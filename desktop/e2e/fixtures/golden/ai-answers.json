@@ -1,5 +1,5 @@
 {
-  "about": "Reviewed AI answers for the quality backbone suite (29 Oct 2026 record run 40861637712; scores and decide items reviewed by qu, rule in the PR). Keyed by question, not request bytes. Shared background kinds are declared by name with invalid-key refusals (owner, 29 Oct 2026); stores uses its notice-period stand-in plus these kinds. Interviews declares caption-keyed authored reviews and a kind-only authored patterns reply (29 Oct 2026). Wander adds authored empty items for answer_home/organize_lines and empty contact_from_cv proposals (30 Oct 2026) to avoid visible raw errors; role_ideas is a controlled refusal. Its six current seeded target-role titles, including the captured Site Reliability Engineer, have authored software verdicts for Strategy's role-kind calls. These are fixtures, not recorded model replies.",
+  "about": "Reviewed AI answers for the quality backbone suite (29 Oct 2026 record run 40861637712; scores and decide items reviewed by qu, rule in the PR). Keyed by question, not request bytes. Shared background kinds are declared by name with invalid-key refusals (owner, 29 Oct 2026); stores uses its notice-period stand-in plus these kinds. Interviews declares caption-keyed authored reviews and a kind-only authored patterns reply (29 Oct 2026). Wander adds authored empty items for answer_home/organize_lines and empty contact_from_cv proposals (30 Oct 2026) to avoid visible raw errors; role_ideas is a controlled refusal. Its six current seeded target-role titles, including the captured Site Reliability Engineer, have authored software verdicts for Strategy's role-kind calls. These are fixtures, not recorded model replies. Why (30 Oct 2026, qu): authored portal relevance rows cover setup, the literal quality reset and the captured post-reset search. True means relevant to offer for SRE jobs in Swiss places, not permission to fetch a login-wall site; the journey never reads these portals.",
   "kinds": {
     "organize_lines": {
       "answer": {
@@ -1468,6 +1468,56 @@
         "answer": {
           "role_family": "cloud_infrastructure"
         }
+      }
+    },
+    "app.visit": {
+      "default/app.visit/3c31a9decd99/1443abeca97337b5379c07ac193d67d57da0270e67c0b7158683e04d0af2339d": {
+        "text": "{\"found\":\"\",\"kind\":\"portal\",\"name\":\"Glassdoor\",\"url\":\"https://www.glassdoor.com/Job/jobs.htm?sc.keyword=sre&locKeyword=zurich\"}",
+        "answer": true
+      },
+      "default/app.visit/3c31a9decd99/182ad98b458527f6a3626cad13ee46b90b6dbd4a678129fd1ad824defe290ca0": {
+        "text": "{\"found\":\"\",\"kind\":\"portal\",\"name\":\"Indeed\",\"url\":\"https://ch.indeed.com/jobs?q=sre&l=zurich\"}",
+        "answer": true
+      },
+      "default/app.visit/3c31a9decd99/67f36eba89a8e9b43be34e33a2106299db487e37095fd173b3d2ad52c9593db6": {
+        "text": "{\"found\":\"\",\"kind\":\"portal\",\"name\":\"levels.fyi\",\"url\":\"https://www.levels.fyi/jobs?searchText=sre&location=zurich\"}",
+        "answer": true
+      },
+      "default/app.visit/3c31a9decd99/8da5b7df15fdf99e631ebd98ba5b05b4c74748b6c8fdf318cf01854858b0da13": {
+        "text": "{\"found\":\"\",\"kind\":\"portal\",\"name\":\"LinkedIn\",\"url\":\"https://www.linkedin.com/jobs/search/?keywords=sre&location=zurich\"}",
+        "answer": true
+      },
+      "default/app.visit/60faa2d559ca/1e46679dc9d55911cdf8b628d84b9e4e9838c06e70cdc69d44c04d84f790bfba": {
+        "text": "{\"found\":\"\",\"kind\":\"portal\",\"name\":\"Glassdoor\",\"url\":\"https://www.glassdoor.com/Job/jobs.htm?sc.keyword=site%20reliability%20engineer&locKeyword=z%C3%BCrich\"}",
+        "answer": true
+      },
+      "default/app.visit/60faa2d559ca/6d6370e24849b5920a5e26d3d85b9adaeee534b4d6b0e78cc9a9d29b4189e219": {
+        "text": "{\"found\":\"\",\"kind\":\"portal\",\"name\":\"Indeed\",\"url\":\"https://ch.indeed.com/jobs?q=site%20reliability%20engineer&l=z%C3%BCrich\"}",
+        "answer": true
+      },
+      "default/app.visit/60faa2d559ca/7a81e8bb96b5d8e133f5b40e2902ce0240ba7098b7969ac0ab8d98061776d289": {
+        "text": "{\"found\":\"\",\"kind\":\"portal\",\"name\":\"LinkedIn\",\"url\":\"https://www.linkedin.com/jobs/search/?keywords=site%20reliability%20engineer&location=z%C3%BCrich\"}",
+        "answer": true
+      },
+      "default/app.visit/60faa2d559ca/db06ac4d5d7da6914864da4d4844cfba3b706f8c8fb4fdf1431b2fc99b38c01f": {
+        "text": "{\"found\":\"\",\"kind\":\"portal\",\"name\":\"levels.fyi\",\"url\":\"https://www.levels.fyi/jobs?searchText=site%20reliability%20engineer&location=z%C3%BCrich\"}",
+        "answer": true
+      },
+      "default/app.visit/6a93d065521f/1443abeca97337b5379c07ac193d67d57da0270e67c0b7158683e04d0af2339d": {
+        "text": "{\"found\":\"\",\"kind\":\"portal\",\"name\":\"Glassdoor\",\"url\":\"https://www.glassdoor.com/Job/jobs.htm?sc.keyword=sre&locKeyword=zurich\"}",
+        "answer": true
+      },
+      "default/app.visit/6a93d065521f/182ad98b458527f6a3626cad13ee46b90b6dbd4a678129fd1ad824defe290ca0": {
+        "text": "{\"found\":\"\",\"kind\":\"portal\",\"name\":\"Indeed\",\"url\":\"https://ch.indeed.com/jobs?q=sre&l=zurich\"}",
+        "answer": true
+      },
+      "default/app.visit/6a93d065521f/67f36eba89a8e9b43be34e33a2106299db487e37095fd173b3d2ad52c9593db6": {
+        "text": "{\"found\":\"\",\"kind\":\"portal\",\"name\":\"levels.fyi\",\"url\":\"https://www.levels.fyi/jobs?searchText=sre&location=zurich\"}",
+        "answer": true
+      },
+      "default/app.visit/6a93d065521f/8da5b7df15fdf99e631ebd98ba5b05b4c74748b6c8fdf318cf01854858b0da13": {
+        "text": "{\"found\":\"\",\"kind\":\"portal\",\"name\":\"LinkedIn\",\"url\":\"https://www.linkedin.com/jobs/search/?keywords=sre&location=zurich\"}",
+        "answer": true
       }
     }
   },

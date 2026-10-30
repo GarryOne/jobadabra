@@ -13,6 +13,8 @@ on:
       - '!desktop/e2e/fixtures/**'
       - '!desktop/e2e/ladder-fixtures/**'
       - '!desktop/e2e/widget-zoo/**'
+      # Why (30 Oct 2026, qu): the authored backbone table is a test input; a fixture-only fix must start its guards.
+      - 'desktop/e2e/fixtures/golden/ai-answers.json'
       - 'extension/**'
       - 'eslint.config.mjs'
       - 'tools/check.sh'

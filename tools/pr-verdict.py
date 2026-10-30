@@ -54,15 +54,12 @@ PR_WORKFLOWS = {'beta-approve.yml', 'conflict-label.yml', 'e2e-windows.yml', 'e2
                 'office-addon.yml', 'page-cases.yml', 'pr-closed-cancel.yml', 'pr-gate.yml', 'pr-suites.yml', 'ready-fill-image.yml', 'search-personas.yml', 'tests-desktop-windows.yml',
                 'tests-desktop.yml', 'tests-python.yml', 'tests-worker.yml'}
 
-
 def ci_change(files):
     workflow = re.compile(r'^\.github/workflows/([^/]+)$')
     return any(CI_FILES.match(file) and (not workflow.match(file) or workflow.match(file).group(1) in PR_WORKFLOWS) for file in files)
 
-
 def _at(text):
     return datetime.fromisoformat(str(text).replace('Z', '+00:00'))
-
 
 def counted(runs):
     """The newest run of each workflow among those that judge this PR's commit."""
@@ -71,7 +68,6 @@ def counted(runs):
     for r in sorted(mine, key=lambda r: (r.get('createdAt') or '', r.get('databaseId') or 0)):
         newest[r['workflowName']] = r
     return list(newest.values())
-
 
 def job_state(job, me=None, my_status=''):
     """One job of a running workflow -> 'running', 'finishing' (only its verdict step and clean-up are left) or its conclusion."""
@@ -82,7 +78,6 @@ def job_state(job, me=None, my_status=''):
     steps = job.get('steps') or []
     left = [st for st in steps if st.get('status') != 'completed' and st.get('name') != STEP and not str(st.get('name', '')).startswith('Post ') and st.get('name') != 'Complete job']
     return 'finishing' if any(st.get('name') == STEP for st in steps) and not left else 'running'
-
 
 def clock(at):
     """'07:04 Zurich' (the owner's time); 'HH:MM UTC' where Python has no time-zone data (Windows runners)."""
@@ -262,7 +257,7 @@ def job_log(repo, job_id):
 
 
 def main_state_module(repo, ref, name='main_e2e_state'):
-    """Load main's state or the AI report companion at this script's commit, even from a standalone CI copy."""
+    """Load main's state or a number companion at this script's commit, even from a standalone CI copy."""
     here = os.path.join(os.path.dirname(os.path.abspath(__file__)), name + '.py')
     if not os.path.exists(here):
         text = gh('api', '-H', 'Accept: application/vnd.github.raw', f'repos/{repo}/contents/tools/{name}.py?ref={ref}')
@@ -449,6 +444,11 @@ def main():
     if state is None:
         print(f'no pull request run on {a.sha[:7]}: nothing to write'); return 0
     why = ai_line(why)
+    if any(str(r.get('displayTitle', '')).startswith(E2E_PR_TITLE) for r in counted(runs)):
+        try:
+            why = main_state_module(a.repo, os.environ.get('GITHUB_SHA') or a.sha, 'pr_speed_number').summary(a.repo, counted(runs), gh, why)
+        except Exception as error:
+            print(f'Speed number unavailable ({type(error).__name__}): required verdict unchanged')
     print(f'{CONTEXT}: {state}: {why}')
     url = f'{server}/{a.repo}/actions/runs/{target or my_run}'   # the run it waits on, or the red one: the PR's e2e run is not in its checks list
     if not a.dry_run:

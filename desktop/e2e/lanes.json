@@ -33,6 +33,15 @@
     "wander": {
       "aiMissesMax": 0
     },
+    "activity": {
+      "aiMissesMax": 0
+    },
+    "interactions": {
+      "aiMissesMax": 0
+    },
+    "failureschannels": {
+      "aiMissesMax": 0
+    },
     "activityfailures": {
       "aiMissesMax": 0
     },

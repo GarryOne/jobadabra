@@ -17,6 +17,9 @@ import {lateShiftFindings, nowInPage, shiftsIn, watchShifts} from '../lib/shift.
 import {goView} from '../lib/go-view.mjs';
 import {probe, problems, waitForRail} from '../lib/rail-markers.mjs';
 
+// Why (30 Oct 2026, bb 3/9, rule A): setup and task asks must use the stored table; any miss fails before live AI.
+export const offlineAi = true;
+export const realAi = false;
 export const macos = true;   // runs on a macOS runner: pixels, fonts and window sizes: judged on the Mac people use (lib/plan.mjs runnerOf)
 export const name = 'interactions';
 export {hangCaps} from '../lib/interactions-caps.mjs';

@@ -3,6 +3,9 @@
 // Job: wait on state
 import {runParts} from './activityfailures.mjs';
 
+// Why (30 Oct 2026, bb 3/9, rule A): setup and task asks must use the stored table; any miss fails before live AI.
+export const offlineAi = true;
+export const realAi = false;
 export const minutes = 12;
 export const name = 'failureschannels';
 export {hangCaps} from '../lib/failureschannels-caps.mjs';

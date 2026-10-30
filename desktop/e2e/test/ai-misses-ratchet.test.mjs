@@ -8,17 +8,14 @@ import {test} from 'node:test';
 import {entryProblems, lanesProblems} from '../../../tools/lanes-check.mjs';
 import {aiMissesVerdict, checkAiMisses} from '../lib/no-real-ai.mjs';
 
-const ZERO_SUITES = ['stores', 'interviews', 'wander', 'activityfailures', 'jobs', 'strategy', 'employers', 'settings', 'applyflows', 'apply', 'recorded', 'wizard', 'updates', 'focus', 'cardstates', 'focusdismiss', 'visitread', 'calendar', 'failuresnotion', 'storemove', 'quality', 'foryou', 'pool', 'visitsauto'];
+const ZERO_SUITES = ['stores', 'interviews', 'wander', 'activity', 'interactions', 'failureschannels', 'activityfailures', 'jobs', 'strategy', 'employers', 'settings', 'applyflows', 'apply', 'recorded', 'wizard', 'updates', 'focus', 'cardstates', 'focusdismiss', 'visitread', 'calendar', 'failuresnotion', 'storemove', 'quality', 'foryou', 'pool', 'visitsauto'];
 // Why (30 Oct 2026, bb 1/9): a suite with no ceiling is not checked at all, so a new suite could ask a live model unseen. Each one listed here has a reason and a PR that removes it; the list only shrinks.
 const UNCHECKED = {
   explore: 'by hand only: it spends the owner\'s AI credit on purpose (suites/explore.mjs)',
-  activity: 'bb 3/9: measure its asks, then answer them from stored answers',
-  interactions: 'bb 3/9: measure its asks, then answer them from stored answers',
-  failureschannels: 'bb 3/9: runs activityfailures\' parts outside the stored-answers list',
   personas: 'bb 4/9: hands the CI key to the engine (suites/personas.mjs)',
 };
 
-test('the real registry parses and protects all 24 suites that reached zero misses', () => {
+test('the real registry parses and protects all 27 suites that reached zero misses', () => {
   const text = fs.readFileSync(new URL('../lanes.json', import.meta.url), 'utf8');
   assert.deepEqual(lanesProblems(null, text), []);
   const {suites} = JSON.parse(text);

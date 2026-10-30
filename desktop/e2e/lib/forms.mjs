@@ -354,6 +354,36 @@ const PAGES = {
   ${submit}</form>`),
 };
 
+// A read-only proof's shape: empty details and an upload, with field-count reports even when its hidden tab closes. No applicant values leave the page.
+const heldReadPage = form => page(form, `<form id="application_form" method="post" action="${form.autoPath}">
+  ${field('first_name', 'First name', {required: true})}${field('last_name', 'Last name', {required: true})}${field('email', 'Email', {type: 'email', required: true})}${resume}${submit}</form>`, `
+  const report = () => fetch('/__triage-fields?job=' + encodeURIComponent(location.href.split('#')[0]) + '&filled=' + [...document.querySelectorAll('input')].filter(item => item.type === 'file' ? item.files.length : item.value).length, {method: 'POST', keepalive: true});
+  ['input', 'change', 'pagehide'].forEach(name => window.addEventListener(name, report, true)); report();`, {realSubmit: true});
+
+/** Holds registered job pages until release(url); counts exact GET addresses and field observations, never applicant values. Unregistered requests keep the usual fixture routes. */
+function heldReadRoutes() {
+  const pages = new Map();
+  const holdReads = jobs => {
+    const reads = [], reports = [];
+    const release = url => { const row = pages.get(url); row.released = true; for (const send of row.pending.splice(0)) send(); };
+    for (const form of jobs) pages.set(form.url, {form, reads, reports, pending: [], released: false});
+    return {reads, reports, release, close: () => { for (const {url} of jobs) { release(url); pages.delete(url); } }};
+  };
+  const route = next => (req, res) => {
+    const url = new URL(req.url, 'https://x'), host = String(req.headers.host || '').split(':')[0];
+    if (req.method === 'POST' && url.pathname === '/__triage-fields') {
+      pages.get(url.searchParams.get('job'))?.reports.push({url: url.searchParams.get('job'), filled: Number(url.searchParams.get('filled'))});
+      req.resume(); res.writeHead(204).end(); return;
+    }
+    const held = pages.get(`https://${host}${url.pathname}${url.search}`);
+    if (req.method !== 'GET' || !held) { next(req, res); return; }
+    held.reads.push(held.form.url);
+    const send = () => { if (!res.destroyed) res.writeHead(200, {'content-type': 'text/html; charset=utf-8'}).end(heldReadPage(held.form)); };
+    if (held.released) send(); else held.pending.push(send);
+  };
+  return {holdReads, route};
+}
+
 // -> {url, host, port, close(), fired: [{kind, form}] (what happened to a Submit), forms: {name: form}}. https, a self-made certificate.
 // A real form's page from its spec: the person's details first (as every board asks), then each field the extension failed on, as the kind it was.
 // A real form's field id, from its label and place (the suite reads the field back by it).
@@ -380,8 +410,9 @@ export async function startForms({vary = null} = {}) {
   const fired = [];
   const posts = [];   // the real Submit of FORMS.submitter (done by the test as the person)
   const hits = [];
+  const readPages = heldReadRoutes();
   const signinPosts = [];   // each press of a sign-in fixture's button the site received: which page, and whether the email and the password were the right ones
-  const server = https.createServer({key: fs.readFileSync(path.join(dir, 'key.pem')), cert: fs.readFileSync(path.join(dir, 'cert.pem'))}, (req, res) => {
+  const server = https.createServer({key: fs.readFileSync(path.join(dir, 'key.pem')), cert: fs.readFileSync(path.join(dir, 'cert.pem'))}, readPages.route((req, res) => {
     const url = new URL(req.url, 'https://x');
     const host = String(req.headers.host || '').split(':')[0];
     hits.push(`${host}${url.pathname}`);
@@ -446,10 +477,10 @@ export async function startForms({vary = null} = {}) {
     if (!name) { res.writeHead(404, {'content-type': 'text/plain'}).end('not a fixture form'); return; }
     res.writeHead(200, {'content-type': 'text/html; charset=utf-8'});
     res.end((PAGES[name] || realPage)(FORMS[name]));
-  });
+  }));
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   const port = server.address().port;
-  return {port, fired, posts, hits, signinPosts, variation, forms: FORMS, close: () => new Promise(resolve => { server.close(resolve); server.closeAllConnections?.(); }), html: name => (PAGES[name] || realPage)(FORMS[name])};
+  return {port, fired, posts, hits, holdReads: readPages.holdReads, signinPosts, variation, forms: FORMS, close: () => new Promise(resolve => { server.close(resolve); server.closeAllConnections?.(); }), html: name => (PAGES[name] || realPage)(FORMS[name])};
 }
 
 // Chromium flags that send the job-site host names to the fixture server and make every other name unresolvable (no employer is ever contacted).

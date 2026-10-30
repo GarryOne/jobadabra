@@ -188,3 +188,30 @@ test('a later failed batch marks only its successful predecessor and retries onl
   assert.deepEqual(log.batches[2].map(entry => entry.text), Array.from({length: 11}, (_, i) => `step ${50 + i}`));
   assert.equal(log.kept().filter(entry => !entry.sent).length, 0);
 });
+
+// Beta 41090972183 (#2608): the push stalled 14-62 s while every other call to the app was fast; a slow cycle says which phase took the time.
+for (const outcome of ['ok', 'failed']) test(`a push cycle of 5 s or more (${outcome}) writes one "slow push" line naming the POST as the slow phase`, async t => {
+  let now = 1000;
+  t.mock.method(Date, 'now', () => now);
+  const log = await extensionLog(t, (_batch, n) => {
+    if (n === 1) { now += 6000; return {ok: outcome === 'ok', status: outcome === 'ok' ? 200 : 503}; }
+    return {ok: true};
+  });
+  await log.decide('fill', 'page kind corrected: form');
+  await log.pushDecisions();
+  await log.pushDecisions();
+  const slow = log.kept().filter(entry => entry.text === 'slow push');
+  assert.equal(slow.length, 1, 'one line for the one slow cycle');
+  const {version: _version, ...fields} = slow[0].fields;
+  assert.deepEqual(fields, {settingsMs: 0, readMs: 0, postMs: 6000, lines: 1, ...(outcome === 'ok' ? {markMs: 0} : {failed: true})});
+  assert.ok(log.batches.flat().some(entry => entry.text === 'slow push'), 'the line itself reaches the app with a later push');
+});
+
+test('a fast push writes no "slow push" line', async t => {
+  let now = 1000;
+  t.mock.method(Date, 'now', () => now);
+  const log = await extensionLog(t, () => { now += 4999; return {ok: true}; });
+  await log.decide('fill', 'filled the form');
+  await log.pushDecisions();
+  assert.equal(log.kept().filter(entry => entry.text === 'slow push').length, 0);
+});

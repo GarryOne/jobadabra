@@ -125,3 +125,13 @@ test('the route passes blocked and its kind on', async () => {
   const answer = await decideAccountJudge({}, {phase: 'form', sketch: covered}, {client: fake({answer: 'blocked', blocked_kind: 'dialog', needs: '', needs_kind: '', confidence: 0.9})});
   assert.deepEqual([answer.answer, answer.blockedKind], ['blocked', 'dialog']);
 });
+
+test('the judge also says whether a login wall or an account to create stands in the way (for the apply triage read)', async () => {
+  const got = await judgeForm(fake({answer: 'needs_person', needs: '', needs_kind: '', login_wall: true, account_to_create: false, bot_check: false, confidence: 0.9}), page);
+  assert.deepEqual([got.loginWall, got.accountCreation], [true, false]);
+});
+
+test('a judge answer without the login and account fields leaves them unknown, never false', async () => {
+  const got = await judgeForm(fake({answer: 'ready', needs: '', needs_kind: '', bot_check: false, confidence: 0.9}), page);
+  assert.equal('loginWall' in got || 'accountCreation' in got, false);
+});

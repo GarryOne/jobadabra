@@ -6,7 +6,7 @@
 import {MODEL} from './page-kind.js';
 import {accountSketch, listed} from './account-judge.js';
 
-export const schema = {type: 'object', additionalProperties: false, required: ['answer', 'blocked_kind', 'needs', 'needs_kind', 'step', 'next_control', 'submit_control', 'bot_check', 'confidence'], properties: {
+export const schema = {type: 'object', additionalProperties: false, required: ['answer', 'blocked_kind', 'needs', 'needs_kind', 'step', 'next_control', 'submit_control', 'bot_check', 'login_wall', 'account_to_create', 'confidence'], properties: {
   answer: {type: 'string', enum: ['ready', 'needs_person', 'blocked', 'unsure']},
   blocked_kind: {type: 'string', enum: ['', 'dialog', 'error', 'overlay', 'gone'], description: 'Only for blocked: dialog = a dialog or popup asks something; error = the site shows its own error about what was entered; overlay = something else covers the form; gone = the application is no longer on the page (another page, a reload, an empty page); else ""'},
   needs: {type: 'string', description: 'The exact label of the one listed control or link that still needs the person (a required field, a choice, an upload, a consent), else ""'},
@@ -14,6 +14,8 @@ export const schema = {type: 'object', additionalProperties: false, required: ['
   step: {type: 'string', enum: ['middle', 'final', 'unsure'], description: 'middle: this page is one step of a multi-step application and a later step follows; final: this page sends the application (or it has one page); unsure'},
   next_control: {type: 'string', description: 'For a middle step: the exact text of the one listed button or link that goes on to the NEXT STEP of this same application (never one that submits, sends or applies), else ""'},
   submit_control: {type: 'string', description: 'Only when answer is ready on a final step: the exact text of the one listed button that sends this application, else ""'},
+  login_wall: {type: 'boolean', description: 'true when the page asks the person to sign in or log in to an account before the form can be filled, whatever its vendor or language, else false'},
+  account_to_create: {type: 'boolean', description: 'true when the page asks the person to create an account or register before the form can be filled, whatever its wording, else false'},
   bot_check: {type: 'boolean', description: 'true when the page asks for a robot or bot check that is not passed yet (a checkbox, a puzzle, a frame for one), whatever its vendor or language, else false'},
   confidence: {type: 'number'}}};
 
@@ -49,7 +51,7 @@ export async function judgeForm(client, raw) {
     const found = JSON.parse(response.content?.find(block => block.type === 'text')?.text || '');
     if (!['ready', 'needs_person', 'blocked', 'unsure'].includes(found?.answer)) return {error: 'not an answer'};
     const blocked = found.answer === 'blocked', robot = found.bot_check === true, said = robot && found.answer === 'ready' ? 'needs_person' : found.answer;   // a ready that names a robot check is the person's
-    return {answer: said, ...(typeof found.bot_check === 'boolean' ? {botCheck: robot} : {}), blockedKind: blocked ? (['dialog', 'error', 'overlay', 'gone'].includes(found.blocked_kind) ? found.blocked_kind : 'overlay') : '', needs: blocked ? '' : listed(found.needs, sketch), needsKind: ['consent', 'choice', 'upload', 'field', 'other'].includes(found.needs_kind) ? found.needs_kind : '',
+    return {answer: said, ...(typeof found.bot_check === 'boolean' ? {botCheck: robot} : {}), ...(typeof found.login_wall === 'boolean' ? {loginWall: found.login_wall} : {}), ...(typeof found.account_to_create === 'boolean' ? {accountCreation: found.account_to_create} : {}), blockedKind: blocked ? (['dialog', 'error', 'overlay', 'gone'].includes(found.blocked_kind) ? found.blocked_kind : 'overlay') : '', needs: blocked ? '' : listed(found.needs, sketch), needsKind: ['consent', 'choice', 'upload', 'field', 'other'].includes(found.needs_kind) ? found.needs_kind : '',
       confidence: Math.max(0, Math.min(1, Number(found.confidence) || 0)),
       step: ['middle', 'final'].includes(found.step) ? found.step : 'unsure', nextControl: found.step === 'middle' ? listedButton(found.next_control, sketch) : '',
       submitControl: said === 'ready' && found.step === 'final' ? listedButton(found.submit_control, sketch) : ''};

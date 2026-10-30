@@ -64,7 +64,9 @@ export function createTabReport(ctx) {
       const sessions = Object.fromEntries(Object.entries(stored).filter(([key, id]) => /^session:\d+$/.test(key) && id && alive.has(Number(key.slice(8))))
         .map(([key, id]) => [key.slice(8), String(id)]));
       const running = await runningVersion();
-      const answer = await api(config, '/extension/tabs', {method: 'POST', body: JSON.stringify({urls, ids, boot, browser, worker: WORKER, reading, sessions, version: running})});
+      // Why (#2536): the launcher sets this marker on its owned copy; the app's Chrome version notes must never use that copy's check-in.
+      const owned = globalThis.__jobPilottoBackgroundOwned === true;
+      const answer = await api(config, '/extension/tabs', {method: 'POST', body: JSON.stringify({urls, ids, boot, browser, worker: WORKER, reading, sessions, version: running, owned})});
       connected(true);
       await pollBackgroundApply(config);
       await chrome.storage.local.set({appBuild: answer?.build ? {...answer.build, version: running} : null}).catch(() => {});   // what the panel shows: the commit this copy runs, and the fixes it lacks (desktop/lib/build-state.js)

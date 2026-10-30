@@ -4,8 +4,23 @@ import fs from 'node:fs';
 import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
+import {registerHooks} from 'node:module';
 import {test} from 'node:test';
 import {createStorage} from '../lib/storage.js';
+
+// Keep the real server, version wording and IPC decisions; cut off all native browser operations.
+registerHooks({load(url, context, next) {
+  if (url === new URL('../lib/dev-extension-version.js', import.meta.url).href) return {format: 'module', shortCircuit: true, source: "export const devVersion = () => '0.9.701';"};
+  if (url === new URL('../lib/extension-ready.js', import.meta.url).href) return {format: 'module', shortCircuit: true, source: 'export const extensionReady = async () => ({waited: 0});'};
+  if (url === new URL('../lib/form-tab.js', import.meta.url).href) return {format: 'module', shortCircuit: true, source: `
+    export const ATS = /jobs\\.test/;
+    export const openFormTab = async () => 'tab'; export const listTabs = async () => [];
+    export const reloadFormTab = async () => 'no-tab';
+    export const closeFormTab = () => { throw Error('no real browser'); };
+    export const focusTabAt = closeFormTab; export const focusTabById = closeFormTab;
+  `};
+  return next(url, context);
+}});
 
 const STORE = 'nmbnjhmpofifgcdalfefddbiihccogoi';    // chromewebstore.google.com/detail/jobadabra/nmbnjhmpofifgcdalfefddbiihccogoi
 const FOLDER = 'gpffoneapcfceflfmfgedkcfbommgcfk';   // the manifest key's ID (Load unpacked)
@@ -31,6 +46,9 @@ test('the store-installed extension pairs, and the app opens pages at the ID tha
     assert.equal(server.extensionIdNow(), FOLDER, 'before any check-in: the folder copy');
     assert.equal((await call('/extension/tabs', `chrome-extension://${STORE}`, {urls: [], version: '0.9.620'}, token)).status, 200);
     assert.equal(server.extensionIdNow(), STORE, 'the store copy checked in: wake it, not the folder copy');
+    await call('/extension/tabs', `chrome-extension://${FOLDER}`, {browser: 'store-test-hidden', owned: true, urls: [], version: '0.9'}, token);
+    assert.equal(server.extensionIdNow(), STORE, 'the hidden folder copy never replaces the person\'s store ID');
+    assert.match(server.staleExtension(server.extensionSeen().version, '0.9.625'), /Chrome Web Store/, 'hidden reports never change the stale-note install type');
     await call('/extension/tabs', `chrome-extension://${FOLDER}`, {urls: [], version: '0.9.621'}, token);
     assert.equal(server.extensionIdNow(), FOLDER);
     await call('/extension/tabs', 'https://evil.example', {urls: []}, token);

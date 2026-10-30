@@ -196,8 +196,15 @@ Who builds what: the verdict session takes rows 16-17 and the push-checks sessio
 | 26 | Outside-world suite nightly | 7 | 🟡 `a8`: #2502 merged (own daily cron); proof: its first daily run |
 | 27 | Bug Tracker "escaped e2e" field, and retire `e2e_weekly.py` after the first Monday post | 1 | `a8`, after 2 Nov 2026 |
 | 28 | Harness shrink, first half (module count before and after) | 10 | 🟡 `qu`: inventory |
-| 29 | Harness shrink, second half | 10 | after row 28 |
+| 29 | Harness shrink, second half: back under 283 lib modules (27 Oct count) | 10 | after row 28 |
 | 30 | Grey tracking: page + weekly + returns | 1 | `a8`: open |
+
+Before/after for the 30 Oct ratchet change, at `f93a714`: non-test `.mjs` files, excluding `test/`, `recorded/`, `fixtures/` and `node_modules/`; lines are newline counts in those files. This adds the brake; both shrink steps remain pending.
+
+| Plan row | Harness files, before → after | Lines, before → after | Lib modules, before → after |
+|---|---|---|---|
+| 28 | 448 → 448 | 32,706 → 32,706 | 312 → 312 |
+| 29 | 448 → 448 | 32,706 → 32,706 | 312 → 312 |
 
 ## Progress
 One `###` per plan step, one box per thing that lands; a box is ticked only with the hash it landed in (`tools/ladder-progress.mjs --spec <this file>` draws the bars).
@@ -260,6 +267,7 @@ One `###` per plan step, one box per thing that lands; a box is ticked only with
 
 ### 10. Harness shrink
 - [ ] Delete what the design replaced, one step at a time, the module count measured before and after.
+- [ ] Enforce the file/module counts with `desktop/e2e/test/harness-size.test.mjs` and `harness-size.json`; lower each baseline in the same PR as a shrink (row 29).
 
 ### 11. Acceptance
 - [ ] 14 days after step 6: the acceptance numbers read from the J card and the scorecard, reported to the owner.

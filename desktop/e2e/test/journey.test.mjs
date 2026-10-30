@@ -53,3 +53,19 @@ test('the test profile\'s undecryptable seeded secrets are not the app\'s error 
   const found = journeyFindings({pageErrors: ["Error: Error invoking remote method 'state': Error: Error while decrypting the ciphertext provided to safeStorage.decryptString."], consoleErrors: [], failedLoads: []}, {suite: 'jobs'});
   assert.deepEqual(found, []);
 });
+
+// The launcher opts out deliberately: the normal startup migration must preserve that choice.
+test('a throwaway app stays opted out of employer sharing through startup and relaunch', async () => {
+  const {initialSettings} = await import('../lib/app.mjs');
+  const {openPoolShare} = await import('../../lib/migrate.js');
+  const {on, variables} = await import('../../lib/pool-share.js');
+  let settings = initialSettings();
+  const storage = {settings: () => settings, saveSettings: patch => { settings = {...settings, ...patch}; }};
+  assert.equal(on(storage), false);
+  assert.equal(openPoolShare(storage), false, 'startup must not reopen the harness opt-out');
+  assert.equal(on(storage), false);
+  settings = JSON.parse(JSON.stringify(settings));
+  assert.equal(openPoolShare(storage), false, 'relaunch preserves the same choice');
+  assert.equal(variables(storage), null, 'no sharing variables reach the pipeline');
+  assert.equal(initialSettings({shareEmployers: true}).shareEmployers, true, 'a suite can explicitly test sharing');
+});

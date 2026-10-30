@@ -27,7 +27,13 @@
 
 - [x] Narrow geo repair merged as c567ff9, no owner merge performed by this agent. (proof: desktop/e2e/test/activityfailures-backbone-no-live-ai.test.mjs @5fe23fa)
 - [x] Read full first/retry CI artifacts and identify vacuous retry proof. (proof: none: run 40996297795, original refusals=5 and suite-failures=[])
-- [ ] Truthful refusal artifacts and nonempty retry proof: red/green regressions, review, full CI.
+- [x] Truthful refusal artifacts and nonempty retry proof: red/green regressions, review, full CI. (proof: desktop/e2e/test/no-real-ai.test.mjs @6cb36b4)
 - [ ] Deterministic input and lifecycle audit, evidence-based fix and CI.
 - [ ] State waits, measured hang caps and CI.
 - [ ] Fresh main evidence after owner merges; full redesign claim only then.
+
+## Isolation follow-up evidence
+
+The launcher explicitly wrote shareEmployers:false but omitted shareEmployersChosen. The real openPoolShare startup migration reopens that value; background-handlers can then schedule contribution after 60 seconds. Record the harness opt-out as a choice, using the same setting as the product switch. A focused regression exercises launcher defaults and the real migration through restart; explicit suite overrides remain available. This fixes a demonstrated external-input leak, without asserting that it caused every missing question.
+
+Finite semantic catalog and synthetic guard retry selection are separate PRs #2560 and #2566; both pass final-head CI with full Gitar approval. Full redesign still requires fault lifecycle, observable state waits, measured caps, CI and fresh main proof.

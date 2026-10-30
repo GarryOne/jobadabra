@@ -1,5 +1,6 @@
 """tools/ship-watch.sh (18 Oct 2026): after `ship: REVIEW` a detached watcher adds MERGED / CLOSED / RED / WATCH ENDED to ship's log, so a session learns of the owner's merge.
 A fake `gh` reads its answers from files: state.txt (OPEN|MERGED|CLOSED, then an optional sha) and checks.txt (the failing check name or empty); a script of steps may rewrite them between looks.\nverdicts: the \"All checks passed\" status per look (pending, else green; pr-verdict.yml since 26 Oct 2026); runs: the head's check-runs (none, running, gate = the old job, else green)."""
+import json
 import os
 import shutil
 import signal
@@ -31,13 +32,15 @@ class ShipWatchTest(unittest.TestCase):
         return {**os.environ, 'PATH': f'{self.tmp / "bin"}{os.pathsep}{os.environ["PATH"]}', 'FAKE_GH_DIR': str(self.tmp), 'PR_REST_CACHE': str(self.tmp / 'cache'),
                 'SHIP_WATCH_POLL': str(poll), 'SHIP_WATCH_CAP': str(cap), 'SHIP_WATCH_FIX': str(self.tmp / 'fix.sh')}
 
-    def watch(self, states, checks='', cap=60, poll=0, mergeables='', runs='', verdicts=''):
+    def watch(self, states, checks='', cap=60, poll=0, mergeables='', runs='', verdicts='', heads='', labels=''):
         (self.tmp / 'states').write_text(states)
         (self.tmp / 'mergeables').write_text(mergeables)
         (self.tmp / 'fixes').write_text('')
         (self.tmp / 'checks').write_text(checks)
         (self.tmp / 'runs').write_text(runs)
         (self.tmp / 'verdicts').write_text(verdicts)
+        (self.tmp / 'heads').write_text(heads)
+        (self.tmp / 'labels').write_text(labels)
         (self.tmp / 'looks').write_text('0')
         subprocess.run(['bash', str(ROOT / 'tools' / 'ship-watch.sh'), '7', str(self.log), str(self.pidfile), 'o/r'], env=self.env(poll, cap), timeout=30, check=True)
         return self.log.read_text().splitlines()[1:]
@@ -79,6 +82,33 @@ class ShipWatchTest(unittest.TestCase):
 
     def test_no_green_while_the_new_heads_checks_are_missing_or_running(self):
         self.assertEqual(self.watch('OPEN\nOPEN\nCLOSED\n', runs='none\nrunning\n'), ['ship: CLOSED #7 (unmerged)'])
+
+    def test_ready_needs_green_and_gitars_approval_on_this_head_and_a_new_head_re_arms_it(self):
+        # Owner via d3, 30 Oct 2026: "my PRs are not fully approved by Gitar": d3 said ready on GREEN while Gitar read "approved with suggestions".
+        approved, suggests = 'Gitar: approved', 'Gitar: approved with suggestions'
+        lines = self.watch('OPEN\nOPEN\nOPEN\nOPEN\nOPEN\nMERGED fff0000\n', checks='\n\n\npending\n\n\n', heads='new1\nnew1\nnew1\nnew2\nnew2\nnew2\n',
+                           labels=f'{suggests}\n{approved}\n{approved}\nGitar: reviewing\n{approved}\n{approved}\n')
+        self.assertEqual(lines, ['ship: GREEN #7', 'ship: READY #7 new1', 'ship: GREEN #7', 'ship: READY #7 new2', 'ship: MERGED #7 fff0000'])
+
+    def test_no_ready_while_a_session_works_on_comments_or_the_owner_waits_for_an_answer(self):
+        working = self.watch('OPEN\nOPEN\nMERGED fff0000\n', labels='Gitar: approved,Working on PR comments\nGitar: approved\n')
+        self.assertEqual(working, ['ship: GREEN #7', 'ship: READY #7 new1', 'ship: MERGED #7 fff0000'], 'READY once the session is done')
+        self.log.write_text('ship: [3s] opened the pull request: https://example.test/pull/7\n')
+        (self.tmp / 'rest').mkdir(exist_ok=True)
+        (self.tmp / 'rest' / 'repos_o_r_issues_7_comments_per_page_100').write_text(json.dumps([
+            {'node_id': 'C1', 'user': {'login': 'GarryOne'}, 'body': 'Please rename it', 'html_url': 'u', 'created_at': '2026-10-30T00:00:00Z'}]))
+        asked = self.watch('OPEN\nMERGED fff0000\n', labels='Gitar: approved\n')
+        self.assertEqual(asked, ['ship: COMMENT #7 owner comment u', 'ship: GREEN #7', 'ship: MERGED #7 fff0000'])
+
+    def test_a_failed_check_read_never_repeats_ready_for_the_same_head(self):
+        lines = self.watch('OPEN\nOPEN\nOPEN\nMERGED fff0000\n', runs='ok\nrefused\nok\n', labels='Gitar: approved\n' * 3)
+        self.assertEqual(lines.count('ship: READY #7 new1'), 1, lines)
+
+    def test_the_labels_ready_reads_are_the_ones_gitar_label_writes(self):
+        source, labels = (ROOT / 'tools' / 'ship-watch.sh').read_text(), (ROOT / 'tools' / 'gitar-label.mjs').read_text()
+        for name in ('Gitar: approved', 'Working on PR comments'):
+            self.assertIn(f"name: '{name}'", labels, 'tools/gitar-label.mjs writes it')
+            self.assertIn(f'index("{name}")', source, 'tools/ship-watch.sh reads the same name')
 
     def test_a_pr_still_open_at_the_cap_ends_the_watch(self):
         self.assertEqual(self.watch('OPEN\n', checks='pending\n' * 4, cap=2, poll=1), ['ship: WATCH ENDED #7 (still open)'])

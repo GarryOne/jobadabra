@@ -80,7 +80,7 @@ ship_pr_land() {
     if [ -n "${SHIP_PR_DRAFT:-}" ]; then gh pr ready "$n" --undo >/dev/null 2>&1 && step "#$n is a draft again until its new checks are green" || true; fi   # --draft: a new push restarts the checks
   fi
   [ -z "${external:-}" ] || bash "$tools/lab-ci-dispatch.sh" "$n"   # a lab PR has no Actions of its own: the public repo runs its tests (tools/lab_ci.py)
-  ship_watch_start "$n"   # from here on the log also hears RED / GREEN / MERGED / CLOSED, whatever way this run ends (18 Oct 2026: #1321 sat red unnoticed)
+  ship_watch_start "$n"   # from here on the log also hears RED / GREEN / READY / MERGED / CLOSED, whatever way this run ends (18 Oct 2026: #1321 sat red unnoticed)
   local review=""; if ship_review; then review=1; step "review mode: the owner reviews and merges #$n by hand; waiting for every check it started"
   elif ! out="$(gh pr merge "$n" --auto --rebase 2>&1)"; then
     case "$out" in

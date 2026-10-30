@@ -10,7 +10,7 @@ test('no captcha, no login, every answer a saved fact: Full automation can take 
 });
 
 test('no captcha, no login, some answers not saved: Background (you review and submit)', () => {
-  assert.deepEqual(modeOfRead({...clean, allFactsSaved: false}), {mode: 'background', reason: 'answers you have not saved'});
+  assert.deepEqual(modeOfRead({...clean, allFactsSaved: false}), {mode: 'fill', reason: 'answers you have not saved'});
 });
 
 test('a captcha, a login wall, or an account to create: Standard, with the reason', () => {
@@ -25,7 +25,7 @@ test('not eligible is skipped, whatever the form says', () => {
 
 test('a missing flag is the unsafe answer, never the automatic one', () => {
   assert.equal(modeOfRead({eligible: true}).mode, 'check', 'no captcha answer: the person decides');
-  assert.equal(modeOfRead({...clean, allFactsSaved: undefined}).mode, 'background');
+  assert.equal(modeOfRead({...clean, allFactsSaved: undefined}).mode, 'fill');
   assert.equal(modeOfRead(undefined).mode, 'none');
 });
 

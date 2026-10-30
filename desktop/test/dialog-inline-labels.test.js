@@ -67,8 +67,25 @@ test('dialog row builders also opt out of stacked margins', () => {
 test('inline margins reset separately from the stacked label rule', () => {
   const shared = source('components.css');
   for (const cls of ['inline-label', 'task-count-field']) assert.ok(rules.some(rule =>
-    rule.selector === `.panel-dialog label.${cls}` && /\bmargin:\s*0\s*[;}]/.test(`${rule.body}}`)), `${cls} clears stacked margins in the shared rule`);
+    rule.selector.replace(/:where\(([^)]*)\)/g, '$1') === `.panel-dialog label.${cls}`
+      && /\bmargin:\s*0\s*[;}]/.test(`${rule.body}}`)), `${cls} clears stacked margins in the shared rule`);
   assert.match(shared, /\.panel-dialog label\s*\{[^}]*margin:\s*var\(--sp-4\) 0 var\(--sp-2\)/);
+});
+
+test('inline margin reset lets row components keep their own spacing', () => {
+  // Literal selectors only: :where contributes no specificity; a later equal-weight radio rule must win.
+  const weight = selector => {
+    const text = selector.replace(/:where\([^)]*\)/g, '');
+    return (text.match(/#[\w-]+/g) || []).length * 100
+      + (text.match(/\.[\w-]+/g) || []).length * 10
+      + (text.replace(/[.#][\w-]+/g, '').match(/\b[a-z][\w-]*\b/g) || []).length;
+  };
+  const reset = rules.find(rule => rule.selector.includes('label.inline-label') && /margin:\s*0\b/.test(rule.body));
+  const stacked = rules.find(rule => rule.selector === '.panel-dialog label');
+  const radio = rules.find(rule => rule.selector === 'label.radio');
+  assert.ok(reset && stacked && radio);
+  assert.ok(weight(reset.selector) >= weight(stacked.selector), 'reset overrides the earlier stacked default');
+  assert.ok(weight(reset.selector) <= weight(radio.selector), 'later radio-card spacing can override the reset');
 });
 
 test('guard catches wrapping and parent rows while allowing stacked fields', () => {

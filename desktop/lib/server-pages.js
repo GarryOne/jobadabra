@@ -185,6 +185,8 @@ export async function pickUploadSlot(storage, body, {client} = {}) {
   return {ok: true, title: found.title};
 }
 
+// The form judge's login-wall and account-to-create flags, only when it gave them (the apply triage read, PR C2a); an absent flag stays absent, never false.
+const pageFlags = answer => ({...(typeof answer.loginWall === 'boolean' ? {loginWall: answer.loginWall} : {}), ...(typeof answer.accountCreation === 'boolean' ? {accountCreation: answer.accountCreation} : {})});   // words-ok: the judge's own flag names, not a page word list
 // The AI's judgment on a sign-up page, before the account button ('ready') or after it ('result'): fixed answers, never a value the person typed (lib/account-judge.js).
 export async function decideAccountJudge(storage, body, {judge = judgeAccount, client} = {}) {
   if (body?.phase === 'format') {   // another way to write a value the site refused (lib/format-judge.js): the site's error text in, one fixed writing out
@@ -216,7 +218,7 @@ export async function decideAccountJudge(storage, body, {judge = judgeAccount, c
   if (climb) appLog('extension', climb, {phase});
   const next = phase === 'form' && !answer.error ? {step: answer.step || 'unsure', nextControl: answer.nextControl || '', submitControl: answer.submitControl || '', confidence: answer.confidence || 0, blockedKind: answer.blockedKind || ''} : {};   // extension/next-step.js
   const background = phase === 'form' && body?.background ? await backgroundApplyFor(storage).judgment(body, answer) : null;
-  return answer.error ? {ok: true, answer: '', error: answer.error, ...judged} : {ok: true, ...judged, answer: answer.answer, needs: answer.needs, needsKind: answer.needsKind || '', consentRequired: !!answer.consentRequired, botCheck: answer.botCheck, ...next, ...(background ? {background} : {})};
+  return answer.error ? {ok: true, answer: '', error: answer.error, ...judged} : {ok: true, ...judged, answer: answer.answer, needs: answer.needs, needsKind: answer.needsKind || '', consentRequired: !!answer.consentRequired, botCheck: answer.botCheck, ...pageFlags(answer), ...next, ...(background ? {background} : {})};
 }
 
 // The closer look (lib/ladder/rung4-picture.js): a picture with typed values hidden, one fixed action back; opt-in, capped, account pages only. A feedback body remembers what worked.

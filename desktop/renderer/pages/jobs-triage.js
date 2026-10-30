@@ -1,5 +1,5 @@
 // Apply triage on the Jobs screen (spec 2026-10-30-apply-triage, PR B): the button, the popup (which jobs, how many), the progress with Cancel, and the chip on each job.
-// The form read itself is PR C: until it lands, `readJob` answers "not read" and the chips stay "Not checked".
+// The form read itself is the hidden browser's (lib/triage-reader.js); a job that was not read keeps its "Not checked" chip.
 import {chip} from '../components.js';
 import {$} from './core.js';
 import {chipOf, pickForTriage} from '../apply-triage-pick.js';
@@ -59,11 +59,11 @@ export async function runTriage(jobs, read) {
   return done;
 }
 
-// PR B's read: the form read is not built yet, so nothing is read and the person is told so.
+// The default read reads nothing (a window with no hidden browser behind it): the person is told so.
 const notYetRead = async () => null;
 
-/** Wires the popup once: `read(job)` is the form read (PR C; the default reads nothing), `rerender` redraws the list after a run, `toast(title, body, place, tone)` says how it ended. Takes the callbacks; a missing dialog wires nothing. */
-export function wireTriage({read = notYetRead, rerender = () => {}, toast = () => {}} = {}) {
+/** Wires the popup once: `read(job)` is the form read in the hidden browser (null = nothing read), `cancel()` ends the read in flight, `rerender` redraws the list after a run, `toast(title, body, place, tone)` says how it ended. Takes the callbacks; a missing dialog wires nothing. */
+export function wireTriage({read = notYetRead, cancel = () => {}, rerender = () => {}, toast = () => {}} = {}) {
   const dialog = $('triage-dialog');
   if (!dialog) return;
   $('triage-open').addEventListener('click', () => { paintCount(); dialog.showModal(); });
@@ -72,7 +72,7 @@ export function wireTriage({read = notYetRead, rerender = () => {}, toast = () =
   $('triage-by-fit').addEventListener('click', () => { $('triage-by-fit').setAttribute('aria-pressed', 'true'); $('triage-by-best').setAttribute('aria-pressed', 'false'); paintCount(); });
   $('triage-n').addEventListener('input', paintCount);
   $('triage-fit').addEventListener('input', paintCount);
-  $('triage-cancel').addEventListener('click', () => { cancelled = true; });
+  $('triage-cancel').addEventListener('click', () => { cancelled = true; cancel(); });
   $('triage-start').addEventListener('click', async () => {
     const jobs = pickForTriage(shared.allJobs || [], choiceNow());
     $('triage-start').disabled = true;
@@ -80,7 +80,7 @@ export function wireTriage({read = notYetRead, rerender = () => {}, toast = () =
     $('triage-progress').hidden = true;
     paintCount();
     rerender();
-    toast(done ? 'Checked your jobs' : 'Nothing was checked', done ? `${done} of ${jobs.length} read. Each chip shows how it can apply.` : 'The form check is not available in this version yet.', null, done ? 'good' : 'info');
+    toast(done ? 'Checked your jobs' : 'Nothing was checked', done ? `${done} of ${jobs.length} read. Each chip shows how it can apply.` : 'No form could be read. The hidden browser has to be downloaded first, and no application can be open.', null, done ? 'good' : 'info');
   });
   paintCount();
 }

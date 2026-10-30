@@ -20,7 +20,10 @@ test('role duties slot reuses the stored family judgment and never changes full 
   assert.equal(q.operation, 'app.enrich');
   assert.deepEqual(q.responseSchema.required, ['role_family']);
   assert.deepEqual(q.responseSchema.properties.duties, {type: 'string'});
-  const legacy = questionOf(askOf(c), {});
+  const legacyBody = bodyOf(c);
+  delete legacyBody.output_config.format.schema.properties.duties;
+  legacyBody.output_config.format.schema.required = ['role_family'];
+  const legacy = questionOf(askOf(c, legacyBody), {});
   assert.equal(q.items[0].key, legacy.items[0].key);
   const {env} = tempTable(t, {'app.enrich': {[q.items[0].key]: {text: q.items[0].text, answer: c.reply}}});
   assert.deepEqual(storedAnswer(askOf(c, body), env), {reply: message(JSON.stringify(c.reply))});

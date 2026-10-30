@@ -13,7 +13,7 @@ const names = text => [...text.matchAll(/ctx\.run\('((?:[^'\\]|\\.)*)'/g)].map(m
 const ORDER = (() => {
   const own = read('suites/apply.mjs'), journeys = own.indexOf('await runJourneys('), cvAt = own.indexOf('await runCvSteps(');
   assert.ok(journeys > 0 && cvAt > journeys, 'runApply calls the journeys, then the CV steps');
-  return [...names(own.slice(0, journeys)), ...names(read('lib/apply-journeys.mjs')), ...names(own.slice(journeys, cvAt)), ...names(read('lib/apply-cv-steps.mjs')), ...names(read('lib/apply-silent-steps.mjs')), ...names(own.slice(cvAt))];
+  return [...names(own.slice(0, journeys)), ...names(read('lib/apply-journeys.mjs')), ...names(own.slice(journeys, cvAt)), ...names(read('lib/apply-cv-steps.mjs')), ...names(read('lib/apply-silent-steps.mjs')), ...names(read('lib/apply-triage-steps.mjs')), ...names(own.slice(cvAt))];
 })();
 const stepsOf = parts => ORDER.filter(name => parts.includes(apply.partOf(name)));
 const needsOf = name => Object.entries(apply.stepNeeds).filter(([word]) => name.includes(word)).flatMap(([, list]) => list).filter(word => word !== SETUP);

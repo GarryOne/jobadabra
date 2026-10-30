@@ -1,0 +1,242 @@
+// Prove stored prompt joins and drift reporting remain deterministic and entirely offline.
+// Job: serve stored answers
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import {spawnSync} from 'node:child_process';
+import {test} from 'node:test';
+import {loadTable, message, storedAnswer, keepCandidate, keepCandidateBody} from '../lib/ai-answers.mjs';
+import {seedRequests, serializeRequests} from '../../../tools/seed-ai-answer-requests.mjs';
+import {loadRequests, resolveRequest, pickSample, compareAnswer, buildReport} from '../lib/answer-drift.mjs';
+
+const fixture = new URL('../fixtures/golden/ai-answer-requests.json', import.meta.url);
+const table = loadTable();
+const tmp = t => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'answer-drift-'));
+  t.after(() => fs.rmSync(dir, {recursive: true, force: true}));
+  return dir;
+};
+const forbidNetwork = t => t.mock.method(globalThis, 'fetch', () => { throw new Error('network forbidden'); });
+
+// Removing the oldest-first selection, or allowing one kind to consume the sample, breaks this test.
+test('sample rotates oldest first within each kind and spreads slots across kinds', () => {
+  const entries = ['a', 'b', 'c'].flatMap(kind => Array.from({length: 4}, (_, n) => ({id: `${kind}${n}`, kind})));
+  const history = Object.fromEntries(entries.filter(e => e.id.endsWith('0')).map(e => [e.id, '2026-10-30']));
+  const first = pickSample(entries, history, 6);
+  assert.deepEqual(first.map(e => e.id), ['a1', 'b1', 'c1', 'a2', 'b2', 'c2']);
+  for (const entry of first) history[entry.id] = {lastChecked: '2026-10-31'};
+  assert.deepEqual(pickSample(entries, history, 3).map(e => e.id), ['a3', 'b3', 'c3']);
+  assert.equal(pickSample(entries, {}, 0).length, 0);
+  assert.equal(pickSample(Array.from({length: 30}, (_, n) => ({id: String(n), kind: 'x'}))).length, 20);
+  assert.deepEqual(pickSample([...entries].reverse(), {}, 5), pickSample(entries, {}, 5));
+});
+
+test('seeding is byte deterministic, body-reference-only and links the measured 268 plus 3 keys', t => {
+  forbidNetwork(t);
+  const entries = seedRequests();
+  assert.equal(serializeRequests(entries), fs.readFileSync(fixture, 'utf8'));
+  assert.equal(serializeRequests(seedRequests()), serializeRequests(entries));
+  assert.equal(new Set(entries.map(e => e.id)).size, entries.length);
+  assert.equal(new Set(entries.map(e => e.source.sha256)).size, entries.length);
+  const linked = new Set(entries.flatMap(e => e.keys.map(key => `${e.kind}/${key}`)));
+  assert.equal(linked.size, 271);
+  const historic = new Set(entries.filter(e => e.provenance !== 'sender capture').flatMap(e => e.keys.map(key => `${e.kind}/${key}`)));
+  assert.equal(historic.size, 268);
+  assert.deepEqual(new Set(entries.map(e => e.provenance)), new Set(['captured', 'reconstructed', 'sender capture']));
+  for (const entry of entries) {
+    assert.ok(!('body' in entry));
+    assert.ok(entry.source.file.endsWith('.json'));
+    assert.equal(entry.source.sha256.length, 64);
+  }
+  assert.equal(fs.readFileSync(fixture, 'utf8').trim().split('\n').length, entries.length + 2);
+});
+
+test('every seeded entry resolves only to existing stored keys; a bogus key is refused', t => {
+  forbidNetwork(t);
+  for (const entry of loadRequests()) {
+    const resolved = resolveRequest(entry, {table});
+    assert.deepEqual(resolved.rows.map(row => row.key).sort(), [...entry.keys].sort());
+    assert.equal(resolved.question.operation, entry.kind);
+    assert.ok(resolved.rows.every(row => row.stored !== undefined));
+  }
+  const entry = loadRequests()[0];
+  assert.throws(() => resolveRequest({...entry, keys: [...entry.keys, 'bogus-key']}, {table}), /stored key|unknown key/i);
+});
+
+test('a stale body hash refuses the sample before any transport can run', async () => {
+  const entry = {...loadRequests()[0], source: {...loadRequests()[0].source, sha256: '0'.repeat(64)}};
+  let calls = 0;
+  await assert.rejects(buildReport({entries: [entry], table, transport: async () => { calls++; }}), /stale.*sha|sha.*stale/i);
+  assert.equal(calls, 0);
+});
+
+test('exact enums, booleans, dates and ids compare same, changed and missing fields', () => {
+  assert.equal(compareAnswer('app.decide', 'yes', 'yes').status, 'same');
+  assert.equal(compareAnswer('app.decide', 'yes', 'no').status, 'changed');
+  assert.equal(compareAnswer('app.title', false, false).status, 'same');
+  const options = {schema: {properties: {tier: {enum: ['A', 'B']}}}};
+  const stored = {tier: 'A', enabled: false, application: 2, posted: '2026-10-01'};
+  assert.equal(compareAnswer('app.score', stored, {...stored}, options).status, 'same');
+  const changed = compareAnswer('app.score', stored, {...stored, application: 3}, options);
+  assert.equal(changed.fields.find(f => f.path === 'application').status, 'changed');
+  const missing = compareAnswer('app.score', stored, {tier: 'A'}, options);
+  assert.equal(missing.fields.find(f => f.path === 'enabled').status, 'missing');
+});
+
+test('numeric changes record their signed delta without a tolerance or an agreement vote', () => {
+  const compared = compareAnswer('app.score', {score: 80}, {score: 79});
+  assert.equal(compared.status, 'numeric-delta');
+  assert.deepEqual(compared.fields[0], {path: 'score', stored: 80, live: 79, status: 'numeric-delta', delta: -1});
+  assert.equal(compared.exact.checked, 0);
+  const geo = compareAnswer('app.geo', {kind: 'city', cc: 'CH', lat: 47, lon: 8, r_km: 20}, {kind: 'unknown', cc: '', lat: 0, lon: 0, r_km: 0});
+  assert.ok(geo.notes.includes('unknown-sentinel'));
+  assert.ok(compareAnswer('app.geo', {lat: 47}, {lat: 91}).notes.includes('range-violation:lat'));
+});
+
+test('prose needs a judge even when the strings match; normalized place sets ignore order', () => {
+  for (const live of ['A strong match.', 'Another phrasing.']) {
+    const compared = compareAnswer('app.score', {reason: 'A strong match.'}, {reason: live});
+    assert.equal(compared.status, 'needs-judge');
+    assert.equal(compared.exact.checked, 0);
+  }
+  const place = {kind: 'city', countries: ['Switzerland'], names: ['Zürich', 'Zurich']};
+  assert.equal(compareAnswer('app.places', place, {...place, names: ['zurich'], countries: ['switzerland']}).status, 'same');
+  assert.equal(compareAnswer('app.places', place, {...place, names: ['Zuerich']}).status, 'needs-judge');
+});
+
+test('enrichment evidence is checked against the supplied posting', () => {
+  const options = {posting: 'Run Kubernetes in production.'};
+  assert.ok(compareAnswer('app.enrich', {evidence: 'Kubernetes'}, {evidence: 'Invented'}, options).notes.includes('ungrounded-evidence:evidence'));
+});
+
+test('enrichment reports ground evidence in the posting body rather than its identity header', async () => {
+  const entry = loadRequests().find(e => e.kind === 'app.enrich' && e.keys.some(key => key.endsWith('/full')));
+  const resolved = resolveRequest(entry, {table}), live = structuredClone(resolved.rows[0].stored);
+  live.english_is_enough.evidence = resolved.request.body.messages[0].content.split('\n')[0];
+  const report = await buildReport({entries: [entry], table, transport: async () => message(JSON.stringify(live))});
+  assert.ok(report.changedKeys[0].notes.includes('ungrounded-evidence:english_is_enough.evidence'));
+});
+
+test('dry reports count an unlinked key as a gap and make no calls', async t => {
+  forbidNetwork(t);
+  const entries = loadRequests();
+  const report = await buildReport({entries, table});
+  assert.deepEqual(report.coverage, {total: 562, eligible: 271, unlinked: 291, checked: 0, unjudged: 0});
+  assert.equal(report.sample.length, 20);
+  assert.equal(report.callsUsed.total, 0);
+  const expanded = structuredClone(table);
+  expanded.items['app.title']['unlinked-new-key'] = {text: 'New title', answer: false};
+  const next = await buildReport({entries, table: expanded});
+  assert.equal(next.kinds['app.title'].unlinked, report.kinds['app.title'].unlinked + 1);
+});
+
+test('fake transport compares per-key booleans including negative selections and reports changes', async t => {
+  forbidNetwork(t);
+  const entry = loadRequests().find(e => e.kind === 'app.title');
+  const resolved = resolveRequest(entry, {table});
+  // The existing parser supplies request-local selectors, so this never guesses them from a key.
+  const selections = resolved.question.items.filter(item => table.items[entry.kind][item.key]?.answer).map(item => item.n);
+  const body = resolved.request.body;
+  const root = Object.keys(body.output_config.format.schema.properties)[0];
+  const reply = message(JSON.stringify({[root]: selections}));
+  const report = await buildReport({entries: [entry], table, transport: async request => { assert.deepEqual(request.body, body); return reply; }});
+  assert.equal(report.callsUsed.app, 1);
+  assert.equal(report.callsUsed.judge, 0);
+  assert.equal(report.kinds[entry.kind].checked, entry.keys.length);
+  assert.equal(report.changedKeys.length, 0);
+  const changed = await buildReport({entries: [entry], table, transport: async () => message(JSON.stringify({[root]: selections.includes(1) ? selections.filter(n => n !== 1) : [...selections, 1]}))});
+  assert.ok(changed.changedKeys.some(row => row.key === resolved.question.items[0].key));
+  assert.equal(changed.results[0].provenance, entry.provenance);
+  assert.equal(changed.kinds[entry.kind].callsUsed.app, 1);
+  assert.ok(changed.kinds[entry.kind].changedKeys.length);
+  assert.ok(changed.kinds[entry.kind].provenance[entry.provenance]);
+});
+
+test('fake score transport leaves prose unjudged, records numeric deltas and counts attempted calls', async () => {
+  const entry = loadRequests().find(e => e.kind === 'app.score');
+  const stored = resolveRequest(entry, {table}).rows[0].stored;
+  const report = await buildReport({entries: [entry], table, transport: async () => message(JSON.stringify({...stored, score: stored.score + 1}))});
+  assert.equal(report.kinds['app.score'].unjudged, 1);
+  assert.equal(report.kinds['app.score'].checked, 1);
+  assert.ok(report.changedKeys[0].fields.some(f => f.path === 'score' && f.delta === 1));
+  const failed = await buildReport({entries: [entry], table, transport: async () => { throw new Error('unavailable'); }});
+  assert.equal(failed.callsUsed.total, 1);
+  assert.equal(failed.kinds['app.score'].checked, 0);
+  assert.equal(failed.results[0].error, 'unavailable');
+});
+
+test('malformed transport replies cannot appear as agreements', async () => {
+  const entry = loadRequests().find(e => e.kind === 'app.score');
+  for (const reply of [undefined, message('{"score":80}'), {...message('{}'), stop_reason: 'max_tokens'}]) {
+    const report = await buildReport({entries: [entry], table, transport: async () => reply});
+    assert.equal(report.results[0].invalidReply, true);
+    assert.equal(report.changedKeys[0].status, 'changed');
+    assert.equal(report.kinds[entry.kind].callsUsed.total, 1);
+  }
+});
+
+test('invalid geographic rows retain numeric deltas and range diagnostics without agreement votes', async () => {
+  const entry = loadRequests().find(e => e.kind === 'app.geo');
+  const resolved = resolveRequest(entry, {table});
+  const places = resolved.question.items.map(item => ({n: item.n, ...(table.items[entry.kind][item.key]?.answer || {kind: 'unknown', cc: '', lat: 0, lon: 0, r_km: 0})}));
+  const first = places.find(row => entry.keys.includes(resolved.question.items.find(item => item.n === row.n).key));
+  first.kind = 'city'; first.cc = 'CH'; first.lat = 91;
+  const report = await buildReport({entries: [entry], table, transport: async () => message(JSON.stringify({places}))});
+  assert.equal(report.results[0].invalidReply, true);
+  const row = report.changedKeys.find(row => row.notes.includes('range-violation:lat'));
+  assert.ok(row);
+  assert.ok(row.fields.some(field => field.path === 'lat' && 'delta' in field));
+  assert.equal(row.exact.checked, 0, 'invalid batches never provide evidence of agreement');
+});
+
+test('unchanged unknown sentinels and identical unjudged prose are not listed as changed keys', async () => {
+  for (const kind of ['app.geo', 'app.score']) {
+    const entry = loadRequests().find(e => e.kind === kind);
+    const resolved = resolveRequest(entry, {table});
+    const reply = kind === 'app.score' ? message(JSON.stringify(resolved.rows[0].stored)) : message(JSON.stringify({places: resolved.question.items.map(item => ({n: item.n, ...(table.items[kind][item.key]?.answer || {kind: 'unknown', cc: '', lat: 0, lon: 0, r_km: 0})}))}));
+    const report = await buildReport({entries: [entry], table, transport: async () => reply});
+    assert.equal(report.changedKeys.length, 0);
+    if (kind === 'app.score') assert.equal(report.kinds[kind].unjudged, 1);
+  }
+});
+
+test('record mode keeps a sanitized request beside complete and per-item candidates without breaking readers', t => {
+  const dir = tmp(t), file = path.join(dir, 'table.json');
+  fs.writeFileSync(file, JSON.stringify({v: 1, answers: {}, items: {}}));
+  const env = {E2E_AI_ANSWERS: 'record', E2E_AI_ANSWERS_FILE: file, E2E_AI_CANDIDATES: dir};
+  for (const kind of ['app.score', 'app.decide']) {
+    const entry = loadRequests().find(e => e.kind === kind);
+    const resolved = resolveRequest(entry, {table});
+    const request = {...resolved.request, headers: {...resolved.request.headers, authorization: 'secret-header'}, body: {...resolved.request.body, metadata: {secret: 'omit'}}};
+    const state = storedAnswer(request, env);
+    const reply = kind === 'app.score' ? message(JSON.stringify(resolved.rows[0].stored)) : message(JSON.stringify({results: resolved.question.items.map(item => ({index: item.index, answer: resolved.question.context.allowedAnswers.split(', ')[0]}))}));
+    if (kind === 'app.score') keepCandidate(state, reply);
+    else keepCandidateBody(state, JSON.stringify(reply));
+  }
+  const candidates = fs.readdirSync(dir).filter(name => name.startsWith('ai-answers-') && name.endsWith('.json'));
+  assert.ok(candidates.some(name => name.startsWith('ai-answers-item-')));
+  for (const name of candidates) {
+    const candidate = loadTable(path.join(dir, name));
+    for (const entries of Object.values(candidate.requests)) for (const value of Object.values(entries)) {
+      assert.ok(value.body.messages);
+      assert.equal(value.body.metadata, undefined);
+      assert.equal(value.headers, undefined);
+    }
+    assert.doesNotMatch(fs.readFileSync(path.join(dir, name), 'utf8'), /secret-header|omit/);
+  }
+  assert.deepEqual(loadTable(file).answers, {});
+});
+
+test('CLI defaults to dry-run, prints sample and coverage, and rejects live mode', () => {
+  const cli = new URL('../answer-drift.mjs', import.meta.url);
+  const run = args => spawnSync(process.execPath, [cli.pathname, ...args], {encoding: 'utf8', env: {PATH: process.env.PATH}});
+  const defaultRun = run([]), explicit = run(['--dry-run']);
+  assert.equal(defaultRun.status, 0, defaultRun.stderr);
+  assert.equal(defaultRun.stdout, explicit.stdout);
+  const result = JSON.parse(defaultRun.stdout);
+  assert.equal(result.coverage.unlinked, 291);
+  assert.equal(result.sample.length, 20);
+  assert.equal(result.callsUsed.total, 0);
+  assert.notEqual(run(['--live']).status, 0);
+});

@@ -390,7 +390,8 @@
   "widget-zoo.test.mjs",
   "check-fill.test.mjs",
   "wrong-values.test.mjs",
-  "pr-linux.test.mjs"
+  "pr-linux.test.mjs",
+  "answer-drift.test.mjs"
  ],
  "folderReaders": {
   "./": [

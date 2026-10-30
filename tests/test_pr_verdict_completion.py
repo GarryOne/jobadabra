@@ -17,20 +17,14 @@ RECORDED = json.loads((ROOT / 'tests/fixtures/pr-verdict-stale.json').read_text(
 
 
 class CompletionWriter(unittest.TestCase):
-    def write(self, record=None, event_name='workflow_run', job_status='', later=None, files=('src/sources/visits.py',)):
+    def write(self, record=None, event_name='workflow_run', job_status='', files=('src/sources/visits.py',), fresh=None):
         record = copy.deepcopy(record or RECORDED)
-        writes, sleeps = [], []
-        # later: the run list GitHub answers on the one re-read after the list's lag (a pending result reads once more, LIST_LAG_S later)
-        def lag(seconds):
-            self.assertEqual((seconds, sleeps), (pv.LIST_LAG_S, []), 'one wait, the list lag, and only once')
-            sleeps.append(seconds)
-            if later is not None:
-                record['runs'] = later
+        writes, self.single_reads = [], []
 
         def gh(*args):
             if args[:2] == ('api', 'graphql'):
                 return json.dumps({'data': {'repository': {'object': {'associatedPullRequests': {'nodes': [
-                    {'number': 2533, 'state': 'OPEN', 'mergedAt': None, 'files': {
+                    {'number': 2533, 'state': 'OPEN', 'mergedAt': None, 'headRefOid': '263ca66', 'files': {
                         'pageInfo': {'hasNextPage': False}, 'nodes': [{'path': path} for path in files]},
                      'commits': {'nodes': []}}
                 ]}}}}})
@@ -40,6 +34,11 @@ class CompletionWriter(unittest.TestCase):
             if args[:2] == ('api', 'rate_limit'):
                 return json.dumps({'resources': {'core': {'remaining': 500, 'limit': 1000},
                                                   'graphql': {'remaining': 5000, 'limit': 5000}}})
+            if args[0] == 'api' and args[1].split('/')[-1].isdigit():
+                rid = int(args[1].split('/')[-1]); self.single_reads.append(rid)
+                r = next(r for r in record['runs'] if r['databaseId'] == rid)
+                return json.dumps({'id': rid, 'head_sha': '263ca66', 'run_attempt': r.get('attempt'),
+                    'status': r['status'], 'conclusion': r['conclusion'], 'updated_at': r['updatedAt'], **(fresh or {}).get(rid, {})})
             if args[0] == 'api' and args[1].endswith('/jobs?per_page=100'):
                 return json.dumps(record['jobs'][args[1].split('/runs/')[1].split('/')[0]])
             if args[:2] == ('api', 'repos/o/r/statuses/263ca66'):
@@ -57,8 +56,8 @@ class CompletionWriter(unittest.TestCase):
                 argv += ['--job-status', job_status]
             with patch.dict(os.environ, env, clear=True), patch.object(sys, 'argv', argv), \
                     patch.object(pv, 'gh', side_effect=gh), patch.object(sys, 'stdout'), \
-                    patch.object(pv, 'main_state_module', side_effect=OSError('offline replay')), \
-                    patch.object(pv.time, 'sleep', side_effect=lag):
+                    patch.object(pv, 'main_state_module', side_effect=lambda repo, ref, name='main_e2e_state': __import__('tools.pr_verdict_runs', fromlist=[name]) if name == 'pr_verdict_runs' else (_ for _ in ()).throw(OSError('offline replay'))), \
+                    patch.object(pv.time, 'sleep', side_effect=AssertionError('no verdict wait or re-read')):
                 self.assertEqual(pv.main(), 0)
         self.assertEqual(len(writes), 1)
         self.assertEqual(writes[0]['context'], 'All checks passed')
@@ -115,24 +114,51 @@ class CompletionWriter(unittest.TestCase):
         record['jobs']['5'] = [{'id': 50, 'name': 'python', 'status': 'in_progress', 'steps': []}]
         self.assertEqual(self.write(record)['state'], 'pending')
 
-    def test_a_run_the_list_still_shows_going_is_read_again_once_after_the_lag(self):
-        # Gitar on #2619: X, Y and Z end together; the verdict for Y is replaced by Z's, whose event names only Z, and the list still shows Y going ~15 s
-        # (#2533). With one writer no later event repairs it: one more read after LIST_LAG_S must see Y ended and write green.
+    def test_cancelled_sibling_writer_does_not_leave_its_ended_red_run_pending(self):
         record = copy.deepcopy(RECORDED)
-        record['event']['workflow_run']['head_sha'] = 'old-head'   # this event clears nothing: only the list can say the run ended
-        ended = [dict(r, status='completed', conclusion='success') for r in record['runs']]
-        self.assertEqual(self.write(record, later=ended)['state'], 'success')
-        self.assertEqual(self.write(record)['state'], 'pending', 'positive control: a run really still going stays pending')
+        record['runs'][2].update(status='in_progress', conclusion='')
+        record['jobs']['3'] = [{'id': 30, 'name': 'desktop', 'status': 'completed', 'conclusion': 'failure'}]
+        written = self.write(record, fresh={3: {'status': 'completed', 'conclusion': 'failure'}})
+        self.assertEqual(written['state'], 'failure')
+        self.assertIn('desktop', written['description'])
+        self.assertEqual(self.single_reads, [3])
 
-    def test_the_re_read_of_a_ci_change_budgets_running_time_not_the_runner_queue(self):
-        # Gitar on #2619: a CI-change PR read pending first, then green on the re-read, must measure its jobs' spans on that re-read: 3 min running after
-        # 10 min in the runner queue is green; judged on wall time (13 min) it read "over the 10-min budget".
+    def test_single_run_success_also_refreshes_e2e_job_evidence(self):
+        record = copy.deepcopy(RECORDED)
+        record['runs'][2].update(status='in_progress', conclusion='', event='workflow_dispatch',
+                                displayTitle='E2E for PR · settings · topic')
+        record['jobs']['3'] = [{'id': 30, 'name': 'settings', 'status': 'in_progress',
+                                'steps': [{'name': 'tests', 'status': 'in_progress'}]}]
+        written = self.write(record, fresh={3: {'status': 'completed', 'conclusion': 'success'}})
+        self.assertEqual(written['state'], 'success')
+        self.assertEqual(self.single_reads, [3])
+
+    def test_pending_freshness_stops_at_first_live_run_or_a_red(self):
+        record = copy.deepcopy(RECORDED)
+        record['event']['workflow_run']['head_sha'] = 'unrelated'
+        record['runs'] = [dict(record['runs'][-1], databaseId=rid, workflowName=f'workflow {rid}') for rid in range(1, 13)]
+        self.assertEqual(self.write(record)['state'], 'pending')
+        self.assertEqual(self.single_reads, [1], 'one live endpoint is enough; never fan out across the push')
+        self.assertEqual(self.write(record, fresh={1: {'status': 'completed', 'conclusion': 'success'}})['state'], 'pending')
+        self.assertEqual(self.single_reads, [1, 2], 'stop on the next actually live run')
+        record['runs'][0].update(status='completed', conclusion='failure')
+        record['jobs']['1'] = [{'id': 10, 'name': 'tests', 'status': 'completed', 'conclusion': 'failure'}]
+        self.assertEqual(self.write(record)['state'], 'failure')
+        self.assertEqual(self.single_reads, [], 'an ended red needs zero freshness calls')
+
+    def test_a_lagging_list_stays_pending_without_a_second_read(self):
+        record = copy.deepcopy(RECORDED)
+        record['event']['workflow_run']['head_sha'] = 'old-head'
+        self.assertEqual(self.write(record)['state'], 'pending', 'a later event or sweep owns the next read')
+
+    def test_a_ci_change_budgets_running_time_not_the_runner_queue(self):
+        # Keep bf7dfa1's running-time budget coverage; the completed state is read once.
         record = copy.deepcopy(RECORDED)
         record['event']['workflow_run']['head_sha'] = 'old-head'
         record['jobs'] = {str(n): [{'name': 'tests', 'status': 'completed', 'conclusion': 'success', 'started_at': '2026-10-30T00:58:00Z',
                                     'completed_at': '2026-10-30T01:01:00Z'}] for n in (1, 2, 3, 4)}
-        queued = [dict(r, status='completed', conclusion='success', createdAt='2026-10-30T00:48:00Z') for r in record['runs']]
-        written = self.write(record, later=queued, files=('tools/pr-verdict.py',))
+        record['runs'] = [dict(r, status='completed', conclusion='success', createdAt='2026-10-30T00:48:00Z') for r in record['runs']]
+        written = self.write(record, files=('tools/pr-verdict.py',))
         self.assertEqual(written['state'], 'success', written)
         self.assertIn('min waiting for runners', written['description'])
 

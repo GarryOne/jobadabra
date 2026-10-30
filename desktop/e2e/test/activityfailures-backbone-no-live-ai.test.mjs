@@ -72,7 +72,7 @@ const semanticCases = () => {
     ...feedAsks.feedPostings.map(post => ({...engineCases.find(item => item.name === 'enrich role'),
       name: `confirm role ${post.title}`, user: `Title: ${post.title}\nCompany: ${post.company}\nLocation: ${post.location}\n\nPosting:\n${post.description}`,
       question: {operation: 'app.enrich', responseSchema: {type: 'object', additionalProperties: false, required: ['role_family'],
-        properties: {role_family: feedAsks.enrich.question.responseSchema.properties.role_family}},
+        properties: {duties: {type: 'string'}, role_family: feedAsks.enrich.question.responseSchema.properties.role_family}},
         items: [{n: 1, text: `${post.title}\n${post.company}\n${post.location}`,
           key: `default/app.enrich/${post.key.slice('feed/'.length)}/role`, label: post.title}]}})),
     ...feedAsks.feedPostings.map(post => ({...engineCases.find(item => item.name === 'title'),

@@ -7,12 +7,16 @@ import unittest
 ROOT = Path(__file__).resolve().parent.parent
 WORKFLOW = ROOT / '.github/workflows/e2e.yml'
 RECORD_GUARD = "github.event_name == 'workflow_dispatch' && github.run_attempt == 1 && inputs.ai_answers == 'record'"
-BACKBONE = ('quality', 'stores', 'interviews', 'wander', 'activityfailures', 'storemove', 'calendar', 'failuresnotion', 'jobs', 'applyflows')
+# Why (30 Oct 2026, beta 41078746088): the backbone suites are the ones that declare it themselves; no workflow or test keeps its own list (three drifted).
+BACKBONE = tuple(sorted(path.stem for path in (ROOT / 'desktop/e2e/suites').glob('*.mjs')
+                        if re.search(r"(?m)^export const aiAnswers = 'backbone';", path.read_text(encoding='utf-8'))))
+WORKFLOWS = ROOT / '.github/workflows'
 
 
 def expression(value, event='workflow_dispatch', mode='off', attempt=1, suite='jobs', burn_in=0):
     """Evaluate ==, &&, || and contains(fromJSON(...), matrix.suite) over workflow inputs."""
-    context = {'github.event_name': event, 'inputs.ai_answers': mode, 'github.run_attempt': attempt, 'matrix.suite': suite, 'matrix.burnIn': burn_in}
+    context = {'github.event_name': event, 'inputs.ai_answers': mode, 'github.run_attempt': attempt, 'matrix.suite': suite, 'matrix.burnIn': burn_in,
+               'matrix.aiAnswers': 'backbone' if suite in BACKBONE else ''}   # what plan-run.mjs puts in a suite's matrix entry
 
     def atom(token):
         token = token.strip()
@@ -64,9 +68,8 @@ class WorkflowAiAnswers(unittest.TestCase):
         mode_line = re.search(r'(?m)^          E2E_AI_ANSWERS: (.+)$', first)
         self.assertIsNotNone(mode_line, 'the suite process must receive its answer mode')
         value = mode_line.group(1)
-        # Why (30 Oct 2026, a8, burn-in; ap): an admission leg always replays stored answers, never records; the suite list is BACKBONE.
-        self.assertEqual(value, "${{ matrix.burnIn && 'backbone' || " + RECORD_GUARD + " && 'record' || contains(fromJSON('" +
-                         json.dumps(list(BACKBONE), separators=(',', ':')) + "'), matrix.suite) && 'backbone' || 'off' }}")
+        # Why (30 Oct 2026, a8, burn-in; ap): an admission leg always replays stored answers, never records; otherwise the suite's own aiAnswers decides (matrix.aiAnswers).
+        self.assertEqual(value, "${{ matrix.burnIn && 'backbone' || " + RECORD_GUARD + " && 'record' || matrix.aiAnswers || 'off' }}")
         cases = [('workflow_dispatch', 'record', 1, 'record'),
                  ('workflow_dispatch', 'off', 1, 'off'),
                  ('workflow_dispatch', '', 1, 'off'),
@@ -121,6 +124,28 @@ class WorkflowAiAnswers(unittest.TestCase):
           fi
           echo "AI answers: record run · ${{ matrix.key }} · $candidates candidate file(s) written (in the e2e-artifacts-${{ matrix.key }} artifact)."
 ''', summary)
+
+
+class EveryWorkflowReadsTheSuitesOwnAnswerMode(unittest.TestCase):
+    """The class: any workflow that runs a suite takes its AI answer mode from the matrix, never from a list of its own."""
+
+    def test_every_answer_mode_line_reads_the_matrix_and_names_no_suite(self):
+        lines = [(path.name, line.strip()) for path in sorted(WORKFLOWS.glob('*.yml'))
+                 for line in path.read_text(encoding='utf-8').splitlines() if re.match(r'\s*E2E_AI_ANSWERS:', line)]
+        self.assertIn('desktop.yml', {name for name, _ in lines}, 'the release run (the beta gate) sets the answer mode too')
+        for name, line in lines:
+            with self.subTest(workflow=name, line=line):
+                self.assertIn("matrix.aiAnswers || 'off'", line)
+                self.assertNotIn('fromJSON', line, 'a suite list here drifts from the suites (beta 41078746088)')
+                self.assertNotRegex(line, r"matrix\.suite\s*==", 'a suite named here drifts from the suites (beta 41078746088)')
+
+    def test_the_beta_gate_runs_every_backbone_suite_on_stored_answers(self):
+        line = next(line for line in (WORKFLOWS / 'desktop.yml').read_text(encoding='utf-8').splitlines() if 'E2E_AI_ANSWERS:' in line)
+        value = line.split('E2E_AI_ANSWERS:', 1)[1].strip()
+        self.assertGreaterEqual(len(BACKBONE), 10, 'the suites stopped declaring aiAnswers')
+        for suite in BACKBONE + ('focus', 'apply', 'qualityai'):
+            with self.subTest(suite=suite):
+                self.assertEqual(expression(value, event='workflow_dispatch', suite=suite), 'backbone' if suite in BACKBONE else 'off')
 
 
 if __name__ == '__main__':

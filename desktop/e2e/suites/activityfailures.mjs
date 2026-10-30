@@ -34,6 +34,7 @@ const disagreement = (mine, opened, run) => {
 // Why (29 Oct 2026, ap): explicit faults, stored metro items and declared background refusals cover every AI ask, so no live key is needed.
 export const offlineAi = true;
 export const realAi = false;
+export const aiAnswers = 'backbone';   // answers its AI from the stored table in every workflow (plan-run.mjs puts it in the matrix)
 export const minutes = 40;   // + Notion, Telegram and Gmail failures (5 Oct 2026)
 // Rule B: nearest-rank p95 from two completed MAIN first-try behavioral samples; see fixtures/activityfailures-main-timings.json.
 // Runs later failed only the missing-answer guard. Caps are hang stops, rounded up to 5 s with a 30 s floor, not speed assertions.

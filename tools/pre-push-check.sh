@@ -220,8 +220,11 @@ if command -v python3 >/dev/null && [ -f "$repo/tools/clean-code-py.py" ] && git
 fi
 # JS cycles and measured browser/runtime boundaries ratchet against main (owner, 29 Oct 2026); old violations never block.
 if command -v python3 >/dev/null && [ -f "$repo/tools/arch-check.py" ] && git -C "$repo" rev-parse --verify -q origin/main >/dev/null; then
-  architecture="$(cd "$repo" && timed "JS architecture" python3 tools/arch-check.py --base origin/main 2>&1)" || block "$architecture"
-  [ -z "$architecture" ] || printf '%s\n' "$architecture" >&2
+  if architecture="$(cd "$repo" && timed "JS architecture" python3 tools/arch-check.py --base origin/main 2>&1)"; then
+    [ -z "$architecture" ] || printf '%s\n' "$architecture" >&2
+  else
+    block "$architecture"
+  fi
 fi
 # A Progress box a pull request ticks names its proof file, and the pull request contains it (or names the commit on main that changed it): tools/spec-proof.mjs.
 if command -v node >/dev/null && [ -f "$repo/tools/spec-proof.mjs" ] && git -C "$repo" rev-parse --verify -q origin/main >/dev/null; then

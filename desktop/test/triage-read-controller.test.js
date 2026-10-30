@@ -30,12 +30,17 @@ test('a queued read reaches the extension as a read command that carries the ses
 
 test('every read asks the browser to start, so a hidden browser that closed since the last read is launched again', async () => {
   const {controller, starts} = make();
-  controller.triageRead({url: 'https://jobs.example.test/first'});
+  const first = controller.triageRead({url: 'https://jobs.example.test/first'});
   await poll(controller);   // the app now knows its owner
   const before = starts.length;
-  controller.triageRead({url: 'https://jobs.example.test/second'});
+  const second = controller.triageRead({url: 'https://jobs.example.test/second'});
   await new Promise(resolve => setImmediate(resolve));
-  assert.equal(starts.length, before + 1, 'start is idempotent and cheap; a read must not trust an owner remembered from a browser that may be gone');
+  try {
+    assert.equal(starts.length, before + 1, 'start is idempotent and cheap; a read must not trust an owner remembered from a browser that may be gone');
+  } finally {
+    controller.cancelTriage();
+    await Promise.all([first, second]);
+  }
 });
 
 test('a Cancel pressed while the browser is starting drops that read: it is never queued behind the Cancel', async () => {

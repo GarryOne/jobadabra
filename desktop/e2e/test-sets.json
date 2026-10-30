@@ -466,6 +466,9 @@
  },
  "folderReaderExceptions": {
   "a11y.test.mjs": "Uses triage, which enumerates artifact directories and refers to suite paths without reading the suites folder.",
+  "ai-answers-engine.test.mjs": "Reaches no-real-ai.mjs through its fixtures; the only directory it lists is a temporary ai-misses folder, not harness code.",
+  "ai-answers-place.test.mjs": "Reaches no-real-ai.mjs through its fixtures; the only directory it lists is a temporary ai-misses folder, not harness code.",
+  "ai-answers-refusal.test.mjs": "Reaches no-real-ai.mjs through its fixtures; the only directory it lists is a temporary ai-misses folder, not harness code.",
   "ai-meter.test.mjs": "Enumerates temporary answer-cache directories; suites occur only in prose.",
   "ai-misses-ratchet.test.mjs": "Counts files in temporary ai-misses directories; suites occur only as lane names in fixtures.",
   "capture-library.test.mjs": "Enumerates temporary screenshot capture directories, not harness code.",

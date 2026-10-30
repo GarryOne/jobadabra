@@ -100,9 +100,12 @@ function fixturePaths() {
   return [...paths].sort();
 }
 
-// Why (30 Oct 2026, ap, Gitar on #2562): judgeFormat (desktop/lib/format-judge.js) sends the field, the site's error and the writings tried, never an Address path, so its request is built without one and its answer cannot depend on the page.
+// Why (30 Oct 2026, ap, Gitar on #2562): judgeFormat (desktop/lib/format-judge.js) sends only the field, the site's error and the writings tried, never an Address path or a page sketch; its request is built in that exact shape, and what it answers depends on the field, not the page.
 const askedWithoutPage = prompt => 'format' in prompt.schema.properties;
-const pageRequest = (prompt, where) => ({model: 'claude-opus-5-5', system: prompt.system,
+const formatRequest = (prompt, field) => ({model: 'claude-opus-5-5', system: prompt.system,
+  output_config: {format: {type: 'json_schema', schema: prompt.schema}}, messages: [{role: 'user', content: [{type: 'text', text: [
+    `Field: ${field}`, "The site's error: Fixture error", 'Writings already tried: (only the first, E.164 with spaces)'].join('\n')}]}]});
+const pageRequest = (prompt, where) => askedWithoutPage(prompt) ? formatRequest(prompt, 'Phone') : ({model: 'claude-opus-5-5', system: prompt.system,
   output_config: {format: {type: 'json_schema', schema: prompt.schema}}, messages: [{role: 'user', content: [{type: 'text', text: [
     ...(prompt.phase ? [`Phase: ${prompt.phase}`] : []),
     ...(prompt.schema.properties.action ? ['Why asked: the fill put nothing in and required fields are left'] : []),
@@ -162,9 +165,10 @@ test('every source-declared page prompt has a schema-valid fixture answer on eve
       if ('repairs' in reply) assert.deepEqual(reply.repairs, [], name);
       if ('verb' in reply) assert.equal(reply.verb, 'none', name);
     }
-    const unknown = await answer(pageRequest(prompt, '/undeclared-fixture'));
-    if (askedWithoutPage(prompt)) assert.deepEqual(JSON.parse(unknown), {format: 'none', confidence: 1}, `${prompt.name}: no page identity, one authored answer`);
-    else assert.equal(unknown, null, `${prompt.name}: unknown page must fall through`);
+    if (askedWithoutPage(prompt)) {
+      assert.deepEqual(JSON.parse(await answer(formatRequest(prompt, 'Téléphone'))), {format: 'none', confidence: 1}, `${prompt.name}: the planted phone field is answered`);
+      assert.equal(await answer(formatRequest(prompt, 'Shoe size')), null, `${prompt.name}: an unplanted field must fall through`);
+    } else assert.equal(await answer(pageRequest(prompt, '/undeclared-fixture')), null, `${prompt.name}: unknown page must fall through`);
   }
   console.log(`Applyflows page coverage: ${prompts.length} prompt variants x ${paths.length} fixture paths = ${prompts.length * paths.length} requests`);
   assert.deepEqual(missing, [], 'a prompt or fixture page has no stored answer');

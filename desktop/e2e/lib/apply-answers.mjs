@@ -65,8 +65,8 @@ function pageKindAnswer(ctx, body, text, {live, realKind}) {
 // Page judges share a sketch shape, but each question owns its own authored reply.
 function pageAnswer(ctx, body, system, text, {live, realKind}) {
   const where = (/^Address path: (.*)$/m.exec(text)?.[1] || '').replace(/\/$/, '');
-  // Why (30 Oct 2026, ap, Gitar on #2562): the format judge's request names no page (desktop/lib/format-judge.js sends the field, the error and the writings tried), so one authored answer serves every page; the fixtures' phone fields all take the first writing.
-  if (system === FORMAT_RULES) return JSON.stringify({format: 'none', confidence: 1});
+  // Why (30 Oct 2026, ap, Gitar on #2562): the format judge's request names no page (desktop/lib/format-judge.js sends the field, the error and the writings tried), so it is keyed on what the sender really carries: a planted fixture's phone field (forms.mjs 'Phone', 'Téléphone') and a site error; any other format ask falls through to the missing-answer guard and fails by name.
+  if (system === FORMAT_RULES) return /^Field: (Phone|Téléphone)$/m.test(text) && /^The site's error: /m.test(text) ? JSON.stringify({format: 'none', confidence: 1}) : null;
   if (!knownPaths.has(where) && !(live && system === KIND_RULES)) return null;
   const reply = nonActingReplies.get(system);
   if (reply !== undefined) return reply;

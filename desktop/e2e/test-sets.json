@@ -476,6 +476,7 @@
   "ai-answers-refusal.test.mjs": "Imports no-real-ai.mjs directly (its checkAiMisses lists a temporary ai-misses folder; this test never calls it); it lists no directory itself, only writes temporary answer tables.",
   "ai-meter.test.mjs": "Enumerates temporary answer-cache directories; suites occur only in prose.",
   "ai-misses-ratchet.test.mjs": "Counts files in temporary ai-misses directories; suites occur only as lane names in fixtures.",
+  "applyflows-backbone.test.mjs": "Lists the product's desktop/lib/ladder folder and reads server-pages.js to find the prompts the page server sends; it reads no harness folder, and suites occur only as fixture names.",
   "capture-library.test.mjs": "Enumerates temporary screenshot capture directories, not harness code.",
   "clock-out.test.mjs": "Uses close-down helpers from suite-main, not its registry-consuming entrypoint.",
   "finder-causes.test.mjs": "Uses triage, which enumerates artifact directories and refers to suite paths without reading the suites folder.",

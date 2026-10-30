@@ -66,9 +66,9 @@ fi
 # Another repo's log carries its name (26 Oct 2026: node24-actions shipped from jobadabra and jobadabra-web at once shared one log, and their events mixed).
 repo_tag=""; [ -z "$external" ] || { repo_tag="$(git remote get-url origin 2>/dev/null)"; repo_tag="${repo_tag##*/}"; repo_tag="${repo_tag%.git}-"; }
 log="${SHIP_LOG:-${TMPDIR:-/tmp}/ship-${repo_tag}${branch//\//-}.log}"
-[ -f "$tools/session-name.sh" ] && source "$tools/session-name.sh" || session_name() { echo "${JOB_PILOTTO_SESSION:-?}"; }
+[ -f "$tools/session-name.sh" ] && source "$tools/session-name.sh" || { session_name() { echo "${JOB_PILOTTO_SESSION:-?}"; }; session_short() { echo "${JOB_PILOTTO_SESSION_SHORT:-?}"; }; }
 if [ "$background" = 1 ]; then
-  export JOB_PILOTTO_SESSION="$(session_name)"   # the detached run has no Claude session among its parents any more
+  export JOB_PILOTTO_SESSION="$(session_name)" JOB_PILOTTO_SESSION_SHORT="$(session_short)"   # the detached run has no Claude session among its parents any more
   : > "$log"; echo 0 > "$log.seen"   # the new run's log starts empty, and so does the cursor tools/ship-wait.sh reads from
   # Its own session (setsid; macOS has no such command, python's os.setsid does the same): the caller's process-group kill or hangup when its
   # call ends (a tool timeout, a closed terminal) must not reach the run. nohup alone only ignores SIGHUP (10 Oct 2026: a killed run logged DONE).

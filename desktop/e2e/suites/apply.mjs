@@ -23,6 +23,7 @@ import {runTriageChipSteps} from '../lib/apply-triage-chip-steps.mjs';
 import {runReadSteps} from '../lib/apply-read-steps.mjs';
 import {runConfirmSteps} from '../lib/apply-confirm-steps.mjs';
 import {runRestartSteps} from '../lib/apply-restart-steps.mjs';
+import {runStopSteps} from '../lib/apply-stop-steps.mjs';
 import {HIDDEN_NEED, autoFormOf, kitSeeder, proveBackground, proveBotCheck, proveQueue} from '../lib/background-proof.mjs';
 import {proveAutomatic} from '../lib/background-auto-proof.mjs';
 import {runJourneys} from '../lib/apply-journeys.mjs';
@@ -48,6 +49,7 @@ export const stepSeconds = {'real forms the extension once failed on': 76, 'Tail
   'a silent Chrome in Standard automation': 45, 'a silent Chrome in Background automation': 20, 'a silent Chrome in Full automation': 20,
   'the app quits while Background automation holds a filled form': 40, 'the app quits in Full automation\'s wait': 140,
   'each read verdict gives its own chip': 90,
+  'Stop on the card in Background automation': 40, 'Stop on the card in Full automation': 140,
   'the Jobs popup has one field': 15, 'checking jobs before the form read exists': 10,
   'Background automation hands a bot check': 25, 'Full automation hands a bot check': 25,
   'Background automation fills several queued jobs': 90, 'Full automation presses each queued job': 50,
@@ -65,6 +67,7 @@ export const hangCaps = {'the app has an applicant': 300, 'the app is seeded': 9
   'a silent Chrome in Standard automation': 90, 'a silent Chrome in Background automation': 90, 'a silent Chrome in Full automation': 90,
   'the app quits while Background automation holds a filled form': 300, 'the app quits in Full automation\'s wait': 420,   // kept from when these steps had inner caps (180 s hold, 60 s hand-over), their waits carry none now: regenerate after 5 main runs (tools/e2e-step-timings.mjs)
   'each read verdict gives its own chip': 360,   // four sequential real reads; fallback until main has calm samples
+  'Stop on the card in Background automation': 300, 'Stop on the card in Full automation': 420,   // hold + card redraw + hand-off, Full watches through due time and two report alarms
   'the Jobs popup has one field': 90, 'checking jobs before the form read exists': 90,
   'Background automation hands a bot check': 240, 'Full automation hands a bot check': 240,
   'Background automation fills several queued jobs': 450, 'Full automation presses each queued job': 450,   // 60 s + 3 x 120 s of inner waits, + 30 s
@@ -84,6 +87,7 @@ export const stepNeeds = {'form': [SETUP], 'session page says it too': [SETUP, '
   'hidden browser fills a form': [SETUP], 'submits a form': [SETUP], 'I submitted it': [SETUP, 'Apply opens a new tab'], 'Apply opens a new tab': [SETUP], 'side by side': [SETUP], 'sign-up page': [SETUP], 'sign-in page': [SETUP], 'menu whose choices': [SETUP], 'Needs your attention" from': [SETUP], 'appears only when + is pressed': [SETUP], 'one page': [SETUP], 'tab is closed': [SETUP], 'second browser': [SETUP], 'wrong kind': [SETUP], 'cannot operate': [SETUP],
   'each read verdict': [SETUP], 'the Jobs popup': [SETUP], 'queued job': [SETUP], 'checking jobs before': [SETUP, 'the Jobs popup'],
   'the app quits while': [SETUP], 'the app quits in': [SETUP],
+  'Stop on the card': [SETUP],
   'Ready to submit': [SETUP, 'cannot operate']};   // it reads the tab the "cannot operate" step left open
 // One failed step never hides the rest: the runner records it and goes on (lib/runner.mjs); only the setup step marked `critical` stops the suite. A step that needs another one is named in stepNeeds.
 export const keepGoing = true;
@@ -435,6 +439,7 @@ export async function runApply(ctx, parts) {
 
   await runRestartSteps(ctx, {urls});   // lib/apply-restart-steps.mjs: the app quits while its hidden browser holds a job
   await runConfirmSteps(ctx, {urls});   // lib/apply-confirm-steps.mjs: Full automation's one confirmation in Settings → Apply, and the refusal without it
+  await runStopSteps(ctx, {urls});   // lib/apply-stop-steps.mjs: Stop pressed on the real live card in each mode
 
   // The bot-check hand-off (owner, 30 Oct 2026: "how covered are we from the apply flows/modes?"): a hidden browser that meets a bot check stops and hands over; it never solves one and sends nothing.
   // The details-only submitter at `?check=<mode>` carries the box (forms.mjs BOT_CHECK); each mode gets its own address, the app keeps one background session per job address.

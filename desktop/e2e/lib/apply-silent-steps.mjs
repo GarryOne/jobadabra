@@ -101,8 +101,10 @@ async function standardStep(ctx, form, id) {
       // Port free again: the app's retry opens it; Chrome still reports elsewhere, so the app is listening but hears nothing.
       await held.release();
       await until('the app did not take its port again', () => /connection back: port/.test(appLogText(ctx.profile)), 30000);
+      // Why (30 Oct 2026, beta 41078746088): the clock moves only once the card has redrawn for the free port (the window's 2 s poll); moved before that redraw, the redraw itself read the moved clock
+      // (green on Linux), moved after it, nothing redrew the card (red on macOS). Then the card must move on by itself within a few 2 s ticks: a 30 s wait let the one-shot CHECK_MS redraw pass it by luck.
+      await until('the card still said the app can\'t hear Chrome after the port was free', async () => { const card = await readCard(ctx.page); return card.title && !/can't hear Chrome/i.test(card.title) ? card : null; }, 10000);
       await clockOn(ctx.page, 70000);
-      // Why (30 Oct 2026, beta 41078746088): the card must move on by itself within a few of the window's 2 s ticks; a 30 s wait let the one-shot CHECK_MS redraw (real time) pass it by luck, and miss by 0.5 s.
       const silent = await until('the card did not say Chrome isn\'t reporting by itself', async () => { const card = await readCard(ctx.page); return /Chrome isn't reporting/i.test(card.title) ? card : null; }, 10000);
       if (silent.buttons[0] !== 'Open it again') throw new Error(`the first button of the silent card is "${silent.buttons[0]}", not "Open it again" (buttons: ${silent.buttons.join(', ')})`);
       // Why (30 Oct 2026, #2586): the harness browser takes each page the app opens out of the opener's spool within milliseconds (lib/extension.mjs watcher), so a poll of the spool races it (2 of 4 runs missed the page). The app's own log line for the open stays.

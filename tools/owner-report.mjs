@@ -24,7 +24,9 @@ export function reportOf(message) {
   const none = /^none\s+\S/i.test(value);
   const noCapture = /^no-capture\s+\S/i.test(value);
   const id = value && !/^(?:none|no-capture)\b/i.test(value) ? value.split(/\s+/)[0] : '';
-  const prose = String(message).split('\n').filter((line, index) => index === 0 || !/^[a-z][a-z0-9-]*:/i.test(line)).join('\n');
+  // Naming a trailer in prose does not claim an owner-seen bug.
+  const prose = String(message).split('\n').filter((line, index) => index === 0 || !/^[a-z][a-z0-9-]*:/i.test(line)).join('\n')
+    .replace(/\b(?:Owner-report|Escaped-e2e)\b/gi, '');
   return {claims: CLAIMS_OWNER_SEEN.test(prose) || Boolean(id) || noCapture, id, none, noCapture, bare: /^(?:none|no-capture)\s*$/i.test(value)};
 }
 

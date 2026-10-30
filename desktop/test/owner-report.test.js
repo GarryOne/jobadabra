@@ -81,6 +81,23 @@ test('trailer text cannot turn Owner-report none into an owner claim', () => {
   assert.equal(reportOf(`${message}\nReviewed-by: owner-reported`).claims, false);
 });
 
+test('naming trailers in prose makes no owner claim', () => {
+  for (const name of ['Owner-report', 'OWNER-REPORT', 'owner-report', 'Escaped-e2e', 'ESCAPED-E2E', 'escaped-e2e']) {
+    for (const quoted of [name, `\`${name}\``]) {
+      const message = `Split ${quoted} none from no-capture\n\nThe gate accepts \`${name}: none\` inline.`;
+      assert.equal(reportOf(message).claims, false, message);
+      assert.equal(ownerReportProblem([commit(message)], look), '', message);
+    }
+  }
+});
+
+test('real owner claims still count alongside trailer names', () => {
+  for (const claim of ['Fix the select the owner reported', 'Fix an owner-seen bug', 'Fix ⚑']) {
+    assert.equal(reportOf(claim).claims, true, claim);
+    assert.equal(reportOf(`${claim}\n\nThe Owner-report gate checks Escaped-e2e.`).claims, true, claim);
+  }
+});
+
 test('escapeOf parses suite lists and no-suite gaps for the collector', () => {
   assert.deepEqual(escapeOf('Fix X\n\nEscaped-e2e: apply, jobs — open a job — then fill'),
     {suites: ['apply', 'jobs'], none: false, journey: 'open a job — then fill'});

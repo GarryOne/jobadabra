@@ -36,7 +36,7 @@ export const withFormJudge = (previous, submitText) => body => {
   const content = body?.messages?.[0]?.content, text = typeof content === 'string' ? content : (content || []).map(part => part.text || '').join('');
   if (!system.startsWith(FORM_JUDGE)) return previous ? previous(body) : null;
   const empty = /· required · empty/.test(text);
-  return JSON.stringify({answer: empty ? 'needs_person' : 'ready', blocked_kind: '', needs: '', needs_kind: '', step: 'final', next_control: '', submit_control: empty ? '' : submitText, bot_check: false, confidence: 0.95});
+  return JSON.stringify({answer: empty ? 'needs_person' : 'ready', blocked_kind: '', needs: '', needs_kind: '', step: 'final', next_control: '', submit_control: empty ? '' : submitText, bot_check: false, login_wall: false, account_to_create: false, confidence: 0.95});
 };
 
 /** The need every hidden-browser step names: the runtime link (linkRuntime) does not exist on Windows. */

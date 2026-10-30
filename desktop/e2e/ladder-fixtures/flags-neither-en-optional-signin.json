@@ -1,0 +1,71 @@
+{
+ "schemaVersion": 1,
+ "id": "flags-neither-en-optional-signin",
+ "question": "form_flags",
+ "source": "invented",
+ "lang": "en",
+ "why": "TRAP: an optional \"Sign in to prefill\" link beside a form that can be filled without it",
+ "capture": {
+  "page": "ladder-fixtures/pages/flags-neither-en-optional-signin.html"
+ },
+ "url": "https://careers.example.com/apply/9002",
+ "expect": {
+  "outcome": "neither"
+ },
+ "sketch": {
+  "url": "https://careers.example.com/apply/9002",
+  "title": "Apply for Support Lead",
+  "headings": [
+   "Apply for Support Lead"
+  ],
+  "controls": [
+   {
+    "type": "text",
+    "label": "First name",
+    "required": true,
+    "state": "empty"
+   },
+   {
+    "type": "text",
+    "label": "Last name",
+    "required": true,
+    "state": "empty"
+   },
+   {
+    "type": "email",
+    "label": "Email",
+    "required": true,
+    "state": "empty"
+   },
+   {
+    "type": "file",
+    "label": "Résumé",
+    "required": true,
+    "state": "empty"
+   }
+  ],
+  "buttons": [
+   "Submit application",
+   "Sign in to prefill"
+  ],
+  "texts": [
+   "Already have a profile? Sign in to prefill this form, or fill it in below."
+  ],
+  "frames": []
+ },
+ "trap": true,
+ "answer": {
+  "answer": "needs_person",
+  "blocked_kind": "",
+  "needs": "First name",
+  "needs_kind": "field",
+  "step": "final",
+  "next_control": "",
+  "submit_control": "",
+  "bot_check": false,
+  "login_wall": false,
+  "account_to_create": false,
+  "confidence": 0.9
+ },
+ "answer_path": "app"
+}

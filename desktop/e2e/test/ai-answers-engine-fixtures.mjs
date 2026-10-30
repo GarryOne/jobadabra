@@ -9,6 +9,7 @@ import {test} from 'node:test';
 import {answerFor, loadTable, questionOf, recordCandidate} from '../lib/ai-answers.mjs';
 import {message} from '../lib/ai-proxy.mjs';
 import {withDerived} from '../../lib/target-roles.js';
+import {capturePrompts} from '../lib/ai-answer-prompts.mjs';
 
 const root = fileURLToPath(new URL('../../../', import.meta.url));
 // Only named constant assignments execute; no source imports, expressions, functions or engine factories run.
@@ -17,7 +18,7 @@ from pathlib import Path
 root=Path(sys.argv[1]); base={}
 for n in ast.parse((root/'src/role_kinds.py').read_text()).body:
  if isinstance(n,ast.Assign) and isinstance(n.targets[0],ast.Name) and n.targets[0].id in ('KINDS','WORK'): base[n.targets[0].id]=ast.literal_eval(n.value)
-keys=set('LANGUAGES _evidence IT_FAMILIES IT_WORK ROLE_FAMILIES SCHEMA SYSTEM ROLE_SYSTEM KINDS VAGUE_SCHEMA VAGUE_SYSTEM VISA_SCHEMA VISA_SYSTEM READ_SCHEMA READ_SYSTEM RECHECK_SYSTEM RELEVANT_SCHEMA RELEVANT_SYSTEM RELEVANT_UNSURE PORTALS'.split()); out={}
+keys=set('LANGUAGES _evidence IT_FAMILIES IT_WORK ROLE_FAMILIES SCHEMA SYSTEM KINDS VAGUE_SCHEMA VAGUE_SYSTEM VISA_SCHEMA VISA_SYSTEM READ_SCHEMA READ_SYSTEM RECHECK_SYSTEM RELEVANT_SCHEMA RELEVANT_SYSTEM RELEVANT_UNSURE PORTALS'.split()); out={}
 for file in ['src/places.py','src/geo.py','src/ai/decide.py','src/ai/title_triage.py','src/ai/enrich.py','src/ai/place_triage.py','src/sources/visits.py','src/sources/visits_portals.py']:
  env={**base,'schema_notes':types.SimpleNamespace(text=lambda schema:'')}
  for n in ast.parse((root/file).read_text()).body:
@@ -38,6 +39,8 @@ const enrichAnswer = Object.fromEntries(Object.entries(fields).map(([k,v]) => [k
 const narrow = names => ({type: 'object', additionalProperties: false, required: names, properties: Object.fromEntries(names.map(name => [name, fields[name]]))});
 const postUser = `Title: ${posting.title}\nCompany: ${company}\nLocation: ${posting.location}\n\nPosting:\n${posting.description}`;
 const p = constants('src/ai/place_triage.py'), t = constants('src/ai/title_triage.py'), g = constants('src/geo.py'), w = constants('src/places.py'), v = constants('src/sources/visits.py'), e = constants('src/ai/enrich.py');
+// Why (30 Oct 2026, a8, quality golden 3006): every role replay fixture uses the engine's captured prompt and duties-first schema, not a legacy reconstruction.
+const roleContract = capturePrompts()['app.enrich'].role;
 // Real failureschannels miss (30 Oct 2026): preserve all three request items, including the fake clock Dates.
 export const mailCapture = {
   "max_tokens": 4000,
@@ -154,7 +157,7 @@ export const engineCases = [
   spec('title recheck', 'app.title', t.RECHECK_SYSTEM, t.SCHEMA, `The search (JSON): ${JSON.stringify(search)}\nThe titles:\n1. senior sre\n2. cashier`, {fit: []}, {action: 'title_triage', first: 'senior sre'}),
   spec('enrich', 'app.enrich', e.SYSTEM, e.SCHEMA, postUser, enrichAnswer, {action: 'enrich', first: posting.title}),
   spec('enrich retry', 'app.enrich', e.SYSTEM, narrow(['seniority', 'technologies']), postUser + '\n\nYour last answer left seniority, technologies empty. Read the posting again.', {seniority: enrichAnswer.seniority, technologies: []}, {action: 'enrich', first: posting.title}),
-  spec('enrich role', 'app.enrich', e.ROLE_SYSTEM, narrow(['role_family']), postUser, {role_family: 'sre'}, {action: 'enrich', first: posting.title}),
+  spec('enrich role', 'app.enrich', roleContract.system, roleContract.schema, postUser, {role_family: 'sre'}, {action: 'enrich', first: posting.title}),
   spec('visit', 'app.visit', `${v.RELEVANT_SYSTEM} ${v.RELEVANT_UNSURE.keep}`, v.RELEVANT_SCHEMA, 'Their roles: ["site reliability"]\nTheir places: ["zurich"]\nThe sites:\n1. E2E Quality Labs (https://boards.e2e.test) [employer] found in: fixture list\n2. E2E Other (https://other.e2e.test) [portal]', {keep: [1]}, {action: 'visit_relevant', first: 'E2E Quality Labs'}),
   spec('visa', 'app.visa', p.VISA_SYSTEM, p.VISA_SCHEMA, 'Their work rights: ["Swiss citizenship"]\nCountries: ["Switzerland", "France"]', {visa: ['France']}, {action: 'place_triage', first: 'Switzerland'}),
   spec('vague', 'app.placeVague', p.VAGUE_SYSTEM, p.VAGUE_SCHEMA, `Their places (JSON): ${JSON.stringify({best_places: places.best_places, anywhere_in: places.anywhere_in, cities_abroad: []})}\nThe job locations:\n1. switzerland\n2. zurich`, {vague: [1]}, {action: 'place_vague', first: 'switzerland'}),

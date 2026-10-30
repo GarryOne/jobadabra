@@ -219,9 +219,10 @@ def capture_engine(prompts=False):
          'src/ai/enrich.py', 'return json.loads(next(block.text')
     if prompts:
         entries[-1]['baseSystem'] = enrich.SYSTEM
-        role = load('src/ai/enrich.py', ['ROLE_SYSTEM', 'AGAIN', '_only'], ROLE_FAMILIES=enrich.ROLE_FAMILIES, SCHEMA=enrich.SCHEMA)
+        # Why (30 Oct 2026, a8, quality golden 3006): capture the engine's own slot rule and schema builder, never reconstruct the role request.
+        role = load('src/ai/enrich.py', ['DUTIES_RULE', 'ROLE_SYSTEM', 'AGAIN', '_only', '_role_schema'], ROLE_FAMILIES=enrich.ROLE_FAMILIES, SCHEMA=enrich.SCHEMA)
         client = Client({})
-        enrich._ask(client, models.SMALL_MODEL, job, role._only(['role_family']), system=role.ROLE_SYSTEM)
+        enrich._ask(client, models.SMALL_MODEL, job, role._role_schema(), system=role.ROLE_SYSTEM)
         entries.append(dict(kind='app.enrich', action='enrich', variant='role', request=client.request, baseSystem=role.ROLE_SYSTEM))
         fields = ['seniority', 'work_mode', 'technologies']
         for mask in range(1, 8):

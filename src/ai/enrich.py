@@ -40,18 +40,19 @@ CREATE TABLE IF NOT EXISTS enrichments (
 LANGUAGES = ['English', 'German', 'French', 'Italian', 'Spanish', 'Portuguese', 'Dutch', 'Other']
 _evidence = {'type': 'string', 'description': 'Short verbatim quote from the posting, or "" if none'}
 IT_FAMILIES = ('sre', 'platform', 'devops', 'cloud_infrastructure', 'software', 'data', 'security', 'support_it')   # the IT role families before the trades
-# Each IT family's work, said like the trades' (src/role_kinds.py WORK): 26 Oct 2026, on Free AI's open model 5 SRE and platform jobs came back
-# 'engineering' while these were bare names (e2e quality, PR #1992). Guarded by: tests/test_role_kinds_split.py.
+# Why (30 Oct 2026, a8, quality golden 3006): keep each IT family's work explicit, as for trades, so duties can select it;
+# PR #1992 found 5 plain SRE/platform jobs called 'engineering' with bare names. Guard: tests/test_role_kinds_split.py.
 IT_WORK = {'sre': 'site reliability: keeping production services up, incidents, on-call, monitoring',
            'platform': 'internal platforms and developer infrastructure, e.g. Kubernetes and CI/CD for other teams',
            'devops': 'build, release and deployment automation, infrastructure as code',
            'cloud_infrastructure': 'cloud, servers, networks and data-centre infrastructure',
            'software': 'building software and applications', 'data': 'data engineering, analytics, data science, machine learning',
            'security': 'IT and cyber security', 'support_it': 'IT support and help desk'}
-# The role families in words, in the system prompt AND the schema: 26 Oct 2026 (PR #1992), with them only in the schema's description Free AI's
-# open model still answered 'engineering' for SRE and platform jobs (a schema there fixes the answer's shape; its descriptions may go unread).
-ROLE_FAMILIES = ("The job's own kind of work, not the team, product or customers it serves; when the title names a kind of work below "
-                 "(site reliability, platform, DevOps, cloud ...), that is its family, and software is only for building the product's own software. IT work (an engineer in software or IT is one of these, "
+# Why (30 Oct 2026, a8, quality golden 3006): duties outrank a misleading title; keep the family meanings in both prompt and schema
+# to preserve #1992's plain SRE/platform fix on models that skip schema descriptions.
+ROLE_FAMILIES = ("The job's own kind of work, not the team, product or customers it serves. The posting's duties decide the family. "
+                 "Use the title only when the posting does not describe the work or its duties agree with the title. "
+                 "Software is only for building the product's own software. IT work (an engineer in software or IT is one of these, "
                  "not engineering): " + '; '.join(f'{family} = {IT_WORK[family]}' for family in IT_FAMILIES) + '. Other work: '
                  + '; '.join(f'{kind} = {WORK[kind]}' for kind in KINDS if kind not in IT_FAMILIES) + '.')
 SCHEMA = {
@@ -185,9 +186,13 @@ AGAIN = ("\n\nYour last answer left {fields} empty. Read the posting again and g
          "skills, licences or topics it names. Answer unknown (or []) only when it gives none.")
 
 
-# An IT job's role family is asked once more, as its own small question, and that answer decides (owner, 26 Oct 2026: "Ask role alone"; Free AI put a
-# different plain SRE posting in "software" on each quality run, inside the 16-fact answer). A narrow question is where small models answer best.
-ROLE_SYSTEM = "You name one job's own kind of work for a job-search tool, from its title and posting.\n\nrole_family: " + ROLE_FAMILIES
+# Why (30 Oct 2026, a8, quality golden 3006): one slot meaning feeds both the role prompt and schema, keeping their guidance identical.
+DUTIES_RULE = 'A few words from the posting about what the person does day to day; "" if unstated.'
+# Why (30 Oct 2026, a8, quality golden 3006): fill a short duties slot before choosing the family, so a helpdesk posting's SRE title
+# cannot override its work; retain the narrow IT re-ask that kept plain SRE jobs out of software (owner, 26 Oct 2026).
+ROLE_SYSTEM = ("You name one job's own kind of work for a job-search tool, from its title and posting. First fill duties, then choose role_family from those duties.\n\n"
+               f'duties: {DUTIES_RULE}\n'
+               "role_family: " + ROLE_FAMILIES)
 
 
 def extract(client, model, job):
@@ -201,7 +206,7 @@ def extract(client, model, job):
         data['seniority'] = settle(job['title'], data.get('seniority'))
         usage = cost.combined(usage, more)
     if data.get('role_family') in IT_FAMILIES:
-        again, more = _ask(client, model, job, _only(['role_family']), system=ROLE_SYSTEM)
+        again, more = _ask(client, model, job, _role_schema(), system=ROLE_SYSTEM)
         data['role_family'] = again.get('role_family') or data['role_family']
         usage = cost.combined(usage, more)
     return data, usage
@@ -226,6 +231,16 @@ def _only(fields):
     """SCHEMA narrowed to the given facts."""
     return {'type': 'object', 'additionalProperties': False, 'required': list(fields),
             'properties': {field: SCHEMA['properties'][field] for field in fields}}
+
+
+# Why (30 Oct 2026, a8, quality golden 3006): extraction and offline capture share the duties-first schema; only role_family is saved.
+def _role_schema():
+    """Build the role re-ask contract; each call owns its required list and properties."""
+    role_schema = _only(['role_family'])
+    role_schema['required'].insert(0, 'duties')
+    role_schema['properties'] = {'duties': {'type': 'string', 'description': DUTIES_RULE},
+                                 **role_schema['properties']}
+    return role_schema
 
 
 

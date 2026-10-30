@@ -2604,8 +2604,8 @@ details.qa-section { margin-top: var(--sp-3); }
 #setting-letter .letter-usage:empty, #setting-letter > .message:empty { display: none; }   /* no reserved line under the card when nothing is said */
 
 /* Apply triage (spec 2026-10-30-apply-triage): the popup's progress. Colors from the tokens, so both themes follow. */
-/* Why (30 Oct 2026, owner: "alignment is not really ok"): .panel-dialog label (components.css) adds a 16px top margin, which put the field's words below its box; this one-line label sits flat. */
-.triage-dialog .triage-n { display: flex; gap: var(--sp-2); align-items: center; margin: var(--sp-3) 0 0; }
+/* Inline-label margins are shared in components.css; this rule only lays out the count and its words. */
+.triage-dialog .triage-n { display: flex; gap: var(--sp-2); align-items: center; }
 .triage-dialog .triage-n input { width: 64px; font-variant-numeric: tabular-nums; }
 .triage-progress { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
 .triage-bar { flex: 1 1 200px; height: 8px; border-radius: var(--r-pill); background: var(--line); overflow: hidden; }

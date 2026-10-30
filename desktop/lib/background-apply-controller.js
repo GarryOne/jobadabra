@@ -116,7 +116,7 @@ export function createBackgroundApplyController(storage, {store = null, browser 
     }
     // Why (2026-10-30, owner: triage read, PR C2a): a form read and an application never share the hidden browser: a read waits for open applications, and an application waits (at most the read's timeout) for a read that is queued or out (Gitar, #2602).
     jobs.push(...readCommands({filling, open}));
-    return {ok: true, jobs, checks, handoffs};
+    return {ok: true, jobs, checks, handoffs, closes: reader.takeEnded().map(session => ({session}))};   // pages of reads Cancel or a timeout ended: the extension closes them (#2624)
   }
   const readCommands = ({filling, open}) => {
     const next = filling || open.length ? null : reader.take();

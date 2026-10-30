@@ -54,7 +54,7 @@ class BurnIn(unittest.TestCase):
                'conclusion': 'success', 'displayTitle': 'E2E for PR · quality · burn-in'}
         attempts = [{'id': 1, 'name': 'quality · burn-in 1/5', 'status': 'completed', 'conclusion': 'success'}]
         with patch.object(pv, 'gh', side_effect=[json.dumps([run]), json.dumps(attempts)]):
-            runs, jobs = pv.read('o/r', 'head', '')
+            runs, jobs = pv.read('o/r', 'head')
         self.assertEqual(jobs.get(7), attempts, 'a green run can still have missing or skipped admission jobs')
 
     def test_standalone_verdict_downloads_its_burn_in_companion_at_its_own_ref(self):

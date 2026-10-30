@@ -68,7 +68,9 @@ for (const ask of [...missing.filter(ask => !placeWord(ask)), ...second]) test(`
   const expected = storedAnswer(init, h.env).reply;
   assert.ok(expected, ask.what);
   const data = JSON.parse(expected.content[0].text), body = JSON.parse(init.body);
-  assert.ok(valid(body.output_config.format.schema, data), 'answer satisfies the product schema');
+  // Why (30 Oct 2026, a8, quality golden 3006): legacy role rows store only the family; the transient duties slot is optional in the replay contract.
+  const replaySchema = ask.family === 'app.enrich' && ask.key.endsWith('/role') ? question.responseSchema : body.output_config.format.schema;
+  assert.ok(valid(replaySchema, data), 'answer satisfies the replay contract');
   if (ask.family === 'app.title') assert.deepEqual(data, {fit: [1]});
   if (ask.family === 'app.place') assert.deepEqual(data.locations, [{n: 1, where: 'Zurich', country: 'Switzerland', nearest: 'zürich', km: 0, answer: 'best'}]);
   if (ask.family === 'app.decide') {

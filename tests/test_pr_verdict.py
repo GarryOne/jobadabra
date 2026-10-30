@@ -1,4 +1,4 @@
-"""The PR's one required status, "All checks passed", is written by tools/pr-verdict.py as the last step of every PR job: no job holds or waits for a runner for it.
+"""The PR's one required status, "All checks passed", is written by tools/pr-verdict.py from pr-verdict.yml each time a PR workflow ends (one writer, owner 30 Oct 2026): no job holds or waits for a runner for it.
 #2042/#2044 (owner, 26 Oct 2026: "it shows green, but I cannot merge" / "again, why I cannot merge this PR?"): a separate verdict job, and e2e's HTML report, sat
 queued for a runner after every check was green.
 Why (owner, 26 Oct 2026: "How could you design such a slow and inefficient method of checking PRs?"): on #1992 two jobs only waited (pr-gate's
@@ -120,41 +120,20 @@ class Workflows(unittest.TestCase):
         self.assertIn("inputs.pr_suites && format('E2E for PR · {0} · {1}', inputs.pr_suites, github.ref_name)", e2e)
         self.assertEqual(pv.E2E_PR_TITLE, 'E2E for PR · ')
 
-    def test_every_pr_job_writes_the_verdict_as_its_last_step(self):
-        # The class: every job a PR can run. Exempt: report jobs (never decide), jobs only main runs, and e2e's plan (its suites need it: its step would see its
-        # run as ended before the suite jobs exist).
-        step_re = re.compile(r"      # The PR's one required status, written as this job ends[^\n]*\n      - name: " + re.escape(pv.STEP) + r"\n        if: always\(\) && (github\.event_name == 'pull_request'|inputs\.pr_suites != '')[^\n]*\n([\s\S]*?)\n(?=  [A-Za-z0-9_-]+:|\Z|\n)")
-        seen, exempt = 0, set()
-        for path in WORKFLOWS.glob('*.yml'):
-            text = path.read_text(); trigger = text.split('\njobs:')[0]
-            if not (re.search(r'(?m)^  pull_request:', trigger) or path.name in ('e2e.yml', 'e2e-windows.yml')):
-                continue
-            jobs = re.split(r'(?m)^(?=  [A-Za-z0-9_-]+:\s*(?:#.*)?$)', text.split('\njobs:\n', 1)[1])
-            needed = set()   # jobs a deciding job needs
-            for other in jobs:
-                other_name = re.search(r'(?m)^    name:\s*(.+?)\s*$', other)
-                other_if = re.search(r'(?m)^    if:\s*(.+)$', other)
-                if (other_name and other_name.group(1).strip('\'"') in pv.REPORT_JOBS) or '\n    steps:' not in other: continue
-                if other_if and ('refs/heads/main' in other_if.group(1) or "github.event_name == 'schedule'" in other_if.group(1)): continue   # main's jobs only
-                for need in re.findall(r'(?m)^    needs:\s*\[?([^\]\n#]+)', other): needed |= {n.strip() for n in need.split(',')}
-            for job in jobs:
-                key = job.split(':', 1)[0].strip(); name = re.search(r'(?m)^    name:\s*(.+?)\s*$', job); cond = re.search(r'(?m)^    if:\s*(.+)$', job)
-                if '\n    steps:' not in job or (name and name.group(1).strip('\'"') in pv.REPORT_JOBS) or key in needed:
-                    self.assertNotIn(pv.STEP, job, f'{path.name} {key}: a report job, or one a deciding job needs (it would see its run ended before them)')
-                    exempt.add((path.name, key)); continue
-                if cond and ('refs/heads/main' in cond.group(1) or "github.event_name == 'schedule'" in cond.group(1) or "inputs.tag != ''" in cond.group(1)):
-                    continue
-                with self.subTest(workflow=path.name, job=key):
-                    steps = re.findall(r'(?m)^      - (?:name|uses): *(.+)$', job)
-                    self.assertTrue(steps and steps[-1] == pv.STEP, f'last step is {steps[-1:]}: add the "{pv.STEP}" step (copy it from tests-python.yml)')
-                    self.assertIn('--job-status "$JOB_STATUS"', job)
-                    for perm in ('actions: read', 'statuses: write', 'pull-requests: read'):
-                        self.assertTrue(perm in job or perm in text.split('\njobs:')[0] or (perm == 'actions: read' and 'actions: write' in trigger), f'{perm} for the verdict')
-                    seen += 1
-        self.assertGreaterEqual(seen, 14, 'positive control: the PR jobs were found')
-        self.assertIn(('e2e.yml', 'plan'), exempt, 'positive control: e2e\'s plan is needed by its suites')
-        self.assertIn(('page-cases.yml', 'replay'), exempt, 'positive control: page-cases\' replays are needed by its report')
-        self.assertNotIn('Turn the PR red now', (WORKFLOWS / 'e2e.yml').read_text(), 'the suite job\'s verdict step turns it red as it ends')
+    def test_one_writer_pr_verdict_yml_alone_writes_the_status(self):
+        # Why (owner, 30 Oct 2026, "One writer"): every PR job also wrote it as its last step; ~21 jobs x ~24 calls per push spent the token's 5,000 calls an hour
+        # by ~35 min past each hour, a failed read wrote nothing, and #2609/#2605/#2598/#2593 sat at pending with every check green.
+        writers = sorted(path.name for path in WORKFLOWS.glob('*.yml') if re.search(r'pr-verdict\.py"? --repo', path.read_text()) or pv.STEP in path.read_text())
+        self.assertEqual(writers, ['pr-verdict.yml'], 'only pr-verdict.yml (workflow_run) runs tools/pr-verdict.py')
+        verdict = (WORKFLOWS / 'pr-verdict.yml').read_text()
+        self.assertIn('python3 tools/pr-verdict.py --repo "$GITHUB_REPOSITORY" --sha "$SHA"\n', verdict, 'positive control: the one writer runs it, with no --job-status')
+        listed = set(re.findall(r"(?m)^      - '(.+)'$", verdict))
+        for path in ('e2e.yml', 'e2e-windows.yml'):   # dispatched by pr-suites.yml, so no pull_request trigger names them: each is listed by hand
+            name = re.search(r'(?m)^name:\s*(.+?)\s*$', (WORKFLOWS / path).read_text()).group(1).strip('\'"')
+            self.assertIn(name, listed, f'{path}: the PR e2e run it makes is judged only when a listed workflow ends')
+        checkout = verdict.split('sparse-checkout: |', 1)[1].split('sparse-checkout-cone-mode', 1)[0]
+        for name in ('main_e2e_state', 'pr_ai_number', 'pr_burn_in', 'pr_health_greys', 'pr_speed_number', 'beta_rate_gate'):
+            self.assertIn(f'tools/{name}.py', checkout, 'a companion not checked out is fetched over the API on every write')
 
     def test_no_e2e_run_for_a_merged_or_closed_pr(self):
         # #2041: an override merge deleted the branch; pr-suites' dispatch then failed (HTTP 422 "No ref found") and the merged head went red.
@@ -229,8 +208,6 @@ class JobByJob(unittest.TestCase):
         state, why, _, finishing, _ = pv.verdict(runs, jobs=jobs, me=20, my_status='success', now=NOW)
         self.assertEqual((state, finishing), ('success', []), why)
         self.assertEqual(pv.verdict(runs, jobs=jobs, me=20, my_status='failure', now=NOW)[0], 'failure')
-        state, _, _, finishing, _ = pv.verdict(runs, jobs=jobs, now=NOW)
-        self.assertTrue(pv.leave_it(finishing, None), 'the backstop leaves it to the job ending')
         jobs[2][0]['steps'] = [{'name': 'Run tests', 'status': 'in_progress'}, {'name': pv.STEP, 'status': 'queued'}]
         self.assertEqual(pv.verdict(runs, jobs=jobs, now=NOW)[0], 'pending', 'its tests still run')
 
@@ -242,17 +219,6 @@ class JobByJob(unittest.TestCase):
         self.assertEqual(pv.verdict([run('CI · Pull request'), e2e], jobs=jobs, me=31, my_status='success', now=NOW)[0], 'success')
         jobs[3][3] = job(33, 'HTML report', conclusion='failure')
         self.assertEqual(pv.verdict([run('CI · Pull request'), e2e], jobs={3: jobs[3][:2] + jobs[3][3:]}, me=31, my_status='success', now=NOW)[0], 'success')
-
-    def test_jobs_ending_together_the_highest_id_writes(self):
-        runs = [run('CI · Tests · python', status='in_progress', id=2), run('CI · Tests · worker', status='in_progress', id=4)]
-        jobs = {2: [ending(20, 'python')], 4: [ending(40, 'worker')]}
-        state, _, _, finishing, _ = pv.verdict(runs, jobs=jobs, me=40, my_status='success', now=NOW)
-        self.assertEqual((state, finishing), ('success', [20]))
-        self.assertFalse(pv.leave_it(finishing, 40), 'the highest waits for 20 to end, then writes')
-        self.assertTrue(pv.leave_it(pv.verdict(runs, jobs=jobs, me=20, my_status='success', now=NOW)[3], 20), '20 leaves it to 40')
-        self.assertTrue(pv.leave_it([20], None), 'the backstop leaves it to the jobs ending')
-        self.assertEqual(pv.verdict(runs, jobs={2: [ending(20, 'python', 'failure')], 4: jobs[4]}, me=40, my_status='success', now=NOW)[0], 'success',
-                         'a step that failed is not the job\'s end: it is read once the job ended')
 
     def test_a_run_whose_jobs_ended_but_not_itself_is_waited_on(self):
         # e2e between its plan and the suite jobs the plan's outputs create: never green then
@@ -354,7 +320,10 @@ FAKE_GH = r"""#!/usr/bin/env python3
 import json, os, sys
 a = sys.argv[1:]; d = os.environ['FAKE_DIR']
 def out(name): sys.stdout.write(open(os.path.join(d, name)).read())
-if a[:2] == ['run', 'list']: out('runs.json')
+open(os.path.join(d, 'calls'), 'a').write(' '.join(a[:2]) + chr(10))
+if a[:2] == ['run', 'list'] and os.path.exists(os.path.join(d, 'fail-once')):   # GitHub's own server error, once (18:05Z on 30 Oct 2026)
+    os.remove(os.path.join(d, 'fail-once')); sys.stderr.write('gh: Server Error (HTTP 502)' + chr(10)); sys.exit(1)
+elif a[:2] == ['run', 'list']: out('runs.json')
 elif a[0] == 'api' and a[1] == 'graphql': out('meta.json')   # the PR's state, files and messages in one call; no REST answer for them: a call back to REST must fail the test
 elif a[0] == 'api' and '/jobs' in a[1]: out('jobs-' + a[1].split('/runs/')[1].split('/')[0] + '.json')
 elif a[0] == 'api' and '/statuses/' in a[1]: open(os.path.join(d, 'written'), 'a').write(json.dumps(a[2:]) + chr(10))
@@ -363,34 +332,60 @@ else: sys.exit('fake gh: no answer for ' + repr(a))
 
 
 class TheScriptAsAJobRunsIt(unittest.TestCase):
-    """The script end to end, as the step runs it (a file copied out of the repo, the real `gh` replaced): #2051 shipped with gh() deleted, every job's step
-    crashed with NameError, continue-on-error hid it and only the backstop wrote the status. The unit tests above never ran main()."""
+    """The script end to end, as pr-verdict.yml runs it (a file copied out of the repo, the real `gh` replaced): #2051 shipped with gh() deleted and only the
+    backstop wrote the status. The unit tests above never ran main()."""
 
-    def run_step(self, pulls, job_status='success'):
+    def run_step(self, pulls, runs=None, jobs=None, fail_once=False, job_status=''):
         d = tempfile.mkdtemp()
         bin_dir = os.path.join(d, 'bin'); os.mkdir(bin_dir)
         gh = os.path.join(bin_dir, 'gh'); open(gh, 'w').write(FAKE_GH.replace('/usr/bin/env python3', sys.executable)); os.chmod(gh, 0o755)
-        runs = [run('CI · Pull request', id=1), run('CI · Tests · python', status='in_progress', id=2)]
+        runs = runs or [run('CI · Pull request', id=1), run('CI · Tests · python', id=2)]
         json.dump(runs, open(os.path.join(d, 'runs.json'), 'w')); open(os.path.join(d, 'meta.json'), 'w').write(meta_answer(*[gql_pr(p['number'], p['state'].upper(), p['merged_at'], files=('desktop/renderer/app.js',)) for p in pulls]))
-        json.dump([{'id': 20, 'name': 'python', 'status': 'in_progress', 'conclusion': None, 'runner_name': 'r1',
-                    'steps': [{'name': 'Run tests', 'status': 'completed', 'conclusion': 'success'}, {'name': pv.STEP, 'status': 'in_progress'}]}],
-                  open(os.path.join(d, 'jobs-2.json'), 'w'))
-        env = dict(os.environ, PATH=bin_dir + os.pathsep + os.environ['PATH'], FAKE_DIR=d, GITHUB_RUN_ID='2', RUNNER_NAME='r1')
-        script = os.path.join(d, 'pr-verdict.py'); open(script, 'w').write((ROOT / 'tools' / 'pr-verdict.py').read_text())   # as the step does: a copy, no repo around it
-        done = subprocess.run([sys.executable, script, '--repo', 'o/r', '--sha', 'abc1234', '--job-status', job_status], env=env, capture_output=True, text=True, timeout=60)
-        written = open(os.path.join(d, 'written')).read() if os.path.exists(os.path.join(d, 'written')) else ''
-        return done, written
+        for run_id, listed in (jobs or {}).items():
+            json.dump(listed, open(os.path.join(d, f'jobs-{run_id}.json'), 'w'))
+        if fail_once:
+            open(os.path.join(d, 'fail-once'), 'w').close()
+        env = dict(os.environ, PATH=bin_dir + os.pathsep + os.environ['PATH'], FAKE_DIR=d, GITHUB_RUN_ID='9')
+        env.pop('GITHUB_EVENT_PATH', None)
+        script = os.path.join(d, 'pr-verdict.py'); open(script, 'w').write((ROOT / 'tools' / 'pr-verdict.py').read_text())   # a copy, no repo around it
+        done = subprocess.run([sys.executable, script, '--repo', 'o/r', '--sha', 'abc1234', *(['--job-status', job_status] if job_status else [])], env=env, capture_output=True, text=True, timeout=60)
+        read = lambda name: open(os.path.join(d, name)).read() if os.path.exists(os.path.join(d, name)) else ''
+        return done, read('written'), read('calls').split('\n')[:-1]
 
-    def test_the_last_job_writes_green_from_its_own_step(self):
-        done, written = self.run_step([{'number': 7, 'state': 'open', 'merged_at': None}])
+    def test_the_last_workflow_end_writes_green_in_three_calls(self):
+        done, written, calls = self.run_step([{'number': 7, 'state': 'open', 'merged_at': None}])
         self.assertEqual(done.returncode, 0, done.stderr)
         self.assertIn('"state=success"', written, done.stdout + done.stderr)
         self.assertIn('context=All checks passed', written)
+        # Why (owner, 30 Oct 2026, "One writer"): ~24 calls per job step spent the hourly quota; a green write is the PR (GraphQL), its runs, the status.
+        self.assertEqual([c for c in calls if c != 'api rate_limit'], ['api graphql', 'run list', 'api repos/o/r/statuses/abc1234'], calls)
 
-    def test_its_own_red_is_written_at_once(self):
-        done, written = self.run_step([{'number': 7, 'state': 'open', 'merged_at': None}], job_status='failure')
+    def test_a_red_run_is_written_red_with_its_failing_job(self):
+        runs = [run('CI · Pull request', id=1), run('CI · Tests · python', conclusion='failure', id=2)]
+        done, written, _ = self.run_step([{'number': 7, 'state': 'open', 'merged_at': None}], runs=runs, jobs={2: [job(20, 'python', conclusion='failure')]})
         self.assertEqual(done.returncode, 0, done.stderr)
         self.assertIn('"state=failure"', written)
+        self.assertIn('python', written)
+
+    def test_a_github_502_is_tried_again_and_the_verdict_still_lands(self):
+        # 30 Oct 2026, 18:05Z: one HTTP 502 ended the verdict with nothing written; #2605 sat at pending with every check green.
+        done, written, calls = self.run_step([{'number': 7, 'state': 'open', 'merged_at': None}], fail_once=True)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertIn('"state=success"', written, done.stdout + done.stderr)
+        self.assertEqual(calls.count('run list'), 2, 'one failed try, one that answered')
+
+    def test_a_job_step_on_an_old_branch_writes_nothing_and_calls_nothing(self):
+        done, written, calls = self.run_step([{'number': 7, 'state': 'open', 'merged_at': None}], job_status='success')
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertEqual((written, calls), ('', []))
+
+    def test_a_403_is_never_retried(self):
+        import contextlib, io
+        from unittest import mock
+        boom = subprocess.CalledProcessError(1, ['gh'], stderr='gh: API rate limit exceeded for installation (HTTP 403)')
+        with mock.patch.object(pv.subprocess, 'run', side_effect=boom) as run_, contextlib.redirect_stderr(io.StringIO()), self.assertRaises(subprocess.CalledProcessError):
+            pv.gh('api', 'x', sleep=lambda _: None)
+        self.assertEqual(run_.call_count, 1, 'a quota refusal does not clear in seconds: trying again only spends more')
 
     def test_gh_output_is_read_as_utf8_on_any_runner(self):
         # #2062: on Windows, text=True decoded gh's UTF-8 as cp1252; "E2E for PR · " did not match and the e2e runs were not counted (a false green).
@@ -401,7 +396,7 @@ class TheScriptAsAJobRunsIt(unittest.TestCase):
         self.assertNotIn('text', run_.call_args.kwargs, 'text=True uses the locale (cp1252 on Windows)')
 
     def test_a_merged_pr_gets_nothing(self):
-        done, written = self.run_step([{'number': 7, 'state': 'closed', 'merged_at': '2026-10-26T04:59:23Z'}])
+        done, written, _ = self.run_step([{'number': 7, 'state': 'closed', 'merged_at': '2026-10-26T04:59:23Z'}])
         self.assertEqual((done.returncode, written), (0, ''), done.stderr)
 
 

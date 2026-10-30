@@ -6,6 +6,7 @@ import {waitForFill} from '../lib/fill-attempt.mjs';
 import {fillNote, formTab} from '../lib/extension.mjs';
 import {flakyProof} from '../lib/flaky-proof.mjs';
 import {markedSession, sessionTabUrl} from '../../lib/session-tab.js';
+import * as apply from '../suites/apply.mjs';
 
 function clock() {
   let ms = 0;
@@ -113,8 +114,7 @@ test('Apply accepts a reload of its own session without a new spool entry', asyn
 
 test('every ordinary apply step has one hang cap and setup remains critical', () => {
   const source = fs.readFileSync(new URL('../suites/apply.mjs', import.meta.url), 'utf8');
-  const weights = new Function(`return ${source.match(/export const stepSeconds = ([\s\S]*?);/)[1]}`)();
-  const caps = new Function('REAL_FORMS', 'stepSeconds', `return ${source.match(/export const hangCaps = ([\s\S]*?);/)[1]}`)([], weights);
+  const caps = apply.hangCaps;   // Why (30 Oct 2026, g2, #2622): the suite's own export; slicing its source at the first `;` went red on a `;` in a comment inside the object
   const cv = fs.readFileSync(new URL('../lib/apply-cv-steps.mjs', import.meta.url), 'utf8') + fs.readFileSync(new URL('../lib/apply-silent-steps.mjs', import.meta.url), 'utf8') + fs.readFileSync(new URL('../lib/apply-triage-steps.mjs', import.meta.url), 'utf8') + fs.readFileSync(new URL('../lib/apply-restart-steps.mjs', import.meta.url), 'utf8');
   const names = [...(source + cv).matchAll(/ctx\.run\('((?:[^'\\]|\\.)*)'/g)].map(match => match[1].replace(/\\'/g, "'"));
   // Inner caps add up past the runner's 8-minute default: the default stays, no entry (Why (29 Oct 2026, ap) above hangCaps).

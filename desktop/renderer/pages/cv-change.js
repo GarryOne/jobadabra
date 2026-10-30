@@ -121,7 +121,7 @@ export async function init() {
     }
     const label = {update: ['Update', 'info'], add: ['Add', 'good'], remove: ['Remove', 'bad']};
     $('cv-suggestions').replaceChildren(...cvSuggestions.map(s => {
-      const row = el('label', 'radio cv-suggestion');
+      const row = el('label', 'radio cv-suggestion inline-label');
       const box = el('input');
       box.type = 'checkbox';
       box.checked = s.kind !== 'remove';  // removals are opt-in

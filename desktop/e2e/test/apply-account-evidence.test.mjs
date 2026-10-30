@@ -1,7 +1,7 @@
 // The sign-up safety assertion waits for its own batched events, never historical or other-host evidence.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {accountSafetyEvidence, waitForAccountSafety} from '../lib/apply-account-evidence.mjs';
+import {accountSafetyEvidence, waitForAccountSafety} from '../lib/wait-on-state.mjs';
 
 const attempt = {host: 'e2e.wd3.myworkdayjobs.com', path: '/e2e/signup'};
 // Captured event/delivery order from main run 41000326672: emitted 04:03:07, checked 04:03:23, delivered 04:03:35.

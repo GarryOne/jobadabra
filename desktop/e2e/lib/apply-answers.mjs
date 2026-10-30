@@ -48,7 +48,7 @@ const nonActingReplies = new Map([
 ]);
 
 // What kind of page (lib/page-kind.js): each fixture's authored kind, including the wrong-kind and late-loading plants.
-function pageKindAnswer(ctx, body, text, {live, realKind}, fallback) {
+function pageKindAnswer(ctx, body, text, {live, realKind}) {
   ctx.kindAsks = (ctx.kindAsks || 0) + 1;   // counted: the night's page kind is never asked (the Open in Chrome step); the "ready to submit?" judge shares this sketch and still runs
   const where = /^Address path: (.*)$/m.exec(text)?.[1] || '';
   const kinds = {[CHAIN.path]: 'posting', [CHAIN.stepPath]: 'posting', [CHAIN.formPath]: 'form', [SCRIPTED.path]: 'posting', [SCRIPTED.formPath]: 'form', [LATE.path]: 'posting',
@@ -59,19 +59,19 @@ function pageKindAnswer(ctx, body, text, {live, realKind}, fallback) {
   if (where.replace(/\/$/, '') === LATE.formPath) return kindReply(/Years of experience/.test(text) ? {kind: 'form', confidence: 0.95} : {kind: 'posting', confidence: 0.85, apply_button: 'Postuler'});
   if ([SIGNIN.accountPath, SIGNIN_REFUSED.accountPath].includes(where.replace(/\/$/, ''))) return kindReply({kind: 'account', confidence: 0.95, apply_button: '', account_step: 'sign_in', register_control: 'Create an account', signin_control: '', account_button: 'Sign in'});
   if ([SIGNIN, SIGNIN_REFUSED].some(fixture => where.replace(/\/$/, '') === `${fixture.accountPath}/new`)) return kindReply({kind: 'account', confidence: 0.95, apply_button: '', account_step: 'sign_up', register_control: '', signin_control: '', account_button: 'Create account'});   // the sign-up page after the refusal
-  if (!knownPaths.has(where.replace(/\/$/, ''))) return unmatched(fallback, body);
   return kindReply({kind: kinds[where.replace(/\/$/, '')] || 'form', confidence: 0.95});
 }
 
 // Page judges share a sketch shape, but each question owns its own authored reply.
-function pageAnswer(ctx, body, system, text, {live, realKind}, fallback) {
+function pageAnswer(ctx, body, system, text, {live, realKind}) {
   const where = (/^Address path: (.*)$/m.exec(text)?.[1] || '').replace(/\/$/, '');
-  if (system === FORMAT_RULES && (!where || knownPaths.has(where))) return JSON.stringify({format: 'none', confidence: 1});
+  // Why (30 Oct 2026, ap, Gitar on #2562): the format judge's request names no page (desktop/lib/format-judge.js sends the field, the error and the writings tried), so one authored answer serves every page; the fixtures' phone fields all take the first writing.
+  if (system === FORMAT_RULES) return JSON.stringify({format: 'none', confidence: 1});
   if (!knownPaths.has(where) && !(live && system === KIND_RULES)) return null;
   const reply = nonActingReplies.get(system);
   if (reply !== undefined) return reply;
   if (system === ACCOUNT_RULES && /^Phase: (ready|result)$/m.test(text)) return accountAnswer(text);
-  if (system === KIND_RULES && /^Address path:/m.test(text) && /^Controls/m.test(text)) return pageKindAnswer(ctx, body, text, {live, realKind}, fallback);
+  if (system === KIND_RULES && /^Address path:/m.test(text) && /^Controls/m.test(text)) return pageKindAnswer(ctx, body, text, {live, realKind});
   return null;
 }
 
@@ -97,7 +97,7 @@ export function installApplyAnswers(ctx, {live = null, realKind} = {}) {
       ctx.optionPicks = [...(ctx.optionPicks || []), {question: ask.question, answer: ask.answer}];
       return JSON.stringify({choice: ask.answer === '+41' && ask.choices.includes('Suisse') ? 'Suisse' : ''});
     }
-    const pageReply = pageAnswer(ctx, body, system, text, {live, realKind}, fallback);
+    const pageReply = pageAnswer(ctx, body, system, text, {live, realKind});
     if (pageReply !== null) return pageReply;
     const asked = /<form_fields>\n([\s\S]*?)\n<\/form_fields>/.exec(typeof content === 'string' ? content : (content || []).map(part => part.text || '').join(''));
     if (!asked) return unmatched(fallback, body);

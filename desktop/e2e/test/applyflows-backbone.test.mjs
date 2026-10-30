@@ -100,11 +100,13 @@ function fixturePaths() {
   return [...paths].sort();
 }
 
+// Why (30 Oct 2026, ap, Gitar on #2562): judgeFormat (desktop/lib/format-judge.js) sends the field, the site's error and the writings tried, never an Address path, so its request is built without one and its answer cannot depend on the page.
+const askedWithoutPage = prompt => 'format' in prompt.schema.properties;
 const pageRequest = (prompt, where) => ({model: 'claude-opus-5-5', system: prompt.system,
   output_config: {format: {type: 'json_schema', schema: prompt.schema}}, messages: [{role: 'user', content: [{type: 'text', text: [
     ...(prompt.phase ? [`Phase: ${prompt.phase}`] : []),
     ...(prompt.schema.properties.action ? ['Why asked: the fill put nothing in and required fields are left'] : []),
-    `Address path: ${where}`, 'Title: Fictional fixture application', 'Controls (type · label):',
+    ...(askedWithoutPage(prompt) ? [] : [`Address path: ${where}`]), 'Title: Fictional fixture application', 'Controls (type · label):',
     '[1] text · Notice period · required · empty · match no', 'Candidates (number · kind · position · host · text):', '(none)',
     'Needs repair:', '[1] empty (not_kept)', 'Field: Phone', "The site's error: Fixture error", 'Buttons and links: Submit application',
   ].join('\n')}]}]});
@@ -160,7 +162,9 @@ test('every source-declared page prompt has a schema-valid fixture answer on eve
       if ('repairs' in reply) assert.deepEqual(reply.repairs, [], name);
       if ('verb' in reply) assert.equal(reply.verb, 'none', name);
     }
-    assert.equal(await answer(pageRequest(prompt, '/undeclared-fixture')), null, `${prompt.name}: unknown page must fall through`);
+    const unknown = await answer(pageRequest(prompt, '/undeclared-fixture'));
+    if (askedWithoutPage(prompt)) assert.deepEqual(JSON.parse(unknown), {format: 'none', confidence: 1}, `${prompt.name}: no page identity, one authored answer`);
+    else assert.equal(unknown, null, `${prompt.name}: unknown page must fall through`);
   }
   console.log(`Applyflows page coverage: ${prompts.length} prompt variants x ${paths.length} fixture paths = ${prompts.length * paths.length} requests`);
   assert.deepEqual(missing, [], 'a prompt or fixture page has no stored answer');
@@ -212,7 +216,7 @@ test('fixture journeys refuse to start in off mode before taking any app action'
 for (const family of ['claude', 'openai']) test(`${family}: unknown page fails at the real proxy seam, before cache or transport`, async t => {
   const h = await backboneHarness(t, 'applyflows', family);
   installApplyAnswers(h);
-  const proxy = h.openaiProxy || h.proxy, prompts = await pagePrompts();
+  const proxy = h.openaiProxy || h.proxy, prompts = (await pagePrompts()).filter(prompt => !askedWithoutPage(prompt));
   for (const prompt of prompts) {
     const request = pageRequest(prompt, '/undeclared-fixture');
     const response = await h.localFetch(`${proxy.url}${family === 'openai' ? '/v1/responses' : '/v1/messages'}`, {

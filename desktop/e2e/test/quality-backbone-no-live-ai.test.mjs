@@ -71,9 +71,11 @@ test('quality backbone serves reviewed app.score/3001 at every seam with zero li
 });
 
 
-test('quality serves the captured Swiss alias country batch without live AI', async t => {
+// Why (30 Oct 2026, qu): the same five Swiss alias patterns are asked under BOTH place topics; a refusal stops at the first missing item, so the country miss hid the metro one (CI 41003648273, ap #2565). One loop over every captured topic.
+const aliasAsks = [['country', 'quality-country-ask.json', ['ch', 'ch', 'ch', 'ch', 'ch']], ['metro', 'quality-metro-ask.json', ['ch-zurich', 'ch-geneva', 'none', 'ch-basel', 'ch-bern']]];
+for (const [topic, ask, answers] of aliasAsks) test(`quality serves the captured Swiss alias ${topic} batch without live AI`, async t => {
   const h = await harness(t);
-  const {question} = JSON.parse(fs.readFileSync(new URL('../fixtures/golden/quality-country-ask.json', import.meta.url), 'utf8'));
+  const {question} = JSON.parse(fs.readFileSync(new URL(`../fixtures/golden/${ask}`, import.meta.url), 'utf8'));
   const {context, items} = question;
   const body = {
     model: 'test', system: 'You decide what short pieces of content mean, in any language, for a job-search tool.',
@@ -82,7 +84,7 @@ test('quality serves the captured Swiss alias country batch without live AI', as
   };
   const init = {method: 'POST', headers: {'content-type': 'application/json', 'x-jp-action': 'decide'}, body: JSON.stringify(body)};
   assert.deepEqual(questionOf(init, h.env, loadTable(tableFile)), question);
-  const expected = {results: [{index: 0, answer: 'ch'}, {index: 1, answer: 'ch'}, {index: 2, answer: 'ch'}, {index: 3, answer: 'ch'}, {index: 4, answer: 'ch'}]};
+  const expected = {results: answers.map((answer, index) => ({index, answer}))};
   assert.deepEqual(JSON.parse(storedAnswer(init, h.env).reply.content[0].text), expected);
   const direct = await modelFetch(`${h.target}/v1/messages`, init, h.options);
   assert.deepEqual(JSON.parse((await direct.json()).content[0].text), expected);

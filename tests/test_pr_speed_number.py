@@ -62,9 +62,10 @@ class Github:
 
 
 class SpeedNumbers(unittest.TestCase):
-    def line(self, github, why='checks green'):
+    def line(self, github, why='checks green', log=None):
         before = copy.deepcopy(github.runs)
-        with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+        output = log if log is not None else io.StringIO()
+        with redirect_stdout(output), redirect_stderr(output):
             result = speed.summary('o/r', github.runs, github, why)
         self.assertEqual(github.runs, before)
         self.assertLessEqual(len(result), 140)
@@ -108,7 +109,7 @@ class SpeedNumbers(unittest.TestCase):
         for baseline in ((), (130,)):
             gh = Github(baseline=baseline)
             if baseline: gh.blobs[10] = b'broken'
-            self.assertEqual(self.line(gh), 'checks green')
+            self.assertEqual(self.line(gh), 'checks green · Jobs check with slow AI 2m40, no main median yet')
 
     def test_no_timed_suite_makes_no_artifact_requests(self):
         gh = Github()
@@ -125,8 +126,10 @@ class SpeedNumbers(unittest.TestCase):
                     aid = rid * 100 + index * 10 + shard
                     gh.artifacts[rid].append({'id': aid, 'name': f'e2e-artifacts-{suite}-{shard}of2'})
                     gh.blobs[aid] = archive([step(10, FOCUS if index else SLOW_JOBS)])
-        self.assertIn('main median from 1 runs', self.line(gh))
-        self.assertEqual(sum(a[:2] == ('run', 'list') for a in gh.calls), 1)
+        line = self.line(gh)
+        self.assertIn('Jobs check with slow AI 10s, no main median yet', line)
+        self.assertEqual(line.count('Focus 10s, no main median yet'), 2)
+        self.assertEqual(sum(a[:2] == ('run', 'list') for a in gh.calls), 0)
         self.assertEqual(sum(a[-1].endswith('/zip') for a in gh.calls), 5)
         self.assertLessEqual(sum('/runs/' in ' '.join(a) for a in gh.calls), 8)
         self.assertFalse(any('--paginate' in a for a in gh.calls))
@@ -134,12 +137,63 @@ class SpeedNumbers(unittest.TestCase):
     def test_missing_history_cannot_expand_the_run_or_artifact_list_budget(self):
         gh = Github(baseline=())
         gh.main = [{'databaseId': rid, 'displayTitle': 'E2E check · on time'} for rid in range(200, 400)]
-        self.assertEqual(self.line(gh), 'checks green')
+        self.assertIn('Jobs check with slow AI 2m40, no main median yet', self.line(gh))
         self.assertEqual(sum(a[:2] == ('run', 'list') for a in gh.calls), 1)
         self.assertEqual(sum('/runs/' in ' '.join(a) for a in gh.calls), 8)
 
     def test_reduced_history_reports_the_number_of_sampled_runs(self):
         self.assertIn('main median from 4 runs', self.line(Github(baseline=(10,) * 12)))
+
+    def test_jobs_and_focus_read_current_numbers_before_splitting_twelve_main_runs(self):
+        gh = Github(baseline=(130,) * 12)
+        gh.runs[0]['displayTitle'] = 'E2E for PR · jobs,focus · topic'
+        for rid in gh.artifacts:
+            aid = rid + 1000
+            gh.artifacts[rid].append({'id': aid, 'name': 'e2e-artifacts-focus'})
+            gh.blobs[aid] = archive([step(10, FOCUS)])
+        log = io.StringIO()
+        line = self.line(gh, log=log)
+        self.assertIn('Jobs check with slow AI 2m40', line)
+        self.assertIn('Focus 10s, main median from 2 runs 10s', line)
+        self.assertIn('main median from 1 runs 2m10', line)
+        zips = [a[-1] for a in gh.calls if a[-1].endswith('/zip')]
+        self.assertEqual(len(zips), 5)
+        self.assertEqual(set(zips[:2]), {'repos/o/r/actions/artifacts/99/zip', 'repos/o/r/actions/artifacts/1099/zip'})
+        self.assertTrue(zips[2].endswith('/1010/zip'), 'promised Focus gets main samples before Jobs')
+        self.assertEqual(log.getvalue().count('Speed number budget exhausted'), 1)
+
+    def test_current_numbers_survive_when_shards_leave_no_main_zip_budget(self):
+        gh = Github()
+        gh.runs[0]['displayTitle'] = 'E2E for PR · jobs,focus · topic'
+        gh.artifacts[99] = [{'id': aid, 'name': f'e2e-artifacts-jobs-{aid}of4'} for aid in range(1, 5)]
+        gh.artifacts[99].append({'id': 5, 'name': 'e2e-artifacts-focus'})
+        gh.blobs.update({aid: archive([step(160)]) for aid in range(1, 5)})
+        gh.blobs[5] = archive([step(21, FOCUS)])
+        log = io.StringIO()
+        line = self.line(gh, log=log)
+        self.assertIn('Jobs check with slow AI 2m40, no main median yet', line)
+        self.assertIn('Focus 21s, no main median yet', line)
+        self.assertIn('over the 20 s promise', line)
+        self.assertEqual(sum(a[-1].endswith('/zip') for a in gh.calls), 5)
+        self.assertFalse(any(a[:2] == ('run', 'list') for a in gh.calls))
+        self.assertEqual(log.getvalue().count('Speed number budget exhausted'), 1)
+
+    def test_both_promised_steps_get_main_zips_before_jobs(self):
+        gh = Github(baseline=(130,) * 12)
+        gh.runs[0]['displayTitle'] = 'E2E for PR · jobs,focus,focusdismiss · topic'
+        for rid in gh.artifacts:
+            for offset, suite in ((1000, 'focus'), (2000, 'focusdismiss')):
+                aid = rid + offset
+                gh.artifacts[rid].append({'id': aid, 'name': f'e2e-artifacts-{suite}'})
+                gh.blobs[aid] = archive([step(10, FOCUS)])
+        log = io.StringIO()
+        line = self.line(gh, log=log)
+        self.assertIn('Jobs check with slow AI 2m40, no main median yet', line)
+        self.assertEqual(line.count('Focus 10s'), 2)
+        zips = [a[-1] for a in gh.calls if a[-1].endswith('/zip')]
+        self.assertEqual(len(zips), 5)
+        self.assertEqual(zips[3:], ['repos/o/r/actions/artifacts/1010/zip', 'repos/o/r/actions/artifacts/2010/zip'])
+        self.assertEqual(log.getvalue().count('Speed number budget exhausted'), 1)
 
     def test_successful_suites_reuse_the_main_run_and_artifact_lists(self):
         gh = Github(baseline=(130,))
@@ -166,7 +220,9 @@ class SpeedNumbers(unittest.TestCase):
                 raise OSError('quota unavailable')
             return gh(*args, **kwargs)
         with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
-            self.assertEqual(speed.summary('o/r', gh.runs, unavailable, 'green'), 'green')
+            line = speed.summary('o/r', gh.runs, unavailable, 'green')
+        self.assertIn('Jobs check with slow AI 2m40, no main median yet', line)
+        self.assertEqual(line.count('Focus 10s, no main median yet'), 2)
         self.assertEqual(sum(a[:2] == ('run', 'list') for a in gh.calls), 1)
 
     def test_newest_pr_run_wins_and_missing_newest_never_uses_stale_number(self):

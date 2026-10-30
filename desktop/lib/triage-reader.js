@@ -49,8 +49,8 @@ export function createTriageReader({uuid = randomUUID, set = setTimeout, clear =
       return finish(id, payload.unreadable === true ? null : readFromJudge(payload, {eligible: true}), true);
     },
     /** Resolves every queued and active read with null (Cancel, the app quitting). Returns how many it ended. */
+    cancelAll: () => [...waiting.keys()].filter(id => finish(id, null)).length,
     /** The reads ended without a report (Cancel, a timeout) whose page the extension still holds; each is returned once. Returns [id]. */
     takeEnded() { const ids = [...ended]; ended.clear(); return ids; },
-    cancelAll: () => [...waiting.keys()].filter(id => finish(id, null)).length,
   };
 }

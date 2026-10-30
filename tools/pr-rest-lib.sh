@@ -48,7 +48,7 @@ pr_view() {
       mergeCommit: (if $p.merged_at then {oid: $p.merge_commit_sha} else null end), labels: [$p.labels[]?.name],
       comments: [.[1][]? | {id: .node_id, author: {login: (.user.login // "")}, body, url: .html_url, createdAt: .created_at}],
       reviews: [.[2][]? | {id: .node_id, author: {login: (.user.login // "")}, body, state, submittedAt: .submitted_at}],
-      commits: [.[3][]? | {committedDate: .commit.committer.date}]}'
+      commits: [.[3][]? | {authoredDate: .commit.author.date, committedDate: .commit.committer.date}]}'
 }
 
 # pr_checks <repo> <sha>: the newest check-run of each name and every commit status of the sha like `gh pr checks --json name,bucket,link` (bucket pass|fail|pending|skipping|cancel).

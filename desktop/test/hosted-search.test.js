@@ -88,5 +88,5 @@ test('the wizard step sits after the strategy and before the extras; its words f
   assert.match(fs.readFileSync(new URL('../renderer/hosted-words.js', import.meta.url), 'utf8'), /Your profile is stored encrypted on our servers\. Turn it off anytime = deleted\./);
   assert.match(view, /switchRow\('hosted-news', NEWS, true/);   // pre-checked (owner, 16 Oct 2026; a lawyer checks before launch)
   assert.doesNotMatch(view.replace(/\/\/.*$/gm, ''), /GitHub|container|\$\d/);
-  assert.equal([...read('renderer/index.html').matchAll(/Step \d of 5/g)].length, 4);
+  // setup-step-count.test.js checks every mounted eyebrow against the sidebar; fixed totals drift.
 });

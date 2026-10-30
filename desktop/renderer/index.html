@@ -72,17 +72,17 @@
 
   <div class="step-body">
     <div class="review-mode" id="review-mode" hidden><i data-icon="shield"></i>
-      <span><strong>Setup is done.</strong> You're reviewing it: nothing changes unless you replace your strategy at step 3, after a confirmation.</span>
+      <span><strong>Setup is done.</strong> You're reviewing it: nothing changes unless you replace your strategy at <span data-step-reference="draft">the Your strategy step</span>, after a confirmation.</span>
       <span class="fine">For small changes, edit your Profile or Search settings.</span></div>
     <div class="step" data-step="welcome">
       <div class="magic-stage">
       <div class="magic" data-magic>
         <span class="magic-twinkle" aria-hidden="true"><i data-icon="sparkle"></i></span><span class="magic-twinkle" aria-hidden="true"><i data-icon="sparkle"></i></span><span class="magic-twinkle" aria-hidden="true"><i data-icon="sparkle"></i></span>
         <span class="ui-tile tone-signal" aria-hidden="true"><i data-icon="sparkle"></i></span>
-        <span class="eyebrow" data-when="first">Check-in · about 5 minutes</span><span class="eyebrow" data-when="done" hidden>Setup complete</span>
+        <span class="eyebrow" data-step-count data-step-suffix=" · about 5 minutes" data-when="first"></span><span class="eyebrow" data-step-count data-step-suffix=" · setup complete" data-when="done" hidden></span>
         <h1 class="magic-title" data-when="first">Help me find a job</h1><h1 class="magic-title" data-when="done" hidden>Your job search is set up</h1>
         <p class="muted subtitle magic-sub" data-when="first">Jobadabra finds openings that fit you, scores them against your CV, and helps you fill applications. You review and click Submit yourself.</p>
-        <p class="muted subtitle magic-sub" data-when="done" hidden>Nothing changes here unless you replace your strategy at step 4, after a confirmation. For small changes, edit your Profile or Search settings.</p>
+        <p class="muted subtitle magic-sub" data-when="done" hidden>Nothing changes here unless you replace your strategy at <span data-step-reference="draft">the Your strategy step</span>, after a confirmation. For small changes, edit your Profile or Search settings.</p>
         <ul class="magic-steps">
           <li><i data-icon="zap"></i>Connect your AI</li>
           <li><i data-icon="file"></i>Choose your CV</li>
@@ -114,7 +114,7 @@
 
     <div class="step" data-step="ai">
       <header class="view-head step-head">
-        <div><span class="eyebrow">Step 1 of 5</span>
+        <div><span class="eyebrow" data-step-count></span>
           <h1>Connect your AI</h1>
           <p class="muted subtitle">The AI reads postings, scores them and drafts your answers.</p>
           <ul class="chip-list step-facts" aria-label="Ways to connect">
@@ -169,7 +169,7 @@
       <div class="magic cv-drop" data-magic>
         <span class="magic-twinkle" aria-hidden="true"><i data-icon="sparkle"></i></span><span class="magic-twinkle" aria-hidden="true"><i data-icon="sparkle"></i></span><span class="magic-twinkle" aria-hidden="true"><i data-icon="sparkle"></i></span>
         <span class="ui-tile tone-signal" aria-hidden="true"><i data-icon="file-text"></i></span>
-        <span class="eyebrow">Step 2 of 5</span>
+        <span class="eyebrow" data-step-count></span>
         <h1 class="magic-title">Your CV</h1>
         <p class="muted magic-sub">The AI reads it for your roles, places and salary.</p>
         <ul class="magic-steps" aria-label="What is read">
@@ -192,7 +192,7 @@
 
     <div class="step" data-step="draft">
       <header class="view-head step-head">
-        <div><span class="eyebrow">Step 3 of 5</span>
+        <div><span class="eyebrow" data-step-count></span>
           <h1 id="draft-title">Your strategy</h1>
           <p class="muted subtitle" id="draft-subtitle" hidden>Check what Jobadabra will search for, score jobs against and use in applications.</p></div>
         <div class="head-actions"><span class="pill-ai" id="draft-cost" hidden></span></div>
@@ -243,7 +243,7 @@
     </div>
 
     <div class="step" data-step="letter" hidden>
-      <header class="view-head step-head"><div><h1>Your cover letter</h1><p>Draft it, review it, then approve it for applications.</p></div></header>
+      <header class="view-head step-head"><div><span class="eyebrow" data-step-count></span><h1>Your cover letter</h1><p>Draft it, review it, then approve it for applications.</p></div></header>
       <div id="setup-letter-slot"></div>
       <p class="muted small">If you leave this unfinished, Application questions keeps it as HIGH PRIORITY. An approved base letter is used when a job has no usable tailored letter.</p>
       <div class="actions sticky"><button class="secondary" data-back>Back</button><button class="primary" id="setup-letter-next">Continue</button></div>
@@ -251,7 +251,7 @@
 
     <div class="step" data-step="extras">
       <header class="view-head step-head">
-        <div><span class="eyebrow">Step 5 of 5 · optional</span>
+        <div><span class="eyebrow" data-step-count data-step-suffix=" · optional"></span>
           <h1>Optional extras</h1>
           <p class="muted subtitle">Everything works without these. You can add them later in Settings.</p></div>
       </header>

@@ -44,6 +44,9 @@ export function registerApplyHandlers(ctx) {
   const needExtension = () => (DEMO ? null : extensionGate());   // a Chrome form with no extension to fill it: install it first (lib/extension-gate.js)
   const background = backgroundApplyFor(storage);
   server.setVisitRoute('/extension/background-apply', payload => background.handle(payload));
+  // Apply triage (PR C2a): one form read in the hidden browser; the answer is the mode table's flags, or null when nothing was read. The demo has no hidden browser.
+  ipcMain.handle('triageRead', (_, job) => (DEMO ? null : background.triageRead({url: String(job?.url || '')}).catch(() => null)));
+  ipcMain.handle('triageCancel', () => background.cancelTriage());
   ipcMain.handle('apply', async (_, options) => {
     const fromSettings = options?.mode === 'settings';   // Why (27 Oct 2026, owner): read after the first-choice gate replays the held call, so Start never uses a stale mode
     const applyMode = fromSettings ? applyOf(storage.settings()).mode : '';

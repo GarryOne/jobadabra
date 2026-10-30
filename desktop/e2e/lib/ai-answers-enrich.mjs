@@ -1,4 +1,4 @@
-// Replay extracted posting facts by golden identity and the full, retry or role-only question.
+// Replay extracted posting facts by posting identity and the full, retry or role-only question.
 // Job: serve stored answers
 import fs from 'node:fs';
 import {S, hash, invalid, itemQuestion, object, requestParts, sameSchema, valid} from './ai-answers-engine-items.mjs';
@@ -20,7 +20,7 @@ enrichKind.validEntry = (answer, key) => {
   return names.length > 0 && (!variant.startsWith('retry-') || names.every(name => ['seniority', 'work_mode', 'technologies'].includes(name))) && new Set(names).size === names.length && names.every(name => Object.hasOwn(fields, name)) && valid(S.object(Object.fromEntries(names.map(name => [name, fields[name]]))), answer);
 };
 
-/** Recognize extraction SYSTEM variants and match Title/Company/Location exactly as score does. */
+/** Recognize extraction SYSTEM variants and one unambiguous Title/Company/Location identity. */
 export function enrichQuestion(body, persona) {
   const parts = requestParts(body), roleOnly = parts.system.startsWith("You name one job's own kind of work for a job-search tool, from its title and posting.");
   if (!roleOnly && !parts.system.startsWith('You extract facts from job postings for a job-search tool.')) return undefined;
@@ -34,7 +34,8 @@ export function enrichQuestion(body, persona) {
   const golden = new URL(persona ? `../fixtures/golden-${persona}/` : '../fixtures/golden/', import.meta.url);
   const truth = JSON.parse(fs.readFileSync(new URL('truth.json', golden), 'utf8')), sources = JSON.parse(fs.readFileSync(new URL('sources.json', golden), 'utf8'));
   const matches = truth.filter(item => item.title === identity[1].trim() && (item.company || sources[0].company) === identity[2].trim() && item.location === identity[3].trim());
-  if (matches.length !== 1) return invalid(enrichKind.operation, 'posting title, company and location must match exactly one golden row');
+  // Why (30 Oct 2026, qu-enrich): feed postings need keys too; the tuple hash below prevents borrowing a different posting's answer.
+  if (matches.length > 1) return invalid(enrichKind.operation, 'posting identity matches more than one golden row');
   // Why (30 Oct 2026, supervisor): narrow retries and the independent role question are different judgments; none may borrow the full extraction's answer.
   const variant = roleOnly ? 'role' : full ? 'full' : `retry-${[...names].sort().join(',')}`;
   const question = itemQuestion(enrichKind.operation, [identity.slice(1).join('\n')], {}, persona);

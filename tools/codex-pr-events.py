@@ -46,14 +46,23 @@ def deliver(log, thread, codex, *, run=subprocess.run, cmux=None, surface=None):
                            'events may be superseded: verify the current head. Continue authorized work, and report READY only on its exact head. '
                            f'Do not merge or submit applications. Owning Codex thread: {thread}; if this is not your thread, do not act on its work.\n' + '\n'.join(events) + f'\nLog: {log}')
                 env = dict(os.environ)
+                commands = []
                 if cmux and surface:
-                    surface = str(uuid.UUID(surface)).upper()
-                    command = [cmux, 'agent', 'message', surface, '--from', 'PR watcher', '--json', '--', message]
-                else:
+                    try:
+                        surface = str(uuid.UUID(surface)).upper()
+                        commands.append([cmux, 'agent', 'message', surface, '--from', 'PR watcher', '--json', '--', message])
+                    except ValueError:
+                        pass
+                if codex:
                     env['PATH'] = f'{Path(codex).parent}{os.pathsep}{env.get("PATH", "")}'
-                    command = [codex, 'queue', '--thread', thread, '--message', message, '--resume']
-                result = run(command, capture_output=True, text=True, timeout=15, env=env)
-                if result.returncode:
+                    commands.append([codex, 'queue', '--thread', thread, '--message', message, '--resume'])
+                for command in commands:
+                    try:
+                        if run(command, capture_output=True, text=True, timeout=15, env=env).returncode == 0:
+                            break
+                    except (OSError, subprocess.TimeoutExpired):
+                        continue
+                else:
                     return False
                 # Queue success is not an acknowledgement; Codex receives this through its native inbox.
             cursor.write_text(json.dumps({'offset': end, 'prefix': hashlib.sha256(content[:end]).hexdigest()}))

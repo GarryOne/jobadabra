@@ -52,6 +52,19 @@ class CodexPrEventsTest(unittest.TestCase):
         self.assertNotIn('send-key', args)
         self.assertNotIn('paste', args)
 
+    def test_lost_cmux_surface_falls_back_to_the_same_native_thread(self):
+        self.run.side_effect = [subprocess.CompletedProcess([], 1, '', 'surface missing'),
+                                subprocess.CompletedProcess([], 0, 'queued', '')]
+        self.assertTrue(self.module.deliver(self.log, THREAD, '/fake/codex', run=self.run,
+                                           cmux='/fake/cmux', surface='CCE70BB3-2B25-44D7-8A24-202B1BE5E33D'))
+        self.assertEqual(self.run.call_count, 2)
+        self.assertEqual(self.run.call_args.args[0][:5], ['/fake/codex', 'queue', '--thread', THREAD, '--message'])
+
+    def test_invalid_cmux_surface_uses_the_native_thread(self):
+        self.assertTrue(self.module.deliver(self.log, THREAD, '/fake/codex', run=self.run,
+                                           cmux='/fake/cmux', surface='no-longer-a-surface'))
+        self.assertEqual(self.run.call_args.args[0][:5], ['/fake/codex', 'queue', '--thread', THREAD, '--message'])
+
     def test_failed_queue_is_retried_without_losing_the_event(self):
         self.run.return_value.returncode = 1
         self.assertFalse(self.deliver())

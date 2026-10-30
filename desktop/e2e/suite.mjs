@@ -32,10 +32,11 @@ process.env.E2E_SUITE = name;   // read when lib/app.mjs loads: each suite write
 // A hard stop for the whole process (6 Oct 2026: a Windows jobs suite ran 14+ min after its last step failed: something outside the steps hung, closing the app
 // or a test server). Only budgeted suites get this start-time stop, at their budget plus 3 minutes. unref: earlier finishes exit as usual.
 {
-  const {stopMsOf} = await import('./lib/runner.mjs');
-  const suite = await import(`./suites/${name}.mjs`).catch(() => null);
-  if (suite?.aggregateBudget !== false) {
-    const stopAt = stopMsOf(suite);
+  const {suiteStopMs} = await import('./lib/runner.mjs');
+  let stopAt;
+  try { stopAt = await suiteStopMs(name); }
+  catch (error) { console.error(error.message); process.exit(1); }
+  if (stopAt !== null) {
     setTimeout(() => {
       console.log(`✗ the ${name} suite was still running ${Math.round(stopAt / 60000)} min after it started: stopped by force (something outside the steps hung: closing the app, a test server, or writing artifacts)`);
       process.exit(1);

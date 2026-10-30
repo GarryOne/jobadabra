@@ -3,7 +3,27 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {SUITES} from '../lib/context.mjs';
 import * as runner from '../lib/runner.mjs';
-const {budgetMsOf, SUITE_BUDGET_MS} = runner;
+const {budgetMsOf, SUITE_BUDGET_MS, suiteStopMs} = runner;
+
+test('a clean CI checkout stages shared code before reading the suite no-aggregate export', async () => {
+  let staged = false;
+  const stop = await suiteStopMs('apply', {
+    stage: async () => { staged = true; },
+    load: async name => {
+      assert.equal(name, 'apply');
+      if (!staged) throw new Error('Cannot find module desktop/shared/alias-schema.js');
+      return {aggregateBudget: false};
+    },
+  });
+  assert.equal(stop, null);
+});
+
+test('a suite that still cannot load after staging fails with its name and original error', async () => {
+  await assert.rejects(suiteStopMs('apply', {
+    stage: () => {},
+    load: async () => { throw new Error('Cannot find module desktop/shared/alias-schema.js'); },
+  }), /apply.*Cannot find module desktop\/shared\/alias-schema\.js/);
+});
 
 test('a suite without its own budget gets the default, one with budgetMinutes gets that', () => {
   assert.equal(budgetMsOf({}), SUITE_BUDGET_MS);

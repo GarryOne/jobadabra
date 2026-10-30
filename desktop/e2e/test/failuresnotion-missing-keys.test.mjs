@@ -34,7 +34,7 @@ function requestOf(ask) {
   if (ask.family === 'app.title') c.user = `The search (JSON): ${JSON.stringify({role_words: demo.role_keywords, words_ruled_out: demo.title_exclude_keywords})}\nThe titles:\n1. ${text}`;
   if (ask.family === 'app.place') c.user = `Their places (JSON): ${JSON.stringify(placeContext)}\nThe job locations:\n1. ${text}`;
   if (ask.family === 'app.enrich') {
-    // Full extraction carries the real sender's generated schema guidance as well as its fixed opening.
+    // Why (#2613, JOB-44): the app.enrich stamp hashes the real sender's system, schema guidance included; the abbreviated case system would be refused.
     if (!roleOnly) c.system = enrichSystem;
     const location = roleOnly ? ask.what.split(' | ')[2] : text.includes('save seed') ? 'Zurich, Switzerland' : 'Zurich, Switzerland or Amsterdam, Netherlands';
     c.user = `Title: ${text}\nCompany: E2E Acme\nLocation: ${location}\n\nPosting:\n${text}: run production on Kubernetes and AWS with Terraform, SLOs and on-call. Senior level, hybrid in Zurich, English working language.`;

@@ -35,7 +35,6 @@ export const PORT = portFrom();
 // (owner, 26 Oct 2026: nmbnjhmpofifgcdalfefddbiihccogoi). Guard: test/extension-store-id.test.js.
 export const EXTENSION_IDS = ['gpffoneapcfceflfmfgedkcfbommgcfk', 'nmbnjhmpofifgcdalfefddbiihccogoi'];   // the second = server-env.js STORE_EXTENSION_ID (an import here runs before it is set)
 export const EXTENSION_ID = EXTENSION_IDS[0];
-// The ID whose pages the app opens (wake.html): the copy that last checked in, else the folder's. A store user has no folder copy.
 // The request's Origin when it is one of our extensions' (else ''), to echo back in Access-Control-Allow-Origin.
 export const ownOrigin = origin => (EXTENSION_IDS.some(id => origin === `chrome-extension://${id}`) ? origin : '');
 
@@ -43,11 +42,16 @@ export const ownOrigin = origin => (EXTENSION_IDS.some(id => origin === `chrome-
 // Kept per browser (the report's `browser`, else its run `boot`): a second browser with the extension adds its tabs, it never replaces this one's.
 // A run silent for 90 s has ended. 8 Oct 2026: a test browser's empty reports made the owner's open forms look closed.
 const tabRuns = new Map();   // browser (else boot) → {urls: Set, at}
-// When the extension last checked in (its tab reports come every 30 s), and its version.
-let seen = null;
-let devCopy = null;   // a development copy: when the extension started, and whether "reload it" was said (server-env.js extensionChangedNote)
-export const extensionSeen = () => seen;
-export const extensionIdNow = () => seen?.id || EXTENSION_ID;
+// Why (#2536): versions, IDs and reload notices belong to a browser, just like its tabs; the hidden copy's base version must never describe Chrome.
+const seenByBrowser = new Map();   // browser (else boot/worker) → {seen: {at, version, id}, devCopy}
+let personBrowser = null;
+let heard = null;
+/** Latest check-in from any browser, including the owned browser: liveness for pooled tab knowledge, without a Chrome version or ID. */
+export const extensionHeard = () => heard;
+/** Last check-in from the person's browser, never the app-owned hidden browser; null until that copy reports. */
+export const extensionSeen = () => seenByBrowser.get(personBrowser)?.seen || null;
+/** The person's extension page ID (wake.html), falling back to the folder copy before its first report. */
+export const extensionIdNow = () => extensionSeen()?.id || EXTENSION_ID;
 export const openTabs = (now = Date.now()) => {
   for (const [boot, run] of tabRuns) if (now - run.at > 90 * 1000) tabRuns.delete(boot);
   return [...new Set([...tabRuns.values()].flatMap(run => [...run.urls]))];
@@ -55,7 +59,7 @@ export const openTabs = (now = Date.now()) => {
 
 
 // -> why this check-in should be logged, or an empty string.
-function checkInReason(at, version) {
+function checkInReason(seen, at, version) {
   // The first check-in since the app started, one after a silence, or a new version: "when did the extension
   // last reach the app?" is answerable from the log (the every-30-s ones in between are not written).
   return !seen ? 'first since the app started' : seen.version !== version ? `version ${seen.version || '?'} → ${version}`
@@ -63,12 +67,13 @@ function checkInReason(at, version) {
 }
 
 // Update the development-copy reload notice state for this report.
-function noteDevelopmentCopy(report, version, at) {
+function noteDevelopmentCopy(report, version, at, devCopy) {
   if (developmentCopy()) {
     const changed = extensionChangedNote({boot: String(report.boot || report.worker || ''), version, at}, devCopy, {latest: latestExtension(), newest: newestExtensionFile});
-    devCopy = changed.state;
     if (changed.note) appLog('extension', changed.note, {version});
+    return changed.state;
   }
+  return devCopy;
 }
 
 // Record a browser report and return tabs that need reading again.
@@ -76,14 +81,18 @@ function recordTabs(req, report) {
   const run = String(report.browser || report.boot || report.worker || '');   // one entry per browser; an older extension: per run
   if (!tabRuns.has(run) && tabRuns.size) appLog('extension', 'another browser run reports its tabs', {runs: tabRuns.size + 1, tabs: (report.urls || []).length});
   tabRuns.set(run, {urls: new Set((report.urls || []).map(pageKey)), at: Date.now()});
-  const at = Date.now(), version = report.version || '';
-  const why = checkInReason(at, version);
-  if (why) appLog('extension', `checked in: ${why}`, {version, tabs: (report.urls || []).length});
-  seen = {at, version, id: ownOrigin(req.headers.origin).slice('chrome-extension://'.length) || seen?.id || ''};
-  noteExtensionId(seen.id);   // the "older copy" note words a store copy apart (server-env.js staleExtension)
-  noteDevelopmentCopy(report, version, at);
+  const at = Date.now(), version = report.version || '', previous = seenByBrowser.get(run), owned = report.owned === true;
+  heard = {at};   // Why (#2536): any reporter proves the pooled tab knowledge is alive; Chrome version identity remains separate.
+  const why = checkInReason(previous?.seen, at, version);
+  if (why) appLog('extension', `checked in: ${why}`, {browser: run, owned, version, tabs: (report.urls || []).length});
+  seenByBrowser.set(run, {seen: {at, version, id: ownOrigin(req.headers.origin).slice('chrome-extension://'.length) || previous?.seen.id || ''},
+    devCopy: owned ? null : noteDevelopmentCopy(report, version, at, previous?.devCopy)});
+  if (!owned) {
+    personBrowser = run;
+    noteExtensionId(extensionSeen().id);   // only the person's store/folder copy controls the older-copy wording
+  }
   const reread = tabsHandler({ids: report.ids, boot: report.boot, browser: report.browser, worker: report.worker, reading: report.reading, sessions: report.sessions}) || [];   // reading: Find jobs using your browser' tabs by ticket (lib/visits.js noteTabs)
-  return reread;
+  return {reread, version};
 }
 
 // Handle an event after acknowledgment, looking up its job only when needed.
@@ -126,15 +135,16 @@ async function handleTabs(req, res, body, {storage}) {
   if (!request) return;
   const {ok} = request;
   let reread = [];   // read tabs to hand back to an extension that restarted mid-read (lib/visits.js noteTabs)
+  let version = '';   // this reply describes the reporting copy, independently of the person's Chrome check-in
   if (ok) {
     try {
       const report = JSON.parse(body?.toString() || '{}');
-      reread = recordTabs(req, report);
+      ({reread, version} = recordTabs(req, report));
       void markReportedConfirmations(storage, report.urls || []).catch(error => appLog('extension', `confirmation check failed: ${error.message}`));
     } catch {}
   }
   jsonHeaders(res, ok ? 200 : 401, POST_CORS);
-  jsonBody(res, ok ? {ok, latest: latestExtension(), build: extensionBuild({repo: pipeline.REPO, version: seen?.version || '', latest: latestExtension(), packaged: developmentCopy() ? null : packagedBuild()}), ...(reread.length ? {reread} : {}), ...(stopAsked() ? {stop: stopAsked()} : {})} : {ok});
+  jsonBody(res, ok ? {ok, latest: latestExtension(), build: extensionBuild({repo: pipeline.REPO, version, latest: latestExtension(), packaged: developmentCopy() ? null : packagedBuild()}), ...(reread.length ? {reread} : {}), ...(stopAsked() ? {stop: stopAsked()} : {})} : {ok});
 }
 
 // Acknowledge an extension event before processing its callbacks.

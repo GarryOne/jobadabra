@@ -13,6 +13,6 @@ test('a show asked before the extension checked in waits for it, and gives up af
 
 test('the form show waits for the first check-in before it looks for a page', () => {
   const source = fs.readFileSync(new URL('../lib/apply-handlers.js', import.meta.url), 'utf8');
-  const ready = source.indexOf('await extensionReady(server.extensionSeen'), asked = source.indexOf('let taken = await review.delivered(key, 4000)');
+  const ready = source.indexOf('await extensionReady(server.extensionHeard'), asked = source.indexOf('let taken = await review.delivered(key, 4000)');
   assert.ok(ready > 0 && ready < asked, 'extensionReady before the page is asked');
 });

@@ -3,6 +3,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {test} from 'node:test';
+import {setImmediate} from 'node:timers/promises';
 import {mayReloadSelf} from '../../extension/self-reload.js';
 
 const newer = (a, b) => {
@@ -11,6 +12,37 @@ const newer = (a, b) => {
   return false;
 };
 const idle = {newer, owned: false, busy: false};
+
+test('tab reports carry the launcher\'s owned marker, never a version-based guess', async t => {
+  const calls = [], events = {addListener() {}}, local = {workerUrl: 'http://127.0.0.1:48993', token: 'fixture', browserId: 'fixture-browser'};
+  const before = globalThis.chrome;
+  globalThis.chrome = {
+    runtime: {getManifest: () => ({version: '0.9'}), onMessage: events, onStartup: events},
+    storage: {local: {get: async keys => Object.fromEntries([].concat(keys).filter(key => key in local).map(key => [key, local[key]])),
+      set: async items => Object.assign(local, items)}, session: {get: async () => ({})}},
+    tabs: {query: async () => [], onRemoved: events, onUpdated: events},
+    webNavigation: {onCommitted: events}, alarms: {get: async () => ({}), onAlarm: events},
+    action: {setBadgeText: async () => {}, setTitle: async () => {}},
+  };
+  t.after(() => { globalThis.chrome = before; delete globalThis.__jobPilottoBackgroundOwned; });
+  t.mock.method(globalThis, 'fetch', async (url, options) => {
+    assert.equal(url, 'http://127.0.0.1:48993/extension/tabs', 'only intercepted tab reports: no live app, AI or network');
+    calls.push(JSON.parse(options.body));
+    return {ok: true, status: 200, json: async () => ({ok: true})};
+  });
+  const {createTabReport} = await import('../../extension/tab-report.js');
+  const reporter = createTabReport({WORKER: 'fixture-worker', bootId: async () => 'fixture-boot', fillsNow: new Set(),
+    reportCorrections: () => {}, newer, keepMemory: async () => {}});
+  await setImmediate();   // the worker's first report
+  calls.length = 0;
+  for (const owned of [false, true]) {
+    globalThis.__jobPilottoBackgroundOwned = owned;
+    await reporter.reportTabs();
+    assert.equal(calls.at(-1).owned, owned);
+    assert.equal(calls.at(-1).version, '0.9', 'the same version can belong to either browser');
+    assert.equal(calls.at(-1).browser, 'fixture-browser');
+  }
+});
 
 test('a normal copy reloads once for a newer version, never while it is busy, never twice for one version', () => {
   assert.equal(mayReloadSelf({...idle, latest: '0.9.431', running: '0.9'}), true);

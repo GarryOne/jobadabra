@@ -117,7 +117,7 @@ export function registerTelemetryHandlers(ctx) {
     });
     // A form tab the app opened must be taken by the extension: one "tab" event per tab, taken or the step that failed (lib/tab-expect.js).
     startTracking({record: fields => { telemetry.record('tab', fields); appLog('apply', `form tab: ${fields.outcome}`, {ms: fields.ms}); },
-      isBound: id => review.tabOf(id) !== '', extensionSeen: server.extensionSeen,
+      isBound: id => review.tabOf(id) !== '', extensionSeen: server.extensionHeard,   // Why (#2536): classify extension silence from any browser's check-in, as with pooled tab knowledge.
       isLive: id => { const session = terminals.get(id); return !!session && !session.outcome && !session.endedAt; }});
     setTimeout(() => { healthOnce(); telemetry.flush(); }, 60 * 1000);
     setInterval(() => { healthOnce(); telemetry.flush(); }, 10 * 60 * 1000);

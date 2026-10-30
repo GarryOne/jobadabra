@@ -109,7 +109,7 @@ export function registerApplyHandlers(ctx) {
       appLog('review', `show ${key}: tab in front, ${answered ? 'the page took the field' : 'the page did not answer'}`, {label: name.slice(0, 60), found: seen});
       return {taken: answered, went: 'tab', found: seen};
     }
-    const ready = await extensionReady(server.extensionSeen);   // just started: pages are known only after the extension's first tab report
+    const ready = await extensionReady(server.extensionHeard);   // Why (#2536): pages are known after any browser's first tab report, including the hidden browser's.
     if (ready.waited) appLog('review', `show ${key}: waited for the extension's first check-in`, {ms: ready.waited, seen: ready.seen});
     review.queueFocus(key, name);
     let taken = await review.delivered(key, 4000), woke = false;  // the page checks in every 2 s
@@ -255,7 +255,7 @@ export function registerApplyHandlers(ctx) {
   let lastFormsOpen = '';
   ipcMain.handle('formsOpen', async () => {
     if (DEMO) return demoFormsOpen(JSON.parse(fs.readFileSync(demoPath(here, 'review.json'), 'utf8')), storage.settings());   // the demo's forms, as Chrome would report them (lib/demo.js)
-    const seen = server.extensionSeen(), known = !!seen && Date.now() - seen.at < 90 * 1000;
+    const heard = server.extensionHeard(), known = !!heard && Date.now() - heard.at < 90 * 1000;   // Why (#2536): openTabs pools hidden and Chrome reports, so either keeps form knowledge alive.
     if (!known) return unheardForms(listenState());   // linkOff: our socket is not open, so no report can come (lib/server-listen.js)
     // A session whose own tab we know is open while that tab exists; for the others, a tab that looks like its form says open, nothing says closed.
     // Open is proved two ways, each exact: a tab in the extension's report naming the session in its address, or in Chrome's own list right now

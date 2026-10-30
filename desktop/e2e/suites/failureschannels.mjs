@@ -5,7 +5,7 @@ import {runParts} from './activityfailures.mjs';
 
 export const minutes = 12;
 export const name = 'failureschannels';
-export {hangCaps} from '../lib/failureschannels-caps.mjs';
+import {hangCapsFor} from '../lib/hang-caps.mjs'; export const hangCaps = hangCapsFor('failureschannels');
 // Why (30 Oct 2026, owner, Rule B): measured per-step hang caps replace the aggregate clock; a slow runner is not a failed state assertion.
 export const aggregateBudget = false;
 export const keepGoing = true;

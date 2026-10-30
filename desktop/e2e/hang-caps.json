@@ -1,0 +1,409 @@
+{
+  "applyflows": {
+    "provenance": "Measured hang caps for applyflows' state waits, keyed by the exact step names.\nWhy (29 Oct 2026, a8, 21b): 3 x calm main p95 from the measuring tool tools/e2e-step-timings.mjs (applyflows, 14 runs) on 29 Oct 2026 (13 runs, 25 calm shard-runs), rounded up to 5 s with a 30 s noise floor; applicant setup keeps its measured 305 s cap.\ntools/e2e-step-timings.mjs --suite applyflows --runs 14; inline p95 values are seconds.",
+    "steps": {
+      "\"I submitted it\" marks the job Applied and takes its session off the list": {
+        "seconds": 30,
+        "p95Seconds": 4.8
+      },
+      "\"Needs your attention\" from the extension's fill: the left menu is listed with its proposal and choices, and Use fills the form": {
+        "seconds": 160,
+        "p95Seconds": 52.4
+      },
+      "a form drawn after a spinner: its submit is never pressed as Apply, and it is filled once its fields come": {
+        "seconds": 175,
+        "p95Seconds": 58.2
+      },
+      "a form with collapsed sections: they are opened and the questions inside are filled": {
+        "seconds": 260,
+        "p95Seconds": 85.7
+      },
+      "a menu whose choices are not the answer's words: the choice that means the same is picked, then remembered for the next form on the site": {
+        "seconds": 185,
+        "p95Seconds": 60.2
+      },
+      "a posting whose Apply opens a new tab, then a \"To apply\" step, then the form: the journey is followed and the form filled": {
+        "seconds": 185,
+        "p95Seconds": 61.5
+      },
+      "a second browser with the extension and no tabs: the form open in the first stays open": {
+        "seconds": 285,
+        "p95Seconds": 93.7
+      },
+      "a sign-in page before the form that refuses the password: \"Sign in\" is pressed once, never again, and you are told; on the stuck sign-up page Take over with Claude only with Claude help on, never started": {
+        "seconds": 215,
+        "p95Seconds": 70.6
+      },
+      "a sign-in page before the form: your email and saved password are filled, \"Sign in\" is pressed once, and the form behind it is filled": {
+        "seconds": 190,
+        "p95Seconds": 62.6
+      },
+      "a sign-up page before the form: the account step is kept apart from the application form": {
+        "seconds": 120,
+        "p95Seconds": 38.4
+      },
+      "an upload slot that appears only when + is pressed: the app's CV reaches it, the rest of the form is filled": {
+        "seconds": 140,
+        "p95Seconds": 45.6
+      },
+      "the account and the application on one page: it is the application form, its passwords stay account fields": {
+        "seconds": 180,
+        "p95Seconds": 58.6
+      },
+      "the AI gave a page the wrong kind: the page contradicts it, the kind is dropped and the form is filled": {
+        "seconds": 190,
+        "p95Seconds": 62.4
+      },
+      "the app has an applicant, jobs with drafted kits for every fixture form, and an AI that answers only what the kits do not": {
+        "seconds": 305,
+        "p95Seconds": 100.5
+      },
+      "the app is seeded as a set-up install from the existing workspace": {
+        "seconds": 60,
+        "p95Seconds": 19.3
+      },
+      "the app is set up on this Mac's store with the applicant's strategy": {
+        "seconds": 35,
+        "p95Seconds": 10.5
+      },
+      "the form tab is closed: the app sees it and Reopen opens the form again, filled, for the same session": {
+        "seconds": 90,
+        "p95Seconds": 30.0
+      },
+      "the Notion stand-in answered every request the app made": {
+        "seconds": 30,
+        "p95Seconds": 0.6
+      },
+      "through all of it: Submit was never clicked or submitted, and no host but the fixture job sites was contacted": {
+        "seconds": 55,
+        "p95Seconds": 18.3
+      },
+      "two applications side by side, one whose Apply opens its form from script: each keeps one tab and its own kit": {
+        "seconds": 250,
+        "p95Seconds": 83.3
+      }
+    }
+  },
+  "failureschannels": {
+    "provenance": "Generated state-wait hang caps for failureschannels; never a speed assertion.\ntools/e2e-step-timings.mjs: 9 main runs, 9/9 calm shard-runs.\nMain run IDs: 40610690663, 40617153757, 40650235925, 40796899545, 40799225090, 40802551247, 40836904987, 40960750830, 40975522762.\nRegenerate this entry with tools/e2e-step-timings.mjs --suite failureschannels --caps; sparse shared steps use applyflows measurements.\nSparse shared steps use applyflows main measurements (see that module for provenance).\n3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.",
+    "steps": {
+      "Google access revoked: the Gmail check says so in words (connect Google again), never a plain Completed, never Google's raw answer": {
+        "seconds": 45,
+        "n": 9,
+        "p95Seconds": 13.6
+      },
+      "nothing was queued to report to the product": {
+        "seconds": 30,
+        "n": 9,
+        "p95Seconds": 0.2
+      },
+      "Telegram refuses the digest (the bot was blocked): the run says so in words, never a plain Completed, nothing left Running": {
+        "seconds": 105,
+        "n": 9,
+        "p95Seconds": 33.7
+      },
+      "the app is quiet before the first task: no schedule, no first search, its history read": {
+        "seconds": 30,
+        "n": 9,
+        "p95Seconds": 9.2
+      },
+      "the app is seeded as a set-up install from the existing workspace": {
+        "shared": "applyflows",
+        "n": 4
+      },
+      "the app is set up on this Mac's store with the applicant's strategy": {
+        "seconds": 30,
+        "n": 5,
+        "p95Seconds": 2.6
+      },
+      "the Gmail check reads the inbox through Google and ends in words, with nothing left Running": {
+        "seconds": 180,
+        "n": 9,
+        "p95Seconds": 58.5
+      },
+      "the Notion stand-in answered every request the app made": {
+        "shared": "applyflows",
+        "n": 4
+      },
+      "this suite starts with no job rows in its store's Job Matches": {
+        "seconds": 30,
+        "n": 9,
+        "p95Seconds": 0.4
+      },
+      "this suite starts with no run rows in its store": {
+        "seconds": 30,
+        "n": 9,
+        "p95Seconds": 4.4
+      },
+      "with Telegram connected, a Jobs check sends one readable digest to the person's chat": {
+        "seconds": 85,
+        "n": 9,
+        "p95Seconds": 27.6
+      }
+    }
+  },
+  "interactions": {
+    "provenance": "Generated state-wait hang caps for interactions; never a speed assertion.\ntools/e2e-step-timings.mjs: 9 main runs, 9/9 calm shard-runs.\nMain run IDs: 40650235925, 40746737212, 40768828567, 40796899545, 40799225090, 40802551247, 40836904987, 40960750830, 40975522762.\nRegenerate this entry with tools/e2e-step-timings.mjs --suite interactions --caps; sparse shared steps use applyflows measurements.\nSparse shared steps use applyflows main measurements (see that module for provenance).\n3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.",
+    "steps": {
+      "actions: every safe control does something": {
+        "seconds": 40,
+        "n": 9,
+        "p95Seconds": 12.3
+      },
+      "actions: stays still once it has loaded": {
+        "seconds": 30,
+        "n": 9,
+        "p95Seconds": 8.2
+      },
+      "calendar: every safe control does something": {
+        "seconds": 45,
+        "n": 9,
+        "p95Seconds": 14.9
+      },
+      "calendar: stays still once it has loaded": {
+        "seconds": 35,
+        "n": 9,
+        "p95Seconds": 11.2
+      },
+      "every page at four window sizes and in both themes: nothing is cut off, unreachable or broken (no screenshots, no AI)": {
+        "seconds": 220,
+        "n": 8,
+        "p95Seconds": 71.8
+      },
+      "focus: every safe control does something": {
+        "seconds": 200,
+        "n": 9,
+        "p95Seconds": 65.6
+      },
+      "focus: stays still once it has loaded": {
+        "seconds": 50,
+        "n": 9,
+        "p95Seconds": 15.1
+      },
+      "interaction findings are written": {
+        "seconds": 30,
+        "n": 8,
+        "p95Seconds": 0.4
+      },
+      "interviews: every safe control does something": {
+        "seconds": 80,
+        "n": 9,
+        "p95Seconds": 25.6
+      },
+      "interviews: stays still once it has loaded": {
+        "seconds": 90,
+        "n": 9,
+        "p95Seconds": 28.5
+      },
+      "jobs: every safe control does something": {
+        "seconds": 160,
+        "n": 9,
+        "p95Seconds": 52.3
+      },
+      "jobs: stays still once it has loaded": {
+        "seconds": 30,
+        "n": 9,
+        "p95Seconds": 8.7
+      },
+      "nothing was queued to report to the product": {
+        "seconds": 30,
+        "n": 8,
+        "p95Seconds": 0.3
+      },
+      "sessions: every safe control does something": {
+        "seconds": 30,
+        "n": 9,
+        "p95Seconds": 4.2
+      },
+      "sessions: stays still once it has loaded": {
+        "seconds": 30,
+        "n": 9,
+        "p95Seconds": 8.4
+      },
+      "settings: every safe control does something": {
+        "seconds": 65,
+        "n": 9,
+        "p95Seconds": 21.6
+      },
+      "settings: stays still once it has loaded": {
+        "seconds": 30,
+        "n": 9,
+        "p95Seconds": 9.9
+      },
+      "strategy: every safe control does something": {
+        "seconds": 90,
+        "n": 9,
+        "p95Seconds": 29.0
+      },
+      "strategy: stays still once it has loaded": {
+        "seconds": 90,
+        "n": 9,
+        "p95Seconds": 29.4
+      },
+      "the app is seeded as a set-up install from the existing workspace": {
+        "seconds": 55,
+        "n": 5,
+        "p95Seconds": 16.9
+      },
+      "the app is set up on this Mac's store with the applicant's strategy": {
+        "shared": "applyflows",
+        "n": 4
+      },
+      "the detectors catch the bugs planted for them (recall)": {
+        "seconds": 85,
+        "n": 9,
+        "p95Seconds": 27.2
+      },
+      "the icon rail: every badge and dot sits inside its button, clear of the icon": {
+        "seconds": 30,
+        "n": 8,
+        "p95Seconds": 0.7
+      },
+      "the narrowest window: the sidebar is an icon rail and every page still fits": {
+        "seconds": 45,
+        "n": 9,
+        "p95Seconds": 14.1
+      },
+      "the Notion stand-in answered every request the app made": {
+        "shared": "applyflows",
+        "n": 4
+      }
+    }
+  },
+  "jobs": {
+    "provenance": "Generated state-wait hang caps for jobs; never a speed assertion.\ntools/e2e-step-timings.mjs: 9 main runs, 9/9 calm shard-runs.\nMain run IDs: 40610690663, 40617153757, 40650235925, 40796899545, 40799225090, 40802551247, 40836904987, 40960750830, 40975522762.\nRegenerate this entry with tools/e2e-step-timings.mjs --suite jobs --caps; sparse shared steps use applyflows measurements.\nSparse shared steps use applyflows main measurements (see that module for provenance).\n3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.",
+    "steps": {
+      "a jobs check reads the fixture feeds, drops the wrong roles and scores the matching jobs": {
+        "seconds": 395,
+        "n": 8,
+        "p95Seconds": 130.5
+      },
+      "a scored job without a kit shows the Apply button, never Prepare, and \"Prepare only\" in its ⋯ menu": {
+        "seconds": 30,
+        "n": 8,
+        "p95Seconds": 2.9
+      },
+      "a slow Jobs check keeps showing that it is working, and ends cleanly": {
+        "seconds": 495,
+        "n": 8,
+        "p95Seconds": 163.9
+      },
+      "every scored job in the Jobs list is its Job Matches record, with the same score, and none is missing": {
+        "seconds": 335,
+        "n": 8,
+        "p95Seconds": 110.8
+      },
+      "Find new employers probes the seed company and lists it in the store (Employers & Sources)": {
+        "seconds": 55,
+        "n": 8,
+        "p95Seconds": 16.9
+      },
+      "nothing was queued to report to the product": {
+        "seconds": 30,
+        "n": 8,
+        "p95Seconds": 0.2
+      },
+      "the app is seeded as a set-up install from the existing workspace": {
+        "shared": "applyflows",
+        "n": 4
+      },
+      "the app is set up on this Mac's store with the applicant's strategy": {
+        "seconds": 30,
+        "n": 5,
+        "p95Seconds": 4.7
+      },
+      "the app's next start links this workspace's Search settings page (so the check looks for this person's roles and places)": {
+        "seconds": 90,
+        "n": 4,
+        "reason": "fewer than 5 calm samples, no shared cap; 30 s floor x 3"
+      },
+      "the check looks for this person's roles and places (this Mac's config, no Search settings page)": {
+        "seconds": 30,
+        "n": 5,
+        "p95Seconds": 0.4
+      },
+      "the Notion stand-in answered every request the app made": {
+        "shared": "applyflows",
+        "n": 4
+      },
+      "the pages of this suite render without layout problems": {
+        "seconds": 35,
+        "n": 8,
+        "p95Seconds": 10.9
+      },
+      "this suite starts with no jobs and no runs in its Notion page": {
+        "seconds": 30,
+        "n": 9,
+        "p95Seconds": 3.7
+      }
+    }
+  },
+  "settings": {
+    "provenance": "Generated state-wait hang caps for settings; never a speed assertion.\ntools/e2e-step-timings.mjs: 10 main runs, 9/10 calm shard-runs.\nMain run IDs: 40135785331, 40152010902, 40252278499, 40274183649, 40428980247, 40434672283, 40589724303, 40610690663, 40799225090, 40802551247.\nRegenerate this entry with tools/e2e-step-timings.mjs --suite settings --caps; sparse shared steps use applyflows measurements.\nSparse shared steps use applyflows main measurements (see that module for provenance).\n3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.",
+    "steps": {
+      "⌘K opens the palette: every page is listed, a typed command opens its page, Esc closes it": {
+        "seconds": 30,
+        "n": 9,
+        "p95Seconds": 2.4
+      },
+      "Automatic backup: a due backup runs once at start and once on the weekly tick": {
+        "seconds": 65,
+        "n": 9,
+        "p95Seconds": 20.2
+      },
+      "Automatic backup: Back up now writes a backup with no keys in its folder, and View backups opens it": {
+        "seconds": 30,
+        "n": 9,
+        "p95Seconds": 1.7
+      },
+      "Automatic backup: the backup file, imported after a reset, brings this computer back as it was": {
+        "seconds": 55,
+        "n": 9,
+        "p95Seconds": 17.9
+      },
+      "every Settings section renders": {
+        "seconds": 70,
+        "n": 9,
+        "p95Seconds": 22.0
+      },
+      "nothing was queued to report to the product": {
+        "seconds": 30,
+        "n": 9,
+        "p95Seconds": 0.3
+      },
+      "Settings render without layout problems": {
+        "seconds": 30,
+        "n": 9,
+        "p95Seconds": 0.4
+      },
+      "the AI engine panel is coherent with each engine chosen (a key is saved in both)": {
+        "seconds": 30,
+        "n": 9,
+        "p95Seconds": 2.7
+      },
+      "the app is seeded as a set-up install from the existing workspace": {
+        "shared": "applyflows",
+        "n": 2
+      },
+      "the app is set up on this Mac's store with the applicant's strategy": {
+        "seconds": 35,
+        "n": 7,
+        "p95Seconds": 11.0
+      },
+      "the CV check reads real PDFs: a plain CV passes, each known problem is found, a picture of a CV fails": {
+        "seconds": 30,
+        "n": 9,
+        "p95Seconds": 4.2
+      },
+      "the Notion stand-in answered every request the app made": {
+        "shared": "applyflows",
+        "n": 2
+      },
+      "Your data: export with keys, reset, then import from the setup brings this computer back as it was": {
+        "seconds": 35,
+        "n": 9,
+        "p95Seconds": 11.5
+      }
+    }
+  }
+}

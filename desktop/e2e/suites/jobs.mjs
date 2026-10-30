@@ -19,7 +19,7 @@ export const realAi = false;
 export const store = 'sqlite';
 export const minutes = 30;
 export const name = 'jobs';
-export {hangCaps} from '../lib/jobs-caps.mjs';
+import {hangCapsFor} from '../lib/hang-caps.mjs'; export const hangCaps = hangCapsFor('jobs');
 // Why (30 Oct 2026, owner, Rule B): measured per-step hang caps replace the aggregate clock; a slow runner is not a failed state assertion.
 export const aggregateBudget = false;
 export async function run(ctx) {

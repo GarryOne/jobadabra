@@ -88,7 +88,8 @@ test('settings registers measured runner caps and no aggregate budget', async ()
   const settings = await import('../suites/settings.mjs');
   const {budgetMsOf} = await import('../lib/runner.mjs');
   const {stepCalls} = await import('../lib/pr-suites.mjs');
-  const {hangCaps: sharedCaps} = await import('../lib/applyflows-caps.mjs');
+  const {hangCapsFor} = await import('../lib/hang-caps.mjs');
+  const sharedCaps = hangCapsFor('applyflows');
   assert.equal(settings.aggregateBudget, false);
   assert.equal(budgetMsOf(settings), Infinity);
   const source = file => readFileSync(new URL(`../${file}`, import.meta.url), 'utf8');
@@ -100,9 +101,10 @@ test('settings registers measured runner caps and no aggregate budget', async ()
   for (const [name, seconds] of Object.entries(settings.hangCaps)) {
     assert.ok(Number.isFinite(seconds) && seconds >= 30, `${name}: ${seconds}`);
   }
-  const caps = source('lib/settings-caps.mjs');
-  for (const [, name, seconds, p95] of caps.matchAll(/^  ("(?:\\.|[^"\\])*?"): (\d+), \/\/ n=\d+, p95=([\d.]+) s$/gm)) {
-    assert.equal(Number(seconds), Math.max(30, Math.ceil(3 * Number(p95) / 5) * 5), JSON.parse(name));
+  const caps = JSON.parse(source('hang-caps.json')).settings;
+  for (const [name, {seconds, p95Seconds, shared}] of Object.entries(caps.steps)) {
+    if (shared || p95Seconds === undefined) continue;
+    assert.equal(seconds, Math.max(30, Math.ceil(3 * p95Seconds / 5) * 5), name);
   }
   for (const name of ['the app is seeded as a set-up install from the existing workspace', 'the Notion stand-in answered every request the app made']) {
     assert.equal(settings.hangCaps[name], sharedCaps[name], 'sparse shared steps reuse the measured shared cap');

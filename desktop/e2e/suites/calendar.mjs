@@ -14,6 +14,8 @@ import {goView} from '../lib/go-view.mjs';
 export const offlineAi = true;
 // Why (30 Oct 2026, ap, main run 40985357367): retain the harness guard against any undeclared live AI call.
 export const realAi = false;
+// Why (30 Oct 2026, ap): stored answers need one store path (test/store.test.mjs); calendar writes its dummy meetings through the Notion API, which the stand-in serves, and its steps for this Mac's SQLite store stay marked as needing it.
+export const store = 'standin';
 export const name = 'calendar';
 export const env = {TZ: 'Asia/Tokyo'};
 const ZONE = 'Asia/Tokyo';

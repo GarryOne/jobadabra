@@ -32,7 +32,8 @@ on:
 permissions:
   contents: read
 
-# One verdict per PR branch: one runs, the newest waits and replaces an older waiting one (it reads the same state; every PR job also writes it as its last step).
+# One verdict per PR branch: one runs, the newest waits and replaces an older waiting one (it reads the same state). This job is the only writer, so a replaced
+# waiting run loses its event; tools/pr-verdict.py reads a pending result once more after the list's lag (#2533) instead.
 # Why (27 Oct 2026): per commit (workflow_run.head_sha) every push kept its own runs. An event the job below skips (a replaced commit, a merged PR) waits in its
 # own group: concurrency applies before the job's `if:`, so in the branch group it could replace the head's waiting verdict and then write nothing (review on #2248).
 concurrency:

@@ -8,7 +8,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 ENDS = ('DONE', 'FAILED', 'REVIEW', 'MERGED', 'CLOSED', 'RED', 'GREEN', 'READY')
-NAMES_ENDINGS = re.compile(r'ship: \(?DONE|DONE\|FAILED')   # a line that tells how a ship run ends
+NAMES_ENDINGS = re.compile(r"ship: \(?DONE|DONE\|FAILED|'DONE', 'FAILED'")   # a line that tells how a ship run ends, as text or as a list of words (tools/claude-pr-events.py ENDINGS)
 
 
 def tracked():

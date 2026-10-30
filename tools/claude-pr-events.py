@@ -5,13 +5,9 @@ action. Let's fix it permanently"). Why: the watcher always wrote every event to
 red-check hook speaks only on a prompt or a stop, so an idle session, or one that did not re-arm, heard nothing (a8's #2580 sat red unseen). Codex sessions already get the
 events pushed (tools/codex-pr-events.py); this is the same for Claude Code, through `cmux agent message`, which delivers by the target agent's hooks and never types into the
 terminal: an idle session wakes, a busy one reads it at its next step, and the sender is labelled "PR watcher", never the owner.
-Invariants: one cursor per log (<log>.claude.json: offset + prefix hash, a replaced log starts over); only complete lines; the cursor advances only after cmux accepted the
-message, so a failed delivery is retried on the next look; no AI call, no GitHub read. Green and review lines never wake (READY says when a PR is done).
+Cursor rules (one cursor per log in <log>.claude.json, whole lines only, moves only after cmux accepted, so a refused delivery is retried): tools/pr_events_cursor.py. Green and review lines never wake (READY says when a PR is done).
 Usage: tools/claude-pr-events.py <log>   (env CMUX_SURFACE_ID of the session that ran ship; no surface or a Codex session: silent exit 0).  Guard: tests/test_claude_pr_events.py.
 """
-import fcntl
-import hashlib
-import json
 import os
 import re
 import shutil
@@ -19,6 +15,9 @@ import subprocess
 import sys
 import uuid
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))   # the sibling module, whether run as a script or loaded by path
+from pr_events_cursor import deliver_pending  # noqa: E402
 
 # Every line the watcher and ship write that names an ending, and the two that are not asks. Why (30 Oct 2026): GREEN and REVIEW say "checks passed", not "act" (READY, MERGED
 # and CLOSED are the ones that do); built from the full list so tests/test_ship_endings.py, which wants every ending named where the endings are listed, still holds.
@@ -38,32 +37,12 @@ def deliver(log, surface, cmux, *, run=subprocess.run):
         surface = str(uuid.UUID(surface)).upper()
     except (ValueError, TypeError, AttributeError):
         return True
-    log = Path(log)
-    cursor = Path(f'{log}.claude.json')
-    try:
-        with Path(f'{cursor}.lock').open('a') as lock:
-            fcntl.flock(lock, fcntl.LOCK_EX)
-            content = log.read_bytes()
-            try:
-                state = json.loads(cursor.read_text())
-            except (OSError, ValueError):
-                state = {}
-            offset = state.get('offset', 0)
-            if not isinstance(offset, int) or offset < 0 or offset > len(content) or hashlib.sha256(content[:offset]).hexdigest() != state.get('prefix'):
-                offset = 0   # the log was replaced or cut: read it from the top
-            end = content.rfind(b'\n') + 1   # whole lines only
-            if end <= offset:
-                return True
-            events = [line for line in content[offset:end].decode('utf8', errors='replace').splitlines() if WAKE.match(line)]
-            if events:
-                message = ASK + '\n'.join(events) + f'\nLog: {log}'
-                done = run([cmux, 'agent', 'message', surface, '--from', 'PR watcher', '--json', '--', message], capture_output=True, text=True, timeout=15)
-                if done.returncode != 0:
-                    return False
-            cursor.write_text(json.dumps({'offset': end, 'prefix': hashlib.sha256(content[:end]).hexdigest()}))
-            return True
-    except (OSError, ValueError, subprocess.TimeoutExpired):
-        return False
+
+    def send(events):
+        message = ASK + '\n'.join(events) + f'\nLog: {log}'
+        return run([cmux, 'agent', 'message', surface, '--from', 'PR watcher', '--json', '--', message], capture_output=True, text=True, timeout=15).returncode == 0
+
+    return deliver_pending(log, f'{log}.claude.json', WAKE, send)
 
 
 def main():

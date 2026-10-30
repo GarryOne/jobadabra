@@ -34,6 +34,7 @@
  ],
  "daily": [
   "ai-cap.test.mjs",
+  "ai-format-manifest.test.mjs",
   "ai-provider.test.mjs",
   "brain-codex.test.mjs",
   "broker-relay.test.mjs",

@@ -6,7 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {test} from 'node:test';
-import {loadTable, storedAnswer} from '../lib/ai-answers.mjs';
+import {loadTable, questionOf, storedAnswer} from '../lib/ai-answers.mjs';
 import {startAiProxy} from '../lib/ai-proxy.mjs';
 import {modelFetch} from '../lib/model.mjs';
 
@@ -67,5 +67,27 @@ test('quality backbone serves reviewed app.score/3001 at every seam with zero li
   const response = await h.localFetch(`${h.proxy.url}/v1/messages`, init);
   assert.equal(response.status, 200);
   assert.deepEqual(await response.json(), expected);
+  h.assertNoLive();
+});
+
+
+test('quality serves the captured Swiss alias country batch without live AI', async t => {
+  const h = await harness(t);
+  const {question} = JSON.parse(fs.readFileSync(new URL('../fixtures/golden/quality-country-ask.json', import.meta.url), 'utf8'));
+  const {context, items} = question;
+  const body = {
+    model: 'test', system: 'You decide what short pieces of content mean, in any language, for a job-search tool.',
+    messages: [{role: 'user', content: `Task: ${context.task}\nAllowed answers: ${context.allowedAnswers}\n\n${items.map(({index, text}) => `### Item ${index}\n${text}`).join('\n\n')}`}],
+    output_config: {format: {type: 'json_schema', schema: context.schema}},
+  };
+  const init = {method: 'POST', headers: {'content-type': 'application/json', 'x-jp-action': 'decide'}, body: JSON.stringify(body)};
+  assert.deepEqual(questionOf(init, h.env, loadTable(tableFile)), question);
+  const expected = {results: [{index: 0, answer: 'ch'}, {index: 1, answer: 'ch'}, {index: 2, answer: 'ch'}, {index: 3, answer: 'ch'}, {index: 4, answer: 'ch'}]};
+  assert.deepEqual(JSON.parse(storedAnswer(init, h.env).reply.content[0].text), expected);
+  const direct = await modelFetch(`${h.target}/v1/messages`, init, h.options);
+  assert.deepEqual(JSON.parse((await direct.json()).content[0].text), expected);
+  const proxied = await h.localFetch(`${h.proxy.url}/v1/messages`, init);
+  assert.equal(proxied.status, 200);
+  assert.deepEqual(JSON.parse((await proxied.json()).content[0].text), expected);
   h.assertNoLive();
 });

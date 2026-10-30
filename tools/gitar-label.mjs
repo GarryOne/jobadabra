@@ -1,8 +1,12 @@
 #!/usr/bin/env node
 // Sets the one "Gitar: …" label on a PR from Gitar's verdict, so the PR list shows red / yellow / green without opening the PR.
 // Why (owner, 28 Oct 2026): "how can I know from this view if the PR has PR comments, or change requested, or not yet approved? … red 'gitar requested changes', or 'approved with suggestions', or green 'fully approved'".
-// Why (28 Oct 2026): Gitar records no approving review (#2377 had none), so only the verdict line of its own comment says approved; a verdict older than the head commit is stale and gets no label.
-// Usage (workflow .github/workflows/gitar-label.yml): node tools/gitar-label.mjs <pr-number>
+// Why (28 Oct 2026; measured again 30 Oct 2026): a head often gets no Gitar review (9 of 60 PRs: an unchanged verdict after a push is only a new comment), so only the
+// verdict line of its own comment says approved; a verdict older than the head commit is stale and gets no label.
+// Design (30 Oct 2026, owner chose "run only on review + push"): the labels change only on a push (the head moved: "reviewing" until Gitar judges it), on Gitar
+// submitting or dismissing a review or posting a new comment (its verdict), and on a session starting work ("working"). Gitar's comment edits change nothing: 151 label runs an hour on
+// them used up the repo's REST budget, and the runs that hit the limit left labels wrong in silence (#2516, 29 Oct 2026). Reads are one GraphQL call.
+// Usage (workflow .github/workflows/gitar-label.yml): node tools/gitar-label.mjs <pr-number>   (a review event's submitted_at is read from GITHUB_EVENT_PATH)
 //   node tools/gitar-label.mjs working <pr-number>   a session says it has started handling the comments. Needs GH_TOKEN and GITHUB_REPOSITORY; guard tests/test_gitar_label.py.
 import {execFileSync} from 'node:child_process';
 import {readFileSync} from 'node:fs';
@@ -28,13 +32,16 @@ export function verdictKind(body) {
   return 'changes';   // Why (28 Oct 2026): an unknown Code Review state is not an approval; red is the safe side
 }
 
-/** Skips only Gitar comment events whose payload already holds the expected label; pushes always sync live state. */
-export function canSkipFromPayload({event, comment, labels = []}) {
-  // Why (29 Oct 2026, a8): 200+ runs in 65 minutes at 8–12 REST calls each exhausted the installation budget; unchanged comment edits must cost zero calls.
-  if (event !== 'issue_comment' || comment?.user?.login !== 'gitar-bot[bot]') return false;
-  const kind = verdictKind(comment.body);
-  if (kind) return labels.includes(LABELS[kind].name) && !(kind === 'approved' && labels.includes(WORKING.name));
-  return labels.includes(WAITING.name) && !Object.values(LABELS).some(label => labels.includes(label.name));
+/** A run started by Gitar's review: re-reads (one GraphQL call each) until Gitar's comment was updated at or after the review, at most `tries` times; -> the last read.
+ * Why (30 Oct 2026, measured on 60 PRs): Gitar submits its review first and edits the verdict line of its comment up to 7 s later, and only the comment tells
+ * "approved with suggestions" (an empty COMMENTED review) from a plain comment batch. */
+export function awaitComment(read, since, reread, {tries = 12, pause = () => {}} = {}) {
+  let current = read;
+  for (let tried = 0; since && tried < tries && !(current.review && Date.parse(current.review.updated_at) >= Date.parse(since)); tried++) {
+    pause();
+    current = reread();
+  }
+  return current;
 }
 
 /** The label name to hold: Gitar's verdict if its comment was written at or after the head commit, else null (a stale approval never stays green). */
@@ -64,11 +71,22 @@ export function wantedLabels({verdict, workingSince, headTime, verdictTime}) {
 const ALL = [...Object.values(LABELS), WAITING, WORKING];
 const ensure = (repo, l, run = gh) => run('label', 'create', l.name, '--color', l.color, '--description', l.description, '--force', '-R', repo);
 
+/** Adds one label; creates it (a REST call) only when GitHub says the repo has no such label yet, then adds it again.
+ * Why (30 Oct 2026, #2516): the create ran before every add and was the REST call that met the exhausted budget; the labels exist after their first use. */
+export function addLabel(repo, pr, l, run = gh) {
+  const add = () => run('pr', 'edit', String(pr), '--add-label', l.name, '-R', repo);
+  try { add(); } catch (error) {
+    if (!/could not add label: .* not found/i.test(error.message)) throw error;   // gh's words for a label the repo lacks, not a missing PR
+    ensure(repo, l, run);
+    add();
+  }
+}
+
 /** Adds and removes labels until the PR holds exactly `wanted`; -> how many it changed. `run` is the gh call (a test passes a fake). */
 export function setLabels(repo, pr, wanted, have, run = gh) {
   let changed = 0;
   for (const l of ALL) {
-    if (wanted.includes(l.name) && !have.includes(l.name)) { ensure(repo, l, run); run('pr', 'edit', String(pr), '--add-label', l.name, '-R', repo); changed++; }
+    if (wanted.includes(l.name) && !have.includes(l.name)) { addLabel(repo, pr, l, run); changed++; }
     else if (!wanted.includes(l.name) && have.includes(l.name)) { run('pr', 'edit', String(pr), '--remove-label', l.name, '-R', repo); changed++; }
   }
   return changed;
@@ -83,8 +101,10 @@ export function converge(once, max = 3) {
   return rounds;
 }
 
-function main(pr) {
-  converge(() => syncOnce(pr));
+function main(pr, since = null) {
+  // Why (30 Oct 2026): only the first round waits for Gitar's comment; a converge re-read after a write reads at once.
+  let wait = since;
+  converge(() => { const changed = syncOnce(pr, wait); wait = null; return changed; });
 }
 
 const PR_QUERY = `query($owner: String!, $name: String!, $pr: Int!) { repository(owner: $owner, name: $name) { pullRequest(number: $pr) {
@@ -127,13 +147,30 @@ function readPrByRest(repo, pr, info) {
   const latest = reviews.sort((a, b) => Date.parse(a.updated_at) - Date.parse(b.updated_at)).at(-1);
   const labels = pages(`repos/${repo}/issues/${pr}/labels`).map(l => l.name);
   const workingSince = labels.includes(WORKING.name) ? pages(`repos/${repo}/issues/${pr}/events`).filter(e => e.event === 'labeled' && e.label.name === WORKING.name).map(e => e.created_at).sort().at(-1) : null;
-  return {state: info.state, headTime: headTime(repo, info.head.sha), review: latest ? {body: latest.body, updated_at: latest.updated_at} : null, labels, workingSince};
+  return {state: info.state, headTime: headTime(repo, info.head.sha), review: latest ? {body: latest.body, updated_at: latest.updated_at} : null, labels, workingSince, viaRest: true};
 }
 
-/** One read of the verdict, head and labels, then the writes it needs; -> true when it changed a label. */
-function syncOnce(pr) {
+/** The read a run labels from: `first`, or after waiting for Gitar's comment to catch up with the review `since` (awaitComment).
+ * Why (30 Oct 2026, Gitar on #2525): a thread too long for the GraphQL read is read by paged REST, about 6 calls; 13 such reads in one wait would spend the
+ * budget this design protects, so that rare path reads once. */
+export function readForRun(first, since, reread, opts) {
+  return first.viaRest ? first : awaitComment(first, since, reread, opts);
+}
+
+const readLive = (repo, pr) => readPr(repo, pr) || readPrByRest(repo, pr, JSON.parse(gh('api', `repos/${repo}/pulls/${pr}`)));
+const WAIT_MS = Number(process.env.GITAR_LABEL_WAIT_MS || 10000);   // between re-reads while Gitar's comment catches up with its review (12 tries: 2 minutes)
+const pause = () => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, WAIT_MS);
+
+/** One read of the verdict, head and labels (after Gitar's comment caught up with the review `since`, if any), then the writes it needs; -> true when it changed a label. */
+function syncOnce(pr, since) {
   const repo = process.env.GITHUB_REPOSITORY;
-  const read = readPr(repo, pr) || readPrByRest(repo, pr, JSON.parse(gh('api', `repos/${repo}/pulls/${pr}`)));
+  const read = readForRun(readLive(repo, pr), since, () => readLive(repo, pr), {pause});
+  // Why (30 Oct 2026, Gitar on #2525): the comment trailed the review by at most 7 s on the last 60 PRs; one still behind after 2 minutes may hold a stale
+  // verdict, so the run goes red (a re-run corrects it) instead of a green run with a wrong label.
+  if (since && !(read.review && Date.parse(read.review.updated_at) >= Date.parse(since))) {
+    console.log(`::error::gitar-label: Gitar's comment on #${pr} did not catch up with its review in 12 reads; labelled from what it read, re-run to correct it`);
+    process.exitCode = 1;
+  }
   if (read.state !== 'open') { console.log(`gitar-label: #${pr} is ${read.state}, left as it is`); return false; }
   const verdict = read.review ? wantedLabel(read.review.body, read.review.updated_at, read.headTime) : null;
   const wanted = wantedLabels({verdict, workingSince: read.workingSince, headTime: read.headTime, verdictTime: read.review?.updated_at});
@@ -144,34 +181,31 @@ function syncOnce(pr) {
 
 function markWorking(pr) {
   const repo = process.env.GITHUB_REPOSITORY;
-  const read = readPr(repo, pr) || readPrByRest(repo, pr, JSON.parse(gh('api', `repos/${repo}/pulls/${pr}`)));
+  const read = readLive(repo, pr);
   // Why (#2386, 29 Oct 2026): a current mark keeps its time; a stale mark is refreshed after a push.
   if (read.state !== 'open') return;
   const present = read.labels.includes(WORKING.name);
   if (present && read.workingSince && Date.parse(read.workingSince) >= Date.parse(read.headTime)) return;
-  ensure(repo, WORKING);
   // Why (#2386, Gitar): a stale mark needs a new event time after the latest push.
   if (present) gh('pr', 'edit', String(pr), '--remove-label', WORKING.name, '-R', repo);
-  gh('pr', 'edit', String(pr), '--add-label', WORKING.name, '-R', repo);
+  addLabel(repo, pr, WORKING);
   main(pr); // Reconcile a push or verdict that arrived while marking work.
 }
 
-/** Reads the runner's event file before any gh call; an unavailable payload falls back to live reads, and only comment rate limits exit cleanly. */
+/** The review time a run must wait for: Gitar's review's submitted_at on a pull_request_review event, else null (a push, a new Gitar comment or a by-hand run reads at once). */
+export function reviewSince(event, payload) {
+  return event === 'pull_request_review' && payload?.review?.user?.login === 'gitar-bot[bot]' ? payload.review.submitted_at || null : null;
+}
+
+/** A failure stays red, rate limit or not: a label left wrong in silence is what this design removes (#2516). */
 function cli() {
   try {
     let payload = {};
     try {
       if (process.env.GITHUB_EVENT_PATH) payload = JSON.parse(readFileSync(process.env.GITHUB_EVENT_PATH, 'utf8'));
-    } catch { /* An unreadable event file only disables the zero-call shortcut. */ }
-    if (canSkipFromPayload({event: process.env.GITHUB_EVENT_NAME, comment: payload.comment,
-      labels: (payload.issue?.labels || payload.pull_request?.labels || []).map(label => label.name)}) && process.argv[2] !== 'working') return;
-    process.argv[2] === 'working' ? markWorking(process.argv[3]) : main(process.argv[2]);
+    } catch { /* An unreadable event file only means no review time to wait for: the run reads at once. */ }
+    process.argv[2] === 'working' ? markWorking(process.argv[3]) : main(process.argv[2], reviewSince(process.env.GITHUB_EVENT_NAME, payload));
   } catch (error) {
-    // Why (29 Oct 2026, a8): 27 label runs turned PRs red on rate-limited HTTP 403 after 200+ runs in 65 minutes exhausted the installation budget; quota failures leave cosmetic labels alone, but permission failures stay visible; Gitar's finding (29 Oct 2026, #2448): push failures must stay red when a stale approval cannot be cleared.
-    if (process.env.GITHUB_EVENT_NAME === 'issue_comment' && /rate limit|HTTP 429/i.test(error.message)) {
-      console.log('::notice::Gitar label left as it is because GitHub API access is rate limited.');
-      return;
-    }
     console.error(error.message);
     process.exitCode = 1;
   }

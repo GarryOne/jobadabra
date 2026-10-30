@@ -6,43 +6,21 @@ import {mkdtempSync, readFileSync, rmSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {canSkipFromPayload, converge, fromGraphql, readPr, setLabels, verdictKind, wantedLabel, wantedLabels, LABELS, WAITING, WORKING} from '../tools/gitar-label.mjs';
+import {addLabel, awaitComment, readForRun, converge, fromGraphql, readPr, reviewSince, setLabels, verdictKind, wantedLabel, wantedLabels, LABELS, WAITING, WORKING} from '../tools/gitar-label.mjs';
 const wrap = kbd => `<details>\n<summary><b>Code Review</b> ${kbd}</summary>\n\nBody\n</details>`;
 const APPROVED = wrap('<kbd>✅ Approved</kbd>');   // #2377, #2380
 const SUGGEST = wrap('<kbd>👍 Approved with suggestions</kbd> <kbd>2 closed / 3 findings</kbd>');   // #2381
 const CHANGES = wrap('<kbd>⚠️ Changes requested</kbd> <kbd>0 closed / 3 findings</kbd>');   // #2382
+const REVIEWED_AT = '2026-10-28T20:06:00Z';   // Gitar's review in the event payload; its comment (20:05 by default) is edited after it
 
-const payloadCases = [
-  {name: 'approved already held', body: APPROVED, labels: [LABELS.approved.name], skip: true, before: 1},
-  {name: 'suggestions already held', body: SUGGEST, labels: [LABELS.suggestions.name], skip: true, before: 1},
-  {name: 'changes already held', body: CHANGES, labels: [LABELS.changes.name], skip: true, before: 1},
-  {name: 'still reviewing', body: 'Gitar is reviewing…', labels: [WAITING.name], skip: true, before: 1},
-  {name: 'different verdict', body: APPROVED, labels: [LABELS.changes.name], skip: false, before: 5},
-  {name: 'working plus approval', body: APPROVED, labels: [LABELS.approved.name, WORKING.name], skip: false, before: 3},
-  {name: 'push clears stale approval', event: 'pull_request_target', body: APPROVED, labels: [LABELS.approved.name], skip: false, before: 5},
-];
-
-test('payload skips only matching comment verdicts or reviewing without any verdict label', () => {
-  const canSkip = (body, labels, event = 'issue_comment', login = 'gitar-bot[bot]') => canSkipFromPayload({event, comment: {body, user: {login}}, labels});
-  for (const c of payloadCases) assert.equal(canSkip(c.body, c.labels, c.event), c.skip, c.name);
-  for (const label of Object.values(LABELS)) {
-    assert.equal(canSkip('still analysing', [WAITING.name, label.name]), false, 'a verdict label still needs clearing');
-    assert.equal(canSkip(APPROVED, [label.name], 'pull_request_target'), false, 'pushes always read live state');
-  }
-  assert.equal(canSkip('still analysing', []), false, 'missing reviewing label needs adding');
-  assert.equal(canSkip('still analysing', [WAITING.name, WORKING.name]), true);
-  assert.equal(canSkip(CHANGES, [LABELS.changes.name, WORKING.name]), true);
-  assert.equal(canSkip(SUGGEST, [LABELS.suggestions.name, WORKING.name]), true, 'suggestions keep working under the existing policy');
-  assert.equal(canSkip(APPROVED, [LABELS.approved.name], 'issue_comment', 'someone-else'), false);
-  assert.equal(canSkipFromPayload({event: 'pull_request_target'}), false);
-});
-
-/** Runs the real CLI with only gh replaced; the fake records calls and persists label writes for convergence reads. */
-function runCliCase(t, {event = 'issue_comment', body = APPROVED, labels = [], failure = '', legacy = false, eventFile = 'present', issueBody = '', working = false} = {}) {
+/** Runs the CLI with gh replaced by a fake PR. `later` makes Gitar's comment change after that many GraphQL reads (its edit after the review);
+ * `missing` lists labels the repo does not have yet (adding one fails "not found"). */
+function runCliCase(t, {event = 'pull_request_review', body = APPROVED, labels = [], failure = '', legacy = false, eventFile = 'present', working = false,
+  later = null, missing = [], reviewer = 'gitar-bot[bot]'} = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'gitar-label-'));
   t.after(() => rmSync(dir, {recursive: true, force: true}));
   const stateFile = join(dir, 'state.json'), preload = join(dir, 'fake-gh.mjs'), payloadFile = join(dir, 'event.json');
-  writeFileSync(stateFile, JSON.stringify({calls: 0, labels, body}));
+  writeFileSync(stateFile, JSON.stringify({calls: 0, reads: 0, creates: 0, labels, body, updatedAt: '2026-10-28T20:05:00Z', later, missing}));
   writeFileSync(preload, `// Replaces only gh so this CLI test cannot access GitHub or credentials.
 import childProcess from 'node:child_process';
 import {syncBuiltinESMExports} from 'node:module';
@@ -51,103 +29,131 @@ childProcess.execFileSync = (file, args) => {
   if (file !== 'gh') throw new Error('unexpected executable: ' + file);
   const state = JSON.parse(readFileSync(process.env.FAKE_GH_STATE, 'utf8'));
   state.calls++;
-  writeFileSync(process.env.FAKE_GH_STATE, JSON.stringify(state));
+  const save = () => writeFileSync(process.env.FAKE_GH_STATE, JSON.stringify(state));
+  save();
   if (process.env.FAKE_GH_FAILURE) throw new Error(process.env.FAKE_GH_FAILURE);
   const names = state.labels.map(name => ({name}));
-  let result;
-  if (args[0] === 'api') {
-    const path = args[1];
-    if (path === 'graphql') result = {data: {repository: {pullRequest: {
+  if (args[0] === 'api' && args[1] === 'graphql') {
+    state.reads++;
+    const edited = state.later && state.reads > state.later.after ? state.later : state;
+    save();
+    return JSON.stringify({data: {repository: {pullRequest: {
       state: 'OPEN', headRefOid: 'head',
-      comments: {pageInfo: {hasPreviousPage: false}, nodes: [{author: {login: 'gitar-bot'}, body: state.body, updatedAt: '2026-10-28T20:05:00Z'}]},
+      comments: {pageInfo: {hasPreviousPage: false}, nodes: [{author: {login: 'gitar-bot'}, body: edited.body, updatedAt: edited.updatedAt}]},
       labels: {nodes: names},
       timelineItems: {nodes: [{label: {name: 'Working on PR comments'}, createdAt: state.workedAt || '2026-10-28T20:05:00Z'}]},
       commits: {nodes: [{commit: {committedDate: process.env.FAKE_HEAD_TIME, checkSuites: {nodes: []}}}]},
-    }}}};
-    else if (path === 'repos/o/r/pulls/1') result = {state: 'open', head: {sha: 'head'}};
-    else if (path === 'repos/o/r/commits/head') result = {commit: {committer: {date: process.env.FAKE_HEAD_TIME}}};
-    else if (path.endsWith('/check-suites')) result = {check_suites: []};
-    else if (path.endsWith('/comments')) result = [[{user: {login: 'gitar-bot[bot]'}, body: state.body, updated_at: '2026-10-28T20:05:00Z'}]];
-    else if (path.endsWith('/labels')) result = [names];
-    else if (path.endsWith('/events')) result = [[{event: 'labeled', label: {name: 'Working on PR comments'}, created_at: '2026-10-28T20:05:00Z'}]];
-    else throw new Error('unexpected API path: ' + path);
-    return JSON.stringify(result);
+    }}}});
   }
-  if (args[0] === 'label' && args[1] === 'create') return '';
+  if (args[0] === 'label' && args[1] === 'create') { state.creates++; state.missing = state.missing.filter(name => name !== args[2]); save(); return ''; }
   if (args[0] !== 'pr' || args[1] !== 'edit') throw new Error('unexpected gh args: ' + args);
   const add = args.indexOf('--add-label'), remove = args.indexOf('--remove-label');
+  if (add >= 0 && state.missing.includes(args[add + 1])) throw new Error("could not add label: '" + args[add + 1] + "' not found");
   state.edits = [...(state.edits || []), args[add >= 0 ? add : remove]];
   if (add >= 0) { state.labels.push(args[add + 1]); state.workedAt = '2026-10-28T20:15:00Z'; }
   else if (remove >= 0) state.labels = state.labels.filter(name => name !== args[remove + 1]);
   else throw new Error('unexpected label edit: ' + args);
-  writeFileSync(process.env.FAKE_GH_STATE, JSON.stringify(state));
+  save();
   return '';
 };
 syncBuiltinESMExports();
 `);
-  const labelObjects = labels.map(name => ({name}));
-  const payload = event === 'issue_comment'
-    ? {comment: {body, user: {login: 'gitar-bot[bot]'}}, issue: {body: issueBody, labels: labelObjects}}
-    : {pull_request: {labels: labelObjects}};
+  const payload = event === 'pull_request_review' ? {review: {user: {login: reviewer}, submitted_at: REVIEWED_AT}, pull_request: {number: 1}}
+    : event === 'issue_comment' ? {comment: {user: {login: 'gitar-bot[bot]'}}, issue: {number: 1, pull_request: {}}}
+    : {pull_request: {number: 1}};
   writeFileSync(payloadFile, JSON.stringify(payload));
   const eventPath = legacy || eventFile === 'unset' ? '' : eventFile === 'missing' ? join(dir, 'missing.json') : eventFile === 'unreadable' ? dir : payloadFile;
   const done = spawnSync(process.execPath, ['--import', preload, fileURLToPath(new URL('../tools/gitar-label.mjs', import.meta.url)), ...(working ? ['working', '1'] : ['1'])], {
     encoding: 'utf8',
-    env: {PATH: process.env.PATH, GITHUB_REPOSITORY: 'o/r', GITHUB_EVENT_NAME: event,
+    env: {PATH: process.env.PATH, GITHUB_REPOSITORY: 'o/r', GITHUB_EVENT_NAME: event, GITAR_LABEL_WAIT_MS: '1',
       GITHUB_EVENT_PATH: eventPath, FAKE_GH_STATE: stateFile,
-      FAKE_HEAD_TIME: event === 'pull_request_target' ? '2026-10-28T20:10:00Z' : '2026-10-28T20:00:00Z', FAKE_GH_FAILURE: failure},
+      FAKE_HEAD_TIME: event === 'pull_request_review' ? '2026-10-28T20:00:00Z' : '2026-10-28T20:10:00Z', FAKE_GH_FAILURE: failure},   // a push or a new comment: the head moved at 20:10
   });
   assert.ifError(done.error);
   return {...done, ...JSON.parse(readFileSync(stateFile, 'utf8'))};
 }
 
-test('CLI gh calls before (unchanged live path) and after payload guard', t => {
-  t.diagnostic('Case | Before gh calls | After gh calls');
-  for (const c of payloadCases) {
-    const before = runCliCase(t, {...c, legacy: true}), after = runCliCase(t, c);
-    assert.equal(before.status, 0, before.stderr);
-    assert.equal(after.status, 0, after.stderr);
-    assert.equal(before.calls, c.before, c.name);
-    assert.equal(after.calls, c.skip ? 0 : c.before, c.name);
-    assert.deepEqual(after.labels, before.labels, c.name);
-    t.diagnostic(`${c.name} | ${before.calls} | ${after.calls}`);
-  }
+test('a review run waits until Gitar\'s comment is newer than the review, then labels from it (#2516: the comment trails the review)', t => {
+  // Gitar requested changes earlier; it now approves: the review event arrives while the comment still says "Changes requested", edited two reads later.
+  const done = runCliCase(t, {body: CHANGES, labels: [LABELS.changes.name], later: {after: 2, body: APPROVED, updatedAt: '2026-10-28T20:06:05Z'}});
+  assert.equal(done.status, 0, done.stderr);
+  assert.deepEqual(done.labels, [LABELS.approved.name], 'the verdict of the comment written after the review, never the older one');
+  assert.equal(done.reads, 4, 'two reads before the edit, the one that sees it, and converge\'s check that nothing is left to change');
 });
 
-test('CLI reads event files over 128 KB and falls back to live reads for unavailable files', t => {
-  const large = runCliCase(t, {labels: [LABELS.approved.name], issueBody: 'x'.repeat(160 * 1024)});
-  assert.equal(large.status, 0, large.stderr);
-  assert.equal(large.calls, 0, 'a large event file still skips without an oversized environment string');
-  for (const eventFile of ['unset', 'missing', 'unreadable']) {
-    const done = runCliCase(t, {labels: [LABELS.approved.name], eventFile});
+test('a comment that never catches up ends the wait after 12 re-reads, labels from what it read and goes red, so a re-run corrects it (Gitar on #2525)', t => {
+  const done = runCliCase(t, {body: SUGGEST, labels: []});
+  assert.equal(done.status, 1, 'a green run would hide a stale label');
+  assert.equal(done.reads, 13 + 1, 'the first read, 12 re-reads, then converge\'s check after its write');
+  assert.ok(done.stdout.includes('::error::'), 'a wait that runs out says so on the run');
+  assert.deepEqual(done.labels, [LABELS.suggestions.name]);
+});
+
+test('after a push with an unchanged verdict Gitar posts a new comment and no review: the push says reviewing, the comment labels it (#2516, 9 of 60 PRs)', t => {
+  const pushed = runCliCase(t, {event: 'pull_request_target', labels: [LABELS.approved.name]});
+  assert.equal(pushed.status, 0, pushed.stderr);
+  assert.deepEqual(pushed.labels, [WAITING.name], 'the approval was for the old head');
+  const commented = runCliCase(t, {event: 'issue_comment', labels: [WAITING.name], later: {after: 0, body: APPROVED, updatedAt: '2026-10-28T20:12:00Z'}});
+  assert.equal(commented.status, 0, commented.stderr);
+  assert.deepEqual(commented.labels, [LABELS.approved.name], 'the new comment is the verdict for the new head');
+  assert.ok(commented.reads <= 2, `a new comment needs no wait: ${commented.reads} reads`);
+  const reply = runCliCase(t, {event: 'issue_comment', labels: [WAITING.name]});   // a thread reply: no newer verdict
+  assert.deepEqual(reply.labels, [WAITING.name]);
+});
+
+test('a push or another reviewer\'s review reads at once, with no wait', t => {
+  for (const c of [{event: 'pull_request_target', labels: [LABELS.approved.name]}, {reviewer: 'someone', labels: [LABELS.approved.name]}, {eventFile: 'unreadable'}]) {
+    const done = runCliCase(t, c);
     assert.equal(done.status, 0, done.stderr);
-    assert.equal(done.calls, 1, `${eventFile}: no payload means the existing live path`);
-    assert.deepEqual(done.labels, [LABELS.approved.name]);
+    assert.ok(done.reads <= 2, `${JSON.stringify(c)}: ${done.reads} reads`);
   }
+  assert.equal(reviewSince('issue_comment', {comment: {user: {login: 'gitar-bot[bot]'}}}), null);
+  assert.equal(reviewSince('pull_request_review', {review: {user: {login: 'gitar-bot[bot]'}, submitted_at: REVIEWED_AT}}), REVIEWED_AT);
+  assert.equal(reviewSince('pull_request_review', {review: {user: {login: 'someone'}, submitted_at: REVIEWED_AT}}), null);
+  assert.equal(reviewSince('pull_request_target', {}), null);
 });
 
-test('CLI notices comment rate limits; push, permission-denied 403 and server errors fail', t => {
-  for (const [failure, status] of [
-    ['HTTP 403 API rate limit exceeded for installation', 0],
-    ['HTTP 403 secondary rate limit exceeded', 0],
-    ['HTTP 429 Too Many Requests', 0],
-    ['rate limit exceeded', 0],
-    ['HTTP 403 Resource not accessible by integration', 1],
-    ['HTTP 500 Internal Server Error', 1],
-  ]) {
-    for (const event of ['issue_comment', 'pull_request_target']) {
-      const labels = [event === 'issue_comment' ? WAITING.name : LABELS.approved.name];
+test('labels are added with no REST create; a label the repo lacks is created once (#2516: the create met the exhausted budget)', t => {
+  const usual = runCliCase(t, {event: 'pull_request_target', labels: []});
+  assert.equal(usual.status, 0, usual.stderr);
+  assert.deepEqual(usual.labels, [WAITING.name]);
+  assert.equal(usual.creates, 0, 'labels exist after their first use: adding needs no create');
+  const fresh = runCliCase(t, {event: 'pull_request_target', labels: [], missing: [WAITING.name]});
+  assert.equal(fresh.status, 0, fresh.stderr);
+  assert.deepEqual(fresh.labels, [WAITING.name]);
+  assert.equal(fresh.creates, 1);
+  const calls = [];
+  assert.throws(() => addLabel('o/r', 1, LABELS.approved, (...args) => { calls.push(args[0]); throw new Error('HTTP 403 Resource not accessible by integration'); }), /403/);
+  assert.deepEqual(calls, ['pr'], 'any other failure is not answered with a create');
+});
+
+test('every failure stays red and leaves the labels: a rate limit is not hidden any more (#2516)', t => {
+  for (const failure of ['HTTP 403 API rate limit exceeded for installation', 'HTTP 429 Too Many Requests', 'HTTP 403 Resource not accessible by integration', 'HTTP 500 Internal Server Error']) {
+    for (const event of ['pull_request_review', 'pull_request_target']) {
+      const labels = [LABELS.approved.name];
       const done = runCliCase(t, {event, failure, labels});
-      const expected = event === 'issue_comment' ? status : 1;
-      assert.equal(done.status, expected, `${event}: ${failure}; stderr: ${done.stderr}`);
+      assert.equal(done.status, 1, `${event}: ${failure}`);
       assert.equal(done.calls, 1, 'never retry a failed gh call');
-      assert.deepEqual(done.labels, labels, 'a failed read leaves every label as it was');
-      const notices = done.stdout.split('\n').filter(line => line.startsWith('::notice::'));
-      assert.equal(notices.length, expected === 0 ? 1 : 0);
-      if (notices.length) assert.match(notices[0], /label.*left as it is/i);
-      else assert.ok(done.stderr.includes(failure), done.stderr);
+      assert.deepEqual(done.labels, labels);
+      assert.ok(done.stderr.includes(failure), done.stderr);
+      assert.ok(!done.stdout.includes('::notice::'), 'no quiet exit');
     }
   }
+});
+
+test('the wait itself: no review time, or a comment already newer, reads once', () => {
+  let reread = 0;
+  const read = at => ({review: {updated_at: at}});
+  assert.equal(awaitComment(read('2026-10-28T20:05:00Z'), null, () => { reread++; return read('x'); }).review.updated_at, '2026-10-28T20:05:00Z');
+  assert.equal(awaitComment(read('2026-10-28T20:07:00Z'), REVIEWED_AT, () => { reread++; return read('x'); }).review.updated_at, '2026-10-28T20:07:00Z');
+  assert.equal(reread, 0);
+  assert.equal(awaitComment({review: null}, REVIEWED_AT, () => { reread++; return {review: null}; }, {tries: 3}).review, null, 'no comment at all: bounded too');
+  assert.equal(reread, 3);
+  const long = {review: {updated_at: '2026-10-28T20:05:00Z'}, viaRest: true};   // Gitar on #2525: a thread past 100 comments is read by paged REST
+  assert.equal(readForRun(long, REVIEWED_AT, () => { reread++; return long; }), long);
+  assert.equal(reread, 3, 'the REST path never re-reads: each read is about 6 REST calls');
+  assert.equal(readForRun(read('2026-10-28T20:05:00Z'), REVIEWED_AT, () => { reread++; return read('2026-10-28T20:07:00Z'); }).review.updated_at, '2026-10-28T20:07:00Z');
+  assert.equal(reread, 4, 'the GraphQL path still waits');
 });
 
 test('real verdict lines map to their kind', () => {

@@ -154,10 +154,10 @@ test('nightly workflow is isolated, Codex-pinned, caches evidence and deduplicat
   assert.match(source, /actions\/upload-artifact@v6\b/);
   assert.match(source, /github.ref == 'refs\/heads\/main'/);
   assert.match(source, /ai-answer-drift-\$\{\{ github.run_id \}\}/);
-  assert.match(source, /github\.rest\.search\.issuesAndPullRequests/);
+  assert.match(source, /search\/issues\?q=/);
+  assert.doesNotMatch(source, /actions\/github-script@/);
   assert.match(source, /item\.title === issue\.title/);
-  assert.match(source, /github\.rest\.issues\.update/);
-  assert.match(source, /github\.rest\.issues\.create/);
+  assert.match(source, /existing \? 'PATCH' : 'POST'/);
   assert.doesNotMatch(source, /pull_request:|workflow_call:|secrets\.|ANTHROPIC_API_KEY|OPENAI_API_KEY/);
 });
 
@@ -243,20 +243,27 @@ test('prose rate waits for 45 judgments, then fails above 10% with exact facts s
   }
 });
 
-test('workflow issue writer creates once and updates the exact-title open issue on later reports', async () => {
+test('workflow issue writer creates once and updates the exact-title open issue on later reports', () => {
   const source = fs.readFileSync(new URL('../../../.github/workflows/ai-answer-drift.yml', import.meta.url), 'utf8');
-  const script = source.split('          script: |\n')[1].split('\n').map(line => line.replace(/^            /, '')).join('\n');
-  const run = new (Object.getPrototypeOf(async function() {}).constructor)('require', 'github', 'context', script);
+  const script = source.split("node <<'JS'\n")[1].split('\n          JS')[0].split('\n').map(line => line.replace(/^          /, '')).join('\n');
+  const run = new Function('require', 'process', script);
   const issue = {title: 'Stored AI answers drift from the live model', body: 'Changed answer: old → new'}, open = [], updated = [];
-  const github = {rest: {search: {issuesAndPullRequests: async () => ({data: {items: open}})}, issues: {
-    create: async data => open.push({...data, number: 1}), update: async data => updated.push(data),
-  }}};
-  const requireFake = () => ({readFileSync: () => JSON.stringify({issue})});
-  const context = {repo: {owner: 'fake', repo: 'fake'}, serverUrl: 'https://github.invalid', runId: 1};
-  await run(requireFake, github, context); await run(requireFake, github, context);
+  const execFileSync = (command, args, options) => {
+    assert.equal(command, 'gh'); assert.equal(args[0], 'api');
+    if (args[1].startsWith('search/issues?q=')) return JSON.stringify({items: open});
+    assert.ok(args.includes('--input')); assert.equal(args.at(-1), '-');
+    const data = JSON.parse(options.input), method = args[args.indexOf('--method') + 1];
+    if (method === 'PATCH') updated.push({endpoint: args[1], ...data});
+    else { assert.equal(method, 'POST'); open.push({...data, number: 1}); }
+    return '{}';
+  };
+  const requireFake = name => name === 'node:fs' ? {readFileSync: () => JSON.stringify({issue})} : {execFileSync};
+  const processFake = {env: {GITHUB_REPOSITORY: 'fake/fake', GITHUB_SERVER_URL: 'https://github.invalid', GITHUB_RUN_ID: '1'}};
+  run(requireFake, processFake); run(requireFake, processFake);
   assert.equal(open.length, 1); assert.equal(updated.length, 1);
-  assert.equal(updated[0].issue_number, 1); assert.match(updated[0].body, /old → new/);
+  assert.equal(updated[0].endpoint, 'repos/fake/fake/issues/1'); assert.match(updated[0].body, /old → new/);
 });
+
 
 
 test('the complete nightly import graph and every linked relay request need no package', () => {

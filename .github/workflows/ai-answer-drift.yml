@@ -53,18 +53,29 @@ jobs:
             desktop/e2e/artifacts/answer-drift/ai-answer-drift.json
             desktop/e2e/artifacts/answer-drift/ai-answer-drift.md
           if-no-files-found: error
+      # Why (30 Oct 2026, owner, JOB-45): reuse the runner's CLI so issue reporting adds no action runtime or package install.
       - name: Maintain one issue for lasting red
         if: always() && github.ref == 'refs/heads/main' && hashFiles('desktop/e2e/artifacts/answer-drift/ai-answer-drift.json') != ''
-        uses: actions/github-script@v8
-        with:
-          script: |
-            const fs = require('node:fs');
-            const {issue} = JSON.parse(fs.readFileSync('desktop/e2e/artifacts/answer-drift/ai-answer-drift.json', 'utf8'));
-            if (!issue) return;
-            const {owner, repo} = context.repo;
-            const found = await github.rest.search.issuesAndPullRequests({q: `repo:${owner}/${repo} is:issue is:open in:title "${issue.title}"`, per_page: 100});
-            const existing = found.data.items.find(item => item.title === issue.title);
-            const run = `${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`;
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          node <<'JS'
+          const fs = require('node:fs');
+          const {execFileSync} = require('node:child_process');
+          const api = (endpoint, data, method = 'GET') => {
+            const args = ['api', endpoint, '--method', method];
+            if (data) args.push('--input', '-');
+            return JSON.parse(execFileSync('gh', args, {encoding: 'utf8', ...(data ? {input: JSON.stringify(data)} : {})}));
+          };
+          const {issue} = JSON.parse(fs.readFileSync('desktop/e2e/artifacts/answer-drift/ai-answer-drift.json', 'utf8'));
+          if (issue) {
+            const repository = process.env.GITHUB_REPOSITORY;
+            const query = `repo:${repository} is:issue is:open in:title "${issue.title}"`;
+            const found = api(`search/issues?q=${encodeURIComponent(query)}&per_page=100`);
+            const existing = found.items.find(item => item.title === issue.title);
+            const run = `${process.env.GITHUB_SERVER_URL}/${repository}/actions/runs/${process.env.GITHUB_RUN_ID}`;
             const body = `${issue.body}\n\n[Full nightly report and artifacts](${run})`;
-            if (existing) await github.rest.issues.update({owner, repo, issue_number: existing.number, body});
-            else await github.rest.issues.create({owner, repo, title: issue.title, body});
+            const endpoint = `repos/${repository}/issues${existing ? `/${existing.number}` : ''}`;
+            api(endpoint, existing ? {body} : {title: issue.title, body}, existing ? 'PATCH' : 'POST');
+          }
+          JS

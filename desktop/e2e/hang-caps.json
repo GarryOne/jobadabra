@@ -405,5 +405,40 @@
         "p95Seconds": 11.5
       }
     }
+  },
+  "personas": {
+    "provenance": "Personas jobs-step split (owner, 30 Oct 2026). Evidence: run 41092667989, trace.trace and logs/engine.log:43-122. One selected persona per run; no aggregate-budget or CI timeout change. Sparse fallback caps catch hangs, never assert speed; failed AI answers remain failures.",
+    "steps": {
+      "Jordan Rivera (data analyst, Austin, US citizen): starts a jobs check": {
+        "seconds": 30,
+        "n": 0,
+        "reason": "Run 41092667989 trace: both clicks completed in under 0.5 s; 30 s noise floor."
+      },
+      "Jordan Rivera (data analyst, Austin, US citizen): the jobs check finishes and its results reach the Jobs list": {
+        "seconds": 90,
+        "n": 0,
+        "reason": "Run 41092667989 engine.log: search 7 s plus discovery 3 s; no calm successful samples, 30 s floor x 3 fallback, not a measured p95."
+      },
+      "Jordan Rivera (data analyst, Austin, US citizen): a jobs check keeps the roles in their places and drops the wrong ones": {
+        "seconds": 30,
+        "n": 0,
+        "reason": "Pure result assertions after completion; 30 s noise floor, no calm samples."
+      },
+      "Camila Souza (marketing manager, Sao Paulo, Brazilian): starts a jobs check": {
+        "seconds": 30,
+        "n": 0,
+        "reason": "Same jobs path as Austin; Run 41092667989 trace: both clicks completed in under 0.5 s; 30 s noise floor."
+      },
+      "Camila Souza (marketing manager, Sao Paulo, Brazilian): the jobs check finishes and its results reach the Jobs list": {
+        "seconds": 90,
+        "n": 0,
+        "reason": "Same jobs path as Austin; Run 41092667989 engine.log: search 7 s plus discovery 3 s; no calm successful samples, 30 s floor x 3 fallback, not a measured p95."
+      },
+      "Camila Souza (marketing manager, Sao Paulo, Brazilian): a jobs check keeps the roles in their places and drops the wrong ones": {
+        "seconds": 30,
+        "n": 0,
+        "reason": "Same jobs path as Austin; Pure result assertions after completion; 30 s noise floor, no calm samples."
+      }
+    }
   }
 }

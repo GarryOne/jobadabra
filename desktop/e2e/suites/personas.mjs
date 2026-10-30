@@ -17,6 +17,7 @@ import {storeText} from '../lib/seed-texts.mjs';
 import {clearData} from '../lib/start-state.mjs';
 import {ensureSetUp} from '../lib/seed.mjs';
 import {withRoles} from '../lib/search-roles.mjs';
+import {hangCapsFor} from '../lib/hang-caps.mjs';
 
 export const minutes = 15;
 export const offlineAi = true;
@@ -29,6 +30,7 @@ export const store = 'sqlite';
 //   gh workflow run e2e.yml -f suite=personas        or        node suite.mjs personas
 export const cadence = 'manual';
 export const name = 'personas';
+export const hangCaps = hangCapsFor('personas');
 
 // Words that belong to the first user, not to the product. Anywhere in what a persona sees or what is stored for them, each is a bug.
 export const FORBIDDEN = /switzerland|swiss|schweiz|suisse|z[uü]rich|🇨🇭|\bCHF\b|\bEU\b|european union|\bEEA\b/i;
@@ -102,6 +104,7 @@ export async function run(ctx) {
     const profile = JSON.parse(fs.readFileSync(path.join(personaDir(key), 'profile.json'), 'utf8'));
     const label = `${profile.name}`;
     const read = {ui: '', digest: '', notion: ''};
+    let searchBefore;
     await ctx.run(`${label}: starts from nothing: no jobs, runs or employers in Notion, no cached jobs on the Mac, their feeds and CV in place`, async () => {
       await clearData(ctx, 'Job Matches — AI Scored'); await clearData(ctx, 'Cronjob Runs'); await clearData(ctx, 'Employers & Sources');
       for (const file of fs.readdirSync(path.join(personaDir(key), 'feeds'))) fs.copyFileSync(path.join(personaDir(key), 'feeds', file), path.join(feeds, file));
@@ -126,12 +129,26 @@ export async function run(ctx) {
       if (settingsPage !== null && !/Where you can work without a visa/i.test(settingsPage)) throw new Error('⚙️ Search settings in Notion has no "Where you can work without a visa" section');
       if (settingsPage !== null && !new RegExp(profile.work_rights[0], 'i').test(settingsPage.split(/Where you can work without a visa/i)[1] || '')) throw new Error(`Notion's work-rights section does not list ${profile.work_rights[0]}`);
     }, {needs: ctx.needs});
-    await ctx.run(`${label}: a jobs check keeps the roles in their places and drops the wrong ones`, async () => {
+    await ctx.run(`${label}: starts a jobs check`, async () => {
+      searchBefore = await page.evaluate(async () => (await window.pilot.runs()).runs.map(run => run.id));
       await page.click('.nav[data-view="jobs"]');
       await page.click('#refresh');
+    }, {needs: ctx.needs});
+    await ctx.run(`${label}: the jobs check finishes and its results reach the Jobs list`, async () => {
+      const timeout = hangCaps[`${label}: the jobs check finishes and its results reach the Jobs list`] * 1000;
+      // Why (30 Oct 2026, owner; run 41092667989): a finished search with no scores cannot satisfy a score wait; wait for this run, then check its actual results separately.
+      await page.waitForFunction(async before => {
+        const data = await window.pilot.runs();
+        return !data.running && !(data.queued || []).length && data.runs.some(run => run.kind === 'search' && run.endedAt && !before.includes(run.id));
+      }, searchBefore, {timeout, polling: 500});
+      const expected = await page.evaluate(async () => (await window.pilot.jobs()).jobs.map(({title, fit}) => ({title, fit})));
+      await page.waitForFunction(expected => JSON.stringify((window.__jp.shared.allJobs || []).map(({title, fit}) => ({title, fit}))) === JSON.stringify(expected),
+        expected, {timeout, polling: 500});
+    }, {needs: ctx.needs});
+    await ctx.run(`${label}: a jobs check keeps the roles in their places and drops the wrong ones`, async () => {
       const rolePattern = new RegExp(profile.roles.filter(role => /^[\w ]+$/.test(role)).join('|'), 'i');
-      await page.waitForFunction(pattern => (window.__jp.shared.allJobs || []).some(job => new RegExp(pattern, 'i').test(job.title) && job.fit != null && job.fit !== ''),
-        rolePattern.source, {timeout: 480000, polling: 3000});
+      const scored = await page.evaluate(pattern => (window.__jp.shared.allJobs || []).some(job => new RegExp(pattern, 'i').test(job.title) && job.fit != null && job.fit !== ''), rolePattern.source);
+      if (!scored) throw new Error('no matching role was kept and scored after the jobs check finished');
       const titles = await page.evaluate(() => (window.__jp.shared.allJobs || []).map(job => job.title));
       console.log(`  jobs: ${titles.join('; ')}`);
       const wrong = titles.filter(title => /account executive|product designer|intern|sales executive|est[aá]gio/i.test(title));

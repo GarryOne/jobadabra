@@ -11,6 +11,7 @@ import hashlib
 import json
 import re
 import sqlite3
+import sys
 import tempfile
 import threading
 import time
@@ -93,7 +94,7 @@ class Client:
                   usage=NS(input_tokens=0, output_tokens=0, billing='subscription'))
 
 
-def capture_engine():
+def capture_engine(prompts=False):
     """Capture declared engine senders with fixture-only state and one-response clients."""
     models = load('src/ai/models.py', ['SMALL_MODEL', 'MAIN_MODEL', 'BIG_MODEL'])
     schema = load('src/ai/providers/schema.py', ['LIMITS', 'without_limits'])
@@ -156,7 +157,7 @@ def capture_engine():
     keep('interview_patterns', client, {'items': [item]}, 'src/ai/interviews_ai.py', 'response = client.messages.create(model=model, **request)',
          'src/ai/interview_insights.py', 'def validate(')
 
-    with tempfile.TemporaryDirectory(prefix='.ai-format-', dir=ROOT) as temporary:
+    with tempfile.TemporaryDirectory(prefix='.ai-format-') as temporary:
         ideas = load('src/ai/role_ideas.py', ['MODEL', 'MAX_IDEAS', 'SCHEMA', 'SYSTEM', '_key', '_load', 'ideas', '_counted', 'count'],
                      MAIN_MODEL=models.MAIN_MODEL, STORE=Path(temporary) / 'roles.json', providers=NS(who=lambda: 'offline capture'))
         search = {'role_keywords': ['vendeur', 'photographe'], 'locations': {'top_tier': ['geneve']}}
@@ -234,7 +235,7 @@ def capture_engine():
     keep('app.visit', client, {'sites': sites, 'search': visit_search, 'unsure': 'keep'}, 'src/sources/visits.py', 'response = client.messages.create(',
          'src/sources/visits.py', 'numbers = {int(n)', action='visit_relevant')
 
-    with tempfile.TemporaryDirectory(prefix='.ai-format-', dir=ROOT) as temporary:
+    with tempfile.TemporaryDirectory(prefix='.ai-format-') as temporary:
         temporary = Path(temporary)
         scope = NS(view=lambda *a: {}, active=lambda: False)
         bindings = dict(SMALL_MODEL=models.SMALL_MODEL, slots=slots, batch_scope=scope, threading=threading, time=time,
@@ -288,11 +289,86 @@ def capture_engine():
              'response = client.messages.create(model=MODEL, max_tokens=1500, system=',
              'src/ai/title_triage.py', 'fit = {int(n) for n in json.loads', action='title_triage',
              source_after='def decide(titles', validator_after='def decide(titles')
+        if prompts:
+            # Why (JOB-44, 30 Oct 2026, owner): one family stamp covers every fixed instruction variant, not just the manifest's first request.
+            client = Client({'fit': [1]})
+            title._second_look(client, titles, {titles[0]: False}, title_search, {'role_words': ['site reliability'], 'words_ruled_out': []})
+            entries.append(dict(kind='app.title', variant='recheck', action='title_triage', request=client.request))
+            client = Client({'keep': [1, 2]})
+            visits.relevant(sites, visit_search, client=client, unsure='leave')
+            entries.append(dict(kind='app.visit', variant='leave', action='visit_relevant', request=client.request))
+            reading = load('src/ai/place_triage.py', ['MODEL', 'READ_BATCH', 'READ_SCHEMA', 'READ_SYSTEM', 'places_words', 'read'],
+                           **bindings, _key=lambda search: 'fixture', read_known=lambda search: {}, read_verdict=lambda *a: None,
+                           _preferences=lambda: {}, _load_read=lambda: {}, READ_STORE=temporary / 'read.json')
+            client = Client({'jobs': []})
+            reading.read([dict(url='fixture-posting', title='Fixture title', location='Country', description='Fixture posting text')],
+                         place_search, client=client)
+            entries.append(dict(kind='app.placeReading', action='place_reading', request=client.request))
     return entries
+
+
+def prompt_templates(entries):
+    """Extract literal framing at real sender boundaries; every interpolation is a named data slot."""
+    specs = {'app.decide': ('src/ai/decide.py', 'SYSTEM'), 'app.place': ('src/ai/place_triage.py', 'SYSTEM'),
+             'app.places': ('src/places.py', 'SYSTEM'), 'app.geo': ('src/geo.py', 'SYSTEM'),
+             'app.title': ('src/ai/title_triage.py', 'SYSTEM'), 'app.visit': ('src/sources/visits.py', 'RELEVANT_SYSTEM'),
+             'app.visa': ('src/ai/place_triage.py', 'VISA_SYSTEM'), 'app.placeVague': ('src/ai/place_triage.py', 'VAGUE_SYSTEM'),
+             'app.placeReading': ('src/ai/place_triage.py', 'READ_SYSTEM')}
+    def template(node):
+        """Keep literal framing, replacing interpolation expressions with named slots."""
+        if isinstance(node, ast.Constant) and isinstance(node.value, str):
+            return node.value
+        if isinstance(node, ast.JoinedStr):
+            return ''.join(template(part) for part in node.values)
+        if isinstance(node, ast.IfExp):
+            return '[' + template(node.body) + '|' + template(node.orelse) + ']'
+        if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add):
+            return template(node.left) + template(node.right)
+        return '{' + (node.id if isinstance(node, ast.Name) else 'data') + '}'
+    def joins(node):
+        """Include list separators and item framing without retaining fixture values."""
+        return [dict(separator=template(call.func.value), item=template(call.args[0].elt)) for call in ast.walk(node)
+                if isinstance(call, ast.Call) and isinstance(call.func, ast.Attribute) and call.func.attr == 'join'
+                and call.args and isinstance(call.args[0], ast.GeneratorExp)]
+    result = []
+    for entry in entries:
+        if entry['kind'] not in specs:
+            continue
+        file, system = specs[entry['kind']]
+        if entry.get('variant') == 'recheck':
+            system = 'RECHECK_SYSTEM'
+        tree = ast.parse(read(file))
+        calls = [node for node in ast.walk(tree) if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
+                 and node.func.attr == 'create' and any(kw.arg == 'system' and any(isinstance(n, ast.Name) and n.id == system
+                     for n in ast.walk(kw.value)) for kw in node.keywords)]
+        if len(calls) != 1:
+            raise AssertionError(f'Uncaptured sender variants: {entry["kind"]}')
+        scope = min((node for node in ast.walk(tree) if isinstance(node, ast.FunctionDef) and calls[0] in list(ast.walk(node))), key=lambda node: len(list(ast.walk(node))))
+        messages = next(kw.value for kw in calls[0].keywords if kw.arg == 'messages')
+        content = next(value for key, value in zip(messages.elts[0].keys, messages.elts[0].values) if key.value == 'content')
+        if isinstance(content, ast.Name):
+            content = next(node.value for node in ast.walk(scope) if isinstance(node, ast.Assign)
+                           and any(isinstance(t, ast.Name) and t.id == content.id for t in node.targets))
+        entry['userTemplate'] = template(content)
+        # Invariant: list item labels are instructions too; data expressions and batch order are never retained.
+        entry['itemTemplates'] = [item for assignment in ast.walk(scope) if isinstance(assignment, ast.Assign)
+                                 and any(isinstance(t, ast.Name) and t.id == 'listed' for t in assignment.targets)
+                                 and any(isinstance(n, ast.Name) and n.id == 'listed' for n in ast.walk(content))
+                                 for item in joins(assignment.value)] + joins(content)
+        result.append(entry)
+    return result
 
 
 def main():
     """Write deterministic offline snapshots and their source fingerprints, never a live mode."""
+    if len(sys.argv) > 1:
+        if sys.argv[1] != '--prompts' or len(sys.argv) > 3:
+            raise ValueError('Expected --prompts [root]')
+        global ROOT
+        if len(sys.argv) == 3:
+            ROOT = Path(sys.argv[2]).resolve()
+        print(json.dumps(prompt_templates(capture_engine(prompts=True)), ensure_ascii=False))
+        return
     read('tools/ai-format-python-capture.py')
     entries = capture_engine()
     result = dict(about='Engine request snapshots captured from real sender definitions with injected offline clients; refresh with tools/ai-format-python-capture.py.',

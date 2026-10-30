@@ -3,7 +3,7 @@
 // Why (30 Oct 2026, owner: "app quits mid-job" picked from the coverage sketch; then "A quit is a Stop"): only unit tests played a cut-off job. This step's first runs saw the job continued
 // after the start, and Full automation press 80 s after it on the wait the quit cut off; now every job an earlier run held goes to the person and nothing is pressed. Every wait is on a state.
 // Job: wait on state
-import {HIDDEN_NEED, autoFormOf, backgroundOf, backgroundStateOf, closeHiddenBrowser, describeHidden, kitSeeder, linkRuntime, withFormJudge} from './background-proof.mjs';
+import {HIDDEN_NEED, autoFormOf, backgroundOf, backgroundStateOf, closeHiddenBrowser, describeHidden, kitSeeder, linkRuntime, skipJob, withFormJudge} from './background-proof.mjs';
 import {appLogLines} from './app-log.mjs';
 import {FORMS} from './forms.mjs';
 import {POSTING} from './apply-fixtures.mjs';
@@ -45,7 +45,7 @@ export async function runRestartSteps(ctx, {urls, until}) {
       await ctx.relaunch();
       await handedOver(ctx, form.url, until);
       if (ctx.forms.posts.length !== posted) throw new Error(`after the start the form was posted ${ctx.forms.posts.length - posted} time(s)`);
-    } finally { await closeHiddenBrowser(ctx.profile); }
+    } finally { await skipJob(ctx.page, form); await closeHiddenBrowser(ctx.profile); }   // the handed-over job stays eligible; the next proof's Start would take it (skipJob)
   }, {needs});
 
   await ctx.run('the app quits in Full automation\'s wait: after it starts again the job is handed to you, and nothing is pressed when the wait runs out', async () => {
@@ -61,6 +61,6 @@ export async function runRestartSteps(ctx, {urls, until}) {
       await until('the watch past the wait did not end', async () => Date.now() > dueAt + 45000 || ctx.forms.posts.length !== posted, Math.max(0, dueAt + 45000 - Date.now()) + 15000);
       if (ctx.forms.posts.length !== posted) throw new Error(`after the start the app pressed Submit ${ctx.forms.posts.length - posted} time(s) on a wait the quit cut off`);
       if ((await backgroundStateOf(ctx.page, autoForm.url)) !== 'needs_user_handoff') throw new Error('after the wait ran out the job was no longer handed to you');
-    } finally { await closeHiddenBrowser(ctx.profile); }
+    } finally { await skipJob(ctx.page, autoForm); await closeHiddenBrowser(ctx.profile); }
   }, {needs});
 }

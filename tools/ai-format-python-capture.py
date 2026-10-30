@@ -104,10 +104,15 @@ def capture_engine():
                  whole_word=paths.whole_word)
     IMPORTS.update(engine=engine, cost=cost, terms=terms.terms, SMALL_MODEL=models.SMALL_MODEL)
     IMPORTS['_key'] = load('src/regions.py', ['_key'])._key
-    table = json.loads(read('desktop/e2e/fixtures/golden/ai-answers.json'))
+    answers_file = 'desktop/e2e/fixtures/golden/ai-answers.json'
+    table = json.loads((ROOT / answers_file).read_text(encoding='utf-8'))
+    interview = table['answers']['app.interview']['recruiter-call-gamma']
+    # Canonical subtree bytes: json.dumps(sort_keys=True, separators=(',', ':'), ensure_ascii=False), UTF-8; same as the Node checker/tests.
+    encoded = json.dumps(interview, sort_keys=True, separators=(',', ':'), ensure_ascii=False).encode('utf-8')
+    DEPENDENCIES[answers_file + '#answers.app.interview.recruiter-call-gamma'] = hashlib.sha256(encoded).hexdigest()
     candidate = read('desktop/e2e/fixtures/golden/candidate.txt')
     transcript = read('desktop/e2e/lib/interview-data.mjs').split('export const TRANSCRIPT = `', 1)[1].split('`;', 1)[0]
-    review = json.loads(table['answers']['app.interview']['recruiter-call-gamma']['reply']['content'][0]['text'])
+    review = json.loads(interview['reply']['content'][0]['text'])
     entries = []
 
     def keep(kind, client, context, source, marker, validator, parser, *, action=None, source_after=None, validator_after=None):
@@ -282,8 +287,9 @@ def main():
     result = dict(about='Engine request snapshots captured from real sender definitions with injected offline clients; refresh with tools/ai-format-python-capture.py.',
                   v=1, dependencies=DEPENDENCIES, entries=sorted(entries, key=lambda entry: entry['kind']))
     compact = lambda value: json.dumps(value, sort_keys=True, ensure_ascii=False, separators=(',', ':'))
-    DEST.write_text('{\n"about":' + compact(result['about']) + ',\n"dependencies":' + compact(DEPENDENCIES)
-                    + ',\n"entries":[\n' + ',\n'.join(compact(entry) for entry in result['entries']) + '\n],\n"v":1\n}\n')
+    dependencies = ',\n'.join(compact(key) + ':' + compact(value) for key, value in sorted(DEPENDENCIES.items()))
+    DEST.write_text('{\n"about":' + compact(result['about']) + ',\n"dependencies":{\n' + dependencies
+                    + '\n},\n"entries":[\n' + ',\n'.join(compact(entry) for entry in result['entries']) + '\n],\n"v":1\n}\n', encoding='utf-8')
     print(f'Captured {len(entries)} engine requests into {DEST.relative_to(ROOT)}')
 
 

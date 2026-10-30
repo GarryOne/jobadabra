@@ -98,6 +98,9 @@
     },
     "visitsauto": {
       "aiMissesMax": 0
+    },
+    "personas": {
+      "aiMissesMax": 0
     }
   }
 }

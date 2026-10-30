@@ -334,6 +334,7 @@
   "suite-ai-mode.test.mjs",
   "suite-budget.test.mjs",
   "suite-done.test.mjs",
+  "suite-hang-caps.test.mjs",
   "suite-retry-room.test.mjs",
   "step-slices.test.mjs",
   "suite-shards.test.mjs",

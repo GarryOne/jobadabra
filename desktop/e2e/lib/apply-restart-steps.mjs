@@ -3,13 +3,11 @@
 // Why (30 Oct 2026, owner: "app quits mid-job" picked from the coverage sketch): only unit tests played a cut-off job (sweepInterrupted covers a press, not a held form). The hidden browser dies
 // with the app (lib/browser-reaper.js), so after the start nothing may press, and the job may not be left on a page that is gone. Every wait is on a state; the caps only catch a hang.
 // Job: wait on state
-import {backgroundStateOf, closeHiddenBrowser, describeHidden, linkRuntime, withFormJudge} from './background-proof.mjs';
+import {HIDDEN_NEED, autoFormOf, backgroundStateOf, closeHiddenBrowser, describeHidden, kitSeeder, linkRuntime, sessionOf, withFormJudge} from './background-proof.mjs';
 import {appLogLines} from './app-log.mjs';
 import {FORMS} from './forms.mjs';
 import {POSTING} from './apply-fixtures.mjs';
-import {addKitJob, removeJobsByUrl} from './seed-data.mjs';
 
-const sessionOf = (page, url) => page.evaluate(target => window.pilot.sessions().then(list => list.find(item => String(item.url || '').replace(/\/$/, '') === target.replace(/\/$/, ''))?.id || ''), url);
 const applyLines = profile => { try { return appLogLines(profile).filter(line => /\[apply\]/.test(line)).slice(-4).map(line => line.slice(0, 220)).join(' // '); } catch { return '(app log unreadable)'; } };
 
 /** Starts one fixture job in `mode` (fill or auto, wait `waitMin`) and waits for the state the app holds it in. -> the posts count before the quit. */
@@ -37,14 +35,15 @@ async function statesAfter(ctx, url, ms) {
   return seen;
 }
 
+/** Throws when the job's state was never read after the start, or the last read failed: a step that never saw the job proves nothing (Gitar on #2598). */
+function unread(seen) {
+  if (!seen.length || seen.at(-1).state === '?') throw new Error(`after the start the job's state could not be read: ${seen.map(item => `${item.state}@${item.at}s`).join(' → ') || 'no read'}`);
+}
+
 /** Runs the restart steps; takes the harness context, the suite's fixture job addresses `urls` (removed first, so the one job Start picks is this step's) and its state wait `until`. */
 export async function runRestartSteps(ctx, {urls, until}) {
   const form = FORMS.submitter;
-  // Full automation needs every answer a saved fact: the submitter's details-only page (as lib/background-auto-proof.mjs), on its own address (one background session per address).
-  const autoForm = {...form, path: form.autoPath, url: `https://${form.host}${form.autoPath}?restart=1`, kit: []};
-  const seed = async job => { await removeJobsByUrl(ctx, urls);
-    await addKitJob(ctx, {title: job.title, company: job.company, url: job.url, kit: {answers: job.kit || [], cover_letter: '', check_before_sending: [], eligible: true}, description: POSTING}); };
-  const needs = [...ctx.needs, {name: 'a runtime link for the hidden browser (none on Windows)', value: process.platform !== 'win32'}];
+  const autoForm = autoFormOf(form, '?restart=1'), seed = kitSeeder(ctx, urls, POSTING), needs = [...ctx.needs, HIDDEN_NEED];
   await ctx.run('the app quits while Background automation holds a filled form: after it starts again nothing is posted, and the job is not left on a page that is gone', async () => {
     const unlinked = linkRuntime(ctx.profile);
     if (unlinked) throw new Error(unlinked);
@@ -54,6 +53,7 @@ export async function runRestartSteps(ctx, {urls, until}) {
       const seen = await statesAfter(ctx, form.url, 60000);
       console.log(`  after the start: ${seen.map(item => `${item.state || 'none'}@${item.at}s`).join(' → ')} | ${applyLines(ctx.profile)}`);
       if (ctx.forms.posts.length !== posted) throw new Error(`after the start the form was posted ${ctx.forms.posts.length - posted} time(s)`);
+      unread(seen);
       if (seen.at(-1)?.state === 'ready_for_review') throw new Error(`a minute after the start the job still says ready for review on the hidden page that died with the app: ${await describeHidden(ctx.profile)}`);
     } finally { await closeHiddenBrowser(ctx.profile); }
   }, {needs});
@@ -68,6 +68,7 @@ export async function runRestartSteps(ctx, {urls, until}) {
       const seen = await statesAfter(ctx, autoForm.url, 90000);   // past the 1-minute wait
       console.log(`  after the start (${id}): ${seen.map(item => `${item.state || 'none'}@${item.at}s`).join(' → ')} | ${applyLines(ctx.profile)}`);
       if (ctx.forms.posts.length !== posted) throw new Error(`after the start the app pressed Submit ${ctx.forms.posts.length - posted} time(s) on a wait the quit cut off`);
+      unread(seen);
       if (seen.at(-1)?.state === 'waiting_to_submit') throw new Error(`90 s after the start (the wait was 1 minute) the job still waits on the hidden page that died with the app: ${await describeHidden(ctx.profile)}`);
     } finally { await closeHiddenBrowser(ctx.profile); }
   }, {needs});

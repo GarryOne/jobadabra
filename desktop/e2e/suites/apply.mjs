@@ -20,7 +20,7 @@ import {runCvSteps} from '../lib/apply-cv-steps.mjs';
 import {runSilentChromeSteps} from '../lib/apply-silent-steps.mjs';
 import {runTriageSteps} from '../lib/apply-triage-steps.mjs';
 import {runRestartSteps} from '../lib/apply-restart-steps.mjs';
-import {proveBackground} from '../lib/background-proof.mjs';
+import {HIDDEN_NEED, autoFormOf, kitSeeder, proveBackground} from '../lib/background-proof.mjs';
 import {proveAutomatic} from '../lib/background-auto-proof.mjs';
 import {runJourneys} from '../lib/apply-journeys.mjs';
 import {installApplyAnswers} from '../lib/apply-answers.mjs';
@@ -412,15 +412,13 @@ export async function runApply(ctx, parts) {
     const form = FORMS.submitter;
     await proveBackground(ctx, {form, until, seed: async () => { await removeJobsByUrl(ctx, urls);   // only the submitter is left, so the one job Start picks is the one this step watches
        await addKitJob(ctx, {title: form.title, company: form.company, url: form.url, kit: {answers: form.kit, cover_letter: '', check_before_sending: []}, description: POSTING}); }});
-  }, {needs: [...ctx.needs, {name: 'a runtime link for the hidden browser (none on Windows)', value: process.platform !== 'win32'}]});   // Why (2026-10-28, Gitar on #2364): a plain return on Windows was counted as passed; a missing need is recorded as skipped (lib/runner.mjs)
+  }, {needs: [...ctx.needs, HIDDEN_NEED]});   // Why (2026-10-28, Gitar on #2364): a plain return on Windows was counted as passed; a missing need is recorded as skipped (lib/runner.mjs)
 
   // Full automation (spec step C): the app presses Submit itself once, against the fixture server's fake endpoint; a Stop in the wait presses nothing. Last of the hidden-browser steps: it relaunches the app with the test-only switch.
   await ctx.run('Full automation presses Submit once on its own, and a Stop in the wait presses nothing', async () => {
     // Why (2026-10-28, found by this step): a kit answer is never a saved fact (extension/flow.js `source: 'kit'`), so Full automation hands over any form with a kit question; this proof uses the submitter's details-only variant.
-    const form = {...FORMS.submitter, path: FORMS.submitter.autoPath, url: `https://${FORMS.submitter.host}${FORMS.submitter.autoPath}`, kit: []};
-    await proveAutomatic(ctx, {form, until, seed: async job => { await removeJobsByUrl(ctx, urls);
-       await addKitJob(ctx, {title: job.title, company: job.company, url: job.url, kit: {answers: [], cover_letter: '', check_before_sending: [], eligible: true}, description: POSTING}); }});
-  }, {needs: [...ctx.needs, {name: 'a runtime link for the hidden browser (none on Windows)', value: process.platform !== 'win32'}]});
+    await proveAutomatic(ctx, {form: autoFormOf(FORMS.submitter), until, seed: kitSeeder(ctx, urls, POSTING)});
+  }, {needs: [...ctx.needs, HIDDEN_NEED]});
 
   await runRestartSteps(ctx, {urls, until});   // lib/apply-restart-steps.mjs: the app quits while its hidden browser holds a job
 

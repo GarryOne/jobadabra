@@ -7,7 +7,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {chromium} from 'playwright-core';
 import {INSTRUCTIONS as FORM_JUDGE} from '../../lib/form-judge.js';
-import {stageOf} from './seed-data.mjs';
+import {addKitJob, removeJobsByUrl, stageOf} from './seed-data.mjs';
 
 const FOLDER = {darwin: 'chrome-mac-', linux: 'chrome-linux64', win32: 'chrome-win64'};
 /**
@@ -38,6 +38,18 @@ export const withFormJudge = (previous, submitText) => body => {
   const empty = /· required · empty/.test(text);
   return JSON.stringify({answer: empty ? 'needs_person' : 'ready', blocked_kind: '', needs: '', needs_kind: '', step: 'final', next_control: '', submit_control: empty ? '' : submitText, bot_check: false, confidence: 0.95});
 };
+
+/** The need every hidden-browser step names: the runtime link (linkRuntime) does not exist on Windows. */
+export const HIDDEN_NEED = {name: 'a runtime link for the hidden browser (none on Windows)', value: process.platform !== 'win32'};
+/** The submitter's details-only page, the one Full automation can take (a kit answer is never a saved fact); `query` gives a step its own address (one background session per address). */
+export const autoFormOf = (form, query = '') => ({...form, path: form.autoPath, url: `https://${form.host}${form.autoPath}${query}`, kit: []});
+/** The seed of a hidden-browser step: the suite's fixture jobs `urls` removed (so the one job Start picks is this step's), then `job` added with an eligible kit of its own answers. */
+export const kitSeeder = (ctx, urls, posting) => async job => {
+  await removeJobsByUrl(ctx, urls);
+  await addKitJob(ctx, {title: job.title, company: job.company, url: job.url, kit: {answers: job.kit || [], cover_letter: '', check_before_sending: [], eligible: true}, description: posting});
+};
+/** The session id of the application of `url`, from the Sessions list, or ''. */
+export const sessionOf = (page, url) => page.evaluate(target => window.pilot.sessions().then(list => list.find(item => String(item.url || '').replace(/\/$/, '') === target.replace(/\/$/, ''))?.id || ''), url);
 
 /** The background state of the application of `url`, from the Sessions list (item.background, lib/background-apply-controller.js cache), or ''. */
 export const backgroundStateOf = (page, url) => page.evaluate(target => window.pilot.sessions().then(list => (list.find(item => String(item.url || '').replace(/\/$/, '') === target.replace(/\/$/, ''))?.background?.state) || ''), url);

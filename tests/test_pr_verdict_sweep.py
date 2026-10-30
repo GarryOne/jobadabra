@@ -22,7 +22,7 @@ class Sweep(unittest.TestCase):
                     self.assertEqual(calls.count('api graphql'), 1, 'one PR/status listing, no REST status scan per PR')
                     e2e = run('E2E', event='workflow_dispatch', title='E2E for PR · settings · topic', id=2, conclusion=conclusion)
                     done, written, calls = self.run_step([{'number': 7, 'state': 'open', 'merged_at': None}],
-                        runs=[run('CI · Pull request'), e2e], jobs={2: [job(20, 'settings', conclusion=conclusion)]}, idle_only=True)
+                        runs=[run('CI · Pull request'), e2e], jobs={2: [job(20, 'settings', conclusion=conclusion)]}, revalidate_head=True)
                     self.assertEqual(done.returncode, 0, done.stderr)
                     self.assertIn('"state=' + expected + '"', written, done.stdout)
                     self.assertEqual(calls.count('run list'), 1)
@@ -30,13 +30,13 @@ class Sweep(unittest.TestCase):
     def test_started_sweep_writes_pending_if_a_counted_run_became_live(self):
         for status in ('queued', 'in_progress', 'waiting'):
             done, written, calls = self.run_step([{'number': 7, 'state': 'open', 'merged_at': None}],
-                runs=[run('CI · Tests · python', status=status)], idle_only=True)
+                runs=[run('CI · Tests · python', status=status)], revalidate_head=True)
             self.assertEqual(done.returncode, 0, done.stderr)
             self.assertIn('state=pending', written)
             self.assertEqual(calls.count('run list'), 1)
         for pr in ({'state': 'closed', 'merged_at': None}, {'state': 'closed', 'merged_at': '2026-10-30T00:00:00Z'},
                    {'state': 'open', 'merged_at': None, 'head_sha': 'replaced'}):
-            done, written, _ = self.run_step([dict(pr, number=7)], idle_only=True)
+            done, written, _ = self.run_step([dict(pr, number=7)], revalidate_head=True)
             self.assertEqual((done.returncode, written), (0, ''), done.stderr)
 
     def test_planner_does_not_schedule_a_head_while_its_event_writer_and_counted_run_are_live(self):
@@ -48,6 +48,18 @@ class Sweep(unittest.TestCase):
             self.assertIn('heads=[]', plan.stdout, 'planning stays outside the writer queue and cannot cancel the writer')
             self.assertEqual(written, '')
             self.assertEqual(calls.count('run list'), 1)
+
+    def test_skipped_planners_cannot_queue_behind_or_replace_a_real_sweep(self):
+        planner = (base.WORKFLOWS / 'pr-verdict.yml').read_text().split('  sweep:\n', 1)[1].split('\n  verdict:', 1)[0]
+        group = planner.split('      group:', 1)[1].split('\n', 1)[0].strip()
+        def key(event, rid):
+            if '${{' not in group: return group
+            expr = group.split('${{', 1)[1].split('}}', 1)[0]
+            expr = expr.replace('github.event_name', repr(event)).replace('github.run_id', repr(rid))
+            return eval(expr.replace('&&', ' and ').replace('||', ' or ').strip())
+        self.assertEqual(key('schedule', '1'), key('workflow_dispatch', '2'))
+        self.assertNotEqual(key('workflow_run', '3'), key('schedule', '1'))
+        self.assertNotEqual(key('workflow_run', '3'), key('workflow_run', '4'))
 
     def test_planner_requires_counted_runs_and_ignores_superseded_or_non_pr_runs(self):
         node = {'headRefOid': 'abc1234', 'commits': {'nodes': [{'commit': {'status': None}}]}}

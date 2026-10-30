@@ -126,13 +126,13 @@ class Workflows(unittest.TestCase):
         writers = sorted(path.name for path in WORKFLOWS.glob('*.yml') if re.search(r'pr-verdict\.py"? --repo', path.read_text()) or pv.STEP in path.read_text())
         self.assertEqual(writers, ['pr-verdict.yml'], 'only pr-verdict.yml (workflow_run) runs tools/pr-verdict.py')
         verdict = (WORKFLOWS / 'pr-verdict.yml').read_text()
-        self.assertIn('python3 tools/pr-verdict.py --repo "$GITHUB_REPOSITORY" --sha "$SHA" $IDLE_ONLY\n', verdict, 'positive control: the one writer runs it, with no --job-status')
+        self.assertIn('python3 tools/pr-verdict.py --repo "$GITHUB_REPOSITORY" --sha "$SHA" $REVALIDATE_HEAD\n', verdict, 'positive control: the one writer runs it, with no --job-status')
         listed = set(re.findall(r"(?m)^      - '(.+)'$", verdict))
         for path in ('e2e.yml', 'e2e-windows.yml'):   # dispatched by pr-suites.yml, so no pull_request trigger names them: each is listed by hand
             name = re.search(r'(?m)^name:\s*(.+?)\s*$', (WORKFLOWS / path).read_text()).group(1).strip('\'"')
             self.assertIn(name, listed, f'{path}: the PR e2e run it makes is judged only when a listed workflow ends')
         checkout = verdict.split('\n  verdict:\n', 1)[1].split('sparse-checkout: |', 1)[1].split('sparse-checkout-cone-mode', 1)[0]
-        for name in ('main_e2e_state', 'pr_ai_number', 'pr_burn_in', 'pr_health_greys', 'pr_speed_number', 'beta_rate_gate'):
+        for name in ('main_e2e_state', 'pr_ai_number', 'pr_burn_in', 'pr_health_greys', 'pr_speed_number', 'beta_rate_gate', 'pr_verdict_runs'):
             self.assertIn(f'tools/{name}.py', checkout, 'a companion not checked out is fetched over the API on every write')
 
     def test_no_e2e_run_for_a_merged_or_closed_pr(self):
@@ -182,7 +182,7 @@ class Workflows(unittest.TestCase):
         self.assertIn("cron: '*/10 * * * *'", text)
         self.assertIn('  workflow_dispatch:', text)
         self.assertIn('--sweep-heads', text)
-        self.assertIn('--idle-only', text)
+        self.assertIn('--revalidate-head', text)
 
     def test_the_budget_counts_running_time_not_the_wait_for_a_runner(self):
         # Owner, 27 Oct 2026: "Count running time only". #2215: 12.4 min in all, its jobs waited for runners most of it; a run of 11 min stays red.
@@ -357,7 +357,7 @@ class TheScriptAsAJobRunsIt(unittest.TestCase):
     """The script end to end, as pr-verdict.yml runs it (a file copied out of the repo, the real `gh` replaced): #2051 shipped with gh() deleted and only the
     backstop wrote the status. The unit tests above never ran main()."""
 
-    def run_step(self, pulls, runs=None, jobs=None, fail_once=False, job_status='', idle_only=False, sweep_heads=None):
+    def run_step(self, pulls, runs=None, jobs=None, fail_once=False, job_status='', revalidate_head=False, sweep_heads=None):
         d = tempfile.mkdtemp()
         bin_dir = os.path.join(d, 'bin'); os.mkdir(bin_dir)
         gh = os.path.join(bin_dir, 'gh'); Path(gh).write_text(FAKE_GH.replace('/usr/bin/env python3', sys.executable)); os.chmod(gh, 0o755)
@@ -373,8 +373,9 @@ class TheScriptAsAJobRunsIt(unittest.TestCase):
         env.pop('GITHUB_EVENT_PATH', None)
         script = os.path.join(d, 'pr-verdict.py'); Path(script).write_text((ROOT / 'tools' / 'pr-verdict.py').read_text())   # a copy, no repo around it
         Path(d, 'pr_verdict_sweep.py').write_text((ROOT / 'tools/pr_verdict_sweep.py').read_text() if (ROOT / 'tools/pr_verdict_sweep.py').exists() else '')
+        Path(d, 'pr_verdict_runs.py').write_text((ROOT / 'tools/pr_verdict_runs.py').read_text())
         mode = ['--sweep-heads'] if sweep_heads is not None else ['--sha', 'abc1234']
-        done = subprocess.run([sys.executable, script, '--repo', 'o/r', *mode, *(['--idle-only'] if idle_only else []), *(['--job-status', job_status] if job_status else [])], env=env, capture_output=True, text=True, timeout=60)
+        done = subprocess.run([sys.executable, script, '--repo', 'o/r', *mode, *(['--revalidate-head'] if revalidate_head else []), *(['--job-status', job_status] if job_status else [])], env=env, capture_output=True, text=True, timeout=60)
         read = lambda name: Path(d, name).read_text() if Path(d, name).exists() else ''
         if sweep_heads is not None and done.returncode == 0:
             self.assertIn('heads=', read('output'), 'the workflow matrix consumes GITHUB_OUTPUT')

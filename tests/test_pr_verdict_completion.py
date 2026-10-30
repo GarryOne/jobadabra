@@ -56,7 +56,7 @@ class CompletionWriter(unittest.TestCase):
                 argv += ['--job-status', job_status]
             with patch.dict(os.environ, env, clear=True), patch.object(sys, 'argv', argv), \
                     patch.object(pv, 'gh', side_effect=gh), patch.object(sys, 'stdout'), \
-                    patch.object(pv, 'main_state_module', side_effect=OSError('offline replay')), \
+                    patch.object(pv, 'main_state_module', side_effect=lambda repo, ref, name='main_e2e_state': __import__('tools.pr_verdict_runs', fromlist=[name]) if name == 'pr_verdict_runs' else (_ for _ in ()).throw(OSError('offline replay'))), \
                     patch.object(pv.time, 'sleep', side_effect=AssertionError('no verdict wait or re-read')):
                 self.assertEqual(pv.main(), 0)
         self.assertEqual(len(writes), 1)
@@ -132,6 +132,19 @@ class CompletionWriter(unittest.TestCase):
         written = self.write(record, fresh={3: {'status': 'completed', 'conclusion': 'success'}})
         self.assertEqual(written['state'], 'success')
         self.assertEqual(self.single_reads, [3])
+
+    def test_pending_freshness_stops_at_first_live_run_or_a_red(self):
+        record = copy.deepcopy(RECORDED)
+        record['event']['workflow_run']['head_sha'] = 'unrelated'
+        record['runs'] = [dict(record['runs'][-1], databaseId=rid, workflowName=f'workflow {rid}') for rid in range(1, 13)]
+        self.assertEqual(self.write(record)['state'], 'pending')
+        self.assertEqual(self.single_reads, [1], 'one live endpoint is enough; never fan out across the push')
+        self.assertEqual(self.write(record, fresh={1: {'status': 'completed', 'conclusion': 'success'}})['state'], 'pending')
+        self.assertEqual(self.single_reads, [1, 2], 'stop on the next actually live run')
+        record['runs'][0].update(status='completed', conclusion='failure')
+        record['jobs']['1'] = [{'id': 10, 'name': 'tests', 'status': 'completed', 'conclusion': 'failure'}]
+        self.assertEqual(self.write(record)['state'], 'failure')
+        self.assertEqual(self.single_reads, [], 'an ended red needs zero freshness calls')
 
     def test_a_lagging_list_stays_pending_without_a_second_read(self):
         record = copy.deepcopy(RECORDED)

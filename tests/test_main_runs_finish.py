@@ -96,7 +96,9 @@ class NothingMultiplies(unittest.TestCase):
                 planner = text.split('  sweep:\n', 1)[1].split('\n  verdict:', 1)[0]
                 self.assertNotIn('matrix:', planner)
                 group, cancel = concurrency(re.sub(r'(?m)^    ', '', planner) + '\nend:')
-                self.assertEqual(group, 'pr-verdict-sweep', 'one planner outside the head writer queue')
+                expr = group.split('${{', 1)[1].split('}}', 1)[0]
+                group = eval(expr.replace('github.event_name', repr('schedule')).replace('github.run_id', repr('17')).replace('&&', ' and ').replace('||', ' or ').strip())
+                self.assertEqual(group, 'pr-verdict-sweep', 'one real planner outside the head queue; skipped events are tested in test_pr_verdict_sweep')
             else:
                 group, cancel = concurrency(text)
             self.assertTrue(group, f'{name}: no concurrency group: each start can add a run to the queue')

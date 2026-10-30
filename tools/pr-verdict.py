@@ -52,7 +52,7 @@ CI_FILES = re.compile(r'^(\.github/|tools/pr-|desktop/e2e/(lib/plan|lib/pr-suite
 # Guard: tests/test_pr_verdict.py recomputes it from .github/workflows (a new PR workflow fails there until listed).
 PR_WORKFLOWS = {'beta-approve.yml', 'conflict-label.yml', 'e2e-windows.yml', 'e2e.yml', 'extension-store-publish.yml', 'gitar-label.yml', 'harness.yml', 'hosted-probe.yml', 'key-org-proof.yml',
                 'office-addon.yml', 'page-cases.yml', 'pr-closed-cancel.yml', 'pr-gate.yml', 'pr-suites.yml', 'ready-fill-image.yml', 'search-personas.yml', 'tests-desktop-windows.yml',
-                'tests-desktop.yml', 'title-tag.yml', 'tests-python.yml', 'tests-worker.yml'}
+                'tests-desktop.yml', 'tests-python.yml', 'tests-worker.yml'}
 
 
 def ci_change(files):

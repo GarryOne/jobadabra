@@ -27,7 +27,7 @@ jobs:
     timeout-minutes: 30   # the replay of a recorded case a PR brings is the long part (#501: 503 s)
     permissions:
       contents: read
-      pull-requests: read   # the open PRs on the same flow files (tools/flow-fresh.mjs)
+      pull-requests: write  # the open PRs on the same flow files (tools/flow-fresh.mjs); the PR's title, when an edit dropped its tag (tools/title-tag.mjs)
       actions: read         # the commit's runs and jobs, for the PR's verdict
       statuses: write       # the PR's "All checks passed"
     steps:
@@ -49,9 +49,18 @@ jobs:
         if: ${{ !cancelled() }}
         env:
           BODY: ${{ github.event.pull_request.body }}
-          PR_TITLE: ${{ endsWith(github.actor, '[bot]') && '' || github.event.pull_request.title }}   # the "[xx] " session tag (a bot's PR has none)
-          OLD_TITLE: ${{ github.event.changes.title.from }}   # a dropped tag is put back by title-tag.yml, which owns that verdict (Gitar on #2577)
-        run: printf '%s' "$BODY" | python3 tools/pr-body-check.py
+          NEW_TITLE: ${{ endsWith(github.actor, '[bot]') && '' || github.event.pull_request.title }}   # the "[xx] " session tag (a bot's PR has none)
+          # Design (30 Oct 2026, owner: auto-restore the tag; Gitar on #2577 twice): this step is the one owner of the title verdict. An edit that dropped a tag the old title had
+          # (OLD_TITLE) is repaired here with the job's own token, then judged in the same run; a failed repair is this step's red. A separate workflow's repair started no new gate run
+          # and its own check never reached "All checks passed".
+          OLD_TITLE: ${{ github.event.changes.title.from }}
+          PR: ${{ github.event.pull_request.number }}
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          PR_TITLE="$(node tools/title-tag.mjs)"
+          export PR_TITLE
+          printf '%s' "$BODY" | python3 tools/pr-body-check.py
       # The open PR is the claim on the applying flow's files (tools/flow-fresh.mjs): red when main changed, since this PR's base, a flow file it also changes.
       # tools/ship.sh rebases and pushes again by itself on this failure (it finds this step's name: keep it in tools/ship-pr.sh).
       - name: Core flow files up to date with main

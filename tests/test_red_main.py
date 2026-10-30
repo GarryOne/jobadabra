@@ -23,7 +23,6 @@ CLASSIFIED = {
     'Proof · Which org the e2e AI keys belong to': 'ignored: pull requests that edit it, and by hand; a $0 check of the e2e keys, never on a push to main',
     'CI · Gitar label': 'ignored: Gitar comment, review and pull_request_target events only; sets PR labels, never runs on a push to main',
     'CI · Conflict label': 'ignored: runs on a push to main, but only labels the open PRs that conflict; it tests nothing, so its result says nothing about main',
-    'CI · Title tag': 'ignored: runs only on a PR title edit, never on main; it tests nothing',
     'CI · Cancel the runs of a closed PR': 'ignored: pull_request_target on close; cancels the closed PR\'s own runs, never runs on main',
     'CI · Prompt cases (Haiku re-ask)': 'ignored: by hand only (paid Haiku calls); compares the selected ref with main, never a push check',
     'CI · Page cases (all cases, real extension, Linux)': 'ignored: pull requests and by hand only; on main its cases are a step of CI · Tests (one Linux job, 15 Oct 2026)',

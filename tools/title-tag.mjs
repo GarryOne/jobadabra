@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 // Puts a PR's "[xx] " session tag back when a hand edit of the title drops it (owner, 30 Oct 2026: auto-restore). PR #2549 lost its "[ac]" to a manual `gh pr edit`.
-// Design: one owner (this script), one verdict: the edit's old title had a tag and the new one has none -> the new title gets the old tag; every other edit is left alone.
-// Runs on a PR title edit (workflow .github/workflows/title-tag.yml, main's copy of this script). Its retitle uses GITHUB_TOKEN, so it starts no further run: pr-gate leaves a
-// dropped tag to this step (OLD_TITLE in pr-body-check.py), and this step's own check is red when the repair fails. The tag rule is pr-body-check.py's TAG (cross-checked by tests/test_title_tag.py).
-// Usage: OLD_TITLE=… NEW_TITLE=… PR=<n> GH_TOKEN=… GITHUB_REPOSITORY=… node tools/title-tag.mjs. Guard: tests/test_title_tag.py.
+// Design: one verdict: the edit's old title had a tag and the new one has none -> the new title gets the old tag; every other edit is left alone.
+// Called by the "PR description laid out" step of .github/workflows/pr-gate.yml, which is the one owner of the title verdict: it repairs, then judges the title this prints,
+// all in one run (a separate workflow's repair, made with GITHUB_TOKEN, starts no new gate run and its own check never reaches "All checks passed": Gitar on #2577).
+// Usage: OLD_TITLE=… NEW_TITLE=… PR=<n> GH_TOKEN=… GITHUB_REPOSITORY=… node tools/title-tag.mjs  -> prints the title to judge. A failed repair exits 1 (the step is red).
+// The tag rule is pr-body-check.py's TAG (tests/test_title_tag.py replays the cases through both). Cases: tests/title_tag_cases.mjs.
 import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 
@@ -22,12 +23,11 @@ export function retitle(repo, pr, title, run = (...args) => execFileSync('gh', a
 }
 
 function cli() {
+  const {OLD_TITLE, NEW_TITLE = '', PR, GITHUB_REPOSITORY} = process.env;
   try {
-    const {OLD_TITLE, NEW_TITLE, PR, GITHUB_REPOSITORY} = process.env;
     const title = restoredTitle(OLD_TITLE, NEW_TITLE);
-    if (!title) return;
-    retitle(GITHUB_REPOSITORY, PR, title);
-    console.log(`title-tag: #${PR} "${NEW_TITLE}" -> "${title}"`);
+    if (title) { retitle(GITHUB_REPOSITORY, PR, title); console.error(`title-tag: #${PR} "${NEW_TITLE}" -> "${title}"`); }
+    console.log(title ?? NEW_TITLE);
   } catch (error) {
     console.error(error.message);
     process.exitCode = 1;

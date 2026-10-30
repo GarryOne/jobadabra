@@ -1,4 +1,4 @@
-"""Guard for tools/title-tag.mjs (puts a PR's "[xx] " tag back when a title edit drops it): runs the node cases in tests/title_tag_cases.mjs and checks the workflow."""
+"""Guard for tools/title-tag.mjs (puts a PR's "[xx] " tag back when a title edit drops it): runs the node cases in tests/title_tag_cases.mjs and checks pr-gate's step."""
 import importlib.util
 import json
 import shutil
@@ -15,15 +15,16 @@ class TitleTagTest(unittest.TestCase):
         done = subprocess.run(['node', '--test', str(ROOT / 'tests/title_tag_cases.mjs')], capture_output=True, text=True, cwd=ROOT)
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
 
-    def test_runs_on_a_title_edit_and_never_runs_a_prs_code(self):
-        # Owner, 30 Oct 2026: the tag guardrail is "auto-restore" (#2549 lost its [ac] to a hand edit). pull_request_target runs with write access, so it must use main's script.
-        flow = (ROOT / '.github/workflows/title-tag.yml').read_text()
-        on = flow.split('\non:\n', 1)[1].split('\n\n', 1)[0]
-        self.assertIn('pull_request_target:\n    types: [edited]', on)
-        self.assertIn("if: github.event.changes.title", flow, 'only a title edit (a body edit has no changes.title)')
-        self.assertIn('ref: ${{ github.event.repository.default_branch }}', flow, "main's copy of the script, never the PR's")
-        self.assertIn('OLD_TITLE: ${{ github.event.changes.title.from }}', flow, 'the title goes in through env, never interpolated into the shell')
-        self.assertNotIn('run: node tools/title-tag.mjs ${{', flow)
+    def test_pr_gate_repairs_then_judges_in_one_run(self):
+        # Owner, 30 Oct 2026: the tag guardrail is "auto-restore" (#2549 lost its [ac] to a hand edit). Gitar on #2577: a repair made by another workflow with GITHUB_TOKEN starts no new
+        # gate run and its own check never reaches "All checks passed", so the gate's step repairs and judges in one run (a failed repair is that step's red).
+        flow = (ROOT / '.github/workflows/pr-gate.yml').read_text()
+        step = flow.split('- name: PR description laid out', 1)[1].split('\n      # ', 1)[0]
+        self.assertIn('OLD_TITLE: ${{ github.event.changes.title.from }}', step)
+        self.assertIn('PR_TITLE="$(node tools/title-tag.mjs)"', step, 'the title judged is the one the repair prints')
+        self.assertLess(step.index('title-tag.mjs'), step.index('pr-body-check.py'), 'repair first, then judge')
+        self.assertIn('pull-requests: write', flow)
+        self.assertFalse((ROOT / '.github/workflows/title-tag.yml').exists(), 'a second workflow would be a second owner of the title verdict')
 
     def test_the_gate_and_the_restorer_agree_on_what_a_tag_is(self):
         # Gitar on #2577: the tag rule lived twice. Every title goes through both: the gate (no old tag) calls it a gap exactly when the restorer would put a tag back.
@@ -35,15 +36,6 @@ class TitleTagTest(unittest.TestCase):
         out = subprocess.run(['node', '--input-type=module', '-e', script, json.dumps(titles)], capture_output=True, text=True, cwd=ROOT, check=True).stdout.split()
         for title, verdict in zip(titles, out):
             self.assertEqual(check.title_gap(title) is None, verdict == 'keep', f'gate and restorer disagree on {title!r}')
-
-    def test_a_dropped_tag_is_left_to_the_restorer_not_the_gate(self):
-        check = importlib.util.module_from_spec(importlib.util.spec_from_file_location('pr_body_check', ROOT / 'tools/pr-body-check.py'))
-        check.__spec__.loader.exec_module(check)
-        self.assertIsNone(check.title_gap('Words', '[ac] Old words'))
-        self.assertIsNotNone(check.title_gap('Words', 'Old words'))
-        self.assertIsNotNone(check.title_gap('Words'))
-        flow = (ROOT / '.github/workflows/pr-gate.yml').read_text()
-        self.assertIn('OLD_TITLE: ${{ github.event.changes.title.from }}', flow)
 
 
 if __name__ == '__main__':

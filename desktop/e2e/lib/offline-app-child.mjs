@@ -2,6 +2,7 @@
 // landing 2, owner 11 Oct 2026). Started by lib/offline-app.mjs in its own process: the server reads its port at import time, and this process's network is
 // cut to loopback (guardNetwork) while the model is answered from the row's kept answers only (memo-only; `claude -p` only when the caller asks).
 // Its folder holds the fake applicant only (fixtures/cv.pdf, the e2e applicant's strategy with the stand-in contact): never the person's data. Prints one JSON line when ready.
+// Job: serve stored answers
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -9,10 +10,12 @@ import {guardNetwork} from './offline-guard.mjs';
 import {realClaude} from './real-claude.mjs';
 import {serveCommands} from './offline-app-commands.mjs';
 import {seedImportedCv} from './applicant-seed.mjs';
+import {watchRunner} from '../../lib/e2e-host.js';
 
 const E2E = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const dir = process.env.JOB_PILOTTO_USER_DATA;
 if (!dir || !process.env.JOB_PILOTTO_E2E || !process.env.JOB_PILOTTO_PORT) throw new Error('offline app: start it through lib/offline-app.mjs (e2e env, own folder, own port)');
+watchRunner(() => process.exit(0));   // the harness that started it is gone (killed, crashed, timed out): end too, from the first line, as the Electron test app does (main.js)
 guardNetwork();
 // A positive control: the guard took effect in this process (an outward fetch is refused and named) before anything is served.
 const guarded = await fetch('https://example.com/').then(() => false, error => /offline: example\.com/.test(String(error?.message || error)));

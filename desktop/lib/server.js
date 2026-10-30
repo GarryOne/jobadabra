@@ -10,7 +10,7 @@ import {routeTable} from './server-routes.js';
 import {POST_CORS, tokenRequest, jsonHeaders, jsonBody} from './server-http.js';
 import {handleExtension} from '../shared/worker/extension.js';
 import {log as appLog} from './log.js';
-import {listen, DEFAULT_PORT} from './server-listen.js';
+import {listen, portFrom, DEFAULT_PORT} from './server-listen.js';
 import * as pipeline from './pipeline.js';
 import * as viewCache from './view-cache.js';
 import {localEnv, latestExtension, developmentCopy, extensionChangedNote, newestExtensionFile, noteExtensionId} from './server-env.js';
@@ -28,10 +28,7 @@ export {setNotifier, setWindowSignal, setAppliedHook, setRenderer, setTabsHandle
   setControlsHandler, setAliasesHandler, setRecipesHandler, setRememberHandler, setJoinHandler, setFocusHandler, setStuckHandler, setClaudeAutoHandler, setAccountFactHandler, setAccountPressedHandler, setPageHandler, setTakeOverHandler,
   setErrorWatcher, setFormIssueHandler, setOpenHandler, setAccountCodeHandler, setStoppedHandler, setStartedHandler, requestStop} from './server-hooks.js';
 
-export {DEFAULT_PORT};   // defined in server-listen.js (the demo's card needs it without this file's imports)
-// The port is fixed because the extension has it built in (extension/flow.js). JOB_PILOTTO_PORT moves it for a test app that runs next to the user's
-// own (the end-to-end suites copy the extension with the same port, desktop/e2e/lib/extension.mjs); anything but a whole port number is ignored.
-export const portFrom = (env = process.env) => (/^\d+$/.test(env.JOB_PILOTTO_PORT || '') && Number(env.JOB_PILOTTO_PORT) > 0 && Number(env.JOB_PILOTTO_PORT) < 65536 ? Number(env.JOB_PILOTTO_PORT) : DEFAULT_PORT);
+export {DEFAULT_PORT, portFrom};   // defined in server-listen.js (the demo's card needs the port without this file's imports; the test-app guard reads portFrom)
 export const PORT = portFrom();
 // The extension's IDs. /extension/pair hands the connection token only to a request from this extension; web pages can't send its Origin.
 // The first is the copy loaded from the app's folder (the public "key" in extension/manifest.json); the second the Chrome Web Store item's

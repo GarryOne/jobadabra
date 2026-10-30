@@ -2,6 +2,7 @@
 // applicant, a free port (never the person's app's), the e2e env without keys or the twin (offlineEnv), the real Claude Code install (never a terminal's wrapper),
 // and the row's model answers (memo: the case's model-memo.json; a miss is refused unless ask: true). -> {port, token, url, dir, logText(), close()}.
 // Guard: e2e/test/offline-app.test.mjs.
+// Job: serve stored answers
 // Reaches: ./offline-app-child.mjs   (spawned by path; lib/test-reach.mjs follows it, so a PR changing the app's server runs the tests that start it)
 import {execFileSync, spawn} from 'node:child_process';
 import fs from 'node:fs';
@@ -37,7 +38,8 @@ export async function startOfflineApp({memo = '', ask = false, loose = '', missL
    ...(loose && !ask ? {JOB_PILOTTO_MODEL_MEMO_LOOSE: loose} : {}), ...(ordinal && !ask ? {JOB_PILOTTO_MODEL_MEMO_ORDINAL: ordinal} : {}), ...(missLog && !ask ? {JOB_PILOTTO_MODEL_MEMO_MISSLOG: missLog} : {}),   // loose: the file a loose memo hit is noted in (lib/ai/model-memo.js looseFile)
    
     JOB_PILOTTO_E2E_OPENER: 'offline-app', ...(journey ? {JP_JOURNEY: '1'} : {}), ...(review ? {JP_REVIEW: '1'} : {}), ...(captureDir ? {LIVE_CAPTURE_DIR: captureDir} : {})};   // an Apply hands its address to the harness (lib/browser-launch.js), never a browser of this computer
-  const child = spawn(process.execPath, [CHILD], {env, stdio: ['pipe', 'pipe', 'pipe']});
+  // Why (30 Oct 2026, a8: an offline app from 27 Oct still ran 3 days later, parent launchd): the child ends with this process however it ends (lib/e2e-host.js watchRunner).
+  const child = spawn(process.execPath, [CHILD], {env: {...env, JOB_PILOTTO_E2E_RUNNER_PID: String(process.pid)}, stdio: ['pipe', 'pipe', 'pipe']});
   let out = '', err = '';
   child.stderr.on('data', chunk => { err += chunk; });
   const ready = await new Promise((resolve, reject) => {
@@ -63,7 +65,7 @@ export async function startOfflineApp({memo = '', ask = false, loose = '', missL
   });
   const call = (cmd, ...args) => new Promise((resolve, reject) => { const id = ++next; waiting.set(id, {resolve, reject}); child.stdin.write(`${JSON.stringify({id, cmd, args})}\n`); });
   return {
-    ...ready, url: `http://127.0.0.1:${ready.port}`, call, onOpen: fn => openers.push(fn),
+    ...ready, pid: child.pid, url: `http://127.0.0.1:${ready.port}`, call, onOpen: fn => openers.push(fn),
     logText: () => { try { return fs.readFileSync(logFile, 'utf8'); } catch { return ''; } },
     stderr: () => err,
     close: () => new Promise(resolve => { if (child.exitCode != null) return resolve(); child.once('exit', () => resolve()); child.kill('SIGTERM'); setTimeout(() => child.kill('SIGKILL'), 3000).unref(); }),

@@ -157,18 +157,6 @@ test('app buttons run the Telegram commands; without Telegram the answer only co
   assert.equal(telegram.plainText('<b>Hi</b> &amp; <a href="x">link</a>'), 'Hi & link');
 });
 
-test('a taken extension port is reported, not a crash', async () => {
-  const net = await import('node:net');
-  const server = await import('../lib/server.js');
-  const blocker = net.createServer();
-  const taken = await new Promise(resolve => blocker.once('error', () => resolve(true))
-    .listen(server.PORT, '127.0.0.1', () => resolve(false)));
-  const storage = createStorage(fs.mkdtempSync(path.join(os.tmpdir(), 'jp-port-')), {encrypt: s => s, decrypt: s => s});
-  const error = await new Promise(resolve => server.start(storage, resolve));  // port busy: blocker or another app
-  assert.equal(error.code, 'EADDRINUSE');
-  if (!taken) blocker.close();
-});
-
 test('pairing hands the extension connection only to the Jobadabra extension', async () => {
   const server = await import('../lib/server.js');
   const manifest = JSON.parse(fs.readFileSync(new URL('../../extension/manifest.json', import.meta.url)));

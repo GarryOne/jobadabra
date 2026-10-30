@@ -65,7 +65,8 @@ if (option('search')) {
 }
 const out = path.resolve(option('out') || path.join(os.tmpdir(), 'job-pilotto-shot.png'));
 fs.rmSync(`${out}.json`, {force: true});
-const env = {...process.env, JOB_PILOTTO_DEMO: '1', JOB_PILOTTO_USER_DATA: data, JOB_PILOTTO_SMOKE: out, JOB_PILOTTO_SMOKE_JS: script(steps.join('\n'))};
+// Why (30 Oct 2026): the timeout below kills only the `.bin/electron` shim; the app itself ends when this script does (lib/e2e-host.js watchRunner), never left running for days.
+const env = {...process.env, JOB_PILOTTO_DEMO: '1', JOB_PILOTTO_E2E_RUNNER_PID: String(process.pid), JOB_PILOTTO_USER_DATA: data, JOB_PILOTTO_SMOKE: out, JOB_PILOTTO_SMOKE_JS: script(steps.join('\n'))};
 if (option('theme')) env.JOB_PILOTTO_THEME = option('theme');
 if (option('width')) env.JOB_PILOTTO_SHOT_WIDTH = option('width');
 if (flag('full')) env.JOB_PILOTTO_SMOKE_FULL = '1';

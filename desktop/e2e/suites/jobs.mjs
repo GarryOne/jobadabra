@@ -10,6 +10,7 @@ import {agreeWithin} from '../lib/truth-data.mjs';
 import {finish, visit} from '../lib/layout.mjs';
 import {ensureSetUp} from '../lib/seed.mjs';
 import {varyFeeds} from '../lib/feeds.mjs';
+import {hangCaps} from '../lib/jobs-caps.mjs';
 
 // Why (30 Oct 2026, ap): rule A serves jobs' declared engine and background answers without a live key.
 export const offlineAi = true;
@@ -20,7 +21,7 @@ export const aiAnswers = 'backbone';   // answers its AI from the stored table i
 export const store = 'sqlite';
 export const minutes = 30;
 export const name = 'jobs';
-export {hangCaps} from '../lib/jobs-caps.mjs';
+export {hangCaps};
 // Why (30 Oct 2026, owner, Rule B): measured per-step hang caps replace the aggregate clock; a slow runner is not a failed state assertion.
 export const aggregateBudget = false;
 export async function run(ctx) {
@@ -144,7 +145,7 @@ export async function run(ctx) {
     await page.click('[data-command="run"]');
     const t0 = Date.now();
     let opened = false;
-    const {samples, endedAt} = await watch(page, {onSample: async (s, all) => {
+    const {samples, endedAt} = await watch(page, {maxMs: hangCaps['a slow Jobs check keeps showing that it is working, and ends cleanly'] * 1000, onSample: async (s, all) => {
       if (!opened && s.banner.shown) { opened = true; await page.click('#run-banner-view').catch(() => {}); }
       console.log(`  +${String(Math.round((s.at - t0) / 1000)).padStart(3)}s running=${s.running ? 'yes' : 'no '} banner=${s.banner.shown ? 'yes' : 'no '} log=${s.logShown} unscored=${s.unscored}/${s.jobs} step="${(s.running?.step || s.panelStep).slice(0, 56)}"`);
     }});
@@ -155,13 +156,10 @@ export async function run(ctx) {
     if (!samples.some(s => s.banner.shown)) problems.push('no "running" banner appeared on the Actions page');
     const firstLog = running.find(s => s.logShown > 0);
     if (!firstLog) problems.push('the Technical log never showed a line while the task ran ("Nothing to show yet" the whole time)');
-    else if (firstLog.at - running[0].at > 40000) problems.push(`the Technical log showed nothing for the first ${Math.round((firstLog.at - running[0].at) / 1000)} s`);
+    else console.log(`  clock: Technical log first showed a line after ${Math.round((firstLog.at - running[0].at) / 1000)} s (reported only)`);
     const silence = longestSilence(samples);
     console.log(`  longest stretch with nothing visibly changing: ${Math.round(silence / 1000)} s; AI calls through the slow proxy: ${proxy.stats.calls - callsBefore}`);
-    // Through the proxy every call takes 8 s, so 60 s of nothing is a stall. Claude Code starts `claude` for each call and scores in long bursts: 150 s on a Mac (CI keeps 60 s).
-    const patience = ctx.engine === 'cli' ? 150000 : 60000;
-    if (silence > patience) problems.push(`nothing visibly changed for ${Math.round(silence / 1000)} s while the task was running`);
-    if (endedAt == null) problems.push('the task was still running after 6 minutes');
+    if (endedAt == null) problems.push('the task never reached its terminal state before the measured hang cap');
     const last = samples.at(-1);
     if (endedAt != null && (last.newest?.live || last.newest?.ok === false)) problems.push(`the task ended but the newest run is ${last.newest?.live ? 'still live' : 'failed'}: ${last.newest?.result}`);
     if (endedAt != null && last.unscored > 0) problems.push(`${last.unscored} job(s) are still "Not scored" after the task ended`);

@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import {readFileSync, readdirSync} from 'node:fs';
 import {test} from 'node:test';
 import {timingCounts, timingViolations} from '../lib/timing-ratchet.mjs';
+import {isBackbone} from '../lib/suite-shards.mjs';
 
 const wait = 'await page.waitForTimeout(100);';
 const baseline = {sample: {fixedWaits: 1, elapsedAssertions: 0}};
@@ -82,6 +83,14 @@ test('every real suite matches the declared ratchet', () => {
   const debt = JSON.parse(readFileSync(new URL('../timing-baseline.json', import.meta.url), 'utf8'));
   const lanes = JSON.parse(readFileSync(new URL('../lanes.json', import.meta.url), 'utf8')).suites;
   assert.deepEqual(timingViolations(suites, debt, lanes), []);
+});
+
+test('every backbone suite declares zero elapsed assertions', () => {
+  const debt = JSON.parse(readFileSync(new URL('../timing-baseline.json', import.meta.url), 'utf8'));
+  const lanes = JSON.parse(readFileSync(new URL('../lanes.json', import.meta.url), 'utf8'));
+  const suites = readdirSync(new URL('../suites/', import.meta.url)).filter(file => file.endsWith('.mjs')).map(file => file.slice(0, -4));
+  const remaining = suites.filter(suite => isBackbone(lanes, suite) && debt[suite]?.elapsedAssertions !== 0);
+  assert.deepEqual(remaining, [], 'Rule B: backbone suites wait on state; speed is reported, never asserted');
 });
 
 test('settings registers measured runner caps and no aggregate budget', async () => {

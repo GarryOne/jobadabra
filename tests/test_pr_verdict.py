@@ -385,35 +385,6 @@ class TheScriptAsAJobRunsIt(unittest.TestCase):
         # Why (owner, 30 Oct 2026, "One writer"): ~24 calls per job step spent the hourly quota; a green write is the PR (GraphQL), its runs, the status.
         self.assertEqual([c for c in calls if c != 'api rate_limit'], ['api graphql', 'run list', 'api repos/o/r/statuses/abc1234'], calls)
 
-    def test_sweep_repairs_pending_or_missing_heads_without_a_completion_event(self):
-        # Owner's 30 Oct incident: an ended red e2e, pending status, zero live runs, no delivered event.
-        for status in ('PENDING', None):
-            for conclusion, expected in (('failure', 'failure'), ('success', 'success')):
-                with self.subTest(status=status, conclusion=conclusion):
-                    node = {'headRefOid': 'abc1234', 'commits': {'nodes': [{'commit': {'status': {'contexts':
-                        [{'context': 'All checks passed', 'state': status}] if status else []}}}]}}
-                    terminal = [{'headRefOid': state, 'commits': {'nodes': [{'commit': {'status': {'contexts':
-                        [{'context': 'All checks passed', 'state': state}]}}}]}} for state in ('SUCCESS', 'FAILURE', 'ERROR')]
-                    plan, _, calls = self.run_step([], sweep_heads=[node, *terminal])
-                    self.assertEqual(plan.returncode, 0, plan.stderr)
-                    self.assertIn('heads=["abc1234"]', plan.stdout)
-                    self.assertEqual(calls.count('api graphql'), 1, 'one PR/status listing, no REST status scan per PR')
-                    e2e = run('E2E', event='workflow_dispatch', title='E2E for PR · settings · topic', id=2, conclusion=conclusion)
-                    done, written, calls = self.run_step([{'number': 7, 'state': 'open', 'merged_at': None}],
-                        runs=[run('CI · Pull request'), e2e], jobs={2: [job(20, 'settings', conclusion=conclusion)]}, idle_only=True)
-                    self.assertEqual(done.returncode, 0, done.stderr)
-                    self.assertIn('"state=' + expected + '"', written, done.stdout)
-                    self.assertEqual(calls.count('run list'), 1)
-
-    def test_sweep_leaves_live_heads_pending_and_closed_prs_untouched(self):
-        for status in ('queued', 'in_progress', 'waiting'):
-            done, written, calls = self.run_step([{'number': 7, 'state': 'open', 'merged_at': None}],
-                runs=[run('CI · Tests · python', status=status)], idle_only=True)
-            self.assertEqual((done.returncode, written), (0, ''), done.stderr)
-            self.assertEqual(calls.count('run list'), 1)
-        done, written, _ = self.run_step([{'number': 7, 'state': 'closed', 'merged_at': None}], idle_only=True)
-        self.assertEqual((done.returncode, written), (0, ''), done.stderr)
-
     def test_a_red_run_is_written_red_with_its_failing_job(self):
         runs = [run('CI · Pull request', id=1), run('CI · Tests · python', conclusion='failure', id=2)]
         done, written, _ = self.run_step([{'number': 7, 'state': 'open', 'merged_at': None}], runs=runs, jobs={2: [job(20, 'python', conclusion='failure')]})

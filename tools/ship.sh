@@ -43,9 +43,12 @@ if [ ! -f "$tools/ship-pr.sh" ]; then tools="$(cd "$(dirname "${BASH_SOURCE[0]}"
 # Why (27 Oct 2026): two ships at once both rewrote the shared .git/config and one lost its lock ("could not lock config file", FAILED twice): write a setting only when it differs.
 config_once() { [ "$(git config --get "$1" 2>/dev/null)" = "$2" ] || git config "$1" "$2"; }
 [ -n "$external" ] || config_once core.hooksPath tools/githooks 2>/dev/null || true   # the commit-msg hook (trailer values) for every worktree of this repo; the setting is shared and relative
-branch="$(git rev-parse --abbrev-ref HEAD)"
+# Why (30 Oct 2026, owner's branch list): --abbrev-ref printed HEAD on a detached checkout and a commit shipped as a branch named HEAD, with no PR;
+# `git branch --show-current` prints nothing there, mid-rebase too, and never a tag-qualified name.
+branch="$(git branch --show-current)"
 main="$(cd "$(git rev-parse --path-format=absolute --git-common-dir)/.." && pwd)"
 [ "$branch" != main ] || { echo "ship: this is the main checkout. Work in a worktree (tools/worktree.sh <topic>), then run this there." >&2; exit 2; }
+[ -n "$branch" ] || { echo "ship: no branch is checked out (detached HEAD). Finish or abort a rebase or merge in progress, else name one: git switch -c <topic>; then run this again." >&2; exit 2; }
 if ! git diff --quiet || ! git diff --cached --quiet; then echo "ship: uncommitted changes in tracked files: commit them first" >&2; exit 2; fi
 
 # The PR description first (26 Oct 2026, c5: 139 s of push checks and a push, then "no Before/After table"): a bad --body stops here in about a second, before

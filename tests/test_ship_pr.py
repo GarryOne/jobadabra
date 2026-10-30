@@ -261,6 +261,16 @@ class ShipPrTest(ShipFixture):
         self.assertNotIn('topic', git(self.origin, 'branch', '--list', 'topic'), 'the branch never reached origin')
         self.assertFalse(any(call.startswith('pr create') for call in self.calls()))
 
+    def test_a_detached_head_is_refused_before_any_push(self):
+        # 30 Oct 2026, owner's branch list: d3 committed on a detached HEAD and ship pushed it as a branch literally named HEAD, with no PR.
+        self.change(self.tree, 'mine.txt', 'y\n', 'My change')
+        git(self.tree, 'checkout', '-q', '--detach')
+        result = self.pr_ship()
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertIn('detached HEAD', result.stderr)
+        self.assertEqual(git(self.origin, 'branch', '--list', 'HEAD'), '', 'no branch named HEAD on origin')
+        self.assertEqual(self.calls(), [])
+
     def test_a_plan_title_without_its_progress_block_stops_ship_before_any_push(self):
         # 28 Oct 2026, fl: #2400's body passed ship's check and went red on the PR gate; ship now runs the gate's own check, with the --title.
         self.change(self.tree, 'mine.txt', 'y\n', 'My change')

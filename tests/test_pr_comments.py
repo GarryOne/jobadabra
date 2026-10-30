@@ -42,7 +42,10 @@ def answer_timeline():
     rebased = {'authoredDate': '2026-10-27T09:00:00Z', 'committedDate': '2026-10-27T11:00:00Z'}
     followup = {'authoredDate': '2026-10-27T12:00:00Z', 'committedDate': '2026-10-27T12:00:00Z'}
     reply = comment('IC_2', 'GarryOne', 'fixed it' + CLAUDE, at='2026-10-27T12:00:00Z')
+    # An amended or squashed answer keeps its old authored date: indistinguishable from a rebase, so it is NOT an answer; a session answers with a new commit or a reply (Gitar on #2578).
+    amended = {'authoredDate': '2026-10-27T09:00:00Z', 'committedDate': '2026-10-27T12:30:00Z'}
     return [('rebase', view(comments=[owner], commits=[rebased]), True),
+            ('amended', view(comments=[owner], commits=[amended]), True),
             ('followup', view(comments=[owner], commits=[followup, rebased]), False),
             ('reply', view(comments=[owner, reply], commits=[rebased]), False)]
 
@@ -212,7 +215,6 @@ class HookCommentsTest(Base):
         gh.write_text(f'#!/bin/sh\nexec "{sys.executable}" "{ROOT / "tests" / "fake_gh_rest.py"}" "$@"\n')
         self.env['PR_REST_CACHE'] = str(self.tmp / 'rest-cache')
         self.answer(view())
-        # Why (30 Oct 2026): the asynchronous REST worker exceeded the old two-second test deadline on this host.
         self.env.update({'PR_RED_DIR': str(self.tmp / 'cache'), 'PR_RED_TTL': '0', 'PR_RED_WAIT': '20',
                          'PR_RED_MAIN_SCRIPT': str(self.tmp / 'rm.sh')})
         (self.tmp / 'rm.sh').write_text('#!/bin/sh\necho unknown\n')

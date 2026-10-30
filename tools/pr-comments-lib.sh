@@ -17,6 +17,7 @@ pc_items() {
     )[] | [.id, .a, .k, .u, .t] | @tsv' 2>/dev/null
 }
 # pc_last_authored <pr view JSON> -> newest commit authored time, or empty when none; never fall back to a rebase's committed time.
+#   An answer is a NEW commit or a session reply: an amended/squashed commit keeps its old authored date and looks like a rebase (Gitar on #2578, tests/test_pr_comments.py `amended`).
 pc_last_authored() {
   jq -r '[.commits[]?.authoredDate // empty] | max // ""' <<<"$1"
 }

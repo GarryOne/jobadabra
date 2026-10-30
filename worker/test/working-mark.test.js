@@ -26,9 +26,9 @@ test('fill-flow: marks set while the read goes on are working marks; the end ver
   const plain = marks.filter((m) => m === 'markPage(tab.id, role, pressed, kind)');
   assert.ok(plain.length >= 1, 'the verdict is said somewhere');
   // Every plain (verdict) mark is the watch's end or its failure, never a mark set before the watch starts.
-  const end = flow.indexOf('await markPage(tab.id, role, pressed, kind, {working: !!watching});'), watch = flow.indexOf('if (watching) watchForFields(');
+  const end = flow.indexOf('await markPage(tab.id, role, pressed, kind, {working: !!watching});'), watch = flow.indexOf('if (watching) step.watch = watchForFields(');
   assert.ok(end > 0 && watch > end, 'the end block marks working while a watch runs, then starts it');
-  assert.match(flow.slice(watch, flow.indexOf('\n', watch)), /\(\) => markPage\(tab\.id, role, pressed, kind\)\)\.catch\(\(\) => markPage\(tab\.id, role, pressed, kind\)\)/, 'the verdict once the watch ends, or fails');
+  assert.match(flow.slice(watch, flow.indexOf('\n', watch)), /\(\) => markPage\(tab\.id, role, pressed, kind\)\)\.catch\(async \(\) => \{ await markPage\(tab\.id, role, pressed, kind\); return false;/, 'the verdict once the watch ends, or fails');
   for (const mark of marks.filter((m) => m !== 'markPage(tab.id, role, pressed, kind)')) assert.match(mark, /working: /, mark);
 });
 

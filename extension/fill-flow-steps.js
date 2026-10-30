@@ -215,7 +215,7 @@ async function watchPage(step) {
   // may judge the page again keeps "Reading this page…" and says the verdict only when it ends with no form (Greenhouse: "no application", then filled seconds later).
   await markPage(tab.id, role, pressed, kind, {working: !!watching});
   // Why (30 Oct 2026, applyflows 40992748380): only recovery waits for the watch; bot-check requests and page state must reach the person immediately.
-  if (watching) step.watch = watchForFields(tab, jobUrl, undefined, botCheck ? 60 : 10, counts?.frameHosts || [], () => markPage(tab.id, role, pressed, kind)).catch(() => false);
+  if (watching) step.watch = watchForFields(tab, jobUrl, undefined, botCheck ? 60 : 10, counts?.frameHosts || [], () => markPage(tab.id, role, pressed, kind)).catch(async () => { await markPage(tab.id, role, pressed, kind); return false; });
   if (late(tab, gen, 'page state')) return false;   // a stale read never writes the page's state (worker/test/read-generation.test.js)
   await writeState(tab.id, {state: role});
   step.botCheck = botCheck;

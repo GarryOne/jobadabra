@@ -422,12 +422,12 @@ def main():
         files = gh('api', '--paginate', f'repos/{a.repo}/pulls/{number}/files', '--jq', '.[].filename').split()
     ref = os.environ.get('GITHUB_SHA') or a.sha
     judge = lambda greys: verdict(runs, files, messages, jobs, spans=spans, greys=greys, reports=reports, burn_in=lambda *args: main_state_module(a.repo, ref, 'pr_burn_in').failures(*args))
-    # One write per workflow end, never a wait loop: a pending result reads the list once more after LIST_LAG_S, then writes.
-    reports, ai_line, prepared = set(), str, False
-    for attempt in (1, 2):   # Why (Gitar on #2619): a replaced waiting verdict loses its run's end while the list lags (#2533); the 2nd read redoes reports and spans too
+    reports, ai_line, prepared = set(), str, None
+    for attempt in (1, 2):   # Why (Gitar on #2619): one write per workflow end, no wait loop; a replaced waiting verdict loses its run's end while the list lags (#2533), so a pending result reads once more after LIST_LAG_S
         runs, jobs = read(a.repo, a.sha)
-        if not prepared and any(str(r.get('displayTitle', '')).startswith(E2E_PR_TITLE) for r in counted(runs)):   # one artifact read per write: BASE's reports do not change
-            prepared = True
+        e2e = [r for r in counted(runs) if str(r.get('displayTitle', '')).startswith(E2E_PR_TITLE)]
+        if e2e and prepared != all(r.get('status') == 'completed' for r in e2e):   # one artifact read per write unless the e2e run ended between the reads
+            prepared = all(r.get('status') == 'completed' for r in e2e)
             try:
                 reports, ai_line = main_state_module(a.repo, ref, 'pr_ai_number').prepare(a.repo, counted(runs), jobs, gh, lambda name='main_e2e_state': main_state_module(a.repo, ref, name), base_branch(), my_run, '', os.environ.get('RUNNER_NAME', ''))
             except Exception as error:

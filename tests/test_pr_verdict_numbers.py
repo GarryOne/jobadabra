@@ -20,7 +20,10 @@ class TheAiNumberInEveryWriter(unittest.TestCase):
             speed_gh.artifacts[7] = speed_gh.artifacts.pop(99)
         jobs = {7: [{'id': 71, 'name': 'qualityai', 'status': 'completed', 'conclusion': 'success'},
                     {'id': 72, 'name': 'settings', 'status': 'completed', 'conclusion': 'success'}]}
-        if kind == 'settling':
+        reads = None
+        if kind == 'ends-between':   # Gitar on #2619: going on the first read, ended on the re-read LIST_LAG_S later: the number comes from the ended run
+            reads = iter([([dict(r, status='in_progress')], {7: [jobs[7][0], dict(jobs[7][1], status='in_progress', conclusion=None)]}), ([r], jobs)])
+        elif kind == 'settling':
             r.update(status='in_progress')
             jobs[7] = [jobs[7][1]]   # measured artifact read independently; another job is still being created
         elif kind == 'pending':
@@ -38,7 +41,7 @@ class TheAiNumberInEveryWriter(unittest.TestCase):
         # Why (owner, 30 Oct 2026, "One writer"): only pr-verdict.yml writes; a job's own step (--job-status) writes nothing.
         with mock.patch.dict(os.environ, {'GITHUB_RUN_ID': '99', 'RUNNER_NAME': 'ours'}), \
              mock.patch.object(sys, 'argv', ['pr-verdict.py', '--repo', 'o/r', '--sha', 'head']), \
-             mock.patch.object(sys, 'stdout'), mock.patch.object(pv, 'read', return_value=([r], jobs)), \
+             mock.patch.object(sys, 'stdout'), mock.patch.object(pv, 'read', side_effect=lambda *args: next(reads) if reads else ([r], jobs)), \
              mock.patch.object(pv, 'pr_meta', return_value=([{'number': 1, 'state': 'open'}], [], [])), \
              mock.patch.object(pv, 'main_state_module', side_effect=lambda repo, ref, name='main_e2e_state': ai if name == 'pr_ai_number' else speed if name == 'pr_speed_number' else mock.Mock()), \
              mock.patch.object(ai, 'report_suites', return_value={'qualityai'}), mock.patch.object(ai, 'numbers', return_value=(RATES, RATES)) as read_number, \
@@ -47,7 +50,7 @@ class TheAiNumberInEveryWriter(unittest.TestCase):
              mock.patch.object(pv, 'quota_line', return_value=''), mock.patch.object(pv.time, 'sleep'), \
              mock.patch.object(pv, 'gh', side_effect=lambda *args, **kw: sent.append(args) if '/statuses/' in ' '.join(args) else speed_gh(*args, **kw)):
             self.assertEqual(pv.main(), 0)
-        self.assertEqual(read_number.call_count, 1, 'one artifact read per write')
+        self.assertEqual(read_number.call_count, 2 if reads else 1, 'one artifact read per write, unless the e2e run ended between the two reads')
         post = next(args for args in sent if '/statuses/' in args[1])
         return next(a.removeprefix('description=') for a in post if a.startswith('description=')), post, speed_gh.calls
 
@@ -84,6 +87,11 @@ class TheAiNumberInEveryWriter(unittest.TestCase):
         self.assertTrue(line.startswith('e2e qualityai,settings ending · AI:'), line)
         self.assertIn('same as main', line)
         self.assertIn('state=pending', post)
+
+    def test_an_e2e_run_that_ends_between_the_two_reads_is_numbered_from_its_end(self):
+        line, post, _ = self.write_case('ends-between')
+        self.assertIn('state=success', post)
+        self.assertIn('AI: facts 63/63 (main 63/63)', line)
 
     def test_main_red_grey_keeps_the_number(self):
         line, post, _ = self.write_case('grey')

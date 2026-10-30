@@ -61,7 +61,9 @@
   "next_control": "",
   "submit_control": "Bewerbung absenden",
   "bot_check": false,
-  "confidence": 0.9
+  "login_wall": false,
+  "account_to_create": false,
+  "confidence": 0.95
  },
  "answer_path": "app"
 }

@@ -9,7 +9,7 @@ import {partOf, runApply, stepNeeds as applyNeeds} from './apply.mjs';
 import {answersMode} from '../lib/ai-answers.mjs';
 import {flowsEngine} from '../lib/engine.mjs';
 
-export {hangCaps} from '../lib/applyflows-caps.mjs';
+import {hangCapsFor} from '../lib/hang-caps.mjs'; export const hangCaps = hangCapsFor('applyflows');
 export const stepNeeds = applyNeeds;
 export const ownsStep = name => ['flows', 'live', 'both'].includes(partOf(name));   // its steps live in apply.mjs: a PR that changes one runs this suite (pr-suites.mjs)   // what a step needs when E2E_STEPS picks it (lib/runner.mjs wantedWords)
 

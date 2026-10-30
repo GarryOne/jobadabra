@@ -10,7 +10,7 @@ import {agreeWithin} from '../lib/truth-data.mjs';
 import {finish, visit} from '../lib/layout.mjs';
 import {ensureSetUp} from '../lib/seed.mjs';
 import {varyFeeds} from '../lib/feeds.mjs';
-import {hangCaps} from '../lib/jobs-caps.mjs';
+import {hangCapsFor} from '../lib/hang-caps.mjs';
 
 // Why (30 Oct 2026, ap): rule A serves jobs' declared engine and background answers without a live key.
 export const offlineAi = true;
@@ -21,7 +21,7 @@ export const aiAnswers = 'backbone';   // answers its AI from the stored table i
 export const store = 'sqlite';
 export const minutes = 30;
 export const name = 'jobs';
-export {hangCaps};
+export const hangCaps = hangCapsFor('jobs');
 // Why (30 Oct 2026, owner, Rule B): measured per-step hang caps replace the aggregate clock; a slow runner is not a failed state assertion.
 export const aggregateBudget = false;
 export async function run(ctx) {

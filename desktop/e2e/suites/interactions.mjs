@@ -19,7 +19,7 @@ import {probe, problems, waitForRail} from '../lib/rail-markers.mjs';
 
 export const macos = true;   // runs on a macOS runner: pixels, fonts and window sizes: judged on the Mac people use (lib/plan.mjs runnerOf)
 export const name = 'interactions';
-export {hangCaps} from '../lib/interactions-caps.mjs';
+import {hangCapsFor} from '../lib/hang-caps.mjs'; export const hangCaps = hangCapsFor('interactions');
 // One failed step never hides the rest: the runner records it and goes on (lib/runner.mjs); only the setup steps marked `critical` stop the suite.
 export const keepGoing = true;
 // A seeded run visits every page from another time zone and language (lib/variation.mjs placeOf): the truth and layout checks see dates and numbers as a person there would.

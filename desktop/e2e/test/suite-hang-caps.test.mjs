@@ -6,12 +6,13 @@ import path from 'node:path';
 import {test} from 'node:test';
 import {budgetMsOf, createRunner, stopMsOf} from '../lib/runner.mjs';
 import {stepCalls} from '../lib/pr-suites.mjs';
-import {hangCaps as sharedCaps} from '../lib/applyflows-caps.mjs';
+import {hangCapsFor} from '../lib/hang-caps.mjs';
 import {VIEWS} from '../lib/uicheck.mjs';
 import * as interactions from '../suites/interactions.mjs';
 import * as jobs from '../suites/jobs.mjs';
 import * as failureschannels from '../suites/failureschannels.mjs';
 
+const sharedCaps = hangCapsFor('applyflows');
 const source = file => readFileSync(new URL(`../${file}`, import.meta.url), 'utf8');
 const names = text => stepCalls(text).flatMap(call => call.name ?? VIEWS.map(view =>
   view + text.slice(call.start, call.end).match(/`\$\{view\}([^`]+)`/)[1]));
@@ -45,7 +46,7 @@ for (const [suiteName, suite, count, largest, minutes] of [
   ['interactions', interactions, 25, 220, 25], ['jobs', jobs, 13, 495, 30], ['failureschannels', failureschannels, 11, 180, 12],
 ]) {
   test(`${suiteName}: every step has a measured or documented fallback cap and no aggregate clock`, () => {
-    const caps = source(`lib/${suiteName}-caps.mjs`);
+    const caps = JSON.parse(source('hang-caps.json'))[suiteName];
     let direct = source(`suites/${suiteName}.mjs`);
     let preparation = '';
     if (suiteName === 'failureschannels') {
@@ -64,24 +65,25 @@ for (const [suiteName, suite, count, largest, minutes] of [
     assert.equal(suite.minutes, minutes, 'the CI job limit stays unchanged');
     assert.equal(Math.max(...Object.values(suite.hangCaps)), largest);
     assert.doesNotMatch(source(`suites/${suiteName}.mjs`), /limitMs\s*:/, 'explicit overrides must not bypass measured caps');
-    assert.match(caps, /Main run IDs: (?:\d+, ){8}\d+\./, 'record all nine source runs');
+    assert.match(caps.provenance, /Main run IDs: (?:\d+, ){8}\d+\./, 'record all nine source runs');
     for (const [name, seconds] of Object.entries(suite.hangCaps)) {
       assert.ok(Number.isFinite(seconds) && seconds >= 30, `${name}: ${seconds}`);
     }
-    const rows = [...caps.matchAll(/^  ("(?:\\.|[^"\\])*?"): (\d+), \/\/ n=(\d+), p95=([\d.]+) s$/gm)];
-    const shared = [...caps.matchAll(/^  ("(?:\\.|[^"\\])*?"): sharedCaps\[.*\], \/\/ n=(\d+); shared step's measured cap$/gm)];
+    const rows = Object.entries(caps.steps).filter(([, step]) => !step.shared && step.p95Seconds !== undefined);
+    const shared = Object.entries(caps.steps).filter(([, step]) => step.shared);
     assert.equal(rows.length + shared.length + (suiteName === 'jobs' ? 1 : 0), count, 'every cap has provenance');
-    for (const [, name, seconds, n, p95] of rows) {
-      assert.ok(Number(n) >= 5, `${name}: insufficient calm samples`);
-      assert.equal(Number(seconds), Math.max(30, Math.ceil(3 * Number(p95) / 5) * 5), JSON.parse(name));
+    for (const [name, {seconds, n, p95Seconds}] of rows) {
+      assert.ok(n >= 5, `${name}: insufficient calm samples`);
+      assert.equal(seconds, Math.max(30, Math.ceil(3 * p95Seconds / 5) * 5), name);
     }
-    for (const [, name, n] of shared) {
-      assert.ok(Number(n) < 5);
-      assert.equal(suite.hangCaps[JSON.parse(name)], sharedCaps[JSON.parse(name)]);
+    for (const [name, {n, shared: sharedSuite}] of shared) {
+      assert.ok(n < 5);
+      assert.equal(sharedSuite, 'applyflows');
+      assert.equal(suite.hangCaps[name], sharedCaps[name]);
     }
     if (suiteName === 'jobs') {
       assert.equal(suite.hangCaps[linkStep], 90);
-      assert.match(caps, /90, \/\/ n=4; fewer than 5 calm samples, no shared cap; 30 s floor x 3/);
+      assert.deepEqual(caps.steps[linkStep], {seconds: 90, n: 4, reason: 'fewer than 5 calm samples, no shared cap; 30 s floor x 3'});
     }
   });
 

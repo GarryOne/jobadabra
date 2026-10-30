@@ -29,7 +29,7 @@ test('each captured request has validator context, a bounded body and real sourc
   for (const entry of read().entries) {
     for (const field of ['kind', 'action', 'request', 'context', 'source', 'validator', 'tier']) assert.ok(field in entry, `${entry.kind}: ${field}`);
     assert.ok(['small', 'mid', 'large'].includes(entry.tier), entry.kind);
-    const actions = {'app.geo': 'place_triage', 'app.place': 'place_triage', 'app.title': 'title_triage', 'app.visa': 'place_triage'};
+    const actions = {'app.geo': 'place_triage', 'app.place': 'place_triage', 'app.title': 'title_triage', 'app.visa': 'place_triage', 'app.visit': 'visit_relevant'};
     assert.equal(entry.action, actions[entry.kind] || entry.kind.replace(/^app\./, ''), entry.kind);
     assert.equal(typeof entry.context, 'object');
     assert.ok(entry.context && Object.keys(entry.context).length, `${entry.kind}: no context`);

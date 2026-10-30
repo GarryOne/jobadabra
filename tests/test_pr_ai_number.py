@@ -245,16 +245,28 @@ class Artifacts(unittest.TestCase):
                 post = self.qualityai_post('timed_out', 'E2E · qualityai', RATES, False, stage)
                 self.assertIn('state=pending', post)
 
-    def qualityai_post(self, conclusion, name, counts, registry, fail_at=''):
+    def qualityai_post(self, conclusion, name, counts, registry, fail_at='', attempt=1, previous=False, peer=False, age_min=0):
         """Run the real status writer/number reader; replace only GitHub and external evidence reads."""
         from unittest import mock
         from tests.test_pr_verdict import pv, run as pr_run
-        github = Github([], {7: [{'id': 7, 'name': ai.ARTIFACT}]} if counts else {}, {7: archive(counts)} if counts else {})
-        r = pr_run('E2E', conclusion=conclusion, event='workflow_dispatch', title='E2E for PR · qualityai · topic', id=7)
-        jobs = {7: [{'id': 71, 'name': name, 'status': 'completed', 'conclusion': conclusion}]}
+        from datetime import datetime, timedelta, timezone
+        end = datetime.now(timezone.utc) - timedelta(minutes=age_min)
+        stamp = lambda value: value.isoformat().replace('+00:00', 'Z')
+        key = 'qualityai-1of2' if name.endswith('-1of2') else 'qualityai'
+        artifact = {'id': 7, 'name': 'e2e-artifacts-' + ('qualityai' if peer else key),
+                    'created_at': stamp(end - timedelta(minutes=20 if previous else 1))}
+        github = Github([], {7: [artifact]} if counts else {}, {7: archive(counts)} if counts else {})
+        r = pr_run('E2E', conclusion=conclusion, event='workflow_dispatch', title='E2E for PR · qualityai · topic', id=7,
+                   end=stamp(end)); r['attempt'] = attempt
+        fields = {'run_id': 7, 'run_attempt': attempt, 'started_at': stamp(end - timedelta(minutes=5)), 'completed_at': stamp(end)}
+        jobs = {7: [dict(fields, id=71, name=name, status='completed', conclusion=conclusion)]}
+        if peer:
+            jobs[7].append(dict(fields, id=72, name='qualityai', status='completed', conclusion='success'))
         sent = []
         def gh(*args, **kwargs):
-            if fail_at and fail_at in ' '.join(args): raise OSError('transient artifact transport failure')
+            if fail_at and fail_at in ' '.join(args):
+                if fail_at == '/zip': raise subprocess.CalledProcessError(1, ['gh'], stderr='gh: Not Found (HTTP 404)')
+                raise OSError('transient artifact transport failure')
             if not registry and '/contents/desktop/e2e/lanes.json' in ' '.join(args): return '{"suites": {}}'
             if '/statuses/' in ' '.join(args): sent.append(args); return '{}'
             return github(*args, **kwargs)
@@ -449,7 +461,7 @@ class StandaloneWriter(unittest.TestCase):
             copied = tmp / 'standalone'
             copied.mkdir()
             (copied / 'pr-verdict.py').write_text((root / 'tools/pr-verdict.py').read_text())
-            for name in ('pr_ai_number.py', 'main_e2e_state.py', 'beta_rate_gate.py', 'pr_speed_number.py'):
+            for name in ('pr_ai_number.py', 'main_e2e_state.py', 'beta_rate_gate.py', 'pr_speed_number.py', 'pr_verdict_runs.py'):
                 (tmp / name).write_text((root / 'tools' / name).read_text())
             gh = tmp / 'gh'
             gh.write_text(f'#!{sys.executable}\n' + FAKE_GH)

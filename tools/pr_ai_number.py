@@ -6,11 +6,13 @@ import json
 import math
 import sys
 import zipfile
+from datetime import datetime, timedelta, timezone
 from fractions import Fraction
 from functools import lru_cache
 
 ARTIFACT = 'e2e-artifacts-qualityai'
 PR_TITLE = 'E2E for PR · '
+UNREADABLE_FOR = timedelta(minutes=30)   # Why (30 Oct 2026, review): a permanently unreadable result must stop holding a PR pending.
 METRICS = (('facts', 'exact', 'total', 'facts'), ('flags', 'flagged', 'judged', 'flags'), ('cv', 'found', 'expected', 'CV'))
 
 
@@ -23,25 +25,40 @@ class NumberReadError(RuntimeError):
 
 
 def prepare(repo, runs, jobs, gh, main_state, base='main', my_run='', my_status='', runner='', suite_of=None):
-    """Return ordinary reports and qualityai evidence: measured -> grey, absent -> red, read error -> pending."""
-    reports, rates, unknown = ReportSuites(report_suites(repo, gh, base)), None, False
+    """Return ordinary reports and qualityai evidence: measured -> grey, absent -> red, read error -> pending for at most 30 min after the run ends."""
+    gh = lru_cache()(gh)   # one artifact listing/download per write even when formatting and job evidence share it
+    reports, rates = ReportSuites(report_suites(repo, gh, base)), None
     suite_of = suite_of or main_state().suite_of
-    reports.qualityai = {}
+    reports.qualityai, reports.unreadable = {}, set()
     try:
         main_module = lru_cache()(main_state)
         # Why (29 Oct 2026, qu): after-merge artifacts measure main's code even though their green cannot clear a suite's state.
         rates = numbers(repo, runs, jobs, gh, lambda run: not main_module().NOT_MAIN_CHECK.match(run.get('display_title') or ''),
                         my_run, my_status, runner, night_module=lambda: main_state('beta_rate_gate'), suite_of=suite_of)
     except Exception as error:
-        unknown = True
         print(f'AI number unavailable ({type(error).__name__}): evidence pending')
-    current = rates[0] if rates else None
-    produced = any((current or {}).get(part) and current[part][den] for part, _, den, _ in METRICS)
-    # Why (30 Oct 2026, owner/review): every non-success/skipped qualityai end needs a number, independent of BASE reports; a read error proves nothing.
+    measurements = []
+    # Why (30 Oct 2026, owner/review): only this job's current-attempt artifact can clear its failure; unknown reads expire 30 min after the run ends.
     for r in runs:
         for job in jobs.get(r['databaseId'], []):
-            if suite_of(job.get('name', '')) == 'qualityai' and job.get('status') == 'completed' and job.get('conclusion') not in ('success', 'skipped'):
-                reports.qualityai[job.get('id')] = 'running' if unknown else 'grey' if produced else 'failure'
+            if suite_of(job.get('name', '')) != 'qualityai' or job.get('status') != 'completed' or job.get('conclusion') in ('success', 'skipped'):
+                continue
+            try:
+                _, current = artifact_rates(repo, r['databaseId'], gh, job=job, attempt=r.get('attempt'))
+                produced = any((current or {}).get(part) and current[part][den] for part, _, den, _ in METRICS)
+                state = 'grey' if produced else 'failure'
+                if produced: measurements.append(current)
+            except Exception as error:
+                ended = r.get('updatedAt') or job.get('completed_at')
+                young = r.get('status') != 'completed' or ended and datetime.now(timezone.utc) - _at(ended) < UNREADABLE_FOR
+                state = 'running' if young else 'failure'
+                if not young: reports.unreadable.add(job.get('id'))
+                print(f"qualityai result unreadable ({type(error).__name__}): {'pending' if young else 'red after 30 min'}")
+            reports.qualityai[job.get('id')] = state
+    if reports.qualityai:
+        current = measurements[0] if measurements else None
+        if rates is None or current != rates[0]:
+            rates = current, rates[1] if rates else None, False
     return reports, (lambda why: description(why, *rates)) if rates is not None else str
 
 
@@ -122,10 +139,26 @@ def report_suites(repo, gh, base='main'):
         return set()
 
 
-def artifact_rates(repo, rid, gh, artifact=ARTIFACT):
-    """Return (artifact exists, validated rates) from the newest artifact, without extracting ZIP paths."""
+def _at(value):
+    """Parse GitHub's UTC timestamps for job ownership and the unreadable-result deadline."""
+    return datetime.fromisoformat(str(value).replace('Z', '+00:00'))
+
+
+def artifact_rates(repo, rid, gh, artifact=ARTIFACT, job=None, attempt=None):
+    """Read the newest matching artifact without extracting ZIP paths.
+    Job evidence requires the current run attempt, exact matrix job key (shard kept),
+    and artifact creation inside that job's start/end window; older attempts cannot qualify.
+    Run-level readers (main_rates and beta_rate_gate) retain historical selection; they grant no PR job exemption.
+    """
+    if job is not None:
+        if attempt is None or job.get('run_attempt') != attempt or not job.get('started_at') or not job.get('completed_at'):
+            return False, None
+        key = job.get('name', '').removeprefix('E2E · ').removeprefix('Mac + Linux · ')
+        artifact = 'e2e-artifacts-' + key
     pages = json.loads(gh('api', '--paginate', '--slurp', f'repos/{repo}/actions/runs/{rid}/artifacts?per_page=100'))
     artifacts = [a for page in pages for a in page['artifacts'] if a.get('name') == artifact]
+    if job is not None:
+        artifacts = [a for a in artifacts if a.get('created_at') and _at(job['started_at']) <= _at(a['created_at']) <= _at(job['completed_at'])]
     if not artifacts:
         return False, None
     latest = max(artifacts, key=lambda a: a['id'])

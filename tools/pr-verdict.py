@@ -140,7 +140,7 @@ def verdict(runs, files=(), messages=(), jobs=None, me=None, my_status='', now=N
         grey += [(job['name'], 'qualityai' if job.get('id') in quality else greys.get(job['id'], 'main') if isinstance(greys, dict) else 'main') for job, state in states if state == 'grey']
         ending = [job['id'] for job, state in states if state == 'finishing' or job.get('id') == me]
         if any(state in RED for _, state in states):
-            red.append(r); red_jobs[r.get('databaseId')] = [job['name'] for job, state in states if state in RED]
+            red.append(r); red_jobs[r.get('databaseId')] = ['qualityai result unreadable' if job.get('id') in getattr(reports, 'unreadable', ()) else job['name'] for job, state in states if state in RED]
         elif (not states and not numbered and r.get('status') != 'completed') or any(state == 'running' for _, state in states):
             running.append((r, [job['name'] for job, state in states if state == 'running']))
         elif r.get('status') != 'completed' and not ending and not numbered: settling.append(r)   # all its jobs ended, yet the run is not: about to end, or to create the jobs that need them

@@ -78,17 +78,16 @@ for (const family of ['claude', 'openai']) test(`failuresnotion every captured/f
   h.assertNoLive();
 });
 
-test('failuresnotion actual feed fixture has the same score keys at two clocks despite new ids and URLs', () => {
+// Why (30 Oct 2026, ap): af's 3f37144 made feed ids a per-context counter, no longer the clock; a second batch from one context still gets new ids and URLs, which is what score keys must ignore.
+test('failuresnotion actual feed fixture has the same score keys in two batches despite new ids and URLs', () => {
   const source = fs.readFileSync(new URL('../lib/activity-steps.mjs', import.meta.url), 'utf8');
-  const feedSource = source.slice(source.indexOf('let nextId ='), source.indexOf('// What a person is told'));
-  const runAt = now => {
-    const ctx = {feeds: '/fixture-only'}, written = new Map();
-    const setFeed = runInNewContext(`${feedSource.replace('export function', 'function')}; setFeed`,
-      {Date: {now: () => now}, path, fs: {writeFileSync: (file, text) => written.set(file, text)}});
-    return titles.flatMap(suffix => setFeed(ctx, [`Senior Site Reliability Engineer, ${suffix}`],
-      suffix === 'save seed' ? {location: 'Zurich, Switzerland'} : {}));
-  };
-  const earlier = runAt(1793350800000), later = runAt(1793437200000);
+  const feedSource = source.slice(source.indexOf('const feedIds ='), source.indexOf('// What a person is told'));
+  const ctx = {feeds: '/fixture-only'};
+  const setFeed = runInNewContext(`${feedSource.replace('export function', 'function')}; setFeed`,
+    {path, fs: {writeFileSync: () => {}}});
+  const batch = () => titles.flatMap(suffix => setFeed(ctx, [`Senior Site Reliability Engineer, ${suffix}`],
+    suffix === 'save seed' ? {location: 'Zurich, Switzerland'} : {}));
+  const earlier = batch(), later = batch();
   const table = loadTable(answersTableFile);
   for (let i = 0; i < earlier.length; i++) {
     assert.notEqual(earlier[i].id, later[i].id);

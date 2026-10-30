@@ -1,4 +1,4 @@
-// Replay every distinct missing ask from failuresnotion CI 41002078448 at the stored and proxy seams.
+// Replay failuresnotion's two captured CI refusal sets through stored, direct and proxy seams.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {test} from 'node:test';
@@ -11,13 +11,15 @@ import {bodyOf, engineCases} from './ai-answers-engine-fixtures.mjs';
 
 const read = file => JSON.parse(fs.readFileSync(new URL(file, import.meta.url)));
 const missing = read('../fixtures/golden/failuresnotion-missing-keys.json');
+const second = read('../fixtures/golden/failuresnotion-run2-keys.json');
 const demo = withDerived(read('../../demo/draft.json').draft.search);
 const placeContext = read('../fixtures/golden/activityfailures-feed-asks.json').place.context;
 const roleKind = read('../fixtures/golden/activityfailures-decide.json').requests[0];
 const request = (action, body) => ({method: 'POST', headers: {'content-type': 'application/json', 'x-jp-action': action}, body: JSON.stringify(body)});
 
 function requestOf(ask) {
-  const text = JSON.parse(ask.what.slice(ask.what.indexOf('"')));
+  const roleOnly = ask.family === 'app.enrich' && ask.key.endsWith('/role');
+  const text = roleOnly ? ask.what.split(' | ')[0] : ask.what.includes('"') ? JSON.parse(ask.what.slice(ask.what.indexOf('"'))) : ask.what;
   if (ask.family === 'app.decide') {
     const body = structuredClone(roleKind);
     body.messages[0].content = body.messages[0].content.split('### Item 0')[0]
@@ -26,11 +28,12 @@ function requestOf(ask) {
       body.output_config.format.schema.properties.results.items.properties.answer.enum.filter(answer => answer !== 'unsure');
     return request('decide', body);
   }
-  const c = structuredClone(engineCases.find(c => c.operation === ask.family));
+  const c = structuredClone(engineCases.find(c => ask.family === 'app.enrich'
+    ? c.name === (roleOnly ? 'enrich role' : 'enrich') : c.operation === ask.family));
   if (ask.family === 'app.title') c.user = `The search (JSON): ${JSON.stringify({role_words: demo.role_keywords, words_ruled_out: demo.title_exclude_keywords})}\nThe titles:\n1. ${text}`;
   if (ask.family === 'app.place') c.user = `Their places (JSON): ${JSON.stringify(placeContext)}\nThe job locations:\n1. ${text}`;
   if (ask.family === 'app.enrich') {
-    const location = text.includes('save seed') ? 'Zurich, Switzerland' : 'Zurich, Switzerland or Amsterdam, Netherlands';
+    const location = roleOnly ? ask.what.split(' | ')[2] : text.includes('save seed') ? 'Zurich, Switzerland' : 'Zurich, Switzerland or Amsterdam, Netherlands';
     c.user = `Title: ${text}\nCompany: E2E Acme\nLocation: ${location}\n\nPosting:\n${text}: run production on Kubernetes and AWS with Terraform, SLOs and on-call. Senior level, hybrid in Zurich, English working language.`;
   }
   return request(c.action, bodyOf(c));
@@ -40,13 +43,6 @@ function requestOf(ask) {
 test('declared CI asks are twelve distinct keys, the two zürich ones from PR #2560 included', () => {
   assert.equal(missing.length, 12);
   assert.equal(new Set(missing.map(ask => ask.key)).size, 12);
-});
-
-// Why (30 Oct 2026, ap): failuresnotion's second CI run 41058466160 refused two role-kind decide asks and four role-only enrichments the first run never reached; each is stored now.
-test('the six asks of the second CI run are stored', () => {
-  const table = loadTable(answersTableFile), second = read('../fixtures/golden/failuresnotion-run2-keys.json');
-  assert.equal(second.length, 6);
-  for (const {family, key} of second) assert.ok(table.items[family][key], `${family}: ${key}`);
 });
 
 const placeWord = ask => ask.family === 'app.decide' && ask.what === 'item 0 "zürich"';
@@ -60,7 +56,8 @@ test('the two zürich place-word decide asks are stored (metro ch-zurich, countr
   assert.equal(missing.filter(placeWord).length, 2);
 });
 
-for (const ask of missing.filter(ask => !placeWord(ask))) test(`${ask.family}: ${ask.key}`, async t => {
+// Why (30 Oct 2026, supervisor/Gitar): run 41058466160 needs the same request-key/schema/transport proof as run 1, not key existence alone.
+for (const ask of [...missing.filter(ask => !placeWord(ask)), ...second]) test(`${ask.family}: ${ask.key}`, async t => {
   const h = await backboneHarness(t, 'failuresnotion');
   const init = requestOf(ask), question = questionOf(init, h.env);
   assert.equal(question.operation, ask.family);
@@ -80,15 +77,18 @@ for (const ask of missing.filter(ask => !placeWord(ask))) test(`${ask.family}: $
   }
   if (ask.family === 'app.enrich') {
     assert.equal(data.role_family, 'sre');
-    assert.deepEqual(data.technologies, ['Kubernetes', 'AWS', 'Terraform']);
-    assert.equal(data.seniority.value, 'senior');
-    assert.equal(data.work_mode.value, 'hybrid');
-    assert.equal(data.english_is_enough.value, 'yes');
-    assert.equal(data.on_call, 'yes');
-    assert.deepEqual(data.salary, {stated: false, text: ''});
-    assert.equal(data.employer_type.value, 'unknown');
-    assert.equal(data.visa_sponsorship.value, 'unknown');
-    assert.equal(data.contract, 'unknown');
+    if (ask.key.endsWith('/role')) assert.deepEqual(data, {role_family: 'sre'});
+    else {
+      assert.deepEqual(data.technologies, ['Kubernetes', 'AWS', 'Terraform']);
+      assert.equal(data.seniority.value, 'senior');
+      assert.equal(data.work_mode.value, 'hybrid');
+      assert.equal(data.english_is_enough.value, 'yes');
+      assert.equal(data.on_call, 'yes');
+      assert.deepEqual(data.salary, {stated: false, text: ''});
+      assert.equal(data.employer_type.value, 'unknown');
+      assert.equal(data.visa_sponsorship.value, 'unknown');
+      assert.equal(data.contract, 'unknown');
+    }
   }
   assert.deepEqual(await (await modelFetch('http://127.0.0.1:1/v1/messages', init, h.options)).json(), expected);
   const response = await h.localFetch(`${h.proxy.url}/v1/messages`, init);

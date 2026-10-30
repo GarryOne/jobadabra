@@ -236,10 +236,8 @@ for (const family of ['claude', 'openai']) test(`${family}: unknown page fails a
 });
 
 test('both workflow attempts run applyflows with semantic backbone answers', () => {
-  const source = fs.readFileSync(new URL('../../../.github/workflows/e2e.yml', import.meta.url), 'utf8');
-  const attempts = [...source.matchAll(/E2E_AI_ANSWERS: .*contains\(fromJSON\('([^']+)'\), matrix\.suite\)/g)];
-  assert.equal(attempts.length, 2);
-  for (const [, suites] of attempts) assert.ok(JSON.parse(suites).includes('applyflows'));
+  // The suite declares it; every workflow reads it from the matrix (plan-run.mjs, tests/test_workflow_ai_answers.py; beta 41078746088: a hand-kept list drifted).
+  assert.match(fs.readFileSync(new URL('../suites/applyflows.mjs', import.meta.url), 'utf8'), /^export const aiAnswers = 'backbone';/m);
 });
 
 // Capture the product's own request: no app, store, account or model is started.

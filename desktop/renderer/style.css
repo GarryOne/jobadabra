@@ -2610,5 +2610,6 @@ details.qa-section { margin-top: var(--sp-3); }
 .triage-progress { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
 .triage-bar { flex: 1 1 200px; height: 8px; border-radius: var(--r-pill); background: var(--line); overflow: hidden; }
 .triage-bar i { display: block; height: 100%; width: 0; background: var(--amber); }
-/* The triage toolbar button: its icon centred on the label (the baseline default sits a few pixels high next to the text). */
-#triage-open .icon { vertical-align: middle; }
+/* Why (2026-10-30, owner: Export's icon sat high): every toolbar button is a flex row, so its icon, label and Pro pill share one centre line (an inline icon sat 1 px low next to the label, and `vertical-align: middle` put it lower still beside the taller pill); one rule for the class, not one per button id. */
+.toolbar > button.secondary { display: inline-flex; align-items: center; gap: var(--sp-2); }
+.toolbar > button.secondary .icon { flex: none; }

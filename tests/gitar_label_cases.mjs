@@ -48,7 +48,8 @@ childProcess.execFileSync = (file, args) => {
   if (args[0] === 'label' && args[1] === 'create') { state.creates++; state.missing = state.missing.filter(name => name !== args[2]); save(); return ''; }
   if (args[0] !== 'pr' || args[1] !== 'edit') throw new Error('unexpected gh args: ' + args);
   const add = args.indexOf('--add-label'), remove = args.indexOf('--remove-label');
-  if (add >= 0 && state.missing.includes(args[add + 1])) throw new Error("could not add label: '" + args[add + 1] + "' not found");
+  // gh's own words for a label the repo lacks (run 40981811862: "'Merge conflict' not found"), never a made-up wording.
+  if (add >= 0 && state.missing.includes(args[add + 1])) throw new Error("'" + args[add + 1] + "' not found");
   state.edits = [...(state.edits || []), args[add >= 0 ? add : remove]];
   if (add >= 0) { state.labels.push(args[add + 1]); state.workedAt = '2026-10-28T20:15:00Z'; }
   else if (remove >= 0) state.labels = state.labels.filter(name => name !== args[remove + 1]);

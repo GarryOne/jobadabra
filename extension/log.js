@@ -12,10 +12,12 @@ import {errorReport} from './error-report.js';
 const LOG_KEY = 'jp-decisions';
 // Why (30 Oct 2026, ap; Gitar on the span PR): one fill pass writes about 30 span lines; a ring of 50 pushed the line that names the slow await out while the app was slow or closed.
 const LOG_KEEP = 200;
+/** Read the persisted decision ring, falling back to an empty ring when storage is unavailable. */
 export async function decisions() {
   const {[LOG_KEY]: kept = []} = await chrome.storage.local.get(LOG_KEY).catch(() => ({}));
   return Array.isArray(kept) ? kept : [];
 }
+/** Persist one decision in order and request delivery without waiting for the app. */
 export async function decide(kind, text, fields = {}) {
   const entry = {at: new Date().toISOString(), kind: String(kind).slice(0, 24), text: String(text).slice(0, 300),
     fields: {...fields, version: chrome.runtime.getManifest().version}, sent: false};
@@ -35,27 +37,43 @@ export async function span(name, promiseFactory) {
   finally { decide('span', `${name} end`, {id, ms: Date.now() - began, ...(failed ? {failed: true} : {})}).catch(() => {}); }
 }
 
-// One at a time: two lines written at once read the same list (one was lost), and two pushes at once sent the same unsent
-// lines twice or three times (8 Oct 2026: "closed the posting tab" logged 3x for one tab).
+// Design: pushDecisions owns idle -> running -> idle; all callers share the running promise.
+// Calls while running set dirty, coalescing into one follow-up drain rather than one POST each.
+// Storage reads/writes stay serialized; fetch never holds that queue, so new lines can persist.
+// Each drain sends all unsent lines oldest first in batches <= 50, marking only an ok batch.
+// A failed POST ends the owner, leaving unsent lines for the next explicit push; no timers.
 let logTurn = Promise.resolve();
 const inTurn = work => (logTurn = logTurn.then(work, work));
-export function pushDecisions() { return inTurn(pushNow); }
+let pushOwner = null, pushDirty = false;
+/** Coalesce delivery requests under one owner, including requests made during a running drain. */
+export function pushDecisions() {
+  pushDirty = true;
+  if (!pushOwner) pushOwner = (async () => {
+    try {
+      do {
+        pushDirty = false;
+        if (!await pushNow()) break;
+      } while (pushDirty);
+    } finally { pushOwner = null; }
+  })();
+  return pushOwner;
+}
 async function pushNow() {
-  const kept = await decisions();
-  const unsent = kept.filter(entry => !entry.sent);
-  if (!unsent.length) return;
   try {
-    // Why (30 Oct 2026, ap; Gitar on the span PR): the oldest 20 go first and only they are marked sent; the newest 20 were sent while every unsent line was marked sent, so the rest were lost.
-    const batch = unsent.slice(0, 20);
     const config = await settings();
-    const response = await fetch(`${config.workerUrl.replace(/\/$/, '')}/extension/log`, {method: 'POST',
-      headers: {Authorization: `Bearer ${config.token}`, 'Content-Type': 'application/json'},
-      body: JSON.stringify({entries: batch})});
-    if (!response.ok) return;
-    const sent = new Set(batch.map(entry => entry.at + entry.text));
-    await chrome.storage.local.set({[LOG_KEY]: (await decisions())
-      .map(entry => (sent.has(entry.at + entry.text) ? {...entry, sent: true} : entry))});
-  } catch { /* not paired, or the app is closed: they stay unsent for the next push */ }
+    while (true) {
+      // Why (30 Oct 2026, ap; Gitar on the span PR): drain oldest first in route-safe batches of 50; only an ok batch is marked sent, and fetch stays outside the storage queue so spans cannot stall product writes.
+      const batch = await inTurn(async () => (await decisions()).filter(entry => !entry.sent).slice(0, 50));
+      if (!batch.length) return true;
+      const response = await fetch(`${config.workerUrl.replace(/\/$/, '')}/extension/log`, {method: 'POST',
+        headers: {Authorization: `Bearer ${config.token}`, 'Content-Type': 'application/json'},
+        body: JSON.stringify({entries: batch})});
+      if (!response.ok) return false;
+      const sent = new Set(batch.map(entry => entry.at + entry.text));
+      await inTurn(async () => chrome.storage.local.set({[LOG_KEY]: (await decisions())
+        .map(entry => (sent.has(entry.at + entry.text) ? {...entry, sent: true} : entry))}));
+    }
+  } catch { return false; /* not paired, or the app is closed: they stay unsent for the next push */ }
 }
 
 // Uncaught worker errors keep their local decision line and reach the app's reporter through the same authenticated log channel.

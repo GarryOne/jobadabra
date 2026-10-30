@@ -19,7 +19,8 @@ import {livePosting, realKind, runLive} from '../lib/apply-live.mjs';
 import {runCvSteps} from '../lib/apply-cv-steps.mjs';
 import {runSilentChromeSteps} from '../lib/apply-silent-steps.mjs';
 import {runTriageSteps} from '../lib/apply-triage-steps.mjs';
-import {proveBackground} from '../lib/background-proof.mjs';
+import {runRestartSteps} from '../lib/apply-restart-steps.mjs';
+import {HIDDEN_NEED, autoFormOf, kitSeeder, proveBackground, proveBotCheck} from '../lib/background-proof.mjs';
 import {proveAutomatic} from '../lib/background-auto-proof.mjs';
 import {runJourneys} from '../lib/apply-journeys.mjs';
 import {installApplyAnswers} from '../lib/apply-answers.mjs';
@@ -42,7 +43,9 @@ export const stepSeconds = {'real forms the extension once failed on': 76, 'Tail
   'Tailor CV on a job': 34, 'a Lever-like form': 33, 'Open in Chrome on a form the night filled': 29, 'Tailor on the session page of a form': 23, 'the person submits a form': 21,
   'a Greenhouse-like form': 16, 'Apply on a saved job without a kit': 15, 'a Workday-shaped form': 11, 'The hidden browser fills a form': 30, 'Full automation presses Submit once on its own': 60,
   'a silent Chrome in Standard automation': 45, 'a silent Chrome in Background automation': 20, 'a silent Chrome in Full automation': 20,
-  'the Jobs popup picks the 10 best matches': 15, 'checking jobs before the form read exists': 10};
+  'the app quits while Background automation holds a filled form': 40, 'the app quits in Full automation\'s wait': 140,
+  'the Jobs popup picks the 10 best matches': 15, 'checking jobs before the form read exists': 10,
+  'Background automation hands a bot check': 25, 'Full automation hands a bot check': 25};
 // Why (29 Oct 2026, ap): hang caps in seconds, 3 x calm p95 from tools/e2e-step-timings.mjs, raised to the step's own inner caps + 30 s where a step waits in sequence; they catch a hang, never a speed.
 // A step whose inner caps add up past the runner's 8-minute default (Tailor CVs for top matches, Full automation) has no entry: the default stays.
 export const hangCaps = {'the app has an applicant': 300, 'the app is seeded': 90, 'the app is set up on this Mac\'s store': 90,
@@ -54,7 +57,9 @@ export const hangCaps = {'the app has an applicant': 300, 'the app is seeded': 9
   'The hidden browser fills a form': 385,
   // no main samples yet, regenerate after 5 main runs: the 30 s floor x 3 (tools/e2e-step-timings.mjs)
   'a silent Chrome in Standard automation': 90, 'a silent Chrome in Background automation': 90, 'a silent Chrome in Full automation': 90,
+  'the app quits while Background automation holds a filled form': 300, 'the app quits in Full automation\'s wait': 420,   // hold 180 + hand-over 60 + the watch past the wait <= 120, + 30 s
   'the Jobs popup picks the 10 best matches': 90, 'checking jobs before the form read exists': 90,
+  'Background automation hands a bot check': 240, 'Full automation hands a bot check': 240,
   'the form\'s panel offers a tailored CV': 3 * stepSeconds['Tailor on the session page of a form']};
 // applyflows' journeys, weighed the same way (26 Oct 2026, beta 40275152602 + main 40274183649, the slowest attempt of each): turn-taking put 392 s of them in one slice and 299 s in the other.
 export const flowSeconds = {'the account and the application on one page': 97, 'a menu whose choices are not the answer': 79, '"Needs your attention" from the extension': 78, 'the form tab is closed': 76,
@@ -69,6 +74,7 @@ const SETUP = 'the app has an applicant';
 export const stepNeeds = {'form': [SETUP], 'session page says it too': [SETUP, 'multi-step form'], 'Tailor CV': [SETUP], 'tailored CV': [SETUP], 'without a kit': [SETUP],
   'hidden browser fills a form': [SETUP], 'submits a form': [SETUP], 'I submitted it': [SETUP, 'Apply opens a new tab'], 'Apply opens a new tab': [SETUP], 'side by side': [SETUP], 'sign-up page': [SETUP], 'sign-in page': [SETUP], 'menu whose choices': [SETUP], 'Needs your attention" from': [SETUP], 'appears only when + is pressed': [SETUP], 'one page': [SETUP], 'tab is closed': [SETUP], 'second browser': [SETUP], 'wrong kind': [SETUP], 'cannot operate': [SETUP],
   'the Jobs popup': [SETUP], 'checking jobs before': [SETUP, 'the Jobs popup'],
+  'the app quits while': [SETUP], 'the app quits in': [SETUP],
   'Ready to submit': [SETUP, 'cannot operate']};   // it reads the tab the "cannot operate" step left open
 // One failed step never hides the rest: the runner records it and goes on (lib/runner.mjs); only the setup step marked `critical` stops the suite. A step that needs another one is named in stepNeeds.
 export const keepGoing = true;
@@ -408,15 +414,24 @@ export async function runApply(ctx, parts) {
     const form = FORMS.submitter;
     await proveBackground(ctx, {form, until, seed: async () => { await removeJobsByUrl(ctx, urls);   // only the submitter is left, so the one job Start picks is the one this step watches
        await addKitJob(ctx, {title: form.title, company: form.company, url: form.url, kit: {answers: form.kit, cover_letter: '', check_before_sending: []}, description: POSTING}); }});
-  }, {needs: [...ctx.needs, {name: 'a runtime link for the hidden browser (none on Windows)', value: process.platform !== 'win32'}]});   // Why (2026-10-28, Gitar on #2364): a plain return on Windows was counted as passed; a missing need is recorded as skipped (lib/runner.mjs)
+  }, {needs: [...ctx.needs, HIDDEN_NEED]});   // Why (2026-10-28, Gitar on #2364; shared as HIDDEN_NEED since #2598): a plain return on Windows was counted as passed; a missing need is recorded as skipped (lib/runner.mjs)
 
-  // Full automation (spec step C): the app presses Submit itself once, against the fixture server's fake endpoint; a Stop in the wait presses nothing. Last of the hidden-browser steps: it relaunches the app with the test-only switch.
+  // Full automation (spec step C): the app presses Submit itself once, against the fixture server's fake endpoint; a Stop in the wait presses nothing. It relaunches the app with the test-only switch; the bot-check steps below relaunch it too.
   await ctx.run('Full automation presses Submit once on its own, and a Stop in the wait presses nothing', async () => {
-    // Why (2026-10-28, found by this step): a kit answer is never a saved fact (extension/flow.js `source: 'kit'`), so Full automation hands over any form with a kit question; this proof uses the submitter's details-only variant.
-    const form = {...FORMS.submitter, path: FORMS.submitter.autoPath, url: `https://${FORMS.submitter.host}${FORMS.submitter.autoPath}`, kit: []};
-    await proveAutomatic(ctx, {form, until, seed: async job => { await removeJobsByUrl(ctx, urls);
-       await addKitJob(ctx, {title: job.title, company: job.company, url: job.url, kit: {answers: [], cover_letter: '', check_before_sending: [], eligible: true}, description: POSTING}); }});
-  }, {needs: [...ctx.needs, {name: 'a runtime link for the hidden browser (none on Windows)', value: process.platform !== 'win32'}]});
+    // Why (2026-10-28, found by this step; autoFormOf since #2598): a kit answer is never a saved fact (extension/flow.js `source: 'kit'`), so Full automation hands over any form with a kit question; this proof uses the submitter's details-only variant.
+    await proveAutomatic(ctx, {form: autoFormOf(FORMS.submitter), until, seed: kitSeeder(ctx, urls, POSTING)});
+  }, {needs: [...ctx.needs, HIDDEN_NEED]});
+
+  await runRestartSteps(ctx, {urls, until});   // lib/apply-restart-steps.mjs: the app quits while its hidden browser holds a job
+
+  // The bot-check hand-off (owner, 30 Oct 2026: "how covered are we from the apply flows/modes?"): a hidden browser that meets a bot check stops and hands over; it never solves one and sends nothing.
+  // The details-only submitter at `?check=<mode>` carries the box (forms.mjs BOT_CHECK); each mode gets its own address, the app keeps one background session per job address.
+  await ctx.run('Background automation hands a bot check to the person: the card says so with Submit off, and nothing is sent', async () => {
+    await proveBotCheck(ctx, {form: autoFormOf(FORMS.submitter, '?check=fill'), mode: 'fill', until, seed: kitSeeder(ctx, urls, POSTING)});
+  }, {needs: [...ctx.needs, HIDDEN_NEED]});
+  await ctx.run('Full automation hands a bot check to the person: the card says so with Submit off, and nothing is pressed or sent', async () => {
+    await proveBotCheck(ctx, {form: autoFormOf(FORMS.submitter, '?check=auto'), mode: 'auto', until, seed: kitSeeder(ctx, urls, POSTING)});
+  }, {needs: [...ctx.needs, HIDDEN_NEED]});
 
   // Found by this suite (2 Oct 2026): extension/review.js built the panel's list from native fields only, so a REQUIRED custom widget it cannot read (here a
   // role=slider) was in no list and no count, and the panel said "Ready to submit, every required field is filled" over a form that still needed an answer.

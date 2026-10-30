@@ -158,3 +158,66 @@ test('a press with no reply after 3 minutes is handed to the person by the app i
   assert.match(reports[0][1].message, /Check whether it went through/);
   assert.deepEqual([launched, touched], [[], []]);
 });
+
+// A quit is a Stop (owner, 30 Oct 2026, after #2598's restart step saw Full automation press 80 s after a restart on the wait the quit cut off).
+test('after a restart a job an earlier run held goes to the person, at start and on the first poll, and its run-out wait asks no press', async () => {
+  const now = Date.parse('2026-10-30T16:30:00Z'), started = now - 5000, asked = [], notices = [];
+  const waiting = {session: 's1', mode: 'auto', chosenAt: 'c1', state: 'waiting_to_submit', readyAt: now - 2 * 60000, manualOverride: false};
+  const handed = {...waiting, state: 'needs_user_handoff', reason: 'app_closed', manualOverride: true};
+  const controller = startedAt => {
+    let state = waiting;
+    return createBackgroundApplyController({}, {
+      store: {read: async () => state, interrupted: async (_url, session, options) => { asked.push([session, options]); return options?.quit && !state.manualOverride ? (state = handed) : null; }},
+      browser: {start: async () => ({owner: 'o1'})}, terminals: {list: () => [{id: 's1', url: 'https://jobs.example.test/w', background: {}, outcome: '', startedAt}], record: () => null, report: () => {}},
+      config: () => ({mode: 'auto', chosenAt: 'c1', auto: {waitMin: 1}}), now: () => now, started, token: () => 't', notify: (...args) => notices.push(args), stop: () => false, log: () => {}});
+  };
+  const before = new Date(started - 60000).toISOString();
+  const polled = await controller(before).handle({action: 'poll', owner: 'o1'});
+  assert.deepEqual(polled.checks, [], 'the wait the quit cut off asks no press, even before the start-up sweep');
+  assert.deepEqual(asked, [['s1', {quit: true}]], 'the job went to the person through the crash rule\'s writer');
+  assert.match(notices[0][1], /app was closed/);
+  asked.length = 0;
+  assert.deepEqual(await controller(before).sweepInterrupted(), ['s1'], 'the start-up sweep hands it over too');
+  assert.deepEqual(asked, [['s1', {quit: true}]]);
+  const fresh = await controller(new Date(started + 1000).toISOString()).handle({action: 'poll', owner: 'o1'});
+  assert.deepEqual(fresh.checks, [{session: 's1'}], 'positive control: a job this run started still presses when its wait runs out');
+});
+
+// Gitar on #2598: a hand-over that does not save must not let the job go on; a quit is a Stop even when the store write fails.
+test('a job an earlier run held whose hand-over fails is still never claimed or pressed', async () => {
+  const now = Date.parse('2026-10-30T16:30:00Z'), started = now - 5000, claimed = [];
+  const waiting = {session: 's1', mode: 'auto', chosenAt: 'c1', state: 'waiting_to_submit', readyAt: now - 2 * 60000, manualOverride: false};
+  const controller = startedAt => createBackgroundApplyController({}, {
+    store: {read: async () => waiting, interrupted: async () => { throw new Error('store unavailable'); }, claim: async (...args) => { claimed.push(args); return {ok: false}; }},
+    browser: {start: async () => ({owner: 'o1'})}, terminals: {list: () => [{id: 's1', url: 'https://jobs.example.test/w', background: {}, outcome: '', startedAt}], record: () => null, report: () => {}},
+    config: () => ({mode: 'auto', chosenAt: 'c1', auto: {waitMin: 1}}), now: () => now, started, token: () => 't', notify: () => {}, stop: () => false, log: () => {}});
+  const polled = await controller(new Date(started - 60000).toISOString()).handle({action: 'poll', owner: 'o1'});
+  assert.deepEqual([polled.checks, polled.jobs, claimed], [[], [], []], 'no press, no claim while the hand-over did not save');
+  const fresh = await controller(new Date(started + 1000).toISOString()).handle({action: 'poll', owner: 'o1'});
+  assert.deepEqual(fresh.checks, [{session: 's1'}], 'positive control: the same store outage does not stop a job this run started');
+});
+
+// Gitar on #2598: the cache is saved 1.5 s after a move, so a quit can leave the store handed over and the cache not; such a job still goes the hand-off way.
+test('a job an earlier run held that the store already handed over goes the normal hand-off way, even when its cache missed it', async () => {
+  const now = Date.parse('2026-10-30T16:30:00Z'), started = now - 5000;
+  const handed = {session: 's1', mode: 'auto', chosenAt: 'c1', state: 'needs_user_handoff', reason: 'stopped', manualOverride: true};
+  const controller = createBackgroundApplyController({}, {
+    store: {read: async () => handed, interrupted: async () => null},
+    browser: {start: async () => ({owner: 'o1'})}, terminals: {list: () => [{id: 's1', url: 'https://jobs.example.test/w', background: {state: 'waiting_to_submit', manualOverride: false}, outcome: '', startedAt: new Date(started - 60000).toISOString()}], record: () => null, report: () => {}},
+    config: () => ({mode: 'auto', chosenAt: 'c1', auto: {waitMin: 1}}), now: () => now, started, token: () => 't', notify: () => {}, stop: () => false, log: () => {}});
+  const polled = await controller.handle({action: 'poll', owner: 'o1'});
+  assert.deepEqual([polled.handoffs, polled.checks], [[{session: 's1', reason: 'stopped', reveal: true}], []], 'the stale cache does not hide the store\'s hand-over');
+});
+
+// Found by #2598's restart steps (30 Oct 2026): a handed-over session whose job was then removed made store.read throw on every poll, so no later job was ever claimed.
+test('an open session whose job record is gone does not stop the poll: the queued job is still claimed', async () => {
+  const queued = {session: 'new', mode: 'auto', chosenAt: 'c1', state: 'queued', owner: ''};
+  const controller = createBackgroundApplyController({}, {
+    store: {read: async url => { if (url.endsWith('/gone')) throw new Error('This job has no Application record. Prepare its kit first.'); return queued; },
+      claim: async () => ({ok: true, state: {...queued, state: 'preflight', owner: 'o1'}})},
+    browser: {start: async () => ({owner: 'o1'})},
+    terminals: {list: () => [{id: 'old', url: 'https://jobs.example.test/gone', background: {state: 'needs_user_handoff', manualOverride: true}, outcome: ''}, {id: 'new', url: 'https://jobs.example.test/new', background: {}, outcome: ''}], record: () => null, report: () => {}},
+    config: () => ({mode: 'auto', chosenAt: 'c1', auto: {waitMin: 1}}), token: () => 't', notify: () => {}, stop: () => false, log: () => {}});
+  const polled = await controller.handle({action: 'poll', owner: 'o1'});
+  assert.deepEqual(polled.jobs.map(job => job.session), ['new'], 'the removed job is skipped, the queued one starts');
+});

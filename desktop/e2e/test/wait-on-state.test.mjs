@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {test} from 'node:test';
 import {currentLaunchLog} from '../lib/app-log.mjs';
-import {formsClosedForJob, pollUntil, waitForFormValue, waitForLogLine, waitJobFormClosed} from '../lib/wait-on-state.mjs';
+import {formsClosedForJob, pollUntil, waitForDecisions, waitForFormValue, waitForLogLine, waitJobFormClosed} from '../lib/wait-on-state.mjs';
 
 const clock = () => {
   let ms = 0;
@@ -228,4 +228,37 @@ test('a fresh one-start log captures its own start count after replacing a compl
   };
   await waitForLogLine(profile, /startup moves finished/g, {...time, pause, capMs: 500});
   assert.deepEqual(time.ticks, [250], 'the fresh launch must finish before this call settles');
+});
+
+// Beta 41090972183 (applyflows, 30 Oct 2026): the form was done at 16:51:04, but the batch carrying "page kind corrected" was still on its way (batches landed 14-62 s late).
+const CORRECTED = /page kind corrected: a posting with no Apply but a form's fields/;
+const beforeBatch = '2026-10-30T16:50:24.474Z [extension] page kind forgotten: a posting with no Apply but a form\'s fields {}\n';
+const afterBatch = `${beforeBatch}2026-10-30T16:51:30.000Z [extension] fill: page kind corrected: a posting with no Apply but a form's fields {"extensionAt":"2026-10-30T16:50:24.480Z"}\n`;
+
+test('a decision line that lands after the form is done is waited for, where one read at that moment misses it', async () => {
+  const time = clock();
+  const read = async () => time.now() < 26000 ? beforeBatch : afterBatch;
+  assert.doesNotMatch(await read(), CORRECTED, 'the control: the single read the step made sees no line');
+  const {value, ms} = await waitForDecisions(read, [CORRECTED], time);
+  assert.match(value, CORRECTED);
+  assert.equal(ms, 26000);
+  assert.match(time.logs[0], /decision lines arrived 26000 ms/);
+});
+
+test('every expected decision line must be in the log, and a g flag cannot make a match flicker', async () => {
+  const time = clock();
+  const lines = ['account button: pressed {}', 'account button: pressed {}\naccount result: created {}'];
+  const {value} = await waitForDecisions(async () => lines[Math.min(time.now() / 250, 1)], [/account button: pressed/g, /account result: created/g], time);
+  assert.match(value, /account result: created/);
+  assert.deepEqual(time.ticks, [250]);
+});
+
+test('a decision line that never arrives returns the last log at the 60 s cap, and a failed read is retried', async () => {
+  const time = clock();
+  let reads = 0;
+  const read = async () => { if (++reads === 2) throw new Error('log rolled'); return beforeBatch; };
+  const {value, ms} = await waitForDecisions(read, [CORRECTED], time);
+  assert.equal(value, beforeBatch);
+  assert.equal(ms, 60000);
+  assert.deepEqual(time.logs, []);
 });

@@ -8,6 +8,7 @@ import {AUTO_DEFAULTS} from '../renderer/apply-settings-model.js';
 export const BACKGROUND_SECTION = 'Background Apply';
 const RESERVED = 'Background submit reserved';
 const TERMINAL = new Set(['manual_submit_required', 'needs_user_handoff', 'receipt_confirmed', 'submitting']);
+const BEFORE_PRESS = new Set(['queued', 'preflight', 'filling', 'ready_for_review', 'waiting_to_submit']);   // a job still on its way to a press: a quit hands it over (interrupted)
 const readState = text => { try { const state = JSON.parse(text || '{}'); return state?.version === 1 ? state : null; } catch { return null; } };
 
 /** Build a serialized controller over Applications sections/events; failed store writes reject before any launch or submit is authorized. */
@@ -109,12 +110,16 @@ export function createBackgroundApplyStore(storage, {call = engineCall, now = Da
    * A press the app's quit cut off: the job is still `submitting` with no receipt, and the hidden browser that pressed it died with the app, so nothing will ever read the site's reply.
    * Hands it to the person as `submission_outcome_unknown` ("check whether it went through") whichever browser owned it; the attempt stays used, so it is never reserved again.
    * `afterMs` (default 0): only a press older than that is handed over, for a reply that never came with the app still open (the extension closed); a younger press may still be answered.
+   * `quit`: the job was held by an earlier run of the app; any state before the press (queued, filling, ready for review, waiting) is handed over too, as `app_closed`.
+   * Why (30 Oct 2026, owner: "A quit is a Stop"): #2598's restart step saw Full automation press 80 s after a restart on the wait the quit cut off, through the reused hidden browser.
    * Returns the saved state, or null when this session's job is not mid-press or not old enough (another session's record is never touched).
    */
-  async function interrupted(url, session, {afterMs = 0} = {}) {
+  async function interrupted(url, session, {afterMs = 0, quit = false} = {}) {
     return serial(async () => {
       const app = await appOf(url), state = await load(app);
-      if (!state || state.session !== session || state.state !== 'submitting' || state.receiptAt) return null;
+      if (!state || state.session !== session) return null;
+      if (quit && !state.manualOverride && BEFORE_PRESS.has(state.state)) return manual(app, state, 'app_closed');   // words-ok: our own hand-off reason id, not page knowledge
+      if (state.state !== 'submitting' || state.receiptAt) return null;
       if (afterMs && now() - (state.submittedAt || 0) < afterMs) return null;
       return manual(app, state, 'submission_outcome_unknown');
     });

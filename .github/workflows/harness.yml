@@ -12,6 +12,7 @@ on:
     paths:
       # Every file or folder a harness test reaches (desktop/e2e/lib/test-reach.mjs), so the plan below sees each change that can break one: test/test-reach.test.mjs fails on a missing one.
       - 'desktop/**'
+      - '.github/workflows/ai-answer-drift.yml'
       # Data that other jobs replay (page-cases.yml, control-tests.yml); no harness test reaches them (owner, 14 Oct 2026: a recorded case alone started the harness).
       - '!desktop/e2e/recorded/**'
       - '!desktop/e2e/recorded-pending/**'
@@ -39,6 +40,7 @@ on:
       - '.github/workflows/replay-refill.yml'
       - 'hosted/ready-fill/extension-storage.mjs'
       - 'hosted/ready-fill/fill-video.mjs'
+      - 'tools/ai-answers-stamp.mjs'
       - 'tools/ai-format-capture.mjs'
       - 'tools/ai-format-js-capture.mjs'
       - 'tools/ai-format-python-capture.py'
@@ -52,6 +54,7 @@ on:
       - 'tools/pool-rows.mjs'
       - 'tools/record-env.mjs'
       - 'tools/rung-trailer.mjs'
+      - 'tools/seed-ai-answer-requests.mjs'
       - 'tools/sentry-fixer/codex-fix.mjs'
       - 'tools/sentry-fixer/lib.mjs'
       - 'tools/suspend-flip.mjs'

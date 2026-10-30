@@ -55,6 +55,7 @@
   "coverage-steps.test.mjs",
   "a11y.test.mjs",
   "activity.test.mjs",
+  "ai-answer-prompts.test.mjs",
   "ai-answers-decide.test.mjs",
   "ai-answers-engine.test.mjs",
   "ai-answers-enrich.test.mjs",
@@ -74,6 +75,7 @@
   "ai-proxy.test.mjs",
   "ai-refused.test.mjs",
   "ai-spend.test.mjs",
+  "answer-drift-nightly.test.mjs",
   "answer-reask.test.mjs",
   "app-log.test.mjs",
   "applicant-grown.test.mjs",
@@ -146,6 +148,7 @@
   "free-click.test.mjs",
   "golden-fixtures.test.mjs",
   "google-fake.test.mjs",
+  "hang-caps.test.mjs",
   "heavy.test.mjs",
   "hold-notes-real-logs.test.mjs",
   "installed-only.test.mjs",
@@ -343,6 +346,7 @@
   "store-call.test.mjs",
   "store.test.mjs",
   "storemove-backbone-no-live-ai.test.mjs",
+  "stored-answer-suites-no-live-ai.test.mjs",
   "storemove-process.test.mjs",
   "stores-answer.test.mjs",
   "stores-backbone-no-live-ai.test.mjs",
@@ -390,7 +394,8 @@
   "widget-zoo.test.mjs",
   "check-fill.test.mjs",
   "wrong-values.test.mjs",
-  "pr-linux.test.mjs"
+  "pr-linux.test.mjs",
+  "answer-drift.test.mjs"
  ],
  "folderReaders": {
   "./": [
@@ -467,6 +472,7 @@
  },
  "folderReaderExceptions": {
   "a11y.test.mjs": "Uses triage, which enumerates artifact directories and refers to suite paths without reading the suites folder.",
+  "ai-answer-prompts.test.mjs": "Imports no-real-ai.mjs and lists only a temporary ai-misses folder; its folder copies are src, tools and the golden fixtures into a temporary root for the offline prompt capture, never a harness code folder.",
   "ai-answers-engine.test.mjs": "Imports no-real-ai.mjs directly (its checkAiMisses lists a temporary ai-misses folder; this test never calls it); the only directories it lists are temporary answer tables, not harness code.",
   "ai-answers-place.test.mjs": "Imports no-real-ai.mjs directly (its checkAiMisses lists a temporary ai-misses folder; this test never calls it); the only directories it lists are temporary answer tables, not harness code.",
   "ai-answers-refusal.test.mjs": "Imports no-real-ai.mjs directly (its checkAiMisses lists a temporary ai-misses folder; this test never calls it); it lists no directory itself, only writes temporary answer tables.",

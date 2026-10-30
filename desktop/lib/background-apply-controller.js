@@ -2,6 +2,7 @@
 import {randomUUID, createHash} from 'node:crypto';
 import {createBackgroundApplyStore} from './background-apply-store.js';
 import {createBackgroundBrowser} from './background-browser.js';
+import {createTriageReader} from './triage-reader.js';
 import {applyOf, AUTO_DEFAULTS} from '../renderer/apply-settings-model.js';
 import * as terminalsDefault from './terminals.js';
 import {sessionTabUrl} from './session-tab.js';
@@ -12,7 +13,8 @@ import {log as appLog} from './log.js';
 const instances = new WeakMap();
 const HANDOFF = new Set(['manual_submit_required', 'needs_user_handoff']);
 const NOTICES = {captcha_preflight: 'This application needs a CAPTCHA check. Open it, solve the check and press Submit yourself.', captcha_runtime: 'This application stopped at a CAPTCHA. The same form is open for you. Solve the check and press Submit yourself.', stopped: 'Background application stopped. Review and submit this form yourself.',   // words-ok: our own hand-off reason id / user-facing word, not page knowledge
-  submission_outcome_unknown: 'No confirmation of this application came back. Check whether it went through, and do not send it again until you know.'};
+  submission_outcome_unknown: 'No confirmation of this application came back. Check whether it went through, and do not send it again until you know.',
+  app_closed: 'The app was closed while it held this application, so nothing was sent. Open it, check the form and submit it yourself.'};   // words-ok: our own hand-off reason id / user-facing word, not page knowledge
 export const MAX_BACKGROUND_SESSIONS = 10;
 
 /**
@@ -33,7 +35,7 @@ export function backgroundApplyFor(storage) {
 /** Create the controller with injectable store/browser boundaries for deterministic fictional browser proofs; no alternative filler exists here. */
 export function createBackgroundApplyController(storage, {store = null, browser = null, terminals = terminalsDefault,
   config = () => applyOf(storage.settings()), now = Date.now, uuid = randomUUID, stop = stopAsked, notify = (...args) => notifyDefault(...args),   // Why (2026-10-28, bot review #2324): main.js sets the notifier after the handlers register; read the live binding at each call
- log = appLog,
+ log = appLog, reader = createTriageReader(), started = APP_STARTED,   // `started`: when this run of the app began; a job held before it was cut off by a quit
   port = Number(process.env.JOB_PILOTTO_PORT || 47111), token = () => extensionToken(storage)} = {}) {
   store ||= createBackgroundApplyStore(storage, {stopped: stop});
   // Why (2026-10-28, CI #2324): the controller is created when the apply handlers register, before any background job exists; the browser reads storage.path, so it is built on first use.
@@ -92,10 +94,12 @@ export function createBackgroundApplyController(storage, {store = null, browser 
   async function poll(givenOwner) {
     if (!owner) ({owner} = await browserOf().start({port, token: token()}));
     if (!givenOwner || givenOwner !== owner) return {ok: false, jobs: [], checks: []};
+    await handOverAll(heldOpen, {quit: true});   // a poll before the start-up sweep never continues a job an earlier run held (owner, 30 Oct 2026: "A quit is a Stop")
     const jobs = [], checks = [], handoffs = [];
     let filling = false;
-    for (const item of terminals.list().filter(item => item.background && !item.outcome)) {
-      let state = await store.read(item.url);
+    const open = terminals.list().filter(item => item.background && !item.outcome && !unsaved.has(item.id));   // a held job whose hand-over write threw is never continued (Gitar on #2598); the next poll tries again
+    for (const item of open) {
+      let state = await store.read(item.url).catch(() => null);   // a session whose job record is gone is skipped, never the whole poll (#2598: one removed job stopped every later one)
       if (!state || state.session !== item.id) continue;
       if (!state.manualOverride && (stop() || item.stuck === 'stopped')) state = await markManual(item, 'stopped');
       const current = config();
@@ -104,35 +108,55 @@ export function createBackgroundApplyController(storage, {store = null, browser 
       if (HANDOFF.has(state.state)) { handoffs.push({session: item.id, reason: state.reason, reveal: state.reason !== 'captcha_preflight'}); cache(item, state); continue; }   // words-ok: our own hand-off reason id / user-facing word, not page knowledge
       if (state.state === 'submitting') continue; // a reserved attempt is never reissued, even after a lost reply/restart
       if (state.state === 'waiting_to_submit' && now() >= state.readyAt + (current.auto?.waitMin ?? AUTO_DEFAULTS.waitMin) * 60000) checks.push({session: item.id});
-      if (['queued', 'preflight'].includes(state.state) && !filling) {
+      if (['queued', 'preflight'].includes(state.state) && !filling && !reader.busy()) {
         const claim = await store.claim(item.url, item.id, owner);
         if (claim.ok) { filling = true; state = claim.state; jobs.push({session: item.id, url: sessionTabUrl(item.url, item.id), mode: state.mode}); }
       }
       cache(item, state);
     }
+    // Why (2026-10-30, owner: triage read, PR C2a): a form read and an application never share the hidden browser: a read waits for open applications, and an application waits (at most the read's timeout) for a read that is queued or out (Gitar, #2602).
+    jobs.push(...readCommands({filling, open}));
     return {ok: true, jobs, checks, handoffs};
   }
-  // Hands to the person every background job of `fits` that is mid-press (`submitting`, no receipt, and older than `afterMs`); returns their session ids.
-  async function handOverMidPress(fits, options) {
+  const readCommands = ({filling, open}) => {
+    const next = filling || open.length ? null : reader.take();
+    return next ? [{session: next.id, url: sessionTabUrl(next.url, next.id), mode: 'read'}] : [];
+  };
+  /** Reads one job's application form in the hidden browser without filling or pressing anything; resolves with the mode table's flags, or null when nothing could be read (no browser, an application open, a timeout). Takes the job ({url}). */
+  async function triageRead(job) {
+    if (!browserOf().ready() || terminals.list().some(item => item.background && !item.outcome)) return null;
+    if (!owner) ({owner} = await browserOf().start({port, token: token()}));
+    return reader.read(job?.url);
+  }
+  const unsaved = new Set();   // jobs an earlier run held whose quit hand-over write threw: the poll leaves them out until one saves (Gitar on #2598)
+  // Hands one background job to the person through the store's interrupted check (`options`: afterMs, quit) with its own words; -> the saved state, or null when it was not handed over.
+  async function handOverInterrupted(item, options) {
+    let threw = false;
+    const state = await store.interrupted(item.url, item.id, options).catch(() => { threw = true; return null; });
+    if (options.quit) unsaved[threw ? 'add' : 'delete'](item.id);
+    if (!state) return null;
+    cache(item, state);
+    notify('Application needs you', NOTICES[state.reason] || NOTICES.submission_outcome_unknown, {view: 'sessions', session: item.id}, 'warn');
+    log('apply', 'background application cut off handed to the person', {session: item.id, mode: state.mode, reason: state.reason, afterMs: options.afterMs || 0});
+    return state;
+  }
+  // Hands to the person every background job of `fits` the interrupted check accepts; returns their session ids.
+  async function handOverAll(fits, options) {
     const handed = [];
-    for (const item of terminals.list().filter(entry => entry.background && !entry.outcome && fits(entry))) {
-      const state = await store.interrupted(item.url, item.id, options).catch(() => null);
-      if (!state) continue;
-      cache(item, state);
-      notify('Application needs you', NOTICES.submission_outcome_unknown, {view: 'sessions', session: item.id}, 'warn');
-      log('apply', 'background application mid-press handed to the person', {session: item.id, mode: state.mode, afterMs: options.afterMs || 0});
-      handed.push(item.id);
-    }
+    for (const item of terminals.list().filter(entry => entry.background && !entry.outcome && fits(entry))) if (await handOverInterrupted(item, options)) handed.push(item.id);
     return handed;
   }
+  const heldBefore = (item, startedBefore = started) => Date.parse(item.startedAt) < startedBefore;   // a job an earlier run of the app held: its quit cut it off
+  const heldOpen = item => heldBefore(item) && !item.background?.manualOverride;   // one not handed over yet (the cached state, so a poll asks the store only for those)
   /**
-   * At start: every background job an earlier run left mid-press (`submitting`, no receipt) is handed to the person as "check whether it went through", never retried and never pressed again.
+   * At start: every background job an earlier run held is handed to the person and never pressed: mid-press as "check whether it went through", before the press as `app_closed`.
    * Why (2026-10-29, owner: "Yes, go" to the crash rule): the hidden browser dies with the app (lib/browser-reaper.js), so no watcher will ever read the site's reply; without this the card said
    * "Submission attempted" for ever. Why (2026-10-29, Gitar on the PR): the sweep waits for the start-up moves, so a press this run started meanwhile is still in flight; only sessions older than this run were cut off by a quit.
+   * Why (30 Oct 2026, owner: "A quit is a Stop"): a job before its press was continued after a restart, and Full automation pressed on the wait the quit cut off (#2598).
    * Returns the session ids it handed over.
    */
-  async function sweepInterrupted(startedBefore = APP_STARTED) {
-    return handOverMidPress(entry => Date.parse(entry.startedAt) < startedBefore, {});
+  async function sweepInterrupted(startedBefore = started) {
+    return handOverAll(entry => heldBefore(entry, startedBefore), {quit: true});
   }
   /**
    * While the app runs: a press with no receipt `afterMs` after it was sent is handed to the person too, because a reply that never arrives (the extension closed, the tab gone) has no other reader.
@@ -141,7 +165,7 @@ export function createBackgroundApplyController(storage, {store = null, browser 
    * Returns the session ids it handed over.
    */
   async function sweepStalled(afterMs = STALL_MS) {
-    return handOverMidPress(entry => entry.background?.state === 'submitting', {afterMs});   // the cached state (set by every store move) spares the store a subprocess per idle session every 30 s (Gitar on #2451)
+    return handOverAll(entry => entry.background?.state === 'submitting', {afterMs});   // the cached state (set by every store move) spares the store a subprocess per idle session every 30 s (Gitar on #2451)
   }
   async function judgment(body, answer) {
     const context = body?.background, item = itemFor(context?.session);
@@ -159,6 +183,7 @@ export function createBackgroundApplyController(storage, {store = null, browser 
       if (payload.action === 'poll') return poll(payload.owner);
       if (!owner && payload.owner) ({owner} = await browserOf().start({port, token: token()}));
       if (!owner || payload.owner !== owner) return {ok: false};
+      if (payload.action === 'triage-read') return {ok: reader.report(String(payload.session || ''), payload)};   // a form read's answer: no application item behind it
       const item = itemFor(payload.session);
       if (!item) return {ok: false};
       if (payload.action === 'manual') {
@@ -235,5 +260,5 @@ export function createBackgroundApplyController(storage, {store = null, browser 
       return {ok: true, handoff};
     });
   }
-  return {enqueue, handle, judgment, reveal, outcome, cancel, page, submitControl, handOver, sweepInterrupted, sweepStalled};
+  return {enqueue, handle, judgment, reveal, outcome, cancel, page, submitControl, handOver, sweepInterrupted, sweepStalled, triageRead, cancelTriage: () => reader.cancelAll()};
 }

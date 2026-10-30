@@ -1,26 +1,40 @@
 // Runs a persona command behind CI's Codex Messages relay; GitHub OIDC stays in the parent and no API credential or fallback reaches the child.
 import {spawn} from 'node:child_process';
+import http from 'node:http';
 import {pathToFileURL} from 'node:url';
 import {aiProvider} from '../../desktop/e2e/lib/ai-provider.mjs';
 import {askBroker} from '../../desktop/e2e/lib/broker-client.mjs';
 import {answerViaBroker} from '../../desktop/e2e/lib/broker-relay.mjs';
-import {startAiProxy} from '../../desktop/e2e/lib/ai-proxy.mjs';
 
 /** Run one command on the Codex relay and return its exit code. Invariant: every proxy request uses the broker; no API fallback, even on refusal. */
 export async function runOnCodex(command, args, {env = process.env, ask = askBroker} = {}) {
   if (!env.CI || aiProvider(env).provider !== 'codex' || !env.ACTIONS_ID_TOKEN_REQUEST_URL || !env.ACTIONS_ID_TOKEN_REQUEST_TOKEN) {
     throw new Error('the persona Codex relay requires CI, the Codex provider and GitHub OIDC');
   }
-  const proxy = await startAiProxy({kind: 'app-codex', metered: /./, relay: body => answerViaBroker(body, {env, ask})});
+  // Why (30 Oct 2026, Gitar on #2635): persona quality must be live; the e2e proxy's golden answers, stale stamps and replay cache cannot measure a changed search.
+  const server = http.createServer(async (request, response) => {
+    const chunks = [];
+    for await (const chunk of request) chunks.push(chunk);
+    try {
+      const answer = await answerViaBroker(JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}'), {env, ask});
+      response.writeHead(answer.status, {'content-type': answer.contentType});
+      response.end(answer.body);
+    } catch (error) {
+      response.writeHead(502, {'content-type': 'application/json'});
+      response.end(JSON.stringify({type: 'error', error: {type: 'api_error', message: `relay: ${error.message}`}}));
+    }
+  });
+  await new Promise((resolve, reject) => { server.once('error', reject); server.listen(0, '127.0.0.1', resolve); });
+  const url = `http://127.0.0.1:${server.address().port}`;
   try {
     const childEnv = Object.fromEntries(Object.entries(env).filter(([name]) => !name.endsWith('_KEY') && !name.endsWith('_TOKEN') && !name.endsWith('_SECRET') && !name.startsWith('ANTHROPIC_') && !name.startsWith('ACTIONS_ID_TOKEN_')));
-    Object.assign(childEnv, {JOB_PILOTTO_PERSONA_CODEX: '1', ANTHROPIC_BASE_URL: proxy.url, JOB_PILOTTO_E2E: '1', JOB_PILOTTO_E2E_AI_BASE_URL: proxy.url, JOB_PILOTTO_NO_DOTENV: '1'});
+    Object.assign(childEnv, {JOB_PILOTTO_PERSONA_CODEX: '1', ANTHROPIC_BASE_URL: url, JOB_PILOTTO_E2E: '1', JOB_PILOTTO_E2E_AI_BASE_URL: url, JOB_PILOTTO_NO_DOTENV: '1'});
     return await new Promise((resolve, reject) => {
       const child = spawn(command, args, {env: childEnv, stdio: 'inherit'});
       child.once('error', reject);
       child.once('exit', code => resolve(code ?? 1));
     });
-  } finally { await proxy.close(); }
+  } finally { server.closeAllConnections?.(); await new Promise(resolve => server.close(resolve)); }
 }
 
 async function main() {

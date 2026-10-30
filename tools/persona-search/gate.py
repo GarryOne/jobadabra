@@ -22,7 +22,7 @@ MAIN_RUNS = 3       # the per-persona "Main" column shows the newest 3 measured 
 # itself: no guessed number.
 QUALITY_MIN_RUNS = 10
 QUALITY_SPREADS = 2
-PERSONA_CAP_USD = 0.10   # Why (owner, 27 Oct 2026, "Haiku on an API key ... with a per-run $ cap"): measured on #2259 (4 personas): $0.045-0.079, mean $0.058, so ~$0.35 a run; the cap is ~25% over the worst
+PERSONA_CAP_USD = 0.10   # Why (30 Oct 2026, owner; supersedes 27 Oct): Codex runs report $0 API charge; this cap only guards legacy API-key measurements (#2259: $0.045-0.079).
 COST = 'Codex subscription (ChatGPT plan; no API charge)'
 
 
@@ -164,7 +164,7 @@ def compare(pr, main_runs):
         unmeasured += bool(row and row.get('not_measured'))
         red += bool(reasons)
         rows.append({'persona': n, 'label': label(n), 'main': seen, 'local': (row or {}).get('local'), 'found': (row or {}).get('found'),
-                     'seconds': (row or {}).get('seconds'), 'usd': (row or {}).get('usd'), 'reasons': reasons, 'not_measured': (row or {}).get('not_measured')})
+                     'seconds': (row or {}).get('seconds'), 'usd': (row or {}).get('usd'), 'billing': (row or {}).get('billing'), 'reasons': reasons, 'not_measured': (row or {}).get('not_measured')})
     quality_ = quality(pr, main_runs)
     if red or quality_['red']:
         parts = ([f'{red} persona(s) red'] if red else []) + ([f"total {quality_['total']} right jobs, below main's floor {quality_['floor']}"] if quality_['red'] else [])
@@ -180,7 +180,8 @@ def compare(pr, main_runs):
 
 def table(verdict):
     spent = sum(r['usd'] or 0 for r in verdict['rows'])
-    lines = [f"🔍 **Search check:** {verdict['head']} · {COST} · cost ${spent:.2f} (cap ${PERSONA_CAP_USD * len(PERSONAS):.2f})", '',
+    cap = '' if any(r.get('billing') == 'subscription' for r in verdict['rows']) else f' (legacy API cap ${PERSONA_CAP_USD * len(PERSONAS):.2f})'
+    lines = [f"🔍 **Search check:** {verdict['head']} · {COST} · cost ${spent:.2f}{cap}", '',
              f"| Persona | Main (last {MAIN_RUNS}) | This PR | Found | Press | Cost | |", '|---|---|---|---|---|---|---|']
     for r in verdict['rows']:
         main = ' · '.join(str(x) for x in r['main']) or '—'

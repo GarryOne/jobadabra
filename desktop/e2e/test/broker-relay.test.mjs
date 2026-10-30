@@ -105,3 +105,28 @@ test('a persona broker refusal stays an error and the wrapper returns the child 
   assert.equal(code, 7);
   await assert.rejects(runOnCodex('unused', [], {env: {CI: 'true', CI_AI_PROVIDER: 'claude'}}), /Codex/);
 });
+
+test('a persona stamped prompt always reaches Codex, even when the e2e golden stamp is stale', async t => {
+  const fs = await import('node:fs'), os = await import('node:os'), path = await import('node:path');
+  const {storedAnswer} = await import('../lib/ai-answers.mjs');
+  const {runOnCodex} = await import('../../../tools/persona-search/codex.mjs');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'persona-relay-'));
+  const file = path.join(dir, 'answers.json');
+  const {request: original, action} = JSON.parse(fs.readFileSync(new URL('../fixtures/golden/ai-format-python.json', import.meta.url))).entries.find(entry => entry.kind === 'app.title');
+  const body = {...original, system: 'Changed title instructions for this PR.'};
+  fs.writeFileSync(file, JSON.stringify({v: 1, answers: {}, promptHashes: {'app.title': '0'.repeat(64)}}));
+  const previous = Object.fromEntries(['E2E_AI_ANSWERS_FILE', 'E2E_ARTIFACTS'].map(key => [key, process.env[key]]));
+  Object.assign(process.env, {E2E_AI_ANSWERS_FILE: file, E2E_ARTIFACTS: dir});
+  t.after(() => { for (const [key, value] of Object.entries(previous)) { if (value === undefined) delete process.env[key]; else process.env[key] = value; } fs.rmSync(dir, {recursive: true, force: true}); });
+  assert.throws(() => storedAnswer({body, headers: {'x-jp-action': action}}), /stale: prompt changed app.title/);
+  let asks = 0;
+  const code = await runOnCodex(process.execPath, ['--input-type=module', '-e', `
+    import assert from 'node:assert/strict';
+    const reply = await fetch(process.env.ANTHROPIC_BASE_URL + '/v1/messages', {method: 'POST', headers: {'x-jp-action': ${JSON.stringify(action)}}, body: ${JSON.stringify(JSON.stringify(body))}});
+    assert.equal(reply.status, 200);
+    assert.equal((await reply.json()).content[0].text, 'fresh from Codex');
+  `], {env: {...process.env, CI: 'true', CI_AI_PROVIDER: 'codex', E2E_AI_PROVIDER: 'codex', ACTIONS_ID_TOKEN_REQUEST_TOKEN: 'oidc', ACTIONS_ID_TOKEN_REQUEST_URL: 'https://oidc.invalid'},
+    ask: async asked => { asks++; assert.equal(asked.system, 'Changed title instructions for this PR.'); return answered('fresh from Codex')(); }});
+  assert.equal(code, 0);
+  assert.equal(asks, 1);
+});

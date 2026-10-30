@@ -221,7 +221,9 @@ class TheWorkflowRunsOnCodex(unittest.TestCase):
             row = gate.result(1, out)
             self.assertEqual(row['usd'], 0)
             self.assertEqual(row['billing'], 'subscription')
-            self.assertIn('Codex subscription', gate.table(gate.compare({1: row}, [])))
+            table = gate.table(gate.compare({1: row}, []))
+            self.assertIn('Codex subscription', table)
+            self.assertNotIn('cap $', table)
 
     def test_a_persona_over_its_cost_cap_is_red_and_the_cost_is_in_the_table(self):
         row = {'persona': 1, 'local': 5, 'seconds': 100, 'code': 0, 'crashes': 0, 'usd': gate.PERSONA_CAP_USD + 0.01}

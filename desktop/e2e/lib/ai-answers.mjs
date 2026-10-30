@@ -6,7 +6,7 @@ import {fileURLToPath} from 'node:url';
 import {decideQuestion} from './ai-answers-decide.mjs';
 import {placeQuestion} from './ai-answers-place.mjs';
 import {engineQuestion, itemOperation, validateItemEntry} from './ai-answers-engine.mjs';
-import {object} from './ai-answers-engine-items.mjs';
+import {canonical, hash, object} from './ai-answers-engine-items.mjs';
 
 const GOLDEN = new URL('../fixtures/golden/', import.meta.url);
 const TABLE = fileURLToPath(new URL('ai-answers.json', GOLDEN));
@@ -77,6 +77,8 @@ const parsed = body => {
 const textOf = content => typeof content === 'string' ? content : (Array.isArray(content) ? content.map(part => part?.text || '').join('\n') : '');
 const actionOf = (headers, body) => new Headers(headers || {}).get('x-jp-action') || String(body.prompt_cache_key || '').replace(/^job-pilotto-/, '');
 
+/** Identify one posting by its golden row, or by its trimmed feed identity when no golden row matches. */
+// Why (30 Oct 2026, qu+ap): a suite scoring its own feed postings needs stored answers keyed by the question.
 function scoreQuestion(body, persona) {
   const messages = body.messages || (Array.isArray(body.input) ? body.input : [{role: 'user', content: body.input}]);
   const text = messages.filter(item => item.role === 'user').map(item => textOf(item.content)).join('\n');
@@ -86,7 +88,12 @@ function scoreQuestion(body, persona) {
   const sources = JSON.parse(fs.readFileSync(new URL('sources.json', golden), 'utf8'));
   const matches = truth.filter(item => identities.some(([, title, company, location]) =>
     item.title === title.trim() && (item.company || sources[0].company) === company.trim() && item.location === location.trim()));
-  if (identities.length !== 1 || matches.length !== 1) return {unkeyable: 'app.score: posting title, company and location must match exactly one golden row'};
+  if (identities.length !== 1 || matches.length > 1) return {unkeyable: 'app.score: request must carry exactly one posting identity matching at most one golden row'};
+  if (matches.length === 0) {
+    const [, title, company, location] = identities[0];
+    const id = `feed/${hash(canonical({company: company.trim(), location: location.trim(), title: title.trim()}))}`;
+    return {operation: 'app.score', id: persona ? `${persona}/${id}` : id};
+  }
   return {operation: 'app.score', id: persona ? `${persona}/${matches[0].id}` : String(matches[0].id)};
 }
 

@@ -1,11 +1,12 @@
 // Stored question answers precede every transport and hash cache, with localhost-only upstreams.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import {createHash} from 'node:crypto';
 import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 import {test} from 'node:test';
-import {answersMode, loadTable, questionOf, answerFor, refusal, recordCandidate, refusedQuestions} from '../lib/ai-answers.mjs';
+import {answersMode, loadTable, questionOf, answerFor, refusal, recordCandidate, refusedQuestions, storedAnswer} from '../lib/ai-answers.mjs';
 import {FAILURES, message, startAiProxy} from '../lib/ai-proxy.mjs';
 import {fresh, keep, requestKey} from '../lib/ai-meter.mjs';
 import {modelFetch} from '../lib/model.mjs';
@@ -14,9 +15,12 @@ import {judge} from '../lib/factjudge.mjs';
 const golden = JSON.parse(fs.readFileSync(new URL('../fixtures/golden/truth.json', import.meta.url)));
 const company = JSON.parse(fs.readFileSync(new URL('../fixtures/golden/sources.json', import.meta.url)))[0].company;
 const stored = message('{"score":82}'), live = message('{"score":61}');
-const score = (item = golden[0], extra = '') => ({model: 'test', messages: [{role: 'user', content: `Title: ${item.title}\nCompany: ${company}\nLocation: ${item.location}\nPosting:\n${extra || item.description}`} ]});
+const score = (item = golden[0], extra = '') => ({model: 'test', messages: [{role: 'user', content: `Title: ${item.title}\nCompany: ${item.company ?? company}\nLocation: ${item.location}\nPosting:\n${extra || item.description}`} ]});
 const init = body => ({method: 'POST', headers: {'content-type': 'application/json', 'x-jp-action': 'score'}, body: JSON.stringify(body)});
 const keyed = {operation: 'app.score', id: '3001'};
+const feedPosting = {company: 'Acme', location: 'Zurich', title: 'Site Reliability Engineer'};
+const feedId = `feed/${createHash('sha256').update(JSON.stringify({company: 'Acme', location: 'Zurich', title: 'Site Reliability Engineer'})).digest('hex')}`;
+const scoreReason = 'app.score: request must carry exactly one posting identity matching at most one golden row';
 
 function fixture(t, answers = {'app.score': {'3001': {reply: stored}}}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ai-answers-'));
@@ -74,10 +78,87 @@ test('score identity uses exact posting triples, not wording, model, schemas or 
   }
   const a = score(), b = score(golden[1]);
   assert.match(questionOf({headers: {'x-jp-action': 'score'}, body: {...a, messages: [...a.messages, ...b.messages]}}).unkeyable, /app.score/);
-  assert.match(questionOf({headers: {'x-jp-action': 'score'}, body: score({title: 'Unknown', location: 'Nowhere'})}).unkeyable, /app.score/);
-  assert.match(questionOf({headers: {'x-jp-action': 'score'}, body: {...a, messages: [{role: 'user', content: a.messages[0].content.replace(company, 'Other employer')}]}}).unkeyable, /app.score/);
   assert.deepEqual(questionOf({body: a, hint: {operation: 'judge.facts', id: '3001/first'}}), {operation: 'judge.facts', id: '3001/first'});
   assert.deepEqual(questionOf({headers: {'x-jp-action': 'decide'}, body: a}), {unkeyable: 'decide: missing recognised system prefix'});
+});
+
+test('non-golden score identity hashes sorted trimmed fields and keeps persona isolation', () => {
+  for (const posting of [feedPosting, {title: '  Site Reliability Engineer  ', company: ' Acme ', location: ' Zurich  '}]) {
+    const body = score(posting, 'Unrelated posting text.');
+    for (const persona of ['', 'photographer']) {
+      const expected = {operation: 'app.score', id: persona ? `${persona}/${feedId}` : feedId};
+      const env = {E2E_QUALITY_PERSONA: persona};
+      assert.deepEqual(questionOf({headers: {'x-jp-action': 'score'}, body}, env), expected);
+      assert.deepEqual(questionOf({body: {prompt_cache_key: 'job-pilotto-score', input: body.messages}}, env), expected);
+    }
+  }
+});
+
+test('score refuses zero or multiple identities and multiple golden matches with the same reason', t => {
+  const request = body => questionOf({headers: {'x-jp-action': 'score'}, body}, {});
+  assert.deepEqual(request({messages: []}), {unkeyable: scoreReason});
+  const a = score(feedPosting), b = score(golden[0]);
+  for (const messages of [[...a.messages, ...a.messages], [...a.messages, ...b.messages]]) {
+    assert.deepEqual(request({messages}), {unkeyable: scoreReason});
+  }
+  const read = fs.readFileSync;
+  t.mock.method(fs, 'readFileSync', (file, ...args) => String(file) === String(new URL('../fixtures/golden/truth.json', import.meta.url)) ?
+    JSON.stringify([...golden, {...golden[0], id: 9999}]) : read(file, ...args));
+  assert.deepEqual(request(b), {unkeyable: scoreReason});
+});
+
+test('feed score entries use the same reply-object validation as golden entries', t => {
+  const {file} = fixture(t, {'app.score': {[feedId]: {reply: stored}}});
+  assert.deepEqual(answerFor({operation: 'app.score', id: feedId}, loadTable(file)), {reply: stored});
+  for (const id of ['3001', feedId]) for (const entry of [{}, {reply: null}, {reply: []}, {reply: 'text'}]) {
+    fs.writeFileSync(file, JSON.stringify({v: 1, answers: {'app.score': {[id]: entry}}}));
+    assert.throws(() => loadTable(file), error => error.message === `AI answers: app.score/${id} reply must be an object`);
+  }
+});
+
+for (const shape of ['anthropic', 'openai']) for (const mode of ['off', 'backbone', 'record']) test(`feed score ${shape} ${mode}: stored replies at all three seams; backbone misses refuse by name`, async t => {
+  const {file, env, dir} = fixture(t, {});
+  Object.assign(env, {E2E_AI_ANSWERS: 'backbone', E2E_AI_CACHE: dir, E2E_AI_CANDIDATES: dir, E2E_AI_REPLAY: '1', E2E_QUALITY_PERSONA: ''});
+  environment(t, env);
+  const up = await upstream(t); let engines = 0, relays = 0;
+  const proxy = await proxyFor(t, {target: up.url, shape, relay: () => { relays++; throw new Error('must not relay'); }});
+  const body = shape === 'anthropic' ? score(feedPosting) : {prompt_cache_key: 'job-pilotto-score', input: score(feedPosting).messages};
+  const pathname = shape === 'anthropic' ? '/v1/messages' : '/v1/responses', request = init(body);
+  const ask = {url: pathname, headers: request.headers, body};
+  const options = {env, engine: () => { engines++; throw new Error('must not choose an engine'); }};
+  keep(requestKey(pathname, Buffer.from(request.body)), {status: 200, contentType: 'application/json', body: Buffer.from(JSON.stringify(live))}, env);
+  const named = error => { assert.equal(error.code, 'E2E_AI_ANSWER_MISSING'); assert.ok(error.message.includes(`app.score/${feedId} has no stored answer`)); return true; };
+  assert.throws(() => storedAnswer(ask, env), named);
+  await assert.rejects(modelFetch(`${up.url}${pathname}`, request, options), named);
+  const missing = await fetch(`${proxy.url}${pathname}`, request);
+  assert.equal(missing.status, 503); named((await missing.json()).error);
+  assert.equal(refusedQuestions(env).length, 3);
+  fs.writeFileSync(file, JSON.stringify({v: 1, answers: {'app.score': {[feedId]: {reply: stored}}}}));
+  env.E2E_AI_ANSWERS = process.env.E2E_AI_ANSWERS = mode;
+  assert.deepEqual(storedAnswer(ask, env), {reply: stored});
+  assert.deepEqual(await (await modelFetch(`${up.url}${pathname}`, request, options)).json(), stored);
+  const response = await fetch(`${proxy.url}${pathname}`, request);
+  assert.equal(response.status, 200);
+  const reply = await response.json();
+  assert.equal(shape === 'openai' ? reply.output_text : reply.content[0].text, stored.content[0].text);
+  assert.equal(up.calls(), 0); assert.equal(engines, 0); assert.equal(relays, 0); assert.equal(proxy.stats.paid || 0, 0);
+  assert.ok(!fs.existsSync(path.join(dir, 'ai-answers-candidates.json')));
+});
+
+test('feed score record misses write loadable keyed candidates through modelFetch and the proxy', async t => {
+  const {env, dir} = fixture(t, {}), up = await upstream(t);
+  Object.assign(env, {E2E_AI_ANSWERS: 'record', E2E_AI_CANDIDATES: dir, E2E_AI_CACHE: dir, E2E_AI_REPLAY: '1', E2E_QUALITY_PERSONA: ''});
+  environment(t, env);
+  const proxy = await proxyFor(t, {target: up.url}), request = init(score(feedPosting));
+  const candidates = path.join(dir, 'ai-answers-candidates.json');
+  for (const ask of [() => modelFetch(`${up.url}/v1/messages`, request, {env, engine: () => 'api'}),
+    () => fetch(`${proxy.url}/v1/messages`, request)]) {
+    assert.deepEqual(await (await ask()).json(), live);
+    assert.deepEqual(loadTable(candidates).answers, {'app.score': {[feedId]: {reply: live}}});
+    fs.rmSync(candidates);
+  }
+  assert.equal(up.calls(), 2);
+  assert.deepEqual(loadTable(env.E2E_AI_ANSWERS_FILE).answers, {});
 });
 
 test('kind declarations validate exactly one known refusal or object reply', t => {
@@ -273,7 +354,7 @@ for (const mode of ['off', 'backbone', 'record']) test(`photographer score in ${
   const response = await fetch(`${proxy.url}/v1/messages`, init(score()));
   if (mode === 'backbone') {
     assert.equal(response.status, 503);
-    assert.match((await response.json()).error.message, /app.score:.*is unkeyable/);
+    assert.match((await response.json()).error.message, /app.score\/photographer\/feed\/[a-f0-9]{64}.*has no stored answer/);
     assert.equal(up.calls(), 0);
   } else {
     assert.deepEqual(await response.json(), live);

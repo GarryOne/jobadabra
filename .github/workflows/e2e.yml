@@ -393,7 +393,7 @@ jobs:
       - name: Run the ${{ matrix.key }} suite (first try)
         id: suite_run
         env:
-          # Why (30 Oct 2026, ap; owner-approved rule A and burn-in): admission uses stored answers; manual first attempts may record; quality, stores, interviews, wander, activityfailures, storemove, calendar, failuresnotion, jobs and applyflows otherwise use backbone answers on both tries without live AI.
+          # Why (30 Oct 2026, ap; owner-approved rule A and burn-in): admission uses stored answers; manual first attempts may record; quality, stores, interviews, wander, activity, interactions, failureschannels, activityfailures, storemove, calendar, failuresnotion, jobs and applyflows otherwise use backbone answers on both tries without live AI.
           E2E_AI_ANSWERS: ${{ matrix.burnIn && 'backbone' || github.event_name == 'workflow_dispatch' && github.run_attempt == 1 && inputs.ai_answers == 'record' && 'record' || contains(fromJSON('["quality","stores","interviews","wander","activity","interactions","failureschannels","activityfailures","storemove","calendar","failuresnotion","jobs","applyflows"]'), matrix.suite) && 'backbone' || 'off' }}
           PR_RUN: ${{ inputs.pr_suites != '' && inputs.after_merge == '' && '1' || '' }}   # a report-only suite skips its retry on a PR only; main, nightly and gate runs keep it
         # A red first run is not the verdict (owner, 6 Oct 2026): the step below runs the suite once more on the same commit and decides. Flaky (red, then green)
@@ -426,7 +426,7 @@ jobs:
       - name: "First try failed: the ${{ matrix.key }} suite once more, to tell flaky from real"
         if: steps.suite_run.outcome == 'failure' && !inputs.mutant && !matrix.burnIn && steps.suite_run.outputs.report_only != '1' && matrix.outside != true
         env:
-          # Why (30 Oct 2026, ap): storemove retries use the same stored organizer answer, never a UUID-dependent live replay; calendar, failuresnotion, jobs and applyflows retries use the same stored answers as the first attempt.
+          # Why (30 Oct 2026, ap): storemove retries use the same stored organizer answer, never a UUID-dependent live replay; calendar, failuresnotion, jobs, applyflows, activity, interactions and failureschannels retries use the same stored answers as the first attempt (bb 3/9, 30 Oct 2026).
           E2E_AI_ANSWERS: ${{ contains(fromJSON('["quality","stores","interviews","wander","activity","interactions","failureschannels","activityfailures","storemove","calendar","failuresnotion","jobs","applyflows"]'), matrix.suite) && 'backbone' || 'off' }}
         working-directory: desktop/e2e
         timeout-minutes: 15

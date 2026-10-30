@@ -8,6 +8,7 @@ import {pickFamily} from '../lib/engine.mjs';
 import {notionFarSide, pickStore, runToken, STORES, storeSettings} from '../lib/store.mjs';
 import {E2E} from '../lib/app.mjs';
 import {SUITES} from '../lib/context.mjs';
+import * as interviews from '../suites/interviews.mjs';
 import * as quality from '../suites/quality.mjs';
 
 test('a Mac runs on its own store (what a new install gets) unless pinned; E2E_NOTION_STANDIN=1 still means the stand-in', () => {
@@ -37,6 +38,13 @@ test('quality pins SQLite for every CI store alternation so recorded answers use
   assert.equal(quality.store, 'sqlite');
   for (const run of [...Array(16).keys(), 985, 987]) { // 985 and 987 are beta 3 and beta 4's run numbers
     assert.equal(pickStore({env: {CI: 'true', GITHUB_RUN_NUMBER: String(run)}, suiteStore: quality.store}), 'sqlite', 'run ' + run);
+  }
+});
+
+test('interviews pins SQLite across CI store alternation and environment overrides', () => {
+  assert.equal(interviews.store, 'sqlite');
+  for (const run of [0, 1, 2, 3]) {
+    assert.equal(pickStore({env: {CI: 'true', GITHUB_RUN_NUMBER: String(run), E2E_STORE: 'standin'}, suiteStore: interviews.store}), 'sqlite', 'run ' + run);
   }
 });
 

@@ -1,5 +1,5 @@
 {
-  "about": "Reviewed AI answers for the quality backbone suite (29 Oct 2026 record run 40861637712; scores and decide items reviewed by qu, rule in the PR). Keyed by question, not request bytes. Shared background kinds are declared by name with invalid-key refusals (owner, 29 Oct 2026); stores uses its notice-period stand-in plus these kinds.",
+  "about": "Reviewed AI answers for the quality backbone suite (29 Oct 2026 record run 40861637712; scores and decide items reviewed by qu, rule in the PR). Keyed by question, not request bytes. Shared background kinds are declared by name with invalid-key refusals (owner, 29 Oct 2026); stores uses its notice-period stand-in plus these kinds. Interviews declares caption-keyed authored reviews and a kind-only authored patterns reply (29 Oct 2026); these are fixtures, not recorded model replies.",
   "kinds": {
     "organize_lines": {
       "answer": {
@@ -55,6 +55,31 @@
       "answer": {
         "refuse": "invalid-key"
       }
+    },
+    "interview": {
+      "identity": "caption"
+    },
+    "interview_patterns": {
+      "answer": {
+        "reply": {
+          "id": "msg_e2e",
+          "model": "e2e-canned",
+          "stop_sequence": null,
+          "type": "message",
+          "role": "assistant",
+          "stop_reason": "end_turn",
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"nothing_useful\":false,\"headline\":\"Practise explaining how your Terraform approach extends across clouds.\",\"headline_detail\":\"The transcript names a multi cloud gap.\",\"patterns\":[{\"round_type\":\"Recruiter screen\",\"title\":\"Terraform experience has a multi cloud gap\",\"kind\":\"note\",\"pattern\":\"You describe Terraform modules and CI checks but have not run a multi cloud estate.\",\"evidence\":[{\"interview\":\"I1\",\"quote\":\"I have not run a multi cloud estate.\"}]}],\"next_steps\":[{\"action\":\"Practise describing Terraform across multiple clouds.\",\"title\":\"Explain Terraform across clouds\",\"focus\":\"Terraform • multiple clouds\",\"interviews\":[\"I1\"]}],\"confidence\":\"low\"}"
+            }
+          ],
+          "usage": {
+            "input_tokens": 1,
+            "output_tokens": 1
+          }
+        }
+      }
     }
   },
   "answers": {
@@ -103,7 +128,7 @@
         "reply": {
           "content": [
             {
-              "text": "{\"score\":86,\"tier\":\"A\",\"components\":{\"role_fit\":90,\"location\":100,\"compensation\":70,\"growth\":80,\"risk\":25},\"basis\":{\"salary_stated\":true,\"level_stated\":true,\"one_job\":true},\"reason\":\"Senior AWS and Kubernetes work fits closely, with remote work from Zurich.\",\"strengths\":[\"AWS, Kubernetes and Terraform experience\",\"Prometheus and Grafana observability\",\"Senior SRE experience and incident response\"],\"gaps\":[\"EUR 95,000\u2013120,000 stated; no conversion to CHF target\",\"CI/CD experience not explicitly stated in profile\",\"Permanent status and 100% workload not stated\"],\"confidence\":\"high\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"CI/CD experience is not explicitly stated in the profile.\"}}",
+              "text": "{\"score\":86,\"tier\":\"A\",\"components\":{\"role_fit\":90,\"location\":100,\"compensation\":70,\"growth\":80,\"risk\":25},\"basis\":{\"salary_stated\":true,\"level_stated\":true,\"one_job\":true},\"reason\":\"Senior AWS and Kubernetes work fits closely, with remote work from Zurich.\",\"strengths\":[\"AWS, Kubernetes and Terraform experience\",\"Prometheus and Grafana observability\",\"Senior SRE experience and incident response\"],\"gaps\":[\"EUR 95,000–120,000 stated; no conversion to CHF target\",\"CI/CD experience not explicitly stated in profile\",\"Permanent status and 100% workload not stated\"],\"confidence\":\"high\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"CI/CD experience is not explicitly stated in the profile.\"}}",
               "type": "text"
             }
           ],
@@ -239,10 +264,68 @@
           }
         }
       }
+    },
+    "app.interview": {
+      "recruiter-call-gamma": {
+        "reply": {
+          "id": "msg_e2e",
+          "model": "e2e-canned",
+          "stop_sequence": null,
+          "type": "message",
+          "role": "assistant",
+          "stop_reason": "end_turn",
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"application\":-1,\"company\":\"Gamma Freight\",\"round\":\"Recruiter screen\",\"interviewers\":[\"Recruiter\"],\"duration_min\":2,\"questions\":[{\"topic\":\"Terraform\",\"question\":\"What is your experience with Terraform at scale?\",\"answer\":\"Six years; about two hundred modules, CI plan checks and a policy gate.\",\"quality\":\"ok\",\"better\":\"Explain how the module and policy approach would extend to multiple clouds.\"}],\"strengths\":[\"Stabilises incidents before investigating: rollback, metrics and traces.\"],\"weaknesses\":[],\"signals\":[],\"red_flags\":[],\"next_step\":\"Technical interview with the platform lead, probably next week.\",\"practice\":[\"Practise describing Terraform across multiple clouds.\"],\"overall\":\"positive\",\"summary\":\"You described structured incident handling and Terraform experience, with a multi cloud gap.\",\"facts\":[]}"
+            }
+          ],
+          "usage": {
+            "input_tokens": 1,
+            "output_tokens": 1
+          }
+        }
+      },
+      "E2E Acme · Round 1": {
+        "reply": {
+          "id": "msg_e2e",
+          "model": "e2e-canned",
+          "stop_sequence": null,
+          "type": "message",
+          "role": "assistant",
+          "stop_reason": "end_turn",
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"application\":-1,\"company\":\"E2E Acme\",\"round\":\"Recruiter screen\",\"interviewers\":[\"Recruiter\"],\"duration_min\":2,\"questions\":[{\"topic\":\"Terraform\",\"question\":\"What is your experience with Terraform at scale?\",\"answer\":\"Six years; about two hundred modules, CI plan checks and a policy gate.\",\"quality\":\"ok\",\"better\":\"Explain how the module and policy approach would extend to multiple clouds.\"}],\"strengths\":[\"Stabilises incidents before investigating: rollback, metrics and traces.\"],\"weaknesses\":[],\"signals\":[],\"red_flags\":[],\"next_step\":\"Technical interview with the platform lead, probably next week.\",\"practice\":[\"Practise describing Terraform across multiple clouds.\"],\"overall\":\"positive\",\"summary\":\"You described structured incident handling and Terraform experience, with a multi cloud gap.\",\"facts\":[]}"
+            }
+          ],
+          "usage": {
+            "input_tokens": 1,
+            "output_tokens": 1
+          }
+        }
+      }
     }
   },
   "items": {
     "app.decide": {
+      "default/6a8162bdf47c3d003f8668a9de6282249e333e51f0f749fe581677b77655b5dd/2c778ff8888912405bbf986c45f0d506b4225fe1dfe162a21d00c96ead24965e": {
+        "answer": "hiring_manager",
+        "text": "Hiring manager"
+      },
+      "default/6a8162bdf47c3d003f8668a9de6282249e333e51f0f749fe581677b77655b5dd/dad2164df7c99ca6ac12ab2f9f64a90cb110387d24b1e255f7818b8b8b28955b": {
+        "answer": "recruiter_screen",
+        "text": "Recruiter screen"
+      },
+      "default/6a8162bdf47c3d003f8668a9de6282249e333e51f0f749fe581677b77655b5dd/e851504f43bf3c8211004193e5de258134159ac0c863cd002e58828725a8d112": {
+        "answer": "technical",
+        "text": "Technical"
+      },
+      "default/6a8162bdf47c3d003f8668a9de6282249e333e51f0f749fe581677b77655b5dd/f3ff66480a59f9a12eca78348a9bfcbf66aa5699049555f1f82db26b6cfafbc7": {
+        "answer": "recruiter_screen",
+        "text": "recruiter-call-gamma"
+      },
       "default/6ddd2461a581fc580d8bddbf2ef22fb798067b815cc7a5b49f2bd0b8a6648760/0e071b6f555c12a0851e607f6fb621f46f22e71d2f90169d12ce8df4cd620ccc": {
         "answer": "ch-bern",
         "text": ": <!w bern !w <!w berne !w"
@@ -359,6 +442,10 @@
         "answer": "software",
         "text": "site reliability"
       },
+      "default/d9f06c97101cdc68b97f8c3572320a414ed64b78d079d9587efd9e5f0094cfdb/6966dc51d01bff356662b4fc659487026d178265a59493429e2bc3e2e19502b1": {
+        "answer": "software",
+        "text": "systems administrator"
+      },
       "default/d9f06c97101cdc68b97f8c3572320a414ed64b78d079d9587efd9e5f0094cfdb/69b4bcbc6ed36c1de44a75ce1deabd1e2e2482081d8fafcd9ef3bc115d257f92": {
         "answer": "software",
         "text": "sre"
@@ -366,6 +453,14 @@
       "default/d9f06c97101cdc68b97f8c3572320a414ed64b78d079d9587efd9e5f0094cfdb/8c851bc1dbac36282942015a1e44f81d0db5370d788d5e8a5407c9d19aaa7e6e": {
         "answer": "software",
         "text": "infrastructure engineer"
+      },
+      "default/d9f06c97101cdc68b97f8c3572320a414ed64b78d079d9587efd9e5f0094cfdb/b9071c11d5c5a030fc9f87c38df15ba56af1328fb48bae254d5239f6aac7e104": {
+        "answer": "software",
+        "text": "site reliability engineer"
+      },
+      "default/d9f06c97101cdc68b97f8c3572320a414ed64b78d079d9587efd9e5f0094cfdb/c477b2766f66fdbdf93bf475663f6c0f96fa91528d9094000f86fa1c52203d8f": {
+        "answer": "software",
+        "text": "cloud engineer"
       },
       "default/e995bd9989d0a7adfbe0da64ce7637e300e64118f5ca7d4ee602d227dee5759c/0e071b6f555c12a0851e607f6fb621f46f22e71d2f90169d12ce8df4cd620ccc": {
         "answer": "ch",

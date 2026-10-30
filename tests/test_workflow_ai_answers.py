@@ -63,7 +63,7 @@ class WorkflowAiAnswers(unittest.TestCase):
         mode_line = re.search(r'(?m)^          E2E_AI_ANSWERS: (.+)$', first)
         self.assertIsNotNone(mode_line, 'the suite process must receive its answer mode')
         value = mode_line.group(1)
-        self.assertEqual(value, "${{ " + RECORD_GUARD + " && 'record' || contains(fromJSON('[\"quality\",\"stores\"]'), matrix.suite) && 'backbone' || 'off' }}")
+        self.assertEqual(value, "${{ " + RECORD_GUARD + " && 'record' || contains(fromJSON('[\"quality\",\"stores\",\"interviews\"]'), matrix.suite) && 'backbone' || 'off' }}")
         cases = [('workflow_dispatch', 'record', 1, 'record'),
                  ('workflow_dispatch', 'off', 1, 'off'),
                  ('workflow_dispatch', '', 1, 'off'),
@@ -73,18 +73,18 @@ class WorkflowAiAnswers(unittest.TestCase):
                   ('schedule', 'push', 'pull_request', 'workflow_call', 'retry')]
         for event, mode, attempt, want in cases:
             with self.subTest(event=event, mode=mode, attempt=attempt):
-                for suite in ('jobs', 'quality', 'stores', 'qualityai', 'apply'):
-                    expected = 'backbone' if suite in ('quality', 'stores') and want == 'off' else want
+                for suite in ('jobs', 'quality', 'stores', 'interviews', 'qualityai', 'apply'):
+                    expected = 'backbone' if suite in ('quality', 'stores', 'interviews') and want == 'off' else want
                     self.assertEqual(expression(value, event, mode, attempt, suite), expected, suite)
 
-    def test_the_suites_second_try_uses_backbone_only_for_quality_and_stores(self):
+    def test_the_suites_second_try_uses_backbone_for_declared_suites(self):
         retry = self.step('if again ')
         value = re.search(r'(?m)^          E2E_AI_ANSWERS: (.+)$', retry).group(1)
-        for suite in ('quality', 'stores', 'qualityai', 'jobs', 'apply'):
+        for suite in ('quality', 'stores', 'interviews', 'qualityai', 'jobs', 'apply'):
             for mode in ('off', 'record'):
                 with self.subTest(suite=suite, mode=mode):
                     self.assertEqual(expression(value, mode=mode, suite=suite),
-                                     'backbone' if suite in ('quality', 'stores') else 'off')
+                                     'backbone' if suite in ('quality', 'stores', 'interviews') else 'off')
 
     def test_candidates_stay_in_the_existing_artifact_upload(self):
         self.assertNotIn('E2E_AI_CANDIDATES', self.suite)

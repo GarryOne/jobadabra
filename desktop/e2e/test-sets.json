@@ -131,6 +131,7 @@
   "installed-only.test.mjs",
   "interact.test.mjs",
   "interview-data.test.mjs",
+  "interviews-backbone-no-live-ai.test.mjs",
   "isolation-check.test.mjs",
   "issue-links.test.mjs",
   "jobs-filter-all.test.mjs",

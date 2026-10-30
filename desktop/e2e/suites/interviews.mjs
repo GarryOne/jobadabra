@@ -1,5 +1,5 @@
 /* global document, window */
-// Interviews: the library on dummy rows written through the Notion API, a transcript imported through the page's own button and reviewed for real (Haiku),
+// Interviews: the library on dummy rows written through the Notion API, a transcript imported through the page's own button and reviewed with stored answers,
 // the failure path (a failing AI), review again, link, delete, the consent rule of the recorder. Starts from a set-up install; resets only its own rows.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -13,8 +13,12 @@ import {ensureSetUp} from '../lib/seed.mjs';
 import {answerConfirms, captureExternal, ids, independent} from '../lib/steps.mjs';
 import {goView} from '../lib/go-view.mjs';
 
-export const realAi = true;   // stubs some AI calls but passes the others to the real model (metered); a suite with all calls stubbed declares false (test/suite-ai-mode.test.mjs)
+// Why (29 Oct 2026, ap): rule A serves declared reviews and patterns; the no-credit fault still precedes the table.
+export const offlineAi = true;
+export const realAi = false;
 export const name = 'interviews';
+// Why (30 Oct 2026, ap): SQLite keeps stored answers on one setup path without the stand-in's paced Notion requests; all steps support SQLite.
+export const store = 'sqlite';
 const REVIEW_MS = 5 * 60 * 1000;
 
 export async function run(ctx) {

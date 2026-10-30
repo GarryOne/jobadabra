@@ -8,8 +8,6 @@ import {AUTO_DEFAULTS} from '../renderer/apply-settings-model.js';
 export const BACKGROUND_SECTION = 'Background Apply';
 const RESERVED = 'Background submit reserved';
 const TERMINAL = new Set(['manual_submit_required', 'needs_user_handoff', 'receipt_confirmed', 'submitting']);
-const employer = value => String(value || '').trim().normalize('NFKC').toLowerCase();
-const dayOf = time => { const d = new Date(time); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 const readState = text => { try { const state = JSON.parse(text || '{}'); return state?.version === 1 ? state : null; } catch { return null; } };
 
 /** Build a serialized controller over Applications sections/events; failed store writes reject before any launch or submit is authorized. */
@@ -89,12 +87,11 @@ export function createBackgroundApplyStore(storage, {call = engineCall, now = Da
       const waitMs = Math.max(0, Number(checks.waitMin ?? AUTO_DEFAULTS.waitMin)) * 60000;
       if (!state.readyAt || now() < state.readyAt + waitMs) return {...deny('waiting'), dueAt: state.readyAt + waitMs};
       const reservations = await ask('events', 'list', {kind: RESERVED});
-      const today = dayOf(now()), company = employer(app.company);
       if (reservations.some(event => event.app_id === app.id)) return stop('attempt_already_reserved');
       if (stopped()) return stop('stopped');
       const attempt = uuid();
-      // Why (2026-10-27, owner): reserve limits before the click; a crash or lost reply consumes the attempt and never creates a retry.
-      await ask('events', 'add', {app_id: app.id, kind: RESERVED, at: new Date(now()).toISOString(), source: 'Full automation', source_id: `background:${session}:${attempt}`, changes: {employer: company, day: today, session, attempt}});
+      // Why (2026-10-27, owner): reserve before the click; a crash or lost reply consumes the attempt and never creates a retry (the daily and per-employer limits are gone, 29 Oct 2026).
+      await ask('events', 'add', {app_id: app.id, kind: RESERVED, at: new Date(now()).toISOString(), source: 'Full automation', source_id: `background:${session}:${attempt}`, changes: {session, attempt}});
       const next = await save(app, {...state, state: 'submitting', attempt, submittedAt: now()});
       if (stopped()) return stop('stopped');
       return {submit: true, attempt, state: next.state, control: proof.submitControl, signature: proof.signature};

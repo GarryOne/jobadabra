@@ -31,17 +31,6 @@ export const CHECKS = [
 const el = (tag, cls = '', text = '') => Object.assign(document.createElement(tag), cls ? {className: cls} : {}, text ? {textContent: text} : {});
 
 function checkRow(check) {
-  if (!('min' in check)) {
-    const row = el('label', 'switch-row'), sw = el('span', 'switch'), words = el('span');
-    const box = Object.assign(el('input'), {type: 'checkbox'});
-    box.dataset.applyCheck = check.key;
-    box.addEventListener('change', () => save({auto: {[check.key]: box.checked}}));
-    sw.append(box, el('span'));
-    words.append(el('span', '', check.title));
-    if (check.note) words.append(el('span', 'muted small', check.note));
-    row.append(sw, words);
-    return row;
-  }
   const row = el('label', 'inline-field');
   const box = Object.assign(el('input'), {type: 'number', min: check.min, max: check.max, step: 1});
   box.dataset.applyCheck = check.key;
@@ -59,7 +48,7 @@ export function draw(settings = current) {
   if ($('apply-answers-text')) $('apply-answers-text').textContent = ANSWERS_TEXT[apply.answers];
   document.querySelectorAll('[data-apply-check]').forEach(box => {
     const value = apply.auto[box.dataset.applyCheck];
-    if (box.type === 'checkbox') box.checked = !!value; else box.value = String(value);
+    box.value = String(value);
   });
 }
 

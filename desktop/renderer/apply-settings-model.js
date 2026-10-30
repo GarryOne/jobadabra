@@ -30,7 +30,6 @@ export const ANSWERS_TEXT = {
   ai: 'The AI answers what your Profile does not cover. You see which answers it wrote.',
 };
 
-// Full automation's checks: each one the person's to change (CLAUDE.md "The app submits only in Full automation").
 // Why (2026-10-29, owner: "remove all checks"; the wait is optional, default none): Full automation has no facts, fit or limit checks; the only setting is the optional wait before a submit (0 = none).
 export const AUTO_DEFAULTS = Object.freeze({waitMin: 0});
 const LIMITS = {waitMin: [0, 120]};
@@ -45,7 +44,7 @@ export function applyOf(settings) {
   const saved = settings?.apply || {}, auto = {...AUTO_DEFAULTS};
   for (const key of Object.keys(AUTO_DEFAULTS)) {
     if (!(key in (saved.auto || {}))) continue;
-    auto[key] = key in LIMITS ? clamp(key, saved.auto[key]) : saved.auto[key] !== false;
+    auto[key] = clamp(key, saved.auto[key]);
   }
   const mode = modeBuilt(saved.mode) ? saved.mode : 'check';
   return {mode, answers: saved.answers === 'ai' ? 'ai' : 'facts', auto, chosenAt: saved.chosenAt || '', autoConfirmedAt: mode === 'auto' ? saved.autoConfirmedAt || '' : ''};

@@ -95,6 +95,29 @@ for (const family of ['claude', 'openai']) test(`activityfailures CI asks resolv
   h.assertNoLive();
 });
 
+// Removing the captured geo row must fail both provider transports before any live fallback.
+for (const family of ['claude', 'openai']) for (const seam of ['direct', 'proxy'])
+  test(`activityfailures multi-location geo resolves at ${family} ${seam} seam`, async t => {
+    const h = await harness(t, family), table = loadTable(answersTableFile);
+    const c = {...engineCases.find(item => item.name === 'geo'),
+      user: `Strings:\n1. ${feedAsks.geoAlternatives.question.items[0].text}`};
+    const init = request(c.action, bodyOf(c, family === 'openai' ? 'openai' : 'anthropic'));
+    assert.deepEqual(questionOf(init, h.env, table), feedAsks.geoAlternatives.question);
+    const expected = {places: [{n: 1, kind: 'unknown', cc: '', lat: 0, lon: 0, r_km: 0}]};
+    assert.ok(validScore(c.schema, expected), 'unknown reply must satisfy the actual src/geo.py schema');
+    if (seam === 'direct') {
+      const reply = await modelFetch('http://127.0.0.1:1/v1/messages', init, h.options);
+      assert.deepEqual(JSON.parse((await reply.json()).content[0].text), expected);
+    } else {
+      const url = family === 'openai' ? `${h.openaiProxy.url}/v1/responses` : `${h.proxy.url}/v1/messages`;
+      const response = await h.localFetch(url, init);
+      assert.equal(response.status, 200);
+      const reply = await response.json();
+      assert.deepEqual(JSON.parse(family === 'openai' ? reply.output[0].content[0].text : reply.content[0].text), expected);
+    }
+    h.assertNoLive();
+  });
+
 test('activityfailures resolves every captured metro item and its batch before any transport', async t => {
   const h = await harness(t), table = loadTable(answersTableFile);
   const init = request('decide', captured), question = questionOf(init, h.env, table);

@@ -1,6 +1,6 @@
-# Reads artifact counts and formats the PR's informational AI number without deciding its required status.
+# Reads AI counts, rejects failed runs without a number, and formats informational scores.
 # Job: report health
-# Invariants: only BASE grants exemptions; artifact counts never decide the required status.
+# Invariants: only BASE grants exemptions; low scores never decide status; failed qualityai needs a usable number.
 import io
 import json
 import math
@@ -15,7 +15,7 @@ METRICS = (('facts', 'exact', 'total', 'facts'), ('flags', 'flagged', 'judged', 
 
 
 def prepare(repo, runs, jobs, gh, main_state, base='main', my_run='', my_status='', runner=''):
-    """Read BASE's exemptions and the numbers once; return exempt suites and the shared status formatter."""
+    """Read BASE's exemptions and numbers once; a failed qualityai without a number loses its report exemption."""
     reports, rates = report_suites(repo, gh, base), None
     try:
         if 'qualityai' in reports:
@@ -24,7 +24,12 @@ def prepare(repo, runs, jobs, gh, main_state, base='main', my_run='', my_status=
             rates = numbers(repo, runs, jobs, gh, lambda run: not main_module().NOT_MAIN_CHECK.match(run.get('display_title') or ''),
                             my_run, my_status, runner, night_module=lambda: main_state('beta_rate_gate'))
     except Exception as error:
-        print(f'AI number unavailable ({type(error).__name__}): required verdict unchanged')
+        print(f'AI number unavailable ({type(error).__name__}): failed qualityai needs number evidence')
+    current = rates[0] if rates else None
+    produced = any((current or {}).get(part) and current[part][den] for part, _, den, _ in METRICS)
+    # Why (30 Oct 2026, owner): qualityai is red only when it failed to run/produce a number, never for a low score (#2632, #2600).
+    if not produced and any(j.get('name') == 'qualityai' and j.get('conclusion') == 'failure' for r in runs for j in jobs.get(r['databaseId'], [])):
+        reports.discard('qualityai')
     return reports, (lambda why: description(why, *rates)) if rates is not None else str
 
 
@@ -169,8 +174,9 @@ def numbers(repo, runs, jobs, gh, comparable, my_run='', my_status='', runner=''
         if rid not in jobs:
             jobs[rid] = json.loads(gh('api', f'repos/{repo}/actions/runs/{rid}/jobs?per_page=100', '--jq', '.jobs'))
         measured = [j for j in jobs[rid] if j.get('name') == 'qualityai']
-        ready = measured and all((j.get('conclusion') == 'success' if j.get('status') == 'completed' else
-                                  str(rid) == str(my_run) and j.get('runner_name') == runner and my_status == 'success') for j in measured)
+        # A completed failure may still have produced a valid low score; unfinished jobs cannot supply a final number.
+        ready = measured and all(j.get('status') == 'completed' or
+                                 str(rid) == str(my_run) and j.get('runner_name') == runner and my_status == 'success' for j in measured)
         if ready:
             _, current = artifact_rates(repo, rid, gh)
     except Exception as error:

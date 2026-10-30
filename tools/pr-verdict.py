@@ -127,7 +127,7 @@ def verdict(runs, files=(), messages=(), jobs=None, me=None, my_status='', now=N
     jobs: {run id: [job]} for the runs read job by job (not ended, or red); me: the id of the job this runs in, my_status its status so far.
     spans: [(started_at, completed_at)] of every job of the counted runs (a CI change only, job_spans): the budget counts their running time, else the wall time.
     greys: red jobs shown, never red: a set of ids (main's own red) or {id: reason in GREY_WORDS} (main, lane or health evidence).
-    reports: BASE's tolerant pr:number suites; their outcomes and waits never decide the required state."""
+    reports: BASE's exempt pr:number suites; failed qualityai needs a produced number to qualify."""
     live = counted(runs)
     if not live:
         return None, '', live, [], None
@@ -140,8 +140,8 @@ def verdict(runs, files=(), messages=(), jobs=None, me=None, my_status='', now=N
             if r.get('status') != 'completed': running.append((r, []))
             elif r.get('conclusion') in RED: red.append(r)
             continue
-        numbered = any(suite_of(job.get('name', '')) in reports for job in listed)
-        states = [(job, 'grey' if job.get('id') in greys else job_state(job, me, my_status)) for job in listed if job.get('name') not in REPORT_JOBS and suite_of(job.get('name', '')) not in reports]
+        numbered = any(suite_of(job.get('name', '')) in reports for job in listed)   # Why (30 Oct 2026, owner): a failed qualityai without a number stays red even in grey lanes.
+        states = [(job, 'grey' if job.get('id') in greys and not (suite_of(job.get('name', '')) == 'qualityai' and job.get('conclusion') == 'failure') else job_state(job, me, my_status)) for job in listed if job.get('name') not in REPORT_JOBS and suite_of(job.get('name', '')) not in reports]
         states = ((burn_in or main_state_module('', '', 'pr_burn_in').failures)(r, listed, lambda job: job_state(job, me, my_status)) if any(' · burn-in ' in job.get('name', '') for job in listed) else []) + states
         grey += [(job['name'], greys.get(job['id'], 'main') if isinstance(greys, dict) else 'main') for job, state in states if state == 'grey']
         ending = [job['id'] for job, state in states if state == 'finishing' or job.get('id') == me]

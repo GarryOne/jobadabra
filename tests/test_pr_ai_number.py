@@ -225,6 +225,36 @@ class Artifacts(unittest.TestCase):
         _, line = ai.prepare('o/r', runs, jobs, github, lambda name='main_e2e_state': __import__('tools.' + name, fromlist=[name]))
         return line('3 workflow(s) green in 2.0 min')
 
+    def test_failed_qualityai_is_red_without_a_number_but_low_scores_stay_reports(self):
+        # Owner's #2632/#2600 case: qualityai is the only red job; its tolerant lane cannot hide a crash.
+        from unittest import mock
+        from tests.test_pr_verdict import pv, run as pr_run
+        low = {**RATES, 'facts': {'exact': 0, 'total': 63}}
+        empty = {**RATES, 'facts': None, 'flags': None, 'cv': None}
+        for counts, expected in ((None, 'failure'), (empty, 'failure'), (low, 'success')):
+            with self.subTest(counts=counts):
+                github = Github([], {7: [{'id': 7, 'name': ai.ARTIFACT}]} if counts else {},
+                                {7: archive(counts)} if counts else {})
+                r = pr_run('E2E', conclusion='failure', event='workflow_dispatch', title='E2E for PR · qualityai · topic', id=7)
+                jobs = {7: [{'id': 71, 'name': 'qualityai', 'status': 'completed', 'conclusion': 'failure'}]}
+                sent = []
+                def gh(*args, **kwargs):
+                    if '/statuses/' in ' '.join(args):
+                        sent.append(args); return '{}'
+                    return github(*args, **kwargs)
+                with mock.patch.object(sys, 'argv', ['pr-verdict.py', '--repo', 'o/r', '--sha', 'head']), \
+                     mock.patch.object(sys, 'stdout'), mock.patch.object(pv, 'read', return_value=([r], jobs)), \
+                     mock.patch.object(pv, 'pr_meta', return_value=([{'number': 1, 'state': 'open'}], [], [])), \
+                     mock.patch.object(pv, 'gh', side_effect=gh), mock.patch.object(pv, 'quota_line', return_value=''), \
+                     mock.patch.object(pv, 'main_red_greys', return_value={71}), \
+                     mock.patch.object(pv, 'lane_greys', return_value={71: 'tolerant'}), \
+                     mock.patch.object(pv, 'health_greys', return_value={71: 'ai-credit'}):
+                    self.assertEqual(pv.main(), 0)
+                self.assertEqual(len(sent), 1)
+                self.assertIn('state=' + expected, sent[0])
+                if counts == low:
+                    self.assertTrue(any('facts 0/63' in arg for arg in sent[0]), sent[0])
+
     def test_pr_compares_with_after_merge_main_artifact(self):
         # Hand-made API responses use the supervisor's run/title shapes and reported counts; no live service is reached.
         rates = {**RATES, 'facts': {'exact': 68, 'total': 69}, 'flags': {'judged': 20, 'flagged': 1},
@@ -308,7 +338,7 @@ class Artifacts(unittest.TestCase):
         self.assertIsNone(ai.main_rates('o/r', gh, main_e2e_state.is_main_check))
         self.assertEqual(sum(binary for _, binary in gh.calls), 1)
 
-    def test_pr_uses_newest_counted_run_and_never_a_failed_or_running_measurement(self):
+    def test_pr_uses_newest_counted_run_and_never_invents_a_missing_measurement(self):
         runs = [{'databaseId': rid, 'createdAt': f'2026-10-29T12:0{rid}:00Z',
                  'displayTitle': 'E2E for PR · qualityai,settings · topic'} for rid in (1, 2)]
         jobs = {rid: [{'name': 'qualityai', 'status': 'completed', 'conclusion': 'success'}] for rid in (1, 2)}
@@ -353,7 +383,7 @@ class Artifacts(unittest.TestCase):
         jobs = {2: [{'name': 'qualityai', 'status': 'completed', 'conclusion': 'failure', 'runner_name': 'ours'}]}
         gh = Github()
         self.assertEqual(ai.numbers('o/r', runs, jobs, gh, main_e2e_state.is_main_check, '2', 'success', 'ours'), (None, None, False))
-        self.assertFalse(any('/artifacts?' in ' '.join(args) for args, _ in gh.calls))
+        self.assertTrue(any('/artifacts?' in ' '.join(args) for args, _ in gh.calls), 'finished failures need artifact evidence, never the stale own-status')
 
 
 FAKE_GH = r'''import json, os, sys

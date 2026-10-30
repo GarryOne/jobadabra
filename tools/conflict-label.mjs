@@ -6,6 +6,7 @@
 // Usage (workflow .github/workflows/conflict-label.yml): node tools/conflict-label.mjs. Needs GH_TOKEN and GITHUB_REPOSITORY; guard tests/test_conflict_label.py.
 import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
+import {addLabel} from './gitar-label.mjs';
 
 // Why (owner, 30 Oct 2026): orange, a warning, apart from Gitar's yellow "approved with suggestions" (fbca04) and red "changes requested" (d73a4a).
 export const CONFLICT = {name: 'Merge conflict', color: 'f66a0a', description: 'Conflicts with its base branch: merge main into it'};
@@ -35,15 +36,10 @@ export function settle(read, {tries = 6, pause = () => {}} = {}) {
 
 const gh = (...args) => execFileSync('gh', args, {encoding: 'utf8'});
 
-/** Applies one edit; creates the label (one REST call) only when gh says the repo lacks it, then adds it again.
- * TODO(AI): share with addLabel in tools/gitar-label.mjs once #2525 is on main (30 Oct 2026). */
+/** Applies one edit: an add goes through gitar-label's addLabel (the label is created only when gh says the repo lacks it); a removal never creates it. */
 export function apply(repo, edit, run = gh) {
-  const args = ['pr', 'edit', String(edit.pr), edit.add ? '--add-label' : '--remove-label', CONFLICT.name, '-R', repo];
-  try { run(...args); } catch (error) {
-    if (!edit.add || !/could not add label: .* not found/i.test(error.message)) throw error;
-    run('label', 'create', CONFLICT.name, '--color', CONFLICT.color, '--description', CONFLICT.description, '--force', '-R', repo);
-    run(...args);
-  }
+  if (edit.add) addLabel(repo, edit.pr, CONFLICT, run);
+  else run('pr', 'edit', String(edit.pr), '--remove-label', CONFLICT.name, '-R', repo);
 }
 
 /** One GraphQL read of every open PR's mergeable state and label. `run` is the gh call (a test passes a fake). */

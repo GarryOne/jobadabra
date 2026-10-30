@@ -12,7 +12,7 @@ on:
 permissions:
   contents: read
   pull-requests: write
-  issues: write   # creating the label the first time (tools/conflict-label.mjs apply)
+  issues: write   # creating the label the first time (addLabel in tools/gitar-label.mjs)
 
 # Why (30 Oct 2026): on main the newest push's run decides (tests/test_main_runs_finish.py) and reads every open PR anyway; a PR push's run is its own group,
 # never cancelled, since a cancelled run is drawn as a failed check on that PR (#2400).
@@ -28,7 +28,9 @@ jobs:
       - uses: actions/checkout@v5
         with:
           ref: ${{ github.event.repository.default_branch }}   # main's copy of the script, whatever started this
-          sparse-checkout: tools/conflict-label.mjs
+          sparse-checkout: |
+            tools/conflict-label.mjs
+            tools/gitar-label.mjs
       - name: Label the open PRs that conflict
         env:
           GH_TOKEN: ${{ github.token }}

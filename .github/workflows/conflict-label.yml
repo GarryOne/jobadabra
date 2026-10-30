@@ -1,0 +1,38 @@
+# Puts an orange "Merge conflict" label on each open PR that GitHub says conflicts with its base, and takes it off once it merges cleanly (owner, 30 Oct 2026).
+# Runs on a push to main (any open PR may now conflict) and on a PR push (it may be fixed); checks out main's copy of the script and NEVER runs a PR's code;
+# its only writes are labels. Script and cases: tools/conflict-label.mjs, tests/test_conflict_label.py.
+name: CI · Conflict label
+
+on:
+  push:
+    branches: [main]
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write   # creating the label the first time (addLabel in tools/gitar-label.mjs)
+
+# Why (30 Oct 2026): on main the newest push's run decides (tests/test_main_runs_finish.py) and reads every open PR anyway; a PR push's run is its own group,
+# never cancelled, since a cancelled run is drawn as a failed check on that PR (#2400).
+concurrency:
+  group: conflict-label-${{ github.event_name == 'push' && 'main' || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  label:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.repository.default_branch }}   # main's copy of the script, whatever started this
+          sparse-checkout: |
+            tools/conflict-label.mjs
+            tools/gitar-label.mjs
+      - name: Label the open PRs that conflict
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: node tools/conflict-label.mjs

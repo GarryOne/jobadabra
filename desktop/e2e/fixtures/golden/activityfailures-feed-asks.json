@@ -422,5 +422,32 @@
         }
       }
     }
+  },
+  "titleSort": {
+    "capturedFrom": "PR2573 CI41053809561, both first and retry; exact restart title question. Other finite feed titles authored from the same schema and seeded search.",
+    "context": {
+      "role_words": [
+        "site reliability engineer",
+        "platform engineer",
+        "devops engineer",
+        "infrastructure engineer",
+        "cloud engineer",
+        "systems administrator"
+      ],
+      "words_ruled_out": [
+        "intern",
+        "junior"
+      ]
+    },
+    "question": {
+      "operation": "app.title",
+      "items": [
+        {
+          "n": 1,
+          "text": "senior platform engineer, restart (site reliability / data analyst)",
+          "key": "default/app.title/a8034c8810b9/b36b0b3b7eb6d2d8830bdc0cac27f32e145b9674de19afce76cd5bb687728c2d"
+        }
+      ]
+    }
   }
 }

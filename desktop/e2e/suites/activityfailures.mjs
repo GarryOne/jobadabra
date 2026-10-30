@@ -291,7 +291,6 @@ export async function runParts(ctx, parts) {
       await waitForRunLock(path.join(ctx.profile, 'data'));
       setFeed(ctx, ['Lead Platform Engineer, silence']);
       const fault = proxy.setMode('hang');
-      try {
         const {fresh, shown, seconds} = await runTask(ctx, 'run', {maxMs: 180000, kind: 'search'});
         const mine = shown.find(row => row.id === String(fresh[0].id));
         const opened = await openRun(ctx, LABEL.search, {id: fresh[0].id, snapAs: 'activity-run-failed', situation: 'A Jobs check stopped by Jobadabra after the AI went silent: Stopped, with its reason, the step it was on and Run again, in the Recent activity panel'});
@@ -306,7 +305,6 @@ export async function runParts(ctx, parts) {
         if (!/no output|stopp|did not answer|silen/i.test(`${fresh[0].log.join('\n')} ${fresh[0].result} ${opened.log} ${opened.warnings}`)) problems.push('nothing in the log or the words says the run was stopped for its silence');
         if (problems.length) throw new Error(problems.join('; '));
         await noRowStaysRunning(ctx);
-      } finally { proxy.setMode('pass'); }
     })), {needs: ctx.needs, faults: true, stopOnHang: true});
 
     // ---------- (2b) the AI fails where a person asked for something on the spot (not a run) ----------

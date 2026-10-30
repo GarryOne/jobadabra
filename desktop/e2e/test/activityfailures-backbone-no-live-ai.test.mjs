@@ -65,6 +65,10 @@ const semanticCases = () => {
         properties: {role_family: feedAsks.enrich.question.responseSchema.properties.role_family}},
         items: [{n: 1, text: `${post.title}\n${post.company}\n${post.location}`,
           key: `default/app.enrich/${post.key.slice('feed/'.length)}/role`, label: post.title}]}})),
+    ...feedAsks.feedPostings.map(post => ({...engineCases.find(item => item.name === 'title'),
+      name: `sort ${post.title}`, user: `The search (JSON): ${JSON.stringify(feedAsks.titleSort.context)}\nThe titles:\n1. ${post.title.toLowerCase()}`,
+      question: {operation: 'app.title', items: [{n: 1, text: post.title.toLowerCase(),
+        key: `default/app.title/${hash({search: feedAsks.titleSort.context, pass: 'sort'}).slice(0, 12)}/${hash(post.title.toLowerCase())}`}]}})),
     ...feedAsks.feedPostings.map(post => ({...engineCases.find(item => item.name === 'score'),
       name: post.title, user: `Title: ${post.title}\nCompany: ${post.company}\nLocation: ${post.location}\n\nPosting:\n${post.description}`,
       question: {operation: 'app.score', id: post.key}})),
@@ -300,3 +304,32 @@ test('changing activityfailures answer fixtures selects its own whole CI journey
     assert.deepEqual(suitesFor([file], ['activityfailures'], {watches: {activityfailures: activityfailures.watches}}), ['activityfailures'], file);
   }
 });
+
+test('the captured title-sort context and restart question match the finite authored catalog', () => {
+  const table = loadTable(answersTableFile), question = feedAsks.titleSort.question;
+  assert.equal(hash({search: feedAsks.titleSort.context, pass: 'sort'}).slice(0, 12), 'a8034c8810b9');
+  assert.equal(question.items[0].key, 'default/app.title/a8034c8810b9/b36b0b3b7eb6d2d8830bdc0cac27f32e145b9674de19afce76cd5bb687728c2d');
+  for (const post of feedAsks.feedPostings) {
+    const text = post.title.toLowerCase();
+    assert.ok(feedAsks.titleSort.context.role_words.some(role => text.includes(role)), text);
+    const key = `default/app.title/a8034c8810b9/${hash(text)}`;
+    assert.equal(table.items['app.title'][key]?.answer, true, key);
+  }
+  assert.deepEqual(JSON.parse(answerFor(question, table).reply.content[0].text), {fit: [1]});
+});
+
+for (const family of ['claude', 'openai']) for (const seam of ['direct', 'proxy']) {
+  test(`captured restart title is answered at the independent ${family} ${seam} seam`, async t => {
+    const h = await harness(t, family);
+    t.after(() => h.assertNoLive());
+    const c = semanticCases().find(item => item.name.startsWith('sort Senior Platform Engineer, restart'));
+    const init = request(c.action, bodyOf(c, family === 'openai' ? 'openai' : 'anthropic'));
+    assert.deepEqual(questionOf(init, h.env, loadTable(answersTableFile)), feedAsks.titleSort.question);
+    const url = family === 'openai' ? `${h.openaiProxy.url}/v1/responses` : `${h.proxy.url}/v1/messages`;
+    const response = seam === 'proxy' ? await h.localFetch(url, init) : await modelFetch('http://127.0.0.1:1/v1/messages', init, h.options);
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    const text = seam === 'proxy' && family === 'openai' ? body.output[0].content[0].text : body.content[0].text;
+    assert.deepEqual(JSON.parse(text), {fit: [1]});
+  });
+}

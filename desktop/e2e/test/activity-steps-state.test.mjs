@@ -99,7 +99,7 @@ test('silence setup failure restores the normal instance, and closed teardown ca
   globalThis.window = {pilot: {runs: async () => ({runs: [], historyLoaded: true, busy: []})}};
   const launches = [], modes = [];
   let closed = false;
-  const ctx = {activityStateWaits: true, proxy: {setMode: mode => modes.push(mode)},
+  const ctx = {activityStateWaits: true, proxy: {stats: {fault: {pending: 0}}, setMode: mode => modes.push(mode)},
     page: {isClosed: () => closed, waitForSelector: async () => {}, evaluate: fn => fn()},
     relaunch: async env => { launches.push(env); if (env) throw new Error('startup failed'); }};
   assert.equal(typeof steps.withSilenceLimit, 'function');
@@ -129,4 +129,28 @@ test('a launch completing after suite teardown is closed rather than adopted', a
   const session = {close: async () => assert.fail('normal launch must stay open')};
   await adoptSessionUnlessClosing(ctx, async () => session, value => adopted.push(value));
   assert.deepEqual(adopted, [session]);
+});
+
+test('silence teardown closes the old app request before proving its own fault drained', async t => {
+  const {startAiProxy} = await import('../lib/ai-proxy.mjs');
+  const {pollUntil} = await import('../lib/wait-on-state.mjs');
+  const proxy = await startAiProxy({target: 'http://127.0.0.1:1'});
+  t.after(() => proxy.close());
+  const original = globalThis.window;
+  t.after(() => { if (original === undefined) delete globalThis.window; else globalThis.window = original; });
+  globalThis.window = {pilot: {runs: async () => ({runs: [], historyLoaded: true, busy: []})}};
+  const controller = new AbortController();
+  const ctx = {activityStateWaits: true, proxy,
+    page: {isClosed: () => false, waitForSelector: async () => {}, evaluate: fn => fn()},
+    relaunch: async env => { if (!env) controller.abort(); }};
+  let fault, request;
+  await steps.withSilenceLimit(ctx, async () => {
+    fault = proxy.setMode('hang');
+    request = fetch(`${proxy.url}/v1/messages`, {method: 'POST', body: '{}', signal: controller.signal}).catch(() => null);
+    const {value} = await pollUntil(() => fault.failed, n => n === 1, {capMs: 1000, tickMs: 1, log: () => {}});
+    assert.equal(value, 1);
+    assert.equal(fault.pending, 1, 'the deliberate hang still owns a connection after the product outcome');
+  });
+  await request;
+  assert.equal(fault.pending, 0, 'teardown resolves only after the old app connection has closed');
 });

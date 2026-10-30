@@ -9,6 +9,7 @@ import {clearData} from './start-state.mjs';
 import {snap} from './layout.mjs';
 import {ensureSetUp} from './seed.mjs';
 import {pressTask} from './task-card.mjs';
+import {pollUntil} from './wait-on-state.mjs';
 
 export const RUNS_DB = 'Cronjob Runs';
 
@@ -153,9 +154,12 @@ export async function withSilenceLimit(ctx, run) {
     await appReady(ctx);
     return await run();
   } finally {
+    const fault = ctx.proxy.stats.fault;
     ctx.proxy.setMode('pass');
     // Closing a hung suite must never be followed by a late relaunch from its abandoned step.
     if (!ctx.page.isClosed()) { await ctx.relaunch(); await appReady(ctx); }
+    const {value} = await pollUntil(() => fault.pending, pending => pending === 0, {log: () => {}});
+    if (value !== 0) throw new Error(`AI ${fault.mode} left ${value} request(s) after the silence instance closed`);
   }
 }
 

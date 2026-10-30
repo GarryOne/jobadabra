@@ -44,6 +44,15 @@ def blocking_jobs(jobs, registry, platform):
     return blocked
 
 
+# Why (30 Oct 2026, owner): Windows runs few suites of its own (the rest were duplicates of Mac + Linux), so each release reads both lanes (--e2e-only).
+LANE_NAMES = {'mac': 'Mac + Linux', 'windows': 'Windows'}
+
+
+def blocking_lanes(jobs, registry):
+    """Name each blocking suite with its lane; a red on either lane holds both betas."""
+    return [f'{LANE_NAMES[lane]}: {suite}' for lane in LANE_NAMES for suite in blocking_jobs(jobs, registry, lane)]
+
+
 def main_nights(repo, suite, github, platform='mac', current_run='', *, first_only=False):
     """Read seven valid desktop nights, or the first eligible night's possibly unavailable rates."""
     selected, page, inspected = [], 1, 0
@@ -118,12 +127,12 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--repo', required=True)
     parser.add_argument('--run', required=True)
-    parser.add_argument('--e2e-only', choices=('mac', 'windows'))
+    parser.add_argument('--e2e-only', action='store_true', help='block on any red gate suite of either lane')
     parser.add_argument('--platform', choices=('mac', 'windows'), default='mac')
     args = parser.parse_args()
     registry = json.loads(LANES.read_text())['suites']
     if args.e2e_only:
-        blocked = blocking_jobs(jobs_of(args.repo, args.run, gh), registry, args.e2e_only)
+        blocked = blocking_lanes(jobs_of(args.repo, args.run, gh), registry)
         if blocked:
             print('::error::E2E gate blocked: ' + ', '.join(blocked))
             return 1

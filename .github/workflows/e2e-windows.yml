@@ -438,7 +438,8 @@ jobs:
           compression-level: 0
 
   # Windows beta approval (owner, 6 Oct 2026) for a gate by hand (tag set, not from the release run): beta-approve.yml, the same job the release run (desktop.yml) shows
-  # as its own "Release · Windows beta" step after "E2E · Windows". Each platform is approved on its own (desktop/lib/updater.js approvedFor).
+  # as its own "Release · Windows beta" step after "E2E · Windows". Each platform has its own approval line (desktop/lib/updater.js approvedFor); the release run gives
+  # either only when both lanes are green (owner, 30 Oct 2026), this by-hand path still reads the Windows lane alone (parked: JOB-55).
   approve-windows:
     needs: [plan, suite]
     if: success() && inputs.tag != '' && !inputs.release_run

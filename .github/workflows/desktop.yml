@@ -942,12 +942,14 @@ jobs:
           E2E_LOCK_TOKEN: ${{ steps.lock_app_end.outputs.token }}
         run: bash lock-tools/tools/e2e-lock.sh release "${{ matrix.key }}"
 
-  # RELEASE: the lane's HTML report (always), then, only when every E2E suite of the lane passed: no real high-severity finding, the shared release checks, and the
+  # RELEASE: the lane's HTML report (always), then, only when every E2E suite of BOTH lanes passed: no real high-severity finding, the shared release checks, and the
   # "Beta-approved:" line that offers the build to Mac beta testers (desktop/lib/updater.js). Red = not released on Mac.
 
+  # Why (30 Oct 2026, owner): most Windows suites were dropped as duplicates of Mac + Linux, so a red there is unproven on Windows too, and a red on Windows holds Mac as well;
+  # beta 41090972183 shipped Windows 0.8.53 while Mac + Linux applyflows was red. Both lanes green, or neither platform is offered.
   release-mac:
     name: Release · Mac beta
-    needs: [changes, test-mac]
+    needs: [changes, test-mac, test-windows]
     if: always() && needs.changes.outputs.gate == 'true' && needs.test-mac.result != 'skipped' && needs.test-mac.result != 'cancelled'
     runs-on: ubuntu-24.04
     timeout-minutes: 90   # Why (30 Oct 2026, a8; beta 41090972183): covers the e2e review (15 min) plus release-checks.sh waiting up to 60 min for main's build; 20 cut Windows off at 18 min
@@ -995,9 +997,9 @@ jobs:
           provider: ${{ inputs.ai_provider || vars.CI_AI_PROVIDER }}
           publish-key: ${{ secrets.AI_COST_PUBLISH_KEY }}
           github-token: ${{ github.token }}
-      - name: Not released on Mac, an E2E suite failed
-        if: needs.test-mac.result != 'success'
-        run: python3 tools/beta_rate_gate.py --repo "$GITHUB_REPOSITORY" --run "$GITHUB_RUN_ID" --e2e-only mac
+      - name: Not released on Mac, an E2E suite failed on Mac + Linux or Windows
+        if: needs.test-mac.result != 'success' || needs.test-windows.result != 'success'
+        run: python3 tools/beta_rate_gate.py --repo "$GITHUB_REPOSITORY" --run "$GITHUB_RUN_ID" --e2e-only
       - name: Tolerant AI rates against main's nightly band
         if: needs.changes.outputs.gate == 'true'
         run: python3 tools/beta_rate_gate.py --repo "$GITHUB_REPOSITORY" --run "$GITHUB_RUN_ID" --platform mac
@@ -1030,11 +1032,11 @@ jobs:
             echo "Stable: $TAG (all required suites passed on its commit)"
           fi
 
-  # RELEASE: the lane's HTML report (always), then, only when every E2E suite of the lane passed: no real high-severity finding, the shared release checks, and the
+  # RELEASE: the lane's HTML report (always), then, only when every E2E suite of BOTH lanes passed: no real high-severity finding, the shared release checks, and the
   # "Beta-approved (Windows):" line that offers the build to Windows beta testers (desktop/lib/updater.js). Red = not released on Windows.
   release-windows:
-    name: Release · Windows beta
-    needs: [changes, test-windows]
+    name: Release · Windows beta   # needs both lanes: the Why above release-mac
+    needs: [changes, test-mac, test-windows]
     if: always() && needs.changes.outputs.gate == 'true' && needs.test-windows.result != 'skipped' && needs.test-windows.result != 'cancelled'
     runs-on: ubuntu-24.04
     timeout-minutes: 90   # Why (30 Oct 2026, a8; beta 41090972183): covers the e2e review (15 min) plus release-checks.sh waiting up to 60 min for main's build; 20 cut Windows off at 18 min
@@ -1082,9 +1084,9 @@ jobs:
           provider: ${{ inputs.ai_provider || vars.CI_AI_PROVIDER }}
           publish-key: ${{ secrets.AI_COST_PUBLISH_KEY }}
           github-token: ${{ github.token }}
-      - name: Not released on Windows, an E2E suite failed
-        if: needs.test-windows.result != 'success'
-        run: python3 tools/beta_rate_gate.py --repo "$GITHUB_REPOSITORY" --run "$GITHUB_RUN_ID" --e2e-only windows
+      - name: Not released on Windows, an E2E suite failed on Mac + Linux or Windows
+        if: needs.test-mac.result != 'success' || needs.test-windows.result != 'success'
+        run: python3 tools/beta_rate_gate.py --repo "$GITHUB_REPOSITORY" --run "$GITHUB_RUN_ID" --e2e-only
       - name: Tolerant AI rates against main's nightly band
         if: needs.changes.outputs.gate == 'true'
         run: python3 tools/beta_rate_gate.py --repo "$GITHUB_REPOSITORY" --run "$GITHUB_RUN_ID" --platform windows

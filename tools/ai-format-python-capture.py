@@ -81,7 +81,7 @@ def locate(file, marker, *, after=None):
 class Client:
     """One fixture response, with the exact Messages body saved before parsing."""
     def __init__(self, answer):
-        self.messages, self.request = self, None
+        self.messages, self.request, self.headers = self, None, {}
         self.calls = 0
         self.answer = answer
 
@@ -89,6 +89,7 @@ class Client:
         self.calls += 1
         if self.calls != 1:
             raise AssertionError('More than one sender call')
+        self.headers = body.pop('extra_headers', {})
         self.request = copy.deepcopy(body)
         return NS(content=[NS(type='text', text=json.dumps(self.answer))], stop_reason='end_turn',
                   usage=NS(input_tokens=0, output_tokens=0, billing='subscription'))
@@ -120,7 +121,7 @@ def capture_engine(prompts=False):
         if client.request is None or client.calls != 1:
             raise AssertionError(f'{kind}: expected exactly one captured request')
         model = client.request['model']
-        entries.append(dict(kind=kind, action=action or kind.removeprefix('app.'), request=client.request, context=context,
+        entries.append(dict(kind=kind, action=client.headers.get('x-jp-action') or action or kind.removeprefix('app.'), request=client.request, context=context,
                             source=locate(source, marker, after=source_after), validator=locate(validator, parser, after=validator_after),
                             tier='small' if 'haiku' in model else 'large' if 'opus' in model else 'mid'))
 
@@ -146,14 +147,27 @@ def capture_engine(prompts=False):
          'src/ai/interviews_ai.py', 'response = client.messages.create(model=model, **request)', 'src/ai/interviews_ai.py', 'if response.stop_reason !=')
     if prompts:
         entries[-1].update(kind='app.interview', baseSystem=interviews.SYSTEM)
-        mail_config = load('src/ai/mail_config.py', ['OUTREACH', 'KINDS', 'BATCH', 'SCHEMA', 'SYSTEM'],
-                           REPLY='Reply received', employer_feedback=NS(RECEIVED='Feedback received'))
-        mail = load('src/ai/mail_read.py', ['classify'], SYSTEM=mail_config.SYSTEM, SCHEMA=mail_config.SCHEMA,
-                    BATCH=mail_config.BATCH, listing=lambda apps: '', engine=engine, cost=NS(add=lambda *a: None))
-        client = Client({'results': []})
-        mail.classify(client, models.SMALL_MODEL, [], [dict(subject='Fixture subject', body='Fixture mail text',
-                                                         date='2026-10-30', **{'from': 'sender@example.com'})])
-        entries.append(dict(kind='mail', action='mail', request=client.request, baseSystem=mail_config.SYSTEM))
+    mail_config = load('src/ai/mail_config.py', ['OUTREACH', 'KINDS', 'BATCH', 'SCHEMA', 'SYSTEM'],
+                       REPLY='Reply received', employer_feedback=NS(RECEIVED='Feedback received'))
+    mail = load('src/ai/mail_read.py', ['classify'], SYSTEM=mail_config.SYSTEM, SCHEMA=mail_config.SCHEMA,
+                BATCH=mail_config.BATCH, listing=lambda apps: '', engine=engine, cost=NS(add=lambda *a: None))
+    client = Client({'results': []})
+    mail_items = [dict(subject='Fixture subject', body='Fixture mail text',
+                       date='2026-10-30', **{'from': 'sender@example.com'})]
+    mail.classify(client, models.SMALL_MODEL, [], mail_items)
+    keep('mail', client, {'apps': [], 'items': mail_items},
+         'src/ai/mail_read.py', 'response = client.messages.create(', 'src/ai/mail_read.py', 'for result in json.loads')
+    if prompts:
+        entries[-1]['baseSystem'] = mail_config.SYSTEM
+
+    opportunity = load('src/ai/opportunity.py', ['SCHEMA', 'SYSTEM', 'extract'], engine=engine, cost=NS(add=lambda *a: None))
+    opportunity_text = 'Subject: Interview invitation: DevOps Engineer at Initech\n\nWe invite you to interview for the DevOps Engineer role at Initech.'
+    client = Client({})
+    opportunity.extract(client, models.SMALL_MODEL, opportunity_text, sender='recruiter@example.com')
+    if client.headers != {'x-jp-action': 'opportunity'}:
+        raise AssertionError('Opportunity extraction must override the shared mail action')
+    keep('opportunity', client, {'text': opportunity_text, 'sender': 'recruiter@example.com'},
+         'src/ai/opportunity.py', 'response = client.messages.create(', 'src/ai/opportunity.py', 'return json.loads')
 
     text = load('src/ai/interview_insights_text.py', ['MIN_SUPPORT', 'ROUND_TYPES', 'MAX_REVIEW_CHARS', 'KINDS', 'SCHEMA', 'SYSTEM'])
     insights = load('src/ai/interview_insights.py', ['prompt_input', 'generate'], interviews=interviews, engine=engine,

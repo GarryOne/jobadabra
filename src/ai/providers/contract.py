@@ -1,7 +1,7 @@
 """The contract every AI provider adapter meets: one neutral request in, one SDK-shaped response out, one set of errors.
 
 Callers keep calling `client.messages.create(**params)` with the Anthropic-shaped params they always sent (model, max_tokens,
-system, messages, output_config, tools). `Adapter.create` turns them into a `Request` (refusing any parameter it does not know,
+system, messages, output_config, tools, extra_headers). `Adapter.create` turns them into a `Request` (refusing any parameter it does not know,
 so nothing is dropped in silence), hands it to the provider's `complete`, and returns a `Response` shaped like the Anthropic
 SDK's (`.content[0].text`, `.usage`, `.stop_reason`, `.model`): the ~30 AI modules work the same whatever the engine.
 
@@ -15,7 +15,7 @@ import sys
 
 API, SUBSCRIPTION = 'api', 'subscription'
 STOP_REASONS = ('end_turn', 'max_tokens', 'refusal', 'max_turns')
-PARAMS = ('model', 'max_tokens', 'system', 'messages', 'output_config', 'tools')
+PARAMS = ('model', 'max_tokens', 'system', 'messages', 'output_config', 'tools', 'extra_headers')
 
 
 # ---------- errors ----------

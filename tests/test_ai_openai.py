@@ -64,6 +64,16 @@ def sdk_error(kind, status, body=None):
 
 
 class OpenAIApiTests(unittest.TestCase):
+    def test_per_call_action_overrides_the_shared_mail_client_for_counting(self):
+        fake = FakeOpenAI(recorded(message(text('{"answer":"yes"}'))))
+        client = OpenAIApi(client=fake, action='mail')
+        client.messages.create(**dict(PARAMS, extra_headers={'x-jp-action': 'opportunity'}))
+        self.assertEqual(fake.sent[0]['extra_headers'], {'x-jp-action': 'opportunity'})
+        self.assertEqual(fake.sent[0]['prompt_cache_key'], 'job-pilotto-opportunity')
+        client.messages.create(**PARAMS)
+        self.assertEqual(fake.sent[1]['prompt_cache_key'], 'job-pilotto-mail')
+        self.assertNotIn('extra_headers', fake.sent[1])
+
     def test_a_structured_call_with_an_image_reads_like_claudes(self):
         fake = FakeOpenAI(recorded(message(text('{"answer": "yes", "why": null, "items": null}'))))
         response = OpenAIApi(client=fake, action='decide').messages.create(**PARAMS)

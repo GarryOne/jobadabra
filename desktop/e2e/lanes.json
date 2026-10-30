@@ -36,6 +36,9 @@
     "interactions": {
       "aiMissesMax": 0
     },
+    "failureschannels": {
+      "aiMissesMax": 0
+    },
     "activityfailures": {
       "aiMissesMax": 0
     },

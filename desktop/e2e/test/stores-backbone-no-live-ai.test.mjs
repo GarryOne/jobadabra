@@ -1,14 +1,12 @@
 // Prove stores' declared background kinds resolve at every seam without a key or live transport.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import {fileURLToPath} from 'node:url';
 import {test} from 'node:test';
 import {loadTable, storedAnswer} from '../lib/ai-answers.mjs';
 import {FAILURES} from '../lib/ai-proxy.mjs';
-import {backboneHarness} from '../lib/backbone-harness.mjs';
+import {answersTableFile, backboneHarness} from '../lib/backbone-harness.mjs';
 import {modelFetch} from '../lib/model.mjs';
 
-const tableFile = fileURLToPath(new URL('../fixtures/golden/ai-answers.json', import.meta.url));
 const kinds = ['contact_asks', 'missing_facts_wording', 'covered_facts', 'reuse_verdict', 'question_formats', 'cv_queue',
   'places', 'field_redraft', 'role_ideas'];
 const empty = {organize_lines: {items: []}, answer_home: {items: []}, contact_from_cv: {proposals: []}};
@@ -19,13 +17,13 @@ const request = action => ({method: 'POST', headers: {'content-type': 'applicati
   body: JSON.stringify({model: 'test', messages: [{role: 'user', content: 'What is your notice period?: Three months, negotiable'}]})});
 
 test('the table declares exactly the refused and authored background kinds', () => {
-  const table = loadTable(tableFile);
+  const table = loadTable(answersTableFile);
   // Why (30 Oct 2026, ap): the shared table includes interview declarations and Strategy's headerless list_meanings (wander); list them explicitly so unlisted kinds still fail the exact check.
   assert.deepEqual(Object.keys(table.kinds).sort(), [...kinds, ...Object.keys(empty), 'interview', 'interview_patterns', 'list_meanings'].sort());
 });
 
 test('stores background refusals resolve before live AI at every seam', async t => {
-  const h = await harness(t), table = loadTable(tableFile);
+  const h = await harness(t), table = loadTable(answersTableFile);
   for (const kind of kinds) {
     const init = request(kind);
     const found = storedAnswer({url: '/v1/messages', ...init}, h.env);
@@ -42,7 +40,7 @@ test('stores background refusals resolve before live AI at every seam', async t 
 });
 
 test('authored background kinds return their replies rather than refusals at every seam', async t => {
-  const h = await harness(t), table = loadTable(tableFile);
+  const h = await harness(t), table = loadTable(answersTableFile);
   for (const [kind, payload] of Object.entries(empty)) {
     const init = request(kind), found = storedAnswer({url: '/v1/messages', ...init}, h.env);
     assert.deepEqual(Object.keys(found), ['reply'], kind);

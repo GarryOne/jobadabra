@@ -1,5 +1,5 @@
 {
-  "about": "Reviewed AI answers for the quality backbone suite (29 Oct 2026 record run 40861637712; scores and decide items reviewed by qu, rule in the PR). Keyed by question, not request bytes. Shared background kinds are declared by name with invalid-key refusals (owner, 29 Oct 2026); stores uses its notice-period stand-in plus these kinds. Interviews declares caption-keyed authored reviews and a kind-only authored patterns reply (29 Oct 2026). Wander adds authored empty items for answer_home/organize_lines and empty contact_from_cv proposals (30 Oct 2026) to avoid visible raw errors; role_ideas is a controlled refusal. Its six current seeded target-role titles, including the captured Site Reliability Engineer, have authored software verdicts for Strategy's role-kind calls; list_meanings, Strategy's chip-meaning read that sends no action header, is an authored empty reply (30 Oct 2026, wander red on main). These are fixtures, not recorded model replies. Why (30 Oct 2026, qu): authored portal relevance rows cover setup, the literal quality reset and the captured post-reset search. True means relevant to offer for SRE jobs in Swiss places, not permission to fetch a login-wall site; the journey never reads these portals.",
+  "about": "Reviewed AI answers for the quality backbone suite (29 Oct 2026 record run 40861637712; scores and decide items reviewed by qu, rule in the PR). Keyed by question, not request bytes. Shared background kinds are declared by name with invalid-key refusals (owner, 29 Oct 2026); stores uses its notice-period stand-in plus these kinds. Interviews declares caption-keyed authored reviews and a kind-only authored patterns reply (29 Oct 2026). Wander adds authored empty items for answer_home/organize_lines and empty contact_from_cv proposals (30 Oct 2026) to avoid visible raw errors; role_ideas is a controlled refusal. Its six current seeded target-role titles, including the captured Site Reliability Engineer, have authored software verdicts for Strategy's role-kind calls; list_meanings, Strategy's chip-meaning read that sends no action header, is an authored empty reply (30 Oct 2026, wander red on main). These are fixtures, not recorded model replies. Why (30 Oct 2026, qu): authored portal relevance rows cover setup, the literal quality reset and the captured post-reset search. True means relevant to offer for SRE jobs in Swiss places, not permission to fetch a login-wall site; the journey never reads these portals. activityfailures adds authored answers (29-30 Oct 2026, no live reply): metro ch-zurich for z[u\u00fc]rich and none for schweiz (reusing the stored switzerland answer); region europe and country ch for z[u\u00fc]rich and schweiz; tech area sre_devops for systems administrator, site reliability engineer and cloud engineer. All support the restarted search requiring an ok run. activityfailures also adds authored pool-family sre_devops_cloud for site reliability engineer, cloud engineer and systems administrator (30 Oct 2026, CI run 40980518892); the captured six-role batch reuses platform engineer, devops engineer and infrastructure engineer. Its six decide topics are role-kind, pool-family, pool-role, pool-metro, pool-region and pool-country. activityfailures adds 12 hand-authored rows (30 Oct 2026, CI 40983489930; not recorded model replies): app.score/feed/1da6368cd24e62770f18a716a7b350fb3c6f01ae226a8f9c7c978541807d34c2, app.score/feed/3d695acacf3962ef39abd7921bf38bed6d236b734f84d892fcc0e27cb47d5634, app.score/feed/22a1f609c2fcddc16a63feee750e7330ffca3d684a352a8b62d98af110dbba0f, app.score/feed/6cbe018ccb67f7edd510cb3af14409471d51da8428386d37341f42ca30f9257d, app.score/feed/cab6da775114a4cab18423082e17b23309db928680f7392d263cf05ce481c788, app.score/feed/b8393735fbb246ce3e13b32086b7d2ce642bb49ccebc0721d2788bff5f64364c, default/app.visit/2e062ba5b572/7a81e8bb96b5d8e133f5b40e2902ce0240ba7098b7969ac0ab8d98061776d289, default/app.visit/2e062ba5b572/6d6370e24849b5920a5e26d3d85b9adaeee534b4d6b0e78cc9a9d29b4189e219, default/app.visit/2e062ba5b572/1e46679dc9d55911cdf8b628d84b9e4e9838c06e70cdc69d44c04d84f790bfba, default/app.visit/2e062ba5b572/db06ac4d5d7da6914864da4d4844cfba3b706f8c8fb4fdf1431b2fc99b38c01f, shared/app.geo/44136fa355b3/201f10d5d64518d86d2d3a47d28675d1c788762c5345df643dadec71d4e0a91e, default/places-289aa37c5864/c0c2300d71d1f496814e8b37d1e4283079d1fe90670bae9e3a15543ff3875de7. Scores use Alex Morgan from desktop/demo/draft.json (not the richer golden candidate.txt); the fault labels and synthetic Data Analyst suffix do not change the production SRE/platform duties. Unknown pay stays null; SLO evidence and on-call details are gaps; the lead posting also lacks profile evidence of leadership. All four portals are relevant to offer for SRE jobs in Zurich; true does not authorize reading login-wall sites. The captured Zurich-only context differs from qu PR #2533's 12 quality rows. Geo locates Z\u00fcrich; place_triage selects the explicitly offered Zurich alternative under the current multi-place rule. The six feed score rows are keyed by qu's feed key, feed/<sha256 of canonical {company, location, title}>, merged in #2539.",
   "kinds": {
     "organize_lines": {
       "answer": {
@@ -135,10 +135,7 @@
               "text": "{\"nothing_useful\":false,\"headline\":\"Practise explaining how your Terraform approach extends across clouds.\",\"headline_detail\":\"The transcript names a multi cloud gap.\",\"patterns\":[{\"round_type\":\"Recruiter screen\",\"title\":\"Terraform experience has a multi cloud gap\",\"kind\":\"note\",\"pattern\":\"You describe Terraform modules and CI checks but have not run a multi cloud estate.\",\"evidence\":[{\"interview\":\"I1\",\"quote\":\"I have not run a multi cloud estate.\"}]}],\"next_steps\":[{\"action\":\"Practise describing Terraform across multiple clouds.\",\"title\":\"Explain Terraform across clouds\",\"focus\":\"Terraform • multiple clouds\",\"interviews\":[\"I1\"]}],\"confidence\":\"low\"}"
             }
           ],
-          "usage": {
-            "input_tokens": 1,
-            "output_tokens": 1
-          }
+          "usage": {"input_tokens": 1, "output_tokens": 1}
         }
       }
     },
@@ -349,6 +346,108 @@
             "output_tokens": 172
           }
         }
+      },
+      "feed/1da6368cd24e62770f18a716a7b350fb3c6f01ae226a8f9c7c978541807d34c2": {
+        "reply": {
+          "id": "msg_e2e",
+          "type": "message",
+          "role": "assistant",
+          "model": "e2e-authored",
+          "stop_reason": "end_turn",
+          "stop_sequence": null,
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"score\":83,\"tier\":\"B\",\"components\":{\"role_fit\":90,\"location\":95,\"compensation\":null,\"growth\":86,\"risk\":25},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Senior SRE stack fits; explicit SLO experience is not stated.\",\"strengths\":[\"Production Kubernetes on AWS and Terraform match the profile\",\"Senior infrastructure scope and English working language fit\",\"Hybrid work in Zurich is offered among the listed locations\"],\"gaps\":[\"Explicit SLO experience is not stated in the profile.\",\"Salary, permanent contract and workload are not stated\",\"On-call intensity and the candidate's tolerance are unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"Explicit SLO experience is not stated in the profile.\"}}"
+            }
+          ],
+          "usage": {"input_tokens": 1, "output_tokens": 1}
+        }
+      },
+      "feed/3d695acacf3962ef39abd7921bf38bed6d236b734f84d892fcc0e27cb47d5634": {
+        "reply": {
+          "id": "msg_e2e",
+          "type": "message",
+          "role": "assistant",
+          "model": "e2e-authored",
+          "stop_reason": "end_turn",
+          "stop_sequence": null,
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"score\":83,\"tier\":\"B\",\"components\":{\"role_fit\":90,\"location\":95,\"compensation\":null,\"growth\":86,\"risk\":25},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Senior SRE stack fits; explicit SLO experience is not stated.\",\"strengths\":[\"Production Kubernetes on AWS and Terraform match the profile\",\"Senior infrastructure scope and English working language fit\",\"Hybrid work in Zurich is offered among the listed locations\"],\"gaps\":[\"Explicit SLO experience is not stated in the profile.\",\"Salary, permanent contract and workload are not stated\",\"On-call intensity and the candidate's tolerance are unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"Explicit SLO experience is not stated in the profile.\"}}"
+            }
+          ],
+          "usage": {"input_tokens": 1, "output_tokens": 1}
+        }
+      },
+      "feed/22a1f609c2fcddc16a63feee750e7330ffca3d684a352a8b62d98af110dbba0f": {
+        "reply": {
+          "id": "msg_e2e",
+          "type": "message",
+          "role": "assistant",
+          "model": "e2e-authored",
+          "stop_reason": "end_turn",
+          "stop_sequence": null,
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"score\":83,\"tier\":\"B\",\"components\":{\"role_fit\":90,\"location\":95,\"compensation\":null,\"growth\":86,\"risk\":25},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Senior SRE stack fits; explicit SLO experience is not stated.\",\"strengths\":[\"Production Kubernetes on AWS and Terraform match the profile\",\"Senior infrastructure scope and English working language fit\",\"Hybrid work in Zurich is offered among the listed locations\"],\"gaps\":[\"Explicit SLO experience is not stated in the profile.\",\"Salary, permanent contract and workload are not stated\",\"On-call intensity and the candidate's tolerance are unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"Explicit SLO experience is not stated in the profile.\"}}"
+            }
+          ],
+          "usage": {"input_tokens": 1, "output_tokens": 1}
+        }
+      },
+      "feed/6cbe018ccb67f7edd510cb3af14409471d51da8428386d37341f42ca30f9257d": {
+        "reply": {
+          "id": "msg_e2e",
+          "type": "message",
+          "role": "assistant",
+          "model": "e2e-authored",
+          "stop_reason": "end_turn",
+          "stop_sequence": null,
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"score\":83,\"tier\":\"B\",\"components\":{\"role_fit\":90,\"location\":95,\"compensation\":null,\"growth\":86,\"risk\":25},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Senior SRE stack fits; explicit SLO experience is not stated.\",\"strengths\":[\"Production Kubernetes on AWS and Terraform match the profile\",\"Senior infrastructure scope and English working language fit\",\"Hybrid work in Zurich is offered among the listed locations\"],\"gaps\":[\"Explicit SLO experience is not stated in the profile.\",\"Salary, permanent contract and workload are not stated\",\"On-call intensity and the candidate's tolerance are unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"Explicit SLO experience is not stated in the profile.\"}}"
+            }
+          ],
+          "usage": {"input_tokens": 1, "output_tokens": 1}
+        }
+      },
+      "feed/cab6da775114a4cab18423082e17b23309db928680f7392d263cf05ce481c788": {
+        "reply": {
+          "id": "msg_e2e",
+          "type": "message",
+          "role": "assistant",
+          "model": "e2e-authored",
+          "stop_reason": "end_turn",
+          "stop_sequence": null,
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"score\":76,\"tier\":\"B\",\"components\":{\"role_fit\":80,\"location\":95,\"compensation\":null,\"growth\":74,\"risk\":32},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Platform stack fits; leadership and explicit SLO experience are not stated.\",\"strengths\":[\"Production Kubernetes on AWS and Terraform match the profile\",\"Senior infrastructure scope and English working language fit\",\"Hybrid work in Zurich is offered among the listed locations\"],\"gaps\":[\"People leadership and explicit SLO experience are not stated in the profile.\",\"Salary, permanent contract and workload are not stated\",\"On-call intensity and the candidate's tolerance are unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":85,\"career_change\":false,\"cv_gap\":\"People leadership and explicit SLO experience are not stated in the profile.\"}}"
+            }
+          ],
+          "usage": {"input_tokens": 1, "output_tokens": 1}
+        }
+      },
+      "feed/b8393735fbb246ce3e13b32086b7d2ce642bb49ccebc0721d2788bff5f64364c": {
+        "reply": {
+          "id": "msg_e2e",
+          "type": "message",
+          "role": "assistant",
+          "model": "e2e-authored",
+          "stop_reason": "end_turn",
+          "stop_sequence": null,
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"score\":82,\"tier\":\"B\",\"components\":{\"role_fit\":90,\"location\":95,\"compensation\":null,\"growth\":86,\"risk\":25},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Senior platform stack fits; explicit SLO experience is not stated.\",\"strengths\":[\"Production Kubernetes on AWS and Terraform match the profile\",\"Senior infrastructure scope and English working language fit\",\"Hybrid work in Zurich is offered among the listed locations\"],\"gaps\":[\"Explicit SLO experience is not stated in the profile.\",\"Salary, permanent contract and workload are not stated\",\"On-call intensity and the candidate's tolerance are unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"Explicit SLO experience is not stated in the profile.\"}}"
+            }
+          ],
+          "usage": {"input_tokens": 1, "output_tokens": 1}
+        }
       }
     },
     "app.interview": {
@@ -366,10 +465,7 @@
               "text": "{\"application\":-1,\"company\":\"Gamma Freight\",\"round\":\"Recruiter screen\",\"interviewers\":[\"Recruiter\"],\"duration_min\":2,\"questions\":[{\"topic\":\"Terraform\",\"question\":\"What is your experience with Terraform at scale?\",\"answer\":\"Six years; about two hundred modules, CI plan checks and a policy gate.\",\"quality\":\"ok\",\"better\":\"Explain how the module and policy approach would extend to multiple clouds.\"}],\"strengths\":[\"Stabilises incidents before investigating: rollback, metrics and traces.\"],\"weaknesses\":[],\"signals\":[],\"red_flags\":[],\"next_step\":\"Technical interview with the platform lead, probably next week.\",\"practice\":[\"Practise describing Terraform across multiple clouds.\"],\"overall\":\"positive\",\"summary\":\"You described structured incident handling and Terraform experience, with a multi cloud gap.\",\"facts\":[]}"
             }
           ],
-          "usage": {
-            "input_tokens": 1,
-            "output_tokens": 1
-          }
+          "usage": {"input_tokens": 1, "output_tokens": 1}
         }
       },
       "E2E Acme · Round 1": {
@@ -386,10 +482,7 @@
               "text": "{\"application\":-1,\"company\":\"E2E Acme\",\"round\":\"Recruiter screen\",\"interviewers\":[\"Recruiter\"],\"duration_min\":2,\"questions\":[{\"topic\":\"Terraform\",\"question\":\"What is your experience with Terraform at scale?\",\"answer\":\"Six years; about two hundred modules, CI plan checks and a policy gate.\",\"quality\":\"ok\",\"better\":\"Explain how the module and policy approach would extend to multiple clouds.\"}],\"strengths\":[\"Stabilises incidents before investigating: rollback, metrics and traces.\"],\"weaknesses\":[],\"signals\":[],\"red_flags\":[],\"next_step\":\"Technical interview with the platform lead, probably next week.\",\"practice\":[\"Practise describing Terraform across multiple clouds.\"],\"overall\":\"positive\",\"summary\":\"You described structured incident handling and Terraform experience, with a multi cloud gap.\",\"facts\":[]}"
             }
           ],
-          "usage": {
-            "input_tokens": 1,
-            "output_tokens": 1
-          }
+          "usage": {"input_tokens": 1, "output_tokens": 1}
         }
       }
     }
@@ -436,6 +529,10 @@
         "answer": "ch-geneva",
         "text": ": <!w geneva !w <!w geneve !w"
       },
+      "default/6ddd2461a581fc580d8bddbf2ef22fb798067b815cc7a5b49f2bd0b8a6648760/6b29128c342245dd11e5905ded2243df8c45e91c802678833e93446b7ca2280f": {
+        "answer": "ch-zurich",
+        "text": "z[u\u00fc]rich"
+      },
       "default/6ddd2461a581fc580d8bddbf2ef22fb798067b815cc7a5b49f2bd0b8a6648760/811dae26155c1f96fa4be679ba416b5b956c4eb73dc831d69f61692507e30595": {
         "answer": "ch-zurich",
         "text": "zurich"
@@ -451,6 +548,10 @@
       "default/6ddd2461a581fc580d8bddbf2ef22fb798067b815cc7a5b49f2bd0b8a6648760/c32f5de8269a9aced9a2a66afe8d228052211b0008b80b6993811ce29496bc91": {
         "answer": "none",
         "text": "switzerland"
+      },
+      "default/6ddd2461a581fc580d8bddbf2ef22fb798067b815cc7a5b49f2bd0b8a6648760/ef50577d72461b3fbacb0f3146047f1a50e2e2f093bb973f8634a63e74eb7156": {
+        "answer": "none",
+        "text": "schweiz"
       },
       "default/89307a17298dafc6c8acfe0bb19a63dc40cb225dbfe5b017aa935b144e01ede9/091d4475c66b3c8a9fde757e966a956eecddf14fb17cf15d83d18a99308f05c3": {
         "answer": "sre_devops_cloud",
@@ -480,6 +581,10 @@
         "answer": "europe",
         "text": "bern"
       },
+      "default/8ac5f5b3506863e6babc9cff899b609ed7094e67c7c6154b345f81d9e9d66668/6b29128c342245dd11e5905ded2243df8c45e91c802678833e93446b7ca2280f": {
+        "answer": "europe",
+        "text": "z[u\u00fc]rich"
+      },
       "default/8ac5f5b3506863e6babc9cff899b609ed7094e67c7c6154b345f81d9e9d66668/811dae26155c1f96fa4be679ba416b5b956c4eb73dc831d69f61692507e30595": {
         "answer": "europe",
         "text": "zurich"
@@ -491,6 +596,10 @@
       "default/8ac5f5b3506863e6babc9cff899b609ed7094e67c7c6154b345f81d9e9d66668/c32f5de8269a9aced9a2a66afe8d228052211b0008b80b6993811ce29496bc91": {
         "answer": "europe",
         "text": "switzerland"
+      },
+      "default/8ac5f5b3506863e6babc9cff899b609ed7094e67c7c6154b345f81d9e9d66668/ef50577d72461b3fbacb0f3146047f1a50e2e2f093bb973f8634a63e74eb7156": {
+        "answer": "europe",
+        "text": "schweiz"
       },
       "default/b15eeeee937e77e08f1f35200deff769847d89397b3058d81dafe6415d201e54/091d4475c66b3c8a9fde757e966a956eecddf14fb17cf15d83d18a99308f05c3": {
         "answer": "sre_devops",
@@ -504,6 +613,10 @@
         "answer": "sre_devops",
         "text": "site reliability"
       },
+      "default/b15eeeee937e77e08f1f35200deff769847d89397b3058d81dafe6415d201e54/6966dc51d01bff356662b4fc659487026d178265a59493429e2bc3e2e19502b1": {
+        "answer": "sre_devops",
+        "text": "systems administrator"
+      },
       "default/b15eeeee937e77e08f1f35200deff769847d89397b3058d81dafe6415d201e54/69b4bcbc6ed36c1de44a75ce1deabd1e2e2482081d8fafcd9ef3bc115d257f92": {
         "answer": "sre_devops",
         "text": "sre"
@@ -511,6 +624,14 @@
       "default/b15eeeee937e77e08f1f35200deff769847d89397b3058d81dafe6415d201e54/8c851bc1dbac36282942015a1e44f81d0db5370d788d5e8a5407c9d19aaa7e6e": {
         "answer": "sre_devops",
         "text": "infrastructure engineer"
+      },
+      "default/b15eeeee937e77e08f1f35200deff769847d89397b3058d81dafe6415d201e54/b9071c11d5c5a030fc9f87c38df15ba56af1328fb48bae254d5239f6aac7e104": {
+        "answer": "sre_devops",
+        "text": "site reliability engineer"
+      },
+      "default/b15eeeee937e77e08f1f35200deff769847d89397b3058d81dafe6415d201e54/c477b2766f66fdbdf93bf475663f6c0f96fa91528d9094000f86fa1c52203d8f": {
+        "answer": "sre_devops",
+        "text": "cloud engineer"
       },
       "default/d9f06c97101cdc68b97f8c3572320a414ed64b78d079d9587efd9e5f0094cfdb/091d4475c66b3c8a9fde757e966a956eecddf14fb17cf15d83d18a99308f05c3": {
         "answer": "software",
@@ -572,6 +693,10 @@
         "answer": "ch",
         "text": ": <!w geneva !w <!w geneve !w"
       },
+      "default/e995bd9989d0a7adfbe0da64ce7637e300e64118f5ca7d4ee602d227dee5759c/6b29128c342245dd11e5905ded2243df8c45e91c802678833e93446b7ca2280f": {
+        "answer": "ch",
+        "text": "z[u\u00fc]rich"
+      },
       "default/e995bd9989d0a7adfbe0da64ce7637e300e64118f5ca7d4ee602d227dee5759c/811dae26155c1f96fa4be679ba416b5b956c4eb73dc831d69f61692507e30595": {
         "answer": "ch",
         "text": "zurich"
@@ -611,6 +736,22 @@
       "default/d9f06c97101cdc68b97f8c3572320a414ed64b78d079d9587efd9e5f0094cfdb/9da38728bc7901fa8f2d328ca8ce13855aff13c9061ab45acb9083638eedc23e": {
         "answer": "software",
         "text": "Systems Administrator"
+      },
+      "default/e995bd9989d0a7adfbe0da64ce7637e300e64118f5ca7d4ee602d227dee5759c/ef50577d72461b3fbacb0f3146047f1a50e2e2f093bb973f8634a63e74eb7156": {
+        "answer": "ch",
+        "text": "schweiz"
+      },
+      "default/89307a17298dafc6c8acfe0bb19a63dc40cb225dbfe5b017aa935b144e01ede9/b9071c11d5c5a030fc9f87c38df15ba56af1328fb48bae254d5239f6aac7e104": {
+        "answer": "sre_devops_cloud",
+        "text": "site reliability engineer"
+      },
+      "default/89307a17298dafc6c8acfe0bb19a63dc40cb225dbfe5b017aa935b144e01ede9/c477b2766f66fdbdf93bf475663f6c0f96fa91528d9094000f86fa1c52203d8f": {
+        "answer": "sre_devops_cloud",
+        "text": "cloud engineer"
+      },
+      "default/89307a17298dafc6c8acfe0bb19a63dc40cb225dbfe5b017aa935b144e01ede9/6966dc51d01bff356662b4fc659487026d178265a59493429e2bc3e2e19502b1": {
+        "answer": "sre_devops_cloud",
+        "text": "systems administrator"
       }
     },
     "app.geo": {
@@ -712,6 +853,16 @@
           "lat": 0,
           "lon": 0,
           "r_km": 0
+        }
+      },
+      "shared/app.geo/44136fa355b3/201f10d5d64518d86d2d3a47d28675d1c788762c5345df643dadec71d4e0a91e": {
+        "text": "z\u00fcrich",
+        "answer": {
+          "kind": "city",
+          "cc": "CH",
+          "lat": 47.3769,
+          "lon": 8.5417,
+          "r_km": 15
         }
       }
     },
@@ -820,6 +971,16 @@
           "nearest": "none",
           "km": -1,
           "answer": "inside"
+        }
+      },
+      "default/places-289aa37c5864/c0c2300d71d1f496814e8b37d1e4283079d1fe90670bae9e3a15543ff3875de7": {
+        "text": "zurich, switzerland or amsterdam, netherlands",
+        "answer": {
+          "where": "Zurich",
+          "country": "Switzerland",
+          "nearest": "z\u00fcrich",
+          "km": 0,
+          "answer": "best"
         }
       }
     },
@@ -1536,6 +1697,22 @@
       },
       "default/app.visit/6a93d065521f/8da5b7df15fdf99e631ebd98ba5b05b4c74748b6c8fdf318cf01854858b0da13": {
         "text": "{\"found\":\"\",\"kind\":\"portal\",\"name\":\"LinkedIn\",\"url\":\"https://www.linkedin.com/jobs/search/?keywords=sre&location=zurich\"}",
+        "answer": true
+      },
+      "default/app.visit/2e062ba5b572/7a81e8bb96b5d8e133f5b40e2902ce0240ba7098b7969ac0ab8d98061776d289": {
+        "text": "{\"found\":\"\",\"kind\":\"portal\",\"name\":\"LinkedIn\",\"url\":\"https://www.linkedin.com/jobs/search/?keywords=site%20reliability%20engineer&location=z%C3%BCrich\"}",
+        "answer": true
+      },
+      "default/app.visit/2e062ba5b572/6d6370e24849b5920a5e26d3d85b9adaeee534b4d6b0e78cc9a9d29b4189e219": {
+        "text": "{\"found\":\"\",\"kind\":\"portal\",\"name\":\"Indeed\",\"url\":\"https://ch.indeed.com/jobs?q=site%20reliability%20engineer&l=z%C3%BCrich\"}",
+        "answer": true
+      },
+      "default/app.visit/2e062ba5b572/1e46679dc9d55911cdf8b628d84b9e4e9838c06e70cdc69d44c04d84f790bfba": {
+        "text": "{\"found\":\"\",\"kind\":\"portal\",\"name\":\"Glassdoor\",\"url\":\"https://www.glassdoor.com/Job/jobs.htm?sc.keyword=site%20reliability%20engineer&locKeyword=z%C3%BCrich\"}",
+        "answer": true
+      },
+      "default/app.visit/2e062ba5b572/db06ac4d5d7da6914864da4d4844cfba3b706f8c8fb4fdf1431b2fc99b38c01f": {
+        "text": "{\"found\":\"\",\"kind\":\"portal\",\"name\":\"levels.fyi\",\"url\":\"https://www.levels.fyi/jobs?searchText=site%20reliability%20engineer&location=z%C3%BCrich\"}",
         "answer": true
       }
     }

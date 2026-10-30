@@ -8,13 +8,14 @@ import {fileURLToPath} from 'node:url';
 import {contextAiKeys, contextAiProxies} from './context.mjs';
 import {assertNoRealAi} from './no-real-ai.mjs';
 
-const tableFile = fileURLToPath(new URL('../fixtures/golden/ai-answers.json', import.meta.url));
+/** Shared stored-answer table path for the backbone harness and its tests. */
+export const answersTableFile = fileURLToPath(new URL('../fixtures/golden/ai-answers.json', import.meta.url));
 
 /** Isolate a backbone suite with stored answers; fail if any call selects an engine or live transport. */
 export async function backboneHarness(t, suite, family = 'claude') {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), `${suite}-backbone-`));
   t.after(() => fs.rmSync(dir, {recursive: true, force: true}));
-  const env = {CI: 'true', E2E_AI_ANSWERS: 'backbone', E2E_AI_ANSWERS_FILE: tableFile, E2E_ARTIFACTS: dir,
+  const env = {CI: 'true', E2E_AI_ANSWERS: 'backbone', E2E_AI_ANSWERS_FILE: answersTableFile, E2E_ARTIFACTS: dir,
     E2E_SUITE: suite, E2E_AI_REPLAY: '1', E2E_AI_CACHE: dir, E2E_QUALITY_PERSONA: '', E2E_AI_PROVIDER: 'codex'};
   const saved = {...process.env};
   for (const key of Object.keys(process.env)) if (/^(E2E_|CI_AI_PROVIDER)/.test(key)) delete process.env[key];

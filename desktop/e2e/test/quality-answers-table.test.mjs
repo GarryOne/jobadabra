@@ -7,8 +7,11 @@ import {capViolations, rankingViolations} from '../lib/quality.mjs';
 
 const file = new URL('../fixtures/golden/ai-answers.json', import.meta.url);
 const truth = JSON.parse(fs.readFileSync(new URL('../fixtures/golden/truth.json', import.meta.url), 'utf8'));
-const scoresOf = table => Object.fromEntries(Object.entries(table.answers['app.score']).map(([id, {reply}]) =>
+// Why (30 Oct 2026, ap): activityfailures' own feed postings are scored under qu's feed/<hash> keys, outside the golden truth; only keys its fixture declares may stay out of it, and the golden ranking, cap and coverage checks read the golden rows alone.
+const feedKeys = new Set(JSON.parse(fs.readFileSync(new URL('../fixtures/golden/activityfailures-feed-asks.json', import.meta.url), 'utf8')).feedPostings.map(post => post.key));
+const allScoresOf = table => Object.fromEntries(Object.entries(table.answers['app.score']).map(([id, {reply}]) =>
   [id, JSON.parse(reply.content.filter(part => part.type === 'text').map(part => part.text).join('')).score]));
+const scoresOf = table => Object.fromEntries(Object.entries(allScoresOf(table)).filter(([id]) => !feedKeys.has(id)));
 
 test('the committed reviewed table loads through the real validator', () => {
   assert.doesNotThrow(() => loadTable(file));
@@ -18,6 +21,9 @@ test('every stored score names a golden posting and is an integer from 0 to 100'
   const ids = new Set(truth.map(item => String(item.id)));
   const scores = scoresOf(loadTable(file));
   assert.ok(Object.keys(scores).length > 0, 'the reviewed score table must not be empty');
+  const stored = allScoresOf(loadTable(file));
+  assert.deepEqual([...feedKeys].filter(id => !(id in stored)), [], 'a declared feed posting has no stored score');
+  for (const [id, score] of Object.entries(stored).filter(([id]) => feedKeys.has(id))) assert.ok(Number.isInteger(score) && score >= 0 && score <= 100, `app.score/${id}: invalid score ${score}`);
   for (const [id, score] of Object.entries(scores)) {
     assert.ok(ids.has(id), `app.score/${id}: unknown golden posting`);
     assert.ok(Number.isInteger(score) && score >= 0 && score <= 100, `app.score/${id}: invalid score ${score}`);

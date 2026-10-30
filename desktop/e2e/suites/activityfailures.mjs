@@ -17,9 +17,13 @@ const disagreement = (mine, opened, run) => {
   return `the list says "${mine?.pill}" and the panel "${opened.status}" (record: ok=${run.ok} warned=${run.warned} problem="${run.problem || ''}", ${(run.log || []).length} log line(s), ${(run.log || []).filter(warnLine).length} warning-like; panel log: ${panelLines.length} line(s), ${panelLines.filter(warnLine).length} warning-like; panel box "${opened.warningsTitle}"; app: ${JSON.stringify(opened.state?.activity ?? null).slice(0, 300)})`;
 };
 
-export const realAi = true;   // stubs some AI calls but passes the others to the real model (metered); a suite with all calls stubbed declares false (test/suite-ai-mode.test.mjs)
+// Why (29 Oct 2026, ap): explicit faults, stored metro items and declared background refusals cover every AI ask, so no live key is needed.
+export const offlineAi = true;
+export const realAi = false;
 export const minutes = 40;   // + Notion, Telegram and Gmail failures (5 Oct 2026)
 export const name = 'activityfailures';
+// Why (30 Oct 2026, ap): shared Notion fault steps need the stand-in; stored AI answers are store-independent, so pin that store for one replay path.
+export const store = 'standin';
 // One failed step never hides the rest: the runner records it and goes on (lib/runner.mjs); only the setup steps marked `critical` stop the suite.
 export const keepGoing = true;
 // Notion fails on purpose too (lib/notion-proxy.mjs): busy, an HTML error page, the connection gone.

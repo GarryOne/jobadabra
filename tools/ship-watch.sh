@@ -22,7 +22,10 @@ old="$(cat "$pidfile" 2>/dev/null || true)"
 echo $$ > "$pidfile"   # before the kill: the old watcher's exit trap then sees a newer pid and leaves the file alone
 [ -z "$old" ] || [ "$old" = "$$" ] || kill "$old" 2>/dev/null || true   # one watcher per branch
 trap '[ "$(cat "$pidfile" 2>/dev/null)" != "$$" ] || rm -f "$pidfile"' EXIT
-say() { echo "ship: $*" >> "$log"; }
+notify_codex() {
+  [ -z "${CODEX_THREAD_ID:-${CODEX_SESSION_ID:-}}" ] || python3 "$here/codex-pr-events.py" "$log"
+}
+say() { echo "ship: $*" >> "$log"; notify_codex; }
 [ -n "$repo" ] || { say "WATCH ENDED #$n (no GitHub repository)"; exit 0; }
 fixer="${SHIP_WATCH_FIX:-$here/pr-conflict-fix.sh}"
 seen="$pidfile.comments"; touch "$seen" 2>/dev/null
@@ -47,15 +50,15 @@ report_comments() {  # <view json>; sets $waiting: the owner's and others' items
     fi
   done <<<"$rows"
 }
-waited=0; red=""; green=""; conflict=""; ready=""; waiting=0
+waited=0; red=""; green=""; conflict=""; ready=""; waiting=0; terminal=""
 while :; do
   view="$(pr_view "$repo" "$n" full)" || view=""
   state="$(jq -r '.state // empty' <<<"$view" 2>/dev/null)"
   case "$state" in
-    MERGED) say "MERGED #$n $(jq -r '.mergeCommit.oid // empty' <<<"$view" | cut -c1-7)"; exit 0 ;;
-    CLOSED) say "CLOSED #$n (unmerged)"; exit 0 ;;
+    MERGED) [ "$terminal" = MERGED ] || { terminal=MERGED; say "MERGED #$n $(jq -r '.mergeCommit.oid // empty' <<<"$view" | cut -c1-7)"; }; notify_codex && exit 0 ;;
+    CLOSED) [ "$terminal" = CLOSED ] || { terminal=CLOSED; say "CLOSED #$n (unmerged)"; }; notify_codex && exit 0 ;;
   esac
-  if [ -n "$state" ]; then
+  if [ -n "$state" ] && [ -z "$terminal" ]; then
     case "$(jq -r '.mergeable // empty' <<<"$view" 2>/dev/null)" in   # UNKNOWN (GitHub is still working it out) keeps the last known state
       CONFLICTING) if [ -z "$conflict" ]; then conflict=1; say "CONFLICT #$n"; (cd "$start_dir" && bash "$fixer" "$n" "$log") >/dev/null 2>&1 || true; fi ;;
       MERGEABLE) [ -z "$conflict" ] || { conflict=""; green=""; } ;;
@@ -76,6 +79,7 @@ while :; do
       [ "$ready" = "$head" ] || say "READY #$n ${head:0:7}"; ready="$head"
     elif [ -n "$checks" ]; then ready=""; fi   # a failed check read clears GREEN for one look, never READY: no second READY for the same head
   fi
+  notify_codex   # retry a failed native queue even if the PR state has not changed
   [ "$waited" -lt "$cap" ] || { say "WATCH ENDED #$n (still open)"; exit 0; }
   if [ -n "$view" ]; then backoff=0; else backoff=$(( backoff ? backoff * 2 : (poll > 0 ? poll : 1) * 2 )); [ "$backoff" -le "$backoff_max" ] || backoff="$backoff_max"; fi
   pause=$(( backoff ? backoff : poll )); sleep "$pause"; waited=$((waited + pause + 1))

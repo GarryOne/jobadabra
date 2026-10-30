@@ -34,6 +34,7 @@ import {storeName} from '../store-words.js';
 import {jobWrites} from '../job-writes.js';
 import {jobPlace} from '../targets.js';
 import {wireApplyDialog} from './jobs-apply.js';
+import {wireTriage} from './jobs-triage.js';
 
 // Every write that changes a job's stage or status ends in jobsChanged(row, patch): that row at once, then the list read again from the store
 // (renderer/job-writes.js: a read older than the write is never painted). The other reads of the list go through writes.read for the same reason.
@@ -360,5 +361,6 @@ export async function init() {
 
   $('jobs-unscored-go').addEventListener('click', () => $('refresh').click());
   wireApplyDialog({startedApplying});
+  wireTriage({rerender: () => renderJobs(), toast: toastMessage});
 }
 

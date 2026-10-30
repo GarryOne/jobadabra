@@ -2,6 +2,7 @@
 import {ai} from '../ai-name.js';
 import {closeMenu, el, isInteractiveTarget, moreButton, pill, tag} from '../components.js';
 import {resumeOffered} from '../claude-help.js';
+import {triageChip} from './jobs-triage.js';
 import {columnOf} from '../jobs-board-rules.js';
 import {isInbound} from '../origin.js';
 import {looksLikeLink, matches} from '../filter.js';
@@ -103,7 +104,7 @@ export function renderJobs() {
     const link = Object.assign(el('a', '', job.title), {href: '#', title: inNotion ? 'Open in Notion' : 'Open the job\'s details'});
     link.addEventListener('click', event => { event.preventDefault(); if (inNotion) window.pilot.openNotion(job.notion_url, event.metaKey); else openJobPanel(job, 'overview'); });   // the posting itself: the drawer's "Open posting"
     titleLine.append(link, Object.assign(pill(statusLabel, statusTone), {className: `ui-pill tone-${statusTone} status-inline`}));
-    role.append(titleLine);
+    role.append(titleLine, triageChip(job));   // Why (2026-10-30, owner: the apply triage chip on every row): the mode of the job's last read, or "Not checked" (spec 2026-10-30-apply-triage)
     // Compact list: company · place · mode · age on one line, in place of those columns.
     const meta = el('div', 'meta');
     const small = avatar(job.company);

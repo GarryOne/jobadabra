@@ -8,6 +8,7 @@ import {$} from './core.js';
 import {openJobPanel} from './job-panel.js';
 import {toastMessage} from './startup.js';
 import {jobsChanged} from './jobs.js';
+import {triageChip} from './jobs-triage.js';
 import {openFromBoard} from './jobs-views.js';
 import {jobPlace} from '../targets.js';
 
@@ -35,6 +36,7 @@ function card(job) {
   body.append(el('span', 'focus-headline', job.title || 'Role'), el('div', 'focus-meta muted small', job.company || ''));
   if (job.fit != null) body.append(el('div', 'muted small', `${job.fit} · ${matchLabel(job.fit)}`));   // a narrow column: one fact a line
   if (job.next_step) body.append(el('div', 'muted small', `Next: ${job.next_step}`));
+  body.append(triageChip(job));   // Why (2026-10-30, owner: the apply triage chip): the mode of the job's last read, or "Not checked" (spec 2026-10-30-apply-triage)
   const moves = STAGES.filter(stage => stage !== job.stage && takesDrop(stage))
     .map(stage => ({label: stage, run: () => moveJob(job, stage)}));
   item.append(body, moreButton([{label: 'Move to', disabled: true}, ...moves], 'Move to another stage'));

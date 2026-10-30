@@ -262,6 +262,7 @@
   "real-claude.test.mjs",
   "real-extension.test.mjs",
   "recall.test.mjs",
+  "record-offline-guard.test.mjs",
   "record-repair.test.mjs",
   "record-sites-order.test.mjs",
   "record-sites-paths.test.mjs",

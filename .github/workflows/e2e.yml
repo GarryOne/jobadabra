@@ -189,6 +189,7 @@ jobs:
           SHA: ${{ github.sha }}
           BEFORE: ${{ github.event.before }}
           ONLY: ${{ inputs.suite || inputs.pr_suites }}
+          AI_ANSWERS: ${{ github.event_name == 'workflow_dispatch' && github.run_attempt == 1 && inputs.ai_answers == 'record' && 'record' || 'off' }}
           PR_SUITES: ${{ inputs.pr_suites }}
           PR_STEPS: ${{ inputs.pr_steps }}   # its "(stores)" and "(why)": the store each suite runs on, and the reasons printed below (desktop/e2e/pr-suites.mjs)
           TARGET_REF: ${{ inputs.target_ref || inputs.gate_tag }}

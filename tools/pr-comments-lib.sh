@@ -34,9 +34,8 @@ pc_gitar_summary() {
   jq -r --arg id "$2" '
     .comments[]? | select(.id == $id and (.author.login | IN("gitar-bot", "gitar-bot[bot]"))) | .body
     | capture("<summary><b>Code Review</b>\\s*<kbd>(?<verdict>[^<]*)</kbd>(?<counts>[^\\n]*?)</summary>")?
-    | (.verdict | ascii_downcase) as $v
-    | (if $v | contains("changes requested") then "changes" elif $v | contains("approved with suggestions") then "suggestions"
-       elif $v | contains("approved") then "approved" else empty end) as $verdict
+    | (.verdict | ascii_downcase | gsub("^[^a-z0-9]+|[[:space:]]+$"; "")) as $verdict
+    | select($verdict != "")
     | ((.counts | capture("(?<closed>[0-9]+) closed / (?<total>[0-9]+) findings?")?) // (if $verdict == "approved" then {closed: "0", total: "0"} else empty end))
     | select((.total | tonumber) >= (.closed | tonumber))
     | "\($verdict):\((.total | tonumber) - (.closed | tonumber))"' <<<"$1"

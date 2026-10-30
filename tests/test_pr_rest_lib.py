@@ -80,6 +80,18 @@ class PrRestLibTest(unittest.TestCase):
             self.put(f'repos/o/r/actions/runs/{i}', {'head_sha': sha, 'event': event})
         self.assertEqual([(c['name'], c['bucket']) for c in json.loads(self.sh('pr_checks o/r h1')[1])], [('python', 'pass')])
 
+    def test_pr_verdict_status_can_link_to_a_workflow_run_on_main(self):
+        self.put('repos/o/r/commits/h1/check-runs?per_page=100', {'check_runs': [
+            {'id': 1, 'name': 'report', 'head_sha': 'main', 'status': 'completed', 'conclusion': 'failure',
+             'html_url': 'https://github.com/o/r/actions/runs/2/job/1'}]})
+        self.put('repos/o/r/actions/runs/2', {'head_sha': 'main', 'event': 'workflow_run'})
+        for state, bucket in [('success', 'pass'), ('failure', 'fail')]:
+            with self.subTest(state=state):
+                self.put('repos/o/r/commits/h1/status', {'sha': 'h1', 'statuses': [
+                    {'context': 'All checks passed', 'state': state, 'target_url': 'https://github.com/o/r/actions/runs/2'}]})
+                self.assertEqual([(c['name'], c['bucket']) for c in json.loads(self.sh('pr_checks o/r h1')[1])],
+                                 [('All checks passed', bucket)])
+
     def test_a_status_response_from_an_old_head_invalidates_the_read(self):
         self.put('repos/o/r/commits/h1/check-runs?per_page=100', {'check_runs': []})
         self.put('repos/o/r/commits/h1/status', {'sha': 'old', 'statuses': [

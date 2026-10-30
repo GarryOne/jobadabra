@@ -115,7 +115,8 @@ class WatcherCommentsTest(Base):
     def test_gitar_reposts_only_notify_for_a_changed_verdict_or_open_count(self):
         def summary(verdict, closed, total):
             return f'<summary><b>Code Review</b> <kbd>{verdict}</kbd> <kbd>{closed} closed / {total} findings</kbd></summary>'
-        cases = [('✅ Approved', 3, 3, True), ('✅ Approved', 3, 3, False),
+        cases = [('🚫 Blocked', 0, 1, True), ('🚫 Blocked', 0, 1, False),
+                 ('✅ Approved', 3, 3, True), ('✅ Approved', 3, 3, False),
                  ('✅ Approved', 4, 4, False), ('👍 Approved with suggestions', 3, 4, True),
                  ('👍 Approved with suggestions', 2, 4, True), ('✅ Approved', 2, 4, True)]
         expected = []

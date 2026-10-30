@@ -54,7 +54,7 @@ pr_view() {
 # pr_checks <repo> <sha>: the newest check-run of each name and every commit status of the sha like `gh pr checks --json name,bucket,link` (bucket pass|fail|pending|skipping|cancel).
 # Why (#2282, its own first run): two edits of a PR start the same workflow twice and the first run is cancelled; the list keeps both, gh's checks keep only the newest.
 pr_checks() {
-  local runs st id run excluded='[]'
+  local runs st id run excluded='[]' status_excluded='[]'
   runs="$(pr_get "repos/$1/commits/$2/check-runs?per_page=100")" && st="$(pr_get "repos/$1/commits/$2/status")" || return 1
   # A cached or mismatched combined status cannot decide this head's red or green state.
   jq -e --arg sha "$2" '(.sha // $sha) == $sha' <<<"$st" >/dev/null || return 1
@@ -66,14 +66,18 @@ pr_checks() {
     if ! jq -e --arg sha "$2" '.head_sha == $sha and .event != "workflow_dispatch"' <<<"$run" >/dev/null; then
       excluded="$(jq -c --arg id "$id" '. + [$id]' <<<"$excluded")"
     fi
+    # Why (#2634, Gitar, 30 Oct 2026): the PR verdict's status belongs to this commit, but its workflow_run reporter executes on main's SHA.
+    if ! jq -e --arg sha "$2" '.event == "workflow_run" or (.head_sha == $sha and .event != "workflow_dispatch")' <<<"$run" >/dev/null; then
+      status_excluded="$(jq -c --arg id "$id" '. + [$id]' <<<"$status_excluded")"
+    fi
   done < <(printf '%s\n%s\n' "$runs" "$st" | jq -sr '[((.[0].check_runs[]?.html_url), (.[1].statuses[]?.target_url)) | . // "" | capture("/actions/runs/(?<id>[0-9]+)")? | .id] | unique[]')
-  printf '%s\n%s\n' "$runs" "$st" | jq -sc --arg sha "$2" --argjson excluded "$excluded" '
-    def allowed: ((. // "" | capture("/actions/runs/(?<id>[0-9]+)").id) // "") as $id | $excluded | index($id) | not;
+  printf '%s\n%s\n' "$runs" "$st" | jq -sc --arg sha "$2" --argjson excluded "$excluded" --argjson status_excluded "$status_excluded" '
+    def allowed(excluded): ((. // "" | capture("/actions/runs/(?<id>[0-9]+)").id) // "") as $id | excluded | index($id) | not;
     [(.[0].check_runs // []
-      | map(select((.head_sha // $sha) == $sha) | select(.html_url | allowed))
+      | map(select((.head_sha // $sha) == $sha) | select(.html_url | allowed($excluded)))
       | group_by(.name) | map(max_by(.id))[] | {name, link: (.html_url // ""), bucket: (if .status != "completed" then "pending"
         elif (.conclusion | IN("success", "neutral")) then "pass" elif .conclusion == "skipped" then "skipping" elif .conclusion == "cancelled" then "cancel" else "fail" end)}),
-      (.[1].statuses[]? | select(.target_url | allowed) | {name: .context, link: (.target_url // ""), bucket: (if .state == "success" then "pass" elif .state == "pending" then "pending" else "fail" end)})]'
+      (.[1].statuses[]? | select(.target_url | allowed($status_excluded)) | {name: .context, link: (.target_url // ""), bucket: (if .state == "success" then "pass" elif .state == "pending" then "pending" else "fail" end)})]'
 }
 
 # pr_list <repo> <state open|closed> [pages=1]: every PR of the state, 100 a page, newest first, as [{number, headRefName, headRefOid, merged}]. Each page is a conditional read.

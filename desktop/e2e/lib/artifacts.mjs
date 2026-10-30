@@ -4,6 +4,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
+import {nameAiFailure} from './ai-miss-cause.mjs';
 
 // The layout findings collected so far (a suite that stops early used to leave none, hiding that night's findings).
 export function writeFindings(ctx) {
@@ -39,8 +40,22 @@ export async function writeReplay(ctx, suite, env = process.env) {
 }
 
 // The steps that failed, as records the loop files as issues (message cut to a readable length).
-export const failureRecords = (suite, results) => results.filter(result => result.status === 'failed')
-  .map(result => ({suite, step: result.name, message: String(result.note || '').slice(0, 600), ...(result.where ? {where: result.where} : {}), ...(result.environment ? {environment: true} : {})}));
+export const failureRecords = (suite, results, evidence = {}) => results.filter(result => result.status === 'failed')
+  .map(result => {
+    const note = String(result.note || ''), message = nameAiFailure(note, evidence);
+    return {suite, step: result.name, message: message.slice(0, 600), ...(result.where ? {where: result.where} : {}), ...(result.environment ? {environment: true} : {})};
+  });
+
+// Read only this suite's artifacts; absent or incomplete diagnostics must never prevent a failure record.
+function aiFailureEvidence(dir) {
+  const names = folder => { try { return fs.readdirSync(folder).sort(); } catch { return []; } };
+  const read = file => { try { return fs.readFileSync(file, 'utf8'); } catch { return ''; } };
+  const json = file => { try { return JSON.parse(read(file)); } catch { return null; } };
+  const misses = names(path.join(dir, 'ai-misses')).filter(name => name.endsWith('.json'))
+    .map(name => path.basename(name, '.json'));
+  const log = [dir, path.join(dir, 'logs')].flatMap(folder => names(folder).filter(name => name.endsWith('.log')).map(name => read(path.join(folder, name)))).join('\n');
+  return {misses, capped: json(path.join(dir, 'ai-capped.json')), log};
+}
 
 // Why (#2266, 27 Oct 2026): apply's last step threw "Unexpected end of JSON input" once and the record named no file, so its source stayed unknown.
 // Frames are cut at the repo root, never at the first folder named like ours (review on #2270: a checkout under /home/me/src/, or a dependency's file).
@@ -83,7 +98,7 @@ export const annotationLines = records => records.slice(0, 3)
 // suite-failures.json, every run: the failed steps, or an empty list; on GitHub also one annotation per failed step.
 export function writeSuiteFailures(dir, suite, results, env = process.env) {
   fs.mkdirSync(dir, {recursive: true});
-  const records = failureRecords(suite, results);
+  const records = failureRecords(suite, results, aiFailureEvidence(dir));
   fs.writeFileSync(path.join(dir, 'suite-failures.json'), JSON.stringify(records, null, 2));
   if (env.GITHUB_ACTIONS === 'true') for (const line of annotationLines(records)) console.log(line);
 }

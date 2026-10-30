@@ -67,6 +67,7 @@
   "ai-budget.test.mjs",
   "ai-cost-report.test.mjs",
   "ai-meter.test.mjs",
+  "ai-miss-cause.test.mjs",
   "ai-proxy.test.mjs",
   "ai-refused.test.mjs",
   "ai-spend.test.mjs",

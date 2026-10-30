@@ -57,6 +57,15 @@ test('Cancel ends a read that is out', async () => {
   assert.equal(await pending, null);
 });
 
+test('Cancel tells the extension to close the page of the read it ended, once (#2624)', async () => {
+  const {controller} = make(), pending = controller.triageRead({url: 'https://jobs.example.test/f'});
+  const {jobs} = await poll(controller);
+  controller.cancelTriage();
+  await pending;
+  assert.deepEqual((await poll(controller)).closes, [{session: jobs[0].session}], 'the poll names the read to close');
+  assert.deepEqual((await poll(controller)).closes, [], 'and only once');
+});
+
 test('an application waits for a read that is out, and is claimed on the next poll once the read ended', async () => {
   const queued = {id: 's2', url: 'https://jobs.example.test/q', background: {}};
   let open = [], claims = 0;

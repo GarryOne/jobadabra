@@ -2175,12 +2175,7 @@
   <form method="dialog">
     <div class="dialog-head"><span class="dialog-icon"><i data-icon="zap"></i></span><h2>See which jobs can apply automatically</h2></div>
     <p class="dialog-lead">Reads each application form once in the hidden browser. Nothing is filled or sent.</p>
-    <div class="triage-choice" role="group" aria-label="Which jobs">
-      <button type="button" class="secondary" id="triage-by-best" aria-pressed="true">10 best matches</button>
-      <button type="button" class="secondary" id="triage-by-fit" aria-pressed="false">Fit above</button>
-      <label class="triage-n">Count <input id="triage-n" type="number" min="1" max="50" step="1" value="10"></label>
-      <label class="triage-n">Fit <input id="triage-fit" type="number" min="0" max="100" step="1" value="70"></label>
-    </div>
+    <label class="triage-n">First <input id="triage-n" type="number" min="1" max="50" step="1" value="10"> best matching jobs</label>
     <p class="muted small" id="triage-count"></p>
     <div id="triage-progress" class="triage-progress" hidden>
       <div class="triage-bar"><i id="triage-bar"></i></div>

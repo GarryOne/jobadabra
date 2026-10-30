@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {test} from 'node:test';
+import {wizardFixture} from './setup-step-fixture.js';
 import {config, exportTo, pullInbox, pushConfig, state, turnOff, turnOn} from '../lib/hosted-search.js';
 
 const FREE = 'JPF1.install-0001.tok';
@@ -88,5 +89,8 @@ test('the wizard step sits after the strategy and before the extras; its words f
   assert.match(fs.readFileSync(new URL('../renderer/hosted-words.js', import.meta.url), 'utf8'), /Your profile is stored encrypted on our servers\. Turn it off anytime = deleted\./);
   assert.match(view, /switchRow\('hosted-news', NEWS, true/);   // pre-checked (owner, 16 Oct 2026; a lawyer checks before launch)
   assert.doesNotMatch(view.replace(/\/\/.*$/gm, ''), /GitHub|container|\$\d/);
-  assert.equal([...read('renderer/index.html').matchAll(/Step \d of 5/g)].length, 4);
+  const wizard = wizardFixture();
+  wizard.goStep('draft');
+  const labels = ['ai', 'cv', 'draft', 'extras'].map(key => wizard.document.querySelector(`.step[data-step="${key}"] .eyebrow`).textContent);
+  assert.deepEqual(labels, ['Step 2 of 7', 'Step 3 of 7', 'Step 4 of 7', 'Step 7 of 7 · optional']);
 });

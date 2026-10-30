@@ -1,4 +1,4 @@
-// Setup wizard: the first-run steps (welcome, AI, CV, draft, extras) and saving each step's answers.
+// Setup wizard: the first-run steps, sidebar-derived labels and saving each step's answers.
 import {shared} from './shared.js';
 import {refreshCv} from './activity.js';
 import {$, STEPS, message, show} from './core.js';
@@ -57,8 +57,26 @@ async function saveOpenAiKey() {
   goStep('cv');
 }
 
+/** Derive every label from the visible sidebar order; no step owns a fixed number or total. */
+export function setupStepLabels(steps) {
+  return steps.map((key, index) => ({key, eyebrow: `Step ${index + 1} of ${steps.length}`, reference: `step ${index + 1}`}));
+}
+
+// Why (30 Oct 2026, owner): labels must follow the visible sidebar as entries are added or hidden.
+function refreshStepLabels() {
+  const visible = [...document.querySelectorAll('#step-list li')].filter(item => {
+    const style = getComputedStyle(item);
+    return !item.hidden && style.display !== 'none' && style.visibility !== 'hidden';
+  });
+  for (const {key, eyebrow, reference} of setupStepLabels(visible.map(item => item.dataset.step))) {
+    document.querySelectorAll(`.step[data-step="${key}"] [data-step-count]`).forEach(node => { node.textContent = eyebrow + (node.dataset.stepSuffix || ''); });
+    document.querySelectorAll(`[data-step-reference="${key}"]`).forEach(node => { node.textContent = reference; });
+  }
+}
+
 // ---------- wizard ----------
 export function goStep(name) {
+  refreshStepLabels();
   const index = STEPS.indexOf(name);
   if (name === 'letter') showLetterStep(); else hideLetterStep();
   window.pilot.saveSettings({wizardStep: name});  // reopening the app continues here
@@ -98,6 +116,7 @@ export async function init() {
   initMagic();   // the Welcome card's wand glow and sparkles (magic.css)
   initWandBurst();   // sparks and a flash when any wand button is pressed (magic.js)
   hostedInit();   // the hosted step and its Settings card are built in script (pages/hosted.js)
+  refreshStepLabels();
   // Finished steps (or any step once setup was done before) can be opened from the sidebar.
   document.querySelectorAll('#step-list li').forEach(li => li.addEventListener('click', () => {
     if (!li.classList.contains('jump') || li.classList.contains('current')) return;

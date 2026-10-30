@@ -1,5 +1,5 @@
 {
-  "about": "Reviewed AI answers for the quality backbone suite (29 Oct 2026 record run 40861637712; scores and decide items reviewed by qu, rule in the PR). Keyed by question, not request bytes. Shared background kinds are declared by name with invalid-key refusals (owner, 29 Oct 2026); stores uses its notice-period stand-in plus these kinds. Interviews declares caption-keyed authored reviews and a kind-only authored patterns reply (29 Oct 2026). Wander adds authored empty items for answer_home/organize_lines and empty contact_from_cv proposals (30 Oct 2026) to avoid visible raw errors; role_ideas is a controlled refusal. Its six current seeded target-role titles, including the captured Site Reliability Engineer, have authored software verdicts for Strategy's role-kind calls; list_meanings, Strategy's chip-meaning read that sends no action header, is an authored empty reply (30 Oct 2026, wander red on main). These are fixtures, not recorded model replies. Why (30 Oct 2026, qu): authored portal relevance rows cover setup, the literal quality reset and the captured post-reset search. True means relevant to offer for SRE jobs in Swiss places, not permission to fetch a login-wall site; the journey never reads these portals. activityfailures adds authored answers (29-30 Oct 2026, no live reply): metro ch-zurich for z[u\u00fc]rich and none for schweiz (reusing the stored switzerland answer); region europe and country ch for z[u\u00fc]rich and schweiz; tech area sre_devops for systems administrator, site reliability engineer and cloud engineer. All support the restarted search requiring an ok run. activityfailures also adds authored pool-family sre_devops_cloud for site reliability engineer, cloud engineer and systems administrator (30 Oct 2026, CI run 40980518892); the captured six-role batch reuses platform engineer, devops engineer and infrastructure engineer. Its six decide topics are role-kind, pool-family, pool-role, pool-metro, pool-region and pool-country. activityfailures adds 12 hand-authored rows (30 Oct 2026, CI 40983489930; not recorded model replies): app.score/feed/1da6368cd24e62770f18a716a7b350fb3c6f01ae226a8f9c7c978541807d34c2, app.score/feed/3d695acacf3962ef39abd7921bf38bed6d236b734f84d892fcc0e27cb47d5634, app.score/feed/22a1f609c2fcddc16a63feee750e7330ffca3d684a352a8b62d98af110dbba0f, app.score/feed/6cbe018ccb67f7edd510cb3af14409471d51da8428386d37341f42ca30f9257d, app.score/feed/cab6da775114a4cab18423082e17b23309db928680f7392d263cf05ce481c788, app.score/feed/b8393735fbb246ce3e13b32086b7d2ce642bb49ccebc0721d2788bff5f64364c, default/app.visit/2e062ba5b572/7a81e8bb96b5d8e133f5b40e2902ce0240ba7098b7969ac0ab8d98061776d289, default/app.visit/2e062ba5b572/6d6370e24849b5920a5e26d3d85b9adaeee534b4d6b0e78cc9a9d29b4189e219, default/app.visit/2e062ba5b572/1e46679dc9d55911cdf8b628d84b9e4e9838c06e70cdc69d44c04d84f790bfba, default/app.visit/2e062ba5b572/db06ac4d5d7da6914864da4d4844cfba3b706f8c8fb4fdf1431b2fc99b38c01f, shared/app.geo/44136fa355b3/201f10d5d64518d86d2d3a47d28675d1c788762c5345df643dadec71d4e0a91e, default/places-289aa37c5864/c0c2300d71d1f496814e8b37d1e4283079d1fe90670bae9e3a15543ff3875de7. Scores use Alex Morgan from desktop/demo/draft.json (not the richer golden candidate.txt); the fault labels and synthetic Data Analyst suffix do not change the production SRE/platform duties. Unknown pay stays null; SLO evidence and on-call details are gaps; the lead posting also lacks profile evidence of leadership. All four portals are relevant to offer for SRE jobs in Zurich; true does not authorize reading login-wall sites. The captured Zurich-only context differs from qu PR #2533's 12 quality rows. Geo locates Z\u00fcrich; place_triage selects the explicitly offered Zurich alternative under the current multi-place rule. The six feed score rows are keyed by qu's feed key, feed/<sha256 of canonical {company, location, title}>, merged in #2539. Quality adds three hand-authored country ch verdicts (30 Oct 2026, CI run 40992084902; not recorded model replies) for its captured Geneva (geneve/genf/ginevra), Basel (bale/basilea) and Bern (berne) alias patterns; quality-country-ask.json preserves the refused batch. Quality adds three hand-authored pool-metro verdicts (30 Oct 2026, CI run 41003648273; not recorded model replies) for the same Geneva (ch-geneva), Basel (ch-basel) and Bern (ch-bern) alias patterns, which the country miss had hidden; quality-metro-ask.json preserves that refused batch. Existing reviewed answers are unchanged. Activityfailures adds one hand-authored app.geo unknown answer (30 Oct 2026; exact refused question from CI 40992084902 and main 40992468315, not a recorded model reply): shared/app.geo/44136fa355b3/c0c2300d71d1f496814e8b37d1e4283079d1fe90670bae9e3a15543ff3875de7. src/geo.py models one place per string and says never invent a place; Zurich and Amsterdam are alternatives in different countries, so kind unknown with empty cc and zero coordinates/radius preserves uncertainty. Existing app.place separately selects the Zurich alternative. Activityfailures adds two hand-authored raw seeded z\u00fcrich verdicts (30 Oct 2026, first-try CI 40996297795 on 5fe23fa; not recorded replies): country ch and metro ch-zurich. The captured batches reuse the existing fixed matching-fragment answers; activityfailures-decide.json preserves their exact context/schema/items. Z\u00fcrich is the fictional applicant seed city in Switzerland/Europe; no runtime rule or existing pattern answer changes. Activityfailures adds six hand-authored full extraction replies (30 Oct 2026; main 41000326672 retry captured the restart posting, not a live reply). The finite six synthetic feed descriptions share production Kubernetes/AWS/Terraform, SLO/on-call work, explicit Senior level, hybrid Zurich and English working language; SRE/platform facts follow their actual production duties, not the synthetic Data Analyst suffix or fault label. These are employer fixture feeds, with no intermediary stated. Salary, workload, contract, visa and dates stay unknown. The full restart question/schema is preserved in activityfailures-feed-asks.json; the other five rows cover the same finite earlier-fault backlog on a later successful read. Narrow retry or role-only questions do not borrow full replies. src/ai/enrich.py extract always asks an IT role family again independently: six authored role-only rows cover that required follow-up using each posting own identity. The full replies provide stated seniority/work mode/technologies, so no ASK_AGAIN empty-field branch is entered for this finite catalog. Storemove reuses the hand-authored app.kind/organize_lines empty items reply (30 Oct 2026, ap; main run 40985357367), not a recorded model reply: no routing proposals keeps the existing Notion Profile and saved answers intact during export/import and migration; block UUIDs never identify this declared-kind answer. Its captured body is storemove-organize-ask.json. No new answer rows. Calendar reuses the existing authored empty answer_home/organize_lines/list_meanings replies, software role verdicts and declared background refusals, including captured reuse_verdict (30 Oct 2026, ap; main run 40985357367); no new answer rows or key functions.",
+  "about": "Reviewed AI answers for the quality backbone suite (29 Oct 2026 record run 40861637712; scores and decide items reviewed by qu, rule in the PR). Keyed by question, not request bytes. Shared background kinds are declared by name with invalid-key refusals (owner, 29 Oct 2026); stores uses its notice-period stand-in plus these kinds. Interviews declares caption-keyed authored reviews and a kind-only authored patterns reply (29 Oct 2026). Wander adds authored empty items for answer_home/organize_lines and empty contact_from_cv proposals (30 Oct 2026) to avoid visible raw errors; role_ideas is a controlled refusal. Its six current seeded target-role titles, including the captured Site Reliability Engineer, have authored software verdicts for Strategy's role-kind calls; list_meanings, Strategy's chip-meaning read that sends no action header, is an authored empty reply (30 Oct 2026, wander red on main). These are fixtures, not recorded model replies. Why (30 Oct 2026, qu): authored portal relevance rows cover setup, the literal quality reset and the captured post-reset search. True means relevant to offer for SRE jobs in Swiss places, not permission to fetch a login-wall site; the journey never reads these portals. activityfailures adds authored answers (29-30 Oct 2026, no live reply): metro ch-zurich for z[u\u00fc]rich and none for schweiz (reusing the stored switzerland answer); region europe and country ch for z[u\u00fc]rich and schweiz; tech area sre_devops for systems administrator, site reliability engineer and cloud engineer. All support the restarted search requiring an ok run. activityfailures also adds authored pool-family sre_devops_cloud for site reliability engineer, cloud engineer and systems administrator (30 Oct 2026, CI run 40980518892); the captured six-role batch reuses platform engineer, devops engineer and infrastructure engineer. Its six decide topics are role-kind, pool-family, pool-role, pool-metro, pool-region and pool-country. activityfailures adds 12 hand-authored rows (30 Oct 2026, CI 40983489930; not recorded model replies): app.score/feed/1da6368cd24e62770f18a716a7b350fb3c6f01ae226a8f9c7c978541807d34c2, app.score/feed/3d695acacf3962ef39abd7921bf38bed6d236b734f84d892fcc0e27cb47d5634, app.score/feed/22a1f609c2fcddc16a63feee750e7330ffca3d684a352a8b62d98af110dbba0f, app.score/feed/6cbe018ccb67f7edd510cb3af14409471d51da8428386d37341f42ca30f9257d, app.score/feed/cab6da775114a4cab18423082e17b23309db928680f7392d263cf05ce481c788, app.score/feed/b8393735fbb246ce3e13b32086b7d2ce642bb49ccebc0721d2788bff5f64364c, default/app.visit/2e062ba5b572/7a81e8bb96b5d8e133f5b40e2902ce0240ba7098b7969ac0ab8d98061776d289, default/app.visit/2e062ba5b572/6d6370e24849b5920a5e26d3d85b9adaeee534b4d6b0e78cc9a9d29b4189e219, default/app.visit/2e062ba5b572/1e46679dc9d55911cdf8b628d84b9e4e9838c06e70cdc69d44c04d84f790bfba, default/app.visit/2e062ba5b572/db06ac4d5d7da6914864da4d4844cfba3b706f8c8fb4fdf1431b2fc99b38c01f, shared/app.geo/44136fa355b3/201f10d5d64518d86d2d3a47d28675d1c788762c5345df643dadec71d4e0a91e, default/places-289aa37c5864/c0c2300d71d1f496814e8b37d1e4283079d1fe90670bae9e3a15543ff3875de7. Scores use Alex Morgan from desktop/demo/draft.json (not the richer golden candidate.txt); the fault labels and synthetic Data Analyst suffix do not change the production SRE/platform duties. Unknown pay stays null; SLO evidence and on-call details are gaps; the lead posting also lacks profile evidence of leadership. All four portals are relevant to offer for SRE jobs in Zurich; true does not authorize reading login-wall sites. The captured Zurich-only context differs from qu PR #2533's 12 quality rows. Geo locates Z\u00fcrich; place_triage selects the explicitly offered Zurich alternative under the current multi-place rule. The six feed score rows are keyed by qu's feed key, feed/<sha256 of canonical {company, location, title}>, merged in #2539. Quality adds three hand-authored country ch verdicts (30 Oct 2026, CI run 40992084902; not recorded model replies) for its captured Geneva (geneve/genf/ginevra), Basel (bale/basilea) and Bern (berne) alias patterns; quality-country-ask.json preserves the refused batch. Quality adds three hand-authored pool-metro verdicts (30 Oct 2026, CI run 41003648273; not recorded model replies) for the same Geneva (ch-geneva), Basel (ch-basel) and Bern (ch-bern) alias patterns, which the country miss had hidden; quality-metro-ask.json preserves that refused batch. Existing reviewed answers are unchanged. Activityfailures adds one hand-authored app.geo unknown answer (30 Oct 2026; exact refused question from CI 40992084902 and main 40992468315, not a recorded model reply): shared/app.geo/44136fa355b3/c0c2300d71d1f496814e8b37d1e4283079d1fe90670bae9e3a15543ff3875de7. src/geo.py models one place per string and says never invent a place; Zurich and Amsterdam are alternatives in different countries, so kind unknown with empty cc and zero coordinates/radius preserves uncertainty. Existing app.place separately selects the Zurich alternative. Activityfailures adds two hand-authored raw seeded z\u00fcrich verdicts (30 Oct 2026, first-try CI 40996297795 on 5fe23fa; not recorded replies): country ch and metro ch-zurich. The captured batches reuse the existing fixed matching-fragment answers; activityfailures-decide.json preserves their exact context/schema/items. Z\u00fcrich is the fictional applicant seed city in Switzerland/Europe; no runtime rule or existing pattern answer changes. Activityfailures adds six hand-authored full extraction replies (30 Oct 2026; main 41000326672 retry captured the restart posting, not a live reply). The finite six synthetic feed descriptions share production Kubernetes/AWS/Terraform, SLO/on-call work, explicit Senior level, hybrid Zurich and English working language; SRE/platform facts follow their actual production duties, not the synthetic Data Analyst suffix or fault label. These are employer fixture feeds, with no intermediary stated. Salary, workload, contract, visa and dates stay unknown. The full restart question/schema is preserved in activityfailures-feed-asks.json; the other five rows cover the same finite earlier-fault backlog on a later successful read. Narrow retry or role-only questions do not borrow full replies. src/ai/enrich.py extract always asks an IT role family again independently: six authored role-only rows cover that required follow-up using each posting own identity. The full replies provide stated seniority/work mode/technologies, so no ASK_AGAIN empty-field branch is entered for this finite catalog. Storemove reuses the hand-authored app.kind/organize_lines empty items reply (30 Oct 2026, ap; main run 40985357367), not a recorded model reply: no routing proposals keeps the existing Notion Profile and saved answers intact during export/import and migration; block UUIDs never identify this declared-kind answer. Its captured body is storemove-organize-ask.json. No new answer rows. Calendar reuses the existing authored empty answer_home/organize_lines/list_meanings replies, software role verdicts and declared background refusals, including captured reuse_verdict (30 Oct 2026, ap; main run 40985357367); no new answer rows or key functions. Why (30 Oct 2026, ap): failuresnotion adds seven hand-authored feed score replies (four captured in main run 40985357367 and three Notion fault/save siblings); none is a recorded model answer. The existing organize_lines empty-items reply preserves seeded applicant facts despite random section IDs. Why (30 Oct 2026, ap-fn, CI 41002078448): failuresnotion adds ten authored rows, not recorded model replies: four app.title selections and four app.enrich full extractions for notion rate-limit, notion html, notion offline and save seed; app.place for zurich, switzerland in the Zurich-only context; app.decide software for Senior Site Reliability Engineer in the role-kind context without unsure. Only explicit posting facts are extracted; unknowns use the product schema unknown/empty representations. The two zürich metro/country decide rows remain owned by PR #2560. CI runs 41058466160 and 41061498825 refused more asks, now stored as authored rows: two role-kind decide verdicts (software) for Staff Platform Engineer and Senior DevOps Engineer, role-only enrichments of the seeded postings, three full enrichments (E2E Gamma, Zurich, Switzerland) and lowercase app.title spellings of the staff platform, senior devops and senior site reliability titles; the feed-coverage test enumerates every feed ask form (30 Oct 2026).",
   "kinds": {
     "organize_lines": {
       "answer": {
@@ -448,6 +448,125 @@
           ],
           "usage": {"input_tokens": 1, "output_tokens": 1}
         }
+      },
+      "feed/b407a453685fccf9d89570d2abc562b34927d74bc7fc6ac93cf70e1efff74d53": {
+        "reply": {
+          "id": "msg_e2e",
+          "type": "message",
+          "role": "assistant",
+          "model": "e2e-authored",
+          "stop_reason": "end_turn",
+          "stop_sequence": null,
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"score\":86,\"tier\":\"A\",\"components\":{\"role_fit\":90,\"location\":60,\"compensation\":null,\"growth\":90,\"risk\":25},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Kubernetes, AWS, Terraform and reliability work match the profile.\",\"strengths\":[\"Kubernetes and AWS\",\"Terraform and incident response\"],\"gaps\":[\"Salary not stated\",\"Posting also names Amsterdam\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"\"}}"
+            }
+          ],
+          "usage": {"input_tokens": 1, "output_tokens": 1}
+        }
+      },
+      "feed/573b5005fb7a6577a2583da5bd83b0e57189eaf5513dd166c27be068361d64a7": {
+        "reply": {
+          "id": "msg_e2e",
+          "type": "message",
+          "role": "assistant",
+          "model": "e2e-authored",
+          "stop_reason": "end_turn",
+          "stop_sequence": null,
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"score\":84,\"tier\":\"A\",\"components\":{\"role_fit\":90,\"location\":95,\"compensation\":null,\"growth\":90,\"risk\":25},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Terraform and AWS fit; CI/CD and Python depth need review.\",\"strengths\":[\"Terraform and AWS\"],\"gaps\":[\"Salary not stated\",\"CI/CD and Python depth need review\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"CI/CD and Python depth need review.\"}}"
+            }
+          ],
+          "usage": {"input_tokens": 1, "output_tokens": 1}
+        }
+      },
+      "feed/2539c39dd2899709c97dbfd18bd09c279c43aecb64a2a8c0b78b8c3d4355d1a3": {
+        "reply": {
+          "id": "msg_e2e",
+          "type": "message",
+          "role": "assistant",
+          "model": "e2e-authored",
+          "stop_reason": "end_turn",
+          "stop_sequence": null,
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"score\":80,\"tier\":\"A\",\"components\":{\"role_fit\":90,\"location\":95,\"compensation\":null,\"growth\":80,\"risk\":25},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Kubernetes and AWS fit; staff leadership scope needs review.\",\"strengths\":[\"Kubernetes and AWS\"],\"gaps\":[\"Salary not stated\",\"Staff leadership scope needs review\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"Staff leadership scope needs review.\"}}"
+            }
+          ],
+          "usage": {"input_tokens": 1, "output_tokens": 1}
+        }
+      },
+      "feed/d0b071ea6396372158bf7e5601a0d35e0b7bb133d2e9119dcfd66ea585268b34": {
+        "reply": {
+          "id": "msg_e2e",
+          "type": "message",
+          "role": "assistant",
+          "model": "e2e-authored",
+          "stop_reason": "end_turn",
+          "stop_sequence": null,
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"score\":86,\"tier\":\"A\",\"components\":{\"role_fit\":90,\"location\":95,\"compensation\":null,\"growth\":90,\"risk\":25},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Kubernetes, AWS, Terraform and reliability work match the profile.\",\"strengths\":[\"Kubernetes and AWS\",\"Terraform and incident response\"],\"gaps\":[\"Salary not stated\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"\"}}"
+            }
+          ],
+          "usage": {"input_tokens": 1, "output_tokens": 1}
+        }
+      },
+      "feed/c4b95a26fb8d7bc464c52be1aa9a6de80ee3c4b0b11e3dad40061d21c1c9db4f": {
+        "reply": {
+          "id": "msg_e2e",
+          "type": "message",
+          "role": "assistant",
+          "model": "e2e-authored",
+          "stop_reason": "end_turn",
+          "stop_sequence": null,
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"score\":86,\"tier\":\"A\",\"components\":{\"role_fit\":90,\"location\":60,\"compensation\":null,\"growth\":90,\"risk\":25},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Kubernetes, AWS, Terraform and reliability work match the profile.\",\"strengths\":[\"Kubernetes and AWS\",\"Terraform and incident response\"],\"gaps\":[\"Salary not stated\",\"Posting also names Amsterdam\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"\"}}"
+            }
+          ],
+          "usage": {"input_tokens": 1, "output_tokens": 1}
+        }
+      },
+      "feed/54cf26792a8c404e34f77ba04a061e9858f6dddbcd85aa675877de959dc2a999": {
+        "reply": {
+          "id": "msg_e2e",
+          "type": "message",
+          "role": "assistant",
+          "model": "e2e-authored",
+          "stop_reason": "end_turn",
+          "stop_sequence": null,
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"score\":86,\"tier\":\"A\",\"components\":{\"role_fit\":90,\"location\":60,\"compensation\":null,\"growth\":90,\"risk\":25},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Kubernetes, AWS, Terraform and reliability work match the profile.\",\"strengths\":[\"Kubernetes and AWS\",\"Terraform and incident response\"],\"gaps\":[\"Salary not stated\",\"Posting also names Amsterdam\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"\"}}"
+            }
+          ],
+          "usage": {"input_tokens": 1, "output_tokens": 1}
+        }
+      },
+      "feed/db7a4b3a8010847c3775ec76cef792268695e8ab346a9a045724814125217a85": {
+        "reply": {
+          "id": "msg_e2e",
+          "type": "message",
+          "role": "assistant",
+          "model": "e2e-authored",
+          "stop_reason": "end_turn",
+          "stop_sequence": null,
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"score\":86,\"tier\":\"A\",\"components\":{\"role_fit\":90,\"location\":95,\"compensation\":null,\"growth\":90,\"risk\":25},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Kubernetes, AWS, Terraform and reliability work match the profile.\",\"strengths\":[\"Kubernetes and AWS\",\"Terraform and incident response\"],\"gaps\":[\"Salary not stated\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"\"}}"
+            }
+          ],
+          "usage": {"input_tokens": 1, "output_tokens": 1}
+        }
       }
     },
     "app.interview": {
@@ -784,6 +903,18 @@
       "default/89307a17298dafc6c8acfe0bb19a63dc40cb225dbfe5b017aa935b144e01ede9/6966dc51d01bff356662b4fc659487026d178265a59493429e2bc3e2e19502b1": {
         "answer": "sre_devops_cloud",
         "text": "systems administrator"
+      },
+      "default/16bba675e32d995829c465144b8951e38d8d5bd22749fa9186471f0242426b0f/beb8c769e0a3ef4e707d2a3b30ab16ed789ce705c2b5d61cc11c2a51a1e0773a": {
+        "text": "Senior Site Reliability Engineer",
+        "answer": "software"
+      },
+      "default/16bba675e32d995829c465144b8951e38d8d5bd22749fa9186471f0242426b0f/2d328252f03dd090a2f6261e075cb5a5af598c95584354f84f134d191fa5b200": {
+        "text": "Staff Platform Engineer",
+        "answer": "software"
+      },
+      "default/16bba675e32d995829c465144b8951e38d8d5bd22749fa9186471f0242426b0f/b89c65d0c3c894abded4ef283199780c454e3a12639dfb815b104781e71ce319": {
+        "text": "Senior DevOps Engineer",
+        "answer": "software"
       }
     },
     "app.geo": {
@@ -976,6 +1107,34 @@
       "default/app.title/a8034c8810b9/b36b0b3b7eb6d2d8830bdc0cac27f32e145b9674de19afce76cd5bb687728c2d": {
         "text": "senior platform engineer, restart (site reliability / data analyst)",
         "answer": true
+      },
+      "default/app.title/a8034c8810b9/aaf29fa9076d22697866e6e2cbb6851410918a147d2282f29da6ff9c97fb8c69": {
+        "text": "senior devops engineer",
+        "answer": true
+      },
+      "default/app.title/a8034c8810b9/0241677db4fa4c64799b453e37bf507580d1f57e7197f8183826431fc876ad0f": {
+        "text": "staff platform engineer",
+        "answer": true
+      },
+      "default/app.title/a8034c8810b9/f2abdfeef08da005b50ecde7d2f76d0c9e63067f3c296c6479554ffb2652814c": {
+        "text": "senior site reliability engineer",
+        "answer": true
+      },
+      "default/app.title/a8034c8810b9/e14d2cf5de15767a7ddebfe474e55c6f3b2b3353068953c9a1251a51eedfe699": {
+        "text": "senior site reliability engineer, notion rate-limit (site reliability / data analyst)",
+        "answer": true
+      },
+      "default/app.title/a8034c8810b9/1c92ece5a1a7511c9f0c95d342d5904ca3274fcb33b5c663a279cd529dcf69df": {
+        "text": "senior site reliability engineer, notion html (site reliability / data analyst)",
+        "answer": true
+      },
+      "default/app.title/a8034c8810b9/32a1e25e6dfed90903b7de6860ae249b27d829528545808d16dc58415a80bc14": {
+        "text": "senior site reliability engineer, notion offline (site reliability / data analyst)",
+        "answer": true
+      },
+      "default/app.title/a8034c8810b9/582c2873911360df6e9bb4167799c1db6bd7443d349a34ac28f557d33804f225": {
+        "text": "senior site reliability engineer, save seed (site reliability / data analyst)",
+        "answer": true
       }
     },
     "app.place": {
@@ -1041,6 +1200,96 @@
       },
       "default/places-289aa37c5864/c0c2300d71d1f496814e8b37d1e4283079d1fe90670bae9e3a15543ff3875de7": {
         "text": "zurich, switzerland or amsterdam, netherlands",
+        "answer": {
+          "where": "Zurich",
+          "country": "Switzerland",
+          "nearest": "z\u00fcrich",
+          "km": 0,
+          "answer": "best"
+        }
+      },
+      "default/places-289aa37c5864/811dae26155c1f96fa4be679ba416b5b956c4eb73dc831d69f61692507e30595": {
+        "text": "zurich",
+        "answer": {
+          "where": "Zurich",
+          "country": "Switzerland",
+          "nearest": "zurich",
+          "km": 0,
+          "answer": "best"
+        }
+      },
+      "default/places-289aa37c5864/05406c552c70ee3eac5b06e3a9b5792afdc8ab7c78c6196b13de11f70ba9d2b0": {
+        "text": "zurich, zh, switzerland",
+        "answer": {
+          "where": "Zurich",
+          "country": "Switzerland",
+          "nearest": "zurich",
+          "km": 0,
+          "answer": "best"
+        }
+      },
+      "default/places-289aa37c5864/b529d20ed15ee3ae97a330eeb8d8411b7c15c724e0d442f6ccf8a237bbb46ad6": {
+        "text": "z\u00fcrich, switzerland",
+        "answer": {
+          "where": "Zurich",
+          "country": "Switzerland",
+          "nearest": "zurich",
+          "km": 0,
+          "answer": "best"
+        }
+      },
+      "default/places-1efe4a68cfa6/811dae26155c1f96fa4be679ba416b5b956c4eb73dc831d69f61692507e30595": {
+        "text": "zurich",
+        "answer": {
+          "where": "Zurich",
+          "country": "Switzerland",
+          "nearest": "zurich",
+          "km": 0,
+          "answer": "best"
+        }
+      },
+      "default/places-1efe4a68cfa6/0777b545c12b1a54ed07b977da9e8d7e2f6e9223e5abb7dcec678b169bb5aa4e": {
+        "text": "zurich, switzerland",
+        "answer": {
+          "where": "Zurich",
+          "country": "Switzerland",
+          "nearest": "zurich",
+          "km": 0,
+          "answer": "best"
+        }
+      },
+      "default/places-1efe4a68cfa6/c0c2300d71d1f496814e8b37d1e4283079d1fe90670bae9e3a15543ff3875de7": {
+        "text": "zurich, switzerland or amsterdam, netherlands",
+        "answer": {
+          "where": "Zurich",
+          "country": "Switzerland",
+          "nearest": "z\u00fcrich",
+          "km": 0,
+          "answer": "best"
+        }
+      },
+      "default/places-1efe4a68cfa6/05406c552c70ee3eac5b06e3a9b5792afdc8ab7c78c6196b13de11f70ba9d2b0": {
+        "text": "zurich, zh, switzerland",
+        "answer": {
+          "where": "Zurich",
+          "country": "Switzerland",
+          "nearest": "zurich",
+          "km": 0,
+          "answer": "best"
+        }
+      },
+      "default/places-1efe4a68cfa6/b529d20ed15ee3ae97a330eeb8d8411b7c15c724e0d442f6ccf8a237bbb46ad6": {
+        "text": "z\u00fcrich, switzerland",
+        "answer": {
+          "where": "Zurich",
+          "country": "Switzerland",
+          "nearest": "zurich",
+          "km": 0,
+          "answer": "best"
+        }
+      },
+      "default/places-289aa37c5864/0777b545c12b1a54ed07b977da9e8d7e2f6e9223e5abb7dcec678b169bb5aa4e": {
+        "text": "zurich, switzerland",
         "answer": {
           "where": "Zurich",
           "country": "Switzerland",
@@ -2061,6 +2310,1104 @@
         "text": "Engineering Manager, Infrastructure\nE2E Quality Labs\nZurich, Switzerland",
         "answer": {
           "role_family": "cloud_infrastructure"
+        }
+      },
+      "default/app.enrich/a30687615fbb46830e38bfcf87aedbc6c4729a51c4341052ed14141f41780fe7/retry-work_mode": {
+        "text": "Senior DevOps Engineer\nE2E Gamma\nZ\u00fcrich, Switzerland",
+        "answer": {
+          "work_mode": {
+            "value": "unknown",
+            "remote_scope": "",
+            "evidence": ""
+          }
+        }
+      },
+      "default/app.enrich/f867befc1059abe4497a70d8c1f9d766cd8238bc7e3f6c314faaed9ec207e21d/retry-work_mode": {
+        "text": "Senior DevOps Engineer\nE2E Gamma\nZurich, ZH, Switzerland",
+        "answer": {
+          "work_mode": {
+            "value": "unknown",
+            "remote_scope": "",
+            "evidence": ""
+          }
+        }
+      },
+      "default/app.enrich/365efbb175f770c2e02c18f97233495a8d435313e3885d1242eeb91b6b2a8ec1/retry-work_mode": {
+        "text": "Senior DevOps Engineer\nE2E Gamma\nZurich",
+        "answer": {
+          "work_mode": {
+            "value": "unknown",
+            "remote_scope": "",
+            "evidence": ""
+          }
+        }
+      },
+      "default/app.enrich/573b5005fb7a6577a2583da5bd83b0e57189eaf5513dd166c27be068361d64a7/retry-work_mode": {
+        "text": "Senior DevOps Engineer\nE2E Gamma\nZurich, Switzerland",
+        "answer": {
+          "work_mode": {
+            "value": "unknown",
+            "remote_scope": "",
+            "evidence": ""
+          }
+        }
+      },
+      "default/app.enrich/a30687615fbb46830e38bfcf87aedbc6c4729a51c4341052ed14141f41780fe7/full": {
+        "text": "Senior DevOps Engineer\nE2E Gamma\nZ\u00fcrich, Switzerland",
+        "answer": {
+          "languages": [],
+          "english_is_enough": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "seniority": {
+            "value": "senior",
+            "evidence": "Senior"
+          },
+          "work_mode": {
+            "value": "unknown",
+            "remote_scope": "",
+            "evidence": ""
+          },
+          "workload": "unknown",
+          "salary": {
+            "stated": false,
+            "text": ""
+          },
+          "employer_type": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "role_family": "devops",
+          "technologies": [
+            "CI/CD",
+            "Terraform",
+            "Python"
+          ],
+          "responsibilities": [
+            "Run CI/CD and cloud infrastructure with Terraform and Python."
+          ],
+          "on_call": "unknown",
+          "visa_sponsorship": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "contract": "unknown",
+          "deadline": "",
+          "posted": "",
+          "confidence": "high"
+        }
+      },
+      "default/app.enrich/a30687615fbb46830e38bfcf87aedbc6c4729a51c4341052ed14141f41780fe7/role": {
+        "text": "Senior DevOps Engineer\nE2E Gamma\nZ\u00fcrich, Switzerland",
+        "answer": {
+          "role_family": "devops"
+        }
+      },
+      "default/app.enrich/f867befc1059abe4497a70d8c1f9d766cd8238bc7e3f6c314faaed9ec207e21d/full": {
+        "text": "Senior DevOps Engineer\nE2E Gamma\nZurich, ZH, Switzerland",
+        "answer": {
+          "languages": [],
+          "english_is_enough": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "seniority": {
+            "value": "senior",
+            "evidence": "Senior"
+          },
+          "work_mode": {
+            "value": "unknown",
+            "remote_scope": "",
+            "evidence": ""
+          },
+          "workload": "unknown",
+          "salary": {
+            "stated": false,
+            "text": ""
+          },
+          "employer_type": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "role_family": "devops",
+          "technologies": [
+            "CI/CD",
+            "Terraform",
+            "Python"
+          ],
+          "responsibilities": [
+            "Run CI/CD and cloud infrastructure with Terraform and Python."
+          ],
+          "on_call": "unknown",
+          "visa_sponsorship": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "contract": "unknown",
+          "deadline": "",
+          "posted": "",
+          "confidence": "high"
+        }
+      },
+      "default/app.enrich/f867befc1059abe4497a70d8c1f9d766cd8238bc7e3f6c314faaed9ec207e21d/role": {
+        "text": "Senior DevOps Engineer\nE2E Gamma\nZurich, ZH, Switzerland",
+        "answer": {
+          "role_family": "devops"
+        }
+      },
+      "default/app.enrich/365efbb175f770c2e02c18f97233495a8d435313e3885d1242eeb91b6b2a8ec1/full": {
+        "text": "Senior DevOps Engineer\nE2E Gamma\nZurich",
+        "answer": {
+          "languages": [],
+          "english_is_enough": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "seniority": {
+            "value": "senior",
+            "evidence": "Senior"
+          },
+          "work_mode": {
+            "value": "unknown",
+            "remote_scope": "",
+            "evidence": ""
+          },
+          "workload": "unknown",
+          "salary": {
+            "stated": false,
+            "text": ""
+          },
+          "employer_type": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "role_family": "devops",
+          "technologies": [
+            "CI/CD",
+            "Terraform",
+            "Python"
+          ],
+          "responsibilities": [
+            "Run CI/CD and cloud infrastructure with Terraform and Python."
+          ],
+          "on_call": "unknown",
+          "visa_sponsorship": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "contract": "unknown",
+          "deadline": "",
+          "posted": "",
+          "confidence": "high"
+        }
+      },
+      "default/app.enrich/365efbb175f770c2e02c18f97233495a8d435313e3885d1242eeb91b6b2a8ec1/role": {
+        "text": "Senior DevOps Engineer\nE2E Gamma\nZurich",
+        "answer": {
+          "role_family": "devops"
+        }
+      },
+      "default/app.enrich/a4fc599cf891624473724ec67961a97b6c8a10c77bf556f716e5320449734a26/full": {
+        "text": "Staff Platform Engineer\nE2E Gamma\nZ\u00fcrich, Switzerland",
+        "answer": {
+          "languages": [
+            {
+              "language": "English",
+              "level": "required",
+              "evidence": "English working language"
+            }
+          ],
+          "english_is_enough": {
+            "value": "yes",
+            "evidence": "English working language"
+          },
+          "seniority": {
+            "value": "staff_principal",
+            "evidence": "Staff level"
+          },
+          "work_mode": {
+            "value": "hybrid",
+            "remote_scope": "",
+            "evidence": "hybrid in Zurich"
+          },
+          "workload": "unknown",
+          "salary": {
+            "stated": false,
+            "text": ""
+          },
+          "employer_type": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "role_family": "platform",
+          "technologies": [
+            "EKS",
+            "GitOps",
+            "CI/CD"
+          ],
+          "responsibilities": [
+            "Lead the internal platform: EKS, GitOps, CI/CD and developer tooling."
+          ],
+          "on_call": "unknown",
+          "visa_sponsorship": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "contract": "unknown",
+          "deadline": "",
+          "posted": "",
+          "confidence": "high"
+        }
+      },
+      "default/app.enrich/a4fc599cf891624473724ec67961a97b6c8a10c77bf556f716e5320449734a26/role": {
+        "text": "Staff Platform Engineer\nE2E Gamma\nZ\u00fcrich, Switzerland",
+        "answer": {
+          "role_family": "platform"
+        }
+      },
+      "default/app.enrich/c270f9504b5a35d769ea9a18bc4807fcfff619cbddd5abaa538cf06e3db50430/full": {
+        "text": "Staff Platform Engineer\nE2E Gamma\nZurich, ZH, Switzerland",
+        "answer": {
+          "languages": [
+            {
+              "language": "English",
+              "level": "required",
+              "evidence": "English working language"
+            }
+          ],
+          "english_is_enough": {
+            "value": "yes",
+            "evidence": "English working language"
+          },
+          "seniority": {
+            "value": "staff_principal",
+            "evidence": "Staff level"
+          },
+          "work_mode": {
+            "value": "hybrid",
+            "remote_scope": "",
+            "evidence": "hybrid in Zurich"
+          },
+          "workload": "unknown",
+          "salary": {
+            "stated": false,
+            "text": ""
+          },
+          "employer_type": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "role_family": "platform",
+          "technologies": [
+            "EKS",
+            "GitOps",
+            "CI/CD"
+          ],
+          "responsibilities": [
+            "Lead the internal platform: EKS, GitOps, CI/CD and developer tooling."
+          ],
+          "on_call": "unknown",
+          "visa_sponsorship": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "contract": "unknown",
+          "deadline": "",
+          "posted": "",
+          "confidence": "high"
+        }
+      },
+      "default/app.enrich/c270f9504b5a35d769ea9a18bc4807fcfff619cbddd5abaa538cf06e3db50430/role": {
+        "text": "Staff Platform Engineer\nE2E Gamma\nZurich, ZH, Switzerland",
+        "answer": {
+          "role_family": "platform"
+        }
+      },
+      "default/app.enrich/eebd0a44206f5eddbd346a5818eb6502c7b04805c600c3aa006adfeb88eaa4b0/full": {
+        "text": "Staff Platform Engineer\nE2E Gamma\nZurich",
+        "answer": {
+          "languages": [
+            {
+              "language": "English",
+              "level": "required",
+              "evidence": "English working language"
+            }
+          ],
+          "english_is_enough": {
+            "value": "yes",
+            "evidence": "English working language"
+          },
+          "seniority": {
+            "value": "staff_principal",
+            "evidence": "Staff level"
+          },
+          "work_mode": {
+            "value": "hybrid",
+            "remote_scope": "",
+            "evidence": "hybrid in Zurich"
+          },
+          "workload": "unknown",
+          "salary": {
+            "stated": false,
+            "text": ""
+          },
+          "employer_type": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "role_family": "platform",
+          "technologies": [
+            "EKS",
+            "GitOps",
+            "CI/CD"
+          ],
+          "responsibilities": [
+            "Lead the internal platform: EKS, GitOps, CI/CD and developer tooling."
+          ],
+          "on_call": "unknown",
+          "visa_sponsorship": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "contract": "unknown",
+          "deadline": "",
+          "posted": "",
+          "confidence": "high"
+        }
+      },
+      "default/app.enrich/eebd0a44206f5eddbd346a5818eb6502c7b04805c600c3aa006adfeb88eaa4b0/role": {
+        "text": "Staff Platform Engineer\nE2E Gamma\nZurich",
+        "answer": {
+          "role_family": "platform"
+        }
+      },
+      "default/app.enrich/5095cb1c66399782493c3cf6ed14769d5ec1215d2a0c6b9f9e6b1ce0ad39a3d7/full": {
+        "text": "Senior Site Reliability Engineer\nE2E Gamma\nZ\u00fcrich, Switzerland",
+        "answer": {
+          "languages": [],
+          "english_is_enough": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "seniority": {
+            "value": "senior",
+            "evidence": "Senior role"
+          },
+          "work_mode": {
+            "value": "hybrid",
+            "remote_scope": "",
+            "evidence": "hybrid in Zurich"
+          },
+          "workload": "unknown",
+          "salary": {
+            "stated": false,
+            "text": ""
+          },
+          "employer_type": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "role_family": "sre",
+          "technologies": [
+            "Kubernetes",
+            "AWS",
+            "Terraform",
+            "Datadog"
+          ],
+          "responsibilities": [
+            "Operate Kubernetes on AWS: SLOs, incident response, Terraform, Datadog."
+          ],
+          "on_call": "unknown",
+          "visa_sponsorship": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "contract": "unknown",
+          "deadline": "",
+          "posted": "",
+          "confidence": "high"
+        }
+      },
+      "default/app.enrich/5095cb1c66399782493c3cf6ed14769d5ec1215d2a0c6b9f9e6b1ce0ad39a3d7/role": {
+        "text": "Senior Site Reliability Engineer\nE2E Gamma\nZ\u00fcrich, Switzerland",
+        "answer": {
+          "role_family": "sre"
+        }
+      },
+      "default/app.enrich/25db39cc431b4fd01df93c09362849038257fa8b928c9ebf487617e324e7a855/full": {
+        "text": "Senior Site Reliability Engineer\nE2E Gamma\nZurich, ZH, Switzerland",
+        "answer": {
+          "languages": [],
+          "english_is_enough": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "seniority": {
+            "value": "senior",
+            "evidence": "Senior role"
+          },
+          "work_mode": {
+            "value": "hybrid",
+            "remote_scope": "",
+            "evidence": "hybrid in Zurich"
+          },
+          "workload": "unknown",
+          "salary": {
+            "stated": false,
+            "text": ""
+          },
+          "employer_type": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "role_family": "sre",
+          "technologies": [
+            "Kubernetes",
+            "AWS",
+            "Terraform",
+            "Datadog"
+          ],
+          "responsibilities": [
+            "Operate Kubernetes on AWS: SLOs, incident response, Terraform, Datadog."
+          ],
+          "on_call": "unknown",
+          "visa_sponsorship": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "contract": "unknown",
+          "deadline": "",
+          "posted": "",
+          "confidence": "high"
+        }
+      },
+      "default/app.enrich/25db39cc431b4fd01df93c09362849038257fa8b928c9ebf487617e324e7a855/role": {
+        "text": "Senior Site Reliability Engineer\nE2E Gamma\nZurich, ZH, Switzerland",
+        "answer": {
+          "role_family": "sre"
+        }
+      },
+      "default/app.enrich/9bf44c481b89f7a0e7ac62533a0a94b3b18cae08bbd2b2ff91d5101880a99ddb/full": {
+        "text": "Senior Site Reliability Engineer\nE2E Gamma\nZurich",
+        "answer": {
+          "languages": [],
+          "english_is_enough": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "seniority": {
+            "value": "senior",
+            "evidence": "Senior role"
+          },
+          "work_mode": {
+            "value": "hybrid",
+            "remote_scope": "",
+            "evidence": "hybrid in Zurich"
+          },
+          "workload": "unknown",
+          "salary": {
+            "stated": false,
+            "text": ""
+          },
+          "employer_type": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "role_family": "sre",
+          "technologies": [
+            "Kubernetes",
+            "AWS",
+            "Terraform",
+            "Datadog"
+          ],
+          "responsibilities": [
+            "Operate Kubernetes on AWS: SLOs, incident response, Terraform, Datadog."
+          ],
+          "on_call": "unknown",
+          "visa_sponsorship": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "contract": "unknown",
+          "deadline": "",
+          "posted": "",
+          "confidence": "high"
+        }
+      },
+      "default/app.enrich/9bf44c481b89f7a0e7ac62533a0a94b3b18cae08bbd2b2ff91d5101880a99ddb/role": {
+        "text": "Senior Site Reliability Engineer\nE2E Gamma\nZurich",
+        "answer": {
+          "role_family": "sre"
+        }
+      },
+      "default/app.enrich/e7f2cd730d082f0dfd93ff5676ee7ee9e549b1802cb1c10c868c8dccb1b0cd9e/full": {
+        "text": "Senior Site Reliability Engineer, save seed (Site Reliability / Data Analyst)\nE2E Acme\nZ\u00fcrich, Switzerland",
+        "answer": {
+          "languages": [
+            {
+              "language": "English",
+              "level": "required",
+              "evidence": "English working language."
+            }
+          ],
+          "english_is_enough": {
+            "value": "yes",
+            "evidence": "English working language."
+          },
+          "seniority": {
+            "value": "senior",
+            "evidence": "Senior level"
+          },
+          "work_mode": {
+            "value": "hybrid",
+            "remote_scope": "",
+            "evidence": "hybrid in Zurich"
+          },
+          "workload": "unknown",
+          "salary": {
+            "stated": false,
+            "text": ""
+          },
+          "employer_type": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "role_family": "sre",
+          "technologies": [
+            "Kubernetes",
+            "AWS",
+            "Terraform"
+          ],
+          "responsibilities": [
+            "Run production on Kubernetes and AWS with Terraform, SLOs and on-call."
+          ],
+          "on_call": "yes",
+          "visa_sponsorship": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "contract": "unknown",
+          "deadline": "",
+          "posted": "",
+          "confidence": "high"
+        }
+      },
+      "default/app.enrich/e7f2cd730d082f0dfd93ff5676ee7ee9e549b1802cb1c10c868c8dccb1b0cd9e/role": {
+        "text": "Senior Site Reliability Engineer, save seed (Site Reliability / Data Analyst)\nE2E Acme\nZ\u00fcrich, Switzerland",
+        "answer": {
+          "role_family": "sre"
+        }
+      },
+      "default/app.enrich/1ff25758bafd8e2f75710a5264198f25dab47fbc67945dca60d5e7dc1ddf8657/full": {
+        "text": "Senior Site Reliability Engineer, save seed (Site Reliability / Data Analyst)\nE2E Acme\nZurich, ZH, Switzerland",
+        "answer": {
+          "languages": [
+            {
+              "language": "English",
+              "level": "required",
+              "evidence": "English working language."
+            }
+          ],
+          "english_is_enough": {
+            "value": "yes",
+            "evidence": "English working language."
+          },
+          "seniority": {
+            "value": "senior",
+            "evidence": "Senior level"
+          },
+          "work_mode": {
+            "value": "hybrid",
+            "remote_scope": "",
+            "evidence": "hybrid in Zurich"
+          },
+          "workload": "unknown",
+          "salary": {
+            "stated": false,
+            "text": ""
+          },
+          "employer_type": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "role_family": "sre",
+          "technologies": [
+            "Kubernetes",
+            "AWS",
+            "Terraform"
+          ],
+          "responsibilities": [
+            "Run production on Kubernetes and AWS with Terraform, SLOs and on-call."
+          ],
+          "on_call": "yes",
+          "visa_sponsorship": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "contract": "unknown",
+          "deadline": "",
+          "posted": "",
+          "confidence": "high"
+        }
+      },
+      "default/app.enrich/1ff25758bafd8e2f75710a5264198f25dab47fbc67945dca60d5e7dc1ddf8657/role": {
+        "text": "Senior Site Reliability Engineer, save seed (Site Reliability / Data Analyst)\nE2E Acme\nZurich, ZH, Switzerland",
+        "answer": {
+          "role_family": "sre"
+        }
+      },
+      "default/app.enrich/fe6df77fdffc141b2230752029206355f6e7c30daeb5d06679dd50b7772b68bc/full": {
+        "text": "Senior Site Reliability Engineer, save seed (Site Reliability / Data Analyst)\nE2E Acme\nZurich",
+        "answer": {
+          "languages": [
+            {
+              "language": "English",
+              "level": "required",
+              "evidence": "English working language."
+            }
+          ],
+          "english_is_enough": {
+            "value": "yes",
+            "evidence": "English working language."
+          },
+          "seniority": {
+            "value": "senior",
+            "evidence": "Senior level"
+          },
+          "work_mode": {
+            "value": "hybrid",
+            "remote_scope": "",
+            "evidence": "hybrid in Zurich"
+          },
+          "workload": "unknown",
+          "salary": {
+            "stated": false,
+            "text": ""
+          },
+          "employer_type": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "role_family": "sre",
+          "technologies": [
+            "Kubernetes",
+            "AWS",
+            "Terraform"
+          ],
+          "responsibilities": [
+            "Run production on Kubernetes and AWS with Terraform, SLOs and on-call."
+          ],
+          "on_call": "yes",
+          "visa_sponsorship": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "contract": "unknown",
+          "deadline": "",
+          "posted": "",
+          "confidence": "high"
+        }
+      },
+      "default/app.enrich/fe6df77fdffc141b2230752029206355f6e7c30daeb5d06679dd50b7772b68bc/role": {
+        "text": "Senior Site Reliability Engineer, save seed (Site Reliability / Data Analyst)\nE2E Acme\nZurich",
+        "answer": {
+          "role_family": "sre"
+        }
+      },
+      "default/app.enrich/573b5005fb7a6577a2583da5bd83b0e57189eaf5513dd166c27be068361d64a7/full": {
+        "text": "Senior DevOps Engineer\nE2E Gamma\nZurich, Switzerland",
+        "answer": {
+          "languages": [],
+          "english_is_enough": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "seniority": {
+            "value": "senior",
+            "evidence": "Senior"
+          },
+          "work_mode": {
+            "value": "unknown",
+            "remote_scope": "",
+            "evidence": ""
+          },
+          "workload": "unknown",
+          "salary": {
+            "stated": false,
+            "text": ""
+          },
+          "employer_type": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "role_family": "devops",
+          "technologies": [
+            "CI/CD",
+            "Terraform",
+            "Python"
+          ],
+          "responsibilities": [
+            "Run CI/CD and cloud infrastructure with Terraform and Python."
+          ],
+          "on_call": "unknown",
+          "visa_sponsorship": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "contract": "unknown",
+          "deadline": "",
+          "posted": "",
+          "confidence": "high"
+        }
+      },
+      "default/app.enrich/573b5005fb7a6577a2583da5bd83b0e57189eaf5513dd166c27be068361d64a7/role": {
+        "text": "Senior DevOps Engineer\nE2E Gamma\nZurich, Switzerland",
+        "answer": {
+          "role_family": "devops"
+        }
+      },
+      "default/app.enrich/2539c39dd2899709c97dbfd18bd09c279c43aecb64a2a8c0b78b8c3d4355d1a3/full": {
+        "text": "Staff Platform Engineer\nE2E Gamma\nZurich, Switzerland",
+        "answer": {
+          "languages": [
+            {
+              "language": "English",
+              "level": "required",
+              "evidence": "English working language"
+            }
+          ],
+          "english_is_enough": {
+            "value": "yes",
+            "evidence": "English working language"
+          },
+          "seniority": {
+            "value": "staff_principal",
+            "evidence": "Staff level"
+          },
+          "work_mode": {
+            "value": "hybrid",
+            "remote_scope": "",
+            "evidence": "hybrid in Zurich"
+          },
+          "workload": "unknown",
+          "salary": {
+            "stated": false,
+            "text": ""
+          },
+          "employer_type": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "role_family": "platform",
+          "technologies": [
+            "EKS",
+            "GitOps",
+            "CI/CD"
+          ],
+          "responsibilities": [
+            "Lead the internal platform: EKS, GitOps, CI/CD and developer tooling."
+          ],
+          "on_call": "unknown",
+          "visa_sponsorship": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "contract": "unknown",
+          "deadline": "",
+          "posted": "",
+          "confidence": "high"
+        }
+      },
+      "default/app.enrich/2539c39dd2899709c97dbfd18bd09c279c43aecb64a2a8c0b78b8c3d4355d1a3/role": {
+        "text": "Staff Platform Engineer\nE2E Gamma\nZurich, Switzerland",
+        "answer": {
+          "role_family": "platform"
+        }
+      },
+      "default/app.enrich/d0b071ea6396372158bf7e5601a0d35e0b7bb133d2e9119dcfd66ea585268b34/full": {
+        "text": "Senior Site Reliability Engineer\nE2E Gamma\nZurich, Switzerland",
+        "answer": {
+          "languages": [],
+          "english_is_enough": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "seniority": {
+            "value": "senior",
+            "evidence": "Senior role"
+          },
+          "work_mode": {
+            "value": "hybrid",
+            "remote_scope": "",
+            "evidence": "hybrid in Zurich"
+          },
+          "workload": "unknown",
+          "salary": {
+            "stated": false,
+            "text": ""
+          },
+          "employer_type": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "role_family": "sre",
+          "technologies": [
+            "Kubernetes",
+            "AWS",
+            "Terraform",
+            "Datadog"
+          ],
+          "responsibilities": [
+            "Operate Kubernetes on AWS: SLOs, incident response, Terraform, Datadog."
+          ],
+          "on_call": "unknown",
+          "visa_sponsorship": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "contract": "unknown",
+          "deadline": "",
+          "posted": "",
+          "confidence": "high"
+        }
+      },
+      "default/app.enrich/d0b071ea6396372158bf7e5601a0d35e0b7bb133d2e9119dcfd66ea585268b34/role": {
+        "text": "Senior Site Reliability Engineer\nE2E Gamma\nZurich, Switzerland",
+        "answer": {
+          "role_family": "sre"
+        }
+      },
+      "default/app.enrich/c4b95a26fb8d7bc464c52be1aa9a6de80ee3c4b0b11e3dad40061d21c1c9db4f/full": {
+        "text": "Senior Site Reliability Engineer, notion rate-limit (Site Reliability / Data Analyst)\nE2E Acme\nZurich, Switzerland or Amsterdam, Netherlands",
+        "answer": {
+          "languages": [
+            {
+              "language": "English",
+              "level": "required",
+              "evidence": "English working language."
+            }
+          ],
+          "english_is_enough": {
+            "value": "yes",
+            "evidence": "English working language."
+          },
+          "seniority": {
+            "value": "senior",
+            "evidence": "Senior level"
+          },
+          "work_mode": {
+            "value": "hybrid",
+            "remote_scope": "",
+            "evidence": "hybrid in Zurich"
+          },
+          "workload": "unknown",
+          "salary": {
+            "stated": false,
+            "text": ""
+          },
+          "employer_type": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "role_family": "sre",
+          "technologies": [
+            "Kubernetes",
+            "AWS",
+            "Terraform"
+          ],
+          "responsibilities": [
+            "Run production on Kubernetes and AWS with Terraform, SLOs and on-call."
+          ],
+          "on_call": "yes",
+          "visa_sponsorship": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "contract": "unknown",
+          "deadline": "",
+          "posted": "",
+          "confidence": "high"
+        }
+      },
+      "default/app.enrich/b407a453685fccf9d89570d2abc562b34927d74bc7fc6ac93cf70e1efff74d53/full": {
+        "text": "Senior Site Reliability Engineer, notion html (Site Reliability / Data Analyst)\nE2E Acme\nZurich, Switzerland or Amsterdam, Netherlands",
+        "answer": {
+          "languages": [
+            {
+              "language": "English",
+              "level": "required",
+              "evidence": "English working language."
+            }
+          ],
+          "english_is_enough": {
+            "value": "yes",
+            "evidence": "English working language."
+          },
+          "seniority": {
+            "value": "senior",
+            "evidence": "Senior level"
+          },
+          "work_mode": {
+            "value": "hybrid",
+            "remote_scope": "",
+            "evidence": "hybrid in Zurich"
+          },
+          "workload": "unknown",
+          "salary": {
+            "stated": false,
+            "text": ""
+          },
+          "employer_type": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "role_family": "sre",
+          "technologies": [
+            "Kubernetes",
+            "AWS",
+            "Terraform"
+          ],
+          "responsibilities": [
+            "Run production on Kubernetes and AWS with Terraform, SLOs and on-call."
+          ],
+          "on_call": "yes",
+          "visa_sponsorship": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "contract": "unknown",
+          "deadline": "",
+          "posted": "",
+          "confidence": "high"
+        }
+      },
+      "default/app.enrich/54cf26792a8c404e34f77ba04a061e9858f6dddbcd85aa675877de959dc2a999/full": {
+        "text": "Senior Site Reliability Engineer, notion offline (Site Reliability / Data Analyst)\nE2E Acme\nZurich, Switzerland or Amsterdam, Netherlands",
+        "answer": {
+          "languages": [
+            {
+              "language": "English",
+              "level": "required",
+              "evidence": "English working language."
+            }
+          ],
+          "english_is_enough": {
+            "value": "yes",
+            "evidence": "English working language."
+          },
+          "seniority": {
+            "value": "senior",
+            "evidence": "Senior level"
+          },
+          "work_mode": {
+            "value": "hybrid",
+            "remote_scope": "",
+            "evidence": "hybrid in Zurich"
+          },
+          "workload": "unknown",
+          "salary": {
+            "stated": false,
+            "text": ""
+          },
+          "employer_type": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "role_family": "sre",
+          "technologies": [
+            "Kubernetes",
+            "AWS",
+            "Terraform"
+          ],
+          "responsibilities": [
+            "Run production on Kubernetes and AWS with Terraform, SLOs and on-call."
+          ],
+          "on_call": "yes",
+          "visa_sponsorship": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "contract": "unknown",
+          "deadline": "",
+          "posted": "",
+          "confidence": "high"
+        }
+      },
+      "default/app.enrich/db7a4b3a8010847c3775ec76cef792268695e8ab346a9a045724814125217a85/full": {
+        "text": "Senior Site Reliability Engineer, save seed (Site Reliability / Data Analyst)\nE2E Acme\nZurich, Switzerland",
+        "answer": {
+          "languages": [
+            {
+              "language": "English",
+              "level": "required",
+              "evidence": "English working language."
+            }
+          ],
+          "english_is_enough": {
+            "value": "yes",
+            "evidence": "English working language."
+          },
+          "seniority": {
+            "value": "senior",
+            "evidence": "Senior level"
+          },
+          "work_mode": {
+            "value": "hybrid",
+            "remote_scope": "",
+            "evidence": "hybrid in Zurich"
+          },
+          "workload": "unknown",
+          "salary": {
+            "stated": false,
+            "text": ""
+          },
+          "employer_type": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "role_family": "sre",
+          "technologies": [
+            "Kubernetes",
+            "AWS",
+            "Terraform"
+          ],
+          "responsibilities": [
+            "Run production on Kubernetes and AWS with Terraform, SLOs and on-call."
+          ],
+          "on_call": "yes",
+          "visa_sponsorship": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "contract": "unknown",
+          "deadline": "",
+          "posted": "",
+          "confidence": "high"
+        }
+      },
+      "default/app.enrich/54cf26792a8c404e34f77ba04a061e9858f6dddbcd85aa675877de959dc2a999/role": {
+        "text": "Senior Site Reliability Engineer, notion offline (Site Reliability / Data Analyst)\nE2E Acme\nZurich, Switzerland or Amsterdam, Netherlands",
+        "answer": {
+          "role_family": "sre"
+        }
+      },
+      "default/app.enrich/b407a453685fccf9d89570d2abc562b34927d74bc7fc6ac93cf70e1efff74d53/role": {
+        "text": "Senior Site Reliability Engineer, notion html (Site Reliability / Data Analyst)\nE2E Acme\nZurich, Switzerland or Amsterdam, Netherlands",
+        "answer": {
+          "role_family": "sre"
+        }
+      },
+      "default/app.enrich/c4b95a26fb8d7bc464c52be1aa9a6de80ee3c4b0b11e3dad40061d21c1c9db4f/role": {
+        "text": "Senior Site Reliability Engineer, notion rate-limit (Site Reliability / Data Analyst)\nE2E Acme\nZurich, Switzerland or Amsterdam, Netherlands",
+        "answer": {
+          "role_family": "sre"
+        }
+      },
+      "default/app.enrich/db7a4b3a8010847c3775ec76cef792268695e8ab346a9a045724814125217a85/role": {
+        "text": "Senior Site Reliability Engineer, save seed (Site Reliability / Data Analyst)\nE2E Acme\nZurich, Switzerland",
+        "answer": {
+          "role_family": "sre"
         }
       }
     },

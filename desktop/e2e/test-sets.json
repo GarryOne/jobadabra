@@ -59,6 +59,7 @@
   "ai-answers-engine.test.mjs",
   "ai-answers-enrich.test.mjs",
   "ai-answers-geo.test.mjs",
+  "ai-answers-mail.test.mjs",
   "ai-answers-place.test.mjs",
   "ai-answers-places.test.mjs",
   "ai-answers-refusal.test.mjs",

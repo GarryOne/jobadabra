@@ -1,4 +1,4 @@
-// Replay visa, vague-location and posting-place questions reachable after location triage.
+// Replay small engine families: work rights, location vagueness, posting places and mail classification.
 // Job: serve stored answers
 import {S, invalid, itemQuestion, json, object, numbered, requestParts, responseSchema, sameSchema, valid, canonical} from './ai-answers-engine-items.mjs';
 /** Per-country sponsorship judgments store negative answers explicitly. */
@@ -39,5 +39,30 @@ export function readingQuestion(body, persona) {
   if (postings.some(posting => !posting)) return invalid(readingKind.operation, 'ambiguous posting block');
   const question = itemQuestion(readingKind.operation, postings.map(canonical), {places}, persona);
   question.items.forEach((item, index) => { item.label = postings[index].title; });
+  return question;
+}
+
+const mailRow = S.object({relevant: S.boolean, application: S.integer, company: S.string, role: S.string,
+  kind: S.enum(['Confirmation received', 'Reply received', 'Interview scheduled', 'Rejected', 'Offer', 'Recruiter outreach', 'Other', 'Feedback received']),
+  interview_at: S.string, interview_zone: S.string, summary: S.string, feedback: S.string});
+/** Mail rows store the classifier's closed result shape without its request-local index. */
+export const mailKind = {operation: 'mail', root: 'results', selector: 'index', row: mailRow, valid: answer => valid(mailRow, answer)};
+/** Key each mail tuple with its classifier policy and ordered applications, independently of the fake clock. */
+export function mailQuestion(body, persona) {
+  const parts = requestParts(body);
+  if (!parts.system.startsWith('You sort the job-search emails (and calendar events) of the owner of Jobadabra.')) return undefined;
+  if (!sameSchema(parts.schema, responseSchema(mailKind))) return invalid('mail', 'expected closed classifier schema');
+  const blocks = parts.user.trimStart().split(/\n\n(?=### Item )/), indexes = [], tuples = [];
+  for (const block of blocks) {
+    const match = /^### Item (\d+)\nFrom: ([^\n]*)\nDate: [^\n]*\nSubject: ([^\n]*)\n\n([\s\S]*)$/.exec(block);
+    if (!match || !match[2].trim() || !match[3].trim()) return invalid('mail', 'expected Item block with From and Subject');
+    const index = Number(match[1]);
+    if (!Number.isSafeInteger(index) || indexes.includes(index)) return invalid('mail', 'ambiguous item index');
+    indexes.push(index); tuples.push({from: match[2].trim(), subject: match[3].trim(), body: match[4].trim()});
+  }
+  // Invariants: Date and batch index never enter the key; replay uses each current request's original index.
+  // Why (30 Oct 2026, PR #2576): application indexes and classifier policy depend on the full system prompt.
+  const question = itemQuestion('mail', tuples.map(canonical), parts.system, persona);
+  question.items = question.items.map((item, index) => ({...item, n: indexes[index], label: tuples[index].subject}));
   return question;
 }

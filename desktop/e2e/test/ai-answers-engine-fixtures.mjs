@@ -38,7 +38,112 @@ const enrichAnswer = Object.fromEntries(Object.entries(fields).map(([k,v]) => [k
 const narrow = names => ({type: 'object', additionalProperties: false, required: names, properties: Object.fromEntries(names.map(name => [name, fields[name]]))});
 const postUser = `Title: ${posting.title}\nCompany: ${company}\nLocation: ${posting.location}\n\nPosting:\n${posting.description}`;
 const p = constants('src/ai/place_triage.py'), t = constants('src/ai/title_triage.py'), g = constants('src/geo.py'), w = constants('src/places.py'), v = constants('src/sources/visits.py'), e = constants('src/ai/enrich.py');
+// Real failureschannels miss (30 Oct 2026): preserve all three request items, including the fake clock Dates.
+export const mailCapture = {
+  "max_tokens": 4000,
+  "messages": [
+    {
+      "role": "user",
+      "content": "### Item 0\nFrom: no-reply@us.greenhouse-mail.io\nDate: 2026-10-29T22:42:05+00:00\nSubject: Security code for your application to Acme Labs\n\nYour security code is 000000. It expires in 10 minutes. If you did not request it, ignore this email.\n\n### Item 1\nFrom: recruiter@initech-hr.test\nDate: 2026-10-29T23:42:05+00:00\nSubject: Interview invitation: DevOps Engineer at Initech\n\nHi Alex, we would like to invite you to an interview for the DevOps Engineer role at Initech on Tuesday 6 October 2026 at 14:00 CEST on Zoom. Please confirm.\n\n### Item 2\nFrom: no-reply@us.greenhouse-mail.io\nDate: 2026-10-30T00:42:05+00:00\nSubject: Thank you for applying to Acme Labs\n\nHi Alex, we received your application for Senior Site Reliability Engineer at Acme Labs. Our team will review it and be in touch."
+    }
+  ],
+  "model": "claude-haiku-5-5",
+  "output_config": {
+    "format": {
+      "type": "json_schema",
+      "schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "results"
+        ],
+        "properties": {
+          "results": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "index",
+                "relevant",
+                "application",
+                "company",
+                "role",
+                "kind",
+                "interview_at",
+                "interview_zone",
+                "summary",
+                "feedback"
+              ],
+              "properties": {
+                "index": {
+                  "type": "integer"
+                },
+                "relevant": {
+                  "type": "boolean",
+                  "description": "About one of the owner's own job applications"
+                },
+                "application": {
+                  "type": "integer",
+                  "description": "Index in the applications list, or -1"
+                },
+                "company": {
+                  "type": "string",
+                  "description": "Hiring company (or platform) named in the item"
+                },
+                "role": {
+                  "type": "string",
+                  "description": "Exact role title the item names (with its location suffix, e.g. \"| Spain | Remote\"), else \"\""
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "Confirmation received",
+                    "Reply received",
+                    "Interview scheduled",
+                    "Rejected",
+                    "Offer",
+                    "Recruiter outreach",
+                    "Other",
+                    "Feedback received"
+                  ]
+                },
+                "interview_at": {
+                  "type": "string",
+                  "description": "Start of a scheduled call/interview as the clock time written, YYYY-MM-DDTHH:MM:SS with no offset, else \"\""
+                },
+                "interview_zone": {
+                  "type": "string",
+                  "description": "IANA time zone of that clock time (e.g. Europe/Zurich), \"\" when the item names none"
+                },
+                "summary": {
+                  "type": "string",
+                  "description": "What happened, max 120 characters, no personal data"
+                },
+                "feedback": {
+                  "type": "string",
+                  "description": "Verbatim specific employer assessment, else empty. Exclude quoted old mail, generic rejections and candidate requests."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "effort": "low"
+  },
+  "system": [
+    {
+      "type": "text",
+      "text": "You sort the job-search emails (and calendar events) of the owner of Jobadabra. For each item:\n- \"Feedback received\" = an employer's assessment following a rejection, or feedback during an ongoing process.\n  A rejection containing specific feedback stays \"Rejected\" with feedback filled. The email that turns the\n  application down is always \"Rejected\", even when it adds that no individual feedback is given (feedback empty).\n  Only a later reply refusing feedback, on a job whose stage is already Rejected, counts as Feedback received:\n  quote the refusal, so no further request is suggested.\n- feedback: quote the employer's specific reasons or assessment verbatim, never infer them. Empty for generic\n  \"other candidates were a better fit\" wording. Exclude candidate requests and old messages quoted below a reply.\n- relevant: true only when it is about one of the owner's own applications or hiring processes, or a recruiter or hiring person writes to the owner personally about a specific role. Automated job alerts, newsletters, marketing, \"jobs you may like\", other people's mail, and one-time sign-in or security codes (even when an applicant system sends them about an application: a code is no news about it) are not relevant.\n- application: the index of the matching application from the list, or -1 if none fits. When the owner applied to several roles at one company, pick the one whose title the item names; if it names none, pick -1 unless only one role at that company is open. Recruiter platforms (e.g. TechTree) may hide the employer: match on the platform (\"Via\") and role title.\n- kind: \"Confirmation received\" = automatic acknowledgement that the application arrived. \"Reply received\" = a person or process answered without a time being fixed yet: an invitation to book or pick a slot, an assessment or test link, a recruiter's message. \"Interview scheduled\" = a specific call or interview was booked for a stated time (the booking confirmation or calendar invite itself), or the employer invites the owner to one at a date and time it states, even when it asks them to confirm; an invitation to choose or book a slot themselves stays \"Reply received\". \"Rejected\" = not moving forward. \"Offer\" = an offer. \"Recruiter outreach\" = a recruiter or hiring person pitches the owner a role that isn't in the list (a first message, or LinkedIn's notification of one); a follow-up about a role already in the list is \"Reply received\". \"Other\" = relevant but none of these: reminders or \"starting soon\" notices for a call already booked, \"still open\" nudges, transcripts or recordings of a call, logistics.\n- role: the role title exactly as the item writes it, including any location part; \"\" when it names none. An item naming a role that differs from every listed role at that company (e.g. another country) gets application -1.\n- interview_at: only when a specific time is stated; the clock time as written (YYYY-MM-DDTHH:MM:SS, no UTC offset: the app works out the offset of that date) and interview_zone, its IANA time zone; \"\" for the zone when the item names none (the owner's own is assumed).\n- summary: factual, short, no email addresses or phone numbers.\nAnswer for every item index.\n\nApplications:\n(none)",
+      "cache_control": {
+        "type": "ephemeral"
+      }
+    }
+  ]
+};
 export const engineCases = [
+  spec('mail', 'mail', mailCapture.system[0].text, mailCapture.output_config.format.schema, mailCapture.messages[0].content, {"results": [{"index": 0, "relevant": false, "application": -1, "company": "Greenhouse", "role": "", "kind": "Other", "interview_at": "", "interview_zone": "", "summary": "One-time security code.", "feedback": ""}, {"index": 1, "relevant": true, "application": -1, "company": "Initech", "role": "DevOps Engineer", "kind": "Interview scheduled", "interview_at": "2026-10-06T14:00:00", "interview_zone": "Europe/Zurich", "summary": "Interview invitation for 6 October at 14:00 CEST.", "feedback": ""}, {"index": 2, "relevant": true, "application": -1, "company": "Acme Labs", "role": "Senior Site Reliability Engineer", "kind": "Confirmation received", "interview_at": "", "interview_zone": "", "summary": "Application received.", "feedback": ""}]}, {action: 'mail', first: 'Security code for your application to Acme Labs'}),
   spec('place', 'app.place', p.SYSTEM, p.SCHEMA, `Their places (JSON): ${JSON.stringify(places)}\nThe job locations:\n1. zurich`, {locations: [{n: 1, where: 'Zurich', country: 'Switzerland', nearest: 'zurich', km: 0, answer: 'best'}]}, {action: 'place_triage', first: 'zurich'}),
   spec('decide', 'app.decide', 'You decide what short pieces of content mean, in any language, for a job-search tool.', {type: 'object', additionalProperties: false, required: ['results'], properties: {results: {type: 'array', items: {type: 'object', additionalProperties: false, required: ['index','answer'], properties: {index: {type:'integer'}, answer: {type:'string', enum:['yes','no']}}}}}}, 'Task: Is this a place?\nAllowed answers: yes, no\n\n### Item 0\nZurich', {results: [{index: 0, answer: 'yes'}]}, {action: 'decide', first: 'Zurich'}),
   spec('score', 'app.score', 'You rank job postings for one candidate. The candidate profile follows.', {}, postUser, {score: 82}, {action: 'score', first: '3001'}),
@@ -120,7 +225,12 @@ function reorderedNumberedCase(c) {
 /** Build the same reordered and subset requests and replies for a fixture family. */
 function reorderedCase(c) {
   let user, expected, subsetUser, subsetExpected;
-  if (c.name === 'places') {
+  if (c.name === 'mail') {
+    const blocks = c.user.split(/\n\n(?=### Item )/);
+    user = [blocks[1].replace('### Item 1', '### Item 8'), blocks[0].replace('### Item 0', '### Item 9')].join('\n\n');
+    expected = {results: [{...c.reply.results[1], index: 8}, {...c.reply.results[0], index: 9}]};
+    subsetUser = blocks[1].replace('### Item 1', '### Item 21'); subsetExpected = {results: [{...c.reply.results[1], index: 21}]};
+  } else if (c.name === 'places') {
     user = 'Place words (JSON): ["Paris", "Zurich"]';
     expected = {places: [{...c.reply.places[1]}, {...c.reply.places[0], word: 'Zurich'}]};
     subsetUser = 'Place words (JSON): ["PARIS"]'; subsetExpected = {places: [{...c.reply.places[1], word: 'PARIS'}]};
@@ -137,7 +247,8 @@ export function familyTests(names) {
     test(`${c.name}: source-shaped request works with its header, no header and translated Responses`, () => {
       const q = questionOf(askOf(c), {}); assert.equal(q.operation, c.operation);
       for (const shape of ['anthropic', 'openai']) assert.deepEqual(questionOf({body: bodyOf(c, shape)}, {}), q);
-      const changed = bodyOf(c); changed.model = 'different'; changed.system[0].text += ' More guidance.';
+      const changed = bodyOf(c); changed.model = 'different';
+      if (c.name !== 'mail') changed.system[0].text += ' More guidance.';
       assert.deepEqual(questionOf({body: changed}, {}), q);
       const bad = bodyOf(c); bad.output_config.format.schema = {type: 'string'};
       assert.ok(questionOf(askOf(c, bad), {}).unkeyable);

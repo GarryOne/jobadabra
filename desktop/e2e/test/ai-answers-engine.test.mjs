@@ -69,9 +69,9 @@ for (const c of engineCases.filter(c => !['score', 'decide', 'place'].includes(c
   assert.deepEqual(JSON.parse(answerFor(q, {answers: {}, items}).reply.content[0].text), c.reply);
 });
 
-test('all eleven engine kinds precede declared-kind dispatch; desktop declarations retain backbone-only behavior', () => {
+test('all twelve engine kinds precede declared-kind dispatch; desktop declarations retain backbone-only behavior', () => {
   const operations = [...new Set(engineCases.map(c => c.operation))].sort();
-  assert.deepEqual(operations, ['app.decide', 'app.enrich', 'app.geo', 'app.place', 'app.placeReading', 'app.placeVague', 'app.places', 'app.score', 'app.title', 'app.visa', 'app.visit'].sort());
+  assert.deepEqual(operations, ['app.decide', 'app.enrich', 'app.geo', 'app.place', 'app.placeReading', 'app.placeVague', 'app.places', 'app.score', 'app.title', 'app.visa', 'app.visit', 'mail'].sort());
   const table = loadTable(), env = {E2E_AI_ANSWERS: 'backbone', E2E_QUALITY_PERSONA: ''};
   for (const c of engineCases) for (const shape of ['anthropic', 'openai']) {
     const declared = {...table, kinds: {...table.kinds, [c.action]: {answer: {refuse: 'invalid-key'}}}};

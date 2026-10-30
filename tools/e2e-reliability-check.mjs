@@ -133,8 +133,11 @@ export function harnessProblems(changes, messages) {
 export function growthProblem(changes, messages) {
   const size = changes.find(change => change.file === HARNESS_SIZE);
   if (!size || size.before === null || size.after === null) return '';
-  if (!(JSON.parse(size.after).harnessLines > JSON.parse(size.before).harnessLines)) return '';
-  return messages.some(message => /^Harness-grow:[ \t]*\S/m.test(message)) ? '' : 'raising harnessLines in harness-size.json needs Harness-grow: <why> in a commit message.';
+  const was = JSON.parse(size.before), now = JSON.parse(size.after);
+  // Why (30 Oct 2026, Gitar on #2592): slack sets the lower bound of the shrink check, so raising it frees lines the same way raising harnessLines does.
+  const raised = ['harnessLines', 'slack'].filter(key => now[key] > was[key]);
+  if (!raised.length) return '';
+  return messages.some(message => /^Harness-grow:[ \t]*\S/m.test(message)) ? '' : `raising ${raised.join(' and ')} in harness-size.json needs Harness-grow: <why> in a commit message.`;
 }
 
 // Repo/base -> blocking message (empty on success). Git errors fail closed; callers must supply a fetched base.

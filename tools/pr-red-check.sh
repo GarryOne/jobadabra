@@ -20,7 +20,7 @@ cwd="$(jqr '.cwd // ""')"; transcript="$(jqr '.transcript_path // ""')"; event="
 [ -n "$cwd" ] && [ -d "$cwd" ] || exit 0
 common="$(git -C "$cwd" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)" || exit 0
 dir="${PR_RED_DIR:-$common/pr-red}"; mkdir -p "$dir" 2>/dev/null || exit 0
-ttl="${PR_RED_TTL:-180}"   # Why (27 Oct 2026): every prompt of ~8 sessions asked GitHub each minute; the owner's GraphQL limit ran out
+ttl="${PR_RED_TTL:-180}"   # Why (27 Oct 2026; 30 Oct 2026, beta 41118633789): keep the prompt cache TTL that avoids repeated GitHub reads; only the test wait changes below.
 # Why (30 Oct 2026, beta 41118633789; owner: "wait on the state, not on a specific time"): tests wait for the reader's verdict; prompts keep their short latency bound.
 wait_limit="${PR_RED_WAIT:-20}"
 

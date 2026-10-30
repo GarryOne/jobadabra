@@ -7,6 +7,7 @@ import {decideQuestion} from './ai-answers-decide.mjs';
 import {placeQuestion} from './ai-answers-place.mjs';
 import {engineQuestion, itemOperation, validateItemEntry} from './ai-answers-engine.mjs';
 import {canonical, hash, object} from './ai-answers-engine-items.mjs';
+import {promptOf} from './ai-answer-prompts.mjs';
 
 /** Opening of desktop/lib/learnings.js INSTRUCTIONS: the only way to tell its header-less call (kind learn_from_form) apart. */
 export const LEARN_FORM_PREFIX = "A job-application form was just filled. You keep the applicant's learnings:";
@@ -37,6 +38,8 @@ export function loadTable(file = TABLE) {
     if (!object(entries)) throw new Error(`AI answers: ${operation} must be an object`);
     for (const [id, entry] of Object.entries(entries)) if (!object(entry?.reply)) throw new Error(`AI answers: ${operation}/${id} reply must be an object`);
   }
+  // Why (JOB-44, 30 Oct 2026, owner): malformed stamps must fail closed rather than silently disable freshness.
+  if (table.promptHashes !== undefined && (!object(table.promptHashes) || Object.values(table.promptHashes).some(value => typeof value !== 'string' || !/^[a-f0-9]{64}$/.test(value)))) throw new Error('AI answers: promptHashes needs family sha256 values');
   checkItems(table);
   checkKinds(table.kinds);
   return table;
@@ -175,10 +178,20 @@ export function refusal(suite, question, why, request) {
   return error;
 }
 
-/** Write keyed live replies or validated items for review; never write the committed table. */
-export function recordCandidate(dir, question, reply) {
+/** Retain the prompt body and identity hints, never metadata or transport headers. */
+function candidateRequest(request) {
+  if (!request) return undefined;
+  const body = JSON.parse(JSON.stringify(parsed(request.body)));
+  delete body.metadata;
+  const action = request.action || new Headers(request.headers || {}).get('x-jp-action');
+  return {url: request.url || '/v1/messages', ...(action ? {action} : {}), ...(request.hint ? {hint: request.hint} : {}), body};
+}
+
+/** Write keyed live replies and their prompts for review; never write the committed table. */
+export function recordCandidate(dir, question, reply, request) {
   if (question.unkeyable) return;
   if (!object(reply)) throw new Error('AI answer candidate reply must be an object');
+  const savedRequest = candidateRequest(request);
   const operation = itemOperation(question.operation);
   if (operation) {
     const items = operation.candidates(question, reply);
@@ -187,6 +200,7 @@ export function recordCandidate(dir, question, reply) {
     for (const {key, text, answer, name} of items) {
       // Why (30 Oct 2026, qu; #2450 slice 3): all registered items remain independently reviewed; recording never changes the committed table.
       const table = {v: 1, about: 'Live AI item answer awaiting human review.', answers: {}, items: {[question.operation]: {[key]: {text, answer}}}};
+      if (savedRequest) table.requests = {[question.operation]: {[key]: savedRequest}};
       fs.writeFileSync(path.join(dir, name), `${JSON.stringify(table, null, 2)}\n`);
     }
     return;
@@ -196,6 +210,11 @@ export function recordCandidate(dir, question, reply) {
   const table = fs.existsSync(file) ? loadTable(file) : {v: 1, about: 'Live AI answers awaiting human review.', answers: {}};
   table.answers[question.operation] ??= {};
   table.answers[question.operation][question.id] = {reply};
+  if (savedRequest) {
+    table.requests ??= {};
+    table.requests[question.operation] ??= {};
+    table.requests[question.operation][question.id] = savedRequest;
+  }
   fs.writeFileSync(file, `${JSON.stringify(table, null, 2)}\n`);
 }
 
@@ -206,7 +225,25 @@ export function refusedQuestions(env = process.env) {
 
 /** Apply the shared table-first rule; E2E_AI_ANSWERS_FILE permits isolated test tables. */
 export function storedAnswer(request, env = process.env) {
-  const mode = answersMode(env), table = loadTable(env.E2E_AI_ANSWERS_FILE || TABLE), question = questionOf(request, env, table) || {unkeyable: 'unknown: question identity is not in the request'}, dir = artifactsOf(env);
+  const mode = answersMode(env), table = loadTable(env.E2E_AI_ANSWERS_FILE || TABLE), dir = artifactsOf(env);
+  // TODO(AI): capture mixed instruction/data templates and stamp score/interview/enrich/mail in JOB-44 slice 2 (30 Oct 2026).
+  const prompt = table.promptHashes && promptOf(parsed(request.body), request.prompts, actionOf(request.headers, parsed(request.body)));
+  const approved = prompt && table.promptHashes[prompt.family];
+  // Why (JOB-44, 30 Oct 2026, owner): stale answers refuse in every mode before table hits, hash cache or any transport; unstamped slice-2 families keep their existing behavior.
+  if (approved && approved !== prompt.hash) {
+    let question;
+    try { question = questionOf(request, env, table); } catch { question = {}; } // Schema edits can make the old identity parser inapplicable.
+
+    const semantic = {operation: prompt.family, ...(question.items ? {keys: question.items.map(item => item.key).sort()} : {id: question.id || hash(parsed(request.body))})};
+    const marker = {family: prompt.family, question: semantic, approved, current: prompt.hash};
+    const error = Object.assign(new Error(`E2E_AI_ANSWER_MISSING: stale: prompt changed ${prompt.family} (${approved.slice(0, 12)} -> ${prompt.hash.slice(0, 12)})`), {code: 'E2E_AI_ANSWER_MISSING'});
+    const misses = path.join(dir, 'ai-misses'); fs.mkdirSync(misses, {recursive: true});
+    fs.writeFileSync(path.join(misses, `stale-${hash(marker)}.json`), JSON.stringify(marker, null, 2));
+    const list = refusals.get(dir) || []; list.push({code: error.code, message: error.message, question: semantic}); refusals.set(dir, list);
+    fs.writeFileSync(path.join(dir, 'ai-answer-refusals.json'), JSON.stringify(list, null, 2));
+    throw error;
+  }
+  const question = questionOf(request, env, table) || {unkeyable: 'unknown: question identity is not in the request'};
   // Why (29 Oct 2026, ap; owner-approved rule A): beta 4 missed 47 hash-keyed questions after setup text changed; question and declared-kind answers share one validated table before every cache and transport; a request no kind identifies is refused here too, never passed on.
   const found = (question.unkeyable ? {} : answerFor(question, table)) || {};
   // Why (29 Oct 2026, ap): an explicit kind refusal is a stored answer, so it must stop before caches and live transports too.
@@ -223,12 +260,12 @@ export function storedAnswer(request, env = process.env) {
     fs.writeFileSync(path.join(dir, 'ai-answer-refusals.json'), JSON.stringify(list, null, 2));
     throw error;
   }
-  return {mode, question, dir: env.E2E_AI_CANDIDATES || dir};
+  return {mode, question, dir: env.E2E_AI_CANDIDATES || dir, ...(mode === 'record' ? {request: candidateRequest(request)} : {})};
 }
 
 /** Keep a successful live reply only for a keyed record-mode miss, never a hash replay. */
 export function keepCandidate(state, reply) {
-  if (state.mode === 'record') recordCandidate(state.dir, state.question, reply);
+  if (state.mode === 'record') recordCandidate(state.dir, state.question, reply, state.request);
 }
 
 /** Decode a successful provider body, including a completed stream, for candidate review. */

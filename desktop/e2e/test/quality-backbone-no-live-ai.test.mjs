@@ -9,6 +9,7 @@ import {test} from 'node:test';
 import {loadTable, questionOf, storedAnswer} from '../lib/ai-answers.mjs';
 import {startAiProxy} from '../lib/ai-proxy.mjs';
 import {modelFetch} from '../lib/model.mjs';
+import {engineCases} from './ai-answers-engine-fixtures.mjs';
 
 const tableFile = fileURLToPath(new URL('../fixtures/golden/ai-answers.json', import.meta.url));
 const truth = JSON.parse(fs.readFileSync(new URL('../fixtures/golden/truth.json', import.meta.url), 'utf8'));
@@ -78,7 +79,7 @@ for (const [topic, ask, answers] of aliasAsks) test(`quality serves the captured
   const {question} = JSON.parse(fs.readFileSync(new URL(`../fixtures/golden/${ask}`, import.meta.url), 'utf8'));
   const {context, items} = question;
   const body = {
-    model: 'test', system: 'You decide what short pieces of content mean, in any language, for a job-search tool.',
+    model: 'test', system: engineCases.find(item => item.name === 'decide').system,
     messages: [{role: 'user', content: `Task: ${context.task}\nAllowed answers: ${context.allowedAnswers}\n\n${items.map(({index, text}) => `### Item ${index}\n${text}`).join('\n\n')}`}],
     output_config: {format: {type: 'json_schema', schema: context.schema}},
   };

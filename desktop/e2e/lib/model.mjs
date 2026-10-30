@@ -75,7 +75,6 @@ export function judgeTarget(url, init, env = process.env) {
   return {url: String(url).replace(/^https:\/\/api\.anthropic\.com/, env.E2E_FREE_AI_URL), init: {...init, headers: {...init.headers, 'x-api-key': env.E2E_FREE_AI_KEY}}};
 }
 
-// Keep the drift-only fresh path independent of stored answers, replay and provider fallbacks.
 async function freshBrokerReply(init, {env, ask}) {
   // Why (30 Oct 2026, owner, JOB-45): a drift judge must ask the subscription broker freshly, never a stored verdict or another provider.
   if (!env.CI || aiProvider(env, 'judges').provider !== 'codex' || !env.ACTIONS_ID_TOKEN_REQUEST_URL || !env.ACTIONS_ID_TOKEN_REQUEST_TOKEN) throw new Error('fresh broker judge requires CI Codex and GitHub OIDC');
@@ -84,7 +83,6 @@ async function freshBrokerReply(init, {env, ask}) {
   return reply(200, {type: 'message', role: 'assistant', model: asked.model, ...asked.message});
 }
 
-// Preserve the suites' normal broker refusal, recording and replay behavior.
 async function cachedBrokerReply(init, stored, key, env) {
   const asked = await askBroker(JSON.parse(init.body), {env});
   if (!asked.ok) {
@@ -97,7 +95,6 @@ async function cachedBrokerReply(init, stored, key, env) {
   return new Response(answer, {status: 200, headers: {'content-type': 'application/json'}});
 }
 
-// Resolve the regular suite cache first, then ask the provider chosen for the run.
 async function apiJudgeReply(url, init, stored, env) {
   // A judge answer seen before is replayed like the app's (owner, 27 Oct 2026: "with the judges replaying in the gate too"); a fresh run asks live.
   const body = Buffer.from(String(init?.body ?? '')), key = requestKey(`judge ${aiProvider(env, 'judges').provider === 'codex' ? 'codex' : judgeFamily(env)} ${new URL(url).pathname}`, body);   // Why (#2416): a Codex answer never replays as Claude's or Free AI's
@@ -126,7 +123,6 @@ async function apiJudgeReply(url, init, stored, env) {
   return response;
 }
 
-// Keep local CLI execution in its empty temporary directory, as before.
 async function cliJudgeReply(init, stored, {exec, timeoutMs}) {
   const body = JSON.parse(init.body);
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'e2e-model-'));   // no project, no CLAUDE.md, no hooks around the call
@@ -140,7 +136,6 @@ async function cliJudgeReply(init, stored, {exec, timeoutMs}) {
     keepCandidate(stored, answered);
     return reply(200, answered);
   } finally { fs.rmSync(dir, {recursive: true, force: true}); }
-
 }
 
 /** Fetch a judge reply; freshBroker requires CI Codex/OIDC and bypasses stored answers and hash caches. */

@@ -10,7 +10,7 @@ import {toastMessage} from './startup.js';
 // One proposal as a ticked row (the shared .check-row): what changes, then the counts it rests on.
 export function proposalRow(item) {
   const li = el('li');
-  const label = el('label', 'check-row');
+  const label = el('label', 'check-row inline-label');
   const box = el('input');
   box.type = 'checkbox';
   box.checked = true;

@@ -98,8 +98,8 @@ unanswered_read() {  # <branch> <worktree>: "<n>\t<owner+bot count>\t<first url>
   n="$(jq -r 'select(.state == "OPEN") | .number // empty' <<<"$view" 2>/dev/null)"; [ -n "$n" ] || return 0
   lines="$(pr_get "repos/$repo/pulls/$n/comments?per_page=100" 2>/dev/null)" || lines=""
   rows="$(pc_items "$view" "${lines:-null}")"
-  # Why (#PR comments, owner 27 Oct 2026): answered = a session comment or a commit newer than the item; the rule lives in pc_unanswered (pr-comments-lib.sh), shared with ship-watch.sh so a watcher never re-announces what this reminder drops.
-  rows="$(pc_unanswered "$(jq -r '[.commits[]?.committedDate // empty] | max // ""' <<<"$view")" <<<"$rows")"
+  # Why (#PR comments, owner 27 Oct 2026): answered = a session comment or a commit newer than the item (authored, not committed); the rule lives in pr-comments-lib.sh, shared with ship-watch.sh so a watcher never re-announces what this reminder drops.
+  rows="$(pc_unanswered "$(pc_last_authored "$view")" <<<"$rows")"
   [ -z "$rows" ] || awk -F'\t' -v n="$n" '$2!="other" {c++; if (!u) u=$4} $2=="other" {o++} END {if (c+o) print n "\t" c+0 "\t" (u ? u : "-") "\t" o+0}' <<<"$rows"
   return 0
 }

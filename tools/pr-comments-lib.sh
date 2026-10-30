@@ -16,8 +16,13 @@ pc_items() {
     + [($l // [])[] | {id: ("L" + (.id | tostring)), a: who(.user.login // ""; .body), k: "line", u: (.html_url // ""), t: (.created_at // "")}]
     )[] | [.id, .a, .k, .u, .t] | @tsv' 2>/dev/null
 }
+# pc_last_authored <pr view JSON> -> newest commit authored time, or empty when none; never fall back to a rebase's committed time.
+#   An answer is a NEW commit or a session reply: an amended/squashed commit keeps its old authored date and looks like a rebase (Gitar on #2578, tests/test_pr_comments.py `amended`).
+pc_last_authored() {
+  jq -r '[.commits[]?.authoredDate // empty] | max // ""' <<<"$1"
+}
 # pc_unanswered <last commit time, may be empty> < pc_items rows -> the rows of owner/bot/other still waiting for a reply
-# Why (#PR comments, owner 27 Oct 2026): an item is answered when a session comment or a commit is newer than it (ISO times compare as text). One copy, read by tools/pr-red-check.sh (what to remind)
+# Why (#PR comments, owner 27 Oct 2026): an item is answered when a session comment or a commit's authored time is newer than it (ISO times compare as text). One copy, read by tools/pr-red-check.sh (what to remind)
 #   and tools/ship-watch.sh (what a watcher that starts on an old PR may announce), so a comment already answered hours ago is never reported again.
 pc_unanswered() {
   awk -F'\t' -v last="${1:-}" '$2=="self" && $5>last {last=$5} {r[NR]=$0} END {for (i=1;i<=NR;i++) {split(r[i],f,"\t"); if (f[2]!="self" && f[5]>=last) print r[i]}}'

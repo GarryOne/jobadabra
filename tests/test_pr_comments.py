@@ -36,6 +36,20 @@ def view(comments=(), reviews=(), commits=(), state='OPEN'):
             'comments': list(comments), 'reviews': list(reviews), 'commits': list(commits)}
 
 
+def answer_timeline():
+    """A rebase is not an answer; a newly authored commit or session reply is."""
+    owner = comment('IC_1', 'GarryOne', at='2026-10-27T10:00:00Z')
+    rebased = {'authoredDate': '2026-10-27T09:00:00Z', 'committedDate': '2026-10-27T11:00:00Z'}
+    followup = {'authoredDate': '2026-10-27T12:00:00Z', 'committedDate': '2026-10-27T12:00:00Z'}
+    reply = comment('IC_2', 'GarryOne', 'fixed it' + CLAUDE, at='2026-10-27T12:00:00Z')
+    # An amended or squashed answer keeps its old authored date: indistinguishable from a rebase, so it is NOT an answer; a session answers with a new commit or a reply (Gitar on #2578).
+    amended = {'authoredDate': '2026-10-27T09:00:00Z', 'committedDate': '2026-10-27T12:30:00Z'}
+    return [('rebase', view(comments=[owner], commits=[rebased]), True),
+            ('amended', view(comments=[owner], commits=[amended]), True),
+            ('followup', view(comments=[owner], commits=[followup, rebased]), False),
+            ('reply', view(comments=[owner, reply], commits=[rebased]), False)]
+
+
 def rest(d, v, n='7', lines=()):
     """Writes a `view()` (gh pr view shape) as the REST answers tools/pr-rest-lib.sh reads (tests/fake_gh_rest.py serves them)."""
     def put(path, body):
@@ -46,7 +60,7 @@ def rest(d, v, n='7', lines=()):
                                  'merged_at': '2026-10-27T10:00:00Z' if v['state'] == 'MERGED' else None, 'mergeable': True})
     put(f'repos/o/r/issues/{n}/comments?per_page=100', [{'node_id': c['id'], 'user': {'login': c['author']['login']}, 'body': c['body'], 'html_url': c['url'], 'created_at': c['createdAt']} for c in v['comments']])
     put(f'repos/o/r/pulls/{n}/reviews?per_page=100', [{'node_id': r['id'], 'user': {'login': r['author']['login']}, 'body': r['body'], 'state': r['state'], 'submitted_at': r['submittedAt']} for r in v['reviews']])
-    put(f'repos/o/r/pulls/{n}/commits?per_page=100', [{'commit': {'committer': {'date': c['committedDate']}}} for c in v['commits']])
+    put(f'repos/o/r/pulls/{n}/commits?per_page=100', [{'commit': {'author': {'date': c['authoredDate']}, 'committer': {'date': c['committedDate']}}} for c in v['commits']])
     put(f'repos/o/r/pulls/{n}/comments?per_page=100', list(lines))
     put('repos/o/r/commits/h1/check-runs?per_page=100', {'check_runs': [{'name': 'x', 'status': 'in_progress', 'conclusion': None}]})
     put('repos/o/r/commits/h1/status', {'statuses': []})
@@ -154,12 +168,27 @@ class WatcherCommentsTest(Base):
 
     def test_a_comment_that_arrives_while_the_watcher_runs_is_told_even_when_a_push_follows_before_the_next_look(self):
         """gitar-bot on #2258: only comments older than the watcher's start may be silenced as answered."""
-        self.answer(view(comments=[comment('IC_1', 'GarryOne', 'also make it blue', '2026-10-27T10:00:20Z')], commits=[{'committedDate': '2026-10-27T10:00:40Z'}]))
+        self.answer(view(comments=[comment('IC_1', 'GarryOne', 'also make it blue', '2026-10-27T10:00:20Z')], commits=[{'authoredDate': '2026-10-27T10:00:40Z', 'committedDate': '2026-10-27T10:00:40Z'}]))
         self.assertEqual(self.watch(started='2026-10-27T10:00:00Z'), [f'ship: COMMENT #7 owner comment {URL}#issuecomment-IC_1'])
 
     def test_a_comment_followed_by_a_push_is_silent_on_start(self):
-        self.answer(view(comments=[comment('IC_1', 'gitar-bot')], commits=[{'committedDate': '2026-10-27T10:30:00Z'}]))
+        self.answer(view(comments=[comment('IC_1', 'gitar-bot')], commits=[{'authoredDate': '2026-10-27T10:30:00Z', 'committedDate': '2026-10-27T10:30:00Z'}]))
         self.assertEqual(self.watch(), [])
+
+    def test_rebase_keeps_owner_comment_unanswered_and_blocks_ready_until_a_real_answer(self):
+        (self.tmp / 'states').write_text('OPEN\n')
+        (self.tmp / 'labels').write_text('Gitar: approved\n')
+        for name, v, unanswered in answer_timeline():
+            with self.subTest(name=name):
+                self.log.write_text('')
+                (self.tmp / 'looks').write_text('0')
+                (self.tmp / 'watch.pid.comments').unlink(missing_ok=True)
+                self.answer(v)
+                comments = self.watch(started='2026-10-27T13:00:00Z')
+                lines = self.log.read_text().splitlines()
+                self.assertIn('ship: GREEN #7', lines)
+                self.assertEqual('ship: READY #7 new1' in lines, not unanswered)
+                self.assertEqual(comments, [f'ship: COMMENT #7 owner comment {URL}#issuecomment-IC_1'] if unanswered else [])
 
     def test_an_unanswered_old_comment_is_still_told_once_on_start_and_a_newer_one_after_the_reply(self):
         bot = comment('IC_1', 'gitar-bot', 'x', '2026-10-27T10:00:00Z')
@@ -212,8 +241,14 @@ class HookCommentsTest(Base):
         reply = comment('IC_2', 'GarryOne', 'done, made it blue' + CLAUDE, '2026-10-27T10:05:00Z')
         self.answer(view(comments=[mine, reply]))
         self.assertNotIn('unanswered', self.hook())
-        self.answer(view(comments=[mine], commits=[{'committedDate': '2026-10-27T10:30:00Z'}]))
+        self.answer(view(comments=[mine], commits=[{'authoredDate': '2026-10-27T10:30:00Z', 'committedDate': '2026-10-27T10:30:00Z'}]))
         self.assertNotIn('unanswered', self.hook())
+
+    def test_rebase_keeps_owner_reminder_until_a_newly_authored_commit_or_session_reply(self):
+        for name, v, unanswered in answer_timeline():
+            with self.subTest(name=name):
+                self.answer(v)
+                self.assertEqual('PR #7 has 1 unanswered comment(s)' in self.hook(), unanswered)
 
     def test_a_merged_pr_and_a_refused_main_notice_do_not_hide_or_add_reminders(self):
         """gitar-bot on #2252: gh pr view also answers a merged PR of the branch (silent); the refused-main notice appends to the reminders, it does not replace them."""

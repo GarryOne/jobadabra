@@ -48,7 +48,7 @@ report_comments() {  # <view json>; sets $waiting: the owner's and others' items
   local lines rows open id who kind url t last
   lines="$(pr_get "repos/$repo/pulls/$n/comments?per_page=100")" || lines=""
   rows="$(pc_items "$1" "${lines:-null}")"
-  last="$(jq -r '[.commits[]?.committedDate // empty] | max // ""' <<<"$1")"
+  last="$(pc_last_authored "$1")"
   open="$(pc_unanswered "$last" <<<"$rows" | cut -f1)"
   waiting="$(pc_unanswered "$last" <<<"$rows" | awk -F'\t' '$2 == "owner" || $2 == "other"' | grep -c . || true)"
   while IFS=$'\t' read -r id who kind url t; do

@@ -12,7 +12,11 @@ import {modelFetch} from '../lib/model.mjs';
 // profile organization, list meanings and the missing-fact/reuse queue are background reads.
 const captured = JSON.parse(fs.readFileSync(new URL('../fixtures/golden/activityfailures-decide.json', import.meta.url), 'utf8'));
 const refused = ['contact_asks', 'covered_facts', 'reuse_verdict', 'field_redraft', 'missing_facts_wording', 'question_formats', 'places'];
-const empty = {answer_home: {items: []}, organize_lines: {items: []}, list_meanings: {lists: []}};
+const empty = {answer_home: {items: []}, organize_lines: {items: []}, list_meanings: {lists: []},
+  // Why (30 Oct 2026, bb 3/9): the Profile's two header-named reads that interactions reaches; an authored empty read keeps the chips and rows as typed.
+  preferences_parse: {countries: [], cities: [], remote: 'unknown', languages: [], relocation: {answer: 'unknown', where: ''}, roles: [],
+    seniority: {min: 'unknown', max: 'unknown', open_ended: false}, employment: [], notes: [], unparsed: []},
+  locations_move: {preferred: [], acceptable: [], relocation: 'unspecified', destinations: []}};
 const table = loadTable(new URL('../fixtures/golden/ai-answers.json', import.meta.url));
 const request = (action, body = {model: 'test', messages: [{role: 'user', content: 'Setup background read'}]}) => ({
   method: 'POST', headers: {'content-type': 'application/json', 'x-jp-action': action}, body: JSON.stringify(body),

@@ -2,6 +2,7 @@
 // (boards.greenhouse.io, jobs.lever.co, e2e.recruitee.com) to this server, and every other host name is unresolvable, so no employer site is ever contacted.
 // The forms are written like the real boards' (labels, required stars, a late-rendered field, a multi-step flow) and each records what happened to it:
 // a Submit that is clicked or submitted is logged, so a test can prove it was never touched.
+// Job: wait on state
 import {execFileSync} from 'node:child_process';
 import fs from 'node:fs';
 import https from 'node:https';
@@ -296,6 +297,8 @@ const CHAIN_PAGES = {
 };
 
 const submit = `<div class="field"><button type="submit" id="submit_app">Submit Application</button></div>`;
+// A box the form asks to tick before it sends (the details-only submitter at `?check=<mode>`, any non-empty value): the shape a bot check has, never a real challenge; the judge's stand-in (lib/background-proof.mjs withBotCheckJudge) reads it as one.
+const BOT_CHECK = `<div class="field"><label><input type="checkbox" id="robot" name="robot" required> I'm not a robot *</label></div>`;
 
 const PAGES = {
   greenhouse: form => page(form, `<form id="application_form">
@@ -339,9 +342,9 @@ const PAGES = {
   ${wd('input-7', 'questionnaire_aws', form.kit[0].question)}${wd('input-9', 'questionnaire_notice', form.kit[1].question, {tag: 'textarea'})}
   <div class="field"><button type="submit" id="submit_app" data-automation-id="bottom-navigation-next-button">Submit</button></div></form></div>`);
   },
-  submitter: (form, done = false, bare = false) => page(form, `${done ? '<p id="done" style="padding:8px;background:#e6f4ea">Your application has been successfully submitted. Thank you, we have received your application.</p>' : ''}<form id="application_form" method="post" action="${bare ? form.autoPath : form.path}">
+  submitter: (form, done = false, bare = false, check = false) => page(form, `${done ? '<p id="done" style="padding:8px;background:#e6f4ea">Your application has been successfully submitted. Thank you, we have received your application.</p>' : ''}<form id="application_form" method="post" action="${bare ? form.autoPath : form.path}">
   ${field('first_name', 'First name', {required: true})}${field('last_name', 'Last name', {required: true})}${field('email', 'Email', {type: 'email', required: true})}${resume}
-  ${bare ? '' : field('question_4001', 'Years of experience with Linux', {required: true})}${submit}</form>`, '', {realSubmit: true}),
+  ${bare ? '' : field('question_4001', 'Years of experience with Linux', {required: true})}${check ? BOT_CHECK : ''}${submit}</form>`, '', {realSubmit: true}),
   // A required control the form reader has no operator for: a custom slider (a div with role=slider).
   unknown: form => page(form, `<form id="application_form">
   ${field('first_name', 'First Name', {required: true})}${field('last_name', 'Last Name', {required: true})}${field('email', 'Email', {type: 'email', required: true})}${resume}
@@ -422,7 +425,7 @@ export async function startForms({vary = null} = {}) {
       return;
     }
     if (host === FORMS.submitter.host && (url.pathname === FORMS.submitter.path || bare) && (url.searchParams.get('sent') || bare)) {
-      res.writeHead(200, {'content-type': 'text/html; charset=utf-8'}); res.end(PAGES.submitter(FORMS.submitter, !!url.searchParams.get('sent'), bare));
+      res.writeHead(200, {'content-type': 'text/html; charset=utf-8'}); res.end(PAGES.submitter(FORMS.submitter, !!url.searchParams.get('sent'), bare, !!url.searchParams.get('check')));
       return;
     }
     const chain = host === CHAIN.host && url.pathname.replace(/(.)\/$/, '$1') === CHAIN.path ? 'posting' : host === CHAIN.stepHost && url.pathname.replace(/(.)\/$/, '$1') === CHAIN.stepPath ? 'step'

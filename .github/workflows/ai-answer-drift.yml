@@ -1,0 +1,81 @@
+# Nightly drift measurement: ask 20 stored prompts and up to 4 prose judges through the Codex subscription broker's drift lane.
+# Why (30 Oct 2026, owner, JOB-45): rates warn during warm-up, then fail only this job; two consecutive red nights maintain one issue. Never a PR or beta gate.
+name: CI · Stored AI answer drift
+on:
+  schedule:
+    - cron: '41 4 * * *'   # Between e2e's 03:17 nightly and the beta build's 05:17 UTC.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write   # Per-run GitHub OIDC proves the workflow to the broker; no API key or fallback.
+  issues: write
+
+concurrency:
+  group: ai-answer-drift
+  cancel-in-progress: false
+
+jobs:
+  drift:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      # Why (30 Oct 2026, owner, JOB-45): always the Codex subscription, regardless of repository defaults; never paid APIs.
+      CI_AI_PROVIDER: codex
+      E2E_AI_PROVIDER: codex
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - name: Restore previous nights
+        uses: actions/cache/restore@v5
+        with:
+          path: desktop/e2e/.answer-drift-history
+          key: ai-answer-drift-history-v1-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: ai-answer-drift-history-v1-
+      - name: Ask fresh linked prompts and report rates
+        id: drift
+        run: node desktop/e2e/answer-drift.mjs --live --history desktop/e2e/.answer-drift-history/history.json --out desktop/e2e/artifacts/answer-drift
+      # Why (30 Oct 2026, owner, JOB-45): retain red and incomplete nights too; only main may advance shared nightly evidence.
+      - name: Save nightly evidence
+        if: always() && github.ref == 'refs/heads/main' && hashFiles('desktop/e2e/.answer-drift-history/history.json') != ''
+        uses: actions/cache/save@v5
+        with:
+          path: desktop/e2e/.answer-drift-history
+          key: ai-answer-drift-history-v1-${{ github.run_id }}-${{ github.run_attempt }}
+      - name: Upload drift report
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: ai-answer-drift-${{ github.run_id }}
+          path: |
+            desktop/e2e/artifacts/answer-drift/ai-answer-drift.json
+            desktop/e2e/artifacts/answer-drift/ai-answer-drift.md
+          if-no-files-found: error
+      # Why (30 Oct 2026, owner, JOB-45): reuse the runner's CLI so issue reporting adds no action runtime or package install.
+      - name: Maintain one issue for lasting red
+        if: always() && github.ref == 'refs/heads/main' && hashFiles('desktop/e2e/artifacts/answer-drift/ai-answer-drift.json') != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          node <<'JS'
+          const fs = require('node:fs');
+          const {execFileSync} = require('node:child_process');
+          const api = (endpoint, data, method = 'GET') => {
+            const args = ['api', endpoint, '--method', method];
+            if (data) args.push('--input', '-');
+            return JSON.parse(execFileSync('gh', args, {encoding: 'utf8', ...(data ? {input: JSON.stringify(data)} : {})}));
+          };
+          const {issue} = JSON.parse(fs.readFileSync('desktop/e2e/artifacts/answer-drift/ai-answer-drift.json', 'utf8'));
+          if (issue) {
+            const repository = process.env.GITHUB_REPOSITORY;
+            const query = `repo:${repository} is:issue is:open in:title "${issue.title}"`;
+            const found = api(`search/issues?q=${encodeURIComponent(query)}&per_page=100`);
+            const existing = found.items.find(item => item.title === issue.title);
+            const run = `${process.env.GITHUB_SERVER_URL}/${repository}/actions/runs/${process.env.GITHUB_RUN_ID}`;
+            const body = `${issue.body}\n\n[Full nightly report and artifacts](${run})`;
+            const endpoint = `repos/${repository}/issues${existing ? `/${existing.number}` : ''}`;
+            api(endpoint, existing ? {body} : {title: issue.title, body}, existing ? 'PATCH' : 'POST');
+          }
+          JS

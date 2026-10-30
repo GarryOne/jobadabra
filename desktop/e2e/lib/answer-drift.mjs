@@ -258,14 +258,17 @@ function finishCoverage(report) {
 }
 
 /** Build coverage offline; only a caller-supplied transport can request fresh replies, with no judge calls. */
-export async function buildReport({entries = loadRequests(), table = loadTable(), history = {}, limit = 20, transport, golden = GOLDEN} = {}) {
+export async function buildReport({entries = loadRequests(), table = loadTable(), history = {}, limit = 20, transport, stopWhen = () => false, golden = GOLDEN} = {}) {
   // Resolve the entire manifest first: even an unsampled bogus key is an invalid baseline inventory.
   const resolved = entries.map(entry => resolveRequest(entry, {table, golden})), byId = new Map(resolved.map(row => [row.entry.id, row]));
   if (byId.size !== entries.length) throw new Error('duplicate prompt ids');
   const sample = pickSample(entries, history, limit), report = coverageReport(entries, table, sample);
   if (transport) {
     report.mode = 'compare';
-    for (const entry of sample) addResult(report, await compareRequest(byId.get(entry.id), transport));
+    for (const entry of sample) {
+      if (stopWhen()) break;
+      addResult(report, await compareRequest(byId.get(entry.id), transport));
+    }
   }
   return finishCoverage(report);
 }

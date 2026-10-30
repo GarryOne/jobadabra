@@ -125,7 +125,8 @@ export function createBackgroundApplyController(storage, {store = null, browser 
   /** Reads one job's application form in the hidden browser without filling or pressing anything; resolves with the mode table's flags, or null when nothing could be read (no browser, an application open, a timeout). Takes the job ({url}). */
   async function triageRead(job) {
     if (!browserOf().ready() || terminals.list().some(item => item.background && !item.outcome)) return null;
-    if (!owner) ({owner} = await browserOf().start({port, token: token()}));
+    // Why (30 Oct 2026, g2's G4 step, #2636): `owner` outlives the browser it came from; a read after the hidden browser closed queued for a poll that never came and ended at the 90 s timeout. start() connects to a live browser or launches one, so every read asks.
+    ({owner} = await browserOf().start({port, token: token()}));
     return reader.read(job?.url);
   }
   const unsaved = new Set();   // jobs an earlier run held whose quit hand-over write threw: the poll leaves them out until one saves (Gitar on #2598)

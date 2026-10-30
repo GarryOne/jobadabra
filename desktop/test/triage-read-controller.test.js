@@ -5,13 +5,13 @@ import {createBackgroundApplyController} from '../lib/background-apply-controlle
 import {markedSession} from '../lib/session-tab.js';
 
 const make = ({open = [], ready = true} = {}) => {
-  const calls = [];
+  const calls = [], starts = [];
   const controller = createBackgroundApplyController({}, {
     store: {read: async () => null, queue: () => calls.push('store.queue'), claim: () => calls.push('store.claim')},
-    browser: {ready: () => ready, start: async () => ({owner: 'o1'})},
+    browser: {ready: () => ready, start: async () => { starts.push('start'); return {owner: 'o1'}; }},
     terminals: {list: () => open, byUrl: () => null, startForm: () => calls.push('terminals.startForm'), record: () => null, report: () => {}},
     config: () => ({}), log: () => {}, token: () => 'fictional', port: 1});
-  return {controller, calls};
+  return {controller, calls, starts};
 };
 const poll = controller => controller.handle({action: 'poll', owner: 'o1'});
 
@@ -26,6 +26,16 @@ test('a queued read reaches the extension as a read command that carries the ses
   assert.deepEqual(answer, {ok: true});
   assert.deepEqual(await pending, {eligible: true, captcha: false, login: true, accountCreation: false, allFactsSaved: null});
   assert.deepEqual(calls, [], 'no store row, no session, no claim');
+});
+
+test('every read asks the browser to start, so a hidden browser that closed since the last read is launched again', async () => {
+  const {controller, starts} = make();
+  controller.triageRead({url: 'https://jobs.example.test/first'});
+  await poll(controller);   // the app now knows its owner
+  const before = starts.length;
+  controller.triageRead({url: 'https://jobs.example.test/second'});
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(starts.length, before + 1, 'start is idempotent and cheap; a read must not trust an owner remembered from a browser that may be gone');
 });
 
 test('a read is never handed out while an application is open, and never starts beside one', async () => {

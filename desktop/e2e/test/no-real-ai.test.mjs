@@ -6,6 +6,8 @@ import os from 'node:os';
 import path from 'node:path';
 import {writeSuiteFailures} from '../lib/artifacts.mjs';
 import {flakyProof} from '../lib/flaky-proof.mjs';
+import {storedAnswer} from '../lib/ai-answers.mjs';
+import {writeFinalFailures} from '../lib/suite-main.mjs';
 import * as aiGuards from '../lib/no-real-ai.mjs';
 const {assertNoRealAi, realAiCalls} = aiGuards;
 
@@ -44,4 +46,23 @@ test('late missing-answer refusals become failed artifacts and cannot prove a fl
   assert.deepEqual(flakyProof(failures[0].message).harness, 'stored answers');
   assert.equal(flakyProof(failures[0].message).flaky, false);
   assert.match(ctx.stopped, /has no stored answer/);
+});
+
+
+test('the production finalizer rewrites an empty artifact after a late registry refusal', t => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'late-answer-finalize-'));
+  t.after(() => fs.rmSync(dir, {recursive: true, force: true}));
+  const table = path.join(dir, 'answers.json');
+  fs.writeFileSync(table, JSON.stringify({v: 1, answers: {}}));
+  const ctx = {ARTIFACTS: dir, runner: {results: [{name: 'journey', status: 'passed'}]}};
+  writeSuiteFailures(dir, 'activityfailures', ctx.runner.results, {});
+  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(dir, 'suite-failures.json'))), []);
+  assert.throws(() => storedAnswer({headers: {'x-jp-action': 'unrecorded-background'}, body: '{}'}, {
+    E2E_AI_ANSWERS: 'backbone', E2E_AI_ANSWERS_FILE: table, E2E_ARTIFACTS: dir, E2E_SUITE: 'activityfailures',
+  }), {code: 'E2E_AI_ANSWER_MISSING'});
+  assert.equal(writeFinalFailures('activityfailures', ctx), true);
+  const failures = JSON.parse(fs.readFileSync(path.join(dir, 'suite-failures.json')));
+  assert.equal(failures.length, 1);
+  assert.match(failures[0].message, /E2E_AI_ANSWER_MISSING.*unrecorded-background/);
+  assert.equal(flakyProof(failures[0].message).harness, 'stored answers');
 });

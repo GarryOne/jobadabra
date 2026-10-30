@@ -1,5 +1,4 @@
 // "Flaky" needs proof (gate G5, owner's yes 26 Oct 2026): a step that failed and then passed on the same commit is flaky only when its failure was timing or the
-// Job: run the backbone
 // test's environment (a wait that ran out, a dropped connection, an HTML error page). A wrong value that came right on the second try is INTERMITTENT: the
 // product or the test behaves differently between two runs of the same code (a race), a bug that shows sometimes. It keeps its rank, goes to the fixer, and only
 // a fix closes it; in CI it keeps the job red (e2e.yml / desktop.yml "once more" step, node flaky-proof.mjs).
@@ -7,6 +6,7 @@
 // ("the test is the problem"), ranked last, closed after two clean runs, and failed beta 2; it was a product bug (bd368f8 fixed it).
 // Only the failure message is read, never the step's name: that step is called "Notion is busy (429) …", which reads like an environment failure.
 // Tests: test/flaky-proof.test.mjs
+// Job: run the backbone
 import {isEnvironment} from './environment.mjs';
 import {FLAKY, TIMEOUT_FAILURE, flakyComment} from './triage-match.mjs';
 

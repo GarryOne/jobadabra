@@ -4,7 +4,9 @@
 
 **Goal:** Make the activityfailures backbone deterministic and ensure failed guards cannot be accepted as a timing retry.
 **Architecture:** Reuse stored semantic answers, the suite runner/artifact writer, fake services, stand-in store and existing state poller. Preserve every behavioral assertion; move only inherently variable measurements to their existing proper seam when necessary.
-**Spec:** docs/superpowers/specs/2026-10-28-e2e-reliability-design.md, rules A/B/C/E/F/G2/G3/H; owner follow-up /private/tmp/activityfailures-companion-redesign-followup.txt.
+**Spec:** docs/superpowers/specs/2026-10-28-e2e-reliability-design.md, rules A/B/C/E/F/G2/G3/H.
+
+**Owner request (30 Oct 2026):** “fully redesign activityfailures to match the approved e2e reliability design, in FOLLOW-UP PRs. Keep your current missing-geo repair PR #2556 narrow; do not inflate it with the redesign.” Audit all AI/background/fault/retry paths, state waits and measured hang caps, outside inputs, deterministic seed/cache inputs and teardown. Each fix needs red-first regression proof and full relevant CI; fresh main evidence is required before claiming the whole suite redesigned.
 **Constraints:** No live AI, Submit, merge, forced beta, assertion weakening, blanket timeout increases, retry-until-green, new polling framework or broad harness refactor.
 
 ## Evidence and boundaries

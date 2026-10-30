@@ -27,6 +27,7 @@ test('a missing flag is the unsafe answer, never the automatic one', () => {
   assert.equal(modeOfRead({eligible: true}).mode, 'check', 'no captcha answer: the person decides');
   assert.equal(modeOfRead({...clean, allFactsSaved: undefined}).mode, 'fill');
   assert.equal(modeOfRead(undefined).mode, 'none');
+  assert.equal(modeOfRead(null).mode, 'none', 'a failed read (null) is never automatic');
 });
 
 test('the captcha outranks the answers: a captcha form is never Background or Full automation', () => {

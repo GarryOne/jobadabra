@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // Check for a branch/PR (owner, 16 Oct 2026: fixes that passed their tests failed on his real page, #941 and #972): a commit that says it fixes a bug the owner saw must carry "Owner-report: <report id>"
 // and the push must bring a recorded case built from that ⚑ capture (case.json origin "captured", "report": "<id>", made by row-to-case from desktop/e2e/reports-fetch.mjs's reported-<id>-<site> record).
-// A hand-cut case (written from vendor code or a sketch) never counts as proof of an owner-seen bug. "Owner-report: none <why>" when the owner's bug has no ⚑ capture (a rule that cannot be shown on a page).
+// A hand-cut case (written from vendor code or a sketch) never counts as proof of an owner-seen bug. "Owner-report: no-capture <why>" claims an owner's bug without a ⚑ capture; no case is needed.
+// "Owner-report: none <why>" means this is not an owner-seen bug; the trailer makes no claim, but owner words in the prose still do.
 // That the case FAILS on the old code is "New test pages fail on the old build" (tools/recorded-fails-on-old.mjs); an Owner-report also counts there as naming a failure (no "Recorded-pins").
 // Every owner-seen fix also records the missed journey: "Escaped-e2e: <suite>[, <suite>] — <journey>" or "Escaped-e2e: no suite — <journey>".
 //   node tools/owner-report.mjs [--base origin/main]      exit 1 with the reason. Guard: desktop/test/owner-report.test.js.
@@ -15,14 +16,16 @@ export const TRAILER = /^Owner-report:[ \t]*(\S.*)$/im;
 // Words that say a commit answers to something the owner saw on his own page.
 export const CLAIMS_OWNER_SEEN = /\bowner[- ](?:saw|seen|reported|report|'s (?:page|capture|report))|\bowner's (?:own )?(?:page|capture|report)|reported by (?:the )?owner|⚑|\breport this form\b/i;
 const ESCAPE = /^Escaped-e2e:[ \t]*([^\r\n]*)$/im;
+const REPORT_FORMS = '  Owner-report: <id> — an owner-seen bug with a ⚑ capture; needs its recorded case\n  Owner-report: no-capture <why> — an owner-seen bug without a ⚑ capture; no case needed, Escaped-e2e required\n  Owner-report: none <why> — not an owner-seen bug; prose owner words still claim one';
 
-/** Read the report id and owner claim; trailer wording itself never implies an owner-seen bug. */
+/** Read the report id and owner claim; an id, no-capture or owner words in prose claims an owner-seen bug. */
 export function reportOf(message) {
   const value = TRAILER.exec(String(message))?.[1].trim() || '';
   const none = /^none\s+\S/i.test(value);
-  const id = value && !/^none\b/i.test(value) ? value.split(/\s+/)[0] : '';
+  const noCapture = /^no-capture\s+\S/i.test(value);
+  const id = value && !/^(?:none|no-capture)\b/i.test(value) ? value.split(/\s+/)[0] : '';
   const prose = String(message).split('\n').filter((line, index) => index === 0 || !/^[a-z][a-z0-9-]*:/i.test(line)).join('\n');
-  return {claims: CLAIMS_OWNER_SEEN.test(prose) || Boolean(id), id, none, bare: /^none\s*$/i.test(value)};
+  return {claims: CLAIMS_OWNER_SEEN.test(prose) || Boolean(id) || noCapture, id, none, noCapture, bare: /^(?:none|no-capture)\s*$/i.test(value)};
 }
 
 /** Parse an escape trailer without I/O; absent or malformed records return null. */
@@ -62,9 +65,9 @@ export function ownerReportProblem(commits, caseJson) {
     const said = reportOf(commit.message);
     const escape = escapeProblem(commit.message, said.claims, suites);
     if (escape) lines.push(escape);
-    if (said.bare) lines.push('"Owner-report: none" needs a reason after it ("Owner-report: none <why no ⚑ capture shows this>").');
-    if (!said.claims || said.none || said.bare) continue;
-    if (!said.id) { lines.push(`a commit says it fixes a bug the owner saw but has no "Owner-report: <report id>" (the id in reported-<id>-<site> after reports-fetch.mjs). Build the case: cd desktop/e2e && npm run row-to-case -- "reported-<id>-<site>" <case> --old-commit <sha>.\nOr, when no ⚑ capture shows this bug: "Owner-report: none <why>".`); continue; }
+    if (said.bare) lines.push(`"Owner-report: none" or "Owner-report: no-capture" needs a reason after it. Use one of:\n${REPORT_FORMS}`);
+    if (!said.claims || said.none || said.noCapture || said.bare) continue;
+    if (!said.id) { lines.push(`a commit says it fixes a bug the owner saw but has no "Owner-report: <report id>" (the id in reported-<id>-<site> after reports-fetch.mjs). Build the case: cd desktop/e2e && npm run row-to-case -- "reported-<id>-<site>" <case> --old-commit <sha>.\nUse the matching form:\n${REPORT_FORMS}`); continue; }
     const mine = commits.flatMap(c => casesOf(c.files)).filter(name => caseJson(name)?.report === said.id);
     if (!mine.length) { lines.push(`"Owner-report: ${said.id}" but no recorded case in this push has "report": "${said.id}" in its case.json: the fix is not proven on the owner's own page.`); continue; }
     const hand = mine.filter(name => caseJson(name)?.origin !== 'captured');

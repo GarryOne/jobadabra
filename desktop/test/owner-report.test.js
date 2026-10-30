@@ -24,10 +24,29 @@ test('a captured case carrying the report id proves it; hand-cut, missing or ano
   assert.match(ownerReportProblem([commit('Fix X\n\nOwner-report: a1b2c3')], look), /no recorded case/);
 });
 
-test('"Owner-report: none" needs a reason; with one it is the way out; the trailer alone is a claim', () => {
+test('"Owner-report: none" needs a reason and makes no claim without prose owner words', () => {
   assert.equal(ownerReportProblem([commit('Fix the owner saw\n\nOwner-report: none a rule, no page shows it\nEscaped-e2e: no suite — enforce a rule')], look), '');
   assert.match(ownerReportProblem([commit('Fix the owner saw\n\nOwner-report: none')], look), /needs a reason/);
   assert.equal(reportOf('x\n\nOwner-report: a1b2c3').claims, true);
+  assert.equal(ownerReportProblem([commit('Fix a log line\n\nOwner-report: none a review finding')], look), '');
+});
+
+test('no-capture claims an owner-seen bug without prose owner words and needs an escape but no recorded case', () => {
+  const message = 'Fix a gate\n\nOwner-report: no-capture a rule, no page shows it';
+  assert.equal(reportOf(message).claims, true);
+  assert.equal(reportOf(message).id, '');
+  assert.match(ownerReportProblem([commit(message)], look), /Escaped-e2e:/);
+  assert.equal(ownerReportProblem([commit(`${message}\nEscaped-e2e: no suite — enforce a rule`)], look), '');
+});
+
+test('bare no-capture and none are refused with a reason and guidance for all three forms', () => {
+  for (const value of ['no-capture', 'none']) {
+    const problem = ownerReportProblem([commit(`Fix a gate\n\nOwner-report: ${value}`)], look);
+    assert.match(problem, /needs a reason/);
+    for (const form of ['Owner-report: <id>', 'Owner-report: no-capture <why>', 'Owner-report: none <why>']) {
+      assert.ok(problem.includes(form), `missing guidance: ${form}`);
+    }
+  }
 });
 
 test('owner claims and report ids require an escape record on the same commit', () => {

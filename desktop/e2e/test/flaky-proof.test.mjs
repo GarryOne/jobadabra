@@ -52,7 +52,9 @@ test('the CLI keeps the job red on an intermittent step, green when every step w
   assert.match(red.out, /🔁 intermittent: Notion is busy/);
   assert.match(red.out, /1 step\(s\) failed on a wrong value/);
   assert.equal(cli(write('green.json', [{step: 'a', message: 'waiting for locator(\'#x\')'}])).code, 0);
-  assert.equal(cli(path.join(dir, 'missing.json')).code, 0, 'no file: nothing to judge, said');
+  assert.equal(cli(path.join(dir, 'missing.json')).code, 1, 'no file cannot prove timing');
+  assert.equal(cli(write('empty.json', [])).code, 1, 'an unrecorded failure is not timing proof');
+  assert.equal(cli(write('malformed.json', {})).code, 1, 'malformed evidence cannot prove timing');
 });
 
 test('an intermittent issue is never closed by "not seen" twice', () => {

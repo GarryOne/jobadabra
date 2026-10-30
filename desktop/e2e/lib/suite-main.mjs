@@ -7,7 +7,7 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {ensureStaged} from './ensure-staged.mjs';
 import {refusedQuestions} from './ai-answers.mjs';
-import {runAiGuards} from './no-real-ai.mjs';
+import {recordAnswerRefusals, runAiGuards} from './no-real-ai.mjs';
 
 // Why (29 Oct 2026, Gitar on #2479 x2): the steps judge themselves by their own caps; close-down is bounded in finally on success or failure, and only the caller exits the process.
 const TEARDOWN_STOP_MS = 3 * 60000;
@@ -84,14 +84,16 @@ export async function runSuite(name, report = null) {
     }
     if (ctx && !ctx.skipAll) {
       const closeDown = async () => {
-      try { if (ctx.findings) writeFindings(ctx); writeSuiteFailures(ctx.ARTIFACTS, name, ctx.runner.results); } catch (error) { console.log(`  (artifacts not written: ${error.message})`); }
+      try { if (ctx.findings) writeFindings(ctx); } catch (error) { console.log(`  (artifacts not written: ${error.message})`); }
       try { await writeReplay(ctx, name); } catch (error) { console.log(`  (replay.json not written: ${error.message})`); }
       await ctx.close();
       };
       await limitCloseDown(suite, ctx, report ? report.step('Close the app, save the artifacts', closeDown) : closeDown()).catch(error => console.log(`  (close-down: ${error.message})`));
       try { (await import('./ai-meter.mjs')).writeUsage(ctx.ARTIFACTS); } catch (error) { console.log(`  (AI usage not written: ${error.message})`); }   // what this suite paid, for /ai-cost (e2e.yml reports it)
       const refused = refusedQuestions({...process.env, E2E_ARTIFACTS: ctx.ARTIFACTS});
-      if (refused.length) { code = 1; ctx.stopped = refused.map(item => item.message).join('; '); console.error(`✗ ${ctx.stopped}`); }
+      // Why (30 Oct 2026, owner-approved rule A; run 40996297795): late answer misses must reach retry proof, not only stderr after an empty failure file.
+      if (recordAnswerRefusals(ctx, refused)) { code = 1; console.error(`✗ ${ctx.stopped}`); }
+      try { writeSuiteFailures(ctx.ARTIFACTS, name, ctx.runner.results); } catch (error) { console.log(`  (failures not written: ${error.message})`); }
       if (ctx.runner.summary()) code = 1;
       report?.decided?.(code);   // the exit code is known: lib/report.mjs stops a Playwright runner that stays open long after this (6 Oct 2026: wander hung 10 min)
       // The steps and the kept traces as data, for the owner's /admin/e2e page (site/src/e2e-report.js reads it out of the e2e-view-<suite> artifact).

@@ -1,4 +1,5 @@
 // "Flaky" needs proof (gate G5, owner's yes 26 Oct 2026): a step that failed and then passed on the same commit is flaky only when its failure was timing or the
+// Job: run the backbone
 // test's environment (a wait that ran out, a dropped connection, an HTML error page). A wrong value that came right on the second try is INTERMITTENT: the
 // product or the test behaves differently between two runs of the same code (a race), a bug that shows sometimes. It keeps its rank, goes to the fixer, and only
 // a fix closes it; in CI it keeps the job red (e2e.yml / desktop.yml "once more" step, node flaky-proof.mjs).
@@ -14,7 +15,7 @@ export const INTERMITTENT = 'intermittent';
 // message: the failed step's note (suite-failures.json `message`), without the step's name → {flaky, why}
 // The harness's own guards (the extension not on the stand-in app): never a product bug and never flaky (a run that may have reached the owner's live app stays
 // red), named "harness: <which>" so a red main reads as the harness's (6e, 27 Oct 2026: a false NOT ISOLATED was announced as "a wrong value", like a product bug).
-const HARNESS = [[/NOT ISOLATED:/, 'isolation']];
+const HARNESS = [[/NOT ISOLATED:/, 'isolation'], [/E2E_AI_ANSWER_MISSING:/, 'stored answers']];
 export function flakyProof(message = '') {
   const text = String(message || '');
   const harness = HARNESS.find(([pattern]) => pattern.test(text));

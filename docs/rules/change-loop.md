@@ -4,7 +4,7 @@ Linked from CLAUDE.md. The tiers and "which test for which question" are in [AGE
 Why each rule exists: [why.md](why.md#change-loop).
 
 ## The habits that prevented rework
-1. A bug the owner saw: find the root cause and write a failing test before any fix.
+1. A bug the owner saw: find the root cause and write a failing test before any fix; its fix commit carries `Owner-report: <id>` (or `none <why>`) and `Escaped-e2e: <suite>[, <suite>] — <journey>` (exported suite names), or `Escaped-e2e: no suite — <journey>` when no suite plays it (`tools/owner-report.mjs`).
 2. Tests first for new behaviour; watch the test fail for the right reason.
 3. UI from an owner mockup or request: confirm layout + behaviour in one message before code.
 4. "Done" = the test files you changed pass locally, and CI's suites pass on the PR (CI runs `python3 -m unittest discover -s tests`, desktop

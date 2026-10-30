@@ -2,6 +2,7 @@
 A fake `gh` reads its answers from files: state.txt (OPEN|MERGED|CLOSED, then an optional sha) and checks.txt (the failing check name or empty); a script of steps may rewrite them between looks.\nverdicts: the \"All checks passed\" status per look (pending, else green; pr-verdict.yml since 26 Oct 2026); runs: the head's check-runs (none, running, gate = the old job, else green)."""
 import json
 import os
+import re
 import shutil
 import signal
 import stat
@@ -32,7 +33,7 @@ class ShipWatchTest(unittest.TestCase):
         return {**os.environ, 'CODEX_THREAD_ID': '', 'CODEX_SESSION_ID': '', 'CMUX_SURFACE_ID': '', 'PATH': f'{self.tmp / "bin"}{os.pathsep}{os.environ["PATH"]}', 'FAKE_GH_DIR': str(self.tmp), 'PR_REST_CACHE': str(self.tmp / 'cache'),
                 'SHIP_WATCH_POLL': str(poll), 'SHIP_WATCH_CAP': str(cap), 'SHIP_WATCH_FIX': str(self.tmp / 'fix.sh'), **getattr(self, 'codex_env', {})}
 
-    def watch(self, states, checks='', cap=60, poll=0, mergeables='', runs='', verdicts='', heads='', labels=''):
+    def watch(self, states, checks='', cap=60, poll=0, mergeables='', runs='', verdicts='', heads='', labels='', drafts=''):
         (self.tmp / 'states').write_text(states)
         (self.tmp / 'mergeables').write_text(mergeables)
         (self.tmp / 'fixes').write_text('')
@@ -41,9 +42,48 @@ class ShipWatchTest(unittest.TestCase):
         (self.tmp / 'verdicts').write_text(verdicts)
         (self.tmp / 'heads').write_text(heads)
         (self.tmp / 'labels').write_text(labels)
+        (self.tmp / 'drafts').write_text(drafts)
         (self.tmp / 'looks').write_text('0')
         subprocess.run(['bash', str(ROOT / 'tools' / 'ship-watch.sh'), '7', str(self.log), str(self.pidfile), 'o/r'], env=self.env(poll, cap), timeout=30, check=True)
         return self.log.read_text().splitlines()[1:]
+
+    def recorded_watch(self, *, event='pull_request', check_head=None, conclusion='success'):
+        """Run the watcher on bb's sanitized #2618 REST shapes, using run-detail provenance."""
+        data = json.loads((ROOT / 'tests/fixtures/ship-watch-github.json').read_text())
+        run = data['runs']['workflow_runs'][0]
+        run['event'] = event
+        data['checks']['check_runs'][0]['conclusion'] = conclusion
+        if check_head:
+            data['checks']['check_runs'][0]['head_sha'] = check_head
+            run['head_sha'] = check_head
+            data['status']['sha'] = check_head
+        head = data['pull']['head']['sha']
+        records = {'repos/o/r/pulls/7': data['pull'],
+                   f'repos/o/r/commits/{head}/check-runs?per_page=100': data['checks'],
+                   f'repos/o/r/commits/{head}/status': data['status'],
+                   f'repos/o/r/actions/runs/{run["id"]}': run}
+        (self.tmp / 'rest').mkdir(exist_ok=True)
+        for path, body in records.items():
+            (self.tmp / 'rest' / re.sub(r'[^A-Za-z0-9]', '_', path)).write_text(json.dumps(body))
+        subprocess.run(['bash', str(ROOT / 'tools/ship-watch.sh'), '7', str(self.log), str(self.pidfile), 'o/r'],
+                       env=self.env(cap=0), timeout=30, check=True)
+        return self.log.read_text().splitlines()[1:]
+
+    def test_dispatch_record_run_is_not_a_red_pr_check(self):
+        lines = self.recorded_watch(event='workflow_dispatch', conclusion='failure')
+        self.assertFalse(any('RED #' in line for line in lines), lines)
+
+    def test_a_superseded_head_cannot_send_red_or_green_or_ready(self):
+        old = 'd843ed50000000000000000000000000000000000'
+        lines = self.recorded_watch(check_head=old, conclusion='failure')
+        self.assertFalse(any('RED #' in line for line in lines), lines)
+        self.log.write_text('opened\n')
+        lines = self.recorded_watch(check_head=old)
+        self.assertFalse(any(event in line for event in ('GREEN #', 'READY #') for line in lines), lines)
+
+    def test_real_red_on_current_head_names_its_full_sha(self):
+        lines = self.recorded_watch(conclusion='failure')
+        self.assertIn('ship: RED #7 personas 466e2aa0000000000000000000000000000000000', lines)
 
     def test_codex_session_receives_state_events_without_terminal_input(self):
         codex = self.tmp / 'bin' / 'codex'
@@ -70,7 +110,7 @@ class ShipWatchTest(unittest.TestCase):
         woken = [json.loads(line) for line in (self.tmp / 'woken').read_text().splitlines()]
         self.assertEqual([m[:5] for m in woken], [['agent', 'message', 'CCE70BB3-2B25-44D7-8A24-202B1BE5E33D', '--from', 'PR watcher']] * len(woken))
         said = ''.join(m[-1] for m in woken)
-        self.assertIn('ship: RED #7 python', said)
+        self.assertIn('ship: RED #7 python new1', said)
         self.assertIn('ship: MERGED #7 abc1234', said)
         self.assertNotIn('GREEN', said)
 
@@ -107,16 +147,16 @@ class ShipWatchTest(unittest.TestCase):
 
     def test_a_check_turning_red_is_reported_once_then_green_once_and_watching_goes_on_to_the_merge(self):
         lines = self.watch('OPEN\nOPEN\nOPEN\nOPEN\nOPEN\nMERGED fff0000\n', checks='pending\npython\npython\npending\n\n')
-        self.assertEqual(lines, ['ship: RED #7 python', 'ship: GREEN #7', 'ship: MERGED #7 fff0000'])
+        self.assertEqual(lines, ['ship: RED #7 python new1', 'ship: GREEN #7', 'ship: MERGED #7 fff0000'])
 
     def test_red_from_the_first_look_is_reported_without_any_review_line(self):
         """Started when the PR opens: the log has no REVIEW line, ship may have ended FAILED."""
         self.log.write_text('ship: FAILED pull request #7 check python failed\n')
-        self.assertEqual(self.watch('OPEN\nCLOSED\n', checks='python\n'), ['ship: RED #7 python', 'ship: CLOSED #7 (unmerged)'][:2])
+        self.assertEqual(self.watch('OPEN\nCLOSED\n', checks='python\n'), ['ship: RED #7 python new1', 'ship: CLOSED #7 (unmerged)'][:2])
 
     def test_a_second_red_after_a_rerun_speaks_again(self):
         lines = self.watch('OPEN\nOPEN\nOPEN\nOPEN\nCLOSED\n', checks='python\npending\npython\n\n')
-        self.assertEqual(lines, ['ship: RED #7 python', 'ship: RED #7 python', 'ship: GREEN #7', 'ship: CLOSED #7 (unmerged)'])
+        self.assertEqual(lines, ['ship: RED #7 python new1', 'ship: RED #7 python new1', 'ship: GREEN #7', 'ship: CLOSED #7 (unmerged)'])
 
     def test_green_waits_for_the_current_heads_checks_and_speaks_once(self):
         """#1476: the rollup still held the old head's passing checks right after a push; the head's own check-runs decide."""
@@ -135,6 +175,17 @@ class ShipWatchTest(unittest.TestCase):
 
     def test_no_green_while_the_new_heads_checks_are_missing_or_running(self):
         self.assertEqual(self.watch('OPEN\nOPEN\nCLOSED\n', runs='none\nrunning\n'), ['ship: CLOSED #7 (unmerged)'])
+
+    def test_red_names_its_head_and_the_same_failure_on_a_new_head_speaks_again(self):
+        lines = self.watch('OPEN\nOPEN\nCLOSED\n', checks='python\npython\n', heads='new1\nnew2\n')
+        self.assertEqual(lines, ['ship: RED #7 python new1', 'ship: RED #7 python new2', 'ship: CLOSED #7 (unmerged)'])
+
+    def test_a_draft_never_becomes_ready_until_marked_ready_for_review(self):
+        draft = self.watch('OPEN\nCLOSED\n', labels='Gitar: approved\n', drafts='true\n')
+        self.assertEqual(draft, ['ship: GREEN #7', 'ship: CLOSED #7 (unmerged)'])
+        self.log.write_text('ship: [3s] opened the pull request\n')
+        published = self.watch('OPEN\nMERGED fff0000\n', labels='Gitar: approved\n', drafts='false\n')
+        self.assertEqual(published, ['ship: GREEN #7', 'ship: READY #7 new1', 'ship: MERGED #7 fff0000'])
 
     def test_ready_needs_green_and_gitars_approval_on_this_head_and_a_new_head_re_arms_it(self):
         # Owner via d3, 30 Oct 2026: "my PRs are not fully approved by Gitar": d3 said ready on GREEN while Gitar read "approved with suggestions".

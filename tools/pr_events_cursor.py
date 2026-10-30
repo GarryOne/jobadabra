@@ -30,6 +30,14 @@ def deliver_pending(log, cursor, pattern, send):
             if end <= offset:
                 return True
             events = [line for line in content[offset:end].decode('utf8', errors='replace').splitlines() if re.match(pattern, line)]
+            # Why (#2618, 30 Oct 2026): failed delivery can outlive a push; the watcher publishes its latest observed head before retrying.
+            try:
+                number, head = Path(f'{log}.head').read_text().split()
+            except (OSError, ValueError):
+                number, head = '', ''
+            if head:
+                events = [line for line in events if not (line.startswith(f'ship: RED #{number} ')
+                          and line.rsplit(' ', 1)[-1] != head)]
             if events and not send(events):
                 return False
             cursor.write_text(json.dumps({'offset': end, 'prefix': hashlib.sha256(content[:end]).hexdigest()}))

@@ -1,6 +1,7 @@
 // A triage read in the hidden browser looks at the form and reports it; it never fills, never hands a page to the person, and closes its own tab (extension/background-apply.js).
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
+import vm from 'node:vm';
 
 const SESSION = 'tr12345678';
 
@@ -10,13 +11,23 @@ const pick = (store, keys) => { const names = typeof keys === 'string' ? [keys] 
 globalThis.chrome = {
   storage: {local: {get: async keys => pick(current.local, keys), set: async value => { Object.assign(current.local, value); }}, session: {get: async keys => pick(current.session, keys), set: async value => { Object.assign(current.session, value); }, remove: async () => {}}},
   tabs: {get: async id => (id === 7 ? {id: 7, url: current.local.backgroundApplySessions[SESSION].url, windowId: 3} : null), remove: async id => { current.removed.push(id); }},
-  scripting: {executeScript: async () => []},
+  scripting: {executeScript: async ({files, func, args = []}) => {
+    if (files) { current.files.push(...files); return []; }
+    const window = {__jobPilottoDescribeForm: async () => current.form, __jobPilottoCheckboxQuestions: () => [],
+      __jobPilottoProfileEntries: (rows, profile) => rows.filter(row => profile[row.field]).map(row => ({field: row.field})), __jobPilottoPageText: () => 'Fictional form'};
+    return [{result: await vm.runInNewContext(`(${func.toString()})(...args)`, {window, args})}];
+  }},
 };
 
-function install(t, {mode = 'read'} = {}) {
-  current = {removed: [], posted: [], session: {'session:7': SESSION},
+function install(t, {mode = 'read', form = [{field: 'a', required: true, type: 'text'}], answers = [], fail = false, dropped = false, contact = {}} = {}) {
+  current = {form, files: [], removed: [], posted: [], session: {'session:7': SESSION},
     local: {backgroundOwner: 'o1', workerUrl: 'http://127.0.0.1:47111', token: 'fictional', backgroundApplySessions: {[SESSION]: {session: SESSION, mode, tab: 7, window: 3, url: `https://jobs.example.test/a#jobpilotto-fill=${SESSION}`, manualRequired: false}}}};
-  t.mock.method(globalThis, 'fetch', async (url, init) => { current.posted.push({url: String(url), body: JSON.parse(init.body)}); return {ok: true, status: 200, json: async () => ({ok: true})}; });
+  t.mock.method(globalThis, 'fetch', async (url, init) => {
+    current.posted.push({url: String(url), body: JSON.parse(init?.body || '{}')});
+    if (url.endsWith('/extension/answer') && fail) throw new Error('fictional failure');
+    const reply = url.includes('/extension/me?') ? {contact} : url.endsWith('/extension/answer') ? (dropped ? null : {answers}) : {ok: true};
+    return {ok: true, status: 200, json: async () => reply};
+  });
   return current;
 }
 
@@ -62,4 +73,45 @@ test('a poll that names a read the app ended (Cancel, a timeout) closes that rea
   t.mock.method(globalThis, 'fetch', async () => ({ok: true, status: 200, json: async () => ({ok: true, jobs: [], checks: [], handoffs: [], closes: []})}));
   await pollBackgroundApply({workerUrl: 'http://127.0.0.1:47111', token: 'fictional'});
   assert.deepEqual(removed, [7], 'an empty closes list leaves the tabs alone');
+});
+
+const fillable = {answer: 'needs_person', botCheck: false, loginWall: false, accountCreation: false};
+for (const [name, extra, expected] of [
+  ['saved answers', {answers: [{field: 'a', use: 'fill', fact: 'other_saved', category: 'normal'}]}, true],
+  ['proposal', {answers: [{field: 'a', use: 'propose', fact: 'none'}]}, false],
+  ['failed call', {fail: true}, null],
+  ['dropped call', {dropped: true}, null],
+  ['no fields', {form: []}, null],
+  ['unreadable form', {form: null}, null],
+  ['profile contact only', {form: [{field: 'first_name', required: true}], contact: {first_name: 'Ada'}}, true],
+]) test(`a read reports ${name} from its plan and always closes without input`, async t => {
+  const state = install(t, extra);
+  const {backgroundFormReady} = await import('../../extension/background-apply.js');
+  assert.equal(await backgroundFormReady({id: 7, url: 'https://jobs.example.test/a'}, 0, fillable), true);
+  const report = state.posted.find(call => call.body.action === 'triage-read');
+  assert.equal(report.body.allFactsSaved, expected);
+  assert.deepEqual(state.removed, [7]);
+  const answerCalls = state.posted.filter(call => call.url.endsWith('/extension/answer'));
+  assert.equal(answerCalls.length, ['no fields', 'unreadable form', 'profile contact only'].includes(name) ? 0 : 1);
+  if (answerCalls.length) assert.equal(answerCalls[0].body.fields[0].field, 'a');
+  assert.ok(state.files.includes('page/fill.js'), 'the shared form reader is prepared');
+  assert.ok(state.posted.every(call => /\/extension\/(me\?|aliases|answer|background-apply)/.test(call.url)), 'no fill or upload route');
+});
+
+for (const judgment of [{...fillable, answer: 'blocked'}, {...fillable, answer: 'unsure'}, {...fillable, botCheck: true}, {...fillable, loginWall: true}, {...fillable, accountCreation: true}, {answer: 'ready'}]) test(`a non-fillable judgment skips the plan: ${JSON.stringify(judgment)}`, async t => {
+  const state = install(t);
+  const {backgroundFormReady} = await import('../../extension/background-apply.js');
+  await backgroundFormReady({id: 7, url: 'https://jobs.example.test/a'}, 0, judgment);
+  assert.equal(state.posted.length, 1);
+  assert.equal(state.posted[0].body.allFactsSaved, null);
+  assert.deepEqual(state.files, []);
+  assert.deepEqual(state.removed, [7]);
+});
+
+test('a read never starts the speculative early answer call before its form judge', async t => {
+  const state = install(t);
+  const {askEarly} = await import('../../extension/flow.js');
+  assert.equal(await askEarly({id: 7, url: 'https://jobs.example.test/a'}, state.local), false);
+  assert.deepEqual(state.posted, []);
+  assert.deepEqual(state.files, []);
 });

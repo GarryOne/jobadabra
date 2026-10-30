@@ -1,4 +1,4 @@
-// Keep every harness shrink permanent by requiring exact committed file counts.
+// Keep the harness from growing unseen: lines of harness code stay at or under a committed number, and a shrink lowers it (JOB-48).
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -16,16 +16,20 @@ function harnessFiles(folder) {
 }
 
 const root = fileURLToPath(new URL('../', import.meta.url));
-const measured = {libModules: harnessFiles(path.join(root, 'lib')).length, harnessFiles: harnessFiles(root).length};
+const lines = file => (fs.readFileSync(file, 'utf8').match(/\n/g) || []).length;
+const files = harnessFiles(root);
+const measured = files.reduce((sum, file) => sum + lines(file), 0);
 const baseline = JSON.parse(fs.readFileSync(new URL('./harness-size.json', import.meta.url), 'utf8'));
-const counts = `libModules=${measured.libModules} (baseline ${baseline.libModules}), harnessFiles=${measured.harnessFiles} (baseline ${baseline.harnessFiles})`;
+const counts = `harness lines=${measured} (baseline ${baseline.harnessLines}), files=${files.length}, lib modules=${harnessFiles(path.join(root, 'lib')).length} (target 283)`;
 const guidance = 'Read docs/superpowers/specs/2026-10-28-e2e-reliability-design.md row 29.';
 
-for (const key of ['libModules', 'harnessFiles']) test(`${key} matches the harness-size.json ratchet`, () => {
-  const action = measured[key] < baseline[key]
-    ? `lower the number in harness-size.json to ${measured[key]} (${key})`
-    : `shrink ${key} back to ${baseline[key]}; the ratchet only moves down`;
-  assert.equal(measured[key], baseline[key], `${counts}; ${action}. ${guidance}`);
+// Why (30 Oct 2026, bb 2/9, JOB-48): three "+1 file" bumps in a day measured an asked-for fold or split as growth; lines measure the work. The test reads the PR's merged result (CI checks out the merge commit), so two PRs that each stay under the baseline but together exceed it still fail here.
+test('harness lines stay at or under the harness-size.json ratchet', () => {
+  assert.ok(measured <= baseline.harnessLines, `${counts}; growth needs "Harness-grow: <why>" in a commit message and harnessLines raised to ${measured} (tools/e2e-reliability-check.mjs checks the trailer). ${guidance}`);
+});
+
+test('a shrink lowers the ratchet, so the freed lines cannot be spent unseen', () => {
+  assert.ok(measured >= baseline.harnessLines - baseline.slack, `${counts}; lower harnessLines in harness-size.json to ${measured} (a shrink of more than ${baseline.slack} lines must be kept). ${guidance}`);
 });
 
 // Why (30 Oct 2026, Gitar on #2554): a PR runs this test only when a folder reader in test-sets.json reaches its files, so a counted folder with no reader lets growth through unchecked until the daily run.

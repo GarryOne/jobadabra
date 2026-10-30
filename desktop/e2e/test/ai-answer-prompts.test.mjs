@@ -50,6 +50,37 @@ function edit(root, file, from, to) {
   assert.ok(before.includes(from)); fs.writeFileSync(dest, before.replace(from, to));
 }
 
+function changedMixedData(family, original) {
+  const changedData = structuredClone(original);
+  if (['app.score', 'app.interview'].includes(family)) changedData.system[0].text += '\nDifferent private CV and persona.';
+  if (family === 'mail') changedData.system[0].text = changedData.system[0].text.replace('(none)', '0. Different private application');
+  changedData.messages[0].content = changedData.messages[0].content.replace(/Posting:\n[\s\S]*$/, 'Posting:\nDifferent private posting.')
+    .replace(/Transcript or notes:\n[\s\S]*$/, 'Transcript or notes:\nDifferent private transcript.')
+    .replace(/Subject: [\s\S]*$/, 'Subject: Different private mail\n\nDifferent private body.');
+  if (['app.score', 'app.enrich'].includes(family)) changedData.messages[0].content = changedData.messages[0].content
+    .replace(/^Title: [^\n]*\nCompany: [^\n]*\nLocation: [^\n]*/, 'Title: Different posting\nCompany: Different company\nLocation: Somewhere');
+  return changedData;
+}
+
+function seedMixedAnswers(table, family, original, changedData, env, headers) {
+  if (family === 'app.score') {
+    const originalId = questionOf({body: original, headers}, env, table).id, changedId = questionOf({body: changedData, headers}, env, table).id;
+    assert.notEqual(originalId, changedId);
+    table.answers[family][changedId] = structuredClone(table.answers[family][originalId]);
+  }
+  if (['mail', 'app.enrich'].includes(family)) {
+    const empty = schema => schema.enum ? schema.enum[0] : schema.type === 'object' ? Object.fromEntries(Object.entries(schema.properties).map(([key, value]) => [key, empty(value)]))
+      : schema.type === 'array' ? [] : schema.type === 'string' ? '' : schema.type === 'boolean' ? false : 0;
+    for (const body of [original, changedData]) {
+      const q = questionOf({body, headers}, env, table);
+      const answer = empty(family === 'mail' ? body.output_config.format.schema.properties.results.items : body.output_config.format.schema);
+      if (family === 'mail') delete answer.index;
+      table.items[family] ??= {};
+      for (const item of q.items) table.items[family][item.key] = {text: item.text, answer};
+    }
+  }
+}
+
 test('capture uses the harness Python override and UTF-8 environment', t => {
   const saved = process.env.E2E_PYTHON, marker = new Error('captured subprocess boundary');
   process.env.E2E_PYTHON = 'fixture-python-command';
@@ -179,36 +210,14 @@ for (const [family, source, from, to] of [
   const {dir, file, env} = fixture(t); sourceCopy(dir);
   const before = capturePrompts(dir), hashes = familyHashes(before), original = mixedRequest(family);
   assert.ok(before[family], `missing ${family}`);
-  const changedData = structuredClone(original);
-  if (['app.score', 'app.interview'].includes(family)) changedData.system[0].text += '\nDifferent private CV and persona.';
-  if (family === 'mail') changedData.system[0].text = changedData.system[0].text.replace('(none)', '0. Different private application');
-  changedData.messages[0].content = changedData.messages[0].content.replace(/Posting:\n[\s\S]*$/, 'Posting:\nDifferent private posting.')
-    .replace(/Transcript or notes:\n[\s\S]*$/, 'Transcript or notes:\nDifferent private transcript.')
-    .replace(/Subject: [\s\S]*$/, 'Subject: Different private mail\n\nDifferent private body.');
-  if (['app.score', 'app.enrich'].includes(family)) changedData.messages[0].content = changedData.messages[0].content
-    .replace(/^Title: [^\n]*\nCompany: [^\n]*\nLocation: [^\n]*/, 'Title: Different posting\nCompany: Different company\nLocation: Somewhere');
+  const changedData = changedMixedData(family, original);
   edit(dir, 'desktop/e2e/fixtures/golden/candidate.txt', 'a', 'A different persona ');
   // Keep the posting shape valid while replacing its actual text in the isolated fixture.
   const truthFile = path.join(dir, 'desktop/e2e/fixtures/golden/truth.json'), truth = JSON.parse(fs.readFileSync(truthFile));
   truth[0].description = 'Different private posting.'; fs.writeFileSync(truthFile, JSON.stringify(truth));
   const dataOnly = capturePrompts(dir); assert.deepEqual(familyHashes(dataOnly), hashes);
   const table = loadTable(file), headers = {'x-jp-action': family.replace('app.', '')};
-  if (family === 'app.score') {
-    const originalId = questionOf({body: original, headers}, env, table).id, changedId = questionOf({body: changedData, headers}, env, table).id;
-    assert.notEqual(originalId, changedId);
-    table.answers[family][changedId] = structuredClone(table.answers[family][originalId]);
-  }
-  if (['mail', 'app.enrich'].includes(family)) {
-    const empty = schema => schema.enum ? schema.enum[0] : schema.type === 'object' ? Object.fromEntries(Object.entries(schema.properties).map(([key, value]) => [key, empty(value)]))
-      : schema.type === 'array' ? [] : schema.type === 'string' ? '' : schema.type === 'boolean' ? false : 0;
-    for (const body of [original, changedData]) {
-      const q = questionOf({body, headers}, env, table);
-      const answer = empty(family === 'mail' ? body.output_config.format.schema.properties.results.items : body.output_config.format.schema);
-      if (family === 'mail') delete answer.index;
-      table.items[family] ??= {};
-      for (const item of q.items) table.items[family][item.key] = {text: item.text, answer};
-    }
-  }
+  seedMixedAnswers(table, family, original, changedData, env, headers);
   fs.writeFileSync(file, JSON.stringify(table));
   for (const provider of [body => body, responses]) {
     assert.equal(promptOf(provider(original), dataOnly, headers['x-jp-action']).hash, hashes[family]);
@@ -268,10 +277,11 @@ test('stale backbone replies refuse before warm cache, relay, upstream and model
     assert.match(String(args[0]), /^http:\/\/127\.0\.0\.1:/);
     return Reflect.apply(target, receiver, args);
   }}));
+  const scenarios = ['app.place', ...mixed].flatMap(family => [false, true].map(stream => ({family, stream})));
   for (const shape of ['anthropic', 'openai']) {
     const proxy = await startAiProxy({shape, target: `http://127.0.0.1:${server.address().port}`, metered: /\/(?:messages|responses)/, relay: async () => { relays++; throw Error('relay'); }});
     t.after(() => proxy.close());
-    for (const family of ['app.place', ...mixed]) for (const stream of [false, true]) {
+    for (const {family, stream} of scenarios) {
       const original = family === 'app.place' ? place() : mixedRequest(family);
       const body = {...(shape === 'openai' ? responses(original) : original), stream}, route = shape === 'openai' ? '/v1/responses' : '/v1/messages';
       keep(requestKey(route, Buffer.from(JSON.stringify(body))), {status: 200, body: Buffer.from('{}'), contentType: 'application/json'});

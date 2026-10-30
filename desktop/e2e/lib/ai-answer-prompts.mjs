@@ -38,16 +38,24 @@ export function capturePrompts(root = ROOT) {
 /** Hash each family's sorted named variants, preserving all schema prose and array order. */
 export const familyHashes = contracts => Object.fromEntries(Object.entries(contracts).map(([family, variants]) => [family, hash(canonical(variants))]));
 
+// Preserve schema-root precedence while keeping each mixed-family hint explicit.
+function familyHintOf(properties) {
+  const roots = {locations: 'app.place', fit: 'app.title', keep: 'app.visit', visa: 'app.visa', vague: 'app.placeVague', jobs: 'app.placeReading'};
+  const hint = Object.keys(roots).find(key => Object.hasOwn(properties, key));
+  if (hint) return roots[hint];
+  if (properties.places) return properties.places.items?.properties?.word ? 'app.places' : 'app.geo';
+  if (properties.results?.items?.properties?.answer) return 'app.decide';
+  if (properties.score) return 'app.score';
+  if (properties.questions) return 'app.interview';
+  if (properties.role_family) return 'app.enrich';
+  return properties.results?.items?.properties?.feedback ? 'mail' : undefined;
+}
+
 /** Identify a family by its sender step and compare data-free wire framing with the fresh sender templates. */
 export function promptOf(body, contracts = (current ??= capturePrompts()), action = '') {
   if (!contracts || Object.keys(contracts).length !== 13 || !contracts['app.title']?.sort || !contracts['app.title']?.recheck || !contracts['app.visit']?.keep || !contracts['app.visit']?.leave) throw new Error('Incomplete fixed prompt capture');
   const {system, schema} = requestParts(body), properties = schema?.properties || {};
-  const roots = {locations: 'app.place', fit: 'app.title', keep: 'app.visit', visa: 'app.visa', vague: 'app.placeVague', jobs: 'app.placeReading'};
-  const hint = Object.keys(roots).find(key => Object.hasOwn(properties, key));
-  const familyHint = hint ? roots[hint] : properties.places ? (properties.places.items?.properties?.word ? 'app.places' : 'app.geo')
-    : properties.results?.items?.properties?.answer ? 'app.decide' : properties.score ? 'app.score'
-    : properties.questions ? 'app.interview' : properties.role_family ? 'app.enrich'
-    : properties.results?.items?.properties?.feedback ? 'mail' : undefined;
+  const familyHint = familyHintOf(properties);
   for (const [family, variants] of Object.entries(contracts)) {
     // Why (JOB-44, Gitar on #2606): a schema root is shared with unrelated senders (job_alerts' jobs, web_search's keep); only the family's own step claims it, so a reworded system still refuses.
     const candidates = Object.entries(variants).filter(([, value]) => value.action === action && (family === familyHint || system.startsWith(value.system.split('.')[0])));

@@ -137,7 +137,7 @@ test('every discovered folder-reader candidate is declared or has an exception w
     assert.ok(listed.has(file) || exceptions[file], `add ${file} to folderReaders in test-sets.json, or to the exceptions with a reason`);
   }
   for (const [folder, files] of Object.entries(folderReaders)) {
-    assert.ok(['./', 'suites/', 'lib/'].includes(folder), `unknown reader folder: ${folder}`);
+    assert.ok(['./', 'suites/', 'lib/', 'report/'].includes(folder), `unknown reader folder: ${folder}`);
     assert.deepEqual(files, [...new Set(files)].sort(), `${folder} readers must be sorted and unique`);
     for (const file of files) {
       assert.ok(fs.existsSync(path.join(ROOT, inRepo(file))), `missing reader: ${file}`);

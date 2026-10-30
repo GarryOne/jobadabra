@@ -1,5 +1,6 @@
 // Scores page-kind decisions against the ladder fixtures: each fixture's sketch goes through the REAL pageKind (desktop/lib/page-kind.js, the endpoint's sketchBody), with either the stored answer
 // (offline: no model, what the push gate runs) or the real model on the plan path (live). Rates are per source, never one blended number. Used by: ladder-score.mjs, test/ladder-ratchet.test.js. Guard: test/ladder-score.test.js.
+// Job: keep the scorecard
 import {judgeAccount} from '../../lib/account-judge.js';
 import {judgeForm} from '../../lib/form-judge.js';
 import {judgeFill} from '../../lib/ladder/fill-verify.js';
@@ -42,6 +43,16 @@ const repairOutcome = (repairs, expect) => {
   const options = [expect.option ?? []].flat();
   return ['choose_option', 'dismiss_layer'].includes(row.verb) && options.length && !options.includes(row.option) ? 'wrong_option' : row.verb;
 };
+// form_flags: the judge's login-wall / account-to-create flags as one word; a flag the judge left out is unknown, so the answer is unsure (apply triage read, lib/triage-read.js).
+const flagsOutcome = r => (typeof r.loginWall !== 'boolean' || typeof r.accountCreation !== 'boolean' ? 'unsure' : r.loginWall ? 'login' : r.accountCreation ? 'account' : 'neither');
+// The one outcome word a judge's answer scores as, per question. fill_verify answers per control: the fixture scores the one it names (expect.control); a control the answer skipped is "unsure".
+const JUDGE_OUTCOMES = {
+  fill_repair: (result, expect) => repairOutcome(result.repairs, expect),
+  fill_verify: (result, expect) => result.verdicts.find(row => row.n === expect.control)?.verdict || 'unsure',
+  form_step: result => result.step,
+  form_flags: flagsOutcome,
+};
+const judgeOutcome = (question, result, expect) => (result.error ? 'unsure' : (JUDGE_OUTCOMES[question] || (answer => answer.answer))(result, expect));
 async function scoreJudge(fixture, base, {clientFor, pending}) {
   const question = questionOf(fixture);
   if (!clientFor && !fixture.answer) return {...base, outcome: '', confidence: 0, rung: -1, route: '', digestOk: null, status: pending ? 'pending' : 'no-answer'};
@@ -49,8 +60,7 @@ async function scoreJudge(fixture, base, {clientFor, pending}) {
   const client = clientFor ? clientFor(fixture) : replayClient(fixture.answer);
   const tee = {messages: {create: async body => { const response = await client.messages.create(body); try { captured = JSON.parse(response.content?.find(block => block.type === 'text')?.text || ''); } catch { /* the judge says so */ } return response; }}};
   const result = question === 'fill_repair' ? await askRepair(tee, fixture.sketch, fixture.misses) : question === 'fill_verify' ? await judgeFill(tee, fixture.sketch) : question.startsWith('form_') ? await judgeForm(tee, fixture.sketch) : await judgeAccount(tee, fixture.sketch, question === 'account_result' ? 'result' : 'ready');
-  // fill_verify answers per control: the fixture scores the one it names (expect.control); a control the answer skipped is "unsure".
-  const outcome = result.error ? 'unsure' : question === 'fill_repair' ? repairOutcome(result.repairs, fixture.expect) : question === 'fill_verify' ? (result.verdicts.find(row => row.n === fixture.expect.control)?.verdict || 'unsure') : question === 'form_step' ? result.step : result.answer;
+  const outcome = judgeOutcome(question, result, fixture.expect);
   const confidence = Number(result.confidence ?? captured?.confidence) || 0;
   return {...base, outcome, confidence, rung: result.error ? 0 : question === 'fill_repair' ? 3 : 2, route: '', digestOk: null, status: pending ? 'pending' : statusOf(fixture.expect, outcome, confidence), note: fixture.note || '', answer: captured || fixture.answer || null};
 }

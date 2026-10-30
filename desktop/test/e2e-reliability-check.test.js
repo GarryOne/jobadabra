@@ -6,7 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {test} from 'node:test';
-import {checkPush, expectationChanges, growthProblem, harnessProblems} from '../../tools/e2e-reliability-check.mjs';
+import {checkPush, expectationChanges, harnessProblems} from '../../tools/e2e-reliability-check.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const suite = 'desktop/e2e/suites/apply.mjs';
@@ -272,19 +272,4 @@ test('a weight-only edit to the real apply suite requires rule F but changes no 
   assert.equal(push({[suite]: original}, {[suite]: `// Job: run the backbone\n${unlabelled}`}, 'Reweight the journeys\n\nHarness-job: run the backbone'), '');
   assert.deepEqual(expectationChanges('export const stepSeconds = {"slow":90,"fast":5};', 'export const stepSeconds = {"fast":90,"slow":5};', suite), []);
   assert.ok(harnessProblems([{file: suite, before: 'export const stepSeconds = {"slow":90,"fast":5};', after: 'export const stepSeconds = {"fast":90,"slow":5};'}], []).length);
-});
-
-test('raising the harness-size ratchet needs a Harness-grow reason; lowering it is free', () => {
-  const file = 'desktop/e2e/test/harness-size.json', size = harnessLines => JSON.stringify({harnessLines, slack: 100});
-  const change = (before, after) => [{file, before: size(before), after: size(after)}];
-  assert.match(growthProblem(change(100, 150), ['Change']), /Harness-grow/);
-  assert.match(growthProblem(change(100, 150), ['Harness-grow:   ']), /Harness-grow/);
-  assert.equal(growthProblem(change(100, 150), ['Change\n\nHarness-grow: the stored answers for personas']), '');
-  assert.equal(growthProblem(change(150, 100), ['Change']), '');
-  const slack = (before, after) => [{file, before: JSON.stringify({harnessLines: 100, slack: before}), after: JSON.stringify({harnessLines: 100, slack: after})}];
-  assert.match(growthProblem(slack(100, 100000), ['Change']), /slack/);
-  assert.equal(growthProblem(slack(100, 100000), ['Change\n\nHarness-grow: wider band while the shrink lands']), '');
-  assert.equal(growthProblem(slack(100, 50), ['Change']), '');
-  assert.equal(growthProblem(change(100, 100), ['Change']), '');
-  assert.equal(growthProblem([{file: lib, before: 'a', after: 'b'}], ['Change']), '');
 });

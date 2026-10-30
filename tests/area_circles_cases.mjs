@@ -56,3 +56,26 @@ test('harness suites and root scripts count while shared registries and non-code
   const lines = report([c('a1', 1, 'Update harness (#1)', files)], files, NOW);
   assert.equal(lines.at(-1), 'AREA-CIRCLES 7d=1 30d=1 files=desktop/e2e/suites/settings.mjs,desktop/e2e/run-all.mjs');
 });
+
+test('harness evidence and non-code files cannot create a circle', async () => {
+  const {report} = await load();
+  const files = ['desktop/e2e/ladder-fixtures/a.json', 'desktop/e2e/recorded-pending/a.json', 'desktop/e2e/widget-zoo/example/case.json',
+    'desktop/e2e/test/x.mjs', 'desktop/e2e/test-sets.json', 'desktop/e2e/lanes.json', 'desktop/e2e/timing-baseline.json',
+    'desktop/e2e/lib/data.json', 'desktop/e2e/suites/data.json', 'desktop/e2e/widget-zoo/example/script.mjs'];
+  const commits = [c('a1', 1, 'Update harness evidence (#1)', files), c('b1', 2, 'Update harness evidence again (#2)', files)];
+  assert.deepEqual(report(commits, files, NOW), ['AREA-CIRCLES 7d=0 30d=0 files=']);
+});
+
+test('only direct harness lib, suite and root mjs code counts', async () => {
+  const {report} = await load();
+  const files = ['desktop/e2e/lib/x.mjs', 'desktop/e2e/suites/y.mjs', 'desktop/e2e/run-all.mjs'];
+  const commits = [c('a1', 1, 'Update harness code (#1)', files)];
+  assert.equal(report(commits, files, NOW).at(-1), 'AREA-CIRCLES 7d=1 30d=1 files=desktop/e2e/lib/x.mjs,desktop/e2e/suites/y.mjs,desktop/e2e/run-all.mjs');
+});
+
+test('outside the harness the original test, doc and fixture exclusions apply', async () => {
+  const {report} = await load();
+  const files = ['src/recorded/code.js', 'src/app.js', 'test/x.js', 'src/tests/x.js', 'doc/x.json', 'src/docs/x.json',
+    'src/fixtures/x.json', 'src/README.md', 'src/x.test.js', 'src/package-lock.json'];
+  assert.equal(report([], files, NOW).at(-1), 'AREA-CIRCLES 7d=0 30d=0 files=src/recorded/code.js,src/app.js');
+});

@@ -208,3 +208,12 @@ test('owner scenario: main\'s quality red reads as the suite, the check, 2 of it
     + '• Senior Platform Engineer: Notion says 78, the app shows nothing\n• Cloud Infrastructure Engineer: Notion says 58, the app shows nothing\n+8 more\n\n'
     + 'After <a href="https://github.com/o/r/pull/2538">#2538</a> · 30 Oct, 02:29\n<a href="https://github.com/o/r/actions/runs/42/job/7">Open the failed job</a>');
 });
+
+// Gitar on #2547: "+N more" subtracted a fixed 2 even when one problem was shown; "null" was rewritten inside real error text.
+test('"+N more" counts the problems left after the ones shown, and only a value ending the line reads "nothing"', () => {
+  const lines = message => messageOf({lanes, status: 'failure', causes: [{suite: 'quality', step: 'a check', message}], env: e2eEnv, now}).text;
+  assert.match(lines('"A long job": Notion says 78, the app shows null; +4 more'), /\n5 problems:\n• A long job: Notion says 78, the app shows nothing\n\+4 more\n/, 'one shown of 5: 4 more');
+  assert.match(lines('"A": Notion says 1, the app shows null; "B": Notion says 2, the app shows null; +3 more'), /\n5 problems:\n• A: .*\n• B: .*\n\+3 more\n/);
+  assert.doesNotMatch(lines('"A": x; "B": y'), /more/, 'all shown: no count');
+  assert.match(lines("Cannot read properties of undefined (reading 'x')"), /Cannot read properties of undefined \(reading 'x'\)/, 'an error text keeps its words');
+});

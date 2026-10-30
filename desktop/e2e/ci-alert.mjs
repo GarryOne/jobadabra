@@ -99,8 +99,8 @@ export async function isRepeat(env = process.env, fetcher = fetch, lanes = readL
   return false;
 }
 
-// Human words for a step's text: "null"/"undefined" say nothing, a quoted name before ":" loses its quotes.
-const plain = text => String(text).replace(/\b(?:null|undefined)\b/g, 'nothing').replace(/^"([^"]+)":/, '$1:');
+// Human words for a step's text: a value that ends the line as null/undefined reads "nothing" (never inside an error such as "of undefined"), a quoted name before ":" loses its quotes.
+const plain = text => String(text).replace(/\b(shows|says|is) (?:null|undefined)$/, '$1 nothing').replace(/^"([^"]+)":/, '$1:');
 
 /** A step cause -> its lines: "Check: <step>", then the one problem, or "N problems:" with 2 of them and "+N more" (annotationLines writes "a; b; +3 more"). */
 export function causeLines({suite, step, message}, named = false) {
@@ -110,7 +110,8 @@ export function causeLines({suite, step, message}, named = false) {
   const total = items.length + (counted ? Number(counted[1]) : 0);
   const lines = [{label: 'Check', parts: [`${named ? `${suite} · ` : ''}${String(step).replace(/\s*\([^)]*\)\s*$/, '')}`]}];
   if (total === 1) return [...lines, {parts: [items[0]]}];
-  return [...lines, ...(total ? [{parts: [`${total} problems:`]}] : []), ...items.slice(0, 2).map(item => ({bullet: true, parts: [item]})), ...(total > 2 ? [{parts: [`+${total - 2} more`]}] : [])];
+  const shown = items.slice(0, 2);
+  return [...lines, ...(total ? [{parts: [`${total} problems:`]}] : []), ...shown.map(item => ({bullet: true, parts: [item]})), ...(total > shown.length ? [{parts: [`+${total - shown.length} more`]}] : [])];
 }
 
 // -> the message ({text, parse_mode, ...} from lib/telegram-html.mjs), or '' when there is nothing to say (a success after a success).

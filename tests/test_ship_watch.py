@@ -29,8 +29,8 @@ class ShipWatchTest(unittest.TestCase):
         self.log.write_text('ship: [3s] opened the pull request: https://example.test/pull/7\n')
 
     def env(self, poll=0, cap=60):
-        return {**os.environ, 'PATH': f'{self.tmp / "bin"}{os.pathsep}{os.environ["PATH"]}', 'FAKE_GH_DIR': str(self.tmp), 'PR_REST_CACHE': str(self.tmp / 'cache'),
-                'SHIP_WATCH_POLL': str(poll), 'SHIP_WATCH_CAP': str(cap), 'SHIP_WATCH_FIX': str(self.tmp / 'fix.sh')}
+        return {**os.environ, 'CODEX_THREAD_ID': '', 'CODEX_SESSION_ID': '', 'CMUX_SURFACE_ID': '', 'PATH': f'{self.tmp / "bin"}{os.pathsep}{os.environ["PATH"]}', 'FAKE_GH_DIR': str(self.tmp), 'PR_REST_CACHE': str(self.tmp / 'cache'),
+                'SHIP_WATCH_POLL': str(poll), 'SHIP_WATCH_CAP': str(cap), 'SHIP_WATCH_FIX': str(self.tmp / 'fix.sh'), **getattr(self, 'codex_env', {})}
 
     def watch(self, states, checks='', cap=60, poll=0, mergeables='', runs='', verdicts='', heads='', labels=''):
         (self.tmp / 'states').write_text(states)
@@ -44,6 +44,45 @@ class ShipWatchTest(unittest.TestCase):
         (self.tmp / 'looks').write_text('0')
         subprocess.run(['bash', str(ROOT / 'tools' / 'ship-watch.sh'), '7', str(self.log), str(self.pidfile), 'o/r'], env=self.env(poll, cap), timeout=30, check=True)
         return self.log.read_text().splitlines()[1:]
+
+    def test_codex_session_receives_state_events_without_terminal_input(self):
+        codex = self.tmp / 'bin' / 'codex'
+        codex.write_text(f'#!{sys.executable}\nimport json,sys\nwith open({str(self.tmp / "queued")!r}, "a") as out: out.write(json.dumps(sys.argv[1:])+"\\n")\n')
+        codex.chmod(0o700)
+        thread = '01a18ac0-a906-7ba1-bf47-93e2bf1db6a7'
+        self.codex_env = {'CODEX_THREAD_ID': thread, 'CMUX_AGENT_LAUNCH_EXECUTABLE': str(codex)}
+        self.watch('OPEN\nOPEN\nMERGED abc1234\n', checks='python\npython\n')
+        queued = [json.loads(line) for line in (self.tmp / 'queued').read_text().splitlines()]
+        self.assertEqual(len(queued), 2)
+        for args in queued:
+            self.assertEqual(args[:3], ['queue', '--thread', thread])
+            self.assertEqual(args[-1], '--resume')
+        self.assertIn('RED #7 python', queued[0][4])
+        self.assertIn('MERGED #7 abc1234', queued[1][4])
+
+    def test_codex_terminal_queue_failure_is_retried_before_watcher_exits(self):
+        codex = self.tmp / 'bin' / 'codex'
+        attempts = self.tmp / 'attempts'
+        codex.write_text(f'#!{sys.executable}\nfrom pathlib import Path\np=Path({str(attempts)!r})\nn=int(p.read_text())+1 if p.exists() else 1\np.write_text(str(n))\nraise SystemExit(1 if n==1 else 0)\n')
+        codex.chmod(0o700)
+        self.codex_env = {'CODEX_THREAD_ID': '01a18ac0-a906-7ba1-bf47-93e2bf1db6a7',
+                          'CMUX_AGENT_LAUNCH_EXECUTABLE': str(codex)}
+        lines = self.watch('MERGED abc1234\n')
+        self.assertEqual(lines, ['ship: MERGED #7 abc1234'])
+        self.assertEqual(attempts.read_text(), '2')
+
+    def test_persistent_terminal_delivery_failure_stops_without_post_merge_polling(self):
+        codex = self.tmp / 'bin' / 'codex'
+        attempts = self.tmp / 'attempts'
+        codex.write_text(f'#!{sys.executable}\nfrom pathlib import Path\np=Path({str(attempts)!r})\nn=int(p.read_text())+1 if p.exists() else 1\np.write_text(str(n))\nraise SystemExit(1)\n')
+        codex.chmod(0o700)
+        self.codex_env = {'CODEX_THREAD_ID': '01a18ac0-a906-7ba1-bf47-93e2bf1db6a7',
+                          'CMUX_AGENT_LAUNCH_EXECUTABLE': str(codex)}
+        lines = self.watch('MERGED abc1234\n', cap=3)
+        self.assertEqual((self.tmp / 'looks').read_text().strip(), '1')
+        self.assertEqual(attempts.read_text(), '3')
+        self.assertIn('ship: CODEX DELIVERY PENDING #7 (PR MERGED; events remain in the log)', lines)
+        self.assertFalse(any('still open' in line for line in lines))
 
     def test_open_then_merged_reports_the_merge_commit_and_stops(self):
         self.assertEqual(self.watch('OPEN\nOPEN\nMERGED abc1234def\n', checks='pending\npending\n'), ['ship: MERGED #7 abc1234'])

@@ -147,6 +147,7 @@
   "free-click.test.mjs",
   "golden-fixtures.test.mjs",
   "google-fake.test.mjs",
+  "hang-caps.test.mjs",
   "heavy.test.mjs",
   "hold-notes-real-logs.test.mjs",
   "installed-only.test.mjs",

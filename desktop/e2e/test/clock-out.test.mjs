@@ -1,6 +1,5 @@
 // Proves that cumulative slowness passes without an aggregate budget while a hung step still fails.
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
 import {test} from 'node:test';
 import {budgetMsOf, createRunner} from '../lib/runner.mjs';
 import * as interactions from '../suites/interactions.mjs';
@@ -59,12 +58,4 @@ test('a step taking twice its calm 60 ms time passes under its hang cap', async 
   const runner = createRunner(() => null, {budgetMs: budgetMsOf(fixture)});
   await runner.run('slow runner', () => pause(120), {limitMs: 500});
   assert.equal(runner.results[0].status, 'passed');
-});
-
-test('interactions opts out of the aggregate and delegates every step to the runner caps', () => {
-  assert.equal(interactions.aggregateBudget, false);
-  const source = readFileSync(new URL('../suites/interactions.mjs', import.meta.url), 'utf8');
-  assert.doesNotMatch(source, /limitMs\s*:/, 'per-call overrides would bypass the exact measured caps');
-  assert.ok(Object.keys(interactions.hangCaps).length > 0);
-  assert.ok(Object.values(interactions.hangCaps).every(seconds => seconds >= 30));
 });

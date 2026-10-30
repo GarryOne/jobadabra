@@ -89,7 +89,7 @@ export async function run(ctx) {
       measured.steady = scored;
       const rate = rateVerdict(record(scored), scored);
       console.log(`  score steadiness: ${rate.line}`);
-      if (!rate.ok) throw new Error(`the AI's scores are not steady over the last nights: ${rate.problems.join('; ')}`);
+      if (!rate.ok) throw new Error(`the AI's scores are not steady:${rate.problems.join('; ')}`);
     }, {needs: ctx.needs, limitMs: 6 * STEP}));
 
     await soft(() => ctx.run('the score reasons say nothing invented or untrue (Haiku judge)', async () => {

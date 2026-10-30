@@ -4,7 +4,7 @@ import {test} from 'node:test';
 import {fileURLToPath} from 'node:url';
 import * as pick from '../lib/pr-suites.mjs';
 import {ensureStaged} from '../lib/ensure-staged.mjs';
-import {shardLegs} from '../lib/suite-shards.mjs';
+import {NON_BACKBONE, shardLegs} from '../lib/suite-shards.mjs';
 
 // Suite imports need generated shared/ even when this test runs alone in a fresh worktree.
 ensureStaged(fileURLToPath(new URL('../..', import.meta.url)));
@@ -141,8 +141,8 @@ test('zero through five suites preserve order and leave Mac exclusions out of de
 });
 
 test('tolerant, suspended and retired entries never use a PR place or join the deferred backbone', () => {
-  const pointed = ['tolerant', 'suspended', 'retired', 'f', 'e', 'd', 'c', 'b', 'a'];
-  const lanes = {suites: Object.fromEntries(['tolerant', 'suspended', 'retired'].map(lane => [lane, {lane}]))};
+  const pointed = [...NON_BACKBONE, 'f', 'e', 'd', 'c', 'b', 'a'];
+  const lanes = {suites: Object.fromEntries(NON_BACKBONE.map(lane => [lane, {lane}]))};
   const out = pick.planPrSuites({...args, pointed, lanes});
   assert.deepEqual(out, {suites: ['a', 'b', 'c', 'd', 'e'], left: ['f'], deferred: ['f']});
   assert.deepEqual(pick.planPrSuites({...args, pointed: ['tolerant', 'b'], lanes}), {suites: ['b'], left: [], deferred: []});

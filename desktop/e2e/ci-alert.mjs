@@ -6,13 +6,11 @@
 import path from 'node:path';
 import fs from 'node:fs';
 import {alertHtml} from './lib/telegram-html.mjs';
-import {suiteOfKey} from './lib/suite-shards.mjs';
+import {isBackbone, suiteOfKey} from './lib/suite-shards.mjs';
 
 const readLanes = () => JSON.parse(fs.readFileSync(new URL('./lanes.json', import.meta.url), 'utf8'));
 // Invariant: a non-backbone suite result cannot cause an owner failure or recovery alert.
-const backbone = (name, lanes = readLanes()) => !['tolerant', 'suspended', 'retired'].includes(lanes.suites?.[
-  suiteOfKey(String(name).replace(/^E2E · (?:Mac \+ Linux · )?/, '').replace(/ · burn-in \d+\/\d+$/, ''))
-]?.lane);
+const backbone = (name, lanes = readLanes()) => isBackbone(lanes, suiteOfKey(name));
 
 // Until 28 Oct 2026 a renamed workflow's old file is read too (replay-offline.yml → site-replays.yml, 14 Oct 2026).
 export const OLD_FILES = {'site-replays.yml': 'replay-offline.yml'};

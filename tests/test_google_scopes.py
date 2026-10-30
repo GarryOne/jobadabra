@@ -16,6 +16,16 @@ class GrantedPartsTest(unittest.TestCase):
         for name, text in CASES.items():
             self.assertEqual(scopes.parts_in(text), WANT[name], name)
 
+    def test_the_calendar_ask_is_events_only(self):
+        # Google's review (29 Oct 2026): why not narrower; we only list events, so nothing wider is requested.
+        self.assertEqual(CAL_URL, 'https://www.googleapis.com/auth/calendar.events.readonly')
+        self.assertNotIn('calendar.readonly', ' '.join(scopes.SCOPE_URLS.values()))
+
+    def test_a_sign_in_from_before_the_narrowing_still_counts_as_calendar_allowed(self):
+        old = 'https://www.googleapis.com/auth/calendar.readonly'
+        self.assertEqual(scopes.parts_in(f'{GMAIL_URL} {old}'), ('gmail', 'calendar'))
+        self.assertEqual(scopes.parts_in(old), ('calendar',))
+
     def test_what_the_app_says_for_each_case(self):
         self.assertEqual(scopes.say(WANT['both']), '')
         self.assertIn('Calendar was not allowed', scopes.say(WANT['gmail only']))
@@ -127,7 +137,7 @@ class AuthorizeReadsTheGrantTest(unittest.TestCase):
                 mock.patch.object(google_auth.secrets, 'token_urlsafe', return_value='S'):
             google_auth.authorize('id', 'secret', open_browser=seen.append, only=('calendar',))
         self.assertIn('include_granted_scopes=true', seen[0])
-        self.assertIn('calendar.readonly', seen[0])
+        self.assertIn('calendar.events.readonly', seen[0])
         self.assertNotIn('gmail.readonly', seen[0])
 
 

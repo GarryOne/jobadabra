@@ -6,7 +6,10 @@ caller one error, `MissingScope`, so no screen or message shows a raw 403."""
 import os
 
 GMAIL, CALENDAR = 'gmail', 'calendar'
-SCOPE_URLS = {GMAIL: 'https://www.googleapis.com/auth/gmail.readonly', CALENDAR: 'https://www.googleapis.com/auth/calendar.readonly'}
+# Why (30 Oct 2026, owner): Google's review asked why Calendar needs more than events; we only list events, so we ask for events only.
+SCOPE_URLS = {GMAIL: 'https://www.googleapis.com/auth/gmail.readonly', CALENDAR: 'https://www.googleapis.com/auth/calendar.events.readonly'}
+# Why (30 Oct 2026): a sign-in made before the narrowing holds the broader calendar.readonly (include_granted_scopes keeps it); it still covers events.
+LEGACY_URLS = {CALENDAR: ('https://www.googleapis.com/auth/calendar.readonly',)}
 SCOPES_SERVICE = 'job-pilotto.google.scopes'
 PART_NAMES = {GMAIL: 'Gmail', CALENDAR: 'Calendar'}
 WHAT_IT_LOSES = {GMAIL: 'replies and rejections cannot be tracked from your mail', CALENDAR: 'interviews cannot be found in your calendar'}
@@ -23,7 +26,7 @@ class MissingScope(RuntimeError):
 def parts_in(scope_text):
     """The parts (GMAIL, CALENDAR) named in Google's space-separated `scope` answer, in a fixed order."""
     words = str(scope_text or '').split()
-    return tuple(part for part, url in SCOPE_URLS.items() if url in words)
+    return tuple(part for part, url in SCOPE_URLS.items() if url in words or any(old in words for old in LEGACY_URLS.get(part, ())))
 
 
 def saved(text):

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Read-only Google access for Jobadabra: Gmail (job-related emails) and Calendar (interviews).
 
-Scopes are gmail.readonly and calendar.readonly: nothing is ever sent, changed or deleted. `auth` runs the
+Scopes are gmail.readonly and calendar.events.readonly: nothing is ever sent, changed or deleted. `auth` runs the
 one-time browser sign-in on this Mac (loopback redirect + PKCE), stores the refresh token in the Keychain,
 and with --github also sets the GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET / GOOGLE_REFRESH_TOKEN
 repository secrets for CI.
@@ -128,14 +128,14 @@ class Google:
             raise
 
     def account_email(self):
-        """The signed-in address: Gmail's profile, or the calendar's own id when only Calendar was allowed."""
+        """The signed-in address: Gmail's profile, or the events list's calendar title when only Calendar was allowed. Why (30 Oct 2026): events.readonly cannot read calendars/primary."""
         if self.scopes is None or google_scopes.GMAIL in self.scopes:
             try:
                 return self.profile()['emailAddress']
             except MissingScope:   # an older sign-in without Gmail: learned just now, Calendar names the account
                 pass
         self.need(google_scopes.CALENDAR)
-        return self.get('https://www.googleapis.com/calendar/v3/calendars/primary').get('id', '')
+        return self.get('https://www.googleapis.com/calendar/v3/calendars/primary/events', {'maxResults': 1}).get('summary', '')
 
     # ---------- Gmail ----------
 

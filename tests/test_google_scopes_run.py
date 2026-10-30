@@ -17,7 +17,7 @@ def refusing(part):
     """A token from before the granted parts were kept (scopes unknown): Google answers 403 for `part` only."""
     def opener(request, timeout=None):
         if scopes.part_of_refusal(request.full_url, 403, 'insufficient scope') != part:
-            return io.BytesIO(json.dumps({'emailAddress': 'a@b.c', 'id': 'a@b.c'}).encode())
+            return io.BytesIO(json.dumps({'emailAddress': 'a@b.c', 'summary': 'a@b.c'}).encode())
         raise urllib.error.HTTPError(request.full_url, 403, 'Forbidden', {}, io.BytesIO(b'{"error": {"message": "insufficient authentication scopes"}}'))
     client = google.Google('id', 'secret', 'refresh', opener=opener)
     client._token = 'access'

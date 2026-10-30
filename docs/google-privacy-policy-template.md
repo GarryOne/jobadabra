@@ -9,7 +9,7 @@ With the owner's consent, read-only:
 
 - **Gmail** (`gmail.readonly`): recent emails from job-application systems, recruiter platforms and
   scheduling tools, and emails that name a company the owner applied to.
-- **Google Calendar** (`calendar.readonly`): upcoming events, to recognise job interviews.
+- **Google Calendar** (`calendar.events.readonly`): upcoming events, to recognise job interviews.
 
 It never sends, changes or deletes email or calendar events.
 

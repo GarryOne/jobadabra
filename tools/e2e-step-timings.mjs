@@ -1,13 +1,13 @@
 // Reports calm main e2e step timings and measured hang caps from downloaded artifacts.
 // Job: wait on state
 import {execFileSync} from 'node:child_process';
-import {mkdtempSync, readdirSync, readFileSync, rmSync} from 'node:fs';
+import {mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {suiteOfKey} from '../desktop/e2e/lib/suite-shards.mjs';
 
-// Usage: node tools/e2e-step-timings.mjs --suite applyflows --runs 12 [--dir artifacts] [--json | --caps]
+// Usage: node tools/e2e-step-timings.mjs --suite applyflows --runs 12 [--dir artifacts] [--json | --caps [--caps-file desktop/e2e/hang-caps.json]]
 // Invariants: only comparable full runs and the default store count; only passed, finite, nonnegative timings count; shard totals never pool.
 const ghCommand = args => execFileSync('gh', args, {encoding: 'utf8', maxBuffer: 16 * 1024 * 1024});
 // Mirrors tools/main_e2e_state.py NOT_MAIN_CHECK + AFTER_MERGE, plus PR runs; guarded against drift in the test.
@@ -82,31 +82,28 @@ export function measure(dir, suite) {
   });
   const shardRuns = shards.reduce((sum, shard) => sum + shard.runs, 0);
   const droppedSlowShardRuns = shards.reduce((sum, shard) => sum + shard.droppedSlowRuns, 0);
-  return {suite, runs: runIds.size, shardRuns, calmShardRuns: shardRuns - droppedSlowShardRuns, droppedSlowShardRuns, shards, steps};
+  return {suite, runs: runIds.size, shardRuns, calmShardRuns: shardRuns - droppedSlowShardRuns, droppedSlowShardRuns, shards, steps, runIds: [...runIds].sort()};
 }
 
-/** Render measured state-wait caps as an importable suite module. */
-export function capsModule(report, {sharedCaps = {}, sharedImport = ''} = {}) {
-  let usesShared = false;
-  const rows = report.steps.map(step => {
-    const key = JSON.stringify(step.name);
+/** Build a suite's JSON entry; sparse steps must reference an exact measured shared cap. Keeps the previous entry's "Why (" lines: they record a decision, not a measurement. */
+export function capsEntry(report, {sharedCaps = {}, sharedSuite = '', previous = ''} = {}) {
+  const steps = Object.fromEntries(report.steps.map(step => {
+    const measurement = {n: step.n, p95Seconds: step.p95Seconds};
     if (step.capSeconds == null) {
-      if (!sharedImport || !Number.isFinite(sharedCaps[step.name]) || sharedCaps[step.name] < 30) {
+      if (!sharedSuite || !Number.isFinite(sharedCaps[step.name]) || sharedCaps[step.name] < 30) {
         throw new Error(`${step.name}: fewer than 5 calm samples; supply a measured cap for this exact shared step`);
       }
-      usesShared = true;
-      return `  ${key}: sharedCaps[${key}], // n=${step.n}; shared step's measured cap`;
+      return [step.name, {shared: sharedSuite, ...measurement}];
     }
-    return `  ${key}: ${step.capSeconds}, // n=${step.n}, p95=${step.p95Seconds} s`;
-  });
-  return [
-    `// Generated state-wait hang caps for ${report.suite}; never a speed assertion.`,
-    '// Job: wait on state',
-    `// tools/e2e-step-timings.mjs: ${report.runs} main runs, ${report.calmShardRuns}/${report.shardRuns} calm shard-runs.`,
-    '// 3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.',
-    ...(usesShared ? [`import {hangCaps as sharedCaps} from ${JSON.stringify(sharedImport)};`] : []),
-    'export const hangCaps = {', ...rows, '};', '',
-  ].join('\n');
+    return [step.name, {seconds: step.capSeconds, ...measurement}];
+  }));
+  return {provenance: [
+    `tools/e2e-step-timings.mjs: ${report.runs} main runs, ${report.calmShardRuns}/${report.shardRuns} calm shard-runs.`,
+    `Main run IDs: ${report.runIds.join(', ')}.`,
+    ...(sharedSuite ? [`Sparse shared steps use the ${sharedSuite} entry's measurements.`] : []),
+    '3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.',
+    ...previous.split('\n').filter(line => line.startsWith('Why (')),
+  ].join('\n'), steps};
 }
 
 function table(report) {
@@ -125,19 +122,28 @@ export function main(args = process.argv.slice(2), {acquire = downloadArtifacts,
     const flag = args[i];
     if (flag === '--json') options.json = true;
     else if (flag === '--caps') options.caps = true;
-    else if (['--suite', '--runs', '--dir'].includes(flag) && args[i + 1] && !args[i + 1].startsWith('--')) options[flag.slice(2)] = args[++i];
+    else if (['--suite', '--runs', '--dir', '--caps-file'].includes(flag) && args[i + 1] && !args[i + 1].startsWith('--')) options[flag.slice(2)] = args[++i];
     else throw new Error(`Unknown or incomplete argument: ${flag}`);
   }
   const {suite} = options, runs = Number(options.runs);
   if (options.json && options.caps) throw new Error('Choose --json or --caps');
   if (!suite || !/^[a-zA-Z0-9][a-zA-Z0-9_-]*$/.test(suite) || !Number.isSafeInteger(runs) || runs < 1) {
-    throw new Error('Usage: --suite <name> [--runs <positive integer>] [--dir <folder>] [--json | --caps]');
+    throw new Error('Usage: --suite <name> [--runs <positive integer>] [--dir <folder>] [--json | --caps [--caps-file desktop/e2e/hang-caps.json]]');
   }
+  if (options['caps-file'] && !options.caps) throw new Error('--caps-file requires --caps');
   const temporary = !options.dir, dir = options.dir || mkdtempSync(path.join(tmpdir(), 'e2e-step-timings-'));
   try {
     if (temporary) acquire({suite, runs, dir});
     const report = measure(dir, suite);
-    write(options.caps ? capsModule(report) : options.json ? JSON.stringify(report, null, 2) : table(report));
+    if (options.caps) {
+      const file = options['caps-file'] || new URL('../desktop/e2e/hang-caps.json', import.meta.url);
+      const data = JSON.parse(readFileSync(file, 'utf8'));
+      const sharedSuite = suite === 'applyflows' ? '' : 'applyflows';
+      const sharedCaps = Object.fromEntries(Object.entries(data[sharedSuite]?.steps || {}).map(([name, step]) => [name, step.seconds]));
+      data[suite] = capsEntry(report, {sharedCaps, sharedSuite, previous: data[suite]?.provenance || ''});
+      writeFileSync(file, JSON.stringify(data, null, 2) + '\n');
+      write(`Updated ${suite} in ${file}`);
+    } else write(options.json ? JSON.stringify(report, null, 2) : table(report));
     return report;
   } finally {
     if (temporary) rmSync(dir, {recursive: true, force: true});

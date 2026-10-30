@@ -4,11 +4,12 @@ import {readFileSync} from 'node:fs';
 import {test} from 'node:test';
 import {budgetMsOf, createRunner, STEP_LIMIT_MS} from '../lib/runner.mjs';
 import {stepCalls} from '../lib/pr-suites.mjs';
-import {hangCaps} from '../lib/applyflows-caps.mjs';
+import {hangCapsFor} from '../lib/hang-caps.mjs';
 import * as applyflows from '../suites/applyflows.mjs';
 import * as apply from '../suites/apply.mjs';
 import {REAL_FORMS} from '../lib/forms.mjs';
 
+const hangCaps = hangCapsFor('applyflows');
 const read = file => readFileSync(new URL(`../${file}`, import.meta.url), 'utf8');
 const names = file => stepCalls(read(file).replace(/\brunAlways\(/g, 'ctx.run(')).map(call => call.name).filter(Boolean);
 

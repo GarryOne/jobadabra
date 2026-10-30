@@ -153,7 +153,7 @@ deleted when that lands) or neither (deleted). Likely early deletions: the AI ca
 - Plumbing commits **under 15%** of all commits per week (37% harness / 26% plumbing-only at baseline), read from the J card.
 - A PR runs **≤ 5 suites** and its e2e finishes in **≤ 10 min** at p90.
 - A backbone run makes **0 live AI calls** (the AI proxy refuses an unstored question there and the test fails, asserted by a harness test).
-- No backbone suite asserts a wall-clock limit (guard test over the backbone suites).
+- No backbone suite asserts a wall-clock limit (guard test over the backbone suites). Since 30 Oct 2026 (owner, #2612): new or changed inline bounds in step code are refused by `tools/e2e-reliability-check.mjs` rule B; the existing ones are moved out step by step.
 - The expectation check refuses a replay of `5395279` and passes `2625cef` with its citation (fixture test); the plumbing check refuses a PR answering a
   tolerant result (fixture test).
 - /admin/operations/e2e, the weekly GitHub issue and Telegram show the same counts from one classifier.

@@ -5,7 +5,8 @@ import os from 'node:os';
 import path from 'node:path';
 import {test} from 'node:test';
 import {currentLaunchLog} from '../lib/app-log.mjs';
-import {formsClosedForJob, pollUntil, waitForDecisions, waitForFormValue, waitForLogLine, waitJobFormClosed} from '../lib/wait-on-state.mjs';
+import {withLimit} from '../lib/runner.mjs';
+import {extensionDecisions, formsClosedForJob, pollUntil, stepClock, stepTimeLeft, waitForDecisions, waitForFormValue, waitForLogLine, waitJobFormClosed} from '../lib/wait-on-state.mjs';
 
 const clock = () => {
   let ms = 0;
@@ -242,7 +243,7 @@ test('a decision line that lands after the form is done is waited for, where one
   const {value, ms} = await waitForDecisions(read, [CORRECTED], time);
   assert.match(value, CORRECTED);
   assert.equal(ms, 26000);
-  assert.match(time.logs[0], /decision lines arrived 26000 ms/);
+  assert.match(time.logs[0], /decision lines were read 26000 ms/);
 });
 
 test('every expected decision line must be in the log, and a g flag cannot make a match flicker', async () => {
@@ -253,12 +254,49 @@ test('every expected decision line must be in the log, and a g flag cannot make 
   assert.deepEqual(time.ticks, [250]);
 });
 
-test('a decision line that never arrives returns the last log at the 60 s cap, and a failed read is retried', async () => {
+test('a decision line that never arrives is waited for until just before the step\'s own hang cap, and a failed read is retried', async () => {
   const time = clock();
   let reads = 0;
   const read = async () => { if (++reads === 2) throw new Error('log rolled'); return beforeBatch; };
-  const {value, ms} = await waitForDecisions(read, [CORRECTED], time);
-  assert.equal(value, beforeBatch);
-  assert.equal(ms, 60000);
+  stepClock(90000);
+  try {
+    const {value, ms} = await waitForDecisions(read, [CORRECTED], time);
+    assert.equal(value, beforeBatch);
+    assert.ok(ms > 87000 && ms <= 88000, `ended 2 s before the step's cap, never at a shorter cap of its own (${ms} ms)`);
+  } finally { stepClock(null); }
   assert.deepEqual(time.logs, []);
+});
+
+test('the runner\'s step limit is the clock a wait inside the step sees, and it ends with the step', async () => {
+  assert.equal(stepTimeLeft(), undefined, 'no step: a wait keeps pollUntil\'s own default');
+  const left = await withLimit(Promise.resolve().then(() => stepTimeLeft()), 5000, 'a step');
+  assert.ok(left > 2000 && left <= 3000, `inside the step: ${left} ms left for the wait, 2 s kept to report`);
+  assert.equal(stepTimeLeft(), undefined, 'after the step: no clock');
+});
+
+// Gitar on #2620: with the wait running to the cap itself, the hang timer won and the step's own check never ran.
+test('a decision that never arrives fails the step with the step\'s own message, not as a hang', async () => {
+  const step = async () => {
+    const {value} = await waitForDecisions(async () => beforeBatch, [CORRECTED], {log: () => {}});
+    if (String(value).search(CORRECTED) === -1) throw new Error('the page-kind correction is not in the extension\'s decisions');
+  };
+  const error = await withLimit(Promise.resolve().then(step), 2600, 'a step').then(() => null, failure => failure);
+  assert.match(String(error?.message), /not in the extension's decisions/);
+  assert.notEqual(error.stepHang, true, 'a missing decision is the product\'s failure, not a hang');
+});
+
+// #2612 (owner, 30 Oct 2026): the decision is read where it is made. Captured shape: extension/log.js entries; server-env.js onLog renders them in app.log.
+const entry = {at: '2026-10-30T16:50:24.480Z', kind: 'fill', text: 'page kind corrected: a posting with no Apply but a form\'s fields', fields: {shape: 'posting|x', version: '0.8.53'}, sent: false};
+const browserWith = worker => ({serviceWorker: async () => worker});
+
+test('a decision still in the extension\'s store is read before app.log has it, in app.log\'s own line shape', async () => {
+  const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-decisions-'));
+  fs.mkdirSync(path.join(profile, 'logs'));
+  fs.writeFileSync(path.join(profile, 'logs', 'app.log'), beforeBatch);
+  const text = await extensionDecisions({browser: browserWith({evaluate: async () => [entry]}), profile});
+  assert.match(text, CORRECTED);
+  assert.ok(text.split('\n').includes(`2026-10-30T16:50:24.480Z [extension] fill: page kind corrected: a posting with no Apply but a form's fields ${JSON.stringify(entry.fields)}`));
+  const control = await extensionDecisions({browser: browserWith({evaluate: async () => { throw new Error('worker restarting'); }}), profile});
+  assert.doesNotMatch(control, CORRECTED, 'the control: app.log alone does not have it yet');
+  assert.match(control, /page kind forgotten/, 'a worker that cannot be read leaves app.log');
 });

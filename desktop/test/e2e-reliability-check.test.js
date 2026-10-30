@@ -6,7 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {test} from 'node:test';
-import {checkPush, expectationChanges, harnessProblems} from '../../tools/e2e-reliability-check.mjs';
+import {checkPush, expectationChanges, harnessProblems, newClockWaits} from '../../tools/e2e-reliability-check.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const suite = 'desktop/e2e/suites/apply.mjs';
@@ -194,6 +194,30 @@ test('lib check modules protect numeric comparisons and named limits even withou
   assert.deepEqual(expectationChanges('const x = n => n > 8;', 'const x = n => n > 9;', lib), []);
 });
 
+// Rule B (owner, 30 Oct 2026, on #2612: "wait on the state, not on a specific time"): the step's measured hang cap is its only clock.
+const journeys = 'desktop/e2e/lib/apply-journeys.mjs', waits = 'desktop/e2e/lib/wait-on-state.mjs', job = '// Job: wait on state\n';
+const cited = 'Change\n\nExpect-changed-by: owner\nHarness-job: wait on state';
+
+test('#2612 replayed: a 10 s loop moved into a helper as a 60 s cap is refused, a citation cannot clear it', () => {
+  const before = {[journeys]: `${job}for (let waited = 0; waited < 10000 && !seen(); waited += 500) await pause(500);`, [waits]: `${job}export const pollUntil = () => {};`};
+  const after = {[journeys]: `${job}await waitForDecisions(read, [line]);`, [waits]: `${job}export const waitForDecisions = (read, lines) => pollUntil(read, lines, {capMs: 60000});`};
+  assert.match(push(before, after, cited), /Rule B[\s\S]*wait-on-state\.mjs: cap 60000/);
+  const own = {[journeys]: after[journeys], [waits]: `${job}export const waitForDecisions = (read, lines) => pollUntil(read, lines, {capMs: stepTimeLeft()});`};
+  assert.equal(push(before, own, cited), '', 'the fix: the step clock, no bound of its own');
+});
+
+test('an unchanged bound moved to another file or removed is free; a raised or new one is refused, and tests are not step code', () => {
+  const wait = 'await until(\'the tab\', () => open(), 30000);';
+  assert.deepEqual(newClockWaits([{file: journeys, before: wait, after: ''}, {file: waits, before: '', after: wait}]), []);
+  assert.deepEqual(newClockWaits([{file: journeys, before: wait, after: null}]), []);
+  assert.deepEqual(newClockWaits([{file: journeys, before: wait, after: wait.replace('30000', '60000')}]), [`${journeys}: until(…, ms) 60000`]);
+  for (const added of ['while (Date.now() - start < 20000) await pause(250);', "await page.waitForSelector('#x', {timeout: 5_000});"]) {
+    assert.equal(newClockWaits([{file: 'desktop/e2e/suites/apply.mjs', before: '', after: added}]).length, 1, added);
+  }
+  assert.deepEqual(newClockWaits([{file: 'desktop/e2e/test/wait-on-state.test.mjs', before: '', after: 'pollUntil(read, ok, {capMs: 500})'}]), []);
+  assert.deepEqual(newClockWaits([{file: journeys, before: '', after: '// waited < 10000 in a comment, and "capMs: 1" in a string'}]), []);
+});
+
 test('a changed harness file needs one valid Job line and a harness trailer independently', () => {
   const before = {[lib]: '// Existing runner\nexport const x = 1;'};
   const after = {[lib]: '// Existing runner\nexport const x = 2;'};
@@ -235,7 +259,7 @@ test('both push and PR checks run the gate; review rules block E, F and excessiv
   assert.ok(script.indexOf('node tools/e2e-reliability-check.mjs') < script.indexOf('case "$command" in *SHIP_PR=1*|*CI_GATES=1*)'));
   assert.match(fs.readFileSync(path.join(root, '.github/workflows/pr-gate.yml'), 'utf8'), /bash tools\/pre-push-check\.sh/);
   const review = fs.readFileSync(path.join(root, '.gitar/review/e2e-reliability.md'), 'utf8');
-  for (const text of ['Rule E', 'Rule F', '2 rounds', 'blocking', 'tolerant']) assert.ok(review.includes(text), text);
+  for (const text of ['Rule B', 'Rule E', 'Rule F', '2 rounds', 'blocking', 'tolerant']) assert.ok(review.includes(text), text);
 });
 
 test('budget-only suite repairs cannot bypass the expectation rule or plumbing brake', () => {

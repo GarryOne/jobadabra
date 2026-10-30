@@ -145,7 +145,9 @@ export async function run(ctx) {
     await page.click('[data-command="run"]');
     const t0 = Date.now();
     let opened = false;
-    const {samples, endedAt} = await watch(page, {maxMs: hangCaps['a slow Jobs check keeps showing that it is working, and ends cleanly'] * 1000, onSample: async (s, all) => {
+    // Why (30 Oct 2026, owner, #2601): reserve 30 s for the state verdict and evidence before the runner's measured hang cap.
+    const verdictReserveSeconds = 30;
+    const {samples, endedAt} = await watch(page, {maxMs: (hangCaps['a slow Jobs check keeps showing that it is working, and ends cleanly'] - verdictReserveSeconds) * 1000, onSample: async (s, all) => {
       if (!opened && s.banner.shown) { opened = true; await page.click('#run-banner-view').catch(() => {}); }
       console.log(`  +${String(Math.round((s.at - t0) / 1000)).padStart(3)}s running=${s.running ? 'yes' : 'no '} banner=${s.banner.shown ? 'yes' : 'no '} log=${s.logShown} unscored=${s.unscored}/${s.jobs} step="${(s.running?.step || s.panelStep).slice(0, 56)}"`);
     }});

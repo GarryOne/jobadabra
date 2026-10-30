@@ -182,3 +182,17 @@ test('after a restart a job an earlier run held goes to the person, at start and
   const fresh = await controller(new Date(started + 1000).toISOString()).handle({action: 'poll', owner: 'o1'});
   assert.deepEqual(fresh.checks, [{session: 's1'}], 'positive control: a job this run started still presses when its wait runs out');
 });
+
+// Gitar on #2598: a hand-over that does not save must not let the job go on; a quit is a Stop even when the store write fails.
+test('a job an earlier run held whose hand-over fails is still never claimed or pressed', async () => {
+  const now = Date.parse('2026-10-30T16:30:00Z'), started = now - 5000, claimed = [];
+  const waiting = {session: 's1', mode: 'auto', chosenAt: 'c1', state: 'waiting_to_submit', readyAt: now - 2 * 60000, manualOverride: false};
+  const controller = startedAt => createBackgroundApplyController({}, {
+    store: {read: async () => waiting, interrupted: async () => { throw new Error('store unavailable'); }, claim: async (...args) => { claimed.push(args); return {ok: false}; }},
+    browser: {start: async () => ({owner: 'o1'})}, terminals: {list: () => [{id: 's1', url: 'https://jobs.example.test/w', background: {}, outcome: '', startedAt}], record: () => null, report: () => {}},
+    config: () => ({mode: 'auto', chosenAt: 'c1', auto: {waitMin: 1}}), now: () => now, started, token: () => 't', notify: () => {}, stop: () => false, log: () => {}});
+  const polled = await controller(new Date(started - 60000).toISOString()).handle({action: 'poll', owner: 'o1'});
+  assert.deepEqual([polled.checks, polled.jobs, claimed], [[], [], []], 'no press, no claim while the hand-over did not save');
+  const fresh = await controller(new Date(started + 1000).toISOString()).handle({action: 'poll', owner: 'o1'});
+  assert.deepEqual(fresh.checks, [{session: 's1'}], 'positive control: the same store outage does not stop a job this run started');
+});

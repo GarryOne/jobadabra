@@ -94,14 +94,14 @@ export function createBackgroundApplyController(storage, {store = null, browser 
   async function poll(givenOwner) {
     if (!owner) ({owner} = await browserOf().start({port, token: token()}));
     if (!givenOwner || givenOwner !== owner) return {ok: false, jobs: [], checks: []};
+    await handOverAll(heldOpen, {quit: true});   // a poll before the start-up sweep never continues a job an earlier run held (owner, 30 Oct 2026: "A quit is a Stop")
     const jobs = [], checks = [], handoffs = [];
     let filling = false;
-    const open = terminals.list().filter(item => item.background && !item.outcome);
+    const open = terminals.list().filter(item => item.background && !item.outcome && !heldOpen(item));   // a held job whose hand-over did not save is never continued (Gitar on #2598); the next poll tries again
     for (const item of open) {
       let state = await store.read(item.url);
       if (!state || state.session !== item.id) continue;
       if (!state.manualOverride && (stop() || item.stuck === 'stopped')) state = await markManual(item, 'stopped');
-      if (!state.manualOverride && heldBefore(item)) state = await handOverInterrupted(item, {quit: true}) || state;   // a poll before the start-up sweep never continues it (owner, 30 Oct 2026: "A quit is a Stop")
       const current = config();
       if (!state.manualOverride && (current.mode !== state.mode || current.chosenAt !== state.chosenAt)) state = await markManual(item, 'mode_changed');
       if (state.ok === false) continue;   // a handoff that did not save leaves the job as it was; never go on with an error as its state
@@ -144,6 +144,7 @@ export function createBackgroundApplyController(storage, {store = null, browser 
     return handed;
   }
   const heldBefore = (item, startedBefore = started) => Date.parse(item.startedAt) < startedBefore;   // a job an earlier run of the app held: its quit cut it off
+  const heldOpen = item => heldBefore(item) && !item.background?.manualOverride;   // one not handed over yet (the cached state, so a poll asks the store only for those)
   /**
    * At start: every background job an earlier run held is handed to the person and never pressed: mid-press as "check whether it went through", before the press as `app_closed`.
    * Why (2026-10-29, owner: "Yes, go" to the crash rule): the hidden browser dies with the app (lib/browser-reaper.js), so no watcher will ever read the site's reply; without this the card said

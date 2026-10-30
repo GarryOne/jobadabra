@@ -7,6 +7,8 @@ export const name = 'focusdismiss';
 export const keepGoing = true;
 // Why (30 Oct 2026, #2601): setup's contact_from_cv ask already has a reviewed kind reply; do not depend on a hash cache or live AI.
 export const aiAnswers = 'backbone';
+// Why (30 Oct 2026, #2601): dismissal steps inject Notion listing lag with ctx.standIn.setLag; keep that existing fault path reachable.
+export const store = 'standin';
 export const minutes = 15;
 export const stepNeeds = focusNeeds;
 export const run = ctx => runFocus(ctx, ['dismiss']);

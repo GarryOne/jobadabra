@@ -185,6 +185,15 @@ class PrePushCheckTest(PrePushFixture):
         self.assertLess(order.index('gate-end'), order.index('suite-start'), 'serial: the gate is done before the suite starts')
         self.assertIn('JP_GATE_SERIAL=1', err)
 
+    @unittest.skipUnless(shutil.which('node'), 'needs node')
+    def test_a_failing_serial_gate_still_blocks_before_the_suites(self):
+        self.gate_stubs(journey_exit=1, seconds=0)
+        code, err = self.hook('git push origin HEAD:main', JP_GATE_SERIAL='1')
+        self.assertEqual(code, 2, err)
+        self.assertIn('Push blocked: journey gate: stub says no', err)
+        order = Path(str(self.log) + '.order').read_text().split()
+        self.assertNotIn('suite-start', order)
+
 
 if __name__ == '__main__':
     unittest.main()

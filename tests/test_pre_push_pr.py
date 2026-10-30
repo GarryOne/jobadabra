@@ -20,6 +20,16 @@ class PrePushPrTest(PrePushFixture):
         self.assertEqual(code, 2)
         self.assertIn('over 72 characters', err)
 
+    def test_a_pr_push_reports_both_a_long_subject_and_a_fix_without_a_test(self):
+        self.needed_committed()
+        self.commit('y' * 80 + '\n\nFixes #12')
+        code, err = self.hook('SHIP_PR=1 git push origin topic')
+        self.assertEqual(code, 2, err)
+        self.assertIn('1) commit subject over 72 characters', err)
+        self.assertIn('2) a commit fixes an issue but changes no test', err)
+        self.assertIn('Push blocked by 2 check(s)', err)
+        self.assertFalse(self.log.exists(), 'refused before any suite starts')
+
     def test_ci_gates_runs_the_same_checks(self):
         self.needed_committed()
         self.commit('y' * 80)

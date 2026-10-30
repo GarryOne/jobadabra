@@ -12,6 +12,7 @@ import {entryProblems} from './lanes-check.mjs';
 import {unproved} from '../desktop/e2e/lib/flaky-proof.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const RETURNS = 'Back to the backbone when its fix PR lands and the next 3 main runs pass it.';
 
 /** Return suspension proposals for attempt flips or unproved in-job retries on the same run, SHA and suite.
  * Attempts are GitHub jobs API responses; suites lists actual journey names, so infrastructure jobs never become checks.
@@ -83,12 +84,13 @@ export function suspensions({attempts = [], artifacts, run, registry = {}, suite
 }
 
 function proposal({suite, sha, since, why, owner, detail}) {
-  const entry = {lane: 'suspended', input: 'same-commit flip', since, why, owner};
+  const entry = {lane: 'suspended', input: 'same-commit flip', since, why, owner,
+    returns: RETURNS};
   const problems = entryProblems(entry);
   if (problems.length) throw new Error(problems.join('; '));
   const issue = {
     title: `Suspend ${suite}: red then green on ${sha.slice(0, 7)}`,
-    body: `Owner: @${owner}\n\n${why}\n\nthis check does not protect you now\n\n${detail} Fix the product or test race without loosening expectations.\n\nTo lift suspension: link the fix PR, wait for it to land, and read the next 3 main runs proving this suite passes. Then remove its lanes.json entry (design: backbone → suspended → backbone; rule E).\n\nProposed registry entry:\n\n\`\`\`json\n${JSON.stringify({[suite]: entry}, null, 2)}\n\`\`\``,
+    body: `Owner: @${owner}\n\n${why}\n\nthis check does not protect you now\n\n${detail} Fix the product or test race without loosening expectations.\n\n${RETURNS} Then remove its lanes.json entry (design: backbone → suspended → backbone; rule E).\n\nProposed registry entry:\n\n\`\`\`json\n${JSON.stringify({[suite]: entry}, null, 2)}\n\`\`\``,
   };
   return {suite, entry, issue};
 }

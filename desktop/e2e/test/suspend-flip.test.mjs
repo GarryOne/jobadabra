@@ -40,6 +40,7 @@ test('labelled reconstructed same-sha red then green yields a valid suspension a
   assert.match(issue.body, /e2e-owner/);
   assert.match(issue.body, /next 3 main runs/);
   assert.match(issue.body, /fix PR/);
+  assert.ok(issue.body.split('Proposed registry entry:')[0].includes(entry.returns));
 });
 
 for (const kind of ['red-red', 'different-sha', 'different-suite', 'green-red', 'same-attempt', 'different-run', 'incomplete-green']) {

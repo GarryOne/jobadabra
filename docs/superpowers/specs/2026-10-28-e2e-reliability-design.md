@@ -87,6 +87,8 @@ outside-world suite, nightly and before beta.
 | Before a beta | tolerant rates decide with the baseline band |
 | Weekly | Telegram + one GitHub issue, same numbers as the page, one decision for the owner if any |
 
+Grey suites are tracked: /admin/operations/e2e Grey section and the weekly (age, returns, 7 nights); the weekly asks keep/fix/retire past 14 days grey or 3 nights below band (owner, 30 Oct 2026).
+
 **E · The expectation rule.** A PR that changes what a backbone or tolerant test expects (an expected value, a threshold, a tolerance, a wait), or skips, deletes or moves a
 backbone test to a tolerant lane, carries one of:
 - `Expect-changed-by: <sha or the owner's request>`: the deliberate behaviour change (`2625cef` → `e2d7df8` passes);
@@ -160,8 +162,8 @@ deleted when that lands) or neither (deleted). Likely early deletions: the AI ca
 - Every workflow and e2e lib module has a `Job:` line; the module count is measured before and after each shrink step.
 
 ## PR plan
-Named from the start (owner, 28 Oct 2026: "when we follow a plan, we should know from the beginning the name of the PRs"): each PR's title reads `[a8] n/29 <what it does>`, and its body carries a "Plan progress" block (done, this PR, left). The total moves only with a reason written in the PR that moves it.
-**29 rows: 20 done, 9 to go** (29 Oct 2026, 23:45; a row with several PRs counts once, when its last one lands and its proof is in). Why the total is 29 and not 34: the owner chose to bundle by plan step (28 Oct 2026, answering "bundle by step?"), so 21 one-per-box PRs became 16. Two calendar items are no PR: the owner reads one week of the weekly summary; acceptance 14 days after step 6. Not counted: four PRs for the green beta, outside the plan (#2378, #2380, #2391, #2393).
+Named from the start (owner, 28 Oct 2026: "when we follow a plan, we should know from the beginning the name of the PRs"): each PR's title reads `[a8] n/30 <what it does>`, and its body carries a "Plan progress" block (done, this PR, left). The total moves only with a reason written in the PR that moves it.
+**30 rows: 20 done, 10 to go** (30 Oct 2026; a row with several PRs counts once, when its last one lands and its proof is in). Row 30 adds grey tracking (owner, 30 Oct 2026). Why the previous total was 29 and not 34: the owner chose to bundle by plan step (28 Oct 2026, answering "bundle by step?"), so 21 one-per-box PRs became 16. Two calendar items are no PR: the owner reads one week of the weekly summary; acceptance 14 days after step 6. Not counted: four PRs for the green beta, outside the plan (#2378, #2380, #2391, #2393).
 Who builds what: the verdict session takes rows 16-17 and the push-checks session rows 15 and 18 (owner's yes, 28 Oct 2026); `fl` keeps the backbone itself and the rest.
 
 | n | PR | Step | State |
@@ -190,11 +192,12 @@ Who builds what: the verdict session takes rows 16-17 and the push-checks sessio
 | 22 | settings the same way | 6 | ✅ #2482, #2488, #2491 |
 | 23 | apply the same way | 6 | 🟡 #2487, #2492 merged; 1 of 3 green main runs |
 | 24 | The rest by scorecard (one PR here; counted when the scorecard lists them) | 6 | 🟡 `a8`: interactions #2479, #2480, stores #2489 merged |
-| 25 | Beta gate on tolerant rates, and speed medians in the weekly summary | 7 | 🟡 `a8`: the gate in this PR; speed medians (private repo) left |
-| 26 | Outside-world suite nightly | 7 | 🟡 `a8`: open |
+| 25 | Beta gate on tolerant rates, and speed medians in the weekly summary | 7 | 🟡 `a8`: gate #2504 merged; speed medians (private repo) and the speed number in the PR check summary (rule D) left |
+| 26 | Outside-world suite nightly | 7 | 🟡 `a8`: #2502 merged (own daily cron); proof: its first daily run |
 | 27 | Bug Tracker "escaped e2e" field, and retire `e2e_weekly.py` after the first Monday post | 1 | `a8`, after 2 Nov 2026 |
 | 28 | Harness shrink, first half (module count before and after) | 10 | 🟡 `qu`: inventory |
 | 29 | Harness shrink, second half | 10 | after row 28 |
+| 30 | Grey tracking: page + weekly + returns | 1 | `a8`: open |
 
 ## Progress
 One `###` per plan step, one box per thing that lands; a box is ticked only with the hash it landed in (`tools/ladder-progress.mjs --spec <this file>` draws the bars).
@@ -208,6 +211,7 @@ One `###` per plan step, one box per thing that lands; a box is ticked only with
 ### 1. Measure in one place
 - [x] Scorecard and the "Where e2e work goes" card on /admin/operations/e2e. (proof: none: jobadabra-web test/admin/e2e-intel.test.js @e4ecceb, web#210, private repo)
 - [x] Weekly Telegram message and GitHub issue from the site's one classifier. (proof: none: jobadabra-web test/admin/e2e-intel.test.js @bed82a7, web#211, private repo)
+- [ ] Grey tracking: page + weekly + returns (row 30, owner `a8`).
 - [ ] Retire the public `tools/e2e_weekly.py` and `e2e-weekly.yml` after the first Monday post (bisect keeps only its fact check).
 - [ ] Bug Tracker "escaped e2e" field.
 - [ ] One week of the weekly summary read by the owner.

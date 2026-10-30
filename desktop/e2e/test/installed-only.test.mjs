@@ -1,7 +1,6 @@
-// The e2e harness's unit tests run on CI's "plan" job with only desktop/e2e's packages installed (Linux, no desktop/node_modules). A module
-// they reach (statically, or by a literal import('…')) that needs any other package fails there and only there: on 9 Oct 2026 the Notion
-// stand-in reached desktop/lib/schema.js → pipeline.js → the AI client, and '@anthropic-ai/sdk' was "not found" on CI while every Mac had it.
-// This walks the imports from every test file and fails on a bare package that is neither a node builtin nor in this folder's package.json.
+// Harness self-tests declare every external package their import graph reaches in desktop/e2e/package.json, independently of the app's install.
+// On 9 Oct 2026 the Notion stand-in reached the app's AI client and CI lacked its SDK while every Mac had it.
+// This walks static and literal dynamic imports, rejecting packages outside this folder's declared dependencies.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {builtinModules} from 'node:module';
@@ -60,6 +59,7 @@ test('positive control: a module two imports away that needs an uninstalled pack
     fs.writeFileSync(path.join(folder, 'entry.test.mjs'), "import {x} from './middle.mjs';\nexport const y = x;\n");
     fs.writeFileSync(path.join(folder, 'middle.mjs'), "export const x = 1;\nexport const later = () => import('./client.mjs');\n");
     fs.writeFileSync(path.join(folder, 'client.mjs'), "import Anthropic from '@anthropic-ai/sdk';\nimport fs from 'node:fs';\nexport default Anthropic;\n");
-    assert.deepEqual(Object.keys(missingPackages([path.join(folder, 'entry.test.mjs')])), ['@anthropic-ai/sdk']);
+    // This fixture models an empty install even when the real harness declares the SDK.
+    assert.deepEqual(Object.keys(missingPackages([path.join(folder, 'entry.test.mjs')], new Set())), ['@anthropic-ai/sdk']);
   } finally { fs.rmSync(folder, {recursive: true, force: true}); }
 });

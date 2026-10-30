@@ -17,7 +17,6 @@ import {buildStandIn, startNotionFake} from './notion-fake.mjs';
 import {useNotionAt} from './notion.mjs';
 import {appKey, appModelEnv, DUMMY_KEY, familySecret, isCi, pickEngine, pickFamily, testKey} from './engine.mjs';
 import {checkRelay} from './free-ai-check.mjs';
-import {copyExtension, freePort, makeOpenShim, opensIntoSpool} from './extension.mjs';
 import {startForms} from './forms.mjs';
 import {hiddenBrowserEnv} from './hidden-browser-env.mjs';
 import {createVariation, placeOf} from './variation.mjs';
@@ -115,6 +114,8 @@ export async function openContext(suite, {fresh = false, env: suiteEnv = {}, bro
       // A suite with no Notion part (`export const notion = false`, the update flow) needs no Notion token and gets no page.
       ...(onNotion ? [{name: `a Notion token for the ${suite} suite (E2E_NOTION_TOKEN${suite === 'wizard' ? '' : `_${(notionTokenOf || suite).toUpperCase()}`})`, value: token}] : [])]};
   if (ctx.needs.some(item => !item.value)) { ctx.skipAll = true; return ctx; }
+  // Extension helpers import app code: load them only after suite-main has staged desktop/shared/ and prerequisites pass.
+  const {copyExtension, freePort, makeOpenShim, opensIntoSpool} = await import('./extension.mjs');
   if (engine === 'cli') console.log('  AI engine: the Claude Code on this Mac (your plan): no Anthropic key is read or used on a Mac.');
   // The real test page is one page for the whole Mac: a run on it waits for the run that holds it (lib/notion-page-lock.mjs). SQLite and stand-in runs never take it.
   if (lockNeeded({store})) ctx.pageLock = await takeNotionPage({what: suite}); else if (store === 'notion' && process.env.JOB_PILOTTO_NOTION_LOCK === '0') console.log('  Notion page lock: off (JOB_PILOTTO_NOTION_LOCK=0)');

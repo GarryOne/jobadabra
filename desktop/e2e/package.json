@@ -37,6 +37,8 @@
     "widget-zoo": "JP_REPLAY=1 bash ../../tools/heavy-lock.sh widget-zoo node widget-zoo.mjs"
   },
   "devDependencies": {
+    "@anthropic-ai/sdk": "^0.128.0",
+    "@lydell/node-pty": "^1.2.0-beta.15",
     "@playwright/test": "^1.63.0",
     "axe-core": "^4.13.0",
     "playwright-core": "^1.55.0"

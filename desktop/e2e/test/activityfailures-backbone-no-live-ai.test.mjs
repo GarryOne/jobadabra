@@ -47,6 +47,8 @@ const semanticCases = () => {
   return [
     {...visit, user: `Their roles: ${JSON.stringify(roles)}\nTheir places: ${JSON.stringify(places)}\nThe sites:\n${sites.map((site, i) => `${i + 1}. ${site.name} (${site.url}) [${site.kind}]`).join('\n')}`, question: feedAsks.visit.question},
     {...engineCases.find(item => item.name === 'geo'), user: 'Strings:\n1. zürich', question: feedAsks.geo.question},
+    {...engineCases.find(item => item.name === 'geo'), name: 'geo alternatives',
+      user: `Strings:\n1. ${feedAsks.geoAlternatives.question.items[0].text}`, question: feedAsks.geoAlternatives.question},
     {...place, user: `Their places (JSON): ${JSON.stringify(feedAsks.place.context)}\nThe job locations:\n1. ${feedAsks.place.question.items[0].text}`, question: feedAsks.place.question},
     ...feedAsks.feedPostings.map(post => ({...engineCases.find(item => item.name === 'score'),
       name: post.title, user: `Title: ${post.title}\nCompany: ${post.company}\nLocation: ${post.location}\n\nPosting:\n${post.description}`,
@@ -93,6 +95,13 @@ for (const family of ['claude', 'openai']) test(`activityfailures CI asks resolv
     assert.equal(family === 'openai' ? reply.output[0].content[0].text : reply.content[0].text, expectedReply.content[0].text);
   });
   h.assertNoLive();
+});
+
+test('activityfailures multi-location geo is unknown under the product schema', () => {
+  const geo = engineCases.find(item => item.name === 'geo'), table = loadTable(answersTableFile);
+  const data = JSON.parse(answerFor(feedAsks.geoAlternatives.question, table).reply.content[0].text);
+  assert.deepEqual(data, {places: [{n: 1, kind: 'unknown', cc: '', lat: 0, lon: 0, r_km: 0}]});
+  assert.ok(validScore(geo.schema, data), 'unknown reply must satisfy the actual src/geo.py schema');
 });
 
 test('activityfailures resolves every captured metro item and its batch before any transport', async t => {

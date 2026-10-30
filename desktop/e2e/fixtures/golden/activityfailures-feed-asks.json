@@ -127,5 +127,18 @@
         }
       ]
     }
+  },
+  "geoAlternatives": {
+    "about": "Exact refused question from CI 40992084902 and main 40992468315 (30 Oct 2026). Request reconstructed with src/geo.py SYSTEM and SCHEMA; no model reply recorded.",
+    "question": {
+      "operation": "app.geo",
+      "items": [
+        {
+          "n": 1,
+          "text": "zurich, switzerland or amsterdam, netherlands",
+          "key": "shared/app.geo/44136fa355b3/c0c2300d71d1f496814e8b37d1e4283079d1fe90670bae9e3a15543ff3875de7"
+        }
+      ]
+    }
   }
 }

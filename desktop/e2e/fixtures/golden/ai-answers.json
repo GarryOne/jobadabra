@@ -16,6 +16,28 @@
   },
   "about": "Reviewed AI answers for backbone replay; put new notes in the PR description.",
   "kinds": {
+    "opportunity": {
+      "answer": {
+        "reply": {
+          "id": "msg_e2e",
+          "type": "message",
+          "role": "assistant",
+          "model": "e2e-canned",
+          "stop_reason": "end_turn",
+          "stop_sequence": null,
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"is_opportunity\":true,\"title\":\"DevOps Engineer\",\"company\":\"Initech\",\"client\":\"\",\"location\":\"\",\"work_mode\":\"\",\"salary\":\"\",\"contract\":\"\",\"recruiter_name\":\"\",\"recruiter_email\":\"recruiter@initech-hr.test\",\"recruiter_company\":\"\",\"in_house\":false,\"platform\":\"Email\",\"job_url\":\"\",\"summary\":\"Interview invitation for DevOps Engineer at Initech.\",\"owner_agreed\":false}"
+            }
+          ],
+          "usage": {
+            "input_tokens": 1,
+            "output_tokens": 1
+          }
+        }
+      }
+    },
     "learn_from_form": {
       "answer": {
         "refuse": "invalid-key"

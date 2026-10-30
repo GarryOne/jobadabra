@@ -33,6 +33,11 @@ class ActionHeaderTest(unittest.TestCase):
             engine.client(env={'JOB_PILOTTO_AI_ENGINE': 'api'}, action='places')
         self.assertEqual(FakeAnthropic.made, [{'default_headers': {'x-jp-action': 'places'}}])
 
+    def test_opportunity_is_already_a_named_free_ai_step(self):
+        with mock.patch.dict(sys.modules, {'anthropic': self.module}):
+            engine.client(env={'JOB_PILOTTO_AI_ENGINE': 'api'}, action='opportunity')
+        self.assertEqual(FakeAnthropic.made, [{'default_headers': {'x-jp-action': 'opportunity'}}])
+
     def test_an_unknown_or_missing_step_sends_no_header(self):
         with mock.patch.dict(sys.modules, {'anthropic': self.module}):
             engine.client(env={}, action='send-my-cv')

@@ -84,6 +84,8 @@ def extract(client, model, text, sender='', stats=None):
     response = client.messages.create(
         model=model, max_tokens=1000, system=SYSTEM, messages=[{'role': 'user', 'content': content}],
         output_config=engine.structured(SCHEMA, model, 'low'),
+        # Why (30 Oct 2026, owner; #2632): Gmail shares its client; this extraction must keep its own replay and cost identity.
+        extra_headers={'x-jp-action': 'opportunity'},
     )
     cost.add(stats, model, response.usage)
     return json.loads(next(b.text for b in response.content if b.type == 'text'))

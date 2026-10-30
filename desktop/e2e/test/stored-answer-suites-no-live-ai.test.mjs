@@ -89,3 +89,27 @@ for (const suite of ['interactions', 'failureschannels']) {
     assert.match(source, /^export const aiAnswers = 'backbone';/m);
   });
 }
+
+for (const family of ['claude', 'openai']) test(`failureschannels opportunity extraction uses its own stored kind before live ${family} AI`, async t => {
+  const h = await backboneHarness(t, 'failureschannels', family);
+  t.after(() => h.assertNoLive());
+  const entry = JSON.parse(fs.readFileSync(new URL('../fixtures/golden/ai-format-manifest.json', import.meta.url), 'utf8')).entries.find(row => row.kind === 'opportunity');
+  assert.ok(entry, 'real opportunity sender must be captured offline');
+  assert.equal(entry.action, 'opportunity');
+  assert.match(entry.request.system, /^You read a message a recruiter or hiring person/);
+  const init = request(entry.action, entry.request);
+  assert.deepEqual(questionOf(init, h.env, table), {operation: 'app.kind', id: 'opportunity'});
+  const found = storedAnswer(init, h.env);
+  assert.deepEqual(JSON.parse(found.reply.content[0].text), {
+    is_opportunity: true, title: 'DevOps Engineer', company: 'Initech', client: '', location: '', work_mode: '', salary: '', contract: '',
+    recruiter_name: '', recruiter_email: 'recruiter@initech-hr.test', recruiter_company: '', in_house: false,
+    platform: 'Email', job_url: '', summary: 'Interview invitation for DevOps Engineer at Initech.', owner_agreed: false,
+  });
+  assert.deepEqual(await (await modelFetch('http://127.0.0.1:1/v1/messages', init, h.options)).json(), found.reply);
+  const url = family === 'openai' ? `${h.openaiProxy.url}/v1/responses` : `${h.proxy.url}/v1/messages`;
+  const body = family === 'openai' ? {model: 'test', input: entry.request.messages[0].content, prompt_cache_key: 'job-pilotto-opportunity'} : entry.request;
+  const response = await h.localFetch(url, request('opportunity', body));
+  assert.equal(response.status, 200);
+  const data = await response.json();
+  assert.deepEqual(JSON.parse(family === 'openai' ? data.output[0].content[0].text : data.content[0].text), JSON.parse(found.reply.content[0].text));
+});

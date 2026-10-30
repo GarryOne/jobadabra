@@ -375,6 +375,7 @@
           <option value="best">Best match</option><option value="newest">Newest</option><option value="company">Company A–Z</option>
         </select></label>
         <button type="button" class="secondary add-button" id="add-open" title="Add a job, an application you sent elsewhere, or a message or update about a job"><i data-icon="plus"></i> Add</button>
+        <button type="button" class="secondary" id="triage-open" title="Reads each job's application form once and shows which jobs can apply automatically. Nothing is filled or sent."><i data-icon="zap"></i> See which jobs can apply automatically</button>
         <!-- The three flows' own openers: the Add dialog (pages/jobs-add.js) presses them, openLogFor too; out of sight, so only "+ Add" shows. -->
         <span hidden>
           <button type="button" class="secondary" id="import-open" title="A job that is not in Jobadabra yet. Paste its link and it is scored like one the search found"><i data-icon="plus"></i> Add job</button>
@@ -2168,6 +2169,25 @@
     <p class="dialog-lead">Jobadabra then fills in and submits applications in its hidden browser, one at a time, when these checks pass. You can turn it off at any time in Settings → Apply.</p>
     <ul class="dialog-steps" id="auto-confirm-checks"></ul>
     <div class="panel-actions"><button type="button" class="secondary" id="auto-confirm-cancel" value="cancel">Not now</button><button type="button" class="primary" id="auto-confirm-go" value="yes">Turn on Full automation</button></div>
+  </form>
+</dialog>
+<dialog id="triage-dialog" class="panel-dialog triage-dialog">
+  <form method="dialog">
+    <div class="dialog-head"><span class="dialog-icon"><i data-icon="zap"></i></span><h2>See which jobs can apply automatically</h2></div>
+    <p class="dialog-lead">Reads each application form once in the hidden browser. Nothing is filled or sent.</p>
+    <div class="triage-choice" role="group" aria-label="Which jobs">
+      <button type="button" class="secondary" id="triage-by-best" aria-pressed="true">10 best matches</button>
+      <button type="button" class="secondary" id="triage-by-fit" aria-pressed="false">Fit above</button>
+      <label class="triage-n">Count <input id="triage-n" type="number" min="1" max="50" step="1" value="10"></label>
+      <label class="triage-n">Fit <input id="triage-fit" type="number" min="0" max="100" step="1" value="70"></label>
+    </div>
+    <p class="muted small" id="triage-count"></p>
+    <div id="triage-progress" class="triage-progress" hidden>
+      <div class="triage-bar"><i id="triage-bar"></i></div>
+      <span class="muted small" id="triage-progress-text"></span>
+      <button type="button" class="secondary" id="triage-cancel">Cancel</button>
+    </div>
+    <div class="panel-actions"><button type="button" class="secondary" id="triage-close">Close</button><button type="button" class="primary" id="triage-start">Check jobs</button></div>
   </form>
 </dialog>
 <dialog id="busy-dialog" class="panel-dialog busy-dialog" aria-live="polite">

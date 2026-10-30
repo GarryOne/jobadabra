@@ -1,7 +1,7 @@
 // Apply triage's mode table: each form read gives one mode, and a missing flag never counts as the safe answer (lib/apply-triage-mode.js).
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {modeOfRead} from '../lib/apply-triage-mode.js';
+import {modeOfRead} from '../renderer/apply-triage-mode.js';
 
 const clean = {eligible: true, captcha: false, login: false, accountCreation: false, allFactsSaved: true};
 

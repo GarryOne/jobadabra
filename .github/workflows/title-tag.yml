@@ -1,0 +1,35 @@
+# Puts a PR's "[xx] " session tag back when a title edit drops it (owner, 30 Oct 2026: PR #2549 lost its "[ac]" to a hand `gh pr edit`).
+# Runs only on a title edit; checks out main's copy of the script and NEVER runs a PR's code; its only write is the PR title. Script and cases: tools/title-tag.mjs, tests/test_title_tag.py.
+name: CI · Title tag
+
+on:
+  pull_request_target:
+    types: [edited]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+# Why (30 Oct 2026): a PR's own edits are its own group and are never cancelled; a cancelled run is drawn as a failed check on that PR (#2400).
+concurrency:
+  group: title-tag-${{ github.run_id }}
+
+jobs:
+  restore:
+    if: github.event.changes.title
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.repository.default_branch }}   # main's copy of the script, whatever the PR holds
+          sparse-checkout: |
+            tools/title-tag.mjs
+      - name: Put the session tag back
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          OLD_TITLE: ${{ github.event.changes.title.from }}
+          NEW_TITLE: ${{ github.event.pull_request.title }}
+        run: node tools/title-tag.mjs

@@ -58,3 +58,28 @@ test('a queued hidden job gets the lowest urgency, so the nav badge stays neutra
   assert.equal(sessionUrgency({...queued, background: {state: 'preflight'}}), sessionUrgency({...queued, background: {state: 'filling'}}), 'only queued is demoted');
   assert.equal(applyingBadge([queued, filling], item => sessionUrgency(item)).count, 2);
 });
+
+// Why (30 Oct 2026, owner's demo: cards stuck with no reason): with the app's connection for the extension closed, a queued hidden-browser job said "Waiting for its turn" behind a job
+// that did not exist. The e2e step "a silent Chrome in Background automation" plays it; this keeps the one status function and the card honest for every state.
+const LINK_OFF = {port: 47111, code: 'EADDRINUSE'};
+
+test('with the connection off a queued job says so in its pill and card; no other state changes', () => {
+  assert.deepEqual(backgroundStatus({background: {state: 'queued'}}, {linkOff: true}), ['Connection off', 'warn']);
+  const card = liveCard({state: 'queued'}, null, {linkOff: LINK_OFF});
+  assert.deepEqual([card.kind, card.live, card.title, card.pill, card.tone], ['waiting', false, 'Jobadabra can\'t hear its browser', ['Connection off', 'warn'], 'warn']);
+  assert.match(card.note, /port 47111/);
+  assert.doesNotMatch(card.note, /one application at a time/, 'the queue is not the reason');
+  const states = ['preflight', 'filling', 'ready_for_review', 'needs_user_handoff', 'manual_submit_required', 'waiting_to_submit', 'submitting', 'receipt_confirmed', ''];
+  for (const state of states) {
+    assert.deepEqual(backgroundStatus({background: {state}}, {linkOff: true}), backgroundStatus({background: {state}}), `${state}: a running job keeps its own words`);
+    assert.deepEqual(liveCard({state}, null, {linkOff: LINK_OFF}), liveCard({state}, null), `${state}: nor its card`);
+  }
+});
+
+test('every place that words a hidden-browser job tells backgroundStatus whether the connection is off', async () => {
+  const fs = await import('node:fs'), path = await import('node:path');
+  const renderer = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..', 'renderer');
+  const files = ['pages/sessions.js', 'pages/session-log.js'];   // the list's and the page header's pill; session-state.js dockCounts only counts, by the state's label
+  for (const file of files) assert.match(fs.readFileSync(path.join(renderer, file), 'utf8'), /backgroundStatus\(item, \{linkOff:/, `${file} words the job with the connection`);
+  assert.match(fs.readFileSync(path.join(renderer, 'pages/session-live.js'), 'utf8'), /liveCard\([^)]*linkOff:/, 'the live card is told too');
+});

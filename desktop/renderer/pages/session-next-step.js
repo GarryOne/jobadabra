@@ -7,7 +7,7 @@ import {ai} from '../ai-name.js';
 import {el, pill} from '../components.js';
 import {icon} from '../icons.js';
 import {PROBLEM, isDevTalk, latestStep, readSessionMessage, sortChecks, splitLabel} from '../session-message.js';
-import {accountProgress, askOutdated, pageLine, asksYou, leftForYou, firstLine, isLive, isSubmitted, panelAnswered, sessionReview, sessionStage, accountRecordLine} from '../session-state.js';
+import {accountProgress, askOutdated, linkOffLine, pageLine, asksYou, leftForYou, firstLine, isLive, isSubmitted, panelAnswered, sessionReview, sessionStage, accountRecordLine} from '../session-state.js';
 import {resumeOffered} from '../claude-help.js';
 import {offerParts} from '../claude-offer.js';
 import {$, osText, show} from './core.js';
@@ -100,9 +100,7 @@ function renderSilent(item) {
   const off = shared.formsOpen?.linkOff;
   if (off) {   // Why (29 Oct 2026, owner): the app's own socket is not open, so Chrome can't report; "Open Chrome" would fix nothing (renderer/session-state.js chromeSilent)
     $('ss-next-title').textContent = 'Jobadabra can\'t hear Chrome';
-    // Why (#2508, Gitar): another program is only the cause for EADDRINUSE, which the app retries; any other code (EACCES) is not retried, so no "updates by itself".
-    $('ss-question').replaceChildren(el('p', 'rich-p', off.code === 'EADDRINUSE' ? `Another program is using the connection Chrome\'s Jobadabra extension reports to (port ${off.port}). Close any other copy of Jobadabra, or restart your computer. This card updates by itself.`
-      : `Jobadabra could not open the connection Chrome\'s Jobadabra extension reports to (port ${off.port}, ${off.code}). Restart Jobadabra; if it stays, your security software may be blocking it.`));
+    $('ss-question').replaceChildren(el('p', 'rich-p', linkOffLine(off)));
     $('ss-actions').replaceChildren();
     return;
   }

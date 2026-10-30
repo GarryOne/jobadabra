@@ -16,6 +16,7 @@ import {ensureSetUp} from '../lib/seed.mjs';
 import {appLogLines, appLogText} from '../lib/app-log.mjs';
 import {livePosting, realKind, runLive} from '../lib/apply-live.mjs';
 import {runCvSteps} from '../lib/apply-cv-steps.mjs';
+import {runSilentChromeSteps} from '../lib/apply-silent-steps.mjs';
 import {proveBackground} from '../lib/background-proof.mjs';
 import {proveAutomatic} from '../lib/background-auto-proof.mjs';
 import {runJourneys} from '../lib/apply-journeys.mjs';
@@ -37,7 +38,8 @@ export const stepSharded = true;   // its slices are steps, not recorded cases (
 // cannot operate + Ready to submit). A new forms or CV step is weighed here (test/step-slices.test.mjs).
 export const stepSeconds = {'real forms the extension once failed on': 76, 'Tailor CVs for top matches': 51, 'a multi-step form': 37, 'a form with a control the extension cannot operate': 35,
   'Tailor CV on a job': 34, 'a Lever-like form': 33, 'Open in Chrome on a form the night filled': 29, 'Tailor on the session page of a form': 23, 'the person submits a form': 21,
-  'a Greenhouse-like form': 16, 'Apply on a saved job without a kit': 15, 'a Workday-shaped form': 11, 'The hidden browser fills a form': 30, 'Full automation presses Submit once on its own': 60};
+  'a Greenhouse-like form': 16, 'Apply on a saved job without a kit': 15, 'a Workday-shaped form': 11, 'The hidden browser fills a form': 30, 'Full automation presses Submit once on its own': 60,
+  'a silent Chrome in Standard automation': 45, 'a silent Chrome in Background automation': 20, 'a silent Chrome in Full automation': 20};
 // Why (29 Oct 2026, ap): hang caps in seconds, 3 x calm p95 from tools/e2e-step-timings.mjs, raised to the step's own inner caps + 30 s where a step waits in sequence; they catch a hang, never a speed.
 // A step whose inner caps add up past the runner's 8-minute default (Tailor CVs for top matches, Full automation) has no entry: the default stays.
 export const hangCaps = {'the app has an applicant': 300, 'the app is seeded': 90, 'the app is set up on this Mac\'s store': 90,
@@ -47,6 +49,8 @@ export const hangCaps = {'the app has an applicant': 300, 'the app is seeded': 9
   'Tailor on the session page': 445, 'the person submits a form': 270, 'through all of it': 50,
   'the panel does not say "Ready to submit"': 75, 'nothing was queued': 5,
   'The hidden browser fills a form': 385,
+  // no main samples yet; regenerate after 5 main runs: the 30 s floor x 3 (tools/e2e-step-timings.mjs)
+  'a silent Chrome in Standard automation': 90, 'a silent Chrome in Background automation': 90, 'a silent Chrome in Full automation': 90,
   'the form\'s panel offers a tailored CV': 3 * stepSeconds['Tailor on the session page of a form']};
 // applyflows' journeys, weighed the same way (26 Oct 2026, beta 40275152602 + main 40274183649, the slowest attempt of each): turn-taking put 392 s of them in one slice and 299 s in the other.
 export const flowSeconds = {'the account and the application on one page': 97, 'a menu whose choices are not the answer': 79, '"Needs your attention" from the extension': 78, 'the form tab is closed': 76,
@@ -438,6 +442,7 @@ export async function runApply(ctx, parts) {
   }, {needs: ctx.needs});
 
   await runCvSteps(ctx, {apply, cv, fail, page, panelOf, proxy, until});   // lib/apply-cv-steps.mjs
+  await runSilentChromeSteps(ctx);   // lib/apply-silent-steps.mjs: the app cannot hear Chrome, one step per apply mode
 
   await ctx.run('through all of it: Submit was never clicked or submitted, and no host but the fixture job sites was contacted', async () => {
     fail(submitProblems(forms.fired, ''));

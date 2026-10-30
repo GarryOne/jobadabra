@@ -6,13 +6,14 @@ const WORDS = {
 };
 
 /**
- * `ready` / `fields` are the card's page facts (all required fields filled; filled of total): the same table, only more exact. -> [label, tone] for a session running in Jobadabra's browser while it is queued, filling, waiting on the person or submitting; null for a Chrome session and for a finished one (the usual words).
+ * `ready` / `fields` are the card's page facts (all required fields filled; filled of total): the same table, only more exact. `linkOff`: the app's own connection for the extension is closed (`formsOpen.linkOff`), the reason a queued job waits. -> [label, tone] for a session running in Jobadabra's browser while it is queued, filling, waiting on the person or submitting; null for a Chrome session and for a finished one (the usual words).
  * Why (2026-10-28, owner screenshots: Air France queued behind GLOCK said "Filling" and "Tab not found", GLOCK filling said "Can't reach form"): the Chrome-tab words (tab lost, form closed) were
  * applied to sessions that have no Chrome tab; the one background state owns these words.
  */
-export function backgroundStatus(item, {ready = false, fields = null} = {}) {
+export function backgroundStatus(item, {ready = false, fields = null, linkOff = false} = {}) {
   const state = item?.background?.state, words = WORDS[state];
   if (!words) return null;
+  if (state === 'queued' && linkOff) return ['Connection off', 'warn'];   // the hidden browser's extension is told to start through the app's own socket: while it is closed the job cannot start, whatever turn it is
   if (state === 'ready_for_review' && ready) return ['Ready to submit', 'good'];   // the card knows the page has no required field left; the list does not read the page
   if (fields?.of && (state === 'filling' || state === 'preflight')) return [`Filling · ${fields.done} of ${fields.of} fields`, 'info'];
   return [...words];

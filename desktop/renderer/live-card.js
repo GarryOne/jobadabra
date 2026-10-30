@@ -1,6 +1,7 @@
 // The live card's pure parts (renderer/pages/session-live.js draws them): what a hidden-browser session's Applying card says in each of its four
 // states, and how a press or a key on the page's picture becomes the page's own. No DOM here. Guard: test/session-live.test.js.
 import {backgroundStatus} from './background-status.js';
+import {linkOffLine} from './session-state.js';
 const FILLING = new Set(['preflight', 'filling']);
 const HANDOFF = new Set(['needs_user_handoff', 'manual_submit_required']);
 const clock = ms => (ms ? new Date(ms).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'}) : '');
@@ -15,12 +16,17 @@ export function countdownLabel(dueAt, now) {
 
 /**
  * Pure: what the card says for a session's background state and the page's latest facts (null until read).
- * -> {kind: waiting|filling|countdown|check|review|ready, live (the page exists: draw its picture), title, meta, pill: [text, tone], tone, frame: ''|'warn'|'good', note, input, filling, submit: {on, hint}|null, marks}
+ * `linkOff`: `formsOpen.linkOff` ({port, code}) when the app's own connection for the extension is closed. -> {kind: waiting|filling|countdown|check|review|ready, live (the page exists: draw its picture), title, meta, pill: [text, tone], tone, frame: ''|'warn'|'good', note, input, filling, submit: {on, hint}|null, marks}
  * Invariant: Submit is on only in Ready to submit: the form judge's ready stands AND the page has no required field empty (main checks both again at the press).
  */
-export function liveCard(background = {}, facts = null, {note = '', at = clock, now = Date.now} = {}) {
+export function liveCard(background = {}, facts = null, {note = '', at = clock, now = Date.now, linkOff = null} = {}) {
   const left = facts ? facts.left.length : null, filled = at(background.readyAt);
   // Why (2026-10-28, owner screenshot: Air France, queued behind GLOCK, drew "Filling" and a broken picture): one job fills at a time; a queued one has no page yet, so no picture is asked for.
+  // Why (30 Oct 2026, owner's demo: cards stuck with no reason): with the app's connection closed (`formsOpen.linkOff`) the hidden browser's extension is never told to start, so a queued job waits on the connection, not on the job before it.
+  if (background.state === 'queued' && linkOff) {
+    return {kind: 'waiting', live: false, title: 'Jobadabra can\'t hear its browser', meta: '· in Jobadabra\'s browser, hidden', pill: backgroundStatus({background}, {linkOff}), tone: 'warn', frame: '',
+      note: linkOffLine(linkOff), input: false, filling: '', submit: null, marks: false};
+  }
   if (background.state === 'queued') {
     return {kind: 'waiting', live: false, title: 'Waiting for its turn', meta: '· in Jobadabra\'s browser, hidden', pill: backgroundStatus({background}), tone: 'neutral', frame: '',
       note: 'Jobadabra fills one application at a time. This one starts when the one before it is done.', input: false, filling: '', submit: null, marks: false};

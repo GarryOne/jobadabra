@@ -82,3 +82,14 @@ test('the judges on codex: an answer returns in Messages shape; a broker refusal
     assert.match(capMessage(capped.neurons, ciEnv, capped.why), /Codex broker said no \(broker: budget:week 85%/);
   } finally { globalThis.fetch = realFetch; }
 });
+
+
+test('web search reaches the broker as search true and ordinary calls omit the flag', async () => {
+  const seen = [];
+  const fetchImpl = fake((url, init) => { seen.push(JSON.parse(init.body)); return new Response(JSON.stringify({reply: '{"boards":[]}', tokens: {input: 1, output: 1}, tier: 'small', model: 'gpt-6-luna'})); });
+  const body = {model: 'claude-haiku-5-5', messages: [{role: 'user', content: 'Find boards.'}]};
+  await askBroker({...body, tools: [{type: 'web_search_20250305', name: 'web_search', max_uses: 3}]}, {env, fetchImpl});
+  await askBroker(body, {env, fetchImpl});
+  assert.equal(seen[0].search, true);
+  assert.equal(Object.hasOwn(seen[1], 'search'), false);
+});

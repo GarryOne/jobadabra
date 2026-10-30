@@ -201,6 +201,13 @@ class TheJudgeIsBlindAndOnCodex(unittest.TestCase):
 
 
 class TheWorkflowRunsOnCodex(unittest.TestCase):
+    def test_all_six_personas_run_with_at_most_two_jobs_at_once(self):
+        persona = WORKFLOW.split('\n  persona:\n', 1)[1].split('\n  compare:\n', 1)[0]
+        strategy = persona.split('    strategy:\n', 1)[1].split('    steps:\n', 1)[0]
+        self.assertRegex(strategy, r'(?m)^      max-parallel: 2$')
+        self.assertIn('persona: [1, 2, 3, 4, 5, 6]', strategy)
+        self.assertIn('needs: persona', WORKFLOW.split('\n  compare:\n', 1)[1])
+
     def test_every_ai_step_uses_the_oidc_broker_without_a_secret(self):
         self.assertRegex(WORKFLOW, r'(?m)^  JOB_PILOTTO_MODEL_OVERRIDE: claude-haiku-5-5\b')
         self.assertIn('id-token: write', WORKFLOW)
@@ -251,7 +258,7 @@ class TheWorkflowRunsOnCodex(unittest.TestCase):
             (out / 'judged.json').write_text(json.dumps({'usd': 0.009, 'rows': [{'role': 'yes', 'place': 'yes'}]}))
             self.assertEqual(gate.result(1, out)['usd'], 0.04)
 
-    def test_all_six_personas_in_parallel_and_the_same_paths_on_prs_and_main(self):
+    def test_all_six_personas_and_the_same_paths_on_prs_and_main(self):
         self.assertIn('persona: [1, 2, 3, 4, 5, 6]', WORKFLOW)
         self.assertEqual(len(gate.PERSONAS), 6)
         on = WORKFLOW.split('\njobs:')[0]

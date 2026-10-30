@@ -108,8 +108,9 @@ jobs:
       id-token: write   # Existing broker authentication: GitHub OIDC, no stored secret.
     strategy:
       fail-fast: false
+      max-parallel: 2
       matrix:
-        persona: [1, 2, 3, 4, 5, 6]   # Why (owner, 27 Oct 2026, "All 6 in parallel"; 30 Oct: Codex): a PR sees every case; 6 presses and 6 judges at once on the plan
+        persona: [1, 2, 3, 4, 5, 6]   # Why (30 Oct 2026, owner): keep all six cases, two at a time; six at once left 17 calls outstanding on the four-slot broker
     steps:
       - name: This run can use the Codex broker
         id: token

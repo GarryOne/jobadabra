@@ -33,7 +33,7 @@ test('a PDF document block is sent as the text pdf.js reads from it; other parts
   assert.equal(out.messages[0].content[1].text, 'Transcribe this CV.');
 });
 
-test('tools are refused with a 400 and the broker saying no is a 503 with its reason, never another provider', async () => {
+test('unsupported tools are refused with a 400 and the broker saying no is a 503 with its reason, never another provider', async () => {
   const tools = await answerViaBroker(request({tools: [{name: 'x'}]}), {ask: answered()});
   assert.equal(tools.status, 400);
   const no = await answerViaBroker(request(), {env: {}, ask: async () => ({ok: false, status: 'capped', detail: 'broker: budget:week 85%'})});
@@ -152,10 +152,26 @@ test('persona timing logs total, broker execution, residual and concurrent calls
   assert.ok(lines.every(line => !line.includes('private-prompt')));
 });
 
-test('persona timing records rejected web tools and missing broker measurements honestly', async () => {
+test('persona timing records rejected unsupported tools and missing broker measurements honestly', async () => {
   const {timedRelay} = await import('../../../tools/persona-search/codex.mjs');
   const lines = [];
   const relay = timedRelay({now: () => 10, log: line => lines.push(line), ask: async () => { throw new Error('must not send a tool request'); }});
-  assert.equal((await relay(request({tools: [{type: 'web_search_20250305', name: 'web_search'}]}), 'scout')).status, 400);
+  assert.equal((await relay(request({tools: [{type: 'function', name: 'unsupported'}]}), 'scout')).status, 400);
   assert.match(lines[0], /broker na waited na .*status 400 sent no tools 1$/);
+});
+
+
+test('web-search-only calls reach the broker, while mixed tools and broker refusals never fall back', async () => {
+  const body = request({tools: [{type: 'web_search_20250305', name: 'web_search', max_uses: 3}]});
+  let asks = 0;
+  const ask = async wire => { asks++; assert.deepEqual(wire.tools, body.tools); return answered('{"boards":[]}')(); };
+  const answer = await answerViaBroker(body, {ask});
+  assert.equal(answer.status, 200);
+  assert.equal(JSON.parse(answer.body).content[0].text, '{"boards":[]}');
+  assert.equal(asks, 1);
+  assert.equal((await answerViaBroker({...body, tools: [...body.tools, {type: 'function', name: 'shell'}]}, {ask})).status, 400);
+  assert.equal(asks, 1);
+  const refused = await answerViaBroker(body, {ask: async () => ({ok: false, status: 'unreachable', detail: 'broker unavailable'})});
+  assert.equal(refused.status, 503);
+  assert.match(JSON.parse(refused.body).error.message, /broker unavailable/);
 });

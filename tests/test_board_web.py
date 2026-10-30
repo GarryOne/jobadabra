@@ -1,6 +1,7 @@
 """Specialist and local job boards found with a web search when a full read had no trade or local board that gave a job (src/sources/board_web.py;
 owner's yes 19 Oct 2026, step 3 of the local-sources sketch). Fake AI client only."""
 import json
+import subprocess
 import tempfile
 import unittest
 from datetime import datetime, timezone
@@ -69,6 +70,33 @@ class SearchTests(Base):
         self.assertIn('Board 1', client.asked[0]['messages'][0]['content'], 'the known boards are named, so it looks past them')
         self.assertEqual([b['host'] for b in board_ideas.load()['ideas']['k1']], ['b1.example', 'buehnenjobs.example'])
         # its cadence (next run while thin, weekly after TRIES, monthly once working): tests/test_board_web_thin.py
+
+    def test_codex_search_reply_is_parsed_by_the_engine_and_joins_the_boards(self):
+        script = """
+          import fs from 'node:fs';
+          import {answerViaBroker} from './desktop/e2e/lib/broker-relay.mjs';
+          import {toBrokerCall} from './desktop/e2e/lib/broker-client.mjs';
+          const data = JSON.parse(fs.readFileSync(0, 'utf8'));
+          const reply = await answerViaBroker(data.request, {ask: async body => {
+            if (toBrokerCall(body).search !== true) throw new Error('search flag did not reach the broker contract');
+            return {ok: true, model: 'gpt-6-luna', message: {content: [{type: 'text', text: JSON.stringify(data.answer)}], stop_reason: 'end_turn', usage: {input_tokens: 1, output_tokens: 1}}};
+          }});
+          process.stdout.write(JSON.stringify({status: reply.status, message: JSON.parse(reply.body)}));
+        """
+        class RelayClient:
+            def __init__(self):
+                self.messages = self
+            def create(client, **request):
+                result = subprocess.run(['node', '--input-type=module', '-e', script], cwd=Path(__file__).resolve().parents[1],
+                                        input=json.dumps({'request': request, 'answer': {'boards': [STAGE]}}), capture_output=True, text=True, check=True)
+                reply = json.loads(result.stdout)
+                self.assertEqual(reply['status'], 200)
+                message = reply['message']
+                return SimpleNamespace(content=[SimpleNamespace(**block) for block in message['content']],
+                                       usage=SimpleNamespace(**message['usage']), stop_reason=message['stop_reason'])
+        found = board_web.search(SEARCH, [board(1)], client=RelayClient(), now=NOW, fetch=lambda url: '')
+        self.assertEqual([b['host'] for b in found], ['buehnenjobs.example'])
+        self.assertEqual(board_ideas.load()['ideas']['k1'][-1]['origin'], 'web')
 
     def test_a_board_found_as_a_plain_page_gets_its_home_page_s_search_link(self):
         crew = {'name': 'Crew Board', 'search_url': 'https://crew.example/', 'countries': ['Germany'], 'kinds': ['creative_media'],

@@ -57,7 +57,9 @@
   "next_control": "Weiter",
   "submit_control": "",
   "bot_check": false,
-  "confidence": 0.9
+  "login_wall": false,
+  "account_to_create": false,
+  "confidence": 0.95
  },
  "answer_path": "app"
 }

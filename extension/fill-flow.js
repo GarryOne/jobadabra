@@ -10,7 +10,7 @@
 //  4. After a fill the AI is asked what the page needs next; a middle step's Next is pressed under the Submit floors, Submit never (worker/test/form-ready.test.js).
 import {preparePage, readPage, askPage, correctPage, describePage} from './fill-flow-read.js';
 import {pressPosting, correctPosting, climbPosting, lookAtPosting, leavePage, fillPage, afterFill} from './fill-flow-steps.js';
-import {backgroundMayFill, backgroundPage} from './background-apply.js';
+import {backgroundMayFill, backgroundPage, backgroundRead} from './background-apply.js';
 import {PAGE_FILES, apiFor, clickCombos, settings} from './flow.js';
 import {decide, span} from './log.js';
 import {retireFill} from './one-fill.js';
@@ -284,6 +284,7 @@ export async function consider(tab, jobUrl) {
   await correctPosting(step);
   if (!await climbPosting(step)) return;
   if (!await lookAtPosting(step)) return;
+  if (await span(`consider ${tab.id}/${gen} backgroundRead`, () => backgroundRead(tab, step))) return;   // a triage read looks at the form and stops here: it never fills (extension/background-apply.js)
   if (await span(`consider ${tab.id}/${gen} backgroundPage`, () => backgroundPage(tab.id, step.role, step.kind?.botCheck === true))) return;
   if (step.role !== 'form') { await leavePage(step); return; }
   if (!await fillPage(step)) return;

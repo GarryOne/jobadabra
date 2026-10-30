@@ -31,6 +31,7 @@ export const sameOnEveryOs = PLANNER.sameOnEveryOs;
 export const judges = PLANNER.judges;
 export const watches = PLANNER.watches;
 export const env = PLANNER.env;
+export const aiAnswers = 'backbone';   // answers its AI from the stored table in every workflow (plan-run.mjs puts it in the matrix)
 /** Run the golden journey and report every independent final check. */
 export async function run(ctx) {
   if (answersMode(process.env) === 'off') throw new Error('quality is a backbone suite: set E2E_AI_ANSWERS=backbone (or record for a record run)');

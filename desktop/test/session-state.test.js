@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import fs from 'node:fs';
-import {SESSION_STATE, dockCounts, dockOrder, firstLine, isLive, isSubmitted, panelAnswered, sessionDuration, sessionReview, sessionState} from '../renderer/session-state.js';
+import {CHECK_MS, SESSION_STATE, WAIT_MS, dockCounts, dockOrder, firstLine, isLive, isSubmitted, panelAnswered, sessionDuration, sessionReview, sessionState, tabPhase, tabPhases} from '../renderer/session-state.js';
 
 test('a filled form waiting for you is "ready for review"; a message ending on your question is not', () => {
   const report = 'The N26 form is filled and open in Chrome. Nothing was submitted.\n\n**Left for you:**\n' +
@@ -392,4 +392,23 @@ test('the header Stop rule: shown while acting or until a pin ends; a later pin 
   assert.equal(stopShown(false, 51000, 30100), true, 'revealed at t=0 and again at t=20 s: the first timer fires at 30.1 s and the pin still holds');
   assert.equal(stopShown(false, 51000, 51000), false, 'the pin has ended');
   assert.equal(stopShown(false, undefined, 1000), false);
+});
+
+// Beta 41078746088 (30 Oct 2026): the cards were redrawn once at CHECK_MS, so "Waiting for Chrome…" stayed up past WAIT_MS until something else redrew them.
+test('a card\'s time-based phase moves on with the clock alone, and the window\'s 2 s tick redraws the cards when it does', () => {
+  const item = {id: 's1', kind: 'form', startedAt: '2026-10-30T10:00:00Z'}, now = Date.parse('2026-10-30T12:00:00Z');
+  const silent = {known: false, ids: []}, heard = {known: true, ids: [], unsure: ['s1']};
+  assert.equal(tabPhase(item, silent, 10000, now), 'checking');
+  assert.equal(tabPhase(item, silent, CHECK_MS + 5000, now), 'waiting');
+  assert.equal(tabPhase(item, silent, WAIT_MS + 5000, now), 'silent');
+  assert.equal(tabPhase(item, {...silent, linkOff: {port: 49299, code: 'EADDRINUSE'}}, 10000, now), 'silent');
+  assert.equal(tabPhase(item, heard, 10000, now), 'checking');
+  assert.equal(tabPhase(item, heard, CHECK_MS + 5000, now), 'lost');
+  assert.equal(tabPhase(item, {known: true, ids: ['s1']}, WAIT_MS + 5000, now), '');
+  // Only the clock moved between the two reads, and the string differs: that difference is what makes the tick redraw.
+  assert.notEqual(tabPhases([item], silent, CHECK_MS + 5000, now), tabPhases([item], silent, WAIT_MS + 5000, now));
+  assert.equal(tabPhases([item], silent, WAIT_MS + 5000, now), tabPhases([item], silent, WAIT_MS + 9000, now));
+  const source = fs.readFileSync(new URL('../renderer/pages/activity.js', import.meta.url), 'utf8');
+  assert.match(source, /tabPhases\(sessionList, shared\.formsOpen, performance\.now\(\)\)/, 'the 2 s tick reads every card\'s phase on the clock the cards use');
+  assert.doesNotMatch(source, /CHECK_MS \+ 100/, 'no one-shot timer redraws the cards once');
 });

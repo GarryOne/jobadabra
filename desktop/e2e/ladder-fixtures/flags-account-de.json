@@ -1,0 +1,75 @@
+{
+ "schemaVersion": 1,
+ "id": "flags-account-de",
+ "question": "form_flags",
+ "source": "invented",
+ "lang": "de",
+ "why": "Konto erstellen vor der Bewerbung",
+ "capture": {
+  "page": "ladder-fixtures/pages/flags-account-de.html"
+ },
+ "url": "https://karriere.example.de/registrieren",
+ "expect": {
+  "outcome": "account"
+ },
+ "sketch": {
+  "url": "https://karriere.example.de/registrieren",
+  "title": "Konto erstellen",
+  "headings": [
+   "Neues Bewerberkonto anlegen"
+  ],
+  "controls": [
+   {
+    "type": "text",
+    "label": "Vorname",
+    "required": true,
+    "state": "empty"
+   },
+   {
+    "type": "text",
+    "label": "Nachname",
+    "required": true,
+    "state": "empty"
+   },
+   {
+    "type": "email",
+    "label": "E-Mail",
+    "required": true,
+    "state": "empty"
+   },
+   {
+    "type": "password",
+    "label": "Passwort wählen",
+    "required": true,
+    "state": "empty"
+   },
+   {
+    "type": "password",
+    "label": "Passwort wiederholen",
+    "required": true,
+    "state": "empty"
+   }
+  ],
+  "buttons": [
+   "Konto erstellen"
+  ],
+  "texts": [
+   "Legen Sie ein Konto an, um fortzufahren."
+  ],
+  "frames": []
+ },
+ "answer": {
+  "answer": "needs_person",
+  "blocked_kind": "",
+  "needs": "Vorname",
+  "needs_kind": "field",
+  "step": "unsure",
+  "next_control": "",
+  "submit_control": "",
+  "bot_check": false,
+  "login_wall": false,
+  "account_to_create": true,
+  "confidence": 0.8
+ },
+ "answer_path": "app"
+}

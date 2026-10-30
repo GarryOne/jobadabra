@@ -9,8 +9,8 @@ import {loadFocus} from './focus.js';
 import {openView} from './nav.js';
 import {showFullReport} from './full-report.js';
 import {renderSessionPage} from './session-log.js';
-import {renderDock} from './sessions.js';
-import {CHECK_MS} from '../session-state.js';
+import {renderDock, sessionList} from './sessions.js';
+import {tabPhases} from '../session-state.js';
 import {sayRefused, toastMessage} from './startup.js';
 import {stopRunning} from '../stop-task.js';
 import {showSearchStatus} from './activity-basics.js';
@@ -21,6 +21,7 @@ import {lastActivity, PANEL_HEIGHT, setPanelHeight, foldedWarnings, detailRunId,
 import {showJumpToLatest, refreshActivity} from './activity-run-card.js';
 import {openActivity, announceRuns, refreshCv, QUESTIONS, currentAnswers} from './activity-panel.js';
 let wasRunning = false;
+let lastPhases = '';   // every session card's time-based phase as last drawn (session-state.js tabPhases)
 let answersTimer;
 // Run at start-up, in the order the window has always done it (app.js calls each page's init in turn).
 // Every upcoming check shows, unless they don't fit the strip: then only the soonest and "+N" (style.css .is-tight).
@@ -154,9 +155,8 @@ export async function init() {
   document.addEventListener('keydown', event => { if (event.key === 'Escape' && !$('activity-panel').hidden) openActivity(false); });
   window.addEventListener('focus-updated', () => { if (!$('activity-panel').hidden && lastActivity) renderActivity(lastActivity); });
   window.pilot.runs().then(runsNow => { renderActivity(runsNow); renderFindCard(runsNow); }).catch(() => {});  // at once, not after the first 2 s tick: the Find jobs card too (it came 2-3 s late, 26 Oct 2026)
-  // Which session tabs are open, at once too: until it is known the session cards say they are checking (CHECK_MS at most).
+  // Which session tabs are open, at once too: until it is known the session cards say they are checking (the 2 s tick below redraws them as their phase moves on).
   window.pilot.formsOpen().then(forms => { shared.formsOpen = forms; renderSessionPage(); renderDock(); }).catch(() => {});
-  setTimeout(() => { renderSessionPage(); renderDock(); }, CHECK_MS + 100);
   setInterval(async () => {
     if ($('app').hidden) return;
     const runsNow = await window.pilot.runs();
@@ -167,6 +167,9 @@ export async function init() {
     if (tabs.size !== shared.openedInChrome.size || [...tabs].some(url => !shared.openedInChrome.has(url))) { shared.openedInChrome = tabs; renderJobs(); }
     const forms = await window.pilot.formsOpen().catch(() => null);
     if (forms && JSON.stringify(forms) !== JSON.stringify(shared.formsOpen)) { shared.formsOpen = forms; renderSessionPage(); }
+    // Why (30 Oct 2026, beta 41078746088): a card's checking, waiting and silent phases change with the clock alone; one timer at CHECK_MS redrew them once and left "Waiting for Chrome…" up past WAIT_MS.
+    const phases = tabPhases(sessionList, shared.formsOpen, performance.now());
+    if (phases !== lastPhases) { lastPhases = phases; renderSessionPage(); renderDock(); }
     if (wasRunning && !running) { loadJobs(); loadFocus(); }  // a check just finished: its jobs, and what it asks of you
     wasRunning = !!running;
     announceRuns(runsNow);

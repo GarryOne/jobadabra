@@ -1,5 +1,5 @@
 """The search PR check (search-personas.yml, tools/persona-search/gate.py): red when a press runs past 3 minutes; right jobs are shown, and red only from
-10 measured main runs, below main's average minus twice its spread (owner, 27 Oct 2026, "Time only, until 10 runs"), on recorded numbers; every AI step on Haiku 5.5 on PR_PROOF_ANTHROPIC_KEY with a $ cap (owner, 27 Oct 2026, "Haiku on an API key")."""
+10 measured main runs, below main's average minus twice its spread (owner, 27 Oct 2026, "Time only, until 10 runs"), on recorded numbers; every AI step on the Codex subscription through the OIDC broker (owner, 28 Oct 2026)."""
 import json
 import re
 import sys
@@ -162,36 +162,27 @@ class TheFilesRoundTrip(unittest.TestCase):
             self.assertIn('p4 Warehouse Operator, Zurich', table)
 
 
-class TheJudgeIsBlindAndOnTheProofKey(unittest.TestCase):
-    def test_only_the_proof_key_reaches_the_judge(self):
-        env = gate_judge.judge_env({'ANTHROPIC_API_KEY': 'other', 'ANTHROPIC_BASE_URL': 'y', 'ANTHROPIC_AUTH_TOKEN': 'a', 'OPENAI_API_KEY': 'z', 'CLAUDE_CODE_OAUTH_TOKEN': 't',
-                                    'LAB_HEAL_ANTHROPIC_KEY': 'h', 'GITHUB_TOKEN': 'g', 'PR_PROOF_ANTHROPIC_KEY': 'proof', 'PATH': '/bin'})
-        self.assertEqual(env['ANTHROPIC_API_KEY'], 'proof', 'the proof key is the one key, handed over as the CLI reads it')
-        self.assertEqual(sorted(env), ['ANTHROPIC_API_KEY', 'MAX_THINKING_TOKENS', 'PATH'])
-        self.assertNotIn('other', env.values())
+class TheJudgeIsBlindAndOnCodex(unittest.TestCase):
+    def test_the_judge_requires_the_codex_relay_and_never_uses_an_api_key(self):
+        with self.assertRaisesRegex(ValueError, 'Codex relay'):
+            gate_judge.ask('Profile', [], env={'ANTHROPIC_API_KEY': 'other'})
 
-    def test_without_the_proof_key_no_key_reaches_the_judge(self):
-        env = gate_judge.judge_env({'ANTHROPIC_API_KEY': 'other', 'CLAUDE_CODE_OAUTH_TOKEN': 't', 'PATH': '/bin'})
-        self.assertNotIn('ANTHROPIC_API_KEY', env)
-        self.assertNotIn('CLAUDE_CODE_OAUTH_TOKEN', env)
-
-    def test_the_judge_asks_haiku_and_stops_past_its_cost_cap(self):
-        self.assertEqual(gate_judge.MODEL, 'claude-haiku-5-5')
-        gate_judge.SPENT[:] = [gate_judge.JUDGE_CAP_USD + 0.01]
-        try:
-            with self.assertRaisesRegex(ValueError, 'judge over its cost cap'):
-                gate_judge.judge(4, [{'title': 'Lagerist', 'company': 'A', 'location': 'Zurich'}], asker=lambda profile, jobs: {})
-        finally:
-            gate_judge.SPENT[:] = []
-
-    def test_each_calls_cost_is_added_up(self):
-        class Out:
-            stdout = json.dumps({'result': '{"jobs":[{"n":1,"role":"yes","place":"yes"}]}', 'total_cost_usd': 0.0123})
-        gate_judge.SPENT[:] = []
-        got = gate_judge.ask('Profile', [{'n': 1, 'title': 't', 'company': 'c', 'location': 'l'}], run=lambda *a, **k: Out(), env={'PATH': '/bin'})
+    def test_the_judge_sends_blind_jobs_to_the_local_relay(self):
+        from unittest.mock import MagicMock
+        seen = []
+        def open_url(request, **kwargs):
+            seen.append(request)
+            response = MagicMock()
+            response.__enter__.return_value.read.return_value = json.dumps({
+                'content': [{'type': 'text', 'text': '{"jobs":[{"n":1,"role":"yes","place":"yes"}]}'}],
+                'usage': {'input_tokens': 10, 'output_tokens': 5}}).encode()
+            return response
+        got = gate_judge.ask('Profile', [{'n': 1, 'title': 't', 'company': 'c', 'location': 'l'}], open_url=open_url,
+                             env={'JOB_PILOTTO_PERSONA_CODEX': '1', 'ANTHROPIC_BASE_URL': 'http://127.0.0.1:1234', 'ANTHROPIC_API_KEY': 'other'})
         self.assertEqual(got[1]['role'], 'yes')
-        self.assertEqual(gate_judge.SPENT, [0.0123])
-        gate_judge.SPENT[:] = []
+        self.assertEqual(seen[0].full_url, 'http://127.0.0.1:1234/v1/messages')
+        self.assertNotIn('other', str(seen[0].headers))
+        self.assertIn('1. t | c | l', json.loads(seen[0].data)['messages'][0]['content'])
 
     def test_one_verdict_per_distinct_job_from_title_employer_and_place_only(self):
         asked, profiles = [], []
@@ -209,15 +200,37 @@ class TheJudgeIsBlindAndOnTheProofKey(unittest.TestCase):
         self.assertIn('Warehouse Operator, 6 years of experience, living in Zurich, Switzerland', profiles[0])
 
 
-class TheWorkflowRunsOnHaikuOnTheProofKey(unittest.TestCase):
-    def test_every_step_on_haiku_5_5_on_the_proof_key_only(self):
+class TheWorkflowRunsOnCodex(unittest.TestCase):
+    def test_all_six_personas_run_with_at_most_two_jobs_at_once(self):
+        persona = WORKFLOW.split('\n  persona:\n', 1)[1].split('\n  compare:\n', 1)[0]
+        strategy = persona.split('    strategy:\n', 1)[1].split('    steps:\n', 1)[0]
+        self.assertRegex(strategy, r'(?m)^      max-parallel: 2$')
+        self.assertIn('persona: [1, 2, 3, 4, 5, 6]', strategy)
+        self.assertIn('needs: persona', WORKFLOW.split('\n  compare:\n', 1)[1])
+
+    def test_every_ai_step_uses_the_oidc_broker_without_a_secret(self):
         self.assertRegex(WORKFLOW, r'(?m)^  JOB_PILOTTO_MODEL_OVERRIDE: claude-haiku-5-5\b')
-        self.assertIn('PR_PROOF_ANTHROPIC_KEY: ${{ secrets.PR_PROOF_ANTHROPIC_KEY }}', WORKFLOW)
-        self.assertNotIn('CLAUDE_CODE_OAUTH_TOKEN', WORKFLOW, 'the subscription token is no longer used (owner, 27 Oct 2026)')
-        self.assertEqual(re.findall(r'secrets\.(\w+)', WORKFLOW), ['PR_PROOF_ANTHROPIC_KEY'] * 3, 'no other secret; only the three steps that ask Claude get the key')
-        self.assertNotRegex(WORKFLOW, r'(?m)^\s+ANTHROPIC_API_KEY:', 'no job is given a second key')
-        self.assertIn('--engine api', next(line for line in WORKFLOW.splitlines() if 'tools/persona-search/run.mjs' in line))
-        self.assertIn('is not set: the search check is not measured', WORKFLOW)
+        self.assertIn('id-token: write', WORKFLOW)
+        self.assertIn('CI_AI_PROVIDER: codex', WORKFLOW)
+        self.assertIn('E2E_AI_PROVIDER: codex', WORKFLOW)
+        self.assertEqual(re.findall(r'secrets\.(\w+)', WORKFLOW), [])
+        for script in ('run.mjs', 'gate_judge.py'):
+            line = next(line for line in WORKFLOW.splitlines() if f'tools/persona-search/{script}' in line and not line.startswith('#'))
+            self.assertIn('node tools/persona-search/codex.mjs -- ', line)
+        self.assertNotIn('@anthropic-ai/claude-code', WORKFLOW)
+
+    def test_codex_results_report_subscription_billing_without_api_dollars(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp)
+            (out / 'draw').mkdir()
+            (out / 'draw' / 'presses.jsonl').write_text(json.dumps({'seconds': 150, 'billing': 'subscription', 'funnel': {'ai_usd': 0.031}}) + '\n')
+            (out / 'judged.json').write_text(json.dumps({'billing': 'subscription', 'usd': 0, 'rows': [{'role': 'yes', 'place': 'yes'}]}))
+            row = gate.result(1, out)
+            self.assertEqual(row['usd'], 0)
+            self.assertEqual(row['billing'], 'subscription')
+            table = gate.table(gate.compare({1: row}, []))
+            self.assertIn('Codex subscription', table)
+            self.assertNotIn('cap $', table)
 
     def test_a_persona_over_its_cost_cap_is_red_and_the_cost_is_in_the_table(self):
         row = {'persona': 1, 'local': 5, 'seconds': 100, 'code': 0, 'crashes': 0, 'usd': gate.PERSONA_CAP_USD + 0.01}
@@ -245,7 +258,7 @@ class TheWorkflowRunsOnHaikuOnTheProofKey(unittest.TestCase):
             (out / 'judged.json').write_text(json.dumps({'usd': 0.009, 'rows': [{'role': 'yes', 'place': 'yes'}]}))
             self.assertEqual(gate.result(1, out)['usd'], 0.04)
 
-    def test_all_six_personas_in_parallel_and_the_same_paths_on_prs_and_main(self):
+    def test_all_six_personas_and_the_same_paths_on_prs_and_main(self):
         self.assertIn('persona: [1, 2, 3, 4, 5, 6]', WORKFLOW)
         self.assertEqual(len(gate.PERSONAS), 6)
         on = WORKFLOW.split('\njobs:')[0]

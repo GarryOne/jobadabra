@@ -1,7 +1,5 @@
-name: Proof · Which org the e2e AI keys belong to
-# A $0 check (owner, 18 Oct 2026): the e2e strategy suite failed with "credit balance too low" (Anthropic) and "insufficient_quota" (OpenAI) while both consoles
-# showed credit, so the question is which org each CI secret really belongs to. Calls only the free model-list endpoints; prints the status and the organization
-# header, never a key; then one 1-token chat call per key (about $0.0001, owner's yes 18 Oct 2026) to see the exact billing error. Runs on a PR that edits this file, or by hand once it is on main.
+name: Proof · Codex subscription broker
+# Why (30 Oct 2026, owner): PR checks cannot read AI keys; prove the Codex subscription broker answers instead, using GitHub OIDC only.
 on:
   pull_request:
     paths:
@@ -10,6 +8,7 @@ on:
 
 permissions:
   contents: read
+  id-token: write   # The existing broker accepts GitHub OIDC; no secret is needed.
   actions: read         # the commit's runs and jobs, for the PR's verdict (the last step of each job)
   pull-requests: read
 
@@ -19,58 +18,17 @@ concurrency:   # newest wins: a newer push replaces the PR's older run; a by-han
 
 jobs:
   proof:
-    name: Org of each e2e key
+    name: Codex subscription broker
     runs-on: ubuntu-24.04
     timeout-minutes: 5
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     env:
-      E2E_ANTHROPIC_KEY: ${{ secrets.E2E_ANTHROPIC_KEY }}
-      E2E_OPENAI_KEY: ${{ secrets.E2E_OPENAI_KEY }}
+      CI_AI_PROVIDER: codex
+      E2E_AI_PROVIDER: codex
     steps:
-      - name: Fingerprint of each key (first 8 hex of its SHA-256, to compare with the suites' preflight line)
-        run: |
-          for name in E2E_ANTHROPIC_KEY E2E_OPENAI_KEY; do
-            value="${!name}"
-            if [ -z "$value" ]; then echo "$name: not set"; else echo "$name fingerprint $(printf '%s' "$value" | sha256sum | cut -c1-8)"; fi
-          done
-      - name: Anthropic key (models list and token count, both free)
-        run: |
-          if [ -z "$E2E_ANTHROPIC_KEY" ]; then echo "E2E_ANTHROPIC_KEY is not set"; exit 0; fi
-          code=$(curl -sS -m 30 -D /tmp/a.h -o /tmp/a.b -w '%{http_code}' https://api.anthropic.com/v1/models \
-            -H "x-api-key: $E2E_ANTHROPIC_KEY" -H 'anthropic-version: 2023-06-01')
-          echo "models: HTTP $code"
-          grep -iE '^(anthropic-organization-id|anthropic-workspace-id|request-id):' /tmp/a.h || echo "(no organization header)"
-          code=$(curl -sS -m 30 -D /tmp/c.h -o /tmp/c.b -w '%{http_code}' https://api.anthropic.com/v1/messages/count_tokens \
-            -H "x-api-key: $E2E_ANTHROPIC_KEY" -H 'anthropic-version: 2023-06-01' -H 'content-type: application/json' \
-            -d '{"model":"claude-haiku-5-5","messages":[{"role":"user","content":"hi"}]}')
-          echo "count_tokens: HTTP $code"
-          python3 -c "import json;e=json.load(open('/tmp/c.b')).get('error',{});print(e.get('type'),'|',e.get('message'))" 2>/dev/null || true
-          echo "chat 1 token:"
-          code=$(curl -sS -m 30 -D /tmp/m.h -o /tmp/m.b -w '%{http_code}' https://api.anthropic.com/v1/messages \
-            -H "x-api-key: $E2E_ANTHROPIC_KEY" -H 'anthropic-version: 2023-06-01' -H 'content-type: application/json' \
-            -d '{"model":"claude-haiku-5-5","max_tokens":1,"messages":[{"role":"user","content":"hi"}]}')
-          echo "messages: HTTP $code"
-          grep -iE '^anthropic-ratelimit-' /tmp/m.h || echo "(no anthropic-ratelimit headers)"
-          python3 -c "import json;e=json.load(open('/tmp/m.b')).get('error',{});print(e.get('type'),'|',e.get('message'))" 2>/dev/null || true
-      - name: Anthropic key, the app's own request shape (3 tiny paid tests, about $0.003, owner's yes 18 Oct 2026)
-        run: |
-          if [ -z "$E2E_ANTHROPIC_KEY" ]; then echo "E2E_ANTHROPIC_KEY is not set"; exit 0; fi
-          ask() {   # $1 = label, $2 = max_tokens: prints the status, error type and message only
-            body=$(printf '{"model":"claude-haiku-5-5","max_tokens":%s,"messages":[{"role":"user","content":"Answer ok."}],"output_config":{"format":{"type":"json_schema","schema":{"type":"object","properties":{"answer":{"type":"string"}},"required":["answer"],"additionalProperties":false}},"effort":"low"}}' "$2")
-            code=$(curl -sS -m 60 -o "/tmp/s-$1.b" -w '%{http_code}' https://api.anthropic.com/v1/messages \
-              -H "x-api-key: $E2E_ANTHROPIC_KEY" -H 'anthropic-version: 2023-06-01' -H 'content-type: application/json' -d "$body")
-            echo "$1 (max_tokens $2): HTTP $code $(python3 -c "import json;e=json.load(open('/tmp/s-$1.b')).get('error',{});print(e.get('type',''),'|',e.get('message',''))" 2>/dev/null)"
-          }
-          ask shape4000 4000
-          ask shape64000 64000
-          for n in $(seq 1 20); do ask "burst$n" 4000 & done; wait
-      - name: OpenAI key (models list, free)
-        run: |
-          if [ -z "$E2E_OPENAI_KEY" ]; then echo "E2E_OPENAI_KEY is not set"; exit 0; fi
-          code=$(curl -sS -m 30 -D /tmp/o.h -o /tmp/o.b -w '%{http_code}' https://api.openai.com/v1/models -H "Authorization: Bearer $E2E_OPENAI_KEY")
-          echo "models: HTTP $code"
-          grep -iE '^(openai-organization|openai-project|x-request-id):' /tmp/o.h || echo "(no organization header)"
-          code=$(curl -sS -m 30 -o /tmp/oc.b -w '%{http_code}' https://api.openai.com/v1/chat/completions \
-            -H "Authorization: Bearer $E2E_OPENAI_KEY" -H 'content-type: application/json' \
-            -d '{"model":"gpt-6-luna","max_completion_tokens":1,"messages":[{"role":"user","content":"hi"}]}')
-          echo "chat 1 token: HTTP $code"
-          python3 -c "import json;e=json.load(open('/tmp/oc.b')).get('error',{});print(e.get('type'),'|',e.get('code'),'|',e.get('message'))" 2>/dev/null || true
+      - uses: actions/checkout@v5
+        with: {persist-credentials: false}
+      - uses: actions/setup-node@v5
+        with: {node-version: '22'}
+      - name: Prove the Codex subscription answers
+        run: node tools/persona-search/codex.mjs --proof

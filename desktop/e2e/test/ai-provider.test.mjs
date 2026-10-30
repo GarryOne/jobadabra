@@ -45,9 +45,10 @@ const fake = reply => async (url, init) => (String(url).startsWith('https://gh.e
 
 test('an answered call comes back in Messages shape with its tokens; the run token is the Bearer', async () => {
   let seen;
-  const answer = await askBroker({model: 'claude-sonnet-5-5', messages: [{role: 'user', content: 'hi'}]}, {env, fetchImpl: fake((url, init) => { seen = {url, auth: init.headers.authorization}; return new Response(JSON.stringify({reply: '{"verdict":"pass"}', tokens: {input: 13576, output: 25}, tier: 'mid', model: 'gpt-6.1-sol'})); })});
+  const answer = await askBroker({model: 'claude-sonnet-5-5', messages: [{role: 'user', content: 'hi'}]}, {env, fetchImpl: fake((url, init) => { seen = {url, auth: init.headers.authorization}; return new Response(JSON.stringify({reply: '{"verdict":"pass"}', tokens: {input: 13576, output: 25}, ms: 51, tier: 'mid', model: 'gpt-6.1-sol'})); })});
   assert.deepEqual(seen, {url: 'https://broker.example/call', auth: 'Bearer jwt-for-run'});
   assert.equal(answer.ok, true);
+  assert.equal(answer.ms, 51, 'the container timing reaches the persona measurement');
   assert.equal(answer.message.content[0].text, '{"verdict":"pass"}');
   assert.deepEqual(answer.message.usage, {input_tokens: 13576, output_tokens: 25});
 });
@@ -80,4 +81,15 @@ test('the judges on codex: an answer returns in Messages shape; a broker refusal
     const capped = takeCapped();
     assert.match(capMessage(capped.neurons, ciEnv, capped.why), /Codex broker said no \(broker: budget:week 85%/);
   } finally { globalThis.fetch = realFetch; }
+});
+
+
+test('web search reaches the broker as search true and ordinary calls omit the flag', async () => {
+  const seen = [];
+  const fetchImpl = fake((url, init) => { seen.push(JSON.parse(init.body)); return new Response(JSON.stringify({reply: '{"boards":[]}', tokens: {input: 1, output: 1}, tier: 'small', model: 'gpt-6-luna'})); });
+  const body = {model: 'claude-haiku-5-5', messages: [{role: 'user', content: 'Find boards.'}]};
+  await askBroker({...body, tools: [{type: 'web_search_20250305', name: 'web_search', max_uses: 3}]}, {env, fetchImpl});
+  await askBroker(body, {env, fetchImpl});
+  assert.equal(seen[0].search, true);
+  assert.equal(Object.hasOwn(seen[1], 'search'), false);
 });

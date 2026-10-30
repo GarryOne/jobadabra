@@ -147,7 +147,14 @@ function readPrByRest(repo, pr, info) {
   const latest = reviews.sort((a, b) => Date.parse(a.updated_at) - Date.parse(b.updated_at)).at(-1);
   const labels = pages(`repos/${repo}/issues/${pr}/labels`).map(l => l.name);
   const workingSince = labels.includes(WORKING.name) ? pages(`repos/${repo}/issues/${pr}/events`).filter(e => e.event === 'labeled' && e.label.name === WORKING.name).map(e => e.created_at).sort().at(-1) : null;
-  return {state: info.state, headTime: headTime(repo, info.head.sha), review: latest ? {body: latest.body, updated_at: latest.updated_at} : null, labels, workingSince};
+  return {state: info.state, headTime: headTime(repo, info.head.sha), review: latest ? {body: latest.body, updated_at: latest.updated_at} : null, labels, workingSince, viaRest: true};
+}
+
+/** The read a run labels from: `first`, or after waiting for Gitar's comment to catch up with the review `since` (awaitComment).
+ * Why (30 Oct 2026, Gitar on #2525): a thread too long for the GraphQL read is read by paged REST, about 6 calls; 13 such reads in one wait would spend the
+ * budget this design protects, so that rare path reads once. */
+export function readForRun(first, since, reread, opts) {
+  return first.viaRest ? first : awaitComment(first, since, reread, opts);
 }
 
 const readLive = (repo, pr) => readPr(repo, pr) || readPrByRest(repo, pr, JSON.parse(gh('api', `repos/${repo}/pulls/${pr}`)));
@@ -157,7 +164,7 @@ const pause = () => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0,
 /** One read of the verdict, head and labels (after Gitar's comment caught up with the review `since`, if any), then the writes it needs; -> true when it changed a label. */
 function syncOnce(pr, since) {
   const repo = process.env.GITHUB_REPOSITORY;
-  const read = awaitComment(readLive(repo, pr), since, () => readLive(repo, pr), {pause});
+  const read = readForRun(readLive(repo, pr), since, () => readLive(repo, pr), {pause});
   if (since && !(read.review && Date.parse(read.review.updated_at) >= Date.parse(since))) console.log(`::warning::gitar-label: Gitar's comment on #${pr} did not catch up with its review in 12 reads; labelled from what it read`);
   if (read.state !== 'open') { console.log(`gitar-label: #${pr} is ${read.state}, left as it is`); return false; }
   const verdict = read.review ? wantedLabel(read.review.body, read.review.updated_at, read.headTime) : null;

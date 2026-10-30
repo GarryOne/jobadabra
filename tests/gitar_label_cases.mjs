@@ -6,7 +6,7 @@ import {mkdtempSync, readFileSync, rmSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {addLabel, awaitComment, converge, fromGraphql, readPr, reviewSince, setLabels, verdictKind, wantedLabel, wantedLabels, LABELS, WAITING, WORKING} from '../tools/gitar-label.mjs';
+import {addLabel, awaitComment, readForRun, converge, fromGraphql, readPr, reviewSince, setLabels, verdictKind, wantedLabel, wantedLabels, LABELS, WAITING, WORKING} from '../tools/gitar-label.mjs';
 const wrap = kbd => `<details>\n<summary><b>Code Review</b> ${kbd}</summary>\n\nBody\n</details>`;
 const APPROVED = wrap('<kbd>✅ Approved</kbd>');   // #2377, #2380
 const SUGGEST = wrap('<kbd>👍 Approved with suggestions</kbd> <kbd>2 closed / 3 findings</kbd>');   // #2381
@@ -149,6 +149,11 @@ test('the wait itself: no review time, or a comment already newer, reads once', 
   assert.equal(reread, 0);
   assert.equal(awaitComment({review: null}, REVIEWED_AT, () => { reread++; return {review: null}; }, {tries: 3}).review, null, 'no comment at all: bounded too');
   assert.equal(reread, 3);
+  const long = {review: {updated_at: '2026-10-28T20:05:00Z'}, viaRest: true};   // Gitar on #2525: a thread past 100 comments is read by paged REST
+  assert.equal(readForRun(long, REVIEWED_AT, () => { reread++; return long; }), long);
+  assert.equal(reread, 3, 'the REST path never re-reads: each read is about 6 REST calls');
+  assert.equal(readForRun(read('2026-10-28T20:05:00Z'), REVIEWED_AT, () => { reread++; return read('2026-10-28T20:07:00Z'); }).review.updated_at, '2026-10-28T20:07:00Z');
+  assert.equal(reread, 4, 'the GraphQL path still waits');
 });
 
 test('real verdict lines map to their kind', () => {

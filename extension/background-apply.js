@@ -21,7 +21,7 @@ export async function backgroundContext(tabId) {
   const {backgroundOwner: owner} = await chrome.storage.local.get('backgroundOwner').catch(() => ({}));
   if (!owner) return null;
   const session = await sessionOf(tabId), row = session && await owned().inspect(session);
-  return row ? {session, owner, attempt: row.attempt || '', manual: row.manualRequired === true} : null;
+  return row ? {session, owner, mode: row.mode || '', attempt: row.attempt || '', manual: row.manualRequired === true} : null;
 }
 /** A terminal per-job handoff never resumes through a reload, solved CAPTCHA, or changed mode; ordinary mode 1 keeps its existing behavior. */
 export async function backgroundMayFill(tabId) {
@@ -32,7 +32,7 @@ export async function backgroundMayFill(tabId) {
 /** Classify a challenge from this application's actual journey, and hand off account pages before credential or form automation. */
 export async function backgroundPage(tabId, role, botCheck) {
   const context = await backgroundContext(tabId);
-  if (!context) return false;
+  if (!context || context.mode === 'read') return false;   // a triage read reports what it sees (backgroundRead); it never hands a page to the person
   const reason = await owned().observe(context.session, role, botCheck);
   return reason ? backgroundChallenge(tabId, reason) : false;
 }
@@ -47,6 +47,31 @@ export async function backgroundChallenge(tabId, reason = 'captcha_runtime') {  
   if (reason !== 'captcha_preflight' && !row.revealedAt) await owned().reveal(context.session);   // words-ok: our own hand-off reason id / user-facing word, not page knowledge
   return true;
 }
+/** Tell the app what a triage read saw, then close its tab: the page is never typed into and never shown to the person. */
+async function reportRead(context, found) {
+  await request(context, {action: 'triage-read', ...found}).catch(() => null);
+  await owned().closeSession(context.session).catch(() => false);
+}
+/**
+ * A triage read's stop before the fill: a bot check is reported at once; a page that is neither a form nor an account page is reported as unreadable; a form or an account page goes to the
+ * judge, whose answer comes back through backgroundFormReady. Takes the tab and the flow's step; returns true when this tab is a read (the flow ends here), false for every other tab.
+ */
+export async function backgroundRead(tab, step) {
+  const context = await backgroundContext(tab.id);
+  if (context?.mode !== 'read') return false;
+  if (step.kind?.botCheck === true) await reportRead(context, {botCheck: true});
+  else if (step.role !== 'form' && step.role !== 'account') await reportRead(context, {unreadable: true});
+  else { forgetJudged(tab.id); await formNext(tab, 0); }
+  return true;
+}
+/** Opens one job the app handed over; a session that could not open goes back to the person, and a read that could not open is reported unreadable. */
+async function startCommand(owner, command) {
+  const read = command.mode === 'read';
+  // Why (2026-10-30, triage read C2a): an earlier read that timed out leaves its tab open; the next read closes it before its own starts.
+  if (read) for (const row of Object.values(await owned().all())) if (row.mode === 'read' && row.session !== command.session) await owned().closeSession(row.session).catch(() => false);
+  const launch = await owned().start(command);
+  if (!launch.ok) await request({owner, session: command.session}, read ? {action: 'triage-read', unreadable: true} : {action: 'manual', reason: 'browser_session_unavailable'});
+}
 /** Poll only from the app-owned browser; the server claims one job at a time and all repeated polls reuse the same marked tab. */
 export async function pollBackgroundApply(config) {
   if (polling) return;
@@ -55,10 +80,7 @@ export async function pollBackgroundApply(config) {
   polling = true;
   try {
     const result = await api(config, '/extension/background-apply', {method: 'POST', body: JSON.stringify({action: 'poll', owner})});
-    for (const command of result.jobs || []) {
-      const launch = await owned().start(command);
-      if (!launch.ok) await request({owner, session: command.session}, {action: 'manual', reason: 'browser_session_unavailable'});
-    }
+    for (const command of result.jobs || []) await startCommand(owner, command);
     for (const handoff of result.handoffs || []) {
       const row = await owned().inspect(handoff.session);
       if (!row) continue;
@@ -86,6 +108,7 @@ async function pressRefusal(tab, session, generation) {
 export async function backgroundFormReady(tab, frameId, answer) {
   const context = await backgroundContext(tab.id);
   if (!context) return false;
+  if (context.mode === 'read') { await reportRead(context, {botCheck: answer.botCheck, loginWall: answer.loginWall, accountCreation: answer.accountCreation}); return true; }   // words-ok: the judge's own flag names
   const row = await owned().inspect(context.session);
   if (row.manualRequired || row.attempt || isStopped()) return true;
   if (answer.botCheck) { await backgroundChallenge(tab.id); return true; }

@@ -86,3 +86,14 @@ test('cancel never closes a recycled tab id belonging to another application', a
   assert.equal(closed, false);
   assert.equal(await run.mayContinue('close'), false);
 });
+
+test('a triage read opens its own unfocused session in mode read and closes the tab when asked', async () => {
+  const fake = browser(), run = createBackgroundSession({chrome: fake.chrome, parseMark});
+  fake.chrome.tabs.remove = async id => { fake.tabs.delete(id); };
+  const created = await run.start({session: 'tr1', url: 'https://jobs.example.test/read#jobpilotto-fill=tr1', mode: 'read'});
+  assert.equal(created.ok, true);
+  assert.equal((await run.inspect('tr1')).mode, 'read');
+  assert.equal(await run.closeSession('tr1'), true);
+  assert.equal(fake.tabs.size, 0, 'the read tab is gone');
+  assert.equal((await run.start({session: 'x', url: 'https://jobs.example.test/x#jobpilotto-fill=x', mode: 'bogus'})).ok, false, 'an unknown mode is still refused');
+});

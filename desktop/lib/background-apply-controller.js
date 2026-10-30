@@ -2,6 +2,7 @@
 import {randomUUID, createHash} from 'node:crypto';
 import {createBackgroundApplyStore} from './background-apply-store.js';
 import {createBackgroundBrowser} from './background-browser.js';
+import {createTriageReader} from './triage-reader.js';
 import {applyOf, AUTO_DEFAULTS} from '../renderer/apply-settings-model.js';
 import * as terminalsDefault from './terminals.js';
 import {sessionTabUrl} from './session-tab.js';
@@ -34,7 +35,7 @@ export function backgroundApplyFor(storage) {
 /** Create the controller with injectable store/browser boundaries for deterministic fictional browser proofs; no alternative filler exists here. */
 export function createBackgroundApplyController(storage, {store = null, browser = null, terminals = terminalsDefault,
   config = () => applyOf(storage.settings()), now = Date.now, uuid = randomUUID, stop = stopAsked, notify = (...args) => notifyDefault(...args),   // Why (2026-10-28, bot review #2324): main.js sets the notifier after the handlers register; read the live binding at each call
- log = appLog, started = APP_STARTED,   // `started`: when this run of the app began; a job held before it was cut off by a quit
+ log = appLog, reader = createTriageReader(), started = APP_STARTED,   // `started`: when this run of the app began; a job held before it was cut off by a quit
   port = Number(process.env.JOB_PILOTTO_PORT || 47111), token = () => extensionToken(storage)} = {}) {
   store ||= createBackgroundApplyStore(storage, {stopped: stop});
   // Why (2026-10-28, CI #2324): the controller is created when the apply handlers register, before any background job exists; the browser reads storage.path, so it is built on first use.
@@ -95,7 +96,8 @@ export function createBackgroundApplyController(storage, {store = null, browser 
     if (!givenOwner || givenOwner !== owner) return {ok: false, jobs: [], checks: []};
     const jobs = [], checks = [], handoffs = [];
     let filling = false;
-    for (const item of terminals.list().filter(item => item.background && !item.outcome)) {
+    const open = terminals.list().filter(item => item.background && !item.outcome);
+    for (const item of open) {
       let state = await store.read(item.url);
       if (!state || state.session !== item.id) continue;
       if (!state.manualOverride && (stop() || item.stuck === 'stopped')) state = await markManual(item, 'stopped');
@@ -106,13 +108,25 @@ export function createBackgroundApplyController(storage, {store = null, browser 
       if (HANDOFF.has(state.state)) { handoffs.push({session: item.id, reason: state.reason, reveal: state.reason !== 'captcha_preflight'}); cache(item, state); continue; }   // words-ok: our own hand-off reason id / user-facing word, not page knowledge
       if (state.state === 'submitting') continue; // a reserved attempt is never reissued, even after a lost reply/restart
       if (state.state === 'waiting_to_submit' && now() >= state.readyAt + (current.auto?.waitMin ?? AUTO_DEFAULTS.waitMin) * 60000) checks.push({session: item.id});
-      if (['queued', 'preflight'].includes(state.state) && !filling) {
+      if (['queued', 'preflight'].includes(state.state) && !filling && !reader.busy()) {
         const claim = await store.claim(item.url, item.id, owner);
         if (claim.ok) { filling = true; state = claim.state; jobs.push({session: item.id, url: sessionTabUrl(item.url, item.id), mode: state.mode}); }
       }
       cache(item, state);
     }
+    // Why (2026-10-30, owner: triage read, PR C2a): a form read and an application never share the hidden browser: a read waits for open applications, and an application waits (at most the read's timeout) for a read that is queued or out (Gitar, #2602).
+    jobs.push(...readCommands({filling, open}));
     return {ok: true, jobs, checks, handoffs};
+  }
+  const readCommands = ({filling, open}) => {
+    const next = filling || open.length ? null : reader.take();
+    return next ? [{session: next.id, url: sessionTabUrl(next.url, next.id), mode: 'read'}] : [];
+  };
+  /** Reads one job's application form in the hidden browser without filling or pressing anything; resolves with the mode table's flags, or null when nothing could be read (no browser, an application open, a timeout). Takes the job ({url}). */
+  async function triageRead(job) {
+    if (!browserOf().ready() || terminals.list().some(item => item.background && !item.outcome)) return null;
+    if (!owner) ({owner} = await browserOf().start({port, token: token()}));
+    return reader.read(job?.url);
   }
   // Hands one background job to the person through the store's interrupted check (`options`: afterMs, quit) with its own words; -> the saved state, or null when it was not handed over.
   async function handOverInterrupted(item, options) {
@@ -165,6 +179,7 @@ export function createBackgroundApplyController(storage, {store = null, browser 
       if (payload.action === 'poll') return poll(payload.owner);
       if (!owner && payload.owner) ({owner} = await browserOf().start({port, token: token()}));
       if (!owner || payload.owner !== owner) return {ok: false};
+      if (payload.action === 'triage-read') return {ok: reader.report(String(payload.session || ''), payload)};   // a form read's answer: no application item behind it
       const item = itemFor(payload.session);
       if (!item) return {ok: false};
       if (payload.action === 'manual') {
@@ -241,5 +256,5 @@ export function createBackgroundApplyController(storage, {store = null, browser 
       return {ok: true, handoff};
     });
   }
-  return {enqueue, handle, judgment, reveal, outcome, cancel, page, submitControl, handOver, sweepInterrupted, sweepStalled};
+  return {enqueue, handle, judgment, reveal, outcome, cancel, page, submitControl, handOver, sweepInterrupted, sweepStalled, triageRead, cancelTriage: () => reader.cancelAll()};
 }

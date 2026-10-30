@@ -135,3 +135,10 @@ test('a judge answer without the login and account fields leaves them unknown, n
   const got = await judgeForm(fake({answer: 'ready', needs: '', needs_kind: '', bot_check: false, confidence: 0.9}), page);
   assert.equal('loginWall' in got || 'accountCreation' in got, false);
 });
+
+test('the route passes the login and account flags on, and leaves them out when the judge gave none', async () => {
+  const said = await decideAccountJudge({}, {phase: 'form', sketch: covered}, {client: fake({answer: 'needs_person', needs: '', needs_kind: '', bot_check: false, login_wall: true, account_to_create: false, confidence: 0.9})});
+  assert.deepEqual([said.loginWall, said.accountCreation], [true, false]);
+  const silent = await decideAccountJudge({}, {phase: 'form', sketch: covered}, {client: fake({answer: 'ready', needs: '', needs_kind: '', bot_check: false, confidence: 0.9})});
+  assert.equal('loginWall' in silent || 'accountCreation' in silent, false);
+});

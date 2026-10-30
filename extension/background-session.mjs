@@ -1,6 +1,6 @@
 // Own the hidden browser's Apply tabs in the installed extension so a hand-off keeps the very same live tab.
 const KEY = 'backgroundApplySessions';
-const MODES = new Set(['fill', 'auto']);
+const MODES = new Set(['fill', 'auto', 'read']);   // read: a triage read, which looks at the form and never fills it (lib/triage-reader.js)
 
 /** Keep one persistent browser-window record per application session; never clear a manual CAPTCHA override automatically. */
 export function createBackgroundSession({chrome = globalThis.chrome, parseMark} = {}) {

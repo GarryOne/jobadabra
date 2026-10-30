@@ -361,6 +361,6 @@ export async function init() {
 
   $('jobs-unscored-go').addEventListener('click', () => $('refresh').click());
   wireApplyDialog({startedApplying});
-  wireTriage({rerender: () => renderJobs(), toast: toastMessage});
+  wireTriage({read: job => window.pilot.triageRead({url: job.url}), cancel: () => window.pilot.triageCancel(), rerender: () => renderJobs(), toast: toastMessage});
 }
 

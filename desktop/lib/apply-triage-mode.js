@@ -1,4 +1,4 @@
-// Apply triage (spec 2026-10-30-apply-triage, in PR #2524): turns one form read into the highest apply mode that job can take. Pure, no AI, no I/O.
+// Apply triage: turns one form read into the highest apply mode that job can take. Pure, no AI, no I/O.
 
 /**
  * The highest apply mode a read form allows, with the reason the chip shows.

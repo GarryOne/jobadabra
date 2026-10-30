@@ -310,6 +310,26 @@
             "output_tokens": 167
           }
         }
+      },
+      "3011": {
+        "reply": {
+          "id": "msg_codex",
+          "type": "message",
+          "role": "assistant",
+          "model": "gpt-6.1-sol",
+          "stop_sequence": null,
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"score\":43,\"tier\":\"C\",\"components\":{\"role_fit\":38,\"location\":100,\"compensation\":null,\"growth\":45,\"risk\":40},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Infrastructure context fits, but the core work is people management with little hands-on.\",\"strengths\":[\"Infrastructure experience as a Senior SRE\",\"Incident response experience relevant to on-call rota\",\"Zurich hybrid and English working language fit\"],\"gaps\":[\"Hiring, people management and stakeholder management experience not stated\",\"Little hands-on work differs from SRE and platform preferences\",\"Salary not stated\"],\"confidence\":\"high\",\"search\":{\"fit\":40,\"career_change\":false,\"cv_gap\":\"Profile does not state team leadership, hiring or roadmap ownership.\"}}"
+            }
+          ],
+          "stop_reason": "end_turn",
+          "usage": {
+            "input_tokens": 15844,
+            "output_tokens": 172
+          }
+        }
       }
     },
     "app.interview": {
@@ -841,6 +861,613 @@
       "default/app.visa/dd2b12daac1a/2275583196d791405892aaca0d87743c872f3fc0cf3308a6c3ef82528918aa8a": {
         "text": "Switzerland",
         "answer": false
+      }
+    },
+    "app.enrich": {
+      "default/app.enrich/1e9b62930237a85555cb1fa4e21513b3de827b9941589fa52fd5445bc5b88397/full": {
+        "text": "Senior Site Reliability Engineer, Customer Care\nE2E Quality Labs\nZurich, Switzerland",
+        "answer": {
+          "languages": [
+            {
+              "language": "English",
+              "level": "required",
+              "evidence": "English working language."
+            }
+          ],
+          "english_is_enough": {
+            "value": "yes",
+            "evidence": "English working language."
+          },
+          "seniority": {
+            "value": "senior",
+            "evidence": "Senior Site Reliability Engineer, Customer Care"
+          },
+          "work_mode": {
+            "value": "onsite",
+            "remote_scope": "",
+            "evidence": "On-site in Zurich."
+          },
+          "workload": "unknown",
+          "salary": {
+            "stated": false,
+            "text": ""
+          },
+          "employer_type": {
+            "value": "direct_employer",
+            "evidence": "our mobile app"
+          },
+          "role_family": "customer_service",
+          "technologies": [
+            "CRM",
+            "Customer care",
+            "reset passwords"
+          ],
+          "responsibilities": [
+            "Answer customer tickets.",
+            "Reset passwords.",
+            "Walk customers through our mobile app.",
+            "Log every call in the CRM."
+          ],
+          "on_call": "no",
+          "visa_sponsorship": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "contract": "unknown",
+          "deadline": "",
+          "posted": "",
+          "confidence": "high"
+        }
+      },
+      "default/app.enrich/3ecc7b6978f456e332c1710c1f5fd679a0c183ee352fad416e034008773c8233/full": {
+        "text": "Cloud Infrastructure Engineer\nE2E Quality Labs\nZurich, Switzerland",
+        "answer": {
+          "languages": [
+            {
+              "language": "English",
+              "level": "required",
+              "evidence": "English working language"
+            }
+          ],
+          "english_is_enough": {
+            "value": "yes",
+            "evidence": "English working language"
+          },
+          "seniority": {
+            "value": "mid",
+            "evidence": "Mid-level role, 3 to 5 years of experience"
+          },
+          "work_mode": {
+            "value": "hybrid",
+            "remote_scope": "",
+            "evidence": "Hybrid in Zurich"
+          },
+          "workload": "unknown",
+          "salary": {
+            "stated": true,
+            "text": "CHF 110,000 - 130,000"
+          },
+          "employer_type": {
+            "value": "direct_employer",
+            "evidence": "operate our AWS accounts"
+          },
+          "role_family": "cloud_infrastructure",
+          "technologies": [
+            "AWS",
+            "Terraform",
+            "monitoring"
+          ],
+          "responsibilities": [
+            "Operate our AWS accounts, Terraform modules and monitoring."
+          ],
+          "on_call": "unknown",
+          "visa_sponsorship": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "contract": "unknown",
+          "deadline": "",
+          "posted": "",
+          "confidence": "high"
+        }
+      },
+      "default/app.enrich/3ecc7b6978f456e332c1710c1f5fd679a0c183ee352fad416e034008773c8233/role": {
+        "text": "Cloud Infrastructure Engineer\nE2E Quality Labs\nZurich, Switzerland",
+        "answer": {
+          "role_family": "cloud_infrastructure"
+        }
+      },
+      "default/app.enrich/4adb0a78f6a6472194fb31f117b30922a2e4b5e06a4ac809243ffee49a376e09/full": {
+        "text": "Senior Site Reliability Engineer\nE2E Quality Labs\nZurich, Switzerland",
+        "answer": {
+          "languages": [
+            {
+              "language": "English",
+              "level": "required",
+              "evidence": "English working language"
+            }
+          ],
+          "english_is_enough": {
+            "value": "yes",
+            "evidence": "English working language"
+          },
+          "seniority": {
+            "value": "senior",
+            "evidence": "Senior role"
+          },
+          "work_mode": {
+            "value": "hybrid",
+            "remote_scope": "",
+            "evidence": "hybrid in Zurich (three days in the office)"
+          },
+          "workload": "unknown",
+          "salary": {
+            "stated": true,
+            "text": "CHF 185,000 - 205,000 per year"
+          },
+          "employer_type": {
+            "value": "direct_employer",
+            "evidence": "Company: E2E Quality Labs"
+          },
+          "role_family": "sre",
+          "technologies": [
+            "Kubernetes",
+            "AWS",
+            "SLOs",
+            "incident response",
+            "Terraform",
+            "Datadog",
+            "OpenTelemetry",
+            "observability"
+          ],
+          "responsibilities": [
+            "Own the reliability of a Kubernetes platform on AWS.",
+            "Handle SLOs and incident response.",
+            "Manage observability with Datadog and OpenTelemetry."
+          ],
+          "on_call": "unknown",
+          "visa_sponsorship": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "contract": "unknown",
+          "deadline": "",
+          "posted": "",
+          "confidence": "high"
+        }
+      },
+      "default/app.enrich/4adb0a78f6a6472194fb31f117b30922a2e4b5e06a4ac809243ffee49a376e09/role": {
+        "text": "Senior Site Reliability Engineer\nE2E Quality Labs\nZurich, Switzerland",
+        "answer": {
+          "role_family": "sre"
+        }
+      },
+      "default/app.enrich/575170cc8b472311aaca316e6034f3eb5b50aeff7f1eb110503e073a32112f0c/full": {
+        "text": "Senior DevOps Engineer\nE2E Quality Labs\nSwitzerland (remote)",
+        "answer": {
+          "languages": [
+            {
+              "language": "English",
+              "level": "required",
+              "evidence": "English only"
+            }
+          ],
+          "english_is_enough": {
+            "value": "yes",
+            "evidence": "English only"
+          },
+          "seniority": {
+            "value": "senior",
+            "evidence": "Senior level"
+          },
+          "work_mode": {
+            "value": "remote",
+            "remote_scope": "Switzerland",
+            "evidence": "Fully remote from anywhere in Switzerland, no office."
+          },
+          "workload": "unknown",
+          "salary": {
+            "stated": true,
+            "text": "EUR 95,000 - 120,000"
+          },
+          "employer_type": {
+            "value": "direct_employer",
+            "evidence": ""
+          },
+          "role_family": "devops",
+          "technologies": [
+            "CI/CD",
+            "Kubernetes",
+            "AWS",
+            "Terraform",
+            "Prometheus",
+            "Grafana"
+          ],
+          "responsibilities": [
+            "Run CI/CD, Kubernetes and AWS infrastructure for a fintech product.",
+            "Participate in on-call rotation one week in six."
+          ],
+          "on_call": "yes",
+          "visa_sponsorship": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "contract": "unknown",
+          "deadline": "",
+          "posted": "",
+          "confidence": "high"
+        }
+      },
+      "default/app.enrich/575170cc8b472311aaca316e6034f3eb5b50aeff7f1eb110503e073a32112f0c/role": {
+        "text": "Senior DevOps Engineer\nE2E Quality Labs\nSwitzerland (remote)",
+        "answer": {
+          "role_family": "devops"
+        }
+      },
+      "default/app.enrich/613dee22c5f7dda7c3618528d803ca922ce454153cc0efcc7328e74c17fdb2f5/full": {
+        "text": "Senior Site Reliability Engineer (DE)\nE2E Quality Labs\nBern, Switzerland",
+        "answer": {
+          "languages": [
+            {
+              "language": "German",
+              "level": "required",
+              "evidence": "Fliessend Deutsch (C1) is required"
+            }
+          ],
+          "english_is_enough": {
+            "value": "no",
+            "evidence": "English alone is not enough"
+          },
+          "seniority": {
+            "value": "senior",
+            "evidence": "Senior SRE"
+          },
+          "work_mode": {
+            "value": "hybrid",
+            "remote_scope": "",
+            "evidence": "Hybrid in Bern, two days a week in the office."
+          },
+          "workload": "unknown",
+          "salary": {
+            "stated": false,
+            "text": ""
+          },
+          "employer_type": {
+            "value": "direct_employer",
+            "evidence": "our Swiss public-sector platform"
+          },
+          "role_family": "sre",
+          "technologies": [
+            "Kubernetes",
+            "Terraform",
+            "incident response"
+          ],
+          "responsibilities": [
+            "incident response"
+          ],
+          "on_call": "unknown",
+          "visa_sponsorship": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "contract": "unknown",
+          "deadline": "",
+          "posted": "",
+          "confidence": "high"
+        }
+      },
+      "default/app.enrich/613dee22c5f7dda7c3618528d803ca922ce454153cc0efcc7328e74c17fdb2f5/role": {
+        "text": "Senior Site Reliability Engineer (DE)\nE2E Quality Labs\nBern, Switzerland",
+        "answer": {
+          "role_family": "sre"
+        }
+      },
+      "default/app.enrich/6a947ebfd1d611f04a23cbd98b3e22956bf1e0582fb0a0d034a537eb75cc08bc/full": {
+        "text": "Junior DevOps Engineer\nE2E Quality Labs\nBasel, Switzerland",
+        "answer": {
+          "languages": [
+            {
+              "language": "English",
+              "level": "required",
+              "evidence": "English working language."
+            }
+          ],
+          "english_is_enough": {
+            "value": "yes",
+            "evidence": "English working language."
+          },
+          "seniority": {
+            "value": "junior",
+            "evidence": "Junior position for someone with up to 2 years of experience"
+          },
+          "work_mode": {
+            "value": "onsite",
+            "remote_scope": "",
+            "evidence": "On-site in Basel, five days a week."
+          },
+          "workload": "unknown",
+          "salary": {
+            "stated": false,
+            "text": ""
+          },
+          "employer_type": {
+            "value": "direct_employer",
+            "evidence": ""
+          },
+          "role_family": "devops",
+          "technologies": [
+            "CI pipelines",
+            "Docker",
+            "Terraform"
+          ],
+          "responsibilities": [
+            "Help the team with CI pipelines, Docker images and simple Terraform changes under close guidance."
+          ],
+          "on_call": "unknown",
+          "visa_sponsorship": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "contract": "unknown",
+          "deadline": "",
+          "posted": "",
+          "confidence": "high"
+        }
+      },
+      "default/app.enrich/6a947ebfd1d611f04a23cbd98b3e22956bf1e0582fb0a0d034a537eb75cc08bc/role": {
+        "text": "Junior DevOps Engineer\nE2E Quality Labs\nBasel, Switzerland",
+        "answer": {
+          "role_family": "devops"
+        }
+      },
+      "default/app.enrich/780b2817a48e260d1079a2624ef9cfb2260d13fad05d9c6a1c2c6b52449f207b/full": {
+        "text": "Senior Platform Engineer\nE2E Quality Labs\nGeneva, Switzerland",
+        "answer": {
+          "languages": [
+            {
+              "language": "English",
+              "level": "required",
+              "evidence": "English is the working language"
+            },
+            {
+              "language": "French",
+              "level": "nice_to_have",
+              "evidence": "French is a plus (un atout)"
+            }
+          ],
+          "english_is_enough": {
+            "value": "yes",
+            "evidence": "English is the working language; French is a plus (un atout)."
+          },
+          "seniority": {
+            "value": "senior",
+            "evidence": "Senior level."
+          },
+          "work_mode": {
+            "value": "onsite",
+            "remote_scope": "",
+            "evidence": "This is an on-site role in Geneva, five days a week in our office."
+          },
+          "workload": "unknown",
+          "salary": {
+            "stated": false,
+            "text": ""
+          },
+          "employer_type": {
+            "value": "direct_employer",
+            "evidence": "our office"
+          },
+          "role_family": "platform",
+          "technologies": [
+            "Kubernetes",
+            "Terraform",
+            "AWS",
+            "GitOps"
+          ],
+          "responsibilities": [
+            "Build and run the Kubernetes platform of an international organisation."
+          ],
+          "on_call": "unknown",
+          "visa_sponsorship": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "contract": "unknown",
+          "deadline": "",
+          "posted": "",
+          "confidence": "high"
+        }
+      },
+      "default/app.enrich/780b2817a48e260d1079a2624ef9cfb2260d13fad05d9c6a1c2c6b52449f207b/role": {
+        "text": "Senior Platform Engineer\nE2E Quality Labs\nGeneva, Switzerland",
+        "answer": {
+          "role_family": "platform"
+        }
+      },
+      "default/app.enrich/944fb11d9fb97b4fb80152ebb6b5f0ecf43a87946a2d2fc6e2305e0e24fcbc8f/full": {
+        "text": "Staff Platform Engineer, Kubernetes\nE2E Quality Labs\nZurich, Switzerland",
+        "answer": {
+          "languages": [
+            {
+              "language": "English",
+              "level": "required",
+              "evidence": "English working language"
+            }
+          ],
+          "english_is_enough": {
+            "value": "yes",
+            "evidence": "English working language"
+          },
+          "seniority": {
+            "value": "staff_principal",
+            "evidence": "Staff-level role"
+          },
+          "work_mode": {
+            "value": "hybrid",
+            "remote_scope": "",
+            "evidence": "Hybrid in Zurich"
+          },
+          "workload": "unknown",
+          "salary": {
+            "stated": false,
+            "text": ""
+          },
+          "employer_type": {
+            "value": "direct_employer",
+            "evidence": "our internal developer platform"
+          },
+          "role_family": "platform",
+          "technologies": [
+            "Kubernetes",
+            "EKS",
+            "GitOps",
+            "Terraform",
+            "Python",
+            "Go"
+          ],
+          "responsibilities": [
+            "Set the technical direction of our internal developer platform."
+          ],
+          "on_call": "unknown",
+          "visa_sponsorship": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "contract": "unknown",
+          "deadline": "",
+          "posted": "",
+          "confidence": "high"
+        }
+      },
+      "default/app.enrich/944fb11d9fb97b4fb80152ebb6b5f0ecf43a87946a2d2fc6e2305e0e24fcbc8f/role": {
+        "text": "Staff Platform Engineer, Kubernetes\nE2E Quality Labs\nZurich, Switzerland",
+        "answer": {
+          "role_family": "platform"
+        }
+      },
+      "default/app.enrich/9e886444c782b9441499eedcb7687f58c019da891b0fd899fd1e37a5b65eae68/full": {
+        "text": "Senior Platform Engineer, Observability\nE2E Quality Labs\nRemote - Switzerland",
+        "answer": {
+          "languages": [
+            {
+              "language": "English",
+              "level": "required",
+              "evidence": "English working language"
+            },
+            {
+              "language": "German",
+              "level": "nice_to_have",
+              "evidence": "German is a plus (von Vorteil)"
+            }
+          ],
+          "english_is_enough": {
+            "value": "yes",
+            "evidence": "English working language; German is a plus (von Vorteil)."
+          },
+          "seniority": {
+            "value": "senior",
+            "evidence": "Senior engineer"
+          },
+          "work_mode": {
+            "value": "remote",
+            "remote_scope": "Switzerland",
+            "evidence": "Work remotely from anywhere in Switzerland."
+          },
+          "workload": "unknown",
+          "salary": {
+            "stated": false,
+            "text": ""
+          },
+          "employer_type": {
+            "value": "direct_employer",
+            "evidence": "our observability platform"
+          },
+          "role_family": "platform",
+          "technologies": [
+            "OpenTelemetry",
+            "Prometheus",
+            "Grafana",
+            "Datadog"
+          ],
+          "responsibilities": [
+            "Senior engineer for our observability platform."
+          ],
+          "on_call": "unknown",
+          "visa_sponsorship": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "contract": "unknown",
+          "deadline": "",
+          "posted": "",
+          "confidence": "high"
+        }
+      },
+      "default/app.enrich/9e886444c782b9441499eedcb7687f58c019da891b0fd899fd1e37a5b65eae68/role": {
+        "text": "Senior Platform Engineer, Observability\nE2E Quality Labs\nRemote - Switzerland",
+        "answer": {
+          "role_family": "platform"
+        }
+      },
+      "default/app.enrich/f0eef5230b094ab5b3d7f7e6b73e2673f2486cf4db43edf2959e83b2171ce760/full": {
+        "text": "Engineering Manager, Infrastructure\nE2E Quality Labs\nZurich, Switzerland",
+        "answer": {
+          "languages": [
+            {
+              "language": "English",
+              "level": "required",
+              "evidence": "English working language"
+            }
+          ],
+          "english_is_enough": {
+            "value": "yes",
+            "evidence": "English working language"
+          },
+          "seniority": {
+            "value": "lead_manager",
+            "evidence": "Lead a team of 8 infrastructure engineers"
+          },
+          "work_mode": {
+            "value": "hybrid",
+            "remote_scope": "",
+            "evidence": "Hybrid in Zurich"
+          },
+          "workload": "unknown",
+          "salary": {
+            "stated": false,
+            "text": ""
+          },
+          "employer_type": {
+            "value": "direct_employer",
+            "evidence": ""
+          },
+          "role_family": "cloud_infrastructure",
+          "technologies": [
+            "hiring",
+            "roadmap",
+            "on-call rota",
+            "stakeholder management"
+          ],
+          "responsibilities": [
+            "Lead a team of 8 infrastructure engineers.",
+            "Manage hiring, roadmap, on-call rota and stakeholder management."
+          ],
+          "on_call": "unknown",
+          "visa_sponsorship": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "contract": "unknown",
+          "deadline": "",
+          "posted": "",
+          "confidence": "high"
+        }
+      },
+      "default/app.enrich/f0eef5230b094ab5b3d7f7e6b73e2673f2486cf4db43edf2959e83b2171ce760/role": {
+        "text": "Engineering Manager, Infrastructure\nE2E Quality Labs\nZurich, Switzerland",
+        "answer": {
+          "role_family": "cloud_infrastructure"
+        }
       }
     }
   },

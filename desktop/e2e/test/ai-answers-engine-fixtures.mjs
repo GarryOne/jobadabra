@@ -80,6 +80,36 @@ export function recorded(t, c, env = {}) {
   }
   return {q, items, table: {v: 1, answers, items}};
 }
+// Why (30 Oct 2026, qu): split fixture construction by shape while preserving the original requests and expected replies.
+/** Build reordered numbered batches without changing their original markers or expected answers. */
+function reorderedNumberedCase(c) {
+  let user, expected, subsetUser, subsetExpected;
+  const marker = c.name === 'reading' ? '\nThe postings:\n' : c.name === 'geo' ? 'Strings:\n' : c.name.startsWith('title') ? '\nThe titles:\n' : c.name === 'visit' ? '\nThe sites:\n' : '\nThe job locations:\n';
+  const start = c.user.indexOf(marker) + marker.length, prefix = c.user.slice(0, start), delimiter = c.name === 'reading' ? '\n\n' : '\n';
+  const blocks = c.user.slice(start).split(delimiter).map(line => line.replace(/^\d+\. /, ''));
+  user = prefix + [`1. ${blocks[1]}`, `2. ${blocks[0]}`].join(delimiter);
+  subsetUser = prefix + `1. ${blocks[1]}`;
+  const root = Object.keys(c.reply)[0], values = c.reply[root];
+  if (['geo', 'reading'].includes(c.name)) {
+    expected = {[root]: [{...values[1], n: 1}, {...values[0], n: 2}]}; subsetExpected = {[root]: [{...values[1], n: 1}]};
+  } else { expected = {[root]: values.length ? [2] : []}; subsetExpected = {[root]: []}; }
+  return {user, expected, subsetUser, subsetExpected};
+}
+
+/** Build the same reordered and subset requests and replies for a fixture family. */
+function reorderedCase(c) {
+  let user, expected, subsetUser, subsetExpected;
+  if (c.name === 'places') {
+    user = 'Place words (JSON): ["Paris", "Zurich"]';
+    expected = {places: [{...c.reply.places[1]}, {...c.reply.places[0], word: 'Zurich'}]};
+    subsetUser = 'Place words (JSON): ["PARIS"]'; subsetExpected = {places: [{...c.reply.places[1], word: 'PARIS'}]};
+  } else if (c.name === 'visa') {
+    user = c.user.replace('["Switzerland", "France"]', '["France", "Switzerland"]'); expected = {visa: ['France']};
+    subsetUser = c.user.replace('["Switzerland", "France"]', '["Switzerland"]'); subsetExpected = {visa: []};
+  } else return reorderedNumberedCase(c);
+  return {user, expected, subsetUser, subsetExpected};
+}
+
 /** Define observable replay, isolation, validation and recording checks for one engine family. */
 export function familyTests(names) {
   for (const c of engineCases.filter(c => names.includes(c.name))) {
@@ -120,25 +150,7 @@ export function familyTests(names) {
     });
     if (c.name !== 'enrich' && !c.name.startsWith('enrich ')) test(`${c.name}: reorder and subset reuse rows while current numbering is rebuilt`, t => {
       const {table} = recorded(t, c);
-      let user, expected, subsetUser, subsetExpected;
-      if (c.name === 'places') {
-        user = 'Place words (JSON): ["Paris", "Zurich"]';
-        expected = {places: [{...c.reply.places[1]}, {...c.reply.places[0], word: 'Zurich'}]};
-        subsetUser = 'Place words (JSON): ["PARIS"]'; subsetExpected = {places: [{...c.reply.places[1], word: 'PARIS'}]};
-      } else if (c.name === 'visa') {
-        user = c.user.replace('["Switzerland", "France"]', '["France", "Switzerland"]'); expected = {visa: ['France']};
-        subsetUser = c.user.replace('["Switzerland", "France"]', '["Switzerland"]'); subsetExpected = {visa: []};
-      } else {
-        const marker = c.name === 'reading' ? '\nThe postings:\n' : c.name === 'geo' ? 'Strings:\n' : c.name.startsWith('title') ? '\nThe titles:\n' : c.name === 'visit' ? '\nThe sites:\n' : '\nThe job locations:\n';
-        const start = c.user.indexOf(marker) + marker.length, prefix = c.user.slice(0, start), delimiter = c.name === 'reading' ? '\n\n' : '\n';
-        const blocks = c.user.slice(start).split(delimiter).map(line => line.replace(/^\d+\. /, ''));
-        user = prefix + [`1. ${blocks[1]}`, `2. ${blocks[0]}`].join(delimiter);
-        subsetUser = prefix + `1. ${blocks[1]}`;
-        const root = Object.keys(c.reply)[0], values = c.reply[root];
-        if (['geo', 'reading'].includes(c.name)) {
-          expected = {[root]: [{...values[1], n: 1}, {...values[0], n: 2}]}; subsetExpected = {[root]: [{...values[1], n: 1}]};
-        } else { expected = {[root]: values.length ? [2] : []}; subsetExpected = {[root]: []}; }
-      }
+      const {user, expected, subsetUser, subsetExpected} = reorderedCase(c);
       for (const [text, value] of [[user, expected], [subsetUser, subsetExpected]]) {
         const q = questionOf(askOf(c, bodyOf({...c, user: text})), {});
         assert.deepEqual(JSON.parse(answerFor(q, table).reply.content[0].text), value);

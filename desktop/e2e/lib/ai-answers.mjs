@@ -3,9 +3,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {decideCandidates, decideQuestion, itemCandidateName} from './ai-answers-decide.mjs';
-import {placeAnswerFor, placeCandidates, placeQuestion, validPlaceAnswer} from './ai-answers-place.mjs';
-import {engineAnswerFor, engineCandidates, engineOperation, engineQuestion, validEngineEntry} from './ai-answers-engine.mjs';
+import {decideQuestion} from './ai-answers-decide.mjs';
+import {placeQuestion} from './ai-answers-place.mjs';
+import {engineQuestion, itemOperation, validateItemEntry} from './ai-answers-engine.mjs';
 
 const GOLDEN = new URL('../fixtures/golden/', import.meta.url);
 const TABLE = fileURLToPath(new URL('ai-answers.json', GOLDEN));
@@ -63,15 +63,7 @@ function checkItems(table) {
     for (const [operation, entries] of Object.entries(table.items)) {
       if (!object(entries)) throw new Error(`AI answers: ${operation} items must be an object`);
       for (const [key, entry] of Object.entries(entries)) {
-        if (engineOperation(operation)) {
-          if (!validEngineEntry(operation, entry, key)) throw new Error(`AI answers: ${operation}/${key} needs text and a valid engine answer`);
-          continue;
-        }
-        if (operation === 'app.place') {
-          if (typeof entry?.text !== 'string' || !validPlaceAnswer(entry.answer)) throw new Error(`AI answers: ${operation}/${key} needs text and a valid place answer`);
-          continue;
-        }
-        if (typeof entry?.text !== 'string' || typeof entry?.answer !== 'string' || !entry.answer.trim()) throw new Error(`AI answers: ${operation}/${key} needs text and a non-empty answer`);
+        validateItemEntry(operation, entry, key);
       }
     }
   }
@@ -134,28 +126,14 @@ export function questionOf({url, headers, body, hint}, env = process.env, table)
 
 /** Return a complete stored reply, or name the precise question that has no answer. */
 export function answerFor(question, table) {
-  if (engineOperation(question.operation)) {
-    const found = engineAnswerFor(question, table);
-    return found.missing ? found : {reply: message(JSON.stringify(found.data))};
-  }
-  if (question.operation === 'app.place') {
-    const found = placeAnswerFor(question, table);
+  const operation = itemOperation(question.operation);
+  if (operation) {
+    const found = operation.answer(question, table);
     return found.missing ? found : {reply: message(JSON.stringify(found.data))};
   }
   if (question.operation === 'app.kind') {
     const entry = object(table.kinds) && Object.hasOwn(table.kinds, question.id) ? table.kinds[question.id] : null;
     return entry ? {...entry.answer} : {missing: `app.kind/${question.id}`};
-  }
-  if (question.operation === 'app.decide') {
-    const results = [], allowed = question.context.allowedAnswers.split(', ');
-    for (const item of question.items) {
-      const entries = table.items?.['app.decide'];
-      const entry = object(entries) && Object.hasOwn(entries, item.key) ? entries[item.key] : null;
-      // Why (#2450 slice 3): a batch is replayable only when every exact item has a valid stored answer for this task.
-      if (!entry || entry.text !== item.text || !allowed.includes(entry.answer)) return {missing: `app.decide item ${item.index} ${JSON.stringify(item.text.slice(0, 80))} key ${item.key}`};
-      results.push({index: item.index, answer: entry.answer});
-    }
-    return {reply: message(JSON.stringify({results}))};
   }
   const entries = table.answers[question.operation];
   if (!object(entries) && !['app.score', 'judge.facts'].includes(question.operation)) return {unkeyable: `${question.operation || 'unknown'}: no answer kind identifies the question`};
@@ -187,34 +165,15 @@ export function refusal(suite, question, why, request) {
 export function recordCandidate(dir, question, reply) {
   if (question.unkeyable) return;
   if (!object(reply)) throw new Error('AI answer candidate reply must be an object');
-  if (engineOperation(question.operation)) {
-    const items = engineCandidates(question, reply);
+  const operation = itemOperation(question.operation);
+  if (operation) {
+    const items = operation.candidates(question, reply);
     if (!items.length) return;
     fs.mkdirSync(dir, {recursive: true});
-    for (const {key, text, answer} of items) {
+    for (const {key, text, answer, name} of items) {
+      // Why (30 Oct 2026, qu; #2450 slice 3): all registered items remain independently reviewed; recording never changes the committed table.
       const table = {v: 1, about: 'Live AI item answer awaiting human review.', answers: {}, items: {[question.operation]: {[key]: {text, answer}}}};
-      fs.writeFileSync(path.join(dir, itemCandidateName(`${question.operation}/${key}`)), `${JSON.stringify(table, null, 2)}\n`);
-    }
-    return;
-  }
-  if (question.operation === 'app.place') {
-    const items = placeCandidates(question, reply);
-    if (!items.length) return;
-    fs.mkdirSync(dir, {recursive: true});
-    for (const {key, text, answer} of items) {
-      const table = {v: 1, about: 'Live AI item answer awaiting human review.', answers: {}, items: {'app.place': {[key]: {text, answer}}}};
-      fs.writeFileSync(path.join(dir, itemCandidateName(key)), `${JSON.stringify(table, null, 2)}\n`);
-    }
-    return;
-  }
-  if (question.operation === 'app.decide') {
-    const items = decideCandidates(question, reply);
-    if (!items.length) return;
-    fs.mkdirSync(dir, {recursive: true});
-    for (const {key, text, answer} of items) {
-      // Why (#2450 slice 3): each item is reviewed independently, and recording never changes the committed answer table.
-      const table = {v: 1, about: 'Live AI item answer awaiting human review.', answers: {}, items: {'app.decide': {[key]: {text, answer}}}};
-      fs.writeFileSync(path.join(dir, itemCandidateName(key)), `${JSON.stringify(table, null, 2)}\n`);
+      fs.writeFileSync(path.join(dir, name), `${JSON.stringify(table, null, 2)}\n`);
     }
     return;
   }

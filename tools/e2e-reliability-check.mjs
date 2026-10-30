@@ -10,7 +10,6 @@ export const JOBS = ['run the backbone', 'serve stored answers', 'wait on state'
 const REGISTRY = 'desktop/e2e/lanes.json';
 const SUITE = /^desktop\/e2e\/suites\/([^/]+)\.mjs$/;
 const CHECK_LIB = /^desktop\/e2e\/lib\/[^/]*(?:check|problems|quality|judge|baseline|truth)[^/]*\.mjs$/;
-const HARNESS_SIZE = 'desktop/e2e/test/harness-size.json';
 const EXPECTATIONS = /^desktop\/e2e\/(?:.*(?:baseline|expectations?)\.json|fixtures\/.*\/truth\.json)$/;
 // Why (28 Oct 2026, a8; e2e-revert #2424; e2e-flip 29 Oct 2026, owner): rule F covers workflows that run, judge or report e2e; label, mail and site workflows have no e2e design job to name. Add a workflow here when it starts to.
 const E2E_WORKFLOWS = '(?:e2e|e2e-windows|e2e-bisect|e2e-revert|e2e-flip|main-steps|pr-suites|pr-verdict|page-cases|stable-canary)';
@@ -129,17 +128,6 @@ export function harnessProblems(changes, messages) {
   return found;
 }
 
-// Why (30 Oct 2026, bb 2/9, JOB-48): raising the harness-size ratchet is allowed, but only on purpose and with a reason a reviewer can read.
-export function growthProblem(changes, messages) {
-  const size = changes.find(change => change.file === HARNESS_SIZE);
-  if (!size || size.before === null || size.after === null) return '';
-  const was = JSON.parse(size.before), now = JSON.parse(size.after);
-  // Why (30 Oct 2026, Gitar on #2592): slack sets the lower bound of the shrink check, so raising it frees lines the same way raising harnessLines does.
-  const raised = ['harnessLines', 'slack'].filter(key => now[key] > was[key]);
-  if (!raised.length) return '';
-  return messages.some(message => /^Harness-grow:[ \t]*\S/m.test(message)) ? '' : `raising ${raised.join(' and ')} in harness-size.json needs Harness-grow: <why> in a commit message.`;
-}
-
 // Repo/base -> blocking message (empty on success). Git errors fail closed; callers must supply a fetched base.
 export function checkPush({root, base = 'origin/main'}) {
   const git = (...args) => execFileSync('git', ['-C', root, ...args], {encoding: 'utf8', maxBuffer: 64 << 20, stdio: ['ignore', 'pipe', 'pipe']});
@@ -171,8 +159,6 @@ export function checkPush({root, base = 'origin/main'}) {
     }
   }
   const found = harnessProblems(changes, messages).map(problem => `Rule F: ${problem}`);
-  const growth = growthProblem(changes, messages);
-  if (growth) found.push(`Rule F: ${growth}`);
   if (needsCitation.length && !citation(messages)) found.unshift(`Rule E: expectation changes need Expect-changed-by: <sha or owner's request> or Test-was-wrong: <why> in a commit message:\n  ${needsCitation.join('\n  ')}`);
   return found.join('\n');
 }

@@ -117,11 +117,22 @@ test('interviews serves both keyed reviews and the kind-only aggregate at every 
     assert.equal(response.status, 200);
     assert.deepEqual(await response.json(), expected);
   }
-  for (const kind of background) {
+  const refused = background.filter(kind => table.kinds[kind].answer.refuse);
+  for (const kind of refused) {
     assert.deepEqual(table.kinds[kind].answer, {refuse: 'invalid-key'});
     const response = await h.localFetch(`${h.proxy.url}/v1/messages`, request(kind));
     assert.equal(response.status, 401, kind);
   }
+  for (const kind of background.filter(kind => !refused.includes(kind))) {
+    const init = request(kind), expected = table.kinds[kind].answer.reply;
+    assert.ok(expected, `${kind} needs an authored reply`);
+    assert.deepEqual(storedAnswer({url: '/v1/messages', ...init}, h.env), {reply: expected});
+    assert.deepEqual(await (await modelFetch('http://127.0.0.1:1/v1/messages', init, h.options)).json(), expected);
+    const response = await h.localFetch(`${h.proxy.url}/v1/messages`, init);
+    assert.equal(response.status, 200, kind);
+    assert.deepEqual(await response.json(), expected);
+  }
+  assert.equal(h.proxy.stats.failed, refused.length);
   h.assertNoLive();
 });
 

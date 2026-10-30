@@ -14,10 +14,14 @@ import {createVariation} from '../lib/variation.mjs';
 import {describe, planWalk} from '../lib/wander.mjs';
 import {goView} from '../lib/go-view.mjs';
 
-export const realAi = true;   // stubs some AI calls but passes the others to the real model (metered); a suite with all calls stubbed declares false (test/suite-ai-mode.test.mjs)
+// Why (30 Oct 2026, ap): wander checks UI resilience with declared answers; no live AI key or transport is needed.
+export const offlineAi = true;
+export const realAi = false;
 export const name = 'wander';
 export const keepGoing = true;
 export const notionProxy = true;
+// Why (30 Oct 2026, ap): stored answers need one store path; the stand-in keeps wander's injected Notion faults reachable, unlike SQLite.
+export const store = 'standin';
 export const variesPlace = true;
 export const varies = true;
 export const minutes = 15;

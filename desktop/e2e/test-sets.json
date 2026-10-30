@@ -354,6 +354,7 @@
   "verify-report.test.mjs",
   "vision.test.mjs",
   "wait-on-state.test.mjs",
+  "wander-backbone-no-live-ai.test.mjs",
   "wander.test.mjs",
   "wanted-hosts.test.mjs",
   "watch-cli.test.mjs",
@@ -470,6 +471,7 @@
   "triage-evidence.test.mjs": "Uses triage, which enumerates artifact directories and refers to suite paths without reading the suites folder.",
   "triage-rank.test.mjs": "Uses triage, which enumerates artifact directories and refers to suite paths without reading the suites folder.",
   "triage-seen-again.test.mjs": "Uses triage, which enumerates artifact directories and refers to suite paths without reading the suites folder.",
-  "verdict-comment.test.mjs": "Uses triage, which enumerates artifact directories and refers to suite paths without reading the suites folder."
+  "verdict-comment.test.mjs": "Uses triage, which enumerates artifact directories and refers to suite paths without reading the suites folder.",
+  "wander-backbone-no-live-ai.test.mjs": "Exercises pure planWalk and named suite/proxy APIs; never enumerates suite or lib modules."
  }
 }

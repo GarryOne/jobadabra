@@ -22,7 +22,7 @@ const request = (action, body = {model: 'test', messages: [{role: 'user', conten
   method: 'POST', headers: {'content-type': 'application/json', 'x-jp-action': action}, body: JSON.stringify(body),
 });
 
-// Why (30 Oct 2026, bb 3/9, Gitar): one looped file instead of one near-identical file per suite; a suite joins by name.
+// Why (30 Oct 2026, bb; #2593): interactions and failureschannels share setup reads, so one loop applies the same stored-answer and no-live guards to both.
 for (const suite of ['interactions', 'failureschannels']) {
   for (const family of ['claude', 'openai']) test(`${suite} setup answers and named refusals stop before live ${family} AI`, async t => {
     const h = await backboneHarness(t, suite, family);

@@ -196,3 +196,15 @@ test('a job an earlier run held whose hand-over fails is still never claimed or 
   const fresh = await controller(new Date(started + 1000).toISOString()).handle({action: 'poll', owner: 'o1'});
   assert.deepEqual(fresh.checks, [{session: 's1'}], 'positive control: the same store outage does not stop a job this run started');
 });
+
+// Gitar on #2598: the cache is saved 1.5 s after a move, so a quit can leave the store handed over and the cache not; such a job still goes the hand-off way.
+test('a job an earlier run held that the store already handed over goes the normal hand-off way, even when its cache missed it', async () => {
+  const now = Date.parse('2026-10-30T16:30:00Z'), started = now - 5000;
+  const handed = {session: 's1', mode: 'auto', chosenAt: 'c1', state: 'needs_user_handoff', reason: 'stopped', manualOverride: true};
+  const controller = createBackgroundApplyController({}, {
+    store: {read: async () => handed, interrupted: async () => null},
+    browser: {start: async () => ({owner: 'o1'})}, terminals: {list: () => [{id: 's1', url: 'https://jobs.example.test/w', background: {state: 'waiting_to_submit', manualOverride: false}, outcome: '', startedAt: new Date(started - 60000).toISOString()}], record: () => null, report: () => {}},
+    config: () => ({mode: 'auto', chosenAt: 'c1', auto: {waitMin: 1}}), now: () => now, started, token: () => 't', notify: () => {}, stop: () => false, log: () => {}});
+  const polled = await controller.handle({action: 'poll', owner: 'o1'});
+  assert.deepEqual([polled.handoffs, polled.checks], [[{session: 's1', reason: 'stopped', reveal: true}], []], 'the stale cache does not hide the store\'s hand-over');
+});

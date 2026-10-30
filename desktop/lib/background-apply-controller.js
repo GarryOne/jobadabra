@@ -97,7 +97,7 @@ export function createBackgroundApplyController(storage, {store = null, browser 
     await handOverAll(heldOpen, {quit: true});   // a poll before the start-up sweep never continues a job an earlier run held (owner, 30 Oct 2026: "A quit is a Stop")
     const jobs = [], checks = [], handoffs = [];
     let filling = false;
-    const open = terminals.list().filter(item => item.background && !item.outcome && !heldOpen(item));   // a held job whose hand-over did not save is never continued (Gitar on #2598); the next poll tries again
+    const open = terminals.list().filter(item => item.background && !item.outcome && !unsaved.has(item.id));   // a held job whose hand-over write threw is never continued (Gitar on #2598); the next poll tries again
     for (const item of open) {
       let state = await store.read(item.url);
       if (!state || state.session !== item.id) continue;
@@ -128,9 +128,12 @@ export function createBackgroundApplyController(storage, {store = null, browser 
     if (!owner) ({owner} = await browserOf().start({port, token: token()}));
     return reader.read(job?.url);
   }
+  const unsaved = new Set();   // jobs an earlier run held whose quit hand-over write threw: the poll leaves them out until one saves (Gitar on #2598)
   // Hands one background job to the person through the store's interrupted check (`options`: afterMs, quit) with its own words; -> the saved state, or null when it was not handed over.
   async function handOverInterrupted(item, options) {
-    const state = await store.interrupted(item.url, item.id, options).catch(() => null);
+    let threw = false;
+    const state = await store.interrupted(item.url, item.id, options).catch(() => { threw = true; return null; });
+    if (options.quit) unsaved[threw ? 'add' : 'delete'](item.id);
     if (!state) return null;
     cache(item, state);
     notify('Application needs you', NOTICES[state.reason] || NOTICES.submission_outcome_unknown, {view: 'sessions', session: item.id}, 'warn');

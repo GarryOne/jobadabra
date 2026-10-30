@@ -34,6 +34,7 @@ DIFFERENT = {
         'E2E_FALLBACK_SUITES': 'red-steps.mjs reserves renamed PR picks; the beta has no picked steps.',
         'E2E_FALLBACK_SUITE': 'red-steps.mjs identifies a reserved PR leg; the beta runs full suites.',
         'E2E_STORE': 'Standalone PR smoke uses fresh SQLite; the beta keeps the default store rotation (store.mjs).',
+        'E2E_AI_REPLAY': 'desktop.yml keeps the qualityai-live expression on every replay line (tests/test_quality_replay_gate.py); qualityai is sameOnEveryOs, so the Windows value is 1 either way.',
     },
 }
 DIFFERENT_NAMES = {

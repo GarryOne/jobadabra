@@ -14,7 +14,7 @@ Each of these is a blocking finding (no approval) with file:line: the cause is m
 
 ## Going in circles
 
-Look for the line `AREA-CIRCLES 7d=<n> 30d=<n> files=<list>` in the PR description. It counts the earlier PRs that touched the same product files; judge from the subjects listed above it which of them were fixes.
+Look for the line `AREA-CIRCLES 7d=<n> 30d=<n> files=<list>` in the PR description. It counts the earlier PRs that touched the same product or harness code (desktop/e2e root, lib and suites `.mjs`; tests, fixtures, recordings and the shared registries never count); judge from the subjects listed above it which of them were fixes.
 
 - `7d` is 2 or more and the earlier PRs read as fixes (this PR would be the 3rd): a blocking finding until the description has a `Design:` block in the description: the intended behaviour in the owner's words, as the states, the one owner of each, and the verdicts that change them. The code should then be simplified to match.
 - Flag a PR that adds one more case, branch, flag or special case to code that already had 2+ fixes that week; ask what the design says instead.

@@ -7,10 +7,19 @@ import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 
 export const CIRCLE_AT = 2;   // Why (owner, 27 Oct 2026): a 3rd fix on the same files within 7 days gets no patch; 2 earlier = this PR would be the 3rd
-// Why (27 Oct 2026): no keyword list decides "is this a fix" (the AI-decides rule), and it would miss the very panel-dim case: those subjects say "Keep the panel steady", not "Fix".
-// The tool counts every earlier PR on the files and prints the subjects; the Gitar reviewer judges which were fixes. Tests and docs are not "the area": every PR touches them.
-export const NOT_AREA = /(^|\/)(tests?|docs?|e2e|fixtures)\/|\.md$|\.test\.|package-lock\.json$/;
+// Why (27 Oct 2026): no keyword list decides "is this a fix" (the AI-decides rule), and it would miss the very panel-dim case: those subjects say "Keep the panel steady", not "Fix". Since 30 Oct 2026 the same applies to harness code (see the Why below).
+// The tool counts every earlier PR on the files and prints the subjects; the Gitar reviewer judges which were fixes. Tests, docs and the shared harness registries are not "the area": every PR touches them.
+// Why (30 Oct 2026, a8: e2e audit): harness code now counts; 19 of 102 e2e PRs were rework. Tests, fixtures and recordings stay excluded.
+// Shared registries test-sets.json, lanes.json and timing-baseline.json stay excluded: every harness PR touches them (measured 30 Oct: test-sets 112 and lanes 12 commits in 7 days).
+const NOT_AREA = /(^|\/)(tests?|docs?|fixtures)\/|\.md$|\.test\.|package-lock\.json$/;
 const DAY = 86400e3;
+
+/** Whether a path counts as an area. Invariant: harness paths count only for direct root, lib or suites .mjs code; test files never count. */
+// Why (30 Oct 2026, Gitar #2587): allowlist harness code because the folder blacklist missed ladder-fixtures and recorded-pending, creating false circles from evidence.
+export function isArea(file) {
+  if (NOT_AREA.test(file)) return false;
+  return !file.startsWith('desktop/e2e/') || /^desktop\/e2e\/(?:(?:lib|suites)\/)?[^/]+\.mjs$/.test(file);
+}
 
 // Commits {hash, time (ms), subject, files} -> the PRs ("#N" from the subject, else the commit hash) touching `files` within `days` of `now`, as {id, subject}.
 export function priorPrs(commits, files, days, now) {
@@ -26,7 +35,7 @@ export function priorPrs(commits, files, days, now) {
 // -> the report lines; last line AREA-CIRCLES 7d=<n> 30d=<n> files=<list>, alone (0 and 0) when no earlier PR touched the area.
 // Why (Gitar on #2287): the counter writes its own zero, so a description's 0/0 is a count, never a caller's fallback for a run that failed.
 export function report(commits, changed, now) {
-  const files = changed.filter(file => !NOT_AREA.test(file));
+  const files = changed.filter(isArea);
   const week = priorPrs(commits, files, 7, now), month = priorPrs(commits, files, 30, now);
   if (!month.length) return [`AREA-CIRCLES 7d=0 30d=0 files=${files.join(',')}`];
   const short = list => list.slice(0, 8).map(pr => `  ${pr.id} ${pr.subject.replace(/\s*\(#\d+\)$/, '')}`);

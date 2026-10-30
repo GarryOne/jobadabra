@@ -45,7 +45,7 @@ export const stepSeconds = {'real forms the extension once failed on': 76, 'Tail
   'a Greenhouse-like form': 16, 'Apply on a saved job without a kit': 15, 'a Workday-shaped form': 11, 'The hidden browser fills a form': 30, 'Full automation presses Submit once on its own': 60,
   'a silent Chrome in Standard automation': 45, 'a silent Chrome in Background automation': 20, 'a silent Chrome in Full automation': 20,
   'the app quits while Background automation holds a filled form': 40, 'the app quits in Full automation\'s wait': 140,
-  'the Jobs popup picks the 10 best matches': 15, 'checking jobs before the form read exists': 10,
+  'the Jobs popup has one field': 15, 'checking jobs before the form read exists': 10,
   'Background automation hands a bot check': 25, 'Full automation hands a bot check': 25,
   'Background automation fills several queued jobs': 90, 'Full automation presses each queued job': 50};
 // Why (29 Oct 2026, ap): hang caps in seconds, 3 x calm p95 from tools/e2e-step-timings.mjs, raised to the step's own inner caps + 30 s where a step waits in sequence; they catch a hang, never a speed.
@@ -60,7 +60,7 @@ export const hangCaps = {'the app has an applicant': 300, 'the app is seeded': 9
   // no main samples yet, regenerate after 5 main runs: the 30 s floor x 3 (tools/e2e-step-timings.mjs)
   'a silent Chrome in Standard automation': 90, 'a silent Chrome in Background automation': 90, 'a silent Chrome in Full automation': 90,
   'the app quits while Background automation holds a filled form': 300, 'the app quits in Full automation\'s wait': 420,   // hold 180 + hand-over 60 + the watch past the wait <= 120, + 30 s
-  'the Jobs popup picks the 10 best matches': 90, 'checking jobs before the form read exists': 90,
+  'the Jobs popup has one field': 90, 'checking jobs before the form read exists': 90,
   'Background automation hands a bot check': 240, 'Full automation hands a bot check': 240,
   'Background automation fills several queued jobs': 450, 'Full automation presses each queued job': 450,   // 60 s + 3 x 120 s of inner waits, + 30 s
   'the form\'s panel offers a tailored CV': 3 * stepSeconds['Tailor on the session page of a form']};

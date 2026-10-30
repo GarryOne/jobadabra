@@ -267,7 +267,7 @@ One `###` per plan step, one box per thing that lands; a box is ticked only with
 
 ### 10. Harness shrink
 - [ ] Delete what the design replaced, one step at a time, the module count measured before and after.
-- [x] ~~Enforce the size of the harness by lines~~ Dropped (owner, 30 Oct 2026: "If it low gain, let's remove it"): a committed line count made every e2e PR rewrite one line and conflict with the others (#2592 added it, this PR removes it, with `Harness-grow:`). The 283-module target (row 29) stays and is measured by bb or a8 at each step, by hand. (bb, JOB-48)
+- [x] ~~Enforce the size of the harness by lines~~ Dropped (owner, 30 Oct 2026: "If it low gain, let's remove it"): a committed line count made every e2e PR rewrite one line and conflict with the others (#2592 added it, this PR removes it, with `Harness-grow:`). The 283-module target (row 29) stays and is measured by bb or a8 at each step, by hand. (bb, JOB-48) (proof: tools/e2e-reliability-check.mjs)
 - [ ] Back under 283 lib modules (row 29), the module count measured before and after.
 
 ### 11. Acceptance

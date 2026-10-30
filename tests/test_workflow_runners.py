@@ -11,6 +11,30 @@ FILES = [*sorted((ROOT / '.github' / 'workflows').glob('*.yml')), ROOT / 'deskto
 
 
 class PinnedRunners(unittest.TestCase):
+    def test_every_macos_runner_uses_the_e2e_image(self):
+        found = []
+        for path in sorted((ROOT / '.github' / 'workflows').glob('*.yml')):
+            runner_indent = None
+            for number, line in enumerate(path.read_text(encoding='utf-8').splitlines(), 1):
+                code = line.split('#', 1)[0].rstrip()
+                if not code.strip():
+                    continue
+                indent = len(code) - len(code.lstrip())
+                if runner_indent is not None and indent <= runner_indent:
+                    runner_indent = None
+                key = re.match(r'\s*(?:runs-on|os):\s*(.*)', code)
+                if key:
+                    runner_indent = indent if not key.group(1) else None
+                    value = key.group(1)
+                elif runner_indent is not None:
+                    value = code
+                else:
+                    continue
+                for runner in re.findall(r'(?<![\w-])macos[\w.-]*', value):
+                    if runner != 'macos-latest':
+                        found.append(f'{path.relative_to(ROOT)}:{number}: {runner}')
+        self.assertEqual(found, [], "a pinned macOS image is retired under us (macos-14 brownout, 30 Oct 2026); use macos-latest, the e2e lanes' image")
+
     def test_no_job_runs_on_ubuntu_latest(self):
         found = [f'{path.name}:{number}' for path in FILES for number, line in enumerate(path.read_text(encoding='utf-8').splitlines(), 1)
                  if re.search(r'ubuntu-latest', line)]

@@ -242,7 +242,7 @@ jobs:
     name: Build · Mac
     needs: changes   # the version and the draft release exist
     if: needs.changes.outputs.released == 'true'
-    runs-on: macos-14   # Apple Silicon
+    runs-on: macos-latest   # Apple Silicon; Why (30 Oct 2026, beta 41114966182): macOS 14 brownout; build on the image the e2e runs on.
     timeout-minutes: 30
     env:
       VERSION: ${{ needs.changes.outputs.version }}

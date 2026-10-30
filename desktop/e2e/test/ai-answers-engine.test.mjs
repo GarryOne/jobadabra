@@ -83,10 +83,14 @@ test('all eleven engine kinds precede declared-kind dispatch; desktop declaratio
     assert.equal(questionOf({...askOf(places), headers: {'x-jp-action': action}}, env, declared).operation, 'app.places');
   }
   for (const [action, entry] of Object.entries(table.kinds)) {
-    const request = {headers: {'x-jp-action': action}, body: {model: 'test', system: 'Declared desktop question.', messages: [{role: 'user', content: 'Contact question: notice period'}]}};
+    // Why (30 Oct 2026, qu): interview reviews use the real builder's caption/notes layout (src/ai/interviews_ai.py), not a kind-only contact request.
+    const captioned = entry.identity === 'caption', caption = 'recruiter-call-gamma';
+    const expected = captioned ? {operation: `app.${action}`, id: caption} : {operation: 'app.kind', id: action};
+    const content = captioned ? `Applications:\n(none)\n\nCaption: ${caption}\n\nTranscript or notes:\nFixture interview notes.` : 'Contact question: notice period';
+    const request = {headers: {'x-jp-action': action}, body: {model: 'test', system: 'Declared desktop question.', messages: [{role: 'user', content}]}};
     const question = questionOf(request, env, table);
-    assert.deepEqual(question, {operation: 'app.kind', id: action});
-    assert.deepEqual(answerFor(question, table), entry.answer);
+    assert.deepEqual(question, expected);
+    assert.deepEqual(answerFor(question, table), captioned ? table.answers[expected.operation][caption] : entry.answer);
     for (const mode of ['off', 'record']) assert.ok(questionOf(request, {...env, E2E_AI_ANSWERS: mode}, table).unkeyable, `${action} must keep its ${mode} path`);
   }
 });

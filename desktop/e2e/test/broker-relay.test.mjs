@@ -78,3 +78,30 @@ test('with the app on codex in CI no other family bills it and its key is the pl
   assert.equal(testKey(env), DUMMY_KEY);
   assert.equal(pickFamily({...env, CI_AI_PROVIDER: 'free'}), 'free');
 });
+
+// The persona wrapper must route both SDKs locally, keep OIDC in the relay, and return the child's failure without API fallback.
+test('a persona child uses only the Codex relay; credentials never reach the child', async () => {
+  const {runOnCodex} = await import('../../../tools/persona-search/codex.mjs');
+  const code = await runOnCodex(process.execPath, ['--input-type=module', '-e', `
+    import assert from 'node:assert/strict';
+    const env = process.env;
+    assert.equal(env.ANTHROPIC_API_KEY, undefined);
+    assert.equal(env.OPENAI_API_KEY, undefined);
+    assert.equal(env.ACTIONS_ID_TOKEN_REQUEST_TOKEN, undefined);
+    assert.equal(env.JOB_PILOTTO_E2E_AI_BASE_URL, env.ANTHROPIC_BASE_URL);
+    const reply = await fetch(env.ANTHROPIC_BASE_URL + '/v1/messages', {method: 'POST', body: JSON.stringify({model: 'claude-haiku-5-5', messages: [{role: 'user', content: 'hi'}]})});
+    assert.equal(reply.status, 200);
+    assert.equal((await reply.json()).content[0].text, 'from Codex');
+  `], {env: {...process.env, CI: 'true', CI_AI_PROVIDER: 'codex', E2E_AI_PROVIDER: 'codex', ACTIONS_ID_TOKEN_REQUEST_TOKEN: 'oidc', ACTIONS_ID_TOKEN_REQUEST_URL: 'https://oidc.invalid', ANTHROPIC_API_KEY: 'paid', OPENAI_API_KEY: 'paid'}, ask: answered('from Codex')});
+  assert.equal(code, 0);
+});
+
+test('a persona broker refusal stays an error and the wrapper returns the child exit code', async () => {
+  const {runOnCodex} = await import('../../../tools/persona-search/codex.mjs');
+  const code = await runOnCodex(process.execPath, ['--input-type=module', '-e', `
+    const reply = await fetch(process.env.ANTHROPIC_BASE_URL + '/v1/messages', {method: 'POST', body: JSON.stringify({model: 'claude-haiku-5-5', messages: [{role: 'user', content: 'hi'}]})});
+    process.exit(reply.status === 503 ? 7 : 9);
+  `], {env: {...process.env, CI: 'true', CI_AI_PROVIDER: 'codex', E2E_AI_PROVIDER: 'codex', ACTIONS_ID_TOKEN_REQUEST_TOKEN: 'oidc', ACTIONS_ID_TOKEN_REQUEST_URL: 'https://oidc.invalid'}, ask: async () => ({ok: false, status: 'no-token', detail: 'refused'})});
+  assert.equal(code, 7);
+  await assert.rejects(runOnCodex('unused', [], {env: {CI: 'true', CI_AI_PROVIDER: 'claude'}}), /Codex/);
+});

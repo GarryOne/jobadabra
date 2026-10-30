@@ -52,6 +52,7 @@ on:
       - 'tools/design-system/zip.mjs'
       - 'tools/lanes-check.mjs'
       - 'tools/pool-rows.mjs'
+      - 'tools/persona-search/codex.mjs'
       - 'tools/record-env.mjs'
       - 'tools/rung-trailer.mjs'
       - 'tools/seed-ai-answer-requests.mjs'

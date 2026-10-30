@@ -23,7 +23,7 @@ MAIN_RUNS = 3       # the per-persona "Main" column shows the newest 3 measured 
 QUALITY_MIN_RUNS = 10
 QUALITY_SPREADS = 2
 PERSONA_CAP_USD = 0.10   # Why (owner, 27 Oct 2026, "Haiku on an API key ... with a per-run $ cap"): measured on #2259 (4 personas): $0.045-0.079, mean $0.058, so ~$0.35 a run; the cap is ~25% over the worst
-COST = 'Haiku 5.5 on PR_PROOF_ANTHROPIC_KEY'
+COST = 'Codex subscription (ChatGPT plan; no API charge)'
 
 
 def label(n):
@@ -63,23 +63,30 @@ def result(n, out):
     a failed press (silence is not success), never a zero that looks measured."""
     out = Path(out)
     row = {'persona': int(n), 'label': label(n)}
+    press_billing = ''
     press_usd = None   # None = the press's cost was not measured; never shown or counted as $0 (gitar on #2259)
     try:
         press = json.loads((out / 'draw' / 'presses.jsonl').read_text(encoding='utf-8').splitlines()[0])
+        press_billing = press.get('billing', '')
         ai = (press.get('funnel') or {}).get('ai_usd')
         press_usd = None if ai is None else float(ai)   # the press's measured AI cost (funnel.py ai_usd); the strategy draft before it is not counted
         row.update(seconds=int(press['seconds']), code=int(press.get('code') or 0), crashes=len(press.get('crashes') or []))
     except (OSError, IndexError, ValueError, KeyError, TypeError):
         row['error'] = 'the press wrote no numbers (see run.log)'
     judge_usd = 0.0
+    subscription = False
     try:
         judged_file = json.loads((out / 'judged.json').read_text(encoding='utf-8'))
+        subscription = judged_file.get('billing') == 'subscription'
         judge_usd = float(judged_file.get('usd') or 0)
         judged = judged_file['rows']
         row.update(found=len(judged), local=sum(1 for r in judged if r.get('role') == 'yes' and r.get('place') == 'yes'))
     except (OSError, ValueError, KeyError):
         row.setdefault('error', 'the judge wrote no verdicts (see judge.log)')
     row['usd'] = None if press_usd is None else round(press_usd + float(judge_usd), 4)
+    if subscription and press_billing == 'subscription' and press_usd is not None:
+        # Why (30 Oct 2026, owner): the relay's engine may estimate tokens at API prices; the broker uses the ChatGPT plan, never API dollars.
+        row.update(usd=0, billing='subscription')
     if press_usd is None:
         row['cost_unmeasured'] = True
     try:
@@ -123,7 +130,7 @@ def judge_one(row, mains):
     if (row.get('usd') or 0) > PERSONA_CAP_USD:
         reasons.append(f"cost ${row['usd']:.3f} over the ${PERSONA_CAP_USD} cap")
     if row.get('non_haiku'):
-        reasons.append(f"{row['non_haiku']} AI step(s) not on Haiku 5.5")
+        reasons.append(f"{row['non_haiku']} AI step(s) outside the small tier")
     seen = [m['local'] for m in mains if isinstance(m.get('local'), int)][:MAIN_RUNS]
     return reasons, seen   # right jobs are shown, never red per persona (quality(): the pooled total)
 
@@ -180,7 +187,7 @@ def table(verdict):
         mark = '🔴 ' + '; '.join(r['reasons']) if r['reasons'] else ('⚪' if r['not_measured'] else '🟢')
         cell = lambda v, unit='': '—' if v is None else f'{v}{unit}'   # noqa: E731
         lines.append(f"| {r['label']} | {main} | {cell(r['local'])} | {cell(r['found'])} | {cell(r['seconds'], ' s')} | {'—' if r['usd'] is None else '$%.3f' % r['usd']} | {mark} |")
-    lines += ['', '<sub>This PR / Main = jobs a blind judge (Haiku 5.5) called right role AND right place, of the jobs found; one press each, '
+    lines += ['', '<sub>This PR / Main = jobs a blind judge (Codex small tier) called right role AND right place, of the jobs found; one press each, '
               'a fresh install. Red: a press over 180 s, or (from 10 measured main runs) the six-persona total below main\'s average minus twice its spread.</sub>']
     return '\n'.join(lines) + '\n'
 

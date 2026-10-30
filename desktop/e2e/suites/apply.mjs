@@ -19,6 +19,7 @@ import {livePosting, realKind, runLive} from '../lib/apply-live.mjs';
 import {runCvSteps} from '../lib/apply-cv-steps.mjs';
 import {runSilentChromeSteps} from '../lib/apply-silent-steps.mjs';
 import {runTriageSteps} from '../lib/apply-triage-steps.mjs';
+import {runRestartSteps} from '../lib/apply-restart-steps.mjs';
 import {proveBackground} from '../lib/background-proof.mjs';
 import {proveAutomatic} from '../lib/background-auto-proof.mjs';
 import {runJourneys} from '../lib/apply-journeys.mjs';
@@ -42,6 +43,7 @@ export const stepSeconds = {'real forms the extension once failed on': 76, 'Tail
   'Tailor CV on a job': 34, 'a Lever-like form': 33, 'Open in Chrome on a form the night filled': 29, 'Tailor on the session page of a form': 23, 'the person submits a form': 21,
   'a Greenhouse-like form': 16, 'Apply on a saved job without a kit': 15, 'a Workday-shaped form': 11, 'The hidden browser fills a form': 30, 'Full automation presses Submit once on its own': 60,
   'a silent Chrome in Standard automation': 45, 'a silent Chrome in Background automation': 20, 'a silent Chrome in Full automation': 20,
+  'the app quits while Background automation holds a filled form': 100, 'the app quits in Full automation\'s wait': 130,
   'the Jobs popup picks the 10 best matches': 15, 'checking jobs before the form read exists': 10};
 // Why (29 Oct 2026, ap): hang caps in seconds, 3 x calm p95 from tools/e2e-step-timings.mjs, raised to the step's own inner caps + 30 s where a step waits in sequence; they catch a hang, never a speed.
 // A step whose inner caps add up past the runner's 8-minute default (Tailor CVs for top matches, Full automation) has no entry: the default stays.
@@ -54,6 +56,7 @@ export const hangCaps = {'the app has an applicant': 300, 'the app is seeded': 9
   'The hidden browser fills a form': 385,
   // no main samples yet, regenerate after 5 main runs: the 30 s floor x 3 (tools/e2e-step-timings.mjs)
   'a silent Chrome in Standard automation': 90, 'a silent Chrome in Background automation': 90, 'a silent Chrome in Full automation': 90,
+  'the app quits while Background automation holds a filled form': 300, 'the app quits in Full automation\'s wait': 330,
   'the Jobs popup picks the 10 best matches': 90, 'checking jobs before the form read exists': 90,
   'the form\'s panel offers a tailored CV': 3 * stepSeconds['Tailor on the session page of a form']};
 // applyflows' journeys, weighed the same way (26 Oct 2026, beta 40275152602 + main 40274183649, the slowest attempt of each): turn-taking put 392 s of them in one slice and 299 s in the other.
@@ -69,6 +72,7 @@ const SETUP = 'the app has an applicant';
 export const stepNeeds = {'form': [SETUP], 'session page says it too': [SETUP, 'multi-step form'], 'Tailor CV': [SETUP], 'tailored CV': [SETUP], 'without a kit': [SETUP],
   'hidden browser fills a form': [SETUP], 'submits a form': [SETUP], 'I submitted it': [SETUP, 'Apply opens a new tab'], 'Apply opens a new tab': [SETUP], 'side by side': [SETUP], 'sign-up page': [SETUP], 'sign-in page': [SETUP], 'menu whose choices': [SETUP], 'Needs your attention" from': [SETUP], 'appears only when + is pressed': [SETUP], 'one page': [SETUP], 'tab is closed': [SETUP], 'second browser': [SETUP], 'wrong kind': [SETUP], 'cannot operate': [SETUP],
   'the Jobs popup': [SETUP], 'checking jobs before': [SETUP, 'the Jobs popup'],
+  'the app quits while': [SETUP], 'the app quits in': [SETUP],
   'Ready to submit': [SETUP, 'cannot operate']};   // it reads the tab the "cannot operate" step left open
 // One failed step never hides the rest: the runner records it and goes on (lib/runner.mjs); only the setup step marked `critical` stops the suite. A step that needs another one is named in stepNeeds.
 export const keepGoing = true;
@@ -417,6 +421,8 @@ export async function runApply(ctx, parts) {
     await proveAutomatic(ctx, {form, until, seed: async job => { await removeJobsByUrl(ctx, urls);
        await addKitJob(ctx, {title: job.title, company: job.company, url: job.url, kit: {answers: [], cover_letter: '', check_before_sending: [], eligible: true}, description: POSTING}); }});
   }, {needs: [...ctx.needs, {name: 'a runtime link for the hidden browser (none on Windows)', value: process.platform !== 'win32'}]});
+
+  await runRestartSteps(ctx, {urls, until});   // lib/apply-restart-steps.mjs: the app quits while its hidden browser holds a job
 
   // Found by this suite (2 Oct 2026): extension/review.js built the panel's list from native fields only, so a REQUIRED custom widget it cannot read (here a
   // role=slider) was in no list and no count, and the panel said "Ready to submit, every required field is filled" over a form that still needed an answer.

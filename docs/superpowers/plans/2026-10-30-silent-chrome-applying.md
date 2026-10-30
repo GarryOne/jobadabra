@@ -27,5 +27,5 @@ Every other app start over 7 days heard Chrome in 0–26 s (the card checks for 
    S2 no reports → "Chrome isn't reporting" with Open it again first → the job's tab opens → the card leaves the state. In `apply` (a8, owner of e2e, 30 Oct 2026).
 
 ## Progress
-- [x] 1/2 port and leftover-app guards (#2543, #2549)
-- [x] 2/2 silent-Chrome steps in apply, one per apply mode; a queued hidden-browser job says why when the link is off (#2585)
+- [x] 1/2 port and leftover-app guards (#2543, #2549) (proof: desktop/test/app-launch-paths.test.js @c12fa83)
+- [x] 2/2 silent-Chrome steps in apply, one per apply mode; a queued hidden-browser job says why when the link is off (#2585) (proof: desktop/e2e/lib/apply-silent-steps.mjs)

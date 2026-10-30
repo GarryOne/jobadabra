@@ -28,6 +28,9 @@ export const ARTIFACTS = process.env.E2E_ARTIFACTS || path.join(E2E, 'artifacts'
 // -> {app, page, profile, shot(name), close()}. `env` adds to the app's environment (models, test hooks).
 export const zoneOf = (env = {}) => env.TZ || 'Europe/Zurich';
 
+/** Build a fresh isolated profile, preserving a suite's explicit setting overrides. */
+export const initialSettings = (settings = {}) => ({telemetry: false, shareEmployers: false, shareEmployersChosen: true, apply: {mode: 'check', chosenAt: '2026-10-26T00:00:00.000Z'}, ...settings});
+
 // Hidden windows (lib/e2e-hidden.js) only on the owner's Mac, so a run doesn't steal focus; CI is unchanged. E2E_HIDDEN=0 to watch, =1 to force.
 const hidden = (env = process.env) => (env.E2E_HIDDEN ? (env.E2E_HIDDEN === '1' ? '1' : '0') : (process.platform === 'darwin' && !env.CI ? '1' : '0'));
 
@@ -37,7 +40,7 @@ export async function launch({env = {}, executablePath, args, profile: again, la
   fs.mkdirSync(ARTIFACTS, {recursive: true});
   // The test app is a stranger to the product: no technical reports, no employer-pool sharing, nothing it learns leaves this computer.
   // It chose Standard automation already (the first-Apply dialog, lib/apply-choice-gate.js): an Apply step goes on as before; a suite that tests the dialog passes settings.apply.
-  if (!again) fs.writeFileSync(path.join(profile, 'settings.json'), JSON.stringify({telemetry: false, shareEmployers: false, apply: {mode: 'check', chosenAt: '2026-10-26T00:00:00.000Z'}, ...settings}));
+  if (!again) fs.writeFileSync(path.join(profile, 'settings.json'), JSON.stringify(initialSettings(settings)));
   pythonCoverage();   // E2E_COVERAGE=1: the engine's Python records its lines per step too (lib/coverage.mjs)
   // Linux (CI runners, 6 Oct 2026): no keyring there, so Chromium's basic password store keeps the app's keys (test keys only, a throwaway profile).
   const port = await ownPortEnv(env);   // Why (29 Oct 2026, owner): a test app without its own port took 47111 and, left running, kept the owner's app from ever hearing Chrome

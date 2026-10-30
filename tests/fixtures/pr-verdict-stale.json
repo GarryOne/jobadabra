@@ -1,0 +1,18 @@
+{
+  "note": "Replay of the owner's PR #2533 measurements (263ca66, 30 Oct 2026); IDs and unreported fields are synthetic, not a downloaded API capture.",
+  "written_at": "2026-10-30T01:02:31Z",
+  "runs": [
+    {"databaseId": 1, "workflowName": "CI · Pull request", "event": "pull_request", "status": "completed", "conclusion": "success", "createdAt": "2026-10-30T00:58:00Z", "updatedAt": "2026-10-30T01:00:03Z", "displayTitle": "CI · Pull request", "attempt": 1},
+    {"databaseId": 2, "workflowName": "CI · Harness tests", "event": "pull_request", "status": "completed", "conclusion": "success", "createdAt": "2026-10-30T00:58:00Z", "updatedAt": "2026-10-30T01:00:40Z", "displayTitle": "CI · Harness tests", "attempt": 1},
+    {"databaseId": 3, "workflowName": "CI · Tests · desktop", "event": "pull_request", "status": "completed", "conclusion": "success", "createdAt": "2026-10-30T00:58:00Z", "updatedAt": "2026-10-30T01:01:45Z", "displayTitle": "CI · Tests · desktop", "attempt": 1},
+    {"databaseId": 4, "workflowName": "CI · Tests · python", "event": "pull_request", "status": "in_progress", "conclusion": "", "createdAt": "2026-10-30T00:58:00Z", "updatedAt": "2026-10-30T01:01:45Z", "displayTitle": "CI · Tests · python", "attempt": 1}
+  ],
+  "jobs": {
+    "4": [{"id": 40, "name": "python", "status": "in_progress", "conclusion": null, "runner_name": "python-runner", "started_at": "2026-10-30T00:58:00Z", "completed_at": null,
+      "steps": [{"name": "Run tests", "status": "in_progress", "conclusion": null}, {"name": "Write the PR's verdict", "status": "queued", "conclusion": null}]}]
+  },
+  "event": {
+    "action": "completed",
+    "workflow_run": {"id": 4, "name": "CI · Tests · python", "event": "pull_request", "head_sha": "263ca66", "head_branch": "qu-visit", "status": "completed", "conclusion": "success", "run_attempt": 1, "updated_at": "2026-10-30T01:02:16Z"}
+  }
+}

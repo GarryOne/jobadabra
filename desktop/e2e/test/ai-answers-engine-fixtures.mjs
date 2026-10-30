@@ -8,6 +8,7 @@ import {fileURLToPath} from 'node:url';
 import {test} from 'node:test';
 import {answerFor, loadTable, questionOf, recordCandidate} from '../lib/ai-answers.mjs';
 import {message} from '../lib/ai-proxy.mjs';
+import {withDerived} from '../../lib/target-roles.js';
 
 const root = fileURLToPath(new URL('../../../', import.meta.url));
 // Only named constant assignments execute; no source imports, expressions, functions or engine factories run.
@@ -53,6 +54,26 @@ export const engineCases = [
   spec('vague', 'app.placeVague', p.VAGUE_SYSTEM, p.VAGUE_SCHEMA, `Their places (JSON): ${JSON.stringify({best_places: places.best_places, anywhere_in: places.anywhere_in, cities_abroad: []})}\nThe job locations:\n1. switzerland\n2. zurich`, {vague: [1]}, {action: 'place_vague', first: 'switzerland'}),
   spec('reading', 'app.placeReading', p.READ_SYSTEM, p.READ_SCHEMA, `Their places (JSON): ${JSON.stringify(places)}\nThe postings:\n1. Title: ${posting.title}\nLocation field: Switzerland\nText: Work at the Zurich site.\n\n2. Title: Another job\nLocation field: Switzerland\nText: Location not stated.`, {jobs: [{n: 1, where: 'Zurich', nearest: 'zurich', km: 0, answer: 'best'}, {n: 2, where: '', nearest: 'none', km: -1, answer: 'unclear'}]}, {action: 'place_reading', first: posting.title}),
 ];
+
+/** Rebuild every source-derived SRE portal context with the real relevance prompt's numbered-site layout. */
+export function goldenPortalCases() {
+  const setup = withDerived(JSON.parse(fs.readFileSync(new URL('../../demo/draft.json', import.meta.url))).draft.search);
+  const roles = ['sre', 'site reliability', 'platform engineer', 'infrastructure engineer', 'devops engineer'];
+  // Why (30 Oct 2026, qu): the seed, the literal quality reset, and art6's captured post-reset search have distinct identities; batch order/subsets do not.
+  const contexts = [
+    {name: 'captured golden', roles, places: ['zurich', 'geneva', 'basel', 'bern'], role: 'sre', place: 'zurich'},
+    {name: 'quality reset', roles, places: ['zurich', 'geneva', 'switzerland', 'basel', 'bern'], role: 'sre', place: 'zurich'},
+    {name: 'setup', roles: setup.role_keywords, places: ['zürich', 'switzerland', 'schweiz'], role: setup.role_keywords[0], place: 'zürich'},
+  ];
+  return contexts.map(context => {
+    const sites = Object.values(fixturePortals).map(portal => ({name: portal.name, kind: 'portal',
+      url: portal.url.replace('{role}', encodeURIComponent(context.role)).replace('{place}', encodeURIComponent(context.place)).replace('{indeed}', 'ch.indeed.com')}));
+    const listed = sites.map((site, index) => `${index + 1}. ${site.name} (${site.url}) [${site.kind}]`).join('\n');
+    return {...engineCases.find(c => c.name === 'visit'), name: context.name, sites,
+      user: `Their roles: ${JSON.stringify(context.roles)}\nTheir places: ${JSON.stringify(context.places)}\nThe sites:\n${listed}`};
+  });
+}
+
 /** Build a fixture request in the requested provider's wire format. */
 export function bodyOf(c, shape = 'anthropic') {
   return shape === 'anthropic' ? {model: 'test', system: [{type: 'text', text: c.system}], messages: [{role: 'user', content: c.user}], output_config: {format: {type: 'json_schema', schema: structuredClone(c.schema)}}} :

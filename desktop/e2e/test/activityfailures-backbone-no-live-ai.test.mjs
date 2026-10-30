@@ -55,6 +55,16 @@ const semanticCases = () => {
       name: `seeded Zurich ${index === 0 ? 'country' : 'metro'}`, schema: question.context.schema,
       user: `Task: ${question.context.task}\nAllowed answers: ${question.context.allowedAnswers}\n\n${question.items.map(item => `### Item ${item.index}\n${item.text}`).join('\n\n')}`, question})),
     {...place, user: `Their places (JSON): ${JSON.stringify(feedAsks.place.context)}\nThe job locations:\n1. ${feedAsks.place.question.items[0].text}`, question: feedAsks.place.question},
+    ...feedAsks.feedPostings.map(post => ({...engineCases.find(item => item.name === 'enrich'),
+      name: `extract ${post.title}`, user: `Title: ${post.title}\nCompany: ${post.company}\nLocation: ${post.location}\n\nPosting:\n${post.description}`,
+      question: {...feedAsks.enrich.question, items: [{n: 1, text: `${post.title}\n${post.company}\n${post.location}`,
+        key: `default/app.enrich/${post.key.slice('feed/'.length)}/full`, label: post.title}]}})),
+    ...feedAsks.feedPostings.map(post => ({...engineCases.find(item => item.name === 'enrich role'),
+      name: `confirm role ${post.title}`, user: `Title: ${post.title}\nCompany: ${post.company}\nLocation: ${post.location}\n\nPosting:\n${post.description}`,
+      question: {operation: 'app.enrich', responseSchema: {type: 'object', additionalProperties: false, required: ['role_family'],
+        properties: {role_family: feedAsks.enrich.question.responseSchema.properties.role_family}},
+        items: [{n: 1, text: `${post.title}\n${post.company}\n${post.location}`,
+          key: `default/app.enrich/${post.key.slice('feed/'.length)}/role`, label: post.title}]}})),
     ...feedAsks.feedPostings.map(post => ({...engineCases.find(item => item.name === 'score'),
       name: post.title, user: `Title: ${post.title}\nCompany: ${post.company}\nLocation: ${post.location}\n\nPosting:\n${post.description}`,
       question: {operation: 'app.score', id: post.key}})),
@@ -119,6 +129,31 @@ test('activityfailures raw seeded Zurich country and metro have authored answers
     const data = JSON.parse(reply.content[0].text);
     assert.ok(validScore(question.context.schema, data));
     assert.deepEqual(data, {results: question.items.map(item => ({index: item.index, answer: index === 0 ? 'ch' : item.index === 2 ? 'none' : 'ch-zurich'}))});
+  }
+});
+
+test('activityfailures full extraction facts use their own posting evidence and keep unknowns', () => {
+  const table = loadTable(answersTableFile), schema = engineCases.find(item => item.name === 'enrich').schema;
+  for (const post of feedAsks.feedPostings) {
+    const key = `default/app.enrich/${post.key.slice('feed/'.length)}/full`, row = table.items['app.enrich'][key];
+    assert.ok(row, `missing extraction facts for ${post.title}`);
+    assert.ok(validScore(schema, row.answer), `src/ai/enrich.py full schema: ${post.title}`);
+    const data = row.answer;
+    assert.deepEqual(data.salary, {stated: false, text: ''});
+    assert.equal(data.workload, 'unknown'); assert.equal(data.contract, 'unknown');
+    assert.deepEqual(data.visa_sponsorship, {value: 'unknown', evidence: ''});
+    assert.equal(data.deadline, ''); assert.equal(data.posted, '');
+    assert.equal(data.role_family, post.title.includes('Platform') ? 'platform' : 'sre');
+    const roleKey = key.replace(/full$/, 'role'), role = table.items['app.enrich'][roleKey];
+    assert.ok(role, `src/ai/enrich.py asks IT role family again: ${post.title}`);
+    assert.deepEqual(role.answer, {role_family: data.role_family});
+    assert.notEqual(data.seniority.value, 'unknown');
+    assert.notEqual(data.work_mode.value, 'unknown');
+    assert.ok(data.technologies.length, 'these full replies do not enter ASK_AGAIN narrow retry');
+    for (const fact of [data.english_is_enough, data.seniority, data.work_mode, data.employer_type, ...data.languages]) {
+      assert.ok(!fact.evidence || post.description.includes(fact.evidence), `${post.title}: ungrounded evidence ${fact.evidence}`);
+    }
+    for (const text of [...data.technologies, ...data.responsibilities]) assert.ok(post.description.includes(text));
   }
 });
 

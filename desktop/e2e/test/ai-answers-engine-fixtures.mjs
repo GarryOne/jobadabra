@@ -17,7 +17,7 @@ from pathlib import Path
 root=Path(sys.argv[1]); base={}
 for n in ast.parse((root/'src/role_kinds.py').read_text()).body:
  if isinstance(n,ast.Assign) and isinstance(n.targets[0],ast.Name) and n.targets[0].id in ('KINDS','WORK'): base[n.targets[0].id]=ast.literal_eval(n.value)
-keys=set('LANGUAGES _evidence IT_FAMILIES IT_WORK ROLE_FAMILIES SCHEMA SYSTEM ROLE_SYSTEM KINDS VAGUE_SCHEMA VAGUE_SYSTEM VISA_SCHEMA VISA_SYSTEM READ_SCHEMA READ_SYSTEM RECHECK_SYSTEM RELEVANT_SCHEMA RELEVANT_SYSTEM RELEVANT_UNSURE PORTALS'.split()); out={}
+keys=set('LANGUAGES _evidence IT_FAMILIES IT_WORK ROLE_FAMILIES SCHEMA SYSTEM DUTIES_RULE ROLE_SYSTEM KINDS VAGUE_SCHEMA VAGUE_SYSTEM VISA_SCHEMA VISA_SYSTEM READ_SCHEMA READ_SYSTEM RECHECK_SYSTEM RELEVANT_SCHEMA RELEVANT_SYSTEM RELEVANT_UNSURE PORTALS'.split()); out={}
 for file in ['src/places.py','src/geo.py','src/ai/decide.py','src/ai/title_triage.py','src/ai/enrich.py','src/ai/place_triage.py','src/sources/visits.py','src/sources/visits_portals.py']:
  env={**base,'schema_notes':types.SimpleNamespace(text=lambda schema:'')}
  for n in ast.parse((root/file).read_text()).body:

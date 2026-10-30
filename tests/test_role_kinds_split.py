@@ -111,6 +111,7 @@ class RoleDutiesTests(unittest.TestCase):
         self.assertEqual(schema['required'], ['duties', 'role_family'])
         self.assertEqual(list(schema['properties']), ['duties', 'role_family'])
         self.assertEqual(schema['properties']['duties']['type'], 'string')
+        self.assertIn(schema['properties']['duties']['description'], enrich.ROLE_SYSTEM)
         self.assertFalse(schema['additionalProperties'])
         self.assertNotIn('duties', enrich.SCHEMA['properties'], 'the slot belongs only to the role re-ask')
 

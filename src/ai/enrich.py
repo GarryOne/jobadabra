@@ -186,10 +186,12 @@ AGAIN = ("\n\nYour last answer left {fields} empty. Read the posting again and g
          "skills, licences or topics it names. Answer unknown (or []) only when it gives none.")
 
 
+# Why (30 Oct 2026, a8, quality golden 3006): one slot meaning feeds both the role prompt and schema, keeping their guidance identical.
+DUTIES_RULE = 'A few words from the posting about what the person does day to day; "" if unstated.'
 # Why (30 Oct 2026, a8, quality golden 3006): fill a short duties slot before choosing the family, so a helpdesk posting's SRE title
 # cannot override its work; retain the narrow IT re-ask that kept plain SRE jobs out of software (owner, 26 Oct 2026).
 ROLE_SYSTEM = ("You name one job's own kind of work for a job-search tool, from its title and posting. First fill duties, then choose role_family from those duties.\n\n"
-               'duties: A few words from the posting about what the person does day to day; "" if unstated.\n'
+               f'duties: {DUTIES_RULE}\n'
                "role_family: " + ROLE_FAMILIES)
 
 
@@ -207,7 +209,7 @@ def extract(client, model, job):
         # Why (30 Oct 2026, a8, quality golden 3006): require duties first in the re-ask only; the saved facts keep only role_family.
         role_schema = _only(['role_family'])
         role_schema['required'].insert(0, 'duties')
-        role_schema['properties'] = {'duties': {'type': 'string', 'description': 'A few words from the posting about what the person does day to day; "" if unstated.'},
+        role_schema['properties'] = {'duties': {'type': 'string', 'description': DUTIES_RULE},
                                      **role_schema['properties']}
         again, more = _ask(client, model, job, role_schema, system=ROLE_SYSTEM)
         data['role_family'] = again.get('role_family') or data['role_family']

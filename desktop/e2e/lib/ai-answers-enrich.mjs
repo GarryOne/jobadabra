@@ -22,7 +22,7 @@ enrichKind.validEntry = (answer, key) => {
   const variant = key.split('/').at(-1);
   // Why (30 Oct 2026, a8, quality golden 3006): accept the new slot only on role rows, without changing full/retry contracts or stored answers.
   if (variant === 'role') return valid(roleSchema, answer);
-  const names = variant === 'full' ? Object.keys(fields) : variant === 'role' ? ['role_family'] : variant.startsWith('retry-') ? variant.slice(6).split(',') : [];
+  const names = variant === 'full' ? Object.keys(fields) : variant.startsWith('retry-') ? variant.slice(6).split(',') : [];
   return names.length > 0 && (!variant.startsWith('retry-') || names.every(name => ['seniority', 'work_mode', 'technologies'].includes(name))) && new Set(names).size === names.length && names.every(name => Object.hasOwn(fields, name)) && valid(S.object(Object.fromEntries(names.map(name => [name, fields[name]]))), answer);
 };
 
@@ -30,17 +30,13 @@ enrichKind.validEntry = (answer, key) => {
 export function enrichQuestion(body, persona) {
   const parts = requestParts(body), roleOnly = parts.system.startsWith("You name one job's own kind of work for a job-search tool, from its title and posting.");
   if (!roleOnly && !parts.system.startsWith('You extract facts from job postings for a job-search tool.')) return undefined;
-  const names = object(parts.schema?.properties) ? Object.keys(parts.schema.properties) : [];
+  let names = object(parts.schema?.properties) ? Object.keys(parts.schema.properties) : [];
   // Why (30 Oct 2026, a8, quality golden 3006): validate the new required wire slot, but let offline replay reuse the same saved family without duties.
   const dutiesSlot = roleOnly && names.length === 2 && sameSchema(parts.schema, S.object(roleFields));
-  if (dutiesSlot) return roleQuestion({...parts, schema: S.object({role_family: fields.role_family})}, persona, roleSchema);
-  return roleQuestion(parts, persona);
-}
-
-/** Validate an extraction variant and build its posting identity; transient slots do not change its semantic key. */
-function roleQuestion(parts, persona, replaySchema) {
-  const roleOnly = parts.system.startsWith("You name one job's own kind of work for a job-search tool, from its title and posting.");
-  const names = object(parts.schema?.properties) ? Object.keys(parts.schema.properties) : [];
+  if (dutiesSlot) {
+    names = ['role_family'];
+    parts.schema = S.object({role_family: fields.role_family});
+  }
   if (!names.length || names.some(name => !Object.hasOwn(fields, name))) return invalid(enrichKind.operation, 'unsupported extraction fields');
   const responseSchema = S.object(Object.fromEntries(names.map(name => [name, fields[name]])));
   const full = names.length === Object.keys(fields).length;
@@ -59,5 +55,5 @@ function roleQuestion(parts, persona, replaySchema) {
   // Why (30 Oct 2026, jobs inventory): fixture IDs collide across catalogs; the title/company/location tuple survives a later catalog extension.
   const posting = {title: identity[1].trim(), company: identity[2].trim(), location: identity[3].trim()};
   question.items[0].key = `${persona || 'default'}/app.enrich/${hash(posting)}/${variant}`;
-  return {...question, responseSchema: replaySchema || responseSchema};
+  return {...question, responseSchema: dutiesSlot ? roleSchema : responseSchema};
 }

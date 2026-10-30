@@ -6,30 +6,35 @@ import {INSTRUCTIONS as FORM_JUDGE} from '../../lib/form-judge.js';
 import {FORMS} from './forms.mjs';
 import {addKitJob, removeJobsByUrl} from './seed-data.mjs';
 import {HIDDEN_NEED, closeHiddenBrowser, describeHidden, evaluateOn, hiddenTargets, linkRuntime, withFormJudge} from './background-proof.mjs';
+import {pollUntil, stepTimeLeft} from './wait-on-state.mjs';
+import {assertReadUntyped, sampleBeforeClose, TYPED_SNAPSHOT} from './typed-recorder.mjs';
 import {CHIP_VALUE, sessionsNow} from './apply-triage-steps.mjs';
-
-const pause = ms => new Promise(done => setTimeout(done, ms));
-const FILLED = `[...document.querySelectorAll('input,textarea')].filter(item => !['hidden', 'submit', 'button', 'checkbox', 'radio', 'file'].includes(item.type) && item.value).map(item => (item.name || item.id) + '=' + item.value)`;
 
 /** The http pages the hidden browser of `profile` holds, [] when it is not running. */
 const hiddenPages = profile => hiddenTargets(profile).then(targets => targets.filter(item => item.type === 'page' && /^https?:/.test(item.url)), () => []);
 const onHost = host => item => { try { return new URL(item.url).host === host; } catch { return false; } };
 
 /**
- * Looks at the hidden form page of `host` every 250 ms until `stop()`: how often it was seen, and every value found typed into it.
- * The page is read from the page itself, over the hidden browser's own debugging port, never from a log.
+ * Observe the form until stopped, retaining transient writes since attachment; the judge checkpoint reads it once more before the close path.
+ * Why (30 Oct 2026, owner): target discovery follows browser startup, so this fallback cannot prove the interval before attachment or after the final read.
  */
 function watchHiddenForm(profile, host) {
-  const seen = {samples: 0, filled: []};
-  const done = (async () => {
-    while (!seen.stop) {
-      const form = (await hiddenPages(profile)).find(onHost(host));
-      const values = form ? await evaluateOn(form.webSocketDebuggerUrl, FILLED) : null;
-      if (values) { seen.samples += 1; seen.filled.push(...values); }
-      await pause(250);
+  const seen = {samples: 0, installed: 0, filled: [], expired: false};
+  let stopped = false;
+  const sample = async () => {
+    const form = (await hiddenPages(profile)).find(onHost(host));
+    const snapshot = form ? await evaluateOn(form.webSocketDebuggerUrl, TYPED_SNAPSHOT) : null;
+    if (snapshot) {
+      seen.samples += 1;
+      if (snapshot.installed === true) seen.installed += 1;
+      seen.filled.push(...(snapshot.filled || []));
     }
-  })();
-  return {seen, stop: () => { seen.stop = true; return done; }};
+    return snapshot?.installed === true;
+  };
+  // Wait on the explicit stop state while observing the open page; the cap catches a stuck read, never proves it read-only.
+  const done = pollUntil(async () => { if (!stopped) await sample(); return stopped; }, value => value,
+    {capMs: stepTimeLeft(), tickMs: 25, log: () => {}}).then(result => { seen.expired = !result.value; });
+  return {seen, sample, stop: () => { stopped = true; return done; }};
 }
 
 /** The chip text of the Jobs row titled `title` (ac's chip selector, lib/apply-triage-steps.mjs), or ''. */
@@ -49,10 +54,18 @@ export async function runReadSteps(ctx, {until}) {
     if (unlinked) throw new Error(unlinked);
     const previous = proxy.canned(), judge = withFormJudge(previous, 'Submit Application');
     let asked = 0;
-    proxy.setCanned(body => { const system = typeof body?.system === 'string' ? body.system : (body?.system || []).map(part => part.text || '').join(''); if (system.startsWith(FORM_JUDGE)) asked += 1; return judge(body); });
     await removeJobsByUrl(ctx, [form.url]);
     await addKitJob(ctx, {title: form.title, company: form.company, url: form.url, kit: null, fit: 90, stage: 'Saved', nextStep: ''});
     const watch = watchHiddenForm(ctx.profile, form.host);
+    proxy.setCanned(async body => {
+      const system = typeof body?.system === 'string' ? body.system : (body?.system || []).map(part => part.text || '').join('');
+      if (system.startsWith(FORM_JUDGE)) {
+        asked += 1;
+        // Why (30 Oct 2026, owner): the extension reports the judge answer then closes the tab; read again before releasing that answer.
+        await sampleBeforeClose(watch);
+      }
+      return judge(body);
+    });
     try {
       await page.reload();
       await page.waitForSelector('.view:not([hidden])', {timeout: 60000});
@@ -72,8 +85,7 @@ export async function runReadSteps(ctx, {until}) {
       if (asked < 1) throw new Error('the verdict never went through the form judge');
       await until('the read tab was never closed', async () => !(await hiddenPages(ctx.profile)).some(onHost(form.host)), 30000);
       await watch.stop();
-      if (watch.seen.samples < 1) throw new Error('the hidden form page was never seen open: the "nothing was filled" check proved nothing');
-      if (watch.seen.filled.length) throw new Error(`the read typed into the form: ${watch.seen.filled.join(', ')}`);
+      assertReadUntyped(watch.seen);
       if (forms.posts.length !== posted) throw new Error('a read posted the form');
       if (sessionsNow(ctx) !== sessions) throw new Error('a read created or changed a session; it is not an application');
     } finally {

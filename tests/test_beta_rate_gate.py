@@ -199,6 +199,17 @@ class Gate(unittest.TestCase):
                 jobs.append({'name': f'E2E · {label} · settings', 'status': 'completed', 'conclusion': 'failure'})
                 self.assertEqual(self.gate().blocking_jobs(jobs, registry, platform), ['settings'])
 
+    def test_both_lanes_hold_each_release_and_name_the_lane(self):
+        # Beta 41090972183 (30 Oct 2026): Mac + Linux applyflows red, Windows green, and Windows 0.8.53 shipped; the owner: neither platform then.
+        registry = {'qualityai': {'lane': 'tolerant', 'input': 'ai'}}
+        jobs = [{'name': 'E2E · Mac + Linux · applyflows-2of2', 'conclusion': 'failure'},
+                {'name': 'E2E · Mac + Linux · qualityai', 'conclusion': 'failure'},
+                {'name': 'E2E · Windows · apply', 'conclusion': 'success'}]
+        self.assertFalse(self.gate().blocking_jobs(jobs, registry, 'windows'), 'the control: the Windows lane alone is green')
+        self.assertEqual(self.gate().blocking_lanes(jobs, registry, ('mac', 'windows')), ['Mac + Linux: applyflows'])
+        self.assertEqual(self.gate().blocking_lanes(jobs[1:], registry, ('mac', 'windows')), [])
+        self.assertEqual(self.gate().blocking_lanes(jobs[:2], registry, ('mac', 'windows')), ['Mac + Linux: applyflows', 'Windows: lane jobs unavailable'])
+
     def test_empty_lane_jobs_cannot_clear_a_failed_matrix(self):
         self.assertEqual(self.gate().blocking_jobs([], {}, 'mac'), ['lane jobs unavailable'])
 

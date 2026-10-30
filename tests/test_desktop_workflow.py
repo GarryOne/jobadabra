@@ -148,10 +148,11 @@ class DesktopWorkflowTest(unittest.TestCase):
         self.assertIn("E2E_FULL: ${{ (github.event_name == 'schedule' || inputs.nightly) && needs.changes.outputs.over != 'true' && '1' || '' }}", job('test-mac'))
         self.assertIn("E2E_FULL: ''", job('test-windows'))
         self.assertIn('node ai-spend.mjs', job('changes'))
-        for name, e2e, script in (('release-mac', 'test-mac', 'tools/beta-approve.sh "$TAG"'), ('release-windows', 'test-windows', 'tools/beta-approve.sh --windows "$TAG"')):
+        for name, script in (('release-mac', 'tools/beta-approve.sh "$TAG"'), ('release-windows', 'tools/beta-approve.sh --windows "$TAG"')):
             release = job(name)
-            self.assertIn(f'needs: [changes, {e2e}]', release)
-            self.assertIn(f"if: needs.{e2e}.result != 'success'", release)   # red, "not released", when an E2E suite failed
+            # Owner, 30 Oct 2026: both lanes green or neither platform is offered (Windows dropped its duplicates of the Mac + Linux suites).
+            self.assertIn('needs: [changes, test-mac, test-windows]', release)
+            self.assertIn("if: needs.test-mac.result != 'success' || needs.test-windows.result != 'success'", release)   # red, "not released", when a suite of either lane failed
             self.assertIn(script, release)
         # only a nightly or a beta by hand is tested; the plan is made once, for both lanes
         self.assertIn("(github.event_name == 'schedule' || inputs.nightly || inputs.beta)", job('changes'))

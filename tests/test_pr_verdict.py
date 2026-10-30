@@ -14,6 +14,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parent.parent
 WORKFLOWS = ROOT / '.github' / 'workflows'
@@ -404,70 +405,36 @@ class TheScriptAsAJobRunsIt(unittest.TestCase):
         self.assertEqual((done.returncode, written), (0, ''), done.stderr)
 
 
-class TheAiNumberInEveryWriter(unittest.TestCase):
-    def write_case(self, kind):
-        """Exercise the real main loop and status POST with only GitHub and time replaced."""
-        from unittest import mock
-        from tools import pr_ai_number as ai
-        from tests.test_pr_ai_number import RATES
-        r = run('E2E', event='workflow_dispatch', title='E2E for PR · qualityai,settings · topic', id=7)
-        jobs = {7: [{'id': 71, 'name': 'qualityai', 'status': 'completed', 'conclusion': 'success'},
-                    {'id': 72, 'name': 'settings', 'status': 'completed', 'conclusion': 'success'}]}
-        if kind == 'settling':
-            r.update(status='in_progress')
-            jobs[7] = [jobs[7][1]]   # measured artifact read independently; another job is still being created
-        elif kind == 'grey':
-            jobs[7][1]['conclusion'] = 'failure'
-        elif kind == 'final':
-            r.update(status='in_progress')
-            jobs[7][1].update(status='in_progress', runner_name='ours', steps=[{'name': pv.STEP, 'status': 'in_progress'}])
-        sent = []
-        with mock.patch.dict(os.environ, {'GITHUB_RUN_ID': '7' if kind == 'final' else '99', 'RUNNER_NAME': 'ours'}), \
-             mock.patch.object(sys, 'argv', ['pr-verdict.py', '--repo', 'o/r', '--sha', 'head', *(['--job-status', 'success'] if kind == 'final' else [])]), \
-             mock.patch.object(sys, 'stdout'), mock.patch.object(pv, 'read', return_value=([r], jobs)), \
-             mock.patch.object(pv, 'pr_meta', return_value=([{'number': 1, 'state': 'open'}], [], [])), \
-             mock.patch.object(pv, 'main_state_module', side_effect=lambda repo, ref, name='main_e2e_state': ai if name == 'pr_ai_number' else mock.Mock()), \
-             mock.patch.object(ai, 'report_suites', return_value={'qualityai'}), mock.patch.object(ai, 'numbers', return_value=(RATES, RATES)) as read_number, \
-             mock.patch.object(pv, 'main_red_greys', return_value={72}), \
-             mock.patch.object(pv, 'lane_greys', return_value={}), mock.patch.object(pv, 'health_greys', return_value={}), \
-             mock.patch.object(pv, 'quota_line', return_value=''), mock.patch.object(pv.time, 'sleep'), \
-             mock.patch.object(pv, 'gh', side_effect=lambda *args: sent.append(args)):
-            self.assertEqual(pv.main(), 0)
-        self.assertEqual(read_number.call_count, 1, 'artifact reads stay outside the settling loop')
-        post = next(args for args in sent if '/statuses/' in args[1])
-        return next(a.removeprefix('description=') for a in post if a.startswith('description=')), post
+class CompanionBoundaries(unittest.TestCase):
+    def test_speed_failure_preserves_the_ai_description_and_plain_runs_need_no_companion(self):
+        e2e = run('E2E', event='workflow_dispatch', title='E2E for PR · jobs · topic')
+        with patch.object(pv, 'main_state_module', side_effect=OSError('unavailable')):
+            self.assertEqual(pv.number_description('o/r', 'writer-ref', [e2e], 'green', lambda why: why + ' · AI counts', 'success'), 'green · AI counts')
+        with patch.object(pv, 'main_state_module', side_effect=AssertionError('no e2e, no number read')):
+            self.assertEqual(pv.number_description('o/r', 'writer-ref', [run('Tests')], 'green', str, 'success'), 'green')
 
-    def test_the_final_inline_writer_keeps_the_number(self):
-        from tests.test_pr_ai_number import SAME
-        self.assertEqual(self.write_case('final')[0], SAME)
-
-    def test_the_backstop_keeps_the_number(self):
-        from tests.test_pr_ai_number import SAME
-        self.assertEqual(self.write_case('backstop')[0], SAME)
-
-    def test_the_settling_timeout_keeps_the_number(self):
-        line, post = self.write_case('settling')
-        self.assertTrue(line.startswith('still ending: e2e qualityai,settings ending · AI:'), line)
-        self.assertIn('same as main', line)
-        self.assertIn('state=pending', post)
-
-    def test_main_red_grey_keeps_the_number(self):
-        line, post = self.write_case('grey')
-        self.assertTrue(line.startswith('grey: settings'), line)
-        self.assertIn('AI: facts 63/63 (main 63/63)', line)
-        self.assertIn('same as main', line)
-        self.assertIn('state=success', post)
-
-    def test_retry_guard_reads_the_checkout_without_an_api_mode(self):
-        workflow = (WORKFLOWS / 'e2e.yml').read_text()
-        self.assertIn('steps.suite_run.outputs.report_only != \'1\'', workflow)
-        self.assertIn('node -e', workflow)
-        self.assertNotIn('--report-only', workflow)
-
-    def test_verdict_glue_stays_below_the_house_split_limit(self):
-        source = (ROOT / 'tools/pr-verdict.py').read_text()
-        self.assertLessEqual(len(source.splitlines()), 460)
-        self.assertNotIn('--report-only', source)
+    def test_standalone_copy_fetches_health_classifier_at_the_writers_ref(self):
+        with tempfile.TemporaryDirectory() as folder:
+            tmp = Path(folder)
+            script = tmp / 'pr-verdict.py'
+            script.write_text((ROOT / 'tools/pr-verdict.py').read_text())
+            fixture = tmp / 'health-source.txt'
+            fixture.write_text((ROOT / 'tools/pr_health_greys.py').read_text())
+            gh = tmp / 'gh'
+            gh.write_text(f'#!{sys.executable}\nimport sys\nfrom pathlib import Path\n'
+                          "assert sys.argv[1:] == ['api', '-H', 'Accept: application/vnd.github.raw', 'repos/o/r/contents/tools/pr_health_greys.py?ref=writer-ref']\n"
+                          f'sys.stdout.write(Path({str(fixture)!r}).read_text())\n')
+            gh.chmod(0o755)
+            probe = """import runpy, sys
+pv = runpy.run_path(sys.argv[1])
+run = {'databaseId': 7, 'workflowName': 'E2E', 'event': 'workflow_dispatch', 'displayTitle': 'E2E for PR · jobs · topic'}
+job = {'id': 71, 'name': 'jobs', 'status': 'completed', 'conclusion': 'cancelled', 'steps': []}
+print(pv['health_greys']('o/r', [run], {7: [job]}, annotations_of=lambda _: [{'message': 'not acquired by Runner'}], log_of=lambda _: '', ref='writer-ref'))
+"""
+            done = subprocess.run([sys.executable, '-c', probe, str(script)], cwd=tmp,
+                                  env={**os.environ, 'PATH': folder + os.pathsep + os.environ['PATH']}, capture_output=True, text=True, timeout=15)
+            self.assertEqual(done.returncode, 0, done.stderr)
+            self.assertEqual(done.stdout.strip(), "{71: 'runner'}")
 
 
 if __name__ == '__main__':

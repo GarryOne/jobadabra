@@ -405,7 +405,7 @@ class StandaloneWriter(unittest.TestCase):
             copied = tmp / 'standalone'
             copied.mkdir()
             (copied / 'pr-verdict.py').write_text((root / 'tools/pr-verdict.py').read_text())
-            for name in ('pr_ai_number.py', 'main_e2e_state.py', 'beta_rate_gate.py'):
+            for name in ('pr_ai_number.py', 'main_e2e_state.py', 'beta_rate_gate.py', 'pr_speed_number.py'):
                 (tmp / name).write_text((root / 'tools' / name).read_text())
             gh = tmp / 'gh'
             gh.write_text(f'#!{sys.executable}\n' + FAKE_GH)

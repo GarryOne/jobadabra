@@ -25,3 +25,17 @@ test('its stored answer reads as "no groups, no typos", so Strategy shows the ch
   const {reply} = storedAnswer(request, backbone);
   assert.deepEqual(JSON.parse(reply.content[0].text), {lists: []});
 });
+
+// Why (30 Oct 2026, bb 3/9, interactions red run 41091251455): the Profile's preferences read and Locations move sent no x-jp-action either; the manifest holds each real request, one loop keys them all.
+for (const [kind, system] of [['preferences_parse', /^You read the job-search preferences/], ['locations_move', /^You read the "where to work" rows/]]) {
+  test(`the real ${kind} request names its step and is keyed as the ${kind} kind in backbone mode only`, () => {
+    const found = JSON.parse(fs.readFileSync(new URL('../fixtures/golden/ai-format-manifest.json', import.meta.url), 'utf8')).entries.find(each => each.kind === kind);
+    assert.ok(found, `positive control: the manifest holds the captured ${kind} request`);
+    assert.equal(found.action, kind);
+    assert.match(found.request.system, system);
+    const asked = {url: '/v1/messages', headers: {'content-type': 'application/json', 'x-jp-action': found.action}, body: JSON.stringify(found.request)};
+    assert.deepEqual(questionOf(asked, backbone), {operation: 'app.kind', id: kind});
+    assert.match(questionOf(asked, {E2E_AI_ANSWERS: 'off'}).unkeyable, /question identity is not in the request/);
+    assert.ok(Object.hasOwn(loadTable().kinds, kind));
+  });
+}

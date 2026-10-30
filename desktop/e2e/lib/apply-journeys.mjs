@@ -11,7 +11,7 @@ import path from 'node:path';
 import {fillNote, fillState, launchBrowser, readForm} from './extension.mjs';
 import {writePrivate} from '../../lib/private-file.js';
 import {pressed, ticked} from './free-click.mjs';
-import {waitForAccountSafety, waitForFormValue, waitJobFormClosed} from './wait-on-state.mjs';
+import {waitForAccountSafety, waitForDecisions, waitForFormValue, waitJobFormClosed} from './wait-on-state.mjs';
 
 export async function runJourneys(ctx, h) {
   const {cv, dumpExtension, fail, forms, page} = h;
@@ -197,10 +197,8 @@ export async function runJourneys(ctx, h) {
     let at = null;
     for (let waited = 0; waited < 20000 && at?.stage !== 'form'; waited += 1000) { at = await sessionOf(SIGNIN); await pause(1000); }
     if (at?.stage !== 'form') problems.push(`after signing in the session did not move to the form step (stage: ${at?.stage}, stuck: ${at?.stuck})`);
-    // The extension's decisions reach the app log in batches: the account AI's word after the press can land after the form was filled
-    // (local e2e, 9 Oct 2026: "created" judged at 22.246 s, the log read 0.1 s later). Wait up to 10 s for the last expected line, then read.
-    for (let waited = 0; waited < 10000 && !/account result: created/.test(appLogText(ctx.profile)); waited += 500) await pause(500);
-    const log = appLogText(ctx.profile);
+    // Why (9 Oct 2026; 30 Oct 2026, a8, #2608): the extension's decisions reach the app log in batches, up to ~60 s after the form was filled; 10 s was too short.
+    const {value: log} = await waitForDecisions(() => appLogText(ctx.profile), [/account button: pressed/, /account result: created/]);
     // Either path may fill the email first (beta 9 Oct 2026: the account step, 864b279, pressed ~1 s after the load, before the fill's line): the site's own
     // record above (`presses[0].email`) is the proof the right email arrived; this line only says which part of the extension did it.
     for (const [line, why] of [[/sign_in page: filled with your details|sign-in page: email filled/, 'the sign-in page was not filled with your details (neither the fill nor the account step says so)'], [/site password given for a sign-in page/, 'the app did not give the saved password as a sign-in'],
@@ -224,7 +222,7 @@ export async function runJourneys(ctx, h) {
     if (presses > 1) problems.push(`after the site refused, "Sign in" was pressed again (${presses} presses): a refused sign-in is never retried`);
     if (tab.url().startsWith(SIGNIN_REFUSED.formUrl)) problems.push('the refusing page somehow led to the form');
     if (at?.stuck !== 'account') problems.push(`the session does not say the account step needs you (stage: ${at?.stage}, stuck: ${at?.stuck})`);
-    const log = appLogText(ctx.profile);
+    const {value: log} = await waitForDecisions(() => appLogText(ctx.profile), [/account result: refused/]);
     if (!/account result: refused/.test(log)) problems.push('the account AI\'s "refused" is not in the app log');
     if (!/account page: the extension could not finish it/.test(log)) problems.push('the account step was not handed to the person after the refused sign-in');
     // The session is stuck on the sign-up page the refusal led to (a box only a person can tick): Claude is OFFERED there, never started (owner, 9 Oct 2026).
@@ -481,7 +479,7 @@ export async function runJourneys(ctx, h) {
     let state = null;
     for (let waited = 0; waited < 90000; waited += 500) { state = await fillState(tab).catch(() => null); if (['done', 'error', 'no-form', 'account'].includes(state?.state)) break; await pause(500); }
     const problems = [];
-    const log = appLogText(ctx.profile);
+    const {value: log} = await waitForDecisions(() => appLogText(ctx.profile), [/page kind corrected: a posting with no Apply but a form's fields/]);
     // The premise, on this page's own shape and from the AI (not remembered): another posting's line proves nothing (beta 9 Oct 2026).
     const ownLines = log.split('\n').filter(line => line.includes(`"shape":"${MISLABELLED.shape}|`));
     if (!ownLines.some(line => line.includes('page kind: posting {') && line.includes('"by":"ai"'))) {

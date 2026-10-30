@@ -174,6 +174,20 @@ class ReleaseChecks(unittest.TestCase):
             self.assertIsNone(re.search(r'--workflow[ =]build\.yml', path.read_text()), f'{path.name} reads build.yml itself: use tools/release-checks.sh')
         self.assertEqual(len(re.findall(r'tools/release-checks\.sh', (ROOT / '.github' / 'workflows' / 'desktop.yml').read_text())), 2)
 
+    def test_every_release_job_outlives_the_longest_wait_the_checks_allow(self):
+        # Why (30 Oct 2026, a8; beta 41090972183): the 20-minute Windows release job was cancelled at 1080 s of the checks' 3600 s wait while main's build ran 46 min.
+        wait = int(re.search(r'RELEASE_CI_WAIT:-(\d+)', SCRIPT.read_text()).group(1))
+        review = int(re.search(r'timeout (\d+) node review-ui\.mjs', (ROOT / '.github' / 'actions' / 'e2e-review' / 'action.yml').read_text()).group(1))
+        jobs = []
+        for name in ['desktop.yml', 'beta-approve.yml']:
+            text = (ROOT / '.github' / 'workflows' / name).read_text()
+            jobs += [(name, job) for job in re.split(r'\n  (?=[\w-]+:\n)', text) if 'tools/release-checks.sh' in job]
+        self.assertEqual(len(jobs), 3)
+        for name, job in jobs:
+            minutes = int(re.search(r'\n    timeout-minutes: (\d+)', job).group(1))
+            needed = wait + (review if 'e2e-review' in job else 0) + 600   # 10 min for downloads, rates and the release itself
+            self.assertGreaterEqual(minutes * 60, needed, f'{name} {job.split(":")[0]}: {minutes} min is shorter than the checks may wait ({needed // 60} min)')
+
 
 if __name__ == '__main__':
     unittest.main()

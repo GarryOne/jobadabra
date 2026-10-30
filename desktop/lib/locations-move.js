@@ -38,7 +38,7 @@ export async function judgeProfile(rows, {client = null, apiKey = ''} = {}) {
   const lines = (rows || []).filter(row => row?.value).map(row => `${row.label}: ${row.value}`);
   if (!ai || !lines.length) return null;
   const response = await ai.messages.create({model: MODEL, max_tokens: 1000, system: INSTRUCTIONS, messages: [{role: 'user', content: lines.join('\n')}],
-    output_config: {format: {type: 'json_schema', schema: SCHEMA}, effort: 'low'}});
+    output_config: {format: {type: 'json_schema', schema: SCHEMA}, effort: 'low'}}, {headers: {'x-jp-action': 'locations_move'}});   // Why (30 Oct 2026, bb 3/9): same as preferences_parse; the sender named no step, so the answer table could not key it.
   let answer;
   try { answer = JSON.parse(response.content?.find(block => block.type === 'text')?.text || ''); } catch { return null; }
   const lists = ['preferred', 'acceptable', 'destinations'];

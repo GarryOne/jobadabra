@@ -78,6 +78,16 @@ export function accountSafetyEvidence(log, {after = 0, host, path}) {
   return {complete: missing.length === 0, missing, log: String(log).slice(after)};
 }
 
+/**
+ * Wait until every expected extension decision line is in the app's log; resolves {value: the last log read, ms}. Lines are RegExps (a g flag is ignored).
+ * Why (30 Oct 2026, a8, #2608): the extension pushes its decisions in batches, and in beta 41090972183 they reached the app 14-62 s after they were made;
+ * a step that read the log once, as the form finished, missed "page kind corrected". The cap catches a line that never arrives and is never a speed assertion.
+ */
+export function waitForDecisions(readLog, lines, options = {}) {
+  return pollUntil(tolerant(readLog), log => lines.every(line => String(log).search(line) !== -1),
+    {capMs: 60000, label: ms => `the extension's decision lines arrived ${ms} ms after the wait started`, ...options});
+}
+
 /** Poll the actual account safety events; the cap catches missing delivery and is never a speed assertion. */
 export function waitForAccountSafety(readLog, attempt, options = {}) {
   return pollUntil(() => accountSafetyEvidence(readLog(), attempt), value => value.complete,

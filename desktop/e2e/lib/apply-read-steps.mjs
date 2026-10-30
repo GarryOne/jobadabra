@@ -5,7 +5,7 @@
 import {INSTRUCTIONS as FORM_JUDGE} from '../../lib/form-judge.js';
 import {FORMS} from './forms.mjs';
 import {addKitJob, removeJobsByUrl} from './seed-data.mjs';
-import {closeHiddenBrowser, describeHidden, evaluateOn, hiddenTargets, linkRuntime, withFormJudge} from './background-proof.mjs';
+import {HIDDEN_NEED, closeHiddenBrowser, describeHidden, evaluateOn, hiddenTargets, linkRuntime, withFormJudge} from './background-proof.mjs';
 import {CHIP_VALUE, sessionsNow} from './apply-triage-steps.mjs';
 
 const pause = ms => new Promise(done => setTimeout(done, ms));
@@ -88,5 +88,5 @@ export async function runReadSteps(ctx, {until}) {
       await removeJobsByUrl(ctx, [form.url]).catch(() => 0);
       await closeHiddenBrowser(ctx.profile);
     }
-  }, {needs: [...ctx.needs, {name: 'a runtime link for the hidden browser (none on Windows)', value: process.platform !== 'win32'}]});   // Why (2026-10-28, Gitar on #2364): a missing need is recorded as skipped, not passed
+  }, {needs: [...ctx.needs, HIDDEN_NEED]});   // Why (2026-10-28, Gitar on #2364): a missing need is recorded as skipped, not passed
 }

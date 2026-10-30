@@ -58,22 +58,44 @@ export function pushDecisions() {
   })();
   return pushOwner;
 }
+// Why (30 Oct 2026, a8, #2608): in beta 41090972183 this push stalled 14-62 s while every other call to the app answered in under 0.5 s.
+// A cycle this slow writes one "slow push" line naming its phase (the queue before the read, the POST, the queue before the mark), so a run says which one.
+const SLOW_PUSH_MS = 5000;
 async function pushNow() {
+  // One cycle's marks: start, then settings (first cycle only), read, posted, marked as each phase ends; a phase not reached has no mark.
+  let marks = {start: Date.now()};
+  const noteIfSlow = (failed = false) => {
+    const now = Date.now(), {start, settings: configured = start, read, posted, marked, lines, onlyNotes} = marks;
+    // Why (Gitar on #2612): a cycle that carried only earlier notes writes none, or a still-slow app would keep the drain sending one note after another.
+    if (now - start < SLOW_PUSH_MS || onlyNotes) return;
+    const between = (from, to) => (from === undefined || to === undefined ? undefined : to - from);
+    const phases = {settingsMs: configured - start, readMs: between(configured, read), postMs: between(read, posted ?? (failed ? now : undefined)), markMs: between(posted, marked)};
+    decide('log', 'slow push', {...Object.fromEntries(Object.entries(phases).filter(([, ms]) => ms !== undefined)), lines, ...(failed ? {failed: true} : {})}).catch(() => {});
+  };
   try {
     const config = await settings();
+    marks.settings = Date.now();
     while (true) {
       // Why (30 Oct 2026, ap; Gitar on the span PR): drain oldest first in route-safe batches of 50; only an ok batch is marked sent, and fetch stays outside the storage queue so spans cannot stall product writes.
       const batch = await inTurn(async () => (await decisions()).filter(entry => !entry.sent).slice(0, 50));
       if (!batch.length) return true;
+      Object.assign(marks, {read: Date.now(), lines: batch.length, onlyNotes: batch.every(entry => entry.kind === 'log' && entry.text === 'slow push')});
       const response = await fetch(`${config.workerUrl.replace(/\/$/, '')}/extension/log`, {method: 'POST',
         headers: {Authorization: `Bearer ${config.token}`, 'Content-Type': 'application/json'},
         body: JSON.stringify({entries: batch})});
-      if (!response.ok) return false;
+      marks.posted = Date.now();
+      if (!response.ok) { noteIfSlow(true); return false; }
       const sent = new Set(batch.map(entry => entry.at + entry.text));
       await inTurn(async () => chrome.storage.local.set({[LOG_KEY]: (await decisions())
         .map(entry => (sent.has(entry.at + entry.text) ? {...entry, sent: true} : entry))}));
+      marks.marked = Date.now();
+      noteIfSlow();
+      marks = {start: Date.now()};
     }
-  } catch { return false; /* not paired, or the app is closed: they stay unsent for the next push */ }
+  } catch {
+    noteIfSlow(true);
+    return false; /* not paired, or the app is closed: they stay unsent for the next push */
+  }
 }
 
 // Uncaught worker errors keep their local decision line and reach the app's reporter through the same authenticated log channel.

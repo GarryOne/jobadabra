@@ -4,12 +4,11 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {test} from 'node:test';
-import {runInNewContext} from 'node:vm';
 import * as context from '../lib/context.mjs';
 import {DUMMY_KEY, pickEngine, pickFamily} from '../lib/engine.mjs';
 import {answerFor, loadTable, questionOf} from '../lib/ai-answers.mjs';
 import * as guards from '../lib/no-real-ai.mjs';
-import {contactKeysAnswer, systemOf, unmatched} from '../lib/apply-fixtures.mjs';
+import {installApplyAnswers} from '../lib/apply-answers.mjs';
 
 test('apply declares offline AI with the real-model guard enabled', () => {
   const source = fs.readFileSync(new URL('../suites/apply.mjs', import.meta.url), 'utf8');
@@ -18,13 +17,10 @@ test('apply declares offline AI with the real-model guard enabled', () => {
 });
 
 test('apply preserves contact answers and each context\'s unmatched-ask fallback', () => {
-  const source = fs.readFileSync(new URL('../suites/apply.mjs', import.meta.url), 'utf8');
-  const setup = /\/\/ The app's own AI calls[\s\S]*?\n    \}\);/.exec(source);
-  assert.ok(setup, 'exercise the installed stand-in without starting the suite or app');
   const ctx = {}, install = fallback => {
     let answer = fallback;
-    const proxy = {canned: () => answer, setCanned: handler => { answer = handler; }};
-    runInNewContext(setup[0], {ctx, proxy, contactKeysAnswer, systemOf, unmatched});
+    ctx.proxy = {canned: () => answer, setCanned: handler => { answer = handler; }};
+    installApplyAnswers(ctx);
     return answer;
   };
   const answer = install(() => ({refuse: 'invalid-key'}));

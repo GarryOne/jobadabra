@@ -30,7 +30,8 @@
   "row-case-gates.test.mjs",
   "server-closes-on-failure.test.mjs",
   "site-ledger.test.mjs",
-  "test-sets.test.mjs"
+  "test-sets.test.mjs",
+  "applyflows-backbone.test.mjs"
  ],
  "daily": [
   "activity-steps-state.test.mjs",
@@ -127,7 +128,7 @@
   "fill-attempt.test.mjs",
   "fill-memo.test.mjs",
   "fill-overlay-early-reload.test.mjs",
- "fill-overlay-run.test.mjs",
+  "fill-overlay-run.test.mjs",
   "fill-overlay.test.mjs",
   "finder-causes.test.mjs",
   "finder-changes.test.mjs",
@@ -247,7 +248,8 @@
   "quality-answers-table.test.mjs",
   "quality-backbone-no-live-ai.test.mjs",
   "quality-clock.test.mjs",
-  "quality-judge-input.test.mjs", "quality-rate.test.mjs",
+  "quality-judge-input.test.mjs",
+  "quality-rate.test.mjs",
   "quality-rows.test.mjs",
   "quality-split.test.mjs",
   "quality-watches-prompts.test.mjs",

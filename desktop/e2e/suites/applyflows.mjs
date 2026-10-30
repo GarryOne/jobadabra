@@ -6,6 +6,7 @@
 // The suite uses SQLite or the local Notion stand-in (lib/notion-fake.mjs via openContext); it needs no Notion secret.
 // Job: wait on state
 import {partOf, runApply, stepNeeds as applyNeeds} from './apply.mjs';
+import {answersMode} from '../lib/ai-answers.mjs';
 import {flowsEngine} from '../lib/engine.mjs';
 
 export {hangCaps} from '../lib/applyflows-caps.mjs';
@@ -27,4 +28,7 @@ export const keepGoing = true;   // as `apply`: a failed journey never hides the
 export const engine = flowsEngine();   // the proxy answers the app's AI calls (CI and the matrix); LIVE=1: this Mac's Claude Code; LIVE_ENGINE overrides (lib/engine.mjs)
 export const macos = 'release';   // a release, a gate and the night run it on a macOS runner (the real Chrome extension, opened through `open` as on a Mac); a PR's run on Linux (lib/plan.mjs runnerOf)
 export const name = 'applyflows';
-export const run = ctx => runApply(ctx, process.env.LIVE ? ['live'] : ['flows']);   // LIVE=1: the live run on a real posting (npm run live), not the journeys
+export const run = ctx => {
+  if (!process.env.LIVE && answersMode() === 'off') throw new Error('applyflows is a backbone suite: set E2E_AI_ANSWERS=backbone');
+  return runApply(ctx, process.env.LIVE ? ['live'] : ['flows']);
+};   // LIVE=1: the live run on a real posting (npm run live), not the journeys

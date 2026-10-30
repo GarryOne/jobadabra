@@ -12,6 +12,8 @@ import {judgeVerdict} from './quality.mjs';
 export const BARS = {pairs: 90, agree: 0.8, jumps: 0.02, within: 8, jump: 20, factNights: 10, facts: 0.995, texts: 90, flagged: 0.1};
 // Below these the rate is reported, not judged (half of each window): one bad night must not turn main red by itself.
 export const MIN_PAIRS = 45, MIN_FACT_NIGHTS = 5, MIN_TEXTS = 45;
+// Why (30 Oct 2026, owner PR #2544 review): half a typical 9–10-pair run, like MIN_PAIRS is half the history window; fewer pairs only report noise.
+const MIN_RUN_PAIRS = 5;
 const KEEP_NIGHTS = 60;
 const GROUPS = [['pairs', 'within8', 'over20'], ['factsExact', 'factsTotal'], ['judged', 'flagged']];
 
@@ -61,20 +63,23 @@ export function rateOf(nights = []) {
 }
 
 const pct = (part, all) => `${Math.round((part / all) * 1000) / 10}%`;
-// Why (30 Oct 2026, owner via a8, design D/E): a PR judges its own facts/flags; old nights are information, with the same bars still judged on main.
+// Why (30 Oct 2026, owner via a8, design D/E; PR #2544 review): a PR judges its own facts/flags/pairs; old nights are information, with the same bars still judged on main.
 const verdict = (judged, line, problems, from, currentProblems = []) => process.env.E2E_QUALITY_JUDGE_HISTORY === '0'
   ? {ok: !currentProblems.length, judged: false, line: `${line}; history is information only`, problems: currentProblems}
   : {ok: !problems.length, judged, line: judged ? line : `${line}; judged from ${from}`, problems};
 
-// Score steadiness -> {ok, judged, line, problems}.
-export function rateVerdict(rate) {
+// Score steadiness over the historical window, or this run's pairs on a PR -> {ok, judged, line, problems}.
+export function rateVerdict(rate, current) {
   const judged = rate.pairs >= MIN_PAIRS;
   const line = rate.pairs ? `${pct(rate.within8, rate.pairs)} of the last ${rate.pairs} score pairs within ${BARS.within} points (bar ${BARS.agree * 100}%), `
     + `${pct(rate.over20, rate.pairs)} more than ${BARS.jump} apart (bar ${BARS.jumps * 100}%), ${rate.nights} night(s)` : 'no score pair yet';
   const problems = !judged ? [] : [
     ...(rate.within8 / rate.pairs < BARS.agree ? [`only ${rate.within8} of ${rate.pairs} pairs (${pct(rate.within8, rate.pairs)}) scored within ${BARS.within} points, under the ${BARS.agree * 100}% bar`] : []),
     ...(rate.over20 / rate.pairs > BARS.jumps ? [`${rate.over20} of ${rate.pairs} pairs (${pct(rate.over20, rate.pairs)}) moved more than ${BARS.jump} points, over the ${BARS.jumps * 100}% bar`] : [])];
-  return verdict(judged, line, problems, `${MIN_PAIRS} pairs`);
+  const own = !current || current.pairs < MIN_RUN_PAIRS ? [] : [
+    ...(current.within8 / current.pairs < BARS.agree ? [`only ${current.within8} of ${current.pairs} pairs scored within ${BARS.within} points in this run, under the ${BARS.agree * 100}% bar`] : []),
+    ...(current.over20 / current.pairs > BARS.jumps ? [`${current.over20} of ${current.pairs} pairs moved more than ${BARS.jump} points in this run, over the ${BARS.jumps * 100}% bar`] : [])];
+  return verdict(judged, line, problems, `${MIN_PAIRS} pairs`, own);
 }
 
 // Facts written exactly over the last 10 nights, or this run's exact counts on a PR -> {ok, judged, line, problems}.

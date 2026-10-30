@@ -107,7 +107,7 @@ test('PR history is informational for facts, scores and flags; main keeps all ba
   for (const mode of ['0', '1', undefined]) {
     if (mode === undefined) delete process.env.E2E_QUALITY_JUDGE_HISTORY; else process.env.E2E_QUALITY_JUDGE_HISTORY = mode;
     for (const [check, current, line] of [[factsVerdict, {exact: 69, total: 69}, /99.2% of the last 483 facts/],
-      [rateVerdict, undefined, /score pairs within 8/], [flagsVerdict, {flagged: 0, judged: 18}, /score texts flagged/]]) {
+      [rateVerdict, {pairs: 10, within8: 8, over20: 0}, /score pairs within 8/], [flagsVerdict, {flagged: 0, judged: 18}, /score texts flagged/]]) {
       const result = check(rate, current);
       assert.equal(result.ok, mode === '0');
       assert.equal(result.judged, mode !== '0');
@@ -116,6 +116,41 @@ test('PR history is informational for facts, scores and flags; main keeps all ba
       if (mode === '0') assert.match(result.line, /information only/);
     }
   }
+});
+
+test('PR steadiness rejects its own bad pairs; history mode judges the same pairs across nights', t => {
+  const saved = process.env.E2E_QUALITY_JUDGE_HISTORY;
+  t.after(() => { if (saved === undefined) delete process.env.E2E_QUALITY_JUDGE_HISTORY; else process.env.E2E_QUALITY_JUDGE_HISTORY = saved; });
+  const clean = rateOf([night(0, 90, 90)]);
+  for (const [within8, over20, problem] of [[7, 0, /within 8 points/], [9, 1, /more than 20 points/]]) {
+    const current = night(1, 10, within8, over20);
+    const history = rateOf(Array.from({length: 5}, (_, i) => ({...current, runId: i})));
+    process.env.E2E_QUALITY_JUDGE_HISTORY = '0';
+    const own = rateVerdict(clean, current);
+    assert.equal(own.ok, false);
+    assert.match(own.problems.join(), problem);
+    assert.match(own.problems.join(), /in this run/);
+    for (const mode of ['1', undefined]) {
+      if (mode === undefined) delete process.env.E2E_QUALITY_JUDGE_HISTORY; else process.env.E2E_QUALITY_JUDGE_HISTORY = mode;
+      assert.deepEqual(rateVerdict(history, current), rateVerdict(history), 'history mode ignores the current argument');
+      assert.equal(rateVerdict(history, current).ok, false);
+      assert.match(rateVerdict(history, current).problems.join(), problem);
+      assert.equal(rateVerdict(clean, current).ok, true, 'history mode still judges only the historical window');
+    }
+  }
+});
+
+test('PR steadiness reports fewer than five pairs without judging noise, then applies both bars', t => {
+  const saved = process.env.E2E_QUALITY_JUDGE_HISTORY;
+  process.env.E2E_QUALITY_JUDGE_HISTORY = '0';
+  t.after(() => { if (saved === undefined) delete process.env.E2E_QUALITY_JUDGE_HISTORY; else process.env.E2E_QUALITY_JUDGE_HISTORY = saved; });
+  const rate = rateOf([night(0, 90, 90)]);
+  for (const pairs of [0, 1, 4]) assert.equal(rateVerdict(rate, {pairs, within8: 0, over20: pairs}).ok, true);
+  assert.equal(rateVerdict(rate, {pairs: 5, within8: 3, over20: 0}).ok, false);
+  assert.equal(rateVerdict(rate, {pairs: 5, within8: 4, over20: 0}).ok, true, 'exactly 80% holds the agreement bar');
+  assert.equal(rateVerdict(rate, {pairs: 5, within8: 4, over20: 1}).ok, false);
+  assert.equal(rateVerdict(rate, {pairs: 50, within8: 49, over20: 1}).ok, true, 'exactly 2% holds the jump bar');
+  assert.equal(rateVerdict(rate, {pairs: 50, within8: 48, over20: 2}).ok, false);
 });
 
 test('PR still rejects a current wrong fact and flags over the per-run judge allowance', t => {

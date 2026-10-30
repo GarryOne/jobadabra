@@ -84,10 +84,10 @@ export async function run(ctx) {
       if (!spread.length) throw new Error('the second check scored nothing to compare');
       const apart = unstable(first, second, 8);
       if (apart.length) console.log(`  ${apart.length} of ${spread.length} jobs moved more than 8 points: ${apart.map(item => `${item.id}: ${item.first} → ${item.second}`).join(', ')}`);
-      // A rate over the last 90 pairs of the night's live runs (lib/quality-rate.mjs), not this run alone: one wobbly night never turns main red by itself.
+      // Main judges the last 90 pairs; a PR judges this run's pairs (lib/quality-rate.mjs).
       const scored = nightOf(first, second, night);
       measured.steady = scored;
-      const rate = rateVerdict(record(scored));
+      const rate = rateVerdict(record(scored), scored);
       console.log(`  score steadiness: ${rate.line}`);
       if (!rate.ok) throw new Error(`the AI's scores are not steady over the last nights: ${rate.problems.join('; ')}`);
     }, {needs: ctx.needs, limitMs: 6 * STEP}));

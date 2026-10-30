@@ -1,1 +1,1 @@
-{"libModules": 313, "harnessFiles": 449}
+{"libModules": 314, "harnessFiles": 450, "why": "Why (30 Oct 2026, #2586): lib/apply-silent-steps.mjs holds the three silent-Chrome steps for every apply mode (a8 allowed +1 module, +1 file)"}

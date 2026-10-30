@@ -50,7 +50,7 @@ export const hangCaps = {'the app has an applicant': 300, 'the app is seeded': 9
   'Tailor on the session page': 445, 'the person submits a form': 270, 'through all of it': 50,
   'the panel does not say "Ready to submit"': 75, 'nothing was queued': 5,
   'The hidden browser fills a form': 385,
-  // no main samples yet; regenerate after 5 main runs: the 30 s floor x 3 (tools/e2e-step-timings.mjs)
+  // no main samples yet, regenerate after 5 main runs: the 30 s floor x 3 (tools/e2e-step-timings.mjs)
   'a silent Chrome in Standard automation': 90, 'a silent Chrome in Background automation': 90, 'a silent Chrome in Full automation': 90,
   'the form\'s panel offers a tailored CV': 3 * stepSeconds['Tailor on the session page of a form']};
 // applyflows' journeys, weighed the same way (26 Oct 2026, beta 40275152602 + main 40274183649, the slowest attempt of each): turn-taking put 392 s of them in one slice and 299 s in the other.

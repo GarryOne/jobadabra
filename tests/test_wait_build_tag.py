@@ -61,15 +61,19 @@ class WaitBuildTagTest(unittest.TestCase):
 
     def test_a_build_that_has_not_tagged_yet_is_waited_for_until_it_does(self):
         self.build()
-        jobs = (self.state / 'jobs.json').as_posix()
-        start = time.time()
-        proc = subprocess.Popen(['bash', str(TOOL)], stderr=subprocess.PIPE, text=True, env=self.env)
-        flip = subprocess.Popen(['bash', '-c', f'sleep 0.6; cat > "{jobs}"'], stdin=subprocess.PIPE, text=True)
-        flip.communicate(STEPS % 'completed')
-        _, err = proc.communicate(timeout=30)
+        err_file = self.tmp / 'err'
+        with open(err_file, 'w') as err_out:
+            proc = subprocess.Popen(['bash', str(TOOL)], stderr=err_out, text=True, env=self.env)
+            deadline = time.monotonic() + 60
+            # Why (30 Oct 2026, bb): the tag flipped after a fixed sleep 0.6; on a loaded Mac the tool had not looked yet, saw "tagged" at once and said nothing (push gate red twice). The tool says it waits: then the tag step ends.
+            while 'waiting until it has tagged itself' not in err_file.read_text() and proc.poll() is None and time.monotonic() < deadline:
+                time.sleep(0.05)
+            self.assertIsNone(proc.poll(), 'it ended without ever saying it waits')
+            (self.state / 'jobs.json').write_text(STEPS % 'completed')
+            proc.wait(timeout=60)
+        err = err_file.read_text()
         self.assertIn('waiting until it has tagged itself', err)
-        self.assertIn('(tagged)', err)
-        self.assertLess(time.time() - start, 10, 'it ended with the tag step; the build itself never ends in this test')
+        self.assertIn('(tagged)', err, 'it ended with the tag step; the build itself never ends in this test')
 
     def test_the_old_wait_for_the_whole_build_is_one_switch_away(self):
         self.build(tag_status='completed')

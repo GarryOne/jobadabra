@@ -412,11 +412,11 @@ export async function runApply(ctx, parts) {
     const form = FORMS.submitter;
     await proveBackground(ctx, {form, until, seed: async () => { await removeJobsByUrl(ctx, urls);   // only the submitter is left, so the one job Start picks is the one this step watches
        await addKitJob(ctx, {title: form.title, company: form.company, url: form.url, kit: {answers: form.kit, cover_letter: '', check_before_sending: []}, description: POSTING}); }});
-  }, {needs: [...ctx.needs, HIDDEN_NEED]});   // Why (2026-10-28, Gitar on #2364): a plain return on Windows was counted as passed; a missing need is recorded as skipped (lib/runner.mjs)
+  }, {needs: [...ctx.needs, HIDDEN_NEED]});   // Why (2026-10-28, Gitar on #2364; shared as HIDDEN_NEED since #2598): a plain return on Windows was counted as passed; a missing need is recorded as skipped (lib/runner.mjs)
 
   // Full automation (spec step C): the app presses Submit itself once, against the fixture server's fake endpoint; a Stop in the wait presses nothing. Last of the hidden-browser steps: it relaunches the app with the test-only switch.
   await ctx.run('Full automation presses Submit once on its own, and a Stop in the wait presses nothing', async () => {
-    // Why (2026-10-28, found by this step): a kit answer is never a saved fact (extension/flow.js `source: 'kit'`), so Full automation hands over any form with a kit question; this proof uses the submitter's details-only variant.
+    // Why (2026-10-28, found by this step; autoFormOf since #2598): a kit answer is never a saved fact (extension/flow.js `source: 'kit'`), so Full automation hands over any form with a kit question; this proof uses the submitter's details-only variant.
     await proveAutomatic(ctx, {form: autoFormOf(FORMS.submitter), until, seed: kitSeeder(ctx, urls, POSTING)});
   }, {needs: [...ctx.needs, HIDDEN_NEED]});
 

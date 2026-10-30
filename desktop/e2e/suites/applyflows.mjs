@@ -16,6 +16,7 @@ export const ownsStep = name => ['flows', 'live', 'both'].includes(partOf(name))
 // Why (30 Oct 2026, owner redesign): fixture journeys never need a live model; npm run live explicitly opts into the real-site measurement.
 export const offlineAi = !process.env.LIVE;
 export const realAi = process.env.LIVE ? true : false;
+export const aiAnswers = 'backbone';   // answers its AI from the stored table in every workflow (plan-run.mjs puts it in the matrix)
 
 // Why (30 Oct 2026, PR #2562): stored-answer journeys use one store path across CI alternation.
 export const store = 'sqlite';

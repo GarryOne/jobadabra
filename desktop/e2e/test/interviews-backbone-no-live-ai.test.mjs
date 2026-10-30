@@ -179,8 +179,6 @@ test('interviews declares offline AI, retains no-real-AI enforcement, and uses b
   const source = fs.readFileSync(new URL('../suites/interviews.mjs', import.meta.url), 'utf8');
   assert.match(source, /^export const offlineAi = true;/m);
   assert.match(source, /^export const realAi = false;/m);
-  const workflow = fs.readFileSync(new URL('../../../.github/workflows/e2e.yml', import.meta.url), 'utf8');
-  const attempts = [...workflow.matchAll(/E2E_AI_ANSWERS: .*contains\(fromJSON\('([^']+)'\), matrix\.suite\)/g)];
-  assert.equal(attempts.length, 2);
-  for (const [, suites] of attempts) assert.ok(JSON.parse(suites).includes('interviews'));
+  // The suite declares it; every workflow reads it from the matrix (plan-run.mjs, tests/test_workflow_ai_answers.py; beta 41078746088: a hand-kept list drifted).
+  assert.match(fs.readFileSync(new URL('../suites/interviews.mjs', import.meta.url), 'utf8'), /^export const aiAnswers = 'backbone';/m);
 });

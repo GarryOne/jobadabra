@@ -8,6 +8,7 @@ import {pickFamily} from '../lib/engine.mjs';
 import {notionFarSide, pickStore, runToken, STORES, storeSettings} from '../lib/store.mjs';
 import {E2E} from '../lib/app.mjs';
 import {SUITES} from '../lib/context.mjs';
+import {suiteFacts} from '../plan-run.mjs';
 import * as interviews from '../suites/interviews.mjs';
 import * as activityfailures from '../suites/activityfailures.mjs';
 import * as quality from '../suites/quality.mjs';
@@ -62,9 +63,8 @@ for (const [name, suite] of [['wander', wander], ['activityfailures', activityfa
 }
 
 test('every stored-answer backbone suite pins its store or bypasses store alternation', async () => {
-  const workflow = fs.readFileSync(new URL('../../../.github/workflows/e2e.yml', import.meta.url), 'utf8');
-  const condition = workflow.match(/^\s*E2E_AI_ANSWERS:.*backbone.*$/m)?.[0] || '';
-  const suites = JSON.parse(condition.match(/contains\(fromJSON\('([^']+)'\), matrix\.suite\)/)?.[1] || '[]');
+  // The suites that declare aiAnswers = 'backbone', the one list every workflow reads through the matrix (plan-run.mjs; beta 41078746088).
+  const {backbone: suites} = await suiteFacts();
   assert.ok(suites.length > 0, 'stored answers must name at least one suite');
   assert.ok(suites.includes('quality'), 'quality must use stored backbone answers');
   assert.ok(suites.includes('stores'), 'stores must use declared backbone kinds');

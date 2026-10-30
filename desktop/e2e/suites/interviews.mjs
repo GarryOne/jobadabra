@@ -16,6 +16,7 @@ import {goView} from '../lib/go-view.mjs';
 // Why (29 Oct 2026, ap): rule A serves declared reviews and patterns; the no-credit fault still precedes the table.
 export const offlineAi = true;
 export const realAi = false;
+export const aiAnswers = 'backbone';   // answers its AI from the stored table in every workflow (plan-run.mjs puts it in the matrix)
 export const name = 'interviews';
 // Why (30 Oct 2026, ap): SQLite keeps stored answers on one setup path without the stand-in's paced Notion requests; all steps support SQLite.
 export const store = 'sqlite';

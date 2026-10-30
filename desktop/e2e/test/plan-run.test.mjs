@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {test} from 'node:test';
-import {planRun} from '../plan-run.mjs';
+import {planRun, suiteFacts} from '../plan-run.mjs';
 import {MAX_RUNS_PER_COMMIT, exploreDecision, reviewNeeded, shouldSkipScheduled, waitingFindings} from '../lib/plan.mjs';
 // The suites a plan runs, once each (a gate runs each suite on two stores: two jobs).
 const suitesOf = out => [...new Set(JSON.parse(out.matrix).include.map(item => item.suite))];
@@ -267,6 +267,19 @@ test('GATE_STORE_LEGS=one: the release run gets ONE Mac job per suite (its job c
     all: ['jobs', 'updates'], storeless: ['updates'], minutes: () => 15});
   assert.deepEqual(JSON.parse(gate.matrix).include.map(({suite, key}) => `${suite}:${key}`), ['jobs:jobs', 'updates:updates']);
   assert.equal(gate.count, '2');
+});
+
+// Beta 41078746088: the release run's own list ran applyflows, jobs, interviews and failuresnotion live. The mode now rides on the matrix both workflows read.
+test('the release run and every other run give a backbone suite its stored answers through the matrix, and no other suite', async () => {
+  const stub = () => '[]';
+  const env = {REPO: 'o/r', EVENT: 'workflow_dispatch', SHA: 'cafe'.repeat(10), TARGET_REF: 'desktop-v2', GATE_TAG: 'desktop-v2', GATE_STORE_LEGS: 'one'};
+  for (const run of [env, {EVENT: 'workflow_dispatch', SHA: HEAD, ONLY: 'jobs,updates'}]) {
+    const out = await planRun({env: run, gh: run.GATE_TAG ? stub : gh(), all: ['jobs', 'updates'], minutes: () => 15, backbone: ['jobs']});
+    assert.deepEqual(JSON.parse(out.matrix).include.map(({suite, aiAnswers}) => `${suite}:${aiAnswers || 'off'}`), ['jobs:backbone', 'updates:off']);
+  }
+  const {backbone} = await suiteFacts();
+  for (const suite of ['quality', 'stores', 'interviews', 'wander', 'activityfailures', 'storemove', 'calendar', 'failuresnotion', 'jobs', 'applyflows']) assert.ok(backbone.includes(suite), suite);
+  assert.ok(!backbone.includes('qualityai') && !backbone.includes('apply'), 'a live or off-mode suite never gets stored answers by accident');
 });
 
 test('the gate runs each suite that keeps data on both stores, one job each; other runs one job, the store left to the run number', async () => {

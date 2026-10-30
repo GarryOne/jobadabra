@@ -6,6 +6,7 @@
 // ("the test is the problem"), ranked last, closed after two clean runs, and failed beta 2; it was a product bug (bd368f8 fixed it).
 // Only the failure message is read, never the step's name: that step is called "Notion is busy (429) …", which reads like an environment failure.
 // Tests: test/flaky-proof.test.mjs
+// Job: run the backbone
 import {isEnvironment} from './environment.mjs';
 import {FLAKY, TIMEOUT_FAILURE, flakyComment} from './triage-match.mjs';
 
@@ -14,7 +15,7 @@ export const INTERMITTENT = 'intermittent';
 // message: the failed step's note (suite-failures.json `message`), without the step's name → {flaky, why}
 // The harness's own guards (the extension not on the stand-in app): never a product bug and never flaky (a run that may have reached the owner's live app stays
 // red), named "harness: <which>" so a red main reads as the harness's (6e, 27 Oct 2026: a false NOT ISOLATED was announced as "a wrong value", like a product bug).
-const HARNESS = [[/NOT ISOLATED:/, 'isolation']];
+const HARNESS = [[/NOT ISOLATED:/, 'isolation'], [/E2E_AI_ANSWER_MISSING:/, 'stored answers']];
 export function flakyProof(message = '') {
   const text = String(message || '');
   const harness = HARNESS.find(([pattern]) => pattern.test(text));

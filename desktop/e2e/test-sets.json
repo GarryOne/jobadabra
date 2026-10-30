@@ -459,6 +459,7 @@
   "journey.test.mjs": "Uses triage, which enumerates artifact directories and refers to suite paths without reading the suites folder.",
   "ladder-capture-candidates.test.mjs": "Enumerates temporary capture output files, not harness code.",
   "net-records-bundles.test.mjs": "Enumerates temporary encrypted bundle destinations, not harness code.",
+  "no-real-ai.test.mjs": "Uses suite-main finalization helpers and reads its own temporary failure artifacts, not the registry-consuming entrypoint or harness folders.",
   "notion-real.test.mjs": "Uses tokenSuites from run-all and named suite modules, not its registry-consuming entrypoint.",
   "own-ui-not-read.test.mjs": "Enumerates extension JavaScript files, not the harness root or module folders.",
   "owns-step.test.mjs": "Enumerates only apply-* lib helpers and reads two named suites, not either whole folder.",

@@ -71,7 +71,7 @@ async function rig(t, options = {}) {
   });
   t.after(() => { hooks.deregister(); delete globalThis[key]; });
   t.mock.method(globalThis, 'fetch', () => { throw new Error('no network in consider characterization'); });
-  t.mock.method(globalThis, 'setTimeout', (callback, ms) => { if (ms < 40000) queueMicrotask(callback); return 0; });
+  t.mock.method(globalThis, 'setTimeout', (callback, ms) => { if (ms === 2000 && options.watchWait) options.watchWait.then(callback); else if (ms < 40000) queueMicrotask(callback); return 0; });
   let now = 10000;
   t.mock.method(Date, 'now', () => (now += options.clockTick || 0));
   t.mock.method(globalThis.crypto, 'randomUUID', () => 'fill-token');
@@ -254,4 +254,30 @@ test('Stop during the empty-page watch retires fallback recovery', async t => {
   await r.run();
   assert.equal(named(r.calls, 'restart').length, 0);
   assert.equal(named(r.calls, 'deadEnd').length, 0);
+});
+
+
+test('the bot-check request reaches the person while the field watch is pending', async t => {
+  let release;
+  const watchWait = new Promise(resolve => { release = resolve; });
+  const r = await rig(t, {answers: [{role: 'no-form', kind: 'posting', botCheck: true, by: 'ai'}],
+    counts: [{...shape, fields: 0}], ruled: 'no-form', watchWait, other: {why: 'other', needs: ''}, restart: true});
+  const running = r.run();
+  await new Promise(resolve => setImmediate(resolve));
+  const prompts = named(r.calls, 'deadEnd').filter(call => call.some(value => value?.botCheck));
+  release();
+  await running;
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(prompts.length, 1, 'the person must be asked to solve the check before the watch ends');
+});
+
+
+test('query-only changes retain the late form watch', async t => {
+  const empty = {...shape, fields: 0};
+  const r = await rig(t, {answers: [{role: 'no-form', kind: 'posting', by: 'ai'}, form],
+    counts: [empty, empty, shape, shape], tabs: [tab, {...tab, url: 'https://jobs.example.test/apply?check=done'}],
+    ruled: 'no-form', other: {why: 'other', needs: ''}, restart: true});
+  await r.run();
+  assert.equal(named(r.calls, 'fill').length, 1);
+  assert.equal(named(r.calls, 'restart').length, 0);
 });

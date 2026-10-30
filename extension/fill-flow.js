@@ -178,6 +178,21 @@ export const fillKey = (tabId, url) => `${tabId} ${pageKey(url)}`;
 // again; once it has fields the panel is put back (a page that replaced its document lost it) and the page is judged again (a new shape for
 // the page-kind AI), then filled. Once per tab and page. Guard: desktop/test/extension-look-again.test.js.
 const lookedAgain = new Set();
+// A query-only change belongs to the same watched document; a different origin or path retires it.
+function sameWatchPage(url, original) {
+  try {
+    const a = new URL(url), b = new URL(original);
+    return a.origin === b.origin && a.pathname.replace(/\/+$/, '') === b.pathname.replace(/\/+$/, '');
+  } catch { return false; }
+}
+// A retired document cannot be filled or recovered by its old watcher.
+function watchLeft(live, tab, after, hostOf) {
+  if (live && sameWatchPage(live.url, tab.url)) return false;
+  decide('fill', 'watch ended: the tab moved on', {host: hostOf(tab.url), after, closed: !live, sameHost: !!live && hostOf(live.url) === hostOf(tab.url)});
+  return true;
+}
+// The watch wakes only for enough controls or a form-frame candidate.
+const watchHasControls = (shape, framed) => !!shape && (shape.fields + shape.textareas + shape.files >= 2 || framed);
 // Result: true = controls handled; false = watch expired; null = stopped or tab left, so no old-page fallback may run.
 async function watchForFields(tab, jobUrl, wait = ms => new Promise(resolve => setTimeout(resolve, ms)), looks = 10, seenHosts = null, onEnd = null) {   // onEnd: the verdict, said once the watch ends with no form
   const key = fillKey(tab.id, tab.url);
@@ -192,8 +207,7 @@ async function watchForFields(tab, jobUrl, wait = ms => new Promise(resolve => s
     if (isStopped()) return null; // Stop retires this watch before it can fill or recover the page
     const live = await chrome.tabs.get(tab.id).catch(() => null);
     // The same page when only its query string changed (a bot-check service appends its own parameter after the load: SmartRecruiters, 9 Oct 2026).
-    const samePage = url => { try { const a = new URL(url), b = new URL(tab.url); return a.origin === b.origin && a.pathname.replace(/\/+$/, '') === b.pathname.replace(/\/+$/, ''); } catch { return false; } };
-    if (!live || !samePage(live.url)) { decide('fill', 'watch ended: the tab moved on', {host: hostOf(tab.url), after: (i + 1) * 2, closed: !live, sameHost: !!live && hostOf(live.url) === hostOf(tab.url)}); return null; }   // the next page decides for itself; this is not an expired watch
+    if (watchLeft(live, tab, (i + 1) * 2, hostOf)) return null;   // the next page decides for itself; this is not an expired watch
     await sweepConsent(tab.id, 'watching a page without a form');   // a banner that drew itself after the first look (consent-sweep.js)
     const shape = await pageShape(tab.id);
     // Fields came (the form drew late), or a frame did on a page that had none (a bot check injected seconds after the load: SmartRecruiters,
@@ -201,7 +215,7 @@ async function watchForFields(tab, jobUrl, wait = ms => new Promise(resolve => s
     const newHost = (shape?.frameHosts || []).some(host => !hadHosts.includes(host));
     // ...or a frame that was there but became a form-frame candidate since (Datadog, 11 Oct 2026: the embed is born 150 px high and grows): by address (ladder/climb.js frameGrew).
     const framed = newHost || (!!shape && await frameBecameCandidate(tab.id));
-    if (!shape || (shape.fields + shape.textareas + shape.files < 2 && !framed)) continue;
+    if (!watchHasControls(shape, framed)) continue;
     lookedAgain.add(key);
     started.delete(key);
     if (framed) await forgetKind(tab, null, newHost ? 'a frame appeared' : 'a frame became a form-frame candidate');   // a kept answer for this page shape never saw the frame (Datadog: it grew; Ocado: the Apply press opened it)

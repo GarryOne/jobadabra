@@ -77,13 +77,11 @@ for (const suite of ['interactions']) {
     assert.equal(error.code, missing.code); assert.match(error.message, missing.message);
   });
 
-  test(`${suite} opts into stored answers and the real-AI guard on both workflow attempts`, () => {
+  test(`${suite} opts into stored answers and the real-AI guard in every workflow`, () => {
     const source = fs.readFileSync(new URL(`../suites/${suite}.mjs`, import.meta.url), 'utf8');
     assert.match(source, /^export const offlineAi = true;/m);
     assert.match(source, /^export const realAi = false;/m);
-    const workflow = fs.readFileSync(new URL('../../../.github/workflows/e2e.yml', import.meta.url), 'utf8');
-    const attempts = [...workflow.matchAll(/E2E_AI_ANSWERS: .*contains\(fromJSON\('([^']+)'\), matrix\.suite\)/g)];
-    assert.equal(attempts.length, 2);
-    for (const [, suites] of attempts) assert.ok(JSON.parse(suites).includes(suite));
+    // The suite says so itself; plan-run.mjs puts it in matrix.aiAnswers, which both attempts of e2e.yml read.
+    assert.match(source, /^export const aiAnswers = 'backbone';/m);
   });
 }

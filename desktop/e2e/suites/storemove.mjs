@@ -24,6 +24,7 @@ export const minutes = 12;
 export const offlineAi = true;
 // Why (30 Oct 2026, ap, main run 40985357367): moving the store must never pay for a new background AI ask.
 export const realAi = false;
+export const aiAnswers = 'backbone';   // answers its AI from the stored table in every workflow (plan-run.mjs puts it in the matrix)
 
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 async function setUp(page) {

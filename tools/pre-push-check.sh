@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Claude Code PreToolUse hook (.claude/settings.json): before any `git push` from this repo (or one of its
 # worktrees), run every test suite CI runs on a clean checkout of what is pushed, and block the push if one fails, so only green builds reach
-# GitHub. Reads the hook's JSON on stdin; exit 2 blocks the command and shows the reason to Claude.
+# GitHub. Reads the hook's JSON on stdin; reports all pure-check refusals together, then exits 2 to block the command.
 #   python: unittest, normally and as CI sees it (no Notion/Telegram/Google/SerpApi credentials)
 #   worker, site: npm test  desktop: npm test (npm ci first when node_modules is missing)
 # Runs only the suites the push touches (AGENTS.md "Change tiers"; PUSH_FULL=1 for all). Also blocks a push on top of a red CI build on main
@@ -10,6 +10,17 @@ set -uo pipefail
 source "$(dirname "$0")/gate-timing.sh" 2>/dev/null || { gate_timing_start() { :; }; timed() { shift; "$@"; }; gate_summary() { :; }; }
 gate_timing_start
 workflows_lint() { SHELLCHECK_OPTS='--severity=warning' actionlint .github/workflows/*.yml; }
+# Every check from the commit subjects to the workflow lint runs, and each refusal is kept: one run tells them all, then blocks once (owner, 30 Oct 2026:
+# "ship always from the first try"; the verdict PR took 4 pushes, one refusal shown per push). Guard: tests/test_pre_push_pr.py.
+blocks=()
+block() { blocks+=("$*"); }
+report_blocks() {
+  [ ${#blocks[@]} -eq 0 ] && return 0
+  local n=0 b
+  echo "Push blocked by ${#blocks[@]} check(s); every one is listed, so fix them all before the next push:" >&2
+  for b in "${blocks[@]}"; do n=$((n + 1)); printf '%s) %s\n' "$n" "$b" >&2; done
+  exit 2
+}
 GATE_DEFERRABLE=""; GATE_DEFERRED=""
 source "$(dirname "$0")/gate-watchdog.sh" 2>/dev/null || { gate_budget() { echo 0; }; gate_wait_budget() { wait; }; gate_was_deferred() { return 1; }; }
 source "$(dirname "$0")/gate-cache.sh" 2>/dev/null || gate_cache_run() { shift 3; "$@"; }   # a checkout without it (the hook's own test repo) runs everything
@@ -78,11 +89,9 @@ esac
 case "$command" in *COMMIT_LONG_OK=1*) ;; *)
   long="$(git -C "$repo" log origin/main..HEAD --no-merges --format='%h %s' 2>/dev/null | awk '{ s=$0; sub(/^[^ ]+ /, "", s); if (length(s) > 72) print $0 }')"
   if [ -n "$long" ]; then
-    echo "Push blocked: commit subject over 72 characters (details go in the body, no versions or reasons in the subject):" >&2
-    echo "$long" | cut -c1-110 >&2
-    echo "Shorten your own unpushed commits: git commit --amend (last one). If the amend is denied, push it as it is:" \
-      "COMMIT_LONG_OK=1 git push ... (never rewrite a pushed commit for this)." >&2
-    exit 2
+    block "commit subject over 72 characters (details go in the body, no versions or reasons in the subject):
+$(echo "$long" | cut -c1-110)
+Shorten your own unpushed commits: git commit --amend (last one). If the amend is denied, push it as it is: COMMIT_LONG_OK=1 git push ... (never rewrite a pushed commit for this)."
   fi ;;
 esac
 
@@ -98,17 +107,16 @@ for sha in $(git -C "$repo" log origin/main..HEAD --no-merges --format='%H' 2>/d
   untested="$untested$(git -C "$repo" log -1 --format='%h %s' "$sha")"$'\n'
 done
 if [ -n "$untested" ]; then
-  echo "Push blocked: a commit fixes an issue but changes no test (every fix leaves a permanent check):" >&2
-  printf '%s' "$untested" | cut -c1-110 >&2
-  echo "Add the test that would have caught it, or a line 'No-test: <why>' in the commit message." >&2
-  exit 2
+  block "a commit fixes an issue but changes no test (every fix leaves a permanent check):
+$(printf '%s' "$untested" | cut -c1-110)
+Add the test that would have caught it, or a line 'No-test: <why>' in the commit message."
 fi
 
 # Words a push removes from the window that an end-to-end suite still expects (5 Oct 2026: #299 and #300 were suites reporting outdated copy as bugs): update the step in the same change.
 # `STALE_EXPECT_OK=1 git push ...` skips it. No node, or no origin/main to compare: skipped.
 case "$command" in *STALE_EXPECT_OK=1*) ;; *)
   if command -v node >/dev/null && git -C "$repo" rev-parse --verify -q origin/main >/dev/null; then
-    stale="$(cd "$repo" && timed "stale expectations" node tools/stale-expectations.mjs --base origin/main 2>&1)" || { echo "Push blocked: $stale" >&2; exit 2; }
+    stale="$(cd "$repo" && timed "stale expectations" node tools/stale-expectations.mjs --base origin/main 2>&1)" || block "$stale"
   fi ;;
 esac
 
@@ -118,11 +126,8 @@ case "$command" in *WORKFLOW_PATHS_OK=1*) ;; *)
   if [ -f "$repo/tests/test_workflow_paths.py" ]; then   # a repo without the test (the hook's own fixtures) has nothing to check
     PATH_TESTS="tests.test_workflow_paths tests.test_windows_paths"   # every test that keeps a workflow's paths: complete (#1447 missed the Windows one)
     # shellcheck disable=SC2086
-    paths_out="$(cd "$repo" && timed "workflow paths" python3 -m unittest $PATH_TESTS 2>&1)" || {
-      echo "Push blocked: a workflow's paths: miss a file its tests read (tests/test_workflow_paths.py):" >&2
-      echo "$paths_out" | tail -n 15 >&2
-      exit 2
-    }
+    paths_out="$(cd "$repo" && timed "workflow paths" python3 -m unittest $PATH_TESTS 2>&1)" || block "a workflow's paths: miss a file its tests read (tests/test_workflow_paths.py):
+$(echo "$paths_out" | tail -n 15)"
   fi ;;
 esac
 
@@ -133,7 +138,8 @@ case "$command" in *PLACES_CHECK_OK=1*|*CI_GATES=1*) ;; *)
     if command -v claude >/dev/null || [ -n "${ANTHROPIC_API_KEY:-}" ]; then
       engine="$([ -n "${ANTHROPIC_API_KEY:-}" ] && echo api || echo cli)"
       checked="$(cd "$repo" && JOB_PILOTTO_FOLLOW_APP=0 JOB_PILOTTO_AI_ENGINE="$engine" timed "places check (real AI)" python3 tools/places_check.py 2>&1)" \
-        || { echo "Push blocked: the place sorter answered wrongly with real AI calls, or could not ask (tools/places_check.py):" >&2; echo "$checked" | grep -v '^⏳' | tail -25 >&2; exit 2; }
+        || block "the place sorter answered wrongly with real AI calls, or could not ask (tools/places_check.py):
+$(echo "$checked" | grep -v '^⏳' | tail -25)"
     else
       echo "Note: the place code changed but no AI is available here (no claude, no ANTHROPIC_API_KEY): tools/places_check.py skipped" >&2
     fi
@@ -143,26 +149,26 @@ esac
 # A new e2e step must have been seen passing (6 Oct 2026: one that never had failed the 0.5.8 beta gate on its own premise): a local run of it, or an
 # "E2E-passed: <run url>" / "E2E-unverified: <why>" line in a commit message (tools/new-e2e-steps.mjs). No node, or no origin/main: skipped.
 if ! [[ "$command" == *CI_GATES=1* ]] && command -v node >/dev/null && [ -f "$repo/tools/new-e2e-steps.mjs" ] && git -C "$repo" rev-parse --verify -q origin/main >/dev/null; then   # CI has no local run to find: the commit message's E2E-passed line is read by the CI-less gate only
-  unseen="$(cd "$repo" && timed "new e2e steps" node tools/new-e2e-steps.mjs --base origin/main 2>&1)" || { echo "Push blocked: $unseen" >&2; exit 2; }
+  unseen="$(cd "$repo" && timed "new e2e steps" node tools/new-e2e-steps.mjs --base origin/main 2>&1)" || block "$unseen"
 fi
 
 # No source file over 500 lines; files already over it may only shrink (tools/file-size.mjs; owner, 8 Oct 2026). Any push, any area.
 if command -v node >/dev/null && [ -f "$repo/tools/file-size.mjs" ]; then
-  sizes="$(cd "$repo" && timed "file size" node tools/file-size.mjs 2>&1)" || { echo "Push blocked: a file is too big:
-$sizes" >&2; exit 2; }
+  sizes="$(cd "$repo" && timed "file size" node tools/file-size.mjs 2>&1)" || block "a file is too big:
+$sizes"
 fi
 # A new harness test file must be in desktop/e2e/test-sets.json ("pr" or "daily"), or CI's harness tests fail on it (26 Oct 2026: #1976 went red on coverage.test.mjs).
 # The same pure test CI runs, a fraction of a second. Any push that touches desktop/e2e/test.
 if command -v node >/dev/null && [ -f "$repo/desktop/e2e/test/test-sets.test.mjs" ] && git -C "$repo" diff --name-only origin/main...HEAD 2>/dev/null | grep -q '^desktop/e2e/test'; then
-  sets="$(cd "$repo/desktop/e2e" && timed "harness test sets" node --test test/test-sets.test.mjs 2>&1)" || { echo "Push blocked: a harness test file is in no set (or a set names a missing file): add it to desktop/e2e/test-sets.json
-$(echo "$sets" | grep -E 'in no set|missing|actual' | head -5)" >&2; exit 2; }
+  sets="$(cd "$repo/desktop/e2e" && timed "harness test sets" node --test test/test-sets.test.mjs 2>&1)" || block "a harness test file is in no set (or a set names a missing file): add it to desktop/e2e/test-sets.json
+$(echo "$sets" | grep -E 'in no set|missing|actual' | head -5)"
 fi
 # A new file a replay workflow loads must be in that workflow's `pull_request` paths (20 Oct 2026: #1638 opened red on "control tests" and "page cases" because worker/src/answer-declarations.js was
 # missing): the same check the workflows run (tools/replay-files.mjs --check), seconds, before the PR exists. Any push, any area.
 if command -v node >/dev/null && [ -f "$repo/tools/replay-files.mjs" ]; then
   for wf in $(cd "$repo" && node tools/replay-files.mjs --workflows); do   # the one list (WORKFLOW_JOB): control-tests.yml left PRs on 26 Oct 2026 and this loop still checked it
     [ -f "$repo/.github/workflows/$wf" ] || continue
-    drift="$(cd "$repo" && timed "workflow paths $wf" node tools/replay-files.mjs --check "$wf" 2>&1)" || { echo "Push blocked: $drift" >&2; exit 2; }
+    drift="$(cd "$repo" && timed "workflow paths $wf" node tools/replay-files.mjs --check "$wf" 2>&1)" || block "$drift"
   done
 fi
 # The cheap checks on commit messages run BEFORE the journey and ladder gates (owner, 11 Oct 2026: a missing "Rung:" line was found only after a
@@ -170,60 +176,63 @@ fi
 # Never fix the same website twice (owner, 10 Oct 2026): a push changing how the extension acts on pages brings its recorded page (desktop/e2e/recorded) or
 # journey scenario, or a commit says "Recorded-unneeded: <why>" (tools/recorded-cases.mjs).
 if command -v node >/dev/null && [ -f "$repo/tools/recorded-cases.mjs" ] && git -C "$repo" rev-parse --verify -q origin/main >/dev/null; then
-  cases="$(cd "$repo" && timed "recorded cases" node tools/recorded-cases.mjs --base origin/main 2>&1)" || { echo "Push blocked: $cases" >&2; exit 2; }
+  cases="$(cd "$repo" && timed "recorded cases" node tools/recorded-cases.mjs --base origin/main 2>&1)" || block "$cases"
 fi
 # A fix for a bug the owner saw is proven on his own page (owner, 16 Oct 2026): "Owner-report: <id>" and a captured case with that report id (tools/owner-report.mjs).
 if command -v node >/dev/null && [ -f "$repo/tools/owner-report.mjs" ] && git -C "$repo" rev-parse --verify -q origin/main >/dev/null; then
-  ownerrep="$(cd "$repo" && timed "owner report" node tools/owner-report.mjs --base origin/main 2>&1)" || { echo "Push blocked: $ownerrep" >&2; exit 2; }
+  ownerrep="$(cd "$repo" && timed "owner report" node tools/owner-report.mjs --base origin/main 2>&1)" || block "$ownerrep"
 fi
 # The rung trailer (docs/flows/ladder.md): a push touching the ladder's flow code carries "Rung: <0-6|router|judges>" and "Fixture: <id | none: why>" in a commit message (tools/rung-trailer.mjs).
 if command -v node >/dev/null && [ -f "$repo/tools/rung-trailer.mjs" ] && git -C "$repo" rev-parse --verify -q origin/main >/dev/null; then
-  trailer="$(cd "$repo" && timed "rung trailer" node tools/rung-trailer.mjs --base origin/main 2>&1)" || { echo "Push blocked: $trailer" >&2; exit 2; }
+  trailer="$(cd "$repo" && timed "rung trailer" node tools/rung-trailer.mjs --base origin/main 2>&1)" || block "$trailer"
 fi
 # A line guarded by a "Why (<PR or date>): <reason>" comment changes only on purpose: "Why-changed: <which> — <reason>" in a commit message (tools/why-changed.mjs; owner, 27 Oct 2026).
 if command -v node >/dev/null && [ -f "$repo/tools/why-changed.mjs" ] && git -C "$repo" rev-parse --verify -q origin/main >/dev/null; then
-  whychanged="$(cd "$repo" && timed "why comments" node tools/why-changed.mjs --base origin/main 2>&1)" || { echo "Push blocked: $whychanged" >&2; exit 2; }
+  whychanged="$(cd "$repo" && timed "why comments" node tools/why-changed.mjs --base origin/main 2>&1)" || block "$whychanged"
 fi
 # New code's comments: a new exported function has a doc comment; a debt note reads "TODO(AI): <what> (<date or #PR>)" or "FIXME: <what>" (tools/new-code-comments.mjs; owner, 27 Oct 2026).
 if command -v node >/dev/null && [ -f "$repo/tools/new-code-comments.mjs" ] && git -C "$repo" rev-parse --verify -q origin/main >/dev/null; then
-  newcomments="$(cd "$repo" && timed "new code comments" node tools/new-code-comments.mjs --base origin/main 2>&1)" || { echo "Push blocked: $newcomments" >&2; exit 2; }
+  newcomments="$(cd "$repo" && timed "new code comments" node tools/new-code-comments.mjs --base origin/main 2>&1)" || block "$newcomments"
 fi
 # A suite leaves the e2e backbone only by naming the input its result depends on (ai, clock, outside) and why: an entry of desktop/e2e/lanes.json (tools/lanes-check.mjs; spec rule E).
 if command -v node >/dev/null && [ -f "$repo/tools/lanes-check.mjs" ] && git -C "$repo" rev-parse --verify -q origin/main >/dev/null; then
-  lanes="$(cd "$repo" && timed "lane registry" node tools/lanes-check.mjs --base origin/main 2>&1)" || { echo "Push blocked: $lanes" >&2; exit 2; }
+  lanes="$(cd "$repo" && timed "lane registry" node tools/lanes-check.mjs --base origin/main 2>&1)" || block "$lanes"
 fi
 # A changed AI prompt brings the case it fixed into its fixed case set (tools/prompt-cases.json), or a commit says "Prompt-case: none <why>" (tools/prompt-cases.mjs; owner, 27 Oct 2026).
 if command -v node >/dev/null && [ -f "$repo/tools/prompt-cases.mjs" ] && git -C "$repo" rev-parse --verify -q origin/main >/dev/null; then
-  promptcases="$(cd "$repo" && timed "prompt cases" node tools/prompt-cases.mjs --base origin/main 2>&1)" || { echo "Push blocked: $promptcases" >&2; exit 2; }
+  promptcases="$(cd "$repo" && timed "prompt cases" node tools/prompt-cases.mjs --base origin/main 2>&1)" || block "$promptcases"
 fi
 # Rules E/F: expectation edits cite their reason; changed harness modules name their job (push and CI use this same fast gate).
 if command -v node >/dev/null && [ -f "$repo/tools/e2e-reliability-check.mjs" ] && git -C "$repo" rev-parse --verify -q origin/main >/dev/null; then
-  reliability="$(cd "$repo" && timed "e2e reliability" node tools/e2e-reliability-check.mjs --base origin/main 2>&1)" || { echo "Push blocked: $reliability" >&2; exit 2; }
+  reliability="$(cd "$repo" && timed "e2e reliability" node tools/e2e-reliability-check.mjs --base origin/main 2>&1)" || block "$reliability"
 fi
 # The renderer class tests (they read every renderer and lib file) run when a push touches those files: a CI red caught in 0.4 s here.
 # Why (28 Oct 2026): 10 of the last 34 red desktop-test PR runs that named a file failed in one of these seven (desktop/test/renderer-class-push.test.js); the whole desktop suite on push is 108 s (rule H).
 class_tests="test/card-system.test.js test/no-question-mark.test.js test/text-fields.test.js test/solid-buttons.test.js test/roomy-cards.test.js test/mac-words.test.js test/design.test.js"
 if command -v node >/dev/null && [ -d "$repo/desktop/test" ] && git -C "$repo" diff --name-only origin/main...HEAD 2>/dev/null | grep -qE '^desktop/(renderer|lib)/|^desktop/test/text-(buttons|fields)-allowed\.json$'; then
-  classes="$(cd "$repo/desktop" && timed "renderer class tests" node --test $class_tests 2>&1)" || { echo "Push blocked: a renderer class test fails (CI would be red):
-$(echo "$classes" | grep -E '^not ok|✖|^# fail' | head -6)" >&2; exit 2; }
+  classes="$(cd "$repo/desktop" && timed "renderer class tests" node --test $class_tests 2>&1)" || block "a renderer class test fails (CI would be red):
+$(echo "$classes" | grep -E '^not ok|✖|^# fail' | head -6)"
 fi
 # New Python code (src/, tools/) over McCabe complexity 15, with an unused import or local, a lambda over a loop variable or a raise in except without `from`
 # is refused on the lines a push adds, and an old function the push makes more complex while over the limit (29 Oct 2026) (tools/clean-code-py.py, Ruff pinned; owner, 28 Oct 2026; CI's pr-gate runs this script too).
 if command -v python3 >/dev/null && [ -f "$repo/tools/clean-code-py.py" ] && git -C "$repo" rev-parse --verify -q origin/main >/dev/null; then
-  cleanpy="$(cd "$repo" && timed "clean code (python)" python3 tools/clean-code-py.py --base origin/main 2>&1)" || { echo "Push blocked: $cleanpy" >&2; exit 2; }
+  cleanpy="$(cd "$repo" && timed "clean code (python)" python3 tools/clean-code-py.py --base origin/main 2>&1)" || block "$cleanpy"
 fi
 # JS cycles and measured browser/runtime boundaries ratchet against main (owner, 29 Oct 2026); old violations never block.
 if command -v python3 >/dev/null && [ -f "$repo/tools/arch-check.py" ] && git -C "$repo" rev-parse --verify -q origin/main >/dev/null; then
-  architecture="$(cd "$repo" && timed "JS architecture" python3 tools/arch-check.py --base origin/main 2>&1)" || { echo "Push blocked: $architecture" >&2; exit 2; }
-  [ -z "$architecture" ] || printf '%s\n' "$architecture" >&2
+  if architecture="$(cd "$repo" && timed "JS architecture" python3 tools/arch-check.py --base origin/main 2>&1)"; then
+    [ -z "$architecture" ] || printf '%s\n' "$architecture" >&2
+  else
+    block "$architecture"
+  fi
 fi
 # A Progress box a pull request ticks names its proof file, and the pull request contains it (or names the commit on main that changed it): tools/spec-proof.mjs.
 if command -v node >/dev/null && [ -f "$repo/tools/spec-proof.mjs" ] && git -C "$repo" rev-parse --verify -q origin/main >/dev/null; then
-  proof="$(cd "$repo" && timed "spec proof" node tools/spec-proof.mjs --base origin/main 2>&1)" || { echo "Push blocked: $proof" >&2; exit 2; }
+  proof="$(cd "$repo" && timed "spec proof" node tools/spec-proof.mjs --base origin/main 2>&1)" || block "$proof"
 fi
 # A list CI checks against the files it must cover (LOCK_PATHS, red-main CLASSIFIED) fails here in about a second, not ~10 min later on the PR (18 Oct 2026: three PRs red on one missing LOCK_PATHS entry): tools/registry-check.py.
 if command -v python3 >/dev/null && [ -f "$repo/tools/registry-check.py" ]; then
-  registry="$(cd "$repo" && timed "registry lists" python3 tools/registry-check.py 2>&1)" || { echo "Push blocked: $registry" >&2; exit 2; }
+  registry="$(cd "$repo" && timed "registry lists" python3 tools/registry-check.py 2>&1)" || block "$registry"
 fi
 # The Applying scenario matrix is not a push gate any more (owner, 9 Oct 2026): its steps run with every other e2e on CI (apply, applyflows: schedule and beta gate);
 # `cd desktop && npm run flows` stays an on-demand check. (8 Oct-9 Oct it blocked pushes that touched FLOW_CORE: one recorded catch in 186 commits, 28 skips.)
@@ -231,23 +240,25 @@ fi
 # and were diagnosed again from scratch): "Fixes #N", "Refs #N" or "E2E-issue: none <why>" (tools/e2e-issue-links.mjs). `E2E_ISSUE_OK=1` on the push skips it.
 case "$command" in *E2E_ISSUE_OK=1*) ;; *)
   if command -v node >/dev/null && [ -f "$repo/tools/e2e-issue-links.mjs" ] && git -C "$repo" rev-parse --verify -q origin/main >/dev/null; then
-    links="$(cd "$repo" && timed "e2e issue links" node tools/e2e-issue-links.mjs --base origin/main 2>&1)" || { echo "Push blocked: $links" >&2; exit 2; }
+    links="$(cd "$repo" && timed "e2e issue links" node tools/e2e-issue-links.mjs --base origin/main 2>&1)" || block "$links"
   fi ;;
 esac
 # A push that changes an e2e suite or its lib says why the suite was red, in /admin/operations/e2e's words (owner, 27 Oct 2026: "let's improve the process"; the page
 # could only guess drift, test bug or product bug from a fix): "E2E-cause: <cause> [suites]" or "E2E-cause: none <why>" (tools/e2e-cause-trailer.mjs).
 if command -v node >/dev/null && [ -f "$repo/tools/e2e-cause-trailer.mjs" ] && git -C "$repo" rev-parse --verify -q origin/main >/dev/null; then
-  ecause="$(cd "$repo" && timed "e2e cause trailer" node tools/e2e-cause-trailer.mjs --base origin/main 2>&1)" || { echo "Push blocked: $ecause" >&2; exit 2; }
+  ecause="$(cd "$repo" && timed "e2e cause trailer" node tools/e2e-cause-trailer.mjs --base origin/main 2>&1)" || block "$ecause"
 fi
 # A push to a pull request branch (tools/ship.sh, 12 Oct 2026: `SHIP_PR=1 git push`) stops here: everything above is seconds. The suites, the journey and ladder gates and the
 # recorded-page replays run in CI on the PR (.github/workflows/pr-gate.yml, build.yml, page-cases.yml), in parallel, not on this Mac behind the heavy lock.
 # CI runs this same script for the pure checks above: CI_GATES=1 (no red-main look, no AI place check, no local-run proof of new e2e steps). Only the workflow lint stays local.
 case "$command" in *SHIP_PR=1*|*CI_GATES=1*)
   if git -C "$repo" diff --name-only origin/main..HEAD 2>/dev/null | grep -q '^\.github/workflows/' && command -v actionlint >/dev/null; then
-    lint="$(cd "$repo" && timed "workflow files (actionlint)" workflows_lint 2>&1)" || { echo "Push blocked: $lint" >&2; exit 2; }
+    lint="$(cd "$repo" && timed "workflow files (actionlint)" workflows_lint 2>&1)" || block "$lint"
   fi
+  report_blocks
   exit 0 ;;
 esac
+report_blocks   # a push to main: every pure check's refusal at once, before the suites
 # The journey and ladder gates reuse a pass on exactly the same tree (tools/gate-cache.sh; owner, 11 Oct 2026: a retry that only changed a commit
 # message re-ran the 255 s journey gate); a failure is never cached; GATE_CACHE=0 or PUSH_FULL=1 runs them anyway.
 # The journey gate (owner, 10 Oct 2026): a push touching a flow file runs the applying scenarios as event sequences (tools/journey-gate.mjs, seconds,

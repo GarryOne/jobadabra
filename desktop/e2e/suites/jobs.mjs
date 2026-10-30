@@ -1,4 +1,5 @@
 /* global window, document */
+// Job: wait on state
 // Actions + Recent activity + Jobs: the core of every workflow. Starts from a set-up install; resets only its own data (jobs and run rows) in Notion.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -13,6 +14,9 @@ import {varyFeeds} from '../lib/feeds.mjs';
 export const realAi = true;   // stubs some AI calls but passes the others to the real model (metered); a suite with all calls stubbed declares false (test/suite-ai-mode.test.mjs)
 export const minutes = 30;
 export const name = 'jobs';
+export {hangCaps} from '../lib/jobs-caps.mjs';
+// Why (30 Oct 2026, owner, Rule B): measured per-step hang caps replace the aggregate clock; a slow runner is not a failed state assertion.
+export const aggregateBudget = false;
 export async function run(ctx) {
   const {proxy, feeds, ARTIFACTS} = ctx;
   let {page} = ctx;

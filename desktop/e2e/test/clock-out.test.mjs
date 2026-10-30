@@ -61,13 +61,10 @@ test('a step taking twice its calm 60 ms time passes under its hang cap', async 
   assert.equal(runner.results[0].status, 'passed');
 });
 
-test('interactions opts out of the aggregate and every step has a cap of at least 30 seconds', () => {
+test('interactions opts out of the aggregate and delegates every step to the runner caps', () => {
   assert.equal(interactions.aggregateBudget, false);
   const source = readFileSync(new URL('../suites/interactions.mjs', import.meta.url), 'utf8');
-  const calls = [...source.matchAll(/ctx\.run\(/g)];
-  assert.equal([...source.matchAll(/limitMs:/g)].length, calls.length);
-  const table = source.match(/const HANG_CAP_SECONDS = \{([\s\S]*?)\};/);
-  assert.ok(table, 'the measured caps live in one table');
-  const caps = [...table[1].matchAll(/:\s*(\d+)/g)].map(match => Number(match[1]));
-  assert.ok(caps.every(seconds => seconds >= 30));
+  assert.doesNotMatch(source, /limitMs\s*:/, 'per-call overrides would bypass the exact measured caps');
+  assert.ok(Object.keys(interactions.hangCaps).length > 0);
+  assert.ok(Object.values(interactions.hangCaps).every(seconds => seconds >= 30));
 });

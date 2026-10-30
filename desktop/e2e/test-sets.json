@@ -257,6 +257,7 @@
   "quality-split.test.mjs",
   "quality-watches-prompts.test.mjs",
   "quality.test.mjs",
+  "queue-filling.test.mjs",
   "rail-wait.test.mjs",
   "read-back-equivalence.test.mjs",
   "real-claude.test.mjs",

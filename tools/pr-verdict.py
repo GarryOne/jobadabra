@@ -54,12 +54,15 @@ PR_WORKFLOWS = {'beta-approve.yml', 'conflict-label.yml', 'e2e-windows.yml', 'e2
                 'office-addon.yml', 'page-cases.yml', 'pr-closed-cancel.yml', 'pr-gate.yml', 'pr-suites.yml', 'ready-fill-image.yml', 'search-personas.yml', 'tests-desktop-windows.yml',
                 'tests-desktop.yml', 'tests-python.yml', 'tests-worker.yml'}
 
+
 def ci_change(files):
     workflow = re.compile(r'^\.github/workflows/([^/]+)$')
     return any(CI_FILES.match(file) and (not workflow.match(file) or workflow.match(file).group(1) in PR_WORKFLOWS) for file in files)
 
+
 def _at(text):
     return datetime.fromisoformat(str(text).replace('Z', '+00:00'))
+
 
 def counted(runs):
     """The newest run of each workflow among those that judge this PR's commit."""
@@ -68,6 +71,7 @@ def counted(runs):
     for r in sorted(mine, key=lambda r: (r.get('createdAt') or '', r.get('databaseId') or 0)):
         newest[r['workflowName']] = r
     return list(newest.values())
+
 
 def job_state(job, me=None, my_status=''):
     """One job of a running workflow -> 'running', 'finishing' (only its verdict step and clean-up are left) or its conclusion."""
@@ -78,6 +82,7 @@ def job_state(job, me=None, my_status=''):
     steps = job.get('steps') or []
     left = [st for st in steps if st.get('status') != 'completed' and st.get('name') != STEP and not str(st.get('name', '')).startswith('Post ') and st.get('name') != 'Complete job']
     return 'finishing' if any(st.get('name') == STEP for st in steps) and not left else 'running'
+
 
 def clock(at):
     """'07:04 Zurich' (the owner's time); 'HH:MM UTC' where Python has no time-zone data (Windows runners)."""
@@ -257,7 +262,7 @@ def job_log(repo, job_id):
 
 
 def main_state_module(repo, ref, name='main_e2e_state'):
-    """Load main's state or a number companion at this script's commit, even from a standalone CI copy."""
+    """Load a verdict companion at this script's commit, even from a standalone CI copy."""
     here = os.path.join(os.path.dirname(os.path.abspath(__file__)), name + '.py')
     if not os.path.exists(here):
         text = gh('api', '-H', 'Accept: application/vnd.github.raw', f'repos/{repo}/contents/tools/{name}.py?ref={ref}')
@@ -321,58 +326,7 @@ def lane_greys(repo, runs, jobs, read_lanes=None):
         return {}
 
 
-# Health causes (PR 16/29). Why (28 Oct 2026, Gitar on #2415): compiled once; "spend limit or credit" is the phrase desktop/e2e/lib/ai-refused.mjs adds only when the engine log
-# carried the limit or credit message (a bare "the AI refused (400)" can be a request of ours that is wrong, so it stays red).
-_CREDIT = re.compile(r'ai-capped:|credit balance is too low|insufficient_quota|the AI refused \(\d+\) \d+ times?[^;]*spend limit or credit', re.I)
-_INSTALL = re.compile(r'install|npm ci|playwright.*browser', re.I)
-# An npm lockfile/script error is this diff's failure. Only a transport error during installation is health.
-_TRANSPORT = re.compile(r'(?:npm (?:error|ERR!).*\b(?:ECONNRESET|ETIMEDOUT|EAI_AGAIN|ENOTFOUND)\b|'
-                        r'(?:download|fetch).*\b(?:ECONNRESET|ETIMEDOUT|EAI_AGAIN|ENOTFOUND)\b)', re.I)
-
-
-def _runner_never_acquired(job, annotations):
-    """A capacity cancellation: no steps, no runner, and GitHub's own annotation says so."""
-    return (not job.get('steps') and not job.get('runner_name')
-            and any('not acquired by Runner' in a.get('message', '') for a in annotations))
-
-
-def _credit_only(job, annotations, failures):
-    """Every failure mark is a cap or credit line (a deliberate "no credit" stub stays red), every named annotation too, and only suite steps failed."""
-    named_errors = [a.get('message', '') for a in annotations if a.get('annotation_level') == 'failure' and ' · ' in a.get('title', '')]
-    return bool(failures) and all(_CREDIT.search(line) and 'stub no-credit on purpose' not in line for line in failures) \
-        and all(_CREDIT.search(text) for text in named_errors) \
-        and all('suite' in step.get('name', '').lower() for step in _failed_steps(job))
-
-
-def _failed_steps(job):
-    return [step for step in job.get('steps') or [] if step.get('conclusion') in RED]
-
-
-def _install_download_failed(step, log):
-    """Only this failed step's own lines count: a recovered download in an earlier step explains no later failure."""
-    if not _INSTALL.search(step.get('name', '')) or not step.get('started_at') or not step.get('completed_at'):
-        return False
-    start, end = _at(step['started_at']).timestamp(), _at(step['completed_at']).timestamp() + 1
-    stamps = ((re.match(r'^(\d{4}-\d\d-\d\dT[\d:.]+Z) ', line), line) for line in log.splitlines())
-    return bool(_TRANSPORT.search('\n'.join(line for stamp, line in stamps if stamp and start <= _at(stamp[1]).timestamp() < end)))
-
-
-def _health_cause(job, annotations_of, log_of):
-    """'runner' | 'ai-credit' | 'install' | '' for one finished red job. Missing evidence and mixed failures give ''."""
-    annotations = annotations_of(job['id'])
-    if _runner_never_acquired(job, annotations):
-        return 'runner'
-    log = log_of(job['id'])
-    failures = marks(log)
-    if _credit_only(job, annotations, failures):
-        return 'ai-credit'
-    failed = _failed_steps(job)
-    if not failures and failed and all(_install_download_failed(step, log) for step in failed):
-        return 'install'
-    return ''
-
-
-def health_greys(repo, runs, jobs, annotations_of=None, log_of=None):
+def health_greys(repo, runs, jobs, annotations_of=None, log_of=None, ref=''):
     """Finished PR e2e jobs -> the existing grey map, with proven health causes only.
     Invariants: a capacity cancellation needs zero steps; AI credit must explain EVERY failure mark;
     install health needs a download transport error in a failed install step, before any suite assertion.
@@ -382,18 +336,30 @@ def health_greys(repo, runs, jobs, annotations_of=None, log_of=None):
     annotations_of = annotations_of or (lambda jid: [a for page in json.loads(gh('api', '--paginate', '--slurp',
         f'repos/{repo}/check-runs/{jid}/annotations?per_page=100')) for a in page])
     log_of = log_of or (lambda jid: job_log(repo, jid))
-    greys = {}
+    greys, classifier = {}, None
     for job in _red_e2e_jobs(runs, jobs, RED):
         if job.get('name') in REPORT_JOBS:
             continue
         try:
-            cause = _health_cause(job, annotations_of, log_of)
+            classifier = classifier or main_state_module(repo, ref, 'pr_health_greys').health_cause
+            cause = classifier(job, annotations_of, log_of, marks=marks, at=_at, red=RED)
         except Exception as error:
             print(f"health of job {job['id']} not read ({type(error).__name__}: {error}): stays red")
             continue
         if cause:
             greys[job['id']] = cause
     return greys
+
+
+def number_description(repo, ref, runs, why, ai_line):
+    """Compose AI and speed text; unavailable speed evidence preserves the AI description."""
+    why = ai_line(why)
+    if any(str(r.get('displayTitle', '')).startswith(E2E_PR_TITLE) for r in counted(runs)):
+        try:
+            why = main_state_module(repo, ref, 'pr_speed_number').summary(repo, counted(runs), gh, why)
+        except Exception as error:
+            print(f'Speed number unavailable ({type(error).__name__}): required verdict unchanged')
+    return why
 
 
 def main():
@@ -428,7 +394,7 @@ def main():
         state, why, live, finishing, target = verdict(runs, files, messages, jobs, me, a.job_status, spans=spans, greys=greys or (), reports=reports, burn_in=lambda *args: main_state_module(a.repo, ref, 'pr_burn_in').failures(*args))
         if state == 'failure' and greys is None:   # read main's reds once, and only for a red: a green PR costs no extra call
             greys = {**{job_id: 'main' for job_id in main_red_greys(a.repo, runs, jobs, ref=ref)}, **lane_greys(a.repo, runs, jobs),
-                     **health_greys(a.repo, runs, jobs)}   # a health cause names this run; lanes still come from the base branch
+                     **health_greys(a.repo, runs, jobs, ref=ref)}   # a health cause names this run; lanes still come from the base branch
             if greys:
                 state, why, live, finishing, target = verdict(runs, files, messages, jobs, me, a.job_status, spans=spans, greys=greys, reports=reports, burn_in=lambda *args: main_state_module(a.repo, ref, 'pr_burn_in').failures(*args))
         if state in (None, 'failure', 'pending') or (state != 'settling' and not finishing):
@@ -443,12 +409,7 @@ def main():
         print(f"  {r.get('conclusion') or r.get('status'):10} {r['workflowName']}")
     if state is None:
         print(f'no pull request run on {a.sha[:7]}: nothing to write'); return 0
-    why = ai_line(why)
-    if any(str(r.get('displayTitle', '')).startswith(E2E_PR_TITLE) for r in counted(runs)):
-        try:
-            why = main_state_module(a.repo, os.environ.get('GITHUB_SHA') or a.sha, 'pr_speed_number').summary(a.repo, counted(runs), gh, why)
-        except Exception as error:
-            print(f'Speed number unavailable ({type(error).__name__}): required verdict unchanged')
+    why = number_description(a.repo, ref, runs, why, ai_line)
     print(f'{CONTEXT}: {state}: {why}')
     url = f'{server}/{a.repo}/actions/runs/{target or my_run}'   # the run it waits on, or the red one: the PR's e2e run is not in its checks list
     if not a.dry_run:

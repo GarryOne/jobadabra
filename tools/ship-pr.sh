@@ -53,7 +53,7 @@ ship_pr_land() {
   ship_pr_push
   if [ -z "$n" ]; then
     title="${SHIP_PR_TITLE:-$(bash "$tools/pr-title.sh" origin/main)}"   # the newest commit that is not a "Move ..." split, or --title= (18 Oct 2026)
-    who="$(session_name)"; [ "$who" = "?" ] || title="[${who##*-}] ${title#"[${who##*-}] "}"   # (a --title already starting with the tag keeps one: 24 Oct 2026, #1750 read "[d8] [d8] ...") the session that opened it, short (owner, 15 Oct 2026; tools/session-name.sh)
+    who="$(session_short)"; [ "$who" = "?" ] || title="[$who] ${title#"[$who] "}"   # (a --title already starting with the tag keeps one: 24 Oct 2026, #1750 read "[d8] [d8] ...") the session that opened it, short (owner, 15 Oct 2026; tools/session-name.sh)
     # A repo without this toolkit (jobadabra-web, jobadabra-lab) has the body check only in its CI, and the lab's Actions can be blocked (24 Oct 2026, lab #57 opened with a free-form body): no body, no PR.
     [ -z "${external:-}" ] || [ -n "${SHIP_PR_BODY:-}" ] || ship_pr_fail "no --body=<file>: a PR of this repo needs the laid-out description (verdict, Why, Unblocks, impact table, Before/After; ~/jobadabra/tools/pr-body-template.md)"
     [ -n "${SHIP_PR_BODY:-}" ] || step "no --body=<file>: the PR shows the subject, the facts and the commit folded; a 5-second summary goes in a file (CLAUDE.md \"PR descriptions\")"
@@ -69,12 +69,12 @@ ship_pr_land() {
       body="$(bash "$tools/pr-body.sh" origin/main "--body=$SHIP_PR_BODY")" && pr_set "$repo" "$n" body "$body" 2>/dev/null && step "refreshed the description of #$n from --body" || step "could not refresh the description of #$n (the old one stays)"
     fi
     if [ -n "${SHIP_PR_TITLE:-}" ]; then   # --title= on a PR that is already open: its title is replaced (only then)
-      who="$(session_name)"; title="$SHIP_PR_TITLE"; [ "$who" = "?" ] || title="[${who##*-}] ${title#"[${who##*-}] "}"
+      who="$(session_short)"; title="$SHIP_PR_TITLE"; [ "$who" = "?" ] || title="[$who] ${title#"[$who] "}"
       pr_set "$repo" "$n" title "$title" 2>/dev/null && step "retitled #$n" || step "could not retitle #$n (the old title stays)"
     else   # no --title: still keep the "[xx]" tag (21 Oct 2026: site#18 and #19 were red for a missing tag, opened or retitled by hand): add it when the title lacks one
-      who="$(session_name)"; title="$(pr_view "$repo" "$n" 2>/dev/null | jq -r '.title // empty' || true)"
+      who="$(session_short)"; title="$(pr_view "$repo" "$n" 2>/dev/null | jq -r '.title // empty' || true)"
       if [ "$who" != "?" ] && [ -n "$title" ] && ! printf '%s' "$title" | grep -qE '^\[[^]]+\] '; then
-        pr_set "$repo" "$n" title "[${who##*-}] $title" 2>/dev/null && step "added the [${who##*-}] tag to the title of #$n" || step "could not add the session tag to #$n (the old title stays)"
+        pr_set "$repo" "$n" title "[$who] $title" 2>/dev/null && step "added the [$who] tag to the title of #$n" || step "could not add the session tag to #$n (the old title stays)"
       fi
     fi
     if [ -n "${SHIP_PR_DRAFT:-}" ]; then gh pr ready "$n" --undo >/dev/null 2>&1 && step "#$n is a draft again until its new checks are green" || true; fi   # --draft: a new push restarts the checks

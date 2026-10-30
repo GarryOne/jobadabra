@@ -13,9 +13,9 @@ The form read decides the highest mode:
 
 | Form read says | Highest mode | Chip |
 |---|---|---|
-| No captcha, no login, every answer a saved fact | `auto` | Can apply automatically |
-| No captcha, some answers drafted, not saved facts | `background` | You review and submit |
-| Captcha, login wall, or asks to create an account | `check` (Standard) | Needs you, with the reason |
+| No captcha, no login, every answer a saved fact | `auto` (Full automation) | Can apply automatically |
+| No captcha, some answers drafted, not saved facts | `fill` | You review and submit |
+| Captcha, login wall, or asks to create an account | `check` (Standard automation) | Needs you, with the reason |
 | Not eligible | none | Skipped |
 
 The chip only orders and sorts jobs. The real checks at the click still run every time (opt-in, page proof, kit eligibility, Stop, the optional wait).

@@ -999,7 +999,7 @@ jobs:
           github-token: ${{ github.token }}
       - name: Not released on Mac, an E2E suite failed on Mac + Linux or Windows
         if: needs.test-mac.result != 'success' || needs.test-windows.result != 'success'
-        run: python3 tools/beta_rate_gate.py --repo "$GITHUB_REPOSITORY" --run "$GITHUB_RUN_ID" --e2e-only both
+        run: python3 tools/beta_rate_gate.py --repo "$GITHUB_REPOSITORY" --run "$GITHUB_RUN_ID" --e2e-only
       - name: Tolerant AI rates against main's nightly band
         if: needs.changes.outputs.gate == 'true'
         run: python3 tools/beta_rate_gate.py --repo "$GITHUB_REPOSITORY" --run "$GITHUB_RUN_ID" --platform mac
@@ -1086,7 +1086,7 @@ jobs:
           github-token: ${{ github.token }}
       - name: Not released on Windows, an E2E suite failed on Mac + Linux or Windows
         if: needs.test-mac.result != 'success' || needs.test-windows.result != 'success'
-        run: python3 tools/beta_rate_gate.py --repo "$GITHUB_REPOSITORY" --run "$GITHUB_RUN_ID" --e2e-only both
+        run: python3 tools/beta_rate_gate.py --repo "$GITHUB_REPOSITORY" --run "$GITHUB_RUN_ID" --e2e-only
       - name: Tolerant AI rates against main's nightly band
         if: needs.changes.outputs.gate == 'true'
         run: python3 tools/beta_rate_gate.py --repo "$GITHUB_REPOSITORY" --run "$GITHUB_RUN_ID" --platform windows

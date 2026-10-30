@@ -206,9 +206,9 @@ class Gate(unittest.TestCase):
                 {'name': 'E2E · Mac + Linux · qualityai', 'conclusion': 'failure'},
                 {'name': 'E2E · Windows · apply', 'conclusion': 'success'}]
         self.assertFalse(self.gate().blocking_jobs(jobs, registry, 'windows'), 'the control: the Windows lane alone is green')
-        self.assertEqual(self.gate().blocking_lanes(jobs, registry, ('mac', 'windows')), ['Mac + Linux: applyflows'])
-        self.assertEqual(self.gate().blocking_lanes(jobs[1:], registry, ('mac', 'windows')), [])
-        self.assertEqual(self.gate().blocking_lanes(jobs[:2], registry, ('mac', 'windows')), ['Mac + Linux: applyflows', 'Windows: lane jobs unavailable'])
+        self.assertEqual(self.gate().blocking_lanes(jobs, registry), ['Mac + Linux: applyflows'])
+        self.assertEqual(self.gate().blocking_lanes(jobs[1:], registry), [])
+        self.assertEqual(self.gate().blocking_lanes(jobs[:2], registry), ['Mac + Linux: applyflows', 'Windows: lane jobs unavailable'])
 
     def test_empty_lane_jobs_cannot_clear_a_failed_matrix(self):
         self.assertEqual(self.gate().blocking_jobs([], {}, 'mac'), ['lane jobs unavailable'])

@@ -56,3 +56,22 @@ test('Cancel ends a read that is out', async () => {
   assert.equal(controller.cancelTriage(), 1);
   assert.equal(await pending, null);
 });
+
+test('an application waits for a read that is out, and is claimed on the next poll once the read ended', async () => {
+  const queued = {id: 's2', url: 'https://jobs.example.test/q', background: {}};
+  let open = [], claims = 0;
+  const controller = createBackgroundApplyController({}, {
+    store: {read: async () => ({session: 's2', state: 'queued', mode: 'background'}), claim: async () => { claims += 1; return {ok: true, state: {mode: 'background'}}; }},
+    browser: {ready: () => true, start: async () => ({owner: 'o1'})},
+    terminals: {list: () => open, byUrl: () => null, record: () => null, report: () => {}},
+    config: () => ({mode: 'background'}), log: () => {}, token: () => 'fictional', port: 1});
+  const pending = controller.triageRead({url: 'https://jobs.example.test/a'});
+  assert.equal((await poll(controller)).jobs[0].mode, 'read', 'the read is out');
+  open = [queued];   // the person starts an application while the read is out
+  assert.deepEqual((await poll(controller)).jobs, [], 'no claim and no second read while a read is out');
+  assert.equal(claims, 0);
+  controller.cancelTriage();
+  await pending;
+  assert.deepEqual((await poll(controller)).jobs.map(job => job.session), ['s2'], 'the application starts once the read ended');
+  assert.equal(claims, 1);
+});

@@ -106,13 +106,13 @@ export function createBackgroundApplyController(storage, {store = null, browser 
       if (HANDOFF.has(state.state)) { handoffs.push({session: item.id, reason: state.reason, reveal: state.reason !== 'captcha_preflight'}); cache(item, state); continue; }   // words-ok: our own hand-off reason id / user-facing word, not page knowledge
       if (state.state === 'submitting') continue; // a reserved attempt is never reissued, even after a lost reply/restart
       if (state.state === 'waiting_to_submit' && now() >= state.readyAt + (current.auto?.waitMin ?? AUTO_DEFAULTS.waitMin) * 60000) checks.push({session: item.id});
-      if (['queued', 'preflight'].includes(state.state) && !filling) {
+      if (['queued', 'preflight'].includes(state.state) && !filling && !reader.busy()) {
         const claim = await store.claim(item.url, item.id, owner);
         if (claim.ok) { filling = true; state = claim.state; jobs.push({session: item.id, url: sessionTabUrl(item.url, item.id), mode: state.mode}); }
       }
       cache(item, state);
     }
-    // Why (2026-10-30, owner: triage read, PR C2a): a form read goes to the hidden browser only when no application is open or starting, so it never shares the browser with one.
+    // Why (2026-10-30, owner: triage read, PR C2a): a form read and an application never share the hidden browser: a read waits for open applications, and an application waits (at most the read's timeout) for a read that is queued or out (Gitar, #2602).
     jobs.push(...readCommands({filling, open}));
     return {ok: true, jobs, checks, handoffs};
   }

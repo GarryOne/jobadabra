@@ -10,7 +10,8 @@ import {errorReport} from './error-report.js';
 // logs/app.log`); entries the push could not deliver stay unsent and go with the next one, so a crashed worker's
 // last decisions still arrive. Ids, hosts, reasons and counts only — never a form answer or a page's text.
 const LOG_KEY = 'jp-decisions';
-const LOG_KEEP = 50;
+// Why (30 Oct 2026, ap; Gitar on the span PR): one fill pass writes about 30 span lines; a ring of 50 pushed the line that names the slow await out while the app was slow or closed.
+const LOG_KEEP = 200;
 export async function decisions() {
   const {[LOG_KEY]: kept = []} = await chrome.storage.local.get(LOG_KEY).catch(() => ({}));
   return Array.isArray(kept) ? kept : [];
@@ -22,6 +23,18 @@ export async function decide(kind, text, fields = {}) {
   pushDecisions();
   return entry;
 }
+let spanId = 0;
+/** Bracket one awaited operation without awaiting logging; preserve its result or rejection and log only ids and duration. */
+export async function span(name, promiseFactory) {
+  const id = ++spanId, began = Date.now();
+  // Why (30 Oct 2026, ap): instrumentation uses the existing decision queue without delaying the work or exposing rejection text.
+  decide('span', `${name} start`, {id}).catch(() => {});
+  let failed = false;
+  try { return await promiseFactory(); }
+  catch (error) { failed = true; throw error; }
+  finally { decide('span', `${name} end`, {id, ms: Date.now() - began, ...(failed ? {failed: true} : {})}).catch(() => {}); }
+}
+
 // One at a time: two lines written at once read the same list (one was lost), and two pushes at once sent the same unsent
 // lines twice or three times (8 Oct 2026: "closed the posting tab" logged 3x for one tab).
 let logTurn = Promise.resolve();
@@ -32,12 +45,14 @@ async function pushNow() {
   const unsent = kept.filter(entry => !entry.sent);
   if (!unsent.length) return;
   try {
+    // Why (30 Oct 2026, ap; Gitar on the span PR): the oldest 20 go first and only they are marked sent; the newest 20 were sent while every unsent line was marked sent, so the rest were lost.
+    const batch = unsent.slice(0, 20);
     const config = await settings();
     const response = await fetch(`${config.workerUrl.replace(/\/$/, '')}/extension/log`, {method: 'POST',
       headers: {Authorization: `Bearer ${config.token}`, 'Content-Type': 'application/json'},
-      body: JSON.stringify({entries: unsent.slice(-20)})});
+      body: JSON.stringify({entries: batch})});
     if (!response.ok) return;
-    const sent = new Set(unsent.map(entry => entry.at + entry.text));
+    const sent = new Set(batch.map(entry => entry.at + entry.text));
     await chrome.storage.local.set({[LOG_KEY]: (await decisions())
       .map(entry => (sent.has(entry.at + entry.text) ? {...entry, sent: true} : entry))});
   } catch { /* not paired, or the app is closed: they stay unsent for the next push */ }

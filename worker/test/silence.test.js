@@ -121,9 +121,9 @@ test('two tabs of one application share its pause: the time with any ask out cou
 test('class: every call to the app is bracketed as an ask of its tab (flow.js apiFor) or is explicitly tab-less (api); the fill path never uses the tab-less one', () => {
   const read = file => fs.readFileSync(new URL(`../../extension/${file}`, import.meta.url), 'utf8');
   const flow = read('flow.js');
-  assert.match(flow, /export async function api\(config, path, init = \{\}, retry = true, tabId = null\) \{\s*const ask = askStarted\(tabId\);[^\n]*\n\s*try \{ return await guarded\(tabId, path, init, \(\) => apiCall\(config, path, init, retry\)[^\n]*\} finally \{ askEnded\(ask\); \}/);
+  assert.match(flow, /export async function api\(config, path, init = \{\}, retry = true, tabId = null\) \{\s*const ask = askStarted\(tabId\);[^\n]*\n(?:\s*(?:\/\/|const trace = )[^\n]*\n)*\s*try \{ return await guarded\(tabId, path, init, \(\) => apiCall\(config, path, init, retry, trace\)[^\n]*\} finally \{ askEnded\(ask\); \}/);
   assert.match(flow, /export const apiFor = \(tabId, config, path, init = \{\}\) => api\(config, path, init, true, tabId\);/);
-  assert.match(flow, /return apiCall\(Object\.assign\(config, fresh\), path, init, false\)/, 'the retry after a 401 is inside the same bracket');
+  assert.match(flow, /return apiCall\(Object\.assign\(config, fresh\), path, init, false, trace\)/, 'the retry after a 401 is inside the same bracket');
   // The fill path: files that work on a tab. A plain api( in them is a new ask that would not pause its own tab's clock.
   for (const file of ['flow.js', 'fill-tab-inputs.js', 'fill-tab-finish.js', 'fill-flow.js', 'fill-flow-read.js', 'fill-flow-steps.js', 'account-step.js', 'form-ready.js', 'format-retry.js', 'consent.js', 'submit-watch.js', 'ladder/fill-climb.js', 'ladder/rung4-picture.js']) {
     const plain = read(file).split('\n').filter(line => /(?<![\w.])api\(/.test(line) && !/^export (async function api\(|const apiFor = )/.test(line));

@@ -47,7 +47,7 @@ async function rig(t, options = {}) {
     restartFromPosting: asyncRecord('restart', !!options.restart), deadEnd: record('deadEnd'),
     notePage: record('page'), noteProgress: record('progress'), forgetGivenUp: record('forget'),
     handGivenUpToPerson: asyncRecord('hand'), formNext: asyncRecord('next'), setApply: record('applyState'),
-    decide: asyncRecord('decide'), STILL_MS: {maxMs: 5000},
+    span: (_name, run) => run(), decide: asyncRecord('decide'), STILL_MS: {maxMs: 5000},
   };
   const root = new URL('../../extension/', import.meta.url);
   const source = fs.readdirSync(root).filter(file => /^fill-flow.*\.js$/.test(file)).map(file => fs.readFileSync(new URL(file, root), 'utf8')).join('\n');

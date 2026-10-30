@@ -3,6 +3,12 @@
 // Job: wait on state
 import {runParts} from './activityfailures.mjs';
 
+// Stored answers cover the channel scenarios; pin their Notion stand-in to keep one replay path.
+export const offlineAi = true;
+export const realAi = false;
+export const aiAnswers = 'backbone';
+export const store = 'standin';
+
 export const minutes = 12;
 export const name = 'failureschannels';
 import {hangCapsFor} from '../lib/hang-caps.mjs'; export const hangCaps = hangCapsFor('failureschannels');

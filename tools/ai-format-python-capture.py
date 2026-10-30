@@ -146,14 +146,18 @@ def capture_engine(prompts=False):
          'src/ai/interviews_ai.py', 'response = client.messages.create(model=model, **request)', 'src/ai/interviews_ai.py', 'if response.stop_reason !=')
     if prompts:
         entries[-1].update(kind='app.interview', baseSystem=interviews.SYSTEM)
-        mail_config = load('src/ai/mail_config.py', ['OUTREACH', 'KINDS', 'BATCH', 'SCHEMA', 'SYSTEM'],
-                           REPLY='Reply received', employer_feedback=NS(RECEIVED='Feedback received'))
-        mail = load('src/ai/mail_read.py', ['classify'], SYSTEM=mail_config.SYSTEM, SCHEMA=mail_config.SCHEMA,
-                    BATCH=mail_config.BATCH, listing=lambda apps: '', engine=engine, cost=NS(add=lambda *a: None))
-        client = Client({'results': []})
-        mail.classify(client, models.SMALL_MODEL, [], [dict(subject='Fixture subject', body='Fixture mail text',
-                                                         date='2026-10-30', **{'from': 'sender@example.com'})])
-        entries.append(dict(kind='mail', action='mail', request=client.request, baseSystem=mail_config.SYSTEM))
+    mail_config = load('src/ai/mail_config.py', ['OUTREACH', 'KINDS', 'BATCH', 'SCHEMA', 'SYSTEM'],
+                       REPLY='Reply received', employer_feedback=NS(RECEIVED='Feedback received'))
+    mail = load('src/ai/mail_read.py', ['classify'], SYSTEM=mail_config.SYSTEM, SCHEMA=mail_config.SCHEMA,
+                BATCH=mail_config.BATCH, listing=lambda apps: '', engine=engine, cost=NS(add=lambda *a: None))
+    client = Client({'results': []})
+    mail_items = [dict(subject='Fixture subject', body='Fixture mail text',
+                       date='2026-10-30', **{'from': 'sender@example.com'})]
+    mail.classify(client, models.SMALL_MODEL, [], mail_items)
+    keep('mail', client, {'apps': [], 'items': mail_items},
+         'src/ai/mail_read.py', 'response = client.messages.create(', 'src/ai/mail_read.py', 'for result in json.loads')
+    if prompts:
+        entries[-1]['baseSystem'] = mail_config.SYSTEM
 
     text = load('src/ai/interview_insights_text.py', ['MIN_SUPPORT', 'ROUND_TYPES', 'MAX_REVIEW_CHARS', 'KINDS', 'SCHEMA', 'SYSTEM'])
     insights = load('src/ai/interview_insights.py', ['prompt_input', 'generate'], interviews=interviews, engine=engine,

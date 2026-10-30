@@ -23,7 +23,7 @@ const request = (action, body = {model: 'test', messages: [{role: 'user', conten
 });
 
 // Why (30 Oct 2026, bb 3/9, Gitar): one looped file instead of one near-identical file per suite; a suite joins by name.
-for (const suite of ['interactions']) {
+for (const suite of ['interactions', 'failureschannels']) {
   for (const family of ['claude', 'openai']) test(`${suite} setup answers and named refusals stop before live ${family} AI`, async t => {
     const h = await backboneHarness(t, suite, family);
     t.after(() => h.assertNoLive());

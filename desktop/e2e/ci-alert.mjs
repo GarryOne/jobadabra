@@ -119,30 +119,45 @@ export function causeLines({suite, step, message}, named = false) {
 export function messageOf({status, what = '', causes = [], next = '', previous = '', recovered = [], since = {prs: [], more: 0}, jobs = [], env = process.env, now = new Date(), lanes = readLanes()}) {
   const blocking = jobs.filter(job => backbone(job.name, lanes));
   if (status === 'failure' && jobs.length && !blocking.length) status = 'success';
-  jobs = blocking;
-  const repo = env.GITHUB_REPOSITORY, site = env.GITHUB_SERVER_URL || 'https://github.com', branch = env.GITHUB_REF_NAME || 'main';
-  const sha = String(env.AFTER_MERGE || env.GITHUB_SHA || ''), run = `${site}/${repo}/actions/runs/${env.GITHUB_RUN_ID}`;
-  const time = new Intl.DateTimeFormat('en-GB', {timeZone: 'Europe/Zurich', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit'}).format(now);
-  const e2e = path.basename(String(env.GITHUB_WORKFLOW_REF || '').split('@')[0]) === 'e2e.yml';
-  const suites = names => [...new Set(names.map(suiteOfKey))].filter(suite => backbone(suite, lanes));
-  const prs = since.prs.slice(0, 3), more = since.more + since.prs.length - prs.length;
-  const after = {parts: prs.length ? ['After ', ...prs.flatMap((number, i) => [i ? ', ' : '', {text: `#${number}`, url: `${site}/${repo}/pull/${number}`}]), more ? ` +${more} more` : '', ` · ${time}`]
-    : ['After ', {text: sha.slice(0, 7), url: `${site}/${repo}/commit/${sha}`}, ` · ${time}`]};
+  const where = placeOf(env, now);
+  const named = names => (where.e2e ? [...new Set(names.map(suiteOfKey))].filter(suite => backbone(suite, lanes)) : []);
   if (status === 'failure') {
-    const red = e2e ? suites(jobs.map(job => job.name)) : [];
-    const named = new Set(causes.slice(0, 2).map(cause => cause.suite)).size > 1;
-    const lines = causes.length ? causes.slice(0, 2).flatMap(cause => causeLines(cause, named))
-      : [{parts: [plain(what) || `Failed job: ${jobs.map(job => job.name).join(', ') || 'see the run'}`]}];
-    if (next) lines.push({label: 'Next', parts: [next]});
-    const links = jobs.length === 1 ? [{text: 'Open the failed job', url: jobs[0].url}] : jobs.length ? jobs.slice(0, 3).map(job => ({text: `Open ${job.name}`, url: job.url})) : [{text: 'Open the run', url: run}];
-    return alertHtml({icon: '🔴', title: red.join(', ') || env.GITHUB_WORKFLOW || 'CI', verdict: `failed on ${branch}`, blocks: [lines, [after]], links});
+    const red = named(blocking.map(job => job.name));
+    return alertHtml({icon: '🔴', title: red.join(', ') || where.workflow, verdict: `failed on ${where.branch}`, blocks: [failureLines({what, causes, next, jobs: blocking}), [afterLine(since, where)]], links: jobLinks(blocking, where.run)});
   }
   if (status === 'success' && ['failure', 'timed_out'].includes(previous)) {
-    const back = e2e ? suites(recovered) : [];
-    return alertHtml({icon: '🟢', title: back.join(', ') || env.GITHUB_WORKFLOW || 'CI', verdict: `${back.length > 1 ? 'are' : 'is'} green again on ${branch}`, blocks: [[after]]});
+    const back = named(recovered);
+    return alertHtml({icon: '🟢', title: back.join(', ') || where.workflow, verdict: `${back.length > 1 ? 'are' : 'is'} green again on ${where.branch}`, blocks: [[afterLine(since, where)]]});
   }
   return '';
 }
+
+// The run's place and time, from the GitHub env: links, branch, the commit it checked, whether it is the e2e workflow (suites name its alerts).
+function placeOf(env, now) {
+  const repo = `${env.GITHUB_SERVER_URL || 'https://github.com'}/${env.GITHUB_REPOSITORY}`;
+  return {repo, run: `${repo}/actions/runs/${env.GITHUB_RUN_ID}`, branch: env.GITHUB_REF_NAME || 'main', sha: String(env.AFTER_MERGE || env.GITHUB_SHA || ''),
+    workflow: env.GITHUB_WORKFLOW || 'CI', e2e: path.basename(String(env.GITHUB_WORKFLOW_REF || '').split('@')[0]) === 'e2e.yml',
+    time: new Intl.DateTimeFormat('en-GB', {timeZone: 'Europe/Zurich', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit'}).format(now)};
+}
+
+// "After #2538, #2535 +2 more · 30 Oct, 02:29": the PRs since green (3 shown), or the commit when none is known.
+function afterLine(since, where) {
+  const prs = since.prs.slice(0, 3), more = since.more + since.prs.length - prs.length;
+  if (!prs.length) return {parts: ['After ', {text: where.sha.slice(0, 7), url: `${where.repo}/commit/${where.sha}`}, ` · ${where.time}`]};
+  return {parts: ['After ', ...prs.flatMap((number, i) => [i ? ', ' : '', {text: `#${number}`, url: `${where.repo}/pull/${number}`}]), more ? ` +${more} more` : '', ` · ${where.time}`]};
+}
+
+// The red's own words: each step cause (2 at most, suite named when they differ), else the caller's cause or the failed jobs; then the caller's next step.
+function failureLines({what, causes, next, jobs}) {
+  const named = new Set(causes.slice(0, 2).map(cause => cause.suite)).size > 1;
+  const lines = causes.length ? causes.slice(0, 2).flatMap(cause => causeLines(cause, named))
+    : [{parts: [plain(what) || `Failed job: ${jobs.map(job => job.name).join(', ') || 'see the run'}`]}];
+  return next ? [...lines, {label: 'Next', parts: [next]}] : lines;
+}
+
+// One failed job: "Open the failed job"; several: one link each (3 at most); none known: the run.
+const jobLinks = (jobs, run) => (jobs.length === 1 ? [{text: 'Open the failed job', url: jobs[0].url}]
+  : jobs.length ? jobs.slice(0, 3).map(job => ({text: `Open ${job.name}`, url: job.url})) : [{text: 'Open the run', url: run}]);
 
 // text: a message from messageOf (or a plain string) -> the line to print.
 export async function send(message, env = process.env, fetcher = fetch) {

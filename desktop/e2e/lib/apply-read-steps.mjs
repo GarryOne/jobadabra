@@ -57,6 +57,7 @@ export async function runReadSteps(ctx, {until}) {
       await page.reload();
       await page.waitForSelector('.view:not([hidden])', {timeout: 60000});
       await page.click('.nav[data-view="jobs"]');
+      await page.fill('#filter-text', form.url);   // Why (2026-10-30, CI run 41092478435): a Saved job is no row of the default "New matches" view; a pasted link finds a job whatever its status (renderJobs `anyStatus`)
       await until('the fixture job never appeared on the Jobs list', async () => (await chipOfRow(page, form.title)) !== '', 60000);
       if (await chipOfRow(page, form.title) !== 'Not checked') throw new Error('the job already had a chip before any read');
       const sessions = sessionsNow(ctx), posted = forms.posts.length;
@@ -81,6 +82,7 @@ export async function runReadSteps(ctx, {until}) {
       await page.click('#triage-cancel').catch(() => {});   // a run still going would read on into the next hidden-browser step
       await page.waitForSelector('#triage-progress', {state: 'hidden', timeout: 30000}).catch(() => {});
       await page.click('#triage-close').catch(() => {});
+      await page.fill('#filter-text', '').catch(() => {});
       await watch.stop();
       proxy.setCanned(previous);
       await removeJobsByUrl(ctx, [form.url]).catch(() => 0);

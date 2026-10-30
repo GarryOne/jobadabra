@@ -3,7 +3,7 @@
 // as one chunk of the same events. A broker "no" is an error answer, never another provider.
 // Why (30 Oct 2026, owner): native web search goes through the broker search flag; other tools remain unsupported.
 // Job: report health
-import {askBroker} from './broker-client.mjs';
+import {askBroker, isWebSearch} from './broker-client.mjs';
 import {capMessage, noteBrokerCapped} from './ai-cap.mjs';
 
 /** Takes base64 PDF bytes; returns the text of its pages (pdf.js legacy build, the same one lib/pdf-edit reads with). */
@@ -43,7 +43,7 @@ const failure = (status, type, message) => ({status, contentType: 'application/j
  * message JSON the meter reads. A broker refusal is a 503 naming its reason and tells the runner's cap path (lib/ai-cap.mjs); unsupported tools are a 400. Web search returns the broker text unchanged in a Messages text block.
  */
 export async function answerViaBroker(body, {env = process.env, ask = askBroker, extract = pdfText} = {}) {
-  if (body.tools?.some(tool => !String(tool?.type || '').startsWith('web_search'))) return failure(400, 'invalid_request_error', 'the Codex relay supports native web search only, not other tool calls');
+  if (body.tools?.some(tool => !isWebSearch(tool))) return failure(400, 'invalid_request_error', 'the Codex relay supports native web search only, not other tool calls');
   const asked = await ask(await withPdfAsText(body, extract), {env});
   if (!asked.ok) {
     if (asked.status === 'capped') noteBrokerCapped(asked.detail, env);

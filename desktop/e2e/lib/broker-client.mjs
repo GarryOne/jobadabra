@@ -9,6 +9,9 @@ export const BROKER_URL = env => env.CODEX_BROKER_URL || 'https://jobadabra-code
 /** A Claude model id -> the broker's tier name ('small' | 'mid' | 'large'); an unknown id runs on 'mid'. */
 export const tierOf = id => (/haiku/i.test(id || '') ? 'small' : /opus/i.test(id || '') ? 'large' : 'mid');
 
+/** A Messages tool is native web search when its versioned type starts with web_search; shared by relay validation and broker translation. */
+export const isWebSearch = tool => String(tool?.type || '').startsWith('web_search');
+
 const text = content => (typeof content === 'string' ? content : (content || []).filter(part => part.type !== 'image').map(part => part.text ?? '').join('\n'));
 
 /** A Messages request -> the broker's body: {tier, prompt, schema?, images?, search?: true}. One system text, the turns in order, the pictures as base64. */
@@ -17,7 +20,7 @@ export function toBrokerCall(body) {
   const turns = body.messages.map(message => `${message.role === 'assistant' ? 'You' : 'User'}:\n${text(message.content)}`).join('\n\n');
   const images = body.messages.flatMap(message => (Array.isArray(message.content) ? message.content : []).filter(part => part.type === 'image')).map((part, i) => ({name: `image${i}.${String(part.source?.media_type || 'image/png').split('/')[1]}`, base64: part.source?.data}));   // numbered across all turns, so two pictures never share a name
   const schema = body.output_config?.format?.schema;
-  const search = body.tools?.some(tool => String(tool?.type || '').startsWith('web_search'));
+  const search = body.tools?.some(isWebSearch);
   return {tier: tierOf(body.model), ...(search ? {search: true} : {}), prompt: [system, turns].filter(Boolean).join('\n\n'), ...(schema ? {schema} : {}), ...(images.length ? {images} : {})};
 }
 

@@ -85,7 +85,7 @@
     }
   },
   "failureschannels": {
-    "provenance": "Generated state-wait hang caps for failureschannels; never a speed assertion.\ntools/e2e-step-timings.mjs: 9 main runs, 9/9 calm shard-runs.\nMain run IDs: 40610690663, 40617153757, 40650235925, 40796899545, 40799225090, 40802551247, 40836904987, 40960750830, 40975522762.\nRegenerate this entry with tools/e2e-step-timings.mjs --suite failureschannels --caps; sparse shared steps use applyflows measurements.\nSparse shared steps use applyflows main measurements (see that module for provenance).\n3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.",
+    "provenance": "Generated state-wait hang caps for failureschannels; never a speed assertion.\ntools/e2e-step-timings.mjs: 9 main runs, 9/9 calm shard-runs.\nSparse shared steps use the applyflows entry's measurements.\nMain run IDs: 40610690663, 40617153757, 40650235925, 40796899545, 40799225090, 40802551247, 40836904987, 40960750830, 40975522762.\n3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.",
     "steps": {
       "Google access revoked: the Gmail check says so in words (connect Google again), never a plain Completed, never Google's raw answer": {
         "seconds": 45,
@@ -143,7 +143,7 @@
     }
   },
   "interactions": {
-    "provenance": "Generated state-wait hang caps for interactions; never a speed assertion.\ntools/e2e-step-timings.mjs: 9 main runs, 9/9 calm shard-runs.\nMain run IDs: 40650235925, 40746737212, 40768828567, 40796899545, 40799225090, 40802551247, 40836904987, 40960750830, 40975522762.\nRegenerate this entry with tools/e2e-step-timings.mjs --suite interactions --caps; sparse shared steps use applyflows measurements.\nSparse shared steps use applyflows main measurements (see that module for provenance).\n3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.",
+    "provenance": "Generated state-wait hang caps for interactions; never a speed assertion.\ntools/e2e-step-timings.mjs: 9 main runs, 9/9 calm shard-runs.\nSparse shared steps use the applyflows entry's measurements.\nMain run IDs: 40650235925, 40746737212, 40768828567, 40796899545, 40799225090, 40802551247, 40836904987, 40960750830, 40975522762.\n3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.",
     "steps": {
       "actions: every safe control does something": {
         "seconds": 40,
@@ -271,7 +271,7 @@
     }
   },
   "jobs": {
-    "provenance": "Generated state-wait hang caps for jobs; never a speed assertion.\ntools/e2e-step-timings.mjs: 9 main runs, 9/9 calm shard-runs.\nMain run IDs: 40610690663, 40617153757, 40650235925, 40796899545, 40799225090, 40802551247, 40836904987, 40960750830, 40975522762.\nRegenerate this entry with tools/e2e-step-timings.mjs --suite jobs --caps; sparse shared steps use applyflows measurements.\nSparse shared steps use applyflows main measurements (see that module for provenance).\n3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.",
+    "provenance": "Generated state-wait hang caps for jobs; never a speed assertion.\ntools/e2e-step-timings.mjs: 9 main runs, 9/9 calm shard-runs.\nSparse shared steps use the applyflows entry's measurements.\nMain run IDs: 40610690663, 40617153757, 40650235925, 40796899545, 40799225090, 40802551247, 40836904987, 40960750830, 40975522762.\n3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.",
     "steps": {
       "a jobs check reads the fixture feeds, drops the wrong roles and scores the matching jobs": {
         "seconds": 395,
@@ -339,7 +339,7 @@
     }
   },
   "settings": {
-    "provenance": "Generated state-wait hang caps for settings; never a speed assertion.\ntools/e2e-step-timings.mjs: 10 main runs, 9/10 calm shard-runs.\nMain run IDs: 40135785331, 40152010902, 40252278499, 40274183649, 40428980247, 40434672283, 40589724303, 40610690663, 40799225090, 40802551247.\nRegenerate this entry with tools/e2e-step-timings.mjs --suite settings --caps; sparse shared steps use applyflows measurements.\nSparse shared steps use applyflows main measurements (see that module for provenance).\n3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.",
+    "provenance": "Generated state-wait hang caps for settings; never a speed assertion.\ntools/e2e-step-timings.mjs: 10 main runs, 9/10 calm shard-runs.\nSparse shared steps use the applyflows entry's measurements.\nMain run IDs: 40135785331, 40152010902, 40252278499, 40274183649, 40428980247, 40434672283, 40589724303, 40610690663, 40799225090, 40802551247.\n3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.",
     "steps": {
       "⌘K opens the palette: every page is listed, a typed command opens its page, Esc closes it": {
         "seconds": 30,

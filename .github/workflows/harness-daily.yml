@@ -1,5 +1,4 @@
 name: CI · Harness tests · daily
-# Job: run the backbone
 # Every harness test (desktop/e2e/test/*.test.mjs) once a day, since a pull request runs only the safety-critical set (harness.yml, desktop/e2e/test-sets.json).
 # One message to the CI alerts chat, only when something fails (owner, 17 Oct 2026: "Slim: safety on PRs, rest daily").
 on:
@@ -18,8 +17,6 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v5
-        with:
-          fetch-depth: 0   # hang-caps.test.mjs compares the folded data with the original modules in git
       - uses: actions/setup-node@v5
         with:
           node-version: '22'

@@ -85,8 +85,8 @@ export function measure(dir, suite) {
   return {suite, runs: runIds.size, shardRuns, calmShardRuns: shardRuns - droppedSlowShardRuns, droppedSlowShardRuns, shards, steps, runIds: [...runIds].sort()};
 }
 
-/** Build a suite's JSON entry; sparse steps must reference an exact measured shared cap. */
-export function capsEntry(report, {sharedCaps = {}, sharedSuite = ''} = {}) {
+/** Build a suite's JSON entry; sparse steps must reference an exact measured shared cap. Keeps the previous entry's "Why (" lines: they record a decision, not a measurement. */
+export function capsEntry(report, {sharedCaps = {}, sharedSuite = '', previous = ''} = {}) {
   const steps = Object.fromEntries(report.steps.map(step => {
     const measurement = {n: step.n, p95Seconds: step.p95Seconds};
     if (step.capSeconds == null) {
@@ -100,7 +100,9 @@ export function capsEntry(report, {sharedCaps = {}, sharedSuite = ''} = {}) {
   return {provenance: [
     `tools/e2e-step-timings.mjs: ${report.runs} main runs, ${report.calmShardRuns}/${report.shardRuns} calm shard-runs.`,
     `Main run IDs: ${report.runIds.join(', ')}.`,
+    ...(sharedSuite ? [`Sparse shared steps use the ${sharedSuite} entry's measurements.`] : []),
     '3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.',
+    ...previous.split('\n').filter(line => line.startsWith('Why (')),
   ].join('\n'), steps};
 }
 
@@ -138,7 +140,7 @@ export function main(args = process.argv.slice(2), {acquire = downloadArtifacts,
       const data = JSON.parse(readFileSync(file, 'utf8'));
       const sharedSuite = suite === 'applyflows' ? '' : 'applyflows';
       const sharedCaps = Object.fromEntries(Object.entries(data[sharedSuite]?.steps || {}).map(([name, step]) => [name, step.seconds]));
-      data[suite] = capsEntry(report, {sharedCaps, sharedSuite});
+      data[suite] = capsEntry(report, {sharedCaps, sharedSuite, previous: data[suite]?.provenance || ''});
       writeFileSync(file, JSON.stringify(data, null, 2) + '\n');
       write(`Updated ${suite} in ${file}`);
     } else write(options.json ? JSON.stringify(report, null, 2) : table(report));

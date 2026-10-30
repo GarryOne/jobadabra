@@ -75,8 +75,15 @@ export function judgeTarget(url, init, env = process.env) {
   return {url: String(url).replace(/^https:\/\/api\.anthropic\.com/, env.E2E_FREE_AI_URL), init: {...init, headers: {...init.headers, 'x-api-key': env.E2E_FREE_AI_KEY}}};
 }
 
-/** Fetch a judge reply, consulting question answers before choosing any live engine. */
-export async function modelFetch(url, init, {engine = () => pickEngine({family: 'claude'}), exec = run, timeoutMs = 5 * 60 * 1000, env = process.env} = {}) {
+/** Fetch a judge reply; freshBroker requires CI Codex/OIDC and bypasses stored answers and hash caches. */
+export async function modelFetch(url, init, {engine = () => pickEngine({family: 'claude'}), exec = run, timeoutMs = 5 * 60 * 1000, env = process.env, freshBroker = false, ask = askBroker} = {}) {
+  // Why (30 Oct 2026, owner, JOB-45): a drift judge must ask the subscription broker freshly, never a stored verdict or another provider.
+  if (freshBroker) {
+    if (!env.CI || aiProvider(env, 'judges').provider !== 'codex' || !env.ACTIONS_ID_TOKEN_REQUEST_URL || !env.ACTIONS_ID_TOKEN_REQUEST_TOKEN) throw new Error('fresh broker judge requires CI Codex and GitHub OIDC');
+    const asked = await ask(JSON.parse(init.body), {env});
+    if (!asked.ok) return reply(503, {error: {message: asked.detail || String(asked.status)}});
+    return reply(200, {type: 'message', role: 'assistant', model: asked.model, ...asked.message});
+  }
   const stored = storedAnswer({url, headers: init?.headers, body: init?.body, hint: init?.hint}, env);
   const answered = storedJudgeReply(stored);
   if (answered) return answered;

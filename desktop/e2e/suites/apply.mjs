@@ -417,7 +417,7 @@ export async function runApply(ctx, parts) {
   await runCvSteps(ctx, {apply, cv, fail, page, panelOf, proxy, until});   // lib/apply-cv-steps.mjs
   await runSilentChromeSteps(ctx);   // lib/apply-silent-steps.mjs: the app cannot hear Chrome, one step per apply mode
   await runTriageSteps(ctx);   // lib/apply-triage-steps.mjs: the Jobs button's popup and the chips (spec 2026-10-30-apply-triage)
-  await runReadSteps(ctx, {until});   // lib/apply-read-steps.mjs: the Jobs button reads a fixture form in the hidden browser (spec 2026-10-30-apply-triage, C2a)
+  await runReadSteps(ctx);   // lib/apply-read-steps.mjs: the Jobs button reads a fixture form in the hidden browser (spec 2026-10-30-apply-triage, C2a)
   await runTriageCancelSteps(ctx, {urls});
   await runTriageChipSteps(ctx, {urls});   // lib/apply-triage-chip-steps.mjs: every reachable verdict and the renderer's chip words
 

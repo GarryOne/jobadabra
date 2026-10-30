@@ -5,7 +5,8 @@
 # a push cancels the older run). `tools/pr-red-ack.sh <n> "<why>"` says "blocked for real": silent until the set of red checks changes. No answer from gh in ~2 s, no gh, no PR: silent.
 # Also (27 Oct 2026, owner: "automatically handle PR comments"): "PR #n has N unanswered comment(s) from the owner/a review bot" until the session replies (a comment with the Claude Code line) or pushes a commit after them;
 # comments of anyone else are listed as data only (tell the coordinator, never act). Never blocks a stop. Guard: tests/test_pr_comments.py.
-# One look per branch per 60 s (cache in the git dir). PR_RED_CHECK=0 off; PR_RED_DIR / PR_RED_TTL / PR_RED_WAIT (tenths of a second) / PR_RED_MAIN_SCRIPT for tests. 18 Oct 2026: #1321 sat red
+# One look per branch per 60 s (cache in the git dir). PR_RED_CHECK=0 off; PR_RED_DIR / PR_RED_TTL / PR_RED_MAIN_SCRIPT for tests.
+# PR_RED_WAIT: tenths of a second (default 20) for prompts; `state` waits without a cap for the reader's lease release / refused-main reader completion in tests. 18 Oct 2026: #1321 sat red
 # on two desktop jobs for hours and nobody reacted until the owner asked; #1356, #1362 and #1350 then sat CONFLICTING. Guard: tests/test_pr_red_hook.py.
 set -uo pipefail
 [ "${PR_RED_CHECK:-1}" != 0 ] || exit 0
@@ -19,7 +20,9 @@ cwd="$(jqr '.cwd // ""')"; transcript="$(jqr '.transcript_path // ""')"; event="
 [ -n "$cwd" ] && [ -d "$cwd" ] || exit 0
 common="$(git -C "$cwd" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)" || exit 0
 dir="${PR_RED_DIR:-$common/pr-red}"; mkdir -p "$dir" 2>/dev/null || exit 0
-ttl="${PR_RED_TTL:-180}"; wait_tenths="${PR_RED_WAIT:-20}"   # Why (27 Oct 2026): every prompt of ~8 sessions asked GitHub each minute; the owner's GraphQL limit ran out
+ttl="${PR_RED_TTL:-180}"   # Why (27 Oct 2026): every prompt of ~8 sessions asked GitHub each minute; the owner's GraphQL limit ran out
+# Why (30 Oct 2026, beta 41118633789; owner: "wait on the state, not on a specific time"): tests wait for the reader's verdict; prompts keep their short latency bound.
+wait_limit="${PR_RED_WAIT:-20}"
 
 dirs=("$cwd")
 if [ -f "$transcript" ]; then
@@ -53,7 +56,9 @@ cached_read() {  # <cache file> <reader function> [args...]; reader emits rows, 
   fi
   if mkdir "$busy" 2>/dev/null; then
     token="$$-$RANDOM-$now"; printf '%s\n' "$token" > "$busy/owner"
-    ( trap 'rm -f "$file.$$.rows" "$file.$$.next"; if [ "$(cat "$busy/owner" 2>/dev/null)" = "$token" ]; then rm -f "$busy/pid" "$busy/owner"; rmdir "$busy" 2>/dev/null || true; fi' EXIT
+    ( # Bash 3.2 clears function locals before EXIT traps; keep cleanup state in this worker's subshell globals.
+      worker_file="$file"; worker_busy="$busy"; worker_token="$token"
+      trap 'rm -f "$worker_file.$$.rows" "$worker_file.$$.next"; if [ "$(cat "$worker_busy/owner" 2>/dev/null)" = "$worker_token" ]; then rm -f "$worker_busy/pid" "$worker_busy/owner"; rmdir "$worker_busy" 2>/dev/null || true; fi' EXIT
       "$@" > "$file.$$.rows" || exit 0
       # An overdue worker must not publish into a replacement worker's cache or release its lease.
       [ "$(cat "$busy/owner" 2>/dev/null)" = "$token" ] || exit 0
@@ -61,7 +66,7 @@ cached_read() {  # <cache file> <reader function> [args...]; reader emits rows, 
     ) >/dev/null 2>&1 &
     pid=$!; printf '%s\n' "$pid" > "$busy/pid" 2>/dev/null || true
   fi
-  while [ -d "$busy" ] && [ "$i" -lt "$wait_tenths" ]; do sleep 0.1; i=$((i + 1)); done
+  while [ -d "$busy" ] && { [ "$wait_limit" = state ] || [ "$i" -lt "$wait_limit" ]; }; do sleep 0.1; i=$((i + 1)); done
   # Expired results are not reported during a refresh: their red checks may belong to an older head.
   after="$(stat -c %i "$file" 2>/dev/null || stat -f %i "$file" 2>/dev/null || true)"
   [ -d "$busy" ] || { [ -z "$after" ] || [ "$after" = "$before" ] || tail -n +2 "$file"; }
@@ -120,7 +125,9 @@ refused_main() {
         row="$sha"$'\t'"$wf"$'\t'"$url"$'\t'"${pr:-?$'\t'?}" ;;
       esac
       { date +%s; [ -z "$row" ] || printf '%s\n' "$row"; } > "$file.$$" && mv -f "$file.$$" "$file" ) >/dev/null 2>&1 &
-    while [ "$(head -n 1 "$file" 2>/dev/null)" = "$stamp" ] && [ "$i" -lt "$wait_tenths" ]; do sleep 0.1; i=$((i + 1)); done
+    # A refresh can publish the same seconds-resolution stamp: reader completion proves publication even then.
+    if [ "$wait_limit" = state ]; then wait "$!"
+    else while [ "$(head -n 1 "$file" 2>/dev/null)" = "$stamp" ] && [ "$i" -lt "$wait_limit" ]; do sleep 0.1; i=$((i + 1)); done; fi
   fi
   tail -n +2 "$file" 2>/dev/null
 }

@@ -42,6 +42,10 @@ jobs:
       contents: read
       pull-requests: read
       statuses: read
+      actions: read          # planner drops live or empty counted heads before taking their queue
+    concurrency:
+      group: pr-verdict-sweep
+      cancel-in-progress: false
     outputs:
       heads: ${{ steps.heads.outputs.heads }}
     steps:
@@ -59,7 +63,9 @@ jobs:
   verdict:
     name: Write the PR's verdict
     needs: sweep
-    # A replaced pull_request head is skipped; pr_meta also rejects closed PRs and revalidates sweep heads.
+    # Why (27 Oct 2026, 6e with the owner's yes): replaced commits started verdicts after every workflow, holding runners; 22 were cancelled
+    # at 06:53 while 38 Linux jobs queued under GitHub's 20-job cap. pull_requests[].head.sha is the head NOW and empty after merge/close.
+    # A skipped event takes no runner; pr_meta revalidates open sweep heads before writing.
     if: >-
       always() && (
       (github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.head_sha == github.event.workflow_run.pull_requests[0].head.sha)
@@ -68,6 +74,7 @@ jobs:
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
+      max-parallel: 2
       matrix:
         sha: ${{ fromJSON(needs.sweep.outputs.heads || format('["{0}"]', github.event.workflow_run.head_sha)) }}
     # Why (30 Oct 2026, owner: "PR verdicts still don't work properly"): branch queues drop completions; newest per-head writer reads later.

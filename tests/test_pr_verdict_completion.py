@@ -17,9 +17,9 @@ RECORDED = json.loads((ROOT / 'tests/fixtures/pr-verdict-stale.json').read_text(
 
 
 class CompletionWriter(unittest.TestCase):
-    def write(self, record=None, event_name='workflow_run', job_status='', files=('src/sources/visits.py',)):
+    def write(self, record=None, event_name='workflow_run', job_status='', files=('src/sources/visits.py',), fresh=None):
         record = copy.deepcopy(record or RECORDED)
-        writes = []
+        writes, self.single_reads = [], []
 
         def gh(*args):
             if args[:2] == ('api', 'graphql'):
@@ -34,6 +34,11 @@ class CompletionWriter(unittest.TestCase):
             if args[:2] == ('api', 'rate_limit'):
                 return json.dumps({'resources': {'core': {'remaining': 500, 'limit': 1000},
                                                   'graphql': {'remaining': 5000, 'limit': 5000}}})
+            if args[0] == 'api' and args[1].split('/')[-1].isdigit():
+                rid = int(args[1].split('/')[-1]); self.single_reads.append(rid)
+                r = next(r for r in record['runs'] if r['databaseId'] == rid)
+                return json.dumps({'id': rid, 'head_sha': '263ca66', 'run_attempt': r.get('attempt'),
+                    'status': r['status'], 'conclusion': r['conclusion'], 'updated_at': r['updatedAt'], **(fresh or {}).get(rid, {})})
             if args[0] == 'api' and args[1].endswith('/jobs?per_page=100'):
                 return json.dumps(record['jobs'][args[1].split('/runs/')[1].split('/')[0]])
             if args[:2] == ('api', 'repos/o/r/statuses/263ca66'):
@@ -108,6 +113,25 @@ class CompletionWriter(unittest.TestCase):
         record['runs'].append(newer)
         record['jobs']['5'] = [{'id': 50, 'name': 'python', 'status': 'in_progress', 'steps': []}]
         self.assertEqual(self.write(record)['state'], 'pending')
+
+    def test_cancelled_sibling_writer_does_not_leave_its_ended_red_run_pending(self):
+        record = copy.deepcopy(RECORDED)
+        record['runs'][2].update(status='in_progress', conclusion='')
+        record['jobs']['3'] = [{'id': 30, 'name': 'desktop', 'status': 'completed', 'conclusion': 'failure'}]
+        written = self.write(record, fresh={3: {'status': 'completed', 'conclusion': 'failure'}})
+        self.assertEqual(written['state'], 'failure')
+        self.assertIn('desktop', written['description'])
+        self.assertEqual(self.single_reads, [3])
+
+    def test_single_run_success_also_refreshes_e2e_job_evidence(self):
+        record = copy.deepcopy(RECORDED)
+        record['runs'][2].update(status='in_progress', conclusion='', event='workflow_dispatch',
+                                displayTitle='E2E for PR · settings · topic')
+        record['jobs']['3'] = [{'id': 30, 'name': 'settings', 'status': 'in_progress',
+                                'steps': [{'name': 'tests', 'status': 'in_progress'}]}]
+        written = self.write(record, fresh={3: {'status': 'completed', 'conclusion': 'success'}})
+        self.assertEqual(written['state'], 'success')
+        self.assertEqual(self.single_reads, [3])
 
     def test_a_lagging_list_stays_pending_without_a_second_read(self):
         record = copy.deepcopy(RECORDED)

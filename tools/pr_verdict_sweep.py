@@ -13,10 +13,10 @@ QUERY = """query($owner: String!, $name: String!, $endCursor: String) {
 }"""
 
 
-def plan(repo, gh, context):
+def plan(repo, gh, context, run_list, counted):
     """List open PRs once, with latest legacy statuses, using one GraphQL call per 100 PRs.
     Invariants: no REST status scan per PR, no workflow dispatch, no status writes.
-    Each candidate enters pr-verdict.yml's shared per-head queue before fresh run reads.
+    Live/no-counted-run heads are dropped before taking a head queue. Each eligible head enters pr-verdict.yml's shared per-head queue before fresh run reads.
     """
     owner, name = repo.split('/')
     pages = json.loads(gh('api', 'graphql', '--paginate', '--slurp', '-f', f'query={QUERY}', '-f', f'owner={owner}', '-f', f'name={name}'))
@@ -28,9 +28,14 @@ def plan(repo, gh, context):
             state = next((s['state'] for s in statuses if s['context'] == context), None)
             if state in (None, 'PENDING'):
                 heads.add(pr['headRefOid'])
-    line = 'heads=' + json.dumps(sorted(heads), separators=(',', ':'))
+    eligible = []
+    for sha in sorted(heads):
+        runs = counted(run_list(sha))
+        if runs and all(r.get('status') == 'completed' for r in runs):
+            eligible.append(sha)
+    line = 'heads=' + json.dumps(eligible, separators=(',', ':'))
     if os.environ.get('GITHUB_OUTPUT'):
         with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as out:
             print(line, file=out)
     print(line)
-    print(f'sweep selection: {len(pages)} GraphQL call(s), 0 REST calls; {len(heads)} candidate head(s)')
+    print(f'sweep selection: {len(pages)} GraphQL call(s), {len(heads)} REST run-list call(s); {len(eligible)} idle counted head(s)')

@@ -92,8 +92,13 @@ class NothingMultiplies(unittest.TestCase):
                 self.assertNotRegex(text, r'(?m)^concurrency:')
                 self.assertRegex(text, r'(?m)^    concurrency:')
                 self.assertRegex(text, r'(?m)^      cancel-in-progress: true$')
-                continue
-            group, cancel = concurrency(text)
+                self.assertRegex(text, r'(?m)^      max-parallel: 2$')
+                planner = text.split('  sweep:\n', 1)[1].split('\n  verdict:', 1)[0]
+                self.assertNotIn('matrix:', planner)
+                group, cancel = concurrency(re.sub(r'(?m)^    ', '', planner) + '\nend:')
+                self.assertEqual(group, 'pr-verdict-sweep', 'one planner outside the head writer queue')
+            else:
+                group, cancel = concurrency(text)
             self.assertTrue(group, f'{name}: no concurrency group: each start can add a run to the queue')
             if name not in PER_COMMIT_OK:
                 self.assertIsNone(MULTIPLIERS.search(group), f'{name}: group {group} has one run per run/commit/input: it multiplies')

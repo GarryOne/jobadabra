@@ -1,18 +1,7 @@
 #!/usr/bin/env python3
-"""Writes a pull request's one required status, "All checks passed", from the state of every workflow run of its head commit, in seconds.
-
-pr-verdict.yml runs it when a workflow ends and sweeps pending/missing open heads every ten minutes.
-One fresh read, one computation, one writer; the sweep skips a commit while any workflow run is live.
-Counted: the runs of the commit started by the pull request, and the e2e run pr-suites.yml started for it (title "E2E for PR · ..."): a red suite blocks the merge
-(gate G1a; the owner rejected report only, 26 Oct 2026). The newest run of each workflow
-decides (a description edit re-runs the gate; a re-run replaces a red). Grey, not red (owner, 28 Oct 2026, e2e reliability design: "a PR is red only when its
-diff broke it"): a PR suite job whose every "✗ step: reason" line is one main's own newest red of that suite printed (tools/main_e2e_state.py). Strict on purpose: a
-new step or a new reason stays red; a step after main's red step, which ran nowhere (main stopped there too), is judged once main is green. A job cannot read its own
-log while it runs: the job that ends last after it, or the backstop when the run ends, writes grey. Any red: failure at once. Any running: pending. All green or skipped: success, with the wall time.
-Budget (owner's yes, 26 Oct 2026): a PR that changes how CI runs PRs (ci_change) and whose checks RAN over BUDGET_MIN goes red, unless a commit of it says
-"CI-budget: <why>". Running time, not queue (owner, 27 Oct 2026: "Count running time only": "Red only when the PR's own jobs run over 10 min; queue wait is still shown on the PR"):
-the wall-clock minutes while at least one job runs, counting overlapping jobs once and excluding queue wait).
-  tools/pr-verdict.py --repo <owner/repo> --sha <head sha> [--job-status <success|failure|cancelled>] [--dry-run]       Guard: tests/test_pr_verdict.py
+"""Write the PR's one required status from fresh counted workflow runs (one writer).
+Usage: tools/pr-verdict.py --repo <owner/repo> (--sha <head> [--idle-only] | --sweep-heads) [--dry-run] [--job-status <status>]
+Live-looking counted runs are read by id without a timed second read. The planner filters live/empty heads; writers revalidate open heads and write.
 """
 import argparse
 # Job: report health
@@ -241,14 +230,19 @@ def ended_run(run, ended):
     return bool(ended) and run.get('databaseId') == ended.get('id') and run.get('attempt') == ended.get('run_attempt')
 
 
+def list_runs(repo, sha):
+    """List a head's runs once; both planner and writer apply counted() to this same list."""
+    return json.loads(gh('run', 'list', '-R', repo, '--commit', sha, '-L', '100', '--json',
+                        'databaseId,workflowName,status,conclusion,event,createdAt,updatedAt,displayTitle,attempt'))
+
+
 def read(repo, sha):
     """Read the PR's runs and deciding jobs; a matching completed event outranks a lagging list.
     Invariant: completion evidence applies only to the same head, run id and attempt, never a rerun.
     Red E2E job details still decide lane exemptions and burn-in admission.
-    Jobs only for a red run and the PR's e2e run: a run going is pending from the list alone (one writer, 30 Oct 2026: each read was a call).
+    Live-looking counted runs are read by id before deciding; job lists then follow those fresh states.
     """
-    runs = json.loads(gh('run', 'list', '-R', repo, '--commit', sha, '-L', '100', '--json',
-                         'databaseId,workflowName,status,conclusion,event,createdAt,updatedAt,displayTitle,attempt'))
+    runs = list_runs(repo, sha)
     ended = {}
     if os.environ.get('GITHUB_EVENT_NAME') == 'workflow_run' and os.environ.get('GITHUB_EVENT_PATH'):
         with open(os.environ['GITHUB_EVENT_PATH'], encoding='utf-8') as file:
@@ -260,14 +254,22 @@ def read(repo, sha):
         # Why (30 Oct 2026, #2533): the final Python completion still listed itself running 15 s later; no later event repaired pending.
         if ended_run(r, ended):
             r.update(status='completed', conclusion=ended['conclusion'], updatedAt=ended['updated_at'])
+    successes = set()
+    for r in counted(runs):
+        if r.get('status') != 'completed':
+            # Why (30 Oct 2026, review of #2533): a cancelled sibling's event is lost; only its single-run endpoint is fresh, without a sleep.
+            fresh = json.loads(gh('api', f"repos/{repo}/actions/runs/{r['databaseId']}"))
+            if fresh.get('head_sha') == sha and ended_run(r, fresh):
+                r.update(status=fresh['status'], conclusion=fresh['conclusion'], updatedAt=fresh['updated_at'])
+                if fresh['status'] == 'completed' and fresh['conclusion'] == 'success': successes.add(r['databaseId'])
     jobs = {}
     for r in counted(runs):
         if r.get('conclusion') in RED or str(r.get('displayTitle', '')).startswith(E2E_PR_TITLE):
             jobs[r['databaseId']] = json.loads(gh('api', f"repos/{repo}/actions/runs/{r['databaseId']}/jobs?per_page=100", '--jq', '.jobs'))
             # Why (30 Oct 2026, Gitar on #2552): a successful last E2E completion outranks lagging jobs; red jobs retain exemption evidence.
-            if ended.get('conclusion') == 'success' and ended_run(r, ended):
+            if r['databaseId'] in successes or ended.get('conclusion') == 'success' and ended_run(r, ended):
                 for job in jobs[r['databaseId']]:
-                    job.update(status='completed', conclusion='success', completed_at=job.get('completed_at') or ended['updated_at'])
+                    job.update(status='completed', conclusion='success', completed_at=job.get('completed_at') or r['updatedAt'])
     return runs, jobs
 
 
@@ -403,7 +405,7 @@ def main():
     ap.add_argument('--repo', required=True)
     mode = ap.add_mutually_exclusive_group(required=True)
     mode.add_argument('--sha'); mode.add_argument('--sweep-heads', action='store_true')
-    ap.add_argument('--idle-only', action='store_true', help='sweep: skip closed/replaced heads and any live workflow run')
+    ap.add_argument('--idle-only', action='store_true', help='sweep writer: revalidate open head; planner already filtered live runs')
     ap.add_argument('--job-status', default='', help="the status so far of the job this step ends (${{ job.status }}); empty: the workflow_run backstop")
     ap.add_argument('--dry-run', action='store_true')
     a = ap.parse_args()
@@ -411,7 +413,7 @@ def main():
         # Why (owner, 30 Oct 2026, "One writer"): pr-verdict.yml alone writes; a branch not yet rebased still runs the old job step, which must not spend calls.
         print(f'{CONTEXT}: pr-verdict.yml writes it when this workflow ends (one writer)'); return 0
     if a.sweep_heads:
-        main_state_module(a.repo, os.environ.get('GITHUB_SHA') or 'main', 'pr_verdict_sweep').plan(a.repo, gh, CONTEXT)
+        main_state_module(a.repo, os.environ.get('GITHUB_SHA') or 'main', 'pr_verdict_sweep').plan(a.repo, gh, CONTEXT, lambda sha: list_runs(a.repo, sha), counted)
         print(quota_line() or 'quota: not readable'); return 0
     my_run = os.environ.get('GITHUB_RUN_ID', '')
     server = os.environ.get('GITHUB_SERVER_URL', 'https://github.com')
@@ -424,10 +426,8 @@ def main():
     if number and files is None:   # over 100 files: the paged REST read
         files = gh('api', '--paginate', f'repos/{a.repo}/pulls/{number}/files', '--jq', '.[].filename').split()
     ref = os.environ.get('GITHUB_SHA') or a.sha
-    # Why (30 Oct 2026, owner: "PR verdicts still don't work properly"): events can disappear; the ten-minute sweep repairs idle heads, without a re-read.
+    # Why (30 Oct 2026, owner: "PR verdicts still don't work properly"): a sweep that takes a head queue must write; live filtering belongs to its planner.
     runs, jobs = read(a.repo, a.sha)
-    if a.idle_only and any(r.get('status') != 'completed' for r in runs):
-        print('sweep: workflow run still live; leave pending'); print(quota_line() or 'quota: not readable'); return 0
     reports, ai_line = set(), str
     if any(str(r.get('displayTitle', '')).startswith(E2E_PR_TITLE) for r in counted(runs)):
         try:

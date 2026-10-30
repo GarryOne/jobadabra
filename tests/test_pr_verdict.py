@@ -344,6 +344,9 @@ elif a[:2] == ['run', 'list']: out('runs.json')
 elif a[0] == 'api' and a[1] == 'graphql':
     if any('pullRequests(states:' in arg for arg in a): assert any('pullRequests(states: OPEN' in arg for arg in a)
     out('meta.json')   # the PR's state, files and messages in one call; no REST answer for them: a call back to REST must fail the test
+elif a[0] == 'api' and '/actions/runs/' in a[1] and a[1].split('/')[-1].isdigit():
+    rid = int(a[1].split('/')[-1]); r = next(r for r in json.load(open(os.path.join(d, 'runs.json'))) if r['databaseId'] == rid)
+    print(json.dumps({'id': rid, 'head_sha': 'abc1234', 'run_attempt': r.get('attempt'), 'status': r['status'], 'conclusion': r['conclusion'], 'updated_at': r['updatedAt']}))
 elif a[0] == 'api' and '/jobs' in a[1]: out('jobs-' + a[1].split('/runs/')[1].split('/')[0] + '.json')
 elif a[0] == 'api' and '/statuses/' in a[1]: open(os.path.join(d, 'written'), 'a').write(json.dumps(a[2:]) + chr(10))
 else: sys.exit('fake gh: no answer for ' + repr(a))
@@ -358,8 +361,8 @@ class TheScriptAsAJobRunsIt(unittest.TestCase):
         d = tempfile.mkdtemp()
         bin_dir = os.path.join(d, 'bin'); os.mkdir(bin_dir)
         gh = os.path.join(bin_dir, 'gh'); Path(gh).write_text(FAKE_GH.replace('/usr/bin/env python3', sys.executable)); os.chmod(gh, 0o755)
-        runs = runs or [run('CI · Pull request', id=1), run('CI · Tests · python', id=2)]
-        Path(d, 'runs.json').write_text(json.dumps(runs)); Path(d, 'meta.json').write_text(meta_answer(*[gql_pr(p['number'], p['state'].upper(), p['merged_at'], files=('desktop/renderer/app.js',)) for p in pulls]))
+        runs = runs if runs is not None else [run('CI · Pull request', id=1), run('CI · Tests · python', id=2)]
+        Path(d, 'runs.json').write_text(json.dumps(runs)); Path(d, 'meta.json').write_text(meta_answer(*[dict(gql_pr(p['number'], p['state'].upper(), p['merged_at'], files=('desktop/renderer/app.js',)), headRefOid=p.get('head_sha', 'abc1234')) for p in pulls]))
         if sweep_heads is not None:
             Path(d, 'meta.json').write_text(json.dumps([{'data': {'repository': {'pullRequests': {'nodes': sweep_heads}}}}]))
         for run_id, listed in (jobs or {}).items():

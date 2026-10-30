@@ -23,6 +23,8 @@ ship_review() {
 ship_flow_step_red() {
   gh api "repos/{owner}/{repo}/actions/jobs/${1##*/}" --jq '[.steps[]? | select(.conclusion == "failure") | .name] | join("|")' 2>/dev/null | grep -q 'Core flow files up to date with main'
 }
+# A caller that defines only session_name (an older ship.sh mid-rebase, tests/test_pr_rest_lib.py's stub) still tags: the name's last part, as before #2629.
+command -v session_short >/dev/null 2>&1 || session_short() { local name; name="$(session_name)"; echo "${name##*-}"; }
 ship_pr_fail() { fail_reason="$1"; echo "ship: FAILED $1" >&2; exit 1; }
 # The lease names what origin has NOW (empty: nothing): the branch is deleted on merge, so the local tracking ref of an earlier landing is stale and a bare --force-with-lease refuses (12 Oct 2026). Only this session writes the branch.
 ship_pr_push() { local now; now="$(git ls-remote origin "refs/heads/$branch" 2>/dev/null | cut -f1)"; git push -q "--force-with-lease=refs/heads/$branch:$now" origin "HEAD:refs/heads/$branch" 2>&1 || ship_pr_fail "could not push the branch $branch to origin"; }

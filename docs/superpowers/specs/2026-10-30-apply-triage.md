@@ -6,7 +6,7 @@ Verdict: a button on the Jobs screen reads each job's application form once, in 
 - **Button:** "See which jobs can apply automatically" (decision 1 below), on the Jobs screen.
 - **Popup:** which jobs (first N by fit, or fit above a value), how many, and an estimate of time and AI credit, measured first on one real page.
 - **Progress:** a bar and Cancel on the Applying card; each job's chip appears as its form is read.
-- **Chip per job:** one of "Can apply automatically", "You review and submit", "Needs you" (with the reason), "Likely: you review" (a dashed early guess), or "Not checked".
+- **Chip per job:** one of "Can apply automatically", "You review and submit", "Needs you" (with the reason), "Likely: you review" (a dashed early guess), "Skipped" (not eligible), or "Not checked".
 
 ## How the mode is chosen
 The form read decides the highest mode:

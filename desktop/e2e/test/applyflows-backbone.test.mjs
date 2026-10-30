@@ -5,12 +5,12 @@ import path from 'node:path';
 import {test} from 'node:test';
 import {installApplyAnswers} from '../lib/apply-answers.mjs';
 import {backboneHarness} from '../lib/backbone-harness.mjs';
-import {answerFor, loadTable, questionOf, refusedQuestions, storedAnswer} from '../lib/ai-answers.mjs';
+import {LEARN_FORM_PREFIX, answerFor, loadTable, questionOf, refusedQuestions, storedAnswer} from '../lib/ai-answers.mjs';
 import {INSTRUCTIONS as KIND_RULES} from '../../lib/ladder/rung2-sketch.js';
 import {INSTRUCTIONS as FORM_RULES, STEP_RULE, SUBMIT_RULE, BLOCKED_RULE, BOT_RULE} from '../../lib/form-judge.js';
 import {DIGEST_INSTRUCTIONS} from '../../lib/ladder/rung3-digest.js';
 import {CHAIN, FORMS, LATE, MISLABELLED} from '../lib/forms.mjs';
-import {judge as judgeLearnings} from '../../lib/learnings.js';
+import {INSTRUCTIONS as LEARN_RULES, judge as judgeLearnings} from '../../lib/learnings.js';
 import * as suite from '../suites/applyflows.mjs';
 
 const body = (system, text) => ({model: 'fixture', system, messages: [{role: 'user', content: text}]});
@@ -118,4 +118,9 @@ for (const family of ['claude', 'openai']) test(`${family}: known journey and le
   fs.writeFileSync(file, JSON.stringify(table));
   assert.throws(() => storedAnswer({body: learning}, {...h.env, E2E_AI_ANSWERS_FILE: file}), /E2E_AI_ANSWERS=backbone/);
   h.assertNoLive();
+});
+
+// Why (30 Oct 2026, PR #2562, Gitar): the harness recognises the header-less learning call by this opening; rewording the product prompt must fail here, not silently send the call to the unknown-question path.
+test('the learning prompt still opens with the prefix the harness recognises', () => {
+  assert.ok(LEARN_RULES.startsWith(LEARN_FORM_PREFIX));
 });

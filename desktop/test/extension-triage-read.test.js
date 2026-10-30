@@ -52,3 +52,14 @@ test('a tab that is not a read is left alone by the read hook', async t => {
   assert.equal(await backgroundRead({id: 7, url: 'https://jobs.example.test/a'}, {kind: {botCheck: true}, role: 'form'}), false);
   assert.deepEqual(posted, []);
 });
+
+test('a poll that names a read the app ended (Cancel, a timeout) closes that read tab, and a later poll with none closes nothing (#2624)', async t => {
+  const {removed} = install(t);
+  t.mock.method(globalThis, 'fetch', async () => ({ok: true, status: 200, json: async () => ({ok: true, jobs: [], checks: [], handoffs: [], closes: [{session: SESSION}]})}));
+  const {pollBackgroundApply} = await import('../../extension/background-apply.js');
+  await pollBackgroundApply({workerUrl: 'http://127.0.0.1:47111', token: 'fictional'});
+  assert.deepEqual(removed, [7], 'the page the app stopped waiting for is closed');
+  t.mock.method(globalThis, 'fetch', async () => ({ok: true, status: 200, json: async () => ({ok: true, jobs: [], checks: [], handoffs: [], closes: []})}));
+  await pollBackgroundApply({workerUrl: 'http://127.0.0.1:47111', token: 'fictional'});
+  assert.deepEqual(removed, [7], 'an empty closes list leaves the tabs alone');
+});

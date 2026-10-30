@@ -21,7 +21,6 @@ permissions:
   id-token: write       # GitHub OIDC → Google, no stored key
   actions: read         # the commit's runs and jobs, for the PR's verdict (the last step of each job)
   pull-requests: read
-  statuses: write       # the PR's "All checks passed"
 
 concurrency:   # publishes run one at a time and finish (a second lane's run then finds the version submitted and skips); a PR's newest push wins
   group: extension-store-publish-${{ github.event_name == 'pull_request' && github.head_ref || (inputs.tag != '' && 'publish' || github.run_id) }}
@@ -55,19 +54,6 @@ jobs:
         env:
           CWS_TOKEN: ${{ steps.google.outputs.access_token }}
         run: node tools/webstore-publish.mjs check
-      # The PR's one required status, written as this job ends (tools/pr-verdict.py): no separate job waits for a runner to write it (owner on #2042, 26 Oct 2026).
-      - name: Write the PR's verdict
-        if: always() && github.event_name == 'pull_request'
-        continue-on-error: true   # never turns a job red; pr-verdict.yml writes it again when the workflow ends
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-          SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-          JOB_STATUS: ${{ job.status }}
-        run: |
-          gh api -H 'Accept: application/vnd.github.raw' "repos/$GITHUB_REPOSITORY/contents/tools/pr-verdict.py?ref=$GITHUB_SHA" > "$RUNNER_TEMP/pr-verdict.py"
-          py=python3; "$py" -c 1 2>/dev/null || py=python
-          "$py" "$RUNNER_TEMP/pr-verdict.py" --repo "$GITHUB_REPOSITORY" --sha "$SHA" --job-status "$JOB_STATUS"
 
   publish:
     name: Publish ${{ inputs.tag }} to the Chrome Web Store

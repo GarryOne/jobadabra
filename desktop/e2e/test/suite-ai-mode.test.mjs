@@ -4,6 +4,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {test} from 'node:test';
 import {fileURLToPath} from 'node:url';
+import {propose} from '../../lib/contact-from-cv.js';
+import {storedAnswer} from '../lib/ai-answers.mjs';
 
 const SUITES = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'suites');
 const sources = fs.readdirSync(SUITES).filter(file => file.endsWith('.mjs')).map(file => [file, fs.readFileSync(path.join(SUITES, file), 'utf8')]);
@@ -44,4 +46,16 @@ test('a wrapper importing a stubbing suite must declare its own AI mode', () => 
   graph.set('cycle.mjs', "export {run} from './cycle.mjs';");
   assert.equal(requiresMode("export {run} from './cycle.mjs';", graph), false);
   assert.equal(requiresMode("import {run} from './unrelated.mjs';", graph), false);
+});
+
+// A missing suite declaration must not send the seeded CV's contact ask to a hash cache or live AI.
+for (const name of ['focus', 'focusdismiss']) test(`${name}: setup contact proposals use the existing reviewed answer`, async () => {
+  const suite = await import(`../suites/${name}.mjs`);
+  const wanted = ['phone', 'salutation', 'street', 'postal_code', 'place_of_origin', 'birth_date', 'linkedin', 'github', 'website'];
+  const client = {messages: {create: async (body, options) => {
+    const answer = storedAnswer({url: '/v1/messages', body, headers: options.headers}, {E2E_AI_ANSWERS: suite.aiAnswers || 'off'});
+    assert.ok(answer.reply, 'the setup ask must be answered before cache or transport');
+    return answer.reply;
+  }}};
+  assert.deepEqual(await propose(client, Buffer.from('%PDF-test-fixture'), wanted), {proposals: []});
 });

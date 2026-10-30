@@ -20,7 +20,10 @@ class BetaRates(unittest.TestCase):
             self.assertLess(job.index('an E2E suite failed'), job.index(rate))
             self.assertLess(job.index(rate), job.index('tools/beta-approve.sh'))
             failure = next(s for s in steps if 'an E2E suite failed' in s)
-            self.assertIn(f'--e2e-only {platform}', failure)
+            # Owner, 30 Oct 2026: a red on either lane holds both platforms (Windows dropped its duplicates of the Mac + Linux suites).
+            self.assertIn('needs: [changes, test-mac, test-windows]', job)
+            self.assertIn("if: needs.test-mac.result != 'success' || needs.test-windows.result != 'success'", failure)
+            self.assertRegex(failure, r'--e2e-only\n')
             self.assertNotIn('exit 1', failure, 'a tolerant red alone must reach the rate decision')
 
 

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {test} from 'node:test';
 import {loadTable, questionOf, storedAnswer} from '../lib/ai-answers.mjs';
-import {valid} from '../lib/ai-answers-engine-items.mjs';
+import {requestParts, valid} from '../lib/ai-answers-engine-items.mjs';
 import {answersTableFile, backboneHarness} from '../lib/backbone-harness.mjs';
 import {modelFetch} from '../lib/model.mjs';
 import {withDerived} from '../../lib/target-roles.js';
@@ -12,6 +12,7 @@ import {bodyOf, engineCases} from './ai-answers-engine-fixtures.mjs';
 const read = file => JSON.parse(fs.readFileSync(new URL(file, import.meta.url)));
 const missing = read('../fixtures/golden/failuresnotion-missing-keys.json');
 const second = read('../fixtures/golden/failuresnotion-run2-keys.json');
+const enrichSystem = requestParts(read('../fixtures/golden/ai-format-python.json').entries.find(entry => entry.kind === 'app.enrich').request).system;
 const demo = withDerived(read('../../demo/draft.json').draft.search);
 const placeContext = read('../fixtures/golden/activityfailures-feed-asks.json').place.context;
 const roleKind = read('../fixtures/golden/activityfailures-decide.json').requests[0];
@@ -33,6 +34,8 @@ function requestOf(ask) {
   if (ask.family === 'app.title') c.user = `The search (JSON): ${JSON.stringify({role_words: demo.role_keywords, words_ruled_out: demo.title_exclude_keywords})}\nThe titles:\n1. ${text}`;
   if (ask.family === 'app.place') c.user = `Their places (JSON): ${JSON.stringify(placeContext)}\nThe job locations:\n1. ${text}`;
   if (ask.family === 'app.enrich') {
+    // Why (#2613, JOB-44): the app.enrich stamp hashes the real sender's system, schema guidance included; the abbreviated case system would be refused.
+    if (!roleOnly) c.system = enrichSystem;
     const location = roleOnly ? ask.what.split(' | ')[2] : text.includes('save seed') ? 'Zurich, Switzerland' : 'Zurich, Switzerland or Amsterdam, Netherlands';
     c.user = `Title: ${text}\nCompany: E2E Acme\nLocation: ${location}\n\nPosting:\n${text}: run production on Kubernetes and AWS with Terraform, SLOs and on-call. Senior level, hybrid in Zurich, English working language.`;
   }
@@ -65,7 +68,9 @@ for (const ask of [...missing.filter(ask => !placeWord(ask)), ...second]) test(`
   const expected = storedAnswer(init, h.env).reply;
   assert.ok(expected, ask.what);
   const data = JSON.parse(expected.content[0].text), body = JSON.parse(init.body);
-  assert.ok(valid(body.output_config.format.schema, data), 'answer satisfies the product schema');
+  // Why (30 Oct 2026, a8, quality golden 3006): legacy role rows store only the family; the transient duties slot is optional in the replay contract.
+  const replaySchema = ask.family === 'app.enrich' && ask.key.endsWith('/role') ? question.responseSchema : body.output_config.format.schema;
+  assert.ok(valid(replaySchema, data), 'answer satisfies the replay contract');
   if (ask.family === 'app.title') assert.deepEqual(data, {fit: [1]});
   if (ask.family === 'app.place') assert.deepEqual(data.locations, [{n: 1, where: 'Zurich', country: 'Switzerland', nearest: 'zürich', km: 0, answer: 'best'}]);
   if (ask.family === 'app.decide') {

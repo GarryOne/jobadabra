@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Enforce the reliability design's expectation citation and plumbing job on the committed PR diff.
+// Enforce the reliability design's step clock, expectation citation and plumbing job on the committed PR diff.
 // Invariants: base lanes decide protection; only touched files need labels; no browser, network or applicant data.
 import {execFileSync} from 'node:child_process';
 import path from 'node:path';
@@ -98,6 +98,28 @@ function signatures(raw, file) {
   return out;
 }
 
+// Rule B (owner, 30 Oct 2026, on #2612: "wait on the state, not on a specific time"): in step code, a step's only clock is its measured hang cap
+// (desktop/e2e/hang-caps.json, which lib/runner.mjs hands to the step's waits). A bound written inline that is new or changed is refused, with no trailer
+// to clear it (3 tries on late extension lines each raised one: 10 s, 45 s, 60 s); moving one unchanged or removing it is free.
+const STEP_CODE = /^desktop\/e2e\/(?:lib\/.*|suites\/[^/]+)\.mjs$/;
+const CLOCKS = [[/\bwaited\s*<=?\s*([\d_]+)/g, 'waited <'], [/\b(?:capMs|limitMs|timeout)\s*[:=]\s*([\d_]+)/g, 'cap'],
+  [/\buntil\s*\([^;]*?,\s*([\d_]{3,})\s*\)/g, 'until(…, ms)'], [/\bDate\.now\(\)\s*-\s*\w+\s*<=?\s*([\d_]+)/g, 'elapsed <']];
+const clockWaits = text => CLOCKS.flatMap(([pattern, kind]) => [...mask(text).matchAll(pattern)].map(match => `${kind} ${match[1].replace(/_/g, '')}`));
+
+/** Changed {file, before, after} records -> "file: kind ms" for each inline wait bound in step code with no identical one before (across all changed files). */
+export function newClockWaits(changes) {
+  const step = changes.filter(change => STEP_CODE.test(change.file));
+  const before = step.flatMap(change => (change.before === null ? [] : clockWaits(change.before))), found = [];
+  for (const {file, after} of step) {
+    for (const wait of after === null ? [] : clockWaits(after)) {
+      const at = before.indexOf(wait);
+      if (at < 0) found.push(`${file}: ${wait}`);
+      else before.splice(at, 1);
+    }
+  }
+  return found;
+}
+
 // Old/new JS source -> mechanical expectation changes; extra assertions alone are free. Semantic rewrites need review.
 export function expectationChanges(before, after, file = '') {
   const available = signatures(after, file), changes = [];
@@ -159,6 +181,8 @@ export function checkPush({root, base = 'origin/main'}) {
     }
   }
   const found = harnessProblems(changes, messages).map(problem => `Rule F: ${problem}`);
+  const clocks = newClockWaits(changes);
+  if (clocks.length) found.unshift(`Rule B: a step's only clock is its measured hang cap (desktop/e2e/hang-caps.json); wait on the state with pollUntil or waitForDecisions (lib/wait-on-state.mjs), with no bound of its own. No trailer clears this:\n  ${clocks.join('\n  ')}`);
   if (needsCitation.length && !citation(messages)) found.unshift(`Rule E: expectation changes need Expect-changed-by: <sha or owner's request> or Test-was-wrong: <why> in a commit message:\n  ${needsCitation.join('\n  ')}`);
   return found.join('\n');
 }

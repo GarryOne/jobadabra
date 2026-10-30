@@ -56,6 +56,19 @@ export const withBotCheckJudge = (previous, submitText) => {
   return body => { const {judged, text} = askOf(body); return judged && /not a robot/i.test(text) ? verdict('needs_person', '', true) : plain(body); };
 };
 
+/** The triage judge's account shapes: a login heading or a password confirmation means the person is needed; other forms use the bot-check/plain stand-ins. `before` observes the real hidden page before the answer releases it. */
+export const withAccountReadJudge = (previous, submitText, before = async () => {}) => {
+  const plain = withBotCheckJudge(previous, submitText);
+  return async body => {
+    const {judged, text} = askOf(body);
+    if (!judged) return plain(body);
+    await before();
+    const login = /^Headings: .*\bSign in to apply\b/m.test(text), account = /password · Confirm password/.test(text);
+    if (!login && !account) return plain(body);
+    return JSON.stringify({...JSON.parse(verdict('needs_person', '')), login_wall: login, account_to_create: account});
+  };
+};
+
 /** The need every hidden-browser step names: the runtime link (linkRuntime) does not exist on Windows. */
 export const HIDDEN_NEED = {name: 'a runtime link for the hidden browser (none on Windows)', value: process.platform !== 'win32'};
 /** The submitter's details-only page, the one Full automation can take (a kit answer is never a saved fact); `query` gives a step its own address (one background session per address). */
@@ -88,13 +101,22 @@ async function openSessionCard(page, form) {
   await page.evaluate(session => import('./pages/session-log.js').then(module => module.openSession(session)), id);
 }
 
-/** The values of the inputs on the page behind `socketUrl` (one Runtime.evaluate over its debugging port), for a failure message. */
-const valuesOf = socketUrl => new Promise(done => {
-  const socket = new WebSocket(socketUrl), end = text => { clearTimeout(timer); try { socket.close(); } catch { /* closed */ } done(text); }, timer = setTimeout(() => end('(no answer)'), 4000);
-  socket.onopen = () => socket.send(JSON.stringify({id: 1, method: 'Runtime.evaluate', params: {returnByValue: true, expression: "[...document.querySelectorAll('input,textarea,select')].map(item => (item.name || item.id) + '=' + (item.type === 'file' ? item.files.length + ' file(s) [file mark: ' + (item.getAttribute('data-jobpilotto-file') || 'none') + ']' : item.value) + ' [grounding: ' + (item.dataset.jobpilottoGrounding || 'none') + (item.hasAttribute('data-jobpilotto-guess') ? ', guess' : '') + ']').join(', ')"}}));
-  socket.onmessage = event => end(String(JSON.parse(event.data).result?.result?.value ?? '(none)').slice(0, 700));
-  socket.onerror = () => end('(unreadable)');
+/** One Runtime.evaluate over the debugging socket `socketUrl`: resolves its value, or null when the page never answers or cannot be read (4 s). Never throws. */
+export const evaluateOn = (socketUrl, expression) => new Promise(done => {
+  const socket = new WebSocket(socketUrl), end = value => { clearTimeout(timer); try { socket.close(); } catch { /* closed */ } done(value); }, timer = setTimeout(() => end(null), 4000);
+  socket.onopen = () => socket.send(JSON.stringify({id: 1, method: 'Runtime.evaluate', params: {returnByValue: true, expression}}));
+  socket.onmessage = event => end(JSON.parse(event.data).result?.result?.value ?? null);
+  socket.onerror = () => end(null);
 });
+
+/** The debugging port of the hidden browser of `profile` (its DevToolsActivePort file); throws when it was never started. */
+export const hiddenPort = profile => Number(fs.readFileSync(path.join(profile, 'background-browser', 'profile', 'DevToolsActivePort'), 'utf8').split('\n')[0]);
+
+/** Every target the hidden browser of `profile` holds (pages and extension workers); throws when it is not running. */
+export const hiddenTargets = async profile => (await fetch(`http://127.0.0.1:${hiddenPort(profile)}/json/list`, {signal: AbortSignal.timeout(3000)})).json();
+
+/** The values of the inputs on the page behind `socketUrl`, for a failure message. */
+const valuesOf = async socketUrl => String(await evaluateOn(socketUrl, "[...document.querySelectorAll('input,textarea,select')].map(item => (item.name || item.id) + '=' + (item.type === 'file' ? item.files.length + ' file(s) [file mark: ' + (item.getAttribute('data-jobpilotto-file') || 'none') + ']' : item.value) + ' [grounding: ' + (item.dataset.jobpilottoGrounding || 'none') + (item.hasAttribute('data-jobpilotto-guess') ? ', guess' : '') + ']').join(', ')") ?? '(no answer)').slice(0, 700);
 
 /** The console lines and exceptions the page behind `socketUrl` already holds (Runtime.enable replays them), for a failure message. */
 const consoleOf = socketUrl => new Promise((done, fail) => {
@@ -150,8 +172,7 @@ async function askExtension(profile, port) {
 export async function describeHidden(profile) {
   const folder = path.join(profile, 'background-browser');
   try {
-    const port = Number(fs.readFileSync(path.join(folder, 'profile', 'DevToolsActivePort'), 'utf8').split('\n')[0]);
-    const targets = await (await fetch(`http://127.0.0.1:${port}/json/list`, {signal: AbortSignal.timeout(3000)})).json();
+    const port = hiddenPort(profile), targets = await hiddenTargets(profile);
     const form = targets.find(item => item.type === 'page' && /^https?:/.test(item.url));
     return `hidden browser on port ${port} holds: ${targets.map(item => `${item.type} ${String(item.url).slice(0, 80)}`).join(' | ') || 'nothing'} | its form reads: ${form ? await valuesOf(form.webSocketDebuggerUrl) : 'no page'} | its console: ${form ? await consoleOf(form.webSocketDebuggerUrl) : 'no page'} | the extension says: ${await askExtension(profile, port)}`;
   } catch (error) {
@@ -164,7 +185,7 @@ export async function describeHidden(profile) {
 /** Closes the app's hidden browser of `profile` (it dies with the app, lib/browser-reaper.js; a run closes it itself so it does not wait for that): Browser.close over its own debugging port. Never throws. */
 export async function closeHiddenBrowser(profile) {
   try {
-    const port = Number(fs.readFileSync(path.join(profile, 'background-browser', 'profile', 'DevToolsActivePort'), 'utf8').split('\n')[0]);
+    const port = hiddenPort(profile);
     const {webSocketDebuggerUrl} = await (await fetch(`http://127.0.0.1:${port}/json/version`, {signal: AbortSignal.timeout(3000)})).json();
     await new Promise(done => {
       const socket = new WebSocket(webSocketDebuggerUrl), end = () => { clearTimeout(timer); done(); }, timer = setTimeout(end, 5000);
@@ -192,7 +213,7 @@ export async function proveBackground(ctx, {form, seed, until}) {
     if (started?.ok === false) throw new Error(`the app refused to start Background automation: ${started.error}`);
     // The owner's scenario (28 Oct 2026 screenshot, "Filling the application" with a broken picture): the session is opened in the window while the fill runs, when the hidden form may not be open yet;
     // the live view must still end up showing the page (renderer/live-opener.js asks again on every redraw).
-    await until('the application never got a session', async () => !!(await page.evaluate(target => window.pilot.sessions().then(list => list.find(item => String(item.url || '').replace(/\/$/, '') === target.replace(/\/$/, ''))?.id || ''), form.url)), 60000);
+    await until('the application never got a session', async () => !!(await sessionOf(page, form.url)), 60000);
     // The way e2e/suites/apply.mjs opens a session (proven on CI): the dock card, expanding the collapsed dock first; the Sessions page when the dock does not show this one.
     await openSessionCard(page, form);
     const shown = await page.evaluate(async () => {
@@ -208,7 +229,7 @@ export async function proveBackground(ctx, {form, seed, until}) {
     await until('the hidden form never reached Ready to review', async () => (await backgroundStateOf(page, form.url)) === 'ready_for_review', 120000)
       .catch(async error => { throw new Error(`${error.message} | ${await describeHidden(ctx.profile)} | state: ${await backgroundStateOf(page, form.url) || 'none'}`); });
     if (forms.posts.length !== posted) throw new Error('the form was posted before the person pressed Submit');
-    const id = await page.evaluate(target => window.pilot.sessions().then(list => list.find(item => String(item.url || '').replace(/\/$/, '') === target.replace(/\/$/, ''))?.id || ''), form.url);
+    const id = await sessionOf(page, form.url);
     if (!id) throw new Error('the filled application has no session to press Submit on');
     const sent = await page.evaluate(session => window.pilot.liveSubmit(session), id);
     if (!sent?.ok) throw new Error(`the person's Submit was refused: ${sent?.error}`);
@@ -257,6 +278,60 @@ export async function proveBotCheck(ctx, {form, mode, seed, until}) {
     if (pressed() !== pressesBefore) throw new Error('the app authorized an automatic press on a page with a bot check');
   } finally {
     await skipJob(page, form);
+    await closeHiddenBrowser(ctx.profile);
+  }
+}
+
+
+/** The app's stored record of the background application of `url` (queuedAt, launchedAt, readyAt, handoffAt, state, reason ...), or null: what the app wrote at each move, read after the run. */
+async function recordOf(ctx, url) {
+  const app = await ctx.data('applications', 'get', {url});
+  if (!app?.id) return null;
+  try { return JSON.parse(await ctx.data('applications', 'section', {app_id: app.id, name: 'Background Apply'}) || 'null'); } catch { return null; }
+}
+
+/**
+ * The proof of several jobs queued at once in a hidden-browser mode (`mode` 'fill' = Background, 'auto' = Full automation, no wait): Start queues `jobs` (forms, distinct addresses); the person stops the second while
+ * it is still queued. After the run, from the app's own stored times: the stopped job was never launched and went to the person with reason `stopped`; the others launched in queue order, each only after the
+ * one before it was ready (never two filling at once); Background sent nothing, Full automation pressed once per job that ran. `seed(job)` adds each job, `until(what, check, ms)` is the suite's state wait.
+ */
+export async function proveQueue(ctx, {jobs, mode, seed, until}) {
+  const unlinked = linkRuntime(ctx.profile);
+  if (unlinked) { if (process.platform === 'win32') { console.log(`  skipped here: ${unlinked}`); return; } throw new Error(unlinked); }
+  await ctx.relaunch();   // Why (30 Oct 2026, #2596): a second proof in one app run never got a browser to poll; each proof starts the app fresh
+  const {page, proxy, forms} = ctx;
+  proxy.setCanned(withFormJudge(proxy.canned(), 'Submit Application'));
+  for (const job of jobs) await seed(job);   // kitSeeder removes the suite's fixture jobs and adds one job: called per job, the queue jobs are not among the fixtures
+  try {
+    const chosenAt = new Date().toISOString(), posted = forms.posts.length;
+    await page.evaluate(({kind, at}) => window.pilot.saveSettings({apply: {mode: kind, chosenAt: at, ...(kind === 'auto' ? {autoConfirmedAt: at, auto: {waitMin: 0}} : {})}}), {kind: mode, at: chosenAt});
+    const started = await page.evaluate(count => window.pilot.apply({n: count, mode: 'settings'}), jobs.length);
+    if (started?.ok === false) throw new Error(`the app refused to start the ${mode} mode: ${started.error}`);
+    const ids = await Promise.all(jobs.map(job => sessionOf(page, job.url)));
+    if (ids.some(id => !id) || started.sessions?.length !== jobs.length) throw new Error(`Start did not queue all ${jobs.length} jobs: ${JSON.stringify({sessions: started.sessions, ids})}`);
+    const queued = started.sessions.map(id => jobs[ids.indexOf(id)]);   // the app's own queue order
+    const stopped = queued[1], ran = queued.filter(job => job !== stopped);
+    await page.evaluate(session => window.pilot.liveStop(session), ids[jobs.indexOf(stopped)]);
+    const done = async job => { const held = await recordOf(ctx, job.url); return mode === 'fill' ? held?.state === 'ready_for_review' : (await stageOf(ctx, job.url)) === 'Applied'; };
+    await until('the stopped job never went to the person', async () => HANDOFF.test((await recordOf(ctx, stopped.url))?.state || ''), 60000);
+    for (const job of ran) {
+      await until(`a queued job never ${mode === 'fill' ? 'reached Ready to review' : 'was pressed and became Applied'}: ${job.url}`, () => done(job), 120000)
+        .catch(async error => { throw new Error(`${error.message} | ${await describeHidden(ctx.profile)} | states: ${JSON.stringify(await Promise.all(queued.map(item => recordOf(ctx, item.url).then(held => held?.state))))}`); });
+    }
+    const gone = await recordOf(ctx, stopped.url);
+    if (gone?.reason !== 'stopped' || gone.launchedAt) throw new Error(`the stopped queued job should be handed over as "stopped" and never launched, the app recorded ${JSON.stringify({reason: gone?.reason, launchedAt: gone?.launchedAt})}`);
+    const times = await Promise.all(ran.map(async job => ({job, held: await recordOf(ctx, job.url)})));
+    for (const {job, held} of times) if (!held?.launchedAt || !held.readyAt) throw new Error(`the app recorded no launch and ready time for ${job.url}: ${JSON.stringify(held)}`);
+    times.forEach(({held}, at) => {
+      if (at && held.launchedAt < times[at - 1].held.launchedAt) throw new Error(`job ${at + 1} of the queue launched before job ${at}`);
+      if (at && held.launchedAt < times[at - 1].held.readyAt) throw new Error(`two jobs filled at once: the next launched at ${held.launchedAt}, the one before was ready only at ${times[at - 1].held.readyAt}`);
+    });
+    const sent = forms.posts.length - posted;
+    if (mode === 'fill' && sent) throw new Error(`Background automation sent ${sent} application(s) before the person pressed Submit`);
+    if (mode === 'auto' && sent !== ran.length) throw new Error(`Full automation should press once per job that ran (${ran.length}), the endpoint saw ${sent}`);
+  } finally {
+    // Why (30 Oct 2026, #2596): Start takes the first eligible job and the suite's steps assume none is left; the person ends each job with "Skip this role".
+    for (const job of jobs) await skipJob(page, job);
     await closeHiddenBrowser(ctx.profile);
   }
 }

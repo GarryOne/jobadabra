@@ -10,6 +10,7 @@ import {POSTING} from './apply-fixtures.mjs';
 import {CHIP_VALUE} from './apply-triage-steps.mjs';
 import {HIDDEN_NEED, autoFormOf, closeHiddenBrowser, evaluateOn, hiddenTargets, kitSeeder, linkRuntime, sessionOf, skipJob, withAccountReadJudge} from './background-proof.mjs';
 import {removeJobsByUrl} from './seed-data.mjs';
+import {showFilter} from './jobs-filter.mjs';
 import {pollUntil, stepTimeLeft} from './wait-on-state.mjs';
 
 const keyOf = read => JSON.stringify(modeOfRead(read));
@@ -95,6 +96,8 @@ export async function runTriageChipSteps(ctx, {urls}) {
       await page.reload();
       await waitOn(seen, 'Jobs navigation', () => page.locator('.nav[data-view="jobs"]').isVisible(), Boolean);
       await page.click('.nav[data-view="jobs"]');
+      // Why (30 Oct 2026, owner): tracked kit fixtures are outside New matches; show them through the existing filter before waiting on their chips.
+      await showFilter(page, 'everything');
       await page.fill('#filter-text', 'Triage chip fixtures');
       await waitOn(seen, 'the unread fixture rows', () => screenOf(page, cases), screen => screen.rows.every(row => row.label === chipOf(null).label));
       await page.click('#triage-open');

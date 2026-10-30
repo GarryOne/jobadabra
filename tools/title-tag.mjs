@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // Puts a PR's "[xx] " session tag back when a hand edit of the title drops it (owner, 30 Oct 2026: auto-restore). PR #2549 lost its "[ac]" to a manual `gh pr edit`.
 // Design: one owner (this script), one verdict: the edit's old title had a tag and the new one has none -> the new title gets the old tag; every other edit is left alone.
-// Runs on a PR title edit (workflow .github/workflows/title-tag.yml, main's copy of this script); its own retitle fires one more edit event, which has a tag and changes nothing.
+// Runs on a PR title edit (workflow .github/workflows/title-tag.yml, main's copy of this script). Its retitle uses GITHUB_TOKEN, so it starts no further run: pr-gate leaves a
+// dropped tag to this step (OLD_TITLE in pr-body-check.py), and this step's own check is red when the repair fails. The tag rule is pr-body-check.py's TAG (cross-checked by tests/test_title_tag.py).
 // Usage: OLD_TITLE=… NEW_TITLE=… PR=<n> GH_TOKEN=… GITHUB_REPOSITORY=… node tools/title-tag.mjs. Guard: tests/test_title_tag.py.
 import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';

@@ -50,6 +50,7 @@ jobs:
         env:
           BODY: ${{ github.event.pull_request.body }}
           PR_TITLE: ${{ endsWith(github.actor, '[bot]') && '' || github.event.pull_request.title }}   # the "[xx] " session tag (a bot's PR has none)
+          OLD_TITLE: ${{ github.event.changes.title.from }}   # a dropped tag is put back by title-tag.yml, which owns that verdict (Gitar on #2577)
         run: printf '%s' "$BODY" | python3 tools/pr-body-check.py
       # The open PR is the claim on the applying flow's files (tools/flow-fresh.mjs): red when main changed, since this PR's base, a flow file it also changes.
       # tools/ship.sh rebases and pushes again by itself on this failure (it finds this step's name: keep it in tools/ship-pr.sh).

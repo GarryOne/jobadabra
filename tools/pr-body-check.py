@@ -29,9 +29,16 @@ def missing(body):
 TAG_FIX = 'the title starts with the opening session\'s tag, e.g. "[75] Fix the thing": tools/ship.sh adds it (re-run it), or `gh pr edit <n> --title "[xx] <title>"`'
 
 
-def title_gap(title):
-    """21 Oct 2026: site#18 and #19 had no "[xx] " tag (opened or retitled by hand). PR_TITLE is set by pr-gate.yml / the site's tests.yml (empty for a bot's PR: no check)."""
-    return None if not title or re.match(r'^\[[^\]]+\] \S', title) else f'the PR title "{title}" has no "[xx] " session tag: {TAG_FIX}'
+TAG = re.compile(r'^\[[^\]]+\] \S')   # the one definition of a session tag; tools/title-tag.mjs restores by the same rule (tests/test_title_tag.py replays the cases through both)
+
+
+def title_gap(title, old_title=''):
+    """21 Oct 2026: site#18 and #19 had no "[xx] " tag (opened or retitled by hand). PR_TITLE is set by pr-gate.yml / the site's tests.yml (empty for a bot's PR: no check).
+    Why (30 Oct 2026, Gitar on #2577): a title edit that drops a tag the old title had is repaired by .github/workflows/title-tag.yml, and that repair (made with GITHUB_TOKEN)
+    starts no new gate run, so this red would outlive it. The repair owns that verdict: its own check is red when it fails; this one judges the other titles."""
+    if not title or TAG.match(title) or (old_title and TAG.match(old_title)):
+        return None
+    return f'the PR title "{title}" has no "[xx] " session tag: {TAG_FIX}'
 
 
 STEP = re.compile(r'^\[[^\]]+\] (\d+)/(\d+) \S')
@@ -59,7 +66,7 @@ def plan_gap(title, body):
 if __name__ == '__main__':
     text = sys.stdin.read()
     gaps = missing(text)
-    gap = title_gap(os.environ.get('PR_TITLE', '').strip()) or plan_gap(os.environ.get('PR_TITLE', '').strip(), text)
+    gap = title_gap(os.environ.get('PR_TITLE', '').strip(), os.environ.get('OLD_TITLE', '').strip()) or plan_gap(os.environ.get('PR_TITLE', '').strip(), text)
     if gap:
         print('pr-title: ' + gap, file=sys.stderr)
         sys.exit(1)

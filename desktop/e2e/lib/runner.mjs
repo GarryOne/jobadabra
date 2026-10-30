@@ -1,7 +1,8 @@
 // Runs a suite's steps: names, timings, a screenshot on the first failure, a summary, an exit code. Steps that need a secret that is not there are skipped, loudly.
 // Job: wait on state
 import path from 'node:path';
-import {ARTIFACTS} from './app.mjs';
+import {ARTIFACTS, DESKTOP} from './app.mjs';
+import {ensureStaged} from './ensure-staged.mjs';
 import {refusalNote} from './ai-refused.mjs';
 import {capMessage, releaseGate, skipStepForCap, takeCapped} from './ai-cap.mjs';
 import {isEnvironment, RETRY_WAIT_MS} from './environment.mjs';
@@ -63,6 +64,13 @@ export const SUITE_BUDGET_MS = Number(process.env.E2E_SUITE_BUDGET_MS) || 7 * 60
 export const budgetMsOf = suite => (suite?.aggregateBudget === false ? Infinity : suite?.budgetMinutes ? suite.budgetMinutes * 60000 : SUITE_BUDGET_MS);
 /** Budgeted suites keep budget plus three minutes; suites without an aggregate have no start-time stop. */
 export const stopMsOf = suite => (suite?.aggregateBudget === false ? null : budgetMsOf(suite) + 3 * 60000);
+/** Decide the start-time stop from the suite exports; shared code must be staged before loading, and load errors must never become a default budget. */
+export async function suiteStopMs(name, {stage = () => ensureStaged(DESKTOP), load = name => import(`../suites/${name}.mjs`)} = {}) {
+  // Why (30 Oct 2026, beta 41121393681): a clean CI checkout hid apply's no-aggregate export behind a missing shared module and armed a false 10-minute stop.
+  await stage();
+  try { return stopMsOf(await load(name)); }
+  catch (error) { throw new Error(`Cannot load the ${name} suite: ${error.message}`, {cause: error}); }
+}
 export const slowest = (results, count = 5) => results.filter(result => result.seconds).sort((a, b) => b.seconds - a.seconds).slice(0, count).map(result => `${result.name.slice(0, 70)} (${Math.round(result.seconds)} s)`);
 
 // The screenshot a failed step leaves (without .png); the HTML report attaches it.

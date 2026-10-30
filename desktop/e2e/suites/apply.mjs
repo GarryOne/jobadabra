@@ -61,7 +61,7 @@ export const hangCaps = {'the app has an applicant': 300, 'the app is seeded': 9
   'The hidden browser fills a form': 385,
   // no main samples yet, regenerate after 5 main runs: the 30 s floor x 3 (tools/e2e-step-timings.mjs)
   'a silent Chrome in Standard automation': 90, 'a silent Chrome in Background automation': 90, 'a silent Chrome in Full automation': 90,
-  'the app quits while Background automation holds a filled form': 300, 'the app quits in Full automation\'s wait': 420,   // 3 x the steps' weights above (40 s, 140 s), rounded up: the steps' waits carry no clock of their own
+  'the app quits while Background automation holds a filled form': 300, 'the app quits in Full automation\'s wait': 420,   // kept from when these steps had inner caps (180 s hold, 60 s hand-over); their waits carry none now: regenerate after 5 main runs (tools/e2e-step-timings.mjs)
   'the Jobs popup has one field': 90, 'checking jobs before the form read exists': 90,
   'Background automation hands a bot check': 240, 'Full automation hands a bot check': 240,
   'Background automation fills several queued jobs': 450, 'Full automation presses each queued job': 450,   // 60 s + 3 x 120 s of inner waits, + 30 s

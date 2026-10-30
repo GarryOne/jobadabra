@@ -1,7 +1,8 @@
 name: CI · PR verdict
 # Job: report health
 # The ONE writer of a pull request's one required status, "All checks passed" (tools/pr-verdict.py), each time one of its workflows ends: pending while any runs,
-# red when a run ended red, green when all ended green. A job of seconds per event; nothing holds a runner to wait (owner, 26 Oct 2026: "How could you design such a
+# red when a run ended red, green when all ended green. A job of seconds per event, never a wait loop: a pending result reads once more ~20 s later (#2533's list
+# lag; owner, 26 Oct 2026: "How could you design such a
 # slow and inefficient method of checking PRs?"). Until 26 Oct pr-gate.yml's "Other workflows passed" and pr-suites.yml's wait each sat on a runner ~20 min per push.
 # Why one writer (owner, 30 Oct 2026, "One writer"): every PR job also wrote it as its last step (#2042); ~21 jobs x ~24 GitHub calls per push spent the token's
 # 5,000 calls an hour by ~35 min past each hour, a failed read wrote nothing, and green PRs sat at "pending" (#2609, #2605, #2598, #2593).

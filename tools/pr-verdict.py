@@ -420,29 +420,29 @@ def main():
         print(f'the pull request of {a.sha[:7]} is merged or closed: nothing to write'); return 0
     if number and files is None:   # over 100 files: the paged REST read
         files = gh('api', '--paginate', f'repos/{a.repo}/pulls/{number}/files', '--jq', '.[].filename').split()
-    reports, ai_line = set(), str
-    runs, jobs = read(a.repo, a.sha)
     ref = os.environ.get('GITHUB_SHA') or a.sha
-    if any(str(r.get('displayTitle', '')).startswith(E2E_PR_TITLE) for r in counted(runs)):
-        try:
-            reports, ai_line = main_state_module(a.repo, ref, 'pr_ai_number').prepare(a.repo, counted(runs), jobs, gh, lambda name='main_e2e_state': main_state_module(a.repo, ref, name), base_branch(), my_run, '', os.environ.get('RUNNER_NAME', ''))
-        except Exception as error:
-            print(f'AI number unavailable ({type(error).__name__}): required verdict unchanged')
-    # One read, one write per workflow end, never a wait loop: a run still settling is written pending, and its own end brings the next write.
-    spans = job_spans(a.repo, runs, reports) if ci_change(files) and (reports or not any(r.get('status') != 'completed' for r in counted(runs))) else None
     judge = lambda greys: verdict(runs, files, messages, jobs, spans=spans, greys=greys, reports=reports, burn_in=lambda *args: main_state_module(a.repo, ref, 'pr_burn_in').failures(*args))
-    state, why, live, _, target = judge(())
-    if state in ('pending', 'settling') and not a.dry_run:
-        # Why (Gitar on #2619): a replaced waiting verdict loses its run's end while the list lags (#2533); no later event repairs it. One more read, no loop.
-        time.sleep(LIST_LAG_S); runs, jobs = read(a.repo, a.sha)
+    # One write per workflow end, never a wait loop: a pending result reads the list once more after LIST_LAG_S, then writes.
+    reports, ai_line, prepared = set(), str, False
+    for attempt in (1, 2):   # Why (Gitar on #2619): a replaced waiting verdict loses its run's end while the list lags (#2533); the 2nd read redoes reports and spans too
+        runs, jobs = read(a.repo, a.sha)
+        if not prepared and any(str(r.get('displayTitle', '')).startswith(E2E_PR_TITLE) for r in counted(runs)):   # one artifact read per write: BASE's reports do not change
+            prepared = True
+            try:
+                reports, ai_line = main_state_module(a.repo, ref, 'pr_ai_number').prepare(a.repo, counted(runs), jobs, gh, lambda name='main_e2e_state': main_state_module(a.repo, ref, name), base_branch(), my_run, '', os.environ.get('RUNNER_NAME', ''))
+            except Exception as error:
+                print(f'AI number unavailable ({type(error).__name__}): required verdict unchanged')
+        spans = job_spans(a.repo, runs, reports) if ci_change(files) and (reports or not any(r.get('status') != 'completed' for r in counted(runs))) else None
         state, why, live, _, target = judge(())
+        if attempt == 2 or a.dry_run or state not in ('pending', 'settling'):
+            break
+        time.sleep(LIST_LAG_S)
     if state == 'failure':   # main's reds are read only for a red: a green PR costs no extra call
         greys = {**{job_id: 'main' for job_id in main_red_greys(a.repo, runs, jobs, ref=ref)}, **lane_greys(a.repo, runs, jobs),
                  **health_greys(a.repo, runs, jobs, ref=ref)}   # a health cause names this run; lanes still come from the base branch
         if greys:
             state, why, live, _, target = judge(greys)
-    if state == 'settling':
-        state = 'pending'
+    state = 'pending' if state == 'settling' else state
     print(quota_line() or 'quota: not readable')
     for r in live:
         print(f"  {r.get('conclusion') or r.get('status'):10} {r['workflowName']}")

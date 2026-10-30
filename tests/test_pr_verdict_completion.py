@@ -17,7 +17,7 @@ RECORDED = json.loads((ROOT / 'tests/fixtures/pr-verdict-stale.json').read_text(
 
 
 class CompletionWriter(unittest.TestCase):
-    def write(self, record=None, event_name='workflow_run', job_status='', later=None):
+    def write(self, record=None, event_name='workflow_run', job_status='', later=None, files=('src/sources/visits.py',)):
         record = copy.deepcopy(record or RECORDED)
         writes, sleeps = [], []
         # later: the run list GitHub answers on the one re-read after the list's lag (a pending result reads once more, LIST_LAG_S later)
@@ -31,7 +31,7 @@ class CompletionWriter(unittest.TestCase):
             if args[:2] == ('api', 'graphql'):
                 return json.dumps({'data': {'repository': {'object': {'associatedPullRequests': {'nodes': [
                     {'number': 2533, 'state': 'OPEN', 'mergedAt': None, 'files': {
-                        'pageInfo': {'hasNextPage': False}, 'nodes': [{'path': 'src/sources/visits.py'}]},
+                        'pageInfo': {'hasNextPage': False}, 'nodes': [{'path': path} for path in files]},
                      'commits': {'nodes': []}}
                 ]}}}}})
             if args[:2] == ('run', 'list'):
@@ -123,6 +123,18 @@ class CompletionWriter(unittest.TestCase):
         ended = [dict(r, status='completed', conclusion='success') for r in record['runs']]
         self.assertEqual(self.write(record, later=ended)['state'], 'success')
         self.assertEqual(self.write(record)['state'], 'pending', 'positive control: a run really still going stays pending')
+
+    def test_the_re_read_of_a_ci_change_budgets_running_time_not_the_runner_queue(self):
+        # Gitar on #2619: a CI-change PR read pending first, then green on the re-read, must measure its jobs' spans on that re-read: 3 min running after
+        # 10 min in the runner queue is green; judged on wall time (13 min) it read "over the 10-min budget".
+        record = copy.deepcopy(RECORDED)
+        record['event']['workflow_run']['head_sha'] = 'old-head'
+        record['jobs'] = {str(n): [{'name': 'tests', 'status': 'completed', 'conclusion': 'success', 'started_at': '2026-10-30T00:58:00Z',
+                                    'completed_at': '2026-10-30T01:01:00Z'}] for n in (1, 2, 3, 4)}
+        queued = [dict(r, status='completed', conclusion='success', createdAt='2026-10-30T00:48:00Z') for r in record['runs']]
+        written = self.write(record, later=queued, files=('tools/pr-verdict.py',))
+        self.assertEqual(written['state'], 'success', written)
+        self.assertIn('min waiting for runners', written['description'])
 
     def test_a_job_s_own_step_writes_nothing_and_reads_nothing(self):
         # Why (owner, 30 Oct 2026, "One writer"): a branch not yet rebased still runs the old per-job step; it must cost no GitHub call.

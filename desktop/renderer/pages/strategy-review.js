@@ -127,7 +127,7 @@ async function openRebuildReview() {
     $('rebuild-total').textContent = picked.length ? `Applying ${picked.length} of ${result.groups.length}: ${uses ? 'AI re-scores the jobs over the next searches' : 'no AI re-scoring'}.` : 'Nothing selected.';
   };
   $('rebuild-groups').replaceChildren(...result.groups.map(group => {
-    const box = el('label', 'review-group');
+    const box = el('label', 'review-group inline-label');
     box.dataset.group = group.id;
     const check = Object.assign(document.createElement('input'), {type: 'checkbox', checked: true});
     boxes[group.id] = check;

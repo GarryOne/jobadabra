@@ -34,6 +34,7 @@ function renderDraft(cv) {
     const role = job.roles[0], box = document.createElement('div');
     box.className = 'form-grid edit-aligned';
     const label = document.createElement('label'), area = document.createElement('textarea');
+    label.className = 'inline-label';
     label.append(`${role.title} · ${job.company}`, area);
     area.rows = 4; area.dataset.role = String(index); area.value = role.bullets.join('\n');
     box.append(label);

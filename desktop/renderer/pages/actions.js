@@ -103,7 +103,7 @@ export async function init() {
   const visitRow = ({value, ticked, name, note, title, drop, dropTitle, onDrop}) => {
     const row = document.createElement('li');
     const label = document.createElement('label');
-    label.className = 'check-row';   // the shared checkbox row (components.css), inside the shared item-rows list
+    label.className = 'check-row inline-label';   // the shared checkbox row (components.css), inside the shared item-rows list
     const box = Object.assign(document.createElement('input'), {type: 'checkbox', checked: ticked, value});
     box.addEventListener('change', countVisits);
     const words = document.createElement('span');

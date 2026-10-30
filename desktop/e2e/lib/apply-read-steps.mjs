@@ -63,9 +63,7 @@ export async function runReadSteps(ctx, {until}) {
       const sessions = sessionsNow(ctx), posted = forms.posts.length;
       await page.click('#triage-open');
       await page.waitForSelector('#triage-dialog[open]', {timeout: 5000});
-      await page.click('#triage-by-fit');   // only this job: the suite's other fixture jobs sit below fit 90 and stay unread
-      await page.fill('#triage-fit', '90');
-      await page.fill('#triage-n', '1');
+      await page.fill('#triage-n', '1');   // Why (2026-10-30, owner: the popup has one field, the first N best matching jobs): this job is fit 90 and the suite's other fixture jobs sit below it, so the first 1 is this job
       await page.click('#triage-start');
       await until('the chip never showed the form read', async () => (await chipOfRow(page, form.title)) !== 'Not checked', 150000)
         .catch(async error => { throw new Error(`${error.message} | chips: ${JSON.stringify(await allChips(page))} | ${await describeHidden(ctx.profile)}`); });

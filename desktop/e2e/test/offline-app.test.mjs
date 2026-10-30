@@ -1,10 +1,12 @@
 // The app's own extension server offline for a row replay (lib/offline-app.mjs): starts in seconds on its own port in a temp folder, answers the extension as a
 // person's app does (the fake applicant and the fixture CV, never the person's), refuses every host but this computer, and stops with nothing left running.
 import assert from 'node:assert/strict';
+import {spawn} from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {test} from 'node:test';
+import {pathToFileURL} from 'node:url';
 import {startAiProxy} from '../lib/ai-proxy.mjs';
 import {DUMMY_KEY} from '../lib/engine.mjs';
 import {startOfflineApp} from '../lib/offline-app.mjs';
@@ -98,4 +100,29 @@ test('with an AI proxy the offline app asks through its API engine and the proxy
 test('the API path takes a proxy on this computer only, and a real key only on CI', async () => {
   await assert.rejects(startOfflineApp({ask: true, api: {url: 'https://api.anthropic.com', key: DUMMY_KEY}}), /127\.0\.0\.1/);
   await assert.rejects(startOfflineApp({ask: true, api: {url: 'http://127.0.0.1:9', key: 'sk-ant-api03-real-looking'}, env: {}}), /CI only/);
+});
+
+// Why (30 Oct 2026, a8: an offline app started 27 Oct still listened 3 days later, parent launchd): it ends with the harness that started it, however the harness ends.
+// The harness is killed outright, so no handler of its own runs; on main before this the app outlived it (the positive control, run on the old child).
+test('the offline app ends when the harness that started it is killed outright', {skip: process.platform === 'win32' && 'Windows ends children with their parent (libuv job object)'}, async () => {
+  const start = `const {startOfflineApp} = await import(${JSON.stringify(pathToFileURL(path.resolve(import.meta.dirname, '../lib/offline-app.mjs')).href)});
+    const app = await startOfflineApp(); console.log(JSON.stringify({pid: app.pid})); setInterval(() => {}, 1000);`;
+  const harness = spawn(process.execPath, ['--input-type=module', '-e', start], {stdio: ['ignore', 'pipe', 'inherit'],
+    env: {...process.env, JOB_PILOTTO_E2E_RUNNER_POLL_MS: '50', JOB_PILOTTO_E2E_RUNNER_GRACE_MS: '150'}});
+  const alive = pid => { try { process.kill(pid, 0); return true; } catch (error) { return error.code === 'EPERM'; } };
+  let pid = 0;
+  try {
+    pid = await new Promise((resolve, reject) => {
+      let out = '';
+      harness.stdout.on('data', chunk => { out += chunk; const line = out.split('\n').find(one => one.startsWith('{"pid"')); if (line) resolve(JSON.parse(line).pid); });
+      harness.on('exit', code => reject(new Error(`the harness ended (${code}) before the app was ready`)));
+    });
+    assert.ok(alive(pid), 'the app runs while its harness does');
+    harness.kill('SIGKILL');
+    for (const end = Date.now() + 5000; Date.now() < end && alive(pid);) await new Promise(resolve => setTimeout(resolve, 50));
+    assert.equal(alive(pid), false, 'the offline app is gone with its harness');
+  } finally {
+    harness.kill('SIGKILL');
+    if (pid && alive(pid)) process.kill(pid, 'SIGKILL');   // never leave one behind, even when the test fails
+  }
 });

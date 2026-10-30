@@ -4,7 +4,7 @@ import http from 'node:http';
 import net from 'node:net';
 import {once} from 'node:events';
 import {test} from 'node:test';
-import {listen, listenState, linkOffOf, testWithoutOwnPort, unheardForms} from '../lib/server-listen.js';
+import {DEFAULT_PORT, listen, listenState, linkOffOf, testWithoutOwnPort, unheardForms} from '../lib/server-listen.js';
 
 const freePort = () => new Promise(resolve => { const s = net.createServer().listen(0, '127.0.0.1', () => { const {port} = s.address(); s.close(() => resolve(port)); }); });
 const until = async (check, ms = 3000) => { const end = Date.now() + ms; while (!check()) { if (Date.now() > end) throw new Error('timed out'); await new Promise(r => setTimeout(r, 20)); } };
@@ -39,6 +39,20 @@ test('a test app without its own port does not listen at all; with one it does',
   await once(own, 'listening');
   assert.equal(listenState().ok, true);
   await new Promise(r => own.close(r));
+});
+
+// Why (30 Oct 2026, owner's demo: the app heard no extension for 27 h): the guard above read only "no port given", so a test told 47111, or a bad port that falls back
+// to it, still took the owner's port, and a unit test under `node --test` (automation.test.js) bound it whenever the owner's app was closed.
+test('a test process never listens on the production port, however its port is given', async () => {
+  const {EventEmitter} = await import('node:events');
+  for (const env of [{JOB_PILOTTO_E2E: '1', JOB_PILOTTO_PORT: '47111'}, {JOB_PILOTTO_E2E: '1', JOB_PILOTTO_PORT: '0'}, {JOB_PILOTTO_E2E: '1', JOB_PILOTTO_PORT: '70000'},
+    {NODE_TEST_CONTEXT: 'child-v8'}, {NODE_TEST_CONTEXT: 'child-v8', JOB_PILOTTO_PORT: '47111'}]) assert.equal(testWithoutOwnPort(env), true, JSON.stringify(env));
+  assert.equal(testWithoutOwnPort({NODE_TEST_CONTEXT: 'child-v8', JOB_PILOTTO_PORT: '48123'}), false, 'a unit test with its own port listens there');
+  // The port being opened counts, not only the env: told 48123 and handed 47111, it still stays off. A stand-in socket, so this test never binds 47111 itself.
+  const fake = Object.assign(new EventEmitter(), {listening: false, calls: 0, listen() { this.calls++; }});
+  listen(fake, DEFAULT_PORT, {env: {JOB_PILOTTO_E2E: '1', JOB_PILOTTO_PORT: '48123'}, say: () => {}});
+  assert.equal(fake.calls, 0);
+  assert.equal(listenState().code, 'TEST_WITHOUT_PORT');
 });
 
 test('formsOpen while unheard: unknown, with linkOff only when our own socket is the reason', () => {

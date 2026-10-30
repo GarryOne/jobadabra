@@ -15,8 +15,18 @@ export const linkOffOf = current => (current?.ok === false && current.code !== '
 /** -> the `formsOpen` answer while no extension has reported: unknown, plus `linkOff` when our own socket is the reason. */
 export const unheardForms = current => ({known: false, ids: [], ...(linkOffOf(current) ? {linkOff: linkOffOf(current)} : {})});
 
-/** -> whether this is an e2e test app that was not given its own port: it must never take the production one (the owner's app, port 47111). */
-export const testWithoutOwnPort = (env = process.env) => !!env.JOB_PILOTTO_E2E && !/^\d+$/.test(env.JOB_PILOTTO_PORT || '');
+/**
+ * -> the port this app listens on: JOB_PILOTTO_PORT when it names a whole port, else the production one. The port is fixed because the extension has it built in
+ * (extension/flow.js); JOB_PILOTTO_PORT moves it for a test app that runs next to the user's own (the e2e suites copy the extension with the same port, e2e/lib/extension.mjs).
+ */
+export const portFrom = (env = process.env) => (/^\d+$/.test(env.JOB_PILOTTO_PORT || '') && Number(env.JOB_PILOTTO_PORT) > 0 && Number(env.JOB_PILOTTO_PORT) < 65536 ? Number(env.JOB_PILOTTO_PORT) : DEFAULT_PORT);
+
+/**
+ * -> whether a test process is about to take the production port (the owner's app, 47111): an e2e app (JOB_PILOTTO_E2E) or a file run by `node --test` (Node sets
+ * NODE_TEST_CONTEXT in it), when the port it opens, or the one its env gives, is 47111. Such a process never listens; a person's app has neither variable.
+ * Why (30 Oct 2026, owner's demo): "no JOB_PILOTTO_PORT" alone let a test told 47111, or a bad port that falls back to it, take the owner's port.
+ */
+export const testWithoutOwnPort = (env = process.env, port = portFrom(env)) => (!!env.JOB_PILOTTO_E2E || !!env.NODE_TEST_CONTEXT) && (port === DEFAULT_PORT || portFrom(env) === DEFAULT_PORT);
 
 /**
  * Listen on 127.0.0.1:port. A busy port is logged once, kept in listenState() and tried again every retryMs until it is free.
@@ -25,9 +35,9 @@ export const testWithoutOwnPort = (env = process.env) => !!env.JOB_PILOTTO_E2E &
  */
 export function listen(server, port, {env = process.env, onError = () => {}, say = log, retryMs = 5000} = {}) {
   const set = next => { state = {...next, port}; };
-  if (testWithoutOwnPort(env)) {
+  if (testWithoutOwnPort(env, port)) {
     set({ok: false, code: 'TEST_WITHOUT_PORT'});
-    say('extension', `connection off: a test app without its own port does not take ${port}`, {port});
+    say('extension', `connection off: a test app never takes the production port ${port}`, {port});
     return;
   }
   let retry = null;

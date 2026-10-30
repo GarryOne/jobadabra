@@ -53,8 +53,9 @@ for (const frame of FRAMES) {
     if (file !== 'jobs.json') fs.copyFileSync(path.join(desktop, 'demo', file), path.join(data, file));
   }
   const png = path.join(frames, `${frame.name}.png`);
+  // Why (30 Oct 2026): the timeout kills only the `.bin/electron` shim; the app ends when this script does (lib/e2e-host.js watchRunner).
   const result = spawnSync(electron, ['.'], {cwd: desktop, stdio: 'ignore', timeout: 60000, env: {...process.env,
-    JOB_PILOTTO_DEMO: '1', JOB_PILOTTO_USER_DATA: data, JOB_PILOTTO_SMOKE: png, JOB_PILOTTO_SMOKE_JS: frame.js}});
+    JOB_PILOTTO_DEMO: '1', JOB_PILOTTO_E2E_RUNNER_PID: String(process.pid), JOB_PILOTTO_USER_DATA: data, JOB_PILOTTO_SMOKE: png, JOB_PILOTTO_SMOKE_JS: frame.js}});
   fs.rmSync(data, {recursive: true, force: true});
   if (!fs.existsSync(png)) throw new Error(`${frame.name}: no screenshot (exit ${result.status})`);
   execFileSync('sips', ['-z', '1024', '1600', png], {stdio: 'ignore'});  // Retina captures are 2x; one size for all

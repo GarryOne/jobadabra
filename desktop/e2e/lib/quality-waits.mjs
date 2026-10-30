@@ -2,10 +2,19 @@
 // Job: wait on state
 import fs from 'node:fs';
 import path from 'node:path';
+import {answersMode} from './ai-answers.mjs';
 
 // Why (29 Oct 2026, qu 3/4): nearest-rank p95 of seven calm green main runs equals their maxima:
 // Jobs 42.6 s, whole 54.2 s, setup <= 7 s, all other steps <= 4.8 s. Caps catch hangs, never judge speed.
 export const QUALITY_CLOCK = Object.freeze({stateMs: 30000, jobsMs: 127800, suiteMs: 162600});
+// Why (30 Oct 2026, qu): RECORD calls live AI, so it shares live state/Jobs allowances and gets an eight-minute journey cap.
+const LIVE_QUALITY_CLOCK = Object.freeze({stateMs: 90000, jobsMs: 360000, suiteMs: 480000});
+
+/** Select replay's measured hang caps or live AI allowances; recording always uses live clocks. */
+export function qualityClocks(backbone = true, env = process.env) {
+  return backbone && answersMode(env) !== 'record' ? QUALITY_CLOCK : LIVE_QUALITY_CLOCK;
+}
+
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
 /** Name a hang and keep the evidence already collected by its caller. */
 export const qualityHang = (label, capMs, evidence) => Object.assign(new Error(

@@ -3,11 +3,13 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {decideCandidates, decideQuestion, itemCandidateName} from './ai-answers-decide.mjs';
+import {decideQuestion} from './ai-answers-decide.mjs';
+import {placeQuestion} from './ai-answers-place.mjs';
+import {engineQuestion, itemOperation, validateItemEntry} from './ai-answers-engine.mjs';
+import {object} from './ai-answers-engine-items.mjs';
 
 const GOLDEN = new URL('../fixtures/golden/', import.meta.url);
 const TABLE = fileURLToPath(new URL('ai-answers.json', GOLDEN));
-const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 const refusals = new Map();
 const suiteOf = env => env.E2E_SUITE || env.E2E_STEPS_SUITE || 'default';
 const artifactsOf = env => path.resolve(env.E2E_ARTIFACTS || fileURLToPath(new URL(`../artifacts/${suiteOf(env)}/`, import.meta.url)));
@@ -61,7 +63,7 @@ function checkItems(table) {
     for (const [operation, entries] of Object.entries(table.items)) {
       if (!object(entries)) throw new Error(`AI answers: ${operation} items must be an object`);
       for (const [key, entry] of Object.entries(entries)) {
-        if (typeof entry?.text !== 'string' || typeof entry?.answer !== 'string' || !entry.answer.trim()) throw new Error(`AI answers: ${operation}/${key} needs text and a non-empty answer`);
+        validateItemEntry(operation, entry, key);
       }
     }
   }
@@ -71,7 +73,8 @@ const parsed = body => {
   if (object(body) && !Buffer.isBuffer(body)) return body;
   try { return JSON.parse(String(body || '{}')); } catch { return {}; }
 };
-const textOf = content => typeof content === 'string' ? content : (Array.isArray(content) ? content.map(part => part.text || '').join('\n') : '');
+// Why (30 Oct 2026, qu): score/caption identities and refusal previews retain their permissive text extraction; engine parsers require strict text-only blocks.
+const textOf = content => typeof content === 'string' ? content : (Array.isArray(content) ? content.map(part => part?.text || '').join('\n') : '');
 const actionOf = (headers, body) => new Headers(headers || {}).get('x-jp-action') || String(body.prompt_cache_key || '').replace(/^job-pilotto-/, '');
 
 function scoreQuestion(body, persona) {
@@ -104,8 +107,16 @@ export function questionOf({url, headers, body, hint}, env = process.env, table)
   const persona = env.E2E_QUALITY_PERSONA || '';
   if (hint?.operation === 'judge.facts' && typeof hint.id === 'string' && hint.id.trim()) return {operation: hint.operation, id: persona ? `${persona}/${hint.id}` : hint.id};
   const data = parsed(body), action = actionOf(headers, data);
-  if (action === 'score') return scoreQuestion(data, persona);
-  if (action === 'decide') return decideQuestion(data, persona);
+  const engine = engineQuestion(data, persona); if (engine) return engine;
+  const system = textOf(data.system ?? data.instructions);
+  if (action === 'score' || system.startsWith('You rank job postings for one candidate.')) return scoreQuestion(data, persona);
+  if (action === 'decide' || system.startsWith('You decide what short pieces of content mean')) return decideQuestion(data, persona);
+  // Why (30 Oct 2026, qu): a recognized place SYSTEM owns its malformed-request reason; header-only scout asks may still belong to a declared kind.
+  const placeSystem = system.startsWith('You decide where job postings are, for one job seeker.');
+  if (placeSystem || action === 'scout' || action === 'place_triage') {
+    const place = placeQuestion(data, persona);
+    if (!place.unkeyable || placeSystem) return place;
+  }
   const kinds = (table ?? loadTable(env.E2E_AI_ANSWERS_FILE || TABLE)).kinds;
   // Why (30 Oct 2026, Gitar on #2505): kinds are declared per backbone suite; live suites in off and record mode keep their replay and live path, for caption-keyed kinds too (30 Oct 2026, ap: interviews).
   if (object(kinds) && Object.hasOwn(kinds, action) && answersMode(env) === 'backbone') {
@@ -118,30 +129,37 @@ export function questionOf({url, headers, body, hint}, env = process.env, table)
 
 /** Return a complete stored reply, or name the precise question that has no answer. */
 export function answerFor(question, table) {
+  const operation = itemOperation(question.operation);
+  if (operation) {
+    const found = operation.answer(question, table);
+    return found.missing ? found : {reply: message(JSON.stringify(found.data))};
+  }
   if (question.operation === 'app.kind') {
     const entry = object(table.kinds) && Object.hasOwn(table.kinds, question.id) ? table.kinds[question.id] : null;
     return entry ? {...entry.answer} : {missing: `app.kind/${question.id}`};
   }
-  if (question.operation === 'app.decide') {
-    const results = [], allowed = question.context.allowedAnswers.split(', ');
-    for (const item of question.items) {
-      const entries = table.items?.['app.decide'];
-      const entry = object(entries) && Object.hasOwn(entries, item.key) ? entries[item.key] : null;
-      // Why (#2450 slice 3): a batch is replayable only when every exact item has a valid stored answer for this task.
-      if (!entry || entry.text !== item.text || !allowed.includes(entry.answer)) return {missing: `app.decide item ${item.index} ${JSON.stringify(item.text.slice(0, 80))} key ${item.key}`};
-      results.push({index: item.index, answer: entry.answer});
-    }
-    return {reply: message(JSON.stringify({results}))};
-  }
   const entries = table.answers[question.operation];
+  if (!object(entries) && !['app.score', 'judge.facts'].includes(question.operation)) return {unkeyable: `${question.operation || 'unknown'}: no answer kind identifies the question`};
   const entry = object(entries) && Object.hasOwn(entries, question.id) ? entries[question.id] : null;
   return entry ? {reply: entry.reply} : {missing: `${question.operation}/${question.id}`};
 }
 
-/** Build the actionable refusal used by both app and judge entry points. */
-export function refusal(suite, question, why) {
-  const name = question.unkeyable || `${question.operation}/${question.id}`;
-  const error = new Error(`${suite}: ${name} ${why} (E2E_AI_ANSWERS=backbone): add it with a record run (E2E_AI_ANSWERS=record)`);
+/** Extract only the bounded identity fields authorized for an unidentifiable refusal. */
+function requestPreview(request) {
+  const data = parsed(request?.body), body = object(data) ? data : {};
+  const messages = Array.isArray(body.messages) ? body.messages : Array.isArray(body.input) ? body.input : [];
+  const user = messages.find(item => item?.role === 'user')?.content ?? (typeof body.input === 'string' ? body.input : '');
+  const prefix = (content, limit) => textOf(content).replace(/\s+/g, ' ').slice(0, limit);
+  // Why (30 Oct 2026, supervisor): unknown refusals need enough identity to classify them; the rest of the prompt must never enter this diagnostic.
+  return {'x-jp-action': new Headers(request?.headers || {}).get('x-jp-action') || 'none',
+    system: prefix(body.system ?? body.instructions, 160), user: prefix(user, 100), model: typeof body.model === 'string' && body.model ? body.model : 'none'};
+}
+
+/** Build the shared refusal, adding bounded diagnostics only when no question can be identified. */
+export function refusal(suite, question, why, request) {
+  const name = question?.unkeyable || (question?.operation ? `${question.operation}/${question.id}` : 'unknown: question identity is not in the request');
+  const preview = why === 'is unkeyable' || !question?.operation ? `; request=${JSON.stringify(requestPreview(request))}` : '';
+  const error = new Error(`${suite}: ${name} ${why} (E2E_AI_ANSWERS=backbone): add it with a record run (E2E_AI_ANSWERS=record)${preview}`);
   error.code = 'E2E_AI_ANSWER_MISSING';
   return error;
 }
@@ -150,14 +168,15 @@ export function refusal(suite, question, why) {
 export function recordCandidate(dir, question, reply) {
   if (question.unkeyable) return;
   if (!object(reply)) throw new Error('AI answer candidate reply must be an object');
-  if (question.operation === 'app.decide') {
-    const items = decideCandidates(question, reply);
+  const operation = itemOperation(question.operation);
+  if (operation) {
+    const items = operation.candidates(question, reply);
     if (!items.length) return;
     fs.mkdirSync(dir, {recursive: true});
-    for (const {key, text, answer} of items) {
-      // Why (#2450 slice 3): each item is reviewed independently, and recording never changes the committed answer table.
-      const table = {v: 1, about: 'Live AI item answer awaiting human review.', answers: {}, items: {'app.decide': {[key]: {text, answer}}}};
-      fs.writeFileSync(path.join(dir, itemCandidateName(key)), `${JSON.stringify(table, null, 2)}\n`);
+    for (const {key, text, answer, name} of items) {
+      // Why (30 Oct 2026, qu; #2450 slice 3): all registered items remain independently reviewed; recording never changes the committed table.
+      const table = {v: 1, about: 'Live AI item answer awaiting human review.', answers: {}, items: {[question.operation]: {[key]: {text, answer}}}};
+      fs.writeFileSync(path.join(dir, name), `${JSON.stringify(table, null, 2)}\n`);
     }
     return;
   }
@@ -176,15 +195,16 @@ export function refusedQuestions(env = process.env) {
 
 /** Apply the shared table-first rule; E2E_AI_ANSWERS_FILE permits isolated test tables. */
 export function storedAnswer(request, env = process.env) {
-  const mode = answersMode(env), table = loadTable(env.E2E_AI_ANSWERS_FILE || TABLE), question = questionOf(request, env, table), dir = artifactsOf(env);
-  // Why (29 Oct 2026, ap; owner-approved rule A): beta 4 missed 47 hash-keyed questions after setup text changed; question and declared-kind answers share one validated table before every cache and transport.
-  const found = question.unkeyable ? {} : answerFor(question, table);
+  const mode = answersMode(env), table = loadTable(env.E2E_AI_ANSWERS_FILE || TABLE), question = questionOf(request, env, table) || {unkeyable: 'unknown: question identity is not in the request'}, dir = artifactsOf(env);
+  // Why (29 Oct 2026, ap; owner-approved rule A): beta 4 missed 47 hash-keyed questions after setup text changed; question and declared-kind answers share one validated table before every cache and transport; a request no kind identifies is refused here too, never passed on.
+  const found = (question.unkeyable ? {} : answerFor(question, table)) || {};
   // Why (29 Oct 2026, ap): an explicit kind refusal is a stored answer, so it must stop before caches and live transports too.
   if (found.reply || found.refuse) return found;
   // Why (29 Oct 2026, a8; owner approved the sketch): those 47 misses reached live AI in strict replay, so backbone misses must refuse before cache, relay, broker or CLI selection.
   if (mode === 'backbone') {
-    // Why (#2450 slice 3): the registry must name the first missing item, even when product code swallows the refusal.
-    const error = refusal(suiteOf(env), found.missing ? {...question, unkeyable: found.missing} : question, question.unkeyable ? 'is unkeyable' : 'has no stored answer');
+    // Why (#2450 slice 3): the registry must name the first missing item (or, for an unidentifiable request, its bounded preview), even when product code swallows the refusal.
+    const failure = found.unkeyable || found.missing;
+    const error = refusal(suiteOf(env), failure ? {...question, unkeyable: failure} : question, question.unkeyable || found.unkeyable || !found.missing ? 'is unkeyable' : 'has no stored answer', request);
     const list = refusals.get(dir) || [];
     list.push({code: error.code, message: error.message, question});
     refusals.set(dir, list);

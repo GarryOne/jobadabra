@@ -112,6 +112,40 @@ test('quality leaves the speed budget and qualityai retains its larger live cloc
   assert.equal(quality.hangCaps[''], 30);
 });
 
+// Why (30 Oct 2026, qu): RECORD makes live calls; replay's measured caps must not kill healthy engine work.
+for (const [mode, stateSeconds, jobsSeconds, suiteMs, minutes] of [
+  ['record', 90, 360, 480000, 8], ['backbone', 30, 127.8, 162600, 3],
+]) test(`${mode}: quality exports and enforces the matching state, Jobs and whole-journey caps`, async t => {
+  const {ctx, time} = fixture(t);
+  process.env.E2E_AI_ANSWERS = mode;
+  const suite = await import(`../suites/quality.mjs?clock=${mode}`);
+  assert.equal(suite.hangCaps[''], stateSeconds);
+  assert.equal(suite.hangCaps['a Jobs check on the golden postings finishes and scores them'], jobsSeconds);
+  assert.equal(suite.minutes, minutes);
+
+  // An unresolved state read exercises the journey's own timer without running the app.
+  t.mock.timers.enable({apis: ['setTimeout']});
+  ctx.page.click = async () => {};
+  let reads = 0;
+  ctx.page.evaluate = async () => ++reads === 1 ? {running: null, queued: [], runs: []} : new Promise(() => {});
+  const journey = qualityJourney(ctx, {strict: true, wait: time});
+  const check = assert.rejects(journey.check('first Jobs check'), {name: 'QualityHangError', message: new RegExp(`did not finish in ${jobsSeconds} s`)});
+  await new Promise(setImmediate);
+  t.mock.timers.tick(jobsSeconds * 1000);
+  await check;
+
+  ctx.run = () => new Promise(() => {});
+  let settled = false;
+  const pending = suite.run(ctx).finally(() => { settled = true; });
+  const rejected = assert.rejects(pending, {name: 'QualityHangError', message: new RegExp(`the quality journey did not finish in ${suiteMs / 1000} s`)});
+  await new Promise(setImmediate);
+  t.mock.timers.tick(suiteMs - 1);
+  await new Promise(setImmediate);
+  assert.equal(settled, false);
+  t.mock.timers.tick(1);
+  await rejected;
+});
+
 test('quality sources contain no long sleeps or step overrides above the measured caps', () => {
   for (const file of ['../suites/quality.mjs', '../lib/quality-journey.mjs']) {
     const text = fs.readFileSync(new URL(file, import.meta.url), 'utf8');

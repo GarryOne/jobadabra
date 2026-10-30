@@ -1,6 +1,7 @@
 // CI's side of the Codex broker (jobadabra-web workers/codex-broker): a test-code Messages request becomes one broker call, and the broker's answer comes back in Messages shape.
 // Why (28 Oct 2026, owner): CI's AI runs on his Codex plan; a job proves itself with GitHub's per-run OIDC token (the login never leaves the broker), and each workflow keeps its Claude tier:
 // Haiku -> small (gpt-6-luna), Sonnet -> mid (gpt-6.1-sol), Opus -> large (gpt-6-astra) (jobadabra-web lib/tiers.mjs is the server's side of the same map).
+// Job: report health
 export const AUDIENCE = 'jobadabra-codex-broker';
 /** The broker's address: takes env, returns CODEX_BROKER_URL when set, else the deployed workers.dev address (jobadabra-web workers/codex-broker). A wrong address fails as 'unreachable' in askBroker. */
 export const BROKER_URL = env => env.CODEX_BROKER_URL || 'https://jobadabra-codex-broker.jobpilotto.workers.dev';
@@ -27,7 +28,7 @@ export async function runToken(env = process.env, fetchImpl = fetch) {
 }
 
 /**
- * Asks the broker. -> {ok: true, message: {content, stop_reason, usage}, tier, model} or {ok: false, status, detail}.
+ * Asks the broker. -> {ok: true, message: {content, stop_reason, usage}, tier, model, ms} (ms is container Codex execution, excluding its later rate-limit lookup) or {ok: false, status, detail}.
  * status 'capped' = the broker's budget or login said no (429/503: skip with the reason, never another provider); 'no-token' = not a job with id-token; 'unreachable' = no answer.
  */
 export async function askBroker(body, {env = process.env, fetchImpl = fetch} = {}) {
@@ -38,5 +39,5 @@ export async function askBroker(body, {env = process.env, fetchImpl = fetch} = {
   const data = await answer.json().catch(() => ({}));
   if (answer.status === 429 || answer.status === 503) return {ok: false, status: 'capped', detail: `broker: ${data.why || answer.status}`};
   if (!answer.ok) return {ok: false, status: answer.status, detail: `broker: ${data.why || data.error || answer.status}`};
-  return {ok: true, tier: data.tier, model: data.model, message: {content: [{type: 'text', text: data.reply}], stop_reason: 'end_turn', usage: {input_tokens: data.tokens?.input || 0, output_tokens: data.tokens?.output || 0}}};
+  return {ok: true, tier: data.tier, model: data.model, ms: Number.isFinite(data.ms) ? data.ms : null, message: {content: [{type: 'text', text: data.reply}], stop_reason: 'end_turn', usage: {input_tokens: data.tokens?.input || 0, output_tokens: data.tokens?.output || 0}}};
 }

@@ -3,8 +3,34 @@ import {spawn} from 'node:child_process';
 import http from 'node:http';
 import {pathToFileURL} from 'node:url';
 import {aiProvider} from '../../desktop/e2e/lib/ai-provider.mjs';
-import {askBroker} from '../../desktop/e2e/lib/broker-client.mjs';
+import {askBroker, toBrokerCall} from '../../desktop/e2e/lib/broker-client.mjs';
 import {answerViaBroker} from '../../desktop/e2e/lib/broker-relay.mjs';
+
+/** Measure each relay call without changing its answer. `waited` is the client residual, not a measurement of queue time alone; no prompt text is logged. */
+export function timedRelay({env = process.env, ask = askBroker, now = Date.now, log = line => console.error(line)} = {}) {
+  let inFlight = 0;
+  return async (body, kind = 'unlabelled') => {
+    const started = now(), call = toBrokerCall(body);
+    let chars = call.prompt.length, brokerMs = null, sent = false, status = 'error';
+    inFlight++;
+    try {
+      const answer = await answerViaBroker(body, {env, ask: async (wire, options) => {
+        chars = toBrokerCall(wire).prompt.length;
+        sent = true;
+        const result = await ask(wire, options);
+        if (Number.isFinite(result.ms)) brokerMs = result.ms;
+        return result;
+      }});
+      status = answer.status;
+      return answer;
+    } finally {
+      const total = now() - started;
+      const label = String(kind).replace(/[^a-zA-Z0-9_.-]/g, '_').slice(0, 64);
+      log(`relay: ${call.tier} total ${total} broker ${brokerMs ?? 'na'} waited ${brokerMs === null ? 'na' : total - brokerMs} in-flight ${inFlight} prompt-chars ${chars} kind ${label} start ${started} status ${status} sent ${sent ? 'yes' : 'no'} tools ${body.tools?.length || 0}`);
+      inFlight--;
+    }
+  };
+}
 
 /** Run one command on the Codex relay and return its exit code. Invariant: every proxy request uses the broker; no API fallback, even on refusal. */
 export async function runOnCodex(command, args, {env = process.env, ask = askBroker} = {}) {
@@ -12,11 +38,12 @@ export async function runOnCodex(command, args, {env = process.env, ask = askBro
     throw new Error('the persona Codex relay requires CI, the Codex provider and GitHub OIDC');
   }
   // Why (30 Oct 2026, Gitar on #2635): persona quality must be live; the e2e proxy's golden answers, stale stamps and replay cache cannot measure a changed search.
+  const relay = timedRelay({env, ask});
   const server = http.createServer(async (request, response) => {
     const chunks = [];
     for await (const chunk of request) chunks.push(chunk);
     try {
-      const answer = await answerViaBroker(JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}'), {env, ask});
+      const answer = await relay(JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}'), request.headers['x-jp-action'] || 'unlabelled');
       response.writeHead(answer.status, {'content-type': answer.contentType});
       response.end(answer.body);
     } catch (error) {

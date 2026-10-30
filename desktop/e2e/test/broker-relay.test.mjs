@@ -130,3 +130,32 @@ test('a persona stamped prompt always reaches Codex, even when the e2e golden st
   assert.equal(code, 0);
   assert.equal(asks, 1);
 });
+
+
+test('persona timing logs total, broker execution, residual and concurrent calls without prompt contents', async () => {
+  const {timedRelay} = await import('../../../tools/persona-search/codex.mjs');
+  let clock = 1000;
+  const lines = [], finish = [];
+  const relay = timedRelay({now: () => clock, log: line => lines.push(line),
+    ask: () => new Promise(resolve => finish.push(() => resolve({ok: true, ms: 70, model: 'gpt-6-luna', message: {content: [{type: 'text', text: 'ok'}], stop_reason: 'end_turn', usage: {input_tokens: 1, output_tokens: 1}}})))});
+  const first = relay(request({messages: [{role: 'user', content: 'private-prompt'}]}), 'places');
+  const second = relay(request(), 'decide');
+  await new Promise(resolve => setImmediate(resolve));
+  clock = 1120;
+  finish[0]();
+  assert.equal((await first).status, 200);
+  clock = 1150;
+  finish[1]();
+  await second;
+  assert.match(lines[0], /^relay: small total 120 broker 70 waited 50 in-flight 2 prompt-chars 20 kind places start 1000 status 200 sent yes tools 0$/);
+  assert.match(lines[1], /total 150 broker 70 waited 80 in-flight 1/);
+  assert.ok(lines.every(line => !line.includes('private-prompt')));
+});
+
+test('persona timing records rejected web tools and missing broker measurements honestly', async () => {
+  const {timedRelay} = await import('../../../tools/persona-search/codex.mjs');
+  const lines = [];
+  const relay = timedRelay({now: () => 10, log: line => lines.push(line), ask: async () => { throw new Error('must not send a tool request'); }});
+  assert.equal((await relay(request({tools: [{type: 'web_search_20250305', name: 'web_search'}]}), 'scout')).status, 400);
+  assert.match(lines[0], /broker na waited na .*status 400 sent no tools 1$/);
+});

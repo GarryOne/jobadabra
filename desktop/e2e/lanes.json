@@ -74,6 +74,27 @@
     },
     "visitread": {
       "aiMissesMax": 0
+    },
+    "calendar": {
+      "aiMissesMax": 0
+    },
+    "failuresnotion": {
+      "aiMissesMax": 0
+    },
+    "storemove": {
+      "aiMissesMax": 0
+    },
+    "quality": {
+      "aiMissesMax": 0
+    },
+    "foryou": {
+      "aiMissesMax": 0
+    },
+    "pool": {
+      "aiMissesMax": 0
+    },
+    "visitsauto": {
+      "aiMissesMax": 0
     }
   }
 }

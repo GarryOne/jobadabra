@@ -281,6 +281,10 @@ test('raising the harness-size ratchet needs a Harness-grow reason; lowering it 
   assert.match(growthProblem(change(100, 150), ['Harness-grow:   ']), /Harness-grow/);
   assert.equal(growthProblem(change(100, 150), ['Change\n\nHarness-grow: the stored answers for personas']), '');
   assert.equal(growthProblem(change(150, 100), ['Change']), '');
+  const slack = (before, after) => [{file, before: JSON.stringify({harnessLines: 100, slack: before}), after: JSON.stringify({harnessLines: 100, slack: after})}];
+  assert.match(growthProblem(slack(100, 100000), ['Change']), /slack/);
+  assert.equal(growthProblem(slack(100, 100000), ['Change\n\nHarness-grow: wider band while the shrink lands']), '');
+  assert.equal(growthProblem(slack(100, 50), ['Change']), '');
   assert.equal(growthProblem(change(100, 100), ['Change']), '');
   assert.equal(growthProblem([{file: lib, before: 'a', after: 'b'}], ['Change']), '');
 });

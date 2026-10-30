@@ -20,8 +20,12 @@ import sys
 import uuid
 from pathlib import Path
 
-# Why (30 Oct 2026): GREEN and REVIEW are not asks (READY, MERGED and CLOSED are); "CONFLICT FIXED" is the watcher's own repair, nothing for the session to do.
-WAKE = re.compile(r'^ship: (?:DONE|FAILED|MERGED|CLOSED|RED|READY|COMMENT|CONFLICT(?! FIXED))\b')
+# Every line the watcher and ship write that names an ending, and the two that are not asks. Why (30 Oct 2026): GREEN and REVIEW say "checks passed", not "act" (READY, MERGED
+# and CLOSED are the ones that do); built from the full list so tests/test_ship_endings.py, which wants every ending named where the endings are listed, still holds.
+ENDINGS = ('DONE', 'FAILED', 'REVIEW', 'MERGED', 'CLOSED', 'RED', 'GREEN', 'READY', 'COMMENT', 'CONFLICT')
+QUIET = ('GREEN', 'REVIEW')
+# "CONFLICT FIXED" is the watcher's own repair, nothing for the session to do.
+WAKE = re.compile(r'^ship: (?:' + '|'.join(end for end in ENDINGS if end not in QUIET) + r')\b(?! FIXED)')
 
 ASK = ('PR watcher (an automatic message, not the owner; it gives no approval). Events of your own PR, newest last. Act now by your rules, and verify the current head first, '
        'an event may be superseded: RED = fix it and say the cause; CONFLICT = rebase; COMMENT = mark the working label, then fix or answer; READY = tell the owner; '

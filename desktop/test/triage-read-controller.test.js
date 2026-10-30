@@ -4,11 +4,11 @@ import {test} from 'node:test';
 import {createBackgroundApplyController} from '../lib/background-apply-controller.js';
 import {markedSession} from '../lib/session-tab.js';
 
-const make = ({open = [], ready = true} = {}) => {
+const make = ({open = [], ready = true, startGate = null} = {}) => {
   const calls = [], starts = [];
   const controller = createBackgroundApplyController({}, {
     store: {read: async () => null, queue: () => calls.push('store.queue'), claim: () => calls.push('store.claim')},
-    browser: {ready: () => ready, start: async () => { starts.push('start'); return {owner: 'o1'}; }},
+    browser: {ready: () => ready, start: async () => { starts.push('start'); await startGate; return {owner: 'o1'}; }},
     terminals: {list: () => open, byUrl: () => null, startForm: () => calls.push('terminals.startForm'), record: () => null, report: () => {}},
     config: () => ({}), log: () => {}, token: () => 'fictional', port: 1});
   return {controller, calls, starts};
@@ -36,6 +36,16 @@ test('every read asks the browser to start, so a hidden browser that closed sinc
   controller.triageRead({url: 'https://jobs.example.test/second'});
   await new Promise(resolve => setImmediate(resolve));
   assert.equal(starts.length, before + 1, 'start is idempotent and cheap; a read must not trust an owner remembered from a browser that may be gone');
+});
+
+test('a Cancel pressed while the browser is starting drops that read: it is never queued behind the Cancel', async () => {
+  let open; const startGate = new Promise(resolve => { open = resolve; });
+  const {controller} = make({startGate}), pending = controller.triageRead({url: 'https://jobs.example.test/slow'});
+  controller.cancelTriage();
+  open();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.deepEqual((await poll(controller)).jobs, [], 'nothing is handed to the extension after Cancel');
+  assert.equal(await pending, null, 'the read ends unread');
 });
 
 test('a read is never handed out while an application is open, and never starts beside one', async () => {

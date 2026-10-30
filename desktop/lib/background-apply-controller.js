@@ -123,10 +123,13 @@ export function createBackgroundApplyController(storage, {store = null, browser 
     return next ? [{session: next.id, url: sessionTabUrl(next.url, next.id), mode: 'read'}] : [];
   };
   /** Reads one job's application form in the hidden browser without filling or pressing anything; resolves with the mode table's flags, or null when nothing could be read (no browser, an application open, a timeout). Takes the job ({url}). */
+  let triageCancels = 0;   // counts Cancels, so a read that was waiting for the browser can tell one arrived
   async function triageRead(job) {
     if (!browserOf().ready() || terminals.list().some(item => item.background && !item.outcome)) return null;
     // Why (30 Oct 2026, g2's G4 step, #2636): `owner` outlives the browser it came from; a read after the hidden browser closed queued for a poll that never came and ended at the 90 s timeout. start() connects to a live browser or launches one, so every read asks.
+    const generation = triageCancels;
     ({owner} = await browserOf().start({port, token: token()}));
+    if (generation !== triageCancels) return null;   // Cancel came while the browser was starting: the read is never queued behind it (Gitar on #2636)
     return reader.read(job?.url);
   }
   const unsaved = new Set();   // jobs an earlier run held whose quit hand-over write threw: the poll leaves them out until one saves (Gitar on #2598)
@@ -261,5 +264,5 @@ export function createBackgroundApplyController(storage, {store = null, browser 
       return {ok: true, handoff};
     });
   }
-  return {enqueue, handle, judgment, reveal, outcome, cancel, page, submitControl, handOver, sweepInterrupted, sweepStalled, triageRead, cancelTriage: () => reader.cancelAll()};
+  return {enqueue, handle, judgment, reveal, outcome, cancel, page, submitControl, handOver, sweepInterrupted, sweepStalled, triageRead, cancelTriage: () => { triageCancels += 1; return reader.cancelAll(); }};
 }

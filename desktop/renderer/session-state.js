@@ -188,6 +188,21 @@ const silentCase = (item, formsOpen) => !!item && !formsOpen?.known && !isSubmit
 export const chromeSilent = (item, formsOpen, sinceStart) => silentCase(item, formsOpen) && (sinceStart > WAIT_MS || !!formsOpen?.linkOff);
 /** -> whether the card says the neutral "Waiting for Chrome…": no report yet, past the first look, before the warning; never when the app's own connection is off (see chromeSilent). Reads only its arguments. */
 export const chromeWaiting = (item, formsOpen, sinceStart) => silentCase(item, formsOpen) && !formsOpen?.linkOff && sinceStart > CHECK_MS && sinceStart <= WAIT_MS;
+/**
+ * The phase of a session's card that the clock alone can change: 'silent' ("Chrome isn't reporting"), 'waiting' ("Waiting for Chrome…"), 'checking' (the first look),
+ * 'lost' ("Tab not found"), or '' when none applies. Reads only its arguments.
+ */
+export function tabPhase(item, formsOpen, sinceStart, now = Date.now()) {
+  if (chromeSilent(item, formsOpen, sinceStart)) return 'silent';
+  if (chromeWaiting(item, formsOpen, sinceStart)) return 'waiting';
+  if (checkingTabs(item, formsOpen, sinceStart, now)) return 'checking';
+  return tabNotFound(item, formsOpen, sinceStart, now) ? 'lost' : '';
+}
+/**
+ * Every session's tabPhase as one string: it changes exactly when some card's time-based phase does, so the window redraws then (pages/activity.js).
+ * Why (30 Oct 2026, beta 41078746088): one timer at CHECK_MS redrew the cards once, so "Waiting for Chrome…" stayed up past WAIT_MS until something else redrew them.
+ */
+export const tabPhases = (items, formsOpen, sinceStart, now = Date.now()) => (items || []).map(item => `${item.id}:${tabPhase(item, formsOpen, sinceStart, now)}`).join(' ');
 /** The pill of a card whose tab can't be seen: the connection, or Chrome. */
 export const silentPill = formsOpen => (formsOpen?.linkOff ? 'Connection off' : 'Chrome not reporting');
 /** The one sentence for a closed connection (`formsOpen.linkOff`: {port, code}), on every card it stops: Chrome's, and a queued hidden-browser job's (`who`: whose extension reports).

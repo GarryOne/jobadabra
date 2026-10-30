@@ -51,13 +51,15 @@ class AskAgainWhenEmpty(unittest.TestCase):
     def test_an_it_role_is_asked_again_alone_and_that_answer_decides(self):
         # Free AI put a different plain SRE posting in "software" on each quality run (owner, 26 Oct 2026: "Ask role alone").
         sre = dict(JOB, title='Senior SRE', description='Senior SRE for our platform. Kubernetes, Terraform, incident response. Hybrid in Bern.')
-        client = Answers(full(role_family='software'), {'role_family': 'sre'})
+        client = Answers(full(role_family='software'), {'duties': 'incident response', 'role_family': 'sre'})
         data, usage = enrich.extract(client, 'free-ai-model', sre)
         self.assertEqual(len(client.requests), 2)
         role = client.requests[1]
-        self.assertEqual(role['output_config']['format']['schema']['required'], ['role_family'])
+        # Why (30 Oct 2026, a8, quality golden 3006): the narrow re-ask fills duties first and keeps only the family.
+        self.assertEqual(role['output_config']['format']['schema']['required'], ['duties', 'role_family'])
         self.assertEqual(role['system'], enrich.ROLE_SYSTEM, 'its own small question, not the 16-fact prompt')
         self.assertEqual(data['role_family'], 'sre')
+        self.assertNotIn('duties', data)
         self.assertEqual(usage.input_tokens, 200)
 
     def test_a_role_outside_it_is_asked_once(self):

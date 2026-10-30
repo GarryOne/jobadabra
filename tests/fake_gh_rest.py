@@ -15,6 +15,12 @@ d = Path(os.environ['FAKE_GH_DIR'])
 argv = sys.argv[1:]
 with open(d / 'calls', 'a') as f:
     f.write(' '.join(argv) + '\n')
+if argv[:1] == ['api'] and 'Accept: application/vnd.github.raw' in argv:
+    raw = d / 'rest' / re.sub(r'[^A-Za-z0-9]', '_', argv[-1])
+    if raw.exists():
+        print(raw.read_text())
+        sys.exit(0)
+    sys.exit(1)
 if argv[:1] != ['api'] or '-i' not in argv:
     print(f'fake gh: unknown call {argv}', file=sys.stderr)
     sys.exit(1)

@@ -3,8 +3,10 @@
 // "≤ 10% of last 90 texts". The live run adds its night to a history the workflow keeps between nights (e2e.yml, cache quality-rate-*), and a step is red only
 // when its rate breaks a bar; the gate (replayed answers) still checks every fact and the per-run judge allowance exactly. /admin/operations/e2e draws the same
 // rates (jobadabra-web admin/e2e-quality.js). Guard: test/quality-rate.test.mjs.
+// Job: run tolerant suites as rates
 import fs from 'node:fs';
 import path from 'node:path';
+import {judgeVerdict} from './quality.mjs';
 
 // Why (#2211, #2214, owner 27 Oct 2026): his bars, set from 34 live runs' measured noise (scores 85.4% within 8; facts 2,079/2,079; flags 5.9%, worst 8.9%).
 export const BARS = {pairs: 90, agree: 0.8, jumps: 0.02, within: 8, jump: 20, factNights: 10, facts: 0.995, texts: 90, flagged: 0.1};
@@ -59,7 +61,10 @@ export function rateOf(nights = []) {
 }
 
 const pct = (part, all) => `${Math.round((part / all) * 1000) / 10}%`;
-const verdict = (judged, line, problems, from) => ({ok: !problems.length, judged, line: judged ? line : `${line}; judged from ${from}`, problems});
+// Why (30 Oct 2026, owner via a8, design D/E): a PR judges its own facts/flags; old nights are information, with the same bars still judged on main.
+const verdict = (judged, line, problems, from, currentProblems = []) => process.env.E2E_QUALITY_JUDGE_HISTORY === '0'
+  ? {ok: !currentProblems.length, judged: false, line: `${line}; history is information only`, problems: currentProblems}
+  : {ok: !problems.length, judged, line: judged ? line : `${line}; judged from ${from}`, problems};
 
 // Score steadiness -> {ok, judged, line, problems}.
 export function rateVerdict(rate) {
@@ -72,20 +77,23 @@ export function rateVerdict(rate) {
   return verdict(judged, line, problems, `${MIN_PAIRS} pairs`);
 }
 
-// Facts written exactly over the last 10 nights -> {ok, judged, line, problems}.
-export function factsVerdict({facts}) {
+// Facts written exactly over the last 10 nights, or this run's exact counts on a PR -> {ok, judged, line, problems}.
+export function factsVerdict({facts}, current) {
   const judged = facts.nights >= MIN_FACT_NIGHTS;
   const line = facts.total ? `${pct(facts.exact, facts.total)} of the last ${facts.total} facts exact (bar ${BARS.facts * 100}%), ${facts.nights} night(s)` : 'no fact checked yet';
   const problems = judged && facts.exact / facts.total < BARS.facts ? [`only ${facts.exact} of ${facts.total} facts (${pct(facts.exact, facts.total)}) were exact over the last ${facts.nights} nights, under the ${BARS.facts * 100}% bar`] : [];
-  return verdict(judged, line, problems, `${MIN_FACT_NIGHTS} nights`);
+  return verdict(judged, line, problems, `${MIN_FACT_NIGHTS} nights`, current && current.exact !== current.total
+    ? [`only ${current.exact} of ${current.total} facts were exact in this run`] : []);
 }
 
-// Score texts the judge flagged (invented or contradicting) over the last 90 -> {ok, judged, line, problems}.
-export function flagsVerdict({flags}) {
+// Judge flags over the last 90 texts, or this run's existing judge allowance on a PR -> {ok, judged, line, problems}.
+export function flagsVerdict({flags}, current) {
   const judged = flags.texts >= MIN_TEXTS;
   const line = flags.texts ? `${pct(flags.flagged, flags.texts)} of the last ${flags.texts} score texts flagged (bar ${BARS.flagged * 100}%), ${flags.nights} night(s)` : 'no score text judged yet';
   const problems = judged && flags.flagged / flags.texts > BARS.flagged ? [`${flags.flagged} of ${flags.texts} score texts (${pct(flags.flagged, flags.texts)}) were flagged over the last ${flags.nights} nights, over the ${BARS.flagged * 100}% bar`] : [];
-  return verdict(judged, line, problems, `${MIN_TEXTS} texts`);
+  const allowance = current && judgeVerdict(Array(current.flagged), current.judged);
+  return verdict(judged, line, problems, `${MIN_TEXTS} texts`, allowance && !allowance.ok
+    ? [`${current.flagged} of ${current.judged} score texts were flagged in this run, over the ${allowance.allowed} text allowance`] : []);
 }
 
 export function readHistory(file) {

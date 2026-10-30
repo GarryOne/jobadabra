@@ -515,6 +515,8 @@ jobs:
       # Why (29 Oct 2026, owner-approved design rule A): quality uses reviewed question answers, never strict hash replay.
       E2E_AI_ANSWERS: ${{ matrix.suite == 'quality' && 'backbone' || 'off' }}
       E2E_QUALITY_HISTORY: ${{ matrix.suite == 'qualityai' && format('{0}/desktop/e2e/.quality-rate/history.json', github.workspace) || '' }}
+      # Why (30 Oct 2026, owner via a8, design D/E): PRs judge this run; historical bars stay on main, nightly and beta dispatches.
+      E2E_QUALITY_JUDGE_HISTORY: ${{ github.ref == 'refs/heads/main' && '1' || github.event_name == 'schedule' && '1' || github.event_name == 'workflow_dispatch' && '1' || '0' }}
       E2E_BLOB_DIR: ${{ github.workspace }}/blob-report   # the suite's part of the run's HTML report (the report job merges them)
       E2E_RUN_KIND: gate   # how an issue names the run (lib/replay.mjs)
       CI_FREE_AI_CF_ACCOUNT_ID: ${{ secrets.CI_FREE_AI_CF_ACCOUNT_ID }}   # Why (28 Oct 2026, beta 3): the cap's account and token (lib/ai-cap.mjs) were set only on the AI preflight, so every suite step read an "unreadable" count, took the AI as capped and failed its AI steps (failureschannels, focusdismiss, ...). They belong to the job that runs the suites. Guard: tests/test_ci_free_ai.py

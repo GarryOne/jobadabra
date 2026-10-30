@@ -318,8 +318,7 @@ def lane_greys(repo, runs, jobs, read_lanes=None):
     if not reds:
         return {}
     try:
-        read_lanes = read_lanes or (lambda: json.loads(gh('api', '-H', 'Accept: application/vnd.github.raw', f'repos/{repo}/contents/desktop/e2e/lanes.json?ref={base_branch()}')))
-        listed = read_lanes()['suites']
+        listed = read_lanes()['suites'] if read_lanes else main_state_module(repo, os.environ.get('GITHUB_SHA') or base_branch(), 'pr_lanes').read_lanes(repo, gh, base_branch())
         return {job['id']: listed[suite_of(job['name'])]['lane'] for job in reds if (listed.get(suite_of(job['name'])) or {}).get('lane') in ('tolerant', 'suspended')}
     except Exception as error:   # Why (28 Oct 2026, same rule as main_red_greys): the verdict is always written; a registry not read keeps every red red
         print(f'lane registry not read ({type(error).__name__}: {error}): every red stays red')

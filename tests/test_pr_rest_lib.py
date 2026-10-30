@@ -78,6 +78,44 @@ class PrRestLibTest(unittest.TestCase):
         self.put('repos/o/r/commits/h1/status', {'statuses': []})
         self.assertEqual([(c['name'], c['bucket']) for c in json.loads(self.sh('pr_checks o/r h1')[1])], [('Pull request checks', 'pass')])
 
+    def test_ship_ignores_tolerant_failures_but_still_fails_backbone_checks(self):
+        """#2533: exercise ship's real wait loop; all mutations are disabled, REST is file-backed."""
+        self.put('repos/o/r/contents/desktop/e2e/lanes.json?ref=main',
+                 {'v': 1, 'suites': {'qualityai': {'lane': 'tolerant'}}})
+        self.put('repos/o/r/pulls/7', {'number': 7, 'html_url': 'u', 'title': '[qu] Quality',
+                                     'head': {'sha': 'h1', 'ref': 'topic'}, 'state': 'open', 'mergeable': True})
+        self.put('repos/o/r/commits/h1/status', {'statuses': [{'context': 'All checks passed', 'state': 'success'}]})
+        for failed, want, registry in [('qualityai', 0, True), ('qualityai-1of2', 0, True),
+                                       ('settings', 1, True), ('qualityai', 1, False)]:
+            with self.subTest(failed=failed, registry=registry):
+                if not registry:
+                    (self.tmp / 'rest' / 'repos_o_r_contents_desktop_e2e_lanes_json_ref_main').unlink()
+                self.put('repos/o/r/commits/h1/check-runs?per_page=100', {'check_runs': [
+                    {'id': 1, 'name': failed, 'status': 'completed', 'conclusion': 'failure'},
+                    {'id': 2, 'name': 'python', 'status': 'completed', 'conclusion': 'success'}]})
+                script = f'''source "{ROOT}/tools/ship-pr.sh"
+tools="{ROOT}/tools"; branch=topic; SHIP_PR_TIMEOUT=0
+git() {{ :; }}
+ship_pr_no_stacking() {{ :; }}
+ship_repo() {{ echo o/r; }}
+pr_of_head() {{ echo 7; }}
+ship_pr_push() {{ :; }}
+ship_watch_start() {{ :; }}
+ship_review() {{ return 0; }}
+ship_flow_step_red() {{ return 1; }}
+session_name() {{ echo '?'; }}
+step() {{ echo "$*"; }}
+ship_pr_land
+echo "REVIEW $review_n"'''
+                result = subprocess.run(['bash', '-e', '-c', script], env=self.env, cwd=self.tmp,
+                                        capture_output=True, text=True, timeout=10)
+                self.assertEqual(result.returncode, want, result.stdout + result.stderr)
+                if want:
+                    self.assertIn(f"check '{failed}' failed", result.stderr)
+                else:
+                    self.assertIn('REVIEW 7', result.stdout)
+                    self.assertNotIn('ship: FAILED', result.stderr)
+
     def test_the_repo_comes_from_a_github_origin_only(self):
         for url, want in (('git@github.com:GarryOne/jobadabra-web.git', 'GarryOne/jobadabra-web'), ('https://github.com/GarryOne/jobadabra', 'GarryOne/jobadabra'),
                           ('/tmp/origin.git', '')):

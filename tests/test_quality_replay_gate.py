@@ -33,6 +33,23 @@ class QualityReplayGateTests(unittest.TestCase):
                             for other in ('qualityai', 'jobs', 'apply'):
                                 self.assertEqual(expression(mode.group(1), event=event, attempt=attempt, suite=other), 'off')
 
+    def test_desktop_judges_history_only_on_main_schedule_or_dispatch(self):
+        value = env_line((WORKFLOWS / 'desktop.yml').read_text(), 'E2E_QUALITY_JUDGE_HISTORY')
+        self.assertIsNotNone(value)
+        for event, ref, want in [('pull_request', 'refs/pull/2533/merge', '0'),
+                                 ('push', 'refs/heads/main', '1'), ('schedule', 'refs/heads/main', '1'),
+                                 ('workflow_dispatch', 'refs/heads/beta', '1'), ('push', 'refs/heads/topic', '0')]:
+            # Evaluate the actual workflow decision with the existing expression evaluator.
+            expression_value = value.replace("github.ref == 'refs/heads/main'", "'yes' == 'yes'" if ref == 'refs/heads/main' else "'no' == 'yes'")
+            self.assertEqual(expression(expression_value, event=event), want, (event, ref))
+
+    def test_dispatched_pr_suites_report_history_but_nightly_beta_and_after_merge_judge_it(self):
+        value = env_line((WORKFLOWS / 'e2e.yml').read_text(), 'E2E_QUALITY_JUDGE_HISTORY')
+        self.assertIsNotNone(value)
+        for suites, after, want in [('qualityai', '', '0'), ('', '', '1'), ('qualityai', 'merged-sha', '1')]:
+            expression_value = value.replace('inputs.pr_suites', repr(suites)).replace('inputs.after_merge', repr(after))
+            self.assertEqual(expression(expression_value), want, (suites, after))
+
     def test_quality_no_longer_sets_hash_strictness_or_expiry(self):
         for name in SUITE_WORKFLOWS:
             text = (WORKFLOWS / name).read_text()

@@ -100,8 +100,11 @@ ship_pr_land() {
               step "pull request #$n is merged: $sha"; return 0 ;;
       CLOSED) ship_pr_fail "pull request #$n was closed without merging: $(jq -r '.url' <<<"$view")" ;;
     esac
-    # Every check the PR started, not only the required ones (14 Oct 2026: only the 3 checks that start on every PR are required; the suites start by `paths:`).
+    # Why (30 Oct 2026, owner via a8, design D): keep every started check (14 Oct: suites start by paths), except BASE's grey tolerant failures.
     checks="$(pr_checks "$repo" "$(jq -r '.headRefOid // empty' <<<"$view" 2>/dev/null)" || true)"
+    if jq -e 'any(.[]?; .bucket == "fail" or .bucket == "cancel")' <<<"${checks:-[]}" >/dev/null 2>&1; then
+      out="$(python3 "$tools/pr_lanes.py" "$repo" "${GITHUB_BASE_REF:-main}" <<<"${checks:-[]}")" && checks="$out"
+    fi
     failing="$(jq -r '[.[]? | select(.bucket == "fail" or .bucket == "cancel")] | first // empty | "\(.name)\t\(.link)"' <<<"${checks:-[]}" 2>/dev/null)" || failing=""
     # A run the next push superseded shows as cancelled (every PR workflow cancels its older run, 15 Oct 2026): not a failure while a newer run may be starting. Only a check that
     # stays cancelled over 3 more looks (about a minute) counts, as one that failed.

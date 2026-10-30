@@ -21,6 +21,8 @@ const contracts = () => capturePrompts(ROOT);
 const requests = JSON.parse(fs.readFileSync(new URL('../fixtures/golden/ai-format-python.json', import.meta.url))).entries;
 const place = () => structuredClone(requests.find(entry => entry.kind === 'app.place').request);
 const responses = body => ({model: 'other', instructions: body.system, input: body.messages.map(turn => ({...turn, content: [{type: 'input_text', text: turn.content}]})), text: {format: body.output_config.format}});
+const stepOf = kind => requests.find(entry => entry.kind === kind).action, PLACE = stepOf('app.place');
+const step = kind => ({'x-jp-action': stepOf(kind)});
 function fixture(t) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'answer-prompts-')), file = path.join(dir, 'answers.json');
   t.after(() => fs.rmSync(dir, {recursive: true, force: true}));
@@ -72,20 +74,34 @@ test('fresh capture includes all nine families and both title/visit variants; st
 });
 
 test('both provider shapes hash full schemas but exclude persona, posting, batch order and transport noise', () => {
-  const current = contracts(), original = place(), expected = promptOf(original, current);
+  const current = contracts(), original = place(), expected = promptOf(original, current, PLACE);
   const noisy = place(); noisy.model = 'different'; noisy.system[0].cache_control = {type: 'ephemeral'};
   noisy.messages[0].content = 'Their places (JSON): {"persona":"other","date":"2099-01-01"}\nThe job locations:\n1. Elsewhere\n2. Somewhere';
-  assert.deepEqual(promptOf(noisy, current), expected);
-  assert.deepEqual(promptOf(responses(noisy), current), expected);
+  assert.deepEqual(promptOf(noisy, current, PLACE), expected);
+  assert.deepEqual(promptOf(responses(noisy), current, PLACE), expected);
   for (const [family, variants] of Object.entries(current)) for (const value of Object.values(variants)) {
     const body = {system: value.system, messages: [{role: 'user', content: value.user.replace(/\{\w+\}/g, 'other persona/posting/date/order')}], output_config: {format: {schema: value.schema}}};
-    assert.equal(promptOf(body, current).hash, familyHashes(current)[family]);
-    assert.deepEqual(promptOf(responses(body), current), promptOf(body, current));
+    assert.equal(promptOf(body, current, value.action).hash, familyHashes(current)[family]);
+    assert.deepEqual(promptOf(responses(body), current, value.action), promptOf(body, current, value.action));
   }
   const reordered = place(); reordered.output_config.format.schema = Object.fromEntries(Object.entries(reordered.output_config.format.schema).reverse());
-  assert.deepEqual(promptOf(reordered, current), expected);
+  assert.deepEqual(promptOf(reordered, current, PLACE), expected);
   reordered.output_config.format.schema.properties.locations.items.properties.km.description += ' Changed.';
-  assert.notEqual(promptOf(reordered, current).hash, expected.hash);
+  assert.notEqual(promptOf(reordered, current, PLACE).hash, expected.hash);
+});
+
+test('a sender outside the nine families is never claimed by a shared schema root; a family\'s own step still is (Gitar on #2606)', t => {
+  const {file, env} = fixture(t); stampAnswers({file, all: true});
+  const current = contracts(), shaped = (root, text) => ({system: [{type: 'text', text}], messages: [{role: 'user', content: 'An alert email'}],
+    output_config: {format: {schema: {type: 'object', required: [root], properties: {[root]: {type: 'array', items: {type: 'integer'}}}}}}});
+  // Real roots and steps: job_alerts' jobs, page_reader's jobs (scout), web_search's PICK_SCHEMA keep (job_page_pick), and a request with no step.
+  for (const [action, body] of [['mail', shaped('jobs', 'You read one job-alert email.')], ['scout', shaped('jobs', 'You read one web page.')],
+    ['job_page_pick', shaped('keep', 'You get a company and numbered web addresses.')], ['', shaped('keep', 'You get a job seeker\'s roles and places.')]]) {
+    assert.equal(promptOf(body, current, action), undefined, action);
+    assert.doesNotThrow(() => { try { storedAnswer({body, headers: action ? {'x-jp-action': action} : {}}, env); } catch (error) { if (/stale/.test(error.message)) throw error; } });
+  }
+  const reworded = place(); reworded.system[0].text = 'A new instruction opening.';
+  assert.equal(promptOf(reworded, current, PLACE).family, 'app.place');
 });
 
 test('wire instruction/framing and schema edits refuse before lookup in all modes while place keys stay stable', t => {
@@ -97,7 +113,7 @@ test('wire instruction/framing and schema edits refuse before lookup in all mode
       body => { body.output_config.format.schema.properties.locations.items.properties.km.description += ' Changed description.'; },
       body => { body.output_config.format.schema.properties.locations = null; }]) {
       const body = place(); change(body);
-      assert.throws(() => storedAnswer({body: provider(body)}, {...env, E2E_AI_ANSWERS: mode}), /E2E_AI_ANSWER_MISSING: stale: prompt changed app.place/);
+      assert.throws(() => storedAnswer({body: provider(body), headers: step('app.place')}, {...env, E2E_AI_ANSWERS: mode}), /E2E_AI_ANSWER_MISSING: stale: prompt changed app.place/);
     }
   }
   const changed = place(); changed.system[0].text += ' More wording.';
@@ -107,13 +123,13 @@ test('wire instruction/framing and schema edits refuse before lookup in all mode
 for (const provider of ['anthropic', 'responses']) test(`${provider}: a real sender edit refuses the same question and counts one metadata-only miss on retry`, t => {
   const {dir, file, env} = fixture(t); sourceCopy(dir);
   stampAnswers({file, all: true, root: dir}); const before = fs.readFileSync(file, 'utf8');
-  assert.ok(storedAnswer({body: place()}, env).reply);
+  assert.ok(storedAnswer({body: place(), headers: step('app.place')}, env).reply);
   edit(dir, 'src/ai/place_triage.py', 'For each \\\nlocation, first say', 'For each \\\nlocation, carefully say');
   const changed = capturePrompts(dir), updated = place(); updated.system[0].text = changed['app.place'].default.system;
   const body = provider === 'responses' ? responses(updated) : updated;
-  const ask = {body, prompts: changed}, key = questionOf(ask, env);
+  const ask = {body, headers: step('app.place'), prompts: changed}, key = questionOf(ask, env);
   assert.equal(checkAiMisses(dir, {aiMissesMax: 0}).misses, 0);
-  const approved = loadTable(file).promptHashes['app.place'], current = promptOf(body, changed).hash;
+  const approved = loadTable(file).promptHashes['app.place'], current = promptOf(body, changed, PLACE).hash;
   assert.equal(current, familyHashes(changed)['app.place']);
   for (let retry = 0; retry < 2; retry++) assert.throws(() => storedAnswer(ask, env), error => {
     assert.equal(error.code, 'E2E_AI_ANSWER_MISSING');
@@ -136,13 +152,13 @@ for (const [file, from, to, family] of [
   const {dir, file: tableFile, env} = fixture(t); sourceCopy(dir);
   const body = requests.find(entry => entry.kind === family).request, question = questionOf({body}, env), table = loadTable(tableFile);
   table.items[family] = Object.fromEntries(question.items.map(item => [item.key, {text: item.text, answer: true}])); fs.writeFileSync(tableFile, JSON.stringify(table));
-  stampAnswers({file: tableFile, all: true}); assert.ok(storedAnswer({body}, env).reply);
+  stampAnswers({file: tableFile, all: true}); assert.ok(storedAnswer({body, headers: step(family)}, env).reply);
   const before = familyHashes(contracts()); edit(dir, file, from, to);
   const changed = capturePrompts(dir), after = familyHashes(changed); assert.notEqual(after[family], before[family]);
-  assert.throws(() => storedAnswer({body, prompts: changed}, env), new RegExp(`stale: prompt changed ${family}`));
+  assert.throws(() => storedAnswer({body, headers: step(family), prompts: changed}, env), new RegExp(`stale: prompt changed ${family}`));
   const oldStamps = loadTable(tableFile).promptHashes; stampAnswers({file: tableFile, family, root: dir});
   assert.deepEqual(loadTable(tableFile).promptHashes, {...oldStamps, [family]: after[family]});
-  assert.ok(storedAnswer({body, prompts: changed}, env).reply);
+  assert.ok(storedAnswer({body, headers: step(family), prompts: changed}, env).reply);
   for (const other of Object.keys(before).filter(name => name !== family)) assert.equal(after[other], before[other]);
 });
 
@@ -165,7 +181,7 @@ test('stale backbone replies refuse before warm cache, relay, upstream and model
     for (const stream of [false, true]) {
       const body = {...(shape === 'openai' ? responses(place()) : place()), stream}, route = shape === 'openai' ? '/v1/responses' : '/v1/messages';
       keep(requestKey(route, Buffer.from(JSON.stringify(body))), {status: 200, body: Buffer.from('{}'), contentType: 'application/json'});
-      const init = {method: 'POST', body: JSON.stringify(body)};
+      const init = {method: 'POST', headers: step('app.place'), body: JSON.stringify(body)};
       const response = await fetch(proxy.url + route, init); assert.equal(response.status, 503);
       assert.match((await response.json()).error.message, /stale: prompt changed app.place/);
       await assert.rejects(modelFetch(proxy.url + route, init, {env, engine: () => { engines++; throw Error('engine'); }}), /stale: prompt changed app.place/);

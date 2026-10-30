@@ -211,7 +211,7 @@ export function refusedQuestions(env = process.env) {
 export function storedAnswer(request, env = process.env) {
   const mode = answersMode(env), table = loadTable(env.E2E_AI_ANSWERS_FILE || TABLE), dir = artifactsOf(env);
   // TODO(AI): capture mixed instruction/data templates and stamp score/interview/enrich/mail in JOB-44 slice 2 (30 Oct 2026).
-  const prompt = table.promptHashes && promptOf(parsed(request.body), request.prompts);
+  const prompt = table.promptHashes && promptOf(parsed(request.body), request.prompts, actionOf(request.headers, parsed(request.body)));
   const approved = prompt && table.promptHashes[prompt.family];
   // Why (JOB-44, 30 Oct 2026, owner): stale answers refuse in every mode before table hits, hash cache or any transport; unstamped slice-2 families keep their existing behavior.
   if (approved && approved !== prompt.hash) {

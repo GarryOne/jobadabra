@@ -13,7 +13,7 @@ function contract(body, template) {
   // Why (JOB-44, 30 Oct 2026, owner): decide task/choices/schema remain semantic context; only its generic instruction layout belongs to the family.
   if (template.family === 'app.decide' && schema?.properties?.results?.items?.properties?.answer?.enum) schema.properties.results.items.properties.answer.enum = ['{allowedAnswers}'];
   const escaped = template.user.replace(/[.*+?^$()|[\]\\]/g, '\\$&').replace(/\{\w+\}/g, '[\\s\\S]+?');
-  return {system, user: new RegExp(`^${escaped}$`).test(user) ? template.user : '{unrecognized framing}', items: template.items, schema};
+  return {action: template.action, system, user: new RegExp(`^${escaped}$`).test(user) ? template.user : '{unrecognized framing}', items: template.items, schema};
 }
 
 /** Capture current contracts offline; root supports isolated source-edit regression tests. Never read a committed prompt manifest. */
@@ -21,10 +21,10 @@ export function capturePrompts(root = ROOT) {
   const entries = JSON.parse(execFileSync(python(), [fileURLToPath(new URL('../../../tools/ai-format-python-capture.py', import.meta.url)), '--prompts', root],
     {encoding: 'utf8', maxBuffer: 4 * 1024 * 1024, env: pythonEnv({PYTHONDONTWRITEBYTECODE: '1'})}));
   const result = {};
-  for (const {kind, variant, request, userTemplate, itemTemplates} of entries) {
-    if (!request) throw new Error(`Uncaptured prompt: ${kind}`);
+  for (const {kind, variant, action, request, userTemplate, itemTemplates} of entries) {
+    if (!request || !action) throw new Error(`Uncaptured prompt: ${kind}`);
     const name = variant || (kind === 'app.title' ? 'sort' : kind === 'app.visit' ? 'keep' : 'default');
-    const template = {family: kind, user: userTemplate, items: itemTemplates};
+    const template = {family: kind, action, user: userTemplate, items: itemTemplates};
     const value = contract(request, template);
     if (value.user !== userTemplate) throw new Error(`Uncaptured framing: ${kind}`);
     (result[kind] ??= {})[name] = value;
@@ -36,8 +36,8 @@ export function capturePrompts(root = ROOT) {
 /** Hash each family's sorted named variants, preserving all schema prose and array order. */
 export const familyHashes = contracts => Object.fromEntries(Object.entries(contracts).map(([family, variants]) => [family, hash(canonical(variants))]));
 
-/** Identify a fixed family before schema validation and compare its wire contract with the freshly captured variants. */
-export function promptOf(body, contracts = (current ??= capturePrompts())) {
+/** Identify a fixed family by the sender's step (x-jp-action or prompt_cache_key) and compare its wire contract with the freshly captured variants. */
+export function promptOf(body, contracts = (current ??= capturePrompts()), action = '') {
   if (!contracts || Object.keys(contracts).length !== 9 || !contracts['app.title']?.sort || !contracts['app.title']?.recheck || !contracts['app.visit']?.keep || !contracts['app.visit']?.leave) throw new Error('Incomplete fixed prompt capture');
   const {system, schema} = requestParts(body), properties = schema?.properties || {};
   const roots = {locations: 'app.place', fit: 'app.title', keep: 'app.visit', visa: 'app.visa', vague: 'app.placeVague', jobs: 'app.placeReading'};
@@ -45,7 +45,8 @@ export function promptOf(body, contracts = (current ??= capturePrompts())) {
   const familyHint = hint ? roots[hint] : properties.places ? (properties.places.items?.properties?.word ? 'app.places' : 'app.geo')
     : properties.results?.items?.properties?.answer ? 'app.decide' : undefined;
   for (const [family, variants] of Object.entries(contracts)) {
-    const candidates = Object.entries(variants).filter(([, value]) => family === familyHint || system.startsWith(value.system.split('.')[0]));
+    // Why (JOB-44, Gitar on #2606): a schema root is shared with unrelated senders (job_alerts' jobs, web_search's keep); only the family's own step claims it, so a reworded system still refuses.
+    const candidates = Object.entries(variants).filter(([, value]) => value.action === action && (family === familyHint || system.startsWith(value.system.split('.')[0])));
     if (!candidates.length) continue;
     const exact = candidates.find(([, value]) => canonical(value) === canonical(contract(body, {...value, family})));
     const selected = candidates.find(([, value]) => value.system === system) || candidates[0], wire = contract(body, {...selected[1], family});

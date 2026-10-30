@@ -293,17 +293,17 @@ def capture_engine(prompts=False):
             # Why (JOB-44, 30 Oct 2026, owner): one family stamp covers every fixed instruction variant, not just the manifest's first request.
             client = Client({'fit': [1]})
             title._second_look(client, titles, {titles[0]: False}, title_search, {'role_words': ['site reliability'], 'words_ruled_out': []})
-            entries.append(dict(kind='app.title', variant='recheck', request=client.request))
+            entries.append(dict(kind='app.title', variant='recheck', action='title_triage', request=client.request))
             client = Client({'keep': [1, 2]})
             visits.relevant(sites, visit_search, client=client, unsure='leave')
-            entries.append(dict(kind='app.visit', variant='leave', request=client.request))
+            entries.append(dict(kind='app.visit', variant='leave', action='visit_relevant', request=client.request))
             reading = load('src/ai/place_triage.py', ['MODEL', 'READ_BATCH', 'READ_SCHEMA', 'READ_SYSTEM', 'places_words', 'read'],
                            **bindings, _key=lambda search: 'fixture', read_known=lambda search: {}, read_verdict=lambda *a: None,
                            _preferences=lambda: {}, _load_read=lambda: {}, READ_STORE=temporary / 'read.json')
             client = Client({'jobs': []})
             reading.read([dict(url='fixture-posting', title='Fixture title', location='Country', description='Fixture posting text')],
                          place_search, client=client)
-            entries.append(dict(kind='app.placeReading', request=client.request))
+            entries.append(dict(kind='app.placeReading', action='place_reading', request=client.request))
     return entries
 
 

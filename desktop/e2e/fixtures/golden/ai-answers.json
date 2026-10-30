@@ -1,14 +1,18 @@
 {
   "promptHashes": {
     "app.decide": "0d3ff9accaee8a1d35d53b4fed8303c8774f4ae9398a680bd7e5c420ac34093e",
+    "app.enrich": "c8bd5bc1c73ac870041a7f154e73492fd2d682f556973d8cfbfc103142a2f9cc",
     "app.geo": "ccbc2cf325a57e2422bf26c022653bb78d542a6de53516003a97e043b64be31d",
+    "app.interview": "d6b680233002adba1cf01d5f3746098a542793a5d6ac1ef96f41e81fbef041cb",
     "app.place": "6c38d88de3ce3c1b181c3e7dd43e2d4fe1dc21aace341cabac3c1398e9d94bd6",
     "app.placeReading": "340c7f78ca09792ef61ace4cee393ce1f9017ce2cc29ec7a60d7f637e42c0340",
     "app.placeVague": "f744c1db22417ed29da19196f40353f63bd158cfc848de348f04eca4701dca65",
     "app.places": "c6eb62dc09db99ce1fb08e663e29c0a7888bf1625d892f9fd5b2480fffd2bfb5",
+    "app.score": "cbda4ae2dbe24a6c0d7b719bc690759a36e228e1606b6a8dd74eca1f82f6f55c",
     "app.title": "3e2689d058a3e371cfdf84f62b8c9f04eeec69982ce47ee100227199f9a777e1",
     "app.visa": "d8f184679928ae546ef469a61d76520b535e82722ef6d745075987af73d215b7",
-    "app.visit": "8d58dca3bf4b79f7ec8437e4b783cef7530f2124a8c24f8ef47230c523ffe169"
+    "app.visit": "8d58dca3bf4b79f7ec8437e4b783cef7530f2124a8c24f8ef47230c523ffe169",
+    "mail": "a68f508a5d620b75902daafa5eeb2463d10395847b6964bb18b5cd21005b2775"
   },
   "about": "Reviewed AI answers for backbone replay; put new notes in the PR description.",
   "kinds": {

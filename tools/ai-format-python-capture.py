@@ -144,6 +144,16 @@ def capture_engine(prompts=False):
     interviews.analyse(client, interviews.DEFAULT_MODEL, candidate, [], 'recruiter-call-gamma', transcript)
     keep('interview', client, {'profile': candidate, 'apps': [], 'caption': 'recruiter-call-gamma', 'transcript': transcript},
          'src/ai/interviews_ai.py', 'response = client.messages.create(model=model, **request)', 'src/ai/interviews_ai.py', 'if response.stop_reason !=')
+    if prompts:
+        entries[-1].update(kind='app.interview', baseSystem=interviews.SYSTEM)
+        mail_config = load('src/ai/mail_config.py', ['OUTREACH', 'KINDS', 'BATCH', 'SCHEMA', 'SYSTEM'],
+                           REPLY='Reply received', employer_feedback=NS(RECEIVED='Feedback received'))
+        mail = load('src/ai/mail_read.py', ['classify'], SYSTEM=mail_config.SYSTEM, SCHEMA=mail_config.SCHEMA,
+                    BATCH=mail_config.BATCH, listing=lambda apps: '', engine=engine, cost=NS(add=lambda *a: None))
+        client = Client({'results': []})
+        mail.classify(client, models.SMALL_MODEL, [], [dict(subject='Fixture subject', body='Fixture mail text',
+                                                         date='2026-10-30', **{'from': 'sender@example.com'})])
+        entries.append(dict(kind='mail', action='mail', request=client.request, baseSystem=mail_config.SYSTEM))
 
     text = load('src/ai/interview_insights_text.py', ['MIN_SUPPORT', 'ROUND_TYPES', 'MAX_REVIEW_CHARS', 'KINDS', 'SCHEMA', 'SYSTEM'])
     insights = load('src/ai/interview_insights.py', ['prompt_input', 'generate'], interviews=interviews, engine=engine,
@@ -170,8 +180,8 @@ def capture_engine(prompts=False):
     bands = load('src/ai/score_bands.py', ['UNMET', 'TEXT'])
     score_search = load('src/ai/score_search.py', ['PART', 'RULE', 'SEARCH_ROLE_FIT', 'extend', 'block', 'apply', 'tier'],
                         _roles=lambda search=None: ['Site Reliability Engineer'])
-    scorer = load('src/ai/score.py', ['_component', '_open_component', 'SCHEMA', 'SYSTEM', 'EFFORT', '_ask'], engine=engine,
-                  score_bands=bands, score_search=score_search, schema_notes=notes, locations=NS(block_now=lambda: ''),
+    scorer = load('src/ai/score.py', ['_component', '_open_component', 'SCHEMA', 'SYSTEM', 'EFFORT', '_whole', '_ask'], engine=engine,
+                  copy=copy, score_bands=bands, score_search=score_search, schema_notes=notes, locations=NS(block_now=lambda: ''),
                   hints=NS(load=lambda: {}, text=lambda value: ''))
     job = json.loads(read('desktop/e2e/fixtures/golden/truth.json'))[0]
     job['company'] = json.loads(read('desktop/e2e/fixtures/golden/sources.json'))[0]['company']
@@ -179,6 +189,12 @@ def capture_engine(prompts=False):
     scorer._ask(client, models.MAIN_MODEL, job, candidate, None, '', scorer.SCHEMA)
     keep('app.score', client, {'job': job, 'profile': candidate, 'roles': ['Site Reliability Engineer'], 'hints': {}, 'locations': ''},
          'src/ai/score.py', 'response = client.messages.create(**params)', 'src/ai/score.py', 'if response.stop_reason !=')
+    if prompts:
+        entries[-1]['baseSystem'] = scorer.SYSTEM
+        for parts in [['compensation'], ['growth'], ['compensation', 'growth']]:
+            client = Client(json.loads(table['answers']['app.score']['3001']['reply']['content'][0]['text']))
+            scorer._ask(client, models.MAIN_MODEL, job, candidate, None, '', scorer._whole(parts))
+            entries.append(dict(kind='app.score', action='score', variant='whole-' + ','.join(parts), request=client.request, baseSystem=scorer.SYSTEM))
 
     pack = NS(ai_first=lambda topic: False, first=lambda *a, **k: None, queue=lambda *a: None)
     IMPORTS['meanings_pack'] = pack
@@ -201,6 +217,18 @@ def capture_engine(prompts=False):
     enrich._ask(client, models.SMALL_MODEL, job, enrich.SCHEMA)
     keep('app.enrich', client, {'subrequest': 'full', 'job': job}, 'src/ai/enrich.py', 'response = client.messages.create(',
          'src/ai/enrich.py', 'return json.loads(next(block.text')
+    if prompts:
+        entries[-1]['baseSystem'] = enrich.SYSTEM
+        role = load('src/ai/enrich.py', ['ROLE_SYSTEM', 'AGAIN', '_only'], ROLE_FAMILIES=enrich.ROLE_FAMILIES, SCHEMA=enrich.SCHEMA)
+        client = Client({})
+        enrich._ask(client, models.SMALL_MODEL, job, role._only(['role_family']), system=role.ROLE_SYSTEM)
+        entries.append(dict(kind='app.enrich', action='enrich', variant='role', request=client.request, baseSystem=role.ROLE_SYSTEM))
+        fields = ['seniority', 'work_mode', 'technologies']
+        for mask in range(1, 8):
+            names = [field for index, field in enumerate(fields) if mask & (1 << index)]
+            client = Client({})
+            enrich._ask(client, models.SMALL_MODEL, job, role._only(names), note=role.AGAIN.format(fields=', '.join(names)))
+            entries.append(dict(kind='app.enrich', action='enrich', variant='retry-' + ','.join(names), request=client.request, baseSystem=enrich.SYSTEM))
 
     # Why (30 Oct 2026, ap): the declared app.places item family and legacy places kind both need entries even though they share a sender.
     words = ['Zürich', 'Paris']
@@ -314,6 +342,8 @@ def prompt_templates(entries):
              'app.title': ('src/ai/title_triage.py', 'SYSTEM'), 'app.visit': ('src/sources/visits.py', 'RELEVANT_SYSTEM'),
              'app.visa': ('src/ai/place_triage.py', 'VISA_SYSTEM'), 'app.placeVague': ('src/ai/place_triage.py', 'VAGUE_SYSTEM'),
              'app.placeReading': ('src/ai/place_triage.py', 'READ_SYSTEM')}
+    mixed = {'app.score': ('src/ai/score.py', '_ask'), 'app.interview': ('src/ai/interviews_ai.py', 'analyse'),
+             'app.enrich': ('src/ai/enrich.py', '_ask'), 'mail': ('src/ai/mail_read.py', 'classify')}
     def template(node):
         """Keep literal framing, replacing interpolation expressions with named slots."""
         if isinstance(node, ast.Constant) and isinstance(node.value, str):
@@ -330,8 +360,51 @@ def prompt_templates(entries):
         return [dict(separator=template(call.func.value), item=template(call.args[0].elt)) for call in ast.walk(node)
                 if isinstance(call, ast.Call) and isinstance(call.func, ast.Attribute) and call.func.attr == 'join'
                 and call.args and isinstance(call.args[0], ast.GeneratorExp)]
+    def strings(node):
+        """Collect literal instruction boundaries, never evaluating a data expression or retaining docstrings."""
+        if isinstance(node, ast.Expr) and isinstance(node.value, ast.Constant):
+            return []
+        if isinstance(node, ast.JoinedStr):
+            # Invariant: conditional labels and concatenated literal prefixes inside slots are instructions too.
+            return [template(node)] + [text for part in node.values if isinstance(part, ast.FormattedValue) for text in strings(part.value)]
+        if isinstance(node, ast.Constant) and isinstance(node.value, str):
+            return [template(node)]
+        return [value for child in ast.iter_child_nodes(node) for value in strings(child)]
     result = []
     for entry in entries:
+        if entry['kind'] in mixed:
+            file, function = mixed[entry['kind']]
+            tree = ast.parse(read(file))
+            scope = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == function)
+            boundary = next(node for node in ast.walk(scope) if isinstance(node, ast.Call)
+                            and any(kw.arg == 'messages' for kw in node.keywords))
+            keywords = {kw.arg: kw.value for kw in boundary.keywords}
+            system = keywords['system']
+            if isinstance(system, ast.List):
+                system = next(v for k, v in zip(system.elts[0].keys, system.elts[0].values) if k.value == 'text')
+            def system_template(node):
+                """Resolve only the captured fixed prefix; profile and helper outputs remain slots."""
+                if isinstance(node, ast.Name) and node.id in ('SYSTEM', 'system'):
+                    return entry['baseSystem']
+                if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add):
+                    return system_template(node.left) + system_template(node.right)
+                return template(node)
+            entry['systemTemplate'] = system_template(system)
+            content = next(v for k, v in zip(keywords['messages'].elts[0].keys, keywords['messages'].elts[0].values) if k.value == 'content')
+            if isinstance(content, ast.Name):
+                content = next(n.value for n in ast.walk(scope) if isinstance(n, ast.Assign)
+                               and any(isinstance(t, ast.Name) and t.id == content.id for t in n.targets))
+            entry['userTemplate'], entry['itemTemplates'] = template(content), joins(content)
+            helpers = {'app.score': [('src/ai/score.py', '_score_once'), ('src/ai/score_not_a_job.py', 'RECHECK'),
+                                    ('src/ai/score_search.py', 'block'), ('src/ai/locations.py', 'block'),
+                                    ('src/ai/hints.py', 'TEMPLATES'), ('src/ai/hints.py', 'text')],
+                       'app.enrich': [('src/ai/enrich.py', 'AGAIN')],
+                       'app.interview': [('src/ai/interviews_ai.py', 'analyse')], 'mail': [('src/ai/mail_read.py', 'listing')]}
+            entry['itemTemplates'] += [dict(instructions=strings(node)) for source, name in helpers[entry['kind']]
+                                      for node in ast.parse(read(source)).body if getattr(node, 'name', None) == name
+                                      or isinstance(node, ast.Assign) and any(isinstance(t, ast.Name) and t.id == name for t in node.targets)]
+            result.append(entry)
+            continue
         if entry['kind'] not in specs:
             continue
         file, system = specs[entry['kind']]

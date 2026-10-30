@@ -10,8 +10,10 @@ import {FAILURES} from '../lib/ai-proxy.mjs';
 import {answersTableFile, backboneHarness} from '../lib/backbone-harness.mjs';
 import {modelFetch} from '../lib/model.mjs';
 import {bodyOf, engineCases} from './ai-answers-engine-fixtures.mjs';
+import * as activityfailures from '../suites/activityfailures.mjs';
+import {suitesFor} from '../lib/plan.mjs';
 
-const {request: captured, requests: capturedMore} = JSON.parse(fs.readFileSync(new URL('../fixtures/golden/activityfailures-decide.json', import.meta.url), 'utf8'));
+const {request: captured, requests: capturedMore, seededPlaceQuestions} = JSON.parse(fs.readFileSync(new URL('../fixtures/golden/activityfailures-decide.json', import.meta.url), 'utf8'));
 // organize_lines is authored (empty items) since wander (30 Oct 2026); activityfailures asks it too and gets that reply.
 const kinds = ['contact_asks', 'covered_facts', 'reuse_verdict', 'field_redraft', 'places'];
 const expected = [['z[uü]rich', 'ch-zurich'], ['switzerland', 'none'], ['schweiz', 'none']];
@@ -49,6 +51,9 @@ const semanticCases = () => {
     {...engineCases.find(item => item.name === 'geo'), user: 'Strings:\n1. zürich', question: feedAsks.geo.question},
     {...engineCases.find(item => item.name === 'geo'), name: 'geo alternatives',
       user: `Strings:\n1. ${feedAsks.geoAlternatives.question.items[0].text}`, question: feedAsks.geoAlternatives.question},
+    ...seededPlaceQuestions.questions.map((question, index) => ({...engineCases.find(item => item.name === 'decide'),
+      name: `seeded Zurich ${index === 0 ? 'country' : 'metro'}`, schema: question.context.schema,
+      user: `Task: ${question.context.task}\nAllowed answers: ${question.context.allowedAnswers}\n\n${question.items.map(item => `### Item ${item.index}\n${item.text}`).join('\n\n')}`, question})),
     {...place, user: `Their places (JSON): ${JSON.stringify(feedAsks.place.context)}\nThe job locations:\n1. ${feedAsks.place.question.items[0].text}`, question: feedAsks.place.question},
     ...feedAsks.feedPostings.map(post => ({...engineCases.find(item => item.name === 'score'),
       name: post.title, user: `Title: ${post.title}\nCompany: ${post.company}\nLocation: ${post.location}\n\nPosting:\n${post.description}`,
@@ -102,6 +107,19 @@ test('activityfailures multi-location geo is unknown under the product schema', 
   const data = JSON.parse(answerFor(feedAsks.geoAlternatives.question, table).reply.content[0].text);
   assert.deepEqual(data, {places: [{n: 1, kind: 'unknown', cc: '', lat: 0, lon: 0, r_km: 0}]});
   assert.ok(validScore(geo.schema, data), 'unknown reply must satisfy the actual src/geo.py schema');
+});
+
+test('activityfailures raw seeded Zurich country and metro have authored answers', () => {
+  assert.equal(seededPlaceQuestions.questions.length, 2);
+  const table = loadTable(answersTableFile);
+  for (const [index, question] of seededPlaceQuestions.questions.entries()) {
+    assert.equal(question.items[0].text, 'zürich');
+    const reply = answerFor(question, table).reply;
+    assert.ok(reply, `missing seeded Zurich ${index === 0 ? 'country' : 'metro'} answer`);
+    const data = JSON.parse(reply.content[0].text);
+    assert.ok(validScore(question.context.schema, data));
+    assert.deepEqual(data, {results: question.items.map(item => ({index: item.index, answer: index === 0 ? 'ch' : item.index === 2 ? 'none' : 'ch-zurich'}))});
+  }
 });
 
 test('activityfailures resolves every captured metro item and its batch before any transport', async t => {
@@ -238,4 +256,12 @@ test('activityfailures keeps its offline declaration and no-real-AI guard enable
   const source = fs.readFileSync(new URL('../suites/activityfailures.mjs', import.meta.url), 'utf8');
   assert.match(source, /^export const offlineAi = true;/m);
   assert.match(source, /^export const realAi = false;/m);
+});
+
+
+test('changing activityfailures answer fixtures selects its own whole CI journey', () => {
+  for (const file of ['desktop/e2e/fixtures/golden/activityfailures-decide.json',
+    'desktop/e2e/fixtures/golden/activityfailures-feed-asks.json', 'desktop/e2e/fixtures/golden/ai-answers.json']) {
+    assert.deepEqual(suitesFor([file], ['activityfailures'], {watches: {activityfailures: activityfailures.watches}}), ['activityfailures'], file);
+  }
 });

@@ -473,5 +473,213 @@
         }
       ]
     }
-  ]
+  ],
+  "seededPlaceQuestions": {
+    "about": "Exact country and metro questions from first-try CI 40996297795 on 5fe23fa (30 Oct 2026). The raw zürich word comes from the fictional applicant seed; other items are fixed matching fragments from src/regions.py, already covered by the reviewed table. No live reply recorded. Author country ch and metro ch-zurich for the seeded city; do not add runtime rules or alter existing pattern rows.",
+    "questions": [
+      {
+        "operation": "app.decide",
+        "context": {
+          "task": "A place a job seeker searches in. Answer the country it is in. Ids: ch = Switzerland; de = Germany; at = Austria; fr = France; it = Italy; gb = United Kingdom; ie = Ireland; nl = Netherlands; be = Belgium; lu = Luxembourg; es = Spain; pt = Portugal; se = Sweden; dk = Denmark; no = Norway; fi = Finland; pl = Poland; cz = Czechia; ro = Romania; md = Moldova; gr = Greece; us = United States; ca = Canada; au = Australia; sg = Singapore; in = India; ae = United Arab Emirates; il = Israel; br = Brazil; mx = Mexico; jp = Japan; bg = Bulgaria; hr = Croatia; ee = Estonia; hu = Hungary; none = none of these.",
+          "allowedAnswers": "ch, de, at, fr, it, gb, ie, nl, be, lu, es, pt, se, dk, no, fi, pl, cz, ro, md, gr, us, ca, au, sg, in, ae, il, br, mx, jp, bg, hr, ee, hu, none",
+          "schema": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "results"
+            ],
+            "properties": {
+              "results": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "index",
+                    "answer"
+                  ],
+                  "properties": {
+                    "index": {
+                      "type": "integer"
+                    },
+                    "answer": {
+                      "type": "string",
+                      "enum": [
+                        "ch",
+                        "de",
+                        "at",
+                        "fr",
+                        "it",
+                        "gb",
+                        "ie",
+                        "nl",
+                        "be",
+                        "lu",
+                        "es",
+                        "pt",
+                        "se",
+                        "dk",
+                        "no",
+                        "fi",
+                        "pl",
+                        "cz",
+                        "ro",
+                        "md",
+                        "gr",
+                        "us",
+                        "ca",
+                        "au",
+                        "sg",
+                        "in",
+                        "ae",
+                        "il",
+                        "br",
+                        "mx",
+                        "jp",
+                        "bg",
+                        "hr",
+                        "ee",
+                        "hu",
+                        "none"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "items": [
+          {
+            "index": 0,
+            "text": "zürich",
+            "key": "default/e995bd9989d0a7adfbe0da64ce7637e300e64118f5ca7d4ee602d227dee5759c/201f10d5d64518d86d2d3a47d28675d1c788762c5345df643dadec71d4e0a91e"
+          },
+          {
+            "index": 1,
+            "text": ": <!w zurich !w",
+            "key": "default/e995bd9989d0a7adfbe0da64ce7637e300e64118f5ca7d4ee602d227dee5759c/3eed57c414c2c0c71676fc8ccc356865f79ad41fd121b80fd8e30117eaca319a"
+          },
+          {
+            "index": 2,
+            "text": ":z :ürich winterthur uster dübendorf wallisellen opfikon kloten glattbrugg schlieren dietikon wädenswil horgen thalwil pfäffikon volketswil regensdorf basel bâle liestal muttenz pratteln allschwil riehen binningen reinach arlesheim rheinfelden bern berne biel bienne thun köniz burgdorf langenthal solothurn aarau olten <!w baden !- fribourg freiburg !s :ims breisgau schwarzenburg genèva genf lausanne nyon morges vevey montreux renens yverdon pully meyrin carouge neuchâtel sion sitten delémont delémont martigny sierre monthey la chaux-de-fonds lücerne luzern zug cham baar schwyz altdorf stans sa",
+            "key": "default/e995bd9989d0a7adfbe0da64ce7637e300e64118f5ca7d4ee602d227dee5759c/af3e16c99861b23d686af7fc57adf6cbda71967fd5ba16d64d26d8a22ffb89b0"
+          }
+        ]
+      },
+      {
+        "operation": "app.decide",
+        "context": {
+          "task": "A place a job seeker searches in. Answer its metro area, or none when it is a whole country, a region, or a place outside these areas. Ids: ch-geneva = Geneva; ch-lausanne = Lausanne and Vaud; ch-zurich = Zurich; ch-basel = Basel; ch-bern = Bern; ch-zug-luzern = Zug and Lucerne; ch-ticino = Ticino; ch-st-gallen = St. Gallen; ch-fribourg-neuchatel = Fribourg and Neuchâtel; ch-valais = Valais; ch-aargau = Aargau (Aarau, Baden); de-berlin = Berlin; de-munich = Munich; de-hamburg = Hamburg; de-frankfurt = Frankfurt; de-cologne-dusseldorf = Cologne and Düsseldorf; de-stuttgart = Stuttgart; at-vienna = Vienna; fr-paris = Paris; fr-lyon = Lyon; fr-annecy-grenoble = Annecy and Grenoble; it-milan = Milan; gb-london = London; gb-manchester = Manchester; ie-dublin = Dublin; nl-amsterdam = Amsterdam; nl-rotterdam-hague = Rotterdam and The Hague; be-brussels = Brussels; lu-luxembourg = Luxembourg; es-madrid = Madrid; es-barcelona = Barcelona; pt-lisbon = Lisbon; pt-porto = Porto; se-stockholm = Stockholm; dk-copenhagen = Copenhagen; no-oslo = Oslo; fi-helsinki = Helsinki; pl-warsaw = Warsaw; pl-krakow = Krakow; cz-prague = Prague; ro-bucharest = Bucharest; md-chisinau = Chisinau; us-new-york = New York; us-bay-area = San Francisco Bay Area; us-seattle = Seattle; us-boston = Boston; us-chicago = Chicago; us-los-angeles = Los Angeles; us-austin = Austin; ca-toronto = Toronto; ca-vancouver = Vancouver; ca-montreal = Montreal; au-sydney = Sydney; au-melbourne = Melbourne; sg-singapore = Singapore; in-bangalore = Bangalore; ae-dubai = Dubai; il-tel-aviv = Tel Aviv; none = none of these.",
+          "allowedAnswers": "ch-geneva, ch-lausanne, ch-zurich, ch-basel, ch-bern, ch-zug-luzern, ch-ticino, ch-st-gallen, ch-fribourg-neuchatel, ch-valais, ch-aargau, de-berlin, de-munich, de-hamburg, de-frankfurt, de-cologne-dusseldorf, de-stuttgart, at-vienna, fr-paris, fr-lyon, fr-annecy-grenoble, it-milan, gb-london, gb-manchester, ie-dublin, nl-amsterdam, nl-rotterdam-hague, be-brussels, lu-luxembourg, es-madrid, es-barcelona, pt-lisbon, pt-porto, se-stockholm, dk-copenhagen, no-oslo, fi-helsinki, pl-warsaw, pl-krakow, cz-prague, ro-bucharest, md-chisinau, us-new-york, us-bay-area, us-seattle, us-boston, us-chicago, us-los-angeles, us-austin, ca-toronto, ca-vancouver, ca-montreal, au-sydney, au-melbourne, sg-singapore, in-bangalore, ae-dubai, il-tel-aviv, none",
+          "schema": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "results"
+            ],
+            "properties": {
+              "results": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "index",
+                    "answer"
+                  ],
+                  "properties": {
+                    "index": {
+                      "type": "integer"
+                    },
+                    "answer": {
+                      "type": "string",
+                      "enum": [
+                        "ch-geneva",
+                        "ch-lausanne",
+                        "ch-zurich",
+                        "ch-basel",
+                        "ch-bern",
+                        "ch-zug-luzern",
+                        "ch-ticino",
+                        "ch-st-gallen",
+                        "ch-fribourg-neuchatel",
+                        "ch-valais",
+                        "ch-aargau",
+                        "de-berlin",
+                        "de-munich",
+                        "de-hamburg",
+                        "de-frankfurt",
+                        "de-cologne-dusseldorf",
+                        "de-stuttgart",
+                        "at-vienna",
+                        "fr-paris",
+                        "fr-lyon",
+                        "fr-annecy-grenoble",
+                        "it-milan",
+                        "gb-london",
+                        "gb-manchester",
+                        "ie-dublin",
+                        "nl-amsterdam",
+                        "nl-rotterdam-hague",
+                        "be-brussels",
+                        "lu-luxembourg",
+                        "es-madrid",
+                        "es-barcelona",
+                        "pt-lisbon",
+                        "pt-porto",
+                        "se-stockholm",
+                        "dk-copenhagen",
+                        "no-oslo",
+                        "fi-helsinki",
+                        "pl-warsaw",
+                        "pl-krakow",
+                        "cz-prague",
+                        "ro-bucharest",
+                        "md-chisinau",
+                        "us-new-york",
+                        "us-bay-area",
+                        "us-seattle",
+                        "us-boston",
+                        "us-chicago",
+                        "us-los-angeles",
+                        "us-austin",
+                        "ca-toronto",
+                        "ca-vancouver",
+                        "ca-montreal",
+                        "au-sydney",
+                        "au-melbourne",
+                        "sg-singapore",
+                        "in-bangalore",
+                        "ae-dubai",
+                        "il-tel-aviv",
+                        "none"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "items": [
+          {
+            "index": 0,
+            "text": "zürich",
+            "key": "default/6ddd2461a581fc580d8bddbf2ef22fb798067b815cc7a5b49f2bd0b8a6648760/201f10d5d64518d86d2d3a47d28675d1c788762c5345df643dadec71d4e0a91e"
+          },
+          {
+            "index": 1,
+            "text": ": <!w zurich !w",
+            "key": "default/6ddd2461a581fc580d8bddbf2ef22fb798067b815cc7a5b49f2bd0b8a6648760/3eed57c414c2c0c71676fc8ccc356865f79ad41fd121b80fd8e30117eaca319a"
+          },
+          {
+            "index": 2,
+            "text": ":z :ürich winterthur uster dübendorf wallisellen opfikon kloten glattbrugg schlieren dietikon wädenswil horgen thalwil pfäffikon volketswil regensdorf basel bâle liestal muttenz pratteln allschwil riehen binningen reinach arlesheim rheinfelden bern berne biel bienne thun köniz burgdorf langenthal solothurn aarau olten <!w baden !- fribourg freiburg !s :ims breisgau schwarzenburg genèva genf lausanne nyon morges vevey montreux renens yverdon pully meyrin carouge neuchâtel sion sitten delémont delémont martigny sierre monthey la chaux-de-fonds lücerne luzern zug cham baar schwyz altdorf stans sa",
+            "key": "default/6ddd2461a581fc580d8bddbf2ef22fb798067b815cc7a5b49f2bd0b8a6648760/af3e16c99861b23d686af7fc57adf6cbda71967fd5ba16d64d26d8a22ffb89b0"
+          }
+        ]
+      }
+    ]
+  }
 }

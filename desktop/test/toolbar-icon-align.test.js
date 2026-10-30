@@ -22,6 +22,9 @@ test('the toolbar buttons that carry an icon are direct children of the toolbar,
     const before = html.slice(0, html.indexOf(tag));
     const toolbar = before.lastIndexOf('<div class="toolbar">');
     assert.ok(toolbar >= 0, `${id} follows a toolbar`);
-    assert.ok(!/<span hidden>/.test(before.slice(toolbar).replace(/<span hidden>[\s\S]*?<\/span>/g, '')), `${id} is not inside a wrapper`);
+    const between = before.slice(toolbar).replace(/<!--[\s\S]*?-->/g, '');
+    const open = (between.match(/<(?:div|span|label|select|details|section|a|p)\b/g) || []).length;
+    const closed = (between.match(/<\/(?:div|span|label|select|details|section|a|p)>/g) || []).length;
+    assert.equal(open - closed, 1, `${id} sits directly in the toolbar: only the toolbar's own div is open before it, no wrapper element`);
   }
 });

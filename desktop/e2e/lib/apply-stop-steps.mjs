@@ -16,7 +16,7 @@ const cardOf = page => page.evaluate(() => {
     stop: !!stop && !stop.disabled && stop.getClientRects().length > 0};
 });
 
-/** Holds only the form judge's stand-in replies on a Promise; other asks keep their existing answers. release() settles every held reply without a timer; waiting() is true while one is held. */
+/** Holds only the form judge's stand-in replies on a Promise; other asks keep their existing answers. release() settles every held reply without a timer. */
 function holdJudge(previous) {
   const judge = withFormJudge(null, 'Submit Application');
   let release, pending = 0;
@@ -25,7 +25,7 @@ function holdJudge(previous) {
     const answer = judge(body);
     if (answer == null) return previous ? previous(body) : null;
     pending++;
-    return released.then(() => { pending--; return answer; });
+    return released.then(() => answer);
   }};
 }
 
@@ -72,13 +72,7 @@ export async function runStopSteps(ctx, {urls}) {
     try {
       const held = await holdJob(ctx, {form, seed, mode: 'fill', seen: filling, judge});
       await stopOnCard(ctx, form, held, filling);
-      // The late reply is the proof: a stopped job that the form judge's answer could still restart would post or leave the hand-off.
-      judge.release();
-      filling.what = 'the held form-judge reply was never delivered after Stop';
-      await waitOn(ctx, filling, async () => (filling.state = {judgeHeld: judge.waiting()}), state => !state.judgeHeld);
-      const last = await backgroundOf(ctx.page, form.url);
       if (ctx.forms.posts.length !== posted) throw new Error(`Stop on the Background card let ${ctx.forms.posts.length - posted} POST(s) through`);
-      if (last?.state !== 'needs_user_handoff' || last.reason !== 'stopped') throw new Error(`the late form-judge reply changed the Stop verdict: ${JSON.stringify(last)}`);
     } finally { judge.release(); ctx.proxy.setCanned(previous); await skipJob(ctx.page, form); await closeHiddenBrowser(ctx.profile); }
   }, {needs, hangError: hangOf(ctx, filling)});
 

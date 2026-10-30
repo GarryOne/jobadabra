@@ -21,7 +21,7 @@ import {runSilentChromeSteps} from '../lib/apply-silent-steps.mjs';
 import {runTriageSteps} from '../lib/apply-triage-steps.mjs';
 import {runReadSteps} from '../lib/apply-read-steps.mjs';
 import {runRestartSteps} from '../lib/apply-restart-steps.mjs';
-import {HIDDEN_NEED, autoFormOf, kitSeeder, proveBackground, proveBotCheck} from '../lib/background-proof.mjs';
+import {HIDDEN_NEED, autoFormOf, kitSeeder, proveBackground, proveBotCheck, proveQueue} from '../lib/background-proof.mjs';
 import {proveAutomatic} from '../lib/background-auto-proof.mjs';
 import {runJourneys} from '../lib/apply-journeys.mjs';
 import {installApplyAnswers} from '../lib/apply-answers.mjs';
@@ -46,7 +46,8 @@ export const stepSeconds = {'real forms the extension once failed on': 76, 'Tail
   'a silent Chrome in Standard automation': 45, 'a silent Chrome in Background automation': 20, 'a silent Chrome in Full automation': 20,
   'the app quits while Background automation holds a filled form': 40, 'the app quits in Full automation\'s wait': 140,
   'the Jobs popup picks the 10 best matches': 15, 'checking jobs before the form read exists': 10,
-  'Background automation hands a bot check': 25, 'Full automation hands a bot check': 25};
+  'Background automation hands a bot check': 25, 'Full automation hands a bot check': 25,
+  'Background automation fills several queued jobs': 90, 'Full automation presses each queued job': 50};
 // Why (29 Oct 2026, ap): hang caps in seconds, 3 x calm p95 from tools/e2e-step-timings.mjs, raised to the step's own inner caps + 30 s where a step waits in sequence; they catch a hang, never a speed.
 // A step whose inner caps add up past the runner's 8-minute default (Tailor CVs for top matches, Full automation) has no entry: the default stays.
 export const hangCaps = {'the app has an applicant': 300, 'the app is seeded': 90, 'the app is set up on this Mac\'s store': 90,
@@ -61,6 +62,7 @@ export const hangCaps = {'the app has an applicant': 300, 'the app is seeded': 9
   'the app quits while Background automation holds a filled form': 300, 'the app quits in Full automation\'s wait': 420,   // hold 180 + hand-over 60 + the watch past the wait <= 120, + 30 s
   'the Jobs popup picks the 10 best matches': 90, 'checking jobs before the form read exists': 90,
   'Background automation hands a bot check': 240, 'Full automation hands a bot check': 240,
+  'Background automation fills several queued jobs': 450, 'Full automation presses each queued job': 450,   // 60 s + 3 x 120 s of inner waits, + 30 s
   'the form\'s panel offers a tailored CV': 3 * stepSeconds['Tailor on the session page of a form']};
 // applyflows' journeys, weighed the same way (26 Oct 2026, beta 40275152602 + main 40274183649, the slowest attempt of each): turn-taking put 392 s of them in one slice and 299 s in the other.
 export const flowSeconds = {'the account and the application on one page': 97, 'a menu whose choices are not the answer': 79, '"Needs your attention" from the extension': 78, 'the form tab is closed': 76,
@@ -74,7 +76,7 @@ export const macos = 'release';   // a release, a gate and the night run it on a
 const SETUP = 'the app has an applicant';
 export const stepNeeds = {'form': [SETUP], 'session page says it too': [SETUP, 'multi-step form'], 'Tailor CV': [SETUP], 'tailored CV': [SETUP], 'without a kit': [SETUP],
   'hidden browser fills a form': [SETUP], 'submits a form': [SETUP], 'I submitted it': [SETUP, 'Apply opens a new tab'], 'Apply opens a new tab': [SETUP], 'side by side': [SETUP], 'sign-up page': [SETUP], 'sign-in page': [SETUP], 'menu whose choices': [SETUP], 'Needs your attention" from': [SETUP], 'appears only when + is pressed': [SETUP], 'one page': [SETUP], 'tab is closed': [SETUP], 'second browser': [SETUP], 'wrong kind': [SETUP], 'cannot operate': [SETUP],
-  'the Jobs popup': [SETUP], 'checking jobs before': [SETUP, 'the Jobs popup'],
+  'the Jobs popup': [SETUP], 'queued job': [SETUP], 'checking jobs before': [SETUP, 'the Jobs popup'],
   'the app quits while': [SETUP], 'the app quits in': [SETUP],
   'Ready to submit': [SETUP, 'cannot operate']};   // it reads the tab the "cannot operate" step left open
 // One failed step never hides the rest: the runner records it and goes on (lib/runner.mjs); only the setup step marked `critical` stops the suite. A step that needs another one is named in stepNeeds.
@@ -434,6 +436,11 @@ export async function runApply(ctx, parts) {
   await ctx.run('Full automation hands a bot check to the person: the card says so with Submit off, and nothing is pressed or sent', async () => {
     await proveBotCheck(ctx, {form: autoFormOf(FORMS.submitter, '?check=auto'), mode: 'auto', until, seed: kitSeeder(ctx, urls, POSTING)});
   }, {needs: [...ctx.needs, HIDDEN_NEED]});
+
+  // Several jobs queued at once (owner, 30 Oct 2026, the second apply-mode coverage gap): one fills at a time, in queue order; a Stop on a queued job skips only that one. Four details-only submitters, each at its own address.
+  const queueJobs = mode => [1, 2, 3, 4].map(n => autoFormOf(FORMS.submitter, `?queue=${mode}${n}`));
+  await ctx.run('Background automation fills several queued jobs one at a time, in queue order, and a Stop on a queued job skips only that one', () => proveQueue(ctx, {jobs: queueJobs('fill'), mode: 'fill', until, seed: kitSeeder(ctx, urls, POSTING)}), {needs: [...ctx.needs, HIDDEN_NEED]});
+  await ctx.run('Full automation presses each queued job once, one at a time, in queue order, and a Stop on a queued job skips only that one', () => proveQueue(ctx, {jobs: queueJobs('auto'), mode: 'auto', until, seed: kitSeeder(ctx, urls, POSTING)}), {needs: [...ctx.needs, HIDDEN_NEED]});
 
   // Found by this suite (2 Oct 2026): extension/review.js built the panel's list from native fields only, so a REQUIRED custom widget it cannot read (here a
   // role=slider) was in no list and no count, and the panel said "Ready to submit, every required field is filled" over a form that still needed an answer.

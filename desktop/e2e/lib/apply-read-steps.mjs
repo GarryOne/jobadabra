@@ -19,7 +19,7 @@ const onHost = host => item => { try { return new URL(item.url).host === host; }
  * Why (30 Oct 2026, owner): target discovery follows browser startup, so this fallback cannot prove the interval before attachment or after the final read.
  */
 function watchHiddenForm(profile, host) {
-  const seen = {samples: 0, installed: 0, filled: []};
+  const seen = {samples: 0, installed: 0, filled: [], expired: false};
   let stopped = false;
   const sample = async () => {
     const form = (await hiddenPages(profile)).find(onHost(host));
@@ -33,7 +33,7 @@ function watchHiddenForm(profile, host) {
   };
   // Wait on the explicit stop state while observing the open page; the cap catches a stuck read, never proves it read-only.
   const done = pollUntil(async () => { if (!stopped) await sample(); return stopped; }, value => value,
-    {capMs: 180000, tickMs: 25, log: () => {}});
+    {tickMs: 25, log: () => {}}).then(result => { seen.expired = !result.value; });
   return {seen, sample, stop: () => { stopped = true; return done; }};
 }
 

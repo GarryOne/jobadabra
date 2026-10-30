@@ -79,3 +79,7 @@ test('a transient write makes the read assertion fail even when the field is emp
   boxes[0].value = 'transient'; boxes[0].value = '';
   assert.throws(() => assertReadUntyped({samples: 1, installed: 1, filled: snapshot().filled}), /read typed into the form/);
 });
+
+test('an observer that stopped at its hang cap cannot prove an empty read', () => {
+  assert.throws(() => assertReadUntyped({samples: 1, installed: 1, filled: [], expired: true}), /observer reached its hang cap/);
+});

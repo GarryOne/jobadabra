@@ -28,6 +28,7 @@ export const TYPED_SNAPSHOT = `(${snapshotTyped.toString()})()`;
 
 /** Require both positive controls before accepting the absence of retained text writes. */
 export function assertReadUntyped(seen) {
+  if (seen.expired) throw new Error('the form observer reached its hang cap before the read stopped: the check proved nothing');
   if (seen.samples < 1) throw new Error('the hidden form page was never seen open: the "nothing was filled" check proved nothing');
   if (seen.installed < 1) throw new Error('the typed-value recorder was never installed: the check proved nothing');
   if (seen.filled.length) throw new Error(`the read typed into the form: ${seen.filled.join(', ')}`);

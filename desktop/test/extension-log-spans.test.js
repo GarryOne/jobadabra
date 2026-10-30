@@ -215,3 +215,15 @@ test('a fast push writes no "slow push" line', async t => {
   await log.pushDecisions();
   assert.equal(log.kept().filter(entry => entry.text === 'slow push').length, 0);
 });
+
+test('while the app stays slow, a cycle that carried only a "slow push" note writes no new note and the drain ends (Gitar on #2612)', async t => {
+  let now = 1000;
+  t.mock.method(Date, 'now', () => now);
+  const log = await extensionLog(t, () => { now += 6000; return {ok: true}; });
+  await log.decide('fill', 'filled the form');
+  await log.pushDecisions();
+  await log.pushDecisions();
+  assert.equal(log.kept().filter(entry => entry.text === 'slow push').length, 1, 'one note for the one slow cycle of real lines');
+  assert.equal(log.batches.length, 2, 'the real line, then its note; no third POST for a note about the note');
+  assert.equal(log.kept().filter(entry => !entry.sent).length, 0);
+});

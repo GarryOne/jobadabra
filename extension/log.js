@@ -65,8 +65,9 @@ async function pushNow() {
   // One cycle's marks: start, then settings (first cycle only), read, posted, marked as each phase ends; a phase not reached has no mark.
   let marks = {start: Date.now()};
   const noteIfSlow = (failed = false) => {
-    const now = Date.now(), {start, settings: configured = start, read, posted, marked, lines} = marks;
-    if (now - start < SLOW_PUSH_MS) return;
+    const now = Date.now(), {start, settings: configured = start, read, posted, marked, lines, onlyNotes} = marks;
+    // Why (Gitar on #2612): a cycle that carried only earlier notes writes none, or a still-slow app would keep the drain sending one note after another.
+    if (now - start < SLOW_PUSH_MS || onlyNotes) return;
     const between = (from, to) => (from === undefined || to === undefined ? undefined : to - from);
     const phases = {settingsMs: configured - start, readMs: between(configured, read), postMs: between(read, posted ?? (failed ? now : undefined)), markMs: between(posted, marked)};
     decide('log', 'slow push', {...Object.fromEntries(Object.entries(phases).filter(([, ms]) => ms !== undefined)), lines, ...(failed ? {failed: true} : {})}).catch(() => {});
@@ -78,7 +79,7 @@ async function pushNow() {
       // Why (30 Oct 2026, ap; Gitar on the span PR): drain oldest first in route-safe batches of 50; only an ok batch is marked sent, and fetch stays outside the storage queue so spans cannot stall product writes.
       const batch = await inTurn(async () => (await decisions()).filter(entry => !entry.sent).slice(0, 50));
       if (!batch.length) return true;
-      Object.assign(marks, {read: Date.now(), lines: batch.length});
+      Object.assign(marks, {read: Date.now(), lines: batch.length, onlyNotes: batch.every(entry => entry.kind === 'log' && entry.text === 'slow push')});
       const response = await fetch(`${config.workerUrl.replace(/\/$/, '')}/extension/log`, {method: 'POST',
         headers: {Authorization: `Bearer ${config.token}`, 'Content-Type': 'application/json'},
         body: JSON.stringify({entries: batch})});

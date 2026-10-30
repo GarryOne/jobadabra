@@ -1,11 +1,8 @@
 #!/usr/bin/env python3
 """Writes a pull request's one required status, "All checks passed", from the state of every workflow run of its head commit, in seconds.
 
-pr-verdict.yml (workflow_run) runs it each time a PR workflow ends: the one writer (owner, 30 Oct 2026, "One writer"). Until then every PR job also ran it as its
-last step ("Write the PR's verdict", #2042), ~21 jobs x ~24 GitHub calls per push: the token's 5,000 calls an hour ran out ~35 min past each hour, a failed read
-wrote nothing, and PRs green everywhere sat at pending. One read and one write per workflow end; a run whose jobs ended but which is not marked ended ("settling")
-is written pending, and its own end writes again. No job holds a runner to wait (owner, 26 Oct 2026: "How could you design such a
-slow and inefficient method of checking PRs?"; on #1992 two polling jobs took 43 of 206 runner-minutes of one push). A merged or closed PR gets nothing (#2041).
+pr-verdict.yml runs it when a workflow ends and sweeps pending/missing open heads every ten minutes.
+One fresh read, one computation, one writer; the sweep skips a commit while any workflow run is live.
 Counted: the runs of the commit started by the pull request, and the e2e run pr-suites.yml started for it (title "E2E for PR · ..."): a red suite blocks the merge
 (gate G1a; the owner rejected report only, 26 Oct 2026). The newest run of each workflow
 decides (a description edit re-runs the gate; a re-run replaces a red). Grey, not red (owner, 28 Oct 2026, e2e reliability design: "a PR is red only when its
@@ -13,10 +10,8 @@ diff broke it"): a PR suite job whose every "✗ step: reason" line is one main'
 new step or a new reason stays red; a step after main's red step, which ran nowhere (main stopped there too), is judged once main is green. A job cannot read its own
 log while it runs: the job that ends last after it, or the backstop when the run ends, writes grey. Any red: failure at once. Any running: pending. All green or skipped: success, with the wall time.
 Budget (owner's yes, 26 Oct 2026): a PR that changes how CI runs PRs (ci_change) and whose checks RAN over BUDGET_MIN goes red, unless a commit of it says
-"CI-budget: <why>". Each slowdown so far (781637a, bc585e3, a7a6a9f, 7083bb7) landed without saying a PR's time.
-Running time, not queue (owner, 27 Oct 2026: "Count running time only": "Red only when the PR's own jobs run over 10 min; queue wait is still shown on the PR"):
-the wall-clock minutes while at least one of the PR's jobs runs (running_minutes; parallel jobs count once, a stretch where every job waits for a runner not at
-all). #2215 took 12.4 min, of which its jobs ran 7.x and waited the rest; summed job time (12.0) would punish parallel jobs. The wait stays in the status text.
+"CI-budget: <why>". Running time, not queue (owner, 27 Oct 2026: "Count running time only": "Red only when the PR's own jobs run over 10 min; queue wait is still shown on the PR"):
+the wall-clock minutes while at least one job runs, counting overlapping jobs once and excluding queue wait).
   tools/pr-verdict.py --repo <owner/repo> --sha <head sha> [--job-status <success|failure|cancelled>] [--dry-run]       Guard: tests/test_pr_verdict.py
 """
 import argparse
@@ -186,7 +181,7 @@ def job_spans(repo, runs, reports=()):
     return spans
 
 
-RETRY_AFTER, LIST_LAG_S = (2, 6), 20   # waits before a GitHub 5xx's 2nd and 3rd try; how long an ended run can still be listed going (#2533: ~15 s)
+RETRY_AFTER = (2, 6)   # waits before a GitHub 5xx's 2nd and 3rd try
 
 
 def gh(*args, binary=False, sleep=time.sleep):
@@ -214,7 +209,7 @@ def quota_line(run=None):
 
 
 PR_META = """query($owner: String!, $name: String!, $oid: GitObjectID!) { repository(owner: $owner, name: $name) { object(oid: $oid) { ... on Commit {
-  associatedPullRequests(first: 5) { nodes { number state mergedAt files(first: 100) { pageInfo { hasNextPage } nodes { path } } commits(last: 100) { nodes { commit { message } } } } } } } } }"""
+  associatedPullRequests(first: 5) { nodes { number state mergedAt headRefOid files(first: 100) { pageInfo { hasNextPage } nodes { path } } commits(last: 100) { nodes { commit { message } } } } } } } } }"""
 
 
 def pr_meta(repo, sha, run=None):
@@ -224,7 +219,7 @@ def pr_meta(repo, sha, run=None):
     owner, name = repo.split('/')
     answer = json.loads((run or gh)('api', 'graphql', '-f', f'query={PR_META}', '-f', f'owner={owner}', '-f', f'name={name}', '-f', f'oid={sha}'))
     nodes = (((answer.get('data') or {}).get('repository') or {}).get('object') or {}).get('associatedPullRequests', {}).get('nodes', [])
-    pulls = [{'number': n['number'], 'state': n['state'].lower(), 'merged_at': n['mergedAt']} for n in nodes]
+    pulls = [{'number': n['number'], 'state': n['state'].lower(), 'merged_at': n['mergedAt'], 'head_sha': n.get('headRefOid')} for n in nodes]
     number, _ = open_pr(pulls)
     mine = next((n for n in nodes if str(n['number']) == number), None)
     if not mine:
@@ -405,38 +400,43 @@ def speed_state(state, live, jobs, me, reports, job_status):
 def main():
     sys.stdout.reconfigure(encoding='utf-8')   # a Windows runner's console is cp1252
     ap = argparse.ArgumentParser()
-    ap.add_argument('--repo', required=True); ap.add_argument('--sha', required=True)
+    ap.add_argument('--repo', required=True)
+    mode = ap.add_mutually_exclusive_group(required=True)
+    mode.add_argument('--sha'); mode.add_argument('--sweep-heads', action='store_true')
+    ap.add_argument('--idle-only', action='store_true', help='sweep: skip closed/replaced heads and any live workflow run')
     ap.add_argument('--job-status', default='', help="the status so far of the job this step ends (${{ job.status }}); empty: the workflow_run backstop")
     ap.add_argument('--dry-run', action='store_true')
     a = ap.parse_args()
     if a.job_status:
         # Why (owner, 30 Oct 2026, "One writer"): pr-verdict.yml alone writes; a branch not yet rebased still runs the old job step, which must not spend calls.
         print(f'{CONTEXT}: pr-verdict.yml writes it when this workflow ends (one writer)'); return 0
+    if a.sweep_heads:
+        main_state_module(a.repo, os.environ.get('GITHUB_SHA') or 'main', 'pr_verdict_sweep').plan(a.repo, gh, CONTEXT)
+        print(quota_line() or 'quota: not readable'); return 0
     my_run = os.environ.get('GITHUB_RUN_ID', '')
     server = os.environ.get('GITHUB_SERVER_URL', 'https://github.com')
     pulls, files, messages = pr_meta(a.repo, a.sha)
     number, write = open_pr(pulls)
+    if a.idle_only and not any(p.get('state') == 'open' and not p.get('merged_at') and p.get('head_sha') == a.sha for p in pulls):
+        print('sweep: no open PR still has this head'); return 0
     if not write:
         print(f'the pull request of {a.sha[:7]} is merged or closed: nothing to write'); return 0
     if number and files is None:   # over 100 files: the paged REST read
         files = gh('api', '--paginate', f'repos/{a.repo}/pulls/{number}/files', '--jq', '.[].filename').split()
     ref = os.environ.get('GITHUB_SHA') or a.sha
+    # Why (30 Oct 2026, owner: "PR verdicts still don't work properly"): events can disappear; the ten-minute sweep repairs idle heads, without a re-read.
+    runs, jobs = read(a.repo, a.sha)
+    if a.idle_only and any(r.get('status') != 'completed' for r in runs):
+        print('sweep: workflow run still live; leave pending'); print(quota_line() or 'quota: not readable'); return 0
+    reports, ai_line = set(), str
+    if any(str(r.get('displayTitle', '')).startswith(E2E_PR_TITLE) for r in counted(runs)):
+        try:
+            reports, ai_line = main_state_module(a.repo, ref, 'pr_ai_number').prepare(a.repo, counted(runs), jobs, gh, lambda name='main_e2e_state': main_state_module(a.repo, ref, name), base_branch(), my_run, '', os.environ.get('RUNNER_NAME', ''))
+        except Exception as error:
+            print(f'AI number unavailable ({type(error).__name__}): required verdict unchanged')
+    spans = job_spans(a.repo, runs, reports) if ci_change(files) and (reports or not any(r.get('status') != 'completed' for r in counted(runs))) else None
     judge = lambda greys: verdict(runs, files, messages, jobs, spans=spans, greys=greys, reports=reports, burn_in=lambda *args: main_state_module(a.repo, ref, 'pr_burn_in').failures(*args))
-    reports, ai_line, prepared = set(), str, None
-    for attempt in (1, 2):   # Why (Gitar on #2619): one write per workflow end, no wait loop; a replaced waiting verdict loses its run's end while the list lags (#2533), so a pending result reads once more after LIST_LAG_S
-        runs, jobs = read(a.repo, a.sha)
-        e2e = [r for r in counted(runs) if str(r.get('displayTitle', '')).startswith(E2E_PR_TITLE)]
-        if e2e and prepared != all(r.get('status') == 'completed' for r in e2e):   # one artifact read per write unless the e2e run ended between the reads
-            prepared = all(r.get('status') == 'completed' for r in e2e)
-            try:
-                reports, ai_line = main_state_module(a.repo, ref, 'pr_ai_number').prepare(a.repo, counted(runs), jobs, gh, lambda name='main_e2e_state': main_state_module(a.repo, ref, name), base_branch(), my_run, '', os.environ.get('RUNNER_NAME', ''))
-            except Exception as error:
-                print(f'AI number unavailable ({type(error).__name__}): required verdict unchanged')
-        spans = job_spans(a.repo, runs, reports) if ci_change(files) and (reports or not any(r.get('status') != 'completed' for r in counted(runs))) else None
-        state, why, live, _, target = judge(())
-        if attempt == 2 or a.dry_run or state not in ('pending', 'settling'):
-            break
-        time.sleep(LIST_LAG_S)
+    state, why, live, _, target = judge(())
     if state == 'failure':   # main's reds are read only for a red: a green PR costs no extra call
         greys = {**{job_id: 'main' for job_id in main_red_greys(a.repo, runs, jobs, ref=ref)}, **lane_greys(a.repo, runs, jobs),
                  **health_greys(a.repo, runs, jobs, ref=ref)}   # a health cause names this run; lanes still come from the base branch

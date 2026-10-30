@@ -68,8 +68,8 @@ class NewestMainRunWins(unittest.TestCase):
 
 
 # 26 Oct 2026: 10 red suites started 10 bisects at once (group e2e-bisect-<suite>) and main checks had no group; the job queue held PR checks 20+ minutes.
-# A workflow that ANOTHER workflow starts (workflow_run, or a chain like the bisect) needs a group that cannot multiply: no run id, commit or input in it.
-MULTIPLIERS = re.compile(r'github\.(run_id|run_number|run_attempt|sha)|inputs\.|workflow_run\.head_sha\s*\}\}')   # head_sha as the key: one group per pushed commit (a comparison, pr-verdict.yml's skip test, is fine) (pr-verdict.yml piled 22 runs up, 27 Oct 2026)
+# A workflow that ANOTHER workflow starts needs a group that cannot multiply, except the PR verdict's approved per-head writer below.
+MULTIPLIERS = re.compile(r'github\.(run_id|run_number|run_attempt|sha)|inputs\.|workflow_run\.head_sha\s*\}\}')
 PER_COMMIT_OK = {   # may keep one run per commit: its trigger runs at most once a night, so it cannot fill the queue
     'fix-verdicts.yml': 'starts only after the nightly offline site replay on main; each commit keeps its verdict (tests/test_fix_verdicts_workflow.py)',
 }
@@ -87,6 +87,12 @@ class NothingMultiplies(unittest.TestCase):
         started = {name: text for name, text in workflows().items() if re.search(r'(?m)^  workflow_run:', text.split('\njobs:')[0])}
         self.assertGreaterEqual(len(started), 3, 'positive control: the workflow_run workflows are read')
         for name, text in {**started, **{n: workflows()[n] for n in CHAINS}}.items():
+            if name == 'pr-verdict.yml':
+                # Why (30 Oct 2026, owner: "PR verdicts still don't work properly"): branch/global queues lose head events; test_pr_verdict checks head isolation.
+                self.assertNotRegex(text, r'(?m)^concurrency:')
+                self.assertRegex(text, r'(?m)^    concurrency:')
+                self.assertRegex(text, r'(?m)^      cancel-in-progress: true$')
+                continue
             group, cancel = concurrency(text)
             self.assertTrue(group, f'{name}: no concurrency group: each start can add a run to the queue')
             if name not in PER_COMMIT_OK:

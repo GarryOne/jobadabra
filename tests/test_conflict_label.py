@@ -20,6 +20,7 @@ class ConflictLabelTest(unittest.TestCase):
         self.assertIn('push:\n    branches: [main]', on)
         self.assertIn('pull_request_target:\n    types: [opened, synchronize, reopened]', on)
         self.assertIn('ref: ${{ github.event.repository.default_branch }}', flow, "main's copy of the script, never the PR's")
+        self.assertIn('PR: ${{ github.event.pull_request.number }}', flow, "a PR's run labels that PR alone (#2529 went red for #2530's label)")
         self.assertIn("group: conflict-label-${{ github.event_name == 'push' && 'main' || github.run_id }}", flow,
                       'main pushes share a group (the newest wins); a PR push is its own group, never cancelled: a cancelled run is a failed check on the PR')
 

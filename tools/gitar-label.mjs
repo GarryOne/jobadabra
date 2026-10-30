@@ -76,7 +76,9 @@ const ensure = (repo, l, run = gh) => run('label', 'create', l.name, '--color', 
 export function addLabel(repo, pr, l, run = gh) {
   const add = () => run('pr', 'edit', String(pr), '--add-label', l.name, '-R', repo);
   try { add(); } catch (error) {
-    if (!/could not add label: .* not found/i.test(error.message)) throw error;   // gh's words for a label the repo lacks, not a missing PR
+    // Why (30 Oct 2026, run 40981811862 red on #2529): gh says "'<name>' not found" for a label the repo lacks; the guessed "could not add label: …" never
+    // matched, so the label was never created. The label's own name keeps a missing PR (another message) from starting a create.
+    if (!String(error.message).includes(`'${l.name}' not found`)) throw error;
     ensure(repo, l, run);
     add();
   }

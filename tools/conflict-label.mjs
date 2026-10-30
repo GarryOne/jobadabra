@@ -54,8 +54,9 @@ const pause = () => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0,
 /** Settles the open PRs' state, applies the edits and prints them; a failure stays red. */
 function cli() {
   try {
-    const repo = process.env.GITHUB_REPOSITORY;
-    const prs = settle(() => readOpen(repo), {pause});
+    const repo = process.env.GITHUB_REPOSITORY, only = Number(process.env.PR) || null;
+    // Why (30 Oct 2026, #2529 red for #2530's label): a PR's push changes only its own mergeable state, so its run reads and labels that PR alone; a push to main reads them all.
+    const prs = settle(() => readOpen(repo).filter(p => !only || p.number === only), {pause});
     for (const edit of edits(prs)) { apply(repo, edit); console.log(`conflict-label: #${edit.pr} ${edit.add ? '+' : '-'} ${CONFLICT.name}`); }
     const unknown = prs.filter(p => p.mergeable === 'UNKNOWN').map(p => `#${p.number}`);
     if (unknown.length) console.log(`::notice::conflict-label: GitHub had not computed ${unknown.join(', ')} yet; the next push to main or to the PR labels them`);

@@ -9,7 +9,7 @@ import {fileURLToPath} from 'node:url';
 import {apply, edits, settle, CONFLICT} from '../tools/conflict-label.mjs';
 
 /** Runs the CLI with gh replaced by a fake repo. `prs` = [{number, states: [mergeable per read, the last repeats], labels}]; `missing`: the repo lacks the label. */
-function runCli(t, {prs, missing = false, failure = ''}) {
+function runCli(t, {prs, missing = false, failure = '', pr = ''}) {
   const dir = mkdtempSync(join(tmpdir(), 'conflict-label-'));
   t.after(() => rmSync(dir, {recursive: true, force: true}));
   const stateFile = join(dir, 'state.json'), preload = join(dir, 'fake-gh.mjs');
@@ -34,7 +34,8 @@ childProcess.execFileSync = (file, args) => {
   if (args[0] === 'label' && args[1] === 'create') { state.creates++; state.missing = false; save(); return ''; }
   if (args[0] !== 'pr' || args[1] !== 'edit') throw new Error('unexpected gh args: ' + args);
   const pr = state.prs.find(p => String(p.number) === args[2]), add = args.indexOf('--add-label'), remove = args.indexOf('--remove-label');
-  if (add >= 0 && state.missing) throw new Error("could not add label: '" + args[add + 1] + "' not found");
+  // gh's own words for a label the repo lacks (run 40981811862: "'Merge conflict' not found"), never a made-up wording.
+  if (add >= 0 && state.missing) throw new Error("'" + args[add + 1] + "' not found");
   if (add >= 0) pr.labels.push(args[add + 1]); else pr.labels = pr.labels.filter(name => name !== args[remove + 1]);
   save();
   return '';
@@ -42,7 +43,7 @@ childProcess.execFileSync = (file, args) => {
 syncBuiltinESMExports();
 `);
   const done = spawnSync(process.execPath, ['--import', preload, fileURLToPath(new URL('../tools/conflict-label.mjs', import.meta.url))], {
-    encoding: 'utf8', env: {PATH: process.env.PATH, GITHUB_REPOSITORY: 'o/r', CONFLICT_LABEL_WAIT_MS: '1', FAKE_GH_STATE: stateFile, FAKE_GH_FAILURE: failure},
+    encoding: 'utf8', env: {PATH: process.env.PATH, GITHUB_REPOSITORY: 'o/r', CONFLICT_LABEL_WAIT_MS: '1', FAKE_GH_STATE: stateFile, FAKE_GH_FAILURE: failure, PR: pr},
   });
   assert.ifError(done.error);
   return {...done, ...JSON.parse(readFileSync(stateFile, 'utf8'))};
@@ -77,6 +78,13 @@ test('a PR GitHub never computes keeps its label and the run says so; a failure 
   assert.ok(failed.stderr.includes('rate limit'), failed.stderr);
 });
 
+test('a PR\'s own run labels that PR alone: another PR\'s conflict never turns it red (#2529 red for #2530)', t => {
+  const done = runCli(t, {pr: '2', prs: [{number: 1, states: ['CONFLICTING'], labels: []}, {number: 2, states: ['CONFLICTING'], labels: []}]});
+  assert.equal(done.status, 0, done.stderr);
+  assert.deepEqual(labelsOf(done, 1), [], 'another PR is left to its own run and to main\'s');
+  assert.deepEqual(labelsOf(done, 2), [CONFLICT.name]);
+});
+
 test('edits, settle and apply', () => {
   assert.deepEqual(edits([
     {number: 1, mergeable: 'CONFLICTING', labeled: false}, {number: 2, mergeable: 'CONFLICTING', labeled: true},
@@ -86,8 +94,8 @@ test('edits, settle and apply', () => {
   assert.deepEqual(settle(() => (++reads < 3 ? [{mergeable: 'UNKNOWN'}] : [{mergeable: 'MERGEABLE'}])), [{mergeable: 'MERGEABLE'}]);
   assert.equal(reads, 3);
   const calls = [];
-  assert.throws(() => apply('o/r', {pr: 1, add: true}, (...args) => { calls.push(args[0]); throw new Error('HTTP 404 Not Found'); }), /404/);
+  assert.throws(() => apply('o/r', {pr: 1, add: true}, (...args) => { calls.push(args[0]); throw new Error('GraphQL: Could not resolve to a PullRequest with the number of 1. (repository.pullRequest)'); }), /Could not resolve/);   // gh 2.101's words for a missing PR
   assert.deepEqual(calls, ['pr'], 'a missing PR is not answered with a label create');
-  assert.throws(() => apply('o/r', {pr: 1, add: false}, (...args) => { calls.push(args[0]); throw new Error("could not add label: 'x' not found"); }));
+  assert.throws(() => apply('o/r', {pr: 1, add: false}, (...args) => { calls.push(args[0]); throw new Error("'x' not found"); }));
   assert.deepEqual(calls, ['pr', 'pr'], 'a removal never creates the label');
 });

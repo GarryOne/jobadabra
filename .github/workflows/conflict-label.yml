@@ -35,4 +35,5 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GITHUB_REPOSITORY: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}   # empty on a push to main: every open PR
         run: node tools/conflict-label.mjs

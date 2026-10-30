@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {test} from 'node:test';
 import {loadTable, questionOf, storedAnswer} from '../lib/ai-answers.mjs';
-import {valid} from '../lib/ai-answers-engine-items.mjs';
+import {requestParts, valid} from '../lib/ai-answers-engine-items.mjs';
 import {answersTableFile, backboneHarness} from '../lib/backbone-harness.mjs';
 import {modelFetch} from '../lib/model.mjs';
 import {withDerived} from '../../lib/target-roles.js';
@@ -12,6 +12,7 @@ import {bodyOf, engineCases} from './ai-answers-engine-fixtures.mjs';
 const read = file => JSON.parse(fs.readFileSync(new URL(file, import.meta.url)));
 const missing = read('../fixtures/golden/failuresnotion-missing-keys.json');
 const second = read('../fixtures/golden/failuresnotion-run2-keys.json');
+const enrichSystem = requestParts(read('../fixtures/golden/ai-format-python.json').entries.find(entry => entry.kind === 'app.enrich').request).system;
 const demo = withDerived(read('../../demo/draft.json').draft.search);
 const placeContext = read('../fixtures/golden/activityfailures-feed-asks.json').place.context;
 const roleKind = read('../fixtures/golden/activityfailures-decide.json').requests[0];
@@ -33,6 +34,8 @@ function requestOf(ask) {
   if (ask.family === 'app.title') c.user = `The search (JSON): ${JSON.stringify({role_words: demo.role_keywords, words_ruled_out: demo.title_exclude_keywords})}\nThe titles:\n1. ${text}`;
   if (ask.family === 'app.place') c.user = `Their places (JSON): ${JSON.stringify(placeContext)}\nThe job locations:\n1. ${text}`;
   if (ask.family === 'app.enrich') {
+    // Why (#2613, JOB-44): the app.enrich stamp hashes the real sender's system, schema guidance included; the abbreviated case system would be refused.
+    if (!roleOnly) c.system = enrichSystem;
     const location = roleOnly ? ask.what.split(' | ')[2] : text.includes('save seed') ? 'Zurich, Switzerland' : 'Zurich, Switzerland or Amsterdam, Netherlands';
     c.user = `Title: ${text}\nCompany: E2E Acme\nLocation: ${location}\n\nPosting:\n${text}: run production on Kubernetes and AWS with Terraform, SLOs and on-call. Senior level, hybrid in Zurich, English working language.`;
   }

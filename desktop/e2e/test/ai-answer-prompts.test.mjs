@@ -20,6 +20,14 @@ const ROOT = fileURLToPath(new URL('../../../', import.meta.url));
 const contracts = () => capturePrompts(ROOT);
 const requests = JSON.parse(fs.readFileSync(new URL('../fixtures/golden/ai-format-python.json', import.meta.url))).entries;
 const place = () => structuredClone(requests.find(entry => entry.kind === 'app.place').request);
+const mixed = ['app.score', 'app.interview', 'app.enrich', 'mail'];
+const manifest = JSON.parse(fs.readFileSync(new URL('../fixtures/golden/ai-format-manifest.json', import.meta.url))).entries;
+const mixedRequest = family => {
+  if (family !== 'mail') return structuredClone(manifest.find(entry => entry.kind === (family === 'app.interview' ? 'interview' : family)).request);
+  const value = contracts().mail.default;
+  return {system: [{type: 'text', text: value.system.replace('{data}', '(none)')}],
+    messages: [{role: 'user', content: '### Item 0\nFrom: sender@example.com\nDate: 2026-10-30\nSubject: Fixture subject\n\nFixture mail text'}], output_config: {format: {schema: value.schema}}};
+};
 const responses = body => ({model: 'other', instructions: body.system, input: body.messages.map(turn => ({...turn, content: [{type: 'input_text', text: turn.content}]})), text: {format: body.output_config.format}});
 const stepOf = kind => requests.find(entry => entry.kind === kind).action, PLACE = stepOf('app.place');
 const step = kind => ({'x-jp-action': stepOf(kind)});
@@ -42,6 +50,37 @@ function edit(root, file, from, to) {
   assert.ok(before.includes(from)); fs.writeFileSync(dest, before.replace(from, to));
 }
 
+function changedMixedData(family, original) {
+  const changedData = structuredClone(original);
+  if (['app.score', 'app.interview'].includes(family)) changedData.system[0].text += '\nDifferent private CV and persona.';
+  if (family === 'mail') changedData.system[0].text = changedData.system[0].text.replace('(none)', '0. Different private application');
+  changedData.messages[0].content = changedData.messages[0].content.replace(/Posting:\n[\s\S]*$/, 'Posting:\nDifferent private posting.')
+    .replace(/Transcript or notes:\n[\s\S]*$/, 'Transcript or notes:\nDifferent private transcript.')
+    .replace(/Subject: [\s\S]*$/, 'Subject: Different private mail\n\nDifferent private body.');
+  if (['app.score', 'app.enrich'].includes(family)) changedData.messages[0].content = changedData.messages[0].content
+    .replace(/^Title: [^\n]*\nCompany: [^\n]*\nLocation: [^\n]*/, 'Title: Different posting\nCompany: Different company\nLocation: Somewhere');
+  return changedData;
+}
+
+function seedMixedAnswers(table, family, original, changedData, env, headers) {
+  if (family === 'app.score') {
+    const originalId = questionOf({body: original, headers}, env, table).id, changedId = questionOf({body: changedData, headers}, env, table).id;
+    assert.notEqual(originalId, changedId);
+    table.answers[family][changedId] = structuredClone(table.answers[family][originalId]);
+  }
+  if (['mail', 'app.enrich'].includes(family)) {
+    const empty = schema => schema.enum ? schema.enum[0] : schema.type === 'object' ? Object.fromEntries(Object.entries(schema.properties).map(([key, value]) => [key, empty(value)]))
+      : schema.type === 'array' ? [] : schema.type === 'string' ? '' : schema.type === 'boolean' ? false : 0;
+    for (const body of [original, changedData]) {
+      const q = questionOf({body, headers}, env, table);
+      const answer = empty(family === 'mail' ? body.output_config.format.schema.properties.results.items : body.output_config.format.schema);
+      if (family === 'mail') delete answer.index;
+      table.items[family] ??= {};
+      for (const item of q.items) table.items[family][item.key] = {text: item.text, answer};
+    }
+  }
+}
+
 test('capture uses the harness Python override and UTF-8 environment', t => {
   const saved = process.env.E2E_PYTHON, marker = new Error('captured subprocess boundary');
   process.env.E2E_PYTHON = 'fixture-python-command';
@@ -59,9 +98,9 @@ test('capture uses the harness Python override and UTF-8 environment', t => {
   assert.throws(() => capturePrompts(), error => error === marker);
 });
 
-test('fresh capture includes all nine families and both title/visit variants; stamping is byte stable', t => {
+test('fresh capture includes all thirteen families and both title/visit variants; stamping is byte stable', t => {
   const {file} = fixture(t), before = loadTable(file), current = contracts();
-  assert.equal(Object.keys(current).length, 9); assert.deepEqual(loadTable().promptHashes, familyHashes(current));
+  assert.equal(Object.keys(current).length, 13); assert.deepEqual(loadTable().promptHashes, familyHashes(current));
   assert.match(current['app.decide'].default.user, /^Task: \{data\}\nAllowed answers: /);
   assert.deepEqual(Object.keys(current['app.title']), ['recheck', 'sort']);
   assert.deepEqual(Object.keys(current['app.visit']), ['keep', 'leave']);
@@ -69,7 +108,7 @@ test('fresh capture includes all nine families and both title/visit variants; st
   stampAnswers({file, all: true}); assert.equal(fs.readFileSync(file, 'utf8'), once);
   const after = loadTable(file); delete before.promptHashes; delete after.promptHashes;
   assert.deepEqual(after, before);
-  assert.throws(() => stampAnswers({file, family: 'app.score'}), /uncaptured/);
+  assert.throws(() => stampAnswers({file, family: 'unknown'}), /uncaptured/);
   assert.throws(() => promptOf(place(), {}), /Incomplete fixed prompt capture/);
 });
 
@@ -162,9 +201,72 @@ for (const [file, from, to, family] of [
   for (const other of Object.keys(before).filter(name => name !== family)) assert.equal(after[other], before[other]);
 });
 
+for (const [family, source, from, to] of [
+  ['app.score', 'src/ai/score.py', 'You rank job postings for one candidate.', 'You carefully rank job postings for one candidate.'],
+  ['app.interview', 'src/ai/interviews_ai.py', 'You review job interviews for the candidate', 'You carefully review job interviews for the candidate'],
+  ['app.enrich', 'src/ai/enrich.py', 'You extract facts from job postings', 'You carefully extract facts from job postings'],
+  ['mail', 'src/ai/mail_config.py', 'You sort the job-search emails', 'You carefully sort the job-search emails'],
+]) test(`${family}: source instructions refuse on both providers; source and wire data stay outside the hash`, t => {
+  const {dir, file, env} = fixture(t); sourceCopy(dir);
+  const before = capturePrompts(dir), hashes = familyHashes(before), original = mixedRequest(family);
+  assert.ok(before[family], `missing ${family}`);
+  const changedData = changedMixedData(family, original);
+  edit(dir, 'desktop/e2e/fixtures/golden/candidate.txt', 'a', 'A different persona ');
+  // Keep the posting shape valid while replacing its actual text in the isolated fixture.
+  const truthFile = path.join(dir, 'desktop/e2e/fixtures/golden/truth.json'), truth = JSON.parse(fs.readFileSync(truthFile));
+  truth[0].description = 'Different private posting.'; fs.writeFileSync(truthFile, JSON.stringify(truth));
+  const dataOnly = capturePrompts(dir); assert.deepEqual(familyHashes(dataOnly), hashes);
+  const table = loadTable(file), headers = {'x-jp-action': family.replace('app.', '')};
+  seedMixedAnswers(table, family, original, changedData, env, headers);
+  fs.writeFileSync(file, JSON.stringify(table));
+  for (const provider of [body => body, responses]) {
+    assert.equal(promptOf(provider(original), dataOnly, headers['x-jp-action']).hash, hashes[family]);
+    assert.equal(promptOf(provider(changedData), dataOnly, headers['x-jp-action']).hash, hashes[family]);
+    assert.ok(storedAnswer({body: provider(changedData), headers, prompts: dataOnly}, env).reply);
+  }
+  stampAnswers({file, all: true, root: dir}); edit(dir, source, from, to);
+  const changed = capturePrompts(dir); assert.notEqual(familyHashes(changed)[family], hashes[family]);
+  const updated = structuredClone(original);
+  if (typeof updated.system === 'string') updated.system = updated.system.replace(from, to);
+  else updated.system[0].text = updated.system[0].text.replace(from, to);
+  for (const provider of [body => body, responses]) assert.equal(promptOf(provider(updated), changed, headers['x-jp-action']).hash, familyHashes(changed)[family]);
+  for (const provider of [body => body, responses]) for (const mode of ['off', 'record', 'backbone']) {
+    for (let retry = 0; retry < 2; retry++) assert.throws(() => storedAnswer({body: provider(original), headers: {'x-jp-action': family.replace('app.', '')}, prompts: changed}, {...env, E2E_AI_ANSWERS: mode}), new RegExp(`stale: prompt changed ${family}`));
+  }
+  assert.equal(checkAiMisses(dir, {aiMissesMax: 0}).misses, 1);
+  assert.doesNotMatch(JSON.stringify(changed[family]), /Different private|J'ai|Gamma Freight/);
+});
+
+for (const [family, source, from, to] of [
+  ['app.score', 'src/ai/score.py', 'Extracted facts (stage 1):', 'Known facts (stage 1):'],
+  ['app.score', 'src/ai/score_search.py', "The person's search (the roles they look for):", "The person's searched roles:"],
+  ['app.enrich', 'src/ai/enrich.py', 'Your last answer left', 'The previous answer left'],
+  ['app.enrich', 'src/ai/enrich.py', "You name one job's own kind of work", "You identify one job's own kind of work"],
+  ['app.interview', 'src/ai/interviews_ai.py', 'Transcript or notes:', 'Transcript and notes:'],
+  ['mail', 'src/ai/mail_read.py', 'Subject:', 'Mail subject:'],
+  ['mail', 'src/ai/mail_read.py', "', via '", "', through '"],
+  ['mail', 'src/ai/mail_read.py', "', recruiter '", "', contact '"],
+  ['app.score', 'src/ai/score.py', "'them'", "'those parts'"],
+]) test(`${family}: fixed framing or auxiliary instructions in ${source} invalidate the family`, t => {
+  const {dir, file, env} = fixture(t); sourceCopy(dir); stampAnswers({file, all: true, root: dir});
+  edit(dir, source, from, to); const changed = capturePrompts(dir);
+  for (const provider of [body => body, responses]) assert.throws(() => storedAnswer({body: provider(mixedRequest(family)), headers: {'x-jp-action': family.replace('app.', '')}, prompts: changed}, env), new RegExp(`stale: prompt changed ${family}`));
+});
+
+test('mixed retry schemas and independent extraction role questions match their captured contracts', () => {
+  const current = contracts(), hashes = familyHashes(current);
+  for (const family of ['app.score', 'app.enrich']) for (const value of Object.values(current[family])) {
+    const body = {system: value.system.replace(/\{\w+\}/g, 'Different private data'),
+      messages: [{role: 'user', content: value.user.replace(/\{\w+\}/g, 'Different private data')}], output_config: {format: {schema: value.schema}}};
+    for (const provider of [body => body, responses]) assert.equal(promptOf(provider(body), current, value.action).hash, hashes[family]);
+  }
+  assert.equal(Object.keys(current['app.score']).length, 4);
+  assert.equal(Object.keys(current['app.enrich']).length, 9);
+});
+
 test('stale backbone replies refuse before warm cache, relay, upstream and model engine selection on both providers', async t => {
   const {dir, file, env} = fixture(t), saved = {...process.env};
-  const table = loadTable(file); table.promptHashes = {...familyHashes(contracts()), 'app.place': '0'.repeat(64)}; fs.writeFileSync(file, JSON.stringify(table));
+  const table = loadTable(file); table.promptHashes = {...familyHashes(contracts()), ...Object.fromEntries(['app.place', ...mixed].map(family => [family, '0'.repeat(64)]))}; fs.writeFileSync(file, JSON.stringify(table));
   Object.assign(env, {E2E_AI_CACHE: dir, E2E_AI_REPLAY: '1', E2E_JUDGE_FAMILY: 'claude'}); Object.assign(process.env, env);
   t.after(() => { for (const key of Object.keys(process.env)) if (!(key in saved)) delete process.env[key]; Object.assign(process.env, saved); });
   let relays = 0, engines = 0, upstream = 0, cacheReads = 0;
@@ -175,16 +277,18 @@ test('stale backbone replies refuse before warm cache, relay, upstream and model
     assert.match(String(args[0]), /^http:\/\/127\.0\.0\.1:/);
     return Reflect.apply(target, receiver, args);
   }}));
+  const scenarios = ['app.place', ...mixed].flatMap(family => [false, true].map(stream => ({family, stream})));
   for (const shape of ['anthropic', 'openai']) {
     const proxy = await startAiProxy({shape, target: `http://127.0.0.1:${server.address().port}`, metered: /\/(?:messages|responses)/, relay: async () => { relays++; throw Error('relay'); }});
     t.after(() => proxy.close());
-    for (const stream of [false, true]) {
-      const body = {...(shape === 'openai' ? responses(place()) : place()), stream}, route = shape === 'openai' ? '/v1/responses' : '/v1/messages';
+    for (const {family, stream} of scenarios) {
+      const original = family === 'app.place' ? place() : mixedRequest(family);
+      const body = {...(shape === 'openai' ? responses(original) : original), stream}, route = shape === 'openai' ? '/v1/responses' : '/v1/messages';
       keep(requestKey(route, Buffer.from(JSON.stringify(body))), {status: 200, body: Buffer.from('{}'), contentType: 'application/json'});
-      const init = {method: 'POST', headers: step('app.place'), body: JSON.stringify(body)};
+      const init = {method: 'POST', headers: {'x-jp-action': family === 'app.place' ? PLACE : family.replace('app.', '')}, body: JSON.stringify(body)};
       const response = await fetch(proxy.url + route, init); assert.equal(response.status, 503);
-      assert.match((await response.json()).error.message, /stale: prompt changed app.place/);
-      await assert.rejects(modelFetch(proxy.url + route, init, {env, engine: () => { engines++; throw Error('engine'); }}), /stale: prompt changed app.place/);
+      assert.match((await response.json()).error.message, new RegExp(`stale: prompt changed ${family}`));
+      await assert.rejects(modelFetch(proxy.url + route, init, {env, engine: () => { engines++; throw Error('engine'); }}), new RegExp(`stale: prompt changed ${family}`));
     }
     assert.equal(proxy.stats.paid || 0, 0);
   }

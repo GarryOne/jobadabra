@@ -17,9 +17,15 @@ RECORDED = json.loads((ROOT / 'tests/fixtures/pr-verdict-stale.json').read_text(
 
 
 class CompletionWriter(unittest.TestCase):
-    def write(self, record=None, event_name='workflow_run', job_status=''):
+    def write(self, record=None, event_name='workflow_run', job_status='', later=None):
         record = copy.deepcopy(record or RECORDED)
-        writes = []
+        writes, sleeps = [], []
+        # later: the run list GitHub answers on the one re-read after the list's lag (a pending result reads once more, LIST_LAG_S later)
+        def lag(seconds):
+            self.assertEqual((seconds, sleeps), (pv.LIST_LAG_S, []), 'one wait, the list lag, and only once')
+            sleeps.append(seconds)
+            if later is not None:
+                record['runs'] = later
 
         def gh(*args):
             if args[:2] == ('api', 'graphql'):
@@ -52,7 +58,7 @@ class CompletionWriter(unittest.TestCase):
             with patch.dict(os.environ, env, clear=True), patch.object(sys, 'argv', argv), \
                     patch.object(pv, 'gh', side_effect=gh), patch.object(sys, 'stdout'), \
                     patch.object(pv, 'main_state_module', side_effect=OSError('offline replay')), \
-                    patch.object(pv.time, 'sleep', side_effect=AssertionError('no retry or sleep')):
+                    patch.object(pv.time, 'sleep', side_effect=lag):
                 self.assertEqual(pv.main(), 0)
         self.assertEqual(len(writes), 1)
         self.assertEqual(writes[0]['context'], 'All checks passed')
@@ -108,6 +114,15 @@ class CompletionWriter(unittest.TestCase):
         record['runs'].append(newer)
         record['jobs']['5'] = [{'id': 50, 'name': 'python', 'status': 'in_progress', 'steps': []}]
         self.assertEqual(self.write(record)['state'], 'pending')
+
+    def test_a_run_the_list_still_shows_going_is_read_again_once_after_the_lag(self):
+        # Gitar on #2619: X, Y and Z end together; the verdict for Y is replaced by Z's, whose event names only Z, and the list still shows Y going ~15 s
+        # (#2533). With one writer no later event repairs it: one more read after LIST_LAG_S must see Y ended and write green.
+        record = copy.deepcopy(RECORDED)
+        record['event']['workflow_run']['head_sha'] = 'old-head'   # this event clears nothing: only the list can say the run ended
+        ended = [dict(r, status='completed', conclusion='success') for r in record['runs']]
+        self.assertEqual(self.write(record, later=ended)['state'], 'success')
+        self.assertEqual(self.write(record)['state'], 'pending', 'positive control: a run really still going stays pending')
 
     def test_a_job_s_own_step_writes_nothing_and_reads_nothing(self):
         # Why (owner, 30 Oct 2026, "One writer"): a branch not yet rebased still runs the old per-job step; it must cost no GitHub call.

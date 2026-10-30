@@ -52,6 +52,21 @@ class ShipTest(ShipFixture):
         self.assertTrue(log.read_text().splitlines()[-1].startswith('ship: DONE '), log.read_text())
         self.assertIn('Slow hook', git(self.origin, 'log', '--format=%s', 'main'))
 
+    def test_a_background_run_keeps_the_cmux_short_name_after_it_detaches(self):
+        # Gitar on #2629: the detached run has no Claude parent left to walk, so ship.sh must export the short name the owner sees in cmux (27) first;
+        # without the export the run only knows JOB_PILOTTO_SESSION=mac-07 and tags "[07]".
+        sessions, kept, seen = self.tmp / 'sessions', self.tmp / 'assignments', self.tmp / 'short-seen'
+        sessions.mkdir(); kept.mkdir()
+        (sessions / f'{os.getpid()}.json').write_text('{"name": "mac-07", "sessionId": "S1"}')   # this test is ship.sh's parent: the walk finds it
+        (kept / 'S1.short').write_text('27\n')
+        self.change(self.tree, 'tools/pre-push-check.sh', f'#!/bin/sh\ncat > /dev/null\n. "$(dirname "$0")/session-name.sh"\nsession_short > {seen}\n', 'Note the tag')
+        log = self.tmp / 'ship-short.log'
+        env = {**os.environ, 'SHIP_LOG': str(log), 'JOB_PILOTTO_SESSION': '', 'JOB_PILOTTO_SESSION_SHORT': '', 'JP_SESSION': '',
+               'JP_SESSIONS_DIR': str(sessions), 'JP_ASSIGNMENTS_DIR': str(kept)}
+        subprocess.run(['bash', str(self.tree / 'tools' / 'ship.sh'), '--background'], cwd=self.tree, capture_output=True, text=True, timeout=60, env=env)
+        self.wait_for_marker(log)
+        self.assertEqual(seen.read_text().strip(), '27', log.read_text())
+
     def test_the_printed_wait_reports_this_runs_ending_not_an_older_one(self):
         # Owner, 30 Oct 2026: "we don't have anymore the watches/monitors for when a PR merges": a Monitor ends after 30 min, so the hint names a background wait.
         log = self.tmp / 'ship-again.log'

@@ -11,7 +11,7 @@ export function pickForTriage(jobs = [], {n = 10, isChecked = () => false} = {})
   return ranked.slice(0, Math.max(0, Math.floor(n)));
 }
 
-const CHIPS = {
+export const CHIPS = {
   auto: {label: 'Can apply automatically', tone: 'good'},
   fill: {label: 'You review and submit', tone: 'info'},
   check: {label: 'Needs you', tone: 'warn'},

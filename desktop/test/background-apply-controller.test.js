@@ -208,3 +208,16 @@ test('a job an earlier run held that the store already handed over goes the norm
   const polled = await controller.handle({action: 'poll', owner: 'o1'});
   assert.deepEqual([polled.handoffs, polled.checks], [[{session: 's1', reason: 'stopped', reveal: true}], []], 'the stale cache does not hide the store\'s hand-over');
 });
+
+// Found by #2598's restart steps (30 Oct 2026): a handed-over session whose job was then removed made store.read throw on every poll, so no later job was ever claimed.
+test('an open session whose job record is gone does not stop the poll: the queued job is still claimed', async () => {
+  const queued = {session: 'new', mode: 'auto', chosenAt: 'c1', state: 'queued', owner: ''};
+  const controller = createBackgroundApplyController({}, {
+    store: {read: async url => { if (url.endsWith('/gone')) throw new Error('This job has no Application record. Prepare its kit first.'); return queued; },
+      claim: async () => ({ok: true, state: {...queued, state: 'preflight', owner: 'o1'}})},
+    browser: {start: async () => ({owner: 'o1'})},
+    terminals: {list: () => [{id: 'old', url: 'https://jobs.example.test/gone', background: {state: 'needs_user_handoff', manualOverride: true}, outcome: ''}, {id: 'new', url: 'https://jobs.example.test/new', background: {}, outcome: ''}], record: () => null, report: () => {}},
+    config: () => ({mode: 'auto', chosenAt: 'c1', auto: {waitMin: 1}}), token: () => 't', notify: () => {}, stop: () => false, log: () => {}});
+  const polled = await controller.handle({action: 'poll', owner: 'o1'});
+  assert.deepEqual(polled.jobs.map(job => job.session), ['new'], 'the removed job is skipped, the queued one starts');
+});

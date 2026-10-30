@@ -99,7 +99,7 @@ export function createBackgroundApplyController(storage, {store = null, browser 
     let filling = false;
     const open = terminals.list().filter(item => item.background && !item.outcome && !unsaved.has(item.id));   // a held job whose hand-over write threw is never continued (Gitar on #2598); the next poll tries again
     for (const item of open) {
-      let state = await store.read(item.url);
+      let state = await store.read(item.url).catch(() => null);   // a session whose job record is gone is skipped, never the whole poll (#2598: one removed job stopped every later one)
       if (!state || state.session !== item.id) continue;
       if (!state.manualOverride && (stop() || item.stuck === 'stopped')) state = await markManual(item, 'stopped');
       const current = config();

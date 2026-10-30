@@ -2,7 +2,7 @@
 // Job: wait on state
 // The end-to-end proof of Full automation's press (spec 2026-10-27-background-apply-execution, step C): the app's hidden browser fills a fictional form and, once the
 // wait has run, presses Submit itself exactly once against the fixture server's fake submit endpoint (never a real site); a Stop in the wait presses nothing. Every wait is on a state.
-import {backgroundStateOf, closeHiddenBrowser, describeHidden, linkRuntime, skipJob, withFormJudge} from './background-proof.mjs';
+import {backgroundStateOf, closeHiddenBrowser, describeHidden, linkRuntime, sessionOf, skipJob, withFormJudge} from './background-proof.mjs';
 import {stageOf} from './seed-data.mjs';
 import {appLogLines} from './app-log.mjs';
 
@@ -21,7 +21,6 @@ async function startAuto(ctx, {form, seed, waitMin}) {   // `seed(form)` adds th
   return started;
 }
 
-const sessionOf = (page, url) => page.evaluate(target => window.pilot.sessions().then(list => list.find(item => String(item.url || '').replace(/\/$/, '') === target.replace(/\/$/, ''))?.id || ''), url);
 
 /**
  * The proof: with Full automation saved (wait 0) the form is filled, the checks pass and the app presses Submit by itself; the fake endpoint sees exactly one POST and the job is Applied.

@@ -199,3 +199,22 @@ test('a press with no receipt after the wait is handed to the person; a younger 
   assert.equal(state.reason, 'submission_outcome_unknown');
   assert.equal((await store.reserve(job.url, session, 'owned-browser', ready, waitNow)).submit, false, 'never pressed again');
 });
+
+// A quit is a Stop (owner, 30 Oct 2026, after #2598's restart step saw Full automation press 80 s after a restart on the wait the quit cut off).
+test('a job a quit caught before its press (waiting, ready for review, filling) goes to the person as app_closed, whatever browser owned it, and is never pressed', async () => {
+  const r = rig(), waiting = await prepared(r, r.add('w'), 'auto'), held = await prepared(r, r.add('f', 'Other employer'), 'fill');
+  const filling = r.make(), job = r.add('q', 'Third employer'), row = await filling.queue(job.url, 'session-q', 'fill', {...config, mode: 'fill'});
+  assert.equal((await filling.claim(job.url, row.session, 'owned-browser')).ok, true);
+  r.advance(600000);   // the wait ran out while the app was closed
+  const restarted = r.make();
+  for (const [url, session, was] of [[waiting.job.url, waiting.session, 'waiting_to_submit'], [held.job.url, held.session, 'ready_for_review'], [job.url, row.session, 'preflight']]) {
+    assert.equal((await restarted.read(url)).state, was, `positive control: the quit caught it in ${was}`);
+    assert.equal(await restarted.interrupted(url, session), null, `without quit, ${was} is not an interrupted press`);
+    const state = await restarted.interrupted(url, session, {quit: true});
+    assert.equal(state.state, 'needs_user_handoff', was);
+    assert.equal(state.reason, 'app_closed', was);
+    assert.equal(state.manualOverride, true, was);
+    assert.equal(await restarted.interrupted(url, session, {quit: true}), null, `${was}: once handed over, nothing is handed over again`);
+  }
+  assert.equal((await restarted.reserve(waiting.job.url, waiting.session, 'owned-browser', ready, config)).submit, false, 'the wait the quit cut off never presses');
+});

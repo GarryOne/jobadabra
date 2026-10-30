@@ -75,48 +75,55 @@ export function judgeTarget(url, init, env = process.env) {
   return {url: String(url).replace(/^https:\/\/api\.anthropic\.com/, env.E2E_FREE_AI_URL), init: {...init, headers: {...init.headers, 'x-api-key': env.E2E_FREE_AI_KEY}}};
 }
 
-/** Fetch a judge reply, consulting question answers before choosing any live engine. */
-export async function modelFetch(url, init, {engine = () => pickEngine({family: 'claude'}), exec = run, timeoutMs = 5 * 60 * 1000, env = process.env} = {}) {
-  const stored = storedAnswer({url, headers: init?.headers, body: init?.body, hint: init?.hint}, env);
-  const answered = storedJudgeReply(stored);
-  if (answered) return answered;
-  if (engine() === 'api') {   // paid: counted for /ai-cost as the judges' spend (lib/ai-meter.mjs)
-    // A judge answer seen before is replayed like the app's (owner, 27 Oct 2026: "with the judges replaying in the gate too"); a fresh run asks live.
-    const body = Buffer.from(String(init?.body ?? '')), key = requestKey(`judge ${aiProvider(env, 'judges').provider === 'codex' ? 'codex' : judgeFamily(env)} ${new URL(url).pathname}`, body);   // Why (#2416): a Codex answer never replays as Claude's or Free AI's
-    // Why (#2450): only keyed misses can become review candidates; unkeyable asks must retain their free hash replays.
-    const kept = stored.mode === 'record' && !stored.question.unkeyable ? null : recall(key, env);
-    if (kept) {
-      try { countReplay('judges', usageOf(kept.body.toString('utf8'), kept.contentType || '')); } catch { /* counting never breaks the call */ }
-      return new Response(kept.body, {status: kept.status, headers: {'content-type': kept.contentType || 'application/json'}});
-    }
-    keepMiss(key, `judge ${new URL(url).pathname}`, body, env);
-    if (aiProvider(env, 'judges').provider === 'codex') {   // the owner's Codex plan through the broker (lib/broker-client.mjs); a refusal is a skip with its reason, never another provider
-      const asked = await askBroker(JSON.parse(init.body), {env});
-      if (!asked.ok) {
-        if (asked.status === 'capped') noteBrokerCapped(asked.detail, env);
-        return new Response(JSON.stringify({type: 'error', error: {type: 'api_error', message: asked.status === 'capped' ? capMessage(null, env, asked.detail) : asked.detail}}), {status: 503, headers: {'content-type': 'application/json'}});
-      }
-      const answer = JSON.stringify({type: 'message', role: 'assistant', model: asked.model, ...asked.message});   // TODO(AI): count broker calls in the judges ai-meter and admin ai-cost (28 Oct 2026)
-      keep(key, {status: 200, contentType: 'application/json', body: Buffer.from(answer)}, env);
-      keepCandidateBody(stored, answer);
-      return new Response(answer, {status: 200, headers: {'content-type': 'application/json'}});
-    }
-    if (judgeFamily(env) === 'free') {   // the day's cap on CI's Workers AI neurons (lib/ai-cap.mjs)
-      const cap = await capReached({env});
-      if (cap.capped) { noteCapped(cap.neurons, env); return new Response(JSON.stringify({type: 'error', error: {type: 'api_error', message: capMessage(cap.neurons, env)}}), {status: 503, headers: {'content-type': 'application/json'}}); }
-    }
-    const target = judgeTarget(url, init, env);
-    const response = await fetch(target.url, target.init);
-    if (response.ok && stored.mode === 'record') keepCandidateBody(stored, await response.clone().text());
-    try {
-      if (response.ok) {
-        const text = await response.clone().text(), contentType = response.headers.get('content-type') || '';
-        count('judges', usageOf(text, contentType));
-        keep(key, {status: response.status, contentType, body: Buffer.from(text)}, env);
-      }
-    } catch { /* counting and keeping never break the call */ }
-    return response;
+async function freshBrokerReply(init, {env, ask}) {
+  // Why (30 Oct 2026, owner, JOB-45): a drift judge must ask the subscription broker freshly, never a stored verdict or another provider.
+  if (!env.CI || aiProvider(env, 'judges').provider !== 'codex' || !env.ACTIONS_ID_TOKEN_REQUEST_URL || !env.ACTIONS_ID_TOKEN_REQUEST_TOKEN) throw new Error('fresh broker judge requires CI Codex and GitHub OIDC');
+  const asked = await ask(JSON.parse(init.body), {env});
+  if (!asked.ok) return reply(503, {error: {message: asked.detail || String(asked.status)}});
+  return reply(200, {type: 'message', role: 'assistant', model: asked.model, ...asked.message});
+}
+
+async function cachedBrokerReply(init, stored, key, env) {
+  const asked = await askBroker(JSON.parse(init.body), {env});
+  if (!asked.ok) {
+    if (asked.status === 'capped') noteBrokerCapped(asked.detail, env);
+    return new Response(JSON.stringify({type: 'error', error: {type: 'api_error', message: asked.status === 'capped' ? capMessage(null, env, asked.detail) : asked.detail}}), {status: 503, headers: {'content-type': 'application/json'}});
   }
+  const answer = JSON.stringify({type: 'message', role: 'assistant', model: asked.model, ...asked.message});   // TODO(AI): count broker calls in the judges ai-meter and admin ai-cost (28 Oct 2026)
+  keep(key, {status: 200, contentType: 'application/json', body: Buffer.from(answer)}, env);
+  keepCandidateBody(stored, answer);
+  return new Response(answer, {status: 200, headers: {'content-type': 'application/json'}});
+}
+
+async function apiJudgeReply(url, init, stored, env) {
+  // A judge answer seen before is replayed like the app's (owner, 27 Oct 2026: "with the judges replaying in the gate too"); a fresh run asks live.
+  const body = Buffer.from(String(init?.body ?? '')), key = requestKey(`judge ${aiProvider(env, 'judges').provider === 'codex' ? 'codex' : judgeFamily(env)} ${new URL(url).pathname}`, body);   // Why (#2416): a Codex answer never replays as Claude's or Free AI's
+  // Why (#2450): only keyed misses can become review candidates; unkeyable asks must retain their free hash replays.
+  const kept = stored.mode === 'record' && !stored.question.unkeyable ? null : recall(key, env);
+  if (kept) {
+    try { countReplay('judges', usageOf(kept.body.toString('utf8'), kept.contentType || '')); } catch { /* counting never breaks the call */ }
+    return new Response(kept.body, {status: kept.status, headers: {'content-type': kept.contentType || 'application/json'}});
+  }
+  keepMiss(key, `judge ${new URL(url).pathname}`, body, env);
+  if (aiProvider(env, 'judges').provider === 'codex') return cachedBrokerReply(init, stored, key, env);   // the owner's Codex plan through the broker (lib/broker-client.mjs); a refusal is a skip with its reason, never another provider
+  if (judgeFamily(env) === 'free') {   // the day's cap on CI's Workers AI neurons (lib/ai-cap.mjs)
+    const cap = await capReached({env});
+    if (cap.capped) { noteCapped(cap.neurons, env); return new Response(JSON.stringify({type: 'error', error: {type: 'api_error', message: capMessage(cap.neurons, env)}}), {status: 503, headers: {'content-type': 'application/json'}}); }
+  }
+  const target = judgeTarget(url, init, env);
+  const response = await fetch(target.url, target.init);
+  if (response.ok && stored.mode === 'record') keepCandidateBody(stored, await response.clone().text());
+  try {
+    if (response.ok) {
+      const text = await response.clone().text(), contentType = response.headers.get('content-type') || '';
+      count('judges', usageOf(text, contentType));
+      keep(key, {status: response.status, contentType, body: Buffer.from(text)}, env);
+    }
+  } catch { /* counting and keeping never break the call */ }
+  return response;
+}
+
+async function cliJudgeReply(init, stored, {exec, timeoutMs}) {
   const body = JSON.parse(init.body);
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'e2e-model-'));   // no project, no CLAUDE.md, no hooks around the call
   try {
@@ -129,4 +136,14 @@ export async function modelFetch(url, init, {engine = () => pickEngine({family: 
     keepCandidate(stored, answered);
     return reply(200, answered);
   } finally { fs.rmSync(dir, {recursive: true, force: true}); }
+}
+
+/** Fetch a judge reply; freshBroker requires CI Codex/OIDC and bypasses stored answers and hash caches. */
+export async function modelFetch(url, init, {engine = () => pickEngine({family: 'claude'}), exec = run, timeoutMs = 5 * 60 * 1000, env = process.env, freshBroker = false, ask = askBroker} = {}) {
+  if (freshBroker) return freshBrokerReply(init, {env, ask});
+  const stored = storedAnswer({url, headers: init?.headers, body: init?.body, hint: init?.hint}, env);
+  const answered = storedJudgeReply(stored);
+  if (answered) return answered;
+  if (engine() === 'api') return apiJudgeReply(url, init, stored, env);
+  return cliJudgeReply(init, stored, {exec, timeoutMs});
 }

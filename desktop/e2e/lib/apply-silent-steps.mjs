@@ -104,13 +104,12 @@ async function standardStep(ctx, form, id) {
       await clockOn(ctx.page, 70000);
       const silent = await until('the card did not say Chrome isn\'t reporting', async () => { const card = await readCard(ctx.page); return /Chrome isn't reporting/i.test(card.title) ? card : null; }, 30000);
       if (silent.buttons[0] !== 'Open it again') throw new Error(`the first button of the silent card is "${silent.buttons[0]}", not "Open it again" (buttons: ${silent.buttons.join(', ')})`);
-      const spool = fs.readdirSync(ctx.shim.spool).filter(name => name.endsWith('.url')).length;
-      await ctx.page.locator('#ss-actions button', {hasText: 'Open it again'}).click();
-      const appEnv = await ctx.app.evaluate(() => `PATH=${String(process.env.PATH).split(':').slice(0, 2).join(':')} OPEN_DIR=${process.env.JOB_PILOTTO_E2E_OPEN_DIR} PORT=${process.env.JOB_PILOTTO_PORT}`).catch(error => String(error));
-    const opened = await until(`Open it again opened no page (the spool ${ctx.shim.spool} holds ${fs.readdirSync(ctx.shim.spool).join(', ') || 'nothing'}; it held ${spool} pages before the press; the app runs with ${appEnv})`, () => fs.readdirSync(ctx.shim.spool).filter(name => name.endsWith('.url')).length > spool, 30000);
-      const urls = fs.readdirSync(ctx.shim.spool).filter(name => name.endsWith('.url')).map(name => fs.readFileSync(path.join(ctx.shim.spool, name), 'utf8'));
-      if (!opened || !urls.some(url => url.startsWith(form.url.split('#')[0]))) throw new Error(`Open it again opened ${urls.slice(-2).join(', ')}, not the job ${form.url}`);
-      if (urls.some(url => url.startsWith('chrome-extension://'))) throw new Error('a page of the extension was opened where the job was wanted');
+      // Why (30 Oct 2026, #2586): the harness browser takes each page the app opens out of the opener's spool within milliseconds (lib/extension.mjs watcher), so a poll of the spool races it (2 of 4 runs missed the page). The app's own log line for the open stays.
+    const opens = () => appLogText(ctx.profile).split('\n').filter(line => line.includes('[apply] opened the form tab') && line.includes(`"session":"${id}"`));
+    const before = opens().length;
+    await ctx.page.locator('#ss-actions button', {hasText: 'Open it again'}).click();
+    const job = await until('Open it again opened no job tab', () => opens()[before] || null, 30000);
+    if (!job.includes(`"host":"${new URL(form.url).hostname}"`)) throw new Error(`Open it again opened another page than the job ${form.url}: ${job}`);
     } finally { await held.release().catch(() => {}); }
     // Chrome's extension reports to the app again (the app on its own port): the card gives a verdict and an action, never the silent state or the first-look wait for ever.
     await ctx.relaunch({JOB_PILOTTO_PORT: String(ctx.appPort)});

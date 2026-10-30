@@ -1,12 +1,10 @@
 #!/usr/bin/env python3
 """Writes a pull request's one required status, "All checks passed", from the state of every workflow run of its head commit, in seconds.
 
-Every job a pull request starts runs it as its last step, "Write the PR's verdict" (--job-status): the job it runs in counts as ended with that status, so the
-status lands within seconds of the last check (owner on #2042, 26 Oct 2026: "it shows green, but I cannot merge": a separate verdict job waited minutes for one of
-the ~20 busy runners). Of jobs ending together, the one with the highest id waits a few seconds for the others' ends and writes; the rest leave it to it.
-A run whose jobs all ended but which is not marked ended ("settling") is waited on for a few seconds: it may be about to create the jobs that need them. So a job
-that a deciding job needs (e2e's plan, page-cases' replays) has no verdict step: it would see its own run as ended before its dependents exist.
-pr-verdict.yml (workflow_run) runs it again when a workflow ends, as a backstop. No job holds a runner to wait (owner, 26 Oct 2026: "How could you design such a
+pr-verdict.yml (workflow_run) runs it each time a PR workflow ends: the one writer (owner, 30 Oct 2026, "One writer"). Until then every PR job also ran it as its
+last step ("Write the PR's verdict", #2042), ~21 jobs x ~24 GitHub calls per push: the token's 5,000 calls an hour ran out ~35 min past each hour, a failed read
+wrote nothing, and PRs green everywhere sat at pending. One read and one write per workflow end; a run whose jobs ended but which is not marked ended ("settling")
+is written pending, and its own end writes again. No job holds a runner to wait (owner, 26 Oct 2026: "How could you design such a
 slow and inefficient method of checking PRs?"; on #1992 two polling jobs took 43 of 206 runner-minutes of one push). A merged or closed PR gets nothing (#2041).
 Counted: the runs of the commit started by the pull request, and the e2e run pr-suites.yml started for it (title "E2E for PR · ..."): a red suite blocks the merge
 (gate G1a; the owner rejected report only, 26 Oct 2026). The newest run of each workflow
@@ -36,10 +34,11 @@ from datetime import datetime, timezone
 CONTEXT = 'All checks passed'
 E2E_PR_TITLE = 'E2E for PR · '   # e2e.yml run-name for a run pr-suites.yml started
 BUDGET_MIN = 10
-STEP = "Write the PR's verdict"   # the last step of every PR job (tests/test_pr_verdict.py checks each one has it)
+STEP = "Write the PR's verdict"   # the old per-job writer, gone 30 Oct 2026 (one writer); a branch not yet rebased still has it: job_state reads it as ending
+# TODO(AI): drop STEP, job_state's 'finishing' and verdict()'s me/my_status once no open PR predates the one-writer change (30 Oct 2026)
 # Jobs that only report (an HTML report, a results upload) never hold or turn the verdict: on #2044 the settings suite was green at 04:36 and the PR waited on
 # e2e's "HTML report" queued for a runner (owner, 26 Oct 2026: "again, why I cannot merge this PR?").
-REPORT_JOBS = {'HTML report', 'Windows HTML report', 'AI review of the screenshots'}   # never decide a PR (page-cases' report does: its fill time vs main; it gets the verdict step). The review: after the suites, on main and release runs only (.github/actions/e2e-review)
+REPORT_JOBS = {'HTML report', 'Windows HTML report', 'AI review of the screenshots'}   # never decide a PR (page-cases' report does: its fill time vs main). The review: after the suites, on main and release runs only (.github/actions/e2e-review)
 RED = {'failure', 'cancelled', 'timed_out', 'startup_failure', 'action_required', 'stale'}
 # Why a red job shows grey, in the order the description tells them: reason -> (word, what it says). 'main': its failure lines are main's own (main_red_greys);
 # 'tolerant' / 'suspended': its suite is in the lane registry desktop/e2e/lanes.json (lane_greys; spec lanes table, 28 Oct 2026).
@@ -187,13 +186,22 @@ def job_spans(repo, runs, reports=()):
     return spans
 
 
-def gh(*args, binary=False):
-    """Run `gh <args>`; stdout as UTF-8 text (a Windows runner's cp1252 default once hid "E2E for PR · " and wrote a false green, #2062), bytes for an artifact ZIP (binary=True). A failure prints gh's error and re-raises."""
-    try:
-        return subprocess.run(['gh', *args], check=True, capture_output=True, encoding=None if binary else 'utf-8').stdout
-    except subprocess.CalledProcessError as error:
-        print(f'gh {" ".join(args)[:120]}: {(error.stderr or "").strip()[:400]}', file=sys.stderr)   # Why (29 Oct 2026, api-quota): the 403 of 23:29Z showed only "exit status 1"
-        raise
+RETRY_AFTER, LIST_LAG_S = (2, 6), 20   # waits before a GitHub 5xx's 2nd and 3rd try; how long an ended run can still be listed going (#2533: ~15 s)
+
+
+def gh(*args, binary=False, sleep=time.sleep):
+    """Run `gh <args>`; stdout as UTF-8 text (a Windows runner's cp1252 default once hid "E2E for PR · " and wrote a false green, #2062), bytes for an artifact ZIP (binary=True).
+    A GitHub server error (HTTP 5xx) is tried again after RETRY_AFTER; any other failure, or the last try, prints gh's error and re-raises."""
+    for wait in (*RETRY_AFTER, None):
+        try:
+            return subprocess.run(['gh', *args], check=True, capture_output=True, encoding=None if binary else 'utf-8').stdout
+        except subprocess.CalledProcessError as error:
+            stderr = error.stderr.decode('utf-8', 'replace') if isinstance(error.stderr, bytes) else (error.stderr or '')
+            # Why (30 Oct 2026): one HTTP 502 on a run's job list at 18:05Z ended the verdict with nothing written; #2605 sat at pending, every check green.
+            if wait is not None and re.search(r'HTTP 5\d\d', stderr):
+                sleep(wait); continue
+            print(f'gh {" ".join(args)[:120]}: {stderr.strip()[:400]}', file=sys.stderr)   # Why (29-30 Oct 2026, api-quota): the 403 of 23:29Z showed only "exit status 1"; a 5xx prints after its last try
+            raise
 
 
 def quota_line(run=None):
@@ -203,11 +211,6 @@ def quota_line(run=None):
         return f"quota left: REST {res['core']['remaining']}/{res['core']['limit']}, GraphQL {res['graphql']['remaining']}/{res['graphql']['limit']}"
     except Exception:
         return ''
-
-
-def leave_it(finishing, me):
-    """Jobs ending together: the one with the highest id writes (it waits for the others' ends); the backstop (me None) leaves it to them."""
-    return bool(finishing) and (me is None or max(finishing) > me)
 
 
 PR_META = """query($owner: String!, $name: String!, $oid: GitObjectID!) { repository(owner: $owner, name: $name) { object(oid: $oid) { ... on Commit {
@@ -243,10 +246,11 @@ def ended_run(run, ended):
     return bool(ended) and run.get('databaseId') == ended.get('id') and run.get('attempt') == ended.get('run_attempt')
 
 
-def read(repo, sha, my_run):
+def read(repo, sha):
     """Read the PR's runs and deciding jobs; a matching completed event outranks a lagging list.
     Invariant: completion evidence applies only to the same head, run id and attempt, never a rerun.
     Red E2E job details still decide lane exemptions and burn-in admission.
+    Jobs only for a red run and the PR's e2e run: a run going is pending from the list alone (one writer, 30 Oct 2026: each read was a call).
     """
     runs = json.loads(gh('run', 'list', '-R', repo, '--commit', sha, '-L', '100', '--json',
                          'databaseId,workflowName,status,conclusion,event,createdAt,updatedAt,displayTitle,attempt'))
@@ -263,7 +267,7 @@ def read(repo, sha, my_run):
             r.update(status='completed', conclusion=ended['conclusion'], updatedAt=ended['updated_at'])
     jobs = {}
     for r in counted(runs):
-        if r.get('status') != 'completed' or r.get('conclusion') in RED or str(r.get('databaseId')) == my_run or str(r.get('displayTitle', '')).startswith(E2E_PR_TITLE):
+        if r.get('conclusion') in RED or str(r.get('displayTitle', '')).startswith(E2E_PR_TITLE):
             jobs[r['databaseId']] = json.loads(gh('api', f"repos/{repo}/actions/runs/{r['databaseId']}/jobs?per_page=100", '--jq', '.jobs'))
             # Why (30 Oct 2026, Gitar on #2552): a successful last E2E completion outranks lagging jobs; red jobs retain exemption evidence.
             if ended.get('conclusion') == 'success' and ended_run(r, ended):
@@ -405,6 +409,9 @@ def main():
     ap.add_argument('--job-status', default='', help="the status so far of the job this step ends (${{ job.status }}); empty: the workflow_run backstop")
     ap.add_argument('--dry-run', action='store_true')
     a = ap.parse_args()
+    if a.job_status:
+        # Why (owner, 30 Oct 2026, "One writer"): pr-verdict.yml alone writes; a branch not yet rebased still runs the old job step, which must not spend calls.
+        print(f'{CONTEXT}: pr-verdict.yml writes it when this workflow ends (one writer)'); return 0
     my_run = os.environ.get('GITHUB_RUN_ID', '')
     server = os.environ.get('GITHUB_SERVER_URL', 'https://github.com')
     pulls, files, messages = pr_meta(a.repo, a.sha)
@@ -413,39 +420,35 @@ def main():
         print(f'the pull request of {a.sha[:7]} is merged or closed: nothing to write'); return 0
     if number and files is None:   # over 100 files: the paged REST read
         files = gh('api', '--paginate', f'repos/{a.repo}/pulls/{number}/files', '--jq', '.[].filename').split()
-    me, greys, reports, ai_line = None, None, set(), str
-    runs, jobs = read(a.repo, a.sha, my_run)
     ref = os.environ.get('GITHUB_SHA') or a.sha
-    if any(str(r.get('displayTitle', '')).startswith(E2E_PR_TITLE) for r in counted(runs)):
-        try:
-            reports, ai_line = main_state_module(a.repo, ref, 'pr_ai_number').prepare(a.repo, counted(runs), jobs, gh, lambda name='main_e2e_state': main_state_module(a.repo, ref, name), base_branch(), my_run, a.job_status, os.environ.get('RUNNER_NAME', ''))
-        except Exception as error:
-            print(f'AI number unavailable ({type(error).__name__}): required verdict unchanged')
-    for attempt in range(20):   # at most ~60 s, only while jobs with a lower id end with us
-        if attempt: runs, jobs = read(a.repo, a.sha, my_run)
-        if a.job_status and me is None:
-            mine = [j for j in jobs.get(int(my_run or 0), []) if j.get('status') != 'completed' and j.get('runner_name') == os.environ.get('RUNNER_NAME')]
-            me = mine[0]['id'] if mine else None
-        spans = job_spans(a.repo, runs, reports) if ci_change(files) and (reports or not any(r.get('status') != 'completed' for r in counted(runs) if str(r.get('databaseId')) != my_run)) else None
-        state, why, live, finishing, target = verdict(runs, files, messages, jobs, me, a.job_status, spans=spans, greys=greys or (), reports=reports, burn_in=lambda *args: main_state_module(a.repo, ref, 'pr_burn_in').failures(*args))
-        if state == 'failure' and greys is None:   # read main's reds once, and only for a red: a green PR costs no extra call
-            greys = {**{job_id: 'main' for job_id in main_red_greys(a.repo, runs, jobs, ref=ref)}, **lane_greys(a.repo, runs, jobs),
-                     **health_greys(a.repo, runs, jobs, ref=ref)}   # a health cause names this run; lanes still come from the base branch
-            if greys:
-                state, why, live, finishing, target = verdict(runs, files, messages, jobs, me, a.job_status, spans=spans, greys=greys, reports=reports, burn_in=lambda *args: main_state_module(a.repo, ref, 'pr_burn_in').failures(*args))
-        if state in (None, 'failure', 'pending') or (state != 'settling' and not finishing):
+    judge = lambda greys: verdict(runs, files, messages, jobs, spans=spans, greys=greys, reports=reports, burn_in=lambda *args: main_state_module(a.repo, ref, 'pr_burn_in').failures(*args))
+    reports, ai_line, prepared = set(), str, None
+    for attempt in (1, 2):   # Why (Gitar on #2619): one write per workflow end, no wait loop; a replaced waiting verdict loses its run's end while the list lags (#2533), so a pending result reads once more after LIST_LAG_S
+        runs, jobs = read(a.repo, a.sha)
+        e2e = [r for r in counted(runs) if str(r.get('displayTitle', '')).startswith(E2E_PR_TITLE)]
+        if e2e and prepared != all(r.get('status') == 'completed' for r in e2e):   # one artifact read per write unless the e2e run ended between the reads
+            prepared = all(r.get('status') == 'completed' for r in e2e)
+            try:
+                reports, ai_line = main_state_module(a.repo, ref, 'pr_ai_number').prepare(a.repo, counted(runs), jobs, gh, lambda name='main_e2e_state': main_state_module(a.repo, ref, name), base_branch(), my_run, '', os.environ.get('RUNNER_NAME', ''))
+            except Exception as error:
+                print(f'AI number unavailable ({type(error).__name__}): required verdict unchanged')
+        spans = job_spans(a.repo, runs, reports) if ci_change(files) and (reports or not any(r.get('status') != 'completed' for r in counted(runs))) else None
+        state, why, live, _, target = judge(())
+        if attempt == 2 or a.dry_run or state not in ('pending', 'settling'):
             break
-        if state != 'settling' and leave_it(finishing, me):
-            print(f'{CONTEXT}: job(s) {finishing} end with this one and write it'); return 0
-        time.sleep(3)
-    else:
-        state, why, target = 'pending', f'still ending: {why}'[:140], None
+        time.sleep(LIST_LAG_S)
+    if state == 'failure':   # main's reds are read only for a red: a green PR costs no extra call
+        greys = {**{job_id: 'main' for job_id in main_red_greys(a.repo, runs, jobs, ref=ref)}, **lane_greys(a.repo, runs, jobs),
+                 **health_greys(a.repo, runs, jobs, ref=ref)}   # a health cause names this run; lanes still come from the base branch
+        if greys:
+            state, why, live, _, target = judge(greys)
+    state = 'pending' if state == 'settling' else state
     print(quota_line() or 'quota: not readable')
     for r in live:
         print(f"  {r.get('conclusion') or r.get('status'):10} {r['workflowName']}")
     if state is None:
         print(f'no pull request run on {a.sha[:7]}: nothing to write'); return 0
-    why = number_description(a.repo, ref, runs, why, ai_line, speed_state(state, live, jobs, me, reports, a.job_status))
+    why = number_description(a.repo, ref, runs, why, ai_line, speed_state(state, live, jobs, None, reports, ''))
     print(f'{CONTEXT}: {state}: {why}')
     url = f'{server}/{a.repo}/actions/runs/{target or my_run}'   # the run it waits on, or the red one: the PR's e2e run is not in its checks list
     if not a.dry_run:

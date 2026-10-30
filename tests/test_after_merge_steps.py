@@ -51,8 +51,11 @@ class MainSteps(unittest.TestCase):
         self.assertRegex(alert, r'elif \[ -z "\$AFTER_MERGE" \]; then node ci-alert\.mjs success', 'a few green steps never say main is green again')
 
     def test_no_pr_verdict_for_a_run_on_main(self):
-        step = re.search(r"(?ms)- name: Write the PR's verdict\n        if: ([^\n]*)", E2E).group(1)
-        self.assertIn("inputs.after_merge == ''", step)
+        # One writer (owner, 30 Oct 2026): pr-verdict.yml counts only runs titled "E2E for PR · "; an after-merge run is titled first, so it never is one.
+        verdict = (ROOT / '.github/workflows/pr-verdict.yml').read_text()
+        self.assertIn("startsWith(github.event.workflow_run.display_title, 'E2E for PR · ')", verdict)
+        name = re.search(r'(?m)^run-name: (.*)$', E2E).group(1)
+        self.assertLess(name.index('inputs.after_merge && format('), name.index("inputs.pr_suites && format('E2E for PR · "))
 
 
 if __name__ == '__main__':

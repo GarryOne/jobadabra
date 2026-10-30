@@ -26,7 +26,7 @@ class ShipPrTest(ShipFixture):
 
     def pr_ship(self, state=None, *flags, timeout=90, **extra):
         self.state.write_text(json.dumps({'origin': str(self.origin), **(state or {})}))
-        env = {**os.environ, 'PATH': f'{self.bin}{os.pathsep}{os.environ["PATH"]}', 'FAKE_GH_STATE': str(self.state), 'SHIP_MODE': 'pr', 'SHIP_REVIEW': '0', 'SHIP_WATCH': '0', 'SHIP_PR_POLL': '0', 'SHIP_RED_POLL': '0', 'JOB_PILOTTO_SESSION': '', 'JP_SESSION': '', 'JP_SESSIONS_DIR': str(self.tmp / 'no-sessions'), **extra}   # SHIP_REVIEW=0 by default: the auto-merge path
+        env = {**os.environ, 'PATH': f'{self.bin}{os.pathsep}{os.environ["PATH"]}', 'FAKE_GH_STATE': str(self.state), 'SHIP_MODE': 'pr', 'SHIP_REVIEW': '0', 'SHIP_WATCH': '0', 'SHIP_PR_POLL': '0', 'SHIP_RED_POLL': '0', 'JOB_PILOTTO_SESSION': '', 'JOB_PILOTTO_SESSION_SHORT': '', 'JP_SESSION': '', 'JP_SESSIONS_DIR': str(self.tmp / 'no-sessions'), **extra}   # SHIP_REVIEW=0 by default: the auto-merge path
         return subprocess.run(['bash', str(self.tree / 'tools' / 'ship.sh'), *flags], cwd=self.tree, capture_output=True, text=True, timeout=timeout, env=env)
 
     def calls(self):
@@ -180,6 +180,23 @@ class ShipPrTest(ShipFixture):
                 self.change(self.tree, f'shape{n}b.txt', 'z\n', f'More {n}')
                 self.pr_ship({'state': 'OPEN', 'head': 'topic', 'title': f'Hand made {n}'}, JOB_PILOTTO_SESSION=name)
                 self.assertIn(f'pr edit 1 --title [9f] Hand made {n}', ' | '.join(self.calls()))
+
+    def test_the_session_tag_is_the_short_name_the_owner_sees_in_cmux(self):
+        # Owner, 30 Oct 2026 ("Tag from cmux title"): d3's PRs read [8f] and the coordinator 27's read "[07] [27]": the tag was the Claude name's last part
+        # (hidden-apply-modes-8f, mac-07), not the short name the cmux title hook keeps for the session (workspace-assignments/<sessionId>.short).
+        sessions, kept = self.tmp / 'sessions', self.tmp / 'assignments'
+        sessions.mkdir(); kept.mkdir()
+        probe = 'printf \'{"name": "mac-07", "sessionId": "S1"}\' > "$JP_SESSIONS_DIR/$$.json"; . tools/session-name.sh; session_short'
+        env = {**os.environ, 'JOB_PILOTTO_SESSION': '', 'JOB_PILOTTO_SESSION_SHORT': '', 'JP_SESSION': '', 'JP_SESSIONS_DIR': str(sessions), 'JP_ASSIGNMENTS_DIR': str(kept)}
+        short = lambda: subprocess.run(['bash', '-c', probe], cwd=ROOT, env=env, capture_output=True, text=True).stdout.strip()
+        self.assertEqual(short(), '07', "positive control: with no kept short name, the Claude name's last part")
+        (kept / 'S1.short').write_text('27\n')
+        self.assertEqual(short(), '27')
+        # ship.sh --background exports the short name before it detaches (no Claude parent to walk after that): the PR is tagged with it
+        self.change(self.tree, 'mine.txt', 'y\n', 'My change')
+        self.pr_ship(None, '--title=[27] Coordinator change', JOB_PILOTTO_SESSION='mac-07', JOB_PILOTTO_SESSION_SHORT='27')
+        self.assertIn('--title [27] Coordinator change --body', ' | '.join(self.calls()))
+        self.assertNotIn('[07]', ' | '.join(self.calls()))
 
     def test_a_pr_landing_of_slow_gate_files_takes_no_landing_queue(self):
         # Owner, 12 Oct 2026: "Everybody can open PR at any time". The PR's required checks guard main, so a local queue only made PRs wait for each other.

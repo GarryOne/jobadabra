@@ -53,6 +53,19 @@ test('every module the harness\'s unit tests reach needs only desktop/e2e\'s own
     'add the package to desktop/e2e/package.json, or import a leaf module (lib/root.js) instead of one that pulls the app in');
 });
 
+test('packages shared with the app use its declared range and locked version', () => {
+  const app = JSON.parse(fs.readFileSync(path.join(HERE, '..', '..', 'package.json'), 'utf8'));
+  const appPackages = {...app.dependencies, ...app.devDependencies};
+  const appLock = JSON.parse(fs.readFileSync(path.join(HERE, '..', '..', 'package-lock.json'), 'utf8')).packages;
+  const harnessLock = JSON.parse(fs.readFileSync(path.join(HERE, '..', 'package-lock.json'), 'utf8')).packages;
+  for (const [name, range] of Object.entries({...pkg.dependencies, ...pkg.devDependencies})) {
+    if (!(name in appPackages)) continue;
+    assert.equal(range, appPackages[name], `${name}: keep the harness range in step with the app`);
+    assert.equal(harnessLock[`node_modules/${name}`]?.version, appLock[`node_modules/${name}`]?.version,
+      `${name}: keep the harness lock in step with the app`);
+  }
+});
+
 test('positive control: a module two imports away that needs an uninstalled package is found', () => {
   const folder = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-installed-only-'));
   try {

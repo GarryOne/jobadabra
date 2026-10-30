@@ -146,7 +146,7 @@
   "free-click.test.mjs",
   "golden-fixtures.test.mjs",
   "google-fake.test.mjs",
-  "harness-size.test.mjs",
+  "hang-caps.test.mjs",
   "heavy.test.mjs",
   "hold-notes-real-logs.test.mjs",
   "installed-only.test.mjs",
@@ -395,7 +395,6 @@
  "folderReaders": {
   "./": [
    "ensure-staged.test.mjs",
-   "harness-size.test.mjs",
    "import-graph.test.mjs",
    "net-records-key.test.mjs",
    "no-local-key.test.mjs",
@@ -412,7 +411,6 @@
    "coverage-steps.test.mjs",
    "ensure-staged.test.mjs",
    "folder-free.test.mjs",
-   "harness-size.test.mjs",
    "import-graph.test.mjs",
    "jobs-filter-all.test.mjs",
    "nav-click-class.test.mjs",
@@ -445,14 +443,12 @@
    "windows-two.test.mjs"
   ],
   "report/": [
-   "harness-size.test.mjs"
   ],
   "lib/": [
    "app-log.test.mjs",
    "async-state-predicates.test.mjs",
    "ensure-staged.test.mjs",
    "folder-free.test.mjs",
-   "harness-size.test.mjs",
    "import-graph.test.mjs",
    "jobs-filter-all.test.mjs",
    "nav-click-class.test.mjs",

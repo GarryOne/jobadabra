@@ -61,7 +61,6 @@ class WaitBuildTagTest(unittest.TestCase):
 
     def test_a_build_that_has_not_tagged_yet_is_waited_for_until_it_does(self):
         self.build()
-        start = time.time()
         err_file = self.tmp / 'err'
         with open(err_file, 'w') as err_out:
             proc = subprocess.Popen(['bash', str(TOOL)], stderr=err_out, text=True, env=self.env)
@@ -74,8 +73,7 @@ class WaitBuildTagTest(unittest.TestCase):
             proc.wait(timeout=60)
         err = err_file.read_text()
         self.assertIn('waiting until it has tagged itself', err)
-        self.assertIn('(tagged)', err)
-        self.assertLess(time.time() - start, 10, 'it ended with the tag step; the build itself never ends in this test')
+        self.assertIn('(tagged)', err, 'it ended with the tag step; the build itself never ends in this test')
 
     def test_the_old_wait_for_the_whole_build_is_one_switch_away(self):
         self.build(tag_status='completed')

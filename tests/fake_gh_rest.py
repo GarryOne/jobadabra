@@ -57,7 +57,7 @@ if (d / 'states').exists() and m:
         sys.exit(1)
     mergeable = {'CONFLICTING': False, 'UNKNOWN': None}.get(line('mergeables', n) or 'MERGEABLE', True)
     answer({'number': int(m[2]), 'html_url': f'https://github.com/{m[1]}/pull/{m[2]}', 'head': {'sha': line('heads', n) or 'new1', 'ref': 'feature'},
-            'state': 'open' if state[0] == 'OPEN' else 'closed', 'merged_at': '2026-10-27T10:00:00Z' if state[0] == 'MERGED' else None,
+            'draft': line('drafts', n) == 'true', 'state': 'open' if state[0] == 'OPEN' else 'closed', 'merged_at': '2026-10-27T10:00:00Z' if state[0] == 'MERGED' else None,
             'merge_commit_sha': state[1] if state[0] == 'MERGED' else None, 'mergeable': mergeable,
             'labels': [{'name': name} for name in line('labels', n).split(',') if name]})
 if (d / 'states').exists() and re.search(r'/commits/[^/]+/check-runs\?per_page=100$', path):
@@ -66,14 +66,16 @@ if (d / 'states').exists() and re.search(r'/commits/[^/]+/check-runs\?per_page=1
         print('HTTP/2.0 403 Forbidden\n\n{"message":"API rate limit exceeded"}')
         sys.exit(1)
     if runs == 'none': answer({'check_runs': []})
-    if runs == 'running' or check == 'pending': answer({'check_runs': [{'name': 'x', 'status': 'in_progress', 'conclusion': None}]})
+    if runs == 'running' or check == 'pending': answer({'check_runs': [{'name': 'x', 'head_sha': line('heads', n) or 'new1', 'status': 'in_progress', 'conclusion': None}]})
     one = {'name': check, 'status': 'completed', 'conclusion': 'failure'} if check else {'name': 'x', 'status': 'completed', 'conclusion': 'success'}
     gate = [{'name': 'All checks passed', 'status': 'completed', 'conclusion': 'success'}] if runs == 'gate' else []
+    for check_run in [one] + gate:
+        check_run['head_sha'] = line('heads', n) or 'new1'
     answer({'check_runs': [one] + gate})
 if (d / 'states').exists() and re.search(r'/commits/[^/]+/status$', path):
     runs = line('runs', look())   # like pr-verdict.yml: no status before the head's runs exist, pending while they run, none for runs older than the status
     verdict = line('verdicts', look()) or {'gate': 'none', 'none': 'none', 'running': 'pending'}.get(runs, 'ok')
-    answer({'statuses': [] if verdict == 'none' else [{'context': 'All checks passed', 'state': 'pending' if verdict == 'pending' else 'success', 'target_url': 'u'}]})
+    answer({'sha': line('heads', look()) or 'new1', 'statuses': [] if verdict == 'none' else [{'context': 'All checks passed', 'state': 'pending' if verdict == 'pending' else 'success', 'target_url': 'u'}]})
 f = d / 'rest' / re.sub(r'[^A-Za-z0-9]', '_', path)
 if f.exists():
     answer(json.loads(f.read_text()))

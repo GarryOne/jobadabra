@@ -17,6 +17,11 @@ while :; do
   [ "$total" -ge "$seen" ] || seen=0   # the log was replaced: read it from the top
   if [ "$total" -gt "$seen" ]; then
     new=$(sed -n "$((seen + 1)),${total}p" "$log" | grep -E "$events" || true)
+    # Why (#2618, 30 Oct 2026): a wait may be re-armed after a push; old-head REDs in its unread log must not wake the session.
+    if [ -s "$log.head" ]; then
+      read -r number head < "$log.head" || true
+      new=$(printf '%s\n' "$new" | awk -v n="#$number" -v head="$head" '$2 != "RED" || $3 != n || $NF == head')
+    fi
     seen=$total; echo "$seen" > "$cursor"
     if [ -n "$new" ]; then printf '%s\n' "$new"; exit 0; fi
   fi

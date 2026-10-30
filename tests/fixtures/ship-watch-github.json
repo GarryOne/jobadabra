@@ -1,0 +1,78 @@
+{
+  "_purpose": "Sanitized GitHub REST response shapes for issue #2618: current/old heads, manual record runs, draft PRs and Gitar reposts.",
+  "pull": {
+    "number": 7,
+    "html_url": "https://github.com/o/r/pull/7",
+    "head": {
+      "sha": "466e2aa0000000000000000000000000000000000",
+      "ref": "topic"
+    },
+    "state": "open",
+    "merged_at": null,
+    "mergeable": true,
+    "draft": false,
+    "labels": [
+      {
+        "name": "Gitar: approved"
+      }
+    ]
+  },
+  "checks": {
+    "check_runs": [
+      {
+        "id": 1,
+        "name": "personas",
+        "head_sha": "466e2aa0000000000000000000000000000000000",
+        "status": "completed",
+        "conclusion": "failure",
+        "app": {
+          "slug": "github-actions"
+        },
+        "check_suite": {
+          "id": 10
+        },
+        "html_url": "https://github.com/o/r/actions/runs/41092667989/job/1"
+      }
+    ]
+  },
+  "runs": {
+    "workflow_runs": [
+      {
+        "id": 41092667989,
+        "head_sha": "466e2aa0000000000000000000000000000000000",
+        "event": "workflow_dispatch",
+        "check_suite_id": 10
+      }
+    ]
+  },
+  "status": {
+    "sha": "466e2aa0000000000000000000000000000000000",
+    "statuses": [
+      {
+        "context": "All checks passed",
+        "state": "success",
+        "target_url": "u"
+      }
+    ]
+  },
+  "gitar_comments": [
+    {
+      "node_id": "IC_6527993181",
+      "user": {
+        "login": "gitar-bot[bot]"
+      },
+      "body": "<details>\n<summary><b>Code Review</b> <kbd>✅ Approved</kbd> <kbd>3 closed / 3 findings</kbd></summary>\nReview of d843ed5\n</details>",
+      "html_url": "https://github.com/o/r/pull/7#issuecomment-6527993181",
+      "created_at": "2026-10-30T10:00:00Z"
+    },
+    {
+      "node_id": "IC_6528339776",
+      "user": {
+        "login": "gitar-bot[bot]"
+      },
+      "body": "<details>\n<summary><b>Code Review</b> <kbd>✅ Approved</kbd> <kbd>3 closed / 3 findings</kbd></summary>\nReview of 466e2aa\n</details>",
+      "html_url": "https://github.com/o/r/pull/7#issuecomment-6528339776",
+      "created_at": "2026-10-30T10:10:00Z"
+    }
+  ]
+}

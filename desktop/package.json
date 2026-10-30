@@ -7,7 +7,7 @@
   "main": "start.js",
   "license": "SEE LICENSE IN ../LICENSE.md",
   "scripts": {
-    "prestart": "npm install --no-audit --no-fund --silent && scripts/audiotee.sh && node scripts/stage.mjs",
+    "prestart": "node scripts/check-install.mjs && npm install --no-audit --no-fund --loglevel=error && scripts/audiotee.sh && node scripts/stage.mjs",
     "start": "electron .",
     "pretest": "node scripts/stage.mjs",
     "test": "npm run lint && node --import ./test/no-live-site.mjs --test --test-reporter=./test/reporter-by-file.mjs test/*.test.js",

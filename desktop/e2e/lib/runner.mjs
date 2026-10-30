@@ -27,8 +27,8 @@ export async function hangReport(session) {
 export function withLimit(promise, ms, name, getSession = () => null, budget = 0, hangError) {   // budget: set when the suite's budget, not the step's own limit, is what cuts it
   let timer;
   stepClock(ms);   // the step's own waits run until this cap, never to a shorter one of their own (lib/wait-on-state.mjs)
-  // Why (#2501; 30 Oct 2026, owner redesign): named hang errors retain their evidence; only cap errors are marked so opted-in owned steps stop without retrying abandoned work. Other errors stay unchanged.
-  const limit = new Promise((_, fail) => { timer = setTimeout(async () => { const error = hangError ? hangError(ms) : new Error(budget
+  // Why (#2501; 30 Oct 2026, owner redesign; g2: hangError may be async, so a step whose waits carry no clock can read the hidden browser when its cap fires): named hang errors retain their evidence; only cap errors are marked so opted-in owned steps stop without retrying abandoned work. Other errors stay unchanged.
+  const limit = new Promise((_, fail) => { timer = setTimeout(async () => { const error = hangError ? await hangError(ms) : new Error(budget
     ? `the suite's ${Math.round(budget / 60000)}-minute budget ran out during this step (the suite is too long: split it): ${await hangReport(getSession())}`
     : `the step did not finish within ${ms < 10 * 60000 ? `${ms / 1000} s` : `${Math.round(ms / 60000)} min`} (it hung): ${await hangReport(getSession())}`); error.stepHang = true; fail(error); }, ms); });
   return Promise.race([promise, limit]).finally(() => { clearTimeout(timer); stepClock(null); });

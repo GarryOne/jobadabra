@@ -20,6 +20,7 @@ import {runCvSteps} from '../lib/apply-cv-steps.mjs';
 import {runSilentChromeSteps} from '../lib/apply-silent-steps.mjs';
 import {runTriageSteps} from '../lib/apply-triage-steps.mjs';
 import {runReadSteps} from '../lib/apply-read-steps.mjs';
+import {runConfirmSteps} from '../lib/apply-confirm-steps.mjs';
 import {runRestartSteps} from '../lib/apply-restart-steps.mjs';
 import {HIDDEN_NEED, autoFormOf, kitSeeder, proveBackground, proveBotCheck, proveQueue} from '../lib/background-proof.mjs';
 import {proveAutomatic} from '../lib/background-auto-proof.mjs';
@@ -47,7 +48,8 @@ export const stepSeconds = {'real forms the extension once failed on': 76, 'Tail
   'the app quits while Background automation holds a filled form': 40, 'the app quits in Full automation\'s wait': 140,
   'the Jobs popup has one field': 15, 'checking jobs before the form read exists': 10,
   'Background automation hands a bot check': 25, 'Full automation hands a bot check': 25,
-  'Background automation fills several queued jobs': 90, 'Full automation presses each queued job': 50};
+  'Background automation fills several queued jobs': 90, 'Full automation presses each queued job': 50,
+  'Full automation asks once in Settings': 10, 'Full automation saved without its confirmation': 10};
 // Why (29 Oct 2026, ap): hang caps in seconds, 3 x calm p95 from tools/e2e-step-timings.mjs, raised to the step's own inner caps + 30 s where a step waits in sequence; they catch a hang, never a speed.
 // A step whose inner caps add up past the runner's 8-minute default (Tailor CVs for top matches, Full automation) has no entry: the default stays.
 export const hangCaps = {'the app has an applicant': 300, 'the app is seeded': 90, 'the app is set up on this Mac\'s store': 90,
@@ -59,10 +61,11 @@ export const hangCaps = {'the app has an applicant': 300, 'the app is seeded': 9
   'The hidden browser fills a form': 385,
   // no main samples yet, regenerate after 5 main runs: the 30 s floor x 3 (tools/e2e-step-timings.mjs)
   'a silent Chrome in Standard automation': 90, 'a silent Chrome in Background automation': 90, 'a silent Chrome in Full automation': 90,
-  'the app quits while Background automation holds a filled form': 300, 'the app quits in Full automation\'s wait': 420,   // hold 180 + hand-over 60 + the watch past the wait <= 120, + 30 s
+  'the app quits while Background automation holds a filled form': 300, 'the app quits in Full automation\'s wait': 420,   // kept from when these steps had inner caps (180 s hold, 60 s hand-over), their waits carry none now: regenerate after 5 main runs (tools/e2e-step-timings.mjs)
   'the Jobs popup has one field': 90, 'checking jobs before the form read exists': 90,
   'Background automation hands a bot check': 240, 'Full automation hands a bot check': 240,
   'Background automation fills several queued jobs': 450, 'Full automation presses each queued job': 450,   // 60 s + 3 x 120 s of inner waits, + 30 s
+  'Full automation asks once in Settings': 90, 'Full automation saved without its confirmation': 90,   // no main samples yet: the 30 s floor x 3
   'the form\'s panel offers a tailored CV': 3 * stepSeconds['Tailor on the session page of a form']};
 // applyflows' journeys, weighed the same way (26 Oct 2026, beta 40275152602 + main 40274183649, the slowest attempt of each): turn-taking put 392 s of them in one slice and 299 s in the other.
 export const flowSeconds = {'the account and the application on one page': 97, 'a menu whose choices are not the answer': 79, '"Needs your attention" from the extension': 78, 'the form tab is closed': 76,
@@ -426,7 +429,8 @@ export async function runApply(ctx, parts) {
     await proveAutomatic(ctx, {form: autoFormOf(FORMS.submitter), until, seed: kitSeeder(ctx, urls, POSTING)});
   }, {needs: [...ctx.needs, HIDDEN_NEED]});
 
-  await runRestartSteps(ctx, {urls, until});   // lib/apply-restart-steps.mjs: the app quits while its hidden browser holds a job
+  await runRestartSteps(ctx, {urls});   // lib/apply-restart-steps.mjs: the app quits while its hidden browser holds a job
+  await runConfirmSteps(ctx, {urls});   // lib/apply-confirm-steps.mjs: Full automation's one confirmation in Settings → Apply, and the refusal without it
 
   // The bot-check hand-off (owner, 30 Oct 2026: "how covered are we from the apply flows/modes?"): a hidden browser that meets a bot check stops and hands over; it never solves one and sends nothing.
   // The details-only submitter at `?check=<mode>` carries the box (forms.mjs BOT_CHECK); each mode gets its own address, the app keeps one background session per job address.

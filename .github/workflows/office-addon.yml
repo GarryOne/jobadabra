@@ -26,7 +26,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-14, windows-latest]   # office.js needs only Node built-ins: no npm ci
+        os: [macos-latest, windows-latest]   # office.js needs only Node built-ins: no npm ci
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
     steps:

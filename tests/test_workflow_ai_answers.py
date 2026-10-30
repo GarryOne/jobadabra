@@ -7,6 +7,7 @@ import unittest
 ROOT = Path(__file__).resolve().parent.parent
 WORKFLOW = ROOT / '.github/workflows/e2e.yml'
 RECORD_GUARD = "github.event_name == 'workflow_dispatch' && github.run_attempt == 1 && inputs.ai_answers == 'record'"
+BACKBONE = ('quality', 'stores', 'interviews', 'wander')
 
 
 def expression(value, event='workflow_dispatch', mode='off', attempt=1, suite='jobs', burn_in=0):
@@ -63,8 +64,9 @@ class WorkflowAiAnswers(unittest.TestCase):
         mode_line = re.search(r'(?m)^          E2E_AI_ANSWERS: (.+)$', first)
         self.assertIsNotNone(mode_line, 'the suite process must receive its answer mode')
         value = mode_line.group(1)
-        # Why (30 Oct 2026, a8, burn-in): an admission leg always replays stored answers, never records.
-        self.assertEqual(value, "${{ matrix.burnIn && 'backbone' || " + RECORD_GUARD + " && 'record' || contains(fromJSON('[\"quality\",\"stores\",\"interviews\"]'), matrix.suite) && 'backbone' || 'off' }}")
+        # Why (30 Oct 2026, a8, burn-in; ap): an admission leg always replays stored answers, never records; the suite list is BACKBONE.
+        self.assertEqual(value, "${{ matrix.burnIn && 'backbone' || " + RECORD_GUARD + " && 'record' || contains(fromJSON('" +
+                         json.dumps(list(BACKBONE), separators=(',', ':')) + "'), matrix.suite) && 'backbone' || 'off' }}")
         cases = [('workflow_dispatch', 'record', 1, 'record'),
                  ('workflow_dispatch', 'off', 1, 'off'),
                  ('workflow_dispatch', '', 1, 'off'),
@@ -74,19 +76,19 @@ class WorkflowAiAnswers(unittest.TestCase):
                   ('schedule', 'push', 'pull_request', 'workflow_call', 'retry')]
         for event, mode, attempt, want in cases:
             with self.subTest(event=event, mode=mode, attempt=attempt):
-                for suite in ('jobs', 'quality', 'stores', 'interviews', 'qualityai', 'apply'):
-                    expected = 'backbone' if suite in ('quality', 'stores', 'interviews') and want == 'off' else want
+                for suite in BACKBONE + ('jobs', 'qualityai', 'apply'):
+                    expected = 'backbone' if suite in BACKBONE and want == 'off' else want
                     self.assertEqual(expression(value, event, mode, attempt, suite), expected, suite)
                     self.assertEqual(expression(value, event, mode, attempt, suite, burn_in=3), 'backbone', f'{suite}: a burn-in leg never records')
 
     def test_the_suites_second_try_uses_backbone_for_declared_suites(self):
         retry = self.step('if again ')
         value = re.search(r'(?m)^          E2E_AI_ANSWERS: (.+)$', retry).group(1)
-        for suite in ('quality', 'stores', 'interviews', 'qualityai', 'jobs', 'apply'):
+        for suite in BACKBONE + ('jobs', 'qualityai', 'apply'):
             for mode in ('off', 'record'):
                 with self.subTest(suite=suite, mode=mode):
                     self.assertEqual(expression(value, mode=mode, suite=suite),
-                                     'backbone' if suite in ('quality', 'stores', 'interviews') else 'off')
+                                     'backbone' if suite in BACKBONE else 'off')
 
     def test_candidates_stay_in_the_existing_artifact_upload(self):
         self.assertNotIn('E2E_AI_CANDIDATES', self.suite)

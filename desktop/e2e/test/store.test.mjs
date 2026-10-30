@@ -10,6 +10,7 @@ import {E2E} from '../lib/app.mjs';
 import {SUITES} from '../lib/context.mjs';
 import * as interviews from '../suites/interviews.mjs';
 import * as quality from '../suites/quality.mjs';
+import * as wander from '../suites/wander.mjs';
 
 test('a Mac runs on its own store (what a new install gets) unless pinned; E2E_NOTION_STANDIN=1 still means the stand-in', () => {
   assert.equal(pickStore({env: {}}), 'sqlite');
@@ -45,6 +46,14 @@ test('interviews pins SQLite across CI store alternation and environment overrid
   assert.equal(interviews.store, 'sqlite');
   for (const run of [0, 1, 2, 3]) {
     assert.equal(pickStore({env: {CI: 'true', GITHUB_RUN_NUMBER: String(run), E2E_STORE: 'standin'}, suiteStore: interviews.store}), 'sqlite', 'run ' + run);
+  }
+});
+
+test('wander keeps its Notion faults reachable on the stand-in across CI store alternation and environment pins', () => {
+  for (const run of [0, 1, 2, 3]) {
+    for (const E2E_STORE of ['', 'sqlite', 'standin', 'alternate']) {
+      assert.equal(pickStore({env: {CI: 'true', GITHUB_RUN_NUMBER: String(run), E2E_STORE}, suiteStore: wander.store}), 'standin');
+    }
   }
 });
 

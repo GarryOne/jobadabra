@@ -1,14 +1,42 @@
 {
-  "about": "Reviewed AI answers for the quality backbone suite (29 Oct 2026 record run 40861637712; scores and decide items reviewed by qu, rule in the PR). Keyed by question, not request bytes. Shared background kinds are declared by name with invalid-key refusals (owner, 29 Oct 2026); stores uses its notice-period stand-in plus these kinds. Interviews declares caption-keyed authored reviews and a kind-only authored patterns reply (29 Oct 2026); these are fixtures, not recorded model replies.",
+  "about": "Reviewed AI answers for the quality backbone suite (29 Oct 2026 record run 40861637712; scores and decide items reviewed by qu, rule in the PR). Keyed by question, not request bytes. Shared background kinds are declared by name with invalid-key refusals (owner, 29 Oct 2026); stores uses its notice-period stand-in plus these kinds. Interviews declares caption-keyed authored reviews and a kind-only authored patterns reply (29 Oct 2026). Wander adds authored empty items for answer_home/organize_lines and empty contact_from_cv proposals (30 Oct 2026) to avoid visible raw errors; role_ideas is a controlled refusal. Its six current seeded target-role titles, including the captured Site Reliability Engineer, have authored software verdicts for Strategy's role-kind calls. These are fixtures, not recorded model replies.",
   "kinds": {
     "organize_lines": {
       "answer": {
-        "refuse": "invalid-key"
+        "reply": {
+          "id": "msg_e2e",
+          "type": "message",
+          "role": "assistant",
+          "model": "e2e-canned",
+          "stop_reason": "end_turn",
+          "stop_sequence": null,
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"items\":[]}"
+            }
+          ],
+          "usage": {"input_tokens": 1, "output_tokens": 1}
+        }
       }
     },
     "answer_home": {
       "answer": {
-        "refuse": "invalid-key"
+        "reply": {
+          "id": "msg_e2e",
+          "type": "message",
+          "role": "assistant",
+          "model": "e2e-canned",
+          "stop_reason": "end_turn",
+          "stop_sequence": null,
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"items\":[]}"
+            }
+          ],
+          "usage": {"input_tokens": 1, "output_tokens": 1}
+        }
       }
     },
     "contact_asks": {
@@ -38,7 +66,21 @@
     },
     "contact_from_cv": {
       "answer": {
-        "refuse": "invalid-key"
+        "reply": {
+          "id": "msg_e2e",
+          "type": "message",
+          "role": "assistant",
+          "model": "e2e-canned",
+          "stop_reason": "end_turn",
+          "stop_sequence": null,
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"proposals\":[]}"
+            }
+          ],
+          "usage": {"input_tokens": 1, "output_tokens": 1}
+        }
       }
     },
     "cv_queue": {
@@ -79,6 +121,11 @@
             "output_tokens": 1
           }
         }
+      }
+    },
+    "role_ideas": {
+      "answer": {
+        "refuse": "invalid-key"
       }
     }
   },
@@ -501,6 +548,30 @@
       "default/e995bd9989d0a7adfbe0da64ce7637e300e64118f5ca7d4ee602d227dee5759c/c32f5de8269a9aced9a2a66afe8d228052211b0008b80b6993811ce29496bc91": {
         "answer": "ch",
         "text": "switzerland"
+      },
+      "default/d9f06c97101cdc68b97f8c3572320a414ed64b78d079d9587efd9e5f0094cfdb/4b6cea9e5ebc36cc2163dd0a8a7bd8eae79f0519ff5064ecce9497c14581ad5b": {
+        "answer": "software",
+        "text": "Site Reliability Engineer"
+      },
+      "default/d9f06c97101cdc68b97f8c3572320a414ed64b78d079d9587efd9e5f0094cfdb/42ebff4396ce4af45ea0e2868fd821e94ce7ec321c2d59bc404ccc307d8935d1": {
+        "answer": "software",
+        "text": "Platform Engineer"
+      },
+      "default/d9f06c97101cdc68b97f8c3572320a414ed64b78d079d9587efd9e5f0094cfdb/c6cd178e72ef00596c7d27acc971ab147fcdf2b8184531bf8c04c46edf1a00f7": {
+        "answer": "software",
+        "text": "DevOps Engineer"
+      },
+      "default/d9f06c97101cdc68b97f8c3572320a414ed64b78d079d9587efd9e5f0094cfdb/2ae413599ad7339e515d74f529e06998ca2acafc4726587de64349e5cf3ca07a": {
+        "answer": "software",
+        "text": "Infrastructure Engineer"
+      },
+      "default/d9f06c97101cdc68b97f8c3572320a414ed64b78d079d9587efd9e5f0094cfdb/474d9109e729925d860a4e9d316811380fbf4db00a269b4e76ecd348a49e22f7": {
+        "answer": "software",
+        "text": "Cloud Engineer"
+      },
+      "default/d9f06c97101cdc68b97f8c3572320a414ed64b78d079d9587efd9e5f0094cfdb/9da38728bc7901fa8f2d328ca8ce13855aff13c9061ab45acb9083638eedc23e": {
+        "answer": "software",
+        "text": "Systems Administrator"
       }
     }
   },

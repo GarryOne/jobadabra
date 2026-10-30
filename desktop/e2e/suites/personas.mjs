@@ -7,9 +7,9 @@
 // must keep the posting's own currency. Fixtures: fixtures/personas/<name>/ (make-personas.py).
 import fs from 'node:fs';
 import path from 'node:path';
-import {execFileSync} from 'node:child_process';
+import {execFile} from 'node:child_process';
 import {goView} from '../lib/go-view.mjs';
-import {familyOf, testKey} from '../lib/engine.mjs';
+import {DUMMY_KEY} from '../lib/engine.mjs';
 import {python, pythonEnv} from '../lib/python.mjs';
 import {DESKTOP} from '../lib/app.mjs';
 import {pageText} from '../lib/notion.mjs';
@@ -19,6 +19,8 @@ import {ensureSetUp} from '../lib/seed.mjs';
 import {withRoles} from '../lib/search-roles.mjs';
 
 export const minutes = 15;
+export const offlineAi = true;
+export const realAi = false;
 // MANUAL (2 Oct 2026, kept, not deleted): It proves nothing is hard-coded to the owner (Swiss/EU wording, visa flag, currencies): one-time hygiene that costs 15 minutes and two
 // full AI runs each time. No schedule, push or release gate runs it (cadence 'manual', lib/plan.mjs); run it by hand when a change could bring owner-specific text back:
 //   gh workflow run e2e.yml -f suite=personas        or        node suite.mjs personas
@@ -35,17 +37,15 @@ const ALL_PERSONAS = ['austin', 'sao_paulo'];
 export const pickPersona = (env = process.env, day = Math.floor(Date.now() / 86400000)) => (ALL_PERSONAS.includes(env.E2E_PERSONA) ? env.E2E_PERSONA : ALL_PERSONAS[day % ALL_PERSONAS.length]);
 const PERSONAS = [pickPersona()];
 
-// The engine's own code, run against this install's folders: what the digest and the settings say for this user.
-// The engine on this suite's profile, isolated (lib/python.mjs: no token, no app-following, HOME the profile), with the app's own AI engine, so a decision
-// the engine hands to AI (Google Jobs places, src/sources/google_jobs.py within_places) is made as the app makes it; a CLI engine keeps this computer's
-// HOME for its sign-in, as the app under test does. 9 Oct 2026: without an engine the place decision fell back to Swiss places only and São Paulo was dropped.
+// The engine's own code on this install's folders; decide/place-country uses the existing app.decide item identity.
+// Invariants: dummy key, isolated HOME, no CLI sign-in, asynchronous child so this process can serve the proxy.
 function engine(ctx, code, args = []) {
-  const cli = ['cli', 'codex'].includes(ctx.engine);
-  const key = cli ? {} : familyOf(ctx.engine) === 'openai' ? {OPENAI_API_KEY: testKey(process.env, ctx.engine)} : {ANTHROPIC_API_KEY: ctx.key,
-    ...(ctx.family === 'free' ? {JOB_PILOTTO_AI_BASE_URL: ctx.proxy.url} : {})};   // CI on Free AI: its JPF1 key only opens the relay, through the suite's proxy (src/ai/providers/anthropic_api.py)
-  const env = pythonEnv({JOB_PILOTTO_CONFIG_DIR: path.join(ctx.profile, 'config'), JOB_PILOTTO_DATA_DIR: path.join(ctx.profile, 'data'), JOB_PILOTTO_AI_ENGINE: ctx.engine, ...key},
-    cli ? {realHome: true} : {home: ctx.profile});
-  return execFileSync(python(), ['-c', code, ...args], {cwd: REPO, env, encoding: 'utf8', timeout: 120000});
+  const openai = ctx.family === 'openai';
+  const key = openai ? {OPENAI_API_KEY: DUMMY_KEY, OPENAI_BASE_URL: `${ctx.openaiProxy.url}/v1`}
+    : {ANTHROPIC_API_KEY: DUMMY_KEY, JOB_PILOTTO_AI_BASE_URL: ctx.proxy.url};
+  const env = pythonEnv({JOB_PILOTTO_CONFIG_DIR: path.join(ctx.profile, 'config'), JOB_PILOTTO_DATA_DIR: path.join(ctx.profile, 'data'), JOB_PILOTTO_AI_ENGINE: openai ? 'openai' : 'api', ...key}, {home: ctx.profile});
+  return new Promise((resolve, reject) => execFile(python(), ['-c', code, ...args], {cwd: REPO, env, encoding: 'utf8', timeout: 120000},
+    (error, stdout) => error ? reject(error) : resolve(stdout)));
 }
 const DIGEST_CODE = `
 import json, sys
@@ -142,7 +142,7 @@ export async function run(ctx) {
       let listed = null;
       while (!listed && Date.now() - started < 240000) { listed = ((await ctx.data('employers', 'list', {active: null}).catch(() => [])) || []).find(item => item.name === 'E2E Gamma') || null; if (!listed) await page.waitForTimeout(4000); }
       if (!listed) throw new Error('"E2E Gamma" was not listed in the store\'s employers (Employers & Sources) within 4 minutes');
-      const output = engine(ctx, 'import subprocess, sys; print(subprocess.run([sys.executable, "-m", "src", "discover"], capture_output=True, text=True).stdout)');
+      const output = await engine(ctx, 'import subprocess, sys; print(subprocess.run([sys.executable, "-m", "src", "discover"], capture_output=True, text=True).stdout)');
       // jobs.ch and SwissDevJobs are for Swiss places only (6b71f5c); TechTree lists Europe but developer jobs only, so a non-IT search uses no board (e2d7df8).
       // The boards searched, without the engine's explanation in brackets ("none (for these roles and places: SwissDevJobs and TechTree list developer jobs,
       // jobs.ch Swiss ones)", src/sources/boards.py since e2d7df8): a board named only to say why it was skipped was not searched.
@@ -153,7 +153,7 @@ export async function run(ctx) {
       if (!noBoard && !/TechTree/.test(boards)) throw new Error(`neither no board nor the TechTree search: ${output.slice(0, 200)}`);
     }, {needs: ctx.needs});
     await ctx.run(`${label}: the digest follows their places, citizenship and the posting's currency`, async () => {
-      const result = JSON.parse(engine(ctx, DIGEST_CODE).trim().split('\n').pop());
+      const result = JSON.parse((await engine(ctx, DIGEST_CODE)).trim().split('\n').pop());
       read.digest = result.text;
       const problems = [];
       const where = (jobs, needle) => jobs.filter(job => job.location.toLowerCase().includes(needle.toLowerCase()));

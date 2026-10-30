@@ -7,7 +7,7 @@ import {tmpdir} from 'node:os';
 import path from 'node:path';
 import {test} from 'node:test';
 import {fileURLToPath} from 'node:url';
-import {measure, downloadArtifacts, main, capsModule} from '../../tools/e2e-step-timings.mjs';
+import {measure, downloadArtifacts, main, capsEntry} from '../../tools/e2e-step-timings.mjs';
 
 const tool = fileURLToPath(new URL('../../tools/e2e-step-timings.mjs', import.meta.url));
 const passed = (name, seconds) => ({name, status: 'passed', seconds});
@@ -81,7 +81,7 @@ test('--json emits only the structured report and --dir bypasses acquisition', t
   assert.deepEqual(JSON.parse(cli), JSON.parse(output));
   assert.deepEqual(JSON.parse(cli), {suite: 'settings', runs: 1, shardRuns: 1, calmShardRuns: 1, droppedSlowShardRuns: 0,
     shards: [{name: 'settings', runs: 1, calmRuns: 1, droppedSlowRuns: 0, medianTotalSeconds: 0}],
-    steps: [{name: 'open', n: 1, medianSeconds: 0, p95Seconds: 0, maxSeconds: 0, capSeconds: null}]});
+    steps: [{name: 'open', n: 1, medianSeconds: 0, p95Seconds: 0, maxSeconds: 0, capSeconds: null}], runIds: ['1']});
 });
 
 test('acquisition selects newest completed main runs with suite artifacts, not just newest runs', t => {
@@ -212,25 +212,42 @@ test('cleans temporary downloads and reports acquisition errors without printing
 });
 
 test('generated caps preserve measured seconds, the floor, and exact shared caps for sparse steps', () => {
-  const report = {suite: 'settings', runs: 10, calmShardRuns: 9, shardRuns: 10, steps: [
+  const report = {suite: 'settings', runs: 10, calmShardRuns: 9, shardRuns: 10, runIds: ['42'], steps: [
     {name: 'open', n: 9, p95Seconds: 22, capSeconds: 70},
     {name: 'shared seed', n: 2, p95Seconds: 14, capSeconds: null},
   ]};
-  assert.throws(() => capsModule(report), /shared seed.*fewer than 5 calm samples/);
-  const source = capsModule(report, {sharedCaps: {'shared seed': 60}, sharedImport: './shared-caps.mjs'});
-  assert.match(source, /"open": 70/);
-  assert.match(source, /"shared seed": sharedCaps\["shared seed"\]/);
-  assert.match(source, /n=9, p95=22 s/);
-  assert.equal((source.match(/Job: wait on state/g) || []).length, 1);
+  assert.throws(() => capsEntry(report), /shared seed.*fewer than 5 calm samples/);
+  const entry = capsEntry(report, {sharedCaps: {'shared seed': 60}, sharedSuite: 'applyflows'});
+  assert.deepEqual(entry.steps, {
+    open: {seconds: 70, n: 9, p95Seconds: 22},
+    'shared seed': {shared: 'applyflows', n: 2, p95Seconds: 14},
+  });
+  assert.match(entry.provenance, /10 main runs, 9\/10 calm shard-runs/);
+  assert.match(entry.provenance, /Main run IDs: 42/);
+  assert.match(entry.provenance, /3 x calm p95.*30 s floor.*at least 5 calm samples/);
 });
 
-test('CLI generates a caps module from local artifacts without acquisition', t => {
-  const dir = fixture(t);
-  for (let i = 0; i < 5; i++) artifact(dir, i, 'settings', [passed('open', 0.2)]);
-  let source;
-  main(['--suite', 'settings', '--dir', dir, '--caps'], {
-    acquire: () => assert.fail('local input must never download'), write: value => { source = value; },
+test('CLI updates only its JSON suite entry from local artifacts without acquisition', t => {
+  const dir = fixture(t), capsFile = path.join(dir, 'hang-caps.json');
+  const shared = {provenance: 'original shared measurement', steps: {'shared seed': {seconds: 60, n: 9, p95Seconds: 20}}};
+  const untouched = {provenance: 'another suite', steps: {other: {seconds: 30}}};
+  writeFileSync(capsFile, JSON.stringify({applyflows: shared, settings: {steps: {stale: {seconds: 90}}}, jobs: untouched}));
+  for (let i = 0; i < 5; i++) artifact(dir, i, 'settings', [passed('open', 0.2), ...(i < 2 ? [passed('shared seed', 0.01)] : [])]);
+  let output;
+  main(['--suite', 'settings', '--dir', dir, '--caps', '--caps-file', capsFile], {
+    acquire: () => assert.fail('local input must never download'), write: value => { output = value; },
   });
-  assert.match(source, /export const hangCaps/);
-  assert.match(source, /"open": 30/);
+  const data = JSON.parse(readFileSync(capsFile, 'utf8'));
+  assert.deepEqual(data.applyflows, shared);
+  assert.deepEqual(data.jobs, untouched);
+  assert.deepEqual(data.settings.steps, {
+    open: {seconds: 30, n: 5, p95Seconds: 0.2},
+    'shared seed': {shared: 'applyflows', n: 2, p95Seconds: 0.01},
+  });
+  assert.match(data.settings.provenance, /Main run IDs: 0, 1, 2, 3, 4/);
+  assert.match(output, /Updated settings/);
+  const before = readFileSync(capsFile, 'utf8');
+  artifact(dir, 6, 'settings', [passed('open', 0.2), passed('unknown sparse', 0.01)]);
+  assert.throws(() => main(['--suite', 'settings', '--dir', dir, '--caps', '--caps-file', capsFile]), /unknown sparse.*fewer than 5/);
+  assert.equal(readFileSync(capsFile, 'utf8'), before, 'invalid measurements never overwrite any suite');
 });

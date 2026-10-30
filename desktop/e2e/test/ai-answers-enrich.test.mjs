@@ -10,7 +10,27 @@ import {test} from 'node:test';
 import {questionOf, storedAnswer} from '../lib/ai-answers.mjs';
 import {message, responseOf, startAiProxy} from '../lib/ai-proxy.mjs';
 import {modelFetch} from '../lib/model.mjs';
-import {engineCases, askOf, bodyOf, tempTable} from './ai-answers-engine-fixtures.mjs';
+import {engineCases, askOf, bodyOf, tempTable, recorded} from './ai-answers-engine-fixtures.mjs';
+test('role duties slot reuses the stored family judgment and never changes full facts', t => {
+  const c = engineCases.find(c => c.name === 'enrich role'), body = bodyOf(c);
+  const schema = body.output_config.format.schema;
+  schema.required = ['duties', 'role_family'];
+  schema.properties = {duties: {type: 'string'}, ...schema.properties};
+  const q = questionOf(askOf(c, body), {});
+  assert.equal(q.operation, 'app.enrich');
+  assert.deepEqual(q.responseSchema.required, ['role_family']);
+  assert.deepEqual(q.responseSchema.properties.duties, {type: 'string'});
+  const legacy = questionOf(askOf(c), {});
+  assert.equal(q.items[0].key, legacy.items[0].key);
+  const {env} = tempTable(t, {'app.enrich': {[q.items[0].key]: {text: q.items[0].text, answer: c.reply}}});
+  assert.deepEqual(storedAnswer(askOf(c, body), env), {reply: message(JSON.stringify(c.reply))});
+  const reply = {duties: 'on-call, incidents, monitoring', ...c.reply};
+  const captured = recorded(t, {...c, schema, reply});
+  assert.deepEqual(captured.items['app.enrich'][q.items[0].key].answer, reply);
+  schema.properties.duties = {type: 'boolean'};
+  assert.ok(questionOf(askOf(c, body), {}).unkeyable, 'validate the transient slot type');
+});
+
 test('full extraction, narrowed retry and role refinement cannot borrow rows', () => {
   const cases = engineCases.filter(c => c.operation === 'app.enrich');
   assert.deepEqual(cases.map(c => questionOf(askOf(c), {}).items[0].key), ['default/app.enrich/4adb0a78f6a6472194fb31f117b30922a2e4b5e06a4ac809243ffee49a376e09/full', 'default/app.enrich/4adb0a78f6a6472194fb31f117b30922a2e4b5e06a4ac809243ffee49a376e09/retry-seniority,technologies', 'default/app.enrich/4adb0a78f6a6472194fb31f117b30922a2e4b5e06a4ac809243ffee49a376e09/role']);

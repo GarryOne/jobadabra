@@ -39,9 +39,10 @@ class FieldGuidanceInPrompt(unittest.TestCase):
         # after #2052 said "the level the title or text states".
         self.assertIn('the years of experience it asks', enrich.SYSTEM)
 
-    def test_a_title_that_names_its_work_decides_the_family(self):
-        # 26 Oct 2026, #2056's quality run: "Senior Site Reliability Engineer" came back "software" on Free AI.
-        self.assertIn('when the title names a kind of work below', enrich.SYSTEM)
+    def test_duties_decide_the_family_and_plain_sre_still_names_its_work(self):
+        # Why (30 Oct 2026, a8, quality golden 3006): duties beat a misleading SRE title; preserve #1992's plain SRE meaning.
+        self.assertIn("The posting's duties decide the family", enrich.SYSTEM)
+        self.assertIn(f"sre = {enrich.IT_WORK['sre']}", enrich.SYSTEM)
 
     def test_the_scorer_is_told_when_growth_may_stay_unknown(self):
         self.assertIn('components.growth: 0-100, or null when the posting gives no basis', score.SYSTEM)

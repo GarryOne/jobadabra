@@ -8,6 +8,7 @@ import sqlite3
 import sys
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -75,6 +76,55 @@ class CopiesTests(unittest.TestCase):
             for name in family['enum']:
                 with self.subTest(where=where, family=name):
                     self.assertRegex(text, rf'(^|[\s:;(]){re.escape(name)} = \w')
+
+
+class RoleDutiesTests(unittest.TestCase):
+    def test_duties_decide_and_title_is_only_a_fallback_or_agrees(self):
+        for prompt in (enrich.SYSTEM, enrich.ROLE_SYSTEM):
+            with self.subTest(prompt=prompt[:40]):
+                self.assertNotIn('when the title names a kind of work below', prompt)
+                self.assertIn("The posting's duties decide the family", prompt)
+                self.assertIn('only when the posting does not describe the work or its duties agree with the title', prompt)
+        self.assertIn('duties:', enrich.ROLE_SYSTEM)
+        self.assertLess(enrich.ROLE_SYSTEM.index('duties:'), enrich.ROLE_SYSTEM.index('role_family:'))
+
+    def extract_role(self, duties, family):
+        requests = []
+        initial = {'role_family': 'sre', 'seniority': {'value': 'senior', 'evidence': 'Senior'},
+                   'work_mode': {'value': 'onsite'}, 'technologies': ['ticketing']}
+
+        def create(**params):
+            requests.append(params)
+            answer = initial if len(requests) == 1 else {'duties': duties, 'role_family': family}
+            return SimpleNamespace(stop_reason='end_turn', usage=None,
+                                   content=[SimpleNamespace(type='text', text=json.dumps(answer))])
+
+        client = SimpleNamespace(messages=SimpleNamespace(create=create))
+        data, _ = enrich.extract(client, 'claude-haiku-4-5', {
+            'title': 'Senior Site Reliability Engineer, Customer Care', 'company': 'Example', 'description': duties})
+        self.assertEqual(len(requests), 2)
+        schema = requests[-1]['output_config']['format']['schema']
+        return data, schema
+
+    def test_role_reask_requires_duties_before_family(self):
+        _, schema = self.extract_role('answer helpdesk tickets, reset passwords', 'support_it')
+        self.assertEqual(schema['required'], ['duties', 'role_family'])
+        self.assertEqual(list(schema['properties']), ['duties', 'role_family'])
+        self.assertEqual(schema['properties']['duties']['type'], 'string')
+        self.assertFalse(schema['additionalProperties'])
+        self.assertNotIn('duties', enrich.SCHEMA['properties'], 'the slot belongs only to the role re-ask')
+
+    def test_helpdesk_reask_keeps_support_it_and_discards_duties(self):
+        data, schema = self.extract_role('answer helpdesk tickets, reset passwords', 'support_it')
+        self.assertIn('duties', schema['required'])
+        self.assertEqual(data['role_family'], 'support_it')
+        self.assertNotIn('duties', data)
+
+    def test_plain_sre_reask_keeps_sre_and_discards_duties(self):
+        data, schema = self.extract_role('on-call, incidents, monitoring', 'sre')
+        self.assertIn('duties', schema['required'])
+        self.assertEqual(data['role_family'], 'sre')
+        self.assertNotIn('duties', data)
 
 
 class JudgedTests(unittest.TestCase):

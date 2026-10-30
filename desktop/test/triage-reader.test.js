@@ -59,3 +59,20 @@ test('Cancel ends every queued and active read with null', async () => {
   assert.equal(r.busy(), false);
   assert.equal(r.take(), null);
 });
+
+test('a read ended without a report (Cancel, a timeout) is handed back once, to close its page; a reported or never-started read is not', async () => {
+  const time = clock(), r = reader({set: time.set, clear: time.clear});
+  const out = r.read('https://jobs.example/i'), waiting = r.read('https://jobs.example/j'), taken = r.take();
+  r.cancelAll();
+  await Promise.all([out, waiting]);
+  assert.deepEqual(r.takeEnded(), [taken.id], 'only the read the extension holds has a page to close');
+  assert.deepEqual(r.takeEnded(), [], 'each is returned once');
+  const timed = r.read('https://jobs.example/k'), {id} = r.take();
+  time.timers[time.timers.length - 1]();
+  assert.equal(await timed, null);
+  assert.deepEqual(r.takeEnded(), [id], 'a timeout leaves its page open too');
+  const answered = r.read('https://jobs.example/l'), next = r.take();
+  r.report(next.id, {botCheck: false, loginWall: false, accountCreation: false});
+  await answered;
+  assert.deepEqual(r.takeEnded(), [], 'a reported read already closed its own tab');
+});

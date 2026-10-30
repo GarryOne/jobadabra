@@ -10,7 +10,7 @@ on:
   pull_request:
     branches: [main]
     paths:
-      # Every file or folder a harness test reaches (desktop/e2e/lib/test-reach.mjs), so the plan below sees each change that can break one: test/test-reach.test.mjs fails on a missing one.
+      # Every file or folder a harness test reaches (desktop/e2e/lib/test-reach.mjs), so a change that can break one starts the run: test/test-reach.test.mjs fails on a missing one.
       - 'desktop/**'
       - '.github/workflows/ai-answer-drift.yml'
       # Data that other jobs replay (page-cases.yml, control-tests.yml); no harness test reaches them (owner, 14 Oct 2026: a recorded case alone started the harness).

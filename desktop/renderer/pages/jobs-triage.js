@@ -1,6 +1,6 @@
 // Apply triage on the Jobs screen (spec 2026-10-30-apply-triage, PR B): the button, the popup (which jobs, how many), the progress with Cancel, and the chip on each job.
 // The form read itself is PR C: until it lands, `readJob` answers "not read" and the chips stay "Not checked".
-import {el} from '../components.js';
+import {chip, el} from '../components.js';
 import {$} from './core.js';
 import {chipOf, pickForTriage} from '../apply-triage-pick.js';
 import {shared} from './shared.js';
@@ -15,7 +15,7 @@ export const setRead = (url, read) => reads.set(url, {read, at: new Date().toISO
 /** The chip for a job's row on the board: the mode of its last read, or "Not checked". */
 export function triageChip(job) {
   const {label, tone, detail} = chipOf(readOf(job?.url));
-  return Object.assign(el('span', `triage-chip tone-${tone}`, label), {title: detail || 'Not read yet: press "See which jobs can apply automatically"'});
+  return chip(label, {tone, detail, title: detail || 'Not read yet: press "See which jobs can apply automatically"'});
 }
 
 let cancelled = false;

@@ -2603,15 +2603,12 @@ details.qa-section { margin-top: var(--sp-3); }
 /* Profile → Cover letter → Base letter: no reserved line when nothing is said (the empty state is page-parts.js emptyState). */
 #setting-letter .letter-usage:empty, #setting-letter > .message:empty { display: none; }   /* no reserved line under the card when nothing is said */
 
-/* Apply triage (spec 2026-10-30-apply-triage): the chip on a job, the popup's progress. Colors from the tokens, so both themes follow. */
-.triage-chip { display: inline-flex; align-items: center; border-radius: var(--r-pill); padding: 2px var(--sp-2); font-size: var(--fs-xs); font-weight: 600; margin-top: var(--sp-1); }
-.triage-chip.tone-good { background: var(--good-soft); color: var(--good); }
-.triage-chip.tone-info { background: var(--info-soft); color: var(--info); }
-.triage-chip.tone-warn { background: var(--amber-soft); color: var(--amber-ink); }
-.triage-chip.tone-neutral { background: var(--bg); color: var(--muted); border: 1px solid var(--line); }
+/* Apply triage (spec 2026-10-30-apply-triage): the popup's progress. Colors from the tokens, so both themes follow. */
 .triage-dialog .triage-choice { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .triage-dialog .triage-n { display: inline-flex; gap: var(--sp-1); align-items: center; font-size: var(--fs-sm); }
 .triage-dialog .triage-n input { width: 64px; font-variant-numeric: tabular-nums; }
 .triage-progress { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
 .triage-bar { flex: 1 1 200px; height: 8px; border-radius: var(--r-pill); background: var(--line); overflow: hidden; }
 .triage-bar i { display: block; height: 100%; width: 0; background: var(--amber); }
+/* The triage toolbar button: its icon centred on the label (the baseline default sits a few pixels high next to the text). */
+#triage-open .icon { vertical-align: middle; }

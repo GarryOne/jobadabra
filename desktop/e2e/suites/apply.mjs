@@ -19,6 +19,7 @@ import {livePosting, realKind, runLive} from '../lib/apply-live.mjs';
 import {runCvSteps} from '../lib/apply-cv-steps.mjs';
 import {runSilentChromeSteps} from '../lib/apply-silent-steps.mjs';
 import {runTriageSteps} from '../lib/apply-triage-steps.mjs';
+import {runReadSteps} from '../lib/apply-read-steps.mjs';
 import {proveBackground} from '../lib/background-proof.mjs';
 import {proveAutomatic} from '../lib/background-auto-proof.mjs';
 import {runJourneys} from '../lib/apply-journeys.mjs';
@@ -394,6 +395,7 @@ export async function runApply(ctx, parts) {
   await runCvSteps(ctx, {apply, cv, fail, page, panelOf, proxy, until});   // lib/apply-cv-steps.mjs
   await runSilentChromeSteps(ctx);   // lib/apply-silent-steps.mjs: the app cannot hear Chrome, one step per apply mode
   await runTriageSteps(ctx);   // lib/apply-triage-steps.mjs: the Jobs button's popup and the chips (spec 2026-10-30-apply-triage)
+  await runReadSteps(ctx, {until});   // lib/apply-read-steps.mjs: the Jobs button reads a fixture form in the hidden browser (spec 2026-10-30-apply-triage, C2a)
 
   await ctx.run('through all of it: Submit was never clicked or submitted, and no host but the fixture job sites was contacted', async () => {
     fail(submitProblems(forms.fired, ''));

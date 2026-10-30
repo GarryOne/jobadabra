@@ -6,7 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {spawnSync} from 'node:child_process';
 import {test} from 'node:test';
-import {loadTable, message, storedAnswer, keepCandidate, keepCandidateBody} from '../lib/ai-answers.mjs';
+import {loadTable, message, storedAnswer, recordCandidate, keepCandidate, keepCandidateBody} from '../lib/ai-answers.mjs';
 import {seedRequests, serializeRequests} from '../../../tools/seed-ai-answer-requests.mjs';
 import {loadRequests, resolveRequest, pickSample, compareAnswer, buildReport} from '../lib/answer-drift.mjs';
 
@@ -50,6 +50,36 @@ test('seeding is byte deterministic, body-reference-only and links the measured 
     assert.equal(entry.source.sha256.length, 64);
   }
   assert.equal(fs.readFileSync(fixture, 'utf8').trim().split('\n').length, entries.length + 2);
+});
+
+test('seeding links a promoted record-mode request to its original answer key', t => {
+  forbidNetwork(t);
+  const dir = tmp(t), golden = path.join(dir, 'golden'), file = path.join(dir, 'empty.json');
+  fs.cpSync(new URL('../fixtures/golden/', import.meta.url), golden, {recursive: true});
+  fs.writeFileSync(file, JSON.stringify({v: 1, answers: {}}));
+  const request = {headers: {'x-jp-action': 'score'}, body: {messages: [{role: 'user',
+    content: 'Title: Record-mode Engineer\nCompany: Fixture Recorder\nLocation: Zurich'}]}};
+  const state = storedAnswer(request, {E2E_AI_ANSWERS: 'record', E2E_AI_ANSWERS_FILE: file, E2E_AI_CANDIDATES: dir});
+  const reply = message('{"score":80}');
+  recordCandidate(state.dir, state.question, reply, state.request);
+  const candidate = loadTable(path.join(dir, 'ai-answers-candidates.json'));
+  const promoted = path.join(golden, 'ai-answers.json');
+  fs.writeFileSync(promoted, JSON.stringify({v: 1, answers: candidate.answers, requests: candidate.requests}));
+  const loaded = loadTable(promoted);
+  assert.deepEqual(loaded.answers, {[state.question.operation]: {[state.question.id]: {reply}}});
+  assert.deepEqual(loaded.requests, candidate.requests);
+  const entries = seedRequests({golden});
+  assert.equal(entries.length, 1);
+  const [entry] = entries;
+  assert.equal(entry.kind, 'app.score');
+  assert.deepEqual(entry.keys, [state.question.id]);
+  assert.equal(entry.provenance, 'captured');
+  assert.equal(entry.action, 'score');
+  assert.equal(entry.source.file, 'ai-answers.json');
+  assert.deepEqual(entry.source.path, ['requests', 'app.score', state.question.id, 'body']);
+  const resolved = resolveRequest(entry, {golden, table: loaded});
+  assert.deepEqual(resolved.request.body, request.body);
+  assert.deepEqual(resolved.rows, [{key: state.question.id, stored: {score: 80}}]);
 });
 
 test('every seeded entry resolves only to existing stored keys; a bogus key is refused', t => {

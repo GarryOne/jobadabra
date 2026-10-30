@@ -10,7 +10,7 @@ const GOLDEN = fileURLToPath(new URL('../desktop/e2e/fixtures/golden/', import.m
 const cmp = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 
 /** Seed only exact keyed joins; provenance describes the request, never an AI-authored baseline. */
-export function seedRequests({golden = GOLDEN, table = loadTable()} = {}) {
+export function seedRequests({golden = GOLDEN, table = loadTable(path.join(golden, 'ai-answers.json'))} = {}) {
   const seeds = [];
   const read = file => JSON.parse(fs.readFileSync(path.join(golden, file), 'utf8'));
   const add = (file, pointer, body, provenance, action = '', evidence = '') => {
@@ -27,6 +27,11 @@ export function seedRequests({golden = GOLDEN, table = loadTable()} = {}) {
       source: {file, path: pointer, sha256}, ...(action ? {action} : {}), provenance,
       ...(evidence ? {evidence} : {}), keys: [...new Set(keys)].sort(cmp)});
   };
+  for (const [kind, entries] of Object.entries(read('ai-answers.json').requests || {})) {
+    for (const [key, entry] of Object.entries(entries)) {
+      add('ai-answers.json', ['requests', kind, key, 'body'], entry.body, 'captured', entry.action);
+    }
+  }
   for (const file of ['jobs-asks.json', 'jobs-decide.json']) {
     read(file).requests.forEach((entry, index) => add(file, ['requests', index, 'body'], entry.body,
       entry.provenance.startsWith('reconstructed') ? 'reconstructed' : 'captured', '', entry.provenance));

@@ -1,6 +1,6 @@
 {
   "v": 1,
-  "about": "The lane registry (spec docs/superpowers/specs/2026-10-28-e2e-reliability-design.md, lanes table). A suite NOT listed is backbone: red or green, a PR's red when its diff reaches it. A listed suite is tolerant (its result depends on an AI answer, the clock or the outside world, named in `input`), suspended (flips red then green on one commit; shown, never blocks) or retired; every entry names when it returns or retires in `returns`. tools/pr-verdict.py shows a red tolerant or suspended suite grey on a PR; it reads this file from the PR's BASE branch, so a PR that edits it is judged by main's copy and its entry counts after it merges. Moving a suite out of the backbone is an expectation change (spec rule E): the PR names the input and why. First cut 28 Oct 2026, from the week's reds (tools/e2e_weekly.py).",
+  "about": "The lane registry (spec docs/superpowers/specs/2026-10-28-e2e-reliability-design.md, lanes table). A suite with no lane is backbone: red or green, a PR's red when its diff reaches it. A lane entry is tolerant (its result depends on an AI answer, the clock or the outside world, named in `input`), suspended (flips red then green on one commit; shown, never blocks) or retired; every lane entry names when it returns or retires in `returns`. tools/pr-verdict.py shows a red tolerant or suspended suite grey on a PR; it reads this file from the PR's BASE branch, so a PR that edits it is judged by main's copy and its entry counts after it merges. Moving a suite out of the backbone is an expectation change (spec rule E): the PR names the input and why. First cut 28 Oct 2026, from the week's reds (tools/e2e_weekly.py). Backbone entries may carry aiMissesMax, the committed non-negative integer ceiling for asks without a stored answer; without it a suite is not checked.",
   "suites": {
     "qualityai": {
       "lane": "tolerant",
@@ -23,6 +23,54 @@
       "since": "2026-10-28",
       "why": "The one suite on a real Notion workspace (nightly and before beta; never PR/push reach): what the in-memory stand-in cannot prove depends on Notion's own pages and rate limits, which are not ours.",
       "returns": "Stays tolerant: it tests Notion itself."
+    },
+    "stores": {
+      "aiMissesMax": 0
+    },
+    "interviews": {
+      "aiMissesMax": 0
+    },
+    "wander": {
+      "aiMissesMax": 0
+    },
+    "activityfailures": {
+      "aiMissesMax": 0
+    },
+    "strategy": {
+      "aiMissesMax": 0
+    },
+    "employers": {
+      "aiMissesMax": 0
+    },
+    "settings": {
+      "aiMissesMax": 0
+    },
+    "applyflows": {
+      "aiMissesMax": 0
+    },
+    "apply": {
+      "aiMissesMax": 0
+    },
+    "recorded": {
+      "aiMissesMax": 0
+    },
+    "wizard": {
+      "aiMissesMax": 0
+    },
+    "updates": {
+      "aiMissesMax": 0
+    },
+    "focus": {
+      "aiMissesMax": 0
+    },
+    "cardstates": {
+      "aiMissesMax": 0
+    },
+    "focusdismiss": {
+      "aiMissesMax": 0
+    },
+    "visitread": {
+      "aiMissesMax": 0
     }
   }
 }

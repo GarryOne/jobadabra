@@ -64,18 +64,22 @@ test('a registry that does not parse is refused', () => {
 test('the registry on this branch passes as a first cut: every entry is complete (class)', () => {
   const text = fs.readFileSync(path.join(root, FILE), 'utf8');
   assert.deepEqual(lanesProblems(null, text), []);
+  assert.equal(checkPush({root, base: 'HEAD'}), '');
   assert.ok(Object.keys(JSON.parse(text).suites).length > 0, 'a registry with no entry would pass for nothing');
 });
 
-// A one-file push, as the push script sees it: base commit, then a commit that changes the registry.
-function push(baseSuites, headSuites) {
+// A push as the script sees it: base and head commits, with optional suite edits before or after the head commit.
+function push(baseSuites, headSuites, {beforeCommit = () => {}, afterCommit = () => {}} = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'lanes-check-'));
   const git = (...rest) => execFileSync('git', ['-C', dir, ...rest], {encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe']});
   try {
     git('init', '-q', '-b', 'main'); git('config', 'user.email', 't@example.com'); git('config', 'user.name', 't'); git('config', 'commit.gpgsign', 'false');
     fs.mkdirSync(path.join(dir, path.dirname(FILE)), {recursive: true});
+    fs.mkdirSync(path.join(dir, 'desktop/e2e/suites'), {recursive: true});
+    fs.writeFileSync(path.join(dir, 'desktop/e2e/suites/settings.mjs'), '// A suite present in the push fixture.\n');
     fs.writeFileSync(path.join(dir, FILE), file(baseSuites)); git('add', '-A'); git('commit', '-qm', 'Base'); git('branch', 'base');
-    fs.writeFileSync(path.join(dir, FILE), file(headSuites)); git('add', '-A'); git('commit', '-qm', 'Change the registry');
+    fs.writeFileSync(path.join(dir, FILE), file(headSuites)); beforeCommit(dir);
+    git('add', '-A'); git('commit', '--allow-empty', '-qm', 'Change the push'); afterCommit(dir);
     return checkPush({root: dir, base: 'base'});
   } finally { fs.rmSync(dir, {recursive: true, force: true}); }
 }
@@ -90,6 +94,36 @@ test('a push that lists a suite as tolerant with no input is blocked with the ru
 test('a checkout with no base to compare with says nothing', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'lanes-check-'));
   try { assert.equal(checkPush({root: dir, base: 'origin/main'}), ''); } finally { fs.rmSync(dir, {recursive: true, force: true}); }
+});
+
+test('a push refuses every head registry entry with no suite file, including a ceiling or an unchanged entry', () => {
+  for (const missing of [{aiMissesMax: 0}, entry()]) {
+    assert.equal(push({}, {nosuchsuite: missing}), 'nosuchsuite: desktop/e2e/lanes.json lists it but desktop/e2e/suites/nosuchsuite.mjs is not in this push; remove the entry or restore the suite');
+  }
+  assert.equal(push({nosuchsuite: {aiMissesMax: 0}}, {nosuchsuite: {aiMissesMax: 0}, settings: entry()}), 'nosuchsuite: desktop/e2e/lanes.json lists it but desktop/e2e/suites/nosuchsuite.mjs is not in this push; remove the entry or restore the suite');
+});
+
+test('a push deleting a listed suite with an unchanged registry reports only the missing suite', () => {
+  const suites = {settings: entry()};
+  const message = push(suites, suites, {
+    beforeCommit: dir => fs.unlinkSync(path.join(dir, 'desktop/e2e/suites/settings.mjs')),
+  });
+  assert.equal(message, 'settings: desktop/e2e/lanes.json lists it but desktop/e2e/suites/settings.mjs is not in this push; remove the entry or restore the suite');
+});
+
+test('an untracked suite cannot hide its deletion from the committed push', () => {
+  const suites = {settings: entry()};
+  const message = push(suites, suites, {
+    beforeCommit: dir => fs.unlinkSync(path.join(dir, 'desktop/e2e/suites/settings.mjs')),
+    afterCommit: dir => fs.writeFileSync(path.join(dir, 'desktop/e2e/suites/settings.mjs'), '// Uncommitted restoration.\n'),
+  });
+  assert.equal(message, 'settings: desktop/e2e/lanes.json lists it but desktop/e2e/suites/settings.mjs is not in this push; remove the entry or restore the suite');
+});
+
+test('an uncommitted deletion does not make a committed suite missing from the push', () => {
+  assert.equal(push({}, {settings: entry()}, {
+    afterCommit: dir => fs.unlinkSync(path.join(dir, 'desktop/e2e/suites/settings.mjs')),
+  }), '');
 });
 
 test('the push script runs it, so the CI gate (the same script) and a local push both block', () => {

@@ -4,6 +4,7 @@
 import {execFileSync} from 'node:child_process';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
+import {isBackbone} from '../desktop/e2e/lib/suite-shards.mjs';
 
 export const JOBS = ['run the backbone', 'serve stored answers', 'wait on state', 'pick the suites', 'run tolerant suites as rates', 'keep the scorecard', 'report health'];
 const REGISTRY = 'desktop/e2e/lanes.json';
@@ -138,17 +139,22 @@ export function checkPush({root, base = 'origin/main'}) {
   const changes = git('diff', '--name-only', '--no-renames', '-z', `${from}..HEAD`).split('\0').filter(Boolean)
     .map(file => ({file, before: show(from, file), after: show('HEAD', file)}));
   const messages = git('log', '--format=%B%x00', `${from}..HEAD`).split('\0');
-  const lanes = JSON.parse(show(from, REGISTRY) || '{"suites":{}}').suites || {};
+  const lanes = JSON.parse(show(from, REGISTRY) || '{"suites":{}}');
   const needsCitation = [];
   for (const {file, before, after} of changes) {
     const suite = SUITE.exec(file)?.[1];
-    // Why (29 Oct 2026, a8 on Gitar #2419): tolerant results may be noisy, but their own bars still need a citation; suspended and retired suites stay free.
-    if (((suite && (!lanes[suite] || lanes[suite]?.lane === 'tolerant')) || CHECK_LIB.test(file)) && before !== null && (after === null || expectationChanges(before, after, file).length)) needsCitation.push(file);
+    // Why (29 Oct 2026, a8 on Gitar #2419; 30 Oct, ratchet): tolerant results may be noisy, but their own bars still need a citation; suspended and retired suites stay free; a registry entry that only holds aiMissesMax is still backbone (isBackbone), so it is not free.
+    if (((suite && (isBackbone(lanes, suite) || lanes.suites?.[suite]?.lane === 'tolerant')) || CHECK_LIB.test(file)) && before !== null && (after === null || expectationChanges(before, after, file).length)) needsCitation.push(file);
     if (EXPECTATIONS.test(file) && before !== null) needsCitation.push(file);
     if (file === REGISTRY && after !== null) {
-      const next = JSON.parse(after).suites || {};
-      for (const [name, entry] of Object.entries(next)) {
-        if (!lanes[name] && ['tolerant', 'suspended', 'retired'].includes(entry.lane)) needsCitation.push(`${REGISTRY}: ${name} leaves backbone`);
+      const next = JSON.parse(after);
+      for (const name of Object.keys(next.suites || {})) {
+        if (isBackbone(lanes, name) && !isBackbone(next, name)) needsCitation.push(`${REGISTRY}: ${name} leaves backbone`);
+      }
+      // Why (30 Oct 2026, a8 on Gitar #2568): the ceiling is read from the PR's own checkout, so raising or dropping it in the PR that adds the ask would pass; a threshold change is Rule E.
+      for (const [name, entry] of Object.entries(lanes.suites || {})) {
+        const was = entry.aiMissesMax, now = next.suites?.[name]?.aiMissesMax;
+        if (was !== undefined && (now === undefined || now > was)) needsCitation.push(`${REGISTRY}: ${name} loosens its AI-ask ceiling (${was} -> ${now ?? 'none'})`);
       }
     }
   }

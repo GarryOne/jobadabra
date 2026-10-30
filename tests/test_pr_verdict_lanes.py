@@ -159,6 +159,9 @@ class RegistryFile(unittest.TestCase):
         self.assertEqual(self.registry['v'], 1)
         for name, entry in self.registry['suites'].items():
             self.assertIn(name, self.suites, f'{name}: no such suite in desktop/e2e/suites')
+            if 'lane' not in entry:   # Why (30 Oct 2026, a8, #2568): an entry that only holds the AI-ask ceiling is a backbone suite.
+                self.assertEqual(set(entry), {'aiMissesMax'}, f'{name}: without a lane, an entry may hold only its AI-ask ceiling')
+                continue
             self.assertIn(entry['lane'], ('tolerant', 'suspended', 'retired'), f'{name}: a suite not listed is backbone; listed it is one of the other three')
             if entry['lane'] == 'tolerant':
                 self.assertIn(entry.get('input'), ('ai', 'clock', 'outside'), f'{name}: tolerance names the non-deterministic input (rule E)')
@@ -166,7 +169,7 @@ class RegistryFile(unittest.TestCase):
             self.assertRegex(entry.get('since', ''), r'^2026-\d\d-\d\d$', f'{name}: the date it left the backbone')
 
     def test_the_registry_keeps_the_first_cut_and_adds_the_live_quality_journey(self):
-        listed = {name: (entry['lane'], entry['returns']) for name, entry in self.registry['suites'].items()}
+        listed = {name: (entry['lane'], entry['returns']) for name, entry in self.registry['suites'].items() if 'lane' in entry}
         self.assertEqual(listed, {
             'qualityai': ('tolerant', 'Stays tolerant: it measures the live model.'),
             'mailreading': ('tolerant', 'Stays tolerant: an eval of the live model.'),

@@ -68,6 +68,7 @@
   "ai-cost-report.test.mjs",
   "ai-meter.test.mjs",
   "ai-miss-cause.test.mjs",
+  "ai-misses-ratchet.test.mjs",
   "ai-proxy.test.mjs",
   "ai-refused.test.mjs",
   "ai-spend.test.mjs",
@@ -453,6 +454,7 @@
  "folderReaderExceptions": {
   "a11y.test.mjs": "Uses triage, which enumerates artifact directories and refers to suite paths without reading the suites folder.",
   "ai-meter.test.mjs": "Enumerates temporary answer-cache directories; suites occur only in prose.",
+  "ai-misses-ratchet.test.mjs": "Counts files in temporary ai-misses directories; suites occur only as lane names in fixtures.",
   "capture-library.test.mjs": "Enumerates temporary screenshot capture directories, not harness code.",
   "clock-out.test.mjs": "Uses close-down helpers from suite-main, not its registry-consuming entrypoint.",
   "finder-causes.test.mjs": "Uses triage, which enumerates artifact directories and refers to suite paths without reading the suites folder.",

@@ -9,6 +9,7 @@ import {ensureStaged} from './ensure-staged.mjs';
 import {refusedQuestions} from './ai-answers.mjs';
 import {recordAnswerRefusals, runAiGuards} from './no-real-ai.mjs';
 import {writeSuiteFailures} from './artifacts.mjs';
+import {checkAiMisses} from './ai-misses-ratchet.mjs';
 
 // Why (29 Oct 2026, Gitar on #2479 x2): the steps judge themselves by their own caps; close-down is bounded in finally on success or failure, and only the caller exits the process.
 const TEARDOWN_STOP_MS = 3 * 60000;
@@ -36,8 +37,14 @@ export function writeFinalFailures(suite, ctx) {
   const refused = refusedQuestions({...process.env, E2E_ARTIFACTS: ctx.ARTIFACTS});
   const missing = recordAnswerRefusals(ctx, refused);
   if (missing) console.error(`✗ ${ctx.stopped}`);
+  // Why (30 Oct 2026, a8): a suite at 0 asks without a stored answer must stay at 0 (jobs and failureschannels went red when the CI AI budget ran out).
+  const ceiling = checkAiMisses(ctx.ARTIFACTS, JSON.parse(fs.readFileSync(new URL('../lanes.json', import.meta.url), 'utf8')).suites?.[suite]);
+  if (!ceiling.ok) {
+    ctx.runner.results.push({name: 'AI asks have stored answers', status: 'failed', note: ceiling.message});
+    console.error(`✗ ${ceiling.message}\nE2E-cause: ai ${suite}`);
+  }
   try { writeSuiteFailures(ctx.ARTIFACTS, suite, ctx.runner.results); } catch (error) { console.log(`  (failures not written: ${error.message})`); }
-  return missing;
+  return missing || !ceiling.ok;
 }
 
 export async function runSuite(name, report = null) {

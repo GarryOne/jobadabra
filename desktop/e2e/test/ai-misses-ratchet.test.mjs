@@ -8,16 +8,15 @@ import {test} from 'node:test';
 import {entryProblems, lanesProblems} from '../../../tools/lanes-check.mjs';
 import {aiMissesVerdict, checkAiMisses} from '../lib/no-real-ai.mjs';
 
-const ZERO_SUITES = ['stores', 'interviews', 'wander', 'interactions', 'activityfailures', 'jobs', 'strategy', 'employers', 'settings', 'applyflows', 'apply', 'recorded', 'wizard', 'updates', 'focus', 'cardstates', 'focusdismiss', 'visitread', 'calendar', 'failuresnotion', 'storemove', 'quality', 'foryou', 'pool', 'visitsauto'];
+const ZERO_SUITES = ['stores', 'interviews', 'wander', 'interactions', 'activityfailures', 'jobs', 'strategy', 'employers', 'settings', 'applyflows', 'apply', 'recorded', 'wizard', 'updates', 'focus', 'cardstates', 'focusdismiss', 'visitread', 'calendar', 'failuresnotion', 'storemove', 'quality', 'foryou', 'pool', 'visitsauto', 'personas'];
 // Why (30 Oct 2026, bb 1/9): a suite with no ceiling is not checked at all, so a new suite could ask a live model unseen. Each one listed here has a reason and a PR that removes it; the list only shrinks.
 const UNCHECKED = {
   activity: 'bb 3/9 left it out: its weekly task asks the unstored `insight` kind (src/ai/insights.py:weekly), so it needs one recorded answer first',
   explore: 'by hand only: it spends the owner\'s AI credit on purpose (suites/explore.mjs)',
   failureschannels: 'bb 3/9 left it out: it asks title, enrich and mail items with no stored answer, and a record run wrote no candidates (run 41088847243); parked in Linear',
-  personas: 'bb 4/9: hands the CI key to the engine (suites/personas.mjs)',
 };
 
-test('the real registry parses and protects all 26 suites that reached zero misses', () => {
+test('the real registry parses and protects all 27 suites with a zero-miss ceiling', () => {
   const text = fs.readFileSync(new URL('../lanes.json', import.meta.url), 'utf8');
   assert.deepEqual(lanesProblems(null, text), []);
   const {suites} = JSON.parse(text);

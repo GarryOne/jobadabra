@@ -45,6 +45,8 @@
   "next_control": "",
   "submit_control": "Invia candidatura",
   "bot_check": false,
+  "login_wall": false,
+  "account_to_create": false,
   "confidence": 0.9
  },
  "answer_path": "app"

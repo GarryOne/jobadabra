@@ -77,7 +77,7 @@ test('a stored answer is a fixed-values object the page-kind schema knows, and n
     if (questionOf(f) === 'page_kind') assert.ok(KINDS.includes(f.answer.kind), `${f.id}: answer kind`);
     else assert.ok(f.answer.answer !== undefined, `${f.id}: a judge answer has an answer`);
     assert.equal(typeof f.answer.confidence, 'number', `${f.id}: answer confidence`);
-    const allowedAnswer = {page_kind: SCHEMA, account_ready: accountSchema(READY), account_result: accountSchema(RESULT), form_step: formSchema, form_ready: formSchema}[questionOf(f)];
+    const allowedAnswer = {page_kind: SCHEMA, account_ready: accountSchema(READY), account_result: accountSchema(RESULT), form_step: formSchema, form_ready: formSchema, form_flags: formSchema}[questionOf(f)];
     for (const key of Object.keys(f.answer)) assert.ok(Object.keys(allowedAnswer.properties).includes(key), `${f.id}: answer field ${key} is not in rung 2's SCHEMA`);   // the schema is the one list
   }
 });

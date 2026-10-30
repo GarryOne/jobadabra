@@ -1,0 +1,58 @@
+{
+ "schemaVersion": 1,
+ "id": "flags-login-fr",
+ "question": "form_flags",
+ "source": "invented",
+ "lang": "fr",
+ "why": "Connexion obligatoire avant le formulaire",
+ "capture": {
+  "page": "ladder-fixtures/pages/flags-login-fr.html"
+ },
+ "url": "https://emploi.example.fr/postuler/31",
+ "expect": {
+  "outcome": "login"
+ },
+ "sketch": {
+  "url": "https://emploi.example.fr/postuler/31",
+  "title": "Connexion",
+  "headings": [
+   "Connectez-vous pour postuler"
+  ],
+  "controls": [
+   {
+    "type": "email",
+    "label": "Adresse e-mail",
+    "required": true,
+    "state": "empty"
+   },
+   {
+    "type": "password",
+    "label": "Mot de passe",
+    "required": true,
+    "state": "empty"
+   }
+  ],
+  "buttons": [
+   "Se connecter",
+   "Mot de passe oublié ?"
+  ],
+  "texts": [
+   "Connexion requise pour continuer votre candidature."
+  ],
+  "frames": []
+ },
+ "answer": {
+  "answer": "needs_person",
+  "blocked_kind": "",
+  "needs": "Adresse e-mail",
+  "needs_kind": "field",
+  "step": "unsure",
+  "next_control": "",
+  "submit_control": "",
+  "bot_check": false,
+  "login_wall": true,
+  "account_to_create": false,
+  "confidence": 0.9
+ },
+ "answer_path": "app"
+}

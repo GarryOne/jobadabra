@@ -14,23 +14,24 @@ function readHistory(file) {
   return data;
 }
 
-/** Run the offline-default CLI or a CI/OIDC-only night; dependencies permit offline broker tests. */
-export async function main(args = process.argv.slice(2), {env = process.env, ask, now = () => new Date()} = {}) {
-  let limit = 20, live = false, dry = false, historyFile, out = 'ai-answer-drift';
+function parseOptions(args) {
+  const result = {limit: 20, live: false, dry: false, out: 'ai-answer-drift'};
+  const flags = {'--live': 'live', '--dry-run': 'dry'};
+  const values = {'--limit': 'limit', '--history': 'historyFile', '--out': 'out'};
   for (let index = 0; index < args.length; index++) {
     const arg = args[index];
-    if (arg === '--dry-run') { dry = true; continue; }
-    if (arg === '--live') { live = true; continue; }
-    if (['--limit', '--history', '--out'].includes(arg)) {
-      const value = args[++index];
-      if (!value || value.startsWith('--')) throw new Error(`${arg} needs a value`);
-      if (arg === '--limit') limit = Number(value);
-      if (arg === '--history') historyFile = value;
-      if (arg === '--out') out = value;
-      continue;
-    }
-    throw new Error(`unsupported option: ${arg}`);
+    if (Object.hasOwn(flags, arg)) { result[flags[arg]] = true; continue; }
+    if (!Object.hasOwn(values, arg)) throw new Error(`unsupported option: ${arg}`);
+    const value = args[++index];
+    if (!value || value.startsWith('--')) throw new Error(`${arg} needs a value`);
+    result[values[arg]] = arg === '--limit' ? Number(value) : value;
   }
+  return result;
+}
+
+/** Run the offline-default CLI or a CI/OIDC-only night; dependencies permit offline broker tests. */
+export async function main(args = process.argv.slice(2), {env = process.env, ask, now = () => new Date()} = {}) {
+  const {limit, live, dry, historyFile, out} = parseOptions(args);
   if (live && dry) throw new Error('choose --live or --dry-run');
   if (!live) {
     const history = historyFile ? JSON.parse(fs.readFileSync(historyFile, 'utf8')) : {};

@@ -22,8 +22,13 @@ function observations(report, identities) {
 }
 
 function daily(nights) {
-  const days = new Set();
-  return nights.filter(night => { if (days.has(night.day)) return false; days.add(night.day); return true; });
+  // Why (30 Oct 2026, owner, JOB-45; review #2611): an incomplete dispatch cannot remove a complete night's evidence or interrupt its red-date streak.
+  const picked = new Map();
+  for (const night of nights) {
+    const previous = picked.get(night.day);
+    if (!previous || (!previous.complete && night.complete)) picked.set(night.day, night);
+  }
+  return nights.filter(night => picked.get(night.day) === night);
 }
 
 function rates(nights, fingerprints) {

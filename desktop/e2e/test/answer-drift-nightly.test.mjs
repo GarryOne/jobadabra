@@ -268,3 +268,16 @@ test('the complete nightly import graph and every linked relay request need no p
   assert.equal(checked.documentRequests, 0);
   assert.equal(checked.packageAttempts, 0);
 });
+
+test('a same-day capped dispatch preserves the complete night and consecutive-red evidence', async () => {
+  const {finalizeNight} = await rateModule();
+  let history = [];
+  for (let n = 1; n <= 5; n++) history = finalizeNight(nightReport(), history, {runId: String(n), day: `2026-10-${20 + n}`}).history;
+  const manual = finalizeNight({...nightReport(), complete: false, incompleteReason: 'broker 429'}, history, {runId: 'manual', day: '2026-10-25'});
+  assert.equal(manual.report.verdict.state, 'incomplete');
+  assert.equal(manual.report.rates.facts.total, 500);
+  assert.equal(manual.report.rates.flags.texts, 20);
+  const next = finalizeNight(nightReport(), manual.history, {runId: '6', day: '2026-10-26'});
+  assert.equal(next.report.rates.facts.total, 600);
+  assert.match(next.report.issue.body, /2026-10-25, 2026-10-26/);
+});

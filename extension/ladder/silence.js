@@ -5,7 +5,7 @@
 // In SHADOW: a silence is noted once (progress.js hands the notice to the door, {shadow: true}); nothing else happens. The clock lives in the worker: a worker that sleeps forgets it
 // (a miss is today's behaviour). Pure apart from its timer, so the CI pool's logs are read with the same rule. Guard: worker/test/silence.test.js.
 
-// T = 30 s, measured on the CI pool (13 Oct 2026: 4 runs, 12 rows, 43 gaps between progress notes; desktop/e2e/pool-gaps.mjs) WITH the asks to the app taken out (the clock stands still while one is
+// T = 30 s, measured on the CI pool (13 Oct 2026: 4 runs, 12 rows, 43 gaps between progress notes; desktop/e2e/lib/pool-gaps.mjs) WITH the asks to the app taken out (the clock stands still while one is
 // out, below): the slowest normal quiet gap is 18.8 s (it was 51.5 s in wall time: a fill waiting for the AI's answers to 15 questions). On the 9 rows that reached the form: false fires 0 at 30 s
 // (1 at 20 s, 4 at 15 s); recall 1/1 (the one true stall). Censoring: the pool cuts a quiet stall at 20 s, so a stall's length above that is not measured. A miss is today's behaviour.
 export const SILENT_AFTER_MS = 30000;

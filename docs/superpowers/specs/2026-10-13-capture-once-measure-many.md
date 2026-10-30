@@ -15,11 +15,11 @@
 | Offline replay of one row / a day (`npm run row/rows`, `lib/row-replay.mjs`), memo-only by default ($0) | ✅ since 11 Oct (2e9fa3f, 78e3fcd) |
 | Captures kept for **every** row | ❌ failing rows only (`worthSaving`); passing rows only with `SMOKE_KEEP_CANDIDATES=1` |
 | CI keeps captures | ❌ `SMOKE_CANDIDATES` is written on the runner and **not uploaded**; only app.log, ai-calls, pictures |
-| Tables on a replay (`pool-shadow.mjs`, `pool-acted.mjs`, ending, fill numbers) | ❌ they read live report folders only |
+| Tables on a replay (`lib/pool-shadow.mjs`, `lib/pool-acted.mjs`, ending, fill numbers) | ❌ they read live report folders only |
 | A positive control (replay on the capturing build = the live numbers) | ❌ only per-row evidence lines (speed-5x trust check, 3 rows) |
 
 So the gap is three things: keep every capture, keep CI's, and a `measure` command whose output is a report folder of the **same shape**
-the tables already read (`<day>.json` + `<row>.app.log`), so `pool-shadow`, `pool-acted`, `pool-endings`, fill counts run on it unchanged.
+the tables already read (`<day>.json` + `<row>.app.log`), so `lib/pool-shadow.mjs`, `lib/pool-acted.mjs`, `pool-endings` and fill counts can analyze it unchanged.
 
 ## Design
 

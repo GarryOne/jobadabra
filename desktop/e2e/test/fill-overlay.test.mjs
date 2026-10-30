@@ -162,8 +162,8 @@ test('reading or routing a page covers it too, says it once in the step row, and
     await t.app.page.waitForTimeout(600);
     assert.equal(await t.overlay(), true, 'a page mark moving on never lifts the dim (Why-changed, 27 Oct 2026: only the worker\'s verdict does)');
     await t.verdict('done');
-    await t.app.page.waitForFunction(() => !document.getElementById('jobpilotto-fill-overlay'), null, {timeout: 8000}).catch(() => assert.fail('the overlay stayed after the worker\'s verdict'));
-    assert.equal((await t.host()).centred, false, 'the panel is back in its corner');
+    // Why (30 Oct 2026, qu): the dim layer and the corner come back in two steps; a one-shot read of the corner right after the dim left failed twice on CI (#2528, Linux), so wait for both like every sibling does.
+    await t.lookIs({dim: false, centred: false}, 'after the worker\'s verdict the layer is gone and the panel is back in its corner');
   } finally { await t.app.close(); }
 });
 

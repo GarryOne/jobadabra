@@ -1,6 +1,6 @@
 // The control level of the one door (spec fill-ladder, 5: "same door"): a control the fill could not settle gets a record {level: 'control', rung, signal, reason, tried}, logged at the page level's
-// door (dead-end.js) as "dead end: <signal>" with its own door id and `level: 'control'`, so a reader that counts page stops skips it by that field, never by its words (ending.mjs, pool-shadow.mjs,
-// pool-gaps.mjs). Signals mirror core.js: stalled (the control used its tries), contradicted (the check says the page holds another answer), failed (the check could not reach it or the try
+// door (dead-end.js) as "dead end: <signal>" with its own door id and `level: 'control'`, so a reader that counts page stops skips it by that field, never by its words (ending.mjs, desktop/e2e/lib/pool-shadow.mjs,
+// desktop/e2e/lib/pool-gaps.mjs). Signals mirror core.js: stalled (the control used its tries), contradicted (the check says the page holds another answer), failed (the check could not reach it or the try
 // did not work), refused (a repair was declined or left to the person), unsure. Evidence is fixed values only (dead-end.js evidenceOf): the control's fingerprint, never its label or value.
 // Logging only: nothing here changes what the fill does. next-move adds `resolved: {by, verb, candidate, form}` to the same line. Guard: worker/test/control-door.test.js.
 import {evidenceOf, nextDoor} from './dead-end.js';

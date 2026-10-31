@@ -1,6 +1,6 @@
-# Reads AI counts, rejects failed runs without a number, and formats informational scores.
+# Reads AI counts and budget refusals, retaining real failures and informational scores.
 # Job: report health
-# Invariants: BASE grants ordinary reports; qualityai evidence is measured, missing or unknown; score values never gate.
+# Invariants: BASE grants ordinary reports; qualityai evidence is measured, budget-refused, missing or unknown; score values never gate.
 import io
 import json
 import math
@@ -25,11 +25,12 @@ class NumberReadError(RuntimeError):
 
 
 def prepare(repo, runs, jobs, gh, main_state, base='main', my_run='', my_status='', runner='', suite_of=None):
-    """Return ordinary reports and qualityai evidence: measured -> grey, absent -> red, read error -> pending for at most 30 min after the run ends."""
+    """Return reports and qualityai states: measured/budget-only -> grey, absent/mixed -> red.
+    Read errors stay pending up to 30 min after completion, then red."""
     gh = lru_cache()(gh)   # one artifact listing/download per write even when formatting and job evidence share it
     reports, rates = ReportSuites(report_suites(repo, gh, base)), None
     suite_of = suite_of or main_state().suite_of
-    reports.qualityai, reports.unreadable = {}, set()
+    reports.qualityai, reports.unreadable, reports.reasons = {}, set(), {}
     try:
         main_module = lru_cache()(main_state)
         # Why (29 Oct 2026, qu): after-merge artifacts measure main's code even though their green cannot clear a suite's state.
@@ -37,17 +38,22 @@ def prepare(repo, runs, jobs, gh, main_state, base='main', my_run='', my_status=
                         my_run, my_status, runner, night_module=lambda: main_state('beta_rate_gate'), suite_of=suite_of)
     except Exception as error:
         print(f'AI number unavailable ({type(error).__name__}): evidence pending')
-    measurements = []
-    # Why (30 Oct 2026, owner/review): only this job's current-attempt artifact can clear its failure; unknown reads expire 30 min after the run ends.
+    measurements, failed_runs = {}, set()
+    # Why (31 Oct 2026, owner: "Grey: not known yet"): only a proved broker budget refusal is not judged;
+    # real/mixed failures stay red. Current job/attempt owns evidence; unreadable expires after 30 min.
     for r in runs:
         for job in jobs.get(r['databaseId'], []):
             if suite_of(job.get('name', '')) != 'qualityai' or job.get('status') != 'completed' or job.get('conclusion') in ('success', 'skipped'):
                 continue
+            failed_runs.add(r['databaseId'])
             try:
-                _, current = artifact_rates(repo, r['databaseId'], gh, job=job, attempt=r.get('attempt'))
+                evidence = {}
+                _, current = artifact_rates(repo, r['databaseId'], gh, job=job, attempt=r.get('attempt'), evidence=evidence)
                 produced = any((current or {}).get(part) and current[part][den] for part, _, den, _ in METRICS)
-                state = 'grey' if produced else 'failure'
-                if produced: measurements.append(current)
+                refusal = budget_refusal(repo, job, gh, evidence) if not produced or evidence.get('capped') else None
+                state = 'grey' if refusal is True or produced and refusal is not False else 'failure'
+                if refusal is True: reports.reasons[job.get('id')] = 'ai-budget'
+                if produced: measurements[r['databaseId']] = current
             except Exception as error:
                 ended = r.get('updatedAt') or job.get('completed_at')
                 young = r.get('status') != 'completed' or ended and datetime.now(timezone.utc) - _at(ended) < UNREADABLE_FOR
@@ -55,8 +61,9 @@ def prepare(repo, runs, jobs, gh, main_state, base='main', my_run='', my_status=
                 if not young: reports.unreadable.add(job.get('id'))
                 print(f"qualityai result unreadable ({type(error).__name__}): {'pending' if young else 'red after 30 min'}")
             reports.qualityai[job.get('id')] = state
-    if reports.qualityai:
-        current = measurements[0] if measurements else None
+    latest = latest_quality_run(runs)
+    if reports.qualityai and latest and latest['databaseId'] in failed_runs:
+        current = measurements.get(latest['databaseId'])
         if rates is None or current != rates[0]:
             rates = current, rates[1] if rates else None, False
     return reports, (lambda why: description(why, *rates)) if rates is not None else str
@@ -144,7 +151,7 @@ def _at(value):
     return datetime.fromisoformat(str(value).replace('Z', '+00:00'))
 
 
-def artifact_rates(repo, rid, gh, artifact=ARTIFACT, job=None, attempt=None):
+def artifact_rates(repo, rid, gh, artifact=ARTIFACT, job=None, attempt=None, evidence=None):
     """Read the newest matching artifact without extracting ZIP paths.
     Job evidence requires the current run attempt, exact matrix job key (shard kept),
     and artifact creation inside that job's start/end window; older attempts cannot qualify.
@@ -167,13 +174,83 @@ def artifact_rates(repo, rid, gh, artifact=ARTIFACT, job=None, attempt=None):
     data = gh('api', f"repos/{repo}/actions/artifacts/{latest['id']}/zip", binary=True)
     try:
         with zipfile.ZipFile(io.BytesIO(data)) as zipped:
+            if evidence is not None:
+                evidence.update(capped=_json_member(zipped, 'ai-capped.json'),
+                                failures=_json_member(zipped, 'suite-failures.json'))
+            if 'quality-rates.json' not in zipped.namelist():
+                return True, None
             member = zipped.getinfo('quality-rates.json')
             if member.file_size > 65536:
                 return True, None
             return True, valid_rates(json.loads(zipped.read(member)))
     except Exception as error:
+        if evidence is not None:
+            raise NumberReadError('qualityai artifact unreadable') from error
         print(f'AI counts unavailable for run {rid} ({type(error).__name__})', file=sys.stderr)
         return True, None
+
+
+def _json_member(zipped, name):
+    """Read bounded diagnostic JSON; absence is distinct from an unreadable artifact."""
+    if name not in zipped.namelist():
+        return None
+    member = zipped.getinfo(name)
+    if member.file_size > 65536:
+        raise NumberReadError('oversized ' + name)
+    return json.loads(zipped.read(member))
+
+
+def _cap_failure(message):
+    """Parse ai-miss-cause's exact marker and retain its original failure symptom."""
+    if not isinstance(message, str) or not message.startswith('AI asks with no stored answer: '):
+        return '', False
+    _, marker, rest = message.partition('; the AI was refused: ')
+    reason, ending, symptom = rest.partition('; the step then failed: ')
+    return reason if marker and ending else '', bool(ending) and symptom.startswith(('503 ai-capped:', 'ai-capped:'))
+
+
+def budget_refusal(repo, job, gh, evidence):
+    """True for budget-only failures, False for mixed/nonbudget refusal, None for no refusal.
+    Invariants: ai-capped.json's why is authoritative; fallback uses only ai-miss-cause
+    failure annotations, never logs. Every original symptom must be an ai-capped failure.
+    """
+    key = job.get('name', '').removeprefix('E2E · ').removeprefix('Mac + Linux · ')
+    suite_steps = {f'Run the {key} suite (first try)',
+                   f'Report-only {key} failed its only try (not retried: each run costs AI)'}
+    if any(step.get('conclusion') not in (None, 'success', 'skipped', 'neutral')
+           and step.get('name') not in suite_steps for step in job.get('steps') or []):
+        return False
+    cap, failures = evidence.get('capped'), evidence.get('failures')
+    why = cap.get('why') if isinstance(cap, dict) else None
+    if why:
+        if not isinstance(why, str) or not why.startswith('broker: budget:'):
+            return False
+    else:
+        check = job.get('check_run_url') or f"repos/{repo}/check-runs/{job['id']}"
+        pages = json.loads(gh('api', '--paginate', '--slurp',
+                              check.removeprefix('https://api.github.com/') + '/annotations?per_page=100'))
+        annotations = [a for page in pages for a in page if a.get('annotation_level') == 'failure']
+        # GitHub adds this wrapper for a failing shell step; it is not a second assertion.
+        messages = [a.get('message', '') for a in annotations if a.get('message') != 'Process completed with exit code 1.']
+        if not messages:
+            return None
+        if not all(a.get('title', '').startswith('qualityai · ') for a in annotations
+                   if a.get('message') != 'Process completed with exit code 1.'):
+            return False
+        parsed = [_cap_failure(message) for message in messages]
+        if not any(reason.startswith('broker: budget:') for reason, _ in parsed):
+            return None
+        if not all(reason.startswith('broker: budget:') and capped for reason, capped in parsed):
+            return False
+        if failures is None:
+            return True
+    if not isinstance(failures, list) or not failures:
+        # No complete failure record: annotations are the fallback, not absence of evidence.
+        if failures is None and why:
+            return budget_refusal(repo, job, gh, {})
+        return False
+    return all(isinstance(row, dict) and row.get('suite') == 'qualityai'
+               and _cap_failure(row.get('message'))[1] for row in failures)
 
 
 def _night_reader(night_module=None):
@@ -206,15 +283,23 @@ def main_rates(repo, gh, comparable, night_module=None):
     return None
 
 
-def numbers(repo, runs, jobs, gh, comparable, my_run='', my_status='', runner='', night_module=None, suite_of=None):
-    """Read the PR and latest main counts plus a text-only comparison with main's usual nightly range."""
-    if suite_of is None:
-        from tools.main_e2e_state import suite_of
+def latest_quality_run(runs):
+    """Pick only the displayed measurement; all counted title/job states still decide in prepare.
+    The caller supplies newest-per-workflow/title runs; timestamp/id/attempt matches counted().
+    """
     selected = [run for run in runs if str(run.get('displayTitle', '')).startswith(PR_TITLE)
                 and 'qualityai' in run['displayTitle'][len(PR_TITLE):].split(' · ')[0].split(',')]
-    if not selected:
+    return max(selected, key=lambda r: (r.get('createdAt') or '', r['databaseId'], r.get('attempt') or 0)) if selected else None
+
+
+def numbers(repo, runs, jobs, gh, comparable, my_run='', my_status='', runner='', night_module=None, suite_of=None):
+    """Display the newest qualityai measurement among counted titles; prepare judges EVERY title/job.
+    Callers pass counted runs: a newer unrelated suite title cannot erase qualityai evidence."""
+    if suite_of is None:
+        from tools.main_e2e_state import suite_of
+    run = latest_quality_run(runs)
+    if run is None:
         return None
-    run = max(selected, key=lambda r: (r.get('createdAt') or '', r['databaseId']))
     current = None
     try:
         rid = run['databaseId']

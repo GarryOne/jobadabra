@@ -6,6 +6,7 @@ Why (28 Oct 2026, owner, "a PR is red only when its diff broke it"): proven main
 failures are grey; new failure evidence stays red. AI score values remain informational.
 Budget (owner's yes, 26 Oct 2026): CI-changing PRs whose checks ran over 10 min need CI-budget.
 Why (27 Oct 2026, owner, "Count running time only"): union job spans count overlaps once, exclude runner queues; #2215's 12.4 min wall time included only 7.x min running.
+Design: counted runs of H: the newest per workflow + title; a re-run replaces only its own title.
 The planner filters live/empty counted heads; each started writer revalidates the open head and writes.
 """
 import argparse
@@ -33,7 +34,8 @@ RED = {'failure', 'cancelled', 'timed_out', 'startup_failure', 'action_required'
 # 'tolerant' / 'suspended': its suite is in the lane registry desktop/e2e/lanes.json (lane_greys; spec lanes table, 28 Oct 2026).
 GREY_WORDS = {'main': ('grey', 'red on main too, not this PR'), 'tolerant': ('tolerant', 'AI, clock or outside: not a PR red'), 'suspended': ('suspended', 'flaky on main: not a PR red')}
 GREY_WORDS.update({'ai-credit': ('grey', 'AI cap or credit'), 'runner': ('grey', 'runner not acquired'),
-                   'install': ('grey', 'install download unavailable'), 'qualityai': ('report', 'AI number produced; score informational')})
+                   'install': ('grey', 'install download unavailable'), 'qualityai': ('report', 'AI number produced; score informational'),
+                   'ai-budget': ('qualityai', 'AI budget refused, not judged')})
 CI_FILES = re.compile(r'^(\.github/|tools/pr-|desktop/e2e/(lib/plan|lib/pr-suites|lib/coverage|pr-suites\.mjs|plan-run\.mjs))')
 # The workflows a pull request can start: a pull_request trigger, or started by one of them. A workflow outside it (the users' Always On daily/scout/mail.yml,
 # the nightly, a release) never runs on a PR, so editing it does not slow a PR: #2137 went red at 11.4 min, every check green, for daily/scout/mail.yml.
@@ -42,27 +44,25 @@ PR_WORKFLOWS = {'beta-approve.yml', 'conflict-label.yml', 'e2e-windows.yml', 'e2
                 'office-addon.yml', 'page-cases.yml', 'pr-closed-cancel.yml', 'pr-gate.yml', 'pr-suites.yml', 'ready-fill-image.yml', 'search-personas.yml', 'tests-desktop-windows.yml',
                 'tests-desktop.yml', 'tests-python.yml', 'tests-worker.yml'}
 
-
 def ci_change(files):
     workflow = re.compile(r'^\.github/workflows/([^/]+)$')
     return any(CI_FILES.match(file) and (not workflow.match(file) or workflow.match(file).group(1) in PR_WORKFLOWS) for file in files)
-
 
 def _at(text):
     return datetime.fromisoformat(str(text).replace('Z', '+00:00'))
 
 
 def counted(runs):
-    """The newest run of each workflow among those that judge this PR's commit."""
+    """The newest attempt per workflow + title among runs judging this commit."""
     mine = [r for r in runs if r.get('event') == 'pull_request' or str(r.get('displayTitle', '')).startswith(E2E_PR_TITLE)]
     newest = {}
-    for r in sorted(mine, key=lambda r: (r.get('createdAt') or '', r.get('databaseId') or 0)):
-        newest[r['workflowName']] = r
+    for r in sorted(mine, key=lambda r: (r.get('createdAt') or '', r.get('databaseId') or 0, r.get('attempt') or 0)):
+        # Why (31 Oct 2026, owner: "Fix: count each run"): #2659's wizard green hid its automatic qualityai red.
+        newest[(r['workflowName'], r.get('displayTitle', ''))] = r
     return list(newest.values())
 
-
 def job_state(job, me=None, my_status=''):
-    """One job of a running workflow -> 'running', 'finishing' (only its verdict step and clean-up are left) or its conclusion."""
+    """A job's conclusion, running, or finishing (only verdict/cleanup left)."""
     if me is not None and job.get('id') == me:
         return {'success': 'success', 'failure': 'failure'}.get(my_status, 'cancelled')
     if job.get('status') == 'completed':
@@ -80,18 +80,15 @@ def clock(at):
     except Exception:   # zoneinfo missing, or no tz database (ZoneInfoNotFoundError)
         return at.astimezone(timezone.utc).strftime('%H:%M UTC')
 
-
 def marks(log):
     """A suite job's log -> the set of its failure lines ("✗ step: reason", the e2e runner's mark), without gh's job/step columns, the timestamp or the indent."""
     lines = (re.sub(r'^.*?\d{4}-\d\d-\d\dT[\d:.]+Z ', '', line).strip() for line in (log or '').splitlines())
     return {line for line in lines if line.startswith(('✗ ', '✖ '))}
 
-
 def mains_own(pr_log, main_logs):
     """True when the PR's red suite job printed only failure lines that main's own red of the suite printed too: main's red, not this diff."""
     mine = marks(pr_log)
     return bool(mine) and mine <= set().union(*(marks(log) for log in main_logs))
-
 
 def label(r, running_jobs=()):
     """How the status names a run it waits for: the PR's e2e run by its suites (the run is not in the PR's checks list), others by workflow."""
@@ -137,7 +134,7 @@ def verdict(runs, files=(), messages=(), jobs=None, me=None, my_status='', now=N
         numbered = any(suite_of(job.get('name', '')) in reports for job in listed)   # Why (30 Oct 2026, owner/review): qualityai evidence overrides report/grey exemptions, including unknown reads.
         states = [(job, quality.get(job.get('id'), 'grey' if job.get('id') in greys else job_state(job, me, my_status))) for job in listed if job.get('name') not in REPORT_JOBS and (suite_of(job.get('name', '')) not in reports or job.get('id') in quality)]
         states = ((burn_in or main_state_module('', '', 'pr_burn_in').failures)(r, listed, lambda job: job_state(job, me, my_status)) if any(' · burn-in ' in job.get('name', '') for job in listed) else []) + states
-        grey += [(job['name'], 'qualityai' if job.get('id') in quality else greys.get(job['id'], 'main') if isinstance(greys, dict) else 'main') for job, state in states if state == 'grey']
+        grey += [(job['name'], getattr(reports, 'reasons', {}).get(job.get('id'), 'qualityai') if job.get('id') in quality else greys.get(job['id'], 'main') if isinstance(greys, dict) else 'main') for job, state in states if state == 'grey']
         ending = [job['id'] for job, state in states if state == 'finishing' or job.get('id') == me]
         if any(state in RED for _, state in states):
             red.append(r); red_jobs[r.get('databaseId')] = ['qualityai result unreadable' if job.get('id') in getattr(reports, 'unreadable', ()) else job['name'] for job, state in states if state in RED]
@@ -161,7 +158,7 @@ def verdict(runs, files=(), messages=(), jobs=None, me=None, my_status='', now=N
     took = f'{minutes:.1f} min' if ran is None else f'{ran:.1f} min running + {max(0.0, minutes - ran):.1f} min waiting for runners'
     if (minutes if ran is None else ran) > BUDGET_MIN and ci_change(files) and not any(re.search(r'(?m)^CI-budget: \S', m or '') for m in messages):
         return 'failure', f'checks ran {took}, over the {BUDGET_MIN}-min budget for a CI change (or "CI-budget: <why>")'[:140], live, finishing, None
-    told = ''.join(f'{word}: {short(name for name, why in grey if why == reason)} ({said}); ' for reason, (word, said) in GREY_WORDS.items() if any(why == reason for _, why in grey))
+    told = ''.join((f'{word}: {said}; ' if reason == 'ai-budget' else f'{word}: {short(name for name, why in grey if why == reason)} ({said}); ') for reason, (word, said) in GREY_WORDS.items() if any(why == reason for _, why in grey))
     return 'success', f'{told}{len(live)} workflow(s) green in {took}'[:140], live, finishing, None
 
 
@@ -221,7 +218,6 @@ def pr_meta(repo, sha, run=None):
     files = None if mine['files']['pageInfo']['hasNextPage'] else [f['path'] for f in mine['files']['nodes']]
     return pulls, files, [c['commit']['message'] for c in mine['commits']['nodes']]
 
-
 def open_pr(pulls):
     """-> (number or '', whether to write). A commit no PR names (a dispatched e2e run's branch) is written; one whose PRs are all merged or closed is not (#2041)."""
     if not pulls:
@@ -229,11 +225,9 @@ def open_pr(pulls):
     live = [p for p in pulls if p.get('state') == 'open' and not p.get('merged_at')]
     return (str(live[0]['number']), True) if live else ('', False)
 
-
 def ended_run(run, ended):
     """Match a head-validated completion event to the exact run and attempt; reruns stay untouched."""
     return bool(ended) and run.get('databaseId') == ended.get('id') and run.get('attempt') == ended.get('run_attempt')
-
 
 def list_runs(repo, sha):
     """List a head's runs once; both planner and writer apply counted() to this same list."""
@@ -242,11 +236,8 @@ def list_runs(repo, sha):
 
 
 def read(repo, sha):
-    """Read the PR's runs and deciding jobs; a matching completed event outranks a lagging list.
-    Invariant: completion evidence applies only to the same head, run id and attempt, never a rerun.
-    Red E2E job details still decide lane exemptions and burn-in admission.
-    Only a pending result reads live-looking runs by id, stopping at the first live run or red.
-    """
+    """Read deciding runs/jobs; completion evidence matches head, id and attempt.
+    Red jobs retain exemption evidence; pending probes stop at the first live run or red."""
     runs = list_runs(repo, sha)
     ended = {}
     if os.environ.get('GITHUB_EVENT_NAME') == 'workflow_run' and os.environ.get('GITHUB_EVENT_PATH'):
@@ -274,9 +265,8 @@ def read(repo, sha):
 
 
 def job_log(repo, job_id):
-    """A finished job's whole log, also while its run still goes (`gh run view --log-failed` refuses until the run ends: code review, 28 Oct 2026).
-    gh 2.101 refuses a raw log (terminal escape sequences) without --allow-escape-sequences; a gh older than the flag never refused, so it is asked again without it.
-    A log not read raises: the caller keeps the job red and says why."""
+    """Read a finished job's log even in a live run; retry older gh without its new flag.
+    A read error raises so the caller keeps the job red (review, 28 Oct 2026)."""
     for extra in (['--allow-escape-sequences'], []):
         done = subprocess.run(['gh', 'api', *extra, f'repos/{repo}/actions/jobs/{job_id}/logs'], capture_output=True, encoding='utf-8', errors='replace')
         if done.returncode == 0:
@@ -351,12 +341,8 @@ def lane_greys(repo, runs, jobs, read_lanes=None):
 
 
 def health_greys(repo, runs, jobs, annotations_of=None, log_of=None, ref=''):
-    """Finished PR e2e jobs -> the existing grey map, with proven health causes only.
-    Invariants: a capacity cancellation needs zero steps; AI credit must explain EVERY failure mark;
-    install health needs a download transport error in a failed install step, before any suite assertion.
-    Missing evidence and mixed failures stay red. A failed read affects only that job.
-    Job: report health (e2e reliability design, PR 16/29).
-    """
+    """Grey only proven health: unacquired runner, credit-only, or install transport.
+    Invariants: missing evidence/mixed failures stay red; a read error affects only its job."""
     annotations_of = annotations_of or (lambda jid: [a for page in json.loads(gh('api', '--paginate', '--slurp',
         f'repos/{repo}/check-runs/{jid}/annotations?per_page=100')) for a in page])
     log_of = log_of or (lambda jid: job_log(repo, jid))
@@ -449,6 +435,8 @@ def main():
     if state is None:
         print(f'no pull request run on {a.sha[:7]}: nothing to write'); return 0
     why = number_description(a.repo, ref, runs, why, ai_line, speed_state(state, live, jobs, None, reports, ''))
+    if 'ai-budget' in getattr(reports, 'reasons', {}).values() and 'qualityai: AI budget refused, not judged' not in why:
+        why = ('qualityai: AI budget refused, not judged; ' + why)[:140]
     print(f'{CONTEXT}: {state}: {why}')
     url = f'{server}/{a.repo}/actions/runs/{target or my_run}'   # the run it waits on, or the red one: the PR's e2e run is not in its checks list
     if not a.dry_run:

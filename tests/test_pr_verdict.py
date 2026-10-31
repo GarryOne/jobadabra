@@ -54,6 +54,30 @@ class Verdict(unittest.TestCase):
         self.assertEqual(pv.verdict([old, new])[0], 'success')
         self.assertEqual(pv.verdict([new, dict(old, createdAt='2026-10-26T03:05:00Z', conclusion='failure')])[0], 'failure')
 
+    def test_distinct_e2e_titles_each_decide_the_same_heads_verdict(self):
+        # #2659: a later hand-started wizard must not hide the automatic qualityai red.
+        old = run('CI · End-to-end on Mac + Linux', event='workflow_dispatch',
+                  title='E2E for PR · activity,qualityai · topic', conclusion='failure',
+                  at='2026-10-31T03:03:15Z', end='2026-10-31T03:07:00Z', id=41162667171)
+        hand = run('CI · End-to-end on Mac + Linux', event='workflow_dispatch',
+                   title='E2E for PR · wizard · topic', at='2026-10-31T03:03:16Z',
+                   end='2026-10-31T03:07:00Z', id=41162669089)
+        for conclusion, expected in (('failure', 'failure'), ('success', 'success')):
+            with self.subTest(conclusion=conclusion):
+                state, _, live, *_ = pv.verdict([dict(old, conclusion=conclusion), hand])
+                self.assertEqual(state, expected)
+                self.assertEqual(len(live), 2)
+
+    def test_rerun_replaces_only_its_own_title_even_when_created_at_is_unchanged(self):
+        old = dict(run('E2E', event='workflow_dispatch', title='E2E for PR · qualityai · topic',
+                       conclusion='failure', id=7), attempt=1)
+        rerun = dict(old, conclusion='success', attempt=2)
+        other = run('E2E', event='workflow_dispatch', title='E2E for PR · wizard · topic', id=8)
+        state, _, live, *_ = pv.verdict([rerun, other, old])
+        self.assertEqual(state, 'success')
+        self.assertEqual(len(live), 2)
+        self.assertIn(rerun, live)
+
     def test_nothing_from_a_pull_request_writes_nothing(self):
         self.assertIsNone(pv.verdict([run('CI · End-to-end on Mac + Linux', event='schedule')])[0])
 

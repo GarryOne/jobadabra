@@ -1,6 +1,7 @@
 name: CI · PR verdict
 run-name: ${{ github.event_name == 'workflow_dispatch' && 'PR verdict sweep · on time (Worker cron)' || github.event_name == 'schedule' && 'PR verdict sweep · GitHub schedule (backup)' || 'CI · PR verdict' }}
 # Job: report health
+# Design: counted runs of H: the newest per workflow + title; a re-run replaces only its own title.
 # tools/pr-verdict.py alone owns verdict(H) = f(H's workflow runs, read fresh).
 # A run ending triggers a best-effort update; every ~10 min a sweep repairs pending/missing open heads with no live runs.
 # One queue per commit H: the newest writer cancels older writers and reads later; skipped events have unique groups.

@@ -75,3 +75,139 @@ test('a known closed tab is a reported failure, not a wait that can still finish
   const state = {state: 'unreadable', closed: true, error: 'Target page has been closed'};
   assert.equal(fillNote(state, 90), `state: ${JSON.stringify(state)}`);
 });
+
+// Beta 41250138244 (31 Oct 2026), Windows apply-1of3, Edge, "a Workday-shaped form": "read on about:blank, 1 tab(s)". The watcher gave the form the blank tab it found, the extension's install then took a
+// tab for its settings page, and the form's navigation was lost (its error was swallowed). These tests play that order with a fake browser: no real browser, no clock.
+const SETTINGS = 'chrome-extension://abcdefghijklmnop/options.html';
+const FORM = 'https://e2e.wd3.myworkdayjobs.com/en-US/E2E/job/Zurich/x/apply#jobpilotto-fill=0a089404';
+
+// A browser context as Playwright shows it: pages(), newPage(), 'page' events; a page navigates by goto (the harness) or navigate (the browser itself, as the install does).
+function fakeContext({gotoFails = null} = {}) {
+  const list = [], handlers = [];
+  const make = (url = 'about:blank') => {
+    const listeners = {}, frame = {url: () => url};
+    const emit = (name, ...args) => (listeners[name] || []).forEach(fn => fn(...args));
+    const page = {gotos: [], closed: false, url: () => url, isClosed: () => page.closed, mainFrame: () => frame, on: (name, fn) => (listeners[name] ||= []).push(fn),
+      navigate(target) { url = target; emit('framenavigated', frame); },
+      async goto(target) { page.gotos.push(target); if (gotoFails) throw new Error(gotoFails); page.navigate(target); },
+      async close() { page.closed = true; list.splice(list.indexOf(page), 1); emit('close'); }};
+    list.push(page);
+    return page;
+  };
+  const context = {pages: () => [...list], on: (name, fn) => handlers.push(fn), made: 0,
+    async newPage() { context.made++; const page = make(); handlers.forEach(fn => fn(page)); return page; }};
+  return {context, starter: make(), open: url => { const page = make(url); handlers.forEach(fn => fn(page)); return page; }, make};
+}
+async function spooled(...urls) {
+  const fs = await import('node:fs'), os = await import('node:os'), path = await import('node:path');
+  const spool = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-spool-'));
+  urls.forEach((url, i) => fs.writeFileSync(path.join(spool, `open.${i}.url`), url));
+  return {spool, remove: () => fs.rmSync(spool, {recursive: true, force: true})};
+}
+const livePages = context => context.pages().map(page => page.url());
+
+test('a fresh profile opens no form before the install\'s settings page was seen, and the install\'s navigation never lands on the form\'s tab', async () => {
+  const {startTabs} = await import('../lib/spool-tabs.mjs');
+  const {context, starter} = fakeContext(), {spool, remove} = await spooled(FORM);
+  try {
+    let ready = false;
+    const starting = startTabs({context, spool, fresh: true, pollMs: 0, guardMs: 60000}).then(tabs => { ready = true; return tabs; });
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(ready, false, 'the tabs were handed out before the install\'s settings page appeared');
+    assert.equal(context.made, 0, 'a form tab was created before the install\'s settings page appeared');
+    starter.navigate(SETTINGS);   // Edge: the install takes the tab that exists, no new page
+    const tabs = await starting;
+    await tabs.drain();
+    await tabs.loaded(FORM);
+    assert.equal(tabs.pages[FORM].url(), FORM, 'the form is in its own tab');
+    assert.notEqual(tabs.pages[FORM], starter);
+    assert.deepEqual(livePages(context).sort(), ['about:blank', FORM].sort(), 'the settings page is closed; one blank anchor tab and the form remain');
+    assert.deepEqual(tabs.pages[FORM].gotos, [FORM], 'one navigation, no retry');
+  } finally { remove(); }
+});
+
+test('beta 41250138244\'s order: the form is asked for at once, the install takes the blank tab right after; a tab still shows the form at the end', async () => {
+  const {startTabs} = await import('../lib/spool-tabs.mjs');
+  const {context, starter} = fakeContext(), {spool, remove} = await spooled(FORM);
+  try {
+    const starting = startTabs({context, spool, fresh: true, pollMs: 0});
+    const installed = new Promise(resolve => setImmediate(() => { starter.navigate(SETTINGS); resolve(); }));
+    const tabs = await starting;
+    await tabs.drain();   // the first poll of the spool
+    await installed;
+    await tabs.drain();   // a later poll
+    assert.ok(livePages(context).includes(FORM), `no tab shows the form at the end; tabs: ${livePages(context).join(', ')}`);
+  } finally { remove(); }
+});
+
+test('an install that opens its settings page as a new tab leaves the start tab and the form', async () => {
+  const {startTabs} = await import('../lib/spool-tabs.mjs');
+  const {context, open} = fakeContext(), {spool, remove} = await spooled(FORM);
+  try {
+    const starting = startTabs({context, spool, fresh: true, pollMs: 0, guardMs: 60000});
+    open(SETTINGS);
+    const tabs = await starting;
+    await tabs.drain();
+    assert.deepEqual(livePages(context).sort(), ['about:blank', FORM].sort());
+    assert.equal(context.made, 1, 'the only page the harness created is the form\'s');
+  } finally { remove(); }
+});
+
+test('a fresh profile whose install page never appears fails the launch, naming it', async () => {
+  const {startTabs} = await import('../lib/spool-tabs.mjs');
+  const {context} = fakeContext(), {spool, remove} = await spooled();
+  try {
+    await assert.rejects(startTabs({context, spool, fresh: true, pollMs: 0, guardMs: 5}), /the extension's install page \(options\.html\) did not appear within 0\.005 s of the browser starting; tabs: tab 1 \+\d+ ms open about:blank/);
+  } finally { remove(); }
+});
+
+test('a kept profile installs nothing, is not waited for, and the form still gets its own tab', async () => {
+  const {startTabs} = await import('../lib/spool-tabs.mjs');
+  const {context, starter} = fakeContext(), {spool, remove} = await spooled(FORM);
+  try {
+    const tabs = await startTabs({context, spool, fresh: false, pollMs: 0});
+    await tabs.drain();
+    assert.equal(starter.gotos.length, 0, 'the blank tab is never reused');
+    assert.equal(tabs.pages[FORM].url(), FORM);
+    assert.equal(context.pages().length, 2);
+  } finally { remove(); }
+});
+
+test('a navigation the browser refused is an error with the tab\'s trail, not a swallowed one', async () => {
+  const {startTabs} = await import('../lib/spool-tabs.mjs');
+  const {context, open} = fakeContext({gotoFails: 'page.goto: net::ERR_ABORTED at https://e2e.wd3.myworkdayjobs.com/x\nCall log: ...'}), {spool, remove} = await spooled(FORM);
+  const logged = [], was = console.error;
+  console.error = (...args) => logged.push(args.join(' '));
+  try {
+    const starting = startTabs({context, spool, fresh: true, pollMs: 0});
+    open(SETTINGS);
+    const tabs = await starting;
+    await tabs.drain();
+    await assert.rejects(tabs.loaded(FORM), error => {
+      assert.match(error.message, /the browser could not open https:\/\/e2e\.wd3\.myworkdayjobs\.com\/en-US\/E2E\/job\/Zurich\/x\/apply in its own tab: page\.goto: net::ERR_ABORTED/);
+      assert.match(error.message, /tab \d: tab \d \+\d+ ms open about:blank/);
+      assert.doesNotMatch(error.message, /jobpilotto-fill/, 'the fill mark is not part of the trail');
+      return true;
+    });
+    assert.equal(tabs.trail.errors.length, 1);
+    assert.match(logged.join('\n'), /the browser could not open .* net::ERR_ABORTED/);
+    assert.ok(tabs.trail.entries.some(entry => entry.what === 'goto failed'));
+  } finally { console.error = was; remove(); }
+});
+
+test('the trail keeps every tab\'s opens, navigations and closes without the fill mark or a query', async () => {
+  const {tabTrail} = await import('../lib/tab-trail.mjs');
+  let ms = 1000;
+  const {context, starter, open} = fakeContext(), trail = tabTrail(context, {now: () => (ms += 10)});
+  starter.navigate(`${SETTINGS}?token=secret`);
+  const page = open('about:blank');
+  page.navigate(FORM);
+  await page.close();
+  assert.deepEqual(trail.entries.map(entry => `${entry.tab}:${entry.what}:${entry.address}`), [
+    '1:open:about:blank', `1:navigated:${SETTINGS}`, '2:open:about:blank', '2:navigated:https://e2e.wd3.myworkdayjobs.com/en-US/E2E/job/Zurich/x/apply', '2:closed:']);
+  assert.deepEqual(trail.entries.map(entry => entry.ms), [10, 20, 30, 40, 50], 'times are ms since the trail began');
+  const fs = await import('node:fs'), os = await import('node:os'), path = await import('node:path');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-trail-'));
+  try { trail.write(dir); assert.equal(JSON.parse(fs.readFileSync(path.join(dir, 'tab-trail.json'), 'utf8')).entries.length, 5, 'the artifact holds the same entries'); }
+  finally { fs.rmSync(dir, {recursive: true, force: true}); }
+});

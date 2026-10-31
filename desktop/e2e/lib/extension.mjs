@@ -6,7 +6,6 @@
 // Job: wait on state
 import {waitCapNote} from './wait-on-state.mjs';
 import {appLaunchEnv} from './app-env.mjs';
-import {guardLiveVisit} from './site-ledger.mjs';
 import {chromium} from 'playwright-core';
 import fs from 'node:fs';
 import {leanChrome} from './chrome-lean.mjs';
@@ -17,6 +16,7 @@ import {hostRules} from './forms.mjs';
 import {stamp, stampedAt} from '../../scripts/extension-stamp.mjs';
 import {LAUNCH_TIMEOUT_MS, launchGuard} from './launch-guard.mjs';
 import {markedSession} from '../../lib/session-tab.js';
+import {startTabs, visitGuard} from './spool-tabs.mjs';
 import {DEFAULT_APP_PORT, freePort} from './own-port.mjs';
 
 export const EXTENSION_DIR = path.resolve(E2E, '..', '..', 'extension');
@@ -80,9 +80,7 @@ export function opensIntoSpool(env, platform = process.platform) {
 export const browserChannel = (env = process.env) => (env.E2E_BROWSER === 'msedge' ? {channel: 'msedge'} : {});
 
 // -> {context, opened: [url], serviceWorker(), page(url), close()}. Every URL the app opens is opened here, in a new tab.
-// The per-site daily limit (lib/site-ledger.mjs) is for live visits: a fixture browser's addresses resolve to the fixture server and are never counted
-// (12 Oct 2026: local apply runs used up jobs.lever.co's 3 a day and the next run's Lever step was refused). Guard: test/extension-browser.test.mjs.
-export const visitGuard = real => (real ? (url, options) => guardLiveVisit(url, options) : () => null);
+export {visitGuard};   // moved to lib/spool-tabs.mjs with the navigation it guards (test/extension-browser.test.mjs imports it from here)
 // `real`: a live-test twin's window (e2e/twin.mjs): real sites (no fixture host mapping), always visible.
 // `profile`: a browser profile kept between runs (the twin's: site sign-ins and cookies survive); else a fresh temp one.
 // `debugPort`: the browser's own debugging port (the twin's: its tabs can be seen and driven from outside, like its app window).
@@ -96,33 +94,20 @@ export async function launchBrowser({port, spool, extensionDir, real = false, pr
     args: [...(process.env.E2E_HEADED || real ? [] : ['--headless=new']), `--disable-extensions-except=${extensionDir}`, `--load-extension=${extensionDir}`,
       ...(real ? [] : [`--host-resolver-rules=${hostRules(port)}`, '--ignore-certificate-errors']), '--no-first-run', '--no-default-browser-check', ...leanChrome(), ...(debugPort ? [`--remote-debugging-port=${debugPort}`] : [])],
   }).catch(error => { launchGuard.failed(error); throw error; });
-  const opened = [], pages = {}, requested = new Set();   // requested: every host name the browser asked for (a test proves no employer site was contacted)
+  const requested = new Set();   // every host name the browser asked for (a test proves no employer site was contacted)
   context.on('request', request => { try { const url = new URL(request.url()); if (/^https?:$/.test(url.protocol)) requested.add(url.hostname); } catch { /* not a URL */ } });
-  let stopped = false;
-  // One window, one tab to start: the extension opens its settings page when installed (background.js onInstalled), and every test
-  // browser is a fresh install, so a settings tab sat beside each test (owner, 8 Oct 2026: "I want to avoid having 2 tabs all the times").
-  // That tab is made blank, and the first page a test opens reuses the blank tab instead of adding one.
-  const blank = page => /^(about:blank|chrome:\/\/new-?tab|chrome-search:)/.test(page.url());
-  const quietSettings = page => { if (page.url().endsWith('/options.html')) page.goto('about:blank').catch(() => {}); };
-  const watcher = (async () => {
-    while (!stopped) {
-      for (const page of context.pages()) quietSettings(page);   // checked on every tick: the install opens it whenever the worker starts
-      for (const file of fs.readdirSync(spool).filter(name => name.endsWith('.url'))) {
-        const url = fs.readFileSync(path.join(spool, file), 'utf8').trim();
-        fs.rmSync(path.join(spool, file));
-        if (!/^https:\/\//.test(url)) continue;   // the app asked `open` for something else: nothing to do here
-        try { visitGuard(real)(url, {who: process.env.JOB_PILOTTO_SESSION || 'browser'}); } catch (error) { console.error(error.message); continue; }   // the per-site daily limit (lib/site-ledger.mjs): a refused address is not opened
-        const tab = context.pages().find(page => blank(page) && !Object.values(pages).includes(page)) || await context.newPage();
-        pages[url] = tab;
-        opened.push(url);   // after the tab exists: a caller that sees the URL finds its tab
-        tab.goto(url).catch(() => {});
-      }
-      await new Promise(resolve => setTimeout(resolve, 250));
-    }
-  })();
+  // Tabs (lib/spool-tabs.mjs): a fresh install opens the extension's settings page (background.js onInstalled); it is waited for and closed BEFORE the first form opens, and every address the app
+  // opens gets its own new tab. Kept profiles (the twin's) install nothing and are not waited for. Why (a8, 1 Nov 2026, beta 41250138244): the form used to reuse "a blank tab" the install could take.
+  let tabs;
+  try { tabs = await startTabs({context, spool, fresh: !kept, real, guardMs: LAUNCH_TIMEOUT_MS}); }
+  catch (error) {
+    launchGuard.failed(error);
+    await context.close().catch(closeError => console.error(`closing the browser after a failed start: ${closeError.message}`));
+    throw error;
+  }
   const serviceWorker = async () => context.serviceWorkers()[0] || await context.waitForEvent('serviceworker', {timeout: 30000});
-  return {context, opened, pages, requested, serviceWorker,
-    close: async () => { stopped = true; await watcher.catch(() => {}); await context.close().catch(() => {}); }};
+  return {context, opened: tabs.opened, pages: tabs.pages, requested, trail: tabs.trail, loaded: tabs.loaded, serviceWorker,
+    close: async () => { await tabs.stop(); await context.close().catch(error => console.error(`closing the browser: ${error.message}`)); }};
 }
 
 // The tab showing this session's marker, even after navigation (background.js markPage restores it). Beta 40281407461, Edge: the install tab raced the reuse

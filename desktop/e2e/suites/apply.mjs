@@ -145,6 +145,7 @@ export async function runApply(ctx, parts) {
     const inside = await (await ctx.browser.serviceWorker()).evaluate(async () => ({session: await chrome.storage.session.get(null),
       tabs: (await chrome.tabs.query({})).map(item => ({id: item.id, status: item.status, opener: item.openerTabId ?? null, url: String(item.url).split('#')[0].slice(0, 70)}))})).catch(error => ({error: String(error)}));
     console.log(`  extension state at the failure: ${JSON.stringify(inside)}`);
+    ctx.browser.trail?.write(ctx.ARTIFACTS);   // every tab's opens, navigations and closes, and any navigation error (lib/tab-trail.mjs)
   }
   // The person's click on a job's Apply button; the form opens in the browser with the extension, which fills it by itself. -> the tab, once the fill is over.
   async function apply(form, {viaApi = false} = {}) {
@@ -170,10 +171,11 @@ export async function runApply(ctx, parts) {
         return openedHere || reloaded.has(picked.tab) ? picked : {...picked, tab: null};
       }, readState: async () => ({opened: true}), accept: state => state?.opened === true});
       if (!opening.ok) throw new Error(`Apply did not open ${form.title} in the browser (the app's open command was never called, and no open tab reloaded)`);
+      await ctx.browser.loaded?.(attemptUrl);   // the form's own tab has loaded (domcontentloaded), or the browser's navigation error is this step's failure (lib/spool-tabs.mjs)
       const result = await waitForFill({capMs: 90000, pickTab, readState: fillState});
       if (result.ok) return {...result, session: markedSession(attemptUrl)};
       await dumpExtension();
-      throw new Error(`the extension never finished filling ${form.title} (${fillNote(result.state, 90)}, read on ${result.url}, ${result.tabs} tab(s))`);
+      throw new Error(`the extension never finished filling ${form.title} (${fillNote(result.state, 90)}, read on ${result.url}, ${result.tabs} tab(s)${ctx.browser.trail ? `; ${ctx.browser.trail.describe(result.tab)}` : ''})`);   // the picked tab's last navigations and any navigation error (lib/tab-trail.mjs)
     } finally { for (const [tab, onLoad] of listeners) tab.off('load', onLoad); }
   }
   // The panel opens by itself while a fill runs; open it only when it is closed (a click on the pill toggles).

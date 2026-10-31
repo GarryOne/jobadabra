@@ -98,6 +98,7 @@ on:
       - 'tools/replay-files.mjs'
       - 'tools/rung-trailer.mjs'
       - 'tools/new-code-comments.mjs'
+      - 'tools/unpinned-clock.mjs'
       - 'tools/why-changed.mjs'
       - 'tools/lanes-check.mjs'
       - 'tools/e2e-reliability-check.mjs'

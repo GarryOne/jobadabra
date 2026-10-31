@@ -9,7 +9,7 @@ import path from 'node:path';
 const ROOT = path.resolve(import.meta.dirname, '..');
 const TOP = ['desktop/test', 'desktop/e2e/test', 'tests'];
 const READ = /\bDate\.now\(\)|\bnew Date\(\)|\bdatetime\.(?:utc)?(?:now|today)\(|\bdate\.today\(\)|\btime\.time\(\)/;
-// Why (31 Oct 2026, a8): `now - started`, `deadline = now + 5000` and `while (now < end)` measure a span on the real clock and cannot depend on the calendar day.
+// Why (31 Oct 2026, a8): a span measured as one reading minus an earlier one, a deadline set from now, or a loop that runs until a time is reached all use the real clock for a duration and cannot depend on the calendar day.
 const ELAPSED = /(?:[-<>]=?\s*(?:Date\.now\(\)|time\.time\(\)))|(?:(?:Date\.now\(\)|time\.time\(\))\s*(?:[-<>]|\+\s*\d))|(?:\b(?:start|began|begin|t0|deadline|end|since|tick|last)\w*\s*=\s*(?:await\s+)?(?:Date\.now\(\)|time\.time\(\)))/i;
 const PINS = /\bpinClock\(|\bpin_clock\(|mock\.timers|JOB_PILOTTO_NOW/;
 

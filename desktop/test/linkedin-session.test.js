@@ -2,7 +2,7 @@
 // copied LinkedIn session as a credential (allow-listed cookies, Keychain only, gone when the switch goes off). lib/linkedin-session.js.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {COOKIE_NAMES, SERVICE, cleanCookies, noteAnswer, noteAsked, readSession, saveSession, shouldAsk, state, turnOff} from '../lib/linkedin-session.js';
+import {COOKIE_NAMES, SERVICE, cleanCookies, noteAnswer, noteAsked, noteRun, pausedUntil, readSession, saveSession, shouldAsk, state, turnOff} from '../lib/linkedin-session.js';
 
 const SECRET = 'AQEDAR-fake-li-at-value';
 const JSESSION = '"ajax:1234567890"';
@@ -89,4 +89,21 @@ test('the counters change only by the dialog: shown = asked + 1, Not now = decli
   noteAnswer(settings, 'on');
   assert.equal(state(settings).declined, 1);
   assert.throws(() => noteAnswer(settings, 'maybe'), /unknown answer/);
+});
+
+test('the last run and a pause are kept beside the switch, and no other write drops them (LinkedIn jobs 2/3)', () => {
+  const settings = store({linkedinJobs: {on: true, asked: 1, declined: 0}});
+  noteRun(settings, {state: 'done', jobs: 12, at: '2026-10-31T12:00:00.000Z'});
+  assert.deepEqual(settings.settings().linkedinJobs.last, {state: 'done', jobs: 12, at: '2026-10-31T12:00:00.000Z'});
+  noteRun(settings, {state: 'limited', jobs: 0, at: '2026-10-31T13:00:00.000Z', pauseUntil: '2026-11-01T13:00:00.000Z'});
+  assert.equal(pausedUntil(settings), Date.parse('2026-11-01T13:00:00.000Z'));
+  noteAsked(settings);
+  noteAnswer(settings, 'not-now');
+  assert.equal(settings.settings().linkedinJobs.last.state, 'limited', 'the ask counters do not drop the last run');
+  assert.equal(pausedUntil(settings), Date.parse('2026-11-01T13:00:00.000Z'));
+  assert.deepEqual(state(settings), {on: true, asked: 2, declined: 1}, 'state() still answers only the three keys');
+  turnOff(settings, {keychain: keychain()});
+  assert.equal(pausedUntil(settings), 0, 'turning it off forgets the pause: a new yes starts clean');
+  assert.equal(settings.settings().linkedinJobs.last, undefined, 'and the last run');
+  assert.equal(pausedUntil(store()), 0);
 });

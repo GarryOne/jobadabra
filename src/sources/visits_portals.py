@@ -74,6 +74,26 @@ def portals(search=None, kinds=None):
     return out
 
 
+def linkedin_searches(search=None, limit=3):
+    """Up to `limit` LinkedIn search pages for the app's own read on every Find jobs: [{name, url}].
+    Invariant: only the strategy's own role and place words (the same `_plain_words` the portal list uses), never a list of its own. Several
+    roles: one per role in the first place; one role: that role in each place. A search is listed once.
+    Why (31 Oct 2026, owner: LinkedIn on every Find jobs, headless): portals() offers one search because a person presses it by hand; the
+    app's slow background read (spec 2026-10-31-linkedin-headless-design.md) covers up to three, 3 pages each, so a strategy's other roles are not left out."""
+    search = load_search_config(matching=False) if search is None else search   # `{}` is a strategy with no words, not "not given"
+    roles = _plain_words(search.get('role_keywords') or [])
+    places = _plain_words((search.get('locations') or {}).get('top_tier') or []) or ['']
+    pairs = [(role, places[0]) for role in roles] if len(roles) > 1 else [(roles[0], place) for place in places] if roles else []
+    out, seen = [], set()
+    for role, place in pairs:
+        url = PORTALS['linkedin']['url'].format(role=urllib.parse.quote(role), place=urllib.parse.quote(place))
+        if url in seen:
+            continue
+        seen.add(url)
+        out.append({'name': f"LinkedIn: {role} in {place}" if place else f'LinkedIn: {role}', 'url': url})
+    return out[:max(0, int(limit))]
+
+
 def unread_picks(db_path=None, limit=30):
     """Employers the scout picked for THIS search (its AI ideas and the user's own lists, never the old tech seed lists) that ended with no
     readable job site, with an address to open: [{name, url, origin}], best first. Owner, 7 Oct 2026: "for a photographer or store manager, start with

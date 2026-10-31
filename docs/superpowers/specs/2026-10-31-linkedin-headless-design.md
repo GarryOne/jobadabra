@@ -22,7 +22,7 @@
 2. The app keeps them **only in the Keychain** (`job-pilotto.linkedin-jobs.session`; e2e: the isolated-secrets file, `lib/keychain.js`).
 3. At the LinkedIn step the app starts the owned headless browser (`lib/background-browser.js`, reused, no second browser), sets the cookies in it for the read, opens the searches, and **removes the cookies from the browser's profile when the step ends** (so the profile never keeps a credential between runs).
 4. The owned browser's extension reads each list page exactly like today (`extension/visit.js`: AI-judged cards, follow pages, stop at login wall or check) and sends it to the app; `src/sources/visits.py` ingests; scoring and filters are the normal path.
-5. Searches come from the current strategy (roles × places, AI-judged: `tests/test_sources_follow_strategy.py`), at most **3 searches × 3 pages**, 2–5 s between pages, within the Find jobs deadline (`tests/test_three_minutes.py`); what did not fit is reported ("LinkedIn: read 2 of 3 searches, ran out of time").
+5. Searches come from the current strategy (its own role and place words: `src/sources/visits_portals.py` `linkedin_searches`), at most **3 searches × 3 pages** (the app ends a read after 3 pages: `visits.runAll` `maxPages`), 1.8–3.2 s between pages (the extension's own pause) and 3–5 s between searches, beside the engine's steps on the press's one deadline (ends at 170 s: `lib/search-beside.js`); what did not fit is reported ("LinkedIn: read 2 of 3 searches, ran out of time").
 6. Every search is a row in Recent activity; **Stop ends it** (tab closed, cookies removed).
 
 ### Where the person turns it on (three doors, one consent)
@@ -44,6 +44,8 @@ All three open **one consent** (the dialog); On requests the two optional permis
 | `check` | checkpoint / verification / bot-check page | "LinkedIn asked for a check" (no retry, not solved) |
 | `limited` | 401/403/429 | "LinkedIn asked us to slow down"; 429 = skip for a day, others for this run |
 | `no-browser` | background browser not downloaded | "Download Jobadabra's browser (one time)" with progress and Cancel (existing add-on) |
+| `failed` | the owned browser would not start or open the page, or clearing the session failed | "LinkedIn: could not be read this time" (no retry) |
+| `stopped` | Stop was pressed | "LinkedIn: stopped" |
 
 Verdicts that change state: page kind judged by the AI (`src/ai/decide.py`), HTTP status, Stop, deadline. Nothing else.
 

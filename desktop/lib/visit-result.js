@@ -17,3 +17,6 @@ export function resultMessage(results, {added: listed = null, postings = null} =
       : `✗ ${clean(result.name)} · ${clean(result.why) || 'nothing read'} · ${key(result.url)}`),
     ...(postings ? [`📄 Read ${postings.read} of ${postings.asked} job${postings.asked === 1 ? '' : 's'} we couldn't read`] : [])].join('\n');
 }
+
+// The page kind the extension judged ('login' | 'check'), kept so a step reads it, not the words of `why` (LinkedIn jobs 2/3).
+export const blockedOf = state => (['login', 'check'].includes(state.blocked) ? state.blocked : '');

@@ -8,7 +8,7 @@ const scenario = async ({failSave = false, withApi = true} = {}) => {
   let canned = original;
   const proxy = {canned: () => canned, setCanned: fn => { canned = fn; }};
   const ctx = {proxy, page: {
-    locator: selector => ({waitFor: async () => { events.push(selector); }}),
+    locator: selector => ({isVisible: async () => { events.push(selector); return true; }}),
     click: async selector => {
       events.push(selector);
       assert.equal(selector, '#draft-save');

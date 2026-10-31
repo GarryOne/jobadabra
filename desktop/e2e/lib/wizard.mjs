@@ -7,6 +7,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {pageText} from './notion.mjs';
 import {goView} from './go-view.mjs';
+import {pollUntil, stepTimeLeft} from './wait-on-state.mjs';
 
 export async function runWizard(ctx) {
   const {page, appKey: KEY} = ctx;
@@ -114,7 +115,6 @@ export async function runWizard(ctx) {
   }, {needs: ctx.needs});
   await ctx.run('saving the strategy reaches the finish action', async () => {
     await saveWizardStrategy(ctx);
-    await page.locator('#finish').waitFor({state: 'visible'});
   }, {needs: ctx.needs});
   await ctx.run('finishing the setup without Notion opens the Jobs list, with the strategy kept on this Mac', async () => {
     await page.click('#finish');
@@ -217,7 +217,11 @@ export async function saveWizardStrategy(ctx) {
   const cv = JSON.parse(fs.readFileSync(new URL('../fixtures/cv.json', import.meta.url), 'utf8'));
   proxy.setCanned(body => wizardSetupAnswer(body, {cv}));
   try {
-    await ctx.withApi(async () => { await page.click('#draft-save'); await page.locator('#finish').waitFor({state: 'visible', timeout: 180000}); });
+    await ctx.withApi(async () => {
+      await page.click('#draft-save');
+      const {value: visible} = await pollUntil(() => page.locator('#finish').isVisible(), Boolean, {capMs: stepTimeLeft()});
+      if (!visible) throw new Error('strategy save did not reveal Go to my jobs');
+    });
   } finally { proxy.setCanned(previous); }
 }
 

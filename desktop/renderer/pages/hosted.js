@@ -68,4 +68,5 @@ export async function refresh() {
   if ($('hosted-status')) draw(model(now, now.schedule, new Date(), now.shared), hostedAddress(now));
 }
 
+/** Mount the Always on Settings card and subscribe to its status refreshes. */
 export function init() { mountCard(); }

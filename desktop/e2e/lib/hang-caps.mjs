@@ -14,11 +14,14 @@ const lanes = JSON.parse(readFileSync(new URL('../lanes.json', import.meta.url),
  */
 export const backboneSuite = (suite, cadence = '') => !!suite && !lanes[suite]?.lane && cadence !== 'manual';
 
-/** Return one suite's cap table in seconds, or quality's recording allowances; shared steps keep their exact source. */
+/**
+ * Return one suite's cap table in seconds, or quality's recording allowances; shared steps keep their exact source.
+ * Why (31 Oct 2026, Gitar on #2701): a live RECORD run is the slower mode, so its allowance is never below the measured replay cap.
+ */
 export function hangCapsFor(suite, {record = false} = {}) {
   // Invariant: a shared relation names this exact step in its measured source suite.
   const key = `${suite}:${record}`;
   if (!tables.has(key)) tables.set(key, Object.fromEntries(Object.entries(data[suite]?.steps || {})
-    .map(([name, step]) => [name, record && step.recordSeconds !== undefined ? step.recordSeconds : step.shared ? hangCapsFor(step.shared)[name] : step.seconds])));
+    .map(([name, step]) => [name, record && step.recordSeconds !== undefined ? Math.max(step.recordSeconds, step.seconds ?? 0) : step.shared ? hangCapsFor(step.shared)[name] : step.seconds])));
   return tables.get(key);
 }

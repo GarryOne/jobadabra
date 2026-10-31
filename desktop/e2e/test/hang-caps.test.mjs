@@ -72,3 +72,12 @@ test('the apply read verdict suffix resolves to a measured prefix cap', async ()
   assert.equal(caps[prefix], Math.max(30, Math.ceil(3 * measured.p95Seconds / 5) * 5));
   assert.equal(hangLimitMs(caps, `${prefix}: You review and submit, missing answers`, 'apply'), caps[prefix] * 1000);
 });
+
+// Why (31 Oct 2026, Gitar on #2701): quality's live RECORD run is the slower mode; "this suite starts with no jobs" was 190 s on replay and 90 s on RECORD.
+test('a RECORD cap is never below the replay cap', async () => {
+  const {hangCapsFor} = await import('../lib/hang-caps.mjs');
+  const replay = hangCapsFor('quality'), record = hangCapsFor('quality', {record: true});
+  assert.ok(Object.keys(replay).length >= 10, 'positive control: quality has its table');
+  for (const [name, seconds] of Object.entries(replay)) assert.ok(record[name] >= seconds, `${name}: RECORD ${record[name]} s < replay ${seconds} s`);
+  assert.equal(record['this suite starts with no jobs and no runs in its Notion page'], 190);
+});

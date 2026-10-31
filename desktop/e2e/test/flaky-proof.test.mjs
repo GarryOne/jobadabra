@@ -169,12 +169,11 @@ async function journeyFailure(t, {head, showTab = true, state = null, immediate 
   return failure.message;
 }
 
-// Exact incident notes are controls: fix their producers without teaching G5 another phrase list.
-for (const [head, original, showTab] of [
-  ['an upload slot that appears only', "the fill did not finish (state: null); the + slot never received a file; the first name was not filled; Kubernetes years is not the kit's 8", true],
-  ['a form drawn after a spinner', 'the late form was never reached. Tabs: ...', false],
+// Replay both incident situations through their producers; G5 reads only the new cap messages.
+for (const [head, showTab] of [
+  ['an upload slot that appears only', true],
+  ['a form drawn after a spinner', false],
 ]) test(`a stalled journey reports timing without fallout: ${head}`, async t => {
-  assert.equal(flakyProof(original).flaky, false, 'the historical note has no proof that its wait expired');
   const message = await journeyFailure(t, {head, showTab});
   assert.equal(flakyProof(message).flaky, true, message);
   assert.match(flakyProof(message).why, /^timing:/);

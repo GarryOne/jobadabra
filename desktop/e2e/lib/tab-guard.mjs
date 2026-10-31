@@ -2,7 +2,7 @@
 // Job: wait on state
 // Why (31 Oct 2026, a8; coordinator, beta 41242762348 apply-2of3): form tabs of finished steps stayed open in the real Chrome, 7 sessions' forms by 21:40:48, and chrome.storage reads went 7 s -> 37 s as they piled up
 // on the slow Mac runner; the part ran 716 s of 660 (cause not proven, but a pile of tabs is never what a step is meant to leave).
-// Invariants: the baseline is the set of live tabs when the step starts; a step that launched the browser has none (nothing to compare); a failed step still closes its tabs and its own error stays the error;
+// Invariants: the baseline is the set of live tabs when the step starts; a step that launched the browser has none (nothing to compare); a failed step still closes its tabs and its own error stays the error; a step that ends after a later one began does nothing (the runner left it);
 // `keepsTabs: '<key>'` hands this step's tabs to a later step on purpose and `closesTabs: '<key>'` makes that later step close the tabs kept under the same key (a pair, never all of them); with `close: false` the guard only reports (a red naming the step).
 // Tests: test/tab-guard.test.mjs
 const live = page => page && !page.isClosed?.();
@@ -16,10 +16,12 @@ const urlOf = page => { try { return String(page.url()).split(/[?#]/)[0].slice(0
  */
 export function tabGuard(ctx, run, {close = true} = {}) {
   const carried = new Map();   // key -> tabs a step kept on purpose (keepsTabs), until the step with the same closesTabs key ends
+  let current = 0;   // the newest step that began: a hung step the runner left (lib/runner.mjs withLimit) must not clean up inside the next one
   const tabs = () => (ctx.browser?.context ? ctx.browser.context.pages().filter(live) : null);
   return (name, fn, options = {}) => {
-    let begun = null;
+    let begun = null, mine = 0;
     const guarded = async () => {
+      mine = ++current;
       begun = tabs();
       let result;
       try { result = await fn(); } catch (error) { await settle(false); throw error; }
@@ -27,6 +29,7 @@ export function tabGuard(ctx, run, {close = true} = {}) {
       return result;
     };
     async function settle(report) {
+      if (mine !== current) return;   // Why (31 Oct 2026, a8; Gitar on #2745): a step that hung past its cap ends later, while the next step runs; its snapshot would count that step's fresh tabs as its own and close them
       const now = tabs();
       if (!begun || !now) return;
       const own = now.filter(page => !begun.includes(page));

@@ -58,7 +58,7 @@ export async function runJourneys(ctx, h) {
     // The stuck case: worker/test/extension-files.test.js, desktop/test/panel-claude.test.js and the twin.
     const offered = await tab.evaluate(() => { const offer = document.getElementById('jobpilotto-review-host')?.shadowRoot?.querySelector('.claude-offer'); return !!offer && !offer.hidden; });
     if (offered) throw new Error('the panel offers Claude on a filled form (nothing is stuck)');
-  }, {needs: ctx.needs, keepsTabs: 'chain'});   // "I submitted it" (suites/apply.mjs) reads this journey's session, then closes the tab
+  }, {needs: ctx.needs});
 
   // Two applications side by side (8 Oct 2026: Coop and Manor started seconds apart; Migros's sign-in page showed on Manor's card). SCRIPTED's Apply opens its
   // form from the page's own script (nothing to point at the same tab: the new tab is followed, the posting closes); CHAIN's goes link → posted form. Started
@@ -87,7 +87,7 @@ export async function runJourneys(ctx, h) {
       if (value !== answer) problems.push(`${job.company}: Kubernetes years "${value}" after waiting ${ms} ms, its own kit says ${answer}${value === (answer === '9' ? '7' : '9') ? ' (the other job\'s kit)' : ''}`);
     }
     fail(problems);
-  }, {needs: ctx.needs});
+  }, {needs: ctx.needs, keepsTabs: 'chain'});   // both forms stay open for "I submitted it" (suites/apply.mjs), which closes them at its end; its session is the CHAIN job's, opened here
 
   // A form drawn late (9 Oct 2026, SuccessFactors after a sign-in): judged while empty it reads as a posting whose "Apply" is the form's own submit span.
   // That is never pressed; once the fields come the page is looked at again (fill-flow.js watchForFields) and filled, with the panel on it.

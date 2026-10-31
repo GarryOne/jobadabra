@@ -69,3 +69,16 @@ test('a tab that will not close is red on the success path, naming it', async ()
   const run = tabGuard({browser}, plainRun);
   await assert.rejects(run('a stubborn step', async () => { const page = browser.open('https://x.test/stuck'); page.close = async () => { throw new Error('gone'); }; }), /left 1 browser tab\(s\) open \(https:\/\/x\.test\/stuck\)/);
 });
+
+test('a step that hung past its cap and ends while the next step runs does not close the next step\'s tabs (Gitar on #2745)', async () => {
+  const browser = fakeBrowser();
+  const run = tabGuard({browser}, plainRun);
+  let release;
+  const hung = new Promise(resolve => { release = resolve; });
+  // The runner gives up on the hung step and moves on; its body is still running.
+  const first = run('a step that hangs', async () => { browser.open('https://hung.test/form'); await hung; });
+  let next;
+  await run('the next step', async () => { next = browser.open('https://next.test/form'); release(); await first.catch(() => {}); assert.equal(next.closed, false, 'the next step\'s tab is still open while the hung step ends'); });
+  assert.equal(next.closed, true, 'the next step closes its own tab at its end');
+  assert.equal(browser.count(), 2, 'the blank tab and the hung step\'s tab (left for the runner\'s red) remain');
+});

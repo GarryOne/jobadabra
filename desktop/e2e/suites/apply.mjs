@@ -357,7 +357,7 @@ export async function runApply(ctx, parts) {
     const log = appLogText(ctx.profile);
     if (!/\[misses\] \d+ new control/.test(log)) throw new Error('the app kept the miss but did not log it');
     unknownTab = tab;
-  }, {needs: ctx.needs, keepsTabs: 'unknown'});   // the next step reads this tab's panel and closes it
+  }, {needs: ctx.needs, keepsTabs: 'unknown'});   // the "Ready to submit" step, after the live, journey, CV and silent steps, reads this tab's panel and closes it
 
   await runLive(ctx, {page, posting: live});   // lib/apply-live.mjs (only when parts has 'live')
   await runJourneys(ctx, {cv, dumpExtension, fail, forms, page});   // lib/apply-journeys.mjs

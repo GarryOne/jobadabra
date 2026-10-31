@@ -1,5 +1,5 @@
 // The step slices of apply and applyflows (lib/step-slices.mjs): every step runs in exactly one slice, a step runs where the step it needs ran, every forms and CV step
-// of apply is weighed, and apply's halves are near equal (26 Oct 2026: one job took 6-6.5 of its 7 minutes; turn-taking would have put 349 s in one half).
+// of apply is weighed, and apply's slices are near equal (26 Oct 2026: one job took 6-6.5 of its 7 minutes; turn-taking would have put 349 s in one half).
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {test} from 'node:test';
@@ -22,7 +22,7 @@ const SUITES = {apply: {parts: ['forms', 'cv'], seconds: apply.stepSeconds}, app
 test('every sliced step of apply and applyflows runs in exactly one slice, and where the step it needs runs', async () => {
   for (const [suite, {parts, seconds}] of Object.entries(SUITES)) {
     const {shards} = await import(`../suites/${suite}.mjs`), steps = stepsOf(parts);
-    assert.equal(shards, 2, suite);
+    assert.equal(shards, {apply: 3, applyflows: 2}[suite], suite);
     assert.ok(steps.length >= 10, `${suite}: only ${steps.length} steps read: the pattern no longer matches`);
     const runs = Array.from({length: shards}, (_, at) => { const takes = stepSlicer({index: at + 1, count: shards}, {seconds, needs: apply.stepNeeds, setup: SETUP}); return steps.filter(name => takes(name)); });
     for (const name of steps) assert.equal(runs.filter(list => list.includes(name)).length, 1, `${suite}: "${name.slice(0, 60)}" runs in ${runs.filter(list => list.includes(name)).length} slices`);
@@ -36,9 +36,12 @@ test('every forms and CV step of apply is weighed or follows one, and no weight 
   assert.deepEqual(heads.filter(head => !steps.some(name => name.startsWith(head))), []);
 });
 
-test('apply\'s two halves are within a tenth of each other, and the hidden need of "Ready to submit" is said', () => {
-  const owner = weighedSlices(apply.stepSeconds, 2), load = [1, 2].map(index => Object.entries(apply.stepSeconds).filter(([head]) => owner[head] === index).reduce((sum, [, s]) => sum + s, 0));
-  assert.ok(Math.abs(load[0] - load[1]) / (load[0] + load[1]) < 0.1, `halves ${load.join(' vs ')} s`);
+// Why (31 Oct 2026, owner chose "Split apply first"): two halves of ~640 s plus setup sat at the 11-minute budget; each third must stay near a third.
+test('apply\'s three slices are within a tenth of each other, and the hidden need of "Ready to submit" is said', () => {
+  const owner = weighedSlices(apply.stepSeconds, apply.shards), load = [1, 2, 3].map(index => Object.entries(apply.stepSeconds).filter(([head]) => owner[head] === index).reduce((sum, [, s]) => sum + s, 0));
+  const mean = load.reduce((sum, s) => sum + s, 0) / load.length;
+  assert.equal(apply.shards, 3);
+  assert.ok((Math.max(...load) - Math.min(...load)) / mean < 0.1, `slices ${load.join(' vs ')} s`);
   assert.ok(apply.stepNeeds['Ready to submit']?.includes('cannot operate'), 'it reads the tab the "cannot operate" step left');
 });
 

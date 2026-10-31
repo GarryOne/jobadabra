@@ -39,8 +39,10 @@ export const varies = true;
 // Why (29 Oct 2026, ap): the 7-minute aggregate ended three apply runs on the Notion stand-in leg; each step has its own hang cap.
 export const aggregateBudget = false;
 export const minutes = 20;   // the job's limit; no aggregate budget since 29 Oct 2026, each step has a hang cap
-export const shards = 2;   // the forms and CV steps split across two gate jobs (JP_REPLAY_SHARD, runApply below); the setup and the final checks run in both. 26 Oct 2026: one job
+export const shards = 3;   // the forms and CV steps split across three gate jobs (JP_REPLAY_SHARD, runApply below); the setup and the final checks run in all. 26 Oct 2026: one job
 // took 6-6.5 min of its 7 and ran over on a slow attempt (beta 40155147300 too, 25 Oct): the same steps vary 2-4x between runners (real forms 46-122 s)
+// Why (31 Oct 2026, owner chose "Split apply first"): the first try is the verdict now (#2682), and re-check 41173193229's apply-1of2 ran out of its 11-minute
+// budget at 12.8 min on its first try (10.2 min on the second); two halves of 640 s of weighed steps plus setup sat at the budget, three thirds hold ~430 s each.
 export const stepSharded = true;   // its slices are steps, not recorded cases (test/suite-shards.test.mjs)
 // The split's weights: each step's seconds on a slow attempt (beta, 26 Oct 2026, Notion leg), a step's followers counted in it (multi-step + the session page,
 // cannot operate + Ready to submit). A new forms or CV step is weighed here (test/step-slices.test.mjs).

@@ -1,4 +1,4 @@
-// Keeps apply outside the aggregate clock while preserving its job limit and two shards.
+// Keeps apply outside the aggregate clock while preserving its job limit and three shards.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {budgetMsOf, stopMsOf} from '../lib/runner.mjs';
@@ -13,7 +13,7 @@ test('apply has no start-time force-stop', () => {
   assert.equal(stopMsOf(applySuite), null);
 });
 
-test('apply keeps its 20-minute job limit and two shards', () => {
+test('apply keeps its 20-minute job limit and three shards', () => {
   assert.equal(applySuite.minutes, 20);
-  assert.equal(applySuite.shards, 2);
+  assert.equal(applySuite.shards, 3);
 });

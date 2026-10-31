@@ -610,6 +610,7 @@ jobs:
       # Why (29 Oct 2026, owner-approved design rule A; 30 Oct 2026, beta 41078746088): every backbone suite answers from stored answers here as in e2e.yml, from the
       # same matrix.aiAnswers (plan-run.mjs). This copy's own list named quality only, so the beta ran applyflows, jobs, interviews and failuresnotion live.
       E2E_AI_ANSWERS: ${{ matrix.aiAnswers || 'off' }}
+      E2E_QUALITY_PARTS: ${{ matrix.suite == 'qualityai' && toJSON(matrix.qualityParts) || '' }}
       E2E_QUALITY_HISTORY: ${{ matrix.suite == 'qualityai' && format('{0}/desktop/e2e/.quality-rate/history.json', github.workspace) || '' }}
       E2E_BLOB_DIR: ${{ github.workspace }}/blob-report   # the suite's part of the run's HTML report (the report job merges them)
       E2E_RUN_KIND: gate   # how an issue names the run (lib/replay.mjs)

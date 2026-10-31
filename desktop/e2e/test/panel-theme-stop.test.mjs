@@ -50,8 +50,8 @@ for (const minimised of [false, true]) {
         assert.equal(await t.app.page.locator('#jobpilotto-review-host').locator('.card').evaluate(el => el.hidden), true, 'ordinary progress keeps the card minimised');
       }
       // Stop keeps the panel, calm: "Stopped by you" with Check form again, no dim, no step row (0d0327b, owner 27 Oct 2026); it no longer removes the panel.
-      // Why (31 Oct 2026, a8; run 41250657527): the shared press (lib/panel-stop.mjs) finds Stop by role and name, waits until it is pressable, then judges the panel's state, and a red names that state.
-      await pressStop(t.app.page);
+      // Why (31 Oct 2026, a8; run 41250657527): the shared press (lib/panel-stop.mjs) presses the same Stop as before (`.stop-btn`, or the pill's `.pill-stop`), waits until it is pressable, then judges the panel's state, and a red names that state.
+      await pressStop(t.app.page, {minimised});
       assert.equal(await t.app.page.evaluate(() => !!document.getElementById('jobpilotto-stop-host')), false, 'the bottom-left chip is gone');
     } finally { await t.app.close(); }
   });

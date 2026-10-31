@@ -2,17 +2,16 @@
 // The person's Stop on the page panel, pressed the way a person presses it, then judged by the panel's own state; a failure names that state.
 // Job: wait on state
 // Why (31 Oct 2026, a8; PR #2746's harness run 41250657527, panel-theme-stop.test.mjs): "Stop halts a fill with the panel open" was red with only "Stop did not halt the fill", and the
-// next try would have known no more. The press found the control by its class (`.stop-btn`), and the failure carried no state. The CI cause is still a hypothesis; the first red that
-// carries this state is its evidence.
-// Invariants: the control is found by role and name ("Stop", the one that is shown: the open panel's or the minimised pill's) at the moment of the press; the press is Playwright's trusted
+// next try would have known no more. The failure carried no state. The CI cause is still a hypothesis; the first red that carries this state is its evidence.
+// Why (1 Nov 2026, owner's manifest via coordinator): "Fixing a red never changes a selector unless the locator is objectively broken": the Stop is found by the same selectors the test used
+// before (`.stop-btn` for the open panel, `.pill-stop` for the minimised pill); only the readiness and the state waits changed.
+// Invariants: the control is the open panel's `.stop-btn`, or with `minimised` the pill's `.pill-stop`, found at the moment of the press; the press is Playwright's trusted
 // click, which waits until the control is visible, enabled, still and not covered; each state the Stop should change (STOP_STAGES) is read from the panel in a loop and waited for on its own, never one combined wait at the end (one event per action); the loops end at the caller's cap or the step's clock.
 // Tests: test/panel-stop.test.mjs
 import {POLL_CAP_MS, pollUntil, stepTimeLeft, stepWait, waitCapNote} from './wait-on-state.mjs';
 
 /** The one budget of a press, spent across the click and the three stages: the step's time left, else the test's cap, else pollUntil's own default (never a fresh budget per wait). */
 export const pressBudget = ({stepLeft, capMs}) => stepLeft ?? capMs ?? POLL_CAP_MS;
-
-const HOST = '#jobpilotto-review-host';
 
 /**
  * What the page's panel shows now, for the verdict and for a failure message.
@@ -41,14 +40,14 @@ export const isStopped = state => state.panel !== 'absent' && STOP_STAGES.every(
 /**
  * Press the panel's Stop and wait for the panel to show the fill stopped.
  * @param {import('playwright-core').Page} page  the job form's tab
- * @param {{capMs?: number}} [options]  capMs: only for a test with no runner step; in a step the step's clock (lib/wait-on-state.mjs stepTimeLeft) is the only bound (Rule B), and with neither pollUntil's own default applies
+ * @param {{capMs?: number, minimised?: boolean}} [options]  minimised: the panel is minimised, so the pill's Stop is the one pressed. capMs: only for a test with no runner step; in a step the step's clock (lib/wait-on-state.mjs stepTimeLeft) is the only bound (Rule B), and with neither pollUntil's own default applies
  * @returns {Promise<{state: object, ms: number}>} the panel's state when it showed stopped
  * @throws {Error} naming what was seen: the Stop control never became pressable, or the panel never showed stopped (with its last state)
  */
-export async function pressStop(page, {capMs} = {}) {
+export async function pressStop(page, {capMs, minimised = false} = {}) {
   const budget = pressBudget({stepLeft: stepTimeLeft(), capMs});
   const deadline = Date.now() + budget;   // Why (PR #2748, Gitar x2): one deadline from before the press in every case; the wait for a pressable Stop spends part of it, the stages get what is left
-  const stop = page.locator(HOST).getByRole('button', {name: 'Stop', exact: true});
+  const stop = page.locator(minimised ? '.pill-stop' : '.stop-btn');   // the selectors the test pressed before (owner's manifest: a fix does not change a selector that works)
   try {
     await stepWait('the Stop control was visible, enabled and still', timeout => stop.click({timeout: timeout ?? Math.max(1, deadline - Date.now())}));
   } catch (error) {

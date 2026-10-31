@@ -6,6 +6,7 @@
 //   4. the app in twin mode (desktop/lib/twin.js) on its own port + a debugging port; its own visible Chromium with an extension copy on that port
 // Everything live-test lives in ~/Library/Application Support/Job Pilotto (live test)/: ids.env (the mirror's ids), notion-copy/ (sync map),
 // home/ (the twin's folder, replaced at each start), browser/ (only its site sign-ins: cookies, local storage), isolated-secrets.json (the job-site passwords it made), site-accounts.json (the site accounts it learned), twin.json (ports, for a script that drives the window). Ctrl-C stops both.
+// Job: wait on state
 import {execFileSync, spawn} from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';

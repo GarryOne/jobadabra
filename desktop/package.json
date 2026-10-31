@@ -86,7 +86,8 @@
       }
     ],
     "asarUnpack": [
-      "node_modules/@lydell/**"
+      "node_modules/@lydell/**",
+      "lib/store-data-copy-helper.mjs"
     ],
     "mac": {
       "target": [

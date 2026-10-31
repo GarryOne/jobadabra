@@ -403,3 +403,74 @@ jobs:
           Get-ChildItem $cache -Force | ForEach-Object { "  $($_.Name): $(Get-Content $_.FullName -Raw -ErrorAction SilentlyContinue)" }
         env:
           UNVIRT: ${{ inputs.unvirtualized }}
+      - name: Prove · a Store user's private data comes over, with the key that opens their secrets
+        if: inputs.unvirtualized
+        shell: pwsh
+        run: |
+          # Why (31 Oct 2026, owner: "Build the copy"; coordinator: "a Store user with cached data, then an upgrade to the unvirtualized package, then they see their jobs and their secrets unseal"):
+          # the old Store copy's data is in the package's private cache, sealed with the key in its `Local State`. The package built from this branch is the upgrade.
+          $out = 'C:\spike-out'; New-Item -ItemType Directory -Force $out | Out-Null
+          $pkg = Get-AppxPackage Jobadabra.Spike
+          $appId = ([xml](Get-Content (Join-Path $pkg.InstallLocation 'AppxManifest.xml'))).Package.Applications.Application.Id
+          $msixExe = (Get-ChildItem (Join-Path $pkg.InstallLocation 'app') -Filter *.exe | Where-Object { $_.Name -notmatch 'uninstall|elevate' } | Select-Object -First 1).FullName
+          $real = Join-Path $env:APPDATA 'Jobadabra'
+          $cache = Join-Path $env:LOCALAPPDATA "Packages\$($pkg.PackageFamilyName)\LocalCache\Roaming\Jobadabra"
+          Remove-Item $real, $cache -Recurse -Force -ErrorAction SilentlyContinue
+          New-Item -ItemType Directory -Force $cache, "$cache\data" | Out-Null
+          $electron = (Resolve-Path (Join-Path $env:GITHUB_WORKSPACE 'desktop\node_modules\electron\dist\electron.exe')).Path
+          @'
+          const {app, safeStorage} = require('electron');
+          const fs = require('fs'), path = require('path');
+          app.setPath('userData', process.env.SEAL_DIR);
+          app.whenReady().then(() => {
+            if (process.env.SEAL_MODE === 'seal') fs.writeFileSync(path.join(process.env.SEAL_DIR, 'sealed.txt'), safeStorage.encryptString('the-secret').toString('base64'));
+            else { let r; try { r = safeStorage.decryptString(Buffer.from(fs.readFileSync(path.join(process.env.SEAL_DIR, 'sealed.txt'), 'utf8'), 'base64')); } catch (e) { r = 'CANNOT OPEN: ' + e.message; } fs.writeFileSync(process.env.SEAL_OUT, r); }
+            setTimeout(() => app.quit(), 500);
+          });
+          '@ | Set-Content "$out\seal.js"
+          function Seal($mode, $dir, $result) { $env:SEAL_MODE = $mode; $env:SEAL_DIR = $dir; $env:SEAL_OUT = $result; Start-Process $electron -ArgumentList "$out\seal.js" -Wait; Start-Sleep 2 }
+          # the old Store copy: a person's setup, jobs, and a token sealed by its own key
+          Set-Content "$cache\settings.json" '{"setupDone":true}'
+          Set-Content "$cache\data\jobs.sqlite" 'the person jobs'
+          Seal 'seal' $cache "$out\unused.txt"
+          "private cache holds Local State with a key: $((Test-Path "$cache\Local State") -and ((Get-Content "$cache\Local State" -Raw) -match 'encrypted_key'))"
+          "sealed.txt written: $(Test-Path "$cache\sealed.txt")"
+          # control: the same sealed file next to a fresh Chromium key does not open (why Local State must travel)
+          $control = Join-Path $env:RUNNER_TEMP 'control'; New-Item -ItemType Directory -Force $control | Out-Null
+          Copy-Item "$cache\sealed.txt" $control
+          Seal 'open' $control "$out\control-result.txt"
+          "control (sealed file + a fresh key): $(Get-Content "$out\control-result.txt" -Raw -ErrorAction SilentlyContinue)"
+          $before = Get-ChildItem $cache -Recurse -File | ForEach-Object { "$($_.FullName.Substring($cache.Length)) $((Get-FileHash $_.FullName).Hash)" }
+          # the upgrade: the new package's first start
+          @"
+          `$env:CI = 'true'; `$env:GITHUB_ACTIONS = 'true'
+          Start-Process '$msixExe'
+          "@ | Set-Content "$out\launch-msix.ps1"
+          Invoke-CommandInDesktopPackage -PackageFamilyName $pkg.PackageFamilyName -AppId $appId -Command 'powershell.exe' -Args "-NoProfile -ExecutionPolicy Bypass -File $out\launch-msix.ps1" -PreventBreakaway
+          Start-Sleep 60
+          $procs = @(Get-CimInstance Win32_Process | Where-Object { $_.ExecutablePath -like '*WindowsApps*Jobadabra.Spike*' })
+          "package processes after the upgrade start: $($procs.Count), renderer: $(@($procs | Where-Object { $_.CommandLine -match '--type=renderer' }).Count)"
+          "marker: $(Get-Content "$real\store-cache-copy.json" -Raw -ErrorAction SilentlyContinue)"
+          "real folder: $((Get-ChildItem $real -Recurse -File -Force | Select-Object -First 40 | ForEach-Object { $_.FullName.Substring($real.Length) }) -join '; ')"
+          "jobs file in the real folder: $(Get-Content "$real\data\jobs.sqlite" -Raw -ErrorAction SilentlyContinue)"
+          "settings in the real folder: $(Get-Content "$real\settings.json" -Raw -ErrorAction SilentlyContinue)"
+          $after = Get-ChildItem $cache -Recurse -File | ForEach-Object { "$($_.FullName.Substring($cache.Length)) $((Get-FileHash $_.FullName).Hash)" }
+          "private cache unchanged: $(-not (Compare-Object $before $after))"
+          "app.log start lines in the real folder: $(@(Select-String -Path "$real\logs\app.log" -Pattern '\[app\] start' -ErrorAction SilentlyContinue).Count)"
+          Get-Content "$real\logs\app.log" -ErrorAction SilentlyContinue | Select-String 'Store data copy' | ForEach-Object { "  log: $($_.Line)" }
+          Get-Process | Where-Object { $_.Path -like '*WindowsApps*Jobadabra.Spike*' } | Stop-Process -Force -ErrorAction SilentlyContinue; Start-Sleep 5
+          Seal 'open' $real "$out\real-result.txt"
+          "their secret opens in the real folder: $(Get-Content "$out\real-result.txt" -Raw -ErrorAction SilentlyContinue)"
+          # a second start copies nothing and restarts nothing
+          Invoke-CommandInDesktopPackage -PackageFamilyName $pkg.PackageFamilyName -AppId $appId -Command 'powershell.exe' -Args "-NoProfile -ExecutionPolicy Bypass -File $out\launch-msix.ps1" -PreventBreakaway
+          Start-Sleep 30
+          "second start: app.log start lines now $(@(Select-String -Path "$real\logs\app.log" -Pattern '\[app\] start').Count); marker $((Get-Content "$real\store-cache-copy.json" -Raw | ConvertFrom-Json).state)"
+          Get-Process | Where-Object { $_.Path -like '*WindowsApps*Jobadabra.Spike*' } | Stop-Process -Force -ErrorAction SilentlyContinue
+      - name: Keep the report
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: virtualization-report
+          path: C:\spike-out
+          if-no-files-found: ignore
+          retention-days: 14

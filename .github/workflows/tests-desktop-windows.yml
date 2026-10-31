@@ -44,6 +44,8 @@ on:
       - 'desktop/lib/reports.js'
       - 'desktop/lib/sentry.js'
       - 'desktop/lib/site-password.js'
+      - 'desktop/lib/store-data-copy-helper.mjs'
+      - 'desktop/lib/store-data-copy.js'
       - 'desktop/lib/system-handlers.js'
       - 'desktop/lib/tar.js'
       - 'desktop/lib/telemetry.js'

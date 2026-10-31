@@ -55,6 +55,7 @@ import * as server from './lib/server.js';
 import * as terminals from './lib/terminals.js';
 import * as transcript from './lib/transcript.js';
 import {offerMove} from './lib/applications.js';
+import {handOff as storeDataHandOff} from './lib/store-data-copy.js';
 import * as aiFree from './lib/ai-free.js';
 import * as claudeCode from './lib/claude-code.js';
 import * as setupFunnel from './lib/setup-funnel.js';
@@ -387,6 +388,7 @@ installCrashMonitors({getTelemetry: () => telemetry});   // lib/crash-monitors.j
 
 startWhenReady({app, firstCopy, getWindows: () => BrowserWindow.getAllWindows(), createWindow, start: () => {
   if (offerMove({app, dialog})) return false;  // moving to Applications: Electron quits and opens the moved copy
+  if (storeDataHandOff({app, log: text => appLog('data', text)})) return false;   // a Store copy's private data goes to the real folder first (lib/store-data-copy.js)
   buildMenu();
   app.setAboutPanelOptions({applicationName: 'Jobadabra', applicationVersion: app.getVersion(),
     version: buildInfo ? `build ${buildInfo.build} · ${buildInfo.commit}` : 'development', copyright: '© 2026 Jobadabra'});

@@ -262,3 +262,23 @@ test('mail eval did not run after 401/429/credit refusal is grey with an alert a
   assert.ok(lines.some(line => line.startsWith('::warning title=AI refused::')));
   assert.ok(!lines.some(line => /##\[error\]|::error|^✗/.test(line)));
 });
+
+
+test('mail permission, server and malformed-request faults stay red rather than becoming AI refusals', async t => {
+  const localFetch = globalThis.fetch;
+  t.mock.method(globalThis, 'fetch', async () => assert.fail('only the stubbed judge transport may answer'));
+  for (const [status, message] of [[403, 'permission denied'], [503, 'server crashed'], [400, 'invalid credit-card field in request']]) {
+    const runner = createRunner(() => null);
+    await assert.rejects(runMailReading({needs: [], run: runner.run}, {
+      fetchImpl: async () => new Response(JSON.stringify({error: {message}}), {status}),
+      execFile: (_python, _args, options, done) => {
+        void localFetch(`${options.env.ANTHROPIC_BASE_URL}/v1/messages`, {method: 'POST', body: '{"messages":[]}'})
+          .then(async response => done({code: 1}, '', `${response.status} ${await response.text()}`))
+          .catch(error => done(error, '', error.message));
+      },
+    }), /the eval did not run/);
+    assert.equal(runner.summary(), 1);
+    assert.equal(runner.results[0].status, 'failed');
+    assert.equal(takeCapped(), null);
+  }
+});

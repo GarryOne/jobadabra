@@ -6,6 +6,7 @@ import http from 'node:http';
 import {modelFetch} from './model.mjs';
 import {DUMMY_KEY} from './engine.mjs';
 import {noteAiRefused} from './ai-cap.mjs';
+import {NO_CREDIT} from './triage-issues.mjs';
 import {python, pythonEnv} from './python.mjs';
 
 export const MAIL_WATCHES = ['src/ai/mail.py', 'src/ai/mail_inbox.py', 'src/ai/mail_read.py', 'src/ai/mail_triage.py', 'tools/mail_eval.py', 'tests/fixtures/mail_eval.json', 'desktop/e2e/lib/quality-mail.mjs'];
@@ -26,7 +27,7 @@ async function judgeProxy(ctx, fetchImpl) {
         headers: {'content-type': 'application/json', 'anthropic-version': '2023-06-01', 'x-api-key': ctx.judgeKey || ''},
         body: Buffer.concat(chunks).toString('utf8')});
       const data = await response.json(), message = data?.error?.message || 'AI provider refused';
-      if (!response.ok && ([401, 402, 403, 429, 503].includes(response.status) || /credit|usage limit|ai-capped/i.test(message))) refusal = `${response.status}: ${message}`;
+      if (!response.ok && ([401, 429].includes(response.status) || NO_CREDIT.test(message))) refusal = `${response.status}: ${message}`;
       res.writeHead(response.status, {'content-type': 'application/json'});
       res.end(JSON.stringify(data));
     } catch (error) {

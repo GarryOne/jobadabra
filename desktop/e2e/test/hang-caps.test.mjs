@@ -79,7 +79,7 @@ for (const mode of ['backbone', 'record', 'off']) test(`personas ${mode}: only r
   }
   t.mock.method(console, 'log', () => {});
   t.mock.timers.enable({apis: ['setTimeout']});
-  const runner = createRunner(() => null, {keepGoing: true, hangCaps, budgetMs: 15 * 60000});
+  const runner = createRunner(() => null, {keepGoing: true, hangCaps, budgetMs: 7 * 60000});
   let enter, finish;
   const entered = new Promise(resolve => { enter = resolve; });
   const pending = runner.run(name, () => { enter(); return new Promise(resolve => { finish = resolve; }); }, result.options[3]);

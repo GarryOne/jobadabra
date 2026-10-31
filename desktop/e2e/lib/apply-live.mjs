@@ -1,4 +1,5 @@
 /* global window, document, location, Event, chrome */
+// Job: report health
 // The LIVE run of the apply flow (8 Oct 2026): the real extension in a headless Chromium (E2E_HEADED=1 to watch; lib/extension.mjs launchBrowser), on a REAL posting from this Mac's job list (read-only), pressed
 // through the app's own Apply, watched for a while, and reported as a timeline. Nothing is pressed on the page: no account button, never Submit.
 // The app under test is the e2e one (its own profile and Notion test page, never the owner's data). Run: `npm run live` in desktop/ (LIVE_URL=<posting> to
@@ -185,5 +186,5 @@ export async function runLive(ctx, h) {
     } finally {   // the job store of this run must not keep the live job (a stray "Applying" row broke another run's step, 8 Oct 2026)
       console.log(`  live: removed ${await removeJobsByUrl(ctx, [posting.url]).catch(() => 0)} job row(s) of the live posting`);
     }
-  }, {needs: ctx.needs});
+  }, {safety: true, needs: ctx.needs});
 }

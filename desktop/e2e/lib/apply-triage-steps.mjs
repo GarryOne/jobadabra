@@ -73,7 +73,7 @@ export async function runTriageSteps(ctx) {
       const odd = chips.filter(text => text !== 'Not checked');
       if (odd.length) throw new Error(`${odd.length} chip(s) guessed a mode without a read: ${[...new Set(odd)].join(', ')}`);
       if (sessionsNow(ctx) !== before) throw new Error('checking jobs started or changed a session; nothing may open, fill or send before the form read exists');
-    });
+    }, {safety: true});
   } finally {
     await removeJobsByUrl(ctx, urls).catch(() => 0);
   }

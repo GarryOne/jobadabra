@@ -39,7 +39,7 @@ export async function runRestartSteps(ctx, {urls}) {
       await handedOver(ctx, form.url, filled);
       if (ctx.forms.posts.length !== posted) throw new Error(`after the start the form was posted ${ctx.forms.posts.length - posted} time(s)`);
     } finally { await skipJob(ctx.page, form); await closeHiddenBrowser(ctx.profile); }   // the handed-over job stays eligible; the next proof's Start would take it (skipJob)
-  }, {needs, hangError: hangOf(ctx, filled)});
+  }, {safety: true, needs, hangError: hangOf(ctx, filled)});
 
   await ctx.run('the app quits in Full automation\'s wait: after it starts again the job is handed to you, and nothing is pressed when the wait runs out', async () => {
     const unlinked = linkRuntime(ctx.profile);
@@ -53,5 +53,5 @@ export async function runRestartSteps(ctx, {urls}) {
       if (ctx.forms.posts.length !== posted) throw new Error(`after the start the app pressed Submit ${ctx.forms.posts.length - posted} time(s) on a wait the quit cut off`);
       if ((await backgroundStateOf(ctx.page, autoForm.url)) !== 'needs_user_handoff') throw new Error('after the wait ran out the job was no longer handed to you');
     } finally { await skipJob(ctx.page, autoForm); await closeHiddenBrowser(ctx.profile); }
-  }, {needs, hangError: hangOf(ctx, waiting)});
+  }, {safety: true, needs, hangError: hangOf(ctx, waiting)});
 }

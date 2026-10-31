@@ -161,5 +161,5 @@ export async function runSilentChromeSteps(ctx) {
   const mode = id => MODES.find(one => one.id === id);
   await ctx.run('a silent Chrome in Standard automation: the card says the app can\'t hear Chrome at once, then asks for Chrome, and Open it again opens the job (not the extension\'s settings)', () => standardStep(ctx, form, 'silent-check'), {needs: ctx.needs});
   await ctx.run('a silent Chrome in Background automation: a queued hidden-browser job says why it waits when the app\'s link is off, and never talks of the person\'s Chrome', () => hiddenStep(ctx, form, 'silent-fill', mode('fill')), {needs: hidden});
-  await ctx.run('a silent Chrome in Full automation: a queued hidden-browser job says why it waits when the app\'s link is off, and never talks of the person\'s Chrome; nothing is submitted', () => hiddenStep(ctx, form, 'silent-auto', mode('auto')), {needs: hidden});
+  await ctx.run('a silent Chrome in Full automation: a queued hidden-browser job says why it waits when the app\'s link is off, and never talks of the person\'s Chrome; nothing is submitted', () => hiddenStep(ctx, form, 'silent-auto', mode('auto')), {safety: true, needs: hidden});
 }

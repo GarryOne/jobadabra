@@ -10,10 +10,12 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {execFileSync} from 'node:child_process';
 import {stepEntryProblems} from './lanes-check.mjs';
+import {isSafetyStep, safetyStepNames} from '../desktop/e2e/lib/safety-steps.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const RETURNS = 'Back to the backbone when its fix PR lands and the next 3 main runs pass it.';
 const TITLE = 'Flaky step';
+export const SAFETY_WHY = 'It is a safety step (it proves the Full automation confirmation, that nothing is posted, sent or pressed, or Stop), and a safety step is never suspended: it blocks the beta and is fixed the same day (owner, 31 Oct 2026). Fix the non-deterministic input it names.';
 const short = (text, max) => (String(text).length > max ? `${String(text).slice(0, max - 1)}…` : String(text));
 /** The issue title for a step; also what an open issue is looked up by. */
 export const issueTitle = (suite, step) => `${TITLE} ${suite} · ${short(step, 80)}`;
@@ -21,14 +23,18 @@ export const issueTitle = (suite, step) => `${TITLE} ${suite} · ${short(step, 8
 /**
  * Suspension proposals for the flaky verdicts of a red run, each with the registry entry (without `issue`, which is the issue's own URL) and the owner issue.
  * verdicts: tools/flaky-verdict.mjs items {suite, step, verdict, green, redSha, redUrl, message, movedFiles, stepFileCount}. registry: lanes.json parsed; a step already listed is left alone.
+ * safety: the marked safety step names (lib/safety-steps.mjs). A flaky safety step is never proposed; it is returned in the result's `refused` list with the reason.
+ * Why (31 Oct 2026, owner: "Never suspend safety steps (Full automation confirmation, nothing posted, Stop): a flaky one blocks the beta and is fixed the same day"): #2703 and #2704.
  */
-export function suspensions({verdicts = [], registry = {}, owner, since = new Date().toISOString().slice(0, 10)}) {
+export function suspensions({verdicts = [], registry = {}, owner, since = new Date().toISOString().slice(0, 10), safety = []}) {
   if (!owner?.trim()) throw new Error('A named --owner is required for a suspension.');
   const out = [], seen = new Set();
+  Object.defineProperty(out, 'refused', {value: [], enumerable: false});   // not enumerable: callers that compare the list with [] keep working
   for (const item of verdicts.filter(found => found.verdict === 'flaky')) {
     const key = JSON.stringify([item.suite, item.step]);
     if (seen.has(key) || registry.steps?.[item.suite]?.[item.step]) continue;
     seen.add(key);
+    if (isSafetyStep(item.step, safety)) { out.refused.push({suite: item.suite, step: item.step, why: SAFETY_WHY}); continue; }
     const red = `${item.redSha.slice(0, 7)}${item.redUrl ? ` (${item.redUrl})` : ''}`, green = `${item.green.sha.slice(0, 7)} (${item.green.url})`;
     const same = item.green.sha === item.redSha;
     const why = `Failed on ${red} and passed on ${green}; ${same ? 'that is the same commit' : `none of the ${item.stepFileCount ?? 'step'} files it runs changed between them`}. A step red on unchanged code cannot protect a PR.`;
@@ -71,7 +77,8 @@ function main(argv) {
       const redUrl = `https://github.com/${repo}/actions/runs/${value('--run')}`;
       verdicts = (await verdictsOfRun({runId: value('--run'), repo})).map(item => ({...item, redUrl}));
     }
-    const found = suspensions({verdicts, registry, owner: value('--owner')});
+    const found = suspensions({verdicts, registry, owner: value('--owner'), safety: safetyStepNames(path.join(ROOT, 'desktop/e2e'))});
+    for (const {suite, step, why} of found.refused) console.log(`## Refused (no suspension): ${suite} · ${step}\n${why}\n`);
     for (const {suite, step, entry, issue} of found) {
       console.log(`## Proposed lanes.json entry (steps.${suite})\n${JSON.stringify({[step]: entry}, null, 2)}\n\n## Owner issue\nTitle: ${issue.title}\n\n${issue.body}\n`);
       if (!argv.includes('--open')) continue;
@@ -82,7 +89,7 @@ function main(argv) {
       const url = execFileSync('gh', ['issue', 'create', '--repo', repo, '--assignee', entry.owner, '--title', issue.title, '--body', issue.body], {encoding: 'utf8'}).trim();
       console.log(`Opened ${url}\nAdd to desktop/e2e/lanes.json steps.${suite} in a PR: ${JSON.stringify({[step]: {...entry, issue: url}})}`);
     }
-    if (!found.length) console.log('No step is red on unchanged code that is not already suspended; no suspension proposed.');
+    if (!found.length && !found.refused.length) console.log('No step is red on unchanged code that is not already suspended; no suspension proposed.');
   })();
 }
 

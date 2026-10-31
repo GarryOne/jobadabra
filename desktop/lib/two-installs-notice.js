@@ -1,5 +1,6 @@
 // The one-time note "Jobadabra is installed twice" (a native dialog), with one action: Windows' own Installed apps page. Detection is lib/two-installs.js.
 // Why (31 Oct 2026, owner: "Root fix + note"): nothing is removed by this app; the person keeps one copy in Windows' own list.
+// Why (31 Oct 2026, coordinator, after #2729): a Store copy first used on a clean PC still keeps its data in the package's own folder (JOB-165), so the text never says the copies share data.
 import {detectCopies, installedTwice} from './two-installs.js';
 
 export const APPS_SETTINGS = 'ms-settings:appsfeatures';  // Windows Settings → Apps → Installed apps
@@ -14,7 +15,7 @@ export function noticeOptions({self}) {
     : 'The one you have open came from the website. Keep the Microsoft Store one: it updates itself, with no Windows warning. In the list, remove the "Jobadabra" that is not from the Microsoft Store (this one).';
   return {
     type: 'info', title: 'Jobadabra', message: 'Jobadabra is installed twice',
-    detail: `You have the Microsoft Store version and the one from the website on this PC. They share your data, but each has its own Start menu entry and its own updates.\n\n${which}\n\nNothing is removed unless you do it in Windows.`,
+    detail: `You have the Microsoft Store version and the one from the website on this PC. Your data may be kept separately in each copy, and each has its own Start menu entry and its own updates.\n\n${which}\n\nNothing is removed unless you do it in Windows. Removing a copy also removes the data it kept.`,
     buttons: ['Open Installed apps', 'Keep both'], defaultId: 0, cancelId: 1, noLink: true,
   };
 }

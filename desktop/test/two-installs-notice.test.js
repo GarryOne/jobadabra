@@ -50,3 +50,11 @@ test('the note recommends the Store copy and says nothing is removed by the app,
   }
   assert.match(noticeOptions({self: 'exe'}).detail, /Keep the Microsoft Store one/);
 });
+
+test('the note never says the two copies share their data (a Store copy first used on a clean PC keeps its own, JOB-165)', () => {
+  for (const self of ['store', 'exe']) {
+    const {detail} = noticeOptions({self});
+    assert.doesNotMatch(detail, /share (your|their|the) data|same data|one data folder/i, self);
+    assert.match(detail, /may be kept separately in each copy/, self);
+  }
+});

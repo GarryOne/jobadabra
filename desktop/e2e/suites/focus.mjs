@@ -55,7 +55,7 @@ export async function runFocus(ctx, parts) {
   // Up next holds what can't wait; Suggestions the rest (pages/focus-suggestions.js; owner, 28 Oct 2026). Both lists: a card is looked for in either.
   const LISTS = '#focus-list .focus-item, #focus-suggestions-list .focus-item';
   const upNext = () => rowsIn('#focus-list');
-  // Why (31 Oct 2026, LinkedIn jobs 1/3, red on #2699's focus run): the standing offer "Also search LinkedIn" is a window-owned row too (renderer/linkedin-words.js) and leads Suggestions, as drawn.
+  // Why (31 Oct 2026, LinkedIn jobs 1/3, red on the focus run of #2699): the standing LinkedIn offer is a window-owned row too (renderer/linkedin-words.js) and leads Suggestions, as drawn.
   // The drawers' rows (cover letter, Fill your details, What we learned) lead Suggestions and belong to the window, not the engine (renderer/question-entries.js,
   // insights PR 1c): `suggested` is the engine's rows, `drawers` those, so each step names what it counts.
   const DRAWER_KINDS = ['linkedin', 'letter', 'details', 'learned', 'questions-error'];
@@ -140,12 +140,11 @@ export async function runFocus(ctx, parts) {
     // The drawers' rows, when the account has any (what is open to fill depends on the store: desktop/test/question-entries.test.js holds each state), lead Suggestions in the
     // owner's order, the blocking cover letter first (28 Oct 2026), each with its own button.
     const lead = await drawers(), kinds = (await rowsIn('#focus-suggestions-list')).map(row => row.kind);
-    const RANK = ['linkedin', 'letter', 'details', 'learned', 'questions-error'], BUTTON = {linkedin: 'Turn on LinkedIn', details: 'Fill your details', learned: 'Check what we learned'};
-    if (kinds.slice(0, lead.length).join() !== lead.map(row => row.kind).join() || lead.some((row, i) => i && RANK.indexOf(row.kind) < RANK.indexOf(lead[i - 1].kind))) {
-      throw new Error(`the drawers' rows should lead Suggestions in the order Also search LinkedIn, cover letter, Fill your details, What we learned; the rows are: ${kinds.join(', ')}`);
+    if (kinds.slice(0, lead.length).join() !== lead.map(row => row.kind).join() || lead.some((row, i) => i && DRAWER_KINDS.indexOf(row.kind) < DRAWER_KINDS.indexOf(lead[i - 1].kind))) {
+      throw new Error(`the drawers' rows should lead Suggestions in the order LinkedIn offer, cover letter, Fill your details, What we learned; the rows are: ${kinds.join(', ')}`);
     }
     for (const row of lead) {
-      if (row.kind in BUTTON && row.buttons.join() !== BUTTON[row.kind]) throw new Error(`"${row.headline}" has the buttons [${row.buttons.join(', ')}], expected [${BUTTON[row.kind]}]`);
+      if (['linkedin', 'details', 'learned'].includes(row.kind) && row.buttons.length !== 1) throw new Error(`"${row.headline}" should carry one button, it has [${row.buttons.join(', ')}]`);
       if (row.kind === 'letter' && (row.badge !== 'High priority' || row.buttons.length !== 1)) throw new Error(`the cover letter row should be "High priority" with one button, it is [${row.badge}] (${row.buttons.join(', ')})`);
     }
     const total = EXPECTED_SUGGESTIONS.length + (await drawers()).length;

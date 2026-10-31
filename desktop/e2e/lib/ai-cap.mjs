@@ -79,8 +79,8 @@ export function skipStepForCap(name, refusal, env = process.env) {
   writeNote(refusal, env);
 }
 
-// Why (31 Oct 2026, beta 41135642422): the broker's reason went only to the job log, so qualityai's failure said "no refusal reason recorded"; the file keeps the
-// reason of the refusal that wrote it, never a copy kept from an earlier one (Gitar on #2652: a later neuron cap would carry the broker's old reason).
+// Why (31 Oct 2026, beta 41135642422; supervisor #2667): each grey alert keeps this refusal's reason and provider, so an API refusal is not described as broker credit.
+// The beta lost its reason outside the job log; retain that evidence and never copy an older provider or reason (Gitar on #2652).
 function writeNote({neurons, why, provider}, env) {
   try {
     if (env.E2E_ARTIFACTS) { fs.mkdirSync(env.E2E_ARTIFACTS, {recursive: true}); fs.writeFileSync(path.join(env.E2E_ARTIFACTS, 'ai-capped.json'), JSON.stringify({neurons, cap: capOf(env), ...(why ? {why} : {}), ...(provider ? {provider} : {}), skipped: skipped.length, steps: skipped, at: new Date().toISOString()})); }

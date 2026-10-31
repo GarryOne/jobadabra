@@ -11,17 +11,21 @@ on:
   workflow_dispatch:
     inputs:
       scenario:
-        description: 'rename = the 25 Oct data-folder rename spike; two-installs = the .exe and the Store package side by side (31 Oct 2026)'
+        description: 'rename = the 25 Oct data-folder rename spike; two-installs = the .exe and the Store package side by side; virtualization = where a Store copy reads and writes AppData with and without virtualization (31 Oct 2026)'
         type: choice
-        options: [rename, two-installs]
+        options: [rename, two-installs, virtualization]
         default: rename
+      unvirtualized:
+        description: 'virtualization scenario only: build the package with AppData write virtualization turned off (desktop6 + unvirtualizedResources); false = the package as the Store gets it today'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
 
 jobs:
   msix:
-    if: inputs.scenario != 'two-installs'
+    if: inputs.scenario == 'rename'
     name: Build and start the MSIX
     runs-on: windows-latest
     timeout-minutes: 40
@@ -282,3 +286,113 @@ jobs:
           path: C:\spike-out
           if-no-files-found: ignore
           retention-days: 14
+
+  virtualization:
+    if: inputs.scenario == 'virtualization'
+    name: Store package reads and writes AppData
+    runs-on: windows-latest
+    timeout-minutes: 40
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0   # stage.mjs counts the extension's commits and refuses a shallow clone
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - name: Install
+        working-directory: desktop
+        run: npm ci
+      - name: Compile · bundle Python
+        working-directory: desktop
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PYTHON_ARCH: x86_64-pc-windows-msvc
+        run: node scripts/stage.mjs --app && scripts/python.sh
+      - name: Compile · build the MSIX, with AppData write virtualization on or off
+        working-directory: desktop
+        env:
+          UNVIRTUALIZED: ${{ inputs.unvirtualized }}
+        run: |
+          # Why (31 Oct 2026, coordinator question (b)): can the appx config add the desktop6 attribute and the restricted capability? electron-builder 26 has `appx.customManifestPath`
+          # (its own template with the ${macros}) and `appx.capabilities` (unvirtualizedResources is a valid name; runFullTrust is always added). Only the Properties element needs the custom file.
+          npm version "0.0.1" --no-git-tag-version --allow-same-version >/dev/null
+          extra=()
+          if [ "$UNVIRTUALIZED" = "true" ]; then
+            node -e "
+              const fs = require('fs');
+              let m = fs.readFileSync('node_modules/app-builder-lib/templates/appx/appxmanifest.xml', 'utf8');
+              m = m.replace('xmlns:rescap=', 'xmlns:desktop6=\"http://schemas.microsoft.com/appx/manifest/desktop/windows10/6\"\n   xmlns:rescap=')
+                   .replace('<Logo>\${logo}</Logo>', '<Logo>\${logo}</Logo>\n    <desktop6:FileSystemWriteVirtualization>disabled</desktop6:FileSystemWriteVirtualization>');
+              if (!m.includes('desktop6:FileSystemWriteVirtualization')) throw new Error('the template changed: the Properties element was not found');
+              fs.writeFileSync('build/appxmanifest-spike.xml', m);
+            "
+            extra=(-c.appx.customManifestPath=appxmanifest-spike.xml -c.appx.capabilities=unvirtualizedResources -c.appx.minVersion=10.0.19041.0 -c.appx.maxVersionTested=10.0.26100.0)
+          fi
+          npx electron-builder --win appx --publish never \
+            -c.appx.identityName=Jobadabra.Spike -c.appx.publisher=CN=JobadabraSpike \
+            -c.appx.publisherDisplayName=Jobadabra -c.appx.displayName=Jobadabra -c.appx.applicationId=Jobadabra "${extra[@]}"
+          ls -la dist/*.appx
+      - name: Install · sign with a test certificate and install the package
+        shell: pwsh
+        working-directory: desktop
+        run: |
+          $cert = New-SelfSignedCertificate -Type Custom -Subject 'CN=JobadabraSpike' -KeyUsage DigitalSignature -CertStoreLocation Cert:\CurrentUser\My -TextExtension @('2.5.29.37={text}1.3.6.1.5.5.7.3.3', '2.5.29.19={text}')
+          $pfx = Join-Path $env:RUNNER_TEMP 'spike.pfx'
+          Export-PfxCertificate -Cert $cert -FilePath $pfx -Password (ConvertTo-SecureString 'spike' -AsPlainText -Force) | Out-Null
+          Import-Certificate -FilePath (Export-Certificate -Cert $cert -FilePath (Join-Path $env:RUNNER_TEMP 'spike.cer')).FullName -CertStoreLocation Cert:\LocalMachine\TrustedPeople | Out-Null
+          $signtool = (Get-ChildItem 'C:\Program Files (x86)\Windows Kits\10\bin\*\x64\signtool.exe' | Sort-Object FullName | Select-Object -Last 1).FullName
+          $appx = (Get-ChildItem dist\*.appx | Select-Object -First 1).FullName
+          & $signtool sign /fd SHA256 /f $pfx /p spike $appx
+          Add-AppxPackage -Path $appx
+          $pkg = Get-AppxPackage Jobadabra.Spike
+          $pkg | Format-List Name, PackageFullName, PackageFamilyName
+          "manifest Properties and Capabilities as installed:"
+          $xml = Get-Content (Join-Path $pkg.InstallLocation 'AppxManifest.xml') -Raw
+          [regex]::Match($xml, '(?s)<Properties>.*?</Properties>').Value
+          [regex]::Match($xml, '(?s)<Capabilities>.*?</Capabilities>').Value
+      - name: Measure · what a packaged app sees and where it writes
+        shell: pwsh
+        run: |
+          # Why (31 Oct 2026, coordinator question (a)): with write virtualization off, does an existing Store user still see data that sits in the package's private cache, or does it need a one-time copy?
+          $out = 'C:\spike-out'; New-Item -ItemType Directory -Force $out | Out-Null
+          $pkg = Get-AppxPackage Jobadabra.Spike
+          $appId = ([xml](Get-Content (Join-Path $pkg.InstallLocation 'AppxManifest.xml'))).Package.Applications.Application.Id
+          $exe = (Get-ChildItem (Join-Path $pkg.InstallLocation 'app') -Filter *.exe | Where-Object { $_.Name -notmatch 'uninstall|elevate' } | Select-Object -First 1).FullName
+          $real = Join-Path $env:APPDATA 'Jobadabra'
+          $cache = Join-Path $env:LOCALAPPDATA "Packages\$($pkg.PackageFamilyName)\LocalCache\Roaming\Jobadabra"
+          # an existing Store user's data: in the private cache; a file in the real folder as an .exe install would have made it
+          New-Item -ItemType Directory -Force $cache, $real | Out-Null
+          Set-Content (Join-Path $cache 'seed-in-cache.txt') 'a Store user data file (private cache)'
+          Set-Content (Join-Path $real 'seed-in-real.txt') 'an .exe copy data file (real folder)'
+          @'
+          const fs = require('fs'), path = require('path');
+          const out = [];
+          const dir = path.join(process.env.APPDATA, 'Jobadabra');
+          const ls = () => { try { return fs.readdirSync(dir).join(', ') || '(empty)'; } catch (e) { return 'ERR ' + e.code; } };
+          const read = f => { try { return fs.readFileSync(path.join(dir, f), 'utf8'); } catch (e) { return 'NOT SEEN (' + e.code + ')'; } };
+          out.push('the app lists its AppData folder: ' + ls());
+          out.push('seed-in-cache.txt: ' + read('seed-in-cache.txt'));
+          out.push('seed-in-real.txt: ' + read('seed-in-real.txt'));
+          fs.writeFileSync(path.join(dir, 'written-by-app.txt'), 'written by the packaged app');
+          fs.appendFileSync(path.join(dir, 'seed-in-cache.txt'), ' + appended by the app');
+          fs.appendFileSync(path.join(dir, 'seed-in-real.txt'), ' + appended by the app');
+          fs.writeFileSync('C:\\spike-out\\probe.txt', out.join('\n'));
+          '@ | Set-Content C:\spike-out\probe.js
+          @"
+          `$env:ELECTRON_RUN_AS_NODE = '1'
+          & '$exe' C:\spike-out\probe.js
+          "@ | Set-Content C:\spike-out\run.ps1
+          Invoke-CommandInDesktopPackage -PackageFamilyName $pkg.PackageFamilyName -AppId $appId -Command 'powershell.exe' -Args '-NoProfile -ExecutionPolicy Bypass -File C:\spike-out\run.ps1' -PreventBreakaway
+          Start-Sleep -Seconds 15
+          "== virtualization off: $env:UNVIRT"
+          "--- as the packaged app saw it ---"
+          if (Test-Path C:\spike-out\probe.txt) { Get-Content C:\spike-out\probe.txt } else { "no result file: the packaged app could not run the probe" }
+          "--- the real folder, seen from outside ---"
+          Get-ChildItem $real -Force | ForEach-Object { "  $($_.Name): $(Get-Content $_.FullName -Raw -ErrorAction SilentlyContinue)" }
+          "--- the package's private cache, seen from outside ---"
+          Get-ChildItem $cache -Force | ForEach-Object { "  $($_.Name): $(Get-Content $_.FullName -Raw -ErrorAction SilentlyContinue)" }
+        env:
+          UNVIRT: ${{ inputs.unvirtualized }}

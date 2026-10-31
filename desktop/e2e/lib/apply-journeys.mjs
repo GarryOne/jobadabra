@@ -25,8 +25,8 @@ export async function runJourneys(ctx, h) {
     }
     return value;
   };
-  const filled = async tab => {
-    const {value, ms} = await pollUntil(() => fillState(tab), fillSettled, {capMs: stepTimeLeft(), tickMs: 500});
+  const filled = async (tab, pageKinds = []) => {
+    const {value, ms} = await pollUntil(() => fillState(tab), state => fillSettled(state, {pageKinds}), {capMs: stepTimeLeft(), tickMs: 500});
     if (value?.state !== 'done') throw new Error(fillNote(value, ms / 1000));
     return value;
   };
@@ -354,7 +354,7 @@ export async function runJourneys(ctx, h) {
   await ctx.run('the account and the application on one page: it is the application form, its passwords stay account fields', async () => {
     await page.evaluate(([url, details]) => window.pilot.applyOne(url, details), [ONEPAGE.url, {title: ONEPAGE.title, company: ONEPAGE.company}]);
     const tab = await arrived(() => ctx.browser.context.pages().find(item => item.url().startsWith(ONEPAGE.url)), 'the wait for the one-page form');
-    await filled(tab);
+    await filled(tab, ['account']);
     const problems = [];
     {
       const actual = await readForm(tab);
@@ -437,7 +437,7 @@ export async function runJourneys(ctx, h) {
   await ctx.run('the AI gave a page the wrong kind: the page contradicts it, the kind is dropped and the form is filled', async () => {
     await page.evaluate(([url, details]) => window.pilot.applyOne(url, details), [MISLABELLED.url, {title: MISLABELLED.title, company: MISLABELLED.company}]);
     const tab = await arrived(() => ctx.browser.context.pages().find(item => item.url().startsWith(MISLABELLED.url)), 'the wait for the mislabelled form');
-    await filled(tab);
+    await filled(tab, ['no-form', 'account']);
     const problems = [];
     const {value: log} = await waitForDecisions(() => extensionDecisions(ctx), [/page kind corrected: a posting with no Apply but a form's fields/]);
     // The premise, on this page's own shape and from the AI (not remembered): another posting's line proves nothing (beta 9 Oct 2026).

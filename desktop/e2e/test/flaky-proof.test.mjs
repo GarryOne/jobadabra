@@ -8,7 +8,7 @@ import {test} from 'node:test';
 import {fileURLToPath} from 'node:url';
 import {INTERMITTENT, greyProof, flakyProof, intermittentComment, labelRerun, unproved} from '../lib/flaky-proof.mjs';
 import {runJourneys} from '../lib/apply-journeys.mjs';
-import {REVEAL} from '../lib/forms.mjs';
+import {LATE, REVEAL} from '../lib/forms.mjs';
 import {stepClock} from '../lib/wait-on-state.mjs';
 import {toClose} from '../lib/triage-issues.mjs';
 
@@ -143,28 +143,31 @@ test('grey CLI proves both files and fails closed on absent or malformed evidenc
 });
 
 // Run the actual journey callback with fixture reads and a fake clock; no browser or app starts.
-async function journeyFailure(t, {head, showTab = true, state = null, immediate = false}) {
+async function journeyFailure(t, {head, showTab = true, state = null, immediate = false, expectSuccess = false}) {
   t.mock.timers.enable({apis: ['Date', 'setTimeout']});
-  let failure;
-  const tab = {url: () => REVEAL.url, evaluate: async fn => {
+  let failure, opened = false;
+  const late = head.startsWith('a form drawn after a spinner');
+  const tab = {url: () => late ? LATE.formUrl : REVEAL.url, evaluate: async fn => {
     if (String(fn).includes('window.got')) return {name: 'cv.pdf', size: 10};
-    if (String(fn).includes('Object.fromEntries')) return {};
-    return state;
+    if (String(fn).includes('Object.fromEntries')) return late ? {question_3001: {value: '5'}} : {};
+    if (String(fn).includes('getElementById')) return true;
+    return Array.isArray(state) ? state.shift() : state;
   }};
-  const ctx = {browser: {context: {pages: () => showTab ? [tab] : []}}, run: async (name, step) => {
+  const ctx = {browser: {context: {pages: () => showTab && opened ? [tab] : []}}, run: async (name, step) => {
     if (!name.startsWith(head)) return;
     stepClock(3000);
     try { await step(); } catch (error) { failure = error; } finally { stepClock(null); }
   }};
   let settled = false;
   const started = Date.now();
-  const pending = runJourneys(ctx, {page: {evaluate: async () => {}}, forms: {fired: []}, cv: {name: 'cv.pdf', size: 10}, dumpExtension: async () => {}, fail: problems => {
+  const pending = runJourneys(ctx, {page: {evaluate: async () => { opened = true; }}, forms: {fired: []}, cv: {name: 'cv.pdf', size: 10}, dumpExtension: async () => {}, fail: problems => {
     if (problems.length) throw new Error(problems.join('; '));
   }}).finally(() => { settled = true; });
   for (let tick = 0; !settled && tick < 20; tick++) { await new Promise(setImmediate); if (!settled) t.mock.timers.tick(500); }
   assert.equal(settled, true, 'uses the step cap, not the old 60/90-second inline clock');
   await pending;
   if (immediate) assert.equal(Date.now() - started, 0, 'a closed tab fails on its first read');
+  if (expectSuccess) { assert.equal(failure, undefined); return; }
   assert.ok(failure, 'the step must report the missing state or wrong value');
   return failure.message;
 }
@@ -199,4 +202,8 @@ test('a closed tab fails immediately and cannot grey either try', async t => {
   assert.equal(message, `state: ${JSON.stringify(state)}`);
   assert.equal(flakyProof(message).flaky, false);
   assert.equal(greyProof([{message}], [{message}]).grey, false);
+});
+
+test('a late form reporting no-form before done is awaited instead of failed early', async t => {
+  await journeyFailure(t, {head: 'a form drawn after a spinner', state: [{state: 'no-form'}, {state: 'done'}], expectSuccess: true});
 });

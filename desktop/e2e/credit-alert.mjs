@@ -53,13 +53,13 @@ function capNotes(folder) {
 }
 
 /** Aggregate capped suites into one existing-channel alert; a persisted run marker suppresses fresh-runner duplicates. Never holds a release. */
-export async function alertCappedSteps({artifacts, marker, env = process.env, fetcher = fetch, log = console.log}) {
+export async function alertCappedSteps({artifacts, marker, verdict = 'AI steps are grey; the beta is not held', env = process.env, fetcher = fetch, log = console.log}) {
   const notes = [...new Set(capNotes(artifacts))];
   if (!notes.length) return 'credit-alert: no capped AI steps';
   for (const note of notes) log(`::warning title=AI credit ran out::${note.replace(/%/g, '%25').replace(/\r/g, '%0D').replace(/\n/g, '%0A')}`);
   if (marker && fs.existsSync(marker)) return 'credit-alert: this run already alerted';
   const run = `${env.GITHUB_SERVER_URL || 'https://github.com'}/${env.GITHUB_REPOSITORY}/actions/runs/${env.GITHUB_RUN_ID}`;
-  const result = await send(alertHtml({icon: '🩶', title: 'AI credit ran out', verdict: 'AI steps are grey; the beta is not held',
+  const result = await send(alertHtml({icon: '🩶', title: 'AI credit ran out', verdict,
     bullets: [{label: 'Workflow', parts: [env.GITHUB_WORKFLOW || 'CI']}, {label: 'Cause', parts: [notes.slice(0, 3).join('; ')]}],
     links: [{text: 'Open the run', url: run}]}), env, fetcher);
   if (marker && result === 'ci-alert: sent') {
@@ -71,7 +71,10 @@ export async function alertCappedSteps({artifacts, marker, env = process.env, fe
 
 if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(new URL(import.meta.url).pathname)) {
   if (process.argv[2] === '--artifacts') {
-    try { console.log(await alertCappedSteps({artifacts: process.argv[3], marker: process.argv[process.argv.indexOf('--marker') + 1]})); }
+    try {
+      const flag = name => (process.argv.includes(name) ? process.argv[process.argv.indexOf(name) + 1] : undefined);
+      console.log(await alertCappedSteps({artifacts: process.argv[3], marker: flag('--marker'), ...(flag('--verdict') ? {verdict: flag('--verdict')} : {})}));
+    }
     catch { console.log('::warning title=AI credit ran out::Could not report AI credit health; the beta is not held'); }
   } else {
     const [provider = 'anthropic', text = ''] = process.argv.slice(2);

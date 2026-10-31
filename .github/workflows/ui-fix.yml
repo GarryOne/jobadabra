@@ -2,11 +2,13 @@ name: CI · UI fixer
 
 # THE FIXER of the UI loop, four times a day (after the nightly build's end-to-end run, and after each daytime one). It reads the open issues the producer (ui-findings.yml) has been
 # filing all day, picks the MOST CRITICAL one that is ready (severity times how often it came back this week, doubled by a person's `confirmed` label; two sightings this
-# week or `confirmed` are needed), and lets Claude Code fix it and open ONE pull request for the owner to review. Never merges anything.
-# Claude only edits files (no git, no gh, no network); the last step checks the paths (desktop/renderer and its tests only), requires a test, runs the whole desktop suite,
+# week or `confirmed` are needed), and lets Codex fix it and open ONE pull request for the owner to review. Never merges anything.
+# The AI only proposes file edits (no git, no gh, no network); the last step checks the paths (desktop/renderer and its tests only), requires a test, runs the whole desktop suite,
 # and only then pushes a branch `auto-fix/<fingerprint>` and opens the PR with the finding's screenshot as "Before". At most 3 automatic PRs may be open at once.
 # A false positive is closed with the label `wontfix-auto`; a finding a person looked at and found real gets `confirmed`.
-# Needs: ANTHROPIC_API_KEY (a repository secret).
+# AI: Codex plan through the broker (desktop/e2e/edit-codex.mjs: one call picks the files, one proposes edits that the steps below check and test), never an API key.
+# Why (31 Oct 2026, owner: "Why Anthropic is reached? We should use fully the Codex"): it ran claude-code-action on UI_FIX_ANTHROPIC_KEY. UI Fixer stays OFF (owner, 25 Oct 2026): this change moves the
+# provider and does not enable or schedule anything. A refused call skips the job with its reason and leaves the issue as it is.
 on:
   schedule:
     - cron: '30 5,11,15,19 * * *'   # four a day (owner, 3 Oct 2026: too many open issues): the early one after the nightly build, then ~1.5 h after each daytime e2e run is filed
@@ -17,6 +19,7 @@ permissions:
   pull-requests: write
   issues: write
   actions: write   # to run the fixed page's suite again right after an automatic merge
+  id-token: write   # the Codex broker knows a run by its OIDC token (desktop/e2e/lib/broker-client.mjs)
 
 concurrency:
   group: ui-fix
@@ -24,7 +27,7 @@ concurrency:
 
 jobs:
   # Up to four fixes at once (4 Oct 2026: one fix per run left confirmed bugs waiting for days): the ready findings, at most one per kind, minus the fixes that
-  # already wait for review, and none while the AI limit is reached (desktop/e2e/ai-budget.mjs).
+  # already wait for review.
   plan:
     runs-on: ubuntu-24.04
     outputs:
@@ -41,8 +44,6 @@ jobs:
       - name: The findings to fix now
         id: list
         run: |
-          node desktop/e2e/ai-budget.mjs --check
-          if grep -q '^skip=true' "$GITHUB_OUTPUT"; then echo "count=0" >> "$GITHUB_OUTPUT"; exit 0; fi
           open=$(gh pr list --repo "$REPO" --state open --label auto-ui-fix --json number --jq length)
           room=$((4 - open))
           if [ "$room" -le 0 ]; then echo "count=0" >> "$GITHUB_OUTPUT"; echo "Four automatic fixes already wait for review; not starting another."; exit 0; fi
@@ -96,44 +97,19 @@ jobs:
       - name: Install the engine's dependencies (for its tests)
         if: steps.pick.outputs.candidate != 'none' && steps.capacity.outputs.full != 'true'
         run: pip install -r requirements.txt
-      - name: Claude Code fixes the problem (files only)
-        id: claude
+      - name: Codex fixes the problem (files only; two broker calls)
+        id: fixer
         if: steps.pick.outputs.candidate != 'none' && steps.capacity.outputs.full != 'true'
-        uses: anthropics/claude-code-action@v1
-        with:
-          anthropic_api_key: ${{ secrets.UI_FIX_ANTHROPIC_KEY || secrets.ANTHROPIC_API_KEY }}
-          github_token: ${{ github.token }}
-          # Least privilege: read and edit files, run the desktop tests, read-only git. No push, no gh, no network.
-          claude_args: >-
-            --model claude-sonnet-5-5 --max-turns 50
-            --allowedTools "Read,Glob,Grep,Edit,Write,Bash(node --test:*),Bash(python3 -m unittest:*),Bash(git diff:*),Bash(git status:*)"
-          prompt: Read .heal/prompt.md and follow it exactly.
-      - name: Why Claude failed (the API's own error)
-        if: failure()
-        env:   # a credit failure also goes to the owner on Telegram (desktop/e2e/credit-alert.mjs)
-          CI_ALERTS_TELEGRAM_BOT_TOKEN: ${{ secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN }}
-          CI_ALERTS_TELEGRAM_CHAT_ID: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}
-        run: python3 tools/claude-failure-reason.py
-      - name: AI budget and cost of this run
-        if: always() && steps.pick.outputs.candidate != 'none' && steps.capacity.outputs.full != 'true'
-        run: node desktop/e2e/ai-budget.mjs --after /home/runner/work/_temp/claude-execution-output.json --job fixer
-      - name: Report the AI cost to /ai-cost
-        if: always() && steps.pick.outputs.candidate != 'none' && steps.capacity.outputs.full != 'true'
-        env:
-          AI_COST_PUBLISH_KEY: ${{ secrets.AI_COST_PUBLISH_KEY }}
-        run: node desktop/e2e/ai-cost-report.mjs --job ui-fix --execution /home/runner/work/_temp/claude-execution-output.json --suffix "${{ matrix.issue }}"
+        # The folders a UI fix may touch (ui-fix-prompt.md rule 4); check-change.mjs checks them again, and the step below runs every suite and the lint.
+        run: >-
+          node desktop/e2e/edit-codex.mjs --prompt .heal/prompt.md --roots desktop/renderer,desktop/lib,desktop/test,src,tests --image .heal/screenshot.png
+          --allow '^(desktop/(renderer|lib)/|src/|desktop/test/[A-Za-z0-9._-]+\.test\.js$|tests/test_[A-Za-z0-9_]+\.py$)'
+          --none-as verdict --none-out .heal/verdict.md --body-out .heal/pr-body.md
       - uses: actions/upload-artifact@v6
         if: always() && steps.pick.outputs.candidate != 'none' && steps.capacity.outputs.full != 'true'
         with:
-          name: ai-cost-fix-${{ matrix.issue }}
-          path: ${{ runner.temp }}/ai-cost.json
-          if-no-files-found: ignore
-      - name: Keep Claude's transcript (to see where its turns went)
-        if: always() && steps.pick.outputs.candidate != 'none' && steps.capacity.outputs.full != 'true'
-        uses: actions/upload-artifact@v6
-        with:
-          name: heal-transcript-${{ matrix.issue }}
-          path: /home/runner/work/_temp/claude-execution-output.json
+          name: ai-capped-fix-${{ matrix.issue }}   # present only when the broker refused: the ai-skipped job sends the one alert
+          path: ${{ runner.temp }}/ai-capped/ai-capped.json
           if-no-files-found: ignore
       # GitHub starts no workflow for a push or PR made with GITHUB_TOKEN, so the PR would sit without checks: push and open it with the CI GitHub App's token (else the workflow token, and no checks).
       - name: The App token, so the PR's checks start
@@ -149,26 +125,31 @@ jobs:
         if: always() && steps.pick.outputs.candidate != 'none' && steps.capacity.outputs.full != 'true'
         env:
           PR_TOKEN: ${{ steps.pr_app.outputs.token }}
-          CLAUDE_OUTCOME: ${{ steps.claude.outcome }}
+          FIXER_OUTCOME: ${{ steps.fixer.outcome }}
+          AI_SKIPPED: ${{ steps.fixer.outputs.skipped }}   # the broker refused (budget, login, down): says nothing about the finding
           SHOT_OUTCOME: ${{ steps.shot.outcome }}
           AUTOMERGE: ${{ vars.JOB_PILOTTO_FIXER_AUTOMERGE }}   # "on": a small UI-only fix that passed every suite merges itself (off by default)
           AUTOMERGE_ENGINE: ${{ vars.JOB_PILOTTO_FIXER_AUTOMERGE_ENGINE }}   # "on": also a small, confirmed fix in src/ or desktop/lib/ that brings its own test
           DEPS_OUTCOME: ${{ steps.deps.outcome }}
         run: |
           set -euo pipefail
-          # An earlier step failed: say WHICH. This step runs after any failure, and "Claude Code did not run (skipped)" hid a picker bug for two runs (3 Oct 2026).
+          # An earlier step failed: say WHICH. This step runs after any failure, and "the AI did not run (skipped)" hid a picker bug for two runs (3 Oct 2026).
           for pair in "Put the finding's screenshot next to it:$SHOT_OUTCOME" "Install the app's dependencies:$DEPS_OUTCOME"; do
             if [ "${pair##*:}" = failure ]; then
-              echo "::error::The step \"${pair%:*}\" failed, so Claude was not run; the issue is left as it is."
+              echo "::error::The step \"${pair%:*}\" failed, so the fixer was not run; the issue is left as it is."
               echo "The step \"${pair%:*}\" failed: see its log above. Nothing was changed on the issue."
               exit 1
             fi
           done
-          # Claude did not run (the API refused: no credit, a bad key, an outage): that says nothing about the finding. Nothing is labelled or closed (2 Oct 2026: a first run that
+          # The AI did not answer (the broker refused: budget, login, down; or the step failed): that says nothing about the finding. Nothing is labelled or closed (2 Oct 2026: a first run that
           # failed on "Credit balance is too low" parked the issue as needs-human, "Claude made no change").
-          if [ "$CLAUDE_OUTCOME" != success ]; then
-            echo "The fixer could not run Claude (step outcome: $CLAUDE_OUTCOME): see this run's transcript artifact. Nothing was changed on the issue."
-            echo "::error::Claude Code did not run ($CLAUDE_OUTCOME); the issue is left as it is."
+          if [ "$AI_SKIPPED" = true ]; then
+            echo "The broker refused the fixer (see the warning above): the issue is left as it is and the run is skipped, not failed."
+            exit 0
+          fi
+          if [ "$FIXER_OUTCOME" != success ]; then
+            echo "The fixer could not run Codex (step outcome: $FIXER_OUTCOME). Nothing was changed on the issue."
+            echo "::error::The Codex fixer did not run ($FIXER_OUTCOME); the issue is left as it is."
             exit 1
           fi
           # The labels the branches below use (a first run finds none).
@@ -178,7 +159,7 @@ jobs:
           id=$(jq -r '.id' .heal/candidate.json)
           changed=$(git status --porcelain --untracked-files=all | awk '{print $NF}' | grep -v -E '^(\.heal/|e2e-artifacts/)' || true)
           mode=$(jq -r '.mode // "fix"' .heal/candidate.json)
-          # A verdict-only pass never opens a pull request: whatever Claude edited is dropped, only its verdict counts.
+          # A verdict-only pass never opens a pull request: whatever the AI edited is dropped, only its verdict counts.
           if [ "$mode" = verdict ]; then changed=""; git checkout -- . 2>/dev/null || true; fi
           if [ -z "$changed" ]; then
             verdict=$(head -1 .heal/verdict.md 2>/dev/null | tr -d '[:space:]' || true)
@@ -194,7 +175,7 @@ jobs:
                   echo "Issue #$number judged real and confirmed."
                 else
                   gh issue edit "$number" --repo "$REPO" --add-label needs-human
-                  gh issue comment "$number" --repo "$REPO" --body "The UI loop could not fix this by itself. ${reason:-Claude made no change.}"
+                  gh issue comment "$number" --repo "$REPO" --body "The UI loop could not fix this by itself. ${reason:-The fixer made no change.}"
                 fi ;;
               false-positive)
                 gh issue edit "$number" --repo "$REPO" --add-label wontfix-auto
@@ -212,7 +193,7 @@ jobs:
               *)
                 gh issue edit "$number" --repo "$REPO" --add-label needs-human
                 if [ "$mode" = verdict ]; then gh issue comment "$number" --repo "$REPO" --body-file .heal/comment.md
-                else gh issue comment "$number" --repo "$REPO" --body "The UI loop could not fix this by itself. ${reason:-Claude made no change.}"; fi
+                else gh issue comment "$number" --repo "$REPO" --body "The UI loop could not fix this by itself. ${reason:-The fixer made no change.}"; fi
                 echo "Issue #$number needs a person." ;;
             esac
             exit 0
@@ -279,3 +260,28 @@ jobs:
               echo "Not merged automatically ($lines lines): it is outside what may merge itself (window-only up to 80 lines, or a confirmed engine fix up to 40 lines with its own test). A person merges it."
             fi
           fi
+
+  # One alert for the whole run, however many fix jobs the broker refused (owner, 31 Oct 2026: four identical alerts from one run).
+  ai-skipped:
+    needs: fix
+    if: always() && !cancelled() && needs.fix.result != 'skipped'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    continue-on-error: true
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          sparse-checkout: |
+            desktop/e2e
+            .github/actions
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - uses: ./.github/actions/ai-skipped-alert
+        with:
+          bot-token: ${{ secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN }}
+          chat-id: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}
+          github-token: ${{ github.token }}

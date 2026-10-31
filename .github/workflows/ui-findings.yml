@@ -25,6 +25,7 @@ permissions:
   contents: write   # the evidence branch (pr-assets): the screenshots the issues show
   issues: write
   actions: read
+  id-token: write   # the Codex broker knows a run by its OIDC token (desktop/e2e/lib/broker-client.mjs)
 
 concurrency:
   group: ui-findings
@@ -73,45 +74,32 @@ jobs:
             if [ "$PLATFORM" = windows ]; then find e2e-artifacts -mindepth 1 -maxdepth 1 -name 'e2e-artifacts-*' ! -name 'e2e-artifacts-windows-*' -exec rm -rf {} +
             else find e2e-artifacts -mindepth 1 -maxdepth 1 -name 'e2e-artifacts-windows-*' -exec rm -rf {} +; fi
           fi
-      # JUDGE BEFORE FILING (desktop/e2e/lib/prejudge.mjs): the run's new findings (at most 3) are judged in one Claude session before any issue opens; noise is
-      # never filed. Only with JOB_PILOTTO_FIXER_VERDICTS = "on" (AI credit) and while the AI budget breaker is closed; otherwise everything is filed as before.
+      # JUDGE BEFORE FILING (desktop/e2e/lib/prejudge.mjs): the run's new findings (at most 3) are judged in one Codex call before any issue opens; noise is
+      # never filed. Only with JOB_PILOTTO_FIXER_VERDICTS = "on" (Codex plan, one broker call per run); a refused call (budget, login, broker down) skips the judging and everything is filed as before.
+      # Why (31 Oct 2026, owner: "Why Anthropic is reached? We should use fully the Codex"): this step ran claude-code-action on an API key; desktop/e2e/judge-codex.mjs asks the broker instead.
       - name: New findings to judge before filing
         id: pending
         if: vars.JOB_PILOTTO_FIXER_VERDICTS == 'on' && env.PLANT == ''
         run: |
           mkdir -p .heal
-          node desktop/e2e/ai-budget.mjs --check
-          if grep -q '^skip=true' "$GITHUB_OUTPUT"; then echo "pending=0" >> "$GITHUB_OUTPUT"; exit 0; fi
           node desktop/e2e/triage.mjs --artifacts e2e-artifacts --run-url "$RUN_URL" --out .heal --platform "$PLATFORM" --pending-out .heal/pending.json
           node desktop/e2e/reversals.mjs --out .heal/lessons.md   # the owner's corrections, appended to the prompt
           node desktop/e2e/prejudge.mjs --pending .heal/pending.json --out .heal
-      - name: Claude judges them (read-only)
+      - name: Codex judges them (read-only, one broker call)
         id: judge
         timeout-minutes: 15   # a slow judgement must never cost the run its filing: on timeout the findings are filed as before
         if: steps.pending.outputs.pending != '' && steps.pending.outputs.pending != '0'
         continue-on-error: true   # no verdict: the findings are filed as before and judged later (ui-verdict.yml)
-        uses: anthropics/claude-code-action@v1
+        run: node desktop/e2e/judge-codex.mjs --mode prejudge
+      - uses: actions/upload-artifact@v6
+        if: always()
         with:
-          anthropic_api_key: ${{ secrets.UI_FINDINGS_ANTHROPIC_KEY || secrets.ANTHROPIC_API_KEY }}
-          github_token: ${{ github.token }}
-          claude_args: >-
-            --model claude-sonnet-5-5 --max-turns 30
-            --allowedTools "Read,Glob,Grep,Write,Bash(git log:*),Bash(git show:*)"
-          prompt: Read .heal/prejudge-prompt.md and follow it exactly. Write only .heal/verdicts.md.
-      - name: Why Claude failed (the API's own error)
-        if: failure()
-        env:   # a credit failure also goes to the owner on Telegram (desktop/e2e/credit-alert.mjs)
-          CI_ALERTS_TELEGRAM_BOT_TOKEN: ${{ secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN }}
-          CI_ALERTS_TELEGRAM_CHAT_ID: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}
-        run: python3 tools/claude-failure-reason.py
-      - name: Read the verdicts, and the cost of judging
-        if: steps.pending.outputs.pending != '' && steps.pending.outputs.pending != '0'
-        env:
-          AI_COST_PUBLISH_KEY: ${{ secrets.AI_COST_PUBLISH_KEY }}
-        run: |
-          node desktop/e2e/prejudge.mjs --parse .heal/verdicts.md --pending .heal/pending.json --out .heal/verdicts.json || true
-          node desktop/e2e/ai-budget.mjs --after /home/runner/work/_temp/claude-execution-output.json --job "judging ${{ steps.pending.outputs.pending }} finding(s) before filing" || true
-          node desktop/e2e/ai-cost-report.mjs --job ui-prejudge --execution /home/runner/work/_temp/claude-execution-output.json --suffix "$RUN_ID" || true
+          name: ai-capped-findings${{ matrix.platform && format('-{0}', matrix.platform) || '' }}   # present only when the broker refused: the ai-skipped job sends the one alert
+          path: ${{ runner.temp }}/ai-capped/ai-capped.json
+          if-no-files-found: ignore
+      - name: Read the verdicts
+        if: steps.pending.outputs.pending != '' && steps.pending.outputs.pending != '0' && steps.judge.outputs.skipped != 'true'
+        run: node desktop/e2e/prejudge.mjs --parse .heal/verdicts.md --pending .heal/pending.json --out .heal/verdicts.json || true
       - name: File the findings
         run: |
           mkdir -p .heal
@@ -141,3 +129,28 @@ jobs:
           name: finder-run-summary${{ matrix.platform && format('-{0}', matrix.platform) || '' }}   # two in a release run; selfheal-stats.mjs reads every finder-run-summary*
           path: .heal/run-summary.json
           retention-days: 60
+
+  # One alert for the whole run (a release run has two platform jobs), however many were refused (owner, 31 Oct 2026: four identical alerts from one run).
+  ai-skipped:
+    needs: findings
+    if: always() && !cancelled() && needs.findings.result != 'skipped'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    continue-on-error: true
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          sparse-checkout: |
+            desktop/e2e
+            .github/actions
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - uses: ./.github/actions/ai-skipped-alert
+        with:
+          bot-token: ${{ secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN }}
+          chat-id: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}
+          github-token: ${{ github.token }}

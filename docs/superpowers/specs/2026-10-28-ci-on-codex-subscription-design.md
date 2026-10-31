@@ -9,7 +9,7 @@ Supersedes: fbadf96 (26 Oct, CI on Free AI), memory `feedback-pr-ai-checks-subsc
 - [x] PR 0 measure: tokens per call (~18k), latency, 4-way concurrency, ≥ ~40 calls per 1% (done 28 Oct); per-consumer calls/day still open (proof: docs/superpowers/specs/2026-10-28-codex-measure/README.md)
 - [ ] PR 1 broker + `codex` engine in `desktop/e2e/lib/engine.mjs`; e2e app-under-test and judges off the Free AI relay (stops the neuron bill)
 - [ ] PR 2 screenshot review (`.github/actions/e2e-review`)
-- [ ] PR 3 code review, ui-prejudge, ui-verdict, test judges
+- [x] PR 3 code review (#2463), ui-prejudge (ui-findings), ui-verdict, judge-exam, Finder self-review, UI fixer (stays OFF): `[ca] 1/2` PR #2708, one broker call per judgement (`desktop/e2e/judge-codex.mjs`, `edit-codex.mjs`), a refused call skips with its reason and one alert per run (`.github/actions/ai-skipped-alert`), guard `tests/test_ci_no_anthropic.py` (proof: tests/test_ci_no_anthropic.py). Left of PR 3: the e2e test judges and the harness engine key (E2E_ANTHROPIC_KEY, e2e lane)
 - [ ] PR 4 central scout, product brain, pool live runs, replay refill, sentry fixer, verdict pass, pool daily watch
 - [ ] PR 5 benchmarks (job search, form filling) harness side
 - [ ] PR 6 cadence rises, one job per PR, each after its job runs on the broker

@@ -2,7 +2,8 @@ name: CI · Judge exam
 
 # The verdict pass's exam (desktop/e2e/lib/judge-exam.mjs): ten findings from this loop's own history, each with the code as it was at its build and a known answer (four real, six false),
 # judged by the same prompt as a real finding and scored. A judge that dismisses a real bug or believes a false alarm shows it as a number on /self-heal, without anyone ticking a box.
-# It costs one judgement per finding (about ten), so it is OFF until the owner turns it on:  gh variable set JOB_PILOTTO_JUDGE_EXAM --body on
+# It costs one broker call (about ten findings in one prompt, Codex plan), so it is OFF until the owner turns it on:  gh variable set JOB_PILOTTO_JUDGE_EXAM --body on
+# Why (31 Oct 2026, owner: "We should use fully the Codex"): it ran claude-code-action on an API key; a refused broker call skips the exam with its reason (desktop/e2e/judge-codex.mjs).
 on:
   schedule:
     - cron: '17 8 * * 0'   # Sunday morning, before the Saturday audit is read
@@ -11,6 +12,7 @@ on:
 permissions:
   contents: read
   actions: read
+  id-token: write   # the Codex broker knows a run by its OIDC token (desktop/e2e/lib/broker-client.mjs)
 
 concurrency:
   group: judge-exam
@@ -32,34 +34,23 @@ jobs:
       - name: Prepare the exam
         run: |
           mkdir -p .heal
-          node desktop/e2e/ai-budget.mjs --check
-          if grep -q '^skip=true' "$GITHUB_OUTPUT"; then echo "skip=true" >> "$GITHUB_OUTPUT"; exit 0; fi
           node desktop/e2e/judge-exam.mjs --prepare .heal
         id: prepare
-      - name: Claude judges the planted findings (read-only)
-        if: steps.prepare.outputs.skip != 'true'
-        uses: anthropics/claude-code-action@v1
-        with:
-          anthropic_api_key: ${{ secrets.JUDGE_EXAM_ANTHROPIC_KEY || secrets.ANTHROPIC_API_KEY }}
-          github_token: ${{ github.token }}
-          claude_args: >-
-            --model claude-sonnet-5-5 --max-turns 40
-            --allowedTools "Read,Glob,Grep,Write"
-          prompt: Read .heal/exam-prompt.md and follow it exactly. Write only .heal/verdicts.md.
-      - name: Why Claude failed (the API's own error)
-        if: failure()
-        env:   # a credit failure also goes to the owner on Telegram (desktop/e2e/credit-alert.mjs)
-          CI_ALERTS_TELEGRAM_BOT_TOKEN: ${{ secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN }}
-          CI_ALERTS_TELEGRAM_CHAT_ID: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}
-        run: python3 tools/claude-failure-reason.py
+      - name: Codex judges the planted findings (read-only, one broker call)
+        id: judge
+        run: node desktop/e2e/judge-codex.mjs --mode exam
       - name: Score it
-        if: steps.prepare.outputs.skip != 'true'
-        env:
-          AI_COST_PUBLISH_KEY: ${{ secrets.AI_COST_PUBLISH_KEY }}
-        run: |
-          node desktop/e2e/judge-exam.mjs --score --verdicts .heal/verdicts.md --out .heal/judge-exam.json
-          node desktop/e2e/ai-budget.mjs --after /home/runner/work/_temp/claude-execution-output.json --job "judge exam" || true
-          node desktop/e2e/ai-cost-report.mjs --job judge-exam --execution /home/runner/work/_temp/claude-execution-output.json --suffix "${{ github.run_id }}" || true
+        if: steps.judge.outputs.skipped != 'true'
+        run: node desktop/e2e/judge-exam.mjs --score --verdicts .heal/verdicts.md --out .heal/judge-exam.json
+      - name: Tell the owner once if the broker refused
+        if: always() && !cancelled()
+        continue-on-error: true
+        uses: ./.github/actions/ai-skipped-alert
+        with:
+          bot-token: ${{ secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN }}
+          chat-id: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}
+          github-token: ${{ github.token }}
+          notes-dir: ${{ runner.temp }}/ai-capped
       - uses: actions/upload-artifact@v6
         if: always() && hashFiles('.heal/judge-exam.json') != ''
         with:

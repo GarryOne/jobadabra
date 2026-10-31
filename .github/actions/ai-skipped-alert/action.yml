@@ -1,0 +1,37 @@
+name: AI skipped alert
+description: >-
+  One Telegram alert for a whole workflow run whose AI jobs were refused by the Codex broker (budget used up, login lost, broker down): reads the `ai-capped-*` artifacts
+  the run's jobs uploaded (desktop/e2e/lib/broker-job.mjs writes one per skipped job) and sends a single message. No artifact: nothing is sent.
+# Why (31 Oct 2026, owner: "four identical Telegram alerts"; "one alert per run"): every matrix job sent its own alert when Anthropic's credit was 0, so one UI-verdict run sent four.
+# The jobs only write a note; this runs once per run, in the one job after them. The caller needs a checkout (desktop/e2e), Node 22 and `actions: read`. Guard: desktop/e2e/test/broker-job.test.mjs.
+inputs:
+  bot-token:
+    description: 'secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN'
+    required: false
+    default: ''
+  chat-id:
+    description: 'secrets.CI_ALERTS_TELEGRAM_CHAT_ID'
+    required: false
+    default: ''
+  github-token:
+    description: 'github.token: this run''s artifacts'
+    required: true
+  notes-dir:
+    description: "A job that ran alone passes its own runner.temp/ai-capped folder and nothing is downloaded; after matrix jobs, leave empty and the run's ai-capped-* artifacts are read"
+    required: false
+    default: ''
+runs:
+  using: composite
+  steps:
+    - name: Tell the owner once, if any job was refused
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        CI_ALERTS_TELEGRAM_BOT_TOKEN: ${{ inputs.bot-token }}
+        CI_ALERTS_TELEGRAM_CHAT_ID: ${{ inputs.chat-id }}
+        NOTES_DIR: ${{ inputs.notes-dir }}
+      run: |
+        notes="${NOTES_DIR:-ai-capped-notes}"
+        mkdir -p "$notes"
+        if [ -z "$NOTES_DIR" ]; then gh run download "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --pattern 'ai-capped-*' --dir "$notes" 2>/dev/null || echo "No AI job was refused in this run."; fi
+        node desktop/e2e/credit-alert.mjs --artifacts "$notes" --verdict "Codex refused the AI jobs of this run; they are skipped (grey), nothing is paid"

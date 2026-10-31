@@ -61,6 +61,34 @@ export function stopCode(error, name, ctx) {
   return 1;
 }
 
+/** The suite-wide guards after its steps: the owner's Keychain untouched, the AI asks, nothing queued to report, the stand-in's gaps. None needs the app's
+ * window, so they also run after a quiet stop (a suspended step that hung or left the app closed). Throws, or records a failed step, like any step. */
+/** Runs a suite's steps. Returns the quiet stop (a suspended step that hung or left the app closed: lib/runner.mjs suspendedStop), else null; any other error is thrown. */
+async function runSteps(suite, ctx) {
+  try { await suite.run(ctx); return null; } catch (error) { if (!error?.suspendedStop) throw error; return error; }
+}
+
+/** The exit code once the suite-wide guards ran: unchanged without a quiet stop, else stopCode's (0, with the steps it skipped named). */
+function afterQuietStop(quiet, name, ctx, code) {
+  if (!quiet) return code;
+  ctx.stopped = quiet.message;
+  return stopCode(quiet, name, ctx);
+}
+
+async function suiteGuards(suite, ctx, runAlways, {keychainBefore, keychainChanges, snapshot, assertNothingQueued}) {
+  if (keychainBefore) await runAlways('nothing in this Mac\'s real Keychain changed (a test run keeps its secrets in its own file)', async () => {
+    const changes = keychainChanges(keychainBefore, snapshot() || new Map());
+    if (changes.length) throw new Error(`the real Keychain changed during the run: ${changes.join('; ')}. A test reached it (desktop/lib/keychain.js isolation), or something else on this Mac saved a secret meanwhile: check, then re-run`);
+  }, {critical: true});   // critical: an E2E_STEPS filter never skips it
+  await runAiGuards(suite, ctx, runAlways);
+  if (!suite.light) await ctx.run('nothing was queued to report to the product', async () => { assertNothingQueued(ctx.profile); });   // a light suite has no app
+  // P7: a request the in-memory Notion does not know is a gap in the stand-in, and the app swallows many such errors (9 Oct 2026: a missing url filter
+  // left a form without its kit, three layers away). Each one fails here by name, so the stand-in grows instead of hiding it (lib/notion-fake.mjs).
+  if (ctx.standIn) await runAlways('the Notion stand-in answered every request the app made', async () => {
+    if (ctx.standIn.stats.unknown.length) throw new Error(`the stand-in did not know: ${ctx.standIn.stats.unknown.join('; ')}`);
+  }, {critical: true});
+}
+
 export async function runSuite(name, report = null) {
   const {assertNothingQueued, traceFiles} = await import('./app.mjs');
   const {SUITES, openContext} = await import('./context.mjs');
@@ -84,20 +112,9 @@ export async function runSuite(name, report = null) {
     const runAlways = ctx.run;   // a suite may wrap ctx.run with its own filter (suites/apply.mjs parts): the Keychain check runs whatever the suite picked
     // Why (#2719, 31 Oct 2026, Gitar): a suspended step that hung or left the app closed ends the steps quietly, but the suite-wide guards below need no
     // app window (Keychain, AI asks, nothing queued, the stand-in's gaps), so they still run and still fail the suite.
-    let quiet = null;
-    try { await suite.run(ctx); } catch (error) { if (!error?.suspendedStop) throw error; quiet = error; }
-    if (keychainBefore) await runAlways('nothing in this Mac\'s real Keychain changed (a test run keeps its secrets in its own file)', async () => {
-      const changes = keychainChanges(keychainBefore, snapshot() || new Map());
-      if (changes.length) throw new Error(`the real Keychain changed during the run: ${changes.join('; ')}. A test reached it (desktop/lib/keychain.js isolation), or something else on this Mac saved a secret meanwhile: check, then re-run`);
-    }, {critical: true});   // critical: an E2E_STEPS filter never skips it
-    await runAiGuards(suite, ctx, runAlways);
-    if (!suite.light) await ctx.run('nothing was queued to report to the product', async () => { assertNothingQueued(ctx.profile); });   // a light suite has no app
-    // P7: a request the in-memory Notion does not know is a gap in the stand-in, and the app swallows many such errors (9 Oct 2026: a missing url filter
-    // left a form without its kit, three layers away). Each one fails here by name, so the stand-in grows instead of hiding it (lib/notion-fake.mjs).
-    if (ctx.standIn) await runAlways('the Notion stand-in answered every request the app made', async () => {
-      if (ctx.standIn.stats.unknown.length) throw new Error(`the stand-in did not know: ${ctx.standIn.stats.unknown.join('; ')}`);
-    }, {critical: true});
-    if (quiet) { ctx.stopped = quiet.message; code = stopCode(quiet, name, ctx); }
+    const quiet = await runSteps(suite, ctx);
+    await suiteGuards(suite, ctx, runAlways, {keychainBefore, keychainChanges, snapshot, assertNothingQueued});
+    code = afterQuietStop(quiet, name, ctx, code);
   } catch (error) {
     if (ctx) ctx.stopped = error.message;   // the trace is kept (lib/context.mjs)
     code = stopCode(error, name, ctx);

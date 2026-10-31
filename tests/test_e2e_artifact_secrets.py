@@ -48,8 +48,11 @@ def credential_refs(value):
 def job_scan_names(job):
     """One job-owned list is inherited by each scan, including composites."""
     head = job.split('    steps:', 1)[0]
-    found = re.search(r'(?m)^      E2E_ARTIFACT_SECRET_NAMES: \|\n((?:        [A-Za-z_][\w]*\n)*)', head)
-    return set(found[1].split()) if found else set()
+    found = re.search(r'(?m)^      E2E_ARTIFACT_SECRET_NAMES: \|\n((?:        [^\n]*\n)*)', head)
+    if not found:
+        return set()
+    lines = [line.strip() for line in found[1].splitlines()]
+    return {line for line in lines if re.fullmatch(r'[A-Z_][A-Z_0-9]*', line)} | set(re.findall(r"'([A-Z_][A-Z_0-9]*)'", found[1]))
 
 
 def local_actions(job):
@@ -85,6 +88,15 @@ def scan_contract(job, action=''):
     required = set(original) | native
     listed = job_scan_names(job)
     problems = [f'missing list name: {name}' for name in sorted(required - listed)]
+    for step in steps:
+        if not re.search(r'uses: \./(?:[\w.-]+/)*\.github/actions/free-ai-relay\b', step):
+            continue
+        condition = re.search(r'(?m)^        if: (.*)$', step)
+        if condition:
+            expression = condition[1].split(' #', 1)[0].strip().removeprefix('${{').removesuffix('}}').strip()
+            expected = "${{ " + expression + " && 'E2E_FREE_AI_KEY' || '' }}"
+            if expected not in job.split('    steps:', 1)[0]:
+                problems.append('generated key condition differs from its producer: E2E_FREE_AI_KEY')
     scans = [step for step in steps + action_steps if 'id: artifact_scan_' in step]
     for step in scans:
         supplied = env_mappings(step)

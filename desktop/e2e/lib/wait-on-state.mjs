@@ -14,6 +14,17 @@ const REPORT_MS = 2000;
 export const stepClock = ms => { stepEndsAt = ms == null ? null : Date.now() + ms; };
 /** Milliseconds a wait in the running step may take, leaving REPORT_MS for the step to name what was missing; with no runner step (a unit test), undefined. */
 export const stepTimeLeft = () => (stepEndsAt === null ? undefined : Math.max(0, stepEndsAt - Date.now() - REPORT_MS));
+/**
+ * Run a Playwright-style wait `run(timeout)` for as long as the step's clock leaves; with the clock spent, throw "the step's clock ran out before <what>" instead.
+ * Why (31 Oct 2026, owner: "E: no zero timeouts"; a8 2/5 #2701, beta gate run 41200878403 apply-1of3 stalled 6.6 min): stepTimeLeft() is 0 once the clock is spent, and
+ * Playwright reads `timeout: 0` as NO timeout, so a cleanup wait outlived its step and only the runner's generic report showed. stepTimeLeft() stays a cap for pollUntil
+ * (0 there ends the wait at once); every Playwright timeout goes through here (guard test/no-zero-timeouts.test.mjs). With no runner step (a unit test): the wait's own default.
+ */
+export async function stepWait(what, run) {
+  const left = stepTimeLeft();
+  if (left !== undefined && left <= 0) throw new Error(`the step's clock ran out before ${what}`);
+  return run(left);
+}
 
 /** Describe only an expired wait, using the timing wording owned by TIMEOUT_FAILURE; lastSeen retains the rejected observation. */
 export const waitCapNote = (what, seconds, lastSeen) => `${what} did not finish within ${seconds} s (last seen: ${JSON.stringify(lastSeen)})`;

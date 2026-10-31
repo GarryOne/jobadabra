@@ -16,7 +16,7 @@ import {clearData} from '../lib/start-state.mjs';
 import {ensureSetUp} from '../lib/seed.mjs';
 import {withRoles} from '../lib/search-roles.mjs';
 import {appLogLines} from '../lib/app-log.mjs';
-import {pollUntil, stepTimeLeft} from '../lib/wait-on-state.mjs';
+import {pollUntil, stepTimeLeft, stepWait} from '../lib/wait-on-state.mjs';
 
 // Saved answers own every gate judgment; the real-model guard catches an escape.
 export const offlineAi = true;
@@ -239,7 +239,7 @@ export async function run(ctx) {
       fs.writeFileSync(file, JSON.stringify({...withRoles({...current, locations: person.locations, title_exclude_keywords: person.title_exclude_keywords}, roles), jobs_board_search_queries: roles.map(role => role.replace(/\\b/g, '')).filter(role => /^[a-z ]+$/i.test(role))}));
       await ctx.page.reload();
       await ctx.page.waitForSelector('.view:not([hidden])', {timeout: 60000});
-      await ctx.page.waitForFunction(() => !document.querySelector('.view:not([hidden]) .skeleton, .view:not([hidden]) .spinner'), null, {timeout: stepTimeLeft()});
+      await stepWait('the view stopped loading after the reload', timeout => ctx.page.waitForFunction(() => !document.querySelector('.view:not([hidden]) .skeleton, .view:not([hidden]) .spinner'), null, {timeout}));
     }
     await visit(ctx, ctx.audience ? ['focus', 'jobs', 'interviews', 'strategy', 'actions'] : ['actions']);
     if (ctx.audience === 'non-it') {

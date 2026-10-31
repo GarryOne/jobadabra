@@ -103,6 +103,25 @@ test('adding or changing an AI-ask exception needs a citation; keeping it is fre
   assert.equal(push({}, registry({apply: {aiMissesException: reason}, jobs: {aiMissesMax: 0}}), 'Change', {apply: {aiMissesException: reason}}), '', 'an unchanged exception beside another edit');
 });
 
+// Gitar on #2714 (31 Oct 2026): a step suspended in lanes.json `steps` left the backbone with no citation; the check read only whole suites.
+test('a backbone step newly suspended in the steps map needs a citation; one already suspended is free', () => {
+  const entry = {lane: 'suspended', owner: 'GarryOne', issue: 'https://github.com/GarryOne/jobadabra/issues/1'};
+  const registry = steps => ({'desktop/e2e/lanes.json': JSON.stringify({suites: {}, steps})});
+  assert.match(push({}, registry({apply: {'the read step': entry}})), /Rule E.*apply · the read step leaves backbone/s);
+  assert.equal(push({}, registry({apply: {'the read step': entry}}), `Change\n\n${why}`), '');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'reliability-steps-'));
+  try {
+    const git = (...args) => execFileSync('git', ['-C', dir, ...args], {encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe']});
+    const lanes = steps => { fs.mkdirSync(path.join(dir, 'desktop/e2e'), {recursive: true}); fs.writeFileSync(path.join(dir, 'desktop/e2e/lanes.json'), JSON.stringify({suites: {}, steps})); };
+    git('init', '-q', '-b', 'main'); git('config', 'user.email', 'test@example.com'); git('config', 'user.name', 'test'); git('config', 'commit.gpgsign', 'false');
+    lanes({apply: {'the read step': entry}}); git('add', '-A'); git('commit', '-qm', 'Base'); git('branch', 'base');
+    lanes({apply: {'the read step': entry, 'another step': entry}}); git('add', '-A'); git('commit', '-qm', 'Change');
+    const found = checkPush({root: dir, base: 'base'});
+    assert.match(found, /another step leaves backbone/);
+    assert.doesNotMatch(found, /the read step/, 'a step already suspended on the base is not a new move');
+  } finally { fs.rmSync(dir, {recursive: true, force: true}); }
+});
+
 test('raising or dropping an AI-ask ceiling needs a citation; lowering it is free', () => {
   const lanes = {apply: {aiMissesMax: 1}};
   const registry = suites => ({'desktop/e2e/lanes.json': JSON.stringify({suites})});

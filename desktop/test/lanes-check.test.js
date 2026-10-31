@@ -100,6 +100,12 @@ test('a suspended step with its owner, its issue URL, a reason and a return pass
   assert.deepEqual(lanesProblems(file({}), withSteps({apply: {'a step': stepEntry()}})), []);
 });
 
+test('a suspended step may name the platforms its flake was seen on; an empty or unknown platform is refused (#2719)', () => {
+  assert.deepEqual(stepEntryProblems(stepEntry({platforms: ['win32']})), []);
+  assert.deepEqual(stepEntryProblems(stepEntry({platforms: ['darwin', 'linux']})), []);
+  for (const platforms of [[], ['windows'], 'win32']) assert.match(stepEntryProblems(stepEntry({platforms})).join(), /platforms, when given/, JSON.stringify(platforms));
+});
+
 test('a suspended step with no issue, no owner or a lane other than suspended is refused, naming suite and step', () => {
   assert.match(stepEntryProblems(stepEntry({issue: undefined})).join(), /issue must be the GitHub issue URL/);
   assert.match(stepEntryProblems(stepEntry({issue: 'https://example.test/1'})).join(), /issue must be the GitHub issue URL/);

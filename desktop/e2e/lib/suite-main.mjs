@@ -48,12 +48,13 @@ export function writeFinalFailures(suite, ctx) {
   return missing || !ceiling.ok;
 }
 
-/** The exit code of a suite stopped by an error: 1, except a suspended step's hang (lib/runner.mjs suspendedStop), which ends the suite without failing it.
+/** The exit code of a suite stopped by an error: 1, except a suspended step that hung or left the app closed (lib/runner.mjs suspendedStop), which ends the suite without failing it.
  * Why (31 Oct 2026, spec row 33): the steps after that step did not run and say so; the hang itself is on the suspended step's owner issue. */
 export function stopCode(error, name, ctx) {
   if (error?.suspendedStop) {
-    console.log(`⚠ the ${name} suite stopped after a suspended step hung: its remaining steps did not run (not a failure): ${error.message}`);
-    ctx?.runner.results.push({name: 'steps after a suspended step that hung', status: 'skipped', note: error.message});
+    const why = error.stoppedBecause || 'hung';
+    console.log(`⚠ the ${name} suite stopped after a suspended step ${why}: its remaining steps did not run (not a failure): ${error.message}`);
+    ctx?.runner.results.push({name: `steps after a suspended step that ${why}`, status: 'skipped', note: error.message});
     return 0;
   }
   if (!ctx?.runner.results.some(result => result.status === 'failed')) console.log(`✗ the ${name} suite stopped: ${error.message}`);

@@ -160,19 +160,11 @@
       "Your data: export with keys, reset, then import from the setup brings this computer back as it was": {
         "lane": "suspended",
         "input": "a process of the old app outliving its exit on Windows (an Electron process still held the data folder 20 s after the app exited); not yet measured which one, same family as #2712",
+        "platforms": ["win32"],
         "since": "2026-10-31",
         "owner": "GarryOne",
         "issue": "https://github.com/GarryOne/jobadabra/issues/2717",
-        "why": "Red on Windows in beta 41220959824 (6acc69d: the data folder stayed held by a process after the app exited, EPERM on rename) and green on 229195f (run 41221090559) with none of its files changed between them.",
-        "returns": "Back to the backbone when its fix PR lands and the next 3 main runs pass it."
-      },
-      "Automatic backup: the backup file, imported after a reset, brings this computer back as it was": {
-        "lane": "suspended",
-        "input": "the step before it left the app closed after the old app outlived its exit (Target page, context or browser has been closed); same input as #2717",
-        "since": "2026-10-31",
-        "owner": "GarryOne",
-        "issue": "https://github.com/GarryOne/jobadabra/issues/2716",
-        "why": "Red on Windows in beta 41220959824 (6acc69d, right after the step above failed) and green on 229195f (run 41221090559) with none of its files changed between them.",
+        "why": "Red on Windows in beta 41220959824 (6acc69d: the data folder stayed held by a process after the app exited, EPERM on rename) and green on 229195f (run 41221090559) with none of its files changed between them. Windows only; when it fails it leaves the app closed, so the suite ends there quietly (the backup step after it, #2716, is that same red).",
         "returns": "Back to the backbone when its fix PR lands and the next 3 main runs pass it."
       }
     }

@@ -47,6 +47,7 @@ export function stepEntryProblems(entry) {
   if (entry.lane !== 'suspended') lacks.push('a step is only ever suspended (a step that cannot be trusted leaves the backbone by a suite lane, rule E)');
   if (!/^https:\/\/github\.com\/[^/]+\/[^/]+\/issues\/\d+$/.test(String(entry.issue || ''))) lacks.push('issue must be the GitHub issue URL that holds the evidence (red run, green run, diff, the failure text)');
   if (typeof entry.owner !== 'string' || !entry.owner.trim()) lacks.push('owner must name who fixes it');
+  if ('platforms' in entry && !(Array.isArray(entry.platforms) && entry.platforms.length && entry.platforms.every(p => ['darwin', 'linux', 'win32'].includes(p)))) lacks.push('platforms, when given, lists where the flake was seen: darwin, linux or win32 (lib/suspended-steps.mjs)');
   return lacks;
 }
 const stepEntries = steps => Object.entries(steps || {}).flatMap(([suite, byName]) => Object.entries(byName || {}).map(([name, entry]) => [suite, name, entry]));

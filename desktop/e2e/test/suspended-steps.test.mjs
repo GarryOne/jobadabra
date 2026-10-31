@@ -42,6 +42,27 @@ test('a suspended owned step cut off by its hang cap ends the suite without fail
   assert.equal(runner.summary(), 0);
 });
 
+test('a suspended step that fails and leaves the app closed ends the suite without failing it: the next steps would only meet a closed app (#2719)', async () => {
+  const closed = {page: {isClosed: () => true}, keepLogs: async () => {}};
+  const runner = createRunner(() => closed, {suspended: held, keepGoing: true});
+  await assert.rejects(runner.run('flaky step', async () => { throw new Error('EPERM: the data folder stayed held'); }), error => error.suspendedStop === true && error.stoppedBecause === 'left the app closed');
+  assert.equal(runner.results[0].status, 'suspended');
+  const ctx = {runner};
+  assert.equal(stopCode(Object.assign(new Error('x'), {suspendedStop: true, stoppedBecause: 'left the app closed'}), 'settings', ctx), 0);
+  assert.equal(ctx.runner.results.at(-1).name, 'steps after a suspended step that left the app closed');
+  const open = {page: {isClosed: () => false}, keepLogs: async () => {}};
+  const going = createRunner(() => open, {suspended: held, keepGoing: true});
+  await going.run('flaky step', async () => { throw new Error('a chip was late'); });
+  assert.equal(going.results[0].status, 'suspended', 'with the app still open the next step runs, as before');
+});
+
+test('a suspension with a platforms list holds only on those platforms; without one it holds everywhere (#2719: a Windows-only flake keeps its step blocking on Mac and Linux)', () => {
+  const lanes = {steps: {settings: {'win step': {lane: 'suspended', issue: ISSUE, platforms: ['win32']}, 'any step': {lane: 'suspended', issue: ISSUE}}}};
+  assert.deepEqual(Object.keys(suspendedStepsOf('settings', lanes, 'win32')).sort(), ['any step', 'win step']);
+  assert.deepEqual(Object.keys(suspendedStepsOf('settings', lanes, 'linux')), ['any step']);
+  assert.deepEqual(Object.keys(suspendedStepsOf('settings', lanes, 'darwin')), ['any step']);
+});
+
 test('suspendedStepsOf reads one suite\'s suspended entries from the registry and ignores anything else', () => {
   const lanes = {suites: {}, steps: {apply: {'a step': {lane: 'suspended', issue: ISSUE}, 'b step': {lane: 'tolerant'}}, other: {'x': {lane: 'suspended'}}}};
   assert.deepEqual(Object.keys(suspendedStepsOf('apply', lanes)), ['a step']);

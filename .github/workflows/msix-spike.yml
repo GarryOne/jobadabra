@@ -468,6 +468,40 @@ jobs:
           Start-Sleep 30
           "second start: app.log start lines now $(@(Select-String -Path "$real\logs\app.log" -Pattern '\[app\] start').Count); marker $((Get-Content "$real\store-cache-copy.json" -Raw | ConvertFrom-Json).state)"
           Get-Process | Where-Object { $_.Path -like '*WindowsApps*Jobadabra.Spike*' } | Stop-Process -Force -ErrorAction SilentlyContinue
+      - name: Probe · does a new folder under Roaming, made by the package, land in the real place
+        if: inputs.unvirtualized
+        shell: pwsh
+        run: |
+          # Why (31 Oct 2026, runs 41230357129 and 41232577742): cases E/F (neither folder exists) wrote the app's data into the package cache although the package is unvirtualized, while A-D and the copy proof (a folder already there) wrote the real folder. Hypothesis: a folder the package creates itself under Roaming goes to the private store.
+          $out = 'C:\spike-out'; New-Item -ItemType Directory -Force $out | Out-Null
+          Get-Process | Where-Object { $_.Path -like '*WindowsApps*Jobadabra.Spike*' } | Stop-Process -Force -ErrorAction SilentlyContinue
+          $pkg = Get-AppxPackage Jobadabra.Spike
+          $appId = ([xml](Get-Content (Join-Path $pkg.InstallLocation 'AppxManifest.xml'))).Package.Applications.Application.Id
+          $exe = (Get-ChildItem (Join-Path $pkg.InstallLocation 'app') -Filter *.exe | Where-Object { $_.Name -notmatch 'uninstall|elevate' } | Select-Object -First 1).FullName
+          $roaming = $env:APPDATA
+          $private = Join-Path $env:LOCALAPPDATA "Packages\$($pkg.PackageFamilyName)\LocalCache\Roaming"
+          "installed manifest Properties:"; [regex]::Match((Get-Content (Join-Path $pkg.InstallLocation 'AppxManifest.xml') -Raw), '(?s)<Properties>.*?</Properties>').Value
+          foreach ($n in 'ProbeFresh', 'ProbeFreshNode', 'ProbePre', 'ProbePreNode', 'ProbeDeep') { Remove-Item (Join-Path $roaming $n), (Join-Path $private $n) -Recurse -Force -ErrorAction SilentlyContinue }
+          New-Item -ItemType Directory -Force (Join-Path $roaming 'ProbePre'), (Join-Path $roaming 'ProbePreNode') | Out-Null
+          @'
+          const fs = require('fs'), path = require('path');
+          const r = process.env.APPDATA;
+          fs.mkdirSync(path.join(r, 'ProbeFreshNode'), {recursive: true}); fs.writeFileSync(path.join(r, 'ProbeFreshNode', 'f.txt'), 'x');
+          fs.writeFileSync(path.join(r, 'ProbePreNode', 'g.txt'), 'y');
+          fs.mkdirSync(path.join(r, 'ProbeDeep', 'a', 'b'), {recursive: true}); fs.writeFileSync(path.join(r, 'ProbeDeep', 'a', 'b', 'h.txt'), 'z');
+          '@ | Set-Content "$out\probe2.js"
+          @"
+          `$a = Join-Path `$env:APPDATA 'ProbeFresh'
+          New-Item -ItemType Directory -Force `$a | Out-Null; Set-Content "`$a\f.txt" 'x'
+          Set-Content (Join-Path `$env:APPDATA 'ProbePre\g.txt') 'y'
+          `$env:ELECTRON_RUN_AS_NODE = '1'
+          & '$exe' $out\probe2.js
+          "@ | Set-Content "$out\run2.ps1"
+          Invoke-CommandInDesktopPackage -PackageFamilyName $pkg.PackageFamilyName -AppId $appId -Command 'powershell.exe' -Args "-NoProfile -ExecutionPolicy Bypass -File $out\run2.ps1" -PreventBreakaway
+          Start-Sleep 15
+          foreach ($f in 'ProbeFresh\f.txt', 'ProbePre\g.txt', 'ProbeFreshNode\f.txt', 'ProbePreNode\g.txt', 'ProbeDeep\a\b\h.txt') {
+            "{0,-24} real folder: {1,-5}  private cache: {2}" -f $f, (Test-Path (Join-Path $roaming $f)), (Test-Path (Join-Path $private $f))
+          }
       - name: Keep the report
         if: always()
         uses: actions/upload-artifact@v6

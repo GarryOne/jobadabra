@@ -389,3 +389,27 @@ class SoakOnlyApprovedTests(unittest.TestCase):
         api = [{'tag_name': 'a', 'body': 'Notes\n\nBeta-approved: unit suites and every end-to-end suite passed on commit 547a444 (2026-10-03)'},
                {'tag_name': 'b', 'body': 'Not Beta-approved: yet'}, {'tag_name': 'c', 'body': None}]
         self.assertEqual(canary.approved_tags(api), {'a'})
+
+
+class RateLimitIsNamed(unittest.TestCase):
+    """Beta 41226261602, "Clean up old builds": GitHub's rate-limit error object was read as the release list and died in beta_kept (line 141)."""
+    BODY = {'message': 'API rate limit exceeded for installation. If you reach out to GitHub Support for help', 'documentation_url': 'https://docs.github.com/rest'}
+
+    def run_mode(self, mode, body):
+        return subprocess.run([sys.executable, str(SCRIPT), mode], input=json.dumps(body), capture_output=True, text=True, env={'PATH': '/usr/bin:/bin'})   # no gh on PATH: the reset time is 'not readable', nothing reaches GitHub
+
+    def test_the_error_object_is_a_named_limit_not_a_traceback(self):
+        for mode in ('--beta-kept', '--canary'):
+            done = self.run_mode(mode, self.BODY)
+            self.assertEqual(done.returncode, 1, mode)
+            self.assertIn('GitHub API rate limit (403 … for installation)', done.stderr)
+            self.assertNotIn('Traceback', done.stderr)
+            self.assertNotIn('AttributeError', done.stderr)
+
+    def test_another_error_object_says_what_github_answered(self):
+        done = self.run_mode('--beta-kept', {'message': 'Not Found'})
+        self.assertEqual(done.returncode, 1)
+        self.assertIn("GitHub answered 'Not Found', not a list", done.stderr)
+
+    def test_a_real_list_still_works(self):
+        self.assertEqual(self.run_mode('--beta-kept', []).returncode, 0)

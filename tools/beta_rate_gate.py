@@ -18,7 +18,16 @@ MAX_NIGHTS_INSPECTED, MAX_PAGES = 21, 2   # three weeks of nights; two pages of 
 
 def gh(*args, binary=False):
     """The injectable GitHub transport, also used for binary artifact downloads."""
-    output = subprocess.run(['gh', *args], check=True, capture_output=True).stdout
+    # Why (31 Oct 2026, a8; beta 41226261602): the jobs read died with "exit 1" when the installation budget was spent; a limit now says so, with its reset time.
+    # Imported here: the PR verdict loads this file alone as a companion (tests/test_beta_rate_gate.py), where its sibling may be missing: then gh's plain error stands.
+    try:
+        try:
+            from .github_limit import run_gh
+        except ImportError:
+            from github_limit import run_gh
+    except ImportError:
+        run_gh = None
+    output = run_gh(*args, binary=True) if run_gh else subprocess.run(['gh', *args], check=True, capture_output=True).stdout
     return output if binary else output.decode('utf-8')
 
 

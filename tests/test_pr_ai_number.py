@@ -474,7 +474,7 @@ class StandaloneWriter(unittest.TestCase):
             tmp = Path(folder)
             copied = tmp / 'standalone'
             copied.mkdir()
-            (copied / 'pr-verdict.py').write_text((root / 'tools/pr-verdict.py').read_text())
+            (copied / 'pr-verdict.py').write_text((root / 'tools/pr-verdict.py').read_text()); (copied / 'github_limit.py').write_text((root / 'tools/github_limit.py').read_text())
             for name in ('pr_ai_number.py', 'main_e2e_state.py', 'beta_rate_gate.py', 'pr_speed_number.py', 'pr_verdict_runs.py'):
                 (tmp / name).write_text((root / 'tools' / name).read_text())
             gh = tmp / 'gh'

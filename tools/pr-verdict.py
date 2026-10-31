@@ -456,4 +456,5 @@ def main():
 
 
 if __name__ == '__main__':
-    sys.exit(main())
+    from github_limit import exit_code   # next to this script (sys.path[0]); in pr-verdict.yml's sparse lists (tests/test_sparse_checkout_has_its_files.py)
+    sys.exit(exit_code(main, 'PR verdict not written'))

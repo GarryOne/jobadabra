@@ -145,6 +145,10 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         timeout-minutes: 5
+      - uses: ./.github/actions/gh-ledger
+        with:
+          phase: start
+        timeout-minutes: 5
       - uses: actions/setup-node@v5
         timeout-minutes: 5
         with:
@@ -209,6 +213,11 @@ jobs:
           CI_FREE_AI_CF_ACCOUNT_ID: ${{ secrets.CI_FREE_AI_CF_ACCOUNT_ID }}   # with the token: the day's $1 cap on Workers AI neurons (lib/ai-cap.mjs; owner, 28 Oct 2026)
           CI_CF_ANALYTICS_TOKEN: ${{ secrets.CI_CF_ANALYTICS_TOKEN }}   # Account Analytics: Read only; unreadable count = the AI is capped (lib/ai-cap.mjs, fail closed)
         run: node desktop/e2e/key-preflight.mjs
+      - if: always()
+        uses: ./.github/actions/gh-ledger
+        with:
+          phase: end
+        timeout-minutes: 5
   suite:
     name: ${{ matrix.burnIn && format('{0} · burn-in {1}/5', matrix.suite, matrix.burnIn) || matrix.key }}
     needs: plan
@@ -336,7 +345,11 @@ jobs:
           path: lock-tools
           sparse-checkout: |
             tools/e2e-lock.sh
+            tools/gh-ledger.sh
             tools/scan-e2e-artifacts.py
+      - name: Count this job's gh calls (the ledger)
+        timeout-minutes: 5
+        run: bash lock-tools/tools/gh-ledger.sh start
       - uses: actions/setup-node@v5
         timeout-minutes: 5
         with:
@@ -672,11 +685,16 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           E2E_LOCK_TOKEN: ${{ steps.lock_app_end.outputs.token }}
         run: bash lock-tools/tools/e2e-lock.sh release "${{ matrix.key }}"
+      - name: This job's gh calls and the budget left (the ledger)
+        if: always()
+        timeout-minutes: 5
+        run: bash lock-tools/tools/gh-ledger.sh end
 
   # Nothing tested is never green (gate G7, owner's yes 26 Oct 2026). A scheduled run on main that planned no suite (a release run was testing, the commit's looks were
   # used up, nothing varies) used to end green: on 25 Oct the 23:33 and 23:47 runs skipped while beta 2 ran and read as a green main. It now says why and ends CANCELLED
   # (grey). plan-run.mjs counts only green or red runs as tested, so the next scheduled run tests this commit. Never in a gate (gate_tag): there it would cancel a release.
   # The AI screenshot review: every suite's pages in ONE Claude batch, after the suites (.github/actions/e2e-review; owner, 26 Oct 2026: "cut the costs in half, but close to the same quality as Claude").
+
   review:
     name: AI review of the screenshots
     needs: [plan, suite]
@@ -698,6 +716,10 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         timeout-minutes: 5
+      - uses: ./.github/actions/gh-ledger
+        with:
+          phase: start
+        timeout-minutes: 5
       - uses: actions/setup-node@v5
         timeout-minutes: 5
         with:
@@ -710,6 +732,11 @@ jobs:
           provider: ${{ inputs.ai_provider || vars.CI_AI_PROVIDER }}
           publish-key: ${{ secrets.AI_COST_PUBLISH_KEY }}
           github-token: ${{ github.token }}
+      - if: always()
+        uses: ./.github/actions/gh-ledger
+        with:
+          phase: end
+        timeout-minutes: 5
 
   nothing-tested:
     name: Nothing tested
@@ -749,7 +776,13 @@ jobs:
           sparse-checkout: |
             desktop/e2e
             tools/merge-e2e-report.sh
+            tools/gh-ledger.sh
+            .github/actions/gh-ledger
             tools/scan-e2e-artifacts.py
+      - uses: ./.github/actions/gh-ledger
+        with:
+          phase: start
+        timeout-minutes: 5
       - uses: actions/setup-node@v5
         timeout-minutes: 5
         with:
@@ -786,6 +819,11 @@ jobs:
           name: e2e-report
           path: e2e-report
           compression-level: 0
+      - if: always()
+        uses: ./.github/actions/gh-ledger
+        with:
+          phase: end
+        timeout-minutes: 5
 
   # The code → suite map (gate G1b, owner's yes 26 Oct 2026): after a main check, the suites' coverage files are laid over the previous map (a suite this run did
   # not test keeps its entry) and kept as the artifact e2e-coverage-map, which a PR's plan downloads (desktop/e2e/pr-suites.mjs). Why: on 25 Oct #1911 changed
@@ -815,8 +853,14 @@ jobs:
           sparse-checkout: |
             desktop/e2e
             tools/scan-e2e-artifacts.py
+            tools/gh-ledger.sh
+            .github/actions/gh-ledger
           fetch-depth: 0
           filter: blob:none
+      - uses: ./.github/actions/gh-ledger
+        with:
+          phase: start
+        timeout-minutes: 5
       - uses: actions/download-artifact@v7
         timeout-minutes: 5
         with:
@@ -854,6 +898,11 @@ jobs:
           name: e2e-coverage-map
           path: map/coverage-map.json
           retention-days: 30
+      - if: always()
+        uses: ./.github/actions/gh-ledger
+        with:
+          phase: end
+        timeout-minutes: 5
 
   # Telegram (owner, 14 Oct 2026): a scheduled or gate run that failed sends 🔴 with the failed suites; the first green one after a failure sends 🟢
   # (desktop/e2e/ci-alert.mjs, bot @jobpilotto_ci_alerts_bot). Not for runs by hand of other kinds (a mutant, a canary, a soak).
@@ -873,7 +922,13 @@ jobs:
         with:
           sparse-checkout: |
             desktop/e2e
+            tools/gh-ledger.sh
+            .github/actions/gh-ledger
             tools
+      - uses: ./.github/actions/gh-ledger
+        with:
+          phase: start
+        timeout-minutes: 5
       - name: Tell the owner (a failure, or back to green)
         timeout-minutes: 5
         # Why (owner, 27 Oct 2026, via the coordinator): a run cancelled by hand is no failure; it sent "🔴 … the estimate is above the cap, or the key is missing" (refill 40451220954). cancelled() is the run's own cancel, never a job's timeout. Also (27 Oct 2026, coordinator): a by-hand run on a PR branch alerted the owner (harness-daily 40457998294), so a dispatch on a branch other than main sends none; a tag (the gate) and main still do. Guard: tests/test_ci_alert_cancel.py.
@@ -898,6 +953,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           AFTER_MERGE: ${{ inputs.after_merge }}
         run: if [ -n "$AFTER_MERGE" ]; then python3 tools/e2e_bisect.py after-merge "$GITHUB_RUN_ID"; else python3 tools/e2e_bisect.py after-run "$GITHUB_RUN_ID"; fi   # after a merge: silent here; e2e-revert.yml owns the retry and revert
+      - if: always()
+        uses: ./.github/actions/gh-ledger
+        with:
+          phase: end
+        timeout-minutes: 5
 
   # The release step of a gate by hand (gh workflow run e2e.yml -f gate_tag=<tag>): beta-approve.yml, the same job the release run (desktop.yml) shows as its own
   # "Release · Mac beta" step after "E2E · Mac + Linux" (release_run: not here, so it is not done twice).
@@ -973,7 +1033,13 @@ jobs:
         with:
           sparse-checkout: |
             desktop/e2e
+            tools/gh-ledger.sh
+            .github/actions/gh-ledger
             tools/scan-e2e-artifacts.py
+      - uses: ./.github/actions/gh-ledger
+        with:
+          phase: start
+        timeout-minutes: 5
       - uses: actions/setup-node@v5
         timeout-minutes: 5
         with:
@@ -999,3 +1065,8 @@ jobs:
           name: ai-credit-alert-${{ github.run_id }}
           path: ai-credit-alert/alert-sent.txt
           overwrite: true
+      - if: always()
+        uses: ./.github/actions/gh-ledger
+        with:
+          phase: end
+        timeout-minutes: 5

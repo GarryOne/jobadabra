@@ -51,6 +51,10 @@ jobs:
         timeout-minutes: 5
         with:
           fetch-depth: 0
+      - uses: ./.github/actions/gh-ledger
+        with:
+          phase: start
+        timeout-minutes: 5
       - uses: actions/setup-node@v5
         timeout-minutes: 5
         with:
@@ -122,3 +126,8 @@ jobs:
           }
           if [ -n "$SUITES" ]; then listed e2e.yml; fi
           if [ -n "$WINDOWS" ]; then listed e2e-windows.yml; fi
+      - if: always()
+        uses: ./.github/actions/gh-ledger
+        with:
+          phase: end
+        timeout-minutes: 5

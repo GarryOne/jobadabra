@@ -43,6 +43,8 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+from github_limit import GitHubLimit, expect_list, run_gh  # noqa: E402
+from canary_beta_kept import approved_tags, beta_kept  # noqa: E402,F401  (re-exported: tests and tools/prune-releases.sh call them through canary_promote)
 from release_guard import is_desktop  # noqa: E402  (only desktop-v* tags are ever stable or candidates)
 
 REPO = 'GarryOne/jobadabra'
@@ -123,28 +125,6 @@ def canary_of(releases, now, window=CANARY_WINDOW, floor=CANARY_FLOOR):
     recent = [r for r in newer if now - parse_time(r['createdAt']) < window
               and (not floor or version_key(version_of(r['tagName'])) >= version_key(floor))]
     return min(recent, key=lambda r: version_key(version_of(r['tagName'])), default=None)
-
-
-def approved_tags(api_releases):
-    """Tags whose release notes carry the gate's `Beta-approved:` line (tools/beta-approve.sh), from GET /repos/{repo}/releases."""
-    return {r['tag_name'] for r in api_releases if re.search(r'^Beta-approved:', r.get('body') or '', re.M)}
-
-
-# The lines the gate writes and each platform's app reads (desktop/lib/updater.js BETA_MARK, BETA_MARK_WINDOWS).
-BETA_MARKS = (re.compile(r'^Beta-approved:', re.M), re.compile(r'^Beta-approved \(Windows\):', re.M))
-
-
-def beta_kept(api_releases):
-    """The test builds tools/prune-releases.sh must keep: per platform, the newest release approved for its beta testers, when that is a
-    pre-release (stable ones are never pruned). From GET /repos/{repo}/releases. 7 Oct 2026: keeping only the newest 3 test builds deleted
-    desktop-v0.5.16, the one build approved for Windows, after four builds failed their gate."""
-    live = sorted((r for r in api_releases if not r.get('draft')), key=lambda r: r.get('created_at') or '', reverse=True)
-    kept = set()
-    for mark in BETA_MARKS:
-        newest = next((r for r in live if mark.search(r.get('body') or '')), None)
-        if newest and newest.get('prerelease'):
-            kept.add(newest['tag_name'])
-    return kept
 
 
 def approved_only(releases, approved):
@@ -370,7 +350,7 @@ class GitHub:
         self.repo, self.key, self.url = repo, key, url
 
     def _gh(self, *args):
-        return subprocess.run(['gh', *args], capture_output=True, text=True, check=True).stdout
+        return run_gh(*args)   # a rate limit raises GitHubLimit, named with its reset (tools/github_limit.py)
 
     def releases(self):
         return json.loads(self._gh('release', 'list', '-R', self.repo, '-L', '100', '--json',
@@ -461,11 +441,20 @@ def main(argv=None):
     parser.add_argument('--beta-kept', action='store_true',
                         help="read GET /repos/{repo}/releases (with bodies) on stdin, print the test builds that are a platform's newest beta, one per line")
     args = parser.parse_args(argv)
+    try:
+        return run(args)
+    except (GitHubLimit, ValueError) as error:   # Why (31 Oct 2026, a8; beta 41226261602): GitHub's error object was iterated as a release list, a traceback at line 141
+        print(f'canary_promote: {error}', file=sys.stderr)
+        return 1
+
+
+def run(args):
+    """The chosen mode; raises GitHubLimit or ValueError (main prints it, one line)."""
     if args.beta_kept:
-        print('\n'.join(sorted(beta_kept(json.load(sys.stdin)))))
+        print('\n'.join(sorted(beta_kept(expect_list(json.load(sys.stdin), 'the release list (GET /releases)')))))
         return 0
     if args.canary:
-        found = canary_of(json.load(sys.stdin), datetime.now(timezone.utc))
+        found = canary_of(expect_list(json.load(sys.stdin), 'the release list (gh release list)'), datetime.now(timezone.utc))
         print(found['tagName'] if found else '')
         return 0
     github = GitHub(args.repo, key=os.environ.get(KEY_ENV, '').strip() or None)

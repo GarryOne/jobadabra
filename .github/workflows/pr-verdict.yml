@@ -61,12 +61,24 @@ jobs:
           sparse-checkout: |
             tools/pr-verdict.py
             tools/pr_verdict_sweep.py
+            tools/gh-ledger.sh
+            .github/actions/gh-ledger
+            tools/github_limit.py
           sparse-checkout-cone-mode: false
+      - uses: ./.github/actions/gh-ledger
+        with:
+          phase: start
+        timeout-minutes: 5
       - id: heads
         timeout-minutes: 5
         env:
           GH_TOKEN: ${{ github.token }}
         run: python3 tools/pr-verdict.py --repo "$GITHUB_REPOSITORY" --sweep-heads
+      - if: always()
+        uses: ./.github/actions/gh-ledger
+        with:
+          phase: end
+        timeout-minutes: 5
 
   verdict:
     name: Write the PR's verdict
@@ -118,7 +130,14 @@ jobs:
             tools/pr_flaky.py
             tools/flaky-verdict.mjs
             desktop/e2e/
+            tools/gh-ledger.sh
+            .github/actions/gh-ledger
+            tools/github_limit.py
           sparse-checkout-cone-mode: false
+      - uses: ./.github/actions/gh-ledger
+        with:
+          phase: start
+        timeout-minutes: 5
       - name: All checks passed?
         timeout-minutes: 5
         env:
@@ -126,3 +145,8 @@ jobs:
           SHA: ${{ matrix.sha }}
           REVALIDATE_HEAD: ${{ github.event_name != 'workflow_run' && '--revalidate-head' || '' }}
         run: python3 tools/pr-verdict.py --repo "$GITHUB_REPOSITORY" --sha "$SHA" $REVALIDATE_HEAD
+      - if: always()
+        uses: ./.github/actions/gh-ledger
+        with:
+          phase: end
+        timeout-minutes: 5

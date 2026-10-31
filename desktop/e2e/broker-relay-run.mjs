@@ -22,10 +22,10 @@ export function childEnv(env, url, cap) {
  * A cap reached by design (capHit) is said but is not a failure.
  */
 export function outcomeOf(stats, job) {
-  const line = `broker relay (${job}): ${stats.calls} calls reached the broker, ${stats.ok} answered, ${stats.failed} failed or refused${stats.capHit ? `, ${stats.capHit} past the run's cap (those items wait for the next run)` : ''}`;
-  if (!stats.failed) return {line, why: ''};
+  const line = `broker relay (${job}): ${stats.calls} calls reached the broker, ${stats.ok} answered, ${stats.refused} failed or refused${stats.capHit ? `, ${stats.capHit} past the run's cap (those items wait for the next run)` : ''}`;
+  if (!stats.refused) return {line, why: ''};
   const first = stats.latched || stats.reasons[0] || 'unknown';
-  return {line, why: `${stats.failed} AI calls failed or were refused (${first}); their items stay unjudged until a run gets an answer`};
+  return {line, why: `${stats.refused} AI calls failed or were refused (${first}); their items stay unjudged until a run gets an answer`};
 }
 
 /** Runs `argv` behind a relay; resolves to the command's exit code. Takes {job, cap, argv, env, dir}. */

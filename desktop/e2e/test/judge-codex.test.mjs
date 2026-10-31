@@ -100,3 +100,11 @@ test('the flagged code\'s callers are in the evidence (3 of 4 live verdicts said
   assert.match(evidence, /uses of showOffer\(\) \(git grep -w\)/);
   assert.match(evidence, /desktop\/renderer\/page\.js:3 \(calls showOffer\)/);
 });
+
+test('JUDGE_MODEL picks the verdict pass\'s broker tier: sonnet (mid) by default, opus (large) when named', async () => {
+  const {judgeModel} = await import('../judge-codex.mjs');
+  const {toBrokerCall} = await import('../lib/broker-client.mjs');
+  assert.equal(judgeModel({}), 'claude-sonnet-5-5');
+  assert.equal(toBrokerCall({model: judgeModel({}), messages: []}).tier, 'mid');
+  assert.equal(toBrokerCall({model: judgeModel({JUDGE_MODEL: 'claude-opus-5-5'}), messages: []}).tier, 'large');
+});

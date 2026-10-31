@@ -12,8 +12,8 @@ const env = dir => ({AI_CAPPED_DIR: dir, GITHUB_OUTPUT: path.join(dir, 'out.txt'
 
 test('an answer comes back as text; nothing is written', async () => {
   const dir = temp();
-  const answer = await askOrSkip({}, {job: 'x', env: env(dir), ask: async () => ({ok: true, model: 'gpt', tier: 'mid', message: {content: [{text: 'hi'}]}})});
-  assert.deepEqual(answer, {ok: true, text: 'hi', model: 'gpt', tier: 'mid'});
+  const answer = await askOrSkip({}, {job: 'x', env: env(dir), ask: async () => ({ok: true, model: 'gpt', tier: 'mid', ms: 900, message: {content: [{text: 'hi'}], usage: {input_tokens: 5, output_tokens: 2}}})});
+  assert.deepEqual(answer, {ok: true, text: 'hi', model: 'gpt', tier: 'mid', ms: 900, usage: {input_tokens: 5, output_tokens: 2}});
   assert.equal(fs.existsSync(path.join(dir, 'ai-capped.json')), false);
 });
 

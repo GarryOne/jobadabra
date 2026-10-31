@@ -1,6 +1,6 @@
 // One broker call for a scheduled job that may be refused: the Codex budget is used up, the login is lost, the broker is down. The job then SKIPS with the reason (green with a warning, its later steps grey),
 // writes ai-capped.json for the one alert of the run (credit-alert.mjs --artifacts), and never moves to another provider.
-//   const answer = await askOrSkip(body, {job: 'ui-verdict'});   // {ok: true, text, model, tier} or {ok: false, why}
+//   const answer = await askOrSkip(body, {job: 'ui-verdict'});   // {ok: true, text, model, tier, ms, usage} or {ok: false, why}
 // Why (31 Oct 2026, owner: "is this expected? Why Anthropic is reached? We should use fully the Codex"; "over-budget jobs skip (grey) until Codex resets on 4 Nov, never paid"): four jobs of one UI-verdict run
 // each failed red on Anthropic's empty credit and each sent its own Telegram alert. A refused call is a skip with a reason, and one alert per run.
 // Job: report health
@@ -33,11 +33,11 @@ export function noteSkipped({job, why, env = process.env, dir = cappedDir(env)})
 
 /**
  * Asks the broker one Messages-shaped question (lib/broker-client.mjs). Takes the body and {job, dir, env, ask}.
- * Returns {ok: true, text, model, tier} on an answer, {ok: false, why} after a skip (noteSkipped ran), and throws on any other failure so the job goes red.
+ * Returns {ok: true, text, model, tier, ms, usage} on an answer, {ok: false, why} after a skip (noteSkipped ran), and throws on any other failure so the job goes red.
  */
 export async function askOrSkip(body, {job, dir, env = process.env, ask = askBroker} = {}) {
   const answer = await ask(body, {env});
-  if (answer.ok) return {ok: true, text: answer.message.content[0].text, model: answer.model, tier: answer.tier};
+  if (answer.ok) return {ok: true, text: answer.message.content[0].text, model: answer.model, tier: answer.tier, ms: answer.ms, usage: answer.message.usage};
   if (SKIPPED.includes(answer.status)) return {ok: false, why: noteSkipped({job, why: answer.detail || answer.status, ...(dir ? {dir} : {}), env})};
   throw new Error(`the Codex broker failed (${answer.status}): ${answer.detail}`);
 }

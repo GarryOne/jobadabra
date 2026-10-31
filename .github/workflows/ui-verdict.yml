@@ -15,6 +15,11 @@ on:
       issues:
         description: 'Re-judge these issues (comma-separated numbers): the verdicts are printed in the log and nothing is applied to the issues'
         required: false
+      judge_model:
+        description: 'Which Claude tier judges on the broker: claude-sonnet-5-5 (mid, gpt-6.1-sol; the default) or claude-opus-5-5 (large, gpt-6-astra). A by-hand measurement of the verdict quality (owner, 31 Oct 2026)'
+        type: choice
+        options: [claude-sonnet-5-5, claude-opus-5-5]
+        default: claude-sonnet-5-5
 
 permissions:
   contents: read
@@ -71,6 +76,8 @@ jobs:
           if [ -n "$shot" ]; then curl -fsSL -o .heal/screenshot.png "$shot" || echo "screenshot not downloaded"; fi
       - name: Codex judges it (read-only, one broker call; skips with its reason when the broker refuses)
         id: judge
+        env:
+          JUDGE_MODEL: ${{ inputs.judge_model }}
         run: node desktop/e2e/judge-codex.mjs --mode verdict
       - uses: actions/upload-artifact@v6
         if: always()

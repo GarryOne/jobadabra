@@ -19,7 +19,7 @@ test('the relay listens on 127.0.0.1 only, answers /v1/messages through the brok
     assert.equal(answer.status, 200);
     assert.equal((await answer.json()).content[0].text, 'hi');
     assert.equal((await fetch(`${relay.url}/v1/other`, {method: 'POST', body: '{}'})).status, 404);
-    assert.deepEqual([relay.stats.calls, relay.stats.ok, relay.stats.failed], [1, 1, 0]);
+    assert.deepEqual([relay.stats.calls, relay.stats.ok, relay.stats.refused], [1, 1, 0]);
   } finally { await relay.close(); }
 });
 
@@ -33,7 +33,7 @@ test('past the run\'s cap a call is refused 429 without asking the broker: the i
     assert.equal(over.status, 429);
     assert.match((await over.json()).error.message, /AI limit reached: this run's cap of 2 calls/);
     assert.equal(relay.stats.capHit, 3);
-    assert.equal(relay.stats.failed, 0, 'a cap reached by design is not a failure');
+    assert.equal(relay.stats.refused, 0, 'a cap reached by design is not a failure');
   } finally { await relay.close(); }
 });
 
@@ -46,7 +46,7 @@ test('the broker\'s first budget "no" latches: 429 "AI limit reached" to the eng
     assert.match((await first.json()).error.message, /^AI limit reached: the Codex broker said no \(budget:week 88%\)/);
     for (let i = 0; i < 5; i++) assert.equal((await post(relay)).status, 429);
     assert.equal(asked, 1, '1,417 failed calls one by one (run 41192760002) become one');
-    assert.equal(relay.stats.failed, 6);
+    assert.equal(relay.stats.refused, 6);
   } finally { await relay.close(); }
 });
 
@@ -99,7 +99,7 @@ test('a run whose calls all answer says nothing is skipped and leaves no note', 
   finally { console.log = log; }
   assert.equal(code, 0);
   assert.equal(fs.existsSync(path.join(dir, 'out')), false);
-  assert.equal(outcomeOf({calls: 1, ok: 1, failed: 0, capHit: 0, latched: '', reasons: []}, 'x').why, '');
+  assert.equal(outcomeOf({calls: 1, ok: 1, refused: 0, capHit: 0, latched: '', reasons: []}, 'x').why, '');
 });
 
 test('the scout step holds no Anthropic secret and no address off this machine; its AI runs behind the relay on the 40-call cap', () => {

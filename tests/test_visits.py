@@ -235,8 +235,11 @@ class OnlyVisitsTest(unittest.TestCase):
     def test_only_visits_is_refused_outside_mode_today(self):
         import subprocess
         import sys
-        done = subprocess.run([sys.executable, '-m', 'src', 'daily', '--mode', 'run', '--only-visits'], capture_output=True, text=True,
-                              env={**__import__('os').environ, 'JOB_PILOTTO_FOLLOW_APP': '0', 'JOB_PILOTTO_DISABLE': 'mail,notion,telegram,google_jobs'})
+        import tempfile
+        # Why (31 Oct 2026, a8): the child is not a unit test process, so without a data folder it wrote the checkout's data/field_stamp.json and run.lock (tools/py-shards.py names such a leak).
+        with tempfile.TemporaryDirectory() as data:
+            done = subprocess.run([sys.executable, '-m', 'src', 'daily', '--mode', 'run', '--only-visits'], capture_output=True, text=True,
+                                  env={**__import__('os').environ, 'JOB_PILOTTO_FOLLOW_APP': '0', 'JOB_PILOTTO_DISABLE': 'mail,notion,telegram,google_jobs', 'JOB_PILOTTO_DATA_DIR': data})
         self.assertEqual(done.returncode, 2)
         self.assertIn('--only-visits needs --mode today', done.stderr)
 

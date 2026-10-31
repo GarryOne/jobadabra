@@ -16,6 +16,10 @@ if sys.platform == 'win32':
         _init(self, suffix, prefix, dir, ignore_cleanup_errors, **kwargs)
     tempfile.TemporaryDirectory.__init__ = _lenient_init
 
+if os.environ.get('JOB_PILOTTO_AUDIT_CHECKOUT_DATA'):   # set by tools/py-shards.py: the test that writes into the checkout's data/ fails by name
+    import checkout_data_audit
+    checkout_data_audit.install(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 IDS = {name: f'test-{name.lower().replace("_", "-")}' for name in (
     'NOTION_APPLICATIONS_DB', 'NOTION_MATCHES_DB', 'NOTION_EVENTS_DB', 'NOTION_INSIGHTS_DB',
     'NOTION_INTERVIEWS_DB', 'NOTION_EMPLOYERS_DB', 'NOTION_AGENT_RUNS_DB', 'NOTION_CRON_RUNS_DB',

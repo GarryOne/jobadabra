@@ -2,6 +2,9 @@
 import contextlib
 import importlib.util
 import io
+import os
+import subprocess
+import sys
 import tempfile
 import unittest
 from unittest import mock
@@ -113,6 +116,65 @@ class NonBlockingOutputTests(unittest.TestCase):
             with mock.patch.multiple(shards, ROOT=Path(tmp), TESTS=Path(tmp), BOOTSTRAP='test_boot'), contextlib.redirect_stdout(io.StringIO()), \
                     contextlib.redirect_stderr(io.StringIO()):
                 self.assertEqual(shards.main(['--jobs', '1', 'test_loud']), 0)
+
+
+class CheckoutDataTests(unittest.TestCase):
+    """31 Oct 2026, a8: a shard run fails when a test leaves a file in the checkout's data/ or reports/, and a unit test's own paths.DATA is a temp folder."""
+    WRITER = ('import unittest\nfrom pathlib import Path\nROOT = Path(__file__).resolve().parent\n'
+              'class W(unittest.TestCase):\n    def test_w(self):\n        (ROOT / "data").mkdir(exist_ok=True)\n        (ROOT / "data" / "host_pace.json").write_text("{}")\n')
+    CLEAN = 'import unittest\nclass C(unittest.TestCase):\n    def test_c(self):\n        pass\n'
+
+    def run_shard(self, name, source):
+        with tempfile.TemporaryDirectory() as tmp:
+            Path(tmp, 'test_boot.py').write_text(self.CLEAN, encoding='utf-8')
+            Path(tmp, f'{name}.py').write_text(source, encoding='utf-8')
+            err = io.StringIO()
+            with mock.patch.multiple(shards, ROOT=Path(tmp), TESTS=Path(tmp), BOOTSTRAP='test_boot'), contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(err):
+                code = shards.main(['--jobs', '1', name])
+            return code, err.getvalue()
+
+    def test_a_test_that_writes_into_the_checkouts_data_folder_fails_the_run_and_is_named(self):
+        code, err = self.run_shard('test_leaky', self.WRITER)
+        self.assertEqual(code, 1)
+        self.assertIn('data/host_pace.json', err.replace('\\', '/'))
+
+    def test_a_test_that_writes_nothing_there_passes(self):
+        self.assertEqual(self.run_shard('test_tidy', self.CLEAN)[0], 0)
+
+    def test_only_added_or_changed_files_count_as_left_behind(self):
+        before = {'data/a.json': (1, 10), 'data/b.json': (2, 20)}
+        after = {'data/a.json': (1, 10), 'data/b.json': (3, 21), 'reports/c.json': (1, 5)}
+        self.assertEqual(shards.leaked(before, after), ['data/b.json', 'reports/c.json'])
+        self.assertEqual(shards.leaked(before, before), [])
+
+    def test_a_unit_test_process_without_a_data_folder_gets_its_own_temp_one(self):
+        code = 'import unittest, src.paths as p; print(p.DATA); print(p.REPORTS); print(p.jobs_db())'
+        env = {key: value for key, value in os.environ.items() if not key.startswith('JOB_PILOTTO_')}   # the shard's own JOB_PILOTTO_TEST_DATA_DIR included (Gitar on #2735)
+        done = subprocess.run([sys.executable, '-c', code], cwd=ROOT, env=env, capture_output=True, text=True)
+        data, reports, db = (Path(line) for line in done.stdout.split())
+        self.assertNotIn(ROOT, data.parents)
+        self.assertEqual((reports, db), (data / 'reports', data / 'jobs.sqlite'))
+        self.assertFalse(data.exists(), 'removed when the process ended')
+
+    def test_the_audit_hook_fails_the_writer_by_name_and_leaves_reads_and_other_folders_alone(self):
+        script = (
+            'import sqlite3, sys, tempfile\nfrom pathlib import Path\nsys.path.insert(0, %r)\nimport checkout_data_audit\n'
+            'root = Path(tempfile.mkdtemp())\n(root / "data").mkdir()\n(root / "data" / "kept.json").write_text("{}")\n(root / "elsewhere").mkdir()\n'
+            'checkout_data_audit.install(root)\n'
+            '(root / "elsewhere" / "ok.json").write_text("{}")\n(root / "data" / "kept.json").read_text()\n'
+            'for name, act in (("write_text", lambda: (root / "data" / "host_pace.json").write_text("{}")), ("open_w", lambda: open(root / "reports" / "x.txt", "w")),\n'
+            '                  ("sqlite", lambda: sqlite3.connect(root / "data" / "jobs.sqlite")), ("append", lambda: open(root / "data" / "kept.json", "a"))):\n'
+            '    try:\n        act()\n        print(name, "NOT-REFUSED")\n    except checkout_data_audit.CheckoutDataWrite:\n        print(name, "refused")\n'
+        ) % str(ROOT / 'tests')
+        done = subprocess.run([sys.executable, '-c', script], capture_output=True, text=True)
+        self.assertEqual(done.stdout.split('\n')[:4], ['write_text refused', 'open_w refused', 'sqlite refused', 'append refused'], done.stderr)
+
+    def test_a_process_a_test_starts_writes_into_the_shards_folder_not_the_checkout(self):
+        with tempfile.TemporaryDirectory() as shard_folder:
+            env = {key: value for key, value in os.environ.items() if not key.startswith('JOB_PILOTTO_')}
+            env.update({'JOB_PILOTTO_TEST_DATA_DIR': shard_folder, 'JOB_PILOTTO_FOLLOW_APP': '0', 'PYTHONPATH': str(ROOT)})
+            done = subprocess.run([sys.executable, '-c', 'from src import paths; print(paths.DATA); print(paths.REPORTS)'], cwd=ROOT, env=env, capture_output=True, text=True)
+            self.assertEqual(done.stdout.split(), [shard_folder, str(Path(shard_folder) / 'reports')], done.stderr)
 
 
 if __name__ == '__main__':

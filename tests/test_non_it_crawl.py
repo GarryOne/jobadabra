@@ -6,6 +6,7 @@ import json
 import os
 import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -36,9 +37,11 @@ ENGINEERING = [('Senior Software Engineer', '{place}'), ('Backend Developer', '{
 
 def crawl(fixture, rows, place):
     rows = rows + [(title, where.format(place=place)) for title, where in ENGINEERING]
-    env = {**os.environ, 'JOB_PILOTTO_LOCATIONS_FILE': str(FIXTURES / fixture), 'JOB_PILOTTO_CONFIG_DIR': str(ROOT / 'config')}
-    done = subprocess.run([sys.executable, '-c', CRAWL, str(ROOT), json.dumps(rows), str(FIXTURES / fixture)],
-                          capture_output=True, text=True, env=env, timeout=60)
+    # Why (31 Oct 2026, a8): the child is not a unit test process, so without a data folder it wrote the checkout's data/jobs.sqlite (tools/py-shards.py names such a leak).
+    with tempfile.TemporaryDirectory() as data:
+        env = {**os.environ, 'JOB_PILOTTO_LOCATIONS_FILE': str(FIXTURES / fixture), 'JOB_PILOTTO_CONFIG_DIR': str(ROOT / 'config'), 'JOB_PILOTTO_DATA_DIR': data}
+        done = subprocess.run([sys.executable, '-c', CRAWL, str(ROOT), json.dumps(rows), str(FIXTURES / fixture)],
+                              capture_output=True, text=True, env=env, timeout=60)
     assert done.returncode == 0, done.stderr
     return json.loads(done.stdout.strip().splitlines()[-1])
 

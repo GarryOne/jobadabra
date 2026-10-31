@@ -10,6 +10,7 @@ import argparse
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -68,6 +69,27 @@ def weights():
 
 
 DURATIONS = ['--durations', '0'] if sys.version_info >= (3, 12) else []   # unittest prints every test's time (3.12+): the shards name their slow tests
+
+
+def checkout_state(root):
+    """{path: (size, mtime_ns)} of every file under root/data and root/reports (where src/paths.py puts what the engine writes when nothing says otherwise)."""
+    state = {}
+    for folder in ('data', 'reports'):
+        for path in (Path(root) / folder).rglob('*'):
+            try:
+                if path.is_file():
+                    info = path.stat()
+                    state[str(path.relative_to(root))] = (info.st_size, info.st_mtime_ns)
+            except OSError:
+                continue   # a file a shard removed while this looked
+    return state
+
+
+def leaked(before, after):
+    """The files a run added or changed in the checkout's data/ or reports/, sorted.
+    Why (31 Oct 2026, a8): a test that wrote through paths.DATA left state the next run read (host_pace.json at a moved clock, jobs.sqlite on 26 Oct). src/paths.py gives a unit test run
+    its own temp folder; this fails a run in which something still reached the checkout (a subprocess, an explicit ROOT / 'data')."""
+    return sorted(name for name, seen in after.items() if before.get(name) != seen)
 
 
 def ended_badly(out, code):
@@ -144,15 +166,20 @@ def main(argv=None):
         return 2
     env = dict(os.environ)
     env['PYTHONPATH'] = os.pathsep.join([str(TESTS), env.get('PYTHONPATH', '')]).rstrip(os.pathsep)
+    env['JOB_PILOTTO_AUDIT_CHECKOUT_DATA'] = '1'   # tests/test_0_notion_ids.py installs tests/checkout_data_audit.py in every shard
     started = time.monotonic()
+    before = checkout_state(ROOT)
     # test_0_notion_ids sets the fake IDs the whole suite imports against; discovery loads it first, so every shard does too.
     # Each shard writes to a file, never a pipe: a process a test starts (Node does this) can leave a shared pipe non-blocking, and a print meeting a
     # full pipe then raises BlockingIOError and Python exits 120 with every test passed (#2136, 26 Oct 2026). Guard: tests/test_py_shards.py.
     shard_list = split(modules, args.jobs)
     logs = [tempfile.TemporaryFile() for _ in shard_list]
-    procs = [(shard, subprocess.Popen([sys.executable, '-m', 'unittest', '-q', '-b', *DURATIONS, BOOTSTRAP, *[m for m in shard if m != BOOTSTRAP]], cwd=ROOT, env=env,
-                                      stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT))
-             for shard, log in zip(shard_list, logs)]
+    # Why (31 Oct 2026, a8): each shard gets its own data folder for the processes its tests start (src/paths.py JOB_PILOTTO_TEST_DATA_DIR); three CI rounds of hunting the test that wrote
+    # data/jobs.sqlite from a child process (try 3) ended in closing the class here instead.
+    data_folders = [tempfile.mkdtemp(prefix='jobadabra-shard-data-') for _ in shard_list]
+    procs = [(shard, subprocess.Popen([sys.executable, '-m', 'unittest', '-q', '-b', *DURATIONS, BOOTSTRAP, *[m for m in shard if m != BOOTSTRAP]], cwd=ROOT,
+                                      env={**env, 'JOB_PILOTTO_TEST_DATA_DIR': folder}, stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT))
+             for shard, log, folder in zip(shard_list, logs, data_folders)]
     results = [None] * len(procs)
     def collect(i, proc):   # each shard's own end time, said the moment it ends (a live CI log is not blank until the last shard)
         proc.wait()
@@ -175,6 +202,12 @@ def main(argv=None):
         if why:
             failed += 1
             print(f'py-shards: shard FAILED, {why} ({len(shard)} modules: {", ".join(shard[:4])}...)\n{out}', file=sys.stderr)
+    for folder in data_folders:
+        shutil.rmtree(folder, ignore_errors=True)
+    left_behind = leaked(before, checkout_state(ROOT))
+    if left_behind:
+        failed += 1
+        print('py-shards: the tests left files in the checkout (a test must write under its own temp folder, never ROOT / "data" or "reports"):\n  ' + '\n  '.join(left_behind[:20]), file=sys.stderr)
     by_module, by_test = slowest([out for out, _ in results])
     if by_module:
         print('py-shards: slowest modules: ' + ', '.join(f'{m} {s:.0f}s' for m, s in by_module[:8]))

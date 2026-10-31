@@ -1,10 +1,13 @@
 """Repository paths shared by every module."""
+import atexit
 import contextlib
 from datetime import datetime
 import json
 import os
 import re
+import shutil
 import sys
+import tempfile
 import time
 from pathlib import Path
 
@@ -121,8 +124,23 @@ FOLLOWED = follow_app()
 # Tests read their own example user (an SRE in Zurich, tests/fixtures/config), never the shipped example defaults.
 CONFIG = (Path(os.environ['JOB_PILOTTO_CONFIG_DIR']) if os.getenv('JOB_PILOTTO_CONFIG_DIR')
           else ROOT / 'tests' / 'fixtures' / 'config' if 'unittest' in sys.modules else ROOT / 'config')
-DATA = Path(os.environ['JOB_PILOTTO_DATA_DIR']) if os.getenv('JOB_PILOTTO_DATA_DIR') else ROOT / 'data'
-REPORTS = DATA / 'reports' if os.getenv('JOB_PILOTTO_DATA_DIR') else ROOT / 'reports'
+
+
+def _test_data_folder():
+    """A fresh data folder for this test process, removed when it ends.
+    Why (31 Oct 2026, a8; the 2nd time: 26 Oct was jobs.sqlite, 31 Oct host_pace.json): without JOB_PILOTTO_DATA_DIR a unit test that wrote through DATA wrote into the
+    checkout's data/, and the next run read it back (a pause learned at one clock was still there when the clock moved). Only a unit test run gets this folder; the app and the
+    scripts keep the checkout's data/ (the example data) when nothing is set, exactly as before. tools/py-shards.py fails a run that still leaves a file in data/ or reports/."""
+    folder = tempfile.mkdtemp(prefix='jobadabra-test-data-')
+    atexit.register(shutil.rmtree, folder, ignore_errors=True)
+    return Path(folder)
+
+
+# JOB_PILOTTO_TEST_DATA_DIR is the shard runner's (tools/py-shards.py) folder for every process a test starts: a child that imports src.paths without unittest loaded (python -m src ...)
+# would otherwise write the checkout's data/. It is not a steering variable of the app: nothing sets it outside a test run.
+_OWN_DATA = os.getenv('JOB_PILOTTO_DATA_DIR') or os.getenv('JOB_PILOTTO_TEST_DATA_DIR') or ('unittest' in sys.modules and str(_test_data_folder())) or ''
+DATA = Path(_OWN_DATA) if _OWN_DATA else ROOT / 'data'
+REPORTS = DATA / 'reports' if _OWN_DATA else ROOT / 'reports'
 JOBS_DB = DATA / 'jobs.sqlite'
 _JOBS_DB = JOBS_DB
 

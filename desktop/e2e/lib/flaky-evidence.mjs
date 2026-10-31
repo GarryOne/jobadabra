@@ -3,8 +3,9 @@
 // Why (31 Oct 2026, owner: "You detect flakiness and immediately treat the flakiness root cause"): the evidence is searched by the tool on every red, from runs of every kind
 // (main after-merge, nightly, beta, re-checks, PR runs), because a green on a PR head is as good a "same code passed" as one on main (trees are compared, not ancestry).
 // Why (31 Oct 2026, owner: "Never suspend safety steps"; found on #2703): the red 41200878403 ran the Notion stand-in store and its "green on the same commit" 41200737331 ran sqlite,
-// so the verdict said flaky for two different inputs and suspended a safety step. A green counts only from a run on the red's own store (io.storeOf); other-store greens are counted, not compared.
-// Invariants: every read is injected (`io`), so tests never reach GitHub; a read that fails leaves that green uncomparable ("unknown"), never "changed" or "flaky". Without io.storeOf the store is not looked at.
+// so the verdict said flaky for two different inputs and suspended a safety step. A green counts only from a view artifact on the red's own store (io.storesOf: per artifact, because a gate run holds
+// both stores of a suite, Gitar on #2726); other-store greens are counted, not compared.
+// Invariants: every read is injected (`io`), so tests never reach GitHub; a read that fails leaves that green uncomparable ("unknown"), never "changed" or "flaky". Without io.storesOf the store is not looked at.
 // Not covered: Mac vs Linux (a suite moves runners only when the run sets all_on_mac; the artifacts do not record the OS); Windows lanes are keyed apart (windows-<suite>).
 // Tests: test/flaky-evidence.test.mjs
 // Job: report health
@@ -35,18 +36,13 @@ export async function verdictsFor({suite, steps, redSha, redRun, redAt, io, wind
   const pending = new Set(steps);
   const otherStore = Object.fromEntries(steps.map(step => [step, 0]));
   const stores = new Map();
-  const storeOn = id => { if (!stores.has(id)) stores.set(id, Promise.resolve(io.storeOf(id, suite)).catch(() => null)); return stores.get(id); };
-  const redStore = io.storeOf ? await storeOn(redRun) : undefined;
+  const storesOn = id => { if (!stores.has(id)) stores.set(id, Promise.resolve(io.storesOf(id, suite)).catch(() => ({}))); return stores.get(id); };
+  const redStore = io.storesOf ? soleStore(await storesOn(redRun)) : undefined;   // a red run holding several stores (a gate) does not say which one failed
   const changedSince = async sha => {
     if (!diffs.has(sha)) diffs.set(sha, await Promise.resolve(io.changedNames(sha, redSha)).catch(() => null));
     return diffs.get(sha);
   };
   const compare = async (run, step) => {
-    if (io.storeOf) {
-      const store = await storeOn(run.id);
-      if (redStore == null || store == null) { compared[step].push({green: {sha: run.sha, run: run.id, url: run.url}, files: null}); return; }   // a store that cannot be read proves nothing
-      if (store !== redStore) { if (++otherStore[step] >= maxGreens) pending.delete(step); return; }   // another store is another input: counted, never compared
-    }
     const changed = await changedSince(run.sha);
     const files = changed ? touched(changed, sets[step]) : null;
     compared[step].push({green: {sha: run.sha, run: run.id, url: run.url}, files});
@@ -54,23 +50,42 @@ export async function verdictsFor({suite, steps, redSha, redRun, redAt, io, wind
   };
   for (const run of nearestFirst(await io.runs(window), redRun, redAt)) {
     if (!pending.size) break;
-    for (const table of await stepTables(run, suite, io)) {
-      for (const step of [...pending].filter(name => passedIn(table, name))) await compare(run, step);
-    }
+    const {same, left} = await passesOf(run, {suite, io, pending, redStore, byName: io.storesOf ? await storesOn(run.id) : null});
+    for (const step of same) if (pending.has(step)) await compare(run, step);
+    for (const step of left) if (pending.has(step) && !same.has(step) && ++otherStore[step] >= maxGreens) pending.delete(step);
   }
   return steps.map(step => {
     const verdict = judge(compared[step]);
     // The evidence an owner issue quotes: how many files moved between the green and the red, and how many of them the step runs.
-    return {step, redSha, ...verdict, ...(io.storeOf ? {store: redStore ?? null, otherStore: otherStore[step]} : {}), ...(verdict.verdict === 'flaky' ? {movedFiles: diffs.get(verdict.green.sha)?.length ?? 0, stepFileCount: sets[step].files.length} : {})};
+    return {step, redSha, ...verdict, ...(io.storesOf ? {store: redStore ?? null, otherStore: otherStore[step]} : {}), ...(verdict.verdict === 'flaky' ? {movedFiles: diffs.get(verdict.green.sha)?.length ?? 0, stepFileCount: sets[step].files.length} : {})};
   });
 }
 
 const passedIn = (table, step) => Boolean(table?.results?.some(result => result.name === step && result.status === 'passed'));
 
-/** The step tables (steps.json) of a run's e2e-view artifacts for one suite, every shard; an unreadable one is left out. */
+/** The step tables (steps.json) of a run's e2e-view artifacts for one suite, every shard and store leg, each with its artifact name; an unreadable one is left out. */
 async function stepTables(run, suite, io) {
   const names = (await io.viewNames(run.id)).filter(name => name.startsWith('e2e-view-') && suiteOfKey(name.slice('e2e-view-'.length)) === suite);
-  return Promise.all(names.map(name => io.stepsOf(run.id, name).catch(() => null)));
+  return Promise.all(names.map(async name => ({name, table: await io.stepsOf(run.id, name).catch(() => null)})));
+}
+
+/** One run's passes of the pending steps: `same` passed on the red's store (or any store when none is looked at), `left` passed only on another known store (counted, never compared; an unknown store proves nothing). */
+async function passesOf(run, {suite, io, pending, redStore, byName}) {
+  const same = new Set(), left = new Set();
+  for (const {name, table} of await stepTables(run, suite, io)) {
+    const store = byName ? byName[name] : undefined;
+    for (const step of [...pending].filter(item => passedIn(table, item))) {
+      if (!byName || (redStore != null && store === redStore)) same.add(step);
+      else if (redStore != null && store != null) left.add(step);
+    }
+  }
+  return {same, left};
+}
+
+/** The one store a run's artifacts of a suite agree on, or null when they are unknown or differ. byName: {artifact name: store | null}. */
+function soleStore(byName) {
+  const found = new Set(Object.values(byName || {}));
+  return found.size === 1 && !found.has(null) ? [...found][0] : null;
 }
 
 /** The runs that count as evidence (not the red itself, not a mutant), nearest the red in time first; the listed order when the red's time is unknown. */
@@ -125,24 +140,27 @@ export function ghIo({repo, root = process.cwd(), run = gh, remoteUrl = `https:/
     const dir = download(runId, name);
     try { return JSON.parse(fs.readFileSync(path.join(dir, file), 'utf8')); } finally { fs.rmSync(dir, {recursive: true, force: true}); }
   };
+  const coverageStore = async (runId, name) => {
+    const dir = download(runId, name);
+    try {
+      const file = fs.readdirSync(dir).find(item => /^coverage-.*\.json$/.test(item));
+      return file ? JSON.parse(fs.readFileSync(path.join(dir, file), 'utf8')).store ?? null : null;
+    } catch { return null; } finally { fs.rmSync(dir, {recursive: true, force: true}); }
+  };
   return {
     runs: async limit => JSON.parse(run(['api', `repos/${repo}/actions/workflows/e2e.yml/runs?status=completed&per_page=${Math.min(limit, 100)}`, '--jq',
       '[.workflow_runs[] | {id, sha: .head_sha, at: .created_at, title: .display_title, url: .html_url}]'])),
     viewNames: async runId => run(['api', '--paginate', `repos/${repo}/actions/runs/${runId}/artifacts?per_page=100`, '--jq', '.artifacts[] | select(.expired == false) | .name']).split('\n').filter(Boolean),
     stepsOf: async (runId, name) => readJson(runId, name, 'steps.json'),
-    /** The store a run ran this suite on: the store leg of one of its keys (settings-standin), else the "store" its coverage artifact records ('' when the suite uses none); null when unknown. */
-    storeOf: async (runId, suite) => {
+    /** The store of each of a run's e2e-view artifacts of one suite: {name: store}. Its store leg (-standin, -sqlite) when the key has one (a gate run holds both stores of a suite), else the "store" its coverage artifact records ('' when the suite uses none); null when unknown. */
+    storesOf: async (runId, suite) => {
       const names = run(['api', '--paginate', `repos/${repo}/actions/runs/${runId}/artifacts?per_page=100`, '--jq', '.artifacts[] | select(.expired == false) | .name']).split('\n').filter(Boolean);
-      const mine = names.filter(name => /^e2e-(view|coverage)-/.test(name) && suiteOfKey(name.replace(/^e2e-(view|coverage)-/, '')) === suite);
-      const leg = mine.map(name => /-(standin|sqlite)(?:-\d+of\d+)?$/.exec(name)?.[1]).find(Boolean);
-      if (leg) return leg;
-      const coverage = mine.find(name => name.startsWith('e2e-coverage-'));
-      if (!coverage) return null;
-      const dir = download(runId, coverage);
-      try {
-        const file = fs.readdirSync(dir).find(name => /^coverage-.*\.json$/.test(name));
-        return file ? JSON.parse(fs.readFileSync(path.join(dir, file), 'utf8')).store ?? null : null;
-      } finally { fs.rmSync(dir, {recursive: true, force: true}); }
+      const out = {};
+      for (const name of names.filter(item => item.startsWith('e2e-view-') && suiteOfKey(item.slice('e2e-view-'.length)) === suite)) {
+        const key = name.slice('e2e-view-'.length), leg = /-(standin|sqlite)$/.exec(key)?.[1];
+        out[name] = leg || (names.includes(`e2e-coverage-${key}`) ? await coverageStore(runId, `e2e-coverage-${key}`) : null);
+      }
+      return out;
     },
     changedNames: async (green, red) => {
       const names = dir => git(dir, 'diff', '--name-only', '--no-renames', green, red).split('\n').filter(Boolean);

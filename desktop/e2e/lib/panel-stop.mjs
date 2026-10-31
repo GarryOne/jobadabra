@@ -10,6 +10,8 @@
 // Tests: test/panel-stop.test.mjs
 import {POLL_CAP_MS, pollUntil, stepTimeLeft, stepWait, waitCapNote} from './wait-on-state.mjs';
 
+const HOST = '#jobpilotto-review-host';
+
 /** The one budget of a press, spent across the click and the three stages: the step's time left, else the test's cap, else pollUntil's own default (never a fresh budget per wait). */
 export const pressBudget = ({stepLeft, capMs}) => stepLeft ?? capMs ?? POLL_CAP_MS;
 
@@ -47,7 +49,7 @@ export const isStopped = state => state.panel !== 'absent' && STOP_STAGES.every(
 export async function pressStop(page, {capMs, minimised = false} = {}) {
   const budget = pressBudget({stepLeft: stepTimeLeft(), capMs});
   const deadline = Date.now() + budget;   // Why (PR #2748, Gitar x2): one deadline from before the press in every case; the wait for a pressable Stop spends part of it, the stages get what is left
-  const stop = page.locator(minimised ? '.pill-stop' : '.stop-btn');   // the selectors the test pressed before (owner's manifest: a fix does not change a selector that works)
+  const stop = page.locator(HOST).locator(minimised ? '.pill-stop' : '.stop-btn');   // exactly what the test pressed before, inside the panel's host (owner's manifest: a fix does not change a selector that works)
   try {
     await stepWait('the Stop control was visible, enabled and still', timeout => stop.click({timeout: timeout ?? Math.max(1, deadline - Date.now())}));
   } catch (error) {

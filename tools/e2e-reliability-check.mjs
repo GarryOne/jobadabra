@@ -173,6 +173,13 @@ export function checkPush({root, base = 'origin/main'}) {
       for (const name of Object.keys(next.suites || {})) {
         if (isBackbone(lanes, name) && !isBackbone(next, name)) needsCitation.push(`${REGISTRY}: ${name} leaves backbone`);
       }
+      // Why (31 Oct 2026, Gitar on #2714): a step suspended in the `steps` map (#2706) leaves the backbone as surely as its suite would; a step already
+      // listed with the same lane on the base is no new move.
+      for (const [name, steps] of Object.entries(next.steps || {})) {
+        for (const [step, entry] of Object.entries(steps || {})) {
+          if (entry?.lane && entry.lane !== 'backbone' && lanes.steps?.[name]?.[step]?.lane !== entry.lane) needsCitation.push(`${REGISTRY}: ${name} · ${step} leaves backbone`);
+        }
+      }
       // Why (30 Oct 2026, a8 on Gitar #2568): the ceiling is read from the PR's own checkout, so raising or dropping it in the PR that adds the ask would pass; a threshold change is Rule E.
       for (const [name, entry] of Object.entries(lanes.suites || {})) {
         const was = entry.aiMissesMax, now = next.suites?.[name]?.aiMissesMax;

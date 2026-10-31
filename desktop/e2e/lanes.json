@@ -134,6 +134,26 @@
         "issue": "https://github.com/GarryOne/jobadabra/issues/2704",
         "why": "Red on 9459046 (run 41198541314, the job never reached the filling card) and green on 4a79a6b (run 41198629562) with none of the 539 files it runs changed between them; also red in run 41175004281.",
         "returns": "Back to the backbone when its fix PR lands and the next 3 main runs pass it."
+      },
+      "each read verdict gives its own chip on Jobs after Check, with no fill, session or hidden page left": {
+        "lane": "suspended",
+        "input": "the hidden Chrome on a loaded shared runner; not yet measured (lead: a Playwright wait given 0 ms once the step's clock ran out waits forever, lib/apply-read-steps.mjs)",
+        "since": "2026-10-31",
+        "owner": "GarryOne",
+        "issue": "https://github.com/GarryOne/jobadabra/issues/2713",
+        "why": "Red on 1cde6ab (run 41218427454, it hung past its 360 s cap) and green on ae8ce1a (run 41217726896) with none of the 821 files it runs changed between them.",
+        "returns": "Back to the backbone when its fix PR lands and the next 3 main runs pass it."
+      }
+    },
+    "activityfailures": {
+      "the AI never answers: the run is stopped after its silence limit and ends as Stopped, in words, with nothing left Running": {
+        "lane": "suspended",
+        "input": "the closing of the old app instance's hung AI request after a relaunch; not yet measured: its engine child outliving the quit, or the proxy seeing the socket close late",
+        "since": "2026-10-31",
+        "owner": "GarryOne",
+        "issue": "https://github.com/GarryOne/jobadabra/issues/2712",
+        "why": "Red on 1eda1d3 (run 41217478444, 1 hung AI request still open 45 s after the relaunch) and green on 68ec575 (run 41215275975) with none of the 519 files it runs changed between them.",
+        "returns": "Back to the backbone when its fix PR lands and the next 3 main runs pass it."
       }
     }
   }

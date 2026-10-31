@@ -66,11 +66,7 @@ class Ledger(unittest.TestCase):
         self.assertIn('the budget fell by 0 while this job ran', report)
 
 
-if __name__ == '__main__':
-    unittest.main()
-
-
-WORKFLOWS = ('desktop', 'e2e', 'e2e-windows', 'pr-suites', 'pr-verdict', 'search-personas')   # the busiest users of the repo's API budget (runs per hour, 31 Oct 2026)
+WORKFLOWS = ('desktop', 'e2e', 'e2e-windows', 'pr-suites', 'pr-verdict', 'search-personas', 'ui-verdict')   # the busiest users of the repo's API budget (runs per hour, 31 Oct 2026); ui-verdict is the one measured to burst (12 judge jobs x 170 event pages)
 
 
 class EveryCheckedOutJobKeepsTheLedger(unittest.TestCase):
@@ -96,3 +92,7 @@ class EveryCheckedOutJobKeepsTheLedger(unittest.TestCase):
                 if counted and 'if: always()' not in text[max(0, mark - 160):mark + 60]:
                     missing.append(f'{name}.yml {job}: the end step must run if: always()')
         self.assertEqual(missing, [], 'add the gh-ledger start step after the checkout and the end step (if: always()) last')
+
+
+if __name__ == "__main__":
+    unittest.main()

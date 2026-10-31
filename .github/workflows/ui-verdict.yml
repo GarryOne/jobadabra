@@ -41,6 +41,10 @@ jobs:
       GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v5
+      - uses: ./.github/actions/gh-ledger
+        with:
+          phase: start
+        timeout-minutes: 2
       - uses: actions/setup-node@v5
         with:
           node-version: '22'
@@ -49,6 +53,11 @@ jobs:
         env:
           ISSUES: ${{ inputs.issues }}
         run: node desktop/e2e/pick.mjs --out .heal --verdict-list 5 --issues "$ISSUES"
+      - if: always()
+        uses: ./.github/actions/gh-ledger
+        with:
+          phase: end
+        timeout-minutes: 2
 
   judge:
     needs: pick
@@ -65,6 +74,10 @@ jobs:
       NUMBER: ${{ matrix.issue }}
     steps:
       - uses: actions/checkout@v5
+      - uses: ./.github/actions/gh-ledger
+        with:
+          phase: start
+        timeout-minutes: 2
       - uses: actions/setup-node@v5
         with:
           node-version: '22'
@@ -94,6 +107,11 @@ jobs:
           set -euo pipefail
           # Comment, severity, labels, close: one script, shared with the triage-github-open-issues skill (desktop/e2e/apply-verdict.sh).
           desktop/e2e/apply-verdict.sh "$NUMBER" .heal/verdict.md "$REPO"
+      - if: always()
+        uses: ./.github/actions/gh-ledger
+        with:
+          phase: end
+        timeout-minutes: 2
 
   # One alert for the whole run, however many judge jobs the broker refused (owner, 31 Oct 2026: four identical alerts from one run).
   ai-skipped:
@@ -111,6 +129,10 @@ jobs:
           sparse-checkout: |
             desktop/e2e
             .github/actions
+      - uses: ./.github/actions/gh-ledger
+        with:
+          phase: start
+        timeout-minutes: 2
       - uses: actions/setup-node@v5
         with:
           node-version: '22'
@@ -119,3 +141,8 @@ jobs:
           bot-token: ${{ secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN }}
           chat-id: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}
           github-token: ${{ github.token }}
+      - if: always()
+        uses: ./.github/actions/gh-ledger
+        with:
+          phase: end
+        timeout-minutes: 2

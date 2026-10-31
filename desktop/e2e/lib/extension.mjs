@@ -4,6 +4,7 @@
 // on the app's PATH (the app runs `open -a "Google Chrome" <url>`: here that URL is handed to this Chromium instead).
 // Reaches: ../../../extension/   (EXTENSION_DIR, loaded whole into the browser: lib/test-reach.mjs follows it, so harness.yml's paths start the harness tests when any extension file changes)
 // Job: wait on state
+import {appLaunchEnv} from './app-env.mjs';
 import {guardLiveVisit} from './site-ledger.mjs';
 import {chromium} from 'playwright-core';
 import fs from 'node:fs';
@@ -89,6 +90,7 @@ export async function launchBrowser({port, spool, extensionDir, real = false, pr
   const profile = kept || fs.mkdtempSync(path.join(os.tmpdir(), 'jp-e2e-chromium-'));
   launchGuard.check();   // a browser that did not start earlier in this process: stop now, never wait again per journey (lib/launch-guard.mjs)
   const context = await chromium.launchPersistentContext(profile, {
+      env: appLaunchEnv(process.env),
     ...browserChannel(), headless: false, ignoreHTTPSErrors: !real, ...(real ? {viewport: null} : {}), ignoreDefaultArgs: ['--disable-extensions', '--disable-popup-blocking'], timeout: LAUNCH_TIMEOUT_MS,
     args: [...(process.env.E2E_HEADED || real ? [] : ['--headless=new']), `--disable-extensions-except=${extensionDir}`, `--load-extension=${extensionDir}`,
       ...(real ? [] : [`--host-resolver-rules=${hostRules(port)}`, '--ignore-certificate-errors']), '--no-first-run', '--no-default-browser-check', ...leanChrome(), ...(debugPort ? [`--remote-debugging-port=${debugPort}`] : [])],

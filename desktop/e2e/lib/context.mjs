@@ -5,6 +5,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import {APP_AI_ALIAS, FREE_AI_ALIAS, NOTION_ALIAS} from './proxy-credentials.mjs';
 import {startAiProxy} from './ai-proxy.mjs';
 import {answersMode} from './ai-answers.mjs';
 import {aiProvider} from './ai-provider.mjs';
@@ -15,7 +16,7 @@ import {startGoogleFake} from './google-fake.mjs';
 import {startReleasesFake} from './releases-fake.mjs';
 import {buildStandIn, startNotionFake} from './notion-fake.mjs';
 import {useNotionAt} from './notion.mjs';
-import {appKey, appModelEnv, DUMMY_KEY, familySecret, isCi, pickEngine, pickFamily, testKey} from './engine.mjs';
+import {appModelEnv, DUMMY_KEY, familySecret, isCi, pickEngine, pickFamily, testKey} from './engine.mjs';
 import {checkRelay} from './free-ai-check.mjs';
 import {startForms} from './forms.mjs';
 import {hiddenBrowserEnv} from './hidden-browser-env.mjs';
@@ -51,18 +52,27 @@ export async function contextAiKeys({offlineAi = false, light = false, family, e
   if (!offlineAi && !light && isCi()) await preflightKeys({family, engine, key});
   const needsKey = isCi() && !offlineAi ? [{name: familySecret(family, engine), value: key}] : [];
   const lightNeeds = !offlineAi && isCi() ? [{name: 'E2E_ANTHROPIC_KEY', value: key}] : [];
-  return {key, judgeKey: offlineCi ? DUMMY_KEY : KEY(), appKey: appKey(key), needsKey, lightNeeds, needs: ['api', 'openai'].includes(engine) ? needsKey : []};
+  return {key, judgeKey: offlineCi ? DUMMY_KEY : KEY(), appKey: offlineCi || !isCi() ? DUMMY_KEY : family === 'free' ? FREE_AI_ALIAS : APP_AI_ALIAS, needsKey, lightNeeds, needs: ['api', 'openai'].includes(engine) ? needsKey : []};
 }
 
 /** Start both proxies; offline backbone suites use declared answers and other offline suites refuse all asks. */
 export async function contextAiProxies({offlineAi = false, family}) {
   const offline = {target: 'http://127.0.0.1:1'};
-  const proxy = await startAiProxy({delayMs: 0, ...(offlineAi ? offline : aiProvider(process.env, 'app').provider === 'codex' && isCi() ? {kind: 'app-codex', relay: answerViaBroker} : family === 'free' ? {target: process.env.E2E_FREE_AI_URL, kind: 'app-free'} : {})});
+  const proxy = await startAiProxy({delayMs: 0, credentials: {[APP_AI_ALIAS]: offlineAi ? '' : testKey(process.env, 'api', family), [FREE_AI_ALIAS]: offlineAi ? '' : testKey(process.env, 'api', family)}, ...(offlineAi ? offline : aiProvider(process.env, 'app').provider === 'codex' && isCi() ? {kind: 'app-codex', relay: answerViaBroker} : family === 'free' ? {target: process.env.E2E_FREE_AI_URL, kind: 'app-free'} : {})});
   // Why (29 Oct 2026, ap): backbone must reach declared answers and fail unknown kinds by name; other offline modes keep the blanket refusal for background asks (59 in Settings run 40930376557).
   if (offlineAi && answersMode() !== 'backbone') proxy.setCanned(() => ({refuse: 'invalid-key'}));
-  const openaiProxy = family === 'openai' ? await startAiProxy({target: offlineAi ? offline.target : 'https://api.openai.com', kind: 'app-openai', metered: /\/responses(\?|$)/, shape: 'openai', follow: proxy}) : null;
+  const openaiProxy = family === 'openai' ? await startAiProxy({target: offlineAi ? offline.target : 'https://api.openai.com', kind: 'app-openai', credentials: {[APP_AI_ALIAS]: offlineAi ? '' : testKey(process.env, 'openai', family)}, metered: /\/responses(\?|$)/, shape: 'openai', follow: proxy}) : null;
   return {proxy, openaiProxy};
 }
+/** Keep a real Notion token behind the proxy; app and harness consumers receive only its alias. */
+export async function contextNotionProxy({notionProxy = false, token = '', standIn = null, store = ''}) {
+  const realToken = token && !standIn;
+  if (!notionProxy && !realToken) return {token};
+  const notion = await startNotionProxy({target: notionFarSide({store, standIn: standIn?.url}), credentials: realToken ? {[NOTION_ALIAS]: token} : {}});
+  if (realToken) useNotionAt(notion.url);   // harness reads and store-call children use the same alias; only the proxy sees the real token
+  return {notion, token: realToken ? NOTION_ALIAS : token};
+}
+
 // Each suite has its own Notion page and connection, so suites can run at the same time. E2E_NOTION_TOKEN is the wizard's; a suite without its own token falls
 // back to it on a developer's Mac (one suite at a time), and is skipped in CI. own: the real workspace (notion-real) takes its own token or none, never the
 // wizard's: with `fresh` it empties its page, and the fallback's page is another suite's.
@@ -134,7 +144,7 @@ export async function openContext(suite, {fresh = false, env: suiteEnv = {}, bro
   Object.assign(ctx, await contextAiProxies({offlineAi, family}));
   // A suite that breaks Notion on purpose (`export const notionProxy = true`) gets the Notion stand-in between the app and Notion (lib/notion-proxy.mjs).
   // Its far side is the stand-in, never real Notion, unless the suite pins the real workspace; on this Mac's store a dead port (the app has no business with Notion there).
-  if (notionProxy) ctx.notion = await startNotionProxy({target: notionFarSide({store, standIn: standIn?.url})});
+  Object.assign(ctx, await contextNotionProxy({notionProxy, token, standIn, store}));
   // A suite that reads what Telegram would receive (`export const telegram = true`) gets the fake Bot API (lib/telegram-fake.mjs); nothing reaches Telegram.
   if (telegram) ctx.telegram = await startTelegramFake();
   // A suite that runs the Gmail check (`export const google = true`) gets a fake Google with three of the mailreading eval's invented emails and a fake sign-in (lib/google-fake.mjs).
@@ -164,7 +174,7 @@ export async function openContext(suite, {fresh = false, env: suiteEnv = {}, bro
     browserEnv.JOB_PILOTTO_PORT = String(ctx.appPort);
     Object.assign(browserEnv, hiddenBrowserEnv(ctx.forms.port));   // the app's hidden browser reaches the fixture sites only (lib/background-proof.mjs)
   }
-  const env = {...appModelEnv(), JOB_PILOTTO_FIXTURE_DIR: ctx.feeds, JOB_PILOTTO_E2E_AI_BASE_URL: ctx.proxy.url, ...(family === 'free' ? {JOB_PILOTTO_E2E_FREE_AI_KEY: key} : {}), ...(ctx.openaiProxy ? {JOB_PILOTTO_E2E_OPENAI_BASE_URL: `${ctx.openaiProxy.url}/v1`} : {}), ...(ctx.notion ? {JOB_PILOTTO_E2E_NOTION_BASE_URL: ctx.notion.url} : ctx.standIn ? {JOB_PILOTTO_E2E_NOTION_BASE_URL: ctx.standIn.url} : store && store !== 'notion' ? {JOB_PILOTTO_E2E_NOTION_BASE_URL: notionFarSide({store})} : {}), ...(ctx.telegram ? {JOB_PILOTTO_E2E_TELEGRAM_BASE_URL: ctx.telegram.url} : {}),
+  const env = {...appModelEnv(), JOB_PILOTTO_FIXTURE_DIR: ctx.feeds, JOB_PILOTTO_E2E_AI_BASE_URL: ctx.proxy.url, ...(family === 'free' ? {JOB_PILOTTO_E2E_FREE_AI_KEY: FREE_AI_ALIAS} : {}), ...(ctx.openaiProxy ? {JOB_PILOTTO_E2E_OPENAI_BASE_URL: `${ctx.openaiProxy.url}/v1`} : {}), ...(ctx.notion ? {JOB_PILOTTO_E2E_NOTION_BASE_URL: ctx.notion.url} : ctx.standIn ? {JOB_PILOTTO_E2E_NOTION_BASE_URL: ctx.standIn.url} : store && store !== 'notion' ? {JOB_PILOTTO_E2E_NOTION_BASE_URL: notionFarSide({store})} : {}), ...(ctx.telegram ? {JOB_PILOTTO_E2E_TELEGRAM_BASE_URL: ctx.telegram.url} : {}),
     ...(ctx.releases ? {JOB_PILOTTO_E2E_UPDATES_URL: ctx.releases.url} : {}), ...(ctx.google ? {JOB_PILOTTO_E2E_GOOGLE_BASE_URL: ctx.google.url, GOOGLE_CLIENT_ID: 'e2e-client', GOOGLE_CLIENT_SECRET: 'e2e-secret', GOOGLE_REFRESH_TOKEN: 'e2e-refresh'} : {}), ...browserEnv, ...suiteEnv};
   // The owner's browser data is never read by a test run: the app's browser-data root is this run's own folder (lib/browser-profile.js browserData).
   if (!env.JOB_PILOTTO_BROWSER_DATA || path.resolve(env.JOB_PILOTTO_BROWSER_DATA).startsWith(path.join(os.homedir(), 'Library')) || path.resolve(env.JOB_PILOTTO_BROWSER_DATA).startsWith(path.join(os.homedir(), 'AppData'))) {

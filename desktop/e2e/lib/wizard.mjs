@@ -9,7 +9,7 @@ import {pageText} from './notion.mjs';
 import {goView} from './go-view.mjs';
 
 export async function runWizard(ctx) {
-  const {page, key: KEY} = ctx;
+  const {page, appKey: KEY} = ctx;
   await ctx.run('the app starts on the welcome screen', async () => {
     await ctx.expectStep('welcome');
     await page.getByRole('button', {name: 'Start'}).waitFor();
@@ -41,7 +41,7 @@ export async function runWizard(ctx) {
         await page.locator('[data-choice="openai"]').click();
         await page.locator('#openai-key').waitFor();
         if (!(await page.locator('#ai-save').isDisabled())) throw new Error('"Check and save" is enabled with no key typed');
-        await page.fill('#openai-key', ctx.key);
+        await page.fill('#openai-key', ctx.appKey);
         await page.click('#ai-save');
         await ctx.expectStep('cv');
       }, {needs: ctx.needsKey});

@@ -5,7 +5,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {applicantDraft} from './applicant-seed.mjs';
-import {appKey, DUMMY_KEY} from './engine.mjs';
+import {DUMMY_KEY} from './engine.mjs';
 import {runWizard} from './wizard.mjs';
 import {RECONNECT} from './notion-reuse.mjs';
 
@@ -37,7 +37,7 @@ export async function fastSeed(ctx, {readyMs = 60000} = {}) {
     }
     await window.pilot.setAiEngine(engine);
     await window.pilot.saveSettings({setupDone: true, wizardStep: 'extras', setupFurthest: 'extras', cvName: 'cv.pdf'});
-  }, {anthropic: ctx.engine === 'api' ? appKey(ctx.key) : DUMMY_KEY, openai: ctx.engine === 'openai' ? ctx.key : '', token: ctx.token, engine: ctx.engine, strategy, reconnect: RECONNECT});
+  }, {anthropic: ctx.engine === 'api' ? ctx.appKey : DUMMY_KEY, openai: ctx.engine === 'openai' ? ctx.appKey : '', token: ctx.token, engine: ctx.engine, strategy, reconnect: RECONNECT});
   fs.copyFileSync(ctx.cv, path.join(ctx.profile, 'cv.pdf'));   // forms and tailoring read the CV from the data folder
   await page.reload();
   // Why (29 Oct 2026, qu 3/4): quality supplies its measured setup hang cap; other journeys keep their existing allowance.

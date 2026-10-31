@@ -2,6 +2,7 @@
 // Job: wait on state
 // Launch the real Jobadabra app (Electron) with a throwaway profile, like a first-time user, and drive it through Playwright.
 // Nothing here touches the real user's data: JOB_PILOTTO_USER_DATA points at a fresh temp folder and no .env is read.
+import {appLaunchEnv} from './app-env.mjs';
 import {journey} from './journey.mjs';
 import {ownerGuardEnv} from './owner-guard-env.mjs';
 import {ownPortEnv} from './own-port.mjs';
@@ -50,7 +51,7 @@ export async function launch({env = {}, executablePath, args, profile: again, la
     // The app counts days in the computer's own zone; the suites check it against Europe/Zurich (lib/focus-data.mjs). On a CI runner in UTC the two disagreed
     // about "today" from 0:00 to 2:00 Zurich time, and Focus's 14-day count failed only then (4 Oct 2026). A suite that tests another zone sets TZ, and the engine follows it
     // (it reads JOB_PILOTTO_TZ first: the calendar suite's Tokyo and Honolulu must reach both the window and the engine).
-    env: withoutWrappers({...process.env, TZ: zoneOf(env), JOB_PILOTTO_TZ: env.JOB_PILOTTO_TZ || zoneOf(env), JOB_PILOTTO_USER_DATA: profile, JOB_PILOTTO_NO_DOTENV: '1', JOB_PILOTTO_E2E: '1', JOB_PILOTTO_E2E_RUNNER_PID: String(process.pid), ...ownerGuardEnv(), JOB_PILOTTO_E2E_HIDDEN: hidden(), ...port, ...env}),   // the app watches this runner and ends when it is gone, even if it was killed (lib/e2e-host.js watchRunner)
+    env: withoutWrappers(appLaunchEnv(process.env, { TZ: zoneOf(env), JOB_PILOTTO_TZ: env.JOB_PILOTTO_TZ || zoneOf(env), JOB_PILOTTO_USER_DATA: profile, JOB_PILOTTO_NO_DOTENV: '1', JOB_PILOTTO_E2E: '1', JOB_PILOTTO_E2E_RUNNER_PID: String(process.pid), ...ownerGuardEnv(), JOB_PILOTTO_E2E_HIDDEN: hidden(), ...port, ...env})),   // the app watches this runner and ends when it is gone, even if it was killed (lib/e2e-host.js watchRunner)
     timeout: 90000,
   });
   const page = await app.firstWindow();

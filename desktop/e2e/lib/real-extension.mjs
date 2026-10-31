@@ -1,4 +1,5 @@
 /* global document, location, chrome */
+// Job: serve stored answers
 // The REAL extension in a real (headless) Chromium on a REAL site, isolated from everything of the owner's: the way to validate a form fix before
 // saying it works (docs/rules/applying.md "Validate a form fix on the real extension"). What it cuts off, and proves it did:
 //  - the owner's live app: the extension is a copy whose built-in app address (127.0.0.1:47111) is a port nothing but a stand-in answers on
@@ -8,6 +9,7 @@
 //  - the owner's browser: a temporary profile of Playwright's own Chromium.
 // What it cannot imitate: the app's AI (page kind, answers), so the panel's "Fill anyway" is used when the rule calls a page an account page.
 // A real third-party site gets only this fake data. Some pages send a chosen file at once (SuccessFactors uploads on choice): only the fixture goes.
+import {appLaunchEnv} from './app-env.mjs';
 import {chromium} from 'playwright-core';
 import fs from 'node:fs';
 import http from 'node:http';
@@ -80,6 +82,7 @@ export async function startRealExtension({extensionDir = EXTENSION_DIR, cv = tru
   try {
     launchGuard.check();   // a browser that did not start earlier in this process: stop now, never wait again per case (lib/launch-guard.mjs)
     context = await chromium.launchPersistentContext(profile, {
+      env: appLaunchEnv(process.env),
       ...browserChannel(), headless: false, locale: 'en-US', ...(timezoneId ? {timezoneId} : {}), ignoreDefaultArgs: ['--disable-extensions', '--disable-popup-blocking'], timeout: LAUNCH_TIMEOUT_MS,
       args: [...(process.env.E2E_HEADED ? [] : ['--headless=new']), `--disable-extensions-except=${copy}`, `--load-extension=${copy}`, '--no-first-run', '--no-default-browser-check', ...(cdp ? ['--remote-debugging-port=0'] : []),   // cdp: lib/replay-coverage.mjs reads <profile>/DevToolsActivePort
         // offline: a replay's pages come from routes; any host they do not serve resolves to nothing (11 Oct 2026: a route set while another tab loaded let one request out)

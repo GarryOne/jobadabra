@@ -32,16 +32,42 @@ def jobs(text):
     return {parts[i]: parts[i + 1] for i in range(1, len(parts) - 1, 2)}
 
 
+def hands_key_to_ai(text):
+    """Ignore credential-only artifact scans; every original AI consumer still requires its relay."""
+    steps = re.split(r'(?m)^      - ', text)
+    # Why (#2651, owner): an upload scanner compares credentials but never executes an AI call.
+    consumers = [step for step in steps if not ('id: artifact_scan_' in step and 'run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"' in step)]
+    return 'E2E_ANTHROPIC_KEY: ${{' in ''.join(consumers)
+
+
 class CiFreeAiTests(unittest.TestCase):
     def test_every_job_with_the_e2e_key_starts_the_relay_or_says_why_not(self):
         missing = []
         for path in sorted(WORKFLOWS.glob('*.yml')):
             for name, text in jobs(path.read_text()).items():
-                if 'E2E_ANTHROPIC_KEY: ${{' not in text or (path.name, name) in NO_RELAY:
+                if not hands_key_to_ai(text) or (path.name, name) in NO_RELAY:
                     continue
                 if not RELAY_STEP.search(text):
                     missing.append(f'{path.name} {name}')
         self.assertEqual(missing, [], 'start the Free AI relay in these jobs (or add them to NO_RELAY with the reason)')
+
+    def test_a_scan_only_mapping_needs_no_relay_but_real_consumers_still_do(self):
+        scan = """    steps:
+      - name: scan
+        id: artifact_scan_1
+        env:
+          E2E_ANTHROPIC_KEY: ${{ secrets.E2E_ANTHROPIC_KEY }}
+        run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
+"""
+        self.assertFalse(hands_key_to_ai(scan))
+        consumer = """      - name: app or judge
+        env:
+          E2E_ANTHROPIC_KEY: ${{ secrets.E2E_ANTHROPIC_KEY }}
+        run: node suite.mjs settings
+"""
+        self.assertTrue(hands_key_to_ai(scan + consumer))
+        self.assertTrue(hands_key_to_ai('    env:\n      E2E_ANTHROPIC_KEY: ${{ secrets.E2E_ANTHROPIC_KEY }}\n' + scan))
+        self.assertTrue(hands_key_to_ai(scan.replace('run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"', 'run: node suite.mjs settings')))
 
     def test_the_relay_starts_after_node_and_before_the_suites_run(self):
         for path in sorted(WORKFLOWS.glob('*.yml')):

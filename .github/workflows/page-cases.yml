@@ -11,6 +11,7 @@ on:
       - 'desktop/cv/template.js'
       - 'desktop/e2e/fixtures/cv.json'
       - 'desktop/e2e/lib/ai-provider.mjs'
+      - 'desktop/e2e/lib/app-env.mjs'
       - 'desktop/e2e/lib/app-front.mjs'
       - 'desktop/e2e/lib/app-log.mjs'
       - 'desktop/e2e/lib/app.mjs'

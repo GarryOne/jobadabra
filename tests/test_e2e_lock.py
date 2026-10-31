@@ -193,7 +193,10 @@ class SuiteJobsTakeTheLockTest(unittest.TestCase):
             # a re-run attempt's workflow token cannot create refs: both lock steps get the CI App's token, minted just before each
             self.assertIn('id: lock_app\n', job, f'{workflow} {name}')
             self.assertIn('id: lock_app_end\n', job, f'{workflow} {name}')
-            self.assertEqual(job.count('E2E_LOCK_TOKEN: ${{ steps.lock_app.outputs.token }}'), 1, f'{workflow} {name}')
+            # Upload scanners also need the generated token; exactly one acquisition owns the lock.
+            acquire = [step for step in re.split(r'(?m)^      - ', job) if 'e2e-lock.sh acquire' in step]
+            self.assertEqual(len(acquire), 1, f'{workflow} {name}')
+            self.assertIn('E2E_LOCK_TOKEN: ${{ steps.lock_app.outputs.token }}', acquire[0], f'{workflow} {name}')
             self.assertEqual(job.count('E2E_LOCK_TOKEN: ${{ steps.lock_app_end.outputs.token }}'), 1, f'{workflow} {name}')
 
     def test_no_suite_job_queues_through_a_group_that_drops_a_waiter(self):

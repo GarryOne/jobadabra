@@ -45,10 +45,20 @@ export const shards = 3;   // the forms and CV steps split across three gate job
 // Why (31 Oct 2026, owner chose "Split apply first"): the first try is the verdict now (#2682), and re-check 41173193229's apply-1of2 ran out of its 11-minute
 // budget at 12.8 min on its first try (10.2 min on the second); two halves of 640 s of weighed steps plus setup sat at the budget, three thirds hold ~430 s each.
 export const stepSharded = true;   // its slices are steps, not recorded cases (test/suite-shards.test.mjs)
-// Why (31 Oct 2026, a8; beta 41229992832, the stand-in leg): apply-3of3 ran 698 s of its 660. The weights below were guessed seconds from one 26 Oct Notion run; added up they were close (1286 vs 1143 measured),
-// but a step weighed 140 s took 25 s and one weighed 45-90 s took 125-170 s, so the slices were not thirds. They are now the slowest seconds seen on the Mac jobs of the apply parts, a step's followers counted in it
-// (multi-step + the session page, cannot operate + Ready to submit); refresh the fixture after a beta (test/part-headroom.test.mjs fails "split apply further" when a slice sits over the headroom of its budget).
-export const stepSeconds = JSON.parse(fs.readFileSync(new URL('../fixtures/apply-slowest-leg.json', import.meta.url), 'utf8')).steps;
+// Why (31 Oct 2026, a8; beta 41229992832, the stand-in leg): apply-3of3 ran 698 s of its 660. The weights were guessed seconds from one 26 Oct Notion run; added up they were close (1286 vs 1143 measured),
+// but a step weighed 140 s took 25 s and one weighed 45-90 s took 125-170 s, so the slices were not thirds. They are now the slowest seconds seen on the Mac jobs of the apply parts (beta 41229992832 and the runs
+// before it), a step's followers counted in it (multi-step + the session page, cannot operate + Ready to submit). Refresh them after a beta from the Mac job logs: test/part-headroom.test.mjs fails "split apply further"
+// when a slice sits over the headroom of its budget, and this table is where the gate (tools/e2e-reliability-check.mjs) sees a re-cut.
+export const stepSeconds = {'real forms the extension once failed on': 71.7, 'Tailor CVs for top matches': 36.7, 'a multi-step form': 16.2,
+  'a form with a control the extension cannot operate': 13.2, 'Tailor CV on a job': 22.7, 'a Lever-like form': 10.6,
+  'Open in Chrome on a form the night filled': 19.2, 'Tailor on the session page of a form': 9.4, 'the person submits a form': 30.3, 'a Greenhouse-like form': 20.8,
+  'Apply on a saved job without a kit': 7.7, 'a Workday-shaped form': 7.4, 'The hidden browser fills a form': 18,
+  'Full automation presses Submit once on its own': 109.2, 'a silent Chrome in Standard automation': 40.1, 'a silent Chrome in Background automation': 19.2,
+  'a silent Chrome in Full automation': 19, 'the app quits while Background automation holds a filled form': 24.7, 'the app quits in Full automation\'s wait': 24.2,
+  'each read verdict gives its own chip': 168, 'Stop on the card in Background automation': 18.3, 'Stop on the card in Full automation': 27.8,
+  'the Jobs popup has one field': 10.7, 'checking jobs before the form read exists': 1.3, 'the triage bar moves per real read': 125,
+  'Background automation hands a bot check': 44.2, 'Full automation hands a bot check': 23.5, 'Background automation fills several queued jobs': 124.1,
+  'Full automation presses each queued job': 68.9, 'Full automation asks once in Settings': 5.2, 'Full automation saved without its confirmation': 6.1};
 export const hangCaps = hangCapsFor('apply');
 // Slow first-try seconds from 80 main/beta runs, 24–31 Oct 2026 (tools/e2e-step-timings.mjs maxSeconds; evidence: fixtures/slice-ci-seconds.json).
 // Two measured halves carry ~650 s each before setup; applyflows uses three slices, without increasing any budget.

@@ -11,7 +11,9 @@ import {loadCases} from '../lib/page-replay.mjs';
 import {costOf, readSeconds, weighedSlices} from '../lib/replay-shard.mjs';
 
 const read = file => JSON.parse(fs.readFileSync(new URL(`../fixtures/${file}`, import.meta.url), 'utf8'));
-const slowest = read('apply-slowest-leg.json'), parts = read('part-seconds.json');
+const parts = read('part-seconds.json');
+// What every slice of apply runs besides its steps: the app's set-up and the final checks (7.3 + 20.8 + 5.2 s in the Mac jobs of beta 41229992832).
+const SETUP_SECONDS = 33.3;
 // apply's weights before this change (suites/apply.mjs, 26-31 Oct 2026): the table the beta-41229992832 slices were cut by.
 const OLD_WEIGHTS = {'real forms the extension once failed on': 76, 'Tailor CVs for top matches': 51, 'a multi-step form': 37, 'a form with a control the extension cannot operate': 35,
   'Tailor CV on a job': 34, 'a Lever-like form': 33, 'Open in Chrome on a form the night filled': 29, 'Tailor on the session page of a form': 23, 'the person submits a form': 21,
@@ -31,18 +33,14 @@ test('the budget is the runner\'s 11 minutes and the headroom is a stated share 
   assert.ok(HEADROOM > 0.5 && HEADROOM < 0.9, 'a headroom outside 50-90% is a typo');
 });
 
-test('the weights of apply are its measured seconds on the slowest leg, one per step', () => {
-  assert.deepEqual(apply.stepSeconds, slowest.steps, 'suites/apply.mjs stepSeconds comes from fixtures/apply-slowest-leg.json');
-});
-
 test('every slice of apply fits the budget with headroom on Mac + the Notion stand-in', () => {
-  const loads = sliceLoads(apply.stepSeconds, apply.shards, slowest.steps, slowest.setupSeconds);
+  const loads = sliceLoads(apply.stepSeconds, apply.shards, apply.stepSeconds, SETUP_SECONDS);
   assert.deepEqual(over(loads), [], `split apply further: ${loads.map(load => `${load.toFixed(0)} s`).join(' / ')} of ${BUDGET_SECONDS} s (limit ${Math.round(HEADROOM * BUDGET_SECONDS)} s)`);
 });
 
 // The red before: the old weights cut the same steps into slices whose slowest-leg seconds are not near a third (beta 41229992832: apply-3of3 ran 698 s).
 test('the guard sees the split the old weights made: a slice over the headroom', () => {
-  const loads = sliceLoads(OLD_WEIGHTS, 3, slowest.steps, slowest.setupSeconds);
+  const loads = sliceLoads(OLD_WEIGHTS, 3, apply.stepSeconds, SETUP_SECONDS);
   assert.ok(over(loads).length >= 1, `old split ${loads.map(load => load.toFixed(0)).join(' / ')} s`);
   assert.ok(Math.max(...loads) > BUDGET_SECONDS * 0.9, 'the heaviest old slice sat near the budget, as apply-3of3 did');
 });

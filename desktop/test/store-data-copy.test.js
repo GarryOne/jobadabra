@@ -132,11 +132,15 @@ test('a start while a helper is still copying quits without starting a second on
   put(cache, STORE_USER); fs.mkdirSync(target, {recursive: true});
   const spawned = [], exits = [];
   const base = {app: {isPackaged: true, getPath: () => target, exit: code => exits.push(code)}, platform: 'win32', windowsStore: true, exePath, local, helper: 'H.mjs', log: () => {}, spawnFn: (...args) => { spawned.push(args); return {unref() {}}; }};
+  // the parent takes the lock with the child's pid before it quits, so no gap is left while the helper boots
+  assert.equal(handOff({...base, spawnFn: () => ({pid: process.pid, unref() {}})}), true);
+  assert.equal(fs.readFileSync(path.join(target, LOCK), 'utf8'), String(process.pid));
+  exits.length = 0;
   fs.writeFileSync(path.join(target, LOCK), String(process.pid));   // a live helper: this test process stands in for it
   assert.equal(helperRunning(target), true);
   assert.equal(handOff(base), true);
   assert.deepEqual([spawned.length, exits], [0, [0]], 'quits, starts nothing');
-  assert.equal(readMarker(target).state, undefined, 'and leaves the marker alone');
+  assert.equal(readMarker(target).tries, 1, 'the second start does not use up a try');
   fs.writeFileSync(path.join(target, LOCK), '2147483646');   // a pid nobody has
   assert.equal(helperRunning(target), false);
   fs.writeFileSync(path.join(target, LOCK), String(process.pid));

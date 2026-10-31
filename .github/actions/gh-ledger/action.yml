@@ -1,0 +1,13 @@
+name: gh call ledger
+description: >
+  First step (phase start) puts a counting gh in front of the real one; last step (phase end, if: always()) prints the job's gh calls by endpoint and how far the repo's
+  GitHub API budget fell while it ran (tools/gh-ledger.sh). Linux and Mac runners only. Why (31 Oct 2026, a8): the budget ran out at 18:01 UTC and no job counted its own calls.
+inputs:
+  phase:
+    description: start or end
+    required: true
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: bash "${{ github.action_path }}/../../../tools/gh-ledger.sh" "${{ inputs.phase }}"

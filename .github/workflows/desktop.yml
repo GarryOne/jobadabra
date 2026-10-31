@@ -89,6 +89,10 @@ jobs:
         timeout-minutes: 5
         with:
           fetch-depth: 0
+      - uses: ./.github/actions/gh-ledger
+        with:
+          phase: start
+        timeout-minutes: 5
       - name: Anything new for the app?
         timeout-minutes: 5
         id: diff
@@ -273,6 +277,11 @@ jobs:
           node plan-run.mjs | { if [ "$OVER" = true ]; then sed 's/^review=.*/review=0/'; else cat; fi; } >> "$GITHUB_OUTPUT"
           # windows_matrix (from plan-run.mjs): its suites less those the same on every OS (quality), a sharded one as one entry per slice (lib/suite-shards.mjs)
           echo "gate=true" >> "$GITHUB_OUTPUT"
+      - if: always()
+        uses: ./.github/actions/gh-ledger
+        with:
+          phase: end
+        timeout-minutes: 5
 
   # One box per lane step (owner, 10 Oct 2026: "Put Compile, Smoke inside the Build"). A build is: it compiles, the unit tests pass, and a very small, fast smoke test of the
   # built app passes; they are NAMED STEPS of the one Build box (Unit tests · …, Compile · …, Smoke test · …), never boxes of their own.
@@ -295,6 +304,10 @@ jobs:
       EXTENSION_VERSION: ${{ needs.changes.outputs.extension_version }}   # the build checkouts are shallow: stage.mjs refuses to count there
     steps:
       - uses: actions/checkout@v5
+        timeout-minutes: 5
+      - uses: ./.github/actions/gh-ledger
+        with:
+          phase: start
         timeout-minutes: 5
       - uses: actions/setup-node@v5
         timeout-minutes: 5
@@ -421,6 +434,11 @@ jobs:
           gh release upload "desktop-v${VERSION}" "${files[@]}" || { python "$GITHUB_WORKSPACE/tools/github_limit.py" explain "gh release upload"; exit 1; }
           GH_REPO="$GITHUB_REPOSITORY" "$tools_dir/release-file-names.sh" check mac "desktop-v${VERSION}"
           gh release edit "desktop-v${VERSION}" --draft=false --prerelease
+      - if: always()
+        uses: ./.github/actions/gh-ledger
+        with:
+          phase: end
+        timeout-minutes: 5
 
   windows:
     name: Build · Windows
@@ -449,6 +467,10 @@ jobs:
         shell: pwsh
         run: Add-MpPreference -ExclusionPath "$env:GITHUB_WORKSPACE", "$env:LOCALAPPDATA\Programs", "$env:TEMP", "$env:RUNNER_TEMP"
       - uses: actions/checkout@v5
+        timeout-minutes: 5
+      - uses: ./.github/actions/gh-ledger
+        with:
+          phase: start
         timeout-minutes: 5
       - uses: actions/setup-node@v5
         timeout-minutes: 5
@@ -580,6 +602,11 @@ jobs:
           else
             echo "::warning::Windows build failed and no earlier release has a Windows installer."
           fi
+      - if: always()
+        uses: ./.github/actions/gh-ledger
+        with:
+          phase: end
+        timeout-minutes: 5
 
   # One look at the AI key before ~60 suite jobs start: a refused key or an empty credit balance ("credit balance is too low") is one red line here, not a job each (run 11, 23 Oct 2026).
   ai-ready:
@@ -597,7 +624,16 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         timeout-minutes: 5
+      - uses: ./.github/actions/gh-ledger
+        with:
+          phase: start
+        timeout-minutes: 5
       - run: node desktop/e2e/key-preflight.mjs
+        timeout-minutes: 5
+      - if: always()
+        uses: ./.github/actions/gh-ledger
+        with:
+          phase: end
         timeout-minutes: 5
 
   # E2E: the gate suites on this build, one box (a matrix) per lane. The suite job of e2e.yml with the gate's settings (fixed path, replayed AI answers, paid judge);
@@ -698,6 +734,10 @@ jobs:
         timeout-minutes: 5
       # Waits for the suite's lock instead of queueing in a concurrency group (GitHub keeps ONE waiting job per group and cancels the older one: beta 14, 24 Oct 2026).
       # Why (31 Oct 2026, stable canary run 41202570730): this is the workflow's own commit, so it also holds main's artifact scan (tools/scan-e2e-artifacts.py); the suite checkout above may be an older tag without it (15 suites red on "can't open file"). Guard: tests/test_e2e_artifact_secrets.py test_scan_runs_the_workflows_own_tool.
+      - uses: ./.github/actions/gh-ledger
+        with:
+          phase: start
+        timeout-minutes: 5
       - uses: actions/checkout@v5
         timeout-minutes: 5
         with:
@@ -937,6 +977,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           E2E_LOCK_TOKEN: ${{ steps.lock_app_end.outputs.token }}
         run: bash lock-tools/tools/e2e-lock.sh release "${{ matrix.key }}"
+      - if: always()
+        uses: ./.github/actions/gh-ledger
+        with:
+          phase: end
+        timeout-minutes: 5
 
   # The Windows lane's E2E box: e2e-windows.yml's suite job with the gate's settings, the same suites as the Mac lane (planned once, in Anything new?).
 
@@ -1023,6 +1068,10 @@ jobs:
         timeout-minutes: 5
       # Waits for the suite's lock instead of queueing in a concurrency group (GitHub keeps ONE waiting job per group and cancels the older one: beta 14, 24 Oct 2026).
       # Why (31 Oct 2026, stable canary run 41202570730): this is the workflow's own commit, so it also holds main's artifact scan (tools/scan-e2e-artifacts.py); the suite checkout above may be an older tag without it (15 suites red on "can't open file"). Guard: tests/test_e2e_artifact_secrets.py test_scan_runs_the_workflows_own_tool.
+      - uses: ./.github/actions/gh-ledger
+        with:
+          phase: start
+        timeout-minutes: 5
       - uses: actions/checkout@v5
         timeout-minutes: 5
         with:
@@ -1276,6 +1325,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           E2E_LOCK_TOKEN: ${{ steps.lock_app_end.outputs.token }}
         run: bash lock-tools/tools/e2e-lock.sh release "${{ matrix.key }}"
+      - if: always()
+        uses: ./.github/actions/gh-ledger
+        with:
+          phase: end
+        timeout-minutes: 5
 
   # RELEASE: the lane's HTML report (always), then, only when every E2E suite of BOTH lanes passed: no real high-severity finding, the shared release checks, and the
   # "Beta-approved:" line that offers the build to Mac beta testers (desktop/lib/updater.js). Red = not released on Mac.
@@ -1312,6 +1366,10 @@ jobs:
       REF: ${{ github.sha }}
     steps:
       - uses: actions/checkout@v5
+        timeout-minutes: 5
+      - uses: ./.github/actions/gh-ledger
+        with:
+          phase: start
         timeout-minutes: 5
       - name: Both builds published? (a lane is never released alone)
         timeout-minutes: 5
@@ -1402,6 +1460,11 @@ jobs:
             tools/release-stable.sh "$TAG"
             echo "Stable: $TAG (all required suites passed on its commit)"
           fi
+      - if: always()
+        uses: ./.github/actions/gh-ledger
+        with:
+          phase: end
+        timeout-minutes: 5
 
   # RELEASE: the lane's HTML report (always), then, only when every E2E suite of BOTH lanes passed: no real high-severity finding, the shared release checks, and the
   # "Beta-approved (Windows):" line that offers the build to Windows beta testers (desktop/lib/updater.js). Red = not released on Windows.
@@ -1431,6 +1494,10 @@ jobs:
       REF: ${{ github.sha }}
     steps:
       - uses: actions/checkout@v5
+        timeout-minutes: 5
+      - uses: ./.github/actions/gh-ledger
+        with:
+          phase: start
         timeout-minutes: 5
       - name: Both builds published? (a lane is never released alone)
         timeout-minutes: 5
@@ -1515,6 +1582,11 @@ jobs:
         run: |
           set -o pipefail   # a program piped into tee/cat keeps its exit code (tests/test_workflow_pipefail.py)
           tools/beta-approve.sh --windows "$TAG"
+      - if: always()
+        uses: ./.github/actions/gh-ledger
+        with:
+          phase: end
+        timeout-minutes: 5
 
   # Keep the release list short: stable releases stay, plus the newest 3 test builds (tools/prune-releases.sh) and each platform's newest beta. After both lanes, so
   # tonight's approvals are already written when it decides what to keep.
@@ -1530,6 +1602,10 @@ jobs:
       # this job and Release · Mac were all skipped with no word, and Release · Windows ran alone and failed on a reason that was not true.
       - uses: actions/checkout@v5
         timeout-minutes: 5
+      - uses: ./.github/actions/gh-ledger
+        with:
+          phase: start
+        timeout-minutes: 5
       - name: A build failed, the beta is not released (names the lane and the step)
         if: needs.build.result != 'success' || needs.windows.result != 'success'
         timeout-minutes: 5
@@ -1543,6 +1619,11 @@ jobs:
           echo "### ❌ The E2E gate was planned but did not run: no build was tested or approved. See the 'Plan the E2E suites' step of Anything new?. Or the AI key was refused: see 'AI key ready?'."
           echo "::error::The E2E gate was skipped after a green build."
           exit 1
+      - if: always()
+        uses: ./.github/actions/gh-ledger
+        with:
+          phase: end
+        timeout-minutes: 5
 
   prune:
     name: Clean up old builds
@@ -1554,6 +1635,10 @@ jobs:
       issues: write     # the pinned Release channels issue
     steps:
       - uses: actions/checkout@v5
+        timeout-minutes: 5
+      - uses: ./.github/actions/gh-ledger
+        with:
+          phase: start
         timeout-minutes: 5
       - name: A release neither build published (both failed) is removed; its tag stays and its number is not reused
         timeout-minutes: 5
@@ -1572,6 +1657,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: python3 tools/sync_release_labels.py || echo "labels not refreshed"   # best effort, never fails a build
+      - if: always()
+        uses: ./.github/actions/gh-ledger
+        with:
+          phase: end
+        timeout-minutes: 5
 
   # Why (31 Oct 2026, owner): "It should just raise an alert. And that's it." One credit alert per workflow run, never a beta hold.
   ai-credit-health:
@@ -1599,6 +1689,10 @@ jobs:
           sparse-checkout: |
             desktop/e2e
             tools/scan-e2e-artifacts.py
+      - uses: ./.github/actions/gh-ledger
+        with:
+          phase: start
+        timeout-minutes: 5
       - uses: actions/setup-node@v5
         timeout-minutes: 5
         with:
@@ -1624,3 +1718,8 @@ jobs:
           name: ai-credit-alert-${{ github.run_id }}
           path: ai-credit-alert/alert-sent.txt
           overwrite: true
+      - if: always()
+        uses: ./.github/actions/gh-ledger
+        with:
+          phase: end
+        timeout-minutes: 5

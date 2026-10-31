@@ -1,3 +1,4 @@
+/* global document */
 // The person's Stop on the page panel, pressed the way a person presses it, then judged by the panel's own state; a failure names that state.
 // Job: wait on state
 // Why (31 Oct 2026, a8; PR #2746's harness run 41250657527, panel-theme-stop.test.mjs): "Stop halts a fill with the panel open" was red with only "Stop did not halt the fill", and the
@@ -43,6 +44,7 @@ export const isStopped = state => state.panel !== 'absent' && STOP_STAGES.every(
  */
 export async function pressStop(page, {capMs} = {}) {
   const budget = stepTimeLeft() ?? capMs;   // undefined outside a step and without a test cap: pollUntil's default
+  const deadline = budget === undefined ? undefined : Date.now() + budget;   // Why (PR #2748, Gitar): one deadline from before the press; the wait for a pressable Stop spends part of it, the stages get what is left
   const stop = page.locator(HOST).getByRole('button', {name: 'Stop', exact: true});
   try {
     await stepWait('the Stop control was visible, enabled and still', timeout => stop.click({timeout: timeout ?? capMs}));
@@ -52,7 +54,7 @@ export async function pressStop(page, {capMs} = {}) {
   const started = Date.now();
   let value = {panel: 'absent'};
   for (const stage of STOP_STAGES) {   // one event per action: each expected state is waited for on its own, with its own message, never one combined wait at the end
-    const left = budget === undefined ? undefined : Math.max(0, budget - (Date.now() - started));
+    const left = deadline === undefined ? undefined : Math.max(0, deadline - Date.now());
     ({value} = await pollUntil(() => readPanel(page), state => state.panel !== 'absent' && stage.accepts(state), {capMs: left, label: elapsed => `${stage.what} ${elapsed} ms after the press`}));
     if (value.panel === 'absent' || !stage.accepts(value)) throw new Error(`Stop did not halt the fill: ${waitCapNote(stage.what, (budget ?? 45000) / 1000, value)}`);
   }

@@ -27,7 +27,31 @@ test('the three-a-day e2e runs start the scheduled plan; an unknown cron starts 
   assert.deepEqual(jobsFor('0 2,3 * * *', at('2026-10-05T03:00:00Z')), [], 'and at 03:00 UTC it is 05:00 in summer: not its turn');
   assert.deepEqual(jobsFor('0 2,3 * * *', at('2026-12-05T03:00:00Z')), [{workflow: 'desktop.yml', inputs: {nightly: 'true'}}], 'in winter 03:00 UTC is 04:00');
   assert.ok(CRONS.length <= 3, 'the account has 5 cron triggers across ALL Workers and the others hold 2: a 4th here was refused (14 Oct 2026)');
-  assert.deepEqual(CRONS, ['0 0,1,2,3 * * *', '47 21,23,1 * * *', '40 */3 * * *']);
+  assert.deepEqual(CRONS, ['0 0,1,2,3 * * *', '47 21,23,1 * * *', '*/10 * * * *']);
+});
+
+test('the ten-minute cron starts the PR verdict sweep on every tick without dispatch inputs', () => {
+  for (const minute of ['00', '10', '20', '30', '40', '50']) {
+    const jobs = jobsFor('*/10 * * * *', at(`2026-10-31T00:${minute}:00Z`));
+    assert.deepEqual(jobs.filter(job => job.workflow === 'pr-verdict.yml'), [{workflow: 'pr-verdict.yml'}], minute);
+  }
+});
+
+test('sharing the ten-minute cron preserves exactly eight stats starts per UTC day', () => {
+  const starts = [], legacy = [];
+  for (let hour = 0; hour < 24; hour++) {
+    for (const minute of [0, 10, 20, 30, 40, 50]) {
+      const now = new Date(Date.UTC(2026, 9, 31, hour, minute));
+      const stats = jobsFor('*/10 * * * *', now).filter(job => job.workflow === 'self-heal-stats.yml');
+      if (stats.length) {
+        assert.deepEqual(stats, [{workflow: 'self-heal-stats.yml', inputs: {scheduled: 'true'}}]);
+        starts.push(now.toISOString().slice(11, 16));
+      }
+      if (minute === 40 && hour % 3 === 0) legacy.push(...jobsFor('40 */3 * * *', now));
+    }
+  }
+  assert.deepEqual(starts, ['00:40', '03:40', '06:40', '09:40', '12:40', '15:40', '18:40', '21:40']);
+  assert.equal(legacy.length, 8, 'the old cron keeps working during deployment');
 });
 
 test('a scheduled start calls the dispatcher; a failed one tells the owner, lets the others start, then fails the cron', async () => {

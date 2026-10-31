@@ -3,10 +3,10 @@ name = "sre-job-pilotto-bot"
 main = "src/index.js"
 compatibility_date = "2026-09-01"
 
-# On-time starts for the pipeline's schedules (src/scheduler.js): 04:00 Zurich nightly build (02:00 and 03:00 UTC: summer and winter), the three e2e runs a day, and the /self-heal numbers every 3 hours.
+# On-time starts (src/scheduler.js): 04:00 Zurich nightly build, three e2e runs a day, PR verdict sweeps every 10 minutes and /self-heal numbers every 3 hours.
 # GitHub's own crons in the workflow files stay as the backup. Deploy after a change: npm run deploy.
 [triggers]
-crons = ["0 0,1,2,3 * * *", "47 21,23,1 * * *", "40 */3 * * *"]
+crons = ["0 0,1,2,3 * * *", "47 21,23,1 * * *", "*/10 * * * *"]
 
 [vars]
 GITHUB_REPO = "GarryOne/jobadabra"

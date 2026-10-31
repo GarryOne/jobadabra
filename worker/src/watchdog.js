@@ -22,7 +22,8 @@ export function dueStarts(now = new Date(), {hours = 26, grace = GRACE_MIN, cron
     const date = new Date(at);
     for (const cron of crons) {
       if (!fires(cron, date)) continue;
-      for (const job of jobsFor(cron, date)) if (!latest.has(job.workflow)) latest.set(job.workflow, {workflow: job.workflow, cron, at: date.toISOString()});
+      // Why (31 Oct 2026, owner, Worker cron): ten-minute verdict repairs would churn the hourly missing-start issue; watch the longer schedules only.
+      for (const job of jobsFor(cron, date)) if (job.workflow !== 'pr-verdict.yml' && !latest.has(job.workflow)) latest.set(job.workflow, {workflow: job.workflow, cron, at: date.toISOString()});
     }
   }
   return [...latest.values()].sort((a, b) => a.workflow.localeCompare(b.workflow));

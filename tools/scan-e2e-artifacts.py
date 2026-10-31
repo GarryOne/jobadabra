@@ -11,15 +11,12 @@ import zipfile
 
 
 def secret_values(env):
-    """Read the workflow's secret context and runtime credential variables in memory only."""
-    supplied = json.loads(env.get('E2E_ARTIFACT_SECRETS', '{}'))
-    if not isinstance(supplied, dict):
+    """Read only the named credentials already available to this scanner process, in memory."""
+    names = env.get('E2E_ARTIFACT_SECRET_NAMES', '').splitlines()
+    names = {name.strip() for name in names if name.strip()}
+    if not names or any(not re.fullmatch(r'[A-Za-z_][A-Za-z0-9_]*', name) for name in names):
         raise ValueError()
-    values = {name: str(value) for name, value in supplied.items()}
-    for name, value in env.items():
-        if name != 'E2E_ARTIFACT_SECRETS' and re.search(r'(?:^|_)(?:KEY|TOKEN|SECRET|PASSWORD|CREDENTIAL)(?:_|$)', name):
-            values[name] = value
-    return {name: value for name, value in values.items() if len(value) >= 8}
+    return {name: env[name] for name in names if len(env.get(name, '')) >= 8}
 
 
 class Scanner:

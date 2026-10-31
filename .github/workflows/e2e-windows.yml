@@ -146,6 +146,35 @@ jobs:
       run:
         shell: bash   # the suites' commands use bash syntax; pwsh would mangle quoting
     env:
+      E2E_ARTIFACT_SECRET_NAMES: |
+        ACTIONS_ID_TOKEN_REQUEST_TOKEN
+        ACTIONS_RUNTIME_TOKEN
+        AI_COST_PUBLISH_KEY
+        CI_CF_ANALYTICS_TOKEN
+        CI_FREE_AI_CF_ACCOUNT_ID
+        E2E_ANTHROPIC_KEY
+        E2E_FREE_AI_KEY
+        E2E_LOCK_TOKEN
+        E2E_NOTION_TOKEN
+        E2E_NOTION_TOKEN_ACTIVITY
+        E2E_NOTION_TOKEN_ACTIVITYFAILURES
+        E2E_NOTION_TOKEN_APPLY
+        E2E_NOTION_TOKEN_APPLYFLOWS
+        E2E_NOTION_TOKEN_CALENDAR
+        E2E_NOTION_TOKEN_EMPLOYERS
+        E2E_NOTION_TOKEN_FOCUS
+        E2E_NOTION_TOKEN_FOCUSDISMISS
+        E2E_NOTION_TOKEN_INTERACTIONS
+        E2E_NOTION_TOKEN_INTERVIEWS
+        E2E_NOTION_TOKEN_JOBS
+        E2E_NOTION_TOKEN_PERSONAS
+        E2E_NOTION_TOKEN_QUALITY
+        E2E_NOTION_TOKEN_SETTINGS
+        E2E_NOTION_TOKEN_STRATEGY
+        E2E_NOTION_TOKEN_WANDER
+        E2E_OPENAI_KEY
+        GH_TOKEN
+        GITHUB_TOKEN
       E2E_ANTHROPIC_KEY: ${{ secrets.E2E_ANTHROPIC_KEY }}
       E2E_OPENAI_KEY: ${{ secrets.E2E_OPENAI_KEY }}   # the OpenAI family's turn (odd runs; desktop/e2e/lib/engine.mjs pickFamily)
       E2E_NOTION_TOKEN: ${{ secrets.E2E_NOTION_TOKEN }}
@@ -319,9 +348,6 @@ jobs:
         if: always()
         shell: bash
         env:
-          E2E_ARTIFACT_SECRETS: ${{ toJSON(secrets) }}
-          E2E_LOCK_TOKEN: ${{ steps.lock_app.outputs.token }}
-          GH_TOKEN: ${{ github.token }}
           E2E_ARTIFACT_PATHS: |
             blob-report
         run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
@@ -340,9 +366,6 @@ jobs:
         if: always()
         shell: bash
         env:
-          E2E_ARTIFACT_SECRETS: ${{ toJSON(secrets) }}
-          E2E_LOCK_TOKEN: ${{ steps.lock_app.outputs.token }}
-          GH_TOKEN: ${{ github.token }}
           E2E_ARTIFACT_PATHS: |
             e2e-artifacts-windows/${{ matrix.key }}/steps.json
             e2e-artifacts-windows/${{ matrix.key }}/trace-*.zip
@@ -363,9 +386,6 @@ jobs:
         if: always()
         shell: bash
         env:
-          E2E_ARTIFACT_SECRETS: ${{ toJSON(secrets) }}
-          E2E_LOCK_TOKEN: ${{ steps.lock_app.outputs.token }}
-          GH_TOKEN: ${{ github.token }}
           E2E_ARTIFACT_PATHS: |
             e2e-artifacts-windows/${{ matrix.key }}
         run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
@@ -383,9 +403,6 @@ jobs:
         if: always()
         shell: bash
         env:
-          E2E_ARTIFACT_SECRETS: ${{ toJSON(secrets) }}
-          E2E_LOCK_TOKEN: ${{ steps.lock_app.outputs.token }}
-          GH_TOKEN: ${{ github.token }}
           E2E_ARTIFACT_PATHS: |
             e2e-artifacts-windows/apply-edge
         run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
@@ -427,6 +444,16 @@ jobs:
       issues: read    # the by-design lessons come from the closed issues (lib/review-lessons.mjs)
       actions: read   # this run's suite artifacts
       id-token: write   # GitHub's per-run token the Codex broker checks (lib/broker-client.mjs)
+    env:
+      E2E_ARTIFACT_SECRET_NAMES: |
+        ACTIONS_ID_TOKEN_REQUEST_TOKEN
+        ACTIONS_RUNTIME_TOKEN
+        AI_COST_PUBLISH_KEY
+        E2E_ANTHROPIC_KEY
+        E2E_FREE_AI_KEY
+        E2E_LOCK_TOKEN
+        GH_TOKEN
+        GITHUB_TOKEN
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -434,7 +461,6 @@ jobs:
           node-version: '22'
       - uses: ./.github/actions/e2e-review
         with:
-          artifact-secrets: ${{ toJSON(secrets) }}
           lane: windows
           anthropic-key: ${{ secrets.E2E_ANTHROPIC_KEY }}
           provider: ${{ inputs.ai_provider || vars.CI_AI_PROVIDER }}
@@ -447,6 +473,14 @@ jobs:
     if: always() && needs.plan.result == 'success'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
+    env:
+      E2E_ARTIFACT_SECRET_NAMES: |
+        ACTIONS_ID_TOKEN_REQUEST_TOKEN
+        ACTIONS_RUNTIME_TOKEN
+        E2E_FREE_AI_KEY
+        E2E_LOCK_TOKEN
+        GH_TOKEN
+        GITHUB_TOKEN
     steps:
       - uses: actions/checkout@v5
         with:
@@ -476,8 +510,6 @@ jobs:
         if: always()
         shell: bash
         env:
-          E2E_ARTIFACT_SECRETS: ${{ toJSON(secrets) }}
-          GH_TOKEN: ${{ github.token }}
           E2E_ARTIFACT_PATHS: |
             e2e-report
         run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"

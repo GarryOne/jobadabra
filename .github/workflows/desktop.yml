@@ -245,6 +245,16 @@ jobs:
     runs-on: macos-latest   # Apple Silicon; Why (30 Oct 2026, beta 41114966182): macOS 14 brownout; build on the image the e2e runs on.
     timeout-minutes: 30
     env:
+      E2E_ARTIFACT_SECRET_NAMES: |
+        ACTIONS_ID_TOKEN_REQUEST_TOKEN
+        ACTIONS_RUNTIME_TOKEN
+        CLIENT
+        E2E_FREE_AI_KEY
+        E2E_LOCK_TOKEN
+        GH_TOKEN
+        GITHUB_TOKEN
+        MAC_SIGN_P12
+        MAC_SIGN_PASSWORD
       VERSION: ${{ needs.changes.outputs.version }}
       EXTENSION_VERSION: ${{ needs.changes.outputs.extension_version }}   # the build checkouts are shallow: stage.mjs refuses to count there
     steps:
@@ -318,8 +328,6 @@ jobs:
         if: always()
         shell: bash
         env:
-          E2E_ARTIFACT_SECRETS: ${{ toJSON(secrets) }}
-          GH_TOKEN: ${{ github.token }}
           E2E_ARTIFACT_PATHS: |
             desktop/smoke
         run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
@@ -357,6 +365,14 @@ jobs:
       run:
         shell: bash
     env:
+      E2E_ARTIFACT_SECRET_NAMES: |
+        ACTIONS_ID_TOKEN_REQUEST_TOKEN
+        ACTIONS_RUNTIME_TOKEN
+        CLIENT
+        E2E_FREE_AI_KEY
+        E2E_LOCK_TOKEN
+        GH_TOKEN
+        GITHUB_TOKEN
       VERSION: ${{ needs.changes.outputs.version }}
       EXTENSION_VERSION: ${{ needs.changes.outputs.extension_version }}   # the build checkouts are shallow: stage.mjs refuses to count there
     steps:
@@ -429,8 +445,6 @@ jobs:
         if: always()
         shell: bash
         env:
-          E2E_ARTIFACT_SECRETS: ${{ toJSON(secrets) }}
-          GH_TOKEN: ${{ github.token }}
           E2E_ARTIFACT_PATHS: |
             desktop/smoke
         run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
@@ -502,6 +516,37 @@ jobs:
       fail-fast: false      # one suite failing must not hide what the others found
       matrix: ${{ fromJson(needs.changes.outputs.mac_matrix) }}
     env:
+      E2E_ARTIFACT_SECRET_NAMES: |
+        ACTIONS_ID_TOKEN_REQUEST_TOKEN
+        ACTIONS_RUNTIME_TOKEN
+        AI_COST_PUBLISH_KEY
+        CI_CF_ANALYTICS_TOKEN
+        CI_FREE_AI_CF_ACCOUNT_ID
+        E2E_ANTHROPIC_KEY
+        E2E_FREE_AI_KEY
+        E2E_LOCK_TOKEN
+        E2E_NOTION_TOKEN
+        E2E_NOTION_TOKEN_ACTIVITY
+        E2E_NOTION_TOKEN_ACTIVITYFAILURES
+        E2E_NOTION_TOKEN_APPLY
+        E2E_NOTION_TOKEN_APPLYFLOWS
+        E2E_NOTION_TOKEN_CALENDAR
+        E2E_NOTION_TOKEN_EMPLOYERS
+        E2E_NOTION_TOKEN_FAILURESCHANNELS
+        E2E_NOTION_TOKEN_FAILURESNOTION
+        E2E_NOTION_TOKEN_FOCUS
+        E2E_NOTION_TOKEN_FOCUSDISMISS
+        E2E_NOTION_TOKEN_INTERACTIONS
+        E2E_NOTION_TOKEN_INTERVIEWS
+        E2E_NOTION_TOKEN_JOBS
+        E2E_NOTION_TOKEN_PERSONAS
+        E2E_NOTION_TOKEN_QUALITY
+        E2E_NOTION_TOKEN_SETTINGS
+        E2E_NOTION_TOKEN_STRATEGY
+        E2E_NOTION_TOKEN_WANDER
+        E2E_OPENAI_KEY
+        GH_TOKEN
+        GITHUB_TOKEN
       # A suite whose secrets are missing FAILS here instead of a green "skipped" (lib/skip.mjs). 6 Oct 2026: failuresnotion and failureschannels
       # had never run (no token) and showed ✓. Forks have no secrets: they still skip with a warning.
       E2E_REQUIRE_SECRETS: ${{ github.repository_owner == 'GarryOne' && '1' || '' }}
@@ -716,9 +761,6 @@ jobs:
         if: always()
         shell: bash
         env:
-          E2E_ARTIFACT_SECRETS: ${{ toJSON(secrets) }}
-          E2E_LOCK_TOKEN: ${{ steps.lock_app.outputs.token }}
-          GH_TOKEN: ${{ github.token }}
           E2E_ARTIFACT_PATHS: |
             blob-report
         run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
@@ -737,9 +779,6 @@ jobs:
         if: always()
         shell: bash
         env:
-          E2E_ARTIFACT_SECRETS: ${{ toJSON(secrets) }}
-          E2E_LOCK_TOKEN: ${{ steps.lock_app.outputs.token }}
-          GH_TOKEN: ${{ github.token }}
           E2E_ARTIFACT_PATHS: |
             e2e-artifacts/${{ matrix.key }}/steps.json
             e2e-artifacts/${{ matrix.key }}/trace-*.zip
@@ -760,9 +799,6 @@ jobs:
         if: always()
         shell: bash
         env:
-          E2E_ARTIFACT_SECRETS: ${{ toJSON(secrets) }}
-          E2E_LOCK_TOKEN: ${{ steps.lock_app.outputs.token }}
-          GH_TOKEN: ${{ github.token }}
           E2E_ARTIFACT_PATHS: |
             e2e-artifacts/${{ matrix.key }}
         run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
@@ -781,9 +817,6 @@ jobs:
         if: always()
         shell: bash
         env:
-          E2E_ARTIFACT_SECRETS: ${{ toJSON(secrets) }}
-          E2E_LOCK_TOKEN: ${{ steps.lock_app.outputs.token }}
-          GH_TOKEN: ${{ github.token }}
           E2E_ARTIFACT_PATHS: |
             e2e-rerun/${{ matrix.key }}
         run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
@@ -825,6 +858,35 @@ jobs:
       run:
         shell: bash   # the suites' commands use bash syntax; pwsh would mangle quoting
     env:
+      E2E_ARTIFACT_SECRET_NAMES: |
+        ACTIONS_ID_TOKEN_REQUEST_TOKEN
+        ACTIONS_RUNTIME_TOKEN
+        AI_COST_PUBLISH_KEY
+        CI_CF_ANALYTICS_TOKEN
+        CI_FREE_AI_CF_ACCOUNT_ID
+        E2E_ANTHROPIC_KEY
+        E2E_FREE_AI_KEY
+        E2E_LOCK_TOKEN
+        E2E_NOTION_TOKEN
+        E2E_NOTION_TOKEN_ACTIVITY
+        E2E_NOTION_TOKEN_ACTIVITYFAILURES
+        E2E_NOTION_TOKEN_APPLY
+        E2E_NOTION_TOKEN_APPLYFLOWS
+        E2E_NOTION_TOKEN_CALENDAR
+        E2E_NOTION_TOKEN_EMPLOYERS
+        E2E_NOTION_TOKEN_FOCUS
+        E2E_NOTION_TOKEN_FOCUSDISMISS
+        E2E_NOTION_TOKEN_INTERACTIONS
+        E2E_NOTION_TOKEN_INTERVIEWS
+        E2E_NOTION_TOKEN_JOBS
+        E2E_NOTION_TOKEN_PERSONAS
+        E2E_NOTION_TOKEN_QUALITY
+        E2E_NOTION_TOKEN_SETTINGS
+        E2E_NOTION_TOKEN_STRATEGY
+        E2E_NOTION_TOKEN_WANDER
+        E2E_OPENAI_KEY
+        GH_TOKEN
+        GITHUB_TOKEN
       E2E_ANTHROPIC_KEY: ${{ secrets.E2E_ANTHROPIC_KEY }}
       E2E_OPENAI_KEY: ${{ secrets.E2E_OPENAI_KEY }}   # the OpenAI family's turn (odd runs; desktop/e2e/lib/engine.mjs pickFamily)
       E2E_NOTION_TOKEN: ${{ secrets.E2E_NOTION_TOKEN }}
@@ -976,9 +1038,6 @@ jobs:
         if: always()
         shell: bash
         env:
-          E2E_ARTIFACT_SECRETS: ${{ toJSON(secrets) }}
-          E2E_LOCK_TOKEN: ${{ steps.lock_app.outputs.token }}
-          GH_TOKEN: ${{ github.token }}
           E2E_ARTIFACT_PATHS: |
             blob-report
         run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
@@ -997,9 +1056,6 @@ jobs:
         if: always()
         shell: bash
         env:
-          E2E_ARTIFACT_SECRETS: ${{ toJSON(secrets) }}
-          E2E_LOCK_TOKEN: ${{ steps.lock_app.outputs.token }}
-          GH_TOKEN: ${{ github.token }}
           E2E_ARTIFACT_PATHS: |
             e2e-artifacts-windows/${{ matrix.key }}/steps.json
             e2e-artifacts-windows/${{ matrix.key }}/trace-*.zip
@@ -1020,9 +1076,6 @@ jobs:
         if: always()
         shell: bash
         env:
-          E2E_ARTIFACT_SECRETS: ${{ toJSON(secrets) }}
-          E2E_LOCK_TOKEN: ${{ steps.lock_app.outputs.token }}
-          GH_TOKEN: ${{ github.token }}
           E2E_ARTIFACT_PATHS: |
             e2e-artifacts-windows/${{ matrix.key }}
         run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
@@ -1040,9 +1093,6 @@ jobs:
         if: always()
         shell: bash
         env:
-          E2E_ARTIFACT_SECRETS: ${{ toJSON(secrets) }}
-          E2E_LOCK_TOKEN: ${{ steps.lock_app.outputs.token }}
-          GH_TOKEN: ${{ github.token }}
           E2E_ARTIFACT_PATHS: |
             e2e-artifacts-windows/apply-edge
         run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
@@ -1089,6 +1139,15 @@ jobs:
       group: release-promote   # one writer of a release's notes at a time: both lanes edit the same body
       cancel-in-progress: false
     env:
+      E2E_ARTIFACT_SECRET_NAMES: |
+        ACTIONS_ID_TOKEN_REQUEST_TOKEN
+        ACTIONS_RUNTIME_TOKEN
+        AI_COST_PUBLISH_KEY
+        E2E_ANTHROPIC_KEY
+        E2E_FREE_AI_KEY
+        E2E_LOCK_TOKEN
+        GH_TOKEN
+        GITHUB_TOKEN
       GH_TOKEN: ${{ github.token }}
       TAG: desktop-v${{ needs.changes.outputs.version }}
       REF: ${{ github.sha }}
@@ -1115,8 +1174,6 @@ jobs:
         if: always()
         shell: bash
         env:
-          E2E_ARTIFACT_SECRETS: ${{ toJSON(secrets) }}
-          GH_TOKEN: ${{ github.token }}
           E2E_ARTIFACT_PATHS: |
             e2e-report
         run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
@@ -1130,7 +1187,6 @@ jobs:
       # batch for every page, half the price; owner, 26 Oct 2026). Inside this job, so the release graph stays Build -> E2E -> Release.
       - uses: ./.github/actions/e2e-review
         with:
-          artifact-secrets: ${{ toJSON(secrets) }}
           lane: mac
           anthropic-key: ${{ secrets.E2E_ANTHROPIC_KEY }}
           provider: ${{ inputs.ai_provider || vars.CI_AI_PROVIDER }}
@@ -1188,6 +1244,15 @@ jobs:
       group: release-promote   # one writer of a release's notes at a time: both lanes edit the same body
       cancel-in-progress: false
     env:
+      E2E_ARTIFACT_SECRET_NAMES: |
+        ACTIONS_ID_TOKEN_REQUEST_TOKEN
+        ACTIONS_RUNTIME_TOKEN
+        AI_COST_PUBLISH_KEY
+        E2E_ANTHROPIC_KEY
+        E2E_FREE_AI_KEY
+        E2E_LOCK_TOKEN
+        GH_TOKEN
+        GITHUB_TOKEN
       GH_TOKEN: ${{ github.token }}
       TAG: desktop-v${{ needs.changes.outputs.version }}
       REF: ${{ github.sha }}
@@ -1214,8 +1279,6 @@ jobs:
         if: always()
         shell: bash
         env:
-          E2E_ARTIFACT_SECRETS: ${{ toJSON(secrets) }}
-          GH_TOKEN: ${{ github.token }}
           E2E_ARTIFACT_PATHS: |
             e2e-report
         run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
@@ -1229,7 +1292,6 @@ jobs:
       # batch for every page, half the price; owner, 26 Oct 2026). Inside this job, so the release graph stays Build -> E2E -> Release.
       - uses: ./.github/actions/e2e-review
         with:
-          artifact-secrets: ${{ toJSON(secrets) }}
           lane: windows
           anthropic-key: ${{ secrets.E2E_ANTHROPIC_KEY }}
           provider: ${{ inputs.ai_provider || vars.CI_AI_PROVIDER }}

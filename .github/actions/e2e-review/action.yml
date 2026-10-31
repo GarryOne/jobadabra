@@ -8,9 +8,6 @@ description: >-
 # suite (named as the suite's artifact) beside the pictures they name; ui-findings.yml and block-check.mjs read them with the suites' own. Guard: tests/test_e2e_review_job.py.
 # The job needs a checkout of its own commit, Node 22, `issues: read` (the lessons) and `actions: read` (this run's artifacts).
 inputs:
-  artifact-secrets:
-    description: 'Secret context for the fail-closed artifact scan (never printed)'
-    required: true
   lane:
     description: 'mac (the Mac + Linux suites, artifacts e2e-artifacts-<key>) or windows (e2e-artifacts-windows-<key>)'
     required: true
@@ -82,8 +79,6 @@ runs:
       shell: bash
       working-directory: ${{ github.workspace }}
       env:
-        E2E_ARTIFACT_SECRETS: ${{ inputs.artifact-secrets }}
-        GH_TOKEN: ${{ inputs.github-token }}
         E2E_ARTIFACT_PATHS: .e2e-review/ai-cost.json
       run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
     - uses: actions/upload-artifact@v6
@@ -98,8 +93,6 @@ runs:
       shell: bash
       working-directory: ${{ github.workspace }}
       env:
-        E2E_ARTIFACT_SECRETS: ${{ inputs.artifact-secrets }}
-        GH_TOKEN: ${{ inputs.github-token }}
         E2E_ARTIFACT_PATHS: .e2e-review/out
       run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
     - name: The findings, one folder per suite beside its pictures

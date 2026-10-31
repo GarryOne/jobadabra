@@ -112,3 +112,39 @@ test('ghIo compares and reads a commit its checkout lacks, and leaves the checko
   assert.throws(() => git(checkout, 'cat-file', '-e', pr), 'nothing was fetched into the checkout');
   fs.rmSync(tmp, {recursive: true, force: true});
 });
+
+// The owner's 31 Oct apply red (#2703): run 41200878403 ran the Notion stand-in store, the "green 2 minutes earlier on the same commit" 41200737331 ran sqlite
+// (coverage artifacts: "store": "standin" / "sqlite"), and the tools called it flaky. Two stores are two inputs: that pair is no evidence of "same code, different result".
+test('a red on the stand-in store next to a green on sqlite of the same commit gives no verdict (41200878403 vs 41200737331)', async () => {
+  const pair = {runs: async () => [{id: 41200737331, sha: RED, title: 'E2E after merge · fb1d711 · apply', url: 'https://x/41200737331'}, {id: 41200878403, sha: RED, title: 'E2E Mac + Linux · apply · main', url: 'https://x/41200878403'}],
+    viewNames: async () => ['e2e-view-apply-1of3'], stepsOf: async () => table(READ), changedNames: async () => [],
+    storeOf: async id => ({41200737331: 'sqlite', 41200878403: 'standin'})[id] ?? null};
+  const [read] = await verdictsFor({suite: 'apply', steps: [READ], redSha: RED, redRun: 41200878403, io: io(pair)});
+  assert.equal(read.verdict, 'unknown', 'a different store is not a comparable green');
+  assert.equal(read.store, 'standin');
+  assert.equal(read.otherStore, 1, 'the verdict says one green was left out for its store');
+});
+
+test('a green on the red\'s own store still decides flaky, and a store that cannot be read is no evidence either way', async () => {
+  const runs = async () => [{id: 1, sha: '79e6c34', title: 'E2E for PR · apply · a8-x', url: 'https://x/1'}, {id: 9, sha: RED, title: 'E2E Mac + Linux · apply · main', url: 'https://x/9'}];
+  const same = await verdictsFor({suite: 'apply', steps: [READ], redSha: RED, redRun: 9, io: io({runs, storeOf: async () => 'standin'})});
+  assert.equal(same[0].verdict, 'flaky');
+  const blindGreen = await verdictsFor({suite: 'apply', steps: [READ], redSha: RED, redRun: 9, io: io({runs, storeOf: async id => (id === 9 ? 'standin' : null)})});
+  assert.equal(blindGreen[0].verdict, 'unknown');
+  const blindRed = await verdictsFor({suite: 'apply', steps: [READ], redSha: RED, redRun: 9, io: io({runs, storeOf: async id => (id === 9 ? null : 'standin')})});
+  assert.equal(blindRed[0].verdict, 'unknown');
+});
+
+test('the real reads: a run\'s store is the "store" its coverage artifact records, or the store leg of a view key; no artifact of the suite is unknown', async () => {
+  const calls = [];
+  const run = args => {
+    calls.push(args.join(' '));
+    if (args.some(arg => String(arg).includes('/artifacts?per_page=100'))) return 'e2e-view-apply-1of3\ne2e-coverage-apply-1of3\ne2e-view-settings-standin\n';
+    if (args[0] === 'run' && args.includes('e2e-coverage-apply-1of3')) { const dir = args[args.indexOf('-D') + 1]; fs.writeFileSync(path.join(dir, 'coverage-apply-1.json'), JSON.stringify({suite: 'apply', store: 'standin', steps: {}})); return ''; }
+    throw new Error(`unexpected gh ${args.join(' ')}`);
+  };
+  const real = ghIo({repo: 'GarryOne/jobadabra', run});
+  assert.equal(await real.storeOf(1, 'apply'), 'standin');
+  assert.equal(await real.storeOf(1, 'settings'), 'standin', 'the key\'s own store leg');
+  assert.equal(await real.storeOf(1, 'quality'), null, 'no artifact of that suite: unknown');
+});

@@ -2,7 +2,10 @@
 // Used by the gate (tools/red-main-gate.sh via tools/flaky-verdict.mjs), the Telegram alert (ci-alert.mjs) and the PR verdict (tools/pr-verdict.py); tools/suspend-flip.mjs proposes the suspension from it.
 // Why (31 Oct 2026, owner: "You detect flakiness and immediately treat the flakiness root cause"): the evidence is searched by the tool on every red, from runs of every kind
 // (main after-merge, nightly, beta, re-checks, PR runs), because a green on a PR head is as good a "same code passed" as one on main (trees are compared, not ancestry).
-// Invariants: every read is injected (`io`), so tests never reach GitHub; a read that fails leaves that green uncomparable ("unknown"), never "changed" or "flaky".
+// Why (31 Oct 2026, owner: "Never suspend safety steps"; found on #2703): the red 41200878403 ran the Notion stand-in store and its "green on the same commit" 41200737331 ran sqlite,
+// so the verdict said flaky for two different inputs and suspended a safety step. A green counts only from a run on the red's own store (io.storeOf); other-store greens are counted, not compared.
+// Invariants: every read is injected (`io`), so tests never reach GitHub; a read that fails leaves that green uncomparable ("unknown"), never "changed" or "flaky". Without io.storeOf the store is not looked at.
+// Not covered: Mac vs Linux (a suite moves runners only when the run sets all_on_mac; the artifacts do not record the OS); Windows lanes are keyed apart (windows-<suite>).
 // Tests: test/flaky-evidence.test.mjs
 // Job: report health
 import {execFileSync} from 'node:child_process';
@@ -30,11 +33,20 @@ export async function verdictsFor({suite, steps, redSha, redRun, redAt, io, wind
   const compared = Object.fromEntries(steps.map(step => [step, []]));
   const diffs = new Map();
   const pending = new Set(steps);
+  const otherStore = Object.fromEntries(steps.map(step => [step, 0]));
+  const stores = new Map();
+  const storeOn = id => { if (!stores.has(id)) stores.set(id, Promise.resolve(io.storeOf(id, suite)).catch(() => null)); return stores.get(id); };
+  const redStore = io.storeOf ? await storeOn(redRun) : undefined;
   const changedSince = async sha => {
     if (!diffs.has(sha)) diffs.set(sha, await Promise.resolve(io.changedNames(sha, redSha)).catch(() => null));
     return diffs.get(sha);
   };
   const compare = async (run, step) => {
+    if (io.storeOf) {
+      const store = await storeOn(run.id);
+      if (redStore == null || store == null) { compared[step].push({green: {sha: run.sha, run: run.id, url: run.url}, files: null}); return; }   // a store that cannot be read proves nothing
+      if (store !== redStore) { if (++otherStore[step] >= maxGreens) pending.delete(step); return; }   // another store is another input: counted, never compared
+    }
     const changed = await changedSince(run.sha);
     const files = changed ? touched(changed, sets[step]) : null;
     compared[step].push({green: {sha: run.sha, run: run.id, url: run.url}, files});
@@ -49,7 +61,7 @@ export async function verdictsFor({suite, steps, redSha, redRun, redAt, io, wind
   return steps.map(step => {
     const verdict = judge(compared[step]);
     // The evidence an owner issue quotes: how many files moved between the green and the red, and how many of them the step runs.
-    return {step, redSha, ...verdict, ...(verdict.verdict === 'flaky' ? {movedFiles: diffs.get(verdict.green.sha)?.length ?? 0, stepFileCount: sets[step].files.length} : {})};
+    return {step, redSha, ...verdict, ...(io.storeOf ? {store: redStore ?? null, otherStore: otherStore[step]} : {}), ...(verdict.verdict === 'flaky' ? {movedFiles: diffs.get(verdict.green.sha)?.length ?? 0, stepFileCount: sets[step].files.length} : {})};
   });
 }
 
@@ -118,6 +130,20 @@ export function ghIo({repo, root = process.cwd(), run = gh, remoteUrl = `https:/
       '[.workflow_runs[] | {id, sha: .head_sha, at: .created_at, title: .display_title, url: .html_url}]'])),
     viewNames: async runId => run(['api', '--paginate', `repos/${repo}/actions/runs/${runId}/artifacts?per_page=100`, '--jq', '.artifacts[] | select(.expired == false) | .name']).split('\n').filter(Boolean),
     stepsOf: async (runId, name) => readJson(runId, name, 'steps.json'),
+    /** The store a run ran this suite on: the store leg of one of its keys (settings-standin), else the "store" its coverage artifact records ('' when the suite uses none); null when unknown. */
+    storeOf: async (runId, suite) => {
+      const names = run(['api', '--paginate', `repos/${repo}/actions/runs/${runId}/artifacts?per_page=100`, '--jq', '.artifacts[] | select(.expired == false) | .name']).split('\n').filter(Boolean);
+      const mine = names.filter(name => /^e2e-(view|coverage)-/.test(name) && suiteOfKey(name.replace(/^e2e-(view|coverage)-/, '')) === suite);
+      const leg = mine.map(name => /-(standin|sqlite)(?:-\d+of\d+)?$/.exec(name)?.[1]).find(Boolean);
+      if (leg) return leg;
+      const coverage = mine.find(name => name.startsWith('e2e-coverage-'));
+      if (!coverage) return null;
+      const dir = download(runId, coverage);
+      try {
+        const file = fs.readdirSync(dir).find(name => /^coverage-.*\.json$/.test(name));
+        return file ? JSON.parse(fs.readFileSync(path.join(dir, file), 'utf8')).store ?? null : null;
+      } finally { fs.rmSync(dir, {recursive: true, force: true}); }
+    },
     changedNames: async (green, red) => {
       const names = dir => git(dir, 'diff', '--name-only', '--no-renames', green, red).split('\n').filter(Boolean);
       try { return names(root); } catch {

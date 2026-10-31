@@ -89,6 +89,7 @@ test('sayLine names the step, the green run it compared to and, for changed, the
   assert.match(changed, /^Changed: “S” /);
   assert.match(changed, /a\.js, b\.js, c\.js \+1 more/);
   assert.match(sayLine({step: 'S', ...judge([])}), /^Unknown: “S” /);
+  assert.match(sayLine({step: 'S', ...judge([]), store: 'standin', otherStore: 2}), /^Unknown: “S” .*2 green\(s\) ran another store than the red's \(standin\)/, 'the line says why a green was left out');
 });
 
 // The same verdict against a real git repository: a tree diff between commits that are not ancestors of each other (a PR head against main).

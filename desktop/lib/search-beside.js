@@ -15,6 +15,9 @@ export const setLinkedinStep = (fn, score = null) => { registered = fn; register
  */
 export const ownPress = ({mode, trigger, employers = false, note = ''}) => mode === 'run' && ['you', 'first'].includes(trigger) && !employers && !note;
 
+/** The search task's one call: the LinkedIn step beside `steps` for a person's own press (ownPress), `steps` alone for every other run. -> steps' result. */
+export const besideSteps = (storage, onLine, signal, press, steps) => (ownPress(press) ? withLinkedin(storage, onLine, signal, steps) : steps());
+
 const SCORE_NEEDS_MS = 40000;   // under this much of the press left, the jobs wait for the next search (an engine step needs a few seconds to start)
 /**
  * Run `main` (the engine's steps) with the LinkedIn step beside it. -> main's result, whatever the step does.

@@ -190,9 +190,11 @@ test('the clean-up deletes every LinkedIn cookie the browser holds, with its own
   const r = rig();
   await linkedinStep(r.args);
   const clear = cookieCalls(r.calls).at(-1)[1].cookies;
-  const key = c => `${c.name}@${c.domain}${c.path}`;
-  for (const wanted of ['li_at@.www.linkedin.com/', 'JSESSIONID@.www.linkedin.com/', 'bcookie@.linkedin.com/', 'lidc@www.linkedin.com/jobs', 'li_at@.linkedin.com/', 'JSESSIONID@.linkedin.com/']) assert.ok(clear.map(key).includes(wanted), wanted);
-  assert.equal(clear.some(c => /notlinkedin|x\.example/.test(c.domain)), false, 'a look-alike host and another site are left alone');
+  const key = c => `${c.name}@${c.domain ?? c.url}${c.path}`;
+  for (const wanted of ['li_at@.www.linkedin.com/', 'JSESSIONID@.www.linkedin.com/', 'bcookie@.linkedin.com/', 'lidc@https://www.linkedin.com/jobs/jobs', 'li_at@.linkedin.com/', 'JSESSIONID@.linkedin.com/']) assert.ok(clear.map(key).includes(wanted), wanted);
+  const hostOnly = clear.find(c => c.name === 'lidc');
+  assert.equal('domain' in hostOnly, false, 'a host-only cookie is addressed by url: a domain would write a different, domain cookie and leave the original (Gitar, 2nd round)');
+  assert.equal(clear.some(c => /notlinkedin|x\.example/.test(c.domain || c.url)), false, 'a look-alike host and another site are left alone');
   assert.ok(clear.every(c => c.value === '' && c.expires < NOW / 1000));
 });
 

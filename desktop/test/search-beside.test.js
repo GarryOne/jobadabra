@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import fs from 'node:fs';
-import {ownPress, withLinkedin} from '../lib/search-beside.js';
+import {besideSteps, ownPress, setLinkedinStep, withLinkedin} from '../lib/search-beside.js';
 
 const storage = {};
 const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -92,7 +92,23 @@ test('only a person\'s own Find jobs press reads LinkedIn: not the timer, a re-s
   assert.equal(ownPress({mode: 'today', trigger: 'you'}), false, 'a light scoring run');
 });
 
-test('the search task asks that question before it runs the LinkedIn step (pinned: every refresh passes through searchOnce)', () => {
+test('the search task runs the LinkedIn step for a person\'s own press and for no other run (not the timer, a re-score, Find more employers or a light run)', async () => {
+  const ran = [], saved = {};
+  const memory = {settings: () => saved, saveSettings: patch => Object.assign(saved, patch)};
+  setLinkedinStep(async () => { ran.push('step'); return {state: 'done', jobs: 0}; });
+  try {
+    const presses = [[{mode: 'run', trigger: 'you'}, true], [{mode: 'run', trigger: 'first'}, true], [{mode: 'scheduled', trigger: 'schedule'}, false], [{mode: 'run', trigger: 'schedule'}, false],
+      [{mode: 'run', trigger: 'you', employers: true}, false], [{mode: 'run', trigger: 'you', note: 'Re-scoring 75 older scores'}, false], [{mode: 'today', trigger: 'you'}, false]];
+    for (const [press, reads] of presses) {
+      ran.length = 0;
+      const outcome = await besideSteps(memory, () => {}, null, press, async () => ({code: 0, result: 'r'}));
+      assert.deepEqual(outcome, {code: 0, result: 'r'}, 'the engine\'s result is returned as it is');
+      assert.equal(ran.length === 1, reads, `${JSON.stringify(press)} ${reads ? 'reads' : 'does not read'} LinkedIn`);
+    }
+  } finally { setLinkedinStep(null); }
+});
+
+test('pipeline-tasks hands the whole press (mode, trigger, employers, note) to besideSteps', () => {
   const source = fs.readFileSync(new URL('../lib/pipeline-tasks.js', import.meta.url), 'utf8');
-  assert.match(source, /ownPress\(\{mode, trigger, employers, note\}\) \? withLinkedin\(/);
+  assert.match(source, /besideSteps\(storage, onLine, signal, \{mode, trigger, employers, note\}, steps\)/);
 });

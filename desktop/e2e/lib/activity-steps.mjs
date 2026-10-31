@@ -9,7 +9,6 @@ import {clearData} from './start-state.mjs';
 import {snap} from './layout.mjs';
 import {ensureSetUp} from './seed.mjs';
 import {pressTask} from './task-card.mjs';
-import {pollUntil} from './wait-on-state.mjs';
 
 export const RUNS_DB = 'Cronjob Runs';
 
@@ -156,10 +155,12 @@ export async function withSilenceLimit(ctx, run) {
   } finally {
     const fault = ctx.proxy.stats.fault;
     ctx.proxy.setMode('pass');
+    // Why (31 Oct 2026, CI 41217478444): the proxy closes the hang it planted when the mode changes and says when its sockets have closed. The old app's engine child can outlive the
+    // app's hard exit still holding that call, so waiting for the app to go (and polling the count for 45 s) proved nothing about the connection.
+    await fault.released;
     // Closing a hung suite must never be followed by a late relaunch from its abandoned step.
     if (!ctx.page.isClosed()) { await ctx.relaunch(); await appReady(ctx); }
-    const {value} = await pollUntil(() => fault.pending, pending => pending === 0, {log: () => {}});
-    if (value !== 0) throw new Error(`AI ${fault.mode} left ${value} request(s) after the silence instance closed`);
+    if (fault.pending !== 0) throw new Error(`AI ${fault.mode} left ${fault.pending} request(s) after the silence instance closed`);
   }
 }
 

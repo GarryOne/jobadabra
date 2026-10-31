@@ -30,7 +30,21 @@ export function failureFor(mode) {
 }
 
 /** One arming owns its requests and failures; changing mode never retags delayed work. */
-function faultScope(mode) { return {mode, calls: 0, failed: 0, pending: 0, delayed: 0}; }
+function faultScope(mode) {
+  const scope = {mode, calls: 0, failed: 0, pending: 0, delayed: 0};
+  Object.defineProperty(scope, 'hung', {value: new Set()});   // the responses a 'hang' never answered and whose sockets are still open; not data, so out of every dump
+  return scope;
+}
+
+/**
+ * Closes what a retired 'hang' scope still holds and returns when those sockets have closed (the sockets' own 'close', no timed wait).
+ * Why (31 Oct 2026, activityfailures CI 41217478444 and 41053809561; a third fix on this symptom after 81ffce0 and 8c60b46): a hang is never answered, so only the client or a
+ * teardown could end it, and the app's engine child (`python -m src.focus`) outlived the harness's hard app exit, still waiting: "AI hang left 1 request(s)" for ever. The proxy planted
+ * the hang, so the proxy ends it, whoever the client is.
+ */
+function releaseHung(fault) {
+  return Promise.all([...fault.hung].map(res => new Promise(resolve => { res.once('close', resolve); res.destroy(); }))).then(() => {});
+}
 
 /** Capture controls at receipt and cancel the delay when the response connection closes. */
 function requestFault(control, res, pending) {
@@ -58,7 +72,7 @@ async function serveFault(control, fault, ready, res, openai) {
   if (fault.mode === 'pass') return false;
   control.failed++; fault.failed++;
   markPlanted(`ai ${fault.mode}`, fault.mode === 'hang' ? HUNG_REPORTS : undefined);
-  if (fault.mode === 'hang') return true;   // never answers; the client or teardown closes the connection
+  if (fault.mode === 'hang') { fault.hung.add(res); res.once('close', () => fault.hung.delete(res)); return true; }   // never answers; the client, the proxy's close() or the next arming (releaseHung) ends it
   const failure = openai ? openaiFailureFor(fault.mode) : failureFor(fault.mode);
   res.writeHead(failure.status, {'content-type': 'application/json', 'content-length': Buffer.byteLength(failure.body), 'retry-after-ms': '10'});
   res.end(failure.body);
@@ -154,7 +168,7 @@ export async function startAiProxy({delayMs = 0, target = 'https://api.anthropic
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   return {url: `http://127.0.0.1:${server.address().port}`, stats, setDelay: ms => { stats.delayMs = ms; },
     // 'pass' (default), 'hang', or a key of FAILURES. Every call after this one is answered that way.
-    setMode: mode => { if (mode !== 'pass' && mode !== 'hang' && !FAILURES[mode]) throw new Error(`unknown proxy mode: ${mode}`); if (mode !== 'pass') { stats.armed++; STUBBED.add(mode); } stats.mode = mode; stats.fault = faultScope(mode); return stats.fault; },
+    setMode: mode => { if (mode !== 'pass' && mode !== 'hang' && !FAILURES[mode]) throw new Error(`unknown proxy mode: ${mode}`); if (mode !== 'pass') { stats.armed++; STUBBED.add(mode); } stats.mode = mode; const retired = stats.fault; stats.fault = faultScope(mode); Object.defineProperty(retired, 'released', {value: releaseHung(retired)}); return stats.fault; },   // `retired.released`: its hung connections are closed (see releaseHung)
     // From now on, calls `answer` returns a text for are answered with it (no model, no cost); the rest go through.
     setCanned: answer => { canned = answer; }, canned: () => canned, close: () => { for (const finish of pending) finish(); server.closeAllConnections?.(); return new Promise(resolve => server.close(resolve)); }};
 }

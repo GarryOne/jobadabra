@@ -157,3 +157,24 @@ test('silence teardown closes the old app request before proving its own fault d
   await request;
   assert.equal(fault.pending, 0, 'teardown resolves only after the old app connection has closed');
 });
+
+test('silence teardown drains a hang whose client outlives the old app (an orphaned engine child)', async t => {
+  const {startAiProxy} = await import('../lib/ai-proxy.mjs');
+  const {pollUntil} = await import('../lib/wait-on-state.mjs');
+  const proxy = await startAiProxy({target: 'http://127.0.0.1:1'});
+  t.after(() => proxy.close());
+  const original = globalThis.window;
+  t.after(() => { if (original === undefined) delete globalThis.window; else globalThis.window = original; });
+  globalThis.window = {pilot: {runs: async () => ({runs: [], historyLoaded: true, busy: []})}};
+  const ctx = {activityStateWaits: true, proxy, page: {isClosed: () => false, waitForSelector: async () => {}, evaluate: fn => fn()}, relaunch: async () => {}};   // the relaunch closes nobody's request
+  let fault, request;
+  const started = Date.now();
+  await steps.withSilenceLimit(ctx, async () => {
+    fault = proxy.setMode('hang');
+    request = fetch(`${proxy.url}/v1/messages`, {method: 'POST', body: '{}'}).then(() => 'answered', () => 'closed');
+    await pollUntil(() => fault.failed, n => n === 1, {capMs: 1000, tickMs: 1, log: () => {}});
+  });
+  assert.equal(fault.pending, 0);
+  assert.equal(await request, 'closed');
+  assert.ok(Date.now() - started < 5000, 'drained by the sockets closing, not by a long timed wait');
+});

@@ -42,7 +42,7 @@ export function moveAppWaitClock(_electron, {module, dueAt}) {
 export async function pollOwnedBackground(profile, {targets = hiddenTargets, evaluate = evaluateOn} = {}) {
   const worker = (await targets(profile)).find(target => target.type === 'service_worker');
   if (!worker) throw new Error('no owned service worker for the due-time poll');
-  const acknowledged = await evaluate(worker.webSocketDebuggerUrl, 'globalThis.__jobPilottoBackgroundSessions?.poll()');
+  const acknowledged = await evaluate(worker.webSocketDebuggerUrl, 'globalThis.__jobPilottoBackgroundSessions?.poll()', {strict: true});
   if (acknowledged !== true) throw new Error('the owned extension poll did not acknowledge completion');
   return true;
 }

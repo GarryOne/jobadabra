@@ -101,12 +101,19 @@ export async function openSessionCard(page, form) {
   await page.evaluate(session => import('./pages/session-log.js').then(module => module.openSession(session)), id);
 }
 
-/** One Runtime.evaluate over the debugging socket `socketUrl`: resolves its value, or null when the page never answers or cannot be read (4 s). Never throws. */
-export const evaluateOn = (socketUrl, expression) => new Promise(done => {
-  const socket = new WebSocket(socketUrl), end = value => { clearTimeout(timer); try { socket.close(); } catch { /* closed */ } done(value); }, timer = setTimeout(() => end(null), 4000);
+/** One Runtime.evaluate on the owned target: ignore events/other replies. Diagnostics return null on failure; strict proofs reject with the worker/protocol error. */
+export const evaluateOn = (socketUrl, expression, {strict = false} = {}) => new Promise((done, fail) => {
+  const socket = new WebSocket(socketUrl), end = (value, error) => { clearTimeout(timer); try { socket.close(); } catch { /* closed */ } strict && error ? fail(error) : done(value); };
+  const timer = setTimeout(() => end(null, new Error('the owned target did not answer Runtime.evaluate (4 s hang cap)')), 4000);
   socket.onopen = () => socket.send(JSON.stringify({id: 1, method: 'Runtime.evaluate', params: {returnByValue: true, awaitPromise: true, expression}}));
-  socket.onmessage = event => end(JSON.parse(event.data).result?.result?.value ?? null);
-  socket.onerror = () => end(null);
+  socket.onmessage = event => {
+    const message = JSON.parse(event.data);
+    if (message.id !== 1) return;
+    const exception = message.result?.exceptionDetails;
+    const error = message.error?.message || exception?.exception?.description || exception?.text;
+    end(message.result?.result?.value ?? null, error ? new Error(`owned Runtime.evaluate: ${error}`) : null);
+  };
+  socket.onerror = () => end(null, new Error('the owned Runtime.evaluate socket failed'));
 });
 
 /** The debugging port of the hidden browser of `profile` (its DevToolsActivePort file); throws when it was never started. */

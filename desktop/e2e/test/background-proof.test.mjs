@@ -144,7 +144,7 @@ test('the hidden worker command awaits its poll promise before reading the reply
   let packet;
   class Socket {
     constructor() { queueMicrotask(() => this.onopen()); }
-    send(text) { packet = JSON.parse(text); queueMicrotask(() => this.onmessage({data: JSON.stringify({result: {result: {value: true}}})})); }
+    send(text) { packet = JSON.parse(text); queueMicrotask(() => this.onmessage({data: JSON.stringify({id: 1, result: {result: {value: true}}})})); }
     close() {}
   }
   const begin = source.indexOf('export const evaluateOn ='), end = source.indexOf('/** The debugging port', begin);
@@ -181,4 +181,44 @@ test('startJob requires an explicit wait for auto before seeding or saving anyth
   const {startJob} = await import('../lib/apply-hold.mjs');
   const ctx = {proxy: {canned: () => null}, page: {}};
   await assert.rejects(() => startJob(ctx, {mode: 'auto', seed: () => { throw new Error('seed must not run'); }}), /waitMin/);
+});
+
+
+test('the due-time CDP reader ignores events and other replies before its acknowledgement', async () => {
+  const {evaluateOn} = await import('../lib/background-proof.mjs');
+  const previous = globalThis.WebSocket;
+  let socket;
+  class Socket {
+    constructor() { socket = this; queueMicrotask(() => this.onopen()); }
+    send() {
+      this.onmessage({data: JSON.stringify({method: 'Runtime.consoleAPICalled', params: {}})});
+      this.onmessage({data: JSON.stringify({id: 2, result: {result: {value: false}}})});
+      queueMicrotask(() => this.onmessage({data: JSON.stringify({id: 1, result: {result: {value: true}}})}));
+    }
+    close() { this.closed = true; }
+  }
+  globalThis.WebSocket = Socket;
+  try {
+    assert.equal(await evaluateOn('ws://fixture', 'poll()', {strict: true}), true);
+    assert.equal(socket.closed, true);
+  } finally { globalThis.WebSocket = previous; }
+});
+
+test('the due-time CDP reader reports worker exceptions and protocol errors', async () => {
+  const {evaluateOn} = await import('../lib/background-proof.mjs');
+  const previous = globalThis.WebSocket;
+  try {
+    for (const reply of [
+      {result: {exceptionDetails: {exception: {description: 'Error: fixture poll refused'}}}},
+      {error: {message: 'fixture target closed'}},
+    ]) {
+      globalThis.WebSocket = class {
+        constructor() { queueMicrotask(() => this.onopen()); }
+        send() { queueMicrotask(() => this.onmessage({data: JSON.stringify({id: 1, ...reply})})); }
+        close() {}
+      };
+      await assert.rejects(evaluateOn('ws://fixture', 'poll()', {strict: true}), /fixture/);
+      assert.equal(await evaluateOn('ws://fixture', 'poll()'), null, 'ordinary diagnostics retain their nonthrowing contract');
+    }
+  } finally { globalThis.WebSocket = previous; }
 });

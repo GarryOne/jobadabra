@@ -242,11 +242,11 @@ Who builds what: the verdict session takes rows 16-17 and the push-checks sessio
 | 29 | Harness shrink, second half: back under 283 lib modules (27 Oct count) | 10 | after row 28 |
 | 30 | Grey tracking: page + weekly + returns | 1 | `a8`: open |
 | 31 | The owner's 31 Oct rules, each with its guard: grey on time, AI never holds a beta, one AI suite, a default-deny backbone | 12 | `a8`: #2660, #2661, the one-AI-suite PR, this guards PR |
-| 32 | Single try is the verdict: no retry passes a job (workflows, flaky-proof, `
+| 32 | Single try is the verdict: no retry passes a job (workflows, flaky-proof, `flaky.json` readers, burn-in/report-only retry skips), guard `tests/test_e2e_single_try.py` | 13 | `fv`: this PR |
 | 33 | Flaky on the red: a step red on code unchanged since its last green is labelled flaky by the gate, the alert and the PR verdict, suspended with an owner issue, never blocks a beta; back after its fix passes main's next 3 runs | 14 | `a8`: 5/5 |
 | 34 | Every backbone step stalls out on its own measured hang cap that fits its job's budget; the runner refuses a step without one (no 8-minute default) | 14 | `a8` (Codex): 2/5 |
 | 35 | A red job keeps its evidence: no half-written trace, the secret scan drops an unscannable file, never the whole upload | 14 | `a8` (Codex): 3/5 |
-| 36 | A new step in a backbone suite passes 5 first tries on its PR (burn-in, as a suite admission) | 14 | `a8`: 4/5 |flaky.json` readers, burn-in/report-only retry skips), guard `tests/test_e2e_single_try.py` | 13 | `fv`: this PR |
+| 36 | A new step in a backbone suite passes 5 first tries on its PR (burn-in, as a suite admission) | 14 | `a8`: 4/5 |
 
 Before/after for the 30 Oct ratchet change, at `f93a714`: non-test `.mjs` files, excluding `test/`, `recorded/`, `fixtures/` and `node_modules/`; lines are newline counts in those files. This adds the brake; both shrink steps remain pending.
 
@@ -332,7 +332,7 @@ One `###` per plan step, one box per thing that lands; a box is ticked only with
 - [x] No workflow runs a suite twice on one commit to pass a red job, and no suite step has `continue-on-error`. (proof: tests/test_e2e_single_try.py)
 - [x] `flaky-proof.mjs`, the retry and report-only steps, the `e2e-rerun` uploads and the `flaky.json` readers are deleted (rule L). Triage still labels a step that passed on a later run of the same commit. (proof: tests/test_e2e_single_try.py, desktop/e2e/test/triage-cli.test.mjs)
 - [x] A suite past its budget is red, not grey: the grey annotation, `beta-grey-rerun.yml`, `tools/beta_grey_rerun.py`, the beta `held` output and every reader of the annotation (main state, backbone proof, beta gate, PR verdict, alert) are deleted. (proof: tests/test_no_suite_grey.py, tests/test_beta_rate_gate.py)
-- [ ] Row 33 (auto-sideline, `a8`) is redefined without the same-commit-flip trigger; until then a suite that goes red often holds the beta and the owner decides.
+- [x] Row 33 (auto-sideline, `a8`) is redefined without the same-commit-flip trigger: a step red on code unchanged since its last green (the Design section, 31 Oct 2026); its wiring is section 14's last box. (proof: none: design text only, the wiring lands in 5/5)
 
 ### 14. Flaky first: four guardrails (rows 33-36, `a8`, 31 Oct 2026)
 - [x] The repair skill checks for flakiness before any cause, and the design says what a flip is and the four guardrails. (proof: none: docs and skill only, 1/5)

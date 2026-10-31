@@ -92,7 +92,8 @@ class SourcesFollowStrategyTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.judge = Judge()
-        self.patches = [mock.patch.object(visits, 'STORE', Path(self.tmp.name) / 'visits.json'),
+        self.patches = [mock.patch.object(feeds, 'TRIAGED', None),   # Why (31 Oct 2026, a8): feeds.triage fills the run-wide title cache; left filled it hid test_feed_facts' jobs in the next module of a shard (tests/test_title_cache_between_modules.py)
+                        mock.patch.object(visits, 'STORE', Path(self.tmp.name) / 'visits.json'),
                         mock.patch('src.ai.board_ideas.load', lambda: json.loads(json.dumps(BOARDS))),
                         mock.patch.object(refused_reads, 'search_config', lambda: SEARCH),
                         mock.patch.object(visits, 'load_search_config', lambda **k: SEARCH),

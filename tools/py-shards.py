@@ -165,6 +165,7 @@ def main(argv=None):
         return 2
     env = dict(os.environ)
     env['PYTHONPATH'] = os.pathsep.join([str(TESTS), env.get('PYTHONPATH', '')]).rstrip(os.pathsep)
+    env['JOB_PILOTTO_AUDIT_CHECKOUT_DATA'] = '1'   # tests/test_0_notion_ids.py installs tests/checkout_data_audit.py in every shard
     started = time.monotonic()
     before = checkout_state(ROOT)
     # test_0_notion_ids sets the fake IDs the whole suite imports against; discovery loads it first, so every shard does too.

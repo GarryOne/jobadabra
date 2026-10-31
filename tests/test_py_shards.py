@@ -156,6 +156,19 @@ class CheckoutDataTests(unittest.TestCase):
         self.assertEqual((reports, db), (data / 'reports', data / 'jobs.sqlite'))
         self.assertFalse(data.exists(), 'removed when the process ended')
 
+    def test_the_audit_hook_fails_the_writer_by_name_and_leaves_reads_and_other_folders_alone(self):
+        script = (
+            'import sqlite3, sys, tempfile\nfrom pathlib import Path\nsys.path.insert(0, %r)\nimport checkout_data_audit\n'
+            'root = Path(tempfile.mkdtemp())\n(root / "data").mkdir()\n(root / "data" / "kept.json").write_text("{}")\n(root / "elsewhere").mkdir()\n'
+            'checkout_data_audit.install(root)\n'
+            '(root / "elsewhere" / "ok.json").write_text("{}")\n(root / "data" / "kept.json").read_text()\n'
+            'for name, act in (("write_text", lambda: (root / "data" / "host_pace.json").write_text("{}")), ("open_w", lambda: open(root / "reports" / "x.txt", "w")),\n'
+            '                  ("sqlite", lambda: sqlite3.connect(root / "data" / "jobs.sqlite")), ("append", lambda: open(root / "data" / "kept.json", "a"))):\n'
+            '    try:\n        act()\n        print(name, "NOT-REFUSED")\n    except checkout_data_audit.CheckoutDataWrite:\n        print(name, "refused")\n'
+        ) % str(ROOT / 'tests')
+        done = subprocess.run([sys.executable, '-c', script], capture_output=True, text=True)
+        self.assertEqual(done.stdout.split('\n')[:4], ['write_text refused', 'open_w refused', 'sqlite refused', 'append refused'], done.stderr)
+
 
 if __name__ == '__main__':
     unittest.main()

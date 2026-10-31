@@ -6,6 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {spawn} from 'node:child_process';
 import {test} from 'node:test';
+import {LEGACY_NAME} from '../lib/app-identity.js';
 import {MAX_TRIES, handOff, ownPackageFolder, planCopy, privateDataFolder, quitBeforeStart, unpackedHelper} from '../lib/store-data-copy.js';
 import {LOCK, MARKER, copyFolder, helperRunning, readMarker, run} from '../lib/store-data-copy-helper.mjs';
 
@@ -52,7 +53,7 @@ test('plan: no private data, already copied, a real folder with data of its own,
 test('the private folder is found by its data, under either name', () => {
   const store = path.join(tmp(), 'pkg');
   assert.equal(privateDataFolder(''), '');
-  const wanted = path.join(store, 'LocalCache', 'Roaming', 'Job Pilotto');
+  const wanted = path.join(store, 'LocalCache', 'Roaming', LEGACY_NAME);
   assert.equal(privateDataFolder(store, dir => (dir === wanted ? 5 : 0)), wanted);
 });
 

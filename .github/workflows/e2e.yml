@@ -500,7 +500,7 @@ jobs:
         timeout-minutes: 5
         if: always() && env.E2E_ANTHROPIC_KEY != '' && hashFiles('desktop/e2e/.ai-cache/*.json') != ''
         run: find desktop/e2e/.ai-cache -name '*.json' -mtime +7 -delete   # an answer not replayed for a week is dropped (a replay touches it)
-      - if: success() && env.E2E_ANTHROPIC_KEY != '' && hashFiles('desktop/e2e/.ai-cache/*.json') != ''
+      - if: success() && steps.suite_run.outputs.tolerant_failed != '1' && env.E2E_ANTHROPIC_KEY != '' && hashFiles('desktop/e2e/.ai-cache/*.json') != ''
         timeout-minutes: 5
         uses: actions/cache/save@v5
         with:
@@ -529,7 +529,7 @@ jobs:
             desktop/e2e/.ai-cache
         run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
       - name: Hand this PR's green AI answers to main's run after the merge (desktop/e2e/pr-answers.mjs)
-        if: (success() && inputs.pr_suites != '' && inputs.after_merge == '' && env.E2E_ANTHROPIC_KEY != '' && hashFiles('desktop/e2e/.ai-cache/*.json') != '') && steps.artifact_scan_1.outcome == 'success'
+        if: (success() && steps.suite_run.outputs.tolerant_failed != '1' && inputs.pr_suites != '' && inputs.after_merge == '' && env.E2E_ANTHROPIC_KEY != '' && hashFiles('desktop/e2e/.ai-cache/*.json') != '') && steps.artifact_scan_1.outcome == 'success'
         timeout-minutes: 5
         uses: actions/upload-artifact@v6
         with:

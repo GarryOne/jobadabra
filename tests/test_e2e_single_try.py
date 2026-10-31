@@ -75,6 +75,17 @@ class SingleTryVerdict(unittest.TestCase):
                 self.assertEqual(code.count('exit 0'), 2 if 'if [ ! -f "suites/' in code else 1, f'{file}: exit 0 only for a missing suite file and a tolerant leg')
                 self.assertIn('matrix.tolerant', code.split('::error', 1)[0].rsplit('||', 1)[-1], f'{file}: the only green exit after a failure is the tolerant leg')
 
+    def test_a_failed_tolerant_try_keeps_no_ai_answers(self):
+        # Why (31 Oct 2026, Gitar on #2682): a tolerant leg exits 0 after a failed try, so success() is true; every step that keeps or hands on .ai-cache answers must also ask tolerant_failed.
+        gated = 0
+        for file in ('e2e.yml', 'desktop.yml'):
+            text = (WORKFLOWS / file).read_text(encoding='utf-8')
+            for line in text.splitlines():
+                if re.search(r'\bif: .*success\(\).*hashFiles\(.desktop/e2e/\.ai-cache', line):
+                    gated += 1
+                    self.assertIn("steps.suite_run.outputs.tolerant_failed != '1'", line, f'{file}: {line.strip()[:90]}')
+        self.assertGreaterEqual(gated, 4, 'positive control: the cache-save and hand-off steps are read')
+
     def test_the_only_try_is_named_so(self):
         for file in ('e2e.yml', 'desktop.yml', 'e2e-windows.yml'):
             names = [name for f, name, block in suite_steps() if f == file and 'id: suite_run' in block or f == file and name.startswith('Run the ')]

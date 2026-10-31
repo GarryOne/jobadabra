@@ -1,14 +1,20 @@
 // After a red suite passed on its second try (e2e.yml, desktop.yml): exits 1 when a step of the first try failed on a wrong value, not timing (lib/flaky-proof.mjs).
 // Job: run the backbone
 //   node flaky-proof.mjs <first try's suite-failures.json>
+//   node flaky-proof.mjs --grey <first> [<second>]   exit 0 = grey; with GREY_RECORD_FILE and GREY_SUITE it writes the job's trend record (lib/grey-record.mjs)
 // Prints one line per step: flaky (with its proof) or intermittent (why). Missing, empty or unreadable evidence cannot prove timing and keeps the job red.
 import fs from 'node:fs';
 import {flakyProof, greyProof} from './lib/flaky-proof.mjs';
+import {writeGreyRecord} from './lib/grey-record.mjs';
 
 if (process.argv[2] === '--grey') {
   try {
     const proof = greyProof(...process.argv.slice(3, 5).map(file => JSON.parse(fs.readFileSync(file, 'utf8'))));
     console.log(proof.why);
+    // The one place a grey job is recorded for the e2e trend (GREY_RECORD_FILE + GREY_SUITE set by the retry step); a record that cannot be written never changes the verdict.
+    if (proof.grey && process.env.GREY_RECORD_FILE) {
+      try { writeGreyRecord(process.env.GREY_RECORD_FILE, process.env.GREY_SUITE, proof.reason); } catch (error) { console.log(`::warning::grey record not written: ${error.message.split('\n')[0]}`); }
+    }
     process.exit(proof.grey ? 0 : 1);
   } catch (error) {
     console.log(`grey-proof: failures unreadable: ${error.message.split('\n')[0]}`);

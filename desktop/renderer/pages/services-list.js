@@ -3,6 +3,7 @@
 import {shared} from './shared.js';
 import {offered} from '../key-sources.js';
 import {telegramRequired} from '../notify-words.js';
+import {LINE} from '../linkedin-words.js';
 
 // Connections status, shared by Overview (cards + alert), Connections (Connected / Available + alert) and the
 // dot on Connections. required: counted for the alert and the dot (Google Jobs and Always on are optional extras;
@@ -16,6 +17,7 @@ const ALL_SERVICES = [
     why: 'Replies, interviews and recruiter emails are tracked from Gmail.'},
   {id: 'extension', name: 'Chrome extension', icon: 'puzzle', what: 'Application form filling', required: true,
     why: 'It fills application forms with your details and CV.'},
+  {id: 'linkedin-jobs', name: 'LinkedIn jobs', icon: 'linkedin', what: `Search LinkedIn on every Find jobs, in the background. ${LINE}`, required: false, connect: 'Turn on'},   // opt-in (owner, 31 Oct 2026): pages/linkedin-consent.js
   {id: 'telegram', name: 'Telegram', icon: 'send', what: 'Digests and reminders', required: () => telegramRequired(shared.state.notifyBy, shared.state.settings.notifyBy) || !!shared.state.settings.telegramChatId,   // optional with e-mail unless chosen; listed while connected
     why: 'Digests and reminders need a bot connection, or email: Settings → Automation → Notifications.'},
   {id: 'serpapi', name: 'Google Jobs (SerpApi)', icon: 'search', what: 'Additional job results', connect: 'Add key'},

@@ -88,9 +88,9 @@ Verdicts that change state: page kind judged by the AI (`src/ai/decide.py`), HTT
 | Guest page measured fine, signed-in page differs | Card recipe/AI judge reads whatever list arrives; unreadable page = `check`/unknown, never a guess. |
 
 ## Progress
-- [x] Feasibility: honest headless loads the public search (31 Oct 2026)
-- [x] Chrome Web Store policy read (31 Oct 2026)
-- [x] Owner's answers: signed-in proof on local main; Web Store fallback desktop-only; three doors (31 Oct 2026)
+- [x] Feasibility: honest headless loads the public search, 60 cards, no wall (31 Oct 2026) (proof: none: one logged-out probe, numbers in this spec's Risks and Safety sections)
+- [x] Chrome Web Store policy read (31 Oct 2026) (proof: docs/superpowers/specs/2026-10-31-linkedin-headless-design.md)
+- [x] Owner's answers, 31 Oct 2026: signed-in proof on local main; Web Store fallback desktop-only; three doors (proof: none: AskUserQuestion answers relayed by the coordinator)
 - [ ] Owner's yes on spec + sketch
 - [ ] PR 1/3 Session: switch, ask dialog, Suggestions entry, ⌘K, consent, cookie copy → Keychain, delete on off (no reading yet)
 - [ ] PR 2/3 Reader: owned-browser LinkedIn step inside Find jobs, states, e2e on fixtures

@@ -1,4 +1,5 @@
 // Navigation: pages, ⌘R memory, the ⌘K palette.
+import {openLinkedinConsent, view as linkedinView} from './linkedin-consent.js';
 import {openPalette} from '../palette.js';
 import {openBuild} from './cv-build.js';
 import {PROMISE} from '../pro-promise.js';
@@ -249,6 +250,9 @@ export function paletteCommands() {
     if (name && node) addNode(node, 'Settings', `${name}: ${labelOf(node)}`, labelOf(card.querySelector('.service-text .muted')), 'settings connections connect', () => { openView('settings'); settingsPage('connections'); },
       {card: `setting-${card.dataset.service}`, part: labelOf(node)});   // a part of its connection's card (settings.js data-service), linked below
   });
+  // LinkedIn jobs (owner, 31 Oct 2026: "Register it in ⌘K"): the action itself, not only its Settings card; the consent behind every door.
+  add('Settings', linkedinView.on ? 'Turn off LinkedIn jobs' : 'Turn on LinkedIn jobs', 'Search LinkedIn on every Find jobs, in the background', 'linkedin jobs search background sign in connection',
+    () => openLinkedinConsent({mode: linkedinView.on ? 'manage' : 'turn-on'}));
   const hiddenAt = node => node.closest('[hidden]:not(.view):not([data-settings-page])');
   const shown = node => !hiddenAt(node);
   // A Profile section is hidden only because its tab is closed: still listed, and its entry opens that tab first (17 Oct 2026: CV and Your details split).

@@ -107,6 +107,7 @@ contextBridge.exposeInMainWorld('pilot', {
     remindGet: call('ivRemindGet'), remindSet: call('ivRemindSet'), recordings: call('ivRecordings'), access: call('mediaAccess'), tapAvailable: call('ivTapAvailable'), tapStart: call('ivTapStart'), openPrivacy: call('openPrivacy'), relaunch: call('relaunch')},
   onInterviewProgress: callback => ipcRenderer.on('ivProgress', (_, step) => callback(step)),
   onCallLevel: callback => ipcRenderer.on('ivLevel', (_, level) => callback(level)),
+  linkedinJobsState: call('linkedinJobsState'), linkedinJobsAsked: call('linkedinJobsAsked'), linkedinJobsAnswer: call('linkedinJobsAnswer'), linkedinJobsConnect: call('linkedinJobsConnect'), linkedinJobsOff: call('linkedinJobsOff'),
   hostedState: call('hostedState'), hostedOn: call('hostedOn'), hostedOff: call('hostedOff'), hostedDelete: call('hostedDelete'), hostedPush: call('hostedPush'), hostedExport: call('hostedExport'),
   onHostedArrived: callback => ipcRenderer.on('hostedArrived', (_, arrived) => callback(arrived)),
   cloudConnect: call('cloudConnect'), cloudOff: call('cloudOff'), cloudTurnOffConfirmed: call('cloudTurnOffConfirmed'), telegramCloudOn: call('telegramCloudOn'), telegramCloudOff: call('telegramCloudOff'),

@@ -1,4 +1,5 @@
 // Jobs: loading and reloading the list, adding jobs, init(); the pieces are jobs-state/-render/-fit/-lead/-questions.js. Guarded by: search-changed, live-status-line, live-count, activity-selection-kept tests.
+import {askLinkedinOnPress} from './linkedin-consent.js';
 import {badgeLabel} from '../badge-label.js';
 import {setCount} from '../components.js';
 import {applicationStats, inboundCount, inProcess, jobCounts, statClick, takenDown, talkingStartsOpen, toReview} from '../jobs-view.js';
@@ -211,6 +212,7 @@ export function showJobsIn(label, urls, from = '') {
 // Always on could not start it) is said on the Find jobs card, or in a pop-up when the card is not on screen (26 Oct 2026: the press was silent).
 // -> the main process's answer.
 export async function startSearch(why = undefined) {
+  askLinkedinOnPress(why).catch(() => {});   // the 1st and 2nd press while LinkedIn jobs is off: one dialog, the search does not wait for it (owner, 31 Oct 2026)
   refreshBusy(true);   // "Your search changed": this refresh applies it
   $('refresh').disabled = true;
   showFindRefused(null);

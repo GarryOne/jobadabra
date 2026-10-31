@@ -1791,6 +1791,20 @@
   </form>
 </dialog>
 
+<!-- LinkedIn jobs on every Find jobs (pages/linkedin-consent.js, renderer/linkedin-words.js): the one consent behind the Settings row, the ask on Find jobs, the Suggestions entry and ⌘K -->
+<dialog id="linkedin-dialog" class="save-dialog panel-dialog">
+  <form method="dialog">
+    <div class="dialog-head"><span class="dialog-icon"><i data-icon="linkedin"></i></span><h2 id="linkedin-title"></h2>
+      <button class="icon-button" value="cancel" formnovalidate title="Close" aria-label="Close"><i data-icon="close"></i></button></div>
+    <p class="dialog-lead" id="linkedin-lead"></p>
+    <div class="alert tone-warn" id="linkedin-line-box"><i data-icon="info"></i><div><strong id="linkedin-line"></strong></div></div>
+    <div class="dialog-foot">
+      <button class="secondary" id="linkedin-no" value="cancel" formnovalidate></button>
+      <button class="primary" id="linkedin-yes" value="default"></button>
+    </div>
+  </form>
+</dialog>
+
 <!-- Build a CV with the AI (pages/cv-build.js, lib/cv-build.js): a short form, the AI's draft to edit, then it becomes the main CV -->
 <dialog id="cvb-dialog" class="save-dialog panel-dialog cv-dialog">
   <div class="dialog-head"><span class="dialog-icon"><i data-icon="sparkle"></i></span>

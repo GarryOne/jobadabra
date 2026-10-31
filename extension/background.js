@@ -27,7 +27,7 @@ import {KEY, fromOf, jobOf, bindMark, markFor, startJob} from './tab-identity.js
 import {tellPanel} from './page-notes.js';
 import {fillWaitsForAllow, resumeFillWaiting, watchUnallowedFillTabs} from './site-allow.js';
 import {createReadyHandoff} from './ready-handoff.js';
-import {startRefusedReads} from './refused-read.js';
+import {startRefusedReads} from './refused-read.js'; import {startLinkedinSession} from './linkedin-session.js';
 import {startEarlyDim} from './early-dim.js'; import {applyState, setApply, forgetApply} from './apply-state.js';
 
 // The tab we may touch: Chrome reuses a tab id after its tab closes, and the user can navigate the tab elsewhere
@@ -159,7 +159,7 @@ if (chrome.webNavigation) {
   chrome.permissions.onAdded.addListener(() => { startWaiting(); resumeFillWaiting({decide}); });
   watchUnallowedFillTabs({decide});
   startEarlyDim();   // an Apply starts when the app opens its tab and stays dimmed through every page change until a verdict (apply-state.js, early-dim.js)
-  startRefusedReads();   // reads refused sites only after the person's press in the app, seen by a one-minute look (extension/refused-read.js)
+  startLinkedinSession(); startRefusedReads();   // LinkedIn: gives its permissions back when the app's switch is off (linkedin-session.js); refused sites are read only after the person's press in the app, seen by a one-minute look (refused-read.js)
   chrome.webNavigation.onCommitted.addListener(async details => {
     if (details.frameId !== 0) return;
     retireFill(details.tabId);   // a new document: the fill running here belongs to the old one (extension/one-fill.js)

@@ -34,8 +34,8 @@ Spec: [2026-10-31-linkedin-headless-design.md](../specs/2026-10-31-linkedin-head
 - Owner's own signed-in try on local main (skill try-fix-in-local-main). A checkpoint = stop and ask; we never disguise.
 
 ## Progress
-- [x] Spec drafted
-- [x] Sketch rendered (light + dark)
+- [x] Spec drafted (proof: docs/superpowers/specs/2026-10-31-linkedin-headless-design.md)
+- [x] Sketch rendered, light + dark (proof: none: images are in the PR body of 1/3, nothing committed)
 - [ ] Owner's yes
 - [ ] PR 1/3
 - [ ] PR 2/3

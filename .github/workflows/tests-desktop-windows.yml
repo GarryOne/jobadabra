@@ -50,6 +50,7 @@ on:
       - 'desktop/lib/tar.js'
       - 'desktop/lib/telemetry.js'
       - 'desktop/lib/twin.js'
+      - 'desktop/lib/two-installs-notice.js'
       - 'desktop/lib/two-installs.js'
       - 'desktop/lib/updater.js'
       - 'desktop/lib/visits.js'

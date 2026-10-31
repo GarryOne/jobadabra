@@ -1172,8 +1172,22 @@ jobs:
           name: e2e-artifacts-windows-${{ matrix.key }}
           path: e2e-artifacts-windows/${{ matrix.key }}
           if-no-files-found: ignore
+      - name: Scan artifact contents for CI secrets
+        working-directory: ${{ github.workspace }}
+        id: artifact_scan_13
+        if: always()
+        shell: bash
+        env:
+          AI_COST_PUBLISH_KEY: ${{ secrets.AI_COST_PUBLISH_KEY }}
+          E2E_LOCK_TOKEN: ${{ steps.lock_app.outputs.token || github.token }}
+          FREE_AI_LOCAL_CF_ACCOUNT_ID: ${{ secrets.CI_FREE_AI_CF_ACCOUNT_ID }}
+          FREE_AI_LOCAL_CF_AI_TOKEN: ${{ secrets.CI_FREE_AI_CF_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+          E2E_ARTIFACT_PATHS: |
+            e2e-rerun/windows-${{ matrix.key }}
+        run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
       - name: The second Windows try's screenshots and logs
-        if: always() && steps.artifact_scan_9.outcome == 'success'
+        if: always() && steps.artifact_scan_13.outcome == 'success'
         uses: actions/upload-artifact@v6
         with:
           overwrite: true
@@ -1304,7 +1318,7 @@ jobs:
           name: beta-held-mac
           path: beta-held.json
           overwrite: true
-      - name: Tolerant AI rates against main's nightly band
+      - name: Tolerant AI rates against main's nightly band (report only)
         if: needs.changes.outputs.gate == 'true'
         run: python3 tools/beta_rate_gate.py --repo "$GITHUB_REPOSITORY" --run "$GITHUB_RUN_ID" --platform mac
       - name: No real high-severity finding in the Mac suites
@@ -1418,7 +1432,7 @@ jobs:
           name: beta-held-windows
           path: beta-held.json
           overwrite: true
-      - name: Tolerant AI rates against main's nightly band
+      - name: Tolerant AI rates against main's nightly band (report only)
         if: needs.changes.outputs.gate == 'true'
         run: python3 tools/beta_rate_gate.py --repo "$GITHUB_REPOSITORY" --run "$GITHUB_RUN_ID" --platform windows
       - name: No real high-severity finding in the Windows suites
@@ -1483,3 +1497,51 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: python3 tools/sync_release_labels.py || echo "labels not refreshed"   # best effort, never fails a build
+
+  # Why (31 Oct 2026, owner): "It should just raise an alert. And that's it." One credit alert per workflow run, never a beta hold.
+  ai-credit-health:
+    name: AI credit health
+    needs: [test-mac, test-windows]
+    if: always() && !cancelled() && github.ref == 'refs/heads/main'
+    continue-on-error: true
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+    env:
+      E2E_ARTIFACT_SECRET_NAMES: |
+        GH_TOKEN
+        CI_ALERTS_TELEGRAM_BOT_TOKEN
+        CI_ALERTS_TELEGRAM_CHAT_ID
+      GH_TOKEN: ${{ github.token }}
+      CI_ALERTS_TELEGRAM_BOT_TOKEN: ${{ secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN }}
+      CI_ALERTS_TELEGRAM_CHAT_ID: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          sparse-checkout: |
+            desktop/e2e
+            tools/scan-e2e-artifacts.py
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - name: AI credit is an alert, never a hold
+        run: |
+          gh run download "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --pattern 'e2e-artifacts-*' --dir ai-credit-health || echo "::notice::No suite artifacts available for AI credit health"
+          gh run download "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --pattern 'e2e-rerun-*' --dir ai-credit-health || echo "::notice::No retry artifacts available for AI credit health"
+          gh run download "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --name "ai-credit-alert-$GITHUB_RUN_ID" --dir ai-credit-alert || true
+          node desktop/e2e/credit-alert.mjs --artifacts ai-credit-health --marker ai-credit-alert/alert-sent.txt
+      - name: Scan artifact contents for CI secrets
+        id: artifact_scan_1
+        if: always()
+        env:
+          E2E_ARTIFACT_PATHS: ai-credit-alert/alert-sent.txt
+        run: python tools/scan-e2e-artifacts.py
+      - name: Remember this run's single credit alert
+        if: (always() && hashFiles('ai-credit-alert/alert-sent.txt') != '') && steps.artifact_scan_1.outcome == 'success'
+        uses: actions/upload-artifact@v6
+        with:
+          name: ai-credit-alert-${{ github.run_id }}
+          path: ai-credit-alert/alert-sent.txt
+          overwrite: true

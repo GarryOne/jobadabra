@@ -212,8 +212,8 @@ class UsualRange(unittest.TestCase):
             with self.subTest(exact=exact):
                 gh, _, _ = self.fixture(exact)
                 status, lines = beta_rate_gate.check('o/r', 99, {'qualityai': {'lane': 'tolerant', 'input': 'ai'}}, gh)
-                self.assertEqual(status, int(blocked))
-                self.assertEqual(any('BLOCKED' in line for line in lines), blocked)
+                self.assertEqual(status, 0)
+                self.assertEqual(any('below band (report only)' in line for line in lines), blocked)
                 self.assertEqual('BELOW' in self.pr_line(gh), blocked)
 
 

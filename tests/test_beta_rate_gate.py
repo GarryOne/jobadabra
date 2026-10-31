@@ -104,7 +104,7 @@ class Gate(unittest.TestCase):
                 store.runs[1].update(event='workflow_dispatch', display_title='Nightly beta')
                 store.runs[:0] = [dict(store.runs[1], id=99)]
                 status, lines = self.gate().check('o/r', '99', {'qualityai': {'lane': 'tolerant', 'input': 'ai'}}, gh, platform=platform)
-                self.assertEqual(status, 1)
+                self.assertEqual(status, 0)
                 self.assertIn('main runs 20,19,18', '\n'.join(lines))
                 self.assertNotIn('main runs 99', '\n'.join(lines))
                 self.assertNotIn('/runs/99/jobs?', str(store.calls))
@@ -130,10 +130,10 @@ class Gate(unittest.TestCase):
                 self.assertEqual(downloads, ['repos/o/r/actions/artifacts/20/zip'])
                 self.assertNotIn('/runs/19/', str(store.calls))
 
-    def test_below_band_fails_and_names_metric_numbers_band_and_used_runs(self):
+    def test_below_band_reports_without_blocking_and_names_numbers(self):
         _, gh = self.fixture(counts(40))
         status, lines = self.gate().check('o/r', 99, {'qualityai': {'lane': 'tolerant', 'input': 'ai'}}, gh)
-        self.assertEqual(status, 1)
+        self.assertEqual(status, 0)
         text = '\n'.join(lines)
         for token in ('facts', '40/100', '87.55%', '92.01%', '20,19,18,17,16,15,14'):
             self.assertIn(token, text)
@@ -163,7 +163,7 @@ class Gate(unittest.TestCase):
         registry = {'future': {'lane': 'tolerant', 'input': 'ai'},
                     'outside': {'lane': 'tolerant', 'input': 'outside'}, 'gone': {'lane': 'suspended', 'input': 'ai'}}
         status, lines = self.gate().check('o/r', 99, registry, gh)
-        self.assertEqual(status, 1)
+        self.assertEqual(status, 0)
         self.assertTrue(all(line.startswith('future:') for line in lines))
 
     def test_only_last_seven_completed_nights_on_main_supply_band(self):
@@ -288,8 +288,8 @@ else:
     def test_windows_uses_its_finished_lane_artifact_not_a_still_running_mac(self):
         _, gh = self.fixture(counts(40), platform='windows')
         status, lines = self.gate().check('o/r', 99, {'qualityai': {'lane': 'tolerant', 'input': 'ai'}}, gh, platform='windows')
-        self.assertEqual(status, 1)
-        self.assertIn('BLOCKED', '\n'.join(lines))
+        self.assertEqual(status, 0)
+        self.assertIn('below band (report only)', '\n'.join(lines))
 
     def test_missing_or_invalid_main_artifacts_are_skipped_without_zero_scores(self):
         for missing in (True, False):
@@ -300,7 +300,7 @@ else:
                 else:
                     store.blobs[20] = archive({**counts(), 'v': 2})
                 status, lines = self.gate().check('o/r', 99, {'qualityai': {'lane': 'tolerant', 'input': 'ai'}}, gh)
-                self.assertEqual(status, 1)
+                self.assertEqual(status, 0)
                 self.assertIn('main runs 19,18,17,16,15,14,13', '\n'.join(lines))
                 self.assertIn('main band 87.55%–92.01%', '\n'.join(lines))
                 self.assertNotIn('/runs/12/', str(store.calls))
@@ -370,10 +370,10 @@ else:
                 return json.dumps([{'jobs': [{'name': 'E2E · Mac + Linux · qualityai', 'status': 'completed', 'conclusion': 'failure'}]}])
             return gh(*args, **kwargs)
         status, lines = self.gate().check('o/r', 99, {'qualityai': {'lane': 'tolerant', 'input': 'ai'}}, paged)
-        self.assertEqual(status, 1)
+        self.assertEqual(status, 0)
         self.assertIn('main runs 20,19,18,17,16,15,14', '\n'.join(lines))
 
-    def test_workflow_cli_returns_nonzero_for_fixture_night_without_network(self):
+    def test_workflow_cli_reports_dip_and_exits_zero_without_network(self):
         root = Path(__file__).resolve().parents[1]
         with tempfile.TemporaryDirectory() as folder:
             tmp = Path(folder)
@@ -403,8 +403,8 @@ else:
             result = subprocess.run([sys.executable, str(root / 'tools/beta_rate_gate.py'), '--repo', 'o/r', '--run', '99'],
                                     env={**os.environ, 'PATH': folder + os.pathsep + os.environ['PATH'], 'PYTHONDONTWRITEBYTECODE': '1'},
                                     capture_output=True, text=True, timeout=15)
-            self.assertEqual(result.returncode, 1, result.stderr)
-            self.assertIn('::error::qualityai: facts 40/100', result.stdout)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn('::warning::qualityai: facts 40/100', result.stdout)
 
 
 if __name__ == '__main__':

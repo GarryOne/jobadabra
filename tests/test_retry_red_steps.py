@@ -20,12 +20,15 @@ class RetryRedStepsTests(unittest.TestCase):
         for name in ('e2e.yml', 'desktop.yml'):
             steps = retry_steps((WORKFLOWS / name).read_text())
             with self.subTest(file=name):
-                self.assertEqual(len(steps), 1, 'one retry step')
-                step = steps[0]
-                pick = step.index('node red-steps.mjs "$first/suite-failures.json"')
-                self.assertLess(pick, step.index('export E2E_STEP_NAMES="$red"'))
-                self.assertLess(pick, step.index('if again ${{ matrix.suite }}'))
-                self.assertNotIn('Red again with the whole suite', step)
+                self.assertEqual(len(steps), 2 if name == 'desktop.yml' else 1, 'one retry per backbone lane')
+                for step in steps:
+                    self.assert_retry_pick(step)
+
+    def assert_retry_pick(self, step):
+        pick = step.index('node red-steps.mjs "$first/suite-failures.json"')
+        self.assertLess(pick, step.index('export E2E_STEP_NAMES="$red"'))
+        self.assertLess(pick, step.index('if again ${{ matrix.suite }}'))
+        self.assertNotIn('Red again with the whole suite', step)
 
     def test_every_workflow_that_runs_picked_steps_runs_whole_on_a_renamed_pick(self):
         # 26-27 Oct 2026: 19 of 54 e2e reds were a picked step renamed since the coverage map; on Windows (no retry) each one failed the PR.

@@ -17,7 +17,7 @@ from pathlib import Path
 sys.dont_write_bytecode = True
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from tools.e2e_causes import classify  # noqa: E402
-from tools.main_e2e_state import AFTER_MERGE, suite_of  # noqa: E402
+from tools.main_e2e_state import AFTER_MERGE, is_grey, suite_of  # noqa: E402
 
 WORKFLOW = '.github/workflows/e2e.yml'
 
@@ -30,8 +30,11 @@ def after_merge(run, sha):
                 and run.get('event') == 'workflow_dispatch')
 
 
-def job_state(job, log):
+def job_state(job, log, annotations=()):
     """Run JSON job + failed-job log -> red/green/grey; only an actual suite failure is red."""
+    # Why (31 Oct 2026, owner, #2661): two timing-only tries are runner health, never proof for reverting the app.
+    if is_grey(annotations):
+        return 'grey'
     if job.get('conclusion') == 'success':
         return 'green'
     if job.get('conclusion') != 'failure':
@@ -57,7 +60,7 @@ def suite_states(record, lanes):
         # Why (28 Oct 2026, owner): tolerant, suspended and retired suites never authorize a revert.
         if suite not in selected or lanes.get(suite, {}).get('lane', 'backbone') != 'backbone':
             continue
-        grouped.setdefault(suite, []).append(job_state(job, record.get('logs', {}).get(str(job.get('id')), '')))
+        grouped.setdefault(suite, []).append(job_state(job, record.get('logs', {}).get(str(job.get('id')), ''), record.get('annotations', {}).get(str(job.get('id')), [])))
     for suite in selected:
         if lanes.get(suite, {}).get('lane', 'backbone') != 'backbone':
             continue
@@ -129,7 +132,10 @@ def second_attempt_run(records, sha, lanes):
 
 def gh_json(endpoint):
     """GitHub REST endpoint -> decoded response; API/JSON failures propagate and refuse a revert."""
-    return json.loads(subprocess.run(['gh', 'api', endpoint], check=True, capture_output=True, encoding='utf-8').stdout)
+    env = os.environ.copy()
+    if '/check-runs/' in endpoint and env.get('RERUN_TOKEN'):
+        env['GH_TOKEN'] = env['RERUN_TOKEN']   # workflow token owns checks:read; the write App needs no new grant
+    return json.loads(subprocess.run(['gh', 'api', endpoint], check=True, capture_output=True, encoding='utf-8', env=env).stdout)
 
 
 def pages(endpoint, key, read):
@@ -166,7 +172,8 @@ def collect(repo, sha, read=gh_json, log_of=None):
             metadata = read(endpoint)
             jobs = pages(f'{endpoint}/jobs?', 'jobs', read) if metadata.get('status') == 'completed' else []
             logs = {str(job['id']): log_of(job) for job in jobs if job.get('conclusion') == 'failure' and suite_of(job['name']) in run['display_title'].split(' · ', 2)[2].split(',')}
-            records.append({'run': metadata, 'jobs': jobs, 'logs': logs})
+            annotations = {jid: read(f'repos/{repo}/check-runs/{jid}/annotations?per_page=100') for jid in logs}
+            records.append({'run': metadata, 'jobs': jobs, 'logs': logs, 'annotations': annotations})
     return records
 
 

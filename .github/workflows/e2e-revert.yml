@@ -21,6 +21,7 @@ jobs:
     permissions:
       contents: read
       actions: write
+      checks: read   # timing-only grey proof is health, never revert evidence
     steps:
       # Why (28 Oct 2026, owner): a workflow-token PR cannot start its own checks; require the existing CI App token before writing.
       - name: The App token, so the revert PR gets checks

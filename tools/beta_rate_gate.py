@@ -1,6 +1,6 @@
 # Compare beta AI artifacts with main's nightly Wilson bands before release approval.
 # Job: run tolerant suites as rates
-# Invariants: only measured rates block tolerant AI suites; unavailable data is visible health.
+# Invariants: tolerant AI rates and missing credit only report health; backbone values still gate.
 import argparse
 import json
 import os
@@ -117,7 +117,7 @@ def main_nights(repo, suite, github, platform='mac', current_run='', *, first_on
 
 def check(repo, rid, registry, github=gh, platform='mac'):
     """Return exit status and reviewable rate/health lines for every tolerant AI suite."""
-    lines, blocked = [], False
+    lines = []
     for suite, entry in registry.items():
         if entry.get('lane') != 'tolerant' or entry.get('input') != 'ai':
             continue
@@ -142,25 +142,29 @@ def check(repo, rid, registry, github=gh, platform='mac'):
                 raw = current[metric]
                 _, numerator, denominator, label = next(m for m in ai.RATE_METRICS if m[0] == metric)
                 note = ' (unflagged quality rate)' if metric == 'flags' else ''
-                outcome = 'BLOCKED' if result['blocked'] else 'within band'
+                outcome = 'below band (report only)' if result['blocked'] else 'within band'
                 lines.append(f"{suite}: {label} {raw[numerator]}/{raw[denominator]}{note}, quality {result['rate']:.2%} "
                              f"(95% {result['lower']:.2%}–{result['upper']:.2%}); main band "
                              f"{before['lower']:.2%}–{before['upper']:.2%}; {outcome}; main runs {used}")
-                blocked |= result['blocked']
         except (OSError, ValueError, KeyError, subprocess.CalledProcessError) as error:
             lines.append(f'{suite}: no band yet: not blocking (GitHub/artifact unavailable: {type(error).__name__})')
-    return int(blocked), lines
+    # Why (31 Oct 2026, owner): "Any AI calls/suites should be green. They should not stop a beta."
+    return 0, lines
 
 
 def main():
-    """Print rate evidence in the job log; fail approval only for a measured degradation."""
+    """Print rate evidence as health only; backbone failures use the separate --e2e-only gate."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--repo', required=True)
     parser.add_argument('--run', required=True)
     parser.add_argument('--e2e-only', action='store_true', help='block on any red gate suite of either lane')
     parser.add_argument('--platform', choices=('mac', 'windows'), default='mac')
     args = parser.parse_args()
-    registry = json.loads(LANES.read_text())['suites']
+    try:
+        registry = json.loads(LANES.read_text())['suites']
+    except (OSError, ValueError, KeyError):
+        print('::warning::AI rate registry unavailable; report only' if not args.e2e_only else '::error::Backbone registry unavailable')
+        return int(args.e2e_only)
     if args.e2e_only:
         status, lines = backbone_check(args.repo, jobs_of(args.repo, args.run, gh), registry,
                                        attempt=int(os.environ.get('GITHUB_RUN_ATTEMPT', '1')))
@@ -168,11 +172,11 @@ def main():
             print(('::notice::' if line.startswith('Held: grey') else '::error::') + line)
         if status:
             return status
-        print('Tolerant/suspended reds do not block; AI rates decide in the next gate.')
+        print('Tolerant/suspended results do not block; AI rates are report-only.')
         return 0
     status, lines = check(args.repo, args.run, registry, platform=args.platform)
     for line in lines:
-        print(('::error::' if 'BLOCKED' in line else '::notice::') + line)
+        print(('::warning::' if 'below band (report only)' in line else '::notice::') + line)
     return status
 
 

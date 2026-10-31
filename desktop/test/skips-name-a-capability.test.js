@@ -6,7 +6,7 @@ import {mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync, 
 import {tmpdir} from 'node:os';
 import {fileURLToPath} from 'node:url';
 import {test} from 'node:test';
-import {cannotRender, electronInstalled} from './needs-electron.js';
+import {cannotRender, electronInstalled, renderOptions} from './needs-electron.js';
 
 const folder = fileURLToPath(new URL('.', import.meta.url));
 const ENV_CI = /process\.env\.(?:CI|GITHUB_ACTIONS)\b|env\[['"](?:CI|GITHUB_ACTIONS)['"]\]/;
@@ -42,4 +42,12 @@ test('electron counts as installed only with its downloaded binary, not the npm 
     writeFileSync(`${root}node_modules/electron/path.txt`, 'electron');   // what install.js writes after the download
     assert.equal(electronInstalled(root), true);
   } finally { rmSync(root, {recursive: true, force: true}); }
+});
+
+test('a job that promises rendering fails when it cannot, instead of skipping green', () => {
+  const CI = {CI: 'true', DESKTOP_RENDER_REQUIRED: '1'};
+  assert.throws(() => renderOptions(CI, 'linux', false), /electron/, 'no binary: a red job, not 19 skips');
+  assert.throws(() => renderOptions(CI, 'linux', true), /display/);
+  assert.deepEqual(renderOptions({...CI, DISPLAY: ':99'}, 'linux', true), {skip: false});
+  assert.deepEqual(renderOptions({CI: 'true'}, 'win32', false), {skip: 'no electron binary installed'}, 'a job that does not promise it (Windows) still skips');
 });

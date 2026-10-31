@@ -3,16 +3,16 @@ import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {claimInstance, startWhenReady, installQuitHandling} from '../lib/lifecycle.js';
 
-function fixture({choice = 0, busy = {kind: 'search'}, queue = [], sessions = [], listed = [], important = [], importantDone = Promise.resolve(), platform = 'darwin', ask = false, demo = false, smoke = false, dataJob = false} = {}) {
+function fixture({choice = 0, busy = {kind: 'search'}, queue = [], sessions = [], listed = [], important = [], importantDone = Promise.resolve(), platform = 'darwin', ask = false, demo = false, smoke = false, dataJob = false, hasEngines = false} = {}) {
   const calls = [], handlers = {};
-  let drain, timeout;
+  let drain, timeout, engines = hasEngines;
   const idle = new Promise(resolve => { drain = resolve; });
   const app = {on: (event, fn) => { handlers[event] = fn; }, quit: () => calls.push('quit')};
   const storage = {settings: () => ({}), saveSettings: patch => calls.push(patch)};
   const window = {show: () => calls.push('show'), isDestroyed: () => false};
   const beforeQuit = installQuitHandling({app, platform, state: () => ({storage, window, demo, smoke}),
     pipeline: {running: () => busy, queued: () => queue, taskName: () => 'Search', freezeQueue: value => { assert.equal(value, storage); calls.push('freeze'); },
-      stopRunning: () => calls.push('stop'), whenIdle: () => idle},
+      stopRunning: () => { calls.push('stop'); engines = false; return Promise.resolve(); }, hasChildren: () => engines, whenIdle: () => idle},
     terminals: {running: () => sessions, list: () => listed, label: () => 'Company', shutdown: () => calls.push('shutdown')},
     critical: {labels: () => important, whenDone: () => importantDone},
     dataRunning: () => dataJob, stopDataJob: () => { calls.push('stop-data'); dataJob = false; return Promise.resolve(); },
@@ -121,4 +121,18 @@ test('quit with only an application filling in the hidden browser asks first; a 
     const f = fixture({busy: null, listed: [job(state)]}); f.quit();
     assert.ok(!f.calls.includes('prevent'), `${state} quits without asking`);
   }
+});
+
+test('any quit with a data job and an engine child stops the job, then the children, and only then shuts down (31 Oct 2026, owner: quit ends every child)', async () => {
+  const both = fixture({busy: null, dataJob: true, hasEngines: true});
+  const events = [];
+  both.handlers['will-quit']({preventDefault: () => events.push('hold')});
+  await new Promise(resolve => setImmediate(resolve));
+  both.handlers['will-quit']({preventDefault: () => events.push('hold')});
+  await new Promise(resolve => setImmediate(resolve));
+  both.handlers['will-quit']({preventDefault: () => assert.fail('nothing left to wait for')});
+  assert.deepEqual(events, ['hold', 'hold']);
+  assert.deepEqual(both.calls.filter(call => ['stop-data', 'stop', 'quit', 'shutdown'].includes(call)), ['stop-data', 'quit', 'stop', 'quit', 'shutdown']);
+  const none = fixture({busy: null}); none.handlers['will-quit']({preventDefault: () => assert.fail('no child, no hold')});
+  assert.ok(none.calls.includes('shutdown'));
 });

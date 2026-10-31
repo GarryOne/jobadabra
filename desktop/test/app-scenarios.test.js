@@ -34,7 +34,7 @@ function scenario(t) {
     setStatus: async (_storage, url, next) => { assert.equal(url, URL); commands.push(`Notion ${next}`); status = next; return {ok: true}; },
     running: () => busy, queued: () => queue, taskName: () => 'Search',
     freezeQueue: () => { commands.push('freeze queue'); queue = []; },
-    stopRunning: () => { commands.push('stop pipeline'); busy = null; }, whenIdle: () => idle,
+    stopRunning: () => { commands.push('stop pipeline'); busy = null; return Promise.resolve(); }, hasChildren: () => false, whenIdle: () => idle,
   };
   const newSession = url => { terminals.startForm({id: 'new1', url}); return terminals.list().find(item => item.id === 'new1'); };
   function emit(event, ...args) { for (const fn of listeners.get(event) || []) fn({}, ...structuredClone(args)); }

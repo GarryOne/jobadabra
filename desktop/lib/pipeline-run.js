@@ -20,21 +20,55 @@ import {quietText} from './pipeline-lines.js';
 import {ticketRunning} from './pipeline-queue.js';
 import {draftsKits} from './pipeline-args.js';
 
-// The pipeline processes running now: stopRunning() ends them cleanly when the app quits (instead of them
-// failing on their next line once the app is gone).
+// Design (31 Oct 2026, owner: "the quit-ends-all-children fix is a user bug"; the area was patched before: effa70b reset exit, 6b7fec3 data job): an engine child has three states.
+//   running  → exited, by itself or by one of the two verdicts that end it:
+//   the silence/total watchdog (every engine command except those that wait on a person, UNWATCHED), and the app's end (quit, restart, reset, import → stopRunning()).
+// `children` is the one owner: run() adds every engine child at its spawn (src.focus and every read, task or not) and removes it on its 'exit'. The app's end is not over until
+// stopRunning() has resolved, i.e. until each child has emitted 'exit': the quit and the exit-restart wait for it (lib/lifecycle.js, main.js), never a timed poll.
 const children = new Set();
-export function stopRunning(options) { for (const child of [...children]) killTree(child, options); }
+export const hasChildren = () => children.size > 0;
+const stopping = new WeakMap();   // child → its one stop: a reaper that calls stopRunning() again and again adds no listener and no timer
+/**
+ * Ends every engine child and what it started, and resolves when each child has exited. SIGTERM to its group first (the engine closes its Notion row); a child that ignores it gets
+ * SIGKILL after LIMITS.killAfterMs (an escalation, not a wait for a state); once the child has exited, its group gets SIGKILL too, so a grandchild that ignores SIGTERM (the `claude -p`
+ * behind an AI call, a browser) does not outlive it (Windows: taskkill /T already ended the tree). A child whose exit never comes (an uninterruptible process) does not hold the quit
+ * for ever: it resolves after twice LIMITS.killAfterMs and says so in the log. Resolves at once when none runs.
+ */
+export function stopRunning(options) {
+  return Promise.all([...children].map(child => {
+    if (stopping.has(child)) return stopping.get(child);
+    const done = new Promise(resolve => {
+      if (child.exitCode !== null || child.signalCode !== null) { resolve(); return; }
+      const hard = setTimeout(() => killTree(child, {...options, signal: 'SIGKILL'}), LIMITS.killAfterMs);
+      const giveUp = setTimeout(() => { appLog('run', 'a stopped engine run did not exit', {pid: child.pid}); resolve(); }, LIMITS.killAfterMs * 2);
+      hard.unref?.(); giveUp.unref?.();
+      child.once('exit', () => {
+        clearTimeout(hard); clearTimeout(giveUp);
+        if (process.platform !== 'win32') killTree(child, {signal: 'SIGKILL'});   // the group the leader left behind (kill-tree.js: kill(-pid))
+        resolve();
+      });
+      killTree(child, options);
+    });
+    stopping.set(child, done);
+    return done;
+  })).then(() => {});
+}
+/** Whether the silence/total watchdog watches this engine command (args[0] of `python -m`): all but the ones that wait on a person or a download. */
+export const isWatched = command => LIMITS.watchAll || !UNWATCHED.has(command);
+// Commands that wait on a person or on a long download by design, so silence is no verdict: the Google sign-in and its mail wait, the transcription, the add-on installs.
+// Why (31 Oct 2026, owner): every other engine command is watched (src.focus hung for the SDK's 10 minutes on a silent AI, unseen); this list is the only exception.
+const UNWATCHED = new Set(['src.sources.google', 'src.ai.transcribe', 'pip']);
 // Run `python -m <args>` in the repo; resolve with {code, stdout}; each output line goes to onLine (made readable).
 // stdout itself stays as printed, for the callers that parse it.
 // Every finished run is told to these (technical reports: a failed run, with its last lines; lib/telemetry.js).
 const runEnd = new Set();
 export const onRunEnd = listener => runEnd.add(listener);
-// A run of the engine (`python -m src …`) that stops talking, or lasts far too long, is stopped, said so in the log and reported (technical
+// A run of the engine (`python -m …`, every command but UNWATCHED) that stops talking, or lasts far too long, is stopped, said so in the log and reported (technical
 // reports: run_failed with timedOut). 2 Oct 2026: a friend's search sat "Running" for 40 minutes (every AI call waiting on a Claude Code that
 // did not answer) and nothing, not the row in Notion, not a report, said it was stuck. SIGTERM lets the engine close its Notion row.
 // The end-to-end journey shortens the silence limit (JOB_PILOTTO_E2E_IDLE_MS) so a hung AI can be tested in under a minute; never set for a user.
 const E2E_IDLE = process.env.JOB_PILOTTO_E2E ? Number(process.env.JOB_PILOTTO_E2E_IDLE_MS) || 0 : 0;
-export const LIMITS = {idleMs: E2E_IDLE || 15 * 60 * 1000, totalMs: 45 * 60 * 1000, checkMs: E2E_IDLE ? 1000 : 5000, killAfterMs: E2E_IDLE ? 3000 : 8000, watchAll: false};   // watchAll: tests watch any module, not only `src …`
+export const LIMITS = {idleMs: E2E_IDLE || 15 * 60 * 1000, totalMs: 45 * 60 * 1000, checkMs: E2E_IDLE ? 1000 : 5000, killAfterMs: E2E_IDLE ? 3000 : 8000, watchAll: false};   // watchAll: tests watch the UNWATCHED commands too
 // What a person reads when the app stopped a silent run (the row, its detail, the toast, the bottom bar). #185: it said only "no output for 10 s", with no
 // next step. The prefix stays: tests and the technical log match it.
 export const stoppedReason = timedOut => `Stopped by Jobadabra: ${timedOut}. The run went quiet, so it was stopped. Run it again; if it keeps stopping, check your AI key or plan in Settings.`;
@@ -71,6 +105,7 @@ export function run(storage, args, onLine = () => {}, extraEnv = {}, {stopAfterM
     onChild?.(child);   // a caller that must end this one command by itself (Cancel sign-in), by the child's own handle
     owner?.children.add(child);
     child.on('exit', () => { children.delete(child); owner?.children.delete(child); });
+    child.on('error', () => { children.delete(child); owner?.children.delete(child); });   // a spawn that failed (no python) has no exit: it must not stay a child for the rest of the session
     let endedByTime = false, hardKill = null;
     const timeUpFile = path.join(os.tmpdir(), `jp-timeup-${runId}`);   // the engine reads it in its SIGTERM handler (src/notion/cron_runs.py stop_reason): a time-up, not a Stop press
     const stopper = stopAfterMs ? setTimeout(() => {
@@ -84,7 +119,7 @@ export function run(storage, args, onLine = () => {}, extraEnv = {}, {stopAfterM
     child.on('close', () => { try { fs.unlinkSync(timeUpFile); } catch {} try { if (aboutFile) fs.unlinkSync(aboutFile); } catch {} });
     let stdout = '', buffer = '', lastOutputAt = awakeNow(), timedOut = '', killTimer = null, rowUrl = '';
     const startedAwake = awakeNow();   // the watchdog's clock leaves out the time the computer slept (lib/awake.js)
-    const watch = (args[0] === 'src' || LIMITS.watchAll) ? setInterval(() => {
+    const watch = isWatched(args[0]) ? setInterval(() => {
       if (timedOut) return;
       const quiet = awakeNow() - lastOutputAt, total = awakeNow() - startedAwake;
       timedOut = quiet > LIMITS.idleMs ? `no output for ${quietText(quiet)}` : total > LIMITS.totalMs ? `still running after ${Math.round(total / 60000)} min` : '';

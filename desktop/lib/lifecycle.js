@@ -39,8 +39,16 @@ export function installQuitHandling({app, platform, state, pipeline, terminals, 
     dataStopped = true;   // once: a job that will not stop does not hold the quit again
     Promise.resolve().then(stopDataJob).catch(error => log('window', `stopping the data job failed: ${error.message}`)).then(() => app.quit());
   };
+  // Why (31 Oct 2026, owner): every way out ends the engine's children and waits for their exit, so none outlives the app holding a hung AI call or the data folder. An untracked read
+  // (src.focus, a store call) is no task the quit guard asks about, so this is the one place that stops it; it comes back here once they are gone.
+  let enginesStopped = false;
+  const stopEnginesThenQuit = () => {
+    enginesStopped = true;   // once: a child that will not exit does not hold the quit again
+    Promise.resolve().then(() => pipeline.stopRunning()).catch(error => log('window', `stopping the engine runs failed: ${error.message}`)).then(() => app.quit());
+  };
   app.on('will-quit', event => {
     if (!dataStopped && dataRunning()) { event.preventDefault(); stopDataThenQuit(); return; }   // the quit comes back here once the job is gone
+    if (!enginesStopped && pipeline.hasChildren()) { event.preventDefault(); stopEnginesThenQuit(); return; }
     terminals.shutdown();
   });
   const beforeQuit = event => {

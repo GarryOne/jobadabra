@@ -129,3 +129,16 @@ test('the give-up message names the processes that hold files in the folder, bef
   await assert.rejects(waitForFolderFree('/p/data', {every: 1, timeout: 5, rename: () => { throw Object.assign(new Error('EPERM x'), {code: 'EPERM'}); }, exists: () => true, whoHasFiles: () => '4242 MsMpEng.exe', who: () => '7 <- 1 node.exe'}),
     /held by a process.*files in it are open in: 4242 MsMpEng\.exe; processes still running: 7 <- 1 node\.exe/);
 });
+
+test('describeHolders: only on Windows; asks for the parent and command line of the pids the Restart Manager named', async () => {
+  const {describeHolders} = await import('../lib/folder-free.mjs');
+  assert.equal(describeHolders('8092 Electron', {platform: 'darwin', run: () => assert.fail('no shell off Windows')}), '');
+  assert.equal(describeHolders('', {platform: 'win32', run: () => assert.fail('nothing to ask')}), '');
+  let script = '';
+  const said = describeHolders('8092 Electron | 4242 MsMpEng.exe', {platform: 'win32', run: (_shell, args) => { script = args.at(-1); return {stdout: '8092 <- 7424 C:\\app\\Electron.exe --user-data-dir=C:\\Temp\\jp-e2e-x\r\n'}; }});
+  assert.match(script, /@\(8092,4242\)/);
+  assert.equal(said, '8092 <- 7424 C:\\app\\Electron.exe --user-data-dir=C:\\Temp\\jp-e2e-x');
+  assert.equal(describeHolders('8092 Electron', {platform: 'win32', run: () => { throw new Error('no powershell'); }}), '');
+  await assert.rejects(waitForFolderFree('/p/data', {every: 1, timeout: 5, rename: () => { throw Object.assign(new Error('EPERM x'), {code: 'EPERM'}); }, exists: () => true, whoHasFiles: () => '8092 Electron', who: () => '', describe: files => `${files.split(' ')[0]} <- 7424 Electron.exe`}),
+    /files in it are open in: 8092 Electron \(8092 <- 7424 Electron\.exe\)/);
+});

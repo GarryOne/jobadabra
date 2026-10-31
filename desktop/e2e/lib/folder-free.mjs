@@ -52,6 +52,15 @@ export function fileHolders({run = spawnSync, platform = process.platform, dir =
   } catch (error) { return `could not ask: ${error.message}`.slice(0, 220); }
 }
 
+// Windows: the parent and command line of the processes a `fileHolders` answer names ("pid name | pid name"), so the failure says whose they are: the old app's tree, or a copy that
+// started later. Why (31 Oct 2026, beta 41220959824: "files in it are open in: 8092 Electron" with no parent and the list cut at 25 entries). -> "pid <- parent command | …", or ''.
+export function describeHolders(answer, {run = spawnSync, platform = process.platform} = {}) {
+  const pids = [...String(answer).matchAll(/(?:^| \| )(\d+) /g)].map(found => found[1]);
+  if (platform !== 'win32' || !pids.length) return '';
+  const script = `Get-CimInstance Win32_Process | Where-Object { @(${pids.join(',')}) -contains $_.ProcessId } | ForEach-Object { "$($_.ProcessId) <- $($_.ParentProcessId) $($_.CommandLine)" }`;
+  try { return String(run('powershell', ['-NoProfile', '-Command', script], {encoding: 'utf8', timeout: 15000, windowsHide: true}).stdout || '').trim().split(/\r?\n/).filter(Boolean).map(line => line.slice(0, 260)).join(' | '); } catch { return ''; }
+}
+
 // Windows: the leftovers of THIS run's app among `rows` ({pid, parent, name, cmd}): its processes whose command line carries the run's own throwaway folder name
 // (--user-data-dir=...\\jp-e2e-xxxx; beta 17, 24 Oct: main, gpu and crashpad-handler held the folder 20 s), and every descendant of the app's main pid, whose
 // command line does not name the folder (beta 4, 26 Oct 2026: after a reset an Electron child of the app, pid 2020, held files in it past 20 s; the 8 s end had
@@ -89,14 +98,14 @@ export function endLeftovers({run = spawnSync, platform = process.platform, dir 
   } catch { return []; }
 }
 
-export async function waitForFolderFree(dir, {timeout = 20000, every = 250, endAfter = 8000, mainPid = 0, rename = fs.renameSync, exists = fs.existsSync, who = () => holders({dir}), whoHasFiles = () => fileHolders({dir}), end = pid => endLeftovers({dir, mainPid: pid})} = {}) {
+export async function waitForFolderFree(dir, {timeout = 20000, every = 250, endAfter = 8000, mainPid = 0, rename = fs.renameSync, exists = fs.existsSync, who = () => holders({dir}), whoHasFiles = () => fileHolders({dir}), end = pid => endLeftovers({dir, mainPid: pid}), describe = describeHolders} = {}) {
   const aside = `${dir}.probe`;
   let waited = 0;
   let ended = false;
   while (exists(dir)) {
     try { rename(dir, aside); rename(aside, dir); return waited; } catch (error) {
       if (!LOCKED.has(error.code)) throw error;
-      if (waited >= timeout) { const files = whoHasFiles(); throw new Error(`the data folder stayed held by a process after the app exited (${waited / 1000} s): ${error.message}${files ? `; files in it are open in: ${files}` : ''}${who() ? `; processes still running: ${who()}` : ''}`); }
+      if (waited >= timeout) { const files = whoHasFiles(); throw new Error(`the data folder stayed held by a process after the app exited (${waited / 1000} s): ${error.message}${files ? `; files in it are open in: ${files}${describe(files) ? ` (${describe(files)})` : ''}` : ''}${who() ? `; processes still running: ${who()}` : ''}`); }
       if (!ended && waited >= endAfter) { ended = true; const gone = end(mainPid); console.log(`  the data folder was still held after ${waited / 1000} s: ${gone.length ? `ended its leftover processes ${gone.join(', ')}` : `found none of the app's own processes to end (main pid ${mainPid || 'unknown'})`}`); }
       await pause(every); waited += every;
     }

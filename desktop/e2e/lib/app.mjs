@@ -2,6 +2,7 @@
 // Job: wait on state
 // Launch the real Jobadabra app (Electron) with a throwaway profile, like a first-time user, and drive it through Playwright.
 // Nothing here touches the real user's data: JOB_PILOTTO_USER_DATA points at a fresh temp folder and no .env is read.
+import {descendantsOf, holdersOf, listProcesses, waitTreeGone} from './app-tree.mjs';
 import {appLaunchEnv} from './app-env.mjs';
 import {journey} from './journey.mjs';
 import {ownerGuardEnv} from './owner-guard-env.mjs';
@@ -83,7 +84,7 @@ export async function launch({env = {}, executablePath, args, profile: again, la
   // coverageMark/coverageStep: the runner's reads at a step's start and end (lib/runner.mjs); a no-op without E2E_COVERAGE=1.
   return {app, page, profile, shot, keepLogs, traceGroup: trace.group, traceGroupEnd: trace.groupEnd,
     coverageMark: name => takeSetup(coverage, name).catch(() => {}), coverageStep: name => takeStep(coverage, name).catch(() => {}),
-    close: async ({keepTrace = false} = {}) => { await keepLogs().catch(() => {}); await saveCoverage(coverage, ARTIFACTS).catch(() => {}); await trace.stop(keepTrace); await closeApp(app); }};
+    close: async ({keepTrace = false, how = 'crash'} = {}) => { await keepLogs().catch(() => {}); await saveCoverage(coverage, ARTIFACTS).catch(() => {}); await trace.stop(keepTrace); await closeApp(app, {how}); }};
 }
 
 // A Playwright trace of each app session (6 Oct 2026): every action with its screenshot strip, the page before and after (DOM snapshots), console and network, each step
@@ -132,7 +133,8 @@ export const pickFile = (app, file) => app.evaluate(({dialog}, filePath) => {
 
 // The app has its own quit handling (it asks before closing while sessions run), so app.close() can wait forever. Exit it directly,
 // and kill the process if even that does not return.
-async function closeApp(app) {
+async function closeApp(app, {how = 'crash'} = {}) {
+  if (how === 'quit') return quitApp(app);
   try {
     const child = app.process();
     if (process.platform === 'win32') await keyWritten(app);
@@ -140,6 +142,28 @@ async function closeApp(app) {
     await Promise.race([app.evaluate(({app: electron}) => electron.exit(0)).catch(() => {}), new Promise(resolve => setTimeout(resolve, 5000))]);
     if (child.exitCode === null) child.kill('SIGKILL');
   } catch { /* the app is already gone */ }
+}
+
+/**
+ * The person's quit (how: 'quit'): the quit question, if the app asks one, is answered "Quit now"; the app's own will-quit then ends its engine children and waits for their exit
+ * (lib/lifecycle.js). Waits for the app's exit EVENT, then until every process it had started is gone, and fails naming the ones that are not (their pid and command line).
+ * Why (31 Oct 2026, owner: quitting must end every engine child): electron.exit(0) skips the quit a person does, so an engine child stayed behind holding a hung AI call
+ * (activityfailures CI 41217478444) and, on Windows, the data folder (settings, beta 41220959824). A crash step keeps how: 'crash'. Guard: test/app-tree.test.mjs.
+ */
+async function quitApp(app, {exitCapMs = 30000} = {}) {
+  const child = app.process();
+  const exited = child.exitCode !== null || child.signalCode ? Promise.resolve() : new Promise(resolve => child.once('exit', resolve));
+  if (process.platform === 'win32') await keyWritten(app);
+  const tree = descendantsOf(listProcesses(), child.pid);   // taken last before the quit (after the Windows key wait): what the app has started
+  console.log(`  ${new Date().toISOString()} e2e: quitting the app (pid ${child.pid}, ${tree.length} process(es) below it)`);
+  await app.evaluate(({app: electron, dialog}) => { dialog.showMessageBoxSync = () => 1; electron.quit(); }).catch(() => {});   // the process may end before evaluate answers
+  let timer;
+  const verdict = await Promise.race([exited.then(() => 'exited'), new Promise(resolve => { timer = setTimeout(() => resolve('late'), exitCapMs); })]);
+  clearTimeout(timer);
+  if (verdict === 'late') { child.kill('SIGKILL'); throw new Error(`the app did not quit by itself within ${exitCapMs / 1000} s after the quit (killed)`); }
+  const left = await waitTreeGone(tree);
+  for (const row of left) { try { process.kill(row.pid, 'SIGKILL'); } catch { /* gone meanwhile */ } }   // never leave them behind, whatever the verdict
+  if (left.length) throw new Error(`the app quit but ${left.length} process(es) it started are still running: ${holdersOf(left)}`);
 }
 
 // Windows: the key that seals saved secrets (safeStorage, DPAPI) is kept in Chromium's "Local State", which a fresh profile writes on a timer (~10 s). The hard

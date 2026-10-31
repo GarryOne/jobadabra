@@ -6,6 +6,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {badSummary, leaks, sample} from './activity.mjs';
 import {clearData} from './start-state.mjs';
+import {whenDrained} from './ai-proxy.mjs';
 import {snap} from './layout.mjs';
 import {ensureSetUp} from './seed.mjs';
 import {pressTask} from './task-card.mjs';
@@ -149,18 +150,27 @@ export async function appReady(ctx) {
 /** Keep the temporary silence limit inside its cleanup scope, including startup failures. */
 export async function withSilenceLimit(ctx, run) {
   try {
-    await ctx.relaunch({JOB_PILOTTO_E2E_IDLE_MS: '10000'});
+    await ctx.relaunch({JOB_PILOTTO_E2E_IDLE_MS: '10000'}, undefined, {how: 'quit'});
     await appReady(ctx);
     return await run();
   } finally {
     const fault = ctx.proxy.stats.fault;
-    ctx.proxy.setMode('pass');
-    // Why (31 Oct 2026, CI 41217478444): the proxy closes the hang it planted when the mode changes and says when its sockets have closed. The old app's engine child can outlive the
-    // app's hard exit still holding that call, so waiting for the app to go (and polling the count for 45 s) proved nothing about the connection.
-    await fault.released;
-    // Closing a hung suite must never be followed by a late relaunch from its abandoned step.
-    if (!ctx.page.isClosed()) { await ctx.relaunch(); await appReady(ctx); }
-    if (fault.pending !== 0) throw new Error(`AI ${fault.mode} left ${fault.pending} request(s) after the silence instance closed`);
+    // Why (31 Oct 2026, owner: quitting must end every engine child; CI 41217478444): the app quits while the hang is still armed, so an engine child that outlives the quit still holds
+    // its never-answered call and this step fails naming it: the check is the product's guard. Only after that does the mode change, and the proxy then closes whatever else the hang
+    // held (the new instance's start-up reads, lib/ai-proxy.mjs releaseHung). Closing a hung suite must never be followed by a late relaunch from its abandoned step.
+    try {
+      if (!ctx.page.isClosed()) {
+        await ctx.relaunch(undefined, async () => {   // the old app is gone and the hang is still armed
+          const drained = await Promise.race([whenDrained(fault).then(() => true), new Promise(resolve => setTimeout(() => resolve(false), 10000).unref())]);   // the deadline only turns "never" into the message
+          if (!drained) throw new Error(`AI ${fault.mode} left ${fault.pending} request(s) after the app quit: an engine process of the old app still holds its call`);
+          ctx.proxy.setMode('pass');   // the new instance starts on a normal AI
+        }, {how: 'quit'});
+      }
+    } finally {
+      if (ctx.proxy.stats.mode !== 'pass') ctx.proxy.setMode('pass');   // a failed guard or launch never leaves the hang armed for the next step
+      await fault.released;
+    }
+    if (!ctx.page.isClosed()) await appReady(ctx);
   }
 }
 

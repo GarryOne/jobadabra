@@ -6,7 +6,6 @@
 import {descendantsOf, holdersOf, isAlive, listProcesses, waitTreeGone} from './app-tree.mjs';
 
 const WHOLE_COMMAND = 100000;   // Chromium puts --user-data-dir after ~1500 characters of flags; app-tree's default 200 would never see it
-const GONE_MS = 5000;   // how long a killed browser may take to leave the process table; a pause for a state, not for the browser's cooperation
 
 /** Every process that was started with this profile (`--user-data-dir=<profile>`) plus the children below them. [] when the lister finds none. */
 export function profileTree(profile, rows = listProcesses({width: WHOLE_COMMAND})) {
@@ -20,15 +19,18 @@ export function profileTree(profile, rows = listProcesses({width: WHOLE_COMMAND}
 }
 
 /**
- * Ends the browser that owns `profile`: asks it to quit through `control` (CDP Browser.close, not awaited), kills the profile's processes, then waits for them to be gone.
- * Throws naming the holders only when a process is still alive after a second kill. `list`, `kill`, `alive` and `capMs` are injectable for the unit test.
+ * Ends the browser that owns `profile`: asks it to quit through `control` (CDP Browser.close, not awaited), kills the profile's processes, then waits for them to be gone
+ * (the step's own hang cap is the only clock: app-tree waitTreeGone). Throws naming the holders only when a process is still alive after a second kill.
+ * `launched`: the browser was started, so seeing none of its processes is no verdict (the lister failed, or its command lines were cut): `fallback` (the browser's own close) ends it instead.
+ * `list`, `kill`, `alive` and `capMs` are injectable for the unit test.
  */
-export async function endBrowser({profile, control = null, list = () => listProcesses({width: WHOLE_COMMAND}), kill = (pid, signal) => process.kill(pid, signal), alive = isAlive, capMs = GONE_MS}) {
+export async function endBrowser({profile, control = null, launched = false, fallback = null, list = () => listProcesses({width: WHOLE_COMMAND}), kill = (pid, signal) => process.kill(pid, signal), alive = isAlive, capMs}) {
   void control?.send('Browser.close').catch(() => {});   // the polite way, never waited for
   let left = profileTree(profile, list());
+  if (!left.length && launched && fallback) { await fallback(); return; }
   for (let attempt = 0; attempt < 2 && left.length; attempt++) {
     for (const row of left) { try { kill(row.pid, 'SIGKILL'); } catch { /* already gone */ } }
-    left = await waitTreeGone(left, {alive, capMs});
+    left = await waitTreeGone(left, {alive, ...(capMs === undefined ? {} : {capMs})});
   }
   if (left.length) throw new Error(`isolated browser: still running after kill: ${holdersOf(left)}`);
 }

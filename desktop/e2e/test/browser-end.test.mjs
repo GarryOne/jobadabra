@@ -56,8 +56,10 @@ test('a browser that left on the first kill needs no second one, and a profile w
   await endBrowser({profile, list: () => [], kill: () => assert.fail('nothing to kill'), capMs: 10});
 });
 
-test('real-extension close() ends the browser through endBrowser, with no wait on the browser\'s own close', () => {
-  const source = fs.readFileSync(new URL('../lib/real-extension.mjs', import.meta.url), 'utf8');
-  assert.match(source, /await endBrowser\(\{profile, control\}\)/);
-  assert.doesNotMatch(source, /isolated browser\.close/, 'the 3.5 s wait on context.close() is gone');
+test('a launched browser whose processes cannot be seen (the lister failed) is closed by its own close, never passed while running', async () => {
+  let closed = 0;
+  await endBrowser({profile, launched: true, list: () => [], fallback: async () => { closed++; }});
+  assert.equal(closed, 1);
+  await assert.rejects(endBrowser({profile, launched: true, list: () => [], fallback: async () => { throw new Error('context.close failed'); }}), /context\.close failed/);
+  await endBrowser({profile, launched: false, list: () => [], fallback: async () => assert.fail('a browser that never launched has nothing to close')});
 });

@@ -67,7 +67,7 @@ export async function startRealExtension({extensionDir = EXTENSION_DIR, cv = tru
   // Why (31 Oct 2026, a8, run 41239658001): the browser is a throwaway, so close() ends its process tree and fails only if a process is still alive (lib/browser-end.mjs);
   // it used to wait 3.5 s for context.close() and re-throw, which failed a passed case on a loaded runner.
   const close = async () => {
-    try { await endBrowser({profile, control}); }
+    try { await endBrowser({profile, control, launched: !!context, fallback: () => context.close()}); }
     finally { stub?.closeAllConnections(); stub?.close(); }
   };
   // Cleanup is published before listening or launching, so a stalled partial startup remains reachable.

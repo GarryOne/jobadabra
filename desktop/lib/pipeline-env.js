@@ -114,7 +114,7 @@ export function pipelineEnv(storage, parent = process.env) {
   // The end-to-end journey's stand-ins for Notion, Telegram and Google (desktop/e2e/lib/*-proxy|fake.mjs), and the fake Google sign-in that goes with its fake Gmail.
   // Only in a test run: the engine's env is a whitelist, so without this the engine's own calls went straight to the real services (5 Oct 2026).
   if (parent.JOB_PILOTTO_E2E) {
-    for (const name of ['JOB_PILOTTO_E2E_NOTION_BASE_URL', 'JOB_PILOTTO_E2E_TELEGRAM_BASE_URL', 'JOB_PILOTTO_E2E_GOOGLE_BASE_URL']) if (parent[name]) env[name] = parent[name];
+    for (const name of ['JOB_PILOTTO_E2E_NOTION_BASE_URL', 'JOB_PILOTTO_E2E_NOTION_STANDIN', 'JOB_PILOTTO_E2E_TELEGRAM_BASE_URL', 'JOB_PILOTTO_E2E_GOOGLE_BASE_URL']) if (parent[name]) env[name] = parent[name];
     if (parent.JOB_PILOTTO_E2E_GOOGLE_BASE_URL) for (const name of ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'GOOGLE_REFRESH_TOKEN']) if (parent[name]) env[name] = parent[name];
     // A fictional candidate's Profile (the quality suite's personas, desktop/e2e/fixtures/golden-*): a file the engine scores against instead of the test page's Profile. Test runs only.
     if (parent.JOB_PILOTTO_E2E_PROFILE_FILE) env.JOB_PILOTTO_PROFILE_FILE = parent.JOB_PILOTTO_E2E_PROFILE_FILE;

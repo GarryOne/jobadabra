@@ -83,7 +83,7 @@ class MainE2eState(unittest.TestCase):
         self.assertEqual(report['suspended'][0]['url'], 'u2')
 
     def test_grey_annotation_is_health_and_a_wrong_value_in_another_shard_stays_red(self):
-        jobs = [{'id': 21, 'name': 'apply-1of2', 'conclusion': 'failure'},
+        jobs = [{'id': 21, 'name': 'apply-1of2', 'conclusion': 'success'},
                 {'id': 22, 'name': 'applyflows', 'conclusion': 'failure'}]
         def annotations(jid):
             return [{'title': 'Grey: the runner, not the app'}] if jid == 21 else []

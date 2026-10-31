@@ -7,10 +7,16 @@
 // Only the failure message is read, never the step's name: that step is called "Notion is busy (429) …", which reads like an environment failure.
 // Tests: test/flaky-proof.test.mjs
 // Job: run the backbone
+import {onlyRenamedPicks} from '../red-steps.mjs';
 import {isEnvironment} from './environment.mjs';
 import {FLAKY, TIMEOUT_FAILURE, flakyComment} from './triage-match.mjs';
 
 export const INTERMITTENT = 'intermittent';
+
+/** The one annotation title proves grey health to every reader, independent of the raw job conclusion. */
+export const GREY_TITLE = 'Grey: the runner, not the app';
+/** Read the proof annotation; neither a timeout word nor a job name alone assigns grey. */
+export const isGrey = notes => Array.isArray(notes) && notes.some(note => note?.title === GREY_TITLE);
 
 // message: the failed step's note (suite-failures.json `message`), without the step's name → {flaky, why}
 // The harness's own guards (the extension not on the stand-in app): never a product bug and never flaky (a run that may have reached the owner's live app stays
@@ -28,6 +34,7 @@ export function flakyProof(message = '') {
 
 /** Prove grey only from two recorded failures; flakyProof alone owns timing and harness classification. */
 export function greyProof(firstFailures, secondFailures) {
+  if (onlyRenamedPicks(firstFailures) && (secondFailures == null || onlyRenamedPicks(secondFailures))) return {grey: true, why: 'picked step(s) not found: the coverage pick is stale'};
   const tries = [firstFailures, secondFailures];
   if (tries.some(failures => !Array.isArray(failures) || failures.length === 0)) return {grey: false, why: 'both tries need recorded failures: no timing proof'};
   for (const failures of tries) for (const failure of failures) {

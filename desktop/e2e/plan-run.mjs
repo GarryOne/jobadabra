@@ -134,7 +134,7 @@ export async function planRun({env, gh = realGh, all, minutes, os = async () => 
   const legs = key => (env.GATE_TAG && env.GATE_STORE_LEGS !== 'one' && !storeless.includes(suiteOfKey(key)) ? [{store: 'sqlite', key}, {store: 'standin', key: `${key}-standin`}] : [{store: prStores[suiteOfKey(key)] || '', key}]);
   // A suite with `shards` is one job per slice (lib/suite-shards.mjs), on both lanes: the recorded replay outgrew one job's budget (13 Oct 2026).
   const include = [];
-  for (const suite of suites) for (const slice of prLegs(suite, shards, env, picks)) for (const leg of legs(slice.key)) include.push({suite, ...tolerantMatrixFlag(suite), ...(cadence[suite] === 'outside' ? {outside: true} : {}), fallbackSuites, ...offlineMatrixFlag(suite, offlineAi), ...answersMatrixFlag(suite, backbone), ...slice, ...leg, minutes: await minutes(suite), os: await os(suite, {pr: !!String(env.PR_SUITES || '').trim()})});
+  for (const suite of suites) for (const slice of prLegs(suite, shards, env, picks)) for (const leg of legs(slice.key)) include.push({suite, ...tolerantMatrixFlag(suite), fallbackSuites, ...offlineMatrixFlag(suite, offlineAi), ...answersMatrixFlag(suite, backbone), ...slice, ...leg, minutes: await minutes(suite), os: await os(suite, {pr: !!String(env.PR_SUITES || '').trim()})});
   if (env.AI_ANSWERS === 'record') {
     const blocked = include.find(leg => leg.offlineAi && !leg.burnIn);
     if (blocked) throw new Error(`suite ${blocked.suite} declares offlineAi, so it cannot record: record from a branch where it does not declare it, then declare it`);

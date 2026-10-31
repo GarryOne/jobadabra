@@ -33,7 +33,7 @@ RED = {'failure', 'cancelled', 'timed_out', 'startup_failure', 'action_required'
 # Why a red job shows grey, in the order the description tells them: reason -> (word, what it says). 'main': its failure lines are main's own (main_red_greys);
 # 'tolerant' / 'suspended': its suite is in the lane registry desktop/e2e/lanes.json (lane_greys; spec lanes table, 28 Oct 2026).
 GREY_WORDS = {'main': ('grey', 'red on main too, not this PR'), 'tolerant': ('tolerant', 'AI, clock or outside: not a PR red'), 'suspended': ('suspended', 'flaky on main: not a PR red')}
-GREY_WORDS.update({'ai-credit': ('grey', 'AI cap or credit'), 'runner': ('grey', 'runner not acquired'),
+GREY_WORDS.update({'ai-credit': ('grey', 'AI cap or credit'), 'runner': ('grey', 'runner not acquired'), 'runner-grey': ('grey', 'runner, not the app'),
                    'install': ('grey', 'install download unavailable'), 'qualityai': ('report', 'AI number produced; score informational'),
                    # Why (31 Oct 2026, owner: "Grey: not known yet"): budget refusal is not a quality judgment.
                    'ai-budget': ('qualityai', 'AI budget refused, not judged')})
@@ -350,7 +350,7 @@ def lane_greys(repo, runs, jobs, read_lanes=None):
 
 def health_greys(repo, runs, jobs, annotations_of=None, log_of=None, ref=''):
     """Delegate the existing per-job health evidence; a missing reader grants no grey."""
-    if not _red_e2e_jobs(runs, jobs, RED):
+    if not _red_e2e_jobs(runs, jobs, (*RED, 'success')):
         return {}
     try:
         return main_state_module(repo, ref, 'pr_verdict_greys').health_greys(repo, runs, jobs, annotations_of, log_of, ref,

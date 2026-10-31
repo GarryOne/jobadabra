@@ -89,7 +89,7 @@ test('every rerun step that writes flaky.json runs flaky-proof.mjs on the first 
     assert.match(block, /node flaky-proof\.mjs "\$first\/suite-failures\.json"/, file);
     assert.match(block, /set -o pipefail/, file);
     assert.match(block, /node flaky-proof\.mjs --grey "\$first\/suite-failures\.json" "\$E2E_ARTIFACTS\/suite-failures\.json"/, file);
-    assert.match(block, /::error title=Grey: the runner, not the app::/, file);
+    assert.match(block, /::warning title=Grey: the runner%2C not the app::/, `${file}: escape the title comma so GitHub returns the full grey title`);
   }
 });
 
@@ -137,4 +137,11 @@ test('grey CLI proves both files and fails closed on absent or malformed evidenc
       assert.equal(cli().code, 1);
     }
   } finally { fs.rmSync(dir, {recursive: true, force: true}); }
+});
+
+test('wizard stale picks are grey health without a retry; a real failure beside a stale pick stays red', () => {
+  const picked = [{step: 'steps picked for this PR', message: 'picked step(s) not found: removed wizard step'}];
+  assert.equal(greyProof(picked).grey, true);
+  assert.equal(greyProof(picked, picked).grey, true);
+  assert.equal(greyProof([...picked, {step: 'save', message: 'expected 3, got 2'}]).grey, false);
 });

@@ -57,7 +57,7 @@ A run of any check can end **grey** ("didn't run": AI credit, runner lost, insta
 both tries was timing or the test's environment": the runner, not the app). Grey is health, never red; it has one owner (the coordinator's round-up) and never
 asks the PR's session for anything. In a beta a grey backbone job re-runs once on a fresh runner: green ships, grey again holds that platform's beta as grey with
 the cause named; a wrong value stays red (owner, 31 Oct 2026: "Re-run once, then hold").
-Guard: `desktop/e2e/test/flaky-proof.test.mjs`.
+Guard: `tests/test_grey_never_red.py` (no workflow ends a grey job red; every reader of red knows grey), `desktop/e2e/test/flaky-proof.test.mjs`.
 
 Verdicts that change a state (nothing else does):
 - **backbone → suspended:** the classifier sees the check red then green on the same commit (a flip). Automatic, visible on the weekly summary with an owner
@@ -299,7 +299,7 @@ One `###` per plan step, one box per thing that lands; a box is ticked only with
 - [ ] 14 days after step 6: the acceptance numbers read from the J card and the scorecard, reported to the owner.
 
 ### 12. The owner's 31 Oct rules, each with its guard (row 31)
-- [ ] A run that stopped on time on both tries ends grey; in a beta it re-runs once on a fresh runner, grey again holds that platform as grey (#2661).
+- [x] A run that stopped on time on both tries ends grey, never red, on every surface; in a beta it re-runs once on a fresh runner, grey again holds that platform as grey (#2661, 1/5). (proof: tests/test_grey_never_red.py)
 - [ ] AI suites are grey or green and never hold a beta; AI credit running out is one alert (#2661).
 - [ ] The backbone refuses live AI by default, exceptions named (#2660); every live AI call in one tolerant suite (the one-AI-suite PR).
 - [x] Every rule of the design names its guard test, and a test fails a rule without one or a guard that does not exist. (proof: tests/test_e2e_design_guards.py)

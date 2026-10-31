@@ -476,12 +476,13 @@ class CompanionBoundaries(unittest.TestCase):
             script = tmp / 'pr-verdict.py'
             script.write_text((ROOT / 'tools/pr-verdict.py').read_text())
             (tmp / 'pr_verdict_greys.py').write_text((ROOT / 'tools/pr_verdict_greys.py').read_text())
-            fixture = tmp / 'health-source.txt'
-            fixture.write_text((ROOT / 'tools/pr_health_greys.py').read_text())
+            # The standalone copy fetches each classifier it imports at the writer's ref: the health one and main's grey check (tools/main_e2e_state.py is_grey).
+            served = {name: str(ROOT / 'tools' / name) for name in ('pr_health_greys.py', 'main_e2e_state.py')}
             gh = tmp / 'gh'
-            gh.write_text(f'#!{sys.executable}\nimport sys\nfrom pathlib import Path\n'
-                          "assert sys.argv[1:] == ['api', '-H', 'Accept: application/vnd.github.raw', 'repos/o/r/contents/tools/pr_health_greys.py?ref=writer-ref']\n"
-                          f'sys.stdout.write(Path({str(fixture)!r}).read_text())\n')
+            gh.write_text(f'#!{sys.executable}\nimport sys\nfrom pathlib import Path\nserved = {served!r}\n'
+                          "name = sys.argv[4].removeprefix('repos/o/r/contents/tools/').removesuffix('?ref=writer-ref')\n"
+                          "assert sys.argv[1:] == ['api', '-H', 'Accept: application/vnd.github.raw', f'repos/o/r/contents/tools/{name}?ref=writer-ref'] and name in served, sys.argv\n"
+                          'sys.stdout.write(Path(served[name]).read_text())\n')
             gh.chmod(0o755)
             probe = """import runpy, sys
 pv = runpy.run_path(sys.argv[1])

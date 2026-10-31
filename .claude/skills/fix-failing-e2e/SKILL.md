@@ -9,6 +9,12 @@ Why this exists (24 Oct 2026): in beta runs 5-11 about 8 of ~10 e2e fixes were t
 
 ## The loop
 0. **Design first:** follow the [canonical repair rule](../../../docs/superpowers/specs/2026-10-28-e2e-reliability-design.md#the-rules), its current implementation status, and `desktop/e2e/lanes.json` before diagnosis or edits.
+   **Is this red compliant with the design?** (owner, 31 Oct 2026: "Is the failures compliant with our e2e redesign?… let's close this gap. Let's fix the process/workflow".)
+   Name the state the design gives it before anything else: a backbone wrong value is red; a run that stopped on time on both tries, a picked step that no longer
+   exists, an AI refusal or spent credit, and any tolerant suite are grey or a rate, never red. When the design says grey or tolerant and it ran red, the suite is
+   not the bug: the wiring is. Fix the shared mechanism for the whole class with a test that plays this red (never the suite, never a re-run), `E2E-cause: ci`, name the
+   design's rule letter in the commit body, and check the rule's `Guard:` line in the design names the test. 31 Oct 2026: wizard ran red on main on a picked step
+   #2659 had removed and on a live AI retry; employers, qualityai and a frozen Mac runner ran red the same way, each fixed as a new bug instead of the wiring.
 1. **Read before you run.** `suite-failures.json`, the suite's step table (`steps.json`), the run log, the screenshot (`gh run download <run> -n e2e-artifacts-<suite>`). A failure that says only `""` or "not found" is missing evidence: add the log line first. **A "⚠ one cause, N steps" line comes first** (the log's end and the run's Summary page, gate G3, 26 Oct 2026): those reds are one fix (e.g. a click on one locator that was not visible), and their own checks never ran, so expect a next layer after it: fix the cause, then read the run on your PR before calling the suite fixed.
 2. **Name the cause in one line, from this list** (the /admin/operations/e2e page uses the same words; the id in brackets is what step 7's trailer says):
    - **Test drift** (`drift`): the app's words, roles or timing changed. Fix the test to read the app's own name (a shared constant), never a new copy.

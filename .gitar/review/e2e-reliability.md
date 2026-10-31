@@ -38,3 +38,15 @@ Tolerant results never get a fix PR. A tolerant result, a red already gone, or a
 After 2 rounds of disagreement on one Gitar finding, the session answers in that thread with the evidence and asks the owner to decide.
 Raise a blocking finding if the session continues the disagreement beyond that cap without the owner's decision. The owner resolves the decision in the thread.
 Approval remains withheld while a blocking finding is unresolved; the approval step reads review findings, not the PR description.
+
+## Rule S: the design's states hold on every surface
+
+Owner, 31 Oct 2026: "Should be gray, or green"; "The backbone shouldn't have any external world, flaky related suites/tests"; "Any AI calls/suites should be green. They should not stop a beta"; "Why there were no guardrails to prevent this. Let's fix the workflow/guardrail".
+Source: the design's states table, the grey line and rules A-C. A PR that touches how a run ends (a workflow's retry or verdict step, `flaky-proof`, `tools/pr-verdict.py`, `desktop/e2e/ci-alert.mjs`,
+`tools/main_e2e_state.py`, `tools/beta_rate_gate.py`, `tools/backbone_red.py`, `lanes.json`, the plan's matrix) is read against these; raise a blocking finding when one breaks:
+- Grey is never red anywhere the owner looks: the job, the PR verdict, main's Telegram alert, the red-main gate, the beta. A grey job ends green with a `::warning`, never `::error` and never a nonzero exit.
+- One owner per state: every reader of red or green calls the one grey check; a second copy of the rule (a title string, a regex, a list of causes) is a finding.
+- One source per fact: a suite's lane comes only from `lanes.json` through the plan (`matrix.tolerant`); a second flag deciding the same thing (`matrix.outside`) is a finding.
+- The backbone has no outside world: no live AI on any try (the retry answers from the same saved table), no wall-clock assertion, no real Notion or site.
+- AI never holds a beta: an AI suite is grey or green, its rate is reported, spent credit is one alert.
+Each rule of the design names its `Guard:` test (mechanical: `tests/test_e2e_design_guards.py`); a PR that adds a rule or changes one names or updates its guard.

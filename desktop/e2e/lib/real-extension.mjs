@@ -19,7 +19,7 @@ import {E2E} from './app.mjs';
 import {EXTENSION_DIR, browserChannel, copyExtension, freePort} from './extension.mjs';
 import {LAUNCH_TIMEOUT_MS, launchGuard} from './launch-guard.mjs';
 import {setExtensionStorage} from '../../../hosted/ready-fill/extension-storage.mjs';
-import {replayLimit} from './replay-deadline.mjs';
+import {endBrowser} from './browser-end.mjs';
 
 // The extension's stored settings (chrome.storage.local as JSON) -> '' or why it is not isolated: its app address is not the stand-in's port, or an address
 // on the live app's port 47111 is stored anywhere. An ADDRESS, never the bare digits: 27 Oct 2026 (run 40447725087) a stored timestamp, "boot":"1793074711121",
@@ -63,14 +63,12 @@ export async function startRealExtension({extensionDir = EXTENSION_DIR, cv = tru
       Promise.resolve(answers[route] ? answers[route](body, new URL(request.url, 'http://stand-in').searchParams) : answer[route] ? answer[route](body) : {}).then(found => { response.writeHead(200, headers); response.end(JSON.stringify(found)); });   // a case's answer may come late (page-replay.mjs answerFor _delayMs)
     });
   });
-  let context, worker, control;
+  let context, worker, control, profile = '';
+  // Why (31 Oct 2026, a8, run 41239658001): the browser is a throwaway, so close() ends its process tree and fails only if a process is still alive (lib/browser-end.mjs);
+  // it used to wait 3.5 s for context.close() and re-throw, which failed a passed case on a loaded runner.
   const close = async () => {
-    try { await replayLimit('isolated browser.close', 3500, () => context?.close()); }
-    catch (error) {
-      // Why (2026-10-27): a stuck context close must not leave its browser alive after the case deadline.
-      if (control) await replayLimit('isolated browser force-close', 1000, () => control.send('Browser.close')).catch(() => {});
-      throw error;
-    } finally { stub?.closeAllConnections(); stub?.close(); }
+    try { await endBrowser({profile, control, launched: !!context, fallback: () => context.close()}); }
+    finally { stub?.closeAllConnections(); stub?.close(); }
   };
   // Cleanup is published before listening or launching, so a stalled partial startup remains reachable.
   onCleanup(close);
@@ -78,7 +76,7 @@ export async function startRealExtension({extensionDir = EXTENSION_DIR, cv = tru
   await checkCancelled();
   if (stub) await new Promise(resolve => stub.listen(port, '127.0.0.1', resolve));
   await checkCancelled();
-  const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-real-ext-'));
+  profile = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-real-ext-'));
   try {
     launchGuard.check();   // a browser that did not start earlier in this process: stop now, never wait again per case (lib/launch-guard.mjs)
     context = await chromium.launchPersistentContext(profile, {

@@ -9,8 +9,8 @@ const LIST_MS = 15000;   // one query about processes, not a wait for a state
 const NO_STEP_CAP_MS = 15000;   // only a unit test has no runner step; a step's own clock is its hang cap (stepTimeLeft)
 
 /** `pid ppid command…` lines → [{pid, ppid, command}]. */
-export const parseProcessList = text => String(text || '').split(/\r?\n/).map(line => /^\s*(\d+)\s+(\d+)\s+(.*)$/.exec(line)).filter(Boolean)
-  .map(([, pid, ppid, command]) => ({pid: Number(pid), ppid: Number(ppid), command: command.slice(0, 200)}));
+export const parseProcessList = (text, width = 200) => String(text || '').split(/\r?\n/).map(line => /^\s*(\d+)\s+(\d+)\s+(.*)$/.exec(line)).filter(Boolean)
+  .map(([, pid, ppid, command]) => ({pid: Number(pid), ppid: Number(ppid), command: command.slice(0, width)}));
 
 /** Every process below `root` (children, their children…), not `root` itself. */
 export function descendantsOf(rows, root) {
@@ -23,11 +23,11 @@ export function descendantsOf(rows, root) {
 }
 
 /** All processes now, as {pid, ppid, command}; [] when the platform's lister fails (a missing answer is no verdict). */
-export function listProcesses({run = spawnSync, platform = process.platform} = {}) {
+export function listProcesses({run = spawnSync, platform = process.platform, width = 200} = {}) {
   const done = platform === 'win32'
     ? run('powershell', ['-NoProfile', '-Command', 'Get-CimInstance Win32_Process | ForEach-Object { "$($_.ProcessId) $($_.ParentProcessId) $($_.Name) $($_.CommandLine)" }'], {encoding: 'utf8', timeout: LIST_MS, windowsHide: true})
     : run('ps', ['-A', '-o', 'pid=,ppid=,command='], {encoding: 'utf8', maxBuffer: 16 << 20});
-  return parseProcessList(done?.stdout);
+  return parseProcessList(done?.stdout, width);
 }
 
 /** Running (a zombie waiting to be reaped is gone: the program has ended). */

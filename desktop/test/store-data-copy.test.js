@@ -6,8 +6,8 @@ import os from 'node:os';
 import path from 'node:path';
 import {spawn} from 'node:child_process';
 import {test} from 'node:test';
-import {MAX_TRIES, handOff, ownPackageFolder, planCopy, privateDataFolder, unpackedHelper} from '../lib/store-data-copy.js';
-import {MARKER, copyFolder, readMarker, run} from '../lib/store-data-copy-helper.mjs';
+import {MAX_TRIES, handOff, ownPackageFolder, planCopy, privateDataFolder, quitBeforeStart, unpackedHelper} from '../lib/store-data-copy.js';
+import {LOCK, MARKER, copyFolder, helperRunning, readMarker, run} from '../lib/store-data-copy-helper.mjs';
 
 const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'store-copy-'));
 const put = (dir, files) => { for (const [rel, text] of Object.entries(files)) { fs.mkdirSync(path.dirname(path.join(dir, rel)), {recursive: true}); fs.writeFileSync(path.join(dir, rel), text); } };
@@ -126,10 +126,39 @@ test('a helper that cannot start leaves the app running with a failed marker; a 
   assert.equal(readMarker(target).state, 'failed', 'the marker is not touched by a helper that did not copy');
 });
 
+test('a start while a helper is still copying quits without starting a second one; a dead helper\'s lock does not block', async () => {
+  const local = tmp(), exePath = 'C:\\Program Files\\WindowsApps\\Jobadabra.Spike_0.0.1.0_x64__x1znb4crzyan6\\app\\Jobadabra.exe';
+  const pkg = ownPackageFolder(exePath, local), cache = path.join(pkg, 'LocalCache', 'Roaming', 'Jobadabra'), target = path.join(tmp(), 'Jobadabra');
+  put(cache, STORE_USER); fs.mkdirSync(target, {recursive: true});
+  const spawned = [], exits = [];
+  const base = {app: {isPackaged: true, getPath: () => target, exit: code => exits.push(code)}, platform: 'win32', windowsStore: true, exePath, local, helper: 'H.mjs', log: () => {}, spawnFn: (...args) => { spawned.push(args); return {unref() {}}; }};
+  fs.writeFileSync(path.join(target, LOCK), String(process.pid));   // a live helper: this test process stands in for it
+  assert.equal(helperRunning(target), true);
+  assert.equal(handOff(base), true);
+  assert.deepEqual([spawned.length, exits], [0, [0]], 'quits, starts nothing');
+  assert.equal(readMarker(target).state, undefined, 'and leaves the marker alone');
+  fs.writeFileSync(path.join(target, LOCK), '2147483646');   // a pid nobody has
+  assert.equal(helperRunning(target), false);
+  fs.writeFileSync(path.join(target, LOCK), String(process.pid));
+  assert.equal(helperRunning(target, -1), false, 'a lock older than the limit is a leftover');
+  fs.rmSync(path.join(target, LOCK));
+  const finished = await run([String(2147483646), cache, target, process.execPath, '-e', '0'], {settleMs: 0});
+  assert.deepEqual(finished.failed, []);
+  assert.ok(!fs.existsSync(path.join(target, LOCK)), 'the helper releases its lock before it restarts the app');
+});
+
 test('the packaged helper path points into app.asar.unpacked, and the helper is unpacked by the build', () => {
   assert.match(unpackedHelper().replace(/\\/g, '/'), /lib\/store-data-copy-helper\.mjs$/);
   assert.equal('C:\\x\\resources\\app.asar\\lib\\h.mjs'.replace(/app\.asar([\\/])/, 'app.asar.unpacked$1'), 'C:\\x\\resources\\app.asar.unpacked\\lib\\h.mjs');
   const build = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8')).build;
   assert.ok(build.asarUnpack.includes('lib/store-data-copy-helper.mjs'));
   assert.ok(build.files.includes('lib/**'));
+});
+
+test('one start check for both quits: a move to Applications first, the Store hand-off only when nothing moved', () => {
+  const calls = [];
+  const app = {isPackaged: false};   // from source: handOff is a no-op, so only offerMove decides here
+  assert.equal(quitBeforeStart({app, dialog: {}, offerMove: () => { calls.push('move'); return true; }, appLog: () => {}}), true);
+  assert.equal(quitBeforeStart({app, dialog: {}, offerMove: () => { calls.push('nomove'); return false; }, appLog: () => {}}), false);
+  assert.deepEqual(calls, ['move', 'nomove']);
 });

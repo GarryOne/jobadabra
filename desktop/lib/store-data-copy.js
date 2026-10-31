@@ -8,7 +8,7 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {spawn} from 'node:child_process';
 import {DATA_NAME, LEGACY_NAME, userDataTime} from './app-identity.js';
-import {readMarker, writeMarker} from './store-data-copy-helper.mjs';
+import {helperRunning, readMarker, writeMarker} from './store-data-copy-helper.mjs';
 
 export const MAX_TRIES = 2;
 // Why (31 Oct 2026): a script inside app.asar cannot be started by a separate node process reliably; the helper is unpacked (package.json build.asarUnpack) and is a .mjs so it runs as a module with no package.json beside it.
@@ -48,6 +48,7 @@ export function planCopy({target, cache, time = userDataTime}) {
 export function handOff({app, log = () => {}, platform = process.platform, windowsStore = !!process.windowsStore, exePath = process.execPath, local = process.env.LOCALAPPDATA, spawnFn = spawn, helper = unpackedHelper()}) {
   if (platform !== 'win32' || !windowsStore || !app.isPackaged) return false;
   const cache = privateDataFolder(ownPackageFolder(exePath, local)), target = app.getPath('userData');
+  if (cache && helperRunning(target)) { log('Store data copy: a copy is still running; this start quits'); app.exit(0); return true; }   // the helper restarts the app when it is done
   const plan = planCopy({target, cache});
   if (plan !== 'copy') { if (plan !== 'none') log(`Store data copy: ${plan}`); return false; }
   const marker = readMarker(target);
@@ -62,4 +63,12 @@ export function handOff({app, log = () => {}, platform = process.platform, windo
   }
   app.exit(0);
   return true;
+}
+
+/**
+ * The two reasons to quit before a normal start, as one check so main.js's start() does not grow a branch (it is over the cognitive-complexity limit and may not grow).
+ * Takes {app, dialog, offerMove, appLog}; offerMove is lib/applications.js's, passed in so this file stays free of it; appLog(tag, text) is main.js's. Returns true when the process is quitting.
+ */
+export function quitBeforeStart({app, dialog, offerMove, appLog}) {
+  return !!(offerMove({app, dialog}) || handOff({app, log: text => appLog('data', text)}));
 }

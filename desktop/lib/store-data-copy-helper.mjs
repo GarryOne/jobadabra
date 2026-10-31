@@ -9,6 +9,20 @@ import {spawn} from 'node:child_process';
 import {pathToFileURL} from 'node:url';
 
 export const MARKER = 'store-cache-copy.json';
+export const LOCK = 'store-cache-copy.lock';
+
+/**
+ * Is a helper still copying into `target`? The helper keeps its pid in LOCK while it runs. A lock older than maxAgeMs is a leftover (a killed helper, a reused pid).
+ * Why (31 Oct 2026, Gitar on #2729): a relaunch during the copy would start a second helper over the first (shared temp names, an early restart over half-copied files).
+ */
+export function helperRunning(target, maxAgeMs = 10 * 60 * 1000) {
+  try {
+    const file = path.join(target, LOCK);
+    if (Date.now() - fs.statSync(file).mtimeMs > maxAgeMs) return false;
+    process.kill(Number(fs.readFileSync(file, 'utf8')), 0);
+    return true;
+  } catch (error) { return error.code === 'EPERM'; }
+}
 const SKIP = new Set(['lockfile', 'SingletonLock', 'SingletonCookie', 'SingletonSocket']);   // held by a running Chromium, never data
 
 /** The copy's state in <folder>: {state: 'started' | 'done' | 'failed', tries, ...} or {} when none. */
@@ -55,12 +69,15 @@ async function waitForExit(pid, {limitMs = 30000, settleMs = 1500} = {}) {
 
 /** The whole job: wait, copy, mark, restart. Takes [pid, from, to, exe, ...exeArgs]; returns the copy's result. */
 export async function run([pid, from, to, exe, ...exeArgs], {settleMs, limitMs} = {}) {
+  const release = () => fs.rmSync(path.join(to, LOCK), {force: true});
+  fs.mkdirSync(to, {recursive: true}); fs.writeFileSync(path.join(to, LOCK), String(process.pid));
   // Why (31 Oct 2026, code review): a copy under a running app is clobbered by it (`Local State` is rewritten), so an app that does not exit within the limit gets no copy and no restart; the marker stays 'started' and the next start tries again.
-  if (!await waitForExit(Number(pid), {settleMs, limitMs})) return {files: 0, failed: [{file: '.', error: 'app-still-running'}], skipped: true};
+  if (!await waitForExit(Number(pid), {settleMs, limitMs})) { release(); return {files: 0, failed: [{file: '.', error: 'app-still-running'}], skipped: true}; }
   const before = readMarker(to);
   let result;
   try { result = copyFolder(from, to); } catch (error) { result = {files: 0, failed: [{file: '.', error: error.code || error.message}]}; }
   writeMarker(to, {...before, state: result.failed.length ? 'failed' : 'done', files: result.files, failed: result.failed.slice(0, 5), at: new Date().toISOString()});
+  release();
   const env = {...process.env}; delete env.ELECTRON_RUN_AS_NODE;
   spawn(exe, exeArgs, {detached: true, stdio: 'ignore', env}).unref();
   return result;

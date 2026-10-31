@@ -151,7 +151,8 @@ class DesktopWorkflowTest(unittest.TestCase):
         for name, script in (('release-mac', 'tools/beta-approve.sh "$TAG"'), ('release-windows', 'tools/beta-approve.sh --windows "$TAG"')):
             release = job(name)
             # Owner, 30 Oct 2026: both lanes green or neither platform is offered (Windows dropped its duplicates of the Mac + Linux suites).
-            self.assertIn('needs: [changes, test-mac, test-windows]', release)
+            # Owner, 31 Oct 2026: + build, windows, whose unit step is red without stopping the e2e (tests/test_desktop_unit_red_runs_e2e.py).
+            self.assertIn('needs: [changes, build, windows, test-mac, test-windows]', release)
             # Owner, 31 Oct 2026 (a suite past its budget is our bug): the gate reads every lane's jobs and its own exit code is the verdict; no grey hold, held output or rerun.
             self.assertIn('--e2e-only', release)
             for gone in ('backbone_gate', 'outputs.held', 'beta-held', 'continue-on-error: true\n        run: python3 tools/beta_rate_gate.py'):

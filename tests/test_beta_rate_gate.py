@@ -221,6 +221,19 @@ class Gate(unittest.TestCase):
         self.assertEqual(lines, ['Not released: red: Mac + Linux: apply'])
         self.assertEqual(gate.backbone_check([{**job, 'conclusion': 'success'} for job in jobs], {}), (0, []), 'the control: all green is released')
 
+    def test_a_red_unit_step_holds_both_betas_even_when_every_e2e_job_passed(self):
+        # Owner, 31 Oct 2026 ("D: unit red still runs e2e"): the unit step no longer stops the e2e, so the release is where one unit red refuses both platforms.
+        gate = self.gate()
+        green = [{'id': 21, 'name': 'E2E · Mac + Linux · apply', 'conclusion': 'success'}, {'id': 22, 'name': 'E2E · Windows · apply', 'conclusion': 'success'}]
+        self.assertEqual(gate.backbone_check(green, {}, {'Mac': 'success', 'Windows': 'success'}), (0, []), 'the control: all green, units green')
+        self.assertEqual(gate.backbone_check(green, {}), (0, []), 'no unit outcomes given (the e2e check by itself)')
+        self.assertEqual(gate.backbone_check(green, {}, {'Mac': 'failure', 'Windows': 'success'}), (1, ['Not released: red: Unit tests · Mac']))
+        self.assertEqual(gate.backbone_check(green, {}, {'Mac': 'failure', 'Windows': 'failure'}), (1, ['Not released: red: Unit tests · Mac, Unit tests · Windows']))
+        red = [{**green[0], 'conclusion': 'failure'}, green[1]]
+        self.assertEqual(gate.backbone_check(red, {}, {'Windows': 'failure'}), (1, ['Not released: red: Mac + Linux: apply, Unit tests · Windows']), 'both reds in one line')
+        for unfinished in ('', 'skipped', 'cancelled'):
+            self.assertEqual(gate.backbone_check(green, {}, {'Mac': unfinished}), (0, []), f'a unit step that never ran ({unfinished!r}) is not a unit red')
+
     def test_rate_only_standalone_import_needs_no_annotation_companion(self):
         # The PR verdict downloads each companion separately, before main_e2e_state may be loaded.
         import importlib.util

@@ -28,6 +28,13 @@ export function useClock(fn) { clock = fn || Date.now; }
 // The turns are shared with the other processes on this computer that use the same connection (lib/notion-pace.js).
 const GAP_MS = sharedPace.GAP_MS;
 let nextSlot = 0, calmUntil = 0;
+// A real connection shares its cool-down; the stand-in keeps only the individual call's retry backoff.
+async function calmConnection(token, wait, pace) {
+  if (sharedPace.isStandIn()) return;
+  calmUntil = Math.max(calmUntil, clock() + wait);
+  if (pace) await sharedPace.calmUntil(token, calmUntil);
+}
+
 async function turn(token, now = clock) {
   const shared = await sharedPace.claim(token, now);
   const at = shared ?? Math.max(nextSlot, calmUntil, now());
@@ -68,10 +75,7 @@ export async function call(token, method, route, body, fetcher = globalThis.fetc
     if (RETRY.has(response.status) && attempt < retries) {
       const after = Number(response.headers?.get?.('retry-after'));
       const wait = Math.min(Number.isFinite(after) && after > 0 ? after * 1000 : 500 * 2 ** attempt, 10_000);
-      if (response.status === 429) {  // everyone waits it out: this app and the other processes
-        calmUntil = Math.max(calmUntil, clock() + wait);
-        if (pace) await sharedPace.calmUntil(token, calmUntil);
-      }
+      if (response.status === 429) await calmConnection(token, wait, pace);
       // A retried 429 is expected (Notion's limit is shared, e.g. with a GitHub run): it's in notion-requests.log,
       // not on the terminal; only a request that finally fails is shown (the error thrown below).
       if (response.status !== 429) log('notion', `${response.status} on ${method} ${route.split('?')[0]}: retry ${attempt + 1}/${retries} in ${wait} ms`);

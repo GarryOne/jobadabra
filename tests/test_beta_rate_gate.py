@@ -217,7 +217,7 @@ class Gate(unittest.TestCase):
         calls = []
         def github(*args, **kwargs):
             calls.append(args)
-            return json.dumps([[{'title': 'Grey: the runner, not the app'}], []])
+            return json.dumps([[{'title': 'Grey: the runner, not the app'}], []]) if '/21/' in str(args) else '[[]]'
         with tempfile.TemporaryDirectory() as folder:
             target = Path(folder) / 'beta-held.json'
             status, lines = gate.backbone_check('o/r', jobs, {}, github, attempt=1, output=target)

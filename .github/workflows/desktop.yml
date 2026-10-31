@@ -123,14 +123,43 @@ jobs:
             # No offline replay gate (owner, 17 Oct 2026: replays are for debugging; the beta is gated by the e2e suites, page cases and unit tests, the daily live check reports real-site health separately).
             echo "build=true" >> "$GITHUB_OUTPUT"
           fi
+      # Why (31 Oct 2026, owner: "when we fix e2e on main. We should run first only the failing e2e suite, then rerun a beta full e2e suite"): main went red at 02:38 UTC (run 41158705592)
+      # and the 03:00 nightly (run 41162490590) still spent ~40 min of Mac and Windows runners on the same reds. Gate G2 (tools/red-main-gate.sh) re-runs ONLY main's red suites and
+      # waits: green → the night goes on; red → it builds and tests nothing. A beta by hand is gated by tools/beta-release.sh (not nightly here), never twice. Only when there is
+      # something to build (the diff step above), so a night with nothing new does not start re-checks. Guard: tests/test_workflow_nightly_red_gate.py
+      - name: Main's e2e red? Re-check its red suites first (nightly)
+        id: redmain
+        if: steps.diff.outputs.build == 'true' && (github.event_name == 'schedule' || inputs.nightly) && inputs.over_red_main == ''
+        timeout-minutes: 50
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RED_MAIN_WAIT_S: '2700'   # the re-check takes 10-15 min; the lock `desktop-release` is held meanwhile
+          CI_ALERTS_TELEGRAM_BOT_TOKEN: ${{ secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN }}
+          CI_ALERTS_TELEGRAM_CHAT_ID: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}
+        run: |
+          set -o pipefail
+          set +e
+          tools/red-main-gate.sh "$GITHUB_REPOSITORY" 2>&1 | tee "$RUNNER_TEMP/red-main-gate.log"
+          rc=${PIPESTATUS[0]}
+          set -e
+          if [ "$rc" -eq 0 ]; then echo "red=false" >> "$GITHUB_OUTPUT"; exit 0; fi
+          suites=$(awk '/^Main.s e2e is red:/ { found = 1; next } found && /^  / { print $1 }' "$RUNNER_TEMP/red-main-gate.log" | paste -sd, -)
+          recheck=$(sed -n 's/^Re-check: //p' "$RUNNER_TEMP/red-main-gate.log" | tail -1)
+          [ -n "$recheck" ] || recheck="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          if [ -n "$suites" ]; then what="main's e2e still red on $suites"; else what="main's e2e state could not be read"; fi
+          message="Nightly skipped: $what (re-check $recheck)"
+          echo "::notice title=Nightly skipped::$message"
+          echo "No build tonight: $what. Nothing is built or tested; the next beta re-checks the red suites first."
+          echo "red=true" >> "$GITHUB_OUTPUT"
+          MESSAGE="$message" node --input-type=module -e "import {send} from './desktop/e2e/ci-alert.mjs'; console.log(await send(process.env.MESSAGE))"
       # Something to build: the release both lanes add their files to, here so each lane starts straight from this job (owner, 7 Oct 2026: "Anything new should
       # trigger 2 separate pipelines"). Its version (the next patch), its tag (at the start: a push to main during the builds costs nothing) and a draft with the notes.
       - uses: actions/setup-node@v5
-        if: steps.diff.outputs.build == 'true'
+        if: steps.diff.outputs.build == 'true' && steps.redmain.outputs.red != 'true'
         with:
           node-version: '22'
       - name: Version
-        if: steps.diff.outputs.build == 'true'
+        if: steps.diff.outputs.build == 'true' && steps.redmain.outputs.red != 'true'
         id: version
         working-directory: desktop
         # package.json holds the target (0.5.0): each build is the next patch, 0.5.1, 0.5.2 … The channel (build, beta, stable) says how proven it is, not the version.
@@ -142,7 +171,7 @@ jobs:
           echo "Extension version $extension"
           echo "extension_version=$extension" >> "$GITHUB_OUTPUT"
       - name: Tag this build now (its workflows still match main's)
-        if: steps.diff.outputs.build == 'true'
+        if: steps.diff.outputs.build == 'true' && steps.redmain.outputs.red != 'true'
         # GitHub refuses (HTTP 403) to let this run's token create a tag on a commit whose workflow files differ from main's. Tagged here, at the
         # start, that can't happen: a push to main during the build no longer costs a rebuild (7 Oct 2026). A build that fails after this leaves
         # its number unused; scripts/next-version.sh then takes the next one.
@@ -151,7 +180,7 @@ jobs:
           if git push -q origin "$GITHUB_SHA:refs/tags/$tag"; then echo "Tagged $tag at ${GITHUB_SHA::7}"
           else echo "::warning::Could not tag $tag at the start: the Release step tags it (and rebuilds main if workflows changed meanwhile)."; fi
       - name: Release
-        if: steps.diff.outputs.build == 'true'
+        if: steps.diff.outputs.build == 'true' && steps.redmain.outputs.red != 'true'
         id: release
         working-directory: desktop
         env:
@@ -511,7 +540,7 @@ jobs:
     runs-on: ${{ matrix.os || 'macos-latest' }}   # Linux unless the suite needs the Mac (lib/plan.mjs runnerOf); a virtual display there
     timeout-minutes: 360   # the lock's wait (up to 3 h) plus the suite; each step below has its own limit, so this only ends a hung wait
     # Outside failures stay red in their job and report, but do not decide the beta gate.
-    continue-on-error: ${{ (matrix.outside == true || matrix.tolerant == true) }}
+    continue-on-error: ${{ matrix.tolerant == true }}
     strategy:
       fail-fast: false      # one suite failing must not hide what the others found
       matrix: ${{ fromJson(needs.changes.outputs.mac_matrix) }}
@@ -684,7 +713,8 @@ jobs:
       # flaky-proof.mjs): every first-try failure was timing or the test's environment. A wrong value that came right keeps it red: a bug that shows sometimes (#1897).
       # Either way the pass writes the marker beside the first run's artifacts, and triage labels those steps `flaky` or `intermittent`. Its own artifacts stay out of the upload.
       - name: "First try failed: the ${{ matrix.suite }} suite once more, to tell flaky from real"
-        if: steps.suite_run.outcome == 'failure' && matrix.outside != true && matrix.tolerant != true
+        id: suite_retry
+        if: steps.suite_run.outcome == 'failure' && matrix.tolerant != true
         working-directory: desktop/e2e
         env:
           E2E_TRY_MINUTES: 15   # = this step's timeout-minutes: a suite without an aggregate budget stops 4 min before it (its close-down cap + 1), with records that read as timing (lib/runner.mjs budgetMsOf; tests/test_e2e_try_minutes.py)
@@ -692,6 +722,11 @@ jobs:
         run: |
           set -o pipefail   # flaky-proof.mjs | tee: the proof's exit decides (tests/test_workflow_pipefail.py)
           first="$E2E_ARTIFACTS"
+          if steps=$(node flaky-proof.mjs --grey "$first/suite-failures.json"); then
+            echo "::warning title=Grey: the runner%2C not the app::${{ matrix.key }}: $steps"
+            echo "grey=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           # Why (31 Oct 2026, owner): backbone retries use the same saved answers; only tolerant lanes may draw fresh AI (wizard run 41163541081).
           export E2E_ARTIFACTS="${{ github.workspace }}/e2e-rerun/${{ matrix.key }}" E2E_RERUN=1 E2E_AI_REPLAY=1   # same stored table as the first try; a second try writes no HTML report (report/playwright.config.mjs)
           again() { if [ "$RUNNER_OS" = Linux ]; then xvfb-run -a --server-args='-screen 0 1440x900x24' node suite.mjs "$1"; else node suite.mjs "$1"; fi; }
@@ -708,19 +743,19 @@ jobs:
             fi
           else
             if steps=$(node flaky-proof.mjs --grey "$first/suite-failures.json" "$E2E_ARTIFACTS/suite-failures.json"); then
-              echo "::error title=Grey: the runner, not the app::${{ matrix.key }}: both tries stopped on time only ($steps); re-runs once on a fresh runner in a beta"
-            else
-              echo "Failed again on the same commit: a real failure."
+              echo "::warning title=Grey: the runner%2C not the app::${{ matrix.key }}: both tries stopped on time only ($steps); the release gate checks it once on a fresh runner"
+              echo "grey=true" >> "$GITHUB_OUTPUT"
+              exit 0
             fi
-            exit 1   # keep failure so gh run rerun --failed picks grey jobs
+            echo "Failed again on the same commit: a real failure."
+            exit 1   # a wrong value or harness guard stays red
           fi
       - name: Outside-world health
-        if: always() && (matrix.outside == true || matrix.tolerant == true)
+        if: always() && matrix.tolerant == true
         env:
           OUTCOME: ${{ steps.suite_run.outcome }}
         run: |
           echo "::notice title=Outside-world health::${{ matrix.key }}: $OUTCOME (tolerant; does not block beta). Steps, screenshots and failures are in the Mac HTML report and e2e-artifacts-${{ matrix.key }}."
-          test "$OUTCOME" = success
       - name: What the suite spent on Free AI (the relay's own meter)
         if: always() && env.E2E_FREE_AI_URL != ''
         continue-on-error: true   # a report never decides a run
@@ -877,7 +912,7 @@ jobs:
     needs: [changes, windows, ai-ready]
     if: needs.windows.result == 'success' && needs.changes.outputs.gate == 'true' && needs.changes.outputs.count != '0'
     runs-on: windows-latest
-    continue-on-error: ${{ (matrix.outside == true || matrix.tolerant == true) }}
+    continue-on-error: ${{ matrix.tolerant == true }}
     timeout-minutes: 225   # + the wait for the suite's lock (up to 3 h)
     strategy:
       fail-fast: false
@@ -1022,7 +1057,8 @@ jobs:
           node suite.mjs ${{ matrix.suite }} \
             || { echo "::error title=First try failed::The ${{ matrix.key }} suite failed its first try; the next step runs it once more and decides"; exit 1; }
       - name: "First try failed: the ${{ matrix.suite }} suite once more, to tell flaky from real"
-        if: steps.suite_run.outcome == 'failure' && matrix.outside != true && matrix.tolerant != true
+        id: suite_retry
+        if: steps.suite_run.outcome == 'failure' && matrix.tolerant != true
         working-directory: desktop/e2e
         env:
           E2E_TRY_MINUTES: 15   # = this step's timeout-minutes: a suite without an aggregate budget stops 4 min before it (its close-down cap + 1), with records that read as timing (lib/runner.mjs budgetMsOf; tests/test_e2e_try_minutes.py)
@@ -1030,6 +1066,11 @@ jobs:
         run: |
           set -o pipefail   # flaky-proof.mjs | tee: the proof's exit decides (tests/test_workflow_pipefail.py)
           first="$E2E_ARTIFACTS"
+          if steps=$(node flaky-proof.mjs --grey "$first/suite-failures.json"); then
+            echo "::warning title=Grey: the runner%2C not the app::${{ matrix.key }}: $steps"
+            echo "grey=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           # Why (31 Oct 2026, owner): backbone retries use the same saved answers; only tolerant lanes may draw fresh AI (wizard run 41163541081).
           export E2E_ARTIFACTS="${{ github.workspace }}/e2e-rerun/windows-${{ matrix.key }}" E2E_RERUN=1 E2E_AI_REPLAY=1   # same stored table as the first try; a second try writes no HTML report (report/playwright.config.mjs)
           again() { if [ "$RUNNER_OS" = Linux ]; then xvfb-run -a --server-args='-screen 0 1440x900x24' node suite.mjs "$1"; else node suite.mjs "$1"; fi; }
@@ -1046,21 +1087,21 @@ jobs:
             fi
           else
             if steps=$(node flaky-proof.mjs --grey "$first/suite-failures.json" "$E2E_ARTIFACTS/suite-failures.json"); then
-              echo "::error title=Grey: the runner, not the app::${{ matrix.key }}: both tries stopped on time only ($steps); re-runs once on a fresh runner in a beta"
-            else
-              echo "Failed again on the same commit: a real failure."
+              echo "::warning title=Grey: the runner%2C not the app::${{ matrix.key }}: both tries stopped on time only ($steps); the release gate checks it once on a fresh runner"
+              echo "grey=true" >> "$GITHUB_OUTPUT"
+              exit 0
             fi
-            exit 1   # keep failure so gh run rerun --failed picks grey jobs
+            echo "Failed again on the same commit: a real failure."
+            exit 1   # a wrong value or harness guard stays red
           fi
       - name: Outside-world health
-        if: always() && (matrix.outside == true || matrix.tolerant == true)
+        if: always() && matrix.tolerant == true
         env:
           OUTCOME: ${{ steps.suite_run.outcome }}
         run: |
           echo "::notice title=Outside-world health::${{ matrix.key }}: $OUTCOME (tolerant; does not block beta). Steps, screenshots and failures are in the Windows HTML report and e2e-artifacts-windows-${{ matrix.key }}."
-          test "$OUTCOME" = success
       - name: The apply suite again in Microsoft Edge (the Windows default; preinstalled on the runner)
-        if: matrix.suite == 'apply'
+        if: matrix.suite == 'apply' && steps.suite_retry.outputs.grey != 'true'
         working-directory: desktop/e2e
         timeout-minutes: 30
         env:
@@ -1309,8 +1350,12 @@ jobs:
           publish-key: ${{ secrets.AI_COST_PUBLISH_KEY }}
           github-token: ${{ github.token }}
       - name: Not released on Mac, an E2E suite failed on Mac + Linux or Windows
-        if: needs.test-mac.result != 'success' || needs.test-windows.result != 'success'
+        id: backbone_gate
+        continue-on-error: true
         run: python3 tools/beta_rate_gate.py --repo "$GITHUB_REPOSITORY" --run "$GITHUB_RUN_ID" --e2e-only --platform mac
+      - name: A wrong value still holds the beta red
+        if: steps.backbone_gate.outcome == 'failure' && steps.backbone_gate.outputs.held != 'true'
+        run: exit 1
       - name: Keep this platform's beta hold evidence
         if: always() && hashFiles('beta-held.json') != ''
         uses: actions/upload-artifact@v6
@@ -1322,6 +1367,7 @@ jobs:
         if: needs.changes.outputs.gate == 'true'
         run: python3 tools/beta_rate_gate.py --repo "$GITHUB_REPOSITORY" --run "$GITHUB_RUN_ID" --platform mac
       - name: No real high-severity finding in the Mac suites
+        if: steps.backbone_gate.outputs.held != 'true'
         working-directory: desktop/e2e
         run: |
           gh run download "${{ github.run_id }}" --repo "$GITHUB_REPOSITORY" --pattern 'e2e-artifacts-*' --dir ../../e2e-artifacts || echo "no artifacts to read"
@@ -1332,11 +1378,13 @@ jobs:
           cat block.txt
           if [ "$status" != 0 ]; then echo "$TAG is not offered on Mac: a real high-severity finding in its end-to-end suites."; exit 1; fi
       - name: The shared release checks (unit suites green on the commit; soak on, the Notion schema additive over stable)
+        if: steps.backbone_gate.outputs.held != 'true'
         env:
           JOB_PILOTTO_SOAK: ${{ vars.JOB_PILOTTO_SOAK }}
         shell: bash -eo pipefail {0}   # a program piped into tee/cat keeps its exit code (tests/test_workflow_pipefail.py)
         run: tools/release-checks.sh "$TAG" "$REF"
       - name: Release it to Mac beta testers
+        if: steps.backbone_gate.outputs.held != 'true'
         env:
           E2E_ALREADY_GREEN: '1'   # required Mac suites passed; outside health is reported separately
           SOAK: ${{ vars.JOB_PILOTTO_SOAK }}
@@ -1423,8 +1471,12 @@ jobs:
           publish-key: ${{ secrets.AI_COST_PUBLISH_KEY }}
           github-token: ${{ github.token }}
       - name: Not released on Windows, an E2E suite failed on Mac + Linux or Windows
-        if: needs.test-mac.result != 'success' || needs.test-windows.result != 'success'
+        id: backbone_gate
+        continue-on-error: true
         run: python3 tools/beta_rate_gate.py --repo "$GITHUB_REPOSITORY" --run "$GITHUB_RUN_ID" --e2e-only --platform windows
+      - name: A wrong value still holds the beta red
+        if: steps.backbone_gate.outcome == 'failure' && steps.backbone_gate.outputs.held != 'true'
+        run: exit 1
       - name: Keep this platform's beta hold evidence
         if: always() && hashFiles('beta-held.json') != ''
         uses: actions/upload-artifact@v6
@@ -1436,6 +1488,7 @@ jobs:
         if: needs.changes.outputs.gate == 'true'
         run: python3 tools/beta_rate_gate.py --repo "$GITHUB_REPOSITORY" --run "$GITHUB_RUN_ID" --platform windows
       - name: No real high-severity finding in the Windows suites
+        if: steps.backbone_gate.outputs.held != 'true'
         working-directory: desktop/e2e
         run: |
           gh run download "${{ github.run_id }}" --repo "$GITHUB_REPOSITORY" --pattern 'e2e-artifacts-*' --dir ../../e2e-artifacts || echo "no artifacts to read"
@@ -1446,11 +1499,13 @@ jobs:
           cat block.txt
           if [ "$status" != 0 ]; then echo "$TAG is not offered on Windows: a real high-severity finding in its end-to-end suites."; exit 1; fi
       - name: The shared release checks (unit suites green on the commit; soak on, the Notion schema additive over stable)
+        if: steps.backbone_gate.outputs.held != 'true'
         env:
           JOB_PILOTTO_SOAK: ${{ vars.JOB_PILOTTO_SOAK }}
         shell: bash -eo pipefail {0}   # a program piped into tee/cat keeps its exit code (tests/test_workflow_pipefail.py)
         run: tools/release-checks.sh "$TAG" "$REF"
       - name: Release it to Windows beta testers
+        if: steps.backbone_gate.outputs.held != 'true'
         env:
           E2E_ALREADY_GREEN: '1'   # every Windows suite passed on this commit, in this run
           SOAK: ${{ vars.JOB_PILOTTO_SOAK }}

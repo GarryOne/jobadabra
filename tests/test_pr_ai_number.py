@@ -264,7 +264,7 @@ class Artifacts(unittest.TestCase):
         fields = {'run_id': 7, 'run_attempt': attempt, 'started_at': stamp(end - timedelta(minutes=5)), 'completed_at': stamp(end)}
         jobs = {7: [dict(fields, id=71, name=name, status='completed', conclusion=conclusion,
                         check_run_url='https://api.github.com/repos/o/r/check-runs/171',
-                        steps=[{'name': f'Run the {key} suite (first try)', 'conclusion': 'failure'},
+                        steps=[{'name': f'Run the {key} suite (the only try)', 'conclusion': 'failure'},
                                {'name': f'Report-only {key} failed its only try (not retried: each run costs AI)',
                                 'conclusion': 'failure'}])]}
         if extra_step: jobs[7][0]['steps'].append({'name': extra_step, 'conclusion': 'failure'})

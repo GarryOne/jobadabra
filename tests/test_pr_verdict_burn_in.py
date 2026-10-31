@@ -1,6 +1,7 @@
 """Five independent green PR attempts are required before a suite enters the backbone."""
 import importlib.util
 import json
+import re
 import tempfile
 import unittest
 from pathlib import Path
@@ -44,9 +45,8 @@ class BurnIn(unittest.TestCase):
     def test_workflow_burn_in_attempts_keep_first_failure_and_never_retry(self):
         workflow = (Path(__file__).resolve().parents[1] / '.github/workflows/e2e.yml').read_text()
         first = workflow.split('id: suite_run', 1)[1].split('- name: AI answer candidates', 1)[0]
-        self.assertIn('continue-on-error: ${{ !inputs.mutant && !matrix.burnIn }}', first)
-        retry = first.split('- name: "First try failed:', 1)[1].split('env:', 1)[0]
-        self.assertIn('!matrix.burnIn', retry)
+        self.assertIsNone(re.search(r'(?m)^        continue-on-error:', first), 'every suite is a single try now (31 Oct 2026, owner); a burn-in leg is no exception')
+        self.assertNotIn('First try failed', first)
         self.assertIn("format('{0} · burn-in {1}/5', matrix.suite, matrix.burnIn)", workflow)
 
     def test_completed_green_e2e_still_reads_jobs_to_check_all_five_attempts(self):

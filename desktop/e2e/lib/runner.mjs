@@ -54,7 +54,7 @@ export function wantedWords(words, stepNeeds = {}) {
 
 // E2E_STEP_NAMES (a JSON list of exact step names): the steps a pull request's changed lines reach (pr-suites.mjs, from the per-step coverage map), plus their
 // stepNeeds and the critical setup. "(setup)" alone: only the critical setup (the change ran only at launch or between steps). A picked name that matches no step
-// (renamed since the map was recorded) fails the suite, never a quiet green: e2e.yml's second try then runs the whole suite.
+// (renamed since the map was recorded) fails the suite, never a quiet green: e2e.yml's picked-step fallback (red-steps.mjs --renamed-only) then runs the whole suite once.
 export function pickedNames(env = process.env) {
   try { const names = JSON.parse(env.E2E_STEP_NAMES || '[]'); return Array.isArray(names) ? names.map(name => String(name).toLowerCase()) : []; } catch { return []; }
 }
@@ -64,7 +64,7 @@ export const PICK_SETUP = '(setup)';
 // slowest steps; a running step is cut at the budget's end. A suite that truly needs more says so (`export const budgetMinutes`): a manual suite, or the recorded replay (it grows a case at a time; sharded in page-cases.yml and, by its `shards`, in the gates: lib/suite-shards.mjs).
 export const SUITE_BUDGET_MS = Number(process.env.E2E_SUITE_BUDGET_MS) || 7 * 60000;
 // Why (31 Oct 2026, owner's pick; main run 41146558456): a suite without an aggregate had no stop of its own, so a slow Mac runner hit the workflow's 15-minute
-// step limit and GitHub killed it with no record: flaky-proof could not prove timing and a passing retry stayed red. It stops TRY_MARGIN_MS before that limit instead,
+// step limit and GitHub killed it with no record: nothing could say it was timing. It stops TRY_MARGIN_MS before that limit instead,
 // through the budget cut below, whose records read as timing. The limit has one owner: the workflow step's timeout-minutes, mirrored in E2E_TRY_MINUTES
 // (tests/test_e2e_try_minutes.py); a local run has none.
 // Why (31 Oct 2026, Gitar on #2654): the failure records are written after close-down, so the margin holds its whole cap (suite-main.mjs TEARDOWN_STOP_MS, 3 min)

@@ -42,7 +42,7 @@ Approval remains withheld while a blocking finding is unresolved; the approval s
 ## Rule S: the design's states hold on every surface
 
 Owner, 31 Oct 2026: "Should be gray, or green"; "The backbone shouldn't have any external world, flaky related suites/tests"; "Any AI calls/suites should be green. They should not stop a beta"; "Why there were no guardrails to prevent this. Let's fix the workflow/guardrail".
-Source: the design's states table, the grey line and rules A-C. A PR that touches how a run ends (a workflow's retry or verdict step, `flaky-proof`, `tools/pr-verdict.py`, `desktop/e2e/ci-alert.mjs`,
+Source: the design's states table, the grey line and rules A-C. A PR that touches how a run ends (a workflow's verdict step, `lib/flaky-proof.mjs`, `tools/pr-verdict.py`, `desktop/e2e/ci-alert.mjs`,
 `tools/main_e2e_state.py`, `tools/beta_rate_gate.py`, `tools/backbone_red.py`, `lanes.json`, the plan's matrix) is read against these; raise a blocking finding when one breaks:
 - Grey is never red anywhere the owner looks: the job, the PR verdict, main's Telegram alert, the red-main gate, the beta. A grey job ends green with a `::warning`, never `::error` and never a nonzero exit. (mechanical: `tests/test_grey_never_red.py`)
 - One owner per state: every reader of red or green calls the one grey check; a second copy of the rule (a title string, a regex, a list of causes) is a finding.

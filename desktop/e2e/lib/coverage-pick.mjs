@@ -4,6 +4,7 @@
 // Pick: a changed line inside lines a suite ran → that suite. A changed line no suite ran (a file's top level, a function never called, a CSS rule never used)
 // → every suite that loaded the file: a change nobody measured runs everyone who loads it, never no one.
 // Tests: test/coverage.test.mjs
+// Job: pick the suites
 import {mergeRanges, SETUP, WHOLE} from './coverage.mjs';
 import {MAX_USERS} from './plan.mjs';
 
@@ -15,7 +16,7 @@ export function mergeMap(previous, coverageFiles, at = new Date().toISOString(),
   for (const {suite, sha, files, steps, partial: some, store} of coverageFiles) {
     if (!suite || !files) continue;
     const entry = fresh[suite] || (fresh[suite] = {sha, at, files: {}});
-    partial[suite] = (partial[suite] ?? true) && Boolean(some);   // one whole file (the whole second try) makes the suite's run whole
+    partial[suite] = (partial[suite] ?? true) && Boolean(some);   // one whole file (a whole-suite run) makes the suite's run whole
     unionFiles(entry.files, files);
     for (const [step, stepFiles] of Object.entries(steps || {})) {
       unionFiles((entry.steps ||= {})[step] ||= {}, stepFiles);

@@ -24,7 +24,6 @@ DIFFERENT = {
         'E2E_COVERAGE': 'coverage.mjs records current-code PR/main runs, never release builds.',
         'E2E_COVERAGE_SHA': 'coverage.mjs stamps that current-code coverage; the beta does not collect it.',
         'JOB_PILOTTO_E2E_EXPECTS_FAILURES': 'sentry.js tags intentional mutant failures; the beta never mutates the build.',
-        'PR_RUN': 'The standalone first try skips paid report-only retries on PRs; the beta keeps retries.',
     },
     'windows': {
         'E2E_FULL': 'The beta omits duplicate paid Windows judges (owner, 7 Oct); standalone runs accept inputs.full.',
@@ -39,8 +38,7 @@ DIFFERENT = {
 }
 DIFFERENT_NAMES = {
     'mac': {
-        'first try': 'The beta labels the suite; standalone labels matrix.key, including shard/store/burn-in suffixes.',
-        'second try': 'The beta labels the suite; standalone labels matrix.key, including shard/store/burn-in suffixes.',
+        'only try': 'The beta labels the suite; standalone labels matrix.key, including shard/store/burn-in suffixes.',
     },
     'windows': {},
 }
@@ -78,7 +76,7 @@ def env(section, indent):
 
 
 def first_try(section, pair):
-    """Locate the Mac first try by id and Windows' single main suite invocation by command."""
+    """Locate the Mac suite step by id and Windows' single main suite invocation by command (a suite's only try)."""
     return one_step(section, r'^        id: suite_run$' if pair == 'mac'
                     else r'^          node suite\.mjs \$\{\{ matrix\.suite \}\}')
 
@@ -93,9 +91,7 @@ def suite_env(section, pair):
 
 def suite_names(section, pair):
     """Read names of the suite attempts and AI cache steps (save is deliberately unnamed)."""
-    selected = {'first try': first_try(section, pair)}
-    if pair == 'mac':
-        selected['second try'] = one_step(section, r'^          export .*E2E_RERUN=1')
+    selected = {'only try': first_try(section, pair)}
     for action in ('restore', 'save'):
         selected[f'AI cache {action}'] = one_step(
             section, rf'(?s)^.*        uses: actions/cache/{action}@[^\n]+\n.*          path: desktop/e2e/\.ai-cache\n')
@@ -125,7 +121,7 @@ class BetaSuiteJobInStep(unittest.TestCase):
                 if key in different:
                     self.assertTrue(different[key].strip(), 'every exception needs a reason')
 
-    def test_first_try_environments_stay_in_step(self):
+    def test_suite_environments_stay_in_step(self):
         for pair, source, copy in self.pairs():
             with self.subTest(pair=pair):
                 self.assert_in_step(suite_env(source, pair), suite_env(copy, pair), DIFFERENT[pair])
@@ -134,11 +130,10 @@ class BetaSuiteJobInStep(unittest.TestCase):
         for pair, source, copy in self.pairs():
             if pair != 'mac':
                 continue
-            retry = one_step(source, r'^          export .*E2E_RERUN=1')
-            mode = env(retry, 8)['E2E_AI_ANSWERS']
-            self.assertEqual(suite_env(copy, pair)['E2E_AI_ANSWERS'], mode)
+            mode = suite_env(copy, pair)['E2E_AI_ANSWERS']
+            self.assertEqual(mode, "${{ matrix.aiAnswers || 'off' }}")
             self.assertTrue(suite_env(source, pair)['E2E_AI_ANSWERS'].endswith(mode.removeprefix('${{ ')),
-                            'standalone first try must fall back to the same replay mode')
+                            'standalone try must fall back to the same replay mode as the beta (no second try carries it any more)')
 
     def test_suite_and_ai_cache_step_names_stay_in_step(self):
         for pair, source, copy in self.pairs():

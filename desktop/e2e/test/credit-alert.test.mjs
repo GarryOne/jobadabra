@@ -75,7 +75,7 @@ test('every e2e workflow reports AI credit through one nonblocking aggregate ale
     assert.match(block, /continue-on-error: true/, name);
     assert.match(block, /if: always\(\) && !cancelled\(\) && github.ref == 'refs\/heads\/main'/, name);
     assert.match(block, /node desktop\/e2e\/credit-alert.mjs --artifacts/, name);
-    assert.match(block, /--pattern 'e2e-rerun-\*' --dir ai-credit-health/, name);
+    assert.doesNotMatch(block, /e2e-rerun/, `${name}: a job has one try, so there is no second-try artifact to download`);
     assert.match(block, /CI_ALERTS_TELEGRAM_BOT_TOKEN:/, name);
     assert.match(block, /name: ai-credit-alert-\$\{\{ github.run_id \}\}/, name);
     assert.match(block, /overwrite: true/, name);

@@ -310,7 +310,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           E2E_LOCK_TOKEN: ${{ steps.lock_app.outputs.token }}
         run: bash lock-tools/tools/e2e-lock.sh acquire "${{ matrix.key }}"
-      - name: Run the ${{ matrix.suite }} suite on Windows (first try)
+      - name: Run the ${{ matrix.suite }} suite on Windows (the only try)
         working-directory: desktop/e2e
         env:
           E2E_TRY_MINUTES: 15   # = this step's timeout-minutes: a suite without an aggregate budget stops 4 min before it (its close-down cap + 1), with records that read as timing (lib/runner.mjs budgetMsOf; tests/test_e2e_try_minutes.py)
@@ -622,7 +622,6 @@ jobs:
         timeout-minutes: 5
         run: |
           gh run download "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --pattern 'e2e-artifacts-*' --dir ai-credit-health || echo "::notice::No suite artifacts available for AI credit health"
-          gh run download "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --pattern 'e2e-rerun-*' --dir ai-credit-health || echo "::notice::No retry artifacts available for AI credit health"
           gh run download "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --name "ai-credit-alert-$GITHUB_RUN_ID" --dir ai-credit-alert || true
           node desktop/e2e/credit-alert.mjs --artifacts ai-credit-health --marker ai-credit-alert/alert-sent.txt
       - name: Scan artifact contents for CI secrets

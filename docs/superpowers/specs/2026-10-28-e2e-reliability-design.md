@@ -53,11 +53,11 @@ A **check** (an e2e suite, later a step) is in exactly one state:
 | **tolerant · ai / clock / outside** | main nightly, before beta; never on a PR | a rate vs main's baseline band | lane registry |
 | **retired** | nowhere | kept in history | lane registry |
 
-A run of any check can end **grey** ("didn't run": AI credit, runner lost, install, a step the picker named that does not exist; or "ran, and every failure of
-both tries was timing or the test's environment": the runner, not the app). Grey is health, never red; it has one owner (the coordinator's round-up) and never
-asks the PR's session for anything. In a beta a grey backbone job re-runs once on a fresh runner: green ships, grey again holds that platform's beta as grey with
-the cause named; a wrong value stays red (owner, 31 Oct 2026: "Re-run once, then hold").
-Guard: `tests/test_grey_never_red.py` (no workflow ends a grey job red; every reader of red knows grey), `desktop/e2e/test/flaky-proof.test.mjs`.
+A run of any check can end **grey** ("didn't run": AI credit, runner lost, install, a step the picker named that does not exist). Grey is health, never red; it has
+one owner (the coordinator's round-up) and never asks the PR's session for anything. **A suite's own try that ran and failed is red, whatever the failure** (a budget that
+ran out, a timeout, a wrong value): its single try is the verdict (owner, 31 Oct 2026: "Is this expected? Error but step passed green ?", "And why should we
+accept/allow that?", "Let's go and handle this"); no second try, no flaky-proof pass, no `continue-on-error` on a suite step. Done by row 32.
+Guard: `tests/test_e2e_single_try.py` (no workflow retries a suite or lets its step fail quietly), `tests/test_grey_never_red.py` (no workflow ends a grey job red; every reader of red knows grey).
 
 Verdicts that change a state (nothing else does):
 - **backbone → suspended:** the classifier sees the check red then green on the same commit (a flip). Automatic, visible on the weekly summary with an owner
@@ -120,7 +120,7 @@ Guard: `desktop/test/e2e-reliability-check.test.js`.
 
 **Design-first repair (owner, 29 Oct 2026):** before diagnosing or editing a red e2e, read this design, the lane registry and the repair skill; name the failed input and the evidence before selecting an implementation. A failure's "split the suite" advice never overrides the lane boundary. A modified pass with an original pass is not a demonstrated causal fix. Changed suite limits (`shards`, `budgetMinutes`, `minutes`) need both rule E citation and rule F design job/`Job:` label, even under `suites/`. The measured weights (`stepSeconds`, `flowSeconds`) only assign steps to shards: weight-only edits need rule F, not a rule E citation. One extractor owns both checks.
 
-**Current suspension implementation (29 Oct 2026):** live G5 (`flaky-proof.mjs`, called by `e2e.yml` and `desktop.yml`) keeps an intermittent job red. The designed automatic suspension is NOT wired yet (plan PR 21): no workflow calls `tools/suspend-flip.mjs`, `lanes.json` has no applyflows suspension entry, and `tools/main_e2e_state.py`, read by the beta gate, never reads the registry. Until that integration lands, a flip stays red and the owner decides. Describing the intended suspension state is not evidence that the live gate honors it.
+**Current suspension implementation (31 Oct 2026):** no job retries, so no in-job flip exists to keep red (`flaky-proof.mjs` and the `flaky.json` marker are gone, row 32). The auto-sideline of row 33 (a8's) loses its same-commit-flip trigger with them and is redefined by a8 after row 32 lands. The designed automatic suspension is NOT wired yet (plan PR 21): no workflow calls `tools/suspend-flip.mjs`, `lanes.json` has no applyflows suspension entry, and `tools/main_e2e_state.py`, read by the beta gate, never reads the registry. Until that integration lands, a flip stays red and the owner decides. Describing the intended suspension state is not evidence that the live gate honors it.
 
 **G · Budget and picking.** A PR runs at most 5 suites, in parallel, within about 10 minutes. When a diff reaches more, the scorecard picks the 5 that caught the
 most bugs for the files it touches; the rest run on main after merge. 10–20 suites run only on main, scheduled, or before a beta. Suites compete for the
@@ -163,12 +163,14 @@ says. On one finding, after 2 rounds of disagreement with Gitar the session answ
 Guard: none: Gitar is a reviewer; the mechanical gates of E and F hold whatever it says.
 
 **L · Harness inventory, then shrink.** Every workflow and harness module is labelled needed (does a design job), replaced (the design's version supersedes it:
-deleted when that lands) or neither (deleted). Likely early deletions: the AI cache's 3-day expiry and live fallback, the retry/intermittent machinery, the
+deleted when that lands) or neither (deleted). Likely early deletions: the AI cache's 3-day expiry and live fallback, the retry/intermittent machinery (**done, row 32, 31 Oct 2026**), the
 "split the suite" advice, the second classifier. Each step keeps main's green suites green.
 Guard: none: an inventory, done once per step; each step keeps main green.
 
 ## Constraints and non-goals
-- No retry that hides a symptom; suspension says plainly "this check does not protect you now" and has an owner.
+- No retry that hides a symptom; suspension says plainly "this check does not protect you now" and has an owner. **A suite's single try is the verdict** (owner, 31 Oct 2026,
+  on a job whose step said "Error: the suite's 11-minute budget ran out" under a green tick: "And why should we accept/allow that?"): a red try is a red job; the cost is more
+  reds until the apply test clock (#2681) lands, accepted by the owner. The line "A red first run is not the verdict (owner, 6 Oct 2026)" (8e9d263) quoted no owner words and is gone.
 - No rewrite in one PR; no new gate beyond those named here; no local e2e loops; the product's behaviour does not change.
 - Live-AI checks cost money: any new nightly/pre-beta live volume states its measured cost first (CLAUDE.md "Ask before spending").
 - Public repo never reads the private site's code; the weekly issue and Telegram come from the site's job (private reads public).
@@ -188,7 +190,7 @@ Guard: none: an inventory, done once per step; each step keeps main green.
 
 ## PR plan
 Named from the start (owner, 28 Oct 2026: "when we follow a plan, we should know from the beginning the name of the PRs"): each PR's title reads `[a8] n/30 <what it does>`, and its body carries a "Plan progress" block (done, this PR, left). The total moves only with a reason written in the PR that moves it.
-**31 rows: 20 done, 11 to go** (31 Oct 2026; a row with several PRs counts once, when its last one lands and its proof is in). Row 30 adds grey tracking (owner, 30 Oct 2026). Row 31 adds the owner's 31 Oct rules and a guard for every rule (owner: "let's close this gap"). Why the previous total was 29 and not 34: the owner chose to bundle by plan step (28 Oct 2026, answering "bundle by step?"), so 21 one-per-box PRs became 16. Two calendar items are no PR: the owner reads one week of the weekly summary; acceptance 14 days after step 6. Not counted: four PRs for the green beta, outside the plan (#2378, #2380, #2391, #2393).
+**32 rows: 20 done, 12 to go** (31 Oct 2026; a row with several PRs counts once, when its last one lands and its proof is in). Row 30 adds grey tracking (owner, 30 Oct 2026). Row 31 adds the owner's 31 Oct rules and a guard for every rule (owner: "let's close this gap"). Row 32 (this PR, `fv`) makes a suite's single try the verdict; the e2e jobs no longer produce grey records, so row 30's grey page shows only health outside our code (pr-verdict's runner, install and AI-credit greys). Why the previous total was 29 and not 34: the owner chose to bundle by plan step (28 Oct 2026, answering "bundle by step?"), so 21 one-per-box PRs became 16. Two calendar items are no PR: the owner reads one week of the weekly summary; acceptance 14 days after step 6. Not counted: four PRs for the green beta, outside the plan (#2378, #2380, #2391, #2393).
 Who builds what: the verdict session takes rows 16-17 and the push-checks session rows 15 and 18 (owner's yes, 28 Oct 2026); `fl` keeps the backbone itself and the rest.
 
 | n | PR | Step | State |
@@ -224,6 +226,7 @@ Who builds what: the verdict session takes rows 16-17 and the push-checks sessio
 | 29 | Harness shrink, second half: back under 283 lib modules (27 Oct count) | 10 | after row 28 |
 | 30 | Grey tracking: page + weekly + returns | 1 | `a8`: open |
 | 31 | The owner's 31 Oct rules, each with its guard: grey on time, AI never holds a beta, one AI suite, a default-deny backbone | 12 | `a8`: #2660, #2661, the one-AI-suite PR, this guards PR |
+| 32 | Single try is the verdict: no retry passes a job (workflows, flaky-proof, `flaky.json` readers, burn-in/report-only retry skips), guard `tests/test_e2e_single_try.py` | 13 | `fv`: this PR |
 
 Before/after for the 30 Oct ratchet change, at `f93a714`: non-test `.mjs` files, excluding `test/`, `recorded/`, `fixtures/` and `node_modules/`; lines are newline counts in those files. This adds the brake; both shrink steps remain pending.
 
@@ -300,7 +303,12 @@ One `###` per plan step, one box per thing that lands; a box is ticked only with
 - [ ] 14 days after step 6: the acceptance numbers read from the J card and the scorecard, reported to the owner.
 
 ### 12. The owner's 31 Oct rules, each with its guard (row 31)
-- [x] A run that stopped on time on both tries ends grey, never red, on every surface; in a beta it re-runs once on a fresh runner, grey again holds that platform as grey (#2661, 1/5). (proof: tests/test_grey_never_red.py)
+- [x] Grey is health, never red, on every surface (#2661, 1/5). (proof: tests/test_e2e_single_try.py) A suite's own try that ran out of time is red since row 32 (section 13).
 - [ ] AI suites are grey or green and never hold a beta; AI credit running out is one alert (#2661).
 - [ ] The backbone refuses live AI by default, exceptions named (#2660); every live AI call in one tolerant suite (the one-AI-suite PR).
 - [x] Every rule of the design names its guard test, and a test fails a rule without one or a guard that does not exist. (proof: tests/test_e2e_design_guards.py)
+
+### 13. The single try is the verdict (row 32, `fv`, 31 Oct 2026)
+- [x] No workflow runs a suite twice on one commit to pass a red job, and no suite step has `continue-on-error`. (proof: tests/test_e2e_single_try.py)
+- [x] `flaky-proof.mjs`, the retry and report-only steps, the `e2e-rerun` uploads and the `flaky.json` readers are deleted (rule L). Triage still labels a step that passed on a later run of the same commit. (proof: tests/test_e2e_single_try.py, desktop/e2e/test/triage-cli.test.mjs)
+- [ ] Row 33 (auto-sideline, `a8`) is redefined without the same-commit-flip trigger; until then a suite that goes red often holds the beta and the owner decides.

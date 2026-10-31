@@ -1,4 +1,4 @@
-# Report a same-commit retry flip as an owner issue with a proposed registry entry; never edit lanes.json.
+# Report a same-commit attempt flip (a hand re-run that came out green) as an owner issue with a proposed registry entry; never edit lanes.json.
 # Job: report health
 name: E2E · Suspend a retry flip
 on:
@@ -62,36 +62,12 @@ jobs:
           done
           jq -s --argjson run "$run" '{run: $run, attempts: [.[][]]}' "${pages[@]}" > "$dir/attempts.json"
           echo "attempts=$dir/attempts.json" >> "$GITHUB_OUTPUT"
-          # Why (29 Oct 2026, owner): G5 keeps wrong-value flips red; green jobs need no traces or screenshots downloaded.
-          # Why (29 Oct 2026, Gitar on #2473): the job name is matrix.key and its artifact is exactly e2e-artifacts-<key>; a prefix pattern pulled applyflows into apply and made gh refuse to overwrite.
-          jq -r '[.attempts[].jobs[] | select(.run_attempt == 1 and .conclusion == "failure") |
-            "e2e-artifacts-\(.name)"] | unique[]' \
-            "$dir/attempts.json" > "$dir/artifact-patterns.txt"
-          if [ -s "$dir/artifact-patterns.txt" ]; then echo "artifact_patterns=$dir/artifact-patterns.txt" >> "$GITHUB_OUTPUT"; fi
-      - name: Download first-try artifacts
-        timeout-minutes: 5
-        id: artifacts
-        if: steps.attempts.outputs.artifact_patterns != ''
-        env:
-          GH_TOKEN: ${{ github.token }}
-          RUN_ID: ${{ inputs.run_id || github.event.workflow_run.id }}
-          PATTERNS: ${{ steps.attempts.outputs.artifact_patterns }}
-        run: |
-          dir="$(mktemp -d "$RUNNER_TEMP/flip-artifacts.XXXXXX")"
-          while IFS= read -r name; do
-            # A job that failed before the suite wrote anything uploaded no artifact: the flip is still judged from the job results.
-            gh run download "$RUN_ID" --repo "$GITHUB_REPOSITORY" --name "$name" --dir "$dir/$name" || echo "::warning::No first-try artifact for $name"
-          done < "$PATTERNS"
-          echo "folder=$dir" >> "$GITHUB_OUTPUT"
       - name: Propose suspension and open its owner issue
         if: steps.attempts.outputs.attempts != ''
         timeout-minutes: 5
         env:
           GH_TOKEN: ${{ github.token }}
           ATTEMPTS: ${{ steps.attempts.outputs.attempts }}
-          ARTIFACTS: ${{ steps.artifacts.outputs.folder }}
           OWNER: ${{ github.repository_owner }}
         run: |
-          artifacts=()
-          [ -z "$ARTIFACTS" ] || artifacts=(--artifacts "$ARTIFACTS")
-          node tools/suspend-flip.mjs --attempts "$ATTEMPTS" "${artifacts[@]}" --owner "$OWNER" --open --repo "$GITHUB_REPOSITORY"
+          node tools/suspend-flip.mjs --attempts "$ATTEMPTS" --owner "$OWNER" --open --repo "$GITHUB_REPOSITORY"

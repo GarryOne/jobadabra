@@ -72,24 +72,23 @@ test('suite-failures.json files are read from every suite folder, and a failed s
   assert.match(created[0], /^\[auto-ui\] activity: step failed: a step/);
 });
 
-// Gate G5, end to end: a rerun pass (flaky.json) on #1897's wrong value files the step as intermittent; a timeout as flaky. Runs the CLI's filing loop, where
-// the labelling is called before its definition (a const there threw only on this path, which no other test reached).
-test('a step that passed on the rerun is labelled by its proof: a wrong value intermittent, a timeout flaky', async () => {
+// Gate G5, end to end: an open step issue whose suite passes now on the SAME commit (a hand re-run: the CI job has one try) is labelled by its proof: a wrong value
+// intermittent, a timeout flaky. Runs the CLI's gone loop, where the labelling is called before its definition (a const there threw only on this path).
+test('a step issue whose suite passes on the same commit is labelled by its proof: a wrong value intermittent, a timeout flaky', async () => {
   const {triage} = await import('../triage.mjs');
   const fs = await import('node:fs'), os = await import('node:os'), path = await import('node:path');
   for (const [message, label] of [['the list says "Completed" and the panel "Completed with warnings"', 'intermittent'], ['locator.click: Timeout 30000ms exceeded.', 'flaky']]) {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'rerun-'));
-    fs.mkdirSync(path.join(dir, 'e2e-artifacts-failuresnotion'));
-    fs.writeFileSync(path.join(dir, 'e2e-artifacts-failuresnotion', 'suite-failures.json'), JSON.stringify([{suite: 'failuresnotion', step: 'Notion is busy (429) for a moment during a Jobs check', message}]));
-    fs.writeFileSync(path.join(dir, 'e2e-artifacts-failuresnotion', 'flaky.json'), '{"rerun": "passed"}');
+    fs.mkdirSync(path.join(dir, 'e2e-artifacts-failuresnotion'));   // the suite ran in this run and nothing failed in it
+    const issue = {number: 1897, state: 'OPEN', title: '[auto-ui] failuresnotion: step failed: Notion is busy (429)', labels: [{name: 'auto-ui'}, {name: 'fp:x'}], comments: [],
+      body: `🟠 **MEDIUM** · test-failure · found by a run of the failuresnotion suite\n> 🏷️ Build tested: main @ abc1234 (schedule run)\n\n### What was found\n${message}\n`};
     const added = [];
     const gh = args => {
       if (args[0] === 'issue' && args[1] === 'edit' && args[3] === '--add-label') added.push(args[4]);
-      if (args[0] === 'issue' && args[1] === 'create') return 'https://github.com/o/r/issues/1897';
-      return args[0] === 'issue' && args[1] === 'list' ? '[]' : args[0] === 'pr' ? '[]' : '';
+      return args[0] === 'issue' && args[1] === 'list' ? JSON.stringify([issue]) : args[0] === 'pr' ? '[]' : '';
     };
-    const result = triage({artifacts: dir, runUrl: 'https://x/runs/1', gh});
-    assert.deepEqual(added, [label], message);
+    const result = triage({artifacts: dir, runUrl: 'https://x/runs/1', gh, build: 'main @ abc1234 (hand run)'});
+    assert.ok(added.includes(label), `${message}: ${JSON.stringify(added)}`);
     assert.deepEqual(result[label], [1897]);
   }
 });

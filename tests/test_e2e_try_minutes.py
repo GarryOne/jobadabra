@@ -1,7 +1,7 @@
 """Every workflow step that runs an e2e suite tells it its own time limit: E2E_TRY_MINUTES equals the step's timeout-minutes. A suite without an aggregate
-budget (apply, applyflows, jobs, ...) stops 4 minutes before that limit (its 3-minute close-down cap + 1) with records flaky-proof reads as timing (desktop/e2e/lib/runner.mjs budgetMsOf).
+budget (apply, applyflows, jobs, ...) stops 4 minutes before that limit (its 3-minute close-down cap + 1) with records that read as timing (desktop/e2e/lib/runner.mjs budgetMsOf).
 Why (31 Oct 2026, owner's pick; main run 41146558456, the beta's re-check 41150330007): without it, a slow Mac runner hit GitHub's 15-minute step limit, the kill
-left no record, and a passing retry stayed red (8 of 82 Mac apply first tries)."""
+left no record and the red could not be told from a bug (8 of 82 Mac apply tries)."""
 import re
 import unittest
 from pathlib import Path
@@ -30,7 +30,7 @@ class TryMinutes(unittest.TestCase):
                 self.assertIsNotNone(limit, f'{path.name}: "{name}" runs a suite with no timeout-minutes of its own')
                 self.assertIsNotNone(told, f'{path.name}: "{name}" runs a suite without E2E_TRY_MINUTES: a slow runner is killed with no record')
                 self.assertEqual(told.group(1), limit.group(1), f'{path.name}: "{name}" tells the suite {told.group(1)} min, the step allows {limit.group(1)}')
-        self.assertGreaterEqual(seen, 8, 'the suite steps of e2e.yml, desktop.yml and e2e-windows.yml were not found: the step parser is stale')
+        self.assertGreaterEqual(seen, 6, 'the suite steps of e2e.yml, desktop.yml and e2e-windows.yml were not found: the step parser is stale')
 
 
 if __name__ == '__main__':

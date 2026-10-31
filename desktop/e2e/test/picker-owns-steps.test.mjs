@@ -79,7 +79,7 @@ test('among 19 planned suites, a lone picked suite 7 keeps its fallback on every
 });
 
 const cli = fileURLToPath(new URL('../red-steps.mjs', import.meta.url));
-test('19 stale picked suites allow only three whole-suite fallbacks, including the retry path', async t => {
+test('19 stale picked suites allow only three whole-suite fallbacks', async t => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'picker-fallback-'));
   t.after(() => fs.rmSync(dir, {recursive: true, force: true}));
   const suites = planned;
@@ -95,15 +95,13 @@ test('19 stale picked suites allow only three whole-suite fallbacks, including t
     if (first.status !== 0) {
       assert.match(first.stderr, /picked step not found \(fallback limit\)/);
       assert.match(fs.readFileSync(file, 'utf8'), /picked step not found \(fallback limit\)/);
-      const retry = spawnSync(process.execPath, [cli, file], {env, encoding: 'utf8'});
-      assert.notEqual(retry.status, 0, 'the normal retry cannot turn a blocked pick into a whole-suite run');
     }
   }
   assert.equal(allowed.length, 3);
   assert.equal(blocked.length, 16);
 });
 
-test('the workflow keeps a capped pick red on both attempts without launching a whole suite', t => {
+test('the workflow keeps a capped pick red without launching a whole suite', t => {
   if (spawnSync('bash', ['--version']).error) return t.skip('requires bash');
   const workflow = fs.readFileSync(new URL('../../../.github/workflows/e2e.yml', import.meta.url), 'utf8');
   assert.match(workflow, /E2E_FALLBACK_SUITES: \$\{\{ matrix\.fallbackSuites \}\}/);
@@ -125,7 +123,7 @@ test('the workflow keeps a capped pick red on both attempts without launching a 
   const env = {...process.env, RUNNER_OS: 'macOS', E2E_ARTIFACTS: path.join(dir, 'artifacts'),
     E2E_STEP_NAMES: '["missing"]', E2E_FALLBACK_SUITE: 'suite-18', E2E_AI_REPLAY: '1',
     E2E_FALLBACK_SUITES: Array.from({length: 19}, (_, i) => `suite-${i}`).join(',')};
-  for (const marker of ['id: suite_run', '- name: "First try failed:']) {
+  for (const marker of ['id: suite_run']) {
     const step = workflow.slice(workflow.indexOf(marker)).split('\n      - name:')[0];
     const script = step.slice(step.indexOf('run: |\n') + 'run: |\n'.length).split('\n')
       .filter(line => line.startsWith('          ')).map(line => line.slice(10)).join('\n')

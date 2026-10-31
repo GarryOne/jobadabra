@@ -1,4 +1,5 @@
 /* global window */
+// Job: run the backbone
 // Independent steps: one failing step is recorded and the next still runs, so a failure never hides the others. The suite fails at the end when any did.
 export function independent(ctx) {
   let failed = 0;

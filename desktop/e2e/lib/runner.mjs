@@ -184,7 +184,7 @@ export function createRunner(getSession, {suite = '', cadence = '', keepGoing = 
       const refused = faults ? '' : refusalNote(getSession()?.profile);
       const note = refused ? `${refused}; the step then failed: ${base}` : base;
       const where = codeLine(error);
-      // Why (31 Oct 2026, owner: "Means its flaky"; spec row 33): a step the lane registry suspended (flaky: red on code unchanged since it passed) runs and shows its result, but never fails the job.
+      // Why (31 Oct 2026, owner: "Means its flaky"; spec row 33): a step the lane registry suspended (flaky: red on code unchanged since it passed) runs and shows its result, but never fails the job; a safety step is never suspended (31 Oct 2026, owner: "Never suspend safety steps"), so `held` is empty for it.
       // An owned step cut off by its hang cap leaves work running that the next steps cannot trust, so it ends the suite quietly instead (suite-main.mjs reads suspendedStop).
       if (held) {
         results.push({name, status: 'suspended', note, cause: causeOf(note), issue: held.issue, ...(where ? {where} : {})});

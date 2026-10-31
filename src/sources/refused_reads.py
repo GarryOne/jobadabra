@@ -17,6 +17,7 @@ OPENED_DAYS = 7     # a site some step opened is asked again after this many day
 WAIT_DAYS = 1       # ... except a site that asked us to slow down: asked again the next day
 MAX_QUEUE = 12      # sites handed to the extension in one go
 CONCURRENCY = 1     # the extension asks one site at a time, with a pause (extension/refused-read.js)
+# Why (31 Oct 2026, owner): LinkedIn stays here. Its opt-in headless read (spec docs/superpowers/specs/2026-10-31-linkedin-headless-design.md) is a separate path with the person's copied session; this read has no cookies and no logins.
 NEVER = (*board_ideas.PORTALS, 'reddit.', 'xing.')   # login-wall sites: only through the person's own visit
 LOGIN_PATH = re.compile(r'/(?:log-?in|sign-?in|sso|oauth\d*|authorize|uas/login|account/login|auth)(?:[/?#.]|$)', re.I)   # a floor: the page we landed on is a login page
 

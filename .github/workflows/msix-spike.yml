@@ -13,7 +13,7 @@ on:
       scenario:
         description: 'rename = the 25 Oct data-folder rename spike; two-installs = the .exe and the Store package side by side; virtualization = where a Store copy reads and writes AppData with and without virtualization (31 Oct 2026)'
         type: choice
-        options: [rename, two-installs, virtualization]
+        options: [rename, two-installs, virtualization, notice-preview]
         default: rename
       unvirtualized:
         description: 'virtualization scenario only: build the package with AppData write virtualization turned off (desktop6 + unvirtualizedResources); false = the package as the Store gets it today'
@@ -474,3 +474,51 @@ jobs:
           path: C:\spike-out
           if-no-files-found: ignore
           retention-days: 14
+
+  notice-preview:
+    if: inputs.scenario == 'notice-preview'
+    name: Show the installed-twice note on Windows
+    runs-on: windows-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - name: Install
+        working-directory: desktop
+        run: npm ci
+      - name: Show the note for each copy and take a screenshot
+        shell: pwsh
+        run: |
+          Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+          $out = 'C:\spike-out'; New-Item -ItemType Directory -Force $out | Out-Null
+          $electron = (Resolve-Path 'desktop\node_modules\electron\dist\electron.exe').Path
+          $lib = (Resolve-Path 'desktop\lib\two-installs-notice.js').Path -replace '\\', '/'
+          @"
+          const {app, dialog} = require('electron');
+          app.whenReady().then(async () => {
+            const {noticeOptions} = await import('file:///$lib');
+            setTimeout(() => app.quit(), 9000);
+            dialog.showMessageBoxSync(noticeOptions({self: process.env.SELF}));
+          });
+          "@ | Set-Content "$out\notice.cjs"
+          foreach ($self in 'exe', 'store') {
+            $env:SELF = $self
+            $p = Start-Process $electron -ArgumentList "$out\notice.cjs" -PassThru
+            Start-Sleep 6
+            $b = [System.Windows.Forms.SystemInformation]::VirtualScreen
+            $bmp = New-Object System.Drawing.Bitmap $b.Width, $b.Height
+            [System.Drawing.Graphics]::FromImage($bmp).CopyFromScreen($b.Location, [System.Drawing.Point]::Empty, $b.Size)
+            $bmp.Save("$out\notice-$self.png")
+            Stop-Process $p -Force -ErrorAction SilentlyContinue; Start-Sleep 2
+          }
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: notice-preview
+          path: C:\spike-out
+          retention-days: 7

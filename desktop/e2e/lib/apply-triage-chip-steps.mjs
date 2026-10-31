@@ -131,5 +131,5 @@ export async function runTriageChipSteps(ctx, {urls}) {
       await page.fill('#filter-text', '').catch(() => {});
       await removeJobsByUrl(ctx, cases.map(item => item.form.url));
     }
-  }, {needs: [...ctx.needs, HIDDEN_NEED], hangError: ms => new Error(`the chip step hung within ${ms / 1000} s: ${seen.what}; last state: ${JSON.stringify(seen.state)}`)});
+  }, {needs: [...ctx.needs, HIDDEN_NEED], hangError: () => `${seen.what}; last state: ${JSON.stringify(seen.state)}`});
 }

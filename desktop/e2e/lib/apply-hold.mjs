@@ -13,8 +13,8 @@ export const WATCH_PAST_DUE_MS = 2 * REPORT_PERIOD_MINUTES * 60 * 1000;
 
 /** What a step that did not get its state reports: what it waited for and last read, the app's apply lines and the hidden browser's tabs. `seen` is read when it is needed. */
 const describe = async (ctx, seen) => `${seen.what} (last read: ${JSON.stringify(seen.state)}) | ${applyLines(ctx.profile)} | ${await describeHidden(ctx.profile)}`;
-/** The runner's hang report of a step (hangError): the same evidence. */
-export const hangOf = (ctx, seen) => async ms => new Error(`the step did not finish within ${ms / 1000} s (it hung): ${await describe(ctx, seen)}`);
+/** The step's evidence for the runner's hang report (hangError); the runner says it was cut off (lib/runner.mjs withLimit). */
+export const hangOf = (ctx, seen) => () => describe(ctx, seen);
 
 /** Waits until `read()` gives a value `accepts` takes, for as long as the step's hang cap leaves (lib/wait-on-state.mjs stepTimeLeft: no clock of its own); -> that value, or throws what `seen` says. */
 export const waitOn = async (ctx, seen, read, accepts) => {

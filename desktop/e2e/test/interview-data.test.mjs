@@ -75,66 +75,86 @@ function fakeCalendar(start) {
   return {title: async () => monthTitle(firstOf(at)), click: async arrow => { at = shiftMonth(at, arrow === 'next' ? 1 : -1); }, month: () => at};
 }
 
+// One instant, as the checks below read it: `c` = {now, dates, slots, here, next, last, hereCells, nextCells}; `fail(invariant, detail)` records a broken invariant.
+function contextOf(now) {
+  const dates = calendarDates(now), here = monthOf(dates.today);
+  return {now, dates, slots: meetingSlots(dates), here, next: shiftMonth(here, 1), last: shiftMonth(here, -1), hereCells: gridOf(here, dates.today), nextCells: gridOf(shiftMonth(here, 1), dates.today)};
+}
+
+// 1. today is Tokyo's day, its title is what an app in Tokyo shows, and the grid highlights exactly that one day of the month.
+function checkToday({now, dates, hereCells}, fail) {
+  const parts = Object.fromEntries(new Intl.DateTimeFormat('en-US', {timeZone: TOKYO, year: 'numeric', month: 'numeric', day: 'numeric'}).formatToParts(now).map(p => [p.type, p.value]));
+  if (dates.today !== `${parts.year}-${parts.month.padStart(2, '0')}-${parts.day.padStart(2, '0')}`) fail('today is not Tokyo\'s day', dates.today);
+  const appTitle = new Intl.DateTimeFormat('en-US', {timeZone: TOKYO, month: 'long', year: 'numeric'}).format(now);
+  if (dates.thisTitle !== appTitle) fail('the grid title is not the title of Tokyo\'s month', `${dates.thisTitle} vs ${appTitle}`);
+  const marked = todayInMonth(hereCells);
+  if (marked.length !== 1 || marked[0].num !== Number(dates.today.slice(8))) fail('the grid does not highlight today alone', JSON.stringify(marked));
+}
+
+// 2. the three "this week" days lie in Tokyo's month, in order, each on exactly one cell of its grid; `future` means all three are ahead of today.
+function checkWeekDays({dates: {today, days, future}, hereCells}, fail) {
+  const [l1, l2, l3] = days;
+  if (!days.every(d => d.slice(0, 7) === today.slice(0, 7))) fail('a "this week" day leaves the month', days.join(' '));
+  if (!(l1 < l2 && l2 < l3)) fail('the "this week" days are not ascending', days.join(' '));
+  if (future !== (days[0] > today)) fail('`future` disagrees with the days', `${days.join(' ')} today ${today}`);
+  for (const d of days) if (ownCells(hereCells, d).length !== 1) fail('a "this week" day has no single cell in the grid', d);
+}
+
+// 3. every meeting's instant lands on its day, at its clock, in Tokyo; Acme is the eve's 13:30 in Honolulu and not on l1 there.
+function checkMeetingInstants({dates: {days, honoluluDay}, slots}, fail) {
+  for (const [key, slot] of Object.entries(slots)) {
+    const clock = clockOf(slot.at, TOKYO);
+    if (dayIn(new Date(slot.at), TOKYO) !== slot.day || clock.h !== slot.clock.h || clock.m !== slot.clock.m) fail(`${key} is not on ${slot.day} at ${slot.clock.h}:${slot.clock.m} in Tokyo`, slot.at);
+  }
+  const acmeHere = clockOf(slots.acme.at, HONOLULU);
+  if (dayIn(new Date(slots.acme.at), HONOLULU) !== honoluluDay || acmeHere.h !== 13 || acmeHere.m !== 30) fail('Acme is not on the eve at 13:30 in Honolulu', slots.acme.at);
+  if (honoluluDay === days[0]) fail('Acme falls on the same day in both zones');
+}
+
+// 4. the agenda's split: with `future` every meeting of this month is ahead of now, without it the three days are gone; next month's is always ahead.
+function checkAgendaSplit({now, dates: {future}, slots}, fail) {
+  const ahead = key => Date.parse(slots[key].at) > now.getTime();
+  for (const key of ['acme', 'beta', 'gamma', 'delta', 'zeta']) if (ahead(key) !== future) fail(`${key} is ${future ? 'not ahead' : 'ahead'} of now although future=${future}`, slots[key].at);
+  if (!ahead('epsilon')) fail('next month\'s meeting is not ahead of now', slots.epsilon.at);
+}
+
+// 5. next month: the 15th, the title the "›" arrow reaches, one cell for the day; today is never highlighted on the month's own cells (the suite's `:not(.out)`). -> 1 when today is drawn on a neighbouring day.
+function checkNextMonth({dates, next, nextCells}, fail) {
+  if (dates.nextMonthDay !== `${firstOf(next).slice(0, 8)}15`) fail('nextMonthDay is not the 15th of next month', dates.nextMonthDay);
+  if (dates.nextTitle !== monthTitle(firstOf(next))) fail('the "›" title is not next month\'s', dates.nextTitle);
+  if (ownCells(nextCells, dates.nextMonthDay).length !== 1) fail('the 15th of next month has no single cell', dates.nextMonthDay);
+  if (todayInMonth(nextCells).length) fail('today is highlighted on a day of next month');
+  return todayAnywhere(nextCells).length && !todayInMonth(nextCells).length ? 1 : 0;
+}
+
+// 6. last month (two "‹" from next month): the title is last month's; none of this month's days is in it; the old call is behind the current month and not drawn in this month's grid.
+function checkLastMonth({dates: {today, days, nextTitle, oldDay}, here, last, hereCells}, fail) {
+  if (monthsBetween(nextTitle, monthTitle(firstOf(last))) !== -2) fail('two "‹" from next month do not reach last month');
+  const lastCells = gridOf(last, today);
+  for (const d of [...days, today]) if (ownCells(lastCells, d).length) fail('a day of this month is a day of last month\'s grid', d);
+  if (!(oldDay < firstOf(here))) fail('the old call is not before this month', oldDay);
+  if (hereCells.some(cell => cell.day === oldDay)) fail('the old call is drawn in this month\'s grid', oldDay);
+}
+
+// 7. Honolulu: the app starts on its own month; the arrows reach the Acme eve's month within three presses, and it has one cell for that day. -> 1 when Honolulu starts in another month.
+async function checkHonolulu({now, dates: {honoluluDay, honoluluTitle}}, fail) {
+  const start = monthOf(dayIn(now, HONOLULU));
+  const reached = await pageToMonth(fakeCalendar(start), honoluluTitle);
+  if (reached !== honoluluTitle) fail('the arrows do not reach the Acme eve\'s month', `from ${monthTitle(firstOf(start))} to ${honoluluTitle}, stopped on ${reached}`);
+  if (ownCells(gridOf(monthOf(honoluluDay)), honoluluDay).length !== 1) fail('the Acme eve has no single cell', honoluluDay);
+  return monthTitle(firstOf(start)) !== honoluluTitle ? 1 : 0;
+}
+
 test('the Calendar suite\'s dates hold on every day of 2026-2027 and 2028\'s February, at the hours the zones disagree', async () => {
   const failures = [];
   let swept = 0, todayDrawnOutNext = 0, zonesInOtherMonths = 0;
   for (const {label, now} of instants()) {
     swept++;
     const fail = (invariant, detail = '') => failures.push(`${label} ${invariant}${detail ? `: ${detail}` : ''}`);
-    const dates = calendarDates(now), {today, days, future, nextMonthDay, oldDay, honoluluDay} = dates, [l1, l2, l3] = days;
-    const slots = meetingSlots(dates);
-    const here = monthOf(today), next = shiftMonth(here, 1), last = shiftMonth(here, -1);
-    const hereCells = gridOf(here, today), nextCells = gridOf(next, today);
-
-    // 1. today is Tokyo's day, its title is what an app in Tokyo shows, and the grid highlights exactly that one day of the month.
-    const parts = Object.fromEntries(new Intl.DateTimeFormat('en-US', {timeZone: TOKYO, year: 'numeric', month: 'numeric', day: 'numeric'}).formatToParts(now).map(p => [p.type, p.value]));
-    if (today !== `${parts.year}-${parts.month.padStart(2, '0')}-${parts.day.padStart(2, '0')}`) fail('today is not Tokyo\'s day', today);
-    const appTitle = new Intl.DateTimeFormat('en-US', {timeZone: TOKYO, month: 'long', year: 'numeric'}).format(now);
-    if (dates.thisTitle !== appTitle) fail('the grid title is not the title of Tokyo\'s month', `${dates.thisTitle} vs ${appTitle}`);
-    const marked = todayInMonth(hereCells);
-    if (marked.length !== 1 || marked[0].num !== Number(today.slice(8))) fail('the grid does not highlight today alone', JSON.stringify(marked));
-
-    // 2. the three "this week" days lie in Tokyo's month, in order, each on exactly one cell of its grid; `future` means all three are ahead of today.
-    if (!days.every(d => d.slice(0, 7) === today.slice(0, 7))) fail('a "this week" day leaves the month', days.join(' '));
-    if (!(l1 < l2 && l2 < l3)) fail('the "this week" days are not ascending', days.join(' '));
-    if (future !== (days[0] > today)) fail('`future` disagrees with the days', `${days.join(' ')} today ${today}`);
-    for (const d of days) if (ownCells(hereCells, d).length !== 1) fail('a "this week" day has no single cell in the grid', d);
-
-    // 3. every meeting's instant lands on its day, at its clock, in Tokyo; Acme is the eve's 13:30 in Honolulu and not on l1 there.
-    for (const [key, slot] of Object.entries(slots)) {
-      const clock = clockOf(slot.at, TOKYO);
-      if (dayIn(new Date(slot.at), TOKYO) !== slot.day || clock.h !== slot.clock.h || clock.m !== slot.clock.m) fail(`${key} is not on ${slot.day} at ${slot.clock.h}:${slot.clock.m} in Tokyo`, slot.at);
-    }
-    const acmeHere = clockOf(slots.acme.at, HONOLULU);
-    if (dayIn(new Date(slots.acme.at), HONOLULU) !== honoluluDay || acmeHere.h !== 13 || acmeHere.m !== 30) fail('Acme is not on the eve at 13:30 in Honolulu', slots.acme.at);
-    if (honoluluDay === l1) fail('Acme falls on the same day in both zones');
-
-    // 4. the agenda's split: with `future` every meeting of this month is ahead of now, without it the three days are gone; next month's is always ahead.
-    const ahead = key => Date.parse(slots[key].at) > now.getTime();
-    for (const key of ['acme', 'beta', 'gamma', 'delta', 'zeta']) if (ahead(key) !== future) fail(`${key} is ${future ? 'not ahead' : 'ahead'} of now although future=${future}`, slots[key].at);
-    if (!ahead('epsilon')) fail('next month\'s meeting is not ahead of now', slots.epsilon.at);
-
-    // 5. next month: the 15th, the title the "›" arrow reaches, one cell for the day; today is never highlighted on the month's own cells (the suite's `:not(.out)`).
-    if (nextMonthDay !== `${firstOf(next).slice(0, 8)}15`) fail('nextMonthDay is not the 15th of next month', nextMonthDay);
-    if (dates.nextTitle !== monthTitle(firstOf(next))) fail('the "›" title is not next month\'s', dates.nextTitle);
-    if (ownCells(nextCells, nextMonthDay).length !== 1) fail('the 15th of next month has no single cell', nextMonthDay);
-    if (todayInMonth(nextCells).length) fail('today is highlighted on a day of next month');
-    if (todayAnywhere(nextCells).length && !todayInMonth(nextCells).length) todayDrawnOutNext++;
-
-    // 6. last month (two "‹" from next month): the title is last month's; none of this month's days is in it; the old call is behind the current month
-    // and not drawn in this month's grid.
-    if (monthsBetween(dates.nextTitle, monthTitle(firstOf(last))) !== -2) fail('two "‹" from next month do not reach last month');
-    const lastCells = gridOf(last, today);
-    for (const d of [...days, today]) if (ownCells(lastCells, d).length) fail('a day of this month is a day of last month\'s grid', d);
-    if (!(oldDay < firstOf(here))) fail('the old call is not before this month', oldDay);
-    if (hereCells.some(cell => cell.day === oldDay)) fail('the old call is drawn in this month\'s grid', oldDay);
-
-    // 7. Honolulu: the app starts on its own month; the arrows reach the Acme eve's month within three presses, and it has one cell for that day.
-    const start = monthOf(dayIn(now, HONOLULU)), calendar = fakeCalendar(start);
-    const reached = await pageToMonth(calendar, dates.honoluluTitle);
-    if (reached !== dates.honoluluTitle) fail('the arrows do not reach the Acme eve\'s month', `from ${monthTitle(firstOf(start))} to ${dates.honoluluTitle}, stopped on ${reached}`);
-    if (ownCells(gridOf(monthOf(honoluluDay)), honoluluDay).length !== 1) fail('the Acme eve has no single cell', honoluluDay);
-    if (monthTitle(firstOf(start)) !== dates.honoluluTitle) zonesInOtherMonths++;
+    const c = contextOf(now);
+    for (const check of [checkToday, checkWeekDays, checkMeetingInstants, checkAgendaSplit, checkLastMonth]) check(c, fail);
+    todayDrawnOutNext += checkNextMonth(c, fail);
+    zonesInOtherMonths += await checkHonolulu(c, fail);
   }
   assert.deepEqual(failures.slice(0, 8), [], `${failures.length} failure(s) over ${swept} instants`);
   assert.ok(swept > 4000, `swept ${swept} instants`);

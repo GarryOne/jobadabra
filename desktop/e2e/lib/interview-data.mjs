@@ -45,8 +45,14 @@ export function weekDays(today) {
   return dom + 3 <= last ? {days: [1, 2, 3].map(n => addDays(today, n)), future: true} : {days: [3, 2, 1].map(n => addDays(today, -n)), future: false};
 }
 
+// Why (31 Oct 2026, calendar sweep): toLocaleDateString builds an Intl formatter per call (~50 µs) and the sweep in test/interview-data.test.mjs asks for thousands of titles, so each month is spelled once.
+const titles = new Map();
 /** The calendar's month title for a YYYY-MM-DD day, "November 2026": the one place the suites spell it (calendar.mjs compares the grid's #cal-title with it). */
-export const monthTitle = day => new Date(`${day.slice(0, 7)}-01T00:00:00Z`).toLocaleDateString('en-US', {month: 'long', year: 'numeric', timeZone: 'UTC'});
+export const monthTitle = day => {
+  const month = day.slice(0, 7);
+  if (!titles.has(month)) titles.set(month, new Date(`${month}-01T00:00:00Z`).toLocaleDateString('en-US', {month: 'long', year: 'numeric', timeZone: 'UTC'}));
+  return titles.get(month);
+};
 // The month names of that title, January first.
 const MONTHS = Array.from({length: 12}, (_, m) => monthTitle(`2000-${String(m + 1).padStart(2, '0')}-01`).split(' ')[0]);
 // How many months the calendar title `want` ("November 2026") is after `shown`: > 0 later, < 0 earlier. Why (beta 41220959824, 31 Oct 2026): the suite

@@ -152,6 +152,15 @@ class FocusTests(unittest.TestCase):
         out = focus.build([], [], now=NOW, insights=answers, gmail=False, search=[])
         self.assertEqual(out['suggestions_hidden'], ['details:open', 'letter:setup'], 'the drawer rows, not the engine-owned Tune row')
 
+    def test_always_on_verdict_survives_focus_reload_and_not_now_expires(self):
+        from src import focus
+        until = (NOW + timedelta(days=14)).date().isoformat()
+        for state, day, hidden in [('Not true', NOW, True), ('Not now', NOW, True),
+                                   ('Not now', NOW + timedelta(days=14), False)]:
+            with self.subTest(state=state, day=day):
+                out = focus.build([], [], now=day, insights=[answer(state, 'hosted:first-matches', until)], gmail=False)
+                self.assertEqual('hosted:first-matches' in out['suggestions_hidden'], hidden)
+
 
     def test_a_role_set_aside_on_focus_stays_aside_after_a_new_role_word_on_every_mac(self):
         """Gitar on #2350: Not true on role ideas, then a role word added (a new key): the kept answer offered the role again. The answer row

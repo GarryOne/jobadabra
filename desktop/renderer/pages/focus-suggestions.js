@@ -22,6 +22,8 @@ import {openActivity} from './activity.js';
 import {openTune} from './tune.js';
 import {toastMessage} from './startup.js';
 import {wand} from '../magic.js';
+import {bindHostedOffer, hostedEntries} from '../hosted-suggestion.js';
+import {emailField} from './hosted.js';
 
 let pool = [];              // the engine's entries as last read (Focus's `suggestions`)
 const ALL = 'jp.focus.suggestions.all';   // Show all stays as you left it (this Mac), like Actions' More
@@ -34,6 +36,7 @@ const started = (what, result) => { if (result?.started) openActivity(true); els
 
 // One handler per actions[].do (suggestions.js DOES): what the button names, done in one press.
 export const RUN = {
+  turn_on_hosted: (_action, _event, row) => row.turnOn(),
   // Its page when the store has one (as Focus's Insight card did), else the same thing here: Reports, or the job's Review tab.
   open_insight: (action, event) => (action.link ? openLink(action.link, event) : (openView('reports'), loadReports('insights'))),
   read_week: (action, event) => (action.link ? openLink(action.link, event) : (openView('reports'), loadReports('weekly'))),
@@ -105,8 +108,19 @@ export function entryRow(entry) {
   body.append(top, meta);
   body.title = parts.evidence;
   const actions = el('div', 'focus-actions');
+  const context = {};
   for (const [i, action] of entry.actions.entries()) {
-    const node = button(action.label, i ? 'secondary' : 'primary', event => RUN[action.do]?.(action, event));
+    const node = button(action.label, i ? 'secondary' : 'primary', event => RUN[action.do]?.(action, event, context));
+    if (action.do === 'turn_on_hosted') {
+      node.id = 'focus-hosted-on';
+      context.turnOn = bindHostedOffer({body, button: node, email: entry.email, emailField: () => emailField('focus-hosted-email'),
+        turnOn: given => window.pilot.hostedOn(given), onSuccess: () => {
+          hostedRead++;
+          hostedContext.hosted.on = true;
+          toastMessage('Always on ✓', `New matches every morning to ${entry.email || body.querySelector('input').value.trim()}.`, NO_PLACE.itself, 'good');
+          redraw();
+        }});
+    }
     actions.append(AI.has(action.do) ? wand(node) : node);
   }
   const more = [];
@@ -125,7 +139,20 @@ let bank = null;
 const loadBank = () => window.pilot.experienceGet().then(view => { bank = view; redraw(); }).catch(() => {});
 const skillsNow = () => (bank ? skillEntries({jobs: jobsState.lastJobsData?.jobs, extraSkills: bank.extraSkills, mainSkills: bank.main?.skills, added: bank.added}) : []);
 const rowsNow = () => drawerRows([...questionEntries(questionsNow()), ...skillsNow()], {held, hidden: hiddenKeys});
-const withRows = () => withQuestions(shownPool(), rowsNow());
+let hostedContext = {};
+let hostedRead = 0;
+// Read only on a fresh Focus load, never on an internal redraw (typing, a verdict, or the asynchronous question rows).
+async function loadHostedOffer() {
+  const read = ++hostedRead;
+  try {
+    const hosted = await window.pilot.hostedState();
+    const [jobs, runs] = hosted.available && !hosted.on && !hosted.skipped ? await Promise.all([window.pilot.jobs(), window.pilot.runs()]) : [null, null];
+    if (read !== hostedRead) return;
+    hostedContext = {hosted, jobs, runs: runs || {}};
+    redraw();
+  } catch { /* no offer until its state and matches can be read */ }
+}
+const withRows = () => [...hostedEntries({...hostedContext, held, hidden: hiddenKeys}), ...withQuestions(shownPool(), rowsNow())];
 let lastArgs = null;
 let questionsAsked = false;
 /** The engine's entries for a home screen (Strategy's Tune row), answered ones left out. */
@@ -134,10 +161,11 @@ export const homeSuggestions = home => homeEntries(shownPool(), home);
 export const answered = key => held.has(key) || hiddenKeys.has(key);
 
 /** Focus's Suggestions section: entries, then the moved items drawn by Focus's own `card`; 3 shown, "Show all N" opens the rest in place. */
-export function renderFocusSuggestions({entries, items, card, hidden}) {
+export function renderFocusSuggestions({entries, items, card, hidden, refreshHosted = true}) {
   pool = entries || [];
   hiddenKeys = new Set(hidden || []);
   lastArgs = {items, card};
+  if (refreshHosted) loadHostedOffer();
   if (!bank) loadBank();
   if (!questionsAsked) { questionsAsked = true; loadQuestions().catch(() => {}); }   // Jobs' count: cached on this Mac, read again after 10 minutes (jobs-questions.js)
   const rows = focusRows(withRows(), items);
@@ -151,7 +179,7 @@ export function renderFocusSuggestions({entries, items, card, hidden}) {
   renderJobsSuggestions();
   window.dispatchEvent(new Event('suggestions-updated'));   // Strategy's Tune row, and its rows answered here
 }
-function redraw() { if (lastArgs) renderFocusSuggestions({entries: pool, hidden: [...hiddenKeys], ...lastArgs}); }
+function redraw() { if (lastArgs) renderFocusSuggestions({entries: pool, hidden: [...hiddenKeys], ...lastArgs, refreshHosted: false}); }
 
 // The folded line: the drawers' rows by name, the blocking one first, then how many search suggestions (question-entries.js foldedLine).
 const barLine = entries => foldedLine(entries.filter(entry => 'blocking' in entry), entries.filter(entry => !('blocking' in entry)).length);

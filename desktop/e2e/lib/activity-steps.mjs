@@ -161,7 +161,7 @@ export async function withSilenceLimit(ctx, run) {
     try {
       if (!ctx.page.isClosed()) {
         await ctx.relaunch(undefined, async () => {   // the old app is gone and the hang is still armed
-          const drained = await Promise.race([whenDrained(fault).then(() => true), new Promise(resolve => setTimeout(() => resolve(false), 10000).unref())]);   // the deadline only turns "never" into the message
+          const drained = await Promise.race([whenDrained(fault).then(() => true), new Promise(resolve => setTimeout(() => resolve(false), ctx.drainMs ?? 10000).unref())]);   // the deadline only turns "never" into the message
           if (!drained) throw new Error(`AI ${fault.mode} left ${fault.pending} request(s) after the app quit: an engine process of the old app still holds its call`);
           ctx.proxy.setMode('pass');   // the new instance starts on a normal AI
         }, {how: 'quit'});

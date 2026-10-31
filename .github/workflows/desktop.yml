@@ -334,7 +334,7 @@ jobs:
             line=$(grep -E '^(OK|FAILED): |^py-shards: .*(passed|FAILED)' "unit-$area.log" | tail -1)
             echo "| $area | $result | ${line:-no summary line} |" >> unit-table.md
             if [ "$result" = passed ]; then echo "✔ $area: ${line}"; echo "::group::$area · every test file"; cat "unit-$area.log"; echo "::endgroup::"
-            else echo "::error::The $area unit tests failed"; cat "unit-$area.log"; fi
+            else echo "::error title=Unit tests · $area::The $area unit tests failed (the build and the E2E suites go on; the release refuses)"; cat "unit-$area.log"; fi
           done
           { echo "### Unit tests · desktop app"; echo; echo "| Suite | Result | Summary |"; echo "|---|---|---|"; cat unit-table.md; }
           if [ "$status" != 0 ]; then { echo "### ❌ Unit tests failed in $RUNNER_OS Build"; echo; echo "The build and the E2E suites go on; the Release jobs refuse (Not released: red: Unit tests)."; echo; cat unit-table.md; } >> "$GITHUB_STEP_SUMMARY"; fi
@@ -493,7 +493,7 @@ jobs:
             line=$(grep -E '^(OK|FAILED): |^py-shards: .*(passed|FAILED)' "unit-$area.log" | tail -1)
             echo "| $area | $result | ${line:-no summary line} |" >> unit-table.md
             if [ "$result" = passed ]; then echo "✔ $area: ${line}"; echo "::group::$area · every test file"; cat "unit-$area.log"; echo "::endgroup::"
-            else echo "::error::The $area unit tests failed"; cat "unit-$area.log"; fi
+            else echo "::error title=Unit tests · $area::The $area unit tests failed (the build and the E2E suites go on; the release refuses)"; cat "unit-$area.log"; fi
           done
           { echo "### Unit tests · desktop app"; echo; echo "| Suite | Result | Summary |"; echo "|---|---|---|"; cat unit-table.md; }
           if [ "$status" != 0 ]; then { echo "### ❌ Unit tests failed in $RUNNER_OS Build"; echo; echo "The build and the E2E suites go on; the Release jobs refuse (Not released: red: Unit tests)."; echo; cat unit-table.md; } >> "$GITHUB_STEP_SUMMARY"; fi

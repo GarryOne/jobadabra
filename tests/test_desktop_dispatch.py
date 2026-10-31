@@ -16,7 +16,7 @@ from src import desktop
 
 COMMANDS = ('jobs delete status unapply not-submitted posting calendar clear-jobs strategy rescore-outdated '
             'refresh-locations places-now tune explain-coverage visit-outcome visit-hide stuck-jobs stuck-dismiss '
-            'set-description visit-list visit-unblock visit-filters visit-context visit-session visit-jobpages '
+            'set-description visit-list linkedin-searches visit-unblock visit-filters visit-context visit-session visit-jobpages '
             'visit-jobpage visit-read refused-queue refused-judge refused-outcome visit-understand visit-recipe role-ideas coverage').split()
 URL = 'https://example.test/jobs'
 VALUE = {'text': 'Zürich'}

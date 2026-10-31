@@ -100,6 +100,21 @@ export function endLeftovers({run = spawnSync, platform = process.platform, dir 
   } catch { return []; }
 }
 
+/** The files' holders as the OS named them, plus whose they are (parent and command line, Windows) when `describe` knows. */
+function withOwner(files, describe) {
+  const whose = describe(files);
+  return whose ? `${files} (${whose})` : files;
+}
+
+/** The failure text of a folder that stayed held: how long, the OS error, whose files hold it, and the processes still running. */
+function heldMessage({waited, error, files, describe, who}) {
+  const parts = [`the data folder stayed held by a process after the app exited (${waited / 1000} s): ${error.message}`];
+  if (files) parts.push(`files in it are open in: ${withOwner(files, describe)}`);
+  const running = who();
+  if (running) parts.push(`processes still running: ${running}`);
+  return parts.join('; ');
+}
+
 /**
  * Waits (renaming the folder aside and back) until `dir` is no longer held, ending the app's own leftovers after `endAfter` ms; -> the ms waited.
  * Throws after `timeout` ms naming the files' holders (with their parent and command line), from `holders`/`fileHolders`/`describeHolders` (Windows queries; '' elsewhere).
@@ -111,7 +126,7 @@ export async function waitForFolderFree(dir, {timeout = 20000, every = 250, endA
   while (exists(dir)) {
     try { rename(dir, aside); rename(aside, dir); return waited; } catch (error) {
       if (!LOCKED.has(error.code)) throw error;
-      if (waited >= timeout) { const files = whoHasFiles(); throw new Error(`the data folder stayed held by a process after the app exited (${waited / 1000} s): ${error.message}${files ? `; files in it are open in: ${files}${describe(files) ? ` (${describe(files)})` : ''}` : ''}${who() ? `; processes still running: ${who()}` : ''}`); }
+      if (waited >= timeout) throw new Error(heldMessage({waited, error, files: whoHasFiles(), describe, who}));
       if (!ended && waited >= endAfter) { ended = true; const gone = end(mainPid); console.log(`  the data folder was still held after ${waited / 1000} s: ${gone.length ? `ended its leftover processes ${gone.join(', ')}` : `found none of the app's own processes to end (main pid ${mainPid || 'unknown'})`}`); }
       await pause(every); waited += every;
     }

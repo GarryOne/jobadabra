@@ -15,41 +15,89 @@ const START = /(?:ctx\.run|\bstep|\brun)\(\s*(?=['"`])/g;
 
 // Source text with comments, regex literals and the insides of string and template literals blanked out (same length), so brackets and keywords can be matched by position.
 // Template `${...}` expressions stay as code: `depth` counts braces and `openAt` remembers the depth each `${` opened at, so its closing `}` resumes the template text.
-function blankLiterals(text) {
-  const out = text.split(''), n = text.length;
-  const blank = (from, to) => { for (let i = from; i < to; i++) if (out[i] !== '\n') out[i] = ' '; };
-  const openAt = [];
-  let i = 0, depth = 0, last = '';   // last: the last significant character, to tell a regex `/` from a division
-  // Reads template text from `from` to its closing backtick or its next `${`; -> the index to continue at.
-  const template = from => {
-    let j = from;
-    while (j < n && text[j] !== '`' && !(text[j] === '$' && text[j + 1] === '{')) j += text[j] === '\\' ? 2 : 1;
-    blank(from, Math.min(j, n));
-    if (text[j] === '$') { openAt.push(depth++); last = '{'; return j + 2; }
-    last = '`';
-    return j + 1;
-  };
-  while (i < n) {
-    const c = text[i], next = text[i + 1];
-    if (c === '/' && next === '/') { const end = text.indexOf('\n', i); const to = end < 0 ? n : end; blank(i, to); i = to; continue; }
-    if (c === '/' && next === '*') { const end = text.indexOf('*/', i + 2); const to = end < 0 ? n : end + 2; blank(i, to); i = to; continue; }
-    if (c === '\'' || c === '"') {
-      let j = i + 1;
-      while (j < n && text[j] !== c && text[j] !== '\n') j += text[j] === '\\' ? 2 : 1;
-      blank(i + 1, j); i = j + 1; last = c; continue;
-    }
-    if (c === '`') { i = template(i + 1); continue; }
-    if (c === '/' && ('(,=:[!&|?{};+-*%<>~^'.includes(last || '(') || /(?:^|[^\w$])(?:return|typeof|case|of|in|delete|void|throw|new|else|do|yield|await)\s*$/.test(text.slice(Math.max(0, i - 12), i)))) {   // a regex literal
-      let j = i + 1, inClass = false;
-      while (j < n && text[j] !== '\n' && (inClass || text[j] !== '/')) { if (text[j] === '\\') j++; else if (text[j] === '[') inClass = true; else if (text[j] === ']') inClass = false; j++; }
-      blank(i + 1, j); i = j + 1; last = '/'; continue;
-    }
-    if (c === '{') depth++;
-    if (c === '}') { depth--; if (openAt.length && openAt[openAt.length - 1] === depth) { openAt.pop(); i = template(i + 1); continue; } }
-    if (!/\s/.test(c)) last = c;
-    i++;
+// Why (31 Oct 2026, clean-code on #2723): one reader per token kind, each -> the index to continue at or -1 ("not mine"); the scanner state `s` is {text, n, out, i, depth, openAt, last}.
+// `last` is the last significant character, to tell a regex `/` from a division.
+const REGEX_AFTER_WORD = /(?:^|[^\w$])(?:return|typeof|case|of|in|delete|void|throw|new|else|do|yield|await)\s*$/;
+
+function blankRange(s, from, to) {
+  for (let i = from; i < to; i++) if (s.out[i] !== '\n') s.out[i] = ' ';
+}
+
+function readComment(s) {
+  const {text, i} = s;
+  if (text[i] !== '/' || (text[i + 1] !== '/' && text[i + 1] !== '*')) return -1;
+  const line = text[i + 1] === '/', end = text.indexOf(line ? '\n' : '*/', line ? i : i + 2);
+  const to = end < 0 ? s.n : end + (line ? 0 : 2);
+  blankRange(s, i, to);
+  return to;
+}
+
+function readString(s) {
+  const quote = s.text[s.i];
+  if (quote !== '\'' && quote !== '"') return -1;
+  let j = s.i + 1;
+  while (j < s.n && s.text[j] !== quote && s.text[j] !== '\n') j += s.text[j] === '\\' ? 2 : 1;
+  blankRange(s, s.i + 1, j);
+  s.last = quote;
+  return j + 1;
+}
+
+// Reads template text from `from` to its closing backtick or its next `${`.
+function readTemplateText(s, from) {
+  let j = from;
+  while (j < s.n && s.text[j] !== '`' && !(s.text[j] === '$' && s.text[j + 1] === '{')) j += s.text[j] === '\\' ? 2 : 1;
+  blankRange(s, from, Math.min(j, s.n));
+  if (s.text[j] === '$') { s.openAt.push(s.depth++); s.last = '{'; return j + 2; }
+  s.last = '`';
+  return j + 1;
+}
+
+const readBacktick = s => (s.text[s.i] === '`' ? readTemplateText(s, s.i + 1) : -1);
+
+// A `/` starts a regex literal after an operator, an opening bracket or a keyword, and is a division after a value.
+const regexAllowed = s => '(,=:[!&|?{};+-*%<>~^'.includes(s.last || '(') || REGEX_AFTER_WORD.test(s.text.slice(Math.max(0, s.i - 12), s.i));
+
+// The index of the `/` closing the regex literal whose opening `/` is at `open` (end of line if unclosed).
+function regexEnd(s, open) {
+  let j = open + 1, inClass = false;
+  while (j < s.n && s.text[j] !== '\n' && (inClass || s.text[j] !== '/')) {
+    if (s.text[j] === '\\') j++;
+    else if (s.text[j] === '[') inClass = true;
+    else if (s.text[j] === ']') inClass = false;
+    j++;
   }
-  return out.join('');
+  return j;
+}
+
+function readRegex(s) {
+  if (s.text[s.i] !== '/' || !regexAllowed(s)) return -1;
+  const end = regexEnd(s, s.i);
+  blankRange(s, s.i + 1, end);
+  s.last = '/';
+  return end + 1;
+}
+
+// Braces only count depth; the `}` closing a template's `${` resumes the template text.
+function readBrace(s) {
+  if (s.text[s.i] === '{') s.depth++;
+  else if (s.text[s.i] === '}') {
+    s.depth--;
+    if (s.openAt.length && s.openAt[s.openAt.length - 1] === s.depth) { s.openAt.pop(); return readTemplateText(s, s.i + 1); }
+  }
+  return -1;
+}
+
+const READERS = [readComment, readString, readBacktick, readRegex, readBrace];
+
+function blankLiterals(text) {
+  const s = {text, n: text.length, out: text.split(''), i: 0, depth: 0, openAt: [], last: ''};
+  while (s.i < s.n) {
+    let next = -1;
+    for (const read of READERS) if ((next = read(s)) >= 0) break;
+    if (next < 0) { if (!/\s/.test(s.text[s.i])) s.last = s.text[s.i]; next = s.i + 1; }
+    s.i = next;
+  }
+  return s.out.join('');
 }
 
 // The index of the `)` closing the `(` at `open`, in blanked text.

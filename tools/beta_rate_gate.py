@@ -69,10 +69,12 @@ def backbone_check(repo, jobs, registry, github=gh, *, attempt=1, output=Path('b
             red.add(f'{label}: lane jobs unavailable')
         for job in lane_jobs:
             suite = re.sub(r'-\d+of\d+$', '', job['name'][len(prefix):])
-            if registry.get(suite, {}).get('lane') in ('tolerant', 'suspended') or job.get('conclusion') == 'success':
+            if registry.get(suite, {}).get('lane') in ('tolerant', 'suspended'):
                 continue
-            proven = job.get('conclusion') == 'failure' and is_grey(annotations_of(repo, job.get('id'), github))
-            (grey if proven else red).add(f'{label}: {suite}')
+            if is_grey(annotations_of(repo, job.get('id'), github)):
+                grey.add(f'{label}: {suite}')
+            elif job.get('conclusion') != 'success':
+                red.add(f'{label}: {suite}')
     report = {'attempt': attempt, 'grey': sorted(grey), 'red': sorted(red)}
     output.write_text(json.dumps(report) + '\n', encoding='utf-8')
     lines = []
@@ -170,6 +172,11 @@ def main():
                                        attempt=int(os.environ.get('GITHUB_RUN_ATTEMPT', '1')))
         for line in lines:
             print(('::notice::' if line.startswith('Held: grey') else '::error::') + line)
+        report = json.loads(Path('beta-held.json').read_text())
+        held = bool(report['grey']) and not report['red']
+        if os.environ.get('GITHUB_OUTPUT'):
+            with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as output:
+                output.write(f'held={str(held).lower()}\n')
         if status:
             return status
         print('Tolerant/suspended results do not block; AI rates are report-only.')

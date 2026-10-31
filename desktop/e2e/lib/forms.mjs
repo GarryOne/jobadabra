@@ -9,8 +9,9 @@ import https from 'node:https';
 import os from 'node:os';
 import path from 'node:path';
 import {CONTACT} from './apply-fixtures.mjs';
+import {HOST as LINKEDIN_HOST, linkedinFixture} from './linkedin-fixture.mjs';
 
-export const HOSTS = ['boards.greenhouse.io', 'jobs.lever.co', 'e2e.recruitee.com', 'e2e.wd3.myworkdayjobs.com'];
+export const HOSTS = ['boards.greenhouse.io', 'jobs.lever.co', 'e2e.recruitee.com', 'e2e.wd3.myworkdayjobs.com', LINKEDIN_HOST];
 const LEVER_ID = '5e2e5e2e-0000-4000-8000-00000000a001';
 
 // One entry per form. `kit` is what the job's drafted kit holds for it (field ids of the form); `legal` the ids the extension must leave to the person even
@@ -411,9 +412,10 @@ export async function startForms({vary = null} = {}) {
   const posts = [];   // the real Submit of FORMS.submitter (done by the test as the person)
   const hits = [];
   const readPages = heldReadRoutes();
+  const linkedin = linkedinFixture();   // www.linkedin.com on this server (suites/linkedin.mjs); every other host passes through
   const signinPosts = [];   // each press of a sign-in fixture's button the site received: which page, and whether the email and the password were the right ones
   // clean-code-ok: Why (30 Oct 2026, g2, #2636): this change only wraps the fixture server's existing request handler (complexity 68 before it); splitting that handler is a separate refactor, parked in Linear.
-  const server = https.createServer({key: fs.readFileSync(path.join(dir, 'key.pem')), cert: fs.readFileSync(path.join(dir, 'cert.pem'))}, readPages.route((req, res) => {
+  const server = https.createServer({key: fs.readFileSync(path.join(dir, 'key.pem')), cert: fs.readFileSync(path.join(dir, 'cert.pem'))}, linkedin.route(readPages.route((req, res) => {
     const url = new URL(req.url, 'https://x');
     const host = String(req.headers.host || '').split(':')[0];
     hits.push(`${host}${url.pathname}`);
@@ -478,10 +480,10 @@ export async function startForms({vary = null} = {}) {
     if (!name) { res.writeHead(404, {'content-type': 'text/plain'}).end('not a fixture form'); return; }
     res.writeHead(200, {'content-type': 'text/html; charset=utf-8'});
     res.end((PAGES[name] || realPage)(FORMS[name]));
-  }));
+  })));
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   const port = server.address().port;
-  return {port, fired, posts, hits, holdReads: readPages.holdReads, signinPosts, variation, forms: FORMS, close: () => new Promise(resolve => { server.close(resolve); server.closeAllConnections?.(); }), html: name => (PAGES[name] || realPage)(FORMS[name])};
+  return {port, fired, posts, hits, linkedin, holdReads: readPages.holdReads, signinPosts, variation, forms: FORMS, close: () => new Promise(resolve => { server.close(resolve); server.closeAllConnections?.(); }), html: name => (PAGES[name] || realPage)(FORMS[name])};
 }
 
 // Chromium flags that send the job-site host names to the fixture server and make every other name unresolvable (no employer is ever contacted).

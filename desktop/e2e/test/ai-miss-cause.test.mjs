@@ -54,10 +54,10 @@ for (const symptom of [
     const causes = await stepCauses('42', env, fetcher, {suites: {}});
     const alert = messageOf({status: 'failure', causes, env, lanes: {suites: {}}});
     assert.doesNotMatch(alert.text, /The search \(JSON\):|role_words/);
-    // The alert splits a message at "; " into bullets: the named cause is the first problem, the refusal the second, the symptom after.
-    const [first, second] = head.split('; ');
-    assert.ok(alert.text.includes('• ' + first), alert.text);
-    assert.ok(alert.text.indexOf('• ' + first) < alert.text.indexOf('• ' + second), alert.text);
+    assert.match(alert.text, /🤖  AI refused: credit 60.1% of 60%/);
+    assert.match(alert.text, /📭  1 ask with no stored answer/);
+    assert.ok(alert.text.indexOf('🤖') < alert.text.indexOf('📭'), alert.text);
+    assert.doesNotMatch(alert.text, /first: [a-f0-9]{64}|the step then failed/);
     assert.match(alert.text, /read jobs/);
   });
 }

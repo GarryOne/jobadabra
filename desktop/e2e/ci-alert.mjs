@@ -6,6 +6,8 @@
 import path from 'node:path';
 import fs from 'node:fs';
 import {alertHtml} from './lib/telegram-html.mjs';
+import {TIMEOUT_FAILURE} from './lib/triage-match.mjs';
+import {aiFailureCauses} from './lib/ai-miss-cause.mjs';
 import {isBackbone, suiteOfKey} from './lib/suite-shards.mjs';
 
 const readLanes = () => JSON.parse(fs.readFileSync(new URL('./lanes.json', import.meta.url), 'utf8'));
@@ -58,8 +60,8 @@ export async function failedJobLinks(runId, env = process.env, fetcher = fetch) 
 }
 
 /**
- * The failed steps' own words: per failed job, its first annotation titled "<suite> · <step>" (lib/artifacts.mjs annotationLines). Errors: [] (the caller's cause stays).
- * @returns {Promise<{suite: string, step: string, message: string}[]>} e.g. [{suite: 'apply', step: 'fill the form', message: 'a required field is missing'}]
+ * The failed steps' own words: per failed job, every annotation titled "<suite> · <step>" (lib/artifacts.mjs annotationLines). Errors: [] (the caller's cause stays).
+ * @returns {Promise<{suite: string, step: string, message: string, job: string, url: string}[]>} e.g. [{suite: 'apply', step: 'fill the form', message: 'a required field is missing'}]
  */
 export async function stepCauses(runId, env = process.env, fetcher = fetch, lanes = readLanes()) {
   try {
@@ -67,8 +69,11 @@ export async function stepCauses(runId, env = process.env, fetcher = fetch, lane
     const out = [];
     for (const job of (body.jobs || []).filter(item => item.conclusion === 'failure' && backbone(item.name, lanes))) {
       const notes = await get(`${API(env)}/repos/${env.GITHUB_REPOSITORY}/check-runs/${job.id}/annotations?per_page=50`, env, fetcher);
-      const note = (Array.isArray(notes) ? notes : []).find(item => / · /.test(item.title || ''));
-      if (note) { const at = note.title.indexOf(' · '); out.push({suite: note.title.slice(0, at), step: note.title.slice(at + 3), message: String(note.message || '')}); }
+      for (const note of (Array.isArray(notes) ? notes : []).filter(item => / · /.test(item.title || ''))) {
+        const at = note.title.indexOf(' · ');
+        out.push({suite: note.title.slice(0, at), step: note.title.slice(at + 3), message: String(note.message || ''), job: job.name,
+          url: job.html_url || `${env.GITHUB_SERVER_URL || 'https://github.com'}/${env.GITHUB_REPOSITORY}/actions/runs/${runId}/job/${job.id}`});
+      }
     }
     return out;
   } catch { return []; }
@@ -104,33 +109,79 @@ export async function isRepeat(env = process.env, fetcher = fetch, lanes = readL
 // Human words for a step's text: a value that ends the line as null/undefined reads "nothing" (never inside an error such as "of undefined"), a quoted name before ":" loses its quotes.
 const plain = text => String(text).replace(/\b(shows|says|is) (?:null|undefined)$/, '$1 nothing').replace(/^"([^"]+)":/, '$1:');
 
-/** A step cause -> its lines: "Check: <step>", then the one problem, or "N problems:" with 2 of them and "+N more" (annotationLines writes "a; b; +3 more"). */
-export function causeLines({suite, step, message}, named = false) {
-  const items = String(message || '').split('; ').filter(Boolean).map(plain);
-  const counted = /^\+(\d+) more$/.exec(items.at(-1) || '');
-  if (counted) items.pop();
-  const total = items.length + (counted ? Number(counted[1]) : 0);
-  const lines = [{label: 'Check', parts: [`${named ? `${suite} · ` : ''}${String(step).replace(/\s*\([^)]*\)\s*$/, '')}`]}];
-  if (total === 1) return [...lines, {parts: [items[0]]}];
-  const shown = items.slice(0, 2);
-  return [...lines, ...(total ? [{parts: [`${total} problems:`]}] : []), ...shown.map(item => ({bullet: true, parts: [item]})), ...(total > shown.length ? [{parts: [`+${total - shown.length} more`]}] : [])];
+// Short names stop at a whole word; annotation evidence remains available in the linked job log.
+const short = (text, max = 80) => text.length <= max ? text : `${text.slice(0, max - 1).replace(/\s+\S*$/, '')}…`;
+const stepName = step => short(String(step).replace(/\s*\([^)]*\)\s*$/, ''));
+
+// Parse only runner-owned budget wording, after the shared timeout classifier has identified timing.
+function timingCause(message) {
+  const minutes = /(?:suite's |over its )(\d+)-minute budget/.exec(message)?.[1];
+  return minutes ? {icon: '⏱', text: `Over its ${minutes}-min budget`, cut: !message.startsWith('not run: '),
+    detail: message.includes('the suite is too long: split it') ? 'the suite is too long: split it' : ''}
+    : {icon: '⏱', text: short(message.split(': ')[0])};
 }
 
-// -> the message ({text, parse_mode, ...} from lib/telegram-html.mjs), or '' when there is nothing to say (a success after a success).
-// what / next: a few words each from the caller; causes: stepCauses()'s answer; since: sinceGreen()'s; jobs: failedJobLinks()'s; recovered: the suites the previous red run failed.
-// Why (30 Oct 2026, owner: "more human readable, more succinct", picked shape A): the red suite is the title, the step and up to 2 problems follow, then the PRs since green.
+// Each annotation can carry multiple recorded problems; an unknown cause keeps its own words.
+function problemsOf(message) {
+  const ai = aiFailureCauses(message);
+  if (ai.length) return ai;
+  if (TIMEOUT_FAILURE.test(message)) return [timingCause(message)];
+  const items = String(message || 'see the job log').split('\n')[0].split('; ').filter(Boolean);
+  const more = /^\+(\d+) more$/.exec(items.at(-1) || '');
+  if (more) items.pop();
+  return items.map((text, i) => ({icon: '✗', key: text, text: short(plain(text), 120), more: i === items.length - 1 ? Number(more?.[1] || 0) : 0}));
+}
+
+function groupedCauses(causes, fallback) {
+  const groups = new Map();
+  for (const cause of causes) for (const problem of problemsOf(cause.message)) {
+    const key = `${problem.icon}:${problem.key || problem.text}`;
+    const group = groups.get(key) || {...problem, more: 0, steps: []};
+    group.detail ||= problem.detail;
+    group.more = (group.more || 0) + (problem.more || 0);
+    group.steps.push({...cause, cut: problem.cut, skipped: String(cause.message).startsWith('not run: ')});
+    groups.set(key, group);
+  }
+  return groups.size ? [...groups.values()] : [{icon: '🔌', text: short(plain(fallback), 160), steps: []}];
+}
+
+function causeBlock(group, run) {
+  const lines = [{parts: [`${group.icon}  ${group.text}`]}];
+  if (group.detail) lines.push({parts: [`     ${group.detail}`]});
+  group.steps.forEach((step, i) => lines.push({step: true, expandable: group.steps.length > 3 && i >= 2,
+    parts: [`     ${step.skipped ? '⏭' : '✗'} `, {text: stepName(step.step), url: step.url || run}, step.skipped ? ' (not run)' : step.cut ? ' ← cut here' : '']}));
+  if (group.more) lines.push({expandable: true, count: group.more, parts: [`+${group.more} more`]});
+  return lines;
+}
+
+// Invariant: suites and their job links remain separate; counts refer to annotations, not repeated cause memberships.
+function redSection(suite, jobs, causes, what, next, since, where) {
+  const own = (where.e2e ? causes.filter(cause => cause.suite === suite) : causes).map(cause => ({...cause,
+    url: cause.url || jobs.find(job => job.name === cause.job)?.url || jobs[0]?.url || where.run}));
+  const fallback = what || `Failed job: ${jobs.map(job => job.name).join(', ') || 'see the run'}`;
+  const groups = groupedCauses(own, fallback);
+  const keys = jobs.map(job => job.name).join(', ') || suite;
+  const subtitle = `${keys} · ${own.length} ${own.length === 1 ? 'step' : 'steps'} · ${groups.length} ${groups.length === 1 ? 'cause' : 'causes'}`;
+  return {icon: '🔴 ', title: suite, verdict: `· red on ${where.branch}`, subtitle,
+    blocks: [...groups.map(group => causeBlock(group, where.run)), ...(next ? [[{label: 'Next', parts: [short(next, 240)]}]] : []), footer(since, where, jobs)]};
+}
+
+/** Build a pure Telegram payload: one block per red suite, or the first recovery after red; non-backbone reds stay silent. */
+// Why (31 Oct 2026, owner selected grouped-by-cause): each suite has its own causes, steps and links; evidence stays in job logs.
 export function messageOf({status, what = '', causes = [], next = '', previous = '', recovered = [], since = {prs: [], more: 0}, jobs = [], env = process.env, now = new Date(), lanes = readLanes()}) {
   const blocking = jobs.filter(job => backbone(job.name, lanes));
   if (status === 'failure' && jobs.length && !blocking.length) status = 'success';
   const where = placeOf(env, now);
-  const named = names => (where.e2e ? [...new Set(names.map(suiteOfKey))].filter(suite => backbone(suite, lanes)) : []);
+  const named = names => [...new Set(names.map(suiteOfKey))].filter(suite => backbone(suite, lanes));
   if (status === 'failure') {
-    const red = named(blocking.map(job => job.name));
-    return alertHtml({icon: '🔴', title: red.join(', ') || where.workflow, verdict: `failed on ${where.branch}`, blocks: [failureLines({what, causes, next, jobs: blocking}), [afterLine(since, where)]], links: jobLinks(blocking, where.run)});
+    const suites = where.e2e ? named([...blocking.map(job => job.name), ...causes.map(cause => cause.suite)]) : [];
+    const sections = (suites.length ? suites : [where.workflow]).map(suite => redSection(suite,
+      where.e2e ? blocking.filter(job => suiteOfKey(job.name) === suite) : blocking, causes, what, next, since, where));
+    return alertHtml({sections});
   }
   if (status === 'success' && ['failure', 'timed_out'].includes(previous)) {
-    const back = named(recovered);
-    return alertHtml({icon: '🟢', title: back.join(', ') || where.workflow, verdict: `${back.length > 1 ? 'are' : 'is'} green again on ${where.branch}`, blocks: [[afterLine(since, where)]]});
+    const back = where.e2e ? named(recovered) : [];
+    return alertHtml({icon: '🟢 ', title: back.join(', ') || where.workflow, verdict: `${back.length > 1 ? 'are' : 'is'} green again on ${where.branch}`, blocks: [footer(since, where, [])]});
   }
   return '';
 }
@@ -143,24 +194,14 @@ function placeOf(env, now) {
     time: new Intl.DateTimeFormat('en-GB', {timeZone: 'Europe/Zurich', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit'}).format(now)};
 }
 
-// "After #2538, #2535 +2 more · 30 Oct, 02:29": the PRs since green (3 shown), or the commit when none is known.
-function afterLine(since, where) {
-  const prs = since.prs.slice(0, 3), more = since.more + since.prs.length - prs.length;
-  if (!prs.length) return {parts: ['After ', {text: where.sha.slice(0, 7), url: `${where.repo}/commit/${where.sha}`}, ` · ${where.time}`]};
-  return {parts: ['After ', ...prs.flatMap((number, i) => [i ? ', ' : '', {text: `#${number}`, url: `${where.repo}/pull/${number}`}]), more ? ` +${more} more` : '', ` · ${where.time}`]};
+// Footer links are shared by red and recovery messages; no raw URLs or evidence tails.
+function footer(since, where, jobs) {
+  const prs = since.prs, more = since.more;
+  const after = prs.length ? ['🔀  After ', ...prs.flatMap((number, i) => [i ? ' · ' : '', {text: `#${number}`, url: `${where.repo}/pull/${number}`}]), more ? ` +${more} more` : ''] : [];
+  return [...(after.length ? [{parts: after}] : []), {parts: [`🕐  ${where.time}`]}, {parts: ['🔗  ',
+    ...jobs.flatMap(job => [{text: `Open ${job.name}`, url: job.url || where.run}, ' · ']), {text: 'Run', url: where.run},
+    ...(where.sha ? [' · ', {text: where.sha.slice(0, 7), url: `${where.repo}/commit/${where.sha}`}] : [])]}];
 }
-
-// The red's own words: each step cause (2 at most, suite named when they differ), else the caller's cause or the failed jobs; then the caller's next step.
-function failureLines({what, causes, next, jobs}) {
-  const named = new Set(causes.slice(0, 2).map(cause => cause.suite)).size > 1;
-  const lines = causes.length ? causes.slice(0, 2).flatMap(cause => causeLines(cause, named))
-    : [{parts: [plain(what) || `Failed job: ${jobs.map(job => job.name).join(', ') || 'see the run'}`]}];
-  return next ? [...lines, {label: 'Next', parts: [next]}] : lines;
-}
-
-// One failed job: "Open the failed job"; several: one link each (3 at most); none known: the run.
-const jobLinks = (jobs, run) => (jobs.length === 1 ? [{text: 'Open the failed job', url: jobs[0].url}]
-  : jobs.length ? jobs.slice(0, 3).map(job => ({text: `Open ${job.name}`, url: job.url})) : [{text: 'Open the run', url: run}]);
 
 // text: a message from messageOf (or a plain string) -> the line to print.
 export async function send(message, env = process.env, fetcher = fetch) {

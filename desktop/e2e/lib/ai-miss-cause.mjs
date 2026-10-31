@@ -20,3 +20,14 @@ export function nameAiFailure(message, {misses = [], capped = null, log = '', su
   const refused = `the AI was refused: ${oneLine(reason)}; the step then failed: ${message}`;
   return misses.length ? `${PREFIX}${misses.length} (first: ${misses[0]}${where})${failed}; ${refused}` : `${refused[0].toUpperCase()}${refused.slice(1)}`;
 }
+
+/** Read the harness's own AI annotation protocol; keep request keys and downstream evidence out of alerts. */
+export function aiFailureCauses(message) {
+  const items = String(message).split('; ');
+  const missing = items[0].startsWith(PREFIX) ? Number.parseInt(items[0].slice(PREFIX.length), 10)
+    : Number(/^(\d+) AI question\(s\) had no recorded answer/.exec(items[0])?.[1] || 0);
+  const refusal = items.find(item => item.toLowerCase().startsWith('the ai was refused: '))?.slice('the AI was refused: '.length);
+  const credit = /^broker: budget:own-share ([\d.]+% of [\d.]+%)/.exec(refusal || '')?.[1];
+  return [...(refusal ? [{icon: '🤖', text: `AI refused: ${credit ? `credit ${credit}` : refusal}`}] : []),
+    ...(missing ? [{icon: '📭', text: `${missing} ${missing === 1 ? 'ask' : 'asks'} with no stored answer`}] : [])];
+}

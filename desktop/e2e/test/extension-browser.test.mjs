@@ -67,6 +67,7 @@ test('fillNote reports a cap for missing or unfinished states, and preserves fin
   for (const name of ['done', 'error', 'stopped', 'no-form', 'account']) {
     const state = {state: name, error: 'reported value'};
     assert.equal(fillNote(state, 90), `state: ${JSON.stringify(state)}`);
+    if (['no-form', 'account'].includes(name)) assert.equal(fillNote(state, 90, {pageKinds: []}), `the fill did not finish within 90 s (last seen: ${JSON.stringify(state)})`);
   }
 });
 

@@ -207,3 +207,10 @@ test('a closed tab fails immediately and cannot grey either try', async t => {
 test('a late form reporting no-form before done is awaited instead of failed early', async t => {
   await journeyFailure(t, {head: 'a form drawn after a spinner', state: [{state: 'no-form'}, {state: 'done'}], expectSuccess: true});
 });
+
+test('a late form stuck at a provisional no-form state until the cap is timing', async t => {
+  const message = await journeyFailure(t, {head: 'a form drawn after a spinner', state: {state: 'no-form'}});
+  assert.match(message, /did not finish within/);
+  assert.equal(flakyProof(message).flaky, true);
+  assert.equal(greyProof([{message}], [{message}]).grey, true);
+});

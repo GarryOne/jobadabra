@@ -27,7 +27,7 @@ export async function runJourneys(ctx, h) {
   };
   const filled = async (tab, pageKinds = []) => {
     const {value, ms} = await pollUntil(() => fillState(tab), state => fillSettled(state, {pageKinds}), {capMs: stepTimeLeft(), tickMs: 500});
-    if (value?.state !== 'done') throw new Error(fillNote(value, ms / 1000));
+    if (value?.state !== 'done') throw new Error(fillNote(value, ms / 1000, {pageKinds}));
     return value;
   };
   // Found by asking "can the extension follow a journey from one tab to another?" (3 Oct 2026): a posting whose Apply opens a NEW tab (since 8 Oct 2026

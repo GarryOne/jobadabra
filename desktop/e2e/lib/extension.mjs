@@ -164,8 +164,8 @@ export const fillSettled = (state, {pageKinds = ['no-form', 'account']} = {}) =>
   || pageKinds.includes(state?.state) || (state?.state === 'unreadable' && state.closed === true);
 
 // A missing or unfinished fill at the wait's cap is timing; a finished state remains the app's reported value.
-/** Format the last fill observation after a wait; terminal states (including a wrong one) never become timing. */
-export const fillNote = (state, seconds) => (fillSettled(state) ? `state: ${JSON.stringify(state)}` : waitCapNote('the fill', seconds, state));
+/** Format the last observation with the poll's terminal policy; explicitly final states never become timing. */
+export const fillNote = (state, seconds, options = {}) => (fillSettled(state, options) ? `state: ${JSON.stringify(state)}` : waitCapNote('the fill', seconds, state));
 
 // The panel the extension draws on the page (bottom right, an open shadow root).
 export const readPanel = page => page.evaluate(() => {

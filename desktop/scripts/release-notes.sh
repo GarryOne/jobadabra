@@ -33,8 +33,6 @@ cat <<'NOTES'
 1. Download **Jobadabra-mac-arm64.dmg** below, open it and drag **Jobadabra** to Applications.
 2. The first time you open it, macOS says it can't verify the developer (the app isn't notarised by
    Apple yet). Go to **System Settings → Privacy & Security** and click **Open Anyway**. Only once.
-
-The same files are also named Job-Pilotto-… for a few releases, so older links and apps keep working.
 NOTES
 cat <<'NOTES'
 

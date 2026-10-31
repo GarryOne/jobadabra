@@ -12,12 +12,12 @@
 | 🔨 **Build** (a GitHub pre-release) | nobody until approved; 🧪 **Beta** once the gate approves it: people who switched the beta on | nightly at 04:00 Zurich (cron: 02:00 and 03:00 UTC, the step lets the one at 04:xx/05:xx Zurich go on) if anything the app bundles changed since the last release, or on demand: `gh workflow run desktop.yml` (always builds). Not per push (`.github/workflows/desktop.yml`) |
 | ✅ **Stable** ("Latest" on GitHub) | friends' apps + the website's Download buttons | **the nightly pipeline** (below), or you with `tools/release-stable.sh` |
 
-### File names: Jobadabra-*, with Job-Pilotto-* copies (owner, 25 Oct 2026: "Rename first, then beta")
-Every release carries `Jobadabra-<version>-arm64.dmg/.zip`, `Jobadabra-mac-arm64.dmg/.zip`, `Jobadabra-<version>-x64.exe`, `Jobadabra-windows-x64.exe`, **and the same files under `Job-Pilotto-…`**
-(`tools/release-file-names.sh make`; `check` fails the build when one is missing). The updater matches **GitHub asset names** (not a `latest.yml`), and an installed 0.8.27 matches only `Job-Pilotto-*`; the new updater matches both.
-- **The `Job-Pilotto-*` copies stop by evidence, not by count** (coordinator, 25 Oct 2026): only when the app-version telemetry on /admin shows **no active install on a version whose updater matches only the old names** (0.8.27 and earlier).
-  A friend whose Mac was off for weeks must still find an update. GitHub release assets cost no storage; the copies cost only upload time.
-- Guard: `tests/test_release_file_names.py` fails when the script, `desktop.yml` or `updater.js` drops an old name. To drop them, show the telemetry in the PR and change that test in the same PR.
+### File names: Jobadabra-* only (owner, 31 Oct 2026: "We want only Jobadabra")
+Every release carries `Jobadabra-<version>-arm64.dmg/.zip`, `Jobadabra-mac-arm64.dmg/.zip`, `Jobadabra-<version>-x64.exe`, `Jobadabra-windows-x64.exe`
+(`tools/release-file-names.sh make`; `check` fails the build when one is missing). The updater matches **GitHub asset names** (not a `latest.yml`).
+- **No `Job-Pilotto-*` copies since 0.8.60** (they were removed from it by hand). An app on 0.8.27 or older matches only `Job-Pilotto-*`, so it no longer finds updates: reinstall it from the website.
+  The updater, the smoke workflows and `release-stable.sh` still read `Job-Pilotto-*` on a release made before 25 Oct 2026 (a rollback).
+- Guard: `tests/test_release_file_names.py` fails when a `Job-Pilotto-*` copy is made again, or the updater stops reading the old names on old releases.
 - Site side (`jobadabra-web`): `/download/*` prefers `Jobadabra-*`, falls back to `Job-Pilotto-*`; `/install` tries the new zip, then the old alias.
 
 ### The nightly pipeline (`desktop.yml` → `e2e.yml`)

@@ -414,7 +414,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          # Stable names too, so a download link can always point at the latest build, and the old Job-Pilotto-* names as copies (tools/release-file-names.sh).
+          # Stable names too, so a download link can always point at the latest build (tools/release-file-names.sh).
           tools_dir="${GITHUB_WORKSPACE}/tools"
           files=(); while IFS= read -r file; do files+=("$file"); done < <("$tools_dir/release-file-names.sh" make mac "$VERSION" dist)   # not mapfile: the Mac runner has bash 3.2
           gh release upload "desktop-v${VERSION}" "${files[@]}"
@@ -553,7 +553,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          # A stable name too, so a download link can always point at the latest build, and the old Job-Pilotto-* names as copies (tools/release-file-names.sh).
+          # A stable name too, so a download link can always point at the latest build (tools/release-file-names.sh).
           tools_dir="${GITHUB_WORKSPACE}/tools"
           files=(); while IFS= read -r file; do files+=("$file"); done < <("$tools_dir/release-file-names.sh" make windows "$VERSION" dist)   # not mapfile: the Mac runner has bash 3.2
           gh release upload "desktop-v${VERSION}" "${files[@]}"
@@ -570,7 +570,7 @@ jobs:
           prev=$(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=30" \
             -q '[.[] | select(.draft | not) | select(.tag_name != "desktop-v'"$VERSION"'") | select(any(.assets[]; .name == "Job-Pilotto-windows-x64.exe" or .name == "Jobadabra-windows-x64.exe"))][0].tag_name')
           if [ -n "$prev" ]; then
-            # whichever generic names that release has (Jobadabra-* and the Job-Pilotto-* copy; a release before 25 Oct 2026 has only the old one)
+            # whichever generic name that release has (a release before 25 Oct 2026 has only Job-Pilotto-*)
             gh release download "$prev" --repo "$GITHUB_REPOSITORY" -p Job-Pilotto-windows-x64.exe -p Jobadabra-windows-x64.exe -D previous
             gh release upload "desktop-v${VERSION}" --repo "$GITHUB_REPOSITORY" previous/* --clobber
             echo "::warning::Windows build failed; desktop-v${VERSION} carries the Windows installer from ${prev}."

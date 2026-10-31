@@ -1383,6 +1383,8 @@ jobs:
         env:
           E2E_ALREADY_GREEN: '1'   # required Mac suites passed; outside health is reported separately
           SOAK: ${{ vars.JOB_PILOTTO_SOAK }}
+          CI_ALERTS_TELEGRAM_BOT_TOKEN: ${{ secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN }}   # release-stable.sh alerts once when a store publish does not start
+          CI_ALERTS_TELEGRAM_CHAT_ID: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}
         run: |
           echo "Outside-world health: see the notion-real job notice and Mac HTML report (tolerant; does not block beta)."
           if [ "$SOAK" = on ]; then

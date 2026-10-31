@@ -1,8 +1,8 @@
 // How much of its budget a suite part may use on its slowest leg (Mac + the Notion stand-in), and the slice loads of a step-sharded suite from measured seconds.
 // Job: pick the suites
 // Why (31 Oct 2026, a8; beta 41229992832): apply-3of3 used 698 s of 660 on the stand-in leg after sitting at ~95% for weeks. A part blocks a beta only when it fits with headroom on its slowest leg.
-// HEADROOM 75% (495 s of 660): the 4 betas of 31 Oct 2026 put every other part at or under 71% on both stores (tools/e2e-part-times.mjs; recorded-1of5..5of5 at 70-71%), so 75% asks for
-// a quarter of the budget spare over the slowest seen without adding a runner job to a part that has run steadily. Guard: test/part-headroom.test.mjs.
+// HEADROOM 70% (462 s of 660; the owner chose it over 75%, 31 Oct 2026): in the 4 betas of that day apply-3of3 was at 106% and the five recorded parts at 70-71% (461-471 s),
+// so recorded got a 6th slice (its measured case seconds average 470 s a slice, over the limit however dealt). Guard: test/part-headroom.test.mjs.
 import {TRY_MARGIN_MS} from './runner.mjs';
 import {weighedSlices} from './replay-shard.mjs';
 
@@ -10,7 +10,7 @@ import {weighedSlices} from './replay-shard.mjs';
 // and recorded's own budgetMinutes is the same 11. So every part has 11 minutes = 660 s.
 export const TRY_MINUTES = 15;
 export const BUDGET_SECONDS = (TRY_MINUTES * 60000 - TRY_MARGIN_MS) / 1000;
-export const HEADROOM = 0.75;
+export const HEADROOM = 0.70;
 
 /** The part times over the limit (seconds above HEADROOM x budget), as [{seconds, limit}]; [] when every one fits. */
 export function over(times, {budget = BUDGET_SECONDS, headroom = HEADROOM} = {}) {

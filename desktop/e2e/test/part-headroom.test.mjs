@@ -6,6 +6,9 @@ import fs from 'node:fs';
 import {test} from 'node:test';
 import {BUDGET_SECONDS, HEADROOM, over, sliceLoads} from '../lib/part-headroom.mjs';
 import * as apply from '../suites/apply.mjs';
+import * as recorded from '../suites/recorded.mjs';
+import {loadCases} from '../lib/page-replay.mjs';
+import {costOf, readSeconds, weighedSlices} from '../lib/replay-shard.mjs';
 
 const read = file => JSON.parse(fs.readFileSync(new URL(`../fixtures/${file}`, import.meta.url), 'utf8'));
 const slowest = read('apply-slowest-leg.json'), parts = read('part-seconds.json');
@@ -44,9 +47,22 @@ test('the guard sees the split the old weights made: a slice over the headroom',
   assert.ok(Math.max(...loads) > BUDGET_SECONDS * 0.9, 'the heaviest old slice sat near the budget, as apply-3of3 did');
 });
 
-// Parts that are not step-sharded are measured whole (tools/e2e-part-times.mjs, the last betas): apply is judged above, from its steps.
+// recorded is cut by cases, each with its measured seconds: five slices averaged 470 s, over the limit however the cases are dealt (beta 41229992832: 461-471 s on both stores).
+const caseLoads = count => {
+  const weights = Object.fromEntries(loadCases().map(item => [item.name, costOf(item, readSeconds())])), owner = weighedSlices(weights, count);
+  return Array.from({length: count}, (_, at) => Object.entries(weights).filter(([name]) => owner[name] === at + 1).reduce((sum, [, seconds]) => sum + seconds, 0));
+};
+test('every slice of recorded fits the budget with headroom', () => {
+  const loads = caseLoads(recorded.shards);
+  assert.deepEqual(over(loads), [], `split recorded further: ${loads.map(load => `${load.toFixed(0)} s`).join(' / ')} (limit ${Math.round(HEADROOM * BUDGET_SECONDS)} s)`);
+});
+test('the guard sees recorded in five slices: every one over the headroom, however dealt', () => {
+  assert.equal(over(caseLoads(5)).length, 5, 'the old cut was five slices of ~470 s');
+});
+
+// Parts that are not sliced by weights are measured whole (tools/e2e-part-times.mjs, the last betas): apply and recorded are judged above, from their steps and cases.
 test('every other measured part fits the budget with headroom on its slowest leg', () => {
-  const tooLong = Object.entries(parts.parts).filter(([name]) => !/ · apply-\d+of\d+$/.test(name)).filter(([, leg]) => over([leg.max]).length)
+  const tooLong = Object.entries(parts.parts).filter(([name]) => !/ · (apply|recorded)-\d+of\d+$/.test(name)).filter(([, leg]) => over([leg.max]).length)
     .map(([name, leg]) => `${name}: ${leg.max} s (standin ${leg.standin ?? '-'}, sqlite ${leg.sqlite ?? '-'})`);
   assert.deepEqual(tooLong, [], 'split it: these parts are over the headroom on their slowest leg');
 });

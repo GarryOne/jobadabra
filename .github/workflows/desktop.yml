@@ -80,14 +80,17 @@ jobs:
     steps:
       - name: Started over a red main e2e
         if: inputs.over_red_main != ''
+        timeout-minutes: 10
         env:
           WHY: ${{ inputs.over_red_main }}   # free text: never inline in the script
         run: |
           echo "### ⚠️ Started while main's e2e was red (tools/beta-release.sh --force): $WHY"
       - uses: actions/checkout@v5
+        timeout-minutes: 5
         with:
           fetch-depth: 0
       - name: Anything new for the app?
+        timeout-minutes: 5
         id: diff
         env:
           GH_TOKEN: ${{ github.token }}
@@ -156,10 +159,12 @@ jobs:
       # trigger 2 separate pipelines"). Its version (the next patch), its tag (at the start: a push to main during the builds costs nothing) and a draft with the notes.
       - uses: actions/setup-node@v5
         if: steps.diff.outputs.build == 'true' && steps.redmain.outputs.red != 'true'
+        timeout-minutes: 5
         with:
           node-version: '22'
       - name: Version
         if: steps.diff.outputs.build == 'true' && steps.redmain.outputs.red != 'true'
+        timeout-minutes: 5
         id: version
         working-directory: desktop
         # package.json holds the target (0.5.0): each build is the next patch, 0.5.1, 0.5.2 … The channel (build, beta, stable) says how proven it is, not the version.
@@ -172,6 +177,7 @@ jobs:
           echo "extension_version=$extension" >> "$GITHUB_OUTPUT"
       - name: Tag this build now (its workflows still match main's)
         if: steps.diff.outputs.build == 'true' && steps.redmain.outputs.red != 'true'
+        timeout-minutes: 5
         # GitHub refuses (HTTP 403) to let this run's token create a tag on a commit whose workflow files differ from main's. Tagged here, at the
         # start, that can't happen: a push to main during the build no longer costs a rebuild (7 Oct 2026). A build that fails after this leaves
         # its number unused; scripts/next-version.sh then takes the next one.
@@ -181,6 +187,7 @@ jobs:
           else echo "::warning::Could not tag $tag at the start: the Release step tags it (and rebuilds main if workflows changed meanwhile)."; fi
       - name: Release
         if: steps.diff.outputs.build == 'true' && steps.redmain.outputs.red != 'true'
+        timeout-minutes: 5
         id: release
         working-directory: desktop
         env:
@@ -235,6 +242,7 @@ jobs:
           echo "released=true" >> "$GITHUB_OUTPUT"
       # Today's e2e AI budget (desktop/e2e/ai-spend.mjs; owner, 7 Oct 2026: "$30 a week"): spent, the lanes skip the paid judge and the screenshot review.
       - name: Today's e2e AI budget
+        timeout-minutes: 5
         id: spend
         if: steps.release.outputs.released == 'true' && (github.event_name == 'schedule' || inputs.nightly || inputs.beta)
         working-directory: desktop/e2e
@@ -245,6 +253,7 @@ jobs:
       # The gate's plan, once for both lanes (desktop/e2e/plan-run.mjs, GATE_TAG): the same suites on Mac + Linux and on Windows, and whether the AI screenshot
       # review runs. A build by hand ("Build only") is not tested.
       - name: Plan the E2E suites for both lanes
+        timeout-minutes: 5
         id: plan
         if: steps.release.outputs.released == 'true' && (github.event_name == 'schedule' || inputs.nightly || inputs.beta)
         working-directory: desktop/e2e
@@ -284,19 +293,24 @@ jobs:
       EXTENSION_VERSION: ${{ needs.changes.outputs.extension_version }}   # the build checkouts are shallow: stage.mjs refuses to count there
     steps:
       - uses: actions/checkout@v5
+        timeout-minutes: 5
       - uses: actions/setup-node@v5
+        timeout-minutes: 5
         with:
           node-version: '22'
       - uses: actions/setup-python@v6   # only runs the pipeline tests; the app bundles its own Python
+        timeout-minutes: 10
         with:
           python-version: '3.12'
       - name: Install
+        timeout-minutes: 5
         working-directory: desktop
         run: npm ci
       # The desktop app's unit tests, the SAME on Mac and Windows (owner, 10 Oct 2026: "both should have the full set of unit tests, only related to the desktop app; no site,
       # no Cloudflare workers"): the Python pipeline the app bundles (`tools/check.sh --area python`) and the app's own tests (`--area desktop`: lint + node tests), side by side
       # so the step takes the longer one. The site and the Worker are tested by CI · Tests on every push and deployed by their own pipelines (site.yml, worker.yml).
       - name: Unit tests · desktop app (Python pipeline and app, side by side)
+        timeout-minutes: 17
         env:
           PYTHONUTF8: '1'   # as the app runs its own engine (lib/pipeline-env.js): files in UTF-8 on Windows too, whose default is the ANSI code page (the tests read UTF-8 files)
           UNIT_AREAS: 'python desktop'
@@ -318,20 +332,24 @@ jobs:
           { echo "### Unit tests · desktop app"; echo; echo "| Suite | Result | Summary |"; echo "|---|---|---|"; cat unit-table.md; }
           exit $status
       - name: Add the shared Google app client
+        timeout-minutes: 5
         env:
           CLIENT: ${{ secrets.GOOGLE_SHARED_CLIENT_JSON }}
         run: |
           if [ -n "$CLIENT" ]; then printf '%s' "$CLIENT" > config/google_oauth_client.json
           else echo "::notice::GOOGLE_SHARED_CLIENT_JSON is not set; the app will ask users for their own Google app."; fi
       - name: Compile · AudioTee (the call's audio, Core Audio taps)
+        timeout-minutes: 5
         working-directory: desktop
         run: scripts/audiotee.sh && test -x build/bin/audiotee
       - name: Compile · bundle Python
+        timeout-minutes: 5
         working-directory: desktop
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: node scripts/stage.mjs --app && scripts/python.sh
       - name: Compile · build and sign the app
+        timeout-minutes: 15
         working-directory: desktop
         env:
           # The release certificate (scripts/sign.cjs): every build carries the same self-made signature.
@@ -345,9 +363,11 @@ jobs:
       # Smoke tests only in beta mode (the nightly, a beta by hand: owner, 10 Oct 2026); a "Build only" run is compile + unit tests.
       - name: Smoke test · the built app (bundled Python, Keychain, signature, the binary, the Jobs screen)
         if: needs.changes.outputs.gate == 'true'
+        timeout-minutes: 5
         working-directory: desktop
         run: node scripts/mac-smoke.mjs "dist/Jobadabra-${VERSION}-arm64.zip" smoke
       - name: Scan artifact contents for CI secrets
+        timeout-minutes: 5
         working-directory: ${{ github.workspace }}
         id: artifact_scan_1
         if: always()
@@ -363,6 +383,7 @@ jobs:
         run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
       - name: Keep the Mac screenshot
         if: (always() && needs.changes.outputs.gate == 'true') && steps.artifact_scan_1.outcome == 'success'
+        timeout-minutes: 5
         uses: actions/upload-artifact@v6
         with:
           name: mac-screens-${{ needs.changes.outputs.version }}
@@ -370,10 +391,12 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
       - name: Build provenance (anyone can verify the download was built here, from this commit)
+        timeout-minutes: 5
         uses: actions/attest-build-provenance@v3
         with:
           subject-path: desktop/dist/Jobadabra-*-arm64.*
       - name: Add to the release, and publish it (the first lane done publishes; the other adds its files to the published pre-release)
+        timeout-minutes: 5
         working-directory: desktop
         env:
           GH_TOKEN: ${{ github.token }}
@@ -405,17 +428,22 @@ jobs:
       # Windows Defender scans every file the install and the build write; excluding the working folders takes the installer from ~75 s down (owner, 10 Oct 2026:
       # "no build over 3-4 minutes"). Never fails the build: without it the build is only slower.
       - name: Speed · leave the build folders out of Windows Defender
+        timeout-minutes: 5
         continue-on-error: true
         shell: pwsh
         run: Add-MpPreference -ExclusionPath "$env:GITHUB_WORKSPACE", "$env:LOCALAPPDATA\Programs", "$env:TEMP", "$env:RUNNER_TEMP"
       - uses: actions/checkout@v5
+        timeout-minutes: 5
       - uses: actions/setup-node@v5
+        timeout-minutes: 5
         with:
           node-version: '22'
       - uses: actions/setup-python@v6   # only reads the Python release list; the app bundles its own Python
+        timeout-minutes: 10
         with:
           python-version: '3.12'
       - name: Install
+        timeout-minutes: 5
         working-directory: desktop
         run: npm ci
       # The desktop app's unit tests, the SAME on Mac and Windows (owner, 10 Oct 2026: "both should have the full set of unit tests, only related to the desktop app; no site,
@@ -423,8 +451,10 @@ jobs:
       # so the step takes the longer one. The site and the Worker are tested by CI · Tests on every push and deployed by their own pipelines (site.yml, worker.yml).
       # Windows has no time-zone database, and the Python tests load Europe/Zurich: the same tzdata the app bundles for Windows (requirements.txt, sys_platform == win32).
       - name: Install · time-zone data for the Python tests
+        timeout-minutes: 5
         run: python -m pip install tzdata
       - name: Unit tests · desktop app (Python pipeline and app, side by side)
+        timeout-minutes: 17
         env:
           PYTHONUTF8: '1'   # as the app runs its own engine (lib/pipeline-env.js): files in UTF-8 on Windows too, whose default is the ANSI code page (the tests read UTF-8 files)
           # TEMPORARY (10 Oct 2026): 196 of the 1,943 Python tests fail on Windows for environmental reasons (SQLite files left open in temp folders, tests of the repo's own
@@ -447,25 +477,30 @@ jobs:
           { echo "### Unit tests · desktop app"; echo; echo "| Suite | Result | Summary |"; echo "|---|---|---|"; cat unit-table.md; }
           exit $status
       - name: Add the shared Google app client
+        timeout-minutes: 5
         env:
           CLIENT: ${{ secrets.GOOGLE_SHARED_CLIENT_JSON }}
         run: if [ -n "$CLIENT" ]; then printf '%s' "$CLIENT" > config/google_oauth_client.json; fi
       - name: Compile · bundle Python
+        timeout-minutes: 5
         working-directory: desktop
         env:
           GITHUB_TOKEN: ${{ github.token }}
           PYTHON_ARCH: x86_64-pc-windows-msvc
         run: node scripts/stage.mjs --app && scripts/python.sh
       - name: Compile · build the installer
+        timeout-minutes: 15
         working-directory: desktop
         run: |
           npm version "$VERSION" --no-git-tag-version --allow-same-version >/dev/null
           npm run build:win -- -c.buildVersion="${{ github.run_number }}"
       - name: Smoke test · the installed app (install, bundled Python, Credential Manager, the Jobs screen)
         if: needs.changes.outputs.gate == 'true'
+        timeout-minutes: 7
         working-directory: desktop
         run: node scripts/windows-smoke.mjs "dist/Jobadabra-${VERSION}-x64.exe" smoke smoke
       - name: Scan artifact contents for CI secrets
+        timeout-minutes: 5
         working-directory: ${{ github.workspace }}
         id: artifact_scan_2
         if: always()
@@ -479,6 +514,7 @@ jobs:
         run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
       - name: Keep the Windows screenshots
         if: (always() && needs.changes.outputs.gate == 'true') && steps.artifact_scan_2.outcome == 'success'
+        timeout-minutes: 5
         uses: actions/upload-artifact@v6
         with:
           name: windows-screens-${{ needs.changes.outputs.version }}
@@ -486,6 +522,7 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
       - name: Add to the release, and publish it (as Build · Mac, whichever lane is done first publishes)
+        timeout-minutes: 5
         working-directory: desktop
         env:
           GH_TOKEN: ${{ github.token }}
@@ -500,6 +537,7 @@ jobs:
       # Windows build passes again. It is never approved for Windows (E2E · Windows needs this build to pass). A step, not a job: no box of its own in the graph.
       - name: Build failed, so carry over the last working Windows installer
         if: failure()
+        timeout-minutes: 10
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -529,7 +567,9 @@ jobs:
       CI_CF_ANALYTICS_TOKEN: ${{ secrets.CI_CF_ANALYTICS_TOKEN }}   # Account Analytics: Read only; unreadable count = the AI is capped (lib/ai-cap.mjs, fail closed)
     steps:
       - uses: actions/checkout@v5
+        timeout-minutes: 5
       - run: node desktop/e2e/key-preflight.mjs
+        timeout-minutes: 5
 
   # E2E: the gate suites on this build, one box (a matrix) per lane. The suite job of e2e.yml with the gate's settings (fixed path, replayed AI answers, paid judge);
   # a copy so the graph shows one box, not e2e.yml's plan/report/approve jobs (owner, 7 Oct 2026: "I want it to literally look that clean"). Keep the two in step.
@@ -626,20 +666,25 @@ jobs:
       id-token: write   # GitHub's per-run token the Codex broker checks (lib/broker-client.mjs); a fork run gets none and cannot spend the owner's plan
     steps:
       - uses: actions/checkout@v5
+        timeout-minutes: 5
       # Waits for the suite's lock instead of queueing in a concurrency group (GitHub keeps ONE waiting job per group and cancels the older one: beta 14, 24 Oct 2026).
       - uses: actions/checkout@v5
+        timeout-minutes: 5
         with:
           ref: ${{ github.sha }}
           path: lock-tools
           sparse-checkout: tools/e2e-lock.sh
       - uses: actions/setup-node@v5
+        timeout-minutes: 5
         with:
           node-version: '22'
       - uses: actions/setup-python@v6
+        timeout-minutes: 5
         with:
           python-version: '3.12'
       - name: Free AI relay (CI's AI since 26 Oct 2026; the site's handler on this runner, CI's own Workers AI token)
         if: matrix.offlineAi != true
+        timeout-minutes: 5
         uses: ./.github/actions/free-ai-relay
         with:
           cf-token: ${{ secrets.CI_FREE_AI_CF_TOKEN }}
@@ -647,21 +692,26 @@ jobs:
           client-id: ${{ vars.CI_APP_CLIENT_ID }}
           app-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
       - name: Record which commit this run tested (ui-findings.yml names it in every issue)
+        timeout-minutes: 5
         run: |
           mkdir -p "$E2E_ARTIFACTS"
           printf '%s %s\n' "${{ github.ref_name }}" "$(git rev-parse HEAD)" > "$E2E_ARTIFACTS/tested.txt"
       - name: Install the app
+        timeout-minutes: 5
         working-directory: desktop
         run: npm ci
       - name: Install the tests
+        timeout-minutes: 5
         working-directory: desktop/e2e
         run: npm ci || npm install
       - name: Chromium for the suites that use a browser (the real extension, the extension's page code)
+        timeout-minutes: 5
         working-directory: desktop/e2e
         # A suite says it needs one: `export const browser = true` (the app's extension browser) or `export const needsChromium = true` (a plain Chromium).
         run: |
           if grep -qE '^export const (browser|needsChromium) = true' "suites/${{ matrix.suite }}.mjs"; then npx playwright-core install chromium; else echo "no browser needed"; fi
       - name: Python packages the engine needs
+        timeout-minutes: 5
         run: pip install --quiet -r requirements.txt
       - name: A virtual display and Electron's libraries (Linux only)
         if: runner.os == 'Linux'
@@ -669,6 +719,7 @@ jobs:
         run: bash tools/apt-install.sh xvfb libnss3 libgbm1 libasound2t64 libgtk-3-0 libxss1 fonts-noto-color-emoji fonts-dejavu-core
       - name: Earlier AI answers (replayed instead of paid again; lib/ai-meter.mjs)
         if: env.E2E_ANTHROPIC_KEY != ''
+        timeout-minutes: 5
         uses: actions/cache/restore@v5
         with:
           path: desktop/e2e/.ai-cache
@@ -676,6 +727,7 @@ jobs:
           restore-keys: ai-answers-${{ matrix.key }}-
       - name: The live qualityai rate history (lib/quality-rate.mjs)
         if: matrix.suite == 'qualityai'
+        timeout-minutes: 10
         uses: actions/cache/restore@v5
         with:
           path: desktop/e2e/.quality-rate
@@ -683,6 +735,7 @@ jobs:
           restore-keys: quality-rate-
       # The lock is taken as late as possible (after the installs, which never touch the suite's Notion page): a waiting job holds its runner.
       - name: The App token for the lock (a re-run attempt's workflow token cannot create refs)
+        timeout-minutes: 5
         id: lock_app
         continue-on-error: true   # a failed mint falls back to the workflow token
         uses: actions/create-github-app-token@v3
@@ -691,6 +744,7 @@ jobs:
           private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
           permission-contents: write
       - name: Take the suite's lock (only a suite on the real Notion workspace; waits, never dropped)
+        timeout-minutes: 185
         env:
           GH_TOKEN: ${{ github.token }}
           E2E_LOCK_TOKEN: ${{ steps.lock_app.outputs.token }}
@@ -753,12 +807,14 @@ jobs:
           fi
       - name: Outside-world health
         if: always() && matrix.tolerant == true
+        timeout-minutes: 5
         env:
           OUTCOME: ${{ steps.suite_run.outcome }}
         run: |
           echo "::notice title=Outside-world health::${{ matrix.key }}: $OUTCOME (tolerant; does not block beta). Steps, screenshots and failures are in the Mac HTML report and e2e-artifacts-${{ matrix.key }}."
       - name: What the suite spent on Free AI (the relay's own meter)
         if: always() && env.E2E_FREE_AI_URL != ''
+        timeout-minutes: 5
         continue-on-error: true   # a report never decides a run
         shell: bash
         run: |
@@ -767,6 +823,7 @@ jobs:
           echo "$spent" > "$E2E_ARTIFACTS/free-ai-spend.json" || true
       - name: Report what the suite paid for AI to /ai-cost (the app under test and the judges)
         if: always() && env.E2E_ANTHROPIC_KEY != ''
+        timeout-minutes: 5
         continue-on-error: true   # a report never decides a run
         env:
           AI_COST_PUBLISH_KEY: ${{ secrets.AI_COST_PUBLISH_KEY }}
@@ -782,19 +839,23 @@ jobs:
           done
       - name: Keep the AI answers for the next run
         if: always() && env.E2E_ANTHROPIC_KEY != '' && hashFiles('desktop/e2e/.ai-cache/*.json') != ''
+        timeout-minutes: 5
         run: find desktop/e2e/.ai-cache -name '*.json' -mtime +7 -delete   # an answer not replayed for a week is dropped (a replay touches it)
       - if: success() && env.E2E_ANTHROPIC_KEY != '' && hashFiles('desktop/e2e/.ai-cache/*.json') != ''
+        timeout-minutes: 5
         uses: actions/cache/save@v5
         with:
           path: desktop/e2e/.ai-cache
           key: ai-answers-${{ matrix.key }}-${{ github.run_id }}-${{ github.run_attempt }}
       - name: Keep the live qualityai rate history, red or green on main
         if: always() && matrix.suite == 'qualityai' && env.E2E_AI_REPLAY != '1' && github.ref == 'refs/heads/main' && hashFiles('desktop/e2e/.quality-rate/history.json') != ''
+        timeout-minutes: 10
         uses: actions/cache/save@v5
         with:
           path: desktop/e2e/.quality-rate
           key: quality-rate-${{ github.run_id }}-${{ github.run_attempt }}
       - name: Scan artifact contents for CI secrets
+        timeout-minutes: 5
         working-directory: ${{ github.workspace }}
         id: artifact_scan_3
         if: always()
@@ -810,6 +871,7 @@ jobs:
         run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
       - name: The suite's part of the HTML report
         if: (always()) && steps.artifact_scan_3.outcome == 'success'
+        timeout-minutes: 5
         uses: actions/upload-artifact@v6
         with:
           overwrite: true
@@ -819,6 +881,7 @@ jobs:
           retention-days: 3
       # Steps and a failed suite's trace as data (the /admin/e2e runs page that read them was dropped on 15 Oct 2026; the artifact stays for download).
       - name: Scan artifact contents for CI secrets
+        timeout-minutes: 5
         working-directory: ${{ github.workspace }}
         id: artifact_scan_4
         if: always()
@@ -835,6 +898,7 @@ jobs:
         run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
       - name: Steps and trace for /admin/e2e
         if: (always()) && steps.artifact_scan_4.outcome == 'success'
+        timeout-minutes: 5
         uses: actions/upload-artifact@v6
         with:
           overwrite: true
@@ -845,6 +909,7 @@ jobs:
           compression-level: 0
           if-no-files-found: ignore
       - name: Scan artifact contents for CI secrets
+        timeout-minutes: 5
         working-directory: ${{ github.workspace }}
         id: artifact_scan_5
         if: always()
@@ -860,6 +925,7 @@ jobs:
         run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
       - name: Screenshots and timings
         if: (always()) && steps.artifact_scan_5.outcome == 'success'
+        timeout-minutes: 5
         uses: actions/upload-artifact@v6
         with:
           overwrite: true
@@ -869,6 +935,7 @@ jobs:
       # The second try writes its own folder (e2e-rerun): without this upload its logs reached no one and a retry's own failure could not be read
       # (#2087's quality run 40340783596, 26 Oct 2026). Guard: tests/test_e2e_artifacts_uploaded.py.
       - name: Scan artifact contents for CI secrets
+        timeout-minutes: 5
         working-directory: ${{ github.workspace }}
         id: artifact_scan_6
         if: always()
@@ -884,6 +951,7 @@ jobs:
         run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
       - name: The second try's screenshots and logs
         if: (always()) && steps.artifact_scan_6.outcome == 'success'
+        timeout-minutes: 5
         uses: actions/upload-artifact@v6
         with:
           overwrite: true
@@ -891,6 +959,7 @@ jobs:
           path: e2e-rerun/${{ matrix.key }}
           if-no-files-found: ignore
       - name: The App token to give the lock back (the first one may have expired)
+        timeout-minutes: 5
         id: lock_app_end
         if: always()
         continue-on-error: true   # a failed mint falls back to the workflow token
@@ -901,6 +970,7 @@ jobs:
           permission-contents: write
       - name: Give the suite's lock back
         if: always()
+        timeout-minutes: 5
         env:
           GH_TOKEN: ${{ github.token }}
           E2E_LOCK_TOKEN: ${{ steps.lock_app_end.outputs.token }}
@@ -988,19 +1058,24 @@ jobs:
       id-token: write   # GitHub's per-run token the Codex broker checks (lib/broker-client.mjs); a fork run gets none and cannot spend the owner's plan
     steps:
       - uses: actions/checkout@v5
+        timeout-minutes: 5
       # Waits for the suite's lock instead of queueing in a concurrency group (GitHub keeps ONE waiting job per group and cancels the older one: beta 14, 24 Oct 2026).
       - uses: actions/checkout@v5
+        timeout-minutes: 5
         with:
           ref: ${{ github.sha }}
           path: lock-tools
           sparse-checkout: tools/e2e-lock.sh
       - uses: actions/setup-node@v5
+        timeout-minutes: 5
         with:
           node-version: '22'
       - uses: actions/setup-python@v6
+        timeout-minutes: 5
         with:
           python-version: '3.12'
       - name: Free AI relay (CI's AI since 26 Oct 2026; the site's handler on this runner, CI's own Workers AI token)
+        timeout-minutes: 5
         uses: ./.github/actions/free-ai-relay
         with:
           cf-token: ${{ secrets.CI_FREE_AI_CF_TOKEN }}
@@ -1008,25 +1083,31 @@ jobs:
           client-id: ${{ vars.CI_APP_CLIENT_ID }}
           app-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
       - name: Record which commit this run tested (ui-findings.yml names it in every issue)
+        timeout-minutes: 5
         run: |
           mkdir -p "$E2E_ARTIFACTS"
           printf '%s %s\n' "${{ github.ref_name }}" "$(git rev-parse HEAD)" > "$E2E_ARTIFACTS/tested.txt"
       - name: Install the app
+        timeout-minutes: 5
         working-directory: desktop
         run: npm ci
       - name: Install the tests
+        timeout-minutes: 5
         working-directory: desktop/e2e
         run: npm ci || npm install
       - name: Chromium for the suites that use a browser (the real extension, the extension's page code)
+        timeout-minutes: 5
         working-directory: desktop/e2e
         # As on the Mac (e2e.yml): the suite says it needs one (`export const browser = true` or `export const needsChromium = true`). A list of suite names here
         # missed visitread and visitsauto (7 Oct 2026: "Executable doesn't exist at ...chrome.exe").
         run: |
           if [ -f "suites/${{ matrix.suite }}.mjs" ] && grep -qE '^export const (browser|needsChromium) = true' "suites/${{ matrix.suite }}.mjs"; then npx playwright-core install chromium; else echo "no browser needed"; fi
       - name: Python packages the engine needs
+        timeout-minutes: 5
         run: pip install --quiet -r requirements.txt
       - name: Earlier AI answers (replayed instead of paid again; lib/ai-meter.mjs)
         if: env.E2E_ANTHROPIC_KEY != ''
+        timeout-minutes: 5
         uses: actions/cache/restore@v5
         with:
           path: desktop/e2e/.ai-cache
@@ -1034,6 +1115,7 @@ jobs:
           restore-keys: ai-answers-windows-${{ matrix.key }}-
       # The lock is taken as late as possible (after the installs, which never touch the suite's Notion page): a waiting job holds its runner.
       - name: The App token for the lock (a re-run attempt's workflow token cannot create refs)
+        timeout-minutes: 5
         id: lock_app
         continue-on-error: true   # a failed mint falls back to the workflow token
         uses: actions/create-github-app-token@v3
@@ -1042,6 +1124,7 @@ jobs:
           private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
           permission-contents: write
       - name: Take the suite's lock (only a suite on the real Notion workspace; waits, never dropped)
+        timeout-minutes: 185
         env:
           GH_TOKEN: ${{ github.token }}
           E2E_LOCK_TOKEN: ${{ steps.lock_app.outputs.token }}
@@ -1097,6 +1180,7 @@ jobs:
           fi
       - name: Outside-world health
         if: always() && matrix.tolerant == true
+        timeout-minutes: 5
         env:
           OUTCOME: ${{ steps.suite_run.outcome }}
         run: |
@@ -1112,6 +1196,7 @@ jobs:
         run: node suite.mjs apply
       - name: What the suite spent on Free AI (the relay's own meter)
         if: always() && env.E2E_FREE_AI_URL != ''
+        timeout-minutes: 5
         continue-on-error: true   # a report never decides a run
         shell: bash
         run: |
@@ -1120,6 +1205,7 @@ jobs:
           echo "$spent" > "$E2E_ARTIFACTS/free-ai-spend.json" || true
       - name: Report what the suite paid for AI to /ai-cost (the app under test and the judges)
         if: always() && env.E2E_ANTHROPIC_KEY != ''
+        timeout-minutes: 5
         continue-on-error: true   # a report never decides a run
         env:
           AI_COST_PUBLISH_KEY: ${{ secrets.AI_COST_PUBLISH_KEY }}
@@ -1135,13 +1221,16 @@ jobs:
           done
       - name: Keep the AI answers for the next run
         if: always() && env.E2E_ANTHROPIC_KEY != '' && hashFiles('desktop/e2e/.ai-cache/*.json') != ''
+        timeout-minutes: 5
         run: find desktop/e2e/.ai-cache -name '*.json' -mtime +7 -delete   # an answer not replayed for a week is dropped (a replay touches it)
       - if: success() && env.E2E_ANTHROPIC_KEY != '' && hashFiles('desktop/e2e/.ai-cache/*.json') != ''
+        timeout-minutes: 5
         uses: actions/cache/save@v5
         with:
           path: desktop/e2e/.ai-cache
           key: ai-answers-windows-${{ matrix.key }}-${{ github.run_id }}-${{ github.run_attempt }}
       - name: Scan artifact contents for CI secrets
+        timeout-minutes: 5
         working-directory: ${{ github.workspace }}
         id: artifact_scan_7
         if: always()
@@ -1157,6 +1246,7 @@ jobs:
         run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
       - name: The suite's part of the HTML report
         if: (always()) && steps.artifact_scan_7.outcome == 'success'
+        timeout-minutes: 5
         uses: actions/upload-artifact@v6
         with:
           overwrite: true
@@ -1166,6 +1256,7 @@ jobs:
           retention-days: 3
       # Steps and a failed suite's trace as data (the /admin/e2e runs page that read them was dropped on 15 Oct 2026; the artifact stays for download).
       - name: Scan artifact contents for CI secrets
+        timeout-minutes: 5
         working-directory: ${{ github.workspace }}
         id: artifact_scan_8
         if: always()
@@ -1182,6 +1273,7 @@ jobs:
         run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
       - name: Steps and trace for /admin/e2e
         if: (always()) && steps.artifact_scan_8.outcome == 'success'
+        timeout-minutes: 5
         uses: actions/upload-artifact@v6
         with:
           overwrite: true
@@ -1192,6 +1284,7 @@ jobs:
           compression-level: 0
           if-no-files-found: ignore
       - name: Scan artifact contents for CI secrets
+        timeout-minutes: 5
         working-directory: ${{ github.workspace }}
         id: artifact_scan_9
         if: always()
@@ -1208,6 +1301,7 @@ jobs:
         run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
       - name: Screenshots and logs
         if: (always()) && steps.artifact_scan_9.outcome == 'success'
+        timeout-minutes: 5
         uses: actions/upload-artifact@v6
         with:
           overwrite: true
@@ -1215,6 +1309,7 @@ jobs:
           path: e2e-artifacts-windows/${{ matrix.key }}
           if-no-files-found: ignore
       - name: Scan artifact contents for CI secrets
+        timeout-minutes: 5
         working-directory: ${{ github.workspace }}
         id: artifact_scan_13
         if: always()
@@ -1230,6 +1325,7 @@ jobs:
         run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
       - name: The second Windows try's screenshots and logs
         if: always() && steps.artifact_scan_13.outcome == 'success'
+        timeout-minutes: 10
         uses: actions/upload-artifact@v6
         with:
           overwrite: true
@@ -1238,6 +1334,7 @@ jobs:
           if-no-files-found: ignore
       # The Edge pass keeps its own folder (apply-edge); without this upload its app log and screenshots reached no one (beta 40281407461, 26 Oct 2026).
       - name: Scan artifact contents for CI secrets
+        timeout-minutes: 5
         working-directory: ${{ github.workspace }}
         id: artifact_scan_10
         if: always()
@@ -1253,6 +1350,7 @@ jobs:
         run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
       - name: The Edge pass's screenshots and logs
         if: (always() && matrix.suite == 'apply') && steps.artifact_scan_10.outcome == 'success'
+        timeout-minutes: 5
         uses: actions/upload-artifact@v6
         with:
           overwrite: true
@@ -1260,6 +1358,7 @@ jobs:
           path: e2e-artifacts-windows/apply-edge
           if-no-files-found: ignore
       - name: The App token to give the lock back (the first one may have expired)
+        timeout-minutes: 5
         id: lock_app_end
         if: always()
         continue-on-error: true   # a failed mint falls back to the workflow token
@@ -1270,6 +1369,7 @@ jobs:
           permission-contents: write
       - name: Give the suite's lock back
         if: always()
+        timeout-minutes: 5
         env:
           GH_TOKEN: ${{ github.token }}
           E2E_LOCK_TOKEN: ${{ steps.lock_app_end.outputs.token }}
@@ -1307,10 +1407,13 @@ jobs:
       REF: ${{ github.sha }}
     steps:
       - uses: actions/checkout@v5
+        timeout-minutes: 5
       - uses: actions/setup-node@v5
+        timeout-minutes: 5
         with:
           node-version: '22'
       - name: The E2E suites' HTML report (also when one failed)
+        timeout-minutes: 5
         working-directory: desktop/e2e
         run: |
           npm ci || npm install
@@ -1323,6 +1426,7 @@ jobs:
               echo "## 📊 [Open the Mac HTML report](https://www.jobpilotto.top/admin/operations/e2e/run/${{ github.run_id }}/report) · every suite, its steps with a screenshot each, the failure and its trace (admins)"
           fi
       - name: Scan artifact contents for CI secrets
+        timeout-minutes: 5
         working-directory: ${{ github.workspace }}
         id: artifact_scan_11
         if: always()
@@ -1336,6 +1440,7 @@ jobs:
         run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
       - uses: actions/upload-artifact@v6
         if: (hashFiles('e2e-report/index.html') != '') && steps.artifact_scan_11.outcome == 'success'
+        timeout-minutes: 5
         with:
           overwrite: true
           name: e2e-report   # admin/e2e-report.js serves it
@@ -1344,6 +1449,7 @@ jobs:
       # The AI screenshot review of this lane's suites, also when one failed, before the block check reads its findings (.github/actions/e2e-review: one Claude
       # batch for every page, half the price; owner, 26 Oct 2026). Inside this job, so the release graph stays Build -> E2E -> Release.
       - uses: ./.github/actions/e2e-review
+        timeout-minutes: 22
         with:
           lane: mac
           anthropic-key: ${{ secrets.E2E_ANTHROPIC_KEY }}
@@ -1351,14 +1457,17 @@ jobs:
           publish-key: ${{ secrets.AI_COST_PUBLISH_KEY }}
           github-token: ${{ github.token }}
       - name: Not released on Mac, an E2E suite failed on Mac + Linux or Windows
+        timeout-minutes: 10
         id: backbone_gate
         continue-on-error: true
         run: python3 tools/beta_rate_gate.py --repo "$GITHUB_REPOSITORY" --run "$GITHUB_RUN_ID" --e2e-only --platform mac
       - name: A wrong value still holds the beta red
         if: steps.backbone_gate.outcome == 'failure' && steps.backbone_gate.outputs.held != 'true'
+        timeout-minutes: 10
         run: exit 1
       - name: Keep this platform's beta hold evidence
         if: always() && hashFiles('beta-held.json') != ''
+        timeout-minutes: 10
         uses: actions/upload-artifact@v6
         with:
           name: beta-held-mac
@@ -1366,9 +1475,11 @@ jobs:
           overwrite: true
       - name: Tolerant AI rates against main's nightly band (report only)
         if: needs.changes.outputs.gate == 'true'
+        timeout-minutes: 10
         run: python3 tools/beta_rate_gate.py --repo "$GITHUB_REPOSITORY" --run "$GITHUB_RUN_ID" --platform mac
       - name: No real high-severity finding in the Mac suites
         if: steps.backbone_gate.outputs.held != 'true'
+        timeout-minutes: 5
         working-directory: desktop/e2e
         run: |
           gh run download "${{ github.run_id }}" --repo "$GITHUB_REPOSITORY" --pattern 'e2e-artifacts-*' --dir ../../e2e-artifacts || echo "no artifacts to read"
@@ -1380,12 +1491,14 @@ jobs:
           if [ "$status" != 0 ]; then echo "$TAG is not offered on Mac: a real high-severity finding in its end-to-end suites."; exit 1; fi
       - name: The shared release checks (unit suites green on the commit; soak on, the Notion schema additive over stable)
         if: steps.backbone_gate.outputs.held != 'true'
+        timeout-minutes: 5
         env:
           JOB_PILOTTO_SOAK: ${{ vars.JOB_PILOTTO_SOAK }}
         shell: bash -eo pipefail {0}   # a program piped into tee/cat keeps its exit code (tests/test_workflow_pipefail.py)
         run: tools/release-checks.sh "$TAG" "$REF"
       - name: Release it to Mac beta testers
         if: steps.backbone_gate.outputs.held != 'true'
+        timeout-minutes: 5
         env:
           E2E_ALREADY_GREEN: '1'   # required Mac suites passed; outside health is reported separately
           SOAK: ${{ vars.JOB_PILOTTO_SOAK }}
@@ -1428,10 +1541,13 @@ jobs:
       REF: ${{ github.sha }}
     steps:
       - uses: actions/checkout@v5
+        timeout-minutes: 5
       - uses: actions/setup-node@v5
+        timeout-minutes: 5
         with:
           node-version: '22'
       - name: The E2E suites' HTML report (also when one failed)
+        timeout-minutes: 5
         working-directory: desktop/e2e
         run: |
           npm ci || npm install
@@ -1444,6 +1560,7 @@ jobs:
               echo "## 📊 [Open the Windows HTML report](https://www.jobpilotto.top/admin/operations/e2e/run/${{ github.run_id }}/report?os=windows) · every suite, its steps with a screenshot each, the failure and its trace (admins)"
           fi
       - name: Scan artifact contents for CI secrets
+        timeout-minutes: 5
         working-directory: ${{ github.workspace }}
         id: artifact_scan_12
         if: always()
@@ -1457,6 +1574,7 @@ jobs:
         run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
       - uses: actions/upload-artifact@v6
         if: (hashFiles('e2e-report/index.html') != '') && steps.artifact_scan_12.outcome == 'success'
+        timeout-minutes: 5
         with:
           overwrite: true
           name: e2e-report-windows   # admin/e2e-report.js serves it
@@ -1465,6 +1583,7 @@ jobs:
       # The AI screenshot review of this lane's suites, also when one failed, before the block check reads its findings (.github/actions/e2e-review: one Claude
       # batch for every page, half the price; owner, 26 Oct 2026). Inside this job, so the release graph stays Build -> E2E -> Release.
       - uses: ./.github/actions/e2e-review
+        timeout-minutes: 22
         with:
           lane: windows
           anthropic-key: ${{ secrets.E2E_ANTHROPIC_KEY }}
@@ -1472,14 +1591,17 @@ jobs:
           publish-key: ${{ secrets.AI_COST_PUBLISH_KEY }}
           github-token: ${{ github.token }}
       - name: Not released on Windows, an E2E suite failed on Mac + Linux or Windows
+        timeout-minutes: 10
         id: backbone_gate
         continue-on-error: true
         run: python3 tools/beta_rate_gate.py --repo "$GITHUB_REPOSITORY" --run "$GITHUB_RUN_ID" --e2e-only --platform windows
       - name: A wrong value still holds the beta red
         if: steps.backbone_gate.outcome == 'failure' && steps.backbone_gate.outputs.held != 'true'
+        timeout-minutes: 10
         run: exit 1
       - name: Keep this platform's beta hold evidence
         if: always() && hashFiles('beta-held.json') != ''
+        timeout-minutes: 10
         uses: actions/upload-artifact@v6
         with:
           name: beta-held-windows
@@ -1487,9 +1609,11 @@ jobs:
           overwrite: true
       - name: Tolerant AI rates against main's nightly band (report only)
         if: needs.changes.outputs.gate == 'true'
+        timeout-minutes: 10
         run: python3 tools/beta_rate_gate.py --repo "$GITHUB_REPOSITORY" --run "$GITHUB_RUN_ID" --platform windows
       - name: No real high-severity finding in the Windows suites
         if: steps.backbone_gate.outputs.held != 'true'
+        timeout-minutes: 5
         working-directory: desktop/e2e
         run: |
           gh run download "${{ github.run_id }}" --repo "$GITHUB_REPOSITORY" --pattern 'e2e-artifacts-*' --dir ../../e2e-artifacts || echo "no artifacts to read"
@@ -1501,12 +1625,14 @@ jobs:
           if [ "$status" != 0 ]; then echo "$TAG is not offered on Windows: a real high-severity finding in its end-to-end suites."; exit 1; fi
       - name: The shared release checks (unit suites green on the commit; soak on, the Notion schema additive over stable)
         if: steps.backbone_gate.outputs.held != 'true'
+        timeout-minutes: 5
         env:
           JOB_PILOTTO_SOAK: ${{ vars.JOB_PILOTTO_SOAK }}
         shell: bash -eo pipefail {0}   # a program piped into tee/cat keeps its exit code (tests/test_workflow_pipefail.py)
         run: tools/release-checks.sh "$TAG" "$REF"
       - name: Release it to Windows beta testers
         if: steps.backbone_gate.outputs.held != 'true'
+        timeout-minutes: 5
         env:
           E2E_ALREADY_GREEN: '1'   # every Windows suite passed on this commit, in this run
           SOAK: ${{ vars.JOB_PILOTTO_SOAK }}
@@ -1524,7 +1650,9 @@ jobs:
     if: always() && needs.changes.outputs.gate == 'true' && ((needs.build.result == 'success' && needs.test-mac.result == 'skipped') || (needs.windows.result == 'success' && needs.test-windows.result == 'skipped'))
     runs-on: ubuntu-24.04
     steps:
-      - run: |
+      - name: Fail the run, the E2E gate did not run
+        timeout-minutes: 5
+        run: |
           echo "### ❌ The E2E gate was planned but did not run: no build was tested or approved. See the 'Plan the E2E suites' step of Anything new?. Or the AI key was refused: see 'AI key ready?'."
           echo "::error::The E2E gate was skipped after a green build."
           exit 1
@@ -1539,17 +1667,21 @@ jobs:
       issues: write     # the pinned Release channels issue
     steps:
       - uses: actions/checkout@v5
+        timeout-minutes: 5
       - name: A release neither build published (both failed) is removed; its tag stays and its number is not reused
+        timeout-minutes: 5
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: desktop-v${{ needs.changes.outputs.version }}
         run: |
           if [ "$(gh release view "$TAG" --json isDraft -q .isDraft 2>/dev/null)" = true ]; then gh release delete "$TAG" --yes; echo "::warning::$TAG: no build finished; its draft is removed."; fi
       - name: Remove older test builds (their tags stay)
+        timeout-minutes: 5
         env:
           GH_TOKEN: ${{ github.token }}
         run: tools/prune-releases.sh 3
       - name: Release titles and the pinned Release channels issue (a new build is listed at once, not at the next soak run)
+        timeout-minutes: 5
         env:
           GH_TOKEN: ${{ github.token }}
         run: python3 tools/sync_release_labels.py || echo "labels not refreshed"   # best effort, never fails a build
@@ -1575,20 +1707,24 @@ jobs:
       CI_ALERTS_TELEGRAM_CHAT_ID: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}
     steps:
       - uses: actions/checkout@v5
+        timeout-minutes: 5
         with:
           sparse-checkout: |
             desktop/e2e
             tools/scan-e2e-artifacts.py
       - uses: actions/setup-node@v5
+        timeout-minutes: 5
         with:
           node-version: '22'
       - name: AI credit is an alert, never a hold
+        timeout-minutes: 5
         run: |
           gh run download "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --pattern 'e2e-artifacts-*' --dir ai-credit-health || echo "::notice::No suite artifacts available for AI credit health"
           gh run download "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --pattern 'e2e-rerun-*' --dir ai-credit-health || echo "::notice::No retry artifacts available for AI credit health"
           gh run download "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --name "ai-credit-alert-$GITHUB_RUN_ID" --dir ai-credit-alert || true
           node desktop/e2e/credit-alert.mjs --artifacts ai-credit-health --marker ai-credit-alert/alert-sent.txt
       - name: Scan artifact contents for CI secrets
+        timeout-minutes: 5
         id: artifact_scan_1
         if: always()
         env:
@@ -1596,6 +1732,7 @@ jobs:
         run: python tools/scan-e2e-artifacts.py
       - name: Remember this run's single credit alert
         if: (always() && hashFiles('ai-credit-alert/alert-sent.txt') != '') && steps.artifact_scan_1.outcome == 'success'
+        timeout-minutes: 5
         uses: actions/upload-artifact@v6
         with:
           name: ai-credit-alert-${{ github.run_id }}

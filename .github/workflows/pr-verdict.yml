@@ -56,12 +56,14 @@ jobs:
       heads: ${{ steps.heads.outputs.heads }}
     steps:
       - uses: actions/checkout@v5
+        timeout-minutes: 5
         with:
           sparse-checkout: |
             tools/pr-verdict.py
             tools/pr_verdict_sweep.py
           sparse-checkout-cone-mode: false
       - id: heads
+        timeout-minutes: 5
         env:
           GH_TOKEN: ${{ github.token }}
         run: python3 tools/pr-verdict.py --repo "$GITHUB_REPOSITORY" --sweep-heads
@@ -98,6 +100,7 @@ jobs:
       statuses: write        # the "All checks passed" status
     steps:
       - uses: actions/checkout@v5
+        timeout-minutes: 5
         with:
           # Its companions too: each one a standalone copy fetched over the API cost a call per write (main_state_module).
           sparse-checkout: |
@@ -113,6 +116,7 @@ jobs:
             tools/beta_rate_gate.py
           sparse-checkout-cone-mode: false
       - name: All checks passed?
+        timeout-minutes: 5
         env:
           GH_TOKEN: ${{ github.token }}
           SHA: ${{ matrix.sha }}

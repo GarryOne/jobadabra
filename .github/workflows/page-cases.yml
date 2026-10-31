@@ -141,23 +141,30 @@ jobs:
         shard: [1, 2]
     steps:
       - uses: actions/checkout@v5
+        timeout-minutes: 5
         with: {fetch-depth: 2}   # HEAD^1 (the base, on a pull_request run) for the changed-files step below
       - name: The PR paths list everything this workflow loads
+        timeout-minutes: 5
         run: node tools/replay-files.mjs --check page-cases.yml
       - uses: actions/setup-node@v5
+        timeout-minutes: 5
         with:
           node-version: '22'
       - name: Install the tests
+        timeout-minutes: 5
         working-directory: desktop/e2e
         run: npm ci || npm install
       # A row case starts the offline app, which imports desktop/lib/server.js and its packages (@anthropic-ai/sdk).
       - name: Install the app's own packages
+        timeout-minutes: 5
         working-directory: desktop
         run: npm ci --omit=dev --ignore-scripts || npm install --omit=dev --ignore-scripts
       - name: Chromium (the real extension needs the full browser, not the headless shell)
+        timeout-minutes: 5
         uses: ./.github/actions/playwright-browser
         with: {working-directory: desktop/e2e}
       - name: The files this pull request changes (a slow case runs on it only if it touches that case's folder)
+        timeout-minutes: 5
         id: changed
         if: github.event_name == 'pull_request'
         # Why (28 Oct 2026, #2367/#2364 went red on "API rate limit exceeded for installation"): the checkout is the merge commit, so its first parent is the base and
@@ -169,6 +176,7 @@ jobs:
           files="$(git diff --name-only HEAD^1 HEAD)"
           { echo 'files<<CHANGED_END'; echo "$files"; echo 'CHANGED_END'; } >> "$GITHUB_OUTPUT"
       - name: Replay this shard's recorded cases
+        timeout-minutes: 12
         working-directory: desktop/e2e
         env:
           JP_REPLAY: 1
@@ -181,6 +189,7 @@ jobs:
         run: node --test --test-concurrency=1 test/recorded-pages.test.mjs
       - name: Keep this shard's results for the report
         if: always()
+        timeout-minutes: 5
         uses: actions/upload-artifact@v6
         with:
           name: replay-results-${{ matrix.shard }}
@@ -202,15 +211,19 @@ jobs:
       pull-requests: read
     steps:
       - uses: actions/checkout@v5
+        timeout-minutes: 5
       - uses: actions/setup-node@v5
+        timeout-minutes: 5
         with:
           node-version: '22'
       - uses: actions/download-artifact@v7
+        timeout-minutes: 5
         with:
           pattern: replay-results-*
           path: desktop/e2e/results
           merge-multiple: true
       - name: Send the replays of this build
+        timeout-minutes: 5
         working-directory: desktop/e2e
         env:
           REPLAYS_PUBLISH_KEY: ${{ secrets.REPLAYS_PUBLISH_KEY }}
@@ -220,6 +233,7 @@ jobs:
       # push run's artifacts (kept 3 days); none, or too few cases in both: it says so and passes.
       - name: Fill time vs main
         if: github.event_name == 'pull_request'
+        timeout-minutes: 5
         working-directory: desktop/e2e
         env:
           GH_TOKEN: ${{ github.token }}

@@ -108,7 +108,7 @@ export async function runJourneys(ctx, h) {
       console.log(`late-form state: ${JSON.stringify(evidence)}`);
     }
     fail(problems);
-  }, {needs: ctx.needs});
+  }, {safety: true, needs: ctx.needs});
   // Account creation and the application form kept apart (owner, 8 Oct 2026). The posting's Apply leads to a sign-up page: the extension leaves it alone and
   // the session shows the account step, no form progress (since 12 Oct 2026 the extension fills the page's detail fields by meaning, and presses neither the box nor the button). The test, as the person, creates the account; the form behind it is filled from the kit and the
   // session moves on to the form. Nothing typed on the sign-up page is learned as an answer or a fill miss, and "Create account" is not the application sent.

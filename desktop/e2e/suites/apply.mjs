@@ -200,7 +200,7 @@ export async function runApply(ctx, parts) {
     if (!panel) throw new Error('no Jobadabra panel on the form');
     console.log(`  panel: "${panel.progress}"; left for you: ${panel.left.join(' | ') || 'nothing'}`);
     fail([...leftProblems(panel.left, []), ...notLeftProblems(panel.left, form.consentWords)]);   // the consent box is ticked, not left
-  }, {needs: ctx.needs});
+  }, {safety: true, needs: ctx.needs});
 
   await ctx.run('a Workday-shaped form: answers fill fields known only by opaque ids and aria labels, the list-button question is left for you by name, Submit untouched', async () => {
     const form = FORMS.workday;
@@ -213,7 +213,7 @@ export async function runApply(ctx, parts) {
     if (!panel) throw new Error('no Jobadabra panel on the form');
     console.log(`  workday panel: "${panel.progress}"; left for you: ${panel.left.join(' | ') || 'nothing'}`);
     fail(leftProblems(panel.left, ['hear about us']));
-  }, {needs: ctx.needs});
+  }, {safety: true, needs: ctx.needs});
 
   // Forms the extension failed on for a real person (fixtures/real-forms, tools/fixture-from-fills.py): your details filled, every required field it cannot
   // fill listed as left for you by its label, Submit untouched. None yet: the step says so and passes.
@@ -305,7 +305,7 @@ export async function runApply(ctx, parts) {
     if (!/reject an application automatically|knockout rule/i.test(left.knock)) throw new Error(`no knockout warning above the list (it says: "${left.knock}")`);
     // The tip line is off for now (SHOW_TIPS=false in extension/review.js, owner 15 Oct 2026): a tip is not required, but one that shows still carries a label that says how strong it is.
     if (left.tip && (!['Fact', 'Recruiters say', 'Worth trying', 'Tip'].includes(left.tip.chip) || left.tip.text.length < 20)) throw new Error(`the panel shows a tip without a valid label (${JSON.stringify(left.tip)})`);
-  }, {needs: ctx.needs});
+  }, {safety: true, needs: ctx.needs});
 
   await ctx.run('the session page says it too: "Before you submit" counts the knockout question that is still the person\'s, and says which CV goes in', async () => {
     const form = FORMS.multistep;
@@ -408,7 +408,7 @@ export async function runApply(ctx, parts) {
     const strange = [...ctx.browser.requested].filter(host => !HOSTS.includes(host) && host !== '127.0.0.1' && host !== 'localhost' && host !== '');
     if (strange.length) throw new Error(`the browser asked for hosts outside the fixtures: ${strange.join(', ')}`);
     await removeJobsByUrl(ctx, urls);
-  }, {needs: ctx.needs});
+  }, {safety: true, needs: ctx.needs});
 
   // Background automation (spec 2026-10-27-background-apply-execution, step B): the app's own hidden browser fills the form, the person's Submit in the live view posts it once.
   // After "through all of it" because it is the one place a Submit is allowed after the person's own (submitProblems above), and it seeds its own job.
@@ -422,7 +422,7 @@ export async function runApply(ctx, parts) {
   await ctx.run('Full automation presses Submit once on its own, and a Stop in the wait presses nothing', async () => {
     // Why (2026-10-28, found by this step; autoFormOf since #2598): a kit answer is never a saved fact (extension/flow.js `source: 'kit'`), so Full automation hands over any form with a kit question; this proof uses the submitter's details-only variant.
     await proveAutomatic(ctx, {form: autoFormOf(FORMS.submitter), until, seed: kitSeeder(ctx, urls, POSTING)});
-  }, {needs: [...ctx.needs, HIDDEN_NEED]});
+  }, {safety: true, needs: [...ctx.needs, HIDDEN_NEED]});
 
   await runRestartSteps(ctx, {urls});   // lib/apply-restart-steps.mjs: the app quits while its hidden browser holds a job
   await runConfirmSteps(ctx, {urls});   // lib/apply-confirm-steps.mjs: Full automation's one confirmation in Settings → Apply, and the refusal without it
@@ -432,15 +432,15 @@ export async function runApply(ctx, parts) {
   // The details-only submitter at `?check=<mode>` carries the box (forms.mjs BOT_CHECK); each mode gets its own address, the app keeps one background session per job address.
   await ctx.run('Background automation hands a bot check to the person: the card says so with Submit off, and nothing is sent', async () => {
     await proveBotCheck(ctx, {form: autoFormOf(FORMS.submitter, '?check=fill'), mode: 'fill', until, seed: kitSeeder(ctx, urls, POSTING)});
-  }, {needs: [...ctx.needs, HIDDEN_NEED]});
+  }, {safety: true, needs: [...ctx.needs, HIDDEN_NEED]});
   await ctx.run('Full automation hands a bot check to the person: the card says so with Submit off, and nothing is pressed or sent', async () => {
     await proveBotCheck(ctx, {form: autoFormOf(FORMS.submitter, '?check=auto'), mode: 'auto', until, seed: kitSeeder(ctx, urls, POSTING)});
-  }, {needs: [...ctx.needs, HIDDEN_NEED]});
+  }, {safety: true, needs: [...ctx.needs, HIDDEN_NEED]});
 
   // Several jobs queued at once (owner, 30 Oct 2026, the second apply-mode coverage gap): one fills at a time, in queue order; a Stop on a queued job skips only that one. Four details-only submitters, each at its own address.
   const queueJobs = mode => [1, 2, 3, 4].map(n => autoFormOf(FORMS.submitter, `?queue=${mode}${n}`));
-  await ctx.run('Background automation fills several queued jobs one at a time, in queue order, and a Stop on a queued job skips only that one', () => proveQueue(ctx, {jobs: queueJobs('fill'), mode: 'fill', until, seed: kitSeeder(ctx, urls, POSTING)}), {needs: [...ctx.needs, HIDDEN_NEED]});
-  await ctx.run('Full automation presses each queued job once, one at a time, in queue order, and a Stop on a queued job skips only that one', () => proveQueue(ctx, {jobs: queueJobs('auto'), mode: 'auto', until, seed: kitSeeder(ctx, urls, POSTING)}), {needs: [...ctx.needs, HIDDEN_NEED]});
+  await ctx.run('Background automation fills several queued jobs one at a time, in queue order, and a Stop on a queued job skips only that one', () => proveQueue(ctx, {jobs: queueJobs('fill'), mode: 'fill', until, seed: kitSeeder(ctx, urls, POSTING)}), {safety: true, needs: [...ctx.needs, HIDDEN_NEED]});
+  await ctx.run('Full automation presses each queued job once, one at a time, in queue order, and a Stop on a queued job skips only that one', () => proveQueue(ctx, {jobs: queueJobs('auto'), mode: 'auto', until, seed: kitSeeder(ctx, urls, POSTING)}), {safety: true, needs: [...ctx.needs, HIDDEN_NEED]});
 
   // Found by this suite (2 Oct 2026): extension/review.js built the panel's list from native fields only, so a REQUIRED custom widget it cannot read (here a
   // role=slider) was in no list and no count, and the panel said "Ready to submit, every required field is filled" over a form that still needed an answer.

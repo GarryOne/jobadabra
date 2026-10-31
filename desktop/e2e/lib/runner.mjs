@@ -113,8 +113,10 @@ export function createRunner(getSession, {suite = '', cadence = '', keepGoing = 
   const allFound = () => picked.every(name => name === PICK_SETUP || found.has(name));
   let overBudget = false;
   // elsewhere: the suite leaves this step to another slice of itself (step-sharded apply/applyflows): a picked name is still found, so the slice without it is not red.
+  // safety: the step proves the Full automation confirmation, that nothing is posted/sent/pressed, or Stop (lib/safety-steps.mjs). Why (31 Oct 2026, owner: "Never suspend safety steps"):
+  // it is never suspended, even when lanes.json lists it: it fails the suite and blocks the beta, and its result carries safety: true.
   // clean-code-ok: Why (#2501; 30 Oct 2026, owner redesign): old function; reuse its cap and opt-in stopOnHang while preserving other suites' retry and keep-going defaults.
-  async function run(name, rawFn, {needs = [], faults = false, critical = false, stopOnHang = false, limitMs, hangError, elsewhere = false} = {}) {
+  async function run(name, rawFn, {needs = [], faults = false, critical = false, stopOnHang = false, limitMs, hangError, elsewhere = false, safety = false} = {}) {
     if (elsewhere) { if (picked.includes(name.toLowerCase())) found.add(name.toLowerCase()); return; }
     const left = budgetMs - (Date.now() - suiteStarted);
     if (left <= 0) {
@@ -125,6 +127,8 @@ export function createRunner(getSession, {suite = '', cadence = '', keepGoing = 
       return;
     }
     let cap;
+    const held = safety ? undefined : suspended[name];   // a safety step is never suspended
+    if (safety && suspended[name]) console.log(`⚠ ${name}: lanes.json lists it as suspended, but it is a safety step: it blocks`);
     const fn = () => withLimit(Promise.resolve().then(rawFn), Math.min(cap, left), name, getSession, left < cap ? budgetMs : 0, hangError);   // faults are never retried as environment noise
     // E2E_STEPS=tailor,seeded runs only the steps whose name contains one of these words (and the critical setup): a quick way to re-run one step of a long suite.
     const only = wantedWords([...(process.env.E2E_STEPS || '').split(',').map(word => word.trim()).filter(Boolean), ...picked], stepNeeds || {});
@@ -163,7 +167,7 @@ export function createRunner(getSession, {suite = '', cadence = '', keepGoing = 
       await (report ? report.step(name, attempt) : attempt());
       const seconds = ((Date.now() - started) / 1000).toFixed(1);
       const vacuous = unfired();
-      results.push({name, status: 'passed', seconds, ...(suspended[name] ? {suspended: true} : {}), ...(retried ? {retried} : {}), ...(vacuous ? {faultNeverFired: true} : {})});
+      results.push({name, status: 'passed', seconds, ...(held ? {suspended: true} : {}), ...(safety ? {safety: true} : {}), ...(retried ? {retried} : {}), ...(vacuous ? {faultNeverFired: true} : {})});
       console.log(`✓ ${name} (${seconds}s)${retried ? ' after one retry' : ''}${vacuous ? ` ⚠ passed, but ${NEVER_FIRED}: it may test nothing` : ''}`);
     } catch (error) {
       // Why (31 Oct 2026, owner): "the fact that AI credit finished should not stop a beta from being green. It should just raise an alert. And that's it." Every capped step is skipped, including release gates.
@@ -182,15 +186,15 @@ export function createRunner(getSession, {suite = '', cadence = '', keepGoing = 
       const where = codeLine(error);
       // Why (31 Oct 2026, owner: "Means its flaky"; spec row 33): a step the lane registry suspended (flaky: red on code unchanged since it passed) runs and shows its result, but never fails the job.
       // An owned step cut off by its hang cap leaves work running that the next steps cannot trust, so it ends the suite quietly instead (suite-main.mjs reads suspendedStop).
-      if (suspended[name]) {
-        results.push({name, status: 'suspended', note, cause: causeOf(note), issue: suspended[name].issue, ...(where ? {where} : {})});
-        console.log(`⚠ ${name}: suspended step (flaky, ${suspended[name].issue || 'owner issue'}), not blocking: ${note}${where ? ` (at ${where})` : ''}`);
+      if (held) {
+        results.push({name, status: 'suspended', note, cause: causeOf(note), issue: held.issue, ...(where ? {where} : {})});
+        console.log(`⚠ ${name}: suspended step (flaky, ${held.issue || 'owner issue'}), not blocking: ${note}${where ? ` (at ${where})` : ''}`);
         // Why (#2719, 31 Oct 2026, Gitar): a step that fails because the suspended one before it left the app closed is that step's flake, not its own; end the suite there.
         if (ownedHang(error, stopOnHang)) throw Object.assign(error, {suspendedStop: true, stoppedBecause: 'hung'});
         if (getSession()?.page?.isClosed?.()) throw Object.assign(error, {suspendedStop: true, stoppedBecause: 'left the app closed'});
         return;
       }
-      results.push({name, status: 'failed', note, cause: causeOf(note), ...(where ? {where} : {}), ...(refused || (!faults && isEnvironment(error.message)) ? {environment: true} : {}), ...(base !== error.message ? {faultNeverFired: true} : {})});
+      results.push({name, status: 'failed', note, cause: causeOf(note), ...(safety ? {safety: true} : {}), ...(where ? {where} : {}), ...(refused || (!faults && isEnvironment(error.message)) ? {environment: true} : {}), ...(base !== error.message ? {faultNeverFired: true} : {})});
       console.log(`✗ ${name}: ${note}${where ? ` (at ${where})` : ''}`);
       if (keepGoing && !critical && !ownedHang(error, stopOnHang)) return;   // recorded: the suite still fails at the end, and the next step runs
       throw error;

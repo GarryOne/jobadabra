@@ -74,7 +74,7 @@ export async function runStopSteps(ctx, {urls}) {
       await stopOnCard(ctx, form, held, filling);
       if (ctx.forms.posts.length !== posted) throw new Error(`Stop on the Background card let ${ctx.forms.posts.length - posted} POST(s) through`);
     } finally { judge.release(); ctx.proxy.setCanned(previous); await skipJob(ctx.page, form); await closeHiddenBrowser(ctx.profile); }
-  }, {needs, hangError: hangOf(ctx, filling)});
+  }, {safety: true, needs, hangError: hangOf(ctx, filling)});
 
   await ctx.run('Stop on the card in Full automation: the wait says when it will submit, Stop hands it to you, and nothing is posted past the due time', async () => {
     const form = autoFormOf(FORMS.submitter, '?stop=auto'), posted = ctx.forms.posts.length;
@@ -88,5 +88,5 @@ export async function runStopSteps(ctx, {urls}) {
       const last = await backgroundOf(ctx.page, form.url);
       if (last?.state !== 'needs_user_handoff' || last.reason !== 'stopped' || !last.manualOverride) throw new Error(`after the cancelled due time the Stop verdict changed: ${JSON.stringify(last)}`);
     } finally { await skipJob(ctx.page, form); await closeHiddenBrowser(ctx.profile); }
-  }, {needs, hangError: hangOf(ctx, waiting)});
+  }, {safety: true, needs, hangError: hangOf(ctx, waiting)});
 }

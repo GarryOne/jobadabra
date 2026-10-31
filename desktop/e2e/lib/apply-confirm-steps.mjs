@@ -56,7 +56,7 @@ export async function runConfirmSteps(ctx, {urls}) {
     const confirmed = await waitOn('"Turn on Full automation" never saved the mode with its confirmation', () => savedApply(page), saved => saved.mode === 'auto' && !!saved.autoConfirmedAt);
     if (Number.isNaN(Date.parse(confirmed.autoConfirmedAt))) throw new Error(`the saved confirmation is not a time: ${confirmed.autoConfirmedAt}`);
     await waitOn('after "Turn on Full automation" the cards never showed it chosen', () => screenOf(page), screen => screen.picked === 'auto' && !screen.open);
-  }, {needs: ctx.needs, hangError: hung});
+  }, {safety: true, needs: ctx.needs, hangError: hung});
 
   await ctx.run('Full automation saved without its confirmation: the app refuses to start, and nothing is filled or sent', async () => {
     const form = autoFormOf(FORMS.submitter, '?unconfirmed=1');
@@ -76,5 +76,5 @@ export async function runConfirmSteps(ctx, {urls}) {
       await removeJobsByUrl(ctx, [form.url]);   // no session holds it, so it stays eligible and the next proof's Start would take it
       await page.evaluate(at => window.pilot.saveSettings({apply: {mode: 'fill', chosenAt: at}}), new Date().toISOString());
     }
-  }, {needs: ctx.needs, hangError: hung});
+  }, {safety: true, needs: ctx.needs, hangError: hung});
 }

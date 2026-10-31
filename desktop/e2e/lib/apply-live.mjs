@@ -185,5 +185,5 @@ export async function runLive(ctx, h) {
     } finally {   // the job store of this run must not keep the live job (a stray "Applying" row broke another run's step, 8 Oct 2026)
       console.log(`  live: removed ${await removeJobsByUrl(ctx, [posting.url]).catch(() => 0)} job row(s) of the live posting`);
     }
-  }, {needs: ctx.needs});
+  }, {safety: true, needs: ctx.needs});
 }

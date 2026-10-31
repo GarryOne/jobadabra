@@ -1,7 +1,7 @@
 // A ratchet against tests that read the real date (owner, 31 Oct 2026: "No test reads the real date/clock unpinned; add a guard for new ones"). It counts, per test file, the lines that read
-// "now" as a calendar value (`Date.now()`, `new Date()`, `datetime.now()`, `date.today()`, `time.time()`) when the file does not pin the clock. Elapsed-time shapes (`Date.now() - started`, `deadline = Date.now() + …`)
+// "now" as a calendar value (`Date.now()`, `new Date()`, `datetime.now()`, `date.today()`, `time.time()`) when the file does not pin the clock. Durations (`Date.now() - started`, `while (now < end)`, a poll deadline) are not counted.
 // are durations and are not counted. The reads of today are the debt in tools/unpinned-clock-allowed.txt (one `<count><TAB><path>` line per file, so PRs that fix different files never conflict) and may only shrink:
-// a new read fails desktop/test/unpinned-clock.test.js. Fix: pin the clock (`pinClock` in desktop/test/helpers/pin-clock.mjs, `pin_clock` in tests/clock_pin.py), or say `// clock: relative <why>` on the line (`# clock: relative <why>` in python).
+// a new read fails desktop/test/unpinned-clock.test.js and tests/test_unpinned_clock.py. Fix: pin the clock (`t.mock.timers.enable({apis: ['Date'], now})` in node, a fixed `now=` argument in python), or say `// clock: relative <why>` on the line (`# clock: relative <why>` in python).
 import {execFileSync} from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -9,9 +9,11 @@ import path from 'node:path';
 const ROOT = path.resolve(import.meta.dirname, '..');
 const TOP = ['desktop/test', 'desktop/e2e/test', 'tests'];
 const READ = /\bDate\.now\(\)|\bnew Date\(\)|\bdatetime\.(?:utc)?(?:now|today)\(|\bdate\.today\(\)|\btime\.time\(\)/;
-// Why (31 Oct 2026, a8): a span measured as one reading minus an earlier one, a deadline set from now, or a loop that runs until a time is reached all use the real clock for a duration and cannot depend on the calendar day.
-const ELAPSED = /(?:[-<>]=?\s*(?:Date\.now\(\)|time\.time\(\)))|(?:(?:Date\.now\(\)|time\.time\(\))\s*(?:[-<>]|\+\s*\d))|(?:\b(?:start|began|begin|t0|deadline|end|since|tick|last)\w*\s*=\s*(?:await\s+)?(?:Date\.now\(\)|time\.time\(\)))/i;
-const PINS = /\bpinClock\(|\bpin_clock\(|mock\.timers|JOB_PILOTTO_NOW/;
+const NOW = String.raw`(?:Date\.now\(\)|time\.time\(\))`;
+// Why (31 Oct 2026, a8; Gitar on #2734): a span is one reading minus an earlier one, a comparison against a deadline, the anchor a span starts from, or a poll deadline set from now: all measure a duration and cannot depend on the calendar day.
+// A date built from now plus a span (`new Date(Date.now() + …)`) and a stored timestamp (`seenAt = Date.now()`) are calendar values and are counted.
+const ELAPSED = [new RegExp(`(?:-|(?<!=)[<>]=?)\\s*${NOW}`), new RegExp(`${NOW}\\s*(?:-|(?<!=)[<>])`), new RegExp(`\\b(?:start|began|begin|t0)\\w*\\s*=\\s*(?:await\\s+)?${NOW}`, 'i'), new RegExp(`^(?!.*new Date\\().*${NOW}\\s*\\+\\s*\\d`)];
+const PINS = /mock\.timers|JOB_PILOTTO_NOW/;
 
 /** The number of lines of `text` that read the real clock as a calendar value; 0 when the file pins the clock. */
 export function countLines(text) {
@@ -19,7 +21,7 @@ export function countLines(text) {
   let count = 0;
   for (const line of text.split('\n')) {
     if (/clock: relative/.test(line) || /^\s*(\/\/|#|\*|\/\*)/.test(line)) continue;
-    if (READ.test(line) && !ELAPSED.test(line)) count++;
+    if (READ.test(line) && !ELAPSED.some(shape => shape.test(line))) count++;
   }
   return count;
 }
@@ -53,7 +55,16 @@ export function allowedText(found) {
   return Object.keys(found).sort().map(name => `${found[name]}\t${name}\n`).join('');
 }
 
+/** The files that read the clock more often than `allowed` records, as `path: count (allowed n)` lines. */
+export function worse(found, allowed) {
+  return Object.entries(found).filter(([file, count]) => count > (allowed[file] || 0)).map(([file, count]) => `${file}: ${count} (allowed ${allowed[file] || 0})`);
+}
+
 if (process.argv[1] === import.meta.filename && process.argv.includes('--write')) {
   fs.writeFileSync(ALLOWED, allowedText(scan()));
   console.log(`wrote ${ALLOWED}`);
+} else if (process.argv[1] === import.meta.filename && process.argv.includes('--check')) {
+  const found = worse(scan(), readAllowed());
+  if (found.length) console.error(`unpinned-clock: a test reads the real clock: pin it, or say \`clock: relative <why>\` on the line\n  ${found.join('\n  ')}`);
+  process.exitCode = found.length ? 1 : 0;
 }

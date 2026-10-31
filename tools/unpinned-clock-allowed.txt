@@ -6,9 +6,9 @@
 2	desktop/e2e/test/timing-ratchet.test.mjs
 9	desktop/e2e/test/triage-cli.test.mjs
 2	desktop/e2e/test/triage-evidence.test.mjs
-1	desktop/test/ai-caps.test.js
+2	desktop/test/ai-caps.test.js
 1	desktop/test/app-scenarios.test.js
-1	desktop/test/archive.test.js
+2	desktop/test/archive.test.js
 2	desktop/test/automation.test.js
 3	desktop/test/background-apply-controller.test.js
 2	desktop/test/claude-asks-hidden.test.js
@@ -19,6 +19,7 @@
 1	desktop/test/extension-tab-adoption.test.js
 1	desktop/test/files.test.js
 1	desktop/test/forms-open-liveness.test.js
+1	desktop/test/job-page-view.test.js
 2	desktop/test/notion-cache.test.js
 2	desktop/test/notion-retry.test.js
 1	desktop/test/plan-promo.test.js

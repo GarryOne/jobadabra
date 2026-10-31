@@ -3,13 +3,12 @@
 // or say `// clock: relative <why>` when the read only compares two readings of the same clock.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {ALLOWED, allowedText, countLines, readAllowed, scan} from '../../tools/unpinned-clock.mjs';
+import {ALLOWED, allowedText, countLines, readAllowed, scan, worse} from '../../tools/unpinned-clock.mjs';
 import fs from 'node:fs';
 
 test('no test file reads the real clock more often than its recorded debt, and fixed files leave the list', () => {
   const allowed = readAllowed(), found = scan();
-  const worse = Object.entries(found).filter(([file, count]) => count > (allowed[file] || 0)).map(([file, count]) => `${file}: ${count} (allowed ${allowed[file] || 0})`);
-  assert.deepEqual(worse, [], 'a new unpinned clock read: pin the clock in that test, or say `// clock: relative <why>` on the line');
+  assert.deepEqual(worse(found, allowed), [], 'a new unpinned clock read: pin the clock in that test, or say `// clock: relative <why>` on the line');
   const paid = Object.entries(allowed).filter(([file, count]) => count > (found[file] || 0)).map(([file]) => file);
   assert.deepEqual(paid, [], `fixed: run \`node tools/unpinned-clock.mjs --write\` so ${ALLOWED} drops these (the debt only shrinks)`);
   assert.equal(fs.readFileSync(ALLOWED, 'utf8'), allowedText(allowed), 'one sorted `<count><TAB><path>` line per file, so two PRs fixing different files never conflict');
@@ -17,7 +16,10 @@ test('no test file reads the real clock more often than its recorded debt, and f
 
 test('what the ratchet counts: a calendar read in an unpinned file; not durations, comments, marked lines or a file that pins', () => {
   assert.equal(countLines('const day = new Date().toISOString().slice(0, 10);'), 1);
-  assert.equal(countLines('const stamp = new Date(Date.now() + 86400000).toISOString();'), 0, 'now plus a span is arithmetic: not counted');
+  assert.equal(countLines('const tomorrow = new Date(Date.now() + 86400000).toISOString();'), 1, 'a date built from now plus a span is a calendar value');
+  assert.equal(countLines('const deadline = Date.now() + 5000;'), 0, 'a poll deadline is a span');
+  assert.equal(countLines('const lastSeen = Date.now();'), 1, 'a stored timestamp is a calendar value');
+  assert.equal(countLines('const clock = () => Date.now();'), 1, 'an arrow function is not a comparison');
   assert.equal(countLines('const made = Date.now();\nstore(made);'), 1);
   assert.equal(countLines('const started = Date.now();\nassert.ok(Date.now() - started < 50);'), 0, 'a duration');
   assert.equal(countLines('while (Date.now() < end) poll();'), 0);

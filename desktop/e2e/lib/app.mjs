@@ -30,7 +30,9 @@ export const ARTIFACTS = process.env.E2E_ARTIFACTS || path.join(E2E, 'artifacts'
 export const zoneOf = (env = {}) => env.TZ || 'Europe/Zurich';
 
 /** Build a fresh isolated profile, preserving a suite's explicit setting overrides. */
-export const initialSettings = (settings = {}) => ({telemetry: false, shareEmployers: false, shareEmployersChosen: true, apply: {mode: 'check', chosenAt: '2026-10-26T00:00:00.000Z'}, ...settings});
+export const initialSettings = (settings = {}) => ({telemetry: false, shareEmployers: false, shareEmployersChosen: true, apply: {mode: 'check', chosenAt: '2026-10-26T00:00:00.000Z'},
+  // Why (31 Oct 2026, LinkedIn jobs 1/3): the ask on the first two Find jobs presses is a dialog that would sit over every suite's press; a test app has answered it twice.
+  linkedinJobs: {asked: 2, declined: 2}, ...settings});
 
 // Hidden windows (lib/e2e-hidden.js) only on the owner's Mac, so a run doesn't steal focus; CI is unchanged. E2E_HIDDEN=0 to watch, =1 to force.
 const hidden = (env = process.env) => (env.E2E_HIDDEN ? (env.E2E_HIDDEN === '1' ? '1' : '0') : (process.platform === 'darwin' && !env.CI ? '1' : '0'));

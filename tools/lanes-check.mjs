@@ -2,7 +2,7 @@
 // Rule E on the lane registry (docs/superpowers/specs/2026-10-28-e2e-reliability-design.md): a suite leaves the backbone only by naming what its result depends on.
 // Suite names are checked for every entry of desktop/e2e/lanes.json; field rules only for entries this push adds or changes. A removed entry brings a suite back.
 // tolerant needs `input` (ai | clock | outside), `why` (a sentence of 8+ words) and `since` (a date); suspended and retired need `why` and `since`. Every lane needs `returns` (a non-empty string).
-// A backbone entry may carry only aiMissesMax, a non-negative integer ceiling for asks without a stored answer.
+// Backbone defaults to zero misses; an entry may pin aiMissesMax to 0 or name an aiMissesException reason.
 // Every suite named in the head registry must have a file in desktop/e2e/suites.
 // Why (28 Oct 2026, spec rule E): 5395279 ("allowance for model noise (1 in 9)") loosened a test to get green; a suite listed as tolerant with no named
 // input is the same move one level up, so the entry itself carries the input and the reason, and a test that cannot name one stays in the backbone (our own races are bugs).
@@ -22,10 +22,11 @@ const HOW = 'A suite leaves the backbone only by naming what its result depends 
 export function entryProblems(entry) {
   if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return ['is not an entry (an object with lane, why and since)'];
   const lacks = [];
-  if (Object.hasOwn(entry, 'aiMissesMax')) {
-    if (!Number.isInteger(entry.aiMissesMax) || entry.aiMissesMax < 0) lacks.push('aiMissesMax must be a non-negative integer');
-    if (!Object.hasOwn(entry, 'lane')) return lacks;
-  }
+  const ceiling = Object.hasOwn(entry, 'aiMissesMax'), exception = Object.hasOwn(entry, 'aiMissesException');
+  if (ceiling && entry.aiMissesMax !== 0) lacks.push('aiMissesMax must be 0; name a reason in aiMissesException when zero is not possible');
+  if (exception && (typeof entry.aiMissesException !== 'string' || words(entry.aiMissesException) < WHY_WORDS)) lacks.push('aiMissesException must name the reason in a sentence (8+ words)');
+  if (exception && (ceiling || Object.hasOwn(entry, 'lane'))) lacks.push('aiMissesException cannot accompany a ceiling or a non-backbone lane');
+  if ((ceiling || exception) && !Object.hasOwn(entry, 'lane')) return lacks;
   if (!LANES.includes(entry.lane)) lacks.push(`lane must be one of ${LANES.join(', ')} (a suite not listed is the backbone)`);
   if (entry.lane === 'tolerant' && !INPUTS.includes(entry.input)) lacks.push(`input must be one of ${INPUTS.join(', ')}: the non-deterministic thing its result depends on`);
   if (words(entry.why) < WHY_WORDS) lacks.push(`why must say in a sentence what the result depends on (${WHY_WORDS}+ words)`);

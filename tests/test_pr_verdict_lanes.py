@@ -162,8 +162,12 @@ class RegistryFile(unittest.TestCase):
         self.assertEqual(self.registry['v'], 1)
         for name, entry in self.registry['suites'].items():
             self.assertIn(name, self.suites, f'{name}: no such suite in desktop/e2e/suites')
-            if 'lane' not in entry:   # Why (30 Oct 2026, a8, #2568): an entry that only holds the AI-ask ceiling is a backbone suite.
-                self.assertEqual(set(entry), {'aiMissesMax'}, f'{name}: without a lane, an entry may hold only its AI-ask ceiling')
+            if 'lane' not in entry:   # Why (31 Oct 2026, owner): backbone defaults to zero; a temporary exception must name its reason.
+                self.assertIn(set(entry), ({'aiMissesMax'}, {'aiMissesException'}), f'{name}: backbone may pin zero or name an exception')
+                if 'aiMissesException' in entry:
+                    self.assertGreaterEqual(len(entry['aiMissesException'].split()), 8, name)
+                else:
+                    self.assertEqual(entry['aiMissesMax'], 0, name)
                 continue
             self.assertIn(entry['lane'], ('tolerant', 'suspended', 'retired'), f'{name}: a suite not listed is backbone; listed it is one of the other three')
             if entry['lane'] == 'tolerant':

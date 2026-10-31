@@ -61,13 +61,20 @@ class QualityReplayGateTests(unittest.TestCase):
         self.assertNotIn('echo "E2E_AI_REPLAY=0"', text)
         self.assertIn("matrix.suite == 'qualityai' && '0' || '1'", env_line(text, 'E2E_AI_REPLAY') or '')
 
-    def test_qualitys_retry_replays_and_other_suites_retry_fresh(self):
+    def test_every_retry_uses_the_plan_lane_and_keeps_backbone_replay_on(self):
         for name in SUITE_WORKFLOWS:
             text = (WORKFLOWS / name).read_text()
-            with self.subTest(file=name):
-                self.assertIn('replay=0; [ "${{ matrix.suite }}" != quality ] || replay="$E2E_AI_REPLAY"', text)
-                self.assertIn('E2E_RERUN=1 E2E_AI_REPLAY="$replay"', text)
-                self.assertNotRegex(text, r'E2E_RERUN=1 E2E_AI_REPLAY=0\b')
+            retries = [step for step in re.split(r'(?m)^      - ', text) if 'if again ' in step]
+            self.assertEqual(len(retries), 2 if name == 'desktop.yml' else 1)
+            for step in retries:
+                condition = re.search(r'(?m)^        if: (.+)$', step).group(1)
+                with self.subTest(file=name, condition=condition):
+                    self.assertIn('matrix.tolerant != true', condition)
+                    self.assertIn('E2E_RERUN=1 E2E_AI_REPLAY=1', step)
+                    self.assertNotIn('lanes.json', step, 'the plan matrix is the one lane source')
+                    self.assertNotIn('node -e', step)
+                    self.assertNotIn('replay=', step)
+                    self.assertNotIn('E2E_AI_ANSWERS=off', step)
 
     def test_qualityai_always_runs_live_without_strict_replay(self):
         for name in SUITE_WORKFLOWS:

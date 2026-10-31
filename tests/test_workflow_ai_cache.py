@@ -32,12 +32,17 @@ class AiAnswerCacheTests(unittest.TestCase):
                 self.assertNotIn('ai-answers-v2-', text)
                 self.assertIn("matrix.key == 'mailreading' && '-v2'", text)
 
-    # Quality's retry replays like its first try (owner, 27 Oct 2026: "Code gate + AI rate"; tests/test_quality_replay_gate.py); every other suite's draws fresh.
-    def test_every_second_try_but_qualitys_draws_fresh_answers(self):
+    # Why (31 Oct 2026, owner): the plan excludes tolerant suites from retry; every admitted retry keeps the saved answers.
+    def test_every_second_try_uses_the_matrix_lane_and_keeps_replay_on(self):
         for name in ('e2e.yml', 'desktop.yml'):
             text = (WORKFLOWS / name).read_text()
-            with self.subTest(file=name):
-                self.assertRegex(text, r'replay=0; \[ "\$\{\{ matrix\.suite \}\}" != quality \] \|\| replay="\$E2E_AI_REPLAY"[^\n]*\n[^\n]*E2E_RERUN=1 E2E_AI_REPLAY="\$replay"')
+            retries = [step for step in steps(text) if 'if again ' in step]
+            self.assertEqual(len(retries), 2 if name == 'desktop.yml' else 1)
+            for retry in retries:
+                self.assertRegex(retry, r'(?m)^        if: .*matrix\.tolerant != true')
+                self.assertIn('E2E_RERUN=1 E2E_AI_REPLAY=1', retry)
+                self.assertNotIn('lanes.json', retry)
+                self.assertNotIn('replay=', retry)
 
     # Main cannot read a PR's cache (27 Oct 2026: #2180 green on its PR with 0 misses, main red after 8 live questions): the PR hands its answers over.
     def test_a_green_pr_job_hands_its_answers_to_main(self):

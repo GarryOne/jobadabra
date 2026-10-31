@@ -1,7 +1,7 @@
 // The wizard harness answers fictional CV details while saving strategy; letter drafting belongs to Settings.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {saveWizardStrategy, wizardSetupAnswer} from '../e2e/lib/wizard.mjs';
+import {runWizard, saveWizardStrategy, wizardSetupAnswer} from '../e2e/lib/wizard.mjs';
 
 const scenario = async ({failSave = false, withApi = true} = {}) => {
   const original = () => null, events = [];
@@ -57,4 +57,31 @@ test('the CV details response remains distinct and usable by its actual proposal
     {field: 'location', value: 'Zurich, Switzerland', sure: true},
   ]);
   assert.deepEqual(wizardSetupAnswer({output_config: {format: {schema: {properties: {score: {}}}}}}, {cv}), {refuse: 'no-credit'});
+});
+
+
+test('the wizard keeps the real background CV-facts request offline and restores its prior answer route', async t => {
+  const fs = await import('node:fs'), os = await import('node:os'), path = await import('node:path');
+  const {createStorage} = await import('../lib/storage.js');
+  const {factProposals} = await import('../lib/cv-queue.js');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wizard-facts-'));
+  t.after(() => fs.rmSync(dir, {recursive: true, force: true}));
+  const storage = createStorage(dir, {encrypt: value => value, decrypt: value => value});
+  fs.mkdirSync(storage.path('cv'), {recursive: true});
+  fs.writeFileSync(storage.path('cv.pdf'), 'Fictional CV bytes');
+  let request;
+  await factProposals(storage, {wanted: ['languages'], client: {messages: {create: async body => {
+    request = body;
+    return {stop_reason: 'end_turn', content: [{type: 'text', text: '{"facts":[]}'}]};
+  }}}});
+  assert.ok(request, 'capture the actual product sender and schema');
+  const unknown = {messages: []}, prior = body => body === unknown ? 'prior fixture answer' : null;
+  let canned = prior;
+  const stop = new Error('fixture stops before browser actions');
+  await assert.rejects(runWizard({page: {}, proxy: {canned: () => canned, setCanned: value => { canned = value; }}, run: async () => {
+    assert.deepEqual(canned(request), {refuse: 'invalid-key'});
+    assert.equal(canned(unknown), 'prior fixture answer', 'unrelated calls retain the existing answer route');
+    throw stop;
+  }}), error => error === stop);
+  assert.equal(canned, prior, 'restore even if setup stops before finishing');
 });

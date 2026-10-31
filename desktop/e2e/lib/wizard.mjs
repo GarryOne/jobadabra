@@ -9,8 +9,20 @@ import {pageText} from './notion.mjs';
 import {goView} from './go-view.mjs';
 import {pollUntil, stepTimeLeft} from './wait-on-state.mjs';
 
+// The CV-facts schema is the one background question newly reached when setup goes straight to Jobs.
+function setupBackgroundAnswer(body, previous) {
+  const properties = body?.output_config?.format?.schema?.properties || {};
+  const how = properties.facts?.items?.properties?.how?.enum || [];
+  // Why (31 Oct 2026, #2659): cv_queue has a declared invalid-key fixture; never send this optional background read to a live relay.
+  if (Object.keys(properties).length === 1 && how.includes('stated') && how.includes('inferred')) return {refuse: 'invalid-key'};
+  return previous?.(body) ?? null;
+}
+
 export async function runWizard(ctx) {
   const {page, appKey: KEY} = ctx;
+  const previous = ctx.proxy.canned();
+  ctx.proxy.setCanned(body => setupBackgroundAnswer(body, previous));
+  try {
   await ctx.run('the app starts on the welcome screen', async () => {
     await ctx.expectStep('welcome');
     await page.getByRole('button', {name: 'Start'}).waitFor();
@@ -177,6 +189,7 @@ export async function runWizard(ctx) {
     });
   }, {needs: ctx.needs});
   await connectNotion(ctx);
+  } finally { ctx.proxy.setCanned(previous); }
 }
 
 // Notion connected with a token: the workspace is built inside the test page and the strategy moves in. startedOnNotion: the store was this Mac's, still

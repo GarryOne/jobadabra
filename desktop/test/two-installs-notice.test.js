@@ -56,5 +56,7 @@ test('the note never says the two copies share their data (a Store copy first us
     const {detail} = noticeOptions({self});
     assert.doesNotMatch(detail, /share (your|their|the) data|same data|one data folder/i, self);
     assert.match(detail, /may be kept separately in each copy/, self);
+    assert.match(detail, /Removing the Microsoft Store copy can also remove data kept only in it/, self);
+    assert.doesNotMatch(detail, /Removing a copy also removes/, 'the installer copy keeps %APPDATA% on uninstall (nsis has no deleteAppDataOnUninstall)');
   }
 });

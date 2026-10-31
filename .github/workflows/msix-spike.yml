@@ -496,7 +496,8 @@ jobs:
         run: |
           Add-Type -AssemblyName System.Windows.Forms, System.Drawing
           $out = 'C:\spike-out'; New-Item -ItemType Directory -Force $out | Out-Null
-          $electron = (Resolve-Path 'desktop\node_modules\electron\dist\electron.exe').Path
+          Push-Location desktop; node node_modules/electron/install.js; $electron = (node -e "process.stdout.write(require('electron'))"); Pop-Location
+          "electron: $electron"
           $lib = (Resolve-Path 'desktop\lib\two-installs-notice.js').Path -replace '\\', '/'
           @"
           const {app, dialog} = require('electron');

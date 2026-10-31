@@ -405,7 +405,7 @@ class TheScriptAsAJobRunsIt(unittest.TestCase):
         env = dict(os.environ, PATH=bin_dir + os.pathsep + os.environ['PATH'], FAKE_DIR=d, GITHUB_RUN_ID='9', GITHUB_OUTPUT=str(Path(d, 'output')))
         env.pop('GITHUB_EVENT_PATH', None)
         script = os.path.join(d, 'pr-verdict.py'); Path(script).write_text((ROOT / 'tools' / 'pr-verdict.py').read_text())   # a copy, no repo around it
-        Path(d, 'pr_verdict_sweep.py').write_text((ROOT / 'tools/pr_verdict_sweep.py').read_text() if (ROOT / 'tools/pr_verdict_sweep.py').exists() else '')
+        Path(d, 'pr_verdict_sweep.py').write_text((ROOT / 'tools/pr_verdict_sweep.py').read_text() if (ROOT / 'tools/pr_verdict_sweep.py').exists() else ''); Path(d, 'github_limit.py').write_text((ROOT / 'tools/github_limit.py').read_text())   # its sibling, as the job's sparse checkout has it
         Path(d, 'pr_verdict_runs.py').write_text((ROOT / 'tools/pr_verdict_runs.py').read_text())
         mode = ['--sweep-heads'] if sweep_heads is not None else ['--sha', 'abc1234']
         done = subprocess.run([sys.executable, script, '--repo', 'o/r', *mode, *(['--revalidate-head'] if revalidate_head else []), *(['--job-status', job_status] if job_status else [])], env=env, capture_output=True, text=True, timeout=60)
@@ -475,7 +475,7 @@ class CompanionBoundaries(unittest.TestCase):
             tmp = Path(folder)
             script = tmp / 'pr-verdict.py'
             script.write_text((ROOT / 'tools/pr-verdict.py').read_text())
-            (tmp / 'pr_verdict_greys.py').write_text((ROOT / 'tools/pr_verdict_greys.py').read_text())
+            (tmp / 'pr_verdict_greys.py').write_text((ROOT / 'tools/pr_verdict_greys.py').read_text()); (tmp / 'github_limit.py').write_text((ROOT / 'tools/github_limit.py').read_text())
             # The standalone copy fetches each classifier it imports at the writer's ref: the health one and main's run reader (tools/main_e2e_state.py).
             served = {name: str(ROOT / 'tools' / name) for name in ('pr_health_greys.py', 'main_e2e_state.py')}
             gh = tmp / 'gh'

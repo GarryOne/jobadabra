@@ -122,6 +122,7 @@ class TheStepAsCIRunsIt(unittest.TestCase):
         env = dict(os.environ, PATH=bin_dir + os.pathsep + os.environ['PATH'], FAKE_DIR=d, GITHUB_RUN_ID='7', RUNNER_NAME='r1', GITHUB_SHA='abc1234', FAKE_OLD_GH='1' if old_gh else '')
         script = Path(d, 'pr-verdict.py'); script.write_text((ROOT / 'tools' / 'pr-verdict.py').read_text(encoding='utf-8'), encoding='utf-8')
         Path(d, 'pr_verdict_greys.py').write_text((ROOT / 'tools/pr_verdict_greys.py').read_text())
+        Path(d, 'github_limit.py').write_text((ROOT / 'tools/github_limit.py').read_text())   # the job's sparse checkout has it next to the script
         args = [sys.executable, str(script), '--repo', 'o/r', '--sha', 'abc1234'] + (['--job-status', job_status] if job_status else [])
         done = subprocess.run(args, env=env, capture_output=True, encoding='utf-8', timeout=60)
         written = Path(d, 'written').read_text(encoding='utf-8') if Path(d, 'written').exists() else ''

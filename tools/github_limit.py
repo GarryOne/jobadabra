@@ -75,6 +75,19 @@ def explain(what, rate=read_rate):
     return ''
 
 
+def exit_code(run, what, rate=read_rate):
+    """`run()` -> its return value. A rate-limit failure of a `gh` call (CalledProcessError) ends as one `::error::<what>: <limit message>` line on stderr and 1; any other failure raises as it always did.
+    Why (31 Oct 2026, a8; CI run 41228178173): with the installation budget spent every PR verdict died in a traceback and the log never said when it would work again."""
+    try:
+        return run()
+    except subprocess.CalledProcessError as error:
+        said = '\n'.join(part.decode('utf-8', 'replace') if isinstance(part, bytes) else (part or '') for part in (error.stderr, error.stdout))
+        if not is_limit(said):
+            raise
+        print(f'::error::{what}: {limit_message(said, rate())}', file=sys.stderr)
+        return 1
+
+
 def main(argv=None):
     args = sys.argv[1:] if argv is None else argv
     if len(args) == 2 and args[0] == 'explain':

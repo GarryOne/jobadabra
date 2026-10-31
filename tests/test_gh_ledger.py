@@ -1,11 +1,13 @@
 # The call ledger counts every gh call a job makes, by endpoint, so the next budget burst names its spender in the logs (3rd rate-limit fix; 31 Oct 2026).
 import os
+import shutil
 import subprocess
 import tempfile
 import unittest
 from pathlib import Path
 
 LEDGER = Path(__file__).resolve().parents[1] / 'tools' / 'gh-ledger.sh'
+BASH = shutil.which('bash')   # absolute, so a test can empty PATH (CI's runner has gh in /usr/bin: a PATH of /usr/bin:/bin is not 'no gh')
 
 
 class Ledger(unittest.TestCase):
@@ -23,7 +25,7 @@ class Ledger(unittest.TestCase):
         self.tmp.cleanup()
 
     def ledger(self, *args):
-        return subprocess.run(['bash', str(LEDGER), *args], capture_output=True, text=True, env=self.env, check=True).stdout
+        return subprocess.run([BASH, str(LEDGER), *args], capture_output=True, text=True, env=self.env, check=True).stdout
 
     def shim_env(self):
         added = Path(self.env['GITHUB_PATH']).read_text().split()
@@ -53,7 +55,9 @@ class Ledger(unittest.TestCase):
         self.assertIn('the budget fell by 0 while this job ran', report)
 
     def test_a_job_with_no_gh_still_reports_and_never_fails(self):
-        self.env['PATH'] = '/usr/bin:/bin'
+        empty = Path(self.tmp.name) / 'empty'
+        empty.mkdir()
+        self.env['PATH'] = str(empty)
         self.assertIn('no gh on PATH', self.ledger('start'))
         self.assertIn('ledger: job build: no count', self.ledger('end'))
 

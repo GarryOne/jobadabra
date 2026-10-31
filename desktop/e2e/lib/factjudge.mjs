@@ -36,11 +36,11 @@ export function failures(verdict) {
   return [verdict.invents_facts && 'invents facts', verdict.contradicts_posting && 'contradicts the posting'].filter(Boolean);
 }
 
-/** Judge score text, optionally identifying its stored question through the transport hint. */
-export async function judge({key, posting, profile, produced, facts, question, fetchImpl = modelFetch}) {
+/** Judge score text; the transport identifies stored verdicts from the complete request meaning. */
+export async function judge({key, posting, profile, produced, facts, fetchImpl = modelFetch}) {
   const ask = async () => {
     const response = await fetchImpl('https://api.anthropic.com/v1/messages', {method: 'POST',
-      headers: {'x-api-key': key, 'anthropic-version': '2023-06-01', 'content-type': 'application/json'}, body: JSON.stringify(buildRequest({posting, profile, produced, facts})), hint: question});
+      headers: {'x-api-key': key, 'anthropic-version': '2023-06-01', 'content-type': 'application/json'}, body: JSON.stringify(buildRequest({posting, profile, produced, facts}))});
     const data = await response.json();
     if (!response.ok) throw new Error(`the judge call failed (${response.status}): ${data?.error?.message || 'unknown'}`);
     return parseVerdict((data.content || []).map(part => part.text || '').join(''));

@@ -10,7 +10,7 @@ import {answersMode, loadTable, questionOf, answerFor, refusal, recordCandidate,
 import {FAILURES, message, startAiProxy} from '../lib/ai-proxy.mjs';
 import {fresh, keep, requestKey} from '../lib/ai-meter.mjs';
 import {modelFetch} from '../lib/model.mjs';
-import {judge} from '../lib/factjudge.mjs';
+import {buildRequest, judge} from '../lib/factjudge.mjs';
 
 const golden = JSON.parse(fs.readFileSync(new URL('../fixtures/golden/truth.json', import.meta.url)));
 const company = JSON.parse(fs.readFileSync(new URL('../fixtures/golden/sources.json', import.meta.url)))[0].company;
@@ -18,6 +18,8 @@ const stored = message('{"score":82}'), live = message('{"score":61}');
 const score = (item = golden[0], extra = '') => ({model: 'test', messages: [{role: 'user', content: `Title: ${item.title}\nCompany: ${item.company ?? company}\nLocation: ${item.location}\nPosting:\n${extra || item.description}`} ]});
 const init = body => ({method: 'POST', headers: {'content-type': 'application/json', 'x-jp-action': 'score'}, body: JSON.stringify(body)});
 const keyed = {operation: 'app.score', id: '3001'};
+const factBody = (produced = 'Text') => buildRequest({posting: {...golden[0], company}, profile: 'Synthetic', produced});
+const factKey = produced => questionOf({body: factBody(produced)}, {});
 const feedPosting = {company: 'Acme', location: 'Zurich', title: 'Site Reliability Engineer'};
 const feedId = `feed/${createHash('sha256').update(JSON.stringify({company: 'Acme', location: 'Zurich', title: 'Site Reliability Engineer'})).digest('hex')}`;
 const scoreReason = 'app.score: request must carry exactly one posting identity matching at most one golden row';
@@ -78,7 +80,7 @@ test('score identity uses exact posting triples, not wording, model, schemas or 
   }
   const a = score(), b = score(golden[1]);
   assert.match(questionOf({headers: {'x-jp-action': 'score'}, body: {...a, messages: [...a.messages, ...b.messages]}}).unkeyable, /app.score/);
-  assert.deepEqual(questionOf({body: a, hint: {operation: 'judge.facts', id: '3001/first'}}), {operation: 'judge.facts', id: '3001/first'});
+  assert.deepEqual(questionOf({body: a, headers: {'x-jp-action': 'score'}, hint: {operation: 'judge.facts', id: '3001/first'}}), keyed, 'hints cannot override the request meaning');
   assert.deepEqual(questionOf({headers: {'x-jp-action': 'decide'}, body: a}), {unkeyable: 'decide: missing recognised system prefix'});
 });
 
@@ -276,59 +278,60 @@ test('record modelFetch replays a warm unkeyable answer without paying or record
   assert.ok(!fs.existsSync(path.join(dir, 'ai-answers-candidates.json')));
 });
 
-test('modelFetch hints replay before engine selection and refuse before API, broker or CLI', async t => {
-  const hint = {operation: 'judge.facts', id: '3001/first'};
-  const {env} = fixture(t, {'judge.facts': {[hint.id]: {reply: stored}}});
+test('modelFetch semantic judge questions replay before engine selection and refuse before API, broker or CLI', async t => {
+  const question = factKey();
+  const {env} = fixture(t, {'judge.facts': {[question.id]: {reply: stored}}});
   const up = await upstream(t); let engines = 0, executions = 0;
   const options = {env: {...env, E2E_AI_ANSWERS: 'backbone'}, engine: () => { engines++; return 'cli'; }, exec: async () => { executions++; throw new Error('must not execute'); }};
-  assert.deepEqual(await (await modelFetch(up.url, {...init({}), hint}, options)).json(), stored);
-  await assert.rejects(modelFetch(up.url, {...init({}), hint: {...hint, id: 'missing'}}, options), {code: 'E2E_AI_ANSWER_MISSING'});
-  await assert.rejects(modelFetch(up.url, {...init({}), hint: {...hint, id: 'missing'}}, {...options, engine: () => 'api', env: {...options.env, CI: 'true', E2E_AI_PROVIDER: 'codex'}}), /judge.facts\/missing/);
+  assert.deepEqual(await (await modelFetch(up.url, init(factBody()), options)).json(), stored);
+  await assert.rejects(modelFetch(up.url, init(factBody('missing')), options), {code: 'E2E_AI_ANSWER_MISSING'});
+  await assert.rejects(modelFetch(up.url, init(factBody('missing')), {...options, engine: () => 'api', env: {...options.env, CI: 'true', E2E_AI_PROVIDER: 'codex'}}), /judge.facts\/default\//);
   assert.equal(engines, 0); assert.equal(executions, 0); assert.equal(up.calls(), 0); assert.equal(refusedQuestions(options.env).length, 2);
 });
 
 test('modelFetch off and record misses reach localhost API; record also captures CLI replies', async t => {
-  const {env, dir} = fixture(t, {}), up = await upstream(t), hint = {operation: 'judge.facts', id: '3001/first'};
+  const {env, dir} = fixture(t, {}), up = await upstream(t);
   for (const mode of ['off', 'record']) {
-    const response = await modelFetch(`${up.url}/v1/messages`, {...init({}), hint}, {engine: () => 'api', env: {...env, E2E_AI_ANSWERS: mode, E2E_AI_CANDIDATES: dir}});
+    const response = await modelFetch(`${up.url}/v1/messages`, init(factBody()), {engine: () => 'api', env: {...env, E2E_AI_ANSWERS: mode, E2E_AI_CANDIDATES: dir}});
     assert.deepEqual(await response.json(), live);
   }
   assert.equal(up.calls(), 2);
-  const cliHint = {...hint, id: '3001/second'};
-  const response = await modelFetch(up.url, {...init({model: 'test', messages: []}), hint: cliHint}, {engine: () => 'cli', exec: async () => ({code: 0, stdout: '{"result":"cli answer"}'}), env: {...env, E2E_AI_ANSWERS: 'record'}});
-  assert.deepEqual(answerFor(cliHint, loadTable(path.join(dir, 'ai-answers-candidates.json'))), {reply: await response.json()});
+  const cliQuestion = factKey('second');
+  const response = await modelFetch(up.url, init(factBody('second')), {engine: () => 'cli', exec: async () => ({code: 0, stdout: '{"result":"cli answer"}'}), env: {...env, E2E_AI_ANSWERS: 'record'}});
+  assert.deepEqual(answerFor(cliQuestion, loadTable(path.join(dir, 'ai-answers-candidates.json'))), {reply: await response.json()});
 });
 
-test('factjudge passes its explicit question as the transport hint', async () => {
-  const question = {operation: 'judge.facts', id: '3001/second'};
+test('factjudge sends the complete semantic request without a round hint', async () => {
   const verdict = {grounded: true, contradicts_posting: false, invents_facts: false, useful: true, why: 'Grounded.'};
-  let hint;
-  assert.deepEqual(await judge({key: '', posting: golden[0], profile: 'Synthetic', produced: 'Text', question, fetchImpl: async (_url, options) => { hint = options.hint; return new Response(JSON.stringify(message(JSON.stringify(verdict)))); }}), verdict);
-  assert.deepEqual(hint, question);
+  let request;
+  assert.deepEqual(await judge({key: '', posting: {...golden[0], company}, profile: 'Synthetic', produced: 'Text', fetchImpl: async (_url, options) => { request = options; return new Response(JSON.stringify(message(JSON.stringify(verdict)))); }}), verdict);
+  assert.deepEqual(JSON.parse(request.body), factBody());
+  assert.equal(request.hint, undefined);
 });
 
 for (const mode of ['off', 'backbone', 'record']) test(`modelFetch table hit in ${mode} bypasses engine selection`, async t => {
-  const hint = {operation: 'judge.facts', id: '3001/first'};
-  const {env} = fixture(t, {'judge.facts': {[hint.id]: {reply: stored}}});
-  const response = await fresh(() => modelFetch('http://127.0.0.1:1/v1/messages', {...init({}), hint}, {env: {...env, E2E_AI_ANSWERS: mode}, engine: () => { throw new Error('must not choose an engine'); }}));
+  const question = factKey();
+  const {env} = fixture(t, {'judge.facts': {[question.id]: {reply: stored}}});
+  const response = await fresh(() => modelFetch('http://127.0.0.1:1/v1/messages', init(factBody()), {env: {...env, E2E_AI_ANSWERS: mode}, engine: () => { throw new Error('must not choose an engine'); }}));
   assert.deepEqual(await response.json(), stored);
 });
 
 for (const mode of ['off', 'backbone', 'record']) test(`photographer judge in ${mode} never replays the default persona's verdict`, async t => {
-  const hint = {operation: 'judge.facts', id: '3001/second'};
-  const {env, dir} = fixture(t, {'judge.facts': {[hint.id]: {reply: stored}}}), up = await upstream(t);
+  const question = factKey('second');
+  const {env, dir} = fixture(t, {'judge.facts': {[question.id]: {reply: stored}}}), up = await upstream(t);
   Object.assign(env, {E2E_AI_ANSWERS: mode, E2E_QUALITY_PERSONA: 'photographer'});
-  const ask = () => modelFetch(`${up.url}/v1/messages`, {...init({}), hint}, {env, engine: () => 'api'});
+  const ask = () => modelFetch(`${up.url}/v1/messages`, init(factBody('second')), {env, engine: () => 'api'});
+  const personaKey = questionOf({body: factBody('second')}, env);
   if (mode === 'backbone') {
-    await assert.rejects(ask(), /judge.facts\/photographer\/3001\/second.*has no stored answer/);
+    await assert.rejects(ask(), /judge.facts\/photographer\/[a-f0-9]+.*has no stored answer/);
     assert.equal(up.calls(), 0);
   } else {
     assert.deepEqual(await (await ask()).json(), live);
     assert.equal(up.calls(), 1);
     if (mode === 'record') {
       const table = loadTable(path.join(dir, 'ai-answers-candidates.json'));
-      assert.deepEqual(Object.keys(table.answers['judge.facts']), ['photographer/3001/second']);
-      assert.deepEqual(answerFor({operation: 'judge.facts', id: 'photographer/3001/second'}, table), {reply: live});
+      assert.deepEqual(Object.keys(table.answers['judge.facts']), [personaKey.id]);
+      assert.deepEqual(answerFor(personaKey, table), {reply: live});
     }
   }
 });
@@ -363,26 +366,25 @@ for (const mode of ['off', 'backbone', 'record']) test(`photographer score in ${
 });
 
 test('modelFetch backbone refuses warm hash replays both normally and inside fresh', async t => {
-  const hint = {operation: 'judge.facts', id: '3001/first'};
   const {env, dir} = fixture(t, {}), up = await upstream(t);
-  const request = init({model: 'test', messages: []});
+  const request = init(factBody());
   Object.assign(env, {E2E_AI_ANSWERS: 'backbone', E2E_AI_CACHE: dir, E2E_AI_REPLAY: '1'});
   keep(requestKey('judge claude /v1/messages', Buffer.from(request.body)), {status: 200, contentType: 'application/json', body: Buffer.from(JSON.stringify(stored))}, env);
-  const ask = () => modelFetch(`${up.url}/v1/messages`, {...request, hint}, {env, engine: () => 'api'});
+  const ask = () => modelFetch(`${up.url}/v1/messages`, request, {env, engine: () => 'api'});
   await assert.rejects(ask(), {code: 'E2E_AI_ANSWER_MISSING'});
   await fresh(() => assert.rejects(ask(), {code: 'E2E_AI_ANSWER_MISSING'}), env);
   assert.equal(up.calls(), 0); assert.equal(refusedQuestions(env).length, 2);
 });
 
 test('modelFetch record miss bypasses a warm judge hash cache', async t => {
-  const hint = {operation: 'judge.facts', id: '3001/first'};
+  const question = factKey();
   const {env, dir} = fixture(t, {}), up = await upstream(t);
-  const request = init({model: 'test', messages: []});
+  const request = init(factBody());
   Object.assign(env, {E2E_AI_ANSWERS: 'record', E2E_AI_CACHE: dir, E2E_AI_REPLAY: '1'});
   keep(requestKey('judge claude /v1/messages', Buffer.from(request.body)), {status: 200, contentType: 'application/json', body: Buffer.from(JSON.stringify(stored))}, env);
-  const response = await modelFetch(`${up.url}/v1/messages`, {...request, hint}, {env, engine: () => 'api'});
+  const response = await modelFetch(`${up.url}/v1/messages`, request, {env, engine: () => 'api'});
   assert.deepEqual(await response.json(), live); assert.equal(up.calls(), 1);
-  assert.deepEqual(answerFor(hint, loadTable(path.join(dir, 'ai-answers-candidates.json'))), {reply: live});
+  assert.deepEqual(answerFor(question, loadTable(path.join(dir, 'ai-answers-candidates.json'))), {reply: live});
 });
 
 test('native OpenAI replies without output_text replay as Messages and as a stream', async t => {

@@ -152,7 +152,6 @@ export function questionOf({url, headers, body, hint}, env = process.env, table)
   const system = textOf(data.system ?? data.instructions);
   if (system.startsWith('You are a strict fact-checker for a job-search tool.')) return factQuestion(data, persona);
   if (system.startsWith('You compare one CV with one job posting,')) return cvQuestion(data, persona);
-  if (hint?.operation === 'judge.facts' && typeof hint.id === 'string' && hint.id.trim()) return {operation: hint.operation, id: persona ? `${persona}/${hint.id}` : hint.id};
   if (system.startsWith('You are a strict reviewer of what a job-search tool wrote down for one person.')) return reviewQuestion(data);
   if (action === 'score' || system.startsWith('You rank job postings for one candidate.')) return scoreQuestion(data, persona);
   if (action === 'decide' || system.startsWith('You decide what short pieces of content mean')) return decideQuestion(data, persona);

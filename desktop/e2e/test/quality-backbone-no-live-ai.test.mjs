@@ -116,10 +116,17 @@ for (const operation of ['judge.facts', 'judge.cv-match']) test(`qualityai repla
     assert.deepEqual(await (await modelFetch(`${h.target}/v1/messages`, init, h.options)).json(), expected);
     const response = await h.localFetch(`${h.proxy.url}/v1/messages`, init);
     assert.equal(response.status, 200); assert.deepEqual(await response.json(), expected);
-    const changed = structuredClone(ask.body);
-    changed.messages[0].content += '\nA different candidate or claim.';
-    assert.notEqual(questionOf({body: changed}, h.env, table).id, id, 'changed judge inputs cannot borrow a verdict');
-    assert.throws(() => storedAnswer({body: changed}, h.env), {code: 'E2E_AI_ANSWER_MISSING'});
+    const markers = operation === 'judge.facts'
+      ? ['\n\nEXTRACTED FACTS (stage 1)\n', '\n\nCANDIDATE\n', '\n\nTEXT THE TOOL WROTE\n', '\n\nJudge the text.']
+      : ['\n</cv>', '\n</profile>', '\n</posting>'];
+    for (const marker of markers) {
+      const changed = structuredClone(ask.body);
+      changed.messages[0].content = changed.messages[0].content.replace(marker, ` A different fact or claim.${marker}`);
+      const other = questionOf({body: changed}, h.env, table);
+      assert.equal(other.operation, operation, 'changed inputs retain valid request structure');
+      assert.ok(other.id && other.id !== id, 'each changed judge input needs its own recorded verdict');
+      assert.throws(() => storedAnswer({body: changed}, h.env), {code: 'E2E_AI_ANSWER_MISSING'});
+    }
     const hinted = {...init, hint: {operation: 'judge.facts', id: '3001/first'}};
     assert.deepEqual(questionOf(hinted, h.env, table), {operation, id}, 'a hint cannot override the actual judge inputs');
   }

@@ -179,13 +179,19 @@ export function stepLists({suites, pullRequest = false, pointedElse = [], quotin
   return steps;
 }
 
+// Decode a literal step name or the static prefix of a runtime template without changing the extent parser.
+function stepCallName(quote, text) {
+  const literal = quote !== '`' || !text.includes('${');
+  const name = (literal ? text : text.split('${')[0]).replace(/\\(.)/g, '$1');
+  return literal ? {name} : {name: null, prefix: name};
+}
+
 // The step that quotes each removed UI text (PR 2 of the PR-checks plan): in a suite file, the `ctx.run('<name>', ...)` call whose text holds the quote. A quote outside
 // any step with a literal name (a helper, a lib file, a `${}` name) → the whole suite. -> {suite: {steps: [names], whole: bool}}
 export function stepCalls(text) {
   const calls = [];
   const re = /\bctx\.run\(\s*(['"`])((?:\\.|(?!\1)[^\\])*)\1/g;
   for (let m; (m = re.exec(text));) {
-    const literal = m[1] !== '`' || !m[2].includes('${');
     let depth = 0, i = m.index + m[0].indexOf('('), quote = '', end = text.length;
     for (; i < text.length; i++) {
       const c = text[i];
@@ -196,7 +202,7 @@ export function stepCalls(text) {
       if (c === '(') depth++;
       else if (c === ')' && --depth === 0) { end = i; break; }
     }
-    calls.push({name: literal ? m[2].replace(/\\(.)/g, '$1') : null, ...(literal ? {} : {prefix: m[2].split('${')[0].replace(/\\(.)/g, '$1')}), start: m.index, end});
+    calls.push({...stepCallName(m[1], m[2]), start: m.index, end});
   }
   return calls;
 }

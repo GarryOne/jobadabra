@@ -26,13 +26,11 @@ DEST = ROOT / 'desktop/e2e/fixtures/golden/ai-format-python.json'
 DEPENDENCIES = {}
 IMPORTS = {}
 
-
 def read(file):
     """Read an explicitly named repository fixture/source and record its fingerprint."""
     data = (ROOT / file).read_bytes()
     DEPENDENCIES[file] = hashlib.sha256(data).hexdigest()
     return data.decode()
-
 
 def safe_import(name, globals=None, locals=None, fromlist=(), level=0):
     """Resolve only explicitly injected dependencies; never invoke a runtime import."""
@@ -43,7 +41,6 @@ def safe_import(name, globals=None, locals=None, fromlist=(), level=0):
     if fromlist and all(key in IMPORTS for key in fromlist):
         return NS(**{key: IMPORTS[key] for key in fromlist})
     raise RuntimeError(f'Offline capture forbids import {name} {fromlist}')
-
 
 def load(file, names, **bindings):
     """Execute intact, explicitly selected AST definitions with inert dependencies."""
@@ -67,7 +64,6 @@ def load(file, names, **bindings):
     exec(compile(ast.Module(body=selected, type_ignores=[]), file, 'exec'), namespace)
     return NS(**{name: namespace[name] for name in names})
 
-
 def locate(file, marker, *, after=None):
     """Locate a live sender/parser marker without freezing a stale line number."""
     started = after is None
@@ -76,7 +72,6 @@ def locate(file, marker, *, after=None):
         if started and marker in line:
             return f'{file}:{number}'
     raise RuntimeError(f'{file}: missing {marker}')
-
 
 class Client:
     """One fixture response, with the exact Messages body saved before parsing."""
@@ -93,6 +88,32 @@ class Client:
         self.request = copy.deepcopy(body)
         return NS(content=[NS(type='text', text=json.dumps(self.answer))], stop_reason='end_turn',
                   usage=NS(input_tokens=0, output_tokens=0, billing='subscription'))
+
+
+def _capture_weekly(models, engine, keep):
+    """Capture the weekly sender with empty fixture statistics, stopping before any reply is parsed."""
+    learning = load('src/ai/learning.py', ['ISSUE_SCHEMA', 'RULES'])
+    writing = load('src/ai/writing_rules.py', ['RULES'])
+    doors = load('src/suggestions.py', ['DOORS', 'DOOR_LABEL_MAX'])
+    weekly_text = load('src/ai/insights_text.py', ['HONEST', 'WEEKLY_SCHEMA', 'WEEKLY_SYSTEM'], learning=learning,
+                       WRITING_RULES=writing.RULES, DOORS=doors.DOORS, DOOR_LABEL_MAX=doors.DOOR_LABEL_MAX)
+    client = Client({})
+    def capture_weekly(**body):
+        client.create(**body)
+        raise RuntimeError('offline weekly captured')
+    data = dict(market={'total': 0}, applications={'total': 0}, interviews={}, week={}, learning={'evidence': []})
+    weekly = load('src/ai/insights.py', ['weekly'], DEFAULT_MODEL=models.MAIN_MODEL, MAX_TOKENS=8000, MIN_GROUP=10,
+                  WEEKLY_SYSTEM=weekly_text.WEEKLY_SYSTEM, WEEKLY_SCHEMA=weekly_text.WEEKLY_SCHEMA, engine=engine,
+                  profile_of=lambda stores: 'Fictional SRE in Zurich.', market_stats=lambda *a: data['market'],
+                  data_of=NS(application_stats=lambda *a: data['applications'], interview_stats=lambda *a: {}, week_stats=lambda *a: {}),
+                  learning=NS(evidence=lambda *a: data['learning']))
+    try:
+        weekly.weekly(None, NS(), client=NS(messages=NS(create=capture_weekly)))
+    except RuntimeError as error:
+        if str(error) != 'offline weekly captured':
+            raise
+    keep('insight', client, {'stats': data}, 'src/ai/insights.py', 'response = client.messages.create(',
+         'src/ai/insights.py', "report = json.loads", source_after='def weekly(')
 
 
 def capture_engine(prompts=False):
@@ -347,6 +368,8 @@ def capture_engine(prompts=False):
             reading.read([dict(url='fixture-posting', title='Fixture title', location='Country', description='Fixture posting text')],
                          place_search, client=client)
             entries.append(dict(kind='app.placeReading', action='place_reading', request=client.request))
+    if not prompts:
+        _capture_weekly(models, engine, keep)
     return entries
 
 

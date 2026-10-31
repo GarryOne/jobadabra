@@ -101,6 +101,9 @@
     },
     "visitsauto": {
       "aiMissesMax": 0
+    },
+    "activity": {
+      "aiMissesMax": 0
     }
   }
 }

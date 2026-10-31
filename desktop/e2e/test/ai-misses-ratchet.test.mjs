@@ -8,15 +8,14 @@ import {test} from 'node:test';
 import {entryProblems, lanesProblems} from '../../../tools/lanes-check.mjs';
 import {aiMissesVerdict, checkAiMisses} from '../lib/no-real-ai.mjs';
 
-const ZERO_SUITES = ['stores', 'interviews', 'wander', 'interactions', 'activityfailures', 'jobs', 'strategy', 'employers', 'settings', 'applyflows', 'apply', 'recorded', 'wizard', 'updates', 'focus', 'cardstates', 'focusdismiss', 'visitread', 'calendar', 'failuresnotion', 'failureschannels', 'storemove', 'quality', 'foryou', 'pool', 'visitsauto'];
-// Why (30 Oct 2026, bb 1/9): a suite with no ceiling is not checked at all, so a new suite could ask a live model unseen. Each one listed here has a reason and a PR that removes it; the list only shrinks.
+const ZERO_SUITES = ['activity', 'stores', 'interviews', 'wander', 'interactions', 'activityfailures', 'jobs', 'strategy', 'employers', 'settings', 'applyflows', 'apply', 'recorded', 'wizard', 'updates', 'focus', 'cardstates', 'focusdismiss', 'visitread', 'calendar', 'failuresnotion', 'failureschannels', 'storemove', 'quality', 'foryou', 'pool', 'visitsauto'];
+// Why (31 Oct 2026, owner saved gates): activity now has reviewed replies and a zero-miss ceiling; a suite with no ceiling is not checked at all, so a new suite could ask a live model unseen. Each one listed here has a reason and a PR that removes it; the list only shrinks.
 const UNCHECKED = {
-  activity: 'bb 3/9 left it out: its weekly task asks the unstored `insight` kind (src/ai/insights.py:weekly), so it needs one recorded answer first',
   explore: 'by hand only: it spends the owner\'s AI credit on purpose (suites/explore.mjs)',
   personas: 'bb 4/9: hands the CI key to the engine (suites/personas.mjs)',
 };
 
-test('the real registry parses and protects all 26 suites that reached zero misses', () => {
+test('the real registry parses and protects all 27 suites that reached zero misses', () => {
   const text = fs.readFileSync(new URL('../lanes.json', import.meta.url), 'utf8');
   assert.deepEqual(lanesProblems(null, text), []);
   const {suites} = JSON.parse(text);
@@ -124,4 +123,14 @@ test('the existing suite finalizer fails after teardown and keeps the AI failure
   assert.equal(failures[0].message, 'AI asks with no stored answer: 1 (allowed 0); first ask key: late');
   const steps = JSON.parse(fs.readFileSync(path.join(dir, 'steps.json'), 'utf8'));
   assert.equal(steps.results[0].status, 'failed');
+});
+
+test('the post-close guard prints the measured zero required by saved-gate CI proof', async t => {
+  const dir = artifacts(t), lines = [];
+  t.mock.method(console, 'log', line => lines.push(line));
+  const {writeFinalFailures} = await import('../lib/suite-main.mjs');
+  const ctx = {ARTIFACTS: dir, runner: {results: []}};
+  assert.equal(writeFinalFailures('activity', ctx), false);
+  assert.ok(lines.includes('AI asks with no stored answer: 0 (allowed 0)'), lines.join('\n'));
+  assert.deepEqual(ctx.runner.results, []);
 });

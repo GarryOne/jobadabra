@@ -1,5 +1,6 @@
 // Bridge canonical background state, the actual extension and its owned browser; every submit command is a persisted one-shot reservation.
 import {randomUUID, createHash} from 'node:crypto';
+import {backgroundWaitNow, onBackgroundWaitMove} from './background-apply-clock.js';
 import {createBackgroundApplyStore} from './background-apply-store.js';
 import {createBackgroundBrowser} from './background-browser.js';
 import {createTriageReader} from './triage-reader.js';
@@ -34,19 +35,23 @@ export function backgroundApplyFor(storage) {
 }
 /** Create the controller with injectable store/browser boundaries for deterministic fictional browser proofs; no alternative filler exists here. */
 export function createBackgroundApplyController(storage, {store = null, browser = null, terminals = terminalsDefault,
-  config = () => applyOf(storage.settings()), now = Date.now, uuid = randomUUID, stop = stopAsked, notify = (...args) => notifyDefault(...args),   // Why (2026-10-28, bot review #2324): main.js sets the notifier after the handlers register; read the live binding at each call
+  config = () => applyOf(storage.settings()), now = backgroundWaitNow, uuid = randomUUID, stop = stopAsked, notify = (...args) => notifyDefault(...args),   // Why (2026-10-28, bot review #2324): main.js sets the notifier after the handlers register; read the live binding at each call
  log = appLog, reader = createTriageReader(), started = APP_STARTED,   // `started`: when this run of the app began; a job held before it was cut off by a quit
   port = Number(process.env.JOB_PILOTTO_PORT || 47111), token = () => extensionToken(storage)} = {}) {
-  store ||= createBackgroundApplyStore(storage, {stopped: stop});
+  store ||= createBackgroundApplyStore(storage, {stopped: stop, now});
   // Why (2026-10-28, CI #2324): the controller is created when the apply handlers register, before any background job exists; the browser reads storage.path, so it is built on first use.
   const browserOf = () => (browser ||= createBackgroundBrowser(storage));
   const judgments = new Map();
   let owner = '', pending = Promise.resolve();
   const serial = work => { const value = pending.then(work); pending = value.catch(() => {}); return value; };
-  const cache = (item, state) => {
+  onBackgroundWaitMove(() => serial(async () => {
+    if (!owner) ({owner} = await browserOf().start({port, token: token()}));
+    await poll(owner);
+  }));
+  const cache = (item, state, decision = null) => {
     const record = terminals.record(item.id);
     if (!record || !state) return;
-    record.background = {mode: state.mode, state: state.state, reason: state.reason || '', readyAt: state.readyAt || 0,
+    record.background = {...(process.env.JOB_PILOTTO_E2E === '1' ? {waitClockOffset: now() - Date.now()} : {}), waitDecision: decision || record.background?.waitDecision || null, mode: state.mode, state: state.state, reason: state.reason || '', readyAt: state.readyAt || 0,
       dueAt: state.mode === 'auto' && state.readyAt ? state.readyAt + (config().auto?.waitMin ?? AUTO_DEFAULTS.waitMin) * 60000 : 0, manualOverride: !!state.manualOverride};
     const words = state.state === 'ready_for_review' ? 'Form filled — review the same background form and Submit' : state.state === 'waiting_to_submit' ? 'Filled — waiting before automatic submission; Stop is available' : state.state === 'submitting' ? 'Submission attempted — waiting for the site receipt' : HANDOFF.has(state.state) ? NOTICES[state.reason] || 'This application needs you. Review and submit the same form yourself.' : 'Filling in the background';
     terminals.report(item.id, {event: 'note', message: words});
@@ -105,14 +110,16 @@ export function createBackgroundApplyController(storage, {store = null, browser 
       const current = config();
       if (!state.manualOverride && (current.mode !== state.mode || current.chosenAt !== state.chosenAt)) state = await markManual(item, 'mode_changed');
       if (state.ok === false) continue;   // a handoff that did not save leaves the job as it was; never go on with an error as its state
-      if (HANDOFF.has(state.state)) { handoffs.push({session: item.id, reason: state.reason, reveal: state.reason !== 'captcha_preflight'}); cache(item, state); continue; }   // words-ok: our own hand-off reason id / user-facing word, not page knowledge
+      const dueAt = state.readyAt ? state.readyAt + (current.auto?.waitMin ?? AUTO_DEFAULTS.waitMin) * 60000 : 0;
+      const decision = state.mode === 'auto' && dueAt && (state.state === 'waiting_to_submit' || HANDOFF.has(state.state)) ? {at: now(), dueAt, state: state.state, reason: HANDOFF.has(state.state) ? state.reason : now() >= dueAt ? 'due' : 'waiting'} : null;
+      if (HANDOFF.has(state.state)) { handoffs.push({session: item.id, reason: state.reason, reveal: state.reason !== 'captcha_preflight'}); cache(item, state, decision); continue; }   // words-ok: our own hand-off reason id / user-facing word, not page knowledge
       if (state.state === 'submitting') continue; // a reserved attempt is never reissued, even after a lost reply/restart
-      if (state.state === 'waiting_to_submit' && now() >= state.readyAt + (current.auto?.waitMin ?? AUTO_DEFAULTS.waitMin) * 60000) checks.push({session: item.id});
+      if (state.state === 'waiting_to_submit' && now() >= dueAt) checks.push({session: item.id});
       if (['queued', 'preflight'].includes(state.state) && !filling && !reader.busy()) {
         const claim = await store.claim(item.url, item.id, owner);
         if (claim.ok) { filling = true; state = claim.state; jobs.push({session: item.id, url: sessionTabUrl(item.url, item.id), mode: state.mode}); }
       }
-      cache(item, state);
+      cache(item, state, decision);
     }
     // Why (2026-10-30, owner: triage read, PR C2a): a form read and an application never share the hidden browser: a read waits for open applications, and an application waits (at most the read's timeout) for a read that is queued or out (Gitar, #2602).
     jobs.push(...readCommands({filling, open}));
@@ -213,7 +220,8 @@ export function createBackgroundApplyController(storage, {store = null, browser 
       }
       if (HANDOFF.has(state.state)) return {ok: true, manual: true, reason: state.reason};
       const permit = await store.reserve(item.url, item.id, owner, proof, config());
-      cache(item, await store.read(item.url));
+      const reserved = await store.read(item.url);
+      cache(item, reserved, {at: now(), dueAt: reserved.readyAt + (config().auto?.waitMin ?? AUTO_DEFAULTS.waitMin) * 60000, state: reserved.state, reason: permit.submit ? 'authorized' : permit.reason});
       if (permit.submit) log('apply', 'one-shot automatic submit authorized', {session: item.id, attempt: permit.attempt, signature: judgment.signature});
       return {ok: true, ...permit, manual: HANDOFF.has(permit.state)};
     });

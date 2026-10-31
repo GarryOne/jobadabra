@@ -10,7 +10,9 @@ import {allFactsSavedOf} from './triage-facts.js';
 
 let runner = null, watcher = () => {}, polling = false;
 const owned = () => (runner ||= createBackgroundSession({chrome, parseMark}));
-globalThis.__jobPilottoBackgroundSessions = {reveal: session => owned().reveal(session), closeSession: session => owned().closeSession(session)};
+globalThis.__jobPilottoBackgroundSessions = {reveal: session => owned().reveal(session), closeSession: session => owned().closeSession(session),
+  // The owned browser can request the alarm's ordinary poll after its app's e2e clock moved; the poll still checks ownership and every submit guard.
+  poll: async () => { await pollBackgroundApply(await settings()); return true; }};
 const request = async (context, payload) => api(await settings(), '/extension/background-apply', {method: 'POST', body: JSON.stringify({owner: context.owner, session: context.session, ...payload})});
 const script = (tabId, frameId, func, args = []) => chrome.scripting.executeScript({target: {tabId, frameIds: [frameId ?? 0]}, world: 'MAIN', func, args}).then(rows => rows?.[0]?.result);
 

@@ -115,3 +115,13 @@ test('a read never starts the speculative early answer call before its form judg
   assert.deepEqual(state.posted, []);
   assert.deepEqual(state.files, []);
 });
+
+test('the owned browser poll command uses the same ownership-checked poll as the report alarm', async t => {
+  const state = install(t);
+  await import('../../extension/background-apply.js');
+  assert.equal(await globalThis.__jobPilottoBackgroundSessions.poll(), true);
+  assert.deepEqual(state.posted.map(call => call.body.action), ['poll']);
+  delete state.local.backgroundOwner;
+  await globalThis.__jobPilottoBackgroundSessions.poll();
+  assert.deepEqual(state.posted.map(call => call.body.action), ['poll'], 'an ordinary browser cannot poll background applications');
+});

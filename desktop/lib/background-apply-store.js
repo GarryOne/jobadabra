@@ -3,6 +3,7 @@ import {call as engineCall} from './store/engine.js';
 import {KIT_SECTION, kitOf} from './store/kit-section.js';
 import {randomUUID} from 'node:crypto';
 import {canStart, STARTABLE_STAGES} from './apply-eligibility.js';
+import {backgroundWaitNow} from './background-apply-clock.js';
 import {AUTO_DEFAULTS} from '../renderer/apply-settings-model.js';
 
 export const BACKGROUND_SECTION = 'Background Apply';
@@ -12,7 +13,7 @@ const BEFORE_PRESS = new Set(['queued', 'preflight', 'filling', 'ready_for_revie
 const readState = text => { try { const state = JSON.parse(text || '{}'); return state?.version === 1 ? state : null; } catch { return null; } };
 
 /** Build a serialized controller over Applications sections/events; failed store writes reject before any launch or submit is authorized. */
-export function createBackgroundApplyStore(storage, {call = engineCall, now = Date.now, uuid = randomUUID, stopped = () => false} = {}) {
+export function createBackgroundApplyStore(storage, {call = engineCall, now = backgroundWaitNow, uuid = randomUUID, stopped = () => false} = {}) {
   let tail = Promise.resolve();
   const serial = work => { const result = tail.then(work); tail = result.catch(() => {}); return result; };
   const ask = (entity, method, args = {}) => call(storage, entity, method, args);

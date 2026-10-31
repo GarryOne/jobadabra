@@ -33,7 +33,7 @@ export function liveCard(background = {}, facts = null, {note = '', at = clock, 
   if (background.state === 'queued') return waitingCard(background, linkOff);
   // Why (2026-10-28, owner: "Finish the 'Full automation' flow"; project safety rule): Full automation waits before it presses Submit; the person sees the clock and can Stop. Stop keeps the filled form for them (a hand-off), it never discards it.
   if (background.state === 'waiting_to_submit') {
-    const left = countdownLabel(background.dueAt, now());
+    const left = countdownLabel(background.dueAt, now() + (background.waitClockOffset || 0));
     return {kind: 'countdown', live: true, title: left ? `Submitting in ${left}` : 'Submitting now…', meta: '· every check passed', pill: backgroundStatus({background}), tone: 'info', frame: '', stop: true,
       note: 'Nothing is sent until the timer ends. Stop keeps the filled form here for you to review and submit yourself.', input: false, filling: '', submit: null, marks: false};
   }

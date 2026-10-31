@@ -118,3 +118,37 @@ test('the triage account stand-in retains bot-check and clean-form answers', asy
   const clean = JSON.parse(await judge(ask('email · Email · required · empty')));
   assert.deepEqual([clean.login_wall, clean.account_to_create, clean.bot_check], [false, false, false]);
 });
+
+test('the app clock bridge moves the already loaded ESM clock through the Node inspector', async () => {
+  const {Session} = await import('node:inspector');
+  const {moveAppWaitClock} = await import('../lib/apply-hold.mjs');
+  const module = new URL('../../lib/background-apply-clock.js', import.meta.url).href;
+  const clock = await import(module), session = new Session(), previous = process.env.JOB_PILOTTO_E2E;
+  process.env.JOB_PILOTTO_E2E = '1';
+  session.connect();
+  try {
+    const dueAt = clock.backgroundWaitNow() + 60000;
+    const reply = await new Promise((resolve, reject) => session.post('Runtime.evaluate', {
+      expression: `(${moveAppWaitClock.toString()})(null, ${JSON.stringify({module, dueAt})})`, awaitPromise: true, returnByValue: true,
+    }, (error, result) => error ? reject(error) : resolve(result)));
+    assert.equal(reply.exceptionDetails, undefined);
+    assert.ok(reply.result.value > dueAt);
+    assert.ok(clock.backgroundWaitNow() >= reply.result.value, 'the inspector moved the app clock, not another module instance');
+  } finally {
+    session.disconnect();
+    if (previous === undefined) delete process.env.JOB_PILOTTO_E2E; else process.env.JOB_PILOTTO_E2E = previous;
+  }
+});
+
+test('the hidden worker command awaits its poll promise before reading the reply', async () => {
+  let packet;
+  class Socket {
+    constructor() { queueMicrotask(() => this.onopen()); }
+    send(text) { packet = JSON.parse(text); queueMicrotask(() => this.onmessage({data: JSON.stringify({result: {result: {value: true}}})})); }
+    close() {}
+  }
+  const begin = source.indexOf('export const evaluateOn ='), end = source.indexOf('/** The debugging port', begin);
+  const evaluateOn = vm.runInNewContext(source.slice(begin, end).replace('export const', 'const') + '; evaluateOn;', {WebSocket: Socket, setTimeout, clearTimeout});
+  assert.equal(await evaluateOn('ws://fixture', 'globalThis.__jobPilottoBackgroundSessions?.poll()'), true);
+  assert.equal(packet.params.awaitPromise, true);
+});

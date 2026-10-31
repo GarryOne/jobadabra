@@ -104,7 +104,7 @@ export async function openSessionCard(page, form) {
 /** One Runtime.evaluate over the debugging socket `socketUrl`: resolves its value, or null when the page never answers or cannot be read (4 s). Never throws. */
 export const evaluateOn = (socketUrl, expression) => new Promise(done => {
   const socket = new WebSocket(socketUrl), end = value => { clearTimeout(timer); try { socket.close(); } catch { /* closed */ } done(value); }, timer = setTimeout(() => end(null), 4000);
-  socket.onopen = () => socket.send(JSON.stringify({id: 1, method: 'Runtime.evaluate', params: {returnByValue: true, expression}}));
+  socket.onopen = () => socket.send(JSON.stringify({id: 1, method: 'Runtime.evaluate', params: {returnByValue: true, awaitPromise: true, expression}}));
   socket.onmessage = event => end(JSON.parse(event.data).result?.result?.value ?? null);
   socket.onerror = () => end(null);
 });

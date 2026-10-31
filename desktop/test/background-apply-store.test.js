@@ -218,3 +218,26 @@ test('a job a quit caught before its press (waiting, ready for review, filling) 
   }
   assert.equal((await restarted.reserve(waiting.job.url, waiting.session, 'owned-browser', ready, config)).submit, false, 'the wait the quit cut off never presses');
 });
+
+
+test('the Full automation clock refuses an offset outside JOB_PILOTTO_E2E', async () => {
+  const {createBackgroundWaitClock} = await import('../lib/background-apply-clock.js');
+  for (const env of [{}, {JOB_PILOTTO_E2E: '0'}, {JOB_PILOTTO_E2E: 'true'}]) {
+    const clock = createBackgroundWaitClock({env, wallNow: () => 1000});
+    assert.throws(() => clock.moveTo(601000), /e2e only/);
+    assert.equal(clock.now(), 1000, 'a refused offset never changes the production clock');
+  }
+});
+
+test('the e2e wait clock advances once, follows wall time and never moves backward', async () => {
+  const {createBackgroundWaitClock} = await import('../lib/background-apply-clock.js');
+  let wall = 1000;
+  const env = {JOB_PILOTTO_E2E: '1'}, clock = createBackgroundWaitClock({env, wallNow: () => wall});
+  assert.equal(clock.moveTo(61000), 61000);
+  wall += 10;
+  assert.equal(clock.now(), 61010);
+  for (const at of [NaN, Infinity, -1]) assert.throws(() => clock.moveTo(at), /forward/);
+  for (const at of [0, 61000]) assert.equal(clock.moveTo(at), 61010);
+  env.JOB_PILOTTO_E2E = '0';
+  assert.equal(clock.now(), wall, 'an offset is ignored without the e2e gate');
+});

@@ -221,3 +221,78 @@ test('an open session whose job record is gone does not stop the poll: the queue
   const polled = await controller.handle({action: 'poll', owner: 'o1'});
   assert.deepEqual(polled.jobs.map(job => job.session), ['new'], 'the removed job is skipped, the queued one starts');
 });
+
+test('one moved clock drives the store reservation and poll; Stop and quit still refuse after due', async () => {
+  const {createBackgroundApplyStore} = await import('../lib/background-apply-store.js');
+  const {createBackgroundWaitClock} = await import('../lib/background-apply-clock.js');
+  for (const handoff of ['', 'stopped', 'app_closed']) {
+    const clock = createBackgroundWaitClock({env: {JOB_PILOTTO_E2E: '1'}, wallNow: () => 1000});
+    const app = {id: 'app', url: 'https://jobs.example.test/clock', stage: 'Kit ready'}, sections = new Map(), events = [], records = new Map();
+    const call = async (_storage, entity, method, args) => {
+      if (entity === 'applications' && method === 'get') return app;
+      if (entity === 'applications' && method === 'section') return sections.get(args.name) || '';
+      if (entity === 'applications' && method === 'set_section') { sections.set(args.name, args.markdown); return; }
+      if (entity === 'events' && method === 'list') return events;
+      if (entity === 'events' && method === 'add') { events.push(args); return; }
+      throw new Error(`unexpected ${entity}.${method}`);
+    };
+    sections.set('📝 Application kit', '```json\n{"eligible":true,"answers":[]}\n```');
+    const config = {mode: 'auto', chosenAt: 'chosen', autoConfirmedAt: 'confirmed', auto: {waitMin: 1}};
+    const store = createBackgroundApplyStore({}, {call, now: clock.now, uuid: () => 'attempt'});
+    const terminals = {list: () => [...records.values()], byUrl: () => null, record: id => records.get(id), report: () => {}, startForm: item => {
+      const record = {...item, startedAt: new Date(1000).toISOString()}; records.set(item.id, record); return record;
+    }};
+    const controller = createBackgroundApplyController({}, {store, now: clock.now, started: 0, config: () => config, uuid: () => 'session1', terminals,
+      browser: {ready: () => true, start: async () => ({owner: 'owner'})}, stop: () => false, reader: {busy: () => false, take: () => null, takeEnded: () => []},
+      port: 1, token: () => 'fictional', notify: () => {}, log: () => {}});
+    await controller.enqueue([app], 'auto');
+    await controller.handle({action: 'poll', owner: 'owner'});
+    const body = {background: {owner: 'owner', session: 'session1'}, sketch: {page: 'same'}};
+    const answer = {answer: 'ready', step: 'final', submitControl: 'Send', confidence: 1, botCheck: false};
+    const readyPayload = async () => ({action: 'ready', owner: 'owner', session: 'session1', ...(await controller.judgment(body, answer)), requiredComplete: true, safe: true, factsOnly: true});
+    assert.equal((await controller.handle(await readyPayload())).reason, 'waiting');
+    const held = records.get('session1').background;
+    assert.equal(held.dueAt, 61000);
+    assert.deepEqual(held.waitDecision, {at: 1000, dueAt: 61000, state: 'waiting_to_submit', reason: 'waiting'});
+    assert.deepEqual((await controller.handle({action: 'poll', owner: 'owner'})).checks, []);
+    if (handoff === 'stopped') await controller.handle({action: 'manual', owner: 'owner', session: 'session1', reason: 'stopped'});
+    if (handoff === 'app_closed') await controller.sweepInterrupted(2000);
+    const at = clock.moveTo(held.dueAt + 1);
+    const poll = await controller.handle({action: 'poll', owner: 'owner'});
+    const decision = records.get('session1').background.waitDecision;
+    assert.equal(decision.at, at, 'the verdict is from the poll after the move');
+    assert.equal(decision.reason, handoff || 'due');
+    assert.equal(decision.state, handoff ? 'needs_user_handoff' : 'waiting_to_submit');
+    assert.deepEqual(poll.checks, handoff ? [] : [{session: 'session1'}]);
+    if (!handoff) {
+      const payload = await readyPayload();
+      assert.equal((await controller.handle(payload)).submit, true, 'the store reads the same advanced clock');
+      assert.equal((await controller.handle(payload)).submit, undefined, 'a consumed proof never presses twice');
+      assert.equal(records.get('session1').background.waitDecision.reason, 'authorized');
+      assert.equal(events.length, 1);
+    } else {
+      assert.equal((await controller.handle(await readyPayload())).submit, undefined);
+      assert.equal(events.length, 0, 'no attempt is reserved after Stop or quit');
+    }
+  }
+});
+
+test('moving the e2e clock after a quit starts the owned scheduler and records its refusal', async () => {
+  const previous = process.env.JOB_PILOTTO_E2E;
+  process.env.JOB_PILOTTO_E2E = '1';
+  try {
+    const {backgroundWaitNow, moveBackgroundWaitClock} = await import('../lib/background-apply-clock.js');
+    const readyAt = backgroundWaitNow(), record = {id: 'clock-quit', url: 'https://jobs.example.test/clock-quit', startedAt: new Date(readyAt - 1000).toISOString(), background: {}};
+    let state = {session: record.id, mode: 'auto', state: 'waiting_to_submit', readyAt}, starts = 0;
+    createBackgroundApplyController({}, {started: readyAt, store: {read: async () => state, interrupted: async () => (state = {...state, state: 'needs_user_handoff', reason: 'app_closed', manualOverride: true})},
+      terminals: {list: () => [record], record: () => record, report: () => {}}, browser: {start: async () => { starts++; return {owner: 'owner'}; }},
+      config: () => ({mode: 'auto', auto: {waitMin: 1}}), token: () => 'fictional', port: 1, notify: () => {}, log: () => {},
+      reader: {takeEnded: () => []}});
+    const moved = await moveBackgroundWaitClock(readyAt + 60001);
+    assert.equal(starts, 1, 'the browser the quit closed is restarted without waiting for an alarm');
+    assert.ok(record.background.waitDecision.at >= moved);
+    assert.deepEqual([record.background.waitDecision.state, record.background.waitDecision.reason], ['needs_user_handoff', 'app_closed']);
+  } finally {
+    if (previous === undefined) delete process.env.JOB_PILOTTO_E2E; else process.env.JOB_PILOTTO_E2E = previous;
+  }
+});

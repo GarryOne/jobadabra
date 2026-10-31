@@ -2,7 +2,8 @@
 // Job: wait on state
 // The end-to-end proof of Full automation's press (spec 2026-10-27-background-apply-execution, step C): the app's hidden browser fills a fictional form and, once the
 // wait has run, presses Submit itself exactly once against the fixture server's fake submit endpoint (never a real site); a Stop in the wait presses nothing. Every wait is on a state.
-import {backgroundStateOf, closeHiddenBrowser, describeHidden, linkRuntime, sessionOf, skipJob, withFormJudge} from './background-proof.mjs';
+import {backgroundOf, backgroundStateOf, closeHiddenBrowser, describeHidden, linkRuntime, sessionOf, skipJob, withFormJudge} from './background-proof.mjs';
+import {advancePastDue, waitOn} from './apply-hold.mjs';
 import {stageOf} from './seed-data.mjs';
 import {appLogLines} from './app-log.mjs';
 
@@ -23,7 +24,7 @@ async function startAuto(ctx, {form, seed, waitMin}) {   // `seed(form)` adds th
 
 
 /**
- * The proof: with Full automation saved (wait 0) the form is filled, the checks pass and the app presses Submit by itself; the fake endpoint sees exactly one POST and the job is Applied.
+ * The proof: with Full automation saved (wait 1, moved test clock) the form is filled, the checks pass and the app presses Submit by itself; the fake endpoint sees exactly one POST and the job is Applied.
  * Then, with a wait of 5 minutes, a Stop in the wait leaves the job with the person and the endpoint sees no POST. `until(what, check, ms)` is the suite's state wait.
  */
 export async function proveAutomatic(ctx, {form, seed, until}) {
@@ -33,7 +34,10 @@ export async function proveAutomatic(ctx, {form, seed, until}) {
   await ctx.relaunch();
   try {
     const posted = forms.posts.length;
-    await startAuto(ctx, {form, seed, waitMin: 0});
+    const seen = {what: 'the automatic job never reached its wait', state: null};
+    await startAuto(ctx, {form, seed, waitMin: 1});
+    await waitOn(ctx, seen, async () => (seen.state = await backgroundOf(ctx.page, form.url)), record => record?.state === 'waiting_to_submit' && record.waitDecision?.reason === 'waiting');
+    await advancePastDue(ctx, form, seen, {state: 'submitting', reason: 'authorized'});
     await until('the job never became Applied after the automatic press', async () => (await stageOf(ctx, form.url)) === 'Applied', 180000)
       .catch(async error => { throw new Error(`${error.message} | ${handedWhy(ctx.profile)} | ${await describeHidden(ctx.profile)} | state: ${await backgroundStateOf(ctx.page, form.url) || 'none'}`); });
     if (forms.posts.length !== posted + 1) throw new Error(`expected the automatic press to post once, the endpoint saw ${forms.posts.length - posted}`);
@@ -50,6 +54,7 @@ export async function proveAutomatic(ctx, {form, seed, until}) {
     if (!id) throw new Error('the waiting application has no session to Stop');
     await ctx.page.evaluate(session => window.pilot.liveStop(session), id);
     await until('the Stop did not hand the application to the person', async () => /manual_submit_required|needs_user_handoff/.test(await backgroundStateOf(ctx.page, second.url) || ''), 60000);
+    await advancePastDue(ctx, second, seen, {state: 'needs_user_handoff', reason: 'stopped'});
     if (forms.posts.length !== beforeStop) throw new Error(`Stop in the wait still let ${forms.posts.length - beforeStop} submit(s) through`);
     await skipJob(ctx.page, second);   // the Stopped job stays handed over and eligible; the next proof's Start would take it
   } finally { await closeHiddenBrowser(ctx.profile); }

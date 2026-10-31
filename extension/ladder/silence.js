@@ -15,27 +15,54 @@ export const SILENT_AFTER_MS = 30000;
 // apiFor(tabId, ...) brackets the call with askStarted(tabId) / askEnded(what it returned); the time with at least one ask of that application out is summed. A tab-less ask (api()) pauses nothing:
 // a miss is today's behaviour.
 // Why (31 Oct 2026, a8; beta 41242762348 apply-2of3, app.log 21:37:37): the fill's OWN awaited reads are waits too. On a starved Chrome pageStill took 12 s and the label read 5 s and 19 s, "dead end: silent"
-// was called 5 s into "filling", and a slow Mac would have handed the person a form still being filled. waiting(tabId, work) (fill-span.js brackets every span of the fill with it) shares the ask's
-// bookkeeping. One continuous pause counts for at most MAX_PAUSE_MS: a read that never answers is still a stall, called MAX_PAUSE_MS + T after the last progress (was T).
-export const MAX_PAUSE_MS = 90000;   // the 90 s a whole fill is given in the e2e (the fill cap): no single wait is slow-Mac work beyond what the whole fill is allowed
-const asks = new Map();   // application -> {count, since, total}
+// was called 5 s into "filling", and a slow Mac would have handed the person a form still being filled. waiting(tabId, work) (fill-span.js brackets every span of the fill with it) is a wait of its
+// own: each one counts for at most MAX_PAUSE_MS (a read that never answers is still a stall, called MAX_PAUSE_MS + T after the last progress, was T), and an ask nested inside it keeps its own
+// uncapped pause (Gitar on the PR: one merged pause let a long outer step cut an ask that was still out). The pause is the union of all of them, so a wait inside a wait counts once.
+export const MAX_PAUSE_MS = 90000;   // the 90 s a whole fill is given in the e2e (the fill cap): no single own step is slow-Mac work beyond what the whole fill is allowed
+const waits = new Map();   // application -> {asks, since, steps: Map(id -> start), next, done: [[start, end]] closed, sorted, merged}
+const waitsOf = app => { let wait = waits.get(app); if (!wait) waits.set(app, wait = {asks: 0, since: 0, steps: new Map(), next: 1, done: []}); return wait; };
+function close(wait, start, end) {   // a closed wait joins the sorted list, overlaps merged
+  const merged = [];
+  for (const [from, to] of [...wait.done, [start, end]].sort((a, b) => a[0] - b[0])) {
+    const last = merged.at(-1);
+    if (last && from <= last[1]) last[1] = Math.max(last[1], to); else merged.push([from, to]);
+  }
+  wait.done = merged;
+}
 export function askStarted(tabId, now = Date.now()) {
   if (tabId == null) return null;
-  const app = appOf(tabId), ask = asks.get(app) || {count: 0, since: 0, total: 0};
-  if (ask.count++ === 0) ask.since = now;
-  asks.set(app, ask);
+  const app = appOf(tabId), wait = waitsOf(app);
+  if (wait.asks++ === 0) wait.since = now;
   return app;   // askEnded gets it back: the tab may be given its job while the ask is out
 }
 export function askEnded(app, now = Date.now()) {
-  const ask = asks.get(app);
-  if (ask && ask.count > 0 && --ask.count === 0) ask.total += Math.min(now - ask.since, MAX_PAUSE_MS);
+  const wait = waits.get(app);
+  if (wait && wait.asks > 0 && --wait.asks === 0) close(wait, wait.since, now);
 }
-export const askTime = (app, now = Date.now()) => { const ask = asks.get(app); return ask ? ask.total + (ask.count ? Math.min(now - ask.since, MAX_PAUSE_MS) : 0) : 0; };
+/** The time this application has spent waiting up to `now`: asks to the app and the fill's own steps, each counted once. */
+export function askTime(app, now = Date.now()) {
+  const wait = waits.get(app);
+  if (!wait) return 0;
+  const spans = [...wait.done];
+  if (wait.asks > 0) spans.push([wait.since, now]);
+  for (const start of wait.steps.values()) spans.push([start, Math.min(now, start + MAX_PAUSE_MS)]);
+  let total = 0, reached = -Infinity;
+  for (const [from, to] of spans.sort((a, b) => a[0] - b[0])) {
+    const end = Math.min(to, now);
+    if (end > Math.max(from, reached)) total += end - Math.max(from, reached);
+    reached = Math.max(reached, end);
+  }
+  return total;
+}
 /** Run one awaited step of a tab's fill as a wait: the application's silent clock stands still while it runs (clock: for the tests' fake time). A tab-less step pauses nothing. */
 export async function waiting(tabId, work, clock = Date.now) {
-  const app = askStarted(tabId, clock());
-  try { return await work(); } finally { askEnded(app, clock()); }
+  if (tabId == null) return work();
+  const wait = waitsOf(appOf(tabId)), id = wait.next++, start = clock();
+  wait.steps.set(id, start);
+  try { return await work(); } finally { wait.steps.delete(id); close(wait, start, Math.min(clock(), start + MAX_PAUSE_MS)); }
 }
+/** The fill's span for a tab (fill-span.js passes the extension log's span): logged by name and counted as a wait. */
+export const waitingSpan = (spanOf, tabId, name, run, clock) => waiting(tabId, () => spanOf(name, run), clock);
 // The silence's length: the time since the last progress that was not spent waiting on an ask (clock.waited: the application's askTime at the note; none: the plain time, as the offline measurement keeps it).
 export const quietFor = (clock, now) => now - clock.at - (clock.waited == null ? 0 : askTime(clock.app, now) - clock.waited);
 

@@ -4,7 +4,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
-import {MAX_PAUSE_MS, SILENT_AFTER_MS, checkSilence, restartSilence, silenceTab, useSilence, waiting} from '../../extension/ladder/silence.js';
+import {MAX_PAUSE_MS, SILENT_AFTER_MS, askEnded, askStarted, checkSilence, restartSilence, silenceTab, useSilence, waiting, waitingSpan} from '../../extension/ladder/silence.js';
 
 const T = SILENT_AFTER_MS, fired = [];
 useSilence({notice: (host, evidence) => fired.push({host, evidence}), timer: () => 1, cancel: () => {}});
@@ -44,11 +44,39 @@ test('a read that never answers is still a stall: the pause stops counting after
   assert.equal(checkSilence(2, 1000000 + MAX_PAUSE_MS + T), true);
 });
 
-test('wired: every awaited step of the fill that the log spans goes through ownSpan(tab.id, ...), so a new span cannot forget the clock', () => {
+test('an ask nested in a long own step keeps pausing after the step\'s own cap (Gitar on the PR): the ask started 85 s in, out for 120 s', async () => {
+  silenceTab(4, 'https://jobs.example/4');
+  now = 5000000;
+  restartSilence(4, 'navigated', {now, host: 'jobs.example'});
+  const begin = now;
+  await waiting(4, async () => {
+    now = begin + 85000;
+    const ask = askStarted(4, now);
+    now = begin + 205000;   // the ask stays out for 120 s; the step itself was capped at 90 s
+    assert.equal(checkSilence(4, now), false, 'the ask is still out: not silent');
+    askEnded(ask, now);
+  }, clock);
+  assert.equal(checkSilence(4, now + T - 1), false);
+  assert.equal(checkSilence(4, now + T), true, 'the ask\'s whole 120 s was a wait, the step\'s capped 90 s overlapped it');
+});
+
+test('the fill\'s span for a tab is a wait for that tab only: waitingSpan names the step in the log, pauses its application, and another tab\'s clock keeps running', async () => {
+  silenceTab(5, 'https://jobs.example/5'); silenceTab(6, 'https://jobs.example/6');
+  now = 9000000;
+  restartSilence(5, 'navigated', {now, host: 'a.example'});
+  restartSilence(6, 'navigated', {now, host: 'b.example'});
+  const named = [];
+  const spanOf = async (name, run) => { named.push(name); now += 40000; return run(); };   // the log's span: the read takes 40 s
+  const answer = await waitingSpan(spanOf, 5, 'consider 5 readPage', async () => { assert.equal(checkSilence(5, now), false, 'tab 5 is waiting'); return 'read'; }, clock);
+  assert.equal(answer, 'read', 'the step\'s own answer comes back');
+  assert.deepEqual(named, ['consider 5 readPage']);
+  assert.equal(checkSilence(6, now), true, 'tab 6 did nothing for 40 s: its clock is not paused by tab 5\'s read');
+});
+
+test('wired: no span of the fill is left outside ownSpan(tab.id, ...), so a new span cannot forget the clock', () => {
   const read = file => fs.readFileSync(new URL(`../../extension/${file}`, import.meta.url), 'utf8');
   for (const file of ['fill-flow.js', 'fill-flow-read.js']) {
     const bare = read(file).split('\n').filter(line => /(?<![\w.])span\(/.test(line) && !/^\s*(\/\/|import)/.test(line));
     assert.deepEqual(bare, [], `${file}: a span the clock does not know about`);
   }
-  assert.match(read('fill-span.js'), /waiting\(tabId, \(\) => span\(name, run\)\)/);
 });

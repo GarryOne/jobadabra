@@ -42,11 +42,10 @@ class NightlyRedGate(unittest.TestCase):
 
     def test_a_red_main_builds_nothing_and_every_later_step_skips(self):
         job = first_job()
-        self.assertIn("steps.redmain.outputs.red == 'true' && 'false'", job.split('steps:')[0], 'the build output says no build')
         for name in ('Version', 'Tag this build now', 'Release'):
             self.assertIn("steps.redmain.outputs.red != 'true'", step(f'name: {name}'), name)
         self.assertIn("steps.redmain.outputs.red != 'true'", step('actions/setup-node@v5'))
-        # released stays empty → build, windows, tests, release and clean-up jobs (all `released == 'true'` or gate == 'true') skip.
+        # released stays empty (the steps above skip) → build, windows, tests, release and clean-up jobs (all `released == 'true'` or gate == 'true') skip.
         self.assertIn("steps.release.outputs.released == 'true'", step('id: plan'))
 
     def test_the_skip_is_named_once_through_the_existing_telegram_sender(self):

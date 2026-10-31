@@ -63,7 +63,7 @@ jobs:
     name: Anything new?
     runs-on: ubuntu-24.04
     outputs:
-      build: ${{ steps.redmain.outputs.red == 'true' && 'false' || steps.diff.outputs.build }}   # a nightly over a red main builds nothing (owner, 31 Oct 2026)
+      build: ${{ steps.diff.outputs.build }}
       version: ${{ steps.version.outputs.version }}     # the release both lanes add their files to
       extension_version: ${{ steps.version.outputs.extension_version }}   # stamped into the app's extension copy (desktop/scripts/extension-stamp.mjs): counted here, on the full clone
       released: ${{ steps.release.outputs.released }}

@@ -106,6 +106,7 @@ function writtenParts(word, roots, root, state) {
 }
 
 // Why (31 Oct 2026, owner: quality before cost; first live run, ui-verdict 41220547004): 3 of 4 verdicts came back needs-human, "the evidence does not include the caller", against 25% before. The session followed the flagged code to its callers; so does this.
+// Measured 31 Oct 2026: callers alone left 3 of 4 at needs-human (run 41221052660); a bounded second round (the judge lists what it still needs, a script fetches it, one more call) took 12 issues the old judge decided from 11 to 10 needs-human (run 41222412182; the old Claude 3 of 12) and was removed. The gap is not retrieval depth; JOB-160.
 function callerParts(focus, root, room = CALLERS_BUDGET) {
   const found = [], named = new Set();
   for (const {file, line} of focus) for (const name of symbolsAt(file, line, root)) if (!named.has(name)) { named.add(name); found.push(...callersOf(name, {file, root})); }
@@ -128,33 +129,6 @@ export function evidenceFor({text, logs = [], root = '.', budget = 30000}) {
   for (const file of logs) parts.push(block(`${path.basename(file)} (the last 80 lines of the failed step's log)`, tail(file, 80, root)));
   const joined = parts.filter(Boolean).join('\n\n');
   return joined.length > budget ? `${joined.slice(0, budget)}\n[evidence cut at ${budget} characters]` : joined;
-}
-
-const PATHLIKE = /^[\w.-]+(?:\/[\w.-]+)+(?::\d+(?:-\d+)?)?$|^[\w.-]+\.(?:m?js|py|css|html|json)(?::\d+(?:-\d+)?)?$/;
-export const MAX_NEEDS = 4;
-export const NEEDS_BUDGET = 16000;   // characters of second-round evidence per finding
-
-/**
- * The second round (the judge said what it still needs): takes the names it listed (a function, selector or id, or a repo path with an optional :line), returns the text a script finds for them within
- * NEEDS_BUDGET characters. A name: where it is declared (the lines around it) and where it is used (git grep -w, a few call sites). A path: the lines around :line, or the file's first 120 lines. Pure but for reading files and `git grep`.
- */
-export function needEvidence(needs, {root = '.', budget = NEEDS_BUDGET} = {}) {
-  const parts = [];
-  for (const raw of (Array.isArray(needs) ? needs : []).map(item => String(item || '').trim()).filter(Boolean).slice(0, MAX_NEEDS)) {
-    if (PATHLIKE.test(raw)) {
-      const [file, lines] = raw.split(':');
-      parts.push(block(`${raw} (asked for by the judge)`, excerpt(file, String(lines || '').split('-')[0], {root, radius: 60}) || 'no such file'));
-      continue;
-    }
-    const name = raw.replace(/\(\)$/, '');
-    const hits = grep(name, ROOTS, root, true);
-    const declared = hits.find(hit => new RegExp(`(function|def|const|let|class)\\s+${name.replace(/[^\w$]/g, '')}\\b`).test(hit.text)) || null;
-    if (declared) parts.push(block(`${declared.file}:${declared.line} (declares ${name}, asked for by the judge)`, excerpt(declared.file, declared.line, {root, radius: 25})));
-    for (const caller of callersOf(name, {root, budget: 5000})) parts.push(block(caller.title, caller.body));
-    if (!hits.length) parts.push(block(`search for ${name}`, 'no file under the product code uses this name'));
-  }
-  const joined = parts.filter(Boolean).join('\n\n');
-  return joined.length > budget ? `${joined.slice(0, budget)}\n[second-round evidence cut at ${budget} characters]` : joined;
 }
 
 /** The planted code of a judge-exam finding (lib/judge-exam.mjs): its excerpt files in full, named as printed (they carry their own line numbers). */

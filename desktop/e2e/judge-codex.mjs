@@ -7,24 +7,21 @@
 // the old session wrote. A refused call (budget, login, broker down) skips the job with its reason (lib/broker-job.mjs): never red, never another provider.
 // Job: report health
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {askOrSkip} from './lib/broker-job.mjs';
-import {evidenceFor, examEvidence, needEvidence, MAX_NEEDS} from './lib/judge-evidence.mjs';
+import {evidenceFor, examEvidence} from './lib/judge-evidence.mjs';
 
 export const WORDS = ['real', 'false-positive', 'harness', 'needs-human'];
-const VERDICT = {type: 'object', additionalProperties: false, required: ['id', 'verdict', 'why', 'check', 'cause', 'severity', 'need'], properties: {
-  id: {type: 'string'}, need: {type: 'array', items: {type: 'string'}}, verdict: {type: 'string', enum: WORDS}, why: {type: 'string'}, check: {type: 'string'},
+const VERDICT = {type: 'object', additionalProperties: false, required: ['id', 'verdict', 'why', 'check', 'cause', 'severity'], properties: {
+  id: {type: 'string'}, verdict: {type: 'string', enum: WORDS}, why: {type: 'string'}, check: {type: 'string'},
   cause: {type: 'string', enum: ['', 'detector', 'probe-race', 'by-design', 'stale', 'duplicate']}, severity: {type: 'string', enum: ['', 'high', 'medium', 'low']}}};
 export const VERDICTS_SCHEMA = {type: 'object', additionalProperties: false, required: ['verdicts'], properties: {verdicts: {type: 'array', items: VERDICT}}};
 
 export const NO_TOOLS = 'THIS CALL HAS NO TOOLS: you cannot open, search or run anything, and the instructions below that say Read, grep, git or "turns" describe a session you are not in. '
   + 'The code the finding points at, the places its words are written and the logs are in the EVIDENCE below, found by a script. Cite only file:line you can see there. '
   + 'When the evidence does not settle it, answer needs-human and say in "check" what a person should open. Fill every field of the answer; use "" for cause, severity or check when the instructions do not ask for it. '
-  + 'The word to give is `verdict`; its reasons go in `why`, with the file:line. '
-  + `When one more look at named code would settle a finding, answer needs-human and list in \`need\` up to ${MAX_NEEDS} function names, selectors, ids or repo paths (path or path:line): a script fetches where each is declared and used and asks you once more. Use [] when you can answer now.`;
-export const FINAL_ROUND = 'THIS IS THE LAST ROUND: the EVIDENCE now includes what you asked for. You cannot ask again: `need` must be []. Answer from what you see; needs-human only when the evidence still cannot settle it.\n\n';
+  + 'The word to give is `verdict`; its reasons go in `why`, with the file:line.';
 
 const PICTURE = file => ({type: 'image', source: {type: 'base64', media_type: 'image/png', data: fs.readFileSync(file).toString('base64')}});
 
@@ -42,13 +39,13 @@ export function verdictFile(mode, verdicts, ids = []) {
 }
 
 /** The Messages body of a run. Takes {mode, prompt, items: [{id, text, logs, screenshot, evidence?}], root}; returns {body, ids}. */
-export function requestFor({mode, prompt, items, root = '.', budget = 90000, final = false}) {
+export function requestFor({mode, prompt, items, root = '.', budget = 90000}) {
   const per = Math.floor(budget / Math.max(1, items.length));
   const blocks = items.map(item => `##### EVIDENCE for ${mode === 'verdict' ? 'the finding' : item.id}\n${item.evidence ?? (evidenceFor({text: item.text, logs: item.logs, root, budget: per}) || 'none found by the script')}`);
   const shots = items.filter(item => item.screenshot && fs.existsSync(item.screenshot));
   const note = shots.length ? `\n\nScreenshots attached, in this order: ${shots.map(item => (mode === 'verdict' ? 'the finding' : item.id)).join(', ')}.` : '';
   const content = [{type: 'text', text: `${blocks.join('\n\n')}${note}`}, ...shots.map(item => PICTURE(item.screenshot))];
-  return {ids: items.map(item => item.id), body: {model: 'claude-sonnet-5-5', max_tokens: 8000, system: `${final ? FINAL_ROUND : ''}${NO_TOOLS}\n\n${prompt}`, messages: [{role: 'user', content}], output_config: {format: {type: 'json_schema', schema: VERDICTS_SCHEMA}}}};
+  return {ids: items.map(item => item.id), body: {model: 'claude-sonnet-5-5', max_tokens: 8000, system: `${NO_TOOLS}\n\n${prompt}`, messages: [{role: 'user', content}], output_config: {format: {type: 'json_schema', schema: VERDICTS_SCHEMA}}}};
 }
 
 const FINDING_AT = '\n---\nTHE FINDING';
@@ -65,42 +62,18 @@ function itemsOf(mode, heal) {
     ...(mode === 'exam' ? {evidence: examEvidence(path.join(heal, 'exam', item.id, 'code'))} : {})}))};
 }
 
-/**
- * The second round (owner, 31 Oct 2026: "Merge #2708 + measured 2nd round"): the findings whose verdict is needs-human with a non-empty `need` get that code fetched (lib/judge-evidence.mjs needEvidence) and one more broker call
- * with the first evidence plus it. At most 2 calls a finding. Takes {mode, prompt, items, verdicts, root, ask}; returns {verdicts, asked: number of findings asked again, skipped: why or ''}. A refusal in the second round keeps
- * the first round's verdicts (they are real answers) and never marks the job skipped.
- */
-export async function secondRound({mode, prompt, items, verdicts, root = '.', ask = askOrSkip}) {
-  const wanting = items.map((item, at) => ({item, at, verdict: mode === 'verdict' ? verdicts[0] : verdicts.find(v => v.id === item.id)}))
-    .filter(({verdict}) => verdict && verdict.verdict === 'needs-human' && Array.isArray(verdict.need) && verdict.need.some(name => String(name).trim()));
-  if (!wanting.length) return {verdicts, asked: 0, skipped: ''};
-  const again = wanting.map(({item, verdict}) => ({...item, evidence: `${item.evidence}\n\n##### ASKED FOR BY YOU, FETCHED BY A SCRIPT\n${needEvidence(verdict.need, {root}) || 'nothing found for the names you listed'}`}));
-  const {body} = requestFor({mode, prompt, items: again, root, final: true});
-  // Why (31 Oct 2026, Gitar on #2715): a second-round refusal or broker error keeps the first round's verdicts (real answers) and sends no alert: a throwaway note dir (no ai-capped.json to upload), no skipped=true, and a throw is caught.
-  let answer;
-  try { answer = await ask(body, {job: `judge ${mode} (second round)`, dir: fs.mkdtempSync(path.join(os.tmpdir(), 'second-round-')), env: {...process.env, GITHUB_OUTPUT: ''}}); }
-  catch (error) { return {verdicts, asked: 0, skipped: error.message}; }
-  if (!answer.ok) return {verdicts, asked: 0, skipped: answer.why};
-  const second = JSON.parse(answer.text).verdicts;
-  const merged = mode === 'verdict' ? (second[0] ? [second[0]] : verdicts) : verdicts.map(v => second.find(w => w.id === v.id && wanting.some(({item}) => item.id === v.id)) || v);
-  return {verdicts: merged, asked: wanting.length, skipped: ''};
-}
-
 async function main() {
   const args = process.argv.slice(2), at = flag => (args.includes(flag) ? args[args.indexOf(flag) + 1] : '');
   const mode = at('--mode'), heal = at('--heal') || '.heal';
   if (!['verdict', 'prejudge', 'exam'].includes(mode)) throw new Error('--mode must be verdict, prejudge or exam');
   const {prompt, items} = itemsOf(mode, heal);
-  const root = '.';
-  const withEvidence = items.map(item => ({...item, evidence: item.evidence ?? (evidenceFor({text: item.text, logs: item.logs, root, budget: Math.floor(90000 / Math.max(1, items.length))}) || 'none found by the script')}));
-  const {body, ids} = requestFor({mode, prompt, items: withEvidence});
+  const {body, ids} = requestFor({mode, prompt, items});
   const answer = await askOrSkip(body, {job: `judge ${mode}`});
   if (!answer.ok) return;
   const out = path.join(heal, mode === 'verdict' ? 'verdict.md' : 'verdicts.md');
-  const first = JSON.parse(answer.text).verdicts;
-  const {verdicts, asked, skipped} = await secondRound({mode, prompt, items: withEvidence, verdicts: first, root});
+  const verdicts = JSON.parse(answer.text).verdicts;
   fs.writeFileSync(out, verdictFile(mode, verdicts, ids));
-  console.log(`judge (${mode}): ${verdicts.length} verdict(s) for ${ids.length} finding(s) written to ${out} by ${answer.model || answer.tier} on the Codex plan; second round: ${asked} finding(s) asked again${skipped ? ` (refused: ${skipped}; first answers kept)` : ''}; needs-human ${first.filter(v => v.verdict === 'needs-human').length} -> ${verdicts.filter(v => v.verdict === 'needs-human').length}`);
+  console.log(`judge (${mode}): ${verdicts.length} verdict(s) for ${ids.length} finding(s) written to ${out} by ${answer.model || answer.tier} on the Codex plan`);
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] || '').href) main().catch(error => { console.error(`::error::judge on Codex: ${error.message}`); process.exit(1); });

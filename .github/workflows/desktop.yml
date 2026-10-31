@@ -337,7 +337,6 @@ jobs:
             else echo "::error title=Unit tests · $area::The $area unit tests failed (the build and the E2E suites go on; the release refuses)"; cat "unit-$area.log"; fi
           done
           { echo "### Unit tests · desktop app"; echo; echo "| Suite | Result | Summary |"; echo "|---|---|---|"; cat unit-table.md; }
-          if [ "$status" != 0 ]; then { echo "### ❌ Unit tests failed in $RUNNER_OS Build"; echo; echo "The build and the E2E suites go on; the Release jobs refuse (Not released: red: Unit tests)."; echo; cat unit-table.md; } >> "$GITHUB_STEP_SUMMARY"; fi
           exit $status
       - name: Unit tests failed, and this run is not tested here, so stop the build
         if: steps.unit.outcome == 'failure' && needs.changes.outputs.gate != 'true'
@@ -496,7 +495,6 @@ jobs:
             else echo "::error title=Unit tests · $area::The $area unit tests failed (the build and the E2E suites go on; the release refuses)"; cat "unit-$area.log"; fi
           done
           { echo "### Unit tests · desktop app"; echo; echo "| Suite | Result | Summary |"; echo "|---|---|---|"; cat unit-table.md; }
-          if [ "$status" != 0 ]; then { echo "### ❌ Unit tests failed in $RUNNER_OS Build"; echo; echo "The build and the E2E suites go on; the Release jobs refuse (Not released: red: Unit tests)."; echo; cat unit-table.md; } >> "$GITHUB_STEP_SUMMARY"; fi
           exit $status
       - name: Unit tests failed, and this run is not tested here, so stop the build
         if: steps.unit.outcome == 'failure' && needs.changes.outputs.gate != 'true'

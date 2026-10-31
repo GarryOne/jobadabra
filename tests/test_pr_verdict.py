@@ -476,7 +476,7 @@ class CompanionBoundaries(unittest.TestCase):
             script = tmp / 'pr-verdict.py'
             script.write_text((ROOT / 'tools/pr-verdict.py').read_text())
             (tmp / 'pr_verdict_greys.py').write_text((ROOT / 'tools/pr_verdict_greys.py').read_text())
-            # The standalone copy fetches each classifier it imports at the writer's ref: the health one and main's grey check (tools/main_e2e_state.py is_grey).
+            # The standalone copy fetches each classifier it imports at the writer's ref: the health one and main's run reader (tools/main_e2e_state.py).
             served = {name: str(ROOT / 'tools' / name) for name in ('pr_health_greys.py', 'main_e2e_state.py')}
             gh = tmp / 'gh'
             gh.write_text(f'#!{sys.executable}\nimport sys\nfrom pathlib import Path\nserved = {served!r}\n'

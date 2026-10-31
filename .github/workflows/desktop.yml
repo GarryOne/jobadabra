@@ -1254,7 +1254,6 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 90   # Why (30 Oct 2026, a8; beta 41090972183): covers the e2e review (15 min) plus release-checks.sh waiting up to 60 min for main's build; 20 cut Windows off at 18 min
     permissions:
-      checks: read     # grey proof in backbone job annotations
       contents: write   # the approval line (release-stable.sh when the soak is off)
       actions: write    # this run's artifacts, build.yml's verdict on the commit; release-stable.sh starts the Chrome Web Store publish
       id-token: write   # GitHub's per-run token the Codex broker checks (the screenshot review, lib/broker-client.mjs)
@@ -1325,27 +1324,12 @@ jobs:
           github-token: ${{ github.token }}
       - name: Not released on Mac, an E2E suite failed on Mac + Linux or Windows
         timeout-minutes: 10
-        id: backbone_gate
-        continue-on-error: true
         run: python3 tools/beta_rate_gate.py --repo "$GITHUB_REPOSITORY" --run "$GITHUB_RUN_ID" --e2e-only --platform mac
-      - name: A wrong value still holds the beta red
-        timeout-minutes: 10
-        if: steps.backbone_gate.outcome == 'failure' && steps.backbone_gate.outputs.held != 'true'
-        run: exit 1
-      - name: Keep this platform's beta hold evidence
-        if: always() && hashFiles('beta-held.json') != ''
-        timeout-minutes: 10
-        uses: actions/upload-artifact@v6
-        with:
-          name: beta-held-mac
-          path: beta-held.json
-          overwrite: true
       - name: Tolerant AI rates against main's nightly band (report only)
         timeout-minutes: 10
         if: needs.changes.outputs.gate == 'true'
         run: python3 tools/beta_rate_gate.py --repo "$GITHUB_REPOSITORY" --run "$GITHUB_RUN_ID" --platform mac
       - name: No real high-severity finding in the Mac suites
-        if: steps.backbone_gate.outputs.held != 'true'
         timeout-minutes: 5
         working-directory: desktop/e2e
         run: |
@@ -1357,14 +1341,12 @@ jobs:
           cat block.txt
           if [ "$status" != 0 ]; then echo "$TAG is not offered on Mac: a real high-severity finding in its end-to-end suites."; exit 1; fi
       - name: The shared release checks (unit suites green on the commit; soak on, the Notion schema additive over stable)
-        if: steps.backbone_gate.outputs.held != 'true'
         timeout-minutes: 5
         env:
           JOB_PILOTTO_SOAK: ${{ vars.JOB_PILOTTO_SOAK }}
         shell: bash -eo pipefail {0}   # a program piped into tee/cat keeps its exit code (tests/test_workflow_pipefail.py)
         run: tools/release-checks.sh "$TAG" "$REF"
       - name: Release it to Mac beta testers
-        if: steps.backbone_gate.outputs.held != 'true'
         timeout-minutes: 5
         env:
           E2E_ALREADY_GREEN: '1'   # required Mac suites passed; outside health is reported separately
@@ -1388,7 +1370,6 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 90   # Why (30 Oct 2026, a8; beta 41090972183): covers the e2e review (15 min) plus release-checks.sh waiting up to 60 min for main's build; 20 cut Windows off at 18 min
     permissions:
-      checks: read     # grey proof in backbone job annotations
       contents: write   # the approval line (release-stable.sh when the soak is off)
       actions: write    # this run's artifacts, build.yml's verdict on the commit; release-stable.sh starts the Chrome Web Store publish
       id-token: write   # GitHub's per-run token the Codex broker checks (the screenshot review, lib/broker-client.mjs)
@@ -1459,27 +1440,12 @@ jobs:
           github-token: ${{ github.token }}
       - name: Not released on Windows, an E2E suite failed on Mac + Linux or Windows
         timeout-minutes: 10
-        id: backbone_gate
-        continue-on-error: true
         run: python3 tools/beta_rate_gate.py --repo "$GITHUB_REPOSITORY" --run "$GITHUB_RUN_ID" --e2e-only --platform windows
-      - name: A wrong value still holds the beta red
-        timeout-minutes: 10
-        if: steps.backbone_gate.outcome == 'failure' && steps.backbone_gate.outputs.held != 'true'
-        run: exit 1
-      - name: Keep this platform's beta hold evidence
-        if: always() && hashFiles('beta-held.json') != ''
-        timeout-minutes: 10
-        uses: actions/upload-artifact@v6
-        with:
-          name: beta-held-windows
-          path: beta-held.json
-          overwrite: true
       - name: Tolerant AI rates against main's nightly band (report only)
         timeout-minutes: 10
         if: needs.changes.outputs.gate == 'true'
         run: python3 tools/beta_rate_gate.py --repo "$GITHUB_REPOSITORY" --run "$GITHUB_RUN_ID" --platform windows
       - name: No real high-severity finding in the Windows suites
-        if: steps.backbone_gate.outputs.held != 'true'
         timeout-minutes: 5
         working-directory: desktop/e2e
         run: |
@@ -1491,14 +1457,12 @@ jobs:
           cat block.txt
           if [ "$status" != 0 ]; then echo "$TAG is not offered on Windows: a real high-severity finding in its end-to-end suites."; exit 1; fi
       - name: The shared release checks (unit suites green on the commit; soak on, the Notion schema additive over stable)
-        if: steps.backbone_gate.outputs.held != 'true'
         timeout-minutes: 5
         env:
           JOB_PILOTTO_SOAK: ${{ vars.JOB_PILOTTO_SOAK }}
         shell: bash -eo pipefail {0}   # a program piped into tee/cat keeps its exit code (tests/test_workflow_pipefail.py)
         run: tools/release-checks.sh "$TAG" "$REF"
       - name: Release it to Windows beta testers
-        if: steps.backbone_gate.outputs.held != 'true'
         timeout-minutes: 5
         env:
           E2E_ALREADY_GREEN: '1'   # every Windows suite passed on this commit, in this run

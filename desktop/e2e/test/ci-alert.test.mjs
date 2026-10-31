@@ -218,11 +218,14 @@ test('"+N more" counts the problems left after the ones shown, and only a value 
   assert.match(lines("Cannot read properties of undefined (reading 'x')"), /Cannot read properties of undefined \(reading 'x'\)/, 'an error text keeps its words');
 });
 
-test('grey annotations never send failed-on-main alerts, including legacy failed jobs', async () => {
-  const fetcher = async url => ({json: async () => url.includes('/annotations')
-    ? [{title: 'Grey: the runner, not the app'}] : {jobs: [{id: 81, name: 'apply', conclusion: 'failure', html_url: 'u81'}]}});
-  assert.deepEqual(await failedJobs(1, env, fetcher, lanes), []);
-  assert.deepEqual(await failedJobLinks(1, env, fetcher), [{name: 'apply', url: 'u81', grey: true}]);
+test('a failed backbone job is a failure whatever its annotations say: its own conclusion is the verdict', async () => {
+  // Why (31 Oct 2026, owner: a suite past its budget is our bug): no "Grey" annotation turns a failed job into health, so annotations are not even fetched.
+  const fetcher = async url => {
+    assert.doesNotMatch(url, /annotations/, 'the verdict does not read annotations');
+    return {json: async () => ({jobs: [{id: 81, name: 'apply', conclusion: 'failure', html_url: 'u81'}]})};
+  };
+  assert.deepEqual(await failedJobs(1, env, fetcher, lanes), ['apply']);
+  assert.deepEqual(await failedJobLinks(1, env, fetcher), [{name: 'apply', url: 'u81'}]);
   const jobs = await failedJobLinks(1, env, fetcher);
-  assert.equal(messageOf({lanes, status: 'failure', env: {...env, GITHUB_WORKFLOW_REF: 'o/r/.github/workflows/e2e.yml@refs/heads/main'}, jobs, now}), '');
+  assert.match(messageOf({lanes, status: 'failure', env: {...env, GITHUB_WORKFLOW_REF: 'o/r/.github/workflows/e2e.yml@refs/heads/main'}, jobs, now}).text, /apply/);
 });

@@ -82,18 +82,17 @@ class MainE2eState(unittest.TestCase):
         self.assertEqual(report['suspended'][0]['conclusion'], 'failure')
         self.assertEqual(report['suspended'][0]['url'], 'u2')
 
-    def test_grey_annotation_is_health_and_a_wrong_value_in_another_shard_stays_red(self):
+    def test_a_suite_is_red_when_any_shard_fails_and_no_annotation_makes_it_health(self):
+        # Why (31 Oct 2026, owner: a suite past its budget is our bug): the job conclusion is the verdict; there is no "grey" state or annotation read.
         jobs = [{'id': 21, 'name': 'apply-1of2', 'conclusion': 'success'},
                 {'id': 22, 'name': 'applyflows', 'conclusion': 'failure'}]
-        def annotations(jid):
-            return [{'title': 'Grey: the runner, not the app'}] if jid == 21 else []
-        self.state = m.state([run(9, 'E2E check · on time (Worker cron)')], lambda _: jobs, annotations)
-        self.assertEqual(self.state['apply']['conclusion'], 'grey')
+        self.state = m.state([run(9, 'E2E check · on time (Worker cron)')], lambda _: jobs)
+        self.assertEqual(self.state['apply']['conclusion'], 'success')
         report = self.report(None)
-        self.assertEqual([entry['suite'] for entry in report['grey']], ['apply'])
+        self.assertNotIn('grey', report)
         self.assertEqual([entry['suite'] for entry in report['red']], ['applyflows'])
         jobs.append({'id': 23, 'name': 'apply-2of2', 'conclusion': 'failure'})
-        st = m.state([run(9, 'E2E check · on time (Worker cron)')], lambda _: jobs, annotations)
+        st = m.state([run(9, 'E2E check · on time (Worker cron)')], lambda _: jobs)
         self.assertEqual(st['apply']['conclusion'], 'failure')
 
     def test_missing_or_invalid_registry_fails_closed(self):

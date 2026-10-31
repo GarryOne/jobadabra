@@ -149,21 +149,6 @@ else: raise SystemExit('unexpected command: ' + str(a))
         self.assertEqual([c for c in calls if c[0] != 'api'], [], 'never gh pr create')
         self.assertIn('owner merges', self.evidence.with_suffix('.body').read_text())
 
-    def test_grey_annotated_timing_opens_no_revert_and_changes_nothing(self):
-        self.live_fake()
-        for item in self.data['records']:
-            jid = str(item['jobs'][0]['id'])
-            item['logs'][jid] = '✗ Fill: Timeout 30000ms exceeded'
-            item['annotations'] = {jid: [{'title': 'Grey: the runner, not the app'}]}
-        before = self.snapshot()
-        result = self.revert(self.bad)
-        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
-        self.assertNotIn('unreadable', result.stdout + result.stderr)
-        self.assertEqual(self.snapshot(), before)
-        calls = [json.loads(line) for line in self.evidence.with_suffix('.calls').read_text().splitlines()]
-        self.assertTrue(any('/check-runs/' in str(call) for call in calls))
-        self.assertFalse(any(call[:3] == ['api', '-X', 'POST'] for call in calls))
-
     def test_an_existing_offer_is_not_pushed_or_opened_again(self):
         self.live_fake()
         self.data['prior'] = [{'html_url': 'https://github.com/GarryOne/jobadabra/pull/98'}]

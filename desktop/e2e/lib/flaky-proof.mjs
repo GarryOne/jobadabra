@@ -13,11 +13,6 @@ import {FLAKY, TIMEOUT_FAILURE, flakyComment} from './triage-match.mjs';
 
 export const INTERMITTENT = 'intermittent';
 
-/** The one annotation title proves grey health to every reader, independent of the raw job conclusion. */
-export const GREY_TITLE = 'Grey: the runner, not the app';
-/** Read the proof annotation; neither a timeout word nor a job name alone assigns grey. */
-export const isGrey = notes => Array.isArray(notes) && notes.some(note => note?.title === GREY_TITLE);
-
 // message: the failed step's note (suite-failures.json `message`), without the step's name → {flaky, why}
 // The harness's own guards (the extension not on the stand-in app): never a product bug and never flaky (a run that may have reached the owner's live app stays
 // red), named "harness: <which>" so a red main reads as the harness's (6e, 27 Oct 2026: a false NOT ISOLATED was announced as "a wrong value", like a product bug).

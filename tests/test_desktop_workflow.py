@@ -152,9 +152,10 @@ class DesktopWorkflowTest(unittest.TestCase):
             release = job(name)
             # Owner, 30 Oct 2026: both lanes green or neither platform is offered (Windows dropped its duplicates of the Mac + Linux suites).
             self.assertIn('needs: [changes, test-mac, test-windows]', release)
-            # Owner, 31 Oct 2026 ("Should be gray, or green"): the gate reads every lane's jobs; a grey job holds the beta without turning red, a wrong value is red.
-            self.assertIn('id: backbone_gate\n        continue-on-error: true', release)
-            self.assertIn("if: steps.backbone_gate.outcome == 'failure' && steps.backbone_gate.outputs.held != 'true'\n        run: exit 1", release)
+            # Owner, 31 Oct 2026 (a suite past its budget is our bug): the gate reads every lane's jobs and its own exit code is the verdict; no grey hold, held output or rerun.
+            self.assertIn('--e2e-only', release)
+            for gone in ('backbone_gate', 'outputs.held', 'beta-held', 'continue-on-error: true\n        run: python3 tools/beta_rate_gate.py'):
+                self.assertNotIn(gone, release)
             self.assertIn(script, release)
         # only a nightly or a beta by hand is tested; the plan is made once, for both lanes
         self.assertIn("(github.event_name == 'schedule' || inputs.nightly || inputs.beta)", job('changes'))

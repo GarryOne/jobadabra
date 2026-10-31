@@ -88,7 +88,6 @@ export function notionToken(suite, {own: ownOnly = false, env = process.env} = {
 
 // browser: the suite drives a real Chromium with the extension (lib/extension.mjs): the fixture forms are served, and the app's `open` reaches that browser.
 // engine: a suite whose steps the AI proxy answers pins 'api' (a placeholder key on a Mac); otherwise a Mac uses Claude Code, CI the API key (lib/engine.mjs).
-// clean-code-ok: Why (29 Oct 2026, ia): old function; this change adds one option to its signature (aggregateBudget) and one argument of the createRunner call; st adds offlineAi (score falls, 75 to 63); a8 (21b) forwards hangCaps to createRunner
 /** Teardown owns the last session: a late launch is closed, never adopted into a closed context. */
 export async function adoptSessionUnlessClosing(ctx, open, adopt) {
   if (ctx.closing) return;
@@ -107,6 +106,7 @@ function markStandIn(env, standIn) {
  * defaults to the suite's table in hang-caps.json and `cadence` is the suite's own export, so a manual suite keeps the default cap. Returns the context, or one that
  * skips the suite when a secret it needs is missing; a launch failure throws. Data: lib/store.mjs, lib/runner.mjs, hang-caps.json.
  */
+// clean-code-ok: Why (29 Oct 2026, ia): old function; this change adds one option to its signature (aggregateBudget) and one argument of the createRunner call; st adds offlineAi (score falls, 75 to 63); a8 (21b) forwards hangCaps to createRunner; a8 (2/5, 31 Oct 2026) defaults hangCaps from the suite's table and adds the suite's cadence, both forwarded to createRunner
 export async function openContext(suite, {fresh = false, env: suiteEnv = {}, browser = false, light = false, offlineAi = false, notionProxy = false, telegram = false, google = false, releases = false, notion: usesNotion = true, notionStandIn = false, store: suiteStore = '', newInstall = false, standInFromWizard = false, notionTokenOf = '', notionPage = '', keepGoing = false, variesPlace = false, engine: suiteEngine = '', budgetMinutes = 0, aggregateBudget = true, hangCaps = hangCapsFor(suite), cadence = '', stepNeeds = null, report = null} = {}) {
   // Where the app keeps the person's data (lib/store.mjs): this Mac (sqlite, no Notion at all), the in-memory Notion (fresh and private for this run, no
   // token, no shared page: lib/notion-fake.mjs), or the real test workspace for a suite that pins it. A suite with no Notion part keeps its own setup.

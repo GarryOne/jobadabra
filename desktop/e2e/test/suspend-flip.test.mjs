@@ -65,20 +65,14 @@ test('already listed lanes and duplicate evidence never add a suite twice', asyn
   assert.equal((await proposals([...attempts, ...attempts].reverse())).length, 1);
 });
 
-test('ceiling-only entries still allow suspension; entries with a lane stay alone on both evidence paths', async t => {
-  const {dir, run} = retryArtifacts(t);
-  for (const [attempts, extra, suite] of [
-    [data().attempts, {}, 'settings'],
-    [[], {artifacts: dir, run, suites: ['applyflows']}, 'applyflows'],
-  ]) {
-    const registry = {suites: {[suite]: {aiMissesMax: 0}}};
-    const found = await proposals(attempts, {...extra, registry});
-    assert.deepEqual(found.map(item => item.suite), [suite]);
-    assert.equal(found[0].entry.lane, 'suspended');
-    for (const lane of ['suspended', 'tolerant', 'retired']) {
-      registry.suites[suite].lane = lane;
-      assert.deepEqual(await proposals(attempts, {...extra, registry}), []);
-    }
+test('ceiling-only entries still allow suspension; entries with a lane stay alone', async () => {
+  const registry = {suites: {settings: {aiMissesMax: 0}}};
+  const found = await proposals(data().attempts, {registry});
+  assert.deepEqual(found.map(item => item.suite), ['settings']);
+  assert.equal(found[0].entry.lane, 'suspended');
+  for (const lane of ['suspended', 'tolerant', 'retired']) {
+    registry.suites.settings.lane = lane;
+    assert.deepEqual(await proposals(data().attempts, {registry}), []);
   }
 });
 
@@ -180,67 +174,4 @@ if (args[1] === 'list') {
     assert.equal(JSON.parse(fs.readFileSync(path.join(dir, 'issues.json'))).length, 1);
     assert.equal(fs.readFileSync(registry, 'utf8'), original);
   } finally { fs.rmSync(dir, {recursive: true, force: true}); }
-});
-
-// Real downloaded-artifact layout: each archive becomes a folder named e2e-artifacts-<matrix.key>.
-function retryArtifacts(t) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'suspend-in-job-'));
-  t.after(() => fs.rmSync(dir, {recursive: true, force: true}));
-  const fixture = JSON.parse(fs.readFileSync(new URL('./fixtures/suspend-flip-in-job.json', import.meta.url)));
-  for (const [folder, files] of Object.entries(fixture.folders)) {
-    fs.mkdirSync(path.join(dir, folder));
-    for (const [name, data] of Object.entries(files)) fs.writeFileSync(path.join(dir, folder, name), JSON.stringify(data));
-  }
-  return {dir, run: fixture.run};
-}
-
-test('attempt 1 wrong-value retry flip proposes one suite issue across two shards; timing and no marker do not', async t => {
-  const {dir, run} = retryArtifacts(t);
-  const out = await proposals([], {artifacts: dir, run, suites: ['applyflows', 'settings', 'apply']});
-  assert.equal(out.length, 1);
-  const {suite, entry, issue} = out[0];
-  assert.equal(suite, 'applyflows');
-  assert.deepEqual(entryProblems(entry), []);
-  assert.equal(entry.owner, options.owner);
-  assert.equal(entry.input, 'same-commit flip');
-  assert.match(issue.body, /in-job retry flip, wrong value/);
-  assert.match(issue.body, /Review keeps the saved value/);
-  assert.match(issue.body, /Expected saved value 42, got 0/);
-  assert.ok(issue.body.includes(run.html_url));
-  assert.match(issue.body, /this check does not protect you now/);
-  assert.match(issue.body, /next 3 main runs/);
-  assert.equal((await proposals([], {artifacts: dir, run, suites: ['settings', 'apply']})).length, 0);
-  assert.equal((await proposals([], {artifacts: dir, run, suites: ['applyflows'], registry: {suites: {applyflows: {lane: 'suspended'}}}})).length, 0);
-});
-
-test('artifact CLI dry-run reads attempt 1 evidence without calling gh or editing lanes', t => {
-  const {dir, run} = retryArtifacts(t);
-  const input = path.join(dir, 'attempts.json'), registry = path.join(dir, 'lanes.json');
-  fs.writeFileSync(input, JSON.stringify({attempts: [], run}));
-  const original = '{"suites": {}}';
-  fs.writeFileSync(registry, original);
-  const done = spawnSync(process.execPath, [tool.pathname, '--attempts', input, '--artifacts', dir,
-    '--registry', registry, '--owner', options.owner], {encoding: 'utf8', env: {...process.env, PATH: dir}});
-  assert.equal(done.status, 0, done.stderr);
-  assert.equal(done.stdout.split('Title: Suspend applyflows:').length - 1, 1);
-  assert.match(done.stdout, /Expected saved value 42, got 0/);
-  assert.equal(fs.readFileSync(registry, 'utf8'), original);
-});
-
-
-test('in-job evidence uses the same open suite issue dedupe as attempt flips', t => {
-  const {dir, run} = retryArtifacts(t);
-  const input = path.join(dir, 'attempts.json'), registry = path.join(dir, 'lanes.json');
-  fs.writeFileSync(input, JSON.stringify({attempts: [], run}));
-  fs.writeFileSync(registry, '{"suites": {}}');
-  fs.writeFileSync(path.join(dir, 'gh'), `#!${process.execPath}
-const args = process.argv.slice(2);
-if (args[0] !== 'issue' || args[1] !== 'list') process.exit(2);
-console.log(JSON.stringify([{number: 12, title: 'Suspend applyflows: another commit'}]));
-`, {mode: 0o755});
-  const done = spawnSync(process.execPath, [tool.pathname, '--attempts', input, '--artifacts', dir,
-    '--registry', registry, '--owner', options.owner, '--open', '--repo', 'example/fixture'],
-    {encoding: 'utf8', env: {...process.env, PATH: dir}});
-  assert.equal(done.status, 0, done.stderr);
-  assert.match(done.stdout, /already open for applyflows: #12/);
 });

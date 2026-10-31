@@ -56,7 +56,7 @@ test('a full run still replaces the entry; a partial one with no diff, no old st
   assert.equal(mergeMap(noSteps, partial, 't1', {diff: () => ''}).suites.jobs, noSteps.suites.jobs, 'a map from before steps: kept, whole-suite picking');
   assert.equal(mergeMap({suites: {}}, partial, 't1', {diff: () => ''}).suites.jobs, undefined, 'never recorded: a partial run does not make it look recorded');
   const mixed = [...partial, {suite: 'jobs', sha: 'B', files: {'g.js': lines([2, 2])}, steps: {'Save a job': {'g.js': lines([2, 2])}}}];
-  assert.deepEqual(Object.keys(mergeMap(OLD, mixed, 't1').suites.jobs.steps), ['Open a job', 'Save a job'], 'one full file of the suite (the whole second try): replaced');
+  assert.deepEqual(Object.keys(mergeMap(OLD, mixed, 't1').suites.jobs.steps), ['Open a job', 'Save a job'], 'one full file of the suite (a whole-suite run): replaced');
   const same = mergeMap(OLD, [{...partial[0], sha: 'A'}], 't1', {diff: () => { throw new Error('same commit: no diff'); }}).suites.jobs;
   assert.deepEqual(same.steps['Save a job'], OLD.suites.jobs.steps['Save a job']);
 });

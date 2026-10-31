@@ -1,6 +1,7 @@
 // Files tonight's findings as GitHub issues (one per problem, found again = a comment) and picks the one ready to be fixed.
 //   node triage.mjs --artifacts <dir> --run-url <url> --out <dir>      (needs `gh` and GH_TOKEN with issues: write)
 // Writes <out>/candidate.json + <out>/prompt.md when a finding is ready, and sets the step output `candidate` (the issue number, or "none").
+// Job: report health
 import {execFileSync} from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -99,9 +100,7 @@ export function triage({artifacts, runUrl, gh = realGh, publish = publishFiles, 
     if (items.some(item => NO_CREDIT.test(item.message || '')) || (!LIMIT_TESTED.includes(suite) && NO_CREDIT.test(logs))) { skipped.push({suite, why: 'the AI had no credit'}); continue; }
     // The first failed step decides: an environment failure (failed twice: the runner retried it) says nothing about the product. Listed in the summary, not filed.
     if (items[0].environment) { skipped.push({suite, why: `the test environment failed twice: ${String(items[0].message).slice(0, 100)}`}); continue; }
-    // The CI job ran a red suite once more on the same commit (e2e.yml); passing then, its failed steps are flaky: the test, not the product (6 Oct 2026).
-    const flaky = read(path.join(dir, 'flaky.json'))?.rerun === 'passed';
-    suiteFailures.push({...items[0], also: items.slice(1).map(item => item.step), ...(flaky ? {flaky: true} : {})});
+    suiteFailures.push({...items[0], also: items.slice(1).map(item => item.step)});
   }
   const dropped = [];   // what the filters cut this run, with why (shown in the run's log)
   for (const file of found['ai-findings.json']) for (const item of (read(file) || {}).dropped || []) dropped.push({...item, source: 'ai-review', why: `AI answer: ${item.why}`});
@@ -289,7 +288,6 @@ export function triage({artifacts, runUrl, gh = realGh, publish = publishFiles, 
       if (regressed && /\/issues\/\d+$/.test(url)) { out.regressions = [...(out.regressions || []), Number(url.split('/').pop())]; gh(['issue', 'comment', url.split('/').pop(), '--body', regressionComment(regressed, runUrl)]); }
       if (judged && /\/issues\/\d+$/.test(url)) gh(['issue', 'comment', url.split('/').pop(), '--body', verdictComment(judged, {number: Number(url.split('/').pop())})]);
       out.filed.push(finding.id);
-      if (finding.flaky && /\/issues\/\d+$/.test(url)) markFlaky(Number(url.split('/').pop()), finding.detail);
     } else if (existing.state === 'OPEN' && !(existing.comments || []).some(comment => (comment.body || '').includes(runUrl))) {
       const comment = seenAgainComment(runUrl, picture, build);
       gh(['issue', 'comment', String(existing.number), '--body', comment]);
@@ -302,7 +300,6 @@ export function triage({artifacts, runUrl, gh = realGh, publish = publishFiles, 
       if ((existing.labels || []).some(item => (item.name || item) === NOT_SEEN)) gh(['issue', 'edit', String(existing.number), '--remove-label', NOT_SEEN]);
       if (versionOfRun && !(existing.labels || []).some(item => (item.name || item) === versionOfRun)) addVersion(existing.number);   // seen on another version: that one is added too
       out.again.push(finding.id);
-      if (finding.flaky) markFlaky(existing.number, finding.detail);
     }
   }
   // A failed step and a screenshot or layout finding of the same suite in this run: probably one defect, linked and labelled, not merged.
@@ -326,7 +323,7 @@ export function triage({artifacts, runUrl, gh = realGh, publish = publishFiles, 
       return commits.find(commit => namesIssue(commit.message, issue.number)) || null;
     } catch { return null; }
   };
-  // A step that failed and then passed on the same commit (flaky.json, or its suite passing now): flaky only with proof, its failure being timing or the test's
+  // A step that failed on a commit and whose suite passes now on that same commit (a hand re-run; the CI job itself has one try): flaky only with proof, its failure being timing or the test's
   // environment; a wrong value that came right is intermittent, a bug that shows sometimes (gate G5, lib/flaky-proof.mjs; #1897 was labelled flaky and was a bug).
   function markFlaky(number, message) { return labelRerun({gh, number, message, sha7: testedSha(build), runUrl, out}); }   // a declaration: the filing loop above calls it
   for (const {issue, view} of gone) {

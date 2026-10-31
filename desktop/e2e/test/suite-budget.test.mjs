@@ -41,16 +41,17 @@ test('there is no start-time force-stop without an aggregate; budgeted suites ke
   assert.equal(runner.stopMsOf(null), SUITE_BUDGET_MS + 180000);
 });
 
-test('every suite with its own budget has a job limit above two runs of it (the first, and the "once more" after a red one)', async () => {
+// Why (31 Oct 2026, owner): a job has one try, so its limit holds one full budget and the setup (the two-attempt limit of 12 Oct 2026, applycv 38242968527, went with the retry).
+test('every suite with its own budget has a job limit above one run of it plus the setup', async () => {
   for (const name of SUITES) {
     const suite = await import(`../suites/${name}.mjs`);
     if (!suite.budgetMinutes) continue;
-    assert.ok((suite.minutes || 15) >= 2 * suite.budgetMinutes + 4 || suite.budgetMinutes <= 10, `${name}: minutes ${suite.minutes} cannot hold two runs of its ${suite.budgetMinutes}-minute budget (CI cancels the job and the evidence is lost)`);
+    assert.ok((suite.minutes || 15) >= suite.budgetMinutes + 4, `${name}: minutes ${suite.minutes} cannot hold one run of its ${suite.budgetMinutes}-minute budget (CI cancels the job and the evidence is lost)`);
   }
 });
 
 // Why (31 Oct 2026, main run 41146558456 and the beta's re-check 41150330007): apply-1of2's first try on a slow Mac runner was killed at the workflow's 15-minute
-// step limit with every step green so far; a kill writes no record, so flaky-proof had no timing proof and the passing retry stayed red (8 of 82 Mac first tries).
+// step limit with every step green so far; a kill writes no record, so the evidence could not say it was timing (8 of 82 Mac first tries).
 test('a suite without an aggregate stops before the CI try limit with room for its whole close-down; locally there is no limit', () => {
   assert.equal(budgetMsOf({aggregateBudget: false}, {E2E_TRY_MINUTES: '15'}), 11 * 60000);
   assert.equal(budgetMsOf({aggregateBudget: false}, {E2E_TRY_MINUTES: '30'}), 26 * 60000);
@@ -59,7 +60,7 @@ test('a suite without an aggregate stops before the CI try limit with room for i
   assert.equal(budgetMsOf({budgetMinutes: 11}, {E2E_TRY_MINUTES: '15'}), 11 * 60000, 'a suite with its own budget keeps it');
 });
 
-test('a slow try cut by that stop leaves records flaky-proof reads as timing, so a passing retry turns the job green', async () => {
+test('a slow try cut by that stop leaves records that read as timing (triage labels a later green re-run of the same commit flaky)', async () => {
   const quiet = console.log;
   console.log = () => {};
   try {

@@ -1,5 +1,5 @@
-"""Every folder an e2e run writes its logs to (E2E_ARTIFACTS) is uploaded: the second try of a red suite writes to e2e-rerun/<suite>, which nothing uploaded, so a
-retry's own failure could not be read (owner's coordinator, 26 Oct 2026, #2087's quality run 40340783596: the retry stored no job and only the first try's logs were kept)."""
+"""Every folder an e2e run writes its logs to (E2E_ARTIFACTS) is uploaded (26 Oct 2026, #2087's quality run 40340783596: a folder nothing uploaded left a failure unreadable).
+There is no second-try folder any more (31 Oct 2026, owner); the Edge pass of apply keeps its own folder and its own upload."""
 import re
 import unittest
 from pathlib import Path
@@ -38,7 +38,7 @@ class ArtifactsUploaded(unittest.TestCase):
             for folder in sorted(set(SET.findall(text))):
                 checked += 1
                 self.assertIn(folder, paths, f'{path.name}: E2E_ARTIFACTS={folder} is written but never uploaded (add an upload-artifact step, if: always())')
-        self.assertGreaterEqual(checked, 4, 'positive control: the first try and the retry folders of e2e.yml and desktop.yml are read')
+        self.assertGreaterEqual(checked, 4, 'positive control: the suite folders of e2e.yml and desktop.yml are read')
 
 
 if __name__ == '__main__':

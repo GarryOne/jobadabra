@@ -40,7 +40,7 @@ def job_state(job, log, annotations=()):
     if job.get('conclusion') != 'failure':
         return 'grey'
     failed = [step['name'] for step in job.get('steps', []) if step.get('conclusion') == 'failure']
-    suite_step = lambda name: (name.startswith('Run the ') and ' suite' in name) or name.startswith('First try failed:')
+    suite_step = lambda name: (name.startswith('Run the ') and ' suite' in name)
     # Why (28 Oct 2026, owner): install/runner failures are health grey, not a red product check.
     if not failed or not all(suite_step(name) for name in failed):
         return 'grey'
@@ -82,7 +82,7 @@ def candidate(records, sha, lanes):
     """Recorded {run,jobs,logs} responses + tested SHA + registry suites -> revert proof or None.
 
     Reads the latest two observations of each backbone suite on this SHA; any red/green flip vetoes that suite.
-    Multiple shards in one attempt count once. This does not count the retry steps inside a job as another workflow attempt.
+    Multiple shards in one attempt count once. A job has one try: its red is the verdict, so only a new workflow attempt can show a flip.
     """
     if not re.fullmatch(r'[0-9a-f]{40}', sha):
         return None

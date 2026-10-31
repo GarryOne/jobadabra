@@ -210,6 +210,78 @@ class Gate(unittest.TestCase):
         self.assertEqual(self.gate().blocking_lanes(jobs[1:], registry), [])
         self.assertEqual(self.gate().blocking_lanes(jobs[:2], registry), ['Mac + Linux: applyflows', 'Windows: lane jobs unavailable'])
 
+    def test_grey_annotation_holds_beta_and_writes_current_attempt_evidence(self):
+        gate = self.gate()
+        jobs = [{'id': 21, 'name': 'E2E · Mac + Linux · apply-1of2', 'conclusion': 'failure'},
+                {'id': 22, 'name': 'E2E · Windows · apply', 'conclusion': 'success'}]
+        calls = []
+        def github(*args, **kwargs):
+            calls.append(args)
+            return json.dumps([[{'title': 'Grey: the runner, not the app'}], []])
+        with tempfile.TemporaryDirectory() as folder:
+            target = Path(folder) / 'beta-held.json'
+            status, lines = gate.backbone_check('o/r', jobs, {}, github, attempt=1, output=target)
+            self.assertEqual(status, 1)
+            self.assertIn('Held: grey (runner, not the app): Mac + Linux: apply', '\n'.join(lines))
+            self.assertEqual(json.loads(target.read_text()), {'attempt': 1, 'grey': ['Mac + Linux: apply'], 'red': []})
+            self.assertIn('repos/o/r/check-runs/21/annotations?per_page=100', str(calls))
+            jobs.insert(1, {'id': 23, 'name': 'E2E · Mac + Linux · apply-2of2', 'conclusion': 'failure'})
+            def mixed(*args, **kwargs):
+                return '[]' if '/23/' in str(args) else github(*args, **kwargs)
+            status, lines = gate.backbone_check('o/r', jobs, {}, mixed, attempt=2, output=target)
+            self.assertEqual(status, 1)
+            self.assertIn('Not released: red: Mac + Linux: apply', '\n'.join(lines))
+            self.assertEqual(json.loads(target.read_text()), {'attempt': 2, 'grey': ['Mac + Linux: apply'], 'red': ['Mac + Linux: apply']})
+
+    def test_non_grey_or_unreadable_annotations_stay_red(self):
+        gate = self.gate()
+        jobs = [{'id': 21, 'name': 'E2E · Mac + Linux · apply', 'conclusion': 'failure'},
+                {'id': 22, 'name': 'E2E · Windows · settings', 'conclusion': 'success'}]
+        def unreadable(*args, **kwargs):
+            raise OSError('offline')
+        for github in (lambda *args: '[]', lambda *args: '[[{"title":"First try failed"}]]', unreadable):
+            with tempfile.TemporaryDirectory() as folder:
+                status, lines = gate.backbone_check('o/r', jobs, {}, github, attempt=1, output=Path(folder) / 'hold.json')
+                self.assertEqual(status, 1)
+                self.assertIn('Not released: red: Mac + Linux: apply', '\n'.join(lines))
+                self.assertNotIn('Held: grey', '\n'.join(lines))
+
+    def test_rate_only_standalone_import_needs_no_annotation_companion(self):
+        # The PR verdict downloads each companion separately, before main_e2e_state may be loaded.
+        import importlib.util
+        root = Path(__file__).resolve().parents[1]
+        with tempfile.TemporaryDirectory() as folder:
+            copied = Path(folder) / 'beta_rate_gate.py'
+            copied.write_text((root / 'tools/beta_rate_gate.py').read_text())
+            with patch.dict(sys.modules, {'pr_ai_number': ai}):
+                spec = importlib.util.spec_from_file_location('standalone_beta_rate_gate', copied)
+                module = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(module)
+                self.assertEqual(module.check('o/r', 99, {}, lambda *args: self.fail('no GitHub call')), (0, []))
+
+    def test_e2e_only_cli_exits_one_and_persists_grey_attempt_without_network(self):
+        root = Path(__file__).resolve().parents[1]
+        with tempfile.TemporaryDirectory() as folder:
+            tmp = Path(folder)
+            fake = tmp / 'gh'
+            fake.write_text(f'#!{sys.executable}\n' + r"""import json, sys
+url = next(a for a in sys.argv if a.startswith('repos/'))
+if '/jobs?' in url:
+    print(json.dumps([{'jobs': [{'id': 21, 'name': 'E2E · Mac + Linux · apply', 'conclusion': 'failure'},
+                              {'id': 22, 'name': 'E2E · Windows · apply', 'conclusion': 'success'}]}]))
+elif '/check-runs/21/annotations?' in url:
+    print(json.dumps([[{'title': 'Grey: the runner, not the app'}]]))
+else:
+    sys.exit('No network: unexpected call ' + repr(sys.argv))
+""")
+            fake.chmod(0o755)
+            result = subprocess.run([sys.executable, str(root / 'tools/beta_rate_gate.py'), '--repo', 'o/r', '--run', '99', '--e2e-only'],
+                                    cwd=tmp, env={**os.environ, 'PATH': folder + os.pathsep + os.environ['PATH'], 'GITHUB_RUN_ATTEMPT': '2'},
+                                    capture_output=True, text=True, timeout=15)
+            self.assertEqual(result.returncode, 1, result.stderr)
+            self.assertIn('Held: grey', result.stdout)
+            self.assertEqual(json.loads((tmp / 'beta-held.json').read_text()), {'attempt': 2, 'grey': ['Mac + Linux: apply'], 'red': []})
+
     def test_empty_lane_jobs_cannot_clear_a_failed_matrix(self):
         self.assertEqual(self.gate().blocking_jobs([], {}, 'mac'), ['lane jobs unavailable'])
 

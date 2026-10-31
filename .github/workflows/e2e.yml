@@ -208,7 +208,7 @@ jobs:
     runs-on: ${{ inputs.all_on_mac && 'macos-latest' || matrix.os || 'macos-latest' }}   # Linux unless the suite needs the Mac (lib/plan.mjs runnerOf); a virtual display there
     timeout-minutes: 360   # the lock's wait (up to 3 h) plus the suite; each step below has its own limit, so this only ends a hung wait
     # Outside failures stay red in their job and report, but do not decide the beta gate.
-    continue-on-error: ${{ matrix.outside == true }}
+    continue-on-error: ${{ (matrix.outside == true || matrix.tolerant == true) }}
     strategy:
       fail-fast: false      # one suite failing must not hide what the others found
       matrix: ${{ fromJson(needs.plan.outputs.matrix) }}
@@ -446,7 +446,7 @@ jobs:
         if: steps.suite_run.outcome == 'failure' && !inputs.mutant && steps.suite_run.outputs.report_only == '1'
         run: exit 1
       - name: "First try failed: the ${{ matrix.key }} suite once more, to tell flaky from real"
-        if: steps.suite_run.outcome == 'failure' && !inputs.mutant && !matrix.burnIn && steps.suite_run.outputs.report_only != '1' && matrix.outside != true
+        if: steps.suite_run.outcome == 'failure' && !inputs.mutant && !matrix.burnIn && steps.suite_run.outputs.report_only != '1' && matrix.outside != true && matrix.tolerant != true
         env:
           E2E_TRY_MINUTES: 15   # = this step's timeout-minutes: a suite without an aggregate budget stops 4 min before it (its close-down cap + 1), with records that read as timing (lib/runner.mjs budgetMsOf; tests/test_e2e_try_minutes.py)
           # Why (30 Oct 2026, ap): a backbone suite's retry uses the same stored answers as its first attempt (matrix.aiAnswers), never a UUID-dependent live replay.
@@ -472,11 +472,15 @@ jobs:
               exit 1
             fi
           else
-            echo "Failed again on the same commit: a real failure."
-            exit 1   # red twice: the job (and the gate) fail
+            if steps=$(node flaky-proof.mjs --grey "$first/suite-failures.json" "$E2E_ARTIFACTS/suite-failures.json"); then
+              echo "::error title=Grey: the runner, not the app::${{ matrix.key }}: both tries stopped on time only ($steps); re-runs once on a fresh runner in a beta"
+            else
+              echo "Failed again on the same commit: a real failure."
+            fi
+            exit 1   # keep failure so gh run rerun --failed picks grey jobs
           fi
       - name: Outside-world health
-        if: always() && matrix.outside == true
+        if: always() && (matrix.outside == true || matrix.tolerant == true)
         env:
           OUTCOME: ${{ steps.suite_run.outcome }}
         run: |

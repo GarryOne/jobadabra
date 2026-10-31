@@ -511,7 +511,7 @@ jobs:
     runs-on: ${{ matrix.os || 'macos-latest' }}   # Linux unless the suite needs the Mac (lib/plan.mjs runnerOf); a virtual display there
     timeout-minutes: 360   # the lock's wait (up to 3 h) plus the suite; each step below has its own limit, so this only ends a hung wait
     # Outside failures stay red in their job and report, but do not decide the beta gate.
-    continue-on-error: ${{ matrix.outside == true }}
+    continue-on-error: ${{ (matrix.outside == true || matrix.tolerant == true) }}
     strategy:
       fail-fast: false      # one suite failing must not hide what the others found
       matrix: ${{ fromJson(needs.changes.outputs.mac_matrix) }}
@@ -684,7 +684,7 @@ jobs:
       # flaky-proof.mjs): every first-try failure was timing or the test's environment. A wrong value that came right keeps it red: a bug that shows sometimes (#1897).
       # Either way the pass writes the marker beside the first run's artifacts, and triage labels those steps `flaky` or `intermittent`. Its own artifacts stay out of the upload.
       - name: "First try failed: the ${{ matrix.suite }} suite once more, to tell flaky from real"
-        if: steps.suite_run.outcome == 'failure' && matrix.outside != true
+        if: steps.suite_run.outcome == 'failure' && matrix.outside != true && matrix.tolerant != true
         working-directory: desktop/e2e
         env:
           E2E_TRY_MINUTES: 15   # = this step's timeout-minutes: a suite without an aggregate budget stops 4 min before it (its close-down cap + 1), with records that read as timing (lib/runner.mjs budgetMsOf; tests/test_e2e_try_minutes.py)
@@ -707,11 +707,15 @@ jobs:
               exit 1
             fi
           else
-            echo "Failed again on the same commit: a real failure."
-            exit 1   # red twice: the job (and the gate) fail
+            if steps=$(node flaky-proof.mjs --grey "$first/suite-failures.json" "$E2E_ARTIFACTS/suite-failures.json"); then
+              echo "::error title=Grey: the runner, not the app::${{ matrix.key }}: both tries stopped on time only ($steps); re-runs once on a fresh runner in a beta"
+            else
+              echo "Failed again on the same commit: a real failure."
+            fi
+            exit 1   # keep failure so gh run rerun --failed picks grey jobs
           fi
       - name: Outside-world health
-        if: always() && matrix.outside == true
+        if: always() && (matrix.outside == true || matrix.tolerant == true)
         env:
           OUTCOME: ${{ steps.suite_run.outcome }}
         run: |
@@ -772,6 +776,7 @@ jobs:
         if: (always()) && steps.artifact_scan_3.outcome == 'success'
         uses: actions/upload-artifact@v6
         with:
+          overwrite: true
           name: blob-${{ matrix.key }}
           path: blob-report
           if-no-files-found: ignore
@@ -796,6 +801,7 @@ jobs:
         if: (always()) && steps.artifact_scan_4.outcome == 'success'
         uses: actions/upload-artifact@v6
         with:
+          overwrite: true
           name: e2e-view-${{ matrix.key }}
           path: |
             e2e-artifacts/${{ matrix.key }}/steps.json
@@ -820,6 +826,7 @@ jobs:
         if: (always()) && steps.artifact_scan_5.outcome == 'success'
         uses: actions/upload-artifact@v6
         with:
+          overwrite: true
           name: e2e-artifacts-${{ matrix.key }}
           path: e2e-artifacts/${{ matrix.key }}
           if-no-files-found: ignore
@@ -843,6 +850,7 @@ jobs:
         if: (always()) && steps.artifact_scan_6.outcome == 'success'
         uses: actions/upload-artifact@v6
         with:
+          overwrite: true
           name: e2e-rerun-${{ matrix.key }}
           path: e2e-rerun/${{ matrix.key }}
           if-no-files-found: ignore
@@ -869,6 +877,7 @@ jobs:
     needs: [changes, windows, ai-ready]
     if: needs.windows.result == 'success' && needs.changes.outputs.gate == 'true' && needs.changes.outputs.count != '0'
     runs-on: windows-latest
+    continue-on-error: ${{ (matrix.outside == true || matrix.tolerant == true) }}
     timeout-minutes: 225   # + the wait for the suite's lock (up to 3 h)
     strategy:
       fail-fast: false
@@ -1001,14 +1010,55 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           E2E_LOCK_TOKEN: ${{ steps.lock_app.outputs.token }}
         run: bash lock-tools/tools/e2e-lock.sh acquire "${{ matrix.key }}"
-      - name: Run the ${{ matrix.suite }} suite on Windows
+      - name: Run the ${{ matrix.suite }} suite on Windows (first try)
+        id: suite_run
+        continue-on-error: true
         working-directory: desktop/e2e
         env:
           E2E_TRY_MINUTES: 15   # = this step's timeout-minutes: a suite without an aggregate budget stops 4 min before it (its close-down cap + 1), with records that read as timing (lib/runner.mjs budgetMsOf; tests/test_e2e_try_minutes.py)
         timeout-minutes: 15   # the suite stops itself at its budget (7 min, recorded 11), and by force 3 min later (suite.mjs)
         run: |
           if [ ! -f "suites/${{ matrix.suite }}.mjs" ]; then echo "The ${{ matrix.suite }} suite does not exist in this build: skipped."; exit 0; fi
-          node suite.mjs ${{ matrix.suite }}
+          node suite.mjs ${{ matrix.suite }} \
+            || { echo "::error title=First try failed::The ${{ matrix.key }} suite failed its first try; the next step runs it once more and decides"; exit 1; }
+      - name: "First try failed: the ${{ matrix.suite }} suite once more, to tell flaky from real"
+        if: steps.suite_run.outcome == 'failure' && matrix.outside != true && matrix.tolerant != true
+        working-directory: desktop/e2e
+        env:
+          E2E_TRY_MINUTES: 15   # = this step's timeout-minutes: a suite without an aggregate budget stops 4 min before it (its close-down cap + 1), with records that read as timing (lib/runner.mjs budgetMsOf; tests/test_e2e_try_minutes.py)
+        timeout-minutes: 15
+        run: |
+          set -o pipefail   # flaky-proof.mjs | tee: the proof's exit decides (tests/test_workflow_pipefail.py)
+          first="$E2E_ARTIFACTS"
+          replay=0; [ "${{ matrix.suite }}" != quality ] || replay="$E2E_AI_REPLAY"   # quality's retry replays like its first try (owner, 27 Oct 2026: "Code gate + AI rate")
+          export E2E_ARTIFACTS="${{ github.workspace }}/e2e-rerun/windows-${{ matrix.key }}" E2E_RERUN=1 E2E_AI_REPLAY="$replay"   # fresh answers, never the first try's (a replayed bad draw proves nothing); quality's retry replays like its first try (owner, 27 Oct 2026); a second try writes no HTML report (report/playwright.config.mjs)
+          again() { if [ "$RUNNER_OS" = Linux ]; then xvfb-run -a --server-args='-screen 0 1440x900x24' node suite.mjs "$1"; else node suite.mjs "$1"; fi; }
+          # Why (#2199): only the first try's red steps and their setup (owner, 27 Oct 2026: "Retry only the red steps"; red-steps.mjs); no step to name, or a build without red-steps.mjs (an older tag: stable canary 40503508863): the whole suite.
+          red=; [ ! -f red-steps.mjs ] || red=$(node red-steps.mjs "$first/suite-failures.json")
+          if [ -n "$red" ]; then export E2E_STEP_NAMES="$red"; echo "The second try repeats only the red step(s) and their setup: $red"; else unset E2E_STEP_NAMES; echo "The second try runs the whole suite (no red step to name)."; fi
+          if again ${{ matrix.suite }}; then
+            echo '{"rerun": "passed"}' > "$first/flaky.json"
+            # "Flaky" needs proof (gate G5): a first-try failure on a wrong value, not timing, is a bug that shows sometimes; the job stays red (lib/flaky-proof.mjs).
+            if node flaky-proof.mjs "$first/suite-failures.json"; then
+              echo "Passed on the second try, and every failure of the first was timing or the test's environment: flaky (labelled by triage)."
+            else
+              exit 1
+            fi
+          else
+            if steps=$(node flaky-proof.mjs --grey "$first/suite-failures.json" "$E2E_ARTIFACTS/suite-failures.json"); then
+              echo "::error title=Grey: the runner, not the app::${{ matrix.key }}: both tries stopped on time only ($steps); re-runs once on a fresh runner in a beta"
+            else
+              echo "Failed again on the same commit: a real failure."
+            fi
+            exit 1   # keep failure so gh run rerun --failed picks grey jobs
+          fi
+      - name: Outside-world health
+        if: always() && (matrix.outside == true || matrix.tolerant == true)
+        env:
+          OUTCOME: ${{ steps.suite_run.outcome }}
+        run: |
+          echo "::notice title=Outside-world health::${{ matrix.key }}: $OUTCOME (tolerant; does not block beta). Steps, screenshots and failures are in the Windows HTML report and e2e-artifacts-windows-${{ matrix.key }}."
+          test "$OUTCOME" = success
       - name: The apply suite again in Microsoft Edge (the Windows default; preinstalled on the runner)
         if: matrix.suite == 'apply'
         working-directory: desktop/e2e
@@ -1067,6 +1117,7 @@ jobs:
         if: (always()) && steps.artifact_scan_7.outcome == 'success'
         uses: actions/upload-artifact@v6
         with:
+          overwrite: true
           name: blob-windows-${{ matrix.key }}
           path: blob-report
           if-no-files-found: ignore
@@ -1091,6 +1142,7 @@ jobs:
         if: (always()) && steps.artifact_scan_8.outcome == 'success'
         uses: actions/upload-artifact@v6
         with:
+          overwrite: true
           name: e2e-view-windows-${{ matrix.key }}
           path: |
             e2e-artifacts-windows/${{ matrix.key }}/steps.json
@@ -1110,13 +1162,23 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           E2E_ARTIFACT_PATHS: |
             e2e-artifacts-windows/${{ matrix.key }}
+            e2e-rerun/windows-${{ matrix.key }}
         run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
       - name: Screenshots and logs
         if: (always()) && steps.artifact_scan_9.outcome == 'success'
         uses: actions/upload-artifact@v6
         with:
+          overwrite: true
           name: e2e-artifacts-windows-${{ matrix.key }}
           path: e2e-artifacts-windows/${{ matrix.key }}
+          if-no-files-found: ignore
+      - name: The second Windows try's screenshots and logs
+        if: always() && steps.artifact_scan_9.outcome == 'success'
+        uses: actions/upload-artifact@v6
+        with:
+          overwrite: true
+          name: e2e-rerun-windows-${{ matrix.key }}
+          path: e2e-rerun/windows-${{ matrix.key }}
           if-no-files-found: ignore
       # The Edge pass keeps its own folder (apply-edge); without this upload its app log and screenshots reached no one (beta 40281407461, 26 Oct 2026).
       - name: Scan artifact contents for CI secrets
@@ -1137,6 +1199,7 @@ jobs:
         if: (always() && matrix.suite == 'apply') && steps.artifact_scan_10.outcome == 'success'
         uses: actions/upload-artifact@v6
         with:
+          overwrite: true
           name: e2e-artifacts-windows-${{ matrix.key }}-edge
           path: e2e-artifacts-windows/apply-edge
           if-no-files-found: ignore
@@ -1168,6 +1231,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 90   # Why (30 Oct 2026, a8; beta 41090972183): covers the e2e review (15 min) plus release-checks.sh waiting up to 60 min for main's build; 20 cut Windows off at 18 min
     permissions:
+      checks: read     # grey proof in backbone job annotations
       contents: write   # the approval line (release-stable.sh when the soak is off)
       actions: write    # this run's artifacts, build.yml's verdict on the commit; release-stable.sh starts the Chrome Web Store publish
       id-token: write   # GitHub's per-run token the Codex broker checks (the screenshot review, lib/broker-client.mjs)
@@ -1217,6 +1281,7 @@ jobs:
       - uses: actions/upload-artifact@v6
         if: (hashFiles('e2e-report/index.html') != '') && steps.artifact_scan_11.outcome == 'success'
         with:
+          overwrite: true
           name: e2e-report   # admin/e2e-report.js serves it
           path: e2e-report
           compression-level: 0
@@ -1231,7 +1296,14 @@ jobs:
           github-token: ${{ github.token }}
       - name: Not released on Mac, an E2E suite failed on Mac + Linux or Windows
         if: needs.test-mac.result != 'success' || needs.test-windows.result != 'success'
-        run: python3 tools/beta_rate_gate.py --repo "$GITHUB_REPOSITORY" --run "$GITHUB_RUN_ID" --e2e-only
+        run: python3 tools/beta_rate_gate.py --repo "$GITHUB_REPOSITORY" --run "$GITHUB_RUN_ID" --e2e-only --platform mac
+      - name: Keep this platform's beta hold evidence
+        if: always() && hashFiles('beta-held.json') != ''
+        uses: actions/upload-artifact@v6
+        with:
+          name: beta-held-mac
+          path: beta-held.json
+          overwrite: true
       - name: Tolerant AI rates against main's nightly band
         if: needs.changes.outputs.gate == 'true'
         run: python3 tools/beta_rate_gate.py --repo "$GITHUB_REPOSITORY" --run "$GITHUB_RUN_ID" --platform mac
@@ -1273,6 +1345,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 90   # Why (30 Oct 2026, a8; beta 41090972183): covers the e2e review (15 min) plus release-checks.sh waiting up to 60 min for main's build; 20 cut Windows off at 18 min
     permissions:
+      checks: read     # grey proof in backbone job annotations
       contents: write   # the approval line (release-stable.sh when the soak is off)
       actions: write    # this run's artifacts, build.yml's verdict on the commit; release-stable.sh starts the Chrome Web Store publish
       id-token: write   # GitHub's per-run token the Codex broker checks (the screenshot review, lib/broker-client.mjs)
@@ -1322,6 +1395,7 @@ jobs:
       - uses: actions/upload-artifact@v6
         if: (hashFiles('e2e-report/index.html') != '') && steps.artifact_scan_12.outcome == 'success'
         with:
+          overwrite: true
           name: e2e-report-windows   # admin/e2e-report.js serves it
           path: e2e-report
           compression-level: 0
@@ -1336,7 +1410,14 @@ jobs:
           github-token: ${{ github.token }}
       - name: Not released on Windows, an E2E suite failed on Mac + Linux or Windows
         if: needs.test-mac.result != 'success' || needs.test-windows.result != 'success'
-        run: python3 tools/beta_rate_gate.py --repo "$GITHUB_REPOSITORY" --run "$GITHUB_RUN_ID" --e2e-only
+        run: python3 tools/beta_rate_gate.py --repo "$GITHUB_REPOSITORY" --run "$GITHUB_RUN_ID" --e2e-only --platform windows
+      - name: Keep this platform's beta hold evidence
+        if: always() && hashFiles('beta-held.json') != ''
+        uses: actions/upload-artifact@v6
+        with:
+          name: beta-held-windows
+          path: beta-held.json
+          overwrite: true
       - name: Tolerant AI rates against main's nightly band
         if: needs.changes.outputs.gate == 'true'
         run: python3 tools/beta_rate_gate.py --repo "$GITHUB_REPOSITORY" --run "$GITHUB_RUN_ID" --platform windows

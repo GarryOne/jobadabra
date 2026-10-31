@@ -21,7 +21,7 @@ log = open(os.path.join(state, 'calls'), 'a'); log.write(' '.join(args) + '\n');
 dispatched = os.path.exists(os.path.join(state, 'dispatched'))
 if args[:2] == ['workflow', 'run']:
     open(os.path.join(state, 'dispatched'), 'w').write(' '.join(args)); sys.exit(0)
-endpoint = args[1]
+endpoint = next(a for a in args if a.startswith('repos/'))
 if 'workflows/e2e.yml/runs?branch=main&status=completed' in endpoint and data.get('unreadable'):
     sys.exit(1)
 elif 'workflows/e2e.yml/runs?branch=main&status=completed' in endpoint:
@@ -31,6 +31,9 @@ elif 'workflows/e2e.yml/runs?branch=main&status=completed' in endpoint:
 elif endpoint.endswith('/jobs?per_page=100'):
     rid = endpoint.split('/runs/')[1].split('/')[0]
     print(json.dumps(data['jobs'].get(rid, data['recheck_jobs'] if rid == '99' else [])))
+elif '/check-runs/' in endpoint:
+    jid = endpoint.split('/check-runs/')[1].split('/')[0]
+    print(json.dumps([data.get('annotations', {}).get(jid, [])]))
 elif endpoint.endswith('commits/main'):
     print(data['head'])
 elif 'event=workflow_dispatch' in endpoint:
@@ -74,6 +77,14 @@ class RedMainGate(unittest.TestCase):
         self.assertEqual(code, 0, out)
         for suite in ('cardstates', 'settings'):
             self.assertIn(f'suspended (owner issue, not blocking): {suite}', out)
+        self.assertEqual(dispatch, '')
+
+    def test_grey_runner_failure_allows_beta_is_named_and_never_dispatched(self):
+        jobs = {'2': [{'id': 21, 'name': 'apply', 'conclusion': 'failure'}]}
+        code, out, dispatch = gate({'runs': [RED_RUN], 'jobs': jobs, 'head': RED_SHA,
+                                    'annotations': {'21': [{'title': 'Grey: the runner, not the app'}]}})
+        self.assertEqual(code, 0, out)
+        self.assertIn('grey (runner, not the app): apply', out)
         self.assertEqual(dispatch, '')
 
     def test_suspended_and_tolerant_reds_are_neither_dispatched_nor_blocking(self):

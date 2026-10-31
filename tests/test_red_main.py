@@ -13,6 +13,7 @@ TESTS, PAGES = 'CI · Tests', 'CI · Page cases (all cases, real extension, Linu
 
 # Every workflow of .github/workflows, counted for red main or ignored with the reason (a new workflow fails the last test until it is put here: a conscious choice).
 CLASSIFIED = {
+    'CI · Re-run a grey beta once': 'ignored: a completed beta hold retries grey jobs once, never tests a push to main',
     # Why (30 Oct 2026, owner, JOB-45): nightly model drift is its own warning/rate check, never a PR or beta gate.
     'CI · Stored AI answer drift': 'ignored: nightly drift rates, warm-up warnings and a deduplicated lasting-red issue; never required',
     'Extension · Chrome Web Store publish': 'ignored: started by tools/release-stable.sh on a stable release, a PR editing it, or by hand; never runs on a push to main',

@@ -3,6 +3,7 @@
 # Invariants: only measured rates block tolerant AI suites; unavailable data is visible health.
 import argparse
 import json
+import os
 import re
 import subprocess
 from pathlib import Path
@@ -51,6 +52,35 @@ LANE_NAMES = {'mac': 'Mac + Linux', 'windows': 'Windows'}
 def blocking_lanes(jobs, registry):
     """Name each blocking suite with its lane; a red on either lane holds both betas."""
     return [f'{LANE_NAMES[lane]}: {suite}' for lane in LANE_NAMES for suite in blocking_jobs(jobs, registry, lane)]
+
+
+def backbone_check(repo, jobs, registry, github=gh, *, attempt=1, output=Path('beta-held.json')):
+    """Hold either beta on backbone failure; keep grey evidence distinct from wrong values."""
+    # The standalone PR rate reader loads companions independently; annotation helpers are needed only by the beta backbone gate.
+    try:
+        from .main_e2e_state import annotations_of, is_grey
+    except ImportError:  # Direct workflow invocation.
+        from main_e2e_state import annotations_of, is_grey
+    grey, red = set(), set()
+    for lane, label in LANE_NAMES.items():
+        prefix = f'E2E · {label} · '
+        lane_jobs = [job for job in jobs if job.get('name', '').startswith(prefix)]
+        if not lane_jobs:
+            red.add(f'{label}: lane jobs unavailable')
+        for job in lane_jobs:
+            suite = re.sub(r'-\d+of\d+$', '', job['name'][len(prefix):])
+            if registry.get(suite, {}).get('lane') in ('tolerant', 'suspended') or job.get('conclusion') == 'success':
+                continue
+            proven = job.get('conclusion') == 'failure' and is_grey(annotations_of(repo, job.get('id'), github))
+            (grey if proven else red).add(f'{label}: {suite}')
+    report = {'attempt': attempt, 'grey': sorted(grey), 'red': sorted(red)}
+    output.write_text(json.dumps(report) + '\n', encoding='utf-8')
+    lines = []
+    if grey:
+        lines.append('Held: grey (runner, not the app): ' + ', '.join(sorted(grey)) + ' — re-runs once on fresh runners')
+    if red:
+        lines.append('Not released: red: ' + ', '.join(sorted(red)))
+    return int(bool(grey or red)), lines
 
 
 def main_nights(repo, suite, github, platform='mac', current_run='', *, first_only=False):
@@ -132,10 +162,12 @@ def main():
     args = parser.parse_args()
     registry = json.loads(LANES.read_text())['suites']
     if args.e2e_only:
-        blocked = blocking_lanes(jobs_of(args.repo, args.run, gh), registry)
-        if blocked:
-            print('::error::E2E gate blocked: ' + ', '.join(blocked))
-            return 1
+        status, lines = backbone_check(args.repo, jobs_of(args.repo, args.run, gh), registry,
+                                       attempt=int(os.environ.get('GITHUB_RUN_ATTEMPT', '1')))
+        for line in lines:
+            print(('::notice::' if line.startswith('Held: grey') else '::error::') + line)
+        if status:
+            return status
         print('Tolerant/suspended reds do not block; AI rates decide in the next gate.')
         return 0
     status, lines = check(args.repo, args.run, registry, platform=args.platform)

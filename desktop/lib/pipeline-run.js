@@ -26,6 +26,7 @@ import {draftsKits} from './pipeline-args.js';
 // `children` is the one owner: run() adds every engine child at its spawn (src.focus and every read, task or not) and removes it on its 'exit'. The app's end is not over until
 // stopRunning() has resolved, i.e. until each child has emitted 'exit': the quit and the exit-restart wait for it (lib/lifecycle.js, main.js), never a timed poll.
 const children = new Set();
+/** True while any engine child (a task or an untracked read) has not yet emitted 'exit'; the quit asks it before leaving. Takes nothing, reads `children`. */
 export const hasChildren = () => children.size > 0;
 const stopping = new WeakMap();   // child → its one stop: a reaper that calls stopRunning() again and again adds no listener and no timer
 /**

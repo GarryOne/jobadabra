@@ -1,9 +1,11 @@
 // Waits until a folder is no longer held by a process that outlived the app (Windows: a child's working directory or open handle keeps the folder, not its files, from being renamed
 // or removed). The reset and the import of the next start need exactly that; a relaunch before it failed them (17 Oct 2026, Windows settings). Guarded by test/folder-free.test.mjs.
+// Job: wait on state
 import {spawnSync} from 'node:child_process';
 import fs from 'node:fs';
 
 const LOCKED = new Set(['EPERM', 'EBUSY', 'EACCES', 'ENOTEMPTY']);
+const POWERSHELL_MS = 15000;   // one Windows query about processes, not a wait for a state
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 // -> the milliseconds waited; throws after `timeout` with the last error, so a holder that never leaves is said, not hidden by a later vague failure.
@@ -58,7 +60,7 @@ export function describeHolders(answer, {run = spawnSync, platform = process.pla
   const pids = [...String(answer).matchAll(/(?:^| \| )(\d+) /g)].map(found => found[1]);
   if (platform !== 'win32' || !pids.length) return '';
   const script = `Get-CimInstance Win32_Process | Where-Object { @(${pids.join(',')}) -contains $_.ProcessId } | ForEach-Object { "$($_.ProcessId) <- $($_.ParentProcessId) $($_.CommandLine)" }`;
-  try { return String(run('powershell', ['-NoProfile', '-Command', script], {encoding: 'utf8', timeout: 15000, windowsHide: true}).stdout || '').trim().split(/\r?\n/).filter(Boolean).map(line => line.slice(0, 260)).join(' | '); } catch { return ''; }
+  try { return String(run('powershell', ['-NoProfile', '-Command', script], {encoding: 'utf8', timeout: POWERSHELL_MS, windowsHide: true}).stdout || '').trim().split(/\r?\n/).filter(Boolean).map(line => line.slice(0, 260)).join(' | '); } catch { return ''; }
 }
 
 // Windows: the leftovers of THIS run's app among `rows` ({pid, parent, name, cmd}): its processes whose command line carries the run's own throwaway folder name
@@ -98,6 +100,10 @@ export function endLeftovers({run = spawnSync, platform = process.platform, dir 
   } catch { return []; }
 }
 
+/**
+ * Waits (renaming the folder aside and back) until `dir` is no longer held, ending the app's own leftovers after `endAfter` ms; -> the ms waited.
+ * Throws after `timeout` ms naming the files' holders (with their parent and command line), from `holders`/`fileHolders`/`describeHolders` (Windows queries; '' elsewhere).
+ */
 export async function waitForFolderFree(dir, {timeout = 20000, every = 250, endAfter = 8000, mainPid = 0, rename = fs.renameSync, exists = fs.existsSync, who = () => holders({dir}), whoHasFiles = () => fileHolders({dir}), end = pid => endLeftovers({dir, mainPid: pid}), describe = describeHolders} = {}) {
   const aside = `${dir}.probe`;
   let waited = 0;

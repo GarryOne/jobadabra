@@ -18,6 +18,7 @@ export const DESKTOP = path.resolve(E2E, '..');
 // Windows has no .bin/electron executable (it is a .cmd that Playwright cannot start): the package itself says where electron.exe is. Elsewhere: unchanged.
 import {createRequire} from 'node:module';
 import {appLogText} from './app-log.mjs';
+import {stepTimeLeft} from './wait-on-state.mjs';
 import {keepRunLogs} from './run-logs.mjs';
 import {pythonCoverage, saveCoverage, startCoverage, takeSetup, takeStep} from './coverage.mjs';   // E2E_COVERAGE=1: what app code this session, and each step, ran (gate G1b)
 import {refuseWrapper, withoutWrappers} from './real-claude.mjs';   // never a terminal's claude wrapper (e2e/test/real-claude.test.mjs)
@@ -150,7 +151,7 @@ async function closeApp(app, {how = 'crash'} = {}) {
  * Why (31 Oct 2026, owner: quitting must end every engine child): electron.exit(0) skips the quit a person does, so an engine child stayed behind holding a hung AI call
  * (activityfailures CI 41217478444) and, on Windows, the data folder (settings, beta 41220959824). A crash step keeps how: 'crash'. Guard: test/app-tree.test.mjs.
  */
-async function quitApp(app, {exitCapMs = 30000} = {}) {
+async function quitApp(app, {exitCapMs = stepTimeLeft() ?? 30000} = {}) {
   const child = app.process();
   const exited = child.exitCode !== null || child.signalCode ? Promise.resolve() : new Promise(resolve => child.once('exit', resolve));
   if (process.platform === 'win32') await keyWritten(app);

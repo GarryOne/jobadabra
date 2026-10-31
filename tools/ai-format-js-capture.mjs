@@ -5,6 +5,7 @@ import crypto from 'node:crypto';
 import vm from 'node:vm';
 
 const ALLOWED = new Set([
+  'desktop/e2e/lib/judge.mjs',
   'desktop/lib/profile-move.js', 'desktop/lib/profile-sections.js', 'desktop/lib/answer-clarity.js',
   'desktop/lib/contact-review.js', 'desktop/lib/contact.js', 'desktop/lib/queue-wording.js',
   'desktop/lib/missing-facts.js', 'desktop/lib/fact-catalog.js', 'desktop/lib/question-reuse.js',
@@ -140,5 +141,15 @@ export async function captureDesktop(root) {
     'desktop/lib/contact-from-cv.js', 'export function cleanProposals', client => load('desktop/lib/contact-from-cv.js').propose(client, cv, ['first_name', 'last_name']));
   await capture('cv_queue', {...cvContext, wanted: ['languages'], catalog}, 'desktop/lib/cv-queue.js', 'const response = await client.messages.create',
     'desktop/lib/cv-queue.js', 'const clean =', client => load('desktop/lib/cv-queue.js').factProposals(storage(), {client, wanted: ['languages']}));
+  const reviewContext = {person: 'A fictional senior SRE looking for platform roles in Zurich, Switzerland.',
+    items: [{name: 'Fixture employer', board: 'greenhouse', quality: 86, citiesOfThose: 'Zurich', relevantRoles: 4, relevantRolesInPreferredPlaces: 4}]};
+  let reviewRequest;
+  await load('desktop/e2e/lib/judge.mjs').judge({...reviewContext, key: '', fetchImpl: async (_url, init) => {
+    reviewRequest = clone(JSON.parse(init.body));
+    return {ok: true, json: async () => ({content: [{type: 'text', text: '{"items":[]}'}]})};
+  }});
+  entries.push({kind: 'judge.review', action: 'judge.review', request: reviewRequest, context: reviewContext,
+    source: location(root, 'desktop/e2e/lib/judge.mjs', 'const response = await fetchImpl'),
+    validator: location(root, 'desktop/e2e/lib/judge.mjs', 'export function parseVerdicts'), tier: 'small'});
   return clone(entries);
 }

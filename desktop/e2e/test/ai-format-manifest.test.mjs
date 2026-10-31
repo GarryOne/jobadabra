@@ -46,8 +46,14 @@ test('each captured request has validator context, a bounded body and real sourc
     assert.equal(entry.tier, tierOf(request.model), entry.kind);
     assert.ok(request.system?.length, entry.kind);
     assert.ok(request.messages.length && request.messages.every(turn => turn.role && turn.content), entry.kind);
-    assert.equal(request.output_config.format.type, 'json_schema');
-    assert.equal(request.output_config.format.schema.type, 'object');
+    if (entry.kind === 'judge.review') {
+      assert.equal(request.output_config, undefined, 'reviewer asks for JSON in its SYSTEM and validates with parseVerdicts');
+      assert.match(request.system, /"makes_sense":true\|false/);
+      assert.equal(questionOf({body: request}, {}).operation, 'judge.review');
+    } else {
+      assert.equal(request.output_config.format.type, 'json_schema');
+      assert.equal(request.output_config.format.schema.type, 'object');
+    }
     for (const field of ['source', 'validator']) {
       const match = /^((?:desktop|src)\/[\w/.-]+):(\d+)$/.exec(entry[field]);
       assert.ok(match, `${entry.kind}: ${field}`);

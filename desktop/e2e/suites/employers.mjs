@@ -16,6 +16,10 @@ import {ensureSetUp} from '../lib/seed.mjs';
 import {withRoles} from '../lib/search-roles.mjs';
 import {appLogLines} from '../lib/app-log.mjs';
 
+// Saved answers own every gate judgment; the real-model guard catches an escape.
+export const offlineAi = true;
+export const realAi = false;
+export const aiAnswers = 'backbone';
 export const minutes = 15;
 export const name = 'employers';
 // The scout judges feeds for this person whatever the test workspace's search settings hold (src/paths.py: JOB_PILOTTO_LOCATIONS_FILE).

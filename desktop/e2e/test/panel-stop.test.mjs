@@ -1,4 +1,4 @@
-// The Stop press waits for a pressable Stop (found by role and name), then for the panel to show the fill stopped, and a Stop that does not halt it fails with the panel's own state.
+// The Stop press waits for a pressable Stop (the panel's `.stop-btn`, or the pill's `.pill-stop` when minimised), then for the panel to show the fill stopped, and a Stop that does not halt it fails with the panel's own state.
 // Why (31 Oct 2026, a8; PR #2746's harness run 41250657527): "Stop halts a fill with the panel open" failed with only "Stop did not halt the fill". A fake panel in a real Chromium plays
 // a Stop that is disabled at first, one that halts late, one that never halts, one that is never pressable and the minimised pill.
 import assert from 'node:assert/strict';
@@ -98,9 +98,9 @@ test('a Stop that is never pressable fails naming the control and the panel, not
   });
 });
 
-test('the minimised panel\'s pill Stop is pressed by the same role and name', async () => {
+test('the minimised panel\'s pill Stop is pressed with the minimised option', async () => {
   await withPanel('pill', async page => {
-    const {state} = await pressStop(page, {capMs: 5000});
+    const {state} = await pressStop(page, {capMs: 5000, minimised: true});
     assert.equal(state.cardHidden, true);
     assert.equal(isStopped(state), true);
   });

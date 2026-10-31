@@ -12,11 +12,11 @@ import {run} from './pipeline-run.js';
 import {searchSteps} from './search-steps.js';
 import {searchDone} from './search-report.js';
 import {offer as offerBrowserReads} from './refused-offer.js';
-import {withLinkedin} from './search-beside.js';
+import {ownPress, withLinkedin} from './search-beside.js';
 
 // note: what this search is for beyond a refresh ("Re-scoring 75 older scores"), shown on its row from queued to finished.
 export function refresh(storage, onLine, mode = 'run', trigger = 'you', {note = '', employers = false} = {}) {
-  return tracked(storage, 'search', trigger, onLine, (tee, signal) => searchOnce(storage, tee, mode, trigger, employers, signal), {mode}, (record, log) => {
+  return tracked(storage, 'search', trigger, onLine, (tee, signal) => searchOnce(storage, tee, mode, trigger, {employers, signal, note}), {mode}, (record, log) => {
     const problem = deliveryProblem(log);   // the digest the bot could not deliver: said on the run, not only as "Failed"
     let summary = {};
     try { summary = JSON.parse(storage.readText('data/reports/last-run.json')); } catch {}
@@ -78,11 +78,12 @@ export function task(storage, kind, args, onLine, trigger = 'you', {note = ''} =
     return {ok: code === 0, result};
   }, {args}, (record, log) => ({summary: taskSummary(kind, log), message: appMessage(log)}), {note});
 }
-function searchOnce(storage, onLine, mode, trigger = 'you', employers = false, signal = null) {
+function searchOnce(storage, onLine, mode, trigger = 'you', {employers = false, signal = null, note = ''} = {}) {
   return (async () => {
     const startedAt = new Date().toISOString();   // "Your search changed" compares with when a refresh began, not ended (renderer/search-changed.js)
-    // LinkedIn jobs (switch on, lib/linkedin-headless.js) is read beside the engine's steps on the press's own clock; with the switch off this is just searchSteps (lib/search-beside.js).
-    const {code, result} = await withLinkedin(storage, onLine, signal, () => searchSteps(storage, onLine, mode, trigger, undefined, {employers}));
+    // LinkedIn jobs (switch on, lib/linkedin-headless.js) is read beside the engine's steps on the press's own clock, for a person's own press only (ownPress); otherwise this is just searchSteps.
+    const steps = () => searchSteps(storage, onLine, mode, trigger, undefined, {employers});
+    const {code, result} = await (ownPress({mode, trigger, employers, note}) ? withLinkedin(storage, onLine, signal, steps) : steps());
     storage.saveSettings({lastSearchAt: new Date().toISOString(), lastSearchStartedAt: startedAt, lastSearchOk: code === 0});
     searchDone({startedAt, ok: code === 0, stopped: code === null, trigger});
     if (code !== null) offerBrowserReads(storage, run).catch(() => {});   // the run offers "Find jobs using your browser" for the sites that refused it; it never reads them (lib/refused-offer.js)   // the search report (lib/search-report.js), when Technical reports are on

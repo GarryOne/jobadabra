@@ -8,6 +8,13 @@ let registered = null, registeredScore = null;
 /** Register the LinkedIn step: (signal, onLine) -> Promise<{state, jobs, fits?, ...}>, and the light scoring (fits, onLine). null removes them (tests, tools). */
 export const setLinkedinStep = (fn, score = null) => { registered = fn; registeredScore = score; };
 
+/**
+ * True for a person's own Find jobs press (the button, Telegram's run, a resumed press, the first press): the only runs that read LinkedIn.
+ * Why (31 Oct 2026, Gitar on #2699 + spec: "scheduling LinkedIn outside Find jobs" is parked): the timer, a re-score and "Find more employers" also pass through the search task,
+ * and the session must not be used with nobody at the keyboard (owner, 26 Oct 2026: not started automatically in the background).
+ */
+export const ownPress = ({mode, trigger, employers = false, note = ''}) => mode === 'run' && ['you', 'first'].includes(trigger) && !employers && !note;
+
 const SCORE_NEEDS_MS = 40000;   // under this much of the press left, the jobs wait for the next search (an engine step needs a few seconds to start)
 /**
  * Run `main` (the engine's steps) with the LinkedIn step beside it. -> main's result, whatever the step does.

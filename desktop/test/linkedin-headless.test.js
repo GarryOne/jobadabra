@@ -10,6 +10,10 @@ const SESSION = {li_at: SECRET, JSESSIONID: '"ajax:99"'};
 const SEARCHES = [1, 2, 3].map(n => ({name: `LinkedIn: role${n} in Genève`, url: `https://www.linkedin.com/jobs/search/?keywords=role${n}&location=Gen%C3%A8ve`}));
 const NOW = Date.parse('2026-10-31T12:00:00.000Z');
 
+const jarAfter = [   // what the browser holds after a read: LinkedIn rotated li_at, set its own JSESSIONID on the www host, added trackers; plus a site that is not LinkedIn
+  {name: 'li_at', domain: '.www.linkedin.com', path: '/', secure: true}, {name: 'JSESSIONID', domain: '.www.linkedin.com', path: '/', secure: true}, {name: 'bcookie', domain: '.linkedin.com', path: '/', secure: true},
+  {name: 'lidc', domain: 'www.linkedin.com', path: '/jobs', secure: false}, {name: 'session', domain: '.notlinkedin.com', path: '/', secure: true}, {name: 'x', domain: 'x.example', path: '/', secure: true}];
+
 function rig({on = true, session = SESSION, ready = true, searches = SEARCHES, paused = '', results = [], status = {}, startError = null, runError = null, aborted = false} = {}) {
   const mine = {linkedinJobs: {on, ...(paused ? {pauseUntil: paused} : {})}};
   const storage = {settings: () => mine, saveSettings: patch => Object.assign(mine, patch)};
@@ -22,6 +26,7 @@ function rig({on = true, session = SESSION, ready = true, searches = SEARCHES, p
       calls.push([method, params]);
       if (method === 'Target.createTarget') { const targetId = `T${++nextTab}`; tabs.add(targetId); return {targetId}; }
       if (method === 'Target.closeTarget') tabs.delete(params.targetId);
+      if (method === 'Storage.getCookies') return {cookies: jarAfter};
       return {};
     },
     targetSocket: async id => `ws://127.0.0.1:1/devtools/page/${id}`,
@@ -179,4 +184,22 @@ test('a browser that will not start is a plain failure, nothing was set', async 
 test('no searches in the strategy: done with none, no cookie set', async () => {
   const r = rig({searches: []});
   assert.deepEqual([(await linkedinStep(r.args)).state, cookieCalls(r.calls).length], ['done', 0]);
+});
+
+test('the clean-up deletes every LinkedIn cookie the browser holds, with its own domain and path, and no other site\'s', async () => {
+  const r = rig();
+  await linkedinStep(r.args);
+  const clear = cookieCalls(r.calls).at(-1)[1].cookies;
+  const key = c => `${c.name}@${c.domain}${c.path}`;
+  for (const wanted of ['li_at@.www.linkedin.com/', 'JSESSIONID@.www.linkedin.com/', 'bcookie@.linkedin.com/', 'lidc@www.linkedin.com/jobs', 'li_at@.linkedin.com/', 'JSESSIONID@.linkedin.com/']) assert.ok(clear.map(key).includes(wanted), wanted);
+  assert.equal(clear.some(c => /notlinkedin|x\.example/.test(c.domain)), false, 'a look-alike host and another site are left alone');
+  assert.ok(clear.every(c => c.value === '' && c.expires < NOW / 1000));
+});
+
+test('if the jar cannot be listed, the two cookies that were set are still expired', async () => {
+  const r = rig();
+  const send = r.args.browser.send;
+  r.args.browser.send = async (method, params) => { if (method === 'Storage.getCookies') throw new Error('no'); return send(method, params); };
+  await linkedinStep(r.args);
+  assert.deepEqual(cookieCalls(r.calls).at(-1)[1].cookies.map(c => c.name), ['li_at', 'JSESSIONID']);
 });

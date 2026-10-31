@@ -21,6 +21,15 @@ const WORDS = {
 };
 const jar = (cookies, now, clear) => cookies.map(([name, value]) => ({name, value: clear ? '' : value, domain: '.linkedin.com', path: '/', secure: true, httpOnly: name === 'li_at', sameSite: 'None',
   ...(clear ? {expires: Math.floor(now / 1000) - 3600} : {})}));
+const onLinkedin = domain => /(^|\.)linkedin\.com$/.test(String(domain).replace(/^\./, ''));
+// Why (31 Oct 2026, Gitar on #2699): LinkedIn rotates li_at and sets its own cookies (JSESSIONID on the www host, trackers) during the read; expiring only the two that were set would leave those
+// in the profile. So the clean-up expires every LinkedIn cookie the browser actually holds, each with its own domain and path (never another site's), and the two that were set as the floor.
+async function clearJar(browser, cookies, now) {
+  const held = await browser.send('Storage.getCookies', {}).then(answer => answer?.cookies || []).catch(() => []);
+  const gone = new Map();
+  for (const c of [...jar(cookies, now, true), ...held.filter(c => onLinkedin(c.domain)).map(c => ({name: c.name, value: '', domain: c.domain, path: c.path || '/', secure: c.secure !== false, expires: Math.floor(now / 1000) - 3600}))]) gone.set(`${c.name}@${c.domain}${c.path}`, c);
+  await browser.send('Storage.setCookies', {cookies: [...gone.values()]});
+}
 
 // A tab opened blank, watched, then sent to the marked address: the extension reads it (extension/background.js #jp-read-<ticket>); the first main-document status is seen first.
 function tabOpener({browser, openCdp, end, tabs, sessions, seen}) {
@@ -100,7 +109,7 @@ export async function linkedinStep({storage, browser, openCdp = openCdpSession, 
     total = await readAll({list, run, openTab, signal, tee, pause, seen, closeTabs});
   } catch { /* the verdict stays 'failed' */ } finally {
     await closeTabs();
-    await browser.send('Storage.setCookies', {cookies: jar(cookies, now(), true)}).catch(() => { total.verdict = 'failed'; });   // the session leaves the browser, whatever ended the step
+    await clearJar(browser, cookies, now()).catch(() => { total.verdict = 'failed'; });   // the session leaves the browser, whatever ended the step
   }
   const {jobs, fits, read, verdict} = total;
   const out = {state: verdict, jobs, fits, read, of: list.length, ...(seen.status === 429 ? {pauseUntil: new Date(now() + DAY_MS).toISOString()} : {})};

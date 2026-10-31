@@ -2,7 +2,8 @@
 // never changed or delayed by the step, a Stop or a failure of either ends both, the step's verdict is recorded once, and the light scoring runs only with time left.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {withLinkedin} from '../lib/search-beside.js';
+import fs from 'node:fs';
+import {ownPress, withLinkedin} from '../lib/search-beside.js';
 
 const storage = {};
 const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -79,4 +80,19 @@ test('a Stop pressed after the engine\'s steps ended, while LinkedIn is still re
   await withLinkedin(storage, () => {}, stop.signal, async () => ({code: 0}), {step, deadlineMs: 5000, record: () => {}});
   assert.equal(endedBy, 'stop');
   assert.ok(Date.now() - started < 300, 'it did not wait for the step\'s own 400 ms');
+});
+
+test('only a person\'s own Find jobs press reads LinkedIn: not the timer, a re-score or "Find more employers" (spec: scheduling LinkedIn outside Find jobs is parked)', () => {
+  assert.equal(ownPress({mode: 'run', trigger: 'you'}), true, 'the Find jobs button, Telegram\'s run, a resumed press');
+  assert.equal(ownPress({mode: 'run', trigger: 'first'}), true, 'the first press on this Mac');
+  assert.equal(ownPress({mode: 'scheduled', trigger: 'schedule'}), false, 'the timer: nobody at the keyboard');
+  assert.equal(ownPress({mode: 'run', trigger: 'schedule'}), false);
+  assert.equal(ownPress({mode: 'run', trigger: 'you', employers: true}), false, 'Find more employers');
+  assert.equal(ownPress({mode: 'run', trigger: 'you', note: 'Re-scoring 75 older scores'}), false, 'a re-score');
+  assert.equal(ownPress({mode: 'today', trigger: 'you'}), false, 'a light scoring run');
+});
+
+test('the search task asks that question before it runs the LinkedIn step (pinned: every refresh passes through searchOnce)', () => {
+  const source = fs.readFileSync(new URL('../lib/pipeline-tasks.js', import.meta.url), 'utf8');
+  assert.match(source, /ownPress\(\{mode, trigger, employers, note\}\) \? withLinkedin\(/);
 });

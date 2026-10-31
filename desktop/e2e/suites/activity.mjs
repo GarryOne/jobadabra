@@ -9,6 +9,10 @@ import {finish, snap} from '../lib/layout.mjs';
 import {journey} from '../lib/journey.mjs';
 import {LABEL, appReady, chooseMenu, closeRunPanel, noRowStaysRunning, openPanel, openRun, runPanelShown, panelRows, prepare, problemsWith, runTask, runsData, sleep} from '../lib/activity-steps.mjs';
 
+// Saved gate replies precede caches and transports, including setup and relaunch reads.
+export const offlineAi = true;
+export const realAi = false;
+export const aiAnswers = 'backbone';
 export const minutes = 15;
 // What a step needs from an earlier one when E2E_STEPS picks it (lib/runner.mjs wantedWords): the relaunch steps read a weekly run, and the filter shows only with two runs.
 export const stepNeeds = {'without its message': ['Analyze my job search', 'Find jobs'], 'read only from Notion': ['Analyze my job search', 'Find jobs']};

@@ -5,7 +5,7 @@ import crypto from 'node:crypto';
 import vm from 'node:vm';
 
 const ALLOWED = new Set([
-  'desktop/e2e/lib/judge.mjs',
+  'desktop/e2e/lib/judge.mjs', 'desktop/e2e/lib/factjudge.mjs', 'desktop/lib/match-check.js',
   'desktop/lib/profile-move.js', 'desktop/lib/profile-sections.js', 'desktop/lib/answer-clarity.js',
   'desktop/lib/contact-review.js', 'desktop/lib/contact.js', 'desktop/lib/queue-wording.js',
   'desktop/lib/missing-facts.js', 'desktop/lib/fact-catalog.js', 'desktop/lib/question-reuse.js',
@@ -151,5 +151,21 @@ export async function captureDesktop(root) {
   entries.push({kind: 'judge.review', action: 'judge.review', request: reviewRequest, context: reviewContext,
     source: location(root, 'desktop/e2e/lib/judge.mjs', 'const response = await fetchImpl'),
     validator: location(root, 'desktop/e2e/lib/judge.mjs', 'export function parseVerdicts'), tier: 'small'});
+  const factContext = {posting: {title: 'Fixture SRE', company: 'Fixture employer', location: 'Zurich', description: 'Maintain Kubernetes in Zurich.'},
+    profile: 'A fictional SRE in Zurich with Kubernetes experience.', produced: ['Kubernetes experience fits the role.'], facts: {}};
+  const factRequest = clone(load('desktop/e2e/lib/factjudge.mjs').buildRequest(factContext));
+  entries.push({kind: 'judge.facts', action: 'judge.facts', request: factRequest, context: factContext,
+    source: location(root, 'desktop/e2e/lib/factjudge.mjs', 'const response = await fetchImpl'),
+    validator: location(root, 'desktop/e2e/lib/factjudge.mjs', 'export function parseVerdict'), tier: 'small'});
+  const matchContext = {job: factContext.posting, cv: {summary: factContext.profile, skills: 'Kubernetes'}, profile: ''};
+  let matchRequest;
+  const captured = new Error('offline CV request captured');
+  try { await load('desktop/lib/match-check.js').check({}, '', {...matchContext, client: {messages: {create: async body => {
+    matchRequest = clone(body);
+    throw captured;   // Capture stops before parsing; no CV verdict is authored here.
+  }}}}); } catch (error) { if (error !== captured) throw error; }
+  entries.push({kind: 'judge.cv-match', action: 'judge.cv-match', request: matchRequest, context: matchContext,
+    source: location(root, 'desktop/lib/match-check.js', 'const response = await anthropic.messages.create'),
+    validator: location(root, 'desktop/lib/match-check.js', 'const result = JSON.parse'), tier: 'mid'});
   return clone(entries);
 }

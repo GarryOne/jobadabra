@@ -347,6 +347,29 @@ def capture_engine(prompts=False):
             reading.read([dict(url='fixture-posting', title='Fixture title', location='Country', description='Fixture posting text')],
                          place_search, client=client)
             entries.append(dict(kind='app.placeReading', action='place_reading', request=client.request))
+    if not prompts:
+        learning = load('src/ai/learning.py', ['ISSUE_SCHEMA', 'RULES'])
+        writing = load('src/ai/writing_rules.py', ['RULES'])
+        doors = load('src/suggestions.py', ['DOORS', 'DOOR_LABEL_MAX'])
+        weekly_text = load('src/ai/insights_text.py', ['HONEST', 'WEEKLY_SCHEMA', 'WEEKLY_SYSTEM'], learning=learning,
+                           WRITING_RULES=writing.RULES, DOORS=doors.DOORS, DOOR_LABEL_MAX=doors.DOOR_LABEL_MAX)
+        client = Client({})
+        def capture_weekly(**body):
+            client.create(**body)
+            raise RuntimeError('offline weekly captured')
+        data = dict(market={'total': 0}, applications={'total': 0}, interviews={}, week={}, learning={'evidence': []})
+        weekly = load('src/ai/insights.py', ['weekly'], DEFAULT_MODEL=models.MAIN_MODEL, MAX_TOKENS=8000, MIN_GROUP=10,
+                      WEEKLY_SYSTEM=weekly_text.WEEKLY_SYSTEM, WEEKLY_SCHEMA=weekly_text.WEEKLY_SCHEMA, engine=engine,
+                      profile_of=lambda stores: 'Fictional SRE in Zurich.', market_stats=lambda *a: data['market'],
+                      data_of=NS(application_stats=lambda *a: data['applications'], interview_stats=lambda *a: {}, week_stats=lambda *a: {}),
+                      learning=NS(evidence=lambda *a: data['learning']))
+        try:
+            weekly.weekly(None, NS(), client=NS(messages=NS(create=capture_weekly)))
+        except RuntimeError as error:
+            if str(error) != 'offline weekly captured':
+                raise
+        keep('insight', client, {'stats': data}, 'src/ai/insights.py', 'response = client.messages.create(',
+             'src/ai/insights.py', "report = json.loads", source_after='def weekly(')
     return entries
 
 

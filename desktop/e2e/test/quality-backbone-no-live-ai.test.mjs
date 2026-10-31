@@ -9,6 +9,11 @@ import {test} from 'node:test';
 import {loadTable, questionOf, storedAnswer} from '../lib/ai-answers.mjs';
 import {startAiProxy} from '../lib/ai-proxy.mjs';
 import {modelFetch} from '../lib/model.mjs';
+import {requestKey} from '../lib/ai-meter.mjs';
+import {hash} from '../lib/ai-answers-engine-items.mjs';
+import {backboneHarness} from '../lib/backbone-harness.mjs';
+import {buildRequest} from '../lib/factjudge.mjs';
+import {checkAiMisses} from '../lib/no-real-ai.mjs';
 import {engineCases} from './ai-answers-engine-fixtures.mjs';
 
 const tableFile = fileURLToPath(new URL('../fixtures/golden/ai-answers.json', import.meta.url));
@@ -93,4 +98,70 @@ for (const [topic, ask, answers] of aliasAsks) test(`quality serves the captured
   assert.equal(proxied.status, 200);
   assert.deepEqual(JSON.parse((await proxied.json()).content[0].text), expected);
   h.assertNoLive();
+});
+
+// Recorded verdicts are bound to all of the judge's inputs, never just a posting id or a favourable flag.
+for (const operation of ['judge.facts', 'judge.cv-match']) test(`qualityai replays each exact recorded ${operation} request at stored, direct and proxy seams`, async t => {
+  const h = await harness(t), table = loadTable(tableFile);
+  const requests = Object.entries(table.requests[operation]);
+  assert.equal(requests.length, operation === 'judge.facts' ? 10 : 3);
+  for (const [id, ask] of requests) {
+    const init = {method: 'POST', headers: {'content-type': 'application/json'}, body: JSON.stringify(ask.body)};
+    assert.deepEqual(questionOf(init, h.env, table), {operation, id});
+    assert.equal(requestKey('judge codex /v1/messages', Buffer.from(init.body)), ask.recorded.cacheKey, ask.evidence);
+    assert.equal(hash(init.body), ask.recorded.requestSha256);
+    const expected = table.answers[operation][id].reply;
+    assert.equal(hash(JSON.stringify(expected)), ask.recorded.replySha256, 'reply bytes stay those of the recorded judge');
+    assert.deepEqual(storedAnswer(init, h.env), {reply: expected});
+    assert.deepEqual(await (await modelFetch(`${h.target}/v1/messages`, init, h.options)).json(), expected);
+    const response = await h.localFetch(`${h.proxy.url}/v1/messages`, init);
+    assert.equal(response.status, 200); assert.deepEqual(await response.json(), expected);
+    const changed = structuredClone(ask.body);
+    changed.messages[0].content += '\nA different candidate or claim.';
+    assert.notEqual(questionOf({body: changed}, h.env, table).id, id, 'changed judge inputs cannot borrow a verdict');
+    assert.throws(() => storedAnswer({body: changed}, h.env), {code: 'E2E_AI_ANSWER_MISSING'});
+    const hinted = {...init, hint: {operation: 'judge.facts', id: '3001/first'}};
+    assert.deepEqual(questionOf(hinted, h.env, table), {operation, id}, 'a hint cannot override the actual judge inputs');
+  }
+  h.assertNoLive();
+});
+
+test('qualityai declares stored gate replies without changing its rate assertions', () => {
+  const source = fs.readFileSync(new URL('../suites/qualityai.mjs', import.meta.url), 'utf8');
+  for (const declaration of ['offlineAi = true', 'realAi = false', "aiAnswers = 'backbone'"]) assert.ok(source.includes(`export const ${declaration};`), declaration);
+});
+
+test('qualityai recorded facts judge the current saved scores and fixture postings', () => {
+  const table = loadTable(tableFile), seen = new Set();
+  for (const ask of Object.values(table.requests['judge.facts'])) {
+    const text = ask.body.messages[0].content;
+    const posting = truth.find(item => text.startsWith(`POSTING\nTitle: ${item.title}\nCompany: ${item.company || company}\nLocation: ${item.location}\n${item.description}\n`));
+    assert.ok(posting, 'recorded posting is still the suite fixture');
+    const score = JSON.parse(table.answers['app.score'][posting.id].reply.content[0].text);
+    const profile = text.split('\n\nCANDIDATE\n')[1].split('\n\nTEXT THE TOOL WROTE\n')[0];
+    const extracted = text.split('\n\nEXTRACTED FACTS (stage 1)\n')[1].split('\n\nCANDIDATE\n')[0];
+    const facts = Object.fromEntries(extracted.split('\n').map(line => line.split(/: (.*)/s).slice(0, 2)));
+    assert.deepEqual(buildRequest({posting: {...posting, company: posting.company || company}, profile,
+      produced: [score.reason, null, `Gaps: ${score.gaps.join('; ')}`], facts}), ask.body);
+    seen.add(posting.id);
+  }
+  assert.equal(seen.size, 10);
+});
+
+test('qualityai recorded judges also resolve through the OpenAI proxy without live AI or hash cache', async t => {
+  const h = await backboneHarness(t, 'qualityai', 'openai');
+  t.after(() => h.assertNoLive());
+  Object.assign(h.env, {E2E_AI_REPLAY: '0', E2E_AI_CACHE: ''});
+  Object.assign(process.env, h.env);
+  const table = loadTable(tableFile);
+  for (const operation of ['judge.facts', 'judge.cv-match']) for (const ask of Object.values(table.requests[operation])) {
+    const body = {model: ask.body.model, instructions: ask.body.system, input: ask.body.messages,
+      ...(ask.body.output_config ? {text: {format: ask.body.output_config.format}} : {})};
+    const init = {method: 'POST', headers: {'content-type': 'application/json'}, body: JSON.stringify(body)};
+    const expected = storedAnswer(init, h.env).reply;
+    const response = await h.localFetch(`${h.openaiProxy.url}/v1/responses`, init);
+    assert.equal(response.status, 200);
+    assert.deepEqual(JSON.parse((await response.json()).output[0].content[0].text), JSON.parse(expected.content[0].text));
+  }
+  assert.equal(checkAiMisses(h.env.E2E_ARTIFACTS, {aiMissesMax: 0}).misses, 0);
 });

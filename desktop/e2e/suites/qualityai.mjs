@@ -1,4 +1,4 @@
-// Live quality rates: measure facts, ranking, score steadiness, judge flags and CV matches.
+// Saved quality gate replies: check facts, ranking, steadiness, judge flags and CV matches.
 // Job: run tolerant suites as rates
 import {loadAppModule} from '../lib/app-module.mjs';
 import fs from 'node:fs';
@@ -16,9 +16,13 @@ import {plainTextOf} from '../lib/seed-texts.mjs';
 import {notKeptNote} from '../lib/quality-rows.mjs';
 import {matchRows, unstable} from '../lib/quality.mjs';
 
+// Saved gate replies precede caches and transports, including setup and relaunch reads.
+export const offlineAi = true;
+export const realAi = false;
+export const aiAnswers = 'backbone';
 export const name = 'qualityai';
 export const store = 'sqlite';
-// Live every run on the shipped model: facts, rescores, judge flags and CV matches.
+// Gates replay reviewed app replies and exact recorded judge replies; all rate assertions remain in force.
 // The shared budget and planner allowance cover Jobs checks and setup; each slow step has its own limit.
 export const cadence = PLANNER.cadence;
 export const budgetMinutes = PLANNER.budgetMinutes;
@@ -76,7 +80,7 @@ export async function run(ctx) {
       const database = path.join(ctx.profile, 'data', 'jobs.sqlite');
       if (!fs.existsSync(database)) throw new Error(`the jobs database is not where expected: ${database}`);
       execFileSync(python(), ['-c', 'import sqlite3,sys; db=sqlite3.connect(sys.argv[1]); db.execute("UPDATE scores SET input_hash=\'\'"); db.commit()', database], {env: pythonEnv({}, {home: ctx.profile})});
-      // Fresh answers: replayed, the second scoring got the first one's answers back and always read ±0 (26 Oct 2026; lib/ai-meter.mjs fresh).
+      // The fresh scope bypasses byte replay; the reviewed question table still owns every gate reply (owner, 31 Oct 2026).
       await fresh(async () => { await check('second Jobs check'); await read2(); });
       const second = scoresOf();
       const spread = Object.keys(first).filter(id => second[id] != null).map(id => Math.abs(first[id] - second[id]));

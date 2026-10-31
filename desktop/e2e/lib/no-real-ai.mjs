@@ -2,6 +2,8 @@
 // Job: serve stored answers
 import fs from 'node:fs';
 import path from 'node:path';
+import {namesException} from '../../../tools/lanes-check.mjs';
+import {NON_BACKBONE} from './suite-shards.mjs';
 
 export const realAiCalls = ctx => (ctx.proxy?.stats.paid || 0) + (ctx.openaiProxy?.stats.paid || 0);
 
@@ -27,9 +29,8 @@ export function recordAnswerRefusals(ctx, refused) {
   return true;
 }
 
-// Why (31 Oct 2026, owner): new backbone suites inherit zero misses; only an explicit lane or a named exception can exempt them.
-const missesExempt = lane => ['tolerant', 'suspended', 'retired'].includes(lane?.lane)
-  || (typeof lane?.aiMissesException === 'string' && lane.aiMissesException.trim().split(/\s+/).length >= 8);
+// Why (31 Oct 2026, owner; Gitar on #2664): new backbone suites inherit zero misses; only an explicit lane or a named exception exempts them, read from the one lane list and the registry's one exception rule.
+const missesExempt = lane => NON_BACKBONE.includes(lane?.lane) || namesException(lane);
 
 /** Pure verdict: backbone defaults to zero; diagnostics contain only the request key, never prompt text. */
 export function aiMissesVerdict(misses, lane, firstKey = '') {

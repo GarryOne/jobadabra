@@ -10,12 +10,15 @@
 import {execFileSync} from 'node:child_process';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
+import {NON_BACKBONE} from '../desktop/e2e/lib/suite-shards.mjs';
 
 export const FILE = 'desktop/e2e/lanes.json';
-export const LANES = ['tolerant', 'suspended', 'retired'];
+export const LANES = NON_BACKBONE;   // one lane list: desktop/e2e/lib/suite-shards.mjs
 export const INPUTS = ['ai', 'clock', 'outside'];
 const WHY_WORDS = 8;   // a mechanical floor for "a sentence": "flaky" and "model noise" are not one; whether the reason is true is Gitar's and the owner's to read
 const words = text => String(text || '').trim().split(/\s+/).filter(Boolean).length;
+/** Whether a backbone entry names its AI-ask exception in a sentence (8+ words); the registry check and the run's verdict (lib/no-real-ai.mjs) share it. */
+export const namesException = entry => typeof entry?.aiMissesException === 'string' && words(entry.aiMissesException) >= WHY_WORDS;
 const HOW = 'A suite leaves the backbone only by naming what its result depends on (ai, clock or outside) and why; a test that cannot name one stays in the backbone: our own races are bugs, not tolerance.\nEvery entry names when it returns or retires in returns. To bring a suite back, delete its entry. (spec 2026-10-28-e2e-reliability-design.md, rules D and E)';
 
 // One entry -> what it lacks, as short phrases ([] when it is complete). Takes the parsed entry of `suites`.
@@ -24,7 +27,7 @@ export function entryProblems(entry) {
   const lacks = [];
   const ceiling = Object.hasOwn(entry, 'aiMissesMax'), exception = Object.hasOwn(entry, 'aiMissesException');
   if (ceiling && entry.aiMissesMax !== 0) lacks.push('aiMissesMax must be 0; name a reason in aiMissesException when zero is not possible');
-  if (exception && (typeof entry.aiMissesException !== 'string' || words(entry.aiMissesException) < WHY_WORDS)) lacks.push('aiMissesException must name the reason in a sentence (8+ words)');
+  if (exception && !namesException(entry)) lacks.push('aiMissesException must name the reason in a sentence (8+ words)');
   if (exception && (ceiling || Object.hasOwn(entry, 'lane'))) lacks.push('aiMissesException cannot accompany a ceiling or a non-backbone lane');
   if ((ceiling || exception) && !Object.hasOwn(entry, 'lane')) return lacks;
   if (!LANES.includes(entry.lane)) lacks.push(`lane must be one of ${LANES.join(', ')} (a suite not listed is the backbone)`);

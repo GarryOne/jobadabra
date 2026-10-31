@@ -5,7 +5,8 @@ import os from 'node:os';
 import path from 'node:path';
 import {registerHooks} from 'node:module';
 import {test} from 'node:test';
-import {entryProblems, lanesProblems} from '../../../tools/lanes-check.mjs';
+import {entryProblems, lanesProblems, namesException} from '../../../tools/lanes-check.mjs';
+import {NON_BACKBONE} from '../lib/suite-shards.mjs';
 import {aiMissesVerdict, checkAiMisses} from '../lib/no-real-ai.mjs';
 
 test('every suite defaults to zero misses unless its lane or a named exception exempts it', t => {
@@ -16,7 +17,7 @@ test('every suite defaults to zero misses unless its lane or a named exception e
   const files = fs.readdirSync(new URL('../suites/', import.meta.url)).filter(file => file.endsWith('.mjs'));
   for (const file of files) {
     const name = file.slice(0, -4), lane = suites[name];
-    const exempt = ['tolerant', 'suspended', 'retired'].includes(lane?.lane) || Boolean(lane?.aiMissesException?.trim());
+    const exempt = NON_BACKBONE.includes(lane?.lane) || namesException(lane);   // the same predicates the run uses (Gitar on #2664)
     const result = checkAiMisses(dir, lane);
     assert.equal(result.max, exempt ? null : 0, name);
     assert.equal(result.ok, exempt, `${name}: an unknown ask must fail every backbone suite`);

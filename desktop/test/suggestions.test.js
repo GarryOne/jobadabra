@@ -81,6 +81,36 @@ test('Always on waits for a valid address and keeps failures in its row for retr
   assert.ok(calls.every(given => given.email === 'alex@example.com' && given.marketing === false));
 });
 
+test('Always on redraws preserve the draft and busy state, and late errors reach the current row', async () => {
+  install();
+  const {bindHostedOffer} = await import('../renderer/hosted-suggestion.js');
+  const {emailField} = await import('../renderer/hosted-step-parts.js');
+  const draft = {}, calls = [];
+  let reply;
+  const pending = new Promise(resolve => { reply = resolve; });
+  const mount = () => {
+    const body = document.createElement('div'), button = document.createElement('button');
+    const run = bindHostedOffer({body, button, email: '', emailField: () => emailField('redraw-email'), draft,
+      turnOn: given => { calls.push(given); return pending; }, onSuccess: () => assert.fail('a refusal never succeeds')});
+    return {body, button, run, input: body.querySelector('input')};
+  };
+  const first = mount(); first.input.value = 'alex@example.com'; first.input.dispatch('input');
+  const second = mount();
+  assert.equal(second.input.value, 'alex@example.com', 'the asynchronous question rows must not wipe a typed address');
+  const activating = second.run();
+  const third = mount();
+  assert.equal(third.button.disabled, true, 'redraws keep an activation in flight disabled');
+  await third.run();
+  assert.equal(calls.length, 1, 'a rebuilt row cannot send a second activation');
+  reply({ok: false, error: 'Could not reach Jobadabra just now. Check your connection.'});
+  await activating;
+  assert.match(third.body.textContent, /Check your connection/, 'the reply updates the current row, not a detached body');
+  assert.equal(third.button.disabled, false);
+  const fourth = mount();
+  assert.match(fourth.body.textContent, /Check your connection/, 'later redraws retain the refusal');
+  assert.equal(fourth.input.value, 'alex@example.com');
+});
+
 test('every engine producer is drawn: on Focus, in its home, and on Jobs when it is about the search or applying', () => {
   assert.deepEqual(PRODUCERS.slice().sort(), Object.keys(HOMES).sort(), 'a new producer in src/suggestions.py is listed here');
   const pool = PRODUCERS.map(entry);

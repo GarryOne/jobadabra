@@ -113,11 +113,11 @@ export function entryRow(entry) {
     const node = button(action.label, i ? 'secondary' : 'primary', event => RUN[action.do]?.(action, event, context));
     if (action.do === 'turn_on_hosted') {
       node.id = 'focus-hosted-on';
-      context.turnOn = bindHostedOffer({body, button: node, email: entry.email, emailField: () => emailField('focus-hosted-email'),
-        turnOn: given => window.pilot.hostedOn(given), onSuccess: () => {
+      context.turnOn = bindHostedOffer({body, button: node, email: entry.email, emailField: () => emailField('focus-hosted-email'), draft: hostedDraft,
+        turnOn: given => window.pilot.hostedOn(given), onSuccess: sentTo => {
           hostedRead++;
           hostedContext.hosted.on = true;
-          toastMessage('Always on ✓', `New matches every morning to ${entry.email || body.querySelector('input').value.trim()}.`, NO_PLACE.itself, 'good');
+          toastMessage('Always on ✓', `New matches every morning to ${sentTo}.`, NO_PLACE.itself, 'good');
           redraw();
         }});
     }
@@ -140,6 +140,7 @@ const loadBank = () => window.pilot.experienceGet().then(view => { bank = view; 
 const skillsNow = () => (bank ? skillEntries({jobs: jobsState.lastJobsData?.jobs, extraSkills: bank.extraSkills, mainSkills: bank.main?.skills, added: bank.added}) : []);
 const rowsNow = () => drawerRows([...questionEntries(questionsNow()), ...skillsNow()], {held, hidden: hiddenKeys});
 let hostedContext = {};
+const hostedDraft = {};   // ephemeral form state for hosted:first-matches, shared by every redraw of the offer
 let hostedRead = 0;
 // Read only on a fresh Focus load, never on an internal redraw (typing, a verdict, or the asynchronous question rows).
 async function loadHostedOffer() {

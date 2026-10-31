@@ -16,30 +16,36 @@ export function hostedEntries({hosted, jobs, runs = {}, hidden = new Set(), held
     evidence: [], answers: ['Not now', 'Not true'], actions: [{label: 'Turn on Always on', do: 'turn_on_hosted'}]}];
 }
 
-/** Reuses the supplied e-mail builder in an ordinary Suggestions row. Invariant: only a valid address and an explicit press turn it on; news is never opted in. */
-export function bindHostedOffer({body, button, email, emailField, turnOn, onSuccess}) {
-  let input = null, busy = false;
+/** Reuses the shared field in a Suggestions row. Invariants: only an explicit press turns it on; news stays off; a shared draft paints replies into the latest row. */
+export function bindHostedOffer({body, button, email, emailField, turnOn, onSuccess, draft = {}}) {
+  let input = null;
   if (!email) {
     const field = emailField();
     input = field.querySelector('input');
+    input.value = draft.value || '';
     body.append(field);
   }
   const note = el('p', 'message'); note.setAttribute('role', 'status');
   body.append(el('div', 'step-field', note));
-  const address = () => String(input ? input.value : email).trim();
-  const update = () => { button.disabled = busy || !validEmail(address()); };
-  input?.addEventListener('input', update);
-  update();
+  const address = () => String(email || draft.value || '').trim();
+  // Why (#2658, Gitar, 31 Oct 2026): question/bank refreshes rebuild the row during activation; its draft and reply must outlive detached DOM.
+  draft.paint = () => {
+    button.disabled = !!draft.busy || !validEmail(address());
+    note.className = draft.bad ? 'message bad' : 'message';
+    note.textContent = draft.note || '';
+  };
+  input?.addEventListener('input', () => { draft.value = input.value; draft.paint(); });
+  draft.paint();
   return async () => {
-    if (busy || !validEmail(address())) return;
-    busy = true; update();
-    note.className = 'message'; note.textContent = 'Turning on…';
+    if (draft.busy || !validEmail(address())) return;
+    const sentTo = address();
+    Object.assign(draft, {busy: true, bad: false, note: 'Turning on…'}); draft.paint();
     try {
-      const result = await turnOn({email: address(), marketing: false});
-      if (result?.ok) { onSuccess(); return; }
-      note.className = 'message bad'; note.textContent = result?.error || 'Could not turn it on just now.';
+      const result = await turnOn({email: sentTo, marketing: false});
+      if (result?.ok) { draft.note = ''; onSuccess(sentTo); return; }
+      Object.assign(draft, {bad: true, note: result?.error || 'Could not turn it on just now.'});
     } catch (error) {
-      note.className = 'message bad'; note.textContent = error.message || 'Could not turn it on just now.';
-    } finally { busy = false; update(); }
+      Object.assign(draft, {bad: true, note: error.message || 'Could not turn it on just now.'});
+    } finally { draft.busy = false; draft.paint(); }
   };
 }

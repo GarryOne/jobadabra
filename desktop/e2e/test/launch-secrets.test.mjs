@@ -77,3 +77,15 @@ test('context consumers get only the Notion alias while stand-in tokens remain u
   assert.deepEqual(fake, {token: 'fake-standin-token'});
   assert.deepEqual(await contextNotionProxy({store: 'sqlite'}), {token: ''});
 });
+
+test('runtime allowlist preserves Windows names and supplies PATH for launch wrapper filtering', async () => {
+  const {appLaunchEnv} = await import('../lib/app-env.mjs');
+  const env = appLaunchEnv({ProgramFiles: '/programs', 'ProgramFiles(x86)': '/programs-x86', ProgramData: '/data', windir: '/windows', ComSpec: '/windows/cmd.exe', Path: '/windows/bin', E2E_NOTION_TOKEN: 'fake-windows-ci-token'});
+  assert.equal(env.ProgramFiles, '/programs');
+  assert.equal(env['ProgramFiles(x86)'], '/programs-x86');
+  assert.equal(env.ProgramData, '/data');
+  assert.equal(env.windir, '/windows');
+  assert.equal(env.ComSpec, '/windows/cmd.exe');
+  assert.equal(env.PATH, '/windows/bin');
+  assert.equal('E2E_NOTION_TOKEN' in env, false);
+});

@@ -8,23 +8,28 @@ import os
 import re
 import shutil
 import subprocess
+import time
 
 E2E_PR_TITLE = 'E2E for PR · '   # e2e.yml run-name for a run pr-suites.yml started (same as pr-verdict.py)
-WINDOW = '15'   # runs looked at per red run: the verdict writer shares a 5,000-calls-an-hour token (30 Oct 2026); main's gate and the alert look at 40
-TIMEOUT_S = 120
+WINDOW = '15'   # runs looked at per red run: the verdict writer shares a 5,000-calls-an-hour token (30 Oct 2026); main's gate and the alert look at WINDOW_RUNS (100, desktop/e2e/lib/flaky-evidence.mjs)
+TIMEOUT_S = 120   # one red run
+TOTAL_S = 60   # Why (31 Oct 2026, Gitar on #2706): the whole read; the verdict job has 5 minutes and must still write its status
 
 
-def lines(repo, runs, run=subprocess.run, which=shutil.which, tool=None):
+def lines(repo, runs, run=subprocess.run, which=shutil.which, tool=None, clock=time.monotonic):
     """The verdict lines (Flaky/Changed/Unknown, one per failed step) for the PR's red e2e runs; [] when the tool, node or the read is unavailable."""
     tool = tool or os.path.join(os.path.dirname(os.path.abspath(__file__)), 'flaky-verdict.mjs')
     if not which('node') or not os.path.exists(tool):
         return []
-    out = []
+    out, end = [], clock() + TOTAL_S
     for r in runs:
+        left = end - clock()
+        if left <= 5:
+            break
         if not str(r.get('displayTitle', '')).startswith(E2E_PR_TITLE) or r.get('conclusion') != 'failure':
             continue
         try:
-            done = run(['node', tool, '--run', str(r['databaseId']), '--repo', repo, '--window', WINDOW], capture_output=True, text=True, encoding='utf-8', timeout=TIMEOUT_S)
+            done = run(['node', tool, '--run', str(r['databaseId']), '--repo', repo, '--window', WINDOW], capture_output=True, text=True, encoding='utf-8', timeout=min(TIMEOUT_S, left))
         except (OSError, subprocess.SubprocessError):
             continue
         out += [line for line in done.stdout.splitlines() if re.match(r'(Flaky|Changed|Unknown): ', line)]

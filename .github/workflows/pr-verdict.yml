@@ -96,6 +96,7 @@ jobs:
     timeout-minutes: 5
     permissions:
       actions: read          # the commit's workflow runs
+      checks: read           # failed steps' annotations (desktop/e2e/ci-alert.mjs stepCauses, tools/pr_flaky.py)
       pull-requests: read    # the PR's files and commits (the CI change budget)
       statuses: write        # the "All checks passed" status
     steps:

@@ -24,6 +24,13 @@ def fake_run(output, calls):
     return run
 
 
+class Clock:
+    def __init__(self, step): self.now, self.step = 0, step
+    def __call__(self):
+        self.now += self.step
+        return self.now
+
+
 class PrFlaky(unittest.TestCase):
     def lines(self, runs, output=f'{FLAKY}\n{CHANGED}\nnoise from node\n'):
         calls = []
@@ -36,6 +43,22 @@ class PrFlaky(unittest.TestCase):
         self.assertEqual(len(calls), 1, 'a green e2e run and a non-e2e run are not read')
         self.assertEqual(calls[0][calls[0].index('--run') + 1], '7')
         self.assertEqual(calls[0][calls[0].index('--window') + 1], pf.WINDOW, 'the verdict writer shares a small API budget: a short window')
+
+    def test_the_whole_read_stops_at_its_total_deadline_and_no_run_may_outlast_it(self):
+        calls, timeouts = [], []
+        def run(args, **kwargs):
+            calls.append(args); timeouts.append(kwargs['timeout'])
+            return subprocess.CompletedProcess(args, 0, stdout=f'{FLAKY}\n', stderr='')
+        runs = [dict(PR_RUN, databaseId=n) for n in range(10)]
+        said = pf.lines('o/r', runs, run=run, which=lambda _: '/usr/bin/node', tool=str(ROOT / 'tools/flaky-verdict.mjs'), clock=Clock(20))
+        self.assertLess(len(calls), 10, 'ten red runs cannot all be read inside the deadline')
+        self.assertEqual(len(said), len(calls))
+        self.assertTrue(all(t <= pf.TOTAL_S for t in timeouts), timeouts)
+
+    def test_the_verdict_job_may_read_check_annotations(self):
+        text = (ROOT / '.github/workflows/pr-verdict.yml').read_text()
+        job = text[text.index('timeout-minutes: 5\n    permissions:\n      actions: read          # the commit'):]
+        self.assertIn('checks: read', job.split('steps:')[0], 'stepCauses reads check-run annotations; without it the flaky read is always empty')
 
     def test_no_node_no_tool_or_a_broken_run_adds_nothing(self):
         self.assertEqual(pf.lines('o/r', [PR_RUN], which=lambda _: None), [])

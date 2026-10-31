@@ -29,13 +29,16 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v5
+        timeout-minutes: 5
         with:
           ref: main
           persist-credentials: false
       - uses: actions/setup-node@v5
+        timeout-minutes: 5
         with:
           node-version: '22'
       - name: Collect every attempt
+        timeout-minutes: 5
         id: attempts
         env:
           GH_TOKEN: ${{ github.token }}
@@ -66,6 +69,7 @@ jobs:
             "$dir/attempts.json" > "$dir/artifact-patterns.txt"
           if [ -s "$dir/artifact-patterns.txt" ]; then echo "artifact_patterns=$dir/artifact-patterns.txt" >> "$GITHUB_OUTPUT"; fi
       - name: Download first-try artifacts
+        timeout-minutes: 5
         id: artifacts
         if: steps.attempts.outputs.artifact_patterns != ''
         env:
@@ -81,6 +85,7 @@ jobs:
           echo "folder=$dir" >> "$GITHUB_OUTPUT"
       - name: Propose suspension and open its owner issue
         if: steps.attempts.outputs.attempts != ''
+        timeout-minutes: 5
         env:
           GH_TOKEN: ${{ github.token }}
           ATTEMPTS: ${{ steps.attempts.outputs.attempts }}

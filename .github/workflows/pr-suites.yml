@@ -48,16 +48,20 @@ jobs:
     timeout-minutes: 15   # the plan and the start; nothing waits here for the suites
     steps:
       - uses: actions/checkout@v5
+        timeout-minutes: 5
         with:
           fetch-depth: 0
       - uses: actions/setup-node@v5
+        timeout-minutes: 5
         with:
           node-version: '22'
       - name: Install what the plan loads
+        timeout-minutes: 5
         run: |
           (cd desktop/e2e && npm ci)
           (cd desktop && npm ci --omit=dev --ignore-scripts)
       - name: Plan
+        timeout-minutes: 5
         id: plan
         env:
           GH_TOKEN: ${{ github.token }}   # reads the newest code → suite map artifact (desktop/e2e/pr-suites.mjs)
@@ -66,6 +70,7 @@ jobs:
           git fetch -q origin main
           node desktop/e2e/pr-suites.mjs --base origin/main --plan --pull-request   # a PR: no `recorded` (page-cases.yml replays the cases; lib/pr-suites.mjs ON_PR_ELSEWHERE)
       - name: Start them
+        timeout-minutes: 5
         id: start
         if: steps.plan.outputs.suites != '' || steps.plan.outputs.windows != ''
         env:
@@ -100,6 +105,7 @@ jobs:
       # Seen listed before this job ends: pr-verdict.yml runs when this workflow ends, and must find the e2e run pending, never a commit that looks finished.
       - name: See the e2e runs listed
         if: (steps.plan.outputs.suites != '' || steps.plan.outputs.windows != '') && steps.start.outputs.skipped != '1'
+        timeout-minutes: 5
         env:
           GH_TOKEN: ${{ github.token }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}

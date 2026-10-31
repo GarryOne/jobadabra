@@ -1,24 +1,11 @@
-// Jobadabra installed twice on Windows (Microsoft Store package + the downloaded .exe): detection and the one-time note. The layout is the one measured on a Windows runner (msix-spike.yml, two-installs).
+// Jobadabra installed twice on Windows (Microsoft Store package + the downloaded .exe): detection only (the note's tests are test/two-installs-notice.test.js). The layout is the one measured on a Windows runner (msix-spike.yml, two-installs).
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {test} from 'node:test';
-import {detectCopies, EXE_FOLDER, installedTwice, realProbes, STORE_IDENTITY} from '../lib/two-installs.js';
-
-const LOCAL = 'C:\\Users\\p\\AppData\\Local';
-const FAMILY = `${STORE_IDENTITY}_8wekyb3d8bbwe`;
-const EXE = `${LOCAL}\\Programs\\${EXE_FOLDER}\\Jobadabra.exe`;
-
-// A fake disk: the Packages folder's names and the files that exist.
-const probes = ({packages = [], files = []} = {}) => ({names: dir => (dir === `${LOCAL}\\Packages` ? packages : []), isFile: file => files.includes(file)});
-const disk = {
-  none: probes(),
-  storeOnly: probes({packages: [FAMILY]}),
-  exeOnly: probes({files: [EXE]}),
-  both: probes({packages: [FAMILY], files: [EXE]}),
-};
-const find = name => detectCopies({env: {LOCALAPPDATA: LOCAL}, probes: disk[name]});
+import {detectCopies, installedTwice, realProbes, STORE_IDENTITY} from '../lib/two-installs.js';
+import {EXE, FAMILY, LOCAL, find, probes} from './two-installs-disk.js';
 
 test('detection: none, Store only, .exe only, both', () => {
   assert.deepEqual(find('none'), {store: '', exe: ''});

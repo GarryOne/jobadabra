@@ -6,14 +6,7 @@ import path from 'node:path';
 import {test} from 'node:test';
 import {createStorage} from '../lib/storage.js';
 import {APPS_SETTINGS, askInstalledTwice, noticeOptions} from '../lib/two-installs-notice.js';
-import {detectCopies, EXE_FOLDER, STORE_IDENTITY} from '../lib/two-installs.js';
-
-const LOCAL = 'C:\\Users\\p\\AppData\\Local';
-const FAMILY = `${STORE_IDENTITY}_8wekyb3d8bbwe`;
-const EXE = `${LOCAL}\\Programs\\${EXE_FOLDER}\\Jobadabra.exe`;
-const probes = ({packages = [], files = []} = {}) => ({names: dir => (dir === `${LOCAL}\\Packages` ? packages : []), isFile: file => files.includes(file)});
-const disk = {none: probes(), storeOnly: probes({packages: [FAMILY]}), exeOnly: probes({files: [EXE]}), both: probes({packages: [FAMILY], files: [EXE]})};
-const find = name => detectCopies({env: {LOCALAPPDATA: LOCAL}, probes: disk[name]});
+import {find} from './two-installs-disk.js';
 
 // The note: shown once, only on Windows with both copies; one action that opens Windows' own page; nothing is removed by the app.
 const settingsOf = () => { const saved = {}; return {saved, settings: () => saved, saveSettings: patch => Object.assign(saved, patch)}; };

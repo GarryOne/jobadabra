@@ -1,4 +1,4 @@
-// Windows: is Jobadabra installed twice (the Microsoft Store package and the .exe installer from the website), and the one-time note that says so.
+// Windows: is Jobadabra installed twice (the Microsoft Store package and the .exe installer from the website). Detection only; the one-time note is lib/two-installs-notice.js.
 //   const copies = detectCopies();                               -> {store, exe}
 // Why (31 Oct 2026, owner: "Let's handle the case when the desktop app is being installed twice. Side by side. For example it's installed from Microsoft Store. And then I download the binary
 // from the website and install it on top."): measured on a Windows 11 runner (msix-spike.yml scenarios two-installs and virtualization). The single-instance lock spans both copies in every start

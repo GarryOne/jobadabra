@@ -70,48 +70,91 @@ export function callersOf(name, {file, root = '.', budget = 4000} = {}) {
 const tail = (file, count, root) => { try { return fs.readFileSync(path.join(root, file), 'utf8').split('\n').slice(-count).join('\n'); } catch { return ''; } };
 const recent = (file, root) => { try { return execFileSync('git', ['log', '--format=%h %ad %s', '--date=short', '-4', '--', file], {cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore']}).trim(); } catch { return ''; } };
 
-/**
- * Takes {text: the finding's words, logs: [file paths of the failed step's logs], root, budget: characters}. Returns the evidence block, cut at the budget.
- * Order: what the finding cites (file:line), then where its quoted words are written, then the logs; each part is skipped when empty.
- */
-export function evidenceFor({text, logs = [], root = '.', budget = 30000}) {
-  const parts = [];
-  const suite = logs.map(file => /e2e-artifacts-([a-z0-9-]+)/.exec(file)?.[1]).find(Boolean);
-  const roots = suite && fs.existsSync(path.join(root, 'desktop/e2e/suites')) ? [...ROOTS, 'desktop/e2e/suites'] : ROOTS;
-  const seen = new Set(), focus = [];
-  const add = (title, body) => { if (body && body.trim()) parts.push(`=== ${title} ===\n${body}`); };
+const block = (title, body) => (body && body.trim() ? `=== ${title} ===\n${body}` : '');
+
+/** The finding's file:line references: the lines around each (and the file's recent git log). Marks them in state.seen so a search hit does not show the same lines again, and puts them in state.focus. */
+function citedParts(text, root, state) {
+  const out = [];
   for (const ref of refsIn(text).slice(0, 6)) {
     const [file, lines] = ref.split(':');
     const at = String(lines || '').split('-')[0];
-    if (seen.has(`${file}:${at}`)) continue;
-    seen.add(`${file}:${at}`);
-    seen.add(`${file}:${Math.floor(Number(at) / 40)}`);   // the same lines are not shown again as a search hit
+    if (state.seen.has(`${file}:${at}`)) continue;
+    state.seen.add(`${file}:${at}`);
+    state.seen.add(`${file}:${Math.floor(Number(at) / 40)}`);
     const body = excerpt(file, at, {root});
-    add(`${file}${at ? `:${at}` : ''} (cited by the finding)`, body);
-    if (body && at) focus.push({file, line: at});
+    out.push(block(`${file}${at ? `:${at}` : ''} (cited by the finding)`, body));
+    if (body && at) state.focus.push({file, line: at});
     const log = body && recent(file, root);
-    if (log) add(`git log of ${file}`, log);
+    if (log) out.push(block(`git log of ${file}`, log));
   }
-  for (const word of quotedWords(text)) {
-    const hits = grep(word, roots, root);
-    if (!hits.length) { add(`search for "${word}"`, 'no file under the product code writes these words'); continue; }
-    add(`search for "${word}" (git grep)`, hits.map(hit => `${hit.file}:${hit.line}: ${hit.text}`).join('\n'));
-    if (focus.length < 4) focus.push({file: hits[0].file, line: hits[0].line});
-    for (const hit of hits.slice(0, 2)) {
-      const key = `${hit.file}:${Math.floor(hit.line / 40)}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      add(`${hit.file}:${hit.line} (writes "${word}")`, excerpt(hit.file, hit.line, {root, radius: 20}));
-    }
+  return out;
+}
+
+/** Where one quoted word is written: the hit list and the lines around the first two hits not already shown. */
+function writtenParts(word, roots, root, state) {
+  const hits = grep(word, roots, root);
+  if (!hits.length) return [block(`search for "${word}"`, 'no file under the product code writes these words')];
+  if (state.focus.length < 4) state.focus.push({file: hits[0].file, line: hits[0].line});
+  const out = [block(`search for "${word}" (git grep)`, hits.map(hit => `${hit.file}:${hit.line}: ${hit.text}`).join('\n'))];
+  for (const hit of hits.slice(0, 2)) {
+    const key = `${hit.file}:${Math.floor(hit.line / 40)}`;
+    if (state.seen.has(key)) continue;
+    state.seen.add(key);
+    out.push(block(`${hit.file}:${hit.line} (writes "${word}")`, excerpt(hit.file, hit.line, {root, radius: 20})));
   }
-  // Why (31 Oct 2026, owner: quality before cost; first live run, ui-verdict 41220547004): 3 of 4 verdicts came back needs-human, "the evidence does not include the caller", against 25% before. The session followed the flagged code to its callers; so does this.
-  const callers = [], named = new Set();
-  for (const {file, line} of focus) for (const name of symbolsAt(file, line, root)) if (!named.has(name)) { named.add(name); callers.push(...callersOf(name, {file, root})); }
-  let room = CALLERS_BUDGET;
-  for (const part of callers) { if (part.body.length > room) break; room -= part.body.length; add(part.title, part.body); }
-  for (const file of logs) add(`${path.basename(file)} (the last 80 lines of the failed step's log)`, tail(file, 80, root));
-  const joined = parts.join('\n\n');
+  return out;
+}
+
+// Why (31 Oct 2026, owner: quality before cost; first live run, ui-verdict 41220547004): 3 of 4 verdicts came back needs-human, "the evidence does not include the caller", against 25% before. The session followed the flagged code to its callers; so does this.
+function callerParts(focus, root, room = CALLERS_BUDGET) {
+  const found = [], named = new Set();
+  for (const {file, line} of focus) for (const name of symbolsAt(file, line, root)) if (!named.has(name)) { named.add(name); found.push(...callersOf(name, {file, root})); }
+  const out = [];
+  for (const part of found) { if (part.body.length > room) break; room -= part.body.length; out.push(block(part.title, part.body)); }
+  return out;
+}
+
+/**
+ * Takes {text: the finding's words, logs: [file paths of the failed step's logs], root, budget: characters}. Returns the evidence block, cut at the budget.
+ * Order: what the finding cites (file:line), where its quoted words are written, the callers of the code it points at, then the logs; each part is skipped when empty.
+ */
+export function evidenceFor({text, logs = [], root = '.', budget = 30000}) {
+  const suite = logs.map(file => /e2e-artifacts-([a-z0-9-]+)/.exec(file)?.[1]).find(Boolean);
+  const roots = suite && fs.existsSync(path.join(root, 'desktop/e2e/suites')) ? [...ROOTS, 'desktop/e2e/suites'] : ROOTS;
+  const state = {seen: new Set(), focus: []};
+  const parts = citedParts(text, root, state);
+  for (const word of quotedWords(text)) parts.push(...writtenParts(word, roots, root, state));
+  parts.push(...callerParts(state.focus, root));
+  for (const file of logs) parts.push(block(`${path.basename(file)} (the last 80 lines of the failed step's log)`, tail(file, 80, root)));
+  const joined = parts.filter(Boolean).join('\n\n');
   return joined.length > budget ? `${joined.slice(0, budget)}\n[evidence cut at ${budget} characters]` : joined;
+}
+
+const PATHLIKE = /^[\w.-]+(?:\/[\w.-]+)+(?::\d+(?:-\d+)?)?$|^[\w.-]+\.(?:m?js|py|css|html|json)(?::\d+(?:-\d+)?)?$/;
+export const MAX_NEEDS = 4;
+export const NEEDS_BUDGET = 16000;   // characters of second-round evidence per finding
+
+/**
+ * The second round (the judge said what it still needs): takes the names it listed (a function, selector or id, or a repo path with an optional :line), returns the text a script finds for them within
+ * NEEDS_BUDGET characters. A name: where it is declared (the lines around it) and where it is used (git grep -w, a few call sites). A path: the lines around :line, or the file's first 120 lines. Pure but for reading files and `git grep`.
+ */
+export function needEvidence(needs, {root = '.', budget = NEEDS_BUDGET} = {}) {
+  const parts = [];
+  for (const raw of (Array.isArray(needs) ? needs : []).map(item => String(item || '').trim()).filter(Boolean).slice(0, MAX_NEEDS)) {
+    if (PATHLIKE.test(raw)) {
+      const [file, lines] = raw.split(':');
+      parts.push(block(`${raw} (asked for by the judge)`, excerpt(file, String(lines || '').split('-')[0], {root, radius: 60}) || 'no such file'));
+      continue;
+    }
+    const name = raw.replace(/\(\)$/, '');
+    const hits = grep(name, ROOTS, root, true);
+    const declared = hits.find(hit => new RegExp(`(function|def|const|let|class)\\s+${name.replace(/[^\w$]/g, '')}\\b`).test(hit.text)) || null;
+    if (declared) parts.push(block(`${declared.file}:${declared.line} (declares ${name}, asked for by the judge)`, excerpt(declared.file, declared.line, {root, radius: 25})));
+    for (const caller of callersOf(name, {root, budget: 5000})) parts.push(block(caller.title, caller.body));
+    if (!hits.length) parts.push(block(`search for ${name}`, 'no file under the product code uses this name'));
+  }
+  const joined = parts.filter(Boolean).join('\n\n');
+  return joined.length > budget ? `${joined.slice(0, budget)}\n[second-round evidence cut at ${budget} characters]` : joined;
 }
 
 /** The planted code of a judge-exam finding (lib/judge-exam.mjs): its excerpt files in full, named as printed (they carry their own line numbers). */

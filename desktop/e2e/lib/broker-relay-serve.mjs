@@ -10,9 +10,11 @@
 import http from 'node:http';
 import {answerViaBroker} from './broker-relay.mjs';
 
+// Why (31 Oct 2026, Gitar on #2715): the Anthropic SDK retries 429 and 5xx twice by default (it reads retry-after-ms first); `x-should-retry: false` is the header it checks before anything else. Without it every refused call
+// became three, spending budget and the run's cap three times over and tripling the failure counts. A relay refusal is final (the repo rule: never retry a 429).
 const json = (res, status, type, message) => {
   const body = Buffer.from(JSON.stringify({type: 'error', error: {type, message}}));
-  res.writeHead(status, {'content-type': 'application/json', 'content-length': body.length, 'retry-after-ms': '10'});
+  res.writeHead(status, {'content-type': 'application/json', 'content-length': body.length, 'x-should-retry': 'false'});
   res.end(body);
 };
 
@@ -43,7 +45,7 @@ export async function startRelay({cap = 0, answer = answerViaBroker, env = proce
     message = message || `HTTP ${answered.status}`;
     if (stats.reasons.length < 5) stats.reasons.push(message);
     if (/^ai-capped:/.test(message)) { stats.latched = message.replace(/^ai-capped:\s*/, ''); return json(res, 429, 'rate_limit_error', `AI limit reached: ${stats.latched}`); }
-    res.writeHead(answered.status, {'content-type': answered.contentType, 'content-length': answered.body.length, 'retry-after-ms': '10'});
+    res.writeHead(answered.status, {'content-type': answered.contentType, 'content-length': answered.body.length, 'x-should-retry': 'false'});
     res.end(answered.body);
   });
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));   // 127.0.0.1 only: nothing off this runner reaches the broker through it

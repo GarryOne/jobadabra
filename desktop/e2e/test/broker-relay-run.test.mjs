@@ -50,6 +50,18 @@ test('the broker\'s first budget "no" latches: 429 "AI limit reached" to the eng
   } finally { await relay.close(); }
 });
 
+test('every refusal tells the SDK not to retry it, so one refused item is one counted failure (Gitar on #2715)', async () => {
+  const relay = await startRelay({cap: 1, answer: async () => no(500, 'boom')});
+  try {
+    const failed = await post(relay), over = await post(relay);
+    for (const answer of [failed, over]) {
+      assert.equal(answer.headers.get('x-should-retry'), 'false');
+      assert.equal(answer.headers.get('retry-after-ms'), null);
+    }
+    assert.deepEqual([failed.status, over.status], [500, 429]);
+  } finally { await relay.close(); }
+});
+
 test('the command gets the relay address, a dummy key and the cap as its limit, and no other AI address or key', () => {
   const env = childEnv({PATH: '/bin', ANTHROPIC_API_KEY: 'sk-real', ANTHROPIC_BASE_URL: 'https://api.anthropic.com', OPENAI_API_KEY: 'sk-o'}, 'http://127.0.0.1:5', 40);
   assert.equal(env.JOB_PILOTTO_AI_BASE_URL, 'http://127.0.0.1:5');

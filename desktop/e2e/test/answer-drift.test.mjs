@@ -32,8 +32,8 @@ test('sample rotates oldest first within each kind and spreads slots across kind
   assert.deepEqual(pickSample([...entries].reverse(), {}, 5), pickSample(entries, {}, 5));
 });
 
-// Why (31 Oct 2026, owner saved gates): 13 exact recorded judge requests join the 298 historic keys; 287 gaps and three sender-capture keys remain.
-test('seeding is byte deterministic, body-reference-only and links the measured 311 plus 3 keys', t => {
+// Why (31 Oct 2026, a8; employers saved gates): the reviewed employer requests link 15 additional keys, including four previously unlinked rows; 287 gaps and three sender-capture keys remain.
+test('seeding is byte deterministic, body-reference-only and links the measured 298 plus 3 keys', t => {
   forbidNetwork(t);
   const entries = seedRequests();
   assert.equal(serializeRequests(entries), fs.readFileSync(fixture, 'utf8'));
@@ -41,9 +41,9 @@ test('seeding is byte deterministic, body-reference-only and links the measured 
   assert.equal(new Set(entries.map(e => e.id)).size, entries.length);
   assert.equal(new Set(entries.map(e => e.source.sha256)).size, entries.length);
   const linked = new Set(entries.flatMap(e => e.keys.map(key => `${e.kind}/${key}`)));
-  assert.equal(linked.size, 314);
+  assert.equal(linked.size, 301);
   const historic = new Set(entries.filter(e => e.provenance !== 'sender capture').flatMap(e => e.keys.map(key => `${e.kind}/${key}`)));
-  assert.equal(historic.size, 311);
+  assert.equal(historic.size, 298);
   const authored = entries.filter(entry => entry.evidence?.startsWith('Authored employers judgment'));
   assert.ok(authored.length > 0);
   assert.ok(authored.every(entry => entry.provenance === 'reconstructed'), 'authored requests must never be labeled as captured AI replies');
@@ -156,7 +156,7 @@ test('dry reports count an unlinked key as a gap and make no calls', async t => 
   forbidNetwork(t);
   const entries = loadRequests();
   const report = await buildReport({entries, table});
-  assert.deepEqual(report.coverage, {total: 601, eligible: 314, unlinked: 287, checked: 0, unjudged: 0});
+  assert.deepEqual(report.coverage, {total: 588, eligible: 301, unlinked: 287, checked: 0, unjudged: 0});
   assert.equal(report.sample.length, 20);
   assert.equal(report.callsUsed.total, 0);
   const expanded = structuredClone(table);

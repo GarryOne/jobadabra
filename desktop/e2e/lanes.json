@@ -7,9 +7,8 @@
       "input": "ai",
       "since": "2026-10-29",
       "pr": "number",
-      "why": "Gate checks replay reviewed fixture app replies and exact recorded judge replies; the existing facts, ranking, steadiness and judge rate assertions still apply.",
-      "returns": "The owner chooses when fresh model measurements resume; saved gates do not spend live AI credit.",
-      "aiMissesMax": 0
+      "why": "A live Jobs check on the golden postings measures the model's facts, scores and judge texts as rates.",
+      "returns": "Stays tolerant: it measures the live model."
     },
     "mailreading": {
       "lane": "tolerant",

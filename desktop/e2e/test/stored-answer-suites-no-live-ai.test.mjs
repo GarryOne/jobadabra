@@ -23,8 +23,8 @@ const request = (action, body = {model: 'test', messages: [{role: 'user', conten
   method: 'POST', headers: {'content-type': 'application/json', 'x-jp-action': action}, body: JSON.stringify(body),
 });
 
-// Why (31 Oct 2026, owner saved gates): interactions, failureschannels, activity and qualityai share setup reads, so all four use the same stored-answer and no-live guards.
-for (const suite of ['interactions', 'failureschannels', 'activity', 'qualityai']) {
+// Why (31 Oct 2026, owner saved gates): interactions, failureschannels and activity share setup reads, so all three use the same stored-answer and no-live guards.
+for (const suite of ['interactions', 'failureschannels', 'activity']) {
   for (const family of ['claude', 'openai']) test(`${suite} setup answers and named refusals stop before live ${family} AI`, async t => {
     const h = await backboneHarness(t, suite, family);
     t.after(() => h.assertNoLive());

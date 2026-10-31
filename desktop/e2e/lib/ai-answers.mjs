@@ -6,7 +6,7 @@ import {fileURLToPath} from 'node:url';
 import {decideQuestion} from './ai-answers-decide.mjs';
 import {placeQuestion} from './ai-answers-place.mjs';
 import {engineQuestion, itemOperation, validateItemEntry} from './ai-answers-engine.mjs';
-import {canonical, hash, object, requestParts} from './ai-answers-engine-items.mjs';
+import {canonical, hash, object} from './ai-answers-engine-items.mjs';
 import {promptOf} from './ai-answer-prompts.mjs';
 
 /** Opening of desktop/lib/learnings.js INSTRUCTIONS: the only way to tell its header-less call (kind learn_from_form) apart. */
@@ -124,34 +124,14 @@ function reviewQuestion(body) {
   return {operation: 'judge.review', id: hash({person: match[1], items: items.map(canonical).sort()})};
 }
 
-/** Bind a recorded fact verdict to its posting, extracted facts, candidate and judged claims. */
-function factQuestion(body, persona) {
-  const {system: instructions, user} = requestParts(body);
-  const match = /^POSTING\nTitle: ([^\n]+)\nCompany: ([^\n]+)\nLocation: ([^\n]+)\n([\s\S]+)\n\nEXTRACTED FACTS \(stage 1\)\n([\s\S]+)\n\nCANDIDATE\n([\s\S]+)\n\nTEXT THE TOOL WROTE\n([\s\S]+)\n\nJudge the text\.$/.exec(user);
-  if (!match) return {unkeyable: 'judge.facts: expected posting, facts, candidate and produced text'};
-  const [, title, company, location, description, facts, profile, produced] = match;
-  // Invariant: a new claim, profile, extracted fact or instruction never borrows a recorded verdict; scoring-round hints do not identify claims.
-  return {operation: 'judge.facts', id: `${persona || 'default'}/${hash({posting: {title, company, location, description}, facts, profile, produced, instructions})}`};
-}
-
-/** Bind a recorded CV comparison to the complete CV, profile, posting and comparison contract. */
-function cvQuestion(body, persona) {
-  const {system: instructions, user, schema} = requestParts(body);
-  const match = /^<cv>\n([\s\S]+)\n<\/cv>\n\n<profile>\n([\s\S]+)\n<\/profile>\n\n<posting>\n([\s\S]+)\n<\/posting>$/.exec(user);
-  if (!match || !object(schema?.properties?.musts)) return {unkeyable: 'judge.cv-match: expected CV, profile, posting and comparison schema'};
-  const [, cv, profile, posting] = match;
-  return {operation: 'judge.cv-match', id: `${persona || 'default'}/${hash({cv, profile, posting, instructions, schema})}`};
-}
-
 /** Identify scores, decide items, declared kinds or fact questions; an explicit table keeps kind lookup pure. */
 export function questionOf({url, headers, body, hint}, env = process.env, table) {
   // Why (#2450): golden personas reuse posting IDs, so their stored scores and verdicts must never share an answer.
   const persona = env.E2E_QUALITY_PERSONA || '';
+  if (hint?.operation === 'judge.facts' && typeof hint.id === 'string' && hint.id.trim()) return {operation: hint.operation, id: persona ? `${persona}/${hint.id}` : hint.id};
   const data = parsed(body), action = actionOf(headers, data);
   const engine = engineQuestion(data, persona); if (engine) return engine;
   const system = textOf(data.system ?? data.instructions);
-  if (system.startsWith('You are a strict fact-checker for a job-search tool.')) return factQuestion(data, persona);
-  if (system.startsWith('You compare one CV with one job posting,')) return cvQuestion(data, persona);
   if (system.startsWith('You are a strict reviewer of what a job-search tool wrote down for one person.')) return reviewQuestion(data);
   if (action === 'score' || system.startsWith('You rank job postings for one candidate.')) return scoreQuestion(data, persona);
   if (action === 'decide' || system.startsWith('You decide what short pieces of content mean')) return decideQuestion(data, persona);

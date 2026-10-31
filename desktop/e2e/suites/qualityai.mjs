@@ -1,4 +1,4 @@
-// Saved quality gate replies: check facts, ranking, steadiness, judge flags and CV matches.
+// Live quality rates: measure facts, ranking, score steadiness, judge flags and CV matches.
 // Job: run tolerant suites as rates
 import {loadAppModule} from '../lib/app-module.mjs';
 import fs from 'node:fs';
@@ -16,13 +16,9 @@ import {plainTextOf} from '../lib/seed-texts.mjs';
 import {notKeptNote} from '../lib/quality-rows.mjs';
 import {matchRows, unstable} from '../lib/quality.mjs';
 
-// Saved gate replies precede caches and transports, including setup and relaunch reads.
-export const offlineAi = true;
-export const realAi = false;
-export const aiAnswers = 'backbone';
 export const name = 'qualityai';
 export const store = 'sqlite';
-// Gates replay reviewed app replies and exact recorded judge replies; all rate assertions remain in force.
+// Live every run on the shipped model: facts, rescores, judge flags and CV matches.
 // The shared budget and planner allowance cover Jobs checks and setup; each slow step has its own limit.
 export const cadence = PLANNER.cadence;
 export const budgetMinutes = PLANNER.budgetMinutes;
@@ -80,7 +76,7 @@ export async function run(ctx) {
       const database = path.join(ctx.profile, 'data', 'jobs.sqlite');
       if (!fs.existsSync(database)) throw new Error(`the jobs database is not where expected: ${database}`);
       execFileSync(python(), ['-c', 'import sqlite3,sys; db=sqlite3.connect(sys.argv[1]); db.execute("UPDATE scores SET input_hash=\'\'"); db.commit()', database], {env: pythonEnv({}, {home: ctx.profile})});
-      // The fresh scope bypasses byte replay; the reviewed question table still owns every gate reply (owner, 31 Oct 2026).
+      // Fresh answers: replayed, the second scoring got the first one's answers back and always read ±0 (26 Oct 2026; lib/ai-meter.mjs fresh).
       await fresh(async () => { await check('second Jobs check'); await read2(); });
       const second = scoresOf();
       const spread = Object.keys(first).filter(id => second[id] != null).map(id => Math.abs(first[id] - second[id]));
@@ -111,7 +107,7 @@ export async function run(ctx) {
           const produced = [p.Reason, p.Strengths && `Strengths: ${p.Strengths}`, p.Gaps && `Gaps: ${p.Gaps}`];
           const facts = Object.fromEntries(['Seniority', 'Work mode', 'Languages', 'Salary', 'Role family', 'Technologies', 'Recruiter'].map(column => [column, p[column]]));
           // The employer is on every posting the app read (fixtures/golden/sources.json): without it the judge called the company's own name invented (Windows run 37150232804, job 3008).
-          const verdict = await judge({key: ctx.judgeKey, posting: {...item, company: item.company || read('sources.json')[0].company}, profile, produced, facts});
+          const verdict = await judge({key: ctx.judgeKey, posting: {...item, company: item.company || read('sources.json')[0].company}, profile, produced, facts, question: {operation: 'judge.facts', id: `${item.id}/${first ? 'first' : 'second'}`}});
           verdicts.push({id: item.id, title: item.title, scoring: first ? 'first' : 'second', produced, facts, verdict});   // facts kept: the judge's inputs, re-judged by another model offline
           const bad = failures(verdict);
           if (bad.length) problems.push(`"${item.title}"${first ? ' (first scoring)' : ''} ${bad.join(' and ')}: ${verdict.why} [text: ${produced.filter(Boolean).join(' / ')}]`);

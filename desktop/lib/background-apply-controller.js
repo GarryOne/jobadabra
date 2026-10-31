@@ -35,7 +35,7 @@ export function backgroundApplyFor(storage) {
 }
 /** Create the controller with injectable store/browser boundaries for deterministic fictional browser proofs; no alternative filler exists here. */
 export function createBackgroundApplyController(storage, {store = null, browser = null, terminals = terminalsDefault,
-  config = () => applyOf(storage.settings()), now = backgroundWaitNow, uuid = randomUUID, stop = stopAsked, notify = (...args) => notifyDefault(...args),   // Why (2026-10-28, bot review #2324): main.js sets the notifier after the handlers register; read the live binding at each call
+  config = () => applyOf(storage.settings()), now = backgroundWaitNow, uuid = randomUUID, stop = stopAsked, notify = (...args) => notifyDefault(...args),   // Why (2026-10-28, bot review #2324; 31 Oct 2026, owner): read the late-wired notifier live; share the gated wait clock with the store so moving it wakes the same due job
  log = appLog, reader = createTriageReader(), started = APP_STARTED,   // `started`: when this run of the app began; a job held before it was cut off by a quit
   port = Number(process.env.JOB_PILOTTO_PORT || 47111), token = () => extensionToken(storage)} = {}) {
   store ||= createBackgroundApplyStore(storage, {stopped: stop, now});

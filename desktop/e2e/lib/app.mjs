@@ -99,8 +99,24 @@ async function startTrace(app, env = process.env) {
   return {
     group: name => quiet(tracing.group(name)), groupEnd: () => quiet(tracing.groupEnd()),
     // A hung app must not hang the close: 60 s at most (a long suite's trace takes a few seconds to write).
-    stop: keep => Promise.race([tracing.stop(keep ? {path: file} : {}).then(() => { if (keep) console.log(`  trace: ${path.basename(file)} (${Math.round(fs.statSync(file).size / 1024)} KB)`); }),
-      new Promise((_, fail) => setTimeout(() => fail(new Error('took over 60 s')), 60000).unref())]).catch(error => console.log(`  (trace not written: ${error.message})`)),
+    stop: async keep => {
+      let timer, expired = false;
+      try {
+        const staging = keep ? fs.mkdtempSync(path.join(path.dirname(ARTIFACTS), '.jp-e2e-trace-')) : null;
+        const pending = staging && path.join(staging, path.basename(file));
+        // Invariant: upload paths contain only finished traces; a timed-out stop can never publish later.
+        const writing = tracing.stop(keep ? {path: pending} : {}).then(() => {
+          if (keep && !expired) {
+            fs.renameSync(pending, file);
+            console.log(`  trace: ${path.basename(file)} (${Math.round(fs.statSync(file).size / 1024)} KB)`);
+          }
+        }).finally(() => { if (staging) fs.rmSync(staging, {recursive: true, force: true}); });
+        await Promise.race([writing, new Promise((_, fail) => {
+          timer = setTimeout(() => { expired = true; fail(new Error('took over 60 s')); }, 60000).unref();
+        })]);
+      } catch (error) { console.log(`  (trace not written: ${error.message})`); }
+      finally { clearTimeout(timer); }
+    },
   };
 }
 

@@ -286,7 +286,8 @@ jobs:
       E2E_NOTION_TOKEN_WANDER: ${{ secrets.E2E_NOTION_TOKEN_WANDER }}
       E2E_ARTIFACTS: ${{ github.workspace }}/e2e-artifacts/${{ matrix.key }}
       # A pull request runs only the steps its changed lines reach (owner, 26 Oct 2026: "not even an entire e2e suite, but just few tests/scenarios/cases"; lib/runner.mjs).
-      E2E_STEP_NAMES: ${{ inputs.pr_steps != '' && toJSON(fromJSON(inputs.pr_steps)[matrix.suite]) || '' }}
+      E2E_STEPS: ${{ matrix.stepFilter || '' }}
+      E2E_STEP_NAMES: ${{ !matrix.burnIn && inputs.pr_steps != '' && toJSON(fromJSON(inputs.pr_steps)[matrix.suite]) || '' }}
       E2E_FALLBACK_SUITES: ${{ matrix.fallbackSuites }}
       E2E_FALLBACK_SUITE: ${{ matrix.suite }}
       JP_REPLAY_SHARD: ${{ matrix.shard }}   # a sharded suite's slice (lib/suite-shards.mjs: the recorded replay, 13 Oct 2026); empty: the whole suite
@@ -327,12 +328,15 @@ jobs:
         with:
           ref: ${{ needs.plan.outputs.ref }}   # a push or a schedule: that commit; the run after a build: the build's own commit
       # Waits for the suite's lock instead of queueing in a concurrency group (GitHub keeps ONE waiting job per group and cancels the older one: beta 14, 24 Oct 2026).
+      # Why (31 Oct 2026, stable canary run 41202570730): this is the workflow's own commit, so it also holds main's artifact scan (tools/scan-e2e-artifacts.py); the suite checkout above may be an older tag without it (15 suites red on "can't open file"). Guard: tests/test_e2e_artifact_secrets.py test_scan_runs_the_workflows_own_tool.
       - uses: actions/checkout@v5
         timeout-minutes: 5
         with:
           ref: ${{ github.sha }}
           path: lock-tools
-          sparse-checkout: tools/e2e-lock.sh
+          sparse-checkout: |
+            tools/e2e-lock.sh
+            tools/scan-e2e-artifacts.py
       - uses: actions/setup-node@v5
         timeout-minutes: 5
         with:
@@ -437,9 +441,14 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           E2E_LOCK_TOKEN: ${{ steps.lock_app.outputs.token }}
         run: bash lock-tools/tools/e2e-lock.sh acquire "${{ matrix.key }}"
+      - name: ${{ matrix.burnInSteps && format('Burn-in steps · {0}', join(matrix.burnInSteps, ' | ')) || 'Burn-in steps' }}
+        if: matrix.burnInSteps != null
+        timeout-minutes: 5
+        run: echo 'Five independent first tries are required for these new steps.'
       - name: Run the ${{ matrix.key }} suite (the only try)
         id: suite_run
         env:
+          E2E_BURN_IN_STEPS: ${{ matrix.burnInSteps && toJSON(matrix.burnInSteps) || '' }}
           E2E_TRY_MINUTES: 15   # = this step's timeout-minutes: a suite without an aggregate budget stops 4 min before it (its close-down cap + 1), with records that read as timing (lib/runner.mjs budgetMsOf; tests/test_e2e_try_minutes.py)
           # Why (30 Oct 2026, ap; owner-approved rule A and burn-in): admission uses stored answers; manual first attempts may record; a suite that declares aiAnswers as backbone (plan-run.mjs puts it in matrix.aiAnswers) otherwise uses backbone answers without live AI.
           E2E_AI_ANSWERS: ${{ matrix.burnIn && 'backbone' || github.event_name == 'workflow_dispatch' && github.run_attempt == 1 && inputs.ai_answers == 'record' && 'record' || matrix.aiAnswers || 'off' }}
@@ -456,6 +465,16 @@ jobs:
               && echo "::notice title=Picked step renamed::A step picked for this PR has a new name: the whole ${{ matrix.key }} suite runs now" && unset E2E_STEP_NAMES && once ${{ matrix.suite }}; } \
             || { if [ "${{ matrix.tolerant }}" = true ]; then echo "::warning title=Tolerant suite failed::The ${{ matrix.key }} suite failed (a rate, not a verdict: it never holds a beta)"; echo "tolerant_failed=1" >> "$GITHUB_OUTPUT"; exit 0; fi
                  echo "::error title=Suite failed::The ${{ matrix.key }} suite failed (its one try is the verdict: no second try)"; exit 1; }
+          if [ -n "${E2E_BURN_IN_STEPS:-}" ]; then
+            node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import {unpassedBurnInSteps} from './lib/pr-suites.mjs';
+          const names = JSON.parse(process.env.E2E_BURN_IN_STEPS);
+          const {results} = JSON.parse(fs.readFileSync(`${process.env.E2E_ARTIFACTS}/steps.json`, 'utf8'));
+          const missing = unpassedBurnInSteps(names, results);
+          if (missing.length) throw new Error(`Burn-in steps did not pass: ${missing.join(' | ')}`);
+          NODE
+          fi
       - name: Outside-world health
         if: always() && matrix.tolerant == true
         timeout-minutes: 5
@@ -527,7 +546,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           E2E_ARTIFACT_PATHS: |
             desktop/e2e/.ai-cache
-        run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
+        run: python "$GITHUB_WORKSPACE/lock-tools/tools/scan-e2e-artifacts.py"
       - name: Hand this PR's green AI answers to main's run after the merge (desktop/e2e/pr-answers.mjs)
         if: (success() && steps.suite_run.outputs.tolerant_failed != '1' && inputs.pr_suites != '' && inputs.after_merge == '' && env.E2E_ANTHROPIC_KEY != '' && hashFiles('desktop/e2e/.ai-cache/*.json') != '') && steps.artifact_scan_1.outcome == 'success'
         timeout-minutes: 5
@@ -551,7 +570,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           E2E_ARTIFACT_PATHS: |
             blob-report
-        run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
+        run: python "$GITHUB_WORKSPACE/lock-tools/tools/scan-e2e-artifacts.py"
       - name: The suite's part of the HTML report
         if: (always()) && steps.artifact_scan_2.outcome == 'success'
         timeout-minutes: 5
@@ -577,7 +596,7 @@ jobs:
           E2E_ARTIFACT_PATHS: |
             e2e-artifacts/${{ matrix.key }}/steps.json
             e2e-artifacts/${{ matrix.key }}/trace-*.zip
-        run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
+        run: python "$GITHUB_WORKSPACE/lock-tools/tools/scan-e2e-artifacts.py"
       - name: Steps and trace for /admin/e2e
         if: (always()) && steps.artifact_scan_3.outcome == 'success'
         timeout-minutes: 5
@@ -603,7 +622,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           E2E_ARTIFACT_PATHS: |
             e2e-artifacts/${{ matrix.key }}/coverage-*.json
-        run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
+        run: python "$GITHUB_WORKSPACE/lock-tools/tools/scan-e2e-artifacts.py"
       - name: Which app lines the suite ran (the code → suite map)
         if: (always() && env.E2E_COVERAGE == '1') && steps.artifact_scan_4.outcome == 'success'
         timeout-minutes: 5
@@ -627,7 +646,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           E2E_ARTIFACT_PATHS: |
             e2e-artifacts/${{ matrix.key }}
-        run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
+        run: python "$GITHUB_WORKSPACE/lock-tools/tools/scan-e2e-artifacts.py"
       - name: Screenshots and timings
         if: (always()) && steps.artifact_scan_5.outcome == 'success'
         timeout-minutes: 5

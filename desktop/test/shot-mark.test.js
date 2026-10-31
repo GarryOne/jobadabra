@@ -1,7 +1,7 @@
-// npm run shot --mark draws a red frame around the matched element (owner, 17 Oct 2026: PR screens point at "where to look"). Renders a tiny page in electron; skipped in CI (no display), like rail-badges.test.js.
+// npm run shot --mark draws a red frame around the matched element (owner, 17 Oct 2026: PR screens point at "where to look"). Renders a tiny page in electron; skipped only where electron or a display is missing (needs-electron.js), like rail-badges.test.js.
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
-import {existsSync} from 'node:fs';
+import {needsElectron} from './needs-electron.js';
 import {fileURLToPath, pathToFileURL} from 'node:url';
 import {test} from 'node:test';
 import {markSteps} from '../scripts/shot-mark.mjs';
@@ -21,7 +21,7 @@ test('the steps name every selector and throw on one that matches nothing', () =
   assert.match(steps, /no element matches/);
 });
 
-test('the frame is red around the box and the box and the page stay as they were', {skip: process.env.CI || !existsSync(`${desktop}node_modules/.bin/electron`)}, () => {
+test('the frame is red around the box and the box and the page stay as they were', needsElectron, () => {
   const seen = probe(1);
   assert.equal(seen.error, null);
   const [r, g, b] = seen.frame;
@@ -30,6 +30,6 @@ test('the frame is red around the box and the box and the page stay as they were
   assert.deepEqual(seen.outside, [255, 255, 255]);
 });
 
-test('a selector with no match is an error, never a shot without the mark', {skip: process.env.CI || !existsSync(`${desktop}node_modules/.bin/electron`)}, () => {
+test('a selector with no match is an error, never a shot without the mark', needsElectron, () => {
   assert.match(probe(2).error, /no element matches #missing/);
 });

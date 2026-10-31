@@ -30,7 +30,8 @@ test('manifest asks for activeTab, alarms, debugger, scripting and storage, and 
     'https://*.myworkdayjobs.com/*', 'https://*.smartrecruiters.com/*', 'https://apply.workable.com/*',
     'https://*.successfactors.eu/*', 'https://*.successfactors.com/*', 'https://*.jobs.personio.de/*', 'https://*.jobs.personio.com/*', 'https://*.teamtailor.com/*', 'https://*.recruitee.com/*', 'https://*.softgarden.io/*', 'https://*.umantis.com/*', 'https://*.taleo.net/*', 'https://*.icims.com/*', 'https://*.bamboohr.com/*']);
   // Every other site only through Settings → Work on every job site (asked from the options tab, which stays open).
-  assert.deepEqual(manifest.optional_host_permissions, ['https://*/*']);
+  // Why (31 Oct 2026, LinkedIn jobs #2694): LinkedIn's origin is also declared by name, optional, so a Chrome Web Store reviewer sees exactly what the opt-in consent page (linkedin.html) asks for.
+  assert.deepEqual(manifest.optional_host_permissions, ['https://*/*', 'https://www.linkedin.com/*']);
   assert.match(read('extension/options.js'), /chrome\.permissions\.request\(EVERY_SITE\)/);
   assert.deepEqual(manifest.optional_permissions, ['cookies']);
   assert.match(read('extension/options.js'), /chrome\.permissions\.request\(COOKIES\)/);

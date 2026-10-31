@@ -304,7 +304,7 @@ function handlers() {
   registerCvBuildHandlers({dialog, getWindow: () => window, ipcMain, printPdf, shell, storage, syncCv});   // lib/cv-build-handlers.js
   registerExperienceHandlers({DEMO, dialog, getWindow: () => window, ipcMain, shell, storage});   // lib/experience-handlers.js
   registerVisitsHandlers({DEMO, allowanceBlock, here, ipcMain, log, readSites, shell, storage});   // lib/visits-handlers.js
-  registerBrowserHandlers({app, clipboard, ipcMain, openNotion, shell, showForm, storage});   // lib/browser-handlers.js
+  registerBrowserHandlers({app, clipboard, DEMO, ipcMain, openNotion, shell, showForm, storage});   // lib/browser-handlers.js
 }
 
 // Started from a terminal that's since closed, writing a log line fails (EIO/EPIPE); that must never crash the app.

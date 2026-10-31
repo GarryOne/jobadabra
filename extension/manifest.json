@@ -57,6 +57,7 @@
     "cookies"
   ],
   "optional_host_permissions": [
-    "https://*/*"
+    "https://*/*",
+    "https://www.linkedin.com/*"
   ]
 }

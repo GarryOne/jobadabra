@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Jobadabra: LinkedIn jobs</title>
+<style>
+  [hidden] { display: none !important; }
+  body { margin: 0; font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; color: #182537; background: #f4f6fa; display: grid; place-items: center; min-height: 100vh; }
+  main { max-width: 480px; background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 28px; display: grid; gap: 14px; }
+  h1 { margin: 0; font-size: 19px; }
+  p, li { margin: 0; color: #5b6b80; }
+  ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+  .warn { background: #fdf3dc; color: #182537; border-radius: 8px; padding: 10px 12px; font-weight: 600; }
+  button { font: inherit; font-weight: 600; padding: 11px 16px; border: 0; border-radius: 8px; background: #ffb224; color: #14110c; cursor: pointer; }
+  .done { color: #1f9d55; font-weight: 600; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Search LinkedIn on every Find jobs?</h1>
+  <p>The Jobadabra app can read your LinkedIn job searches every time you press Find jobs, in the background with no window, using your LinkedIn sign-in from this Chrome.</p>
+  <ul>
+    <li>Chrome will ask for two permissions, once: LinkedIn pages and cookies.</li>
+    <li>Only two LinkedIn cookies are read (<code>li_at</code>, <code>JSESSIONID</code>) and sent only to the Jobadabra app on this Mac (127.0.0.1). The app keeps them in your Keychain.</li>
+    <li>Turn it off in Jobadabra → Settings → Connections → LinkedIn: the sign-in is deleted and Chrome's permissions are given back.</li>
+  </ul>
+  <p class="warn" id="warning">LinkedIn may limit accounts it thinks are automated; we read slowly and only your job searches.</p>
+  <button id="allow">Allow and turn on LinkedIn jobs</button>
+  <p id="said" role="status"></p>
+</main>
+<script type="module" src="linkedin.js"></script>
+</body>
+</html>

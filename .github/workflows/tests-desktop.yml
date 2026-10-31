@@ -159,9 +159,14 @@ jobs:
         with:
           node-version: '22'
       # Install exactly what a developer (and the release workflow) has, dev dependencies included: `npm test` runs scripts/stage.mjs, which needs esbuild.
-      # Only Electron's large binary is skipped, as the tests don't start it. tools/pre-push-check.sh blocks `--omit` here.
+      # Electron's binary too, and a virtual display: the tests that render the demo app (card-grid-layout, palette-*, rail-badges, report-grid-layout, shot-mark)
+      # run here, not only on a Mac (Why (31 Oct 2026, owner: "How did it endup in main ?"): they skipped on CI, so palette-one-row-per-card went red on main unseen).
+      # tools/pre-push-check.sh blocks `--omit` here. ELECTRON_DISABLE_SANDBOX: Ubuntu 24.04 runners refuse Chromium's sandbox, as the e2e harness knows (--no-sandbox).
       - run: npm ci
         working-directory: desktop
+      - name: A virtual display and Electron's libraries
+        timeout-minutes: 5
+        run: bash tools/apt-install.sh xvfb libnss3 libgbm1 libasound2t64 libgtk-3-0 libxss1 fonts-noto-color-emoji fonts-dejavu-core
+      - run: xvfb-run -a --server-args='-screen 0 1440x900x24' bash tools/check.sh --area desktop
         env:
-          ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
-      - run: bash tools/check.sh --area desktop
+          ELECTRON_DISABLE_SANDBOX: '1'

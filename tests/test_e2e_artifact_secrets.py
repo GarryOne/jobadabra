@@ -114,6 +114,30 @@ def scan_contract(job, action=''):
     return problems
 
 
+def scan_tool_problems(job):
+    """Every scan runs main's tool: through the workflow's own checkout wherever the job may check out another ref."""
+    steps = re.split(r'(?m)^      - ', job)
+    refs, lock_tools = [], False
+    for step in steps:
+        if 'uses: actions/checkout@' not in step:
+            continue
+        ref = re.search(r'(?m)^          ref: (.*?)(?:\s+#.*)?$', step)
+        refs.append(ref[1].strip() if ref else '')
+        sparse = re.search(r'(?ms)^          sparse-checkout: \|\n((?:            [^\n]*\n)+)', step)
+        listed = sparse[1].split() if sparse else []
+        if 'path: lock-tools' in step and ref and ref[1].strip() == '${{ github.sha }}':
+            lock_tools = not sparse or 'tools/scan-e2e-artifacts.py' in listed or 'tools' in listed
+    other_ref = any(ref not in ('', '${{ github.sha }}') for ref in refs)
+    problems = []
+    for line in re.findall(r'(?m)^\s*run: python3? .*scan-e2e-artifacts\.py.*$', job):
+        own = 'lock-tools/tools/scan-e2e-artifacts.py' in line
+        if own and not lock_tools:
+            problems.append(f'no lock-tools checkout of this workflow\'s commit that holds the scanner: {line.strip()}')
+        if not own and (other_ref or any('path: lock-tools' in step for step in steps)):
+            problems.append(f'runs the scanner from the job\'s workspace, which may be another ref: {line.strip()}')
+    return problems
+
+
 class ArtifactSecretsTests(unittest.TestCase):
     def scan(self, folder, **extra):
         env = {'PATH': os.environ.get('PATH', ''), 'E2E_ARTIFACT_SECRET_NAMES': 'E2E_NOTION_TOKEN_APPLY\nACTIONS_ID_TOKEN_REQUEST_TOKEN', 'E2E_NOTION_TOKEN_APPLY': 'fake-notion-secret-123456', 'ACTIONS_ID_TOKEN_REQUEST_TOKEN': 'fake-runtime-token-123456', **extra}
@@ -174,6 +198,52 @@ class ArtifactSecretsTests(unittest.TestCase):
             self.assertEqual(self.scan(folder).returncode, 0)
             self.assertEqual(self.scan(Path(folder) / 'missing').returncode, 0)
 
+    def test_unfinished_zip_is_removed_and_good_evidence_still_passes(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            (root / 'app.log').write_text('fictional app log')
+            (root / 'steps.json').write_text('{"status":"failed"}')
+            with zipfile.ZipFile(root / 'good.zip', 'w') as archive:
+                archive.writestr('snapshot.txt', 'fictional snapshot')
+            broken = root / 'trace-apply-6.zip'
+            broken.write_bytes(b'PK\x03\x04unfinished trace without central directory')
+            result = self.scan(root)
+            self.assertEqual(result.returncode, 0, result.stdout)
+            self.assertFalse(broken.exists(), 'nothing unreadable remains in the upload')
+            self.assertIn('not uploaded: unreadable,', result.stdout)
+            self.assertIn('trace-apply-6.zip', result.stdout)
+            self.assertEqual(sorted(file.name for file in root.iterdir()), ['app.log', 'good.zip', 'steps.json'])
+
+    def test_complete_blob_with_unfinished_nested_trace_is_removed(self):
+        # The failed job attached a trace after stop timed out, then finished its blob reporter normally.
+        with tempfile.TemporaryDirectory() as folder:
+            blob = Path(folder) / 'apply.zip'
+            with zipfile.ZipFile(blob, 'w', zipfile.ZIP_DEFLATED) as archive:
+                archive.writestr('report.jsonl', '{"result":"failed"}')
+                archive.writestr('resources/trace.zip', b'PK\x03\x04unfinished nested trace')
+            with zipfile.ZipFile(blob) as archive:
+                self.assertIsNone(archive.testzip(), 'the outer blob is a complete, readable ZIP')
+            result = self.scan(folder)
+            self.assertEqual(result.returncode, 0, result.stdout)
+            self.assertFalse(blob.exists())
+            self.assertIn('not uploaded: unreadable,', result.stdout)
+            self.assertIn('apply.zip', result.stdout)
+
+    def test_unreadable_file_that_cannot_be_removed_still_blocks_upload(self):
+        spec = importlib.util.spec_from_file_location('scan_e2e_artifacts', SCANNER)
+        scanner = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(scanner)
+        with tempfile.TemporaryDirectory() as folder:
+            broken = Path(folder) / 'unfinished.zip'
+            broken.write_bytes(b'PK\x03\x04unfinished')
+            found = scanner.Scanner({})
+            with mock.patch.object(Path, 'unlink', side_effect=PermissionError('private exception')), mock.patch('builtins.print') as output:
+                found.paths([folder])
+            self.assertTrue(found.failed)
+            self.assertTrue(broken.exists())
+            self.assertIn('SCAN_ERROR', str(output.call_args_list))
+            self.assertNotIn('private exception', str(output.call_args_list))
+
     def test_broken_zip_fails_without_exception_content(self):
         with tempfile.TemporaryDirectory() as folder:
             (Path(folder) / 'trace.zip').write_text('fake-notion-secret-123456')
@@ -192,6 +262,41 @@ class ArtifactSecretsTests(unittest.TestCase):
                     self.assertRegex(step, r"steps\.artifact_scan_\d+\.outcome == 'success'")
                     self.assertIn('scan-e2e-artifacts.py', steps[index - 1])
                     self.assertNotIn('toJSON(secrets)', steps[index - 1])
+
+    def test_scan_runs_the_workflows_own_tool(self):
+        """Why (31 Oct 2026, stable canary 41202570730): the suite job checks out an older tag with no scanner; 15 suites went red on \"can't open file\"."""
+        checked = 0
+        for workflow in ('e2e.yml', 'e2e-windows.yml', 'desktop.yml'):
+            text = (ROOT / '.github/workflows' / workflow).read_text()
+            for name, job in workflow_jobs(text):
+                if 'scan-e2e-artifacts.py' not in job:
+                    continue
+                self.assertEqual(scan_tool_problems(job), [], f'{workflow}/{name}')
+                checked += 1
+        self.assertGreaterEqual(checked, 12)
+
+    def test_scan_tool_guard_rejects_the_canary_shape(self):
+        old_ref = """    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ needs.plan.outputs.ref }}
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.sha }}
+          path: lock-tools
+          sparse-checkout: |
+            tools/e2e-lock.sh
+            tools/scan-e2e-artifacts.py
+      - id: artifact_scan_1
+        run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
+"""
+        self.assertEqual(len(scan_tool_problems(old_ref)), 1)
+        fixed = old_ref.replace('WORKSPACE/tools/scan', 'WORKSPACE/lock-tools/tools/scan')
+        self.assertEqual(scan_tool_problems(fixed), [])
+        no_tool = fixed.replace('            tools/scan-e2e-artifacts.py\n', '')
+        self.assertEqual(len(scan_tool_problems(no_tool)), 1)
+        default_ref = "    steps:\n      - uses: actions/checkout@v5\n      - run: python tools/scan-e2e-artifacts.py\n"
+        self.assertEqual(scan_tool_problems(default_ref), [])
 
     def test_no_repository_wide_secret_context_or_input_is_restored(self):
         for file in ('.github/actions/e2e-review/action.yml', '.github/workflows/e2e.yml', '.github/workflows/e2e-windows.yml', '.github/workflows/desktop.yml'):

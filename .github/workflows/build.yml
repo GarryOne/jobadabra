@@ -48,15 +48,20 @@ jobs:
         run: |
           (cd worker && npm ci)
           bash tools/check.sh --area worker || { echo "::error title=Suite failed::worker: the job fails at \"Every suite passed\""; exit 1; }
-      # Install exactly what a developer has, dev dependencies included: `npm test` runs scripts/stage.mjs, which needs esbuild. Only Electron's large binary is skipped.
+      # Install exactly what a developer has, dev dependencies included: `npm test` runs scripts/stage.mjs, which needs esbuild. Electron's binary too, under a virtual
+      # display, as in tests-desktop.yml (the desktop tests that render the app run on CI, not only on a Mac).
+      - name: Electron's libraries and a virtual display
+        timeout-minutes: 5
+        continue-on-error: true
+        run: bash tools/apt-install.sh xvfb libnss3 libgbm1 libasound2t64 libgtk-3-0 libxss1 fonts-noto-color-emoji fonts-dejavu-core
       - name: Suite · desktop
         id: desktop
         continue-on-error: true
         env:
-          ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+          ELECTRON_DISABLE_SANDBOX: '1'
         run: |
           (cd desktop && npm ci)
-          bash tools/check.sh --area desktop || { echo "::error title=Suite failed::desktop: the job fails at \"Every suite passed\""; exit 1; }
+          xvfb-run -a --server-args='-screen 0 1440x900x24' bash tools/check.sh --area desktop || { echo "::error title=Suite failed::desktop: the job fails at \"Every suite passed\""; exit 1; }
       # The recorded pages and the widget zoo need the replay's own install (the app's runtime packages only, the generated shared files, the full Chromium).
       - name: Install the replays' packages and browser
         id: replay-install

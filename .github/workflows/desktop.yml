@@ -668,12 +668,15 @@ jobs:
       - uses: actions/checkout@v5
         timeout-minutes: 5
       # Waits for the suite's lock instead of queueing in a concurrency group (GitHub keeps ONE waiting job per group and cancels the older one: beta 14, 24 Oct 2026).
+      # Why (31 Oct 2026, stable canary run 41202570730): this is the workflow's own commit, so it also holds main's artifact scan (tools/scan-e2e-artifacts.py); the suite checkout above may be an older tag without it (15 suites red on "can't open file"). Guard: tests/test_e2e_artifact_secrets.py test_scan_runs_the_workflows_own_tool.
       - uses: actions/checkout@v5
         timeout-minutes: 5
         with:
           ref: ${{ github.sha }}
           path: lock-tools
-          sparse-checkout: tools/e2e-lock.sh
+          sparse-checkout: |
+            tools/e2e-lock.sh
+            tools/scan-e2e-artifacts.py
       - uses: actions/setup-node@v5
         timeout-minutes: 5
         with:
@@ -824,7 +827,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           E2E_ARTIFACT_PATHS: |
             blob-report
-        run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
+        run: python "$GITHUB_WORKSPACE/lock-tools/tools/scan-e2e-artifacts.py"
       - name: The suite's part of the HTML report
         if: (always()) && steps.artifact_scan_3.outcome == 'success'
         timeout-minutes: 5
@@ -851,7 +854,7 @@ jobs:
           E2E_ARTIFACT_PATHS: |
             e2e-artifacts/${{ matrix.key }}/steps.json
             e2e-artifacts/${{ matrix.key }}/trace-*.zip
-        run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
+        run: python "$GITHUB_WORKSPACE/lock-tools/tools/scan-e2e-artifacts.py"
       - name: Steps and trace for /admin/e2e
         if: (always()) && steps.artifact_scan_4.outcome == 'success'
         timeout-minutes: 5
@@ -878,7 +881,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           E2E_ARTIFACT_PATHS: |
             e2e-artifacts/${{ matrix.key }}
-        run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
+        run: python "$GITHUB_WORKSPACE/lock-tools/tools/scan-e2e-artifacts.py"
       - name: Screenshots and timings
         if: (always()) && steps.artifact_scan_5.outcome == 'success'
         timeout-minutes: 5
@@ -990,12 +993,15 @@ jobs:
       - uses: actions/checkout@v5
         timeout-minutes: 5
       # Waits for the suite's lock instead of queueing in a concurrency group (GitHub keeps ONE waiting job per group and cancels the older one: beta 14, 24 Oct 2026).
+      # Why (31 Oct 2026, stable canary run 41202570730): this is the workflow's own commit, so it also holds main's artifact scan (tools/scan-e2e-artifacts.py); the suite checkout above may be an older tag without it (15 suites red on "can't open file"). Guard: tests/test_e2e_artifact_secrets.py test_scan_runs_the_workflows_own_tool.
       - uses: actions/checkout@v5
         timeout-minutes: 5
         with:
           ref: ${{ github.sha }}
           path: lock-tools
-          sparse-checkout: tools/e2e-lock.sh
+          sparse-checkout: |
+            tools/e2e-lock.sh
+            tools/scan-e2e-artifacts.py
       - uses: actions/setup-node@v5
         timeout-minutes: 5
         with:
@@ -1135,7 +1141,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           E2E_ARTIFACT_PATHS: |
             blob-report
-        run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
+        run: python "$GITHUB_WORKSPACE/lock-tools/tools/scan-e2e-artifacts.py"
       - name: The suite's part of the HTML report
         if: (always()) && steps.artifact_scan_7.outcome == 'success'
         timeout-minutes: 5
@@ -1162,7 +1168,7 @@ jobs:
           E2E_ARTIFACT_PATHS: |
             e2e-artifacts-windows/${{ matrix.key }}/steps.json
             e2e-artifacts-windows/${{ matrix.key }}/trace-*.zip
-        run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
+        run: python "$GITHUB_WORKSPACE/lock-tools/tools/scan-e2e-artifacts.py"
       - name: Steps and trace for /admin/e2e
         if: (always()) && steps.artifact_scan_8.outcome == 'success'
         timeout-minutes: 5
@@ -1189,7 +1195,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           E2E_ARTIFACT_PATHS: |
             e2e-artifacts-windows/${{ matrix.key }}
-        run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
+        run: python "$GITHUB_WORKSPACE/lock-tools/tools/scan-e2e-artifacts.py"
       - name: Screenshots and logs
         if: (always()) && steps.artifact_scan_9.outcome == 'success'
         timeout-minutes: 5
@@ -1214,7 +1220,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           E2E_ARTIFACT_PATHS: |
             e2e-artifacts-windows/apply-edge
-        run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
+        run: python "$GITHUB_WORKSPACE/lock-tools/tools/scan-e2e-artifacts.py"
       - name: The Edge pass's screenshots and logs
         if: (always() && matrix.suite == 'apply') && steps.artifact_scan_10.outcome == 'success'
         timeout-minutes: 5

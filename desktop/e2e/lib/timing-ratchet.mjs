@@ -13,8 +13,8 @@ const elapsedComparison = condition => /[<>]/.test(condition)
 
 const children = node => Object.values(node).flatMap(value => Array.isArray(value) ? value : [value]).filter(value => value && typeof value.type === 'string');
 const has = (node, check) => !!node && (check(node) || children(node).some(child => has(child, check)));
-const clockRead = node => node.type === 'CallExpression' && node.callee.type === 'MemberExpression' &&
-  ['Date', 'performance'].includes(node.callee.object.name) && node.callee.property.name === 'now';
+const clockReference = node => node.type === 'MemberExpression' && ['Date', 'performance'].includes(node.object.name) && node.property.name === 'now';
+const clockRead = node => (node.type === 'CallExpression' && clockReference(node.callee)) || (node.type === 'NewExpression' && node.callee.name === 'Date' && !node.arguments.length);
 const comparison = node => node.type === 'BinaryExpression' && ['<', '>', '<=', '>='].includes(node.operator);
 const functionNode = node => /^(?:FunctionDeclaration|FunctionExpression|ArrowFunctionExpression)$/.test(node.type);
 const nameOf = node => node?.name || node?.property?.name || '';
@@ -36,9 +36,18 @@ function clockWaits(source) {
       if (test) { if (node.body) visit(node.body, scope); if (node.consequent) visit(node.consequent, scope); if (node.alternate) visit(node.alternate, scope); }
       return;
     }
-    // A nonzero product wait must be paired with a clock move in the containing function.
-    if (node.type === 'Property' && nameOf(node.key) === 'waitMin' && node.value.type === 'Literal' && Number(node.value.value) > 0 &&
-        !inScope(scope, child => child.type === 'CallExpression' && /^(?:advancePastDue|moveBackgroundWaitClock)$/.test(nameOf(child.callee)))) count++;
+    // A local clock alias or expression predicate can hide a clock from its later wait. Count that declaration once.
+    if (node.type === 'VariableDeclarator' && node.init && (clockReference(node.init) ||
+        (functionNode(node.init) && ['BinaryExpression', 'LogicalExpression', 'UnaryExpression'].includes(node.init.body.type) && has(node.init.body, clockRead) && has(node.init.body, comparison)))) { count++; return; }
+    // Auto starts without an explicit zero wait need a clock move, including defaults and nonliteral waits.
+    if (node.type === 'CallExpression' && ['startJob', 'startAuto'].includes(nameOf(node.callee))) {
+      const options = node.arguments.find(arg => arg.type === 'ObjectExpression');
+      const field = key => options?.properties.find(property => nameOf(property.key) === key)?.value;
+      const automatic = nameOf(node.callee) === 'startAuto' || field('mode')?.value === 'auto';
+      const wait = field('waitMin');
+      if (automatic && !(wait?.type === 'Literal' && wait.value === 0) &&
+          !inScope(scope, child => child.type === 'CallExpression' && /^(?:advancePastDue|moveBackgroundWaitClock)$/.test(nameOf(child.callee)))) count++;
+    }
     for (const child of children(node)) visit(child, scope);
   };
   visit(tree);

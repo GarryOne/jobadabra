@@ -51,7 +51,10 @@ export function createBackgroundApplyController(storage, {store = null, browser 
   const cache = (item, state, decision = null) => {
     const record = terminals.record(item.id);
     if (!record || !state) return;
-    record.background = {...(process.env.JOB_PILOTTO_E2E === '1' ? {waitClockOffset: now() - Date.now()} : {}), waitDecision: decision || record.background?.waitDecision || null, mode: state.mode, state: state.state, reason: state.reason || '', readyAt: state.readyAt || 0,
+    const previous = record.background?.waitDecision;
+    const verdict = previous?.reason === 'authorized' ? previous : decision || previous;
+    const testClock = process.env.JOB_PILOTTO_E2E === '1' ? {waitClockOffset: now() - Date.now(), ...(verdict ? {waitDecision: verdict} : {})} : {};
+    record.background = {...testClock, mode: state.mode, state: state.state, reason: state.reason || '', readyAt: state.readyAt || 0,
       dueAt: state.mode === 'auto' && state.readyAt ? state.readyAt + (config().auto?.waitMin ?? AUTO_DEFAULTS.waitMin) * 60000 : 0, manualOverride: !!state.manualOverride};
     const words = state.state === 'ready_for_review' ? 'Form filled — review the same background form and Submit' : state.state === 'waiting_to_submit' ? 'Filled — waiting before automatic submission; Stop is available' : state.state === 'submitting' ? 'Submission attempted — waiting for the site receipt' : HANDOFF.has(state.state) ? NOTICES[state.reason] || 'This application needs you. Review and submit the same form yourself.' : 'Filling in the background';
     terminals.report(item.id, {event: 'note', message: words});
@@ -96,7 +99,7 @@ export function createBackgroundApplyController(storage, {store = null, browser 
       return {ok: true, mode, sessions: enrolled, message: `${enrolled.length} application${enrolled.length === 1 ? '' : 's'} queued in the background. Review filled forms in Sessions.${skippedNote}`};
     });
   }
-  async function poll(givenOwner) {
+  async function poll(givenOwner, via = 'app') {
     if (!owner) ({owner} = await browserOf().start({port, token: token()}));
     if (!givenOwner || givenOwner !== owner) return {ok: false, jobs: [], checks: []};
     await handOverAll(heldOpen, {quit: true});   // a poll before the start-up sweep never continues a job an earlier run held (owner, 30 Oct 2026: "A quit is a Stop")
@@ -111,7 +114,7 @@ export function createBackgroundApplyController(storage, {store = null, browser 
       if (!state.manualOverride && (current.mode !== state.mode || current.chosenAt !== state.chosenAt)) state = await markManual(item, 'mode_changed');
       if (state.ok === false) continue;   // a handoff that did not save leaves the job as it was; never go on with an error as its state
       const dueAt = state.readyAt ? state.readyAt + (current.auto?.waitMin ?? AUTO_DEFAULTS.waitMin) * 60000 : 0;
-      const decision = state.mode === 'auto' && dueAt && (state.state === 'waiting_to_submit' || HANDOFF.has(state.state)) ? {at: now(), dueAt, state: state.state, reason: HANDOFF.has(state.state) ? state.reason : now() >= dueAt ? 'due' : 'waiting'} : null;
+      const decision = process.env.JOB_PILOTTO_E2E === '1' && via === 'extension' && state.mode === 'auto' && dueAt && (state.state === 'waiting_to_submit' || HANDOFF.has(state.state)) ? {via, at: now(), dueAt, state: state.state, reason: HANDOFF.has(state.state) ? state.reason : now() >= dueAt ? 'due' : 'waiting'} : null;
       if (HANDOFF.has(state.state)) { handoffs.push({session: item.id, reason: state.reason, reveal: state.reason !== 'captcha_preflight'}); cache(item, state, decision); continue; }   // words-ok: our own hand-off reason id / user-facing word, not page knowledge
       if (state.state === 'submitting') continue; // a reserved attempt is never reissued, even after a lost reply/restart
       if (state.state === 'waiting_to_submit' && now() >= dueAt) checks.push({session: item.id});
@@ -191,7 +194,7 @@ export function createBackgroundApplyController(storage, {store = null, browser 
   }
   async function handle(payload = {}) {
     return serial(async () => {
-      if (payload.action === 'poll') return poll(payload.owner);
+      if (payload.action === 'poll') return poll(payload.owner, 'extension');
       if (!owner && payload.owner) ({owner} = await browserOf().start({port, token: token()}));
       if (!owner || payload.owner !== owner) return {ok: false};
       if (payload.action === 'triage-read') return {ok: reader.report(String(payload.session || ''), payload)};   // a form read's answer: no application item behind it
@@ -221,7 +224,7 @@ export function createBackgroundApplyController(storage, {store = null, browser 
       if (HANDOFF.has(state.state)) return {ok: true, manual: true, reason: state.reason};
       const permit = await store.reserve(item.url, item.id, owner, proof, config());
       const reserved = await store.read(item.url);
-      cache(item, reserved, {at: now(), dueAt: reserved.readyAt + (config().auto?.waitMin ?? AUTO_DEFAULTS.waitMin) * 60000, state: reserved.state, reason: permit.submit ? 'authorized' : permit.reason});
+      cache(item, reserved, reserved && {via: 'extension', at: now(), dueAt: reserved.readyAt + (config().auto?.waitMin ?? AUTO_DEFAULTS.waitMin) * 60000, state: reserved.state, reason: permit.submit ? 'authorized' : permit.reason});
       if (permit.submit) log('apply', 'one-shot automatic submit authorized', {session: item.id, attempt: permit.attempt, signature: judgment.signature});
       return {ok: true, ...permit, manual: HANDOFF.has(permit.state)};
     });

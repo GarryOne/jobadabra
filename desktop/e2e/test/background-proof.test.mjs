@@ -152,3 +152,33 @@ test('the hidden worker command awaits its poll promise before reading the reply
   assert.equal(await evaluateOn('ws://fixture', 'globalThis.__jobPilottoBackgroundSessions?.poll()'), true);
   assert.equal(packet.params.awaitPromise, true);
 });
+
+test('a due-time proof requires a live worker and an acknowledged extension poll', async () => {
+  const {pollOwnedBackground} = await import('../lib/apply-hold.mjs');
+  await assert.rejects(() => pollOwnedBackground('/fixture', {targets: async () => []}), /no.*service worker/);
+  for (const result of [null, false, undefined]) {
+    await assert.rejects(() => pollOwnedBackground('/fixture', {targets: async () => [{type: 'service_worker', webSocketDebuggerUrl: 'ws://fixture'}], evaluate: async () => result}), /poll.*acknowledge/);
+  }
+  assert.equal(await pollOwnedBackground('/fixture', {targets: async () => [{type: 'service_worker', webSocketDebuggerUrl: 'ws://fixture'}], evaluate: async () => true}), true);
+});
+
+test('advancePastDue rejects an app-only verdict and accepts a fresh extension verdict', async () => {
+  const {advancePastDue} = await import('../lib/apply-hold.mjs');
+  const at = 1000, record = {dueAt: 900, waitDecision: {at, state: 'needs_user_handoff', reason: 'stopped'}};
+  const advance = vm.runInNewContext(advancePastDue.toString().replace('import.meta.url', JSON.stringify(new URL('../lib/apply-hold.mjs', import.meta.url).href)) + '; advancePastDue;', {
+    URL, backgroundOf: async () => record, moveAppWaitClock: () => {}, pollOwnedBackground: async () => true,
+    waitOn: async (_ctx, _seen, read, accepts) => {
+      assert.equal(accepts(await read()), false, 'the app-only decision does not prove extension polling');
+      record.waitDecision.via = 'extension';
+      assert.equal(accepts(await read()), true);
+      return record;
+    },
+  });
+  await advance({page: {}, app: {evaluate: async () => at}, profile: '/fixture'}, {url: 'https://fixture'}, {}, {state: 'needs_user_handoff', reason: 'stopped'});
+});
+
+test('startJob requires an explicit wait for auto before seeding or saving anything', async () => {
+  const {startJob} = await import('../lib/apply-hold.mjs');
+  const ctx = {proxy: {canned: () => null}, page: {}};
+  await assert.rejects(() => startJob(ctx, {mode: 'auto', seed: () => { throw new Error('seed must not run'); }}), /waitMin/);
+});

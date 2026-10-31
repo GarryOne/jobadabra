@@ -20,7 +20,8 @@ export const waitOn = async (ctx, seen, read, accepts) => {
 };
 
 /** Saves `mode` (fill, or auto with its confirmation and `waitMin`) and starts the one seeded fixture job; `canned` is the AI stand-in (default: the form judge on top of the current one). Throws the app's refusal. */
-export async function startJob(ctx, {form, seed, mode, waitMin = 1, canned = withFormJudge(ctx.proxy.canned(), 'Submit Application')}) {
+export async function startJob(ctx, {form, seed, mode, waitMin, canned = withFormJudge(ctx.proxy.canned(), 'Submit Application')}) {
+  if (mode === 'auto' && (!Number.isFinite(waitMin) || waitMin < 0)) throw new Error('Auto startJob requires an explicit nonnegative waitMin');
   const {page, proxy} = ctx;
   proxy.setCanned(canned);
   await seed(form);
@@ -37,6 +38,15 @@ export function moveAppWaitClock(_electron, {module, dueAt}) {
   return clock.moveBackgroundWaitClock(Math.max(clock.backgroundWaitNow(), dueAt) + 1);
 }
 
+/** Ask the owned service worker to complete a fresh poll; a missing worker or missing acknowledgement is failed evidence. */
+export async function pollOwnedBackground(profile, {targets = hiddenTargets, evaluate = evaluateOn} = {}) {
+  const worker = (await targets(profile)).find(target => target.type === 'service_worker');
+  if (!worker) throw new Error('no owned service worker for the due-time poll');
+  const acknowledged = await evaluate(worker.webSocketDebuggerUrl, 'globalThis.__jobPilottoBackgroundSessions?.poll()');
+  if (acknowledged !== true) throw new Error('the owned extension poll did not acknowledge completion');
+  return true;
+}
+
 /** Move the isolated app past this job's due time, then ask the extension's ordinary alarm poll to read it; wait for the app's fresh decision, never an alarm period. */
 export async function advancePastDue(ctx, form, seen, {state, reason}) {
   const held = await backgroundOf(ctx.page, form.url);
@@ -45,8 +55,7 @@ export async function advancePastDue(ctx, form, seen, {state, reason}) {
   seen.what = `the app never decided ${state}/${reason} after the moved due time`;
   return waitOn(ctx, seen, async () => {
     // The alarm normally invokes this same poll. Trigger it directly in the owned worker so Chrome's 30-second heartbeat is not a second test clock.
-    const worker = (await hiddenTargets(ctx.profile)).find(target => target.type === 'service_worker');
-    if (worker) await evaluateOn(worker.webSocketDebuggerUrl, 'globalThis.__jobPilottoBackgroundSessions?.poll()');
+    await pollOwnedBackground(ctx.profile);
     return (seen.state = await backgroundOf(ctx.page, form.url));
-  }, record => record?.waitDecision?.at >= at && record.waitDecision.state === state && record.waitDecision.reason === reason);
+  }, record => record?.waitDecision?.via === 'extension' && record.waitDecision.at >= at && record.waitDecision.state === state && record.waitDecision.reason === reason);
 }

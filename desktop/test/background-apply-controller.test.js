@@ -222,7 +222,9 @@ test('an open session whose job record is gone does not stop the poll: the queue
   assert.deepEqual(polled.jobs.map(job => job.session), ['new'], 'the removed job is skipped, the queued one starts');
 });
 
-test('one moved clock drives the store reservation and poll; Stop and quit still refuse after due', async () => {
+test('one moved clock drives the store reservation and poll; Stop and quit still refuse after due', async t => {
+  const previous = process.env.JOB_PILOTTO_E2E; process.env.JOB_PILOTTO_E2E = '1';
+  t.after(() => { if (previous === undefined) delete process.env.JOB_PILOTTO_E2E; else process.env.JOB_PILOTTO_E2E = previous; });
   const {createBackgroundApplyStore} = await import('../lib/background-apply-store.js');
   const {createBackgroundWaitClock} = await import('../lib/background-apply-clock.js');
   for (const handoff of ['', 'stopped', 'app_closed']) {
@@ -253,7 +255,7 @@ test('one moved clock drives the store reservation and poll; Stop and quit still
     assert.equal((await controller.handle(await readyPayload())).reason, 'waiting');
     const held = records.get('session1').background;
     assert.equal(held.dueAt, 61000);
-    assert.deepEqual(held.waitDecision, {at: 1000, dueAt: 61000, state: 'waiting_to_submit', reason: 'waiting'});
+    assert.deepEqual(held.waitDecision, {via: 'extension', at: 1000, dueAt: 61000, state: 'waiting_to_submit', reason: 'waiting'});
     assert.deepEqual((await controller.handle({action: 'poll', owner: 'owner'})).checks, []);
     if (handoff === 'stopped') await controller.handle({action: 'manual', owner: 'owner', session: 'session1', reason: 'stopped'});
     if (handoff === 'app_closed') await controller.sweepInterrupted(2000);
@@ -284,15 +286,62 @@ test('moving the e2e clock after a quit starts the owned scheduler and records i
     const {backgroundWaitNow, moveBackgroundWaitClock} = await import('../lib/background-apply-clock.js');
     const readyAt = backgroundWaitNow(), record = {id: 'clock-quit', url: 'https://jobs.example.test/clock-quit', startedAt: new Date(readyAt - 1000).toISOString(), background: {}};
     let state = {session: record.id, mode: 'auto', state: 'waiting_to_submit', readyAt}, starts = 0;
-    createBackgroundApplyController({}, {started: readyAt, store: {read: async () => state, interrupted: async () => (state = {...state, state: 'needs_user_handoff', reason: 'app_closed', manualOverride: true})},
+    const controller = createBackgroundApplyController({}, {started: readyAt, store: {read: async () => state, interrupted: async () => (state = {...state, state: 'needs_user_handoff', reason: 'app_closed', manualOverride: true})},
       terminals: {list: () => [record], record: () => record, report: () => {}}, browser: {start: async () => { starts++; return {owner: 'owner'}; }},
       config: () => ({mode: 'auto', auto: {waitMin: 1}}), token: () => 'fictional', port: 1, notify: () => {}, log: () => {},
       reader: {takeEnded: () => []}});
     const moved = await moveBackgroundWaitClock(readyAt + 60001);
     assert.equal(starts, 1, 'the browser the quit closed is restarted without waiting for an alarm');
+    assert.equal(record.background.waitDecision, undefined, 'the app clock wake cannot stand in for an extension request');
+    await controller.handle({action: 'poll', owner: 'owner'});
     assert.ok(record.background.waitDecision.at >= moved);
+    assert.equal(record.background.waitDecision.via, 'extension');
     assert.deepEqual([record.background.waitDecision.state, record.background.waitDecision.reason], ['needs_user_handoff', 'app_closed']);
   } finally {
     if (previous === undefined) delete process.env.JOB_PILOTTO_E2E; else process.env.JOB_PILOTTO_E2E = previous;
   }
+});
+
+
+function reservationProof(t) {
+  const previous = process.env.JOB_PILOTTO_E2E; process.env.JOB_PILOTTO_E2E = '1';
+  t.after(() => { if (previous === undefined) delete process.env.JOB_PILOTTO_E2E; else process.env.JOB_PILOTTO_E2E = previous; });
+  let state = {session: 'bg', owner: 'o1', mode: 'auto', state: 'waiting_to_submit', readyAt: 1000}, missing = false, id = 0, attempts = 0;
+  const record = {id: 'bg', url: 'https://jobs.example.test/proof', background: {}};
+  const controller = createBackgroundApplyController({}, {now: () => 1001, uuid: () => `proof-${++id}`, config: () => ({auto: {waitMin: 0}}),
+    store: {read: async () => missing ? null : state, ready: async () => state, reserve: async () => {
+      if (state.state === 'submitting') return {submit: false, reason: 'manual_or_already_attempted', state: state.state};
+      attempts++; state = {...state, state: 'submitting'}; return {submit: true, state: state.state, attempt: 'one'};
+    }}, browser: {start: async () => ({owner: 'o1'})}, terminals: {record: () => record, report: () => {}}, token: () => 'fictional', port: 1, log: () => {}});
+  const payload = async () => ({action: 'ready', owner: 'o1', session: 'bg', requiredComplete: true, factsOnly: true, safe: true,
+    ...(await controller.judgment({background: {owner: 'o1', session: 'bg'}, sketch: {}}, {answer: 'ready', step: 'final', confidence: 1, botCheck: false}))});
+  return {controller, record, payload, disappear: () => { missing = true; }, attempts: () => attempts};
+}
+
+test('a null read after reservation does not crash the ready response', async t => {
+  const proof = reservationProof(t), payload = await proof.payload();
+  proof.disappear();
+  assert.equal((await proof.controller.handle(payload)).submit, true);
+});
+
+test('a second concurrent ready verdict preserves the first authorization decision', async t => {
+  const proof = reservationProof(t), first = await proof.payload(), second = await proof.payload();
+  const [authorized, refused] = await Promise.all([proof.controller.handle(first), proof.controller.handle(second)]);
+  assert.equal(authorized.submit, true); assert.equal(refused.submit, false);
+  assert.equal(proof.attempts(), 1);
+  assert.equal(proof.record.background.waitDecision.reason, 'authorized');
+  assert.equal(proof.record.background.waitDecision.via, 'extension');
+});
+
+test('ordinary sessions never cache an e2e wait decision', async t => {
+  const previous = process.env.JOB_PILOTTO_E2E; delete process.env.JOB_PILOTTO_E2E;
+  t.after(() => { if (previous !== undefined) process.env.JOB_PILOTTO_E2E = previous; });
+  const now = Date.now(), state = {session: 'bg', mode: 'auto', state: 'needs_user_handoff', manualOverride: true, reason: 'stopped', readyAt: now - 60000};
+  const record = {id: 'bg', url: 'https://jobs.example.test/ordinary', background: {}};
+  const controller = createBackgroundApplyController({}, {store: {read: async () => state}, browser: {start: async () => ({owner: 'o1'})},
+    terminals: {list: () => [record], record: () => record, report: () => {}}, config: () => ({auto: {waitMin: 1}}), token: () => 'fictional', port: 1,
+    reader: {takeEnded: () => []}});
+  await controller.handle({action: 'poll', owner: 'o1'});
+  assert.equal(Object.hasOwn(record.background, 'waitDecision'), false);
+  assert.equal(Object.hasOwn(record.background, 'waitClockOffset'), false);
 });

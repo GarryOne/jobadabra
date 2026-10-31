@@ -162,3 +162,18 @@ test('the existing replay and silent-step deadline shapes are counted without re
     assert.equal(timingCounts(readFileSync(new URL(`../lib/${file}.mjs`, import.meta.url), 'utf8')).clockWaits, count, file);
   }
 });
+
+
+test('clock waits include implicit timers, values, date objects and local aliases', () => {
+  for (const source of [
+    "await startJob(ctx, {mode: 'auto'}); await waitOn(ctx, s, read, s => s.state === 'submitting');",
+    'await startJob(ctx, {mode: "auto", waitMin: w});',
+    'await waitOn(ctx, s, () => new Date() > due, done => done);',
+    'const clock = Date.now;',
+    'const clock = Date.now; await waitOn(ctx, s, () => clock() > due, done => done);',
+    'const expired = () => Date.now() > d; while (!expired()) { await read(); }',
+  ]) {
+    assert.equal(timingCounts(source).clockWaits, 1, source);
+    assert.match(timingViolations({sample: source}, {}).join('\n'), /clockWaits 1 > baseline 0/);
+  }
+});

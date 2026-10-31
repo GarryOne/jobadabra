@@ -122,6 +122,29 @@ test('the owned browser poll command uses the same ownership-checked poll as the
   assert.equal(await globalThis.__jobPilottoBackgroundSessions.poll(), true);
   assert.deepEqual(state.posted.map(call => call.body.action), ['poll']);
   delete state.local.backgroundOwner;
-  await globalThis.__jobPilottoBackgroundSessions.poll();
+  await assert.rejects(() => globalThis.__jobPilottoBackgroundSessions.poll(), /poll/);
   assert.deepEqual(state.posted.map(call => call.body.action), ['poll'], 'an ordinary browser cannot poll background applications');
+});
+
+
+test('a forced poll waits for an in-flight alarm then makes its own extension request', async t => {
+  install(t);
+  const {pollBackgroundApply} = await import('../../extension/background-apply.js');
+  let release, entered, calls = 0, settled = false;
+  const held = new Promise(resolve => { release = resolve; }), opened = new Promise(resolve => { entered = resolve; });
+  t.mock.method(globalThis, 'fetch', async () => {
+    calls++;
+    if (calls === 1) { entered(); await held; }
+    return {ok: true, status: 200, json: async () => ({ok: true})};
+  });
+  const alarm = pollBackgroundApply(current.local);
+  await opened;
+  const forced = globalThis.__jobPilottoBackgroundSessions.poll().then(value => { settled = true; return value; });
+  await new Promise(resolve => setImmediate(resolve));
+  const wasSettled = settled;
+  release();
+  await alarm;
+  assert.equal(await forced, true);
+  assert.equal(wasSettled, false, 'no success acknowledgement while another poll is in flight');
+  assert.equal(calls, 2, 'the forced poll made a new request after the alarm');
 });

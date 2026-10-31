@@ -33,7 +33,7 @@ function holdJudge(previous) {
 async function holdJob(ctx, {form, seed, mode, seen, judge = null}) {
   const {page} = ctx, unlinked = linkRuntime(ctx.profile);
   if (unlinked) throw new Error(unlinked);
-  await startJob(ctx, {form, seed, mode, canned: judge ? judge.answer : undefined});
+  await startJob(ctx, {form, seed, mode, waitMin: 1, canned: judge ? judge.answer : undefined});
   const held = mode === 'auto' ? 'waiting_to_submit' : 'the filling card with a held form-judge reply';
   seen.what = `the job never reached ${held}`;
   return waitOn(ctx, seen, async () => {

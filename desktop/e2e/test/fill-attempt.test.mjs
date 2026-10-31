@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import {waitForFill} from '../lib/fill-attempt.mjs';
 import {fillNote, formTab} from '../lib/extension.mjs';
 import {flakyProof} from '../lib/flaky-proof.mjs';
+import {tabGuard} from '../lib/tab-guard.mjs';
 import {markedSession, sessionTabUrl} from '../../lib/session-tab.js';
 import * as apply from '../suites/apply.mjs';
 
@@ -126,7 +127,7 @@ test('every ordinary apply step has one hang cap and setup remains critical', ()
   }
   const seen = [], ctx = {run: (...args) => seen.push(args)};
   const wrapper = source.slice(source.indexOf('  const all = ctx.run;'), source.indexOf('  await ensureSetUp(ctx);'));
-  new Function('ctx', 'hangCaps', wrapper)(ctx, caps);
+  new Function('ctx', 'hangCaps', 'tabGuard', wrapper)(ctx, caps, tabGuard);
   ctx.run('the app is seeded as a set-up install', () => {}, {critical: true, needs: ['setup']});
   assert.deepEqual(seen[0][2], {critical: true, needs: ['setup']});
   assert.ok(caps['a multi-step form'] >= (30 + 90 + 45 + 15 + 60 + 15 + 15 + 30));

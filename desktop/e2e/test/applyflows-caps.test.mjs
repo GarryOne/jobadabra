@@ -7,6 +7,7 @@ import {stepCalls} from '../lib/pr-suites.mjs';
 import {hangCapsFor} from '../lib/hang-caps.mjs';
 import * as applyflows from '../suites/applyflows.mjs';
 import * as apply from '../suites/apply.mjs';
+import {tabGuard} from '../lib/tab-guard.mjs';
 
 const hangCaps = hangCapsFor('applyflows');
 const read = file => readFileSync(new URL(`../${file}`, import.meta.url), 'utf8');
@@ -95,7 +96,7 @@ for (const [name, seconds] of [
   const ctx = {run: runner.run};
   const source = read('suites/apply.mjs');
   const wrapper = source.slice(source.indexOf('  const all = ctx.run;'), source.indexOf('  await ensureSetUp(ctx);'));
-  new Function('ctx', 'hangCaps', wrapper)(ctx, apply.hangCaps);
+  new Function('ctx', 'hangCaps', 'tabGuard', wrapper)(ctx, apply.hangCaps, tabGuard);
   let entered;
   const started = new Promise(resolve => { entered = resolve; });
   const pending = ctx.run(name, () => { entered(); return new Promise(() => {}); });

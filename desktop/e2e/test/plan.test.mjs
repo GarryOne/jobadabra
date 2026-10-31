@@ -60,14 +60,14 @@ test('autoSuites: the schedule takes the always suites, anything else everything
 });
 
 test('a watched suite (it costs real AI money and judges one piece of code) runs only on a push that touches its files, never on a schedule or in the nightly gate', () => {
-  const all = [...ALL, 'mailreading'];
-  const cadence = {mailreading: 'watched'}, watches = {mailreading: ['src/ai/mail.py', 'tests/fixtures/mail_eval.json']};
+  const all = [...ALL, 'watchedeval'];
+  const cadence = {watchedeval: 'watched'}, watches = {watchedeval: ['src/ai/mail.py', 'tests/fixtures/mail_eval.json']};
   assert.deepEqual(autoSuites(all, cadence), ALL);                                                    // not in the schedule or the nightly gate
   assert.deepEqual(autoSuites(all, cadence, true), ALL);
-  assert.deepEqual(suitesFor(['src/ai/mail.py'], all, {watches, cadence}), ['mailreading']);          // its own code changed
-  assert.deepEqual(suitesFor(['tests/fixtures/mail_eval.json'], all, {watches, cadence}), ['mailreading']);
+  assert.deepEqual(suitesFor(['src/ai/mail.py'], all, {watches, cadence}), ['watchedeval']);          // its own code changed
+  assert.deepEqual(suitesFor(['tests/fixtures/mail_eval.json'], all, {watches, cadence}), ['watchedeval']);
   assert.deepEqual(suitesFor(['src/ai/score.py', 'desktop/lib/pipeline.js'], all, {watches, cadence}), []);   // anything else leaves it alone
-  assert.deepEqual(suitesFor(['desktop/e2e/suites/mailreading.mjs'], all, {watches, cadence}), ['mailreading']);   // so does a change to the suite itself
+  assert.deepEqual(suitesFor(['desktop/e2e/suites/watchedeval.mjs'], all, {watches, cadence}), ['watchedeval']);   // so does a change to the suite itself
 });
 
 // The noise breaker (4 Oct 2026): the AI review stops spending tokens when most of its recent issues were noise.

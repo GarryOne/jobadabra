@@ -10,7 +10,7 @@ import {annotationLines} from '../lib/artifacts.mjs';
 
 const env = {GITHUB_WORKFLOW: 'CI · Site replays · all (offline)', GITHUB_SHA: 'abcdef1234', GITHUB_REF_NAME: 'main', GITHUB_REPOSITORY: 'o/r', GITHUB_RUN_ID: '42',
   GITHUB_WORKFLOW_REF: 'o/r/.github/workflows/site-replays.yml@refs/heads/main', GH_TOKEN: 'gh'};
-const lanes = {suites: {quality: {lane: 'tolerant'}, qualityai: {lane: 'tolerant'}, mailreading: {lane: 'tolerant'}}};
+const lanes = {suites: {quality: {lane: 'tolerant'}, qualityai: {lane: 'tolerant'}, mailreading: {lane: 'retired'}}};
 const now = new Date('2026-10-14T00:30:00Z');
 
 test('a failure says which workflow, cause, next step, commit and run; a success says something only after a failure', () => {
@@ -90,7 +90,7 @@ test('the cause quotes each failed job\'s own step annotation ("<suite> · <step
 const e2eEnv = {...env, GITHUB_WORKFLOW: 'CI · End-to-end on Mac + Linux', GITHUB_WORKFLOW_REF: 'o/r/.github/workflows/e2e.yml@refs/heads/main'};
 const failed = names => names.map(name => ({name, url: 'https://job/' + encodeURIComponent(name)}));
 
-test('owner scenario: quality and mailreading red send no message, including shards, stand-ins and burn-in names', () => {
+test('owner scenario: tolerant quality and retired mailreading red send no message, including shards, stand-ins and burn-in names', () => {
   for (const names of [['quality', 'mailreading'], ['quality-1of2-standin · burn-in 2/5', 'mailreading-standin']]) {
     assert.equal(messageOf({lanes, status: 'failure', jobs: failed(names), env: e2eEnv}), '');
   }

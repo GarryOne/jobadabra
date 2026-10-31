@@ -11,11 +11,10 @@
       "returns": "Stays tolerant: it measures the live model."
     },
     "mailreading": {
-      "lane": "tolerant",
-      "input": "ai",
-      "since": "2026-10-30",
-      "why": "An eval: invented emails go to the real model through the mail check's own prompt; its result is the model's reading, not our code's (rule A). Red on #2505 (run 40969422470) only because the CI Anthropic key is refused (401).",
-      "returns": "Stays tolerant: an eval of the live model."
+      "lane": "retired",
+      "since": "2026-10-31",
+      "why": "The live mail-reading eval now runs as a watched part of qualityai, keeping one tolerant AI suite.",
+      "returns": "Retired permanently; use qualityai:mail for a manual mail-reading eval."
     },
     "notion-real": {
       "lane": "tolerant",

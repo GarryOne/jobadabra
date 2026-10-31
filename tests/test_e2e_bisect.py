@@ -61,7 +61,7 @@ class AfterRun(unittest.TestCase):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         lanes = Path(tmp.name) / 'lanes.json'
-        lanes.write_text(json.dumps({'suites': {suite: {'lane': 'tolerant'} for suite in ('quality', 'mailreading')}}))
+        lanes.write_text(json.dumps({'suites': {suite: {'lane': 'tolerant'} for suite in ('quality', 'qualityai')}}))
         registry = patch.object(m, 'LANES', lanes)
         registry.start()
         self.addCleanup(registry.stop)
@@ -84,7 +84,7 @@ class AfterRun(unittest.TestCase):
         return [next(a for a in c if a.startswith('suite=')) for c in self.calls if c[:2] == ('workflow', 'run')]
 
     def test_tolerant_red_never_starts_bisect_or_opens_issue(self):
-        b.jobs_of = lambda rid: [{'name': name, 'conclusion': 'failure'} for name in ('quality-1of2-standin · burn-in 2/5', 'mailreading-standin')]
+        b.jobs_of = lambda rid: [{'name': name, 'conclusion': 'failure'} for name in ('quality-1of2-standin · burn-in 2/5', 'qualityai-standin')]
         b.after_run('9')
         self.assertEqual(self.calls, [], 'tolerant reds never create red-main work')
 

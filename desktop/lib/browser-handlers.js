@@ -10,9 +10,10 @@ import * as server from './server.js';
 import path from 'node:path';
 import {reloadFormTab} from './form-tab.js';
 import {launchOnce} from './chrome-launch-once.js';
+import {registerLinkedinHandlers} from './linkedin-handlers.js';
 
 export function registerBrowserHandlers(ctx) {
-  const {app, clipboard, ipcMain, openNotion, shell, showForm, storage} = ctx;
+  const {app, clipboard, DEMO, ipcMain, openNotion, shell, showForm, storage} = ctx;
   // "Open filled form": Chrome, switched to the form's tab (lib/form-tab.js).
   // "Open filled form": the session's form tab through the extension (an empty label: bring it forward, no scroll).
   // `taken` says whether the page's panel answered — the one thing the window needs to know whether the "Reload the
@@ -89,10 +90,16 @@ export function registerBrowserHandlers(ctx) {
   // The extension's own options page: its "Connect to the Jobadabra app" is what starts it reporting. The ID the
   // browser recorded is authoritative (a manifest "key" makes it differ from the folder path's hash).
   // Every "Open Chrome" / Connect press comes here: one launch while Chrome is starting (lib/chrome-launch-once.js).
+  const openPage = async page => {
+    const found = extensionInstall.installed({folder: extensionFolder()});
+    const copy = found.find(entry => entry.current) || found[0] || null;
+    return copy?.id ? await extensionInstall.openInChrome(`chrome-extension://${copy.id}/${page}`, {browser: copy.app}) : null;
+  };
   ipcMain.handle('extensionOptions', launchOnce(async () => {
     const found = extensionInstall.installed({folder: extensionFolder()});
     const copy = found.find(entry => entry.current) || found[0] || null;
-    return copy?.id ? await extensionInstall.openInChrome(`chrome-extension://${copy.id}/options.html`, {browser: copy.app})
-      : await extensionInstall.openOptionsPage(copy?.folder || extensionFolder());
+    return copy?.id ? await openPage('options.html') : await extensionInstall.openOptionsPage(copy?.folder || extensionFolder());
   }, () => server.extensionSeen()?.at || 0));
+  // LinkedIn jobs (lib/linkedin-handlers.js): its consent page is the extension's own; no extension, no page ({opened: false}).
+  registerLinkedinHandlers({DEMO, ipcMain, server, storage, openPage: launchOnce(() => openPage('linkedin.html'), () => server.extensionSeen()?.at || 0)});
 }

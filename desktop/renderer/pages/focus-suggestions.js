@@ -24,6 +24,8 @@ import {toastMessage} from './startup.js';
 import {wand} from '../magic.js';
 import {bindHostedOffer, hostedEntries} from '../hosted-suggestion.js';
 import {emailField} from '../hosted-step-parts.js';
+import {linkedinEntries} from '../linkedin-words.js';
+import {openLinkedinConsent, refreshLinkedin, view as linkedinView} from './linkedin-consent.js';
 
 let pool = [];              // the engine's entries as last read (Focus's `suggestions`)
 const ALL = 'jp.focus.suggestions.all';   // Show all stays as you left it (this Mac), like Actions' More
@@ -37,6 +39,7 @@ const started = (what, result) => { if (result?.started) openActivity(true); els
 // One handler per actions[].do (suggestions.js DOES): what the button names, done in one press.
 export const RUN = {
   turn_on_hosted: (_action, _event, row) => row.turnOn(),
+  turn_on_linkedin: () => openLinkedinConsent({mode: 'turn-on'}),   // the same consent as Settings, the Find jobs ask and ⌘K
   // Its page when the store has one (as Focus's Insight card did), else the same thing here: Reports, or the job's Review tab.
   open_insight: (action, event) => (action.link ? openLink(action.link, event) : (openView('reports'), loadReports('insights'))),
   read_week: (action, event) => (action.link ? openLink(action.link, event) : (openView('reports'), loadReports('weekly'))),
@@ -153,7 +156,7 @@ async function loadHostedOffer() {
     redraw();
   } catch { /* no offer until its state and matches can be read */ }
 }
-const withRows = () => [...hostedEntries({...hostedContext, held, hidden: hiddenKeys}), ...withQuestions(shownPool(), rowsNow())];
+const withRows = () => [...hostedEntries({...hostedContext, held, hidden: hiddenKeys}), ...linkedinEntries({view: linkedinView, held, hidden: hiddenKeys}), ...withQuestions(shownPool(), rowsNow())];
 let lastArgs = null;
 let questionsAsked = false;
 /** The engine's entries for a home screen (Strategy's Tune row), answered ones left out. */
@@ -166,7 +169,7 @@ export function renderFocusSuggestions({entries, items, card, hidden, refreshHos
   pool = entries || [];
   hiddenKeys = new Set(hidden || []);
   lastArgs = {items, card};
-  if (refreshHosted) loadHostedOffer();
+  if (refreshHosted) { loadHostedOffer(); refreshLinkedin().then(redraw).catch(() => {}); }
   if (!bank) loadBank();
   if (!questionsAsked) { questionsAsked = true; loadQuestions().catch(() => {}); }   // Jobs' count: cached on this Mac, read again after 10 minutes (jobs-questions.js)
   const rows = focusRows(withRows(), items);
@@ -215,5 +218,6 @@ export function initSuggestions() {
   });
   $('jobs-suggestions').addEventListener('toggle', renderJobsSuggestions);
   window.addEventListener('experience-changed', () => { loadBank(); });
+  window.addEventListener('linkedin-changed', () => { if (lastArgs) redraw(); });
   document.addEventListener('questions-read', () => { if (lastArgs) redraw(); else renderJobsSuggestions(); });   // the count arrived, or changed
 }

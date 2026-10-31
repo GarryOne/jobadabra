@@ -18,6 +18,7 @@ import {clean} from '../targets.js';
 import {TONES, toneOf} from '../toast-tone.js';
 import {icon} from '../icons.js';
 import {goStep} from './wizard.js';
+import {bindToast} from './linkedin-consent.js';
 
 // toastMessage(title, body, target, tone) or toastMessage({title, body, target, tone, action, hint}). target: where a click leads (renderer/targets.js),
 // or a NO_PLACE reason when there is none; tone: bad | warn | good | info, its colour and icon (renderer/toast-tone.js). test/toast-targets.test.js
@@ -47,6 +48,7 @@ export function toastMessage(title, body, target = null, tone = 'info') {
   setTimeout(() => toast.remove(), hint || action ? 20000 : 8000);   // a step to take stays long enough to take it
   return toast;
 }
+bindToast(toastMessage);   // LinkedIn jobs' messages (pages/linkedin-consent.js)
 
 // A start button's run was refused (renderer/refusal.js): no AI credit or a Free AI line opens the top-up dialog (owner, 26 Oct 2026: "Blocking, but showing a topup
 // popup/dialog"; retry: the same press, run again after a promo code added credit); any other reason in a pop-up whose click opens Settings → Plan's card

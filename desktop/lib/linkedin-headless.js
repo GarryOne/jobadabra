@@ -22,6 +22,63 @@ const WORDS = {
 const jar = (cookies, now, clear) => cookies.map(([name, value]) => ({name, value: clear ? '' : value, domain: '.linkedin.com', path: '/', secure: true, httpOnly: name === 'li_at', sameSite: 'None',
   ...(clear ? {expires: Math.floor(now / 1000) - 3600} : {})}));
 
+// A tab opened blank, watched, then sent to the marked address: the extension reads it (extension/background.js #jp-read-<ticket>); the first main-document status is seen first.
+function tabOpener({browser, openCdp, end, tabs, sessions, seen}) {
+  return url => {
+    const ticket = /-([a-z0-9]+)$/.exec(url)?.[1], start = url.split('#')[0];
+    const stop = why => end({url: start, ticket, jobs: 0, added: 0, pages: 0, stopped: why});
+    const limited = ({type, response} = {}) => {
+      if (type !== 'Document' || !LIMITED.has(response?.status) || seen.status || !/(^|\.)linkedin\.com$/.test(new URL(response.url).hostname)) return;
+      seen.status = response.status;
+      stop('LinkedIn asked us to slow down');
+    };
+    (async () => {
+      const {targetId} = await browser.send('Target.createTarget', {url: 'about:blank'});
+      tabs.push(targetId);
+      const cdp = await openCdp(await browser.targetSocket(targetId));
+      sessions.push(cdp);
+      cdp.on('Network.responseReceived', limited);
+      await cdp.send('Network.enable');
+      await cdp.send('Page.navigate', {url});
+    })().catch(() => stop('the background browser could not open the page'));
+    return {ok: true};
+  };
+}
+
+/** Why a read ends after one search, or null to go on: the 429-style status the tab saw, a sign-in page, a check page (the extension's page kind, not words), or Stop. */
+export function endOf(result, seen, signal) {
+  if (seen.status) return 'limited';
+  if (result?.blocked === 'login') return 'signed-out';
+  if (result?.blocked === 'check') return 'check';
+  return signal?.aborted || result?.why === 'Stopped by you' ? 'stopped' : null;
+}
+
+// Every gate before anything is started; -> {state, jobs} to stop here, or {session} to go on.
+function gate({storage, browser, signal, now, readSession}) {
+  if (!realSession.state(storage).on) return {state: 'off', jobs: 0, quiet: true};
+  if (signal?.aborted) return {state: 'stopped', jobs: 0};
+  if (realSession.pausedUntil(storage) > now()) return {state: 'limited', jobs: 0};
+  const session = readSession();
+  if (!session?.li_at) return {state: 'no-session', jobs: 0};
+  return browser.ready() ? {session} : {state: 'no-browser', jobs: 0};
+}
+
+async function readAll({list, run, openTab, signal, tee, pause, seen, closeTabs}) {
+  const total = {jobs: 0, fits: 0, read: 0, verdict: 'done'};
+  for (const [index, search] of list.entries()) {
+    if (signal?.aborted) { total.verdict = 'stopped'; break; }
+    if (index) await pause(3000 + Math.random() * 2000);   // a gap between searches, like a person: the extension also waits 2-3 s between pages
+    tee(`LinkedIn: reading search ${index + 1} of ${list.length}`);
+    const [result] = await run([{name: search.name, url: search.url}], {atOnce: 1, filter: false, maxPages: PAGES, openTab, signal,
+      tee: line => { if (/^\s*[✓✗]/.test(line)) tee(line); }, waitMs: 40000, quietMs: 30000, siteMs: 75000});
+    await closeTabs();
+    total.jobs += result?.jobs || 0; total.fits += result?.fits || 0; total.read += 1;
+    const ended = endOf(result, seen, signal);
+    if (ended) { total.verdict = ended; break; }
+  }
+  return total;
+}
+
 /**
  * Read the person's LinkedIn searches in the owned browser. Every seam is injected (browser, CDP opener, runAll, `end` = visits.done, session reader, pause).
  * -> {state: 'off'|'no-session'|'no-browser'|'done'|'signed-out'|'check'|'limited'|'stopped'|'failed', jobs, read?, of?, pauseUntil?}; the caller records it (linkedin-session.js noteRun).
@@ -29,57 +86,23 @@ const jar = (cookies, now, clear) => cookies.map(([name, value]) => ({name, valu
 export async function linkedinStep({storage, browser, openCdp = openCdpSession, run, end, tee = () => {}, signal = null, now = Date.now, searches, readSession = realSession.readSession,
   port, token, pause = ms => new Promise(resolve => setTimeout(resolve, ms))}) {
   const say = state => { if (WORDS[state]) tee(WORDS[state]); return {state, jobs: 0}; };
-  if (!realSession.state(storage).on) return {state: 'off', jobs: 0};
-  if (signal?.aborted) return say('stopped');
-  if (realSession.pausedUntil(storage) > now()) return say('limited');
-  const session = readSession();
-  if (!session?.li_at) return say('no-session');
-  if (!browser.ready()) return say('no-browser');
+  const gated = gate({storage, browser, signal, now, readSession});
+  if (!gated.session) return gated.quiet ? {state: 'off', jobs: 0} : say(gated.state);
   try { await browser.start({port, token: typeof token === 'function' ? token() : token}); } catch (error) { return say(error?.code === 'BACKGROUND_BROWSER_MISSING' ? 'no-browser' : 'failed'); }
   const list = (await searches().catch(() => [])).slice(0, SEARCHES);
   if (!list.length) { tee('LinkedIn: no search to read for your strategy'); return {state: 'done', jobs: 0, read: 0, of: 0}; }
-  const cookies = Object.entries(session);
-  const tabs = [], sessions = [], seen = {status: 0};
+  const cookies = Object.entries(gated.session), tabs = [], sessions = [], seen = {status: 0};
   const closeTabs = async () => { for (const id of tabs.splice(0)) await browser.send('Target.closeTarget', {targetId: id}).catch(() => {}); for (const cdp of sessions.splice(0)) await cdp.detach().catch(() => {}); };
-  // A tab opened blank, watched, then sent to the marked address: the extension reads it (extension/background.js #jp-read-<ticket>); the first main-document status is seen first.
-  const openTab = url => {
-    const ticket = /-([a-z0-9]+)$/.exec(url)?.[1], start = url.split('#')[0];
-    const stop = why => end({url: start, ticket, jobs: 0, added: 0, pages: 0, stopped: why});
-    (async () => {
-      const {targetId} = await browser.send('Target.createTarget', {url: 'about:blank'});
-      tabs.push(targetId);
-      const cdp = await openCdp(await browser.targetSocket(targetId));
-      sessions.push(cdp);
-      cdp.on('Network.responseReceived', ({type, response} = {}) => {
-        if (type !== 'Document' || !LIMITED.has(response?.status) || !/(^|\.)linkedin\.com$/.test(new URL(response.url).hostname) || seen.status) return;
-        seen.status = response.status;
-        stop('LinkedIn asked us to slow down');
-      });
-      await cdp.send('Network.enable');
-      await cdp.send('Page.navigate', {url});
-    })().catch(() => stop('the background browser could not open the page'));
-    return {ok: true};
-  };
-  let jobs = 0, fits = 0, read = 0, verdict = 'done';
+  const openTab = tabOpener({browser, openCdp, end, tabs, sessions, seen});
+  let total = {jobs: 0, fits: 0, read: 0, verdict: 'failed'};
   try {
     await browser.send('Storage.setCookies', {cookies: jar(cookies, now(), false)});
-    for (const [index, search] of list.entries()) {
-      if (signal?.aborted) { verdict = 'stopped'; break; }
-      if (index) await pause(3000 + Math.random() * 2000);   // a gap between searches, like a person: the extension also waits 2-3 s between pages
-      tee(`LinkedIn: reading search ${index + 1} of ${list.length}`);
-      const [result] = await run([{name: search.name, url: search.url}], {atOnce: 1, filter: false, maxPages: PAGES, openTab, signal,
-        tee: line => { if (/^\s*[✓✗]/.test(line)) tee(line); }, waitMs: 40000, quietMs: 30000, siteMs: 75000});
-      await closeTabs();
-      jobs += result?.jobs || 0; fits += result?.fits || 0; read += 1;
-      if (seen.status) { verdict = 'limited'; break; }
-      if (result?.blocked === 'login') { verdict = 'signed-out'; break; }
-      if (result?.blocked === 'check') { verdict = 'check'; break; }
-      if (signal?.aborted || result?.why === 'Stopped by you') { verdict = 'stopped'; break; }
-    }
-  } catch { verdict = 'failed'; } finally {
+    total = await readAll({list, run, openTab, signal, tee, pause, seen, closeTabs});
+  } catch { /* the verdict stays 'failed' */ } finally {
     await closeTabs();
-    await browser.send('Storage.setCookies', {cookies: jar(cookies, now(), true)}).catch(() => { verdict = 'failed'; });   // the session leaves the browser, whatever ended the step
+    await browser.send('Storage.setCookies', {cookies: jar(cookies, now(), true)}).catch(() => { total.verdict = 'failed'; });   // the session leaves the browser, whatever ended the step
   }
+  const {jobs, fits, read, verdict} = total;
   const out = {state: verdict, jobs, fits, read, of: list.length, ...(seen.status === 429 ? {pauseUntil: new Date(now() + DAY_MS).toISOString()} : {})};
   if (verdict === 'done') tee(jobs ? `LinkedIn: ${jobs} job${jobs === 1 ? '' : 's'} read` : 'LinkedIn: none new');
   else say(verdict);

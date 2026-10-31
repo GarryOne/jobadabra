@@ -64,6 +64,10 @@ class Scanner:
             self.report('SCAN_ERROR', location)
             return
         stream.seek(0)
+        if isinstance(stream, zipfile.ZipExtFile):
+            # Why (31 Oct 2026, personas blob-report scans hung 17+ min): every backward seek on a ZipExtFile decompresses from
+            # its start, and ZipFile seeks once per member; one read into memory makes it linear (still never written to disk).
+            stream = io.BytesIO(stream.read())
         with zipfile.ZipFile(stream) as archive:
             for entry in archive.infolist():
                 if entry.is_dir():
@@ -71,7 +75,7 @@ class Scanner:
                 member = f'{location}!/{entry.filename}'
                 self.scan(io.BytesIO(entry.filename.encode()), member)
                 with archive.open(entry) as contents:
-                    # ZipExtFile is seekable; nested ZIPs stay in memory, never extracted to disk.
+                    # Nested ZIPs stay in memory (buffered once above), never extracted to disk.
                     self.scan(contents, member, entry.filename.lower().endswith('.zip'), depth + 1)
 
     def paths(self, patterns):

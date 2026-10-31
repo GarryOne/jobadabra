@@ -8,14 +8,22 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {spawn} from 'node:child_process';
 import {DATA_NAME, LEGACY_NAME, userDataTime} from './app-identity.js';
-import {detectCopies} from './two-installs.js';
 import {readMarker, writeMarker} from './store-data-copy-helper.mjs';
 
 export const MAX_TRIES = 2;
 // Why (31 Oct 2026): a script inside app.asar cannot be started by a separate node process reliably; the helper is unpacked (package.json build.asarUnpack) and is a .mjs so it runs as a module with no package.json beside it.
 export const unpackedHelper = () => fileURLToPath(new URL('./store-data-copy-helper.mjs', import.meta.url)).replace(/app\.asar([\\/])/, 'app.asar.unpacked$1');
 
-/** The private cache folder that holds a person's data for this package, or ''. Takes the package's folder (detectCopies().store). */
+/**
+ * The running Store copy's own package folder under %LOCALAPPDATA%\Packages, from its executable's path: C:\Program Files\WindowsApps\<Name>_<version>_<arch>_<resource>_<publisher id>\app\Jobadabra.exe
+ * -> <local>\Packages\<Name>_<publisher id>. '' when the path is not a Store package's. Why (31 Oct 2026, spike run 41231364697): the copy must not depend on our production package name, a test package has another.
+ */
+export function ownPackageFolder(exePath, local) {
+  const match = /[\\/]WindowsApps[\\/]([^\\/_]+)_[^\\/_]*_[^\\/_]*_[^\\/_]*_([^\\/_]+)[\\/]/i.exec(exePath || '');
+  return match && local ? path.join(local, 'Packages', `${match[1]}_${match[2]}`) : '';
+}
+
+/** The private cache folder that holds a person's data for this package, or ''. Takes the package's folder (ownPackageFolder). */
 export function privateDataFolder(store, time = userDataTime) {
   if (!store) return '';
   return [DATA_NAME, LEGACY_NAME].map(name => path.join(store, 'LocalCache', 'Roaming', name)).find(dir => time(dir) > 0) || '';
@@ -34,12 +42,12 @@ export function planCopy({target, cache, time = userDataTime}) {
 }
 
 /**
- * Run at start, after the single-instance lock. Takes {app, log, platform, windowsStore, copies, spawnFn}. For a packaged Store copy with private data and a real folder without any:
+ * Run at start, after the single-instance lock. Takes {app, log, platform, windowsStore, exePath, local, spawnFn}. For a packaged Store copy with private data and a real folder without any:
  * writes the marker (try n), starts the helper detached and quits this process. Returns true when it did.
  */
-export function handOff({app, log = () => {}, platform = process.platform, windowsStore = !!process.windowsStore, copies, spawnFn = spawn, helper = unpackedHelper()}) {
+export function handOff({app, log = () => {}, platform = process.platform, windowsStore = !!process.windowsStore, exePath = process.execPath, local = process.env.LOCALAPPDATA, spawnFn = spawn, helper = unpackedHelper()}) {
   if (platform !== 'win32' || !windowsStore || !app.isPackaged) return false;
-  const cache = privateDataFolder((copies || detectCopies()).store), target = app.getPath('userData');
+  const cache = privateDataFolder(ownPackageFolder(exePath, local)), target = app.getPath('userData');
   const plan = planCopy({target, cache});
   if (plan !== 'copy') { if (plan !== 'none') log(`Store data copy: ${plan}`); return false; }
   const marker = readMarker(target);

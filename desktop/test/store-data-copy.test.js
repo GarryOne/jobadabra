@@ -6,7 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {spawn} from 'node:child_process';
 import {test} from 'node:test';
-import {MAX_TRIES, handOff, planCopy, privateDataFolder, unpackedHelper} from '../lib/store-data-copy.js';
+import {MAX_TRIES, handOff, ownPackageFolder, planCopy, privateDataFolder, unpackedHelper} from '../lib/store-data-copy.js';
 import {MARKER, copyFolder, readMarker, run} from '../lib/store-data-copy-helper.mjs';
 
 const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'store-copy-'));
@@ -56,15 +56,24 @@ test('the private folder is found by its data, under either name', () => {
   assert.equal(privateDataFolder(store, dir => (dir === wanted ? 5 : 0)), wanted);
 });
 
+test('the Store copy finds its own package folder from where it runs, whatever the package is called', () => {
+  const exe = name => `C:\\Program Files\\WindowsApps\\${name}_1.2.3.0_x64__abc123def\\app\\Jobadabra.exe`;
+  assert.equal(ownPackageFolder(exe('IgorMardari.Jobadabra'), path.join('L', 'x')), path.join('L', 'x', 'Packages', 'IgorMardari.Jobadabra_abc123def'));
+  assert.equal(ownPackageFolder(exe('Jobadabra.Spike'), path.join('L', 'x')), path.join('L', 'x', 'Packages', 'Jobadabra.Spike_abc123def'));
+  assert.equal(ownPackageFolder('C:\\Users\\a\\AppData\\Local\\Programs\\job-pilotto-desktop\\Jobadabra.exe', 'L'), '', 'the installer copy is not a package');
+  assert.equal(ownPackageFolder(exe('IgorMardari.Jobadabra'), ''), '');
+});
+
 test('hand-off: a packaged Store copy with private data writes the marker, starts the helper detached and quits; nothing else does', () => {
   const cache = path.join(tmp(), 'Jobadabra'), target = path.join(tmp(), 'Jobadabra');
   put(cache, STORE_USER); put(target, FRESH_START);
   // privateDataFolder wants <package>\LocalCache\Roaming\<name>: build that layout
-  const pkg = tmp(), roaming = path.join(pkg, 'LocalCache', 'Roaming');
+  const local = tmp(), exePath = 'C:\\Program Files\\WindowsApps\\Jobadabra.Spike_0.0.1.0_x64__x1znb4crzyan6\\app\\Jobadabra.exe';
+  const pkg = ownPackageFolder(exePath, local), roaming = path.join(pkg, 'LocalCache', 'Roaming');
   fs.mkdirSync(roaming, {recursive: true}); fs.renameSync(cache, path.join(roaming, 'Jobadabra'));
   const spawned = [], exits = [];
   const app = {isPackaged: true, getPath: () => target, exit: code => exits.push(code)};
-  const base = {app, platform: 'win32', windowsStore: true, copies: {store: pkg}, spawnFn: (...args) => { spawned.push(args); return {unref() {}}; }, helper: 'H.mjs'};
+  const base = {app, platform: 'win32', windowsStore: true, exePath, local, spawnFn: (...args) => { spawned.push(args); return {unref() {}}; }, helper: 'H.mjs'};
   // userDataTime reads the real fs: the private folder holds settings.json {"setupDone":true}, so it counts as data on any OS
   assert.equal(handOff({...base, windowsStore: false}), false, 'not a Store copy');
   assert.equal(handOff({...base, platform: 'darwin'}), false);

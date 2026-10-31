@@ -18,6 +18,9 @@ test('what the ratchet counts: a calendar read in an unpinned file; not duration
   assert.equal(countLines('const day = new Date().toISOString().slice(0, 10);'), 1);
   assert.equal(countLines('const tomorrow = new Date(Date.now() + 86400000).toISOString();'), 1, 'a date built from now plus a span is a calendar value');
   assert.equal(countLines('const deadline = Date.now() + 5000;'), 0, 'a poll deadline is a span');
+  assert.equal(countLines('const yesterday = new Date(Date.now() - 86400000);'), 1, 'now minus a number is a past date');
+  assert.equal(countLines('os.utime(path, (time.time() - 3600, time.time() - 3600))'), 1, 'an hour before the clock, set as a file time: the review-cache and mail_google bug');
+  assert.equal(countLines('const waited = Date.now() - started;'), 0, 'now minus a reading is a span');
   assert.equal(countLines('const lastSeen = Date.now();'), 1, 'a stored timestamp is a calendar value');
   assert.equal(countLines('const clock = () => Date.now();'), 1, 'an arrow function is not a comparison');
   assert.equal(countLines('const made = Date.now();\nstore(made);'), 1);

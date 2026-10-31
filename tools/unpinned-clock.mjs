@@ -11,8 +11,8 @@ const TOP = ['desktop/test', 'desktop/e2e/test', 'tests'];
 const READ = /\bDate\.now\(\)|\bnew Date\(\)|\bdatetime\.(?:utc)?(?:now|today)\(|\bdate\.today\(\)|\btime\.time\(\)/;
 const NOW = String.raw`(?:Date\.now\(\)|time\.time\(\))`;
 // Why (31 Oct 2026, a8; Gitar on #2734): a span is one reading minus an earlier one, a comparison against a deadline, the anchor a span starts from, or a poll deadline set from now: all measure a duration and cannot depend on the calendar day.
-// A date built from now plus a span (`new Date(Date.now() + …)`) and a stored timestamp (`seenAt = Date.now()`) are calendar values and are counted.
-const ELAPSED = [new RegExp(`(?:-|(?<!=)[<>]=?)\\s*${NOW}`), new RegExp(`${NOW}\\s*(?:-|(?<!=)[<>])`), new RegExp(`\\b(?:start|began|begin|t0)\\w*\\s*=\\s*(?:await\\s+)?${NOW}`, 'i'), new RegExp(`^(?!.*new Date\\().*${NOW}\\s*\\+\\s*\\d`)];
+// A date built from now plus or minus a number (`new Date(Date.now() - 3600e3)`, `time.time() - 3600` as a file's time) and a stored timestamp (`seenAt = Date.now()`) are calendar values and are counted.
+const ELAPSED = [new RegExp(`(?:-|(?<!=)[<>]=?)\\s*${NOW}`), new RegExp(`${NOW}\\s*(?:-\\s*[A-Za-z_]|(?<!=)[<>])`), new RegExp(`\\b(?:start|began|begin|t0)\\w*\\s*=\\s*(?:await\\s+)?${NOW}`, 'i'), new RegExp(`\\b(?:deadline|end|until|timeout|limit|stop)\\w*\\s*=.*${NOW}\\s*\\+\\s*\\d`, 'i')];
 const PINS = /mock\.timers|JOB_PILOTTO_NOW/;
 
 /** The number of lines of `text` that read the real clock as a calendar value; 0 when the file pins the clock. */

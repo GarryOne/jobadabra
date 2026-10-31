@@ -33,8 +33,10 @@ test('a runner that closes on its own is waited for, never stopped, and a suite 
 
 // Exercise the private trace writer with its real filesystem operations and a controlled deadline; no Electron is launched.
 function traceWriter(t, tracing) {
-  const artifacts = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-trace-test-'));
-  t.after(() => fs.rmSync(artifacts, {recursive: true, force: true}));
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-trace-test-'));
+  const artifacts = path.join(root, 'evidence', 'apply');
+  fs.mkdirSync(artifacts, {recursive: true});
+  t.after(() => fs.rmSync(root, {recursive: true, force: true}));
   let expire;
   const source = fs.readFileSync(new URL('../lib/app.mjs', import.meta.url), 'utf8');
   const traceCode = source.slice(source.indexOf('let traces = 0;'), source.indexOf('// Which wizard step'))
@@ -75,4 +77,16 @@ test('a completed trace is published only after stop finishes', async t => {
   finish();
   await stopping;
   assert.equal(fs.readFileSync(final, 'utf8'), 'complete trace');
+});
+
+test('trace staging uses the artifact parent even when system temp is elsewhere', async t => {
+  let writing;
+  const harness = traceWriter(t, {start: async () => {}, stop: async ({path: file}) => {
+    writing = file;
+    fs.writeFileSync(file, 'complete trace');
+  }});
+  const trace = await harness.start();
+  await trace.stop(true);
+  assert.equal(path.dirname(path.dirname(writing)), path.dirname(harness.artifacts), 'stage on the artifact volume, outside its uploaded suite folder');
+  assert.equal(fs.readFileSync(path.join(harness.artifacts, 'trace-apply.zip'), 'utf8'), 'complete trace');
 });

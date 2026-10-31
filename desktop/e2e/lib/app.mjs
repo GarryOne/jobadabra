@@ -102,7 +102,7 @@ async function startTrace(app, env = process.env) {
     stop: async keep => {
       let timer, expired = false;
       try {
-        const staging = keep ? fs.mkdtempSync(path.join(os.tmpdir(), 'jp-e2e-trace-')) : null;
+        const staging = keep ? fs.mkdtempSync(path.join(path.dirname(ARTIFACTS), '.jp-e2e-trace-')) : null;
         const pending = staging && path.join(staging, path.basename(file));
         // Invariant: upload paths contain only finished traces; a timed-out stop can never publish later.
         const writing = tracing.stop(keep ? {path: pending} : {}).then(() => {

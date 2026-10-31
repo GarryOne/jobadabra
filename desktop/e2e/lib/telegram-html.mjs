@@ -54,12 +54,13 @@ function dropOverflow(sections) {
   return false;
 }
 
-// Extremely many causes/suites can exceed the limit even after prose is shortened; count whole omitted groups.
+// Only step-bearing cause groups can be omitted; action and footer paragraphs always stay. Count the hidden steps.
 function dropGroup(sections) {
   for (const section of [...sections].reverse()) {
-    if (section.groups.length <= 1) continue;
-    const removed = section.groups.splice(section.groups.length - 2, 1)[0];
-    section.omitted = (section.omitted || 0) + Math.max(1, removed.lines.reduce((count, one) => count + (one.count || Number(Boolean(one.step))), 0) + removed.omitted);
+    const causes = section.groups.map((group, at) => group.lines.some(one => one.step) ? at : -1).filter(at => at >= 0);
+    if (causes.length <= 1) continue;
+    const [removed] = section.groups.splice(causes.at(-1), 1);
+    section.omitted = (section.omitted || 0) + removed.lines.reduce((count, one) => count + (one.count || Number(Boolean(one.step))), 0) + removed.omitted;
     return true;
   }
   if (sections.length <= 1) return false;

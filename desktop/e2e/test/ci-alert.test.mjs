@@ -45,7 +45,7 @@ test('no secrets: no send; a failed send never prints the token', async () => {
   const line = await send('x', secret, async url => { throw new Error(`fetch failed ${url}`); });
   assert.doesNotMatch(line, /TOKEN123/);
   let body = null;
-  assert.equal(await send('hello', secret, async (url, options) => { body = fields(options.headers['Content-Type'], options.body); return {ok: true}; }), 'ci-alert: sent');
+  assert.equal(await send('hello', secret, async (url, options) => { body = JSON.parse(options.body); return {ok: true}; }), 'ci-alert: sent');
   assert.deepEqual([body.chat_id, body.text], ['7', 'hello']);
 });
 
@@ -262,6 +262,11 @@ test('12:45 apply alert renders every annotation grouped under its one budget ca
     + '🔀  After #2676 · #2682\n🕐  31 Oct, 12:45\n🔗  Open apply-1of2 · Run · 23e73e5');
   assert.match(message.text, /<i>apply-1of2 · 3 steps · 1 cause<\/i>/);
   assert.doesNotMatch(message.text, /window answers|main process/);
+  let delivered;
+  await send(message, {CI_ALERTS_TELEGRAM_BOT_TOKEN: 'fake', CI_ALERTS_TELEGRAM_CHAT_ID: 'fake'}, async (_url, options) => {
+    delivered = fields(options.headers['Content-Type'], options.body); return {ok: true};
+  });
+  assert.equal(delivered.text, message.text, 'the fake Telegram payload preserves the rendered fixture');
 });
 
 test('two red suites have separate blocks for budget and the 03:23/04:30 refused-AI shapes', async () => {
@@ -316,4 +321,15 @@ test('two shards group the same cause once while each step keeps its own job lin
   const label = /<a href="https:\/\/job\/apply-2of2">([^<]+)<\/a>/.exec(message.text)?.[1];
   assert.ok(label && label.length <= 80 && label.endsWith('…'));
   assert.ok(message.text.includes(`<a href="${applyJob.url}">Background automation fills several queued jobs</a>`));
+});
+
+test('many distinct causes preserve the Next action and footer without counting either as an omitted step', async () => {
+  const input = await applyFixture();
+  const causes = Array.from({length: 40}, (_, i) => ({...input.causes[0], step: `queued job ${i}`, message: `wrong value ${i}`}));
+  const message = messageOf({...input, causes, next: 'label the PR replay-accepted'});
+  assert.ok(message.text.length <= 4096);
+  assert.match(message.text, /Next: label the PR replay-accepted/);
+  assert.match(message.text, /23e73e5<\/a>\n<blockquote expandable>\+\d+ more<\/blockquote>$/);
+  const shown = (message.text.match(/     ✗ /g) || []).length;
+  assert.equal(shown + Number(/\+(\d+) more/.exec(message.text)[1]), causes.length);
 });

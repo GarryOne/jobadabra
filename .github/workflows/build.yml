@@ -59,8 +59,10 @@ jobs:
         continue-on-error: true
         env:
           ELECTRON_DISABLE_SANDBOX: '1'
+          DESKTOP_RENDER_REQUIRED: '1'   # test/needs-electron.js: no electron or display is a red suite, never a green skip
         run: |
           (cd desktop && npm ci)
+          (cd desktop && node node_modules/electron/install.js)   # version 44 has no install script; without it the rendering tests would wait for a first launch
           xvfb-run -a --server-args='-screen 0 1440x900x24' bash tools/check.sh --area desktop || { echo "::error title=Suite failed::desktop: the job fails at \"Every suite passed\""; exit 1; }
       # The recorded pages and the widget zoo need the replay's own install (the app's runtime packages only, the generated shared files, the full Chromium).
       - name: Install the replays' packages and browser

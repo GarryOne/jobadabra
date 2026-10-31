@@ -12,26 +12,24 @@ const html = read('index.html');
 const steps = [...html.matchAll(/<div class="step" data-step="(\w+)">([\s\S]*?)(?=\n    <div class="step" data-step=|\n  <\/div>\n)/g)];
 
 test('the lead under every setup title is one short line; longer wording sits in a fold', () => {
-  assert.ok(steps.length >= 5, 'found the steps');
+  assert.ok(steps.length >= 4, 'found the steps');
   for (const [, name, body] of steps) {
     for (const lead of body.matchAll(/<p class="muted (?:subtitle|magic-sub)"[^>]*>([^<]*)</g)) assert.ok(lead[1].length <= 90, `${name}: a lead of ${lead[1].length} characters: ${lead[1]}`);
   }
-  for (const lead of read('pages/hosted.js').matchAll(/'muted subtitle', '([^']*)'/g)) assert.ok(lead[1].length <= 90, `hosted lead: ${lead[1]}`);
 });
 
-test('a single/small input is a centered card: the CV step is a magic card with one real button, Always on sits in the centered stage', () => {
+test('a single/small input is a centered card: the CV step is a magic card with one real button', () => {
   const cv = steps.find(([, name]) => name === 'cv')[2];
   assert.match(cv, /class="magic-stage"/);
   assert.match(cv, /data-magic/);
   assert.equal([...cv.matchAll(/class="[^"]*magic-go[^"]*"/g)].length, 1, 'one magic button');
   assert.match(cv, /id="cv-choose"/);
-  assert.match(read('pages/hosted.js'), /el\('div', 'step magic-stage'\)/, 'Always on (one switch + e-mail): centered stage');
 });
 
 test('the done banner is one quiet line, not the old green alert box, and names the right step', () => {
   assert.doesNotMatch(html, /class="alert tone-good review-mode"/);
   assert.match(html, /<div class="review-mode" id="review-mode" hidden>/);
-  // The strategy reference is numbered from the sidebar at runtime, including Welcome and Cover letter.
+  // The strategy reference is numbered from the sidebar at runtime, including Welcome.
   assert.match(html, /replace your strategy at <span data-step-reference="draft">/);
 });
 

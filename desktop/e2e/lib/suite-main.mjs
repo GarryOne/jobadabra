@@ -61,8 +61,6 @@ export function stopCode(error, name, ctx) {
   return 1;
 }
 
-/** The suite-wide guards after its steps: the owner's Keychain untouched, the AI asks, nothing queued to report, the stand-in's gaps. None needs the app's
- * window, so they also run after a quiet stop (a suspended step that hung or left the app closed). Throws, or records a failed step, like any step. */
 /** Runs a suite's steps. Returns the quiet stop (a suspended step that hung or left the app closed: lib/runner.mjs suspendedStop), else null; any other error is thrown. */
 async function runSteps(suite, ctx) {
   try { await suite.run(ctx); return null; } catch (error) { if (!error?.suspendedStop) throw error; return error; }
@@ -75,6 +73,8 @@ function afterQuietStop(quiet, name, ctx, code) {
   return stopCode(quiet, name, ctx);
 }
 
+/** The suite-wide guards after its steps: the owner's Keychain untouched, the AI asks, nothing queued to report, the stand-in's gaps. None needs the app's
+ * window, so they also run after a quiet stop (a suspended step that hung or left the app closed). Throws, or records a failed step, like any step. */
 async function suiteGuards(suite, ctx, runAlways, {keychainBefore, keychainChanges, snapshot, assertNothingQueued}) {
   if (keychainBefore) await runAlways('nothing in this Mac\'s real Keychain changed (a test run keeps its secrets in its own file)', async () => {
     const changes = keychainChanges(keychainBefore, snapshot() || new Map());

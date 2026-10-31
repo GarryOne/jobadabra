@@ -51,7 +51,7 @@ function setMode(box) {
   $('notion-connect-go').textContent = GO_LABEL[box.mode];
 }
 
-// reason: a key of lib/notion-gate.js REASONS, or 'none' (the Optional extras card, Settings). where: dialog | extras | settings.
+// reason: a key of lib/notion-gate.js REASONS, or 'none' (Settings). where: dialog | settings.
 // then(result): runs after a successful connect, and after the move it announced (the action the user asked for, or a redraw).
 // With the data on this Mac the prompt is "Connect and move", or "Move to Notion" when Notion is connected already (rules connectMode).
 export function openNotionConnect({reason = 'none', where = 'dialog', from = 'dialog', then = null} = {}) {
@@ -165,14 +165,6 @@ export function init() {
   $('notion-connect-note').textContent = GATE_FOOTNOTE;
   waitSignIn = signInWait($('notion-connect-go'), () => window.pilot.notionOAuthCancel());
   $('notion-connect-go').addEventListener('click', connect);
-  // Setup → Optional extras → Notion: the first three advantages; "Connect" opens the prompt on this step (the other extras'
-  // buttons finish setup and open Settings, strategy-review.js); connected, the button is "Manage" and does that like the rest.
-  $('extras-notion-benefits').replaceChildren(...notionBenefits(3, {compact: true}).children);
-  $('extras-notion').addEventListener('click', event => {
-    if (notionConnected()) return;
-    event.stopImmediatePropagation();  // this listener is registered first: the finish-setup handler never runs
-    openNotionConnect({reason: 'none', where: 'extras', from: 'wizard', then: () => import('./settings.js').then(settings => settings.showExtrasStatus())});
-  });
   $('notion-connect-later').addEventListener('click', () => {
     if (!current) return;
     if (current.notNow) { $('notion-connect-dialog').close(); return; }

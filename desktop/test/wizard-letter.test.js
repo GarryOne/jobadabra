@@ -1,4 +1,4 @@
-// Setup moves the one existing letter editor into its own step and restores it; generation starts only after an explicit draft choice.
+// The Settings letter editor loads without spending; drafting and approval still require explicit choices.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {test} from 'node:test';
@@ -12,40 +12,33 @@ const calls = [];
 window.pilot = new Proxy({coverLetter: async () => ({state: 'none', text: '', pdf: false}),
   coverLetterDraft: async () => { calls.push('draft'); return {ok:false, error:'Fictional generation failure'}; }, coverLetterApprove: () => { calls.push('approve'); },
   state: async () => ({settings: {}})}, {get: (obj, key) => obj[key] || (() => null)});
-const {showLetterStep, hideLetterStep} = await import('../renderer/pages/wizard-letter.js');
-const {initLetter} = await import('../renderer/pages/base-letter.js');
+const {initLetter, loadLetter} = await import('../renderer/pages/base-letter.js');
 initLetter();
 
-test('setup shares the editor without generating until the person asks for a draft', async () => {
+test('Settings opens the letter editor without generating until the person asks', async () => {
   const editor = document.getElementById('setting-letter'), home = editor.parentNode;
-  await showLetterStep();
-  assert.equal(editor.parentNode, document.getElementById('setup-letter-slot'));
-  assert.equal(editor.hidden, false);
+  await loadLetter();
   assert.match(editor.textContent || document.getElementById('letter-empty').textContent, /Draft with AI/);
   const openedCalls = calls.slice();
-  hideLetterStep();
-  assert.deepEqual(openedCalls, [], 'opening setup must not start a potentially paid AI request');
+  assert.deepEqual(openedCalls, [], 'opening Settings must not start a potentially paid AI request');
   assert.equal(editor.parentNode, home);
-  assert.equal(editor.hidden, true);
 });
 
-test('explicitly started draft is shared when leaving and reopening the step', async () => {
+test('explicitly started draft is shared when reopening Settings', async () => {
   let finish, started = 0;
   window.pilot.coverLetterDraft = () => { started += 1; return new Promise(resolve => { finish = resolve; }); };
-  const opening = showLetterStep();
+  const opening = loadLetter();
   await new Promise(resolve => setImmediate(resolve));
   const autoStarted = started;
   if (finish) { finish({ok: false, error: 'Fictional generation failure'}); await opening; }
-  hideLetterStep();
-  assert.equal(autoStarted, 0, 'opening the step must wait for a deliberate action');
+  assert.equal(autoStarted, 0, 'opening Settings must wait for a deliberate action');
   started = 0;
   finish = null;
-  await showLetterStep();
+  await loadLetter();
   document.getElementById('letter-start-ai').click();
   await new Promise(resolve => setImmediate(resolve));
   assert.equal(started, 1);
-  hideLetterStep();
-  const second = showLetterStep();
+  const second = loadLetter();
   await new Promise(resolve => setImmediate(resolve));
   document.getElementById('letter-start-ai').click();
   await new Promise(resolve => setImmediate(resolve));
@@ -53,10 +46,9 @@ test('explicitly started draft is shared when leaving and reopening the step', a
   finish({ok: false, error: 'Fictional generation failure'});
   await second;
   await new Promise(resolve => setImmediate(resolve));
-  hideLetterStep();
 });
 
-test('fake AI prefills the existing wizard textbox; only the person’s approval makes it usable', async () => {
+test('fake AI prefills the Settings textbox; only the person’s approval makes it usable', async () => {
   const os = await import('node:os'), path = await import('node:path');
   const {createStorage} = await import('../lib/storage.js');
   const letters = await import('../lib/cover-letter.js');
@@ -75,10 +67,9 @@ test('fake AI prefills the existing wizard textbox; only the person’s approval
     return {ok: true, ...letters.status(storage)};
   };
   window.pilot.coverLetterApprove = async value => {approvals += 1; letters.edit(storage, value); letters.approve(storage, Buffer.from('%PDF-fictional')); return {ok: true, ...letters.status(storage)};};
-  await showLetterStep();
+  await loadLetter();
   const autoGenerations = generations;
-  if (autoGenerations) hideLetterStep();
-  assert.equal(autoGenerations, 0, 'entering the wizard letter step does not spend AI credits');
+  assert.equal(autoGenerations, 0, 'opening Settings does not spend AI credits');
   assert.equal(document.getElementById('letter-text').value, '');
   document.getElementById('letter-start-ai').click();
   await new Promise(resolve => setImmediate(resolve));
@@ -91,5 +82,4 @@ test('fake AI prefills the existing wizard textbox; only the person’s approval
   assert.equal(approvals, 1);
   assert.equal(letters.status(storage).state, 'approved');
   assert.equal(letterQuestion(storage), null, 'explicit approval makes the complete base letter an automatic fallback');
-  hideLetterStep();
 });

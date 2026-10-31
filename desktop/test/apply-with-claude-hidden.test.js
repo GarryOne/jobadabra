@@ -1,5 +1,5 @@
 // "Apply with Claude" is gone from every screen while SHOW_RESUME_CLAUDE is off (owner, 24 Oct 2026: "we don't have anymore Apply with X functionality").
-// The class: every renderer line that draws it asks resumeOffered(), no visible text names it, and the Optional extras card starts hidden.
+// The class: every renderer line that draws it asks resumeOffered(), no visible text names it, and the Settings checklist follows that flag.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -26,14 +26,12 @@ test('renderer scripts: a line that names Apply with Claude is a comment or asks
 
 test('index.html: no visible text offers Apply with Claude; the batch modal has no independent mode radio', () => {
   const html = read('renderer/index.html');
-  assert.doesNotMatch(html.replace(/<[^>]*id="claude-extra"[^]*?<\/div>\s*(?=<)/g, ''), NAMED);
-  assert.match(html, /id="claude-extra" hidden/);
+  assert.doesNotMatch(html, NAMED);
   assert.doesNotMatch(html, /name="apply-mode"/);
 });
 
-test('class: the card and Settings checklist follow the takeover flag; the batch modal has no second mode selector', () => {
+test('class: the Settings checklist follows the takeover flag; the batch modal has no second mode selector', () => {
   const prereqs = read('renderer/pages/claude-prereqs.js');
-  assert.match(prereqs, /card\.hidden = !resumeOffered\(\)/);
   assert.match(prereqs, /inSettings\.hidden = !resumeOffered\(\)/);
   assert.doesNotMatch(read('renderer/pages/jobs.js'), /resumeOffered|name="apply-mode"/);
 });

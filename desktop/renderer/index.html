@@ -53,8 +53,6 @@
       <li data-step="ai">AI</li>
       <li data-step="cv">Your CV</li>
       <li data-step="draft">Your strategy</li>
-      <li data-step="letter">Cover letter</li>
-      <li data-step="extras">Optional extras</li>
     </ol>
     <div class="steps-foot">
       <button class="nav wizard-exit" id="wizard-exit" type="button" hidden><i data-icon="undo"></i>Back to the app</button>
@@ -242,50 +240,8 @@
       <p class="message" id="draft-save-message"></p>
     </div>
 
-    <div class="step" data-step="letter" hidden>
-      <header class="view-head step-head"><div><h1>Your cover letter</h1><p>Draft it, review it, then approve it for applications.</p></div></header>
-      <div id="setup-letter-slot"></div>
-      <p class="muted small">If you leave this unfinished, Application questions keeps it as HIGH PRIORITY. An approved base letter is used when a job has no usable tailored letter.</p>
-      <div class="actions sticky"><button class="secondary" data-back>Back</button><button class="primary" id="setup-letter-next">Continue</button></div>
-    </div>
+    <div class="actions sticky" id="setup-finish" hidden><button class="primary" id="finish">Go to my jobs</button></div>
 
-    <div class="step" data-step="extras">
-      <header class="view-head step-head">
-        <div><span class="eyebrow" data-step-count data-step-suffix=" · optional"></span>
-          <h1>Optional extras</h1>
-          <p class="muted subtitle">Everything works without these. You can add them later in Settings.</p></div>
-      </header>
-      <div class="service-card is-row is-wide setup-assistant-mode"><span class="ui-tile tone-signal"><i data-icon="zap"></i></span>
-        <span class="service-text"><b>Should Jobadabra create and sign in to employer accounts for you?</b><span class="muted small">It takes each application up to its Submit button and never submits for you. You can change this in Settings → Profile.</span></span>
-        <div class="segmented" role="group" aria-label="How much Jobadabra does"><button data-assistant-mode="full">Yes, do it for me</button><button data-assistant-mode="assist">I'll do it myself</button></div></div>
-      <div class="service-grid is-rows extras">
-        <div class="service-card is-row is-wide"><span class="ui-tile tone-signal"><i data-icon="layers"></i></span>
-          <span class="service-text"><b>Notion</b><span class="muted small">Keep your applications, kits and interviews in your own free Notion workspace instead of this Mac. Needed for Always on (runs while this Mac is off).</span>
-            <ul class="ui-benefits is-compact" id="extras-notion-benefits"></ul></span>
-          <button class="secondary" id="extras-notion" data-goto-settings="notion" data-connect="Connect with Notion">Connect with Notion</button></div>
-        <div id="extras-extension" class="service-card is-row is-wide"><span class="ui-tile tone-signal"><i data-icon="puzzle"></i></span>
-          <span class="service-text"><b>Chrome extension</b><span class="muted small">Fills application forms in Chrome in seconds. You review and submit.</span>
-            <span class="muted small">From the Chrome Web Store, for Chrome, Edge or Brave. It connects itself within 30 seconds.</span></span>
-          <button class="secondary" data-add-extension>Add to Chrome</button></div>
-        <div class="service-card is-row"><span class="ui-tile tone-signal"><i data-icon="inbox"></i></span>
-          <span class="service-text"><b>Email</b><span class="muted small">New matches, reminders and answers in your inbox, also while your Mac is off. Telegram, email or both: you choose.</span></span>
-          <button class="secondary" data-goto-settings="notify">Set up</button></div>
-        <div class="service-card is-row"><span class="ui-tile tone-signal"><i data-icon="send"></i></span>
-          <span class="service-text"><b>Telegram</b><span class="muted small">Your best new matches on your phone after each search, with buttons to save, apply or dismiss.</span></span>
-          <button class="secondary" data-goto-settings="telegram">Set up</button></div>
-        <div class="service-card is-row"><span class="ui-tile tone-signal"><i data-icon="cloud"></i></span>
-          <span class="service-text"><b>Always on: your GitHub</b><span class="muted small">Runs on GitHub, even when your Mac is off: searches, application kits, insights and mail checks, on your schedule, from your own private repository (free).</span></span>
-          <button class="secondary" data-goto-settings="cloud">Set up</button></div>
-        <div class="service-card is-row" id="key-source-card" data-parked="google_jobs" hidden><span class="ui-tile tone-signal"><i data-icon="search"></i></span>
-          <span class="service-text"><b>Google Jobs</b><span class="muted small">Adds Google Jobs listings (SerpApi, free plan: 250 searches a month).</span></span>
-          <button class="secondary" data-goto-settings="serpapi">Add key</button></div>
-        <div class="service-card is-row is-wide" id="claude-extra" hidden><span class="ui-tile tone-signal"><i data-icon="bot"></i></span>
-          <span class="service-text"><b>Apply with Claude</b><span class="muted small">Claude opens each job, signs up on the employer's site if needed and fills every page. You review and submit. It needs a few things only you can install:</span>
-            <ul class="prereqs" id="claude-prereqs"></ul></span>
-          </div>
-      </div>
-      <div class="actions"><button class="primary" id="finish">Go to my jobs</button></div>
-    </div>
   </div>
 </section>
 
@@ -936,11 +892,6 @@
     </div>
 
     <div class="view" data-view="settings" hidden>
-      <div class="back-to-setup" id="back-to-setup" hidden>
-        <span>You're finishing your setup: set this up here, then go back to the last step.</span>
-        <button class="secondary small-btn" id="back-to-setup-go">← Back to setup</button>
-        <button class="link" id="back-to-setup-close" title="Hide">✕</button>
-      </div>
       <header class="view-head"><div><h1>Settings</h1><p class="muted">Manage your profile, automations and connections.</p></div></header>
       <div class="settings-layout">
         <nav class="settings-nav" aria-label="Settings sections">

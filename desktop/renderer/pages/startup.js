@@ -80,7 +80,7 @@ export async function init() {
   } else {
     show($('wizard'));
     const saved = shared.state.settings.wizardStep === 'goals' ? 'cv' : shared.state.settings.wizardStep;  // the old goals step: now part of the CV step
-    const resume = saved === 'notion' ? 'cv' : saved || 'welcome';  // an install that stopped on the old Notion step carries on at the CV
+    const resume = ['letter', 'hosted', 'extras'].includes(saved) ? 'draft' : saved === 'notion' ? 'cv' : saved || 'welcome';  // removed optional steps resume at strategy; the old Notion step resumes at CV
     if (resume === 'draft') toDraft(); else goStep(resume);
   }
 
@@ -94,7 +94,7 @@ window.pilot.onToast(toast => {
   // Help improve Jobadabra (opt-in anonymous form reports).
   // How much Jobadabra does (renderer/assistant-mode.js): "Do it for me" (the default) or "Let me check each step".
   wireMode(async patch => (shared.state.settings = await window.pilot.saveSettings(patch)));
-  showMode(shared.state?.settings || {});   // the setup's question and Settings show the same choice; nothing saved yet is "Do it for me"
+  showMode(shared.state?.settings || {});   // Settings shows the saved choice; nothing saved yet is "Do it for me"
   wireClaudeAuto(async patch => (shared.state.settings = await window.pilot.saveSettings(patch)));   // "Always let Claude finish when I'm stuck" (claude-auto.js)
   refreshClaudeHelp();   // is Claude ready (installed, signed in)? every Claude entry point follows (claude-help.js)
 }

@@ -332,8 +332,6 @@ button.secondary.is-signal { color: var(--signal-ink); border-color: var(--signa
 .service-grid.is-rows { grid-template-columns: minmax(0, 1fr); margin-bottom: var(--sp-5); }
 .service-grid.is-rows:empty { margin-bottom: 0; }
 .service-card.is-row { cursor: default; align-items: center; }
-/* Optional extras: cards of different heights; the tile sits by the title, not mid-card. */
-.extras .service-card.is-row { align-items: flex-start; }
 .service-text { flex: 1; display: flex; flex-direction: column; gap: 2px; }
 .service-actions { display: flex; align-items: center; gap: var(--sp-4); flex: none; }
 .service-card.is-row .service-state { padding: var(--sp-1) var(--sp-3); border-radius: var(--r-pill);
@@ -354,7 +352,6 @@ button.secondary.is-signal { color: var(--signal-ink); border-color: var(--signa
 .conn-head-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--sp-1); }
 .conn-head-text h3 { margin: 0; font-size: var(--fs-xl); }
 .conn-head-text p { margin: 0; }
-.extras .service-state { align-self: flex-start; }
 .conn-head .service-state { flex: none; padding: var(--sp-1) var(--sp-3); border-radius: var(--r-pill);
   background: var(--warn-soft); font-size: var(--fs-sm); font-weight: 600; }
 .conn-head .service-state.is-on { background: var(--good-soft); }
@@ -623,7 +620,7 @@ button.secondary.is-signal { color: var(--signal-ink); border-color: var(--signa
 .ui-benefits { list-style: none; margin: var(--sp-3) 0; padding: 0; display: grid; gap: var(--sp-3); }
 .ui-benefits li { display: flex; align-items: flex-start; gap: var(--sp-3); }
 .ui-benefit-text { font-size: var(--fs-sm); line-height: 1.45; padding-top: var(--sp-1); }
-/* Compact: a small muted icon, no tile, on a card that has its own tile (Optional extras → Notion). */
+/* Compact: a small muted icon, no tile, on a card that has its own tile (Notion). */
 .ui-benefits.is-compact { gap: var(--sp-1); margin: var(--sp-2) 0 0; }
 .ui-benefits.is-compact li { gap: var(--sp-2); align-items: baseline; }
 .ui-benefits.is-compact .ui-benefit-icon { flex: none; width: 14px; height: 14px; color: var(--muted); transform: translateY(2px); }

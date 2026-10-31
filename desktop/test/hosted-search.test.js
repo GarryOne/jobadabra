@@ -78,19 +78,16 @@ test('without a regular install key nothing is sent, and export writes the data 
   assert.deepEqual(config(st).profile, 'My profile');
 });
 
-test('the wizard step sits after the strategy and before the extras; its words follow the owner\'s wording and never name GitHub or dollars', () => {
-  const read = file => fs.readFileSync(new URL(`../${file}`, import.meta.url), 'utf8');
-  assert.match(read('renderer/pages/core.js'), /'draft', 'letter', 'hosted', 'extras'/);
-  assert.match(read('renderer/pages/strategy-review.js'), /else goStep\('letter'\)/);
-  const view = read('renderer/pages/hosted.js');
-  assert.match(view, /New matching jobs every morning, even when your Mac is off/);
-  assert.match(view, /Search for me every day/);   // the wizard's own switch label (owner's wording)
-  assert.match(view + fs.readFileSync(new URL('../renderer/hosted-words.js', import.meta.url), 'utf8'), /Also send me product news and the Pro launch offer \(unsubscribe in one click\)/);
-  assert.match(fs.readFileSync(new URL('../renderer/hosted-words.js', import.meta.url), 'utf8'), /Your profile is stored encrypted on our servers\. Turn it off anytime = deleted\./);
-  assert.match(view, /switchRow\('hosted-news', NEWS, true/);   // pre-checked (owner, 16 Oct 2026; a lawyer checks before launch)
-  assert.doesNotMatch(view.replace(/\/\/.*$/gm, ''), /GitHub|container|\$\d/);
-  const wizard = wizardFixture();
-  wizard.goStep('draft');
-  const labels = ['ai', 'cv', 'draft', 'extras'].map(key => wizard.document.querySelector(`.step[data-step="${key}"] .eyebrow`).textContent);
-  assert.deepEqual(labels, ['Step 2 of 7', 'Step 3 of 7', 'Step 4 of 7', 'Step 7 of 7 · optional']);
+test('Always on stays in Settings while setup ends after strategy with the shared finish action', async () => {
+  const view = wizardFixture();
+  assert.deepEqual(view.list.children.map(item => item.textContent), ['Welcome', 'AI', 'Your CV', 'Your strategy']);
+  view.goStep('draft');
+  await view.saveDraft();
+  assert.equal(view.document.getElementById('finish').closest('.step').dataset.step, 'draft');
+  await view.click('finish');
+  assert.equal(view.settings.setupDone, true);
+  const page = fs.readFileSync(new URL('../renderer/pages/hosted.js', import.meta.url), 'utf8');
+  assert.match(page, /export function init\(\) \{ mountCard\(\); \}/);
+  assert.match(page, /\$\('setting-cloud'\)\.after\(card\)/);
+  assert.match(page, /window\.pilot\.hostedOn\(\{\}\)/, 'Settings retains the shared notification-address turn-on action');
 });

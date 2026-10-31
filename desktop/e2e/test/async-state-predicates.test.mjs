@@ -5,10 +5,6 @@ import path from 'node:path';
 import {test} from 'node:test';
 
 const root = new URL('../', import.meta.url);
-const allowed = new Set([
-  // TODO(AI): migrate wizard's async predicate in its owning PR (29 Oct 2026).
-  'lib/wizard.mjs',
-]);
 const asyncPredicate = /\bwaitForFunction\s*\(\s*async\b/;
 
 function files(dir) {
@@ -20,6 +16,5 @@ function files(dir) {
 
 test('suite and harness state waits have no unapproved async waitForFunction predicates', () => {
   const hits = [...files('suites/'), ...files('lib/')].filter(file => asyncPredicate.test(fs.readFileSync(new URL(file, root), 'utf8')));
-  assert.deepEqual(hits.filter(file => !allowed.has(file)), [], 'poll page.evaluate with pollUntil so only the resolved value can settle');
-  assert.deepEqual([...allowed].filter(file => !hits.includes(file)), [], 'remove obsolete exceptions when their owning PR migrates them');
+  assert.deepEqual(hits, [], 'poll page.evaluate with pollUntil so only the resolved value can settle');
 });

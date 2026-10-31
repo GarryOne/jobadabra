@@ -15,7 +15,7 @@ const card = id => {
   const next = html.slice(start + 10).search(/\n\s*<div (class="[^"]*(service-card|setting conn-panel)[^"]*"[^>]*id=|id="[^"]+" class="[^"]*(service-card|setting conn-panel))/);
   return html.slice(start, next < 0 ? undefined : start + 10 + next);
 };
-const SURFACES = ['extras-extension', 'setting-extension'];   // the setup wizard's extras step, Settings → Connections → Chrome extension
+const SURFACES = ['setting-extension'];   // Settings → Connections → Chrome extension remains the install surface
 
 test('the store page the app opens is the item whose ID the app trusts', () => {
   assert.equal(env.STORE_EXTENSION_ID, 'nmbnjhmpofifgcdalfefddbiihccogoi');

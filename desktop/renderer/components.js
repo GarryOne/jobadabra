@@ -224,7 +224,7 @@ export function moreButton(items, title = 'More actions') {
 }
 
 // Why connect Notion: the advantages as a list (an icon tile, a bold lead, a sentence). count: only the first few.
-// compact: a small plain icon instead of the tile, for a card that already has its own tile (Optional extras).
+// compact: a small plain icon instead of the tile, for a card that already has its own tile (Notion).
 export function notionBenefits(count = NOTION_BENEFITS.length, {compact = false} = {}) {
   const list = el('ul', compact ? 'ui-benefits is-compact' : 'ui-benefits');
   for (const item of NOTION_BENEFITS.slice(0, count)) {

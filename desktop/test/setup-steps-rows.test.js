@@ -10,7 +10,7 @@ const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const steps = [...html.matchAll(/<div class="step" data-step="(\w+)">([\s\S]*?)(?=\n    <div class="step" data-step=|\n  <\/div>\n)/g)];
 
 test('every checkbox inside a setup step sits in the standard .switch, never a bare switch-row', () => {
-  assert.ok(steps.length >= 5, 'found the setup steps');
+  assert.ok(steps.length >= 4, 'found the setup steps');
   for (const [, name, body] of steps) {
     assert.doesNotMatch(body, /class="[^"]*switch-row/, `${name}: a bare switch-row grid is drawn for Settings, not steps`);
     for (const box of body.matchAll(/<input type="checkbox"[^>]*>/g)) {

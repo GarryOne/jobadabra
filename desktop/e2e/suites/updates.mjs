@@ -15,7 +15,7 @@ export async function run(ctx) {
   await ctx.run('the app is set up without Notion (trying mode): a key saved, setup done', async () => {
     await page.evaluate(async () => {
       await window.pilot.saveSecret('ANTHROPIC_API_KEY', 'sk-ant-api03-e2e-updates-not-a-real-key-000000000000000000000000000000000000000000000000');
-      await window.pilot.saveSettings({setupDone: true, wizardStep: 'extras', setupFurthest: 'extras', betaChannel: false});
+      await window.pilot.saveSettings({setupDone: true, wizardStep: 'draft', setupFurthest: 'draft', betaChannel: false});
     });
     await page.reload();
     await page.waitForSelector('.view:not([hidden])', {timeout: 60000});

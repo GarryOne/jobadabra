@@ -36,7 +36,7 @@ export async function fastSeed(ctx, {readyMs = 60000} = {}) {
       if (!status?.authenticated) throw new Error(`${engine === 'cli' ? 'Claude Code' : 'Codex'} is not ready on this Mac (${status?.error || 'not signed in'}): sign in with ${engine === 'cli' ? 'claude' : 'codex login'}`);
     }
     await window.pilot.setAiEngine(engine);
-    await window.pilot.saveSettings({setupDone: true, wizardStep: 'extras', setupFurthest: 'extras', cvName: 'cv.pdf'});
+    await window.pilot.saveSettings({setupDone: true, wizardStep: 'draft', setupFurthest: 'draft', cvName: 'cv.pdf'});
   }, {anthropic: ctx.engine === 'api' ? ctx.appKey : DUMMY_KEY, openai: ctx.engine === 'openai' ? ctx.appKey : '', token: ctx.token, engine: ctx.engine, strategy, reconnect: RECONNECT});
   fs.copyFileSync(ctx.cv, path.join(ctx.profile, 'cv.pdf'));   // forms and tailoring read the CV from the data folder
   await page.reload();

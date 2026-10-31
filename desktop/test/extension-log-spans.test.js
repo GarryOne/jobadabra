@@ -8,6 +8,8 @@ import {test} from 'node:test';
 import {logTo} from '../lib/log.js';
 import {logText} from './log-text.mjs';
 
+let fresh = 0;   // the log keeps its lines in module memory: each test imports its own copy (a query makes it a new module)
+
 // The real server environment and file logger run; only service boundaries imported by server-env are inert.
 async function serverLog(t) {
   const file = new URL('../lib/server-env.js', import.meta.url);
@@ -74,7 +76,7 @@ test('a slow await logs paired measured spans, including rejection, without wait
     },
   });
   t.after(() => hooks.deregister());
-  const {span, pushDecisions} = await import('../../extension/log.js');
+  const {span, pushDecisions} = await import(`../../extension/log.js?fresh=${++fresh}`);
   assert.equal(typeof span, 'function', 'the production span helper must exist');
   let release;
   const slow = new Promise(resolve => { release = resolve; });
@@ -104,13 +106,17 @@ test('a slow await logs paired measured spans, including rejection, without wait
 });
 
 // Only storage, configuration and transport are fake; each test runs the real log owner.
-async function extensionLog(t, reply) {
-  let kept = {};
+async function extensionLog(t, reply, {serial = false, kept: start = []} = {}) {
+  let kept = start.length ? {'jp-decisions': start} : {};
+  // serial: one storage backend handling one operation at a time, as the browser does; `ops` counts them, `done` counts the finished ones.
+  const stats = {ops: 0, done: 0};
+  let tail = Promise.resolve();
+  const once = work => serial ? (tail = tail.then(async () => { stats.ops++; await new Promise(resolve => setTimeout(resolve, 1)); const out = work(); stats.done++; return out; })) : Promise.resolve(work());
   const batches = [];
   const oldChrome = globalThis.chrome;
   t.after(() => { if (oldChrome === undefined) delete globalThis.chrome; else globalThis.chrome = oldChrome; });
   globalThis.chrome = {runtime: {getManifest: () => ({version: '0.9'})}, storage: {local: {
-    get: async () => structuredClone(kept), set: async patch => { kept = structuredClone({...kept, ...patch}); },
+    get: () => once(() => structuredClone(kept)), set: patch => once(() => { kept = structuredClone({...kept, ...patch}); }),
   }}};
   t.mock.method(globalThis, 'fetch', async (_url, init) => {
     const batch = JSON.parse(init.body).entries;
@@ -125,7 +131,7 @@ async function extensionLog(t, reply) {
     },
   });
   t.after(() => hooks.deregister());
-  return {...await import('../../extension/log.js'), batches, kept: () => kept['jp-decisions'] || []};
+  return {...await import(`../../extension/log.js?fresh=${++fresh}`), batches, stats, kept: () => kept['jp-decisions'] || []};
 }
 
 for (const failure of ['non-ok', 'rejected']) test(`a ${failure} POST leaves the burst unsent and one later push drains every line oldest first`, async t => {
@@ -226,4 +232,88 @@ test('while the app stays slow, a cycle that carried only a "slow push" note wri
   assert.equal(log.kept().filter(entry => entry.text === 'slow push').length, 1, 'one note for the one slow cycle of real lines');
   assert.equal(log.batches.length, 2, 'the real line, then its note; no third POST for a note about the note');
   assert.equal(log.kept().filter(entry => !entry.sent).length, 0);
+});
+
+// Owner, 31 Oct 2026 ("Evidence first"; run 41162490590): a 24-lines/s burst made the log queue behind itself (read 10.7 s, mark 13.6 s, POST 18 ms) and the app got lines up to 184 s late.
+test('a 120-line burst costs a handful of storage operations, and a read made during it is not queued behind the lines', async t => {
+  const log = await extensionLog(t, undefined, {serial: true});
+  const burst = Promise.all(Array.from({length: 120}, (_, i) => log.decide('span', `step ${i}`)));
+  await new Promise(resolve => setTimeout(resolve, 15));
+  const issued = log.stats.done;
+  await globalThis.chrome.storage.local.get('config');   // what settings() and every other storage user does
+  const ahead = log.stats.done - issued;
+  await burst;
+  await log.pushDecisions();
+  t.diagnostic(`storage operations for 120 lines: ${log.stats.ops}; operations ahead of a concurrent read: ${ahead}`);
+  assert.ok(log.stats.ops <= 12, `expected a handful of storage operations, got ${log.stats.ops} (one get+set per line before the change)`);
+  assert.ok(ahead <= 3, `a read made during the burst waited behind ${ahead} operations`);
+  assert.equal(log.kept().length, 120);
+  assert.equal(log.kept().filter(entry => entry.sent).length, 120);
+});
+
+test('lines that would be pushed out of a full ring unsent leave one "log dropped N" line, never a silent gap', async t => {
+  const log = await extensionLog(t, () => { throw new Error('app closed'); });
+  await Promise.all(Array.from({length: 260}, (_, i) => log.decide('span', `step ${i}`)));
+  const kept = log.kept(), marker = kept.find(entry => /^log dropped \d+$/.test(entry.text));
+  assert.ok(kept.length <= 200, `the ring stays at 200, got ${kept.length}`);
+  assert.ok(marker, 'the loss is written down');
+  const steps = kept.filter(entry => /^step /.test(entry.text));
+  assert.equal(steps.at(-1).text, 'step 259', 'the newest line is kept');
+  assert.equal(steps.length + marker.fields.lost, 260, 'every line is either kept or counted');
+});
+
+test('the first line after a worker restart says how long the log had been silent, and names this worker\'s log', async t => {
+  t.mock.timers.enable({apis: ['Date'], now: Date.parse('2026-10-31T03:21:48.000Z')});
+  const log = await extensionLog(t, undefined, {kept: [{at: '2026-10-31T03:20:27.500Z', kind: 'fill', text: 'last line of the old worker', fields: {}, sent: true}]});
+  await log.decide('worker', 'worker started again in the same browser run');
+  await log.decide('fill', 'second line');
+  const [old, first, second] = log.kept();
+  assert.equal(old.text, 'last line of the old worker');
+  assert.equal(first.fields.sinceLastLineMs, 80500);
+  assert.match(first.fields.logBoot, /^[a-z0-9]{6,}$/);
+  assert.equal(second.fields.sinceLastLineMs, undefined, 'only the first line of a worker carries it');
+});
+
+// Review of this change (31 Oct 2026): the three ways the first version missed its own purpose.
+test('the restart stamp lands in the real boot order: a push has already read the crash copy when the worker\'s first line is written', async t => {
+  t.mock.timers.enable({apis: ['Date'], now: Date.parse('2026-10-31T03:21:48.000Z')});
+  const log = await extensionLog(t, undefined, {kept: [{at: '2026-10-31T03:20:27.500Z', kind: 'fill', text: 'old', fields: {}, sent: true}]});
+  await log.pushDecisions();   // background.js:41 pushes at module load, before any line
+  await log.decide('worker', 'worker started again in the same browser run');
+  assert.equal(log.kept()[1].fields.sinceLastLineMs, 80500);
+  assert.ok(log.kept()[1].fields.logBoot);
+});
+
+test('lines trickling in with the app closed keep one "log dropped" line and nearly the whole ring', async t => {
+  const log = await extensionLog(t, () => { throw new Error('app closed'); });
+  for (let i = 0; i < 400; i++) await log.decide('fill', `line ${i}`);
+  const kept = log.kept(), markers = kept.filter(entry => /^log dropped \d+$/.test(entry.text));
+  assert.ok(kept.length <= 200);
+  assert.equal(markers.length, 1, 'one marker, updated in place');
+  assert.equal(kept.filter(entry => /^line /.test(entry.text)).length + markers[0].fields.lost, 400, 'every line is kept or counted');
+  assert.ok(kept.length >= 199, `the ring is used in full, got ${kept.length}`);
+});
+
+test('a caller waits for the write that holds its own line, not for the lines that arrive after it', async t => {
+  const log = await extensionLog(t);
+  const real = globalThis.chrome.storage.local.set, gates = [];
+  globalThis.chrome.storage.local.set = patch => new Promise(resolve => gates.push(() => resolve(real(patch))));
+  const first = log.decide('fill', 'A');
+  await new Promise(resolve => setTimeout(resolve, 5));
+  let secondDone = false;
+  const second = log.decide('fill', 'B').then(() => { secondDone = true; });
+  gates.shift()();
+  await first;
+  assert.equal(secondDone, false, 'the first caller did not wait for the second line\'s write');
+  while (!secondDone) { await new Promise(resolve => setTimeout(resolve, 1)); gates.shift()?.(); }
+  await second;
+});
+
+test('a stalled storage cannot grow the ring in memory without bound', async t => {
+  const log = await extensionLog(t);
+  globalThis.chrome.storage.local.set = () => new Promise(() => {});
+  for (let i = 0; i < 2000; i++) log.decide('span', `step ${i}`).catch(() => {});
+  await new Promise(resolve => setTimeout(resolve, 5));
+  await Promise.race([log.pushDecisions(), new Promise(resolve => setTimeout(resolve, 20))]);
+  assert.ok(log.batches.flat().length <= 300, `the stalled ring stayed bounded, pushed ${log.batches.flat().length}`);
 });

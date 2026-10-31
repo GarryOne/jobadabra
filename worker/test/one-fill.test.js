@@ -89,3 +89,25 @@ test('the class: every fill starts through oneFillPerTab, and flow.js writes the
   const writers = [...flow.matchAll(/inPage\(tab\.id, markCardId,/g)].length;   // the id has its own attribute (fill-mark-own-page.test.js): the state attribute is never written here
   assert.equal(writers, 1); assert.match(flow, /if \(stillOnPage\(tab\.url, [^\n]*inPage\(tab\.id, markCardId,/);
 });
+
+// Owner, 31 Oct 2026 (run 41162490590, "previous form stuck, next form handed over"): a fill that went quiet for 30 s holds nothing the next tab's fill needs. The silent dead end only remarks (shadow);
+// it ends and releases nothing, and oneFillPerTab never looks at another tab. Passes before and after the log change: it pins that the extension has no wait between tabs.
+test('a fill on tab 7 stuck in its 30 s silent dead end does not delay the fill handed to tab 8', async () => {
+  const {useSilence, restartSilence, checkSilence, silenceTab} = await import('../../extension/ladder/silence.js');
+  const timers = [], notices = [];
+  useSilence({timer: fn => timers.push(fn), cancel: () => {}, notice: (host, evidence, tab) => notices.push({host, evidence, tab})});
+  silenceTab(7, 'https://x.test/job/1'); restartSilence(7, 'required_down', {now: 1000, host: 'x.test'});
+  const stuck = oneFillPerTab(7, 'https://x.test/signin-refused', () => new Promise(() => {}));
+  assert.equal(checkSilence(7, 31000), true, 'the dead end is noticed after 30 s');
+  assert.equal(notices.length, 1);
+  let ran = false;
+  const next = await Promise.race([
+    oneFillPerTab(8, 'https://x.test/e2e-reveal', async () => { ran = true; return {state: 'done'}; }),
+    wait(500).then(() => 'waited'),
+  ]);
+  assert.deepEqual(next, {state: 'done'});
+  assert.ok(ran);
+  let pending = true; stuck.then(() => { pending = false; });
+  await wait(10);
+  assert.ok(pending, 'the noticed dead end did not end the stuck fill (it is a remark, not a verdict)');
+});

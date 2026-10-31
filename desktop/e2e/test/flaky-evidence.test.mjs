@@ -165,3 +165,16 @@ test('the real reads: a view key\'s store is its store leg, else the "store" of 
   assert.deepEqual(await real.storesOf(1, 'settings'), {'e2e-view-settings': null}, 'no coverage artifact: unknown');
   assert.deepEqual(await real.storesOf(1, 'quality'), {'e2e-view-quality-2of2': ''}, 'a suite with no store says ""');
 });
+
+// Gitar on #2726: a red whose store is unknown can compare with nothing, so it must not walk the whole window; and stores are read only for runs where a pending step passed.
+test('an unknown red store answers unknown at once, and a run with no pass of the step never has its stores read', async () => {
+  const runs = async () => [{id: 1, sha: '79e6c34', title: 'E2E · apply', url: 'https://x/1'}, {id: 2, sha: '4a79a6b', title: 'E2E · apply', url: 'https://x/2'}, {id: 9, sha: RED, title: 'E2E Mac + Linux · apply · main', url: 'https://x/9'}];
+  const reads = [], seen = [];
+  const blind = await verdictsFor({suite: 'apply', steps: [READ], redSha: RED, redRun: 9, io: io({runs, viewNames: async () => { seen.push('views'); return [VIEW]; }, storesOf: async id => { reads.push(id); return {[VIEW]: null}; }})});
+  assert.equal(blind[0].verdict, 'unknown');
+  assert.deepEqual(reads, [9], 'only the red\'s own stores were read');
+  assert.deepEqual(seen, [], 'no run of the window was opened');
+  const lazy = [];
+  await verdictsFor({suite: 'apply', steps: [READ], redSha: RED, redRun: 9, io: io({runs, viewNames: async () => [VIEW], stepsOf: async () => table(), storesOf: async id => { lazy.push(id); return {[VIEW]: 'standin'}; }})});
+  assert.deepEqual(lazy, [9], 'runs where nothing passed cost no store read');
+});

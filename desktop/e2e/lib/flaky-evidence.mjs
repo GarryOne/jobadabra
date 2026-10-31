@@ -35,30 +35,53 @@ export async function verdictsFor({suite, steps, redSha, redRun, redAt, io, wind
   const diffs = new Map();
   const pending = new Set(steps);
   const otherStore = Object.fromEntries(steps.map(step => [step, 0]));
-  const stores = new Map();
-  const storesOn = id => { if (!stores.has(id)) stores.set(id, Promise.resolve(io.storesOf(id, suite)).catch(() => ({}))); return stores.get(id); };
+  const storesOn = storeReader(io, suite);
   const redStore = io.storesOf ? soleStore(await storesOn(redRun)) : undefined;   // a red run holding several stores (a gate) does not say which one failed
-  const changedSince = async sha => {
-    if (!diffs.has(sha)) diffs.set(sha, await Promise.resolve(io.changedNames(sha, redSha)).catch(() => null));
-    return diffs.get(sha);
-  };
-  const compare = async (run, step) => {
-    const changed = await changedSince(run.sha);
-    const files = changed ? touched(changed, sets[step]) : null;
-    compared[step].push({green: {sha: run.sha, run: run.id, url: run.url}, files});
-    if (files?.length === 0 || compared[step].length >= maxGreens) pending.delete(step);
-  };
+  if (io.storesOf && redStore == null) return steps.map(step => ({step, redSha, verdict: 'unknown', compared: 0, uncomparable: 0, store: null, otherStore: 0}));   // nothing can be compared with an unknown store (Gitar on #2726: no 100-run scan for a sure "unknown")
+  const state = {suite, io, pending, redStore, storesOn, compared, otherStore, maxGreens, sets, redSha, diffs};
   for (const run of nearestFirst(await io.runs(window), redRun, redAt)) {
     if (!pending.size) break;
-    const {same, left} = await passesOf(run, {suite, io, pending, redStore, byName: io.storesOf ? await storesOn(run.id) : null});
-    for (const step of same) if (pending.has(step)) await compare(run, step);
-    for (const step of left) if (pending.has(step) && !same.has(step) && ++otherStore[step] >= maxGreens) pending.delete(step);
+    await walkRun(run, state);
   }
-  return steps.map(step => {
-    const verdict = judge(compared[step]);
-    // The evidence an owner issue quotes: how many files moved between the green and the red, and how many of them the step runs.
-    return {step, redSha, ...verdict, ...(io.storesOf ? {store: redStore ?? null, otherStore: otherStore[step]} : {}), ...(verdict.verdict === 'flaky' ? {movedFiles: diffs.get(verdict.green.sha)?.length ?? 0, stepFileCount: sets[step].files.length} : {})};
-  });
+  return steps.map(step => resultOf(step, {redSha, compared: compared[step], files: sets[step].files, diffs, withStores: Boolean(io.storesOf), redStore, otherStore: otherStore[step]}));
+}
+
+/** The names that changed between a green's commit and the red's, read once per commit; null when they cannot be read. */
+async function changedSince(sha, {diffs, io, redSha}) {
+  if (!diffs.has(sha)) diffs.set(sha, await Promise.resolve(io.changedNames(sha, redSha)).catch(() => null));
+  return diffs.get(sha);
+}
+
+/** Records one green of a step: the step's files that differ between it and the red (null when the two cannot be compared); a step with no difference, or enough greens, is done. */
+async function compareGreen(run, step, state) {
+  const changed = await changedSince(run.sha, state);
+  const files = changed ? touched(changed, state.sets[step]) : null;
+  state.compared[step].push({green: {sha: run.sha, run: run.id, url: run.url}, files});
+  if (files?.length === 0 || state.compared[step].length >= state.maxGreens) state.pending.delete(step);
+}
+
+/** One run of the window: compare its passes on the red's store; count the ones that passed only on another store (a step with enough of them is done). */
+async function walkRun(run, state) {
+  const {suite, io, pending, redStore, storesOn, otherStore, maxGreens} = state;
+  const {same, left} = await passesOf(run, {suite, io, pending, redStore, storesFor: io.storesOf ? () => storesOn(run.id) : null});
+  for (const step of same) if (pending.has(step)) await compareGreen(run, step, state);
+  for (const step of left) if (pending.has(step) && !same.has(step) && ++otherStore[step] >= maxGreens) pending.delete(step);
+}
+
+/** One step's verdict with its evidence: for flaky, how many files moved between the green and the red and how many of them the step runs (the numbers an owner issue quotes); with stores, the red's store and the greens left out for another one. */
+function resultOf(step, {redSha, compared, files, diffs, withStores, redStore, otherStore}) {
+  const verdict = judge(compared);
+  const moved = verdict.verdict === 'flaky' ? {movedFiles: diffs.get(verdict.green.sha)?.length ?? 0, stepFileCount: files.length} : {};
+  return {step, redSha, ...verdict, ...(withStores ? {store: redStore ?? null, otherStore} : {}), ...moved};
+}
+
+/** A run's stores ({artifact: store}) read once per run; a failed read is "no stores" (every store unknown). */
+function storeReader(io, suite) {
+  const stores = new Map();
+  return id => {
+    if (!stores.has(id)) stores.set(id, Promise.resolve(io.storesOf?.(id, suite)).catch(() => ({})));
+    return stores.get(id);
+  };
 }
 
 const passedIn = (table, step) => Boolean(table?.results?.some(result => result.name === step && result.status === 'passed'));
@@ -70,13 +93,17 @@ async function stepTables(run, suite, io) {
 }
 
 /** One run's passes of the pending steps: `same` passed on the red's store (or any store when none is looked at), `left` passed only on another known store (counted, never compared; an unknown store proves nothing). */
-async function passesOf(run, {suite, io, pending, redStore, byName}) {
+async function passesOf(run, {suite, io, pending, redStore, storesFor}) {
   const same = new Set(), left = new Set();
+  let byName = null;
   for (const {name, table} of await stepTables(run, suite, io)) {
+    const passed = [...pending].filter(item => passedIn(table, item));
+    if (!passed.length) continue;
+    if (storesFor && !byName) byName = await storesFor();   // the stores are read only for a run where a pending step passed (Gitar on #2726)
     const store = byName ? byName[name] : undefined;
-    for (const step of [...pending].filter(item => passedIn(table, item))) {
-      if (!byName || (redStore != null && store === redStore)) same.add(step);
-      else if (redStore != null && store != null) left.add(step);
+    for (const step of passed) {
+      if (!byName || store === redStore) same.add(step);
+      else if (store != null) left.add(step);
     }
   }
   return {same, left};

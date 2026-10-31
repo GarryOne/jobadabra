@@ -1,7 +1,7 @@
 // The day's $1 cap on CI's Workers AI (lib/ai-cap.mjs): over it a live Free AI ask is refused and named grey; under it, unreadable or not Free AI, nothing changes.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {CAP_NEURONS, capMessage, capReached, noteCapped, noteAiRefused, resetCap, takeCapped} from '../lib/ai-cap.mjs';
+import {CAP_NEURONS, capMessage, capReached, noteBrokerCapped, noteCapped, noteAiRefused, resetCap, takeCapped} from '../lib/ai-cap.mjs';
 import {createRunner} from '../lib/runner.mjs';
 import {askFree} from '../lib/review-free.mjs';
 import {startAiProxy} from '../lib/ai-proxy.mjs';
@@ -88,6 +88,22 @@ test('a step the cap refused is skipped with its cause, counted, and the suite g
   } finally { console.log = quiet; delete process.env.E2E_FULL; delete process.env.E2E_RUN_KIND; }
 });
 
+test("the owner's beta case: the broker refuses on its own-share budget inside a backbone suite, the step is skipped with that reason and the suite is green", async () => {
+  // Why (31 Oct 2026, owner via mac-07; beta 41135642422, failureschannels): AI credit used up is outside our code, so the suite is never red for it, and no grey annotation is needed since the job simply passes.
+  const reason = 'broker: budget:own-share 66.0% of 60% (scheduled)', quiet = console.log, lines = [];
+  console.log = line => lines.push(String(line));
+  process.env.E2E_SUITE = 'failureschannels';
+  try {
+    const runner = createRunner(() => null, {keepGoing: false});
+    await runner.run('asks the AI', async () => { noteBrokerCapped(reason); throw new Error('the AI said 503'); });
+    await runner.run('next', async () => {});
+    assert.deepEqual(runner.results.map(item => item.status), ['skipped', 'passed']);
+    assert.equal(runner.results[0].aiCapped, true);
+    assert.match(runner.results[0].note, /budget:own-share 66\.0% of 60% \(scheduled\)/);
+    assert.equal(runner.summary(), 0, 'a refused AI never makes the suite red');
+    assert.ok(lines.some(line => line.startsWith('::warning title=AI credit ran out::')), 'it is said as a warning, not an error');
+  } finally { console.log = quiet; delete process.env.E2E_SUITE; }
+});
 
 test('a provider refusal keeps its cause without claiming broker credit or switching providers', () => {
   const lines = [], log = console.log;

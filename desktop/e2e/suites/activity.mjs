@@ -13,6 +13,7 @@ import {LABEL, appReady, chooseMenu, closeRunPanel, noRowStaysRunning, openPanel
 export const offlineAi = true;
 export const realAi = false;
 export const aiAnswers = 'backbone';
+export const store = 'standin';
 export const minutes = 15;
 // What a step needs from an earlier one when E2E_STEPS picks it (lib/runner.mjs wantedWords): the relaunch steps read a weekly run, and the filter shows only with two runs.
 export const stepNeeds = {'without its message': ['Analyze my job search', 'Find jobs'], 'read only from Notion': ['Analyze my job search', 'Find jobs']};

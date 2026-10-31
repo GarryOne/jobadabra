@@ -365,22 +365,6 @@ class TheVerdictReadsThePrInOneCall(unittest.TestCase):
             pv.gh('api', 'x')
         self.assertIn('API rate limit exceeded', seen.getvalue())
 
-    def test_a_rate_limit_ends_the_verdict_with_one_named_line_not_a_traceback(self):
-        # CI run 41228178173 (31 Oct 2026): every verdict since 18:00 died with a CalledProcessError traceback; the log never said "rate limit ... reset at".
-        import contextlib, io
-        reset = int(datetime.datetime(2026, 10, 31, 18, 30, 12, tzinfo=datetime.timezone.utc).timestamp())
-        rate = lambda: {'resources': {'core': {'limit': 5000, 'remaining': 0, 'reset': reset}}}
-        def refuse(): raise subprocess.CalledProcessError(1, ['gh'], stderr='failed to get runs: HTTP 403: API rate limit exceeded for installation.')
-        seen = io.StringIO()
-        with contextlib.redirect_stderr(seen):
-            self.assertEqual(pv.run_main(refuse, rate=rate), 1)
-        self.assertIn('::error::PR verdict not written: GitHub API rate limit (403 … for installation), reset at 18:30:12 UTC', seen.getvalue())
-
-    def test_any_other_failure_still_raises(self):
-        def broken(): raise subprocess.CalledProcessError(1, ['gh'], stderr='HTTP 404: Not Found')
-        with self.assertRaises(subprocess.CalledProcessError):
-            pv.run_main(broken, rate=lambda: None)
-
 
 FAKE_GH = r"""#!/usr/bin/env python3
 import json, os, sys

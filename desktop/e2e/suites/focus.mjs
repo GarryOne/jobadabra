@@ -140,7 +140,7 @@ export async function runFocus(ctx, parts) {
     // The drawers' rows, when the account has any (what is open to fill depends on the store: desktop/test/question-entries.test.js holds each state), lead Suggestions in the
     // owner's order, the blocking cover letter first (28 Oct 2026), each with its own button.
     const lead = await drawers(), kinds = (await rowsIn('#focus-suggestions-list')).map(row => row.kind);
-    const RANK = ['linkedin', 'letter', 'details', 'learned'], BUTTON = {linkedin: 'Turn on LinkedIn', details: 'Fill your details', learned: 'Check what we learned'};
+    const RANK = ['linkedin', 'letter', 'details', 'learned', 'questions-error'], BUTTON = {linkedin: 'Turn on LinkedIn', details: 'Fill your details', learned: 'Check what we learned'};
     if (kinds.slice(0, lead.length).join() !== lead.map(row => row.kind).join() || lead.some((row, i) => i && RANK.indexOf(row.kind) < RANK.indexOf(lead[i - 1].kind))) {
       throw new Error(`the drawers' rows should lead Suggestions in the order Also search LinkedIn, cover letter, Fill your details, What we learned; the rows are: ${kinds.join(', ')}`);
     }

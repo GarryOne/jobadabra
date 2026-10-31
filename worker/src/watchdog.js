@@ -22,11 +22,14 @@ export function dueStarts(now = new Date(), {hours = 26, grace = GRACE_MIN, cron
     const date = new Date(at);
     for (const cron of crons) {
       if (!fires(cron, date)) continue;
-      // Why (31 Oct 2026, owner, Worker cron): ten-minute verdict repairs would churn the hourly missing-start issue; watch the longer schedules only.
-      for (const job of jobsFor(cron, date)) if (job.workflow !== 'pr-verdict.yml' && !latest.has(job.workflow)) latest.set(job.workflow, {workflow: job.workflow, cron, at: date.toISOString()});
+      // Why (31 Oct 2026, owner, Worker cron; a8, night burn-in): the ten-minute verdict repairs would churn the hourly missing-start issue, so only the longer schedules are watched; a night burn-in pass is a start of e2e.yml of its own, keyed apart, or it would replace the three-a-day start (01:47) in this check.
+      for (const job of jobsFor(cron, date)) {
+        const night = job.inputs?.night_pass || '', key = night ? `${job.workflow}#night` : job.workflow;
+        if (job.workflow !== 'pr-verdict.yml' && !latest.has(key)) latest.set(key, {workflow: job.workflow, cron, at: date.toISOString(), ...(night ? {night} : {})});
+      }
     }
   }
-  return [...latest.values()].sort((a, b) => a.workflow.localeCompare(b.workflow));
+  return [...latest.values()].sort((a, b) => a.workflow.localeCompare(b.workflow) || Boolean(a.night) - Boolean(b.night));
 }
 
 // A run is that start when it carries the on-time title, or was started by hand-or-API (workflow_dispatch) in the minutes after the slot.
@@ -34,7 +37,7 @@ export function startedAt(due, runs = []) {
   const from = Date.parse(due.at), to = from + WINDOW_MIN * 60000;
   return runs.find(run => {
     const created = Date.parse(run.createdAt);
-    return created >= from - 120000 && created <= to && (run.displayTitle === TITLES[due.workflow] || run.event === 'workflow_dispatch');
+    return created >= from - 120000 && created <= to && (run.displayTitle === TITLES[due.workflow] || run.displayTitle?.startsWith(`Night burn-in ${due.night || '-'} `) || run.event === 'workflow_dispatch');
   }) || null;
 }
 
@@ -42,10 +45,11 @@ export function startedAt(due, runs = []) {
 export const missingStarts = (due, runsOf) => due.filter(item => !startedAt(item, runsOf[item.workflow] || []));
 
 const clock = iso => `${iso.slice(0, 10)} ${iso.slice(11, 16)} UTC`;
-export const keyOf = missing => missing.map(item => `${item.workflow}@${item.at.slice(0, 16)}`).join(',');
+/** The text the open issue is keyed by: each missing start as workflow[#night n/5]@time, so an unchanged set is not commented again. */
+export const keyOf = missing => missing.map(item => `${item.workflow}${item.night ? `#night${item.night}` : ''}@${item.at.slice(0, 16)}`).join(',');
 export function issueBody(missing, {checked, runUrl = ''} = {}) {
   return [`**The Worker's cron did not start ${missing.length === 1 ? 'this run' : `these ${missing.length} runs`} on time** (checked ${clock(checked)}${runUrl ? `, [watchdog run](${runUrl})` : ''}):`, '',
-    '| Workflow | Due | Cron |', '|---|---|---|', ...missing.map(item => `| \`${item.workflow}\` | ${clock(item.at)} | \`${item.cron}\` |`), '',
+    '| Workflow | Due | Cron |', '|---|---|---|', ...missing.map(item => `| \`${item.workflow}\`${item.night ? ` night pass ${item.night}` : ''} | ${clock(item.at)} | \`${item.cron}\` |`), '',
     "GitHub's own schedule still starts them, late or not at all (it skipped 4 of 6 stats runs on 5-6 Oct). What to check:",
     '- the Worker\'s secrets: `cd worker && npx wrangler secret list` (GITHUB_TOKEN, TELEGRAM_BOT_TOKEN, OWNER_CHAT_ID; `npm run deploy` checks them)',
     "- a refused start is commented here by the Worker itself, with GitHub's answer",

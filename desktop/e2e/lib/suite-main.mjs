@@ -146,7 +146,7 @@ export async function runSuite(name, report = null) {
       if (ctx.runner.summary()) code = 1;
       report?.decided?.(code);   // the exit code is known: lib/report.mjs stops a Playwright runner that stays open long after this (6 Oct 2026: wander hung 10 min)
       // The steps and the kept traces as data, for the owner's /admin/e2e page (site/src/e2e-report.js reads it out of the e2e-view-<suite> artifact).
-      try { fs.writeFileSync(path.join(ctx.ARTIFACTS, 'steps.json'), JSON.stringify({v: 1, suite: name, results: ctx.runner.results, traces: traceFiles()}, null, 1)); } catch (error) { console.log(`  (steps.json not written: ${error.message})`); }
+      try { fs.writeFileSync(path.join(ctx.ARTIFACTS, 'steps.json'), JSON.stringify({v: 1, suite: name, store: ctx.store || '', os: process.platform, results: ctx.runner.results, traces: traceFiles()}, null, 1)); } catch (error) { console.log(`  (steps.json not written: ${error.message})`); }
       // The HTML report: the trace (the report opens it in Playwright's viewer) and the app's logs, on the suite's test.
       if (report) {
         for (const file of traceFiles()) await report.attach('trace', {path: path.join(ctx.ARTIFACTS, file), contentType: 'application/zip'}).catch(() => {});

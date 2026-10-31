@@ -15,6 +15,7 @@ test('the due starts are the latest of each workflow, by the Worker\'s own crons
   assert.deepEqual(due.map(item => [item.workflow, item.at]), [
     ['desktop.yml', '2026-10-06T02:00:00.000Z'],   // 04:00 Zurich in summer; the 03:00 UTC firing starts nothing
     ['e2e.yml', '2026-10-06T01:47:00.000Z'],
+    ['e2e.yml', '2026-10-06T05:30:00.000Z'],   // the night burn-in's 5th pass is a start of its own: it does not replace the three-a-day one
     ['self-heal-stats.yml', '2026-10-06T09:40:00.000Z'],
   ]);
   assert.equal(dueStarts(at('2026-10-06T12:50:00Z')).find(item => item.workflow === 'self-heal-stats.yml').at, '2026-10-06T09:40:00.000Z', 'the 12:40 slot is younger than the grace: not judged yet');
@@ -29,9 +30,10 @@ test('a start is its run when titled so, or dispatched in the minutes after the 
   assert.equal(startedAt(due, [{createdAt: '2026-10-06T10:05:00Z', event: 'workflow_dispatch', displayTitle: 'CI · Self-heal stats'}]), null, 'too late to be the slot\'s');
   const runsOf = {'desktop.yml': [], 'e2e.yml': [{createdAt: '2026-10-06T10:17:10Z', event: 'workflow_run', displayTitle: 'Beta E2E tests x'}], 'self-heal-stats.yml': []};
   const missing = missingStarts(dueStarts(at('2026-10-06T12:05:00Z')), runsOf);
-  assert.deepEqual(missing.map(item => item.workflow), ['desktop.yml', 'e2e.yml', 'self-heal-stats.yml']);
+  assert.deepEqual(missing.map(item => item.workflow), ['desktop.yml', 'e2e.yml', 'e2e.yml', 'self-heal-stats.yml']);
   const body = issueBody(missing, {checked: '2026-10-06T12:05:00Z', runUrl: 'https://x/runs/1'});
-  assert.match(body, /did not start these 3 runs on time/);
+  assert.match(body, /did not start these 4 runs on time/);
+  assert.match(body, /\| `e2e\.yml` night pass 5\/5 \| 2026-10-06 05:30 UTC \| `\*\/10 \* \* \* \*` \|/);
   assert.match(body, /\| `e2e\.yml` \| 2026-10-06 01:47 UTC \| `47 21,23,1 \* \* \*` \|/);
   assert.match(body, /npx wrangler secret list/);
   assert.ok(body.includes(`<!-- watchdog-missing: ${keyOf(missing)} -->`), 'the body names what it reported, so an unchanged state is not commented again');

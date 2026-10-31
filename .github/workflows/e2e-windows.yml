@@ -7,7 +7,7 @@ name: CI · End-to-end on Windows
 # suites and the same AI review (plan-windows.mjs). A commit Windows already tested is not run again. On a release gate's build it is the Windows beta gate (approve-windows).
 # 7 Oct 2026: the release run (desktop.yml) calls it as its "E2E · Windows" job, after "E2E · Mac + Linux", with that gate's suites, on the fixed path as the Mac gate
 # (it used to take the Mac run's id as its seed: a gate walked a different path on Windows than on the Mac).
-run-name: ${{ inputs.pr_steps && format('E2E for PR · windows {0} · {1}', inputs.suites, github.ref_name) || format('E2E Windows · {0} · {1}', inputs.suites || inputs.mac_run && 'the Mac run''s suites' || 'all suites', inputs.sha || github.ref_name) }}   # which suites, at a glance (owner, 7 Oct 2026)   # a PR's check (pr-suites.yml): the verdict counts runs titled "E2E for PR · "
+run-name: ${{ inputs.pr_steps && format('E2E for PR · windows {0} · {1}', inputs.suites, github.ref_name) || inputs.night && format('Night burn-in Windows {0} · {1}', inputs.night, inputs.sha) || format('E2E Windows · {0} · {1}', inputs.suites || inputs.mac_run && 'the Mac run''s suites' || 'all suites', inputs.sha || github.ref_name) }}   # which suites, at a glance (owner, 7 Oct 2026)   # a PR's check (pr-suites.yml): the verdict counts runs titled "E2E for PR · "
 on:
   workflow_dispatch:
     inputs:
@@ -39,6 +39,9 @@ on:
         required: false
       pr_steps:
         description: "Set by pr-suites.yml: a PR's short Windows check, the steps to run as JSON (SQLite, no lock; lib/pr-suites.mjs WINDOWS_SMOKE)"
+        required: false
+      night:
+        description: 'Set by e2e.yml on a night burn-in pass (n/5): titled apart so the commit-already-tested skip (plan-windows.mjs) does not drop passes 2 to 5 of the same commit'
         required: false
   # The release run (desktop.yml) calls this as its "E2E · Windows" job: the Windows beta gate for the release it built.
   workflow_call:
@@ -137,6 +140,7 @@ jobs:
           REPO: ${{ github.repository }}
           ONLY: ${{ inputs.suites }}
           MAC_RUN: ${{ inputs.mac_run }}
+          NIGHT: ${{ inputs.night }}   # a night pass tests a commit again on purpose: no "already tested" skip (plan-windows.mjs)
           SHA: ${{ inputs.sha }}
           REVIEW: ${{ inputs.review }}
           GATE_TAG: ${{ inputs.tag }}   # the release run's Windows gate: planned as the Mac + Linux gate (plan-run.mjs), not after it

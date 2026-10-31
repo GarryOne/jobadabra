@@ -4,6 +4,7 @@
 //
 //   desktop.yml  -nightly: true    the nightly build, at 04:00 Zurich (the build runs only when the app changed since the last release)
 //   e2e.yml      -scheduled: true  the three-a-day journey runs, planned exactly as the schedule event plans them
+//   e2e.yml      -night_pass: n/5  the night burn-in: five full runs at fixed UTC times (NIGHT_SLOTS below), each on the commit of pass 1
 //   self-heal-stats.yml            the numbers on the owner's /self-heal page, every 3 hours (GitHub's schedule left them 5-6 hours old on 5 Oct 2026)
 //   pr-verdict.yml                repairs pending PR verdicts every 10 minutes; shares the stats trigger to stay within the account limit
 //   (site-replays.yml is no longer started here since 17 Oct 2026: replays are for debugging, by hand)
@@ -11,6 +12,14 @@
 // (5 Oct 2026), and a 4th trigger for this Worker was refused (14 Oct 2026): the hour that is 02:00 in Zurich starts the replay gate, the one that is 04:00 the nightly.
 // Why (31 Oct 2026, owner, "Worker cron"): GitHub never started #2648's sweep on schedule; reuse the stats trigger, keeping its UTC slots below.
 export const CRONS = ['0 0,1,2,3 * * *', '47 21,23,1 * * *', '*/10 * * * *'];
+
+// The night burn-in's five passes (UTC, HH:MM), spread over the night, never back to back. Each is the beta's own layout on the commit of pass 1 (e2e.yml input night_pass, desktop/e2e/lib/night-pass.mjs).
+// Why (31 Oct 2026, owner: "Spread the 5 burn-in passes over the night at different hours, not back to back (keeps PR CI free by day, and catches time-of-day flakes like calendar's)"; a8 with the coordinator):
+// they ride the ten-minute trigger, as the stats start does, because a 4th trigger for this Worker cannot be registered (the account's 5 are used; see CRONS above).
+export const NIGHT_SLOTS = ['21:00', '23:30', '01:30', '03:30', '05:30'];
+const hhmm = date => `${String(date.getUTCHours()).padStart(2, '0')}:${String(date.getUTCMinutes()).padStart(2, '0')}`;
+/** The night pass due at this moment as "n/5", or '' when none. */
+export const nightPassAt = date => (NIGHT_SLOTS.includes(hhmm(date)) ? `${NIGHT_SLOTS.indexOf(hhmm(date)) + 1}/${NIGHT_SLOTS.length}` : '');
 
 // The hour in Zurich (0-23) at this moment: 04:00 all year, whether UTC+1 or UTC+2.
 export const zurichHour = date => Number(new Intl.DateTimeFormat('en-GB', {timeZone: 'Europe/Zurich', hour: '2-digit', hourCycle: 'h23'}).format(date));
@@ -24,6 +33,8 @@ export function jobsFor(cron, now = new Date()) {
   if (cron === '*/10 * * * *') {
     const jobs = [{workflow: 'pr-verdict.yml'}];
     if (now.getUTCMinutes() === 40 && now.getUTCHours() % 3 === 0) jobs.push({workflow: 'self-heal-stats.yml', inputs: {scheduled: 'true'}});
+    const pass = nightPassAt(now);
+    if (pass) jobs.push({workflow: 'e2e.yml', inputs: {night_pass: pass}});
     return jobs;
   }
   if (cron === '40 */3 * * *') return [{workflow: 'self-heal-stats.yml', inputs: {scheduled: 'true'}}];

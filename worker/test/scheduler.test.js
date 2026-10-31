@@ -1,7 +1,7 @@
 // The Worker's cron triggers start the nightly build and the three-a-day e2e runs on time (src/scheduler.js).
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {CRONS, jobsFor, runScheduled, zurichHour} from '../src/scheduler.js';
+import {CRONS, jobsFor, NIGHT_SLOTS, nightPassAt, runScheduled, zurichHour} from '../src/scheduler.js';
 
 const at = iso => new Date(iso);
 
@@ -35,6 +35,21 @@ test('the ten-minute cron starts the PR verdict sweep on every tick without disp
     const jobs = jobsFor('*/10 * * * *', at(`2026-10-31T00:${minute}:00Z`));
     assert.deepEqual(jobs.filter(job => job.workflow === 'pr-verdict.yml'), [{workflow: 'pr-verdict.yml'}], minute);
   }
+});
+
+test('the night burn-in starts five full e2e passes at five different UTC times, on the ten-minute trigger, and nothing at any other tick', () => {
+  assert.deepEqual(NIGHT_SLOTS, ['21:00', '23:30', '01:30', '03:30', '05:30']);
+  const day = new Date(Date.UTC(2026, 9, 31));
+  const started = [];
+  for (let minutes = 0; minutes < 24 * 60; minutes += 10) {
+    const now = new Date(day.getTime() + minutes * 60000);
+    const night = jobsFor('*/10 * * * *', now).filter(job => job.workflow === 'e2e.yml');
+    if (night.length) started.push([now.toISOString().slice(11, 16), night]);
+  }
+  assert.deepEqual(started.map(([time, jobs]) => [time, jobs[0].inputs.night_pass, jobs.length]), [['01:30', '3/5', 1], ['03:30', '4/5', 1], ['05:30', '5/5', 1], ['21:00', '1/5', 1], ['23:30', '2/5', 1]]);
+  assert.deepEqual(jobsFor('*/10 * * * *', new Date('2026-10-31T21:00:00Z')), [{workflow: 'pr-verdict.yml'}, {workflow: 'e2e.yml', inputs: {night_pass: '1/5'}}], 'the verdict sweep keeps its tick');
+  assert.equal(nightPassAt(new Date('2026-10-31T21:10:00Z')), '', 'a tick next to a slot is not a pass');
+  assert.deepEqual(CRONS, ['0 0,1,2,3 * * *', '47 21,23,1 * * *', '*/10 * * * *'], 'no 4th trigger');
 });
 
 test('sharing the ten-minute cron preserves exactly eight stats starts per UTC day', () => {

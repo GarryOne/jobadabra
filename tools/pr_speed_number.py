@@ -13,7 +13,7 @@ from functools import lru_cache
 
 PR_TITLE = 'E2E for PR · '
 # Mirrors e2e-step-timings.mjs comparable; the offline parity test executes both filters.
-EXCLUDED = re.compile(r'^(Mutant|RC soak|Stable canary|Beta E2E tests|Gate|Bisect|E2E check · outside world|E2E for PR|E2E after merge) ')
+EXCLUDED = re.compile(r'^(Mutant|RC soak|Stable canary|Beta E2E tests|Gate|Night burn-in|Bisect|E2E check · outside world|E2E for PR|E2E after merge) ')
 # Whole-step elapsed time, including fixture/assertion overhead, rather than an invented inner-path timer.
 PATHS = (
     # Why (30 Oct 2026, a8 review): this step delays every AI call by 8 s; it cannot measure the user's Find jobs promise.

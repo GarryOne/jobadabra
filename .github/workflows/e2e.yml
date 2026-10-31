@@ -13,7 +13,7 @@ name: CI · End-to-end on Mac + Linux
 #     The AI review of screenshots (the costly part) runs when the UI or its tests changed, a finding waits, or the run is exploring. A push to main runs NO e2e here; after each merge main-steps.yml starts only the steps it touched ("E2E after merge", owner 26 Oct 2026); by hand: gh workflow run e2e.yml -f suite=jobs,activity.
 # All of it is decided in desktop/e2e/plan-run.mjs (tested). The test key's AI credit is shared and small: see desktop/e2e/README.md.
 # Secrets (Settings → Secrets → Actions): E2E_ANTHROPIC_KEY, and one E2E_NOTION_TOKEN_<SUITE> per suite (a connection that sees only that suite's test page).
-run-name: ${{ inputs.bisect && format('Bisect {0} {1}', inputs.suite, inputs.target_ref) || inputs.scheduled && 'E2E check · on time (Worker cron)' || inputs.mutant && format('Mutant {0}', inputs.mutant) || inputs.canary && format('Stable canary {0}', inputs.target_ref) || inputs.soak && format('RC soak {0}', inputs.target_ref) || inputs.gate_tag && format('Beta E2E tests {0}', inputs.gate_tag) || github.event.schedule == '17 3 * * *' && 'E2E check · outside world (real Notion)' || github.event_name == 'schedule' && 'E2E check · GitHub schedule (backup)' || inputs.after_merge && format('E2E after merge · {0} · {1}', inputs.after_merge, inputs.pr_suites) || inputs.pr_suites && format('E2E for PR · {0} · {1}', inputs.pr_suites, github.ref_name) || format('E2E Mac + Linux · {0} · {1}', inputs.suite || 'all suites', github.ref_name) }}   # a run by hand says which suites (owner, 7 Oct 2026); a PR's run says its suites (it read "all suites" until 26 Oct 2026), and pr-verdict.yml finds it by "E2E for PR · ". Both name the release they test: ui-findings.yml ignores 'Stable canary'; canary_promote.py counts 'RC soak <tag>' for gate 4. Called by the release run (desktop.yml), this run-name is not used: the jobs show as "E2E · Mac + Linux / <job>"
+run-name: ${{ inputs.bisect && format('Bisect {0} {1}', inputs.suite, inputs.target_ref) || inputs.scheduled && 'E2E check · on time (Worker cron)' || inputs.mutant && format('Mutant {0}', inputs.mutant) || inputs.canary && format('Stable canary {0}', inputs.target_ref) || inputs.soak && format('RC soak {0}', inputs.target_ref) || inputs.night_pass && format('Night burn-in {0} · {1}', inputs.night_pass, github.sha) || inputs.gate_tag && format('Beta E2E tests {0}', inputs.gate_tag) || github.event.schedule == '17 3 * * *' && 'E2E check · outside world (real Notion)' || github.event_name == 'schedule' && 'E2E check · GitHub schedule (backup)' || inputs.after_merge && format('E2E after merge · {0} · {1}', inputs.after_merge, inputs.pr_suites) || inputs.pr_suites && format('E2E for PR · {0} · {1}', inputs.pr_suites, github.ref_name) || format('E2E Mac + Linux · {0} · {1}', inputs.suite || 'all suites', github.ref_name) }}   # a run by hand says which suites (owner, 7 Oct 2026); a PR's run says its suites (it read "all suites" until 26 Oct 2026), and pr-verdict.yml finds it by "E2E for PR · ". Both name the release they test: ui-findings.yml ignores 'Stable canary'; canary_promote.py counts 'RC soak <tag>' for gate 4. Called by the release run (desktop.yml), this run-name is not used: the jobs show as "E2E · Mac + Linux / <job>"
 
 on:
   workflow_dispatch:
@@ -46,6 +46,10 @@ on:
         description: 'The fixed path (E2E_SEED=0), as the release gate, instead of a new seeded one: two runs then ask the same requests (replay, cost checks)'
         type: boolean
         default: false
+      night_pass:
+        description: 'Started by the Worker (worker/src/scheduler.js NIGHT_SLOTS): pass n/5 of the night burn-in, e.g. 3/5. The beta''s own layout (every gate suite, both stores, Windows following) on the commit of pass 1, fixed path, no paid AI (desktop/e2e/lib/night-pass.mjs)'
+        type: string
+        default: ''
       scheduled:
         description: 'Started on time by the Worker (worker/src/scheduler.js) in place of the three-a-day schedule: planned exactly as a schedule event, no paid AI judge'
         type: boolean
@@ -196,6 +200,7 @@ jobs:
           PR_STEPS: ${{ inputs.pr_steps }}   # its "(stores)" and "(why)": the store each suite runs on, and the reasons printed below (desktop/e2e/pr-suites.mjs)
           TARGET_REF: ${{ inputs.target_ref || inputs.gate_tag }}
           GATE_TAG: ${{ inputs.gate_tag }}
+          NIGHT_PASS: ${{ inputs.night_pass }}
           OVER: ${{ steps.spend.outputs.over }}
           OUTSIDE: ${{ github.event.schedule == '17 3 * * *' && '1' || '' }}   # the daily outside-world run plans only the `outside` suites (lib/plan.mjs)
         shell: bash -eo pipefail {0}   # a program piped into tee/cat keeps its exit code (tests/test_workflow_pipefail.py)
@@ -318,13 +323,13 @@ jobs:
       CI_AI_PROVIDER: ${{ vars.CI_AI_PROVIDER }}   # the global AI switch for the judges: codex | claude | free, empty = free (lib/ai-provider.mjs; owner, 28 Oct 2026); E2E_AI_PROVIDER overrides it for one run
       E2E_AI_PROVIDER: ${{ inputs.ai_provider }}   # one run's choice from the dispatch input (empty = CI_AI_PROVIDER decides)
       JOB_PILOTTO_E2E_EXPECTS_FAILURES: ${{ inputs.mutant && '1' || '' }}   # a mutant run breaks the app on purpose: its crash reports are tagged expected, so the Sentry loop ignores them
-      E2E_SEED: ${{ (inputs.fixed || inputs.canary || inputs.soak || inputs.gate_tag || inputs.mutant) && '0' || github.run_id }}   # a different path in every scheduled, top-up or manual run; the release gate, the soak top-ups (their three green runs must be comparable) and the stable canary walk the fixed one (lib/variation.mjs)
+      E2E_SEED: ${{ (inputs.fixed || inputs.canary || inputs.soak || inputs.gate_tag || inputs.night_pass || inputs.mutant) && '0' || github.run_id }}   # a different path in every scheduled, top-up or manual run; the release gate, the soak top-ups (their three green runs must be comparable) and the stable canary walk the fixed one (lib/variation.mjs)
       # Which app lines the suite runs (gate G1b, owner's yes 26 Oct 2026; lib/coverage.mjs): main checks, a PR's suites and runs by hand of the newest code, never a release,
       # mutant or bisect (an old commit, timing that matters). Only main's scheduled runs feed the map a PR's plan reads (the coverage-map job below); a PR's files are kept
       # 7 days to compare with main's (pr-suites.mjs --map) and to measure what recording costs.
-      E2E_COVERAGE: ${{ !inputs.gate_tag && !inputs.release_run && !inputs.mutant && !inputs.target_ref && !inputs.canary && !inputs.soak && !inputs.bisect && '1' || '' }}
+      E2E_COVERAGE: ${{ !inputs.gate_tag && !inputs.night_pass && !inputs.release_run && !inputs.mutant && !inputs.target_ref && !inputs.canary && !inputs.soak && !inputs.bisect && '1' || '' }}
       E2E_COVERAGE_SHA: ${{ needs.plan.outputs.ref }}   # the commit the suite ran: a PR's diff is taken from it
-      E2E_FULL: ${{ needs.plan.outputs.over != 'true' && (inputs.gate_tag || (github.event_name == 'workflow_dispatch' && !inputs.canary && !inputs.soak && !inputs.mutant && !inputs.scheduled && !inputs.bisect)) && '1' || '' }}   # the paid AI judge steps: the nightly gate and manual runs only
+      E2E_FULL: ${{ needs.plan.outputs.over != 'true' && (inputs.gate_tag || (github.event_name == 'workflow_dispatch' && !inputs.canary && !inputs.soak && !inputs.mutant && !inputs.scheduled && !inputs.night_pass && !inputs.bisect)) && '1' || '' }}   # the paid AI judge steps: the nightly gate and manual runs only
     permissions:
       contents: write   # tools/e2e-lock.sh creates the lock ref
       issues: read      # the screenshot review reads its by-design lessons from the closed issues (lib/review-lessons.mjs)
@@ -984,7 +989,7 @@ jobs:
     # the next run's Mac + Linux suites waited. Main's checks start Windows once a UTC day (gate G4, owner's yes 26 Oct 2026): the Worker's on-time runs
     # (inputs.scheduled) are main's checks since 5 Oct, and this job looked only for GitHub's backup schedule, so from 17 Oct Windows ran only inside betas
     # and beta 2 (25 Oct) met its Windows reds (cardstates, foryou) there first.
-    if: always() && needs.plan.outputs.count != '0' && !inputs.release_run && !inputs.canary && !inputs.soak && !inputs.mutant && !inputs.bisect && (github.event_name == 'schedule' || inputs.scheduled || inputs.gate_tag)
+    if: always() && needs.plan.outputs.count != '0' && !inputs.release_run && !inputs.canary && !inputs.soak && !inputs.mutant && !inputs.bisect && (github.event_name == 'schedule' || inputs.scheduled || inputs.gate_tag || inputs.night_pass)
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
@@ -996,15 +1001,18 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           FULL: ''   # no paid AI judge on Windows: the Mac run judged the same screens (owner, 7 Oct 2026: "$30 a week")
           GATE: ${{ inputs.gate_tag }}
+          NIGHT: ${{ inputs.night_pass }}   # every night pass is followed by Windows (the beta's layout), not once a day
         run: |
-          # A main check starts Windows once a UTC day: the first one that tested something. A gate always starts it.
-          if [ -z "$GATE" ]; then
+          # A main check starts Windows once a UTC day: the first one that tested something. A gate or a night pass always starts it.
+          if [ -z "$GATE" ] && [ -z "$NIGHT" ]; then
             today=$(date -u +%Y-%m-%d)
             ran=$(gh run list --repo "${{ github.repository }}" --workflow e2e-windows.yml --branch main --limit 30 --json createdAt,displayTitle \
               --jq "[.[] | select(.createdAt >= \"${today}T00:00:00Z\" and (.displayTitle | startswith(\"E2E Windows · the Mac run's suites · \")))] | length" || echo 0)
             if [ "${ran:-0}" -gt 0 ]; then echo "Windows already followed a main check today ($today): the next one starts tomorrow."; exit 0; fi
           fi
-          gh workflow run e2e-windows.yml --repo "${{ github.repository }}" --ref main \
+          # A night pass is titled apart (so Windows does not skip a commit it already tested) and walks the fixed path, as the Mac pass does.
+          extra=(); if [ -n "$NIGHT" ]; then extra=(-f "night=$NIGHT" -f fixed=true); fi
+          gh workflow run e2e-windows.yml --repo "${{ github.repository }}" --ref main "${extra[@]}" \
             -f mac_run=${{ github.run_id }} -f sha=${{ needs.plan.outputs.ref }} -f review=${{ needs.plan.outputs.review }} -f full="$FULL" -f tag="${{ needs.plan.outputs.tag }}"
           echo "Windows run started for commit ${{ needs.plan.outputs.ref }} (it skips a commit Windows already tested)."
 

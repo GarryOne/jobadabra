@@ -88,7 +88,7 @@ async function main() {
   const carry = (from, to) => { for (const name of SIGN_INS) if (fs.existsSync(path.join(from, 'Default', name))) fs.cpSync(path.join(from, 'Default', name), path.join(to, 'Default', name), {recursive: true}); };
   fs.mkdirSync(path.join(profile, 'Default'), {recursive: true});
   carry(path.join(LIVE, 'browser'), profile);
-  const browser = await launchBrowser({port, spool: shim.spool, extensionDir, real: true, profile, debugPort: browserCdp});   // kept: site sign-ins survive
+  const browser = await launchBrowser({port, spool: shim.spool, extensionDir, real: true, profile, debugPort: browserCdp, installs: true});   // sign-ins carried into a NEW folder: a fresh install each start, so its settings page opens and is waited for
   // A page's own alert/confirm/"leave this page?" dialog: Playwright answers it for us, and when the page has moved on by then its answer fails with
   // "session closed" as an UNHANDLED error that ended this launcher and, with it, the twin app (9 Oct 2026, Migros, a click on the panel's Fill again).
   // The dialog is dismissed here, a failure is ignored, and nothing a stray rejection raises stops the twin.

@@ -83,8 +83,9 @@ export const browserChannel = (env = process.env) => (env.E2E_BROWSER === 'msedg
 export {visitGuard};   // moved to lib/spool-tabs.mjs with the navigation it guards (test/extension-browser.test.mjs imports it from here)
 // `real`: a live-test twin's window (e2e/twin.mjs): real sites (no fixture host mapping), always visible.
 // `profile`: a browser profile kept between runs (the twin's: site sign-ins and cookies survive); else a fresh temp one.
+// `installs`: this start is a fresh install of the extension (it opens its settings page). A fresh temp profile is; a profile kept between runs is not, unless the caller says so (the twin copies sign-ins into a NEW folder).
 // `debugPort`: the browser's own debugging port (the twin's: its tabs can be seen and driven from outside, like its app window).
-export async function launchBrowser({port, spool, extensionDir, real = false, profile: kept = '', debugPort = 0}) {
+export async function launchBrowser({port, spool, extensionDir, real = false, profile: kept = '', debugPort = 0, installs = !kept}) {
   if (kept) fs.mkdirSync(kept, {recursive: true});
   const profile = kept || fs.mkdtempSync(path.join(os.tmpdir(), 'jp-e2e-chromium-'));
   launchGuard.check();   // a browser that did not start earlier in this process: stop now, never wait again per journey (lib/launch-guard.mjs)
@@ -97,9 +98,9 @@ export async function launchBrowser({port, spool, extensionDir, real = false, pr
   const requested = new Set();   // every host name the browser asked for (a test proves no employer site was contacted)
   context.on('request', request => { try { const url = new URL(request.url()); if (/^https?:$/.test(url.protocol)) requested.add(url.hostname); } catch { /* not a URL */ } });
   // Tabs (lib/spool-tabs.mjs): a fresh install opens the extension's settings page (background.js onInstalled); it is waited for and closed BEFORE the first form opens, and every address the app
-  // opens gets its own new tab. Kept profiles (the twin's) install nothing and are not waited for. Why (a8, 1 Nov 2026, beta 41250138244): the form used to reuse "a blank tab" the install could take.
+  // opens gets its own new tab. A start that installs nothing (a profile kept between runs) is not waited for. Why (a8, 1 Nov 2026, beta 41250138244): the form used to reuse "a blank tab" the install could take.
   let tabs;
-  try { tabs = await startTabs({context, spool, fresh: !kept, real, guardMs: LAUNCH_TIMEOUT_MS}); }
+  try { tabs = await startTabs({context, spool, fresh: installs, real, guardMs: LAUNCH_TIMEOUT_MS}); }
   catch (error) {
     launchGuard.failed(error);
     await context.close().catch(closeError => console.error(`closing the browser after a failed start: ${closeError.message}`));

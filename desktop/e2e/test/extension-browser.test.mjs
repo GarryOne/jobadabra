@@ -137,6 +137,8 @@ test('beta 41250138244\'s order: the form is asked for at once, the install take
     await installed;
     await tabs.drain();   // a later poll
     assert.ok(livePages(context).includes(FORM), `no tab shows the form at the end; tabs: ${livePages(context).join(', ')}`);
+    assert.notEqual(tabs.pages[FORM], starter, 'the form reused the tab the install navigated');
+    assert.equal(starter.gotos.length, 0, 'the harness navigated the install\'s tab');
   } finally { remove(); }
 });
 

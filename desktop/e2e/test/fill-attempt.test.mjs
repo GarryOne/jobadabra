@@ -37,7 +37,7 @@ test('exhaustion keeps the last rejected read, URL and tab count without reading
   assert.equal(result.tab, tab);
   assert.equal(result.tabs, 2);
   assert.equal(result.url, tab.url());
-  assert.equal(fillNote(result.state, result.ms / 1000), 'state: {"state":"unreadable","raw":"read-3"}');
+  assert.equal(fillNote(result.state, result.ms / 1000), 'the fill did not finish within 0.75 s (last seen: {"state":"unreadable","raw":"read-3"})');
   assert.equal(reads, 3);
 });
 
@@ -60,7 +60,7 @@ test('a running fill at exhaustion is classified as timing by G5', async () => {
     readState: async () => ({state: 'running'})});
   const message = `the extension never finished filling Engineer (${fillNote(result.state, result.ms / 1000)})`;
   assert.equal(result.ok, false);
-  assert.match(message, /did not finish within 1 s \(still running\)/);
+  assert.match(message, /did not finish within 1 s \(last seen: {"state":"running"}\)/);
   assert.match(flakyProof(message).why, /^timing:/);
 });
 
@@ -93,7 +93,7 @@ function applyHarness({spooled = true, reloadOwn = false} = {}) {
 
 test('Apply ignores the global spool tail and reports its rejected read even if the dump sees done', async () => {
   const h = applyHarness();
-  await assert.rejects(h.apply(), /never finished filling Engineer \(the fill did not finish within 90 s \(still running\), read on https:\/\/example.test\/apply#jobpilotto-fill=ours, 2 tab\(s\)\)/);
+  await assert.rejects(h.apply(), /never finished filling Engineer \(the fill did not finish within 90 s \(last seen: {"state":"running","read":3}\), read on https:\/\/example.test\/apply#jobpilotto-fill=ours, 2 tab\(s\)\)/);
   assert.equal(h.reads(), 3, 'no fresh state read while formatting the failure');
   assert.equal(h.dumps(), 1);
   assert.equal(h.listeners.size, 0, 'listeners leave with the attempt');

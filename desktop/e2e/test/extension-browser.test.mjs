@@ -1,7 +1,7 @@
 // E2E_BROWSER=msedge runs the extension in Edge; anything else keeps Playwright's Chromium.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {browserChannel, formTab} from '../lib/extension.mjs';
+import {browserChannel, fillNote, formTab} from '../lib/extension.mjs';
 
 test('the apply suite uses Edge only when asked', () => {
   assert.deepEqual(browserChannel({E2E_BROWSER: 'msedge'}), {channel: 'msedge'});
@@ -58,4 +58,20 @@ test('a fill state that cannot be read says so and what it saw, never a bare nul
     const gone = await fillState({evaluate: async () => { throw new Error('page.evaluate: Target page, context or browser has been closed\n at ...'); }, url: () => 'https://e2e.wd3.myworkdayjobs.com/x#jobpilotto-fill=1', isClosed: () => true});
     assert.deepEqual(gone, {state: 'unreadable', error: 'page.evaluate: Target page, context or browser has been closed', at: 'https://e2e.wd3.myworkdayjobs.com/x', closed: true}, 'a read that threw');
   } finally { delete globalThis.document; }
+});
+
+test('fillNote reports a cap for missing or unfinished states, and preserves finished values', () => {
+  for (const state of [null, {state: 'running'}, {state: 'unreadable', raw: 'card-id'}, {state: 'unreadable', closed: false, error: 'navigation replaced context'}, {state: 'pending'}]) {
+    assert.equal(fillNote(state, 90), `the fill did not finish within 90 s (last seen: ${JSON.stringify(state)})`);
+  }
+  for (const name of ['done', 'error', 'stopped', 'no-form', 'account']) {
+    const state = {state: name, error: 'reported value'};
+    assert.equal(fillNote(state, 90), `state: ${JSON.stringify(state)}`);
+    if (['no-form', 'account'].includes(name)) assert.equal(fillNote(state, 90, {pageKinds: []}), `the fill did not finish within 90 s (last seen: ${JSON.stringify(state)})`);
+  }
+});
+
+test('a known closed tab is a reported failure, not a wait that can still finish', () => {
+  const state = {state: 'unreadable', closed: true, error: 'Target page has been closed'};
+  assert.equal(fillNote(state, 90), `state: ${JSON.stringify(state)}`);
 });

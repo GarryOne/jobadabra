@@ -15,6 +15,9 @@ export const stepClock = ms => { stepEndsAt = ms == null ? null : Date.now() + m
 /** Milliseconds a wait in the running step may take, leaving REPORT_MS for the step to name what was missing; with no runner step (a unit test), undefined. */
 export const stepTimeLeft = () => (stepEndsAt === null ? undefined : Math.max(0, stepEndsAt - Date.now() - REPORT_MS));
 
+/** Describe only an expired wait, using the timing wording owned by TIMEOUT_FAILURE; lastSeen retains the rejected observation. */
+export const waitCapNote = (what, seconds, lastSeen) => `${what} did not finish within ${seconds} s (last seen: ${JSON.stringify(lastSeen)})`;
+
 /** Wait for `done` after the latest recorded launch; no recorded starts are already settled. */
 export async function waitForLogLine(profile, done, {what = done.source, capMs = 90000, now = Date.now, pause = sleep} = {}) {
   const starts = (appLogText(profile).match(/\[app\] start /g) || []).length;

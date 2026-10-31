@@ -2,7 +2,7 @@
 // message the app writes is exactly what its card reads.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {done, heardFrom, resultMessage, runAll, stepOf} from '../lib/visits.js';
+import {done, heardFrom, read, resultMessage, runAll, stepOf} from '../lib/visits.js';
 import {parseVisits} from '../renderer/visits-card.js';
 
 test('sites open a few at a time, each closes on its report, a silent one stops in time', async () => {
@@ -374,4 +374,32 @@ test('a held board whose Read was pressed is not cut off by the wait for the per
   const [result] = await runAll([{name: 'board', url: 'https://board.example/jobs', kind: 'board'}], {hold: true, atOnce: 1, openTab, waitMs: 120, quietMs: 5000, siteMs: 5000});
   assert.equal(result.ok, true, result.why);
   assert.equal(result.jobs, 7);
+});
+
+test('a read that met a sign-in or a check keeps which one, from the page kind the extension judged (not from its words)', async () => {
+  const openTab = url => {
+    const start = url.split('#')[0], ticket = /-([a-z0-9]+)$/.exec(url)[1];
+    const blocked = start.includes('login') ? 'login' : start.includes('check') ? 'check' : '';
+    setTimeout(() => done({url: start, ticket, jobs: 0, added: 0, pages: 0, ...(blocked ? {blocked, stopped: 'words that say anything'} : {stopped: '2 pages read'})}), 5);
+    return {ok: true};
+  };
+  const sites = ['login', 'check', 'plain'].map(name => ({name, url: `https://${name}.example/jobs`}));
+  const results = await runAll(sites, {atOnce: 3, openTab, waitMs: 500});
+  assert.deepEqual(results.map(result => [result.name, result.blocked]), [['login', 'login'], ['check', 'check'], ['plain', '']]);
+});
+
+test('maxPages: the read ends after that many pages, keeps the jobs read, and says why (the extension reads up to 20 otherwise)', async () => {
+  let pagesSent = 0;
+  const engine = async () => ({code: 0, stdout: JSON.stringify({ok: true, jobs: 25 * pagesSent, added: 3 * pagesSent, fits: 2})});
+  const openTab = url => {
+    const start = url.split('#')[0], ticket = /-([a-z0-9]+)$/.exec(url)[1];
+    (async () => { for (let page = 1; page <= 6; page++) { pagesSent = page; await read({}, {url: `${start}&start=${page * 25}`, ticket, cards: [], session: 's'}, engine); } })();
+    return {ok: true};
+  };
+  const [result] = await runAll([{name: 'Capped', url: 'https://capped.example/jobs?q=x'}], {openTab, filter: false, maxPages: 3, waitMs: 500});
+  assert.equal(result.ok, true);
+  assert.equal(result.jobs, 75, 'the jobs of the three pages read are kept');
+  assert.match(result.why, /^3 pages read: the most for this read/);
+  const [open] = await runAll([{name: 'Open', url: 'https://open.example/jobs?q=x'}], {openTab: url => { const ticket = /-([a-z0-9]+)$/.exec(url)[1]; setTimeout(() => done({url, ticket, jobs: 9, added: 1, pages: 6, stopped: 'no next page'}), 5); return {ok: true}; }, waitMs: 500});
+  assert.equal(open.why, 'no next page', 'without maxPages nothing is cut');
 });

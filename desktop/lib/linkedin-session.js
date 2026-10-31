@@ -17,7 +17,8 @@ export function state(storage) {
   const mine = storage.settings().linkedinJobs || {};
   return {on: mine.on === true, asked: Math.min(MAX_ASKS, Number(mine.asked) || 0), declined: Math.min(MAX_ASKS, Number(mine.declined) || 0)};
 }
-const save = (storage, patch) => storage.saveSettings({linkedinJobs: {...state(storage), ...patch}});
+// Why (31 Oct 2026, LinkedIn jobs 2/3): the object also holds the last run and a pause; a write of the switch or a counter must keep them.
+const save = (storage, patch) => storage.saveSettings({linkedinJobs: {...(storage.settings().linkedinJobs || {}), ...state(storage), ...patch}});
 
 /** Reduce what the extension sent to {li_at, JSESSIONID?}, or null. Invariant: only the allow-listed names of linkedin.com with a plain token value pass; li_at is required. */
 export function cleanCookies(list) {
@@ -47,9 +48,16 @@ export function readSession({keychain = realKeychain} = {}) {
 /** Switch off: the Keychain item goes, the ask counters stay. Repeatable. */
 export function turnOff(storage, {keychain = realKeychain} = {}) {
   keychain.remove(SERVICE, {account: ACCOUNT});
-  save(storage, {on: false});
+  save(storage, {on: false, last: undefined, pauseUntil: undefined});   // a new yes starts clean: no old result, no old pause
   return {ok: true};
 }
+
+/** The one writer of a run's result (the step's verdict): {state, jobs, at} kept as `last`; a 429 also keeps `pauseUntil` (an ISO time). Never a cookie. */
+export function noteRun(storage, {state: verdict, jobs = 0, at, pauseUntil}) {
+  save(storage, {last: {state: String(verdict), jobs: Number(jobs) || 0, at: String(at)}, ...(pauseUntil ? {pauseUntil: String(pauseUntil)} : {})});
+}
+/** Epoch ms until which LinkedIn is left alone (a 429 asked us to slow down), or 0. */
+export const pausedUntil = storage => Date.parse(storage.settings().linkedinJobs?.pauseUntil || '') || 0;
 
 /** The ask on Find jobs: the 1st and 2nd press while off; never after On, two "Not now" or two asks. */
 export const shouldAsk = mine => !mine.on && mine.asked < MAX_ASKS && mine.declined < MAX_ASKS;

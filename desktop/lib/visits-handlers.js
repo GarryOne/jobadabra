@@ -9,10 +9,13 @@ import * as visits from './visits.js';
 import fs from 'node:fs';
 import {log as appLog} from './log.js';
 import {registerRefusedReadsHandlers} from './refused-reads-handlers.js';
+import {linkedinSeams} from './linkedin-beside.js';
+import {setLinkedinStep} from './search-beside.js';
 import {demoPath} from './demo.js';
 
 export function registerVisitsHandlers(ctx) {
   const {DEMO, allowanceBlock, here, ipcMain, log, readSites, shell, storage} = ctx;
+  if (!DEMO) { const linkedin = linkedinSeams(storage); setLinkedinStep(linkedin.step, linkedin.score); }   // LinkedIn jobs beside every Find jobs, only while its switch is on (lib/search-beside.js)
   registerRefusedReadsHandlers({allowanceBlock, log, storage});   // refused sites read in the browser after the person's press: lib/refused-reads.js
   ipcMain.handle('openExternal', (_, url) => shell.openExternal(url));   // opening a job reads nothing in the browser: only the button does (lib/refused-now.js)
   ipcMain.handle('openVisit', (_, url) => visits.openYourself(url));   // the tab you already have for the site, else a new one

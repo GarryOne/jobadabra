@@ -89,6 +89,7 @@ def _parse_args(argv):
     sub.add_parser('stuck-dismiss').add_argument('url')   # you dismissed this job in "Jobs we couldn't read": not offered again
     sub.add_parser('set-description').add_argument('file')   # a posting's text read in your browser (JSON: url, text): kept for that job
     sub.add_parser('visit-list')   # sites only you can open (src/sources/visits.py): refusing employers and portals, least recently read first
+    sub.add_parser('linkedin-searches')   # up to 3 LinkedIn searches from the strategy, for the app's own read on every Find jobs (src/sources/visits_portals.py)
     sub.add_parser('visit-unblock').add_argument('file')   # a page with no job list (JSON: url, title, text, ways): at most 2 steps toward it, or "needs you"
     sub.add_parser('visit-filters').add_argument('file')   # a page's filter controls (JSON: url, title, controls): which to set for this search (src/ai/visit_filters.py)
     sub.add_parser('visit-context').add_argument('file')   # for a "Read with Claude" session: the search's own role words and places (plain words)
@@ -283,6 +284,11 @@ def _visit_list(db, args):
     return {'ok': True, 'visits': _visits(load_search_config(matching=False))}, False
 
 
+def _linkedin_searches(db, args):
+    from .sources import visits_portals
+    return {'ok': True, 'searches': visits_portals.linkedin_searches()}, False
+
+
 # Handlers return (payload, ensure_ascii); command-specific imports stay in their bodies.
 _COMMANDS = {
     'jobs': _jobs,
@@ -305,6 +311,7 @@ _COMMANDS = {
     'stuck-dismiss': _stuck_dismiss,
     'set-description': _set_description,
     'visit-list': _visit_list,
+    'linkedin-searches': _linkedin_searches,
     'visit-unblock': _visit_unblock,
     'visit-filters': _visit_filters,
     'visit-context': _visit_context,

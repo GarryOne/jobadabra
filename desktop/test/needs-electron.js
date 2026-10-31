@@ -9,7 +9,8 @@ const desktop = fileURLToPath(new URL('..', import.meta.url));
 
 /**
  * True when the electron binary was downloaded: install.js writes node_modules/electron/path.txt only then. Not `node_modules/.bin/electron`: npm links that shim
- * from the package's `bin` on every install, also one with ELECTRON_SKIP_BINARY_DOWNLOAD=1 (Windows CI), where the tests would then fail instead of skip (Gitar, #2698).
+ * from the package's `bin` on every install, also on Windows CI where no binary is downloaded, and the tests would then fail instead of skip (Gitar, #2698).
+ * Electron 44 has no install script: the binary comes only from `node node_modules/electron/install.js` (a CI step) or the first launch.
  */
 export const electronInstalled = (root = desktop) => existsSync(`${root}node_modules/electron/path.txt`);
 
@@ -20,5 +21,15 @@ export function cannotRender(env = process.env, platform = process.platform, has
   return false;
 }
 
-/** Options for `test(name, needsElectron, fn)`: skips with the reason from cannotRender(), runs otherwise. */
-export const needsElectron = {skip: cannotRender()};
+/**
+ * The options for `test(name, needsElectron, fn)`: skip with the reason from cannotRender(), run otherwise. Where DESKTOP_RENDER_REQUIRED is set (the Linux desktop jobs
+ * of tests-desktop.yml and build.yml, which install electron and a display) a missing capability throws instead: the tests fail loudly, never skip green.
+ * Why (31 Oct 2026, #2698 try 2): path.txt is absent on a fresh CI install, so every rendering test skipped and the job still passed.
+ */
+export function renderOptions(env = process.env, platform = process.platform, hasElectron = electronInstalled()) {
+  const reason = cannotRender(env, platform, hasElectron);
+  if (reason && env.DESKTOP_RENDER_REQUIRED) throw new Error(`this job promises to render the app but cannot: ${reason}`);
+  return {skip: reason};
+}
+
+export const needsElectron = renderOptions();

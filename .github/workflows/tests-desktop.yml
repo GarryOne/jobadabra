@@ -164,9 +164,14 @@ jobs:
       # tools/pre-push-check.sh blocks `--omit` here. ELECTRON_DISABLE_SANDBOX: Ubuntu 24.04 runners refuse Chromium's sandbox, as the e2e harness knows (--no-sandbox).
       - run: npm ci
         working-directory: desktop
+      - name: The Electron binary (version 44 has no install script, so it would only download on the first launch)
+        timeout-minutes: 5
+        working-directory: desktop
+        run: node node_modules/electron/install.js
       - name: A virtual display and Electron's libraries
         timeout-minutes: 5
         run: bash tools/apt-install.sh xvfb libnss3 libgbm1 libasound2t64 libgtk-3-0 libxss1 fonts-noto-color-emoji fonts-dejavu-core
       - run: xvfb-run -a --server-args='-screen 0 1440x900x24' bash tools/check.sh --area desktop
         env:
           ELECTRON_DISABLE_SANDBOX: '1'
+          DESKTOP_RENDER_REQUIRED: '1'   # test/needs-electron.js: no electron or display is a red job here, never a green skip

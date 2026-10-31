@@ -3,7 +3,7 @@
 // Calendar: meetings from the Job Tracker ("Next interview") and from saved recordings, on dummy rows written through the Notion API, with the app running in a fixed time
 // zone (Asia/Tokyo, no daylight saving) and then in another (Pacific/Honolulu). Starts from a set-up install; resets only its own rows.
 import {launch} from '../lib/app.mjs';
-import {addDays, monthsBetween, showsClock, weekDays} from '../lib/interview-data.mjs';
+import {addDays, monthTitle, monthsBetween, showsClock, weekDays} from '../lib/interview-data.mjs';
 import {addInterview, addTrackedJob} from '../lib/seed-data.mjs';
 import {clearData} from '../lib/start-state.mjs';
 import {finish, snap} from '../lib/layout.mjs';
@@ -25,7 +25,6 @@ const ZONE = 'Asia/Tokyo';
 const dayIn = (date, zone) => new Intl.DateTimeFormat('en-CA', {timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit'}).format(date);
 // Today is disabled while this month is already shown: press it only when it can move the page.
 const backToToday = async page => { if (await page.locator('#cal-today').isEnabled()) await page.click('#cal-today'); };
-const monthTitle = day => new Date(`${day.slice(0, 7)}-01T00:00:00Z`).toLocaleDateString('en-US', {month: 'long', year: 'numeric', timeZone: 'UTC'});
 
 export async function run(ctx) {
   const {page, app} = ctx;

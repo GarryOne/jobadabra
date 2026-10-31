@@ -45,8 +45,10 @@ export function weekDays(today) {
   return dom + 3 <= last ? {days: [1, 2, 3].map(n => addDays(today, n)), future: true} : {days: [3, 2, 1].map(n => addDays(today, -n)), future: false};
 }
 
-// The English month names the calendar's title uses, January first.
-const MONTHS = Array.from({length: 12}, (_, m) => new Date(Date.UTC(2000, m, 1)).toLocaleDateString('en-US', {month: 'long', timeZone: 'UTC'}));
+/** The calendar's month title for a YYYY-MM-DD day, "November 2026": the one place the suites spell it (calendar.mjs compares the grid's #cal-title with it). */
+export const monthTitle = day => new Date(`${day.slice(0, 7)}-01T00:00:00Z`).toLocaleDateString('en-US', {month: 'long', year: 'numeric', timeZone: 'UTC'});
+// The month names of that title, January first.
+const MONTHS = Array.from({length: 12}, (_, m) => monthTitle(`2000-${String(m + 1).padStart(2, '0')}-01`).split(' ')[0]);
 // How many months the calendar title `want` ("November 2026") is after `shown`: > 0 later, < 0 earlier. Why (beta 41220959824, 31 Oct 2026): the suite
 // compared titles as text, and "October 2026" < "November 2026" is false, so on a month's last day (Tokyo past it, Honolulu not) it paged back.
 // Takes two titles as the calendar shows them ("<Month> <year>"); throws "not a month title" on anything else, so a changed title fails loudly.

@@ -117,14 +117,13 @@ test('every ordinary apply step has one hang cap and setup remains critical', ()
   const caps = apply.hangCaps;   // Why (30 Oct 2026, g2, #2622): the suite's own export; slicing its source at the first `;` went red on a `;` in a comment inside the object
   const cv = fs.readFileSync(new URL('../lib/apply-cv-steps.mjs', import.meta.url), 'utf8') + fs.readFileSync(new URL('../lib/apply-silent-steps.mjs', import.meta.url), 'utf8') + fs.readFileSync(new URL('../lib/apply-triage-steps.mjs', import.meta.url), 'utf8') + fs.readFileSync(new URL('../lib/apply-restart-steps.mjs', import.meta.url), 'utf8');
   const names = [...(source + cv).matchAll(/ctx\.run\('((?:[^'\\]|\\.)*)'/g)].map(match => match[1].replace(/\\'/g, "'"));
-  // Inner caps add up past the runner's 8-minute default: the default stays, no entry (Why (29 Oct 2026, ap) above hangCaps).
-  const UNCAPPED = ['"I submitted it"', 'Tailor CVs for top matches', 'Full automation presses Submit once on its own'];
-  for (const name of names.filter(name => !UNCAPPED.some(head => name.startsWith(head)))) {
+  // This journey belongs to applyflows; every ordinary apply step needs its own cap.
+  const OTHER_SUITE = ['"I submitted it"'];
+  for (const name of names.filter(name => !OTHER_SUITE.some(head => name.startsWith(head)))) {
     const matches = Object.keys(caps).filter(head => name.startsWith(head));
     assert.equal(matches.length, 1, name);
     assert.ok(caps[matches[0]] > 0);
   }
-  for (const head of UNCAPPED.slice(1)) assert.equal(Object.keys(caps).filter(key => head.startsWith(key)).length, 0, head);
   const seen = [], ctx = {run: (...args) => seen.push(args)};
   const wrapper = source.slice(source.indexOf('  const all = ctx.run;'), source.indexOf('  await ensureSetUp(ctx);'));
   new Function('ctx', 'hangCaps', wrapper)(ctx, caps);

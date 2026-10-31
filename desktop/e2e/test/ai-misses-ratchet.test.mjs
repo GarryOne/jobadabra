@@ -22,7 +22,7 @@ test('every suite defaults to zero misses unless its lane or a named exception e
     assert.equal(result.max, exempt ? null : 0, name);
     assert.equal(result.ok, exempt, `${name}: an unknown ask must fail every backbone suite`);
   }
-  assert.match(suites.personas.aiMissesException, /owner.*30 Oct 2026/);
+  assert.equal(suites.personas.lane, 'tolerant', 'personas reports only (owner, 31 Oct 2026), so it has no exception to hold');
   assert.match(suites.explore.aiMissesException, /manual.only/);
   assert.equal(checkAiMisses(dir, undefined).ok, false, 'new suites inherit zero without a registry edit');
 });

@@ -7,7 +7,6 @@ import {stepCalls} from '../lib/pr-suites.mjs';
 import {hangCapsFor} from '../lib/hang-caps.mjs';
 import * as applyflows from '../suites/applyflows.mjs';
 import * as apply from '../suites/apply.mjs';
-import {REAL_FORMS} from '../lib/forms.mjs';
 
 const hangCaps = hangCapsFor('applyflows');
 const read = file => readFileSync(new URL(`../${file}`, import.meta.url), 'utf8');
@@ -43,9 +42,10 @@ test('every applyflows journey and setup has a cap, and no cap names a missing s
   assert.ok(journeys.length >= 14, 'positive control: read the literal journey names');
   const steps = [
     ...journeys,
+    ...names('lib/no-real-ai.mjs'),
     ...names('suites/apply.mjs').filter(applyflows.ownsStep),
     ...names('lib/seed.mjs'),
-    ...names('lib/suite-main.mjs').filter(name => name === 'the Notion stand-in answered every request the app made'),
+    ...names('lib/suite-main.mjs').filter(name => ['the Notion stand-in answered every request the app made', 'nothing was queued to report to the product'].includes(name)),
   ];
   const caps = hangCaps;
   assert.equal(applyflows.hangCaps, caps, 'the suite re-exports the measured caps from lib');
@@ -68,14 +68,12 @@ test('the suite passes its caps through context to the runner', () => {
   assert.match(read('lib/context.mjs'), /createRunner\(\(\) => session, \{[^\n]*\bhangCaps\b/);
 });
 
-test('apply exports caps in seconds, preserving the real-forms hang limit', () => {
+// Why (31 Oct 2026, owner, a8 2/5): the real-forms cap was 5 forms x 165 s + 30 s = 855 s, above apply's 660 s job budget, so the budget would have cut it first;
+// it now follows its measurement like every other step (4 main runs: 105.3 s at most), and every cap stays below the budget.
+test('apply exports caps in seconds, each below its job budget', () => {
   assert.notEqual(apply.hangCaps, applyflows.hangCaps, 'each suite supplies its own table');
-  for (const [name, seconds] of Object.entries(apply.hangCaps)) {
-    // The real-forms cap scales with fixture count and has its own equality check below.
-    if (name === 'real forms the extension once failed on') continue;
-    assert.ok(Number.isFinite(seconds) && seconds >= 5 && seconds <= 700, `${name}: ${seconds}`);
-  }
-  assert.equal(apply.hangCaps['real forms the extension once failed on'], Math.max(540000, REAL_FORMS.length * 165000 + 30000) / 1000);
+  for (const [name, seconds] of Object.entries(apply.hangCaps)) assert.ok(Number.isFinite(seconds) && seconds >= 5 && seconds <= 600, `${name}: ${seconds}`);
+  assert.equal(apply.hangCaps['real forms the extension once failed on'], 320);
 });
 
 test('apply delegates hang caps to the runner instead of passing a table-derived limitMs', () => {

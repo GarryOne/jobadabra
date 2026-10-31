@@ -3,6 +3,7 @@
 // person's to decide, and never submits. Starts from a set-up install; writes and removes only its own jobs in its Notion page. The forms are local
 // (lib/forms.mjs, behind the real job-site host names), the AI answer is canned, so the suite costs nothing and no employer site is contacted.
 // Job: wait on state
+import {hangCapsFor} from '../lib/hang-caps.mjs';
 import fs from 'node:fs';
 import {parseShard} from '../lib/replay-shard.mjs';
 import {stepSlicer} from '../lib/step-slices.mjs';
@@ -58,26 +59,7 @@ export const stepSeconds = {'real forms the extension once failed on': 76, 'Tail
   'Background automation hands a bot check': 25, 'Full automation hands a bot check': 25,
   'Background automation fills several queued jobs': 90, 'Full automation presses each queued job': 50,
   'Full automation asks once in Settings': 10, 'Full automation saved without its confirmation': 10};
-// Why (29 Oct 2026, ap): hang caps in seconds, 3 x calm p95 from tools/e2e-step-timings.mjs, raised to the step's own inner caps + 30 s where a step waits in sequence; they catch a hang, never a speed.
-// A step whose inner caps add up past the runner's 8-minute default (Tailor CVs for top matches, Full automation) has no entry: the default stays.
-export const hangCaps = {'the app has an applicant': 300, 'the app is seeded': 90, 'the app is set up on this Mac\'s store': 90,
-  'a Greenhouse-like form': 195, 'a Workday-shaped form': 195, 'a Lever-like form': 150, 'a form with a control the extension cannot operate': 180,
-  'real forms the extension once failed on': Math.max(540, REAL_FORMS.length * 165 + 30), 'Open in Chrome on a form the night filled': 160,
-  'a multi-step form': 300, 'the session page says it too': 105, 'Tailor CV on a job': 480, 'Apply on a saved job without a kit': 390,
-  'Tailor on the session page': 445, 'the person submits a form': 270, 'through all of it': 50,
-  'the panel does not say "Ready to submit"': 75, 'nothing was queued': 5,
-  'The hidden browser fills a form': 385,
-  // no main samples yet, regenerate after 5 main runs: the 30 s floor x 3 (tools/e2e-step-timings.mjs)
-  'a silent Chrome in Standard automation': 90, 'a silent Chrome in Background automation': 90, 'a silent Chrome in Full automation': 90,
-  'the app quits while Background automation holds a filled form': 300, 'the app quits in Full automation\'s wait': 420,   // kept from when these steps had inner caps (180 s hold, 60 s hand-over), their waits carry none now: regenerate after 5 main runs (tools/e2e-step-timings.mjs)
-  'each read verdict gives its own chip': 360,   // four sequential real reads; fallback until main has calm samples
-  'Stop on the card in Background automation': 300, 'Stop on the card in Full automation': 420,   // hold + card redraw + hand-off, Full watches through due time and two report alarms
-  'the Jobs popup has one field': 90, 'checking jobs before the form read exists': 90,
-  'the triage bar moves per real read': 180,   // no samples yet: three sequential fixture reads plus cleanup; the cap catches a hang, never a speed
-  'Background automation hands a bot check': 240, 'Full automation hands a bot check': 240,
-  'Background automation fills several queued jobs': 450, 'Full automation presses each queued job': 450,   // 60 s + 3 x 120 s of inner waits, + 30 s
-  'Full automation asks once in Settings': 90, 'Full automation saved without its confirmation': 90,   // no main samples yet: the 30 s floor x 3
-  'the form\'s panel offers a tailored CV': 3 * stepSeconds['Tailor on the session page of a form']};
+export const hangCaps = hangCapsFor('apply');
 // Slow first-try seconds from 80 main/beta runs, 24–31 Oct 2026 (tools/e2e-step-timings.mjs maxSeconds; evidence: fixtures/slice-ci-seconds.json).
 // Two measured halves carry ~650 s each before setup; applyflows uses three slices, without increasing any budget.
 export const flowSeconds = JSON.parse(fs.readFileSync(new URL('../fixtures/slice-ci-seconds.json', import.meta.url), 'utf8')).applyflows;

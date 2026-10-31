@@ -12,11 +12,10 @@ import * as interactions from '../suites/interactions.mjs';
 import * as jobs from '../suites/jobs.mjs';
 import * as failureschannels from '../suites/failureschannels.mjs';
 
-const sharedCaps = hangCapsFor('applyflows');
 const source = file => readFileSync(new URL(`../${file}`, import.meta.url), 'utf8');
 const names = text => stepCalls(text).flatMap(call => call.name ?? VIEWS.map(view =>
   view + text.slice(call.start, call.end).match(/`\$\{view\}([^`]+)`/)[1]));
-const finalSteps = ['nothing was queued to report to the product', 'the Notion stand-in answered every request the app made'];
+const finalSteps = ['no AI call of this suite reached a real model: the stand-in answered or refused every one', 'nothing was queued to report to the product', 'the Notion stand-in answered every request the app made'];
 const linkStep = "the app's next start links this workspace's Search settings page (so the check looks for this person's roles and places)";
 
 test('jobs watcher leaves time for the terminal-state verdict before the runner cap', async t => {
@@ -43,7 +42,7 @@ test('jobs watcher leaves time for the terminal-state verdict before the runner 
 });
 
 for (const [suiteName, suite, count, largest, minutes] of [
-  ['interactions', interactions, 25, 220, 25], ['jobs', jobs, 13, 495, 30], ['failureschannels', failureschannels, 11, 180, 12],
+  ['interactions', interactions, 26, 220, 25], ['jobs', jobs, 14, 495, 30], ['failureschannels', failureschannels, 12, 180, 12],
 ]) {
   test(`${suiteName}: every step has a measured or documented fallback cap and no aggregate clock`, () => {
     const caps = JSON.parse(source('hang-caps.json'))[suiteName];
@@ -78,8 +77,7 @@ for (const [suiteName, suite, count, largest, minutes] of [
     }
     for (const [name, {n, shared: sharedSuite}] of shared) {
       assert.ok(n < 5);
-      assert.equal(sharedSuite, 'applyflows');
-      assert.equal(suite.hangCaps[name], sharedCaps[name]);
+      assert.equal(suite.hangCaps[name], hangCapsFor(sharedSuite)[name]);
     }
     if (suiteName === 'jobs') {
       assert.equal(suite.hangCaps[linkStep], 90);
@@ -110,3 +108,48 @@ for (const [suiteName, suite, count, largest, minutes] of [
     assert.equal(runner.results.at(-1).status, 'passed');
   });
 }
+
+// Why (31 Oct 2026, owner, a8 2/5): a backbone suite names a cap for every step it runs, and every cap is below its job's budget. Setup caps are worst-case hang stops,
+// not what setup takes, so they are not added to a step's cap; the runner hands the step min(cap, budget left) and its own waits end first.
+test('every backbone suite has a cap table and every cap is a positive number below its job budget', async () => {
+  const {readdirSync} = await import('node:fs');
+  const {cadenceOf} = await import('../lib/plan.mjs');
+  const lanes = JSON.parse(source('lanes.json')).suites;
+  const data = JSON.parse(source('hang-caps.json'));
+  const violations = [], checked = [];
+  for (const file of readdirSync(new URL('../suites/', import.meta.url)).filter(file => file.endsWith('.mjs'))) {
+    const name = file.slice(0, -4), suite = await import(`../suites/${file}`);
+    if (lanes[name]?.lane || cadenceOf(name, suite) === 'manual') continue;   // tolerant, suspended, retired and manual suites keep the default (explore: cadence manual)
+    checked.push(name);
+    if (!data[name] || !Object.keys(data[name].steps).length) { violations.push(`${name}: no measured hang cap table`); continue; }
+    const budgetMs = budgetMsOf(suite, {E2E_TRY_MINUTES: '15'});
+    for (const [step, seconds] of Object.entries(hangCapsFor(name))) {
+      if (!Number.isFinite(seconds) || seconds <= 0 || seconds * 1000 >= budgetMs) violations.push(`${name}/${step}: cap ${seconds} s, job budget ${budgetMs / 1000} s`);
+    }
+  }
+  assert.ok(checked.length >= 25 && checked.includes('apply'), 'positive control: the class covers the backbone, not an empty list');
+  assert.ok(!checked.includes('explore') && !checked.includes('personas'), 'explore is manual and personas is tolerant');
+  assert.deepEqual(violations, [], violations.join('\n'));
+});
+
+// Why (31 Oct 2026, owner, a8 2/5): the first tables came from history, which missed steps only a variant reaches (wizard's OpenAI and Codex steps run on CI's odd runs
+// only). Reading the step names from the code finds them. A literal name is read from the suite's file and the helpers it imports directly; a name another slice of the
+// suite owns (apply's journeys belong to applyflows) resolves in that suite's table. Templated names (`${...}`) are not literal: their suites measure them by prefix.
+test('every literal step a backbone suite runs has a cap in some backbone table', async () => {
+  const {readdirSync} = await import('node:fs');
+  const {cadenceOf} = await import('../lib/plan.mjs');
+  const lanes = JSON.parse(source('lanes.json')).suites;
+  const capped = Object.keys(JSON.parse(source('hang-caps.json'))).flatMap(suite => Object.keys(hangCapsFor(suite))).filter(Boolean);
+  const literals = file => stepCalls(source(file).replace(/\brunAlways\(/g, 'ctx.run(')).map(call => call.name).filter(Boolean);
+  const helperFiles = readdirSync(new URL('../lib/', import.meta.url)).filter(file => file.endsWith('.mjs')).map(file => `lib/${file}`);
+  const uncapped = [], checked = [];
+  for (const file of readdirSync(new URL('../suites/', import.meta.url)).filter(file => file.endsWith('.mjs'))) {
+    const suite = file.slice(0, -4);
+    if (lanes[suite]?.lane || cadenceOf(suite, await import(`../suites/${file}`)) === 'manual') continue;
+    const helpers = [...source(`suites/${file}`).matchAll(/from\s+'\.\.\/lib\/([^']+\.mjs)'/g)].map(match => `lib/${match[1]}`).filter(helper => helperFiles.includes(helper));
+    checked.push(suite);
+    for (const name of [`suites/${file}`, ...helpers].flatMap(literals)) if (!capped.some(head => name.startsWith(head))) uncapped.push(`${suite}: ${name}`);
+  }
+  assert.ok(checked.length >= 25 && checked.includes('wizard'), 'positive control: the class reads the real backbone suites');
+  assert.deepEqual(uncapped, [], `these steps would fail with "no hang cap":\n${uncapped.join('\n')}`);
+});

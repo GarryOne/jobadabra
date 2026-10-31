@@ -38,13 +38,16 @@ test('activityfailures has only measured per-step hang caps and no aggregate clo
   assert.equal(suite.aggregateBudget, false);
   assert.equal(budgetMsOf(suite), Infinity);
   assert.equal(stopMsOf(suite), null);
-  assert.deepEqual(Object.keys(suite.hangCaps).sort(), timings.rows.map(row => row.name).sort());
+  const required = [...timings.rows.map(row => row.name), "the app is set up on this Mac's store with the applicant's strategy"];
+  assert.deepEqual(Object.keys(suite.hangCaps).sort(), [...new Set(required)].sort());
   t.mock.method(console, 'log', () => {});
   t.mock.timers.enable({apis: ['setTimeout']});
   const runner = createRunner(() => null, {keepGoing: true, budgetMs: budgetMsOf(suite), hangCaps: suite.hangCaps});
   for (const row of timings.rows) {
     assert.equal(row.seconds.length, timings.runs.length);
-    const cap = Math.max(30, Math.ceil(3 * Math.max(...row.seconds) / 5) * 5);
+    const latest = JSON.parse(fs.readFileSync(new URL('../hang-caps.json', import.meta.url))).activityfailures.steps[row.name];
+    const cap = Math.max(30, Math.ceil(3 * Math.max(...row.seconds) / 5) * 5,
+      latest.p95Seconds === undefined ? 0 : Math.ceil(3 * latest.p95Seconds / 5) * 5);
     assert.equal(suite.hangCaps[row.name], cap, row.name);
     let entered;
     const started = new Promise(resolve => { entered = resolve; });

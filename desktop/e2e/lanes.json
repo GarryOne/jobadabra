@@ -105,7 +105,11 @@
       "aiMissesMax": 0
     },
     "personas": {
-      "aiMissesException": "Held by the owner on 30 Oct 2026 (#2600); do not migrate its live asks until the owner releases the hold."
+      "lane": "tolerant",
+      "input": "ai",
+      "since": "2026-10-31",
+      "why": "Owner, 31 Oct 2026: personas reports only, like qualityai: it runs and shows its result but never holds a beta, because its live asks depend on a model's answers. The stored-answers migration (#2600) was dropped by the owner on 31 Oct 2026; its live asks stay.",
+      "returns": "Stays tolerant: it reports a live model's answers on fictional personas; it returns to the backbone only if the owner asks for its asks to be stored."
     },
     "explore": {
       "aiMissesException": "The manual-only AI explorer deliberately spends model credit when explicitly requested; cadence manual excludes it from scheduled and release gates."

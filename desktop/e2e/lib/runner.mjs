@@ -11,12 +11,13 @@ import {codeLine} from './artifacts.mjs';
 import {causeOf, sharedCauseLines} from './step-cause.mjs';
 import {providerLine} from './ai-provider.mjs';
 import {stepClock} from './wait-on-state.mjs';
+import {backboneSuite} from './hang-caps.mjs';
 
 // keepGoing (a suite's `export const keepGoing = true`): a failed step is recorded and the next one runs, so one failure never hides the rest of the suite
 // (5 Oct 2026: one outdated step hid fifteen, twice). A step marked `critical` (the setup the others need) still stops the suite.
 // A step that never ends (6 Oct 2026: activityfailures sat 25 min after its first step, killed by the job's timeout with no screenshot and no app log: a call into the
-// app that never answered). Every step gets a limit (limitMs, default 8 min: twice the longest step of the 6 Oct gate, 226 s); past it the step fails like any other, saving the
-// screenshot and logs, with which side of the app still answers in the message.
+// app that never answered). Backbone steps require named measured caps. Tolerant suites keep the 8-minute default.
+// Past its cap the step fails like any other, saving screenshots and logs with which side of the app still answers in the message.
 export const STEP_LIMIT_MS = Number(process.env.E2E_STEP_LIMIT_MS) || 8 * 60000;
 const answers = (promise, ms = 5000) => Promise.race([promise.then(() => true, () => false), new Promise(done => setTimeout(() => done(false), ms))]);
 export async function hangReport(session) {
@@ -93,17 +94,19 @@ export const shotName = name => `failed-${name.replace(/\W+/g, '-').slice(0, 60)
 const pictureOf = async session => (session?.page ? Promise.race([session.page.screenshot().catch(() => null), new Promise(done => setTimeout(() => done(null), 10000))]) : null);
 // stepNeeds null: the suite declares none, so its steps may build on every earlier one (quality's checks read the rows its Jobs check wrote, after the step that loads
 // the golden postings): a picked run then runs every step up to the last picked one and skips only the rest (#2108, 26 Oct 2026). Declared (even {}): the precise pick.
-/** Resolve seconds to ms: exact name wins, else the longest matching prefix, else STEP_LIMIT_MS. */
-const hangLimitMs = (hangCaps, name) => {
-  if (hangCaps[name] !== undefined) return hangCaps[name] * 1000;
-  const prefix = Object.keys(hangCaps).filter(head => name.startsWith(head)).sort((a, b) => b.length - a.length)[0];
-  return prefix === undefined ? STEP_LIMIT_MS : hangCaps[prefix] * 1000;
+/** Resolve an exact cap or its longest prefix; backbone steps may never use the tolerant default. */
+export const hangLimitMs = (hangCaps, name, suite = '', cadence = '') => {
+  const prefix = Object.keys(hangCaps).filter(head => head && name.startsWith(head)).sort((a, b) => b.length - a.length)[0];
+  const seconds = hangCaps[name] ?? (prefix === undefined ? undefined : hangCaps[prefix]);
+  if (seconds !== undefined && Number.isFinite(seconds) && seconds > 0) return seconds * 1000;
+  if (backboneSuite(suite, cadence)) throw new Error(`${suite}: no hang cap for "${name}". Measure with tools/e2e-step-timings.mjs --suite ${suite} --caps, or add 3 x its PR run time (30 s floor) with Why "provisional: regenerate after 5 main runs".`);
+  return hangCaps[''] === undefined ? STEP_LIMIT_MS : hangCaps[''] * 1000;
 };
 // An opted-in owned step must stop the suite after a hang; its raw promise cannot be cancelled.
 const ownedHang = (error, stopOnHang) => stopOnHang && error.stepHang;
 
 /** Run state checks with named hang caps; owned steps may stop progression on a hang. */
-export function createRunner(getSession, {keepGoing = false, budgetMs = SUITE_BUDGET_MS, hangCaps = {}, stepNeeds = null, faultTally = null, report = null} = {}) {
+export function createRunner(getSession, {suite = '', cadence = '', keepGoing = false, budgetMs = SUITE_BUDGET_MS, hangCaps = {}, stepNeeds = null, faultTally = null, report = null} = {}) {
   const results = [], suiteStarted = Date.now(), picked = pickedNames(), found = new Set();
   if (process.env.CI) console.log(providerLine(process.env, 'judges'));   // Why (#2416, Gitar): who decided the judges' provider is never a guess
   const buildsOn = stepNeeds == null && picked.length > 0 && !String(process.env.E2E_STEPS || '').trim();
@@ -111,7 +114,7 @@ export function createRunner(getSession, {keepGoing = false, budgetMs = SUITE_BU
   let overBudget = false;
   // elsewhere: the suite leaves this step to another slice of itself (step-sharded apply/applyflows): a picked name is still found, so the slice without it is not red.
   // clean-code-ok: Why (#2501; 30 Oct 2026, owner redesign): old function; reuse its cap and opt-in stopOnHang while preserving other suites' retry and keep-going defaults.
-  async function run(name, rawFn, {needs = [], faults = false, critical = false, stopOnHang = false, limitMs = hangLimitMs(hangCaps, name), hangError, elsewhere = false} = {}) {
+  async function run(name, rawFn, {needs = [], faults = false, critical = false, stopOnHang = false, limitMs, hangError, elsewhere = false} = {}) {
     if (elsewhere) { if (picked.includes(name.toLowerCase())) found.add(name.toLowerCase()); return; }
     const left = budgetMs - (Date.now() - suiteStarted);
     if (left <= 0) {
@@ -121,7 +124,8 @@ export function createRunner(getSession, {keepGoing = false, budgetMs = SUITE_BU
       await report?.skipStep(`${name} (not run: over the suite's budget)`).catch(() => {});
       return;
     }
-    const fn = () => withLimit(Promise.resolve().then(rawFn), Math.min(limitMs, left), name, getSession, left < limitMs ? budgetMs : 0, hangError);   // faults: the step breaks things on purpose, so a broken answer is the product's to handle: never retried, never "environment"
+    let cap;
+    const fn = () => withLimit(Promise.resolve().then(rawFn), Math.min(cap, left), name, getSession, left < cap ? budgetMs : 0, hangError);   // faults are never retried as environment noise
     // E2E_STEPS=tailor,seeded runs only the steps whose name contains one of these words (and the critical setup): a quick way to re-run one step of a long suite.
     const only = wantedWords([...(process.env.E2E_STEPS || '').split(',').map(word => word.trim()).filter(Boolean), ...picked], stepNeeds || {});
     const doneBefore = allFound();
@@ -154,6 +158,8 @@ export function createRunner(getSession, {keepGoing = false, budgetMs = SUITE_BU
       if (picture) await report.attach('screenshot', {body: picture, contentType: 'image/png'}).catch(() => {});
     };
     try {
+      const named = hangLimitMs(hangCaps, name, suite, cadence);
+      cap = backboneSuite(suite, cadence) ? Math.min(limitMs ?? named, named) : limitMs ?? named;
       await (report ? report.step(name, attempt) : attempt());
       const seconds = ((Date.now() - started) / 1000).toFixed(1);
       const vacuous = unfired();

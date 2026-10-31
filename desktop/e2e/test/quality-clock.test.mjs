@@ -119,7 +119,7 @@ test('quality leaves the speed budget and qualityai retains its larger live cloc
   assert.equal(qualityai.budgetMinutes, 10);
   assert.equal(qualityai.minutes, 24);
   assert.equal(quality.hangCaps['a Jobs check on the golden postings finishes and scores them'], 127.8);
-  assert.equal(quality.hangCaps[''], 30);
+  assert.equal(quality.hangCaps['no job text, CV text or secret reached the logs'], 30);
 });
 
 // Why (30 Oct 2026, qu): RECORD makes live calls; replay's measured caps must not kill healthy engine work.
@@ -129,7 +129,7 @@ for (const [mode, stateSeconds, jobsSeconds, suiteMs, minutes] of [
   const {ctx, time} = fixture(t);
   process.env.E2E_AI_ANSWERS = mode;
   const suite = await import(`../suites/quality.mjs?clock=${mode}`);
-  assert.equal(suite.hangCaps[''], stateSeconds);
+  assert.equal(suite.hangCaps['no job text, CV text or secret reached the logs'], stateSeconds);
   assert.equal(suite.hangCaps['a Jobs check on the golden postings finishes and scores them'], jobsSeconds);
   assert.equal(suite.minutes, minutes);
 

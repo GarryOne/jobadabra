@@ -24,6 +24,7 @@ import {createVariation, placeOf} from './variation.mjs';
 import {ARTIFACTS, E2E, launch, pickFile, step} from './app.mjs';
 import {clearRoot, testRoot, workspaceReady} from './notion.mjs';
 import {budgetMsOf, createRunner} from './runner.mjs';
+import {hangCapsFor} from './hang-caps.mjs';
 import {notionFarSide, pickStore, runToken, storeSettings} from './store.mjs';
 import {storeCall} from './store-call.mjs';
 import {isLoopback} from '../../lib/notion-pace.js';
@@ -101,7 +102,7 @@ function markStandIn(env, standIn) {
   if (standIn) env.JOB_PILOTTO_E2E_NOTION_STANDIN = '1';
 }
 
-export async function openContext(suite, {fresh = false, env: suiteEnv = {}, browser = false, light = false, offlineAi = false, notionProxy = false, telegram = false, google = false, releases = false, notion: usesNotion = true, notionStandIn = false, store: suiteStore = '', newInstall = false, standInFromWizard = false, notionTokenOf = '', notionPage = '', keepGoing = false, variesPlace = false, engine: suiteEngine = '', budgetMinutes = 0, aggregateBudget = true, hangCaps = {}, stepNeeds = null, report = null} = {}) {
+export async function openContext(suite, {fresh = false, env: suiteEnv = {}, browser = false, light = false, offlineAi = false, notionProxy = false, telegram = false, google = false, releases = false, notion: usesNotion = true, notionStandIn = false, store: suiteStore = '', newInstall = false, standInFromWizard = false, notionTokenOf = '', notionPage = '', keepGoing = false, variesPlace = false, engine: suiteEngine = '', budgetMinutes = 0, aggregateBudget = true, hangCaps = hangCapsFor(suite), cadence = '', stepNeeds = null, report = null} = {}) {
   // Where the app keeps the person's data (lib/store.mjs): this Mac (sqlite, no Notion at all), the in-memory Notion (fresh and private for this run, no
   // token, no shared page: lib/notion-fake.mjs), or the real test workspace for a suite that pins it. A suite with no Notion part keeps its own setup.
   const store = light || !usesNotion ? '' : pickStore({suiteStore: suiteStore || (notionStandIn ? 'standin' : '')});
@@ -118,7 +119,7 @@ export async function openContext(suite, {fresh = false, env: suiteEnv = {}, bro
   const {key, judgeKey} = aiKeys, token = runToken({store, standIn, light, fromEnv: () => notionToken(notionTokenOf || suite, {own: store === 'notion'})});
   if (!light) console.log(`  AI family under test: ${{openai: 'OpenAI', free: 'Free AI (Workers AI, the relay on this runner)'}[family] || 'Claude'} (engine ${engine}${isCi() && family !== 'free' ? `, CI run ${process.env.GITHUB_RUN_NUMBER || '?'}: odd runs OpenAI, even runs Claude` : ''})`);
   let session = null, fakes = [];   // the fake services of this suite, once started: the runner checks that a step's fault fired (lib/faults.mjs)
-  const runner = createRunner(() => session, {keepGoing, hangCaps, stepNeeds, report, faultTally: () => tally(fakes), budgetMs: budgetMsOf({aggregateBudget, budgetMinutes})});
+  const runner = createRunner(() => session, {suite, cadence, keepGoing, hangCaps, stepNeeds, report, faultTally: () => tally(fakes), budgetMs: budgetMsOf({aggregateBudget, budgetMinutes})});
   countNotionRequestsByStep(runner, standIn);
   // A light suite needs only the AI key: no Notion page, no app, no browser (a model-only eval).
   // The test's own judges and evals (lib/judge.mjs, fit.mjs, model.mjs, the explore agent) are Claude whatever the app runs on, so both families are judged

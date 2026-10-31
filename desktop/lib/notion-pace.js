@@ -13,6 +13,13 @@ export const GAP_MS = Number(process.env.JOB_PILOTTO_NOTION_GAP_MS) || 340;  // 
 const LOCK_STALE_MS = 3000;
 const LOCK_TRIES = 200;
 
+/** Recognize the fixture service's HTTP loopback address, with or without a port (also src/notion/pace.py). */
+export const isLoopback = value => /^http:\/\/127\.0\.0\.1(?::\d+)?(?:\/|$)/.test(String(value || ''));
+
+/** True only for an explicitly marked in-memory service in e2e; local fault proxies retain production pacing. */
+// Why (31 Oct 2026, owner review of bab7120): the shared pacer owns the exemption so every client and subprocess follows one rule.
+export const isStandIn = (env = process.env) => !!env.JOB_PILOTTO_E2E && env.JOB_PILOTTO_E2E_NOTION_STANDIN === '1' && isLoopback(env.JOB_PILOTTO_E2E_NOTION_BASE_URL);
+
 export const paceFile = token => path.join(os.tmpdir(),
   `job-pilotto-notion-${crypto.createHash('sha256').update(String(token)).digest('hex').slice(0, 12)}.pace`);
 
@@ -37,6 +44,7 @@ const read = file => {
 
 // The moment (ms) this request may go, shared across processes; null when the file can't be used.
 export async function claim(token, now = Date.now) {
+  if (isStandIn()) return now();
   const file = paceFile(token);
   try {
     return await locked(file, () => {
@@ -50,6 +58,7 @@ export async function claim(token, now = Date.now) {
 
 // After a 429: every process waits until `until`.
 export async function calmUntil(token, until) {
+  if (isStandIn()) return;
   const file = paceFile(token);
   try {
     await locked(file, () => {

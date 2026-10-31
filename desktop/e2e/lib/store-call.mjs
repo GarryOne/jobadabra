@@ -2,6 +2,7 @@
 // with the environment the app gives the engine (desktop/lib/pipeline-env.js): the same store the app opens, whichever it is (this Mac's or Notion, the stand-in in a test).
 // One seed helper then works on both stores (P7 step 4, spec 2026-10-09-store-adapters.md). The real-Notion helpers in lib/notion.mjs are for notion-real only.
 // Guarded by test/store-call.test.mjs.
+// Job: run the backbone
 import {execFile} from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -17,7 +18,9 @@ const TEXT_FILES = {JOB_PILOTTO_PROFILE_FILE: 'profile.md', JOB_PILOTTO_ANSWERS_
 // Never anyone's real data: the profile must be a temp folder (the harness's own, lib/app.mjs launch), HOME is that profile and the engine does not follow
 // an app set up on this computer (src/paths.py follow_app, which would open the person's own data and Notion ids).
 const inTemp = folder => [os.tmpdir(), fs.realpathSync(os.tmpdir())].some(root => path.resolve(folder).startsWith(root));
-export function storeEnv({profile, token = '', notionUrl = ''}) {
+/** Build the engine environment from a temp profile and supplied token/URL; standIn identifies the in-memory service.
+ * Throws for a profile outside temp or an unconnected Notion store; returns only that store's isolated environment. */
+export function storeEnv({profile, token = '', notionUrl = '', standIn = false}) {
   if (!inTemp(profile)) throw new Error(`not a temp profile: ${profile}`);
   const settings = JSON.parse(fs.readFileSync(path.join(profile, 'settings.json'), 'utf8'));
   const env = {HOME: profile, JOB_PILOTTO_FOLLOW_APP: '0', JOB_PILOTTO_E2E: '1', JOB_PILOTTO_NO_DOTENV: '1', JOB_PILOTTO_CONFIG_DIR: path.join(profile, 'config'), JOB_PILOTTO_DATA_DIR: path.join(profile, 'data')};
@@ -28,7 +31,8 @@ export function storeEnv({profile, token = '', notionUrl = ''}) {
     return env;
   }
   if (!token || !settings.notionIds) throw new Error('the store is Notion, and the app is not connected yet (no token or no workspace ids in settings.json)');
-  return {...env, JOB_PILOTTO_STORE: 'notion', NOTION_TOKEN: token, ...settings.notionIds, ...(notionUrl ? {JOB_PILOTTO_E2E_NOTION_BASE_URL: notionUrl} : {})};
+  return {...env, JOB_PILOTTO_STORE: 'notion', NOTION_TOKEN: token, ...settings.notionIds, ...(notionUrl ? {JOB_PILOTTO_E2E_NOTION_BASE_URL: notionUrl} : {}),
+    ...(standIn ? {JOB_PILOTTO_E2E_NOTION_STANDIN: '1'} : {})};
 }
 
 // One store method; -> its JSON answer. A refused or failing call throws with the engine's own error (exit 2 refused, 1 raised).
@@ -37,7 +41,7 @@ export function storeCall(ctx, entity, method, kwargs = {}, {profile = ctx.profi
   const shell = Object.fromEntries(['PATH', 'TMPDIR', 'LANG', 'SYSTEMROOT', 'TEMP', 'TMP'].filter(name => process.env[name]).map(name => [name, process.env[name]]));
   const notionUrl = ctx.appEnv?.JOB_PILOTTO_E2E_NOTION_BASE_URL || '';
   // The engine's Notion requests go to the profile's notion-requests.log, beside the app's (kept with the artifacts, lib/run-logs.mjs).
-  const env = {...shell, PYTHONUTF8: '1', ...storeEnv({profile, token: ctx.store === 'sqlite' ? '' : ctx.token, notionUrl}), JOB_PILOTTO_NOTION_LOG: path.join(profile, 'logs', 'notion-requests.log')};
+  const env = {...shell, PYTHONUTF8: '1', ...storeEnv({profile, token: ctx.store === 'sqlite' ? '' : ctx.token, notionUrl, standIn: ctx.appEnv?.JOB_PILOTTO_E2E_NOTION_STANDIN === '1'}), JOB_PILOTTO_NOTION_LOG: path.join(profile, 'logs', 'notion-requests.log')};
   fs.mkdirSync(path.join(profile, 'logs'), {recursive: true});
   const said = (ok, error) => logStoreCall(profile, {entity, method, store: ctx.store, notionUrl, ok, error});
   return new Promise((resolve, reject) => {

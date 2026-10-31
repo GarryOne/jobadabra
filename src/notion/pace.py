@@ -8,6 +8,7 @@ its own pace.
 """
 import hashlib
 import os
+import re
 import shutil
 import tempfile
 import threading
@@ -20,6 +21,12 @@ LOCK_TRIES = 200
 
 _local = threading.Lock()
 _next_local = 0
+
+
+def _standin():
+    """Only the explicit in-memory e2e service omits pacing; the loopback rule matches desktop/lib/notion-pace.js."""
+    return bool(os.getenv('JOB_PILOTTO_E2E') and os.getenv('JOB_PILOTTO_E2E_NOTION_STANDIN') == '1'
+                and re.match(r'^http://127\.0\.0\.1(?::\d+)?(?:/|$)', os.getenv('JOB_PILOTTO_E2E_NOTION_BASE_URL', '')))
 
 
 def pace_file(token):
@@ -67,6 +74,8 @@ def _read(path):
 
 def claim(token):
     """The moment (ms) the next request may go, shared across processes; None when the file can't be used."""
+    if _standin():
+        return _now()
     path = pace_file(token)
 
     def take():
@@ -83,6 +92,8 @@ def claim(token):
 
 def calm_until(token, until_ms):
     """After a 429: every process waits until `until_ms`."""
+    if _standin():
+        return
     path = pace_file(token)
 
     def write():

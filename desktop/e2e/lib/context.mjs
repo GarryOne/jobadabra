@@ -26,6 +26,7 @@ import {clearRoot, testRoot, workspaceReady} from './notion.mjs';
 import {budgetMsOf, createRunner} from './runner.mjs';
 import {notionFarSide, pickStore, runToken, storeSettings} from './store.mjs';
 import {storeCall} from './store-call.mjs';
+import {isLoopback} from '../../lib/notion-pace.js';
 import {lockNeeded, takeNotionPage} from './notion-page-lock.mjs';
 import {tally} from './faults.mjs';
 
@@ -93,6 +94,11 @@ export async function adoptSessionUnlessClosing(ctx, open, adopt) {
   const session = await open();
   if (ctx.closing) { await session.close(); return; }
   adopt(session);
+}
+
+// Why (#2669): an actual in-memory service has no external rate limit; a fault proxy alone is not that service.
+function markStandIn(env, standIn) {
+  if (standIn) env.JOB_PILOTTO_E2E_NOTION_STANDIN = '1';
 }
 
 export async function openContext(suite, {fresh = false, env: suiteEnv = {}, browser = false, light = false, offlineAi = false, notionProxy = false, telegram = false, google = false, releases = false, notion: usesNotion = true, notionStandIn = false, store: suiteStore = '', newInstall = false, standInFromWizard = false, notionTokenOf = '', notionPage = '', keepGoing = false, variesPlace = false, engine: suiteEngine = '', budgetMinutes = 0, aggregateBudget = true, hangCaps = {}, stepNeeds = null, report = null} = {}) {
@@ -177,6 +183,7 @@ export async function openContext(suite, {fresh = false, env: suiteEnv = {}, bro
   const env = {...appModelEnv(), JOB_PILOTTO_FIXTURE_DIR: ctx.feeds, JOB_PILOTTO_E2E_AI_BASE_URL: ctx.proxy.url, ...(family === 'free' ? {JOB_PILOTTO_E2E_FREE_AI_KEY: FREE_AI_ALIAS} : {}), ...(ctx.openaiProxy ? {JOB_PILOTTO_E2E_OPENAI_BASE_URL: `${ctx.openaiProxy.url}/v1`} : {}), ...(ctx.notion ? {JOB_PILOTTO_E2E_NOTION_BASE_URL: ctx.notion.url} : ctx.standIn ? {JOB_PILOTTO_E2E_NOTION_BASE_URL: ctx.standIn.url} : store && store !== 'notion' ? {JOB_PILOTTO_E2E_NOTION_BASE_URL: notionFarSide({store})} : {}), ...(ctx.telegram ? {JOB_PILOTTO_E2E_TELEGRAM_BASE_URL: ctx.telegram.url} : {}),
     ...(ctx.releases ? {JOB_PILOTTO_E2E_UPDATES_URL: ctx.releases.url} : {}), ...(ctx.google ? {JOB_PILOTTO_E2E_GOOGLE_BASE_URL: ctx.google.url, GOOGLE_CLIENT_ID: 'e2e-client', GOOGLE_CLIENT_SECRET: 'e2e-secret', GOOGLE_REFRESH_TOKEN: 'e2e-refresh'} : {}), ...browserEnv, ...suiteEnv};
   // The owner's browser data is never read by a test run: the app's browser-data root is this run's own folder (lib/browser-profile.js browserData).
+  markStandIn(env, standIn);
   if (!env.JOB_PILOTTO_BROWSER_DATA || path.resolve(env.JOB_PILOTTO_BROWSER_DATA).startsWith(path.join(os.homedir(), 'Library')) || path.resolve(env.JOB_PILOTTO_BROWSER_DATA).startsWith(path.join(os.homedir(), 'AppData'))) {
     throw new Error(`a test run must not read the owner's browser profiles (JOB_PILOTTO_BROWSER_DATA is ${env.JOB_PILOTTO_BROWSER_DATA || 'unset'})`);
   }
@@ -185,7 +192,7 @@ export async function openContext(suite, {fresh = false, env: suiteEnv = {}, bro
   // P7: off the real workspace a run holds no token but the stand-in's own (lib/store.mjs runToken); the run fails here, before the app starts, if it ever does.
   if (store && store !== 'notion' && token && token !== standIn?.token) throw new Error(`the ${store} store must not hold a Notion token from the environment`);
   // P7: a run off the real workspace reaches no Notion but a local one (the stand-in, or the fault proxy in front of it). Fails the run before the app starts.
-  if (store && store !== 'notion' && !/^http:\/\/127\.0\.0\.1[:/]/.test(env.JOB_PILOTTO_E2E_NOTION_BASE_URL || '')) throw new Error(`the ${store} store must not reach real Notion, and the app was given ${env.JOB_PILOTTO_E2E_NOTION_BASE_URL || 'no Notion URL (the real one)'}`);
+  if (store && store !== 'notion' && !isLoopback(env.JOB_PILOTTO_E2E_NOTION_BASE_URL)) throw new Error(`the ${store} store must not reach real Notion, and the app was given ${env.JOB_PILOTTO_E2E_NOTION_BASE_URL || 'no Notion URL (the real one)'}`);
   // The environment the app was started with: a second app a step opens (another time zone, a fresh install) starts from it, so it talks to the same Notion
   // (real or the stand-in), AI proxy and fixtures (6 Oct 2026: calendar's second app had its own list and reached real Notion with the stand-in's token).
   ctx.appEnv = env;

@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import {execFileSync} from 'node:child_process';
 import {test} from 'node:test';
 import * as pipeline from '../lib/pipeline.js';
 import * as strategy from '../lib/strategy.js';
@@ -45,15 +46,52 @@ test('the pipeline runs on the user folder, with AI models only when a key is se
 test('the end-to-end stand-ins reach the engine only in a test run (its env is a whitelist)', () => {
   const storage = tempStorage();
   const parent = {PATH: '/bin', JOB_PILOTTO_E2E_NOTION_BASE_URL: 'http://127.0.0.1:1', JOB_PILOTTO_E2E_TELEGRAM_BASE_URL: 'http://127.0.0.1:2',
-    JOB_PILOTTO_E2E_GOOGLE_BASE_URL: 'http://127.0.0.1:3', GOOGLE_CLIENT_ID: 'id', GOOGLE_CLIENT_SECRET: 's', GOOGLE_REFRESH_TOKEN: 'r'};
+    JOB_PILOTTO_E2E_GOOGLE_BASE_URL: 'http://127.0.0.1:3', JOB_PILOTTO_E2E_NOTION_STANDIN: '1', GOOGLE_CLIENT_ID: 'id', GOOGLE_CLIENT_SECRET: 's', GOOGLE_REFRESH_TOKEN: 'r'};
   const user = pipeline.pipelineEnv(storage, parent);
   assert.equal(user.JOB_PILOTTO_E2E_NOTION_BASE_URL, undefined);
+  assert.equal(user.JOB_PILOTTO_E2E_NOTION_STANDIN, undefined);
   assert.equal(user.GOOGLE_REFRESH_TOKEN, undefined);
   const e2e = pipeline.pipelineEnv(storage, {...parent, JOB_PILOTTO_E2E: '1'});
   assert.equal(e2e.JOB_PILOTTO_E2E_NOTION_BASE_URL, 'http://127.0.0.1:1');
+  assert.equal(e2e.JOB_PILOTTO_E2E_NOTION_STANDIN, '1');
   assert.equal(e2e.JOB_PILOTTO_E2E_TELEGRAM_BASE_URL, 'http://127.0.0.1:2');
   assert.equal(e2e.JOB_PILOTTO_E2E_GOOGLE_BASE_URL, 'http://127.0.0.1:3');
   assert.equal(e2e.GOOGLE_REFRESH_TOKEN, 'r');
+});
+
+test('the app-launched Python client omits the stand-in clock after the env whitelist', () => {
+  const storage = tempStorage();
+  const code = `import json, os
+from src.notion import client, pace
+now, waits, calls = [1000.0], [], []
+class Answer:
+    def __enter__(self): return self
+    def __exit__(self, *args): return False
+    def read(self, *args): return b'{"ok":true}'
+def opener(request, timeout):
+    calls.append(request.full_url)
+    return Answer()
+def sleep(seconds):
+    waits.append(seconds)
+    now[0] += seconds
+client.urllib.request.urlopen = opener
+pace.clock = lambda: now[0]
+tracker = client.Tracker('pipeline-standin-' + str(os.getpid()), opener=opener, sleep=sleep)
+try:
+    for _ in range(20):
+        assert tracker._request('GET', 'pages/fixture') == {'ok': True}
+    assert calls == ['http://127.0.0.1/v1/pages/fixture'] * 20
+    print(json.dumps({'calls': len(calls), 'pacing_seconds': round(sum(waits), 2)}))
+finally:
+    from pathlib import Path
+    Path(pace.pace_file(tracker.token)).unlink(missing_ok=True)
+`;
+  for (const [flag, seconds] of [[undefined, 6.46], ['1', 0]]) {
+    const parent = {PATH: process.env.PATH, HOME: storage.path(''), JOB_PILOTTO_E2E: '1', JOB_PILOTTO_E2E_NOTION_BASE_URL: 'http://127.0.0.1',
+      ...(flag ? {JOB_PILOTTO_E2E_NOTION_STANDIN: flag} : {})};
+    const result = JSON.parse(execFileSync(pipeline.python(), ['-c', code], {cwd: pipeline.REPO, env: pipeline.pipelineEnv(storage, parent), encoding: 'utf8'}));
+    assert.deepEqual(result, {calls: 20, pacing_seconds: seconds}, `app engine stand-in flag ${flag || '(absent)'}`);
+  }
 });
 
 test('Trying (no Notion): the engine reads the Profile and answers from this Mac; connected, it never does', () => {

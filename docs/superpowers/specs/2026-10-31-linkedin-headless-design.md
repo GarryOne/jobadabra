@@ -93,8 +93,8 @@ Verdicts that change state: page kind judged by the AI (`src/ai/decide.py`), HTT
 - [x] Feasibility: honest headless loads the public search, 60 cards, no wall (31 Oct 2026) (proof: none: one logged-out probe, numbers in this spec's Risks and Safety sections)
 - [x] Chrome Web Store policy read (31 Oct 2026) (proof: docs/superpowers/specs/2026-10-31-linkedin-headless-design.md)
 - [x] Owner's answers, 31 Oct 2026: signed-in proof on local main; Web Store fallback desktop-only; three doors (proof: none: AskUserQuestion answers relayed by the coordinator)
-- [ ] Owner's yes on spec + sketch
-- [ ] PR 1/3 Session: switch, ask dialog, Suggestions entry, ⌘K, consent, cookie copy → Keychain, delete on off (no reading yet)
-- [ ] PR 2/3 Reader: owned-browser LinkedIn step inside Find jobs, states, e2e on fixtures
-- [ ] PR 3/3 Rules and docs: CLAUDE.md, why.md, applying.md, Decision Log row
+- [x] Owner's yes on spec + sketch (proof: none: the owner's answers of 31 Oct 2026, relayed by the coordinator)
+- [x] PR 1/3 Session: switch, ask dialog, Suggestions entry, ⌘K, consent, cookie copy → Keychain, delete on off (no reading yet; #2694) (proof: desktop/lib/linkedin-session.js @f9e9652)
+- [ ] PR 2/3 Reader: owned-browser LinkedIn step inside Find jobs, states, e2e on fixtures (reader #2699 merged; the e2e suite is PR 2b)
+- [x] PR 3/3 Rules and docs: CLAUDE.md, why.md, applying.md, Decision Log row (#2709; Notion row 40a62be8-fd86-815f-b622-ccdcee530c3c) (proof: docs/rules/why.md @33fc161)
 - [ ] Owner's signed-in try on local main

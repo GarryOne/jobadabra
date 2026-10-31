@@ -34,6 +34,7 @@ on:
       - 'desktop/e2e/lib/forms.mjs'
       - 'desktop/e2e/lib/journey.mjs'
       - 'desktop/e2e/lib/ladder-moves.mjs'
+      - 'desktop/e2e/lib/linkedin-fixture.mjs'
       - 'desktop/e2e/lib/live-still.mjs'
       - 'desktop/e2e/lib/offline-app-child.mjs'
       - 'desktop/e2e/lib/offline-app-commands.mjs'

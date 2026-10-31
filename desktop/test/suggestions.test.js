@@ -58,8 +58,9 @@ test('Always on uses the known address in one press with no product-news consent
 test('Always on waits for a valid address and keeps failures in its row for retry', async () => {
   install();
   const {bindHostedOffer} = await import('../renderer/hosted-suggestion.js');
+  const {emailField} = await import('../renderer/hosted-step-parts.js');
   const body = document.createElement('div'), button = document.createElement('button'), calls = [];
-  const field = document.createElement('div'), input = document.createElement('input'); field.append(input);
+  const field = emailField('offer-test-email'), input = field.querySelector('input');
   let removed = false, failure = {ok: false, error: 'Could not reach Jobadabra just now. Check your connection.'};
   const run = bindHostedOffer({body, button, email: '', emailField: () => field,
     turnOn: async given => { calls.push(given); if (failure instanceof Error) throw failure; return failure; }, onSuccess: () => { removed = true; }});

@@ -23,7 +23,7 @@ import {openTune} from './tune.js';
 import {toastMessage} from './startup.js';
 import {wand} from '../magic.js';
 import {bindHostedOffer, hostedEntries} from '../hosted-suggestion.js';
-import {emailField} from './hosted.js';
+import {emailField} from '../hosted-step-parts.js';
 
 let pool = [];              // the engine's entries as last read (Focus's `suggestions`)
 const ALL = 'jp.focus.suggestions.all';   // Show all stays as you left it (this Mac), like Actions' More

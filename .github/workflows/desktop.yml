@@ -719,6 +719,8 @@ jobs:
         working-directory: desktop/e2e
         env:
           E2E_TRY_MINUTES: 15   # = this step's timeout-minutes: a suite without an aggregate budget stops 4 min before it (its close-down cap + 1), with records that read as timing (lib/runner.mjs budgetMsOf; tests/test_e2e_try_minutes.py)
+          GREY_RECORD_FILE: ${{ github.workspace }}/grey-record/grey.json   # flaky-proof.mjs --grey writes the grey job's trend record here (lib/grey-record.mjs); the next step uploads it
+          GREY_SUITE: ${{ matrix.key }}
         timeout-minutes: 15
         run: |
           set -o pipefail   # flaky-proof.mjs | tee: the proof's exit decides (tests/test_workflow_pipefail.py)
@@ -751,6 +753,16 @@ jobs:
             echo "Failed again on the same commit: a real failure."
             exit 1   # a wrong value or harness guard stays red
           fi
+      # Why (gt, 31 Oct 2026, owner: "which suite went grey most this week, and why"): a grey job ends green, so its suite and reason go to the private site's e2e page as this tiny
+      # artifact (only {suite, reason} from fixed words: no log text, no secret to scan); the site's hourly collector reads it from the run. Guard: desktop/e2e/test/grey-record.test.mjs.
+      - name: Keep the grey record for the e2e page
+        if: always() && hashFiles('grey-record/grey.json') != ''
+        uses: actions/upload-artifact@v6
+        with:
+          overwrite: true
+          name: grey-${{ matrix.key }}
+          path: grey-record/grey.json
+          retention-days: 30
       - name: Outside-world health
         if: always() && matrix.tolerant == true
         env:
@@ -1063,6 +1075,8 @@ jobs:
         working-directory: desktop/e2e
         env:
           E2E_TRY_MINUTES: 15   # = this step's timeout-minutes: a suite without an aggregate budget stops 4 min before it (its close-down cap + 1), with records that read as timing (lib/runner.mjs budgetMsOf; tests/test_e2e_try_minutes.py)
+          GREY_RECORD_FILE: ${{ github.workspace }}/grey-record/grey.json   # flaky-proof.mjs --grey writes the grey job's trend record here (lib/grey-record.mjs); the next step uploads it
+          GREY_SUITE: ${{ matrix.key }}
         timeout-minutes: 15
         run: |
           set -o pipefail   # flaky-proof.mjs | tee: the proof's exit decides (tests/test_workflow_pipefail.py)
@@ -1095,6 +1109,16 @@ jobs:
             echo "Failed again on the same commit: a real failure."
             exit 1   # a wrong value or harness guard stays red
           fi
+      # Why (gt, 31 Oct 2026, owner: "which suite went grey most this week, and why"): a grey job ends green, so its suite and reason go to the private site's e2e page as this tiny
+      # artifact (only {suite, reason} from fixed words: no log text, no secret to scan); the site's hourly collector reads it from the run. Guard: desktop/e2e/test/grey-record.test.mjs.
+      - name: Keep the grey record for the e2e page
+        if: always() && hashFiles('grey-record/grey.json') != ''
+        uses: actions/upload-artifact@v6
+        with:
+          overwrite: true
+          name: grey-windows-${{ matrix.key }}
+          path: grey-record/grey.json
+          retention-days: 30
       - name: Outside-world health
         if: always() && matrix.tolerant == true
         env:

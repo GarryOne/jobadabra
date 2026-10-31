@@ -25,7 +25,7 @@ test('the step name is never read: "Notion is busy (429)" in a name is not an en
 });
 
 test('timing and the test environment are proof', () => {
-  assert.deepEqual(flakyProof('locator.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator(\'#x\')'), {flaky: true, why: 'timing: "Timeout 30000ms exceeded"'});
+  assert.deepEqual(flakyProof('locator.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator(\'#x\')'), {flaky: true, kind: 'timing', why: 'timing: "Timeout 30000ms exceeded"'});
   assert.equal(flakyProof('Unexpected token \'<\', "<!DOCTYPE "... is not valid JSON').flaky, true);
   assert.equal(flakyProof('request to http://127.0.0.1:8790 failed, reason: socket hang up').flaky, true);
   assert.equal(flakyProof('').flaky, false, 'no message proves nothing');

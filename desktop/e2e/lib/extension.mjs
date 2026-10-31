@@ -4,6 +4,7 @@
 // on the app's PATH (the app runs `open -a "Google Chrome" <url>`: here that URL is handed to this Chromium instead).
 // Reaches: ../../../extension/   (EXTENSION_DIR, loaded whole into the browser: lib/test-reach.mjs follows it, so harness.yml's paths start the harness tests when any extension file changes)
 // Job: wait on state
+import {waitCapNote} from './wait-on-state.mjs';
 import {appLaunchEnv} from './app-env.mjs';
 import {guardLiveVisit} from './site-ledger.mjs';
 import {chromium} from 'playwright-core';
@@ -158,9 +159,10 @@ export const fillState = page => page.evaluate(() => {
 // fillState for a wait that asks only "has the page written a state yet": a mark that is not a state, or a read that failed, is nothing written, as it was before `unreadable` existed.
 // Why (Gitar on #2378, 28 Oct 2026): `unreadable` is truthy, and the page cases' quiet window (page-replay.mjs watchWindow) ended on the extension's card id.
 export const fillStateOf = page => fillState(page).then(state => (state?.state === 'unreadable' ? null : state));
-// A fill state for a step's failure note: a fill still running when the step's wait ran out says so in timing words ("did not finish within"), which gate G5 reads as
-// timing (lib/flaky-proof.mjs); any other state is shown as it is. 26 Oct 2026, beta 40275152602: the one-page fill was done 2 s after its 90 s wait and was called a wrong value.
-export const fillNote = (state, seconds) => (state?.state === 'running' ? `the fill did not finish within ${seconds} s (still running)` : `state: ${JSON.stringify(state)}`);
+// A missing or unfinished fill at the wait's cap is timing; a finished state remains the app's reported value.
+/** Format the last fill observation after a wait; terminal states (including a wrong one) never become timing. */
+export const fillNote = (state, seconds) => (['done', 'error', 'stopped', 'no-form', 'account'].includes(state?.state)
+  ? `state: ${JSON.stringify(state)}` : waitCapNote('the fill', seconds, state));
 
 // The panel the extension draws on the page (bottom right, an open shadow root).
 export const readPanel = page => page.evaluate(() => {

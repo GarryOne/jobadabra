@@ -13,7 +13,7 @@ const capped = {neurons: null, cap: 100000, skipped: 0, steps: [], at: '2026-10-
 const miss = {url: '/v1/messages', request: {messages: [{role: 'user', content: 'The search (JSON): {"role_words": ["site reliability engineer", "platform engineer"]}\nThe titles:\n1. marketing manager 43'}]}};
 const key = '7f'.repeat(32);
 const reason = 'broker: budget:own-share 60.1% of 60% (scheduled)';
-const head = `AI asks with no stored answer: 1 (first: ${key}); the AI was refused: ${reason}`;
+const head = `AI asks with no stored answer: 1 (first: ${key}, suite jobs, step "read jobs"); the AI was refused: ${reason}`;
 const env = {GITHUB_WORKFLOW: 'CI', GITHUB_REPOSITORY: 'o/r', GITHUB_RUN_ID: '42', GITHUB_SHA: '4709c81'};
 
 function fixture(t, {withMiss = true, withCap = withMiss, log = ''} = {}) {
@@ -74,9 +74,26 @@ test('a cap log alone names the refusal without inventing an ask key', t => {
   const dir = fixture(t, {withMiss: false, log: `ai-capped: jobs (Codex broker: ${reason})\n`});
   writeSuiteFailures(dir, 'jobs', [{name: 'read jobs', status: 'failed', note: 'wrong value'}], {});
   const [record] = JSON.parse(fs.readFileSync(path.join(dir, 'suite-failures.json'), 'utf8'));
-  assert.ok(record.message.startsWith(`AI asks with no stored answer: 0 (first: unavailable); the AI was refused: ${reason}`), record.message);
+  assert.ok(record.message.startsWith(`The AI was refused: ${reason}`), record.message);
   assert.equal(Object.hasOwn(record, 'cause'), false);
   assert.equal(Object.hasOwn(record, 'environment'), false);
+});
+
+// Why (31 Oct 2026, a8 via mac-07; beta 41135642422): one case per order. Missing stored answer first (it is our gap: key, suite, step), the refusal second; a refusal alone never claims a missing answer.
+test('order 1, missing answer and refusal: the answer key, suite and step lead, the refusal follows, the symptom ends', t => {
+  const dir = fixture(t, {log: `ai-capped: jobs (Codex broker: ${reason})\n`});
+  writeSuiteFailures(dir, 'jobs', [{name: 'read jobs', status: 'failed', note: 'wrong value'}], {});
+  const [record] = JSON.parse(fs.readFileSync(path.join(dir, 'suite-failures.json'), 'utf8'));
+  assert.equal(record.message, `AI asks with no stored answer: 1 (first: ${key}, suite jobs, step "read jobs"); the AI was refused: ${reason}; the step then failed: wrong value`);
+  assert.ok(record.message.indexOf('no stored answer') < record.message.indexOf('was refused') && record.message.indexOf('was refused') < record.message.indexOf('wrong value'));
+});
+
+test('order 2, refusal only: it leads alone and does not claim a missing stored answer', t => {
+  const dir = fixture(t, {withMiss: false, log: `ai-capped: jobs (Codex broker: ${reason})\n`});
+  writeSuiteFailures(dir, 'jobs', [{name: 'read jobs', status: 'failed', note: 'wrong value'}], {});
+  const [record] = JSON.parse(fs.readFileSync(path.join(dir, 'suite-failures.json'), 'utf8'));
+  assert.equal(record.message, `The AI was refused: ${reason}; the step then failed: wrong value`);
+  assert.doesNotMatch(record.message, /no stored answer/);
 });
 
 test('naming AI evidence preserves an existing environment flag', t => {
@@ -103,7 +120,7 @@ test('a broker refusal the harness noted names its reason without any log file',
   try { noteBrokerCapped(reason, {E2E_ARTIFACTS: dir, E2E_SUITE: 'qualityai'}); } finally { console.log = quiet; takeCapped(); }
   writeSuiteFailures(dir, 'qualityai', [{name: 'facts', status: 'failed', note: 'the facts are not exact'}], {});
   const [record] = JSON.parse(fs.readFileSync(path.join(dir, 'suite-failures.json'), 'utf8'));
-  assert.ok(record.message.startsWith(`AI asks with no stored answer: 0 (first: unavailable); the AI was refused: ${reason}`), record.message);
+  assert.ok(record.message.startsWith(`The AI was refused: ${reason}`), record.message);
 });
 
 // Gitar on #2652: the file holds the reason of the refusal that wrote it, so a neuron cap after a broker refusal is not named as the broker's budget.

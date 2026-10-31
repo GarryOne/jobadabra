@@ -42,7 +42,7 @@ export async function writeReplay(ctx, suite, env = process.env) {
 // The steps that failed, as records the loop files as issues (message cut to a readable length).
 export const failureRecords = (suite, results, evidence = {}) => results.filter(result => result.status === 'failed')
   .map(result => {
-    const note = String(result.note || ''), message = nameAiFailure(note, evidence);
+    const note = String(result.note || ''), message = nameAiFailure(note, {...evidence, suite, step: result.name});
     return {suite, step: result.name, message: message.slice(0, 600), ...(result.where ? {where: result.where} : {}), ...(result.environment ? {environment: true} : {})};
   });
 

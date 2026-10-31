@@ -70,3 +70,18 @@ test('a refused dispatch (not a 404) is raised', async () => {
   const refused = async () => { throw new Error('GitHub dispatch failed: 403 nope'); };
   await assert.rejects(runScheduled({cron: '0 0,1,2,3 * * *', scheduledTime: Date.parse('2026-10-05T02:00:00Z')}, {}, {dispatch: refused}), /403/);
 });
+
+test('failed verdict sweep ticks fail the cron without paging and still allow stats to start', async () => {
+  for (const minute of ['10', '40']) {
+    const calls = [], told = [], reported = [];
+    const dispatch = async (env, inputs, workflow) => {
+      calls.push(workflow);
+      if (workflow === 'pr-verdict.yml') throw new Error('GitHub dispatch failed: 403 nope');
+    };
+    await assert.rejects(runScheduled({cron: '*/10 * * * *', scheduledTime: Date.parse(`2026-10-31T00:${minute}:00Z`)}, {},
+      {dispatch, notify: async text => told.push(text), report: async text => reported.push(text)}), /scheduled start failed: pr-verdict\.yml: GitHub dispatch failed: 403/);
+    assert.deepEqual(calls, minute === '40' ? ['pr-verdict.yml', 'self-heal-stats.yml'] : ['pr-verdict.yml']);
+    assert.deepEqual(told, [], 'a sustained sweep failure must not page Telegram 144 times a day');
+    assert.deepEqual(reported, [], 'the ten-minute sweep must not churn the watchdog issue');
+  }
+});

@@ -1,9 +1,16 @@
 // The employers suite's checks and its Sonnet judge are only worth anything if they fail on a wrong input: each test feeds a deliberately broken one.
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import {test} from 'node:test';
 import {blank, byQuality, duplicates, EXPECTED, parseRunLine, rowProblems} from '../lib/employers.mjs';
 import {buildRequest, judge, parseVerdicts, problems} from '../lib/judge.mjs';
 import {flatten} from '../lib/notion.mjs';
+import {answerFor, loadTable, questionOf, storedAnswer} from '../lib/ai-answers.mjs';
+import {backboneHarness} from '../lib/backbone-harness.mjs';
+import {checkAiMisses} from '../lib/no-real-ai.mjs';
+import {modelFetch} from '../lib/model.mjs';
+import {requestKey} from '../lib/ai-meter.mjs';
+import {valid} from '../lib/ai-answers-engine-items.mjs';
 
 const good = {name: 'E2E Nimbus', feed_status: 'Feed found', ats: 'greenhouse', slug: 'e2e-nimbus', feed: 'https://x', quality: 76, cities: 'Zurich', relevant_roles: 4,
   in_preferred_places: 4, notes: '5 postings; 4 SRE-type; 4 in preferred places', origin: 'Tier 1 seed', tier: 'Tier 1', checked: '2026-10-02', added: '2026-10-02', active: true};
@@ -76,4 +83,106 @@ test('the judge call fails loudly when the request is rejected', async () => {
   await assert.rejects(judge({key: 'k', person: 'p', items: [], fetchImpl: rejected}), /rejected \(400\).*temperature/);
   const answered = async () => ({ok: true, status: 200, json: async () => ({content: [{type: 'text', text: '{"items":[{"name":"A","makes_sense":false,"reason":"wrong city"}]}'}]})});
   assert.deepEqual(await judge({key: 'k', person: 'p', items: [], fetchImpl: answered}), [{name: 'A', makes_sense: false, reason: 'wrong city'}]);
+});
+
+const fixture = JSON.parse(fs.readFileSync(new URL('../fixtures/golden/employers-asks.json', import.meta.url)));
+const request = ask => ({method: 'POST', headers: {'content-type': 'application/json', ...(ask.action ? {'x-jp-action': ask.action} : {})}, body: JSON.stringify(ask.body)});
+const dataOf = reply => JSON.parse(reply.content[0].text);
+
+test('employers declares offline backbone answers for both workflow attempts', () => {
+  const source = fs.readFileSync(new URL('../suites/employers.mjs', import.meta.url), 'utf8');
+  for (const declaration of ['offlineAi = true', 'realAi = false', "aiAnswers = 'backbone'", "store = 'standin'"]) assert.ok(source.includes(`export const ${declaration};`), declaration);
+});
+
+for (const family of ['claude', 'openai']) test(`employers captured and reconstructed asks resolve at stored, direct and ${family} proxy seams with cache off`, async t => {
+  const h = await backboneHarness(t, 'employers', family);
+  Object.assign(h.env, {E2E_AI_REPLAY: '0', E2E_AI_CACHE: ''});
+  Object.assign(process.env, h.env);
+  t.after(() => h.assertNoLive());
+  const table = loadTable(), keys = new Set();
+  for (const ask of fixture.asks) {
+    const init = request(ask), question = questionOf(init, h.env, table);
+    assert.ok(question.operation, JSON.stringify(question));
+    const identified = (question.items?.map(item => item.key) || [question.id]).map(key => `${question.operation}/${key}`);
+    assert.deepEqual(identified, ask.keys, ask.source);
+    for (const key of identified) keys.add(key);
+    const expected = storedAnswer(init, h.env).reply;
+    assert.ok(expected, ask.source);
+    if (ask.body.output_config) assert.ok(valid(ask.body.output_config.format.schema, dataOf(expected)), ask.source);
+    assert.deepEqual(await (await modelFetch('http://127.0.0.1:1/v1/messages', init, h.options)).json(), expected);
+    const response = await h.localFetch(`${h.proxy.url}/v1/messages`, init);
+    assert.equal(response.status, 200, ask.source);
+    assert.deepEqual(await response.json(), expected);
+    if (family === 'openai') {
+      const body = {model: 'test', instructions: ask.body.system, input: ask.body.messages,
+        ...(ask.body.output_config ? {text: {format: ask.body.output_config.format}} : {}), prompt_cache_key: `job-pilotto-${ask.action}`};
+      const response = await h.localFetch(`${h.openaiProxy.url}/v1/responses`, {...init, body: JSON.stringify(body)});
+      assert.equal(response.status, 200, ask.source);
+      assert.deepEqual(JSON.parse((await response.json()).output[0].content[0].text), dataOf(expected));
+    }
+  }
+  assert.equal(checkAiMisses(h.env.E2E_ARTIFACTS, {aiMissesMax: 0}).misses, 0);
+  console.log(`AI asks with no stored answer: 0; ${keys.size} distinct questions; cache off; live transports 0`);
+  console.log([...keys].sort().join('\n'));
+});
+
+test('both CI-refused organizer asks keep their kind identity despite changing UUIDs', () => {
+  const captured = fixture.asks.filter(ask => ask.action === 'organize_lines');
+  assert.equal(captured.length, 2);
+  assert.equal(new Set(captured.map(ask => requestKey('/v1/messages', Buffer.from(JSON.stringify(ask.body))))).size, 2);
+  for (const ask of captured) {
+    const q = questionOf(request(ask), {E2E_AI_ANSWERS: 'backbone'});
+    assert.deepEqual(q, {operation: 'app.kind', id: 'organize_lines'});
+    assert.deepEqual(dataOf(answerFor(q, loadTable()).reply), {items: []});
+  }
+});
+
+test('stored board judgments preserve Nimbus and Orbit counts and reject the noise board', () => {
+  const table = loadTable(), env = {E2E_AI_ANSWERS: 'backbone'};
+  const titleAsk = fixture.asks.find(ask => ask.source.includes('job-title-kind'));
+  const titleQuestion = questionOf(request(titleAsk), env, table);
+  const kinds = new Map(titleQuestion.items.map(item => [item.text, table.items['app.decide'][item.key].answer]));
+  const placeAsk = fixture.asks.find(ask => ask.action === 'place_triage');
+  const placeQuestion = questionOf(request(placeAsk), env, table);
+  const locations = new Map(placeQuestion.items.map(item => [item.text, table.items['app.place'][item.key].answer.answer]));
+  for (const [board, company, expected] of [['nimbus', 'E2E Nimbus', [4, 4]], ['orbit', 'E2E Orbit', [2, 1]], ['noise', 'E2E Noise', [0, 0]]]) {
+    const {jobs} = JSON.parse(fs.readFileSync(new URL(`../fixtures/feeds/employers/${board}.json`, import.meta.url)));
+    const matching = jobs.filter(job => kinds.get(job.title) === 'software');
+    const preferred = matching.filter(job => ['best', 'inside'].includes(locations.get(job.location.name.toLowerCase())));
+    assert.deepEqual([matching.length, preferred.length], expected, company);
+    assert.equal(EXPECTED[company].status, preferred.length ? 'found' : 'low');
+    assert.equal(EXPECTED[company].active, preferred.length > 0);
+  }
+  const review = fixture.asks.find(ask => ask.keys[0].startsWith('judge.review/')), {items} = dataOf(storedAnswer(request(review), env).reply);
+  assert.deepEqual(items.map(item => item.name).sort(), ['E2E Nimbus', 'E2E Orbit']);
+  assert.deepEqual(problems(['E2E Nimbus', 'E2E Orbit'], items), []);
+});
+
+test('review identity keeps every fact and person, ignores row/JSON order, and refuses malformed rows', () => {
+  const ask = fixture.asks.find(ask => ask.keys[0].startsWith('judge.review/')), env = {E2E_AI_ANSWERS: 'backbone'}, table = loadTable();
+  const original = questionOf(request(ask), env, table);
+  assert.equal(original.operation, 'judge.review');
+  const [person, rows] = ask.body.messages[0].content.slice('The person: '.length).split('\n\nThe items the tool wrote:\n');
+  const changed = (p, items) => request({action: '', body: buildRequest({person: p, items})});
+  const items = JSON.parse(rows);
+  assert.deepEqual(questionOf(changed(person, items.toReversed()), env, table), original);
+  for (const init of [changed(`${person} Different candidate.`, items), changed(person, [{...items[0], relevantRoles: 0}, items[1]])]) {
+    const question = questionOf(init, env, table);
+    assert.notEqual(question.id, original.id);
+    assert.equal(answerFor(question, table).missing, `judge.review/${question.id}`);
+  }
+  assert.match(questionOf(changed(person, [{quality: 86}]), env, table).unkeyable, /judge.review/);
+});
+
+test('employers unknown kinds refuse by name at all three seams', async t => {
+  const h = await backboneHarness(t, 'employers');
+  t.after(() => h.assertNoLive());
+  const init = request({action: 'undeclared_employers_kind', body: {}});
+  const missing = {code: 'E2E_AI_ANSWER_MISSING', message: /employers: undeclared_employers_kind.*is unkeyable/};
+  assert.throws(() => storedAnswer(init, h.env), missing);
+  await assert.rejects(modelFetch('http://127.0.0.1:1/v1/messages', init, h.options), missing);
+  const response = await h.localFetch(`${h.proxy.url}/v1/messages`, init);
+  assert.equal(response.status, 503);
+  const {error} = await response.json();
+  assert.equal(error.code, missing.code); assert.match(error.message, missing.message);
 });

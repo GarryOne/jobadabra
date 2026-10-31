@@ -113,6 +113,17 @@ function captionQuestion(body, action) {
   return {operation: `app.${action}`, id: captions[0]};
 }
 
+/** Identify a row review by its person and structured facts, independent of JSON formatting or row order. */
+function reviewQuestion(body) {
+  const messages = body.messages ?? body.input;
+  const user = Array.isArray(messages) && messages.length === 1 && messages[0]?.role === 'user' ? textOf(messages[0].content) : '';
+  const match = /^The person: ([\s\S]+)\n\nThe items the tool wrote:\n([\s\S]+)$/.exec(user);
+  let items; try { items = match && JSON.parse(match[2]); } catch { /* Malformed facts have no review identity. */ }
+  if (!match || !Array.isArray(items) || !items.length || items.some(item => !object(item) || typeof item.name !== 'string')) return {unkeyable: 'judge.review: expected one person and named fact rows'};
+  // Invariant: every supplied fact participates; a different person, quality or row can never borrow this verdict.
+  return {operation: 'judge.review', id: hash({person: match[1], items: items.map(canonical).sort()})};
+}
+
 /** Identify scores, decide items, declared kinds or fact questions; an explicit table keeps kind lookup pure. */
 export function questionOf({url, headers, body, hint}, env = process.env, table) {
   // Why (#2450): golden personas reuse posting IDs, so their stored scores and verdicts must never share an answer.
@@ -121,6 +132,7 @@ export function questionOf({url, headers, body, hint}, env = process.env, table)
   const data = parsed(body), action = actionOf(headers, data);
   const engine = engineQuestion(data, persona); if (engine) return engine;
   const system = textOf(data.system ?? data.instructions);
+  if (system.startsWith('You are a strict reviewer of what a job-search tool wrote down for one person.')) return reviewQuestion(data);
   if (action === 'score' || system.startsWith('You rank job postings for one candidate.')) return scoreQuestion(data, persona);
   if (action === 'decide' || system.startsWith('You decide what short pieces of content mean')) return decideQuestion(data, persona);
   // Why (30 Oct 2026, qu): a recognized place SYSTEM owns its malformed-request reason; header-only scout asks may still belong to a declared kind.

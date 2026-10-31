@@ -18,6 +18,7 @@ import {e2eMs} from './e2e-timing.js';
 import {log as appLog} from './log.js';
 import {resumeDelay, scheduleResume} from './resume-queue.js';
 import {startSchedule} from './schedule.js';
+import {askInstalledTwice} from './two-installs-notice.js';
 import {watchOrphans} from './orphans.js';
 import {watchSleep, startHeartbeat} from './awake.js';
 
@@ -25,8 +26,9 @@ import {runState} from './run-state.js';
 import {isTwin} from './twin.js';
 
 export function registerBackgroundHandlers(ctx) {
-  const {DEMO, announceRuns, app, backupNow, checkForUpdate, cloud, focusReminder, log, notify, powerMonitor, restartTelegram, resumeQueue, skipUntilNotion, storage, syncCv, toWindow} = ctx;
+  const {BrowserWindow, DEMO, announceRuns, app, backupNow, checkForUpdate, cloud, dialog, focusReminder, log, notify, powerMonitor, restartTelegram, resumeQueue, shell, skipUntilNotion, storage, syncCv, toWindow} = ctx;
   if (!DEMO) {
+    askInstalledTwice({dialog, shell, storage, window: BrowserWindow.getAllWindows()[0], packaged: app.isPackaged});   // the one-time "installed twice" note (Windows, both copies); resolves, never rejects (lib/two-installs-notice.js)
     // User data left on this Mac -> Notion (source of truth), once. It runs while the window loads, so the
     // window reads again what moved (e.g. open questions read before they reached Notion looked like none).
     // Why (2026-10-28, red main after #2339): the move runs for seconds behind the first reads and drops this Mac's profile.md and answers.md once Notion has them, so anything

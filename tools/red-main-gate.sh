@@ -30,6 +30,8 @@ python3 -c 'import json, sys
 state = json.load(sys.stdin)
 for suite in state["suspended"]:
     print("suspended (owner issue, not blocking): " + suite["suite"])
+for step in state.get("suspendedSteps", []):
+    print("suspended step (owner issue, not blocking): " + step["suite"] + " · " + step["step"] + " (" + step["issue"] + ")")
 ' <<<"$state_json"
 reds="$(python3 -c 'import json, sys
 for s in json.load(sys.stdin)["red"]:
@@ -73,4 +75,6 @@ if [ "${st#completed }" = success ]; then
   exit 0
 fi
 echo "Re-check ${st#completed }: main is still red (${url}). No beta: fix the suite (skill fix-failing-e2e), or --force \"<why>\"."
+# Why (31 Oct 2026, owner: "You detect flakiness and immediately treat the flakiness root cause"): say whether each red step is flaky (it passed on code unchanged since) or changed (a likely regression), with the green run, so no person has to notice. Information only: a failed read prints nothing.
+if [ -f "$here/flaky-verdict.mjs" ]; then GITHUB_REPOSITORY="$repo" node "$here/flaky-verdict.mjs" --run "$id" --repo "$repo" 2>/dev/null | sed 's/^/  /'; fi
 exit 1

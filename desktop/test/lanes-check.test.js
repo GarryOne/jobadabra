@@ -7,7 +7,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {test} from 'node:test';
 import {fileURLToPath} from 'node:url';
-import {checkPush, entryProblems, FILE, lanesProblems} from '../../tools/lanes-check.mjs';
+import {checkPush, entryProblems, FILE, lanesProblems, stepEntryProblems} from '../../tools/lanes-check.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const WHY = 'Twelve golden postings go through the real check and a judge reads the free text.';
@@ -89,6 +89,30 @@ test('a push that lists a suite as tolerant with no input is blocked with the ru
   assert.match(blocked, /this push changes the lane registry desktop\/e2e\/lanes\.json, and:\n {2}settings: input must be one of/);
   assert.match(blocked, /our own races are bugs, not tolerance/);
   assert.equal(push({}, {settings: entry({input: 'outside'})}), '');
+});
+
+// A step suspended by name (spec row 33, 31 Oct 2026): top-level `steps`, an owner and the issue holding the evidence.
+const stepEntry = (over = {}) => ({lane: 'suspended', input: 'a loaded runner starves the hidden Chrome', since: '2026-10-31', owner: 'GarryOne', issue: 'https://github.com/GarryOne/jobadabra/issues/2701', why: WHY, returns: 'Back after its fix PR lands and main\'s next 3 runs pass it.', ...over});
+const withSteps = steps => JSON.stringify({v: 1, about: 'the registry', suites: {}, steps}, null, 2);
+
+test('a suspended step with its owner, its issue URL, a reason and a return passes', () => {
+  assert.deepEqual(stepEntryProblems(stepEntry()), []);
+  assert.deepEqual(lanesProblems(file({}), withSteps({apply: {'a step': stepEntry()}})), []);
+});
+
+test('a suspended step with no issue, no owner or a lane other than suspended is refused, naming suite and step', () => {
+  assert.match(stepEntryProblems(stepEntry({issue: undefined})).join(), /issue must be the GitHub issue URL/);
+  assert.match(stepEntryProblems(stepEntry({issue: 'https://example.test/1'})).join(), /issue must be the GitHub issue URL/);
+  assert.match(stepEntryProblems(stepEntry({owner: ' '})).join(), /owner must name who fixes it/);
+  assert.match(stepEntryProblems(stepEntry({lane: 'tolerant', input: 'ai'})).join(), /only ever suspended/);
+  const found = lanesProblems(file({}), withSteps({apply: {'a step': stepEntry({returns: ''})}}));
+  assert.equal(found.length, 1);
+  assert.match(found[0], /^apply · a step: returns must be a non-empty string/);
+});
+
+test('an unchanged step entry is not checked again, and a push naming a step of a suite with no file is refused', () => {
+  const same = withSteps({apply: {'a step': stepEntry({issue: 'not a url'})}});
+  assert.deepEqual(lanesProblems(same, same), []);
 });
 
 test('a checkout with no base to compare with says nothing', () => {

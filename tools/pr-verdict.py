@@ -384,6 +384,15 @@ def speed_state(state, live, jobs, me, reports, job_status):
     return result
 
 
+def flaky_note(repo, ref, live, why):
+    """The red PR's description with its flaky-step count (tools/pr_flaky.py note). Why (31 Oct 2026, owner): say "flaky" on the red; information only."""
+    try:
+        return main_state_module(repo, ref, 'pr_flaky').note(repo, live, why)
+    except Exception as error:
+        print(f'Flaky read unavailable ({type(error).__name__}): verdict unchanged')
+        return why
+
+
 def main():
     sys.stdout.reconfigure(encoding='utf-8')   # a Windows runner's console is cp1252
     ap = argparse.ArgumentParser()
@@ -437,6 +446,8 @@ def main():
     # Why (31 Oct 2026, owner: "Grey: not known yet"): preserve the note even with red/pending peers or truncated numbers.
     if 'ai-budget' in getattr(reports, 'reasons', {}).values() and 'qualityai: AI budget refused, not judged' not in why:
         why = ('qualityai: AI budget refused, not judged; ' + why)[:140]
+    if state == 'failure':
+        why = flaky_note(a.repo, ref, live, why)
     print(f'{CONTEXT}: {state}: {why}')
     url = f'{server}/{a.repo}/actions/runs/{target or my_run}'   # the run it waits on, or the red one: the PR's e2e run is not in its checks list
     if not a.dry_run:

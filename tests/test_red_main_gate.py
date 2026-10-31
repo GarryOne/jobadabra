@@ -48,7 +48,7 @@ RED_RUN = {'id': 2, 'display_title': 'E2E check · on time (Worker cron)', 'conc
 RED_JOBS = {'2': [{'name': 'cardstates', 'conclusion': 'failure'}, {'name': 'settings', 'conclusion': 'failure'}, {'name': 'jobs', 'conclusion': 'success'}]}
 
 
-def gate(data, *extra, lanes=None):
+def gate(data, *extra, lanes=None, verdict_tool=None):
     with tempfile.TemporaryDirectory() as tmp:
         tmp = Path(tmp)
         (tmp / 'bin').mkdir()
@@ -60,6 +60,8 @@ def gate(data, *extra, lanes=None):
         if lanes is not None:
             (tmp / 'desktop/e2e').mkdir(parents=True)
             (tmp / 'desktop/e2e/lanes.json').write_text(lanes)
+        if verdict_tool is not None:   # tools/flaky-verdict.mjs, faked: the real one reads GitHub and git
+            (tmp / 'tools/flaky-verdict.mjs').write_text(verdict_tool)
         gh = tmp / 'bin/gh'
         gh.write_text(FAKE_GH)
         gh.chmod(gh.stat().st_mode | stat.S_IEXEC)
@@ -124,6 +126,27 @@ class RedMainGate(unittest.TestCase):
         code, out, _ = gate({'runs': [RED_RUN], 'jobs': RED_JOBS, 'head': NEW_SHA, 'recheck': 'failure'})
         self.assertEqual(code, 1, out)
         self.assertIn('still red', out)
+
+    def test_a_red_recheck_says_flaky_or_changed_for_each_red_step_after_the_failure_line(self):
+        # Why (31 Oct 2026, owner: "why I need to flag this personally"): the tools say "flaky" on the red, with the green run it compared to; the run read is the re-check (99).
+        tool = "console.log(`Flaky: “a step” passed on the same commit (run ${process.argv[process.argv.indexOf('--run') + 1]})`); console.log('Changed: “b step” differs in src/x.py');\n"
+        code, out, _ = gate({'runs': [RED_RUN], 'jobs': RED_JOBS, 'head': NEW_SHA, 'recheck': 'failure'}, verdict_tool=tool)
+        self.assertEqual(code, 1, out)
+        lines = out.splitlines()
+        failure = next(i for i, line in enumerate(lines) if line.startswith('Re-check failure: main is still red'))
+        self.assertEqual(lines[failure + 1:failure + 3], ['  Flaky: “a step” passed on the same commit (run 99)', '  Changed: “b step” differs in src/x.py'])
+
+    def test_a_verdict_tool_that_breaks_never_changes_the_gate(self):
+        code, out, _ = gate({'runs': [RED_RUN], 'jobs': RED_JOBS, 'head': NEW_SHA, 'recheck': 'failure'}, verdict_tool="throw new Error('no network');\n")
+        self.assertEqual(code, 1, out)
+        self.assertIn('still red', out)
+
+    def test_suspended_steps_are_listed_with_their_issue_and_never_block(self):
+        lanes = json.dumps({'suites': {}, 'steps': {'apply': {'a flaky step': {'lane': 'suspended', 'issue': 'https://github.com/o/r/issues/7'}, 'tolerant one': {'lane': 'tolerant'}}}})
+        code, out, _ = gate({'runs': [{**RED_RUN, 'conclusion': 'success'}], 'jobs': {'2': [{'name': 'apply', 'conclusion': 'success'}]}, 'head': RED_SHA}, lanes=lanes)
+        self.assertEqual(code, 0, out)
+        self.assertIn('suspended step (owner issue, not blocking): apply · a flaky step (https://github.com/o/r/issues/7)', out)
+        self.assertNotIn('tolerant one', out)
 
     def test_force_goes_on_and_names_the_reds(self):
         code, out, dispatch = gate({'runs': [RED_RUN], 'jobs': RED_JOBS, 'head': RED_SHA}, '--force', 'hotfix for testers')

@@ -40,7 +40,7 @@ class TheAiNumberInEveryWriter(unittest.TestCase):
              mock.patch.object(sys, 'argv', ['pr-verdict.py', '--repo', 'o/r', '--sha', 'head']), \
              mock.patch.object(sys, 'stdout'), mock.patch.object(pv, 'read', return_value=([r], jobs)) as read_runs, \
              mock.patch.object(pv, 'pr_meta', return_value=([{'number': 1, 'state': 'open'}], [], [])), \
-             mock.patch.object(pv, 'main_state_module', side_effect=lambda repo, ref, name='main_e2e_state': ai if name == 'pr_ai_number' else speed if name == 'pr_speed_number' else mock.Mock()), \
+             mock.patch.object(pv, 'main_state_module', side_effect=lambda repo, ref, name='main_e2e_state': ai if name == 'pr_ai_number' else speed if name == 'pr_speed_number' else mock.Mock(note=lambda repo, runs, why: why) if name == 'pr_flaky' else mock.Mock()), \
              mock.patch.object(ai, 'report_suites', return_value={'qualityai'}), mock.patch.object(ai, 'numbers', return_value=(RATES, RATES)) as read_number, \
              mock.patch.object(pv, 'main_red_greys', return_value=set() if kind in ('red', 'early-red') else {72}), \
              mock.patch.object(pv, 'lane_greys', return_value={}), mock.patch.object(pv, 'health_greys', return_value={}), \

@@ -1,6 +1,6 @@
-# Report a same-commit attempt flip (a hand re-run that came out green) as an owner issue with a proposed registry entry; never edit lanes.json.
+# Report a step that is red on code unchanged since it last passed (flaky) as an owner issue with a proposed registry entry; never edit lanes.json.
 # Job: report health
-name: E2E · Suspend a retry flip
+name: E2E · Suspend a flaky step
 on:
   workflow_run:
     workflows: ['CI · End-to-end on Mac + Linux']
@@ -9,24 +9,27 @@ on:
   workflow_dispatch:
     inputs:
       run_id:
-        description: 'Completed main e2e run to inspect (all attempts)'
+        description: 'Completed main e2e run to inspect'
         type: string
         required: true
 
 permissions:
   actions: read
+  checks: read      # the failed steps' annotations (desktop/e2e/ci-alert.mjs stepCauses)
   issues: write
   contents: read
 
-# Keep the lookup and issue creation together, including different runs flipping the same suite.
+# Keep the lookup and issue creation together, including different runs reddening the same step.
 concurrency:
   group: e2e-flip
   cancel-in-progress: false
 
 jobs:
   flip:
+    # A green run has nothing to say; a hand dispatch inspects whatever run it names.
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'failure'
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v5
         timeout-minutes: 5
@@ -37,37 +40,22 @@ jobs:
         timeout-minutes: 5
         with:
           node-version: '22'
-      - name: Collect every attempt
-        timeout-minutes: 5
-        id: attempts
+      - name: Propose suspension and open its owner issue
+        timeout-minutes: 8
         env:
           GH_TOKEN: ${{ github.token }}
           RUN_ID: ${{ inputs.run_id || github.event.workflow_run.id }}
+          OWNER: ${{ github.repository_owner }}
         run: |
           case "$RUN_ID" in ''|*[!0-9]*) echo 'Run id must be numeric.' >&2; exit 1 ;; esac
           run="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID")"
+          # Why (31 Oct 2026, spec row 33): only a run that checks main's own code is evidence; a mutant is red on purpose, a soak or canary tests another commit.
           if ! jq -e --arg repo "$GITHUB_REPOSITORY" '
             .head_branch == "main" and .head_repository.full_name == $repo and
-            .path == ".github/workflows/e2e.yml" and .status == "completed" and .run_attempt >= 1
+            .path == ".github/workflows/e2e.yml" and .status == "completed" and
+            (.display_title | test("^(Mutant|RC soak|Stable canary|Beta E2E tests|Gate|Bisect|E2E check · outside world) ") | not)
           ' <<< "$run" >/dev/null; then
             echo 'No completed main e2e run to inspect.'
             exit 0
           fi
-          count="$(jq -r .run_attempt <<< "$run")"
-          dir="$(mktemp -d "$RUNNER_TEMP/flip.XXXXXX")"
-          pages=()
-          for ((n=1; n<=count; n++)); do
-            gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID/attempts/$n/jobs?per_page=100" --paginate --slurp > "$dir/$n.json"
-            pages+=("$dir/$n.json")
-          done
-          jq -s --argjson run "$run" '{run: $run, attempts: [.[][]]}' "${pages[@]}" > "$dir/attempts.json"
-          echo "attempts=$dir/attempts.json" >> "$GITHUB_OUTPUT"
-      - name: Propose suspension and open its owner issue
-        if: steps.attempts.outputs.attempts != ''
-        timeout-minutes: 5
-        env:
-          GH_TOKEN: ${{ github.token }}
-          ATTEMPTS: ${{ steps.attempts.outputs.attempts }}
-          OWNER: ${{ github.repository_owner }}
-        run: |
-          node tools/suspend-flip.mjs --attempts "$ATTEMPTS" --owner "$OWNER" --open --repo "$GITHUB_REPOSITORY"
+          node tools/suspend-flip.mjs --run "$RUN_ID" --owner "$OWNER" --open --repo "$GITHUB_REPOSITORY"

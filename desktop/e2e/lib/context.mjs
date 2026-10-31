@@ -25,6 +25,7 @@ import {ARTIFACTS, E2E, launch, pickFile, step} from './app.mjs';
 import {clearRoot, testRoot, workspaceReady} from './notion.mjs';
 import {budgetMsOf, createRunner} from './runner.mjs';
 import {hangCapsFor} from './hang-caps.mjs';
+import {suspendedStepsOf} from './suspended-steps.mjs';
 import {notionFarSide, pickStore, runToken, storeSettings} from './store.mjs';
 import {storeCall} from './store-call.mjs';
 import {isLoopback} from '../../lib/notion-pace.js';
@@ -124,7 +125,7 @@ export async function openContext(suite, {fresh = false, env: suiteEnv = {}, bro
   const {key, judgeKey} = aiKeys, token = runToken({store, standIn, light, fromEnv: () => notionToken(notionTokenOf || suite, {own: store === 'notion'})});
   if (!light) console.log(`  AI family under test: ${{openai: 'OpenAI', free: 'Free AI (Workers AI, the relay on this runner)'}[family] || 'Claude'} (engine ${engine}${isCi() && family !== 'free' ? `, CI run ${process.env.GITHUB_RUN_NUMBER || '?'}: odd runs OpenAI, even runs Claude` : ''})`);
   let session = null, fakes = [];   // the fake services of this suite, once started: the runner checks that a step's fault fired (lib/faults.mjs)
-  const runner = createRunner(() => session, {suite, cadence, keepGoing, hangCaps, stepNeeds, report, faultTally: () => tally(fakes), budgetMs: budgetMsOf({aggregateBudget, budgetMinutes})});
+  const runner = createRunner(() => session, {suite, cadence, keepGoing, hangCaps, stepNeeds, report, suspended: suspendedStepsOf(suite), faultTally: () => tally(fakes), budgetMs: budgetMsOf({aggregateBudget, budgetMinutes})});
   countNotionRequestsByStep(runner, standIn);
   // A light suite needs only the AI key: no Notion page, no app, no browser (a model-only eval).
   // The test's own judges and evals (lib/judge.mjs, fit.mjs, model.mjs, the explore agent) are Claude whatever the app runs on, so both families are judged
@@ -210,7 +211,7 @@ export async function openContext(suite, {fresh = false, env: suiteEnv = {}, bro
   // newInstall: no store written, as a new install starts (the app gives it this Mac at first start, lib/store-handlers.js settleStore).
   adopt(await launch({env, lang: ctx.place?.locale || '', settings: newInstall ? {} : storeSettings(store)}));
   // The app's trace is kept when the suite failed so far: a failed step, or an error outside the steps (lib/suite-main.mjs sets ctx.stopped first).
-  const failed = () => !!ctx.stopped || runner.results.some(result => result.status === 'failed');
+  const failed = () => !!ctx.stopped || runner.results.some(result => ['failed', 'suspended'].includes(result.status));   // a suspended step's red keeps its trace: the owner issue needs the evidence
   ctx.close = async () => { ctx.closing = true; try { await session?.shot('last'); await ctx.browser?.close(); await session?.close({keepTrace: failed()}); await ctx.proxy?.close(); await ctx.openaiProxy?.close(); await ctx.notion?.close(); await ctx.telegram?.close(); await ctx.google?.close(); await ctx.releases?.close(); if (ctx.standIn) { try { fs.writeFileSync(path.join(ARTIFACTS, 'notion-standin.json'), JSON.stringify(ctx.standIn.dump(), null, 1)); } catch {} writeNotionRequests(ARTIFACTS, ctx.standIn.requests); await ctx.standIn.close(); } await ctx.forms?.close(); } finally { ctx.pageLock?.release(); } };
   // Quit the app the hard way (as a crash or a power cut would: nothing gets to tidy up) and start it again on the same profile. `extra` adds to the environment; `between(profile)` runs while the app is down.
   ctx.relaunch = async (extra = {}, between) => { const profile = session.profile; await session.close({keepTrace: failed()}); await between?.(profile); await adoptSessionUnlessClosing(ctx, () => launch({env: {...env, ...extra}, profile, lang: ctx.place?.locale || ''}), adopt); };

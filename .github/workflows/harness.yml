@@ -51,6 +51,7 @@ on:
       - 'tools/design-system/rules-html.mjs'
       - 'tools/design-system/serve.mjs'
       - 'tools/design-system/zip.mjs'
+      - 'tools/flaky-verdict.mjs'
       - 'tools/lanes-check.mjs'
       - 'tools/pool-rows.mjs'
       - 'tools/persona-search/codex.mjs'

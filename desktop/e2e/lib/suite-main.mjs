@@ -48,6 +48,18 @@ export function writeFinalFailures(suite, ctx) {
   return missing || !ceiling.ok;
 }
 
+/** The exit code of a suite stopped by an error: 1, except a suspended step's hang (lib/runner.mjs suspendedStop), which ends the suite without failing it.
+ * Why (31 Oct 2026, spec row 33): the steps after that step did not run and say so; the hang itself is on the suspended step's owner issue. */
+export function stopCode(error, name, ctx) {
+  if (error?.suspendedStop) {
+    console.log(`⚠ the ${name} suite stopped after a suspended step hung: its remaining steps did not run (not a failure): ${error.message}`);
+    ctx?.runner.results.push({name: 'steps after a suspended step that hung', status: 'skipped', note: error.message});
+    return 0;
+  }
+  if (!ctx?.runner.results.some(result => result.status === 'failed')) console.log(`✗ the ${name} suite stopped: ${error.message}`);
+  return 1;
+}
+
 export async function runSuite(name, report = null) {
   const {assertNothingQueued, traceFiles} = await import('./app.mjs');
   const {SUITES, openContext} = await import('./context.mjs');
@@ -82,9 +94,8 @@ export async function runSuite(name, report = null) {
       if (ctx.standIn.stats.unknown.length) throw new Error(`the stand-in did not know: ${ctx.standIn.stats.unknown.join('; ')}`);
     }, {critical: true});
   } catch (error) {
-    if (!ctx?.runner.results.some(result => result.status === 'failed')) console.log(`✗ the ${name} suite stopped: ${error.message}`);
     if (ctx) ctx.stopped = error.message;   // the trace is kept (lib/context.mjs)
-    code = 1;
+    code = stopCode(error, name, ctx);
   } finally {
     // For the nightly loop, whatever happened: the layout findings so far, and the steps that failed (a suite that stops early used to leave neither).
     // Errors over the whole suite (lib/journey.mjs): added to its findings, so even a suite without layout checks reports a renderer exception.

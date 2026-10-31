@@ -165,7 +165,7 @@ class Workflows(unittest.TestCase):
             name = re.search(r'(?m)^name:\s*(.+?)\s*$', (WORKFLOWS / path).read_text()).group(1).strip('\'"')
             self.assertIn(name, listed, f'{path}: the PR e2e run it makes is judged only when a listed workflow ends')
         checkout = verdict.split('\n  verdict:\n', 1)[1].split('sparse-checkout: |', 1)[1].split('sparse-checkout-cone-mode', 1)[0]
-        for name in ('main_e2e_state', 'pr_ai_number', 'pr_burn_in', 'pr_health_greys', 'pr_speed_number', 'beta_rate_gate', 'pr_verdict_runs', 'pr_verdict_greys'):
+        for name in ('main_e2e_state', 'pr_ai_number', 'pr_burn_in', 'pr_health_greys', 'pr_speed_number', 'beta_rate_gate', 'pr_verdict_runs', 'pr_verdict_greys', 'pr_flaky'):
             self.assertIn(f'tools/{name}.py', checkout, 'a companion not checked out is fetched over the API on every write')
 
     def test_no_e2e_run_for_a_merged_or_closed_pr(self):

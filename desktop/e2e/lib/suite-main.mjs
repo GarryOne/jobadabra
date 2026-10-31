@@ -39,6 +39,7 @@ export function writeFinalFailures(suite, ctx) {
   if (missing) console.error(`✗ ${ctx.stopped}`);
   // Why (30 Oct 2026, a8): a suite at 0 asks without a stored answer must stay at 0 (jobs and failureschannels went red when the CI AI budget ran out).
   const ceiling = checkAiMisses(ctx.ARTIFACTS, JSON.parse(fs.readFileSync(new URL('../lanes.json', import.meta.url), 'utf8')).suites?.[suite]);
+  if (ceiling.max !== null) console.log(`AI asks with no stored answer: ${ceiling.misses} (allowed ${ceiling.max})`);
   if (!ceiling.ok) {
     ctx.runner.results.push({name: 'AI asks have stored answers', status: 'failed', note: ceiling.message});
     console.error(`✗ ${ceiling.message}\nE2E-cause: ai ${suite}`);

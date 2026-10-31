@@ -124,3 +124,13 @@ test('the existing suite finalizer fails after teardown and keeps the AI failure
   const steps = JSON.parse(fs.readFileSync(path.join(dir, 'steps.json'), 'utf8'));
   assert.equal(steps.results[0].status, 'failed');
 });
+
+test('the post-close guard prints the measured zero required by saved-gate CI proof', async t => {
+  const dir = artifacts(t), lines = [];
+  t.mock.method(console, 'log', line => lines.push(line));
+  const {writeFinalFailures} = await import('../lib/suite-main.mjs');
+  const ctx = {ARTIFACTS: dir, runner: {results: []}};
+  assert.equal(writeFinalFailures('activity', ctx), false);
+  assert.ok(lines.includes('AI asks with no stored answer: 0 (allowed 0)'), lines.join('\n'));
+  assert.deepEqual(ctx.runner.results, []);
+});

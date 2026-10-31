@@ -216,6 +216,7 @@ jobs:
           Say "Start apps: $((Get-StartApps | Where-Object Name -match 'Jobadabra|Job Pilotto' | ForEach-Object { $_.Name + ' <' + $_.AppID + '>' }) -join ' | ')"
           Say "Uninstall keys (HKCU+HKLM, installer copies): $((Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*','HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*' -ErrorAction SilentlyContinue | Where-Object { $_.DisplayName -match 'Jobadabra|Job Pilotto' } | ForEach-Object { $_.DisplayName + ' ' + $_.DisplayVersion + ' [' + $_.PSChildName + ']' }) -join ' | ')"
           Say "Appx packages: $((Get-AppxPackage | Where-Object Name -match 'Jobadabra' | ForEach-Object PackageFullName) -join ' | ')"
+          Say "installed manifest Properties: $(([regex]::Match((Get-Content (Join-Path $pkg.InstallLocation 'AppxManifest.xml') -Raw), '(?s)<Properties>.*?</Properties>').Value) -replace '\s+', ' ')"
           function Copies {   # the running processes of each copy, by where its exe lives
             Get-CimInstance Win32_Process | Where-Object { $_.ExecutablePath -and ($_.ExecutablePath -like '*WindowsApps*Jobadabra.Spike*' -or $_.ExecutablePath -eq $nsisExe) } |
               ForEach-Object { [pscustomobject]@{ Copy = $(if ($_.ExecutablePath -eq $nsisExe) { 'exe' } else { 'msix' }); Id = $_.ProcessId; Renderer = ($_.CommandLine -match '--type=renderer'); Typed = ($_.CommandLine -match '--type=') } }
@@ -254,6 +255,14 @@ jobs:
           Say "== F. clean machine: the Store copy is open (private data), then the .exe copy is started"
           Start-Msix; Start-Sleep 25; Start-Exe; Start-Sleep 35; Outcome 'F-msix-private-then-exe'
           Say "   real folder: $((Files $real | Select-Object -First 4) -join '; ')"
+          Stop-Copies; Remove-Item $real, $legacy, "$cache\Jobadabra" -Recurse -Force -ErrorAction SilentlyContinue
+
+          # Why (31 Oct 2026, runs 41230357129, 41232577742, 41233772134): E/F wrote the package cache, a fresh folder made by a package process wrote the real place (probe). E was the package's first launch after install: is the first launch the difference?
+          Say "== E2. the same as E, now that the package has been started before"
+          Start-Msix; Start-Sleep 35; Outcome 'E2-msix-second-time'
+          Say "   real folder: $((Files $real | Select-Object -First 6) -join '; ')"
+          Say "   package cache: $((Files "$cache\Jobadabra" | Select-Object -First 6) -join '; ')"
+          Say "   package cache holds app.log: $(Test-Path "$cache\Jobadabra\logs\app.log")   real folder holds app.log: $(Test-Path "$real\logs\app.log")"
           Stop-Copies; Remove-Item $real, $legacy, "$cache\Jobadabra" -Recurse -Force -ErrorAction SilentlyContinue
 
           Say "== A. the .exe copy alone"

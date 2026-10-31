@@ -78,6 +78,15 @@ class Verdict(unittest.TestCase):
         self.assertEqual(len(live), 2)
         self.assertIn(rerun, live)
 
+    def test_title_edits_replace_the_ordinary_pr_gate_even_after_cancellation(self):
+        old = run('CI · Pull request', title='Fix the thing', conclusion='failure', id=1)
+        cancelled = run('CI · Pull request', title='[xx] Fix the thin', conclusion='cancelled', id=2,
+                        at='2026-10-26T03:01:00Z')
+        fixed = run('CI · Pull request', title='[xx] Fix the thing', id=3, at='2026-10-26T03:02:00Z')
+        state, _, live, *_ = pv.verdict([old, cancelled, fixed])
+        self.assertEqual(state, 'success')
+        self.assertEqual(live, [fixed])
+
     def test_nothing_from_a_pull_request_writes_nothing(self):
         self.assertIsNone(pv.verdict([run('CI · End-to-end on Mac + Linux', event='schedule')])[0])
 
@@ -156,7 +165,7 @@ class Workflows(unittest.TestCase):
             name = re.search(r'(?m)^name:\s*(.+?)\s*$', (WORKFLOWS / path).read_text()).group(1).strip('\'"')
             self.assertIn(name, listed, f'{path}: the PR e2e run it makes is judged only when a listed workflow ends')
         checkout = verdict.split('\n  verdict:\n', 1)[1].split('sparse-checkout: |', 1)[1].split('sparse-checkout-cone-mode', 1)[0]
-        for name in ('main_e2e_state', 'pr_ai_number', 'pr_burn_in', 'pr_health_greys', 'pr_speed_number', 'beta_rate_gate', 'pr_verdict_runs'):
+        for name in ('main_e2e_state', 'pr_ai_number', 'pr_burn_in', 'pr_health_greys', 'pr_speed_number', 'beta_rate_gate', 'pr_verdict_runs', 'pr_verdict_greys'):
             self.assertIn(f'tools/{name}.py', checkout, 'a companion not checked out is fetched over the API on every write')
 
     def test_no_e2e_run_for_a_merged_or_closed_pr(self):
@@ -466,6 +475,7 @@ class CompanionBoundaries(unittest.TestCase):
             tmp = Path(folder)
             script = tmp / 'pr-verdict.py'
             script.write_text((ROOT / 'tools/pr-verdict.py').read_text())
+            (tmp / 'pr_verdict_greys.py').write_text((ROOT / 'tools/pr_verdict_greys.py').read_text())
             fixture = tmp / 'health-source.txt'
             fixture.write_text((ROOT / 'tools/pr_health_greys.py').read_text())
             gh = tmp / 'gh'

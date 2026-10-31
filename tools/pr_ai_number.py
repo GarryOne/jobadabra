@@ -50,9 +50,10 @@ def prepare(repo, runs, jobs, gh, main_state, base='main', my_run='', my_status=
                 evidence = {}
                 _, current = artifact_rates(repo, r['databaseId'], gh, job=job, attempt=r.get('attempt'), evidence=evidence)
                 produced = any((current or {}).get(part) and current[part][den] for part, _, den, _ in METRICS)
-                refusal = budget_refusal(repo, job, gh, evidence) if not produced or evidence.get('capped') else None
-                state = 'grey' if refusal is True or produced and refusal is not False else 'failure'
-                if refusal is True: reports.reasons[job.get('id')] = 'ai-budget'
+                # Why (31 Oct 2026, owner: "Grey: not known yet"): exempt only a proved budget refusal without a number.
+                refusal = not produced and budget_refusal(job, evidence)
+                state = 'grey' if produced or refusal else 'failure'
+                if refusal: reports.reasons[job.get('id')] = 'ai-budget'
                 if produced: measurements[r['databaseId']] = current
             except Exception as error:
                 ended = r.get('updatedAt') or job.get('completed_at')
@@ -174,15 +175,15 @@ def artifact_rates(repo, rid, gh, artifact=ARTIFACT, job=None, attempt=None, evi
     data = gh('api', f"repos/{repo}/actions/artifacts/{latest['id']}/zip", binary=True)
     try:
         with zipfile.ZipFile(io.BytesIO(data)) as zipped:
-            if evidence is not None:
+            current = None
+            if 'quality-rates.json' in zipped.namelist():
+                member = zipped.getinfo('quality-rates.json')
+                if member.file_size <= 65536:
+                    current = valid_rates(json.loads(zipped.read(member)))
+            if evidence is not None and not any((current or {}).get(part) and current[part][den] for part, _, den, _ in METRICS):
                 evidence.update(capped=_json_member(zipped, 'ai-capped.json'),
                                 failures=_json_member(zipped, 'suite-failures.json'))
-            if 'quality-rates.json' not in zipped.namelist():
-                return True, None
-            member = zipped.getinfo('quality-rates.json')
-            if member.file_size > 65536:
-                return True, None
-            return True, valid_rates(json.loads(zipped.read(member)))
+            return True, current
     except Exception as error:
         if evidence is not None:
             raise NumberReadError('qualityai artifact unreadable') from error
@@ -200,57 +201,32 @@ def _json_member(zipped, name):
     return json.loads(zipped.read(member))
 
 
-def _cap_failure(message):
-    """Parse ai-miss-cause's exact marker and retain its original failure symptom."""
-    if not isinstance(message, str) or not message.startswith('AI asks with no stored answer: '):
-        return '', False
-    _, marker, rest = message.partition('; the AI was refused: ')
-    reason, ending, symptom = rest.partition('; the step then failed: ')
-    return reason if marker and ending else '', bool(ending) and symptom.startswith(('503 ai-capped:', 'ai-capped:'))
+def _cap_failure(message, why):
+    """The original symptom must contain both the cap marker and this artifact's exact reason."""
+    if not isinstance(message, str):
+        return False
+    _, marker, symptom = message.partition('; the step then failed: ')
+    return bool(marker) and 'ai-capped:' in symptom and why in symptom
 
 
-def budget_refusal(repo, job, gh, evidence):
-    """True for budget-only failures, False for mixed/nonbudget refusal, None for no refusal.
-    Invariants: ai-capped.json's why is authoritative; fallback uses only ai-miss-cause
-    failure annotations, never logs. Every original symptom must be an ai-capped failure.
+def budget_refusal(job, evidence):
+    """Prove a budget-only failure from the current job's complete artifact, never annotations.
+    Invariants: ai-capped.json's why starts with broker: budget:; every failure's
+    original symptom carries ai-capped: and that exact why. Other failed steps stay red.
     """
+    cap, failures = evidence.get('capped'), evidence.get('failures')
+    why = cap.get('why') if isinstance(cap, dict) else None
+    if not isinstance(why, str) or not why.startswith('broker: budget:'):
+        return False
     key = job.get('name', '').removeprefix('E2E · ').removeprefix('Mac + Linux · ')
     suite_steps = {f'Run the {key} suite (first try)',
                    f'Report-only {key} failed its only try (not retried: each run costs AI)'}
     if any(step.get('conclusion') not in (None, 'success', 'skipped', 'neutral')
            and step.get('name') not in suite_steps for step in job.get('steps') or []):
         return False
-    cap, failures = evidence.get('capped'), evidence.get('failures')
-    why = cap.get('why') if isinstance(cap, dict) else None
-    if why:
-        if not isinstance(why, str) or not why.startswith('broker: budget:'):
-            return False
-    else:
-        check = job.get('check_run_url') or f"repos/{repo}/check-runs/{job['id']}"
-        pages = json.loads(gh('api', '--paginate', '--slurp',
-                              check.removeprefix('https://api.github.com/') + '/annotations?per_page=100'))
-        annotations = [a for page in pages for a in page if a.get('annotation_level') == 'failure']
-        # GitHub adds this wrapper for a failing shell step; it is not a second assertion.
-        messages = [a.get('message', '') for a in annotations if a.get('message') != 'Process completed with exit code 1.']
-        if not messages:
-            return None
-        if not all(a.get('title', '').startswith('qualityai · ') for a in annotations
-                   if a.get('message') != 'Process completed with exit code 1.'):
-            return False
-        parsed = [_cap_failure(message) for message in messages]
-        if not any(reason.startswith('broker: budget:') for reason, _ in parsed):
-            return None
-        if not all(reason.startswith('broker: budget:') and capped for reason, capped in parsed):
-            return False
-        if failures is None:
-            return True
-    if not isinstance(failures, list) or not failures:
-        # No complete failure record: annotations are the fallback, not absence of evidence.
-        if failures is None and why:
-            return budget_refusal(repo, job, gh, {})
-        return False
-    return all(isinstance(row, dict) and row.get('suite') == 'qualityai'
-               and _cap_failure(row.get('message'))[1] for row in failures)
+    return isinstance(failures, list) and bool(failures) and all(
+        isinstance(row, dict) and row.get('suite') == 'qualityai'
+        and _cap_failure(row.get('message'), why) for row in failures)
 
 
 def _night_reader(night_module=None):
@@ -285,7 +261,7 @@ def main_rates(repo, gh, comparable, night_module=None):
 
 def latest_quality_run(runs):
     """Pick only the displayed measurement; all counted title/job states still decide in prepare.
-    The caller supplies newest-per-workflow/title runs; timestamp/id/attempt matches counted().
+    The caller supplies newest-per-workflow/PR-e2e-title runs; timestamp/id/attempt matches counted().
     """
     selected = [run for run in runs if str(run.get('displayTitle', '')).startswith(PR_TITLE)
                 and 'qualityai' in run['displayTitle'][len(PR_TITLE):].split(' · ')[0].split(',')]

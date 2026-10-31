@@ -1,7 +1,11 @@
 """Guard qualityai job/attempt attribution and bounded unreadable results with offline GitHub responses."""
+import json
 import unittest
 from tests import test_pr_ai_number as base
 
+
+REFUSAL_CAP = json.loads('''{"neurons": null, "cap": 100000, "why": "broker: budget:own-share 67.0% of 60% (scheduled)", "skipped": 0, "steps": [], "at": "2026-10-31T03:07:22.358Z"}''')
+REFUSAL_FAILURES = json.loads('''[{"suite":"qualityai","step":"the score reasons say nothing invented or untrue (Haiku judge)","message":"AI asks with no stored answer: 0 (first: unavailable); the AI was refused: broker: budget:own-share 67.0% of 60% (scheduled); the step then failed: the judge call failed (503): ai-capped: the Codex broker said no (broker: budget:own-share 67.0% of 60% (scheduled)); it answers from saved replies or the step goes grey (never another provider by itself)"},{"suite":"qualityai","step":"the CV match is right about the CV on golden postings: required terms found, few claims corrected","message":"AI asks with no stored answer: 0 (first: unavailable); the AI was refused: broker: budget:own-share 67.0% of 60% (scheduled); the step then failed: 503 ai-capped: the Codex broker said no (broker: budget:own-share 67.0% of 60% (scheduled)); it answers from saved replies or the step goes grey (never another provider by itself)"}]''')
 
 class MeasurementOwnership(unittest.TestCase):
     qualityai_post = base.Artifacts.qualityai_post
@@ -27,37 +31,51 @@ class MeasurementOwnership(unittest.TestCase):
 
 class BudgetRefusal(unittest.TestCase):
     qualityai_post = base.Artifacts.qualityai_post
-    reason = 'broker: budget:own-share 67.0% of 60% (scheduled)'
-    message = ('AI asks with no stored answer: 1 (first: fixture-key); the AI was refused: '
-               + reason + '; the step then failed: 503 ai-capped: the Codex broker said no')
+    reason = REFUSAL_CAP['why']
+    message = REFUSAL_FAILURES[1]['message']
 
     def record(self, message=None):
-        """Mirror ai-miss-cause's failureRecords output, including its original symptom."""
-        return {'suite': 'qualityai', 'step': 'judge facts', 'message': message or self.message}
+        """Copy the owner's real CV-match record, optionally changing only its symptom."""
+        return {**REFUSAL_FAILURES[1], 'message': message or self.message}
 
     def test_artifact_budget_refusal_alone_is_grey_and_named_in_the_final_status(self):
         post = self.qualityai_post('failure', 'qualityai', None, False,
-                                  files={'ai-capped.json': {'neurons': None, 'why': self.reason},
-                                         'suite-failures.json': [self.record()]})
+                                  files={'ai-capped.json': REFUSAL_CAP,
+                                         'suite-failures.json': REFUSAL_FAILURES})
         self.assertIn('state=success', post)
         self.assertTrue(any('qualityai: AI budget refused, not judged' in arg for arg in post), post)
 
-    def test_old_artifact_without_why_uses_the_named_failure_annotation(self):
-        post = self.qualityai_post('failure', 'qualityai', None, False,
-                                  files={'ai-capped.json': {'neurons': None}},
-                                  annotations=[{'annotation_level': 'failure', 'title': 'qualityai · judge facts',
-                                                'message': self.message}])
-        self.assertIn('state=success', post)
-        self.assertTrue(any('qualityai: AI budget refused, not judged' in arg for arg in post), post)
-
-    def test_refusal_plus_real_assertion_stays_red_even_when_both_have_the_refusal_prefix(self):
-        assertion = self.message.split('; the step then failed: ')[0] + '; the step then failed: facts differ'
-        for counts in (None, base.RATES):
-            with self.subTest(counts=counts):
-                post = self.qualityai_post('failure', 'qualityai', counts, False,
-                                          files={'ai-capped.json': {'why': self.reason},
-                                                 'suite-failures.json': [self.record(), self.record(assertion)]})
+    def test_annotations_without_complete_artifact_evidence_cannot_grey_a_job(self):
+        annotations = [{'annotation_level': 'failure', 'title': 'qualityai · judge facts',
+                        'message': self.message}]
+        for files in (None, {'ai-capped.json': {'neurons': None}},
+                      {'ai-capped.json': REFUSAL_CAP}):
+            with self.subTest(files=files):
+                post = self.qualityai_post('failure', 'qualityai', None, False,
+                                          files=files, annotations=annotations)
                 self.assertIn('state=failure', post)
+
+    def test_refusal_plus_real_assertion_stays_red_when_no_number_was_produced(self):
+        assertion = self.message.split('; the step then failed: ')[0] + '; the step then failed: facts differ'
+        post = self.qualityai_post('failure', 'qualityai', None, False,
+                                  files={'ai-capped.json': REFUSAL_CAP,
+                                         'suite-failures.json': [*REFUSAL_FAILURES, self.record(assertion)]})
+        self.assertIn('state=failure', post)
+
+    def test_a_produced_number_keeps_the_informational_grey_even_with_refusal_evidence(self):
+        assertion = self.message.split('; the step then failed: ')[0] + '; the step then failed: facts differ'
+        post = self.qualityai_post('failure', 'qualityai', base.RATES, False,
+                                  files={'ai-capped.json': REFUSAL_CAP,
+                                         'suite-failures.json': [*REFUSAL_FAILURES, self.record(assertion)]})
+        self.assertIn('state=success', post)
+        self.assertTrue(any('AI number produced; score informational' in arg for arg in post), post)
+        self.assertFalse(any('AI budget refused' in arg for arg in post), post)
+
+    def test_a_produced_number_does_not_read_oversized_refusal_diagnostics(self):
+        post = self.qualityai_post('failure', 'qualityai', base.RATES, False,
+                                  files={'ai-capped.json': {'why': self.reason + 'x' * 65536}})
+        self.assertIn('state=success', post)
+        self.assertTrue(any('AI number produced; score informational' in arg for arg in post), post)
 
     def test_annotations_cannot_override_a_structured_nonbudget_refusal(self):
         post = self.qualityai_post('failure', 'qualityai', None, False,
@@ -73,6 +91,15 @@ class BudgetRefusal(unittest.TestCase):
                 post = self.qualityai_post('failure', 'qualityai', None, False,
                                           files={'ai-capped.json': {'why': why},
                                                  'suite-failures.json': [self.record('facts differ')]})
+                self.assertIn('state=failure', post)
+
+    def test_refusal_requires_the_exact_structured_why_in_each_original_symptom(self):
+        symptom = self.message.split('; the step then failed: ')[0] + '; the step then failed: '
+        for tail in ('facts differ', '503 ai-capped: broker: budget:another limit'):
+            with self.subTest(tail=tail):
+                post = self.qualityai_post('failure', 'qualityai', None, False,
+                                          files={'ai-capped.json': REFUSAL_CAP,
+                                                 'suite-failures.json': [self.record(symptom + tail)]})
                 self.assertIn('state=failure', post)
 
     def test_every_title_and_other_check_still_decides_with_the_grey_note(self):
@@ -132,7 +159,8 @@ class BudgetRefusal(unittest.TestCase):
         for age, expected in ((29, 'pending'), (31, 'failure')):
             with self.subTest(age=age):
                 post = self.qualityai_post('failure', 'qualityai', None, False,
-                                          fail_at='/annotations?', age_min=age)
+                                          files={'ai-capped.json': REFUSAL_CAP, 'suite-failures.json': REFUSAL_FAILURES},
+                                          fail_at='/zip', age_min=age)
                 self.assertIn('state=' + expected, post)
 
 

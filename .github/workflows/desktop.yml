@@ -227,7 +227,7 @@ jobs:
             # The same 403 when workflows changed on main in the seconds after the check above: hand over to a fresh
             # build of main instead of failing. Only when main has moved, so a real 403 on main itself still fails.
             git fetch -q origin main
-            if grep -q 'HTTP 403' release-error.txt && [ "$(git rev-parse origin/main)" != "$GITHUB_SHA" ]; then
+            if grep -q 'HTTP 403' release-error.txt && ! grep -qi 'rate limit' release-error.txt && [ "$(git rev-parse origin/main)" != "$GITHUB_SHA" ]; then   # a spent budget is not a moved main: a new build would only spend more
               gh release delete "$tag" --yes --cleanup-tag 2>/dev/null || true   # a half-made draft, if any
               echo "::warning::Release refused (403) after main moved: not released; a new build of main starts."
               # Keep what this build was (6 Oct 2026: a beta by hand came back as a plain build, which no gate approves): a beta stays a beta, a nightly a nightly.
@@ -417,7 +417,8 @@ jobs:
           # Stable names too, so a download link can always point at the latest build (tools/release-file-names.sh).
           tools_dir="${GITHUB_WORKSPACE}/tools"
           files=(); while IFS= read -r file; do files+=("$file"); done < <("$tools_dir/release-file-names.sh" make mac "$VERSION" dist)   # not mapfile: the Mac runner has bash 3.2
-          gh release upload "desktop-v${VERSION}" "${files[@]}"
+          # Why (31 Oct 2026, a8; beta 41226261602): with the installation budget spent gh printed "release not found"; a limit now says so, with its reset time.
+          gh release upload "desktop-v${VERSION}" "${files[@]}" || { python "$GITHUB_WORKSPACE/tools/github_limit.py" explain "gh release upload"; exit 1; }
           GH_REPO="$GITHUB_REPOSITORY" "$tools_dir/release-file-names.sh" check mac "desktop-v${VERSION}"
           gh release edit "desktop-v${VERSION}" --draft=false --prerelease
 
@@ -556,7 +557,8 @@ jobs:
           # A stable name too, so a download link can always point at the latest build (tools/release-file-names.sh).
           tools_dir="${GITHUB_WORKSPACE}/tools"
           files=(); while IFS= read -r file; do files+=("$file"); done < <("$tools_dir/release-file-names.sh" make windows "$VERSION" dist)   # not mapfile: the Mac runner has bash 3.2
-          gh release upload "desktop-v${VERSION}" "${files[@]}"
+          # Why (31 Oct 2026, a8; beta 41226261602): with the installation budget spent gh printed "release not found"; a limit now says so, with its reset time.
+          gh release upload "desktop-v${VERSION}" "${files[@]}" || { python "$GITHUB_WORKSPACE/tools/github_limit.py" explain "gh release upload"; exit 1; }
           GH_REPO="$GITHUB_REPOSITORY" "$tools_dir/release-file-names.sh" check windows "desktop-v${VERSION}"
           gh release edit "desktop-v${VERSION}" --draft=false --prerelease
       # Build · Windows failed: the release carries the last working Windows installer, so the Windows download link of a release that becomes stable keeps working until a
@@ -1311,6 +1313,9 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         timeout-minutes: 5
+      - name: Both builds published? (a lane is never released alone)
+        timeout-minutes: 5
+        run: python3 tools/beta_lane_gate.py --mac "${{ needs.build.result }}" --windows "${{ needs.windows.result }}"
       - uses: actions/setup-node@v5
         timeout-minutes: 5
         with:
@@ -1427,6 +1432,9 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         timeout-minutes: 5
+      - name: Both builds published? (a lane is never released alone)
+        timeout-minutes: 5
+        run: python3 tools/beta_lane_gate.py --mac "${{ needs.build.result }}" --windows "${{ needs.windows.result }}"
       - uses: actions/setup-node@v5
         timeout-minutes: 5
         with:
@@ -1515,10 +1523,21 @@ jobs:
   gate-ran:
     name: Gate ran?
     needs: [changes, build, windows, ai-ready, test-mac, test-windows]
-    if: always() && needs.changes.outputs.gate == 'true' && ((needs.build.result == 'success' && needs.test-mac.result == 'skipped') || (needs.windows.result == 'success' && needs.test-windows.result == 'skipped'))
+    if: always() && needs.changes.outputs.gate == 'true' && (needs.build.result == 'failure' || needs.windows.result == 'failure' || (needs.build.result == 'success' && needs.test-mac.result == 'skipped') || (needs.windows.result == 'success' && needs.test-windows.result == 'skipped'))
     runs-on: ubuntu-24.04
     steps:
+      # Why (31 Oct 2026, a8; beta 41226261602, owner: a failed build in either lane blocks the beta loudly): Build · Mac failed at its release upload, so its E2E matrix,
+      # this job and Release · Mac were all skipped with no word, and Release · Windows ran alone and failed on a reason that was not true.
+      - uses: actions/checkout@v5
+        timeout-minutes: 5
+      - name: A build failed, the beta is not released (names the lane and the step)
+        if: needs.build.result != 'success' || needs.windows.result != 'success'
+        timeout-minutes: 5
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 tools/beta_lane_gate.py --mac "${{ needs.build.result }}" --windows "${{ needs.windows.result }}"
       - name: Fail the run, the E2E gate did not run
+        if: (needs.build.result == 'success' && needs.test-mac.result == 'skipped') || (needs.windows.result == 'success' && needs.test-windows.result == 'skipped')
         timeout-minutes: 5
         run: |
           echo "### ❌ The E2E gate was planned but did not run: no build was tested or approved. See the 'Plan the E2E suites' step of Anything new?. Or the AI key was refused: see 'AI key ready?'."

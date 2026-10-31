@@ -455,5 +455,23 @@ def main():
     return 0
 
 
+def run_main(run=main, rate=None):
+    """main(), but a GitHub rate limit ends it as one named line, not a traceback. Why (31 Oct 2026, a8; CI run 41228178173): with the installation budget spent every verdict
+    died with a CalledProcessError and the log never said when it would work again. Any other failure raises as before (health_greys relies on gh() raising)."""
+    try:
+        return run()
+    except subprocess.CalledProcessError as error:
+        try:   # the sibling may be absent in a standalone copy: then the plain failure stands
+            sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+            from github_limit import is_limit, limit_message, read_rate
+        except ImportError:
+            raise error
+        said = error.stderr.decode('utf-8', 'replace') if isinstance(error.stderr, bytes) else (error.stderr or '')
+        if not is_limit(said):
+            raise
+        print(f"::error::PR verdict not written: {limit_message(said, (rate or read_rate)())}", file=sys.stderr)
+        return 1
+
+
 if __name__ == '__main__':
-    sys.exit(main())
+    sys.exit(run_main())

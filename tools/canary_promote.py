@@ -43,6 +43,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+from github_limit import GitHubLimit, expect_list, run_gh  # noqa: E402
 from release_guard import is_desktop  # noqa: E402  (only desktop-v* tags are ever stable or candidates)
 
 REPO = 'GarryOne/jobadabra'
@@ -370,7 +371,7 @@ class GitHub:
         self.repo, self.key, self.url = repo, key, url
 
     def _gh(self, *args):
-        return subprocess.run(['gh', *args], capture_output=True, text=True, check=True).stdout
+        return run_gh(*args)   # a rate limit raises GitHubLimit, named with its reset (tools/github_limit.py)
 
     def releases(self):
         return json.loads(self._gh('release', 'list', '-R', self.repo, '-L', '100', '--json',
@@ -461,11 +462,20 @@ def main(argv=None):
     parser.add_argument('--beta-kept', action='store_true',
                         help="read GET /repos/{repo}/releases (with bodies) on stdin, print the test builds that are a platform's newest beta, one per line")
     args = parser.parse_args(argv)
+    try:
+        return run(args)
+    except (GitHubLimit, ValueError) as error:   # Why (31 Oct 2026, a8; beta 41226261602): GitHub's error object was iterated as a release list, a traceback at line 141
+        print(f'canary_promote: {error}', file=sys.stderr)
+        return 1
+
+
+def run(args):
+    """The chosen mode; raises GitHubLimit or ValueError (main prints it, one line)."""
     if args.beta_kept:
-        print('\n'.join(sorted(beta_kept(json.load(sys.stdin)))))
+        print('\n'.join(sorted(beta_kept(expect_list(json.load(sys.stdin), 'the release list (GET /releases)')))))
         return 0
     if args.canary:
-        found = canary_of(json.load(sys.stdin), datetime.now(timezone.utc))
+        found = canary_of(expect_list(json.load(sys.stdin), 'the release list (gh release list)'), datetime.now(timezone.utc))
         print(found['tagName'] if found else '')
         return 0
     github = GitHub(args.repo, key=os.environ.get(KEY_ENV, '').strip() or None)

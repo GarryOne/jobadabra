@@ -8,7 +8,7 @@ import path from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import {removedStrings, suitesExpecting, report, planPrSuites, stepLists, stepsQuoting, windowsSmoke, windowsCiText, WINDOWS_SMOKE, newSideRanges, stepCalls, stepsTouched, rehomeQuotes, stepHomes, pointedWithMap, ON_PR_ELSEWHERE, deferredLines, ownedStepNames, admittedSuites, admissionLanes} from './lib/pr-suites.mjs';
-import {suitesFor} from './lib/plan.mjs';
+import {suitePartsFor, suitesFor} from './lib/plan.mjs';
 import {suitesUsing, watchesWithImports} from './lib/import-graph.mjs';
 import {hunksFromDiff, mapShas, stepNamesFor, steplessSuites, stepsCovering, stillWholeBy, storeFor, watchedFiles} from './lib/coverage-pick.mjs';
 import {STORES, WHY, whyLines} from './lib/pick-why.mjs';
@@ -125,7 +125,8 @@ try {
     console.log(`Precise: ${plan.suites.length} suite(s); ${stepCount} picked step(s) in ${Object.keys(steps).length}, ${whole.length} whole (${whole.join(', ') || 'none'})`);
     const stepless = steplessSuites(map);
     if (stepless.length) console.log(`Map: ${stepless.length} of ${Object.keys(map.suites).length} suites have no steps yet (${[...new Set(stepless.map(entry => `${entry.sha} ${entry.at}`))].join('; ')}): a line they ran picks them whole until a whole run of each records its steps`);
-    const stepsOut = JSON.stringify({...steps, ...(burnIn.length ? {'(burn-in)': burnIn} : {}), ...(Object.keys(stores).length ? {[STORES]: stores} : {}), [WHY]: reasons});   // metadata keys no suite has: e2e.yml reads steps by suite name
+    const selectedParts = Object.fromEntries(Object.entries(facts.parts || {}).map(([suite, parts]) => [suite, suitePartsFor(changedFiles, watchesWithImports(parts))]));
+    const stepsOut = JSON.stringify({...steps, '(parts)': selectedParts, ...(burnIn.length ? {'(burn-in)': burnIn} : {}), ...(Object.keys(stores).length ? {[STORES]: stores} : {}), [WHY]: reasons});   // metadata keys no suite has: e2e.yml reads steps by suite name
     console.log(`suites=${plan.suites.join(',')}\nleft=${plan.left.join(',')}\nsteps=${stepsOut}`);
     const ciText = windowsCiText(file => { try { return fs.readFileSync(path.join(here, '..', '..', file), 'utf8'); } catch { return null; } });
     const windows = windowsSmoke(changedFiles, ciText) ? JSON.stringify(WINDOWS_SMOKE.steps) : '';

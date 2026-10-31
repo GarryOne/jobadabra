@@ -221,7 +221,7 @@ test('CLI writes five whole suites and three deferrals with their reasons to std
   assert.equal(values.suites, 'calendar,focus,interviews,jobs,settings');
   assert.equal(values.left, 'wizard,wander,strategy');
   const steps = JSON.parse(values.steps);
-  assert.deepEqual(Object.keys(steps), ['(why)']);
+  assert.deepEqual(Object.keys(steps), ['(parts)', '(why)']);
   for (const suite of values.left.split(',')) {
     assert.match(text, new RegExp(`${suite} · run after merge ← desktop/e2e/suites/${suite}.mjs`));
     assert.ok(steps['(why)'].some(line => line.startsWith(`${suite} · run after merge ←`)));
@@ -284,16 +284,16 @@ test('CLI keeps main tip exemptions without burning in a stale branch after a ma
 });
 
 // Owner's 30 Oct merges reached live-AI suites: only backbone belongs in the after-merge plan.
-test('after merge drops quality and mailreading but keeps reached backbone and PR-only numbers', () => {
-  const lanes = {suites: {quality: {lane: 'tolerant'}, mailreading: {lane: 'tolerant'}, qualityai: {lane: 'tolerant', pr: 'number'}}};
+test('after merge drops tolerant quality and retired mailreading but keeps reached backbone and PR-only numbers', () => {
+  const lanes = {suites: {quality: {lane: 'tolerant'}, mailreading: {lane: 'retired'}, qualityai: {lane: 'tolerant', pr: 'number'}}};
   const input = {linux: () => true, pointed: ['quality', 'mailreading', 'apply', 'qualityai'], lanes};
   assert.deepEqual(pick.planPrSuites({...input, pullRequest: false}), {suites: ['apply'], left: [], deferred: []});
   assert.deepEqual(pick.planPrSuites({...input, pullRequest: true}).suites, ['apply', 'qualityai']);
 });
 
 test('without --base the CLI reads the merged registry, including a lane changed by this merge', () => {
-  const {values} = cliPlan({pullRequest: false, base: '', suites: ['quality', 'mailreading', 'focus'],
-    checkoutLanes: {quality: {lane: 'tolerant'}, mailreading: {lane: 'tolerant'}}});
+  const {values} = cliPlan({pullRequest: false, base: '', suites: ['quality', 'qualityai', 'focus'],
+    checkoutLanes: {quality: {lane: 'tolerant'}, qualityai: {lane: 'tolerant'}}});
   assert.equal(values.suites, 'focus');
 });
 
@@ -301,4 +301,15 @@ test('without --base the CLI reads the merged registry, including a lane changed
 test('--base without --pull-request cannot use the checkout lane to exempt a reached suite', () => {
   const {values} = cliPlan({pullRequest: false, suites: ['focus'], listed: {}, checkoutLanes: {focus: {lane: 'tolerant'}}});
   assert.equal(values.suites, 'focus');
+});
+
+
+test('CLI transports watched mail parts from the actual PR changed files', () => {
+  const listed = {qualityai: {lane: 'tolerant', pr: 'number'}};
+  const mail = cliPlan({suites: [], extraFiles: ['src/ai/mail.py'], listed});
+  assert.equal(mail.values.suites, 'qualityai');
+  assert.deepEqual(JSON.parse(mail.values.steps)['(parts)'].qualityai, ['mail']);
+  const unrelated = cliPlan({suites: [], extraFiles: ['src/ai/interviews.py'], listed});
+  assert.ok(!unrelated.values.suites.split(',').includes('qualityai'));
+  assert.deepEqual(JSON.parse(unrelated.values.steps)['(parts)'].qualityai, []);
 });

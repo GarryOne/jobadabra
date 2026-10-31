@@ -6,21 +6,24 @@ import * as journeyLib from '../lib/quality-journey.mjs';
 import {qualityRates} from '../lib/quality-rates.mjs';
 import * as quality from '../suites/quality.mjs';
 import * as qualityai from '../suites/qualityai.mjs';
-import {suiteFacts} from '../plan-run.mjs';
+import {planRun, suiteFacts} from '../plan-run.mjs';
+import {suitePartsFor, suitesFor, suitesNamed} from '../lib/plan.mjs';
+import {watchesWithImports} from '../lib/import-graph.mjs';
+import {runMailReading} from '../lib/quality-mail.mjs';
 
 const source = file => fs.readFileSync(new URL(file, import.meta.url), 'utf8');
 
 test('rates not reached are null, and reached zero counts remain zero', () => {
-  assert.deepEqual(qualityRates(), {v: 1, facts: null, flags: null, cv: null, steady: null, ranking: null, caps: null});
+  assert.deepEqual(qualityRates(), {v: 1, facts: null, flags: null, cv: null, steady: null, ranking: null, caps: null, mail: null});
   assert.deepEqual(qualityRates({facts: {exact: 0, total: 0}, flags: {judged: 0, flagged: 0}, cv: {found: 0, expected: 0, corrected: 0}}),
-    {v: 1, facts: {exact: 0, total: 0}, flags: {judged: 0, flagged: 0}, cv: {found: 0, expected: 0, corrected: 0}, steady: null, ranking: null, caps: null});
+    {v: 1, facts: {exact: 0, total: 0}, flags: {judged: 0, flagged: 0}, cv: {found: 0, expected: 0, corrected: 0}, steady: null, ranking: null, caps: null, mail: null});
 });
 
 test('rates contain only the contracted counts and verdicts, never judge texts or history', () => {
   const measured = {facts: {exact: 90, total: 91, text: 'private'}, flags: {judged: 18, flagged: 2, why: 'private'},
     cv: {found: 12, expected: 13, corrected: 1, cv: 'private'}, steady: {pairs: 9, within8: 8, runId: 10, over20: 1}, ranking: '2 violation(s)', caps: '1 over'};
   assert.deepEqual(qualityRates(measured), {v: 1, facts: {exact: 90, total: 91}, flags: {judged: 18, flagged: 2},
-    cv: {found: 12, expected: 13, corrected: 1}, steady: {pairs: 9, within8: 8}, ranking: '2 violation(s)', caps: '1 over'});
+    cv: {found: 12, expected: 13, corrected: 1}, steady: {pairs: 9, within8: 8}, ranking: '2 violation(s)', caps: '1 over', mail: null});
   assert.equal(qualityRates({ranking: 'ok', caps: 'ok'}).caps, 'ok');
 });
 
@@ -35,7 +38,7 @@ test('both suites share planner inputs and the golden journey, with separate clo
     assert.equal(suite.minutes, suite.name === 'qualityai' ? 24 : 3);
     assert.equal(typeof suite.run, 'function');
     assert.equal(suite.env, journeyLib.PLANNER.env);
-    assert.equal(suite.watches, journeyLib.PLANNER.watches);
+    assert.deepEqual(suite.watches, suite.name === 'qualityai' ? [...journeyLib.PLANNER.watches, ...qualityai.parts.mail] : journeyLib.PLANNER.watches);
     assert.equal(suite.judges, journeyLib.PLANNER.judges);
     assert.ok(facts.all.includes(suite.name));
     assert.equal(facts.cadence[suite.name], 'nightly');
@@ -43,7 +46,7 @@ test('both suites share planner inputs and the golden journey, with separate clo
     assert.ok(facts.storeless.includes(suite.name));
     assert.deepEqual(facts.judges[suite.name], quality.judges);
     assert.equal(await facts.minutes(suite.name), suite.name === 'qualityai' ? 24 : 3);
-    assert.deepEqual(facts.watches[suite.name], quality.watches);
+    assert.deepEqual(facts.watches[suite.name], suite.watches);
     assert.match(source(`../suites/${suite.name}.mjs`), /quality-journey.mjs/);
   }
 });
@@ -133,4 +136,65 @@ test('exact quality refuses off, unset or invalid answers before setup; backbone
     else if (mode === '' || mode === 'invalid') await assert.rejects(quality.run(ctx), {message: `invalid E2E_AI_ANSWERS: ${mode}`});
     else await assert.rejects(quality.run(ctx), error => error === touched);
   }
+});
+
+
+test('mail watches choose only the mail part; unrelated and scheduled runs do not', async () => {
+  const facts = await suiteFacts();
+  const parts = Object.fromEntries(Object.entries(qualityai.parts).map(([part, paths]) => [part, watchesWithImports({part: paths}).part]));
+  assert.deepEqual(suitePartsFor(['src/ai/mail.py'], parts), ['mail']);
+  assert.deepEqual(suitePartsFor(['src/ai/mail_lines.py'], parts), ['mail']);
+  assert.deepEqual(suitePartsFor(['src/ai/interviews.py'], parts), []);
+  assert.deepEqual(suitesFor(['src/ai/mail.py'], facts.all, facts), ['qualityai']);
+  assert.deepEqual(suitesNamed('qualityai:mail', facts.all), ['qualityai']);
+  const plan = async env => JSON.parse((await planRun({env: {REPO: 'o/r', SHA: 'a'.repeat(40), ...env}, gh: () => '[]', ...facts})).matrix).include.find(leg => leg.suite === 'qualityai');
+  assert.deepEqual((await plan({EVENT: 'workflow_dispatch', ONLY: 'qualityai:mail'})).qualityParts, ['mail']);
+  const push = await planRun({env: {EVENT: 'push', REPO: 'o/r', SHA: 'head', BEFORE: 'base'},
+    gh: args => args.join(' ').includes('/compare/') ? 'src/ai/mail.py' : '[]', ...facts});
+  assert.deepEqual(JSON.parse(push.matrix).include.find(leg => leg.suite === 'qualityai').qualityParts, ['mail']);
+  assert.deepEqual((await plan({EVENT: 'workflow_dispatch', ONLY: 'qualityai', PR_SUITES: 'qualityai', PR_STEPS: JSON.stringify({'(parts)': {qualityai: ['mail']}})})).qualityParts, ['mail']);
+  for (const env of [{EVENT: 'schedule'}, {EVENT: 'gate', GATE_TAG: 'desktop-v9.9'}, {EVENT: 'workflow_dispatch', ONLY: 'qualityai'}]) {
+    const leg = await plan(env);
+    if (leg) assert.deepEqual(leg.qualityParts, ['journey']);
+  }
+});
+
+test('mail eval reports low and strict misses as counts without failing; unavailable eval stays grey', async () => {
+  let calls = 0, closed = 0;
+  const ctx = {engine: 'api', key: 'dummy', needs: [], run: async (_name, fn) => fn()};
+  const evalWith = output => runMailReading(ctx, {
+    startProxy: async () => ({url: 'http://127.0.0.1:1', close: async () => { closed++; }}),
+    execFile: (_python, args, options, done) => {
+      calls++;
+      assert.match(args[0], /tools[\\/]mail_eval.py$/);
+      assert.equal(options.env.ANTHROPIC_API_KEY, 'dummy');
+      done({code: 1}, output, 'refused or out of credit');
+    },
+  });
+  assert.deepEqual(await evalWith('MISS rejection [strict]\n3/16 right (19%, needs 85%)'), {right: 3, total: 16, strictFailed: 1});
+  await assert.rejects(evalWith(''), /the eval did not run/);
+  assert.equal(calls, 2);
+  assert.equal(closed, 2);
+  assert.deepEqual(qualityRates({mail: {right: 3, total: 16, strictFailed: 1, text: 'private'}}).mail, {right: 3, total: 16, strictFailed: 1});
+});
+
+
+test('a pretty-printed mail-only CI matrix uses the light context and writes only mail rates', async t => {
+  const os = await import('node:os');
+  const path = await import('node:path');
+  const child = await import('node:child_process');
+  const {syncBuiltinESMExports} = await import('node:module');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'quality-mail-'));
+  const saved = process.env.E2E_QUALITY_PARTS;
+  t.after(() => { if (saved === undefined) delete process.env.E2E_QUALITY_PARTS; else process.env.E2E_QUALITY_PARTS = saved; fs.rmSync(dir, {recursive: true, force: true}); });
+  process.env.E2E_QUALITY_PARTS = JSON.stringify(['mail'], null, 2);
+  let evals = 0;
+  t.mock.method(child.default, 'execFile', (_python, _args, _options, done) => { evals++; done(null, '16/16 right (100%, needs 85%)', ''); });
+  syncBuiltinESMExports();
+  t.after(() => { t.mock.restoreAll(); syncBuiltinESMExports(); });
+  const mailOnly = await import('../suites/qualityai.mjs?mail-only');
+  assert.equal(mailOnly.light, true);
+  await mailOnly.run({engine: 'openai', needs: [], ARTIFACTS: dir, run: async (_name, fn) => fn(), get page() { assert.fail('mail must never start the Jobs journey'); }});
+  assert.equal(evals, 1);
+  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(dir, 'quality-rates.json'))), {...qualityRates(), mail: {right: 16, total: 16, strictFailed: 0}});
 });

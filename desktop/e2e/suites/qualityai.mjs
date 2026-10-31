@@ -1,5 +1,6 @@
 // Live quality rates: measure facts, ranking, score steadiness, judge flags and CV matches.
 // Job: run tolerant suites as rates
+import {MAIL_WATCHES, runMailReading} from '../lib/quality-mail.mjs';
 import {loadAppModule} from '../lib/app-module.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -18,6 +19,8 @@ import {matchRows, unstable} from '../lib/quality.mjs';
 
 export const name = 'qualityai';
 export const store = 'sqlite';
+// A mail-only leg retains the old eval's no-app context and cost.
+export const light = JSON.parse(process.env.E2E_QUALITY_PARTS || '["journey"]').join(',') === 'mail';
 // Live every run on the shipped model: facts, rescores, judge flags and CV matches.
 // The shared budget and planner allowance cover Jobs checks and setup; each slow step has its own limit.
 export const cadence = PLANNER.cadence;
@@ -25,14 +28,26 @@ export const budgetMinutes = PLANNER.budgetMinutes;
 export const minutes = PLANNER.minutes;
 export const sameOnEveryOs = PLANNER.sameOnEveryOs;
 export const judges = PLANNER.judges;
-export const watches = PLANNER.watches;
+export const parts = {journey: PLANNER.watches, mail: MAIL_WATCHES};
+export const watches = [...PLANNER.watches, ...MAIL_WATCHES];
 export const env = PLANNER.env;
 const STEP = 60000;
 /** Run the golden journey and report every independent final check. */
 export async function run(ctx) {
+  const selected = JSON.parse(process.env.E2E_QUALITY_PARTS || '["journey"]');
+  const measured = {};
+  try {
+    if (selected.includes('mail')) measured.mail = await runMailReading(ctx);
+    if (selected.includes('journey')) await runJourney(ctx, measured);
+  } finally {
+    fs.writeFileSync(path.join(ctx.ARTIFACTS, 'quality-rates.json'), JSON.stringify(qualityRates(measured)));
+  }
+}
+
+/** Run the Jobs quality journey independently of the watched mail eval. */
+async function runJourney(ctx, measured) {
   const journey = qualityJourney(ctx);
   const {truth, postings, scoresOf, privacyLogs, persona, GOLDEN, read, check} = journey;
-  const measured = {};
   let firstTexts = {};
   const read2 = async () => { await journey.read2(); rows = journey.rows; };
   let rows = [];
@@ -162,6 +177,5 @@ export async function run(ctx) {
     const line = `quality: ${summary.facts.exact}/${summary.facts.total} facts exact, ranking ${summary.ranking}, ${summary.invented} invented facts, scores stable ${summary.stable}`;
     console.log(`\n${line}\n`);
     fs.writeFileSync(path.join(ctx.ARTIFACTS, 'quality-summary.txt'), line + '\n');
-    fs.writeFileSync(path.join(ctx.ARTIFACTS, 'quality-rates.json'), JSON.stringify(qualityRates(measured)));
   }
 }

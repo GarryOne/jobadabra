@@ -13,7 +13,7 @@ The **real** Jobadabra app, driven by Playwright on a throwaway profile, in suit
 | `employers` | a set-up install, its own employer rows and runs reset | Find new employers on a candidate list of every kind (good board, empty, wrong roles, dead feed, duplicate, excluded, manual watch): statuses, quality order, Employers & Sources rows, the run row's counts, a second run, the crawl's source list, a Sonnet judge | ~1 min |
 | `focus` | a set-up install + dummy applications in every stage written to Notion | Up next order and buttons, every number checked against the Notion rows (`lib/focus-data.mjs`), Edit target, Done/Skip, Insight, a fresh account | ~3 min |
 | `apply` | a set-up install + 4 kit jobs it writes | the real **Chrome extension** on fixture forms: Apply click → fill from the kit, CV, legal boxes left, AI answers highlighted, late field, multi-step, unknown widget, Submit never touched | ~3 min |
-| `mailreading` (**watched**) | the AI key only: no app, no Notion, no browser | whether the model still reads the Gmail check's emails right: 16 invented emails with a known answer go through `src/ai/mail.py`'s own prompt (`tools/mail_eval.py`); a rejection, offer, invitation, security code, receipt or vendor alert read wrong fails at once, and 85% of the rest must be right | ~15 s, about a cent |
+| `qualityai:mail` (**watched part**) | the AI key only: no app, no Notion, no browser | 16 invented emails through the mail check prompt (`tools/mail_eval.py`), reported as right/total and strict misses; unavailable AI is grey | ~15 s, about a cent |
 | `activity` | a set-up install, its own run rows reset, schedule off | every task on Actions (one row, an end, plain words, a log without keys/emails/paths, no Notion row left Running) and Actions → Runs: the filters, "View all runs" (Actions → Runs), a finished run's result card, a run read only from Notion | ~4 min |
 | `activityfailures` | the same, on its own Notion page, in parallel | what goes **wrong**: the AI answering **429, 500, 401, no credit** and **never answering** (`lib/ai-proxy.mjs` modes), a spend-limit pause, a double click, a Gmail check queued behind a search, **quitting mid-run**. Shared steps: `lib/activity-steps.mjs` | ~5 min |
 | `failuresnotion` | split from `activityfailures` (6 Oct 2026), own Notion page, in parallel | Notion busy (429), an HTML error page, the connection gone, a refused Save: a clear end in words |
@@ -33,7 +33,7 @@ The **real** Jobadabra app, driven by Playwright on a throwaway profile, in suit
 A suite exports `cadence` (`lib/plan.mjs` decides, `plan-run.mjs` plans the CI run):
 - `always` (the default): every automatic run, including the three-a-day schedule.
 - `nightly`: the nightly release gate, and manual runs. `quality` is this: it costs about $0.3 a run.
-- `watched`: never in a schedule or the nightly gate: only on a push that touches the suite's files or its `watches`, and when a person names it. For a suite that costs real AI money and judges one piece of code: `mailreading` runs only when `src/ai/mail.py`, its cases or its script change.
+- `watched`: never in a schedule or the nightly gate: only on a push that touches the suite's files or its `watches`, and when a person names it. For a suite that costs real AI money and judges one piece of code: `qualityai:mail` runs only when `src/ai/mail.py`, its cases or its script change.
 - `manual`: never by itself; a person names it (`gh workflow run e2e.yml -f suite=personas`, `npm run all -- --only personas`). `personas`, `explore` and the audit's dropped `foryou`, `pool`, `notion-real` are this: kept, not deleted.
 - `slim`: like `always`, but never in a release's repeats (the soak top-ups, the stable canary). Set in `SLIM` in `lib/plan.mjs`, not in the suite (an edited suite runs on its PR). The e2e audit (26 Oct 2026) slimmed 15 suites that caught no product bug in 30 days.
 
@@ -269,7 +269,7 @@ Every open UI-loop issue carries one label `priority:P0` to `P3`, recomputed aft
 
 ## Telegram and Gmail in the journey (5 Oct 2026)
 - **`lib/telegram-fake.mjs`**: a fake Bot API (`export const telegram = true`). The engine (`src/telegram.py`), the app (`desktop/lib/telegram.js`) and the bot code (`worker/src/index.js`) send there in a test run (`JOB_PILOTTO_E2E_TELEGRAM_BASE_URL`). `activityfailures` reads the digest a person would receive (`digestProblems`: header, no technical text, every promised job listed, under 4096 characters) and makes Telegram refuse it (bot blocked).
-- **`lib/google-fake.mjs`**: a fake Google (`export const google = true`) with three of the mailreading eval's invented emails and a fake sign-in; `src/sources/google.py` `e2e_url` routes to it in a test run. `activityfailures` runs a real Gmail check on them, then one with the sign-in revoked.
+- **`lib/google-fake.mjs`**: a fake Google (`export const google = true`) with three of the mail eval's invented emails and a fake sign-in; `src/sources/google.py` `e2e_url` routes to it in a test run. `activityfailures` runs a real Gmail check on them, then one with the sign-in revoked.
 - **The engine gets the stand-ins too.** Its environment is a whitelist (`desktop/lib/pipeline.js` `pipelineEnv`): the Notion, Telegram and Google base URLs (and the fake Google sign-in) are passed on only with `JOB_PILOTTO_E2E`. Before this, the Notion stand-in only saw the app's own calls.
 - **The code review reads every product commit**: each run starts where the last review that ran ended (its `code-review` artifact) and carries the commits the 20-commit cap left out; every 4 hours.
 
@@ -305,9 +305,17 @@ folded steps and probe path, and the same facts as one hidden `<!-- replay: {…
 ## No Anthropic key on a Mac: the e2e runs on Claude Code (owner, 5 Oct 2026)
 **The e2e key is for CI only.** On a developer's Mac no suite loads, reads or spends an Anthropic key; the cost is the plan's fixed price. This is independent of the AI engine the developer chose in their own app.
 - **The app under test** runs on **your Claude Code** (`claude` signed in): the seed verifies it and chooses it the way Settings → Connections does, with a placeholder key saved (`lib/engine.mjs` `DUMMY_KEY`, never valid). It is slower: each AI call starts `claude`.
-- **Every judge and the explorer** (`lib/judge.mjs`, `lib/fit.mjs`, `lib/factjudge.mjs`, `suites/explore.mjs`, the CV match check in `quality`) ask through `lib/model.mjs`: `claude -p` on a Mac, with flags that drop your MCP servers, skills and settings (a bare call loads about 106k tokens; this one about 400), the API in CI. The mail eval (`mailreading`) runs the engine the same way.
+- **Every judge and the explorer** (`lib/judge.mjs`, `lib/fit.mjs`, `lib/factjudge.mjs`, `suites/explore.mjs`, the CV match check in `quality`) ask through `lib/model.mjs`: `claude -p` on a Mac, with flags that drop your MCP servers, skills and settings (a bare call loads about 106k tokens; this one about 400), the API in CI. The mail eval (`qualityai:mail`) runs the engine the same way.
 - **Steps that need the AI proxy in front of the app** (a refusal, a delay, silence, a canned answer: the activity suite's failure and concurrency steps, the whole `apply` suite) switch to the API engine **with the placeholder key** (`ctx.withApi(fn)`, or `export const engine = 'api'`): the proxy answers before anything reaches Anthropic, so it costs nothing.
 - **The wizard suite** picks the Claude Code choice on a Mac; CI types the key, so both paths stay tested. The product's own wizard is unchanged.
 - **How it is enforced:** `testKey()` is empty on a Mac whatever the environment holds; `run-all.mjs` never reads the Keychain item `job-pilotto.e2e.anthropic_key`; `E2E_AI_ENGINE=api` is refused on a Mac; `test/no-local-key.test.mjs` fails when a suite or helper fetches the API itself or reads the key, so **a new suite must ask a model through `lib/model.mjs`**. The AI screenshot review (`review-ui.mjs`) and the Finder's CI tooling keep the CI key.
 - **To check the spend:** the Claude Console's API keys page shows the cost per key (`job-pilotto-e2e-testing` was $34.89 on 5 Oct 2026); it should not grow from local runs.
 
+
+The retired `mailreading` file is a pointer because lanes-check requires registry entries to have a file.
+The PR plan reads changed files as it does for `watches`, including one-hop Python imports. It emits
+`(parts).qualityai` in `pr_steps`; plan-run carries that as `matrix.qualityParts`, and e2e.yml passes
+`E2E_QUALITY_PARTS`. Mail-only changes run only the mail eval, without the Jobs journey. Unrelated
+changes, schedules and nightly gates never add mail. Name `qualityai:mail` in e2e.yml's suite input
+for a manual mail eval; naming `qualityai` alone keeps the Jobs journey. Model misses are rates,
+with no threshold or strict-case failure in the suite. No extra eval or retry is added.

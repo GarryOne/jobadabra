@@ -54,7 +54,7 @@ export function suitesFor(files, all, {watches = {}, cadence = {}, uses = {}} = 
 
 // A manual run's `suite` input: "" = all, else a comma-separated list.
 export function suitesNamed(text, all) {
-  const names = String(text || '').split(',').map(name => name.trim()).filter(Boolean);
+  const names = String(text || '').split(',').map(name => name.trim()).filter(Boolean).map(name => name === 'qualityai:mail' ? 'qualityai' : name);
   const unknown = names.filter(name => !all.includes(name));
   if (unknown.length) throw new Error(`unknown suite: ${unknown.join(', ')} (known: ${all.join(', ')})`);
   return names.length ? all.filter(suite => names.includes(suite)) : all;
@@ -128,4 +128,9 @@ export const onWindows = suites => suites.filter(suite => WINDOWS.includes(suite
 export function tolerantMatrixFlag(suite) {
   const lanes = JSON.parse(fs.readFileSync(new URL('../lanes.json', import.meta.url), 'utf8'));
   return lanes.suites[suite]?.lane === 'tolerant' ? {tolerant: true} : {};
+}
+
+/** Select watched parts from changed files; callers expand the same one-hop imports as suite watches. */
+export function suitePartsFor(files, parts = {}) {
+  return Object.entries(parts).filter(([, paths]) => files.some(file => paths.some(watched => file === watched || (watched.endsWith('/') && file.startsWith(watched))))).map(([part]) => part);
 }

@@ -7,7 +7,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {test} from 'node:test';
 import {assertIsolated, pythonEnv} from '../lib/python.mjs';
-import {evalEnv} from '../suites/mailreading.mjs';
+import {evalEnv} from '../lib/quality-mail.mjs';
 
 test('the engine runs with UTF-8 mode on, and a suite\'s own variables win', () => {
   assert.equal(pythonEnv().PYTHONUTF8, '1');
@@ -59,13 +59,13 @@ test('every engine spawn in suites/ and lib/ is isolated', () => {
     }
   }
   const files = new Set(spawns);
-  for (const known of ['suites/personas.mjs', 'suites/employers.mjs', 'suites/pool.mjs', 'suites/mailreading.mjs', 'suites/visitread.mjs', 'lib/forget.mjs', 'lib/store-call.mjs']) {
+  for (const known of ['suites/personas.mjs', 'suites/employers.mjs', 'suites/pool.mjs', 'lib/quality-mail.mjs', 'suites/visitread.mjs', 'lib/forget.mjs', 'lib/store-call.mjs']) {
     assert.ok(files.has(known), `the check no longer sees ${known} start Python: ${[...files].join(', ')}`);
   }
 });
 
-// mailreading calls the real model, so it is not run to prove this (AI spend needs the owner's OK): its env is checked here instead, per engine.
-test('mailreading\'s eval env: only its own key, no shell token, temp data; the real HOME only for a CLI', () => {
+// qualityai mail reading calls the real model, so it is not run to prove this (AI spend needs the owner's OK): its env is checked here instead, per engine.
+test('qualityai mail reading\'s eval env: only its own key, no shell token, temp data; the real HOME only for a CLI', () => {
   const saved = {...process.env};
   try {
     Object.assign(process.env, {NOTION_TOKEN: 'secret_x', E2E_NOTION_TOKEN: 'secret_y', TELEGRAM_BOT_TOKEN: 't', E2E_OPENAI_KEY: 'sk-openai-test'});

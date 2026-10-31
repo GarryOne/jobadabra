@@ -153,7 +153,7 @@ export async function openContext(suite, {fresh = false, env: suiteEnv = {}, bro
   Object.assign(ctx, await contextNotionProxy({notionProxy, token, standIn, store}));
   // A suite that reads what Telegram would receive (`export const telegram = true`) gets the fake Bot API (lib/telegram-fake.mjs); nothing reaches Telegram.
   if (telegram) ctx.telegram = await startTelegramFake();
-  // A suite that runs the Gmail check (`export const google = true`) gets a fake Google with three of the mailreading eval's invented emails and a fake sign-in (lib/google-fake.mjs).
+  // A suite that runs the Gmail check (`export const google = true`) gets a fake Google with three of the qualityai mail eval's invented emails and a fake sign-in (lib/google-fake.mjs).
   // The update flow (`export const releases = true`): a fake GitHub release list the app's updater reads instead of GitHub (lib/releases-fake.mjs).
   if (releases) ctx.releases = await startReleasesFake();
   if (google) {

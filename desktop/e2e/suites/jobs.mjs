@@ -11,6 +11,7 @@ import {finish, visit} from '../lib/layout.mjs';
 import {ensureSetUp} from '../lib/seed.mjs';
 import {varyFeeds} from '../lib/feeds.mjs';
 import {hangCapsFor} from '../lib/hang-caps.mjs';
+import {pollUntil, stepTimeLeft} from '../lib/wait-on-state.mjs';
 
 // Why (30 Oct 2026, ap): rule A serves jobs' declared engine and background answers without a live key.
 export const offlineAi = true;
@@ -41,12 +42,9 @@ export async function run(ctx) {
     await ctx.relaunch();
     page = ctx.page;
     await page.waitForSelector('.view:not([hidden])', {timeout: 60000});
-    let linked = null;
-    for (let waited = 0; !linked && waited < 60000; waited += 2000) {
-      linked = await page.evaluate(async () => (await window.pilot.state()).settings?.notionIds?.NOTION_SEARCH_SETTINGS_PAGE || null);
-      if (!linked) await page.waitForTimeout(2000);
-    }
-    if (!linked) throw new Error("the app did not link this workspace's Search settings page within a minute of starting");
+    const {value: linked} = await pollUntil(() => page.evaluate(async () => (await window.pilot.state()).settings?.notionIds?.NOTION_SEARCH_SETTINGS_PAGE || null),
+      linked => !!linked, {capMs: stepTimeLeft()});
+    if (!linked) throw new Error("the app did not link this workspace's Search settings page before the step's hang cap");
   }, {needs: ctx.needs});
   await ctx.run('this suite starts with no jobs and no runs in its Notion page', async () => {
     const rows = [await clearData(ctx, 'Job Matches — AI Scored'), await clearData(ctx, 'Cronjob Runs')];
@@ -83,7 +81,7 @@ export async function run(ctx) {
       // As a person reads it: a gender tag such as (m/w/d) may be dropped for display (src/digest.py), spacing and case may change.
       const read = title => String(title || '').toLowerCase().replace(/\((?:m\/w\/d|m\/f\/d|f\/m\/d|w\/m\/d|all genders|a)\)/g, '').replace(/\s+/g, ' ').trim();
       const has = async () => (await scored()).some(job => read(job.title) === read(varied.match));
-      for (let waited = 0; !(await has()) && waited < 120000; waited += 5000) await page.waitForTimeout(5000);
+      await pollUntil(has, present => present, {capMs: stepTimeLeft()});
       // Say what the window holds for every fixture job, scored or not: present without a score (scoring slow) is not the same as missing from the list (never kept or never refreshed).
       const held = () => page.evaluate(() => (window.__jp.shared.allJobs || []).filter(job => /^E2E /.test(job.company || '')).map(job => `${job.title} [${job.fit == null || job.fit === '' ? 'no score' : job.fit}]`));
       if (!(await has())) throw new Error(`the added match "${varied.match}" (in "${varied.place}") was not kept and scored; scored: ${(await scored()).map(job => job.title).join('; ')}; the window holds ${(await held()).length} fixture job(s): ${(await held()).join('; ')}`);
@@ -93,8 +91,8 @@ export async function run(ctx) {
     // Screen against source: a list that drops, adds or rescored a job is a wrong result no screenshot shows (lib/truth-data.mjs).
     // After the refresh ends: the list shows a job the moment it is scored, and the refresh writes its Notion rows in groups and at its end (7 Oct 2026: the
     // step compared at "scored 5 of 6", before any row was written, and failed on Mac and Windows).
-    for (let waited = 0; (await runsData(page)).running && waited < 240000; waited += 3000) await page.waitForTimeout(3000);
-    if ((await runsData(page)).running) throw new Error('the refresh was still running 4 minutes after its first scored job');
+    const {value: run} = await pollUntil(() => runsData(page), state => !state.running, {capMs: stepTimeLeft()});
+    if (run.running) throw new Error('the refresh was still running at the step\'s hang cap');
     // The list redraws a moment after the run ends (a reload from the store may still be in flight, slow on Windows: 17 Oct 2026 read a listed job as missing): both sides are read again until they agree.
     const problems = await agreeWithin(async () => [
       await page.evaluate(() => (window.__jp.shared.allJobs || []).filter(job => /^E2E /.test(job.company || '') && job.fit != null && job.fit !== '').map(job => ({url: job.url, title: job.title, fit: job.fit}))),
@@ -120,13 +118,10 @@ export async function run(ctx) {
     fs.copyFileSync(path.join(ctx.E2E, 'fixtures', 'feeds', 'scout_seeds.json'), path.join(ctx.profile, 'config', 'scout_seeds.json'));
     await page.click('.nav[data-view="actions"]');
     await page.evaluate(() => window.pilot.command('scout'));   // the finder alone: Find jobs runs it as its last step, and Always on / the schedule start it by itself; the Actions card was merged into Find jobs (16 Oct 2026)
-    const started = Date.now();
-    let listed = null;
-    while (!listed && Date.now() - started < 240000) {
-      listed = ((await ctx.data('employers', 'list', {active: false}).catch(() => [])) || []).concat((await ctx.data('employers', 'list', {}).catch(() => [])) || []).find(employer => employer.name === 'E2E Gamma') || null;   // active or not
-      if (!listed) await page.waitForTimeout(4000);
-    }
-    if (!listed) throw new Error('"E2E Gamma" was not listed in the store (Employers & Sources) within 4 minutes');
+    const {value: listed} = await pollUntil(async () =>
+      ((await ctx.data('employers', 'list', {active: false}).catch(() => [])) || []).concat((await ctx.data('employers', 'list', {}).catch(() => [])) || []).find(employer => employer.name === 'E2E Gamma') || null,
+    listed => !!listed, {capMs: stepTimeLeft()});   // active or not
+    if (!listed) throw new Error('"E2E Gamma" was not listed in the store (Employers & Sources) before the step\'s hang cap');
   }, {needs: ctx.needs});
   // Stored answers through the AI proxy, delayed by 8 s per call; its counter advances before table lookup.
   await ctx.run('a slow Jobs check keeps showing that it is working, and ends cleanly', async () => {

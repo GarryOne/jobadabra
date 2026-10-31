@@ -1,4 +1,5 @@
 /* global document, window */
+// Job: wait on state
 // Interviews: the library on dummy rows written through the Notion API, a transcript imported through the page's own button and reviewed with stored answers,
 // the failure path (a failing AI), review again, link, delete, the consent rule of the recorder. Starts from a set-up install; resets only its own rows.
 import fs from 'node:fs';
@@ -12,6 +13,7 @@ import {pickJob} from '../lib/picker.mjs';
 import {ensureSetUp} from '../lib/seed.mjs';
 import {answerConfirms, captureExternal, ids, independent} from '../lib/steps.mjs';
 import {goView} from '../lib/go-view.mjs';
+import {pollUntil, stepTimeLeft} from '../lib/wait-on-state.mjs';
 
 // Why (29 Oct 2026, ap): rule A serves declared reviews and patterns; the no-credit fault still precedes the table.
 export const offlineAi = true;
@@ -46,8 +48,7 @@ export async function run(ctx) {
       throw new Error(`${error.message.split('\n')[0]}; expected ${expected} rows, the page shows ${JSON.stringify(seen)}`);
     });
     // The library paints its saved copy first and re-draws when Notion answers: act only once that is done, so the rows the test reads are the final ones.
-    await page.waitForFunction(want => document.getElementById('iv-lib-stats').textContent.trim() === want, SAVED_TO, {timeout: 120000});
-    await page.waitForTimeout(500);
+    await page.waitForFunction(want => document.getElementById('iv-lib-stats').textContent.trim() === want, SAVED_TO, {timeout: stepTimeLeft()});
   };
   // A re-draw of the table (a read finishing) keeps an open ⋯ menu (components.js holdMenu; 31 Oct 2026): open it once and click.
   const chooseFromMenu = async (id, label) => {
@@ -154,8 +155,7 @@ export async function run(ctx) {
         if (await page.locator('#review-dialog').evaluate(dialog => dialog.open)) throw new Error('the review stayed open after Escape');
       });
     } else {
-      await page.waitForTimeout(500);
-      const opened = await external.urls();
+      const {value: opened} = await pollUntil(external.urls, urls => urls.length > 0, {capMs: stepTimeLeft()});
       if (!opened.some(url => url.includes(ids(seed.ivPositive.page)))) throw new Error(`"Open review" opened ${JSON.stringify(opened)}, not the interview's Notion page`);
     }
   });
@@ -291,9 +291,9 @@ export async function run(ctx) {
     const before = await notionRows();
     const calls = proxy.stats.calls;
     await chooseFromMenu(seed.imported.page, 'Review again');
-    await page.waitForFunction(() => !/reviewing the interview again/.test(document.getElementById('iv-message').textContent) && document.getElementById('iv-message').textContent.trim() !== '', null, {timeout: 60000});
+    // reviewAgainRow publishes this terminal message only after iv.review returns; no delayed AI dispatch follows it.
+    await page.waitForFunction(() => !/reviewing the interview again/.test(document.getElementById('iv-message').textContent) && document.getElementById('iv-message').textContent.trim() !== '', null, {timeout: stepTimeLeft()});
     const said = (await message()).trim();
-    await page.waitForTimeout(3000);
     if (proxy.stats.calls !== calls) throw new Error(`a second review started within the guard window: ${proxy.stats.calls - calls} AI call(s)`);
     if ((await notionRows()).length !== before.length) throw new Error('Review again added or removed an interview row');
     const headings = await reviewHeadings(seed.imported.page);

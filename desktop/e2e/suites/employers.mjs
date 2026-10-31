@@ -1,4 +1,5 @@
-/* global window */
+/* global window, document */
+// Job: wait on state
 // Find new employers + the Employers & Sources data. A candidate list with every kind of company (two good boards, an empty one, one with only wrong roles, a dead
 // feed, a duplicate of a source already in use, an excluded company, a manual-watch company) is run from the Actions page; then what the scout decided, what it wrote
 // into Notion and into its run row, what a second run does, what the crawl would now read, and a Sonnet judge on whether the added employers suit the person.
@@ -15,6 +16,7 @@ import {clearData} from '../lib/start-state.mjs';
 import {ensureSetUp} from '../lib/seed.mjs';
 import {withRoles} from '../lib/search-roles.mjs';
 import {appLogLines} from '../lib/app-log.mjs';
+import {pollUntil, stepTimeLeft} from '../lib/wait-on-state.mjs';
 
 // Saved answers own every gate judgment; the real-model guard catches an escape.
 export const offlineAi = true;
@@ -80,23 +82,16 @@ async function findEmployers(ctx) {
       runs: (data.runs || []).filter(item => item.kind === 'scout').map(item => ({ok: item.ok, trigger: item.trigger, result: item.result || item.summary || ''}))};
   });
   // A fresh install starts its own catch-up checks (Gmail) a few seconds after launch: begin when the app has been quiet for a while, so only this click is counted.
+  // Retained: runs() exposes running/queued tasks, but no completion signal for the delayed startup catch-up timer.
   for (let quietSince = Date.now(); Date.now() - quietSince < 25000;) {
     if ((await scouts()).running) quietSince = Date.now();
     await page.waitForTimeout(2000);
   }
   const before = (await scouts()).runs.length, startsBefore = scoutStarts(ctx);
   await page.evaluate(() => window.pilot.command('scout'));   // the finder alone: Find jobs runs it as its last step, and Always on / the schedule start it by itself; the Actions card was merged into Find jobs (16 Oct 2026)
-  const started = Date.now();
-  let now;
-  for (;;) {
-    now = await scouts();
-    if (!now.running && now.runs.length > before) break;
-    if (Date.now() - started > 240000) throw new Error('Find new employers did not finish within 4 minutes');
-    await page.waitForTimeout(2000);
-  }
-  await page.waitForTimeout(6000);   // a second run that was only waiting its turn would start now
-  now = await scouts();
-  while (now.running && Date.now() - started < 240000) { await page.waitForTimeout(2000); now = await scouts(); }
+  // runs() includes the queue: completion means the scout has a result and no task is running or waiting its turn.
+  const {value: now} = await pollUntil(scouts, state => !state.running && state.runs.length > before, {capMs: stepTimeLeft()});
+  if (now.running || now.runs.length <= before) throw new Error('Find new employers did not finish before the step\'s hang cap');
   const engineRuns = scoutStarts(ctx) - startsBefore;
   if (engineRuns !== 1) throw new Error(`one click started ${engineRuns} Find new employers runs (the app's own log shows ${engineRuns} engine starts)`);
   return now.runs.slice(0, now.runs.length - before);
@@ -240,7 +235,7 @@ export async function run(ctx) {
       fs.writeFileSync(file, JSON.stringify({...withRoles({...current, locations: person.locations, title_exclude_keywords: person.title_exclude_keywords}, roles), jobs_board_search_queries: roles.map(role => role.replace(/\\b/g, '')).filter(role => /^[a-z ]+$/i.test(role))}));
       await ctx.page.reload();
       await ctx.page.waitForSelector('.view:not([hidden])', {timeout: 60000});
-      await ctx.page.waitForTimeout(3000);
+      await ctx.page.waitForFunction(() => !document.querySelector('.view:not([hidden]) .skeleton, .view:not([hidden]) .spinner'), null, {timeout: stepTimeLeft()});
     }
     await visit(ctx, ctx.audience ? ['focus', 'jobs', 'interviews', 'strategy', 'actions'] : ['actions']);
     if (ctx.audience === 'non-it') {

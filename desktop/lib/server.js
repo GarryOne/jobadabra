@@ -10,6 +10,7 @@ import {routeTable} from './server-routes.js';
 import {POST_CORS, tokenRequest, jsonHeaders, jsonBody} from './server-http.js';
 import {handleExtension} from '../shared/worker/extension.js';
 import {log as appLog} from './log.js';
+import {timed} from './ext-http-timing.js';
 import {listen, portFrom, DEFAULT_PORT} from './server-listen.js';
 import * as pipeline from './pipeline.js';
 import * as viewCache from './view-cache.js';
@@ -163,7 +164,7 @@ async function handleEvent(req, res, body, {storage}) {
 export function start(storage, onError = () => {}) {
   const routes = routeTable(handleTabs, handleEvent);
   const context = {storage, ownOrigin, EXTENSION_ID, PORT};
-  const server = http.createServer(async (req, res) => {
+  const server = http.createServer((req, res) => timed(req, res, async () => {   // timed: a slow request names where its time went (ext-http-timing.js)
     try {
       const chunks = [];
       for await (const chunk of req) chunks.push(chunk);
@@ -180,7 +181,7 @@ export function start(storage, onError = () => {}) {
       res.writeHead(500, {'Content-Type': 'application/json'});
       res.end(JSON.stringify({error: error.message}));
     }
-  });
+  }, {log: appLog}));
   listen(server, PORT, {onError});   // lib/server-listen.js: a busy port is said and retried, a test app without its own port stays off
   return server;
 }

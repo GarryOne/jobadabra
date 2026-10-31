@@ -11,6 +11,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {Adapter, AiError, AiLimit, SUBSCRIPTION, attachments, plus, response} from './contract.js';
 import {parseJson, problems} from './schema.js';
+import {noteAiLimiter} from '../ext-http-timing.js';
 
 export const TIMEOUT_MS = 10 * 60 * 1000;
 const TIMEOUTS_BEFORE_STOP = 2;  // in a row: the CLI is not answering at all, so nothing waits again in this run
@@ -73,10 +74,11 @@ export function slots(size = 2) {
     if (pick >= 0) { busy += 1; waiting.splice(pick, 1)[0].go(); }
   };
   return async (work, lane) => {
-    const page = lane === 'page', ahead = page ? waiting.filter(item => item.lane === 'page').length : waiting.length;
+    const page = lane === 'page', ahead = page ? waiting.filter(item => item.lane === 'page').length : waiting.length, queuedAt = Date.now();
     if (!ahead && fits(lane)) busy += 1;
     else await new Promise(go => waiting.splice(ahead, 0, {lane, go}));   // page asks stay in front, in order
-    try { return await work(); } finally { busy -= 1; next(); }
+    const startedAt = Date.now();
+    try { return await work(); } finally { noteAiLimiter(startedAt - queuedAt, Date.now() - startedAt); busy -= 1; next(); }   // evidence only (ext-http-timing.js)
   };
 }
 

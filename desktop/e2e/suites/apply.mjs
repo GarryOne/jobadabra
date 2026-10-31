@@ -80,22 +80,7 @@ export const hangCaps = {'the app has an applicant': 300, 'the app is seeded': 9
   'the form\'s panel offers a tailored CV': 3 * stepSeconds['Tailor on the session page of a form']};
 // Slow first-try seconds from 80 main/beta runs, 24–31 Oct 2026 (tools/e2e-step-timings.mjs maxSeconds; evidence: fixtures/slice-ci-seconds.json).
 // Two measured halves carry ~650 s each before setup; applyflows uses three slices, without increasing any budget.
-export const flowSeconds = {
-  "the account and the application on one page": 85.6,
-  "a menu whose choices are not the answer": 127.4,
-  "\"Needs your attention\" from the extension": 94.3,
-  "the form tab is closed": 127,
-  "a second browser with the extension": 93.7,
-  "a posting whose Apply opens a new tab": 107.1,
-  "two applications side by side": 91.7,
-  "a sign-in page before the form that refuses": 97,
-  "a sign-in page before the form:": 62.6,
-  "a form drawn after a spinner": 58.4,
-  "an upload slot that appears only when +": 80.2,
-  "the AI gave a page the wrong kind": 94.2,
-  "a sign-up page before the form": 95.5,
-  "a form with collapsed sections": 92.8
-};
+export const flowSeconds = JSON.parse(fs.readFileSync(new URL('../fixtures/slice-ci-seconds.json', import.meta.url), 'utf8')).applyflows;
 export const browser = true;
 export const engine = 'api';   // the form's open question is answered by the AI proxy, which needs the API engine
 export const macos = 'release';   // a release, a gate and the night run it on a macOS runner (the real Chrome extension, opened through `open` as on a Mac); a PR's run on Linux (lib/plan.mjs runnerOf)

@@ -68,7 +68,7 @@ test('every journey of applyflows is weighed or follows one, no weight names a g
   assert.ok(Math.abs(load[0] - load[1]) / mean < 0.1, `halves ${load.join(' vs ')} s`);
 });
 
-// These observed seconds are independent of the production weights: stale weights must not make their own balance test green.
+// Pinned observations supply the weights; these guards check placement and capacity, while the PR run proves current runtime.
 test('applyflows slices fit eight measured minutes, with two halves balanced against their mean', () => {
   const halves = weighedSlices(apply.flowSeconds, 2);
   const halfLoad = [1, 2].map(index => Object.entries(measured.applyflows).filter(([head]) => halves[head] === index).reduce((sum, [, seconds]) => sum + seconds, 0));

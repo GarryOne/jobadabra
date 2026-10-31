@@ -1,5 +1,5 @@
 {
-  "about": "Slow first-try passed seconds, 24–31 Oct 2026 main and beta CI; regression evidence independent of production weights.",
+  "about": "Slow first-try passed seconds, 24–31 Oct 2026 main and beta CI; canonical slice weights and timing regression evidence.",
   "method": "tools/e2e-step-timings.mjs --suite <suite> --dir <first-try artifacts> --json; maxSeconds after the tool excludes shard-runs above 1.5x their median. Older retry-overwritten artifacts recovered from the first suite-step interval in job logs. Preserve tenths: rounding 149 cases up adds 73 seconds.",
   "applyflowsRuns": 80,
   "recordedRuns": 66,

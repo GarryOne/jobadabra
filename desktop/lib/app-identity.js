@@ -69,11 +69,24 @@ export function migrateDataFolder(appData, {log = () => {}, store = false, now =
   }
 }
 
+/**
+ * The Store copy makes its data folder itself, before Chromium does. Why (31 Oct 2026, spike runs 41232577742 and 41234356684): on a clean machine the Store package wrote the folder
+ * Chromium made into the package's private cache although the manifest turns virtualization off, while a folder made by a package process (node, PowerShell) landed in the real
+ * place and every start after it wrote there too. Not understood why; this is the measured way round it. Never throws: a folder that cannot be made is Chromium's to make as before.
+ */
+export function makeFolder(folder, log = () => {}) {
+  try { fs.mkdirSync(folder, {recursive: true}); } catch (error) { log(`could not make ${path.basename(folder)} (${error.code || error.message})`); }
+}
+
 // Call before anything reads userData. userDataOverride: a folder set by a test or demo (it wins, and the real folder is not touched at all).
 // Electron fixes the Keychain item's name ("<app name> Safe Storage") the first time safeStorage seals something, so seal once under the old name, then take the new one (menus, About).
 export function keepLegacyIdentity({app, safeStorage, displayName = 'Jobadabra', userDataOverride = '', log, store = !!process.windowsStore}) {
   app.setName(LEGACY_NAME);
-  if (!userDataOverride) app.setPath('userData', migrateDataFolder(app.getPath('appData'), {log, store}));
+  if (!userDataOverride) {
+    const folder = migrateDataFolder(app.getPath('appData'), {log, store});
+    app.setPath('userData', folder);
+    if (store) makeFolder(folder, log);
+  }
   app.whenReady().then(() => {
     try { if (safeStorage.isEncryptionAvailable()) safeStorage.encryptString('keychain-name'); } catch { /* no keychain here (CI): nothing to keep */ }
     app.setName(displayName);

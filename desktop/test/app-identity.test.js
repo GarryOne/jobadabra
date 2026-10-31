@@ -160,6 +160,20 @@ test('the data folder is Jobadabra; the Keychain item is sealed under the old na
   assert.deepEqual(log, ['name:Job Pilotto', 'seal under:Job Pilotto', 'name:Jobadabra']);
 });
 
+test('the Store copy makes its data folder itself, the installer copy leaves it to Chromium, a demo folder is not touched', () => {
+  const store = tmp(), exe = tmp(), demo = tmp();
+  keepLegacyIdentity({app: fakeApp(store).app, safeStorage: {}, store: true});
+  assert.deepEqual(fs.readdirSync(store), [DATA_NAME]);
+  keepLegacyIdentity({app: fakeApp(exe).app, safeStorage: {}, store: false});
+  assert.deepEqual(fs.readdirSync(exe), []);
+  keepLegacyIdentity({app: fakeApp(demo).app, safeStorage: {}, store: true, userDataOverride: '/tmp/demo'});
+  assert.deepEqual(fs.readdirSync(demo), []);
+  const blocked = tmp(); fs.writeFileSync(path.join(blocked, DATA_NAME), 'a file where the folder should be');
+  const logs = [];
+  keepLegacyIdentity({app: fakeApp(blocked).app, safeStorage: {}, store: true, log: text => logs.push(text)});
+  assert.match(logs.join('\n'), /could not make/, 'a folder that cannot be made is logged, never thrown');
+});
+
 // "Tests and automation never touch the owner's live app": a test or demo folder must stop the move.
 test('with a test or demo folder the real data folder is not moved', () => {
   const appData = tmp();

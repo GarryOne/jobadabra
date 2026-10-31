@@ -7,6 +7,7 @@ import {hangCapsFor} from '../lib/hang-caps.mjs';
 import fs from 'node:fs';
 import {parseShard} from '../lib/replay-shard.mjs';
 import {stepSlicer} from '../lib/step-slices.mjs';
+import {tabGuard} from '../lib/tab-guard.mjs';
 import path from 'node:path';
 import {cvProblems, fillProblems, highlightProblems, leftProblems, notLeftProblems, submitProblems} from '../lib/applycheck.mjs';
 import {CHAIN, FORMS, HOSTS, LATE, REAL_FORMS, SCRIPTED, SIGNIN, SIGNIN_REFUSED, SIGNUP, MENU_FIRST, MENU_AGAIN, PROPOSE, REVEAL, COLLAPSED, ONEPAGE, MISLABELLED, realFieldId} from '../lib/forms.mjs';
@@ -103,7 +104,7 @@ export async function runApply(ctx, parts) {
   fs.writeFileSync(path.join(ctx.ARTIFACTS, 'seed.json'), JSON.stringify({seed: ctx.vary.seed, fixed: ctx.vary.fixed, detail: forms.variation}));
   console.log(ctx.vary.fixed ? '  variation: fixed forms' : `  variation: seed ${ctx.vary.seed}; ${forms.variation}; replay with E2E_SEED=${ctx.vary.seed}`);
   const all = ctx.run;
-  const capped = (name, fn, options) => all(name, fn, options);
+  const capped = tabGuard(ctx, all);   // Why (31 Oct 2026, a8; beta 41242762348): a step closes the form tabs it opened, at its own end (lib/tab-guard.mjs); they piled up to 7 and slowed chrome.storage 7 s -> 37 s
   ctx.run = capped;
   await ensureSetUp(ctx);   // before the filter below: a new Notion page is built by the wizard's own steps
   const live = parts.includes('live') ? livePosting() : null;   // the live run: one real posting, read from this Mac's job list; the fixture checks do not apply to it
@@ -305,7 +306,7 @@ export async function runApply(ctx, parts) {
     if (!/reject an application automatically|knockout rule/i.test(left.knock)) throw new Error(`no knockout warning above the list (it says: "${left.knock}")`);
     // The tip line is off for now (SHOW_TIPS=false in extension/review.js, owner 15 Oct 2026): a tip is not required, but one that shows still carries a label that says how strong it is.
     if (left.tip && (!['Fact', 'Recruiters say', 'Worth trying', 'Tip'].includes(left.tip.chip) || left.tip.text.length < 20)) throw new Error(`the panel shows a tip without a valid label (${JSON.stringify(left.tip)})`);
-  }, {safety: true, needs: ctx.needs});
+  }, {safety: true, needs: ctx.needs, keepsTabs: 'multistep'});   // the session-page step below reads this form's session
 
   await ctx.run('the session page says it too: "Before you submit" counts the knockout question that is still the person\'s, and says which CV goes in', async () => {
     const form = FORMS.multistep;
@@ -338,7 +339,7 @@ export async function runApply(ctx, parts) {
     await page.locator('#ss-before-cv').waitFor({state: 'visible', timeout: 15000});
     const cvRow = (await page.locator('#ss-before-cv').innerText()).replace(/\s+/g, ' ');
     if (!/general CV|tailored/i.test(cvRow)) throw new Error(`the CV row says neither which CV goes in nor that one is tailored: "${cvRow}"`);
-  }, {needs: ctx.needs});
+  }, {needs: ctx.needs, closesTabs: 'multistep'});
 
   await ctx.run('a form with a control the extension cannot operate: the miss is reported to the app', async () => {
     const form = FORMS.unknown;
@@ -356,7 +357,7 @@ export async function runApply(ctx, parts) {
     const log = appLogText(ctx.profile);
     if (!/\[misses\] \d+ new control/.test(log)) throw new Error('the app kept the miss but did not log it');
     unknownTab = tab;
-  }, {needs: ctx.needs});
+  }, {needs: ctx.needs, keepsTabs: 'unknown'});   // the next step reads this tab's panel and closes it
 
   await runLive(ctx, {page, posting: live});   // lib/apply-live.mjs (only when parts has 'live')
   await runJourneys(ctx, {cv, dumpExtension, fail, forms, page});   // lib/apply-journeys.mjs
@@ -394,7 +395,7 @@ export async function runApply(ctx, parts) {
     if (!result?.ok) throw new Error(`the app refused: ${result?.error}`);
     await until('"I submitted it" left the job\'s session on the list', async () => !(await sessionsOf(CHAIN.url)).length, 30000);
     if ((await stageOf(ctx, CHAIN.url)) !== 'Applied') throw new Error('the Notion row is not Applied');
-  }, {needs: ctx.needs});
+  }, {needs: ctx.needs, closesTabs: 'chain'});
 
   await runCvSteps(ctx, {apply, cv, fail, page, panelOf, proxy, until});   // lib/apply-cv-steps.mjs
   await runSilentChromeSteps(ctx);   // lib/apply-silent-steps.mjs: the app cannot hear Chrome, one step per apply mode
@@ -450,5 +451,5 @@ export async function runApply(ctx, parts) {
     console.log(`  panel: "${panel?.progress}"; left for you: ${panel?.left.join(' | ') || 'nothing'}; pill: "${panel?.pill}"`);
     if (/ready to submit/i.test(`${panel?.pill} ${panel?.progress}`)) throw new Error('the panel says "Ready to submit" while the required "How would you rate your Terraform skill?" control is unanswered');
     fail(leftProblems(panel?.left || [], ['Terraform skill']));
-  }, {needs: ctx.needs});
+  }, {needs: ctx.needs, closesTabs: 'unknown'});
 }

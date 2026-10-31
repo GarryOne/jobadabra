@@ -58,7 +58,7 @@ export async function runJourneys(ctx, h) {
     // The stuck case: worker/test/extension-files.test.js, desktop/test/panel-claude.test.js and the twin.
     const offered = await tab.evaluate(() => { const offer = document.getElementById('jobpilotto-review-host')?.shadowRoot?.querySelector('.claude-offer'); return !!offer && !offer.hidden; });
     if (offered) throw new Error('the panel offers Claude on a filled form (nothing is stuck)');
-  }, {needs: ctx.needs});
+  }, {needs: ctx.needs, keepsTabs: 'chain'});   // "I submitted it" (suites/apply.mjs) reads this journey's session, then closes the tab
 
   // Two applications side by side (8 Oct 2026: Coop and Manor started seconds apart; Migros's sign-in page showed on Manor's card). SCRIPTED's Apply opens its
   // form from the page's own script (nothing to point at the same tab: the new tab is followed, the posting closes); CHAIN's goes link → posted form. Started

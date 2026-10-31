@@ -152,7 +152,7 @@ export function createRunner(getSession, {keepGoing = false, budgetMs = SUITE_BU
       const capped = takeCapped();
       if (capped && !releaseGate()) {
         results.push({name, status: 'skipped', aiCapped: true, note: capMessage(capped.neurons, process.env, capped.why)});
-        skipStepForCap(name, capped.neurons);
+        skipStepForCap(name, capped);
         await report?.skipStep(`${name} (AI capped)`).catch(() => {});
         return;
       }

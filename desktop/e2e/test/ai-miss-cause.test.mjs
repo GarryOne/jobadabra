@@ -6,6 +6,7 @@ import path from 'node:path';
 import {test} from 'node:test';
 import {annotationLines, writeSuiteFailures} from '../lib/artifacts.mjs';
 import {messageOf, stepCauses} from '../ci-alert.mjs';
+import {noteBrokerCapped, noteCapped, takeCapped} from '../lib/ai-cap.mjs';
 
 // Reduced recorded shapes from main run 40987274061, jobs and failureschannels.
 const capped = {neurons: null, cap: 100000, skipped: 0, steps: [], at: '2026-10-30T01:42:57.349Z'};
@@ -91,4 +92,28 @@ test('a first-seen miss without refusal evidence leaves an unrelated failure unc
   writeSuiteFailures(dir, 'jobs', [{name: 'read jobs', status: 'failed', note: 'wrong value'}], {});
   assert.deepEqual(JSON.parse(fs.readFileSync(path.join(dir, 'suite-failures.json'), 'utf8')),
     [{suite: 'jobs', step: 'read jobs', message: 'wrong value'}]);
+});
+
+// Beta 41135642422's qualityai: the harness logged the broker's refusal only to the job log, and the record said "no refusal reason recorded".
+test('a broker refusal the harness noted names its reason without any log file', t => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ai-miss-cause-'));
+  t.after(() => fs.rmSync(dir, {recursive: true, force: true}));
+  const quiet = console.log;
+  console.log = () => {};
+  try { noteBrokerCapped(reason, {E2E_ARTIFACTS: dir, E2E_SUITE: 'qualityai'}); } finally { console.log = quiet; takeCapped(); }
+  writeSuiteFailures(dir, 'qualityai', [{name: 'facts', status: 'failed', note: 'the facts are not exact'}], {});
+  const [record] = JSON.parse(fs.readFileSync(path.join(dir, 'suite-failures.json'), 'utf8'));
+  assert.ok(record.message.startsWith(`AI asks with no stored answer: 0 (first: unavailable); the AI was refused: ${reason}`), record.message);
+});
+
+// Gitar on #2652: the file holds the reason of the refusal that wrote it, so a neuron cap after a broker refusal is not named as the broker's budget.
+test('a neuron cap after a broker refusal writes no broker reason', t => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ai-miss-cause-'));
+  t.after(() => fs.rmSync(dir, {recursive: true, force: true}));
+  const quiet = console.log, env = {E2E_ARTIFACTS: dir, E2E_SUITE: 'jobs'};
+  console.log = () => {};
+  try { noteBrokerCapped(reason, env); noteCapped(100001, env); } finally { console.log = quiet; takeCapped(); }
+  const note = JSON.parse(fs.readFileSync(path.join(dir, 'ai-capped.json'), 'utf8'));
+  assert.equal(note.neurons, 100001);
+  assert.equal(Object.hasOwn(note, 'why'), false, JSON.stringify(note));
 });

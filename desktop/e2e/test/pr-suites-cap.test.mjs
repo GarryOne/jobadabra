@@ -313,3 +313,16 @@ test('CLI transports watched mail parts from the actual PR changed files', () =>
   assert.ok(!unrelated.values.suites.split(',').includes('qualityai'));
   assert.deepEqual(JSON.parse(unrelated.values.steps)['(parts)'].qualityai, []);
 });
+
+
+test('mail part routing preserves helper, suite, mixed and recorded journey reach', () => {
+  const listed = {qualityai: {lane: 'tolerant', pr: 'number'}};
+  const parts = extraFiles => JSON.parse(cliPlan({suites: [], extraFiles, listed}).values.steps)['(parts)'].qualityai;
+  assert.deepEqual(parts(['desktop/e2e/lib/quality-mail.mjs']), ['mail']);
+  assert.deepEqual(parts(['src/ai/mail.py', 'desktop/e2e/lib/quality-journey.mjs']), ['journey', 'mail']);
+  assert.deepEqual(parts(['src/ai/mail.py', 'desktop/e2e/suites/qualityai.mjs']), ['journey', 'mail']);
+  assert.deepEqual(parts(['src/ai/mail.py', 'docs/ARCHITECTURE.md']), ['mail']);
+  const coverage = {suites: {qualityai: {sha: 'recorded', files: {'desktop/lib/some-loaded.js': {lines: [[1, 1]]}}}}};
+  const mapped = cliPlan({suites: [], extraFiles: ['src/ai/mail.py', 'desktop/lib/some-loaded.js'], listed, coverage});
+  assert.deepEqual(JSON.parse(mapped.values.steps)['(parts)'].qualityai, ['journey', 'mail']);
+});

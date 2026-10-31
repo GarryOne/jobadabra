@@ -319,3 +319,4 @@ The PR plan reads changed files as it does for `watches`, including one-hop Pyth
 changes, schedules and nightly gates never add mail. Name `qualityai:mail` in e2e.yml's suite input
 for a manual mail eval; naming `qualityai` alone keeps the Jobs journey. Model misses are rates,
 with no threshold or strict-case failure in the suite. No extra eval or retry is added.
+The mail runner itself is watched, replacing the old suite-file reach. A mixed change keeps the Jobs journey when imports, quoted app text or recorded lines reach it; unrelated files do not add a journey.

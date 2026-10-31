@@ -70,11 +70,13 @@ export async function planRun({env, gh = realGh, all, minutes, os = async () => 
   const own = run => run.headSha === ref && tested(run) && run.event !== 'push' && run.event !== 'workflow_run' && !otherCode(run);
   let exploring = false, why = '';
 
-  let changedFiles = [];
+  let changedFiles = [], pushReach = [];
   let suites = [], tag = '';
   if (event === 'push') {
     changedFiles = changed(env.BEFORE, sha) || ['desktop/e2e/suite.mjs'];
-    suites = suitesFor(changedFiles, all, {watches: watchesWithImports(watches), cadence, uses: suitesUsing(path.dirname(fileURLToPath(import.meta.url)))});
+    const pointing = {watches: watchesWithImports(watches), cadence, uses: suitesUsing(path.dirname(fileURLToPath(import.meta.url)))};
+    suites = suitesFor(changedFiles, all, pointing);
+    pushReach = changedFiles.filter(file => suitesFor([file], all, pointing).includes('qualityai'));
   }
   else if (env.PROMOTE_TAG) suites = [];   // a manual dry run of the promotion step: no suites
   // The gate: the release run calls it only for a release it built (a nightly or a beta by hand, desktop.yml), or a gate by hand. Always + nightly suites, not the manual ones.
@@ -138,7 +140,7 @@ export async function planRun({env, gh = realGh, all, minutes, os = async () => 
   const legs = key => (env.GATE_TAG && env.GATE_STORE_LEGS !== 'one' && !storeless.includes(suiteOfKey(key)) ? [{store: 'sqlite', key}, {store: 'standin', key: `${key}-standin`}] : [{store: prStores[suiteOfKey(key)] || '', key}]);
   // A suite with `shards` is one job per slice (lib/suite-shards.mjs), on both lanes: the recorded replay outgrew one job's budget (13 Oct 2026).
   const qualityParts = env.PR_SUITES ? picks['(parts)']?.qualityai || ['journey']
-    : event === 'push' ? suitePartsFor(changedFiles, watchesWithImports(parts.qualityai || {}))
+    : event === 'push' ? suitePartsFor(changedFiles, watchesWithImports(parts.qualityai || {}), pushReach)
     : !env.GATE_TAG && event === 'workflow_dispatch' && String(env.ONLY || '').split(',').map(name => name.trim()).includes('qualityai:mail') ? ['mail'] : ['journey'];
   const include = [];
   for (const suite of suites) for (const slice of prLegs(suite, shards, env, picks)) for (const leg of legs(slice.key)) include.push({suite, ...(suite === 'qualityai' ? {qualityParts: qualityParts.length ? qualityParts : ['journey']} : {}), ...tolerantMatrixFlag(suite), fallbackSuites, ...offlineMatrixFlag(suite, offlineAi), ...answersMatrixFlag(suite, backbone), ...slice, ...leg, minutes: await minutes(suite), os: await os(suite, {pr: !!String(env.PR_SUITES || '').trim()})});

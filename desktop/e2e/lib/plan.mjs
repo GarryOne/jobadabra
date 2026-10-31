@@ -130,7 +130,10 @@ export function tolerantMatrixFlag(suite) {
   return lanes.suites[suite]?.lane === 'tolerant' ? {tolerant: true} : {};
 }
 
-/** Select watched parts from changed files; callers expand the same one-hop imports as suite watches. */
-export function suitePartsFor(files, parts = {}) {
-  return Object.entries(parts).filter(([, paths]) => files.some(file => paths.some(watched => file === watched || (watched.endsWith('/') && file.startsWith(watched))))).map(([part]) => part);
+/** Select quality parts from expanded watches; non-mail reach retains the Jobs journey. */
+export function suitePartsFor(files, parts = {}, reachedFiles = []) {
+  const matches = (paths = [], file) => paths.some(watched => file === watched || (watched.endsWith('/') && file.startsWith(watched)));
+  const selected = new Set(Object.entries(parts).filter(([, paths]) => files.some(file => matches(paths, file))).map(([part]) => part));
+  if (parts.journey && reachedFiles.some(file => !matches(parts.mail, file))) selected.add('journey');
+  return Object.keys(parts).filter(part => selected.has(part));
 }

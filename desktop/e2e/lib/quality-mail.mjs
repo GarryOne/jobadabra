@@ -6,7 +6,7 @@ import {startAiProxy} from './ai-proxy.mjs';
 import {familyOf, testKey} from './engine.mjs';
 import {python, pythonEnv} from './python.mjs';
 
-export const MAIL_WATCHES = ['src/ai/mail.py', 'src/ai/mail_inbox.py', 'src/ai/mail_read.py', 'src/ai/mail_triage.py', 'tools/mail_eval.py', 'tests/fixtures/mail_eval.json'];
+export const MAIL_WATCHES = ['src/ai/mail.py', 'src/ai/mail_inbox.py', 'src/ai/mail_read.py', 'src/ai/mail_triage.py', 'tools/mail_eval.py', 'tests/fixtures/mail_eval.json', 'desktop/e2e/lib/quality-mail.mjs'];
 const repo = path.resolve(import.meta.dirname, '..', '..', '..');
 
 /** Isolate the eval environment and pass only its engine's test key; CLI engines retain sign-in HOME. */

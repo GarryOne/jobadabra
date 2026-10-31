@@ -5,14 +5,23 @@ name: Spike · Windows Store package (MSIX)
 # a Microsoft Store listing is free for individuals and Microsoft re-signs the package, so Store installs never show SmartScreen.
 # This run builds the package with a throwaway identity, signs it with a self-made test certificate on the runner, installs it and
 # checks that the app stays up. Nothing is published and no secret is used; the real Store identity comes from the owner's Partner Center account.
+# Why (31 Oct 2026, owner: Store copy + downloaded .exe installed side by side): the second job below measures that case. It lives in this file because a workflow can be dispatched
+# from a branch only if its file already exists on main; `scenario` picks which job runs.
 on:
   workflow_dispatch:
+    inputs:
+      scenario:
+        description: 'rename = the 25 Oct data-folder rename spike; two-installs = the .exe and the Store package side by side (31 Oct 2026)'
+        type: choice
+        options: [rename, two-installs]
+        default: rename
 
 permissions:
   contents: read
 
 jobs:
   msix:
+    if: inputs.scenario != 'two-installs'
     name: Build and start the MSIX
     runs-on: windows-latest
     timeout-minutes: 40
@@ -128,3 +137,131 @@ jobs:
           "local listeners: $(@(Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue | Where-Object { $_.LocalAddress -eq '127.0.0.1' }).Count)"
           Get-WinEvent -LogName 'Microsoft-Windows-AppXDeploymentServer/Operational','Application' -MaxEvents 15 -ErrorAction SilentlyContinue | Where-Object { $_.LevelDisplayName -in 'Error','Warning' } | Select-Object -First 8 | Format-List TimeCreated, ProviderName, Message
           if (-not $running) { Write-Error 'The packaged app did not start'; exit 1 }
+
+  two-installs:
+    if: inputs.scenario == 'two-installs'
+    name: Install both copies and measure
+    runs-on: windows-latest
+    timeout-minutes: 50
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0   # stage.mjs counts the extension's commits and refuses a shallow clone
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - name: Install
+        working-directory: desktop
+        run: npm ci
+      - name: Compile · bundle Python
+        working-directory: desktop
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PYTHON_ARCH: x86_64-pc-windows-msvc
+        run: node scripts/stage.mjs --app && scripts/python.sh
+      - name: Compile · build the NSIS installer and the MSIX (test identity)
+        working-directory: desktop
+        run: |
+          npm version "0.0.1" --no-git-tag-version --allow-same-version >/dev/null
+          npx electron-builder --win nsis appx --publish never \
+            -c.appx.identityName=Jobadabra.Spike -c.appx.publisher=CN=JobadabraSpike \
+            -c.appx.publisherDisplayName=Jobadabra -c.appx.displayName=Jobadabra -c.appx.applicationId=Jobadabra
+          ls -la dist/*.appx dist/*.exe
+      - name: Install · the .exe silently, then the signed test MSIX
+        shell: pwsh
+        working-directory: desktop
+        run: |
+          $setup = (Get-ChildItem dist -Filter *.exe | Where-Object { $_.Name -notmatch 'uninstall|elevate' } | Select-Object -First 1).FullName
+          Start-Process $setup -ArgumentList '/S' -Wait
+          $cert = New-SelfSignedCertificate -Type Custom -Subject 'CN=JobadabraSpike' -KeyUsage DigitalSignature -CertStoreLocation Cert:\CurrentUser\My -TextExtension @('2.5.29.37={text}1.3.6.1.5.5.7.3.3', '2.5.29.19={text}')
+          $pfx = Join-Path $env:RUNNER_TEMP 'spike.pfx'
+          Export-PfxCertificate -Cert $cert -FilePath $pfx -Password (ConvertTo-SecureString 'spike' -AsPlainText -Force) | Out-Null
+          Import-Certificate -FilePath (Export-Certificate -Cert $cert -FilePath (Join-Path $env:RUNNER_TEMP 'spike.cer')).FullName -CertStoreLocation Cert:\LocalMachine\TrustedPeople | Out-Null
+          $signtool = (Get-ChildItem 'C:\Program Files (x86)\Windows Kits\10\bin\*\x64\signtool.exe' | Sort-Object FullName | Select-Object -Last 1).FullName
+          $appx = (Get-ChildItem dist\*.appx | Select-Object -First 1).FullName
+          & $signtool sign /fd SHA256 /f $pfx /p spike $appx
+          Add-AppxPackage -Path $appx
+          Get-AppxPackage Jobadabra.Spike | Format-List Name, PackageFullName, PackageFamilyName, InstallLocation
+      - name: Measure · four scenarios, one report
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Continue'
+          Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+          $out = 'C:\spike-out'; New-Item -ItemType Directory -Force $out | Out-Null
+          $report = Join-Path $out 'report.txt'
+          function Say($text) { $text | Tee-Object -FilePath $report -Append }
+          $pkg = Get-AppxPackage Jobadabra.Spike
+          $pfn = $pkg.PackageFamilyName
+          $appId = ([xml](Get-Content (Join-Path $pkg.InstallLocation 'AppxManifest.xml'))).Package.Applications.Application.Id
+          $msixExe = (Get-ChildItem (Join-Path $pkg.InstallLocation 'app') -Filter *.exe | Where-Object { $_.Name -notmatch 'uninstall|elevate' } | Select-Object -First 1).FullName
+          $nsisExe = (Get-ChildItem (Join-Path $env:LOCALAPPDATA 'Programs') -Recurse -Filter Jobadabra.exe -Depth 2 | Select-Object -First 1).FullName
+          $real = Join-Path $env:APPDATA 'Jobadabra'
+          $legacy = Join-Path $env:APPDATA 'Job Pilotto'
+          $cache = Join-Path $env:LOCALAPPDATA "Packages\$pfn\LocalCache\Roaming"
+          Say "== Inventory"
+          Say "nsis exe: $nsisExe"
+          Say "msix exe: $msixExe (package family $pfn)"
+          Say "Start menu shortcuts: $((Get-ChildItem (Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs'), 'C:\ProgramData\Microsoft\Windows\Start Menu\Programs' -Recurse -Filter *.lnk -ErrorAction SilentlyContinue | Where-Object { $_.Name -match 'Jobadabra|Job Pilotto' } | ForEach-Object FullName) -join ' | ')"
+          Say "Start apps: $((Get-StartApps | Where-Object Name -match 'Jobadabra|Job Pilotto' | ForEach-Object { $_.Name + ' <' + $_.AppID + '>' }) -join ' | ')"
+          Say "Uninstall keys (HKCU+HKLM, installer copies): $((Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*','HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*' -ErrorAction SilentlyContinue | Where-Object { $_.DisplayName -match 'Jobadabra|Job Pilotto' } | ForEach-Object { $_.DisplayName + ' ' + $_.DisplayVersion + ' [' + $_.PSChildName + ']' }) -join ' | ')"
+          Say "Appx packages: $((Get-AppxPackage | Where-Object Name -match 'Jobadabra' | ForEach-Object PackageFullName) -join ' | ')"
+          function Copies {   # the running processes of each copy, by where its exe lives
+            Get-CimInstance Win32_Process | Where-Object { $_.ExecutablePath -and ($_.ExecutablePath -like '*WindowsApps*Jobadabra.Spike*' -or $_.ExecutablePath -eq $nsisExe) } |
+              ForEach-Object { [pscustomobject]@{ Copy = $(if ($_.ExecutablePath -eq $nsisExe) { 'exe' } else { 'msix' }); Id = $_.ProcessId; Renderer = ($_.CommandLine -match '--type=renderer'); Typed = ($_.CommandLine -match '--type=') } }
+          }
+          function Stop-Copies { Get-Process | Where-Object { $_.Path -and ($_.Path -like '*WindowsApps*Jobadabra.Spike*' -or $_.Path -eq $nsisExe) } | Stop-Process -Force -ErrorAction SilentlyContinue; Start-Sleep 6 }
+          function Start-Exe { $env:CI = 'true'; $env:GITHUB_ACTIONS = 'true'; Start-Process $nsisExe }
+          function Start-Msix {   # in the package's identity (process.windowsStore), with CI set so it does not count as an install
+            @"
+          `$env:CI = 'true'; `$env:GITHUB_ACTIONS = 'true'
+          Start-Process '$msixExe'
+          "@ | Set-Content (Join-Path $out 'launch-msix.ps1')
+            Invoke-CommandInDesktopPackage -PackageFamilyName $pfn -AppId $appId -Command 'powershell.exe' -Args "-NoProfile -ExecutionPolicy Bypass -File $out\launch-msix.ps1" -PreventBreakaway
+          }
+          function Files($root) { if (Test-Path $root) { Get-ChildItem $root -Recurse -File -Force -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName.Substring($root.Length) + ' (' + $_.Length + ' B)' } } }
+          function Starts($log) { if (Test-Path $log) { @(Select-String -Path $log -Pattern '\[app\] start').Count } else { 0 } }
+          function Shot($name) { $b = [System.Windows.Forms.SystemInformation]::VirtualScreen; $bmp = New-Object System.Drawing.Bitmap $b.Width, $b.Height; [System.Drawing.Graphics]::FromImage($bmp).CopyFromScreen($b.Location, [System.Drawing.Point]::Empty, $b.Size); $bmp.Save("$out\$name.png") }
+          function Outcome($title) {
+            $all = @(Copies)
+            foreach ($c in 'exe', 'msix') { $mine = @($all | Where-Object Copy -eq $c); Say ("   {0,-5} processes: {1}, renderer: {2}" -f $c, $mine.Count, @($mine | Where-Object Renderer).Count) }
+            Say "   app.log 'start' lines: real folder $(Starts "$real\logs\app.log"), package cache $(Starts "$cache\Jobadabra\logs\app.log"), legacy folder $(Starts "$legacy\logs\app.log")"
+            Shot ($title -replace '\W+', '-')
+          }
+
+          Say "== A. the .exe copy alone"
+          Stop-Copies; Start-Exe; Start-Sleep 30; Outcome 'A-exe-alone'
+          Set-Content "$real\marker-written-from-outside.txt" 'outside'
+          Say "   real folder after: $((Files $real | Select-Object -First 12) -join '; ')"
+          Stop-Copies
+
+          Say "== B. the Store copy alone (the .exe copy's folder already exists)"
+          Say "   package cache before: $((Files $cache) -join '; ')"
+          Start-Msix; Start-Sleep 35; Outcome 'B-msix-alone'
+          Say "   real folder after: $((Files $real | Select-Object -First 12) -join '; ')"
+          Say "   package cache after: $((Files $cache | Select-Object -First 20) -join '; ')"
+          Say "   package cache has the outside marker: $(Test-Path "$cache\Jobadabra\marker-written-from-outside.txt")"
+          Stop-Copies
+
+          Say "== C. the .exe copy is open, then the Store copy is started"
+          Start-Exe; Start-Sleep 25; Start-Msix; Start-Sleep 35; Outcome 'C-exe-then-msix'
+          Stop-Copies
+
+          Say "== D. the Store copy is open, then the .exe copy is started"
+          Start-Msix; Start-Sleep 25; Start-Exe; Start-Sleep 35; Outcome 'D-msix-then-exe'
+          Stop-Copies
+
+          Say "== Logs"
+          foreach ($log in "$real\logs\app.log", "$cache\Jobadabra\logs\app.log") { if (Test-Path $log) { Say "-- $log"; Get-Content $log -Tail 40 | ForEach-Object { Say "   $_" } } }
+          Copy-Item "$real\logs" "$out\real-logs" -Recurse -ErrorAction SilentlyContinue
+          Copy-Item "$cache\Jobadabra\logs" "$out\cache-logs" -Recurse -ErrorAction SilentlyContinue
+      - name: Keep the report and screenshots
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: two-installs-report
+          path: C:\spike-out
+          if-no-files-found: ignore
+          retention-days: 14

@@ -73,5 +73,27 @@ class SiblingsOfAListedToolAreListed(unittest.TestCase):
         return seen
 
 
+class ASkippedCheckoutSkipsTheLedgerToo(unittest.TestCase):
+    """Why (31 Oct 2026, a8; Gitar on #2733): the persona job checks out only when its OIDC token is trusted (fork runs skip it and finish green); the ledger steps had no such
+    condition, so they died on a missing action.yml and turned that green run red."""
+
+    def test_the_ledger_steps_carry_the_condition_of_the_checkout_that_provides_them(self):
+        wrong = []
+        for workflow in WORKFLOWS:
+            for name, job in jobs(workflow.read_text()).items():
+                from_lock_tools = 'lock-tools/tools/gh-ledger.sh' in job
+                if not (from_lock_tools or './.github/actions/gh-ledger' in job):
+                    continue
+                steps = re.split(r'\n(?=      - )', job)
+                provider = next((s for s in steps if 'uses: actions/checkout@' in s and bool(re.search(r'^\s+path:\s*lock-tools', s, re.M)) == from_lock_tools), '')
+                condition = re.search(r'^\s+if:\s*(.+)$', provider, re.M)
+                if not condition:
+                    continue
+                for step in steps:
+                    if ('gh-ledger' in step) and 'actions/checkout@' not in step and condition.group(1).strip() not in step:
+                        wrong.append(f'{workflow.name} {name}: a ledger step lacks the checkout\'s condition ({condition.group(1).strip()})')
+        self.assertEqual(wrong, [], 'give the ledger start `if: <condition>` and the end `if: always() && <condition>`')
+
+
 if __name__ == '__main__':
     unittest.main()

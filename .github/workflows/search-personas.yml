@@ -127,6 +127,7 @@ jobs:
         if: steps.token.outputs.ok == 'yes'
         with: {persist-credentials: false}
       - uses: ./.github/actions/gh-ledger
+        if: steps.token.outputs.ok == 'yes'   # the checkout that holds the action only runs for a trusted run
         with:
           phase: start
         timeout-minutes: 5
@@ -175,7 +176,7 @@ jobs:
             out/judge.log
             out/draw/presses.jsonl
             out/draw/run-*.log
-      - if: always()
+      - if: always() && steps.token.outputs.ok == 'yes'
         uses: ./.github/actions/gh-ledger
         with:
           phase: end

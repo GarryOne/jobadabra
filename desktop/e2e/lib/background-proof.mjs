@@ -101,10 +101,14 @@ export async function openSessionCard(page, form) {
   await page.evaluate(session => import('./pages/session-log.js').then(module => module.openSession(session)), id);
 }
 
-/** One Runtime.evaluate on the owned target: ignore events/other replies. Diagnostics return null on failure; strict proofs reject with the worker/protocol error. */
+/** One Runtime.evaluate on the owned target: ignore events/other replies. Diagnostics return null on failure and end after 4 s; strict proofs reject with the
+ * worker/protocol error and have no clock of their own; a socket that closes before its reply ends either. */
 export const evaluateOn = (socketUrl, expression, {strict = false} = {}) => new Promise((done, fail) => {
   const socket = new WebSocket(socketUrl), end = (value, error) => { clearTimeout(timer); try { socket.close(); } catch { /* closed */ } strict && error ? fail(error) : done(value); };
-  const timer = setTimeout(() => end(null, new Error('the owned target did not answer Runtime.evaluate (4 s hang cap)')), 4000);
+  // Why (31 Oct 2026, re-check 41198629562, apply-2of3): the strict due-time poll awaits the app's /extension/background-apply ([ext-http] 4.1 and 4.8 s there,
+  // no AI), so a 4 s cap timed the app's work, not the worker's reply; the step's hang cap is a strict proof's only clock (rule B).
+  const timer = strict ? undefined : setTimeout(() => end(null, new Error('the owned target did not answer Runtime.evaluate (4 s hang cap)')), 4000);
+  socket.onclose = () => end(null, new Error('the owned Runtime.evaluate socket closed before its reply'));
   socket.onopen = () => socket.send(JSON.stringify({id: 1, method: 'Runtime.evaluate', params: {returnByValue: true, awaitPromise: true, expression}}));
   socket.onmessage = event => {
     const message = JSON.parse(event.data);

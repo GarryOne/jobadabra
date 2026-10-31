@@ -55,9 +55,10 @@ export async function runFocus(ctx, parts) {
   // Up next holds what can't wait; Suggestions the rest (pages/focus-suggestions.js; owner, 28 Oct 2026). Both lists: a card is looked for in either.
   const LISTS = '#focus-list .focus-item, #focus-suggestions-list .focus-item';
   const upNext = () => rowsIn('#focus-list');
+  // Why (31 Oct 2026, LinkedIn jobs 1/3, red on #2699's focus run): the standing offer "Also search LinkedIn" is a window-owned row too (renderer/linkedin-words.js) and leads Suggestions, as drawn.
   // The drawers' rows (cover letter, Fill your details, What we learned) lead Suggestions and belong to the window, not the engine (renderer/question-entries.js,
   // insights PR 1c): `suggested` is the engine's rows, `drawers` those, so each step names what it counts.
-  const DRAWER_KINDS = ['letter', 'details', 'learned', 'questions-error'];
+  const DRAWER_KINDS = ['linkedin', 'letter', 'details', 'learned', 'questions-error'];
   const suggested = async () => (await rowsIn('#focus-suggestions-list')).filter(row => !DRAWER_KINDS.includes(row.kind));
   const drawers = async () => (await rowsIn('#focus-suggestions-list')).filter(row => DRAWER_KINDS.includes(row.kind));
   const anyRow = headline => page.locator(LISTS, {has: page.locator('.focus-headline', {hasText: headline})});
@@ -139,7 +140,7 @@ export async function runFocus(ctx, parts) {
     // The drawers' rows, when the account has any (what is open to fill depends on the store: desktop/test/question-entries.test.js holds each state), lead Suggestions in the
     // owner's order, the blocking cover letter first (28 Oct 2026), each with its own button.
     const lead = await drawers(), kinds = (await rowsIn('#focus-suggestions-list')).map(row => row.kind);
-    const RANK = ['letter', 'details', 'learned'], BUTTON = {details: 'Fill your details', learned: 'Check what we learned'};
+    const RANK = ['linkedin', 'letter', 'details', 'learned'], BUTTON = {linkedin: 'Turn on LinkedIn', details: 'Fill your details', learned: 'Check what we learned'};
     if (kinds.slice(0, lead.length).join() !== lead.map(row => row.kind).join() || lead.some((row, i) => i && RANK.indexOf(row.kind) < RANK.indexOf(lead[i - 1].kind))) {
       throw new Error(`the drawers' rows should lead Suggestions in the order cover letter, Fill your details, What we learned; the rows are: ${kinds.join(', ')}`);
     }
@@ -171,7 +172,7 @@ export async function runFocus(ctx, parts) {
 
   await ctx.run('Suggestions lead with the latest rejection lesson, with a button to review it', async () => {
     const lesson = '#focus-suggestions-list .focus-item[data-suggestion="rejection"]';
-    const card = await page.evaluate(lesson => ({shown: !document.querySelector('#focus-suggestions').hidden, first: [...document.querySelectorAll('#focus-suggestions-list .focus-item')].find(li => !['letter', 'details', 'learned', 'questions-error'].includes(li.dataset.suggestion))?.dataset.suggestion,
+    const card = await page.evaluate(lesson => ({shown: !document.querySelector('#focus-suggestions').hidden, first: [...document.querySelectorAll('#focus-suggestions-list .focus-item')].find(li => !['linkedin', 'letter', 'details', 'learned', 'questions-error'].includes(li.dataset.suggestion))?.dataset.suggestion,
       text: document.querySelector(lesson)?.innerText || '', button: document.querySelector(`${lesson} .focus-actions > button`)?.textContent.trim()}), lesson);
     if (!card.shown || !card.text) throw new Error('Suggestions show no rejection lesson although a rejection with a lesson was saved today');
     if (card.first !== 'rejection') throw new Error(`the rejection lesson should be the first of Suggestions' own rows (after the drawers' rows), the first is "${card.first || 'a Focus item'}"`);
@@ -416,7 +417,7 @@ export async function runFocus(ctx, parts) {
     if (!/Prepare kits from your best matches/.test(items[0].meta) || !items[0].buttons.includes('Browse jobs')) throw new Error(`the first step does not say what to do: "${items[0].meta}" ${items[0].buttons}`);
     const page$ = await page.evaluate(() => ({text: document.querySelector('.view[data-view="focus"]').innerText, funnel: !document.querySelector('#focus-funnel').hidden,
       inbound: !document.querySelector('#focus-inbound').hidden, funnelEmpty: document.querySelector('#focus-funnel').classList.contains('is-empty'),
-      funnelHint: document.querySelector('#funnel-empty').hidden ? '' : document.querySelector('#funnel-empty').textContent.trim(), insight: [...document.querySelectorAll('#focus-suggestions-list [data-suggestion]')].some(li => !['letter', 'details', 'learned', 'questions-error'].includes(li.dataset.suggestion)),
+      funnelHint: document.querySelector('#funnel-empty').hidden ? '' : document.querySelector('#funnel-empty').textContent.trim(), insight: [...document.querySelectorAll('#focus-suggestions-list [data-suggestion]')].some(li => !['linkedin', 'letter', 'details', 'learned', 'questions-error'].includes(li.dataset.suggestion)),
       skeleton: !!document.querySelector('.view[data-view="focus"] .skeleton'), empty: !document.querySelector('#focus-empty').hidden, summary: document.querySelector('#focus-summary').textContent.trim()}));
     if (page$.skeleton) throw new Error('a skeleton is still showing on a fresh account');
     if (page$.inbound) throw new Error('an Inbound funnel is drawn although nothing found this account');

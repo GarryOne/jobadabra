@@ -6,7 +6,19 @@ name: CI · Harness tests
 # Not a required check: a required check whose workflow `paths:` skips never reports and blocks the PR (tests/test_affected_jobs.py). The backstop is harness-daily.yml.
 # History: they ran only in e2e.yml's scheduled plan job, which broke silently for ~11 h (12 Oct 2026, ERR_MODULE_NOT_FOUND after 3394c2e); here they gate the change that would
 # break them (test/recorded-ci-deps.test.mjs checks every job that runs them installs the app's own packages and stages desktop/shared).
+# Why (owner's manifest, 1 Nov 2026: "Do not present your solution to me until the script successfully registers 20/20 clean runs"): a by-hand dispatch plays ONE test file `repeat` times in
+# a row on this Linux runner and stops at the first red ("red on run n"), because a real-browser or real-app test cannot be looped on the Mac. It never runs on its own and gates nothing.
 on:
+  workflow_dispatch:
+    inputs:
+      file:
+        description: 'One test file under desktop/e2e/test, e.g. test/panel-stop.test.mjs'
+        required: true
+        type: string
+      repeat:
+        description: 'How many runs in a row (stops at the first red)'
+        default: '20'
+        type: string
   pull_request:
     branches: [main]
     paths:
@@ -71,7 +83,7 @@ permissions:
   pull-requests: read
 
 concurrency:
-  group: harness-${{ github.event.pull_request.number }}
+  group: harness-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: true
 
 jobs:
@@ -98,5 +110,27 @@ jobs:
         with: {working-directory: desktop/e2e, mode: both}
       # The same command as harness-daily.yml: one list, the folder itself.
       - name: Every harness test
+        if: github.event_name != 'workflow_dispatch'
         working-directory: desktop/e2e
         run: npm test
+      # By hand only: the one file, `repeat` times in a row, the same flags as `npm test`. The inputs go through env (never into the script text) and are checked first.
+      - name: One harness test file, repeated (by hand)
+        if: github.event_name == 'workflow_dispatch'
+        working-directory: desktop/e2e
+        env:
+          TEST_FILE: ${{ inputs.file }}
+          REPEAT: ${{ inputs.repeat }}
+        run: |
+          case "$TEST_FILE" in test/*.test.mjs) ;; *) echo "file must be test/<name>.test.mjs, got: $TEST_FILE"; exit 1;; esac
+          case "$TEST_FILE" in *..*|*[!A-Za-z0-9._/-]*) echo "file has a character that is not allowed: $TEST_FILE"; exit 1;; esac
+          [ -f "$TEST_FILE" ] || { echo "no such file: $TEST_FILE"; exit 1; }
+          case "$REPEAT" in ''|*[!0-9]*) echo "repeat must be a whole number, got: $REPEAT"; exit 1;; esac
+          [ "$REPEAT" -ge 1 ] && [ "$REPEAT" -le 50 ] || { echo "repeat must be 1 to 50, got: $REPEAT"; exit 1; }
+          n=1
+          while [ "$n" -le "$REPEAT" ]; do
+            echo "::group::run $n of $REPEAT"
+            node --test --test-timeout=180000 --test-reporter=spec "$TEST_FILE" || { echo "::endgroup::"; echo "red on run $n of $REPEAT: $TEST_FILE"; exit 1; }
+            echo "::endgroup::"
+            n=$((n + 1))
+          done
+          echo "$REPEAT/$REPEAT green: $TEST_FILE"

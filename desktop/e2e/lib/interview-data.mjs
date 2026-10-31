@@ -45,14 +45,16 @@ export function weekDays(today) {
   return dom + 3 <= last ? {days: [1, 2, 3].map(n => addDays(today, n)), future: true} : {days: [3, 2, 1].map(n => addDays(today, -n)), future: false};
 }
 
-// Why (31 Oct 2026, calendar sweep): toLocaleDateString builds an Intl formatter per call (~50 µs) and the sweep in test/interview-data.test.mjs asks for thousands of titles, so each month is spelled once.
-const titles = new Map();
-/** The calendar's month title for a YYYY-MM-DD day, "November 2026": the one place the suites spell it (calendar.mjs compares the grid's #cal-title with it). */
-export const monthTitle = day => {
-  const month = day.slice(0, 7);
-  if (!titles.has(month)) titles.set(month, new Date(`${month}-01T00:00:00Z`).toLocaleDateString('en-US', {month: 'long', year: 'numeric', timeZone: 'UTC'}));
-  return titles.get(month);
+// Building an Intl formatter costs ~50 µs; the sweep in test/interview-data.test.mjs asks thousands of times, so each (locale, zone, options) is built once.
+const formatters = new Map();
+const formatter = (locale, zone, options) => {
+  const key = `${locale}|${zone}|${JSON.stringify(options)}`;
+  if (!formatters.has(key)) formatters.set(key, new Intl.DateTimeFormat(locale, {timeZone: zone, ...options}));
+  return formatters.get(key);
 };
+
+/** The calendar's month title for a YYYY-MM-DD day, "November 2026": the one place the suites spell it (calendar.mjs compares the grid's #cal-title with it). */
+export const monthTitle = day => formatter('en-US', 'UTC', {month: 'long', year: 'numeric'}).format(new Date(`${day.slice(0, 7)}-01T00:00:00Z`));
 // The month names of that title, January first.
 const MONTHS = Array.from({length: 12}, (_, m) => monthTitle(`2000-${String(m + 1).padStart(2, '0')}-01`).split(' ')[0]);
 // How many months the calendar title `want` ("November 2026") is after `shown`: > 0 later, < 0 earlier. Why (beta 41220959824, 31 Oct 2026): the suite
@@ -73,15 +75,8 @@ export function monthsBetween(shown, want) {
 export const TOKYO = 'Asia/Tokyo';
 export const HONOLULU = 'Pacific/Honolulu';
 
-// Building an Intl formatter costs ~50 µs; the sweep in test/interview-data.test.mjs asks thousands of times, so each (locale, zone, options) is built once.
-const formatters = new Map();
-const formatter = (locale, zone, options) => {
-  const key = `${locale}|${zone}|${JSON.stringify(options)}`;
-  if (!formatters.has(key)) formatters.set(key, new Intl.DateTimeFormat(locale, {timeZone: zone, ...options}));
-  return formatters.get(key);
-};
-
-/** The calendar day ("YYYY-MM-DD") that instant `date` falls on in time zone `zone`. */
+/** The calendar day ("YYYY-MM-DD") that instant `date` falls on in time zone `zone`.
+ * Why (a8, 31 Oct 2026, Gitar on #2728): deliberately not the renderer's dayKey: the suite is the oracle of what the app shows, so it must not spell the day with the app's own function. */
 export const dayIn = (date, zone) => formatter('en-CA', zone, {year: 'numeric', month: '2-digit', day: '2-digit'}).format(date);
 
 /** The instant `time` ("HH:MM") UTC on `day`, as the ISO string the store takes. */

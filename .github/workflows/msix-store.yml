@@ -74,7 +74,9 @@ jobs:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
           npm version "$VERSION" --no-git-tag-version --allow-same-version >/dev/null
-          npx electron-builder --win appx --publish never \
+          # Why (31 Oct 2026, owner: "Root fix + note"): the Store copy stops hiding AppData, so it and the downloaded .exe copy share one data folder (desktop/scripts/appx-manifest.mjs).
+          node scripts/appx-manifest.mjs
+          npx electron-builder --win appx --publish never -c.appx.customManifestPath=appxmanifest-store.xml \
             -c.appx.identityName=IgorMardari.Jobadabra -c.appx.publisher=CN=0D77B925-8A8E-4E89-A698-35A1E48A4789 \
             "-c.appx.publisherDisplayName=Igor Mardari" -c.appx.displayName=Jobadabra -c.appx.applicationId=Jobadabra \
             -c.appx.minVersion=10.0.17763.0 -c.appx.maxVersionTested=10.0.26100.0

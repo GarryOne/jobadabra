@@ -46,12 +46,13 @@ test('Stop ends the step at once; so does a failing search, which is still throw
 });
 
 test('the press\'s deadline ends the step even when the engine\'s steps take longer', async () => {
-  let aborted = false;
-  const step = async signal => { await new Promise(resolve => signal.addEventListener('abort', () => { aborted = true; resolve(); }, {once: true})); return {state: 'done', jobs: 1}; };
-  const started = Date.now();
-  await withLinkedin(storage, () => {}, null, async () => { await wait(80); return {code: 0}; }, {step, deadlineMs: 20, record: () => {}});
-  assert.equal(aborted, true);
-  assert.ok(Date.now() - started >= 80, 'the engine was not cut');
+  // Why (31 Oct 2026, flaky on #2699's desktop job): the engine's end was proved with Date.now() - started >= 80 after wait(80), and a timer can fire a millisecond early against the wall clock. The order of events proves it with no clock: the step is cut first, and only then is the engine let finish.
+  const order = [];
+  let release;
+  const engineMayFinish = new Promise(resolve => { release = resolve; });
+  const step = async signal => { await new Promise(resolve => signal.addEventListener('abort', () => { order.push('step cut'); release(); resolve(); }, {once: true})); return {state: 'done', jobs: 1}; };
+  await withLinkedin(storage, () => {}, null, async () => { await engineMayFinish; order.push('engine done'); return {code: 0}; }, {step, deadlineMs: 20, record: () => {}});
+  assert.deepEqual(order, ['step cut', 'engine done'], 'the deadline cuts the step while the engine runs on, and the press waits for the engine');
 });
 
 test('the light scoring runs after both, for the jobs LinkedIn added, only with time left and not after a Stop', async () => {

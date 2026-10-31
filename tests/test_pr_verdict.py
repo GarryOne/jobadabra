@@ -126,13 +126,13 @@ class Workflows(unittest.TestCase):
         writers = sorted(path.name for path in WORKFLOWS.glob('*.yml') if re.search(r'pr-verdict\.py"? --repo', path.read_text()) or pv.STEP in path.read_text())
         self.assertEqual(writers, ['pr-verdict.yml'], 'only pr-verdict.yml (workflow_run) runs tools/pr-verdict.py')
         verdict = (WORKFLOWS / 'pr-verdict.yml').read_text()
-        self.assertIn('python3 tools/pr-verdict.py --repo "$GITHUB_REPOSITORY" --sha "$SHA"\n', verdict, 'positive control: the one writer runs it, with no --job-status')
+        self.assertIn('python3 tools/pr-verdict.py --repo "$GITHUB_REPOSITORY" --sha "$SHA" $REVALIDATE_HEAD\n', verdict, 'positive control: the one writer runs it, with no --job-status')
         listed = set(re.findall(r"(?m)^      - '(.+)'$", verdict))
         for path in ('e2e.yml', 'e2e-windows.yml'):   # dispatched by pr-suites.yml, so no pull_request trigger names them: each is listed by hand
             name = re.search(r'(?m)^name:\s*(.+?)\s*$', (WORKFLOWS / path).read_text()).group(1).strip('\'"')
             self.assertIn(name, listed, f'{path}: the PR e2e run it makes is judged only when a listed workflow ends')
-        checkout = verdict.split('sparse-checkout: |', 1)[1].split('sparse-checkout-cone-mode', 1)[0]
-        for name in ('main_e2e_state', 'pr_ai_number', 'pr_burn_in', 'pr_health_greys', 'pr_speed_number', 'beta_rate_gate'):
+        checkout = verdict.split('\n  verdict:\n', 1)[1].split('sparse-checkout: |', 1)[1].split('sparse-checkout-cone-mode', 1)[0]
+        for name in ('main_e2e_state', 'pr_ai_number', 'pr_burn_in', 'pr_health_greys', 'pr_speed_number', 'beta_rate_gate', 'pr_verdict_runs'):
             self.assertIn(f'tools/{name}.py', checkout, 'a companion not checked out is fetched over the API on every write')
 
     def test_no_e2e_run_for_a_merged_or_closed_pr(self):
@@ -155,17 +155,34 @@ class Workflows(unittest.TestCase):
         self.assertIn("E2E_STORE: ${{ inputs.pr_steps != '' && 'sqlite' || '' }}", win)
         self.assertRegex(win, r"Take the suite's lock[^\n]*\n        if: inputs\.pr_steps == ''", 'a PR check on SQLite needs no Notion page: it never waits for the lock on a runner')
 
-    def test_the_backstop_skips_a_replaced_commit_and_keeps_one_per_pr(self):
-        # 27 Oct 2026: 22 queued verdicts for commits no open PR had as its head, each waiting for a runner under GitHub's 20-job cap.
+    def test_verdicts_queue_per_commit_and_skipped_events_have_unique_groups(self):
         text = (WORKFLOWS / 'pr-verdict.yml').read_text()
+        self.assertNotIn('\nconcurrency:', text, 'the sweep planner must not cancel a head writer')
         job = text.split('\n  verdict:\n', 1)[1]
-        condition = job.split('    if: >-\n', 1)[1].split('\n    runs-on:', 1)[0]
-        self.assertIn("github.event.workflow_run.head_sha == github.event.workflow_run.pull_requests[0].head.sha", condition, 'a replaced commit or a merged PR is skipped')
-        header = text.split('\njobs:\n', 1)[0]
-        group = header.split('concurrency:\n', 1)[1].split('\n  cancel-in-progress:', 1)[0]
-        self.assertIn("&& github.event.workflow_run.head_branch || 'skipped'", group, 'one verdict per PR branch, not per commit')
-        # Review on #2248: concurrency applies before `if:`, so an event the job skips must not share the branch group (it would replace the head's waiting verdict).
-        self.assertIn(' '.join(condition.split()), ' '.join(group.split()), 'the group picks the branch by the same condition the job runs on')
+        condition = job.split('    if: >-\n', 1)[1].split('    runs-on:', 1)[0]
+        self.assertIn('github.event.workflow_run.head_sha == github.event.workflow_run.pull_requests[0].head.sha', condition)
+        group = job.split('      group: >-\n', 1)[1].split('      cancel-in-progress:', 1)[0]
+        self.assertIn('&& github.event.workflow_run.head_sha', group)
+        self.assertNotIn('head_branch', group, 'different commits on the same branch cannot cancel each other')
+        self.assertIn('|| github.run_id', group, 'a skipped event cannot cancel a handled event')
+        self.assertIn('&& matrix.sha', group, 'sweep and event writers share the head group')
+        self.assertIn('cancel-in-progress: true', job)
+        expr = group.split('${{', 1)[1].split('}}', 1)[0]
+        def key(sha, current, event='pull_request', title='', sweep=False):
+            values = {'github.event.workflow_run.head_sha': sha, 'github.event.workflow_run.pull_requests[0].head.sha': current,
+                      'github.event.workflow_run.event': event, 'github.event.workflow_run.display_title': title,
+                      'github.event_name': 'schedule' if sweep else 'workflow_run', 'matrix.sha': sha, 'github.run_id': '99'}
+            expression = expr
+            for name, value in values.items(): expression = expression.replace(name, repr(value))
+            return eval(' '.join(expression.replace('&&', ' and ').replace('||', ' or ').split()), {'startsWith': lambda text, prefix: text.startswith(prefix)})
+        self.assertEqual((key('head1', 'head1'), key('head2', 'head2')), ('head1', 'head2'))
+        self.assertEqual(key('head1', 'new-head'), '99')
+        self.assertEqual(key('head1', '', event='push'), '99')
+        self.assertEqual(key('head1', '', event='', sweep=True), 'head1')
+        self.assertIn("cron: '*/10 * * * *'", text)
+        self.assertIn('  workflow_dispatch:', text)
+        self.assertIn('--sweep-heads', text)
+        self.assertIn('--revalidate-head', text)
 
     def test_the_budget_counts_running_time_not_the_wait_for_a_runner(self):
         # Owner, 27 Oct 2026: "Count running time only". #2215: 12.4 min in all, its jobs waited for runners most of it; a run of 11 min stays red.
@@ -262,7 +279,7 @@ def meta_answer(*prs):
 
 
 def gql_pr(number=7, state='OPEN', merged=None, files=('desktop/a.js',), more=False, messages=('Fix a thing',)):
-    return {'number': number, 'state': state, 'mergedAt': merged, 'files': {'pageInfo': {'hasNextPage': more}, 'nodes': [{'path': f} for f in files]},
+    return {'number': number, 'state': state, 'mergedAt': merged, 'headRefOid': 'abc1234', 'files': {'pageInfo': {'hasNextPage': more}, 'nodes': [{'path': f} for f in files]},
             'commits': {'nodes': [{'commit': {'message': m}} for m in messages]}}
 
 
@@ -324,7 +341,12 @@ open(os.path.join(d, 'calls'), 'a').write(' '.join(a[:2]) + chr(10))
 if a[:2] == ['run', 'list'] and os.path.exists(os.path.join(d, 'fail-once')):   # GitHub's own server error, once (18:05Z on 30 Oct 2026)
     os.remove(os.path.join(d, 'fail-once')); sys.stderr.write('gh: Server Error (HTTP 502)' + chr(10)); sys.exit(1)
 elif a[:2] == ['run', 'list']: out('runs.json')
-elif a[0] == 'api' and a[1] == 'graphql': out('meta.json')   # the PR's state, files and messages in one call; no REST answer for them: a call back to REST must fail the test
+elif a[0] == 'api' and a[1] == 'graphql':
+    if any('pullRequests(states:' in arg for arg in a): assert any('pullRequests(states: OPEN' in arg for arg in a)
+    out('meta.json')   # the PR's state, files and messages in one call; no REST answer for them: a call back to REST must fail the test
+elif a[0] == 'api' and '/actions/runs/' in a[1] and a[1].split('/')[-1].isdigit():
+    rid = int(a[1].split('/')[-1]); r = next(r for r in json.load(open(os.path.join(d, 'runs.json'))) if r['databaseId'] == rid)
+    print(json.dumps({'id': rid, 'head_sha': 'abc1234', 'run_attempt': r.get('attempt'), 'status': r['status'], 'conclusion': r['conclusion'], 'updated_at': r['updatedAt']}))
 elif a[0] == 'api' and '/jobs' in a[1]: out('jobs-' + a[1].split('/runs/')[1].split('/')[0] + '.json')
 elif a[0] == 'api' and '/statuses/' in a[1]: open(os.path.join(d, 'written'), 'a').write(json.dumps(a[2:]) + chr(10))
 else: sys.exit('fake gh: no answer for ' + repr(a))
@@ -335,21 +357,28 @@ class TheScriptAsAJobRunsIt(unittest.TestCase):
     """The script end to end, as pr-verdict.yml runs it (a file copied out of the repo, the real `gh` replaced): #2051 shipped with gh() deleted and only the
     backstop wrote the status. The unit tests above never ran main()."""
 
-    def run_step(self, pulls, runs=None, jobs=None, fail_once=False, job_status=''):
+    def run_step(self, pulls, runs=None, jobs=None, fail_once=False, job_status='', revalidate_head=False, sweep_heads=None):
         d = tempfile.mkdtemp()
         bin_dir = os.path.join(d, 'bin'); os.mkdir(bin_dir)
-        gh = os.path.join(bin_dir, 'gh'); open(gh, 'w').write(FAKE_GH.replace('/usr/bin/env python3', sys.executable)); os.chmod(gh, 0o755)
-        runs = runs or [run('CI · Pull request', id=1), run('CI · Tests · python', id=2)]
-        json.dump(runs, open(os.path.join(d, 'runs.json'), 'w')); open(os.path.join(d, 'meta.json'), 'w').write(meta_answer(*[gql_pr(p['number'], p['state'].upper(), p['merged_at'], files=('desktop/renderer/app.js',)) for p in pulls]))
+        gh = os.path.join(bin_dir, 'gh'); Path(gh).write_text(FAKE_GH.replace('/usr/bin/env python3', sys.executable)); os.chmod(gh, 0o755)
+        runs = runs if runs is not None else [run('CI · Pull request', id=1), run('CI · Tests · python', id=2)]
+        Path(d, 'runs.json').write_text(json.dumps(runs)); Path(d, 'meta.json').write_text(meta_answer(*[dict(gql_pr(p['number'], p['state'].upper(), p['merged_at'], files=('desktop/renderer/app.js',)), headRefOid=p.get('head_sha', 'abc1234')) for p in pulls]))
+        if sweep_heads is not None:
+            Path(d, 'meta.json').write_text(json.dumps([{'data': {'repository': {'pullRequests': {'nodes': sweep_heads}}}}]))
         for run_id, listed in (jobs or {}).items():
-            json.dump(listed, open(os.path.join(d, f'jobs-{run_id}.json'), 'w'))
+            Path(d, f'jobs-{run_id}.json').write_text(json.dumps(listed))
         if fail_once:
-            open(os.path.join(d, 'fail-once'), 'w').close()
-        env = dict(os.environ, PATH=bin_dir + os.pathsep + os.environ['PATH'], FAKE_DIR=d, GITHUB_RUN_ID='9')
+            Path(d, 'fail-once').touch()
+        env = dict(os.environ, PATH=bin_dir + os.pathsep + os.environ['PATH'], FAKE_DIR=d, GITHUB_RUN_ID='9', GITHUB_OUTPUT=str(Path(d, 'output')))
         env.pop('GITHUB_EVENT_PATH', None)
-        script = os.path.join(d, 'pr-verdict.py'); open(script, 'w').write((ROOT / 'tools' / 'pr-verdict.py').read_text())   # a copy, no repo around it
-        done = subprocess.run([sys.executable, script, '--repo', 'o/r', '--sha', 'abc1234', *(['--job-status', job_status] if job_status else [])], env=env, capture_output=True, text=True, timeout=60)
-        read = lambda name: open(os.path.join(d, name)).read() if os.path.exists(os.path.join(d, name)) else ''
+        script = os.path.join(d, 'pr-verdict.py'); Path(script).write_text((ROOT / 'tools' / 'pr-verdict.py').read_text())   # a copy, no repo around it
+        Path(d, 'pr_verdict_sweep.py').write_text((ROOT / 'tools/pr_verdict_sweep.py').read_text() if (ROOT / 'tools/pr_verdict_sweep.py').exists() else '')
+        Path(d, 'pr_verdict_runs.py').write_text((ROOT / 'tools/pr_verdict_runs.py').read_text())
+        mode = ['--sweep-heads'] if sweep_heads is not None else ['--sha', 'abc1234']
+        done = subprocess.run([sys.executable, script, '--repo', 'o/r', *mode, *(['--revalidate-head'] if revalidate_head else []), *(['--job-status', job_status] if job_status else [])], env=env, capture_output=True, text=True, timeout=60)
+        read = lambda name: Path(d, name).read_text() if Path(d, name).exists() else ''
+        if sweep_heads is not None and done.returncode == 0:
+            self.assertIn('heads=', read('output'), 'the workflow matrix consumes GITHUB_OUTPUT')
         return done, read('written'), read('calls').split('\n')[:-1]
 
     def test_the_last_workflow_end_writes_green_in_three_calls(self):

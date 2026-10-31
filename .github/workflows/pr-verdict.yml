@@ -1,13 +1,16 @@
 name: CI · PR verdict
 # Job: report health
-# The ONE writer of a pull request's one required status, "All checks passed" (tools/pr-verdict.py), each time one of its workflows ends: pending while any runs,
-# red when a run ended red, green when all ended green. A job of seconds per event, never a wait loop: a pending result reads once more ~20 s later (#2533's list
-# lag; owner, 26 Oct 2026: "How could you design such a
-# slow and inefficient method of checking PRs?"). Until 26 Oct pr-gate.yml's "Other workflows passed" and pr-suites.yml's wait each sat on a runner ~20 min per push.
-# Why one writer (owner, 30 Oct 2026, "One writer"): every PR job also wrote it as its last step (#2042); ~21 jobs x ~24 GitHub calls per push spent the token's
-# 5,000 calls an hour by ~35 min past each hour, a failed read wrote nothing, and green PRs sat at "pending" (#2609, #2605, #2598, #2593).
-# workflow_run runs main's copy of this file. Every workflow a pull request starts must be listed below (tests/test_pr_verdict.py), plus the e2e runs pr-suites.yml starts.
+# tools/pr-verdict.py alone owns verdict(H) = f(H's workflow runs, read fresh).
+# A run ending triggers a best-effort update; every ~10 min a sweep repairs pending/missing open heads with no live runs.
+# One queue per commit H: the newest writer cancels older writers and reads later; skipped events have unique groups.
+# No per-branch queue or timed re-read; pending probes stop at the first truly live run. workflow_run uses main's copy.
+# Why (30 Oct 2026, owner, "One writer"): ~21 writers x ~24 calls spent 5,000 REST calls/hour; green PRs stayed pending (#2609/#2605/#2598/#2593).
+# Why (28 Oct 2026, owner): "a PR is red only when its diff broke it"; proven main/health failures are grey, score values informational.
+# Budget (owner's yes, 26 Oct 2026): CI-changing PR checks get 10 min; "Count running time only" (27 Oct): union job spans exclude queue waits (#2215).
 on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
   workflow_run:
     types: [completed]
     workflows:
@@ -32,27 +35,60 @@ on:
 permissions:
   contents: read
 
-# One verdict per PR branch: one runs, the newest waits and replaces an older waiting one (it reads the same state). This job is the only writer, so a replaced
-# waiting run loses its event; tools/pr-verdict.py reads a pending result once more after the list's lag (#2533) instead.
-# Why (27 Oct 2026): per commit (workflow_run.head_sha) every push kept its own runs. An event the job below skips (a replaced commit, a merged PR) waits in its
-# own group: concurrency applies before the job's `if:`, so in the branch group it could replace the head's waiting verdict and then write nothing (review on #2248).
-concurrency:
-  group: >-
-    pr-verdict-${{ ((github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.head_sha == github.event.workflow_run.pull_requests[0].head.sha)
-    || startsWith(github.event.workflow_run.display_title, 'E2E for PR · ')) && github.event.workflow_run.head_branch || 'skipped' }}
-  cancel-in-progress: false
-
 jobs:
+  sweep:
+    name: Find pending open PR heads
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+      statuses: read
+      actions: read          # planner drops live or empty counted heads before taking their queue
+    concurrency:
+      # Why (30 Oct 2026, review): concurrency precedes if; skipped event planners must never queue with or replace a real sweep.
+      group: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && 'pr-verdict-sweep' || github.run_id }}
+      cancel-in-progress: false
+    outputs:
+      heads: ${{ steps.heads.outputs.heads }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          sparse-checkout: |
+            tools/pr-verdict.py
+            tools/pr_verdict_sweep.py
+          sparse-checkout-cone-mode: false
+      - id: heads
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 tools/pr-verdict.py --repo "$GITHUB_REPOSITORY" --sweep-heads
+
   verdict:
     name: Write the PR's verdict
-    # Only runs of a pull request's CURRENT head, or the e2e run one started: main's schedules and bisects end here at once.
-    # Why (27 Oct 2026, 6e with the owner's yes): a commit a newer push replaced still started a verdict per finished workflow, each holding a runner; 22 were cancelled
-    # by hand at 06:53 while 38 Linux jobs queued behind GitHub's 20-job cap. workflow_run.pull_requests[].head.sha is the PR's head NOW (an older commit's run
-    # names the newer head), and it is empty once the PR is merged or closed: a skipped job takes no runner. Guard: tests/test_pr_verdict.py.
+    needs: sweep
+    # Why (27 Oct 2026, 6e with the owner's yes): replaced commits started verdicts after every workflow, holding runners; 22 were cancelled
+    # at 06:53 while 38 Linux jobs queued under GitHub's 20-job cap. pull_requests[].head.sha is the head NOW and empty after merge/close.
+    # A skipped event takes no runner; pr_meta revalidates open sweep heads before writing.
     if: >-
+      always() && (
       (github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.head_sha == github.event.workflow_run.pull_requests[0].head.sha)
       || startsWith(github.event.workflow_run.display_title, 'E2E for PR · ')
+      || (needs.sweep.result == 'success' && needs.sweep.outputs.heads != '[]'))
     runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        sha: ${{ fromJSON(needs.sweep.outputs.heads || format('["{0}"]', github.event.workflow_run.head_sha)) }}
+    # Why (30 Oct 2026, owner: "PR verdicts still don't work properly"): branch queues drop completions; newest per-head writer reads later.
+    # Concurrency applies before if: skipped events use run_id, never a handled head's group. Sweeps share the head's group.
+    concurrency:
+      group: >-
+        pr-verdict-${{ ((github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.head_sha == github.event.workflow_run.pull_requests[0].head.sha)
+        || startsWith(github.event.workflow_run.display_title, 'E2E for PR · ')) && github.event.workflow_run.head_sha
+        || (github.event_name != 'workflow_run' && matrix.sha) || github.run_id }}
+      cancel-in-progress: true
     timeout-minutes: 5
     permissions:
       actions: read          # the commit's workflow runs
@@ -64,6 +100,8 @@ jobs:
           # Its companions too: each one a standalone copy fetched over the API cost a call per write (main_state_module).
           sparse-checkout: |
             tools/pr-verdict.py
+            tools/pr_verdict_sweep.py
+            tools/pr_verdict_runs.py
             tools/main_e2e_state.py
             tools/pr_ai_number.py
             tools/pr_burn_in.py
@@ -74,5 +112,6 @@ jobs:
       - name: All checks passed?
         env:
           GH_TOKEN: ${{ github.token }}
-          SHA: ${{ github.event.workflow_run.head_sha }}
-        run: python3 tools/pr-verdict.py --repo "$GITHUB_REPOSITORY" --sha "$SHA"
+          SHA: ${{ matrix.sha }}
+          REVALIDATE_HEAD: ${{ github.event_name != 'workflow_run' && '--revalidate-head' || '' }}
+        run: python3 tools/pr-verdict.py --repo "$GITHUB_REPOSITORY" --sha "$SHA" $REVALIDATE_HEAD

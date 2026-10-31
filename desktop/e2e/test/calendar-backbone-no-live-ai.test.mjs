@@ -1,8 +1,9 @@
 // Prove Calendar's captured and setup asks stop at stored answers without a live key or AI.
+import {loadAppModule} from '../lib/app-module.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {test} from 'node:test';
-import {classify} from '../../lib/question-reuse.js';
+const {classify} = await loadAppModule('question-reuse.js');
 import {applicantDraft} from '../lib/applicant-seed.mjs';
 import {loadTable, questionOf, storedAnswer} from '../lib/ai-answers.mjs';
 import {FAILURES, OPENAI_FAILURES} from '../lib/ai-proxy.mjs';

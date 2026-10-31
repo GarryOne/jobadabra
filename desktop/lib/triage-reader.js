@@ -2,7 +2,8 @@
 import {randomUUID} from 'node:crypto';
 import {readFromJudge} from './triage-read.js';
 
-export const READ_TIMEOUT_MS = 90000;
+// Why (30 Oct 2026, owner): the measured plan adds 15 s to a 49 s judge; allow 150 s for both steps.
+export const READ_TIMEOUT_MS = 150000;
 
 /**
  * One reader per app. `read(url)` queues a job's form read and resolves with the mode table's flags ({eligible, captcha, login, accountCreation, allFactsSaved}) or null when nothing was read.
@@ -43,10 +44,10 @@ export function createTriageReader({uuid = randomUUID, set = setTimeout, clear =
     },
     /** True while a read is queued or out, so a real application is never started beside it. */
     busy: () => waiting.size > 0,
-    /** The extension's answer for the active read: {botCheck, loginWall, accountCreation} from the judge, or {unreadable: true} when the page never became a form. Returns false for any other id. */
+    /** The extension's answer for the active read: {botCheck, loginWall, accountCreation} from the judge and allFactsSaved from the answer plan, or {unreadable: true} when the page never became a form. Returns false for any other id. */
     report(id, payload = {}) {
       if (!active || id !== active) return false;
-      return finish(id, payload.unreadable === true ? null : readFromJudge(payload, {eligible: true}), true);
+      return finish(id, payload.unreadable === true ? null : readFromJudge(payload, {eligible: true, allFactsSaved: payload.allFactsSaved}), true);
     },
     /** Resolves every queued and active read with null (Cancel, the app quitting). Returns how many it ended. */
     cancelAll: () => [...waiting.keys()].filter(id => finish(id, null)).length,

@@ -1,3 +1,4 @@
+// Missing live prerequisites skip with the requested exit status; offline settings needs no AI secret.
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
 import {test} from 'node:test';
@@ -28,12 +29,26 @@ test('the table marks a skipped suite, and only fails the run when secrets are r
   assert.doesNotMatch(summarize([{suite: 'a', code: 0, seconds: 5}]).text, /skipped/);
 });
 
-test('suite.mjs itself: no secrets means a loud SKIPPED line, and the exit code follows the environment', () => {
-  // As CI with no test key: since every suite runs without a Notion token (lib/store.mjs), the AI key is the secret a suite can lack. On a Mac nothing is missing.
+test('suite.mjs itself: offline settings needs no AI secret; a live Notion suite skips with the requested exit code', async t => {
+  const beforeCi = process.env.CI;
+  t.after(() => { if (beforeCi === undefined) delete process.env.CI; else process.env.CI = beforeCi; });
+  process.env.CI = 'true';
+  const settings = await import('../suites/settings.mjs');
+  const {contextAiKeys} = await import('../lib/context.mjs');
+  assert.equal(settings.offlineAi, true);
+  for (const family of ['claude', 'openai']) {
+    const keys = await contextAiKeys({offlineAi: settings.offlineAi, family, engine: family === 'openai' ? 'openai' : 'api'});
+    assert.deepEqual(keys.needs, [], `${family}: offline settings never waits for an AI secret`);
+  }
+  // The real-Notion suite still requires its own workspace token, even though its AI is offline.
   const clean = Object.fromEntries(Object.entries(process.env).filter(([key]) => !/^E2E_/.test(key)));
   // Nothing heavy runs here (the suite skips at once), so it must not queue behind another session's browser suite for the heavy-run lock (JOB_PILOTTO_HEAVY=0).
-  const run = env => spawnSync('node', ['suite.mjs', 'settings'], {cwd: new URL('..', import.meta.url).pathname, env: {...clean, CI: 'true', JOB_PILOTTO_HEAVY: '0', ...env}, encoding: 'utf8', timeout: 60000});
+  const run = env => spawnSync('node', ['suite.mjs', 'notion-real'], {cwd: new URL('..', import.meta.url).pathname, env: {...clean, CI: 'true', JOB_PILOTTO_HEAVY: '0', E2E_REPORT: '0', ...env}, encoding: 'utf8', timeout: 60000});
   const plain = run({}), inRun = run({E2E_SKIP_EXIT: '3'}), required = run({E2E_REQUIRE_SECRETS: '1'});
-  for (const result of [plain, inRun, required]) assert.match(result.stdout, /SKIPPED, nothing ran/);
+  for (const result of [plain, inRun, required]) {
+    assert.ifError(result.error);
+    assert.match(result.stdout, /SKIPPED, nothing ran/);
+    assert.match(result.stdout, /E2E_NOTION_TOKEN_FAILURESNOTION/);
+  }
   assert.deepEqual([plain.status, inRun.status, required.status], [0, SKIPPED, 1]);
 });

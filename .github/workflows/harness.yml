@@ -1,8 +1,8 @@
 name: CI · Harness tests
-# The e2e harness's unit tests a pull request reaches (owner, 27 Oct 2026, "Yes, reached files"): the safety-critical set (desktop/e2e/test-sets.json "pr") when the harness
-# itself changed, plus every test file whose imports reach a changed file (desktop/e2e/lib/test-reach.mjs); the whole folder still runs daily (harness-daily.yml).
-# Why: with only the pr set on PRs, 8c8bd70 and 3fc251e broke daily-set tests unseen and harness-daily stayed red 10 days (17-27 Oct 2026).
-# GitHub's `on: paths:` below starts it for every area a harness test reaches (test/test-reach.test.mjs fails when one is missing); the plan step then picks the files, no install first.
+# Every e2e harness unit test (desktop/e2e/test/*.test.mjs, `npm test`) on each pull request that changes what one reaches; harness-daily.yml runs the same command nightly on main.
+# Why (owner, 30 Oct 2026, option C "run all on every PR"): a PR ran only a "pr" set plus the files its changes reached (test-sets.json, a picker), so tests outside them went red unseen
+# (harness-daily red 28-30 Oct: 1, 3, then 6 tests, one a PR-workflow AI guard), and every new test edited the one shared list (8 PRs conflicting on it, 30 Oct). The whole folder takes 4-5 min.
+# GitHub's `on: paths:` below starts it for every area a harness test reaches (test/test-reach.test.mjs fails when one is missing).
 # Not a required check: a required check whose workflow `paths:` skips never reports and blocks the PR (tests/test_affected_jobs.py). The backstop is harness-daily.yml.
 # History: they ran only in e2e.yml's scheduled plan job, which broke silently for ~11 h (12 Oct 2026, ERR_MODULE_NOT_FOUND after 3394c2e); here they gate the change that would
 # break them (test/recorded-ci-deps.test.mjs checks every job that runs them installs the app's own packages and stages desktop/shared).
@@ -10,7 +10,7 @@ on:
   pull_request:
     branches: [main]
     paths:
-      # Every file or folder a harness test reaches (desktop/e2e/lib/test-reach.mjs), so the plan below sees each change that can break one: test/test-reach.test.mjs fails on a missing one.
+      # Every file or folder a harness test reaches (desktop/e2e/lib/test-reach.mjs), so a change that can break one starts the run: test/test-reach.test.mjs fails on a missing one.
       - 'desktop/**'
       - '.github/workflows/ai-answer-drift.yml'
       # Data that other jobs replay (page-cases.yml, control-tests.yml); no harness test reaches them (owner, 14 Oct 2026: a recorded case alone started the harness).
@@ -74,42 +74,25 @@ jobs:
   harness:
     name: harness tests
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v5
-        with:
-          fetch-depth: 0   # the plan diffs the PR against main
       - uses: actions/setup-node@v5
         with:
           node-version: '22'
-      - name: Which harness tests this change reaches
-        id: plan
-        working-directory: desktop/e2e
-        run: |
-          git fetch -q origin main
-          node test-sets.mjs reached --base origin/main >> "$GITHUB_OUTPUT"
       - name: Install the tests
-        if: steps.plan.outputs.files != ''
         working-directory: desktop/e2e
         run: npm ci || npm install
       - name: Install the app's own packages
-        if: steps.plan.outputs.files != ''
         working-directory: desktop
         run: npm ci --omit=dev --ignore-scripts || npm install --omit=dev --ignore-scripts
       - name: Stage the app's shared files
-        if: steps.plan.outputs.files != ''
         working-directory: desktop
         run: node scripts/stage.mjs --files-only
-      - name: The browsers, when a picked test opens one (the full one loads the extension)
-        if: steps.plan.outputs.browser == 'true'
+      - name: The browsers for the tests' own tests (the full one loads the extension)
         uses: ./.github/actions/playwright-browser
         with: {working-directory: desktop/e2e, mode: both}
-      - name: The harness tests this change reaches
-        if: steps.plan.outputs.files != ''
+      # The same command as harness-daily.yml: one list, the folder itself.
+      - name: Every harness test
         working-directory: desktop/e2e
-        env:
-          FILES: ${{ steps.plan.outputs.files }}
-        # the flags go before the files; the full set runs daily (harness-daily.yml)
-        run: |
-          # shellcheck disable=SC2086
-          node --test --test-reporter=spec $FILES
+        run: npm test

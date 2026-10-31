@@ -3,7 +3,7 @@
 // and the row's model answers (memo: the case's model-memo.json; a miss is refused unless ask: true). -> {port, token, url, dir, logText(), close()}.
 // Guard: e2e/test/offline-app.test.mjs.
 // Job: serve stored answers
-// Reaches: ./offline-app-child.mjs   (spawned by path; lib/test-reach.mjs follows it, so a PR changing the app's server runs the tests that start it)
+// Reaches: ./offline-app-child.mjs   (spawned by path; lib/test-reach.mjs follows it, so harness.yml's paths start the harness tests when the app's server changes)
 import {execFileSync, spawn} from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';

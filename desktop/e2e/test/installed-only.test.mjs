@@ -1,7 +1,5 @@
-// The e2e harness's unit tests run on CI's "plan" job with only desktop/e2e's packages installed (Linux, no desktop/node_modules). A module
-// they reach (statically, or by a literal import('…')) that needs any other package fails there and only there: on 9 Oct 2026 the Notion
-// stand-in reached desktop/lib/schema.js → pipeline.js → the AI client, and '@anthropic-ai/sdk' was "not found" on CI while every Mac had it.
-// This walks the imports from every test file and fails on a bare package that is neither a node builtin nor in this folder's package.json.
+// Harness modules need only desktop/e2e's declared packages; staged app modules load through lib/app-module.mjs and use desktop's install.
+// This walks static and literal dynamic harness imports. The original missing-package control stays independent of the app boundary.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {builtinModules} from 'node:module';
@@ -62,4 +60,15 @@ test('positive control: a module two imports away that needs an uninstalled pack
     fs.writeFileSync(path.join(folder, 'client.mjs'), "import Anthropic from '@anthropic-ai/sdk';\nimport fs from 'node:fs';\nexport default Anthropic;\n");
     assert.deepEqual(Object.keys(missingPackages([path.join(folder, 'entry.test.mjs')])), ['@anthropic-ai/sdk']);
   } finally { fs.rmSync(folder, {recursive: true, force: true}); }
+});
+
+test('staged app modules load with the app\'s packages and retain their real exports', async () => {
+  const {loadAppModule} = await import('../lib/app-module.mjs');
+  const {AnthropicApi} = await loadAppModule('ai/anthropic-api.js');
+  const sdk = {messages: {create: async () => { throw new Error('no model call in an import test'); }}};
+  assert.equal(new AnthropicApi({sdk}).sdk, sdk);
+  const {openPoolShare} = await loadAppModule('migrate.js');
+  const settings = {shareEmployers: false, shareEmployersChosen: true};
+  assert.equal(openPoolShare({settings: () => settings, saveSettings: patch => Object.assign(settings, patch)}), false);
+  assert.equal(settings.shareEmployers, false);
 });

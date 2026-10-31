@@ -2,10 +2,11 @@
 import {createBackgroundSession} from './background-session.mjs';
 import {parseMark, pageFingerprint, pageKey} from './tab-pages.js';
 import {sessionOf} from './tab-identity.js';
-import {api, settings} from './flow.js';
+import {api, settings, planAnswers} from './flow.js';
 import {isStopped, stopGeneration} from './stop-state.js';
 import {submissionPage} from './background-submit.js';
 import {formNext, forgetJudged} from './form-ready.js';
+import {allFactsSavedOf} from './triage-facts.js';
 
 let runner = null, watcher = () => {}, polling = false;
 const owned = () => (runner ||= createBackgroundSession({chrome, parseMark}));
@@ -109,7 +110,17 @@ async function pressRefusal(tab, session, generation) {
 export async function backgroundFormReady(tab, frameId, answer) {
   const context = await backgroundContext(tab.id);
   if (!context) return false;
-  if (context.mode === 'read') { await reportRead(context, {botCheck: answer.botCheck, loginWall: answer.loginWall, accountCreation: answer.accountCreation}); return true; }   // words-ok: the judge's own flag names
+  if (context.mode === 'read') {
+    let allFactsSaved = null;
+    // Why (30 Oct 2026, owner): only a usable application form gets an answer plan; unknown, blocked, bot and account pages stay unknown.
+    const fillable = ['ready', 'needs_person'].includes(answer.answer) && answer.botCheck === false && answer.loginWall === false && answer.accountCreation === false;   // words-ok: the judge's own flag names
+    if (fillable) {
+      try { allFactsSaved = allFactsSavedOf(await planAnswers(tab, await settings())); }
+      catch { /* a failed plan stays unknown; the read still reports and closes */ }
+    }
+    await reportRead(context, {botCheck: answer.botCheck, loginWall: answer.loginWall, accountCreation: answer.accountCreation, allFactsSaved});   // words-ok: the judge's own flag names
+    return true;
+  }
   const row = await owned().inspect(context.session);
   if (row.manualRequired || row.attempt || isStopped()) return true;
   if (answer.botCheck) { await backgroundChallenge(tab.id); return true; }

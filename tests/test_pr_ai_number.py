@@ -225,6 +225,62 @@ class Artifacts(unittest.TestCase):
         _, line = ai.prepare('o/r', runs, jobs, github, lambda name='main_e2e_state': __import__('tools.' + name, fromlist=[name]))
         return line('3 workflow(s) green in 2.0 min')
 
+    def test_failed_qualityai_requires_number_evidence_for_all_conclusions_and_job_shapes(self):
+        # A produced zero score is informational even without BASE exemptions; absent/empty counts prove no number.
+        low = {**RATES, 'facts': {'exact': 0, 'total': 63}}
+        empty = {**RATES, 'facts': None, 'flags': None, 'cv': None}
+        for conclusion in ('failure', 'timed_out', 'cancelled', 'startup_failure', 'neutral'):
+            for name in ('qualityai', 'E2E · Mac + Linux · qualityai-1of2'):
+                for counts, expected in ((None, 'failure'), (empty, 'failure'), (low, 'success')):
+                    for registry in (True, False):
+                        with self.subTest(conclusion=conclusion, name=name, counts=counts, registry=registry):
+                            post = self.qualityai_post(conclusion, name, counts, registry)
+                            self.assertIn('state=' + expected, post)
+                            if counts == low:
+                                self.assertTrue(any('facts 0/63' in arg for arg in post), post)
+
+    def test_artifact_read_errors_stay_pending_instead_of_becoming_a_lasting_red(self):
+        for stage in ('/artifacts?', '/zip'):
+            with self.subTest(stage=stage):
+                post = self.qualityai_post('timed_out', 'E2E · qualityai', RATES, False, stage)
+                self.assertIn('state=pending', post)
+
+    def qualityai_post(self, conclusion, name, counts, registry, fail_at='', attempt=1, previous=False, peer=False, age_min=0):
+        """Run the real status writer/number reader; replace only GitHub and external evidence reads."""
+        from unittest import mock
+        from tests.test_pr_verdict import pv, run as pr_run
+        from datetime import datetime, timedelta, timezone
+        end = datetime.now(timezone.utc) - timedelta(minutes=age_min)
+        stamp = lambda value: value.isoformat().replace('+00:00', 'Z')
+        key = 'qualityai-1of2' if name.endswith('-1of2') else 'qualityai'
+        artifact = {'id': 7, 'name': 'e2e-artifacts-' + ('qualityai' if peer else key),
+                    'created_at': stamp(end - timedelta(minutes=20 if previous else 1))}
+        github = Github([], {7: [artifact]} if counts else {}, {7: archive(counts)} if counts else {})
+        r = pr_run('E2E', conclusion=conclusion, event='workflow_dispatch', title='E2E for PR · qualityai · topic', id=7,
+                   end=stamp(end)); r['attempt'] = attempt
+        fields = {'run_id': 7, 'run_attempt': attempt, 'started_at': stamp(end - timedelta(minutes=5)), 'completed_at': stamp(end)}
+        jobs = {7: [dict(fields, id=71, name=name, status='completed', conclusion=conclusion)]}
+        if peer:
+            jobs[7].append(dict(fields, id=72, name='qualityai', status='completed', conclusion='success'))
+        sent = []
+        def gh(*args, **kwargs):
+            if fail_at and fail_at in ' '.join(args):
+                if fail_at == '/zip': raise subprocess.CalledProcessError(1, ['gh'], stderr='gh: Not Found (HTTP 404)')
+                raise OSError('transient artifact transport failure')
+            if not registry and '/contents/desktop/e2e/lanes.json' in ' '.join(args): return '{"suites": {}}'
+            if '/statuses/' in ' '.join(args): sent.append(args); return '{}'
+            return github(*args, **kwargs)
+        with mock.patch.object(sys, 'argv', ['pr-verdict.py', '--repo', 'o/r', '--sha', 'head']), \
+             mock.patch.object(sys, 'stdout'), mock.patch.object(pv, 'read', return_value=([r], jobs)), \
+             mock.patch.object(pv, 'pr_meta', return_value=([{'number': 1, 'state': 'open'}], [], [])), \
+             mock.patch.object(pv, 'gh', side_effect=gh), mock.patch.object(pv, 'quota_line', return_value=''), \
+             mock.patch.object(pv, 'main_red_greys', return_value={71}), \
+             mock.patch.object(pv, 'lane_greys', return_value={71: 'tolerant'}), \
+             mock.patch.object(pv, 'health_greys', return_value={71: 'ai-credit'}):
+            self.assertEqual(pv.main(), 0)
+        self.assertEqual(len(sent), 1)
+        return sent[0]
+
     def test_pr_compares_with_after_merge_main_artifact(self):
         # Hand-made API responses use the supervisor's run/title shapes and reported counts; no live service is reached.
         rates = {**RATES, 'facts': {'exact': 68, 'total': 69}, 'flags': {'judged': 20, 'flagged': 1},
@@ -308,7 +364,7 @@ class Artifacts(unittest.TestCase):
         self.assertIsNone(ai.main_rates('o/r', gh, main_e2e_state.is_main_check))
         self.assertEqual(sum(binary for _, binary in gh.calls), 1)
 
-    def test_pr_uses_newest_counted_run_and_never_a_failed_or_running_measurement(self):
+    def test_pr_uses_newest_counted_run_and_never_invents_a_missing_measurement(self):
         runs = [{'databaseId': rid, 'createdAt': f'2026-10-29T12:0{rid}:00Z',
                  'displayTitle': 'E2E for PR · qualityai,settings · topic'} for rid in (1, 2)]
         jobs = {rid: [{'name': 'qualityai', 'status': 'completed', 'conclusion': 'success'}] for rid in (1, 2)}
@@ -353,7 +409,7 @@ class Artifacts(unittest.TestCase):
         jobs = {2: [{'name': 'qualityai', 'status': 'completed', 'conclusion': 'failure', 'runner_name': 'ours'}]}
         gh = Github()
         self.assertEqual(ai.numbers('o/r', runs, jobs, gh, main_e2e_state.is_main_check, '2', 'success', 'ours'), (None, None, False))
-        self.assertFalse(any('/artifacts?' in ' '.join(args) for args, _ in gh.calls))
+        self.assertTrue(any('/artifacts?' in ' '.join(args) for args, _ in gh.calls), 'finished failures need artifact evidence, never the stale own-status')
 
 
 FAKE_GH = r'''import json, os, sys
@@ -405,7 +461,7 @@ class StandaloneWriter(unittest.TestCase):
             copied = tmp / 'standalone'
             copied.mkdir()
             (copied / 'pr-verdict.py').write_text((root / 'tools/pr-verdict.py').read_text())
-            for name in ('pr_ai_number.py', 'main_e2e_state.py', 'beta_rate_gate.py', 'pr_speed_number.py'):
+            for name in ('pr_ai_number.py', 'main_e2e_state.py', 'beta_rate_gate.py', 'pr_speed_number.py', 'pr_verdict_runs.py'):
                 (tmp / name).write_text((root / 'tools' / name).read_text())
             gh = tmp / 'gh'
             gh.write_text(f'#!{sys.executable}\n' + FAKE_GH)

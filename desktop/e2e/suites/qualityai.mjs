@@ -1,5 +1,6 @@
 // Live quality rates: measure facts, ranking, score steadiness, judge flags and CV matches.
 // Job: run tolerant suites as rates
+import {loadAppModule} from '../lib/app-module.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import {PLANNER, collectFacts, qualityJourney, rankingCheck} from '../lib/quality-journey.mjs';
@@ -128,7 +129,7 @@ export async function run(ctx) {
     // both state must come back as found, and the code has to correct the model's claims about the CV only rarely (it corrects them; this watches how often).
     await soft(() => ctx.run('the CV match is right about the CV on golden postings: required terms found, few claims corrected', async () => {
       process.env.JOB_PILOTTO_MODEL_OVERRIDE ||= env.JOB_PILOTTO_MODEL_OVERRIDE;
-      const {check, cvText} = await import('../../lib/match-check.js');
+      const {check, cvText} = await loadAppModule('match-check.js');
       const cv = persona?.cvMatch?.cv ?? {summary: 'Senior Site Reliability Engineer, nine years in cloud infrastructure, Kubernetes, observability and incident response.', skills: 'Kubernetes, Terraform, AWS, Datadog, OpenTelemetry, SLOs',
         jobs: [{company: 'Acme Cloud', roles: [{title: 'Senior SRE', period: '2022 – Present', place: 'Zurich', skills: 'AWS EKS, Terraform, Datadog',
           bullets: ['Ran 400 microservices on Kubernetes (AWS EKS)', 'Cut incident time by 40 percent with Datadog and OpenTelemetry', 'Built the Terraform platform used by 120 engineers', 'Led the on-call rotation of 8 people']}]},

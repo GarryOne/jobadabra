@@ -3,7 +3,7 @@
 // Calendar: meetings from the Job Tracker ("Next interview") and from saved recordings, on dummy rows written through the Notion API, with the app running in a fixed time
 // zone (Asia/Tokyo, no daylight saving) and then in another (Pacific/Honolulu). Starts from a set-up install; resets only its own rows.
 import {launch} from '../lib/app.mjs';
-import {addDays, showsClock, weekDays} from '../lib/interview-data.mjs';
+import {addDays, monthsBetween, showsClock, weekDays} from '../lib/interview-data.mjs';
 import {addInterview, addTrackedJob} from '../lib/seed-data.mjs';
 import {clearData} from '../lib/start-state.mjs';
 import {finish, snap} from '../lib/layout.mjs';
@@ -206,7 +206,7 @@ export async function run(ctx) {
       const day = addDays(l1, -1);
       const wantMonth = monthTitle(day);
       for (let i = 0; i < 3 && (await other.page.locator('#cal-title').innerText()) !== wantMonth; i++) {
-        await other.page.click((await other.page.locator('#cal-title').innerText()) < wantMonth ? '#cal-next' : '#cal-prev');
+        await other.page.click(monthsBetween(await other.page.locator('#cal-title').innerText(), wantMonth) > 0 ? '#cal-next' : '#cal-prev');   // by date: as text "October" > "November"
       }
       await other.page.waitForFunction(() => document.querySelectorAll('#cal-grid .cal-chip').length > 0, null, {timeout: 30000});
       const chips = await chipsOf(other.page, day);

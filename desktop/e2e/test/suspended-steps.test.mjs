@@ -43,17 +43,19 @@ test('a suspended owned step cut off by its hang cap ends the suite without fail
 });
 
 test('a suspended step that fails and leaves the app closed ends the suite without failing it: the next steps would only meet a closed app (#2719)', async () => {
-  const closed = {page: {isClosed: () => true}, keepLogs: async () => {}};
+  const closed = {page: {isClosed: () => true}, shot: async () => {}, keepLogs: async () => {}};
   const runner = createRunner(() => closed, {suspended: held, keepGoing: true});
   await assert.rejects(runner.run('flaky step', async () => { throw new Error('EPERM: the data folder stayed held'); }), error => error.suspendedStop === true && error.stoppedBecause === 'left the app closed');
   assert.equal(runner.results[0].status, 'suspended');
+  assert.match(runner.results[0].note, /EPERM/, 'the step\'s own failure is what is shown');
   const ctx = {runner};
   assert.equal(stopCode(Object.assign(new Error('x'), {suspendedStop: true, stoppedBecause: 'left the app closed'}), 'settings', ctx), 0);
   assert.equal(ctx.runner.results.at(-1).name, 'steps after a suspended step that left the app closed');
-  const open = {page: {isClosed: () => false}, keepLogs: async () => {}};
+  const open = {page: {isClosed: () => false}, shot: async () => {}, keepLogs: async () => {}};
   const going = createRunner(() => open, {suspended: held, keepGoing: true});
   await going.run('flaky step', async () => { throw new Error('a chip was late'); });
   assert.equal(going.results[0].status, 'suspended', 'with the app still open the next step runs, as before');
+  assert.match(going.results[0].note, /a chip was late/);
 });
 
 test('a suspension with a platforms list holds only on those platforms; without one it holds everywhere (#2719: a Windows-only flake keeps its step blocking on Mac and Linux)', () => {

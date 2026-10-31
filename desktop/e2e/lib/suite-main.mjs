@@ -82,7 +82,10 @@ export async function runSuite(name, report = null) {
       return {code: skipExitCode(), skipped: message};
     }
     const runAlways = ctx.run;   // a suite may wrap ctx.run with its own filter (suites/apply.mjs parts): the Keychain check runs whatever the suite picked
-    await suite.run(ctx);
+    // Why (#2719, 31 Oct 2026, Gitar): a suspended step that hung or left the app closed ends the steps quietly, but the suite-wide guards below need no
+    // app window (Keychain, AI asks, nothing queued, the stand-in's gaps), so they still run and still fail the suite.
+    let quiet = null;
+    try { await suite.run(ctx); } catch (error) { if (!error?.suspendedStop) throw error; quiet = error; }
     if (keychainBefore) await runAlways('nothing in this Mac\'s real Keychain changed (a test run keeps its secrets in its own file)', async () => {
       const changes = keychainChanges(keychainBefore, snapshot() || new Map());
       if (changes.length) throw new Error(`the real Keychain changed during the run: ${changes.join('; ')}. A test reached it (desktop/lib/keychain.js isolation), or something else on this Mac saved a secret meanwhile: check, then re-run`);
@@ -94,6 +97,7 @@ export async function runSuite(name, report = null) {
     if (ctx.standIn) await runAlways('the Notion stand-in answered every request the app made', async () => {
       if (ctx.standIn.stats.unknown.length) throw new Error(`the stand-in did not know: ${ctx.standIn.stats.unknown.join('; ')}`);
     }, {critical: true});
+    if (quiet) { ctx.stopped = quiet.message; code = stopCode(quiet, name, ctx); }
   } catch (error) {
     if (ctx) ctx.stopped = error.message;   // the trace is kept (lib/context.mjs)
     code = stopCode(error, name, ctx);

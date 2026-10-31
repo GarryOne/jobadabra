@@ -207,7 +207,8 @@ test('the runner preserves a named quality step hang with engine evidence', asyn
   const started = new Promise(resolve => { entered = resolve; });
   ctx.page.evaluate = () => { entered(); return new Promise(() => {}); };
   const pending = quality.run(ctx);
-  const rejected = assert.rejects(pending, {name: 'QualityHangError', message: /HANG: the app is set up.*30 s.*engine evidence/s});
+  // The runner says it was cut off (timing); the quality step's named hang and engine evidence follow (lib/runner.mjs withLimit, 31 Oct 2026).
+  const rejected = assert.rejects(pending, {message: /^the step did not finish within 30 s \(it hung\): HANG: the app is set up.*30 s.*engine evidence/s});
   await started;
   t.mock.timers.tick(30000);
   await rejected;
@@ -289,7 +290,7 @@ test('the outer Jobs cap keeps partial-store diagnostics when it fires before th
   ctx.data = async () => { entered(); return []; };
   const pending = quality.run(ctx);
   const rejected = assert.rejects(pending, error => {
-    assert.equal(error.name, 'QualityHangError');
+    assert.match(error.message, /^the step did not finish within [\d.]+ s \(it hung\): HANG: /);   // the runner's cut-off words first (lib/runner.mjs withLimit)
     assert.match(error.message, /0 of \d+ required postings reached the store; missing:.*engine evidence/s);
     assertDiagnostics(error.message);
     return true;

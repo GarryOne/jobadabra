@@ -36,8 +36,8 @@ export const aiAnswers = 'backbone';   // answers its AI from the stored table i
 export async function run(ctx) {
   if (answersMode(process.env) === 'off') throw new Error('quality is a backbone suite: set E2E_AI_ANSWERS=backbone (or record for a record run)');
   const runStep = ctx.run;
-  // Why (29 Oct 2026, qu 3/4): the runner's outer step cap must preserve the same named hang and engine evidence as an inner state wait.
-  ctx.run = (name, work, options) => runStep(name, work, {...options, hangError: capMs => qualityHang(name, capMs, ctx.qualityWaitEvidence?.() ?? qualityEvidence(ctx))});
+  // Why (29 Oct 2026, qu 3/4; 31 Oct 2026, a8): the runner's outer step cap keeps the same named hang text and engine evidence as an inner state wait, after the runner's own cut-off words.
+  ctx.run = (name, work, options) => runStep(name, work, {...options, hangError: capMs => qualityHang(name, capMs, ctx.qualityWaitEvidence?.() ?? qualityEvidence(ctx)).message});
   try {
     return await withQualityHang(() => runJourney(ctx), {label: 'the quality journey', capMs: clocks.suiteMs, evidence: () => ctx.qualityWaitEvidence?.() ?? qualityEvidence(ctx)});
   } finally { ctx.run = runStep; }

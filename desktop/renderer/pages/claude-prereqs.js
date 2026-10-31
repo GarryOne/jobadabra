@@ -1,13 +1,8 @@
-// Apply with Claude prerequisites checklist: what only the user can install. Drawn in the wizard's Optional extras card and under Settings' "Show Claude help" switch
-// (owner, 9 Oct 2026: the wizard card is hidden with the switch off, so whoever turns it on later sees what to install there); both only with the switch on (claude-help.js).
-// Moved out of connections.js, which calls it at start-up and on window focus. Guarded by the desktop page shot tests (npm test).
-import {$} from './core.js';
+// Apply with Claude prerequisites: what only the user can install, shown in Settings when Claude help is available.
 import {resumeOffered} from '../claude-help.js';
 import {icon} from '../icons.js';
 
 export async function showClaudePrereqs() {
-  const card = document.getElementById('claude-extra');   // the setup's Claude card: only with Claude help on (claude-help.js)
-  if (card) card.hidden = !resumeOffered();
   const inSettings = document.getElementById('claude-prereqs-settings');
   if (inSettings) inSettings.hidden = !resumeOffered();
   if (!resumeOffered()) return;   // nothing to check while Claude help is off
@@ -34,7 +29,7 @@ export async function showClaudePrereqs() {
     li.append(icon(done ? 'check-circle' : 'info'), words);
     return li;
   });
-  for (const list of [$('claude-prereqs'), inSettings].filter(Boolean)) list.replaceChildren(...draw());   // each list its own items (a node lives in one place)
+  if (inSettings) inSettings.replaceChildren(...draw());
 }
 window.addEventListener('claude-help', () => showClaudePrereqs());   // the switch turned on in Settings: what to install shows under it at once
 

@@ -112,11 +112,9 @@ export async function runWizard(ctx) {
     const goals = await page.locator('#setup-strategy-slot #strategy-main-goals .main-goals').innerText();
     if (!goals || /No roles yet/.test(goals)) throw new Error('the strategy has no roles to search for');
   }, {needs: ctx.needs});
-  await ctx.run('setup drafts the base letter; explicit approval makes its PDF before continuing', async () => {
-    await completeWizardLetter(ctx);
-    await ctx.expectStep('hosted', 180000);   // the daily-searches step (pages/hosted.js): Skip leaves hosted off, the extras step follows
-    await page.click('#hosted-skip');
-    await ctx.expectStep('extras');
+  await ctx.run('saving the strategy reaches the finish action', async () => {
+    await saveWizardStrategy(ctx);
+    await page.locator('#finish').waitFor({state: 'visible'});
   }, {needs: ctx.needs});
   await ctx.run('finishing the setup without Notion opens the Jobs list, with the strategy kept on this Mac', async () => {
     await page.click('#finish');
@@ -211,47 +209,22 @@ async function connectNotion(ctx, {startedOnNotion = false} = {}) {
 }
 
 
-/** Exercise explicit AI drafting and approval using the existing dummy-key API seam and a fictional letter. */
-export async function completeWizardLetter(ctx) {
+/** Save the setup strategy through the existing dummy-key seam, answering only its fictional CV details. */
+export async function saveWizardStrategy(ctx) {
   const {page, proxy} = ctx;
-  if (!proxy?.setCanned || typeof ctx.withApi !== 'function') throw new Error('wizard letter proof requires the canned API seam');
-  const fixtures = JSON.parse(fs.readFileSync(new URL('../../demo/job-pages.json', import.meta.url), 'utf8'));
-  const section = Object.values(fixtures).flatMap(item => Object.values(item.sections || {})).find(text => String(text).includes('### ✉️ Cover letter'));
-  const letter = JSON.parse(section.match(/```json\n([\s\S]*?)\n```/)[1]).cover_letter;
+  if (!proxy?.setCanned || typeof ctx.withApi !== 'function') throw new Error('wizard strategy proof requires the canned API seam');
   const previous = proxy.canned();
-  let answered = 0;
   const cv = JSON.parse(fs.readFileSync(new URL('../fixtures/cv.json', import.meta.url), 'utf8'));
-  // Why (#2304): setup saves CV details before drafting; answer their distinct schemas and refuse unknown calls before the explicit Draft with AI click.
-  proxy.setCanned(body => {
-    const answer = wizardSetupAnswer(body, {letter, cv});
-    if (typeof answer === 'string' && Object.hasOwn(JSON.parse(answer), 'letter')) answered += 1;
-    return answer;
-  });
+  proxy.setCanned(body => wizardSetupAnswer(body, {cv}));
   try {
-    await ctx.withApi(async () => {
-      await page.click('#draft-save');
-      await ctx.expectStep('letter', 180000);
-      await page.click('#letter-start-ai');
-      await page.waitForFunction(() => !!document.getElementById('letter-text')?.value.trim(), null, {timeout: 120000});
-      const draft = await page.evaluate(() => window.pilot.coverLetter());
-      if (!answered || draft.text !== letter) throw new Error('setup did not use the canned letter');
-      if (draft.state === 'approved' || draft.pdf) throw new Error('setup approved the letter without the person');
-      await page.click('#letter-approve');
-      await page.waitForFunction(async () => {
-        const approved = await window.pilot.coverLetter();
-        return approved.state === 'approved' && approved.pdf;
-      }, null, {timeout: 30000});
-      await page.click('#setup-letter-next');
-    });
+    await ctx.withApi(async () => { await page.click('#draft-save'); await page.locator('#finish').waitFor({state: 'visible', timeout: 180000}); });
   } finally { proxy.setCanned(previous); }
 }
 
-
-/** Answer only the setup's letter/details schemas from fictional fixtures; unknown calls are refused without model passthrough. */
-export function wizardSetupAnswer(body, {letter, cv}) {
+/** Answer only setup's CV-details schema from fictional fixtures; unknown calls never pass through to a model. */
+export function wizardSetupAnswer(body, {cv}) {
   const properties = body?.output_config?.format?.schema?.properties || {};
   if (Object.keys(properties).length !== 1) return {refuse: 'no-credit'};
-  if (properties.letter) return JSON.stringify({letter});
   if (properties.proposals) {
     const [first, ...last] = cv.name.trim().split(/\s+/);
     const stated = {first_name: first, last_name: last.join(' '), location: cv.location};

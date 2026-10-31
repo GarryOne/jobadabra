@@ -30,7 +30,7 @@ const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 async function setUp(page) {
   await page.evaluate(async key => {
     await window.pilot.saveSecret('ANTHROPIC_API_KEY', key);
-    await window.pilot.saveSettings({setupDone: true, wizardStep: 'extras', setupFurthest: 'extras', store: 'sqlite'});
+    await window.pilot.saveSettings({setupDone: true, wizardStep: 'draft', setupFurthest: 'draft', store: 'sqlite'});
   }, DUMMY_KEY);
   await page.reload();
   await page.waitForSelector('.view:not([hidden])', {timeout: 60000});

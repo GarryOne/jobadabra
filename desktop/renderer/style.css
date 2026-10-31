@@ -114,9 +114,6 @@ details { background: var(--surface); border: 1px solid var(--line); border-radi
 details.plain { background: none; border: 0; border-radius: 0; padding: 0; margin-top: 0; }
 summary { cursor: pointer; font-weight: 600; padding: 4px 0; }
 details textarea { margin-top: 8px; }
-/* Optional extras: Settings → Connections' service rows; Apply with Claude spans both columns with its checklist. */
-.extras .service-card.is-wide { grid-column: 1 / -1; }
-.extras .service-card > button { white-space: nowrap; flex: none; }
 .prereqs { list-style: none; margin: var(--sp-2) 0 0; padding: 0; display: grid; gap: var(--sp-1); font-size: var(--fs-md); }
 .prereqs li { display: flex; align-items: flex-start; gap: var(--sp-2); color: var(--ink-2); }
 .prereqs li svg { width: 16px; height: 16px; flex: none; margin-top: 2px; color: var(--muted); }
@@ -223,7 +220,7 @@ label.radio input { width: auto; margin-top: 3px; }
 .narrow { max-width: 180px; }
 @media (max-width: 1000px) { .action-grid { grid-template-columns: repeat(2, 1fr); } }
 .app-version { font-size: var(--fs-xs); color: var(--on-navy-3); opacity: .85; margin-top: 4px; padding-left: 8px; }
-/* Welcome isn't a numbered step, so the sidebar matches "Step N of 6" on each page. */
+/* Welcome uses a decorative dot until it is complete. */
 .steps li[data-step="welcome"] { counter-increment: none; }
 .steps li[data-step="welcome"]:not(.done)::before { content: "•"; }
 .steps .app-version { padding-left: 0; }
@@ -890,9 +887,7 @@ button.danger-solid:disabled { opacity: 1; background: var(--danger-surface); co
 #step-list li.jump:not(.current):hover { color: var(--on-navy); }
 .wizard-exit { -webkit-app-region: no-drag; margin-top: auto; margin-bottom: 12px; background: var(--navy-active); color: var(--on-navy); border: 1px solid var(--navy-line); text-align: left; }
 .wizard-exit:hover { background: var(--navy-hover); }
-.back-to-setup { position: sticky; top: -28px; z-index: 4; display: flex; align-items: center; gap: 12px; background: var(--signal-soft);
-  border: 1px solid var(--signal-line); border-radius: var(--r-md); padding: 10px 14px; margin: -8px 0 16px; font-size: var(--fs-base); }
-.back-to-setup span { flex: 1; }
+
 
 /* Setup reopened after it was done: a review; replacing the strategy is confirmed */
 .review-mode:not([hidden]) { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1) var(--sp-2); margin: 0 0 var(--sp-4); font-size: var(--fs-sm); color: var(--ink-2); }   /* one quiet line on steps 2-5 */

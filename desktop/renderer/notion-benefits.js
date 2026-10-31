@@ -1,5 +1,5 @@
 // Why connect Notion: the advantages, written once. Shown in the connect dialog, on a locked page, in Settings → Notion
-// (all of them), and as the first three on the Optional extras card. Claims beyond these need the owner's say-so.
+// (all of them). Claims beyond these need the owner's say-so.
 export const NOTION_BENEFITS = [
   {icon: 'cloud', lead: 'Safe in your own cloud', text: 'free, and it survives a lost or reset computer.'},
   {icon: 'globe', lead: 'On every device', text: 'check and update your applications from your phone.'},

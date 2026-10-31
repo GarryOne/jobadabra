@@ -3,7 +3,7 @@
 // shows where people stop. Anonymous: the step, its number, minutes since the first start, which AI path was taken.
 import {isOn as freeOn} from './ai-free.js';
 
-export const STEPS = ['welcome', 'ai', 'cv', 'draft', 'hosted', 'extras'];  // = renderer/pages/core.js STEPS (older apps also reported 'notion': the website still counts it)
+export const STEPS = ['welcome', 'ai', 'cv', 'draft'];  // = renderer/pages/core.js STEPS (older apps also reported 'notion': the website still counts it)
 
 // The report for this settings change, or null: a step further than before, or setup finished for the first time.
 export function track(patch, before, now = Date.now()) {

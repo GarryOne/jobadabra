@@ -4,11 +4,6 @@ import {promise} from './pro-promise.js';
 export const NAME = 'Always on: on our servers';
 export const SUBTITLE = 'New matches every morning, even when your Mac is off';
 export const STORED = 'Your profile is stored encrypted on our servers. Turn it off anytime = deleted.';
-export const NEWS = 'Also send me product news and the Pro launch offer (unsubscribe in one click)';
-// Demo jobs only, always marked "Example": the person sees what arrives, never a claim about their own matches.
-export const EXAMPLE_JOBS = [['Platform Engineer · Zurich', '86'], ['Cloud Engineer · Remote, EU', '81'], ['Site Reliability Engineer · Berlin', '78']];
-
-export const NEWS_HINT = 'Separate from your matches.';
 export const HELPER = 'We send the daily matches here. Unsubscribe in one click.';
 
 const two = n => String(n).padStart(2, '0');

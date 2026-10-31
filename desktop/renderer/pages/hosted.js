@@ -1,60 +1,12 @@
-// Always on "on our servers" in the window (private spec jobadabra-lab:docs/specs/2026-10-16-hosted-always-on.md §4b, §4d): the wizard's Always on step (switch ON, e-mail, a pre-checked product-news box, Skip / Turn on Always on)
-// and the Settings card (ON by default until Skip; asks for the e-mail first when there is none; Turn off and delete; Download my data; Delete our copy of your data while off, when we hold one; when the profile was last copied there). One name everywhere: "Always on" (owner, 17 Oct 2026).
+// Always on "on our servers": the Settings card, its status, and the actions to turn it on, export or delete the held data.
 // The words and states are renderer/hosted-words.js; the data calls are lib/hosted-search.js. Never "GitHub", "container" or dollars here. Guard: test/hosted-search.test.js, test/hosted-words.test.js.
 import {el, pill, tile} from '../components.js';
 import {$, message, show} from './core.js';
-import {goStep} from './wizard.js';
 import {shared} from './shared.js';
 import {openSetting} from './settings.js';
-import {NAME, NEWS, NEWS_HINT, STORED, SUBTITLE, model} from '../hosted-words.js';
-import {alwaysOnCard, emailField} from '../hosted-step-parts.js';
+import {NAME, STORED, SUBTITLE, model} from '../hosted-words.js';
 
-export const HEADLINE = 'New matching jobs every morning, even when your Mac is off';
-
-function switchRow(id, label, checked, hint = '') {
-  const input = Object.assign(document.createElement('input'), {type: 'checkbox', id, checked});
-  input.setAttribute('aria-label', label);
-  const row = el('div', 'switch-row'), toggle = el('span', 'switch', input);
-  toggle.append(document.createElement('span'));
-  const words = el('span');
-  words.append(...(hint ? [el('b', '', label), el('span', 'muted small', hint)] : [label]));
-  row.append(toggle, words);
-  return row;
-}
 const button = (id, label, cls) => { const node = el('button', cls, label); node.id = id; return node; };
-
-// Wizard Always on step. Skip only leaves Always on off; the rest of the app works as before.
-export function mountStep() {
-  if ($('hosted-step-root')) return;
-  const step = el('div', 'step magic-stage');   // a small form: one centered column, like the CV card (magic.css)
-  step.id = 'hosted-step-root'; step.dataset.step = 'hosted'; step.hidden = true;
-  const head = el('header', 'view-head step-head'), text = el('div');
-  const count = el('span', 'eyebrow'); count.dataset.stepCount = '';
-  text.append(count, el('h1', '', HEADLINE), el('p', 'muted subtitle', 'A short list of what is new, by e-mail, and in the app when you open it.'));
-  head.append(text);
-  const actions = el('div', 'actions');
-  actions.append(button('hosted-skip', 'Skip', 'ghost'), button('hosted-go', 'Turn on Always on', 'primary'));
-  const note = el('p', 'message'); note.id = 'hosted-message';
-  // Two cards: the daily search (switch + e-mail), and the product news as its own consent, never tied to the search.
-  const search = alwaysOnCard('A short list of what is new, in your inbox and in the app.', switchRow('hosted-daily', 'Search for me every day', true, 'Runs on our servers, with your Mac on or off'), emailField('hosted-email'));
-  const news = el('div', 'setting panel roomy');
-  news.append(switchRow('hosted-news', NEWS, true, NEWS_HINT));
-  step.append(head, search, news, el('p', 'muted small', STORED), note, actions);
-  document.querySelector('.step[data-step="extras"]').before(step);
-  // The address and news choice already kept (the setup's Email step, Notifications): shown here, so the person types it once (#1711).
-  window.pilot.notifyState?.().then(kept => { if (kept?.email && !$('hosted-email').value) $('hosted-email').value = kept.email; if (kept && typeof kept.marketing === 'boolean') $('hosted-news').checked = kept.marketing; }).catch(() => {});
-  const item = el('li', '', 'Always on'); item.dataset.step = 'hosted';
-  document.querySelector('#step-list li[data-step="extras"]').before(item);
-  $('hosted-skip').addEventListener('click', async () => { await window.pilot.hostedOff(); goStep('extras'); });
-  $('hosted-go').addEventListener('click', async () => {
-    if (!$('hosted-daily').checked) { await window.pilot.hostedOff(); goStep('extras'); return; }   // the switch turned off here is the same as Skip
-    $('hosted-go').disabled = true; message('hosted-message', 'Turning on…');
-    const done = await window.pilot.hostedOn({email: $('hosted-email').value, marketing: $('hosted-news').checked});
-    $('hosted-go').disabled = false;
-    if (!done.ok) { message('hosted-message', done.error || 'Could not turn it on just now.', 'bad'); return; }
-    goStep('extras');
-  });
-}
 
 // Settings: the card, built once; draw(model) shows one of its states.
 export function mountCard() {
@@ -116,4 +68,4 @@ export async function refresh() {
   if ($('hosted-status')) draw(model(now, now.schedule, new Date(), now.shared), hostedAddress(now));
 }
 
-export function init() { mountStep(); mountCard(); }
+export function init() { mountCard(); }

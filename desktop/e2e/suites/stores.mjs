@@ -46,7 +46,7 @@ export async function run(ctx) {
   await ctx.run('the app is set up on the SQLite store, with no Notion token', async () => {
     await page.evaluate(async key => {
       await window.pilot.saveSecret('ANTHROPIC_API_KEY', key);
-      await window.pilot.saveSettings({setupDone: true, wizardStep: 'extras', setupFurthest: 'extras', store: 'sqlite'});
+      await window.pilot.saveSettings({setupDone: true, wizardStep: 'draft', setupFurthest: 'draft', store: 'sqlite'});
     }, KEY);
     await settle();
     const settings = JSON.parse(fs.readFileSync(path.join(ctx.profile, 'settings.json'), 'utf8'));

@@ -1,4 +1,4 @@
-// Settings → Connections → Chrome extension (and the setup wizard's extras card): is it installed (the browser says so at once),
+// Settings → Connections → Chrome extension: is it installed (the browser says so at once),
 // is it awake (its report), and the buttons that install and connect it. Moved from connections.js (26 Oct 2026, a pure move).
 // Guards: test/extension-store-setup.test.js, test/palette-every-action.test.js, test/extension-card-first-paint.test.js.
 // The first paint draws the last known state (owner, 26 Oct 2026: "We should see the status from beginning"), from the record settings.js keeps
@@ -36,7 +36,7 @@ function drawCard(state) {
   const pill = stateLine(state.on, state.on && state.version ? `v${state.version}` : '', state.checking, state.words);
   pill.id = 'ext-status';
   $('ext-status').replaceWith(pill);
-  for (const card of ['setting-extension', 'extras-extension']) retarget($(card), browserApp, '#ext-stray, #ext-looked, #ext-path');  // Chrome's words become Edge's when that is where it is
+  retarget($('setting-extension'), browserApp, '#ext-stray, #ext-looked, #ext-path');  // Chrome's words become Edge's when that is where it is
   $('ext-line').textContent = inBrowser(EXT_LINE[state.state] || EXT_LINE.absent, browserApp);
   show($('ext-connect'), state.state === 'idle');
   foldFollows($('ext-setup'), state.state, state.state !== 'connected');

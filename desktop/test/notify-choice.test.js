@@ -60,11 +60,10 @@ test('Telegram is required only when e-mail is not chosen, and the Actions line 
   assert.equal(channelLine({by: ['app'], connected: false}).text, 'Tell me by: app notifications only');
 });
 
-// The class: every screen that offers or requires a way to be told. Listed 26 Oct 2026: Connections (Telegram required), setup extras (Telegram only), Actions header,
+// The class: every screen that offers or requires a way to be told. Listed 26 Oct 2026: Connections (Telegram required), Actions header,
 // Always on "How it works", the Focus reminder tooltip, the ⌘K entry.
 test('no screen presents Telegram as the only channel', () => {
   const html = read('renderer/index.html'), settings = read('renderer/pages/services-list.js') + read('renderer/pages/settings.js'), nav = read('renderer/pages/nav.js'), runs = read('renderer/pages/runs-page.js');
-  assert.match(html, /class="[^"]*\bextras"[\s\S]*data-goto-settings="notify"/, 'setup extras offer e-mail next to Telegram');
   assert.doesNotMatch(html, /sends results to Telegram and/, 'Always on: results go by the chosen channel');
   assert.doesNotMatch(html, /title="Notifications and Telegram when/, 'Focus reminders: by the chosen channels');
   assert.match(settings, /id: 'telegram'[^\n]*required: \(\) => telegramRequired\(shared\.state\.notifyBy, shared\.state\.settings\.notifyBy\) \|\| !!shared\.state\.settings\.telegramChatId/, 'Telegram is required only without e-mail');

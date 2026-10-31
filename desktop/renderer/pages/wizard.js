@@ -8,7 +8,6 @@ import {toDraft} from './strategy-review.js';
 import {hideCards} from './setup-strategy.js';
 import {mountEngine} from './ai-engine.js';
 import {canContinue} from '../ai-engine-view.js';
-import {showLetterStep, hideLetterStep} from './wizard-letter.js';
 import {initMagic, initWandBurst} from '../magic.js';
 
 // The AI step's engine chooser (pages/ai-engine.js): mounted the first time the step opens. Nothing is pre-selected;
@@ -74,11 +73,19 @@ function refreshStepLabels() {
   }
 }
 
+/** Reveal the one finish action after the strategy was saved; its existing handler owns setupDone and opening Jobs. */
+export function showSetupFinish() {
+  // Why (31 Oct 2026, owner): setup ends after strategy; optional services are configured in Settings.
+  document.querySelector('.step[data-step="draft"]').append($('setup-finish'));
+  show($('draft-actions'), false);
+  show($('setup-finish'));
+}
+
 // ---------- wizard ----------
 export function goStep(name) {
   refreshStepLabels();
+  show($('setup-finish'), false);
   const index = STEPS.indexOf(name);
-  if (name === 'letter') showLetterStep(); else hideLetterStep();
   window.pilot.saveSettings({wizardStep: name});  // reopening the app continues here
   if (name === 'ai' && shared.state.secrets.ANTHROPIC_API_KEY && !$('anthropic-key').value) {
     message('ai-message', '✓ Your key is saved. Continue, or paste a new key to replace it.', 'ok');
@@ -87,7 +94,6 @@ export function goStep(name) {
       if (hints.ANTHROPIC_API_KEY) $('anthropic-key').placeholder = `${hints.ANTHROPIC_API_KEY} · saved (paste a new one to replace it)`;
     });
   }
-  if (name === 'extras') import('./settings.js').then(settings => settings.showExtrasStatus());  // Connected / Manage, as in Settings
   if (name === 'ai') {
     if (!chooser) chooser = mountEngine($('ai-engine'), {context: 'wizard', onChange: aiStep});
     aiStep();
@@ -115,7 +121,7 @@ export const saveState = {};   // step -> 0..1; "<step>:note": a finished step's
 export async function init() {
   initMagic();   // the Welcome card's wand glow and sparkles (magic.css)
   initWandBurst();   // sparks and a flash when any wand button is pressed (magic.js)
-  hostedInit();   // the hosted step and its Settings card are built in script (pages/hosted.js)
+  hostedInit();   // Always on stays available as its Settings card (pages/hosted.js)
   refreshStepLabels();
   // Finished steps (or any step once setup was done before) can be opened from the sidebar.
   document.querySelectorAll('#step-list li').forEach(li => li.addEventListener('click', () => {
@@ -123,7 +129,7 @@ export async function init() {
     if (li.dataset.step === 'draft') toDraft(); else goStep(li.dataset.step);
   }));
   // Setup was done before (Run setup again, Rebuild from CV): leave the wizard any time, nothing changes.
-  $('wizard-exit').addEventListener('click', () => { hideLetterStep(); hideCards(); show($('wizard'), false); show($('app')); loadJobs(); });
+  $('wizard-exit').addEventListener('click', () => { hideCards(); show($('wizard'), false); show($('app')); loadJobs(); });
   // A key already there (e.g. Free AI already on): no AI step to do.
   document.querySelectorAll('[data-next]').forEach(b => b.addEventListener('click', () => goStep(aiDone() ? 'cv' : 'ai')));
   document.querySelectorAll('[data-back]').forEach(b => b.addEventListener('click', () => {
@@ -160,7 +166,6 @@ export async function init() {
     message('ai-message', 'Saved ✓', 'ok');
     goStep('cv');
   });
-  $('setup-letter-next').addEventListener('click', () => goStep('hosted'));
   $('ai-skip').addEventListener('click', () => goStep('cv'));
   // What's happening, line by line: finished pieces ✓, the one being written last.
   window.pilot.onDraftProgress(({part, percent, notes = []}) => {

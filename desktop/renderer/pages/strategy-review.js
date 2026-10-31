@@ -8,10 +8,9 @@ import {buildDraft, currentAnswers} from './activity.js';
 import {$, message, osText, show} from './core.js';
 import {loadJobs} from './jobs.js';
 import {openView} from './nav.js';
-import {openSetting} from './settings.js';
 import {hideCards, showCards} from './setup-strategy.js';
 import {toastMessage} from './startup.js';
-import {goStep, saveState} from './wizard.js';
+import {goStep, saveState, showSetupFinish} from './wizard.js';
 import {byStore} from '../store-words.js';
 import {titleCase} from '../fragment-words.js';
 export {titleCase};   // one place for it: renderer/fragment-words.js
@@ -106,7 +105,7 @@ async function saveDraft(parts = null) {
     $('save-dialog').close();
     // The Strategy page read again: it still showed the strategy from before (7 Oct 2026: "Your Profile is empty" stayed after a rebuild filled it).
     if (replacing) { hideCards(); show($('wizard'), false); show($('app')); loadJobs(); import('./strategy.js').then(page => page.loadStrategy()); toastMessage('Strategy replaced ✓', byStore('The previous one is kept in Notion as “🗂 Previous strategy”.', 'The previous one is kept as “🗂 Previous strategy”.'), {view: 'strategy'}, 'good'); }
-    else goStep('letter');
+    else showSetupFinish();
   }, 900);
 }
 async function openRebuildReview() {
@@ -194,14 +193,5 @@ export async function init() {
   $('save-retry').addEventListener('click', saveDraft);
   $('save-close').addEventListener('click', () => $('save-dialog').close());
   $('save-dialog').addEventListener('cancel', event => { if (!$('save-close').hidden) return; event.preventDefault(); });  // no Esc while saving
-  // "Set up" on the last step: finish the setup, open that Settings card, and offer the way back to the wizard.
-  document.querySelectorAll('[data-goto-settings]').forEach(button => button.addEventListener('click', async () => {
-    await finishSetup();
-    openView('settings');
-    show($('back-to-setup'));
-    openSetting(button.dataset.gotoSettings);
-  }));
   $('finish').addEventListener('click', finishSetup);
-  $('back-to-setup-go').addEventListener('click', () => { show($('back-to-setup'), false); show($('app'), false); show($('wizard')); goStep('extras'); });
-  $('back-to-setup-close').addEventListener('click', () => show($('back-to-setup'), false));
 }

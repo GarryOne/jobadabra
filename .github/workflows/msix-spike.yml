@@ -168,11 +168,15 @@ jobs:
         run: node scripts/stage.mjs --app && scripts/python.sh
       - name: Compile · build the NSIS installer and the MSIX (test identity)
         working-directory: desktop
+        env:
+          UNVIRTUALIZED: ${{ inputs.unvirtualized }}
         run: |
           npm version "0.0.1" --no-git-tag-version --allow-same-version >/dev/null
+          extra=()
+          if [ "$UNVIRTUALIZED" = "true" ]; then node scripts/appx-manifest.mjs; extra=(-c.appx.customManifestPath=appxmanifest-store.xml); fi
           npx electron-builder --win nsis appx --publish never \
             -c.appx.identityName=Jobadabra.Spike -c.appx.publisher=CN=JobadabraSpike \
-            -c.appx.publisherDisplayName=Jobadabra -c.appx.displayName=Jobadabra -c.appx.applicationId=Jobadabra
+            -c.appx.publisherDisplayName=Jobadabra -c.appx.displayName=Jobadabra -c.appx.applicationId=Jobadabra "${extra[@]}"
           ls -la dist/*.appx dist/*.exe
       - name: Install · the .exe silently, then the signed test MSIX
         shell: pwsh

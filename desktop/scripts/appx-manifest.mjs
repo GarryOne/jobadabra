@@ -25,6 +25,7 @@ export function storeManifest(template) {
   }, template);
 }
 
+/** Where electron-builder keeps its appx manifest template (inside the installed app-builder-lib package). Takes nothing; throws when the package is not installed. */
 export const templatePath = () => path.join(path.dirname(createRequire(import.meta.url).resolve('app-builder-lib/package.json')), 'templates', 'appx', 'appxmanifest.xml');
 
 if (import.meta.url === pathToFileURL(process.argv[1] || '').href) {

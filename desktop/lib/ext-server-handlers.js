@@ -231,7 +231,7 @@ export function registerExtServerHandlers(ctx) {
   server.setStoppedHandler(event => appLog('extension', 'the extension stopped', {reason: String(event?.reason || '').slice(0, 80), marked: stopLiveForms(terminals)}));   // its Stop, the app's, or Chrome's Cancel: every live form says Stopped (lib/stop-all.js)
   server.setStartedHandler(event => { const id = startForm(terminals, review.sessionOfTab, event?.tab); if (id) appLog('extension', 'started again on its tab: the session is no longer stopped', {id, who: String(event?.who || '').slice(0, 40)}); });
   server.setStuckHandler(event => { flow().stuck(event); });   // tier 3: the extension can't reach a form (lib/session-flow.js)
-  review.onBind(({id, tab, before, by, host}) => appLog('review', `tab ${tab} is session ${id}'s now`, {before, by, host}));   // which tab a session follows, and why
+  review.onBind(({id, tab, before, by, host, newRun}) => appLog('review', `tab ${tab} is session ${id}'s now`, {before, by, host, ...(newRun ? {newRun} : {})}));   // which tab a session follows, and why
   review.setReporter(state => flow().reported(state));   // the step each form report puts its session at (lib/session-flow.js)
   const readReported = new Set();
   // (readSites, set when a Read with Claude session starts: its sites' addresses, so each site's button is told when it ends)   // Read with Claude sessions already reported (a session's Stop can arrive more than once)

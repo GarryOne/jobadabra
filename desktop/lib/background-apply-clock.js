@@ -13,15 +13,15 @@ export function createBackgroundWaitClock({wallNow = Date.now, env = process.env
   }};
 }
 const clock = createBackgroundWaitClock(), listeners = new Set();
-/** Register an app poll only inside e2e; a moved clock wakes the same scheduler even after a restart closed its browser. */
-export function onBackgroundWaitMove(poll) {
-  if (process.env.JOB_PILOTTO_E2E === '1') listeners.add(poll);
+/** Register a scheduler wake only inside e2e; moving the clock can restart the browser without consuming its queued commands. */
+export function onBackgroundWaitMove(wake) {
+  if (process.env.JOB_PILOTTO_E2E === '1') listeners.add(wake);
 }
 /** Read the app's shared wait clock; normal launches always read Date.now(). */
 export const backgroundWaitNow = () => clock.now();
 /** Move only this isolated e2e app's wait clock to `at`; never exposed through IPC or HTTP. */
 export async function moveBackgroundWaitClock(at) {
   const moved = clock.moveTo(at);
-  for (const poll of listeners) await poll();
+  for (const wake of listeners) await wake();
   return moved;
 }

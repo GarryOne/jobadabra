@@ -21,33 +21,36 @@ const nameOf = node => node?.name || node?.property?.name || '';
 const inScope = (node, check) => check(node) || children(node).some(child => !functionNode(child) && inScope(child, check));
 const waitCall = node => node.type === 'CallExpression' && /^(?:waitOn|waitFor\w*|pollUntil|until)$/.test(nameOf(node.callee));
 
-// Count a whole wait once (including a clock read returned as an object and compared in its accepts callback).
-// Own deadline loops/branches count too. wait-on-state.mjs's shared runner cap is excluded by the caller, never each helper's own deadline.
+// Local aliases are debt at their declaration, so later calls cannot hide the clock from a wait.
+const clockAlias = node => node.type === 'VariableDeclarator' && node.init && (clockReference(node.init) ||
+  (functionNode(node.init) && ['BinaryExpression', 'LogicalExpression', 'UnaryExpression'].includes(node.init.body.type) && has(node.init.body, clockRead) && has(node.init.body, comparison)));
+const movesClock = node => node.type === 'CallExpression' && /^(?:advancePastDue|moveBackgroundWaitClock)$/.test(nameOf(node.callee));
+function startsUnmovedWait(node, scope) {
+  if (node.type !== 'CallExpression' || !['startJob', 'startAuto'].includes(nameOf(node.callee))) return false;
+  const options = node.arguments.find(arg => arg.type === 'ObjectExpression');
+  const field = key => options?.properties.find(property => nameOf(property.key) === key)?.value;
+  const automatic = nameOf(node.callee) === 'startAuto' || field('mode')?.value === 'auto';
+  const wait = field('waitMin');
+  return automatic && !(wait?.type === 'Literal' && wait.value === 0) && !inScope(scope, movesClock);
+}
+
+// Count a whole wait once, including a clock read returned as an object and compared in accepts.
+// Own deadline loops count too; only the caller excludes wait-on-state.mjs's shared runner cap.
 function clockWaits(source) {
   const tree = parse(source, {ecmaVersion: 'latest', sourceType: 'module', allowAwaitOutsideFunction: true});
   let count = 0;
   const visit = (node, scope = tree) => {
     if (functionNode(node)) scope = node;
     const test = ['WhileStatement', 'DoWhileStatement', 'ForStatement', 'IfStatement'].includes(node.type) ? node.test : null;
-    if ((test && has(test, clockRead) && has(test, comparison)) ||
-        (waitCall(node) && node.arguments.some(arg => has(arg, clockRead)) && node.arguments.some(arg => has(arg, comparison)))) {
+    const timedCondition = test && has(test, clockRead) && has(test, comparison);
+    const timedCall = waitCall(node) && node.arguments.some(arg => has(arg, clockRead)) && node.arguments.some(arg => has(arg, comparison));
+    if (timedCondition || timedCall) {
       count++;
-      // Do not double count a comparison nested within this wait, but still inspect a loop's body.
-      if (test) { if (node.body) visit(node.body, scope); if (node.consequent) visit(node.consequent, scope); if (node.alternate) visit(node.alternate, scope); }
+      for (const branch of [node.body, node.consequent, node.alternate].filter(Boolean)) visit(branch, scope);
       return;
     }
-    // A local clock alias or expression predicate can hide a clock from its later wait. Count that declaration once.
-    if (node.type === 'VariableDeclarator' && node.init && (clockReference(node.init) ||
-        (functionNode(node.init) && ['BinaryExpression', 'LogicalExpression', 'UnaryExpression'].includes(node.init.body.type) && has(node.init.body, clockRead) && has(node.init.body, comparison)))) { count++; return; }
-    // Auto starts without an explicit zero wait need a clock move, including defaults and nonliteral waits.
-    if (node.type === 'CallExpression' && ['startJob', 'startAuto'].includes(nameOf(node.callee))) {
-      const options = node.arguments.find(arg => arg.type === 'ObjectExpression');
-      const field = key => options?.properties.find(property => nameOf(property.key) === key)?.value;
-      const automatic = nameOf(node.callee) === 'startAuto' || field('mode')?.value === 'auto';
-      const wait = field('waitMin');
-      if (automatic && !(wait?.type === 'Literal' && wait.value === 0) &&
-          !inScope(scope, child => child.type === 'CallExpression' && /^(?:advancePastDue|moveBackgroundWaitClock)$/.test(nameOf(child.callee)))) count++;
-    }
+    if (clockAlias(node)) { count++; return; }
+    if (startsUnmovedWait(node, scope)) count++;
     for (const child of children(node)) visit(child, scope);
   };
   visit(tree);

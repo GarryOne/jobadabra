@@ -46,7 +46,6 @@ export function createBackgroundApplyController(storage, {store = null, browser 
   const serial = work => { const value = pending.then(work); pending = value.catch(() => {}); return value; };
   onBackgroundWaitMove(() => serial(async () => {
     if (!owner) ({owner} = await browserOf().start({port, token: token()}));
-    await poll(owner);
   }));
   const cache = (item, state, decision = null) => {
     const record = terminals.record(item.id);
@@ -99,31 +98,46 @@ export function createBackgroundApplyController(storage, {store = null, browser 
       return {ok: true, mode, sessions: enrolled, message: `${enrolled.length} application${enrolled.length === 1 ? '' : 's'} queued in the background. Review filled forms in Sessions.${skippedNote}`};
     });
   }
+  // A stopped or changed-mode job is handed over before any command is collected; a missing record skips only its own session.
+  async function stateForPoll(item) {
+    let state = await store.read(item.url).catch(() => null);
+    if (!state || state.session !== item.id) return null;
+    if (!state.manualOverride && (stop() || item.stuck === 'stopped')) state = await markManual(item, 'stopped');
+    const current = config();
+    if (!state.manualOverride && (current.mode !== state.mode || current.chosenAt !== state.chosenAt)) state = await markManual(item, 'mode_changed');
+    return state.ok === false ? null : {state, current};
+  }
+  // Only an extension request can supply the e2e proof that it looked at this due job; app clock wakes are not evidence.
+  function decisionForPoll(state, dueAt, via) {
+    if (process.env.JOB_PILOTTO_E2E !== '1' || via !== 'extension' || state.mode !== 'auto' || !dueAt) return null;
+    if (state.state !== 'waiting_to_submit' && !HANDOFF.has(state.state)) return null;
+    const reason = HANDOFF.has(state.state) ? state.reason : now() >= dueAt ? 'due' : 'waiting';
+    return {via, at: now(), dueAt, state: state.state, reason};
+  }
+  // Collect at most one launch, due rechecks and permanent handoffs without ever reissuing a reserved press.
+  async function commandsForPoll(item, commands, via) {
+    const found = await stateForPoll(item);
+    if (!found) return;
+    let {state} = found;
+    const dueAt = state.readyAt ? state.readyAt + (found.current.auto?.waitMin ?? AUTO_DEFAULTS.waitMin) * 60000 : 0;
+    const decision = decisionForPoll(state, dueAt, via);
+    if (HANDOFF.has(state.state)) { commands.handoffs.push({session: item.id, reason: state.reason, reveal: state.reason !== 'captcha_preflight'}); cache(item, state, decision); return; }   // words-ok: our own hand-off reason id / user-facing word, not page knowledge
+    if (state.state === 'submitting') return;
+    if (state.state === 'waiting_to_submit' && now() >= dueAt) commands.checks.push({session: item.id});
+    if (['queued', 'preflight'].includes(state.state) && !commands.filling && !reader.busy()) {
+      const claim = await store.claim(item.url, item.id, owner);
+      if (claim.ok) { commands.filling = true; state = claim.state; commands.jobs.push({session: item.id, url: sessionTabUrl(item.url, item.id), mode: state.mode}); }
+    }
+    cache(item, state, decision);
+  }
   async function poll(givenOwner, via = 'app') {
     if (!owner) ({owner} = await browserOf().start({port, token: token()}));
     if (!givenOwner || givenOwner !== owner) return {ok: false, jobs: [], checks: []};
     await handOverAll(heldOpen, {quit: true});   // a poll before the start-up sweep never continues a job an earlier run held (owner, 30 Oct 2026: "A quit is a Stop")
-    const jobs = [], checks = [], handoffs = [];
-    let filling = false;
+    const commands = {jobs: [], checks: [], handoffs: [], filling: false};
     const open = terminals.list().filter(item => item.background && !item.outcome && !unsaved.has(item.id));   // a held job whose hand-over write threw is never continued (Gitar on #2598); the next poll tries again
-    for (const item of open) {
-      let state = await store.read(item.url).catch(() => null);   // a session whose job record is gone is skipped, never the whole poll (#2598: one removed job stopped every later one)
-      if (!state || state.session !== item.id) continue;
-      if (!state.manualOverride && (stop() || item.stuck === 'stopped')) state = await markManual(item, 'stopped');
-      const current = config();
-      if (!state.manualOverride && (current.mode !== state.mode || current.chosenAt !== state.chosenAt)) state = await markManual(item, 'mode_changed');
-      if (state.ok === false) continue;   // a handoff that did not save leaves the job as it was; never go on with an error as its state
-      const dueAt = state.readyAt ? state.readyAt + (current.auto?.waitMin ?? AUTO_DEFAULTS.waitMin) * 60000 : 0;
-      const decision = process.env.JOB_PILOTTO_E2E === '1' && via === 'extension' && state.mode === 'auto' && dueAt && (state.state === 'waiting_to_submit' || HANDOFF.has(state.state)) ? {via, at: now(), dueAt, state: state.state, reason: HANDOFF.has(state.state) ? state.reason : now() >= dueAt ? 'due' : 'waiting'} : null;
-      if (HANDOFF.has(state.state)) { handoffs.push({session: item.id, reason: state.reason, reveal: state.reason !== 'captcha_preflight'}); cache(item, state, decision); continue; }   // words-ok: our own hand-off reason id / user-facing word, not page knowledge
-      if (state.state === 'submitting') continue; // a reserved attempt is never reissued, even after a lost reply/restart
-      if (state.state === 'waiting_to_submit' && now() >= dueAt) checks.push({session: item.id});
-      if (['queued', 'preflight'].includes(state.state) && !filling && !reader.busy()) {
-        const claim = await store.claim(item.url, item.id, owner);
-        if (claim.ok) { filling = true; state = claim.state; jobs.push({session: item.id, url: sessionTabUrl(item.url, item.id), mode: state.mode}); }
-      }
-      cache(item, state, decision);
-    }
+    for (const item of open) await commandsForPoll(item, commands, via);
+    const {jobs, checks, handoffs, filling} = commands;
     // Why (2026-10-30, owner: triage read, PR C2a): a form read and an application never share the hidden browser: a read waits for open applications, and an application waits (at most the read's timeout) for a read that is queued or out (Gitar, #2602).
     jobs.push(...readCommands({filling, open}));
     return {ok: true, jobs, checks, handoffs, closes: reader.takeEnded().map(session => ({session}))};   // pages of reads Cancel or a timeout ended: the extension closes them (#2624)

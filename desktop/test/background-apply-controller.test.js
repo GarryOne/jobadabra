@@ -345,3 +345,19 @@ test('ordinary sessions never cache an e2e wait decision', async t => {
   assert.equal(Object.hasOwn(record.background, 'waitDecision'), false);
   assert.equal(Object.hasOwn(record.background, 'waitClockOffset'), false);
 });
+
+test('a clock wake leaves queued triage reads and ended-page closes for the extension', async t => {
+  const previous = process.env.JOB_PILOTTO_E2E; process.env.JOB_PILOTTO_E2E = '1';
+  t.after(() => { if (previous === undefined) delete process.env.JOB_PILOTTO_E2E; else process.env.JOB_PILOTTO_E2E = previous; });
+  const {backgroundWaitNow, moveBackgroundWaitClock} = await import('../lib/background-apply-clock.js');
+  let taken = 0, ended = 0;
+  const controller = createBackgroundApplyController({}, {store: {}, terminals: {list: () => []}, config: () => ({}),
+    browser: {start: async () => ({owner: 'reader-owner'})}, token: () => 'fictional', port: 1,
+    reader: {take: () => { taken++; return {id: 'read-next', url: 'https://jobs.example.test/read'}; }, takeEnded: () => { ended++; return ['read-ended']; }}});
+  await moveBackgroundWaitClock(backgroundWaitNow() + 1);
+  assert.deepEqual([taken, ended], [0, 0], 'waking the browser must not consume one-shot commands');
+  const commands = await controller.handle({action: 'poll', owner: 'reader-owner'});
+  assert.deepEqual(commands.closes, [{session: 'read-ended'}]);
+  assert.equal(commands.jobs[0].session, 'read-next');
+  assert.deepEqual([taken, ended], [1, 1]);
+});

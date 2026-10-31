@@ -19,6 +19,7 @@ on:
       - 'tools/check.py'
       # Files outside desktop/ that its tests read (tests/test_workflow_paths.py fails when one is missing).
       - '.github/workflows/e2e.yml'
+      - '.github/workflows/harness.yml'
       - '.gitignore'
       - 'tools/design-system/**'   # desktop/test/design-system-page.test.js builds the page with it
       - 'docs/rules/desktop-ui.md'

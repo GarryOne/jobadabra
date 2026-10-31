@@ -1,4 +1,5 @@
 // Prove wander's stored answers parse without moving facts or reaching a live key or AI.
+import {loadAppModule} from '../lib/app-module.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -14,11 +15,11 @@ import {modelFetch} from '../lib/model.mjs';
 import {python, pythonEnv} from '../lib/python.mjs';
 import {planWalk} from '../lib/wander.mjs';
 import {applicantDraft} from '../lib/applicant-seed.mjs';
-import {judge, move, planOf} from '../../lib/profile-move.js';
-import {organize} from '../../lib/profile-routing.js';
-import {propose, forCv} from '../../lib/contact-from-cv.js';
+const {judge, move, planOf} = await loadAppModule('profile-move.js');
+const {organize} = await loadAppModule('profile-routing.js');
+const {propose, forCv} = await loadAppModule('contact-from-cv.js');
 import {createStorage} from '../../lib/storage.js';
-import {openStore} from '../../lib/store/index.js';
+const {openStore} = await loadAppModule('store/index.js');
 
 const tableFile = fileURLToPath(new URL('../fixtures/golden/ai-answers.json', import.meta.url));
 const {request: captured} = JSON.parse(fs.readFileSync(new URL('../fixtures/golden/wander-decide.json', import.meta.url), 'utf8'));

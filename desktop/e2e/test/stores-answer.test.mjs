@@ -1,4 +1,5 @@
 // Execute the stores Remember step with real file persistence and a fixed classification, without a browser.
+import {loadAppModule} from '../lib/app-module.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -6,8 +7,8 @@ import path from 'node:path';
 import {test} from 'node:test';
 import {run} from '../suites/stores.mjs';
 import {createStorage} from '../../lib/storage.js';
-import * as questions from '../../lib/questions.js';
-import * as sections from '../../lib/profile-sections.js';
+const questions = await loadAppModule('questions.js');
+const sections = await loadAppModule('profile-sections.js');
 
 test('stores checks the remembered answer in its returned availability home and restores its AI stub', async t => {
   const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-stores-answer-'));

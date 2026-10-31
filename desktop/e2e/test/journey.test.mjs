@@ -1,5 +1,6 @@
 // Errors over a whole suite become findings: an uncaught exception, a console.error, one of the app's files failing to load. Expected AI refusals in a
 // suite that breaks the AI on purpose, and outside noise, do not.
+import {loadAppModule} from '../lib/app-module.mjs';
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {journeyFindings} from '../lib/journey.mjs';
@@ -57,7 +58,7 @@ test('the test profile\'s undecryptable seeded secrets are not the app\'s error 
 // The launcher opts out deliberately: the normal startup migration must preserve that choice.
 test('a throwaway app stays opted out of employer sharing through startup and relaunch', async () => {
   const {initialSettings} = await import('../lib/app.mjs');
-  const {openPoolShare} = await import('../../lib/migrate.js');
+  const {openPoolShare} = await loadAppModule('migrate.js');
   const {on, variables} = await import('../../lib/pool-share.js');
   let settings = initialSettings();
   const storage = {settings: () => settings, saveSettings: patch => { settings = {...settings, ...patch}; }};

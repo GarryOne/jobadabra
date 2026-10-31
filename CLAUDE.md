@@ -61,4 +61,4 @@ The full pre-diet text: `git show c7bed98:CLAUDE.md`.
 | Why each rule exists | [why.md](docs/rules/why.md) |
 
 ## Tests in CI (summary)
-CI runs the python, worker and desktop suites; one required check, "All checks passed" (`tools/pr-verdict.py`). A PR runs only the e2e steps and harness test files its changes reach (`desktop/e2e/lib/test-reach.mjs`); a PR's own jobs run under 10 min (`CI-budget: <why>` to exceed). Push hooks run fast pure checks (`SHIP_PR=1`); the full gate is `PUSH_FULL=1`. Detail and guards: [change-loop.md](docs/rules/change-loop.md).
+CI runs the python, worker and desktop suites; one required check, "All checks passed" (`tools/pr-verdict.py`). A PR runs only the e2e steps its changes reach, and every harness test file when it changes what one reaches (`harness.yml`); a PR's own jobs run under 10 min (`CI-budget: <why>` to exceed). Push hooks run fast pure checks (`SHIP_PR=1`); the full gate is `PUSH_FULL=1`. Detail and guards: [change-loop.md](docs/rules/change-loop.md).

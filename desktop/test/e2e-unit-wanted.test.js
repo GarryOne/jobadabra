@@ -19,7 +19,8 @@ test('the hook runs it (a block in tools/pre-push-check.sh) and the CI command i
   const hook = fs.readFileSync(new URL('../../tools/pre-push-check.sh', import.meta.url), 'utf8');
   assert.match(hook, /node "\$repo\/tools\/e2e-unit-wanted\.mjs"/);
   assert.match(hook, /\(cd desktop\/e2e && npm test\)/);
-  assert.match(fs.readFileSync(new URL('../../.github/workflows/e2e.yml', import.meta.url), 'utf8'), /working-directory: desktop\/e2e\n(\s+#.*\n)*\s+run: (npm test|node test-sets\.mjs pr \| xargs node --test .*)/);
+  // Why (owner, 30 Oct 2026, option C): CI runs the harness's own tests in harness.yml, every file, with the hook's command.
+  assert.match(fs.readFileSync(new URL('../../.github/workflows/harness.yml', import.meta.url), 'utf8'), /working-directory: desktop\/e2e\n(\s+#.*\n)*\s+run: npm test\n/);
 });
 
 test('the suite no longer rewrites a tracked file: the playwright blob report is ignored', () => {

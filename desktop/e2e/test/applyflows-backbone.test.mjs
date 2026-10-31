@@ -1,4 +1,5 @@
 // Applyflows fixture questions are explicit; unknown questions fail before any cache or model.
+import {loadAppModule} from '../lib/app-module.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -13,7 +14,7 @@ import {INSTRUCTIONS as KIND_RULES} from '../../lib/ladder/rung2-sketch.js';
 import {INSTRUCTIONS as FORM_RULES, STEP_RULE, SUBMIT_RULE, BLOCKED_RULE, BOT_RULE} from '../../lib/form-judge.js';
 import {DIGEST_INSTRUCTIONS} from '../../lib/ladder/rung3-digest.js';
 import {CHAIN, FORMS, LATE, MISLABELLED} from '../lib/forms.mjs';
-import {INSTRUCTIONS as LEARN_RULES, judge as judgeLearnings} from '../../lib/learnings.js';
+const {INSTRUCTIONS: LEARN_RULES, judge: judgeLearnings} = await loadAppModule('learnings.js');
 import * as suite from '../suites/applyflows.mjs';
 
 const body = (system, text) => ({model: 'fixture', system, messages: [{role: 'user', content: text}]});

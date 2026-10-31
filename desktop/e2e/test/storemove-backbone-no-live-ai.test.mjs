@@ -1,4 +1,5 @@
 // Prove storemove keeps its original lines with stored AI answers and no live key or transport.
+import {loadAppModule} from '../lib/app-module.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -7,8 +8,8 @@ import {loadTable, questionOf, storedAnswer} from '../lib/ai-answers.mjs';
 import {answersTableFile, backboneHarness} from '../lib/backbone-harness.mjs';
 import {requestKey} from '../lib/ai-meter.mjs';
 import {modelFetch} from '../lib/model.mjs';
-import {judge} from '../../lib/profile-move.js';
-import {judgeNew} from '../../lib/details-review.js';
+const {judge} = await loadAppModule('profile-move.js');
+const {judgeNew} = await loadAppModule('details-review.js');
 import {createStorage} from '../../lib/storage.js';
 
 const {request: captured} = JSON.parse(fs.readFileSync(new URL('../fixtures/golden/storemove-organize-ask.json', import.meta.url), 'utf8'));

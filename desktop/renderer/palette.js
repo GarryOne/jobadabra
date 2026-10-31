@@ -6,6 +6,10 @@ const FILLER = new Set(['a', 'an', 'the', 'for', 'to', 'my', 'me', 'of', 'in', '
 const words = text => String(text).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
   .split(/[^a-z0-9]+/).filter(Boolean);
 
+/** The words that count as a command's LABEL when ranking: its label and its alias (a card's own words: "email" and "telegram" → Notifications). Why (31 Oct 2026, main red): the palette test's
+ *  "hint-only row" check had its own copy that left the alias out, so it called the Notifications row weak for "telegram"; one definition, used by rank() and by test/palette-one-row-per-card.test.js. */
+export const labelWords = command => words(`${command.label} ${command.alias || ''}`);
+
 // What a row shows: its path when it has one ("Settings → Connections → Chrome extension"), else its label.
 export const shownLabel = command => (command.path?.length ? command.path.join(' → ') : command.label);
 const sameWords = (a, b) => words(a).join(' ') === words(b).join(' ');
@@ -26,7 +30,7 @@ export function rank(commands, query) {
   const holds = text => { const all = words(text); return terms.every(term => all.some(word => word.startsWith(term))); };
   const scored = [];
   commands.forEach((command, index) => {
-    const label = words(`${command.label} ${command.alias || ''}`), rest = words(`${command.keywords || ''} ${command.hint || ''}`);   // alias: a card's own words ("email" → Notifications)
+    const label = labelWords(command), rest = words(`${command.keywords || ''} ${command.hint || ''}`);
     let score = 0, strong = false;
     for (const term of terms) {
       if (label.some(word => word.startsWith(term))) { score += label[0].startsWith(term) ? 4 : 3; strong = true; }

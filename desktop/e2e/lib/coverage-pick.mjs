@@ -216,6 +216,12 @@ export function stepsCovering(map, hunksBySha, {smoke = 'settings', maxUsers = M
       }
     }
   }
+  settleSetup(setupOnly, out, pick, smoke);
+  return out;
+}
+
+// The lines only launch ran (SETUP): ONE suite's setup each, the smoke when it ran the line, unless a suite already runs for this PR. A pure move out of stepsCovering (clean-code gate).
+function settleSetup(setupOnly, out, pick, smoke) {
   const byKey = {};
   for (const {suite, key} of setupOnly) (byKey[key] ||= []).push(suite);
   for (const [key, candidates] of Object.entries(byKey)) {
@@ -223,7 +229,6 @@ export function stepsCovering(map, hunksBySha, {smoke = 'settings', maxUsers = M
     const chosen = candidates.includes(smoke) ? smoke : [...candidates].sort()[0];
     pick(chosen, {setup: true}, `runs ${key} at launch (one suite's setup)`);
   }
-  return out;
 }
 
 // The suites a PR's files point at (pointsAt(file) -> suites: its own suite file, the harness, a suite's `watches`, lib/plan.mjs suitesFor) that still run whole.

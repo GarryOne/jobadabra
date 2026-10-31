@@ -14,6 +14,10 @@ export const SILENT_AFTER_MS = 30000;
 // one is out. The pause belongs to the application of the tab whose ask is out (14 Oct 2026: it was summed across tabs, so an ask on one application also paused another's clock): flow.js
 // apiFor(tabId, ...) brackets the call with askStarted(tabId) / askEnded(what it returned); the time with at least one ask of that application out is summed. A tab-less ask (api()) pauses nothing:
 // a miss is today's behaviour.
+// Why (31 Oct 2026, a8; beta 41242762348 apply-2of3, app.log 21:37:37): the fill's OWN awaited reads are waits too. On a starved Chrome pageStill took 12 s and the label read 5 s and 19 s, "dead end: silent"
+// was called 5 s into "filling", and a slow Mac would have handed the person a form still being filled. waiting(tabId, work) (fill-span.js brackets every span of the fill with it) shares the ask's
+// bookkeeping. One continuous pause counts for at most MAX_PAUSE_MS: a read that never answers is still a stall, called MAX_PAUSE_MS + T after the last progress (was T).
+export const MAX_PAUSE_MS = 90000;   // the 90 s a whole fill is given in the e2e (the fill cap): no single wait is slow-Mac work beyond what the whole fill is allowed
 const asks = new Map();   // application -> {count, since, total}
 export function askStarted(tabId, now = Date.now()) {
   if (tabId == null) return null;
@@ -24,9 +28,14 @@ export function askStarted(tabId, now = Date.now()) {
 }
 export function askEnded(app, now = Date.now()) {
   const ask = asks.get(app);
-  if (ask && ask.count > 0 && --ask.count === 0) ask.total += now - ask.since;
+  if (ask && ask.count > 0 && --ask.count === 0) ask.total += Math.min(now - ask.since, MAX_PAUSE_MS);
 }
-export const askTime = (app, now = Date.now()) => { const ask = asks.get(app); return ask ? ask.total + (ask.count ? now - ask.since : 0) : 0; };
+export const askTime = (app, now = Date.now()) => { const ask = asks.get(app); return ask ? ask.total + (ask.count ? Math.min(now - ask.since, MAX_PAUSE_MS) : 0) : 0; };
+/** Run one awaited step of a tab's fill as a wait: the application's silent clock stands still while it runs (clock: for the tests' fake time). A tab-less step pauses nothing. */
+export async function waiting(tabId, work, clock = Date.now) {
+  const app = askStarted(tabId, clock());
+  try { return await work(); } finally { askEnded(app, clock()); }
+}
 // The silence's length: the time since the last progress that was not spent waiting on an ask (clock.waited: the application's askTime at the note; none: the plain time, as the offline measurement keeps it).
 export const quietFor = (clock, now) => now - clock.at - (clock.waited == null ? 0 : askTime(clock.app, now) - clock.waited);
 

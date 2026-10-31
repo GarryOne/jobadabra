@@ -12,7 +12,8 @@ import {preparePage, readPage, askPage, correctPage, describePage} from './fill-
 import {pressPosting, correctPosting, climbPosting, lookAtPosting, leavePage, fillPage, afterFill} from './fill-flow-steps.js';
 import {backgroundMayFill, backgroundPage, backgroundRead} from './background-apply.js';
 import {PAGE_FILES, apiFor, clickCombos, settings} from './flow.js';
-import {decide, span} from './log.js';
+import {decide} from './log.js';
+import {ownSpan} from './fill-span.js';
 import {retireFill} from './one-fill.js';
 import {handoffKey} from './ready-handoff.js';
 import {sweepConsent} from './consent-sweep.js';
@@ -91,7 +92,7 @@ async function forgetKind(tab, kind, reason) {
 // What the person sees while the app waits for the AI (the panel's step line; nothing is drawn when the tab has no panel yet). Never throws.
 export const sayStep = (tabId, text) => progress(tabId, text).catch(() => {});
 export async function askKind(tab, {fresh = false, digest = false, shadow = false} = {}) {   // fresh: the page changed after a press, a kept answer for its shape does not apply (start-route.js); shadow: the dead-end question (ladder/fallback.js)
-  const trace = (name, run) => span(`askKind ${tab.id} ${name}`, run);
+  const trace = (name, run) => ownSpan(tab.id, `askKind ${tab.id} ${name}`, run);
   const askedAt = Date.now();   // the three ways this returns null with no word from the app are logged below (Hornbach 0.9.176: null after 2.1 s, nothing said which)
   await trace('labels', () => labelReaderIn(tab.id));
   const sketch = await trace('sketch', () => pageSketchOf(tab.id));
@@ -262,8 +263,8 @@ export async function consider(tab, jobUrl) {
   started.add(key);
   notePage(tab.id, key, {job: jobUrl || tab.url, page: tab.url});   // a new page in the tab is progress, for this application (ladder/progress.js)
   if (await restoreLostQuery(tab, jobUrl, {decide})) return;   // Why (27 Oct 2026, fair round form 264402): a redirect dropped the posting's ?job id, the embed showed its list; only the tab's first look may reopen it, before anything is read (restore-query.js)
-  // Why (30 Oct 2026, ap): spans name the pre-fill wait without changing its order, bounds or late-read guards.
-  await span(`consider ${tab.id} pageStill`, () => pageStill(tab.id, {maxMs: 1500}));   // the form renders after the load event: read once the page has been still 0.5 s, at most the old 1.5 s (page-still.js)
+  // Why (30 Oct 2026, ap; 31 Oct 2026, a8): spans name the pre-fill wait without changing its order, bounds or late-read guards; ownSpan also counts each as a wait of the silent dead-end clock (fill-span.js), so a slow Mac is not called silent.
+  await ownSpan(tab.id, `consider ${tab.id} pageStill`, () => pageStill(tab.id, {maxMs: 1500}));   // the form renders after the load event: read once the page has been still 0.5 s, at most the old 1.5 s (page-still.js)
   const live = await chrome.tabs.get(tab.id).catch(() => null);
   const gen = openRead(tab.id, key, started, !live || pageKey(live.url) !== pageKey(tab.url));
   if (!gen) return;   // only a read that goes on makes older ones late: one that found the tab moved on (above) must not kill the read of the page the tab is on now
@@ -275,17 +276,17 @@ export async function consider(tab, jobUrl) {
    * pressed: pressPosting, afterApply, routeAfterApply, climbPosting, pressDigest, lookAtPosting (initial false and later press results);
    * lookAfterPress: pressPosting, routeAfterApply (initial null and the fresh post-press answer). Some assignments carry an unchanged value onward. */
   const step = {tab, jobUrl, key, live, gen, flow: fillFlowParts};
-  await span(`consider ${tab.id}/${gen} preparePage`, () => preparePage(step));
-  if (!await span(`consider ${tab.id}/${gen} readPage`, () => readPage(step))) return;
-  if (!await span(`consider ${tab.id}/${gen} askPage`, () => askPage(step))) return;
+  await ownSpan(tab.id, `consider ${tab.id}/${gen} preparePage`, () => preparePage(step));
+  if (!await ownSpan(tab.id, `consider ${tab.id}/${gen} readPage`, () => readPage(step))) return;
+  if (!await ownSpan(tab.id, `consider ${tab.id}/${gen} askPage`, () => askPage(step))) return;
   if (!await correctPage(step)) return;
   await describePage(step);
   if (!await pressPosting(step)) return;
   await correctPosting(step);
   if (!await climbPosting(step)) return;
   if (!await lookAtPosting(step)) return;
-  if (await span(`consider ${tab.id}/${gen} backgroundRead`, () => backgroundRead(tab, step))) return;   // a triage read looks at the form and stops here: it never fills (extension/background-apply.js)
-  if (await span(`consider ${tab.id}/${gen} backgroundPage`, () => backgroundPage(tab.id, step.role, step.kind?.botCheck === true))) return;
+  if (await ownSpan(tab.id, `consider ${tab.id}/${gen} backgroundRead`, () => backgroundRead(tab, step))) return;   // a triage read looks at the form and stops here: it never fills (extension/background-apply.js)
+  if (await ownSpan(tab.id, `consider ${tab.id}/${gen} backgroundPage`, () => backgroundPage(tab.id, step.role, step.kind?.botCheck === true))) return;
   if (step.role !== 'form') { await leavePage(step); return; }
   if (!await fillPage(step)) return;
   await afterFill(step);

@@ -15,7 +15,7 @@ const runUrl = process.env.GITHUB_RUN_ID ? `${process.env.GITHUB_SERVER_URL}/${p
 
 const due = dueStarts(now);
 const runsOf = Object.fromEntries(due.map(item => [item.workflow,
-  JSON.parse(gh(['run', 'list', '--workflow', item.workflow, '--limit', '40', '--json', 'createdAt,displayTitle,event,url']))]));
+  JSON.parse(gh(['run', 'list', '--workflow', item.workflow, '--limit', '100', '--json', 'createdAt,displayTitle,event,url']))]));
 const missing = missingStarts(due, runsOf);
 for (const item of due) console.log(`${item.workflow} due ${item.at}: ${missing.includes(item) ? 'MISSING' : 'started'}`);
 

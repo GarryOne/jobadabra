@@ -18,6 +18,7 @@ def run(rid, title, conclusion='failure', sha='f' * 40, branch='main'):
 
 JOBS = {
     # newest first: two runs that tested nothing are not runs here (G7: cancelled); a mutant is red on purpose; a by-hand re-run on main cleared settings
+    8: [{'name': 'jobs', 'conclusion': 'failure'}, {'name': 'cardstates', 'conclusion': 'failure'}],   # a night burn-in pass: a look at a step's record, not main's state
     5: [{'name': 'cardstates', 'conclusion': 'failure'}],                                   # RC soak: tests a release, not main
     4: [{'name': 'settings', 'conclusion': 'success'}, {'name': 'plan', 'conclusion': 'success'}],
     3: [{'name': 'cardstates', 'conclusion': 'success'}],                                   # a mutant
@@ -26,7 +27,8 @@ JOBS = {
         {'name': 'Telegram alert', 'conclusion': 'failure'}, {'name': 'HTML report', 'conclusion': 'success'}],
     1: [{'name': 'cardstates', 'conclusion': 'success'}, {'name': 'interactions', 'conclusion': 'success'}, {'name': 'foryou', 'conclusion': 'success'}],
 }
-RUNS = [run(6, 'E2E check · on time (Worker cron)', conclusion='cancelled'),
+RUNS = [run(8, 'Night burn-in 3/5 · aaaaaaaa'),
+        run(6, 'E2E check · on time (Worker cron)', conclusion='cancelled'),
         run(5, 'RC soak desktop-v0.8.28'),
         run(4, 'E2E Mac + Linux · settings · main', conclusion='success'),
         run(3, 'Mutant raw-http-error', conclusion='success'),
@@ -61,6 +63,10 @@ class MainE2eState(unittest.TestCase):
         self.assertEqual(self.state['cardstates']['url'], 'u2', 'the RC soak (5) and the mutant (3) are not main checks')
         self.assertNotIn('Telegram alert', self.state)
         self.assertNotIn('HTML report', self.state)
+
+    def test_a_night_burn_in_pass_never_counts_as_main_red(self):
+        self.assertEqual(self.state['jobs']['conclusion'], 'success', 'the red pass (8) did not turn a green suite red')
+        self.assertEqual(self.state['cardstates']['url'], 'u2')
 
     def test_a_shard_red_makes_its_suite_red(self):
         self.assertEqual(self.state['recorded']['conclusion'], 'failure')

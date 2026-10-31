@@ -10,6 +10,7 @@ import {fileURLToPath, pathToFileURL} from 'node:url';
 import {ensureStaged} from './lib/ensure-staged.mjs';
 import {suitesUsing, watchesWithImports} from './lib/import-graph.mjs';
 import {tolerantMatrixFlag, autoSuites, cadenceOf, exploreDecision, onWindows, runnerOf, noiseTripped, reviewNeeded, suitesFor, suitesNamed, suitePartsFor, waitingFindings} from './lib/plan.mjs';
+import {nightRef, nightSuites, NIGHT_TITLE} from './lib/night-pass.mjs';
 import {asIssues, REGISTER_LIST, registerEntries} from './lib/prejudge.mjs';
 import {shardLegs, suiteOfKey, windowsMatrix} from './lib/suite-shards.mjs';
 import {STORES, WHY} from './lib/pick-why.mjs';
@@ -55,9 +56,12 @@ export async function planRun({env, gh = realGh, all, minutes, os = async () => 
   const {EVENT: event, REPO: repo, SHA: sha} = env;
   // TARGET_REF (the gate, the soak top-ups and the stable canary): test THAT release's commit, with this workflow file. The workflow file of an old tag does not know newer
   // inputs (canary, soak), so the run is started on main and told which tag to check out.
+  // NIGHT_PASS ("3/5", lib/night-pass.mjs): one of the five nightly full runs; each tests the commit of pass 1.
+  const night = env.NIGHT_PASS ? nightRef({pass: env.NIGHT_PASS, sha, now: Date.now(), runs: JSON.parse(gh(['run', 'list', '-R', repo, '--workflow', 'e2e.yml', '-L', '40', '--json', 'headSha,createdAt,displayTitle']) || '[]')}) : null;
+  const targetRef = env.TARGET_REF || (night && night.ref !== sha ? night.ref : '');
   let target = '';
-  if (env.TARGET_REF) {
-    try { target = gh(['api', `repos/${repo}/commits/${env.TARGET_REF}`, '-q', '.sha']).trim(); } catch { throw new Error(`target_ref ${env.TARGET_REF} is not a commit of ${repo}`); }
+  if (targetRef) {
+    try { target = gh(['api', `repos/${repo}/commits/${targetRef}`, '-q', '.sha']).trim(); } catch { throw new Error(`target_ref ${targetRef} is not a commit of ${repo}`); }
   }
   const ref = target || sha;
   const lines = text => String(text || '').split('\n').map(line => line.trim()).filter(Boolean);
@@ -70,7 +74,7 @@ export async function planRun({env, gh = realGh, all, minutes, os = async () => 
   const tested = run => ['success', 'failure'].includes(run.conclusion);
   // Runs that test something else (a release, a mutation, one bisect step at an older commit: gate G2b), a PR's branch (the run list is every branch's), or a few
   // steps after a merge (main-steps.yml: not a look; the nightly full run stays) are never main's last tested commit nor its looks.
-  const otherCode = run => /^(Stable canary|RC soak|Gate|Beta E2E tests|Mutant|Bisect|E2E for PR ·|E2E after merge ·|E2E check · outside world) /.test(run.displayTitle || '');
+  const otherCode = run => /^(Stable canary|RC soak|Gate|Beta E2E tests|Night burn-in|Mutant|Bisect|E2E for PR ·|E2E after merge ·|E2E check · outside world) /.test(run.displayTitle || '');
   const lastSha = runs.find(run => run.event !== 'push' && tested(run) && !otherCode(run))?.headSha || '';
   const issues = json(['issue', 'list', '-R', repo, '--label', 'auto-ui', '--state', 'open', '--limit', '300', '--json', 'number,state,labels,body,comments,createdAt']);
   const waiting = waitingFindings(issues);
@@ -87,6 +91,13 @@ export async function planRun({env, gh = realGh, all, minutes, os = async () => 
     pushReach = changedFiles.filter(file => suitesFor([file], all, pointing).includes('qualityai'));
   }
   else if (env.PROMOTE_TAG) suites = [];   // a manual dry run of the promotion step: no suites
+  // A night pass: the beta's own layout (the gate's suites, both stores), without the release steps and without a paid model. A release run that is testing owns the per-suite groups, so the pass
+  // skips itself rather than cancel a gate job waiting there (the same rule as a scheduled run's, below).
+  else if (night) {
+    const releasing = json(['run', 'list', '-R', repo, '--workflow', 'desktop.yml', '-L', '5', '--json', 'status,displayTitle']).filter(run => run.status !== 'completed' && !/^Build only/.test(run.displayTitle || ''));
+    suites = releasing.length ? [] : nightSuites(all, cadence);
+    why = releasing.length ? `${NIGHT_TITLE} ${night.pass}/5 skipped: a release run is testing (${releasing[0].displayTitle})` : night.why;
+  }
   // The gate: the release run calls it only for a release it built (a nightly or a beta by hand, desktop.yml), or a gate by hand. Always + nightly suites, not the manual ones.
   else if (env.GATE_TAG) {
     tag = env.GATE_TAG; suites = autoSuites(all, cadence);
@@ -123,7 +134,7 @@ export async function planRun({env, gh = realGh, all, minutes, os = async () => 
   if (env.PR_SUITES || event === 'pull_request') suites = suites.filter(suite => cadence[suite] !== 'outside');
 
   const files = lastSha ? changed(lastSha, ref) : null;
-  let review = exploring || reviewNeeded({files: files || [], waiting, known: files !== null});   // an exploring run exists for what the AI review sees
+  let review = !night && (exploring || reviewNeeded({files: files || [], waiting, known: files !== null}));   // an exploring run exists for what the AI review sees
   if (review) {   // the noise breaker: no AI tokens on a review whose recent issues were mostly noise
     try {
       const issues = JSON.parse(gh(['issue', 'list', '--label', 'auto-ui', '--state', 'all', '--limit', '300', '--json', 'number,state,stateReason,labels,comments,createdAt']));
@@ -145,7 +156,7 @@ export async function planRun({env, gh = realGh, all, minutes, os = async () => 
   const prStores = String(env.PR_SUITES || '').trim() ? picks[STORES] || {} : {};
   // Only suites handed step names can need a renamed-pick fallback; each leg carries the same roster for both attempts.
   const fallbackSuites = suites.filter(suite => Array.isArray(picks[suite]) && picks[suite].length > 0).join(',');
-  const legs = key => (env.GATE_TAG && env.GATE_STORE_LEGS !== 'one' && !storeless.includes(suiteOfKey(key)) ? [{store: 'sqlite', key}, {store: 'standin', key: `${key}-standin`}] : [{store: prStores[suiteOfKey(key)] || '', key}]);
+  const legs = key => ((env.GATE_TAG || night) && env.GATE_STORE_LEGS !== 'one' && !storeless.includes(suiteOfKey(key)) ? [{store: 'sqlite', key}, {store: 'standin', key: `${key}-standin`}] : [{store: prStores[suiteOfKey(key)] || '', key}]);
   // A suite with `shards` is one job per slice (lib/suite-shards.mjs), on both lanes: the recorded replay outgrew one job's budget (13 Oct 2026).
   const qualityParts = env.PR_SUITES ? picks['(parts)']?.qualityai || ['journey']
     : event === 'push' ? suitePartsFor(changedFiles, watchesWithImports(parts.qualityai || {}), pushReach)

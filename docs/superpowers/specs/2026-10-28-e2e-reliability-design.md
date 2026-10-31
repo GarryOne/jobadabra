@@ -247,6 +247,9 @@ Who builds what: the verdict session takes rows 16-17 and the push-checks sessio
 | 34 | Every backbone step stalls out on its own measured hang cap that fits its job's budget; the runner refuses a step without one (no 8-minute default) | 14 | `a8` (Codex): 2/5 |
 | 35 | A red job keeps its evidence: no half-written trace, the secret scan drops an unscannable file, never the whole upload | 14 | `a8` (Codex): 3/5 |
 | 36 | A new step in a backbone suite passes 5 first tries on its PR (burn-in, as a suite admission) | 14 | `a8`: 4/5 |
+| 37 | Night burn-in: five full runs a night at different hours, the beta's own layout (every gate suite, both stores, Windows following) on the commit of pass 1, on the Worker's ten-minute trigger; no paid AI | 15 | `a8`: 1/3 |
+| 38 | Only proven steps block a beta: safety steps, any red on code changed since the step's last green, and a red on a step proven by ≥ 99.5% over ~200 runs on unchanged code; every other red reports and opens an issue | 15 | `a8-two-flaky-steps`: 2/3 |
+| 39 | After the first full night: steps under the threshold (not safety ones) are listed with their issues and fixed per cause | 15 | `a8`: 3/3 |
 
 Before/after for the 30 Oct ratchet change, at `f93a714`: non-test `.mjs` files, excluding `test/`, `recorded/`, `fixtures/` and `node_modules/`; lines are newline counts in those files. This adds the brake; both shrink steps remain pending.
 
@@ -340,3 +343,9 @@ One `###` per plan step, one box per thing that lands; a box is ticked only with
 - [ ] A red job uploads its app log and steps even when its trace ran out of time (3/5).
 - [ ] A new step in a backbone suite passes 5 first tries on its PR before it blocks (4/5).
 - [x] A step red on unchanged code is called flaky on the red and suspended with an owner issue; it never blocks a beta while suspended (5/5). (proof: desktop/e2e/test/flaky-verdict.test.mjs, desktop/e2e/test/flaky-evidence.test.mjs, desktop/e2e/test/suspended-steps.test.mjs, desktop/e2e/test/suspend-flip.test.mjs, desktop/e2e/test/ci-alert.test.mjs, tests/test_red_main_gate.py, tests/test_pr_flaky.py)
+
+### 15. Predictable beta: the night burn-in (rows 37-39, `a8`, 31 Oct 2026)
+Owner, 31 Oct 2026: "I want predictability. If a test was green last time, it should be green this time as well, if the code didn't change on that area." Chosen: "Burn in all steps once"; "Only proven steps block"; "Spread the 5 burn-in passes over the night at different hours, not back to back (keeps PR CI free by day, and catches time-of-day flakes like calendar's)." Then: "Beta blocks only on your safety steps + steps proven ≥99.5% in night burn-in"; a step's runs count when they are "every run on unchanged code" (night passes, PR, after-merge and beta runs; every machine and store; ~200 runs, at most 1 red).
+- [ ] 1/3 Night burn-in: five passes at 21:00, 23:30, 01:30, 03:30 and 05:30 UTC from the Worker's `*/10` trigger (no 4th trigger exists), each the beta's layout on pass 1's commit, no paid AI. Measured: 45 jobs and about 180 runner-minutes a pass, about 900 a night.
+- [ ] 2/3 The beta gate: only proven steps block (`a8-two-flaky-steps`; owns the history file and the writer after each run).
+- [ ] 3/3 After the first full night: one PR suspends the steps under the threshold, with their issues; fix briefs per cause.

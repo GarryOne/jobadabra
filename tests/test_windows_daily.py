@@ -22,10 +22,17 @@ class WindowsDaily(unittest.TestCase):
         for never in ('!inputs.release_run', '!inputs.canary', '!inputs.soak', '!inputs.mutant', '!inputs.bisect'):
             self.assertIn(never, cond)
 
+    def test_a_night_pass_always_starts_windows_titled_apart(self):
+        # Why (31 Oct 2026, a8): the five night passes test ONE commit; the once-a-day limit and the "commit already tested" skip (plan-windows.mjs) would drop passes 2 to 5 on Windows.
+        script = windows_job().split('- name: Start the Windows run on this commit', 1)[1]
+        self.assertIn('NIGHT: ${{ inputs.night_pass }}', script)
+        self.assertIn('extra=(-f "night=$NIGHT" -f fixed=true)', script)
+        self.assertIn("inputs.night_pass", re.search(r'^    if: (.*)$', windows_job(), re.M).group(1))
+
     def test_once_a_day_outside_a_gate(self):
         script = windows_job().split('- name: Start the Windows run on this commit', 1)[1]
         self.assertIn('GATE: ${{ inputs.gate_tag }}', script)
-        self.assertRegex(script, r'if \[ -z "\$GATE" \]; then')
+        self.assertRegex(script, r'if \[ -z "\$GATE" \] && \[ -z "\$NIGHT" \]; then')
         self.assertIn('date -u +%Y-%m-%d', script)
         self.assertIn("E2E Windows · the Mac run's suites · ", script, 'the title e2e-windows.yml gives a run after a Mac run (plan-windows.mjs macRunTitle)')
         self.assertLess(script.index('exit 0'), script.index('gh workflow run e2e-windows.yml'))

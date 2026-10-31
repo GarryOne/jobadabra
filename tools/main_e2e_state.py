@@ -19,7 +19,7 @@ from pathlib import Path
 REPO = 'GarryOne/jobadabra'
 LANES = Path(__file__).resolve().parent.parent / 'desktop/e2e/lanes.json'
 # Runs that do not check main's own code as it is.
-NOT_MAIN_CHECK = re.compile(r'^(Mutant|RC soak|Stable canary|Beta E2E tests|Gate|Bisect|E2E check · outside world) ')   # the outside world is health, never main's state (#2502)
+NOT_MAIN_CHECK = re.compile(r'^(Mutant|RC soak|Stable canary|Beta E2E tests|Gate|Night burn-in|Bisect|E2E check · outside world) ')   # the outside world is health, never main's state (#2502)
 # Jobs of e2e.yml that are not a suite.
 NOT_SUITE = {'plan', 'HTML report', 'promote', 'Telegram alert', 'Windows follows', 'Nothing tested', 'AI credit health'}
 AFTER_MERGE = 'E2E after merge · '   # e2e.yml run-name for the steps main-steps.yml starts after a merge

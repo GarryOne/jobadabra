@@ -1,4 +1,5 @@
 // What the Windows e2e (e2e-windows.yml) runs: of the suites planned below, only apply and the settings smoke (lib/plan.mjs WINDOWS; the e2e audit, 26 Oct 2026), unless named by hand. In the release run (desktop.yml, "E2E · Windows", GATE_TAG) the gate's own plan: plan-run.mjs planRun, exactly as the Mac + Linux
+// Job: pick the suites
 // gate plans it (its suites, its AI review), so the Windows lane never waits for the Mac lane (7 Oct 2026).
 // After a scheduled Mac run (e2e.yml, job "Windows follows"), when it tested something: the same suites
 // on the same commit, with the AI screenshot review where the Mac run had it, so Windows has the Mac's coverage (4 Oct 2026: it ran 7 of 13
@@ -42,7 +43,7 @@ if (import.meta.url === pathToFileURL(process.argv[1] || '').href) {
   if (id && !process.env.ONLY) {
     mac = {jobs: JSON.parse(gh(['api', `repos/${repo}/actions/runs/${id}/jobs?per_page=100`, '--jq', '.jobs']))};
     const runs = JSON.parse(gh(['run', 'list', '--repo', repo, '--workflow', 'e2e-windows.yml', '--limit', '50', '--json', 'databaseId,displayTitle,conclusion']))
-      .filter(run => run.displayTitle === macRunTitle(sha) && String(run.databaseId) !== String(process.env.GITHUB_RUN_ID));
+      .filter(run => !process.env.NIGHT && run.displayTitle === macRunTitle(sha) && String(run.databaseId) !== String(process.env.GITHUB_RUN_ID));
     previous = testedBefore(runs.map(run => ({id: run.databaseId, title: run.displayTitle, conclusion: run.conclusion,
       suitesRan: JSON.parse(gh(['api', `repos/${repo}/actions/runs/${run.databaseId}/jobs?per_page=100`, '--jq', '[.jobs[] | select(.name != "plan" and .conclusion != "skipped" and .conclusion != "cancelled")] | length']))})), sha, process.env.GITHUB_RUN_ID);
   }

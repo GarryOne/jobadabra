@@ -6,7 +6,7 @@ import {INSTRUCTIONS as FORM_JUDGE} from '../../lib/form-judge.js';
 import {FORMS} from './forms.mjs';
 import {addKitJob, removeJobsByUrl} from './seed-data.mjs';
 import {HIDDEN_NEED, autoFormOf, closeHiddenBrowser, describeHidden, evaluateOn, hiddenTargets, linkRuntime, withFormJudge} from './background-proof.mjs';
-import {pollUntil, stepTimeLeft} from './wait-on-state.mjs';
+import {pollUntil, stepTimeLeft, stepWait} from './wait-on-state.mjs';
 import {assertReadUntyped, sampleBeforeClose, TYPED_SNAPSHOT} from './typed-recorder.mjs';
 import {CHIP_VALUE, sessionsNow} from './apply-triage-steps.mjs';
 
@@ -76,14 +76,14 @@ export async function runReadSteps(ctx) {
       });
       try {
         await page.reload();
-        await page.locator('.view:not([hidden])').waitFor({timeout: stepTimeLeft()});
+        await stepWait('the app window showed its view after the reload', timeout => page.locator('.view:not([hidden])').waitFor({timeout}));
         await page.click('.nav[data-view="jobs"]');
         await page.fill('#filter-text', form.url);   // Why (2026-10-30, CI run 41092478435): a Saved job is no row of the default "New matches" view; a pasted link finds a job whatever its status (renderJobs `anyStatus`)
         await readState('the fixture job never appeared on the Jobs list', async () => (await chipOfRow(page, form.title)) !== '');
         if (await chipOfRow(page, form.title) !== 'Not checked') throw new Error('the job already had a chip before any read');
         const sessions = sessionsNow(ctx), posted = forms.posts.length;
         await page.click('#triage-open');
-        await page.waitForSelector('#triage-dialog[open]', {timeout: stepTimeLeft()});
+        await stepWait('the triage dialog opened', timeout => page.waitForSelector('#triage-dialog[open]', {timeout}));
         await page.fill('#triage-n', '1');   // Why (2026-10-30, owner: the popup is becoming one field, the first N best matching jobs): the default "best" choice ranks by fit; this job is fit 90 and the suite's other fixture jobs sit below it, so the first 1 is this job
         await page.click('#triage-start');
         await readState('the chip never showed the form read', async () => (await chipOfRow(page, form.title)) !== 'Not checked')
@@ -98,7 +98,7 @@ export async function runReadSteps(ctx) {
         if (sessionsNow(ctx) !== sessions) throw new Error('a read created or changed a session; it is not an application');
       } finally {
         await page.click('#triage-cancel').catch(() => {});   // a run still going would read on into the next hidden-browser step
-        await page.waitForSelector('#triage-progress', {state: 'hidden', timeout: stepTimeLeft()}).catch(() => {});
+        await stepWait('the triage progress went away', timeout => page.waitForSelector('#triage-progress', {state: 'hidden', timeout})).catch(() => {});
         await page.click('#triage-close').catch(() => {});
         await page.fill('#filter-text', '').catch(() => {});
         await watch.stop();

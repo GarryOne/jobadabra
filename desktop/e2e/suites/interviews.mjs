@@ -13,7 +13,7 @@ import {pickJob} from '../lib/picker.mjs';
 import {ensureSetUp} from '../lib/seed.mjs';
 import {answerConfirms, captureExternal, ids, independent} from '../lib/steps.mjs';
 import {goView} from '../lib/go-view.mjs';
-import {pollUntil, stepTimeLeft} from '../lib/wait-on-state.mjs';
+import {pollUntil, stepTimeLeft, stepWait} from '../lib/wait-on-state.mjs';
 
 // Why (29 Oct 2026, ap): rule A serves declared reviews and patterns; the no-credit fault still precedes the table.
 export const offlineAi = true;
@@ -48,7 +48,7 @@ export async function run(ctx) {
       throw new Error(`${error.message.split('\n')[0]}; expected ${expected} rows, the page shows ${JSON.stringify(seen)}`);
     });
     // The library paints its saved copy first and re-draws when Notion answers: act only once that is done, so the rows the test reads are the final ones.
-    await page.waitForFunction(want => document.getElementById('iv-lib-stats').textContent.trim() === want, SAVED_TO, {timeout: stepTimeLeft()});
+    await stepWait('the interview library showed its saved count', timeout => page.waitForFunction(want => document.getElementById('iv-lib-stats').textContent.trim() === want, SAVED_TO, {timeout}));
   };
   // A re-draw of the table (a read finishing) keeps an open ⋯ menu (components.js holdMenu; 31 Oct 2026): open it once and click.
   const chooseFromMenu = async (id, label) => {
@@ -292,7 +292,7 @@ export async function run(ctx) {
     const calls = proxy.stats.calls;
     await chooseFromMenu(seed.imported.page, 'Review again');
     // reviewAgainRow publishes this terminal message only after iv.review returns.
-    await page.waitForFunction(() => !/reviewing the interview again/.test(document.getElementById('iv-message').textContent) && document.getElementById('iv-message').textContent.trim() !== '', null, {timeout: stepTimeLeft()});
+    await stepWait('the interview review message settled', timeout => page.waitForFunction(() => !/reviewing the interview again/.test(document.getElementById('iv-message').textContent) && document.getElementById('iv-message').textContent.trim() !== '', null, {timeout}));
     const said = (await message()).trim();
     // Retained: the terminal message cannot rule out a late second dispatch; no app signal closes that observation window.
     await page.waitForTimeout(3000);

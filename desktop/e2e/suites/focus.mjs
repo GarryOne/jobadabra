@@ -9,7 +9,7 @@ import {journey} from '../lib/journey.mjs';
 import {actionScenario, addApplication, addFocusData, expectedNumbers, compareNumbers, EXPECTED_SUGGESTIONS, EXPECTED_UP_NEXT, HAND_EDITS, readData, resetFocusData, savedTarget, scenario} from '../lib/focus-data.mjs';
 import {finish, snap} from '../lib/layout.mjs';
 import {ensureSetUp} from '../lib/seed.mjs';
-import {pollUntil, stepTimeLeft} from '../lib/wait-on-state.mjs';
+import {pollUntil, stepTimeLeft, stepWait} from '../lib/wait-on-state.mjs';
 
 // Why (30 Oct 2026, #2601): setup's contact_from_cv ask already has a reviewed kind reply; do not depend on a hash cache or live AI.
 export const aiAnswers = 'backbone';
@@ -42,9 +42,9 @@ export async function runFocus(ctx, parts) {
   const now = new Date();
   let rows, events, target = 5;
 
-  const focusReady = () => page.waitForFunction(() => /^Updated/.test(document.querySelector('#focus-status')?.textContent || '')
+  const focusReady = () => stepWait('the Focus view finished refreshing', timeout => page.waitForFunction(() => /^Updated/.test(document.querySelector('#focus-status')?.textContent || '')
     && !document.querySelector('#focus-refresh').disabled
-    && !document.querySelector('.view[data-view="focus"] .skeleton, .view[data-view="focus"] .spinner'), null, {timeout: stepTimeLeft()});
+    && !document.querySelector('.view[data-view="focus"] .skeleton, .view[data-view="focus"] .spinner'), null, {timeout}));
   const refresh = async () => { await page.click('#focus-refresh'); await focusReady(); };
   const goFocus = async () => { await page.click('.nav[data-view="focus"]'); await page.waitForSelector('.view[data-view="focus"]:not([hidden])'); };
   const rowsIn = list => page.evaluate(list => [...document.querySelectorAll(`${list} .focus-item`)].map(li => ({
@@ -377,8 +377,8 @@ export async function runFocus(ctx, parts) {
     await page.waitForSelector('.view:not([hidden])', {timeout: 60000});
     await page.click('.nav[data-view="jobs"]');
     await page.click('.stat[data-stat="interviews"]');
-    await page.waitForFunction(() => !document.querySelector('#jobs-body .list-loading')
-      && !/Loading|Refreshing|updating/.test(document.querySelector('#jobs-stats')?.textContent || ''), null, {timeout: stepTimeLeft()});
+    await stepWait('the Jobs list finished loading', timeout => page.waitForFunction(() => !document.querySelector('#jobs-body .list-loading')
+      && !/Loading|Refreshing|updating/.test(document.querySelector('#jobs-stats')?.textContent || ''), null, {timeout}));
     if (await ember().count()) throw new Error(`after a reload the dismissed job is back in the In process list: "${(await ember().innerText()).replace(/\s+/g, ' ')}" (the store says ${await stageInNotion()})`);
     await goFocus();   // the next step starts on Focus
   }, {needs: ctx.needs});

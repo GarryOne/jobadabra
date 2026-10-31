@@ -174,6 +174,52 @@ class ArtifactSecretsTests(unittest.TestCase):
             self.assertEqual(self.scan(folder).returncode, 0)
             self.assertEqual(self.scan(Path(folder) / 'missing').returncode, 0)
 
+    def test_unfinished_zip_is_removed_and_good_evidence_still_passes(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            (root / 'app.log').write_text('fictional app log')
+            (root / 'steps.json').write_text('{"status":"failed"}')
+            with zipfile.ZipFile(root / 'good.zip', 'w') as archive:
+                archive.writestr('snapshot.txt', 'fictional snapshot')
+            broken = root / 'trace-apply-6.zip'
+            broken.write_bytes(b'PK\x03\x04unfinished trace without central directory')
+            result = self.scan(root)
+            self.assertEqual(result.returncode, 0, result.stdout)
+            self.assertFalse(broken.exists(), 'nothing unreadable remains in the upload')
+            self.assertIn('not uploaded: unreadable,', result.stdout)
+            self.assertIn('trace-apply-6.zip', result.stdout)
+            self.assertEqual(sorted(file.name for file in root.iterdir()), ['app.log', 'good.zip', 'steps.json'])
+
+    def test_complete_blob_with_unfinished_nested_trace_is_removed(self):
+        # The failed job attached a trace after stop timed out, then finished its blob reporter normally.
+        with tempfile.TemporaryDirectory() as folder:
+            blob = Path(folder) / 'apply.zip'
+            with zipfile.ZipFile(blob, 'w', zipfile.ZIP_DEFLATED) as archive:
+                archive.writestr('report.jsonl', '{"result":"failed"}')
+                archive.writestr('resources/trace.zip', b'PK\x03\x04unfinished nested trace')
+            with zipfile.ZipFile(blob) as archive:
+                self.assertIsNone(archive.testzip(), 'the outer blob is a complete, readable ZIP')
+            result = self.scan(folder)
+            self.assertEqual(result.returncode, 0, result.stdout)
+            self.assertFalse(blob.exists())
+            self.assertIn('not uploaded: unreadable,', result.stdout)
+            self.assertIn('apply.zip', result.stdout)
+
+    def test_unreadable_file_that_cannot_be_removed_still_blocks_upload(self):
+        spec = importlib.util.spec_from_file_location('scan_e2e_artifacts', SCANNER)
+        scanner = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(scanner)
+        with tempfile.TemporaryDirectory() as folder:
+            broken = Path(folder) / 'unfinished.zip'
+            broken.write_bytes(b'PK\x03\x04unfinished')
+            found = scanner.Scanner({})
+            with mock.patch.object(Path, 'unlink', side_effect=PermissionError('private exception')), mock.patch('builtins.print') as output:
+                found.paths([folder])
+            self.assertTrue(found.failed)
+            self.assertTrue(broken.exists())
+            self.assertIn('SCAN_ERROR', str(output.call_args_list))
+            self.assertNotIn('private exception', str(output.call_args_list))
+
     def test_broken_zip_fails_without_exception_content(self):
         with tempfile.TemporaryDirectory() as folder:
             (Path(folder) / 'trace.zip').write_text('fake-notion-secret-123456')

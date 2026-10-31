@@ -39,12 +39,14 @@ class Scanner:
         self.failed = False
         self.files = 0
 
-    def report(self, name, location):
+    def report(self, name, location, *, fatal=True):
         """Never let a credential in a filename or exception escape through the diagnostic itself."""
         for value in self.values.values():
             location = location.replace(value, '[redacted]')
-        print(f'{name}: {json.dumps(location, ensure_ascii=True)}')
-        self.failed = True
+        separator = ': ' if fatal else ', '
+        print(f'{name}{separator}{json.dumps(location, ensure_ascii=True)}')
+        if fatal:
+            self.failed = True
 
     def scan(self, stream, location, zipped=False, depth=0):
         """Read complete streams in bounded chunks and recursively inspect every ZIP entry."""
@@ -61,8 +63,7 @@ class Scanner:
         if not zipped and stream.read(4) not in (b'PK\x03\x04', b'PK\x05\x06'):
             return
         if depth >= 8:
-            self.report('SCAN_ERROR', location)
-            return
+            raise ValueError('ZIP nesting limit')
         stream.seek(0)
         if isinstance(stream, zipfile.ZipExtFile):
             # Why (31 Oct 2026, personas blob-report scans hung 17+ min): every backward seek on a ZipExtFile decompresses from
@@ -78,6 +79,15 @@ class Scanner:
                     # Nested ZIPs stay in memory (buffered once above), never extracted to disk.
                     self.scan(contents, member, entry.filename.lower().endswith('.zip'), depth + 1)
 
+    def drop_unreadable(self, file):
+        """Exclude an unscannable upload file; inability to remove it still blocks the upload."""
+        try:
+            file.unlink()
+        except OSError:
+            self.report('SCAN_ERROR', str(file))
+            return
+        self.report('not uploaded: unreadable', str(file), fatal=False)
+
     def paths(self, patterns):
         """Scan upload paths (including globs); missing paths have nothing to upload."""
         for pattern in patterns:
@@ -88,18 +98,18 @@ class Scanner:
                 paths = root.rglob('*') if root.is_dir() else [root]
                 for file in paths:
                     if file.is_symlink():
-                        self.report('SCAN_ERROR', str(file))
+                        self.drop_unreadable(file)
                     elif file.is_file():
-                        self.files += 1
                         try:
                             with file.open('rb') as stream:
                                 self.scan(stream, str(file), file.suffix.lower() == '.zip')
+                            self.files += 1
                         except Exception:
-                            self.report('SCAN_ERROR', str(file))
+                            self.drop_unreadable(file)
 
 
 def main():
-    """Exit nonzero on any hit or inspection failure, with no exception payload or credential output."""
+    """Block credential hits or incomplete scans; unreadable files must be removed before upload."""
     try:
         values = secret_values(os.environ)
         if values is None:

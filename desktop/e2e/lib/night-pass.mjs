@@ -2,7 +2,7 @@
 // The night burn-in's pass: what one of the five nightly full runs tests, and on which commit. Every pass tests the commit of pass 1, so the five are five looks at ONE tree.
 // Why (31 Oct 2026, owner: "I want predictability. If a test was green last time, it should be green this time as well, if the code didn't change on that area."; chosen:
 // "Spread the 5 burn-in passes over the night at different hours, not back to back (keeps PR CI free by day, and catches time-of-day flakes like calendar's)"): the passes
-// are ordinary runs of e2e.yml on the beta's own layout (every suite, both stores, Windows following); their step tables join the history the beta gate reads (a8, PR 2/3).
+// are ordinary runs of e2e.yml on the beta's own layout (every suite, both stores, Windows following); the beta gate (a8, PR 2/3) folds their steps.json into its record like any run's.
 // Why (31 Oct 2026, a8 with the coordinator): no AI spend without the owner's yes, so a pass leaves out the suites that ask the model live and the paid judge steps; those get their
 // proof from the other runs that count. Guard: test/night-pass.test.mjs.
 import {autoSuites} from './plan.mjs';

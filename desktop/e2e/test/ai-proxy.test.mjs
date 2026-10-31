@@ -232,3 +232,17 @@ test('retiring a hang leaves the next arming and its own requests alone', async 
   await second.released;
   assert.equal(await next, 'closed');
 });
+
+// Gitar, #2721: a request received under the hang but not yet served (its start delay still running) must be closed by the retirement too, or it hangs after `released` resolved.
+test('retiring a hang also closes a request it received but had not yet served', async t => {
+  const proxy = await startAiProxy({delayMs: 300, target: 'http://127.0.0.1:1'});
+  t.after(() => proxy.close());
+  const hung = proxy.setMode('hang');
+  const held = post(proxy.url).then(() => 'answered', () => 'closed');
+  await pollUntil(() => hung.calls, n => n === 1, {tickMs: 5, capMs: 5000, log: () => {}});
+  assert.equal(hung.failed, 0, 'the request is received, not yet served');
+  proxy.setMode('pass');
+  await hung.released;
+  assert.equal(hung.pending, 0);
+  assert.equal(await held, 'closed');
+});

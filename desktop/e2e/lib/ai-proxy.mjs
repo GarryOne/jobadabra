@@ -63,6 +63,7 @@ function requestFault(control, res, pending) {
   };
   pending.add(finish);
   res.once('close', finish);
+  if (fault.mode === 'hang') { fault.hung.add(res); res.once('close', () => fault.hung.delete(res)); }   // from receipt, not from serving: a request still in its start delay when the hang retires is closed too (Gitar, #2721)
   return {fault, ready};
 }
 
@@ -72,7 +73,7 @@ async function serveFault(control, fault, ready, res, openai) {
   if (fault.mode === 'pass') return false;
   control.failed++; fault.failed++;
   markPlanted(`ai ${fault.mode}`, fault.mode === 'hang' ? HUNG_REPORTS : undefined);
-  if (fault.mode === 'hang') { fault.hung.add(res); res.once('close', () => fault.hung.delete(res)); return true; }   // never answers; the client, the proxy's close() or the next arming (releaseHung) ends it
+  if (fault.mode === 'hang') return true;   // never answers; the client, the proxy's close() or the next arming (releaseHung) ends it
   const failure = openai ? openaiFailureFor(fault.mode) : failureFor(fault.mode);
   res.writeHead(failure.status, {'content-type': 'application/json', 'content-length': Buffer.byteLength(failure.body), 'retry-after-ms': '10'});
   res.end(failure.body);

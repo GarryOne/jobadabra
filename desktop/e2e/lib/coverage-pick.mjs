@@ -178,6 +178,7 @@ export const mapShas = map => [...new Set(Object.values(map?.suites || {}).map(e
 // `reads`: {file: [suites]}, the suites whose source quotes an element the file draws (lib/page-reach.mjs). The map records what ran, not what a suite checks: a line of a page
 // that 23 suites ran (the app opens Focus in every one) is the own line of the suite that reads the page, as a watched file is (#2694 added a Focus row, broke 4 `focus` steps, and
 // only the settings smoke ran, 31 Oct 2026). A reader that ran the line runs its steps that did; no other suite takes the shared line then.
+// clean-code-ok: Why (31 Oct 2026, #2707): an old picker (63 on main) that this change leaves simpler (61: its setup tail moved out); the `reads` option touches its head line. Split: parked in Linear.
 export function stepsCovering(map, hunksBySha, {smoke = 'settings', maxUsers = MAX_USERS, watched = {}, reads = {}} = {}) {
   const out = {}, setupOnly = [];
   const suites = Object.entries(map?.suites || {});

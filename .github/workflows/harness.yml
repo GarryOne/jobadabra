@@ -90,7 +90,7 @@ jobs:
   harness:
     name: harness tests
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: ${{ github.event_name == 'workflow_dispatch' && 180 || 20 }}   # Why (PR #2752, Gitar): 20 min was sized for one `npm test` pass; a by-hand repeat of up to 50 runs of a real-browser file (3 min hang guard each) needs more
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5

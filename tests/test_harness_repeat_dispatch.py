@@ -47,6 +47,11 @@ class HarnessRepeatDispatch(unittest.TestCase):
         every = text.split('- name: Every harness test\n', 1)[1].split('run:', 1)[0]
         self.assertIn("if: github.event_name != 'workflow_dispatch'", every, 'the whole-folder run must not also start on a dispatch')
 
+    def test_a_dispatch_gets_a_job_budget_for_up_to_50_runs_and_a_pr_run_keeps_20_minutes(self):
+        job = re.search(r"(?m)^    timeout-minutes: (.+)$", WORKFLOW.read_text()).group(1)
+        self.assertIn("github.event_name == 'workflow_dispatch'", job, 'the 20-minute job budget was sized for one npm test pass, not for 50 runs of a real-browser file')
+        self.assertRegex(job, r'&& 180 \|\| 20')
+
     def test_all_green_plays_the_file_repeat_times(self):
         code, out, calls = self.play('test/ok.test.mjs', '4')
         self.assertEqual((code, calls), (0, 4), out)

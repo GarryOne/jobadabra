@@ -135,18 +135,19 @@ export async function run(ctx) {
       await page.click('.nav[data-view="jobs"]');
       await page.click('#refresh');
     }, {needs: ctx.needs});
+    // Why (31 Oct 2026, owner: "No cap when recording"): live recordings keep the suite budget but do not use backbone's 90-second step cap.
+    const timeout = process.env.E2E_AI_ANSWERS === 'record' ? 0 : hangCaps[`${label}: the jobs check finishes and its results reach the Jobs list`] * 1000;
     await ctx.run(`${label}: the jobs check finishes and its results reach the Jobs list`, async () => {
-      const timeout = hangCaps[`${label}: the jobs check finishes and its results reach the Jobs list`] * 1000;
       // Why (30 Oct 2026, owner; run 41092667989): a finished search with no scores cannot satisfy a score wait; wait for this run, then check its actual results separately.
       const {value: finished} = await pollUntil(() => page.evaluate(async before => {
         const data = await window.pilot.runs();
         return !data.running && !(data.queued || []).length && data.runs.some(run => run.kind === 'search' && run.endedAt && !before.includes(run.id));
-      }, searchBefore), value => value, {capMs: timeout, tickMs: 500, log: () => {}});
+      }, searchBefore), value => value, {capMs: timeout || Infinity, tickMs: 500, log: () => {}});
       if (!finished) throw new Error('the jobs check never finished');
       const expected = await page.evaluate(async () => (await window.pilot.jobs()).jobs.map(({title, fit}) => ({title, fit})));
       await page.waitForFunction(expected => JSON.stringify((window.__jp.shared.allJobs || []).map(({title, fit}) => ({title, fit}))) === JSON.stringify(expected),
         expected, {timeout, polling: 500});
-    }, {needs: ctx.needs});
+    }, {needs: ctx.needs, limitMs: timeout || Infinity});
     await ctx.run(`${label}: a jobs check keeps the roles in their places and drops the wrong ones`, async () => {
       const rolePattern = new RegExp(profile.roles.filter(role => /^[\w ]+$/.test(role)).join('|'), 'i');
       const scored = await page.evaluate(pattern => (window.__jp.shared.allJobs || []).some(job => new RegExp(pattern, 'i').test(job.title) && job.fit != null && job.fit !== ''), rolePattern.source);

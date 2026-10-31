@@ -8,6 +8,7 @@ export const JOBS_TOPICS = ['search', 'applying'];   // the Jobs bar's (spec: "o
 export const DOES = ['open_insight', 'open_rejection', 'read_week', 'analyze', 'tune', 'find_jobs', 'tailor', 'prep', 'change_search', 'read_site', 'see_all', 'show_jobs', 'edit_minimum'];   // the Jobs drawers' rows write theirs in the window: question-entries.js QUESTION_DOES
 // Each producer's row: its icon, its edge colour and its badge.
 export const LOOK = {insight: {icon: 'bulb', tone: 'warn', badge: 'Insight'}, rejection: {icon: 'alert', tone: 'warn', badge: 'Rejection'},
+  hosted: {icon: 'cloud', tone: 'info', badge: 'Always on'},
   week: {icon: 'chart', tone: 'good', badge: 'Your week'}, analyze: {icon: 'chart', tone: 'info', badge: 'Analyze'}, tune: {icon: 'sliders', tone: 'info', badge: 'Tune'},
   // Strategy's search rows (PR 1b): the icons of their Strategy rows
   places: {icon: 'pin', tone: 'info', badge: 'Places'}, ideas: {icon: 'briefcase', tone: 'info', badge: 'Roles'}, coverage: {icon: 'search', tone: 'info', badge: 'Role words'},

@@ -1128,6 +1128,8 @@ main { min-width: 0; }
 .focus-body { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
 .focus-top { display: flex; align-items: center; gap: var(--sp-2); max-width: 100%; min-width: 0; }
 .focus-top .focus-headline { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.focus-item[data-suggestion="hosted"] .focus-top { flex-wrap: wrap; }
+.focus-item[data-suggestion="hosted"] .focus-headline { white-space: normal; }
 .focus-top .ui-pill { font-size: var(--fs-xs); flex: none; }
 .focus-list .focus-round { width: 32px; height: 32px; }
 .focus-list .focus-round .icon { width: 16px; height: 16px; }

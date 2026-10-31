@@ -2,10 +2,12 @@
 // docs/superpowers/specs/2026-10-28-insights-with-actions-design.md, PR 1a): every engine producer shows on Focus, in its home and, when it is
 // about the search or applying, on Jobs; every button the engine writes has its handler; Up next keeps only what can't wait; Tune and Analyze
 // left the Actions page and stay in ⌘K.
+/* global document */
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {test} from 'node:test';
 import {DOES, LOOK, countWords, entryParts, focusRows, homeEntries, jobsBarWords, jobsEntries, movedItems, upNext} from '../renderer/suggestions.js';
+import {install} from './tiny-dom.js';
 
 const read = file => fs.readFileSync(new URL(file, import.meta.url), 'utf8');
 const engine = read('../../src/suggestions.py'), searchRows = read('../../src/suggestions_search.py') + read('../../src/suggestions_pay.py');
@@ -16,6 +18,98 @@ const PRODUCERS = tuple('PRODUCERS'), HOMES = {insight: 'focus', rejection: 'job
 const TOPICS = {insight: 'profile', rejection: 'applying', week: 'search', analyze: 'search', tune: 'search', ...Object.fromEntries(SEARCH_ROWS.map(kind => [kind, 'search']))};
 const entry = kind => ({kind, home: HOMES[kind], topic: TOPICS[kind], title: `${kind} title`, source: 'From', detail: 'What it says', evidence: ['seen'],
   actions: [{label: 'Go', do: DOES[0]}], key: `${kind}:k`, answers: ['Not now', 'Not true']});
+
+test('Always on is offered only after finished matches, while available and unanswered', async () => {
+  install();
+  const {hostedEntries} = await import('../renderer/hosted-suggestion.js');
+  const ready = {hosted: {available: true, on: false, skipped: false, shared: 'alex@example.com'},
+    jobs: {jobs: [{stage: 'Saved', fit: 81}]}, runs: {lastSearchAt: '2026-10-31T08:00:00Z'}};
+  for (const [name, patch, shown] of [
+    ['all clear', {}, true], ['on', {hosted: {...ready.hosted, on: true}}, false],
+    ['skipped', {hosted: {...ready.hosted, skipped: true}}, false], ['no matches', {jobs: {jobs: []}}, false],
+    ['applications only', {jobs: {jobs: [{stage: 'Applied', status: 'applied', fit: 90}]}}, false],
+    ['inbound only', {jobs: {jobs: [{origin: 'Inbound', fit: 90}]}}, false],
+    ['not available', {hosted: {...ready.hosted, available: false}}, false],
+    ['no finished search', {runs: {}}, false],
+    ['first search running', {runs: {running: {kind: 'search'}}}, false],
+    ['Not now', {hidden: new Set(['hosted:first-matches'])}, false],
+    ['answered here', {held: new Set(['hosted:first-matches'])}, false],
+  ]) assert.equal(hostedEntries({...ready, ...patch}).length, Number(shown), name);
+  const [offer] = hostedEntries(ready);
+  assert.match(offer.detail, /to alex@example.com/);
+  assert.deepEqual(offer.answers, ['Not now', 'Not true']);
+  assert.equal(entryParts(offer).badge, 'Always on');
+});
+
+test('Always on uses the known address in one press with no product-news consent', async () => {
+  install();
+  const {bindHostedOffer} = await import('../renderer/hosted-suggestion.js');
+  const body = document.createElement('div'), button = document.createElement('button'), calls = [];
+  let removed = false;
+  const run = bindHostedOffer({body, button, email: 'alex@example.com',
+    emailField: () => assert.fail('a known address needs no field'),
+    turnOn: async given => { calls.push(given); return {ok: true}; }, onSuccess: () => { removed = true; }});
+  assert.equal(button.disabled, false);
+  await run();
+  assert.deepEqual(calls, [{email: 'alex@example.com', marketing: false}]);
+  assert.equal(removed, true, 'the successful offer leaves Suggestions');
+});
+
+test('Always on waits for a valid address and keeps failures in its row for retry', async () => {
+  install();
+  const {bindHostedOffer} = await import('../renderer/hosted-suggestion.js');
+  const {emailField} = await import('../renderer/hosted-step-parts.js');
+  const body = document.createElement('div'), button = document.createElement('button'), calls = [];
+  const field = emailField('offer-test-email'), input = field.querySelector('input');
+  let removed = false, failure = {ok: false, error: 'Could not reach Jobadabra just now. Check your connection.'};
+  const run = bindHostedOffer({body, button, email: '', emailField: () => field,
+    turnOn: async given => { calls.push(given); if (failure instanceof Error) throw failure; return failure; }, onSuccess: () => { removed = true; }});
+  assert.equal(body.querySelector('input'), input, 'uses the supplied shared field');
+  for (const [value, disabled] of [['', true], ['alex', true], ['alex@example', true], ['alex@example.com', false]]) {
+    input.value = value; input.dispatch('input'); assert.equal(button.disabled, disabled, value);
+  }
+  await run();
+  assert.equal(removed, false);
+  assert.match(body.textContent, /Could not reach Jobadabra/);
+  assert.equal(button.disabled, false);
+  failure = {ok: false, error: 'Always on is not available just now.'}; await run();
+  assert.match(body.textContent, /Always on is not available/);
+  failure = new Error('Connection lost'); await run();
+  assert.match(body.textContent, /Connection lost/);
+  failure = {ok: true}; await run();
+  assert.equal(removed, true);
+  assert.ok(calls.every(given => given.email === 'alex@example.com' && given.marketing === false));
+});
+
+test('Always on redraws preserve the draft and busy state, and late errors reach the current row', async () => {
+  install();
+  const {bindHostedOffer} = await import('../renderer/hosted-suggestion.js');
+  const {emailField} = await import('../renderer/hosted-step-parts.js');
+  const draft = {}, calls = [];
+  let reply;
+  const pending = new Promise(resolve => { reply = resolve; });
+  const mount = () => {
+    const body = document.createElement('div'), button = document.createElement('button');
+    const run = bindHostedOffer({body, button, email: '', emailField: () => emailField('redraw-email'), draft,
+      turnOn: given => { calls.push(given); return pending; }, onSuccess: () => assert.fail('a refusal never succeeds')});
+    return {body, button, run, input: body.querySelector('input')};
+  };
+  const first = mount(); first.input.value = 'alex@example.com'; first.input.dispatch('input');
+  const second = mount();
+  assert.equal(second.input.value, 'alex@example.com', 'the asynchronous question rows must not wipe a typed address');
+  const activating = second.run();
+  const third = mount();
+  assert.equal(third.button.disabled, true, 'redraws keep an activation in flight disabled');
+  await third.run();
+  assert.equal(calls.length, 1, 'a rebuilt row cannot send a second activation');
+  reply({ok: false, error: 'Could not reach Jobadabra just now. Check your connection.'});
+  await activating;
+  assert.match(third.body.textContent, /Check your connection/, 'the reply updates the current row, not a detached body');
+  assert.equal(third.button.disabled, false);
+  const fourth = mount();
+  assert.match(fourth.body.textContent, /Check your connection/, 'later redraws retain the refusal');
+  assert.equal(fourth.input.value, 'alex@example.com');
+});
 
 test('every engine producer is drawn: on Focus, in its home, and on Jobs when it is about the search or applying', () => {
   assert.deepEqual(PRODUCERS.slice().sort(), Object.keys(HOMES).sort(), 'a new producer in src/suggestions.py is listed here');

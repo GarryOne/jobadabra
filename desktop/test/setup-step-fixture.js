@@ -4,6 +4,7 @@ import vm from 'node:vm';
 import {install} from './tiny-dom.js';
 install();
 const {el} = await import('../renderer/components.js');
+const {emailField} = await import('../renderer/hosted-step-parts.js');
 
 const read = file => fs.readFileSync(new URL(`../renderer/${file}`, import.meta.url), 'utf8');
 const script = file => read(file).replace(/^import .*;\n/gm, '').replace(/^export /gm, '');
@@ -39,7 +40,7 @@ export function wizardFixture() {
     hideLetterStep() {}, showLetterStep() {}, hideCards() {},
     getComputedStyle: node => ({display: node.style.display || 'list-item', visibility: node.style.visibility || 'visible'})};
   function $(id) { return document.getElementById(id); }
-  const {mountStep} = vm.runInNewContext(`${script('pages/hosted.js')}\n({mountStep})`, {...context, alwaysOnCard: () => el('div'), HELPER: '', NEWS: '', NEWS_HINT: '', STORED: ''});
+  const {mountStep} = vm.runInNewContext(`${script('pages/hosted.js')}\n({mountStep})`, {...context, alwaysOnCard: () => el('div'), emailField, NEWS: '', NEWS_HINT: '', STORED: ''});
   mountStep();
   const wizard = vm.runInNewContext(`${script('pages/wizard.js')}\n({goStep, labels: typeof setupStepLabels === 'function' ? setupStepLabels : null})`, context);
   return {document, list, ...wizard};

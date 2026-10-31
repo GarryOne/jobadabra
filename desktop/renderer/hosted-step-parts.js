@@ -1,7 +1,15 @@
 // The cards of the setup's Always on step (owner, 24 Oct 2026: "more aligned with our design system"): the header card with a marked example of the morning e-mail. Pure builders; pages/hosted.js places them. Guard: test/hosted-step.test.js.
 import {el, pill} from './components.js';
 import {cardHead} from './card-shell.js';
-import {EXAMPLE_JOBS} from './hosted-words.js';
+import {EXAMPLE_JOBS, HELPER} from './hosted-words.js';
+
+/** The shared e-mail field: label, full-width input and helper, reused by Always on's wizard and Focus entry. */
+export function emailField(id, label = 'Where should we send them?') {
+  const input = Object.assign(document.createElement('input'), {type: 'email', id, placeholder: 'you@example.com', autocomplete: 'email'});
+  const field = el('div', 'step-field');
+  field.append(Object.assign(document.createElement('label'), {htmlFor: id, textContent: label}), input, el('p', 'muted small field-hint', HELPER));
+  return field;
+}
 
 export function digestExample() {
   const box = el('div', 'card-read');

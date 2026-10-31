@@ -6,8 +6,8 @@ import {$, message, show} from './core.js';
 import {goStep} from './wizard.js';
 import {shared} from './shared.js';
 import {openSetting} from './settings.js';
-import {HELPER, NAME, NEWS, NEWS_HINT, STORED, SUBTITLE, model} from '../hosted-words.js';
-import {alwaysOnCard} from '../hosted-step-parts.js';
+import {NAME, NEWS, NEWS_HINT, STORED, SUBTITLE, model} from '../hosted-words.js';
+import {alwaysOnCard, emailField} from '../hosted-step-parts.js';
 
 export const HEADLINE = 'New matching jobs every morning, even when your Mac is off';
 
@@ -20,13 +20,6 @@ function switchRow(id, label, checked, hint = '') {
   words.append(...(hint ? [el('b', '', label), el('span', 'muted small', hint)] : [label]));
   row.append(toggle, words);
   return row;
-}
-// The e-mail field as the AI step draws its key field (.step-field: the label above a full-width input), with a helper line under it.
-function emailField(id, label = 'Where should we send them?') {
-  const input = Object.assign(document.createElement('input'), {type: 'email', id, placeholder: 'you@example.com', autocomplete: 'email'});
-  const field = el('div', 'step-field');
-  field.append(Object.assign(document.createElement('label'), {htmlFor: id, textContent: label}), input, el('p', 'muted small field-hint', HELPER));
-  return field;
 }
 const button = (id, label, cls) => { const node = el('button', cls, label); node.id = id; return node; };
 

@@ -85,5 +85,5 @@ export async function runTriageCancelSteps(ctx, {urls}) {
       await page.fill('#filter-text', '').catch(() => {});
       proxy.setCanned(previous);
     }
-  }, {needs: [...ctx.needs, HIDDEN_NEED], hangError: hangOf(seen)});
+  }, {safety: true, needs: [...ctx.needs, HIDDEN_NEED], hangError: hangOf(seen)});
 }

@@ -12,6 +12,7 @@ import {execFileSync} from 'node:child_process';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {NON_BACKBONE} from '../desktop/e2e/lib/suite-shards.mjs';
+import {isSafetyStep, safetyStepNames} from '../desktop/e2e/lib/safety-steps.mjs';
 
 export const FILE = 'desktop/e2e/lanes.json';
 export const LANES = NON_BACKBONE;   // one lane list: desktop/e2e/lib/suite-shards.mjs
@@ -54,13 +55,17 @@ const stepEntries = steps => Object.entries(steps || {}).flatMap(([suite, byName
 const parse = text => { try { const json = JSON.parse(text); return {suites: json.suites || {}, steps: json.steps || {}}; } catch (error) { return {error: error.message}; } };
 
 // The registry as it was (text or null) and as it is -> the lines for each added or changed entry that lacks something; one line for a file that does not parse.
-export function lanesProblems(baseText, headText) {
-  if (headText === null || headText === baseText) return [];
+// `safety`: the marked safety step names (lib/safety-steps.mjs); a `steps` entry for one is refused whether it is new or old.
+// Why (31 Oct 2026, owner: "Never suspend safety steps (Full automation confirmation, nothing posted, Stop): a flaky one blocks the beta and is fixed the same day"): #2703 and #2704 sat in the registry.
+export function lanesProblems(baseText, headText, safety = []) {
+  if (headText === null) return [];
   const head = parse(headText);
-  if (head.error) return [`${FILE} is not valid JSON (${head.error})`];
+  if (head.error) return headText === baseText ? [] : [`${FILE} is not valid JSON (${head.error})`];
+  const safe = stepEntries(head.steps).filter(([, name]) => isSafetyStep(name, safety)).map(([suite, name]) => `${suite} · ${name.slice(0, 60)}: is a safety step (Full automation confirmation, nothing posted, Stop): it is never suspended; remove the entry and fix the step`);
+  if (headText === baseText) return safe;
   const base = baseText === null ? {suites: {}, steps: {}} : parse(baseText);
   const was = base.error ? {} : base.suites;
-  const found = [];
+  const found = [...safe];
   const wasSteps = base.error ? {} : base.steps;
   for (const [suite, name, entry] of stepEntries(head.steps)) {
     if (JSON.stringify(entry) === JSON.stringify(wasSteps?.[suite]?.[name])) continue;
@@ -80,7 +85,7 @@ export function checkPush({root, base = 'origin/main'}) {
   let from;
   try { from = git('merge-base', base, 'HEAD').trim(); } catch { return ''; }   // no base to compare with (a fresh clone without origin/main): nothing to say
   const head = show('HEAD');
-  const found = lanesProblems(show(from), head);
+  const found = lanesProblems(show(from), head, safetyStepNames(path.join(root, 'desktop/e2e')));
   const messages = found.length ? [`this push changes the lane registry ${FILE}, and:\n  ${found.join('\n  ')}\n${HOW}`] : [];
   // Why (30 Oct 2026; 31 Oct 2026 for `steps`): a ceiling for the nonexistent review suite reached CI; check every head key, even an unchanged entry; a suspended step names its suite too.
   const headRegistry = head === null ? {} : parse(head);

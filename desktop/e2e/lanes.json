@@ -117,24 +117,6 @@
   },
   "steps": {
     "apply": {
-      "\"See which jobs can apply automatically\" reads a job's form in the hidden browser: You review and submit, the tab closes, and nothing is filled or sent": {
-        "lane": "suspended",
-        "input": "the hidden Chrome and its extension worker on a loaded shared runner (no clock or AI input: the same commit passed)",
-        "since": "2026-10-31",
-        "owner": "GarryOne",
-        "issue": "https://github.com/GarryOne/jobadabra/issues/2703",
-        "why": "Red on fb1d711 (run 41200878403, the 11-minute budget ran out inside this step) and green on the same commit fb1d711 two minutes earlier (run 41200737331): same code, different result.",
-        "returns": "Back to the backbone when its fix PR lands and the next 3 main runs pass it."
-      },
-      "Stop on the card in Background automation: while the form is filling, Stop hands it to you and nothing is posted": {
-        "lane": "suspended",
-        "input": "the hidden Chrome and its extension worker on a loaded shared runner (no clock or AI input: the same commit passed)",
-        "since": "2026-10-31",
-        "owner": "GarryOne",
-        "issue": "https://github.com/GarryOne/jobadabra/issues/2704",
-        "why": "Red on 9459046 (run 41198541314, the job never reached the filling card) and green on 4a79a6b (run 41198629562) with none of the 539 files it runs changed between them; also red in run 41175004281.",
-        "returns": "Back to the backbone when its fix PR lands and the next 3 main runs pass it."
-      },
       "each read verdict gives its own chip on Jobs after Check, with no fill, session or hidden page left": {
         "lane": "suspended",
         "input": "the hidden Chrome on a loaded shared runner; not yet measured (lead: a Playwright wait given 0 ms once the step's clock ran out waits forever, lib/apply-read-steps.mjs)",

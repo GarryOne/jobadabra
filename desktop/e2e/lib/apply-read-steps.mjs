@@ -106,6 +106,6 @@ export async function runReadSteps(ctx) {
         await removeJobsByUrl(ctx, [form.url]).catch(() => 0);
         await closeHiddenBrowser(ctx.profile);
       }
-    }, {needs: [...ctx.needs, HIDDEN_NEED]});   // Why (2026-10-28, Gitar on #2364): a missing need is recorded as skipped, not passed
+    }, {safety: true, needs: [...ctx.needs, HIDDEN_NEED]});   // Why (2026-10-28, Gitar on #2364; safety: 31 Oct 2026, owner): a missing need is recorded as skipped, not passed; this step proves nothing is filled or sent, so it is never suspended
   }
 }

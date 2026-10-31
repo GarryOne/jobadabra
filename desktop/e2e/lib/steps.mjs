@@ -1,9 +1,11 @@
 /* global window */
+// Job: run the backbone
 // Independent steps: one failing step is recorded and the next still runs, so a failure never hides the others. The suite fails at the end when any did.
 export function independent(ctx) {
   let failed = 0;
+  // safety: a step that proves a safety rule (lib/safety-steps.mjs) is never suspended.
   // needs: what this one step needs beyond the suite's (a missing one skips the step by name, lib/runner.mjs), e.g. a feature still being built on one store.
-  const step = async (name, fn, {needs = []} = {}) => { try { await ctx.run(name, fn, {needs: [...(ctx.needs || []), ...needs]}); } catch { failed++; } };
+  const step = async (name, fn, {needs = [], safety = false} = {}) => { try { await ctx.run(name, fn, {needs: [...(ctx.needs || []), ...needs], safety}); } catch { failed++; } };
   const end = () => { if (failed) throw new Error(`${failed} step(s) failed`); };
   return {step, end};
 }

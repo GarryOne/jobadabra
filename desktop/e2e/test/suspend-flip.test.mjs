@@ -9,7 +9,8 @@ import {stepEntryProblems} from '../../../tools/lanes-check.mjs';
 import {issueTitle, suspensions} from '../../../tools/suspend-flip.mjs';
 
 const tool = new URL('../../../tools/suspend-flip.mjs', import.meta.url);
-const READ = '"See which jobs can apply automatically" reads a job\'s form in the hidden browser: You review and submit, the tab closes, and nothing is filled or sent';
+// A step that is not a safety step (#2703's "See which jobs can apply automatically" was this fixture until 31 Oct 2026, when it became one: test/safety-steps.test.mjs).
+const READ = 'the jobs list reads a job\'s page in the hidden browser, the tab closes, and the list shows it';
 const verdict = (over = {}) => ({suite: 'apply', step: READ, verdict: 'flaky', redSha: 'fb1d711b0b43af12905b4e71b8b75b55b59e7726', redUrl: 'https://github.com/o/r/actions/runs/41200878403',
   green: {sha: '79e6c34aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', run: 41199890591, url: 'https://github.com/o/r/actions/runs/41199890591'}, message: "the suite's 11-minute budget ran out during this step", movedFiles: 6, stepFileCount: 814, ...over});
 const options = {registry: {suites: {}}, owner: 'e2e-owner', since: '2026-10-31'};

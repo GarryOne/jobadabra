@@ -313,3 +313,12 @@ test('schedules never carry the outside world; its own daily run carries only it
   assert.equal(beta.ai_required, '0');
   assert.equal(JSON.parse(beta.matrix).include.filter(leg => leg.suite === 'notion-real').length, 1, 'no duplicate store legs');
 });
+
+
+test('the matrix marks tolerant suites from lanes.json, never backbone suites', async () => {
+  const out = await planRun({env: {EVENT: 'workflow_dispatch', SHA: HEAD, ONLY: 'qualityai,settings'},
+    gh: gh(), all: ['qualityai', 'settings'], minutes: () => 15});
+  const legs = JSON.parse(out.matrix).include;
+  assert.equal(legs.find(leg => leg.suite === 'qualityai').tolerant, true);
+  assert.equal(legs.find(leg => leg.suite === 'settings').tolerant, undefined);
+});

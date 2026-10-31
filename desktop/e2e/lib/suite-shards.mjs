@@ -3,6 +3,8 @@
 // Job: pick the suites
 // Guard: test/suite-shards.test.mjs (every slice fits its budget at today's case count; every workflow that runs a suite passes the shard and names its job by key).
 
+import {tolerantMatrixFlag} from './plan.mjs';
+
 export const shardKey = (suite, index, count) => `${suite}-${index}of${count}`;
 
 // -> [{key, shard}]: one per slice, or the suite itself (shard '': the whole suite).
@@ -21,4 +23,4 @@ export const NON_BACKBONE = ['tolerant', 'suspended', 'retired'];
 export const isBackbone = (lanes, suite) => !NON_BACKBONE.includes(lanes?.suites?.[suite]?.lane);
 
 // The Windows lanes' matrix (e2e-windows.yml, desktop.yml test-windows): one entry per suite, or per slice of a sharded one.
-export const windowsMatrix = (suites, shards = {}) => ({include: suites.flatMap(suite => shardLegs(suite, shards[suite]).map(leg => ({suite, ...leg})))});
+export const windowsMatrix = (suites, shards = {}) => ({include: suites.flatMap(suite => shardLegs(suite, shards[suite]).map(leg => ({suite, ...tolerantMatrixFlag(suite), ...leg})))});

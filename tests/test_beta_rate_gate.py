@@ -104,7 +104,7 @@ class Gate(unittest.TestCase):
                 store.runs[1].update(event='workflow_dispatch', display_title='Nightly beta')
                 store.runs[:0] = [dict(store.runs[1], id=99)]
                 status, lines = self.gate().check('o/r', '99', {'qualityai': {'lane': 'tolerant', 'input': 'ai'}}, gh, platform=platform)
-                self.assertEqual(status, 1)
+                self.assertEqual(status, 0)
                 self.assertIn('main runs 20,19,18', '\n'.join(lines))
                 self.assertNotIn('main runs 99', '\n'.join(lines))
                 self.assertNotIn('/runs/99/jobs?', str(store.calls))
@@ -130,10 +130,10 @@ class Gate(unittest.TestCase):
                 self.assertEqual(downloads, ['repos/o/r/actions/artifacts/20/zip'])
                 self.assertNotIn('/runs/19/', str(store.calls))
 
-    def test_below_band_fails_and_names_metric_numbers_band_and_used_runs(self):
+    def test_below_band_reports_without_blocking_and_names_numbers(self):
         _, gh = self.fixture(counts(40))
         status, lines = self.gate().check('o/r', 99, {'qualityai': {'lane': 'tolerant', 'input': 'ai'}}, gh)
-        self.assertEqual(status, 1)
+        self.assertEqual(status, 0)
         text = '\n'.join(lines)
         for token in ('facts', '40/100', '87.55%', '92.01%', '20,19,18,17,16,15,14'):
             self.assertIn(token, text)
@@ -163,7 +163,7 @@ class Gate(unittest.TestCase):
         registry = {'future': {'lane': 'tolerant', 'input': 'ai'},
                     'outside': {'lane': 'tolerant', 'input': 'outside'}, 'gone': {'lane': 'suspended', 'input': 'ai'}}
         status, lines = self.gate().check('o/r', 99, registry, gh)
-        self.assertEqual(status, 1)
+        self.assertEqual(status, 0)
         self.assertTrue(all(line.startswith('future:') for line in lines))
 
     def test_only_last_seven_completed_nights_on_main_supply_band(self):
@@ -210,14 +210,86 @@ class Gate(unittest.TestCase):
         self.assertEqual(self.gate().blocking_lanes(jobs[1:], registry), [])
         self.assertEqual(self.gate().blocking_lanes(jobs[:2], registry), ['Mac + Linux: applyflows', 'Windows: lane jobs unavailable'])
 
+    def test_grey_annotation_holds_beta_and_writes_current_attempt_evidence(self):
+        gate = self.gate()
+        jobs = [{'id': 21, 'name': 'E2E · Mac + Linux · apply-1of2', 'conclusion': 'failure'},
+                {'id': 22, 'name': 'E2E · Windows · apply', 'conclusion': 'success'}]
+        calls = []
+        def github(*args, **kwargs):
+            calls.append(args)
+            return json.dumps([[{'title': 'Grey: the runner, not the app'}], []])
+        with tempfile.TemporaryDirectory() as folder:
+            target = Path(folder) / 'beta-held.json'
+            status, lines = gate.backbone_check('o/r', jobs, {}, github, attempt=1, output=target)
+            self.assertEqual(status, 1)
+            self.assertIn('Held: grey (runner, not the app): Mac + Linux: apply', '\n'.join(lines))
+            self.assertEqual(json.loads(target.read_text()), {'attempt': 1, 'grey': ['Mac + Linux: apply'], 'red': []})
+            self.assertIn('repos/o/r/check-runs/21/annotations?per_page=100', str(calls))
+            jobs.insert(1, {'id': 23, 'name': 'E2E · Mac + Linux · apply-2of2', 'conclusion': 'failure'})
+            def mixed(*args, **kwargs):
+                return '[]' if '/23/' in str(args) else github(*args, **kwargs)
+            status, lines = gate.backbone_check('o/r', jobs, {}, mixed, attempt=2, output=target)
+            self.assertEqual(status, 1)
+            self.assertIn('Not released: red: Mac + Linux: apply', '\n'.join(lines))
+            self.assertEqual(json.loads(target.read_text()), {'attempt': 2, 'grey': ['Mac + Linux: apply'], 'red': ['Mac + Linux: apply']})
+
+    def test_non_grey_or_unreadable_annotations_stay_red(self):
+        gate = self.gate()
+        jobs = [{'id': 21, 'name': 'E2E · Mac + Linux · apply', 'conclusion': 'failure'},
+                {'id': 22, 'name': 'E2E · Windows · settings', 'conclusion': 'success'}]
+        def unreadable(*args, **kwargs):
+            raise OSError('offline')
+        for github in (lambda *args: '[]', lambda *args: '[[{"title":"First try failed"}]]', unreadable):
+            with tempfile.TemporaryDirectory() as folder:
+                status, lines = gate.backbone_check('o/r', jobs, {}, github, attempt=1, output=Path(folder) / 'hold.json')
+                self.assertEqual(status, 1)
+                self.assertIn('Not released: red: Mac + Linux: apply', '\n'.join(lines))
+                self.assertNotIn('Held: grey', '\n'.join(lines))
+
+    def test_rate_only_standalone_import_needs_no_annotation_companion(self):
+        # The PR verdict downloads each companion separately, before main_e2e_state may be loaded.
+        import importlib.util
+        root = Path(__file__).resolve().parents[1]
+        with tempfile.TemporaryDirectory() as folder:
+            copied = Path(folder) / 'beta_rate_gate.py'
+            copied.write_text((root / 'tools/beta_rate_gate.py').read_text())
+            with patch.dict(sys.modules, {'pr_ai_number': ai}):
+                spec = importlib.util.spec_from_file_location('standalone_beta_rate_gate', copied)
+                module = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(module)
+                self.assertEqual(module.check('o/r', 99, {}, lambda *args: self.fail('no GitHub call')), (0, []))
+
+    def test_e2e_only_cli_exits_one_and_persists_grey_attempt_without_network(self):
+        root = Path(__file__).resolve().parents[1]
+        with tempfile.TemporaryDirectory() as folder:
+            tmp = Path(folder)
+            fake = tmp / 'gh'
+            fake.write_text(f'#!{sys.executable}\n' + r"""import json, sys
+url = next(a for a in sys.argv if a.startswith('repos/'))
+if '/jobs?' in url:
+    print(json.dumps([{'jobs': [{'id': 21, 'name': 'E2E · Mac + Linux · apply', 'conclusion': 'failure'},
+                              {'id': 22, 'name': 'E2E · Windows · apply', 'conclusion': 'success'}]}]))
+elif '/check-runs/21/annotations?' in url:
+    print(json.dumps([[{'title': 'Grey: the runner, not the app'}]]))
+else:
+    sys.exit('No network: unexpected call ' + repr(sys.argv))
+""")
+            fake.chmod(0o755)
+            result = subprocess.run([sys.executable, str(root / 'tools/beta_rate_gate.py'), '--repo', 'o/r', '--run', '99', '--e2e-only'],
+                                    cwd=tmp, env={**os.environ, 'PATH': folder + os.pathsep + os.environ['PATH'], 'GITHUB_RUN_ATTEMPT': '2'},
+                                    capture_output=True, text=True, timeout=15)
+            self.assertEqual(result.returncode, 1, result.stderr)
+            self.assertIn('Held: grey', result.stdout)
+            self.assertEqual(json.loads((tmp / 'beta-held.json').read_text()), {'attempt': 2, 'grey': ['Mac + Linux: apply'], 'red': []})
+
     def test_empty_lane_jobs_cannot_clear_a_failed_matrix(self):
         self.assertEqual(self.gate().blocking_jobs([], {}, 'mac'), ['lane jobs unavailable'])
 
     def test_windows_uses_its_finished_lane_artifact_not_a_still_running_mac(self):
         _, gh = self.fixture(counts(40), platform='windows')
         status, lines = self.gate().check('o/r', 99, {'qualityai': {'lane': 'tolerant', 'input': 'ai'}}, gh, platform='windows')
-        self.assertEqual(status, 1)
-        self.assertIn('BLOCKED', '\n'.join(lines))
+        self.assertEqual(status, 0)
+        self.assertIn('below band (report only)', '\n'.join(lines))
 
     def test_missing_or_invalid_main_artifacts_are_skipped_without_zero_scores(self):
         for missing in (True, False):
@@ -228,7 +300,7 @@ class Gate(unittest.TestCase):
                 else:
                     store.blobs[20] = archive({**counts(), 'v': 2})
                 status, lines = self.gate().check('o/r', 99, {'qualityai': {'lane': 'tolerant', 'input': 'ai'}}, gh)
-                self.assertEqual(status, 1)
+                self.assertEqual(status, 0)
                 self.assertIn('main runs 19,18,17,16,15,14,13', '\n'.join(lines))
                 self.assertIn('main band 87.55%–92.01%', '\n'.join(lines))
                 self.assertNotIn('/runs/12/', str(store.calls))
@@ -298,10 +370,10 @@ class Gate(unittest.TestCase):
                 return json.dumps([{'jobs': [{'name': 'E2E · Mac + Linux · qualityai', 'status': 'completed', 'conclusion': 'failure'}]}])
             return gh(*args, **kwargs)
         status, lines = self.gate().check('o/r', 99, {'qualityai': {'lane': 'tolerant', 'input': 'ai'}}, paged)
-        self.assertEqual(status, 1)
+        self.assertEqual(status, 0)
         self.assertIn('main runs 20,19,18,17,16,15,14', '\n'.join(lines))
 
-    def test_workflow_cli_returns_nonzero_for_fixture_night_without_network(self):
+    def test_workflow_cli_reports_dip_and_exits_zero_without_network(self):
         root = Path(__file__).resolve().parents[1]
         with tempfile.TemporaryDirectory() as folder:
             tmp = Path(folder)
@@ -331,8 +403,8 @@ else:
             result = subprocess.run([sys.executable, str(root / 'tools/beta_rate_gate.py'), '--repo', 'o/r', '--run', '99'],
                                     env={**os.environ, 'PATH': folder + os.pathsep + os.environ['PATH'], 'PYTHONDONTWRITEBYTECODE': '1'},
                                     capture_output=True, text=True, timeout=15)
-            self.assertEqual(result.returncode, 1, result.stderr)
-            self.assertIn('::error::qualityai: facts 40/100', result.stdout)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn('::warning::qualityai: facts 40/100', result.stdout)
 
 
 if __name__ == '__main__':

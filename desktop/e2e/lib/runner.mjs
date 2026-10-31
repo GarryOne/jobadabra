@@ -4,7 +4,7 @@ import path from 'node:path';
 import {ARTIFACTS, DESKTOP} from './app.mjs';
 import {ensureStaged} from './ensure-staged.mjs';
 import {refusalNote} from './ai-refused.mjs';
-import {capMessage, releaseGate, skipStepForCap, takeCapped} from './ai-cap.mjs';
+import {capMessage, skipStepForCap, takeCapped} from './ai-cap.mjs';
 import {isEnvironment, RETRY_WAIT_MS} from './environment.mjs';
 import {faultCheck, NEVER_FIRED, neverFiredNote} from './faults.mjs';
 import {codeLine} from './artifacts.mjs';
@@ -157,9 +157,9 @@ export function createRunner(getSession, {keepGoing = false, budgetMs = SUITE_BU
       results.push({name, status: 'passed', seconds, ...(retried ? {retried} : {}), ...(vacuous ? {faultNeverFired: true} : {})});
       console.log(`✓ ${name} (${seconds}s)${retried ? ' after one retry' : ''}${vacuous ? ` ⚠ passed, but ${NEVER_FIRED}: it may test nothing` : ''}`);
     } catch (error) {
-      // Why (28 Oct 2026, owner + fl): a step the AI cap refused is SKIPPED with its cause, never failed and never passed; the nightly and every release gate (releaseGate: E2E_FULL or E2E_RUN_KIND=gate) fail it instead, so a release never approves with AI steps unrun.
+      // Why (31 Oct 2026, owner): "the fact that AI credit finished should not stop a beta from being green. It should just raise an alert. And that's it." Every capped step is skipped, including release gates.
       const capped = takeCapped();
-      if (capped && !releaseGate()) {
+      if (capped) {
         results.push({name, status: 'skipped', aiCapped: true, note: capMessage(capped.neurons, process.env, capped.why)});
         skipStepForCap(name, capped);
         await report?.skipStep(`${name} (AI capped)`).catch(() => {});

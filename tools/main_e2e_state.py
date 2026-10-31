@@ -21,9 +21,30 @@ LANES = Path(__file__).resolve().parent.parent / 'desktop/e2e/lanes.json'
 # Runs that do not check main's own code as it is.
 NOT_MAIN_CHECK = re.compile(r'^(Mutant|RC soak|Stable canary|Beta E2E tests|Gate|Bisect|E2E check · outside world) ')   # the outside world is health, never main's state (#2502)
 # Jobs of e2e.yml that are not a suite.
-NOT_SUITE = {'plan', 'HTML report', 'promote', 'Telegram alert', 'Windows follows', 'Nothing tested'}
+NOT_SUITE = {'plan', 'HTML report', 'promote', 'Telegram alert', 'Windows follows', 'Nothing tested', 'AI credit health'}
 AFTER_MERGE = 'E2E after merge · '   # e2e.yml run-name for the steps main-steps.yml starts after a merge
 MAX_RUNS = 15   # main-check runs read, newest first (two days of schedule plus re-runs)
+
+
+GREY_TITLE = 'Grey: the runner, not the app'
+
+
+def is_grey(annotations):
+    """Only the proof step's exact annotation title identifies a grey job."""
+    return any(note.get('title') == GREY_TITLE for note in annotations)
+
+
+def annotations_of(repo, job_id, github):
+    """Read all check-run annotations through the caller's transport; absent evidence stays red."""
+    if job_id is None:
+        return []
+    try:
+        pages = json.loads(github('api', '--paginate', '--slurp', f'repos/{repo}/check-runs/{job_id}/annotations?per_page=100'))
+        if not isinstance(pages, list) or any(not isinstance(page, list) or any(not isinstance(note, dict) for note in page) for page in pages):
+            return []
+        return [note for page in pages for note in page]
+    except (OSError, ValueError, TypeError, subprocess.CalledProcessError):
+        return []
 
 
 def suite_of(job_name):
@@ -43,7 +64,7 @@ def counts_green(run):
     return is_main_check(run) and not (run.get('display_title') or '').startswith(AFTER_MERGE)
 
 
-def state(runs, jobs_of):
+def state(runs, jobs_of, annotations=lambda jid: []):
     """runs: e2e.yml runs newest first ({id, head_branch, head_sha, conclusion, display_title, created_at, html_url}); jobs_of(run_id) → [{id, name, conclusion}].
     Returns {suite: {'conclusion', 'sha', 'url', 'at', 'jobs'}} from each suite's newest finished job; 'jobs': the ids of its red jobs in that run
     (tools/pr-verdict.py reads their failure lines to tell main's own red from a PR's)."""
@@ -54,8 +75,13 @@ def state(runs, jobs_of):
             if job.get('name') in NOT_SUITE or job.get('conclusion') not in ('success', 'failure'):
                 continue
             suite = suite_of(job['name'])
-            slices[suite] = 'failure' if job['conclusion'] == 'failure' or slices.get(suite) == 'failure' else 'success'
-            if job['conclusion'] == 'failure':
+            conclusion = job['conclusion']
+            if conclusion == 'failure' and is_grey(annotations(job.get('id'))):
+                conclusion = 'grey'
+            priority = {'success': 0, 'grey': 1, 'failure': 2}
+            if priority[conclusion] > priority.get(slices.get(suite), -1):
+                slices[suite] = conclusion
+            if conclusion == 'failure':
                 reds.setdefault(suite, []).append(job.get('id'))
         for suite, conclusion in slices.items():
             if conclusion == 'success' and not counts_green(run):
@@ -92,7 +118,8 @@ def gh_json(args):
 
 def live(repo):
     runs = gh_json(['api', f'repos/{repo}/actions/workflows/e2e.yml/runs?branch=main&status=completed&per_page=60', '--jq', '.workflow_runs'])
-    return state(runs, lambda rid: gh_json(['api', f'repos/{repo}/actions/runs/{rid}/jobs?per_page=100', '--jq', '.jobs']) or [])
+    return state(runs, lambda rid: gh_json(['api', f'repos/{repo}/actions/runs/{rid}/jobs?per_page=100', '--jq', '.jobs']) or [],
+                 lambda jid: annotations_of(repo, jid, lambda *args: json.dumps(gh_json(list(args)))))
 
 
 def main(argv):
@@ -106,7 +133,8 @@ def main(argv):
     suspended = lane_suites(('suspended',))
     reds = red(st)
     if '--json' in argv:
-        print(json.dumps({'red': [{'suite': suite, **s} for suite, s in reds],
+        print(json.dumps({'grey': [{'suite': suite, **s} for suite, s in sorted(st.items()) if s['conclusion'] == 'grey'],
+                          'red': [{'suite': suite, **s} for suite, s in reds],
                           'suspended': [{'suite': suite, **st[suite]} for suite in sorted(suspended) if suite in st]}))
     else:
         for suite, s in reds:

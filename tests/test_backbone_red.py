@@ -47,6 +47,15 @@ class BackboneRedTest(unittest.TestCase):
                 if change == 'intermittent': item['logs'][str(job['id'])] += '🔁 intermittent'
             self.assertIsNone(candidate(data, SHA, {}), change)
 
+    def test_grey_annotated_timing_never_authorizes_retry_or_revert(self):
+        data = records()
+        for item in data:
+            jid = str(item['jobs'][0]['id'])
+            item['logs'][jid] = '✗ Fill: Timeout 30000ms exceeded'
+            item['annotations'] = {jid: [{'title': 'Grey: the runner, not the app'}]}
+        self.assertIsNone(candidate(data, SHA, {}))
+        self.assertIsNone(backbone.second_attempt_run(data[:1], SHA, {}))
+
     def test_wrong_commit_wrong_run_duplicate_or_different_suite_do_not_count_twice(self):
         for change in ['sha', 'title', 'branch', 'path', 'duplicate', 'suite']:
             data = records()
@@ -70,6 +79,8 @@ class BackboneRedTest(unittest.TestCase):
         data = records()
         def read(endpoint):
             calls.append(endpoint)
+            if '/annotations?' in endpoint:
+                return []
             if '/attempts/' in endpoint and '/jobs?' not in endpoint:
                 return data[int(endpoint.rsplit('/', 1)[-1]) - 1]['run']
             if '/jobs?' in endpoint:
@@ -82,6 +93,19 @@ class BackboneRedTest(unittest.TestCase):
         self.assertIsNotNone(proof)
         self.assertEqual(proof['attempts'], ['501/1', '501/2'])
         self.assertTrue(any('page=2' in call for call in calls))
+
+    def test_live_collection_keeps_grey_check_run_annotations_with_the_attempt(self):
+        data = records()
+        def read(endpoint):
+            if '/annotations?' in endpoint:
+                return [{'title': 'Grey: the runner, not the app'}]
+            if '/attempts/' in endpoint:
+                number = int(endpoint.split('/attempts/')[1].split('/')[0])
+                return {'jobs': data[number - 1]['jobs']} if '/jobs?' in endpoint else data[number - 1]['run']
+            return {'workflow_runs': [data[-1]['run']]}
+        got = collect('o/r', SHA, read, lambda job: '✗ Fill: Timeout 30000ms exceeded')
+        self.assertIsNone(candidate(got, SHA, {}))
+        self.assertTrue(all(record['annotations'] for record in got))
 
     def test_a_missing_or_running_latest_suite_interrupts_the_red_pair(self):
         for change in ('missing', 'running'):
@@ -163,6 +187,7 @@ class OneBackboneSuiteRedAfterMerge(unittest.TestCase):
                     attempt = int(endpoint.split('/attempts/')[1].split('/')[0])
                     record = next(r for r in data if r['run']['run_attempt'] == attempt)
                     value = {'jobs': record['jobs'], 'total_count': len(record['jobs'])} if '/jobs?' in endpoint else record['run']
+                elif '/annotations?' in endpoint: value = []
                 elif endpoint.endswith('/logs'):
                     job_id = endpoint.split('/jobs/')[1].split('/')[0]
                     return subprocess.CompletedProcess(command, 0, next(r['logs'][job_id] for r in data if job_id in r['logs']))

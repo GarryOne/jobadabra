@@ -9,7 +9,7 @@ import path from 'node:path';
 import {fileURLToPath, pathToFileURL} from 'node:url';
 import {ensureStaged} from './lib/ensure-staged.mjs';
 import {suitesUsing} from './lib/import-graph.mjs';
-import {autoSuites, cadenceOf, exploreDecision, onWindows, runnerOf, noiseTripped, reviewNeeded, suitesFor, suitesNamed, waitingFindings} from './lib/plan.mjs';
+import {tolerantMatrixFlag, autoSuites, cadenceOf, exploreDecision, onWindows, runnerOf, noiseTripped, reviewNeeded, suitesFor, suitesNamed, waitingFindings} from './lib/plan.mjs';
 import {asIssues, REGISTER_LIST, registerEntries} from './lib/prejudge.mjs';
 import {shardLegs, suiteOfKey, windowsMatrix} from './lib/suite-shards.mjs';
 import {STORES, WHY} from './lib/pick-why.mjs';
@@ -134,7 +134,7 @@ export async function planRun({env, gh = realGh, all, minutes, os = async () => 
   const legs = key => (env.GATE_TAG && env.GATE_STORE_LEGS !== 'one' && !storeless.includes(suiteOfKey(key)) ? [{store: 'sqlite', key}, {store: 'standin', key: `${key}-standin`}] : [{store: prStores[suiteOfKey(key)] || '', key}]);
   // A suite with `shards` is one job per slice (lib/suite-shards.mjs), on both lanes: the recorded replay outgrew one job's budget (13 Oct 2026).
   const include = [];
-  for (const suite of suites) for (const slice of prLegs(suite, shards, env, picks)) for (const leg of legs(slice.key)) include.push({suite, ...(cadence[suite] === 'outside' ? {outside: true} : {}), fallbackSuites, ...offlineMatrixFlag(suite, offlineAi), ...answersMatrixFlag(suite, backbone), ...slice, ...leg, minutes: await minutes(suite), os: await os(suite, {pr: !!String(env.PR_SUITES || '').trim()})});
+  for (const suite of suites) for (const slice of prLegs(suite, shards, env, picks)) for (const leg of legs(slice.key)) include.push({suite, ...tolerantMatrixFlag(suite), ...(cadence[suite] === 'outside' ? {outside: true} : {}), fallbackSuites, ...offlineMatrixFlag(suite, offlineAi), ...answersMatrixFlag(suite, backbone), ...slice, ...leg, minutes: await minutes(suite), os: await os(suite, {pr: !!String(env.PR_SUITES || '').trim()})});
   if (env.AI_ANSWERS === 'record') {
     const blocked = include.find(leg => leg.offlineAi && !leg.burnIn);
     if (blocked) throw new Error(`suite ${blocked.suite} declares offlineAi, so it cannot record: record from a branch where it does not declare it, then declare it`);

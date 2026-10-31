@@ -34,3 +34,50 @@ test('no secrets: one line, no send, and the message never carries the token', a
   assert.match(await alertCreditOut({provider: 'anthropic', text: 'Credit balance is too low', env: {}, fetcher: async () => { throw new Error('must not call'); }}), /not sent \(CI_ALERTS_TELEGRAM_BOT_TOKEN/);
   assert.doesNotMatch(creditMessage({provider: 'anthropic', text: 'x', env}).text, /botT|"T"/);
 });
+
+test('capped release artifacts warn and send one existing-channel alert across suites and retries', async () => {
+  const fs = await import('node:fs');
+  const os = await import('node:os');
+  const path = await import('node:path');
+  const {alertCappedSteps} = await import('../credit-alert.mjs');
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ai-credit-health-'));
+  const sent = [], lines = [];
+  const fetcher = async (_, init) => { sent.push(JSON.parse(init.body)); return {ok: true}; };
+  try {
+    for (const suite of ['apply', 'qualityai']) {
+      fs.mkdirSync(path.join(root, suite));
+      fs.writeFileSync(path.join(root, suite, 'ai-capped.json'), JSON.stringify({why: 'weekly budget used up', steps: ['ask'], skipped: 1}));
+    }
+    const marker = path.join(root, 'alert-sent.txt');
+    await alertCappedSteps({artifacts: root, marker, env, fetcher, log: line => lines.push(line)});
+    assert.equal(sent.length, 1);
+    assert.match(sent[0].text, /AI credit ran out/);
+    assert.match(sent[0].text, /beta is not held/);
+    assert.match(sent[0].text, /weekly budget used up/);
+    assert.ok(lines.every(line => line.includes('::warning title=AI credit ran out::')));
+    assert.ok(fs.existsSync(marker));
+    await alertCappedSteps({artifacts: root, marker, env, fetcher, log: () => {}});
+    assert.equal(sent.length, 1, 'a fresh-runner retry never sends a second credit alert for this run');
+    fs.rmSync(marker);
+    fs.rmSync(path.join(root, 'qualityai', 'ai-capped.json'));
+    fs.rmSync(path.join(root, 'apply', 'ai-capped.json'));
+    fs.writeFileSync(path.join(root, 'apply', 'steps.json'), JSON.stringify({results: [{aiCapped: true, status: 'skipped', note: 'AI was capped'}]}));
+    await alertCappedSteps({artifacts: root, marker, env, fetcher, log: () => {}});
+    assert.equal(sent.length, 2, 'aiCapped step records also alert when the cap file is missing');
+  } finally { fs.rmSync(root, {recursive: true, force: true}); }
+});
+
+test('every e2e workflow reports AI credit through one nonblocking aggregate alert job', async () => {
+  const fs = await import('node:fs');
+  for (const name of ['desktop', 'e2e', 'e2e-windows']) {
+    const text = fs.readFileSync(new URL(`../../../.github/workflows/${name}.yml`, import.meta.url), 'utf8');
+    const block = text.split('  ai-credit-health:\n')[1]?.split(/\n  [a-z][a-z-]*:/)[0] || '';
+    assert.match(block, /continue-on-error: true/, name);
+    assert.match(block, /if: always\(\) && !cancelled\(\) && github.ref == 'refs\/heads\/main'/, name);
+    assert.match(block, /node desktop\/e2e\/credit-alert.mjs --artifacts/, name);
+    assert.match(block, /--pattern 'e2e-rerun-\*' --dir ai-credit-health/, name);
+    assert.match(block, /CI_ALERTS_TELEGRAM_BOT_TOKEN:/, name);
+    assert.match(block, /name: ai-credit-alert-\$\{\{ github.run_id \}\}/, name);
+    assert.match(block, /overwrite: true/, name);
+  }
+});

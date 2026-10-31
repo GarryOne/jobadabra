@@ -208,7 +208,7 @@ jobs:
     runs-on: ${{ inputs.all_on_mac && 'macos-latest' || matrix.os || 'macos-latest' }}   # Linux unless the suite needs the Mac (lib/plan.mjs runnerOf); a virtual display there
     timeout-minutes: 360   # the lock's wait (up to 3 h) plus the suite; each step below has its own limit, so this only ends a hung wait
     # Outside failures stay red in their job and report, but do not decide the beta gate.
-    continue-on-error: ${{ matrix.outside == true }}
+    continue-on-error: ${{ (matrix.outside == true || matrix.tolerant == true) }}
     strategy:
       fail-fast: false      # one suite failing must not hide what the others found
       matrix: ${{ fromJson(needs.plan.outputs.matrix) }}
@@ -446,7 +446,7 @@ jobs:
         if: steps.suite_run.outcome == 'failure' && !inputs.mutant && steps.suite_run.outputs.report_only == '1'
         run: exit 1
       - name: "First try failed: the ${{ matrix.key }} suite once more, to tell flaky from real"
-        if: steps.suite_run.outcome == 'failure' && !inputs.mutant && !matrix.burnIn && steps.suite_run.outputs.report_only != '1' && matrix.outside != true
+        if: steps.suite_run.outcome == 'failure' && !inputs.mutant && !matrix.burnIn && steps.suite_run.outputs.report_only != '1' && matrix.outside != true && matrix.tolerant != true
         env:
           E2E_TRY_MINUTES: 15   # = this step's timeout-minutes: a suite without an aggregate budget stops 4 min before it (its close-down cap + 1), with records that read as timing (lib/runner.mjs budgetMsOf; tests/test_e2e_try_minutes.py)
           # Why (30 Oct 2026, ap): a backbone suite's retry uses the same stored answers as its first attempt (matrix.aiAnswers), never a UUID-dependent live replay.
@@ -472,11 +472,15 @@ jobs:
               exit 1
             fi
           else
-            echo "Failed again on the same commit: a real failure."
-            exit 1   # red twice: the job (and the gate) fail
+            if steps=$(node flaky-proof.mjs --grey "$first/suite-failures.json" "$E2E_ARTIFACTS/suite-failures.json"); then
+              echo "::error title=Grey: the runner, not the app::${{ matrix.key }}: both tries stopped on time only ($steps); re-runs once on a fresh runner in a beta"
+            else
+              echo "Failed again on the same commit: a real failure."
+            fi
+            exit 1   # keep failure so gh run rerun --failed picks grey jobs
           fi
       - name: Outside-world health
-        if: always() && matrix.outside == true
+        if: always() && (matrix.outside == true || matrix.tolerant == true)
         env:
           OUTCOME: ${{ steps.suite_run.outcome }}
         run: |
@@ -935,3 +939,51 @@ jobs:
           gh workflow run e2e-windows.yml --repo "${{ github.repository }}" --ref main \
             -f mac_run=${{ github.run_id }} -f sha=${{ needs.plan.outputs.ref }} -f review=${{ needs.plan.outputs.review }} -f full="$FULL" -f tag="${{ needs.plan.outputs.tag }}"
           echo "Windows run started for commit ${{ needs.plan.outputs.ref }} (it skips a commit Windows already tested)."
+
+  # Why (31 Oct 2026, owner): "It should just raise an alert. And that's it." One credit alert per workflow run, never a beta hold.
+  ai-credit-health:
+    name: AI credit health
+    needs: [suite]
+    if: always() && !cancelled() && github.ref == 'refs/heads/main'
+    continue-on-error: true
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+    env:
+      E2E_ARTIFACT_SECRET_NAMES: |
+        GH_TOKEN
+        CI_ALERTS_TELEGRAM_BOT_TOKEN
+        CI_ALERTS_TELEGRAM_CHAT_ID
+      GH_TOKEN: ${{ github.token }}
+      CI_ALERTS_TELEGRAM_BOT_TOKEN: ${{ secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN }}
+      CI_ALERTS_TELEGRAM_CHAT_ID: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          sparse-checkout: |
+            desktop/e2e
+            tools/scan-e2e-artifacts.py
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - name: AI credit is an alert, never a hold
+        run: |
+          gh run download "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --pattern 'e2e-artifacts-*' --dir ai-credit-health || echo "::notice::No suite artifacts available for AI credit health"
+          gh run download "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --pattern 'e2e-rerun-*' --dir ai-credit-health || echo "::notice::No retry artifacts available for AI credit health"
+          gh run download "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --name "ai-credit-alert-$GITHUB_RUN_ID" --dir ai-credit-alert || true
+          node desktop/e2e/credit-alert.mjs --artifacts ai-credit-health --marker ai-credit-alert/alert-sent.txt
+      - name: Scan artifact contents for CI secrets
+        id: artifact_scan_1
+        if: always()
+        env:
+          E2E_ARTIFACT_PATHS: ai-credit-alert/alert-sent.txt
+        run: python tools/scan-e2e-artifacts.py
+      - name: Remember this run's single credit alert
+        if: (always() && hashFiles('ai-credit-alert/alert-sent.txt') != '') && steps.artifact_scan_1.outcome == 'success'
+        uses: actions/upload-artifact@v6
+        with:
+          name: ai-credit-alert-${{ github.run_id }}
+          path: ai-credit-alert/alert-sent.txt
+          overwrite: true

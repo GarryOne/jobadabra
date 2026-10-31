@@ -41,11 +41,7 @@ export async function capReached({env = process.env, fetchImpl = fetch, now = Da
   return neurons == null ? {capped: true, neurons: null, unreadable: true} : {capped: neurons >= capOf(env), neurons};
 }
 
-// True on a run that gates a release or is the night's full run (E2E_RUN_KIND=gate: the beta and the release gates in desktop.yml, e2e.yml, e2e-windows.yml; E2E_FULL=1: the paid judge steps):
-// there a capped step FAILS, so a release never approves with AI steps unrun. A PR run is neither: its capped steps are skipped (Gitar on #2375: E2E_FULL alone missed the Windows beta).
-export const releaseGate = (env = process.env) => env.E2E_RUN_KIND === 'gate' || env.E2E_FULL === '1';
-
-// The caps this process has hit and the steps it skipped for them: one list, written to ai-capped.json (the beta and release gates read it as "not run").
+// Why (31 Oct 2026, owner): "Should be gray, or green". Release gates skip capped steps too: ai-capped.json is alert evidence, never a release hold.
 let fired = null;
 const skipped = [];
 
@@ -68,7 +64,13 @@ export function noteBrokerCapped(why, env = process.env) {
 export function takeCapped() { const was = fired; fired = null; return was; }
 
 // The runner skipped `name` because of the cap (never failed, never passed: owner/fl 28 Oct 2026). Takes the refusal takeCapped gave ({neurons, why?}); counts it and rewrites ai-capped.json.
-export function skipStepForCap(name, refusal, env = process.env) { skipped.push(name); console.log(`- ${name}: skipped (AI capped; ${skipped.length} step(s) skipped in this run)`); writeNote(refusal, env); }
+export function skipStepForCap(name, refusal, env = process.env) {
+  skipped.push(name);
+  console.log(`- ${name}: skipped (AI capped; ${skipped.length} step(s) skipped in this run)`);
+  const cause = capMessage(refusal.neurons, env, refusal.why).replace(/%/g, '%25').replace(/\r/g, '%0D').replace(/\n/g, '%0A');
+  console.log(`::warning title=AI credit ran out::${cause}`);
+  writeNote(refusal, env);
+}
 
 // Why (31 Oct 2026, beta 41135642422): the broker's reason went only to the job log, so qualityai's failure said "no refusal reason recorded"; the file keeps the
 // reason of the refusal that wrote it, never a copy kept from an earlier one (Gitar on #2652: a later neuron cap would carry the broker's old reason).

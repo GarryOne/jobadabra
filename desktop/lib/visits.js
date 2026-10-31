@@ -335,8 +335,8 @@ export function done(payload) {
 }
 // `prepare` (a site -> the site to open, e.g. with its job page found): run in the site's own lane just before its tab opens, so the first tab
 // opens after one lookup, not after all of them (7 Oct 2026: "Finding the job page of 7 employers…" held every tab for about 2 minutes).
-// signal: Stop (lib/pipeline.js work): no further site opens, and the ones reading now end at once (their tabs are left as they are).
-export async function runAll(sites, {hold = false, atOnce = 2, filter = true, tee = () => {}, openTab = open, waitMs = WAIT_MS, quietMs = QUIET_MS, siteMs = SITE_MS, prepare = null, signal = null} = {}) {
+// signal: Stop (lib/pipeline.js work): no further site opens, and the ones reading now end at once (their tabs are left as they are). maxPages: a site ends after that many pages (0 = the extension's own). Each result has `blocked`: 'login' | 'check' | ''.
+export async function runAll(sites, {hold = false, atOnce = 2, filter = true, tee = () => {}, openTab = open, waitMs = WAIT_MS, quietMs = QUIET_MS, siteMs = SITE_MS, prepare = null, signal = null, maxPages = 0} = {}) {
   const queue = [...sites], results = [];
   const mine = new Set();   // this run's tickets still waiting, for Stop
   signal?.addEventListener('abort', () => {
@@ -396,7 +396,12 @@ export async function runAll(sites, {hold = false, atOnce = 2, filter = true, te
       }
       if (event.step) tee(siteLine('reading', site.name, `${event.step}${jobs ? ` · ${jobs} jobs so far` : ''}`));
       if (event.waiting) tee(siteLine('waiting', site.name, typeof event.waiting === 'string' ? event.waiting : 'Waiting for you in Chrome: press Allow on the Jobadabra page'));
-      if (event.page) { active?.lastPage.set(key(chosen.url), event.url); seenPages.set(key(chosen.url), event.url); blocked.delete(ticket); pages += 1; jobs = Math.max(jobs, Number(event.page.jobs) || 0); tee(siteLine('reading', site.name, `page ${pages} · ${jobs} jobs`)); }
+      if (event.page) { active?.lastPage.set(key(chosen.url), event.url); seenPages.set(key(chosen.url), event.url); blocked.delete(ticket); pages += 1; jobs = Math.max(jobs, Number(event.page.jobs) || 0); tee(siteLine('reading', site.name, `page ${pages} · ${jobs} jobs`));
+        if (maxPages && pages >= maxPages && waiting.has(ticket)) {   // Why (31 Oct 2026, LinkedIn jobs 2/3, owner: a handful of pages per run): the cap is the app's; the extension reads up to 20
+          const resolve = waiting.get(ticket); waiting.delete(ticket);
+          resolve({stopped: `${pages} pages read: the most for this read`, jobs, added: Number(event.page.added) || 0, pages});
+        }
+      }
     });
     const mark = hold ? 'jp-board' : filter ? 'jp-read-filter' : 'jp-read';
     marks.set(ticket, mark);
@@ -428,7 +433,7 @@ export async function runAll(sites, {hold = false, atOnce = 2, filter = true, te
     tee(siteLine(ok ? 'done' : state.closed ? 'closed' : 'stopped', site.name, ok ? `${state.jobs} job${state.jobs === 1 ? '' : 's'} read (${state.added || 0} new), ${fits} matching your search${cut}` : state.stopped || 'nothing read'));
     tee(`⏳ Finding jobs in your browser: ${doneCount} of ${sites.length} · ${percent(doneCount, sites.length)}% · ${site.name}: ${ok ? `${state.jobs} jobs` : 'stopped'}`);   // the window's running step
     log('visit', 'site read by the Actions task', {host: new URL(site.url).hostname, jobs: state.jobs || 0, added: state.added || 0, fits, pages: state.pages || 0, stopped: String(state.stopped || '').slice(0, 80)});
-    return {...site, start: chosen.url, ok, why: state.stopped || '', jobs: state.jobs || 0, added: state.added || 0, fits};
+    return {...site, start: chosen.url, ok, why: state.stopped || '', jobs: state.jobs || 0, added: state.added || 0, fits, blocked: state.blocked === 'login' || state.blocked === 'check' ? state.blocked : ''};   // Why (31 Oct 2026, LinkedIn jobs 2/3): the extension judged the page's kind; the step reads it here, not from `why`'s words
   };
   active = {queue, sites, lastPage: new Map(), tickets: new Map(), back: site => {   // "Open again": the site is next once more, and no longer counted as finished
     if (queue.includes(site)) return;

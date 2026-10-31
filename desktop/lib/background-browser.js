@@ -128,6 +128,13 @@ export function createBackgroundBrowser(storage, {find = findBackgroundBrowser, 
     const pages = (await get(live.port, '/json/list')).filter(target => target.type === 'page');
     return tabOfSession(String(session || ''), pages)?.webSocketDebuggerUrl || null;
   }
+  /** One CDP command on the verified browser (cookies, a new tab, closing one) -> its result. Throws when the browser is not ours or not running; nothing is sent then. */
+  async function send(method, params = {}) { const live = await connect(); return command(live.socket, method, params); }
+  /** The loopback CDP address of one open tab by its target id, or null (a worker or a closed tab is not one). */
+  async function targetSocket(targetId) {
+    const live = await connect();
+    return (await get(live.port, '/json/list')).find(target => target.type === 'page' && target.id === targetId)?.webSocketDebuggerUrl || null;
+  }
   async function close() { const live = await connect(); await command(live.socket, 'Browser.close').catch(() => {}); }
-  return {ready: () => !!find(storage.path('background-browser-runtime')), start, pageSocket, reveal: session => sessionAction(session, 'reveal'), closeSession: session => sessionAction(session, 'closeSession'), close};
+  return {ready: () => !!find(storage.path('background-browser-runtime')), start, pageSocket, send, targetSocket, reveal: session => sessionAction(session, 'reveal'), closeSession: session => sessionAction(session, 'closeSession'), close};
 }

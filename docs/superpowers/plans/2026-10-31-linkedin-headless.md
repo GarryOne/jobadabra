@@ -24,7 +24,19 @@ Spec: [2026-10-31-linkedin-headless-design.md](../specs/2026-10-31-linkedin-head
 - States from the spec table, one writer (the step's result); login/checkpoint/401/403/429 end it, no retry, 429 skip a day. Page-kind judgments stay AI calls (`src/ai/decide.py`).
 - Guard test: `browserArguments` has no user-agent override or stealth flag.
 - E2E on fixtures: `linkedin.com` host-mapped to a local server (guest list, login page, checkpoint, 429), fake cookie `FAKE-LI-AT`; Find jobs with the switch off makes no request; Stop closes the tab and clears cookies; value scan of logs.
-- Time: add the step to `tests/test_three_minutes.py`'s accounting.
+- Time: the step is not an engine stage (`tests/test_three_minutes.py` counts those): `lib/search-beside.js` ends it at 170 s of the press's 180 (test/search-beside.test.js).
+
+### Design (PR 2/3, 31 Oct 2026, read from the code that exists)
+- **Reused as is:** the owned browser's extension worker imports the same `background.js` and its manifest gets `https://*/*` (`hosted/ready-fill/extension-copy.mjs`), so a tab marked `#jp-read-<ticket>` is read by `extension/visit.js`, which posts `/extension/visit-done` with `blocked: 'login'|'check'` (the page kind it already judged). `visits.runAll` takes `openTab`, `signal`, `tee`, `siteMs`.
+- **Small additions, nothing parallel (checked for an existing owner first: `git grep` in `desktop/lib`, not from memory):**
+  1. `src/sources/visits_portals.py` `linkedin_searches(search, limit=3)` + `src.desktop linkedin-searches`: up to 3 LinkedIn search URLs from the strategy's own roles and first place (the lists are already AI-judged); `portals()` is unchanged.
+  2. `lib/background-browser.js` `send(method, params)`: one CDP command on the verified browser socket (cookies, new tab, close tab).
+  3. `lib/cdp-session.js` already is that client (`openCdpSession`: send/on/detach, loopback only, from the live view): reused, not rewritten. The tab opens as `about:blank`, the step attaches, enables `Network`, then `Page.navigate`s to the marked address, so the first main-document response is seen: 401/403/429/999 = `limited`. Nothing else reads statuses today.
+  4. `visits.runAll` result keeps `blocked` (it drops it now), so `login` = `signed-out` and `check` = `check` come from the page kind the extension already judged, not from the words.
+- **The step (`lib/linkedin-headless.js`, one writer of the state):** switch on + session in the Keychain + runtime downloaded → `Storage.setCookies` (the two cookies, `Secure`, `HttpOnly`) → `runAll(searches, {openTab: Target.createTarget, signal, atOnce: 1})` with a 2–5 s pause between searches → in a `finally` the same cookies are expired (`setCookies` with a past `expires`) and the tabs closed, whatever ended it (done, Stop, error, deadline). A state other than `done` ends the step with no retry; 429 writes `linkedinJobs.pausedUntil` (a day).
+- **Where it runs:** beside the engine's search inside `searchOnce` (`lib/pipeline-tasks.js`), on the press's one deadline (`JOB_PILOTTO_SEARCH_AT`); it never delays the engine and says what it skipped. Its pages go to the store through the existing `remember`/ingest route and the existing light scoring run; the lines go to the search's own log, so Recent activity lists each read.
+- **Guards:** no user-agent override or stealth flag in `browserArguments`; the cookie value never in a log line, a task row or the store (a scan of the step's output for the fixture's `FAKE-LI-AT`); switch off = no cookie call, no browser start (assert on the injected seams); Stop clears the cookies.
+- **Order (tests first):** searches (Python) → `runAll` keeps `blocked` → `send`+`targetSocket` on the owned browser → the step with fakes for every state → the wiring in `searchOnce` → the e2e step on a host-mapped fixture (guest list, login, checkpoint, 429).
 
 ## PR 3/3 Rules and docs (the relaxation, in the owner's words)
 - CLAUDE.md Safety line, `docs/rules/why.md:13`, `docs/rules/applying.md:53`; `extension/refused-read.js` NEVER list and `src/sources/refused_reads.py` stay (not this path), with a Why saying so.

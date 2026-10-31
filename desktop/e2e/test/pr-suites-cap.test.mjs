@@ -184,7 +184,7 @@ import path from 'node:path';
 import {spawnSync} from 'node:child_process';
 
 const cli = new URL('../pr-suites.mjs', import.meta.url);
-function cliPlan({catches, pullRequest = true, base = 'origin/main', listed = {}, mergeBaseListed = listed, headListed = listed, checkoutLanes = {}, addedFiles = [], deletedFiles = [], suites = ['wizard', 'wander', 'strategy', 'settings', 'jobs', 'interviews', 'focus', 'calendar'], extraFiles = [], coverage = {}} = {}) {
+function cliPlan({catches, pullRequest = true, base = 'origin/main', listed = {}, mergeBaseListed = listed, headListed = listed, checkoutLanes = {}, addedFiles = [], deletedFiles = [], suites = ['wizard', 'wander', 'strategy', 'settings', 'jobs', 'interviews', 'focus', 'calendar'], extraFiles = [], coverage = {}, baseSources = {}} = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pr-cap-cli-'));
   try {
     const files = [...suites.map(s => `desktop/e2e/suites/${s}.mjs`), ...extraFiles];
@@ -194,7 +194,7 @@ function cliPlan({catches, pullRequest = true, base = 'origin/main', listed = {}
       return `--- a/${file}\n+++ b/${file}\n@@ -${line} +${line} @@\n-old\n+new`;
     }).join('\n');
     const bin = path.join(dir, 'bin'); fs.mkdirSync(bin);
-    fs.writeFileSync(path.join(bin, 'git'), `#!${process.execPath}\nconst args = process.argv.slice(2);\nif (args.includes('--name-only') && !args.includes(${JSON.stringify(`${base || 'origin/main'}...HEAD`)})) throw new Error('wrong diff base');\nif (args.includes('--diff-filter=A')) console.log(${JSON.stringify(addedFiles.join('\n'))});\nelse if (args.includes('--diff-filter=D')) console.log(${JSON.stringify(deletedFiles.join('\n'))});\nelse if (args.includes('--name-only')) console.log(${JSON.stringify(files.join('\n'))});\nelse if (args[0] === 'merge-base') console.log('fork');\nelse if (args[0] === 'show') console.log(args[1].startsWith('HEAD:') ? ${JSON.stringify(JSON.stringify({suites: headListed}))} : args[1].startsWith('fork:') ? ${JSON.stringify(JSON.stringify({suites: mergeBaseListed}))} : ${JSON.stringify(JSON.stringify({suites: listed}))});\nelse console.log(${JSON.stringify(diff)});\n`, {mode: 0o755});
+    fs.writeFileSync(path.join(bin, 'git'), `#!${process.execPath}\nconst args = process.argv.slice(2);\nif (args.includes('--name-only') && !args.includes(${JSON.stringify(`${base || 'origin/main'}...HEAD`)})) throw new Error('wrong diff base');\nif (args.includes('--diff-filter=A')) console.log(${JSON.stringify(addedFiles.join('\n'))});\nelse if (args.includes('--diff-filter=D')) console.log(${JSON.stringify(deletedFiles.join('\n'))});\nelse if (args.includes('--name-only')) console.log(${JSON.stringify(files.join('\n'))});\nelse if (args[0] === 'merge-base') console.log('fork');\nelse if (args[0] === 'show' && !args[1].endsWith('lanes.json')) { const file = args[1].split(':').slice(1).join(':'); const sources = ${JSON.stringify(baseSources)}; console.log(Object.hasOwn(sources, file) ? sources[file] : require('node:fs').readFileSync(require('node:path').join(${JSON.stringify(new URL('../../../', import.meta.url).pathname)}, file), 'utf8')); }\nelse if (args[0] === 'show') console.log(args[1].startsWith('HEAD:') ? ${JSON.stringify(JSON.stringify({suites: headListed}))} : args[1].startsWith('fork:') ? ${JSON.stringify(JSON.stringify({suites: mergeBaseListed}))} : ${JSON.stringify(JSON.stringify({suites: listed}))});\nelse console.log(${JSON.stringify(diff)});\n`, {mode: 0o755});
     fs.writeFileSync(path.join(bin, 'gh'), `#!${process.execPath}\nthrow new Error('Network forbidden in CLI test');\n`, {mode: 0o755});
     const output = path.join(dir, 'output'), map = path.join(dir, 'map.json');
     fs.writeFileSync(map, JSON.stringify(coverage));
@@ -325,4 +325,26 @@ test('mail part routing preserves helper, suite, mixed and recorded journey reac
   const coverage = {suites: {qualityai: {sha: 'recorded', files: {'desktop/lib/some-loaded.js': {lines: [[1, 1]]}}}}};
   const mapped = cliPlan({suites: [], extraFiles: ['src/ai/mail.py', 'desktop/lib/some-loaded.js'], listed, coverage});
   assert.deepEqual(JSON.parse(mapped.values.steps)['(parts)'].qualityai, ['journey', 'mail']);
+});
+
+
+test('CLI compares merge-base step names and emits step burn-in metadata', () => {
+  const file = 'desktop/e2e/suites/settings.mjs';
+  const head = fs.readFileSync(new URL('../../../' + file, import.meta.url), 'utf8');
+  const [step] = pick.stepCalls(head).filter(call => call.name);
+  const old = head.slice(0, step.start) + head.slice(step.end + 1);
+  const {values} = cliPlan({suites: ['settings'], baseSources: {[file]: old}});
+  assert.deepEqual(JSON.parse(values.steps)['(step-burn-in)'], {settings: [step.name]});
+});
+
+test('new-step suites outrank ordinary reach so the cap cannot silently skip burn-in', () => {
+  const out = pick.planPrSuites({...eight, stepBurnIn: {'new-mac': ['New step']}, linux: suite => suite !== 'new-mac'});
+  assert.ok(out.suites.includes('new-mac'));
+  assert.equal(out.suites.length, 5);
+});
+
+
+test('more than five burn-in suites must be split, rather than defer an unproved step', () => {
+  const stepBurnIn = Object.fromEntries(['a', 'b', 'c', 'd', 'e', 'f'].map(suite => [suite, ['New step']]));
+  assert.throws(() => pick.planPrSuites({...args, stepBurnIn}), {code: 'E2E_BURN_IN_CAPACITY'});
 });

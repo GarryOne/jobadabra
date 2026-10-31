@@ -7,6 +7,9 @@ import path from 'node:path';
 import {test} from 'node:test';
 import {fileURLToPath} from 'node:url';
 import {INTERMITTENT, greyProof, flakyProof, intermittentComment, labelRerun, unproved} from '../lib/flaky-proof.mjs';
+import {runJourneys} from '../lib/apply-journeys.mjs';
+import {LATE, REVEAL} from '../lib/forms.mjs';
+import {stepClock} from '../lib/wait-on-state.mjs';
 import {toClose} from '../lib/triage-issues.mjs';
 
 // #1897 (25 Oct 2026): this step failed, passed on the rerun, was labelled flaky and closed, then failed beta 2. It was a product bug (bd368f8).
@@ -32,13 +35,13 @@ test('timing and the test environment are proof', () => {
 });
 
 // Beta 40275152602 (26 Oct 2026): the suite's own budget cut a step short and the steps after it never ran; G5 called them "a wrong value" and kept the job red.
-// A fill still running when its wait ran out says so in timing words (lib/extension.mjs fillNote). The sign-up step's eaten click (state null) stays intermittent: a race.
-test('a step the suite budget cut short, one it never ran, and a fill still running at its wait are timing; a page that never moved is not', async () => {
+// A wait that expires before any fill state arrives is timing too (owner, 31 Oct 2026).
+test('a step the suite budget cut short, one it never ran, and a fill still running at its wait are timing; a reported error is not', async () => {
   const {fillNote} = await import('../lib/extension.mjs');
   assert.equal(flakyProof('the suite\'s 7-minute budget ran out during this step (the suite is too long: split it): the window answers, the main process answers').flaky, true);
   assert.equal(flakyProof('not run: the suite was over its 7-minute budget').flaky, true);
   assert.equal(flakyProof(`the one-page form was not filled as the application (${fillNote({state: 'running'}, 90)}): a CV upload beside the password makes it the form`).flaky, true);
-  assert.equal(flakyProof(`the application form after the sign-up was not filled (at https://e2e.wd3.myworkdayjobs.com/e2e/signup, ${fillNote(null, 60)})`).flaky, false);
+  assert.equal(flakyProof(`the application form after the sign-up was not filled (at https://e2e.wd3.myworkdayjobs.com/e2e/signup, ${fillNote(null, 60)})`).flaky, true);
   assert.equal(flakyProof(`the fill did not finish (${fillNote({state: 'error', error: 'x'}, 90)})`).flaky, false, 'an error is a value');
 });
 
@@ -144,4 +147,77 @@ test('wizard stale picks are grey health without a retry; a real failure beside 
   assert.equal(greyProof(picked).grey, true);
   assert.equal(greyProof(picked, picked).grey, true);
   assert.equal(greyProof([...picked, {step: 'save', message: 'expected 3, got 2'}]).grey, false);
+});
+
+// Run the actual journey callback with fixture reads and a fake clock; no browser or app starts.
+async function journeyFailure(t, {head, showTab = true, state = null, immediate = false, expectSuccess = false}) {
+  t.mock.timers.enable({apis: ['Date', 'setTimeout']});
+  let failure, opened = false;
+  const late = head.startsWith('a form drawn after a spinner');
+  const tab = {url: () => late ? LATE.formUrl : REVEAL.url, evaluate: async fn => {
+    if (String(fn).includes('window.got')) return {name: 'cv.pdf', size: 10};
+    if (String(fn).includes('Object.fromEntries')) return late ? {question_3001: {value: '5'}} : {};
+    if (String(fn).includes('getElementById')) return true;
+    return Array.isArray(state) ? state.shift() : state;
+  }};
+  const ctx = {browser: {context: {pages: () => showTab && opened ? [tab] : []}}, run: async (name, step) => {
+    if (!name.startsWith(head)) return;
+    stepClock(3000);
+    try { await step(); } catch (error) { failure = error; } finally { stepClock(null); }
+  }};
+  let settled = false;
+  const started = Date.now();
+  const pending = runJourneys(ctx, {page: {evaluate: async () => { opened = true; }}, forms: {fired: []}, cv: {name: 'cv.pdf', size: 10}, dumpExtension: async () => {}, fail: problems => {
+    if (problems.length) throw new Error(problems.join('; '));
+  }}).finally(() => { settled = true; });
+  for (let tick = 0; !settled && tick < 20; tick++) { await new Promise(setImmediate); if (!settled) t.mock.timers.tick(500); }
+  assert.equal(settled, true, 'uses the step cap, not the old 60/90-second inline clock');
+  await pending;
+  if (immediate) assert.equal(Date.now() - started, 0, 'a closed tab fails on its first read');
+  if (expectSuccess) { assert.equal(failure, undefined); return; }
+  assert.ok(failure, 'the step must report the missing state or wrong value');
+  return failure.message;
+}
+
+// Replay both incident situations through their producers; G5 reads only the new cap messages.
+for (const [head, showTab] of [
+  ['an upload slot that appears only', true],
+  ['a form drawn after a spinner', false],
+]) test(`a stalled journey reports timing without fallout: ${head}`, async t => {
+  const message = await journeyFailure(t, {head, showTab});
+  assert.equal(flakyProof(message).flaky, true, message);
+  assert.match(flakyProof(message).why, /^timing:/);
+  assert.doesNotMatch(message, /slot never received|first name was not filled|Kubernetes years/);
+  const failures = [{step: head, message}];
+  assert.deepEqual(unproved(failures), [], 'a passing retry has timing proof');
+  assert.equal(greyProof(failures, failures).grey, true, 'two stalled tries are grey');
+});
+
+for (const state of ['done', 'error', 'stopped']) test(`a reported ${state} stays a wrong value on either try`, async t => {
+  const message = await journeyFailure(t, {head: 'an upload slot that appears only', state: {state}});
+  if (state === 'done') assert.match(message, /the first name was not filled; Kubernetes years is not the kit's 8/);
+  else assert.equal(message, `state: {"state":"${state}"}`);
+  const failures = [{step: 'filled form', message}];
+  assert.equal(flakyProof(message).flaky, false);
+  assert.equal(unproved(failures).length, 1);
+  assert.equal(greyProof(failures, failures).grey, false);
+});
+
+test('a closed tab fails immediately and cannot grey either try', async t => {
+  const state = {state: 'unreadable', closed: true, error: 'Target page has been closed'};
+  const message = await journeyFailure(t, {head: 'an upload slot that appears only', state, immediate: true});
+  assert.equal(message, `state: ${JSON.stringify(state)}`);
+  assert.equal(flakyProof(message).flaky, false);
+  assert.equal(greyProof([{message}], [{message}]).grey, false);
+});
+
+test('a late form reporting no-form before done is awaited instead of failed early', async t => {
+  await journeyFailure(t, {head: 'a form drawn after a spinner', state: [{state: 'no-form'}, {state: 'done'}], expectSuccess: true});
+});
+
+test('a late form stuck at a provisional no-form state until the cap is timing', async t => {
+  const message = await journeyFailure(t, {head: 'a form drawn after a spinner', state: {state: 'no-form'}});
+  assert.match(message, /did not finish within/);
+  assert.equal(flakyProof(message).flaky, true);
+  assert.equal(greyProof([{message}], [{message}]).grey, true);
 });

@@ -6,7 +6,7 @@ import path from 'node:path';
 import {test} from 'node:test';
 import {currentLaunchLog} from '../lib/app-log.mjs';
 import {withLimit} from '../lib/runner.mjs';
-import {extensionDecisions, formsClosedForJob, pollUntil, stepClock, stepTimeLeft, waitForDecisions, waitForFormValue, waitForLogLine, waitJobFormClosed} from '../lib/wait-on-state.mjs';
+import {extensionDecisions, formsClosedForJob, pollUntil, stepClock, stepTimeLeft, waitForDecisions, waitForFormValue, waitForLogLine, waitJobFormClosed, waitCapNote} from '../lib/wait-on-state.mjs';
 
 const clock = () => {
   let ms = 0;
@@ -299,4 +299,10 @@ test('a decision still in the extension\'s store is read before app.log has it, 
   const control = await extensionDecisions({browser: browserWith({evaluate: async () => { throw new Error('worker restarting'); }}), profile});
   assert.doesNotMatch(control, CORRECTED, 'the control: app.log alone does not have it yet');
   assert.match(control, /page kind forgotten/, 'a worker that cannot be read leaves app.log');
+});
+
+test('an expired wait uses one timing form with elapsed seconds and the last observation', () => {
+  assert.equal(waitCapNote('the wait for the late form', 1.25, ['https://fixture.test/posting']),
+    'the wait for the late form did not finish within 1.25 s (last seen: ["https://fixture.test/posting"])');
+  assert.equal(waitCapNote('the fill', 90, null), 'the fill did not finish within 90 s (last seen: null)');
 });

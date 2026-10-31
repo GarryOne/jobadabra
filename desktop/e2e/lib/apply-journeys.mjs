@@ -8,13 +8,28 @@ import {cvProblems, fillProblems, submitProblems} from './applycheck.mjs';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {fillNote, fillState, launchBrowser, readForm} from './extension.mjs';
+import {fillNote, fillSettled, fillState, launchBrowser, readForm} from './extension.mjs';
 import {writePrivate} from '../../lib/private-file.js';
 import {pressed, ticked} from './free-click.mjs';
-import {extensionDecisions, waitForAccountSafety, waitForDecisions, waitForFormValue, waitJobFormClosed} from './wait-on-state.mjs';
+import {extensionDecisions, pollUntil, stepTimeLeft, waitCapNote, waitForAccountSafety, waitForDecisions, waitForFormValue, waitJobFormClosed} from './wait-on-state.mjs';
 
 export async function runJourneys(ctx, h) {
   const {cv, dumpExtension, fail, forms, page} = h;
+  const tabsSeen = () => ctx.browser.context.pages().map(item => item.url().split('#')[0]);
+  const arrived = async (read, what, lastSeen = tabsSeen) => {
+    const {value, ms} = await pollUntil(read, Boolean, {capMs: stepTimeLeft()});
+    if (!value) {
+      const evidence = await lastSeen();
+      await dumpExtension();
+      throw new Error(waitCapNote(what, ms / 1000, evidence));
+    }
+    return value;
+  };
+  const filled = async (tab, pageKinds = []) => {
+    const {value, ms} = await pollUntil(() => fillState(tab), state => fillSettled(state, {pageKinds}), {capMs: stepTimeLeft(), tickMs: 500});
+    if (value?.state !== 'done') throw new Error(fillNote(value, ms / 1000, {pageKinds}));
+    return value;
+  };
   // Found by asking "can the extension follow a journey from one tab to another?" (3 Oct 2026): a posting whose Apply opens a NEW tab (since 8 Oct 2026
   // loaded in the posting's own tab instead, extension/same-tab.js), whose page has only a
   // "To apply" link, and only then the form (jobs.ch -> an agency's own site). The extension must press Apply, follow the new tab as the same application, press
@@ -25,29 +40,14 @@ export async function runJourneys(ctx, h) {
     await page.locator('article.job-row').filter({hasText: CHAIN.company}).first().locator('.row-main').click();
     for (let waited = 0; ctx.browser.opened.length === opened && waited < 30000; waited += 250) await pause(250);
     if (ctx.browser.opened.length === opened) throw new Error('Apply did not open the posting in the browser');
-    const seen = [];
-    let tab = null;
-    for (let waited = 0; waited < 90000 && !tab; waited += 1000) {
-      const pages = ctx.browser.context.pages();
-      seen.splice(0, seen.length, ...pages.map(item => item.url().split('#')[0]));
-      tab = pages.find(item => item.url().startsWith(CHAIN.formUrl)) || null;
-      await pause(1000);
-    }
-    if (!tab) await dumpExtension();
-    if (!tab) throw new Error(`the journey never reached the form. Tabs open: ${seen.join(' | ')}. ${seen.some(url => url.startsWith(CHAIN.stepUrl)) ? 'The new tab opened but "To apply" was not followed.' : 'Apply did not open the second tab.'}`);
+    const tab = await arrived(() => ctx.browser.context.pages().find(item => item.url().startsWith(CHAIN.formUrl)), 'the wait for the journey form');
     // The form page answers only to the step's POST: "session expired" means the posted data was dropped (the address loaded again).
     for (let waited = 0; waited < 10000 && !(await tab.locator('#application_form, form input').count().catch(() => 0)); waited += 500) await pause(500);
     if (await tab.locator('#expired').count().catch(() => 0)) throw new Error('"To apply" posts its form into a new tab, and the form page said "session expired": the posted data was lost on the way to one tab');
     // One tab for the whole journey (owner, 8 Oct 2026): the page Apply opened in a new tab loads in the posting's own tab, and the new tab closes.
     const journey = ctx.browser.context.pages().filter(item => [CHAIN.url, CHAIN.stepUrl, CHAIN.formUrl].some(url => item.url().startsWith(url.split('#')[0])));
     if (journey.length !== 1) throw new Error(`the journey was in ${journey.length} tabs, not one: ${journey.map(item => item.url().split('#')[0]).join(' | ')}`);
-    let state = null;
-    for (let waited = 0; waited < 90000; waited += 500) {
-      state = await fillState(tab).catch(() => null);
-      if (state?.state === 'done' || state?.state === 'error') break;
-      await pause(500);
-    }
-    if (state?.state !== 'done') throw new Error(`the form was reached but not filled (${fillNote(state, 90)})`);
+    await filled(tab);
     const actual = await readForm(tab);
     fail([...fillProblems({expected: {first_name: CONTACT.first_name, last_name: CONTACT.last_name, email: CONTACT.email, question_3001: '7'}, actual}), ...cvProblems(actual, cv),
       ...submitProblems(forms.fired, CHAIN.path), ...submitProblems(forms.fired, CHAIN.formPath)]);
@@ -71,19 +71,18 @@ export async function runJourneys(ctx, h) {
     await pause(2000);
     await apply(CHAIN);
     const find = url => ctx.browser.context.pages().find(item => item.url().startsWith(url)) || null;
-    let scripted = null, chain = null;
-    for (let waited = 0; waited < 90000 && !(scripted && chain); waited += 1000) { scripted = find(SCRIPTED.formUrl); chain = find(CHAIN.formUrl); await pause(1000); }
-    const seen = () => ctx.browser.context.pages().map(item => item.url().split('#')[0]).join(' | ');
-    if (!scripted || !chain) { await dumpExtension(); throw new Error(`not both forms were reached (scripted: ${!!scripted}, chain: ${!!chain}). Tabs open: ${seen()}`); }
+    const [scripted, chain] = await arrived(() => {
+      const pair = [find(SCRIPTED.formUrl), find(CHAIN.formUrl)];
+      return pair.every(Boolean) ? pair : null;
+    }, 'the wait for both application forms');
+    const seen = () => tabsSeen().join(' | ');
     const tabsOf = urls => ctx.browser.context.pages().filter(item => urls.some(url => item.url().startsWith(url))).length;
     for (let waited = 0; waited < 10000 && tabsOf([SCRIPTED.url, SCRIPTED.formUrl]) > 1; waited += 500) await pause(500);   // the posting closes once its new tab is followed
     const problems = [];
     if (tabsOf([SCRIPTED.url, SCRIPTED.formUrl]) !== 1) problems.push(`the scripted application is in ${tabsOf([SCRIPTED.url, SCRIPTED.formUrl])} tabs, not one: ${seen()}`);
     if (tabsOf([CHAIN.url, CHAIN.stepUrl, CHAIN.formUrl]) !== 1) problems.push(`the chain application is in ${tabsOf([CHAIN.url, CHAIN.stepUrl, CHAIN.formUrl])} tabs, not one: ${seen()}`);
     for (const [tab, job, answer] of [[scripted, SCRIPTED, '9'], [chain, CHAIN, '7']]) {
-      let state = null;
-      for (let waited = 0; waited < 90000; waited += 500) { state = await fillState(tab).catch(() => null); if (state?.state === 'done' || state?.state === 'error') break; await pause(500); }
-      if (state?.state !== 'done') { problems.push(`${job.company}: its form was reached but not filled (${fillNote(state, 90)})`); continue; }
+      await filled(tab);
       const {value, ms} = await waitForFormValue(async () => { const read = (await readForm(tab)).question_3001; return String(read?.value ?? read ?? ''); }, answer);
       if (value !== answer) problems.push(`${job.company}: Kubernetes years "${value}" after waiting ${ms} ms, its own kit says ${answer}${value === (answer === '9' ? '7' : '9') ? ' (the other job\'s kit)' : ''}`);
     }
@@ -95,14 +94,10 @@ export async function runJourneys(ctx, h) {
   await ctx.run('a form drawn after a spinner: its submit is never pressed as Apply, and it is filled once its fields come', async () => {
     for (const item of ctx.browser.context.pages()) if ([LATE.url, LATE.formUrl].some(url => item.url().startsWith(url))) await item.close();
     await page.evaluate(([url, details]) => window.pilot.applyOne(url, details), [LATE.url, {title: LATE.title, company: LATE.company}]);
-    let tab = null;
-    for (let waited = 0; waited < 60000 && !tab; waited += 1000) { tab = ctx.browser.context.pages().find(item => item.url().startsWith(LATE.formUrl)) || null; await pause(1000); }
-    if (!tab) { await dumpExtension(); throw new Error(`the late form was never reached. Tabs: ${ctx.browser.context.pages().map(item => item.url()).join(' | ')}`); }
-    let state = null;
-    for (let waited = 0; waited < 90000; waited += 500) { state = await fillState(tab).catch(() => null); if (state?.state === 'done' || state?.state === 'error') break; await pause(500); }
+    const tab = await arrived(() => ctx.browser.context.pages().find(item => item.url().startsWith(LATE.formUrl)), 'the wait for the late form');
+    await filled(tab);
     const problems = [...submitProblems(forms.fired, LATE.formPath)];
-    if (state?.state !== 'done') problems.push(`the form was not filled once its fields came (${fillNote(state, 90)})`);
-    else {
+    {
       const read = (await readForm(tab)).question_3001, value = String(read?.value ?? read ?? '');
       if (value !== '5') problems.push(`Kubernetes years "${value}", the kit says 5`);
     }
@@ -121,9 +116,7 @@ export async function runJourneys(ctx, h) {
     const since = new Date().toISOString();
     await page.evaluate(([url, details]) => window.pilot.applyOne(url, details), [SIGNUP.url, {title: SIGNUP.title, company: SIGNUP.company}]);
     const find = url => ctx.browser.context.pages().find(item => item.url().startsWith(url)) || null;
-    let tab = null;
-    for (let waited = 0; waited < 60000 && !tab; waited += 1000) { tab = find(SIGNUP.accountUrl); await pause(1000); }
-    if (!tab) { await dumpExtension(); throw new Error(`the sign-up page was never reached. Tabs: ${ctx.browser.context.pages().map(item => item.url()).join(' | ')}`); }
+    const tab = await arrived(() => find(SIGNUP.accountUrl), 'the wait for the sign-up page');
     const session = async () => (await page.evaluate(target => window.pilot.sessions(), null)).find(item => String(item.url || '').replace(/\/$/, '') === SIGNUP.url) || null;
     let at = null;
     for (let waited = 0; waited < 30000 && at?.stage !== 'account'; waited += 1000) { at = await session(); await pause(1000); }
@@ -138,10 +131,9 @@ export async function runJourneys(ctx, h) {
     await tab.fill('#signup_password', 'Fictional-Pass-1234');
     await ticked(tab, '#robot');   // each waits for the overlay again and retries a click it swallowed (lib/free-click.mjs)
     await pressed(tab, '#create_account', {landed: () => tab.url().startsWith(SIGNUP.formUrl)});   // counted only when the form behind it loads
-    let state = null;
-    for (let waited = 0; waited < 60000; waited += 500) { if (tab.url().startsWith(SIGNUP.formUrl)) { state = await fillState(tab).catch(() => null); if (state?.state === 'done' || state?.state === 'error') break; } await pause(500); }
-    if (state?.state !== 'done') problems.push(`the application form after the sign-up was not filled (at ${tab.url()}, ${fillNote(state, 60)})`);
-    else {
+    await arrived(() => tab.url().startsWith(SIGNUP.formUrl), 'the wait for the application after sign-up');
+    await filled(tab);
+    {
       // The last fill pass can commit after "done" (13 Oct 2026, #558): wait for the box itself, with a hang cap and a measured wait.
       const {value, ms} = await waitForFormValue(async () => { const read = (await readForm(tab)).question_3001; return String(read?.value ?? read ?? ''); }, '5');
       if (value !== '5') problems.push(`the form after the sign-up has Kubernetes years "${value}" after waiting ${ms} ms, its kit says 5`);
@@ -172,9 +164,7 @@ export async function runJourneys(ctx, h) {
   const openAccount = async fixture => {
     await seedSitePassword(fixture.accountHost);
     await page.evaluate(([url, details]) => window.pilot.applyOne(url, details), [fixture.url, {title: fixture.title, company: fixture.company}]);
-    let tab = null;
-    for (let waited = 0; waited < 60000 && !tab; waited += 1000) { tab = ctx.browser.context.pages().find(item => item.url().startsWith(fixture.accountUrl)) || null; await pause(1000); }
-    if (!tab) { await dumpExtension(); throw new Error(`the sign-in page was never reached. Tabs: ${ctx.browser.context.pages().map(item => item.url()).join(' | ')}`); }
+    const tab = await arrived(() => ctx.browser.context.pages().find(item => item.url().startsWith(fixture.accountUrl)), 'the wait for the sign-in page');
     return tab;
   };
   const sessionOf = fixture => pollSessions(page, fixture.url, ctx.ARTIFACTS);
@@ -186,10 +176,9 @@ export async function runJourneys(ctx, h) {
     const presses = pressesOf(SIGNIN);
     if (!presses.length) problems.push(`"Sign in" was never pressed (email box "${await tab.locator('#signin_email').inputValue().catch(() => '?')}" is ${await tab.locator('#signin_email').inputValue().catch(() => '') === CONTACT.email ? 'filled' : 'not filled'}, password box ${await tab.locator('#signin_password').inputValue().then(value => (value ? 'filled' : 'empty')).catch(() => '?')})`);
     else if (!presses[0].email || !presses[0].password) problems.push(`"Sign in" was pressed with the wrong ${!presses[0].email ? 'email' : 'password'} (the saved one for this site was not used)`);
-    let state = null;
-    for (let waited = 0; waited < 60000 && presses.length; waited += 500) { if (tab.url().startsWith(SIGNIN.formUrl)) { state = await fillState(tab).catch(() => null); if (state?.state === 'done' || state?.state === 'error') break; } await pause(500); }
-    if (presses.length && state?.state !== 'done') problems.push(`the form after signing in was not filled (at ${tab.url()}, ${fillNote(state, 60)})`);
-    else if (presses.length) {
+    if (presses.length) {
+      await arrived(() => tab.url().startsWith(SIGNIN.formUrl), 'the wait for the application after sign-in');
+      await filled(tab);
       const {value, ms} = await waitForFormValue(async () => { const read = (await readForm(tab)).question_3001; return String(read?.value ?? read ?? ''); }, '4');
       if (value !== '4') problems.push(`the form after signing in has Kubernetes years "${value}" after waiting ${ms} ms, its kit says 4`);
     }
@@ -256,12 +245,8 @@ export async function runJourneys(ctx, h) {
     const problems = [];
     const openForm = async fixture => {
       await page.evaluate(([url, details]) => window.pilot.applyOne(url, details), [fixture.url, {title: fixture.title, company: fixture.company}]);
-      let tab = null;
-      for (let waited = 0; waited < 60000 && !tab; waited += 1000) { tab = ctx.browser.context.pages().find(item => item.url().startsWith(fixture.url)) || null; await pause(1000); }
-      if (!tab) throw new Error(`${fixture.title} never opened. Tabs: ${ctx.browser.context.pages().map(item => item.url()).join(' | ')}`);
-      let state = null;
-      for (let waited = 0; waited < 90000; waited += 500) { state = await fillState(tab).catch(() => null); if (state?.state === 'done' || state?.state === 'error') break; await pause(500); }
-      if (state?.state !== 'done') problems.push(`${fixture.title}: the fill did not finish (${fillNote(state, 90)})`);
+      const tab = await arrived(() => ctx.browser.context.pages().find(item => item.url().startsWith(fixture.url)), `the wait for ${fixture.title}`);
+      await filled(tab);
       return tab;
     };
     const menuOf = async (tab, within) => {
@@ -296,12 +281,8 @@ export async function runJourneys(ctx, h) {
   await ctx.run('"Needs your attention" from the extension\'s fill: the left menu is listed with its proposal and choices, and Use fills the form', async () => {
     const problems = [];
     await page.evaluate(([url, details]) => window.pilot.applyOne(url, details), [PROPOSE.url, {title: PROPOSE.title, company: PROPOSE.company}]);
-    let tab = null;
-    for (let waited = 0; waited < 60000 && !tab; waited += 1000) { tab = ctx.browser.context.pages().find(item => item.url().startsWith(PROPOSE.url)) || null; await pause(1000); }
-    if (!tab) throw new Error(`the notice-period form never opened. Tabs: ${ctx.browser.context.pages().map(item => item.url()).join(' | ')}`);
-    let state = null;
-    for (let waited = 0; waited < 90000; waited += 500) { state = await fillState(tab).catch(() => null); if (state?.state === 'done' || state?.state === 'error') break; await pause(500); }
-    if (state?.state !== 'done') throw new Error(`the fill did not finish (${fillNote(state, 90)})`);
+    const tab = await arrived(() => ctx.browser.context.pages().find(item => item.url().startsWith(PROPOSE.url)), 'the wait for the notice-period form');
+    await filled(tab);
     if (await tab.locator('#notice_period').inputValue() !== '') problems.push(`the fill put "${await tab.locator('#notice_period').inputValue()}" in a menu where no choice means "3 months"`);
     await page.click('.nav[data-view="sessions"]');
     await page.locator('.view[data-view="sessions"]').getByText(PROPOSE.company).first().click({timeout: 15000}).catch(() => { throw new Error(`no session for ${PROPOSE.company} on the Sessions page`); });
@@ -340,13 +321,9 @@ export async function runJourneys(ctx, h) {
   // (the shapes alone are guarded in test/upload-slot.test.mjs without the app). The slot says it got the CV; the rest of the form is filled; Submit untouched.
   await ctx.run('an upload slot that appears only when + is pressed: the app\'s CV reaches it, the rest of the form is filled', async () => {
     await page.evaluate(([url, details]) => window.pilot.applyOne(url, details), [REVEAL.url, {title: REVEAL.title, company: REVEAL.company}]);
-    let tab = null;
-    for (let waited = 0; waited < 60000 && !tab; waited += 1000) { tab = ctx.browser.context.pages().find(item => item.url().startsWith(REVEAL.url)) || null; await pause(1000); }
-    if (!tab) throw new Error(`the + upload form never opened. Tabs: ${ctx.browser.context.pages().map(item => item.url()).join(' | ')}`);
-    let state = null;
-    for (let waited = 0; waited < 90000; waited += 500) { state = await fillState(tab).catch(() => null); if (state?.state === 'done' || state?.state === 'error') break; await pause(500); }
+    const tab = await arrived(() => ctx.browser.context.pages().find(item => item.url().startsWith(REVEAL.url)), 'the wait for the + upload form');
+    await filled(tab);
     const problems = [];
-    if (state?.state !== 'done') problems.push(`the fill did not finish (${fillNote(state, 90)})`);
     let got = null;
     for (let waited = 0; waited < 10000 && !got; waited += 500) { got = await tab.evaluate(() => window.got?.cv_plus || null).catch(() => null); await pause(500); }
     if (!got) problems.push('the + slot never received a file (its input appears only after the + is pressed)');
@@ -361,13 +338,9 @@ export async function runJourneys(ctx, h) {
   // (extension/sections.js), then reads and fills the questions inside them. Shapes alone: worker/test/page-sections.test.js. Submit untouched.
   await ctx.run('a form with collapsed sections: they are opened and the questions inside are filled', async () => {
     await page.evaluate(([url, details]) => window.pilot.applyOne(url, details), [COLLAPSED.url, {title: COLLAPSED.title, company: COLLAPSED.company}]);
-    let tab = null;
-    for (let waited = 0; waited < 60000 && !tab; waited += 1000) { tab = ctx.browser.context.pages().find(item => item.url().startsWith(COLLAPSED.url)) || null; await pause(1000); }
-    if (!tab) throw new Error(`the collapsed-sections form never opened. Tabs: ${ctx.browser.context.pages().map(item => item.url()).join(' | ')}`);
-    let state = null;
-    for (let waited = 0; waited < 90000; waited += 500) { state = await fillState(tab).catch(() => null); if (state?.state === 'done' || state?.state === 'error') break; await pause(500); }
+    const tab = await arrived(() => ctx.browser.context.pages().find(item => item.url().startsWith(COLLAPSED.url)), 'the wait for the collapsed-sections form');
+    await filled(tab);
     const problems = [];
-    if (state?.state !== 'done') problems.push(`the fill did not finish (${fillNote(state, 90)})`);
     const read = await readForm(tab);
     if (String(read.email?.value ?? read.email ?? '') !== CONTACT.email) problems.push('the e-mail inside the closed "profile" section was not filled');
     if (String(read.question_4001?.value ?? read.question_4001 ?? '') !== '6') problems.push('the question inside the closed "job" section is not the kit\'s 6');
@@ -380,14 +353,10 @@ export async function runJourneys(ctx, h) {
   // form step, and its password boxes are never counted as questions the fill missed.
   await ctx.run('the account and the application on one page: it is the application form, its passwords stay account fields', async () => {
     await page.evaluate(([url, details]) => window.pilot.applyOne(url, details), [ONEPAGE.url, {title: ONEPAGE.title, company: ONEPAGE.company}]);
-    let tab = null;
-    for (let waited = 0; waited < 60000 && !tab; waited += 1000) { tab = ctx.browser.context.pages().find(item => item.url().startsWith(ONEPAGE.url)) || null; await pause(1000); }
-    if (!tab) throw new Error(`the one-page form never opened. Tabs: ${ctx.browser.context.pages().map(item => item.url()).join(' | ')}`);
-    let state = null;
-    for (let waited = 0; waited < 90000; waited += 500) { state = await fillState(tab).catch(() => null); if (state?.state === 'done' || state?.state === 'error' || state?.state === 'account') break; await pause(500); }
+    const tab = await arrived(() => ctx.browser.context.pages().find(item => item.url().startsWith(ONEPAGE.url)), 'the wait for the one-page form');
+    await filled(tab, ['account']);
     const problems = [];
-    if (state?.state !== 'done') problems.push(`the one-page form was not filled as the application (${fillNote(state, 90)}): a CV upload beside the password makes it the form`);
-    else {
+    {
       const actual = await readForm(tab);
       const value = id => String(actual[id]?.value ?? actual[id] ?? '');
       if (value('first_name') !== CONTACT.first_name) problems.push(`first name "${value('first_name')}", expected ${CONTACT.first_name}`);
@@ -408,11 +377,9 @@ export async function runJourneys(ctx, h) {
     await waitJobFormClosed(page, ONEPAGE.url);
     await page.evaluate(([url, details]) => window.pilot.applyOne(url, details), [ONEPAGE.url, {title: ONEPAGE.title, company: ONEPAGE.company}]);
     const tabOf = () => ctx.browser.context.pages().find(item => item.url().startsWith(ONEPAGE.url)) || null;
-    const filled = async tab => { for (let waited = 0; waited < 90000; waited += 500) { const state = await fillState(tab).catch(() => null); if (state?.state === 'done' || state?.state === 'error') return state; await pause(500); } return null; };
-    let tab = null;
-    for (let waited = 0; waited < 60000 && !tab; waited += 1000) { tab = tabOf(); await pause(1000); }
-    if (!tab) throw new Error(`the form never opened. Tabs: ${ctx.browser.context.pages().map(item => item.url()).join(' | ')}; the app's forms open: ${JSON.stringify(await page.evaluate(() => window.pilot.formsOpen()).catch(() => null))}`);   // Why (28 Oct 2026, beta 2, Mac applyflows): the red said only "never opened"; the app's log showed a live tab the test's list never held, so the next red must carry both sides
-    if ((await filled(tab))?.state !== 'done') throw new Error('the form was not filled the first time');
+    // Why (28 Oct 2026, beta 2, Mac applyflows): a missing tab needs both the browser's list and the app's report.
+    const tab = await arrived(tabOf, 'the wait for the form page', async () => ({tabs: tabsSeen(), formsOpen: await page.evaluate(() => window.pilot.formsOpen()).catch(() => null)}));
+    await filled(tab);
     const session = (await page.evaluate(() => window.pilot.sessions())).find(item => String(item.url || '').replace(/\/$/, '') === ONEPAGE.url);
     if (!session) throw new Error('no session for the job');
     await tab.close();
@@ -422,12 +389,10 @@ export async function runJourneys(ctx, h) {
     if (!forms?.known || forms.ids.includes(session.id)) problems.push(`the app never saw the tab closed (forms open: ${JSON.stringify(forms)})`);
     const reopened = await page.evaluate(id => window.pilot.sessionReopen(id, false), session.id);
     if (!reopened?.ok) problems.push(`Reopen failed: ${JSON.stringify(reopened)}`);
-    let again = null;
-    for (let waited = 0; waited < 60000 && !again; waited += 1000) { again = tabOf(); await pause(1000); }
-    if (!again) problems.push('Reopen opened no tab on the form');
-    else {
+    const again = await arrived(tabOf, 'the wait for the reopened form');
+    {
       if (!again.url().includes('jobpilotto-fill')) problems.push(`the reopened tab has no fill mark: ${again.url()}`);
-      if ((await filled(again))?.state !== 'done') problems.push('the reopened form was not filled again');
+      await filled(again);
       const after = (await page.evaluate(() => window.pilot.sessions())).filter(item => String(item.url || '').replace(/\/$/, '') === ONEPAGE.url);
       if (after.length !== 1 || after[0].id !== session.id) problems.push(`the reopened form is not the same session (${after.map(item => item.id).join(', ')} vs ${session.id})`);
     }
@@ -440,9 +405,7 @@ export async function runJourneys(ctx, h) {
     for (const item of ctx.browser.context.pages()) if (item.url().startsWith(ONEPAGE.url)) await item.close();   // an earlier step's tab of the same job
     await waitJobFormClosed(page, ONEPAGE.url);
     await page.evaluate(([url, details]) => window.pilot.applyOne(url, details), [ONEPAGE.url, {title: ONEPAGE.title, company: ONEPAGE.company}]);
-    let tab = null;
-    for (let waited = 0; waited < 60000 && !tab; waited += 1000) { tab = ctx.browser.context.pages().find(item => item.url().startsWith(ONEPAGE.url)) || null; await pause(1000); }
-    if (!tab) throw new Error(`the form never opened. Tabs: ${ctx.browser.context.pages().map(item => item.url()).join(' | ')}`);
+    await arrived(() => ctx.browser.context.pages().find(item => item.url().startsWith(ONEPAGE.url)), 'the wait for the one-page form');
     const session = (await page.evaluate(() => window.pilot.sessions())).find(item => String(item.url || '').replace(/\/$/, '') === ONEPAGE.url);
     if (!session) throw new Error('no session for the job');
     const openNow = async () => { const forms = await page.evaluate(() => window.pilot.formsOpen()); return forms?.known && forms.ids.includes(session.id); };
@@ -473,11 +436,8 @@ export async function runJourneys(ctx, h) {
   // press while the page has a form's fields, drops the kind (logged), and fills the form from the kit this visit.
   await ctx.run('the AI gave a page the wrong kind: the page contradicts it, the kind is dropped and the form is filled', async () => {
     await page.evaluate(([url, details]) => window.pilot.applyOne(url, details), [MISLABELLED.url, {title: MISLABELLED.title, company: MISLABELLED.company}]);
-    let tab = null;
-    for (let waited = 0; waited < 60000 && !tab; waited += 1000) { tab = ctx.browser.context.pages().find(item => item.url().startsWith(MISLABELLED.url)) || null; await pause(1000); }
-    if (!tab) throw new Error(`the mislabelled form never opened. Tabs: ${ctx.browser.context.pages().map(item => item.url()).join(' | ')}`);
-    let state = null;
-    for (let waited = 0; waited < 90000; waited += 500) { state = await fillState(tab).catch(() => null); if (['done', 'error', 'no-form', 'account'].includes(state?.state)) break; await pause(500); }
+    const tab = await arrived(() => ctx.browser.context.pages().find(item => item.url().startsWith(MISLABELLED.url)), 'the wait for the mislabelled form');
+    await filled(tab, ['no-form', 'account']);
     const problems = [];
     const {value: log} = await waitForDecisions(() => extensionDecisions(ctx), [/page kind corrected: a posting with no Apply but a form's fields/]);
     // The premise, on this page's own shape and from the AI (not remembered): another posting's line proves nothing (beta 9 Oct 2026).
@@ -487,8 +447,7 @@ export async function runJourneys(ctx, h) {
     }
     if (!/page kind corrected: a posting with no Apply but a form's fields/.test(log)) problems.push('the wrong kind was not corrected (no "page kind corrected" line)');
     if (!/page kind forgotten/.test(log)) problems.push('the app never dropped the kept kind (no "page kind forgotten" line)');
-    if (state?.state !== 'done') problems.push(`the form was not filled after the correction (${fillNote(state, 90)})`);
-    else {
+    {
       const read = (await readForm(tab)).question_3001, value = String(read?.value ?? read ?? '');
       if (value !== '4') problems.push(`Kubernetes years "${value}", its kit says 4`);
     }

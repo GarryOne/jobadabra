@@ -133,6 +133,9 @@ async function extensionLog(t, reply, {serial = false, kept: start = []} = {}) {
   });
   t.after(() => hooks.deregister());
   const log = await import(`../../extension/log.js?fresh=${++fresh}`);
+  // Why (beta 41215677698, 31 Oct 2026): a test ends only once its own log has stopped sending (joining the drain sends what is left to THIS test's stub), so no
+  // batch of an ended test reaches the next test's fetch stub; a drain that outlives 2 s fails its own test instead of leaking. Test: "never posts into the next".
+  t.after(() => Promise.race([log.pushDecisions(), new Promise((_, reject) => setTimeout(() => reject(new Error('this test\'s log was still sending 2 s after it ended')), 2000).unref())]));
   // pushDecisions never waits for storage (Gitar on #2673); a test that reads the crash copy waits for it explicitly. rawPush is the push itself.
   return {...log, rawPush: log.pushDecisions, pushDecisions: async () => { await log.pushDecisions(); await log.crashCopyWritten(); }, batches, stats, kept: () => kept['jp-decisions'] || []};
 }
@@ -328,6 +331,21 @@ test('a storage write that never settles does not stop the drain: every batch is
   await new Promise(resolve => setTimeout(resolve, 5));
   await Promise.race([log.rawPush(), new Promise((_, reject) => setTimeout(() => reject(new Error('the drain waited for a write that never settles')), 500))]);
   assert.equal(log.batches.flat().length, 120, 'all 120 lines reached the app while storage hung');
+});
+
+// Beta 41215677698 (31 Oct 2026, Mac build): the test above got 170 lines, not 120. The test before it ended while its log was still sending, and on the slow
+// runner that log's next batch of 50 went to the fetch stub of the next test. Code unchanged since its last green (#2700's PR run): flaky, by test isolation.
+test('a log whose test has ended never posts into the next test\'s stub', async t => {
+  await t.test('a drain still sending when its test ends', async st => {
+    const log = await extensionLog(st, async () => { await new Promise(resolve => setTimeout(resolve, 30)); return {ok: true}; });
+    for (let i = 0; i < 120; i++) log.decide('span', `old ${i}`).catch(() => {});
+    await new Promise(resolve => setTimeout(resolve, 5));   // its first batch is in flight when the test ends
+  });
+  await t.test('the next test sees only its own lines', async st => {
+    const log = await extensionLog(st);
+    await new Promise(resolve => setTimeout(resolve, 150));
+    assert.deepEqual(log.batches.flat().map(entry => entry.text), [], 'no line of the ended test reached this stub');
+  });
 });
 
 // #2673 red (page cases, required-salutation-menu-1): recorded cases' "told" words match the POSTed text, whose keys chrome.storage used to return sorted.

@@ -2,13 +2,14 @@
 //   const copies = detectCopies();                               -> {store, exe}
 // Why (31 Oct 2026, owner: "Let's handle the case when the desktop app is being installed twice. Side by side. For example it's installed from Microsoft Store. And then I download the binary
 // from the website and install it on top."): measured on a Windows 11 runner (msix-spike.yml scenarios two-installs and virtualization). The single-instance lock spans both copies in every start
-// order, so two copies never run at once; the Store package no longer hides AppData (scripts/appx-manifest.mjs), so both use %APPDATA%\Jobadabra. What is left is the person's own clutter: two
-// Start menu entries and two update routes (the Store copy updates through the Store, the installer copy from GitHub). The note that says so is lib/two-installs-notice.js.
+// order, so two copies never run at once; the Store package no longer hides AppData (scripts/appx-manifest.mjs), so both use %APPDATA%\Jobadabra, except a Store copy first used on a clean PC,
+// which still keeps its data in the package's own folder (JOB-165). What is left is the person's own clutter: two Start menu entries and two update routes (the Store copy updates through
+// the Store, the installer copy from GitHub). The note that says so is lib/two-installs-notice.js.
 import fs from 'node:fs';
 import path from 'node:path';
 
 export const STORE_IDENTITY = 'IgorMardari.Jobadabra';   // the Store package's identity name (.github/workflows/msix-store.yml); its folder is <identity>_<publisher id>
-export const EXE_FOLDER = 'job-pilotto-desktop';         // where the NSIS installer puts the app: %LOCALAPPDATA%\Programs\<this>\Jobadabra.exe (seen in the spike run)
+export const EXE_FOLDER = 'job-pilotto-desktop';         // where the NSIS installer puts the app: %LOCALAPPDATA%\Programs\<this>\Jobadabra.exe (measured: msix-spike.yml run 41232577742, inventory line "nsis exe")
 
 const win = path.win32;
 const names = dir => { try { return fs.readdirSync(dir); } catch { return []; } };

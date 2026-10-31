@@ -1,6 +1,10 @@
 // The one-time note "installed twice" (lib/two-installs-notice.js): once, only on Windows with both copies, one action, nothing removed by the app.
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import {test} from 'node:test';
+import {createStorage} from '../lib/storage.js';
 import {APPS_SETTINGS, askInstalledTwice, noticeOptions} from '../lib/two-installs-notice.js';
 import {detectCopies, EXE_FOLDER, STORE_IDENTITY} from '../lib/two-installs.js';
 
@@ -17,7 +21,7 @@ const ask = async (answer, overrides = {}) => {
   const calls = {dialog: [], opened: []}, storage = settingsOf();
   const dialog = {showMessageBox: async (...args) => { calls.dialog.push(args.at(-1)); return {response: answer}; }};
   const shell = {openExternal: url => calls.opened.push(url)};
-  const result = await askInstalledTwice({dialog, shell, storage, window: null, self: 'exe', copies: find('both'), platform: 'win32', env: {}, ...overrides});
+  const result = await askInstalledTwice({dialog, shell, storage, window: null, packaged: true, self: 'exe', copies: find('both'), platform: 'win32', env: {}, ...overrides});
   return {result, calls, storage};
 };
 
@@ -26,7 +30,7 @@ test('both installed: the note asks once; "Open Installed apps" opens Windows\' 
   assert.equal(first.result, 'asked');
   assert.deepEqual(first.calls.opened, [APPS_SETTINGS]);
   assert.equal(first.storage.saved.installedTwiceAsked, true);
-  const again = await askInstalledTwice({dialog: {showMessageBox: () => assert.fail('asked twice')}, shell: {}, storage: {settings: () => ({installedTwiceAsked: true}), saveSettings() {}}, window: null, self: 'exe', copies: find('both'), platform: 'win32', env: {}});
+  const again = await askInstalledTwice({dialog: {showMessageBox: () => assert.fail('asked twice')}, shell: {}, storage: {settings: () => ({installedTwiceAsked: true}), saveSettings() {}}, window: null, packaged: true, self: 'exe', copies: find('both'), platform: 'win32', env: {}});
   assert.equal(again, 'skipped');
 });
 
@@ -39,6 +43,8 @@ test('"Keep both" opens nothing', async () => {
 test('one copy, or not Windows, or a test/demo data folder: no note and nothing saved', async () => {
   for (const name of ['none', 'storeOnly', 'exeOnly']) { const run = await ask(0, {copies: find(name)}); assert.equal(run.result, 'skipped', name); assert.deepEqual(run.storage.saved, {}, name); }
   assert.equal((await ask(0, {platform: 'darwin'})).result, 'skipped');
+  const source = await ask(0, {packaged: false});
+  assert.deepEqual([source.result, source.calls.dialog.length, source.storage.saved], ['skipped', 0, {}], 'from source (npm start) nothing is asked and no flag is set in the dev folder');
   const test = await ask(0, {env: {JOB_PILOTTO_USER_DATA: '/tmp/x'}});
   assert.equal(test.result, 'skipped');
   assert.deepEqual([test.calls.dialog.length, test.storage.saved], [0, {}], 'a test or demo run never opens a dialog');
@@ -63,4 +69,15 @@ test('the note never says the two copies share their data (a Store copy first us
     assert.match(detail, /Removing the Microsoft Store copy can also remove data kept only in it/, self);
     assert.doesNotMatch(detail, /Removing a copy also removes/, 'the installer copy keeps %APPDATA% on uninstall (nsis has no deleteAppDataOnUninstall)');
   }
+});
+
+test('the ask-once flag round-trips through the real storage: the second start asks nothing', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'two-installs-'));
+  const storage = createStorage(dir, {encrypt: value => value, decrypt: value => value});
+  let asked = 0;
+  const dialog = {showMessageBox: async () => { asked++; return {response: 1}; }};
+  const args = {dialog, shell: {}, storage, window: null, packaged: true, self: 'exe', copies: find('both'), platform: 'win32', env: {}};
+  assert.equal(await askInstalledTwice(args), 'asked');
+  assert.equal(await askInstalledTwice({...args, storage: createStorage(dir, {encrypt: value => value, decrypt: value => value})}), 'skipped', 'a new storage object on the same folder, as after a restart');
+  assert.equal(asked, 1);
 });

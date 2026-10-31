@@ -21,14 +21,14 @@ export function noticeOptions({self}) {
 }
 
 /**
- * Shows the note once, without blocking the start. Takes {dialog, shell, storage, window, self, copies, platform, env}. Does nothing off Windows, with a test or demo data folder
+ * Shows the note once, without blocking the start. Takes {dialog, shell, storage, window, packaged, self, copies, platform, env}. Does nothing off Windows, from source (`packaged` false: `npm start` on a PC with both copies would name the wrong copy and set the flag in the dev folder), with a test or demo data folder
  * (JOB_PILOTTO_USER_DATA), with one copy, or after it was asked (settings `installedTwiceAsked`, saved before the dialog opens, so a crash or a second start never asks twice).
  * Resolves to 'asked' | 'skipped' | 'failed' and never rejects. The one action opens Windows' own page; nothing is removed by this app.
  * Why (31 Oct 2026): the async dialog, not showMessageBoxSync, which would hold the whole start until someone clicked.
  */
-export async function askInstalledTwice({dialog, shell, storage, window, self = process.windowsStore ? 'store' : 'exe', copies = detectCopies(), platform = process.platform, env = process.env}) {
+export async function askInstalledTwice({dialog, shell, storage, window, packaged, self = process.windowsStore ? 'store' : 'exe', copies = detectCopies(), platform = process.platform, env = process.env}) {
   try {
-    if (platform !== 'win32' || env.JOB_PILOTTO_USER_DATA || !installedTwice(copies) || storage.settings().installedTwiceAsked) return 'skipped';
+    if (platform !== 'win32' || !packaged || env.JOB_PILOTTO_USER_DATA || !installedTwice(copies) || storage.settings().installedTwiceAsked) return 'skipped';
     storage.saveSettings({installedTwiceAsked: true});
     const options = noticeOptions({self});
     const {response} = await (window ? dialog.showMessageBox(window, options) : dialog.showMessageBox(options));

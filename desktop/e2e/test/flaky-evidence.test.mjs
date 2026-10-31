@@ -112,3 +112,69 @@ test('ghIo compares and reads a commit its checkout lacks, and leaves the checko
   assert.throws(() => git(checkout, 'cat-file', '-e', pr), 'nothing was fetched into the checkout');
   fs.rmSync(tmp, {recursive: true, force: true});
 });
+
+// The owner's 31 Oct apply red (#2703): run 41200878403 ran the Notion stand-in store, the "green 2 minutes earlier on the same commit" 41200737331 ran sqlite
+// (coverage artifacts: "store": "standin" / "sqlite"), and the tools called it flaky. Two stores are two inputs: that pair is no evidence of "same code, different result".
+const VIEW = 'e2e-view-apply-1of3';
+const storesOf = (byRun, other = {}) => async id => byRun[id] ?? other[id] ?? null;
+test('a red on the stand-in store next to a green on sqlite of the same commit gives no verdict (41200878403 vs 41200737331)', async () => {
+  const pair = {runs: async () => [{id: 41200737331, sha: RED, title: 'E2E after merge · fb1d711 · apply', url: 'https://x/41200737331'}, {id: 41200878403, sha: RED, title: 'E2E Mac + Linux · apply · main', url: 'https://x/41200878403'}],
+    viewNames: async () => [VIEW], stepsOf: async () => table(READ), changedNames: async () => [],
+    storesOf: storesOf({41200737331: {[VIEW]: 'sqlite'}, 41200878403: {[VIEW]: 'standin'}})};
+  const [read] = await verdictsFor({suite: 'apply', steps: [READ], redSha: RED, redRun: 41200878403, io: io(pair)});
+  assert.equal(read.verdict, 'unknown', 'a different store is not a comparable green');
+  assert.equal(read.store, 'standin');
+  assert.equal(read.otherStore, 1, 'the verdict says one green was left out for its store');
+});
+
+test('a green on the red\'s own store still decides flaky, and a store that cannot be read is no evidence either way', async () => {
+  const runs = async () => [{id: 1, sha: '79e6c34', title: 'E2E for PR · apply · a8-x', url: 'https://x/1'}, {id: 9, sha: RED, title: 'E2E Mac + Linux · apply · main', url: 'https://x/9'}];
+  const same = await verdictsFor({suite: 'apply', steps: [READ], redSha: RED, redRun: 9, io: io({runs, storesOf: async () => ({[VIEW]: 'standin'})})});
+  assert.equal(same[0].verdict, 'flaky');
+  const blindGreen = await verdictsFor({suite: 'apply', steps: [READ], redSha: RED, redRun: 9, io: io({runs, storesOf: async id => (id === 9 ? {[VIEW]: 'standin'} : {[VIEW]: null})})});
+  assert.equal(blindGreen[0].verdict, 'unknown');
+  const blindRed = await verdictsFor({suite: 'apply', steps: [READ], redSha: RED, redRun: 9, io: io({runs, storesOf: async id => (id === 9 ? {[VIEW]: null} : {[VIEW]: 'standin'})})});
+  assert.equal(blindRed[0].verdict, 'unknown');
+});
+
+// Gitar on #2726: a gate run holds BOTH stores of a suite (plan-run.mjs:148: the sqlite leg keeps the key, the stand-in leg adds "-standin"), so the store is a property of
+// the view artifact, not of the run: a pass on one leg must not count for a red on the other.
+test('a gate run with both legs: only the leg on the red\'s store counts, in either direction', async () => {
+  const STAND = `${VIEW}-standin`;
+  const gate = {[VIEW]: 'sqlite', [STAND]: 'standin'};
+  const runs = async () => [{id: 1, sha: '79e6c34', title: 'Gate · apply', url: 'https://x/1'}, {id: 9, sha: RED, title: 'E2E Mac + Linux · apply · main', url: 'https://x/9'}];
+  const only = leg => async (_id, name) => (name === leg ? table(READ) : table());   // the step passed on one leg only
+  const base = {runs, viewNames: async id => (id === 1 ? [VIEW, STAND] : [])};
+  const sqliteRed = await verdictsFor({suite: 'apply', steps: [READ], redSha: RED, redRun: 9, io: io({...base, storesOf: async id => (id === 1 ? gate : {[VIEW]: 'sqlite'}), stepsOf: only(STAND)})});
+  assert.equal(sqliteRed[0].verdict, 'unknown', 'a sqlite red, the gate passed it on its stand-in leg only');
+  const standinRed = await verdictsFor({suite: 'apply', steps: [READ], redSha: RED, redRun: 9, io: io({...base, storesOf: async id => (id === 1 ? gate : {[STAND]: 'standin'}), stepsOf: only(VIEW)})});
+  assert.equal(standinRed[0].verdict, 'unknown', 'a stand-in red, the gate passed it on its sqlite leg only');
+  const matching = await verdictsFor({suite: 'apply', steps: [READ], redSha: RED, redRun: 9, io: io({...base, storesOf: async id => (id === 1 ? gate : {[STAND]: 'standin'}), stepsOf: only(STAND)})});
+  assert.equal(matching[0].verdict, 'flaky', 'positive control: the same leg decides');
+});
+
+test('the real reads: a view key\'s store is its store leg, else the "store" of its coverage artifact; none of either is unknown', async () => {
+  const run = args => {
+    if (args.some(arg => String(arg).includes('/artifacts?per_page=100'))) return 'e2e-view-apply-1of3\ne2e-coverage-apply-1of3\ne2e-view-apply-1of3-standin\ne2e-view-settings\ne2e-view-quality-2of2\ne2e-coverage-quality-2of2\n';
+    const name = args[args.indexOf('-n') + 1], dir = args[args.indexOf('-D') + 1];
+    fs.writeFileSync(path.join(dir, 'coverage-x-1.json'), JSON.stringify({store: name.includes('quality') ? '' : 'sqlite', steps: {}}));
+    return '';
+  };
+  const real = ghIo({repo: 'GarryOne/jobadabra', run});
+  assert.deepEqual(await real.storesOf(1, 'apply'), {'e2e-view-apply-1of3': 'sqlite', 'e2e-view-apply-1of3-standin': 'standin'}, 'a gate run: two legs, two stores');
+  assert.deepEqual(await real.storesOf(1, 'settings'), {'e2e-view-settings': null}, 'no coverage artifact: unknown');
+  assert.deepEqual(await real.storesOf(1, 'quality'), {'e2e-view-quality-2of2': ''}, 'a suite with no store says ""');
+});
+
+// Gitar on #2726: a red whose store is unknown can compare with nothing, so it must not walk the whole window; and stores are read only for runs where a pending step passed.
+test('an unknown red store answers unknown at once, and a run with no pass of the step never has its stores read', async () => {
+  const runs = async () => [{id: 1, sha: '79e6c34', title: 'E2E · apply', url: 'https://x/1'}, {id: 2, sha: '4a79a6b', title: 'E2E · apply', url: 'https://x/2'}, {id: 9, sha: RED, title: 'E2E Mac + Linux · apply · main', url: 'https://x/9'}];
+  const reads = [], seen = [];
+  const blind = await verdictsFor({suite: 'apply', steps: [READ], redSha: RED, redRun: 9, io: io({runs, viewNames: async () => { seen.push('views'); return [VIEW]; }, storesOf: async id => { reads.push(id); return {[VIEW]: null}; }})});
+  assert.equal(blind[0].verdict, 'unknown');
+  assert.deepEqual(reads, [9], 'only the red\'s own stores were read');
+  assert.deepEqual(seen, [], 'no run of the window was opened');
+  const lazy = [];
+  await verdictsFor({suite: 'apply', steps: [READ], redSha: RED, redRun: 9, io: io({runs, viewNames: async () => [VIEW], stepsOf: async () => table(), storesOf: async id => { lazy.push(id); return {[VIEW]: 'standin'}; }})});
+  assert.deepEqual(lazy, [9], 'runs where nothing passed cost no store read');
+});

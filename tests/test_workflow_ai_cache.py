@@ -24,13 +24,12 @@ class AiAnswerCacheTests(unittest.TestCase):
                         self.assertNotIn('always()', step)
         self.assertGreaterEqual(saved, 4, 'a save step moved: update this test')
 
-    def test_mailreadings_poisoned_entries_never_restore(self):
-        # Only mailreading held a bad draw (26 Oct 2026); bumping every suite made the quality suite draw fresh from Free AI and fail on its own instability.
+    def test_retired_mail_suite_has_no_cache_key_workaround(self):
         for name in FILES:
             text = (WORKFLOWS / name).read_text()
             with self.subTest(file=name):
+                self.assertNotIn("matrix.key == 'mailreading'", text)
                 self.assertNotIn('ai-answers-v2-', text)
-                self.assertIn("matrix.key == 'mailreading' && '-v2'", text)
 
     # Quality's retry replays like its first try (owner, 27 Oct 2026: "Code gate + AI rate"; tests/test_quality_replay_gate.py); every other suite's draws fresh.
     def test_every_second_try_but_qualitys_draws_fresh_answers(self):
@@ -45,7 +44,7 @@ class AiAnswerCacheTests(unittest.TestCase):
         self.assertEqual(len(uploads), 1, 'one upload of the AI answers, from a PR run')
         step = uploads[0]
         for part in ('success()', "inputs.pr_suites != ''", "inputs.after_merge == ''", 'include-hidden-files: true', 'path: desktop/e2e/.ai-cache',
-                     "name: ai-answers-${{ matrix.key }}${{ matrix.key == 'mailreading' && '-v2' || '' }}"):
+                     "name: ai-answers-${{ matrix.key }}"):
             self.assertIn(part, step)
         self.assertNotIn('always()', step)
 
@@ -57,7 +56,7 @@ class AiAnswerCacheTests(unittest.TestCase):
         self.assertLess(restore, load)
         self.assertLess(load, first)
         self.assertIn("inputs.after_merge != ''", names[load])
-        self.assertIn("KEY: ${{ matrix.key }}${{ matrix.key == 'mailreading' && '-v2' || '' }}", names[load])
+        self.assertIn("KEY: ${{ matrix.key }}", names[load])
 
 
 if __name__ == '__main__':

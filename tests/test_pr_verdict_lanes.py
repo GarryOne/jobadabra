@@ -175,7 +175,7 @@ class RegistryFile(unittest.TestCase):
         listed = {name: (entry['lane'], entry['returns']) for name, entry in self.registry['suites'].items() if 'lane' in entry}
         self.assertEqual(listed, {
             'qualityai': ('tolerant', 'Stays tolerant: it measures the live model.'),
-            'mailreading': ('tolerant', 'Stays tolerant: an eval of the live model.'),
+            'mailreading': ('retired', 'Retired permanently; use qualityai:mail for a manual mail-reading eval.'),
             'notion-real': ('tolerant', 'Stays tolerant: it tests Notion itself.'),
         })
 

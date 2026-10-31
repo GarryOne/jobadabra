@@ -109,11 +109,11 @@ class MainE2eState(unittest.TestCase):
             self.assertEqual([s['suite'] for s in report['red']], ['cardstates', 'interactions', 'recorded'])
 
     def test_owner_tolerant_reds_never_make_main_red(self):
-        self.state = m.state([run(9, 'E2E after merge · ed2f834 · quality,mailreading,apply')],
-                             lambda rid: [{'name': name, 'conclusion': 'failure'} for name in ('quality-1of2-standin · burn-in 2/5', 'mailreading-standin', 'apply')])
-        report = self.report(json.dumps({'suites': {'quality': {'lane': 'tolerant'}, 'mailreading': {'lane': 'tolerant'}, 'apply': {'lane': 'backbone'}}}))
+        self.state = m.state([run(9, 'E2E after merge · ed2f834 · quality,qualityai,apply')],
+                             lambda rid: [{'name': name, 'conclusion': 'failure'} for name in ('quality-1of2-standin · burn-in 2/5', 'qualityai-standin', 'apply')])
+        report = self.report(json.dumps({'suites': {'quality': {'lane': 'tolerant'}, 'qualityai': {'lane': 'tolerant'}, 'apply': {'lane': 'backbone'}}}))
         self.assertEqual([s['suite'] for s in report['red']], ['apply'])
-        report = self.report(json.dumps({'suites': {'quality': {'lane': 'tolerant'}, 'mailreading': {'lane': 'tolerant'}, 'apply': {'lane': 'retired'}}}))
+        report = self.report(json.dumps({'suites': {'quality': {'lane': 'tolerant'}, 'qualityai': {'lane': 'tolerant'}, 'apply': {'lane': 'retired'}}}))
         self.assertEqual(report['red'], [])
 
     def test_an_older_green_does_not_hide_a_newer_red(self):

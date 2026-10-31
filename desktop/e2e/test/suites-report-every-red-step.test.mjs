@@ -12,7 +12,6 @@ const suitesDir = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 
 const CHAINED = {
   employers: 'each step reads the run the step before made (one run, its row, the second run)',
   jobs: 'each step reads the check the first one ran and the rows it wrote',
-  mailreading: 'the second and third steps score the reading the first one did',
   personas: 'a persona is one chain: nothing saved, no check, no digest',
   quality: 'steps share the golden check; its optional ones already go on (soft)',
   qualityai: 'steps share the golden check; its optional ones already go on (soft)',

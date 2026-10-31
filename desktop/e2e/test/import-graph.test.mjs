@@ -43,34 +43,34 @@ test('a file a watched Python file imports from its own folder is watched too (#
     'src/run_counts.py': '', 'src/store.py': '', 'src/ai/score_not_a_job.py': '', 'src/ai/mail.py': 'from . import cost\n',
   };
   const read = file => (file in files ? files[file] : null);
-  const out = watchesWithImports({quality: ['src/ai/score.py', 'desktop/lib/pipeline.js'], mailreading: ['src/ai/mail.py']}, read);
+  const out = watchesWithImports({quality: ['src/ai/score.py', 'desktop/lib/pipeline.js'], mailPart: ['src/ai/mail.py']}, read);
   assert.deepEqual(out.quality.sort(), ['desktop/lib/pipeline.js', 'src/ai/cost.py', 'src/ai/engine/', 'src/ai/models.py',
     'src/ai/schema_notes.py', 'src/ai/score.py', 'src/ai/score_not_a_job.py'], 'its own folder only: src/run_counts.py and src/store.py are not followed; a package is its folder');
-  assert.deepEqual(out.mailreading.sort(), ['src/ai/cost.py', 'src/ai/mail.py']);
+  assert.deepEqual(out.mailPart.sort(), ['src/ai/cost.py', 'src/ai/mail.py']);
 });
 
-// 26 Oct 2026 audit: followed through every hop, mailreading's 4 files became 56 (all of src/ai) and 8 of 32 PRs ran it on lines it never reads
+// 26 Oct 2026 audit: followed through every hop, mailPart's 4 files became 56 (all of src/ai) and 8 of 32 PRs ran it on lines it never reads
 // (#2068 decide.py, #2060/#2056/#2063 score.py). One hop: what a watched file imports itself; deeper lines are the code → suite map's.
 test('only the files a watched file imports itself are watched, not their imports', () => {
   const files = {'src/ai/mail.py': 'from . import cost\n', 'src/ai/cost.py': 'from . import decide\n', 'src/ai/decide.py': ''};
-  const out = watchesWithImports({mailreading: ['src/ai/mail.py']}, file => (file in files ? files[file] : null));
-  assert.deepEqual(out.mailreading.sort(), ['src/ai/cost.py', 'src/ai/mail.py']);
+  const out = watchesWithImports({mailPart: ['src/ai/mail.py']}, file => (file in files ? files[file] : null));
+  assert.deepEqual(out.mailPart.sort(), ['src/ai/cost.py', 'src/ai/mail.py']);
 });
 
 test('the real tree: the audited PRs pick the watched suites their files reach, and only those', async () => {
   const {suiteFacts} = await import('../plan-run.mjs');
   const facts = await suiteFacts();
   const watches = watchesWithImports(facts.watches);
-  const pick = files => suitesFor(files, facts.all, {watches, cadence: {}}).filter(suite => ['mailreading', 'quality', 'qualityai'].includes(suite));
-  assert.ok(watches.mailreading.length < 25, `mailreading watches ${watches.mailreading.length} files: the import closure is back`);
+  const pick = files => suitesFor(files, facts.all, {watches, cadence: {}}).filter(suite => ['quality', 'qualityai'].includes(suite));
+  assert.ok(watchesWithImports({mail: facts.parts.qualityai.mail}).mail.length < 25, `mailPart watches ${watchesWithImports({mail: facts.parts.qualityai.mail}).mail.length} files: the import closure is back`);
   assert.deepEqual(pick(['src/ai/decide.py', 'src/sources/careers.py']), [], '#2068: neither suite reads decide.py');
   assert.deepEqual(pick(['src/ai/score.py', 'src/ai/score_search.py']), ['quality', 'qualityai'], '#2060: a scoring change runs both quality journeys');
   assert.deepEqual(pick(['src/ai/enrich.py']), ['quality', 'qualityai']);
   assert.deepEqual(pick(['desktop/lib/question-reuse.js']), ['quality', 'qualityai']);
   assert.deepEqual(pick(['src/ai/interviews.py']), [], 'an interviews change runs neither');
   assert.deepEqual(pick(['src/ai/schema_notes.py']), ['quality', 'qualityai'], '#2043 still: score.py imports it');
-  assert.deepEqual(pick(['src/ai/providers/anthropic_api.py']), ['mailreading'], '#2077 broke main\'s mailreading (#2086): the providers the mail check imports');
-  assert.deepEqual(pick(['src/ai/mail_lines.py']), ['mailreading']);
+  assert.deepEqual(pick(['src/ai/providers/anthropic_api.py']), ['qualityai'], '#2077 broke main\'s mailPart (#2086): the providers the mail check imports');
+  assert.deepEqual(pick(['src/ai/mail_lines.py']), ['qualityai']);
 });
 
 test('every file a suite watches, imports included, starts pr-suites.yml (else the plan never runs: #2043)', async () => {

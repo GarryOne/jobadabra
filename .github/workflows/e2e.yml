@@ -385,8 +385,8 @@ jobs:
         timeout-minutes: 5
         run: pip install --quiet -r requirements.txt
       - name: A virtual display and Electron's libraries (Linux only)
-        if: runner.os == 'Linux'
         timeout-minutes: 5
+        if: runner.os == 'Linux'
         run: bash tools/apt-install.sh xvfb libnss3 libgbm1 libasound2t64 libgtk-3-0 libxss1 fonts-noto-color-emoji fonts-dejavu-core
       - name: Write the mutant into the app (mutation test only)
         if: inputs.mutant != '' && inputs.mutant != 'baseline'
@@ -469,8 +469,8 @@ jobs:
       # Either way the pass writes the marker beside the first run's artifacts, and triage labels those steps `flaky` or `intermittent`. Its own artifacts stay out of the upload.
       # Why (#2497, Gitar): a report-only suite is not retried (each run costs AI), but its failed first try must still leave the job red; the verdict ignores this job via BASE's lane entry.
       - name: "Report-only ${{ matrix.key }} failed its only try (not retried: each run costs AI)"
-        if: steps.suite_run.outcome == 'failure' && !inputs.mutant && steps.suite_run.outputs.report_only == '1'
         timeout-minutes: 5
+        if: steps.suite_run.outcome == 'failure' && !inputs.mutant && steps.suite_run.outputs.report_only == '1'
         run: exit 1
       - name: "First try failed: the ${{ matrix.key }} suite once more, to tell flaky from real"
         if: steps.suite_run.outcome == 'failure' && !inputs.mutant && !matrix.burnIn && steps.suite_run.outputs.report_only != '1' && matrix.tolerant != true
@@ -556,8 +556,8 @@ jobs:
             done
           done
       - name: Keep the AI answers for the next run
-        if: always() && env.E2E_ANTHROPIC_KEY != '' && hashFiles('desktop/e2e/.ai-cache/*.json') != ''
         timeout-minutes: 5
+        if: always() && env.E2E_ANTHROPIC_KEY != '' && hashFiles('desktop/e2e/.ai-cache/*.json') != ''
         run: find desktop/e2e/.ai-cache -name '*.json' -mtime +7 -delete   # an answer not replayed for a week is dropped (a replay touches it)
       - if: success() && env.E2E_ANTHROPIC_KEY != '' && hashFiles('desktop/e2e/.ai-cache/*.json') != ''
         timeout-minutes: 5

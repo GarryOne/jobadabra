@@ -64,6 +64,17 @@ class SingleTryVerdict(unittest.TestCase):
         self.assertEqual(twice, [])
         self.assertTrue(any('red-steps.mjs --renamed-only' in block for _, _, block in suite_steps()), 'positive control: the fallback is read')
 
+    def test_a_failed_backbone_try_exits_nonzero_and_only_a_tolerant_leg_may_end_green(self):
+        # Why (31 Oct 2026, Gitar on #2682): Rule S keeps AI/clock/outside legs grey or green; every other failed try is red by its own exit code.
+        for file in ('e2e.yml', 'desktop.yml'):
+            blocks = [block for f, _, block in suite_steps() if f == file and 'id: suite_run' in block]
+            self.assertTrue(blocks, file)
+            for block in blocks:
+                code = '\n'.join(line for line in block.splitlines() if not line.lstrip().startswith('#'))
+                self.assertRegex(code, r'::error title=Suite failed::[^\n]*"; exit 1', file)
+                self.assertEqual(code.count('exit 0'), 2 if 'if [ ! -f "suites/' in code else 1, f'{file}: exit 0 only for a missing suite file and a tolerant leg')
+                self.assertIn('matrix.tolerant', code.split('::error', 1)[0].rsplit('||', 1)[-1], f'{file}: the only green exit after a failure is the tolerant leg')
+
     def test_the_only_try_is_named_so(self):
         for file in ('e2e.yml', 'desktop.yml', 'e2e-windows.yml'):
             names = [name for f, name, block in suite_steps() if f == file and 'id: suite_run' in block or f == file and name.startswith('Run the ')]

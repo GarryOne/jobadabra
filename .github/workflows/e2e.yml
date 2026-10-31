@@ -444,7 +444,7 @@ jobs:
           # Why (30 Oct 2026, ap; owner-approved rule A and burn-in): admission uses stored answers; manual first attempts may record; a suite that declares aiAnswers as backbone (plan-run.mjs puts it in matrix.aiAnswers) otherwise uses backbone answers without live AI.
           E2E_AI_ANSWERS: ${{ matrix.burnIn && 'backbone' || github.event_name == 'workflow_dispatch' && github.run_attempt == 1 && inputs.ai_answers == 'record' && 'record' || matrix.aiAnswers || 'off' }}
         # Why (31 Oct 2026, owner: "Is this expected? Error but step passed green ?", "And why should we accept/allow that?", "Let's go and handle this"): this step's own exit code is the verdict.
-        # No continue-on-error, no second try: a failed try shows a red step and a red job (guard tests/test_e2e_single_try.py). The old "a red first run is not the verdict (owner, 6 Oct 2026)" quoted no owner words.
+        # No continue-on-error, no second try: a failed backbone try shows a red step and a red job (guard tests/test_e2e_single_try.py); a tolerant leg (AI, clock, outside) reports a ::warning and a rate, as before (Rule S, Gitar on #2682). The old "a red first run is not the verdict (owner, 6 Oct 2026)" quoted no owner words.
         working-directory: desktop/e2e
         timeout-minutes: 15   # the suite stops itself at its budget (7 min, recorded 11: lib/runner.mjs) with its evidence, by force 3 min later (suite.mjs); this catches only a suite that cannot
         run: |
@@ -454,12 +454,13 @@ jobs:
           # Only a reserved suite may fall back on a renamed pick (red-steps.mjs).
           once ${{ matrix.suite }} || { [ -n "${E2E_STEP_NAMES:-}" ] && node red-steps.mjs --renamed-only "$E2E_ARTIFACTS/suite-failures.json" \
               && echo "::notice title=Picked step renamed::A step picked for this PR has a new name: the whole ${{ matrix.key }} suite runs now" && unset E2E_STEP_NAMES && once ${{ matrix.suite }}; } \
-            || { echo "::error title=Suite failed::The ${{ matrix.key }} suite failed (its one try is the verdict: no second try)"; exit 1; }
+            || { if [ "${{ matrix.tolerant }}" = true ]; then echo "::warning title=Tolerant suite failed::The ${{ matrix.key }} suite failed (a rate, not a verdict: it never holds a beta)"; echo "tolerant_failed=1" >> "$GITHUB_OUTPUT"; exit 0; fi
+                 echo "::error title=Suite failed::The ${{ matrix.key }} suite failed (its one try is the verdict: no second try)"; exit 1; }
       - name: Outside-world health
         if: always() && matrix.tolerant == true
         timeout-minutes: 5
         env:
-          OUTCOME: ${{ steps.suite_run.outcome }}
+          OUTCOME: ${{ steps.suite_run.outputs.tolerant_failed == '1' && 'failure' || steps.suite_run.outcome }}
         run: |
           echo "::notice title=Outside-world health::${{ matrix.key }}: $OUTCOME (tolerant; does not block beta). Steps, screenshots and failures are in the Mac HTML report and e2e-artifacts-${{ matrix.key }}."
       - name: AI answer candidates written for review
@@ -490,10 +491,8 @@ jobs:
           AI_COST_PUBLISH_KEY: ${{ secrets.AI_COST_PUBLISH_KEY }}
         run: |
           for kind in app app-openai judges; do   # app-openai: the app under test on an OpenAI engine (odd runs), shown under OpenAI on /ai-cost
-            dir="$E2E_ARTIFACTS"
-            file="$dir/ai-usage-$kind.json"; [ -f "$file" ] || continue
-            tag=""; case "$dir" in *apply-edge*) tag="-edge";; esac
-            job="e2e-$kind"; provider=anthropic
+            file="$E2E_ARTIFACTS/ai-usage-$kind.json"; [ -f "$file" ] || continue
+            tag=""; job="e2e-$kind"; provider=anthropic
             if [ "$kind" = app-openai ]; then job=e2e-app; provider=openai; tag="$tag-openai"; fi
             node desktop/e2e/ai-cost-report.mjs --job "$job" --suffix "${{ matrix.key }}$tag" --file "$file" --provider "$provider"
           done

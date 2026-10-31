@@ -752,7 +752,7 @@ jobs:
       - name: Run the ${{ matrix.suite }} suite (the only try)
         id: suite_run
         # Why (31 Oct 2026, owner: "Is this expected? Error but step passed green ?", "And why should we accept/allow that?", "Let's go and handle this"): this step's own exit code is the verdict.
-        # No continue-on-error, no second try: a failed try shows a red step and a red job (guard tests/test_e2e_single_try.py).
+        # No continue-on-error, no second try: a failed backbone try shows a red step and a red job (guard tests/test_e2e_single_try.py); a tolerant leg (AI, clock, outside) reports a ::warning and a rate, as before (Rule S, Gitar on #2682).
         working-directory: desktop/e2e
         env:
           E2E_TRY_MINUTES: 15   # = this step's timeout-minutes: a suite without an aggregate budget stops 4 min before it (its close-down cap + 1), with records that read as timing (lib/runner.mjs budgetMsOf; tests/test_e2e_try_minutes.py)
@@ -762,12 +762,13 @@ jobs:
           if [ ! -f "suites/${{ matrix.suite }}.mjs" ]; then echo "The ${{ matrix.suite }} suite does not exist in this build: skipped."; exit 0; fi
           once() { if [ "$RUNNER_OS" = Linux ]; then xvfb-run -a --server-args='-screen 0 1440x900x24' node suite.mjs "$1"; else node suite.mjs "$1"; fi; }
           once ${{ matrix.suite }} \
-            || { echo "::error title=Suite failed::The ${{ matrix.key }} suite failed (its one try is the verdict: no second try)"; exit 1; }
+            || { if [ "${{ matrix.tolerant }}" = true ]; then echo "::warning title=Tolerant suite failed::The ${{ matrix.key }} suite failed (a rate, not a verdict: it never holds a beta)"; echo "tolerant_failed=1" >> "$GITHUB_OUTPUT"; exit 0; fi
+                 echo "::error title=Suite failed::The ${{ matrix.key }} suite failed (its one try is the verdict: no second try)"; exit 1; }
       - name: Outside-world health
         if: always() && matrix.tolerant == true
         timeout-minutes: 5
         env:
-          OUTCOME: ${{ steps.suite_run.outcome }}
+          OUTCOME: ${{ steps.suite_run.outputs.tolerant_failed == '1' && 'failure' || steps.suite_run.outcome }}
         run: |
           echo "::notice title=Outside-world health::${{ matrix.key }}: $OUTCOME (tolerant; does not block beta). Steps, screenshots and failures are in the Mac HTML report and e2e-artifacts-${{ matrix.key }}."
       - name: What the suite spent on Free AI (the relay's own meter)
@@ -787,10 +788,8 @@ jobs:
           AI_COST_PUBLISH_KEY: ${{ secrets.AI_COST_PUBLISH_KEY }}
         run: |
           for kind in app app-openai judges; do   # app-openai: the app under test on an OpenAI engine (odd runs), shown under OpenAI on /ai-cost
-            dir="$E2E_ARTIFACTS"
-            file="$dir/ai-usage-$kind.json"; [ -f "$file" ] || continue
-            tag=""; case "$dir" in *apply-edge*) tag="-edge";; esac
-            job="e2e-$kind"; provider=anthropic
+            file="$E2E_ARTIFACTS/ai-usage-$kind.json"; [ -f "$file" ] || continue
+            tag=""; job="e2e-$kind"; provider=anthropic
             if [ "$kind" = app-openai ]; then job=e2e-app; provider=openai; tag="$tag-openai"; fi
             node desktop/e2e/ai-cost-report.mjs --job "$job" --suffix "${{ matrix.key }}$tag" --file "$file" --provider "$provider"
           done
@@ -1069,12 +1068,13 @@ jobs:
         run: |
           if [ ! -f "suites/${{ matrix.suite }}.mjs" ]; then echo "The ${{ matrix.suite }} suite does not exist in this build: skipped."; exit 0; fi
           node suite.mjs ${{ matrix.suite }} \
-            || { echo "::error title=Suite failed::The ${{ matrix.key }} suite failed (its one try is the verdict: no second try)"; exit 1; }
+            || { if [ "${{ matrix.tolerant }}" = true ]; then echo "::warning title=Tolerant suite failed::The ${{ matrix.key }} suite failed (a rate, not a verdict: it never holds a beta)"; echo "tolerant_failed=1" >> "$GITHUB_OUTPUT"; exit 0; fi
+                 echo "::error title=Suite failed::The ${{ matrix.key }} suite failed (its one try is the verdict: no second try)"; exit 1; }
       - name: Outside-world health
         if: always() && matrix.tolerant == true
         timeout-minutes: 5
         env:
-          OUTCOME: ${{ steps.suite_run.outcome }}
+          OUTCOME: ${{ steps.suite_run.outputs.tolerant_failed == '1' && 'failure' || steps.suite_run.outcome }}
         run: |
           echo "::notice title=Outside-world health::${{ matrix.key }}: $OUTCOME (tolerant; does not block beta). Steps, screenshots and failures are in the Windows HTML report and e2e-artifacts-windows-${{ matrix.key }}."
       - name: The apply suite again in Microsoft Edge (the Windows default; preinstalled on the runner)

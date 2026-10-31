@@ -29,7 +29,8 @@ class OutsideWorkflow(unittest.TestCase):
                 self.assertFalse([step for step in re.split(r'(?m)^      - ', block) if step.startswith('name: "First try failed:')], 'no job retries a suite (tests/test_e2e_single_try.py)')
                 health = next((step for step in re.split(r'(?m)^      - ', block) if step.startswith('name: Outside-world health')), '')
                 self.assertIn('if: always() && matrix.tolerant == true', health)
-                self.assertIn('OUTCOME: ${{ steps.suite_run.outcome }}', health)
+                self.assertIn("OUTCOME: ${{ steps.suite_run.outputs.tolerant_failed == '1' && 'failure' || steps.suite_run.outcome }}", health)
+                self.assertIn('tolerant_failed=1', block, 'a tolerant leg ends green with a warning, never a red job (Rule S)')
                 script = health.split('run: |\n', 1)[1].replace('${{ matrix.key }}', 'notion-real')
                 for outcome, code in [('success', 0), ('failure', 0), ('cancelled', 0), ('skipped', 0)]:
                     done = subprocess.run(['bash', '-e', '-c', script], env={**os.environ, 'OUTCOME': outcome}, capture_output=True, text=True)

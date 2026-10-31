@@ -338,6 +338,6 @@ test('lanes.json alone marks every tolerant suite and every outside cadence is t
     const text = fs.readFileSync(new URL(`../../../.github/workflows/${name}.yml`, import.meta.url), 'utf8');
     assert.doesNotMatch(text, /matrix\.outside/, name);
     assert.match(text, /continue-on-error: \$\{\{ matrix.tolerant == true \}\}/, name);
-    if (name !== 'e2e-windows') assert.match(text, /matrix.tolerant != true/, name);
+    assert.doesNotMatch(text, /matrix.tolerant != true/, `${name}: no retry step needs a tolerant guard (a suite has one try, 31 Oct 2026)`);
   }
 });

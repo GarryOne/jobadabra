@@ -1,10 +1,10 @@
 // A slow extension request says when it arrived, when it ended, and how long its AI calls waited for a CLI slot versus ran (nightly run 41162490590: 106 s before a page-kind answer, unlocated).
 import assert from 'node:assert/strict';
 import {EventEmitter} from 'node:events';
-import fs from 'node:fs';
 import {test} from 'node:test';
 import {slots} from '../lib/ai/cli-base.js';
 import {SLOW_MS, noteAiLimiter, timed} from '../lib/ext-http-timing.js';
+import {requestListener} from '../lib/server.js';
 
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
 function request(url, handle, clock) {
@@ -48,6 +48,14 @@ test('the real CLI limiter reports a call\'s wait for a slot to the request it b
   assert.ok(b.ai_run_ms < 50, `the second's run time excludes its wait: ${JSON.stringify(b)}`);
 });
 
-test('every request of the app\'s local server goes through timed()', () => {
-  assert.match(fs.readFileSync(new URL('../lib/server.js', import.meta.url), 'utf8'), /http\.createServer\(\(req, res\) => timed\(req, res,/);
+test('the app\'s real request listener times every request, and the response is unchanged', async () => {
+  const clock = {at: 0}, lines = [], fired = [], res = Object.assign(new EventEmitter(), {head: null, text: '', writeHead(status) { this.head = status; }, end(chunk) { this.text = String(chunk ?? ''); }});
+  const req = Object.assign((async function* () {})(), {url: '/extension/nothing-here?job=https://private.example/x', method: 'GET', headers: {}});
+  const listener = requestListener({}, {log: (area, text) => lines.push(`[${area}] ${text}`), now: () => clock.at, after: (fn, ms) => { fired.push({fn, ms}); return 1; }, cancel: () => {}});
+  await listener(req, res);
+  assert.equal(fired[0]?.ms, SLOW_MS, 'the request was armed for the slow-request line');
+  assert.ok(res.head >= 200, 'the handler still answered');
+  clock.at = 7000; fired[0].fn(); res.emit('close');
+  assert.match(lines.join('\n'), /\[ext-http\] \d+ \/extension\/nothing-here phase=open elapsed_ms=7000\n\[ext-http\] \d+ \/extension\/nothing-here phase=finish elapsed_ms=7000 ai_queue_ms=0/);
+  assert.doesNotMatch(lines.join('\n'), /private\.example/);
 });

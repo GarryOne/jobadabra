@@ -64,6 +64,15 @@ export async function contextAiProxies({offlineAi = false, family}) {
   const openaiProxy = family === 'openai' ? await startAiProxy({target: offlineAi ? offline.target : 'https://api.openai.com', kind: 'app-openai', credentials: {[APP_AI_ALIAS]: offlineAi ? '' : testKey(process.env, 'openai', family)}, metered: /\/responses(\?|$)/, shape: 'openai', follow: proxy}) : null;
   return {proxy, openaiProxy};
 }
+/** Keep a real Notion token behind the proxy; app and harness consumers receive only its alias. */
+export async function contextNotionProxy({notionProxy = false, token = '', standIn = null, store = ''}) {
+  const realToken = token && !standIn;
+  if (!notionProxy && !realToken) return {token};
+  const notion = await startNotionProxy({target: notionFarSide({store, standIn: standIn?.url}), credentials: realToken ? {[NOTION_ALIAS]: token} : {}});
+  if (realToken) useNotionAt(notion.url);   // harness reads and store-call children use the same alias; only the proxy sees the real token
+  return {notion, token: realToken ? NOTION_ALIAS : token};
+}
+
 // Each suite has its own Notion page and connection, so suites can run at the same time. E2E_NOTION_TOKEN is the wizard's; a suite without its own token falls
 // back to it on a developer's Mac (one suite at a time), and is skipped in CI. own: the real workspace (notion-real) takes its own token or none, never the
 // wizard's: with `fresh` it empties its page, and the fallback's page is another suite's.
@@ -135,11 +144,7 @@ export async function openContext(suite, {fresh = false, env: suiteEnv = {}, bro
   Object.assign(ctx, await contextAiProxies({offlineAi, family}));
   // A suite that breaks Notion on purpose (`export const notionProxy = true`) gets the Notion stand-in between the app and Notion (lib/notion-proxy.mjs).
   // Its far side is the stand-in, never real Notion, unless the suite pins the real workspace; on this Mac's store a dead port (the app has no business with Notion there).
-  if (notionProxy || (token && !standIn)) ctx.notion = await startNotionProxy({target: notionFarSide({store, standIn: standIn?.url}), credentials: token && !standIn ? {[NOTION_ALIAS]: token} : {}});
-  if (token && !standIn) {
-    ctx.token = NOTION_ALIAS;
-    useNotionAt(ctx.notion.url);   // harness reads and store-call children use the same alias; only the proxy sees the real token
-  }
+  Object.assign(ctx, await contextNotionProxy({notionProxy, token, standIn, store}));
   // A suite that reads what Telegram would receive (`export const telegram = true`) gets the fake Bot API (lib/telegram-fake.mjs); nothing reaches Telegram.
   if (telegram) ctx.telegram = await startTelegramFake();
   // A suite that runs the Gmail check (`export const google = true`) gets a fake Google with three of the mailreading eval's invented emails and a fake sign-in (lib/google-fake.mjs).

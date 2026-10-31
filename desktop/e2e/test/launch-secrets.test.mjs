@@ -64,3 +64,16 @@ test('both real proxy transports attach credentials only on the upstream hop', a
   await request(`${ai.url}/v1/responses`, {authorization: `Bearer ${APP_AI_ALIAS}`});
   assert.equal(forwarded[2].headers.authorization, 'Bearer fake-upstream-ai-key');
 });
+
+test('context consumers get only the Notion alias while stand-in tokens remain unchanged', async () => {
+  const {contextNotionProxy} = await import('../lib/context.mjs');
+  const {NOTION_ALIAS} = await import('../lib/proxy-credentials.mjs');
+  const real = await contextNotionProxy({store: 'notion', token: 'fake-context-notion-token'});
+  try {
+    assert.equal(real.token, NOTION_ALIAS);
+    assert.match(real.notion.url, /^http:\/\/127\.0\.0\.1:/);
+  } finally { await real.notion.close(); }
+  const fake = await contextNotionProxy({store: 'standin', standIn: {url: 'http://127.0.0.1:1'}, token: 'fake-standin-token'});
+  assert.deepEqual(fake, {token: 'fake-standin-token'});
+  assert.deepEqual(await contextNotionProxy({store: 'sqlite'}), {token: ''});
+});

@@ -61,11 +61,16 @@ test('a fill state that cannot be read says so and what it saw, never a bare nul
 });
 
 test('fillNote reports a cap for missing or unfinished states, and preserves finished values', () => {
-  for (const state of [null, {state: 'running'}, {state: 'unreadable', raw: 'card-id'}, {state: 'pending'}]) {
+  for (const state of [null, {state: 'running'}, {state: 'unreadable', raw: 'card-id'}, {state: 'unreadable', closed: false, error: 'navigation replaced context'}, {state: 'pending'}]) {
     assert.equal(fillNote(state, 90), `the fill did not finish within 90 s (last seen: ${JSON.stringify(state)})`);
   }
   for (const name of ['done', 'error', 'stopped', 'no-form', 'account']) {
     const state = {state: name, error: 'reported value'};
     assert.equal(fillNote(state, 90), `state: ${JSON.stringify(state)}`);
   }
+});
+
+test('a known closed tab is a reported failure, not a wait that can still finish', () => {
+  const state = {state: 'unreadable', closed: true, error: 'Target page has been closed'};
+  assert.equal(fillNote(state, 90), `state: ${JSON.stringify(state)}`);
 });

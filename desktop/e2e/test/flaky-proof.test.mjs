@@ -143,7 +143,7 @@ test('grey CLI proves both files and fails closed on absent or malformed evidenc
 });
 
 // Run the actual journey callback with fixture reads and a fake clock; no browser or app starts.
-async function journeyFailure(t, {head, showTab = true, state = null}) {
+async function journeyFailure(t, {head, showTab = true, state = null, immediate = false}) {
   t.mock.timers.enable({apis: ['Date', 'setTimeout']});
   let failure;
   const tab = {url: () => REVEAL.url, evaluate: async fn => {
@@ -157,12 +157,14 @@ async function journeyFailure(t, {head, showTab = true, state = null}) {
     try { await step(); } catch (error) { failure = error; } finally { stepClock(null); }
   }};
   let settled = false;
+  const started = Date.now();
   const pending = runJourneys(ctx, {page: {evaluate: async () => {}}, forms: {fired: []}, cv: {name: 'cv.pdf', size: 10}, dumpExtension: async () => {}, fail: problems => {
     if (problems.length) throw new Error(problems.join('; '));
   }}).finally(() => { settled = true; });
-  for (let tick = 0; !settled && tick < 20; tick++) { await new Promise(setImmediate); t.mock.timers.tick(500); }
+  for (let tick = 0; !settled && tick < 20; tick++) { await new Promise(setImmediate); if (!settled) t.mock.timers.tick(500); }
   assert.equal(settled, true, 'uses the step cap, not the old 60/90-second inline clock');
   await pending;
+  if (immediate) assert.equal(Date.now() - started, 0, 'a closed tab fails on its first read');
   assert.ok(failure, 'the step must report the missing state or wrong value');
   return failure.message;
 }
@@ -190,4 +192,12 @@ for (const state of ['done', 'error', 'stopped']) test(`a reported ${state} stay
   assert.equal(flakyProof(message).flaky, false);
   assert.equal(unproved(failures).length, 1);
   assert.equal(greyProof(failures, failures).grey, false);
+});
+
+test('a closed tab fails immediately and cannot grey either try', async t => {
+  const state = {state: 'unreadable', closed: true, error: 'Target page has been closed'};
+  const message = await journeyFailure(t, {head: 'an upload slot that appears only', state, immediate: true});
+  assert.equal(message, `state: ${JSON.stringify(state)}`);
+  assert.equal(flakyProof(message).flaky, false);
+  assert.equal(greyProof([{message}], [{message}]).grey, false);
 });

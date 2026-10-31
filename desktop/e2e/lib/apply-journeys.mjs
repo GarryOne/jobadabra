@@ -8,7 +8,7 @@ import {cvProblems, fillProblems, submitProblems} from './applycheck.mjs';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {fillNote, fillState, launchBrowser, readForm} from './extension.mjs';
+import {fillNote, fillSettled, fillState, launchBrowser, readForm} from './extension.mjs';
 import {writePrivate} from '../../lib/private-file.js';
 import {pressed, ticked} from './free-click.mjs';
 import {extensionDecisions, pollUntil, stepTimeLeft, waitCapNote, waitForAccountSafety, waitForDecisions, waitForFormValue, waitJobFormClosed} from './wait-on-state.mjs';
@@ -26,7 +26,7 @@ export async function runJourneys(ctx, h) {
     return value;
   };
   const filled = async tab => {
-    const {value, ms} = await pollUntil(() => fillState(tab), state => ['done', 'error', 'stopped', 'no-form', 'account'].includes(state?.state), {capMs: stepTimeLeft(), tickMs: 500});
+    const {value, ms} = await pollUntil(() => fillState(tab), fillSettled, {capMs: stepTimeLeft(), tickMs: 500});
     if (value?.state !== 'done') throw new Error(fillNote(value, ms / 1000));
     return value;
   };

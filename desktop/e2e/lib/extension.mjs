@@ -159,10 +159,13 @@ export const fillState = page => page.evaluate(() => {
 // fillState for a wait that asks only "has the page written a state yet": a mark that is not a state, or a read that failed, is nothing written, as it was before `unreadable` existed.
 // Why (Gitar on #2378, 28 Oct 2026): `unreadable` is truthy, and the page cases' quiet window (page-replay.mjs watchWindow) ended on the extension's card id.
 export const fillStateOf = page => fillState(page).then(state => (state?.state === 'unreadable' ? null : state));
+/** A finished fill or a known closed tab cannot still reach done; open-tab read errors may recover on navigation. */
+export const fillSettled = state => ['done', 'error', 'stopped', 'no-form', 'account'].includes(state?.state)
+  || (state?.state === 'unreadable' && state.closed === true);
+
 // A missing or unfinished fill at the wait's cap is timing; a finished state remains the app's reported value.
 /** Format the last fill observation after a wait; terminal states (including a wrong one) never become timing. */
-export const fillNote = (state, seconds) => (['done', 'error', 'stopped', 'no-form', 'account'].includes(state?.state)
-  ? `state: ${JSON.stringify(state)}` : waitCapNote('the fill', seconds, state));
+export const fillNote = (state, seconds) => (fillSettled(state) ? `state: ${JSON.stringify(state)}` : waitCapNote('the fill', seconds, state));
 
 // The panel the extension draws on the page (bottom right, an open shadow root).
 export const readPanel = page => page.evaluate(() => {

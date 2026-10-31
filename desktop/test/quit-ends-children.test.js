@@ -7,7 +7,7 @@ import path from 'node:path';
 import {test} from 'node:test';
 import {installQuitHandling} from '../lib/lifecycle.js';
 import * as pipeline from '../lib/pipeline.js';
-import {untilGone} from './process-gone.js';
+import {holdersOf, waitTreeGone} from '../e2e/lib/app-tree.mjs';
 
 const alive = pid => { try { process.kill(pid, 0); return true; } catch { return false; } };
 const storageIn = dir => ({settings: () => ({}), secret: () => '', saveSettings: () => {}, path: (...parts) => path.join(dir, ...parts)});
@@ -89,9 +89,10 @@ test('a grandchild that ignores SIGTERM is gone too when the quit goes on', {ski
   assert.equal(alive(grand), true);
   await pipeline.stopRunning();
   await within(read, 5000, null);   // a surviving grandchild keeps the pipe open, so run() would not resolve: the assertion below says it
-  // Why (31 Oct 2026, a8; #2726 run 41231359925): the closed pipe means the grandchild is dying, not that init has reaped it; kill(pid, 0) answers for that zombie. Read its state.
-  const seen = await untilGone(grand, 3000);
-  assert.equal(seen.gone, true, `the grandchild that ignored SIGTERM was ended with its group (last seen in state ${seen.state})`);
+  // Why (31 Oct 2026, a8; #2726 run 41231359925): the closed pipe means the grandchild is dying, not that init has reaped it; kill(pid, 0) answers for that zombie.
+  // waitTreeGone reads the process state (a zombie is gone) and waits on it, the one copy of that (e2e/lib/app-tree.mjs, guard e2e/test/app-tree.test.mjs).
+  const left = await waitTreeGone([{pid: grand, command: 'grandchild'}], {capMs: 3000});
+  assert.deepEqual(left, [], `the grandchild that ignored SIGTERM was ended with its group (still running: ${holdersOf(left)})`);
 });
 
 test('the watchdog watches every engine command but the ones that wait on a person or a download', () => {

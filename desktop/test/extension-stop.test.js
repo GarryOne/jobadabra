@@ -11,11 +11,12 @@ const store = {};
 const calls = {detached: [], attached: [], scripted: [], told: [], sent: [], funcs: []};
 let pageWasStopped = true;   // what startedPage answers from the page
 let attachedTargets = [], detachListener = null;
+const fail = {keep: false, page: false, gone: new Set()};   // what a failing Stop step looks like: the kept flag will not save, the page will not take its mark, a tab is closed
 globalThis.chrome = {
   runtime: {getManifest: () => ({version: 'test'}), sendMessage: async () => {}},
   storage: {local: {get: async () => ({}), set: async () => {}}, session: {
     async get(keys) { if (keys == null) return {...store}; return Object.fromEntries([].concat(keys).filter(key => key in store).map(key => [key, store[key]])); },
-    async set(items) { Object.assign(store, items); },
+    async set(items) { if (fail.keep && 'stopped' in items) throw new Error('storage quota exceeded'); Object.assign(store, items); },
     async remove(keys) { for (const key of [].concat(keys)) delete store[key]; },
   }},
   debugger: {
@@ -24,13 +25,13 @@ globalThis.chrome = {
     async getTargets() { return attachedTargets; },
     onDetach: {addListener(fn) { detachListener = fn; }},
   },
-  tabs: {async get() { return null; }, async query() { return [{id: 5, url: 'https://github.com/x/y/pull/1#jobpilotto-fill=s1'}, {id: 6, url: 'https://example.com/'}]; }, async sendMessage(id, message) { calls.told.push([id, message.type]); }, onRemoved: {addListener() {}}},
-  scripting: {async executeScript(options) { calls.scripted.push(options.target.tabId); calls.funcs.push([options.target.tabId, options.func?.name || '']); return options.func?.name === 'startedPage' ? [{result: pageWasStopped}] : []; }},
+  tabs: {async get(id) { if (fail.gone.has(id)) throw new Error(`No tab with id: ${id}`); return null; }, async query() { return [{id: 5, url: 'https://github.com/x/y/pull/1#jobpilotto-fill=s1'}, {id: 6, url: 'https://example.com/'}]; }, async sendMessage(id, message) { calls.told.push([id, message.type]); }, onRemoved: {addListener() {}}},
+  scripting: {async executeScript(options) { if (fail.page && options.func?.name === 'stoppedPage') throw new Error('cannot access a chrome:// page'); calls.scripted.push(options.target.tabId); calls.funcs.push([options.target.tabId, options.func?.name || '']); return options.func?.name === 'startedPage' ? [{result: pageWasStopped}] : []; }},
 };
 const stop = await import('../../extension/stop.js');
 const {isCurrent, beginRead} = await import('../../extension/read-gen.js');
 const {followOpener, notePress} = await import('../../extension/tabs.js');
-const reset = () => { for (const key of Object.keys(store)) delete store[key]; for (const list of Object.values(calls)) list.length = 0; attachedTargets = []; stop.restart('test'); };
+const reset = () => { fail.keep = false; fail.page = false; fail.gone.clear(); for (const key of Object.keys(store)) delete store[key]; for (const list of Object.values(calls)) list.length = 0; attachedTargets = []; stop.restart('test'); };
 
 test('Stop clears every armed tab\'s state, keeps what is not a tab\'s, and says it is stopped', async () => {
   reset();
@@ -189,4 +190,43 @@ test('the page fill waits for the page\'s Stop to clear before it starts', () =>
   assert.match(flow, /const summary = await pageStarted\(tab\.id\)\.then\(\(\) => inPage\(tab\.id, \(list, profile, resume, letter, consents\) => window\.__jobPilottoExtensionFill/, 'flow.js awaits pageStarted right before the page fill');
   const stopFile = fs.readFileSync(new URL('../../extension/stop.js', import.meta.url), 'utf8');
   assert.doesNotMatch(stopFile.match(/function stoppedPage\(\) \{[\s\S]*?\n\}/)[0].match(/for \(const id of \[[^\]]*\]\) document\.getElementById\(id\)\?\.remove\(\)/)[0], /'jobpilotto-review-host'/, 'Stop keeps the panel: it says "Stopped by you" with Check form again (owner mockup 03), never a panel taken away and drawn back working');
+});
+
+// Why (31 Oct 2026, a8; coordinator: "A Stop that failed must say so (rule 6, safety)"; the open-panel Stop flake of run 41250657527): stopAll swallowed every step's error and the
+// worker answered ok:true, so the panel went on as if the Stop had worked. Now the answer is ok:false with the reason of each step that mattered, and the panel puts its Stop back.
+test('a Stop whose flag could not be kept says so with the reason, and the worker still stops itself', async () => {
+  reset();
+  fail.keep = true;
+  const done = await stop.stopAll('the person pressed Stop');
+  assert.equal(done.ok, false);
+  assert.match(done.failed.join(' | '), /could not be kept for a restarted worker: storage quota exceeded/);
+  assert.equal(stop.isStopped(), true, 'the running worker is stopped even when the flag for a restarted one failed');
+});
+
+test('a page that would not take its Stop mark is named; a tab that was closed is not a failure', async () => {
+  reset();
+  Object.assign(store, {'armed:5': true, 'armed:7': true});
+  fail.page = true;
+  fail.gone.add(7);
+  const done = await stop.stopAll('test');
+  assert.equal(done.ok, false);
+  assert.deepEqual(done.failed.map(line => line.replace(/:.*/, '')), ['tab 5'], 'only the tab that is still there');
+  assert.match(done.failed[0], /the page was not marked stopped: cannot access a chrome:\/\/ page/);
+});
+
+test('a Stop that worked says ok:true and nothing failed; the debugger refusing a detach is not a failure', async () => {
+  reset();
+  Object.assign(store, {'armed:5': true});
+  const done = await stop.stopAll('test');
+  assert.equal(done.ok, true);
+  assert.deepEqual(done.failed, []);
+});
+
+test('the panel hears a failed Stop as ok:false with the reasons, so its Stop button comes back', async () => {
+  reset();
+  fail.keep = true;
+  const {createStopMessages} = await import('../../extension/stop-messages.js');
+  const answer = await new Promise(resolve => createStopMessages()({type: 'stop', reason: 'the Stop button in the panel'}, {}, resolve));
+  assert.equal(answer.ok, false);
+  assert.match(answer.failed[0], /could not be kept/);
 });

@@ -8,6 +8,7 @@ import {spawnSync} from 'node:child_process';
 import {failedJobLinks, failedJobs, isRepeat, messageOf, previousConclusion, sinceGreen, send, stepCauses} from '../ci-alert.mjs';
 import {annotationLines} from '../lib/artifacts.mjs';
 import {fields} from '../lib/telegram-fake.mjs';
+import {nameAiFailure} from '../lib/ai-miss-cause.mjs';
 
 const env = {GITHUB_WORKFLOW: 'CI · Site replays · all (offline)', GITHUB_SHA: 'abcdef1234', GITHUB_REF_NAME: 'main', GITHUB_REPOSITORY: 'o/r', GITHUB_RUN_ID: '42',
   GITHUB_WORKFLOW_REF: 'o/r/.github/workflows/site-replays.yml@refs/heads/main', GH_TOKEN: 'gh'};
@@ -332,4 +333,13 @@ test('many distinct causes preserve the Next action and footer without counting 
   assert.match(message.text, /23e73e5<\/a>\n<blockquote expandable>\+\d+ more<\/blockquote>$/);
   const shown = (message.text.match(/     ✗ /g) || []).length;
   assert.equal(shown + Number(/\+(\d+) more/.exec(message.text)[1]), causes.length);
+});
+
+
+test('a refusal without an unstored ask uses the current writer protocol without inventing a missing-answer cause', async () => {
+  const input = await applyFixture();
+  const message = nameAiFailure('the strategy is empty', {capped: {why: 'broker: budget:own-share 67% of 60% (scheduled)'}});
+  const alert = messageOf({...input, causes: [{...input.causes[0], message}]});
+  assert.match(alert.text, /🤖  AI refused: credit 67% of 60%/);
+  assert.doesNotMatch(alert.text, /📭|no stored answer|the step then failed/);
 });

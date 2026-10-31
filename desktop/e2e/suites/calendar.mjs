@@ -3,7 +3,7 @@
 // Calendar: meetings from the Job Tracker ("Next interview") and from saved recordings, on dummy rows written through the Notion API, with the app running in a fixed time
 // zone (Asia/Tokyo, no daylight saving) and then in another (Pacific/Honolulu). Starts from a set-up install; resets only its own rows.
 import {launch} from '../lib/app.mjs';
-import {addDays, monthTitle, monthsBetween, showsClock, weekDays} from '../lib/interview-data.mjs';
+import {HONOLULU, TOKYO, calendarDates, meetingSlots, pageToMonth, showsClock} from '../lib/interview-data.mjs';
 import {addInterview, addTrackedJob} from '../lib/seed-data.mjs';
 import {clearData} from '../lib/start-state.mjs';
 import {finish, snap} from '../lib/layout.mjs';
@@ -20,9 +20,8 @@ export const aiAnswers = 'backbone';   // answers its AI from the stored table i
 // Why (30 Oct 2026, ap; a8's decision on #2565): stored answers need one store path (test/store.test.mjs); calendar takes its default store, SQLite, so the side-panel steps keep running. The one step that needs Notion ("a meeting opens its job in Notion", 3.6 s, minority store) is skipped by its needs guard and parked, not dropped; a second app launch on the stand-in store would need harness code this suite lacks.
 export const store = 'sqlite';
 export const name = 'calendar';
-export const env = {TZ: 'Asia/Tokyo'};
-const ZONE = 'Asia/Tokyo';
-const dayIn = (date, zone) => new Intl.DateTimeFormat('en-CA', {timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit'}).format(date);
+export const env = {TZ: TOKYO};
+const ZONE = TOKYO;
 // Today is disabled while this month is already shown: press it only when it can move the page.
 const backToToday = async page => { if (await page.locator('#cal-today').isEnabled()) await page.click('#cal-today'); };
 
@@ -30,20 +29,18 @@ export async function run(ctx) {
   const {page, app} = ctx;
   ctx.findings = [];
   const {step, end} = independent(ctx);
-  const today = dayIn(new Date(), ZONE);
-  const {days: [l1, l2, l3], future} = weekDays(today);
-  const nextMonthDay = dayIn(new Date(Date.UTC(Number(today.slice(0, 4)), Number(today.slice(5, 7)), 15, 3)), ZONE);   // the 15th of next month, noon in Tokyo
-  const oldDay = addDays(today, -40);
-  // Instants chosen so that the local day differs between zones: 23:30 UTC on D-1 is D 08:30 in Tokyo and D-1 13:30 in Honolulu.
-  const utc = (day, time) => `${day}T${time}:00Z`;
+  // Every date comes from lib/interview-data.mjs (calendarDates, meetingSlots), proven for every day of the year in test/interview-data.test.mjs.
+  const dates = calendarDates(new Date());
+  const {today, days: [l1, l2, l3], future, nextMonthDay, oldDay} = dates;
+  const slots = meetingSlots(dates);
   const meetings = [
-    {key: 'acme', company: 'E2E Acme', role: 'Senior SRE', stage: 'Screening', at: utc(addDays(l1, -1), '23:30'), day: l1, clock: {h: 8, m: 30}},
-    {key: 'beta', company: 'E2E Beta', role: 'Platform Engineer', stage: 'Interviewing', at: utc(l2, '01:00'), day: l2, clock: {h: 10, m: 0}},
-    {key: 'gamma', company: 'E2E Gamma', role: 'Staff SRE', stage: 'Interviewing', at: utc(l2, '06:00'), day: l2, clock: {h: 15, m: 0}},
-    {key: 'delta', company: 'E2E Delta', role: 'DevOps Engineer', stage: 'Interviewing', at: utc(l2, '08:00'), day: l2, clock: {h: 17, m: 0}},
-    {key: 'zeta', company: 'E2E Zeta', role: 'Cloud Engineer', stage: 'Interviewing', at: utc(l2, '09:00'), day: l2, clock: {h: 18, m: 0}},
-    {key: 'epsilon', company: 'E2E Epsilon', role: 'Infrastructure Engineer', stage: 'Interviewing', at: utc(nextMonthDay, '03:00'), day: nextMonthDay, clock: {h: 12, m: 0}},
-  ];
+    {key: 'acme', company: 'E2E Acme', role: 'Senior SRE', stage: 'Screening'},
+    {key: 'beta', company: 'E2E Beta', role: 'Platform Engineer', stage: 'Interviewing'},
+    {key: 'gamma', company: 'E2E Gamma', role: 'Staff SRE', stage: 'Interviewing'},
+    {key: 'delta', company: 'E2E Delta', role: 'DevOps Engineer', stage: 'Interviewing'},
+    {key: 'zeta', company: 'E2E Zeta', role: 'Cloud Engineer', stage: 'Interviewing'},
+    {key: 'epsilon', company: 'E2E Epsilon', role: 'Infrastructure Engineer', stage: 'Interviewing'},
+  ].map(meeting => ({...meeting, ...slots[meeting.key]}));
   const seed = {};
   const num = day => String(Number(day.slice(8)));
   const closeDrawer = async () => {
@@ -76,7 +73,7 @@ export async function run(ctx) {
     if (!/No upcoming interviews/.test(await page.locator('#cal-upcoming').innerText())) throw new Error('"Coming up" does not say "No upcoming interviews"');   // the empty card's words since fe415fb (#299: the suite still expected "Nothing scheduled")
     if (!/No past meetings yet/.test(await page.locator('#cal-past').innerText())) throw new Error('"Past" does not say there are no past meetings');
     if (await page.locator('#cal-grid .cal-chip').count()) throw new Error('the grid shows a meeting in an empty calendar');
-    if ((await page.locator('#cal-title').innerText()) !== monthTitle(today)) throw new Error(`the grid opens on "${await page.locator('#cal-title').innerText()}", not the current month`);
+    if ((await page.locator('#cal-title').innerText()) !== dates.thisTitle) throw new Error(`the grid opens on "${await page.locator('#cal-title').innerText()}", not the current month`);
     if ((await page.locator('#cal-grid .cal-cell.today .cal-num').innerText()) !== num(today)) throw new Error('the highlighted day is not today');
     await snap(ctx, 'calendar-empty', {view: 'calendar', situation: 'A calendar with no meeting'});
   });
@@ -132,7 +129,7 @@ export async function run(ctx) {
     await openCalendar();
     const here = await page.locator('#cal-title').innerText();
     await page.click('#cal-next');
-    const next = monthTitle(addDays(`${today.slice(0, 7)}-28`, 5));
+    const next = dates.nextTitle;
     if ((await page.locator('#cal-title').innerText()) !== next) throw new Error(`"›" shows "${await page.locator('#cal-title').innerText()}", expected "${next}"`);
     const chips = await chipsOf(page, nextMonthDay);
     if (chips.length !== 1 || !/E2E Epsilon/.test(chips[0]) || !showsClock(chips[0], {h: 12, m: 0})) throw new Error(`the 15th of next month shows ${JSON.stringify(chips)}, expected "E2E Epsilon" at 12:00`);
@@ -187,26 +184,23 @@ export async function run(ctx) {
   }, {needs: [{name: 'this Mac\'s store (on Notion a meeting opens its Notion page: the step above)', value: ctx.store === 'sqlite'}]});
 
   await step('the same meetings fall on other days and hours in another time zone', async () => {
-    const options = {env: {...ctx.appEnv, TZ: 'Pacific/Honolulu', JOB_PILOTTO_TZ: 'Pacific/Honolulu'}};
+    const options = {env: {...ctx.appEnv, TZ: HONOLULU, JOB_PILOTTO_TZ: HONOLULU}};
     // The same data in another zone. Notion: a second app, connected to the same workspace. This Mac's store: the data is this profile's, so the same app
     // starts again in Honolulu, and back in the test's zone afterwards.
     const sameMac = ctx.store === 'sqlite';
-    if (sameMac) await ctx.relaunch({TZ: 'Pacific/Honolulu', JOB_PILOTTO_TZ: 'Pacific/Honolulu'});
+    if (sameMac) await ctx.relaunch({TZ: HONOLULU, JOB_PILOTTO_TZ: HONOLULU});
     // A second Electron next to the first sometimes misses its first window on a busy machine: one more try, then fail loudly.
     const other = sameMac ? {page: ctx.page, close: () => ctx.relaunch()} : await launch(options).catch(error => { console.log(`  second app did not open (${error.message.split('\n')[0]}): trying once more`); return launch(options); });
     try {
       if (!sameMac) await fastSeed({...ctx, page: other.page, profile: other.profile});
       const zone = await other.page.evaluate(() => Intl.DateTimeFormat().resolvedOptions().timeZone);
-      if (zone !== 'Pacific/Honolulu') throw new Error(`the second app runs in "${zone}"`);
+      if (zone !== HONOLULU) throw new Error(`the second app runs in "${zone}"`);
       await goView(other.page, 'calendar');
       await backToToday(other.page);
       await ready(other.page);
       // Acme: 23:30 UTC on (l1 - 1) is 13:30 on that same day in Honolulu (and 08:30 the day after in Tokyo).
-      const day = addDays(l1, -1);
-      const wantMonth = monthTitle(day);
-      for (let i = 0; i < 3 && (await other.page.locator('#cal-title').innerText()) !== wantMonth; i++) {
-        await other.page.click(monthsBetween(await other.page.locator('#cal-title').innerText(), wantMonth) > 0 ? '#cal-next' : '#cal-prev');   // by date: as text "October" > "November"
-      }
+      const day = dates.honoluluDay;
+      await pageToMonth({title: () => other.page.locator('#cal-title').innerText(), click: arrow => other.page.click(`#cal-${arrow}`)}, dates.honoluluTitle);   // by date: as text "October" > "November"
       await other.page.waitForFunction(() => document.querySelectorAll('#cal-grid .cal-chip').length > 0, null, {timeout: 30000});
       const chips = await chipsOf(other.page, day);
       if (!chips.some(text => /E2E Acme/.test(text) && showsClock(text, {h: 13, m: 30}))) throw new Error(`in Honolulu ${day} shows ${JSON.stringify(chips)}, expected "E2E Acme" at 13:30 (Tokyo shows it on ${l1} at 08:30)`);

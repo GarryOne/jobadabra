@@ -6,7 +6,7 @@
 "desktop/e2e/fixtures/golden/interviews-decide.json":"a142becc10081b3e86b31124d52a27c5b3372905332fe6f3bffe2f66b3e4b7b2",
 "desktop/e2e/fixtures/golden/sources.json":"0335becb2dfdbb6254666f6bfeaf3da4243858581cfda12b15cf010826be6290",
 "desktop/e2e/fixtures/golden/truth.json":"1e3bb7e56aa8992ff56bd73e97a70a32e6bea1fe4effcd90405e883a4d2ad851",
-"desktop/e2e/lib/interview-data.mjs":"ce1caa0a1d4eef6a57443ddd1d312c848680f95ee5785c1ca5596a57e8c2dca9",
+"desktop/e2e/lib/interview-data.mjs":"ae039b8b71f6a16ae83f9212c26e7aea76d1a81ef048463a30c1ffecf9a9a08a",
 "src/ai/decide.py":"f89f284b1a2ffccab596e0f3a6146d9e0a2b8e33c46505b3f170a1ac834bf54e",
 "src/ai/engine.py":"4d93fc06f72e8b2a6af8edf1308696878dd614d7d66a948ed917ca1ba045bf4a",
 "src/ai/enrich.py":"737f0e424e8c7ee7bd70953ce65d9685d6ad4226e512cc2fd9cbbe3f2e929064",

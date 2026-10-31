@@ -395,7 +395,7 @@ export async function runApply(ctx, parts) {
     if (!result?.ok) throw new Error(`the app refused: ${result?.error}`);
     await until('"I submitted it" left the job\'s session on the list', async () => !(await sessionsOf(CHAIN.url)).length, 30000);
     if ((await stageOf(ctx, CHAIN.url)) !== 'Applied') throw new Error('the Notion row is not Applied');
-  }, {needs: ctx.needs, closesTabs: 'chain'});
+  }, {needs: ctx.needs});
 
   await runCvSteps(ctx, {apply, cv, fail, page, panelOf, proxy, until});   // lib/apply-cv-steps.mjs
   await runSilentChromeSteps(ctx);   // lib/apply-silent-steps.mjs: the app cannot hear Chrome, one step per apply mode

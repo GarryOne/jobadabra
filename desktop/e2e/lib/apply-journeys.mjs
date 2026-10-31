@@ -87,7 +87,7 @@ export async function runJourneys(ctx, h) {
       if (value !== answer) problems.push(`${job.company}: Kubernetes years "${value}" after waiting ${ms} ms, its own kit says ${answer}${value === (answer === '9' ? '7' : '9') ? ' (the other job\'s kit)' : ''}`);
     }
     fail(problems);
-  }, {needs: ctx.needs, keepsTabs: 'chain'});   // both forms stay open for "I submitted it" (suites/apply.mjs), which closes them at its end; its session is the CHAIN job's, opened here
+  }, {needs: ctx.needs});
 
   // A form drawn late (9 Oct 2026, SuccessFactors after a sign-in): judged while empty it reads as a posting whose "Apply" is the form's own submit span.
   // That is never pressed; once the fields come the page is looked at again (fill-flow.js watchForFields) and filled, with the panel on it.

@@ -20,9 +20,9 @@ def workflow_jobs(text):
     return zip(parts[1::2], parts[2::2])
 
 
-def secret_env_names(text):
-    """Collect env aliases for direct secrets.X mappings at both job and step scopes."""
-    names = set()
+def env_mappings(text):
+    """Read direct YAML env mappings by indentation, retaining their first consumer expression."""
+    result = {}
     lines = text.splitlines()
     for index, line in enumerate(lines):
         found = re.fullmatch(r'(\s*)env:', line)
@@ -34,24 +34,78 @@ def secret_env_names(text):
                 continue
             if len(child) - len(child.lstrip()) <= indent:
                 break
-            mapping = re.match(r'\s*([A-Za-z_][\w]*):\s*(.*)', child)
-            if mapping and re.search(r'\$\{\{[^}]*\bsecrets\.[A-Za-z_][\w]*', mapping[2].split(' #', 1)[0]):
-                names.add(mapping[1])
-    return names
+            mapping = re.match(rf' {{{indent + 2}}}([A-Za-z_][\w]*):\s*(.*)', child)
+            if mapping:
+                result.setdefault(mapping[1], mapping[2].split(' #', 1)[0].strip())
+    return result
+
+
+def credential_refs(value):
+    """Compare credential provenance by reference, never by a real credential value."""
+    return set(re.findall(r'\b(?:secrets\.[\w]+|github\.token|steps\.[\w-]+\.outputs\.token)', value))
 
 
 def job_scan_names(job):
-    """The one scanner-name list belongs to job env and is inherited by each scan process."""
+    """One job-owned list is inherited by each scan, including composites."""
     head = job.split('    steps:', 1)[0]
-    found = re.search(r'(?m)^      E2E_ARTIFACT_SECRET_NAMES: \|\n((?:        [A-Za-z_][\w]*\n)+)', head)
+    found = re.search(r'(?m)^      E2E_ARTIFACT_SECRET_NAMES: \|\n((?:        [A-Za-z_][\w]*\n)*)', head)
     return set(found[1].split()) if found else set()
+
+
+def local_actions(job):
+    """Resolve local composite env consumers through only the inputs that this job supplies."""
+    actions = []
+    for step in re.split(r'(?m)^      - ', job):
+        found = re.search(r'uses: \./(?:[\w.-]+/)*(\.github/actions/[\w-]+)', step)
+        if not found:
+            continue
+        action = (ROOT / found[1] / 'action.yml').read_text()
+        for target in set(re.findall(r'inputs\.([\w-]+)', action)):
+            binding = re.search(rf'(?m)^          {re.escape(target)}: (.*)$', step)
+            if binding:
+                action = action.replace('${{ inputs.' + target + ' }}', binding[1])
+        actions.append(action)
+    return '\n'.join(actions)
+
+
+def scan_contract(job, action=''):
+    """Require list coverage, readable values, and no new credential reference granted by a scan."""
+    steps = re.split(r'(?m)^      - ', job)
+    consumers = ''.join(step for step in steps if 'id: artifact_scan_' not in step)
+    action_steps = re.split(r'(?m)^    - ', action)
+    consumers += ''.join(step for step in action_steps if 'id: artifact_scan_' not in step)
+    original = {name: value for name, value in env_mappings(consumers).items() if credential_refs(value)}
+    allowed = set().union(*(credential_refs(value) for value in original.values())) if original else set()
+    inherited = env_mappings(job.split('    steps:', 1)[0])
+    native = set()
+    if 'id-token: write' in job:
+        native.add('ACTIONS_ID_TOKEN_REQUEST_TOKEN')
+    if re.search(r'uses: \./(?:[\w.-]+/)*\.github/actions/free-ai-relay\b', job):
+        native.add('E2E_FREE_AI_KEY')   # that existing action publishes the generated key through GITHUB_ENV
+    required = set(original) | native
+    listed = job_scan_names(job)
+    problems = [f'missing list name: {name}' for name in sorted(required - listed)]
+    scans = [step for step in steps + action_steps if 'id: artifact_scan_' in step]
+    for step in scans:
+        supplied = env_mappings(step)
+        effective = {**inherited, **supplied}
+        for name, value in supplied.items():
+            if credential_refs(value) - allowed:
+                problems.append(f'scan grants unrelated credential: {name}')
+        for name in sorted(listed - native):
+            if name not in effective:
+                problems.append(f'scan cannot read: {name}')
+            elif name in original and credential_refs(original[name]) - credential_refs(effective[name]):
+                problems.append(f'scan changed credential source: {name}')
+    return problems
 
 
 class ArtifactSecretsTests(unittest.TestCase):
     def scan(self, folder, **extra):
-        env = {'PATH': os.environ.get('PATH', ''), 'E2E_ARTIFACT_SECRET_NAMES': 'E2E_NOTION_TOKEN_APPLY\nACTIONS_ID_TOKEN_REQUEST_TOKEN', 'E2E_NOTION_TOKEN_APPLY': 'fake-notion-secret-123456', **extra}
+        env = {'PATH': os.environ.get('PATH', ''), 'E2E_ARTIFACT_SECRET_NAMES': 'E2E_NOTION_TOKEN_APPLY\nACTIONS_ID_TOKEN_REQUEST_TOKEN', 'E2E_NOTION_TOKEN_APPLY': 'fake-notion-secret-123456', 'ACTIONS_ID_TOKEN_REQUEST_TOKEN': 'fake-runtime-token-123456', **extra}
         result = subprocess.run(['python3', str(SCANNER), str(folder)], env=env, capture_output=True, text=True)
         self.assertNotIn('fake-notion-secret-123456', result.stdout + result.stderr)
+        self.assertNotIn('fake-runtime-token-123456', result.stdout + result.stderr)
         return result
 
     def test_trace_with_secret_fails_and_names_only_variable_and_file(self):
@@ -100,16 +154,9 @@ class ArtifactSecretsTests(unittest.TestCase):
                     self.assertIn('scan-e2e-artifacts.py', steps[index - 1])
                     self.assertNotIn('toJSON(secrets)', steps[index - 1])
 
-    def test_review_scans_inherit_the_callers_name_list_without_secret_inputs(self):
-        action = (ROOT / '.github/actions/e2e-review/action.yml').read_text()
-        self.assertIn("steps.artifact_scan_cost.outcome == 'success'", action)
-        self.assertIn("steps.artifact_scan_findings.outcome == 'success'", action)
-        self.assertNotIn('artifact-secrets', action)
-        for step in re.split(r'(?m)^    - ', action):
-            if 'id: artifact_scan_' in step:
-                self.assertEqual(re.findall(r'(?m)^        ([A-Z_0-9]+):', step), ['E2E_ARTIFACT_PATHS'])
-        for name in ('e2e.yml', 'e2e-windows.yml', 'desktop.yml'):
-            text = (ROOT / '.github/workflows' / name).read_text()
+    def test_no_repository_wide_secret_context_or_input_is_restored(self):
+        for file in ('.github/actions/e2e-review/action.yml', '.github/workflows/e2e.yml', '.github/workflows/e2e-windows.yml', '.github/workflows/desktop.yml'):
+            text = (ROOT / file).read_text()
             self.assertNotIn('toJSON(secrets)', text)
             self.assertNotIn('artifact-secrets:', text)
 
@@ -138,53 +185,60 @@ class ArtifactSecretsTests(unittest.TestCase):
             self.assertIn('UNLISTED_TOKEN', result.stdout)
             self.assertNotIn('fake-unlisted-secret-123456', result.stdout + result.stderr)
 
-    def test_short_or_unset_named_values_are_skipped_and_empty_list_fails_closed(self):
+    def test_missing_and_empty_named_values_fail_with_names_only(self):
+        with tempfile.TemporaryDirectory() as folder:
+            for extra in ({}, {'REQUIRED': ''}):
+                result = self.scan(folder, E2E_ARTIFACT_SECRET_NAMES='REQUIRED', **extra)
+                self.assertEqual(result.returncode, 1)
+                self.assertEqual(result.stdout.strip(), 'REQUIRED')
+                self.assertEqual(result.stderr, '')
+
+    def test_short_values_are_skipped_by_name_and_eight_characters_are_scanned(self):
         with tempfile.TemporaryDirectory() as folder:
             (Path(folder) / 'log.txt').write_text('short12')
-            self.assertEqual(self.scan(folder, E2E_ARTIFACT_SECRET_NAMES='SHORT\nUNSET', SHORT='short12').returncode, 0)
-            self.assertEqual(self.scan(folder, E2E_ARTIFACT_SECRET_NAMES='').returncode, 1)
+            result = self.scan(folder, E2E_ARTIFACT_SECRET_NAMES='SHORT', SHORT='short12')
+            self.assertEqual(result.returncode, 0)
+            self.assertIn('SKIPPED_SHORT: SHORT', result.stdout)
+            self.assertNotIn('short12', result.stdout)
             (Path(folder) / 'log.txt').write_text('eight123')
             self.assertEqual(self.scan(folder, E2E_ARTIFACT_SECRET_NAMES='EIGHT', EIGHT='eight123').returncode, 1)
 
-    def test_job_scan_names_cover_every_secret_backed_env_mapping(self):
+    def test_job_with_no_credential_environment_can_declare_an_empty_list(self):
+        with tempfile.TemporaryDirectory() as folder:
+            result = subprocess.run(['python3', str(SCANNER), folder], env={'PATH': os.environ.get('PATH', ''), 'E2E_ARTIFACT_SECRET_NAMES': ''}, capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0)
+
+    def test_every_job_covers_and_supplies_its_credentials_without_new_grants(self):
         checked = 0
         for workflow in ('e2e.yml', 'e2e-windows.yml', 'desktop.yml'):
             text = (ROOT / '.github/workflows' / workflow).read_text()
             for name, job in workflow_jobs(text):
                 if 'uses: actions/upload-artifact@' not in job and 'uses: ./.github/actions/e2e-review' not in job:
                     continue
-                expected = secret_env_names(job)
-                if 'uses: ./.github/actions/e2e-review' in job:
-                    # Resolve the composite's existing secret inputs to the env aliases its consumers use.
-                    action = (ROOT / '.github/actions/e2e-review/action.yml').read_text()
-                    for alias, input_name in re.findall(r'(?m)^        (\w+): \$\{\{ inputs\.([\w-]+) \}\}', action):
-                        if re.search(rf'(?m)^          {re.escape(input_name)}: .*secrets\.', job):
-                            expected.add(alias)
-                declared = job_scan_names(job)
-                self.assertFalse(expected - declared, f'{workflow}/{name}: missing scanner env names: {sorted(expected - declared)}')
-                self.assertTrue(declared, f'{workflow}/{name}: missing job-owned scanner name list')
-                self.assertEqual(job.count('E2E_ARTIFACT_SECRET_NAMES:'), 1, f'{workflow}/{name}: one job-owned name list')
-                scans = [step for step in re.split(r'(?m)^      - ', job) if 'id: artifact_scan_' in step]
-                for step in scans:
-                    # A scanner inherits the job list; it must not inject any extra credential values.
-                    self.assertFalse(secret_env_names(step), f'{workflow}/{name}: scanner grants a secret')
-                    self.assertNotIn('E2E_LOCK_TOKEN:', step)
-                    self.assertNotIn('GH_TOKEN:', step)
-                    self.assertEqual(re.findall(r'(?m)^          ([A-Z_0-9]+):', step), ['E2E_ARTIFACT_PATHS'], f'{workflow}/{name}: scanner env must contain paths only')
+                self.assertEqual(job.count('E2E_ARTIFACT_SECRET_NAMES:'), 1, f'{workflow}/{name}: one job-owned list')
+                self.assertEqual(scan_contract(job, local_actions(job)), [], f'{workflow}/{name}')
                 checked += 1
         self.assertGreaterEqual(checked, 10)
 
-    def test_job_parser_includes_step_env_and_detects_missing_names(self):
+    def test_same_job_mapping_is_allowed_but_a_planted_unrelated_secret_is_rejected(self):
         job = """    env:
       E2E_ARTIFACT_SECRET_NAMES: |
         FIRST
+        ALIAS
       FIRST: ${{ secrets.ONE }}
     steps:
-      - name: original credential consumer
+      - name: original consumer
         env:
           ALIAS: ${{ secrets.TWO }}
-          PUBLIC: ${{ vars.SOMETHING }}
         run: echo done
+      - name: scan
+        id: artifact_scan_1
+        env:
+          ALIAS: ${{ secrets.TWO }}
+        run: python scan-e2e-artifacts.py
 """
-        self.assertEqual(secret_env_names(job), {'FIRST', 'ALIAS'})
-        self.assertEqual(secret_env_names(job) - job_scan_names(job), {'ALIAS'})
+        self.assertEqual(scan_contract(job), [])
+        planted = job.replace('        run: python scan-e2e-artifacts.py', '          PLANTED: ${{ secrets.NOT_USED_BY_JOB }}\n        run: python scan-e2e-artifacts.py')
+        self.assertIn('scan grants unrelated credential: PLANTED', scan_contract(planted))
+        missing = job.replace('          ALIAS: ${{ secrets.TWO }}\n        run: python', '        run: python')
+        self.assertIn('scan cannot read: ALIAS', scan_contract(missing))

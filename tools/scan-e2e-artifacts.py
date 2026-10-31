@@ -11,12 +11,22 @@ import zipfile
 
 
 def secret_values(env):
-    """Read only the named credentials already available to this scanner process, in memory."""
-    names = env.get('E2E_ARTIFACT_SECRET_NAMES', '').splitlines()
-    names = {name.strip() for name in names if name.strip()}
-    if not names or any(not re.fullmatch(r'[A-Za-z_][A-Za-z0-9_]*', name) for name in names):
+    """Read named credentials in memory; unresolved names fail, short values are named and skipped."""
+    if 'E2E_ARTIFACT_SECRET_NAMES' not in env:
         raise ValueError()
-    return {name: env[name] for name in names if len(env.get(name, '')) >= 8}
+    names = {name.strip() for name in env['E2E_ARTIFACT_SECRET_NAMES'].splitlines() if name.strip()}
+    if any(not re.fullmatch(r'[A-Za-z_][A-Za-z0-9_]*', name) for name in names):
+        raise ValueError()
+    # Why (31 Oct 2026, owner): a partial credential scan must never permit an upload.
+    missing = sorted(name for name in names if not env.get(name))
+    for name in missing:
+        print(name)
+    if missing:
+        return None
+    for name in sorted(names):
+        if len(env[name]) < 8:
+            print(f'SKIPPED_SHORT: {name}')
+    return {name: env[name] for name in names if len(env[name]) >= 8}
 
 
 class Scanner:
@@ -87,7 +97,10 @@ class Scanner:
 def main():
     """Exit nonzero on any hit or inspection failure, with no exception payload or credential output."""
     try:
-        scanner = Scanner(secret_values(os.environ))
+        values = secret_values(os.environ)
+        if values is None:
+            return 1
+        scanner = Scanner(values)
         patterns = sys.argv[1:] or os.environ.get('E2E_ARTIFACT_PATHS', '').splitlines()
         if not patterns:
             raise ValueError()

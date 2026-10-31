@@ -246,11 +246,7 @@ jobs:
     timeout-minutes: 30
     env:
       E2E_ARTIFACT_SECRET_NAMES: |
-        ACTIONS_ID_TOKEN_REQUEST_TOKEN
-        ACTIONS_RUNTIME_TOKEN
         CLIENT
-        E2E_FREE_AI_KEY
-        E2E_LOCK_TOKEN
         GH_TOKEN
         GITHUB_TOKEN
         MAC_SIGN_P12
@@ -328,6 +324,11 @@ jobs:
         if: always()
         shell: bash
         env:
+          CLIENT: ${{ secrets.GOOGLE_SHARED_CLIENT_JSON }}
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ github.token }}
+          MAC_SIGN_P12: ${{ secrets.MAC_SIGN_P12 }}
+          MAC_SIGN_PASSWORD: ${{ secrets.MAC_SIGN_PASSWORD }}
           E2E_ARTIFACT_PATHS: |
             desktop/smoke
         run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
@@ -366,11 +367,7 @@ jobs:
         shell: bash
     env:
       E2E_ARTIFACT_SECRET_NAMES: |
-        ACTIONS_ID_TOKEN_REQUEST_TOKEN
-        ACTIONS_RUNTIME_TOKEN
         CLIENT
-        E2E_FREE_AI_KEY
-        E2E_LOCK_TOKEN
         GH_TOKEN
         GITHUB_TOKEN
       VERSION: ${{ needs.changes.outputs.version }}
@@ -445,6 +442,9 @@ jobs:
         if: always()
         shell: bash
         env:
+          CLIENT: ${{ secrets.GOOGLE_SHARED_CLIENT_JSON }}
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ github.token }}
           E2E_ARTIFACT_PATHS: |
             desktop/smoke
         run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
@@ -518,7 +518,6 @@ jobs:
     env:
       E2E_ARTIFACT_SECRET_NAMES: |
         ACTIONS_ID_TOKEN_REQUEST_TOKEN
-        ACTIONS_RUNTIME_TOKEN
         AI_COST_PUBLISH_KEY
         CI_CF_ANALYTICS_TOKEN
         CI_FREE_AI_CF_ACCOUNT_ID
@@ -545,8 +544,9 @@ jobs:
         E2E_NOTION_TOKEN_STRATEGY
         E2E_NOTION_TOKEN_WANDER
         E2E_OPENAI_KEY
+        FREE_AI_LOCAL_CF_ACCOUNT_ID
+        FREE_AI_LOCAL_CF_AI_TOKEN
         GH_TOKEN
-        GITHUB_TOKEN
       # A suite whose secrets are missing FAILS here instead of a green "skipped" (lib/skip.mjs). 6 Oct 2026: failuresnotion and failureschannels
       # had never run (no token) and showed ✓. Forks have no secrets: they still skip with a warning.
       E2E_REQUIRE_SECRETS: ${{ github.repository_owner == 'GarryOne' && '1' || '' }}
@@ -761,6 +761,11 @@ jobs:
         if: always()
         shell: bash
         env:
+          AI_COST_PUBLISH_KEY: ${{ secrets.AI_COST_PUBLISH_KEY }}
+          E2E_LOCK_TOKEN: ${{ steps.lock_app.outputs.token || github.token }}
+          FREE_AI_LOCAL_CF_ACCOUNT_ID: ${{ secrets.CI_FREE_AI_CF_ACCOUNT_ID }}
+          FREE_AI_LOCAL_CF_AI_TOKEN: ${{ secrets.CI_FREE_AI_CF_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
           E2E_ARTIFACT_PATHS: |
             blob-report
         run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
@@ -779,6 +784,11 @@ jobs:
         if: always()
         shell: bash
         env:
+          AI_COST_PUBLISH_KEY: ${{ secrets.AI_COST_PUBLISH_KEY }}
+          E2E_LOCK_TOKEN: ${{ steps.lock_app.outputs.token || github.token }}
+          FREE_AI_LOCAL_CF_ACCOUNT_ID: ${{ secrets.CI_FREE_AI_CF_ACCOUNT_ID }}
+          FREE_AI_LOCAL_CF_AI_TOKEN: ${{ secrets.CI_FREE_AI_CF_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
           E2E_ARTIFACT_PATHS: |
             e2e-artifacts/${{ matrix.key }}/steps.json
             e2e-artifacts/${{ matrix.key }}/trace-*.zip
@@ -799,6 +809,11 @@ jobs:
         if: always()
         shell: bash
         env:
+          AI_COST_PUBLISH_KEY: ${{ secrets.AI_COST_PUBLISH_KEY }}
+          E2E_LOCK_TOKEN: ${{ steps.lock_app.outputs.token || github.token }}
+          FREE_AI_LOCAL_CF_ACCOUNT_ID: ${{ secrets.CI_FREE_AI_CF_ACCOUNT_ID }}
+          FREE_AI_LOCAL_CF_AI_TOKEN: ${{ secrets.CI_FREE_AI_CF_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
           E2E_ARTIFACT_PATHS: |
             e2e-artifacts/${{ matrix.key }}
         run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
@@ -817,6 +832,11 @@ jobs:
         if: always()
         shell: bash
         env:
+          AI_COST_PUBLISH_KEY: ${{ secrets.AI_COST_PUBLISH_KEY }}
+          E2E_LOCK_TOKEN: ${{ steps.lock_app.outputs.token || github.token }}
+          FREE_AI_LOCAL_CF_ACCOUNT_ID: ${{ secrets.CI_FREE_AI_CF_ACCOUNT_ID }}
+          FREE_AI_LOCAL_CF_AI_TOKEN: ${{ secrets.CI_FREE_AI_CF_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
           E2E_ARTIFACT_PATHS: |
             e2e-rerun/${{ matrix.key }}
         run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
@@ -860,7 +880,6 @@ jobs:
     env:
       E2E_ARTIFACT_SECRET_NAMES: |
         ACTIONS_ID_TOKEN_REQUEST_TOKEN
-        ACTIONS_RUNTIME_TOKEN
         AI_COST_PUBLISH_KEY
         CI_CF_ANALYTICS_TOKEN
         CI_FREE_AI_CF_ACCOUNT_ID
@@ -885,8 +904,9 @@ jobs:
         E2E_NOTION_TOKEN_STRATEGY
         E2E_NOTION_TOKEN_WANDER
         E2E_OPENAI_KEY
+        FREE_AI_LOCAL_CF_ACCOUNT_ID
+        FREE_AI_LOCAL_CF_AI_TOKEN
         GH_TOKEN
-        GITHUB_TOKEN
       E2E_ANTHROPIC_KEY: ${{ secrets.E2E_ANTHROPIC_KEY }}
       E2E_OPENAI_KEY: ${{ secrets.E2E_OPENAI_KEY }}   # the OpenAI family's turn (odd runs; desktop/e2e/lib/engine.mjs pickFamily)
       E2E_NOTION_TOKEN: ${{ secrets.E2E_NOTION_TOKEN }}
@@ -1038,6 +1058,11 @@ jobs:
         if: always()
         shell: bash
         env:
+          AI_COST_PUBLISH_KEY: ${{ secrets.AI_COST_PUBLISH_KEY }}
+          E2E_LOCK_TOKEN: ${{ steps.lock_app.outputs.token || github.token }}
+          FREE_AI_LOCAL_CF_ACCOUNT_ID: ${{ secrets.CI_FREE_AI_CF_ACCOUNT_ID }}
+          FREE_AI_LOCAL_CF_AI_TOKEN: ${{ secrets.CI_FREE_AI_CF_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
           E2E_ARTIFACT_PATHS: |
             blob-report
         run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
@@ -1056,6 +1081,11 @@ jobs:
         if: always()
         shell: bash
         env:
+          AI_COST_PUBLISH_KEY: ${{ secrets.AI_COST_PUBLISH_KEY }}
+          E2E_LOCK_TOKEN: ${{ steps.lock_app.outputs.token || github.token }}
+          FREE_AI_LOCAL_CF_ACCOUNT_ID: ${{ secrets.CI_FREE_AI_CF_ACCOUNT_ID }}
+          FREE_AI_LOCAL_CF_AI_TOKEN: ${{ secrets.CI_FREE_AI_CF_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
           E2E_ARTIFACT_PATHS: |
             e2e-artifacts-windows/${{ matrix.key }}/steps.json
             e2e-artifacts-windows/${{ matrix.key }}/trace-*.zip
@@ -1076,6 +1106,11 @@ jobs:
         if: always()
         shell: bash
         env:
+          AI_COST_PUBLISH_KEY: ${{ secrets.AI_COST_PUBLISH_KEY }}
+          E2E_LOCK_TOKEN: ${{ steps.lock_app.outputs.token || github.token }}
+          FREE_AI_LOCAL_CF_ACCOUNT_ID: ${{ secrets.CI_FREE_AI_CF_ACCOUNT_ID }}
+          FREE_AI_LOCAL_CF_AI_TOKEN: ${{ secrets.CI_FREE_AI_CF_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
           E2E_ARTIFACT_PATHS: |
             e2e-artifacts-windows/${{ matrix.key }}
         run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
@@ -1093,6 +1128,11 @@ jobs:
         if: always()
         shell: bash
         env:
+          AI_COST_PUBLISH_KEY: ${{ secrets.AI_COST_PUBLISH_KEY }}
+          E2E_LOCK_TOKEN: ${{ steps.lock_app.outputs.token || github.token }}
+          FREE_AI_LOCAL_CF_ACCOUNT_ID: ${{ secrets.CI_FREE_AI_CF_ACCOUNT_ID }}
+          FREE_AI_LOCAL_CF_AI_TOKEN: ${{ secrets.CI_FREE_AI_CF_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
           E2E_ARTIFACT_PATHS: |
             e2e-artifacts-windows/apply-edge
         run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
@@ -1141,11 +1181,8 @@ jobs:
     env:
       E2E_ARTIFACT_SECRET_NAMES: |
         ACTIONS_ID_TOKEN_REQUEST_TOKEN
-        ACTIONS_RUNTIME_TOKEN
         AI_COST_PUBLISH_KEY
         E2E_ANTHROPIC_KEY
-        E2E_FREE_AI_KEY
-        E2E_LOCK_TOKEN
         GH_TOKEN
         GITHUB_TOKEN
       GH_TOKEN: ${{ github.token }}
@@ -1174,6 +1211,9 @@ jobs:
         if: always()
         shell: bash
         env:
+          AI_COST_PUBLISH_KEY: ${{ secrets.AI_COST_PUBLISH_KEY }}
+          E2E_ANTHROPIC_KEY: ${{ secrets.E2E_ANTHROPIC_KEY }}
+          GITHUB_TOKEN: ${{ github.token }}
           E2E_ARTIFACT_PATHS: |
             e2e-report
         run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
@@ -1246,11 +1286,8 @@ jobs:
     env:
       E2E_ARTIFACT_SECRET_NAMES: |
         ACTIONS_ID_TOKEN_REQUEST_TOKEN
-        ACTIONS_RUNTIME_TOKEN
         AI_COST_PUBLISH_KEY
         E2E_ANTHROPIC_KEY
-        E2E_FREE_AI_KEY
-        E2E_LOCK_TOKEN
         GH_TOKEN
         GITHUB_TOKEN
       GH_TOKEN: ${{ github.token }}
@@ -1279,6 +1316,9 @@ jobs:
         if: always()
         shell: bash
         env:
+          AI_COST_PUBLISH_KEY: ${{ secrets.AI_COST_PUBLISH_KEY }}
+          E2E_ANTHROPIC_KEY: ${{ secrets.E2E_ANTHROPIC_KEY }}
+          GITHUB_TOKEN: ${{ github.token }}
           E2E_ARTIFACT_PATHS: |
             e2e-report
         run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"

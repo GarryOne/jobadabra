@@ -79,6 +79,10 @@ runs:
       shell: bash
       working-directory: ${{ github.workspace }}
       env:
+        AI_COST_PUBLISH_KEY: ${{ inputs.publish-key }}
+        E2E_ANTHROPIC_KEY: ${{ inputs.anthropic-key }}
+        GH_TOKEN: ${{ inputs.github-token }}
+        GITHUB_TOKEN: ${{ inputs.github-token }}
         E2E_ARTIFACT_PATHS: .e2e-review/ai-cost.json
       run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
     - uses: actions/upload-artifact@v6
@@ -93,6 +97,10 @@ runs:
       shell: bash
       working-directory: ${{ github.workspace }}
       env:
+        AI_COST_PUBLISH_KEY: ${{ inputs.publish-key }}
+        E2E_ANTHROPIC_KEY: ${{ inputs.anthropic-key }}
+        GH_TOKEN: ${{ inputs.github-token }}
+        GITHUB_TOKEN: ${{ inputs.github-token }}
         E2E_ARTIFACT_PATHS: .e2e-review/out
       run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
     - name: The findings, one folder per suite beside its pictures

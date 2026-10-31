@@ -5,6 +5,7 @@
 // Job: report health
 import path from 'node:path';
 import fs from 'node:fs';
+import {isGrey} from './lib/flaky-proof.mjs';
 import {alertHtml} from './lib/telegram-html.mjs';
 import {isBackbone, suiteOfKey} from './lib/suite-shards.mjs';
 
@@ -28,7 +29,7 @@ export async function previousRun(env = process.env, fetcher = fetch, lanes = re
       const found = (body.workflow_runs || []).find(run => String(run.id) !== String(env.GITHUB_RUN_ID));
       if (file === 'e2e.yml' && found?.conclusion === 'failure') {
         const jobs = await failedJobLinks(found.id, env, fetcher);
-        if (jobs.length && !jobs.some(job => backbone(job.name, lanes))) return {conclusion: 'success', id: found.id};
+        if (!jobs.some(job => !job.grey && backbone(job.name, lanes))) return {conclusion: 'success', id: found.id};
       }
       if (found?.conclusion) return {conclusion: found.conclusion, id: found.id};
     } catch { /* try the next name */ }
@@ -43,16 +44,26 @@ const API = env => env.GITHUB_API_URL || 'https://api.github.com';
 const unsuccessful = job => ['failure', 'cancelled', 'timed_out'].includes(job.conclusion);
 const get = (url, env, fetcher) => fetcher(url, {headers: {Authorization: `Bearer ${env.GH_TOKEN || ''}`, Accept: 'application/vnd.github+json'}, signal: AbortSignal.timeout(15000)}).then(answer => answer.json());
 
-// A run's unsuccessful backbone jobs, sorted (the alert's own job is still running, so it never counts).
-export async function failedJobs(runId, env = process.env, fetcher = fetch, lanes = readLanes()) {
+// A grey annotation is health even for a legacy raw-failed job; missing annotation evidence preserves its red.
+async function annotatedJobs(runId, env, fetcher) {
   const body = await get(`${API(env)}/repos/${env.GITHUB_REPOSITORY}/actions/runs/${runId}/jobs?per_page=100`, env, fetcher);
-  return (body.jobs || []).filter(job => unsuccessful(job) && backbone(job.name, lanes)).map(job => job.name).sort();
+  const out = [];
+  for (const job of (body.jobs || []).filter(unsuccessful)) {
+    let notes = [];
+    try { notes = await get(`${API(env)}/repos/${env.GITHUB_REPOSITORY}/check-runs/${job.id}/annotations?per_page=100`, env, fetcher); } catch { /* no proof, still red */ }
+    out.push(isGrey(notes) ? {...job, grey: true} : job);
+  }
+  return out;
 }
 
-// The failed, cancelled or timed-out jobs of this run with their pages. -> [{name, url}]
+/** A run's blocking backbone job names, excluding the single grey proof annotation. */
+export async function failedJobs(runId, env = process.env, fetcher = fetch, lanes = readLanes()) {
+  return (await annotatedJobs(runId, env, fetcher)).filter(job => !job.grey && backbone(job.name, lanes)).map(job => job.name).sort();
+}
+
+/** Unsuccessful jobs with grey proof attached so alert consumers can suppress health-only failures. */
 export async function failedJobLinks(runId, env = process.env, fetcher = fetch) {
-  const body = await get(`${API(env)}/repos/${env.GITHUB_REPOSITORY}/actions/runs/${runId}/jobs?per_page=100`, env, fetcher);
-  return (body.jobs || []).filter(unsuccessful).map(job => ({name: job.name, url: job.html_url}));
+  return (await annotatedJobs(runId, env, fetcher)).map(job => ({name: job.name, url: job.html_url, ...(job.grey ? {grey: true} : {})}));
 }
 
 /**
@@ -65,6 +76,7 @@ export async function stepCauses(runId, env = process.env, fetcher = fetch, lane
     const out = [];
     for (const job of (body.jobs || []).filter(item => item.conclusion === 'failure' && backbone(item.name, lanes))) {
       const notes = await get(`${API(env)}/repos/${env.GITHUB_REPOSITORY}/check-runs/${job.id}/annotations?per_page=50`, env, fetcher);
+      if (isGrey(notes)) continue;
       const note = (Array.isArray(notes) ? notes : []).find(item => / · /.test(item.title || ''));
       if (note) { const at = note.title.indexOf(' · '); out.push({suite: note.title.slice(0, at), step: note.title.slice(at + 3), message: String(note.message || '')}); }
     }
@@ -118,7 +130,7 @@ export function causeLines({suite, step, message}, named = false) {
 // what / next: a few words each from the caller; causes: stepCauses()'s answer; since: sinceGreen()'s; jobs: failedJobLinks()'s; recovered: the suites the previous red run failed.
 // Why (30 Oct 2026, owner: "more human readable, more succinct", picked shape A): the red suite is the title, the step and up to 2 problems follow, then the PRs since green.
 export function messageOf({status, what = '', causes = [], next = '', previous = '', recovered = [], since = {prs: [], more: 0}, jobs = [], env = process.env, now = new Date(), lanes = readLanes()}) {
-  const blocking = jobs.filter(job => backbone(job.name, lanes));
+  const blocking = jobs.filter(job => !job.grey && backbone(job.name, lanes));
   if (status === 'failure' && jobs.length && !blocking.length) status = 'success';
   const where = placeOf(env, now);
   const named = names => (where.e2e ? [...new Set(names.map(suiteOfKey))].filter(suite => backbone(suite, lanes)) : []);

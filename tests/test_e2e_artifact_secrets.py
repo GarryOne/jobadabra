@@ -1,4 +1,5 @@
 """E2E uploads fail closed on fake credentials in files, nested traces, or unreadable archives."""
+import importlib.util
 import io
 import json
 import os
@@ -7,6 +8,7 @@ from pathlib import Path
 import subprocess
 import tempfile
 import unittest
+from unittest import mock
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -140,6 +142,31 @@ class ArtifactSecretsTests(unittest.TestCase):
             self.assertEqual(result.returncode, 1)
             self.assertIn('ACTIONS_ID_TOKEN_REQUEST_TOKEN', result.stdout)
             self.assertNotIn('fake-runtime-token-123456', result.stdout + result.stderr)
+
+    def test_nested_trace_with_many_members_is_decompressed_once(self):
+        # Why (31 Oct 2026, personas runs 41167629768/41169971636): a ZipFile opened on a nested ZipExtFile decompressed
+        # the inner zip from its start on every member seek, so a long run's blob-report scan hung for 17+ minutes.
+        spec = importlib.util.spec_from_file_location('scan_e2e_artifacts', SCANNER)
+        scanner = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(scanner)
+        inner = io.BytesIO()
+        with zipfile.ZipFile(inner, 'w', zipfile.ZIP_DEFLATED) as archive:
+            for index in range(300):
+                archive.writestr(f'resources/{index}.png', os.urandom(4000))
+        with tempfile.TemporaryDirectory() as folder:
+            with zipfile.ZipFile(Path(folder) / 'report.zip', 'w', zipfile.ZIP_DEFLATED) as archive:
+                archive.writestr('trace.zip', inner.getvalue())
+            decompressed = []
+            real_read1 = zipfile.ZipExtFile._read1
+            def counting_read1(stream, n):
+                data = real_read1(stream, n)
+                decompressed.append(len(data))
+                return data
+            with mock.patch.object(zipfile.ZipExtFile, '_read1', counting_read1):
+                found = scanner.Scanner({'E2E_NOTION_TOKEN_APPLY': 'fake-notion-secret-123456'})
+                found.paths([folder])
+        self.assertFalse(found.failed)
+        self.assertLess(sum(decompressed), 4 * (len(inner.getvalue()) + 300 * 4000))
 
     def test_clean_and_missing_folders_pass(self):
         with tempfile.TemporaryDirectory() as folder:

@@ -30,23 +30,20 @@ export async function verdictsFor({suite, steps, redSha, redRun, redAt, io, wind
   const compared = Object.fromEntries(steps.map(step => [step, []]));
   const diffs = new Map();
   const pending = new Set(steps);
-  const listed = await io.runs(window);
-  const at = Date.parse(redAt || listed.find(item => String(item.id) === String(redRun))?.at || '');
-  const apart = item => (Number.isNaN(at) || !item.at ? 0 : Math.abs(Date.parse(item.at) - at));
-  const candidates = listed.filter(item => String(item.id) !== String(redRun) && !NOT_EVIDENCE.test(item.title || ''));
-  for (const run of Number.isNaN(at) ? candidates : [...candidates].sort((a, b) => apart(a) - apart(b))) {
+  const changedSince = async sha => {
+    if (!diffs.has(sha)) diffs.set(sha, await Promise.resolve(io.changedNames(sha, redSha)).catch(() => null));
+    return diffs.get(sha);
+  };
+  const compare = async (run, step) => {
+    const changed = await changedSince(run.sha);
+    const files = changed ? touched(changed, sets[step]) : null;
+    compared[step].push({green: {sha: run.sha, run: run.id, url: run.url}, files});
+    if (files?.length === 0 || compared[step].length >= maxGreens) pending.delete(step);
+  };
+  for (const run of nearestFirst(await io.runs(window), redRun, redAt)) {
     if (!pending.size) break;
-    const names = (await io.viewNames(run.id)).filter(name => name.startsWith('e2e-view-') && suiteOfKey(name.slice('e2e-view-'.length)) === suite);
-    for (const name of names) {
-      const table = await io.stepsOf(run.id, name).catch(() => null);
-      for (const step of [...pending]) {
-        if (!table?.results?.some(result => result.name === step && result.status === 'passed')) continue;
-        if (!diffs.has(run.sha)) diffs.set(run.sha, await Promise.resolve(io.changedNames(run.sha, redSha)).catch(() => null));
-        const changed = diffs.get(run.sha);
-        const files = changed ? touched(changed, sets[step]) : null;
-        compared[step].push({green: {sha: run.sha, run: run.id, url: run.url}, files});
-        if (files?.length === 0 || compared[step].length >= maxGreens) pending.delete(step);
-      }
+    for (const table of await stepTables(run, suite, io)) {
+      for (const step of [...pending].filter(name => passedIn(table, name))) await compare(run, step);
     }
   }
   return steps.map(step => {
@@ -54,6 +51,22 @@ export async function verdictsFor({suite, steps, redSha, redRun, redAt, io, wind
     // The evidence an owner issue quotes: how many files moved between the green and the red, and how many of them the step runs.
     return {step, redSha, ...verdict, ...(verdict.verdict === 'flaky' ? {movedFiles: diffs.get(verdict.green.sha)?.length ?? 0, stepFileCount: sets[step].files.length} : {})};
   });
+}
+
+const passedIn = (table, step) => Boolean(table?.results?.some(result => result.name === step && result.status === 'passed'));
+
+/** The step tables (steps.json) of a run's e2e-view artifacts for one suite, every shard; an unreadable one is left out. */
+async function stepTables(run, suite, io) {
+  const names = (await io.viewNames(run.id)).filter(name => name.startsWith('e2e-view-') && suiteOfKey(name.slice('e2e-view-'.length)) === suite);
+  return Promise.all(names.map(name => io.stepsOf(run.id, name).catch(() => null)));
+}
+
+/** The runs that count as evidence (not the red itself, not a mutant), nearest the red in time first; the listed order when the red's time is unknown. */
+function nearestFirst(listed, redRun, redAt) {
+  const at = Date.parse(redAt || listed.find(item => String(item.id) === String(redRun))?.at || '');
+  const candidates = listed.filter(item => String(item.id) !== String(redRun) && !NOT_EVIDENCE.test(item.title || ''));
+  const apart = item => (item.at ? Math.abs(Date.parse(item.at) - at) : 0);
+  return Number.isNaN(at) ? candidates : [...candidates].sort((a, b) => apart(a) - apart(b));
 }
 
 /**

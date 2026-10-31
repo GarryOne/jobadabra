@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {createRunner} from '../lib/runner.mjs';
 import {suspendedStepsOf} from '../lib/suspended-steps.mjs';
+import {stopCode} from '../lib/suite-main.mjs';
 
 const ISSUE = 'https://github.com/GarryOne/jobadabra/issues/1';
 const held = {'flaky step': {lane: 'suspended', issue: ISSUE}};
@@ -47,4 +48,12 @@ test('suspendedStepsOf reads one suite\'s suspended entries from the registry an
   assert.deepEqual(suspendedStepsOf('nothing', lanes), {});
   assert.deepEqual(suspendedStepsOf('apply', {}), {});
   assert.deepEqual(suspendedStepsOf('apply', {steps: 'oops'}), {}, 'a malformed registry suspends nothing');
+});
+
+test('a suite stopped by a suspended step\'s hang exits 0 and says the rest did not run; any other stop exits 1', () => {
+  const ctx = {runner: {results: []}};
+  assert.equal(stopCode(Object.assign(new Error('hung'), {suspendedStop: true}), 'apply', ctx), 0);
+  assert.deepEqual(ctx.runner.results.map(item => [item.name, item.status]), [['steps after a suspended step that hung', 'skipped']]);
+  assert.equal(stopCode(new Error('boom'), 'apply', {runner: {results: []}}), 1);
+  assert.equal(stopCode(new Error('boom'), 'apply', undefined), 1, 'a stop before the context opened is still a failure');
 });

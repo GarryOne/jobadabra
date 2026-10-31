@@ -53,8 +53,11 @@ A **check** (an e2e suite, later a step) is in exactly one state:
 | **tolerant · ai / clock / outside** | main nightly, before beta; never on a PR | a rate vs main's baseline band | lane registry |
 | **retired** | nowhere | kept in history | lane registry |
 
-A run of any check can end **grey** ("didn't run": AI credit, runner lost, install, a step the picker named that does not exist). Grey is health, never red; it
-has one owner (the coordinator's round-up) and never asks the PR's session for anything.
+A run of any check can end **grey** ("didn't run": AI credit, runner lost, install, a step the picker named that does not exist; or "ran, and every failure of
+both tries was timing or the test's environment": the runner, not the app). Grey is health, never red; it has one owner (the coordinator's round-up) and never
+asks the PR's session for anything. In a beta a grey backbone job re-runs once on a fresh runner: green ships, grey again holds that platform's beta as grey with
+the cause named; a wrong value stays red (owner, 31 Oct 2026: "Re-run once, then hold").
+Guard: `desktop/e2e/test/flaky-proof.test.mjs`, `tests/test_beta_grey_rerun.py`.
 
 Verdicts that change a state (nothing else does):
 - **backbone → suspended:** the classifier sees the check red then green on the same commit (a flip). Automatic, visible on the weekly summary with an owner
@@ -65,19 +68,29 @@ Verdicts that change a state (nothing else does):
 - **any → retired:** the scorecard lists it (90 days, 0 catches, ≥ 1 false red) and the owner says yes on the weekly summary.
 - **PR verdict:** red only from a backbone check the diff reaches; grey for health; tolerant results never appear as a check result.
 - **Main red after merge (backbone):** revert, don't fix forward (`tools/revert-red.sh`); the PR comes back with its fix. The owner merges the revert.
-- **Beta:** blocked when a tolerant AI rate is clearly below main's baseline band (the owner: "high reliability of my app for the beta").
+- **Beta:** an AI suite is grey or green and never stops a beta; its rate against main's band is reported, and AI credit running out is one alert (owner,
+  31 Oct 2026: "Any AI calls/suites should be green. They should not stop a beta", "Should be gray, or green", "the fact that AI credit finished should not
+  stop a beta from being green. It should just raise an alert. And that's it"). This replaces "blocked when a tolerant AI rate is clearly below main's band"
+  (#2504) and the 28 Oct rule that a capped AI step fails a release gate. Guard: `tests/test_beta_rate_gate.py`.
 
 ## The rules
 **A · AI answers.** In the backbone every AI call (the app's and the judges') is answered from answers stored with the test, keyed by the question
 ("page kind → form", "score → 82"), never by prompt bytes. No live AI call in a backbone run. A question with no stored answer fails the test that asked it:
 a test bug, the PR's to fix. The gate tests "given the AI says X, the app does Y". A test that mixes both is **cut at the seam**: backbone "the app keeps
-what the AI said keep", tolerant "the AI says keep".
+what the AI said keep", tolerant "the AI says keep". The "no live AI" ceiling is default-deny: every suite not tolerant, suspended or retired in
+`lanes.json` allows 0 asks without a stored answer unless it is named as an exception with its reason. Every live AI call lives in ONE tolerant suite (owner,
+31 Oct 2026: "All the AI calls should be in 1 or 2 suites… Better to be in one single… Where we test all the AI calls").
+Guard: `desktop/e2e/test/stored-answer-suites-no-live-ai.test.mjs`, `desktop/e2e/test/ai-misses-ratchet.test.mjs`.
 
 **B · Clock.** Backbone steps wait on state (the row exists, the fill ended) with a cap of about 3× main's p95 that only catches hangs. No wall-clock limit is an
 assertion in the backbone. User promises (Find jobs ≤ 3 min, Focus ≤ 20 s) live in the `clock` lane: the median of main's nightly runs vs the promise.
+Guard: `desktop/e2e/test/timing-ratchet.test.mjs`, `desktop/test/e2e-reliability-check.test.js`.
 
 **C · Outside world.** Real Notion, the AI key's credit, real websites and runners are `outside`. The backbone stubs Notion; real Notion runs in one tolerant
-outside-world suite, nightly and before beta.
+outside-world suite, nightly and before beta. The backbone has none of them (owner, 31 Oct 2026: "The backbone shouldn't have any external world, flaky related
+suites/tests"). A suite's lane has ONE source, `lanes.json`: the workflows read it through the plan (`matrix.tolerant`), never a second flag such as the
+`outside` cadence (31 Oct 2026: qualityai was tolerant in `lanes.json` but its job still failed, because desktop.yml read `matrix.outside`).
+Guard: `tests/test_workflow_outside.py`, `tests/test_pr_verdict_lanes.py`.
 
 **D · Where results are seen.**
 | Where | What |
@@ -88,6 +101,7 @@ outside-world suite, nightly and before beta.
 | Weekly | Telegram + one GitHub issue, same numbers as the page, one decision for the owner if any |
 
 Grey suites are tracked: /admin/operations/e2e Grey section and the weekly (age, returns, 7 nights); the weekly asks keep/fix/retire past 14 days grey or 3 nights below band (owner, 30 Oct 2026).
+Guard: `tests/test_pr_verdict_lanes.py` (tolerant results never a check result); the Grey page and the weekly: none, they live in the private jobadabra-web repo.
 
 **E · The expectation rule.** A PR that changes what a backbone or tolerant test expects (an expected value, a threshold, a tolerance, a wait), or skips, deletes or moves a
 backbone test to a tolerant lane, carries one of:
@@ -95,11 +109,13 @@ backbone test to a tolerant lane, carries one of:
 - `Test-was-wrong: <why>`: shown to the owner in the PR summary.
 Without one the PR cannot go green. A real fix in product code leaves the test untouched and never meets this rule. `5395279` ("allowance for model noise
 (1 in 9)") is the case it refuses.
+Guard: `desktop/test/e2e-reliability-check.test.js`.
 
 **F · The plumbing brake.** Every e2e workflow (the list in `tools/e2e-reliability-check.mjs`; label, mail and site workflows have no e2e job) and e2e harness module carries one `Job:` line naming which of the design's jobs it does (run the backbone, serve
 stored answers, wait on state, pick the suites, run tolerant suites as rates, keep the scorecard, report health). A harness PR carries `Harness-job: <job>`
 or `Fixes-backbone-red: <run>` (a backbone red seen twice on the same commit). A PR that answers a tolerant result, a red already gone, or names no job cannot
 go green. Legitimate plumbing (a runner image, a new suite) names its job.
+Guard: `desktop/test/e2e-reliability-check.test.js`.
 
 **Design-first repair (owner, 29 Oct 2026):** before diagnosing or editing a red e2e, read this design, the lane registry and the repair skill; name the failed input and the evidence before selecting an implementation. A failure's "split the suite" advice never overrides the lane boundary. A modified pass with an original pass is not a demonstrated causal fix. Changed suite limits (`shards`, `budgetMinutes`, `minutes`) need both rule E citation and rule F design job/`Job:` label, even under `suites/`. The measured weights (`stepSeconds`, `flowSeconds`) only assign steps to shards: weight-only edits need rule F, not a rule E citation. One extractor owns both checks.
 
@@ -108,11 +124,13 @@ go green. Legitimate plumbing (a runner image, a new suite) names its job.
 **G · Budget and picking.** A PR runs at most 5 suites, in parallel, within about 10 minutes. When a diff reaches more, the scorecard picks the 5 that caught the
 most bugs for the files it touches; the rest run on main after merge. 10–20 suites run only on main, scheduled, or before a beta. Suites compete for the
 budget: a new suite earns its place by covering a gap better than one already there.
+Guard: `desktop/e2e/test/pr-suites-cap.test.mjs`.
 
 **G2 · A suite is a journey; a PR runs it whole.** (owner, 28 Oct 2026: "journeys … I'm fine with that. I agree".) A step stands on the steps before it, so a PR never
 runs a step alone: #2342's "Edit target" had no target, #2350's "Up next" no earlier state (15 of 149 red runs were picker reds). After a merge the picked steps still
 run. A red names the first failing step; later ones did not run. Every PR suite job is under 8 minutes on a green run (medians 3.9–7.5 min, 28 Oct); a suite that
 passes 8 is cut in two by journey, never picked. `recorded` is not run on PRs (page-cases.yml replays those cases there). Code: `lib/pr-suites.mjs stepLists`.
+Guard: `desktop/e2e/test/pr-suites.test.mjs`.
 
 **G3 · A local run reaches nothing of the owner's.** (owner's safety rule; 28 Oct 2026: an interactions run put ch.indeed.com in their Chrome three times.) Every way the
 app reaches the owner's computer is closed for every suite where the app starts, and asserted before step 1; a run that finds one open stops. The doors today: `open` on
@@ -120,6 +138,7 @@ PATH (`makeOpenShim`, `opensIntoSpool`, #2362), Electron's `shell.openExternal`,
 checked by `lib/app.mjs`), the browser profile and backup folder (`openContext`), the Keychain (a step compares it before and after). CI cannot show an open door (a runner
 has no owner's browser), so the check is at run start and a class test lists every host call in the app (`test/e2e-host.test.js`): a new call is a door or on its reviewed
 list in the PR that adds it. Re-running a repro of a door incident locally waits until its door is closed, and the spool says what the app tried to open.
+Guard: `desktop/test/e2e-host.test.js`.
 
 **H · Cheapest place.** A pure check that runs in seconds (no browser, no app, no e2e) runs on push when its files changed (`tools/pre-push-check.sh`); a CI red
 that push could have caught is a harness bug (#2322: no-question-mark, solid-buttons). E2E suites never run on the Mac except one: fixing a real backbone red,
@@ -127,20 +146,25 @@ that one suite or step (the owner's memory is tight). A check earns its place on
 unit-test files, 2459 tests): the affected unit tests take 108 s here (`node --test` 88 s, stage and lint about 15 s, the Mac loaded) against 2.3 min for CI's
 `desktop (ubuntu)` job, so running them on a PR push saves about one CI round per red and costs 1–1.8 min on each of the day's 43 PRs. None of that day's 4 unit-test
 reds was a direct importer (3 named the changed file in their text, 1 scanned the tree). Not done: the owner's 12 Oct rule (PR suites on CI) stands.
+Guard: `tests/test_pre_push_check.py`.
 
 **I · One classifier, one scorecard.** The site's `admin/e2e-causes.js` (rules v3) is the only cause classifier; the weekly issue, Telegram and the page read
 its data. The scorecard per check: catches (red, then the fix changed product code), false reds (red on the backbone for any other cause), minutes. Gaps:
 the Bug Tracker gets an "escaped e2e" field for bugs found while e2e was green; the journeys with most escapes get the next tests.
+Guard: none: the classifier lives in the private jobadabra-web repo.
 
 **J · Where e2e work goes.** A card on /admin/operations/e2e, per week: commits split into product / test expectations / plumbing / other e2e, against the owner's
 target of plumbing under 15%, plus fix PRs per harness area within 7 days (`tools/area-circles.mjs`). Same numbers in the weekly summary.
+Guard: `tests/test_area_circles.py`.
 
 **K · Gitar too.** `.gitar/review/e2e-reliability.md` holds E, F and "tolerant results never get a fix PR"; the mechanical gates enforce the same, whatever Gitar
 says. On one finding, after 2 rounds of disagreement with Gitar the session answers in the thread and the owner decides.
+Guard: none: Gitar is a reviewer; the mechanical gates of E and F hold whatever it says.
 
 **L · Harness inventory, then shrink.** Every workflow and harness module is labelled needed (does a design job), replaced (the design's version supersedes it:
 deleted when that lands) or neither (deleted). Likely early deletions: the AI cache's 3-day expiry and live fallback, the retry/intermittent machinery, the
 "split the suite" advice, the second classifier. Each step keeps main's green suites green.
+Guard: none: an inventory, done once per step; each step keeps main green.
 
 ## Constraints and non-goals
 - No retry that hides a symptom; suspension says plainly "this check does not protect you now" and has an owner.
@@ -163,7 +187,7 @@ deleted when that lands) or neither (deleted). Likely early deletions: the AI ca
 
 ## PR plan
 Named from the start (owner, 28 Oct 2026: "when we follow a plan, we should know from the beginning the name of the PRs"): each PR's title reads `[a8] n/30 <what it does>`, and its body carries a "Plan progress" block (done, this PR, left). The total moves only with a reason written in the PR that moves it.
-**30 rows: 20 done, 10 to go** (30 Oct 2026; a row with several PRs counts once, when its last one lands and its proof is in). Row 30 adds grey tracking (owner, 30 Oct 2026). Why the previous total was 29 and not 34: the owner chose to bundle by plan step (28 Oct 2026, answering "bundle by step?"), so 21 one-per-box PRs became 16. Two calendar items are no PR: the owner reads one week of the weekly summary; acceptance 14 days after step 6. Not counted: four PRs for the green beta, outside the plan (#2378, #2380, #2391, #2393).
+**31 rows: 20 done, 11 to go** (31 Oct 2026; a row with several PRs counts once, when its last one lands and its proof is in). Row 30 adds grey tracking (owner, 30 Oct 2026). Row 31 adds the owner's 31 Oct rules and a guard for every rule (owner: "let's close this gap"). Why the previous total was 29 and not 34: the owner chose to bundle by plan step (28 Oct 2026, answering "bundle by step?"), so 21 one-per-box PRs became 16. Two calendar items are no PR: the owner reads one week of the weekly summary; acceptance 14 days after step 6. Not counted: four PRs for the green beta, outside the plan (#2378, #2380, #2391, #2393).
 Who builds what: the verdict session takes rows 16-17 and the push-checks session rows 15 and 18 (owner's yes, 28 Oct 2026); `fl` keeps the backbone itself and the rest.
 
 | n | PR | Step | State |
@@ -198,6 +222,7 @@ Who builds what: the verdict session takes rows 16-17 and the push-checks sessio
 | 28 | Harness shrink, first half (module count before and after) | 10 | 🟡 `qu`: inventory |
 | 29 | Harness shrink, second half: back under 283 lib modules (27 Oct count) | 10 | after row 28 |
 | 30 | Grey tracking: page + weekly + returns | 1 | `a8`: open |
+| 31 | The owner's 31 Oct rules, each with its guard: grey on time, AI never holds a beta, one AI suite, a default-deny backbone | 12 | `a8`: #2660, #2661, the one-AI-suite PR, this guards PR |
 
 Before/after for the 30 Oct ratchet change, at `f93a714`: non-test `.mjs` files, excluding `test/`, `recorded/`, `fixtures/` and `node_modules/`; lines are newline counts in those files. This adds the brake; both shrink steps remain pending.
 
@@ -272,3 +297,9 @@ One `###` per plan step, one box per thing that lands; a box is ticked only with
 
 ### 11. Acceptance
 - [ ] 14 days after step 6: the acceptance numbers read from the J card and the scorecard, reported to the owner.
+
+### 12. The owner's 31 Oct rules, each with its guard (row 31)
+- [ ] A run that stopped on time on both tries ends grey; in a beta it re-runs once on a fresh runner, grey again holds that platform as grey (#2661).
+- [ ] AI suites are grey or green and never hold a beta; AI credit running out is one alert (#2661).
+- [ ] The backbone refuses live AI by default, exceptions named (#2660); every live AI call in one tolerant suite (the one-AI-suite PR).
+- [x] Every rule of the design names its guard test, and a test fails a rule without one or a guard that does not exist. (proof: tests/test_e2e_design_guards.py)

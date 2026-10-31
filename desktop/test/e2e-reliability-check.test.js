@@ -92,6 +92,17 @@ test('a ceiling-only backbone entry moving to another lane still needs a citatio
   }
 });
 
+// Gitar on #2664 (31 Oct 2026): a new suite could arrive with only an aiMissesException and turn its zero-miss check off with no citation.
+test('adding or changing an AI-ask exception needs a citation; keeping it is free', () => {
+  const reason = 'Held by the owner until the live asks are reviewed.';
+  const registry = suites => ({'desktop/e2e/lanes.json': JSON.stringify({suites})});
+  for (const [lanes, next] of [[{}, {fresh: {aiMissesException: reason}}], [{apply: {aiMissesException: reason}}, {apply: {aiMissesException: `${reason} Again.`}}]]) {
+    assert.match(push({}, registry(next), 'Change', lanes), /Rule E.*(fresh|apply) adds or changes its AI-ask exception/s, JSON.stringify(next));
+    assert.equal(push({}, registry(next), `Change\n\n${why}`, lanes), '');
+  }
+  assert.equal(push({}, registry({apply: {aiMissesException: reason}, jobs: {aiMissesMax: 0}}), 'Change', {apply: {aiMissesException: reason}}), '', 'an unchanged exception beside another edit');
+});
+
 test('raising or dropping an AI-ask ceiling needs a citation; lowering it is free', () => {
   const lanes = {apply: {aiMissesMax: 1}};
   const registry = suites => ({'desktop/e2e/lanes.json': JSON.stringify({suites})});

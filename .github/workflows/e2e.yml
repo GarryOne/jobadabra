@@ -384,6 +384,7 @@ jobs:
       - name: Run the ${{ matrix.key }} suite (first try)
         id: suite_run
         env:
+          E2E_TRY_MINUTES: 15   # = this step's timeout-minutes: a suite without an aggregate budget stops 4 min before it (its close-down cap + 1), with records that read as timing (lib/runner.mjs budgetMsOf; tests/test_e2e_try_minutes.py)
           # Why (30 Oct 2026, ap; owner-approved rule A and burn-in): admission uses stored answers; manual first attempts may record; a suite that declares aiAnswers as backbone (plan-run.mjs puts it in matrix.aiAnswers) otherwise uses backbone answers on both tries without live AI.
           E2E_AI_ANSWERS: ${{ matrix.burnIn && 'backbone' || github.event_name == 'workflow_dispatch' && github.run_attempt == 1 && inputs.ai_answers == 'record' && 'record' || matrix.aiAnswers || 'off' }}
           PR_RUN: ${{ inputs.pr_suites != '' && inputs.after_merge == '' && '1' || '' }}   # a report-only suite skips its retry on a PR only; main, nightly and gate runs keep it
@@ -417,6 +418,7 @@ jobs:
       - name: "First try failed: the ${{ matrix.key }} suite once more, to tell flaky from real"
         if: steps.suite_run.outcome == 'failure' && !inputs.mutant && !matrix.burnIn && steps.suite_run.outputs.report_only != '1' && matrix.outside != true
         env:
+          E2E_TRY_MINUTES: 15   # = this step's timeout-minutes: a suite without an aggregate budget stops 4 min before it (its close-down cap + 1), with records that read as timing (lib/runner.mjs budgetMsOf; tests/test_e2e_try_minutes.py)
           # Why (30 Oct 2026, ap): a backbone suite's retry uses the same stored answers as its first attempt (matrix.aiAnswers), never a UUID-dependent live replay.
           E2E_AI_ANSWERS: ${{ matrix.aiAnswers || 'off' }}
         working-directory: desktop/e2e

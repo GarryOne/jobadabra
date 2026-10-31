@@ -54,6 +54,8 @@ test('row 5, a read of the same job in another browser run never takes the sessi
   review.onBind(bind => binds.push(bind));
   const own = {session: 's1', tab: 7, boot: 'run-a', url: `${posting(1)}#jobpilotto-fill=s1`, job: posting(1), total: 1, left: 0};
   assert.equal(review.report([sessions[0]], own).matched, 's1');
+  review.noteTabs({ids: [7], boot: 'run-a', browser: 'chrome'});   // the person's Chrome reports its tabs every 30 s: its run is live
+  review.noteTabs({ids: [130], boot: 'run-b', browser: 'hidden'});
   review.queueFill('s1', 'Phone', '123');
   const read = {session: 'tr1a2b3c4d', tab: 130, boot: 'run-b', url: `${posting(1)}#jobpilotto-fill=tr1a2b3c4d`, job: posting(1), total: 0, left: 0};
   const answer = review.report([sessions[0]], read);
@@ -66,6 +68,17 @@ test('row 5, a read of the same job in another browser run never takes the sessi
   // The tab's own session mark still binds, in any run (Chrome restarted and the app reopened the form).
   assert.equal(review.report([sessions[0]], {...read, session: 's1', url: `${posting(1)}#jobpilotto-fill=s1`}).matched, 's1');
   assert.equal(review.tabOf('s1', 'run-b'), 130);
+});
+
+// Gitar on #2747: after a Chrome restart the old run is dead, so a report by the job address alone (the address lost its mark) rebinds the session, as before.
+test('row 5, a restarted Chrome: the old run holds nothing, so a job address alone rebinds the session', () => {
+  review._reset();
+  const own = {session: 's1', tab: 7, boot: 'run-a', url: `${posting(1)}#jobpilotto-fill=s1`, job: posting(1), total: 1, left: 0};
+  review.report([sessions[0]], own);
+  review.noteTabs({ids: [7], boot: 'run-a', browser: 'chrome'});
+  review.noteTabs({ids: [9], boot: 'run-c', browser: 'chrome'});   // the same browser started again: a new run replaces the old one
+  assert.equal(review.report([sessions[0]], {tab: 9, boot: 'run-c', url: posting(1), job: posting(1), total: 1, left: 0}).matched, 's1');
+  assert.equal(review.tabOf('s1', 'run-c'), 9);
 });
 
 test('row 8, the app restarts: the bound tab id is read back from the saved state', () => {

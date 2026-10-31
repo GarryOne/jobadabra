@@ -54,10 +54,10 @@ export function sessionFor(sessions, page, tab) { return pick(sessions, page, ta
 function pick(sessions, page, tab, boot = '') {
   const named = [page.session, markedSession(page.url)].filter(Boolean);
   for (const id of named) { const own = sessions.find(session => session.id === id); if (own) return {session: own, by: 'session'}; }
-  // Why (4/4, #43 of beta 41162490590, 31 Oct 2026): a job address alone never matches a session that is bound in another browser run. A hidden-browser read of a job the person has open in Chrome carries a
+  // Why (4/4, #43 of beta 41162490590, 31 Oct 2026): a job address alone never matches a session whose tab is in another browser that still reports (Gitar on #2747: after a Chrome restart the old run is dead and a job match rebinds). A hidden-browser read of a job the person has open in Chrome carries a
   // read id that is no session, so the job matched it to the person's session: its commands went to the read and the read was filled as that application. Its own mark still binds (above).
-  // Needs the tab's `boot` (every current extension sends it); a session saved without a run is never excluded.
-  const byJob = page.job ? sessions.filter(session => isFormOf(page.job, session.url) && sameRun(session.id, boot)) : [];   // the posting, its form address (Ashby /application, Lever /apply) or a page below it
+  // Needs the tab's `boot` (every current extension sends it) and the other browser's tab report (every 30 s); a session saved without a run is never excluded.
+  const byJob = page.job ? sessions.filter(session => isFormOf(page.job, session.url) && !heldElsewhere(session.id, boot)) : [];   // the posting, its form address (Ashby /application, Lever /apply) or a page below it
   if (byJob.length) return {session: byJob.reduce((a, b) => (b.startedAt > a.startedAt ? b : a)), by: 'job'};
   return {session: null, by: named.length ? 'gone' : 'none'};
 }
@@ -145,6 +145,8 @@ const runs = new Map();   // browser (else boot) → {boot, ids: Set | null, at}
 let bootId = '', clock = () => Date.now();
 const liveRuns = () => { const now = clock(); for (const [key, run] of runs) if (now - run.at > RUN_MS) runs.delete(key); return [...runs.values()]; };
 const sameRun = (id, boot = bootId) => !runOf.get(id) || !boot || runOf.get(id) === boot;
+// The session's tab is in another browser that still reports (a restarted or silent browser holds nothing: its tab ids are closed tabs).
+const heldElsewhere = (id, boot) => !sameRun(id, boot) && liveRuns().some(run => run.boot === runOf.get(id));
 function bind(id, tab, boot, by, host = '', keep = true) {
   if (bound.get(id) === tab && runOf.get(id) === boot) return;
   bindLog({id, tab, before: bound.get(id) ?? null, by, host, ...(runOf.has(id) && runOf.get(id) !== boot ? {newRun: true} : {})});

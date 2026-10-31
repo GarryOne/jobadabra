@@ -2,10 +2,11 @@
 // Why (31 Oct 2026, owner: "was this a flaky e2e? OR what's the root cause of this ? How did it endup in main ?"): palette-one-row-per-card skipped on `process.env.CI`,
 // so no CI run executed it and #2695 was needed to fix what it caught on the owner's Mac. Run under xvfb in tests-desktop.yml and build.yml.
 import assert from 'node:assert/strict';
-import {readdirSync, readFileSync} from 'node:fs';
+import {mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync} from 'node:fs';
+import {tmpdir} from 'node:os';
 import {fileURLToPath} from 'node:url';
 import {test} from 'node:test';
-import {cannotRender} from './needs-electron.js';
+import {cannotRender, electronInstalled} from './needs-electron.js';
 
 const folder = fileURLToPath(new URL('.', import.meta.url));
 const ENV_CI = /process\.env\.(?:CI|GITHUB_ACTIONS)\b|env\[['"](?:CI|GITHUB_ACTIONS)['"]\]/;
@@ -29,4 +30,16 @@ test('electron tests are skipped for a missing electron or display and for nothi
   assert.equal(cannotRender(CI, 'darwin', true), false, 'macOS needs no DISPLAY');
   assert.equal(cannotRender(CI, 'win32', true), false, 'Windows needs no DISPLAY');
   assert.match(cannotRender({DISPLAY: ':99'}, 'linux', false), /electron/);
+});
+
+test('electron counts as installed only with its downloaded binary, not the npm bin shim a skipped download leaves', () => {
+  const root = mkdtempSync(`${tmpdir()}/needs-electron-`) + '/';
+  try {
+    mkdirSync(`${root}node_modules/electron`, {recursive: true});
+    mkdirSync(`${root}node_modules/.bin`, {recursive: true});
+    symlinkSync('../electron/cli.js', `${root}node_modules/.bin/electron`);   // what `npm ci` with ELECTRON_SKIP_BINARY_DOWNLOAD=1 leaves
+    assert.equal(electronInstalled(root), false, 'the shim alone is not an install');
+    writeFileSync(`${root}node_modules/electron/path.txt`, 'electron');   // what install.js writes after the download
+    assert.equal(electronInstalled(root), true);
+  } finally { rmSync(root, {recursive: true, force: true}); }
 });

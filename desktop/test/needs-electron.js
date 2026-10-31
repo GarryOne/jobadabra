@@ -7,8 +7,14 @@ import {fileURLToPath} from 'node:url';
 
 const desktop = fileURLToPath(new URL('..', import.meta.url));
 
+/**
+ * True when the electron binary was downloaded: install.js writes node_modules/electron/path.txt only then. Not `node_modules/.bin/electron`: npm links that shim
+ * from the package's `bin` on every install, also one with ELECTRON_SKIP_BINARY_DOWNLOAD=1 (Windows CI), where the tests would then fail instead of skip (Gitar, #2698).
+ */
+export const electronInstalled = (root = desktop) => existsSync(`${root}node_modules/electron/path.txt`);
+
 /** The reason this machine cannot render the app, or false when it can: no electron binary, or Linux without an X display. */
-export function cannotRender(env = process.env, platform = process.platform, hasElectron = existsSync(`${desktop}node_modules/.bin/electron`)) {
+export function cannotRender(env = process.env, platform = process.platform, hasElectron = electronInstalled()) {
   if (!hasElectron) return 'no electron binary installed';
   if (platform === 'linux' && !env.DISPLAY) return 'no display (run under xvfb-run)';
   return false;

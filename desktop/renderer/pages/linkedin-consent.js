@@ -83,3 +83,9 @@ export async function askLinkedinOnPress(why) {
   await refreshLinkedin().catch(() => {});
   return true;
 }
+
+/** The ⌘K command for the switch (pages/nav.js): "Turn on LinkedIn jobs" while off, "Turn off LinkedIn jobs" while on; it opens the same consent as every door. */
+export function linkedinCommand() {
+  const mode = view.on ? 'manage' : 'turn-on';
+  return {label: view.on ? 'Turn off LinkedIn jobs' : 'Turn on LinkedIn jobs', hint: 'Search LinkedIn on every Find jobs, in the background', keywords: 'linkedin jobs search background sign in connection', run: () => openLinkedinConsent({mode})};
+}

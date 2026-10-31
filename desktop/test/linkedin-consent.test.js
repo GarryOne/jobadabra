@@ -50,7 +50,8 @@ test('the consent words: the owner\'s warning line verbatim, what is read, where
 });
 
 test('every door opens the one consent: Settings row, ask on Find jobs, Suggestions entry, ⌘K', () => {
-  const doors = {'renderer/pages/settings.js': 'openLinkedinConsent', 'renderer/pages/jobs.js': 'askLinkedinOnPress', 'renderer/pages/focus-suggestions.js': 'openLinkedinConsent', 'renderer/pages/nav.js': 'openLinkedinConsent'};
+  // nav.js (⌘K) takes the command from the same module: linkedinCommand() opens the consent (kept out of nav.js's long function: clean-code complexity)
+  const doors = {'renderer/pages/settings.js': 'openLinkedinConsent', 'renderer/pages/jobs.js': 'askLinkedinOnPress', 'renderer/pages/focus-suggestions.js': 'openLinkedinConsent', 'renderer/pages/nav.js': 'linkedinCommand'};
   for (const [file, name] of Object.entries(doors)) {
     const source = fs.readFileSync(new URL(`../${file}`, import.meta.url), 'utf8');
     assert.match(source, new RegExp(`import \\{[^}]*\\b${name}\\b[^}]*\\} from '[./]*(pages/)?linkedin-consent\\.js'`), `${file} imports ${name} from the one consent module`);

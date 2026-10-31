@@ -31,7 +31,7 @@ export function suspensions({verdicts = [], registry = {}, owner, since = new Da
     seen.add(key);
     const red = `${item.redSha.slice(0, 7)}${item.redUrl ? ` (${item.redUrl})` : ''}`, green = `${item.green.sha.slice(0, 7)} (${item.green.url})`;
     const same = item.green.sha === item.redSha;
-    const why = `"${short(item.step, 120)}" failed on ${red} and passed on ${green}; ${same ? 'that is the same commit' : `none of the ${item.stepFileCount ?? 'step'} files it runs changed between them`}. A step red on unchanged code cannot protect a PR.`;
+    const why = `Failed on ${red} and passed on ${green}; ${same ? 'that is the same commit' : `none of the ${item.stepFileCount ?? 'step'} files it runs changed between them`}. A step red on unchanged code cannot protect a PR.`;
     const entry = {lane: 'suspended', since, owner, why, returns: RETURNS};
     const problems = stepEntryProblems({...entry, issue: 'https://github.com/o/r/issues/1'});   // the issue URL comes from --open; everything else is checked now
     if (problems.length) throw new Error(problems.join('; '));

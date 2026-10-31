@@ -1,6 +1,6 @@
 {
   "v": 1,
-  "about": "The lane registry (spec docs/superpowers/specs/2026-10-28-e2e-reliability-design.md, lanes table). A suite with no lane is backbone: red or green, a PR's red when its diff reaches it. A lane entry is tolerant (its result depends on an AI answer, the clock or the outside world, named in `input`), suspended (flips red then green on one commit; shown, never blocks) or retired; every lane entry names when it returns or retires in `returns`. tools/pr-verdict.py shows a red tolerant or suspended suite grey on a PR; it reads this file from the PR's BASE branch, so a PR that edits it is judged by main's copy and its entry counts after it merges. Moving a suite out of the backbone is an expectation change (spec rule E): the PR names the input and why. First cut 28 Oct 2026, from the week's reds (tools/e2e_weekly.py). Every backbone suite, including a new unlisted suite, defaults to aiMissesMax 0: any ask without a stored answer fails. Only tolerant, suspended and retired lanes or a named aiMissesException reason bypass that ceiling (owner, 31 Oct 2026: no external-world flakiness in the backbone).",
+  "about": "The lane registry (spec docs/superpowers/specs/2026-10-28-e2e-reliability-design.md, lanes table). A suite with no lane is backbone: red or green, a PR's red when its diff reaches it. A lane entry is tolerant (its result depends on an AI answer, the clock or the outside world, named in `input`), suspended (flips red then green on one commit; shown, never blocks) or retired; every lane entry names when it returns or retires in `returns`. tools/pr-verdict.py shows a red tolerant or suspended suite grey on a PR; it reads this file from the PR's BASE branch, so a PR that edits it is judged by main's copy and its entry counts after it merges. Moving a suite out of the backbone is an expectation change (spec rule E): the PR names the input and why. First cut 28 Oct 2026, from the week's reds (tools/e2e_weekly.py). Every backbone suite, including a new unlisted suite, defaults to aiMissesMax 0: any ask without a stored answer fails. Only tolerant, suspended and retired lanes or a named aiMissesException reason bypass that ceiling (owner, 31 Oct 2026: no external-world flakiness in the backbone). A step can be suspended by name (top-level `steps`: {suite: {exact step name: entry}}): it runs and shows its result but never fails the job or blocks a beta (tools/suspend-flip.mjs proposes it from a step red on code unchanged since a green; spec row 33, 31 Oct 2026).",
   "suites": {
     "qualityai": {
       "lane": "tolerant",
@@ -113,6 +113,28 @@
     },
     "explore": {
       "aiMissesException": "The manual-only AI explorer deliberately spends model credit when explicitly requested; cadence manual excludes it from scheduled and release gates."
+    }
+  },
+  "steps": {
+    "apply": {
+      "\"See which jobs can apply automatically\" reads a job's form in the hidden browser: You review and submit, the tab closes, and nothing is filled or sent": {
+        "lane": "suspended",
+        "input": "the hidden Chrome and its extension worker on a loaded shared runner (no clock or AI input: the same commit passed)",
+        "since": "2026-10-31",
+        "owner": "GarryOne",
+        "issue": "https://github.com/GarryOne/jobadabra/issues/2703",
+        "why": "Red on fb1d711 (run 41200878403, the 11-minute budget ran out inside this step) and green on the same commit fb1d711 two minutes earlier (run 41200737331): same code, different result.",
+        "returns": "Back to the backbone when its fix PR lands and the next 3 main runs pass it."
+      },
+      "Stop on the card in Background automation: while the form is filling, Stop hands it to you and nothing is posted": {
+        "lane": "suspended",
+        "input": "the hidden Chrome and its extension worker on a loaded shared runner (no clock or AI input: the same commit passed)",
+        "since": "2026-10-31",
+        "owner": "GarryOne",
+        "issue": "https://github.com/GarryOne/jobadabra/issues/2704",
+        "why": "Red on 9459046 (run 41198541314, the job never reached the filling card) and green on 4a79a6b (run 41198629562) with none of the 539 files it runs changed between them; also red in run 41175004281.",
+        "returns": "Back to the backbone when its fix PR lands and the next 3 main runs pass it."
+      }
     }
   }
 }

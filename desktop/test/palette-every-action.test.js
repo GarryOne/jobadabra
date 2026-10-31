@@ -1,14 +1,14 @@
 /* global document, window */
-// Every button a person can press is in ⌘K, and a task that is running stays there (owner, 18 Oct 2026: "I don't find the Chrome extension card from Settings"). Renders the demo app (electron); skipped in CI (no display) and where electron is not installed.
+// Every button a person can press is in ⌘K, and a task that is running stays there (owner, 18 Oct 2026: "I don't find the Chrome extension card from Settings"). Renders the demo app (electron); skipped only where electron or a display is missing (needs-electron.js).
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
-import {existsSync, readFileSync} from 'node:fs';
+import {readFileSync} from 'node:fs';
+import {needsElectron} from './needs-electron.js';
 import {fileURLToPath} from 'node:url';
 import {test} from 'node:test';
 
 const desktop = fileURLToPath(new URL('..', import.meta.url));
 const nav = readFileSync(new URL('../renderer/pages/nav.js', import.meta.url), 'utf8');
-const SKIP = {skip: process.env.CI || !existsSync(`${desktop}node_modules/.bin/electron`)};
 
 // Left out on purpose: shortcuts that lead to a page ⌘K already lists, a twin whose Actions card is listed, a sole danger button that shares its section's entry, icon-only arrows.
 const LEFT_OUT = new Set(['refresh', 'ov-review-setup', 'ov-profile', 'ov-backups', 'reset-review', 'cal-prev', 'cal-next', 'ov-alert-go', 'conn-alert-go']);   // the last two: an alert's shortcut to the Chrome extension card, which is listed
@@ -31,7 +31,7 @@ const probe = () => {
   return {unlisted, headings, parked, whileRunning, labels: entries.map(entry => entry.label)};
 };
 
-test('every button, card and section heading has a ⌘K entry; a running search keeps "Find jobs"', SKIP, () => {
+test('every button, card and section heading has a ⌘K entry; a running search keeps "Find jobs"', needsElectron, () => {
   const run = spawnSync('node', ['scripts/shot.mjs', 'settings', '--no-picture', '--eval', `JSON.stringify((${probe})())`], {cwd: desktop, encoding: 'utf8', timeout: 90000});
   const result = JSON.parse(JSON.parse(run.stdout.trim().split('\n').pop()));
   assert.deepEqual(result.unlisted.filter(id => !LEFT_OUT.has(id)), [], 'these buttons are not in ⌘K: the sweeps in pages/nav.js missed them');

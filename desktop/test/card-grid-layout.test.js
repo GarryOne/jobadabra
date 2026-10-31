@@ -2,15 +2,14 @@
 // Every card grid on every page, measured in the demo app (owner, 25 Oct 2026: "2 columns with very different heights, let's better have 1 column, and
 // full rows cards"; "same height for all the columns, if we have multiple columns per row"): a grid is one column, or its cards in a row are one height.
 // Cards that grow with the user's data (Advanced search settings, Locations, Job preferences, the Profile's background) must be one column.
-// Renders the demo app (electron); skipped on CI and without electron, like test/report-grid-layout.test.js. The shared grid: components.css .card-grid.
+// Renders the demo app (electron); skipped only where electron or a display is missing (needs-electron.js), like test/report-grid-layout.test.js. The shared grid: components.css .card-grid.
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
-import {existsSync} from 'node:fs';
+import {needsElectron} from './needs-electron.js';
 import {fileURLToPath} from 'node:url';
 import {test} from 'node:test';
 
 const desktop = fileURLToPath(new URL('..', import.meta.url));
-const SKIP = {skip: process.env.CI || !existsSync(`${desktop}node_modules/.bin/electron`)};
 const GRIDS = '.card-grid, .task-pair, .ui-choices.is-pair, .exp-profile';
 const probe = grids => [...document.querySelectorAll(grids)].filter(grid => grid.getBoundingClientRect().width > 0).map(grid => {
   const cards = [...grid.children].filter(card => card.getBoundingClientRect().height > 0).map(card => {
@@ -27,7 +26,7 @@ const ADVANCED = "document.getElementById('strategy-advanced').open = true";
 const PAGES = [['strategy', ADVANCED], ['settings', ''], ['actions', ''], ['profile', '']];
 
 for (const [page, js] of PAGES) {
-  test(`${page}: every card grid is one column, or its cards in a row are one height`, SKIP, () => {
+  test(`${page}: every card grid is one column, or its cards in a row are one height`, needsElectron, () => {
     for (const grid of measure(page, js)) {
       if (grid.columns === 1) continue;
       for (const [top, row] of Map.groupBy(grid.cards, card => card.top)) {
@@ -39,7 +38,7 @@ for (const [page, js] of PAGES) {
   });
 }
 
-test('strategy: Advanced search settings is one column of full-width cards', SKIP, () => {
+test('strategy: Advanced search settings is one column of full-width cards', needsElectron, () => {
   const grid = measure('strategy', ADVANCED).find(one => one.name.includes('strategy-targets'));
   assert.ok(grid && grid.cards.length >= 3, 'the three advanced cards are drawn');
   assert.equal(new Set(grid.cards.map(card => card.top)).size, grid.cards.length, 'one card per row');

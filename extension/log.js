@@ -24,6 +24,11 @@ export async function decisions() {
 // - The push reads its batches from memory and marks them sent in memory; fetch never waits for storage.
 // - A full ring drops sent lines first; a dropped unsent line leaves one "log dropped N" line, so a missing stretch is never silent.
 // Why (31 Oct 2026, a8; run 41162490590): the old get+set of all 200 lines per line made a 24-lines/s burst queue for 10-14 s (readMs 10726, markMs 13660, postMs 18) and the app got the lines up to 184 s late; the failing step's own lines never arrived.
+// Why (31 Oct 2026, a8, #2673 red "page cases 1", required-salutation-menu-1): the lines used to be POSTed as chrome.storage returned them, keys sorted, and recorded cases'
+// "told" words match that text ("label":"Title","outcome":"left","reason":...: no "type" between them because it sorts last). From memory the keys keep their insertion order, so the
+// same line stopped matching. The wire keeps its old key order at every depth; arrays keep theirs.
+const sortedKeys = value => (Array.isArray(value) ? value.map(sortedKeys)
+  : value && typeof value === 'object' ? Object.fromEntries(Object.keys(value).sort().map(key => [key, sortedKeys(value[key])])) : value);
 const logBoot = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;   // this worker's log, named on its first line
 let ring = [];
 let loading = null, lastBefore, bootStamped = false, firstNew = null, writing = null, writeAgain = false, appended = 0, written = 0;
@@ -153,7 +158,7 @@ async function pushNow() {
       Object.assign(marks, {read: Date.now(), lines: batch.length, onlyNotes: batch.every(entry => entry.kind === 'log' && entry.text === 'slow push')});
       const response = await fetch(`${config.workerUrl.replace(/\/$/, '')}/extension/log`, {method: 'POST',
         headers: {Authorization: `Bearer ${config.token}`, 'Content-Type': 'application/json'},
-        body: JSON.stringify({entries: batch})});
+        body: JSON.stringify({entries: batch.map(sortedKeys)})});
       marks.posted = Date.now();
       if (!response.ok) { noteIfSlow(true); return false; }
       for (const entry of batch) entry.sent = true;   // the entries themselves, so a trim during the POST cannot mark a neighbour

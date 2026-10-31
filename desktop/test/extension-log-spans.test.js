@@ -329,3 +329,13 @@ test('a storage write that never settles does not stop the drain: every batch is
   await Promise.race([log.rawPush(), new Promise((_, reject) => setTimeout(() => reject(new Error('the drain waited for a write that never settles')), 500))]);
   assert.equal(log.batches.flat().length, 120, 'all 120 lines reached the app while storage hung');
 });
+
+// #2673 red (page cases, required-salutation-menu-1): recorded cases' "told" words match the POSTed text, whose keys chrome.storage used to return sorted.
+test('lines go to the app with their keys sorted at every depth, as when they were read back from storage; arrays keep their order', async t => {
+  const log = await extensionLog(t);
+  await log.decide('fill', 'fields: 1 filled', {url: 'https://x.test/a', fields: [{label: 'Title', type: 'combobox', required: true, outcome: 'left', source: '', reason: 'demographic: your own choice'}, {label: 'First', outcome: 'filled'}]});
+  await log.pushDecisions();
+  const [entry] = log.batches[0];
+  assert.deepEqual(Object.keys(entry), ['at', 'fields', 'kind', 'sent', 'text']);
+  assert.match(JSON.stringify(entry.fields), /"fields":\[\{"label":"Title","outcome":"left","reason":"demographic: your own choice","required":true,"source":"","type":"combobox"\},\{"label":"First","outcome":"filled"\}\],"logBoot":"[a-z0-9]+","url"/);
+});

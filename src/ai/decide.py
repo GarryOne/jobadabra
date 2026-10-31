@@ -14,6 +14,7 @@ Tests: tests/test_decide.py."""
 import atexit
 import contextlib
 import json
+import os
 import sqlite3
 import sys
 from datetime import datetime, timezone
@@ -142,7 +143,14 @@ def limit():
     """This process's cap on model calls: the central scout's, or an install's. Read from the scout's module only when the scout loaded it
     (an install never imports scout code from inside an AI call)."""
     scout_core = sys.modules.get(__package__.rsplit('.', 1)[0] + '.scout_core')
-    return CENTRAL_MAX_CALLS if getattr(scout_core, 'CENTRAL', False) else MAX_CALLS_PER_RUN
+    if not getattr(scout_core, 'CENTRAL', False):
+        return MAX_CALLS_PER_RUN
+    # Why (31 Oct 2026, owner: the plan "burn these tokens" once Codex resets on 4 Nov): the scout's AI now runs on the Codex plan (desktop/e2e/broker-relay-run.mjs), whose weekly share is small until then,
+    # so central-scout.yml sets CENTRAL_AI_CAP=40 calls a run (about 2,000 items at BATCH 50; items past it stay unjudged, never defaulted). Raise that one value after the 4 Nov reset.
+    try:
+        return int(os.environ.get('JOB_PILOTTO_CENTRAL_MAX_CALLS') or 0) or CENTRAL_MAX_CALLS
+    except ValueError:
+        return CENTRAL_MAX_CALLS
 
 
 def _db():

@@ -1,6 +1,7 @@
 // The fixer's first step (ui-fix.yml, four times a day): the most critical open finding that is ready for a fix, from the issues the producer (ui-findings.yml) keeps filing.
 //   node pick.mjs --out .heal      (needs `gh` and GH_TOKEN)
 // Writes <out>/candidate.json + <out>/prompt.md and sets the step output `candidate` (the issue number, or "none").
+// Job: report health
 import {execFileSync} from 'node:child_process';
 import fs from 'node:fs';
 import {pathToFileURL} from 'node:url';
@@ -13,7 +14,9 @@ if (import.meta.url === pathToFileURL(process.argv[1] || '').href) {
   // ui-verdict.yml: the one-off findings to judge in parallel (--verdict-list N), or the files for one of them (--issue N).
   const at = flag => { const i = args.indexOf(flag); return i >= 0 ? args[i + 1] : ''; };
   if (args.includes('--verdict-list')) {
-    const list = chooseVerdictCandidates({max: Number(at('--verdict-list')) || 5}).map(issue => ({issue: issue.number}));
+    // --issues 2485,2589: a person's re-judgement of named issues (ui-verdict.yml input `issues`), instead of the unjudged one-off findings.
+    const named = at('--issues').split(',').map(item => Number(item.trim())).filter(number => Number.isInteger(number) && number > 0);
+    const list = (named.length ? named.map(number => ({number})) : chooseVerdictCandidates({max: Number(at('--verdict-list')) || 5})).map(issue => ({issue: issue.number}));
     console.log(`To judge: ${list.map(item => `#${item.issue}`).join(', ') || 'nothing'}`);
     if (process.env.GITHUB_OUTPUT) fs.appendFileSync(process.env.GITHUB_OUTPUT, `matrix=${JSON.stringify({include: list})}\ncount=${list.length}\n`);
     process.exit(0);

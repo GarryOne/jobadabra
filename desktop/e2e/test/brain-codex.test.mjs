@@ -4,7 +4,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {brainProvider, buildRequest, fileText, MODEL} from '../brain-codex.mjs';
+import {buildRequest, fileText, MODEL, promptFor} from '../brain-codex.mjs';
+import {askOrSkip} from '../lib/broker-job.mjs';
 import {toBrokerCall} from '../lib/broker-client.mjs';
 
 const workflow = fs.readFileSync(new URL('../../../.github/workflows/product-brain.yml', import.meta.url), 'utf8');
@@ -41,22 +42,33 @@ test('a brief without an action or a lens, or a plan that is empty, stops the st
   assert.equal(JSON.parse(fileText('brief', JSON.stringify({lens: 'Growth', action: 'Post X'}))).action, 'Post X');
 });
 
-test('the workflow runs the brain on Codex by default, with no repo variable, and only an explicit claude uses the API key', () => {
-  assert.doesNotMatch(workflow, /BRAIN_AI: \$\{\{/, 'the provider is resolved by lib/ai-provider.mjs, not by an expression');
-  assert.match(workflow, /name: Which AI provider\n\s+run: node desktop\/e2e\/brain-codex\.mjs --provider/);
+test('the workflow runs the brain only on the broker: no Claude step, no Anthropic key, the post steps wait for an answer, a refusal alerts once', () => {
+  assert.doesNotMatch(workflow.replace(/^\s*#.*$/gm, ''), /claude-code-action|anthropic_api_key|ANTHROPIC|BRAIN_AI|ai_provider/i, 'no Anthropic path is left in the brain');
   assert.match(workflow, /id-token: write/);
-  for (const step of ['brief', 'review', 'explore']) assert.match(workflow, new RegExp(`brain-codex\\.mjs --step ${step === 'brief' ? '"\\$STEP"' : step}`));
-  const claudeSteps = workflow.split('\n').filter(line => /^\s+uses: anthropics\/claude-code-action/.test(line)).length;
-  assert.equal(claudeSteps, 3);
-  const guards = [...workflow.matchAll(/- name: Claude (?:picks|reviews|explores)[^\n]*\n\s+if: ([^\n]*)/g)].map(match => match[1]);
-  assert.equal(guards.length, 3);
-  for (const guard of guards) assert.match(guard, /env\.BRAIN_AI == 'claude'/, 'a Claude step never runs unless asked');
+  assert.match(workflow, /brain-codex\.mjs --step "\$STEP"/);
+  assert.match(workflow, /brain-codex\.mjs --step explore/);
+  assert.match(workflow, /Send the brief\n\s+if: [^\n]*steps\.brief_ai\.outputs\.skipped != 'true'/);
+  assert.match(workflow, /Send the plan\n\s+if: [^\n]*steps\.explore_ai\.outputs\.skipped != 'true'/);
+  assert.match(workflow, /uses: \.\/\.github\/actions\/ai-skipped-alert/);
 });
 
-test('the brain provider: Codex with no variable set, free means Codex, claude only when named, a typo is refused', () => {
-  assert.equal(brainProvider({CI: 'true'}), 'codex');
-  assert.equal(brainProvider({CI: 'true', CI_AI_PROVIDER: 'free'}), 'codex');
-  assert.equal(brainProvider({CI: 'true', CI_AI_PROVIDER: 'claude'}), 'claude');
-  assert.equal(brainProvider({CI: 'true', CI_AI_PROVIDER: 'claude', E2E_AI_PROVIDER_BRAIN: 'codex'}), 'codex', 'the brain\'s own variable is the more specific');
-  assert.throws(() => brainProvider({CI: 'true', E2E_AI_PROVIDER_BRAIN: 'claud'}), /must be codex, claude or free/);
+test('a refused broker call skips the step with its reason: no file, skipped=true, one note for the alert; any other failure stays red', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'brain-skip-'));
+  const out = path.join(dir, 'out');
+  const notes = path.join(dir, 'notes');
+  const run = (ask, extra = {}) => askOrSkip({model: 'claude-sonnet-5-5'}, {job: 'product brain brief', dir: notes, env: {GITHUB_OUTPUT: out, ...extra}, ask});
+  const refused = await run(async () => ({ok: false, status: 'capped', detail: 'budget:week 90%'}));
+  assert.equal(refused.ok, false);
+  assert.match(fs.readFileSync(out, 'utf8'), /skipped=true/);
+  assert.match(fs.readFileSync(path.join(notes, 'ai-capped.json'), 'utf8'), /budget:week 90%/);
+  await assert.rejects(run(async () => ({ok: false, status: 500, detail: 'boom'})), /failed \(500\)/);
+});
+
+test('each step takes its own private prompt; another adds the "something different" line; an unset secret gives no prompt', () => {
+  const env = {BRAIN_PROMPT_BRIEF: 'B', BRAIN_PROMPT_REVIEW: 'R', BRAIN_PROMPT_EXPLORE: 'E'};
+  assert.match(promptFor('brief', env), /^B\n.*regular morning brief/s);
+  assert.match(promptFor('another', env), /^B\n.*clearly different/s);
+  assert.equal(promptFor('review', env), 'R');
+  assert.equal(promptFor('explore', env), 'E');
+  assert.equal(promptFor('review', {}), '');
 });

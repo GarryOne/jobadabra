@@ -82,3 +82,29 @@ test('files to read: only listed ones, seeds first; the none-file is a verdict f
   assert.equal(noneText('verdict', {verdict: 'none', why: ''}, ['no edit']), 'needs-human\nWhy: no edit\n');
   assert.equal(noneText('summary', {verdict: 'none', why: 'nothing recurs'}), 'nothing recurs\n');
 });
+
+test('the flagged code\'s callers are in the evidence (3 of 4 live verdicts said "the evidence does not include the caller")', async () => {
+  const {symbolsAt, callersOf} = await import('../lib/judge-evidence.mjs');
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'callers-'));
+  fs.mkdirSync(path.join(root, 'desktop/renderer'), {recursive: true});
+  fs.writeFileSync(path.join(root, 'desktop/renderer/offer.js'), ['export function showOffer(box) {', '  const note = hostedOn(box);', "  box.textContent = error.message;", '}', ''].join('\n'));
+  fs.writeFileSync(path.join(root, 'desktop/renderer/page.js'), ['import {showOffer} from "./offer.js";', 'function open() {', '  showOffer(document.body);   // any IPC failure reaches it', '}', ''].join('\n'));
+  for (const args of [['init', '-q'], ['add', '-A'], ['-c', 'user.email=a@b', '-c', 'user.name=a', 'commit', '-qm', 'x']]) execFileSync('git', args, {cwd: root});
+  assert.deepEqual(symbolsAt('desktop/renderer/offer.js', 3, root), ['showOffer']);
+  assert.deepEqual(symbolsAt('desktop/renderer/offer.js', 2, root), ['showOffer', 'hostedOn']);
+  const parts = callersOf('showOffer', {file: 'desktop/renderer/offer.js', root});
+  assert.match(parts[0].body, /page\.js:3:\s+showOffer\(document\.body\)/);
+  assert.doesNotMatch(parts[0].body, /export function showOffer/, 'the declaration is not a caller');
+  assert.match(parts[1].body, /any IPC failure reaches it/);
+  const evidence = evidenceFor({text: 'The bar shows a raw error. See desktop/renderer/offer.js:3.', root});
+  assert.match(evidence, /uses of showOffer\(\) \(git grep -w\)/);
+  assert.match(evidence, /desktop\/renderer\/page\.js:3 \(calls showOffer\)/);
+});
+
+test('JUDGE_MODEL picks the verdict pass\'s broker tier: sonnet (mid) by default, opus (large) when named', async () => {
+  const {judgeModel} = await import('../judge-codex.mjs');
+  const {toBrokerCall} = await import('../lib/broker-client.mjs');
+  assert.equal(judgeModel({}), 'claude-sonnet-5-5');
+  assert.equal(toBrokerCall({model: judgeModel({}), messages: []}).tier, 'mid');
+  assert.equal(toBrokerCall({model: judgeModel({JUDGE_MODEL: 'claude-opus-5-5'}), messages: []}).tier, 'large');
+});

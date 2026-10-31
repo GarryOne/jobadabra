@@ -12,6 +12,9 @@ import {pathToFileURL} from 'node:url';
 import {askOrSkip} from './lib/broker-job.mjs';
 import {evidenceFor, examEvidence} from './lib/judge-evidence.mjs';
 
+/** The Claude id whose broker tier judges (sonnet -> mid gpt-6.1-sol, opus -> large gpt-6-astra): JUDGE_MODEL, else sonnet. One env value, so the verdict pass's model is measured and changed in one place (owner, 31 Oct 2026: "a higher/more intelligent Codex model"). */
+export const judgeModel = (env = process.env) => env.JUDGE_MODEL || 'claude-sonnet-5-5';
+
 export const WORDS = ['real', 'false-positive', 'harness', 'needs-human'];
 const VERDICT = {type: 'object', additionalProperties: false, required: ['id', 'verdict', 'why', 'check', 'cause', 'severity'], properties: {
   id: {type: 'string'}, verdict: {type: 'string', enum: WORDS}, why: {type: 'string'}, check: {type: 'string'},
@@ -45,7 +48,7 @@ export function requestFor({mode, prompt, items, root = '.', budget = 90000}) {
   const shots = items.filter(item => item.screenshot && fs.existsSync(item.screenshot));
   const note = shots.length ? `\n\nScreenshots attached, in this order: ${shots.map(item => (mode === 'verdict' ? 'the finding' : item.id)).join(', ')}.` : '';
   const content = [{type: 'text', text: `${blocks.join('\n\n')}${note}`}, ...shots.map(item => PICTURE(item.screenshot))];
-  return {ids: items.map(item => item.id), body: {model: 'claude-sonnet-5-5', max_tokens: 8000, system: `${NO_TOOLS}\n\n${prompt}`, messages: [{role: 'user', content}], output_config: {format: {type: 'json_schema', schema: VERDICTS_SCHEMA}}}};
+  return {ids: items.map(item => item.id), body: {model: judgeModel(), max_tokens: 8000, system: `${NO_TOOLS}\n\n${prompt}`, messages: [{role: 'user', content}], output_config: {format: {type: 'json_schema', schema: VERDICTS_SCHEMA}}}};
 }
 
 const FINDING_AT = '\n---\nTHE FINDING';
@@ -73,7 +76,7 @@ async function main() {
   const out = path.join(heal, mode === 'verdict' ? 'verdict.md' : 'verdicts.md');
   const verdicts = JSON.parse(answer.text).verdicts;
   fs.writeFileSync(out, verdictFile(mode, verdicts, ids));
-  console.log(`judge (${mode}): ${verdicts.length} verdict(s) for ${ids.length} finding(s) written to ${out} by ${answer.model || answer.tier} on the Codex plan`);
+  console.log(`judge (${mode}): ${verdicts.length} verdict(s) for ${ids.length} finding(s) written to ${out} by ${answer.model || answer.tier} on the Codex plan (${answer.ms ?? '?'} ms, ${answer.usage?.input_tokens ?? '?'} tokens in, ${answer.usage?.output_tokens ?? '?'} out)`);
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] || '').href) main().catch(error => { console.error(`::error::judge on Codex: ${error.message}`); process.exit(1); });

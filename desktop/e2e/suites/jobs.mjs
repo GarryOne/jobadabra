@@ -110,12 +110,9 @@ export async function run(ctx) {
     if (!kitless.length) throw new Error(`no kitless job in the list to check (rows: ${rows.length})`);
     const wrong = kitless.filter(row => row.label !== 'Apply' || !/state-apply/.test(row.cls) || /Prepare/.test(row.text));
     if (wrong.length) throw new Error(`${wrong.length} of ${kitless.length} jobs without a kit do not show a plain Apply button: ${wrong.slice(0, 3).map(row => `"${row.label}" (${row.cls})`).join('; ')}`);
-    let items = [];
-    for (let attempt = 0; attempt < 8 && !items.some(text => /Prepare only/.test(text)); attempt++) {   // the list redraws and closes an open ⋯ menu: open it again
-      await page.locator('article.job-row').filter({hasNotText: '📝 Kit'}).first().getByRole('button', {name: 'More actions'}).click();
-      await page.waitForTimeout(600);
-      items = await page.getByRole('menuitem').allInnerTexts();
-    }
+    await page.locator('article.job-row').filter({hasNotText: '📝 Kit'}).first().getByRole('button', {name: 'More actions'}).click();   // an open menu survives the list's redraws (components.js holdMenu)
+    await page.getByRole('menuitem').first().waitFor();
+    const items = await page.getByRole('menuitem').allInnerTexts();
     if (!items.some(text => /Prepare only/.test(text))) throw new Error(`the ⋯ menu of a job without a kit has no "Prepare only" (it lists: ${items.join(' | ')})`);
     await page.keyboard.press('Escape');
   }, {needs: ctx.needs});

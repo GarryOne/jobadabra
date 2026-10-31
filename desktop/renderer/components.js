@@ -126,6 +126,33 @@ export function closeMenu(within = null) {
   menuAt = null;
   for (const open of document.querySelectorAll('.ui-more[aria-expanded="true"]')) open.setAttribute('aria-expanded', 'false');
 }
+// A list that redraws its rows in the background (Jobs on a sessions update, Interviews when a read finishes) calls holdMenu before it clears its rows and
+// the function it returns after it has drawn them, not closeMenu: a ⋯ menu open on one of its rows
+// stays open on the redrawn row of the same item (rows carry data-<keyAttr>), with its items built again from the new data and the same item focused.
+// `within` is the page's element, as for closeMenu: a menu open on another page is left alone. A row with no key, or gone from the new draw, closes the menu.
+// Why (31 Oct 2026, owner: "Fix in the product"): the redraw closed the menu under the cursor; the e2e step "Tailor CV on a job…" clicked into a
+// closed menu (nightly beta run 41162490590) and three e2e steps reopened it in a loop (apply-cv-steps, jobs, interviews).
+/** Close the menu open inside `within` for a redraw; returns restore(), which reopens it on the redrawn row whose data-<keyAttr> matches (nothing when none was open or the row is gone). */
+export function holdMenu(within, keyAttr) {
+  const open = menu.hidden || !menuAnchor || !within?.contains(menuAnchor) ? null : (() => {
+    const row = menuAnchor.closest(`[data-${keyAttr}]`);
+    const key = row?.dataset[keyAttr];
+    if (!key) return null;   // a row with no key (a job with no link) cannot be found again: the menu closes
+    return {key, same: [...within.querySelectorAll(`[data-${keyAttr}]`)].filter(node => node.dataset[keyAttr] === key).indexOf(row),
+      nth: [...row.querySelectorAll('.ui-more')].indexOf(menuAnchor), focused: [...menu.querySelectorAll('button')].indexOf(document.activeElement)};
+  })();
+  const elsewhere = open && open.focused < 0 ? document.activeElement : null;   // focus was outside the menu (the filter box, mid-typing): openMenu would take it
+  closeMenu(within);
+  return () => {
+    if (!open) return;
+    const row = [...within.querySelectorAll(`[data-${keyAttr}]`)].filter(node => node.dataset[keyAttr] === open.key)[Math.max(open.same, 0)];   // two rows with one key: the same one of them
+    const button = row && [...row.querySelectorAll('.ui-more')][Math.max(open.nth, 0)];
+    if (!button) return;
+    button.click();
+    if (open.focused >= 0) [...menu.querySelectorAll('button')][open.focused]?.focus();
+    else if (elsewhere?.isConnected) elsewhere.focus();   // a node the redraw replaced is gone: the menu keeps the focus
+  };
+}
 function menuItem(item) {
   if (item === '-') return document.createElement('hr');
   if (item.heading) return el('p', 'ui-menu-heading', item.heading);

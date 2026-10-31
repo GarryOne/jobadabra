@@ -12,12 +12,13 @@ import {runTriageCancelSteps} from '../lib/apply-triage-cancel-steps.mjs';
 const text = value => ({type: 'text', value, checked: false, files: [], ai: false});
 const box = checked => ({type: 'checkbox', value: 'on', checked, files: [], ai: false});
 
-test('the triage Cancel step gives the runner a synchronous hang error with its last state', async () => {
+test('the triage Cancel step gives the runner its evidence with its last state; the runner says it was cut off', async () => {
   let options;
   await runTriageCancelSteps({needs: [], run: (_name, _fn, given) => { options = given; }}, {urls: []});
-  const error = options.hangError(180000);
-  assert.ok(error instanceof Error, 'runner.withLimit reads .message immediately; it cannot consume a Promise');
-  assert.match(error.message, /within 180 s.*last read: null/);
+  const evidence = options.hangError(180000);
+  assert.equal(typeof evidence, 'string', 'the runner prefixes the cut-off verdict to the step\'s evidence (lib/runner.mjs withLimit)');
+  assert.match(evidence, /last read: null/);
+  assert.doesNotMatch(evidence, /within 180 s/, 'the cut-off words are the runner\'s, never the step\'s');
 });
 
 test('fillProblems: a wrong, missing or empty answer is reported; the right one is not', () => {

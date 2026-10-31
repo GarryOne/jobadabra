@@ -20,7 +20,7 @@ test('a drop goes through the app\'s own stage paths (setStatus, setStage → th
 test('renderJobs narrows by the ticked filters and ends by painting the board', () => {
   const render = read('renderer/pages/jobs-render.js');
   assert.match(render, /inFiltersLoose\(job, filters, now\) : inFilters\(job, filters, now\)/);
-  assert.match(render, /paintViews\(\(counted \|\| shared\.allJobs\)\.filter\(job => columnOf\(job\) && \(counted \|\| !onBoard\.length \|\| inFilters\(job, onBoard, now\)\) && matches\(job, text\)\)\);[^\n]*\n\}/);
+  assert.match(render, /paintViews\(\(counted \|\| shared\.allJobs\)\.filter\(job => columnOf\(job\) && \(counted \|\| !onBoard\.length \|\| inFilters\(job, onBoard, now\)\) && matches\(job, text\)\)\);[^\n]*\n(?:  restoreMenu\(\);\n)?\}/);   // the open ⋯ menu is restored after the board is painted (31 Oct 2026)
   assert.match(read('renderer/pages/jobs.js'), /setFilters\(\[next\.filter\]\)/, 'a counter is a selection of the menu');
 });
 

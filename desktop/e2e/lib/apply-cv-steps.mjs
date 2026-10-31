@@ -26,15 +26,10 @@ export async function runCvSteps(ctx, h) {
     const row = page.locator(`article.job-row[data-url=${JSON.stringify(form.url)}]`);
     await row.waitFor({timeout: 60000})
       .catch(() => { throw new Error(`${form.company} is not in the Jobs list even under Everything`); });
-    // The list redraws while sessions update, which closes an open ⋯ menu: open it again until the item is there.
-    let items = [];
-    for (let attempt = 0; attempt < 8; attempt++) {
-      await row.getByRole('button', {name: 'More actions'}).click();
-      const menu = await waitForFill({capMs: 2500, pickTab: () => ({tab: page}), readState: () => page.getByRole('menuitem').allInnerTexts(), accept: texts => texts.some(text => /Tailor CV/.test(text))});
-      items = menu.state;
-      if (menu.ok) break;
-    }
-    if (!items.some(text => /Tailor CV/.test(text))) throw new Error(`the ⋯ menu of ${form.company} has no Tailor CV (it lists: ${items.join(' | ') || 'nothing'})`);
+    // An open ⋯ menu survives the list's redraws (components.js holdMenu; 31 Oct 2026): open it once and click.
+    await row.getByRole('button', {name: 'More actions'}).click();
+    const menu = await waitForFill({capMs: 2500, pickTab: () => ({tab: page}), readState: () => page.getByRole('menuitem').allInnerTexts(), accept: texts => texts.some(text => /Tailor CV/.test(text))});
+    if (!menu.ok) throw new Error(`the ⋯ menu of ${form.company} has no Tailor CV (it lists: ${menu.state.join(' | ') || 'nothing'})`);
     await page.getByRole('menuitem', {name: /Tailor CV/}).click();
     await until('Tailor CV wrote no PDF within two minutes (see the "Tailoring failed" toast)', () => fs.existsSync(tailoredPdf), 120000);
     const size = fs.statSync(tailoredPdf).size;

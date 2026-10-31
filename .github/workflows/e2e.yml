@@ -289,6 +289,7 @@ jobs:
       E2E_AI_REPLAY: ${{ matrix.suite == 'qualityai' && '0' || '1' }}   # qualityai asks live; every other suite keeps its existing replay path
       E2E_JUDGE_MODEL: claude-haiku-5-5   # every suite's judge, quality too (owner, 27 Oct 2026: "let's do")
       # Why (29 Oct 2026, owner-approved design rule A): quality uses reviewed question answers, never strict hash replay.
+      E2E_QUALITY_PARTS: ${{ matrix.suite == 'qualityai' && toJSON(matrix.qualityParts) || '' }}
       E2E_QUALITY_HISTORY: ${{ matrix.suite == 'qualityai' && format('{0}/desktop/e2e/.quality-rate/history.json', github.workspace) || '' }}   # lib/quality-rate.mjs
       # Why (30 Oct 2026, owner via a8, design D/E): pr-suites dispatches report old nights; after-merge, nightly and beta runs still judge them.
       E2E_QUALITY_JUDGE_HISTORY: ${{ inputs.pr_suites && inputs.after_merge == '' && '0' || '1' }}
@@ -378,8 +379,8 @@ jobs:
         uses: actions/cache/restore@v5
         with:
           path: desktop/e2e/.ai-cache
-          key: ai-answers-${{ matrix.key }}${{ matrix.key == 'mailreading' && '-v2' || '' }}-${{ github.run_id }}-${{ github.run_attempt }}
-          restore-keys: ai-answers-${{ matrix.key }}${{ matrix.key == 'mailreading' && '-v2' || '' }}-
+          key: ai-answers-${{ matrix.key }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: ai-answers-${{ matrix.key }}-
       # Main cannot read a PR's cache: after a merge, the merged PR's own green answers are laid over main's, so main asks what its PR asked and replays what the PR
       # was green on (27 Oct 2026: #2180 green on its PR with 0 misses; main restored an older cache, asked 8 questions live and went red). desktop/e2e/pr-answers.mjs.
       - name: The merged PR's own AI answers (after a merge)
@@ -387,7 +388,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           MERGED: ${{ inputs.after_merge }}
-          KEY: ${{ matrix.key }}${{ matrix.key == 'mailreading' && '-v2' || '' }}
+          KEY: ${{ matrix.key }}
         run: node desktop/e2e/pr-answers.mjs "$MERGED" "$KEY" desktop/e2e/.ai-cache
       # The lock is taken as late as possible (after the installs, which never touch the suite's Notion page): a waiting job holds its runner.
       - name: The score-steadiness history of the night's live qualityai runs (lib/quality-rate.mjs)
@@ -461,8 +462,8 @@ jobs:
             echo "grey=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          replay=0; [ "${{ matrix.suite }}" != quality ] || replay="$E2E_AI_REPLAY"   # quality's retry replays like its first try (owner, 27 Oct 2026: "Code gate + AI rate")
-          export E2E_ARTIFACTS="${{ github.workspace }}/e2e-rerun/${{ matrix.key }}" E2E_RERUN=1 E2E_AI_REPLAY="$replay"   # fresh answers, never the first try's (a replayed bad draw proves nothing); quality's retry replays like its first try (owner, 27 Oct 2026); a second try writes no HTML report (report/playwright.config.mjs)
+          # Why (31 Oct 2026, owner): backbone retries use the same saved answers; only tolerant lanes may draw fresh AI (wizard run 41163541081).
+          export E2E_ARTIFACTS="${{ github.workspace }}/e2e-rerun/${{ matrix.key }}" E2E_RERUN=1 E2E_AI_REPLAY=1   # same stored table as the first try; a second try writes no HTML report (report/playwright.config.mjs)
           again() { if [ "$RUNNER_OS" = Linux ]; then xvfb-run -a --server-args='-screen 0 1440x900x24' node suite.mjs "$1"; else node suite.mjs "$1"; fi; }
           # Why (#2199): the retry repeats only the first try's red steps and their setup (owner, 27 Oct 2026: "Retry only the red steps"; red-steps.mjs). Main's quality on
           # 27 Oct 2026 had one red step, then a whole-suite retry ran out of the 7-minute budget. No step to name (a crash, a renamed pick) or a build without red-steps.mjs (an older tag: stable canary 40503508863): the whole suite.
@@ -531,7 +532,7 @@ jobs:
         uses: actions/cache/save@v5
         with:
           path: desktop/e2e/.ai-cache
-          key: ai-answers-${{ matrix.key }}${{ matrix.key == 'mailreading' && '-v2' || '' }}-${{ github.run_id }}-${{ github.run_attempt }}
+          key: ai-answers-${{ matrix.key }}-${{ github.run_id }}-${{ github.run_attempt }}
       - name: Keep the score-steadiness history, red or green (the night's live qualityai run on main)
         if: always() && matrix.suite == 'qualityai' && env.E2E_AI_REPLAY != '1' && github.ref == 'refs/heads/main' && hashFiles('desktop/e2e/.quality-rate/history.json') != ''
         uses: actions/cache/save@v5
@@ -556,7 +557,7 @@ jobs:
         if: (success() && inputs.pr_suites != '' && inputs.after_merge == '' && env.E2E_ANTHROPIC_KEY != '' && hashFiles('desktop/e2e/.ai-cache/*.json') != '') && steps.artifact_scan_1.outcome == 'success'
         uses: actions/upload-artifact@v6
         with:
-          name: ai-answers-${{ matrix.key }}${{ matrix.key == 'mailreading' && '-v2' || '' }}
+          name: ai-answers-${{ matrix.key }}
           path: desktop/e2e/.ai-cache
           include-hidden-files: true   # .ai-cache is a hidden folder: without this the artifact is empty
           retention-days: 7

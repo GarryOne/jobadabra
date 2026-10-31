@@ -89,7 +89,7 @@ export async function fresh(fn, env = process.env) {
 
 // Why (30 Oct 2026, owner: "go" on the beta batch; design rule L): a kept answer never expires. With a 3-day expiry (7 Oct 2026) and a suite's ceiling of 0
 // asks without an answer, the forced live re-ask turned the suite red, and a red run never saves its cache, so it stayed red (beta 41078746088: focus,
-// focusdismiss, employers, wizard). A model update reaches the live lanes (qualityai, mailreading), never a gate through its cache.
+// focusdismiss, employers, wizard). A model update reaches the live lanes (qualityai), never a gate through its cache.
 // -> {status, contentType, body: Buffer} kept for this request, or null (none).
 export function recall(key, env = process.env) {
   if (!replaying(env)) return null;

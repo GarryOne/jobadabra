@@ -25,7 +25,7 @@ const screenOf = (page, urls) => page.evaluate(({urls, selector}) => ({
 }), {urls, selector: CHIP_VALUE});
 
 /** The runner's hang report: last state, exact per-job GET counts, field reports and the hidden browser's targets. */
-const hangOf = seen => ms => new Error(`the step did not finish within ${ms / 1000} s (it hung): ${seen.what} (last read: ${JSON.stringify(seen.state)}) | reads: ${JSON.stringify(seen.held?.reads)} | field reports: ${JSON.stringify(seen.held?.reports)}`);
+const hangOf = seen => () => `${seen.what} (last read: ${JSON.stringify(seen.state)}) | reads: ${JSON.stringify(seen.held?.reads)} | field reports: ${JSON.stringify(seen.held?.reports)}`;   // evidence; the runner says it was cut off
 
 /** Runs one triage proof with four fixture jobs; removes the suite's fixture urls first so only this run's jobs can be picked. No application is started. */
 export async function runTriageCancelSteps(ctx, {urls}) {

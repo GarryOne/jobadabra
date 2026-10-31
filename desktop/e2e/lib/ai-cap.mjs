@@ -19,7 +19,7 @@ export const resetCap = () => { seen = {at: 0, day: '', neurons: null}; };
 // The day's cap in neurons: E2E_AI_CAP_NEURONS from env when it is a number, else CAP_NEURONS. Takes env, returns a number.
 export const capOf = (env = process.env) => Number(env.E2E_AI_CAP_NEURONS) || CAP_NEURONS;
 // The refusal text a capped ask gets: takes the neuron count (null = unreadable) and env, returns the string; it names the fix when the count is unreadable.
-export const capMessage = (neurons, env = process.env, why = '') => (why ? `ai-capped: the Codex broker said no (${why}); it answers from saved replies or the step goes grey (never another provider by itself)` : neurons == null
+export const capMessage = (neurons, env = process.env, why = '', provider = 'Codex broker') => (why ? `ai-capped: the ${provider} said no (${why}); it answers from saved replies or the step goes grey (never another provider by itself)` : neurons == null
   ? 'ai-capped: the account\'s neuron count is unreadable here (CI_CF_ANALYTICS_TOKEN missing or not Account Analytics: Read), so the $1/day cap fails closed; set that secret'
   : `ai-capped: CI's Workers AI is at ${neurons} of ${capOf(env)} neurons today (about $1 a day, owner 28 Oct 2026); it answers from saved replies or the step goes grey`);
 
@@ -60,6 +60,13 @@ export function noteBrokerCapped(why, env = process.env) {
   writeNote(fired, env);
 }
 
+/** Mark a structured provider refusal for the same grey-step/alert path as caps, without calling it a broker or credit failure. */
+export function noteAiRefused(why, env = process.env) {
+  fired = {neurons: null, why, provider: 'AI provider'};
+  console.log(`ai-capped: ${env.E2E_SUITE || 'e2e'} (${why})`);
+  writeNote(fired, env);
+}
+
 // -> {neurons, why?} when a live ask was refused for the cap since the last call (and clears it), else null. The runner calls it before a step and in its catch.
 export function takeCapped() { const was = fired; fired = null; return was; }
 
@@ -67,15 +74,15 @@ export function takeCapped() { const was = fired; fired = null; return was; }
 export function skipStepForCap(name, refusal, env = process.env) {
   skipped.push(name);
   console.log(`- ${name}: skipped (AI capped; ${skipped.length} step(s) skipped in this run)`);
-  const cause = capMessage(refusal.neurons, env, refusal.why).replace(/%/g, '%25').replace(/\r/g, '%0D').replace(/\n/g, '%0A');
-  console.log(`::warning title=AI credit ran out::${cause}`);
+  const cause = capMessage(refusal.neurons, env, refusal.why, refusal.provider).replace(/%/g, '%25').replace(/\r/g, '%0D').replace(/\n/g, '%0A');
+  console.log(`::warning title=${refusal.provider ? 'AI refused' : 'AI credit ran out'}::${cause}`);
   writeNote(refusal, env);
 }
 
-// Why (31 Oct 2026, beta 41135642422): the broker's reason went only to the job log, so qualityai's failure said "no refusal reason recorded"; the file keeps the
-// reason of the refusal that wrote it, never a copy kept from an earlier one (Gitar on #2652: a later neuron cap would carry the broker's old reason).
-function writeNote({neurons, why}, env) {
+// Why (31 Oct 2026, beta 41135642422; supervisor #2667): each grey alert keeps this refusal's reason and provider, so an API refusal is not described as broker credit.
+// The beta lost its reason outside the job log; retain that evidence and never copy an older provider or reason (Gitar on #2652).
+function writeNote({neurons, why, provider}, env) {
   try {
-    if (env.E2E_ARTIFACTS) { fs.mkdirSync(env.E2E_ARTIFACTS, {recursive: true}); fs.writeFileSync(path.join(env.E2E_ARTIFACTS, 'ai-capped.json'), JSON.stringify({neurons, cap: capOf(env), ...(why ? {why} : {}), skipped: skipped.length, steps: skipped, at: new Date().toISOString()})); }
+    if (env.E2E_ARTIFACTS) { fs.mkdirSync(env.E2E_ARTIFACTS, {recursive: true}); fs.writeFileSync(path.join(env.E2E_ARTIFACTS, 'ai-capped.json'), JSON.stringify({neurons, cap: capOf(env), ...(why ? {why} : {}), ...(provider ? {provider} : {}), skipped: skipped.length, steps: skipped, at: new Date().toISOString()})); }
   } catch { /* a note never breaks the run */ }
 }

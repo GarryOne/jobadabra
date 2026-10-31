@@ -7,8 +7,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
-import {removedStrings, suitesExpecting, report, planPrSuites, stepLists, stepsQuoting, windowsSmoke, windowsCiText, WINDOWS_SMOKE, newSideRanges, stepCalls, stepsTouched, rehomeQuotes, stepHomes, pointedWithMap, ON_PR_ELSEWHERE, deferredLines, ownedStepNames, admittedSuites, admissionLanes} from './lib/pr-suites.mjs';
-import {suitesFor} from './lib/plan.mjs';
+import {isAppFile, removedStrings, suitesExpecting, report, planPrSuites, stepLists, stepsQuoting, windowsSmoke, windowsCiText, WINDOWS_SMOKE, newSideRanges, stepCalls, stepsTouched, rehomeQuotes, stepHomes, pointedWithMap, ON_PR_ELSEWHERE, deferredLines, ownedStepNames, admittedSuites, admissionLanes} from './lib/pr-suites.mjs';
+import {suitePartsFor, suitesFor} from './lib/plan.mjs';
 import {suitesUsing, watchesWithImports} from './lib/import-graph.mjs';
 import {hunksFromDiff, mapShas, stepNamesFor, steplessSuites, stepsCovering, stillWholeBy, storeFor, watchedFiles} from './lib/coverage-pick.mjs';
 import {STORES, WHY, whyLines} from './lib/pick-why.mjs';
@@ -33,12 +33,16 @@ function loadMap() {
   } catch (error) { console.log(`pr-suites: no coverage map (${error.message.split('\n')[0]}): the other picks only`); return {}; }
 }
 // The suites and STEPS whose recorded lines this PR changes: the diff from each suite's recorded commit to the PR's head, for the files the PR changes (a superset when
-// main moved on). -> {map, picked: {suite: {steps, setup, whole, reason}}} (lib/coverage-pick.mjs stepsCovering).
+// main moved on). byFile retains every file that reached each suite for watched-part selection. -> {map, picked: {suite: {steps, setup, whole, reason}}} (lib/coverage-pick.mjs stepsCovering).
 function covered(changedFiles, watched = {}) {
   const map = loadMap(), bySha = {};
-  if (!changedFiles.length) return {map, picked: {}};   // `git diff <sha> HEAD --` with no path would diff the whole repo since the map's commit
+  if (!changedFiles.length) return {map, picked: {}, byFile: {}};   // `git diff <sha> HEAD --` with no path would diff the whole repo since the map's commit
   for (const sha of mapShas(map)) { try { bySha[sha] = hunksFromDiff(git(['-C', '../..', 'diff', '-U0', sha, 'HEAD', '--', ...changedFiles])); } catch { /* commit not here: that suite is not picked by lines */ } }
-  return {map, picked: stepsCovering(map, bySha, {watched})};
+  const byFile = Object.fromEntries(changedFiles.map(file => {
+    const only = Object.fromEntries(Object.entries(bySha).map(([sha, hunks]) => [sha, {[file]: hunks[file] || []}]));
+    return [file, Object.keys(stepsCovering(map, only, {watched}))];
+  }));
+  return {map, picked: stepsCovering(map, bySha, {watched}), byFile};
 }
 try {
   // --catches is opt-in local JSON {suite: count}; no private scorecard reads or invented counts.
@@ -56,7 +60,7 @@ try {
     const linux = {};
     for (const suite of facts.all) linux[suite] = (await facts.os(suite)) === 'ubuntu-24.04';
     // A suite's own watched files (exact paths, not folders) are never shared code for it: quality runs for a score.py line (lib/coverage-pick.mjs stepsCovering).
-    const {map, picked: all} = covered(changedFiles, watchedFiles(facts.watches, facts.judges));
+    const {map, picked: all, byFile} = covered(changedFiles, watchedFiles(facts.watches, facts.judges));
     const picked = Object.fromEntries(Object.entries(all).filter(([suite]) => facts.all.includes(suite)));   // a suite removed since the map was made: gone
     const covering = Object.fromEntries(Object.entries(picked).map(([suite, p]) => [suite, p.reason]));
     // A suite a changed file points at runs whole, unless the step map recorded that file for it (a watched src/ Python file): then its lines pick the steps.
@@ -125,7 +129,8 @@ try {
     console.log(`Precise: ${plan.suites.length} suite(s); ${stepCount} picked step(s) in ${Object.keys(steps).length}, ${whole.length} whole (${whole.join(', ') || 'none'})`);
     const stepless = steplessSuites(map);
     if (stepless.length) console.log(`Map: ${stepless.length} of ${Object.keys(map.suites).length} suites have no steps yet (${[...new Set(stepless.map(entry => `${entry.sha} ${entry.at}`))].join('; ')}): a line they ran picks them whole until a whole run of each records its steps`);
-    const stepsOut = JSON.stringify({...steps, ...(burnIn.length ? {'(burn-in)': burnIn} : {}), ...(Object.keys(stores).length ? {[STORES]: stores} : {}), [WHY]: reasons});   // metadata keys no suite has: e2e.yml reads steps by suite name
+    const selectedParts = Object.fromEntries(Object.entries(facts.parts || {}).map(([suite, parts]) => [suite, suitePartsFor(changedFiles, watchesWithImports(parts), changedFiles.filter(file => pointsAt(file).includes(suite) || byFile[file]?.includes(suite) || (hits[suite] && isAppFile(file))))]));
+    const stepsOut = JSON.stringify({...steps, '(parts)': selectedParts, ...(burnIn.length ? {'(burn-in)': burnIn} : {}), ...(Object.keys(stores).length ? {[STORES]: stores} : {}), [WHY]: reasons});   // metadata keys no suite has: e2e.yml reads steps by suite name
     console.log(`suites=${plan.suites.join(',')}\nleft=${plan.left.join(',')}\nsteps=${stepsOut}`);
     const ciText = windowsCiText(file => { try { return fs.readFileSync(path.join(here, '..', '..', file), 'utf8'); } catch { return null; } });
     const windows = windowsSmoke(changedFiles, ciText) ? JSON.stringify(WINDOWS_SMOKE.steps) : '';

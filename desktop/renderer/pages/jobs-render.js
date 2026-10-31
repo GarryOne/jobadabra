@@ -1,6 +1,6 @@
 // Jobs page, the list: renderJobs (rows, filters, row actions), the stuck banner, loading state, kit label. Guarded by: test/count-flash.test.js.
 import {ai} from '../ai-name.js';
-import {closeMenu, el, isInteractiveTarget, moreButton, pill, tag} from '../components.js';
+import {el, holdMenu, isInteractiveTarget, moreButton, pill, tag} from '../components.js';
 import {resumeOffered} from '../claude-help.js';
 import {triageChip} from './jobs-triage.js';
 import {columnOf} from '../jobs-board-rules.js';
@@ -50,8 +50,9 @@ const claudeStarted = new Set();
 
 document.addEventListener('sessions-loaded', () => renderStuck());
 const COUNTS_ALL = new Set(['applied', 'waiting', 'interviews', 'closed']);
+// clean-code-ok: Why (31 Oct 2026): the 252 complexity is the whole Jobs row draw, unchanged; this PR adds two lines to it (hold and restore the open ⋯ menu); splitting the draw is its own refactor.
 export function renderJobs() {
-  closeMenu(document.querySelector('.view[data-view="jobs"]'));   // only a menu on this page
+  const restoreMenu = holdMenu(document.querySelector('.view[data-view="jobs"]'), 'url');   // Why (31 Oct 2026, owner): an open ⋯ menu survives the redraw a sessions update causes; only a menu on this page
   const filters = jobsState.filters;
   const filter = soleFilter(filters);   // '' when several are ticked
   const now = Date.now();
@@ -424,6 +425,7 @@ export function renderJobs() {
   // The board shows applications only (rows with a Stage); the stage filters ticked, a counter and the words narrow it.
   const onBoard = boardIds(filters);   // the ticked filters that name a stage; none: every application
   paintViews((counted || shared.allJobs).filter(job => columnOf(job) && (counted || !onBoard.length || inFilters(job, onBoard, now)) && matches(job, text)));   // a job the board has a column for (jobs-board-rules.js)
+  restoreMenu();
 }
 
 // "Refresh jobs" in the empty list is the same trigger as the header button (a disabled one, while a refresh runs, ignores it).

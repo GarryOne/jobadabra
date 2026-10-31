@@ -610,6 +610,7 @@ jobs:
       # Why (29 Oct 2026, owner-approved design rule A; 30 Oct 2026, beta 41078746088): every backbone suite answers from stored answers here as in e2e.yml, from the
       # same matrix.aiAnswers (plan-run.mjs). This copy's own list named quality only, so the beta ran applyflows, jobs, interviews and failuresnotion live.
       E2E_AI_ANSWERS: ${{ matrix.aiAnswers || 'off' }}
+      E2E_QUALITY_PARTS: ${{ matrix.suite == 'qualityai' && toJSON(matrix.qualityParts) || '' }}
       E2E_QUALITY_HISTORY: ${{ matrix.suite == 'qualityai' && format('{0}/desktop/e2e/.quality-rate/history.json', github.workspace) || '' }}
       E2E_BLOB_DIR: ${{ github.workspace }}/blob-report   # the suite's part of the run's HTML report (the report job merges them)
       E2E_RUN_KIND: gate   # how an issue names the run (lib/replay.mjs)
@@ -671,8 +672,8 @@ jobs:
         uses: actions/cache/restore@v5
         with:
           path: desktop/e2e/.ai-cache
-          key: ai-answers-${{ matrix.key }}${{ matrix.key == 'mailreading' && '-v2' || '' }}-${{ github.run_id }}-${{ github.run_attempt }}
-          restore-keys: ai-answers-${{ matrix.key }}${{ matrix.key == 'mailreading' && '-v2' || '' }}-
+          key: ai-answers-${{ matrix.key }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: ai-answers-${{ matrix.key }}-
       - name: The live qualityai rate history (lib/quality-rate.mjs)
         if: matrix.suite == 'qualityai'
         uses: actions/cache/restore@v5
@@ -727,8 +728,8 @@ jobs:
             echo "grey=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          replay=0; [ "${{ matrix.suite }}" != quality ] || replay="$E2E_AI_REPLAY"   # quality's retry replays like its first try (owner, 27 Oct 2026: "Code gate + AI rate")
-          export E2E_ARTIFACTS="${{ github.workspace }}/e2e-rerun/${{ matrix.key }}" E2E_RERUN=1 E2E_AI_REPLAY="$replay"   # fresh answers, never the first try's (a replayed bad draw proves nothing); quality's retry replays like its first try (owner, 27 Oct 2026); a second try writes no HTML report (report/playwright.config.mjs)
+          # Why (31 Oct 2026, owner): backbone retries use the same saved answers; only tolerant lanes may draw fresh AI (wizard run 41163541081).
+          export E2E_ARTIFACTS="${{ github.workspace }}/e2e-rerun/${{ matrix.key }}" E2E_RERUN=1 E2E_AI_REPLAY=1   # same stored table as the first try; a second try writes no HTML report (report/playwright.config.mjs)
           again() { if [ "$RUNNER_OS" = Linux ]; then xvfb-run -a --server-args='-screen 0 1440x900x24' node suite.mjs "$1"; else node suite.mjs "$1"; fi; }
           # Why (#2199): only the first try's red steps and their setup (owner, 27 Oct 2026: "Retry only the red steps"; red-steps.mjs); no step to name, or a build without red-steps.mjs (an older tag: stable canary 40503508863): the whole suite.
           red=; [ ! -f red-steps.mjs ] || red=$(node red-steps.mjs "$first/suite-failures.json")
@@ -786,7 +787,7 @@ jobs:
         uses: actions/cache/save@v5
         with:
           path: desktop/e2e/.ai-cache
-          key: ai-answers-${{ matrix.key }}${{ matrix.key == 'mailreading' && '-v2' || '' }}-${{ github.run_id }}-${{ github.run_attempt }}
+          key: ai-answers-${{ matrix.key }}-${{ github.run_id }}-${{ github.run_attempt }}
       - name: Keep the live qualityai rate history, red or green on main
         if: always() && matrix.suite == 'qualityai' && env.E2E_AI_REPLAY != '1' && github.ref == 'refs/heads/main' && hashFiles('desktop/e2e/.quality-rate/history.json') != ''
         uses: actions/cache/save@v5
@@ -1029,8 +1030,8 @@ jobs:
         uses: actions/cache/restore@v5
         with:
           path: desktop/e2e/.ai-cache
-          key: ai-answers-windows-${{ matrix.key }}${{ matrix.key == 'mailreading' && '-v2' || '' }}-${{ github.run_id }}-${{ github.run_attempt }}
-          restore-keys: ai-answers-windows-${{ matrix.key }}${{ matrix.key == 'mailreading' && '-v2' || '' }}-
+          key: ai-answers-windows-${{ matrix.key }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: ai-answers-windows-${{ matrix.key }}-
       # The lock is taken as late as possible (after the installs, which never touch the suite's Notion page): a waiting job holds its runner.
       - name: The App token for the lock (a re-run attempt's workflow token cannot create refs)
         id: lock_app
@@ -1071,8 +1072,8 @@ jobs:
             echo "grey=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          replay=0; [ "${{ matrix.suite }}" != quality ] || replay="$E2E_AI_REPLAY"   # quality's retry replays like its first try (owner, 27 Oct 2026: "Code gate + AI rate")
-          export E2E_ARTIFACTS="${{ github.workspace }}/e2e-rerun/windows-${{ matrix.key }}" E2E_RERUN=1 E2E_AI_REPLAY="$replay"   # fresh answers, never the first try's (a replayed bad draw proves nothing); quality's retry replays like its first try (owner, 27 Oct 2026); a second try writes no HTML report (report/playwright.config.mjs)
+          # Why (31 Oct 2026, owner): backbone retries use the same saved answers; only tolerant lanes may draw fresh AI (wizard run 41163541081).
+          export E2E_ARTIFACTS="${{ github.workspace }}/e2e-rerun/windows-${{ matrix.key }}" E2E_RERUN=1 E2E_AI_REPLAY=1   # same stored table as the first try; a second try writes no HTML report (report/playwright.config.mjs)
           again() { if [ "$RUNNER_OS" = Linux ]; then xvfb-run -a --server-args='-screen 0 1440x900x24' node suite.mjs "$1"; else node suite.mjs "$1"; fi; }
           # Why (#2199): only the first try's red steps and their setup (owner, 27 Oct 2026: "Retry only the red steps"; red-steps.mjs); no step to name, or a build without red-steps.mjs (an older tag: stable canary 40503508863): the whole suite.
           red=; [ ! -f red-steps.mjs ] || red=$(node red-steps.mjs "$first/suite-failures.json")
@@ -1139,7 +1140,7 @@ jobs:
         uses: actions/cache/save@v5
         with:
           path: desktop/e2e/.ai-cache
-          key: ai-answers-windows-${{ matrix.key }}${{ matrix.key == 'mailreading' && '-v2' || '' }}-${{ github.run_id }}-${{ github.run_attempt }}
+          key: ai-answers-windows-${{ matrix.key }}-${{ github.run_id }}-${{ github.run_attempt }}
       - name: Scan artifact contents for CI secrets
         working-directory: ${{ github.workspace }}
         id: artifact_scan_7

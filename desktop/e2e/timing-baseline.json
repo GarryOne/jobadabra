@@ -60,11 +60,7 @@
     "elapsedAssertions": 0
   },
   "jobs": {
-    "fixedWaits": 5,
-    "elapsedAssertions": 0
-  },
-  "mailreading": {
-    "fixedWaits": 0,
+    "fixedWaits": 4,
     "elapsedAssertions": 0
   },
   "notion-real": {

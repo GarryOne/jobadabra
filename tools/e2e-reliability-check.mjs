@@ -178,6 +178,10 @@ export function checkPush({root, base = 'origin/main'}) {
         const was = entry.aiMissesMax, now = next.suites?.[name]?.aiMissesMax;
         if (was !== undefined && (now === undefined || now > was)) needsCitation.push(`${REGISTRY}: ${name} loosens its AI-ask ceiling (${was} -> ${now ?? 'none'})`);
       }
+      // Why (31 Oct 2026, Gitar on #2664): an exception turns the zero-miss check off, so a new or reworded one is an expectation change too, new suites included.
+      for (const [name, entry] of Object.entries(next.suites || {})) {
+        if (entry?.aiMissesException !== undefined && entry.aiMissesException !== lanes.suites?.[name]?.aiMissesException) needsCitation.push(`${REGISTRY}: ${name} adds or changes its AI-ask exception`);
+      }
     }
   }
   const found = harnessProblems(changes, messages).map(problem => `Rule F: ${problem}`);

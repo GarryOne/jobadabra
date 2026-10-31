@@ -1,4 +1,5 @@
-// A fake Google API for the end-to-end tests (5 Oct 2026): the Gmail check reads invented emails (the mailreading eval's own, tests/fixtures/mail_eval.json) from here
+// A fake Google API for the end-to-end tests (5 Oct 2026): the Gmail check reads invented emails (the qualityai mail eval's own, tests/fixtures/mail_eval.json) from here
+// Job: run the backbone
 // instead of a real inbox (JOB_PILOTTO_E2E_GOOGLE_BASE_URL, test runs only: <base>/<google host>/<path>). It can also refuse the sign-in, as a revoked Google access does.
 import http from 'node:http';
 import {markPlanted} from './planted.mjs';

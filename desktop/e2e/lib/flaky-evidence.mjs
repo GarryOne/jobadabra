@@ -12,16 +12,17 @@ import path from 'node:path';
 import {judge, stepFiles, touched} from './flaky-verdict.mjs';
 import {suiteOfKey} from './suite-shards.mjs';
 
-export const WINDOW_RUNS = 40;   // runs of e2e.yml looked at, newest first (about two days of main plus PR runs)
+export const WINDOW_RUNS = 100;   // runs of e2e.yml looked at (one API page: about a day of main plus PR runs); the ones nearest the red in time are compared first
 export const MAX_GREENS = 12;    // greens compared per step before "changed" is the answer
 const NOT_EVIDENCE = /^(Mutant|Bisect) /;   // a mutant's green is on purpose-broken code
 
 /**
- * Verdicts for red steps of one suite. io: {runs(limit) -> [{id, sha, title, url}], viewNames(runId) -> [artifact name], stepsOf(runId, name) -> steps.json | null,
+ * Verdicts for red steps of one suite. redAt: when the red run started; greens are compared nearest in time first, on either side (a green much newer than the red may already
+ * carry the fix, which would read "changed" for a red that was flaky when it happened; the nearest greens are the fair comparison). io: {runs(limit) -> [{id, sha, at, title, url}], viewNames(runId) -> [artifact name], stepsOf(runId, name) -> steps.json | null,
  * changedNames(greenSha, redSha) -> [path] | null, readAt(sha, path) -> text | null, coverageMap() -> map | null}.
  * @returns {Promise<{step: string, redSha: string, verdict: string, green?: object, files?: string[], compared: number}[]>}
  */
-export async function verdictsFor({suite, steps, redSha, redRun, io, window = WINDOW_RUNS, maxGreens = MAX_GREENS}) {
+export async function verdictsFor({suite, steps, redSha, redRun, redAt, io, window = WINDOW_RUNS, maxGreens = MAX_GREENS}) {
   const map = await io.coverageMap().catch(() => null);
   const texts = new Map();
   const read = file => { if (!texts.has(file)) texts.set(file, io.readAt(redSha, file)); return texts.get(file); };
@@ -29,7 +30,11 @@ export async function verdictsFor({suite, steps, redSha, redRun, io, window = WI
   const compared = Object.fromEntries(steps.map(step => [step, []]));
   const diffs = new Map();
   const pending = new Set(steps);
-  for (const run of (await io.runs(window)).filter(item => String(item.id) !== String(redRun) && !NOT_EVIDENCE.test(item.title || ''))) {
+  const listed = await io.runs(window);
+  const at = Date.parse(redAt || listed.find(item => String(item.id) === String(redRun))?.at || '');
+  const apart = item => (Number.isNaN(at) || !item.at ? 0 : Math.abs(Date.parse(item.at) - at));
+  const candidates = listed.filter(item => String(item.id) !== String(redRun) && !NOT_EVIDENCE.test(item.title || ''));
+  for (const run of Number.isNaN(at) ? candidates : [...candidates].sort((a, b) => apart(a) - apart(b))) {
     if (!pending.size) break;
     const names = (await io.viewNames(run.id)).filter(name => name.startsWith('e2e-view-') && suiteOfKey(name.slice('e2e-view-'.length)) === suite);
     for (const name of names) {
@@ -96,8 +101,8 @@ export function ghIo({repo, root = process.cwd(), run = gh, remoteUrl = `https:/
     try { return JSON.parse(fs.readFileSync(path.join(dir, file), 'utf8')); } finally { fs.rmSync(dir, {recursive: true, force: true}); }
   };
   return {
-    runs: async limit => JSON.parse(run(['api', `repos/${repo}/actions/workflows/e2e.yml/runs?status=completed&per_page=${limit}`, '--jq',
-      '[.workflow_runs[] | {id, sha: .head_sha, title: .display_title, url: .html_url}]'])),
+    runs: async limit => JSON.parse(run(['api', `repos/${repo}/actions/workflows/e2e.yml/runs?status=completed&per_page=${Math.min(limit, 100)}`, '--jq',
+      '[.workflow_runs[] | {id, sha: .head_sha, at: .created_at, title: .display_title, url: .html_url}]'])),
     viewNames: async runId => run(['api', '--paginate', `repos/${repo}/actions/runs/${runId}/artifacts?per_page=100`, '--jq', '.artifacts[] | select(.expired == false) | .name']).split('\n').filter(Boolean),
     stepsOf: async (runId, name) => readJson(runId, name, 'steps.json'),
     changedNames: async (green, red) => {

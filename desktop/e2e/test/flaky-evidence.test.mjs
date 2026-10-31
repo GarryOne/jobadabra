@@ -47,7 +47,19 @@ test('a step the coverage map does not know counts the whole desktop/ app, so th
   assert.ok(read.files.includes('desktop/e2e/ci-alert.mjs'));
 });
 
-test('a mutant run is never evidence, and the red run itself is not compared with itself', async () => {
+test('greens are compared nearest the red in time, on either side: newer greens that carry the fix must not crowd out the older one that did not change', async () => {
+  const at = minutes => new Date(Date.UTC(2026, 9, 31, 12, 0) + minutes * 60000).toISOString();
+  const runs = [{id: 20, sha: 'new0001', at: at(300), title: 'E2E after merge', url: 'https://x/20'}, {id: 21, sha: 'new0002', at: at(200), title: 'E2E after merge', url: 'https://x/21'},
+    {id: 9, sha: RED, at: at(0), title: 'E2E after merge', url: 'https://x/9'}, {id: 22, sha: 'old0001', at: at(-5), title: 'E2E after merge', url: 'https://x/22'}];
+  const all = {viewNames: async () => ['e2e-view-apply-1of3'], stepsOf: async () => table(READ), changedNames: async green => (green === 'old0001' ? ['desktop/e2e/ci-alert.mjs'] : ['desktop/lib/apply-run.js'])};
+  const [near] = await verdictsFor({suite: 'apply', steps: [READ], redSha: RED, redRun: 9, maxGreens: 2, io: io({runs: async () => runs, ...all})});
+  assert.equal(near.verdict, 'flaky', 'the green 5 minutes before the red is compared first, then the nearest newer one');
+  assert.equal(near.green.sha, 'old0001');
+  const [unordered] = await verdictsFor({suite: 'apply', steps: [READ], redSha: RED, redRun: 9, maxGreens: 2, io: io({runs: async () => runs.map(({at: _at, ...rest}) => rest), ...all})});
+  assert.equal(unordered.verdict, 'changed', 'positive control: with no times the newest two fill the cap');
+});
+
+test('a mutant run, and the red run itself is not compared with itself', async () => {
   const seen = [];
   await verdictsFor({suite: 'apply', steps: [STOP], redSha: RED, redRun: 2, io: io({stepsOf: async (id, name) => { seen.push(id); return tables[`${id}:${name}`] || null; }})});
   assert.ok(!seen.includes(3) && !seen.includes(2));

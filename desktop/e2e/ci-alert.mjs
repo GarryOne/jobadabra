@@ -88,8 +88,8 @@ export async function flakyCauses(causes, runId, env = process.env, fetcher = fe
   let timer;
   try {
     const read = (async () => {
-      const redSha = (await get(`${API(env)}/repos/${env.GITHUB_REPOSITORY}/actions/runs/${runId}`, env, fetcher)).head_sha;
-      return {redSha, found: await verdictsForCauses(causes, {redSha, redRun: runId, io}) };
+      const run = await get(`${API(env)}/repos/${env.GITHUB_REPOSITORY}/actions/runs/${runId}`, env, fetcher);
+      return {redSha: run.head_sha, found: await verdictsForCauses(causes, {redSha: run.head_sha, redRun: runId, redAt: run.created_at, io})};
     })();
     const {redSha, found} = await Promise.race([read, new Promise((_, stop) => { timer = setTimeout(() => stop(new Error('flaky read took too long')), deadlineMs); })]);
     return causes.map(cause => {

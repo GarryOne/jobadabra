@@ -16,10 +16,10 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 /** The verdicts for a red run's failed steps: [{suite, step, verdict, green, files, compared, redSha, line}]. */
 export async function verdictsOfRun({runId, repo, io = ghIo({repo, root: ROOT}), causes, window}) {
-  const sha = execFileSync('gh', ['api', `repos/${repo}/actions/runs/${runId}`, '--jq', '.head_sha'], {encoding: 'utf8'}).trim();
+  const [sha, redAt] = execFileSync('gh', ['api', `repos/${repo}/actions/runs/${runId}`, '--jq', '[.head_sha, .created_at] | @tsv'], {encoding: 'utf8'}).trim().split('\t');
   const token = process.env.GH_TOKEN || execFileSync('gh', ['auth', 'token'], {encoding: 'utf8'}).trim();
   const found = causes || await stepCauses(runId, {...process.env, GH_TOKEN: token, GITHUB_REPOSITORY: repo});
-  return (await verdictsForCauses(found, {redSha: sha, redRun: runId, io, ...(window ? {window} : {})})).map(item => ({...item, line: sayLine(item)}));
+  return (await verdictsForCauses(found, {redSha: sha, redRun: runId, redAt, io, ...(window ? {window} : {})})).map(item => ({...item, line: sayLine(item)}));
 }
 
 async function main(argv) {

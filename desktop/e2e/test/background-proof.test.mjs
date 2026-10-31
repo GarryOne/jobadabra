@@ -153,6 +153,22 @@ test('the hidden worker command awaits its poll promise before reading the reply
   assert.equal(packet.params.awaitPromise, true);
 });
 
+// Why (31 Oct 2026, re-check 41198629562, apply-2of3): the poll awaits the app's /extension/background-apply ([ext-http] 4.1 and 4.8 s there, no AI), and a 4 s
+// cap on the whole evaluate timed the app's work, not the worker's reply. The step's hang cap is the strict poll's only clock (rule B).
+test('the strict due-time poll has no clock of its own; a diagnostics read keeps its cap', async () => {
+  class Socket {
+    constructor() { queueMicrotask(() => this.onopen()); }
+    send() { queueMicrotask(() => this.onmessage({data: JSON.stringify({id: 1, result: {result: {value: true}}})})); }
+    close() {}
+  }
+  const begin = source.indexOf('export const evaluateOn ='), end = source.indexOf('/** The debugging port', begin);
+  // A cap fires before the reply arrives, as a slow app request makes it on CI.
+  const evaluateOn = vm.runInNewContext(source.slice(begin, end).replace('export const', 'const') + '; evaluateOn;', {WebSocket: Socket, setTimeout: fire => queueMicrotask(fire), clearTimeout: () => {}});
+  assert.equal(await evaluateOn('ws://fixture', 'diagnostics()'), null, 'a diagnostics read still ends at its cap');
+  const {pollOwnedBackground} = await import('../lib/apply-hold.mjs');
+  assert.equal(await pollOwnedBackground('/fixture', {targets: async () => [{type: 'service_worker', webSocketDebuggerUrl: 'ws://fixture'}], evaluate: evaluateOn}), true);
+});
+
 test('a due-time proof requires a live worker and an acknowledged extension poll', async () => {
   const {pollOwnedBackground} = await import('../lib/apply-hold.mjs');
   await assert.rejects(() => pollOwnedBackground('/fixture', {targets: async () => []}), /no.*service worker/);

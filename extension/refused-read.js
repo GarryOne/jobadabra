@@ -13,6 +13,7 @@ export const NOW_ALARM = 'refused-reads-now';   // every minute: has the person 
 export const PAUSE_MS = [5000, 12000];   // between sites: gentle, one at a time
 export const MAX_SITES = 12;             // the app's own cap, kept here too
 export const MAX_BYTES = 3_000_000;
+// Why (31 Oct 2026, owner): LinkedIn stays on this list. Its opt-in headless read (desktop/lib/linkedin-headless.js) is a separate path with the person's copied session; this one has no cookies and no logins.
 const NEVER = ['linkedin.', 'indeed.', 'glassdoor.', 'levels.fyi', 'reddit.', 'xing.'];   // login-wall sites: only through the person's own visit
 
 export function mayFetch(url) {

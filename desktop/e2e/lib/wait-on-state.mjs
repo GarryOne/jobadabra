@@ -91,8 +91,8 @@ export function accountSafetyEvidence(log, {since = '', host, path}) {
 
 /**
  * The extension's decisions as app.log lines (desktop/lib/server-env.js onLog writes them the same way), read where they are made: the extension's own store
- * (extension/log.js), then app.log for those the store has rolled out. Why (30 Oct 2026, owner on #2612; #2608): the store holds a decision as soon as its burst's one
- * write ends (31 Oct 2026: memory is the owner, extension/log.js group commit; a few ms, not a push); app.log gets it by a push that ran 14-62 s late, so steps that read app.log waited on delivery, not on the decision (3 tries: 10 s, 45 s, 60 s).
+ * (extension/log.js), then app.log for those the store has rolled out. Why (30 Oct 2026, owner on #2612; #2608): the store is the copy this wait reads: it lags the log's
+ * memory (the line's owner since 31 Oct 2026, extension/log.js) by the one write in flight, a few ms, never a push; it stays the copy because the worker's memory is not readable from outside (Gitar on #2673); app.log gets it by a push that ran 14-62 s late, so steps that read app.log waited on delivery, not on the decision (3 tries: 10 s, 45 s, 60 s).
  */
 export async function extensionDecisions({browser, profile}) {
   const kept = await browser.serviceWorker().then(worker => worker.evaluate(async () => (await chrome.storage.local.get('jp-decisions'))['jp-decisions'] || [])).catch(() => []);

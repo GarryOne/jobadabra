@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {fillTab, PAGE_FILES} from '../../extension/flow.js';
-import {pushDecisions} from '../../extension/log.js';
+import {crashCopyWritten, pushDecisions} from '../../extension/log.js';
 import {disarmRecordUpdate} from '../../extension/ladder/record-update.js';
 
 const TAB = {id: 719, url: 'https://forms.example.test/apply#step'};
@@ -81,6 +81,7 @@ async function run(options = {}, scenario = {}) {
     try { result = await fillTab(TAB, {...CONFIG, ...scenario.config}, {...options, onStep: text => steps.push(text)}); }
     catch (caught) { error = caught; }
     await pushDecisions();
+    await crashCopyWritten();   // the push never waits for storage: the stored copy is read after its own write
     return {result, error, calls, fills, steps, requests, session, page,
       decisions: (local['jp-decisions'] || []).map(({text, fields}) => ({text, fields})),
       run: requests.find(request => request.path === '/extension/run')?.body};

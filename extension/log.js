@@ -77,6 +77,8 @@ function persist() {
   })();
   return writing;
 }
+/** Resolve when the crash copy holds everything appended so far (for a caller or test that needs storage current; the push never waits for it). */
+export const crashCopyWritten = () => flushed();
 /** Resolve when a write that started after this call's line was appended has finished (later lines are not waited for). */
 function flushed() {
   const seq = ++appended;
@@ -147,7 +149,7 @@ async function pushNow() {
     while (true) {
       // Why (30 Oct 2026, ap; Gitar on the span PR): drain oldest first in route-safe batches of 50; only an ok batch is marked sent, and fetch stays outside storage so spans cannot stall product writes.
       const batch = ring.filter(entry => !entry.sent).slice(0, 50);
-      if (!batch.length) { await writing; return true; }
+      if (!batch.length) return true;
       Object.assign(marks, {read: Date.now(), lines: batch.length, onlyNotes: batch.every(entry => entry.kind === 'log' && entry.text === 'slow push')});
       const response = await fetch(`${config.workerUrl.replace(/\/$/, '')}/extension/log`, {method: 'POST',
         headers: {Authorization: `Bearer ${config.token}`, 'Content-Type': 'application/json'},
@@ -155,7 +157,7 @@ async function pushNow() {
       marks.posted = Date.now();
       if (!response.ok) { noteIfSlow(true); return false; }
       for (const entry of batch) entry.sent = true;   // the entries themselves, so a trim during the POST cannot mark a neighbour
-      await flushed();
+      persist().catch(() => {});   // the crash copy follows; the next POST never waits for storage (Gitar on #2673: a stalled `set` must not stop the drain)
       marks.marked = Date.now();
       noteIfSlow();
       marks = {start: Date.now()};

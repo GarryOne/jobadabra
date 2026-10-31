@@ -76,7 +76,8 @@ test('a slow await logs paired measured spans, including rejection, without wait
     },
   });
   t.after(() => hooks.deregister());
-  const {span, pushDecisions} = await import(`../../extension/log.js?fresh=${++fresh}`);
+  const {span, pushDecisions: push, crashCopyWritten} = await import(`../../extension/log.js?fresh=${++fresh}`);
+  const pushDecisions = async () => { await push(); await crashCopyWritten(); };
   assert.equal(typeof span, 'function', 'the production span helper must exist');
   let release;
   const slow = new Promise(resolve => { release = resolve; });
@@ -131,7 +132,9 @@ async function extensionLog(t, reply, {serial = false, kept: start = []} = {}) {
     },
   });
   t.after(() => hooks.deregister());
-  return {...await import(`../../extension/log.js?fresh=${++fresh}`), batches, stats, kept: () => kept['jp-decisions'] || []};
+  const log = await import(`../../extension/log.js?fresh=${++fresh}`);
+  // pushDecisions never waits for storage (Gitar on #2673); a test that reads the crash copy waits for it explicitly. rawPush is the push itself.
+  return {...log, rawPush: log.pushDecisions, pushDecisions: async () => { await log.pushDecisions(); await log.crashCopyWritten(); }, batches, stats, kept: () => kept['jp-decisions'] || []};
 }
 
 for (const failure of ['non-ok', 'rejected']) test(`a ${failure} POST leaves the burst unsent and one later push drains every line oldest first`, async t => {
@@ -173,8 +176,8 @@ test('writes during a busy POST coalesce instead of waiting for one POST per lin
   for (let i = 0; i < 60; i++) await log.decide('span', `step ${i}`);
   const product = "page kind corrected: a posting with no Apply but a form's fields";
   await log.decide('fill', product);
-  const owner = log.pushDecisions();
-  const followers = Array.from({length: 60}, () => log.pushDecisions());
+  const owner = log.rawPush();
+  const followers = Array.from({length: 60}, () => log.rawPush());
   await owner;
   t.diagnostic(`interleaved burst POST count: ${log.batches.length}`);
   assert.ok(log.batches.length <= 4, `expected at most 4 POSTs, got ${log.batches.length}`);
@@ -316,4 +319,13 @@ test('a stalled storage cannot grow the ring in memory without bound', async t =
   await new Promise(resolve => setTimeout(resolve, 5));
   await Promise.race([log.pushDecisions(), new Promise(resolve => setTimeout(resolve, 20))]);
   assert.ok(log.batches.flat().length <= 300, `the stalled ring stayed bounded, pushed ${log.batches.flat().length}`);
+});
+
+test('a storage write that never settles does not stop the drain: every batch is still delivered (Gitar on #2673)', async t => {
+  const log = await extensionLog(t);
+  globalThis.chrome.storage.local.set = () => new Promise(() => {});
+  for (let i = 0; i < 120; i++) log.decide('span', `step ${i}`).catch(() => {});
+  await new Promise(resolve => setTimeout(resolve, 5));
+  await Promise.race([log.rawPush(), new Promise((_, reject) => setTimeout(() => reject(new Error('the drain waited for a write that never settles')), 500))]);
+  assert.equal(log.batches.flat().length, 120, 'all 120 lines reached the app while storage hung');
 });

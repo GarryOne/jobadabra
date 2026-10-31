@@ -39,9 +39,9 @@ test('every forms and CV step of apply is weighed or follows one, and no weight 
 // Why (31 Oct 2026, owner chose "Split apply first"): two halves of ~640 s plus setup sat at the 11-minute budget; each third must stay near a third.
 test('apply\'s three slices are within a tenth of each other, and the hidden need of "Ready to submit" is said', () => {
   const owner = weighedSlices(apply.stepSeconds, apply.shards), load = [1, 2, 3].map(index => Object.entries(apply.stepSeconds).filter(([head]) => owner[head] === index).reduce((sum, [, s]) => sum + s, 0));
-  const total = load.reduce((sum, s) => sum + s, 0);
+  const mean = load.reduce((sum, s) => sum + s, 0) / load.length;
   assert.equal(apply.shards, 3);
-  assert.ok((Math.max(...load) - Math.min(...load)) / total < 0.1, `slices ${load.join(' vs ')} s`);
+  assert.ok((Math.max(...load) - Math.min(...load)) / mean < 0.1, `slices ${load.join(' vs ')} s`);
   assert.ok(apply.stepNeeds['Ready to submit']?.includes('cannot operate'), 'it reads the tab the "cannot operate" step left');
 });
 

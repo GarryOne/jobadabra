@@ -17,7 +17,10 @@ export {titleCase};   // one place for it: renderer/fragment-words.js
 
 // ---------- step 3: review the drafted strategy ----------
 let draftSavedTimer, editsTimer;
+// Pending first-setup completion is renderer state: saveStrategy already persists setupDone in both stores.
+let setupFinishReady = false;
 export function draftChanged(fields) {
+  if (setupFinishReady) { setupFinishReady = false; show($('setup-finish'), false); show($('draft-actions')); }
   clearTimeout(editsTimer);
   editsTimer = setTimeout(async () => {
     await window.pilot.cacheDraftEdits(Object.fromEntries(fields.map(field => [field, shared.draft[field]])));
@@ -38,6 +41,7 @@ function noteSummary() {
 }
 // Before a draft exists, after a failed one, or on Rebuild from CV: what the user wants, then Build my strategy.
 export function showDraftIntro() {
+  setupFinishReady = false;
   hideCards();
   placeNote('intro');
   show($('draft-intro')); show($('draft-actions'), false);
@@ -75,6 +79,8 @@ export async function toDraft() {
   $('draft-stale-text').textContent = cached.cvChanged ? 'Your CV changed since this strategy was drafted.'
     : answersChanged ? 'Your note changed since this strategy was drafted.' : '';
   show($('draft-stale'), !!stale);
+  if (stale) setupFinishReady = false;
+  if (setupFinishReady) showSetupFinish();
 }
 async function saveDraft(parts = null) {
   for (const key of Object.keys(saveState)) delete saveState[key];
@@ -100,6 +106,7 @@ async function saveDraft(parts = null) {
   $('save-title').textContent = byStore('Saved to Notion ✓', 'Saved ✓');
   $('save-bar').style.width = '100%';
   shared.state = await window.pilot.state();
+  setupFinishReady = !replacing;
   // A replaced strategy: back to the app; the first setup: on to the last step.
   setTimeout(() => {
     $('save-dialog').close();
@@ -154,6 +161,7 @@ const outside = (dialog, event) => {
   return event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom;
 };
 async function finishSetup() {
+  setupFinishReady = false;
   hideCards();
   shared.state.settings = await window.pilot.saveSettings({setupDone: true});
   show($('wizard'), false); show($('app'));

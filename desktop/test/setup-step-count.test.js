@@ -69,10 +69,37 @@ test('the simplified wizard loops through exactly four visible steps and finishe
   assert.equal(finish.closest('.step').dataset.step, 'draft');
   assert.equal(finish.closest('.step').hidden, false);
   assert.equal(finish.parentNode.hidden, false);
-  assert.equal(view.settings.setupDone, undefined, 'finishing is still the person’s explicit choice');
+  assert.equal(view.settings.setupDone, true, 'the real saveStrategy IPC persists setupDone');
+  assert.deepEqual(view.opened, [], 'the finish button still owns opening Jobs');
   await view.click('finish');
   assert.equal(view.settings.setupDone, true);
   assert.equal(view.document.getElementById('wizard').hidden, true);
   assert.equal(view.document.getElementById('app').hidden, false);
   assert.deepEqual(view.opened, ['jobs']);
+});
+
+
+test('returning to a saved first-setup strategy keeps finish without repeating the save', async () => {
+  const view = wizardFixture();
+  view.goStep('draft');
+  await view.saveDraft();
+  assert.equal(view.saves.length, 1);
+  view.goStep('cv');
+  await view.toDraft();
+  assert.equal(view.document.getElementById('setup-finish').hidden, false);
+  assert.equal(view.document.getElementById('draft-actions').hidden, true);
+  assert.equal(view.saves.length, 1, 'navigation never saves or reads CV details again');
+  await view.click('finish');
+  assert.deepEqual(view.opened, ['jobs']);
+});
+
+
+test('editing a saved setup draft restores Save and hides finish until another save', async () => {
+  const view = wizardFixture();
+  view.goStep('draft');
+  await view.saveDraft();
+  view.draftChanged(['profile_markdown']);
+  assert.equal(view.document.getElementById('setup-finish').hidden, true);
+  assert.equal(view.document.getElementById('draft-actions').hidden, false);
+  assert.equal(view.saves.length, 1);
 });

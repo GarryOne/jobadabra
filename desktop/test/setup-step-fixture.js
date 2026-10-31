@@ -47,17 +47,19 @@ export function wizardFixture() {
   for (const [, key] of html.matchAll(/data-save-step="([^"]+)"/g)) { const li = el('li'); li.dataset.saveStep = key; document.body.append(li); }
   $('save-dialog').showModal = () => { $('save-dialog').open = true; };
   $('save-dialog').close = () => { $('save-dialog').open = false; };
-  const settings = {}, opened = [], state = {settings, secrets: {}};
-  window.pilot = {saveSettings: async patch => Object.assign(settings, patch), saveStrategy: async () => ({ok: true}), state: async () => state};
+  const settings = {}, opened = [], state = {settings, secrets: {}}, saves = [];
+  const cached = {answers: {anything_else: ''}, draft: {summary: 'Fictional strategy'}};
+  window.pilot = {saveSettings: async patch => Object.assign(settings, patch), saveStrategy: async draft => { saves.push(draft); settings.setupDone = true; return {ok: true}; }, state: async () => state,
+    cachedDraft: async () => cached, cacheDraftEdits: async edits => Object.assign(cached.draft, edits)};
   const context = {document, window, el, $, show: (node, on = true) => { node.hidden = !on; },
     shared: {state, draft: {}}, STEPS: [...read('pages/core.js').match(/STEPS = \[([^\]]*)\]/)[1].matchAll(/'([a-z]+)'/g)].map(m => m[1]),
-    hideCards() {}, refreshCv() {}, mountEngine: () => ({picked: () => null, status: () => null}), canContinue: () => false, setTimeout: fn => fn(), saveState: {},
+    hideCards() {}, refreshCv() {}, mountEngine: () => ({picked: () => null, status: () => null}), canContinue: () => false, setTimeout: fn => fn(), clearTimeout() {}, saveState: {},
     message() {}, byStore: (_, local) => local, osText: text => text, loadJobs() {}, openView: name => opened.push(name),
     getComputedStyle: node => ({display: node.style.display || 'list-item', visibility: node.style.visibility || 'visible'})};
   const wizard = vm.runInNewContext(`${script('pages/wizard.js')}\n({goStep, showSetupFinish, labels: setupStepLabels})`, context);
-  const review = vm.runInNewContext(`${script('pages/strategy-review.js')}\n({saveDraft, init})`, {...context, ...wizard,
-    buildDraft() {}, currentAnswers: () => ({anything_else: ''}), toDraft() {}, titleCase: text => text});
+  const review = vm.runInNewContext(`${script('pages/strategy-review.js')}\n({saveDraft, toDraft, draftChanged, init})`, {...context, ...wizard,
+    showCards() {}, costText: () => '', dollars: value => value, buildDraft() {}, currentAnswers: () => ({anything_else: ''}), titleCase: text => text});
   review.init();
   const click = async id => { for (const listener of $(id).listeners.click || []) await listener({}); };
-  return {document, list, settings, opened, click, saveDraft: review.saveDraft, ...wizard};
+  return {document, list, settings, opened, click, saves, saveDraft: review.saveDraft, toDraft: review.toDraft, draftChanged: review.draftChanged, ...wizard};
 }

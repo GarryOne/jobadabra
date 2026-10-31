@@ -8,7 +8,7 @@ import path from 'node:path';
 import {test} from 'node:test';
 import {fileURLToPath} from 'node:url';
 import {greyProof} from '../lib/flaky-proof.mjs';
-import {REASONS, greyRecord, writeGreyRecord} from '../lib/grey-record.mjs';
+import {REASONS, greyRecord} from '../lib/grey-record.mjs';
 
 const timing = [{step: 'fill', message: 'Timeout 30000ms exceeded'}];
 const environment = [{step: 'load', message: 'socket hang up'}];

@@ -2,7 +2,7 @@
 import {ai} from '../ai-name.js';
 import * as pendingReviews from '../review-pending.js';
 import * as reviewAgain from '../review-again.js';
-import {closeMenu, el, moreButton, pill} from '../components.js';
+import {el, holdMenu, moreButton, pill} from '../components.js';
 import {searchSelect} from '../search-select.js';
 import {avatar, interviewJob, placeAndMode} from '../jobs-view.js';
 import {insightCard, insightSkeleton, insightView} from '../interview-insight.js';
@@ -269,7 +269,7 @@ async function refreshInsights() {
   renderInsight();
 }
 function renderSaved() {
-  closeMenu(document.querySelector('.view[data-view="interviews"]'));   // only a menu on this page
+  const restoreMenu = holdMenu(document.querySelector('.view[data-view="interviews"]'), 'id');   // Why (31 Oct 2026, owner): an open ⋯ menu survives the redraw a finished read causes; only a menu on this page
   const text = $('iv-filter').value.trim().toLowerCase(), outcome = $('iv-outcome').value;
   const rows = ivSavedRows.filter(row => {
     const job = row.application?.[0] ? jobForPage(row.application[0]) : null;
@@ -384,6 +384,7 @@ function renderSaved() {
     cell(actions);
     return tr;
   }));
+  restoreMenu();
 }
 
 async function reviewRow(pageId, why = 'Review') {

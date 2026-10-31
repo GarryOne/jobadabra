@@ -45,19 +45,15 @@ export async function run(ctx) {
         stats: document.getElementById('iv-lib-stats')?.textContent.trim(), notionIds: Object.keys(window.__jp?.shared?.state?.notion || {}).length, store: window.__jp?.shared?.state?.store || null}; }).catch(() => ({}));
       throw new Error(`${error.message.split('\n')[0]}; expected ${expected} rows, the page shows ${JSON.stringify(seen)}`);
     });
-    // The library paints its saved copy first and re-draws when Notion answers: act only once that is done, or a menu opened on the first draw is closed under the click.
+    // The library paints its saved copy first and re-draws when Notion answers: act only once that is done, so the rows the test reads are the final ones.
     await page.waitForFunction(want => document.getElementById('iv-lib-stats').textContent.trim() === want, SAVED_TO, {timeout: 120000});
     await page.waitForTimeout(500);
   };
-  // A re-draw of the table (a read finishing) closes an open ⋯ menu: open it again until the entry is there.
+  // A re-draw of the table (a read finishing) keeps an open ⋯ menu (components.js holdMenu; 31 Oct 2026): open it once and click.
   const chooseFromMenu = async (id, label) => {
-    const entry = page.locator('[role=menuitem]:visible').filter({hasText: label});
-    for (let attempt = 0; attempt < 6; attempt++) {
-      await row(id).getByRole('button', {name: 'More actions'}).click();
-      const shown = await entry.first().waitFor({state: 'visible', timeout: 2500}).then(() => true, () => false);
-      if (shown && await entry.first().click({timeout: 2500}).then(() => true, () => false)) return;
-    }
-    throw new Error(`the ⋯ menu of the row never showed "${label}"`);
+    await row(id).getByRole('button', {name: 'More actions'}).click();
+    await page.locator('[role=menuitem]:visible').filter({hasText: label}).first().click()
+      .catch(() => { throw new Error(`the ⋯ menu of the row never showed "${label}"`); });
   };
   // The interviews as the store keeps them (any store): {id, title, overall, next_step, app_id, transcript, review}; transcript and review are whole Markdown (spec §4).
   const notionRows = async () => (await ctx.data('interviews', 'list', {})) || [];

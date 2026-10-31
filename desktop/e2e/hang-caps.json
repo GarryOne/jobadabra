@@ -1,6 +1,6 @@
 {
   "applyflows": {
-    "provenance": "Measured hang caps for applyflows' state waits, keyed by the exact step names.\nWhy (29 Oct 2026, a8, 21b): 3 x calm main p95 from the measuring tool tools/e2e-step-timings.mjs (applyflows, 14 runs) on 29 Oct 2026 (13 runs, 25 calm shard-runs), rounded up to 5 s with a 30 s noise floor; applicant setup keeps its measured 305 s cap.\ntools/e2e-step-timings.mjs --suite applyflows --runs 14; inline p95 values are seconds.",
+    "provenance": "Measured hang caps for applyflows' state waits, keyed by the exact step names.\nWhy (29 Oct 2026, a8, 21b): 3 x calm main p95 from the measuring tool tools/e2e-step-timings.mjs (applyflows, 14 runs) on 29 Oct 2026 (13 runs, 25 calm shard-runs), rounded up to 5 s with a 30 s noise floor; applicant setup keeps its measured 305 s cap.\ntools/e2e-step-timings.mjs --suite applyflows --runs 14; inline p95 values are seconds.\ntools/e2e-step-timings.mjs: 6 main runs, 9/11 calm shard-runs.\nMain run IDs: 41153500920, 41157036555, 41158705592, 41166853012, 41173193229, 41180851813.\n3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.",
     "steps": {
       "\"I submitted it\" marks the job Applied and takes its session off the list": {
         "seconds": 30,
@@ -31,8 +31,10 @@
         "p95Seconds": 93.7
       },
       "a sign-in page before the form that refuses the password: \"Sign in\" is pressed once, never again, and you are told; on the stuck sign-up page Take over with Claude only with Claude help on, never started": {
-        "seconds": 215,
-        "p95Seconds": 70.6
+        "seconds": 275,
+        "p95Seconds": 90.1,
+        "n": 5,
+        "reason": "Recent calm measurement exceeds the preserved 215 s lower bound."
       },
       "a sign-in page before the form: your email and saved password are filled, \"Sign in\" is pressed once, and the form behind it is filled": {
         "seconds": 190,
@@ -68,7 +70,7 @@
       },
       "the form tab is closed: the app sees it and Reopen opens the form again, filled, for the same session": {
         "seconds": 90,
-        "p95Seconds": 30.0
+        "p95Seconds": 30
       },
       "the Notion stand-in answered every request the app made": {
         "seconds": 30,
@@ -81,16 +83,27 @@
       "two applications side by side, one whose Apply opens its form from script: each keeps one tab and its own kit": {
         "seconds": 250,
         "p95Seconds": 83.3
+      },
+      "no AI call of this suite reached a real model: the stand-in answered or refused every one": {
+        "seconds": 30,
+        "n": 8,
+        "p95Seconds": 0.7
+      },
+      "nothing was queued to report to the product": {
+        "seconds": 30,
+        "n": 8,
+        "p95Seconds": 0.5
       }
     }
   },
   "failureschannels": {
-    "provenance": "Generated state-wait hang caps for failureschannels; never a speed assertion.\ntools/e2e-step-timings.mjs: 9 main runs, 9/9 calm shard-runs.\nSparse shared steps use the applyflows entry's measurements.\nMain run IDs: 40610690663, 40617153757, 40650235925, 40796899545, 40799225090, 40802551247, 40836904987, 40960750830, 40975522762.\n3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.",
+    "provenance": "Generated state-wait hang caps for failureschannels; never a speed assertion.\ntools/e2e-step-timings.mjs: 9 main runs, 9/9 calm shard-runs.\nSparse shared steps use the applyflows entry's measurements.\nMain run IDs: 40610690663, 40617153757, 40650235925, 40796899545, 40799225090, 40802551247, 40836904987, 40960750830, 40975522762.\n3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.\ntools/e2e-step-timings.mjs: 6 main runs, 5/6 calm shard-runs.\nMain run IDs: 40796899545, 40799225090, 40960750830, 40985357367, 41133640727, 41146558456.\n3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.",
     "steps": {
       "Google access revoked: the Gmail check says so in words (connect Google again), never a plain Completed, never Google's raw answer": {
-        "seconds": 45,
-        "n": 9,
-        "p95Seconds": 13.6
+        "seconds": 50,
+        "n": 5,
+        "p95Seconds": 15.6,
+        "reason": "Recent calm measurement exceeds the preserved 45 s lower bound."
       },
       "nothing was queued to report to the product": {
         "seconds": 30,
@@ -139,11 +152,16 @@
         "seconds": 85,
         "n": 9,
         "p95Seconds": 27.6
+      },
+      "no AI call of this suite reached a real model: the stand-in answered or refused every one": {
+        "shared": "applyflows",
+        "n": 1,
+        "p95Seconds": 0.2
       }
     }
   },
   "interactions": {
-    "provenance": "Generated state-wait hang caps for interactions; never a speed assertion.\ntools/e2e-step-timings.mjs: 9 main runs, 9/9 calm shard-runs.\nSparse shared steps use the applyflows entry's measurements.\nMain run IDs: 40650235925, 40746737212, 40768828567, 40796899545, 40799225090, 40802551247, 40836904987, 40960750830, 40975522762.\n3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.",
+    "provenance": "Generated state-wait hang caps for interactions; never a speed assertion.\ntools/e2e-step-timings.mjs: 9 main runs, 9/9 calm shard-runs.\nSparse shared steps use the applyflows entry's measurements.\nMain run IDs: 40650235925, 40746737212, 40768828567, 40796899545, 40799225090, 40802551247, 40836904987, 40960750830, 40975522762.\n3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.\ntools/e2e-step-timings.mjs: 8 main runs, 8/8 calm shard-runs.\nMain run IDs: 40836904987, 40975522762, 40987937824, 41021843712, 41133640727, 41146558456, 41153500920, 41180851813.\n3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.",
     "steps": {
       "actions: every safe control does something": {
         "seconds": 40,
@@ -156,9 +174,10 @@
         "p95Seconds": 8.2
       },
       "calendar: every safe control does something": {
-        "seconds": 45,
-        "n": 9,
-        "p95Seconds": 14.9
+        "seconds": 50,
+        "n": 8,
+        "p95Seconds": 15.2,
+        "reason": "Recent calm measurement exceeds the preserved 45 s lower bound."
       },
       "calendar: stays still once it has loaded": {
         "seconds": 35,
@@ -233,7 +252,7 @@
       "strategy: every safe control does something": {
         "seconds": 90,
         "n": 9,
-        "p95Seconds": 29.0
+        "p95Seconds": 29
       },
       "strategy: stays still once it has loaded": {
         "seconds": 90,
@@ -267,11 +286,16 @@
       "the Notion stand-in answered every request the app made": {
         "shared": "applyflows",
         "n": 4
+      },
+      "no AI call of this suite reached a real model: the stand-in answered or refused every one": {
+        "shared": "applyflows",
+        "n": 4,
+        "p95Seconds": 0.3
       }
     }
   },
   "jobs": {
-    "provenance": "Generated state-wait hang caps for jobs; never a speed assertion.\ntools/e2e-step-timings.mjs: 9 main runs, 9/9 calm shard-runs.\nSparse shared steps use the applyflows entry's measurements.\nMain run IDs: 40610690663, 40617153757, 40650235925, 40796899545, 40799225090, 40802551247, 40836904987, 40960750830, 40975522762.\n3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.",
+    "provenance": "Generated state-wait hang caps for jobs; never a speed assertion.\ntools/e2e-step-timings.mjs: 9 main runs, 9/9 calm shard-runs.\nSparse shared steps use the applyflows entry's measurements.\nMain run IDs: 40610690663, 40617153757, 40650235925, 40796899545, 40799225090, 40802551247, 40836904987, 40960750830, 40975522762.\n3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.\ntools/e2e-step-timings.mjs: 4 main runs, 4/4 calm shard-runs.\nMain run IDs: 40985357367, 40987937824, 41133640727, 41180851813.\n3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.",
     "steps": {
       "a jobs check reads the fixture feeds, drops the wrong roles and scores the matching jobs": {
         "seconds": 395,
@@ -335,11 +359,16 @@
         "seconds": 30,
         "n": 9,
         "p95Seconds": 3.7
+      },
+      "no AI call of this suite reached a real model: the stand-in answered or refused every one": {
+        "shared": "applyflows",
+        "n": 2,
+        "p95Seconds": 0.2
       }
     }
   },
   "settings": {
-    "provenance": "Generated state-wait hang caps for settings; never a speed assertion.\ntools/e2e-step-timings.mjs: 10 main runs, 9/10 calm shard-runs.\nSparse shared steps use the applyflows entry's measurements.\nMain run IDs: 40135785331, 40152010902, 40252278499, 40274183649, 40428980247, 40434672283, 40589724303, 40610690663, 40799225090, 40802551247.\n3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.",
+    "provenance": "Generated state-wait hang caps for settings; never a speed assertion.\ntools/e2e-step-timings.mjs: 10 main runs, 9/10 calm shard-runs.\nSparse shared steps use the applyflows entry's measurements.\nMain run IDs: 40135785331, 40152010902, 40252278499, 40274183649, 40428980247, 40434672283, 40589724303, 40610690663, 40799225090, 40802551247.\n3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.\ntools/e2e-step-timings.mjs: 9 main runs, 6/9 calm shard-runs.\nMain run IDs: 40796899545, 40799225090, 40836904987, 40960750830, 40985357367, 40987937824, 41146558456, 41157036555, 41180851813.\n3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.",
     "steps": {
       "⌘K opens the palette: every page is listed, a typed command opens its page, Esc closes it": {
         "seconds": 30,
@@ -362,9 +391,10 @@
         "p95Seconds": 17.9
       },
       "every Settings section renders": {
-        "seconds": 70,
-        "n": 9,
-        "p95Seconds": 22.0
+        "seconds": 75,
+        "n": 6,
+        "p95Seconds": 24.8,
+        "reason": "Recent calm measurement exceeds the preserved 70 s lower bound."
       },
       "nothing was queued to report to the product": {
         "seconds": 30,
@@ -388,7 +418,7 @@
       "the app is set up on this Mac's store with the applicant's strategy": {
         "seconds": 35,
         "n": 7,
-        "p95Seconds": 11.0
+        "p95Seconds": 11
       },
       "the CV check reads real PDFs: a plain CV passes, each known problem is found, a picture of a CV fails": {
         "seconds": 30,
@@ -400,9 +430,2363 @@
         "n": 2
       },
       "Your data: export with keys, reset, then import from the setup brings this computer back as it was": {
-        "seconds": 35,
+        "seconds": 45,
+        "n": 6,
+        "p95Seconds": 13.4,
+        "reason": "Recent calm measurement exceeds the preserved 35 s lower bound."
+      },
+      "no AI call of this suite reached a real model: the stand-in answered or refused every one": {
+        "shared": "applyflows",
+        "n": 3,
+        "p95Seconds": 0.3
+      }
+    }
+  },
+  "apply": {
+    "provenance": "Moved from suites/apply.mjs on 31 Oct 2026 (a8 2/5): Why (29 Oct 2026, ap): hang caps in seconds, 3 x calm p95 from tools/e2e-step-timings.mjs, raised to the step's own inner caps + 30 s where a step waits in sequence; they catch a hang, never a speed.\ntools/e2e-step-timings.mjs: 8 main runs, 12/15 calm shard-runs.\nMain run IDs: 41153500920, 41157036555, 41158705592, 41166853012, 41173193229, 41180851813, 41198629562, 41200878403.\n3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.\nGenerated step labels share their source template prefix; p95 is recomputed from the raw calm samples, not averaged from per-label percentiles.\nWhy (31 Oct 2026, owner a8): preserve the apply inline caps while consolidating; hand-raised inner-sequence allowances remain minimum bounds; a larger recent calm measurement takes precedence.",
+    "steps": {
+      "the app has an applicant": {
+        "seconds": 300,
+        "reason": "Preserved inline cap; see provenance."
+      },
+      "the app is seeded": {
+        "seconds": 90,
+        "reason": "Preserved inline cap; see provenance."
+      },
+      "the app is set up on this Mac's store": {
+        "seconds": 90,
+        "reason": "Preserved inline cap; see provenance."
+      },
+      "a Greenhouse-like form": {
+        "seconds": 195,
+        "reason": "Preserved inline cap; see provenance."
+      },
+      "a Workday-shaped form": {
+        "seconds": 195,
+        "reason": "Preserved inline cap; see provenance."
+      },
+      "a Lever-like form": {
+        "seconds": 150,
+        "reason": "Preserved inline cap; see provenance."
+      },
+      "a form with a control the extension cannot operate": {
+        "seconds": 180,
+        "reason": "Preserved inline cap; see provenance."
+      },
+      "real forms the extension once failed on": {
+        "seconds": 320,
+        "n": 4,
+        "maxSeconds": 105.3,
+        "provisional": true,
+        "reason": "provisional: 3 x its slowest calm sample, 30 s floor, rounded up to 5 s; regenerate after 5 main runs (tools/e2e-step-timings.mjs). It was 855 s (5 recorded forms x 165 s of inner waits + 30 s), above the 660 s job budget, so the job budget would have cut it first; 4 main runs measured the whole step at 105.3 s at most."
+      },
+      "Open in Chrome on a form the night filled": {
+        "seconds": 160,
+        "reason": "Preserved inline cap; see provenance."
+      },
+      "a multi-step form": {
+        "seconds": 300,
+        "reason": "Preserved inline cap; see provenance."
+      },
+      "the session page says it too": {
+        "seconds": 105,
+        "reason": "Preserved inline cap; see provenance."
+      },
+      "Tailor CV on a job": {
+        "seconds": 480,
+        "reason": "Preserved inline cap; see provenance."
+      },
+      "Apply on a saved job without a kit": {
+        "seconds": 390,
+        "reason": "Preserved inline cap; see provenance."
+      },
+      "Tailor on the session page": {
+        "seconds": 445,
+        "reason": "Preserved inline cap; see provenance."
+      },
+      "the person submits a form": {
+        "seconds": 270,
+        "reason": "Preserved inline cap; see provenance."
+      },
+      "through all of it": {
+        "seconds": 50,
+        "reason": "Preserved inline cap; see provenance."
+      },
+      "the panel does not say \"Ready to submit\"": {
+        "seconds": 75,
+        "reason": "Preserved inline cap; see provenance."
+      },
+      "nothing was queued": {
+        "seconds": 30,
+        "reason": "Recent calm measurement exceeds the preserved 5 s lower bound.",
+        "n": 6,
+        "p95Seconds": 0.3
+      },
+      "The hidden browser fills a form": {
+        "seconds": 385,
+        "reason": "Preserved inline cap; see provenance."
+      },
+      "a silent Chrome in Standard automation": {
+        "seconds": 215,
+        "reason": "Recent calm measurement exceeds the preserved 90 s lower bound.",
+        "n": 5,
+        "p95Seconds": 70.1
+      },
+      "a silent Chrome in Background automation": {
+        "seconds": 95,
+        "reason": "Recent calm measurement exceeds the preserved 90 s lower bound.",
+        "n": 6,
+        "p95Seconds": 30.9
+      },
+      "a silent Chrome in Full automation": {
+        "seconds": 90,
+        "reason": "Preserved inline cap; see provenance."
+      },
+      "the app quits while Background automation holds a filled form": {
+        "seconds": 300,
+        "reason": "Preserved inline cap; see provenance."
+      },
+      "the app quits in Full automation's wait": {
+        "seconds": 420,
+        "reason": "Preserved inline cap; see provenance."
+      },
+      "each read verdict gives its own chip": {
+        "seconds": 360,
+        "reason": "Preserved inline cap; see provenance."
+      },
+      "Stop on the card in Background automation": {
+        "seconds": 300,
+        "reason": "Preserved inline cap; see provenance."
+      },
+      "Stop on the card in Full automation": {
+        "seconds": 420,
+        "reason": "Preserved inline cap; see provenance."
+      },
+      "the Jobs popup has one field": {
+        "seconds": 135,
+        "reason": "Recent calm measurement exceeds the preserved 90 s lower bound.",
+        "n": 5,
+        "p95Seconds": 44.8
+      },
+      "checking jobs before the form read exists": {
+        "seconds": 90,
+        "reason": "Preserved inline cap; see provenance."
+      },
+      "the triage bar moves per real read": {
+        "seconds": 180,
+        "reason": "Preserved inline cap; see provenance."
+      },
+      "Background automation hands a bot check": {
+        "seconds": 240,
+        "reason": "Preserved inline cap; see provenance."
+      },
+      "Full automation hands a bot check": {
+        "seconds": 240,
+        "reason": "Preserved inline cap; see provenance."
+      },
+      "Background automation fills several queued jobs": {
+        "seconds": 450,
+        "reason": "Preserved inline cap; see provenance."
+      },
+      "Full automation presses each queued job": {
+        "seconds": 450,
+        "reason": "Preserved inline cap; see provenance."
+      },
+      "Full automation asks once in Settings": {
+        "seconds": 90,
+        "reason": "Preserved inline cap; see provenance."
+      },
+      "Full automation saved without its confirmation": {
+        "seconds": 90,
+        "reason": "Preserved inline cap; see provenance."
+      },
+      "the form's panel offers a tailored CV": {
+        "seconds": 69,
+        "reason": "Preserved inline cap; see provenance."
+      },
+      "\"See which jobs can apply automatically\" reads a job's form in the hidden browser": {
+        "seconds": 170,
+        "n": 7,
+        "p95Seconds": 55.5
+      },
+      "no AI call of this suite reached a real model: the stand-in answered or refused every one": {
+        "seconds": 30,
+        "n": 6,
+        "p95Seconds": 0.2
+      },
+      "Tailor CVs for top matches: asked for 2, it tailors the two best open jobs without a CV, in fit order, and leaves the third alone": {
+        "seconds": 195,
+        "n": 6,
+        "p95Seconds": 65
+      },
+      "the Notion stand-in answered every request the app made": {
+        "seconds": 30,
+        "n": 5,
+        "p95Seconds": 0.2
+      },
+      "Full automation presses Submit once on its own, and a Stop in the wait presses nothing": {
+        "seconds": 480,
+        "n": 3,
+        "maxSeconds": 159.4,
+        "provisional": true,
+        "reason": "provisional: 3 x its slowest calm sample, 30 s floor, rounded up to 5 s; regenerate after 5 main runs (tools/e2e-step-timings.mjs)"
+      },
+      "a real posting, watched live: the page kinds, stages and fills as they happen (nothing is pressed on the page)": {
+        "seconds": 360,
+        "provisional": true,
+        "reason": "provisional: a by-hand LIVE run outside the matrix (lib/apply-live.mjs), no samples; 3 x its default LIVE_SECONDS=120 watch; regenerate if it ever joins a gate."
+      }
+    }
+  },
+  "activityfailures": {
+    "provenance": "Measured caps: nearest-rank p95 of completed main first-try runs (fixtures/activityfailures-main-timings.json), later re-measured below. Caps are hang stops rounded up to 5 s with a 30 s floor, not speed assertions; the suite has no aggregate speed budget.\ntools/e2e-step-timings.mjs: 10 main runs, 10/10 calm shard-runs.\nMain run IDs: 40836904987, 40975522762, 40985357367, 40987937824, 41000326672, 41072228094, 41133640727, 41146558456, 41157036555, 41180851813.\n3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.\n31 Oct 2026 (a8 2/5): the inline table moved here; hand-raised inner-sequence allowances stay as minimum bounds, and a larger recent calm measurement takes precedence.",
+    "steps": {
+      "this suite starts with no run rows in its store": {
+        "seconds": 30,
+        "reason": "Preserved inline cap; see provenance."
+      },
+      "this suite starts with no job rows in its store's Job Matches": {
+        "seconds": 30,
+        "reason": "Preserved inline cap; see provenance."
+      },
+      "the app is seeded as a set-up install from the existing workspace": {
+        "seconds": 50,
+        "reason": "Preserved inline cap; see provenance."
+      },
+      "the app is quiet before the first task: no schedule, no first search, its history read": {
+        "seconds": 30,
+        "reason": "Preserved inline cap; see provenance."
+      },
+      "the AI answers 429 (rate limit): the run ends as Failed or with warnings, in words, with nothing left Running": {
+        "seconds": 105,
+        "reason": "Recent calm measurement exceeds the preserved 90 s lower bound.",
+        "n": 10,
+        "p95Seconds": 34.8
+      },
+      "the AI answers 500: the run ends as Failed or with warnings, in words, with nothing left Running": {
+        "seconds": 70,
+        "reason": "Recent calm measurement exceeds the preserved 60 s lower bound.",
+        "n": 10,
+        "p95Seconds": 23.2
+      },
+      "the AI says the key is invalid (401): the run ends as Failed or with warnings, in words, with nothing left Running": {
+        "seconds": 65,
+        "reason": "Recent calm measurement exceeds the preserved 60 s lower bound.",
+        "n": 10,
+        "p95Seconds": 21
+      },
+      "the AI says the credit balance is empty (the spending limit): the run ends as Failed or with warnings, in words, with nothing left Running": {
+        "seconds": 70,
+        "reason": "Recent calm measurement exceeds the preserved 65 s lower bound.",
+        "n": 10,
+        "p95Seconds": 22.4
+      },
+      "a search analysis paused by the spending limit is a run with a warning that names the limit, not a failure": {
+        "seconds": 65,
+        "reason": "Recent calm measurement exceeds the preserved 60 s lower bound.",
+        "n": 10,
+        "p95Seconds": 20.8
+      },
+      "the AI never answers: the run is stopped after its silence limit and ends as Stopped, in words, with nothing left Running": {
+        "seconds": 170,
+        "reason": "Recent calm measurement exceeds the preserved 155 s lower bound.",
+        "n": 10,
+        "p95Seconds": 55.7
+      },
+      "the AI out of credit while reading the CV: the card says it in words, never the API's JSON (#94)": {
+        "seconds": 30,
+        "reason": "Preserved inline cap; see provenance."
+      },
+      "quitting the app in the middle of a run: it is not shown Running for ever, and the app says what became of it": {
+        "seconds": 495,
+        "reason": "Recent calm measurement exceeds the preserved 475 s lower bound.",
+        "n": 10,
+        "p95Seconds": 164.6
+      },
+      "the failure and queued states render without layout problems": {
+        "seconds": 30,
+        "reason": "Preserved inline cap; see provenance."
+      },
+      "no AI call of this suite reached a real model: the stand-in answered or refused every one": {
+        "seconds": 30,
+        "reason": "Preserved inline cap; see provenance."
+      },
+      "nothing was queued to report to the product": {
+        "seconds": 30,
+        "reason": "Preserved inline cap; see provenance."
+      },
+      "the Notion stand-in answered every request the app made": {
+        "seconds": 30,
+        "reason": "Preserved inline cap; see provenance."
+      },
+      "the app is set up on this Mac's store with the applicant's strategy": {
+        "shared": "applyflows",
+        "n": 3,
+        "p95Seconds": 2.2
+      }
+    }
+  },
+  "quality": {
+    "provenance": "Quality uses measured replay caps or live RECORD caps (recordSeconds, never below the replay cap), and no aggregate speed budget.\n29 Oct 2026 (qu 3/4): seven calm green main runs measured the Jobs check at 42.6 s, the whole suite at 54.2 s, setup at 7 s or less and every other step at 4.8 s or less; the 127.8 s Jobs and 30 s state caps are kept. RECORD keeps 360 s for the Jobs check and 90 s for state steps.\ntools/e2e-step-timings.mjs: 6 main runs, 5/6 calm shard-runs.\nMain run IDs: 37939133100, 40362764325, 40508145728, 40526061842, 40992748380, 41000326672.\n3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.\n31 Oct 2026 (a8 2/5): the inline caps moved here; a larger recent calm measurement takes precedence. test/quality-clock.test.mjs pins these numbers to lib/quality-waits.mjs, whose clocks still bound quality-journey's Jobs check.",
+    "steps": {
+      "a Jobs check on the golden postings finishes and scores them": {
+        "seconds": 127.8,
+        "reason": "Preserved inline cap; see provenance.",
+        "recordSeconds": 360
+      },
+      "every enriched fact equals the ground truth (seniority, work mode, location, languages, salary, role family)": {
+        "seconds": 30,
+        "recordSeconds": 90,
+        "reason": "Preserved quality state cap, previously selected by its empty-prefix entry."
+      },
+      "the duplicate posting is one job, everywhere": {
+        "seconds": 30,
+        "recordSeconds": 90,
+        "reason": "Preserved quality state cap, previously selected by its empty-prefix entry."
+      },
+      "relevant jobs rank above irrelevant ones, and scores are whole numbers from 0 to 100": {
+        "seconds": 30,
+        "recordSeconds": 90,
+        "reason": "Preserved quality state cap, previously selected by its empty-prefix entry."
+      },
+      "every Notion column the app promises is filled, and no text shows a programming accident": {
+        "seconds": 30,
+        "recordSeconds": 90,
+        "reason": "Preserved quality state cap, previously selected by its empty-prefix entry."
+      },
+      "the app's list agrees with Notion (same jobs, same scores)": {
+        "seconds": 30,
+        "recordSeconds": 90,
+        "reason": "Preserved quality state cap, previously selected by its empty-prefix entry."
+      },
+      "the first search after the setup has ended": {
+        "seconds": 30,
+        "recordSeconds": 90,
+        "reason": "Preserved quality state cap, previously selected by its empty-prefix entry."
+      },
+      "this suite starts with no jobs and no runs in its Notion page": {
+        "seconds": 190,
+        "recordSeconds": 90,
+        "reason": "Recent calm measurement exceeds the preserved 30 s lower bound.",
+        "n": 5,
+        "p95Seconds": 62.7
+      },
+      "no job text, CV text or secret reached the logs": {
+        "seconds": 30,
+        "recordSeconds": 90,
+        "reason": "Preserved quality state cap, previously selected by its empty-prefix entry."
+      },
+      "the app is set up on this Mac's store with the applicant's strategy": {
+        "seconds": 30,
+        "recordSeconds": 90,
+        "reason": "Preserved quality state cap, previously selected by its empty-prefix entry."
+      },
+      "the app is seeded as a set-up install from the existing workspace": {
+        "seconds": 30,
+        "recordSeconds": 90,
+        "reason": "Preserved quality state cap, previously selected by its empty-prefix entry."
+      },
+      "nothing in this Mac's real Keychain changed (a test run keeps its secrets in its own file)": {
+        "seconds": 30,
+        "recordSeconds": 90,
+        "reason": "Preserved quality state cap, previously selected by its empty-prefix entry."
+      },
+      "nothing was queued to report to the product": {
+        "seconds": 30,
+        "recordSeconds": 90,
+        "reason": "Preserved quality state cap, previously selected by its empty-prefix entry."
+      },
+      "the Notion stand-in answered every request the app made": {
+        "seconds": 30,
+        "recordSeconds": 90,
+        "reason": "Preserved quality state cap, previously selected by its empty-prefix entry."
+      }
+    }
+  },
+  "activity": {
+    "provenance": "tools/e2e-step-timings.mjs: 11 main runs, 10/11 calm shard-runs.\nMain run IDs: 40796899545, 40799225090, 40802551247, 40836904987, 40975522762, 40985357367, 40987937824, 41133640727, 41146558456, 41157036555, 41180851813.\n3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.",
+    "steps": {
+      "a run read only from Notion (a fresh start, no local record) still shows its log": {
+        "seconds": 75,
+        "n": 10,
+        "p95Seconds": 23.7
+      },
+      "a run recorded on this Mac without its message still shows its result from the Notion page": {
+        "seconds": 95,
+        "n": 10,
+        "p95Seconds": 30.5
+      },
+      "Analyze my job search: one Recent runs row, an end, plain words, a clean log, and no row left Running": {
+        "seconds": 55,
+        "n": 10,
+        "p95Seconds": 17.8
+      },
+      "Check Gmail & Calendar with no Google connection: one Recent runs row, an end, plain words, a clean log, and no row left Running": {
+        "seconds": 30,
+        "n": 10,
+        "p95Seconds": 6.1
+      },
+      "clicking the pop-up of a finished task opens that task's result in Recent activity": {
+        "seconds": 30,
+        "n": 10,
+        "p95Seconds": 4
+      },
+      "Find jobs (an empty feed: nothing new): one Recent runs row, an end, plain words, a clean log, and no row left Running": {
+        "seconds": 85,
+        "n": 10,
+        "p95Seconds": 27.1
+      },
+      "no AI call of this suite reached a real model: the stand-in answered or refused every one": {
+        "shared": "activityfailures",
+        "n": 1,
+        "p95Seconds": 0.1
+      },
+      "nothing was queued to report to the product": {
+        "seconds": 30,
+        "n": 10,
+        "p95Seconds": 0.2
+      },
+      "opening a finished run shows its result card and its Technical log": {
+        "seconds": 30,
+        "n": 10,
+        "p95Seconds": 4
+      },
+      "the Actions page and Recent runs render without layout problems after every task": {
+        "seconds": 30,
+        "n": 10,
+        "p95Seconds": 2.3
+      },
+      "the app is quiet before the first task: no schedule, no first search, its history read": {
+        "seconds": 30,
+        "n": 10,
+        "p95Seconds": 9.2
+      },
+      "the app is seeded as a set-up install from the existing workspace": {
+        "seconds": 50,
+        "n": 5,
+        "p95Seconds": 15.7
+      },
+      "the app is set up on this Mac's store with the applicant's strategy": {
+        "seconds": 30,
+        "n": 5,
+        "p95Seconds": 3.5
+      },
+      "The link to all runs opens Actions → Runs, and its task filter keeps one kind of run at a time": {
+        "seconds": 30,
+        "n": 10,
+        "p95Seconds": 4.9
+      },
+      "the Notion stand-in answered every request the app made": {
+        "seconds": 30,
+        "n": 5,
+        "p95Seconds": 0.2
+      },
+      "this suite starts with no job rows in its store's Job Matches": {
+        "seconds": 30,
+        "n": 10,
+        "p95Seconds": 0.4
+      },
+      "this suite starts with no run rows in its store": {
+        "seconds": 30,
+        "n": 10,
+        "p95Seconds": 5.7
+      }
+    }
+  },
+  "calendar": {
+    "provenance": "tools/e2e-step-timings.mjs: 12 main runs, 9/12 calm shard-runs.\nMain run IDs: 40796899545, 40799225090, 40802551247, 40836904987, 40960750830, 40975522762, 40985357367, 40987937824, 41133640727, 41146558456, 41157036555, 41180851813.\n3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.",
+    "steps": {
+      "a day with more than three meetings shows three and says how many more": {
+        "seconds": 30,
         "n": 9,
+        "p95Seconds": 2.1
+      },
+      "an empty calendar says nothing is scheduled and shows no meeting": {
+        "seconds": 30,
+        "n": 9,
+        "p95Seconds": 4.8
+      },
+      "Calendar renders without layout problems": {
+        "seconds": 30,
+        "n": 9,
+        "p95Seconds": 0.3
+      },
+      "no AI call of this suite reached a real model: the stand-in answered or refused every one": {
+        "shared": "applyflows",
+        "n": 4,
+        "p95Seconds": 0.3
+      },
+      "nothing was queued to report to the product": {
+        "seconds": 30,
+        "n": 9,
+        "p95Seconds": 0.3
+      },
+      "on this Mac's store a meeting opens its job's side panel, from the grid and from the agenda": {
+        "seconds": 30,
+        "n": 9,
+        "p95Seconds": 5.7
+      },
+      "the agenda lists what is coming soonest first and what is past latest first": {
+        "seconds": 30,
+        "n": 9,
+        "p95Seconds": 2.1
+      },
+      "the app is set up on this Mac's store with the applicant's strategy": {
+        "seconds": 30,
+        "n": 9,
+        "p95Seconds": 5.2
+      },
+      "the app runs in the time zone the test asked for": {
+        "seconds": 30,
+        "n": 9,
+        "p95Seconds": 0.4
+      },
+      "the grid shows every meeting on its own day, in the app's time zone, with its time": {
+        "seconds": 30,
+        "n": 9,
+        "p95Seconds": 4.3
+      },
+      "the month arrows move through the months and Today comes back": {
+        "seconds": 30,
+        "n": 9,
+        "p95Seconds": 2.4
+      },
+      "the same meetings fall on other days and hours in another time zone": {
+        "seconds": 50,
+        "n": 9,
+        "p95Seconds": 15.6
+      },
+      "this suite starts with no jobs and no interviews in its Notion page": {
+        "seconds": 30,
+        "n": 9,
+        "p95Seconds": 0.6
+      },
+      "this suite writes its dummy meetings to the store": {
+        "seconds": 30,
+        "n": 9,
+        "p95Seconds": 1.7
+      }
+    }
+  },
+  "cardstates": {
+    "provenance": "tools/e2e-step-timings.mjs: 9 main runs, 9/9 calm shard-runs.\nMain run IDs: 40789795183, 40802551247, 40836904987, 40960750830, 40985357367, 40987937824, 41133640727, 41146558456, 41157036555.\n3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.",
+    "steps": {
+      "a live run, mocked: Queued, then Running with its log open and Live, Jump to latest when scrolled up, then Completed keeps what you chose; reopened, folded": {
+        "seconds": 30,
+        "n": 9,
+        "p95Seconds": 0.6
+      },
+      "a partial Tailor run: its counts, its row actions and its warning status agree": {
+        "seconds": 30,
+        "n": 9,
+        "p95Seconds": 1
+      },
+      "every finished state reads in plain words, with its technical log folded": {
+        "seconds": 115,
+        "n": 9,
+        "p95Seconds": 37.4
+      },
+      "Find jobs using your browser: its card counts the sites and jobs; a stopped site offers Open it myself, and Read with Claude only with Claude help on": {
+        "seconds": 30,
+        "n": 9,
+        "p95Seconds": 2.4
+      },
+      "Gmail \"which job?\" answers: three questions open, then each answer its own saved outcome": {
+        "seconds": 30,
+        "n": 9,
+        "p95Seconds": 5
+      },
+      "Gmail connected now: past not-connected and revoked runs stay as history, without a button": {
+        "seconds": 30,
+        "n": 9,
+        "p95Seconds": 5.6
+      },
+      "Gmail disconnected now: one way to connect, and the schedule says it waits for it": {
+        "seconds": 30,
+        "n": 9,
+        "p95Seconds": 6.2
+      }
+    }
+  },
+  "employers": {
+    "provenance": "tools/e2e-step-timings.mjs: 6 main runs, 6/6 calm shard-runs.\nMain run IDs: 41147458356, 41157036555, 41158705592, 41166853012, 41173193229, 41180851813.\n3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.",
+    "steps": {
+      "a second run writes nothing twice": {
+        "seconds": 125,
+        "n": 6,
+        "p95Seconds": 40.8
+      },
+      "each candidate ends in the right status, and only genuinely useful boards become sources": {
+        "seconds": 30,
+        "n": 6,
+        "p95Seconds": 0.3
+      },
+      "Employers & Sources in Notion holds a complete, sensible row per candidate, and none for the duplicate or the excluded": {
+        "seconds": 30,
+        "n": 6,
+        "p95Seconds": 0.4
+      },
+      "no AI call of this suite reached a real model: the stand-in answered or refused every one": {
+        "shared": "applyflows",
+        "n": 3,
+        "p95Seconds": 0.2
+      },
+      "nothing was queued to report to the product": {
+        "seconds": 30,
+        "n": 6,
+        "p95Seconds": 0.2
+      },
+      "one click on Find new employers is one run, and it ends": {
+        "seconds": 195,
+        "n": 6,
+        "p95Seconds": 63.5
+      },
+      "the Actions page renders without layout problems after the runs": {
+        "seconds": 30,
+        "n": 6,
+        "p95Seconds": 2.6
+      },
+      "the app is seeded as a set-up install from the existing workspace": {
+        "seconds": 45,
+        "n": 6,
+        "p95Seconds": 14.9
+      },
+      "the crawl's source list now holds the starter employers and the two new boards, and nothing else": {
+        "seconds": 30,
+        "n": 6,
+        "p95Seconds": 0.2
+      },
+      "the Notion stand-in answered every request the app made": {
+        "seconds": 30,
+        "n": 6,
+        "p95Seconds": 0.3
+      },
+      "the run's row says what happened, and the numbers are the real ones": {
+        "seconds": 30,
+        "n": 6,
+        "p95Seconds": 0.4
+      },
+      "this suite starts with no employers and no runs in its Notion page, and a candidate list of every kind": {
+        "seconds": 30,
+        "n": 6,
+        "p95Seconds": 0.3
+      },
+      "a Sonnet judge finds each added employer sensible for the candidate": {
+        "seconds": 30,
+        "n": 4,
+        "maxSeconds": 0.2,
+        "provisional": true,
+        "reason": "provisional: 3 x its slowest calm sample, 30 s floor, rounded up to 5 s; regenerate after 5 main runs (tools/e2e-step-timings.mjs)"
+      }
+    }
+  },
+  "failuresnotion": {
+    "provenance": "tools/e2e-step-timings.mjs: 5 main runs, 5/5 calm shard-runs.\nMain run IDs: 40985357367, 40987937824, 41133640727, 41157036555, 41180851813.\n3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.",
+    "steps": {
+      "a Save that Notion refuses is never shown as saved: the person is told in words, and Notion and the list still agree": {
+        "seconds": 70,
+        "n": 5,
+        "p95Seconds": 21.7
+      },
+      "no AI call of this suite reached a real model: the stand-in answered or refused every one": {
+        "shared": "applyflows",
+        "n": 3,
+        "p95Seconds": 0.3
+      },
+      "nothing was queued to report to the product": {
+        "seconds": 30,
+        "n": 5,
+        "p95Seconds": 0.3
+      },
+      "Notion answers an HTML error page instead of JSON during a Jobs check: the run ends as Failed or with warnings, in words, with nothing left Running": {
+        "seconds": 135,
+        "n": 5,
+        "p95Seconds": 43.9
+      },
+      "Notion is busy (429) for a moment during a Jobs check: the run ends normally, in words, with nothing left Running": {
+        "seconds": 130,
+        "n": 5,
+        "p95Seconds": 41.7
+      },
+      "the app is quiet before the first task: no schedule, no first search, its history read": {
+        "seconds": 30,
+        "n": 5,
+        "p95Seconds": 9.2
+      },
+      "the app is seeded as a set-up install from the existing workspace": {
+        "seconds": 50,
+        "n": 5,
+        "p95Seconds": 15.7
+      },
+      "the connection to Notion is gone during a Jobs check: the run ends as Failed or with warnings, in words, with nothing left Running": {
+        "seconds": 70,
+        "n": 5,
+        "p95Seconds": 23.2
+      },
+      "the Notion stand-in answered every request the app made": {
+        "seconds": 30,
+        "n": 5,
+        "p95Seconds": 0.3
+      },
+      "this suite starts with no job rows in its store's Job Matches": {
+        "seconds": 30,
+        "n": 5,
+        "p95Seconds": 0.2
+      },
+      "this suite starts with no run rows in its store": {
+        "seconds": 30,
+        "n": 5,
+        "p95Seconds": 4.8
+      }
+    }
+  },
+  "focus": {
+    "provenance": "tools/e2e-step-timings.mjs: 10 main runs, 7/10 calm shard-runs.\nMain run IDs: 40796899545, 40799225090, 40802551247, 40836904987, 40960750830, 40985357367, 40987937824, 41133640727, 41157036555, 41180851813.\n3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.\nGenerated step labels share their source template prefix; p95 is recomputed from the raw calm samples, not averaged from per-label percentiles.",
+    "steps": {
+      "\"Edit target\" saves to Notion, survives a reload and changes the progress ratio": {
+        "seconds": 30,
+        "n": 7,
+        "p95Seconds": 7.1
+      },
+      "\"Up next\" lists what can't wait and Suggestions the rest, in the right order, each with the right buttons": {
+        "seconds": 30,
+        "n": 7,
+        "p95Seconds": 1.4
+      },
+      "a fresh account gets a helpful Focus: nothing urgent, one suggested next step, zeros, a funnel that says it fills in later, no insight, no raw errors": {
+        "seconds": 30,
+        "n": 7,
+        "p95Seconds": 8.5
+      },
+      "a search with applications in every stage is written to the store (dummy employers, target 5)": {
+        "seconds": 30,
+        "n": 7,
+        "p95Seconds": 4.8
+      },
+      "clicking an Up next or Suggestions row opens the right place: the mail, Jobs, the feedback box": {
+        "seconds": 30,
+        "n": 7,
+        "p95Seconds": 2.2
+      },
+      "every number on Focus matches the Notion rows (today, target, 14-day chart, funnel, inbound funnel)": {
+        "seconds": 30,
+        "n": 7,
+        "p95Seconds": 0.8
+      },
+      "Focus finishes loading": {
+        "seconds": 30,
+        "n": 7,
+        "p95Seconds": 8.4
+      },
+      "Focus renders without layout problems, with data and without": {
+        "seconds": 30,
+        "n": 7,
+        "p95Seconds": 0.2
+      },
+      "marking an action Done removes it, writes it to Notion and updates the counts": {
+        "seconds": 30,
+        "n": 7,
+        "p95Seconds": 3.8
+      },
+      "nothing was queued to report to the product": {
+        "seconds": 30,
+        "n": 7,
+        "p95Seconds": 0.2
+      },
+      "rows edited by hand in Notion (an unknown stage, an empty title, a very long note, other scripts) leave Focus working and its numbers right": {
+        "seconds": 40,
+        "n": 7,
+        "p95Seconds": 12.8
+      },
+      "Skip dismisses \"Add details\" for good: it leaves, Notion records it, a refresh does not bring it back": {
+        "seconds": 30,
+        "n": 7,
+        "p95Seconds": 9.9
+      },
+      "Suggestions lead with the latest rejection lesson, with a button to review it": {
+        "seconds": 30,
+        "n": 7,
+        "p95Seconds": 2.1
+      },
+      "the app is set up on this Mac's store with the applicant's strategy": {
+        "seconds": 30,
+        "n": 7,
+        "p95Seconds": 4.3
+      }
+    }
+  },
+  "focusdismiss": {
+    "provenance": "tools/e2e-step-timings.mjs: 11 main runs, 11/11 calm shard-runs.\nMain run IDs: 40799225090, 40802551247, 40836904987, 40960750830, 40985357367, 40987937824, 41114032271, 41133640727, 41146558456, 41157036555, 41180851813.\n3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.",
+    "steps": {
+      "a search with applications in every stage is written to the store (dummy employers, target 5)": {
+        "seconds": 155,
+        "n": 11,
+        "p95Seconds": 50.8
+      },
+      "Dismiss on a job in process leaves the In process list at once, and is still gone after a reload (it was bouncing back to \"Interview scheduled\", 3 Oct 2026)": {
+        "seconds": 85,
+        "n": 10,
+        "p95Seconds": 26.7
+      },
+      "five more Up next cards, one for each way to finish one, are written to Notion": {
+        "seconds": 50,
+        "n": 11,
+        "p95Seconds": 16.4
+      },
+      "Focus finishes loading with no error text": {
+        "seconds": 30,
+        "n": 5,
+        "p95Seconds": 8.8
+      },
+      "Focus finishes loading within 20 seconds, with no error text": {
+        "seconds": 30,
+        "n": 6,
+        "p95Seconds": 9
+      },
+      "nothing was queued to report to the product": {
+        "seconds": 30,
+        "n": 11,
+        "p95Seconds": 0.2
+      },
+      "once the in-app hold is over, none of the dismissed Up next cards comes back from Notion": {
+        "seconds": 30,
+        "n": 11,
+        "p95Seconds": 8.7
+      },
+      "the app is seeded as a set-up install from the existing workspace": {
+        "seconds": 50,
+        "n": 8,
+        "p95Seconds": 15.4
+      },
+      "the app is set up on this Mac's store with the applicant's strategy": {
+        "shared": "applyflows",
+        "n": 3,
+        "p95Seconds": 4.3
+      },
+      "the Notion stand-in answered every request the app made": {
+        "seconds": 30,
+        "n": 8,
+        "p95Seconds": 0.3
+      },
+      "Up next \"details\" card: Skip button removes it for good (leaves at once, not back after a refresh or a reload)": {
+        "seconds": 110,
+        "n": 11,
+        "p95Seconds": 36.3
+      },
+      "Up next \"feedback\" card: ⋯ Skip this request removes it for good (leaves at once, not back after a refresh or a reload)": {
+        "seconds": 75,
+        "n": 11,
+        "p95Seconds": 24.7
+      },
+      "Up next \"nudge\" card: ⋯ I'm out: withdraw removes it for good (leaves at once, not back after a refresh or a reload)": {
+        "seconds": 80,
+        "n": 11,
+        "p95Seconds": 25.4
+      },
+      "Up next \"prepare\" card: ⋯ Dismiss interview removes it for good (leaves at once, not back after a refresh or a reload)": {
+        "seconds": 75,
+        "n": 11,
+        "p95Seconds": 24.6
+      },
+      "Up next \"reply\" card: Done button removes it for good (leaves at once, not back after a refresh or a reload)": {
+        "seconds": 90,
+        "n": 11,
+        "p95Seconds": 28.6
+      }
+    }
+  },
+  "foryou": {
+    "provenance": "tools/e2e-step-timings.mjs: 6 main runs, 6/6 calm shard-runs.\nMain run IDs: 40144173581, 40151661424, 40152010902, 40237153490, 40255698407, 40255953518.\n3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.",
+    "steps": {
+      "\"Employers hiring people like you\": Review lists employers with their interviews, and was recorded as shown": {
+        "seconds": 30,
+        "n": 6,
+        "p95Seconds": 0.3
+      },
+      "a chip opens the Jobs list searched for that employer, and is recorded as taken": {
+        "seconds": 30,
+        "n": 6,
+        "p95Seconds": 0.6
+      },
+      "a jobs check with few new jobs offers the same advice as rows with a Review button, recorded as shown": {
+        "seconds": 60,
+        "n": 6,
+        "p95Seconds": 18.7
+      },
+      "a strategy draft: one card's editor, Unsaved badge, the page bar on every tab, typed text kept, leaving asks, Save clears it": {
+        "seconds": 30,
+        "n": 6,
+        "p95Seconds": 4.3
+      },
+      "adding a suggested role says the next step: the pop-up offers Find jobs": {
+        "seconds": 30,
+        "n": 6,
+        "p95Seconds": 0.5
+      },
+      "Review opens Strategy with that suggestion's options showing": {
+        "seconds": 30,
+        "n": 6,
+        "p95Seconds": 0.3
+      },
+      "the demo window opens on Strategy with the shared pool's answer": {
+        "seconds": 30,
+        "n": 6,
+        "p95Seconds": 9.3
+      },
+      "what is recorded holds fixed words only: never a role word, a place or an employer's name": {
+        "seconds": 30,
+        "n": 6,
+        "p95Seconds": 0
+      },
+      "the job sources card is not offered: every source it could list needs a key of the person's own": {
+        "seconds": 30,
+        "n": 4,
+        "maxSeconds": 0.6,
+        "provisional": true,
+        "reason": "provisional: 3 x its slowest calm sample, 30 s floor, rounded up to 5 s; regenerate after 5 main runs (tools/e2e-step-timings.mjs)"
+      }
+    }
+  },
+  "interviews": {
+    "provenance": "tools/e2e-step-timings.mjs: 11 main runs, 8/11 calm shard-runs.\nMain run IDs: 40796899545, 40799225090, 40802551247, 40836904987, 40960750830, 40975522762, 40985357367, 40987937824, 41133640727, 41146558456, 41157036555.\n3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.",
+    "steps": {
+      "a reviewed row opens its review in the app": {
+        "seconds": 30,
+        "n": 8,
+        "p95Seconds": 3.4
+      },
+      "a transcript imported through the page is reviewed for real: outcome, strengths, next step, the right job, and the insights follow": {
+        "seconds": 75,
+        "n": 8,
+        "p95Seconds": 23.5
+      },
+      "a transcript that fails to review leaves one saved row, not reviewed, and a clear message": {
+        "seconds": 60,
+        "n": 8,
+        "p95Seconds": 18.8
+      },
+      "an interview can be linked to a job and unlinked again, and Notion follows": {
+        "seconds": 30,
+        "n": 8,
+        "p95Seconds": 7.4
+      },
+      "Delete moves an interview to the Notion trash and takes it off the page": {
+        "seconds": 30,
+        "n": 8,
+        "p95Seconds": 4.3
+      },
+      "Interviews renders without layout problems": {
+        "seconds": 30,
+        "n": 8,
+        "p95Seconds": 0.2
+      },
+      "no AI call of this suite reached a real model: the stand-in answered or refused every one": {
+        "seconds": 30,
+        "n": 5,
+        "p95Seconds": 0.3
+      },
+      "nothing was queued to report to the product": {
+        "seconds": 30,
+        "n": 8,
+        "p95Seconds": 0.3
+      },
+      "Record stays off until everyone has agreed, and says why": {
+        "seconds": 30,
+        "n": 8,
+        "p95Seconds": 3.1
+      },
+      "Refresh insights without a new review says it is up to date and spends nothing": {
+        "seconds": 50,
+        "n": 8,
+        "p95Seconds": 15.3
+      },
+      "Review again on an older review replaces it: same row, one review, the old text gone": {
+        "seconds": 30,
+        "n": 8,
+        "p95Seconds": 9.1
+      },
+      "Review again right after a review starts nothing: no second call, no duplicate row, no duplicate review": {
+        "seconds": 30,
+        "n": 8,
+        "p95Seconds": 6.1
+      },
+      "the app is set up on this Mac's store with the applicant's strategy": {
+        "seconds": 30,
+        "n": 8,
+        "p95Seconds": 4.6
+      },
+      "the app reads the new jobs, as it does when the Jobs page has loaded": {
+        "seconds": 30,
+        "n": 8,
+        "p95Seconds": 1.5
+      },
+      "the library lists every interview, newest first, with its outcome": {
+        "seconds": 85,
+        "n": 8,
+        "p95Seconds": 27.4
+      },
+      "the library shows each interview's job by name (opening it in the Jobs list), and \"Link a job\" when there is none": {
+        "seconds": 30,
+        "n": 8,
+        "p95Seconds": 3.2
+      },
+      "the one-time setup banner shows its step and percent, then goes away when transcribing starts": {
+        "seconds": 30,
+        "n": 8,
+        "p95Seconds": 5
+      },
+      "the search box and the outcome filter narrow the library, and say so when nothing matches": {
+        "seconds": 30,
+        "n": 8,
+        "p95Seconds": 3.8
+      },
+      "this suite starts from its own dummy jobs and interviews in the store": {
+        "seconds": 30,
+        "n": 8,
+        "p95Seconds": 2
+      }
+    }
+  },
+  "pool": {
+    "provenance": "tools/e2e-step-timings.mjs: 12 main runs, 12/12 calm shard-runs.\nMain run IDs: 38992350751, 39009143403, 40051394356, 40070363403, 40135785331, 40143950408, 40144173581, 40151661424, 40152010902, 40237153490, 40255698407, 40255953518.\n3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.",
+    "steps": {
+      "A job source suggestion says what it gave people like you (by the most specific label)": {
+        "seconds": 30,
+        "n": 12,
+        "p95Seconds": 0
+      },
+      "A second check sends only what changed": {
+        "seconds": 30,
+        "n": 12,
+        "p95Seconds": 0
+      },
+      "Find new employers sends each verified employer and each dead end at once, with fixed labels only": {
+        "seconds": 30,
+        "n": 12,
+        "p95Seconds": 0
+      },
+      "Search for jobs sends every feed it read (also with no match) and each board by fixed id, with counts only": {
+        "seconds": 30,
+        "n": 12,
+        "p95Seconds": 0
+      },
+      "The central list is checked about hourly, by its publish time, and kept on 304": {
+        "seconds": 30,
+        "n": 12,
+        "p95Seconds": 0
+      },
+      "The central list: software left out; a feed quiet for photographers named in shadow mode, left out after it, never when the user matched it; employers for you ranked": {
+        "seconds": 30,
+        "n": 12,
+        "p95Seconds": 0
+      },
+      "the engine runs the pool against a stand-in website, and the stand-in saw it": {
+        "seconds": 30,
+        "n": 12,
+        "p95Seconds": 1.9
+      },
+      "With \"Help the pool grow\" off, nothing is sent": {
+        "seconds": 30,
+        "n": 12,
+        "p95Seconds": 0
+      }
+    }
+  },
+  "recorded": {
+    "provenance": "tools/e2e-step-timings.mjs: 12 main runs, 58/58 calm shard-runs.\nMain run IDs: 40789795183, 40799225090, 40802551247, 40836904987, 40960750830, 40975522762, 40985357367, 40987937824, 41133640727, 41146558456, 41157036555, 41180851813.\n3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.",
+    "steps": {
+      "accordion-body-after-head-1: an accordion head with no heading and no aria-controls, its body hidden right after it and drawn only when opened": {
+        "seconds": 30,
+        "n": 11,
+        "p95Seconds": 7.3
+      },
+      "address-page-guess-1: a text box the page fills itself on load with its guess of the visitor's place (an Address box from the visitor's IP), before the person or the fill types anything": {
+        "seconds": 30,
+        "n": 11,
+        "p95Seconds": 6.1
+      },
+      "address-svg-label-1: a label that holds an icon <svg> whose <desc>/<title> text is never drawn, read into the field's name (\"AddressSVGs not supported by this browser.\"), so the box's meaning is lost": {
+        "seconds": 30,
+        "n": 12,
+        "p95Seconds": 6.2
+      },
+      "aldi-apply-outside-sketch-1: a posting whose Apply control is not among the first 20 buttons the sketch keeps (25 navigation links come first): rung 2 names no button, the numbered digest finds it": {
+        "seconds": 30,
+        "n": 12,
+        "p95Seconds": 7.4
+      },
+      "answer-ids-gone-by-second-pass-1: the AI's answers are keyed by the field ids it was asked about, and the page drew those boxes again with new generated ids before the second pass applied them": {
+        "seconds": 205,
+        "n": 11,
+        "p95Seconds": 66.8
+      },
+      "ashby-open-question-written-1: an open question in the person's own words (\"why do you want to join us?\") that nothing given answers, beside radios the AI answers": {
+        "seconds": 30,
+        "n": 11,
+        "p95Seconds": 6.9
+      },
+      "ashby-yes-no-buttons-1: a form whose Yes/No questions are two aria-pressed buttons under one parent, with a display:none checkbox beside them (Ashby)": {
+        "seconds": 30,
+        "n": 11,
+        "p95Seconds": 7
+      },
+      "bot-check-then-form-1: a check that the visitor is human in front of the application form: the person solves it, then the page draws the form at the same address; the run says exactly what the person must do and fills the form by itself once it comes": {
+        "seconds": 50,
+        "n": 12,
+        "p95Seconds": 15.6
+      },
+      "choice-chips-named-by-label-1: choice chips in a div named only by aria-labelledby (no role): their only state is a class, so a reader sees nothing change": {
+        "seconds": 30,
+        "n": 12,
+        "p95Seconds": 7.1
+      },
+      "chosen-picklist-judged-1: a form whose required picklists are custom comboboxes (react-select): the choice is a chip beside an empty search input, so the input's own value says nothing": {
+        "seconds": 70,
+        "n": 11,
+        "p95Seconds": 23.3
+      },
+      "chrome-translated-form-1: an application form in German that Chrome has translated to English (text wrapped in <font>, html marked translated-ltr)": {
+        "seconds": 30,
+        "n": 12,
+        "p95Seconds": 7.1
+      },
+      "combo-never-opens-late-answers-1: a suggest-only address combobox whose list never opens, with two questions whose AI answers arrive after the first fill pass: the late answers are never typed": {
+        "seconds": 255,
+        "n": 11,
+        "p95Seconds": 84.6
+      },
+      "combo-never-opens-required-1: a suggest-only address combobox that is REQUIRED and whose list never opens, with two questions answered late: the fill gives up on it and the page is handed to the person": {
+        "seconds": 120,
+        "n": 12,
+        "p95Seconds": 38.6
+      },
+      "consent-banner-shadow-root-1: a cookie banner drawn inside an open shadow root (Usercentrics) covers a posting whose named Apply link does nothing while the banner is up: the banner is closed (the least consent), then the link is pressed": {
+        "seconds": 30,
+        "n": 12,
+        "p95Seconds": 8.8
+      },
+      "consent-control-shapes-1: a native consent select and input combobox offer equivalent agreements beside a consent checkbox and a factual attestation": {
+        "seconds": 35,
+        "n": 11,
+        "p95Seconds": 10.3
+      },
+      "contact-box-ai-meaning-1: a contact box whose label names more than one part of a name (\"Preferred First & Last Name\"): the quick step's label pattern reads one part, the AI reads the whole": {
+        "seconds": 30,
+        "n": 12,
+        "p95Seconds": 6.6
+      },
+      "contradicted-form-1: a page a kept answer calls an application form that has no field at all (a closed posting): the page contradicts the answer, the answer is forgotten and the ladder climbs to the numbered digest": {
+        "seconds": 30,
+        "n": 11,
+        "p95Seconds": 5.3
+      },
+      "cookie-banner-links-1: a cookie banner with links beside its close button (the AI names a link)": {
+        "seconds": 60,
+        "n": 12,
+        "p95Seconds": 18.8
+      },
+      "cookie-banner-shows-late-1: a posting that asks for the application by email, with a cookie banner that shows itself seconds after the load (it ships hidden): the closer looks again while the run watches, and its Ok is pressed (the page marks #closed)": {
+        "seconds": 30,
+        "n": 12,
+        "p95Seconds": 9.3
+      },
+      "cookie-bar-beside-form-1: a small bar fixed to the bottom of the page, away from the form's controls: it covers none of them, so it does not block the fill (the guard must not over-block)": {
+        "seconds": 30,
+        "n": 12,
+        "p95Seconds": 7.4
+      },
+      "cookie-wall-over-posting-ontop-1: a cookie wall drawn over a posting: the page-kind ask is shown what sits on top (structure), with the posting's own Apply behind it": {
+        "seconds": 30,
+        "n": 11,
+        "p95Seconds": 5
+      },
+      "country-picker-shows-code-1: a phone country picker labelled Country: its options name the country and its calling code (\"Switzerland +41\"); once picked it shows a flag and the code only (\"+41\"); the fill's answer is the country": {
+        "seconds": 35,
+        "n": 12,
+        "p95Seconds": 10.1
+      },
+      "cv-choice-step-1: a step that offers ways to give the CV, each revealing its own part (upload / paste / later)": {
+        "seconds": 30,
+        "n": 12,
+        "p95Seconds": 6.5
+      },
+      "cv-to-required-slot-1: two file slots that both read as the CV: an optional 'Autofill from resume' import box first, then the form's required CV slot (both inputs visually hidden, as Ashby draws them)": {
+        "seconds": 30,
+        "n": 12,
+        "p95Seconds": 10
+      },
+      "dead-apply-route-1: a posting whose AI-named Apply control does nothing when pressed (a script handler that never fires), beside a second route that works: the dead control must not be pressed again, the AI is told it had no effect and names the other route (Hornbach 0.9.189: 'ohne Anmeldung' pressed 3 times, 'mit Anmeldung' never)": {
+        "seconds": 50,
+        "n": 12,
+        "p95Seconds": 15.9
+      },
+      "dial-code-in-country-1: a required native Country menu that lists country names only; the fill's answer for it is a calling code (\"+41\"), so no option matches and the menu stays on its placeholder": {
+        "seconds": 40,
+        "n": 12,
+        "p95Seconds": 12.6
+      },
+      "dialog-mid-fill-holds-1: a robot check wakes 60 ms after the first typed value and nothing closes it: the gate holds the fill, the person is told, and no stage after it runs (a held fill reports no 'filled the form')": {
+        "seconds": 30,
+        "n": 11,
+        "p95Seconds": 7.3
+      },
+      "dialog-opened-by-fill-1: a site's own confirm modal (\"your fields may be replaced, continue?\") opens after the first value is typed and covers the form: it is closed with the non-agreeing button, which keeps the fill": {
+        "seconds": 30,
+        "n": 12,
+        "p95Seconds": 8.9
+      },
+      "dialog-opens-mid-fill-1: a modal wakes 60 ms after the first typed value, while the fill is on its way to the upload: the gate between the fill's stages sees it, the extension closes it with CANCELAR, and the fill goes on to attach the CV": {
+        "seconds": 30,
+        "n": 12,
+        "p95Seconds": 8.2
+      },
+      "dialog-over-form-after-fill-1: a site dialog stays open over the form after the fill: the form judge is shown what sits on top (structure) and says blocked, never needs_person for a field behind it": {
+        "seconds": 30,
+        "n": 12,
+        "p95Seconds": 5.4
+      },
+      "dialog-over-framed-form-1: an application form embedded in an iframe, with a newsletter layer in the TOP page drawn over it (the frame cannot see it): the layer is closed with its non-agreeing button and the frame's fields are filled": {
+        "seconds": 30,
+        "n": 11,
+        "p95Seconds": 8.8
+      },
+      "dialog-unclosable-holds-1: a robot check over the form that no non-agreeing button closes (the AI answers none): the fill is HELD, the person is told, and nothing is typed under the dialog": {
+        "seconds": 30,
+        "n": 12,
+        "p95Seconds": 6.9
+      },
+      "digest-hrefless-route-1: a posting whose Apply route without an account is an <a> with no href (a script handles the click), and rung 2 names no button: only the numbered digest can choose, and it can only choose what the candidate list shows": {
+        "seconds": 30,
+        "n": 12,
+        "p95Seconds": 7.4
+      },
+      "digest-press-unknown-word-1: a posting whose Apply link carries a word no shared phrase knows (\"Mitmachen\"), outside the sketch's 20 buttons: only the numbered digest can name it": {
+        "seconds": 30,
+        "n": 11,
+        "p95Seconds": 7.4
+      },
+      "div-combobox-in-form-1: a div combobox named by aria-labelledby, set straight in the form among other boxes, that opens only on a real mousedown and commits into a hidden input": {
+        "seconds": 30,
+        "n": 11,
+        "p95Seconds": 7.9
+      },
+      "dropzone-input-in-body-and-grid-consent-2: a form whose attachment zone is a pressable three levels under the container that names uploading, its real file input made by script and hidden as a first child of <body>, beside a lone consent box in a row of captioned fields: the CV goes into that input with no press, and the box is read by its own caption, never the first field's": {
+        "seconds": 30,
+        "n": 12,
+        "p95Seconds": 7.4
+      },
+      "easy-apply-board-own-1: a posting whose only Apply route is the board's own \"Easy apply\" (no plain Apply): the AI names it as the Apply button and the extension presses it": {
+        "seconds": 30,
+        "n": 12,
+        "p95Seconds": 7.3
+      },
+      "easy-apply-dialog-1: a posting whose Easy apply opens a start dialog (Login here / Create an account / Continue without an account): the AI names Easy apply, the press opens the dialog, the AI names the manual route, the extension presses it": {
+        "seconds": 50,
+        "n": 11,
+        "p95Seconds": 15.8
+      },
+      "education-menus-first-page-1: three required react-select menus of an Education section: a school list that opens on its first page and does not hold the CV's school, then a degree list of levels the CV words differently (BSc), then a long discipline list": {
+        "seconds": 120,
+        "n": 12,
+        "p95Seconds": 39.5
+      },
+      "email-application-1: a posting that asks for the application by email (address in the text and in a mailto link), no Apply button, no form": {
+        "seconds": 30,
+        "n": 12,
+        "p95Seconds": 5.3
+      },
+      "email-first-no-password-1: an email-first sign-in step before the application form (no password box on the page yet), no password saved for the site: the run names what the person must do at once, and fills the form by itself once the person has signed in": {
+        "seconds": 55,
+        "n": 11,
+        "p95Seconds": 17.9
+      },
+      "email-first-no-step-1: an account page the AI names with no account step (one email box as a plain text input, Continue, no password box): its fields still get the normal fill": {
+        "seconds": 30,
+        "n": 12,
+        "p95Seconds": 6
+      },
+      "email-first-signin-1: email-first sign-in: one email box and Continue, a 'Create an account' link, social sign-in buttons": {
+        "seconds": 30,
+        "n": 12,
+        "p95Seconds": 5.8
+      },
+      "embedded-form-frame-1: a posting page that shows no form of its own and embeds the applicant form from another site in one big iframe (careers pages over a hosted job board)": {
+        "seconds": 30,
+        "n": 12,
+        "p95Seconds": 7.6
+      },
+      "embedded-form-frame-2: a posting whose embedded application frame is born small (the browser's default 150 px) and grows after the page was judged: the judgment saw no form-frame candidate, the frame became one later": {
+        "seconds": 55,
+        "n": 11,
+        "p95Seconds": 17.2
+      },
+      "embedded-form-frame-3: a posting that embeds the applicant form in one big iframe, where the page-kind answer names no frame (rung 2 unsure or a posting with no way on): the numbered digest names the frame": {
+        "seconds": 30,
+        "n": 11,
+        "p95Seconds": 7.7
+      },
+      "embedded-form-frame-4: a posting whose Apply press loads the applicant form into an iframe of the same page: the first read lists no frame, the fresh look after the press names it (form_frame)": {
+        "seconds": 50,
+        "n": 12,
+        "p95Seconds": 15.9
+      },
+      "embedded-form-frame-5: a posting whose application form frame is already on the page; its Apply does nothing and the fresh look after it names a plain link as the manual route AND the frame (form_frame)": {
+        "seconds": 50,
+        "n": 12,
+        "p95Seconds": 16.2
+      },
+      "empty-busy-layer-over-form-1: a transparent busy layer (no text, no control) over the whole form that clears by itself after about a second: the fill waits and fills, never holds with 'a dialog covers the form'": {
+        "seconds": 30,
+        "n": 12,
+        "p95Seconds": 7.3
+      },
+      "flatpickr-real-library-1: the REAL flatpickr (4.6.13, vendored): a date box that opens a calendar and is read-only; the answer is a date in the box's own format": {
+        "seconds": 30,
+        "n": 11,
+        "p95Seconds": 7
+      },
+      "group-title-across-controls-1: two Yes/No groups and a text box: the second and third questions are plain <p> rows right before their groups, after another control with a styled title": {
+        "seconds": 30,
+        "n": 12,
+        "p95Seconds": 7.1
+      },
+      "heading-names-its-controls-1: a question whose words are a bare heading (<h3>) above its box, not a <label> and not a class named label/title: the box and a currency menu beside it were asked as their field names (cSalary, salaryCurrency, section_..._question_5), so the AI could not tell a salary currency or a city from a code": {
+        "seconds": 30,
+        "n": 11,
+        "p95Seconds": 7.1
+      },
+      "hidden-star-section-1: a repeating section (Add Position, no box of its own) whose required star the page keeps hidden until its script needs it; an optional summary box sits further down the same section": {
+        "seconds": 145,
+        "n": 11,
+        "p95Seconds": 46.8
+      },
+      "judge-names-field-by-question-1: a required question whose title sits in a sibling block: the form judge's sketch names the field by its question, as the panel does, never by its raw name": {
+        "seconds": 30,
+        "n": 11,
+        "p95Seconds": 6.3
+      },
+      "judge-waits-for-fill-1: a form whose required boxes are filled at once while one more answer is still on its way from the AI: the panel's count looks ready over a half-filled page": {
+        "seconds": 55,
+        "n": 11,
+        "p95Seconds": 18.1
+      },
+      "judge-waits-for-fill-2: a form whose required boxes are filled at once while one more answer is still on its way from the AI: the panel's count looks ready over a half-filled page": {
+        "seconds": 65,
+        "n": 12,
+        "p95Seconds": 20.1
+      },
+      "label-before-flat-form-1: a flat form whose labels are tied to no box (their `for` names no id), boxes named by the page with field names that point the other way (the first-name box named surname): the label right before the box names it": {
+        "seconds": 30,
+        "n": 12,
+        "p95Seconds": 7.1
+      },
+      "label-before-wrapped-form-1: a flat or wrapped form whose labels are tied to no box (their `for` names no id) and whose boxes carry field names that point the other way: the label right before the box names it": {
+        "seconds": 30,
+        "n": 12,
+        "p95Seconds": 7.1
+      },
+      "late-autofill-after-record-1: a form whose file upload starts the page's own autofill-from-resume, which at once empties the name boxes and keeps them read-only until 10 s after the upload: the fill's record is sent with those boxes empty, and they are typable again only after it": {
+        "seconds": 95,
+        "n": 12,
+        "p95Seconds": 30.1
+      },
+      "legal-picklist-any-wording-1: a required legal picklist whose wording the English legal floor misses (an attestation: \"I certify that the information provided ... is true\"), beside an optional text field left empty": {
+        "seconds": 75,
+        "n": 11,
+        "p95Seconds": 23.4
+      },
+      "lever-sibling-title-1: required text questions whose title sits in a sibling block (div.application-label), not a <label for>, marked with a heavy star": {
+        "seconds": 30,
+        "n": 11,
+        "p95Seconds": 4.6
+      },
+      "lost-query-after-redirect-1: an employer careers page that shows the job's application when its address carries the job id, and the whole list of openings when it does not; the first load is redirected to the address WITHOUT the query (http -> https that strips it)": {
+        "seconds": 30,
+        "n": 12,
+        "p95Seconds": 7.1
+      },
+      "menu-choices-worded-differently-1: a required dropdown that opens only on a real mousedown and whose choices state the answer in their own words (a yes/no question; neither choice is \"Yes\" or \"No\")": {
+        "seconds": 35,
+        "n": 11,
+        "p95Seconds": 11.4
+      },
+      "menu-choices-worded-differently-2: variant of menu-choices-worded-differently-1: another language, list and option tags, wrappers and ids; the same shape": {
+        "seconds": 35,
+        "n": 11,
         "p95Seconds": 11.5
+      },
+      "menu-choices-worded-differently-3: variant of menu-choices-worded-differently-1: the menu filters its choices by whatever is typed, so typing the answer (\"Yes\") empties it (\"No options\") while the choices as it opened can still be asked about": {
+        "seconds": 35,
+        "n": 12,
+        "p95Seconds": 11.5
+      },
+      "menu-set-back-by-page-1: a native country menu the page sets back to its placeholder a moment after each of its first two changes (a late initialisation)": {
+        "seconds": 185,
+        "n": 11,
+        "p95Seconds": 60.3
+      },
+      "multi-select-menu-1: a react-select style menu that takes several choices: a real mouse opens it, each pick adds a chip and closes it, so every choice needs its own opening": {
+        "seconds": 30,
+        "n": 11,
+        "p95Seconds": 8.4
+      },
+      "named-control-absent-1: the AI names a control that is not on the page ('Apply Manually') while the page has a plain Apply link: nothing is pressed in its place": {
+        "seconds": 40,
+        "n": 11,
+        "p95Seconds": 11.8
+      },
+      "named-link-beside-form-1: the AI-named Apply link has no href and sits NEXT TO a form with a visible field (a search box): it is still pressed": {
+        "seconds": 30,
+        "n": 12,
+        "p95Seconds": 6.9
+      },
+      "named-link-inside-form-1: the AI-named Apply link has no href and sits INSIDE a form with a visible field: it is a Submit by another name and is never pressed": {
+        "seconds": 40,
+        "n": 12,
+        "p95Seconds": 11.8
+      },
+      "notice-over-page-centre-1: a non-modal notice with an x close button is drawn over the page centre and covers none of the form's controls, and the app names no button to close it: the notice never holds the fill (the real onTop said covered: [])": {
+        "seconds": 30,
+        "n": 12,
+        "p95Seconds": 9.3
+      },
+      "option-group-no-fieldset-1: a required group of checkboxes with a shared []-name and no fieldset: one question, three options with their own ids": {
+        "seconds": 135,
+        "n": 12,
+        "p95Seconds": 44.7
+      },
+      "other-no-answer-1: a page that is not a form and says nothing about how to apply (the ladder ends at the person with nothing to quote)": {
+        "seconds": 80,
+        "n": 11,
+        "p95Seconds": 25.3
+      },
+      "other-page-with-fields-1: a page that is no job page at all (a code host's pull request) which the page-kind AI calls 'other' with confidence 0.97, and which has an input, a comment box and an upload: the fields never turn it into the application form": {
+        "seconds": 30,
+        "n": 12,
+        "p95Seconds": 5.8
+      },
+      "other-weak-page-with-fields-1: the same page when the page-kind AI is only half sure it is 'other' (0.7, under the line an answer is kept from): the fields still never turn it into the application form; nothing is filled, the page is asked again next visit": {
+        "seconds": 30,
+        "n": 11,
+        "p95Seconds": 5.8
+      },
+      "own-panel-not-in-sketch-1: an application form whose fill starts from the extension's panel: the panel (its open shadow root) is on the page before the extension asks what kind of page this is": {
+        "seconds": 30,
+        "n": 11,
+        "p95Seconds": 7
+      },
+      "page-fill-throws-1: a page whose own script makes one of the fill's page queries throw: the page fill errors on something nobody expected": {
+        "seconds": 30,
+        "n": 12,
+        "p95Seconds": 7.2
+      },
+      "paged-menu-answer-on-later-page-1: a required Country combobox whose list draws 20 choices at a time and loads the next page when scrolled (the answer is not in the page when the menu opens)": {
+        "seconds": 30,
+        "n": 11,
+        "p95Seconds": 7.6
+      },
+      "panel-report-button-1: an application form whose panel the app says may offer Report this form (the Settings switch is on): the panel itself carries a labelled button for it, not only the header icon": {
+        "seconds": 30,
+        "n": 12,
+        "p95Seconds": 8.6
+      },
+      "phone-country-real-library-1: the REAL intl-tel-input (19.5.6, vendored): a country picker beside a number box that starts on its own country's dial code (Israel +972); the answer is the applicant's Swiss number": {
+        "seconds": 30,
+        "n": 12,
+        "p95Seconds": 7
+      },
+      "phone-format-refused-1: a form whose phone box shows the site's own error ('This Phone Number Format is not Allowed') for the international writing we typed": {
+        "seconds": 30,
+        "n": 11,
+        "p95Seconds": 7
+      },
+      "phone-lone-box-country-list-1: ONE phone box whose country list (a button and a listbox) sits in its own wrapper: the box is the whole phone, not a calling-code box": {
+        "seconds": 205,
+        "n": 12,
+        "p95Seconds": 66.8
+      },
+      "phone-split-picker-1: a phone split into a calling-code picker (a multi-select whose chosen item is a chip beside its search box), a number box that takes the national part only (it refuses and empties one written with its code) and an extension box": {
+        "seconds": 210,
+        "n": 12,
+        "p95Seconds": 69.8
+      },
+      "phone-widget-reverts-typed-1: an international phone widget (a country picker beside a number box) whose box starts on its own country code ('+972'): the readers called it filled, so our number was never typed, and the panel said ready": {
+        "seconds": 30,
+        "n": 12,
+        "p95Seconds": 7.1
+      },
+      "picker-chip-beside-search-1: a picker whose search box is a plain input and whose chosen item stands beside it as a chip (a Workday multi-select), already holding the wanted choice": {
+        "seconds": 205,
+        "n": 12,
+        "p95Seconds": 66.9
+      },
+      "picker-menu-open-stays-empty-1: a picker with its menu OPEN beside a box: the listbox's options (none selected) are choices, never the box's value": {
+        "seconds": 205,
+        "n": 12,
+        "p95Seconds": 67.5
+      },
+      "picklist-hidden-key-1: type-to-search picklists (SuccessFactors) that keep the choice in a labelled hidden input as a numeric key and show the chosen option's words in the combobox box itself": {
+        "seconds": 165,
+        "n": 12,
+        "p95Seconds": 54.8
+      },
+      "picture-press-1: a posting whose Apply control no earlier rung names (rung 2 sure of nothing, the digest answers `other`): the picture rung looks once and presses the one listed control the AI calls Apply": {
+        "seconds": 30,
+        "n": 11,
+        "p95Seconds": 7.4
+      },
+      "placeholder-then-form-1: a page that shows only its site header under a Loading cover while its form is on the way: the AI says it is still being drawn, the extension reads it again once it is still and fills the form that came": {
+        "seconds": 30,
+        "n": 11,
+        "p95Seconds": 8.8
+      },
+      "popup-closer-in-form-1: a cookie banner inside the application's <form>: the fill closes it (the least consent) with a script's click, and that press is never the person's submit": {
+        "seconds": 30,
+        "n": 11,
+        "p95Seconds": 7.6
+      },
+      "popup-closer-navigates-by-script-1: a job page with a layer whose only button leaves the page by script (no link, no form)": {
+        "seconds": 30,
+        "n": 12,
+        "p95Seconds": 5.5
+      },
+      "posting-closed-200-de-1: a posting the site took down but still answers 200: a 'not found' notice and a link to the open positions, no form (de); the run says plainly that the posting is closed, at once": {
+        "seconds": 30,
+        "n": 12,
+        "p95Seconds": 5.8
+      },
+      "posting-closed-200-en-1: a posting the site took down but still answers 200: a 'not found' notice and a link to the open positions, no form (en); the run says plainly that the posting is closed, at once": {
+        "seconds": 30,
+        "n": 12,
+        "p95Seconds": 5.3
+      },
+      "posting-gone-1: a posting the site took down: its address answers 404 with no form; the run says plainly that the posting is gone, at once (a 404 is never loaded again)": {
+        "seconds": 30,
+        "n": 11,
+        "p95Seconds": 5
+      },
+      "preference-own-choice-1: a required free-text preference question (preferred messenger and its handle) the profile does not state, beside a text field the AI answers": {
+        "seconds": 30,
+        "n": 12,
+        "p95Seconds": 6.4
+      },
+      "press-no-form-1: a posting with an Apply button that opens no form (the page only tells the candidate how to apply, here by post): the press leads nowhere, then the numbered digest says what the page asks": {
+        "seconds": 45,
+        "n": 12,
+        "p95Seconds": 13.8
+      },
+      "privacy-statement-decline-deletes-1: a privacy consent statement over the application (Accept / Decline / Print) whose Decline opens a 'Delete All Data: permanently delete your account' dialog: the extension presses neither, whatever the AI names": {
+        "seconds": 30,
+        "n": 12,
+        "p95Seconds": 6
+      },
+      "question-naming-mobile-1: open text boxes whose question only names a contact detail (\"mobile (iOS/Android) ... workflows?\", \"your e-mail\"), beside the real phone and name boxes": {
+        "seconds": 120,
+        "n": 11,
+        "p95Seconds": 39.6
+      },
+      "radio-only-real-click-1: role=radio options that ignore a scripted click (event.isTrusted false): only a real click selects": {
+        "seconds": 30,
+        "n": 12,
+        "p95Seconds": 7.1
+      },
+      "react-select-real-library-1: the REAL react-select (5.8.0, vendored): a required Country menu, the choice shows as a chip beside an empty search input; the answer is one of its options": {
+        "seconds": 30,
+        "n": 12,
+        "p95Seconds": 7.1
+      },
+      "required-in-label-words-1: a required mark drawn as a star glued to the label's last word, followed by a short tail of the page's own words; the input has no required attribute": {
+        "seconds": 30,
+        "n": 12,
+        "p95Seconds": 9.5
+      },
+      "required-in-label-words-2: a required mark drawn as a star glued to the label's last word, followed by a short tail of the page's own words; the input has no required attribute": {
+        "seconds": 30,
+        "n": 12,
+        "p95Seconds": 9.7
+      },
+      "required-salutation-menu-1: a required salutation menu (placeholder first, then Mr./Ms./Diverse, no decline choice) that nothing given states: the person's own choice": {
+        "seconds": 30,
+        "n": 12,
+        "p95Seconds": 6.7
+      },
+      "required-star-twin-1: a form whose required mark is an aria-hidden star element followed by a visually hidden word that says 'required' in the page's language: the field's name reads without the star and that word, and the field counts as required": {
+        "seconds": 30,
+        "n": 11,
+        "p95Seconds": 6.3
+      },
+      "required-star-twin-2: a form whose required mark is an aria-hidden star element followed by a visually hidden word that says 'required' in the page's language: the field's name reads without the star and that word, and the field counts as required": {
+        "seconds": 30,
+        "n": 12,
+        "p95Seconds": 6.3
+      },
+      "required-upload-and-recorder-1: a required file question that is not the CV (a motivation letter) and a required video-recorder widget (a group with a button and no input of its own)": {
+        "seconds": 30,
+        "n": 12,
+        "p95Seconds": 10
+      },
+      "search-and-alert-beside-apply-1: a posting with a job-search box and a 'Create Alert' form (3 fields) beside its Apply link; the Apply link navigates to the form 1.5 s after the press": {
+        "seconds": 30,
+        "n": 12,
+        "p95Seconds": 8.3
+      },
+      "section-rerendered-after-pick-1: boxes typed first, then a menu below them is set and the page draws their section again: new elements with new generated ids, empty": {
+        "seconds": 215,
+        "n": 11,
+        "p95Seconds": 71.5
+      },
+      "segmented-radio-wrapper-1: a two-segment choice control whose segments are role=radio elements (aria-checked) around a label holding a visually hidden native radio: a click on the segment's own element does nothing, the state is set by the click on what is inside it": {
+        "seconds": 30,
+        "n": 12,
+        "p95Seconds": 7
+      },
+      "segmented-radio-wrapper-2: a two-segment choice control whose segments are role=radio list items (aria-checked) with their label text in an inner span that carries the page's click handler and a display:none native radio beside it, the question in a heading after the control": {
+        "seconds": 30,
+        "n": 11,
+        "p95Seconds": 7.1
+      },
+      "select2-real-library-1: the REAL Select2 (4.0.13 on jQuery 3.7.1, vendored): a required Country select drawn as its own box over the hidden native select; the answer is one of its options": {
+        "seconds": 30,
+        "n": 12,
+        "p95Seconds": 7
+      },
+      "sign-in-then-form-1: a sign-in step before the application form, with no password saved for the site: the run says exactly what the person must do, and fills the form by itself once the person has signed in": {
+        "seconds": 55,
+        "n": 11,
+        "p95Seconds": 18
+      },
+      "site-error-then-form-1: an application form whose site answers the first load with a server error (503) and the next load with the form: the run loads it again by itself and fills it": {
+        "seconds": 35,
+        "n": 11,
+        "p95Seconds": 10.5
+      },
+      "site-hidden-submit-click-1: a styled Send control whose own script clicks a hidden submit button: the site's click is the person's submit and is noted, unlike the extension's own press": {
+        "seconds": 30,
+        "n": 11,
+        "p95Seconds": 9.9
+      },
+      "slow-answer-after-press-1: a single-page posting whose Apply press is answered by the site 20 s later: the request stays open, then the form appears in the same page": {
+        "seconds": 85,
+        "n": 12,
+        "p95Seconds": 28.3
+      },
+      "suggest-only-place-blur-1: the same suggest-only place box (searches on keydown), cleared once by a blur (another tab, the app window) right after the first real typing, before its list shows: the box must be typed and chosen again": {
+        "seconds": 70,
+        "n": 11,
+        "p95Seconds": 22.8
+      },
+      "suggest-only-place-decoy-1: a place box whose suggestions never include the applicant's own place: only a place nearby (the visitor's network, not the applicant)": {
+        "seconds": 70,
+        "n": 11,
+        "p95Seconds": 22.1
+      },
+      "suggest-only-place-input-1: a place box that takes only a suggestion and searches on input: the same box, a different trigger": {
+        "seconds": 55,
+        "n": 12,
+        "p95Seconds": 16.7
+      },
+      "suggest-only-place-keydown-1: a place box that takes only a suggestion and searches on keydown: the applicant's saved place carries a country code (\"Zürich, CHE\") that no place search matches": {
+        "seconds": 50,
+        "n": 11,
+        "p95Seconds": 16.5
+      },
+      "swatch-open-link-1: a posting whose menu fills the first 20 sketch buttons and whose Apply link goes to another site and opens in a new tab: rung 2 names no button, the digest opens the link (verb open, press_kind apply)": {
+        "seconds": 30,
+        "n": 11,
+        "p95Seconds": 7.3
+      },
+      "text-state-from-keys-1: a text box that keeps its own state from real key presses and writes it back on blur: a value set by a script goes away": {
+        "seconds": 50,
+        "n": 12,
+        "p95Seconds": 16.1
+      },
+      "text-state-from-keys-2: a text box that keeps its own state from keypress events and writes it back when the value changes or the box is left (French labels wrapping the box)": {
+        "seconds": 50,
+        "n": 11,
+        "p95Seconds": 16.1
+      },
+      "there are recorded cases to replay": {
+        "seconds": 30,
+        "n": 58,
+        "p95Seconds": 0
+      },
+      "toggle-group-named-by-its-label-1: a Yes/No question drawn as two aria-pressed buttons in a role=group named by aria-labelledby, after boxes that carry their own <label for>": {
+        "seconds": 30,
+        "n": 11,
+        "p95Seconds": 7
+      },
+      "told-no-form-1: a posting with no form and no Apply control that tells the candidate to come by in person (rung 2 unsure, then the numbered digest says what the page asks)": {
+        "seconds": 30,
+        "n": 12,
+        "p95Seconds": 5.3
+      },
+      "two-apply-routes-1: a posting with two Apply links, one that needs an account and one that does not (Hornbach: \"Jetzt bewerben (ohne Anmeldung)\" / \"(mit Anmeldung)\")": {
+        "seconds": 30,
+        "n": 12,
+        "p95Seconds": 7.4
+      },
+      "two-apply-routes-2: a posting whose named Apply route is a link with no href (a script click handler) beside a real link to the account route (Hornbach: the AI names \"Jetzt bewerben (ohne Anmeldung)\", only \"(mit Anmeldung)\" is an a[href])": {
+        "seconds": 30,
+        "n": 12,
+        "p95Seconds": 7.5
+      },
+      "typeahead-accent-option-1: a required Location search box whose list offers the answer with an accent (answer \"Zurich, Switzerland\", option \"Zürich, Switzerland\"): the free match ignores accents, no AI pick is needed": {
+        "seconds": 30,
+        "n": 12,
+        "p95Seconds": 9.3
+      },
+      "typeahead-answer-text-differs-1: a required Location search box (type to search): its options load from a server only after real keystrokes, the typed answer finds nothing, a short start finds options in another wording that the AI matches by meaning": {
+        "seconds": 80,
+        "n": 12,
+        "p95Seconds": 25.2
+      },
+      "typeahead-listbox-other-markup-1: the same type-to-search box in another markup and language: wrapped input before its label, a list of rows in a listbox that names no option, German wording": {
+        "seconds": 55,
+        "n": 12,
+        "p95Seconds": 18.3
+      },
+      "typeless-answer-buttons-1: a form whose answer choices are typeless buttons (no type attribute, so the browser reports type=submit) that the page handles itself; answering them must never read as the form's Submit": {
+        "seconds": 30,
+        "n": 11,
+        "p95Seconds": 7.1
+      },
+      "ui5-radio-group-named-1: a radio group that names its question by aria-labelledby and marks itself aria-required; the page already shows a selected choice": {
+        "seconds": 205,
+        "n": 12,
+        "p95Seconds": 66.8
+      },
+      "ui5-select-shown-choice-1: a select-only combobox that is no input (<div role=combobox> holding the shown choice, a hidden input with its key beside it): the page already shows the person's choice": {
+        "seconds": 205,
+        "n": 11,
+        "p95Seconds": 66.8
+      },
+      "umantis-div-row-radio-1: a radio group laid out as a div row whose required \"*\" is in its own span (class *label*): the \"*\" was taken as the row title, the group was named by its first option (\"Frau\") and its question was never read (Umantis div layout)": {
+        "seconds": 30,
+        "n": 12,
+        "p95Seconds": 7.1
+      },
+      "umantis-salutation-held-1: a salutation radio (Herr/Frau) the profile does not state, beside a text field the AI answers": {
+        "seconds": 30,
+        "n": 12,
+        "p95Seconds": 6.6
+      },
+      "umantis-table-form-1: a table form whose required marks read \"Label*:\" (a star, then a colon) and whose radio group is named by a text cell in its row, no fieldset (Haufe umantis, German)": {
+        "seconds": 30,
+        "n": 11,
+        "p95Seconds": 7
+      },
+      "upload-autofill-clears-typed-1: a form whose file upload starts the page's own autofill-from-resume, which rewrites the name and link boxes a moment later (empty when it reads nothing): what the fill typed before the upload is gone": {
+        "seconds": 40,
+        "n": 12,
+        "p95Seconds": 13
+      },
+      "upload-buttons-replaced-by-chip-1: a resume field that is three buttons (Attach, Dropbox, Enter manually) and no file input until Attach is pressed: the page makes its own input, takes the file, removes the input and replaces the buttons with a chip (the file's name and a remove button)": {
+        "seconds": 30,
+        "n": 11,
+        "p95Seconds": 10
+      },
+      "upload-clears-input-1: an upload slot (a drop zone with a visually hidden file input) whose page empties the input in its own change handler and shows the attached file as a chip with its name": {
+        "seconds": 35,
+        "n": 12,
+        "p95Seconds": 10.1
+      },
+      "upload-import-from-cv-1: a form with its own CV slot (\"Currículo\", a word no floor knows) and the site's \"Import data from my CV\" feature, whose hidden file input is labelled by its button: the app's AI names the slot that takes the CV as a document, so the import input gets no file (and the site's \"your fields may be replaced\" dialog never opens)": {
+        "seconds": 30,
+        "n": 11,
+        "p95Seconds": 7.6
+      },
+      "upload-input-hidden-by-library-1: an upload slot drawn by the real react-dropzone 14.2.3 (vendored): its file input is display:none inside the library's drop zone; a taken file is shown as a chip": {
+        "seconds": 30,
+        "n": 12,
+        "p95Seconds": 10
+      },
+      "upload-refused-shows-nothing-1: an upload slot (a drop zone with a visually hidden file input) whose page refuses the attached file: it empties the input and shows nothing of the file": {
+        "seconds": 35,
+        "n": 11,
+        "p95Seconds": 10.1
+      },
+      "upload-rerender-clears-typed-1: a form that draws itself again after an upload: the name and link boxes are replaced by new elements of the same id, empty, twice (right after the upload and a few seconds later)": {
+        "seconds": 55,
+        "n": 12,
+        "p95Seconds": 18
+      },
+      "upload-slot-in-modal-2: an application drawn as a modal dialog: the whole form, its CV slot included, sits inside a role=dialog layer; the CV slot (a styled drop area over a hidden file input) takes the file": {
+        "seconds": 30,
+        "n": 11,
+        "p95Seconds": 6.3
+      },
+      "upload-widget-counted-once-1: upload fields drawn as a group (a label block, then Attach / Dropbox / Enter manually buttons, the file input hidden under Attach, in a wrapper whose class names uploading); the CV field drops its buttons once the file is in and draws the file's chip a few seconds later": {
+        "seconds": 120,
+        "n": 12,
+        "p95Seconds": 40
+      },
+      "workday-start-dialog-1: a start dialog offering manual / reuse a previous application / sign in with a third-party account (Workday 'Start Your Application')": {
+        "seconds": 50,
+        "n": 12,
+        "p95Seconds": 15.7
+      },
+      "workday-start-dialog-2: a start dialog whose manual route is a link-styled button, while the posting's own plain Apply stays behind it (Workday 'Start Your Application', real markup)": {
+        "seconds": 50,
+        "n": 11,
+        "p95Seconds": 15.6
+      },
+      "written-reminder-never-typed-1: open questions answered in the person's own words whose drafted answer carries \"• Add: ...\" reminders: one with finished sentences and a reminder, one with reminders only": {
+        "seconds": 30,
+        "n": 12,
+        "p95Seconds": 6.8
+      },
+      "yes-no-pair-counted-once-1: a required yes/no question drawn as two toggle buttons (aria-pressed) with a checkbox inside the same box, its title a label whose for names no box and whose class marks it required, as the captured Ashby page draws it; nothing answers it": {
+        "seconds": 30,
+        "n": 12,
+        "p95Seconds": 10
+      },
+      "yes-no-step-continue-1: a question step: a sentence, two plain buttons (no aria state, no form) and a Continue switched off until one is chosen": {
+        "seconds": 30,
+        "n": 12,
+        "p95Seconds": 6.2
+      }
+    }
+  },
+  "storemove": {
+    "provenance": "tools/e2e-step-timings.mjs: 6 main runs, 6/6 calm shard-runs.\nMain run IDs: 40985357367, 40987937824, 41133640727, 41146558456, 41157036555, 41180851813.\n3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.",
+    "steps": {
+      "a move killed halfway changes nothing, and the next one goes on with nothing twice": {
+        "seconds": 80,
+        "n": 6,
+        "p95Seconds": 25.9
+      },
+      "after the move the store is Notion, the Profile Notion had is kept, and this Mac's files are in the archive": {
+        "seconds": 30,
+        "n": 6,
+        "p95Seconds": 0.2
+      },
+      "an app on this Mac's store holds real-shaped data on every screen": {
+        "seconds": 60,
+        "n": 6,
+        "p95Seconds": 19.4
+      },
+      "Export data writes this Mac's data to one file": {
+        "seconds": 30,
+        "n": 6,
+        "p95Seconds": 0.8
+      },
+      "Jobs, Focus, Interviews and Recent activity show the same items from Notion": {
+        "seconds": 50,
+        "n": 6,
+        "p95Seconds": 15.4
+      },
+      "no AI call of this suite reached a real model: the stand-in answered or refused every one": {
+        "shared": "applyflows",
+        "n": 4,
+        "p95Seconds": 0.2
+      },
+      "nothing was queued to report to the product": {
+        "seconds": 30,
+        "n": 6,
+        "p95Seconds": 0.2
+      },
+      "Notion connects with a Profile of its own; this Mac keeps its data until the move": {
+        "seconds": 30,
+        "n": 6,
+        "p95Seconds": 9
+      },
+      "the export, imported into a fresh install, shows the same on every screen (still this Mac's store)": {
+        "seconds": 60,
+        "n": 6,
+        "p95Seconds": 18.5
+      },
+      "the imported install moves into an empty Notion: its Profile and every record arrive once": {
+        "seconds": 165,
+        "n": 6,
+        "p95Seconds": 54.2
+      },
+      "the Notion stand-in answered every request the app made": {
+        "seconds": 30,
+        "n": 6,
+        "p95Seconds": 0.2
+      }
+    }
+  },
+  "stores": {
+    "provenance": "tools/e2e-step-timings.mjs: 9 main runs, 9/9 calm shard-runs.\nMain run IDs: 40796899545, 40799225090, 40836904987, 40975522762, 40985357367, 41133640727, 41146558456, 41157036555, 41180851813.\n3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.",
+    "steps": {
+      "a job's page shows its kit, prep and history from the store": {
+        "seconds": 30,
+        "n": 9,
+        "p95Seconds": 7.1
+      },
+      "a remembered answer is kept in this Mac's Availability & compensation": {
+        "seconds": 30,
+        "n": 6,
+        "p95Seconds": 0.5
+      },
+      "a saved view chip narrows the list: Saved shows the saved application only": {
+        "seconds": 30,
+        "n": 9,
+        "p95Seconds": 2
+      },
+      "Interviews opens without asking to connect Notion": {
+        "seconds": 30,
+        "n": 9,
+        "p95Seconds": 1.3
+      },
+      "moving a card to Interviewing writes the stage and its event to the store, and it stays after a reload": {
+        "seconds": 30,
+        "n": 9,
+        "p95Seconds": 5.5
+      },
+      "no AI call of this suite reached a real model: the stand-in answered or refused every one": {
+        "seconds": 30,
+        "n": 6,
+        "p95Seconds": 0.1
+      },
+      "nothing was queued to report to the product": {
+        "seconds": 30,
+        "n": 9,
+        "p95Seconds": 0.2
+      },
+      "Reports → Funnel shows the Pipeline table from the store's applications": {
+        "seconds": 30,
+        "n": 9,
+        "p95Seconds": 2
+      },
+      "Reports shows the weekly report and the insights; a feedback is kept in the store and after a reload": {
+        "seconds": 30,
+        "n": 9,
+        "p95Seconds": 7.1
+      },
+      "the app is set up on the SQLite store, with no Notion token": {
+        "seconds": 30,
+        "n": 9,
+        "p95Seconds": 6.7
+      },
+      "the board shows the store's applications in their stage columns": {
+        "seconds": 30,
+        "n": 9,
+        "p95Seconds": 5.4
+      },
+      "with no store chosen and no Notion, Interviews still asks to connect (no change for anyone)": {
+        "seconds": 30,
+        "n": 9,
+        "p95Seconds": 2.2
+      }
+    }
+  },
+  "strategy": {
+    "provenance": "tools/e2e-step-timings.mjs: 10 main runs, 6/10 calm shard-runs.\nMain run IDs: 40796899545, 40799225090, 40802551247, 40836904987, 40960750830, 40985357367, 40987937824, 41146558456, 41157036555, 41180851813.\n3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.\nGenerated step labels share their source template prefix; p95 is recomputed from the raw calm samples, not averaged from per-label percentiles.",
+    "steps": {
+      "a company to skip, set in the app, reaches": {
+        "seconds": 30,
+        "n": 6,
+        "p95Seconds": 0.7
+      },
+      "a region word and a level set in the app decide which postings the next check keeps": {
+        "seconds": 60,
+        "n": 5,
+        "p95Seconds": 19.8
+      },
+      "a role and a place added in the app reach": {
+        "seconds": 30,
+        "n": 6,
+        "p95Seconds": 0.8
+      },
+      "a role changed in the app is used by the next check, and a removed role stops matching": {
+        "seconds": 65,
+        "n": 5,
+        "p95Seconds": 20.3
+      },
+      "before any change the check finds neither new posting": {
+        "seconds": 90,
+        "n": 6,
+        "p95Seconds": 28.5
+      },
+      "no AI call of this suite reached a real model: the stand-in answered or refused every one": {
+        "seconds": 30,
+        "n": 6,
+        "p95Seconds": 0.6
+      },
+      "nothing was queued to report to the product": {
+        "seconds": 30,
+        "n": 6,
+        "p95Seconds": 0.4
+      },
+      "the app is seeded as a set-up install from the existing workspace": {
+        "shared": "applyflows",
+        "n": 1,
+        "p95Seconds": 2.9
+      },
+      "the app is set up on this Mac's store with the applicant's strategy": {
+        "seconds": 30,
+        "n": 5,
+        "p95Seconds": 5.7
+      },
+      "the next check keeps the posting that matches the new role and place, and still drops the other": {
+        "seconds": 60,
+        "n": 6,
+        "p95Seconds": 18.5
+      },
+      "the Notion stand-in answered every request the app made": {
+        "shared": "applyflows",
+        "n": 1,
+        "p95Seconds": 0
+      },
+      "the skipped company is not kept any more, while the same role at the other board still is": {
+        "seconds": 60,
+        "n": 6,
+        "p95Seconds": 19.2
+      },
+      "this suite starts with no jobs, two small boards and no strategy change": {
+        "seconds": 30,
+        "n": 6,
+        "p95Seconds": 8.3
+      },
+      "a fresh install reconnecting to the same Notion page keeps the real settings and links the same page": {
+        "seconds": 50,
+        "n": 1,
+        "maxSeconds": 16,
+        "provisional": true,
+        "reason": "provisional: 3 x its slowest calm sample, 30 s floor, rounded up to 5 s; regenerate after 5 main runs (tools/e2e-step-timings.mjs)"
+      },
+      "a region word and a level written on the Notion page decide which postings the next check keeps": {
+        "seconds": 50,
+        "n": 1,
+        "maxSeconds": 15.5,
+        "provisional": true,
+        "reason": "provisional: 3 x its slowest calm sample, 30 s floor, rounded up to 5 s; regenerate after 5 main runs (tools/e2e-step-timings.mjs)"
+      },
+      "an edit made directly on the Notion page is used by the next check, and a removed role stops matching": {
+        "seconds": 45,
+        "n": 1,
+        "maxSeconds": 14.8,
+        "provisional": true,
+        "reason": "provisional: 3 x its slowest calm sample, 30 s floor, rounded up to 5 s; regenerate after 5 main runs (tools/e2e-step-timings.mjs)"
+      }
+    }
+  },
+  "updates": {
+    "provenance": "tools/e2e-step-timings.mjs: 4 main runs, 4/4 calm shard-runs.\nMain run IDs: 40985357367, 41133640727, 41146558456, 41157036555.\n3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.",
+    "steps": {
+      "nothing was queued to report to the product": {
+        "shared": "applyflows",
+        "n": 4,
+        "p95Seconds": 0.3
+      },
+      "a newer stable release is offered to everyone, in the menu foot": {
+        "seconds": 30,
+        "n": 4,
+        "maxSeconds": 0.8,
+        "provisional": true,
+        "reason": "provisional: 3 x its slowest calm sample, 30 s floor, rounded up to 5 s; regenerate after 5 main runs (tools/e2e-step-timings.mjs)"
+      },
+      "a pre-release the gate has not approved is never offered, even on the beta channel": {
+        "seconds": 30,
+        "n": 4,
+        "maxSeconds": 0.4,
+        "provisional": true,
+        "reason": "provisional: 3 x its slowest calm sample, 30 s floor, rounded up to 5 s; regenerate after 5 main runs (tools/e2e-step-timings.mjs)"
+      },
+      "an approved beta is offered only on the beta channel": {
+        "seconds": 30,
+        "n": 4,
+        "maxSeconds": 0.7,
+        "provisional": true,
+        "reason": "provisional: 3 x its slowest calm sample, 30 s floor, rounded up to 5 s; regenerate after 5 main runs (tools/e2e-step-timings.mjs)"
+      },
+      "the app is set up without Notion (trying mode): a key saved, setup done": {
+        "seconds": 30,
+        "n": 4,
+        "maxSeconds": 6.7,
+        "provisional": true,
+        "reason": "provisional: 3 x its slowest calm sample, 30 s floor, rounded up to 5 s; regenerate after 5 main runs (tools/e2e-step-timings.mjs)"
+      }
+    }
+  },
+  "visitread": {
+    "provenance": "tools/e2e-step-timings.mjs: 11 main runs, 11/11 calm shard-runs.\nMain run IDs: 40789795183, 40799225090, 40802551247, 40960750830, 40975522762, 40985357367, 40987937824, 41133640727, 41146558456, 41157036555, 41180851813.\n3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.",
+    "steps": {
+      "a bot-check page stops it: nothing read, the person answers it": {
+        "seconds": 30,
+        "n": 11,
+        "p95Seconds": 0
+      },
+      "a consent message drawn in an iframe is closed from inside the frame, with the least consent": {
+        "seconds": 30,
+        "n": 11,
+        "p95Seconds": 0.1
+      },
+      "a cookie banner over the list is closed with the least consent offered (\"Reject all\", not \"Accept all\"), a sign-in box never touched": {
+        "seconds": 30,
+        "n": 11,
+        "p95Seconds": 0.1
+      },
+      "a home page is not a job list: the quick guess says so, and the engine finds the job list from its own links": {
+        "seconds": 30,
+        "n": 11,
+        "p95Seconds": 1.9
+      },
+      "a job list drawn in a frame by another site is found (not the cookie or video frame), and resetting the filters is never a way on (7 Oct 2026)": {
+        "seconds": 30,
+        "n": 11,
+        "p95Seconds": 0.2
+      },
+      "a link whose address is template code (DHL, 7 Oct 2026) is never offered to Claude nor followed as the next page": {
+        "seconds": 30,
+        "n": 11,
+        "p95Seconds": 0
+      },
+      "a page that draws nothing is seen as blank (said and stopped, not skipped as silent); a list page is not": {
+        "seconds": 30,
+        "n": 11,
+        "p95Seconds": 0
+      },
+      "a page with no job list yet lists its ways on for Claude (never Sign in); the step Claude picks shows the jobs": {
+        "seconds": 30,
+        "n": 11,
+        "p95Seconds": 0
+      },
+      "a second round of ways on never gives one id to two elements: the step Claude names is the one clicked (Fust, 7 Oct 2026)": {
+        "seconds": 30,
+        "n": 11,
+        "p95Seconds": 0
+      },
+      "any site: where the quick guess reads nothing, Claude's recipe from the page outline reads the jobs and finds the next page": {
+        "seconds": 30,
+        "n": 11,
+        "p95Seconds": 0.4
+      },
+      "filters: a place typed in a suggest box is picked from its suggestions before the search is sent (Van Cleef, 7 Oct 2026)": {
+        "seconds": 30,
+        "n": 11,
+        "p95Seconds": 0.4
+      },
+      "filters: a place typed in English is picked in the site's own spelling (\"geneva\" -> \"Genève (GE)\", Decathlon, 8 Oct 2026)": {
+        "seconds": 30,
+        "n": 11,
+        "p95Seconds": 2.4
+      },
+      "filters: a plain box with its own suggestion list gets its place picked too, never a link already on the page (7 Oct 2026)": {
+        "seconds": 30,
+        "n": 11,
+        "p95Seconds": 0.4
+      },
+      "filters: the page's own controls are listed for Claude, never Easy Apply, Sign in or Save; only its place step is kept and applied, a forbidden one refused": {
+        "seconds": 30,
+        "n": 11,
+        "p95Seconds": 1.8
+      },
+      "it goes to the next page of the same list, reads it, and finds no page after the last": {
+        "seconds": 30,
+        "n": 11,
+        "p95Seconds": 0.2
+      },
+      "one posting: its main text is read for \"Jobs we couldn't read\", without the menu or footer; a sign-in page sends only why": {
+        "seconds": 30,
+        "n": 11,
+        "p95Seconds": 0.1
+      },
+      "the engine keeps the pages of one visit as one feed (three jobs, each with its own employer and place, no duplicate) and reads the job data of an employer page without fetching": {
+        "seconds": 30,
+        "n": 11,
+        "p95Seconds": 0.3
+      },
+      "the extension reads a list page as you see it: each card's title, address and visible lines": {
+        "seconds": 30,
+        "n": 11,
+        "p95Seconds": 0.2
+      }
+    }
+  },
+  "visitsauto": {
+    "provenance": "tools/e2e-step-timings.mjs: 10 main runs, 10/10 calm shard-runs.\nMain run IDs: 40789795183, 40799225090, 40802551247, 40836904987, 40960750830, 40975522762, 40987937824, 41146558456, 41157036555, 41180851813.\n3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.",
+    "steps": {
+      "a marked tab waiting on the person says so: the Allow page opens beside it and the app is told it waits (owner's rule), nothing is read": {
+        "seconds": 30,
+        "n": 10,
+        "p95Seconds": 0.4
+      },
+      "a marked tab whose site redirects by script and drops the mark is still read by itself": {
+        "seconds": 30,
+        "n": 10,
+        "p95Seconds": 5.1
+      },
+      "a marked tab, once allowed, is read by itself over its pages, reported to the app as done, and closed": {
+        "seconds": 30,
+        "n": 10,
+        "p95Seconds": 5.1
+      },
+      "a page the app did not mark is left alone: nothing read, nothing sent": {
+        "seconds": 30,
+        "n": 10,
+        "p95Seconds": 3.4
+      },
+      "the extension starts and reaches the stand-in app, never the user's own (a different port)": {
+        "seconds": 30,
+        "n": 10,
+        "p95Seconds": 0
+      }
+    }
+  },
+  "wander": {
+    "provenance": "tools/e2e-step-timings.mjs: 5 main runs, 5/5 calm shard-runs.\nMain run IDs: 41021843712, 41133640727, 41146558456, 41153500920, 41157036555.\n3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.\nGenerated step labels share their source template prefix; p95 is recomputed from the raw calm samples, not averaged from per-label percentiles.",
+    "steps": {
+      "no AI call of this suite reached a real model: the stand-in answered or refused every one": {
+        "seconds": 30,
+        "n": 5,
+        "p95Seconds": 0.3
+      },
+      "nothing was queued to report to the product": {
+        "seconds": 30,
+        "n": 5,
+        "p95Seconds": 0.3
+      },
+      "start state: ": {
+        "seconds": 30,
+        "n": 5,
+        "p95Seconds": 3.5
+      },
+      "step ": {
+        "seconds": 45,
+        "n": 70,
+        "p95Seconds": 13.7
+      },
+      "the app is seeded as a set-up install from the existing workspace": {
+        "seconds": 45,
+        "n": 5,
+        "p95Seconds": 14.9
+      },
+      "the Notion stand-in answered every request the app made": {
+        "seconds": 30,
+        "n": 5,
+        "p95Seconds": 0.3
+      },
+      "wander findings are written": {
+        "seconds": 30,
+        "n": 5,
+        "p95Seconds": 0.3
+      }
+    }
+  },
+  "wizard": {
+    "provenance": "tools/e2e-step-timings.mjs: 10 main runs, 10/10 calm shard-runs.\nMain run IDs: 40802551247, 40960750830, 40985357367, 40987937824, 41133640727, 41146558456, 41157036555, 41166853012, 41173193229, 41180851813.\n3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.",
+    "steps": {
+      "a CV is chosen and read": {
+        "seconds": 30,
+        "n": 10,
+        "p95Seconds": 4.6
+      },
+      "a new install keeps its data on this Mac: the store is set once at first start": {
+        "seconds": 30,
+        "n": 10,
+        "p95Seconds": 0.5
+      },
+      "a Notion token connects: the workspace is built inside the test page and the strategy moves in": {
+        "seconds": 110,
+        "n": 7,
+        "p95Seconds": 36.2
+      },
+      "a valid API key is accepted and saved": {
+        "seconds": 30,
+        "n": 9,
+        "p95Seconds": 2
+      },
+      "an invalid API key is rejected without saving": {
+        "seconds": 30,
+        "n": 9,
+        "p95Seconds": 1.7
+      },
+      "finishing the setup without Notion opens the Jobs list, with the strategy kept on this Mac": {
+        "seconds": 30,
+        "n": 10,
+        "p95Seconds": 1.3
+      },
+      "Jobs opens on the Find jobs card; pressing it starts the first search": {
+        "seconds": 30,
+        "n": 10,
+        "p95Seconds": 1.9
+      },
+      "nothing was queued to report to the product": {
+        "seconds": 30,
+        "n": 10,
+        "p95Seconds": 0.3
+      },
+      "on this Mac's store no page asks to connect Notion: Focus and Interviews open their own content": {
+        "seconds": 30,
+        "n": 10,
+        "p95Seconds": 2.5
+      },
+      "setup drafts the base letter; explicit approval makes its PDF before continuing": {
+        "seconds": 30,
+        "n": 7,
+        "p95Seconds": 4.3
+      },
+      "Start opens the AI step with both engines to choose from": {
+        "seconds": 30,
+        "n": 10,
+        "p95Seconds": 3.2
+      },
+      "the AI step will not continue without a key": {
+        "seconds": 30,
+        "n": 9,
+        "p95Seconds": 1.7
+      },
+      "the app starts on the welcome screen": {
+        "seconds": 30,
+        "n": 10,
+        "p95Seconds": 5.4
+      },
+      "the first screens after setup render without layout problems": {
+        "seconds": 50,
+        "n": 10,
+        "p95Seconds": 16.2
+      },
+      "the Notion stand-in answered every request the app made": {
+        "seconds": 30,
+        "n": 7,
+        "p95Seconds": 0.3
+      },
+      "the strategy is built from the CV and shows roles to search for": {
+        "seconds": 30,
+        "n": 10,
+        "p95Seconds": 1
+      },
+      "Free AI is chosen and the AI step continues on it": {
+        "seconds": 30,
+        "n": 1,
+        "maxSeconds": 1.6,
+        "provisional": true,
+        "reason": "provisional: 3 x its slowest calm sample, 30 s floor, rounded up to 5 s; regenerate after 5 main runs (tools/e2e-step-timings.mjs)"
+      },
+      "saving the strategy reaches the finish action": {
+        "seconds": 30,
+        "n": 3,
+        "maxSeconds": 1.5,
+        "provisional": true,
+        "reason": "provisional: 3 x its slowest calm sample, 30 s floor, rounded up to 5 s; regenerate after 5 main runs (tools/e2e-step-timings.mjs)"
+      },
+      "the OpenAI side of the switch shows its two cards": {
+        "seconds": 90,
+        "provisional": true,
+        "reason": "provisional: no calm sample yet, the 30 s floor x 3 (the convention of the apply caps); regenerate after 5 main runs (tools/e2e-step-timings.mjs). It runs only on the engine or store variant that reaches it (CI alternates OpenAI and Claude engines), so the main reports measured so far never saw it."
+      },
+      "Codex is chosen (confirmed once, then checked) and the AI step continues": {
+        "seconds": 90,
+        "provisional": true,
+        "reason": "provisional: no calm sample yet, the 30 s floor x 3 (the convention of the apply caps); regenerate after 5 main runs (tools/e2e-step-timings.mjs). It runs only on the engine or store variant that reaches it (CI alternates OpenAI and Claude engines), so the main reports measured so far never saw it."
+      },
+      "a valid OpenAI API key is accepted and saved": {
+        "seconds": 90,
+        "provisional": true,
+        "reason": "provisional: no calm sample yet, the 30 s floor x 3 (the convention of the apply caps); regenerate after 5 main runs (tools/e2e-step-timings.mjs). It runs only on the engine or store variant that reaches it (CI alternates OpenAI and Claude engines), so the main reports measured so far never saw it."
+      },
+      "Claude Code is chosen (confirmed once, then checked) and the AI step continues": {
+        "seconds": 90,
+        "provisional": true,
+        "reason": "provisional: no calm sample yet, the 30 s floor x 3 (the convention of the apply caps); regenerate after 5 main runs (tools/e2e-step-timings.mjs). It runs only on the engine or store variant that reaches it (CI alternates OpenAI and Claude engines), so the main reports measured so far never saw it."
+      },
+      "Focus shows Get started without Notion; Interviews asks to connect Notion, lists the advantages, and Not now with a reason closes the prompt": {
+        "seconds": 90,
+        "provisional": true,
+        "reason": "provisional: no calm sample yet, the 30 s floor x 3 (the convention of the apply caps); regenerate after 5 main runs (tools/e2e-step-timings.mjs). It runs only on the engine or store variant that reaches it (CI alternates OpenAI and Claude engines), so the main reports measured so far never saw it."
       }
     }
   }

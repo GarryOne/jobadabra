@@ -7,6 +7,7 @@ import path from 'node:path';
 import {FORMS} from './forms.mjs';
 import {POSTING} from './apply-fixtures.mjs';
 import {waitForFill} from './fill-attempt.mjs';
+import {stepTimeLeft} from './wait-on-state.mjs';
 import {addKitJob, removeJobsByUrl, tailoredFiles} from './seed-data.mjs';
 import {cvProblems} from './applycheck.mjs';
 import {readForm, readPanel} from './extension.mjs';
@@ -118,10 +119,11 @@ export async function runCvSteps(ctx, h) {
       if (!(await page.locator('#tailor-top').isDisabled())) throw new Error('Run is still pressable while Tailor CVs is running');
     } finally { ctx.tailorHold = null; release(); }
     let said = '';
-    await until('the Tailor CVs task did not finish within 420 s', async () => {
+    // Why (31 Oct 2026, owner, a8 2/5, Gitar): the step's measured hang cap is this wait's only clock; the old 420 s bound sat above the 195 s cap, so its message could never fire.
+    await until('the Tailor CVs task did not finish before the step\'s hang cap (hang-caps.json)', async () => {
       said = await page.evaluate(async id => ((await window.pilot.runs()).runs || []).filter(run => String(run.id) === String(id)).pop()?.summary || '', runId);
       return /Tailored \d+ of \d+ CV/.test(said);
-    }, 420000);
+    }, stepTimeLeft());
     await page.waitForFunction(() => !document.getElementById('tailor-top').disabled, null, {timeout: 20000}).catch(() => { throw new Error('Run stayed disabled after Tailor CVs ended'); });
     if (!/Tailored 2 of 2 CVs/.test(said)) throw new Error(`Recent activity has no Tailor CVs run that says two CVs were tailored: "${said}"`);
     const made = topUrls.map(url => fs.existsSync(tailoredAt(url)));

@@ -112,7 +112,7 @@ test('settings registers measured runner caps and no aggregate budget', async ()
   const source = file => readFileSync(new URL(`../${file}`, import.meta.url), 'utf8');
   const direct = stepCalls(source('suites/settings.mjs')).map(step => step.name);
   const seed = stepCalls(source('lib/seed.mjs')).map(step => step.name);
-  const required = [...direct, ...seed, 'nothing was queued to report to the product', 'the Notion stand-in answered every request the app made'];
+  const required = [...direct, ...seed, 'no AI call of this suite reached a real model: the stand-in answered or refused every one', 'nothing was queued to report to the product', 'the Notion stand-in answered every request the app made'];
   assert.ok(direct.length >= 9, 'positive control: settings literal steps were read');
   assert.deepEqual(Object.keys(settings.hangCaps).sort(), [...new Set(required)].sort());
   for (const [name, seconds] of Object.entries(settings.hangCaps)) {

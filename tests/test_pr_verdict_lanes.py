@@ -175,12 +175,13 @@ class RegistryFile(unittest.TestCase):
             self.assertGreater(len(re.sub(r'\W', '', entry.get('why', ''))), 24, f'{name}: why it is not backbone, in words')
             self.assertRegex(entry.get('since', ''), r'^2026-\d\d-\d\d$', f'{name}: the date it left the backbone')
 
-    def test_the_registry_keeps_the_first_cut_and_adds_the_live_quality_journey(self):
+    def test_the_registry_keeps_the_first_cut_the_live_quality_journey_and_personas(self):
         listed = {name: (entry['lane'], entry['returns']) for name, entry in self.registry['suites'].items() if 'lane' in entry}
         self.assertEqual(listed, {
             'qualityai': ('tolerant', 'Stays tolerant: it measures the live model.'),
             'mailreading': ('retired', 'Retired permanently; use qualityai:mail for a manual mail-reading eval.'),
             'notion-real': ('tolerant', 'Stays tolerant: it tests Notion itself.'),
+            'personas': ('tolerant', 'Stays tolerant: it reports a live model\'s answers on fictional personas; it returns to the backbone only if the owner asks for its asks to be stored.'),   # owner, 31 Oct 2026: report only, like qualityai
         })
 
 

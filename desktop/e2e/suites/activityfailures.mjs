@@ -3,6 +3,7 @@
 // quitting the app in the middle of a run. Starts from a set-up install; resets only its own run rows in Notion. The task cards and the Recent activity screen are the
 // activity suite, in parallel, on its own Notion page (this split halves the wall-clock time).
 // Job: run the backbone
+import {hangCapsFor} from '../lib/hang-caps.mjs';
 import path from 'node:path';
 import {pollUntil, waitForLogLine} from '../lib/wait-on-state.mjs';
 import {badSummary, leaks} from '../lib/activity.mjs';
@@ -36,27 +37,9 @@ export const offlineAi = true;
 export const realAi = false;
 export const aiAnswers = 'backbone';   // answers its AI from the stored table in every workflow (plan-run.mjs puts it in the matrix)
 export const minutes = 40;   // + Notion, Telegram and Gmail failures (5 Oct 2026)
-// Rule B: nearest-rank p95 from two completed MAIN first-try behavioral samples; see fixtures/activityfailures-main-timings.json.
-// Runs later failed only the missing-answer guard. Caps are hang stops, rounded up to 5 s with a 30 s floor, not speed assertions.
+// Measured caps and preserved inner-sequence allowances live in the shared table.
 export const aggregateBudget = false;
-export const hangCaps = {
-  "this suite starts with no run rows in its store": 30,
-  "this suite starts with no job rows in its store's Job Matches": 30,
-  "the app is seeded as a set-up install from the existing workspace": 50,
-  "the app is quiet before the first task: no schedule, no first search, its history read": 30,
-  "the AI answers 429 (rate limit): the run ends as Failed or with warnings, in words, with nothing left Running": 90,
-  "the AI answers 500: the run ends as Failed or with warnings, in words, with nothing left Running": 60,
-  "the AI says the key is invalid (401): the run ends as Failed or with warnings, in words, with nothing left Running": 60,
-  "the AI says the credit balance is empty (the spending limit): the run ends as Failed or with warnings, in words, with nothing left Running": 65,
-  "a search analysis paused by the spending limit is a run with a warning that names the limit, not a failure": 60,
-  "the AI never answers: the run is stopped after its silence limit and ends as Stopped, in words, with nothing left Running": 155,
-  "the AI out of credit while reading the CV: the card says it in words, never the API's JSON (#94)": 30,
-  "quitting the app in the middle of a run: it is not shown Running for ever, and the app says what became of it": 475,
-  "the failure and queued states render without layout problems": 30,
-  "no AI call of this suite reached a real model: the stand-in answered or refused every one": 30,
-  "nothing was queued to report to the product": 30,
-  "the Notion stand-in answered every request the app made": 30,
-};
+export const hangCaps = hangCapsFor('activityfailures');
 
 export const name = 'activityfailures';
 // Why (30 Oct 2026, owner-approved rules A/G2): fixture-only repairs missed this journey in the PR picker; its semantic inputs must run it whole.

@@ -1,6 +1,7 @@
 // Exact quality checks: the app keeps the golden facts and scores and protects private logs.
 /* global document */
 // Job: run the backbone
+import {hangCapsFor} from '../lib/hang-caps.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import {answersMode} from '../lib/ai-answers.mjs';
@@ -17,8 +18,7 @@ export const store = 'sqlite';
 // Why (30 Oct 2026, qu): quality uses measured replay caps or live RECORD caps, never an aggregate speed budget.
 const clocks = qualityClocks();
 export const aggregateBudget = false;
-export const hangCaps = Object.freeze({'': clocks.stateMs / 1000,
-  'a Jobs check on the golden postings finishes and scores them': clocks.jobsMs / 1000});
+export const hangCaps = hangCapsFor('quality', {record: answersMode(process.env) === 'record'});
 export const cadence = PLANNER.cadence;
 // Why (30 Oct 2026, qu): plan-time imports keep replay's 3 min; e2e.yml's fixed 15-min run step already covers RECORD's 8 min.
 export const minutes = Math.ceil(clocks.suiteMs / 60000);

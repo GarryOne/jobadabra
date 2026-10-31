@@ -11,6 +11,10 @@ on:
     workflows: ['CI · UI findings']
     types: [completed]
   workflow_dispatch:
+    inputs:
+      issues:
+        description: 'Re-judge these issues (comma-separated numbers): the verdicts are printed in the log and nothing is applied to the issues'
+        required: false
 
 permissions:
   contents: read
@@ -37,7 +41,9 @@ jobs:
           node-version: '22'
       - name: The one-off findings to judge
         id: list
-        run: node desktop/e2e/pick.mjs --out .heal --verdict-list 5
+        env:
+          ISSUES: ${{ inputs.issues }}
+        run: node desktop/e2e/pick.mjs --out .heal --verdict-list 5 --issues "$ISSUES"
 
   judge:
     needs: pick
@@ -72,8 +78,11 @@ jobs:
           name: ai-capped-verdict-${{ matrix.issue }}   # present only when the broker refused: the ai-skipped job sends the one alert
           path: ${{ runner.temp }}/ai-capped/ai-capped.json
           if-no-files-found: ignore
+      - name: Show the verdict (a re-judgement by hand applies nothing)
+        if: inputs.issues != '' && steps.judge.outcome == 'success' && steps.judge.outputs.skipped != 'true'
+        run: cat .heal/verdict.md
       - name: Apply the verdict
-        if: steps.judge.outcome == 'success' && steps.judge.outputs.skipped != 'true'
+        if: inputs.issues == '' && steps.judge.outcome == 'success' && steps.judge.outputs.skipped != 'true'
         run: |
           set -euo pipefail
           # Comment, severity, labels, close: one script, shared with the triage-github-open-issues skill (desktop/e2e/apply-verdict.sh).

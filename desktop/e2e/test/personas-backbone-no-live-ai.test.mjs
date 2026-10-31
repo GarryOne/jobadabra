@@ -121,8 +121,8 @@ except urllib.error.HTTPError as error:
   h.assertNoLive();
 });
 
-test('personas recording retains stored answers and the real-AI guard', () => {
-  assert.doesNotMatch(source, /^export const offlineAi =/m, 'temporary owner-approved recording phase');
+test('personas opts into stored answers and the real-AI guard in every workflow', () => {
+  assert.match(source, /^export const offlineAi = true;/m);
   assert.match(source, /^export const realAi = false;/m);
   // The suite says so itself; plan-run.mjs puts it in matrix.aiAnswers, which both attempts of e2e.yml read.
   assert.match(source, /^export const aiAnswers = 'backbone';/m);

@@ -21,11 +21,12 @@ RATES = {'v': 1, 'facts': {'exact': 63, 'total': 63}, 'flags': {'judged': 9, 'fl
 SAME = 'AI: facts 63/63 (main 63/63) · flags 1/9 (main 1/9) · CV 6/6 (main 6/6) · same as main'
 
 
-def archive(value=RATES, raw=None):
+def archive(value=RATES, raw=None, files=None):
     """A real artifact ZIP containing the producer's JSON contract."""
     data = io.BytesIO()
     with zipfile.ZipFile(data, 'w') as z:
         z.writestr('quality-rates.json', raw if raw is not None else json.dumps(value))
+        for name, record in (files or {}).items(): z.writestr(name, json.dumps(record))
     return data.getvalue()
 
 
@@ -49,6 +50,7 @@ class Github:
             return json.dumps({'workflow_runs': self.nights})
         if '/contents/desktop/e2e/lanes.json' in url:
             return json.dumps({'suites': {'qualityai': {'lane': 'tolerant', 'pr': 'number'}}})
+        if '/annotations?' in url: return '[[]]'
         if '/jobs?' in url:
             return json.dumps([{'jobs': [{'name': 'E2E · Mac + Linux · qualityai', 'status': 'completed', 'conclusion': 'success'}]}])
         if '/artifacts?' in url:
@@ -245,7 +247,7 @@ class Artifacts(unittest.TestCase):
                 post = self.qualityai_post('timed_out', 'E2E · qualityai', RATES, False, stage)
                 self.assertIn('state=pending', post)
 
-    def qualityai_post(self, conclusion, name, counts, registry, fail_at='', attempt=1, previous=False, peer=False, age_min=0):
+    def qualityai_post(self, conclusion, name, counts, registry, fail_at='', attempt=1, previous=False, peer=False, age_min=0, files=None, annotations=(), other_status=None, extra_step=None):
         """Run the real status writer/number reader; replace only GitHub and external evidence reads."""
         from unittest import mock
         from tests.test_pr_verdict import pv, run as pr_run
@@ -255,11 +257,23 @@ class Artifacts(unittest.TestCase):
         key = 'qualityai-1of2' if name.endswith('-1of2') else 'qualityai'
         artifact = {'id': 7, 'name': 'e2e-artifacts-' + ('qualityai' if peer else key),
                     'created_at': stamp(end - timedelta(minutes=20 if previous else 1))}
-        github = Github([], {7: [artifact]} if counts else {}, {7: archive(counts)} if counts else {})
+        github = Github([], {7: [artifact]} if counts or files else {},
+                        {7: archive(counts, files=files)} if counts or files else {})
         r = pr_run('E2E', conclusion=conclusion, event='workflow_dispatch', title='E2E for PR · qualityai · topic', id=7,
                    end=stamp(end)); r['attempt'] = attempt
         fields = {'run_id': 7, 'run_attempt': attempt, 'started_at': stamp(end - timedelta(minutes=5)), 'completed_at': stamp(end)}
-        jobs = {7: [dict(fields, id=71, name=name, status='completed', conclusion=conclusion)]}
+        jobs = {7: [dict(fields, id=71, name=name, status='completed', conclusion=conclusion,
+                        check_run_url='https://api.github.com/repos/o/r/check-runs/171',
+                        steps=[{'name': f'Run the {key} suite (first try)', 'conclusion': 'failure'},
+                               {'name': f'Report-only {key} failed its only try (not retried: each run costs AI)',
+                                'conclusion': 'failure'}])]}
+        if extra_step: jobs[7][0]['steps'].append({'name': extra_step, 'conclusion': 'failure'})
+        runs = [r]
+        if other_status:
+            runs.append(pr_run('E2E', id=8, event='workflow_dispatch', title='E2E for PR · wizard · topic',
+                               status='in_progress' if other_status == 'in_progress' else 'completed',
+                               conclusion='failure' if other_status == 'failure' else 'success',
+                               at=stamp(end - timedelta(minutes=3)), end=stamp(end)))
         if peer:
             jobs[7].append(dict(fields, id=72, name='qualityai', status='completed', conclusion='success'))
         sent = []
@@ -267,11 +281,12 @@ class Artifacts(unittest.TestCase):
             if fail_at and fail_at in ' '.join(args):
                 if fail_at == '/zip': raise subprocess.CalledProcessError(1, ['gh'], stderr='gh: Not Found (HTTP 404)')
                 raise OSError('transient artifact transport failure')
+            if '/annotations?' in ' '.join(args): return json.dumps([list(annotations)])
             if not registry and '/contents/desktop/e2e/lanes.json' in ' '.join(args): return '{"suites": {}}'
             if '/statuses/' in ' '.join(args): sent.append(args); return '{}'
             return github(*args, **kwargs)
         with mock.patch.object(sys, 'argv', ['pr-verdict.py', '--repo', 'o/r', '--sha', 'head']), \
-             mock.patch.object(sys, 'stdout'), mock.patch.object(pv, 'read', return_value=([r], jobs)), \
+             mock.patch.object(sys, 'stdout'), mock.patch.object(pv, 'read', return_value=(runs, jobs)), \
              mock.patch.object(pv, 'pr_meta', return_value=([{'number': 1, 'state': 'open'}], [], [])), \
              mock.patch.object(pv, 'gh', side_effect=gh), mock.patch.object(pv, 'quota_line', return_value=''), \
              mock.patch.object(pv, 'main_red_greys', return_value={71}), \
@@ -280,7 +295,6 @@ class Artifacts(unittest.TestCase):
             self.assertEqual(pv.main(), 0)
         self.assertEqual(len(sent), 1)
         return sent[0]
-
     def test_pr_compares_with_after_merge_main_artifact(self):
         # Hand-made API responses use the supervisor's run/title shapes and reported counts; no live service is reached.
         rates = {**RATES, 'facts': {'exact': 68, 'total': 69}, 'flags': {'judged': 20, 'flagged': 1},

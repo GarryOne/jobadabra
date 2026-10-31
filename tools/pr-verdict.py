@@ -6,6 +6,7 @@ Why (28 Oct 2026, owner, "a PR is red only when its diff broke it"): proven main
 failures are grey; new failure evidence stays red. AI score values remain informational.
 Budget (owner's yes, 26 Oct 2026): CI-changing PRs whose checks ran over 10 min need CI-budget.
 Why (27 Oct 2026, owner, "Count running time only"): union job spans count overlaps once, exclude runner queues; #2215's 12.4 min wall time included only 7.x min running.
+Design: counted runs: the newest per workflow; for E2E for PR runs, per workflow + title.
 The planner filters live/empty counted heads; each started writer revalidates the open head and writes.
 """
 import argparse
@@ -33,7 +34,9 @@ RED = {'failure', 'cancelled', 'timed_out', 'startup_failure', 'action_required'
 # 'tolerant' / 'suspended': its suite is in the lane registry desktop/e2e/lanes.json (lane_greys; spec lanes table, 28 Oct 2026).
 GREY_WORDS = {'main': ('grey', 'red on main too, not this PR'), 'tolerant': ('tolerant', 'AI, clock or outside: not a PR red'), 'suspended': ('suspended', 'flaky on main: not a PR red')}
 GREY_WORDS.update({'ai-credit': ('grey', 'AI cap or credit'), 'runner': ('grey', 'runner not acquired'),
-                   'install': ('grey', 'install download unavailable'), 'qualityai': ('report', 'AI number produced; score informational')})
+                   'install': ('grey', 'install download unavailable'), 'qualityai': ('report', 'AI number produced; score informational'),
+                   # Why (31 Oct 2026, owner: "Grey: not known yet"): budget refusal is not a quality judgment.
+                   'ai-budget': ('qualityai', 'AI budget refused, not judged')})
 CI_FILES = re.compile(r'^(\.github/|tools/pr-|desktop/e2e/(lib/plan|lib/pr-suites|lib/coverage|pr-suites\.mjs|plan-run\.mjs))')
 # The workflows a pull request can start: a pull_request trigger, or started by one of them. A workflow outside it (the users' Always On daily/scout/mail.yml,
 # the nightly, a release) never runs on a PR, so editing it does not slow a PR: #2137 went red at 11.4 min, every check green, for daily/scout/mail.yml.
@@ -53,11 +56,13 @@ def _at(text):
 
 
 def counted(runs):
-    """The newest run of each workflow among those that judge this PR's commit."""
+    """Newest per workflow; PR e2e runs keep each workflow/title's newest attempt."""
     mine = [r for r in runs if r.get('event') == 'pull_request' or str(r.get('displayTitle', '')).startswith(E2E_PR_TITLE)]
     newest = {}
-    for r in sorted(mine, key=lambda r: (r.get('createdAt') or '', r.get('databaseId') or 0)):
-        newest[r['workflowName']] = r
+    for r in sorted(mine, key=lambda r: (r.get('createdAt') or '', r.get('databaseId') or 0, r.get('attempt') or 0)):
+        # Why (31 Oct 2026, owner: "Fix: count each run"): keep each E2E title's red; ordinary PR title edits replace the older gate.
+        key = (r['workflowName'], r['displayTitle']) if str(r.get('displayTitle', '')).startswith(E2E_PR_TITLE) else r['workflowName']
+        newest[key] = r
     return list(newest.values())
 
 
@@ -137,7 +142,7 @@ def verdict(runs, files=(), messages=(), jobs=None, me=None, my_status='', now=N
         numbered = any(suite_of(job.get('name', '')) in reports for job in listed)   # Why (30 Oct 2026, owner/review): qualityai evidence overrides report/grey exemptions, including unknown reads.
         states = [(job, quality.get(job.get('id'), 'grey' if job.get('id') in greys else job_state(job, me, my_status))) for job in listed if job.get('name') not in REPORT_JOBS and (suite_of(job.get('name', '')) not in reports or job.get('id') in quality)]
         states = ((burn_in or main_state_module('', '', 'pr_burn_in').failures)(r, listed, lambda job: job_state(job, me, my_status)) if any(' · burn-in ' in job.get('name', '') for job in listed) else []) + states
-        grey += [(job['name'], 'qualityai' if job.get('id') in quality else greys.get(job['id'], 'main') if isinstance(greys, dict) else 'main') for job, state in states if state == 'grey']
+        grey += [(job['name'], getattr(reports, 'reasons', {}).get(job.get('id'), 'qualityai') if job.get('id') in quality else greys.get(job['id'], 'main') if isinstance(greys, dict) else 'main') for job, state in states if state == 'grey']
         ending = [job['id'] for job, state in states if state == 'finishing' or job.get('id') == me]
         if any(state in RED for _, state in states):
             red.append(r); red_jobs[r.get('databaseId')] = ['qualityai result unreadable' if job.get('id') in getattr(reports, 'unreadable', ()) else job['name'] for job, state in states if state in RED]
@@ -161,7 +166,8 @@ def verdict(runs, files=(), messages=(), jobs=None, me=None, my_status='', now=N
     took = f'{minutes:.1f} min' if ran is None else f'{ran:.1f} min running + {max(0.0, minutes - ran):.1f} min waiting for runners'
     if (minutes if ran is None else ran) > BUDGET_MIN and ci_change(files) and not any(re.search(r'(?m)^CI-budget: \S', m or '') for m in messages):
         return 'failure', f'checks ran {took}, over the {BUDGET_MIN}-min budget for a CI change (or "CI-budget: <why>")'[:140], live, finishing, None
-    told = ''.join(f'{word}: {short(name for name, why in grey if why == reason)} ({said}); ' for reason, (word, said) in GREY_WORDS.items() if any(why == reason for _, why in grey))
+    # Why (31 Oct 2026, owner: "Grey: not known yet"): name a refusal separately from a measured AI score.
+    told = ''.join((f'{word}: {said}; ' if reason == 'ai-budget' else f'{word}: {short(name for name, why in grey if why == reason)} ({said}); ') for reason, (word, said) in GREY_WORDS.items() if any(why == reason for _, why in grey))
     return 'success', f'{told}{len(live)} workflow(s) green in {took}'[:140], live, finishing, None
 
 
@@ -308,19 +314,14 @@ def _red_e2e_jobs(runs, jobs, conclusions=('failure',)):
 
 
 def main_red_greys(repo, runs, jobs, ref='', read_main=None, log_of=None):
-    """Ids of the PR e2e run's finished red suite jobs that failed as main's own newest red of that suite (mains_own): grey. Any read that fails keeps them red."""
-    log_of = log_of or (lambda job_id: job_log(repo, job_id))
-    reds = _red_e2e_jobs(runs, jobs)
-    if not reds:
+    """Delegate main's own-red evidence; unreadable evidence keeps every red red."""
+    if not _red_e2e_jobs(runs, jobs):
         return set()
     try:
-        main_e2e_state = main_state_module(repo, ref)
-        main = (read_main or main_e2e_state.live)(repo)
-        return {job['id'] for job in reds
-                if (main.get(main_e2e_state.suite_of(job['name'])) or {}).get('conclusion') == 'failure'
-                and mains_own(log_of(job['id']), [log_of(i) for i in main[main_e2e_state.suite_of(job['name'])].get('jobs') or []])}
-    except Exception as error:   # Why (code review, 28 Oct 2026): the verdict is always written; whatever fails here (a read, a None from the API) keeps every red red
-        print(f'main\'s own reds not read ({type(error).__name__}: {error}): every red stays red')
+        return main_state_module(repo, ref, 'pr_verdict_greys').main_red_greys(repo, runs, jobs, ref, read_main, log_of,
+            job_log=job_log, _red_e2e_jobs=_red_e2e_jobs, main_state_module=main_state_module, mains_own=mains_own)
+    except Exception as error:
+        print(f'main grey reader not read ({type(error).__name__}: {error}): every red stays red')
         return set()
 
 
@@ -329,50 +330,34 @@ def suite_of(job_name):
     key = re.sub(r' · burn-in \d+/\d+$', '', re.sub(r'^E2E · (?:Mac \+ Linux · )?', '', job_name))
     return re.sub(r'-\d+of\d+$', '', re.sub(r'-(?:standin|sqlite)$', '', key))
 
+
 def base_branch(env=None):
     """The branch a PR merges into: GITHUB_BASE_REF on a pull_request run, else main (the workflow_run backstop)."""
     return (env if env is not None else os.environ).get('GITHUB_BASE_REF') or 'main'
 
 
 def lane_greys(repo, runs, jobs, read_lanes=None):
-    """{job id: 'tolerant' | 'suspended'} for the PR e2e run's finished red suite jobs whose suite desktop/e2e/lanes.json lists in that lane: shown grey, never red.
-    A suite not listed is backbone and stays red. Any read that fails, or a file that is not a registry, keeps every red red.
-    Why (28 Oct 2026, Gitar on #2376): the registry is read from the PR's BASE branch and takes no ref from the caller. Read at the PR's own commit, a PR that breaks
-    `settings` could list it as tolerant in the same diff and go green. A PR that edits lanes.json is judged by main's file; its entry counts after it merges."""
-    reds = _red_e2e_jobs(runs, jobs)
-    if not reds:
+    """Delegate BASE's lane evidence; the caller cannot supply the PR's own ref."""
+    if not _red_e2e_jobs(runs, jobs):
         return {}
     try:
-        listed = read_lanes()['suites'] if read_lanes else main_state_module(repo, os.environ.get('GITHUB_SHA') or base_branch(), 'pr_lanes').read_lanes(repo, gh, base_branch())
-        return {job['id']: listed[suite_of(job['name'])]['lane'] for job in reds if (listed.get(suite_of(job['name'])) or {}).get('lane') in ('tolerant', 'suspended')}
-    except Exception as error:   # Why (28 Oct 2026, same rule as main_red_greys): the verdict is always written; a registry not read keeps every red red
-        print(f'lane registry not read ({type(error).__name__}: {error}): every red stays red')
+        return main_state_module(repo, os.environ.get('GITHUB_SHA') or base_branch(), 'pr_verdict_greys').lane_greys(repo, runs, jobs, read_lanes,
+            _red_e2e_jobs=_red_e2e_jobs, main_state_module=main_state_module, base_branch=base_branch, gh=gh, suite_of=suite_of)
+    except Exception as error:
+        print(f'lane grey reader not read ({type(error).__name__}: {error}): every red stays red')
         return {}
 
 
 def health_greys(repo, runs, jobs, annotations_of=None, log_of=None, ref=''):
-    """Finished PR e2e jobs -> the existing grey map, with proven health causes only.
-    Invariants: a capacity cancellation needs zero steps; AI credit must explain EVERY failure mark;
-    install health needs a download transport error in a failed install step, before any suite assertion.
-    Missing evidence and mixed failures stay red. A failed read affects only that job.
-    Job: report health (e2e reliability design, PR 16/29).
-    """
-    annotations_of = annotations_of or (lambda jid: [a for page in json.loads(gh('api', '--paginate', '--slurp',
-        f'repos/{repo}/check-runs/{jid}/annotations?per_page=100')) for a in page])
-    log_of = log_of or (lambda jid: job_log(repo, jid))
-    greys, classifier = {}, None
-    for job in _red_e2e_jobs(runs, jobs, RED):
-        if job.get('name') in REPORT_JOBS:
-            continue
-        try:
-            classifier = classifier or main_state_module(repo, ref, 'pr_health_greys').health_cause
-            cause = classifier(job, annotations_of, log_of, marks=marks, at=_at, red=RED)
-        except Exception as error:
-            print(f"health of job {job['id']} not read ({type(error).__name__}: {error}): stays red")
-            continue
-        if cause:
-            greys[job['id']] = cause
-    return greys
+    """Delegate the existing per-job health evidence; a missing reader grants no grey."""
+    if not _red_e2e_jobs(runs, jobs, RED):
+        return {}
+    try:
+        return main_state_module(repo, ref, 'pr_verdict_greys').health_greys(repo, runs, jobs, annotations_of, log_of, ref,
+            gh=gh, job_log=job_log, _red_e2e_jobs=_red_e2e_jobs, main_state_module=main_state_module, marks=marks, _at=_at, RED=RED, REPORT_JOBS=REPORT_JOBS)
+    except Exception as error:
+        print(f'health grey reader not read ({type(error).__name__}: {error}): every red stays red')
+        return {}
 
 
 def number_description(repo, ref, runs, why, ai_line, state):
@@ -449,6 +434,9 @@ def main():
     if state is None:
         print(f'no pull request run on {a.sha[:7]}: nothing to write'); return 0
     why = number_description(a.repo, ref, runs, why, ai_line, speed_state(state, live, jobs, None, reports, ''))
+    # Why (31 Oct 2026, owner: "Grey: not known yet"): preserve the note even with red/pending peers or truncated numbers.
+    if 'ai-budget' in getattr(reports, 'reasons', {}).values() and 'qualityai: AI budget refused, not judged' not in why:
+        why = ('qualityai: AI budget refused, not judged; ' + why)[:140]
     print(f'{CONTEXT}: {state}: {why}')
     url = f'{server}/{a.repo}/actions/runs/{target or my_run}'   # the run it waits on, or the red one: the PR's e2e run is not in its checks list
     if not a.dry_run:

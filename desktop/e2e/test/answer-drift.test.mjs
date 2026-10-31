@@ -12,7 +12,7 @@ import {loadRequests, resolveRequest, pickSample, compareAnswer, buildReport} fr
 
 const fixture = new URL('../fixtures/golden/ai-answer-requests.json', import.meta.url);
 const table = loadTable();
-const PERSONA_ANSWERS = 109;
+const PERSONA_ANSWERS = 141;
 const tmp = t => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'answer-drift-'));
   t.after(() => fs.rmSync(dir, {recursive: true, force: true}));
@@ -33,7 +33,7 @@ test('sample rotates oldest first within each kind and spreads slots across kind
   assert.deepEqual(pickSample([...entries].reverse(), {}, 5), pickSample(entries, {}, 5));
 });
 
-// Why (31 Oct 2026, owner takeover #2600): preserve main’s reviewed employer requests and 109 reviewed persona keys (57 earlier Austin, 52 from runs 41171205641 / 41171205664); doubtful scores remain absent, with 287 gaps and three sender-capture keys unchanged.
+// Why (31 Oct 2026, owner takeover #2600): preserve main’s reviewed employer requests and 141 reviewed persona keys (57 earlier Austin, 52 from runs 41171205641 / 41171205664, 32 from round 2); doubtful scores remain absent, with 287 gaps and three sender-capture keys unchanged.
 test('seeding is byte deterministic, body-reference-only and links main captures plus reviewed persona keys', t => {
   forbidNetwork(t);
   const entries = seedRequests();

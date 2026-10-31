@@ -10,6 +10,7 @@ import {fileURLToPath} from 'node:url';
 import {isAppFile, removedStrings, suitesExpecting, report, planPrSuites, stepLists, stepsQuoting, windowsSmoke, windowsCiText, WINDOWS_SMOKE, newSideRanges, stepCalls, stepsTouched, rehomeQuotes, stepHomes, pointedWithMap, ON_PR_ELSEWHERE, deferredLines, ownedStepNames, admittedSuites, admissionLanes, addedBackboneSteps, baseStepSources} from './lib/pr-suites.mjs';
 import {suitePartsFor, suitesFor} from './lib/plan.mjs';
 import {suitesUsing, watchesWithImports} from './lib/import-graph.mjs';
+import {suitesReading} from './lib/page-reach.mjs';
 import {hunksFromDiff, mapShas, stepNamesFor, steplessSuites, stepsCovering, stillWholeBy, storeFor, watchedFiles} from './lib/coverage-pick.mjs';
 import {STORES, WHY, whyLines} from './lib/pick-why.mjs';
 import os from 'node:os';
@@ -34,15 +35,15 @@ function loadMap() {
 }
 // The suites and STEPS whose recorded lines this PR changes: the diff from each suite's recorded commit to the PR's head, for the files the PR changes (a superset when
 // main moved on). byFile retains every file that reached each suite for watched-part selection. -> {map, picked: {suite: {steps, setup, whole, reason}}} (lib/coverage-pick.mjs stepsCovering).
-function covered(changedFiles, watched = {}) {
+function covered(changedFiles, watched = {}, reads = {}) {
   const map = loadMap(), bySha = {};
   if (!changedFiles.length) return {map, picked: {}, byFile: {}};   // `git diff <sha> HEAD --` with no path would diff the whole repo since the map's commit
   for (const sha of mapShas(map)) { try { bySha[sha] = hunksFromDiff(git(['-C', '../..', 'diff', '-U0', sha, 'HEAD', '--', ...changedFiles])); } catch { /* commit not here: that suite is not picked by lines */ } }
   const byFile = Object.fromEntries(changedFiles.map(file => {
     const only = Object.fromEntries(Object.entries(bySha).map(([sha, hunks]) => [sha, {[file]: hunks[file] || []}]));
-    return [file, Object.keys(stepsCovering(map, only, {watched}))];
+    return [file, Object.keys(stepsCovering(map, only, {watched, reads}))];
   }));
-  return {map, picked: stepsCovering(map, bySha, {watched}), byFile};
+  return {map, picked: stepsCovering(map, bySha, {watched, reads}), byFile};
 }
 try {
   // --catches is opt-in local JSON {suite: count}; no private scorecard reads or invented counts.
@@ -60,7 +61,9 @@ try {
     const linux = {};
     for (const suite of facts.all) linux[suite] = (await facts.os(suite)) === 'ubuntu-24.04';
     // A suite's own watched files (exact paths, not folders) are never shared code for it: quality runs for a score.py line (lib/coverage-pick.mjs stepsCovering).
-    const {map, picked: all, byFile} = covered(changedFiles, watchedFiles(facts.watches, facts.judges));
+    // The suites that read a changed page (their source quotes an element it draws) keep a line most suites ran: lib/page-reach.mjs (#2694's Focus row ran no `focus` step).
+    const appTexts = Object.fromEntries(changedFiles.filter(file => /^desktop\/(renderer|lib)\//.test(file) && fs.existsSync(path.resolve(here, '../..', file))).map(file => [file, fs.readFileSync(path.resolve(here, '../..', file), 'utf8')]));
+    const {map, picked: all, byFile} = covered(changedFiles, watchedFiles(facts.watches, facts.judges), suitesReading(appTexts, sources, suitesUsing(here)));
     const picked = Object.fromEntries(Object.entries(all).filter(([suite]) => facts.all.includes(suite)));   // a suite removed since the map was made: gone
     const covering = Object.fromEntries(Object.entries(picked).map(([suite, p]) => [suite, p.reason]));
     // A suite a changed file points at runs whole, unless the step map recorded that file for it (a watched src/ Python file): then its lines pick the steps.

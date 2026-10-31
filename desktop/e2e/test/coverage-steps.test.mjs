@@ -189,3 +189,24 @@ test('a changed line in a file a suite watches runs that suite, even when many s
   }
   assert.deepEqual(Object.keys(stepsCovering({suites: Object.fromEntries([...others, 'quality'].map(name => [name, {sha: 'S', files: {'desktop/lib/server.js': lines([1, 50])}, steps: {'x': {'desktop/lib/server.js': lines([1, 50])}}}]))}, {S: {'desktop/lib/server.js': [[20, 20]]}}, {watched})), ['settings'], 'a file nobody watches: still one suite');
 });
+
+// #2694 added a Suggestions row to Focus (pages/focus-suggestions.js:156) on 31 Oct 2026 and broke 4 `focus` steps; no `focus` step ran on its PR. The line ran in 23 suites (the
+// app opens Focus in every one), so "shared code" gave it to the settings smoke alone. The map records what ran, not what a suite checks: the suite that reads an element the
+// file draws (its source quotes `#focus-suggestions-list`) is that line's own suite, whoever else ran it (`reads`: lib/page-reach.mjs).
+test('a changed line a page draws runs the steps of the suites that read that page, though many suites ran the line', () => {
+  const page = 'desktop/renderer/pages/focus-suggestions.js';
+  const ran = {[page]: lines([100, 200])};
+  const entry = {sha: 'S', files: ran, steps: {'Focus rows': ran, 'Dismiss a row': ran, 'Unrelated step': {}, [SETUP]: ran}};
+  const crowd = Object.fromEntries(['calendar', 'interviews', 'jobs', 'wander', 'strategy'].map(name => [name, {sha: 'S', files: ran, steps: {'passes through': ran, [SETUP]: ran}}]));
+  const map = {suites: {...crowd, focus: entry, focusdismiss: entry, settings: {sha: 'S', files: ran, steps: {'every Settings section renders': ran, [SETUP]: ran}}}};
+  const hunks = {S: {[page]: [[156, 156]]}};
+  assert.deepEqual(Object.keys(stepsCovering(map, hunks)), ['settings'], 'no reader named: the shared rule, one suite (#2118, #2119)');
+  const picked = stepsCovering(map, hunks, {reads: {[page]: ['focus', 'focusdismiss']}});
+  assert.deepEqual(Object.keys(picked).sort(), ['focus', 'focusdismiss'], 'the readers run, the crowd and the smoke do not');
+  assert.deepEqual(picked.focus.steps, ['Focus rows', 'Dismiss a row'], 'only the steps that ran the line');
+  assert.equal(picked.focus.reach['Focus rows'], `${page}:156`);
+  const ranNone = stepsCovering(map, {S: {[page]: [[300, 300]]}}, {reads: {[page]: ['focus']}});
+  assert.deepEqual(Object.keys(ranNone), ['settings'], 'a reader that did not run the line is not picked by reading alone (a line no suite ran keeps its rule)');
+  const elsewhere = stepsCovering(map, {S: {'desktop/lib/server.js': [[51, 51]]}}, {reads: {[page]: ['focus']}});
+  assert.deepEqual(Object.keys(elsewhere), [], 'no suite loaded that file');
+});

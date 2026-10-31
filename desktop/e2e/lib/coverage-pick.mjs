@@ -175,7 +175,10 @@ export const mapShas = map => [...new Set(Object.values(map?.suites || {}).map(e
 // runs its own steps that ran the line (whole when none did), because no other suite judges that file (#2194's score.py lines went to failureschannels
 // and settings only, and quality did not run on main; 27 Oct 2026). A watched folder (wander: desktop/lib/) keeps the shared rule; a judged folder (quality's src/ai/,
 // watchedFiles) does not: every file under it is the suite's own (#2234's place_triage.py).
-export function stepsCovering(map, hunksBySha, {smoke = 'settings', maxUsers = MAX_USERS, watched = {}} = {}) {
+// `reads`: {file: [suites]}, the suites whose source quotes an element the file draws (lib/page-reach.mjs). The map records what ran, not what a suite checks: a line of a page
+// that 23 suites ran (the app opens Focus in every one) is the own line of the suite that reads the page, as a watched file is (#2694 added a Focus row, broke 4 `focus` steps, and
+// only the settings smoke ran, 31 Oct 2026). A reader that ran the line runs its steps that did; no other suite takes the shared line then.
+export function stepsCovering(map, hunksBySha, {smoke = 'settings', maxUsers = MAX_USERS, watched = {}, reads = {}} = {}) {
   const out = {}, setupOnly = [];
   const suites = Object.entries(map?.suites || {});
   const pick = (suite, patch, reason) => { const now = out[suite] ||= {steps: [], setup: false, whole: false, reason, reach: {}}; if (patch.step && !now.steps.includes(patch.step)) now.steps.push(patch.step); if (patch.step && patch.at) now.reach[patch.step] ||= patch.at; if (patch.setup) now.setup = true; if (patch.whole) now.whole = true; };
@@ -190,6 +193,8 @@ export function stepsCovering(map, hunksBySha, {smoke = 'settings', maxUsers = M
     const users = suites.filter(([name, entry]) => ran(entry.files[file]?.lines, range) && mine(name)).map(([name]) => name);
     const loaders = users.length ? users : suites.filter(([name, entry]) => entry.files[file] && mine(name)).map(([name]) => name);
     if (loaders.length <= maxUsers) return null;
+    const readers = users.filter(name => reads[file]?.includes(name));
+    if (readers.length) return {readers};
     return {suite: loaders.includes(smoke) ? smoke : [...loaders].sort()[0], loadOnly: !users.length};
   };
   for (const [suite, entry] of suites) {
@@ -198,7 +203,7 @@ export function stepsCovering(map, hunksBySha, {smoke = 'settings', maxUsers = M
       if (!entry.files[file]) continue;
       for (const range of ranges) {
         const shared = owns(watched[suite], file) ? null : runner(file, range);   // Why (#2212): a suite's own watched file is never shared code (quality skipped after #2194)
-        if (shared && shared.suite !== suite) continue;
+        if (shared?.readers ? !shared.readers.includes(suite) : shared && shared.suite !== suite) continue;   // Why (31 Oct 2026, #2694): a reader keeps the line; else the one suite
         if (shared?.loadOnly) { if (entry.steps) setupOnly.push({suite, key: `${file}:${range[0]}`}); else pick(suite, {whole: true}, `loads ${file} (line ${range[0]} ran in no suite)`); continue; }
         if (!entry.steps) { if (ran(entry.files[file].lines, range)) pick(suite, {whole: true}, `runs ${file}:${range[0]}`); continue; }
         if (ran(entry.steps[WHOLE]?.[file]?.lines, range)) { pick(suite, {whole: true}, `runs ${file}:${range[0]} at import or across steps`); continue; }   // Python (lib/coverage.mjs WHOLE)

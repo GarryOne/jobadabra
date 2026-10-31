@@ -125,10 +125,8 @@ class Tracker:
 
     def _request(self, method, path, body=None):
         from . import pace
-        # Why (31 Oct 2026, apply run 41153500920): the in-memory stand-in spent 340 ms per local request; a local fault proxy to real Notion must still pace.
-        standin = os.getenv('JOB_PILOTTO_E2E_NOTION_STANDIN') == '1' and api_base().startswith('http://127.0.0.1:')
         for attempt in range(self.RETRIES + 1):
-            if self._paced() and not standin:
+            if self._paced():
                 pace.wait_turn(self.token, self.sleep)
             started = time.time()
             request = urllib.request.Request(
@@ -157,7 +155,7 @@ class Tracker:
                 except ValueError:
                     wait = 0
                 wait = min(wait if wait > 0 else 0.5 * 2 ** attempt, 10)
-                if error.code == 429 and self._paced() and not standin:
+                if error.code == 429 and self._paced():
                     pace.calm_until(self.token, time.time() * 1000 + wait * 1000)  # everyone waits it out
                 self.sleep(wait)
                 if then in (retry.LOOKUP, retry.LOOKUP_OR_RETRY):

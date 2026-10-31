@@ -7,6 +7,7 @@ import path from 'node:path';
 import {test} from 'node:test';
 import {buildStandIn, startNotionFake} from '../lib/notion-fake.mjs';
 import {storeCall, storeEnv} from '../lib/store-call.mjs';
+import {paceFile} from '../../lib/notion-pace.js';
 
 const profileWith = settings => {
   const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-store-call-'));
@@ -39,7 +40,7 @@ test('Notion (the stand-in): the same calls, with the run\'s token and the works
   try {
     const ids = await buildStandIn(fake);
     const profile = profileWith({notionIds: ids});
-    await roundTrip({profile, store: 'standin', token: fake.token, appEnv: {JOB_PILOTTO_E2E_NOTION_BASE_URL: fake.url}});
+    await roundTrip({profile, store: 'standin', token: fake.token, appEnv: {JOB_PILOTTO_E2E_NOTION_BASE_URL: fake.url, JOB_PILOTTO_E2E_NOTION_STANDIN: '1'}});
     assert.equal(fake.dump().find(item => item.title === 'Job Tracker')?.rows, 1, 'the job is a row of the stand-in\'s Job Tracker, not anywhere else');
   } finally { await fake.close(); }
 });
@@ -53,6 +54,17 @@ test('only the in-memory Notion store opts the engine out of the real service cl
   const given = {profile, token: 'fixture', notionUrl: 'http://127.0.0.1:12345'};
   assert.equal(storeEnv({...given, standIn: true}).JOB_PILOTTO_E2E_NOTION_STANDIN, '1');
   assert.equal(storeEnv(given).JOB_PILOTTO_E2E_NOTION_STANDIN, undefined, 'a local fault proxy may still forward to real Notion');
+});
+
+test('seed subprocesses use the app environment marker even when the context store label is notion', async t => {
+  const fake = await startNotionFake();
+  const clock = paceFile(fake.token);
+  t.after(async () => { await fake.close(); fs.rmSync(clock, {force: true}); });
+  const profile = profileWith({store: 'notion', notionIds: await buildStandIn(fake)});
+  const result = await storeCall({profile, store: 'notion', token: fake.token,
+    appEnv: {JOB_PILOTTO_E2E_NOTION_BASE_URL: fake.url, JOB_PILOTTO_E2E_NOTION_STANDIN: '1'}}, 'applications', 'list');
+  assert.deepEqual(result, []);
+  assert.equal(fs.existsSync(clock), false, 'the seed process must inherit the app marker instead of reclassifying the store label');
 });
 
 test('never anyone\'s real data: only a temp profile, HOME there, and the engine does not follow an app set up on this computer', () => {

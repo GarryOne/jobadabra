@@ -82,7 +82,21 @@ class SharedPaceTest(unittest.TestCase):
             for _ in range(20):
                 self.assertEqual(tracker._request('GET', 'pages/fixture'), {'results': []})
         self.assertEqual(requested, ['http://127.0.0.1:12345/v1/pages/fixture'] * 20)
-        self.assertEqual(waits, [], 'a local stand-in must not consume real Notion rate-limit slots')
+        self.assertEqual(waits, [], 'the stand-in must not waste about 340 ms wall clock per request')
+
+    def test_standin_clock_is_removed_at_the_shared_pacer_for_both_loopback_forms(self):
+        """Neither slot claims nor shared 429 cool-downs wait on the in-memory service."""
+        for base in ['http://127.0.0.1', 'http://127.0.0.1:12345']:
+            with self.subTest(base=base), \
+                    mock.patch.dict(os.environ, {'JOB_PILOTTO_E2E': '1', 'JOB_PILOTTO_E2E_NOTION_STANDIN': '1',
+                                                 'JOB_PILOTTO_E2E_NOTION_BASE_URL': base}), \
+                    mock.patch.object(pace, 'clock', lambda: 1000.0):
+                waits = []
+                pace.calm_until(self.token, 1_005_000)
+                for _ in range(20):
+                    pace.wait_turn(self.token, waits.append)
+                self.assertEqual(waits, [], 'the stand-in must not waste about 340 ms wall clock per request')
+                self.assertFalse(Path(pace.pace_file(self.token)).exists())
 
     def test_only_an_explicit_local_test_standin_bypasses_pacing(self):
         """A fault proxy or an out-of-test marker still takes real service turns."""

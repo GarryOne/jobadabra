@@ -26,6 +26,7 @@ import {clearRoot, testRoot, workspaceReady} from './notion.mjs';
 import {budgetMsOf, createRunner} from './runner.mjs';
 import {notionFarSide, pickStore, runToken, storeSettings} from './store.mjs';
 import {storeCall} from './store-call.mjs';
+import {isLoopback} from '../../lib/notion-pace.js';
 import {lockNeeded, takeNotionPage} from './notion-page-lock.mjs';
 import {tally} from './faults.mjs';
 
@@ -187,7 +188,7 @@ export async function openContext(suite, {fresh = false, env: suiteEnv = {}, bro
   // P7: off the real workspace a run holds no token but the stand-in's own (lib/store.mjs runToken); the run fails here, before the app starts, if it ever does.
   if (store && store !== 'notion' && token && token !== standIn?.token) throw new Error(`the ${store} store must not hold a Notion token from the environment`);
   // P7: a run off the real workspace reaches no Notion but a local one (the stand-in, or the fault proxy in front of it). Fails the run before the app starts.
-  if (store && store !== 'notion' && !/^http:\/\/127\.0\.0\.1[:/]/.test(env.JOB_PILOTTO_E2E_NOTION_BASE_URL || '')) throw new Error(`the ${store} store must not reach real Notion, and the app was given ${env.JOB_PILOTTO_E2E_NOTION_BASE_URL || 'no Notion URL (the real one)'}`);
+  if (store && store !== 'notion' && !isLoopback(env.JOB_PILOTTO_E2E_NOTION_BASE_URL)) throw new Error(`the ${store} store must not reach real Notion, and the app was given ${env.JOB_PILOTTO_E2E_NOTION_BASE_URL || 'no Notion URL (the real one)'}`);
   // The environment the app was started with: a second app a step opens (another time zone, a fresh install) starts from it, so it talks to the same Notion
   // (real or the stand-in), AI proxy and fixtures (6 Oct 2026: calendar's second app had its own list and reached real Notion with the stand-in's token).
   ctx.appEnv = env;

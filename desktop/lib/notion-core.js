@@ -10,8 +10,6 @@ import {ROOT as REPO} from './root.js';   // the repo's folder only: pipeline.js
 
 // The end-to-end tests put a Notion stand-in in between that can fail on purpose (desktop/e2e/lib/notion-proxy.mjs); honoured only in a test run.
 const API = process.env.JOB_PILOTTO_E2E && process.env.JOB_PILOTTO_E2E_NOTION_BASE_URL ? `${process.env.JOB_PILOTTO_E2E_NOTION_BASE_URL.replace(/\/$/, '')}/v1/` : 'https://api.notion.com/v1/';
-// Why (31 Oct 2026, apply run 41153500920): only the in-memory service drops the real 340 ms clock; a local fault proxy to real Notion keeps it.
-const STAND_IN = process.env.JOB_PILOTTO_E2E_NOTION_STANDIN === '1' && API.startsWith('http://127.0.0.1:');
 export const TEMPLATE = JSON.parse(fs.readFileSync(path.join(REPO, 'config', 'notion_template.json'), 'utf8'));
 
 // Notion answers 429 when a workspace sends more than ~3 requests a second (the app often reads several things at
@@ -31,7 +29,6 @@ export function useClock(fn) { clock = fn || Date.now; }
 const GAP_MS = sharedPace.GAP_MS;
 let nextSlot = 0, calmUntil = 0;
 async function turn(token, now = clock) {
-  if (STAND_IN) return;
   const shared = await sharedPace.claim(token, now);
   const at = shared ?? Math.max(nextSlot, calmUntil, now());
   if (shared === null) nextSlot = at + GAP_MS;
@@ -71,9 +68,9 @@ export async function call(token, method, route, body, fetcher = globalThis.fetc
     if (RETRY.has(response.status) && attempt < retries) {
       const after = Number(response.headers?.get?.('retry-after'));
       const wait = Math.min(Number.isFinite(after) && after > 0 ? after * 1000 : 500 * 2 ** attempt, 10_000);
-      if (response.status === 429) {  // everyone waits it out: this app and the other processes
+      if (response.status === 429 && !sharedPace.isStandIn()) {  // the real connection's clients share its cool-down; the stand-in has only this call's retry backoff
         calmUntil = Math.max(calmUntil, clock() + wait);
-        if (pace && !STAND_IN) await sharedPace.calmUntil(token, calmUntil);
+        if (pace) await sharedPace.calmUntil(token, calmUntil);
       }
       // A retried 429 is expected (Notion's limit is shared, e.g. with a GitHub run): it's in notion-requests.log,
       // not on the terminal; only a request that finally fails is shown (the error thrown below).

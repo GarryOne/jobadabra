@@ -41,7 +41,7 @@ export function storeCall(ctx, entity, method, kwargs = {}, {profile = ctx.profi
   const shell = Object.fromEntries(['PATH', 'TMPDIR', 'LANG', 'SYSTEMROOT', 'TEMP', 'TMP'].filter(name => process.env[name]).map(name => [name, process.env[name]]));
   const notionUrl = ctx.appEnv?.JOB_PILOTTO_E2E_NOTION_BASE_URL || '';
   // The engine's Notion requests go to the profile's notion-requests.log, beside the app's (kept with the artifacts, lib/run-logs.mjs).
-  const env = {...shell, PYTHONUTF8: '1', ...storeEnv({profile, token: ctx.store === 'sqlite' ? '' : ctx.token, notionUrl, standIn: ctx.store === 'standin'}), JOB_PILOTTO_NOTION_LOG: path.join(profile, 'logs', 'notion-requests.log')};
+  const env = {...shell, PYTHONUTF8: '1', ...storeEnv({profile, token: ctx.store === 'sqlite' ? '' : ctx.token, notionUrl, standIn: ctx.appEnv?.JOB_PILOTTO_E2E_NOTION_STANDIN === '1'}), JOB_PILOTTO_NOTION_LOG: path.join(profile, 'logs', 'notion-requests.log')};
   fs.mkdirSync(path.join(profile, 'logs'), {recursive: true});
   const said = (ok, error) => logStoreCall(profile, {entity, method, store: ctx.store, notionUrl, ok, error});
   return new Promise((resolve, reject) => {

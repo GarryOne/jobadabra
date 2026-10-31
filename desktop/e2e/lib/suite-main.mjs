@@ -48,16 +48,45 @@ export function writeFinalFailures(suite, ctx) {
   return missing || !ceiling.ok;
 }
 
-/** The exit code of a suite stopped by an error: 1, except a suspended step's hang (lib/runner.mjs suspendedStop), which ends the suite without failing it.
+/** The exit code of a suite stopped by an error: 1, except a suspended step that hung or left the app closed (lib/runner.mjs suspendedStop), which ends the suite without failing it.
  * Why (31 Oct 2026, spec row 33): the steps after that step did not run and say so; the hang itself is on the suspended step's owner issue. */
 export function stopCode(error, name, ctx) {
   if (error?.suspendedStop) {
-    console.log(`⚠ the ${name} suite stopped after a suspended step hung: its remaining steps did not run (not a failure): ${error.message}`);
-    ctx?.runner.results.push({name: 'steps after a suspended step that hung', status: 'skipped', note: error.message});
+    const why = error.stoppedBecause || 'hung';
+    console.log(`⚠ the ${name} suite stopped after a suspended step ${why}: its remaining steps did not run (not a failure): ${error.message}`);
+    ctx?.runner.results.push({name: `steps after a suspended step that ${why}`, status: 'skipped', note: error.message});
     return 0;
   }
   if (!ctx?.runner.results.some(result => result.status === 'failed')) console.log(`✗ the ${name} suite stopped: ${error.message}`);
   return 1;
+}
+
+/** Runs a suite's steps. Returns the quiet stop (a suspended step that hung or left the app closed: lib/runner.mjs suspendedStop), else null; any other error is thrown. */
+async function runSteps(suite, ctx) {
+  try { await suite.run(ctx); return null; } catch (error) { if (!error?.suspendedStop) throw error; return error; }
+}
+
+/** The exit code once the suite-wide guards ran: unchanged without a quiet stop, else stopCode's (0, with the steps it skipped named). */
+function afterQuietStop(quiet, name, ctx, code) {
+  if (!quiet) return code;
+  ctx.stopped = quiet.message;
+  return stopCode(quiet, name, ctx);
+}
+
+/** The suite-wide guards after its steps: the owner's Keychain untouched, the AI asks, nothing queued to report, the stand-in's gaps. None needs the app's
+ * window, so they also run after a quiet stop (a suspended step that hung or left the app closed). Throws, or records a failed step, like any step. */
+async function suiteGuards(suite, ctx, runAlways, {keychainBefore, keychainChanges, snapshot, assertNothingQueued}) {
+  if (keychainBefore) await runAlways('nothing in this Mac\'s real Keychain changed (a test run keeps its secrets in its own file)', async () => {
+    const changes = keychainChanges(keychainBefore, snapshot() || new Map());
+    if (changes.length) throw new Error(`the real Keychain changed during the run: ${changes.join('; ')}. A test reached it (desktop/lib/keychain.js isolation), or something else on this Mac saved a secret meanwhile: check, then re-run`);
+  }, {critical: true});   // critical: an E2E_STEPS filter never skips it
+  await runAiGuards(suite, ctx, runAlways);
+  if (!suite.light) await ctx.run('nothing was queued to report to the product', async () => { assertNothingQueued(ctx.profile); });   // a light suite has no app
+  // P7: a request the in-memory Notion does not know is a gap in the stand-in, and the app swallows many such errors (9 Oct 2026: a missing url filter
+  // left a form without its kit, three layers away). Each one fails here by name, so the stand-in grows instead of hiding it (lib/notion-fake.mjs).
+  if (ctx.standIn) await runAlways('the Notion stand-in answered every request the app made', async () => {
+    if (ctx.standIn.stats.unknown.length) throw new Error(`the stand-in did not know: ${ctx.standIn.stats.unknown.join('; ')}`);
+  }, {critical: true});
 }
 
 export async function runSuite(name, report = null) {
@@ -81,18 +110,11 @@ export async function runSuite(name, report = null) {
       return {code: skipExitCode(), skipped: message};
     }
     const runAlways = ctx.run;   // a suite may wrap ctx.run with its own filter (suites/apply.mjs parts): the Keychain check runs whatever the suite picked
-    await suite.run(ctx);
-    if (keychainBefore) await runAlways('nothing in this Mac\'s real Keychain changed (a test run keeps its secrets in its own file)', async () => {
-      const changes = keychainChanges(keychainBefore, snapshot() || new Map());
-      if (changes.length) throw new Error(`the real Keychain changed during the run: ${changes.join('; ')}. A test reached it (desktop/lib/keychain.js isolation), or something else on this Mac saved a secret meanwhile: check, then re-run`);
-    }, {critical: true});   // critical: an E2E_STEPS filter never skips it
-    await runAiGuards(suite, ctx, runAlways);
-    if (!suite.light) await ctx.run('nothing was queued to report to the product', async () => { assertNothingQueued(ctx.profile); });   // a light suite has no app
-    // P7: a request the in-memory Notion does not know is a gap in the stand-in, and the app swallows many such errors (9 Oct 2026: a missing url filter
-    // left a form without its kit, three layers away). Each one fails here by name, so the stand-in grows instead of hiding it (lib/notion-fake.mjs).
-    if (ctx.standIn) await runAlways('the Notion stand-in answered every request the app made', async () => {
-      if (ctx.standIn.stats.unknown.length) throw new Error(`the stand-in did not know: ${ctx.standIn.stats.unknown.join('; ')}`);
-    }, {critical: true});
+    // Why (#2719, 31 Oct 2026, Gitar): a suspended step that hung or left the app closed ends the steps quietly, but the suite-wide guards below need no
+    // app window (Keychain, AI asks, nothing queued, the stand-in's gaps), so they still run and still fail the suite.
+    const quiet = await runSteps(suite, ctx);
+    await suiteGuards(suite, ctx, runAlways, {keychainBefore, keychainChanges, snapshot, assertNothingQueued});
+    code = afterQuietStop(quiet, name, ctx, code);
   } catch (error) {
     if (ctx) ctx.stopped = error.message;   // the trace is kept (lib/context.mjs)
     code = stopCode(error, name, ctx);

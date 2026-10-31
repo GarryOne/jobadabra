@@ -185,7 +185,9 @@ export function createRunner(getSession, {suite = '', cadence = '', keepGoing = 
       if (suspended[name]) {
         results.push({name, status: 'suspended', note, cause: causeOf(note), issue: suspended[name].issue, ...(where ? {where} : {})});
         console.log(`⚠ ${name}: suspended step (flaky, ${suspended[name].issue || 'owner issue'}), not blocking: ${note}${where ? ` (at ${where})` : ''}`);
-        if (ownedHang(error, stopOnHang)) throw Object.assign(error, {suspendedStop: true});
+        // Why (#2719, 31 Oct 2026, Gitar): a step that fails because the suspended one before it left the app closed is that step's flake, not its own; end the suite there.
+        if (ownedHang(error, stopOnHang)) throw Object.assign(error, {suspendedStop: true, stoppedBecause: 'hung'});
+        if (getSession()?.page?.isClosed?.()) throw Object.assign(error, {suspendedStop: true, stoppedBecause: 'left the app closed'});
         return;
       }
       results.push({name, status: 'failed', note, cause: causeOf(note), ...(where ? {where} : {}), ...(refused || (!faults && isEnvironment(error.message)) ? {environment: true} : {}), ...(base !== error.message ? {faultNeverFired: true} : {})});

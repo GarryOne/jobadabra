@@ -8,10 +8,13 @@ import fs from 'node:fs';
 
 const readLanes = () => JSON.parse(fs.readFileSync(new URL('../lanes.json', import.meta.url), 'utf8'));
 
-/** @returns {Record<string, object>} the suspended steps of one suite, by exact step name. A missing or malformed registry suspends nothing. */
-export function suspendedStepsOf(suite, lanes) {
+/** @returns {Record<string, object>} the suspended steps of one suite on this platform, by exact step name. An entry with a `platforms` list (process.platform
+ * values) holds only there; without one it holds everywhere. A missing or malformed registry suspends nothing.
+ * Why (#2719, 31 Oct 2026): a flake seen only on Windows must not stop the same step from protecting the journey on Mac and Linux. */
+export function suspendedStepsOf(suite, lanes, platform = process.platform) {
   try {
     const entries = (lanes || readLanes()).steps?.[suite] || {};
-    return Object.fromEntries(Object.entries(entries).filter(([, entry]) => entry?.lane === 'suspended'));
+    return Object.fromEntries(Object.entries(entries).filter(([, entry]) => entry?.lane === 'suspended'
+      && (!Array.isArray(entry.platforms) || entry.platforms.includes(platform))));
   } catch { return {}; }
 }

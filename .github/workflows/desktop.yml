@@ -312,8 +312,19 @@ jobs:
         if: needs.changes.outputs.gate == 'true'
         working-directory: desktop
         run: node scripts/mac-smoke.mjs "dist/Jobadabra-${VERSION}-arm64.zip" smoke
+      - name: Scan artifact contents for CI secrets
+        working-directory: ${{ github.workspace }}
+        id: artifact_scan_1
+        if: always()
+        shell: bash
+        env:
+          E2E_ARTIFACT_SECRETS: ${{ toJSON(secrets) }}
+          GH_TOKEN: ${{ github.token }}
+          E2E_ARTIFACT_PATHS: |
+            desktop/smoke
+        run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
       - name: Keep the Mac screenshot
-        if: always() && needs.changes.outputs.gate == 'true'
+        if: (always() && needs.changes.outputs.gate == 'true') && steps.artifact_scan_1.outcome == 'success'
         uses: actions/upload-artifact@v6
         with:
           name: mac-screens-${{ needs.changes.outputs.version }}
@@ -412,8 +423,19 @@ jobs:
         if: needs.changes.outputs.gate == 'true'
         working-directory: desktop
         run: node scripts/windows-smoke.mjs "dist/Jobadabra-${VERSION}-x64.exe" smoke smoke
+      - name: Scan artifact contents for CI secrets
+        working-directory: ${{ github.workspace }}
+        id: artifact_scan_2
+        if: always()
+        shell: bash
+        env:
+          E2E_ARTIFACT_SECRETS: ${{ toJSON(secrets) }}
+          GH_TOKEN: ${{ github.token }}
+          E2E_ARTIFACT_PATHS: |
+            desktop/smoke
+        run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
       - name: Keep the Windows screenshots
-        if: always() && needs.changes.outputs.gate == 'true'
+        if: (always() && needs.changes.outputs.gate == 'true') && steps.artifact_scan_2.outcome == 'success'
         uses: actions/upload-artifact@v6
         with:
           name: windows-screens-${{ needs.changes.outputs.version }}
@@ -688,8 +710,20 @@ jobs:
         with:
           path: desktop/e2e/.quality-rate
           key: quality-rate-${{ github.run_id }}-${{ github.run_attempt }}
-      - name: The suite's part of the HTML report
+      - name: Scan artifact contents for CI secrets
+        working-directory: ${{ github.workspace }}
+        id: artifact_scan_3
         if: always()
+        shell: bash
+        env:
+          E2E_ARTIFACT_SECRETS: ${{ toJSON(secrets) }}
+          E2E_LOCK_TOKEN: ${{ steps.lock_app.outputs.token }}
+          GH_TOKEN: ${{ github.token }}
+          E2E_ARTIFACT_PATHS: |
+            blob-report
+        run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
+      - name: The suite's part of the HTML report
+        if: (always()) && steps.artifact_scan_3.outcome == 'success'
         uses: actions/upload-artifact@v6
         with:
           name: blob-${{ matrix.key }}
@@ -697,8 +731,21 @@ jobs:
           if-no-files-found: ignore
           retention-days: 3
       # Steps and a failed suite's trace as data (the /admin/e2e runs page that read them was dropped on 15 Oct 2026; the artifact stays for download).
-      - name: Steps and trace for /admin/e2e
+      - name: Scan artifact contents for CI secrets
+        working-directory: ${{ github.workspace }}
+        id: artifact_scan_4
         if: always()
+        shell: bash
+        env:
+          E2E_ARTIFACT_SECRETS: ${{ toJSON(secrets) }}
+          E2E_LOCK_TOKEN: ${{ steps.lock_app.outputs.token }}
+          GH_TOKEN: ${{ github.token }}
+          E2E_ARTIFACT_PATHS: |
+            e2e-artifacts/${{ matrix.key }}/steps.json
+            e2e-artifacts/${{ matrix.key }}/trace-*.zip
+        run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
+      - name: Steps and trace for /admin/e2e
+        if: (always()) && steps.artifact_scan_4.outcome == 'success'
         uses: actions/upload-artifact@v6
         with:
           name: e2e-view-${{ matrix.key }}
@@ -707,8 +754,20 @@ jobs:
             e2e-artifacts/${{ matrix.key }}/trace-*.zip
           compression-level: 0
           if-no-files-found: ignore
-      - name: Screenshots and timings
+      - name: Scan artifact contents for CI secrets
+        working-directory: ${{ github.workspace }}
+        id: artifact_scan_5
         if: always()
+        shell: bash
+        env:
+          E2E_ARTIFACT_SECRETS: ${{ toJSON(secrets) }}
+          E2E_LOCK_TOKEN: ${{ steps.lock_app.outputs.token }}
+          GH_TOKEN: ${{ github.token }}
+          E2E_ARTIFACT_PATHS: |
+            e2e-artifacts/${{ matrix.key }}
+        run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
+      - name: Screenshots and timings
+        if: (always()) && steps.artifact_scan_5.outcome == 'success'
         uses: actions/upload-artifact@v6
         with:
           name: e2e-artifacts-${{ matrix.key }}
@@ -716,8 +775,20 @@ jobs:
           if-no-files-found: ignore
       # The second try writes its own folder (e2e-rerun): without this upload its logs reached no one and a retry's own failure could not be read
       # (#2087's quality run 40340783596, 26 Oct 2026). Guard: tests/test_e2e_artifacts_uploaded.py.
-      - name: The second try's screenshots and logs
+      - name: Scan artifact contents for CI secrets
+        working-directory: ${{ github.workspace }}
+        id: artifact_scan_6
         if: always()
+        shell: bash
+        env:
+          E2E_ARTIFACT_SECRETS: ${{ toJSON(secrets) }}
+          E2E_LOCK_TOKEN: ${{ steps.lock_app.outputs.token }}
+          GH_TOKEN: ${{ github.token }}
+          E2E_ARTIFACT_PATHS: |
+            e2e-rerun/${{ matrix.key }}
+        run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
+      - name: The second try's screenshots and logs
+        if: (always()) && steps.artifact_scan_6.outcome == 'success'
         uses: actions/upload-artifact@v6
         with:
           name: e2e-rerun-${{ matrix.key }}
@@ -899,8 +970,20 @@ jobs:
         with:
           path: desktop/e2e/.ai-cache
           key: ai-answers-windows-${{ matrix.key }}${{ matrix.key == 'mailreading' && '-v2' || '' }}-${{ github.run_id }}-${{ github.run_attempt }}
-      - name: The suite's part of the HTML report
+      - name: Scan artifact contents for CI secrets
+        working-directory: ${{ github.workspace }}
+        id: artifact_scan_7
         if: always()
+        shell: bash
+        env:
+          E2E_ARTIFACT_SECRETS: ${{ toJSON(secrets) }}
+          E2E_LOCK_TOKEN: ${{ steps.lock_app.outputs.token }}
+          GH_TOKEN: ${{ github.token }}
+          E2E_ARTIFACT_PATHS: |
+            blob-report
+        run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
+      - name: The suite's part of the HTML report
+        if: (always()) && steps.artifact_scan_7.outcome == 'success'
         uses: actions/upload-artifact@v6
         with:
           name: blob-windows-${{ matrix.key }}
@@ -908,8 +991,21 @@ jobs:
           if-no-files-found: ignore
           retention-days: 3
       # Steps and a failed suite's trace as data (the /admin/e2e runs page that read them was dropped on 15 Oct 2026; the artifact stays for download).
-      - name: Steps and trace for /admin/e2e
+      - name: Scan artifact contents for CI secrets
+        working-directory: ${{ github.workspace }}
+        id: artifact_scan_8
         if: always()
+        shell: bash
+        env:
+          E2E_ARTIFACT_SECRETS: ${{ toJSON(secrets) }}
+          E2E_LOCK_TOKEN: ${{ steps.lock_app.outputs.token }}
+          GH_TOKEN: ${{ github.token }}
+          E2E_ARTIFACT_PATHS: |
+            e2e-artifacts-windows/${{ matrix.key }}/steps.json
+            e2e-artifacts-windows/${{ matrix.key }}/trace-*.zip
+        run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
+      - name: Steps and trace for /admin/e2e
+        if: (always()) && steps.artifact_scan_8.outcome == 'success'
         uses: actions/upload-artifact@v6
         with:
           name: e2e-view-windows-${{ matrix.key }}
@@ -918,16 +1014,40 @@ jobs:
             e2e-artifacts-windows/${{ matrix.key }}/trace-*.zip
           compression-level: 0
           if-no-files-found: ignore
-      - name: Screenshots and logs
+      - name: Scan artifact contents for CI secrets
+        working-directory: ${{ github.workspace }}
+        id: artifact_scan_9
         if: always()
+        shell: bash
+        env:
+          E2E_ARTIFACT_SECRETS: ${{ toJSON(secrets) }}
+          E2E_LOCK_TOKEN: ${{ steps.lock_app.outputs.token }}
+          GH_TOKEN: ${{ github.token }}
+          E2E_ARTIFACT_PATHS: |
+            e2e-artifacts-windows/${{ matrix.key }}
+        run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
+      - name: Screenshots and logs
+        if: (always()) && steps.artifact_scan_9.outcome == 'success'
         uses: actions/upload-artifact@v6
         with:
           name: e2e-artifacts-windows-${{ matrix.key }}
           path: e2e-artifacts-windows/${{ matrix.key }}
           if-no-files-found: ignore
       # The Edge pass keeps its own folder (apply-edge); without this upload its app log and screenshots reached no one (beta 40281407461, 26 Oct 2026).
+      - name: Scan artifact contents for CI secrets
+        working-directory: ${{ github.workspace }}
+        id: artifact_scan_10
+        if: always()
+        shell: bash
+        env:
+          E2E_ARTIFACT_SECRETS: ${{ toJSON(secrets) }}
+          E2E_LOCK_TOKEN: ${{ steps.lock_app.outputs.token }}
+          GH_TOKEN: ${{ github.token }}
+          E2E_ARTIFACT_PATHS: |
+            e2e-artifacts-windows/apply-edge
+        run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
       - name: The Edge pass's screenshots and logs
-        if: always() && matrix.suite == 'apply'
+        if: (always() && matrix.suite == 'apply') && steps.artifact_scan_10.outcome == 'success'
         uses: actions/upload-artifact@v6
         with:
           name: e2e-artifacts-windows-${{ matrix.key }}-edge
@@ -989,8 +1109,19 @@ jobs:
           if grep -q made=1 "$RUNNER_TEMP/made.txt" 2>/dev/null; then
               echo "## 📊 [Open the Mac HTML report](https://www.jobpilotto.top/admin/operations/e2e/run/${{ github.run_id }}/report) · every suite, its steps with a screenshot each, the failure and its trace (admins)"
           fi
+      - name: Scan artifact contents for CI secrets
+        working-directory: ${{ github.workspace }}
+        id: artifact_scan_11
+        if: always()
+        shell: bash
+        env:
+          E2E_ARTIFACT_SECRETS: ${{ toJSON(secrets) }}
+          GH_TOKEN: ${{ github.token }}
+          E2E_ARTIFACT_PATHS: |
+            e2e-report
+        run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
       - uses: actions/upload-artifact@v6
-        if: hashFiles('e2e-report/index.html') != ''
+        if: (hashFiles('e2e-report/index.html') != '') && steps.artifact_scan_11.outcome == 'success'
         with:
           name: e2e-report   # admin/e2e-report.js serves it
           path: e2e-report
@@ -999,6 +1130,7 @@ jobs:
       # batch for every page, half the price; owner, 26 Oct 2026). Inside this job, so the release graph stays Build -> E2E -> Release.
       - uses: ./.github/actions/e2e-review
         with:
+          artifact-secrets: ${{ toJSON(secrets) }}
           lane: mac
           anthropic-key: ${{ secrets.E2E_ANTHROPIC_KEY }}
           provider: ${{ inputs.ai_provider || vars.CI_AI_PROVIDER }}
@@ -1076,8 +1208,19 @@ jobs:
           if grep -q made=1 "$RUNNER_TEMP/made.txt" 2>/dev/null; then
               echo "## 📊 [Open the Windows HTML report](https://www.jobpilotto.top/admin/operations/e2e/run/${{ github.run_id }}/report?os=windows) · every suite, its steps with a screenshot each, the failure and its trace (admins)"
           fi
+      - name: Scan artifact contents for CI secrets
+        working-directory: ${{ github.workspace }}
+        id: artifact_scan_12
+        if: always()
+        shell: bash
+        env:
+          E2E_ARTIFACT_SECRETS: ${{ toJSON(secrets) }}
+          GH_TOKEN: ${{ github.token }}
+          E2E_ARTIFACT_PATHS: |
+            e2e-report
+        run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
       - uses: actions/upload-artifact@v6
-        if: hashFiles('e2e-report/index.html') != ''
+        if: (hashFiles('e2e-report/index.html') != '') && steps.artifact_scan_12.outcome == 'success'
         with:
           name: e2e-report-windows   # admin/e2e-report.js serves it
           path: e2e-report
@@ -1086,6 +1229,7 @@ jobs:
       # batch for every page, half the price; owner, 26 Oct 2026). Inside this job, so the release graph stays Build -> E2E -> Release.
       - uses: ./.github/actions/e2e-review
         with:
+          artifact-secrets: ${{ toJSON(secrets) }}
           lane: windows
           anthropic-key: ${{ secrets.E2E_ANTHROPIC_KEY }}
           provider: ${{ inputs.ai_provider || vars.CI_AI_PROVIDER }}

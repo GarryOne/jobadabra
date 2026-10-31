@@ -97,7 +97,8 @@ class WorkflowAiAnswers(unittest.TestCase):
         self.assertNotIn('E2E_AI_CANDIDATES', self.suite)
         self.assertIn('      E2E_ARTIFACTS: ${{ github.workspace }}/e2e-artifacts/${{ matrix.key }}', self.suite.splitlines())
         upload = self.step('name: Screenshots and timings')
-        for line in ('        if: always()', '        uses: actions/upload-artifact@v6',
+        self.assertRegex(upload, r"(?m)^        if: .*always\(\).* && steps\.artifact_scan_\d+\.outcome == 'success'$")
+        for line in ('        uses: actions/upload-artifact@v6',
                      '          path: e2e-artifacts/${{ matrix.key }}'):
             self.assertIn(line, upload.splitlines())
         self.assertIn('          name: e2e-artifacts-${{ matrix.key }}', upload.splitlines())

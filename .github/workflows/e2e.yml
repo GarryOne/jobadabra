@@ -499,16 +499,40 @@ jobs:
         with:
           path: desktop/e2e/.quality-rate
           key: quality-rate-${{ github.run_id }}-${{ github.run_attempt }}
+      - name: Scan artifact contents for CI secrets
+        working-directory: ${{ github.workspace }}
+        id: artifact_scan_1
+        if: always()
+        shell: bash
+        env:
+          E2E_ARTIFACT_SECRETS: ${{ toJSON(secrets) }}
+          E2E_LOCK_TOKEN: ${{ steps.lock_app.outputs.token }}
+          GH_TOKEN: ${{ github.token }}
+          E2E_ARTIFACT_PATHS: |
+            desktop/e2e/.ai-cache
+        run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
       - name: Hand this PR's green AI answers to main's run after the merge (desktop/e2e/pr-answers.mjs)
-        if: success() && inputs.pr_suites != '' && inputs.after_merge == '' && env.E2E_ANTHROPIC_KEY != '' && hashFiles('desktop/e2e/.ai-cache/*.json') != ''
+        if: (success() && inputs.pr_suites != '' && inputs.after_merge == '' && env.E2E_ANTHROPIC_KEY != '' && hashFiles('desktop/e2e/.ai-cache/*.json') != '') && steps.artifact_scan_1.outcome == 'success'
         uses: actions/upload-artifact@v6
         with:
           name: ai-answers-${{ matrix.key }}${{ matrix.key == 'mailreading' && '-v2' || '' }}
           path: desktop/e2e/.ai-cache
           include-hidden-files: true   # .ai-cache is a hidden folder: without this the artifact is empty
           retention-days: 7
-      - name: The suite's part of the HTML report
+      - name: Scan artifact contents for CI secrets
+        working-directory: ${{ github.workspace }}
+        id: artifact_scan_2
         if: always()
+        shell: bash
+        env:
+          E2E_ARTIFACT_SECRETS: ${{ toJSON(secrets) }}
+          E2E_LOCK_TOKEN: ${{ steps.lock_app.outputs.token }}
+          GH_TOKEN: ${{ github.token }}
+          E2E_ARTIFACT_PATHS: |
+            blob-report
+        run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
+      - name: The suite's part of the HTML report
+        if: (always()) && steps.artifact_scan_2.outcome == 'success'
         uses: actions/upload-artifact@v6
         with:
           name: blob-${{ matrix.key }}
@@ -516,8 +540,21 @@ jobs:
           if-no-files-found: ignore
           retention-days: 3
       # Steps and a failed suite's trace as data (the /admin/e2e runs page that read them was dropped on 15 Oct 2026; the artifact stays for download).
-      - name: Steps and trace for /admin/e2e
+      - name: Scan artifact contents for CI secrets
+        working-directory: ${{ github.workspace }}
+        id: artifact_scan_3
         if: always()
+        shell: bash
+        env:
+          E2E_ARTIFACT_SECRETS: ${{ toJSON(secrets) }}
+          E2E_LOCK_TOKEN: ${{ steps.lock_app.outputs.token }}
+          GH_TOKEN: ${{ github.token }}
+          E2E_ARTIFACT_PATHS: |
+            e2e-artifacts/${{ matrix.key }}/steps.json
+            e2e-artifacts/${{ matrix.key }}/trace-*.zip
+        run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
+      - name: Steps and trace for /admin/e2e
+        if: (always()) && steps.artifact_scan_3.outcome == 'success'
         uses: actions/upload-artifact@v6
         with:
           name: e2e-view-${{ matrix.key }}
@@ -526,16 +563,40 @@ jobs:
             e2e-artifacts/${{ matrix.key }}/trace-*.zip
           compression-level: 0
           if-no-files-found: ignore
+      - name: Scan artifact contents for CI secrets
+        working-directory: ${{ github.workspace }}
+        id: artifact_scan_4
+        if: always()
+        shell: bash
+        env:
+          E2E_ARTIFACT_SECRETS: ${{ toJSON(secrets) }}
+          E2E_LOCK_TOKEN: ${{ steps.lock_app.outputs.token }}
+          GH_TOKEN: ${{ github.token }}
+          E2E_ARTIFACT_PATHS: |
+            e2e-artifacts/${{ matrix.key }}/coverage-*.json
+        run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
       - name: Which app lines the suite ran (the code → suite map)
-        if: always() && env.E2E_COVERAGE == '1'
+        if: (always() && env.E2E_COVERAGE == '1') && steps.artifact_scan_4.outcome == 'success'
         uses: actions/upload-artifact@v6
         with:
           name: e2e-coverage-${{ matrix.key }}
           path: e2e-artifacts/${{ matrix.key }}/coverage-*.json
           if-no-files-found: ignore
           retention-days: 7
-      - name: Screenshots and timings
+      - name: Scan artifact contents for CI secrets
+        working-directory: ${{ github.workspace }}
+        id: artifact_scan_5
         if: always()
+        shell: bash
+        env:
+          E2E_ARTIFACT_SECRETS: ${{ toJSON(secrets) }}
+          E2E_LOCK_TOKEN: ${{ steps.lock_app.outputs.token }}
+          GH_TOKEN: ${{ github.token }}
+          E2E_ARTIFACT_PATHS: |
+            e2e-artifacts/${{ matrix.key }}
+        run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
+      - name: Screenshots and timings
+        if: (always()) && steps.artifact_scan_5.outcome == 'success'
         uses: actions/upload-artifact@v6
         with:
           name: e2e-artifacts-${{ matrix.key }}
@@ -543,8 +604,20 @@ jobs:
           if-no-files-found: ignore
       # The second try writes its own folder (e2e-rerun): without this upload its logs reached no one and a retry's own failure could not be read
       # (#2087's quality run 40340783596, 26 Oct 2026). Guard: tests/test_e2e_artifacts_uploaded.py.
-      - name: The second try's screenshots and logs
+      - name: Scan artifact contents for CI secrets
+        working-directory: ${{ github.workspace }}
+        id: artifact_scan_6
         if: always()
+        shell: bash
+        env:
+          E2E_ARTIFACT_SECRETS: ${{ toJSON(secrets) }}
+          E2E_LOCK_TOKEN: ${{ steps.lock_app.outputs.token }}
+          GH_TOKEN: ${{ github.token }}
+          E2E_ARTIFACT_PATHS: |
+            e2e-rerun/${{ matrix.key }}
+        run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
+      - name: The second try's screenshots and logs
+        if: (always()) && steps.artifact_scan_6.outcome == 'success'
         uses: actions/upload-artifact@v6
         with:
           name: e2e-rerun-${{ matrix.key }}
@@ -588,6 +661,7 @@ jobs:
           node-version: '22'
       - uses: ./.github/actions/e2e-review
         with:
+          artifact-secrets: ${{ toJSON(secrets) }}
           lane: mac
           anthropic-key: ${{ secrets.E2E_ANTHROPIC_KEY }}
           provider: ${{ inputs.ai_provider || vars.CI_AI_PROVIDER }}
@@ -628,6 +702,7 @@ jobs:
           sparse-checkout: |
             desktop/e2e
             tools/merge-e2e-report.sh
+            tools/scan-e2e-artifacts.py
       - uses: actions/setup-node@v5
         with:
           node-version: '22'
@@ -644,8 +719,19 @@ jobs:
           # A report never decides the run: a corrupt blob is left out and named, a failed merge is said, the job stays green (tools/merge-e2e-report.sh)
           bash "$GITHUB_WORKSPACE/tools/merge-e2e-report.sh" "$GITHUB_WORKSPACE/blob-reports" "$GITHUB_WORKSPACE/e2e-report"
           if grep -q "^made=1" "$GITHUB_OUTPUT"; then echo "HTML report (admins): https://www.jobpilotto.top/admin/operations/e2e/run/${{ github.run_id }}/report"; fi
+      - name: Scan artifact contents for CI secrets
+        working-directory: ${{ github.workspace }}
+        id: artifact_scan_7
+        if: always()
+        shell: bash
+        env:
+          E2E_ARTIFACT_SECRETS: ${{ toJSON(secrets) }}
+          GH_TOKEN: ${{ github.token }}
+          E2E_ARTIFACT_PATHS: |
+            e2e-report
+        run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
       - uses: actions/upload-artifact@v6
-        if: steps.merge.outputs.made == '1'
+        if: (steps.merge.outputs.made == '1') && steps.artifact_scan_7.outcome == 'success'
         with:
           name: e2e-report
           path: e2e-report
@@ -672,7 +758,9 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          sparse-checkout: desktop/e2e
+          sparse-checkout: |
+            desktop/e2e
+            tools/scan-e2e-artifacts.py
           fetch-depth: 0
           filter: blob:none
       - uses: actions/download-artifact@v7
@@ -691,7 +779,19 @@ jobs:
           set -o pipefail
           prev=(); [ -f "$GITHUB_WORKSPACE/previous/coverage-map.json" ] && prev=(--previous "$GITHUB_WORKSPACE/previous/coverage-map.json")
           node coverage-map.mjs --artifacts "$GITHUB_WORKSPACE/coverage" "${prev[@]}" --repo "$GITHUB_WORKSPACE" --out "$GITHUB_WORKSPACE/map/coverage-map.json"
+      - name: Scan artifact contents for CI secrets
+        working-directory: ${{ github.workspace }}
+        id: artifact_scan_8
+        if: always()
+        shell: bash
+        env:
+          E2E_ARTIFACT_SECRETS: ${{ toJSON(secrets) }}
+          GH_TOKEN: ${{ github.token }}
+          E2E_ARTIFACT_PATHS: |
+            map/coverage-map.json
+        run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
       - uses: actions/upload-artifact@v6
+        if: steps.artifact_scan_8.outcome == 'success'
         with:
           name: e2e-coverage-map
           path: map/coverage-map.json

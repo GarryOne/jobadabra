@@ -17,7 +17,10 @@ test('a safety step listed as suspended still fails the suite, and its result sa
   await assert.rejects(runner.run('Stop on the card', async () => { throw new Error('the job never reached the filling card'); }, {safety: true}));
   assert.equal(runner.results[0].status, 'failed', 'not "suspended": a safety step blocks');
   assert.equal(runner.results[0].safety, true);
-  assert.equal(runner.summary(), 1);
+  const lines = [], log = console.log;
+  console.log = line => lines.push(String(line));
+  try { assert.equal(runner.summary(), 1); } finally { console.log = log; }
+  assert.ok(lines.some(line => /1 safety step\(s\) failed.*never suspended.*Stop on the card/.test(line)), 'the summary names the failed safety step');
 });
 
 test('the same step without the mark is still suspended (the rule is the mark, not the name), and a passing safety step carries the mark without "suspended"', async () => {

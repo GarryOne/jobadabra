@@ -206,6 +206,8 @@ export function createRunner(getSession, {suite = '', cadence = '', keepGoing = 
     else if (picked.length) console.log(`(ran only the ${picked.filter(name => name !== PICK_SETUP).length} step(s) this PR's changes reach, their needs and the setup: E2E_STEP_NAMES)`);
     const count = status => results.filter(result => result.status === status).length;
     console.log(`\n${count('passed')} passed, ${count('failed')} failed, ${count('skipped')} skipped${count('suspended') ? `, ${count('suspended')} suspended (flaky, not blocking)` : ''}`);
+    const unsafe = results.filter(result => result.status === 'failed' && result.safety);
+    if (unsafe.length) console.log(`⚠ ${unsafe.length} safety step(s) failed (never suspended: they block the beta and are fixed the same day): ${unsafe.map(result => result.name.slice(0, 70)).join('; ')}`);   // Why (31 Oct 2026, owner; Gitar on #2723): the one reader of a result's safety mark
     for (const line of sharedCauseLines(results)) console.log(line);   // gate G3: six reds on one locator read as one cause, not six bugs
     return count('failed') ? 1 : 0;
   };

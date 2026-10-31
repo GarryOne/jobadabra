@@ -417,7 +417,9 @@ jobs:
           $cache = Join-Path $env:LOCALAPPDATA "Packages\$($pkg.PackageFamilyName)\LocalCache\Roaming\Jobadabra"
           Remove-Item $real, $cache -Recurse -Force -ErrorAction SilentlyContinue
           New-Item -ItemType Directory -Force $cache, "$cache\data" | Out-Null
-          $electron = (Resolve-Path (Join-Path $env:GITHUB_WORKSPACE 'desktop\node_modules\electron\dist\electron.exe')).Path
+          # Why (31 Oct 2026, run 41230956068): desktop/node_modules/electron/dist was not on the runner; Electron's own installer fetches it and require('electron') names it.
+          Push-Location (Join-Path $env:GITHUB_WORKSPACE 'desktop'); node node_modules/electron/install.js; $electron = (node -e "process.stdout.write(require('electron'))"); Pop-Location
+          "electron: $electron"
           @'
           const {app, safeStorage} = require('electron');
           const fs = require('fs'), path = require('path');

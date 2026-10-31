@@ -123,14 +123,43 @@ jobs:
             # No offline replay gate (owner, 17 Oct 2026: replays are for debugging; the beta is gated by the e2e suites, page cases and unit tests, the daily live check reports real-site health separately).
             echo "build=true" >> "$GITHUB_OUTPUT"
           fi
+      # Why (31 Oct 2026, owner: "when we fix e2e on main. We should run first only the failing e2e suite, then rerun a beta full e2e suite"): main went red at 02:38 UTC (run 41158705592)
+      # and the 03:00 nightly (run 41162490590) still spent ~40 min of Mac and Windows runners on the same reds. Gate G2 (tools/red-main-gate.sh) re-runs ONLY main's red suites and
+      # waits: green → the night goes on; red → it builds and tests nothing. A beta by hand is gated by tools/beta-release.sh (not nightly here), never twice. Only when there is
+      # something to build (the diff step above), so a night with nothing new does not start re-checks. Guard: tests/test_workflow_nightly_red_gate.py
+      - name: Main's e2e red? Re-check its red suites first (nightly)
+        id: redmain
+        if: steps.diff.outputs.build == 'true' && (github.event_name == 'schedule' || inputs.nightly) && inputs.over_red_main == ''
+        timeout-minutes: 50
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RED_MAIN_WAIT_S: '2700'   # the re-check takes 10-15 min; the lock `desktop-release` is held meanwhile
+          CI_ALERTS_TELEGRAM_BOT_TOKEN: ${{ secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN }}
+          CI_ALERTS_TELEGRAM_CHAT_ID: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}
+        run: |
+          set -o pipefail
+          set +e
+          tools/red-main-gate.sh "$GITHUB_REPOSITORY" 2>&1 | tee "$RUNNER_TEMP/red-main-gate.log"
+          rc=${PIPESTATUS[0]}
+          set -e
+          if [ "$rc" -eq 0 ]; then echo "red=false" >> "$GITHUB_OUTPUT"; exit 0; fi
+          suites=$(awk '/^Main.s e2e is red:/ { found = 1; next } found && /^  / { print $1 }' "$RUNNER_TEMP/red-main-gate.log" | paste -sd, -)
+          recheck=$(sed -n 's/^Re-check: //p' "$RUNNER_TEMP/red-main-gate.log" | tail -1)
+          [ -n "$recheck" ] || recheck="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          if [ -n "$suites" ]; then what="main's e2e still red on $suites"; else what="main's e2e state could not be read"; fi
+          message="Nightly skipped: $what (re-check $recheck)"
+          echo "::notice title=Nightly skipped::$message"
+          echo "No build tonight: $what. Nothing is built or tested; the next beta re-checks the red suites first."
+          echo "red=true" >> "$GITHUB_OUTPUT"
+          MESSAGE="$message" node --input-type=module -e "import {send} from './desktop/e2e/ci-alert.mjs'; console.log(await send(process.env.MESSAGE))"
       # Something to build: the release both lanes add their files to, here so each lane starts straight from this job (owner, 7 Oct 2026: "Anything new should
       # trigger 2 separate pipelines"). Its version (the next patch), its tag (at the start: a push to main during the builds costs nothing) and a draft with the notes.
       - uses: actions/setup-node@v5
-        if: steps.diff.outputs.build == 'true'
+        if: steps.diff.outputs.build == 'true' && steps.redmain.outputs.red != 'true'
         with:
           node-version: '22'
       - name: Version
-        if: steps.diff.outputs.build == 'true'
+        if: steps.diff.outputs.build == 'true' && steps.redmain.outputs.red != 'true'
         id: version
         working-directory: desktop
         # package.json holds the target (0.5.0): each build is the next patch, 0.5.1, 0.5.2 … The channel (build, beta, stable) says how proven it is, not the version.
@@ -142,7 +171,7 @@ jobs:
           echo "Extension version $extension"
           echo "extension_version=$extension" >> "$GITHUB_OUTPUT"
       - name: Tag this build now (its workflows still match main's)
-        if: steps.diff.outputs.build == 'true'
+        if: steps.diff.outputs.build == 'true' && steps.redmain.outputs.red != 'true'
         # GitHub refuses (HTTP 403) to let this run's token create a tag on a commit whose workflow files differ from main's. Tagged here, at the
         # start, that can't happen: a push to main during the build no longer costs a rebuild (7 Oct 2026). A build that fails after this leaves
         # its number unused; scripts/next-version.sh then takes the next one.
@@ -151,7 +180,7 @@ jobs:
           if git push -q origin "$GITHUB_SHA:refs/tags/$tag"; then echo "Tagged $tag at ${GITHUB_SHA::7}"
           else echo "::warning::Could not tag $tag at the start: the Release step tags it (and rebuilds main if workflows changed meanwhile)."; fi
       - name: Release
-        if: steps.diff.outputs.build == 'true'
+        if: steps.diff.outputs.build == 'true' && steps.redmain.outputs.red != 'true'
         id: release
         working-directory: desktop
         env:

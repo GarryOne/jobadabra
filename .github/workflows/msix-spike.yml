@@ -365,6 +365,10 @@ jobs:
           New-Item -ItemType Directory -Force $cache, $real | Out-Null
           Set-Content (Join-Path $cache 'seed-in-cache.txt') 'a Store user data file (private cache)'
           Set-Content (Join-Path $real 'seed-in-real.txt') 'an .exe copy data file (real folder)'
+          # what the app needs to find the OTHER copy: a stand-in .exe where the NSIS installer puts it, and the packages folder
+          $fake = Join-Path $env:LOCALAPPDATA 'Programs\job-pilotto-desktop'
+          New-Item -ItemType Directory -Force $fake | Out-Null
+          Set-Content (Join-Path $fake 'Jobadabra.exe') 'stand-in'
           @'
           const fs = require('fs'), path = require('path');
           const out = [];
@@ -374,6 +378,11 @@ jobs:
           out.push('the app lists its AppData folder: ' + ls());
           out.push('seed-in-cache.txt: ' + read('seed-in-cache.txt'));
           out.push('seed-in-real.txt: ' + read('seed-in-real.txt'));
+          const local = process.env.LOCALAPPDATA;
+          const names = d => { try { return fs.readdirSync(d); } catch (e) { return 'ERR ' + e.code; } };
+          out.push('inside the package, Packages folders named Jobadabra*: ' + [].concat(names(path.join(local, 'Packages'))).filter(n => /^Jobadabra/.test(n)).join(', '));
+          out.push('inside the package, the .exe copy is visible: ' + fs.existsSync(path.join(local, 'Programs', 'job-pilotto-desktop', 'Jobadabra.exe')));
+          out.push('inside the package, its own cache folder lists: ' + [].concat(names(path.join(local, 'Packages', process.argv[2], 'LocalCache', 'Roaming', 'Jobadabra'))).join(', '));
           fs.writeFileSync(path.join(dir, 'written-by-app.txt'), 'written by the packaged app');
           fs.appendFileSync(path.join(dir, 'seed-in-cache.txt'), ' + appended by the app');
           fs.appendFileSync(path.join(dir, 'seed-in-real.txt'), ' + appended by the app');
@@ -381,7 +390,7 @@ jobs:
           '@ | Set-Content C:\spike-out\probe.js
           @"
           `$env:ELECTRON_RUN_AS_NODE = '1'
-          & '$exe' C:\spike-out\probe.js
+          & '$exe' C:\spike-out\probe.js '$($pkg.PackageFamilyName)'
           "@ | Set-Content C:\spike-out\run.ps1
           Invoke-CommandInDesktopPackage -PackageFamilyName $pkg.PackageFamilyName -AppId $appId -Command 'powershell.exe' -Args '-NoProfile -ExecutionPolicy Bypass -File C:\spike-out\run.ps1' -PreventBreakaway
           Start-Sleep -Seconds 15

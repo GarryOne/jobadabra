@@ -61,12 +61,15 @@ function tolerant(read) {
   };
 }
 
+/** pollUntil's cap when the caller gives none; also what a helper that spends one budget across several waits falls back to. */
+export const POLL_CAP_MS = 45000;
+
 /**
  * Poll fresh reads until accepts succeeds or elapsed ms reaches capMs; return the last value and elapsed ms.
  * Read errors propagate unless the reader is composed with tolerant; unread values skip accepts.
  * Ticks are clipped to the remaining cap. The label formats slow successes; now/pause allow clock-free tests.
  */
-export async function pollUntil(read, accepts, {capMs = 45000, tickMs = 250, label = ms => `the state was observed ${ms} ms after the wait started`, log = console.log, now = Date.now, pause = sleep} = {}) {
+export async function pollUntil(read, accepts, {capMs = POLL_CAP_MS, tickMs = 250, label = ms => `the state was observed ${ms} ms after the wait started`, log = console.log, now = Date.now, pause = sleep} = {}) {
   const start = now();
   let value = '';
   for (;;) {

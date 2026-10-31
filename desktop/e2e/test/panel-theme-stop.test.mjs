@@ -2,6 +2,7 @@
 // The panel's two themes follow the app's setting live (no reload), and Stop is one press away mid-fill with the panel open AND minimised (real extension, fixture form, fake data).
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
+import {pressStop} from '../lib/panel-stop.mjs';
 import {startRealExtension} from '../lib/real-extension.mjs';
 
 const FORM = `<!doctype html><title>Senior Site Reliability Engineer</title><form><h1>Apply</h1>
@@ -48,10 +49,9 @@ for (const minimised of [false, true]) {
         await t.step('Reading another field…');
         assert.equal(await t.app.page.locator('#jobpilotto-review-host').locator('.card').evaluate(el => el.hidden), true, 'ordinary progress keeps the card minimised');
       }
-      await t.press(minimised ? '.pill-stop' : '.stop-btn');
       // Stop keeps the panel, calm: "Stopped by you" with Check form again, no dim, no step row (0d0327b, owner 27 Oct 2026); it no longer removes the panel.
-      await t.app.page.waitForFunction(() => { const root = document.getElementById('jobpilotto-review-host')?.shadowRoot;
-        return !!root && !root.querySelector('.fill.is-busy') && !document.getElementById('jobpilotto-fill-overlay') && (root.querySelector('.card').hidden || !root.querySelector('.stopped').hidden); }, null, {timeout: 10000}).catch(() => assert.fail('Stop did not halt the fill'));
+      // Why (31 Oct 2026, a8; run 41250657527): the shared press (lib/panel-stop.mjs) presses the same Stop as before (`.stop-btn`, or the pill's `.pill-stop`), waits until it is pressable, then judges the panel's state, and a red names that state.
+      await pressStop(t.app.page, {minimised});
       assert.equal(await t.app.page.evaluate(() => !!document.getElementById('jobpilotto-stop-host')), false, 'the bottom-left chip is gone');
     } finally { await t.app.close(); }
   });

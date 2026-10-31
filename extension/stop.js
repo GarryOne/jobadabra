@@ -77,11 +77,16 @@ export function startTab(tabId, who = '', wasStopped = false) {
   return page;
 }
 
-// Stop everything. -> {tabs}: how many tabs were cleared.
+// Stop everything. -> {tabs, ok, failed}: how many tabs were cleared; ok false when a step that makes the Stop hold failed, `failed` naming each step and why.
+// Why (31 Oct 2026, a8; coordinator: "A Stop that failed must say so (rule 6, safety)"): every step's error was swallowed and the worker answered ok:true, so the panel went on as if
+// the Stop had worked. The steps that count are the ones that keep it from holding (the flag a restarted worker reads, a tab's armed marks, the page's own mark); a closed tab, the
+// debugger refusing a detach it does not own, the page's panel message and the app's report are best effort and never make the Stop fail.
 export async function stopAll(reason = 'the person pressed Stop') {
   const at = Date.now();
+  const failed = [];
+  const attempt = (what, work) => Promise.resolve(work).catch(error => { failed.push(`${what}: ${String(error?.message || error).slice(0, 80)}`); });
   markStopped(at);
-  await chrome.storage.session.set({stopped: {at, reason: String(reason).slice(0, 80)}}).catch(() => {});
+  await attempt('the Stop could not be kept for a restarted worker', chrome.storage.session.set({stopped: {at, reason: String(reason).slice(0, 80)}}));
   decide('stop', 'stopped: nothing more is done on any tab', {reason: String(reason).slice(0, 80)});
   const stored = await chrome.storage.session.get(null).catch(() => ({}));
   const ids = new Set(Object.keys(stored).filter(key => key.startsWith('armed:') && stored[key]).map(key => Number(key.slice(6))).filter(Number.isInteger));
@@ -92,13 +97,15 @@ export async function stopAll(reason = 'the person pressed Stop') {
   forgetDebuggerUsers();   // nobody holds the attachment any more (the form trace is dropped by its own onStopped, messages-report.js)
   for (const tabId of new Set([...ids, ...workingTabs()])) setApply(tabId, 'stopped');   // Stop is a verdict: the one owner of the dim says so, every page lifts (apply-state.js)
   for (const tabId of ids) {
-    await chrome.storage.session.remove([...IDENTITY_KEYS(tabId), `role:${tabId}`, `armed:${tabId}`, `carried:${tabId}`, `submit:${tabId}`, `judged:${tabId}`, `read:${tabId}`, `next:${tabId}`]).catch(() => {});
+    const gone = await Promise.resolve().then(() => chrome.tabs.get(tabId)).then(() => false, () => true);   // a closed tab has nothing left to stop
+    const step = (what, work) => (gone ? Promise.resolve(work).catch(() => {}) : attempt(`tab ${tabId}: ${what}`, work));
+    await step('its marks were not cleared', chrome.storage.session.remove([...IDENTITY_KEYS(tabId), `role:${tabId}`, `armed:${tabId}`, `carried:${tabId}`, `submit:${tabId}`, `judged:${tabId}`, `read:${tabId}`, `next:${tabId}`]));
     await chrome.storage.session.set({[`stoppedTab:${tabId}`]: at}).catch(() => {});   // still the app's tab for the person's own start (the popup's Apply on this page): its mark and arming are gone
-    await chrome.scripting.executeScript({target: {tabId, allFrames: true}, world: 'MAIN', func: stoppedPage}).catch(() => {});
+    await step('the page was not marked stopped', chrome.scripting.executeScript({target: {tabId, allFrames: true}, world: 'MAIN', func: stoppedPage}));
     chrome.tabs.sendMessage(tabId, {type: 'stopped', at}).catch(() => {});   // at: the panel ignores a Stop older than the person's start on it (review.js)
   }
   for (const fn of told) await Promise.resolve(fn(reason, ids.size)).catch(() => {});
-  return {tabs: ids.size};
+  return {tabs: ids.size, ok: failed.length === 0, failed};
 }
 
 // Chrome's own "Cancel" on its "started debugging this browser" bar is the person's Stop too (a closed tab or DevTools taking over is not).

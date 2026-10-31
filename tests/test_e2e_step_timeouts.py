@@ -58,7 +58,63 @@ def untimed(path):
     return [name for name, body in steps(path.read_text()) if not TIMEOUT.search(body)]
 
 
+# Why (31 Oct 2026, a8; beta 41246139016): 518662a capped "The shared release checks" at 5 minutes, but tools/release-checks.sh waits up to RELEASE_CI_WAIT (3600 s) for main's
+# build.yml; both Release jobs died with "has timed out after 5 minutes" over an all-green beta. A cap has to outlive the wait its own script declares.
+# Each entry: (a pattern that finds the step by what it runs, the script that waits, the env names whose seconds add up to its longest wait). A step's `env:` value wins over the script's
+# `NAME:-N` default, as it does when the script runs. A step that runs a waiting script and is not listed here is not checked: add the script when it gains a wait.
+WAITING = [
+    (r'tools/release-checks\.sh', 'tools/release-checks.sh', ['RELEASE_CI_WAIT']),
+    (r'tools/red-main-gate\.sh(?! .*--status)', 'tools/red-main-gate.sh', ['RED_MAIN_FIND_S', 'RED_MAIN_WAIT_S']),
+    (r'e2e-lock\.sh acquire', 'tools/e2e-lock.sh', ['E2E_LOCK_MAX']),
+]
+MARGIN = 120  # seconds the cap leaves after the longest wait, so the script's own "still running after N s" line prints before the runner kills the step
+
+
+def declared_waits(body):
+    """The (script, seconds) pairs a step may wait: the sum of the env names listed for each waiting script it runs."""
+    found = []
+    code = '\n'.join(line for line in body.splitlines() if not line.lstrip().startswith('#'))   # a comment that names a script does not run it
+    for pattern, script, names in WAITING:
+        if not re.search(pattern, code):
+            continue
+        text = (ROOT / script).read_text()
+        seconds = 0
+        for name in names:
+            from_step = re.search(rf"(?m)^\s+{name}: '?(\d+)'?\s*(?:#.*)?$", body)
+            seconds += int((from_step or re.search(rf'{name}:-(\d+)', text)).group(1))
+        found.append((script, seconds))
+    return found
+
+
+def too_short_for_the_wait(path):
+    bad = []
+    for name, body in steps(path.read_text()):
+        cap = TIMEOUT.search(body)
+        for script, seconds in declared_waits(body):
+            if cap and int(cap.group(1)) * 60 < seconds + MARGIN:
+                bad.append(f'{name} ({cap.group(1)} min, but {script} may wait {seconds} s)')
+    return bad
+
+
 class E2eStepTimeouts(unittest.TestCase):
+    def test_a_step_cap_outlives_the_wait_its_script_declares(self):
+        short = [f'{name}.yml: {step}' for name in e2e_workflow_names() for step in too_short_for_the_wait(WORKFLOWS / f'{name}.yml')]
+        self.assertEqual(short, [], f'raise `timeout-minutes` to the wait plus {MARGIN // 60} min (the script prints its own "not waiting any longer" line only if the runner has not killed it first)')
+
+    def test_every_waiting_script_is_found_in_a_step(self):
+        seen = {script: 0 for _, script, _ in WAITING}
+        for name in e2e_workflow_names():
+            for _, body in steps((WORKFLOWS / f'{name}.yml').read_text()):
+                for script, _ in declared_waits(body):
+                    seen[script] += 1
+        self.assertEqual([script for script, count in seen.items() if not count], [], 'a WAITING entry no step runs any more: drop it, or fix its pattern')
+        self.assertGreaterEqual(seen['tools/release-checks.sh'], 2, 'the Mac and the Windows release jobs both run the shared release checks')
+
+    def test_the_wait_is_read_from_the_step_then_the_script(self):
+        self.assertEqual(declared_waits('run: tools/release-checks.sh "$TAG" "$REF"'), [('tools/release-checks.sh', 3600)])
+        self.assertEqual(declared_waits("env:\n  RELEASE_CI_WAIT: '600'\nrun: tools/release-checks.sh x"), [('tools/release-checks.sh', 600)])
+        self.assertEqual(declared_waits('run: tools/red-main-gate.sh "$R" --status'), [])
+
     def test_every_e2e_step_has_a_timeout(self):
         bad = []
         for name in e2e_workflow_names():

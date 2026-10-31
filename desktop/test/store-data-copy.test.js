@@ -144,8 +144,13 @@ test('a start while a helper is still copying quits without starting a second on
   assert.equal(readMarker(target).tries, 1, 'the second start does not use up a try');
   fs.writeFileSync(path.join(target, LOCK), '2147483646');   // a pid nobody has
   assert.equal(helperRunning(target), false);
+  // Why (31 Oct 2026, windows-latest run 41251735222 on #2747): the old check wrote a lock and passed a limit of -1, so it raced Date.now() against the file's mtime (Windows can stamp a file 1 ms ahead
+  // of Date.now(): true !== false). The leftover is built for real now: its mtime is 10 minutes back, the limit is a minute, and the same limit keeps a fresh lock.
   fs.writeFileSync(path.join(target, LOCK), String(process.pid));
-  assert.equal(helperRunning(target, -1), false, 'a lock older than the limit is a leftover');
+  assert.equal(helperRunning(target, 60000), true, 'a fresh lock of a live pid is a running helper under the same limit');
+  const tenMinutesAgo = new Date(fs.statSync(path.join(target, LOCK)).mtimeMs - 10 * 60 * 1000);   // from the file's own mtime: the test reads no clock (test/unpinned-clock.test.js)
+  fs.utimesSync(path.join(target, LOCK), tenMinutesAgo, tenMinutesAgo);
+  assert.equal(helperRunning(target, 60000), false, 'a lock older than the limit is a leftover');
   fs.rmSync(path.join(target, LOCK));
   const finished = await run([String(2147483646), cache, target, process.execPath, '-e', '0'], {settleMs: 0});
   assert.deepEqual(finished.failed, []);

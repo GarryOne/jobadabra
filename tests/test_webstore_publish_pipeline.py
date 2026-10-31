@@ -35,7 +35,7 @@ class StorePublishOnStable(unittest.TestCase):
         self.assertNotIn('--prerelease=false', step, 'a hand-rolled promotion would skip the store starts')
 
     def steps_that_promote(self):
-        """(workflow, step text) of every step that runs tools/release-stable.sh or the canary's auto-promote (not the --candidate lookups)."""
+        """(workflow, step text, call line, the job's header up to `steps:`) of every step that runs tools/release-stable.sh or the canary's auto-promote (not the --candidate lookups)."""
         found = []
         for path in sorted(WORKFLOWS.glob('*.yml')):
             text = path.read_text()
@@ -44,26 +44,30 @@ class StorePublishOnStable(unittest.TestCase):
                     continue
                 begin = text.rfind('\n      - ', 0, match.start())
                 end = text.find('\n      - ', match.end())
-                found.append((path.name, text[begin:end if end != -1 else len(text)], text[match.start():text.index('\n', match.start())]))
+                job = [header for header in re.finditer(r'(?m)^  [\w-]+:[ \t]*(?:#.*)?$', text[:begin])][-1].start()
+                found.append((path.name, text[begin:end if end != -1 else len(text)], text[match.start():text.index('\n', match.start())], text[job:text.index('    steps:', job)]))
         return found
 
     def test_no_route_swallows_a_failed_store_start(self):
         # The script now exits 4 after promoting when a store start failed. A caller that ignores the exit status would put the old green run back.
         found = self.steps_that_promote()
-        self.assertTrue({name for name, _, _ in found} >= {'beta-approve.yml', 'canary-promote.yml', 'desktop.yml'}, f'positive control: {[n for n, _, _ in found]}')
-        for name, step, line in found:
+        self.assertTrue({name for name, *_ in found} >= {'beta-approve.yml', 'canary-promote.yml', 'desktop.yml'}, f'positive control: {[n for n, *_ in found]}')
+        for name, step, line, _ in found:
             with self.subTest(workflow=name, line=line.strip()):
                 self.assertNotRegex(line, r'\|\|\s*(true|:|echo|exit 0)', 'the exit status of the promotion is kept')
                 self.assertNotIn('continue-on-error', step)
 
     def test_every_route_that_promotes_can_send_the_alert(self):
-        # release-stable.sh sends one Telegram alert (desktop/e2e/ci-alert.mjs send) when a store start fails; it needs the bot's token and chat from the calling step.
-        for name, step, line in self.steps_that_promote():
+        # release-stable.sh sends one Telegram alert (desktop/e2e/ci-alert.mjs send) when a store start fails; it needs the bot's token and chat from the calling step or its job.
+        # A job with an artifact secret list (E2E_ARTIFACT_SECRET_NAMES, tests/test_e2e_artifact_secrets.py) keeps them at job level and lists them: the first push put them in the step and that test went red.
+        for name, step, line, head in self.steps_that_promote():
             if name == 'promote-dry-run.yml':
                 continue   # the dry run stops before the promotion and starts no store
             with self.subTest(workflow=name, line=line.strip()):
-                self.assertIn('CI_ALERTS_TELEGRAM_BOT_TOKEN: ${{ secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN }}', step)
-                self.assertIn('CI_ALERTS_TELEGRAM_CHAT_ID: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}', step)
+                for secret in ('CI_ALERTS_TELEGRAM_BOT_TOKEN', 'CI_ALERTS_TELEGRAM_CHAT_ID'):
+                    self.assertIn(f'{secret}: ${{{{ secrets.{secret} }}}}', step + head)
+                    if 'E2E_ARTIFACT_SECRET_NAMES' in head:
+                        self.assertRegex(head, rf'(?m)^        {secret}$', 'listed for the artifact secret scan')
 
     def test_every_job_that_promotes_may_start_a_workflow(self):
         callers = {}

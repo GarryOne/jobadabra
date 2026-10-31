@@ -2,6 +2,7 @@
 // Why (28 Oct 2026, owner; fail closed: mac-27): an unreadable count is treated as capped and said as grey with its cause: a guess that lets the spend through is the silent-hiding class.
 // Why (28 Oct 2026, owner): CI on Free AI billed ~$4/day of neurons unseen (fbadf96); this is the stop-gap until CI's AI runs on the Codex plan (specs/2026-10-28-ci-on-codex-subscription-design.md).
 // The count is Cloudflare's own for the whole account today (GraphQL), so every runner and job shares it; asked at most once a minute per process, and once over, the day stays over.
+// Job: report health
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -45,7 +46,7 @@ export async function capReached({env = process.env, fetchImpl = fetch, now = Da
 export const releaseGate = (env = process.env) => env.E2E_RUN_KIND === 'gate' || env.E2E_FULL === '1';
 
 // The caps this process has hit and the steps it skipped for them: one list, written to ai-capped.json (the beta and release gates read it as "not run").
-let fired = null;
+let fired = null, refusal = '';
 const skipped = [];
 
 // The line for the log, and the file kept with the suite's artifacts. Marks that a live ask was refused since the runner last looked (takeCapped).
@@ -59,6 +60,7 @@ export function noteCapped(neurons, env = process.env) {
 // The Codex broker refused a call (its budget, a lost login: jobadabra-web workers/codex-broker): the same skip-or-fail path as the neuron cap, with the broker's reason. Takes the reason and env; returns nothing.
 export function noteBrokerCapped(why, env = process.env) {
   fired = {neurons: null, why};
+  refusal = why;
   console.log(`ai-capped: ${env.E2E_SUITE || env.E2E_STEPS_SUITE || 'e2e'} (Codex broker: ${why})`);
   writeNote(null, env);
 }
@@ -69,8 +71,9 @@ export function takeCapped() { const was = fired; fired = null; return was; }
 // The runner skipped `name` because of the cap (never failed, never passed: owner/fl 28 Oct 2026). Counts it and rewrites ai-capped.json.
 export function skipStepForCap(name, neurons, env = process.env) { skipped.push(name); console.log(`- ${name}: skipped (AI capped; ${skipped.length} step(s) skipped in this run)`); writeNote(neurons, env); }
 
+// Why (31 Oct 2026, beta 41135642422): the broker's reason went only to the job log, so qualityai's failure said "no refusal reason recorded"; the file keeps it.
 function writeNote(neurons, env) {
   try {
-    if (env.E2E_ARTIFACTS) { fs.mkdirSync(env.E2E_ARTIFACTS, {recursive: true}); fs.writeFileSync(path.join(env.E2E_ARTIFACTS, 'ai-capped.json'), JSON.stringify({neurons, cap: capOf(env), skipped: skipped.length, steps: skipped, at: new Date().toISOString()})); }
+    if (env.E2E_ARTIFACTS) { fs.mkdirSync(env.E2E_ARTIFACTS, {recursive: true}); fs.writeFileSync(path.join(env.E2E_ARTIFACTS, 'ai-capped.json'), JSON.stringify({neurons, cap: capOf(env), ...(refusal ? {why: refusal} : {}), skipped: skipped.length, steps: skipped, at: new Date().toISOString()})); }
   } catch { /* a note never breaks the run */ }
 }

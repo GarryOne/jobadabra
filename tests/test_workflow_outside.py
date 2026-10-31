@@ -19,7 +19,7 @@ class OutsideWorkflow(unittest.TestCase):
         for name, text, block in self.workflows():
             with self.subTest(workflow=name):
                 self.assertEqual(re.findall(r'^# Job: (.+)$', text, re.M), ['serve stored answers' if name == 'e2e.yml' else 'run the backbone'])
-                self.assertRegex(block, r'(?m)^    continue-on-error: \$\{\{ \(matrix.outside == true \|\| matrix.tolerant == true\) \}\}')
+                self.assertRegex(block, r'(?m)^    continue-on-error: \$\{\{ matrix.tolerant == true \}\}')
                 self.assertIn('E2E_NOTION_TOKEN_FAILURESNOTION: ${{ secrets.E2E_NOTION_TOKEN_FAILURESNOTION }}', block)
                 self.assertIn('name: e2e-artifacts-' + ('windows-' if 'name: E2E · Windows' in block else '') + '${{ matrix.key }}', block)
 
@@ -27,12 +27,12 @@ class OutsideWorkflow(unittest.TestCase):
         for name, _, block in self.workflows():
             with self.subTest(workflow=name):
                 retry = next(step for step in re.split(r'(?m)^      - ', block) if step.startswith('name: "First try failed:'))
-                self.assertIn('matrix.outside != true && matrix.tolerant != true', retry.split('run:', 1)[0])
+                self.assertIn('matrix.tolerant != true', retry.split('run:', 1)[0])
                 health = next((step for step in re.split(r'(?m)^      - ', block) if step.startswith('name: Outside-world health')), '')
-                self.assertIn('if: always() && (matrix.outside == true || matrix.tolerant == true)', health)
+                self.assertIn('if: always() && matrix.tolerant == true', health)
                 self.assertIn('OUTCOME: ${{ steps.suite_run.outcome }}', health)
                 script = health.split('run: |\n', 1)[1].replace('${{ matrix.key }}', 'notion-real')
-                for outcome, code in [('success', 0), ('failure', 1), ('cancelled', 1), ('skipped', 1)]:
+                for outcome, code in [('success', 0), ('failure', 0), ('cancelled', 0), ('skipped', 0)]:
                     done = subprocess.run(['bash', '-e', '-c', script], env={**os.environ, 'OUTCOME': outcome}, capture_output=True, text=True)
                     self.assertEqual(done.returncode, code, done.stderr)
                     self.assertIn(f'::notice title=Outside-world health::notion-real: {outcome}', done.stdout)
@@ -41,12 +41,12 @@ class OutsideWorkflow(unittest.TestCase):
     def test_windows_retry_uses_the_same_grey_proof_and_tolerant_boundary(self):
         text = (ROOT / '.github/workflows/desktop.yml').read_text()
         block = text.split('  test-windows:', 1)[1].split('  release-mac:', 1)[0]
-        self.assertIn('continue-on-error: ${{ (matrix.outside == true || matrix.tolerant == true) }}', block)
+        self.assertIn('continue-on-error: ${{ matrix.tolerant == true }}', block)
         retry = next(step for step in re.split(r'(?m)^      - ', block) if step.startswith('name: "First try failed:'))
-        self.assertIn('matrix.outside != true && matrix.tolerant != true', retry.split('run:', 1)[0])
+        self.assertIn('matrix.tolerant != true', retry.split('run:', 1)[0])
         self.assertIn('node flaky-proof.mjs --grey "$first/suite-failures.json" "$E2E_ARTIFACTS/suite-failures.json"', retry)
-        self.assertIn('::error title=Grey: the runner, not the app::', retry)
-        self.assertIn('if: always() && (matrix.outside == true || matrix.tolerant == true)', block)
+        self.assertIn('::warning title=Grey: the runner%2C not the app::', retry)
+        self.assertIn('if: always() && matrix.tolerant == true', block)
 
     def test_outside_does_not_start_a_live_ai_relay(self):
         for name, _, block in self.workflows():

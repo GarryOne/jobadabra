@@ -25,13 +25,13 @@ class GreyRerun(unittest.TestCase):
             with self.subTest(attempt=attempt, reports=reports):
                 self.assertEqual(rerun.decision(attempt, reports)[0], 'stop')
 
-    def test_cli_downloads_only_hold_artifacts_and_calls_failed_rerun_once(self):
+    def test_cli_reruns_each_annotation_proven_grey_job_by_id_once(self):
         def archive(report):
             buffer = io.BytesIO()
             with zipfile.ZipFile(buffer, 'w') as out:
                 out.writestr('beta-held.json', json.dumps(report))
             return buffer.getvalue()
-        def execute(attempt, red=None):
+        def execute(attempt, red=None, proven=True, second_grey=False):
             calls = []
             report = {'attempt': attempt, 'grey': ['Mac + Linux: apply'], 'red': red or []}
             def github(*args, binary=False):
@@ -40,6 +40,11 @@ class GreyRerun(unittest.TestCase):
                     return json.dumps([{'artifacts': [{'id': 12, 'name': 'beta-held-mac'}, {'id': 13, 'name': 'e2e-artifacts-apply'}]}])
                 if args[-1].endswith('/12/zip'):
                     return archive(report)
+                if '/jobs?' in str(args):
+                    return json.dumps([{'jobs': [{'id': 21, 'name': 'E2E · Mac + Linux · apply', 'conclusion': 'success'},
+                                                {'id': 22, 'name': 'E2E · Windows · settings', 'conclusion': 'success'}]}])
+                if '/annotations?' in str(args):
+                    return json.dumps([[{'title': 'Grey: the runner, not the app'}]] if proven and ('/21/' in str(args) or second_grey) else [[]])
                 if args[:2] == ('run', 'rerun'):
                     return ''
                 self.fail(f'unexpected GitHub call: {args}')
@@ -48,12 +53,37 @@ class GreyRerun(unittest.TestCase):
                 self.assertEqual(rerun.main(['--repo', 'o/r', '--run', '99', '--attempt', str(attempt)], github=github), 0)
             return calls, output.getvalue()
         calls, _ = execute(1)
-        self.assertEqual([call for call in calls if call[:2] == ('run', 'rerun')], [('run', 'rerun', '99', '--failed', '--repo', 'o/r')])
+        self.assertEqual([call for call in calls if call[:2] == ('run', 'rerun')], [('run', 'rerun', '99', '--job', '21', '--repo', 'o/r')])
+        calls, _ = execute(1, second_grey=True)
+        self.assertEqual([call[4] for call in calls if call[:2] == ('run', 'rerun')], ['21', '22'])
+        calls, _ = execute(1, proven=False)
+        self.assertFalse(any(call[:2] == ('run', 'rerun') for call in calls), 'artifact labels alone cannot prove a grey job')
         for attempt, red in [(1, ['Windows: settings']), (2, [])]:
             calls, output = execute(attempt, red)
             self.assertFalse(any(call[:2] == ('run', 'rerun') for call in calls))
             if attempt == 2:
                 self.assertIn('::notice::Beta held: grey twice on fresh runners (Mac + Linux: apply): the runner, not the app', output)
+
+    def test_successful_grey_job_is_held_by_release_before_approval(self):
+        from tools import beta_rate_gate as gate
+        import tempfile
+        jobs = [{'id': 21, 'name': 'E2E · Mac + Linux · apply', 'conclusion': 'success'},
+                {'id': 22, 'name': 'E2E · Windows · apply', 'conclusion': 'success'}]
+        def github(*args):
+            return json.dumps([[{'title': 'Grey: the runner, not the app'}]] if '/21/' in str(args) else [[]])
+        with tempfile.TemporaryDirectory() as folder:
+            output = Path(folder) / 'beta-held.json'
+            gate.backbone_check('o/r', jobs, {}, github, output=output)
+            self.assertEqual(json.loads(output.read_text()), {'attempt': 1, 'grey': ['Mac + Linux: apply'], 'red': []})
+        text = (ROOT / '.github/workflows/desktop.yml').read_text()
+        for platform in ('mac', 'windows'):
+            job = text.split(f'  release-{platform}:', 1)[1].split('\n  # Keep the release', 1)[0]
+            gate_step = next(step for step in job.split('      - ') if '--e2e-only' in step)
+            self.assertNotIn('if: needs.test-', gate_step)
+            self.assertIn('id: backbone_gate', gate_step)
+            self.assertIn('continue-on-error: true', gate_step)
+            approval = next(step for step in job.split('      - ') if 'name: Release it to ' in step)
+            self.assertIn("if: steps.backbone_gate.outputs.held != 'true'", approval)
 
     def test_fresh_attempt_can_replace_existing_suite_and_release_artifacts(self):
         workflow = (ROOT / '.github/workflows/desktop.yml').read_text().split('  test-mac:', 1)[1]

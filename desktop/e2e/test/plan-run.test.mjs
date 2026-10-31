@@ -303,13 +303,13 @@ test('schedules never carry the outside world; its own daily run carries only it
   assert.ok(!suitesOf(await plan({})).includes('notion-real'), 'a look on a new commit never checks real Notion');
   const outside = await plan({OUTSIDE: '1'}, [sched(1), sched(2), sched(3)]);
   assert.deepEqual(suitesOf(outside), ['notion-real'], 'the daily outside run checks real Notion even on an unchanged commit, and nothing else');
-  assert.equal(JSON.parse(outside.matrix).include[0].outside, true);
+  assert.equal(JSON.parse(outside.matrix).include[0].tolerant, true);
   assert.equal(outside.ai_required, '0');
   const beta = await planRun({env: {EVENT: 'gate', REPO: 'o/r', SHA: HEAD, GATE_TAG: 'desktop-v9.9', GATE_KIND: 'beta'},
     gh: args => args[0] === 'release' && args[1] === 'view' ? '{"body":"Beta-approved: yes"}' : gh({releases: [['desktop-v9.8', OLD]], files: []})(args),
     all, cadence, offlineAi: all, storeless: ['notion-real'], minutes: () => 15});
   assert.ok(suitesOf(beta).includes('notion-real'), 'an unchanged beta still checks the outside world');
-  assert.equal(JSON.parse(beta.matrix).include.find(leg => leg.suite === 'notion-real').outside, true);
+  assert.equal(JSON.parse(beta.matrix).include.find(leg => leg.suite === 'notion-real').tolerant, true);
   assert.equal(beta.ai_required, '0');
   assert.equal(JSON.parse(beta.matrix).include.filter(leg => leg.suite === 'notion-real').length, 1, 'no duplicate store legs');
 });
@@ -321,4 +321,23 @@ test('the matrix marks tolerant suites from lanes.json, never backbone suites', 
   const legs = JSON.parse(out.matrix).include;
   assert.equal(legs.find(leg => leg.suite === 'qualityai').tolerant, true);
   assert.equal(legs.find(leg => leg.suite === 'settings').tolerant, undefined);
+});
+
+test('lanes.json alone marks every tolerant suite and every outside cadence is tolerant; workflows never gate that lane', async () => {
+  const lanes = JSON.parse(fs.readFileSync(new URL('../lanes.json', import.meta.url), 'utf8')).suites;
+  const facts = await suiteFacts();
+  const all = Object.keys(lanes);
+  const out = await planRun({env: {EVENT: 'workflow_dispatch', SHA: HEAD, ONLY: all.join(',')},
+    gh: gh(), all, cadence: facts.cadence, minutes: () => 15});
+  const legs = JSON.parse(out.matrix).include;
+  for (const [suite, entry] of Object.entries(lanes)) {
+    assert.equal(legs.find(leg => leg.suite === suite)?.tolerant, entry.lane === 'tolerant' ? true : undefined, suite);
+  }
+  for (const [suite, cadence] of Object.entries(facts.cadence)) if (cadence === 'outside') assert.equal(lanes[suite]?.lane, 'tolerant', suite);
+  for (const name of ['desktop', 'e2e', 'e2e-windows']) {
+    const text = fs.readFileSync(new URL(`../../../.github/workflows/${name}.yml`, import.meta.url), 'utf8');
+    assert.doesNotMatch(text, /matrix\.outside/, name);
+    assert.match(text, /continue-on-error: \$\{\{ matrix.tolerant == true \}\}/, name);
+    if (name !== 'e2e-windows') assert.match(text, /matrix.tolerant != true/, name);
+  }
 });

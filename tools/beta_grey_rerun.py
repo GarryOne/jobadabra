@@ -8,7 +8,7 @@ import zipfile
 
 
 def gh(*args, binary=False):
-    """Injectable transport for hold artifacts and the single failed-job re-run."""
+    """Injectable transport for hold artifacts and the single annotation-proven job re-run."""
     data = subprocess.run(['gh', *args], check=True, capture_output=True).stdout
     return data if binary else data.decode('utf-8')
 
@@ -44,6 +44,20 @@ def hold_reports(repo, rid, github):
     return reports
 
 
+def grey_job_ids(repo, rid, github):
+    """Read current suite jobs, including success, and select only the shared grey proof annotation."""
+    try:
+        from .beta_rate_gate import jobs_of, LANE_NAMES
+        from .main_e2e_state import annotations_of, is_grey
+    except ImportError:  # Direct workflow invocation.
+        from beta_rate_gate import jobs_of, LANE_NAMES
+        from main_e2e_state import annotations_of, is_grey
+    prefixes = tuple(f'E2E · {lane} · ' for lane in LANE_NAMES.values())
+    return sorted({job['id'] for job in jobs_of(repo, rid, github)
+                   if job.get('name', '').startswith(prefixes) and job.get('conclusion') in ('success', 'failure')
+                   and is_grey(annotations_of(repo, job.get('id'), github))})
+
+
 def main(argv=None, *, github=gh):
     """Handle one completed desktop run; only the first proven grey attempt starts fresh jobs."""
     parser = argparse.ArgumentParser(description=__doc__)
@@ -57,8 +71,13 @@ def main(argv=None, *, github=gh):
         print(f'::notice::Beta grey proof unavailable ({type(error).__name__}); no automatic re-run')
         return 0
     if action == 'rerun':
+        job_ids = grey_job_ids(args.repo, args.run, github)
+        if not job_ids:
+            print('::notice::No job carries the grey proof annotation; no automatic re-run')
+            return 0
         print('::notice::Beta held grey: re-running once on fresh runners: ' + ', '.join(suites))
-        github('run', 'rerun', args.run, '--failed', '--repo', args.repo)
+        for job_id in job_ids:
+            github('run', 'rerun', args.run, '--job', str(job_id), '--repo', args.repo)
     elif action == 'held':
         print('::notice::Beta held: grey twice on fresh runners (' + ', '.join(suites) + '): the runner, not the app')
     else:

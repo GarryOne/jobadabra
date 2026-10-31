@@ -2,6 +2,8 @@
 // Job: serve stored answers
 import fs from 'node:fs';
 import path from 'node:path';
+import {namesException} from '../../../tools/lanes-check.mjs';
+import {NON_BACKBONE} from './suite-shards.mjs';
 
 export const realAiCalls = ctx => (ctx.proxy?.stats.paid || 0) + (ctx.openaiProxy?.stats.paid || 0);
 
@@ -27,16 +29,19 @@ export function recordAnswerRefusals(ctx, refused) {
   return true;
 }
 
-/** Pure verdict: an absent ceiling never fails; diagnostics contain only the request key, never prompt text. */
+// Why (31 Oct 2026, owner; Gitar on #2664): new backbone suites inherit zero misses; only an explicit lane or a named exception exempts them, read from the one lane list and the registry's one exception rule.
+const missesExempt = lane => NON_BACKBONE.includes(lane?.lane) || namesException(lane);
+
+/** Pure verdict: backbone defaults to zero; diagnostics contain only the request key, never prompt text. */
 export function aiMissesVerdict(misses, lane, firstKey = '') {
-  const max = lane?.aiMissesMax ?? null;
+  const max = missesExempt(lane) ? null : (lane?.aiMissesMax ?? 0);
   const ok = max === null || misses <= max;
   return {ok, misses, max, message: ok ? '' : `AI asks with no stored answer: ${misses} (allowed ${max}); first ask key: ${firstKey}`};
 }
 
-/** Count miss JSON filenames without reading bodies; missing folders mean zero, and suites without a ceiling do no I/O. */
+/** Count miss JSON filenames without reading bodies; missing folders mean zero, and exempt suites do no I/O. */
 export function checkAiMisses(artifacts, lane) {
-  if (lane?.aiMissesMax === undefined) return aiMissesVerdict(0, lane);
+  if (missesExempt(lane)) return aiMissesVerdict(0, lane);
   const dir = path.join(artifacts, 'ai-misses');
   let files;
   try { files = fs.readdirSync(dir, {withFileTypes: true}).filter(file => file.isFile() && file.name.endsWith('.json')).map(file => file.name).sort(); }

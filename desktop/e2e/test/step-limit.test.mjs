@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {createRunner, hangReport, withLimit} from '../lib/runner.mjs';
+import {flakyProof} from '../lib/flaky-proof.mjs';
 
 const never = () => new Promise(() => {});
 const session = {page: {evaluate: never}, app: {evaluate: async () => 1}, shot: async () => {}, keepLogs: async () => {}};
@@ -45,4 +46,24 @@ test('a step cut by the suite budget says so, not that it hung', async () => {
   const runner = createRunner(() => session, {keepGoing: true, budgetMs: 80});
   await runner.run('cut by the budget', never);
   assert.match(runner.results[0].note, /budget ran out during this step/);
+});
+
+// Owner, 31 Oct 2026 ("why it's flaky? Or it's a product bug?"): re-check run 41166853012's apply-2of2 chip step was cut by the 11-minute budget, but its own
+// hang words ("the chip step hung within 129.72 s") hid that, so the grey rule read a wrong value and held the beta red. The runner owns "cut off"; a step gives evidence.
+const chipEvidence = 'all read tabs close; last state: []';
+test('a step with its own evidence, cut by the suite budget, reads as timing in the runner\'s words', async () => {
+  const runner = createRunner(() => session, {keepGoing: true, budgetMs: 80});
+  await runner.run('each read verdict gives its own chip', never, {hangError: async () => chipEvidence});
+  const {note} = runner.results[0];
+  assert.match(note, /budget ran out during this step.*: all read tabs close; last state: \[\]$/);
+  assert.equal(flakyProof(note).flaky, true, note);
+});
+
+test('a step with its own evidence, cut by its own limit, reads as timing in the runner\'s words', async () => {
+  await assert.rejects(withLimit(never(), 50, 'restart', () => null, 0, () => 'the watch past the wait did not end (last read: {})'), error => {
+    assert.equal(error.message, 'the step did not finish within 0.05 s (it hung): the watch past the wait did not end (last read: {})');
+    assert.equal(error.stepHang, true);
+    assert.equal(flakyProof(error.message).flaky, true);
+    return true;
+  });
 });

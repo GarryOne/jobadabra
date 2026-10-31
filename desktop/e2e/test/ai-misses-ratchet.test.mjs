@@ -5,35 +5,55 @@ import os from 'node:os';
 import path from 'node:path';
 import {registerHooks} from 'node:module';
 import {test} from 'node:test';
-import {entryProblems, lanesProblems} from '../../../tools/lanes-check.mjs';
+import {entryProblems, lanesProblems, namesException} from '../../../tools/lanes-check.mjs';
+import {NON_BACKBONE} from '../lib/suite-shards.mjs';
 import {aiMissesVerdict, checkAiMisses} from '../lib/no-real-ai.mjs';
 
-const ZERO_SUITES = ['activity', 'stores', 'interviews', 'wander', 'interactions', 'activityfailures', 'jobs', 'strategy', 'employers', 'settings', 'applyflows', 'apply', 'recorded', 'wizard', 'updates', 'focus', 'cardstates', 'focusdismiss', 'visitread', 'calendar', 'failuresnotion', 'failureschannels', 'storemove', 'quality', 'foryou', 'pool', 'visitsauto', 'personas'];
-// Why (31 Oct 2026, owner saved gates): activity now has reviewed replies and a zero-miss ceiling; a suite with no ceiling is not checked at all, so a new suite could ask a live model unseen. Each one listed here has a reason and a PR that removes it; the list only shrinks.
-const UNCHECKED = {
-  explore: 'by hand only: it spends the owner\'s AI credit on purpose (suites/explore.mjs)',
-};
-
-test('the real registry parses and protects all 28 suites that reached zero misses', () => {
+test('every suite defaults to zero misses unless its lane or a named exception exempts it', t => {
   const text = fs.readFileSync(new URL('../lanes.json', import.meta.url), 'utf8');
   assert.deepEqual(lanesProblems(null, text), []);
-  const {suites} = JSON.parse(text);
-  for (const name of ZERO_SUITES) assert.equal(suites[name]?.aiMissesMax, 0, name);
-});
-
-test('every suite has a ceiling, a lane, or a named reason with the PR that removes it', () => {
-  const {suites} = JSON.parse(fs.readFileSync(new URL('../lanes.json', import.meta.url), 'utf8'));
-  const files = fs.readdirSync(new URL('../suites/', import.meta.url)).filter(file => file.endsWith('.mjs')).map(file => file.slice(0, -4));
-  const open = files.filter(name => suites[name]?.aiMissesMax === undefined && !suites[name]?.lane).sort();
-  assert.deepEqual(open, Object.keys(UNCHECKED).sort(), 'add "aiMissesMax" to lanes.json for a new suite (0 unless it asks a model on purpose), or remove a migrated suite from UNCHECKED');
-});
-
-test('a ceiling-only backbone entry is valid; ceilings must be non-negative integers', () => {
-  for (const aiMissesMax of [0, 2]) assert.deepEqual(entryProblems({aiMissesMax}), []);
-  for (const aiMissesMax of [-1, 0.5, '0', null, true]) {
-    assert.match(entryProblems({aiMissesMax}).join('; '), /aiMissesMax must be a non-negative integer/);
+  const {suites} = JSON.parse(text), dir = artifacts(t);
+  miss(dir, 'unanswered', {input: 'fixture only'});
+  const files = fs.readdirSync(new URL('../suites/', import.meta.url)).filter(file => file.endsWith('.mjs'));
+  for (const file of files) {
+    const name = file.slice(0, -4), lane = suites[name];
+    const exempt = NON_BACKBONE.includes(lane?.lane) || namesException(lane);   // the same predicates the run uses (Gitar on #2664)
+    const result = checkAiMisses(dir, lane);
+    assert.equal(result.max, exempt ? null : 0, name);
+    assert.equal(result.ok, exempt, `${name}: an unknown ask must fail every backbone suite`);
   }
-  assert.notDeepEqual(entryProblems({}), [], 'empty entries still need a lane or a ceiling');
+  // Why (31 Oct 2026, owner takeover #2600): personas already uses the strict zero ceiling; retain it while adopting main’s default-deny checks.
+  assert.equal(suites.personas.aiMissesMax, 0);
+  assert.equal(namesException(suites.personas), false);
+  assert.match(suites.explore.aiMissesException, /manual.only/);
+  assert.equal(checkAiMisses(dir, undefined).ok, false, 'new suites inherit zero without a registry edit');
+});
+
+test('a new unlisted backbone suite defaults to zero without a registry entry', t => {
+  const {suites} = JSON.parse(fs.readFileSync(new URL('../lanes.json', import.meta.url), 'utf8'));
+  const name = 'new-unlisted-backbone-fixture';
+  assert.equal(Object.hasOwn(suites, name), false);
+  const dir = artifacts(t);
+  assert.deepEqual(checkAiMisses(dir, suites[name]), {ok: true, misses: 0, max: 0, message: ''});
+  miss(dir, 'new-unknown-ask', {input: 'fictional fixture request'});
+  assert.deepEqual(checkAiMisses(dir, suites[name]), {
+    ok: false, misses: 1, max: 0,
+    message: 'AI asks with no stored answer: 1 (allowed 0); first ask key: new-unknown-ask',
+  });
+});
+
+test('a backbone ceiling can only be zero; an exception needs a reason', () => {
+  assert.deepEqual(entryProblems({aiMissesMax: 0}), []);
+  assert.deepEqual(entryProblems({aiMissesException: 'Held by the owner until the live asks are reviewed.'}), []);
+  for (const aiMissesMax of [-1, 0.5, '0', null, true, 1]) {
+    assert.match(entryProblems({aiMissesMax}).join('; '), /aiMissesMax must be 0/);
+  }
+  for (const aiMissesException of ['', '  ', null, 42, 'flaky']) {
+    assert.match(entryProblems({aiMissesException}).join('; '), /aiMissesException must name the reason/);
+    assert.equal(aiMissesVerdict(1, {aiMissesException}).ok, false, 'invalid exceptions fail closed');
+  }
+  assert.notDeepEqual(entryProblems({}), [], 'empty entries carry no policy');
+  assert.notDeepEqual(entryProblems({aiMissesMax: 0, aiMissesException: 'Held by the owner until its live asks are reviewed.'}), [], 'a ceiling and an exemption conflict');
   assert.match(entryProblems({aiMissesMax: 0, lane: 'tolerant'}).join('; '), /input must be/);
 });
 
@@ -63,12 +83,15 @@ test('one miss with max zero reports only its request key and never the fixture 
   });
 });
 
-test('without aiMissesMax, misses never fail and the artifact folder is not read', t => {
+test('an absent ceiling fails closed; non-backbone lanes and named exceptions do no I/O', t => {
   const dir = artifacts(t);
   miss(dir, 'first', {input: 'an unanswered ask'});
-  assert.equal(checkAiMisses(dir, {}).ok, true);
-  assert.equal(checkAiMisses(null, undefined).ok, true);
-  assert.deepEqual(aiMissesVerdict(100, {}), {ok: true, misses: 100, max: null, message: ''});
+  assert.equal(checkAiMisses(dir, {}).ok, false);
+  assert.deepEqual(aiMissesVerdict(100, {}), {ok: false, misses: 100, max: 0, message: 'AI asks with no stored answer: 100 (allowed 0); first ask key: '});
+  for (const lane of [{lane: 'tolerant'}, {lane: 'suspended'}, {lane: 'retired'}, {aiMissesException: 'Held by the owner until the live asks are reviewed.'}]) {
+    assert.equal(checkAiMisses(null, lane).max, null);
+    assert.equal(aiMissesVerdict(100, lane).ok, true);
+  }
 });
 
 test('counts only JSON files, sorts the keys and includes the ceiling boundary', t => {

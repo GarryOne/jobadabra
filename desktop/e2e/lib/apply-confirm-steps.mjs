@@ -16,7 +16,7 @@ async function waitOn(what, read, accepts) {
   if (!accepts(value)) throw new Error(seen);
   return value;
 }
-const hung = ms => new Error(`the step did not finish within ${ms / 1000} s (it hung): ${seen || 'before its first wait'}`);
+const hung = () => seen || 'before its first wait';   // the step's evidence; the runner says it was cut off (lib/runner.mjs withLimit)
 
 /** The apply settings the app saved ({mode, autoConfirmedAt, …}), read from the main process, never from the window's own copy. */
 const savedApply = page => page.evaluate(() => window.pilot.state().then(state => state?.settings?.apply || {}));

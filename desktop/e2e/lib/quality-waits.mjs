@@ -16,9 +16,10 @@ export function qualityClocks(backbone = true, env = process.env) {
 }
 
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
-/** Name a hang and keep the evidence already collected by its caller. */
+/** Name a hang and keep the evidence already collected by its caller. A cut-off is timing in the runner's words too (lib/runner.mjs withLimit): one verdict, whichever timer fires. */
+// Why (31 Oct 2026, Gitar on #2672): the old hang words read as a wrong value here but as timing at the step cap; a cut-off says so in one shape.
 export const qualityHang = (label, capMs, evidence) => Object.assign(new Error(
-  `HANG: ${label} did not finish in ${capMs / 1000} s: the app is hung, not slow${evidence ? `\n${evidence}` : ''}`), {name: 'QualityHangError'});
+  `HANG: ${label} did not finish within ${capMs / 1000} s (it hung)${evidence ? `\n${evidence}` : ''}`), {name: 'QualityHangError'});
 
 /** Read the existing engine log tail without making any app or network calls. */
 export function qualityEvidence(ctx) {

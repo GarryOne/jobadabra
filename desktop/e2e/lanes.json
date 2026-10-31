@@ -1,6 +1,6 @@
 {
   "v": 1,
-  "about": "The lane registry (spec docs/superpowers/specs/2026-10-28-e2e-reliability-design.md, lanes table). A suite with no lane is backbone: red or green, a PR's red when its diff reaches it. A lane entry is tolerant (its result depends on an AI answer, the clock or the outside world, named in `input`), suspended (flips red then green on one commit; shown, never blocks) or retired; every lane entry names when it returns or retires in `returns`. tools/pr-verdict.py shows a red tolerant or suspended suite grey on a PR; it reads this file from the PR's BASE branch, so a PR that edits it is judged by main's copy and its entry counts after it merges. Moving a suite out of the backbone is an expectation change (spec rule E): the PR names the input and why. First cut 28 Oct 2026, from the week's reds (tools/e2e_weekly.py). Backbone entries may carry aiMissesMax, the committed non-negative integer ceiling for asks without a stored answer; without it a suite is not checked.",
+  "about": "The lane registry (spec docs/superpowers/specs/2026-10-28-e2e-reliability-design.md, lanes table). A suite with no lane is backbone: red or green, a PR's red when its diff reaches it. A lane entry is tolerant (its result depends on an AI answer, the clock or the outside world, named in `input`), suspended (flips red then green on one commit; shown, never blocks) or retired; every lane entry names when it returns or retires in `returns`. tools/pr-verdict.py shows a red tolerant or suspended suite grey on a PR; it reads this file from the PR's BASE branch, so a PR that edits it is judged by main's copy and its entry counts after it merges. Moving a suite out of the backbone is an expectation change (spec rule E): the PR names the input and why. First cut 28 Oct 2026, from the week's reds (tools/e2e_weekly.py). Every backbone suite, including a new unlisted suite, defaults to aiMissesMax 0: any ask without a stored answer fails. Only tolerant, suspended and retired lanes or a named aiMissesException reason bypass that ceiling (owner, 31 Oct 2026: no external-world flakiness in the backbone).",
   "suites": {
     "qualityai": {
       "lane": "tolerant",
@@ -106,6 +106,9 @@
     },
     "activity": {
       "aiMissesMax": 0
+    },
+    "explore": {
+      "aiMissesException": "The manual-only AI explorer deliberately spends model credit when explicitly requested; cadence manual excludes it from scheduled and release gates."
     }
   }
 }

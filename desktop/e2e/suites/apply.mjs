@@ -136,7 +136,7 @@ export async function runApply(ctx, parts) {
         const seen = await page.evaluate(() => (window.__jp.shared.allJobs || []).map(job => `${job.company} [${job.stage}${job.kit ? ', kit' : ''}]`));
         throw new Error(`the Jobs list never showed every kit job with an Apply button; it holds ${seen.length}: ${seen.join('; ')}`);
       });
-    ctx.browser = await launchBrowser({port: forms.port, spool: ctx.shim.spool, extensionDir: ctx.extensionDir, real: !!live});
+    ctx.browser = await launchBrowser({port: forms.port, spool: ctx.shim.spool, extensionDir: ctx.extensionDir, real: !!live, trailDir: ctx.ARTIFACTS});
     await ctx.browser.serviceWorker();
   }, {needs: ctx.needs, critical: true});   // the setup: every later step needs it, so only this one stops the suite
 

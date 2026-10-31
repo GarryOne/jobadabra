@@ -84,8 +84,9 @@ export {visitGuard};   // moved to lib/spool-tabs.mjs with the navigation it gua
 // `real`: a live-test twin's window (e2e/twin.mjs): real sites (no fixture host mapping), always visible.
 // `profile`: a browser profile kept between runs (the twin's: site sign-ins and cookies survive); else a fresh temp one.
 // `installs`: this start is a fresh install of the extension (it opens its settings page). A fresh temp profile is; a profile kept between runs is not, unless the caller says so (the twin copies sign-ins into a NEW folder).
+// `trailDir`: where close() writes tab-trail.json and prints the trail's first entries, so a GREEN run shows the order too (the install's settings page before the first form's tab); the suite's artifacts folder.
 // `debugPort`: the browser's own debugging port (the twin's: its tabs can be seen and driven from outside, like its app window).
-export async function launchBrowser({port, spool, extensionDir, real = false, profile: kept = '', debugPort = 0, installs = !kept}) {
+export async function launchBrowser({port, spool, extensionDir, real = false, profile: kept = '', debugPort = 0, installs = !kept, trailDir = ''}) {
   if (kept) fs.mkdirSync(kept, {recursive: true});
   const profile = kept || fs.mkdtempSync(path.join(os.tmpdir(), 'jp-e2e-chromium-'));
   launchGuard.check();   // a browser that did not start earlier in this process: stop now, never wait again per journey (lib/launch-guard.mjs)
@@ -108,7 +109,11 @@ export async function launchBrowser({port, spool, extensionDir, real = false, pr
   }
   const serviceWorker = async () => context.serviceWorkers()[0] || await context.waitForEvent('serviceworker', {timeout: 30000});
   return {context, opened: tabs.opened, pages: tabs.pages, requested, trail: tabs.trail, loaded: tabs.loaded, serviceWorker,
-    close: async () => { await tabs.stop(); await context.close().catch(error => console.error(`closing the browser: ${error.message}`)); }};
+    close: async () => {
+      await tabs.stop();
+      await context.close().catch(error => console.error(`closing the browser: ${error.message}`));
+      if (trailDir) { tabs.trail.write(trailDir); console.log(`  tab trail (first entries): ${tabs.trail.head()}`); }
+    }};
 }
 
 // The tab showing this session's marker, even after navigation (background.js markPage restores it). Beta 40281407461, Edge: the install tab raced the reuse

@@ -208,6 +208,7 @@ test('the trail keeps every tab\'s opens, navigations and closes without the fil
   assert.deepEqual(trail.entries.map(entry => `${entry.tab}:${entry.what}:${entry.address}`), [
     '1:open:about:blank', `1:navigated:${SETTINGS}`, '2:open:about:blank', '2:navigated:https://e2e.wd3.myworkdayjobs.com/en-US/E2E/job/Zurich/x/apply', '2:closed:']);
   assert.deepEqual(trail.entries.map(entry => entry.ms), [10, 20, 30, 40, 50], 'times are ms since the trail began');
+  assert.equal(trail.head(2), `tab 1 +10 ms open about:blank; tab 1 +20 ms navigated ${SETTINGS}`, 'the first entries read in order');
   const fs = await import('node:fs'), os = await import('node:os'), path = await import('node:path');
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-trail-'));
   try { trail.write(dir); assert.equal(JSON.parse(fs.readFileSync(path.join(dir, 'tab-trail.json'), 'utf8')).entries.length, 5, 'the artifact holds the same entries'); }

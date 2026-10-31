@@ -44,6 +44,8 @@ export function tabTrail(context, {now = Date.now} = {}) {
       return `${tab ? `tab ${tab}` : 'no tab picked, all tabs'}: ${mine.slice(-last).map(line).join('; ') || 'no entries'}${failed.length ? `; goto errors: ${failed.join(' | ')}` : ''}`;
     },
     summary: () => entries.slice(-12).map(line).join('; '),
+    /** The first `count` entries: the browser's start, the install's settings page and the first form's tab, in order. */
+    head: (count = 8) => entries.slice(0, count).map(line).join('; '),
     /** The whole trail as tab-trail.json in `dir` (the run's artifacts). */
     write(dir) { fs.writeFileSync(path.join(dir, 'tab-trail.json'), JSON.stringify({entries, errors}, null, 1)); },
   };

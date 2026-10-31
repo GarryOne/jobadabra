@@ -242,6 +242,12 @@ jobs:
           Say "   after the .exe copy started: start lines in the real folder's app.log: $(Starts "$real\logs\app.log")"
           Stop-Copies; Remove-Item $real, $legacy, "$cache\Jobadabra" -Recurse -Force -ErrorAction SilentlyContinue
 
+          # Why (31 Oct 2026, run 41226839388: case E put the Store copy's data in the package cache and the .exe copy then made its own real folder = two data sets): does the one lock still hold when the two copies' data is in different places?
+          Say "== F. clean machine: the Store copy is open (private data), then the .exe copy is started"
+          Start-Msix; Start-Sleep 25; Start-Exe; Start-Sleep 35; Outcome 'F-msix-private-then-exe'
+          Say "   real folder: $((Files $real | Select-Object -First 4) -join '; ')"
+          Stop-Copies; Remove-Item $real, $legacy, "$cache\Jobadabra" -Recurse -Force -ErrorAction SilentlyContinue
+
           Say "== A. the .exe copy alone"
           Stop-Copies; Start-Exe; Start-Sleep 30; Outcome 'A-exe-alone'
           Set-Content "$real\marker-written-from-outside.txt" 'outside'

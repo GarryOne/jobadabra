@@ -1,13 +1,13 @@
 // "Flaky" needs proof (gate G5, owner's yes 26 Oct 2026): a step that failed and then passed on the same commit is flaky only when its failure was timing or the
 // test's environment (a wait that ran out, a dropped connection, an HTML error page). A wrong value that came right on the second try is INTERMITTENT: the
 // product or the test behaves differently between two runs of the same code (a race), a bug that shows sometimes. It keeps its rank, goes to the fixer, and only
-// a fix closes it; in CI it keeps the job red (e2e.yml / desktop.yml "once more" step, node flaky-proof.mjs).
+// a fix closes it. Triage labels a step that failed on a commit and passed on the same commit in a later run (a hand re-run); the CI job itself has one try, so it
+// never turns a red into a pass (31 Oct 2026, owner: "And why should we accept/allow that?"; tests/test_e2e_single_try.py).
 // Why: #1897 (25 Oct): failuresnotion's "the list says Completed and the panel Completed with warnings" failed, passed on the rerun, was labelled flaky
 // ("the test is the problem"), ranked last, closed after two clean runs, and failed beta 2; it was a product bug (bd368f8 fixed it).
 // Only the failure message is read, never the step's name: that step is called "Notion is busy (429) …", which reads like an environment failure.
 // Tests: test/flaky-proof.test.mjs
 // Job: run the backbone
-import {onlyRenamedPicks} from '../red-steps.mjs';
 import {isEnvironment} from './environment.mjs';
 import {FLAKY, TIMEOUT_FAILURE, flakyComment} from './triage-match.mjs';
 
@@ -31,24 +31,6 @@ export function flakyProof(message = '') {
   if (isEnvironment(text)) return {flaky: true, kind: 'environment', why: 'the test environment answered badly'};
   return {flaky: false, why: `a wrong value, not timing: "${text.split('\n')[0].slice(0, 140)}"`};
 }
-
-/** Prove grey only from two recorded failures; flakyProof alone owns timing and harness classification. A grey proof names its `reason` (timing | environment | picker) for the trend record (lib/grey-record.mjs). */
-export function greyProof(firstFailures, secondFailures) {
-  if (onlyRenamedPicks(firstFailures) && (secondFailures == null || onlyRenamedPicks(secondFailures))) return {grey: true, reason: 'picker', why: 'picked step(s) not found: the coverage pick is stale'};
-  const tries = [firstFailures, secondFailures];
-  if (tries.some(failures => !Array.isArray(failures) || failures.length === 0)) return {grey: false, why: 'both tries need recorded failures: no timing proof'};
-  const kinds = new Set();
-  for (const failures of tries) for (const failure of failures) {
-    const proof = flakyProof(failure?.message);
-    if (!proof.flaky) return {grey: false, why: proof.why};
-    kinds.add(proof.kind);
-  }
-  // Why (gt, 31 Oct 2026, a8): the trend names the reason with flakyProof's own kind; a run with any timing failure is "timing", only environment failures "environment".
-  return {grey: true, reason: kinds.has('timing') ? 'timing' : 'environment', why: [...new Set(tries.flat().map(failure => failure.step || '(unnamed step)'))].join('; ')};
-}
-
-// The failed steps of a first try (suite-failures.json) that passed on the second try without proof of being flaky.
-export const unproved = failures => (failures || []).map(failure => ({...failure, proof: flakyProof(failure.message)})).filter(failure => !failure.proof.flaky);
 
 export const intermittentComment = (sha7, runUrl, why) => `🔁 **Intermittent, not flaky:** this step failed and then passed on the same commit \`${sha7}\` (${runUrl}), but on ${why}. `
   + 'Same code, two results: the product or the test behaves differently between runs (a race), a bug that shows sometimes. Labelled `intermittent`: it keeps its rank, '

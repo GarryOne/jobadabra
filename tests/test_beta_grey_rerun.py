@@ -96,9 +96,7 @@ class GreyRerun(unittest.TestCase):
         self.assertGreaterEqual(len(uploads), 12)
         for block in uploads:
             self.assertIn('overwrite: true', block)
-        windows = workflow.split('  test-windows:', 1)[1].split('  release-mac:', 1)[0]
-        self.assertIn('            e2e-rerun/windows-${{ matrix.key }}', windows)
-        self.assertIn('          path: e2e-rerun/windows-${{ matrix.key }}', windows)
+        self.assertNotIn('e2e-rerun', workflow, 'a job has one try: no second-try artifact exists (31 Oct 2026, owner)')
 
     def test_workflow_reads_main_completed_desktop_runs_with_only_requested_permissions(self):
         workflow = (ROOT / '.github/workflows/beta-grey-rerun.yml').read_text()

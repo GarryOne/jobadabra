@@ -1,25 +1,23 @@
-// Propose lane suspension and an owner issue from same-commit attempt or in-job retry flips.
+// Propose lane suspension and an owner issue from same-commit attempt flips (a hand re-run of a red run that came out green).
 // Job: report health
-// Usage: node tools/suspend-flip.mjs --attempts attempts.json --owner <login> [--artifacts folder] [--registry file] [--dry-run | --open] [--repo owner/repo]
+// Usage: node tools/suspend-flip.mjs --attempts attempts.json --owner <login> [--registry file] [--dry-run | --open] [--repo owner/repo]
 // Input: {attempts: [<GitHub /actions/runs/ID/attempts/N/jobs JSON>, ...]}; include every page of each attempt's jobs.
-// Why (2026-10-28, owner): a retry flip does not protect a PR; name its evidence and owner instead of retrying it green.
+// Why (2026-10-28, owner): a retry flip does not protect a PR; name its evidence and owner instead of retrying it green. Since 31 Oct 2026 no CI job retries inside itself, so only run attempts can flip.
 // Invariants: never edit the registry; no network in dry-run (the default); only --open creates issues.
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {execFileSync} from 'node:child_process';
 import {entryProblems} from './lanes-check.mjs';
-import {unproved} from '../desktop/e2e/lib/flaky-proof.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const RETURNS = 'Back to the backbone when its fix PR lands and the next 3 main runs pass it.';
 
-/** Return suspension proposals for attempt flips or unproved in-job retries on the same run, SHA and suite.
+/** Return suspension proposals for attempt flips on the same run, SHA and suite.
  * Attempts are GitHub jobs API responses; suites lists actual journey names, so infrastructure jobs never become checks.
- * artifacts optionally names downloaded first-try folders; run supplies their GitHub head_sha and html_url.
  * registry is lanes.json's parsed object; only entries with a lane are left alone. owner is required, never guessed.
  */
-export function suspensions({attempts = [], artifacts, run, registry = {}, suites, owner, since = new Date().toISOString().slice(0, 10)}) {
+export function suspensions({attempts = [], registry = {}, suites, owner, since = new Date().toISOString().slice(0, 10)}) {
   if (!owner?.trim()) throw new Error('A named --owner is required for a suspension.');
   const groups = new Map();
   for (const response of attempts) for (const job of response.jobs || []) {
@@ -58,28 +56,6 @@ export function suspensions({attempts = [], artifacts, run, registry = {}, suite
       break;
     }
   }
-  // Why (29 Oct 2026, owner): G5 keeps a wrong-value retry red inside attempt 1; job conclusions cannot reveal that flip.
-  const walk = dir => {
-    for (const item of fs.readdirSync(dir, {withFileTypes: true})) {
-      if (item.isDirectory()) { walk(path.join(dir, item.name)); continue; }
-      if (item.name !== 'suite-failures.json') continue;
-      const folder = path.dirname(path.join(dir, item.name)), marker = path.join(folder, 'flaky.json');
-      if (!fs.existsSync(marker) || JSON.parse(fs.readFileSync(marker, 'utf8'))?.rerun !== 'passed') continue;
-      const failures = JSON.parse(fs.readFileSync(path.join(folder, item.name), 'utf8'));
-      const wrong = unproved(failures);
-      if (!wrong.length) continue;
-      const suite = String(failures[0].suite || path.basename(folder).replace(/^e2e-artifacts-/, '')).replace(/-\d+of\d+$/, '');
-      if (!suites.includes(suite) || seen.has(suite) || Object.hasOwn(registry.suites?.[suite] || {}, 'lane')) continue;
-      const why = `${suite}: in-job retry flip, wrong value on unchanged commit ${run.head_sha}: first try failed, rerun passed in ${run.html_url}. ${wrong[0].proof.why}. A retry flip leaves this check unable to protect a PR.`;
-      out.push(proposal({suite, sha: run.head_sha, since, why, owner,
-        detail: `Kind: in-job retry flip, wrong value. First failing step: ${failures[0].step}\n\nFirst-try message:\n\n${failures[0].message}\n\nRun: ${run.html_url}\n\nUnproved failure: ${wrong[0].step}: ${wrong[0].message}`}));
-      seen.add(suite);
-    }
-  };
-  if (artifacts) {
-    if (!run?.head_sha || !String(run.html_url || '').startsWith('https://github.com/')) throw new Error('Artifact evidence needs run head_sha and html_url.');
-    walk(artifacts);
-  }
   return out.sort((a, b) => a.suite < b.suite ? -1 : a.suite > b.suite ? 1 : 0);
 }
 
@@ -108,7 +84,7 @@ function main(argv) {
   const data = JSON.parse(fs.readFileSync(input, 'utf8'));
   const registry = JSON.parse(fs.readFileSync(value('--registry') || path.join(ROOT, 'desktop/e2e/lanes.json'), 'utf8'));
   const suites = fs.readdirSync(path.join(ROOT, 'desktop/e2e/suites')).filter(name => name.endsWith('.mjs')).map(name => name.slice(0, -4));
-  const found = suspensions({attempts: data.attempts || data, artifacts: value('--artifacts'), run: data.run, registry, suites, owner: value('--owner')});
+  const found = suspensions({attempts: data.attempts || data, registry, suites, owner: value('--owner')});
   for (const {suite, entry, issue} of found) {
     console.log(`## Proposed lanes.json entry\n${JSON.stringify({[suite]: entry}, null, 2)}\n\n## Owner issue\nTitle: ${issue.title}\n\n${issue.body}\n`);
     if (argv.includes('--open')) {
@@ -123,7 +99,7 @@ function main(argv) {
       execFileSync('gh', ['issue', 'create', '--repo', repo, '--assignee', entry.owner, '--title', issue.title, '--body', issue.body], {stdio: 'inherit'});
     }
   }
-  if (!found.length) console.log('No new same-commit retry flips; no suspension proposed.');
+  if (!found.length) console.log('No new same-commit attempt flips; no suspension proposed.');
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

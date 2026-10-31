@@ -84,14 +84,9 @@ class WorkflowAiAnswers(unittest.TestCase):
                     self.assertEqual(expression(value, event, mode, attempt, suite), expected, suite)
                     self.assertEqual(expression(value, event, mode, attempt, suite, burn_in=3), 'backbone', f'{suite}: a burn-in leg never records')
 
-    def test_the_suites_second_try_uses_backbone_for_declared_suites(self):
-        retry = self.step('if again ')
-        value = re.search(r'(?m)^          E2E_AI_ANSWERS: (.+)$', retry).group(1)
-        for suite in BACKBONE + ('qualityai', 'apply'):
-            for mode in ('off', 'record'):
-                with self.subTest(suite=suite, mode=mode):
-                    self.assertEqual(expression(value, mode=mode, suite=suite),
-                                     'backbone' if suite in BACKBONE else 'off')
+    def test_the_suite_has_no_second_try_with_its_own_answer_mode(self):
+        # Why (31 Oct 2026, owner): one try per suite; its E2E_AI_ANSWERS (checked above) is the only answer mode.
+        self.assertEqual([step for step in self.steps if 'if again ' in step or 'E2E_RERUN=1' in step], [])
 
     def test_candidates_stay_in_the_existing_artifact_upload(self):
         self.assertNotIn('E2E_AI_CANDIDATES', self.suite)
@@ -113,7 +108,7 @@ class WorkflowAiAnswers(unittest.TestCase):
         for event, mode, attempt in [('workflow_dispatch', 'off', 1), ('schedule', 'record', 1),
                                      ('workflow_call', 'record', 1), ('workflow_dispatch', 'record', 2)]:
             self.assertFalse(expression(guard, event, mode, attempt))
-        self.assertGreater(self.steps.index(summary), self.steps.index(self.step('if again ')))
+        self.assertGreater(self.steps.index(summary), self.steps.index(self.step('id: suite_run')))
 
     def test_summary_counts_candidate_files_including_items_and_missing_folder(self):
         summary = self.step('name: AI answer candidates written for review')

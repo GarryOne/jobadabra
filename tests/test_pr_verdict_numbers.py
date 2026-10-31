@@ -93,10 +93,9 @@ class TheAiNumberInEveryWriter(unittest.TestCase):
         self.assertIn('same as main', line)
         self.assertIn('state=success', post)
 
-    def test_retry_guard_reads_the_checkout_without_an_api_mode(self):
+    def test_no_retry_guard_remains_in_the_suite_step(self):
         workflow = (WORKFLOWS / 'e2e.yml').read_text()
-        self.assertIn('steps.suite_run.outputs.report_only != \'1\'', workflow)
-        self.assertIn('node -e', workflow)
+        self.assertNotIn('report_only', workflow)   # the report-only retry skip went with the retry (31 Oct 2026, owner)
         self.assertNotIn('--report-only', workflow)
 
     def test_verdict_glue_stays_below_the_house_split_limit(self):

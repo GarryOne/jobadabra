@@ -1,5 +1,5 @@
-"""The e2e AI-answer cache keeps only answers from a green job, and a suite's second try asks the model again (26 Oct 2026: main's mailreading went red on one
-bad Free AI draw; the cache saved it (`always()`), the second try replayed it, and every later run replayed it too, so a rerun could never tell flaky from real)."""
+"""The e2e AI-answer cache keeps only answers from a green job (26 Oct 2026: main's mailreading went red on one bad Free AI draw; the cache saved it (`always()`),
+and every later run replayed it, so a rerun could never tell flaky from real). A suite has no second try that replays them (31 Oct 2026, owner)."""
 import re
 import unittest
 from pathlib import Path
@@ -31,17 +31,12 @@ class AiAnswerCacheTests(unittest.TestCase):
                 self.assertNotIn("matrix.key == 'mailreading'", text)
                 self.assertNotIn('ai-answers-v2-', text)
 
-    # Why (31 Oct 2026, owner): the plan excludes tolerant suites from retry; every admitted retry keeps the saved answers.
-    def test_every_second_try_uses_the_matrix_lane_and_keeps_replay_on(self):
-        for name in ('e2e.yml', 'desktop.yml'):
+    # Why (31 Oct 2026, owner): a job has one try; nothing replays a stored table on a second run of the same commit any more.
+    def test_no_step_replays_the_answers_for_a_second_try(self):
+        for name in FILES:
             text = (WORKFLOWS / name).read_text()
-            retries = [step for step in steps(text) if 'if again ' in step]
-            self.assertEqual(len(retries), 2 if name == 'desktop.yml' else 1)
-            for retry in retries:
-                self.assertRegex(retry, r'(?m)^        if: .*matrix\.tolerant != true')
-                self.assertIn('E2E_RERUN=1 E2E_AI_REPLAY=1', retry)
-                self.assertNotIn('lanes.json', retry)
-                self.assertNotIn('replay=', retry)
+            self.assertNotIn('E2E_RERUN=1', text, name)
+            self.assertEqual([step for step in steps(text) if 'if again ' in step], [], name)
 
     # Main cannot read a PR's cache (27 Oct 2026: #2180 green on its PR with 0 misses, main red after 8 live questions): the PR hands its answers over.
     def test_a_green_pr_job_hands_its_answers_to_main(self):
@@ -57,7 +52,7 @@ class AiAnswerCacheTests(unittest.TestCase):
         names = steps((WORKFLOWS / 'e2e.yml').read_text())
         restore = next(i for i, step in enumerate(names) if 'actions/cache/restore' in step and 'ai-answers-' in step)
         load = next(i for i, step in enumerate(names) if 'pr-answers.mjs' in step and 'run:' in step)
-        first = next(i for i, step in enumerate(names) if step.startswith('name: Run the ${{ matrix.key }} suite (first try)'))
+        first = next(i for i, step in enumerate(names) if step.startswith('name: Run the ${{ matrix.key }} suite (the only try)'))
         self.assertLess(restore, load)
         self.assertLess(load, first)
         self.assertIn("inputs.after_merge != ''", names[load])

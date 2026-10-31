@@ -1,4 +1,4 @@
-"""Quality and stores replay declared answers on both tries; qualityai keeps its live path."""
+"""Quality and stores replay declared answers on their one try; qualityai keeps its live path."""
 import re
 import unittest
 from pathlib import Path
@@ -14,13 +14,13 @@ def env_line(text, name):
 
 
 class QualityReplayGateTests(unittest.TestCase):
-    def test_quality_uses_stored_answers_on_both_tries_for_pr_and_main(self):
+    def test_quality_uses_stored_answers_for_pr_and_main(self):
         for name, job in (('e2e.yml', 'suite'), ('desktop.yml', 'test-mac')):
             text = (WORKFLOWS / name).read_text()
             suite = re.search(rf'(?ms)^  {job}:\n.*?(?=^  [a-z][\w-]*:|\Z)', text).group()
             job_env = re.search(r'(?m)^      E2E_AI_ANSWERS: (.+)$', suite)
             steps = re.split(r'(?m)^      - ', suite)[1:]
-            for marker in ('id: suite_run', 'if again '):
+            for marker in ('id: suite_run',):
                 step = next(step for step in steps if marker in step)
                 mode = re.search(r'(?m)^          E2E_AI_ANSWERS: (.+)$', step) or job_env
                 self.assertIsNotNone(mode, f'{name}: {marker} needs a stored-answer mode')
@@ -61,20 +61,11 @@ class QualityReplayGateTests(unittest.TestCase):
         self.assertNotIn('echo "E2E_AI_REPLAY=0"', text)
         self.assertIn("matrix.suite == 'qualityai' && '0' || '1'", env_line(text, 'E2E_AI_REPLAY') or '')
 
-    def test_every_retry_uses_the_plan_lane_and_keeps_backbone_replay_on(self):
+    def test_no_retry_replays_answers_a_second_time(self):
         for name in SUITE_WORKFLOWS:
             text = (WORKFLOWS / name).read_text()
-            retries = [step for step in re.split(r'(?m)^      - ', text) if 'if again ' in step]
-            self.assertEqual(len(retries), 2 if name == 'desktop.yml' else 1)
-            for step in retries:
-                condition = re.search(r'(?m)^        if: (.+)$', step).group(1)
-                with self.subTest(file=name, condition=condition):
-                    self.assertIn('matrix.tolerant != true', condition)
-                    self.assertIn('E2E_RERUN=1 E2E_AI_REPLAY=1', step)
-                    self.assertNotIn('lanes.json', step, 'the plan matrix is the one lane source')
-                    self.assertNotIn('node -e', step)
-                    self.assertNotIn('replay=', step)
-                    self.assertNotIn('E2E_AI_ANSWERS=off', step)
+            self.assertEqual([step for step in re.split(r'(?m)^      - ', text) if 'if again ' in step], [], name)
+            self.assertNotIn('E2E_RERUN=1', text, name)
 
     def test_qualityai_always_runs_live_without_strict_replay(self):
         for name in SUITE_WORKFLOWS:

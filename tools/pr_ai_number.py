@@ -219,7 +219,8 @@ def budget_refusal(job, evidence):
     if not isinstance(why, str) or not why.startswith('broker: budget:'):
         return False
     key = job.get('name', '').removeprefix('E2E · ').removeprefix('Mac + Linux · ')
-    suite_steps = {f'Run the {key} suite (first try)',
+    # Why (31 Oct 2026, owner): the suite step is "(the only try)" now; runs started before that PR keep the older names, so a PR already open is still read.
+    suite_steps = {f'Run the {key} suite (the only try)', f'Run the {key} suite (first try)',
                    f'Report-only {key} failed its only try (not retried: each run costs AI)'}
     if any(step.get('conclusion') not in (None, 'success', 'skipped', 'neutral')
            and step.get('name') not in suite_steps for step in job.get('steps') or []):

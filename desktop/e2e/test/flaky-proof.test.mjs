@@ -1,12 +1,7 @@
-// "Flaky" needs proof (gate G5): lib/flaky-proof.mjs, flaky-proof.mjs, triage's closing rule and every CI rerun step.
+// "Flaky" needs proof (gate G5): lib/flaky-proof.mjs and triage's closing rule. The CI job has one try (tests/test_e2e_single_try.py).
 import assert from 'node:assert/strict';
-import {execFileSync} from 'node:child_process';
-import fs from 'node:fs';
-import os from 'node:os';
-import path from 'node:path';
 import {test} from 'node:test';
-import {fileURLToPath} from 'node:url';
-import {INTERMITTENT, greyProof, flakyProof, intermittentComment, labelRerun, unproved} from '../lib/flaky-proof.mjs';
+import {INTERMITTENT, flakyProof, intermittentComment, labelRerun} from '../lib/flaky-proof.mjs';
 import {runJourneys} from '../lib/apply-journeys.mjs';
 import {LATE, REVEAL} from '../lib/forms.mjs';
 import {stepClock} from '../lib/wait-on-state.mjs';
@@ -24,7 +19,6 @@ test('#1897: a wrong value that came right on the rerun is intermittent, not fla
 
 test('the step name is never read: "Notion is busy (429)" in a name is not an environment failure', () => {
   assert.equal(flakyProof(`${STEP_1897}: ${MESSAGE_1897}`).flaky, true, 'guard: the name alone WOULD read as environment, so only the message may be passed');
-  assert.deepEqual(unproved([{suite: 'failuresnotion', step: STEP_1897, message: MESSAGE_1897}]).map(failure => failure.step), [STEP_1897]);
 });
 
 test('timing and the test environment are proof', () => {
@@ -45,21 +39,6 @@ test('a step the suite budget cut short, one it never ran, and a fill still runn
   assert.equal(flakyProof(`the fill did not finish (${fillNote({state: 'error', error: 'x'}, 90)})`).flaky, false, 'an error is a value');
 });
 
-test('the CLI keeps the job red on an intermittent step, green when every step was timing', () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'flaky-proof-'));
-  const write = (name, failures) => { const file = path.join(dir, name); fs.writeFileSync(file, JSON.stringify(failures)); return file; };
-  const cli = file => { try { return {code: 0, out: execFileSync(process.execPath, ['flaky-proof.mjs', file], {cwd: new URL('..', import.meta.url), encoding: 'utf8'})}; } catch (error) { return {code: error.status, out: String(error.stdout)}; } };
-  const red = cli(write('red.json', [{step: 'a', message: 'Timeout 5000ms exceeded'}, {step: STEP_1897, message: MESSAGE_1897}]));
-  assert.equal(red.code, 1);
-  assert.match(red.out, /🎲 flaky: a: timing/);
-  assert.match(red.out, /🔁 intermittent: Notion is busy/);
-  assert.match(red.out, /1 step\(s\) failed on a wrong value/);
-  assert.equal(cli(write('green.json', [{step: 'a', message: 'waiting for locator(\'#x\')'}])).code, 0);
-  assert.equal(cli(path.join(dir, 'missing.json')).code, 1, 'no file cannot prove timing');
-  assert.equal(cli(write('empty.json', [])).code, 1, 'an unrecorded failure is not timing proof');
-  assert.equal(cli(write('malformed.json', {})).code, 1, 'malformed evidence cannot prove timing');
-});
-
 test('an intermittent issue is never closed by "not seen" twice', () => {
   const issue = labels => ({number: 1897, state: 'OPEN', labels: labels.map(name => ({name})), comments: []});
   const closing = issues => toClose(issues, new Set(), 'https://run/2', () => true).map(item => item.labels.map(label => label.name).join(','));
@@ -76,28 +55,6 @@ test('triage labels the rerun: #1897 intermittent, a timeout flaky with its proo
   assert.match(calls.find(args => args[1] === 'comment' && args[2] === '7')[4], /on timing: "Timeout 30000ms exceeded"/);
 });
 
-// The class: every CI step that runs a red suite once more and writes flaky.json must ask for the proof before passing the job.
-test('every rerun step that writes flaky.json runs flaky-proof.mjs on the first try, with pipefail', () => {
-  const flows = path.join(fileURLToDir(), '..', '..', '..', '.github', 'workflows');
-  const steps = [];
-  for (const file of fs.readdirSync(flows).filter(name => name.endsWith('.yml'))) {
-    const text = fs.readFileSync(path.join(flows, file), 'utf8');
-    for (const [at] of [...text.matchAll(/> "\$first\/flaky\.json"/g)].map(m => [m.index])) {
-      const start = text.lastIndexOf('      - name:', at), end = text.indexOf('\n      - ', at);
-      steps.push({file, block: text.slice(start, end < 0 ? undefined : end)});
-    }
-  }
-  assert.ok(steps.length >= 2, 'e2e.yml and desktop.yml both rerun a red suite');
-  for (const {file, block} of steps) {
-    assert.match(block, /node flaky-proof\.mjs "\$first\/suite-failures\.json"/, file);
-    assert.match(block, /set -o pipefail/, file);
-    assert.match(block, /node flaky-proof\.mjs --grey "\$first\/suite-failures\.json" "\$E2E_ARTIFACTS\/suite-failures\.json"/, file);
-    assert.match(block, /::warning title=Grey: the runner%2C not the app::/, `${file}: escape the title comma so GitHub returns the full grey title`);
-  }
-});
-
-function fileURLToDir() { return path.dirname(fileURLToPath(import.meta.url)); }
-
 test('a red of the harness\'s own isolation check is the harness\'s: never flaky, never "a wrong value" (6e, 27 Oct 2026: main read like a product bug)', () => {
   const proof = flakyProof('NOT ISOLATED: the extension is not on the stand-in app\'s port 42941 ("47111" stored at 3520: …)');
   assert.equal(proof.flaky, false);
@@ -107,49 +64,6 @@ test('a red of the harness\'s own isolation check is the harness\'s: never flaky
 });
 
 
-test('grey needs two non-empty tries with only timing/environment failures; guards and wrong values stay red', () => {
-  const timing = [{step: 'fill', message: 'Timeout 30000ms exceeded'}];
-  const environment = [{step: 'load', message: 'socket hang up'}];
-  assert.equal(greyProof(timing, environment).grey, true);
-  for (const message of ['expected Completed, got Running', 'NOT ISOLATED: Timeout 30000ms exceeded', 'E2E_AI_ANSWER_MISSING: Timeout 30000ms exceeded']) {
-    const wrong = [...timing, {step: 'value', message}];
-    assert.equal(greyProof(wrong, timing).grey, false);
-    assert.equal(greyProof(timing, wrong).grey, false);
-  }
-  for (const empty of [[], null, {}, [null]]) {
-    assert.equal(greyProof(timing, empty).grey, false);
-    assert.equal(greyProof(empty, timing).grey, false);
-  }
-});
-
-test('grey CLI proves both files and fails closed on absent or malformed evidence', () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'grey-proof-'));
-  try {
-    const first = path.join(dir, 'first.json'), second = path.join(dir, 'second.json');
-    fs.writeFileSync(first, JSON.stringify([{step: 'fill', message: 'Timeout 30000ms exceeded'}]));
-    const cli = () => {
-      try { return {code: 0, out: execFileSync(process.execPath, ['flaky-proof.mjs', '--grey', first, second], {cwd: new URL('..', import.meta.url), encoding: 'utf8'})}; }
-      catch (error) { return {code: error.status, out: String(error.stdout)}; }
-    };
-    assert.equal(cli().code, 1);
-    fs.writeFileSync(second, JSON.stringify([{step: 'load', message: 'socket hang up'}]));
-    assert.equal(cli().code, 0);
-    assert.match(cli().out, /fill.*load/);
-    for (const value of ['[]', '{}', '{', '[{"message":"wrong value"}]']) {
-      fs.writeFileSync(second, value);
-      assert.equal(cli().code, 1);
-    }
-  } finally { fs.rmSync(dir, {recursive: true, force: true}); }
-});
-
-test('wizard stale picks are grey health without a retry; a real failure beside a stale pick stays red', () => {
-  const picked = [{step: 'steps picked for this PR', message: 'picked step(s) not found: removed wizard step'}];
-  assert.equal(greyProof(picked).grey, true);
-  assert.equal(greyProof(picked, picked).grey, true);
-  assert.equal(greyProof([...picked, {step: 'save', message: 'expected 3, got 2'}]).grey, false);
-});
-
-// Run the actual journey callback with fixture reads and a fake clock; no browser or app starts.
 async function journeyFailure(t, {head, showTab = true, state = null, immediate = false, expectSuccess = false}) {
   t.mock.timers.enable({apis: ['Date', 'setTimeout']});
   let failure, opened = false;
@@ -188,27 +102,20 @@ for (const [head, showTab] of [
   assert.equal(flakyProof(message).flaky, true, message);
   assert.match(flakyProof(message).why, /^timing:/);
   assert.doesNotMatch(message, /slot never received|first name was not filled|Kubernetes years/);
-  const failures = [{step: head, message}];
-  assert.deepEqual(unproved(failures), [], 'a passing retry has timing proof');
-  assert.equal(greyProof(failures, failures).grey, true, 'two stalled tries are grey');
 });
 
-for (const state of ['done', 'error', 'stopped']) test(`a reported ${state} stays a wrong value on either try`, async t => {
+for (const state of ['done', 'error', 'stopped']) test(`a reported ${state} stays a wrong value`, async t => {
   const message = await journeyFailure(t, {head: 'an upload slot that appears only', state: {state}});
   if (state === 'done') assert.match(message, /the first name was not filled; Kubernetes years is not the kit's 8/);
   else assert.equal(message, `state: {"state":"${state}"}`);
-  const failures = [{step: 'filled form', message}];
   assert.equal(flakyProof(message).flaky, false);
-  assert.equal(unproved(failures).length, 1);
-  assert.equal(greyProof(failures, failures).grey, false);
 });
 
-test('a closed tab fails immediately and cannot grey either try', async t => {
+test('a closed tab fails immediately and is a wrong value, never timing', async t => {
   const state = {state: 'unreadable', closed: true, error: 'Target page has been closed'};
   const message = await journeyFailure(t, {head: 'an upload slot that appears only', state, immediate: true});
   assert.equal(message, `state: ${JSON.stringify(state)}`);
   assert.equal(flakyProof(message).flaky, false);
-  assert.equal(greyProof([{message}], [{message}]).grey, false);
 });
 
 test('a late form reporting no-form before done is awaited instead of failed early', async t => {
@@ -219,5 +126,4 @@ test('a late form stuck at a provisional no-form state until the cap is timing',
   const message = await journeyFailure(t, {head: 'a form drawn after a spinner', state: {state: 'no-form'}});
   assert.match(message, /did not finish within/);
   assert.equal(flakyProof(message).flaky, true);
-  assert.equal(greyProof([{message}], [{message}]).grey, true);
 });

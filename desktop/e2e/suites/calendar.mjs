@@ -1,4 +1,5 @@
 /* global document */
+// Job: wait on state
 // Calendar: meetings from the Job Tracker ("Next interview") and from saved recordings, on dummy rows written through the Notion API, with the app running in a fixed time
 // zone (Asia/Tokyo, no daylight saving) and then in another (Pacific/Honolulu). Starts from a set-up install; resets only its own rows.
 import {launch} from '../lib/app.mjs';
@@ -9,6 +10,7 @@ import {finish, snap} from '../lib/layout.mjs';
 import {fastSeed, ensureSetUp} from '../lib/seed.mjs';
 import {captureExternal, ids, independent} from '../lib/steps.mjs';
 import {goView} from '../lib/go-view.mjs';
+import {pollUntil, stepTimeLeft} from '../lib/wait-on-state.mjs';
 
 // Why (30 Oct 2026, ap, main run 40985357367): Calendar's setup asks use declared stored answers before any live transport.
 export const offlineAi = true;
@@ -153,18 +155,16 @@ export async function run(ctx) {
     await page.waitForFunction(() => document.querySelectorAll('#cal-grid .cal-chip').length >= 5, null, {timeout: 60000});
     await external.clear();
     await cell(page, l1).locator('.cal-chip').first().click();
-    await page.waitForTimeout(400);
-    let opened = await external.urls();
+    let {value: opened} = await pollUntil(external.urls, urls => urls.length > 0, {capMs: stepTimeLeft()});
     if (!opened.some(url => url.includes(ids(seed.acme.id)))) throw new Error(`clicking the Acme chip opened ${JSON.stringify(opened)}, expected its Notion page ${ids(seed.acme.id)}`);
     await external.clear();
     await page.locator('#cal-upcoming .cal-row, #cal-past .cal-row').filter({hasText: 'E2E Beta'}).first().click();
-    await page.waitForTimeout(400);
-    opened = await external.urls();
+    ({value: opened} = await pollUntil(external.urls, urls => urls.length > 0, {capMs: stepTimeLeft()}));
     if (!opened.some(url => url.includes(ids(seed.beta.id)))) throw new Error(`clicking the Beta agenda row opened ${JSON.stringify(opened)}, expected its Notion page ${ids(seed.beta.id)}`);
     await external.clear();
     await cell(page, l3).locator('.cal-chip').first().click();   // the held recording: opens the job it belongs to
-    await page.waitForTimeout(400);
-    if (!(await external.urls()).some(url => url.includes(ids(seed.acme.id)))) throw new Error('the recording on the third day did not open its job');
+    ({value: opened} = await pollUntil(external.urls, urls => urls.length > 0, {capMs: stepTimeLeft()}));
+    if (!opened.some(url => url.includes(ids(seed.acme.id)))) throw new Error('the recording on the third day did not open its job');
   }, {needs: [notionPage]});
 
   // This Mac's store: no Notion page, so a meeting opens its job's side panel in the app (renderer/pages/calendar.js, mac-27 f8f8d5e), from the grid and the agenda.

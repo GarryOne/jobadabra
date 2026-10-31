@@ -1,4 +1,5 @@
 name: E2E · Bisect a red main suite
+# Job: report health
 # A red e2e suite on main gets an owner (gate G2b, owner's yes 26 Oct 2026). Started by e2e.yml's alert job (tools/e2e_bisect.py after-run) for the first red suite with no
 # open `red-main` issue whose cause is not the test environment (key, AI service, network), one per main check: finds the last main check where the suite was green, runs it on the commits in between (e2e.yml, titled "Bisect <suite> <sha>"), then names
 # the breaking PR in a `red-main` issue and on the PR; the session that shipped it reads it at its next prompt (tools/pr-red-check.sh).
@@ -34,9 +35,11 @@ jobs:
     timeout-minutes: 360   # up to 8 steps of one suite each (a step waits for its suite's lock)
     steps:
       - uses: actions/checkout@v5
+        timeout-minutes: 5
         with:
           fetch-depth: 0   # the commits between green and red
       - name: Bisect, then name the breaking PR
+        timeout-minutes: 310
         env:
           GH_TOKEN: ${{ github.token }}
           SUITE: ${{ inputs.suite }}

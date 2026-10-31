@@ -1,4 +1,5 @@
 name: CI · Stable canary
+# Job: report health
 
 # Is what users have right now still working? The release gate (e2e.yml) proves a build BEFORE it becomes stable; this proves it AFTER, once a day, because the world
 # drifts under a frozen build (Notion's API, the job sites' forms, an expired certificate). It runs the e2e journey on the stable tag (no paid AI judge) and:
@@ -29,6 +30,7 @@ jobs:
       REPO: ${{ github.repository }}
     steps:
       - name: The stable build, and whether it needs a look today
+        timeout-minutes: 5
         id: stable
         run: |
           tag=$(gh release list -R "$REPO" -L 20 --json tagName,isPrerelease,isDraft -q '[.[] | select(.isDraft | not) | select(.isPrerelease | not)][0].tagName')
@@ -40,6 +42,7 @@ jobs:
           echo "tag=$tag" >> "$GITHUB_OUTPUT"; echo "sha=$sha" >> "$GITHUB_OUTPUT"
           if [ "${fresh:-0}" != 0 ]; then echo "skip=1" >> "$GITHUB_OUTPUT"; echo "$tag: its own e2e run passed in the last 20 hours; nothing to check today."; else echo "skip=0" >> "$GITHUB_OUTPUT"; fi
       - name: Run the journey on the stable tag and wait for it
+        timeout-minutes: 58
         id: run
         if: steps.stable.outputs.skip == '0'
         env:
@@ -61,6 +64,7 @@ jobs:
           else v=$(gh run view "$id" -R "$REPO" --json jobs | python3 tools/canary_verdict.py); [ "$v" = harness ] && echo "result=harness" >> "$GITHUB_OUTPUT" || echo "result=red" >> "$GITHUB_OUTPUT"; fi
       - name: Alarm, or all clear
         if: steps.stable.outputs.skip == '0' && steps.run.outputs.result != ''
+        timeout-minutes: 5
         env:
           TAG: ${{ steps.stable.outputs.tag }}
           SHA: ${{ steps.stable.outputs.sha }}

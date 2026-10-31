@@ -84,7 +84,8 @@ Guard: `desktop/e2e/test/stored-answer-suites-no-live-ai.test.mjs`, `desktop/e2e
 
 **B · Clock.** Backbone steps wait on state (the row exists, the fill ended) with a cap of about 3× main's p95 that only catches hangs. No wall-clock limit is an
 assertion in the backbone. User promises (Find jobs ≤ 3 min, Focus ≤ 20 s) live in the `clock` lane: the median of main's nightly runs vs the promise.
-Guard: `desktop/e2e/test/timing-ratchet.test.mjs`, `desktop/test/e2e-reliability-check.test.js`.
+The same cap sits on every CI step around the suite run (scan, upload, report, lock, setup; 31 Oct 2026, a 17-min hung scan lost a job's logs): `timeout-minutes` of about 3× the step's p95, 5 min at least.
+Guard: `desktop/e2e/test/timing-ratchet.test.mjs`, `desktop/test/e2e-reliability-check.test.js`, `tests/test_e2e_step_timeouts.py`.
 
 **C · Outside world.** Real Notion, the AI key's credit, real websites and runners are `outside`. The backbone stubs Notion; real Notion runs in one tolerant
 outside-world suite, nightly and before beta. The backbone has none of them (owner, 31 Oct 2026: "The backbone shouldn't have any external world, flaky related

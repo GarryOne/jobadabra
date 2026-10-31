@@ -20,7 +20,7 @@
     "clockWaits": 8
   },
   "calendar": {
-    "fixedWaits": 3,
+    "fixedWaits": 0,
     "elapsedAssertions": 0,
     "clockWaits": 2
   },
@@ -30,9 +30,9 @@
     "clockWaits": 1
   },
   "employers": {
-    "fixedWaits": 5,
+    "fixedWaits": 2,
     "elapsedAssertions": 0,
-    "clockWaits": 5
+    "clockWaits": 3
   },
   "explore": {
     "fixedWaits": 4,
@@ -50,9 +50,9 @@
     "clockWaits": 9
   },
   "focus": {
-    "fixedWaits": 14,
+    "fixedWaits": 4,
     "elapsedAssertions": 0,
-    "clockWaits": 3
+    "clockWaits": 2
   },
   "focusdismiss": {
     "fixedWaits": 0,
@@ -70,14 +70,14 @@
     "clockWaits": 4
   },
   "interviews": {
-    "fixedWaits": 3,
+    "fixedWaits": 1,
     "elapsedAssertions": 0,
     "clockWaits": 2
   },
   "jobs": {
-    "fixedWaits": 4,
+    "fixedWaits": 0,
     "elapsedAssertions": 0,
-    "clockWaits": 9
+    "clockWaits": 8
   },
   "mailreading": {
     "fixedWaits": 0,
@@ -120,9 +120,9 @@
     "clockWaits": 2
   },
   "storemove": {
-    "fixedWaits": 3,
+    "fixedWaits": 0,
     "elapsedAssertions": 0,
-    "clockWaits": 12
+    "clockWaits": 10
   },
   "stores": {
     "fixedWaits": 0,

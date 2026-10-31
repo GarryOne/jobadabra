@@ -144,26 +144,32 @@ jobs:
       over: ${{ steps.spend.outputs.over }}
     steps:
       - uses: actions/checkout@v5
+        timeout-minutes: 5
       - uses: actions/setup-node@v5
+        timeout-minutes: 5
         with:
           node-version: '22'
       - name: Install the tests
+        timeout-minutes: 5
         working-directory: desktop/e2e
         run: npm ci || npm install
       # Why (a8, 30 Oct 2026): "What to run" (plan-run.mjs) imports lib/ensure-staged.mjs and every suites/*.mjs through context.mjs, which reach the app's code and its
       # packages (@anthropic-ai/sdk); without them the beta and nightly plan dies with ERR_MODULE_NOT_FOUND (11 Oct 2026). The harness tests that once needed them run in harness.yml.
       - name: Install the app's own packages
         if: inputs.pr_suites == ''   # beta, nightly and scheduled plans import every suite
+        timeout-minutes: 5
         working-directory: desktop
         run: npm ci --omit=dev --ignore-scripts || npm install --omit=dev --ignore-scripts
       # desktop/shared is generated (gitignored): the suites the plan imports reach it (lib/ensure-staged.mjs), as the step above explains.
       - name: Stage the app's shared files
         if: inputs.pr_suites == ''   # beta, nightly and scheduled plans import every suite
+        timeout-minutes: 5
         working-directory: desktop
         run: node scripts/stage.mjs --files-only
       # The harness's own tests no longer run here (owner, 30 Oct 2026, option C): harness.yml runs every one on each PR that reaches them, harness-daily.yml nightly on main.
       # Today's e2e AI budget (ai-spend.mjs; owner, 7 Oct 2026: "$30 a week"): spent, this run skips the paid judge and the screenshot review.
       - name: Today's e2e AI budget
+        timeout-minutes: 5
         id: spend
         working-directory: desktop/e2e
         env:
@@ -171,6 +177,7 @@ jobs:
           E2E_DAILY_BUDGET: ${{ vars.E2E_DAILY_BUDGET }}
         run: node ai-spend.mjs >> "$GITHUB_OUTPUT"
       - name: What to run (suites, commit, AI review, release to promote)
+        timeout-minutes: 5
         id: list
         working-directory: desktop/e2e
         env:
@@ -194,6 +201,7 @@ jobs:
       # not a red suite each (each suite's relay starts without checking it). Guard: tests/test_ci_free_ai.py test_every_relay_matrix_checks_the_ai_once_first.
       - name: Is CI's AI ready? (one check before the suites)
         if: steps.list.outputs.ai_required == '1'
+        timeout-minutes: 5
         env:
           E2E_ANTHROPIC_KEY: ${{ secrets.E2E_ANTHROPIC_KEY }}
           E2E_OPENAI_KEY: ${{ secrets.E2E_OPENAI_KEY }}
@@ -315,18 +323,22 @@ jobs:
       pull-requests: read
     steps:
       - uses: actions/checkout@v5
+        timeout-minutes: 5
         with:
           ref: ${{ needs.plan.outputs.ref }}   # a push or a schedule: that commit; the run after a build: the build's own commit
       # Waits for the suite's lock instead of queueing in a concurrency group (GitHub keeps ONE waiting job per group and cancels the older one: beta 14, 24 Oct 2026).
       - uses: actions/checkout@v5
+        timeout-minutes: 5
         with:
           ref: ${{ github.sha }}
           path: lock-tools
           sparse-checkout: tools/e2e-lock.sh
       - uses: actions/setup-node@v5
+        timeout-minutes: 5
         with:
           node-version: '22'
       - uses: actions/setup-python@v6
+        timeout-minutes: 5
         with:
           python-version: '3.12'
       # The relay comes from this workflow's own commit: a bisect or a soak checks out an older commit above, which may have no relay (26 Oct 2026: every bisect
@@ -334,6 +346,7 @@ jobs:
       # Why (29 Oct 2026, owner): offline suites need neither the relay checkout nor its GitHub App and Cloudflare credentials.
       - name: The Free AI relay from this workflow's own commit
         if: matrix.offlineAi != true
+        timeout-minutes: 5
         uses: actions/checkout@v5
         with:
           ref: ${{ github.sha }}
@@ -341,6 +354,7 @@ jobs:
           persist-credentials: false
       - name: Free AI relay (CI's AI since 26 Oct 2026; the site's handler on this runner, CI's own Workers AI token)
         if: matrix.offlineAi != true
+        timeout-minutes: 5
         uses: ./.ci-relay/.github/actions/free-ai-relay
         with:
           public-tree: .ci-relay
@@ -349,33 +363,40 @@ jobs:
           client-id: ${{ vars.CI_APP_CLIENT_ID }}
           app-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
       - name: Record which commit this run tested (ui-findings.yml names it in every issue)
+        timeout-minutes: 5
         run: |
           mkdir -p "$E2E_ARTIFACTS"
           printf '%s %s\n' "${{ inputs.target_ref || github.ref_name }}" "$(git rev-parse HEAD)" > "$E2E_ARTIFACTS/tested.txt"
       - name: Install the app
+        timeout-minutes: 5
         working-directory: desktop
         run: npm ci
       - name: Install the tests
+        timeout-minutes: 5
         working-directory: desktop/e2e
         run: npm ci || npm install
       - name: Chromium for the suites that use a browser (the real extension, the extension's page code)
+        timeout-minutes: 5
         working-directory: desktop/e2e
         # A suite says it needs one: `export const browser = true` (the app's extension browser) or `export const needsChromium = true` (a plain Chromium).
         run: |
           if grep -qE '^export const (browser|needsChromium) = true' "suites/${{ matrix.suite }}.mjs"; then npx playwright-core install chromium; else echo "no browser needed"; fi
       - name: Python packages the engine needs
+        timeout-minutes: 5
         run: pip install --quiet -r requirements.txt
       - name: A virtual display and Electron's libraries (Linux only)
-        if: runner.os == 'Linux'
         timeout-minutes: 5
+        if: runner.os == 'Linux'
         run: bash tools/apt-install.sh xvfb libnss3 libgbm1 libasound2t64 libgtk-3-0 libxss1 fonts-noto-color-emoji fonts-dejavu-core
       - name: Write the mutant into the app (mutation test only)
         if: inputs.mutant != '' && inputs.mutant != 'baseline'
+        timeout-minutes: 10
         env:
           MUTANT: ${{ inputs.mutant }}
         run: node desktop/e2e/mutate.mjs "$MUTANT"
       - name: Earlier AI answers (replayed instead of paid again; lib/ai-meter.mjs)
         if: env.E2E_ANTHROPIC_KEY != ''
+        timeout-minutes: 5
         uses: actions/cache/restore@v5
         with:
           path: desktop/e2e/.ai-cache
@@ -385,6 +406,7 @@ jobs:
       # was green on (27 Oct 2026: #2180 green on its PR with 0 misses; main restored an older cache, asked 8 questions live and went red). desktop/e2e/pr-answers.mjs.
       - name: The merged PR's own AI answers (after a merge)
         if: inputs.after_merge != '' && env.E2E_ANTHROPIC_KEY != ''
+        timeout-minutes: 5
         env:
           GH_TOKEN: ${{ github.token }}
           MERGED: ${{ inputs.after_merge }}
@@ -392,6 +414,7 @@ jobs:
         run: node desktop/e2e/pr-answers.mjs "$MERGED" "$KEY" desktop/e2e/.ai-cache
       # The lock is taken as late as possible (after the installs, which never touch the suite's Notion page): a waiting job holds its runner.
       - name: The score-steadiness history of the night's live qualityai runs (lib/quality-rate.mjs)
+        timeout-minutes: 5
         # Owner, 27 Oct 2026 ("Code gate + AI rate"): "same scores twice" is a rate over the last 90 pairs, red below 80% within 8 points or above 2% more than 20 apart.
         if: matrix.suite == 'qualityai'
         uses: actions/cache/restore@v5
@@ -400,6 +423,7 @@ jobs:
           key: quality-rate-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: quality-rate-
       - name: The App token for the lock (a re-run attempt's workflow token cannot create refs)
+        timeout-minutes: 5
         id: lock_app
         continue-on-error: true   # a failed mint falls back to the workflow token
         uses: actions/create-github-app-token@v3
@@ -408,6 +432,7 @@ jobs:
           private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
           permission-contents: write
       - name: Take the suite's lock (only a suite on the real Notion workspace; waits, never dropped)
+        timeout-minutes: 185
         env:
           GH_TOKEN: ${{ github.token }}
           E2E_LOCK_TOKEN: ${{ steps.lock_app.outputs.token }}
@@ -444,12 +469,15 @@ jobs:
       # Either way the pass writes the marker beside the first run's artifacts, and triage labels those steps `flaky` or `intermittent`. Its own artifacts stay out of the upload.
       # Why (#2497, Gitar): a report-only suite is not retried (each run costs AI), but its failed first try must still leave the job red; the verdict ignores this job via BASE's lane entry.
       - name: "Report-only ${{ matrix.key }} failed its only try (not retried: each run costs AI)"
+        timeout-minutes: 5
         if: steps.suite_run.outcome == 'failure' && !inputs.mutant && steps.suite_run.outputs.report_only == '1'
         run: exit 1
       - name: "First try failed: the ${{ matrix.key }} suite once more, to tell flaky from real"
         if: steps.suite_run.outcome == 'failure' && !inputs.mutant && !matrix.burnIn && steps.suite_run.outputs.report_only != '1' && matrix.tolerant != true
         env:
           E2E_TRY_MINUTES: 15   # = this step's timeout-minutes: a suite without an aggregate budget stops 4 min before it (its close-down cap + 1), with records that read as timing (lib/runner.mjs budgetMsOf; tests/test_e2e_try_minutes.py)
+          GREY_RECORD_FILE: ${{ github.workspace }}/grey-record/grey.json   # flaky-proof.mjs --grey writes the grey job's trend record here (lib/grey-record.mjs); the next step uploads it
+          GREY_SUITE: ${{ matrix.key }}
           # Why (30 Oct 2026, ap): a backbone suite's retry uses the same stored answers as its first attempt (matrix.aiAnswers), never a UUID-dependent live replay.
           E2E_AI_ANSWERS: ${{ matrix.aiAnswers || 'off' }}
         working-directory: desktop/e2e
@@ -486,14 +514,26 @@ jobs:
             echo "Failed again on the same commit: a real failure."
             exit 1   # a wrong value or harness guard stays red
           fi
+      # Why (gt, 31 Oct 2026, owner: "which suite went grey most this week, and why"): a grey job ends green, so its suite and reason go to the private site's e2e page as this tiny
+      # artifact (only {suite, reason} from fixed words: no log text, no secret to scan); the site's hourly collector reads it from the run. Guard: desktop/e2e/test/grey-record.test.mjs.
+      - name: Keep the grey record for the e2e page
+        if: always() && hashFiles('grey-record/grey.json') != ''
+        uses: actions/upload-artifact@v6
+        with:
+          overwrite: true
+          name: grey-${{ matrix.key }}
+          path: grey-record/grey.json
+          retention-days: 30
       - name: Outside-world health
         if: always() && matrix.tolerant == true
+        timeout-minutes: 5
         env:
           OUTCOME: ${{ steps.suite_run.outcome }}
         run: |
           echo "::notice title=Outside-world health::${{ matrix.key }}: $OUTCOME (tolerant; does not block beta). Steps, screenshots and failures are in the Mac HTML report and e2e-artifacts-${{ matrix.key }}."
       - name: AI answer candidates written for review
         if: always() && github.event_name == 'workflow_dispatch' && github.run_attempt == 1 && inputs.ai_answers == 'record'
+        timeout-minutes: 10
         shell: bash
         run: |
           candidates=0
@@ -504,6 +544,7 @@ jobs:
       # Why (29 Oct 2026, owner): an offline suite must not contact even the relay's usage meter.
       - name: What the suite spent on Free AI (the relay's own meter)
         if: always() && matrix.offlineAi != true && env.E2E_FREE_AI_URL != ''
+        timeout-minutes: 5
         continue-on-error: true   # a report never decides a run
         shell: bash
         run: |
@@ -512,6 +553,7 @@ jobs:
           echo "$spent" > "$E2E_ARTIFACTS/free-ai-spend.json" || true
       - name: Report what the suite paid for AI to /ai-cost (the app under test and the judges)
         if: always() && env.E2E_ANTHROPIC_KEY != ''
+        timeout-minutes: 5
         continue-on-error: true   # a report never decides a run
         env:
           AI_COST_PUBLISH_KEY: ${{ secrets.AI_COST_PUBLISH_KEY }}
@@ -526,20 +568,24 @@ jobs:
             done
           done
       - name: Keep the AI answers for the next run
+        timeout-minutes: 5
         if: always() && env.E2E_ANTHROPIC_KEY != '' && hashFiles('desktop/e2e/.ai-cache/*.json') != ''
         run: find desktop/e2e/.ai-cache -name '*.json' -mtime +7 -delete   # an answer not replayed for a week is dropped (a replay touches it)
       - if: success() && env.E2E_ANTHROPIC_KEY != '' && hashFiles('desktop/e2e/.ai-cache/*.json') != ''
+        timeout-minutes: 5
         uses: actions/cache/save@v5
         with:
           path: desktop/e2e/.ai-cache
           key: ai-answers-${{ matrix.key }}-${{ github.run_id }}-${{ github.run_attempt }}
       - name: Keep the score-steadiness history, red or green (the night's live qualityai run on main)
         if: always() && matrix.suite == 'qualityai' && env.E2E_AI_REPLAY != '1' && github.ref == 'refs/heads/main' && hashFiles('desktop/e2e/.quality-rate/history.json') != ''
+        timeout-minutes: 10
         uses: actions/cache/save@v5
         with:
           path: desktop/e2e/.quality-rate
           key: quality-rate-${{ github.run_id }}-${{ github.run_attempt }}
       - name: Scan artifact contents for CI secrets
+        timeout-minutes: 5
         working-directory: ${{ github.workspace }}
         id: artifact_scan_1
         if: always()
@@ -555,6 +601,7 @@ jobs:
         run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
       - name: Hand this PR's green AI answers to main's run after the merge (desktop/e2e/pr-answers.mjs)
         if: (success() && inputs.pr_suites != '' && inputs.after_merge == '' && env.E2E_ANTHROPIC_KEY != '' && hashFiles('desktop/e2e/.ai-cache/*.json') != '') && steps.artifact_scan_1.outcome == 'success'
+        timeout-minutes: 5
         uses: actions/upload-artifact@v6
         with:
           name: ai-answers-${{ matrix.key }}
@@ -562,6 +609,7 @@ jobs:
           include-hidden-files: true   # .ai-cache is a hidden folder: without this the artifact is empty
           retention-days: 7
       - name: Scan artifact contents for CI secrets
+        timeout-minutes: 5
         working-directory: ${{ github.workspace }}
         id: artifact_scan_2
         if: always()
@@ -577,6 +625,7 @@ jobs:
         run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
       - name: The suite's part of the HTML report
         if: (always()) && steps.artifact_scan_2.outcome == 'success'
+        timeout-minutes: 5
         uses: actions/upload-artifact@v6
         with:
           name: blob-${{ matrix.key }}
@@ -585,6 +634,7 @@ jobs:
           retention-days: 3
       # Steps and a failed suite's trace as data (the /admin/e2e runs page that read them was dropped on 15 Oct 2026; the artifact stays for download).
       - name: Scan artifact contents for CI secrets
+        timeout-minutes: 5
         working-directory: ${{ github.workspace }}
         id: artifact_scan_3
         if: always()
@@ -601,6 +651,7 @@ jobs:
         run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
       - name: Steps and trace for /admin/e2e
         if: (always()) && steps.artifact_scan_3.outcome == 'success'
+        timeout-minutes: 5
         uses: actions/upload-artifact@v6
         with:
           name: e2e-view-${{ matrix.key }}
@@ -610,6 +661,7 @@ jobs:
           compression-level: 0
           if-no-files-found: ignore
       - name: Scan artifact contents for CI secrets
+        timeout-minutes: 5
         working-directory: ${{ github.workspace }}
         id: artifact_scan_4
         if: always()
@@ -625,6 +677,7 @@ jobs:
         run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
       - name: Which app lines the suite ran (the code → suite map)
         if: (always() && env.E2E_COVERAGE == '1') && steps.artifact_scan_4.outcome == 'success'
+        timeout-minutes: 5
         uses: actions/upload-artifact@v6
         with:
           name: e2e-coverage-${{ matrix.key }}
@@ -632,6 +685,7 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
       - name: Scan artifact contents for CI secrets
+        timeout-minutes: 5
         working-directory: ${{ github.workspace }}
         id: artifact_scan_5
         if: always()
@@ -647,6 +701,7 @@ jobs:
         run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
       - name: Screenshots and timings
         if: (always()) && steps.artifact_scan_5.outcome == 'success'
+        timeout-minutes: 5
         uses: actions/upload-artifact@v6
         with:
           name: e2e-artifacts-${{ matrix.key }}
@@ -655,6 +710,7 @@ jobs:
       # The second try writes its own folder (e2e-rerun): without this upload its logs reached no one and a retry's own failure could not be read
       # (#2087's quality run 40340783596, 26 Oct 2026). Guard: tests/test_e2e_artifacts_uploaded.py.
       - name: Scan artifact contents for CI secrets
+        timeout-minutes: 5
         working-directory: ${{ github.workspace }}
         id: artifact_scan_6
         if: always()
@@ -670,12 +726,14 @@ jobs:
         run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
       - name: The second try's screenshots and logs
         if: (always()) && steps.artifact_scan_6.outcome == 'success'
+        timeout-minutes: 5
         uses: actions/upload-artifact@v6
         with:
           name: e2e-rerun-${{ matrix.key }}
           path: e2e-rerun/${{ matrix.key }}
           if-no-files-found: ignore
       - name: The App token to give the lock back (the first one may have expired)
+        timeout-minutes: 5
         id: lock_app_end
         if: always()
         continue-on-error: true   # a failed mint falls back to the workflow token
@@ -686,6 +744,7 @@ jobs:
           permission-contents: write
       - name: Give the suite's lock back
         if: always()
+        timeout-minutes: 5
         env:
           GH_TOKEN: ${{ github.token }}
           E2E_LOCK_TOKEN: ${{ steps.lock_app_end.outputs.token }}
@@ -715,10 +774,13 @@ jobs:
         GITHUB_TOKEN
     steps:
       - uses: actions/checkout@v5
+        timeout-minutes: 5
       - uses: actions/setup-node@v5
+        timeout-minutes: 5
         with:
           node-version: '22'
       - uses: ./.github/actions/e2e-review
+        timeout-minutes: 18
         with:
           lane: mac
           anthropic-key: ${{ secrets.E2E_ANTHROPIC_KEY }}
@@ -736,6 +798,7 @@ jobs:
       actions: write   # cancel this run
     steps:
       - name: Say why, then end the run grey, not green
+        timeout-minutes: 5
         env:
           GH_TOKEN: ${{ github.token }}
           WHY: ${{ needs.plan.outputs.why }}
@@ -758,20 +821,24 @@ jobs:
       E2E_ARTIFACT_SECRET_NAMES: |
     steps:
       - uses: actions/checkout@v5
+        timeout-minutes: 5
         with:
           sparse-checkout: |
             desktop/e2e
             tools/merge-e2e-report.sh
             tools/scan-e2e-artifacts.py
       - uses: actions/setup-node@v5
+        timeout-minutes: 5
         with:
           node-version: '22'
       - uses: actions/download-artifact@v7
+        timeout-minutes: 5
         with:
           pattern: blob-*
           path: blob-reports
           merge-multiple: true
       - name: Merge the suites into one HTML report
+        timeout-minutes: 5
         id: merge
         working-directory: desktop/e2e
         run: |
@@ -780,6 +847,7 @@ jobs:
           bash "$GITHUB_WORKSPACE/tools/merge-e2e-report.sh" "$GITHUB_WORKSPACE/blob-reports" "$GITHUB_WORKSPACE/e2e-report"
           if grep -q "^made=1" "$GITHUB_OUTPUT"; then echo "HTML report (admins): https://www.jobpilotto.top/admin/operations/e2e/run/${{ github.run_id }}/report"; fi
       - name: Scan artifact contents for CI secrets
+        timeout-minutes: 5
         working-directory: ${{ github.workspace }}
         id: artifact_scan_7
         if: always()
@@ -790,6 +858,7 @@ jobs:
         run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
       - uses: actions/upload-artifact@v6
         if: (steps.merge.outputs.made == '1') && steps.artifact_scan_7.outcome == 'success'
+        timeout-minutes: 5
         with:
           name: e2e-report
           path: e2e-report
@@ -818,6 +887,7 @@ jobs:
         GH_TOKEN
     steps:
       - uses: actions/checkout@v5
+        timeout-minutes: 5
         with:
           sparse-checkout: |
             desktop/e2e
@@ -825,22 +895,26 @@ jobs:
           fetch-depth: 0
           filter: blob:none
       - uses: actions/download-artifact@v7
+        timeout-minutes: 5
         with:
           pattern: e2e-coverage-*
           path: coverage
       - name: The previous map
+        timeout-minutes: 5
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           id=$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=e2e-coverage-map&per_page=1" --jq '.artifacts[0].workflow_run.id // empty' || true)
           if [ -n "$id" ]; then gh run download "$id" -n e2e-coverage-map -D previous || echo "previous map not read: starting a new one"; else echo "no map yet: starting one"; fi
       - name: Merge this run's coverage into the map
+        timeout-minutes: 5
         working-directory: desktop/e2e
         run: |
           set -o pipefail
           prev=(); [ -f "$GITHUB_WORKSPACE/previous/coverage-map.json" ] && prev=(--previous "$GITHUB_WORKSPACE/previous/coverage-map.json")
           node coverage-map.mjs --artifacts "$GITHUB_WORKSPACE/coverage" "${prev[@]}" --repo "$GITHUB_WORKSPACE" --out "$GITHUB_WORKSPACE/map/coverage-map.json"
       - name: Scan artifact contents for CI secrets
+        timeout-minutes: 5
         working-directory: ${{ github.workspace }}
         id: artifact_scan_8
         if: always()
@@ -852,6 +926,7 @@ jobs:
         run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
       - uses: actions/upload-artifact@v6
         if: steps.artifact_scan_8.outcome == 'success'
+        timeout-minutes: 5
         with:
           name: e2e-coverage-map
           path: map/coverage-map.json
@@ -871,11 +946,13 @@ jobs:
       checks: read     # the failed steps' annotations the alert quotes (ci-alert.mjs stepCauses; review on #2249)
     steps:
       - uses: actions/checkout@v5
+        timeout-minutes: 5
         with:
           sparse-checkout: |
             desktop/e2e
             tools
       - name: Tell the owner (a failure, or back to green)
+        timeout-minutes: 5
         # Why (owner, 27 Oct 2026, via the coordinator): a run cancelled by hand is no failure; it sent "🔴 … the estimate is above the cap, or the key is missing" (refill 40451220954). cancelled() is the run's own cancel, never a job's timeout. Also (27 Oct 2026, coordinator): a by-hand run on a PR branch alerted the owner (harness-daily 40457998294), so a dispatch on a branch other than main sends none; a tag (the gate) and main still do. Guard: tests/test_ci_alert_cancel.py.
         if: ${{ !cancelled() && (github.event_name != 'workflow_dispatch' || !startsWith(github.ref, 'refs/heads/') || github.ref == 'refs/heads/main') }}
         working-directory: desktop/e2e
@@ -893,6 +970,7 @@ jobs:
       # and the issue of a suite this run passed is closed. Not for a release gate (it tests a release, and its reds are the beta's).
       - name: Own the red (bisect new reds, close the ones green again)
         if: ${{ !inputs.gate_tag }}
+        timeout-minutes: 5
         env:
           GH_TOKEN: ${{ github.token }}
           AFTER_MERGE: ${{ inputs.after_merge }}
@@ -930,6 +1008,7 @@ jobs:
       actions: write
     steps:
       - name: Start the Windows run on this commit
+        timeout-minutes: 5
         env:
           GH_TOKEN: ${{ github.token }}
           FULL: ''   # no paid AI judge on Windows: the Mac run judged the same screens (owner, 7 Oct 2026: "$30 a week")
@@ -967,20 +1046,24 @@ jobs:
       CI_ALERTS_TELEGRAM_CHAT_ID: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}
     steps:
       - uses: actions/checkout@v5
+        timeout-minutes: 5
         with:
           sparse-checkout: |
             desktop/e2e
             tools/scan-e2e-artifacts.py
       - uses: actions/setup-node@v5
+        timeout-minutes: 5
         with:
           node-version: '22'
       - name: AI credit is an alert, never a hold
+        timeout-minutes: 5
         run: |
           gh run download "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --pattern 'e2e-artifacts-*' --dir ai-credit-health || echo "::notice::No suite artifacts available for AI credit health"
           gh run download "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --pattern 'e2e-rerun-*' --dir ai-credit-health || echo "::notice::No retry artifacts available for AI credit health"
           gh run download "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --name "ai-credit-alert-$GITHUB_RUN_ID" --dir ai-credit-alert || true
           node desktop/e2e/credit-alert.mjs --artifacts ai-credit-health --marker ai-credit-alert/alert-sent.txt
       - name: Scan artifact contents for CI secrets
+        timeout-minutes: 5
         id: artifact_scan_1
         if: always()
         env:
@@ -988,6 +1071,7 @@ jobs:
         run: python tools/scan-e2e-artifacts.py
       - name: Remember this run's single credit alert
         if: (always() && hashFiles('ai-credit-alert/alert-sent.txt') != '') && steps.artifact_scan_1.outcome == 'success'
+        timeout-minutes: 5
         uses: actions/upload-artifact@v6
         with:
           name: ai-credit-alert-${{ github.run_id }}

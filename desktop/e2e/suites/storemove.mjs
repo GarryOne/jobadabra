@@ -1,4 +1,5 @@
 /* global document, window */
+// Job: wait on state
 // "Move my data to Notion" and export/import, end to end (spec docs/superpowers/specs/2026-10-09-store-adapters.md, P4): an app on this Mac's store with
 // real-shaped data (lib/store_seed.py: applications with a kit and a file, events, an interview, a run, a match, an employer, the three texts) moves into
 // the in-memory Notion (no token) from Settings → Your data. The copy is killed halfway and moved again: nothing twice. A Profile Notion already had is
@@ -11,6 +12,7 @@ import {launch} from '../lib/app.mjs';
 import {DUMMY_KEY} from '../lib/engine.mjs';
 import {buildStandIn, startNotionFake} from '../lib/notion-fake.mjs';
 import {connectExisting} from '../lib/notion-reuse.mjs';
+import {pollUntil, stepTimeLeft} from '../lib/wait-on-state.mjs';
 import {NOTION_PROFILE, TEXTS, answerImport, answerSave, copyProcess, fileBlocks, journalOf, pageText, rowsIn, sameScreens, screens, seedStore, standInRows,
   afterFirstSearch, logLines, searches, settingsOf, pressMove, storeMessage, writeProfile, yourData} from '../lib/storemove-steps.mjs';
 
@@ -26,7 +28,6 @@ export const offlineAi = true;
 export const realAi = false;
 export const aiAnswers = 'backbone';   // answers its AI from the stored table in every workflow (plan-run.mjs puts it in the matrix)
 
-const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 async function setUp(page) {
   await page.evaluate(async key => {
     await window.pilot.saveSecret('ANTHROPIC_API_KEY', key);
@@ -103,8 +104,8 @@ export async function run(ctx) {
     // The 6th write hangs (inside the applications: their pages, kit sections and file): the copy is then killed as a crash or a power cut would.
     ctx.notion.fail('hang', {writes: true, every: 6, times: 1});
     const pending = pressMove(page);
-    const started = Date.now();
-    while (ctx.notion.stats.failed < 1) { if (Date.now() - started > 120000) throw new Error('the copy never reached the stalled write'); await sleep(250); }
+    const {value: failed} = await pollUntil(() => ctx.notion.stats.failed, count => count >= 1, {capMs: stepTimeLeft()});
+    if (failed < 1) throw new Error('the copy never reached the stalled write before the step\'s hang cap');
     const pids = copyProcess(ctx.app.process().pid);
     if (pids.length !== 1) { ctx.notion.pass(); await pending.catch(() => {}); throw new Error(`expected one copy process of this app, found ${pids.length}`); }
     const moved = Object.keys(journalOf(ctx.profile).applications || {}).length;
@@ -149,13 +150,11 @@ export async function run(ctx) {
       await answerImport(second.app, exportFile);
       await second.page.click('#welcome-import');
       // The restart is the app's own exit (relaunch answered above): its log says so, whatever Playwright saw of the process.
-      const started = Date.now();
-      while (!logLines(second.profile).some(line => /restart: import/.test(line)) || !logLines(second.profile).some(line => /process exit/.test(line))) {
-        if (Date.now() - started > 30000) {
-          await second.shot('import-not-restarted').catch(() => {});
-          throw new Error(`the app did not restart for the import; its log: ${JSON.stringify(logLines(second.profile))}`);
-        }
-        await sleep(250);
+      const restarted = lines => lines.some(line => /restart: import/.test(line)) && lines.some(line => /process exit/.test(line));
+      const {value: lines} = await pollUntil(() => logLines(second.profile), restarted, {capMs: stepTimeLeft()});
+      if (!restarted(lines)) {
+        await second.shot('import-not-restarted').catch(() => {});
+        throw new Error(`the app did not restart for the import; its log: ${JSON.stringify(lines)}`);
       }
       const profile = second.profile;
       await second.close().catch(() => {});

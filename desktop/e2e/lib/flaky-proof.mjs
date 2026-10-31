@@ -27,21 +27,24 @@ export function flakyProof(message = '') {
   const harness = HARNESS.find(([pattern]) => pattern.test(text));
   if (harness) return {flaky: false, harness: harness[1], why: `harness: ${harness[1]}: "${text.split('\n')[0].slice(0, 140)}"`};
   const timing = TIMEOUT_FAILURE.exec(text);
-  if (timing) return {flaky: true, why: `timing: "${timing[0]}"`};
-  if (isEnvironment(text)) return {flaky: true, why: 'the test environment answered badly'};
+  if (timing) return {flaky: true, kind: 'timing', why: `timing: "${timing[0]}"`};
+  if (isEnvironment(text)) return {flaky: true, kind: 'environment', why: 'the test environment answered badly'};
   return {flaky: false, why: `a wrong value, not timing: "${text.split('\n')[0].slice(0, 140)}"`};
 }
 
-/** Prove grey only from two recorded failures; flakyProof alone owns timing and harness classification. */
+/** Prove grey only from two recorded failures; flakyProof alone owns timing and harness classification. A grey proof names its `reason` (timing | environment | picker) for the trend record (lib/grey-record.mjs). */
 export function greyProof(firstFailures, secondFailures) {
-  if (onlyRenamedPicks(firstFailures) && (secondFailures == null || onlyRenamedPicks(secondFailures))) return {grey: true, why: 'picked step(s) not found: the coverage pick is stale'};
+  if (onlyRenamedPicks(firstFailures) && (secondFailures == null || onlyRenamedPicks(secondFailures))) return {grey: true, reason: 'picker', why: 'picked step(s) not found: the coverage pick is stale'};
   const tries = [firstFailures, secondFailures];
   if (tries.some(failures => !Array.isArray(failures) || failures.length === 0)) return {grey: false, why: 'both tries need recorded failures: no timing proof'};
+  const kinds = new Set();
   for (const failures of tries) for (const failure of failures) {
     const proof = flakyProof(failure?.message);
     if (!proof.flaky) return {grey: false, why: proof.why};
+    kinds.add(proof.kind);
   }
-  return {grey: true, why: [...new Set(tries.flat().map(failure => failure.step || '(unnamed step)'))].join('; ')};
+  // Why (gt, 31 Oct 2026, a8): the trend names the reason with flakyProof's own kind; a run with any timing failure is "timing", only environment failures "environment".
+  return {grey: true, reason: kinds.has('timing') ? 'timing' : 'environment', why: [...new Set(tries.flat().map(failure => failure.step || '(unnamed step)'))].join('; ')};
 }
 
 // The failed steps of a first try (suite-failures.json) that passed on the second try without proof of being flaky.

@@ -9,6 +9,7 @@ import {journey} from '../lib/journey.mjs';
 import {actionScenario, addApplication, addFocusData, expectedNumbers, compareNumbers, EXPECTED_SUGGESTIONS, EXPECTED_UP_NEXT, HAND_EDITS, readData, resetFocusData, savedTarget, scenario} from '../lib/focus-data.mjs';
 import {finish, snap} from '../lib/layout.mjs';
 import {ensureSetUp} from '../lib/seed.mjs';
+import {pollUntil, stepTimeLeft} from '../lib/wait-on-state.mjs';
 
 // Why (30 Oct 2026, #2601): setup's contact_from_cv ask already has a reviewed kind reply; do not depend on a hash cache or live AI.
 export const aiAnswers = 'backbone';
@@ -42,8 +43,9 @@ export async function runFocus(ctx, parts) {
   let rows, events, target = 5;
 
   const focusReady = () => page.waitForFunction(() => /^Updated/.test(document.querySelector('#focus-status')?.textContent || '')
-    && !document.querySelector('.view[data-view="focus"] .skeleton, .view[data-view="focus"] .spinner'), null, {timeout: 60000});
-  const refresh = async () => { await page.click('#focus-refresh'); await page.waitForTimeout(300); await focusReady(); };
+    && !document.querySelector('#focus-refresh').disabled
+    && !document.querySelector('.view[data-view="focus"] .skeleton, .view[data-view="focus"] .spinner'), null, {timeout: stepTimeLeft()});
+  const refresh = async () => { await page.click('#focus-refresh'); await focusReady(); };
   const goFocus = async () => { await page.click('.nav[data-view="focus"]'); await page.waitForSelector('.view[data-view="focus"]:not([hidden])'); };
   const rowsIn = list => page.evaluate(list => [...document.querySelectorAll(`${list} .focus-item`)].map(li => ({
     headline: li.querySelector('.focus-headline')?.textContent.trim() || '', badge: li.querySelector('.ui-pill')?.textContent.trim() || '',
@@ -72,26 +74,22 @@ export async function runFocus(ctx, parts) {
   });
   const readStore = async () => ({rows, events} = await readData(ctx));
   // The helper every count goes through: what Focus shows against what Notion says (an independent oracle, lib/focus-data.mjs).
-  // Notion's query API is eventually consistent: a read a moment after a write can miss it, and the engine and this oracle read at different moments.
-  // So a difference is checked again (Notion re-read, Focus refreshed) for up to ~30 s; a real bug does not go away, and the log says how long agreement took.
+  // Re-read both sides until the store and the page agree; only the running step's hang cap bounds the wait.
   const numbersMatchSource = async label => {
-    let diffs = [];
-    for (let attempt = 0; attempt < 7; attempt++) {
-      if (attempt) { await page.waitForTimeout(5000); if (attempt % 2 === 0) await refresh(); }
+    let attempt = 0;
+    const {value: diffs} = await pollUntil(async () => {
+      if (attempt++) await refresh();
       await readStore();
-      diffs = compareNumbers(await shownNumbers(), expectedNumbers(rows, events, {now, target}));
-      if (!diffs.length) { if (attempt) console.log(`  ${label}: the store and Focus agreed after ${attempt} re-read(s)`); return; }
-    }
-    throw new Error(`${label}: ${diffs.join('; ')} (the store has ${rows.length} application(s) and ${events.length} event(s); still different after 30 s)`);
+      return compareNumbers(await shownNumbers(), expectedNumbers(rows, events, {now, target}));
+    }, diffs => !diffs.length, {capMs: stepTimeLeft()});
+    if (diffs.length) throw new Error(`${label}: ${diffs.join('; ')} (the store has ${rows.length} application(s) and ${events.length} event(s); still different at the step's hang cap)`);
   };
-  // The events of one kind on one application (found by who it is for), for up to 30 s: Notion shows a write a moment after it returns.
+  // Wait for the saved event, including stores whose listing can lag a write.
   const eventsOf = async (kind, who) => {
-    let found = [];
-    for (let i = 0; i < 10 && !found.length; i++) {
+    const {value: found} = await pollUntil(async () => {
       const row = (await ctx.data('applications', 'list', {})).find(item => item.company === who || item.via === who);
-      found = row ? await ctx.data('events', 'list', {app_id: row.id, kind}) : [];
-      if (!found.length) await page.waitForTimeout(3000);
-    }
+      return row ? await ctx.data('events', 'list', {app_id: row.id, kind}) : [];
+    }, found => found.length > 0, {capMs: stepTimeLeft()});
     return found;
   };
 
@@ -103,7 +101,7 @@ export async function runFocus(ctx, parts) {
 
   await ctx.run('a search with applications in every stage is written to the store (dummy employers, target 5)', async () => {
     await resetFocusData(ctx, {data: scenario(now)});
-    for (let i = 0; i < 12; i++) { await readStore(); if (rows.length === 10 && events.length === 14) break; await page.waitForTimeout(5000); }   // Notion lists new rows a moment later
+    await pollUntil(readStore, data => data.rows.length === 10 && data.events.length === 14, {capMs: stepTimeLeft()});
     if (rows.length !== 10 || events.length !== 14) throw new Error(`expected 10 applications and 14 events in the store, found ${rows.length} and ${events.length}`);
   }, {needs: ctx.needs, critical: true});
 
@@ -195,6 +193,8 @@ export async function runFocus(ctx, parts) {
       await goFocus();
       if (await page.locator('#job-drawer-layer').isVisible()) throw new Error("the job's drawer stayed open after going to another page");   // it covers the page it was opened from (pages/nav.js openView)
     } else {
+      await pollUntil(urlsOpened, urls => urls.length > opened, {capMs: stepTimeLeft()});
+      // Retained: openExternal reports each open, but no signal proves that a late duplicate cannot follow.
       await page.waitForTimeout(500);
       if ((await urlsOpened()).length !== opened + 1) throw new Error(`"Review rejection" opened nothing (opened: ${(await urlsOpened()).join(', ') || 'none'})`);
     }
@@ -204,6 +204,8 @@ export async function runFocus(ctx, parts) {
     const row = anyRow;
     await showAll();
     await row('Huxley Partners').getByRole('button', {name: 'Open email'}).click();
+    await pollUntil(urlsOpened, urls => urls.some(url => /mail\.google\.com.*e2e-lead-1/.test(url)), {capMs: stepTimeLeft()});
+    // Retained: keep the exactly-once observation window; the first captured URL cannot rule out a late duplicate.
     await page.waitForTimeout(500);
     const mail = (await urlsOpened()).filter(url => /mail\.google\.com.*e2e-lead-1/.test(url));
     if (mail.length !== 1) throw new Error(`"Open email" should open the lead's own message (e2e-lead-1), the app opened: ${(await urlsOpened()).join(', ') || 'nothing'}`);
@@ -245,11 +247,11 @@ export async function runFocus(ctx, parts) {
     const written = await page.evaluate(async () => (await window.pilot.state()).settings.notionIds?.NOTION_SEARCH_SETTINGS_PAGE || '');
     if (!written && ctx.store !== 'sqlite') throw new Error('changing the target did not save a Search settings page id in the app');
     let line = NaN, last = '';
-    for (let i = 0; i < 20 && line !== 3; i++) {   // Notion shows a rewritten page a moment after the write returns (a page of 26+ blocks: up to a minute)
+    await pollUntil(async () => {
       try { line = await savedTarget(ctx, written); } catch (error) { last = error.message; }
-      if (line !== 3) await page.waitForTimeout(3000);
-    }
-    if (line !== 3 && last) throw new Error(`the target was not saved to Notion within 60 s: ${last}`);
+      return line;
+    }, value => value === 3, {capMs: stepTimeLeft()});
+    if (line !== 3 && last) throw new Error(`the target was not saved before the step's hang cap: ${last}`);
     if (line !== 3 && ctx.store === 'sqlite') throw new Error(`this Mac's config/preferences.json says the daily target is ${line}, expected 3`);
     if (line !== 3) throw new Error(`Notion's "Daily applications target" is ${line}, expected 3 (page ${written}: ${JSON.stringify((await call(NOTION, 'GET', `blocks/${written}/children?page_size=100`)).results.map(block => (block[block.type].rich_text || []).map(part => part.plain_text).join('').slice(0, 30)).filter(Boolean).slice(0, 60))})`);
     await page.reload();
@@ -312,7 +314,7 @@ export async function runFocus(ctx, parts) {
       const card = () => anyRow(new RegExp(action.card || action.who));
       await goFocus();
       await showAll();
-      for (let i = 0; i < 12 && !(await card().count()); i++) { await refresh(); if (!(await card().count())) await page.waitForTimeout(4000); }   // Notion lists new rows a moment later
+      await pollUntil(async () => { await refresh(); return card().count(); }, count => count > 0, {capMs: stepTimeLeft()});
       if (!(await card().count())) throw new Error(`no ${action.kind} card for ${action.who} appeared; Focus lists: ${[...await upNext(), ...await suggested()].map(item => item.headline).join(' | ')}`);
       await page.evaluate(({key, source}) => { localStorage.setItem('__e2eWatch', JSON.stringify([{key, source}])); sessionStorage.removeItem(`__e2eSeen_${key}`); }, {key: action.who, source: action.card || action.who});
       if (action.how.confirm) page.once('dialog', dialog => dialog.accept());
@@ -320,11 +322,13 @@ export async function runFocus(ctx, parts) {
       else { await card().getByRole('button', {name: 'More'}).click(); await page.getByRole('menuitem', {name: label}).click(); }
       await card().waitFor({state: 'detached', timeout: 5000}).catch(() => { throw new Error(`the ${action.kind} card for ${action.who} is still listed 5 seconds after ${label}`); });
       await page.evaluate(name => sessionStorage.removeItem(`__e2eSeen_${name}`), action.who);   // watch from here: it must not return
+      // Retained: optimistic removal precedes the save; Focus exposes no completion signal for these five different writes.
       await page.waitForTimeout(800);
       await focusReady();
       await refresh();
       if ((await card().count()) || await seenOf(action.who)) throw new Error(`the ${action.kind} card for ${action.who} came back after a refresh`);
       for (const [when, wait] of [['straight away', 0], ['once Notion has had time', 6000]]) {
+        // Retained: the app exposes no signal for the end of Notion's listing lag; this second reload probes that later read.
         await page.waitForTimeout(wait);
         await page.reload();
         await page.waitForSelector('.view:not([hidden])', {timeout: 60000});
@@ -345,15 +349,14 @@ export async function runFocus(ctx, parts) {
     await page.waitForSelector('.view:not([hidden])', {timeout: 60000});
     await goFocus();
     // Notion's query can list a just-written dismissal late (CI 6 Oct 2026: a "Details skipped" saved ok was still unlisted 2 min later; the app's 10-minute hold
-    // covers that for a person). Read again for up to 90 s; a card still back then is reported with whether its dismissal is in Notion at all.
+    // covers that for a person). Re-read until no dismissed card returns, bounded by the running step's hang cap.
     const backNow = async () => [...await upNext(), ...await suggested()].filter(item => actions.actions.some(action => new RegExp(action.card || action.who).test(item.headline)));
-    let back = [];
-    for (const started = Date.now(); Date.now() - started < 90000;) { await refresh(); back = await backNow(); if (!back.length) break; await page.waitForTimeout(10000); }
+    const {value: back} = await pollUntil(async () => { await refresh(); return backNow(); }, rows => !rows.length, {capMs: stepTimeLeft()});
     if (back.length) {
       const recorded = await Promise.all(back.map(async item => { const action = actions.actions.find(one => new RegExp(one.card || one.who).test(item.headline));
         if (action?.kind !== 'details') return item.headline;   // only a Skip of "Add details" leaves an event this step can look up
         return `${item.headline}: ${(await eventsOf('Details skipped', action.who).catch(() => [])).length ? 'its dismissal IS in Notion (the read lags)' : 'no dismissal event found in Notion'}`; }));
-      throw new Error(`dismissed cards are still listed 90 s after the in-app hold ended: ${recorded.join(' | ')}`);
+      throw new Error(`dismissed cards are still listed at the step's hang cap after the in-app hold ended: ${recorded.join(' | ')}`);
     }
   }, {needs: ctx.needs});
 
@@ -368,14 +371,14 @@ export async function runFocus(ctx, parts) {
     // At once: no waiting for a refresh. The screen must not claim a change Notion has not taken.
     await ember().waitFor({state: 'detached', timeout: 5000}).catch(() => { throw new Error('the dismissed job is still in the In process list 5 seconds after Dismiss'); });
     const stageInNotion = async () => (await ctx.data('applications', 'list', {})).find(item => item.company === 'Ember Data')?.stage;
-    let stage = null;
-    for (let i = 0; i < 10 && stage !== 'Closed'; i++) { stage = await stageInNotion(); if (stage !== 'Closed') await page.waitForTimeout(3000); }
+    const {value: stage} = await pollUntil(stageInNotion, stage => stage === 'Closed', {capMs: stepTimeLeft()});
     if (stage !== 'Closed') throw new Error(`the store's stage for the dismissed job should be Closed, it is "${stage}"`);
     await page.reload();
     await page.waitForSelector('.view:not([hidden])', {timeout: 60000});
     await page.click('.nav[data-view="jobs"]');
     await page.click('.stat[data-stat="interviews"]');
-    await page.waitForTimeout(3000);
+    await page.waitForFunction(() => !document.querySelector('#jobs-body .list-loading')
+      && !/Loading|Refreshing|updating/.test(document.querySelector('#jobs-stats')?.textContent || ''), null, {timeout: stepTimeLeft()});
     if (await ember().count()) throw new Error(`after a reload the dismissed job is back in the In process list: "${(await ember().innerText()).replace(/\s+/g, ' ')}" (the store says ${await stageInNotion()})`);
     await goFocus();   // the next step starts on Focus
   }, {needs: ctx.needs});
@@ -398,14 +401,14 @@ export async function runFocus(ctx, parts) {
     await resetFocusData(ctx);   // every row to the trash: a new user's workspace
     target = 5;
     await page.evaluate(() => window.pilot.setDailyTarget(5));   // the app's own cache of the target, as a new install has it
-    // Notion still lists a trashed row for up to a few minutes: refresh until Focus has caught up, and say how long that took (it must catch up).
+    // Refresh until the emptied workspace is reflected in both the rows and the funnel.
     let tries = 0;
-    for (; tries < 24; tries++) {   // trashed rows leave the engine's results one by one, over a minute or more on a CI runner
+    await pollUntil(async () => {
+      tries++;
       await refresh();
       const [first, ...rest] = [...await upNext(), ...await suggested()];   // caught up: the one next step says there are no kits yet (a trashed kit row is listed for a while)
-      if (first && !rest.length && /Prepare kits from your best matches/.test(first.meta) && (await shownNumbers()).funnel.every(step => step.count === '0')) break;
-      await page.waitForTimeout(5000);
-    }
+      return first && !rest.length && /Prepare kits from your best matches/.test(first.meta) && (await shownNumbers()).funnel.every(step => step.count === '0');
+    }, caughtUp => caughtUp, {capMs: stepTimeLeft()});
     if (tries) console.log(`  Focus caught up with the emptied workspace after ${tries} refresh(es)`);
     if ((await upNext()).length) throw new Error(`a fresh account has nothing that can't wait, Up next lists: ${(await upNext()).map(item => item.headline).join(' | ')}`);
     const items = await suggested();

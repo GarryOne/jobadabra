@@ -1,4 +1,5 @@
 name: CI · E2E steps after a merge
+# Job: pick the suites
 # After each merge, main runs the e2e steps that merge touched (PR 4 of the PR-checks plan, owner's yes 26 Oct 2026): the same plan a PR gets (desktop/e2e/pr-suites.mjs, the
 # code → step map from main's coverage), from this push's own diff, started through e2e.yml on main as "E2E after merge · <sha> · <suites>". A red names its commit:
 # e2e.yml's alert job tells Telegram and files it on the merged PR (tools/e2e_bisect.py after-merge), and the beta gate counts it (tools/main_e2e_state.py). A green
@@ -36,16 +37,20 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
+        timeout-minutes: 5
         with:
           fetch-depth: 0
       - uses: actions/setup-node@v5
+        timeout-minutes: 5
         with:
           node-version: '22'
       - name: Install what the plan loads
+        timeout-minutes: 5
         run: |
           (cd desktop/e2e && npm ci)
           (cd desktop && npm ci --omit=dev --ignore-scripts)
       - name: Plan
+        timeout-minutes: 5
         id: plan
         env:
           GH_TOKEN: ${{ github.token }}   # reads the newest code → step map artifact
@@ -55,6 +60,7 @@ jobs:
           node desktop/e2e/pr-suites.mjs --base "$BEFORE" --plan
       - name: Start them
         if: steps.plan.outputs.suites != ''
+        timeout-minutes: 5
         env:
           GH_TOKEN: ${{ github.token }}
           SUITES: ${{ steps.plan.outputs.suites }}

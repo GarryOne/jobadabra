@@ -91,7 +91,7 @@ const dataOf = reply => JSON.parse(reply.content[0].text);
 
 test('employers declares offline backbone answers for both workflow attempts', () => {
   const source = fs.readFileSync(new URL('../suites/employers.mjs', import.meta.url), 'utf8');
-  for (const declaration of ['offlineAi = true', 'realAi = false', "aiAnswers = 'backbone'"]) assert.ok(source.includes(`export const ${declaration};`), declaration);
+  for (const declaration of ['offlineAi = true', 'realAi = false', "aiAnswers = 'backbone'", "store = 'standin'"]) assert.ok(source.includes(`export const ${declaration};`), declaration);
 });
 
 for (const family of ['claude', 'openai']) test(`employers captured and reconstructed asks resolve at stored, direct and ${family} proxy seams with cache off`, async t => {
@@ -153,13 +153,13 @@ test('stored board judgments preserve Nimbus and Orbit counts and reject the noi
     assert.equal(EXPECTED[company].status, preferred.length ? 'found' : 'low');
     assert.equal(EXPECTED[company].active, preferred.length > 0);
   }
-  const review = fixture.asks.at(-1), {items} = dataOf(storedAnswer(request(review), env).reply);
+  const review = fixture.asks.find(ask => ask.keys[0].startsWith('judge.review/')), {items} = dataOf(storedAnswer(request(review), env).reply);
   assert.deepEqual(items.map(item => item.name).sort(), ['E2E Nimbus', 'E2E Orbit']);
   assert.deepEqual(problems(['E2E Nimbus', 'E2E Orbit'], items), []);
 });
 
 test('review identity keeps every fact and person, ignores row/JSON order, and refuses malformed rows', () => {
-  const ask = fixture.asks.at(-1), env = {E2E_AI_ANSWERS: 'backbone'}, table = loadTable();
+  const ask = fixture.asks.find(ask => ask.keys[0].startsWith('judge.review/')), env = {E2E_AI_ANSWERS: 'backbone'}, table = loadTable();
   const original = questionOf(request(ask), env, table);
   assert.equal(original.operation, 'judge.review');
   const [person, rows] = ask.body.messages[0].content.slice('The person: '.length).split('\n\nThe items the tool wrote:\n');

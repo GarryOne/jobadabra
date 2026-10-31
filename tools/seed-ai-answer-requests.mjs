@@ -29,7 +29,7 @@ export function seedRequests({golden = GOLDEN, table = loadTable(path.join(golde
   };
   for (const [kind, entries] of Object.entries(read('ai-answers.json').requests || {})) {
     for (const [key, entry] of Object.entries(entries)) {
-      add('ai-answers.json', ['requests', kind, key, 'body'], entry.body, 'captured', entry.action);
+      add('ai-answers.json', ['requests', kind, key, 'body'], entry.body, entry.provenance || 'captured', entry.action, entry.evidence);
     }
   }
   for (const file of ['jobs-asks.json', 'jobs-decide.json']) {

@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {answersMode} from '../lib/ai-answers.mjs';
 import {PLANNER, collectFacts, jobListDifferences, qualityJourney, rankingCheck} from '../lib/quality-journey.mjs';
-import {qualityClocks, qualityEvidence, qualityHang, withQualityHang} from '../lib/quality-waits.mjs';
+import {qualityClocks, qualityEvidence, withQualityHang} from '../lib/quality-waits.mjs';
 import {notKeptNote} from '../lib/quality-rows.mjs';
 import {dirtyRows, dirtyText, matchRows, missingColumns, mayBeEmptyFor, normalizeUrl} from '../lib/quality.mjs';
 
@@ -36,8 +36,8 @@ export const aiAnswers = 'backbone';   // answers its AI from the stored table i
 export async function run(ctx) {
   if (answersMode(process.env) === 'off') throw new Error('quality is a backbone suite: set E2E_AI_ANSWERS=backbone (or record for a record run)');
   const runStep = ctx.run;
-  // Why (29 Oct 2026, qu 3/4; 31 Oct 2026, a8): the runner's outer step cap keeps the same named hang text and engine evidence as an inner state wait, after the runner's own cut-off words.
-  ctx.run = (name, work, options) => runStep(name, work, {...options, hangError: capMs => qualityHang(name, capMs, ctx.qualityWaitEvidence?.() ?? qualityEvidence(ctx)).message});
+  // Why (29 Oct 2026, qu 3/4; 31 Oct 2026, Gitar on #2672): the runner's outer step cap keeps the step's name and engine evidence; the runner's cut-off words are the only verdict.
+  ctx.run = (name, work, options) => runStep(name, work, {...options, hangError: () => `${name}: ${ctx.qualityWaitEvidence?.() ?? qualityEvidence(ctx)}`});
   try {
     return await withQualityHang(() => runJourney(ctx), {label: 'the quality journey', capMs: clocks.suiteMs, evidence: () => ctx.qualityWaitEvidence?.() ?? qualityEvidence(ctx)});
   } finally { ctx.run = runStep; }

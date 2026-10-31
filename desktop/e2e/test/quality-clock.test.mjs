@@ -6,6 +6,8 @@ import path from 'node:path';
 import vm from 'node:vm';
 import {test} from 'node:test';
 import * as waits from '../lib/quality-waits.mjs';
+import {flakyProof} from '../lib/flaky-proof.mjs';
+import {withLimit} from '../lib/runner.mjs';
 import {jobListDifferences, qualityJourney} from '../lib/quality-journey.mjs';
 import * as quality from '../suites/quality.mjs';
 import * as qualityai from '../suites/qualityai.mjs';
@@ -37,12 +39,19 @@ test('state wait resolves as soon as its state arrives, without a fixed settling
   assert.equal(time.now(), 500);
 });
 
+// Gitar on #2672 (31 Oct 2026): one hung app had two verdicts, timing at the step cap and a wrong value at an inner wait; a cut-off is timing whichever timer fires.
+test('a quality hang reads as timing at its inner wait and at the step cap alike', async () => {
+  const inner = waits.qualityHang('the Jobs check', 1000, 'engine evidence').message;
+  const outer = await withLimit(new Promise(() => {}), 20, 'a Jobs check', () => null, 0, () => 'a Jobs check: engine evidence').catch(error => error.message);
+  for (const message of [inner, outer]) assert.equal(flakyProof(message).flaky, true, message);
+});
+
 test('state wait throws a named HANG with its last state and evidence at the cap', async () => {
   const time = clock();
   await assert.rejects(waits.waitForQualityState(() => 'pending', () => false,
     {label: 'the Jobs check', capMs: 1000, evidence: value => `last=${value}; engine evidence`, ...time}), error => {
     assert.equal(error.name, 'QualityHangError');
-    assert.match(error.message, /HANG: the Jobs check did not finish in 1 s: the app is hung, not slow/);
+    assert.match(error.message, /HANG: the Jobs check did not finish within 1 s \(it hung\)/);
     assert.match(error.message, /last=pending; engine evidence/);
     return true;
   });
@@ -130,7 +139,7 @@ for (const [mode, stateSeconds, jobsSeconds, suiteMs, minutes] of [
   let reads = 0;
   ctx.page.evaluate = async () => ++reads === 1 ? {running: null, queued: [], runs: []} : new Promise(() => {});
   const journey = qualityJourney(ctx, {strict: true, wait: time});
-  const check = assert.rejects(journey.check('first Jobs check'), {name: 'QualityHangError', message: new RegExp(`did not finish in ${jobsSeconds} s`)});
+  const check = assert.rejects(journey.check('first Jobs check'), {name: 'QualityHangError', message: new RegExp(`did not finish within ${jobsSeconds} s`)});
   await new Promise(setImmediate);
   t.mock.timers.tick(jobsSeconds * 1000);
   await check;
@@ -138,7 +147,7 @@ for (const [mode, stateSeconds, jobsSeconds, suiteMs, minutes] of [
   ctx.run = () => new Promise(() => {});
   let settled = false;
   const pending = suite.run(ctx).finally(() => { settled = true; });
-  const rejected = assert.rejects(pending, {name: 'QualityHangError', message: new RegExp(`the quality journey did not finish in ${suiteMs / 1000} s`)});
+  const rejected = assert.rejects(pending, {name: 'QualityHangError', message: new RegExp(`the quality journey did not finish within ${suiteMs / 1000} s`)});
   await new Promise(setImmediate);
   t.mock.timers.tick(suiteMs - 1);
   await new Promise(setImmediate);
@@ -191,7 +200,7 @@ test('the whole quality journey has a measured hang cap instead of the aggregate
   t.mock.timers.enable({apis: ['setTimeout']});
   ctx.page.evaluate = () => new Promise(() => {});
   const pending = quality.run(ctx);
-  const rejected = assert.rejects(pending, {name: 'QualityHangError', message: /HANG: the quality journey did not finish in 162.6 s.*engine evidence/s});
+  const rejected = assert.rejects(pending, {name: 'QualityHangError', message: /HANG: the quality journey did not finish within 162.6 s.*engine evidence/s});
   t.mock.timers.tick(162600);
   await rejected;
 });
@@ -208,11 +217,11 @@ test('the runner preserves a named quality step hang with engine evidence', asyn
   ctx.page.evaluate = () => { entered(); return new Promise(() => {}); };
   const pending = quality.run(ctx);
   // The runner says it was cut off (timing); the quality step's named hang and engine evidence follow (lib/runner.mjs withLimit, 31 Oct 2026).
-  const rejected = assert.rejects(pending, {message: /^the step did not finish within 30 s \(it hung\): HANG: the app is set up.*30 s.*engine evidence/s});
+  const rejected = assert.rejects(pending, {message: /^the step did not finish within 30 s \(it hung\): the app is set up.*engine evidence/s});
   await started;
   t.mock.timers.tick(30000);
   await rejected;
-  assert.match(runner.results[0].note, /HANG:.*engine evidence/s);
+  assert.match(runner.results[0].note, /^the step did not finish within 30 s \(it hung\): the app is set up.*engine evidence/s);
 });
 
 
@@ -290,7 +299,7 @@ test('the outer Jobs cap keeps partial-store diagnostics when it fires before th
   ctx.data = async () => { entered(); return []; };
   const pending = quality.run(ctx);
   const rejected = assert.rejects(pending, error => {
-    assert.match(error.message, /^the step did not finish within [\d.]+ s \(it hung\): HANG: /);   // the runner's cut-off words first (lib/runner.mjs withLimit)
+    assert.match(error.message, /^the step did not finish within [\d.]+ s \(it hung\): a Jobs check/);   // the runner's cut-off words first (lib/runner.mjs withLimit)
     assert.match(error.message, /0 of \d+ required postings reached the store; missing:.*engine evidence/s);
     assertDiagnostics(error.message);
     return true;

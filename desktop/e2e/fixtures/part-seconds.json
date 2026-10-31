@@ -1,0 +1,261 @@
+{
+  "about": "Slowest seconds of each e2e suite part per store leg, from finished beta/gate runs (tools/e2e-part-times.mjs).",
+  "runs": [
+    {
+      "run": "41229992832",
+      "runNumber": 1003,
+      "store": "standin"
+    },
+    {
+      "run": "41226261602",
+      "runNumber": 1002,
+      "store": "standin"
+    },
+    {
+      "run": "41220959824",
+      "runNumber": 1001,
+      "store": "sqlite"
+    },
+    {
+      "run": "41215677698",
+      "runNumber": 1000,
+      "store": "sqlite"
+    }
+  ],
+  "parts": {
+    "Windows · apply-2of3": {
+      "runs": 4,
+      "max": 97,
+      "standin": 97,
+      "sqlite": 62
+    },
+    "Windows · apply-3of3": {
+      "runs": 4,
+      "max": 159,
+      "standin": 159,
+      "sqlite": 132
+    },
+    "Windows · apply-1of3": {
+      "runs": 4,
+      "max": 234,
+      "standin": 234,
+      "sqlite": 162
+    },
+    "Windows · settings": {
+      "runs": 4,
+      "max": 100,
+      "standin": 100,
+      "sqlite": 98
+    },
+    "Mac + Linux · activityfailures": {
+      "runs": 2,
+      "max": 315,
+      "standin": 262,
+      "sqlite": 315
+    },
+    "Mac + Linux · apply-3of3": {
+      "runs": 2,
+      "max": 698,
+      "standin": 698,
+      "sqlite": 576
+    },
+    "Mac + Linux · apply-2of3": {
+      "runs": 2,
+      "max": 416,
+      "standin": 389,
+      "sqlite": 416
+    },
+    "Mac + Linux · focus": {
+      "runs": 2,
+      "max": 50,
+      "standin": 28,
+      "sqlite": 50
+    },
+    "Mac + Linux · activity": {
+      "runs": 2,
+      "max": 97,
+      "standin": 90,
+      "sqlite": 97
+    },
+    "Mac + Linux · recorded-2of5": {
+      "runs": 2,
+      "max": 461,
+      "standin": 461,
+      "sqlite": 454
+    },
+    "Mac + Linux · apply-1of3": {
+      "runs": 2,
+      "max": 351,
+      "standin": 351,
+      "sqlite": 334
+    },
+    "Mac + Linux · recorded-1of5": {
+      "runs": 2,
+      "max": 467,
+      "standin": 459,
+      "sqlite": 467
+    },
+    "Mac + Linux · calendar": {
+      "runs": 2,
+      "max": 38,
+      "standin": 26,
+      "sqlite": 38
+    },
+    "Mac + Linux · focusdismiss": {
+      "runs": 2,
+      "max": 130,
+      "standin": 124,
+      "sqlite": 130
+    },
+    "Mac + Linux · applyflows-2of3": {
+      "runs": 2,
+      "max": 235,
+      "standin": 137,
+      "sqlite": 235
+    },
+    "Mac + Linux · cardstates": {
+      "runs": 2,
+      "max": 51,
+      "standin": 51,
+      "sqlite": 43
+    },
+    "Mac + Linux · updates": {
+      "runs": 2,
+      "max": 16,
+      "standin": 16,
+      "sqlite": 16
+    },
+    "Mac + Linux · stores": {
+      "runs": 2,
+      "max": 28,
+      "standin": 28,
+      "sqlite": 24
+    },
+    "Mac + Linux · applyflows-1of3": {
+      "runs": 2,
+      "max": 252,
+      "standin": 208,
+      "sqlite": 252
+    },
+    "Mac + Linux · employers": {
+      "runs": 2,
+      "max": 86,
+      "standin": 83,
+      "sqlite": 86
+    },
+    "Mac + Linux · visitread": {
+      "runs": 2,
+      "max": 10,
+      "standin": 10,
+      "sqlite": 10
+    },
+    "Mac + Linux · visitsauto": {
+      "runs": 2,
+      "max": 21,
+      "standin": 20,
+      "sqlite": 21
+    },
+    "Mac + Linux · strategy": {
+      "runs": 2,
+      "max": 129,
+      "standin": 129,
+      "sqlite": 83
+    },
+    "Mac + Linux · wizard": {
+      "runs": 2,
+      "max": 44,
+      "standin": 44,
+      "sqlite": 39
+    },
+    "Mac + Linux · jobs": {
+      "runs": 2,
+      "max": 95,
+      "standin": 89,
+      "sqlite": 95
+    },
+    "Mac + Linux · recorded-3of5": {
+      "runs": 2,
+      "max": 466,
+      "standin": 466,
+      "sqlite": 458
+    },
+    "Mac + Linux · interactions": {
+      "runs": 2,
+      "max": 253,
+      "standin": 253,
+      "sqlite": 220
+    },
+    "Mac + Linux · storemove": {
+      "runs": 2,
+      "max": 87,
+      "standin": 87,
+      "sqlite": 83
+    },
+    "Mac + Linux · qualityai": {
+      "runs": 2,
+      "max": 278,
+      "standin": 113,
+      "sqlite": 278
+    },
+    "Mac + Linux · recorded-5of5": {
+      "runs": 2,
+      "max": 463,
+      "standin": 461,
+      "sqlite": 463
+    },
+    "Mac + Linux · failureschannels": {
+      "runs": 2,
+      "max": 46,
+      "standin": 46,
+      "sqlite": 41
+    },
+    "Mac + Linux · notion-real": {
+      "runs": 2,
+      "max": 130,
+      "standin": 130,
+      "sqlite": 126
+    },
+    "Mac + Linux · failuresnotion": {
+      "runs": 2,
+      "max": 78,
+      "standin": 77,
+      "sqlite": 78
+    },
+    "Mac + Linux · interviews": {
+      "runs": 2,
+      "max": 60,
+      "standin": 60,
+      "sqlite": 43
+    },
+    "Mac + Linux · settings": {
+      "runs": 2,
+      "max": 79,
+      "standin": 72,
+      "sqlite": 79
+    },
+    "Mac + Linux · recorded-4of5": {
+      "runs": 2,
+      "max": 471,
+      "standin": 470,
+      "sqlite": 471
+    },
+    "Mac + Linux · applyflows-3of3": {
+      "runs": 2,
+      "max": 262,
+      "standin": 262,
+      "sqlite": 107
+    },
+    "Mac + Linux · quality": {
+      "runs": 2,
+      "max": 33,
+      "standin": 27,
+      "sqlite": 33
+    },
+    "Mac + Linux · wander": {
+      "runs": 2,
+      "max": 25,
+      "standin": 25,
+      "sqlite": 21
+    }
+  }
+}

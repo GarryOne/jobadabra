@@ -316,8 +316,11 @@ test('suite execution configuration ignores comments and whitespace', () => {
 
 
 test('a weight-only edit to the real apply suite requires rule F but changes no expectation', () => {
-  const original = fs.readFileSync(path.join(root, suite), 'utf8');
-  const changed = original.replace(/('real forms the extension once failed on':\s*)76/, (_, prefix) => `${prefix}80`);
+  // Why (31 Oct 2026, a8): the real apply suite reads its weights from fixtures/apply-slowest-leg.json (test/part-headroom.test.mjs guards them), so no real suite keeps a literal table;
+  // the suite's own text is rebuilt with that table inline, which is the shape this rule reads.
+  const fixture = JSON.parse(fs.readFileSync(path.join(root, 'desktop/e2e/fixtures/apply-slowest-leg.json'), 'utf8')).steps;
+  const original = fs.readFileSync(path.join(root, suite), 'utf8').replace(/^export const stepSeconds = .*$/m, `export const stepSeconds = ${JSON.stringify(fixture)};`);
+  const changed = original.replace(/("real forms the extension once failed on":\s*)[\d.]+/, (_, prefix) => `${prefix}999`);
   assert.notEqual(changed, original, 'the real weight edit took effect');
   const unlabelled = changed.replace(/^\/\/ Job:[^\n]*\n/gm, '');
   const result = push({[suite]: original}, {[suite]: unlabelled});

@@ -64,6 +64,21 @@ Verdicts that change a state (nothing else does):
 - **backbone → suspended:** the classifier sees the check red then green on the same commit (a flip). Automatic, visible on the weekly summary with an owner
   issue. It is a bug (product or test race), never a reason to loosen the test. **suspended → backbone:** a PR that names its fix lands and the check passes
   main's next 3 runs.
+  **A flip is "same code, different result" (owner, 31 Oct 2026: "How last time it didn't go red, but this time it went, without changing the code on that area.
+  Means its flaky, Means our redesign and guardarails are not fully working"; "You detect flakinesss and immedaitely treat the flakiness root cause"):** since row 32
+  no job runs twice on one commit, so the trigger is a step red on a commit whose diff from that step's last green touches none of the files it runs (its suite,
+  harness lib and the app files the coverage map gives it). The tools say "flaky" on the red itself (the gate, the alert, the PR verdict), so no person has to
+  notice. The fix is the non-deterministic input's class, never the one step (rows 33–36).
+
+**Flaky first: four guardrails (owner, 31 Oct 2026: "Let's close the gap").** Rule B removed clocks; the input it left is a real hidden Chrome and its extension
+worker on a loaded shared runner. A step reaches the backbone and stays there only through these, each with its guard:
+1. **Proven before it blocks:** a new step in a backbone suite passes 5 first tries on its PR, as a suite admission does (row 36).
+2. **Every step stalls out on its own measured cap:** each backbone step has an explicit hang cap (3× calm p95, a stated provisional one for a new step) that fits
+   its job's budget; the runner refuses a step without one instead of the 8-minute default (row 34).
+3. **Evidence survives:** a red job always uploads its app log and steps; a trace that ran out of time leaves no file, and the secret scan drops an unscannable
+   file, never the whole upload (row 35).
+4. **Detected and suspended by the tools:** a flip (above) is labelled flaky on the red, the step is suspended with an owner issue holding the evidence, and it
+   never blocks a beta while suspended; it returns after its fix passes main's next 3 runs (row 33).
 - **backbone → tolerant:** a PR that names the non-deterministic input (`ai`, `clock` or `outside`) the test depends on. It is an expectation change (rule E).
   A test that cannot name one stays in the backbone: our own races are bugs, not tolerance.
 - **any → retired:** the scorecard lists it (90 days, 0 catches, ≥ 1 false red) and the owner says yes on the weekly summary.
@@ -121,7 +136,7 @@ Guard: `desktop/test/e2e-reliability-check.test.js`.
 
 **Design-first repair (owner, 29 Oct 2026):** before diagnosing or editing a red e2e, read this design, the lane registry and the repair skill; name the failed input and the evidence before selecting an implementation. A failure's "split the suite" advice never overrides the lane boundary. A modified pass with an original pass is not a demonstrated causal fix. Changed suite limits (`shards`, `budgetMinutes`, `minutes`) need both rule E citation and rule F design job/`Job:` label, even under `suites/`. The measured weights (`stepSeconds`, `flowSeconds`) only assign steps to shards: weight-only edits need rule F, not a rule E citation. One extractor owns both checks.
 
-**Current suspension implementation (31 Oct 2026):** no job retries, so no in-job flip exists to keep red (`flaky-proof.mjs` and the `flaky.json` marker are gone, row 32). The auto-sideline of row 33 (a8's) loses its same-commit-flip trigger with them and is redefined by a8 after row 32 lands. The designed automatic suspension is NOT wired yet (plan PR 21): no workflow calls `tools/suspend-flip.mjs`, `lanes.json` has no applyflows suspension entry, and `tools/main_e2e_state.py`, read by the beta gate, never reads the registry. Until that integration lands, a flip stays red and the owner decides. Describing the intended suspension state is not evidence that the live gate honors it.
+**Current suspension implementation (31 Oct 2026):** no job retries, so no in-job flip exists to keep red (`flaky-proof.mjs` and the `flaky.json` marker are gone, row 32). The auto-sideline of row 33 (a8's) loses its same-commit-flip trigger with them; it is redefined as "same code, different result" (the Design section, 31 Oct 2026) and is part of the four guardrails, not something that waits for a beta. The designed automatic suspension is NOT wired yet (plan PR 21): no workflow calls `tools/suspend-flip.mjs`, `lanes.json` has no applyflows suspension entry, and `tools/main_e2e_state.py`, read by the beta gate, never reads the registry. Until that integration lands, a flip stays red and the owner decides. Describing the intended suspension state is not evidence that the live gate honors it.
 
 **G · Budget and picking.** A PR runs at most 5 suites, in parallel, within about 10 minutes. When a diff reaches more, the scorecard picks the 5 that caught the
 most bugs for the files it touches; the rest run on main after merge. 10–20 suites run only on main, scheduled, or before a beta. Suites compete for the
@@ -227,7 +242,11 @@ Who builds what: the verdict session takes rows 16-17 and the push-checks sessio
 | 29 | Harness shrink, second half: back under 283 lib modules (27 Oct count) | 10 | after row 28 |
 | 30 | Grey tracking: page + weekly + returns | 1 | `a8`: open |
 | 31 | The owner's 31 Oct rules, each with its guard: grey on time, AI never holds a beta, one AI suite, a default-deny backbone | 12 | `a8`: #2660, #2661, the one-AI-suite PR, this guards PR |
-| 32 | Single try is the verdict: no retry passes a job (workflows, flaky-proof, `flaky.json` readers, burn-in/report-only retry skips), guard `tests/test_e2e_single_try.py` | 13 | `fv`: this PR |
+| 32 | Single try is the verdict: no retry passes a job (workflows, flaky-proof, `
+| 33 | Flaky on the red: a step red on code unchanged since its last green is labelled flaky by the gate, the alert and the PR verdict, suspended with an owner issue, never blocks a beta; back after its fix passes main's next 3 runs | 14 | `a8`: 5/5 |
+| 34 | Every backbone step stalls out on its own measured hang cap that fits its job's budget; the runner refuses a step without one (no 8-minute default) | 14 | `a8` (Codex): 2/5 |
+| 35 | A red job keeps its evidence: no half-written trace, the secret scan drops an unscannable file, never the whole upload | 14 | `a8` (Codex): 3/5 |
+| 36 | A new step in a backbone suite passes 5 first tries on its PR (burn-in, as a suite admission) | 14 | `a8`: 4/5 |flaky.json` readers, burn-in/report-only retry skips), guard `tests/test_e2e_single_try.py` | 13 | `fv`: this PR |
 
 Before/after for the 30 Oct ratchet change, at `f93a714`: non-test `.mjs` files, excluding `test/`, `recorded/`, `fixtures/` and `node_modules/`; lines are newline counts in those files. This adds the brake; both shrink steps remain pending.
 
@@ -314,3 +333,10 @@ One `###` per plan step, one box per thing that lands; a box is ticked only with
 - [x] `flaky-proof.mjs`, the retry and report-only steps, the `e2e-rerun` uploads and the `flaky.json` readers are deleted (rule L). Triage still labels a step that passed on a later run of the same commit. (proof: tests/test_e2e_single_try.py, desktop/e2e/test/triage-cli.test.mjs)
 - [x] A suite past its budget is red, not grey: the grey annotation, `beta-grey-rerun.yml`, `tools/beta_grey_rerun.py`, the beta `held` output and every reader of the annotation (main state, backbone proof, beta gate, PR verdict, alert) are deleted. (proof: tests/test_no_suite_grey.py, tests/test_beta_rate_gate.py)
 - [ ] Row 33 (auto-sideline, `a8`) is redefined without the same-commit-flip trigger; until then a suite that goes red often holds the beta and the owner decides.
+
+### 14. Flaky first: four guardrails (rows 33-36, `a8`, 31 Oct 2026)
+- [x] The repair skill checks for flakiness before any cause, and the design says what a flip is and the four guardrails. (proof: none: docs and skill only, 1/5)
+- [ ] Every backbone step has an explicit measured hang cap that fits its job's budget; the runner refuses a step without one (2/5).
+- [ ] A red job uploads its app log and steps even when its trace ran out of time (3/5).
+- [ ] A new step in a backbone suite passes 5 first tries on its PR before it blocks (4/5).
+- [ ] A step red on unchanged code is called flaky on the red and suspended with an owner issue; it never blocks a beta while suspended (5/5).

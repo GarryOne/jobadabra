@@ -1,5 +1,6 @@
 // The slow/failing AI proxy: each mode answers the way the real API does, and a bad mode name is refused (a typo must not silently pass requests through).
 import assert from 'node:assert/strict';
+import {spawn} from 'node:child_process';
 import http from 'node:http';
 import test from 'node:test';
 import {pollUntil} from '../lib/wait-on-state.mjs';
@@ -194,4 +195,54 @@ test('closing a proxy cancels delayed work and clears its pending fault requests
   assert.equal(fault.pending, 0);
   assert.equal(fault.delayed, 0);
   assert.equal(fault.failed, 0, 'a closed request never serves a late fault');
+});
+
+// Why (31 Oct 2026, activityfailures CI 41217478444, after 81ffce0 and 8c60b46 patched the same symptom): the app's engine child outlived the app's hard exit
+// still waiting on a hung call, so no client and no teardown ever closed it ("AI hang left 1 request(s)"). The proxy planted the hang, so the proxy ends it: another mode retires the
+// scope and closes what it held, whoever the client is. The client here is a separate process nobody closes, as the orphan was.
+test('arming another mode closes the connections a hang held, even for a client that outlives the app', async t => {
+  const proxy = await startAiProxy({target: 'http://127.0.0.1:1'});
+  t.after(() => proxy.close());
+  const hung = proxy.setMode('hang');
+  const orphan = spawn(process.execPath, ['-e', `fetch(process.argv[1] + '/v1/messages', {method: 'POST', body: '{}'}).then(() => console.log('answered'), () => console.log('closed'))`, proxy.url], {stdio: ['ignore', 'pipe', 'inherit']});
+  t.after(() => orphan.kill('SIGKILL'));
+  const told = new Promise(resolve => orphan.stdout.once('data', data => resolve(String(data).trim())));
+  const {value} = await pollUntil(() => hung.failed, n => n === 1, {tickMs: 5, capMs: 5000, log: () => {}});
+  assert.equal(value, 1, 'the hang reached the proxy');
+  assert.equal(hung.pending, 1, 'the client waits: nothing but the proxy can end it');
+  proxy.setMode('pass');
+  await hung.released;
+  assert.equal(hung.pending, 0, 'the retired hang holds no connection once its sockets have closed');
+  assert.equal(await told, 'closed', 'the outliving client was told by the connection, not left waiting');
+});
+
+test('retiring a hang leaves the next arming and its own requests alone', async t => {
+  const proxy = await startAiProxy({target: 'http://127.0.0.1:1'});
+  t.after(() => proxy.close());
+  const first = proxy.setMode('hang');
+  const held = post(proxy.url).then(() => 'answered', () => 'closed');
+  await pollUntil(() => first.failed, n => n === 1, {tickMs: 5, capMs: 5000, log: () => {}});
+  const second = proxy.setMode('hang');
+  await first.released;
+  assert.equal(await held, 'closed');
+  const next = post(proxy.url).then(() => 'answered', () => 'closed');
+  await pollUntil(() => second.failed, n => n === 1, {tickMs: 5, capMs: 5000, log: () => {}});
+  assert.equal(second.pending, 1, 'a request of the new arming stays hung until that arming ends');
+  proxy.setMode('pass');
+  await second.released;
+  assert.equal(await next, 'closed');
+});
+
+// Gitar, #2721: a request received under the hang but not yet served (its start delay still running) must be closed by the retirement too, or it hangs after `released` resolved.
+test('retiring a hang also closes a request it received but had not yet served', async t => {
+  const proxy = await startAiProxy({delayMs: 300, target: 'http://127.0.0.1:1'});
+  t.after(() => proxy.close());
+  const hung = proxy.setMode('hang');
+  const held = post(proxy.url).then(() => 'answered', () => 'closed');
+  await pollUntil(() => hung.calls, n => n === 1, {tickMs: 5, capMs: 5000, log: () => {}});
+  assert.equal(hung.failed, 0, 'the request is received, not yet served');
+  proxy.setMode('pass');
+  await hung.released;
+  assert.equal(hung.pending, 0);
+  assert.equal(await held, 'closed');
 });

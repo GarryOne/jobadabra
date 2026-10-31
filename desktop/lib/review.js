@@ -50,10 +50,14 @@ export const onState = fn => { stateListeners.push(fn); };
 // no company or title, no "the one free session" (owner, 12 Oct 2026; spec 2026-10-12-tab-owned.md). A page that carries a session that is gone
 // (cancelled, started again under a new id) is 'gone': its job may find the new one, never a guess.
 export function sessionFor(sessions, page, tab) { return pick(sessions, page, tab).session; }
-function pick(sessions, page) {
+// `boot`: the browser run the tab reports from; '' when the caller has none (then every session may match by its job).
+function pick(sessions, page, tab, boot = '') {
   const named = [page.session, markedSession(page.url)].filter(Boolean);
   for (const id of named) { const own = sessions.find(session => session.id === id); if (own) return {session: own, by: 'session'}; }
-  const byJob = page.job ? sessions.filter(session => isFormOf(page.job, session.url)) : [];   // the posting, its form address (Ashby /application, Lever /apply) or a page below it
+  // Why (4/4, #43 of beta 41162490590, 31 Oct 2026): a job address alone never matches a session that is bound in another browser run. A hidden-browser read of a job the person has open in Chrome carries a
+  // read id that is no session, so the job matched it to the person's session: its commands went to the read and the read was filled as that application. Its own mark still binds (above).
+  // Needs the tab's `boot` (every current extension sends it); a session saved without a run is never excluded.
+  const byJob = page.job ? sessions.filter(session => isFormOf(page.job, session.url) && sameRun(session.id, boot)) : [];   // the posting, its form address (Ashby /application, Lever /apply) or a page below it
   if (byJob.length) return {session: byJob.reduce((a, b) => (b.startedAt > a.startedAt ? b : a)), by: 'job'};
   return {session: null, by: named.length ? 'gone' : 'none'};
 }
@@ -237,12 +241,8 @@ export function notePage(id, page, now = Date.now()) {
 export function report(sessions, payload, now = Date.now()) {
   const page = {url: String(payload?.url || ''), title: String(payload?.title || ''), job: String(payload?.job || ''), session: String(payload?.session || '')};
   const tab = Number(payload?.tab), boot = String(payload?.boot || bootId || '');   // the run that tab id belongs to
-  const {session, by} = pick(sessions, page, tab);
+  const {session, by} = pick(sessions, page, tab, boot);
   if (!session) return {matched: null, session: null, watch: [], commands: []};
-  // Why (4/4, #43 of beta 41162490590, 31 Oct 2026): a job address alone never moves a session to a tab of another browser run. A hidden-browser read of a job the person has open in Chrome
-  // carries a read id that is no session, so the job matched it to the person's session: its commands went to the read and the read was filled as that application. Its own mark still binds.
-  // Needs the tab's `boot` (every current extension sends it) and a session already bound; a session saved without a run ('' ) is never refused.
-  if (by === 'job' && bound.has(session.id) && !sameRun(session.id, boot)) return {matched: null, session: null, watch: [], commands: []};
   if (Number.isInteger(tab)) {
     // A session follows its newest tab (tab ids only grow within a browser run): an older tab of it goes quiet and is told so.
     // Unless this older tab holds the live application form and the newer one does not (the app opened a second tab, 15 Oct 2026): the page that is further wins.

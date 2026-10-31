@@ -37,7 +37,7 @@ test('measured seconds win over the declared window, and a case the measured run
 
 test('the two shards of a pull request carry the same measured seconds, within 5% of the total', () => {
   const seconds = readSeconds(), all = loadCases();
-  assert.ok(Object.keys(seconds).length > 50, 'case-seconds.json is there (node tools/slow-page-cases.mjs <results>)');
+  assert.ok(Object.keys(seconds).length > 50, 'CI case seconds are there (fixtures/slice-ci-seconds.json)');
   const {run} = splitForPr(all, {slow: readSlow().slow, touched: []});
   const load = index => shardOf(run, index, 2).reduce((sum, one) => sum + costOf(one, seconds), 0);
   const [first, second] = [load(1), load(2)];

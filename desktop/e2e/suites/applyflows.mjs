@@ -24,7 +24,8 @@ export const varies = true;
 export const minutes = 17;   // CI's job-limit plumbing, including setup and a retry; step hang caps decide whether a check is stuck
 // Why (29 Oct 2026, a8, 21b): measured per-step hang caps catch hangs; cumulative runner slowness must not suppress later state checks
 export const aggregateBudget = false;
-export const shards = 2;   // the journeys take turns across two gate jobs (JP_REPLAY_SHARD, suites/apply.mjs runApply); a Mac run is the whole suite
+// Why (31 Oct 2026, owner a8): measured slow journeys total 1,307.5 s; two halves exceed eight minutes before setup.
+export const shards = 3;   // weighted steps in suites/apply.mjs runApply; JP_REPLAY_SHARD=i/n
 export const stepSharded = true;   // its slices are steps, not recorded cases (test/suite-shards.test.mjs)
 export const browser = true;
 export const keepGoing = true;   // as `apply`: a failed journey never hides the others; the setup step is critical (suites/apply.mjs)

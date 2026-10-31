@@ -78,11 +78,9 @@ export const hangCaps = {'the app has an applicant': 300, 'the app is seeded': 9
   'Background automation fills several queued jobs': 450, 'Full automation presses each queued job': 450,   // 60 s + 3 x 120 s of inner waits, + 30 s
   'Full automation asks once in Settings': 90, 'Full automation saved without its confirmation': 90,   // no main samples yet: the 30 s floor x 3
   'the form\'s panel offers a tailored CV': 3 * stepSeconds['Tailor on the session page of a form']};
-// applyflows' journeys, weighed the same way (26 Oct 2026, beta 40275152602 + main 40274183649, the slowest attempt of each): turn-taking put 392 s of them in one slice and 299 s in the other.
-export const flowSeconds = {'the account and the application on one page': 97, 'a menu whose choices are not the answer': 79, '"Needs your attention" from the extension': 78, 'the form tab is closed': 76,
-  'a second browser with the extension': 73, 'a posting whose Apply opens a new tab': 65, 'two applications side by side': 61, 'a sign-in page before the form that refuses': 38,
-  'a sign-in page before the form:': 30, 'a form drawn after a spinner': 25, 'an upload slot that appears only when +': 23, 'the AI gave a page the wrong kind': 18, 'a sign-up page before the form': 15,
-  'a form with collapsed sections': 13};
+// Slow first-try seconds from 80 main/beta runs, 24–31 Oct 2026 (tools/e2e-step-timings.mjs maxSeconds; evidence: fixtures/slice-ci-seconds.json).
+// Two measured halves carry ~650 s each before setup; applyflows uses three slices, without increasing any budget.
+export const flowSeconds = JSON.parse(fs.readFileSync(new URL('../fixtures/slice-ci-seconds.json', import.meta.url), 'utf8')).applyflows;
 export const browser = true;
 export const engine = 'api';   // the form's open question is answered by the AI proxy, which needs the API engine
 export const macos = 'release';   // a release, a gate and the night run it on a macOS runner (the real Chrome extension, opened through `open` as on a Mac); a PR's run on Linux (lib/plan.mjs runnerOf)

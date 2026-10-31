@@ -3,9 +3,14 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {test} from 'node:test';
-import {stepSlicer, weighedSlices} from '../lib/step-slices.mjs';
+import {stepSlicer} from '../lib/step-slices.mjs';
 import * as apply from '../suites/apply.mjs';
+import * as flows from '../suites/applyflows.mjs';
+import * as recorded from '../suites/recorded.mjs';
+import {loadCases} from '../lib/page-replay.mjs';
+import {costOf, shardOf, weighedSlices} from '../lib/replay-shard.mjs';
 
+const measured = JSON.parse(fs.readFileSync(new URL('../fixtures/slice-ci-seconds.json', import.meta.url), 'utf8'));
 const SETUP = 'the app has an applicant';
 const read = file => fs.readFileSync(new URL(`../${file}`, import.meta.url), 'utf8');
 const names = text => [...text.matchAll(/ctx\.run\('((?:[^'\\]|\\.)*)'/g)].map(match => match[1].replace(/\\'/g, "'"));
@@ -22,7 +27,7 @@ const SUITES = {apply: {parts: ['forms', 'cv'], seconds: apply.stepSeconds}, app
 test('every sliced step of apply and applyflows runs in exactly one slice, and where the step it needs runs', async () => {
   for (const [suite, {parts, seconds}] of Object.entries(SUITES)) {
     const {shards} = await import(`../suites/${suite}.mjs`), steps = stepsOf(parts);
-    assert.equal(shards, {apply: 3, applyflows: 2}[suite], suite);
+    assert.equal(shards, {apply: 3, applyflows: 3}[suite], suite);
     assert.ok(steps.length >= 10, `${suite}: only ${steps.length} steps read: the pattern no longer matches`);
     const runs = Array.from({length: shards}, (_, at) => { const takes = stepSlicer({index: at + 1, count: shards}, {seconds, needs: apply.stepNeeds, setup: SETUP}); return steps.filter(name => takes(name)); });
     for (const name of steps) assert.equal(runs.filter(list => list.includes(name)).length, 1, `${suite}: "${name.slice(0, 60)}" runs in ${runs.filter(list => list.includes(name)).length} slices`);
@@ -59,5 +64,29 @@ test('every journey of applyflows is weighed or follows one, no weight names a g
   assert.deepEqual(heads.filter(head => !steps.some(name => name.startsWith(head))), []);
   for (const name of steps) assert.ok(heads.filter(head => name.startsWith(head)).length <= 1, `"${name.slice(0, 50)}" matches two weights`);
   const owner = weighedSlices(apply.flowSeconds, 2), load = [1, 2].map(index => Object.entries(apply.flowSeconds).filter(([head]) => owner[head] === index).reduce((sum, [, s]) => sum + s, 0));
-  assert.ok(Math.abs(load[0] - load[1]) / (load[0] + load[1]) < 0.1, `halves ${load.join(' vs ')} s`);
+  const mean = (load[0] + load[1]) / 2;
+  assert.ok(Math.abs(load[0] - load[1]) / mean < 0.1, `halves ${load.join(' vs ')} s`);
+});
+
+// Pinned observations supply the weights; these guards check placement and capacity, while the PR run proves current runtime.
+test('applyflows slices fit eight measured minutes, with two halves balanced against their mean', () => {
+  const halves = weighedSlices(apply.flowSeconds, 2);
+  const halfLoad = [1, 2].map(index => Object.entries(measured.applyflows).filter(([head]) => halves[head] === index).reduce((sum, [, seconds]) => sum + seconds, 0));
+  const mean = halfLoad.reduce((sum, seconds) => sum + seconds, 0) / 2;
+  assert.ok((Math.max(...halfLoad) - Math.min(...halfLoad)) / mean < 0.1, `measured halves ${halfLoad.join(' vs ')} s`);
+  for (let index = 1; index <= flows.shards; index++) {
+    const takes = stepSlicer({index, count: flows.shards}, {seconds: apply.flowSeconds, needs: apply.stepNeeds, setup: SETUP});
+    const load = stepsOf(['flows']).filter(name => takes(name)).reduce((sum, name) => sum + (Object.entries(measured.applyflows).find(([head]) => name.startsWith(head))?.[1] || 0), 0);
+    assert.ok(load <= 480, `applyflows ${index}/${flows.shards}: ${load} measured seconds exceeds eight minutes`);
+  }
+});
+
+test('recorded case slices balance measured seconds and each fits eight minutes', () => {
+  const cases = loadCases();
+  const slices = Array.from({length: recorded.shards}, (_, at) => shardOf(cases, at + 1, recorded.shards));
+  assert.deepEqual(slices.flat().map(item => item.name).sort(), cases.map(item => item.name).sort(), 'each case runs once');
+  const load = slices.map(slice => slice.reduce((sum, item) => sum + (measured.recorded[item.name] ?? costOf(item, measured.recorded)), 0));
+  const mean = load.reduce((sum, seconds) => sum + seconds, 0) / load.length;
+  assert.ok((Math.max(...load) - Math.min(...load)) / mean < 0.1, `recorded slices ${load.join(' vs ')} measured seconds`);
+  for (const [index, seconds] of load.entries()) assert.ok(seconds <= 480, `recorded ${index + 1}/${recorded.shards}: ${seconds} measured seconds exceeds eight minutes`);
 });

@@ -465,7 +465,7 @@ def run_main(run=main, rate=None):
             sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
             from github_limit import is_limit, limit_message, read_rate
         except ImportError:
-            raise error
+            raise error from None   # the original failure, not the missing sibling
         said = error.stderr.decode('utf-8', 'replace') if isinstance(error.stderr, bytes) else (error.stderr or '')
         if not is_limit(said):
             raise

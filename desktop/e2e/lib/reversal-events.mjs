@@ -1,6 +1,6 @@
 // The newest issue events a correction is made of, read page by page until enough are found, so a judge job spends about 18 calls, not the whole history.
 // Job: report health
-// Why (31 Oct 2026, a8; budget burst 17:52-18:00 UTC): `gh api .../issues/events --paginate` then `.slice(0, 600)` downloaded all 170 pages (170 REST calls) per UI-verdict judge job, 12 jobs
+// Why (31 Oct 2026, a8; budget burst 17:52-18:00 UTC): the whole event history was paginated, then cut to 600: all 170 pages (170 REST calls) per UI-verdict judge job, 12 jobs
 // a run = 2,040 calls in 5 minutes of the 5,000-an-hour budget every workflow shares; every later job failed on the 403. The endpoint is newest first and 27-42% of a page is a correction
 // kind (measured), so the first 600 matches are the first ~18 pages: the same events, read from the pages they are on. Guard: test/reversals.test.mjs.
 

@@ -2841,6 +2841,11 @@
         "seconds": 30,
         "n": 0,
         "reason": "provisional: regenerate after 5 main runs (tools/e2e-step-timings.mjs)"
+      },
+      "nothing was queued to report to the product": {
+        "seconds": 30,
+        "n": 0,
+        "reason": "provisional: regenerate after 5 main runs (tools/e2e-step-timings.mjs)"
       }
     }
   }

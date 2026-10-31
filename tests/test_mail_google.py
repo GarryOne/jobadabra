@@ -57,15 +57,17 @@ class GoogleApiTests(unittest.TestCase):
 
     def test_guided_setup_finds_the_newly_downloaded_client_file(self):
         from src.sources import google_setup
-        import os, time
+        import os
+        # Why (31 Oct 2026, a8): the files' written-at times and `start` are fixed numbers; "time.time() - 1" against real file mtimes read the clock and broke when the clock was not the machine's.
+        start = 1_800_000_000
         with tempfile.TemporaryDirectory() as tmp:
             old_file = Path(tmp) / 'client_secret_old.json'
             old_file.write_text('{}')
-            os.utime(old_file, (time.time() - 3600, time.time() - 3600))
-            start = time.time() - 1
+            os.utime(old_file, (start - 3600, start - 3600))
             self.assertIsNone(google_setup.newest_client_file(start, tmp))
             new_file = Path(tmp) / 'client_secret_new.json'
             new_file.write_text('{}')
+            os.utime(new_file, (start + 5, start + 5))
             self.assertEqual(google_setup.newest_client_file(start, tmp), str(new_file))
 
     def test_auth_reads_the_downloaded_client_json(self):

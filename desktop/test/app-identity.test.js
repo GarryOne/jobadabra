@@ -94,8 +94,10 @@ test('both folders with data: nothing moves, the one written last is used, and t
     const appData = tmp();
     seed(path.join(appData, older), REAL);
     seed(path.join(appData, newer), REAL);
-    const past = new Date(Date.now() - 3600e3);
-    for (const rel of Object.keys(REAL)) fs.utimesSync(path.join(appData, older, rel), past, past);
+    // Why (31 Oct 2026, a8): both folders get a fixed written-at; the old "an hour before now" mixed the clock with the files' real mtimes and failed whenever the clock was not the machine's.
+    for (const [name, at] of [[older, new Date('2026-01-01T10:00:00Z')], [newer, new Date('2026-01-01T11:00:00Z')]]) {
+      for (const rel of Object.keys(REAL)) fs.utimesSync(path.join(appData, name, rel), at, at);
+    }
     const messages = [];
     assert.equal(migrateDataFolder(appData, {log: text => messages.push(text)}), path.join(appData, newer));
     assert.deepEqual(names(appData), ([DATA_NAME, LEGACY_NAME]).sort(), 'nothing moved');

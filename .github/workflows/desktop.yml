@@ -137,7 +137,7 @@ jobs:
       - name: Main's e2e red? Re-check its red suites first (nightly)
         id: redmain
         if: steps.diff.outputs.build == 'true' && (github.event_name == 'schedule' || inputs.nightly) && inputs.over_red_main == ''
-        timeout-minutes: 50
+        timeout-minutes: 55   # Why (31 Oct 2026, a8; beta 41246139016): the gate may wait RED_MAIN_FIND_S 300 + RED_MAIN_WAIT_S 2700 = 50 min; a cap equal to the wait kills it before its own "no beta" line
         env:
           GH_TOKEN: ${{ github.token }}
           RED_MAIN_WAIT_S: '2700'   # the re-check takes 10-15 min; the lock `desktop-release` is held meanwhile
@@ -1441,7 +1441,7 @@ jobs:
           cat block.txt
           if [ "$status" != 0 ]; then echo "$TAG is not offered on Mac: a real high-severity finding in its end-to-end suites."; exit 1; fi
       - name: The shared release checks (unit suites green on the commit; soak on, the Notion schema additive over stable)
-        timeout-minutes: 5
+        timeout-minutes: 65   # Why (31 Oct 2026, a8; beta 41246139016): the shared release checks script waits up to RELEASE_CI_WAIT (3600 s) for main's build.yml; 5 minutes killed it in both Release jobs of an all-green beta (tests/test_e2e_step_timeouts.py)
         env:
           JOB_PILOTTO_SOAK: ${{ vars.JOB_PILOTTO_SOAK }}
         shell: bash -eo pipefail {0}   # a program piped into tee/cat keeps its exit code (tests/test_workflow_pipefail.py)
@@ -1569,7 +1569,7 @@ jobs:
           cat block.txt
           if [ "$status" != 0 ]; then echo "$TAG is not offered on Windows: a real high-severity finding in its end-to-end suites."; exit 1; fi
       - name: The shared release checks (unit suites green on the commit; soak on, the Notion schema additive over stable)
-        timeout-minutes: 5
+        timeout-minutes: 65   # Why (31 Oct 2026, a8; beta 41246139016): the shared release checks script waits up to RELEASE_CI_WAIT (3600 s) for main's build.yml; 5 minutes killed it in both Release jobs of an all-green beta (tests/test_e2e_step_timeouts.py)
         env:
           JOB_PILOTTO_SOAK: ${{ vars.JOB_PILOTTO_SOAK }}
         shell: bash -eo pipefail {0}   # a program piped into tee/cat keeps its exit code (tests/test_workflow_pipefail.py)

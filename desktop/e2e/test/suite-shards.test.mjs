@@ -118,10 +118,11 @@ test('a step-sharded suite gives every step to exactly one slice, and splits the
   assert.equal(shardTurn(5, null), true, 'no slice: every step runs');
 });
 
-test('applyflows is two slices of steps whose seconds are within a third of each other (a gate run, 23 Oct 2026)', async () => {
+test('applyflows plans three weighted step jobs after its measured halves exceeded eight minutes', async () => {
   const suite = await import('../suites/applyflows.mjs');
-  assert.equal(suite.shards, 2);
-  const seconds = [26.7, 10.9, 13.5, 51.3, 23.3, 34.0, 21.9, 72.1, 41.7, 19.8, 75.5, 40];   // the 12 journey steps' seconds in that run (the 13th has none: it failed)
-  const sum = index => seconds.filter((_, ordinal) => shardTurn(ordinal, {index, count: 2})).reduce((a, b) => a + b, 0);
-  assert.ok(Math.abs(sum(1) - sum(2)) / (sum(1) + sum(2)) < 0.34, `slices ${sum(1)} vs ${sum(2)}`);
+  assert.equal(suite.stepSharded, true);
+  const jobs = windowsMatrix(['applyflows'], {applyflows: suite.shards}).include;
+  assert.deepEqual(jobs.map(job => [job.key, job.shard]), [
+    ['applyflows-1of3', '1/3'], ['applyflows-2of3', '2/3'], ['applyflows-3of3', '3/3'],
+  ]);
 });

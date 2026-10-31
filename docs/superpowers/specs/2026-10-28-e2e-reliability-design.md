@@ -57,7 +57,7 @@ A run of any check can end **grey** ("didn't run": AI credit, runner lost, insta
 both tries was timing or the test's environment": the runner, not the app). Grey is health, never red; it has one owner (the coordinator's round-up) and never
 asks the PR's session for anything. In a beta a grey backbone job re-runs once on a fresh runner: green ships, grey again holds that platform's beta as grey with
 the cause named; a wrong value stays red (owner, 31 Oct 2026: "Re-run once, then hold").
-Guard: `tests/test_grey_never_red.py` (no workflow ends a grey job red; every reader of red knows grey), `desktop/e2e/test/flaky-proof.test.mjs`.
+Guard: `desktop/e2e/test/flaky-proof.test.mjs`.
 
 Verdicts that change a state (nothing else does):
 - **backbone → suspended:** the classifier sees the check red then green on the same commit (a flip). Automatic, visible on the weekly summary with an owner

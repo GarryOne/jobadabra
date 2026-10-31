@@ -2,7 +2,8 @@
 // Invariants: the flow-core block in extension/fill-flow.js's header governs this file (read it before editing).
 import {backgroundPage} from './background-apply.js';
 import {apiFor, askEarly, settings} from './flow.js';
-import {decide, span} from './log.js';
+import {decide} from './log.js';
+import {ownSpan} from './fill-span.js';
 import {expandSections} from './sections.js';
 import {closeConsentEverywhere} from './consent.js';
 import {accountOutcome, accountStep} from './account-step.js';
@@ -74,7 +75,7 @@ export async function askPage(step) {
   // The AI says the page is still being drawn (a placeholder, a cover over an empty shell): read it again once it is still, never plan a fill from it (ladder/still-drawing.js).
   const asked = await readWhileDrawing(firstAsked, {again: () => askKind(tab, {fresh: true}), still: () => pageStill(tab.id, STILL_MS), unanswered: async () => { const now = await pageShape(tab.id); return !!now && emptyShape(now); }, log: decide, host: (() => { try { return new URL(tab.url).hostname; } catch { return ''; } })()});
   if (late(tab, gen, 'page kind, read again')) return false;
-  if (await span(`askPage ${tab.id}/${gen} backgroundPage`, () => backgroundPage(tab.id, asked?.role || pageRole(counts, tab.url), asked?.botCheck === true))) return false;
+  if (await ownSpan(tab.id, `askPage ${tab.id}/${gen} backgroundPage`, () => backgroundPage(tab.id, asked?.role || pageRole(counts, tab.url), asked?.botCheck === true))) return false;
   // The application form: fill it now; what became of the sign-up before it is the account AI's word a moment later, for the card only (owner, 9 Oct 2026: the fill
   // waited 40 s on it on Migros while the page was already the form). Any other page (an account page, a posting, nothing known) waits for it, as the sign-in →
   // sign-up switch and the account step go by it. Guard: worker/test/account-step.test.js.

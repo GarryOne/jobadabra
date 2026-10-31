@@ -178,3 +178,29 @@ test('silence teardown drains a hang whose client outlives the old app (an orpha
   assert.equal(await request, 'closed');
   assert.ok(Date.now() - started < 5000, 'drained by the sockets closing, not by a long timed wait');
 });
+
+// The step is the product's guard (owner, 31 Oct 2026): the app quits while the hang is armed, so a call still held then belongs to an engine process the quit left behind.
+for (const survives of [false, true]) {
+  test(`silence teardown ${survives ? 'fails naming an engine process that outlived the quit' : 'passes when the quit ended the engine call'}`, async t => {
+    const {startAiProxy} = await import('../lib/ai-proxy.mjs');
+    const {pollUntil} = await import('../lib/wait-on-state.mjs');
+    const proxy = await startAiProxy({target: 'http://127.0.0.1:1'});
+    t.after(() => proxy.close());
+    const original = globalThis.window;
+    t.after(() => { if (original === undefined) delete globalThis.window; else globalThis.window = original; });
+    globalThis.window = {pilot: {runs: async () => ({runs: [], historyLoaded: true, busy: []})}};
+    const controller = new AbortController(), modes = [];
+    const ctx = {activityStateWaits: true, proxy, drainMs: 300, page: {isClosed: () => false, waitForSelector: async () => {}, evaluate: fn => fn()},
+      relaunch: async (env, between, how) => { if (!env) { assert.deepEqual(how, {how: 'quit'}); if (!survives) controller.abort(); await between(); modes.push(proxy.stats.mode); } }};
+    let fault;
+    const done = steps.withSilenceLimit(ctx, async () => {
+      fault = proxy.setMode('hang');
+      fetch(`${proxy.url}/v1/messages`, {method: 'POST', body: '{}', signal: controller.signal}).catch(() => null);
+      await pollUntil(() => fault.failed, n => n === 1, {capMs: 1000, tickMs: 1, log: () => {}});
+    });
+    if (survives) await assert.rejects(done, /an engine process of the old app still holds its call/); else await done;
+    assert.equal(proxy.stats.mode, 'pass', 'the hang never stays armed for the next step');
+    assert.equal(fault.pending, 0);
+    if (!survives) assert.deepEqual(modes, ['pass'], 'the new instance starts on a normal AI');
+  });
+}

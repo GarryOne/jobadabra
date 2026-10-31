@@ -331,7 +331,7 @@ function handleImportant(channel, label, handler) {
   ipcMain.handle(channel, (...args) => critical.during(label, () => handler(...args)));
 }
 // Every restart says why: app.exit skips 'will-quit', so without this line a restart looks like a silent exit (a Windows e2e relaunch, 6 Oct 2026).
-const restarter = createRestarter({app, log: message => appLog('window', message), beforeExit: () => { pipeline.stopRunning(); return dataJob.stop(); }});
+const restarter = createRestarter({app, log: message => appLog('window', message), beforeExit: () => Promise.allSettled([pipeline.stopRunning(), dataJob.stop()])});
 function restartApp(reason, options) { restarter.restart(reason, options, {how: 'exit'}); }
 // How the app ended, in logs/app.log: a Windows e2e relaunch closed with no line at all (6 Oct 2026). No line after "start" now means the
 // process was killed from outside (nothing in the app can log that).

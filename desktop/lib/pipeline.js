@@ -9,7 +9,7 @@
 //   pipeline-commands.js  one-shot commands (jobs, addLead, focus, setStatus, ...)
 // Guarded by: test/pipeline-run.test.js and the queue/stop/run-* tests named in each piece.
 export {REPO, MODELS, python, ensureConfig, setCrashReports, pipelineEnv, readable, setDemo} from './pipeline-env.js';
-export {stopRunning, onRunEnd, LIMITS, stoppedReason, run} from './pipeline-run.js';
+export {stopRunning, hasChildren, isWatched, onRunEnd, LIMITS, stoppedReason, run} from './pipeline-run.js';
 export {quietText, isDataLine, TASKS, taskName, failedLine, appMessage, taskSummary, isProgressStep, STATUS_LINE, leadStepOf, HEARTBEAT_MS} from './pipeline-lines.js';
 export {stopTask, serial, RUN_HISTORY, saveRuns, runs, running, keep, queued, INTERRUPTED, freezeQueue, unqueue, takeQueue, whenIdle} from './pipeline-queue.js';
 export {dailyArgs, SEARCH_BUDGET_S, SCOUT_BUDGET_S, syncMatchesArgs, mailArgs, triggerEnv, visitsArgs} from './pipeline-args.js';

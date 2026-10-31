@@ -32,6 +32,7 @@ export function failureFor(mode) {
 /** One arming owns its requests and failures; changing mode never retags delayed work. */
 function faultScope(mode) {
   const scope = {mode, calls: 0, failed: 0, pending: 0, delayed: 0};
+  Object.defineProperty(scope, 'waiters', {value: new Set()});   // wake-ups of whenDrained()
   Object.defineProperty(scope, 'hung', {value: new Set()});   // the responses a 'hang' never answered and whose sockets are still open; not data, so out of every dump
   return scope;
 }
@@ -59,6 +60,7 @@ function requestFault(control, res, pending) {
   const finish = () => {
     if (!pending.delete(finish)) return;
     fault.pending--;
+    if (!fault.pending) for (const wake of fault.waiters) wake();
     if (timer) { clearTimeout(timer); timer = null; if (delayMs) fault.delayed--; settle(false); }
   };
   pending.add(finish);
@@ -172,6 +174,11 @@ export async function startAiProxy({delayMs = 0, target = 'https://api.anthropic
     setMode: mode => { if (mode !== 'pass' && mode !== 'hang' && !FAILURES[mode]) throw new Error(`unknown proxy mode: ${mode}`); if (mode !== 'pass') { stats.armed++; STUBBED.add(mode); } stats.mode = mode; const retired = stats.fault; stats.fault = faultScope(mode); Object.defineProperty(retired, 'released', {value: releaseHung(retired)}); return stats.fault; },   // `retired.released`: its hung connections are closed (see releaseHung)
     // From now on, calls `answer` returns a text for are answered with it (no model, no cost); the rest go through.
     setCanned: answer => { canned = answer; }, canned: () => canned, close: () => { for (const finish of pending) finish(); server.closeAllConnections?.(); return new Promise(resolve => server.close(resolve)); }};
+}
+
+/** Resolves when `fault` (a scope from setMode) holds no connection: at once if it holds none, else on the socket 'close' that empties it. */
+export function whenDrained(fault) {
+  return fault.pending ? new Promise(resolve => { fault.waiters.add(resolve); }) : Promise.resolve();
 }
 
 /** Send the same provider-shaped error for a suite stand-in and a declared stored refusal. */

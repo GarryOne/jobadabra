@@ -15,6 +15,7 @@ on:
       - 'desktop/e2e/lib/app-env.mjs'
       - 'desktop/e2e/lib/app-front.mjs'
       - 'desktop/e2e/lib/app-log.mjs'
+      - 'desktop/e2e/lib/app-tree.mjs'
       - 'desktop/e2e/lib/app.mjs'
       - 'desktop/e2e/lib/applicant-seed.mjs'
       - 'desktop/e2e/lib/applying-status.mjs'

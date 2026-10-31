@@ -89,8 +89,12 @@ async function findEmployers(ctx) {
   }
   const before = (await scouts()).runs.length, startsBefore = scoutStarts(ctx);
   await page.evaluate(() => window.pilot.command('scout'));   // the finder alone: Find jobs runs it as its last step, and Always on / the schedule start it by itself; the Actions card was merged into Find jobs (16 Oct 2026)
-  // runs() includes the queue: completion means the scout has a result and no task is running or waiting its turn.
-  const {value: now} = await pollUntil(scouts, state => !state.running && state.runs.length > before, {capMs: stepTimeLeft()});
+  // Wait for the scout's result and an empty queue before observing possible late duplicate dispatches.
+  let {value: now} = await pollUntil(scouts, state => !state.running && state.runs.length > before, {capMs: stepTimeLeft()});
+  if (now.running || now.runs.length <= before) throw new Error('Find new employers did not finish before the step\'s hang cap');
+  // Retained: an empty queue cannot rule out a delayed second dispatch; no app signal proves none can follow.
+  await page.waitForTimeout(6000);
+  ({value: now} = await pollUntil(scouts, state => !state.running && state.runs.length > before, {capMs: stepTimeLeft()}));
   if (now.running || now.runs.length <= before) throw new Error('Find new employers did not finish before the step\'s hang cap');
   const engineRuns = scoutStarts(ctx) - startsBefore;
   if (engineRuns !== 1) throw new Error(`one click started ${engineRuns} Find new employers runs (the app's own log shows ${engineRuns} engine starts)`);

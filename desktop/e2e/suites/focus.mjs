@@ -194,6 +194,8 @@ export async function runFocus(ctx, parts) {
       if (await page.locator('#job-drawer-layer').isVisible()) throw new Error("the job's drawer stayed open after going to another page");   // it covers the page it was opened from (pages/nav.js openView)
     } else {
       await pollUntil(urlsOpened, urls => urls.length > opened, {capMs: stepTimeLeft()});
+      // Retained: openExternal reports each open, but no signal proves that a late duplicate cannot follow.
+      await page.waitForTimeout(500);
       if ((await urlsOpened()).length !== opened + 1) throw new Error(`"Review rejection" opened nothing (opened: ${(await urlsOpened()).join(', ') || 'none'})`);
     }
   }, {needs: ctx.needs});
@@ -203,6 +205,8 @@ export async function runFocus(ctx, parts) {
     await showAll();
     await row('Huxley Partners').getByRole('button', {name: 'Open email'}).click();
     await pollUntil(urlsOpened, urls => urls.some(url => /mail\.google\.com.*e2e-lead-1/.test(url)), {capMs: stepTimeLeft()});
+    // Retained: keep the exactly-once observation window; the first captured URL cannot rule out a late duplicate.
+    await page.waitForTimeout(500);
     const mail = (await urlsOpened()).filter(url => /mail\.google\.com.*e2e-lead-1/.test(url));
     if (mail.length !== 1) throw new Error(`"Open email" should open the lead's own message (e2e-lead-1), the app opened: ${(await urlsOpened()).join(', ') || 'nothing'}`);
     await row('Fjord Networks').getByRole('button', {name: 'Add feedback'}).click();

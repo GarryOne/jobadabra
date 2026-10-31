@@ -148,7 +148,7 @@ test('a start while a helper is still copying quits without starting a second on
   // of Date.now(): true !== false). The leftover is built for real now: its mtime is 10 minutes back, the limit is a minute, and the same limit keeps a fresh lock.
   fs.writeFileSync(path.join(target, LOCK), String(process.pid));
   assert.equal(helperRunning(target, 60000), true, 'a fresh lock of a live pid is a running helper under the same limit');
-  const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
+  const tenMinutesAgo = new Date(fs.statSync(path.join(target, LOCK)).mtimeMs - 10 * 60 * 1000);   // from the file's own mtime: the test reads no clock (test/unpinned-clock.test.js)
   fs.utimesSync(path.join(target, LOCK), tenMinutesAgo, tenMinutesAgo);
   assert.equal(helperRunning(target, 60000), false, 'a lock older than the limit is a leftover');
   fs.rmSync(path.join(target, LOCK));

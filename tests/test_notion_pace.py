@@ -10,6 +10,7 @@ from unittest import mock
 
 from src import paths
 from src.notion import pace
+from src.notion import client
 from src.notion.client import Tracker
 
 
@@ -58,6 +59,60 @@ class SharedPaceTest(unittest.TestCase):
             pace.claim(self.token)
             pace.wait_turn(self.token, waits.append)
         self.assertEqual(waits, [0.34])
+
+    def test_local_e2e_requests_do_not_wait_for_real_notion_slots(self):
+        """The HTTP stand-in must answer a burst without a real service's clock."""
+        now = [1000.0]
+        waits, requested = [], []
+
+        def sleep(seconds):
+            waits.append(seconds)
+            now[0] += seconds
+
+        def opener(request, timeout):
+            requested.append(request.full_url)
+            return Answer({'results': []})
+
+        with mock.patch.dict(os.environ, {'JOB_PILOTTO_E2E': '1', 'JOB_PILOTTO_E2E_NOTION_STANDIN': '1',
+                                         'JOB_PILOTTO_E2E_NOTION_BASE_URL': 'http://127.0.0.1:12345'}), \
+                mock.patch.object(pace, 'clock', lambda: now[0]), \
+                mock.patch.object(pace, 'GAP_MS', 340), \
+                mock.patch.object(client.urllib.request, 'urlopen', opener):
+            tracker = Tracker(self.token, opener=opener, sleep=sleep)
+            for _ in range(20):
+                self.assertEqual(tracker._request('GET', 'pages/fixture'), {'results': []})
+        self.assertEqual(requested, ['http://127.0.0.1:12345/v1/pages/fixture'] * 20)
+        self.assertEqual(waits, [], 'a local stand-in must not consume real Notion rate-limit slots')
+
+    def test_only_an_explicit_local_test_standin_bypasses_pacing(self):
+        """A fault proxy or an out-of-test marker still takes real service turns."""
+        for e2e, standin, base, expected in [
+            ('1', '', 'http://127.0.0.1:12345', 'http://127.0.0.1:12345/v1'),
+            ('', '1', 'http://127.0.0.1:12345', 'https://api.notion.com/v1'),
+            ('1', '1', 'https://api.notion.com', 'https://api.notion.com/v1'),
+        ]:
+            with self.subTest(e2e=e2e, standin=standin, base=base):
+                Path(pace.pace_file(self.token)).unlink(missing_ok=True)
+                now, waits, requested = [1000.0], [], []
+
+                def sleep(seconds):
+                    waits.append(seconds)
+                    now[0] += seconds
+
+                def opener(request, timeout):
+                    requested.append(request.full_url)
+                    return Answer({'ok': True})
+
+                with mock.patch.dict(os.environ, {'JOB_PILOTTO_E2E': e2e, 'JOB_PILOTTO_E2E_NOTION_STANDIN': standin,
+                                                 'JOB_PILOTTO_E2E_NOTION_BASE_URL': base}), \
+                        mock.patch.object(pace, 'clock', lambda: now[0]), \
+                        mock.patch.object(pace, 'GAP_MS', 340), \
+                        mock.patch.object(client.urllib.request, 'urlopen', opener):
+                    tracker = Tracker(self.token, opener=opener, sleep=sleep)
+                    for _ in range(2):
+                        self.assertEqual(tracker._request('GET', 'pages/fixture'), {'ok': True})
+                self.assertEqual(requested, [expected + '/pages/fixture'] * 2)
+                self.assertEqual(waits, [0.34])
 
 
 class KeptPageTest(unittest.TestCase):

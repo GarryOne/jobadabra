@@ -48,6 +48,13 @@ test('a Notion store the app has not connected yet is said, not guessed', () => 
   assert.throws(() => storeEnv({profile: profileWith({}), token: ''}), /not connected yet/);
 });
 
+test('only the in-memory Notion store opts the engine out of the real service clock', () => {
+  const profile = profileWith({store: 'notion', notionIds: {}});
+  const given = {profile, token: 'fixture', notionUrl: 'http://127.0.0.1:12345'};
+  assert.equal(storeEnv({...given, standIn: true}).JOB_PILOTTO_E2E_NOTION_STANDIN, '1');
+  assert.equal(storeEnv(given).JOB_PILOTTO_E2E_NOTION_STANDIN, undefined, 'a local fault proxy may still forward to real Notion');
+});
+
 test('never anyone\'s real data: only a temp profile, HOME there, and the engine does not follow an app set up on this computer', () => {
   assert.throws(() => storeEnv({profile: os.homedir()}), /not a temp profile/);
   const profile = profileWith({store: 'sqlite'});

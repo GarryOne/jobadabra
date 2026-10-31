@@ -2,6 +2,7 @@
 // recorded AI answers, offline (lib/page-replay.mjs). One step per case, so a failure names the case. No app window, no Notion, no AI, no network: a few minutes in CI.
 // Runs with every e2e suite (the release and beta gates, schedules, a gate by hand) and on a push that touches extension/ or e2e/recorded/ (lib/plan.mjs).
 // Guarded by test/recorded-pages.test.mjs (the same replay locally: npm run recorded).
+// Job: pick the suites
 import {loadCases, runCase} from '../lib/page-replay.mjs';
 import {parseShard, shardOf} from '../lib/replay-shard.mjs';
 

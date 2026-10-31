@@ -10,6 +10,9 @@ import {planRun, suiteFacts} from '../plan-run.mjs';
 import {suitePartsFor, suitesFor, suitesNamed} from '../lib/plan.mjs';
 import {watchesWithImports} from '../lib/import-graph.mjs';
 import {runMailReading} from '../lib/quality-mail.mjs';
+import {DUMMY_KEY} from '../lib/engine.mjs';
+import {createRunner} from '../lib/runner.mjs';
+import {takeCapped} from '../lib/ai-cap.mjs';
 
 const source = file => fs.readFileSync(new URL(file, import.meta.url), 'utf8');
 
@@ -159,22 +162,20 @@ test('mail watches choose only the mail part; unrelated and scheduled runs do no
   }
 });
 
-test('mail eval reports low and strict misses as counts without failing; unavailable eval stays grey', async () => {
-  let calls = 0, closed = 0;
+test('mail eval reports low and strict misses as counts; an unexplained eval crash stays red', async () => {
+  let calls = 0;
   const ctx = {engine: 'api', key: 'dummy', needs: [], run: async (_name, fn) => fn()};
   const evalWith = output => runMailReading(ctx, {
-    startProxy: async () => ({url: 'http://127.0.0.1:1', close: async () => { closed++; }}),
     execFile: (_python, args, options, done) => {
       calls++;
       assert.match(args[0], /tools[\\/]mail_eval.py$/);
-      assert.equal(options.env.ANTHROPIC_API_KEY, 'dummy');
+      assert.equal(options.env.ANTHROPIC_API_KEY, DUMMY_KEY);
       done({code: 1}, output, 'refused or out of credit');
     },
   });
   assert.deepEqual(await evalWith('MISS rejection [strict]\n3/16 right (19%, needs 85%)'), {right: 3, total: 16, strictFailed: 1});
   await assert.rejects(evalWith(''), /the eval did not run/);
   assert.equal(calls, 2);
-  assert.equal(closed, 2);
   assert.deepEqual(qualityRates({mail: {right: 3, total: 16, strictFailed: 1, text: 'private'}}).mail, {right: 3, total: 16, strictFailed: 1});
 });
 
@@ -197,4 +198,67 @@ test('a pretty-printed mail-only CI matrix uses the light context and writes onl
   await mailOnly.run({engine: 'openai', needs: [], ARTIFACTS: dir, run: async (_name, fn) => fn(), get page() { assert.fail('mail must never start the Jobs journey'); }});
   assert.equal(evals, 1);
   assert.deepEqual(JSON.parse(fs.readFileSync(path.join(dir, 'quality-rates.json'))), {...qualityRates(), mail: {right: 16, total: 16, strictFailed: 0}});
+});
+
+
+// The real modelFetch resolver must choose the Codex broker; any Anthropic request is a tripwire.
+test('mail SDK request uses the existing Codex judge provider, without handing Python provider keys', async t => {
+  const os = await import('node:os'), path = await import('node:path');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mail-provider-'));
+  const saved = {...process.env}, localFetch = globalThis.fetch;
+  Object.assign(process.env, {CI: '1', CI_AI_PROVIDER: 'codex', E2E_AI_PROVIDER: '', E2E_AI_PROVIDER_JUDGES: '',
+    E2E_AI_ANSWERS: 'off', E2E_AI_REPLAY: '0', E2E_ARTIFACTS: dir, E2E_AI_CACHE: dir,
+    ACTIONS_ID_TOKEN_REQUEST_URL: 'https://oidc.invalid?job=mail', ACTIONS_ID_TOKEN_REQUEST_TOKEN: 'fake-oidc', CODEX_BROKER_URL: 'https://broker.invalid'});
+  t.after(() => { for (const key of Object.keys(process.env)) if (!(key in saved)) delete process.env[key]; Object.assign(process.env, saved); fs.rmSync(dir, {recursive: true, force: true}); });
+  const urls = [];
+  t.mock.method(globalThis, 'fetch', async (url, init) => {
+    urls.push(String(url));
+    if (String(url).startsWith('https://oidc.invalid')) return new Response(JSON.stringify({value: 'fake-job-token'}));
+    assert.equal(String(url), 'https://broker.invalid/call', 'no direct provider request or fallback');
+    assert.equal(JSON.parse(init.body).tier, 'small');
+    return new Response(JSON.stringify({reply: '{"results":[]}', model: 'test-codex', tier: 'small', tokens: {input: 1, output: 1}}));
+  });
+  const measured = await runMailReading({engine: 'api', key: DUMMY_KEY, judgeKey: 'judge-only', needs: [], run: async (_name, fn) => fn()}, {
+    execFile: (_python, _args, options, done) => {
+      assert.equal(options.env.JOB_PILOTTO_AI_ENGINE, 'api');
+      assert.equal(options.env.ANTHROPIC_API_KEY, DUMMY_KEY);
+      assert.equal(options.env.OPENAI_API_KEY, undefined);
+      void localFetch(`${options.env.ANTHROPIC_BASE_URL}/v1/messages`, {method: 'POST', body: JSON.stringify({model: 'claude-haiku-5-5', messages: [{role: 'user', content: 'invented mail'}]})})
+        .then(async response => { assert.equal(response.status, 200); assert.equal((await response.json()).content[0].text, '{"results":[]}'); done(null, '16/16 right (100%, needs 85%)', ''); })
+        .catch(error => done(error, '', error.message));
+    },
+  });
+  assert.deepEqual(measured, {right: 16, total: 16, strictFailed: 0});
+  assert.equal(urls.length, 2);
+});
+
+// Provider 401, rate-limit and spent-credit responses are skips with alert evidence, never failed suite steps.
+test('mail eval did not run after 401/429/credit refusal is grey with an alert and no red/error', async t => {
+  const os = await import('node:os'), path = await import('node:path');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mail-refusal-'));
+  const saved = {...process.env}, localFetch = globalThis.fetch;
+  Object.assign(process.env, {E2E_ARTIFACTS: dir, E2E_SUITE: 'qualityai', E2E_STEPS: '', E2E_STEP_NAMES: ''});
+  t.after(() => { takeCapped(); for (const key of Object.keys(process.env)) if (!(key in saved)) delete process.env[key]; Object.assign(process.env, saved); fs.rmSync(dir, {recursive: true, force: true}); });
+  const lines = [];
+  t.mock.method(console, 'log', line => lines.push(String(line)));
+  t.mock.method(globalThis, 'fetch', async () => assert.fail('only the stubbed judge route may answer'));
+  for (const [status, message] of [[401, 'invalid x-api-key'], [429, 'rate limit'], [400, 'Your credit balance is too low']]) {
+    const runner = createRunner(() => null);
+    const measured = await runMailReading({engine: 'api', key: 'app-key', judgeKey: 'judge-key', needs: [], run: runner.run}, {
+      fetchImpl: async () => new Response(JSON.stringify({error: {message}}), {status}),
+      execFile: (_python, _args, options, done) => {
+        void localFetch(`${options.env.ANTHROPIC_BASE_URL}/v1/messages`, {method: 'POST', body: JSON.stringify({model: 'test', messages: []})})
+          .then(async response => { assert.equal(response.status, status); done({code: 1}, '', `the eval did not run: ${status} ${await response.text()}`); })
+          .catch(error => done(error, '', error.message));
+      },
+    });
+    assert.equal(measured, null);
+    assert.equal(runner.summary(), 0);
+    assert.equal(runner.results[0].status, 'skipped');
+    const alert = JSON.parse(fs.readFileSync(path.join(dir, 'ai-capped.json')));
+    assert.match(alert.why, new RegExp(String(status)));
+    assert.ok(alert.steps.some(name => name.startsWith('mail reading:')));
+  }
+  assert.ok(lines.some(line => line.startsWith('::warning title=AI refused::')));
+  assert.ok(!lines.some(line => /##\[error\]|::error|^✗/.test(line)));
 });

@@ -1,7 +1,7 @@
 // The day's $1 cap on CI's Workers AI (lib/ai-cap.mjs): over it a live Free AI ask is refused and named grey; under it, unreadable or not Free AI, nothing changes.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {CAP_NEURONS, capMessage, capReached, noteCapped, resetCap, takeCapped} from '../lib/ai-cap.mjs';
+import {CAP_NEURONS, capMessage, capReached, noteCapped, noteAiRefused, resetCap, takeCapped} from '../lib/ai-cap.mjs';
 import {createRunner} from '../lib/runner.mjs';
 import {askFree} from '../lib/review-free.mjs';
 import {startAiProxy} from '../lib/ai-proxy.mjs';
@@ -86,4 +86,17 @@ test('a step the cap refused is skipped with its cause, counted, and the suite g
     }
     await runner.run('plain failure', async () => { throw new Error('boom'); }).then(() => assert.fail('a failure with no cap behind it is still red'), error => assert.equal(error.message, 'boom'));
   } finally { console.log = quiet; delete process.env.E2E_FULL; delete process.env.E2E_RUN_KIND; }
+});
+
+
+test('a provider refusal keeps its cause without claiming broker credit or switching providers', () => {
+  const lines = [], log = console.log;
+  console.log = line => lines.push(line);
+  try { noteAiRefused('mail reading: 401 invalid x-api-key', {E2E_SUITE: 'qualityai'}); }
+  finally { console.log = log; }
+  const refusal = takeCapped();
+  assert.deepEqual(refusal, {neurons: null, why: 'mail reading: 401 invalid x-api-key', provider: 'AI provider'});
+  assert.match(capMessage(refusal.neurons, {}, refusal.why, refusal.provider), /the AI provider said no.*401/);
+  assert.doesNotMatch(capMessage(refusal.neurons, {}, refusal.why, refusal.provider), /Codex broker|neuron count/);
+  assert.equal(takeCapped(), null);
 });

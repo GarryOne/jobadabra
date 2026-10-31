@@ -64,24 +64,17 @@ test('every engine spawn in suites/ and lib/ is isolated', () => {
   }
 });
 
-// qualityai mail reading calls the real model, so it is not run to prove this (AI spend needs the owner's OK): its env is checked here instead, per engine.
-test('qualityai mail reading\'s eval env: only its own key, no shell token, temp data; the real HOME only for a CLI', () => {
-  const saved = {...process.env};
-  try {
-    Object.assign(process.env, {NOTION_TOKEN: 'secret_x', E2E_NOTION_TOKEN: 'secret_y', TELEGRAM_BOT_TOKEN: 't', E2E_OPENAI_KEY: 'sk-openai-test'});
-    const tmp = folder => folder.startsWith(os.tmpdir()) || folder.startsWith(fs.realpathSync(os.tmpdir()));
-    const leaks = env => Object.keys(env).filter(name => /NOTION|TELEGRAM/.test(name));
-    const cli = evalEnv({engine: 'cli', key: 'sk-dummy'});
-    assert.deepEqual(leaks(cli), []);
-    assert.equal(cli.ANTHROPIC_API_KEY, 'sk-dummy', 'the eval\'s own key, named by the suite, and nothing else');
-    assert.equal(cli.HOME, os.homedir(), 'the CLI finds its sign-in');
-    assert.ok(tmp(cli.JOB_PILOTTO_DATA_DIR) && tmp(cli.JOB_PILOTTO_CONFIG_DIR), 'its data and config are temp');
-    const api = evalEnv({engine: 'api', key: 'sk-dummy'}, 'http://127.0.0.1:9999');
-    assert.deepEqual([api.ANTHROPIC_API_KEY, api.ANTHROPIC_BASE_URL, api.OPENAI_API_KEY], ['sk-dummy', 'http://127.0.0.1:9999', undefined]);
-    assert.ok(tmp(api.HOME), 'the API engine runs with a temp HOME');
-    assert.deepEqual(leaks(api), []);
-    assert.equal(cli.JOB_PILOTTO_FOLLOW_APP, '0');
-  } finally { for (const name of Object.keys(process.env)) if (!(name in saved)) delete process.env[name]; Object.assign(process.env, saved); }
+// Python holds only a localhost transport placeholder; the Node judge transport owns provider credentials and CLI sign-in.
+test('mail eval env has a temp HOME and no provider keys or account tokens', () => {
+  const env = evalEnv('http://127.0.0.1:9999');
+  assert.equal(env.JOB_PILOTTO_AI_ENGINE, 'api');
+  assert.equal(env.ANTHROPIC_BASE_URL, 'http://127.0.0.1:9999');
+  assert.match(env.ANTHROPIC_API_KEY, /not-a-real-key/);
+  assert.equal(env.OPENAI_API_KEY, undefined);
+  assert.notEqual(env.HOME, os.homedir());
+  assert.ok(env.HOME.startsWith(os.tmpdir()) || env.HOME.startsWith(fs.realpathSync(os.tmpdir())));
+  assert.deepEqual(Object.keys(env).filter(name => /NOTION|TELEGRAM|OIDC|TOKEN/.test(name)), []);
+  assert.equal(env.JOB_PILOTTO_FOLLOW_APP, '0');
 });
 
 test('a coverage run hands the Python step map\'s recorder to the engine it runs; otherwise no PYTHONPATH gets through', () => {

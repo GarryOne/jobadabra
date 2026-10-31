@@ -25,7 +25,12 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          sparse-checkout: tools/beta_grey_rerun.py
+          # Why (31 Oct 2026, Gitar on #2665): the script imports the gate's job reader and main's grey check; each module it reaches is checked out.
+          sparse-checkout: |
+            tools/beta_grey_rerun.py
+            tools/beta_rate_gate.py
+            tools/main_e2e_state.py
+            tools/pr_ai_number.py
       - name: Re-run a grey beta once, or name the second grey hold
         env:
           GH_TOKEN: ${{ github.token }}

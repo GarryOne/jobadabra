@@ -5,7 +5,7 @@ import {createBackgroundApplyStore} from '../lib/background-apply-store.js';
 
 const config = {mode: 'auto', chosenAt: '2026-10-27T10:00:00Z', answers: 'facts', auto: {waitMin: 10}};
 const ready = {answer: 'ready', step: 'final', submitControl: 'Send my application', requiredComplete: true, factsOnly: true, safe: true, botCheck: false, signature: 'page-1'};
-function rig() {
+function rig({now, realNow} = {}) {
   let time = Date.parse('2026-10-27T12:00:00Z'), id = 0, failed = false;
   const apps = new Map(), sections = new Map(), events = [];
   const call = async (_storage, entity, method, args) => {
@@ -21,7 +21,7 @@ function rig() {
     if (entity === 'events' && method === 'add') { const old = events.find(e => e.source_id === args.source_id); if (old) return old; const row = {...args, id: `e${++id}`}; events.push(row); return row; }
     throw new Error(`unexpected ${entity}.${method}`);
   };
-  const make = () => createBackgroundApplyStore({}, {call, now: () => time, uuid: () => `attempt-${++id}`});
+  const make = () => createBackgroundApplyStore({}, {call, now: now || (() => time), realNow: realNow || (() => time), uuid: () => `attempt-${++id}`});
   const add = (suffix = '1', company = 'Fictional Cloud') => {
     const job = {id: `job-${suffix}`, url: `https://jobs.example.test/${suffix}`, fit: 90, company, stage: 'Kit ready'};
     apps.set(job.url, job);
@@ -217,4 +217,42 @@ test('a job a quit caught before its press (waiting, ready for review, filling) 
     assert.equal(await restarted.interrupted(url, session, {quit: true}), null, `${was}: once handed over, nothing is handed over again`);
   }
   assert.equal((await restarted.reserve(waiting.job.url, waiting.session, 'owned-browser', ready, config)).submit, false, 'the wait the quit cut off never presses');
+});
+
+
+test('the Full automation clock refuses an offset outside JOB_PILOTTO_E2E', async () => {
+  const {createBackgroundWaitClock} = await import('../lib/background-apply-clock.js');
+  for (const env of [{}, {JOB_PILOTTO_E2E: '0'}, {JOB_PILOTTO_E2E: 'true'}]) {
+    const clock = createBackgroundWaitClock({env, wallNow: () => 1000});
+    assert.throws(() => clock.moveTo(601000), /e2e only/);
+    assert.equal(clock.now(), 1000, 'a refused offset never changes the production clock');
+  }
+});
+
+test('the e2e wait clock advances once, follows wall time and never moves backward', async () => {
+  const {createBackgroundWaitClock} = await import('../lib/background-apply-clock.js');
+  let wall = 1000;
+  const env = {JOB_PILOTTO_E2E: '1'}, clock = createBackgroundWaitClock({env, wallNow: () => wall});
+  assert.equal(clock.moveTo(61000), 61000);
+  wall += 10;
+  assert.equal(clock.now(), 61010);
+  for (const at of [NaN, Infinity, -1]) assert.throws(() => clock.moveTo(at), /forward/);
+  for (const at of [0, 61000]) assert.equal(clock.moveTo(at), 61010);
+  env.JOB_PILOTTO_E2E = '0';
+  assert.equal(clock.now(), wall, 'an offset is ignored without the e2e gate');
+});
+
+
+test('a human receipt on a later job uses real time after the wait clock moved', async () => {
+  let wall = 1000000, offset = 20 * 60000;
+  const r = rig({now: () => wall + offset, realNow: () => wall});
+  const {store, job, session} = await prepared(r, r.add(), 'fill', {...config, mode: 'fill'});
+  wall += 100;
+  assert.equal((await store.humanReceipt(job.url, session, 'owned-browser', wall)).state, 'receipt_confirmed');
+  assert.equal((await store.read(job.url)).receiptAt, wall, 'a human receipt carries real time');
+  const later = await prepared(r, r.add('later'), 'fill', {...config, mode: 'fill'});
+  assert.equal((await later.store.humanReceipt(later.job.url, later.session, 'owned-browser', wall - 1)).ok, false, 'a press before this queue is still refused');
+  offset += 60000;
+  wall += 16 * 60000;
+  assert.equal((await later.store.humanReceipt(later.job.url, later.session, 'owned-browser', wall - 16 * 60000)).ok, false, 'an old real press is still refused');
 });

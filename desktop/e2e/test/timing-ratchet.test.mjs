@@ -3,11 +3,13 @@
 import assert from 'node:assert/strict';
 import {readFileSync, readdirSync} from 'node:fs';
 import {test} from 'node:test';
+import {fileURLToPath} from 'node:url';
 import {timingCounts, timingViolations} from '../lib/timing-ratchet.mjs';
+import {suitesUsing} from '../lib/import-graph.mjs';
 import {isBackbone} from '../lib/suite-shards.mjs';
 
 const wait = 'await page.waitForTimeout(100);';
-const baseline = {sample: {fixedWaits: 1, elapsedAssertions: 0}};
+const baseline = {sample: {fixedWaits: 1, elapsedAssertions: 0, clockWaits: 0}};
 
 test('a fixture at its fixed-wait baseline passes', () => {
   assert.deepEqual(timingViolations({sample: wait}, baseline), []);
@@ -33,7 +35,7 @@ test('counts each fixed-wait syntax, arbitrary Promise resolver names, and white
     await new Promise(r => setTimeout(r, 30));
     const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
     new Promise(done => { setTimeout(done, 40); });
-  `), {fixedWaits: 5, elapsedAssertions: 0});
+  `), {fixedWaits: 5, elapsedAssertions: 0, clockWaits: 0});
 });
 
 test('comments and prose do not become timing debt; state waits remain allowed', () => {
@@ -45,13 +47,13 @@ test('comments and prose do not become timing debt; state waits remain allowed',
     await page.waitForFunction(() => window.rowExists);
     await pollUntil(() => rowExists(), {timeout: 30000});
     await new Promise(done => server.listen(0, done));
-  `), {fixedWaits: 0, elapsedAssertions: 0});
+  `), {fixedWaits: 0, elapsedAssertions: 0, clockWaits: 0});
 });
 
 test('elapsed-time assertions ratchet in both directions, independent of fixed waits', () => {
   const source = 'expect(elapsed).toBeLessThan(100); if (took > 200) throw new Error();';
-  assert.deepEqual(timingCounts(source), {fixedWaits: 0, elapsedAssertions: 2});
-  const debt = {sample: {fixedWaits: 0, elapsedAssertions: 2}};
+  assert.deepEqual(timingCounts(source), {fixedWaits: 0, elapsedAssertions: 2, clockWaits: 0});
+  const debt = {sample: {fixedWaits: 0, elapsedAssertions: 2, clockWaits: 0}};
   assert.deepEqual(timingViolations({sample: source}, debt), []);
   assert.match(timingViolations({sample: source + 'if (seconds > 20) problems.push();'}, debt).join('\n'), /elapsedAssertions 3 > baseline 2/);
   assert.match(timingViolations({sample: ''}, debt).join('\n'), /elapsedAssertions 0 < baseline 2.*lower the baseline/);
@@ -62,7 +64,7 @@ test('braced failures and node assertions also guard elapsed time', () => {
     if (elapsedMs > 100) { throw new Error(); }
     assert.ok(took < 200);
     assert(durationMs <= 300);
-  `), {fixedWaits: 0, elapsedAssertions: 3});
+  `), {fixedWaits: 0, elapsedAssertions: 3, clockWaits: 0});
 });
 
 test('only a declared clock lane exempts elapsed assertions, never fixed waits', () => {
@@ -82,7 +84,13 @@ test('every real suite matches the declared ratchet', () => {
     .map(file => [file.slice(0, -4), readFileSync(new URL(`../suites/${file}`, import.meta.url), 'utf8')]));
   const debt = JSON.parse(readFileSync(new URL('../timing-baseline.json', import.meta.url), 'utf8'));
   const lanes = JSON.parse(readFileSync(new URL('../lanes.json', import.meta.url), 'utf8')).suites;
-  assert.deepEqual(timingViolations(suites, debt, lanes), []);
+  const reached = suitesUsing(fileURLToPath(new URL('../', import.meta.url))), dependencies = {};
+  for (const [file, users] of Object.entries(reached)) {
+    if (!file.startsWith('lib/') || file === 'lib/wait-on-state.mjs') continue;
+    const source = readFileSync(new URL(`../${file}`, import.meta.url), 'utf8');
+    for (const suite of users) (dependencies[suite] ||= []).push(source);
+  }
+  assert.deepEqual(timingViolations(suites, debt, lanes, dependencies), []);
 });
 
 test('every backbone suite declares zero elapsed assertions', () => {
@@ -117,5 +125,55 @@ test('settings registers measured runner caps and no aggregate budget', async ()
   }
   for (const name of ['the app is seeded as a set-up install from the existing workspace', 'the Notion stand-in answered every request the app made']) {
     assert.equal(settings.hangCaps[name], sharedCaps[name], 'sparse shared steps reuse the measured shared cap');
+  }
+});
+
+
+test('clock predicates, own deadline loops and real product waits are clock debt', () => {
+  for (const source of [
+    'await waitOn(ctx, s, async () => Date.now() > dueAt + X, over => over);',
+    'await waitOn(ctx, s, async () => ({now: Date.now(), end: dueAt + X}), s => s.now >= s.end);',
+    'await pollUntil(() => performance.now() >= dueAt, done => done);',
+    'while (Date.now() < deadline) { await read(); }',
+    'for (const end = Date.now() + ms; state.running && Date.now() < end;) await read();',
+    "await startAuto(ctx, {form, seed, waitMin: 1}); await until('pressed', isApplied);",
+    "const unrelated = () => advancePastDue(); await startAuto(ctx, {waitMin: 1});",
+  ]) {
+    assert.equal(timingCounts(source).clockWaits, 1, source);
+    assert.match(timingViolations({sample: source}, {}).join('\n'), /clockWaits 1 > baseline 0/);
+  }
+});
+
+test('the three repaired apply helpers carry no clock waits', () => {
+  for (const file of ['apply-restart-steps', 'apply-stop-steps', 'background-auto-proof']) {
+    assert.equal(timingCounts(readFileSync(new URL(`../lib/${file}.mjs`, import.meta.url), 'utf8')).clockWaits, 0, file);
+  }
+});
+
+test('a clock wait added in an imported helper fails even when the suite only waits on state', () => {
+  assert.match(timingViolations({sample: 'await waitOn(ctx, s, read, ready);'}, {}, {}, {
+    sample: ['await waitOn(ctx, s, async () => Date.now() > dueAt + X, over => over);'],
+  }).join('\n'), /sample: clockWaits 1 > baseline 0/);
+});
+
+
+test('the existing replay and silent-step deadline shapes are counted without rewriting them', () => {
+  for (const [file, count] of [['page-replay', 4], ['replay-truth', 2], ['replay-coverage', 1], ['apply-silent-steps', 1]]) {
+    assert.equal(timingCounts(readFileSync(new URL(`../lib/${file}.mjs`, import.meta.url), 'utf8')).clockWaits, count, file);
+  }
+});
+
+
+test('clock waits include implicit timers, values, date objects and local aliases', () => {
+  for (const source of [
+    "await startJob(ctx, {mode: 'auto'}); await waitOn(ctx, s, read, s => s.state === 'submitting');",
+    'await startJob(ctx, {mode: "auto", waitMin: w});',
+    'await waitOn(ctx, s, () => new Date() > due, done => done);',
+    'const clock = Date.now;',
+    'const clock = Date.now; await waitOn(ctx, s, () => clock() > due, done => done);',
+    'const expired = () => Date.now() > d; while (!expired()) { await read(); }',
+  ]) {
+    assert.equal(timingCounts(source).clockWaits, 1, source);
+    assert.match(timingViolations({sample: source}, {}).join('\n'), /clockWaits 1 > baseline 0/);
   }
 });

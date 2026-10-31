@@ -8,9 +8,16 @@ import {submissionPage} from './background-submit.js';
 import {formNext, forgetJudged} from './form-ready.js';
 import {allFactsSavedOf} from './triage-facts.js';
 
-let runner = null, watcher = () => {}, polling = false;
+let runner = null, watcher = () => {}, polling = null;
 const owned = () => (runner ||= createBackgroundSession({chrome, parseMark}));
-globalThis.__jobPilottoBackgroundSessions = {reveal: session => owned().reveal(session), closeSession: session => owned().closeSession(session)};
+globalThis.__jobPilottoBackgroundSessions = {reveal: session => owned().reveal(session), closeSession: session => owned().closeSession(session),
+  // The owned browser can request the alarm's ordinary poll after its app's e2e clock moved; the poll still checks ownership and every submit guard.
+  poll: async () => {
+    const config = await settings();
+    if (polling) await polling;   // the alarm may already be running; its reply cannot acknowledge a new poll after the clock move
+    if (await pollBackgroundApply(config) !== true) throw new Error('The owned extension poll was refused');
+    return true;
+  }};
 const request = async (context, payload) => api(await settings(), '/extension/background-apply', {method: 'POST', body: JSON.stringify({owner: context.owner, session: context.session, ...payload})});
 const script = (tabId, frameId, func, args = []) => chrome.scripting.executeScript({target: {tabId, frameIds: [frameId ?? 0]}, world: 'MAIN', func, args}).then(rows => rows?.[0]?.result);
 
@@ -74,13 +81,13 @@ async function startCommand(owner, command) {
   if (!launch.ok) await request({owner, session: command.session}, read ? {action: 'triage-read', unreadable: true} : {action: 'manual', reason: 'browser_session_unavailable'});
 }
 /** Poll only from the app-owned browser; the server claims one job at a time and all repeated polls reuse the same marked tab. */
-export async function pollBackgroundApply(config) {
-  if (polling) return;
-  const {backgroundOwner: owner} = await chrome.storage.local.get('backgroundOwner').catch(() => ({}));
-  if (!owner) return;
-  polling = true;
-  try {
+export function pollBackgroundApply(config) {
+  if (polling) return polling;
+  polling = (async () => {
+    const {backgroundOwner: owner} = await chrome.storage.local.get('backgroundOwner').catch(() => ({}));
+    if (!owner) return false;
     const result = await api(config, '/extension/background-apply', {method: 'POST', body: JSON.stringify({action: 'poll', owner})});
+    if (result?.ok !== true) return false;
     for (const command of result.jobs || []) await startCommand(owner, command);
     for (const end of result.closes || []) await owned().closeSession(end.session).catch(() => false);   // a read the app ended without a report (Cancel, a timeout, #2624)
     for (const handoff of result.handoffs || []) {
@@ -96,7 +103,9 @@ export async function pollBackgroundApply(config) {
       if (!tab) continue;
       forgetJudged(tab.id); await formNext(tab, row.frameId || 0);
     }
-  } finally { polling = false; }
+    return true;
+  })().finally(() => { polling = null; });
+  return polling;
 }
 /** Why the press must not go now, as the hand-off reason id, or '' when it may: the tab is gone, a stop was asked, the tab moved to another address, or a manual override was set. */
 async function pressRefusal(tab, session, generation) {

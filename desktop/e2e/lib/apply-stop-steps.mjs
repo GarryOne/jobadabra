@@ -1,9 +1,9 @@
-// The apply suite presses Stop on the live card in both hidden-browser modes, reads the app's hand-off verdict, and watches Full automation past its cancelled due time.
+// The apply suite presses Stop on the live card in both hidden-browser modes, reads the app's hand-off verdict, and moves the app clock past Full automation's cancelled due time.
 /* global document, window */
 // Why (30 Oct 2026, g2, owner): the older Full automation proof called liveStop directly, so it could pass with the card's Stop missing or unwired.
 // Job: wait on state
 import {HIDDEN_NEED, autoFormOf, backgroundOf, closeHiddenBrowser, kitSeeder, linkRuntime, openSessionCard, sessionOf, skipJob, withFormJudge} from './background-proof.mjs';
-import {WATCH_PAST_DUE_MS, hangOf, startJob, waitOn} from './apply-hold.mjs';
+import {advancePastDue, hangOf, startJob, waitOn} from './apply-hold.mjs';
 import {FORMS} from './forms.mjs';
 import {POSTING} from './apply-fixtures.mjs';
 import {liveCard} from '../../renderer/live-card.js';
@@ -33,14 +33,14 @@ function holdJudge(previous) {
 async function holdJob(ctx, {form, seed, mode, seen, judge = null}) {
   const {page} = ctx, unlinked = linkRuntime(ctx.profile);
   if (unlinked) throw new Error(unlinked);
-  await startJob(ctx, {form, seed, mode, canned: judge ? judge.answer : undefined});
+  await startJob(ctx, {form, seed, mode, waitMin: 1, canned: judge ? judge.answer : undefined});
   const held = mode === 'auto' ? 'waiting_to_submit' : 'the filling card with a held form-judge reply';
   seen.what = `the job never reached ${held}`;
   return waitOn(ctx, seen, async () => {
     const record = await backgroundOf(page, form.url);
     seen.state = {background: record, judgeHeld: judge?.waiting()};
     return record;
-  }, record => mode === 'auto' ? record?.state === held : !!record && liveCard(record).kind === 'filling' && judge.waiting());
+  }, record => mode === 'auto' ? record?.state === held && record.waitDecision?.reason === 'waiting' : !!record && liveCard(record).kind === 'filling' && judge.waiting());
 }
 
 /** Opens this session's live card, waits for its held state to be drawn, checks the countdown's own words, and clicks its real Stop. */
@@ -52,7 +52,7 @@ async function stopOnCard(ctx, form, held, seen) {
     [liveCard(held, null, {now: () => card.now}).title, liveCard(held, {left: []}, {now: () => card.now}).title].includes(card.title));
   if (held.state === 'waiting_to_submit') {
     const expected = liveCard(held, null, {now: () => shown.now});
-    if (shown.title !== expected.title || shown.note !== expected.note || held.dueAt <= shown.now) throw new Error(`the wait's card did not show the renderer's countdown and note before it was due: ${JSON.stringify(shown)}`);
+    if (shown.title !== expected.title || shown.note !== expected.note || held.dueAt <= shown.now + (held.waitClockOffset || 0)) throw new Error(`the wait's card did not show the renderer's countdown and note before it was due: ${JSON.stringify(shown)}`);
   }
   if (!shown.stop) throw new Error(`the held job has no enabled Stop on its live card: ${JSON.stringify(shown)}`);
   seen.what = 'Stop on the live card never handed the job to the person';
@@ -83,9 +83,7 @@ export async function runStopSteps(ctx, {urls}) {
       if (!Number.isFinite(held.dueAt) || !held.dueAt) throw new Error('the waiting job has no due time to watch past');
       await stopOnCard(ctx, form, held, waiting);
       if (ctx.forms.posts.length !== posted) throw new Error(`Stop on the Full automation card let ${ctx.forms.posts.length - posted} POST(s) through`);
-      waiting.what = 'the watch past the stopped wait never ended';
-      await waitOn(ctx, waiting, async () => (waiting.state = {now: Date.now(), watchUntil: held.dueAt + WATCH_PAST_DUE_MS, posts: ctx.forms.posts.length, background: await backgroundOf(ctx.page, form.url)}),
-        state => state.now >= state.watchUntil || state.posts !== posted);
+      await advancePastDue(ctx, form, waiting, {state: 'needs_user_handoff', reason: 'stopped'});
       if (ctx.forms.posts.length !== posted) throw new Error(`after Stop the app still posted ${ctx.forms.posts.length - posted} time(s)`);
       const last = await backgroundOf(ctx.page, form.url);
       if (last?.state !== 'needs_user_handoff' || last.reason !== 'stopped' || !last.manualOverride) throw new Error(`after the cancelled due time the Stop verdict changed: ${JSON.stringify(last)}`);

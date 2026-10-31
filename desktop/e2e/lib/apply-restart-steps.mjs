@@ -1,10 +1,10 @@
 // The apply suite's restart steps: the app quits while its hidden browser holds a job (Background automation's filled form, Full automation's wait), then starts again.
 // Why (30 Oct 2026, owner: "app quits mid-job" picked from the coverage sketch; then "A quit is a Stop"): only unit tests played a cut-off job. This step's first runs saw the job continued
 // after the start, and Full automation press 80 s after it on the wait the quit cut off; now every job an earlier run held goes to the person and nothing is pressed. Every wait is on a state.
-// Why (30 Oct 2026, a8, #2612): the waits carry no clock of their own; the step's hang cap (apply.mjs hangCaps) is the only one, and a hang reports what the app and its hidden browser held (hangError).
+// Why (31 Oct 2026, owner, a8): move the app's test clock past the cut-off wait and read its handoff decision; the step's hang cap is the only real clock.
 // Job: wait on state
 import {HIDDEN_NEED, autoFormOf, backgroundOf, backgroundStateOf, closeHiddenBrowser, kitSeeder, linkRuntime, skipJob} from './background-proof.mjs';
-import {WATCH_PAST_DUE_MS, hangOf, startJob, waitOn} from './apply-hold.mjs';
+import {advancePastDue, hangOf, startJob, waitOn} from './apply-hold.mjs';
 import {FORMS} from './forms.mjs';
 import {POSTING} from './apply-fixtures.mjs';
 
@@ -13,7 +13,7 @@ async function holdJob(ctx, {form, seed, mode, waitMin, held, seen}) {
   const {page, forms} = ctx;
   await startJob(ctx, {form, seed, mode, waitMin});
   seen.what = `the job never reached ${held}`;
-  await waitOn(ctx, seen, async () => (seen.state = (await backgroundStateOf(page, form.url)) || 'none'), state => state === held);
+  await waitOn(ctx, seen, async () => (seen.state = await backgroundOf(page, form.url)), record => record?.state === held && (held !== 'waiting_to_submit' || record.waitDecision?.reason === 'waiting'));
   return forms.posts.length;
 }
 
@@ -47,12 +47,9 @@ export async function runRestartSteps(ctx, {urls}) {
     try {
       const posted = await holdJob(ctx, {form: autoForm, seed, mode: 'auto', waitMin: 1, held: 'waiting_to_submit', seen: waiting});
       await ctx.relaunch();
-      const {dueAt} = await handedOver(ctx, autoForm.url, waiting);
-      // Why (30 Oct 2026, #2598 run 41088170876): the press came 80 s after the start, once the cut-off wait ran out; a press waits for the extension's next alarm, so the step watches the posts
-      // until WATCH_PAST_DUE_MS past the app's own due time. A negative watch on the product's promise: it ends at that time, or at the first press.
-      if (!dueAt) throw new Error('the handed-over job has no due time: the step cannot watch past the press it would have made');
-      waiting.what = 'the watch past the wait did not end';
-      await waitOn(ctx, waiting, async () => Date.now() > dueAt + WATCH_PAST_DUE_MS || ctx.forms.posts.length !== posted, over => over);
+      await handedOver(ctx, autoForm.url, waiting);
+      // Why (31 Oct 2026, owner, a8): the old alarm-margin watch took two minutes and hit the step cap despite the correct app_closed handoff; a moved clock plus the poll's verdict proves the same refusal.
+      await advancePastDue(ctx, autoForm, waiting, {state: 'needs_user_handoff', reason: 'app_closed'});
       if (ctx.forms.posts.length !== posted) throw new Error(`after the start the app pressed Submit ${ctx.forms.posts.length - posted} time(s) on a wait the quit cut off`);
       if ((await backgroundStateOf(ctx.page, autoForm.url)) !== 'needs_user_handoff') throw new Error('after the wait ran out the job was no longer handed to you');
     } finally { await skipJob(ctx.page, autoForm); await closeHiddenBrowser(ctx.profile); }

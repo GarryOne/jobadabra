@@ -1,126 +1,162 @@
 {
   "activity": {
     "fixedWaits": 2,
-    "elapsedAssertions": 0
+    "elapsedAssertions": 0,
+    "clockWaits": 8
   },
   "activityfailures": {
     "fixedWaits": 1,
-    "elapsedAssertions": 0
+    "elapsedAssertions": 0,
+    "clockWaits": 9
   },
   "apply": {
     "fixedWaits": 0,
-    "elapsedAssertions": 0
+    "elapsedAssertions": 0,
+    "clockWaits": 8
   },
   "applyflows": {
     "fixedWaits": 0,
-    "elapsedAssertions": 0
+    "elapsedAssertions": 0,
+    "clockWaits": 8
   },
   "calendar": {
     "fixedWaits": 0,
-    "elapsedAssertions": 0
+    "elapsedAssertions": 0,
+    "clockWaits": 2
   },
   "cardstates": {
     "fixedWaits": 1,
-    "elapsedAssertions": 0
+    "elapsedAssertions": 0,
+    "clockWaits": 1
   },
   "employers": {
     "fixedWaits": 2,
-    "elapsedAssertions": 0
+    "elapsedAssertions": 0,
+    "clockWaits": 3
   },
   "explore": {
     "fixedWaits": 4,
-    "elapsedAssertions": 0
+    "elapsedAssertions": 0,
+    "clockWaits": 4
   },
   "failureschannels": {
     "fixedWaits": 0,
-    "elapsedAssertions": 0
+    "elapsedAssertions": 0,
+    "clockWaits": 9
   },
   "failuresnotion": {
     "fixedWaits": 0,
-    "elapsedAssertions": 0
+    "elapsedAssertions": 0,
+    "clockWaits": 9
   },
   "focus": {
     "fixedWaits": 4,
-    "elapsedAssertions": 0
+    "elapsedAssertions": 0,
+    "clockWaits": 2
   },
   "focusdismiss": {
     "fixedWaits": 0,
-    "elapsedAssertions": 0
+    "elapsedAssertions": 0,
+    "clockWaits": 2
   },
   "foryou": {
     "fixedWaits": 3,
-    "elapsedAssertions": 0
+    "elapsedAssertions": 0,
+    "clockWaits": 1
   },
   "interactions": {
     "fixedWaits": 1,
-    "elapsedAssertions": 0
+    "elapsedAssertions": 0,
+    "clockWaits": 4
   },
   "interviews": {
     "fixedWaits": 1,
-    "elapsedAssertions": 0
+    "elapsedAssertions": 0,
+    "clockWaits": 2
   },
   "jobs": {
     "fixedWaits": 0,
-    "elapsedAssertions": 0
+    "elapsedAssertions": 0,
+    "clockWaits": 8
+  },
+  "mailreading": {
+    "fixedWaits": 0,
+    "elapsedAssertions": 0,
+    "clockWaits": 0
   },
   "notion-real": {
     "fixedWaits": 2,
-    "elapsedAssertions": 0
+    "elapsedAssertions": 0,
+    "clockWaits": 11
   },
   "personas": {
     "fixedWaits": 2,
-    "elapsedAssertions": 0
+    "elapsedAssertions": 0,
+    "clockWaits": 3
   },
   "pool": {
     "fixedWaits": 0,
-    "elapsedAssertions": 0
+    "elapsedAssertions": 0,
+    "clockWaits": 0
   },
   "quality": {
     "fixedWaits": 0,
-    "elapsedAssertions": 0
+    "elapsedAssertions": 0,
+    "clockWaits": 8
   },
   "qualityai": {
     "fixedWaits": 0,
-    "elapsedAssertions": 0
+    "elapsedAssertions": 0,
+    "clockWaits": 8
   },
   "recorded": {
     "fixedWaits": 0,
-    "elapsedAssertions": 0
+    "elapsedAssertions": 0,
+    "clockWaits": 9
   },
   "settings": {
     "fixedWaits": 0,
-    "elapsedAssertions": 0
+    "elapsedAssertions": 0,
+    "clockWaits": 2
   },
   "storemove": {
     "fixedWaits": 0,
-    "elapsedAssertions": 0
+    "elapsedAssertions": 0,
+    "clockWaits": 10
   },
   "stores": {
     "fixedWaits": 0,
-    "elapsedAssertions": 0
+    "elapsedAssertions": 0,
+    "clockWaits": 0
   },
   "strategy": {
     "fixedWaits": 3,
-    "elapsedAssertions": 0
+    "elapsedAssertions": 0,
+    "clockWaits": 3
   },
   "updates": {
     "fixedWaits": 0,
-    "elapsedAssertions": 0
+    "elapsedAssertions": 0,
+    "clockWaits": 0
   },
   "visitread": {
     "fixedWaits": 0,
-    "elapsedAssertions": 0
+    "elapsedAssertions": 0,
+    "clockWaits": 0
   },
   "visitsauto": {
     "fixedWaits": 1,
-    "elapsedAssertions": 0
+    "elapsedAssertions": 0,
+    "clockWaits": 1
   },
   "wander": {
     "fixedWaits": 2,
-    "elapsedAssertions": 0
+    "elapsedAssertions": 0,
+    "clockWaits": 4
   },
   "wizard": {
     "fixedWaits": 0,
-    "elapsedAssertions": 0
+    "elapsedAssertions": 0,
+    "clockWaits": 2
   }
 }

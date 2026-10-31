@@ -118,3 +118,107 @@ test('the triage account stand-in retains bot-check and clean-form answers', asy
   const clean = JSON.parse(await judge(ask('email · Email · required · empty')));
   assert.deepEqual([clean.login_wall, clean.account_to_create, clean.bot_check], [false, false, false]);
 });
+
+test('the app clock bridge moves the already loaded ESM clock through the Node inspector', async () => {
+  const {Session} = await import('node:inspector');
+  const {moveAppWaitClock} = await import('../lib/apply-hold.mjs');
+  const module = new URL('../../lib/background-apply-clock.js', import.meta.url).href;
+  const clock = await import(module), session = new Session(), previous = process.env.JOB_PILOTTO_E2E;
+  process.env.JOB_PILOTTO_E2E = '1';
+  session.connect();
+  try {
+    const dueAt = clock.backgroundWaitNow() + 60000;
+    const reply = await new Promise((resolve, reject) => session.post('Runtime.evaluate', {
+      expression: `(${moveAppWaitClock.toString()})(null, ${JSON.stringify({module, dueAt})})`, awaitPromise: true, returnByValue: true,
+    }, (error, result) => error ? reject(error) : resolve(result)));
+    assert.equal(reply.exceptionDetails, undefined);
+    assert.ok(reply.result.value > dueAt);
+    assert.ok(clock.backgroundWaitNow() >= reply.result.value, 'the inspector moved the app clock, not another module instance');
+  } finally {
+    session.disconnect();
+    if (previous === undefined) delete process.env.JOB_PILOTTO_E2E; else process.env.JOB_PILOTTO_E2E = previous;
+  }
+});
+
+test('the hidden worker command awaits its poll promise before reading the reply', async () => {
+  let packet;
+  class Socket {
+    constructor() { queueMicrotask(() => this.onopen()); }
+    send(text) { packet = JSON.parse(text); queueMicrotask(() => this.onmessage({data: JSON.stringify({id: 1, result: {result: {value: true}}})})); }
+    close() {}
+  }
+  const begin = source.indexOf('export const evaluateOn ='), end = source.indexOf('/** The debugging port', begin);
+  const evaluateOn = vm.runInNewContext(source.slice(begin, end).replace('export const', 'const') + '; evaluateOn;', {WebSocket: Socket, setTimeout, clearTimeout});
+  assert.equal(await evaluateOn('ws://fixture', 'globalThis.__jobPilottoBackgroundSessions?.poll()'), true);
+  assert.equal(packet.params.awaitPromise, true);
+});
+
+test('a due-time proof requires a live worker and an acknowledged extension poll', async () => {
+  const {pollOwnedBackground} = await import('../lib/apply-hold.mjs');
+  await assert.rejects(() => pollOwnedBackground('/fixture', {targets: async () => []}), /no.*service worker/);
+  for (const result of [null, false, undefined]) {
+    await assert.rejects(() => pollOwnedBackground('/fixture', {targets: async () => [{type: 'service_worker', webSocketDebuggerUrl: 'ws://fixture'}], evaluate: async () => result}), /poll.*acknowledge/);
+  }
+  assert.equal(await pollOwnedBackground('/fixture', {targets: async () => [{type: 'service_worker', webSocketDebuggerUrl: 'ws://fixture'}], evaluate: async () => true}), true);
+});
+
+test('advancePastDue rejects an app-only verdict and accepts a fresh extension verdict', async () => {
+  const {advancePastDue} = await import('../lib/apply-hold.mjs');
+  const at = 1000, record = {dueAt: 900, waitDecision: {at, state: 'needs_user_handoff', reason: 'stopped'}};
+  const advance = vm.runInNewContext(advancePastDue.toString().replace('import.meta.url', JSON.stringify(new URL('../lib/apply-hold.mjs', import.meta.url).href)) + '; advancePastDue;', {
+    URL, backgroundOf: async () => record, moveAppWaitClock: () => {}, pollOwnedBackground: async () => true,
+    waitOn: async (_ctx, _seen, read, accepts) => {
+      assert.equal(accepts(await read()), false, 'the app-only decision does not prove extension polling');
+      record.waitDecision.via = 'extension';
+      assert.equal(accepts(await read()), true);
+      return record;
+    },
+  });
+  await advance({page: {}, app: {evaluate: async () => at}, profile: '/fixture'}, {url: 'https://fixture'}, {}, {state: 'needs_user_handoff', reason: 'stopped'});
+});
+
+test('startJob requires an explicit wait for auto before seeding or saving anything', async () => {
+  const {startJob} = await import('../lib/apply-hold.mjs');
+  const ctx = {proxy: {canned: () => null}, page: {}};
+  await assert.rejects(() => startJob(ctx, {mode: 'auto', seed: () => { throw new Error('seed must not run'); }}), /waitMin/);
+});
+
+
+test('the due-time CDP reader ignores events and other replies before its acknowledgement', async () => {
+  const {evaluateOn} = await import('../lib/background-proof.mjs');
+  const previous = globalThis.WebSocket;
+  let socket;
+  class Socket {
+    constructor() { socket = this; queueMicrotask(() => this.onopen()); }
+    send() {
+      this.onmessage({data: JSON.stringify({method: 'Runtime.consoleAPICalled', params: {}})});
+      this.onmessage({data: JSON.stringify({id: 2, result: {result: {value: false}}})});
+      queueMicrotask(() => this.onmessage({data: JSON.stringify({id: 1, result: {result: {value: true}}})}));
+    }
+    close() { this.closed = true; }
+  }
+  globalThis.WebSocket = Socket;
+  try {
+    assert.equal(await evaluateOn('ws://fixture', 'poll()', {strict: true}), true);
+    assert.equal(socket.closed, true);
+  } finally { globalThis.WebSocket = previous; }
+});
+
+test('the due-time CDP reader reports worker exceptions and protocol errors', async () => {
+  const {evaluateOn} = await import('../lib/background-proof.mjs');
+  const previous = globalThis.WebSocket;
+  try {
+    for (const reply of [
+      {result: {exceptionDetails: {exception: {description: 'Error: fixture poll refused'}}}},
+      {error: {message: 'fixture target closed'}},
+    ]) {
+      globalThis.WebSocket = class {
+        constructor() { queueMicrotask(() => this.onopen()); }
+        send() { queueMicrotask(() => this.onmessage({data: JSON.stringify({id: 1, ...reply})})); }
+        close() {}
+      };
+      await assert.rejects(evaluateOn('ws://fixture', 'poll()', {strict: true}), /fixture/);
+      assert.equal(await evaluateOn('ws://fixture', 'poll()'), null, 'ordinary diagnostics retain their nonthrowing contract');
+    }
+  } finally { globalThis.WebSocket = previous; }
+});

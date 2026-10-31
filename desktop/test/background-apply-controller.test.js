@@ -221,3 +221,143 @@ test('an open session whose job record is gone does not stop the poll: the queue
   const polled = await controller.handle({action: 'poll', owner: 'o1'});
   assert.deepEqual(polled.jobs.map(job => job.session), ['new'], 'the removed job is skipped, the queued one starts');
 });
+
+test('one moved clock drives the store reservation and poll; Stop and quit still refuse after due', async t => {
+  const previous = process.env.JOB_PILOTTO_E2E; process.env.JOB_PILOTTO_E2E = '1';
+  t.after(() => { if (previous === undefined) delete process.env.JOB_PILOTTO_E2E; else process.env.JOB_PILOTTO_E2E = previous; });
+  const {createBackgroundApplyStore} = await import('../lib/background-apply-store.js');
+  const {createBackgroundWaitClock} = await import('../lib/background-apply-clock.js');
+  for (const handoff of ['', 'stopped', 'app_closed']) {
+    const clock = createBackgroundWaitClock({env: {JOB_PILOTTO_E2E: '1'}, wallNow: () => 1000});
+    const app = {id: 'app', url: 'https://jobs.example.test/clock', stage: 'Kit ready'}, sections = new Map(), events = [], records = new Map();
+    const call = async (_storage, entity, method, args) => {
+      if (entity === 'applications' && method === 'get') return app;
+      if (entity === 'applications' && method === 'section') return sections.get(args.name) || '';
+      if (entity === 'applications' && method === 'set_section') { sections.set(args.name, args.markdown); return; }
+      if (entity === 'events' && method === 'list') return events;
+      if (entity === 'events' && method === 'add') { events.push(args); return; }
+      throw new Error(`unexpected ${entity}.${method}`);
+    };
+    sections.set('📝 Application kit', '```json\n{"eligible":true,"answers":[]}\n```');
+    const config = {mode: 'auto', chosenAt: 'chosen', autoConfirmedAt: 'confirmed', auto: {waitMin: 1}};
+    const store = createBackgroundApplyStore({}, {call, now: clock.now, uuid: () => 'attempt'});
+    const terminals = {list: () => [...records.values()], byUrl: () => null, record: id => records.get(id), report: () => {}, startForm: item => {
+      const record = {...item, startedAt: new Date(1000).toISOString()}; records.set(item.id, record); return record;
+    }};
+    const controller = createBackgroundApplyController({}, {store, now: clock.now, started: 0, config: () => config, uuid: () => 'session1', terminals,
+      browser: {ready: () => true, start: async () => ({owner: 'owner'})}, stop: () => false, reader: {busy: () => false, take: () => null, takeEnded: () => []},
+      port: 1, token: () => 'fictional', notify: () => {}, log: () => {}});
+    await controller.enqueue([app], 'auto');
+    await controller.handle({action: 'poll', owner: 'owner'});
+    const body = {background: {owner: 'owner', session: 'session1'}, sketch: {page: 'same'}};
+    const answer = {answer: 'ready', step: 'final', submitControl: 'Send', confidence: 1, botCheck: false};
+    const readyPayload = async () => ({action: 'ready', owner: 'owner', session: 'session1', ...(await controller.judgment(body, answer)), requiredComplete: true, safe: true, factsOnly: true});
+    assert.equal((await controller.handle(await readyPayload())).reason, 'waiting');
+    const held = records.get('session1').background;
+    assert.equal(held.dueAt, 61000);
+    assert.deepEqual(held.waitDecision, {via: 'extension', at: 1000, dueAt: 61000, state: 'waiting_to_submit', reason: 'waiting'});
+    assert.deepEqual((await controller.handle({action: 'poll', owner: 'owner'})).checks, []);
+    if (handoff === 'stopped') await controller.handle({action: 'manual', owner: 'owner', session: 'session1', reason: 'stopped'});
+    if (handoff === 'app_closed') await controller.sweepInterrupted(2000);
+    const at = clock.moveTo(held.dueAt + 1);
+    const poll = await controller.handle({action: 'poll', owner: 'owner'});
+    const decision = records.get('session1').background.waitDecision;
+    assert.equal(decision.at, at, 'the verdict is from the poll after the move');
+    assert.equal(decision.reason, handoff || 'due');
+    assert.equal(decision.state, handoff ? 'needs_user_handoff' : 'waiting_to_submit');
+    assert.deepEqual(poll.checks, handoff ? [] : [{session: 'session1'}]);
+    if (!handoff) {
+      const payload = await readyPayload();
+      assert.equal((await controller.handle(payload)).submit, true, 'the store reads the same advanced clock');
+      assert.equal((await controller.handle(payload)).submit, undefined, 'a consumed proof never presses twice');
+      assert.equal(records.get('session1').background.waitDecision.reason, 'authorized');
+      assert.equal(events.length, 1);
+    } else {
+      assert.equal((await controller.handle(await readyPayload())).submit, undefined);
+      assert.equal(events.length, 0, 'no attempt is reserved after Stop or quit');
+    }
+  }
+});
+
+test('moving the e2e clock after a quit starts the owned scheduler and records its refusal', async () => {
+  const previous = process.env.JOB_PILOTTO_E2E;
+  process.env.JOB_PILOTTO_E2E = '1';
+  try {
+    const {backgroundWaitNow, moveBackgroundWaitClock} = await import('../lib/background-apply-clock.js');
+    const readyAt = backgroundWaitNow(), record = {id: 'clock-quit', url: 'https://jobs.example.test/clock-quit', startedAt: new Date(readyAt - 1000).toISOString(), background: {}};
+    let state = {session: record.id, mode: 'auto', state: 'waiting_to_submit', readyAt}, starts = 0;
+    const controller = createBackgroundApplyController({}, {started: readyAt, store: {read: async () => state, interrupted: async () => (state = {...state, state: 'needs_user_handoff', reason: 'app_closed', manualOverride: true})},
+      terminals: {list: () => [record], record: () => record, report: () => {}}, browser: {start: async () => { starts++; return {owner: 'owner'}; }},
+      config: () => ({mode: 'auto', auto: {waitMin: 1}}), token: () => 'fictional', port: 1, notify: () => {}, log: () => {},
+      reader: {takeEnded: () => []}});
+    const moved = await moveBackgroundWaitClock(readyAt + 60001);
+    assert.equal(starts, 1, 'the browser the quit closed is restarted without waiting for an alarm');
+    assert.equal(record.background.waitDecision, undefined, 'the app clock wake cannot stand in for an extension request');
+    await controller.handle({action: 'poll', owner: 'owner'});
+    assert.ok(record.background.waitDecision.at >= moved);
+    assert.equal(record.background.waitDecision.via, 'extension');
+    assert.deepEqual([record.background.waitDecision.state, record.background.waitDecision.reason], ['needs_user_handoff', 'app_closed']);
+  } finally {
+    if (previous === undefined) delete process.env.JOB_PILOTTO_E2E; else process.env.JOB_PILOTTO_E2E = previous;
+  }
+});
+
+
+function reservationProof(t) {
+  const previous = process.env.JOB_PILOTTO_E2E; process.env.JOB_PILOTTO_E2E = '1';
+  t.after(() => { if (previous === undefined) delete process.env.JOB_PILOTTO_E2E; else process.env.JOB_PILOTTO_E2E = previous; });
+  let state = {session: 'bg', owner: 'o1', mode: 'auto', state: 'waiting_to_submit', readyAt: 1000}, missing = false, id = 0, attempts = 0;
+  const record = {id: 'bg', url: 'https://jobs.example.test/proof', background: {}};
+  const controller = createBackgroundApplyController({}, {now: () => 1001, uuid: () => `proof-${++id}`, config: () => ({auto: {waitMin: 0}}),
+    store: {read: async () => missing ? null : state, ready: async () => state, reserve: async () => {
+      if (state.state === 'submitting') return {submit: false, reason: 'manual_or_already_attempted', state: state.state};
+      attempts++; state = {...state, state: 'submitting'}; return {submit: true, state: state.state, attempt: 'one'};
+    }}, browser: {start: async () => ({owner: 'o1'})}, terminals: {record: () => record, report: () => {}}, token: () => 'fictional', port: 1, log: () => {}});
+  const payload = async () => ({action: 'ready', owner: 'o1', session: 'bg', requiredComplete: true, factsOnly: true, safe: true,
+    ...(await controller.judgment({background: {owner: 'o1', session: 'bg'}, sketch: {}}, {answer: 'ready', step: 'final', confidence: 1, botCheck: false}))});
+  return {controller, record, payload, disappear: () => { missing = true; }, attempts: () => attempts};
+}
+
+test('a null read after reservation does not crash the ready response', async t => {
+  const proof = reservationProof(t), payload = await proof.payload();
+  proof.disappear();
+  assert.equal((await proof.controller.handle(payload)).submit, true);
+});
+
+test('a second concurrent ready verdict preserves the first authorization decision', async t => {
+  const proof = reservationProof(t), first = await proof.payload(), second = await proof.payload();
+  const [authorized, refused] = await Promise.all([proof.controller.handle(first), proof.controller.handle(second)]);
+  assert.equal(authorized.submit, true); assert.equal(refused.submit, false);
+  assert.equal(proof.attempts(), 1);
+  assert.equal(proof.record.background.waitDecision.reason, 'authorized');
+  assert.equal(proof.record.background.waitDecision.via, 'extension');
+});
+
+test('ordinary sessions never cache an e2e wait decision', async t => {
+  const previous = process.env.JOB_PILOTTO_E2E; delete process.env.JOB_PILOTTO_E2E;
+  t.after(() => { if (previous !== undefined) process.env.JOB_PILOTTO_E2E = previous; });
+  const now = Date.now(), state = {session: 'bg', mode: 'auto', state: 'needs_user_handoff', manualOverride: true, reason: 'stopped', readyAt: now - 60000};
+  const record = {id: 'bg', url: 'https://jobs.example.test/ordinary', background: {}};
+  const controller = createBackgroundApplyController({}, {store: {read: async () => state}, browser: {start: async () => ({owner: 'o1'})},
+    terminals: {list: () => [record], record: () => record, report: () => {}}, config: () => ({auto: {waitMin: 1}}), token: () => 'fictional', port: 1,
+    reader: {takeEnded: () => []}});
+  await controller.handle({action: 'poll', owner: 'o1'});
+  assert.equal(Object.hasOwn(record.background, 'waitDecision'), false);
+  assert.equal(Object.hasOwn(record.background, 'waitClockOffset'), false);
+});
+
+test('a clock wake leaves queued triage reads and ended-page closes for the extension', async t => {
+  const previous = process.env.JOB_PILOTTO_E2E; process.env.JOB_PILOTTO_E2E = '1';
+  t.after(() => { if (previous === undefined) delete process.env.JOB_PILOTTO_E2E; else process.env.JOB_PILOTTO_E2E = previous; });
+  const {backgroundWaitNow, moveBackgroundWaitClock} = await import('../lib/background-apply-clock.js');
+  let taken = 0, ended = 0;
+  const controller = createBackgroundApplyController({}, {store: {}, terminals: {list: () => []}, config: () => ({}),
+    browser: {start: async () => ({owner: 'reader-owner'})}, token: () => 'fictional', port: 1,
+    reader: {take: () => { taken++; return {id: 'read-next', url: 'https://jobs.example.test/read'}; }, takeEnded: () => { ended++; return ['read-ended']; }}});
+  await moveBackgroundWaitClock(backgroundWaitNow() + 1);
+  assert.deepEqual([taken, ended], [0, 0], 'waking the browser must not consume one-shot commands');
+  const commands = await controller.handle({action: 'poll', owner: 'reader-owner'});
+  assert.deepEqual(commands.closes, [{session: 'read-ended'}]);
+  assert.equal(commands.jobs[0].session, 'read-next');
+  assert.deepEqual([taken, ended], [1, 1]);
+});

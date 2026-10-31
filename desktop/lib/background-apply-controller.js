@@ -1,5 +1,6 @@
 // Bridge canonical background state, the actual extension and its owned browser; every submit command is a persisted one-shot reservation.
 import {randomUUID, createHash} from 'node:crypto';
+import {backgroundWaitNow, onBackgroundWaitMove} from './background-apply-clock.js';
 import {createBackgroundApplyStore} from './background-apply-store.js';
 import {createBackgroundBrowser} from './background-browser.js';
 import {createTriageReader} from './triage-reader.js';
@@ -34,19 +35,25 @@ export function backgroundApplyFor(storage) {
 }
 /** Create the controller with injectable store/browser boundaries for deterministic fictional browser proofs; no alternative filler exists here. */
 export function createBackgroundApplyController(storage, {store = null, browser = null, terminals = terminalsDefault,
-  config = () => applyOf(storage.settings()), now = Date.now, uuid = randomUUID, stop = stopAsked, notify = (...args) => notifyDefault(...args),   // Why (2026-10-28, bot review #2324): main.js sets the notifier after the handlers register; read the live binding at each call
+  config = () => applyOf(storage.settings()), now = backgroundWaitNow, uuid = randomUUID, stop = stopAsked, notify = (...args) => notifyDefault(...args),   // Why (2026-10-28, bot review #2324; 31 Oct 2026, owner): read the late-wired notifier live; share the gated wait clock with the store so moving it wakes the same due job
  log = appLog, reader = createTriageReader(), started = APP_STARTED,   // `started`: when this run of the app began; a job held before it was cut off by a quit
   port = Number(process.env.JOB_PILOTTO_PORT || 47111), token = () => extensionToken(storage)} = {}) {
-  store ||= createBackgroundApplyStore(storage, {stopped: stop});
+  store ||= createBackgroundApplyStore(storage, {stopped: stop, now});
   // Why (2026-10-28, CI #2324): the controller is created when the apply handlers register, before any background job exists; the browser reads storage.path, so it is built on first use.
   const browserOf = () => (browser ||= createBackgroundBrowser(storage));
   const judgments = new Map();
   let owner = '', pending = Promise.resolve();
   const serial = work => { const value = pending.then(work); pending = value.catch(() => {}); return value; };
-  const cache = (item, state) => {
+  onBackgroundWaitMove(() => serial(async () => {
+    if (!owner) ({owner} = await browserOf().start({port, token: token()}));
+  }));
+  const cache = (item, state, decision = null) => {
     const record = terminals.record(item.id);
     if (!record || !state) return;
-    record.background = {mode: state.mode, state: state.state, reason: state.reason || '', readyAt: state.readyAt || 0,
+    const previous = record.background?.waitDecision;
+    const verdict = previous?.reason === 'authorized' ? previous : decision || previous;
+    const testClock = process.env.JOB_PILOTTO_E2E === '1' ? {waitClockOffset: now() - Date.now(), ...(verdict ? {waitDecision: verdict} : {})} : {};
+    record.background = {...testClock, mode: state.mode, state: state.state, reason: state.reason || '', readyAt: state.readyAt || 0,
       dueAt: state.mode === 'auto' && state.readyAt ? state.readyAt + (config().auto?.waitMin ?? AUTO_DEFAULTS.waitMin) * 60000 : 0, manualOverride: !!state.manualOverride};
     const words = state.state === 'ready_for_review' ? 'Form filled — review the same background form and Submit' : state.state === 'waiting_to_submit' ? 'Filled — waiting before automatic submission; Stop is available' : state.state === 'submitting' ? 'Submission attempted — waiting for the site receipt' : HANDOFF.has(state.state) ? NOTICES[state.reason] || 'This application needs you. Review and submit the same form yourself.' : 'Filling in the background';
     terminals.report(item.id, {event: 'note', message: words});
@@ -91,29 +98,46 @@ export function createBackgroundApplyController(storage, {store = null, browser 
       return {ok: true, mode, sessions: enrolled, message: `${enrolled.length} application${enrolled.length === 1 ? '' : 's'} queued in the background. Review filled forms in Sessions.${skippedNote}`};
     });
   }
-  async function poll(givenOwner) {
+  // A stopped or changed-mode job is handed over before any command is collected; a missing record skips only its own session.
+  async function stateForPoll(item) {
+    let state = await store.read(item.url).catch(() => null);
+    if (!state || state.session !== item.id) return null;
+    if (!state.manualOverride && (stop() || item.stuck === 'stopped')) state = await markManual(item, 'stopped');
+    const current = config();
+    if (!state.manualOverride && (current.mode !== state.mode || current.chosenAt !== state.chosenAt)) state = await markManual(item, 'mode_changed');
+    return state.ok === false ? null : {state, current};
+  }
+  // Only an extension request can supply the e2e proof that it looked at this due job; app clock wakes are not evidence.
+  function decisionForPoll(state, dueAt, via) {
+    if (process.env.JOB_PILOTTO_E2E !== '1' || via !== 'extension' || state.mode !== 'auto' || !dueAt) return null;
+    if (state.state !== 'waiting_to_submit' && !HANDOFF.has(state.state)) return null;
+    const reason = HANDOFF.has(state.state) ? state.reason : now() >= dueAt ? 'due' : 'waiting';
+    return {via, at: now(), dueAt, state: state.state, reason};
+  }
+  // Collect at most one launch, due rechecks and permanent handoffs without ever reissuing a reserved press.
+  async function commandsForPoll(item, commands, via) {
+    const found = await stateForPoll(item);
+    if (!found) return;
+    let {state} = found;
+    const dueAt = state.readyAt ? state.readyAt + (found.current.auto?.waitMin ?? AUTO_DEFAULTS.waitMin) * 60000 : 0;
+    const decision = decisionForPoll(state, dueAt, via);
+    if (HANDOFF.has(state.state)) { commands.handoffs.push({session: item.id, reason: state.reason, reveal: state.reason !== 'captcha_preflight'}); cache(item, state, decision); return; }   // words-ok: our own hand-off reason id / user-facing word, not page knowledge
+    if (state.state === 'submitting') return;
+    if (state.state === 'waiting_to_submit' && now() >= dueAt) commands.checks.push({session: item.id});
+    if (['queued', 'preflight'].includes(state.state) && !commands.filling && !reader.busy()) {
+      const claim = await store.claim(item.url, item.id, owner);
+      if (claim.ok) { commands.filling = true; state = claim.state; commands.jobs.push({session: item.id, url: sessionTabUrl(item.url, item.id), mode: state.mode}); }
+    }
+    cache(item, state, decision);
+  }
+  async function poll(givenOwner, via = 'app') {
     if (!owner) ({owner} = await browserOf().start({port, token: token()}));
     if (!givenOwner || givenOwner !== owner) return {ok: false, jobs: [], checks: []};
     await handOverAll(heldOpen, {quit: true});   // a poll before the start-up sweep never continues a job an earlier run held (owner, 30 Oct 2026: "A quit is a Stop")
-    const jobs = [], checks = [], handoffs = [];
-    let filling = false;
+    const commands = {jobs: [], checks: [], handoffs: [], filling: false};
     const open = terminals.list().filter(item => item.background && !item.outcome && !unsaved.has(item.id));   // a held job whose hand-over write threw is never continued (Gitar on #2598); the next poll tries again
-    for (const item of open) {
-      let state = await store.read(item.url).catch(() => null);   // a session whose job record is gone is skipped, never the whole poll (#2598: one removed job stopped every later one)
-      if (!state || state.session !== item.id) continue;
-      if (!state.manualOverride && (stop() || item.stuck === 'stopped')) state = await markManual(item, 'stopped');
-      const current = config();
-      if (!state.manualOverride && (current.mode !== state.mode || current.chosenAt !== state.chosenAt)) state = await markManual(item, 'mode_changed');
-      if (state.ok === false) continue;   // a handoff that did not save leaves the job as it was; never go on with an error as its state
-      if (HANDOFF.has(state.state)) { handoffs.push({session: item.id, reason: state.reason, reveal: state.reason !== 'captcha_preflight'}); cache(item, state); continue; }   // words-ok: our own hand-off reason id / user-facing word, not page knowledge
-      if (state.state === 'submitting') continue; // a reserved attempt is never reissued, even after a lost reply/restart
-      if (state.state === 'waiting_to_submit' && now() >= state.readyAt + (current.auto?.waitMin ?? AUTO_DEFAULTS.waitMin) * 60000) checks.push({session: item.id});
-      if (['queued', 'preflight'].includes(state.state) && !filling && !reader.busy()) {
-        const claim = await store.claim(item.url, item.id, owner);
-        if (claim.ok) { filling = true; state = claim.state; jobs.push({session: item.id, url: sessionTabUrl(item.url, item.id), mode: state.mode}); }
-      }
-      cache(item, state);
-    }
+    for (const item of open) await commandsForPoll(item, commands, via);
+    const {jobs, checks, handoffs, filling} = commands;
     // Why (2026-10-30, owner: triage read, PR C2a): a form read and an application never share the hidden browser: a read waits for open applications, and an application waits (at most the read's timeout) for a read that is queued or out (Gitar, #2602).
     jobs.push(...readCommands({filling, open}));
     return {ok: true, jobs, checks, handoffs, closes: reader.takeEnded().map(session => ({session}))};   // pages of reads Cancel or a timeout ended: the extension closes them (#2624)
@@ -184,7 +208,7 @@ export function createBackgroundApplyController(storage, {store = null, browser 
   }
   async function handle(payload = {}) {
     return serial(async () => {
-      if (payload.action === 'poll') return poll(payload.owner);
+      if (payload.action === 'poll') return poll(payload.owner, 'extension');
       if (!owner && payload.owner) ({owner} = await browserOf().start({port, token: token()}));
       if (!owner || payload.owner !== owner) return {ok: false};
       if (payload.action === 'triage-read') return {ok: reader.report(String(payload.session || ''), payload)};   // a form read's answer: no application item behind it
@@ -213,7 +237,8 @@ export function createBackgroundApplyController(storage, {store = null, browser 
       }
       if (HANDOFF.has(state.state)) return {ok: true, manual: true, reason: state.reason};
       const permit = await store.reserve(item.url, item.id, owner, proof, config());
-      cache(item, await store.read(item.url));
+      const reserved = await store.read(item.url);
+      cache(item, reserved, reserved && {via: 'extension', at: now(), dueAt: reserved.readyAt + (config().auto?.waitMin ?? AUTO_DEFAULTS.waitMin) * 60000, state: reserved.state, reason: permit.submit ? 'authorized' : permit.reason});
       if (permit.submit) log('apply', 'one-shot automatic submit authorized', {session: item.id, attempt: permit.attempt, signature: judgment.signature});
       return {ok: true, ...permit, manual: HANDOFF.has(permit.state)};
     });

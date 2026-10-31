@@ -34,3 +34,9 @@ test('when the time is up the card says it is submitting, and a job with no due 
 test('every other state is unchanged and offers no countdown Stop', () => {
   for (const state of ['queued', 'preflight', 'filling', 'ready_for_review', 'needs_user_handoff']) assert.notEqual(liveCard({state}, null, {now: () => NOW}).kind, 'countdown', state);
 });
+
+test('the countdown reads the same moved wait clock as the app scheduler', () => {
+  const background = {state: 'waiting_to_submit', dueAt: NOW + 7 * 60000, waitClockOffset: 6 * 60000};
+  assert.equal(liveCard(background, null, {now: () => NOW}).title, 'Submitting in 1:00');
+  assert.equal(liveCard(background, null, {now: () => NOW + 60000}).title, 'Submitting now…');
+});

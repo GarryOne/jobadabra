@@ -239,6 +239,10 @@ export function report(sessions, payload, now = Date.now()) {
   const tab = Number(payload?.tab), boot = String(payload?.boot || bootId || '');   // the run that tab id belongs to
   const {session, by} = pick(sessions, page, tab);
   if (!session) return {matched: null, session: null, watch: [], commands: []};
+  // Why (4/4, #43 of beta 41162490590, 31 Oct 2026): a job address alone never moves a session to a tab of another browser run. A hidden-browser read of a job the person has open in Chrome
+  // carries a read id that is no session, so the job matched it to the person's session: its commands went to the read and the read was filled as that application. Its own mark still binds.
+  // Needs the tab's `boot` (every current extension sends it) and a session already bound; a session saved without a run ('' ) is never refused.
+  if (by === 'job' && bound.has(session.id) && !sameRun(session.id, boot)) return {matched: null, session: null, watch: [], commands: []};
   if (Number.isInteger(tab)) {
     // A session follows its newest tab (tab ids only grow within a browser run): an older tab of it goes quiet and is told so.
     // Unless this older tab holds the live application form and the newer one does not (the app opened a second tab, 15 Oct 2026): the page that is further wins.

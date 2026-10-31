@@ -46,6 +46,28 @@ test('row 5, a second browser: its tab ids only bind in its own run, so another 
   assert.equal(review.tabOf('s1', 'run-b'), '', 'another browser run: tab 7 there is some other page');
 });
 
+// 4/4, beta 41162490590 (#43, 31 Oct 2026): the person's form for a job was open in Chrome (session s1); a read of the same job in the hidden browser carried a read id that
+// is no session, so the job address matched it to s1: s1 moved to the hidden tab, its pending commands went there, and the read became s1's fill. A job match never crosses runs.
+test('row 5, a read of the same job in another browser run never takes the session, its commands or its tab', () => {
+  review._reset();
+  const binds = [];
+  review.onBind(bind => binds.push(bind));
+  const own = {session: 's1', tab: 7, boot: 'run-a', url: `${posting(1)}#jobpilotto-fill=s1`, job: posting(1), total: 1, left: 0};
+  assert.equal(review.report([sessions[0]], own).matched, 's1');
+  review.queueFill('s1', 'Phone', '123');
+  const read = {session: 'tr1a2b3c4d', tab: 130, boot: 'run-b', url: `${posting(1)}#jobpilotto-fill=tr1a2b3c4d`, job: posting(1), total: 0, left: 0};
+  const answer = review.report([sessions[0]], read);
+  assert.equal(answer.matched, null, 'the read is nobody\'s application');
+  assert.deepEqual(answer.commands, [], 's1\'s pending fill is not handed to the read');
+  assert.equal(review.tabOf('s1', 'run-a'), 7, 's1 keeps its tab in its own run');
+  assert.equal(review.sessionOfTab(130, 'run-b'), '');
+  assert.deepEqual(binds.map(bind => bind.tab), [7], 'no second bind');
+  assert.deepEqual(review.report([sessions[0]], own).commands, [{fill: {label: 'Phone', value: '123'}}], 'the person\'s own tab still gets it');
+  // The tab's own session mark still binds, in any run (Chrome restarted and the app reopened the form).
+  assert.equal(review.report([sessions[0]], {...read, session: 's1', url: `${posting(1)}#jobpilotto-fill=s1`}).matched, 's1');
+  assert.equal(review.tabOf('s1', 'run-b'), 130);
+});
+
 test('row 8, the app restarts: the bound tab id is read back from the saved state', () => {
   review._reset();
   const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'jp-st-')), 'states.json');

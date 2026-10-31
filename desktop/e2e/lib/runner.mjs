@@ -106,7 +106,7 @@ export const hangLimitMs = (hangCaps, name, suite = '', cadence = '') => {
 const ownedHang = (error, stopOnHang) => stopOnHang && error.stepHang;
 
 /** Run state checks with named hang caps; owned steps may stop progression on a hang. */
-export function createRunner(getSession, {suite = '', cadence = '', keepGoing = false, budgetMs = SUITE_BUDGET_MS, hangCaps = {}, stepNeeds = null, faultTally = null, report = null} = {}) {
+export function createRunner(getSession, {suite = '', cadence = '', keepGoing = false, budgetMs = SUITE_BUDGET_MS, hangCaps = {}, stepNeeds = null, faultTally = null, report = null, suspended = {}} = {}) {
   const results = [], suiteStarted = Date.now(), picked = pickedNames(), found = new Set();
   if (process.env.CI) console.log(providerLine(process.env, 'judges'));   // Why (#2416, Gitar): who decided the judges' provider is never a guess
   const buildsOn = stepNeeds == null && picked.length > 0 && !String(process.env.E2E_STEPS || '').trim();
@@ -163,7 +163,7 @@ export function createRunner(getSession, {suite = '', cadence = '', keepGoing = 
       await (report ? report.step(name, attempt) : attempt());
       const seconds = ((Date.now() - started) / 1000).toFixed(1);
       const vacuous = unfired();
-      results.push({name, status: 'passed', seconds, ...(retried ? {retried} : {}), ...(vacuous ? {faultNeverFired: true} : {})});
+      results.push({name, status: 'passed', seconds, ...(suspended[name] ? {suspended: true} : {}), ...(retried ? {retried} : {}), ...(vacuous ? {faultNeverFired: true} : {})});
       console.log(`✓ ${name} (${seconds}s)${retried ? ' after one retry' : ''}${vacuous ? ` ⚠ passed, but ${NEVER_FIRED}: it may test nothing` : ''}`);
     } catch (error) {
       // Why (31 Oct 2026, owner): "the fact that AI credit finished should not stop a beta from being green. It should just raise an alert. And that's it." Every capped step is skipped, including release gates.
@@ -180,6 +180,14 @@ export function createRunner(getSession, {suite = '', cadence = '', keepGoing = 
       const refused = faults ? '' : refusalNote(getSession()?.profile);
       const note = refused ? `${refused}; the step then failed: ${base}` : base;
       const where = codeLine(error);
+      // Why (31 Oct 2026, owner: "Means its flaky"; spec row 33): a step the lane registry suspended (flaky: red on code unchanged since it passed) runs and shows its result, but never fails the job.
+      // An owned step cut off by its hang cap leaves work running that the next steps cannot trust, so it ends the suite quietly instead (suite-main.mjs reads suspendedStop).
+      if (suspended[name]) {
+        results.push({name, status: 'suspended', note, cause: causeOf(note), issue: suspended[name].issue, ...(where ? {where} : {})});
+        console.log(`⚠ ${name}: suspended step (flaky, ${suspended[name].issue || 'owner issue'}), not blocking: ${note}${where ? ` (at ${where})` : ''}`);
+        if (ownedHang(error, stopOnHang)) throw Object.assign(error, {suspendedStop: true});
+        return;
+      }
       results.push({name, status: 'failed', note, cause: causeOf(note), ...(where ? {where} : {}), ...(refused || (!faults && isEnvironment(error.message)) ? {environment: true} : {}), ...(base !== error.message ? {faultNeverFired: true} : {})});
       console.log(`✗ ${name}: ${note}${where ? ` (at ${where})` : ''}`);
       if (keepGoing && !critical && !ownedHang(error, stopOnHang)) return;   // recorded: the suite still fails at the end, and the next step runs
@@ -191,7 +199,7 @@ export function createRunner(getSession, {suite = '', cadence = '', keepGoing = 
     if (lost.length) { results.push({name: 'steps picked for this PR', status: 'failed', note: `no step is named ${lost.map(name => `"${name}"`).join(', ')} (renamed since the coverage map was recorded): the whole suite runs next`}); console.log(`✗ picked step(s) not found: ${lost.join('; ')}`); }
     else if (picked.length) console.log(`(ran only the ${picked.filter(name => name !== PICK_SETUP).length} step(s) this PR's changes reach, their needs and the setup: E2E_STEP_NAMES)`);
     const count = status => results.filter(result => result.status === status).length;
-    console.log(`\n${count('passed')} passed, ${count('failed')} failed, ${count('skipped')} skipped`);
+    console.log(`\n${count('passed')} passed, ${count('failed')} failed, ${count('skipped')} skipped${count('suspended') ? `, ${count('suspended')} suspended (flaky, not blocking)` : ''}`);
     for (const line of sharedCauseLines(results)) console.log(line);   // gate G3: six reds on one locator read as one cause, not six bugs
     return count('failed') ? 1 : 0;
   };

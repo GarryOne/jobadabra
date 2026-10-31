@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {spawnSync} from 'node:child_process';
-import {failedJobLinks, failedJobs, isRepeat, messageOf, previousConclusion, sinceGreen, send, stepCauses} from '../ci-alert.mjs';
+import {failedJobLinks, failedJobs, flakyCauses, isRepeat, messageOf, previousConclusion, sinceGreen, send, stepCauses} from '../ci-alert.mjs';
 import {annotationLines} from '../lib/artifacts.mjs';
 import {fields} from '../lib/telegram-fake.mjs';
 import {nameAiFailure} from '../lib/ai-miss-cause.mjs';
@@ -342,4 +342,35 @@ test('a refusal without an unstored ask uses the current writer protocol without
   const alert = messageOf({...input, causes: [{...input.causes[0], message}]});
   assert.match(alert.text, /🤖  AI refused: credit 67% of 60%/);
   assert.doesNotMatch(alert.text, /📭|no stored answer|the step then failed/);
+});
+
+// Flaky first (31 Oct 2026, owner: "You detect flakiness and immediately treat the flakiness root cause"): a step red on code unchanged since a green is its own cause, with the green.
+const READ_STEP = '"See which jobs can apply automatically" reads a job\'s form in the hidden browser';
+const flakyIo = (changed, passedOn = 'e2e-view-apply-1of3') => ({
+  coverageMap: async () => ({suites: {apply: {steps: {[READ_STEP]: {'desktop/lib/apply-run.js': {lines: []}}}}}}),
+  runs: async () => [{id: 7, sha: '79e6c34aaaa', title: 'E2E for PR · apply · a8-x', url: 'https://github.com/o/r/actions/runs/7'}],
+  viewNames: async () => [passedOn], stepsOf: async () => ({results: [{name: READ_STEP, status: 'passed'}]}),
+  changedNames: async () => changed, readAt: () => null,
+});
+const redRun = async () => ({json: async () => ({head_sha: 'fb1d711bbbb'})});
+const readCause = {suite: 'apply', step: READ_STEP, message: "the suite's 11-minute budget ran out during this step (the suite is too long: split it): the window answers"};
+
+test('a flaky step is marked with its green, and the alert shows it as its own cause with a link to that green', async () => {
+  const causes = await flakyCauses([readCause], '9', applyEnv, redRun, flakyIo(['desktop/e2e/ci-alert.mjs']));
+  assert.equal(causes[0].flaky.green.sha, '79e6c34aaaa');
+  assert.equal(causes[0].flaky.sameCommit, false);
+  const message = messageOf({...await applyFixture(), causes});
+  assert.match(render(message), /🎲  Flaky: red on code unchanged since it passed\n     passed on code the step does not touch: 79e6c34 \(fix its input, not the step\)\n     ✗ /);
+  assert.doesNotMatch(render(message), /Over its 11-min budget/, 'the flaky cause replaces the symptom cause for that step');
+  assert.match(message.text, /<a href="https:\/\/github\.com\/o\/r\/actions\/runs\/7">79e6c34<\/a>/);
+});
+
+test('a green on the red\'s own commit says so; a step whose files changed stays an ordinary red; a failed read leaves the causes alone', async () => {
+  const same = await flakyCauses([readCause], '9', applyEnv, redRun, {...flakyIo([]), runs: async () => [{id: 7, sha: 'fb1d711bbbb', title: 'E2E after merge', url: 'https://x/7'}]});
+  assert.equal(same[0].flaky.sameCommit, true);
+  assert.match(render(messageOf({...await applyFixture(), causes: same})), /passed on this same commit: fb1d711/);
+  const changed = await flakyCauses([readCause], '9', applyEnv, redRun, flakyIo(['desktop/lib/apply-run.js']));
+  assert.equal(changed[0].flaky, undefined);
+  const broken = await flakyCauses([readCause], '9', applyEnv, async () => { throw new Error('offline'); }, flakyIo([]));
+  assert.deepEqual(broken, [readCause]);
 });

@@ -8,6 +8,7 @@ import fs from 'node:fs';
 import {alertHtml} from './lib/telegram-html.mjs';
 import {TIMEOUT_FAILURE} from './lib/triage-match.mjs';
 import {aiFailureCauses} from './lib/ai-miss-cause.mjs';
+import {ghIo, verdictsForCauses} from './lib/flaky-evidence.mjs';
 import {isBackbone, suiteOfKey} from './lib/suite-shards.mjs';
 
 const readLanes = () => JSON.parse(fs.readFileSync(new URL('./lanes.json', import.meta.url), 'utf8'));
@@ -79,6 +80,25 @@ export async function stepCauses(runId, env = process.env, fetcher = fetch, lane
   } catch { return []; }
 }
 
+/**
+ * Mark the failed steps that are flaky: red on code unchanged since a green of the same step (lib/flaky-verdict.mjs). Errors and a slow read: the causes as they were.
+ * @returns {Promise<object[]>} causes, each flaky one with `flaky: {green: {sha, run, url}, sameCommit}`
+ */
+export async function flakyCauses(causes, runId, env = process.env, fetcher = fetch, io = ghIo({repo: env.GITHUB_REPOSITORY}), deadlineMs = 90000) {
+  let timer;
+  try {
+    const read = (async () => {
+      const redSha = (await get(`${API(env)}/repos/${env.GITHUB_REPOSITORY}/actions/runs/${runId}`, env, fetcher)).head_sha;
+      return {redSha, found: await verdictsForCauses(causes, {redSha, redRun: runId, io}) };
+    })();
+    const {redSha, found} = await Promise.race([read, new Promise((_, stop) => { timer = setTimeout(() => stop(new Error('flaky read took too long')), deadlineMs); })]);
+    return causes.map(cause => {
+      const verdict = found.find(item => item.suite === cause.suite && item.step === cause.step && item.verdict === 'flaky');
+      return verdict ? {...cause, flaky: {green: verdict.green, sameCommit: verdict.green.sha === redSha}} : cause;
+    });
+  } catch { return causes; } finally { clearTimeout(timer); }
+}
+
 // The PRs that landed since this workflow's last green run on the branch (a merge commit "Merge pull request #123 from …", or a squash "Title (#123)"), newest first.
 // -> {prs: [number], more: number}; empty when unknown. Why (30 Oct 2026): main merges PRs by merge commit since 27 Oct; matching only "(#123)" left "Since green" empty.
 export async function sinceGreen(env = process.env, fetcher = fetch, shown = 5) {
@@ -132,9 +152,12 @@ function problemsOf(message) {
   return items.map((text, i) => ({icon: '✗', key: text, text: short(plain(text), 120), more: i === items.length - 1 ? Number(more?.[1] || 0) : 0}));
 }
 
+// Why (31 Oct 2026, owner: "You detect flakiness and immediately treat the flakiness root cause"): a step red on code unchanged since a green is its own cause, with the green it compared to.
+const flakyProblem = flaky => ({icon: '🎲', key: 'flaky', text: 'Flaky: red on code unchanged since it passed', green: flaky.green, same: Boolean(flaky.sameCommit)});
+
 function groupedCauses(causes, fallback) {
   const groups = new Map();
-  for (const cause of causes) for (const problem of problemsOf(cause.message)) {
+  for (const cause of causes) for (const problem of cause.flaky ? [flakyProblem(cause.flaky)] : problemsOf(cause.message)) {
     const key = `${problem.icon}:${problem.key || problem.text}`;
     const group = groups.get(key) || {...problem, more: 0, steps: []};
     group.detail ||= problem.detail;
@@ -148,6 +171,7 @@ function groupedCauses(causes, fallback) {
 function causeBlock(group, run) {
   const lines = [{parts: [`${group.icon}  ${group.text}`]}];
   if (group.detail) lines.push({parts: [`     ${group.detail}`]});
+  if (group.green) lines.push({parts: [`     passed on ${group.same ? 'this same commit' : 'code the step does not touch'}: `, {text: String(group.green.sha).slice(0, 7), url: group.green.url}, ' (fix its input, not the step)']});
   group.steps.forEach((step, i) => lines.push({step: true, expandable: group.steps.length > 3 && i >= 2,
     parts: [`     ${step.skipped ? '⏭' : '✗'} `, {text: stepName(step.step), url: step.url || run}, step.skipped ? ' (not run)' : step.cut ? ' ← cut here' : '']}));
   if (group.more) lines.push({expandable: true, count: group.more, parts: [`+${group.more} more`]});
@@ -223,7 +247,8 @@ if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(new URL(im
     const {conclusion: previous, id: previousId} = await previousRun();
     const red = ['failure', 'timed_out'].includes(previous);
     const since = failure || red ? await sinceGreen() : undefined, jobs = failure ? await failedJobLinks(process.env.GITHUB_RUN_ID).catch(() => []) : undefined;
-    const causes = failure ? await stepCauses(process.env.GITHUB_RUN_ID) : [];
+    const seen = failure ? await stepCauses(process.env.GITHUB_RUN_ID) : [];
+    const causes = failure && placeOf(process.env, new Date()).e2e ? await flakyCauses(seen, process.env.GITHUB_RUN_ID) : seen;
     const recovered = red && previousId ? await failedJobs(previousId).catch(() => []) : [];
     console.log(await send(messageOf({status, what, causes, next, previous, recovered, since, jobs})));
   }

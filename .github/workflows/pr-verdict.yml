@@ -114,6 +114,9 @@ jobs:
             tools/pr_health_greys.py
             tools/pr_speed_number.py
             tools/beta_rate_gate.py
+            tools/pr_flaky.py
+            tools/flaky-verdict.mjs
+            desktop/e2e/
           sparse-checkout-cone-mode: false
       - name: All checks passed?
         timeout-minutes: 5

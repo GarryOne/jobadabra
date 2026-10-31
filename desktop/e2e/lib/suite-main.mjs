@@ -82,9 +82,15 @@ export async function runSuite(name, report = null) {
       if (ctx.standIn.stats.unknown.length) throw new Error(`the stand-in did not know: ${ctx.standIn.stats.unknown.join('; ')}`);
     }, {critical: true});
   } catch (error) {
-    if (!ctx?.runner.results.some(result => result.status === 'failed')) console.log(`✗ the ${name} suite stopped: ${error.message}`);
     if (ctx) ctx.stopped = error.message;   // the trace is kept (lib/context.mjs)
-    code = 1;
+    if (error?.suspendedStop) {
+      // Why (31 Oct 2026, spec row 33): a suspended step that hung ends the suite without failing the job; the steps after it did not run and say so.
+      console.log(`⚠ the ${name} suite stopped after a suspended step hung: its remaining steps did not run (not a failure): ${error.message}`);
+      ctx?.runner.results.push({name: 'steps after a suspended step that hung', status: 'skipped', note: error.message});
+    } else {
+      if (!ctx?.runner.results.some(result => result.status === 'failed')) console.log(`✗ the ${name} suite stopped: ${error.message}`);
+      code = 1;
+    }
   } finally {
     // For the nightly loop, whatever happened: the layout findings so far, and the steps that failed (a suite that stops early used to leave neither).
     // Errors over the whole suite (lib/journey.mjs): added to its findings, so even a suite without layout checks reports a renderer exception.

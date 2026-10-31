@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Rule E on the lane registry (docs/superpowers/specs/2026-10-28-e2e-reliability-design.md): a suite leaves the backbone only by naming what its result depends on.
 // Suite names are checked for every entry of desktop/e2e/lanes.json; field rules only for entries this push adds or changes. A removed entry brings a suite back.
+// A step can be suspended by name (top-level `steps`, stepEntryProblems): lane suspended, an owner and the issue URL that holds the evidence, plus the lane rules below.
 // tolerant needs `input` (ai | clock | outside), `why` (a sentence of 8+ words) and `since` (a date); suspended and retired need `why` and `since`. Every lane needs `returns` (a non-empty string).
 // Backbone defaults to zero misses; an entry may pin aiMissesMax to 0 or name an aiMissesException reason.
 // Every suite named in the head registry must have a file in desktop/e2e/suites.
@@ -39,16 +40,31 @@ export function entryProblems(entry) {
   return lacks;
 }
 
-const parse = text => { try { return {suites: JSON.parse(text).suites || {}}; } catch (error) { return {error: error.message}; } };
+/** A suspended STEP entry (lanes.json top-level `steps`: {<suite>: {<exact step name>: entry}}): the lane entry rules, plus its owner and the issue holding the evidence. */
+export function stepEntryProblems(entry) {
+  const lacks = entryProblems(entry);
+  if (!entry || typeof entry !== 'object') return lacks;
+  if (entry.lane !== 'suspended') lacks.push('a step is only ever suspended (a step that cannot be trusted leaves the backbone by a suite lane, rule E)');
+  if (!/^https:\/\/github\.com\/[^/]+\/[^/]+\/issues\/\d+$/.test(String(entry.issue || ''))) lacks.push('issue must be the GitHub issue URL that holds the evidence (red run, green run, diff, the failure text)');
+  if (typeof entry.owner !== 'string' || !entry.owner.trim()) lacks.push('owner must name who fixes it');
+  return lacks;
+}
+const stepEntries = steps => Object.entries(steps || {}).flatMap(([suite, byName]) => Object.entries(byName || {}).map(([name, entry]) => [suite, name, entry]));
+const parse = text => { try { const json = JSON.parse(text); return {suites: json.suites || {}, steps: json.steps || {}}; } catch (error) { return {error: error.message}; } };
 
 // The registry as it was (text or null) and as it is -> the lines for each added or changed entry that lacks something; one line for a file that does not parse.
 export function lanesProblems(baseText, headText) {
   if (headText === null || headText === baseText) return [];
   const head = parse(headText);
   if (head.error) return [`${FILE} is not valid JSON (${head.error})`];
-  const base = baseText === null ? {suites: {}} : parse(baseText);
+  const base = baseText === null ? {suites: {}, steps: {}} : parse(baseText);
   const was = base.error ? {} : base.suites;
   const found = [];
+  const wasSteps = base.error ? {} : base.steps;
+  for (const [suite, name, entry] of stepEntries(head.steps)) {
+    if (JSON.stringify(entry) === JSON.stringify(wasSteps?.[suite]?.[name])) continue;
+    for (const lack of stepEntryProblems(entry)) found.push(`${suite} · ${name.slice(0, 60)}: ${lack}`);
+  }
   for (const [suite, entry] of Object.entries(head.suites)) {
     if (JSON.stringify(entry) === JSON.stringify(was[suite])) continue;
     for (const lack of entryProblems(entry)) found.push(`${suite}: ${lack}`);
@@ -65,8 +81,9 @@ export function checkPush({root, base = 'origin/main'}) {
   const head = show('HEAD');
   const found = lanesProblems(show(from), head);
   const messages = found.length ? [`this push changes the lane registry ${FILE}, and:\n  ${found.join('\n  ')}\n${HOW}`] : [];
-  // Why (30 Oct 2026): a ceiling for the nonexistent review suite reached CI; check every head key, even an unchanged entry.
-  for (const suite of Object.keys(head === null ? {} : parse(head).suites || {})) {
+  // Why (30 Oct 2026; 31 Oct 2026 for `steps`): a ceiling for the nonexistent review suite reached CI; check every head key, even an unchanged entry; a suspended step names its suite too.
+  const headRegistry = head === null ? {} : parse(head);
+  for (const suite of [...Object.keys(headRegistry.suites || {}), ...Object.keys(headRegistry.steps || {})]) {
     try { git('cat-file', '-e', `HEAD:desktop/e2e/suites/${suite}.mjs`); }
     catch { messages.push(`${suite}: ${FILE} lists it but desktop/e2e/suites/${suite}.mjs is not in this push; remove the entry or restore the suite`); }
   }

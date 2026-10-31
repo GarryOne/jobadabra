@@ -81,6 +81,19 @@ def lane_suites(lanes=('tolerant', 'suspended', 'retired')):
         return set()
 
 
+def lane_steps():
+    """[{suite, step, issue}]: the steps the registry suspends by name (lanes.json top-level `steps`, spec row 33). A suspended step still runs and shows its result,
+    but never fails its job (desktop/e2e/lib/runner.mjs), so it never makes a suite red; the gate lists them. A missing or malformed registry lists none."""
+    try:
+        registry = json.loads(LANES.read_text(encoding='utf-8'))
+        steps = registry.get('steps') if isinstance(registry, dict) else None
+        return [{'suite': suite, 'step': step, 'issue': entry.get('issue', '')}
+                for suite, by_name in sorted((steps or {}).items()) if isinstance(by_name, dict)
+                for step, entry in sorted(by_name.items()) if isinstance(entry, dict) and entry.get('lane') == 'suspended']
+    except (OSError, ValueError, AttributeError):
+        return []
+
+
 def red(st, excluded=None):
     """Blocking backbone reds only; tolerant, suspended and retired results never make main red."""
     # Why (30 Oct 2026, owner): rule D reports non-backbone results as rates or suspensions, never red main.
@@ -110,7 +123,8 @@ def main(argv):
     reds = red(st)
     if '--json' in argv:
         print(json.dumps({'red': [{'suite': suite, **s} for suite, s in reds],
-                          'suspended': [{'suite': suite, **st[suite]} for suite in sorted(suspended) if suite in st]}))
+                          'suspended': [{'suite': suite, **st[suite]} for suite in sorted(suspended) if suite in st],
+                          'suspendedSteps': lane_steps()}))
     else:
         for suite, s in reds:
             print(f"{suite}\t{s['sha'][:7]}\t{s['at']}\t{s['url']}")

@@ -53,11 +53,12 @@ A **check** (an e2e suite, later a step) is in exactly one state:
 | **tolerant · ai / clock / outside** | main nightly, before beta; never on a PR | a rate vs main's baseline band | lane registry |
 | **retired** | nowhere | kept in history | lane registry |
 
-A run of any check can end **grey** ("didn't run": AI credit, runner lost, install, a step the picker named that does not exist). Grey is health, never red; it has
+A run of any check can end **grey** ("didn't run": AI credit, runner never acquired, install, a step the picker named that does not exist), read by the PR verdict from the log and marks (`tools/pr_health_greys.py`), never from a suite's own try. Grey is health, never red; it has
 one owner (the coordinator's round-up) and never asks the PR's session for anything. **A suite's own try that ran and failed is red, whatever the failure** (a budget that
 ran out, a timeout, a wrong value): its single try is the verdict (owner, 31 Oct 2026: "Is this expected? Error but step passed green ?", "And why should we
-accept/allow that?", "Let's go and handle this"); no second try, no flaky-proof pass, no `continue-on-error` on a suite step. Done by row 32.
-Guard: `tests/test_e2e_single_try.py` (no workflow retries a suite or lets its step fail quietly), `tests/test_grey_never_red.py` (no workflow ends a grey job red; every reader of red knows grey).
+accept/allow that?", "Let's go and handle this"; a suite past its budget is our bug: red, confirmed through the coordinator); no second try, no flaky-proof pass, no `continue-on-error` on a suite step, no
+"Grey: the runner, not the app" annotation, no grey beta hold or rerun. Done by row 32.
+Guard: `tests/test_e2e_single_try.py` (no workflow retries a suite or lets its step fail quietly), `tests/test_no_suite_grey.py` (no workflow, tool or reader knows a grey suite verdict; the grey beta rerun is gone).
 
 Verdicts that change a state (nothing else does):
 - **backbone → suspended:** the classifier sees the check red then green on the same commit (a flip). Automatic, visible on the weekly summary with an owner
@@ -311,4 +312,5 @@ One `###` per plan step, one box per thing that lands; a box is ticked only with
 ### 13. The single try is the verdict (row 32, `fv`, 31 Oct 2026)
 - [x] No workflow runs a suite twice on one commit to pass a red job, and no suite step has `continue-on-error`. (proof: tests/test_e2e_single_try.py)
 - [x] `flaky-proof.mjs`, the retry and report-only steps, the `e2e-rerun` uploads and the `flaky.json` readers are deleted (rule L). Triage still labels a step that passed on a later run of the same commit. (proof: tests/test_e2e_single_try.py, desktop/e2e/test/triage-cli.test.mjs)
+- [x] A suite past its budget is red, not grey: the grey annotation, `beta-grey-rerun.yml`, `tools/beta_grey_rerun.py`, the beta `held` output and every reader of the annotation (main state, backbone proof, beta gate, PR verdict, alert) are deleted. (proof: tests/test_no_suite_grey.py, tests/test_beta_rate_gate.py)
 - [ ] Row 33 (auto-sideline, `a8`) is redefined without the same-commit-flip trigger; until then a suite that goes red often holds the beta and the owner decides.

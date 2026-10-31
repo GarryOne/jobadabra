@@ -22,13 +22,13 @@ class BetaRates(unittest.TestCase):
             failure = next(s for s in steps if 'an E2E suite failed' in s)
             # Owner, 30 Oct 2026: a red on either lane holds both platforms (Windows dropped its duplicates of the Mac + Linux suites).
             self.assertIn('needs: [changes, test-mac, test-windows]', job)
-            self.assertNotIn('if: needs.test-', failure, 'successful grey jobs must also be read')
-            self.assertIn('id: backbone_gate', failure)
-            self.assertIn('continue-on-error: true', failure)
+            # Owner, 31 Oct 2026 (a suite past its budget is our bug): the gate's own exit code holds the beta; no grey hold, held output or continue-on-error.
+            self.assertNotIn('if: needs.test-', failure, 'every lane job is read')
+            self.assertNotIn('continue-on-error', failure)
+            self.assertNotIn('id: backbone_gate', failure)
             approval = next(s for s in steps if 'name: Release it to ' in s)
-            self.assertIn("if: steps.backbone_gate.outputs.held != 'true'", approval)
+            self.assertNotIn('held', approval)
             self.assertIn(f'--e2e-only --platform {platform}', failure)
-            self.assertNotIn('exit 1', failure, 'a tolerant result must only report its rate')
 
 
 if __name__ == '__main__':

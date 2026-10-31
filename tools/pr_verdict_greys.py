@@ -47,18 +47,12 @@ def health_greys(repo, runs, jobs, annotations_of=None, log_of=None, ref='', *, 
     annotations_of = annotations_of or (lambda jid: [a for page in json.loads(gh('api', '--paginate', '--slurp',
         f'repos/{repo}/check-runs/{jid}/annotations?per_page=100')) for a in page])
     log_of = log_of or (lambda jid: job_log(repo, jid))
-    greys, classifier, grey_check = {}, None, None
-    for job in _red_e2e_jobs(runs, jobs, (*RED, 'success')):
+    greys, classifier = {}, None
+    for job in _red_e2e_jobs(runs, jobs, RED):
         if job.get('name') in REPORT_JOBS:
             continue
         try:
             notes = annotations_of(job['id'])
-            grey_check = grey_check or main_state_module(repo, ref).is_grey
-            if grey_check(notes):
-                greys[job['id']] = 'runner-grey'
-                continue
-            if job.get('conclusion') == 'success':
-                continue   # successful jobs are read only for the grey annotation, never their logs
             classifier = classifier or main_state_module(repo, ref, 'pr_health_greys').health_cause
             cause = classifier(job, lambda _, notes=notes: notes, log_of, marks=marks, at=_at, red=RED)
         except Exception as error:

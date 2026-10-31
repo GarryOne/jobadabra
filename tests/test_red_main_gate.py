@@ -79,13 +79,13 @@ class RedMainGate(unittest.TestCase):
             self.assertIn(f'suspended (owner issue, not blocking): {suite}', out)
         self.assertEqual(dispatch, '')
 
-    def test_grey_runner_failure_allows_beta_is_named_and_never_dispatched(self):
+    def test_a_runner_timeout_is_red_whatever_its_annotations_say(self):
+        # Why (31 Oct 2026, owner: a suite past its budget is our bug): no "Grey: the runner, not the app" annotation lets a failed suite pass the gate.
         jobs = {'2': [{'id': 21, 'name': 'apply', 'conclusion': 'failure'}]}
         code, out, dispatch = gate({'runs': [RED_RUN], 'jobs': jobs, 'head': RED_SHA,
                                     'annotations': {'21': [{'title': 'Grey: the runner, not the app'}]}})
-        self.assertEqual(code, 0, out)
-        self.assertIn('grey (runner, not the app): apply', out)
-        self.assertEqual(dispatch, '')
+        self.assertNotEqual(code, 0, out)
+        self.assertNotIn('grey', out)
 
     def test_suspended_and_tolerant_reds_are_neither_dispatched_nor_blocking(self):
         lanes = json.dumps({'suites': {'cardstates': {'lane': 'suspended'}, 'settings': {'lane': 'tolerant'}}})

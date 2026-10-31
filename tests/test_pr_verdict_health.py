@@ -32,25 +32,19 @@ class HealthGreys(unittest.TestCase):
         self.assertEqual(state, 'success', why)
         self.assertIn('runner not acquired', why)
 
-    def test_grey_annotation_on_green_or_legacy_red_job_is_health(self):
-        for conclusion in ('success', 'failure'):
-            job = {**RECORDED['ai_mixed']['job'], 'conclusion': conclusion}
-            greys = self.grey(job, [{'title': 'Grey: the runner, not the app'}])
-            self.assertEqual(greys, {job['id']: 'runner-grey'})
-            result, why, *_ = pv.verdict([run()], jobs={7: [job]}, greys=greys)
-            self.assertEqual(result, 'success', why)
-            self.assertIn('runner, not the app', why)
+    def test_a_grey_titled_annotation_is_no_health_proof_any_more(self):
+        # Why (31 Oct 2026, owner: a suite past its budget is our bug): nothing writes "Grey: the runner, not the app"; a job's health comes from its log or its recorded marks only.
+        job = {**RECORDED['ai_mixed']['job'], 'conclusion': 'failure'}
+        greys = self.grey(job, [{'title': 'Grey: the runner, not the app'}])
+        self.assertNotIn('runner-grey', greys.values())
+        result, why, *_ = pv.verdict([run()], jobs={7: [job]}, greys=greys)
+        self.assertNotIn('runner, not the app', why)
 
-    def test_success_without_grey_reads_no_failure_log(self):
+    def test_a_green_job_is_never_read_for_health(self):
         job = {**RECORDED['ai_mixed']['job'], 'conclusion': 'success'}
-        seen = []
-        def notes(jid):
-            seen.append(jid)
-            return []
-        def log(_):
-            self.fail('successful jobs must not read failure logs')
-        self.assertEqual(pv.health_greys('o/r', [run()], {7: [job]}, annotations_of=notes, log_of=log), {})
-        self.assertEqual(seen, [job['id']])
+        def never(_):
+            self.fail('a successful job reads neither annotations nor logs')
+        self.assertEqual(pv.health_greys('o/r', [run()], {7: [job]}, annotations_of=never, log_of=never), {})
 
     def test_recorded_cap_annotation_in_isolation_is_health(self):
         # Replay just the recorded cap failure; the actual job also had an unrelated assertion (next test).

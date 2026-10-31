@@ -7,6 +7,7 @@
 // Alert policy: send once per failed workflow run, including during an ongoing outage, so each affected workflow has its own run link. No cross-run suppression.
 // Job: report health
 import path from 'node:path';
+import fs from 'node:fs';
 import {alertHtml} from './lib/telegram-html.mjs';
 import {send} from './ci-alert.mjs';
 
@@ -35,7 +36,45 @@ export async function alertCreditOut({provider, text, always = false, env = proc
   return send(creditMessage({provider, text, env}), env, fetcher);
 }
 
+// Read cap files and the runner's aiCapped results; unrelated failed values keep their ordinary verdict.
+function capNotes(folder) {
+  let entries;
+  try { entries = fs.readdirSync(folder, {withFileTypes: true}); } catch { return []; }
+  return entries.flatMap(entry => {
+    const file = path.join(folder, entry.name);
+    if (entry.isDirectory()) return capNotes(file);
+    if (!['ai-capped.json', 'steps.json'].includes(entry.name)) return [];
+    try {
+      const data = JSON.parse(fs.readFileSync(file, 'utf8'));
+      if (entry.name === 'ai-capped.json') return [`${path.basename(folder)}: ${data.why || `${data.neurons ?? 'unreadable'} of ${data.cap ?? 'unknown'} neurons; ${data.skipped || 0} skipped step(s)`}`];
+      return (data.results || []).filter(step => step.aiCapped).map(step => `${path.basename(folder)}: ${step.note || step.name}`);
+    } catch { return []; }
+  });
+}
+
+/** Aggregate capped suites into one existing-channel alert; a persisted run marker suppresses fresh-runner duplicates. Never holds a release. */
+export async function alertCappedSteps({artifacts, marker, env = process.env, fetcher = fetch, log = console.log}) {
+  const notes = [...new Set(capNotes(artifacts))];
+  if (!notes.length) return 'credit-alert: no capped AI steps';
+  for (const note of notes) log(`::warning title=AI credit ran out::${note.replace(/%/g, '%25').replace(/\r/g, '%0D').replace(/\n/g, '%0A')}`);
+  if (marker && fs.existsSync(marker)) return 'credit-alert: this run already alerted';
+  const run = `${env.GITHUB_SERVER_URL || 'https://github.com'}/${env.GITHUB_REPOSITORY}/actions/runs/${env.GITHUB_RUN_ID}`;
+  const result = await send(alertHtml({icon: '🩶', title: 'AI credit ran out', verdict: 'AI steps are grey; the beta is not held',
+    bullets: [{label: 'Workflow', parts: [env.GITHUB_WORKFLOW || 'CI']}, {label: 'Cause', parts: [notes.slice(0, 3).join('; ')]}],
+    links: [{text: 'Open the run', url: run}]}), env, fetcher);
+  if (marker && result === 'ci-alert: sent') {
+    fs.mkdirSync(path.dirname(marker), {recursive: true});
+    fs.writeFileSync(marker, 'sent\n');
+  }
+  return result;
+}
+
 if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(new URL(import.meta.url).pathname)) {
-  const [provider = 'anthropic', text = ''] = process.argv.slice(2);
-  console.log(await alertCreditOut({provider, text}));
+  if (process.argv[2] === '--artifacts') {
+    try { console.log(await alertCappedSteps({artifacts: process.argv[3], marker: process.argv[process.argv.indexOf('--marker') + 1]})); }
+    catch { console.log('::warning title=AI credit ran out::Could not report AI credit health; the beta is not held'); }
+  } else {
+    const [provider = 'anthropic', text = ''] = process.argv.slice(2);
+    console.log(await alertCreditOut({provider, text}));
+  }
 }

@@ -4,6 +4,7 @@
 // without a real outage and without spending anything.
 // Job: serve stored answers
 import http from 'node:http';
+import {upstreamCredentials} from './proxy-credentials.mjs';
 import {HUNG_REPORTS, markPlanted} from './planted.mjs';
 import {keyFingerprint} from './key-check.mjs';
 import {capMessage, capReached, noteCapped} from './ai-cap.mjs';
@@ -68,7 +69,7 @@ async function serveFault(control, fault, ready, res, openai) {
 // follow: the Claude proxy of the same suite, whose controls (canned answers, fault mode, delay) this one obeys, so a suite's stand-ins and faults work on an OpenAI
 // turn too (9 Oct 2026: the first OpenAI run let every stand-in pass through to the real model). shape 'openai': the Responses API, translated both ways.
 /** Start the app's AI proxy with fault controls, stored answers and metered live fallback. */
-export async function startAiProxy({delayMs = 0, target = 'https://api.anthropic.com', kind = 'app', metered = /\/messages(\?|$)/, shape = 'anthropic', follow = null, maxCalls = 0, relay = null} = {}) {   // maxCalls: the refill's per-row cap on paid calls (lib/refill.mjs): the next one is refused here, before Anthropic
+export async function startAiProxy({delayMs = 0, target = 'https://api.anthropic.com', kind = 'app', metered = /\/messages(\?|$)/, shape = 'anthropic', follow = null, maxCalls = 0, relay = null, credentials = {}} = {}) {   // maxCalls: the refill's per-row cap on paid calls (lib/refill.mjs): the next one is refused here, before Anthropic
   const stats = {calls: 0, delayMs, mode: 'pass', canned: 0, armed: 0, failed: 0, fault: faultScope('pass')};   // armed / failed: the runner's check that a step's fault fired (lib/faults.mjs)
   const pending = new Set();
   let canned = null;   // (request body as an object) -> the text a model would answer, or null to pass the call through to Anthropic
@@ -135,7 +136,7 @@ export async function startAiProxy({delayMs = 0, target = 'https://api.anthropic
     stats.paid = (stats.paid || 0) + 1;
     stats.inflight = (stats.inflight || 0) + 1;
     try {
-      const headers = Object.fromEntries(Object.entries(req.headers).filter(([name]) => !['host', 'connection', 'content-length', 'accept-encoding'].includes(name)));
+      const headers = upstreamCredentials(Object.fromEntries(Object.entries(req.headers).filter(([name]) => !['host', 'connection', 'content-length', 'accept-encoding'].includes(name))), credentials);
       const answer = await fetch(`${target}${req.url}`, {method: req.method, headers, body: ['GET', 'HEAD'].includes(req.method) ? undefined : body});
       const answered = Buffer.from(await answer.arrayBuffer()), contentType = answer.headers.get('content-type') || 'application/json';
       if (!answer.ok) { countError(answer.status, answered.toString('utf8')); describeRefusal(stats, answer, req, body); }   // Anthropic's own answer: which limit, which error (lib/ai-meter.mjs); the first few with the request's shape

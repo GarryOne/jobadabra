@@ -3,7 +3,18 @@
 //   node flaky-proof.mjs <first try's suite-failures.json>
 // Prints one line per step: flaky (with its proof) or intermittent (why). Missing, empty or unreadable evidence cannot prove timing and keeps the job red.
 import fs from 'node:fs';
-import {flakyProof} from './lib/flaky-proof.mjs';
+import {flakyProof, greyProof} from './lib/flaky-proof.mjs';
+
+if (process.argv[2] === '--grey') {
+  try {
+    const proof = greyProof(...process.argv.slice(3, 5).map(file => JSON.parse(fs.readFileSync(file, 'utf8'))));
+    console.log(proof.why);
+    process.exit(proof.grey ? 0 : 1);
+  } catch (error) {
+    console.log(`grey-proof: failures unreadable: ${error.message.split('\n')[0]}`);
+    process.exit(1);
+  }
+}
 
 let failures = null;
 try { failures = JSON.parse(fs.readFileSync(process.argv[2], 'utf8')); } catch (error) { console.log(`flaky-proof: no first-try failures read (${error.message.split('\n')[0]}): no timing proof`); process.exit(1); }

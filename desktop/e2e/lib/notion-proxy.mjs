@@ -1,7 +1,9 @@
 // A pass-through stand-in for the Notion API that can fail on purpose (5 Oct 2026), as lib/ai-proxy.mjs does for the AI: a busy Notion (429), a server error,
+// Job: run the backbone
 // an HTML error page instead of JSON (#266 met that by chance), no answer at all, or a refused connection (the network gone). The app and the engine use it only in a
 // test run (JOB_PILOTTO_E2E_NOTION_BASE_URL). `fail(mode, {times, writes})` fails the next `times` calls (all calls when omitted), or only the writes.
 import http from 'node:http';
+import {upstreamCredentials} from './proxy-credentials.mjs';
 import {HUNG_REPORTS, markPlanted} from './planted.mjs';
 
 export const NOTION_FAILURES = {
@@ -28,7 +30,8 @@ export function decide(plan, method, url) {
 // stand-in's placeholder token to api.notion.com, 401). Real Notion only for a run on the real test page.
 export const farSide = standIn => (standIn ? standIn.url : 'https://api.notion.com');
 
-export async function startNotionProxy({target = 'https://api.notion.com'} = {}) {
+/** Start a fault-controlled Notion proxy; exact aliases gain credentials only on the upstream hop. */
+export async function startNotionProxy({target = 'https://api.notion.com', credentials = {}} = {}) {
   const stats = {calls: 0, failed: 0, writes: 0, armed: 0};
   let plan = {mode: 'pass'};
   const server = http.createServer(async (req, res) => {
@@ -48,7 +51,7 @@ export async function startNotionProxy({target = 'https://api.notion.com'} = {})
       return;
     }
     try {
-      const headers = Object.fromEntries(Object.entries(req.headers).filter(([name]) => !['host', 'connection', 'content-length', 'accept-encoding'].includes(name)));
+      const headers = upstreamCredentials(Object.fromEntries(Object.entries(req.headers).filter(([name]) => !['host', 'connection', 'content-length', 'accept-encoding'].includes(name))), credentials);
       const answer = await fetch(`${target}${req.url}`, {method: req.method, headers, body: ['GET', 'HEAD'].includes(req.method) ? undefined : Buffer.concat(chunks)});
       const body = Buffer.from(await answer.arrayBuffer());
       res.writeHead(answer.status, {'content-type': answer.headers.get('content-type') || 'application/json', 'content-length': body.length});

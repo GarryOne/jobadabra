@@ -104,6 +104,9 @@
     },
     "personas": {
       "aiMissesMax": 0
+    },
+    "activity": {
+      "aiMissesMax": 0
     }
   }
 }

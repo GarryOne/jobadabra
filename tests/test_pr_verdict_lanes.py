@@ -127,6 +127,8 @@ class LaneGreys(unittest.TestCase):
         asked = []
         def github(*args):
             asked.append(args[-1])
+            if '/contents/tools/pr_verdict_greys.py?ref=' in args[-1]:
+                return (ROOT / 'tools/pr_verdict_greys.py').read_text()
             if '/contents/tools/pr_lanes.py?ref=' in args[-1]:
                 return (ROOT / 'tools/pr_lanes.py').read_text()
             if args[-1].endswith('/lanes.json?ref=release'):
@@ -137,7 +139,8 @@ class LaneGreys(unittest.TestCase):
                 mock.patch.dict(os.environ, {'GITHUB_BASE_REF': 'release', 'GITHUB_SHA': 'pr-head'}):
             jobs = {7: [job(71, 'quality', 'failure'), job(72, 'settings', 'failure')]}
             self.assertEqual(pv.lane_greys('o/r', [PR, run(7)], jobs), {71: 'tolerant'})
-        self.assertEqual(asked, ['repos/o/r/contents/tools/pr_lanes.py?ref=pr-head',
+        self.assertEqual(asked, ['repos/o/r/contents/tools/pr_verdict_greys.py?ref=pr-head',
+                                 'repos/o/r/contents/tools/pr_lanes.py?ref=pr-head',
                                  'repos/o/r/contents/desktop/e2e/lanes.json?ref=release'])
 
     def test_this_file_and_main_e2e_state_strip_every_real_job_shape_the_same_way(self):

@@ -23,8 +23,8 @@ class BetaRates(unittest.TestCase):
             # Owner, 30 Oct 2026: a red on either lane holds both platforms (Windows dropped its duplicates of the Mac + Linux suites).
             self.assertIn('needs: [changes, test-mac, test-windows]', job)
             self.assertIn("if: needs.test-mac.result != 'success' || needs.test-windows.result != 'success'", failure)
-            self.assertRegex(failure, r'--e2e-only\n')
-            self.assertNotIn('exit 1', failure, 'a tolerant red alone must reach the rate decision')
+            self.assertIn(f'--e2e-only --platform {platform}', failure)
+            self.assertNotIn('exit 1', failure, 'a tolerant result must only report its rate')
 
 
 if __name__ == '__main__':

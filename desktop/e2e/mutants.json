@@ -52,7 +52,7 @@
  {
   "id": "scout-silent",
   "suite": "activity",
-  "store": "sqlite",
+  "store": "standin",
   "file": "src/scout_run.py",
   "find": "def read_lists(scout, db, seeds):",
   "replace": "print = lambda *args, **kwargs: None\n\ndef read_lists(scout, db, seeds):",
@@ -102,7 +102,7 @@
  {
   "id": "weekly-plain-layout-unread",
   "suite": "activity",
-  "store": "sqlite",
+  "store": "standin",
   "file": "desktop/renderer/weekly-card.js",
   "find": "const FINDING = /^(?:💡\\s*|Finding:\\s*)(.+)$/;",
   "replace": "const FINDING = /^💡\\s*(.+)$/;",

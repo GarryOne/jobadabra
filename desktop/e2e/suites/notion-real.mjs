@@ -72,7 +72,7 @@ export async function run(ctx) {
       await ctx.relaunch({}, profile => {
         const file = path.join(profile, 'settings.json');
         const settings = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : {};
-        fs.writeFileSync(file, JSON.stringify({...settings, setupDone: true, wizardStep: 'extras', setupFurthest: 'extras', store: 'sqlite'}));
+        fs.writeFileSync(file, JSON.stringify({...settings, setupDone: true, wizardStep: 'draft', setupFurthest: 'draft', store: 'sqlite'}));
       });
       await ctx.page.evaluate(key => window.pilot.saveSecret('ANTHROPIC_API_KEY', key), DUMMY_KEY);
       if (settingsOf(ctx.profile).store !== 'sqlite') throw new Error(`the app starts on ${settingsOf(ctx.profile).store}`);

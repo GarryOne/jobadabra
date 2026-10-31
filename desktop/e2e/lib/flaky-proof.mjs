@@ -26,6 +26,17 @@ export function flakyProof(message = '') {
   return {flaky: false, why: `a wrong value, not timing: "${text.split('\n')[0].slice(0, 140)}"`};
 }
 
+/** Prove grey only from two recorded failures; flakyProof alone owns timing and harness classification. */
+export function greyProof(firstFailures, secondFailures) {
+  const tries = [firstFailures, secondFailures];
+  if (tries.some(failures => !Array.isArray(failures) || failures.length === 0)) return {grey: false, why: 'both tries need recorded failures: no timing proof'};
+  for (const failures of tries) for (const failure of failures) {
+    const proof = flakyProof(failure?.message);
+    if (!proof.flaky) return {grey: false, why: proof.why};
+  }
+  return {grey: true, why: [...new Set(tries.flat().map(failure => failure.step || '(unnamed step)'))].join('; ')};
+}
+
 // The failed steps of a first try (suite-failures.json) that passed on the second try without proof of being flaky.
 export const unproved = failures => (failures || []).map(failure => ({...failure, proof: flakyProof(failure.message)})).filter(failure => !failure.proof.flaky);
 

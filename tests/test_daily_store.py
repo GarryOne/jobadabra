@@ -17,6 +17,7 @@ from datetime import datetime
 from unittest import mock
 
 from src import daily, daily_helpers, daily_search, doctor, run_log, store_access
+from src.sources import eures
 from src.stores import memory
 
 JOB = {'url': 'https://jobs.example/sre-1', 'title': 'SRE', 'company': 'Example', 'location': 'Zurich', 'description': 'Kubernetes on call.'}
@@ -48,6 +49,8 @@ class ScheduledRunOnTheStoreTests(unittest.TestCase):
             mock.patch.object(daily_search, 'downloaded_index', return_value=[]),
             mock.patch.object(daily_search.feeds, 'scan', return_value={'jobs': [JOB], 'sources': []}),
             mock.patch('src.sources.aggregators.scan', return_value={'jobs': [], 'sources': []}),
+            # Why (#2651): the mocked aggregator never takes this read; it leaked into test_eures in the same process.
+            mock.patch.object(eures, 'start_early'),
             mock.patch.object(daily_search.describe, 'backfill', return_value=''),
             mock.patch.object(daily_search.google_jobs, 'api_key', return_value=''),
             mock.patch.object(daily_search.coverage, 'save'),
@@ -76,11 +79,13 @@ class ScheduledRunOnTheStoreTests(unittest.TestCase):
         self.addCleanup(run_log._open.clear)
 
     def run_daily(self, *extra, env=None):
+        early_reads = dict(eures._early)
         argv = ['daily', '--mode', 'scheduled', '--log-run', '--insight', '--db', str(self.tmp / 'jobs.sqlite'), *extra]
         out = io.StringIO()
         with mock.patch.object(sys, 'argv', argv), mock.patch.dict('os.environ', env or {'JOB_PILOTTO_STORE': 'memory', 'JOB_PILOTTO_DISABLE': 'mail,notion,google_jobs'}), \
                 contextlib.redirect_stdout(out):
             code = daily.main()
+        self.assertEqual(eures._early, early_reads, 'the isolated store run leaves no background EURES read')
         return code, out.getvalue()
 
     def test_a_scheduled_run_on_this_macs_store_logs_its_row_and_uses_the_store_everywhere(self):

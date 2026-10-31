@@ -213,7 +213,7 @@ jobs:
     runs-on: ${{ inputs.all_on_mac && 'macos-latest' || matrix.os || 'macos-latest' }}   # Linux unless the suite needs the Mac (lib/plan.mjs runnerOf); a virtual display there
     timeout-minutes: 360   # the lock's wait (up to 3 h) plus the suite; each step below has its own limit, so this only ends a hung wait
     # Outside failures stay red in their job and report, but do not decide the beta gate.
-    continue-on-error: ${{ matrix.outside == true }}
+    continue-on-error: ${{ (matrix.outside == true || matrix.tolerant == true) }}
     strategy:
       fail-fast: false      # one suite failing must not hide what the others found
       matrix: ${{ fromJson(needs.plan.outputs.matrix) }}
@@ -223,6 +223,37 @@ jobs:
       group: ${{ inputs.after_merge != '' && format('e2e-after-merge-{0}', matrix.key) || inputs.pr_suites != '' && format('e2e-pr-{0}-{1}', github.ref, matrix.key) || format('e2e-run-{0}-{1}', github.run_id, matrix.key) }}
       cancel-in-progress: ${{ inputs.pr_suites != '' && inputs.after_merge == '' }}
     env:
+      # Why (#2651, owner): the generated relay key exists only when its producer runs.
+      E2E_ARTIFACT_SECRET_NAMES: |
+        ACTIONS_ID_TOKEN_REQUEST_TOKEN
+        AI_COST_PUBLISH_KEY
+        CI_CF_ANALYTICS_TOKEN
+        CI_FREE_AI_CF_ACCOUNT_ID
+        E2E_ANTHROPIC_KEY
+        ${{ matrix.offlineAi != true && 'E2E_FREE_AI_KEY' || '' }}
+        E2E_LOCK_TOKEN
+        E2E_NOTION_TOKEN
+        E2E_NOTION_TOKEN_ACTIVITY
+        E2E_NOTION_TOKEN_ACTIVITYFAILURES
+        E2E_NOTION_TOKEN_APPLY
+        E2E_NOTION_TOKEN_CALENDAR
+        E2E_NOTION_TOKEN_EMPLOYERS
+        E2E_NOTION_TOKEN_FAILURESCHANNELS
+        E2E_NOTION_TOKEN_FAILURESNOTION
+        E2E_NOTION_TOKEN_FOCUS
+        E2E_NOTION_TOKEN_FOCUSDISMISS
+        E2E_NOTION_TOKEN_INTERACTIONS
+        E2E_NOTION_TOKEN_INTERVIEWS
+        E2E_NOTION_TOKEN_JOBS
+        E2E_NOTION_TOKEN_PERSONAS
+        E2E_NOTION_TOKEN_QUALITY
+        E2E_NOTION_TOKEN_SETTINGS
+        E2E_NOTION_TOKEN_STRATEGY
+        E2E_NOTION_TOKEN_WANDER
+        E2E_OPENAI_KEY
+        FREE_AI_LOCAL_CF_ACCOUNT_ID
+        FREE_AI_LOCAL_CF_AI_TOKEN
+        GH_TOKEN
       # A suite whose secrets are missing FAILS here instead of a green "skipped" (lib/skip.mjs). 6 Oct 2026: failuresnotion and failureschannels
       # had never run (no token) and showed ✓. Forks have no secrets: they still skip with a warning.
       E2E_REQUIRE_SECRETS: ${{ github.repository_owner == 'GarryOne' && '1' || '' }}
@@ -245,7 +276,6 @@ jobs:
       E2E_NOTION_TOKEN_FOCUS: ${{ secrets.E2E_NOTION_TOKEN_FOCUS }}
       E2E_NOTION_TOKEN_FOCUSDISMISS: ${{ secrets.E2E_NOTION_TOKEN_FOCUSDISMISS }}
       E2E_NOTION_TOKEN_APPLY: ${{ secrets.E2E_NOTION_TOKEN_APPLY }}
-      E2E_NOTION_TOKEN_APPLYFLOWS: ${{ secrets.E2E_NOTION_TOKEN_APPLYFLOWS }}
       E2E_NOTION_TOKEN_ACTIVITY: ${{ secrets.E2E_NOTION_TOKEN_ACTIVITY }}
       E2E_NOTION_TOKEN_ACTIVITYFAILURES: ${{ secrets.E2E_NOTION_TOKEN_ACTIVITYFAILURES }}
       E2E_NOTION_TOKEN_STRATEGY: ${{ secrets.E2E_NOTION_TOKEN_STRATEGY }}
@@ -390,6 +420,7 @@ jobs:
       - name: Run the ${{ matrix.key }} suite (first try)
         id: suite_run
         env:
+          E2E_TRY_MINUTES: 15   # = this step's timeout-minutes: a suite without an aggregate budget stops 4 min before it (its close-down cap + 1), with records that read as timing (lib/runner.mjs budgetMsOf; tests/test_e2e_try_minutes.py)
           # Why (30 Oct 2026, ap; owner-approved rule A and burn-in): admission uses stored answers; manual first attempts may record; a suite that declares aiAnswers as backbone (plan-run.mjs puts it in matrix.aiAnswers) otherwise uses backbone answers on both tries without live AI.
           E2E_AI_ANSWERS: ${{ matrix.burnIn && 'backbone' || github.event_name == 'workflow_dispatch' && github.run_attempt == 1 && inputs.ai_answers == 'record' && 'record' || matrix.aiAnswers || 'off' }}
           PR_RUN: ${{ inputs.pr_suites != '' && inputs.after_merge == '' && '1' || '' }}   # a report-only suite skips its retry on a PR only; main, nightly and gate runs keep it
@@ -421,8 +452,9 @@ jobs:
         if: steps.suite_run.outcome == 'failure' && !inputs.mutant && steps.suite_run.outputs.report_only == '1'
         run: exit 1
       - name: "First try failed: the ${{ matrix.key }} suite once more, to tell flaky from real"
-        if: steps.suite_run.outcome == 'failure' && !inputs.mutant && !matrix.burnIn && steps.suite_run.outputs.report_only != '1' && matrix.outside != true
+        if: steps.suite_run.outcome == 'failure' && !inputs.mutant && !matrix.burnIn && steps.suite_run.outputs.report_only != '1' && matrix.outside != true && matrix.tolerant != true
         env:
+          E2E_TRY_MINUTES: 15   # = this step's timeout-minutes: a suite without an aggregate budget stops 4 min before it (its close-down cap + 1), with records that read as timing (lib/runner.mjs budgetMsOf; tests/test_e2e_try_minutes.py)
           # Why (30 Oct 2026, ap): a backbone suite's retry uses the same stored answers as its first attempt (matrix.aiAnswers), never a UUID-dependent live replay.
           E2E_AI_ANSWERS: ${{ matrix.aiAnswers || 'off' }}
         working-directory: desktop/e2e
@@ -446,11 +478,15 @@ jobs:
               exit 1
             fi
           else
-            echo "Failed again on the same commit: a real failure."
-            exit 1   # red twice: the job (and the gate) fail
+            if steps=$(node flaky-proof.mjs --grey "$first/suite-failures.json" "$E2E_ARTIFACTS/suite-failures.json"); then
+              echo "::error title=Grey: the runner, not the app::${{ matrix.key }}: both tries stopped on time only ($steps); re-runs once on a fresh runner in a beta"
+            else
+              echo "Failed again on the same commit: a real failure."
+            fi
+            exit 1   # keep failure so gh run rerun --failed picks grey jobs
           fi
       - name: Outside-world health
-        if: always() && matrix.outside == true
+        if: always() && (matrix.outside == true || matrix.tolerant == true)
         env:
           OUTCOME: ${{ steps.suite_run.outcome }}
         run: |
@@ -503,16 +539,44 @@ jobs:
         with:
           path: desktop/e2e/.quality-rate
           key: quality-rate-${{ github.run_id }}-${{ github.run_attempt }}
+      - name: Scan artifact contents for CI secrets
+        working-directory: ${{ github.workspace }}
+        id: artifact_scan_1
+        if: always()
+        shell: bash
+        env:
+          AI_COST_PUBLISH_KEY: ${{ secrets.AI_COST_PUBLISH_KEY }}
+          E2E_LOCK_TOKEN: ${{ steps.lock_app.outputs.token || github.token }}
+          FREE_AI_LOCAL_CF_ACCOUNT_ID: ${{ secrets.CI_FREE_AI_CF_ACCOUNT_ID }}
+          FREE_AI_LOCAL_CF_AI_TOKEN: ${{ secrets.CI_FREE_AI_CF_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+          E2E_ARTIFACT_PATHS: |
+            desktop/e2e/.ai-cache
+        run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
       - name: Hand this PR's green AI answers to main's run after the merge (desktop/e2e/pr-answers.mjs)
-        if: success() && inputs.pr_suites != '' && inputs.after_merge == '' && env.E2E_ANTHROPIC_KEY != '' && hashFiles('desktop/e2e/.ai-cache/*.json') != ''
+        if: (success() && inputs.pr_suites != '' && inputs.after_merge == '' && env.E2E_ANTHROPIC_KEY != '' && hashFiles('desktop/e2e/.ai-cache/*.json') != '') && steps.artifact_scan_1.outcome == 'success'
         uses: actions/upload-artifact@v6
         with:
           name: ai-answers-${{ matrix.key }}${{ matrix.key == 'mailreading' && '-v2' || '' }}
           path: desktop/e2e/.ai-cache
           include-hidden-files: true   # .ai-cache is a hidden folder: without this the artifact is empty
           retention-days: 7
-      - name: The suite's part of the HTML report
+      - name: Scan artifact contents for CI secrets
+        working-directory: ${{ github.workspace }}
+        id: artifact_scan_2
         if: always()
+        shell: bash
+        env:
+          AI_COST_PUBLISH_KEY: ${{ secrets.AI_COST_PUBLISH_KEY }}
+          E2E_LOCK_TOKEN: ${{ steps.lock_app.outputs.token || github.token }}
+          FREE_AI_LOCAL_CF_ACCOUNT_ID: ${{ secrets.CI_FREE_AI_CF_ACCOUNT_ID }}
+          FREE_AI_LOCAL_CF_AI_TOKEN: ${{ secrets.CI_FREE_AI_CF_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+          E2E_ARTIFACT_PATHS: |
+            blob-report
+        run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
+      - name: The suite's part of the HTML report
+        if: (always()) && steps.artifact_scan_2.outcome == 'success'
         uses: actions/upload-artifact@v6
         with:
           name: blob-${{ matrix.key }}
@@ -520,8 +584,23 @@ jobs:
           if-no-files-found: ignore
           retention-days: 3
       # Steps and a failed suite's trace as data (the /admin/e2e runs page that read them was dropped on 15 Oct 2026; the artifact stays for download).
-      - name: Steps and trace for /admin/e2e
+      - name: Scan artifact contents for CI secrets
+        working-directory: ${{ github.workspace }}
+        id: artifact_scan_3
         if: always()
+        shell: bash
+        env:
+          AI_COST_PUBLISH_KEY: ${{ secrets.AI_COST_PUBLISH_KEY }}
+          E2E_LOCK_TOKEN: ${{ steps.lock_app.outputs.token || github.token }}
+          FREE_AI_LOCAL_CF_ACCOUNT_ID: ${{ secrets.CI_FREE_AI_CF_ACCOUNT_ID }}
+          FREE_AI_LOCAL_CF_AI_TOKEN: ${{ secrets.CI_FREE_AI_CF_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+          E2E_ARTIFACT_PATHS: |
+            e2e-artifacts/${{ matrix.key }}/steps.json
+            e2e-artifacts/${{ matrix.key }}/trace-*.zip
+        run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
+      - name: Steps and trace for /admin/e2e
+        if: (always()) && steps.artifact_scan_3.outcome == 'success'
         uses: actions/upload-artifact@v6
         with:
           name: e2e-view-${{ matrix.key }}
@@ -530,16 +609,44 @@ jobs:
             e2e-artifacts/${{ matrix.key }}/trace-*.zip
           compression-level: 0
           if-no-files-found: ignore
+      - name: Scan artifact contents for CI secrets
+        working-directory: ${{ github.workspace }}
+        id: artifact_scan_4
+        if: always()
+        shell: bash
+        env:
+          AI_COST_PUBLISH_KEY: ${{ secrets.AI_COST_PUBLISH_KEY }}
+          E2E_LOCK_TOKEN: ${{ steps.lock_app.outputs.token || github.token }}
+          FREE_AI_LOCAL_CF_ACCOUNT_ID: ${{ secrets.CI_FREE_AI_CF_ACCOUNT_ID }}
+          FREE_AI_LOCAL_CF_AI_TOKEN: ${{ secrets.CI_FREE_AI_CF_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+          E2E_ARTIFACT_PATHS: |
+            e2e-artifacts/${{ matrix.key }}/coverage-*.json
+        run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
       - name: Which app lines the suite ran (the code → suite map)
-        if: always() && env.E2E_COVERAGE == '1'
+        if: (always() && env.E2E_COVERAGE == '1') && steps.artifact_scan_4.outcome == 'success'
         uses: actions/upload-artifact@v6
         with:
           name: e2e-coverage-${{ matrix.key }}
           path: e2e-artifacts/${{ matrix.key }}/coverage-*.json
           if-no-files-found: ignore
           retention-days: 7
-      - name: Screenshots and timings
+      - name: Scan artifact contents for CI secrets
+        working-directory: ${{ github.workspace }}
+        id: artifact_scan_5
         if: always()
+        shell: bash
+        env:
+          AI_COST_PUBLISH_KEY: ${{ secrets.AI_COST_PUBLISH_KEY }}
+          E2E_LOCK_TOKEN: ${{ steps.lock_app.outputs.token || github.token }}
+          FREE_AI_LOCAL_CF_ACCOUNT_ID: ${{ secrets.CI_FREE_AI_CF_ACCOUNT_ID }}
+          FREE_AI_LOCAL_CF_AI_TOKEN: ${{ secrets.CI_FREE_AI_CF_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+          E2E_ARTIFACT_PATHS: |
+            e2e-artifacts/${{ matrix.key }}
+        run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
+      - name: Screenshots and timings
+        if: (always()) && steps.artifact_scan_5.outcome == 'success'
         uses: actions/upload-artifact@v6
         with:
           name: e2e-artifacts-${{ matrix.key }}
@@ -547,8 +654,22 @@ jobs:
           if-no-files-found: ignore
       # The second try writes its own folder (e2e-rerun): without this upload its logs reached no one and a retry's own failure could not be read
       # (#2087's quality run 40340783596, 26 Oct 2026). Guard: tests/test_e2e_artifacts_uploaded.py.
-      - name: The second try's screenshots and logs
+      - name: Scan artifact contents for CI secrets
+        working-directory: ${{ github.workspace }}
+        id: artifact_scan_6
         if: always()
+        shell: bash
+        env:
+          AI_COST_PUBLISH_KEY: ${{ secrets.AI_COST_PUBLISH_KEY }}
+          E2E_LOCK_TOKEN: ${{ steps.lock_app.outputs.token || github.token }}
+          FREE_AI_LOCAL_CF_ACCOUNT_ID: ${{ secrets.CI_FREE_AI_CF_ACCOUNT_ID }}
+          FREE_AI_LOCAL_CF_AI_TOKEN: ${{ secrets.CI_FREE_AI_CF_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+          E2E_ARTIFACT_PATHS: |
+            e2e-rerun/${{ matrix.key }}
+        run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
+      - name: The second try's screenshots and logs
+        if: (always()) && steps.artifact_scan_6.outcome == 'success'
         uses: actions/upload-artifact@v6
         with:
           name: e2e-rerun-${{ matrix.key }}
@@ -585,6 +706,13 @@ jobs:
       issues: read    # the by-design lessons come from the closed issues (lib/review-lessons.mjs)
       actions: read   # this run's suite artifacts
       id-token: write   # GitHub's per-run token the Codex broker checks (lib/broker-client.mjs)
+    env:
+      E2E_ARTIFACT_SECRET_NAMES: |
+        ACTIONS_ID_TOKEN_REQUEST_TOKEN
+        AI_COST_PUBLISH_KEY
+        E2E_ANTHROPIC_KEY
+        GH_TOKEN
+        GITHUB_TOKEN
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -626,12 +754,15 @@ jobs:
     if: always() && needs.plan.result == 'success'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
+    env:
+      E2E_ARTIFACT_SECRET_NAMES: |
     steps:
       - uses: actions/checkout@v5
         with:
           sparse-checkout: |
             desktop/e2e
             tools/merge-e2e-report.sh
+            tools/scan-e2e-artifacts.py
       - uses: actions/setup-node@v5
         with:
           node-version: '22'
@@ -648,8 +779,17 @@ jobs:
           # A report never decides the run: a corrupt blob is left out and named, a failed merge is said, the job stays green (tools/merge-e2e-report.sh)
           bash "$GITHUB_WORKSPACE/tools/merge-e2e-report.sh" "$GITHUB_WORKSPACE/blob-reports" "$GITHUB_WORKSPACE/e2e-report"
           if grep -q "^made=1" "$GITHUB_OUTPUT"; then echo "HTML report (admins): https://www.jobpilotto.top/admin/operations/e2e/run/${{ github.run_id }}/report"; fi
+      - name: Scan artifact contents for CI secrets
+        working-directory: ${{ github.workspace }}
+        id: artifact_scan_7
+        if: always()
+        shell: bash
+        env:
+          E2E_ARTIFACT_PATHS: |
+            e2e-report
+        run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
       - uses: actions/upload-artifact@v6
-        if: steps.merge.outputs.made == '1'
+        if: (steps.merge.outputs.made == '1') && steps.artifact_scan_7.outcome == 'success'
         with:
           name: e2e-report
           path: e2e-report
@@ -673,10 +813,15 @@ jobs:
     permissions:
       actions: read   # the previous map
       contents: read
+    env:
+      E2E_ARTIFACT_SECRET_NAMES: |
+        GH_TOKEN
     steps:
       - uses: actions/checkout@v5
         with:
-          sparse-checkout: desktop/e2e
+          sparse-checkout: |
+            desktop/e2e
+            tools/scan-e2e-artifacts.py
           fetch-depth: 0
           filter: blob:none
       - uses: actions/download-artifact@v7
@@ -695,7 +840,18 @@ jobs:
           set -o pipefail
           prev=(); [ -f "$GITHUB_WORKSPACE/previous/coverage-map.json" ] && prev=(--previous "$GITHUB_WORKSPACE/previous/coverage-map.json")
           node coverage-map.mjs --artifacts "$GITHUB_WORKSPACE/coverage" "${prev[@]}" --repo "$GITHUB_WORKSPACE" --out "$GITHUB_WORKSPACE/map/coverage-map.json"
+      - name: Scan artifact contents for CI secrets
+        working-directory: ${{ github.workspace }}
+        id: artifact_scan_8
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          E2E_ARTIFACT_PATHS: |
+            map/coverage-map.json
+        run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
       - uses: actions/upload-artifact@v6
+        if: steps.artifact_scan_8.outcome == 'success'
         with:
           name: e2e-coverage-map
           path: map/coverage-map.json
@@ -789,3 +945,51 @@ jobs:
           gh workflow run e2e-windows.yml --repo "${{ github.repository }}" --ref main \
             -f mac_run=${{ github.run_id }} -f sha=${{ needs.plan.outputs.ref }} -f review=${{ needs.plan.outputs.review }} -f full="$FULL" -f tag="${{ needs.plan.outputs.tag }}"
           echo "Windows run started for commit ${{ needs.plan.outputs.ref }} (it skips a commit Windows already tested)."
+
+  # Why (31 Oct 2026, owner): "It should just raise an alert. And that's it." One credit alert per workflow run, never a beta hold.
+  ai-credit-health:
+    name: AI credit health
+    needs: [suite]
+    if: always() && !cancelled() && github.ref == 'refs/heads/main'
+    continue-on-error: true
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+    env:
+      E2E_ARTIFACT_SECRET_NAMES: |
+        GH_TOKEN
+        CI_ALERTS_TELEGRAM_BOT_TOKEN
+        CI_ALERTS_TELEGRAM_CHAT_ID
+      GH_TOKEN: ${{ github.token }}
+      CI_ALERTS_TELEGRAM_BOT_TOKEN: ${{ secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN }}
+      CI_ALERTS_TELEGRAM_CHAT_ID: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          sparse-checkout: |
+            desktop/e2e
+            tools/scan-e2e-artifacts.py
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - name: AI credit is an alert, never a hold
+        run: |
+          gh run download "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --pattern 'e2e-artifacts-*' --dir ai-credit-health || echo "::notice::No suite artifacts available for AI credit health"
+          gh run download "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --pattern 'e2e-rerun-*' --dir ai-credit-health || echo "::notice::No retry artifacts available for AI credit health"
+          gh run download "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --name "ai-credit-alert-$GITHUB_RUN_ID" --dir ai-credit-alert || true
+          node desktop/e2e/credit-alert.mjs --artifacts ai-credit-health --marker ai-credit-alert/alert-sent.txt
+      - name: Scan artifact contents for CI secrets
+        id: artifact_scan_1
+        if: always()
+        env:
+          E2E_ARTIFACT_PATHS: ai-credit-alert/alert-sent.txt
+        run: python tools/scan-e2e-artifacts.py
+      - name: Remember this run's single credit alert
+        if: (always() && hashFiles('ai-credit-alert/alert-sent.txt') != '') && steps.artifact_scan_1.outcome == 'success'
+        uses: actions/upload-artifact@v6
+        with:
+          name: ai-credit-alert-${{ github.run_id }}
+          path: ai-credit-alert/alert-sent.txt
+          overwrite: true

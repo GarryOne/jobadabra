@@ -1,4 +1,5 @@
 // Job: pick the suites
+import fs from 'node:fs';
 import {STATS_SINCE} from './stats-epoch.mjs';
 import {classify, detectorOf} from './selfheal-stats.mjs';
 // Which suites a run starts. A push to main runs only the suites whose files changed (every test-file push used to run all of them, and the shared test key's
@@ -121,3 +122,10 @@ export const runnerOf = (module, {pr = false} = {}) => ((module.macos === true |
 // or test timing. Read by plan-run.mjs (the release run's Windows matrix) and plan-windows.mjs (after main's checks, a gate by hand). Guard: test/windows-two.test.mjs.
 export const WINDOWS = ['apply', 'settings'];
 export const onWindows = suites => suites.filter(suite => WINDOWS.includes(suite));
+
+
+/** Mark tolerant matrix entries from the canonical registry; unlisted suites remain backbone. */
+export function tolerantMatrixFlag(suite) {
+  const lanes = JSON.parse(fs.readFileSync(new URL('../lanes.json', import.meta.url), 'utf8'));
+  return lanes.suites[suite]?.lane === 'tolerant' ? {tolerant: true} : {};
+}

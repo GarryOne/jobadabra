@@ -10,7 +10,7 @@ const read = file => fs.readFileSync(new URL(`../renderer/${file}`, import.meta.
 const html = read('index.html');
 const review = read('pages/strategy-review.js');
 const live = html.slice(html.indexOf('id="strategy-live"'), html.indexOf('id="strategy-suggestions"'));
-const wizard = html.slice(html.indexOf('data-step="draft"'), html.indexOf('class="step" data-step="extras"'));
+const wizard = html.slice(html.indexOf('data-step="draft"'), html.indexOf('id="setup-finish"'));
 
 test('every card host of the Strategy page is inside the one block the setup moves; the wizard has none of its own', () => {
   const hosts = [...live.matchAll(/id="(strategy-[a-z-]+|preferences-body)"/g)].map(match => match[1]);
@@ -21,7 +21,7 @@ test('every card host of the Strategy page is inside the one block the setup mov
 
 test('the wizard step has no second renderer of a field the cards own', () => {
   for (const old of ['chips-roles', 'chips-places', 'chips-country', 'chips-abroad', 'chips-languages', 'chips-rights', 'draft-tiles', 'data-list=', 'doc-profile', 'doc-answers', 'draft-profile', 'draft-answers', 'open-questions']) {
-    assert.ok(!wizard.includes(old), `index.html: step 3 no longer draws ${old}`);
+    assert.ok(!wizard.includes(old), `index.html: strategy no longer draws ${old}`);
   }
   for (const old of ['goalTiles', 'markdownView', 'renderList', 'withPills', 'LISTS']) assert.ok(!review.includes(old), `strategy-review.js has no ${old}`);
   assert.ok(review.includes('showCards') && review.includes('hideCards'), 'the review hands the cards the draft');

@@ -33,7 +33,7 @@ test('sample rotates oldest first within each kind and spreads slots across kind
   assert.deepEqual(pickSample([...entries].reverse(), {}, 5), pickSample(entries, {}, 5));
 });
 
-// Why (30 Oct 2026, bb; #2632; 31 Oct 2026, owner, bb 4/9): reviewed channel captures link 13 new keys, plus 57 reviewed Austin keys; the 291 existing gaps and three sender-capture keys are unchanged. Withheld scores stay absent.
+// Why (31 Oct 2026, owner takeover #2600): preserve main’s reviewed employer requests and Austin’s 57 reviewed keys; 287 gaps and three sender-capture keys remain.
 test('seeding is byte deterministic, body-reference-only and links main captures plus reviewed persona keys', t => {
   forbidNetwork(t);
   const entries = seedRequests();
@@ -42,9 +42,12 @@ test('seeding is byte deterministic, body-reference-only and links main captures
   assert.equal(new Set(entries.map(e => e.id)).size, entries.length);
   assert.equal(new Set(entries.map(e => e.source.sha256)).size, entries.length);
   const linked = new Set(entries.flatMap(e => e.keys.map(key => `${e.kind}/${key}`)));
-  assert.equal(linked.size, 286 + PERSONA_ANSWERS);
+  assert.equal(linked.size, 301 + PERSONA_ANSWERS);
   const historic = new Set(entries.filter(e => e.provenance !== 'sender capture').flatMap(e => e.keys.map(key => `${e.kind}/${key}`)));
-  assert.equal(historic.size, 283 + PERSONA_ANSWERS);
+  assert.equal(historic.size, 298 + PERSONA_ANSWERS);
+  const authored = entries.filter(entry => entry.evidence?.startsWith('Authored employers judgment'));
+  assert.ok(authored.length > 0);
+  assert.ok(authored.every(entry => entry.provenance === 'reconstructed'), 'authored requests must never be labeled as captured AI replies');
   assert.deepEqual(new Set(entries.map(e => e.provenance)), new Set(['captured', 'reconstructed', 'sender capture']));
   for (const entry of entries) {
     assert.ok(!('body' in entry));
@@ -154,7 +157,7 @@ test('dry reports count an unlinked key as a gap and make no calls', async t => 
   forbidNetwork(t);
   const entries = loadRequests();
   const report = await buildReport({entries, table});
-  assert.deepEqual(report.coverage, {total: 577 + PERSONA_ANSWERS, eligible: 286 + PERSONA_ANSWERS, unlinked: 291, checked: 0, unjudged: 0});
+  assert.deepEqual(report.coverage, {total: 588 + PERSONA_ANSWERS, eligible: 301 + PERSONA_ANSWERS, unlinked: 287, checked: 0, unjudged: 0});
   assert.equal(report.sample.length, 20);
   assert.equal(report.callsUsed.total, 0);
   const expanded = structuredClone(table);
@@ -267,7 +270,7 @@ test('CLI defaults to dry-run, prints sample and coverage, and rejects live mode
   assert.equal(defaultRun.status, 0, defaultRun.stderr);
   assert.equal(defaultRun.stdout, explicit.stdout);
   const result = JSON.parse(defaultRun.stdout);
-  assert.equal(result.coverage.unlinked, 291);
+  assert.equal(result.coverage.unlinked, 287);
   assert.equal(result.sample.length, 20);
   assert.equal(result.callsUsed.total, 0);
   assert.notEqual(run(['--live']).status, 0);

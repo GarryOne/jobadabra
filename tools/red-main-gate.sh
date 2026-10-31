@@ -27,7 +27,10 @@ if [ "$read_rc" -ne 0 ]; then   # unknown is not green (26 Oct 2026: a failed re
   echo "No beta. Re-run, or --force \"<why>\"."; exit 1
 fi
 python3 -c 'import json, sys
-for suite in json.load(sys.stdin)["suspended"]:
+state = json.load(sys.stdin)
+for suite in state.get("grey", []):
+    print("grey (runner, not the app): " + suite["suite"])
+for suite in state["suspended"]:
     print("suspended (owner issue, not blocking): " + suite["suite"])
 ' <<<"$state_json"
 reds="$(python3 -c 'import json, sys

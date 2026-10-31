@@ -6,6 +6,7 @@ import {loadTable, questionOf, storedAnswer} from '../lib/ai-answers.mjs';
 import {FAILURES, OPENAI_FAILURES} from '../lib/ai-proxy.mjs';
 import {backboneHarness} from '../lib/backbone-harness.mjs';
 import {modelFetch} from '../lib/model.mjs';
+import {valid} from '../lib/ai-answers-engine-items.mjs';
 
 // interactions: isSafe excludes commands, wands and AI-spending controls, so only the shared setup/background reads below are expected.
 // Shared ensureSetUp saves the applicant strategy and reloads Focus: role/place decide,
@@ -22,8 +23,8 @@ const request = (action, body = {model: 'test', messages: [{role: 'user', conten
   method: 'POST', headers: {'content-type': 'application/json', 'x-jp-action': action}, body: JSON.stringify(body),
 });
 
-// Why (30 Oct 2026, bb; #2593): interactions and failureschannels share setup reads, so one loop applies the same stored-answer and no-live guards to both.
-for (const suite of ['interactions', 'failureschannels']) {
+// Why (31 Oct 2026, owner saved gates): interactions, failureschannels and activity share setup reads, so all three use the same stored-answer and no-live guards.
+for (const suite of ['interactions', 'failureschannels', 'activity']) {
   for (const family of ['claude', 'openai']) test(`${suite} setup answers and named refusals stop before live ${family} AI`, async t => {
     const h = await backboneHarness(t, suite, family);
     t.after(() => h.assertNoLive());
@@ -112,4 +113,27 @@ for (const family of ['claude', 'openai']) test(`failureschannels opportunity ex
   assert.equal(response.status, 200);
   const data = await response.json();
   assert.deepEqual(JSON.parse(family === 'openai' ? data.output[0].content[0].text : data.content[0].text), JSON.parse(found.reply.content[0].text));
+});
+
+// CI refused these organizer bodies although their question meaning was already stored.
+test('activity captured UUID organizer asks and weekly report replay before every transport', async t => {
+  const h = await backboneHarness(t, 'activity');
+  t.after(() => h.assertNoLive());
+  const entries = Object.entries(table.requests['app.kind']).filter(([id]) => id.startsWith('activity-organizer/') || id === 'insight');
+  assert.equal(entries.length, 3);
+  for (const [id, ask] of entries) {
+    const init = request(ask.action, ask.body);
+    const found = storedAnswer(init, h.env);
+    assert.deepEqual(questionOf(init, h.env, table), {operation: 'app.kind', id: ask.action});
+    assert.deepEqual(await (await modelFetch('http://127.0.0.1:1/v1/messages', init, h.options)).json(), found.reply);
+    const response = await h.localFetch(`${h.proxy.url}/v1/messages`, init);
+    assert.equal(response.status, 200, id); assert.deepEqual(await response.json(), found.reply);
+    const data = JSON.parse(found.reply.content[0].text);
+    if (id === 'insight') {
+      assert.ok(valid(ask.body.output_config.format.schema, data));
+      assert.match(data.headline, /0 jobs, 0 applications/);
+      assert.deepEqual(data.issues, []);
+      assert.ok(data.summary.length > 20);
+    } else assert.deepEqual(data, {items: []}, 'preserve the seeded applicant lines');
+  }
 });

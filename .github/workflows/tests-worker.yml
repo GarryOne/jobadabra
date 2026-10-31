@@ -11,6 +11,7 @@ on:
       - 'tools/check.sh'
       - 'tools/check.py'
       # Files outside worker/ that its tests read (tests/test_workflow_paths.py fails when one is missing).
+      - '.github/workflows/pr-verdict.yml'   # watchdog.test.js checks the Worker's sweep run-name
       - 'hosted/ready-fill/**'   # the night's AI: worker/test/ready-night-ai.test.js imports it
       - 'desktop/demo/answers.md'
       - 'desktop/demo/job-pages.json'

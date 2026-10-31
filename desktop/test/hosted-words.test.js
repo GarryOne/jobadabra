@@ -53,9 +53,8 @@ test('one name: "Always on", with the two told apart, and nothing user-visible s
   assert.equal(NAME, 'Always on: on our servers');
   const html = read('renderer/index.html');
   assert.match(html, /<h3>Always on: your GitHub<\/h3>/);
-  assert.match(html, /<b>Always on: your GitHub<\/b>/);
   const view = read('renderer/pages/hosted.js') + read('renderer/hosted-words.js');
   assert.match(view, /'Turn on Always on'/); assert.match(view, /'Turn off and delete'/); assert.match(view, /'Delete our copy of your data'/); assert.match(view, /'Download my data'/); assert.match(view, /'Resume Always on'/);
-  assert.match(view, /el\('li', '', 'Always on'\)/);
+  assert.match(view, /el\('h3', '', NAME\)/);   // the Settings card retains the shared name
   assert.doesNotMatch(view.replace(/\/\/.*$/gm, ''), /[Dd]aily searches|[Hh]osted search|GitHub|container|\$\d/);
 });

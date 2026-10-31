@@ -62,7 +62,7 @@ test('the app\'s proxy on Free AI answers 503 ai-capped for a question replay ca
   } finally { globalThis.fetch = real; await proxy.close(); delete process.env.CI_CF_ANALYTICS_TOKEN; delete process.env.CI_FREE_AI_CF_ACCOUNT_ID; delete process.env.E2E_SUITE; }
 });
 
-test('a step the cap refused is skipped with its cause, counted, and the suite goes on; the nightly and beta fail it instead', async () => {
+test('a step the cap refused is skipped with its cause, counted, and the suite goes on; the nightly and beta skip it too', async () => {
   const quiet = console.log;
   console.log = () => {};
   try {
@@ -79,8 +79,9 @@ test('a step the cap refused is skipped with its cause, counted, and the suite g
       Object.assign(process.env, gate);
       const full = createRunner(() => null, {keepGoing: true});
       await full.run('asks the AI', async () => { noteCapped(CAP_NEURONS + 1); throw new Error('the AI said 503'); });
-      assert.equal(full.results[0].status, 'failed', `a release never approves with its AI steps unrun (${JSON.stringify(gate)})`);
-      assert.equal(full.summary(), 1);
+      assert.equal(full.results[0].status, 'skipped', `AI credit never holds a release (${JSON.stringify(gate)})`);
+      assert.equal(full.results[0].aiCapped, true);
+      assert.equal(full.summary(), 0);
       delete process.env.E2E_FULL; delete process.env.E2E_RUN_KIND;
     }
     await runner.run('plain failure', async () => { throw new Error('boom'); }).then(() => assert.fail('a failure with no cap behind it is still red'), error => assert.equal(error.message, 'boom'));

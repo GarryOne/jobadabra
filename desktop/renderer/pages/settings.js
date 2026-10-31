@@ -208,28 +208,8 @@ export function showServicesNow() {
   checkingLine(true);
   renderKnown();
 }
-// Setup → Optional extras: the same status as Settings → Connections (Connected · detail / Not connected), and
-// "Manage" instead of "Set up" once a service is on.
-function renderExtras({on, detail, words = {}, checking = {}}) {
-  for (const button of document.querySelectorAll('.extras [data-goto-settings], .extras [data-add-extension]')) {
-    const id = button.dataset.gotoSettings || 'extension', text = button.closest('.service-card')?.querySelector('.service-text');
-    if (!text) continue;
-    text.querySelector('.service-state')?.remove();
-    text.querySelector('b').after(stateLine(!!on[id], detail[id] || '', !!checking[id], words?.[id] || ''));
-    if (!button.dataset.gotoSettings) { show(button, !on[id]); continue; }   // Add to Chrome: nothing to press once it is in
-    button.textContent = on[id] ? 'Manage' : (button.dataset.connect ||= button.textContent);
-  }
-}
-// The extras step opened: from what's known at once, then the real checks.
-export async function showExtrasStatus() {
-  if (!shared.state?.secrets) return;
-  renderExtras(quickStatus());
-  const status = await serviceStatus();
-  renderExtras(status);
-}
 function renderServices(status) {
   const {on, detail, words = {}, missing, checking} = status;
-  renderExtras(status);
   renderConnections(status);
   renderDiagnostics(status);
   renderUpdate();

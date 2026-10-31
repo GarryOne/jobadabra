@@ -6,7 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {test} from 'node:test';
 import {fileURLToPath} from 'node:url';
-import {INTERMITTENT, flakyProof, intermittentComment, labelRerun, unproved} from '../lib/flaky-proof.mjs';
+import {INTERMITTENT, greyProof, flakyProof, intermittentComment, labelRerun, unproved} from '../lib/flaky-proof.mjs';
 import {toClose} from '../lib/triage-issues.mjs';
 
 // #1897 (25 Oct 2026): this step failed, passed on the rerun, was labelled flaky and closed, then failed beta 2. It was a product bug (bd368f8).
@@ -88,6 +88,8 @@ test('every rerun step that writes flaky.json runs flaky-proof.mjs on the first 
   for (const {file, block} of steps) {
     assert.match(block, /node flaky-proof\.mjs "\$first\/suite-failures\.json"/, file);
     assert.match(block, /set -o pipefail/, file);
+    assert.match(block, /node flaky-proof\.mjs --grey "\$first\/suite-failures\.json" "\$E2E_ARTIFACTS\/suite-failures\.json"/, file);
+    assert.match(block, /::error title=Grey: the runner, not the app::/, file);
   }
 });
 
@@ -99,4 +101,40 @@ test('a red of the harness\'s own isolation check is the harness\'s: never flaky
   assert.equal(proof.harness, 'isolation');
   assert.match(proof.why, /^harness: isolation: "NOT ISOLATED/);
   assert.doesNotMatch(proof.why, /wrong value/);
+});
+
+
+test('grey needs two non-empty tries with only timing/environment failures; guards and wrong values stay red', () => {
+  const timing = [{step: 'fill', message: 'Timeout 30000ms exceeded'}];
+  const environment = [{step: 'load', message: 'socket hang up'}];
+  assert.equal(greyProof(timing, environment).grey, true);
+  for (const message of ['expected Completed, got Running', 'NOT ISOLATED: Timeout 30000ms exceeded', 'E2E_AI_ANSWER_MISSING: Timeout 30000ms exceeded']) {
+    const wrong = [...timing, {step: 'value', message}];
+    assert.equal(greyProof(wrong, timing).grey, false);
+    assert.equal(greyProof(timing, wrong).grey, false);
+  }
+  for (const empty of [[], null, {}, [null]]) {
+    assert.equal(greyProof(timing, empty).grey, false);
+    assert.equal(greyProof(empty, timing).grey, false);
+  }
+});
+
+test('grey CLI proves both files and fails closed on absent or malformed evidence', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'grey-proof-'));
+  try {
+    const first = path.join(dir, 'first.json'), second = path.join(dir, 'second.json');
+    fs.writeFileSync(first, JSON.stringify([{step: 'fill', message: 'Timeout 30000ms exceeded'}]));
+    const cli = () => {
+      try { return {code: 0, out: execFileSync(process.execPath, ['flaky-proof.mjs', '--grey', first, second], {cwd: new URL('..', import.meta.url), encoding: 'utf8'})}; }
+      catch (error) { return {code: error.status, out: String(error.stdout)}; }
+    };
+    assert.equal(cli().code, 1);
+    fs.writeFileSync(second, JSON.stringify([{step: 'load', message: 'socket hang up'}]));
+    assert.equal(cli().code, 0);
+    assert.match(cli().out, /fill.*load/);
+    for (const value of ['[]', '{}', '{', '[{"message":"wrong value"}]']) {
+      fs.writeFileSync(second, value);
+      assert.equal(cli().code, 1);
+    }
+  } finally { fs.rmSync(dir, {recursive: true, force: true}); }
 });

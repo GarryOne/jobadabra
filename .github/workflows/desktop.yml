@@ -245,6 +245,12 @@ jobs:
     runs-on: macos-latest   # Apple Silicon; Why (30 Oct 2026, beta 41114966182): macOS 14 brownout; build on the image the e2e runs on.
     timeout-minutes: 30
     env:
+      E2E_ARTIFACT_SECRET_NAMES: |
+        CLIENT
+        GH_TOKEN
+        GITHUB_TOKEN
+        MAC_SIGN_P12
+        MAC_SIGN_PASSWORD
       VERSION: ${{ needs.changes.outputs.version }}
       EXTENSION_VERSION: ${{ needs.changes.outputs.extension_version }}   # the build checkouts are shallow: stage.mjs refuses to count there
     steps:
@@ -312,8 +318,22 @@ jobs:
         if: needs.changes.outputs.gate == 'true'
         working-directory: desktop
         run: node scripts/mac-smoke.mjs "dist/Jobadabra-${VERSION}-arm64.zip" smoke
+      - name: Scan artifact contents for CI secrets
+        working-directory: ${{ github.workspace }}
+        id: artifact_scan_1
+        if: always()
+        shell: bash
+        env:
+          CLIENT: ${{ secrets.GOOGLE_SHARED_CLIENT_JSON }}
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ github.token }}
+          MAC_SIGN_P12: ${{ secrets.MAC_SIGN_P12 }}
+          MAC_SIGN_PASSWORD: ${{ secrets.MAC_SIGN_PASSWORD }}
+          E2E_ARTIFACT_PATHS: |
+            desktop/smoke
+        run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
       - name: Keep the Mac screenshot
-        if: always() && needs.changes.outputs.gate == 'true'
+        if: (always() && needs.changes.outputs.gate == 'true') && steps.artifact_scan_1.outcome == 'success'
         uses: actions/upload-artifact@v6
         with:
           name: mac-screens-${{ needs.changes.outputs.version }}
@@ -346,6 +366,10 @@ jobs:
       run:
         shell: bash
     env:
+      E2E_ARTIFACT_SECRET_NAMES: |
+        CLIENT
+        GH_TOKEN
+        GITHUB_TOKEN
       VERSION: ${{ needs.changes.outputs.version }}
       EXTENSION_VERSION: ${{ needs.changes.outputs.extension_version }}   # the build checkouts are shallow: stage.mjs refuses to count there
     steps:
@@ -412,8 +436,20 @@ jobs:
         if: needs.changes.outputs.gate == 'true'
         working-directory: desktop
         run: node scripts/windows-smoke.mjs "dist/Jobadabra-${VERSION}-x64.exe" smoke smoke
+      - name: Scan artifact contents for CI secrets
+        working-directory: ${{ github.workspace }}
+        id: artifact_scan_2
+        if: always()
+        shell: bash
+        env:
+          CLIENT: ${{ secrets.GOOGLE_SHARED_CLIENT_JSON }}
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ github.token }}
+          E2E_ARTIFACT_PATHS: |
+            desktop/smoke
+        run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
       - name: Keep the Windows screenshots
-        if: always() && needs.changes.outputs.gate == 'true'
+        if: (always() && needs.changes.outputs.gate == 'true') && steps.artifact_scan_2.outcome == 'success'
         uses: actions/upload-artifact@v6
         with:
           name: windows-screens-${{ needs.changes.outputs.version }}
@@ -475,11 +511,42 @@ jobs:
     runs-on: ${{ matrix.os || 'macos-latest' }}   # Linux unless the suite needs the Mac (lib/plan.mjs runnerOf); a virtual display there
     timeout-minutes: 360   # the lock's wait (up to 3 h) plus the suite; each step below has its own limit, so this only ends a hung wait
     # Outside failures stay red in their job and report, but do not decide the beta gate.
-    continue-on-error: ${{ matrix.outside == true }}
+    continue-on-error: ${{ (matrix.outside == true || matrix.tolerant == true) }}
     strategy:
       fail-fast: false      # one suite failing must not hide what the others found
       matrix: ${{ fromJson(needs.changes.outputs.mac_matrix) }}
     env:
+      # Why (#2651, owner): the generated relay key exists only when its producer runs.
+      E2E_ARTIFACT_SECRET_NAMES: |
+        ACTIONS_ID_TOKEN_REQUEST_TOKEN
+        AI_COST_PUBLISH_KEY
+        CI_CF_ANALYTICS_TOKEN
+        CI_FREE_AI_CF_ACCOUNT_ID
+        E2E_ANTHROPIC_KEY
+        ${{ matrix.offlineAi != true && 'E2E_FREE_AI_KEY' || '' }}
+        E2E_LOCK_TOKEN
+        E2E_NOTION_TOKEN
+        E2E_NOTION_TOKEN_ACTIVITY
+        E2E_NOTION_TOKEN_ACTIVITYFAILURES
+        E2E_NOTION_TOKEN_APPLY
+        E2E_NOTION_TOKEN_CALENDAR
+        E2E_NOTION_TOKEN_EMPLOYERS
+        E2E_NOTION_TOKEN_FAILURESCHANNELS
+        E2E_NOTION_TOKEN_FAILURESNOTION
+        E2E_NOTION_TOKEN_FOCUS
+        E2E_NOTION_TOKEN_FOCUSDISMISS
+        E2E_NOTION_TOKEN_INTERACTIONS
+        E2E_NOTION_TOKEN_INTERVIEWS
+        E2E_NOTION_TOKEN_JOBS
+        E2E_NOTION_TOKEN_PERSONAS
+        E2E_NOTION_TOKEN_QUALITY
+        E2E_NOTION_TOKEN_SETTINGS
+        E2E_NOTION_TOKEN_STRATEGY
+        E2E_NOTION_TOKEN_WANDER
+        E2E_OPENAI_KEY
+        FREE_AI_LOCAL_CF_ACCOUNT_ID
+        FREE_AI_LOCAL_CF_AI_TOKEN
+        GH_TOKEN
       # A suite whose secrets are missing FAILS here instead of a green "skipped" (lib/skip.mjs). 6 Oct 2026: failuresnotion and failureschannels
       # had never run (no token) and showed ✓. Forks have no secrets: they still skip with a warning.
       E2E_REQUIRE_SECRETS: ${{ github.repository_owner == 'GarryOne' && '1' || '' }}
@@ -497,7 +564,6 @@ jobs:
       E2E_NOTION_TOKEN_FOCUS: ${{ secrets.E2E_NOTION_TOKEN_FOCUS }}
       E2E_NOTION_TOKEN_FOCUSDISMISS: ${{ secrets.E2E_NOTION_TOKEN_FOCUSDISMISS }}
       E2E_NOTION_TOKEN_APPLY: ${{ secrets.E2E_NOTION_TOKEN_APPLY }}
-      E2E_NOTION_TOKEN_APPLYFLOWS: ${{ secrets.E2E_NOTION_TOKEN_APPLYFLOWS }}
       E2E_NOTION_TOKEN_ACTIVITY: ${{ secrets.E2E_NOTION_TOKEN_ACTIVITY }}
       E2E_NOTION_TOKEN_ACTIVITYFAILURES: ${{ secrets.E2E_NOTION_TOKEN_ACTIVITYFAILURES }}
       E2E_NOTION_TOKEN_STRATEGY: ${{ secrets.E2E_NOTION_TOKEN_STRATEGY }}
@@ -605,6 +671,8 @@ jobs:
         # passes the job and is filed and labelled `flaky`; red twice fails it. A mutation test has no second try: its red means the bug was caught.
         continue-on-error: true
         working-directory: desktop/e2e
+        env:
+          E2E_TRY_MINUTES: 15   # = this step's timeout-minutes: a suite without an aggregate budget stops 4 min before it (its close-down cap + 1), with records that read as timing (lib/runner.mjs budgetMsOf; tests/test_e2e_try_minutes.py)
         timeout-minutes: 15   # the suite stops itself at its budget (7 min, recorded 11: lib/runner.mjs) with its evidence, by force 3 min later (suite.mjs); this catches only a suite that cannot
         run: |
           # A run on an older commit (target_ref: the stable canary, a release candidate) plans with main's suite list; a suite added since does not exist in that build.
@@ -616,8 +684,10 @@ jobs:
       # flaky-proof.mjs): every first-try failure was timing or the test's environment. A wrong value that came right keeps it red: a bug that shows sometimes (#1897).
       # Either way the pass writes the marker beside the first run's artifacts, and triage labels those steps `flaky` or `intermittent`. Its own artifacts stay out of the upload.
       - name: "First try failed: the ${{ matrix.suite }} suite once more, to tell flaky from real"
-        if: steps.suite_run.outcome == 'failure' && matrix.outside != true
+        if: steps.suite_run.outcome == 'failure' && matrix.outside != true && matrix.tolerant != true
         working-directory: desktop/e2e
+        env:
+          E2E_TRY_MINUTES: 15   # = this step's timeout-minutes: a suite without an aggregate budget stops 4 min before it (its close-down cap + 1), with records that read as timing (lib/runner.mjs budgetMsOf; tests/test_e2e_try_minutes.py)
         timeout-minutes: 15
         run: |
           set -o pipefail   # flaky-proof.mjs | tee: the proof's exit decides (tests/test_workflow_pipefail.py)
@@ -637,11 +707,15 @@ jobs:
               exit 1
             fi
           else
-            echo "Failed again on the same commit: a real failure."
-            exit 1   # red twice: the job (and the gate) fail
+            if steps=$(node flaky-proof.mjs --grey "$first/suite-failures.json" "$E2E_ARTIFACTS/suite-failures.json"); then
+              echo "::error title=Grey: the runner, not the app::${{ matrix.key }}: both tries stopped on time only ($steps); re-runs once on a fresh runner in a beta"
+            else
+              echo "Failed again on the same commit: a real failure."
+            fi
+            exit 1   # keep failure so gh run rerun --failed picks grey jobs
           fi
       - name: Outside-world health
-        if: always() && matrix.outside == true
+        if: always() && (matrix.outside == true || matrix.tolerant == true)
         env:
           OUTCOME: ${{ steps.suite_run.outcome }}
         run: |
@@ -684,38 +758,99 @@ jobs:
         with:
           path: desktop/e2e/.quality-rate
           key: quality-rate-${{ github.run_id }}-${{ github.run_attempt }}
-      - name: The suite's part of the HTML report
+      - name: Scan artifact contents for CI secrets
+        working-directory: ${{ github.workspace }}
+        id: artifact_scan_3
         if: always()
+        shell: bash
+        env:
+          AI_COST_PUBLISH_KEY: ${{ secrets.AI_COST_PUBLISH_KEY }}
+          E2E_LOCK_TOKEN: ${{ steps.lock_app.outputs.token || github.token }}
+          FREE_AI_LOCAL_CF_ACCOUNT_ID: ${{ secrets.CI_FREE_AI_CF_ACCOUNT_ID }}
+          FREE_AI_LOCAL_CF_AI_TOKEN: ${{ secrets.CI_FREE_AI_CF_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+          E2E_ARTIFACT_PATHS: |
+            blob-report
+        run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
+      - name: The suite's part of the HTML report
+        if: (always()) && steps.artifact_scan_3.outcome == 'success'
         uses: actions/upload-artifact@v6
         with:
+          overwrite: true
           name: blob-${{ matrix.key }}
           path: blob-report
           if-no-files-found: ignore
           retention-days: 3
       # Steps and a failed suite's trace as data (the /admin/e2e runs page that read them was dropped on 15 Oct 2026; the artifact stays for download).
-      - name: Steps and trace for /admin/e2e
+      - name: Scan artifact contents for CI secrets
+        working-directory: ${{ github.workspace }}
+        id: artifact_scan_4
         if: always()
+        shell: bash
+        env:
+          AI_COST_PUBLISH_KEY: ${{ secrets.AI_COST_PUBLISH_KEY }}
+          E2E_LOCK_TOKEN: ${{ steps.lock_app.outputs.token || github.token }}
+          FREE_AI_LOCAL_CF_ACCOUNT_ID: ${{ secrets.CI_FREE_AI_CF_ACCOUNT_ID }}
+          FREE_AI_LOCAL_CF_AI_TOKEN: ${{ secrets.CI_FREE_AI_CF_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+          E2E_ARTIFACT_PATHS: |
+            e2e-artifacts/${{ matrix.key }}/steps.json
+            e2e-artifacts/${{ matrix.key }}/trace-*.zip
+        run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
+      - name: Steps and trace for /admin/e2e
+        if: (always()) && steps.artifact_scan_4.outcome == 'success'
         uses: actions/upload-artifact@v6
         with:
+          overwrite: true
           name: e2e-view-${{ matrix.key }}
           path: |
             e2e-artifacts/${{ matrix.key }}/steps.json
             e2e-artifacts/${{ matrix.key }}/trace-*.zip
           compression-level: 0
           if-no-files-found: ignore
-      - name: Screenshots and timings
+      - name: Scan artifact contents for CI secrets
+        working-directory: ${{ github.workspace }}
+        id: artifact_scan_5
         if: always()
+        shell: bash
+        env:
+          AI_COST_PUBLISH_KEY: ${{ secrets.AI_COST_PUBLISH_KEY }}
+          E2E_LOCK_TOKEN: ${{ steps.lock_app.outputs.token || github.token }}
+          FREE_AI_LOCAL_CF_ACCOUNT_ID: ${{ secrets.CI_FREE_AI_CF_ACCOUNT_ID }}
+          FREE_AI_LOCAL_CF_AI_TOKEN: ${{ secrets.CI_FREE_AI_CF_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+          E2E_ARTIFACT_PATHS: |
+            e2e-artifacts/${{ matrix.key }}
+        run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
+      - name: Screenshots and timings
+        if: (always()) && steps.artifact_scan_5.outcome == 'success'
         uses: actions/upload-artifact@v6
         with:
+          overwrite: true
           name: e2e-artifacts-${{ matrix.key }}
           path: e2e-artifacts/${{ matrix.key }}
           if-no-files-found: ignore
       # The second try writes its own folder (e2e-rerun): without this upload its logs reached no one and a retry's own failure could not be read
       # (#2087's quality run 40340783596, 26 Oct 2026). Guard: tests/test_e2e_artifacts_uploaded.py.
-      - name: The second try's screenshots and logs
+      - name: Scan artifact contents for CI secrets
+        working-directory: ${{ github.workspace }}
+        id: artifact_scan_6
         if: always()
+        shell: bash
+        env:
+          AI_COST_PUBLISH_KEY: ${{ secrets.AI_COST_PUBLISH_KEY }}
+          E2E_LOCK_TOKEN: ${{ steps.lock_app.outputs.token || github.token }}
+          FREE_AI_LOCAL_CF_ACCOUNT_ID: ${{ secrets.CI_FREE_AI_CF_ACCOUNT_ID }}
+          FREE_AI_LOCAL_CF_AI_TOKEN: ${{ secrets.CI_FREE_AI_CF_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+          E2E_ARTIFACT_PATHS: |
+            e2e-rerun/${{ matrix.key }}
+        run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
+      - name: The second try's screenshots and logs
+        if: (always()) && steps.artifact_scan_6.outcome == 'success'
         uses: actions/upload-artifact@v6
         with:
+          overwrite: true
           name: e2e-rerun-${{ matrix.key }}
           path: e2e-rerun/${{ matrix.key }}
           if-no-files-found: ignore
@@ -742,6 +877,7 @@ jobs:
     needs: [changes, windows, ai-ready]
     if: needs.windows.result == 'success' && needs.changes.outputs.gate == 'true' && needs.changes.outputs.count != '0'
     runs-on: windows-latest
+    continue-on-error: ${{ (matrix.outside == true || matrix.tolerant == true) }}
     timeout-minutes: 225   # + the wait for the suite's lock (up to 3 h)
     strategy:
       fail-fast: false
@@ -750,6 +886,34 @@ jobs:
       run:
         shell: bash   # the suites' commands use bash syntax; pwsh would mangle quoting
     env:
+      E2E_ARTIFACT_SECRET_NAMES: |
+        ACTIONS_ID_TOKEN_REQUEST_TOKEN
+        AI_COST_PUBLISH_KEY
+        CI_CF_ANALYTICS_TOKEN
+        CI_FREE_AI_CF_ACCOUNT_ID
+        E2E_ANTHROPIC_KEY
+        E2E_FREE_AI_KEY
+        E2E_LOCK_TOKEN
+        E2E_NOTION_TOKEN
+        E2E_NOTION_TOKEN_ACTIVITY
+        E2E_NOTION_TOKEN_ACTIVITYFAILURES
+        E2E_NOTION_TOKEN_APPLY
+        E2E_NOTION_TOKEN_CALENDAR
+        E2E_NOTION_TOKEN_EMPLOYERS
+        E2E_NOTION_TOKEN_FOCUS
+        E2E_NOTION_TOKEN_FOCUSDISMISS
+        E2E_NOTION_TOKEN_INTERACTIONS
+        E2E_NOTION_TOKEN_INTERVIEWS
+        E2E_NOTION_TOKEN_JOBS
+        E2E_NOTION_TOKEN_PERSONAS
+        E2E_NOTION_TOKEN_QUALITY
+        E2E_NOTION_TOKEN_SETTINGS
+        E2E_NOTION_TOKEN_STRATEGY
+        E2E_NOTION_TOKEN_WANDER
+        E2E_OPENAI_KEY
+        FREE_AI_LOCAL_CF_ACCOUNT_ID
+        FREE_AI_LOCAL_CF_AI_TOKEN
+        GH_TOKEN
       E2E_ANTHROPIC_KEY: ${{ secrets.E2E_ANTHROPIC_KEY }}
       E2E_OPENAI_KEY: ${{ secrets.E2E_OPENAI_KEY }}   # the OpenAI family's turn (odd runs; desktop/e2e/lib/engine.mjs pickFamily)
       E2E_NOTION_TOKEN: ${{ secrets.E2E_NOTION_TOKEN }}
@@ -762,7 +926,6 @@ jobs:
       E2E_NOTION_TOKEN_FOCUS: ${{ secrets.E2E_NOTION_TOKEN_FOCUS }}
       E2E_NOTION_TOKEN_FOCUSDISMISS: ${{ secrets.E2E_NOTION_TOKEN_FOCUSDISMISS }}
       E2E_NOTION_TOKEN_APPLY: ${{ secrets.E2E_NOTION_TOKEN_APPLY }}
-      E2E_NOTION_TOKEN_APPLYFLOWS: ${{ secrets.E2E_NOTION_TOKEN_APPLYFLOWS }}
       E2E_NOTION_TOKEN_ACTIVITY: ${{ secrets.E2E_NOTION_TOKEN_ACTIVITY }}
       E2E_NOTION_TOKEN_ACTIVITYFAILURES: ${{ secrets.E2E_NOTION_TOKEN_ACTIVITYFAILURES }}
       E2E_NOTION_TOKEN_STRATEGY: ${{ secrets.E2E_NOTION_TOKEN_STRATEGY }}
@@ -847,17 +1010,61 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           E2E_LOCK_TOKEN: ${{ steps.lock_app.outputs.token }}
         run: bash lock-tools/tools/e2e-lock.sh acquire "${{ matrix.key }}"
-      - name: Run the ${{ matrix.suite }} suite on Windows
+      - name: Run the ${{ matrix.suite }} suite on Windows (first try)
+        id: suite_run
+        continue-on-error: true
         working-directory: desktop/e2e
+        env:
+          E2E_TRY_MINUTES: 15   # = this step's timeout-minutes: a suite without an aggregate budget stops 4 min before it (its close-down cap + 1), with records that read as timing (lib/runner.mjs budgetMsOf; tests/test_e2e_try_minutes.py)
         timeout-minutes: 15   # the suite stops itself at its budget (7 min, recorded 11), and by force 3 min later (suite.mjs)
         run: |
           if [ ! -f "suites/${{ matrix.suite }}.mjs" ]; then echo "The ${{ matrix.suite }} suite does not exist in this build: skipped."; exit 0; fi
-          node suite.mjs ${{ matrix.suite }}
+          node suite.mjs ${{ matrix.suite }} \
+            || { echo "::error title=First try failed::The ${{ matrix.key }} suite failed its first try; the next step runs it once more and decides"; exit 1; }
+      - name: "First try failed: the ${{ matrix.suite }} suite once more, to tell flaky from real"
+        if: steps.suite_run.outcome == 'failure' && matrix.outside != true && matrix.tolerant != true
+        working-directory: desktop/e2e
+        env:
+          E2E_TRY_MINUTES: 15   # = this step's timeout-minutes: a suite without an aggregate budget stops 4 min before it (its close-down cap + 1), with records that read as timing (lib/runner.mjs budgetMsOf; tests/test_e2e_try_minutes.py)
+        timeout-minutes: 15
+        run: |
+          set -o pipefail   # flaky-proof.mjs | tee: the proof's exit decides (tests/test_workflow_pipefail.py)
+          first="$E2E_ARTIFACTS"
+          replay=0; [ "${{ matrix.suite }}" != quality ] || replay="$E2E_AI_REPLAY"   # quality's retry replays like its first try (owner, 27 Oct 2026: "Code gate + AI rate")
+          export E2E_ARTIFACTS="${{ github.workspace }}/e2e-rerun/windows-${{ matrix.key }}" E2E_RERUN=1 E2E_AI_REPLAY="$replay"   # fresh answers, never the first try's (a replayed bad draw proves nothing); quality's retry replays like its first try (owner, 27 Oct 2026); a second try writes no HTML report (report/playwright.config.mjs)
+          again() { if [ "$RUNNER_OS" = Linux ]; then xvfb-run -a --server-args='-screen 0 1440x900x24' node suite.mjs "$1"; else node suite.mjs "$1"; fi; }
+          # Why (#2199): only the first try's red steps and their setup (owner, 27 Oct 2026: "Retry only the red steps"; red-steps.mjs); no step to name, or a build without red-steps.mjs (an older tag: stable canary 40503508863): the whole suite.
+          red=; [ ! -f red-steps.mjs ] || red=$(node red-steps.mjs "$first/suite-failures.json")
+          if [ -n "$red" ]; then export E2E_STEP_NAMES="$red"; echo "The second try repeats only the red step(s) and their setup: $red"; else unset E2E_STEP_NAMES; echo "The second try runs the whole suite (no red step to name)."; fi
+          if again ${{ matrix.suite }}; then
+            echo '{"rerun": "passed"}' > "$first/flaky.json"
+            # "Flaky" needs proof (gate G5): a first-try failure on a wrong value, not timing, is a bug that shows sometimes; the job stays red (lib/flaky-proof.mjs).
+            if node flaky-proof.mjs "$first/suite-failures.json"; then
+              echo "Passed on the second try, and every failure of the first was timing or the test's environment: flaky (labelled by triage)."
+            else
+              exit 1
+            fi
+          else
+            if steps=$(node flaky-proof.mjs --grey "$first/suite-failures.json" "$E2E_ARTIFACTS/suite-failures.json"); then
+              echo "::error title=Grey: the runner, not the app::${{ matrix.key }}: both tries stopped on time only ($steps); re-runs once on a fresh runner in a beta"
+            else
+              echo "Failed again on the same commit: a real failure."
+            fi
+            exit 1   # keep failure so gh run rerun --failed picks grey jobs
+          fi
+      - name: Outside-world health
+        if: always() && (matrix.outside == true || matrix.tolerant == true)
+        env:
+          OUTCOME: ${{ steps.suite_run.outcome }}
+        run: |
+          echo "::notice title=Outside-world health::${{ matrix.key }}: $OUTCOME (tolerant; does not block beta). Steps, screenshots and failures are in the Windows HTML report and e2e-artifacts-windows-${{ matrix.key }}."
+          test "$OUTCOME" = success
       - name: The apply suite again in Microsoft Edge (the Windows default; preinstalled on the runner)
         if: matrix.suite == 'apply'
         working-directory: desktop/e2e
         timeout-minutes: 30
         env:
+          E2E_TRY_MINUTES: 30   # = this step's timeout-minutes: a suite without an aggregate budget stops 4 min before it (its close-down cap + 1), with records that read as timing (lib/runner.mjs budgetMsOf; tests/test_e2e_try_minutes.py)
           E2E_BROWSER: msedge
           E2E_ARTIFACTS: ${{ github.workspace }}/e2e-artifacts-windows/apply-edge   # its own folder: the Chromium run's evidence stays
         run: node suite.mjs apply
@@ -892,37 +1099,121 @@ jobs:
         with:
           path: desktop/e2e/.ai-cache
           key: ai-answers-windows-${{ matrix.key }}${{ matrix.key == 'mailreading' && '-v2' || '' }}-${{ github.run_id }}-${{ github.run_attempt }}
-      - name: The suite's part of the HTML report
+      - name: Scan artifact contents for CI secrets
+        working-directory: ${{ github.workspace }}
+        id: artifact_scan_7
         if: always()
+        shell: bash
+        env:
+          AI_COST_PUBLISH_KEY: ${{ secrets.AI_COST_PUBLISH_KEY }}
+          E2E_LOCK_TOKEN: ${{ steps.lock_app.outputs.token || github.token }}
+          FREE_AI_LOCAL_CF_ACCOUNT_ID: ${{ secrets.CI_FREE_AI_CF_ACCOUNT_ID }}
+          FREE_AI_LOCAL_CF_AI_TOKEN: ${{ secrets.CI_FREE_AI_CF_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+          E2E_ARTIFACT_PATHS: |
+            blob-report
+        run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
+      - name: The suite's part of the HTML report
+        if: (always()) && steps.artifact_scan_7.outcome == 'success'
         uses: actions/upload-artifact@v6
         with:
+          overwrite: true
           name: blob-windows-${{ matrix.key }}
           path: blob-report
           if-no-files-found: ignore
           retention-days: 3
       # Steps and a failed suite's trace as data (the /admin/e2e runs page that read them was dropped on 15 Oct 2026; the artifact stays for download).
-      - name: Steps and trace for /admin/e2e
+      - name: Scan artifact contents for CI secrets
+        working-directory: ${{ github.workspace }}
+        id: artifact_scan_8
         if: always()
+        shell: bash
+        env:
+          AI_COST_PUBLISH_KEY: ${{ secrets.AI_COST_PUBLISH_KEY }}
+          E2E_LOCK_TOKEN: ${{ steps.lock_app.outputs.token || github.token }}
+          FREE_AI_LOCAL_CF_ACCOUNT_ID: ${{ secrets.CI_FREE_AI_CF_ACCOUNT_ID }}
+          FREE_AI_LOCAL_CF_AI_TOKEN: ${{ secrets.CI_FREE_AI_CF_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+          E2E_ARTIFACT_PATHS: |
+            e2e-artifacts-windows/${{ matrix.key }}/steps.json
+            e2e-artifacts-windows/${{ matrix.key }}/trace-*.zip
+        run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
+      - name: Steps and trace for /admin/e2e
+        if: (always()) && steps.artifact_scan_8.outcome == 'success'
         uses: actions/upload-artifact@v6
         with:
+          overwrite: true
           name: e2e-view-windows-${{ matrix.key }}
           path: |
             e2e-artifacts-windows/${{ matrix.key }}/steps.json
             e2e-artifacts-windows/${{ matrix.key }}/trace-*.zip
           compression-level: 0
           if-no-files-found: ignore
-      - name: Screenshots and logs
+      - name: Scan artifact contents for CI secrets
+        working-directory: ${{ github.workspace }}
+        id: artifact_scan_9
         if: always()
+        shell: bash
+        env:
+          AI_COST_PUBLISH_KEY: ${{ secrets.AI_COST_PUBLISH_KEY }}
+          E2E_LOCK_TOKEN: ${{ steps.lock_app.outputs.token || github.token }}
+          FREE_AI_LOCAL_CF_ACCOUNT_ID: ${{ secrets.CI_FREE_AI_CF_ACCOUNT_ID }}
+          FREE_AI_LOCAL_CF_AI_TOKEN: ${{ secrets.CI_FREE_AI_CF_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+          E2E_ARTIFACT_PATHS: |
+            e2e-artifacts-windows/${{ matrix.key }}
+            e2e-rerun/windows-${{ matrix.key }}
+        run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
+      - name: Screenshots and logs
+        if: (always()) && steps.artifact_scan_9.outcome == 'success'
         uses: actions/upload-artifact@v6
         with:
+          overwrite: true
           name: e2e-artifacts-windows-${{ matrix.key }}
           path: e2e-artifacts-windows/${{ matrix.key }}
           if-no-files-found: ignore
-      # The Edge pass keeps its own folder (apply-edge); without this upload its app log and screenshots reached no one (beta 40281407461, 26 Oct 2026).
-      - name: The Edge pass's screenshots and logs
-        if: always() && matrix.suite == 'apply'
+      - name: Scan artifact contents for CI secrets
+        working-directory: ${{ github.workspace }}
+        id: artifact_scan_13
+        if: always()
+        shell: bash
+        env:
+          AI_COST_PUBLISH_KEY: ${{ secrets.AI_COST_PUBLISH_KEY }}
+          E2E_LOCK_TOKEN: ${{ steps.lock_app.outputs.token || github.token }}
+          FREE_AI_LOCAL_CF_ACCOUNT_ID: ${{ secrets.CI_FREE_AI_CF_ACCOUNT_ID }}
+          FREE_AI_LOCAL_CF_AI_TOKEN: ${{ secrets.CI_FREE_AI_CF_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+          E2E_ARTIFACT_PATHS: |
+            e2e-rerun/windows-${{ matrix.key }}
+        run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
+      - name: The second Windows try's screenshots and logs
+        if: always() && steps.artifact_scan_13.outcome == 'success'
         uses: actions/upload-artifact@v6
         with:
+          overwrite: true
+          name: e2e-rerun-windows-${{ matrix.key }}
+          path: e2e-rerun/windows-${{ matrix.key }}
+          if-no-files-found: ignore
+      # The Edge pass keeps its own folder (apply-edge); without this upload its app log and screenshots reached no one (beta 40281407461, 26 Oct 2026).
+      - name: Scan artifact contents for CI secrets
+        working-directory: ${{ github.workspace }}
+        id: artifact_scan_10
+        if: always()
+        shell: bash
+        env:
+          AI_COST_PUBLISH_KEY: ${{ secrets.AI_COST_PUBLISH_KEY }}
+          E2E_LOCK_TOKEN: ${{ steps.lock_app.outputs.token || github.token }}
+          FREE_AI_LOCAL_CF_ACCOUNT_ID: ${{ secrets.CI_FREE_AI_CF_ACCOUNT_ID }}
+          FREE_AI_LOCAL_CF_AI_TOKEN: ${{ secrets.CI_FREE_AI_CF_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+          E2E_ARTIFACT_PATHS: |
+            e2e-artifacts-windows/apply-edge
+        run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
+      - name: The Edge pass's screenshots and logs
+        if: (always() && matrix.suite == 'apply') && steps.artifact_scan_10.outcome == 'success'
+        uses: actions/upload-artifact@v6
+        with:
+          overwrite: true
           name: e2e-artifacts-windows-${{ matrix.key }}-edge
           path: e2e-artifacts-windows/apply-edge
           if-no-files-found: ignore
@@ -954,6 +1245,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 90   # Why (30 Oct 2026, a8; beta 41090972183): covers the e2e review (15 min) plus release-checks.sh waiting up to 60 min for main's build; 20 cut Windows off at 18 min
     permissions:
+      checks: read     # grey proof in backbone job annotations
       contents: write   # the approval line (release-stable.sh when the soak is off)
       actions: write    # this run's artifacts, build.yml's verdict on the commit; release-stable.sh starts the Chrome Web Store publish
       id-token: write   # GitHub's per-run token the Codex broker checks (the screenshot review, lib/broker-client.mjs)
@@ -962,6 +1254,12 @@ jobs:
       group: release-promote   # one writer of a release's notes at a time: both lanes edit the same body
       cancel-in-progress: false
     env:
+      E2E_ARTIFACT_SECRET_NAMES: |
+        ACTIONS_ID_TOKEN_REQUEST_TOKEN
+        AI_COST_PUBLISH_KEY
+        E2E_ANTHROPIC_KEY
+        GH_TOKEN
+        GITHUB_TOKEN
       GH_TOKEN: ${{ github.token }}
       TAG: desktop-v${{ needs.changes.outputs.version }}
       REF: ${{ github.sha }}
@@ -982,9 +1280,22 @@ jobs:
           if grep -q made=1 "$RUNNER_TEMP/made.txt" 2>/dev/null; then
               echo "## 📊 [Open the Mac HTML report](https://www.jobpilotto.top/admin/operations/e2e/run/${{ github.run_id }}/report) · every suite, its steps with a screenshot each, the failure and its trace (admins)"
           fi
+      - name: Scan artifact contents for CI secrets
+        working-directory: ${{ github.workspace }}
+        id: artifact_scan_11
+        if: always()
+        shell: bash
+        env:
+          AI_COST_PUBLISH_KEY: ${{ secrets.AI_COST_PUBLISH_KEY }}
+          E2E_ANTHROPIC_KEY: ${{ secrets.E2E_ANTHROPIC_KEY }}
+          GITHUB_TOKEN: ${{ github.token }}
+          E2E_ARTIFACT_PATHS: |
+            e2e-report
+        run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
       - uses: actions/upload-artifact@v6
-        if: hashFiles('e2e-report/index.html') != ''
+        if: (hashFiles('e2e-report/index.html') != '') && steps.artifact_scan_11.outcome == 'success'
         with:
+          overwrite: true
           name: e2e-report   # admin/e2e-report.js serves it
           path: e2e-report
           compression-level: 0
@@ -999,8 +1310,15 @@ jobs:
           github-token: ${{ github.token }}
       - name: Not released on Mac, an E2E suite failed on Mac + Linux or Windows
         if: needs.test-mac.result != 'success' || needs.test-windows.result != 'success'
-        run: python3 tools/beta_rate_gate.py --repo "$GITHUB_REPOSITORY" --run "$GITHUB_RUN_ID" --e2e-only
-      - name: Tolerant AI rates against main's nightly band
+        run: python3 tools/beta_rate_gate.py --repo "$GITHUB_REPOSITORY" --run "$GITHUB_RUN_ID" --e2e-only --platform mac
+      - name: Keep this platform's beta hold evidence
+        if: always() && hashFiles('beta-held.json') != ''
+        uses: actions/upload-artifact@v6
+        with:
+          name: beta-held-mac
+          path: beta-held.json
+          overwrite: true
+      - name: Tolerant AI rates against main's nightly band (report only)
         if: needs.changes.outputs.gate == 'true'
         run: python3 tools/beta_rate_gate.py --repo "$GITHUB_REPOSITORY" --run "$GITHUB_RUN_ID" --platform mac
       - name: No real high-severity finding in the Mac suites
@@ -1041,6 +1359,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 90   # Why (30 Oct 2026, a8; beta 41090972183): covers the e2e review (15 min) plus release-checks.sh waiting up to 60 min for main's build; 20 cut Windows off at 18 min
     permissions:
+      checks: read     # grey proof in backbone job annotations
       contents: write   # the approval line (release-stable.sh when the soak is off)
       actions: write    # this run's artifacts, build.yml's verdict on the commit; release-stable.sh starts the Chrome Web Store publish
       id-token: write   # GitHub's per-run token the Codex broker checks (the screenshot review, lib/broker-client.mjs)
@@ -1049,6 +1368,12 @@ jobs:
       group: release-promote   # one writer of a release's notes at a time: both lanes edit the same body
       cancel-in-progress: false
     env:
+      E2E_ARTIFACT_SECRET_NAMES: |
+        ACTIONS_ID_TOKEN_REQUEST_TOKEN
+        AI_COST_PUBLISH_KEY
+        E2E_ANTHROPIC_KEY
+        GH_TOKEN
+        GITHUB_TOKEN
       GH_TOKEN: ${{ github.token }}
       TAG: desktop-v${{ needs.changes.outputs.version }}
       REF: ${{ github.sha }}
@@ -1069,9 +1394,22 @@ jobs:
           if grep -q made=1 "$RUNNER_TEMP/made.txt" 2>/dev/null; then
               echo "## 📊 [Open the Windows HTML report](https://www.jobpilotto.top/admin/operations/e2e/run/${{ github.run_id }}/report?os=windows) · every suite, its steps with a screenshot each, the failure and its trace (admins)"
           fi
+      - name: Scan artifact contents for CI secrets
+        working-directory: ${{ github.workspace }}
+        id: artifact_scan_12
+        if: always()
+        shell: bash
+        env:
+          AI_COST_PUBLISH_KEY: ${{ secrets.AI_COST_PUBLISH_KEY }}
+          E2E_ANTHROPIC_KEY: ${{ secrets.E2E_ANTHROPIC_KEY }}
+          GITHUB_TOKEN: ${{ github.token }}
+          E2E_ARTIFACT_PATHS: |
+            e2e-report
+        run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
       - uses: actions/upload-artifact@v6
-        if: hashFiles('e2e-report/index.html') != ''
+        if: (hashFiles('e2e-report/index.html') != '') && steps.artifact_scan_12.outcome == 'success'
         with:
+          overwrite: true
           name: e2e-report-windows   # admin/e2e-report.js serves it
           path: e2e-report
           compression-level: 0
@@ -1086,8 +1424,15 @@ jobs:
           github-token: ${{ github.token }}
       - name: Not released on Windows, an E2E suite failed on Mac + Linux or Windows
         if: needs.test-mac.result != 'success' || needs.test-windows.result != 'success'
-        run: python3 tools/beta_rate_gate.py --repo "$GITHUB_REPOSITORY" --run "$GITHUB_RUN_ID" --e2e-only
-      - name: Tolerant AI rates against main's nightly band
+        run: python3 tools/beta_rate_gate.py --repo "$GITHUB_REPOSITORY" --run "$GITHUB_RUN_ID" --e2e-only --platform windows
+      - name: Keep this platform's beta hold evidence
+        if: always() && hashFiles('beta-held.json') != ''
+        uses: actions/upload-artifact@v6
+        with:
+          name: beta-held-windows
+          path: beta-held.json
+          overwrite: true
+      - name: Tolerant AI rates against main's nightly band (report only)
         if: needs.changes.outputs.gate == 'true'
         run: python3 tools/beta_rate_gate.py --repo "$GITHUB_REPOSITORY" --run "$GITHUB_RUN_ID" --platform windows
       - name: No real high-severity finding in the Windows suites
@@ -1152,3 +1497,51 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: python3 tools/sync_release_labels.py || echo "labels not refreshed"   # best effort, never fails a build
+
+  # Why (31 Oct 2026, owner): "It should just raise an alert. And that's it." One credit alert per workflow run, never a beta hold.
+  ai-credit-health:
+    name: AI credit health
+    needs: [test-mac, test-windows]
+    if: always() && !cancelled() && github.ref == 'refs/heads/main'
+    continue-on-error: true
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+    env:
+      E2E_ARTIFACT_SECRET_NAMES: |
+        GH_TOKEN
+        CI_ALERTS_TELEGRAM_BOT_TOKEN
+        CI_ALERTS_TELEGRAM_CHAT_ID
+      GH_TOKEN: ${{ github.token }}
+      CI_ALERTS_TELEGRAM_BOT_TOKEN: ${{ secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN }}
+      CI_ALERTS_TELEGRAM_CHAT_ID: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          sparse-checkout: |
+            desktop/e2e
+            tools/scan-e2e-artifacts.py
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - name: AI credit is an alert, never a hold
+        run: |
+          gh run download "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --pattern 'e2e-artifacts-*' --dir ai-credit-health || echo "::notice::No suite artifacts available for AI credit health"
+          gh run download "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --pattern 'e2e-rerun-*' --dir ai-credit-health || echo "::notice::No retry artifacts available for AI credit health"
+          gh run download "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --name "ai-credit-alert-$GITHUB_RUN_ID" --dir ai-credit-alert || true
+          node desktop/e2e/credit-alert.mjs --artifacts ai-credit-health --marker ai-credit-alert/alert-sent.txt
+      - name: Scan artifact contents for CI secrets
+        id: artifact_scan_1
+        if: always()
+        env:
+          E2E_ARTIFACT_PATHS: ai-credit-alert/alert-sent.txt
+        run: python tools/scan-e2e-artifacts.py
+      - name: Remember this run's single credit alert
+        if: (always() && hashFiles('ai-credit-alert/alert-sent.txt') != '') && steps.artifact_scan_1.outcome == 'success'
+        uses: actions/upload-artifact@v6
+        with:
+          name: ai-credit-alert-${{ github.run_id }}
+          path: ai-credit-alert/alert-sent.txt
+          overwrite: true

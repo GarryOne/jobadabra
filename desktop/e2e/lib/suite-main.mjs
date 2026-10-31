@@ -10,8 +10,9 @@ import {refusedQuestions} from './ai-answers.mjs';
 import {checkAiMisses, recordAnswerRefusals, runAiGuards} from './no-real-ai.mjs';
 import {writeSuiteFailures} from './artifacts.mjs';
 
-// Why (29 Oct 2026, Gitar on #2479 x2): the steps judge themselves by their own caps; close-down is bounded in finally on success or failure, and only the caller exits the process.
-const TEARDOWN_STOP_MS = 3 * 60000;
+// Why (29 Oct 2026, Gitar on #2479 x2; exported 31 Oct, #2654): the steps judge themselves by their own caps; close-down is bounded in finally on success or failure,
+// and only the caller exits the process. Exported because runner.mjs TRY_MARGIN_MS must hold this cap plus a minute before CI's try limit (test/suite-budget.test.mjs).
+export const TEARDOWN_STOP_MS = 3 * 60000;
 const closeDownHangMessage = suite => `the ${suite.name} suite's close-down was still running 3 min after its steps ended: moving on (closing the app, a test server, or writing artifacts)`;
 
 /** Without an aggregate budget, record close-down hangs in the runner; always clear the unref'd timer when the race settles. */
@@ -38,6 +39,7 @@ export function writeFinalFailures(suite, ctx) {
   if (missing) console.error(`✗ ${ctx.stopped}`);
   // Why (30 Oct 2026, a8): a suite at 0 asks without a stored answer must stay at 0 (jobs and failureschannels went red when the CI AI budget ran out).
   const ceiling = checkAiMisses(ctx.ARTIFACTS, JSON.parse(fs.readFileSync(new URL('../lanes.json', import.meta.url), 'utf8')).suites?.[suite]);
+  if (ceiling.max !== null) console.log(`AI asks with no stored answer: ${ceiling.misses} (allowed ${ceiling.max})`);
   if (!ceiling.ok) {
     ctx.runner.results.push({name: 'AI asks have stored answers', status: 'failed', note: ceiling.message});
     console.error(`✗ ${ceiling.message}\nE2E-cause: ai ${suite}`);

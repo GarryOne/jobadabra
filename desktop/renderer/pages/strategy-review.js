@@ -8,17 +8,19 @@ import {buildDraft, currentAnswers} from './activity.js';
 import {$, message, osText, show} from './core.js';
 import {loadJobs} from './jobs.js';
 import {openView} from './nav.js';
-import {openSetting} from './settings.js';
 import {hideCards, showCards} from './setup-strategy.js';
 import {toastMessage} from './startup.js';
-import {goStep, saveState} from './wizard.js';
+import {goStep, saveState, showSetupFinish} from './wizard.js';
 import {byStore} from '../store-words.js';
 import {titleCase} from '../fragment-words.js';
 export {titleCase};   // one place for it: renderer/fragment-words.js
 
 // ---------- step 3: review the drafted strategy ----------
 let draftSavedTimer, editsTimer;
+// Pending first-setup completion is renderer state: saveStrategy already persists setupDone in both stores.
+let setupFinishReady = false;
 export function draftChanged(fields) {
+  if (setupFinishReady) { setupFinishReady = false; show($('setup-finish'), false); show($('draft-actions')); }
   clearTimeout(editsTimer);
   editsTimer = setTimeout(async () => {
     await window.pilot.cacheDraftEdits(Object.fromEntries(fields.map(field => [field, shared.draft[field]])));
@@ -39,6 +41,7 @@ function noteSummary() {
 }
 // Before a draft exists, after a failed one, or on Rebuild from CV: what the user wants, then Build my strategy.
 export function showDraftIntro() {
+  setupFinishReady = false;
   hideCards();
   placeNote('intro');
   show($('draft-intro')); show($('draft-actions'), false);
@@ -76,6 +79,8 @@ export async function toDraft() {
   $('draft-stale-text').textContent = cached.cvChanged ? 'Your CV changed since this strategy was drafted.'
     : answersChanged ? 'Your note changed since this strategy was drafted.' : '';
   show($('draft-stale'), !!stale);
+  if (stale) setupFinishReady = false;
+  if (setupFinishReady) showSetupFinish();
 }
 async function saveDraft(parts = null) {
   for (const key of Object.keys(saveState)) delete saveState[key];
@@ -101,12 +106,13 @@ async function saveDraft(parts = null) {
   $('save-title').textContent = byStore('Saved to Notion ✓', 'Saved ✓');
   $('save-bar').style.width = '100%';
   shared.state = await window.pilot.state();
+  setupFinishReady = !replacing;
   // A replaced strategy: back to the app; the first setup: on to the last step.
   setTimeout(() => {
     $('save-dialog').close();
     // The Strategy page read again: it still showed the strategy from before (7 Oct 2026: "Your Profile is empty" stayed after a rebuild filled it).
     if (replacing) { hideCards(); show($('wizard'), false); show($('app')); loadJobs(); import('./strategy.js').then(page => page.loadStrategy()); toastMessage('Strategy replaced ✓', byStore('The previous one is kept in Notion as “🗂 Previous strategy”.', 'The previous one is kept as “🗂 Previous strategy”.'), {view: 'strategy'}, 'good'); }
-    else goStep('letter');
+    else showSetupFinish();
   }, 900);
 }
 async function openRebuildReview() {
@@ -155,6 +161,7 @@ const outside = (dialog, event) => {
   return event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom;
 };
 async function finishSetup() {
+  setupFinishReady = false;
   hideCards();
   shared.state.settings = await window.pilot.saveSettings({setupDone: true});
   show($('wizard'), false); show($('app'));
@@ -194,14 +201,5 @@ export async function init() {
   $('save-retry').addEventListener('click', saveDraft);
   $('save-close').addEventListener('click', () => $('save-dialog').close());
   $('save-dialog').addEventListener('cancel', event => { if (!$('save-close').hidden) return; event.preventDefault(); });  // no Esc while saving
-  // "Set up" on the last step: finish the setup, open that Settings card, and offer the way back to the wizard.
-  document.querySelectorAll('[data-goto-settings]').forEach(button => button.addEventListener('click', async () => {
-    await finishSetup();
-    openView('settings');
-    show($('back-to-setup'));
-    openSetting(button.dataset.gotoSettings);
-  }));
   $('finish').addEventListener('click', finishSetup);
-  $('back-to-setup-go').addEventListener('click', () => { show($('back-to-setup'), false); show($('app'), false); show($('wizard')); goStep('extras'); });
-  $('back-to-setup-close').addEventListener('click', () => show($('back-to-setup'), false));
 }

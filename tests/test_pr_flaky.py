@@ -51,11 +51,13 @@ class PrFlaky(unittest.TestCase):
 
     def test_the_verdict_writer_calls_it_only_for_a_red_and_never_lets_it_change_the_state(self):
         text = (ROOT / 'tools/pr-verdict.py').read_text()
-        block = text.split("if state == 'failure':   # Why (31 Oct 2026, owner)", 1)[1].split("print(f'{CONTEXT}", 1)[0]
-        self.assertIn("main_state_module(a.repo, ref, 'pr_flaky')", block)
+        main = text.split('\ndef main():', 1)[1]
+        block = main.split("if state == 'failure':\n        why = flaky_note(", 1)[1].split("print(f'{CONTEXT}", 1)[0]
         self.assertNotRegex(block, r'(?m)^\s+state\s*=', 'the flaky note changes the description, never the state')
-        self.assertRegex(text, re.escape("print('\\n'.join(said))"), 'the lines reach the job log')
-        self.assertIn('except Exception as error:   # information only', block, 'a companion that cannot be fetched never stops the verdict (the job-run test has no pr_flaky.py)')
+        note = text.split('def flaky_note(', 1)[1].split('\ndef main():', 1)[0]
+        self.assertIn("print('\\n'.join(said))", note, 'the lines reach the job log')
+        self.assertIn('except Exception as error:', note, 'a companion that cannot be fetched never stops the verdict (the job-run test has no pr_flaky.py)')
+        self.assertNotRegex(note, r'(?m)^\s+state\s*=')
 
 
 if __name__ == '__main__':

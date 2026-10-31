@@ -281,7 +281,7 @@ One `###` per plan step, one box per thing that lands; a box is ticked only with
 - [x] At most 5 suites on a PR, picked by how strongly the diff reaches them; the other reached suites run after the merge (rule G). (proof: desktop/e2e/test/pr-suites-cap.test.mjs)
 - [ ] Catch-weighted picking: a PUBLIC snapshot of the scorecard feeds `pr-suites.mjs --catches` (the scorecard is private, so today's ties go to reach, then name; the site session owns the snapshot).
 - [x] Suspension after a GitHub re-run (replaced 31 Oct 2026, row 33): a hand re-run that came out green was the old trigger; the same idea at step level is "red on code unchanged since a green", proposed by `.github/workflows/e2e-flip.yml` through `tools/suspend-flip.mjs` as an owner issue plus a `steps` entry, and the beta gate lists a suspended step as not blocking. (proof: tests/test_workflow_e2e_flip.py, desktop/e2e/test/suspend-flip.test.mjs, tests/test_red_main_gate.py)
-- [x] The in-job retry flip is gone with the retry (row 32): `flaky.json` markers and first-try artifacts no longer exist; applyflows flipped this way on 29 Oct. (proof: tests/test_e2e_single_try.py)
+- [x] The in-job retry flip is gone with the retry (row 32): `flaky.json` markers and first-try artifacts no longer exist; applyflows flipped this way on 29 Oct. (proof: none: the retry and its markers were deleted in row 32, nothing replaces them)
 
 ### 3. Expectation rule and plumbing brake
 - [x] Rule E: a PR that changes what a backbone test expects carries its citation (mechanical check plus `.gitar/review/e2e-reliability.md`). (proof: desktop/test/e2e-reliability-check.test.js)

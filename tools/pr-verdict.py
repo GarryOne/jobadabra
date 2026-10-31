@@ -384,6 +384,19 @@ def speed_state(state, live, jobs, me, reports, job_status):
     return result
 
 
+def flaky_note(repo, ref, live, why):
+    """The description of a red PR, with how many of its failed e2e steps are flaky (tools/pr_flaky.py); the lines go to the log.
+    Why (31 Oct 2026, owner): say "flaky" on the red. Information only: the verdict is written whatever this read does."""
+    try:
+        flaky = main_state_module(repo, ref, 'pr_flaky')
+        said = flaky.lines(repo, live)
+        print('\n'.join(said))
+        return (why + flaky.summary(said))[:140]
+    except Exception as error:
+        print(f'Flaky read unavailable ({type(error).__name__}): verdict unchanged')
+        return why
+
+
 def main():
     sys.stdout.reconfigure(encoding='utf-8')   # a Windows runner's console is cp1252
     ap = argparse.ArgumentParser()
@@ -437,14 +450,8 @@ def main():
     # Why (31 Oct 2026, owner: "Grey: not known yet"): preserve the note even with red/pending peers or truncated numbers.
     if 'ai-budget' in getattr(reports, 'reasons', {}).values() and 'qualityai: AI budget refused, not judged' not in why:
         why = ('qualityai: AI budget refused, not judged; ' + why)[:140]
-    if state == 'failure':   # Why (31 Oct 2026, owner): say "flaky" on the red; tools/pr_flaky.py, information only
-        try:
-            flaky = main_state_module(a.repo, ref, 'pr_flaky')
-            said = flaky.lines(a.repo, live)
-            print('\n'.join(said))
-            why = (why + flaky.summary(said))[:140]
-        except Exception as error:   # information only: the verdict is written whatever this read does
-            print(f'Flaky read unavailable ({type(error).__name__}): verdict unchanged')
+    if state == 'failure':
+        why = flaky_note(a.repo, ref, live, why)
     print(f'{CONTEXT}: {state}: {why}')
     url = f'{server}/{a.repo}/actions/runs/{target or my_run}'   # the run it waits on, or the red one: the PR's e2e run is not in its checks list
     if not a.dry_run:

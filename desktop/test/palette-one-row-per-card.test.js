@@ -27,9 +27,9 @@ const TOP = {
 };
 
 const probe = queries => (async () => {
-  const {rank, shownLabel} = await import(new URL('palette.js', document.baseURI).href);
+  const {rank, shownLabel, labelWords} = await import(new URL('palette.js', document.baseURI).href);
   const entries = window.__jp.paletteCommands(), out = {};
-  const strong = (command, query) => query.split(/\s+/).some(term => command.label.toLowerCase().split(/[^a-z0-9]+/).some(word => word.startsWith(term)));
+  const strong = (command, query) => query.split(/\s+/).some(term => labelWords(command).some(word => word.startsWith(term)));
   for (const query of queries) {
     const rows = rank(entries, query);
     out[query] = {rows: rows.map(command => `${command.group}|${shownLabel(command)}`), weak: rows.some(row => !strong(row, query)) && rows.some(row => strong(row, query))};

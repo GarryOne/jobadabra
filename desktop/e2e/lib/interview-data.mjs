@@ -61,12 +61,73 @@ export function monthsBetween(shown, want) {
   return index(want) - index(shown);
 }
 
+// ---- the Calendar suite's dates: every one derived from `now`, so test/interview-data.test.mjs can run them over the calendar's edges ----
+// Why (a8, 31 Oct 2026): the suite went red on its date twice in 7 days (fdc31ca: Tokyo's "today" in next month's grid; #2718: month titles compared as text),
+// each found only by a beta on the one evening that hits it. Both are deterministic once `now` is fixed, so `now` is an argument here, never read inside.
+export const TOKYO = 'Asia/Tokyo';
+export const HONOLULU = 'Pacific/Honolulu';
+
+// Building an Intl formatter costs ~50 µs; the sweep in test/interview-data.test.mjs asks thousands of times, so each (locale, zone, options) is built once.
+const formatters = new Map();
+const formatter = (locale, zone, options) => {
+  const key = `${locale}|${zone}|${JSON.stringify(options)}`;
+  if (!formatters.has(key)) formatters.set(key, new Intl.DateTimeFormat(locale, {timeZone: zone, ...options}));
+  return formatters.get(key);
+};
+
+/** The calendar day ("YYYY-MM-DD") that instant `date` falls on in time zone `zone`. */
+export const dayIn = (date, zone) => formatter('en-CA', zone, {year: 'numeric', month: '2-digit', day: '2-digit'}).format(date);
+
+/** The instant `time` ("HH:MM") UTC on `day`, as the ISO string the store takes. */
+export const utc = (day, time) => `${day}T${time}:00Z`;
+
+/**
+ * Every date the Calendar suite derives from `now`, in the app's zone (Tokyo): today, the three "this week" days inside the month (`future` = they are
+ * ahead of today), the 15th of next month, the title of next month, the old call's day (40 days back), and the day and month title the Acme call falls on
+ * in Honolulu (23:30 UTC on the eve of its Tokyo day).
+ */
+export function calendarDates(now) {
+  const today = dayIn(now, TOKYO);
+  const {days, future} = weekDays(today);
+  const honoluluDay = addDays(days[0], -1);
+  return {
+    today, days, future, honoluluDay, thisTitle: monthTitle(today), honoluluTitle: monthTitle(honoluluDay),
+    nextMonthDay: dayIn(new Date(Date.UTC(Number(today.slice(0, 4)), Number(today.slice(5, 7)), 15, 3)), TOKYO),   // the 15th of next month, noon in Tokyo
+    nextTitle: monthTitle(addDays(`${today.slice(0, 7)}-28`, 5)),
+    oldDay: addDays(today, -40),
+  };
+}
+
+/**
+ * The six dummy meetings' instants, days and clocks in Tokyo, from `calendarDates`. Instants are chosen so that the local day differs between zones:
+ * 23:30 UTC on D-1 is D 08:30 in Tokyo and D-1 13:30 in Honolulu.
+ */
+export function meetingSlots({days: [l1, l2], nextMonthDay}) {
+  return {
+    acme: {at: utc(addDays(l1, -1), '23:30'), day: l1, clock: {h: 8, m: 30}},
+    beta: {at: utc(l2, '01:00'), day: l2, clock: {h: 10, m: 0}},
+    gamma: {at: utc(l2, '06:00'), day: l2, clock: {h: 15, m: 0}},
+    delta: {at: utc(l2, '08:00'), day: l2, clock: {h: 17, m: 0}},
+    zeta: {at: utc(l2, '09:00'), day: l2, clock: {h: 18, m: 0}},
+    epsilon: {at: utc(nextMonthDay, '03:00'), day: nextMonthDay, clock: {h: 12, m: 0}},
+  };
+}
+
+/**
+ * Pages the calendar to the month titled `want`, at most `cap` clicks, by date (see monthsBetween). `calendar.title()` reads the shown title,
+ * `calendar.click('next' | 'prev')` presses an arrow. Returns the title it stopped on; the caller decides what a miss means.
+ */
+export async function pageToMonth(calendar, want, cap = 3) {
+  for (let i = 0; i < cap && (await calendar.title()) !== want; i++) await calendar.click(monthsBetween(await calendar.title(), want) > 0 ? 'next' : 'prev');
+  return calendar.title();
+}
+
 // Rows are listed newest first (src/ai/interviews.py listing): true when no row is older than the one before it.
 export const newestFirst = days => days.every((value, i) => i === 0 || days[i - 1] >= value);
 
 // The hour:minute a chip or row shows, for an instant, in a zone: "08:30" or "1:30 PM" both read as the same clock.
 export function clockOf(iso, zone) {
-  const [h, m] = new Intl.DateTimeFormat('en-GB', {timeZone: zone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23'}).format(new Date(iso)).split(':').map(Number);
+  const [h, m] = formatter('en-GB', zone, {hour: '2-digit', minute: '2-digit', hourCycle: 'h23'}).format(new Date(iso)).split(':').map(Number);
   return {h, m};
 }
 // Does the text show that clock, in 24 h or 12 h form?

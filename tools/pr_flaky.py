@@ -40,3 +40,10 @@ def summary(said):
     """'' or a short suffix for the status description: how many of the red steps passed on unchanged code."""
     flaky = sum(1 for line in said if line.startswith('Flaky: '))
     return f' (flaky: {flaky} of {len(said)} red step(s) passed on unchanged code)' if flaky else ''
+
+
+def note(repo, runs, why, **kwargs):
+    """The PR's description with the flaky count appended (140 characters at most); the verdict lines go to the log."""
+    said = lines(repo, runs, **kwargs)
+    print('\n'.join(said))
+    return (why + summary(said))[:140]

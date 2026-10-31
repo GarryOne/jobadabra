@@ -55,6 +55,16 @@ class PrFlaky(unittest.TestCase):
         self.assertEqual(len(said), len(calls))
         self.assertTrue(all(t <= pf.TOTAL_S for t in timeouts), timeouts)
 
+    def test_note_prints_the_lines_and_appends_the_count_within_140_characters(self):
+        import contextlib, io
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            text = pf.note('o/r', [PR_RUN], 'x' * 120, run=fake_run(f'{FLAKY}\n', []), which=lambda _: '/usr/bin/node', tool=str(ROOT / 'tools/flaky-verdict.mjs'))
+        self.assertIn(FLAKY, out.getvalue())
+        self.assertEqual(len(text), 140)
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(pf.note('o/r', [PR_RUN], 'why', run=fake_run(f'{CHANGED}\n', []), which=lambda _: '/usr/bin/node', tool=str(ROOT / 'tools/flaky-verdict.mjs')), 'why')
+
     def test_the_verdict_job_may_read_check_annotations(self):
         text = (ROOT / '.github/workflows/pr-verdict.yml').read_text()
         job = text[text.index('timeout-minutes: 5\n    permissions:\n      actions: read          # the commit'):]
@@ -78,7 +88,8 @@ class PrFlaky(unittest.TestCase):
         block = main.split("if state == 'failure':\n        why = flaky_note(", 1)[1].split("print(f'{CONTEXT}", 1)[0]
         self.assertNotRegex(block, r'(?m)^\s+state\s*=', 'the flaky note changes the description, never the state')
         note = text.split('def flaky_note(', 1)[1].split('\ndef main():', 1)[0]
-        self.assertIn("print('\\n'.join(said))", note, 'the lines reach the job log')
+        self.assertIn('.note(repo, live, why)', note, 'the lines and the count come from tools/pr_flaky.py note')
+        self.assertIn('except Exception', note, 'a failed read leaves the description as it was')
         self.assertIn('except Exception as error:', note, 'a companion that cannot be fetched never stops the verdict (the job-run test has no pr_flaky.py)')
         self.assertNotRegex(note, r'(?m)^\s+state\s*=')
 

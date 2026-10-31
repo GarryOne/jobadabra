@@ -385,13 +385,9 @@ def speed_state(state, live, jobs, me, reports, job_status):
 
 
 def flaky_note(repo, ref, live, why):
-    """The description of a red PR, with how many of its failed e2e steps are flaky (tools/pr_flaky.py); the lines go to the log.
-    Why (31 Oct 2026, owner): say "flaky" on the red. Information only: the verdict is written whatever this read does."""
+    """The red PR's description with its flaky-step count (tools/pr_flaky.py note). Why (31 Oct 2026, owner): say "flaky" on the red; information only."""
     try:
-        flaky = main_state_module(repo, ref, 'pr_flaky')
-        said = flaky.lines(repo, live)
-        print('\n'.join(said))
-        return (why + flaky.summary(said))[:140]
+        return main_state_module(repo, ref, 'pr_flaky').note(repo, live, why)
     except Exception as error:
         print(f'Flaky read unavailable ({type(error).__name__}): verdict unchanged')
         return why

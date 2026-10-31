@@ -4,7 +4,8 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {chromium} from 'playwright-core';
-import {isStopped, pressStop, readPanel} from '../lib/panel-stop.mjs';
+import {isStopped, pressBudget, pressStop, readPanel} from '../lib/panel-stop.mjs';
+import {POLL_CAP_MS} from '../lib/wait-on-state.mjs';
 
 // mode: 'lateNever' (Stop disabled 900 ms, then never halts: the press itself spends part of the budget), 'late' (Stop disabled 400 ms, halts 100 ms after the press),'slow' (halts 700 ms after the press), 'never' (Stopping… and nothing else),
 // 'hidden' (no Stop is ever shown), 'pill' (the card is minimised, the pill's Stop halts at once), 'dim' (the step row ends and the dim over the page stays),
@@ -79,6 +80,12 @@ test('the time the press waits for an enabled Stop comes off the same budget the
     const took = Date.now() - began;
     assert.ok(took < 2100, `one deadline from the press, not a fresh budget after the click (took ${took} ms of a 1500 ms cap)`);
   });
+});
+
+test('a press outside a runner step still has one budget: the step\'s time, else the test\'s cap, else pollUntil\'s default', () => {
+  assert.equal(pressBudget({stepLeft: 7000, capMs: 900}), 7000);
+  assert.equal(pressBudget({stepLeft: undefined, capMs: 900}), 900);
+  assert.equal(pressBudget({stepLeft: undefined, capMs: undefined}), POLL_CAP_MS, 'panel-theme-stop.test.mjs is a plain node:test: its failing Stop must not take 30 s + 3 x 45 s');
 });
 
 test('a Stop that is never pressable fails naming the control and the panel, not as a timeout of the page', async () => {

@@ -7,7 +7,10 @@
 // Invariants: the control is found by role and name ("Stop", the one that is shown: the open panel's or the minimised pill's) at the moment of the press; the press is Playwright's trusted
 // click, which waits until the control is visible, enabled, still and not covered; each state the Stop should change (STOP_STAGES) is read from the panel in a loop and waited for on its own, never one combined wait at the end (one event per action); the loops end at the caller's cap or the step's clock.
 // Tests: test/panel-stop.test.mjs
-import {pollUntil, stepTimeLeft, stepWait, waitCapNote} from './wait-on-state.mjs';
+import {POLL_CAP_MS, pollUntil, stepTimeLeft, stepWait, waitCapNote} from './wait-on-state.mjs';
+
+/** The one budget of a press, spent across the click and the three stages: the step's time left, else the test's cap, else pollUntil's own default (never a fresh budget per wait). */
+export const pressBudget = ({stepLeft, capMs}) => stepLeft ?? capMs ?? POLL_CAP_MS;
 
 const HOST = '#jobpilotto-review-host';
 
@@ -43,20 +46,20 @@ export const isStopped = state => state.panel !== 'absent' && STOP_STAGES.every(
  * @throws {Error} naming what was seen: the Stop control never became pressable, or the panel never showed stopped (with its last state)
  */
 export async function pressStop(page, {capMs} = {}) {
-  const budget = stepTimeLeft() ?? capMs;   // undefined outside a step and without a test cap: pollUntil's default
-  const deadline = budget === undefined ? undefined : Date.now() + budget;   // Why (PR #2748, Gitar): one deadline from before the press; the wait for a pressable Stop spends part of it, the stages get what is left
+  const budget = pressBudget({stepLeft: stepTimeLeft(), capMs});
+  const deadline = Date.now() + budget;   // Why (PR #2748, Gitar x2): one deadline from before the press in every case; the wait for a pressable Stop spends part of it, the stages get what is left
   const stop = page.locator(HOST).getByRole('button', {name: 'Stop', exact: true});
   try {
-    await stepWait('the Stop control was visible, enabled and still', timeout => stop.click({timeout: timeout ?? capMs}));
+    await stepWait('the Stop control was visible, enabled and still', timeout => stop.click({timeout: timeout ?? Math.max(1, deadline - Date.now())}));
   } catch (error) {
     throw new Error(`Stop was never pressable (${String(error.message).split('\n')[0]}); the panel showed ${JSON.stringify(await readPanel(page).catch(() => 'unreadable'))}`);
   }
   const started = Date.now();
   let value = {panel: 'absent'};
   for (const stage of STOP_STAGES) {   // one event per action: each expected state is waited for on its own, with its own message, never one combined wait at the end
-    const left = deadline === undefined ? undefined : Math.max(0, deadline - Date.now());
+    const left = Math.max(0, deadline - Date.now());
     ({value} = await pollUntil(() => readPanel(page), state => state.panel !== 'absent' && stage.accepts(state), {capMs: left, label: elapsed => `${stage.what} ${elapsed} ms after the press`}));
-    if (value.panel === 'absent' || !stage.accepts(value)) throw new Error(`Stop did not halt the fill: ${waitCapNote(stage.what, (budget ?? 45000) / 1000, value)}`);
+    if (value.panel === 'absent' || !stage.accepts(value)) throw new Error(`Stop did not halt the fill: ${waitCapNote(stage.what, budget / 1000, value)}`);
   }
   const ms = Date.now() - started;
   return {state: value, ms};

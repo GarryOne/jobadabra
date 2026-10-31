@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {SUITES} from '../lib/context.mjs';
 import * as runner from '../lib/runner.mjs';
+import {flakyProof} from '../lib/flaky-proof.mjs';
 const {budgetMsOf, SUITE_BUDGET_MS, suiteStopMs} = runner;
 
 test('a clean CI checkout stages shared code before reading the suite no-aggregate export', async () => {
@@ -45,4 +46,26 @@ test('every suite with its own budget has a job limit above two runs of it (the 
     if (!suite.budgetMinutes) continue;
     assert.ok((suite.minutes || 15) >= 2 * suite.budgetMinutes + 4 || suite.budgetMinutes <= 10, `${name}: minutes ${suite.minutes} cannot hold two runs of its ${suite.budgetMinutes}-minute budget (CI cancels the job and the evidence is lost)`);
   }
+});
+
+// Why (31 Oct 2026, main run 41146558456 and the beta's re-check 41150330007): apply-1of2's first try on a slow Mac runner was killed at the workflow's 15-minute
+// step limit with every step green so far; a kill writes no record, so flaky-proof had no timing proof and the passing retry stayed red (8 of 82 Mac first tries).
+test('a suite without an aggregate stops 2 minutes before the CI try limit; locally there is no limit', () => {
+  assert.equal(budgetMsOf({aggregateBudget: false}, {E2E_TRY_MINUTES: '15'}), 13 * 60000);
+  assert.equal(budgetMsOf({aggregateBudget: false}, {E2E_TRY_MINUTES: '30'}), 28 * 60000);
+  assert.equal(budgetMsOf({aggregateBudget: false}, {}), Infinity);
+  assert.equal(budgetMsOf({budgetMinutes: 11}, {E2E_TRY_MINUTES: '15'}), 11 * 60000, 'a suite with its own budget keeps it');
+});
+
+test('a slow try cut by that stop leaves records flaky-proof reads as timing, so a passing retry turns the job green', async () => {
+  const quiet = console.log;
+  console.log = () => {};
+  try {
+    const run = runner.createRunner(() => null, {keepGoing: true, budgetMs: 150});
+    await run.run('a form step on a slow runner', () => new Promise(done => setTimeout(done, 400)));
+    await run.run('the step after it', async () => {});
+    const failed = run.results.filter(result => result.status === 'failed');
+    assert.equal(failed.length, 2, JSON.stringify(run.results));
+    for (const result of failed) assert.equal(flakyProof(result.note).flaky, true, result.note);
+  } finally { console.log = quiet; }
 });

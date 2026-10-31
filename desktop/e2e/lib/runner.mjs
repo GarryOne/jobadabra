@@ -60,8 +60,15 @@ export const PICK_SETUP = '(setup)';
 // A whole suite has a budget too (owner, 6 Oct 2026: no suite over 5-7 minutes). Past it, the steps left are recorded as not run and the suite fails, naming its
 // slowest steps; a running step is cut at the budget's end. A suite that truly needs more says so (`export const budgetMinutes`): a manual suite, or the recorded replay (it grows a case at a time; sharded in page-cases.yml and, by its `shards`, in the gates: lib/suite-shards.mjs).
 export const SUITE_BUDGET_MS = Number(process.env.E2E_SUITE_BUDGET_MS) || 7 * 60000;
-/** A suite can leave the aggregate budget; otherwise its own budget or the existing default applies. */
-export const budgetMsOf = suite => (suite?.aggregateBudget === false ? Infinity : suite?.budgetMinutes ? suite.budgetMinutes * 60000 : SUITE_BUDGET_MS);
+// Why (31 Oct 2026, owner's pick; main run 41146558456): a suite without an aggregate had no stop of its own, so a slow Mac runner hit the workflow's 15-minute
+// step limit and GitHub killed it with no record: flaky-proof could not prove timing and a passing retry stayed red. It stops 2 minutes before that limit instead,
+// through the budget cut below, whose records read as timing. The limit has one owner: the workflow step's timeout-minutes, mirrored in E2E_TRY_MINUTES
+// (tests/test_e2e_try_minutes.py); a local run has none.
+export const TRY_MARGIN_MS = 2 * 60000;
+/** A suite can leave the aggregate budget (then only the CI try's limit, less the margin, cuts it); otherwise its own budget or the default applies. Takes the suite's exports and env. */
+export const budgetMsOf = (suite, env = process.env) => (suite?.aggregateBudget === false
+  ? (Number(env.E2E_TRY_MINUTES) > 0 ? Number(env.E2E_TRY_MINUTES) * 60000 - TRY_MARGIN_MS : Infinity)
+  : suite?.budgetMinutes ? suite.budgetMinutes * 60000 : SUITE_BUDGET_MS);
 /** Budgeted suites keep budget plus three minutes; suites without an aggregate have no start-time stop. */
 export const stopMsOf = suite => (suite?.aggregateBudget === false ? null : budgetMsOf(suite) + 3 * 60000);
 /** Decide the start-time stop from the suite exports; shared code must be staged before loading, and load errors must never become a default budget. */

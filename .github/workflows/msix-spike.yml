@@ -316,24 +316,18 @@ jobs:
         env:
           UNVIRTUALIZED: ${{ inputs.unvirtualized }}
         run: |
-          # Why (31 Oct 2026, coordinator question (b)): can the appx config add the desktop6 attribute and the restricted capability? electron-builder 26 has `appx.customManifestPath`
-          # (its own template with the ${macros}) and `appx.capabilities` (unvirtualizedResources is a valid name; runFullTrust is always added). Only the Properties element needs the custom file.
+          # Why (31 Oct 2026, owner: "Root fix + note"): the manifest edit that turns AppData write virtualization off is desktop/scripts/appx-manifest.mjs, the same file msix-store.yml uses.
+          # Try 1 passed -c.appx.capabilities as a string and electron-builder's schema wants an array (run 41229368050); the script now writes the capability into the manifest itself.
           npm version "0.0.1" --no-git-tag-version --allow-same-version >/dev/null
           extra=()
           if [ "$UNVIRTUALIZED" = "true" ]; then
-            node -e "
-              const fs = require('fs');
-              let m = fs.readFileSync('node_modules/app-builder-lib/templates/appx/appxmanifest.xml', 'utf8');
-              m = m.replace('xmlns:rescap=', 'xmlns:desktop6=\"http://schemas.microsoft.com/appx/manifest/desktop/windows10/6\"\n   xmlns:rescap=')
-                   .replace('<Logo>\${logo}</Logo>', '<Logo>\${logo}</Logo>\n    <desktop6:FileSystemWriteVirtualization>disabled</desktop6:FileSystemWriteVirtualization>');
-              if (!m.includes('desktop6:FileSystemWriteVirtualization')) throw new Error('the template changed: the Properties element was not found');
-              fs.writeFileSync('build/appxmanifest-spike.xml', m);
-            "
-            extra=(-c.appx.customManifestPath=appxmanifest-spike.xml -c.appx.capabilities=unvirtualizedResources -c.appx.minVersion=10.0.19041.0 -c.appx.maxVersionTested=10.0.26100.0)
+            node scripts/appx-manifest.mjs
+            extra=(-c.appx.customManifestPath=appxmanifest-store.xml)
           fi
           npx electron-builder --win appx --publish never \
             -c.appx.identityName=Jobadabra.Spike -c.appx.publisher=CN=JobadabraSpike \
-            -c.appx.publisherDisplayName=Jobadabra -c.appx.displayName=Jobadabra -c.appx.applicationId=Jobadabra "${extra[@]}"
+            -c.appx.publisherDisplayName=Jobadabra -c.appx.displayName=Jobadabra -c.appx.applicationId=Jobadabra \
+            -c.appx.minVersion=10.0.17763.0 -c.appx.maxVersionTested=10.0.26100.0 "${extra[@]}"
           ls -la dist/*.appx
       - name: Install · sign with a test certificate and install the package
         shell: pwsh

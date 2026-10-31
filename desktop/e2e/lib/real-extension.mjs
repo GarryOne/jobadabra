@@ -1,4 +1,5 @@
 /* global document, location, chrome */
+// Job: serve stored answers
 // The REAL extension in a real (headless) Chromium on a REAL site, isolated from everything of the owner's: the way to validate a form fix before
 // saying it works (docs/rules/applying.md "Validate a form fix on the real extension"). What it cuts off, and proves it did:
 //  - the owner's live app: the extension is a copy whose built-in app address (127.0.0.1:47111) is a port nothing but a stand-in answers on

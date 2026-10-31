@@ -1,4 +1,5 @@
 // The traced app and browsers inherit only named runtime settings; CI credentials stay in the harness.
+// Job: run the backbone
 const RUNTIME = new Set(['PATH', 'Path', 'HOME', 'USERPROFILE', 'HOMEDRIVE', 'HOMEPATH', 'SystemRoot', 'SYSTEMROOT', 'WINDIR', 'COMSPEC', 'PATHEXT', 'TEMP', 'TMP', 'TMPDIR', 'LOCALAPPDATA', 'APPDATA', 'PROGRAMFILES', 'PROGRAMFILES(X86)', 'PROGRAMDATA', 'DISPLAY', 'WAYLAND_DISPLAY', 'XAUTHORITY', 'XDG_RUNTIME_DIR', 'DBUS_SESSION_BUS_ADDRESS', 'LANG', 'LC_ALL', 'TZ', 'CI', 'PYTHONPATH', 'PYTHONUTF8', 'NODE_V8_COVERAGE', 'COVERAGE_PROCESS_START', 'COVERAGE_FILE', 'E2E_PY_COVERAGE_DIR']);
 
 /** Build launch options without inherited CI secrets; explicit product hooks remain, credential overrides do not. */

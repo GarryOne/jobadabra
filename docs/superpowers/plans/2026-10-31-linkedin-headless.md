@@ -12,8 +12,8 @@ Spec: [2026-10-31-linkedin-headless-design.md](../specs/2026-10-31-linkedin-head
 - Extension consent patterns: `extension/options.js:23` (optional `cookies` toggle), `extension/allow.js` (`permissions.request`).
 
 ## PR 1/3 Session: switch, three doors, consent, cookie copy
-- Setting `linkedin` = `{on, asked, declined}` (one owner: `desktop/lib/linkedin-session.js`; the dialog's verdict is the only writer of `asked`/`declined`).
-- Cookie copy: extension asks `permissions.request({origins: ['https://www.linkedin.com/*'], permissions: ['cookies']})` inside its own consent UI, reads only `li_at` and `JSESSIONID`, posts them over the authenticated loopback; app stores in Keychain `job-pilotto.linkedin.session`. Turning the switch off: item deleted, `permissions.remove`.
+- Setting `linkedinJobs` = `{on, asked, declined}` (not `linkedin`: the profile import's) (one owner: `desktop/lib/linkedin-session.js`; the dialog's verdict is the only writer of `asked`/`declined`).
+- Cookie copy: extension asks `permissions.request({origins: ['https://www.linkedin.com/*'], permissions: ['cookies']})` inside its own consent UI, reads only `li_at` and `JSESSIONID`, posts them over the authenticated loopback; app stores in Keychain `job-pilotto.linkedin-jobs.session`. Turning the switch off: item deleted, `permissions.remove`.
 - UI: Settings → Connections row, Find jobs ask (1st/2nd press while off, "Not now" twice = never), Suggestions entry while off, ⌘K "Turn on LinkedIn jobs". One consent dialog behind all three.
 - Tests first: Keychain round trip (isolated, never `security`), only-allow-listed cookie names/host, value never in logs (scan), off deletes, ask counters (1st, 2nd, never after On or two declines), registry/palette, class tests (card-system NOT_A_CARD, text-fields-allowed, input type, renderer class tests). Run the whole desktop lint.
 - Gate: Chrome Web Store text reviewed with the extension change; manifest keeps `cookies` and `https://*/*` optional only.

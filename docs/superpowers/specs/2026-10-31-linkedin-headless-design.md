@@ -19,7 +19,7 @@
 ## Behaviour
 **One read per Find jobs, only when the switch is on and a session exists.**
 1. The extension (in the person's Chrome) copies the LinkedIn session cookies to the app **when the switch is turned on and at each Find jobs while on** (refresh), over the existing authenticated loopback. It never reads them otherwise.
-2. The app keeps them **only in the Keychain** (`job-pilotto.linkedin.session`; e2e: the isolated-secrets file, `lib/keychain.js`).
+2. The app keeps them **only in the Keychain** (`job-pilotto.linkedin-jobs.session`; e2e: the isolated-secrets file, `lib/keychain.js`).
 3. At the LinkedIn step the app starts the owned headless browser (`lib/background-browser.js`, reused, no second browser), sets the cookies in it for the read, opens the searches, and **removes the cookies from the browser's profile when the step ends** (so the profile never keeps a credential between runs).
 4. The owned browser's extension reads each list page exactly like today (`extension/visit.js`: AI-judged cards, follow pages, stop at login wall or check) and sends it to the app; `src/sources/visits.py` ingests; scoring and filters are the normal path.
 5. Searches come from the current strategy (roles × places, AI-judged: `tests/test_sources_follow_strategy.py`), at most **3 searches × 3 pages**, 2–5 s between pages, within the Find jobs deadline (`tests/test_three_minutes.py`); what did not fit is reported ("LinkedIn: read 2 of 3 searches, ran out of time").
@@ -31,7 +31,7 @@
 | Settings → Connections → LinkedIn | always | the switch + the one warning line |
 | Ask on Find jobs | the 1st and 2nd Find jobs press while off and never asked twice before | one dialog: warning line, **On** / **Not now**. "Not now" twice = never asks again (the other doors stay) |
 | Suggestions card | while off (and not on LinkedIn-less strategies, see non-goals) | entry "Also search LinkedIn, in the background" with one click that opens the same consent |
-All three open **one consent** (the dialog); On requests the two optional permissions in the extension, whose own UI shows the consent text (Web Store rule), then copies the session. Each is in the ⌘K palette ("Turn on LinkedIn jobs"). One owner of "asked N times / answered": a small setting `linkedin.asked` (0-2) and `linkedin.declined` (0-2), changed only by the dialog's verdict.
+All three open **one consent** (the dialog); On requests the two optional permissions in the extension, whose own UI shows the consent text (Web Store rule), then copies the session. Each is in the ⌘K palette ("Turn on LinkedIn jobs"). One owner of "asked N times / answered": a small setting `linkedinJobs.asked` (0-2) and `linkedinJobs.declined` (0-2); the switch is `linkedinJobs.on` (`settings.linkedin` belongs to the profile import), changed only by the dialog's verdict.
 
 ### States (one owner: the LinkedIn step's result, written once per run)
 | State | When | Card says |

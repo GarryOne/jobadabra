@@ -3,9 +3,10 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import {fileURLToPath} from 'node:url';
 import {test} from 'node:test';
 
-const desktop = new URL('..', import.meta.url).pathname;
+const desktop = fileURLToPath(new URL('..', import.meta.url));
 const files = [path.join(desktop, 'main.js'), ...fs.readdirSync(path.join(desktop, 'lib')).filter(name => name.endsWith('.js')).map(name => path.join(desktop, 'lib', name))];
 
 test('no IPC channel is registered twice across main.js and lib/', () => {

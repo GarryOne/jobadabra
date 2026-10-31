@@ -66,6 +66,12 @@ class FileNamesTests(unittest.TestCase):
         for platform, built in (('mac', ['Jobadabra-0.9.1-arm64.dmg', 'Jobadabra-0.9.1-arm64.zip']), ('windows', ['Jobadabra-0.9.1-x64.exe'])):
             names, _ = self.make(platform, built)
             self.assertFalse({n for n in names if n.startswith('Job-Pilotto-')}, f'no Job-Pilotto-* copy is made ({platform})')
+        # The failed-Windows fallback copies an older release's installer: it uploads that file only under the Jobadabra name.
+        uploads = [line for line in (ROOT / '.github/workflows/desktop.yml').read_text().splitlines() if 'gh release upload' in line]
+        self.assertTrue(uploads)
+        for line in uploads:
+            self.assertNotIn('previous/*', line, 'the fallback would upload a Job-Pilotto-* file as is')
+            self.assertNotIn('Job-Pilotto', line)
         updater = (ROOT / 'desktop/lib/updater.js').read_text()
         for pattern in ('Job-Pilotto-[\\d.]+', 'Job-Pilotto-mac-arm64', 'Job-Pilotto-windows-x64', 'Jobadabra-[\\d.]+', 'Jobadabra-mac-arm64', 'Jobadabra-windows-x64'):
             self.assertIn(pattern, updater, 'the updater matches both names')

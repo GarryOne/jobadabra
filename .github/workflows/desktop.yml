@@ -570,9 +570,10 @@ jobs:
           prev=$(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=30" \
             -q '[.[] | select(.draft | not) | select(.tag_name != "desktop-v'"$VERSION"'") | select(any(.assets[]; .name == "Job-Pilotto-windows-x64.exe" or .name == "Jobadabra-windows-x64.exe"))][0].tag_name')
           if [ -n "$prev" ]; then
-            # whichever generic name that release has (a release before 25 Oct 2026 has only Job-Pilotto-*)
-            gh release download "$prev" --repo "$GITHUB_REPOSITORY" -p Job-Pilotto-windows-x64.exe -p Jobadabra-windows-x64.exe -D previous
-            gh release upload "desktop-v${VERSION}" --repo "$GITHUB_REPOSITORY" previous/* --clobber
+            # whichever generic name that release has (a release before 25 Oct 2026 has only Job-Pilotto-*), uploaded only as Jobadabra-* (owner, 31 Oct 2026: "We want only Jobadabra")
+            gh release download "$prev" --repo "$GITHUB_REPOSITORY" -p Jobadabra-windows-x64.exe -p Job-Pilotto-windows-x64.exe -D previous
+            [ -f previous/Jobadabra-windows-x64.exe ] || mv previous/Job-Pilotto-windows-x64.exe previous/Jobadabra-windows-x64.exe
+            gh release upload "desktop-v${VERSION}" --repo "$GITHUB_REPOSITORY" previous/Jobadabra-windows-x64.exe --clobber
             echo "::warning::Windows build failed; desktop-v${VERSION} carries the Windows installer from ${prev}."
           else
             echo "::warning::Windows build failed and no earlier release has a Windows installer."

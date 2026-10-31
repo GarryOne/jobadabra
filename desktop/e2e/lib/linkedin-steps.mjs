@@ -7,6 +7,7 @@
 // so nothing is scored; the suite's "no AI call reached a real model" step proves it. Skipped where the hidden browser has no runtime link (Windows).
 import fs from 'node:fs';
 import path from 'node:path';
+import {writePrivate} from '../../lib/private-file.js';
 import {appLogText} from './app-log.mjs';
 import {HIDDEN_NEED, closeHiddenBrowser, describeHidden, evaluateOn, hiddenPort, hiddenTargets, linkRuntime} from './background-proof.mjs';
 import {FAKE_JSESSIONID, FAKE_LI_AT} from './linkedin-fixture.mjs';
@@ -30,7 +31,7 @@ async function seed(ctx, fx, caseName) {
   const file = path.join(ctx.profile, 'isolated-secrets.json');
   let items = {}; try { items = JSON.parse(fs.readFileSync(file, 'utf8')) || {}; } catch { /* the first item */ }
   items[SERVICE] = {value: JSON.stringify({li_at: FAKE_LI_AT, JSESSIONID: FAKE_JSESSIONID}), account: 'linkedin-jobs', comment: '', created: new Date().toISOString()};
-  fs.writeFileSync(file, JSON.stringify(items, null, 2), {mode: 0o600});
+  writePrivate(file, JSON.stringify(items, null, 2));
   await ctx.page.evaluate(() => window.pilot.saveSettings({linkedinJobs: {on: true, asked: 2, declined: 0, last: null, pauseUntil: null}}));
   fx.reset();
   fx.setCase(caseName);
@@ -102,8 +103,11 @@ async function pressed(ctx, fx, caseName) {
   await press(ctx);
   return {since, before};
 }
-/** Wait until the search run started after `before` has ended (a press that writes no verdict). */
-const endedAfter = (ctx, before) => pollUntil(async () => { const now = await searchRuns(ctx.page); return !now.running && now.runs.length > before; }, done => done, {capMs: stepTimeLeft()});
+/** Wait until the search run started after `before` has ended (a press that writes no verdict); throws when none ended, so "nothing reached LinkedIn" cannot pass on a press that did nothing. */
+const endedAfter = async (ctx, before) => {
+  const {value} = await pollUntil(async () => { const now = await searchRuns(ctx.page); return !now.running && now.runs.length > before; }, done => done, {capMs: stepTimeLeft()});
+  if (!value) throw new Error('the press started no search run that ended before the step\'s hang cap');
+};
 
 async function listBody(ctx, fx) {
   const mark = await pressed(ctx, fx, 'list');
@@ -137,10 +141,13 @@ async function wallBody(ctx, fx, key, state) {
 
 async function stopBody(ctx, fx) {
   const mark = await pressed(ctx, fx, 'hold');
-  await pollUntil(() => fx.requests.length > 0, seen => seen, {capMs: stepTimeLeft()});
-  await ctx.page.evaluate(() => window.pilot.stopTask());
-  const {last} = await verdictOf(ctx, mark.since, mark.before);
-  fx.release();
+  let last;
+  try {   // the held response is freed even when a check below throws, so the leak and off steps start from a quiet fixture
+    const seen = await pollUntil(() => fx.requests.length > 0, value => value, {capMs: stepTimeLeft()});
+    expect('the held LinkedIn read never reached the fixture before Stop', seen.value);
+    await ctx.page.evaluate(() => window.pilot.stopTask());
+    ({last} = await verdictOf(ctx, mark.since, mark.before));
+  } finally { fx.release(); }
   expect(`the verdict is "${last.state}", not "stopped"`, last.state === 'stopped');
   expect('a LinkedIn tab is still open after Stop', (await pollUntil(() => linkedinTabs(ctx.profile).then(tabs => tabs.length === 0), gone => gone, {capMs: stepTimeLeft()})).value);
   const held = await cookiesHeld(ctx.profile);

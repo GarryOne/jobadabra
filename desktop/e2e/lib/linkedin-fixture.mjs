@@ -2,7 +2,7 @@
 // A stand-in for www.linkedin.com on the forms server (lib/forms.mjs HOSTS): a guest job list over two pages, a login page, a check page and a 429, switched per step.
 // It records every request (path, status, whether li_at arrived, never the value), sets two cookies the way LinkedIn does (one for the whole site, one host-only), and answers /__cookies with the
 // names of the cookies the browser sent, so a probe tab can show the app's browser holds none after a read. The host lives only here: product code names LinkedIn from its own search URLs.
-// Guard: suites/linkedin.mjs (the steps), test/linkedin-fixture.test.mjs (the pure shapes).
+// Guard: suites/linkedin.mjs (the steps).
 export const HOST = 'www.linkedin.com';
 /** Obviously fake values: the secret scan must neither drop nor flag them, and a leak is searched for by this word. */
 export const FAKE_LI_AT = 'FAKE-LI-AT-e2e-not-a-session';

@@ -2831,6 +2831,16 @@
         "seconds": 120,
         "n": 0,
         "reason": "provisional: regenerate after 5 main runs (tools/e2e-step-timings.mjs)"
+      },
+      "nothing in this Mac's real Keychain changed (a test run keeps its secrets in its own file)": {
+        "seconds": 30,
+        "n": 0,
+        "reason": "provisional: regenerate after 5 main runs (tools/e2e-step-timings.mjs)"
+      },
+      "no AI call of this suite reached a real model: the stand-in answered or refused every one": {
+        "seconds": 30,
+        "n": 0,
+        "reason": "provisional: regenerate after 5 main runs (tools/e2e-step-timings.mjs)"
       }
     }
   }

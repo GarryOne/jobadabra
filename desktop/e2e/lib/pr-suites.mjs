@@ -246,7 +246,7 @@ export function baseStepSources(git, base, changedFiles, sources) {
 export function unpassedBurnInSteps(names, results) {
   return names.filter(name => {
     const matching = results.filter(result => result.name.startsWith(name));
-    return !matching.length || matching.some(result => result.status !== 'passed');
+    return !matching.length || matching.some(result => result.status !== 'passed' || result.retried || result.faultNeverFired);
   });
 }
 

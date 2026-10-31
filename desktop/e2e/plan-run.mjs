@@ -33,10 +33,14 @@ function prLegs(suite, shards, env, picks) {
   const pr = String(env.PR_SUITES || '').trim();
   const admitted = pr && picks['(burn-in)']?.includes(suite);
   const names = pr && !admitted ? picks['(step-burn-in)']?.[suite] : null;
-  // Why (2026-10-31, owner a8): admission proves five complete journeys; an existing backbone suite proves only its new steps five times.
-  // Keys retain the artifact parser's suite-NofM shape. Commas delimit E2E_STEPS, so use the static prefix before a name's first comma.
-  return admitted || names?.length ? Array.from({length: 5}, (_, at) => ({key: `${suite}-${at + 1}of5`, shard: '', burnIn: at + 1,
-    ...(names?.length ? {burnInSteps: names, stepFilter: [...new Set(names.map(name => name.split(',')[0].trim()))].join(',')} : {})})) : shardLegs(suite, shards[suite]);
+  const normal = shardLegs(suite, shards[suite]);
+  if (!admitted && !names?.length) return normal;
+  // Why (2026-10-31, owner a8): admissions prove five whole journeys; new-step proof supplements the suite's ordinary PR journeys.
+  // Offset proof keys by normal leg count, preserving suite-NofM parsing and uniqueness even when the suite already has five shards.
+  const offset = admitted ? 0 : normal.length;
+  const five = Array.from({length: 5}, (_, at) => ({key: `${suite}-${offset + at + 1}of${offset + 5}`, shard: '', burnIn: at + 1,
+    ...(names?.length ? {burnInSteps: names, stepFilter: [...new Set(names.map(name => name.split(',')[0].trim()))].join(',')} : {})}));
+  return admitted ? five : [...normal, ...five];
 }
 
 function aiPlanOutputs(suites, offlineAi, review) {

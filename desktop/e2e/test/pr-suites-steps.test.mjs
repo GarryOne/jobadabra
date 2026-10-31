@@ -111,6 +111,9 @@ test('a step burn-in cannot pass when its step was missing, skipped or failed', 
     {name: 'New step', status: 'passed'}, {name: 'Dynamic verdict: ready', status: 'passed'},
   ]), []);
   assert.deepEqual(pick.unpassedBurnInSteps(names, [{name: 'New step', status: 'passed'}]), ['Dynamic verdict: ']);
+  for (const flags of [{retried: 'environment'}, {faultNeverFired: true}]) {
+    assert.deepEqual(pick.unpassedBurnInSteps(['New step'], [{name: 'New step', status: 'passed', ...flags}]), ['New step']);
+  }
   for (const status of ['skipped', 'failed']) {
     assert.deepEqual(pick.unpassedBurnInSteps(['New step'], [{name: 'New step', status}]), ['New step']);
   }

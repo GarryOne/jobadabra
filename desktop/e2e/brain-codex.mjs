@@ -1,13 +1,13 @@
 // The product brain's AI step on the owner's Codex plan (the broker), in place of claude-code-action: reads the signals, the website screenshots and the README, asks once, writes the file the step after it posts.
-//   node brain-codex.mjs --step brief|another|review|explore     (.github/workflows/product-brain.yml; BRAIN_PROMPT = the private prompt of the step)
+//   node brain-codex.mjs --step brief|another|review|explore     (.github/workflows/product-brain.yml; the private prompts come from BRAIN_PROMPT_BRIEF, _REVIEW and _EXPLORE)
 // Why (29 Oct 2026, owner: CI AI on his Codex plan; "Product brain is failing" every morning since 22 Oct, "Credit balance is too low"): one Messages call through lib/broker-client.mjs, no tools, no web search
 // (the broker's model has no shell: the signals and README are put in the prompt). brief/another/review write .brain/brief.json (the keys tools/product_brain.py post wants), explore writes .brain/plan.md.
+// Why (31 Oct 2026, owner: "We should use fully the Codex"): the BRAIN_AI=claude path (claude-code-action on an Anthropic key) is gone; a refused call skips the day with its reason (lib/broker-job.mjs) instead of failing red.
 // Job: report health
 import fs from 'node:fs';
 import path from 'node:path';
 import {pathToFileURL} from 'node:url';
-import {askBroker} from './lib/broker-client.mjs';
-import {aiProvider} from './lib/ai-provider.mjs';
+import {askOrSkip} from './lib/broker-job.mjs';
 
 const BRIEF_KEYS = ['lens', 'serves', 'evidence', 'action', 'why', 'effort', 'expected', 'check_in_days', 'details'];
 export const BRIEF_SCHEMA = {type: 'object', additionalProperties: false, required: BRIEF_KEYS, properties: {...Object.fromEntries(BRIEF_KEYS.map(key => [key, {type: 'string'}])), check_in_days: {type: 'integer'}}};
@@ -35,27 +35,25 @@ export function fileText(step, reply) {
   return JSON.stringify(brief, null, 2);
 }
 
-/** 'claude' only when the resolver (lib/ai-provider.mjs, consumer "brain") says claude; free and codex both mean the broker here, the brain has no Workers AI path. */
-export const brainProvider = (env = process.env) => (aiProvider(env, 'brain').provider === 'claude' ? 'claude' : 'codex');
-
-/** Logs the provider the brain runs on and which variable decided, and puts BRAIN_AI into the job's env for the steps' guards. */
-function exportProvider() {
-  const {from} = aiProvider(process.env, 'brain');
-  const used = brainProvider();   // free maps to codex here, so the line names what runs, not the resolver's raw word
-  console.log(`AI provider: ${used} (from ${from}${used === 'codex' && from !== 'default' && aiProvider(process.env, 'brain').provider !== 'codex' ? '; free runs on the broker here' : ''})`);
-  if (process.env.GITHUB_ENV) fs.appendFileSync(process.env.GITHUB_ENV, `BRAIN_AI=${used}\n`);
+/** The private prompt of a step (the secrets BRAIN_PROMPT_BRIEF|REVIEW|EXPLORE), and for `another` the line that asks for something different. '' when the step's secret is not set. */
+export function promptFor(step, env = process.env) {
+  const base = {brief: env.BRAIN_PROMPT_BRIEF, another: env.BRAIN_PROMPT_BRIEF, review: env.BRAIN_PROMPT_REVIEW, explore: env.BRAIN_PROMPT_EXPLORE}[step] || '';
+  if (!base) return '';
+  if (step === 'another') return `${base}\n- The owner rejected the latest proposal (Not now today): propose something clearly different.`;
+  return step === 'brief' ? `${base}\n- This is the regular morning brief.` : base;
 }
 
 async function main() {
-  if (process.argv.includes('--provider')) return exportProvider();
   const step = process.argv[process.argv.indexOf('--step') + 1];
   if (!MODEL[step]) throw new Error('--step must be brief, another, review or explore');
-  if (!process.env.BRAIN_PROMPT) throw new Error('BRAIN_PROMPT is empty (the secret BRAIN_PROMPT_* of this step)');
-  const answer = await askBroker(buildRequest({step, prompt: process.env.BRAIN_PROMPT}));
-  if (!answer.ok) throw new Error(`Codex did not answer (${answer.status}): ${answer.detail}`);
+  const prompt = promptFor(step);
+  if (!prompt) throw new Error(`the prompt secret of the ${step} step is empty (BRAIN_PROMPT_${step === 'another' ? 'BRIEF' : step.toUpperCase()})`);
+  // A refused call (budget, login, broker down) skips: no file, skipped=true for the steps after it, one alert from the run's last step. Never another provider.
+  const answer = await askOrSkip(buildRequest({step, prompt}), {job: `product brain ${step}`});
+  if (!answer.ok) return;
   const out = step === 'explore' ? '.brain/plan.md' : '.brain/brief.json';
   fs.mkdirSync('.brain', {recursive: true});
-  fs.writeFileSync(out, fileText(step, answer.message.content[0].text));
+  fs.writeFileSync(out, fileText(step, answer.text));
   console.log(`product brain (${step}): ${out} written by ${answer.model || answer.tier} on the Codex plan`);
 }
 

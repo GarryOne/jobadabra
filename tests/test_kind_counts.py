@@ -94,13 +94,32 @@ class CentralCapAndSampleTest(Fixtures):
         self.assertIn('Kind counts by country on 1 of 2 feeds', line)
 
 
-class ScoutKeepsClaudeTest(unittest.TestCase):
-    def test_the_central_scout_judges_with_claude_never_free_ai(self):
-        """Owner, 26 Oct 2026: "keep claude for the scout": its kinds and places decide which employers every install reads (~$11 a month)."""
+class ScoutUsesTheBrokerTest(unittest.TestCase):
+    def test_the_central_scout_judges_through_the_broker_never_a_key_never_free_ai(self):
+        """Owner, 26 Oct 2026: "keep claude for the scout" (kinds and places decide which employers every install reads); 31 Oct 2026: "We should use fully the Codex".
+        Its judgments are the same public engine calls, answered by the Codex broker behind a 127.0.0.1 relay; no Anthropic key, no Free AI."""
         from pathlib import Path
         workflow = (Path(__file__).resolve().parents[1] / '.github' / 'workflows' / 'central-scout.yml').read_text()
-        self.assertIn('ANTHROPIC_API_KEY: ${{ secrets.CENTRAL_SCOUT_ANTHROPIC_KEY }}', workflow)
-        self.assertNotRegex(workflow, r'(?i)free_ai|JOB_PILOTTO_AI_ENGINE', 'the scout never switches to Free AI or another engine')
+        code = '\n'.join(line for line in workflow.splitlines() if not line.lstrip().startswith('#'))
+        self.assertIn('broker-relay-run.mjs --job central-scout', code)
+        self.assertNotRegex(code, r'(?i)anthropic', 'the scout holds no Anthropic key and no base URL')
+        self.assertNotRegex(code, r'(?i)free_ai|JOB_PILOTTO_AI_ENGINE', 'the scout never switches to Free AI or another engine')
+
+    def test_the_run_cap_is_one_env_value_and_items_past_it_stay_unjudged(self):
+        import os
+        from unittest import mock
+
+        from src import scout_core
+        with mock.patch.object(scout_core, 'CENTRAL', True):
+            with mock.patch.dict('os.environ', {'JOB_PILOTTO_CENTRAL_MAX_CALLS': '40'}):
+                self.assertEqual(decide.limit(), 40)
+            with mock.patch.dict('os.environ', {'JOB_PILOTTO_CENTRAL_MAX_CALLS': 'not a number'}):
+                self.assertEqual(decide.limit(), decide.CENTRAL_MAX_CALLS)
+            with mock.patch.dict('os.environ'):
+                os.environ.pop('JOB_PILOTTO_CENTRAL_MAX_CALLS', None)
+                self.assertEqual(decide.limit(), decide.CENTRAL_MAX_CALLS)
+        with mock.patch.dict('os.environ', {'JOB_PILOTTO_CENTRAL_MAX_CALLS': '40'}):
+            self.assertEqual(decide.limit(), decide.MAX_CALLS_PER_RUN, "an install never reads the scout's cap")
 
 
 class LocatedFitTest(unittest.TestCase):

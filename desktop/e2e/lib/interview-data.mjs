@@ -1,5 +1,6 @@
 // Dummy data for the Interviews and Calendar suites, written to the test Notion page through its API (no AI call), and the small pure checks the suites
 // assert with. Everything here is tested in test/interview-data.test.mjs, including the cases that must fail.
+// Job: run the backbone
 import {paragraph, richText} from './notion.mjs';
 
 const title = content => ({title: [{text: {content}}]});
@@ -42,6 +43,22 @@ export function weekDays(today) {
   const last = new Date(Date.UTC(year, month, 0)).getUTCDate();
   const dom = Number(today.slice(8));
   return dom + 3 <= last ? {days: [1, 2, 3].map(n => addDays(today, n)), future: true} : {days: [3, 2, 1].map(n => addDays(today, -n)), future: false};
+}
+
+/** The calendar's month title for a YYYY-MM-DD day, "November 2026": the one place the suites spell it (calendar.mjs compares the grid's #cal-title with it). */
+export const monthTitle = day => new Date(`${day.slice(0, 7)}-01T00:00:00Z`).toLocaleDateString('en-US', {month: 'long', year: 'numeric', timeZone: 'UTC'});
+// The month names of that title, January first.
+const MONTHS = Array.from({length: 12}, (_, m) => monthTitle(`2000-${String(m + 1).padStart(2, '0')}-01`).split(' ')[0]);
+// How many months the calendar title `want` ("November 2026") is after `shown`: > 0 later, < 0 earlier. Why (beta 41220959824, 31 Oct 2026): the suite
+// compared titles as text, and "October 2026" < "November 2026" is false, so on a month's last day (Tokyo past it, Honolulu not) it paged back.
+// Takes two titles as the calendar shows them ("<Month> <year>"); throws "not a month title" on anything else, so a changed title fails loudly.
+export function monthsBetween(shown, want) {
+  const index = text => {
+    const [name, year] = String(text).trim().split(/\s+/), m = MONTHS.indexOf(name);
+    if (m < 0 || !/^\d{4}$/.test(year || '')) throw new Error(`not a month title: "${text}"`);
+    return Number(year) * 12 + m;
+  };
+  return index(want) - index(shown);
 }
 
 // Rows are listed newest first (src/ai/interviews.py listing): true when no row is older than the one before it.

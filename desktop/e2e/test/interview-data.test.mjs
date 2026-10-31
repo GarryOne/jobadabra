@@ -1,7 +1,7 @@
 // The helpers the Interviews and Calendar suites assert with must pass on the right input and FAIL on a deliberately broken one.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {TRANSCRIPT, addDays, clockOf, interviewProps, newestFirst, showsClock, trackerProps, transcriptBlocks, weekDays} from '../lib/interview-data.mjs';
+import {TRANSCRIPT, addDays, clockOf, interviewProps, monthsBetween, newestFirst, showsClock, trackerProps, transcriptBlocks, weekDays} from '../lib/interview-data.mjs';
 
 test('week days stay inside the month: the next days, or the last days when the month is nearly over', () => {
   assert.deepEqual(weekDays('2026-10-02'), {days: ['2026-10-03', '2026-10-04', '2026-10-05'], future: true});
@@ -37,4 +37,14 @@ test('rows are built with the columns the app reads', () => {
   assert.ok(!('Overall' in interviewProps({name: 'n', day: '2026-10-01'})));   // not reviewed
   assert.equal(transcriptBlocks('hello')[0].heading_3.rich_text[0].text.content, 'Transcript');
   assert.ok(TRANSCRIPT.length > 40 && /^\[\d\d:\d\d:\d\d\] Recruiter:/m.test(TRANSCRIPT));
+});
+
+// Beta 41220959824 (31 Oct 2026, 16:50 UTC): Tokyo was in November, Honolulu in October, and the text comparison paged back to September.
+test('months between two calendar titles count by date, never by text', () => {
+  assert.equal('October 2026' < 'November 2026', false, 'the text comparison that paged the wrong way');
+  assert.equal(monthsBetween('October 2026', 'November 2026'), 1);
+  assert.equal(monthsBetween('December 2026', 'January 2027'), 1);
+  assert.equal(monthsBetween('November 2026', 'October 2026'), -1);
+  assert.equal(monthsBetween('May 2026', 'May 2026'), 0);
+  assert.throws(() => monthsBetween('Okt 2026', 'November 2026'), /not a month title/);
 });

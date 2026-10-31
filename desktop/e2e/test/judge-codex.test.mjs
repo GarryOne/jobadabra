@@ -131,6 +131,12 @@ test('the second round: a needs-human that names what it needs gets it fetched a
   assert.equal(asked.length, 1, 'no further call');
   const refused = await secondRound({mode: 'verdict', prompt: 'P', items: [item], verdicts: first, root, ask: async () => ({ok: false, why: 'budget:week'})});
   assert.deepEqual([refused.verdicts, refused.skipped], [first, 'budget:week'], "a refused second round keeps the first round's verdicts");
+  const broke = await secondRound({mode: 'verdict', prompt: 'P', items: [item], verdicts: first, root, ask: async () => { throw new Error('the Codex broker failed (500): boom'); }});
+  assert.deepEqual([broke.verdicts, broke.skipped], [first, 'the Codex broker failed (500): boom'], 'a broker error in the second round does not crash the job either');
+  const seenDir = [];
+  await secondRound({mode: 'verdict', prompt: 'P', items: [item], verdicts: first, root, ask: async (body, options) => { seenDir.push(options); return {ok: false, why: 'x'}; }});
+  assert.ok(seenDir[0].dir && !seenDir[0].dir.includes('ai-capped'), 'its skip note goes to a throwaway dir, so no alert is uploaded');
+  assert.equal(seenDir[0].env.GITHUB_OUTPUT, '');
 });
 
 test('prejudge: only the findings that asked are asked again, the others keep their first verdict', async () => {

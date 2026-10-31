@@ -2,11 +2,10 @@
 //   node broker-relay-run.mjs --job central-scout --cap 40 -- python -m src scout --publish-index      (.github/workflows/central-scout.yml)
 // Why (31 Oct 2026, owner: "We should use fully the Codex"; coordinator: "the silent green is a bug in its own right"): central-scout run 41192760002 ended `success` with 1,417 logged AI failures
 // (the Anthropic workspace's usage limit, HTTP 400) and 1,552 "regain access on 2026-11-01" lines: nobody saw that the day's judgments were skipped. Every AI call of the command passes through the
-// relay, so the relay's counts are the truth: any failed call becomes an "AI skipped/failed" annotation, a step summary line, ai-capped.json for the ONE alert of the run, and skipped=true for the steps after.
+// relay, so the relay's counts are the truth: any failed call becomes an "AI skipped/failed" annotation, ai-capped.json for the ONE alert of the run, and skipped=true for the steps after.
 // The command keeps its own exit code (a refused judgment leaves items unjudged, never fails the day's publish) and never gets a real Anthropic key or an address off this machine.
 // Job: report health
 import {spawn} from 'node:child_process';
-import fs from 'node:fs';
 import {pathToFileURL} from 'node:url';
 import {noteSkipped} from './lib/broker-job.mjs';
 import {startRelay} from './lib/broker-relay-serve.mjs';
@@ -40,7 +39,6 @@ export async function runBehindRelay({job, cap = 0, argv, env = process.env, dir
   await relay.close();
   const {line, why} = outcomeOf(relay.stats, job);
   console.log(line);
-  if (env.GITHUB_STEP_SUMMARY) { try { fs.appendFileSync(env.GITHUB_STEP_SUMMARY, `${why ? `⚠️ **AI skipped/failed (${job}):** ${why}\n\n` : ''}${line}\n`); } catch { /* a summary never breaks the run */ } }
   if (why) noteSkipped({job, why: `AI skipped/failed: ${why}`, env, ...(dir ? {dir} : {})});
   return code;
 }

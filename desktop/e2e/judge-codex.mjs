@@ -7,6 +7,7 @@
 // the old session wrote. A refused call (budget, login, broker down) skips the job with its reason (lib/broker-job.mjs): never red, never another provider.
 // Job: report health
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {askOrSkip} from './lib/broker-job.mjs';
@@ -75,7 +76,10 @@ export async function secondRound({mode, prompt, items, verdicts, root = '.', as
   if (!wanting.length) return {verdicts, asked: 0, skipped: ''};
   const again = wanting.map(({item, verdict}) => ({...item, evidence: `${item.evidence}\n\n##### ASKED FOR BY YOU, FETCHED BY A SCRIPT\n${needEvidence(verdict.need, {root}) || 'nothing found for the names you listed'}`}));
   const {body} = requestFor({mode, prompt, items: again, root, final: true});
-  const answer = await ask(body, {job: `judge ${mode} (second round)`, env: {...process.env, GITHUB_OUTPUT: ''}});   // no skipped=true: the first round's verdicts stand
+  // Why (31 Oct 2026, Gitar on #2715): a second-round refusal or broker error keeps the first round's verdicts (real answers) and sends no alert: a throwaway note dir (no ai-capped.json to upload), no skipped=true, and a throw is caught.
+  let answer;
+  try { answer = await ask(body, {job: `judge ${mode} (second round)`, dir: fs.mkdtempSync(path.join(os.tmpdir(), 'second-round-')), env: {...process.env, GITHUB_OUTPUT: ''}}); }
+  catch (error) { return {verdicts, asked: 0, skipped: error.message}; }
   if (!answer.ok) return {verdicts, asked: 0, skipped: answer.why};
   const second = JSON.parse(answer.text).verdicts;
   const merged = mode === 'verdict' ? (second[0] ? [second[0]] : verdicts) : verdicts.map(v => second.find(w => w.id === v.id && wanting.some(({item}) => item.id === v.id)) || v);

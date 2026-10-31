@@ -72,9 +72,9 @@ test('the command gets the relay address, a dummy key and the cap as its limit, 
   assert.doesNotMatch(JSON.stringify(env), /sk-real|api\.anthropic\.com/);
 });
 
-test('a run whose calls fail stays green but says so: warning, summary line, ai-capped.json for the one alert, skipped=true', async () => {
+test('a run whose calls fail stays green but says so: warning, ai-capped.json for the one alert, skipped=true', async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'relay-run-'));
-  const env = {...process.env, GITHUB_OUTPUT: path.join(dir, 'out'), GITHUB_STEP_SUMMARY: path.join(dir, 'summary')};
+  const env = {...process.env, GITHUB_OUTPUT: path.join(dir, 'out')};
   const caller = "const b=JSON.stringify({model:'m',messages:[]});(async()=>{for(let i=0;i<3;i++)await fetch(process.env.JOB_PILOTTO_AI_BASE_URL+'/v1/messages',{method:'POST',body:b});})()";
   const logged = [];
   const log = console.log;
@@ -85,7 +85,6 @@ test('a run whose calls fail stays green but says so: warning, summary line, ai-
   assert.equal(code, 0, 'the scout still publishes its index');
   assert.ok(logged.some(line => /::warning title=AI skipped \(central-scout\)::AI skipped\/failed: 3 AI calls failed or were refused \(the Codex broker said no \(budget:week 90%25\)\)/.test(line)), logged.join('\n'));
   assert.match(fs.readFileSync(path.join(dir, 'out'), 'utf8'), /skipped=true/);
-  assert.match(fs.readFileSync(path.join(dir, 'summary'), 'utf8'), /AI skipped\/failed \(central-scout\)/);
   assert.match(fs.readFileSync(path.join(dir, 'notes', 'ai-capped.json'), 'utf8'), /central-scout: AI skipped\/failed/);
 });
 

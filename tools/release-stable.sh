@@ -74,10 +74,28 @@ fi
 if [ "${DRY_RUN:-0}" = 1 ]; then echo "Dry run: would make $tag stable (its Windows installer is its own, the end-to-end gate holds)."; exit 0; fi
 gh release edit "$tag" -R "$repo" --prerelease=false --latest
 echo "Stable: $tag (friends' apps offer it within 10 minutes, or at their next start)"
-gh workflow run extension-store-publish.yml -R "$repo" --ref main -f tag="$tag" \
-  && echo "Chrome Web Store: publishing its extension (Extension · Chrome Web Store publish; the store reviews it, then Chrome updates every copy)" \
-  || echo "(Chrome Web Store publish not started: gh workflow run extension-store-publish.yml -R $repo --ref main -f tag=$tag)"   # best effort, never fails a promotion
-gh workflow run msix-store.yml -R "$repo" --ref main -f tag="$tag" \
-  && echo "Microsoft Store: building and submitting its Windows package (Build · Windows Store package; Microsoft certifies it, then the Store updates every copy)" \
-  || echo "(Microsoft Store submission not started: gh workflow run msix-store.yml -R $repo --ref main -f tag=$tag)"   # best effort, never fails a promotion
+# Both store publishes start on EVERY way a release becomes stable (the daily canary, the release run, beta-approve with the soak off, the hot path): the switches above
+# (SKIP_E2E, E2E_NO_START, ...) only skip the end-to-end gate, and only DRY_RUN stops before this point. A start that fails never undoes the promotion, but it is no longer one echoed line
+# in a green run. Why (31 Oct 2026, owner: "We should have this always, even if we go on the hot path"): the job ends red (exit 4 below), with an annotation and one Telegram alert.
+failed=(); by_hand=()
+start_store() {   # <store name> <workflow file> <what it does>
+  local command="gh workflow run $2 -R $repo --ref main -f tag=$tag"
+  if gh workflow run "$2" -R "$repo" --ref main -f tag="$tag"; then echo "$1: $3"
+  else
+    failed+=("$1"); by_hand+=("$command")
+    echo "::error title=$1 publish not started::$tag is stable, but its $1 publish did not start. Start it by hand: $command"
+  fi
+}
+start_store "Chrome Web Store" extension-store-publish.yml "publishing its extension (Extension · Chrome Web Store publish; the store reviews it, then Chrome updates every copy)"
+start_store "Microsoft Store" msix-store.yml "building and submitting its Windows package (Build · Windows Store package; Microsoft certifies it, then the Store updates every copy)"
 python3 "$here/sync_release_labels.py" || echo "(release labels not refreshed: run tools/sync_release_labels.py)"   # the list says STABLE / BETA / Build; best effort, never fails a promotion
+if [ "${#failed[@]}" -gt 0 ]; then
+  names=$(printf '%s, ' "${failed[@]}"); names=${names%, }
+  message="⚠️ $tag is stable, but the publish to the $names did not start. Start it by hand:"
+  for command in "${by_hand[@]}"; do message+=$'\n'"$command"; done
+  message+=$'\n'"Run: ${GITHUB_SERVER_URL:-https://github.com}/$repo/actions/runs/${GITHUB_RUN_ID:-0}"
+  # The one alert path the other CI checks use (desktop/e2e/ci-alert.mjs; CI_ALERTS_TELEGRAM_BOT_TOKEN and _CHAT_ID from the calling step); an alert that cannot go out never hides the failure.
+  MESSAGE="$message" node --input-type=module -e "import {send} from '$here/../desktop/e2e/ci-alert.mjs'; console.log(await send(process.env.MESSAGE))" || echo "(alert not sent)" >&2
+  echo "$tag is stable, but the $names publish did not start: this run ends red (exit 4) so it is seen. Start it by hand, as above." >&2
+  exit 4
+fi

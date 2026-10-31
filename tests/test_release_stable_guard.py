@@ -28,7 +28,12 @@ FAKE_GH = textwrap.dedent('''\
     if [ "$1" = release ] && [ "$2" = view ]; then printf '%s\\n' "${FAKE_ASSETS:-}"; exit 0; fi
     if [ "$1" = release ] && [ "$2" = edit ]; then echo "edited $3"; exit 0; fi
     if [ "$1" = api ]; then echo abc1234def5678; exit 0; fi
-    if [ "$1" = workflow ] && [ "$2" = run ]; then echo "$*" >> "$FAKE_LOG"; touch "$FAKE_STARTED"; exit 0; fi
+    if [ "$1" = workflow ] && [ "$2" = run ]; then
+      echo "$*" >> "$FAKE_LOG"; touch "$FAKE_STARTED"
+      # FAKE_FAIL=<workflow file name(s)>: that start is refused, as GitHub does when the token cannot start workflows or the API is down.
+      if [ -n "${FAKE_FAIL:-}" ] && [[ "$*" == *"$FAKE_FAIL"* || " $FAKE_FAIL " == *" $3 "* ]]; then echo "HTTP 403: Resource not accessible by integration" >&2; exit 1; fi
+      exit 0
+    fi
     if [ "$1" = run ] && [ "$2" = watch ]; then echo "watched $3" >> "$FAKE_LOG"; exit 0; fi
     if [ "$1" = run ] && [ "$2" = list ]; then
       now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
@@ -80,9 +85,13 @@ class PromoteGuardTests(unittest.TestCase):
             binary = Path(folder) / 'gh'
             binary.write_text(FAKE_GH)
             binary.chmod(0o755)
+            # The alert goes out through desktop/e2e/ci-alert.mjs (node): a stand-in node writes the message it was given, so nothing reaches Telegram.
+            node = Path(folder) / 'node'
+            node.write_text('#!/usr/bin/env bash\n[ -n "${FAKE_NODE_FAILS:-}" ] && exit 1\nprintf %s "$MESSAGE" > "$FAKE_ALERT"\n')
+            node.chmod(0o755)
             self.log = Path(folder) / 'gh.log'
             env = {**{name: value for name, value in os.environ.items() if name not in OWN_SWITCHES and not name.startswith('E2E_')},
-                   'PATH': f'{folder}{os.pathsep}{os.environ["PATH"]}', 'FAKE_LOG': str(self.log), 'FAKE_STARTED': str(Path(folder) / 'started'),
+                   'PATH': f'{folder}{os.pathsep}{os.environ["PATH"]}', 'FAKE_LOG': str(self.log), 'FAKE_ALERT': str(Path(folder) / 'alert.txt'), 'FAKE_STARTED': str(Path(folder) / 'started'),
                    'FAKE_ASSETS': '\n'.join(f'{name}\t{size}' for name, size in assets), 'FAKE_E2E': e2e, 'FAKE_E2E_AFTER': after, 'E2E_POLL_SECONDS': '0',
                    **({'SKIP_E2E': '1'} if skip else {}), **({'E2E_NO_START': '1'} if no_start else {}), **(extra or {})}
             # The real gh would edit a real release: the script must find the fake first.
@@ -93,6 +102,8 @@ class PromoteGuardTests(unittest.TestCase):
             stores = ('extension-store-publish.yml', 'msix-store.yml')
             self.store = ''.join(line for line in lines if any(name in line for name in stores))
             self.calls = ''.join(line for line in lines if not any(name in line for name in stores))
+            alert = Path(folder) / 'alert.txt'
+            self.alert = alert.read_text() if alert.exists() else ''
             return done
 
     def test_its_own_installer_at_the_same_size_promotes(self):
@@ -207,6 +218,52 @@ class PromoteGuardTests(unittest.TestCase):
     def test_a_refused_promotion_sends_nothing_to_the_store(self):
         done = self.promote([(DMG, 1), (GENERIC, 2)], extra={'E2E_ALREADY_GREEN': '1'})
         self.assertEqual(done.returncode, 1)
+        self.assertEqual(self.store, '')
+
+
+    # 31 Oct 2026, owner: "We should have this always, even if we go on the hot path". Both store publishes start on EVERY way a release becomes stable;
+    # a start that fails never undoes the promotion, but it is no longer one echoed line in a green run.
+    STORES = {'extension-store-publish.yml': 'Chrome Web Store', 'msix-store.yml': 'Microsoft Store'}
+
+    def test_no_switch_skips_the_store_starts(self):
+        # SKIP_E2E (the hot path), E2E_NO_START (the canary), E2E_ALREADY_GREEN (the release run), FRESH_E2E and no switch at all: all of them skip only the end-to-end gate.
+        assets = [(OWN, 1), (GENERIC, 1)]
+        for name, kwargs in {'none': {}, 'SKIP_E2E (hot path)': {'skip': True}, 'E2E_NO_START (canary)': {'no_start': True},
+                             'E2E_ALREADY_GREEN (release run)': {'extra': {'E2E_ALREADY_GREEN': '1'}}, 'FRESH_E2E': {'extra': {'FRESH_E2E': '1'}}}.items():
+            with self.subTest(route=name):
+                done = self.promote(assets, **kwargs)
+                self.assertEqual(done.returncode, 0, done.stderr)
+                for flow in self.STORES:
+                    self.assertEqual(self.store.count(f'workflow run {flow}'), 1, f'{flow} not started: {self.store!r}')
+                self.assertEqual(self.alert, '', 'a clean promotion sends no alert')
+
+    def test_a_store_start_that_fails_is_loud_and_names_the_command_to_start_it_by_hand(self):
+        for failing in (['extension-store-publish.yml'], ['msix-store.yml'], ['extension-store-publish.yml', 'msix-store.yml']):
+            with self.subTest(failing=failing):
+                done = self.promote([(OWN, 1), (GENERIC, 1)], skip=True, extra={'FAKE_FAIL': ' '.join(failing)})
+                self.assertEqual(done.returncode, 4, 'the job must end red: an echoed line in a green run is what hid it')
+                self.assertIn('Stable:', done.stdout, 'the release is promoted before, and stays stable')
+                for flow, store in self.STORES.items():
+                    self.assertEqual(self.store.count(f'workflow run {flow}'), 1, 'the other store is still tried')
+                    command = f'gh workflow run {flow} -R GarryOne/jobadabra --ref main -f tag={TAG}'
+                    for where, text in (('annotation', '\n'.join(line for line in done.stdout.splitlines() if line.startswith('::error'))), ('alert', self.alert)):
+                        if flow in failing:
+                            self.assertIn(store, text, f'{where} names the store')
+                            self.assertIn(command, text, f'{where} gives the command to start it by hand')
+                        else:
+                            self.assertNotIn(store, text, f'{where} names only the store that failed')
+                self.assertIn('::error', done.stdout, 'a GitHub annotation on the run')
+                self.assertIn(TAG, self.alert)
+                self.assertEqual(self.alert.count('Start it by hand'), 1, 'one alert for the release, not one per store')
+
+    def test_an_alert_that_cannot_be_sent_does_not_hide_the_failure(self):
+        done = self.promote([(OWN, 1), (GENERIC, 1)], skip=True, extra={'FAKE_FAIL': 'msix-store.yml', 'FAKE_NODE_FAILS': '1'})
+        self.assertEqual(done.returncode, 4)
+        self.assertIn('::error', done.stdout)
+
+    def test_a_dry_run_is_the_only_switch_that_starts_no_store(self):
+        done = self.promote([(OWN, 1), (GENERIC, 1)], skip=True, extra={'DRY_RUN': '1', 'FAKE_FAIL': 'msix-store.yml'})
+        self.assertEqual(done.returncode, 0, done.stderr)
         self.assertEqual(self.store, '')
 
 

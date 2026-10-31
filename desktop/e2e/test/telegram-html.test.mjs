@@ -25,14 +25,14 @@ test('every kind: status emoji + bold name + verdict first, a blank line, plain 
     const {text} = message;
     assert.equal(message.parse_mode, 'HTML', kind);
     assert.equal(message.link_preview_options.is_disabled, true, kind);
-    assert.match(text, /^(🔴|🟢) <b>CI · E2E<\/b> (failed|is green again) on main\n\n[^\n•]/, kind);
-    if (input.status === 'failure') assert.match(text, /\nAfter .+\n<a href="https:\/\/github\.com\/o\/r\/actions\/runs\/42(\/job\/7)?">Open (the run|the failed job)<\/a>$/, kind);
+    assert.match(text, /^(🔴|🟢)  <b>CI · E2E<\/b> (· red|is green again) on main\n[^•]/, kind);
+    assert.match(text, /🔗  (?:<a href="https:\/\/github\.com\/o\/r\/actions\/runs\/42\/job\/7">Open plan<\/a> · )?<a href="https:\/\/github\.com\/o\/r\/actions\/runs\/42">Run<\/a> · <a href="https:\/\/github\.com\/o\/r\/commit\/abcdef1234">abcdef1<\/a>$/, kind);
     assert.doesNotMatch(text, /\bnull\b/, `${kind}: human words`);
     assert.ok(text.length <= LIMIT, `${kind}: ${text.length} characters`);
     assert.doesNotMatch(text.replace(/<a href="[^"]*">/g, '<a>'), /https?:\/\//, `${kind}: a bare URL`);
     const tags = text.match(/<\/?[a-z]+/g) || [];
-    for (const tag of ['b', 'a']) assert.equal(tags.filter(one => one === `<${tag}`).length, tags.filter(one => one === `</${tag}`).length, `${kind}: <${tag}> balanced`);
-    assert.doesNotMatch(text.replace(/<\/?(b|a)( href="[^"]*")?>/g, ''), /[<>]/, `${kind}: every other < and > is escaped`);
+    for (const tag of ['b', 'a', 'i', 'blockquote']) assert.equal(tags.filter(one => one === `<${tag}`).length, tags.filter(one => one === `</${tag}`).length, `${kind}: <${tag}> balanced`);
+    assert.doesNotMatch(text.replace(/<\/?(?:b|i|a|blockquote)(?: href="[^"]*"| expandable)?>/g, ''), /[<>]/, `${kind}: every other < and > is escaped`);
   }
   assert.match(messageOf({...KINDS['site replays: rows worse'], env, now}).text, /&lt;reason&gt;/);
   assert.equal(messageOf({status: 'success', previous: 'success', env, now}), '', 'a success after a success says nothing');

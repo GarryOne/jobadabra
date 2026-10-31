@@ -1,4 +1,5 @@
 // Which e2e suites reach a helper file through their imports (plan.mjs suitesFor, so a changed helper runs the suites that use it, not only the settings smoke). Tests: test/import-graph.test.mjs.
+// Job: pick the suites
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -36,8 +37,8 @@ function readTree(root, dir = '', out = {}) {
 
 // A suite's `watches` (plan.mjs) plus the Python files a watched .py file imports DIRECTLY from its own folder: #2043 changed src/ai/schema_notes.py,
 // which score.py (quality watches it) imports, and quality never ran. Only its own folder (src/ai/ for the prompts): followed into src/, score.py reaches 165
-// files through the store. Only one hop (26 Oct 2026 audit): followed through, mailreading's 4 files grew to 56 (all of src/ai: score, decide, interviews),
-// and 8 of 32 PRs ran mailreading on lines it never reads; a deeper change is picked by the code → suite map's Python lines instead. An imported package
+// files through the store. Only one hop (26 Oct 2026 audit): followed through, the mail eval's 4 files grew to 56 (all of src/ai: score, decide, interviews),
+// and 8 of 32 PRs ran the mail eval on lines it never reads; a deeper change is picked by the code → suite map's Python lines instead. An imported package
 // (`from . import providers`) is watched as its folder. `read(path)` -> the file's text, or null when there is none.
 const PY_FROM = /^\s*from\s+(\.+|src\.)([\w.]*)\s+import\s+(\([^)]*\)|[^\n#]+)/gm;
 export function watchesWithImports(watches, read = file => { try { return fs.readFileSync(path.join(REPO, file), 'utf8'); } catch { return null; } }) {

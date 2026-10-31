@@ -33,5 +33,14 @@ class TryMinutes(unittest.TestCase):
         self.assertGreaterEqual(seen, 6, 'the suite steps of e2e.yml, desktop.yml and e2e-windows.yml were not found: the step parser is stale')
 
 
+    def test_the_headroom_guard_uses_the_same_limit(self):
+        """desktop/e2e/lib/part-headroom.mjs keeps a copy of the gate step's limit (TRY_MINUTES): a part's 11 minutes are that limit less the suite's close-down margin."""
+        root = WORKFLOWS.parent.parent
+        mine = re.search(r'(?m)^export const TRY_MINUTES = (\d+);', (root / 'desktop' / 'e2e' / 'lib' / 'part-headroom.mjs').read_text(encoding='utf-8'))
+        self.assertIsNotNone(mine, 'part-headroom.mjs no longer exports TRY_MINUTES: update this guard with it')
+        told = set(re.findall(r'(?m)^          E2E_TRY_MINUTES: (\d+)', (WORKFLOWS / 'e2e.yml').read_text(encoding='utf-8')))
+        self.assertEqual(told, {mine.group(1)}, f'e2e.yml gate steps tell suites {sorted(told)} min, part-headroom.mjs budgets its parts for {mine.group(1)}')
+
+
 if __name__ == '__main__':
     unittest.main()

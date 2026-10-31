@@ -22,6 +22,7 @@ on:
       # ... except the ones a harness test reads (a later pattern wins)
       - 'desktop/e2e/fixtures/activityfailures-main-timings.json'
       - 'desktop/e2e/fixtures/slice-ci-seconds.json'
+      - 'desktop/e2e/fixtures/part-seconds.json'
       - 'desktop/e2e/fixtures/cv.json'
       - 'desktop/e2e/fixtures/cv.pdf'
       # Why (#2435/#2450, 29 Oct 2026): ai-answers.mjs reads the golden directory and the photographer's stored sources and truth.
@@ -47,6 +48,7 @@ on:
       - 'tools/ai-format-python-capture.py'
       - 'tools/browser-submit-guard.js'
       - 'tools/claim-shape.mjs'
+      - 'tools/e2e-part-times.mjs'
       - 'tools/design-system/build.mjs'
       - 'tools/design-system/rules-html.mjs'
       - 'tools/design-system/serve.mjs'

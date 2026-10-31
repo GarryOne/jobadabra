@@ -61,6 +61,9 @@ jobs:
           sparse-checkout: |
             tools/pr-verdict.py
             tools/pr_verdict_sweep.py
+            tools/gh-ledger.sh
+            .github/actions/gh-ledger
+            tools/github_limit.py
           sparse-checkout-cone-mode: false
       - uses: ./.github/actions/gh-ledger
         with:
@@ -127,6 +130,9 @@ jobs:
             tools/pr_flaky.py
             tools/flaky-verdict.mjs
             desktop/e2e/
+            tools/gh-ledger.sh
+            .github/actions/gh-ledger
+            tools/github_limit.py
           sparse-checkout-cone-mode: false
       - uses: ./.github/actions/gh-ledger
         with:

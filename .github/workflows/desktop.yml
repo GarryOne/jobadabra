@@ -1688,6 +1688,8 @@ jobs:
         with:
           sparse-checkout: |
             desktop/e2e
+            tools/gh-ledger.sh
+            .github/actions/gh-ledger
             tools/scan-e2e-artifacts.py
       - uses: ./.github/actions/gh-ledger
         with:

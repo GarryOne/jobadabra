@@ -246,6 +246,7 @@ jobs:
           path: lock-tools
           sparse-checkout: |
             tools/e2e-lock.sh
+            tools/gh-ledger.sh
             tools/scan-e2e-artifacts.py
       - name: Count this job's gh calls (the ledger)
         timeout-minutes: 5
@@ -563,6 +564,8 @@ jobs:
           sparse-checkout: |
             desktop/e2e
             tools/merge-e2e-report.sh
+            tools/gh-ledger.sh
+            .github/actions/gh-ledger
             tools/scan-e2e-artifacts.py
       - uses: ./.github/actions/gh-ledger
         with:
@@ -651,6 +654,8 @@ jobs:
         with:
           sparse-checkout: |
             desktop/e2e
+            tools/gh-ledger.sh
+            .github/actions/gh-ledger
             tools/scan-e2e-artifacts.py
       - uses: ./.github/actions/gh-ledger
         with:

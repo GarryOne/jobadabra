@@ -4,7 +4,8 @@ Why (31 Oct 2026, owner: "let's close all the gaps"; coordinator 27): the step "
 41167629768 and 41169971636 (a quadratic nested-zip scan, fixed in #2671). Nothing capped the step, a human cancelled the job, and a force-cancel lost every
 log (BlobNotFound) and every artifact upload. A step with `timeout-minutes` fails alone, keeps its log, and the job's later `if: always()` steps still run.
 Suite-run steps already had one (E2E_TRY_MINUTES, rule B); this extends it to every step around them (scan, upload, report, lock, cleanup, setup).
-The numbers are about 3x the p95 of the last 20 successful runs, 2 minutes at least (the PR body lists them). A composite action's own steps cannot carry
+The numbers are about 3x the p95 of the last 20 successful runs, FLOOR minutes at least (PR #2677's body lists them): most of these steps take 0-30 s, so 3x p95
+alone would turn a slow checkout or cache restore into a false red. A composite action's own steps cannot carry
 `timeout-minutes` (GitHub does not allow it there), so the step that calls the action carries it.
 """
 import re
@@ -17,6 +18,7 @@ WORKFLOWS = ROOT / '.github/workflows'
 ALSO = ('desktop', 'e2e-weekly')
 # (file, step name) -> why it has no `timeout-minutes`. Empty on purpose: a stale entry fails the test, so an exemption cannot outlive its step.
 EXEMPT = {}
+FLOOR = 5  # minutes; rule B in docs/superpowers/specs/2026-10-28-e2e-reliability-design.md
 TIMEOUT = re.compile(r'(?m)^        timeout-minutes: (\d+)\b')
 
 
@@ -48,6 +50,10 @@ def steps(text):
         yield step_name(body), body
 
 
+def too_short(path):
+    return [f'{name} ({m.group(1)} min)' for name, body in steps(path.read_text()) for m in TIMEOUT.finditer(body) if int(m.group(1)) < FLOOR]
+
+
 def untimed(path):
     return [name for name, body in steps(path.read_text()) if not TIMEOUT.search(body)]
 
@@ -59,7 +65,11 @@ class E2eStepTimeouts(unittest.TestCase):
             path = WORKFLOWS / f'{name}.yml'
             self.assertTrue(path.is_file(), f'{path.name} is named by the F rule but missing')
             bad += [f'{path.name}: {step}' for step in untimed(path) if (path.name, step) not in EXEMPT]
-        self.assertEqual(bad, [], 'add `timeout-minutes: N` (about 3x the step\'s p95, 2 at least) to each step above')
+        self.assertEqual(bad, [], f'add `timeout-minutes: N` (about 3x the step\'s p95, {FLOOR} at least) to each step above')
+
+    def test_no_step_cap_is_below_the_floor(self):
+        short = [f'{name}.yml: {step}' for name in e2e_workflow_names() for step in too_short(WORKFLOWS / f'{name}.yml')]
+        self.assertEqual(short, [], f'a step cap under {FLOOR} min turns a slow checkout or cache restore into a false red: raise it')
 
     def test_exemptions_are_not_stale(self):
         stale = [key for key in EXEMPT if key[1] not in untimed(WORKFLOWS / key[0])]

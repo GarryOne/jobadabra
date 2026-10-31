@@ -231,6 +231,17 @@ jobs:
             Shot ($title -replace '\W+', '-')
           }
 
+          # Why (31 Oct 2026, first run 41225480744 measured A-D with the folder already made by the .exe copy): the Store copy that makes the folder itself is the case a person with the Store first has.
+          Say "== E. the Store copy alone on a clean machine, then the .exe copy"
+          Stop-Copies; Remove-Item $real, $legacy, "$cache\Jobadabra" -Recurse -Force -ErrorAction SilentlyContinue
+          Start-Msix; Start-Sleep 35; Outcome 'E-msix-first-ever'
+          Say "   real folder: $((Files $real | Select-Object -First 6) -join '; ')"
+          Say "   package cache: $((Files "$cache\Jobadabra" | Select-Object -First 6) -join '; ')"
+          Say "   package cache holds app.log: $(Test-Path "$cache\Jobadabra\logs\app.log")   real folder holds app.log: $(Test-Path "$real\logs\app.log")"
+          Stop-Copies; Start-Exe; Start-Sleep 30; Outcome 'E-then-exe'
+          Say "   after the .exe copy started: start lines in the real folder's app.log: $(Starts "$real\logs\app.log")"
+          Stop-Copies; Remove-Item $real, $legacy, "$cache\Jobadabra" -Recurse -Force -ErrorAction SilentlyContinue
+
           Say "== A. the .exe copy alone"
           Stop-Copies; Start-Exe; Start-Sleep 30; Outcome 'A-exe-alone'
           Set-Content "$real\marker-written-from-outside.txt" 'outside'

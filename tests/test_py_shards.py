@@ -149,7 +149,7 @@ class CheckoutDataTests(unittest.TestCase):
 
     def test_a_unit_test_process_without_a_data_folder_gets_its_own_temp_one(self):
         code = 'import unittest, src.paths as p; print(p.DATA); print(p.REPORTS); print(p.jobs_db())'
-        env = {key: value for key, value in os.environ.items() if key not in ('JOB_PILOTTO_DATA_DIR', 'JOB_PILOTTO_CONFIG_DIR')}
+        env = {key: value for key, value in os.environ.items() if not key.startswith('JOB_PILOTTO_')}   # the shard's own JOB_PILOTTO_TEST_DATA_DIR included (Gitar on #2735)
         done = subprocess.run([sys.executable, '-c', code], cwd=ROOT, env=env, capture_output=True, text=True)
         data, reports, db = (Path(line) for line in done.stdout.split())
         self.assertNotIn(ROOT, data.parents)

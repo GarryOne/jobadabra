@@ -30,9 +30,13 @@ function answersMatrixFlag(suite, backbone) {
 }
 
 function prLegs(suite, shards, env, picks) {
-  const admitted = String(env.PR_SUITES || '').trim() && picks['(burn-in)']?.includes(suite);
-  // Why (2026-10-29, owner): admission proves five complete journeys, never five slices of one journey. Keys retain the artifact parser's suite-NofM shape.
-  return admitted ? Array.from({length: 5}, (_, at) => ({key: `${suite}-${at + 1}of5`, shard: '', burnIn: at + 1})) : shardLegs(suite, shards[suite]);
+  const pr = String(env.PR_SUITES || '').trim();
+  const admitted = pr && picks['(burn-in)']?.includes(suite);
+  const names = pr && !admitted ? picks['(step-burn-in)']?.[suite] : null;
+  // Why (2026-10-31, owner a8): admission proves five complete journeys; an existing backbone suite proves only its new steps five times.
+  // Keys retain the artifact parser's suite-NofM shape. Commas delimit E2E_STEPS, so use the static prefix before a name's first comma.
+  return admitted || names?.length ? Array.from({length: 5}, (_, at) => ({key: `${suite}-${at + 1}of5`, shard: '', burnIn: at + 1,
+    ...(names?.length ? {burnInSteps: names, stepFilter: [...new Set(names.map(name => name.split(',')[0].trim()))].join(',')} : {})})) : shardLegs(suite, shards[suite]);
 }
 
 function aiPlanOutputs(suites, offlineAi, review) {
@@ -143,7 +147,7 @@ export async function planRun({env, gh = realGh, all, minutes, os = async () => 
     : event === 'push' ? suitePartsFor(changedFiles, watchesWithImports(parts.qualityai || {}), pushReach)
     : !env.GATE_TAG && event === 'workflow_dispatch' && String(env.ONLY || '').split(',').map(name => name.trim()).includes('qualityai:mail') ? ['mail'] : ['journey'];
   const include = [];
-  for (const suite of suites) for (const slice of prLegs(suite, shards, env, picks)) for (const leg of legs(slice.key)) include.push({suite, ...(suite === 'qualityai' ? {qualityParts: qualityParts.length ? qualityParts : ['journey']} : {}), ...tolerantMatrixFlag(suite), fallbackSuites, ...offlineMatrixFlag(suite, offlineAi), ...answersMatrixFlag(suite, backbone), ...slice, ...leg, minutes: await minutes(suite), os: await os(suite, {pr: !!String(env.PR_SUITES || '').trim()})});
+  for (const suite of suites) for (const slice of prLegs(suite, shards, env, picks)) for (const leg of legs(slice.key)) include.push({suite, ...(suite === 'qualityai' ? {qualityParts: qualityParts.length ? qualityParts : ['journey']} : {}), ...tolerantMatrixFlag(suite), fallbackSuites: slice.burnIn ? '' : fallbackSuites, ...offlineMatrixFlag(suite, offlineAi), ...answersMatrixFlag(suite, backbone), ...slice, ...leg, minutes: await minutes(suite), os: await os(suite, {pr: !!String(env.PR_SUITES || '').trim()})});
   if (env.AI_ANSWERS === 'record') {
     const blocked = include.find(leg => leg.offlineAi && !leg.burnIn);
     if (blocked) throw new Error(`suite ${blocked.suite} declares offlineAi, so it cannot record: record from a branch where it does not declare it, then declare it`);

@@ -1,5 +1,5 @@
 """Every workflow step that runs an e2e suite tells it its own time limit: E2E_TRY_MINUTES equals the step's timeout-minutes. A suite without an aggregate
-budget (apply, applyflows, jobs, ...) stops 2 minutes before that limit with records flaky-proof reads as timing (desktop/e2e/lib/runner.mjs budgetMsOf).
+budget (apply, applyflows, jobs, ...) stops 4 minutes before that limit (its 3-minute close-down cap + 1) with records flaky-proof reads as timing (desktop/e2e/lib/runner.mjs budgetMsOf).
 Why (31 Oct 2026, owner's pick; main run 41146558456, the beta's re-check 41150330007): without it, a slow Mac runner hit GitHub's 15-minute step limit, the kill
 left no record, and a passing retry stayed red (8 of 82 Mac apply first tries)."""
 import re

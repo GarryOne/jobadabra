@@ -266,7 +266,7 @@ jobs:
       - name: Run the ${{ matrix.suite }} suite on Windows
         working-directory: desktop/e2e
         env:
-          E2E_TRY_MINUTES: 15   # = this step's timeout-minutes: a suite without an aggregate budget stops 2 min before it, with records that read as timing (lib/runner.mjs budgetMsOf; tests/test_e2e_try_minutes.py)
+          E2E_TRY_MINUTES: 15   # = this step's timeout-minutes: a suite without an aggregate budget stops 4 min before it (its close-down cap + 1), with records that read as timing (lib/runner.mjs budgetMsOf; tests/test_e2e_try_minutes.py)
         timeout-minutes: 15   # the suite stops itself at its budget (7 min, recorded 11), and by force 3 min later (suite.mjs)
         run: |
           if [ ! -f "suites/${{ matrix.suite }}.mjs" ]; then echo "The ${{ matrix.suite }} suite does not exist in this build: skipped."; exit 0; fi
@@ -278,7 +278,7 @@ jobs:
         working-directory: desktop/e2e
         timeout-minutes: 30
         env:
-          E2E_TRY_MINUTES: 30   # = this step's timeout-minutes: a suite without an aggregate budget stops 2 min before it, with records that read as timing (lib/runner.mjs budgetMsOf; tests/test_e2e_try_minutes.py)
+          E2E_TRY_MINUTES: 30   # = this step's timeout-minutes: a suite without an aggregate budget stops 4 min before it (its close-down cap + 1), with records that read as timing (lib/runner.mjs budgetMsOf; tests/test_e2e_try_minutes.py)
           E2E_BROWSER: msedge
           E2E_ARTIFACTS: ${{ github.workspace }}/e2e-artifacts-windows/apply-edge   # its own folder: the Chromium run's evidence stays
         run: node suite.mjs apply

@@ -102,6 +102,11 @@ function markStandIn(env, standIn) {
   if (standIn) env.JOB_PILOTTO_E2E_NOTION_STANDIN = '1';
 }
 
+/**
+ * Opens one suite's context: the app, its fake services and the step runner. Takes the suite name and its exported options (suite-main.mjs passes them); `hangCaps`
+ * defaults to the suite's table in hang-caps.json and `cadence` is the suite's own export, so a manual suite keeps the default cap. Returns the context, or one that
+ * skips the suite when a secret it needs is missing; a launch failure throws. Data: lib/store.mjs, lib/runner.mjs, hang-caps.json.
+ */
 export async function openContext(suite, {fresh = false, env: suiteEnv = {}, browser = false, light = false, offlineAi = false, notionProxy = false, telegram = false, google = false, releases = false, notion: usesNotion = true, notionStandIn = false, store: suiteStore = '', newInstall = false, standInFromWizard = false, notionTokenOf = '', notionPage = '', keepGoing = false, variesPlace = false, engine: suiteEngine = '', budgetMinutes = 0, aggregateBudget = true, hangCaps = hangCapsFor(suite), cadence = '', stepNeeds = null, report = null} = {}) {
   // Where the app keeps the person's data (lib/store.mjs): this Mac (sqlite, no Notion at all), the in-memory Notion (fresh and private for this run, no
   // token, no shared page: lib/notion-fake.mjs), or the real test workspace for a suite that pins it. A suite with no Notion part keeps its own setup.

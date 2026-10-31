@@ -1,4 +1,5 @@
 // Which slice of a step-sharded suite (apply, applyflows; JP_REPLAY_SHARD=i/n) runs a step: a step that needs an earlier one (the suite's stepNeeds, past its setup)
+// Job: pick the suites
 // runs where that step ran; a weighed step goes where the greedy split of the measured seconds put it; any other step takes turns (lib/replay-shard.mjs shardTurn).
 // 26 Oct 2026: turn-taking put apply's two longest steps in one slice (349 s of a 420 s budget), and "Ready to submit" reads the tab "cannot operate" left
 // (its slice must be the same). Guard: test/step-slices.test.mjs (every need shares its slice, every apply step is weighed, the halves are near equal).

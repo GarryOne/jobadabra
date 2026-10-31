@@ -1,4 +1,5 @@
 // Splits the recorded cases across the CI matrix's jobs (.github/workflows/page-cases.yml): JP_REPLAY_SHARD="i/n" runs the i-th of n slices.
+// Job: pick the suites
 // Balanced by measured slow first-try CI seconds (fixtures/slice-ci-seconds.json, 24–31 Oct 2026 main/beta artifacts), else its declared window
 // (a case with only "must not happen" checks waits its whole window); every case in exactly one slice. Guard: e2e/test/replay-shard.test.mjs.
 import fs from 'node:fs';

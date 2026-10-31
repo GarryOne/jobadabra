@@ -31,7 +31,12 @@ test('the question key ignores the picture but not the prompt, the facts or the 
 test('an answer not used for CACHE_DAYS is pruned', () => {
   const at = dir();
   remember(at, 'old', {view: 'v', model: 'm', strips: strips(1), text: 't'});
-  prune(at, {now: Date.now() + (CACHE_DAYS + 1) * 86400000});
+  // Why (31 Oct 2026, a8): the file's mtime and prune's `now` are both fixed dates; "real now + 15 days" against a real mtime read the clock and broke when the clock was not the machine's.
+  const written = new Date('2026-01-01T10:00:00Z'), day = 86400000;
+  for (const name of fs.readdirSync(at)) fs.utimesSync(path.join(at, name), written, written);
+  prune(at, {now: written.getTime() + (CACHE_DAYS - 1) * day});
+  assert.equal(fs.readdirSync(at).length, 1, 'one day short of CACHE_DAYS: kept');
+  prune(at, {now: written.getTime() + (CACHE_DAYS + 1) * day});
   assert.deepEqual(fs.readdirSync(at), []);
 });
 

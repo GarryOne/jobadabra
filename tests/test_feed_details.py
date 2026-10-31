@@ -1,9 +1,25 @@
 """SmartRecruiters lists postings without a description: the scan fetches it for the jobs it keeps, so they get
 stage 1 facts and a fit score (Canva's and Delivery Hero's jobs had stayed unscored)."""
 import sqlite3
+import tempfile
 import unittest
+from pathlib import Path
+from unittest import mock
 
-from src.sources import feeds, visits
+from src.sources import feeds, host_pace, visits
+
+
+def own_pace(test):
+    """Point the learned pace of sites at a temp file for one test.
+    Why (31 Oct 2026, a8): the 403 from shop.test taught host_pace a pause and wrote it to the real data/host_pace.json; a later run (or a parallel one) read that
+    pause as if its own 403 had just happened and listed or skipped jobs by it. Measured: the file survived runs and flipped test_stuck_jobs when the clock was set earlier."""
+    tmp = tempfile.TemporaryDirectory()
+    test.addCleanup(tmp.cleanup)
+    patch = mock.patch.object(host_pace, 'FILE', Path(tmp.name) / 'host_pace.json')
+    patch.start()
+    test.addCleanup(patch.stop)
+    host_pace.reset()
+    test.addCleanup(host_pace.reset)
 
 
 class FeedDetailsTest(unittest.TestCase):
@@ -42,7 +58,7 @@ class DescriptionBackfillTest(unittest.TestCase):
         from src.sources import describe
         db = sqlite3.connect(':memory:')
         db.execute("CREATE TABLE jobs (id INTEGER PRIMARY KEY, url TEXT, state TEXT, description TEXT, first_seen_at TEXT)")
-        now = datetime.now(timezone.utc)
+        now = datetime.now(timezone.utc)   # clock: relative: the rows and the call under test share this one `now`
         recent, old = now.isoformat(timespec='seconds'), (now - timedelta(days=30)).isoformat(timespec='seconds')
         db.executemany('INSERT INTO jobs VALUES (?, ?, ?, ?, ?)', [
             (1, 'https://jobs.smartrecruiters.com/canva/1', 'open', '', recent),
@@ -94,7 +110,7 @@ class TechTreeDescriptionTest(unittest.TestCase):
         from src.sources import describe
         db = sqlite3.connect(':memory:')
         db.execute("CREATE TABLE jobs (id INTEGER PRIMARY KEY, url TEXT, state TEXT, description TEXT, first_seen_at TEXT)")
-        now = datetime.now(timezone.utc)
+        now = datetime.now(timezone.utc)   # clock: relative: the rows and the call under test share this one `now`
         rows = [(1, 'https://jobs.techtree.dev/job/1'), (2, 'https://careers.example.com/job/2'), (3, 'https://ch.linkedin.com/jobs/view/3'),
                 (4, 'https://career.hm.com/job/4')]
         db.executemany('INSERT INTO jobs VALUES (?, ?, ?, ?, ?)', [(i, url, 'open', '', now.isoformat(timespec='seconds')) for i, url in rows])
@@ -119,6 +135,9 @@ class TechTreeDescriptionTest(unittest.TestCase):
 
 class AnyPostingPageTest(unittest.TestCase):
     """The posting text from any page: Workday's JSON, a page's schema.org JobPosting, else its main text; a refusal is respected."""
+
+    def setUp(self):
+        own_pace(self)
 
     class Opener:
         def __init__(self, pages):
@@ -163,6 +182,9 @@ class AnyPostingPageTest(unittest.TestCase):
 
 class BrowserJobsTests(unittest.TestCase):
     """Jobs whose text only a browser can read (8 Oct 2026): listed for the extension, and its text saved for the job."""
+    def setUp(self):
+        own_pace(self)
+
     def test_stuck_jobs_and_a_saved_text(self):
         from datetime import datetime, timedelta, timezone
         from unittest import mock

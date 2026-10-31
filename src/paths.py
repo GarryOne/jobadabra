@@ -136,7 +136,9 @@ def _test_data_folder():
     return Path(folder)
 
 
-_OWN_DATA = os.getenv('JOB_PILOTTO_DATA_DIR') or ('unittest' in sys.modules and str(_test_data_folder())) or ''
+# JOB_PILOTTO_TEST_DATA_DIR is the shard runner's (tools/py-shards.py) folder for every process a test starts: a child that imports src.paths without unittest loaded (python -m src ...)
+# would otherwise write the checkout's data/. It is not a steering variable of the app: nothing sets it outside a test run.
+_OWN_DATA = os.getenv('JOB_PILOTTO_DATA_DIR') or os.getenv('JOB_PILOTTO_TEST_DATA_DIR') or ('unittest' in sys.modules and str(_test_data_folder())) or ''
 DATA = Path(_OWN_DATA) if _OWN_DATA else ROOT / 'data'
 REPORTS = DATA / 'reports' if _OWN_DATA else ROOT / 'reports'
 JOBS_DB = DATA / 'jobs.sqlite'

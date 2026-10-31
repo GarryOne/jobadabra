@@ -169,6 +169,13 @@ class CheckoutDataTests(unittest.TestCase):
         done = subprocess.run([sys.executable, '-c', script], capture_output=True, text=True)
         self.assertEqual(done.stdout.split('\n')[:4], ['write_text refused', 'open_w refused', 'sqlite refused', 'append refused'], done.stderr)
 
+    def test_a_process_a_test_starts_writes_into_the_shards_folder_not_the_checkout(self):
+        with tempfile.TemporaryDirectory() as shard_folder:
+            env = {key: value for key, value in os.environ.items() if not key.startswith('JOB_PILOTTO_')}
+            env.update({'JOB_PILOTTO_TEST_DATA_DIR': shard_folder, 'JOB_PILOTTO_FOLLOW_APP': '0', 'PYTHONPATH': str(ROOT)})
+            done = subprocess.run([sys.executable, '-c', 'from src import paths; print(paths.DATA); print(paths.REPORTS)'], cwd=ROOT, env=env, capture_output=True, text=True)
+            self.assertEqual(done.stdout.split(), [shard_folder, str(Path(shard_folder) / 'reports')], done.stderr)
+
 
 if __name__ == '__main__':
     unittest.main()

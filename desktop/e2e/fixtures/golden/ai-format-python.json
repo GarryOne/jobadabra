@@ -33,7 +33,7 @@
 "src/geo.py":"19cfe43d153a7929a9ed32e6d42b6954cac591e3a09d4ebe2c6c3ccd073f8f7a",
 "src/levels.py":"8f2666a69b222366ce25fb91e2ad766fed990df66a5c704393ef6db45bb66f2d",
 "src/notion/search_settings.py":"d8c2f83e64dec4746c32c5461fbb9d6d72ecc662d3ba3ae773650300a9b00aa0",
-"src/paths.py":"36c1c5cbbc397ff78645ccabdb027675994b652c91666b4a22c9cad34fcbc740",
+"src/paths.py":"c0608a9f66f7b7639482d152414862528edf1f62be7d4e68a08eba26ddde7859",
 "src/places.py":"2212ebe7897aa1b177ee03405192e22cf38d289b343b3854f857cd3d05b6902c",
 "src/regions.py":"5826c34d5dc72adf17e1786c2a2292b428841db0e5f1cf4e05b021807ff8a6c8",
 "src/role_kinds.py":"a99d645ebeb1538b934f55bf5e240c4fc237b17c0caf52e45ffe6c5769b2ea22",

@@ -10,6 +10,7 @@ import argparse
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -173,9 +174,12 @@ def main(argv=None):
     # full pipe then raises BlockingIOError and Python exits 120 with every test passed (#2136, 26 Oct 2026). Guard: tests/test_py_shards.py.
     shard_list = split(modules, args.jobs)
     logs = [tempfile.TemporaryFile() for _ in shard_list]
-    procs = [(shard, subprocess.Popen([sys.executable, '-m', 'unittest', '-q', '-b', *DURATIONS, BOOTSTRAP, *[m for m in shard if m != BOOTSTRAP]], cwd=ROOT, env=env,
-                                      stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT))
-             for shard, log in zip(shard_list, logs)]
+    # Why (31 Oct 2026, a8): each shard gets its own data folder for the processes its tests start (src/paths.py JOB_PILOTTO_TEST_DATA_DIR); three CI rounds of hunting the test that wrote
+    # data/jobs.sqlite from a child process (try 3) ended in closing the class here instead.
+    data_folders = [tempfile.mkdtemp(prefix='jobadabra-shard-data-') for _ in shard_list]
+    procs = [(shard, subprocess.Popen([sys.executable, '-m', 'unittest', '-q', '-b', *DURATIONS, BOOTSTRAP, *[m for m in shard if m != BOOTSTRAP]], cwd=ROOT,
+                                      env={**env, 'JOB_PILOTTO_TEST_DATA_DIR': folder}, stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT))
+             for shard, log, folder in zip(shard_list, logs, data_folders)]
     results = [None] * len(procs)
     def collect(i, proc):   # each shard's own end time, said the moment it ends (a live CI log is not blank until the last shard)
         proc.wait()
@@ -198,6 +202,8 @@ def main(argv=None):
         if why:
             failed += 1
             print(f'py-shards: shard FAILED, {why} ({len(shard)} modules: {", ".join(shard[:4])}...)\n{out}', file=sys.stderr)
+    for folder in data_folders:
+        shutil.rmtree(folder, ignore_errors=True)
     left_behind = leaked(before, checkout_state(ROOT))
     if left_behind:
         failed += 1

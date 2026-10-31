@@ -291,9 +291,11 @@ export async function run(ctx) {
     const before = await notionRows();
     const calls = proxy.stats.calls;
     await chooseFromMenu(seed.imported.page, 'Review again');
-    // reviewAgainRow publishes this terminal message only after iv.review returns; no delayed AI dispatch follows it.
+    // reviewAgainRow publishes this terminal message only after iv.review returns.
     await page.waitForFunction(() => !/reviewing the interview again/.test(document.getElementById('iv-message').textContent) && document.getElementById('iv-message').textContent.trim() !== '', null, {timeout: stepTimeLeft()});
     const said = (await message()).trim();
+    // Retained: the terminal message cannot rule out a late second dispatch; no app signal closes that observation window.
+    await page.waitForTimeout(3000);
     if (proxy.stats.calls !== calls) throw new Error(`a second review started within the guard window: ${proxy.stats.calls - calls} AI call(s)`);
     if ((await notionRows()).length !== before.length) throw new Error('Review again added or removed an interview row');
     const headings = await reviewHeadings(seed.imported.page);

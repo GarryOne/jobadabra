@@ -41,6 +41,7 @@ CLASSIFIED = {
     'CI · Hosted Always on e2e': 'ignored: pull requests that touch the hosted code, and nightly; never on a push to main',
     'CI · Harness tests': 'ignored: alone only on pull requests that change the harness (on: paths:); on main build.yml calls it as a job of CI · Tests (1 Nov 2026), so its red is CI · Tests\' red',
     'CI · Smoke (the app starts)': 'ignored: alone only on pull requests that touch the app (on: paths:); on main build.yml calls it as a job of CI · Tests, so its red is CI · Tests\' red',
+    'CI · Integration tests': 'ignored: alone only on pull requests that touch what it reaches (on: paths:); on main build.yml calls it as a job of CI · Tests (1 Nov 2026), so its red is CI · Tests\' red',
     'CI · Harness tests · daily': 'ignored: its own daily run alerts the CI chat; not a main push check',
     'CI · Tests · python': 'ignored: on main it runs inside CI · Tests (build.yml calls it); alone only on pull requests',
     'CI · Tests · worker': 'ignored: on main it runs inside CI · Tests (build.yml calls it); alone only on pull requests',

@@ -38,6 +38,11 @@ import {OUTCOME_STAGES as BOARD_STAGES} from '../renderer/jobs-board-rules.js';
 import {demoFormsOpen, demoPath, demoTriageRead} from './demo.js';
 import {applyOf, modeRunner} from '../renderer/apply-settings-model.js';
 
+/** One hidden-browser form read for the Jobs page: its flags, or null when nothing was read. A failure is logged with the job, never swallowed. */
+// Why (#2650, 1 Nov 2026): a browser-start error became a silent null, so a read that never reached its chip left no cause in any log.
+export function triageReadOrNull(read, url, log = appLog) {
+  return Promise.resolve().then(() => read({url})).catch(error => { log('apply', 'triage: the form read failed', {url, error: String(error?.message || error).slice(0, 300)}); return null; });
+}
 export const extensionGate = installedGate;   // what main.js hands to every handler that opens a Chrome form
 export function registerApplyHandlers(ctx) {
   const {DEMO, applyRunner = apply, extensionGate = () => null, allowanceBlock, claudeConsent, cloud, here, ipcMain, log, nativeTheme = {shouldUseDarkColors: false}, needsNotion, prepareKitFor, getRecipeReporter, startClaude, storage, toWindow, track} = ctx;
@@ -45,7 +50,7 @@ export function registerApplyHandlers(ctx) {
   const background = backgroundApplyFor(storage);
   server.setVisitRoute('/extension/background-apply', payload => background.handle(payload));
   // Apply triage (PR C2a): one form read in the hidden browser; the answer is the mode table's flags, or null when nothing was read. The demo has no hidden browser: it reads what settings.demoTriageReads names (lib/demo.js).
-  ipcMain.handle('triageRead', (_, job) => (DEMO ? demoTriageRead(storage.settings(), String(job?.url || '')) : background.triageRead({url: String(job?.url || '')}).catch(() => null)));
+  ipcMain.handle('triageRead', (_, job) => (DEMO ? demoTriageRead(storage.settings(), String(job?.url || '')) : triageReadOrNull(background.triageRead, String(job?.url || ''))));   // app.log (lib/log.js), not the window log: it keeps a line only while a pipeline task runs (Gitar, #2867)
   ipcMain.handle('triageCancel', () => background.cancelTriage());
   ipcMain.handle('apply', async (_, options) => {
     const fromSettings = options?.mode === 'settings';   // Why (27 Oct 2026, owner): read after the first-choice gate replays the held call, so Start never uses a stale mode

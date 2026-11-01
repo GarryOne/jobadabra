@@ -3,7 +3,7 @@
 // plan's limits, not API credits. Nothing here reads, copies, stores, logs or forwards the CLI's credentials, sets auth variables for it
 // (each subclass's env() drops the API keys the app holds), or signs in for the user. Each call gets a fresh temp folder (its working
 // directory and the only place the CLI may read: attached images/PDFs are written there), a hard timeout, at most 2 processes at once per
-// CLI, and one repair when a structured answer does not match its schema. A subclass says how to call its binary (build, parse, answer,
+// CLI plus one kept for an open form's own questions (slots, below; #2674), and one repair when a structured answer does not match its schema. A subclass says how to call its binary (build, parse, answer,
 // usage). Guarded by test/ai-contract.test.js (both CLIs) and test/claude-code.test.js.
 import {spawn} from 'node:child_process';
 import fs from 'node:fs';

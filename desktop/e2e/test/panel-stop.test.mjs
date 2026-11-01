@@ -17,7 +17,8 @@ const PAGE = mode => `<body><div id="jobpilotto-review-host"></div><script>
     + '<div class="fill-box"><button class="primary fill is-busy">Choosing dropdown answers…</button>'
     + '<button class="stop-btn" type="button" title="Stops everything"' + (mode === 'late' ? ' disabled' : '') + (mode === 'hidden' ? ' style="display:none"' : '') + (mode === 'pill' ? ' style="display:none"' : '') + '>Stop</button></div></div>'
     + '<button class="pill-stop" type="button" title="Stops everything" style="display:' + (mode === 'pill' ? 'block' : 'none') + '">Stop</button></div>';
-  const halted = () => { const fill = root.querySelector('.fill'); fill.classList.remove('is-busy'); fill.textContent = 'Fill again'; if (mode !== 'nocard') root.querySelector('.stopped').hidden = false; if (mode === 'pill') root.querySelector('.card').hidden = true; };
+  const halted = () => { const fill = root.querySelector('.fill'); fill.classList.remove('is-busy'); fill.textContent = 'Fill again'; if (mode !== 'nocard') root.querySelector('.stopped').hidden = false; if (mode === 'pill') root.querySelector('.card').hidden = true;
+    if (mode === 'dim') for (const button of root.querySelectorAll('.stop-btn, .pill-stop')) { button.disabled = false; button.textContent = 'Stop'; } };   // the product's stoppedHere puts the labels back to Stop (extension/review.js) while the page's dim lifts later
   if (mode === 'decoy') document.body.append(Object.assign(document.createElement('button'), {className: 'stop-btn', textContent: 'Stop'}));   // the job form's own control with the same class
   if (mode === 'dim') document.body.append(Object.assign(document.createElement('div'), {id: 'jobpilotto-fill-overlay'}));
   if (mode === 'late') setTimeout(() => { root.querySelector('.stop-btn').disabled = false; }, 400);

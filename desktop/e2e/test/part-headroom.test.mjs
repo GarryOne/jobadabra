@@ -42,7 +42,7 @@ test('the guard sees the split the old weights made: a slice over the headroom',
   assert.ok(Math.max(...loads) > BUDGET_SECONDS * 0.9, 'the heaviest old slice sat near the budget, as apply-3of3 did');
 });
 
-// Parts that are not sliced by weights are measured whole (tools/e2e-part-times.mjs, the last betas): apply is judged above, from its steps (recorded left e2e on 1 Nov 2026: CI · Page cases shards it).
+// Parts that are not sliced by weights are measured whole (tools/e2e-part-times.mjs, the last betas): apply is judged above, from its steps (recorded left e2e on 1 Nov 2026: CI · Integration · Page cases shards it).
 test('every other measured part fits the budget with headroom on its slowest leg', () => {
   const tooLong = Object.entries(parts.parts).filter(([name]) => !/ · apply-\d+of\d+$/.test(name)).filter(([, leg]) => over([leg.max]).length)
     .map(([name, leg]) => `${name}: ${leg.max} s (standin ${leg.standin ?? '-'}, sqlite ${leg.sqlite ?? '-'})`);

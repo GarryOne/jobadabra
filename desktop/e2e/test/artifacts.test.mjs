@@ -24,8 +24,8 @@ test('the findings so far are written even when the suite never reached its last
 
 test('suite-failures.json is written every run: the failed steps, or an empty list', () => {
   const failed = dir(), clean = dir();
-  writeSuiteFailures(failed, 'activity', results);
-  writeSuiteFailures(clean, 'activity', results.filter(result => result.status !== 'failed'));
+  writeSuiteFailures(failed, 'activity', results, {});
+  writeSuiteFailures(clean, 'activity', results.filter(result => result.status !== 'failed'), {});
   assert.equal(JSON.parse(fs.readFileSync(path.join(failed, 'suite-failures.json'), 'utf8')).length, 1);
   assert.deepEqual(JSON.parse(fs.readFileSync(path.join(clean, 'suite-failures.json'), 'utf8')), []);
 });

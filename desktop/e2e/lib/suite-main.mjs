@@ -33,7 +33,8 @@ export function limitCloseDown(suite, ctx, work, {ms = TEARDOWN_STOP_MS, log = c
 }
 
 /** Persist the final post-close guard result; late misses must be visible to retry proof and step reports. */
-export function writeFinalFailures(suite, ctx) {
+/** `env` decides whether failures print as GitHub annotations (lib/artifacts.mjs writeSuiteFailures): production passes process.env, a test passes {}. */
+export function writeFinalFailures(suite, ctx, env) {
   const refused = refusedQuestions({...process.env, E2E_ARTIFACTS: ctx.ARTIFACTS});
   const missing = recordAnswerRefusals(ctx, refused);
   if (missing) console.error(`✗ ${ctx.stopped}`);
@@ -44,7 +45,7 @@ export function writeFinalFailures(suite, ctx) {
     ctx.runner.results.push({name: 'AI asks have stored answers', status: 'failed', note: ceiling.message});
     console.error(`✗ ${ceiling.message}\nE2E-cause: ai ${suite}`);
   }
-  try { writeSuiteFailures(ctx.ARTIFACTS, suite, ctx.runner.results); } catch (error) { console.log(`  (failures not written: ${error.message})`); }
+  try { writeSuiteFailures(ctx.ARTIFACTS, suite, ctx.runner.results, env); } catch (error) { console.log(`  (failures not written: ${error.message})`); }
   return missing || !ceiling.ok;
 }
 
@@ -141,8 +142,8 @@ export async function runSuite(name, report = null) {
       };
       await limitCloseDown(suite, ctx, report ? report.step('Close the app, save the artifacts', closeDown) : closeDown()).catch(error => console.log(`  (close-down: ${error.message})`));
       try { (await import('./ai-meter.mjs')).writeUsage(ctx.ARTIFACTS); } catch (error) { console.log(`  (AI usage not written: ${error.message})`); }   // what this suite paid, for /ai-cost (e2e.yml reports it)
-      // Why (30 Oct 2026, owner-approved rule A; run 40996297795): late answer misses must reach retry proof, not only stderr after an empty failure file.
-      if (writeFinalFailures(name, ctx)) code = 1;
+      // Why (30 Oct 2026, owner-approved rule A; run 40996297795): late answer misses must reach retry proof, not stderr alone after an empty failure file; the env is passed in (process.env here, so CI shows annotations; tests pass their own, 1 Nov 2026, #2784).
+      if (writeFinalFailures(name, ctx, process.env)) code = 1;
       if (ctx.runner.summary()) code = 1;
       report?.decided?.(code);   // the exit code is known: lib/report.mjs stops a Playwright runner that stays open long after this (6 Oct 2026: wander hung 10 min)
       // The steps and the kept traces as data, for the owner's /admin/e2e page (site/src/e2e-report.js reads it out of the e2e-view-<suite> artifact).

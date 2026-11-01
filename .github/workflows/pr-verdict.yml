@@ -25,7 +25,7 @@ on:
       - 'Proof · Codex subscription broker'
       - 'Extension · Chrome Web Store publish'
       - 'Proof · LibreOffice add-on on Mac and Windows'
-      - 'CI · Page cases (all cases, real extension, Linux)'
+      - 'CI · Integration · Page cases (all cases, real extension, Linux)'
       - 'CI · Ready to send image'
       - 'CI · Search check (6 personas)'
       - 'CI · Tests · desktop (Windows)'

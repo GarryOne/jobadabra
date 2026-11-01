@@ -150,7 +150,7 @@ test('the post-close guard prints the measured zero required by saved-gate CI pr
   t.mock.method(console, 'log', line => lines.push(line));
   const {writeFinalFailures} = await import('../lib/suite-main.mjs');
   const ctx = {ARTIFACTS: dir, runner: {results: []}};
-  assert.equal(writeFinalFailures('activity', ctx), false);
+  assert.equal(writeFinalFailures('activity', ctx, {}), false);
   assert.ok(lines.includes('AI asks with no stored answer: 0 (allowed 0)'), lines.join('\n'));
   assert.deepEqual(ctx.runner.results, []);
 });

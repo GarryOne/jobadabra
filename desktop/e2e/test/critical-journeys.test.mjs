@@ -10,9 +10,9 @@ import {SUITES} from '../lib/context.mjs';
 ensureStaged(fileURLToPath(new URL('../..', import.meta.url)));
 const registry = loadJourneys();
 
-// Why (1 Nov 2026, owner via mac-07: "'Find jobs using your browser' this is not critical", "Move all 3 to integration"): J3 is out; the registry has J0-J2, J4-J12 and the tier additions J14-J19 (J13 Strategy waits for its suite to return).
-test('the registry holds the journeys J0-J2, J4-J12 and the tier additions, each with a name and steps', () => {
-  assert.deepEqual(registry.journeys.map(journey => journey.id), ['J0', 'J1', 'J2', 'J4', 'J5', 'J6', 'J7', 'J8', 'J9', 'J10', 'J11', 'J12', 'J14', 'J15', 'J16', 'J17', 'J18', 'J19']);
+// Why (1 Nov 2026, owner via mac-07: "'Find jobs using your browser' this is not critical", "Move all 3 to integration"): J3 is out; the registry has J0-J2, J4-J12 and the tier additions J13-J19.
+test('the registry holds the journeys J0-J2, J4-J12 and the tier additions J13-J19, each with a name and steps', () => {
+  assert.deepEqual(registry.journeys.map(journey => journey.id), ['J0', 'J1', 'J2', 'J4', 'J5', 'J6', 'J7', 'J8', 'J9', 'J10', 'J11', 'J12', 'J13', 'J14', 'J15', 'J16', 'J17', 'J18', 'J19']);
   for (const journey of registry.journeys) {
     assert.ok(journey.name.length > 10, `${journey.id} has the owner's name`);
     assert.ok(journey.steps.length > 0, `${journey.id} has steps`);
@@ -25,7 +25,7 @@ test('the registry holds the journeys J0-J2, J4-J12 and the tier additions, each
 test('every journey has tier 1 or 2, and the owner\'s first-tier journeys are tier 1', () => {
   for (const journey of registry.journeys) assert.ok([1, 2].includes(journey.tier), `${journey.id} has a tier`);
   const tier = id => registry.journeys.find(journey => journey.id === id)?.tier;
-  for (const id of ['J0', 'J1', 'J2', 'J4', 'J5', 'J6', 'J7', 'J9', 'J10', 'J11', 'J12', 'J14']) assert.equal(tier(id), 1, id);
+  for (const id of ['J0', 'J1', 'J2', 'J4', 'J5', 'J6', 'J7', 'J9', 'J10', 'J11', 'J12', 'J13', 'J14']) assert.equal(tier(id), 1, id);
   assert.equal(tier('J8'), 2, 'Tailor CV: a failed tailor leaves the base CV, so it degrades but does not block');
 });
 

@@ -79,7 +79,7 @@ test('applyflows slices fit eight measured minutes, with two halves balanced aga
   }
 });
 
-// The recorded cases are no e2e suite since 1 Nov 2026: CI · Page cases (page-cases.yml, JP_REPLAY_SHARD_COUNT slices) is their only home.
+// The recorded cases are no e2e suite since 1 Nov 2026: CI · Integration · Page cases (page-cases.yml, JP_REPLAY_SHARD_COUNT slices) is their only home.
 test('recorded case slices of page-cases.yml run each case once and balance measured seconds', () => {
   const count = Number(/JP_REPLAY_SHARD_COUNT: (\d+)/.exec(fs.readFileSync(new URL('../../../.github/workflows/page-cases.yml', import.meta.url), 'utf8'))?.[1]);
   assert.ok(count >= 1, 'page-cases.yml names its slice count');

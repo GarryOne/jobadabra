@@ -308,8 +308,7 @@ folded steps and probe path, and the same facts as one hidden `<!-- replay: {…
 - **To check the spend:** the Claude Console's API keys page shows the cost per key (`job-pilotto-e2e-testing` was $34.89 on 5 Oct 2026); it should not grow from local runs.
 
 
-The retired `mailreading` pointer file was deleted with its registry entry (R2, 1 Nov 2026).
-The PR plan reads changed files as it does for `watches`, including one-hop Python imports. It emits
+The after-merge plan (a PR runs no e2e since 1 Nov 2026: unit + integration on the PR, journeys after the merge on main, in the night burn-in and the beta) reads changed files as it does for `watches`, including one-hop Python imports. It emits
 `(parts).qualityai` in `pr_steps`; plan-run carries that as `matrix.qualityParts`, and e2e.yml passes
 `E2E_QUALITY_PARTS`. Mail-only changes run only the mail eval, without the Jobs journey. Unrelated
 changes, schedules and nightly gates never add mail. Name `qualityai:mail` in e2e.yml's suite input

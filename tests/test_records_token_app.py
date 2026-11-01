@@ -10,7 +10,7 @@ import re
 import unittest
 
 WORKFLOWS = pathlib.Path(__file__).resolve().parent.parent / '.github' / 'workflows'
-# Why (1 Nov 2026, owner: move the repos to a GitHub org): the owner of jobadabra-lab is a repository variable, so a transfer is one `gh variable set`, not a PR.
+# Why (1 Nov 2026, owner): the owner of jobadabra-lab is a repository variable, so moving the repo is one variable change, not a pull request.
 LAB_OWNER = '${{ vars.OWNER_OF_LAB || github.repository_owner }}'
 OLD = re.compile(r'secrets\.NET_RECORDS_(READ|WRITE)_TOKEN')
 GOOD = re.compile(r'\$\{\{ steps\.records_app\.outputs\.token \|\| secrets\.NET_RECORDS_(READ|WRITE)_TOKEN \}\}')

@@ -34,13 +34,4 @@ if [ "$watch" = 0 ]; then
 fi
 id=${run%% *}
 gh run watch "$id" -R "$repo" --interval 30 >/dev/null 2>&1 || true
-version=$(gh run view "$id" -R "$repo" --log 2>/dev/null | sed -n 's/.*Releasing \([0-9.]*\).*/\1/p' | head -1)
-if gh run view "$id" -R "$repo" --log 2>/dev/null | grep -q "not released"; then
-  echo "Build ${version:-?} was NOT released (workflows changed on main during it): a new build of main started by itself."
-elif notes=$(gh release view "desktop-v$version" -R "$repo" --json body -q .body 2>/dev/null); then
-  mac=$(grep -q '^Beta-approved:' <<<"$notes" && echo "approved" || echo "NOT approved")
-  win=$(grep -q '^Beta-approved (Windows):' <<<"$notes" && echo "approved" || echo "NOT approved")
-  echo "desktop-v${version}: Mac beta ${mac}, Windows beta ${win}. The run: ${run#* }"
-else
-  echo "Build ${version:-?} finished without a release: see ${run#* }"
-fi
+exec bash "$(dirname "$0")/beta-release-report.sh" "$id" "${run#* }"

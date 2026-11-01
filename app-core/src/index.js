@@ -7,6 +7,7 @@
 import { handleReport } from './report.js';
 import { handleExtension } from './extension.js';
 import { runScheduled } from './scheduler.js';
+import { githubFetch } from './github-fetch.js';
 import { STAGE_EMOJI, escapeHtml, formatRuns, formatNotionRuns, formatApplied, formatSaved, formatAppliedItems, formatSavedItems, formatRunItems } from './format.js';
 export { escapeHtml, formatRuns, formatNotionRuns, formatApplied, formatSaved };
 import { LABEL as WATCHDOG_LABEL, TITLE as WATCHDOG_TITLE } from './watchdog.js';
@@ -52,7 +53,7 @@ function reply(env, answer) {
 }
 
 function github(env, path, init = {}) {
-  return fetch(`https://api.github.com/repos/${env.GITHUB_REPO}/${path}`, {
+  return githubFetch(`https://api.github.com/repos/${env.GITHUB_REPO}/${path}`, {
     ...init,
     headers: {
       Authorization: `Bearer ${env.GITHUB_TOKEN}`,

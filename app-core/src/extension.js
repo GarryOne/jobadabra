@@ -11,6 +11,7 @@
 
 import { anthropicClient, priceOf } from './ai.js';
 import { cleanEntries } from './extension-log.js';
+import { githubFetch } from './github-fetch.js';
 import { askAgainForGaps, unanswered } from './answer-missing.js';
 import { withholdOwner } from './owner-guard.js';
 import { BILLED, billedTo, learnings, runBlocks, runData, runRecord } from './extension-run-record.js';
@@ -469,7 +470,7 @@ export async function handleExtension(request, env) {
       const decision = `applied ${why || 'no reason given'} (${evidence?.path || 'unknown'}${evidence?.host ? ` on ${evidence.host}` : ''}, extension ${evidence?.version || '?'})`;
       if (env.markApplied) return json(await env.markApplied(job, decision)); // desktop app: recorded locally
       console.log(`extension ${decision} -> ${job}`);
-      const response = await fetch(`https://api.github.com/repos/${env.GITHUB_REPO}/actions/workflows/${env.WORKFLOW_FILE}/dispatches`, {
+      const response = await githubFetch(`https://api.github.com/repos/${env.GITHUB_REPO}/actions/workflows/${env.WORKFLOW_FILE}/dispatches`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${env.GITHUB_TOKEN}`, Accept: 'application/vnd.github+json',

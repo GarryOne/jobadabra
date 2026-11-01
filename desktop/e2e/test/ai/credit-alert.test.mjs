@@ -73,7 +73,9 @@ test('every e2e workflow reports AI credit through one nonblocking aggregate ale
     const text = fs.readFileSync(new URL(`../../../../.github/workflows/${name}.yml`, import.meta.url), 'utf8');
     const block = text.split('  ai-credit-health:\n')[1]?.split(/\n  [a-z][a-z-]*:/)[0] || '';
     assert.match(block, /continue-on-error: true/, name);
-    assert.match(block, /if: always\(\) && !cancelled\(\) && github.ref == 'refs\/heads\/main'/, name);
+    // Why (1 Nov 2026, a8, #2883): a by-hand beta of an older green commit runs on a beta-pick/<sha7> branch (tools/beta-release.sh) and still sends the alert.
+    const onMain = name === 'desktop' ? /\(github.ref == 'refs\/heads\/main' \|\| startsWith\(github.ref, 'refs\/heads\/beta-pick\/'\)\)/ : /github.ref == 'refs\/heads\/main'/;
+    assert.match(block, new RegExp(`if: always\\(\\) && !cancelled\\(\\) && ${onMain.source}`), name);
     assert.match(block, /node desktop\/e2e\/credit-alert.mjs --artifacts/, name);
     assert.doesNotMatch(block, /e2e-rerun/, `${name}: a job has one try, so there is no second-try artifact to download`);
     assert.match(block, /CI_ALERTS_TELEGRAM_BOT_TOKEN:/, name);

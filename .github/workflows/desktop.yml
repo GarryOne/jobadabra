@@ -96,6 +96,21 @@ jobs:
         timeout-minutes: 5
         with:
           fetch-depth: 0
+      - name: Which commit this run is built from (an annotation on the run)
+        timeout-minutes: 5
+        run: |
+          # Why (1 Nov 2026, owner: "We should show though, on the beta pipeline, as an annotation. What is the commit chosen and how old it is... or both"): a by-hand beta is built from the newest
+          # fully green main commit (tools/beta_pick.py), which can be a few commits behind main's head; the run says which one, its place counting back from the head, and its age.
+          git fetch -q origin main
+          behind=$(git rev-list --count "$GITHUB_SHA..origin/main")
+          subject=$(git log -1 --format=%s "$GITHUB_SHA")
+          ago=$(git log -1 --format=%cr "$GITHUB_SHA")
+          gap=$(( $(git log -1 --format=%ct origin/main) - $(git log -1 --format=%ct "$GITHUB_SHA") ))
+          if [ "$gap" -ge 86400 ]; then older="$((gap / 86400)) day(s)"; elif [ "$gap" -ge 3600 ]; then older="$((gap / 3600)) hour(s)"; else older="$((gap / 60)) minute(s)"; fi
+          n=$((behind + 1)); case "$n" in 11|12|13) sfx=th;; *1) sfx=st;; *2) sfx=nd;; *3) sfx=rd;; *) sfx=th;; esac
+          if [ "$behind" = 0 ]; then where="the newest commit of main (its head)"; else where="the ${n}${sfx} newest commit of main, $behind behind the head $(git rev-parse --short origin/main) and $older older than it"; fi
+          echo "::notice title=Built from ${GITHUB_SHA:0:7}::$subject ($where, committed $ago)"
+          echo "Built from ${GITHUB_SHA:0:7}: $subject ($where, committed $ago)"
       - uses: ./.github/actions/gh-ledger
         with:
           phase: start
@@ -1755,7 +1770,7 @@ jobs:
   ai-credit-health:
     name: AI credit health
     needs: [test-mac, test-windows]
-    if: always() && !cancelled() && github.ref == 'refs/heads/main'
+    if: always() && !cancelled() && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/beta-pick/'))
     continue-on-error: true
     runs-on: ubuntu-24.04
     timeout-minutes: 5

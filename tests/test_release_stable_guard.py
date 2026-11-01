@@ -25,6 +25,7 @@ DMG = f'Job-Pilotto-{TAG.removeprefix("desktop-v")}-arm64.dmg'
 
 FAKE_GH = textwrap.dedent('''\
     #!/usr/bin/env bash
+    if [ "$1" = release ] && [ "$2" = view ] && [[ "$*" == *isPrerelease* ]]; then echo "${FAKE_PRERELEASE:-true}"; exit 0; fi
     if [ "$1" = release ] && [ "$2" = view ]; then printf '%s\\n' "${FAKE_ASSETS:-}"; exit 0; fi
     if [ "$1" = release ] && [ "$2" = edit ]; then echo "edited $3"; exit 0; fi
     if [ "$1" = api ]; then echo abc1234def5678; exit 0; fi
@@ -87,11 +88,11 @@ class PromoteGuardTests(unittest.TestCase):
             binary.chmod(0o755)
             # The alert goes out through desktop/e2e/ci-alert.mjs (node): a stand-in node writes the message it was given, so nothing reaches Telegram.
             node = Path(folder) / 'node'
-            node.write_text('#!/usr/bin/env bash\n[ -n "${FAKE_NODE_FAILS:-}" ] && exit 1\nprintf %s "$MESSAGE" > "$FAKE_ALERT"\n')
+            node.write_text('#!/usr/bin/env bash\n[ -n "${FAKE_NODE_FAILS:-}" ] && exit 1\ncase "$1" in *release-alert.mjs) echo "$*" >> "$FAKE_RELEASE_ALERT"; exit 0;; esac\nprintf %s "$MESSAGE" > "$FAKE_ALERT"\n')
             node.chmod(0o755)
             self.log = Path(folder) / 'gh.log'
             env = {**{name: value for name, value in os.environ.items() if name not in OWN_SWITCHES and not name.startswith('E2E_')},
-                   'PATH': f'{folder}{os.pathsep}{os.environ["PATH"]}', 'FAKE_LOG': str(self.log), 'FAKE_ALERT': str(Path(folder) / 'alert.txt'), 'FAKE_STARTED': str(Path(folder) / 'started'),
+                   'PATH': f'{folder}{os.pathsep}{os.environ["PATH"]}', 'FAKE_LOG': str(self.log), 'FAKE_ALERT': str(Path(folder) / 'alert.txt'), 'FAKE_RELEASE_ALERT': str(Path(folder) / 'release-alert.txt'), 'FAKE_STARTED': str(Path(folder) / 'started'),
                    'FAKE_ASSETS': '\n'.join(f'{name}\t{size}' for name, size in assets), 'FAKE_E2E': e2e, 'FAKE_E2E_AFTER': after, 'E2E_POLL_SECONDS': '0',
                    **({'SKIP_E2E': '1'} if skip else {}), **({'E2E_NO_START': '1'} if no_start else {}), **(extra or {})}
             # The real gh would edit a real release: the script must find the fake first.
@@ -104,6 +105,8 @@ class PromoteGuardTests(unittest.TestCase):
             self.calls = ''.join(line for line in lines if not any(name in line for name in stores))
             alert = Path(folder) / 'alert.txt'
             self.alert = alert.read_text() if alert.exists() else ''
+            released = Path(folder) / 'release-alert.txt'
+            self.release_alert = released.read_text() if released.exists() else ''
             return done
 
     def test_its_own_installer_at_the_same_size_promotes(self):
@@ -265,6 +268,28 @@ class PromoteGuardTests(unittest.TestCase):
         done = self.promote([(OWN, 1), (GENERIC, 1)], skip=True, extra={'DRY_RUN': '1', 'FAKE_FAIL': 'msix-store.yml'})
         self.assertEqual(done.returncode, 0, done.stderr)
         self.assertEqual(self.store, '')
+
+    # 1 Nov 2026, owner: "I'd like to receive on Telegram, CI Alerts, when a new version (beta or stable) is released".
+    def test_a_promotion_sends_one_release_alert_with_the_tag(self):
+        done = self.promote([(OWN, 1), (GENERIC, 1)], extra={'E2E_ALREADY_GREEN': '1'})
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertEqual(self.release_alert.count('release-alert.mjs stable ' + TAG), 1, self.release_alert)
+
+    def test_a_tag_that_is_already_stable_alerts_nothing(self):
+        done = self.promote([(OWN, 1), (GENERIC, 1)], extra={'E2E_ALREADY_GREEN': '1', 'FAKE_PRERELEASE': 'false'})
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertEqual(self.release_alert, '', 'a re-run on a stable tag does not announce it again')
+
+    def test_a_release_alert_that_fails_does_not_undo_the_promotion(self):
+        done = self.promote([(OWN, 1), (GENERIC, 1)], extra={'E2E_ALREADY_GREEN': '1', 'FAKE_NODE_FAILS': '1'})
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertIn('Stable:', done.stdout)
+
+    def test_a_refused_promotion_and_a_dry_run_announce_nothing(self):
+        self.promote([(DMG, 1), (GENERIC, 2)], extra={'E2E_ALREADY_GREEN': '1'})
+        self.assertEqual(self.release_alert, '')
+        self.promote([(OWN, 1), (GENERIC, 1)], extra={'E2E_ALREADY_GREEN': '1', 'DRY_RUN': '1'})
+        self.assertEqual(self.release_alert, '')
 
 
 if __name__ == '__main__':

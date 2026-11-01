@@ -320,11 +320,6 @@
         "n": 5,
         "p95Seconds": 4.7
       },
-      "the app's next start links this workspace's Search settings page (so the check looks for this person's roles and places)": {
-        "seconds": 90,
-        "n": 4,
-        "reason": "fewer than 5 calm samples, no shared cap; 30 s floor x 3"
-      },
       "the Notion stand-in answered every request the app made": {
         "shared": "applyflows",
         "n": 4

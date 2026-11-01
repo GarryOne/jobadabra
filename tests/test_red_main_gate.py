@@ -42,6 +42,9 @@ elif endpoint.endswith('/jobs?per_page=100'):
 elif '/check-runs/' in endpoint:
     jid = endpoint.split('/check-runs/')[1].split('/')[0]
     print(json.dumps([data.get('annotations', {}).get(jid, [])]))
+elif '/contents/desktop/e2e/suites?ref=main' in endpoint:   # gh api … --jq '[.[].name]'
+    if 'suites' not in data: sys.exit(1)
+    print(json.dumps(data['suites']))
 elif endpoint.endswith('commits/main'):
     print(data['head'])
 elif 'event=workflow_dispatch' in endpoint:
@@ -70,14 +73,13 @@ def gate(data, *extra, lanes=None, verdict_tool=None, suites=None):
         if lanes is not None:
             (tmp / 'desktop/e2e').mkdir(parents=True, exist_ok=True)
             (tmp / 'desktop/e2e/lanes.json').write_text(lanes)
-        for suite in suites or ():   # main's suite files (desktop/e2e/suites); none = the folder is missing, which drops no red
-            (tmp / 'desktop/e2e/suites').mkdir(parents=True, exist_ok=True)
-            (tmp / f'desktop/e2e/suites/{suite}.mjs').write_text('// a suite on main\n')
         if verdict_tool is not None:   # tools/flaky-verdict.mjs, faked: the real one reads GitHub and git
             (tmp / 'tools/flaky-verdict.mjs').write_text(verdict_tool)
         gh = tmp / 'bin/gh'
         gh.write_text(FAKE_GH)
         gh.chmod(gh.stat().st_mode | stat.S_IEXEC)
+        if suites is not None:   # main's suite files on GitHub (desktop/e2e/suites?ref=main); unset = that read fails, which drops no red
+            data = {**data, 'suites': [f'{suite}.mjs' for suite in suites]}
         (tmp / 'data.json').write_text(json.dumps({'recheck_jobs': [{'name': 'cardstates', 'conclusion': 'success'}, {'name': 'settings', 'conclusion': 'success'}], **data}))
         env = {**os.environ, 'PATH': f"{tmp / 'bin'}{os.pathsep}{os.environ['PATH']}", 'FAKE_GH': str(tmp), 'RED_MAIN_POLL': '0', 'RED_MAIN_FIND_S': '2', 'RED_MAIN_WAIT_S': '2'}
         proc = subprocess.run(['bash', str(tmp / 'tools/red-main-gate.sh'), 'o/r', *extra], env=env, capture_output=True, text=True, timeout=120)

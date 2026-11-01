@@ -12,7 +12,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from tools import main_e2e_state as m  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
-REAL_SUITES = m.SUITES if hasattr(m, 'SUITES') else None   # read before setUp patches it
 
 
 def run(rid, title, conclusion='failure', sha='f' * 40, branch='main'):
@@ -47,9 +46,7 @@ class MainE2eState(unittest.TestCase):
         registry = patch.object(m, 'LANES', Path(tmp.name) / 'lanes.json')
         registry.start()
         self.addCleanup(registry.stop)
-        folder = patch.object(m, 'SUITES', Path(tmp.name) / 'suites')   # no folder: no red is dropped (the fictional suites below are kept)
-        folder.start()
-        self.addCleanup(folder.stop)
+        self.present = None   # main's suite list unread: no red is dropped (the fictional suites below are kept)
         self.state = m.state(RUNS, lambda rid: JOBS.get(rid, []))
 
     def test_red_suites_are_the_newest_main_check_result(self):
@@ -83,7 +80,8 @@ class MainE2eState(unittest.TestCase):
             if registry is not None:
                 lanes.write_text(registry)
             output = io.StringIO()
-            with patch.object(m, 'LANES', lanes, create=True), patch.object(m, 'live', return_value=self.state), redirect_stdout(output):
+            with patch.object(m, 'LANES', lanes, create=True), patch.object(m, 'live', return_value=self.state), \
+                    patch.object(m, 'suites_on_main', return_value=self.present), redirect_stdout(output):
                 self.assertEqual(m.main(['--json']), 0)
             return json.loads(output.getvalue())
 
@@ -133,21 +131,28 @@ class MainE2eState(unittest.TestCase):
         self.state = m.state([run(9, 'E2E check · GitHub schedule (backup)')],
                              lambda _: [{'name': name, 'conclusion': 'failure'} for name in ('focusdismiss', 'apply-3of3', 'AI review of the screenshots')]
                              + [{'name': 'wizard', 'conclusion': 'success'}])
-        with tempfile.TemporaryDirectory() as tmp:
-            for suite in ('apply', 'wizard'):
-                (Path(tmp) / f'{suite}.mjs').write_text('// a suite on main\n')
-            with patch.object(m, 'SUITES', Path(tmp)):
-                self.assertEqual([suite for suite, _ in m.red(self.state)], ['apply'])
-                self.assertEqual([s['suite'] for s in self.report(None)['red']], ['apply'])
-            (Path(tmp) / 'apply.mjs').unlink()
-            (Path(tmp) / 'wizard.mjs').unlink()
-            with patch.object(m, 'SUITES', Path(tmp)):   # an empty or missing folder is unknown: every red stays (never a silent green)
-                self.assertEqual([suite for suite, _ in m.red(self.state)], ['AI review of the screenshots', 'apply', 'focusdismiss'])
+        self.assertEqual([suite for suite, _ in m.red(self.state, present={'apply', 'wizard'})], ['apply'])
+        self.present = {'apply', 'wizard'}
+        self.assertEqual([s['suite'] for s in self.report(None)['red']], ['apply'])
+        self.present = None   # main's list unread: unknown, every red stays (never a silent green)
+        self.assertEqual([s['suite'] for s in self.report(None)['red']], ['AI review of the screenshots', 'apply', 'focusdismiss'])
 
-    def test_the_suite_folder_is_the_one_the_plan_reads(self):
-        self.assertEqual(REAL_SUITES, ROOT / 'desktop/e2e/suites')
-        self.assertIn('SUITES = readdirSync(path.join(E2E, \'suites\'))', (ROOT / 'desktop/e2e/lib/context.mjs').read_text())
-        self.assertTrue((REAL_SUITES / 'apply.mjs').exists())
+    def test_main_s_suite_list_is_read_on_main_not_from_this_checkout(self):
+        # Why (Gitar on #2820): the gate runs from any checkout; a local folder behind main would drop the red of a suite added on main since.
+        calls = []
+        def gh(args):
+            calls.append(args)
+            return ['apply.mjs', 'wizard.mjs', 'README.md']
+        with patch.object(m, 'gh_json', side_effect=gh):
+            self.assertEqual(m.suites_on_main('o/r'), {'apply', 'wizard'})
+        self.assertIn('repos/o/r/contents/desktop/e2e/suites?ref=main', calls[0])
+        self.assertIn("SUITES = readdirSync(path.join(E2E, 'suites'))", (ROOT / 'desktop/e2e/lib/context.mjs').read_text(), 'the folder the plan lists')
+        for broken in (m.subprocess.CalledProcessError(1, 'gh'), json.JSONDecodeError('x', '', 0), OSError('no gh')):
+            with self.subTest(broken=type(broken).__name__), patch.object(m, 'gh_json', side_effect=broken):
+                self.assertIsNone(m.suites_on_main('o/r'))
+        for empty in ([], None, ['README.md']):
+            with self.subTest(empty=empty), patch.object(m, 'gh_json', return_value=empty):
+                self.assertIsNone(m.suites_on_main('o/r'), 'an empty list is unknown, never "every red is gone"')
 
     def test_an_older_green_does_not_hide_a_newer_red(self):
         self.assertEqual(self.state['interactions']['sha'], 'f' * 40)

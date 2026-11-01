@@ -30,6 +30,8 @@ on:
       - 'desktop/e2e/package.json'
       - 'desktop/e2e/package-lock.json'
       - 'desktop/lib/**'
+      - 'desktop/ready-fill/extension-storage.mjs'   # the extension layer's tests import it (it moved here from hosted/)
+      - 'desktop/ready-fill/fill-video.mjs'
       - 'desktop/renderer/**'
       - 'desktop/demo/**'
       - 'desktop/cv/**'

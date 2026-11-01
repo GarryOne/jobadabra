@@ -3,7 +3,7 @@
 // that drop only the person's trusted input. The driver (extension/input-gap.js) sets data-jobpilotto-driving around its own debugger input, which lets that through. The panel, the Stop chip
 // and the report card (ids starting jobpilotto) are never held. It lifts on ONE thing: the worker's verdict (apply-state.js: done, stopped, your-turn),
 // which reaches it as {type: 'applyState'} (and as 'stopped'); it tells the panel (onLift) so the panel leaves its centred, working look too: the two never drift apart. No timer, page event or removed layer lifts it
-// (owner, 27 Oct 2026: "Why we're so reactive? Who needs that reactivity? It causes glitches"); a page that deletes the layer gets it back. An extension reload ends the script itself. The animated aurora, sparkles and shimmer on it are panel-overlay-fx.js. Injected before review.js (panel-files.js). Guards: desktop/e2e/test/fill-overlay.test.mjs, desktop/test/fill-overlay.test.js.
+// (owner, 27 Oct 2026: "Why we're so reactive? Who needs that reactivity? It causes glitches"); a page that deletes the layer gets it back. An extension reload ends the script itself. The animated aurora, sparkles and shimmer on it are panel-overlay-fx.js. Injected before review.js (panel-files.js). Guards: desktop/integration/extension/fill-overlay.test.mjs, desktop/test/fill-overlay.test.js.
 // Early (owner, 27 Oct 2026: "at the time the webpage loads, can we instantly show the overlay"): the worker turns it on at the page's commit (early-dim.js), before the panel is injected. One copy per page:
 // a second injection (the panel's own, arm() in background.js) keeps the live copy, so the layer the early dim drew is the one the panel lifts.
 (() => {

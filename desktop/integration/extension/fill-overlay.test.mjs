@@ -4,8 +4,8 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {test} from 'node:test';
-import {startRealExtension} from '../lib/real-extension.mjs';
-import {extensionWorker} from '../lib/own-worker.mjs';
+import {startRealExtension} from '../../e2e/lib/real-extension.mjs';
+import {extensionWorker} from '../../e2e/lib/own-worker.mjs';
 
 const FORM = `<!doctype html><title>Senior Site Reliability Engineer</title><body style="height:3000px"><form><h1>Apply</h1>
 <label>Full name <input id="n" name="n" required></label><label>Email <input id="e" name="e" type="email" required></label><label>Phone <input name="p" required></label><label>City <input name="c" required></label></form>
@@ -19,7 +19,7 @@ const open = async (answer = {}) => {
   await app.page.evaluate(() => { location.hash = 'jobpilotto-fill'; });
   await app.page.waitForFunction(() => document.getElementById('jobpilotto-review-host')?.shadowRoot?.querySelector('.report-btn'), null, {timeout: 20000});
   const worker = await extensionWorker(app.context);
-  // Why-changed (27 Oct 2026, owner: one state, changed only on a verdict): a step is the worker saying the run is on (apply-state.js: `working`), an empty one its end (`done`), exactly as background.js progress() does;
+  // Why-changed (27 Oct 2026, owner: one state, changed only on a verdict): a step is the worker saying the run is on (apply-state.js: `working`); an empty one stands here for the run's end verdict (`done`): a fill pass inside the page no longer says done since #2803, only the fill's end does;
   // the page draws what it is told. `verdict(state)` pushes any other state the way the worker does.
   const verdict = state => worker.evaluate(async word => { const [tab] = await chrome.tabs.query({url: 'https://jobs.example.test/*'}); return chrome.tabs.sendMessage(tab.id, {type: 'applyState', state: word}); }, state);
   const step = async text => { await verdict(text ? 'working' : 'done'); return worker.evaluate(async words => { const [tab] = await chrome.tabs.query({url: 'https://jobs.example.test/*'}); return chrome.tabs.sendMessage(tab.id, {type: 'panelStep', text: words}); }, text); };

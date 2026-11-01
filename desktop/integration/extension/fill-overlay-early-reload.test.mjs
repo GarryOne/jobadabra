@@ -4,8 +4,8 @@
 // bottom-right corner in the finished look, then dimmed and centred for good. Guard for: extension/early-dim.js, extension/background.js (the tab is "in an Apply" from the app's open), review.js.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {startRealExtension} from '../lib/real-extension.mjs';
-import {extensionWorker} from '../lib/own-worker.mjs';
+import {startRealExtension} from '../../e2e/lib/real-extension.mjs';
+import {extensionWorker} from '../../e2e/lib/own-worker.mjs';
 
 // Two ways a posting replaces its own document at once: a reload (the mark stays in the address) and a script that moves to the same page without the mark (a redirect through the site's own router).
 const POSTING = how => `<!doctype html><title>ML Engineer</title><body><h1>ML Engineer</h1><p>Company background and project description.</p><script>if (!sessionStorage.once) { sessionStorage.once = '1'; setTimeout(() => { ${how} }, 350); }</script>`;

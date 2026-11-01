@@ -137,8 +137,14 @@ test('describeHolders: only on Windows; asks for the parent and command line of 
   let script = '';
   const said = describeHolders('8092 Electron | 4242 MsMpEng.exe', {platform: 'win32', run: (_shell, args) => { script = args.at(-1); return {stdout: '8092 <- 7424 C:\\app\\Electron.exe --user-data-dir=C:\\Temp\\jp-e2e-x\r\n'}; }});
   assert.match(script, /@\(8092,4242\)/);
+  assert.match(script, /parent running.*parent gone.*CreationDate.*MainWindowTitle/s, 'the answer says whether the parent still runs, when the process started and its window title');
   assert.equal(said, '8092 <- 7424 C:\\app\\Electron.exe --user-data-dir=C:\\Temp\\jp-e2e-x');
   assert.equal(describeHolders('8092 Electron', {platform: 'win32', run: () => { throw new Error('no powershell'); }}), '');
   await assert.rejects(waitForFolderFree('/p/data', {every: 1, timeout: 5, rename: () => { throw Object.assign(new Error('EPERM x'), {code: 'EPERM'}); }, exists: () => true, whoHasFiles: () => '8092 Electron', who: () => '', describe: files => `${files.split(' ')[0]} <- 7424 Electron.exe`}),
     /files in it are open in: 8092 Electron \(8092 <- 7424 Electron\.exe\)/);
+});
+
+test('the give-up message says which launcher pid the wait was started for', async () => {
+  await assert.rejects(waitForFolderFree('/p/data', {every: 1, timeout: 5, mainPid: 7424, rename: () => { throw Object.assign(new Error('EPERM x'), {code: 'EPERM'}); }, exists: () => true, whoHasFiles: () => '', who: () => ''}),
+    /the app's launcher was pid 7424/);
 });

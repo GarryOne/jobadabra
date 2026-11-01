@@ -1,0 +1,24 @@
+// A crash close ends the whole tree a launch started, not only the process Playwright holds. Guards lib/app.mjs closeApp.
+// Why (1 Nov 2026, #2717): on Windows Playwright starts Electron through a shell (shell: true), so app.process() is that shell and the real electron.exe is its child. closeApp killed the shell
+// when the app was still tearing down, the app went on as an orphan holding the profile (beta 41220959824: pid 8092, parent gone), and the next start of the same profile met it.
+import assert from 'node:assert/strict';
+import {spawn} from 'node:child_process';
+import {once} from 'node:events';
+import test from 'node:test';
+import {isAlive} from '../lib/app-tree.mjs';
+import {closeApp} from '../lib/app.mjs';
+
+const START_THE_APP = "const {spawn} = require('node:child_process'); const app = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], {stdio: 'ignore'}); console.log(app.pid); setInterval(() => {}, 1000);";
+const firstLine = async stream => { for await (const chunk of stream) return String(chunk).split('\n')[0]; return ''; };
+
+test('closing the app ends the program the launcher started, when only the launcher exits', async t => {
+  const launcher = spawn(process.execPath, ['-e', START_THE_APP], {stdio: ['ignore', 'pipe', 'ignore']});
+  const app = Number(await firstLine(launcher.stdout));
+  t.after(() => { for (const pid of [app, launcher.pid]) { try { process.kill(pid, 'SIGKILL'); } catch (error) { if (error.code !== 'ESRCH') throw error; } } });
+  assert.ok(isAlive(app), 'positive control: the program is running before the close');
+  // electron.exit(0) on Windows: the program the launcher started is tearing down, the launcher (a shell) is what Node sees leave first.
+  const exits = once(launcher, 'exit');
+  const fake = {process: () => launcher, evaluate: async () => { launcher.kill('SIGKILL'); await exits; }};
+  await closeApp(fake, {graceMs: 300});
+  assert.equal(isAlive(app), false, 'the program the launcher started is still running after the close: it would hold the profile the next start uses');
+});

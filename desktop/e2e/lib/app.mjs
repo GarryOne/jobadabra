@@ -2,7 +2,7 @@
 // Job: wait on state
 // Launch the real Jobadabra app (Electron) with a throwaway profile, like a first-time user, and drive it through Playwright.
 // Nothing here touches the real user's data: JOB_PILOTTO_USER_DATA points at a fresh temp folder and no .env is read.
-import {descendantsOf, holdersOf, listProcesses, waitTreeGone} from './app-tree.mjs';
+import {descendantsOf, endTree, holdersOf, listProcesses, waitTreeGone} from './app-tree.mjs';
 import {appLaunchEnv} from './app-env.mjs';
 import {journey} from './journey.mjs';
 import {ownerGuardEnv} from './owner-guard-env.mjs';
@@ -132,17 +132,25 @@ export const pickFile = (app, file) => app.evaluate(({dialog}, filePath) => {
   dialog.showOpenDialog = async () => ({canceled: false, filePaths: [filePath]});
 }, file);
 
-// The app has its own quit handling (it asks before closing while sessions run), so app.close() can wait forever. Exit it directly,
-// and kill the process if even that does not return.
-async function closeApp(app, {how = 'crash'} = {}) {
+/**
+ * Closes the app the hard way (how 'crash'; 'quit' is quitApp below). The app has its own quit handling (it asks before closing while sessions run), so app.close() can wait forever:
+ * exit it directly, then give everything the launch started `graceMs` to leave and end what stays. Takes the Playwright app; resolves when the whole tree is gone.
+ * Why (1 Nov 2026, #2717; beta 41220959824): on Windows Playwright starts Electron through a shell (shell: true), so app.process() is that shell and the app is its child. Killing only
+ * `child` while the app was still tearing down left the app running with its parent gone (pid 8092), holding the profile the next start of it uses; 20 s later the reset's folder wait failed.
+ * The tree is taken before the exit (a child's parent is lost once the parent dies). Guard: test/close-app-tree.test.mjs.
+ */
+export async function closeApp(app, {how = 'crash', graceMs = 5000} = {}) {
   if (how === 'quit') return quitApp(app);
+  const child = app.process();
+  let tree = [{pid: child.pid, ppid: 0, command: 'the launcher'}];
   try {
-    const child = app.process();
     if (process.platform === 'win32') await keyWritten(app);
-    console.log(`  ${new Date().toISOString()} e2e: closing the app (pid ${child.pid})`);   // tells the harness's exit from the app's own in logs/app.log
+    tree = [...tree, ...descendantsOf(listProcesses(), child.pid)];
+    console.log(`  ${new Date().toISOString()} e2e: closing the app (pid ${child.pid}, ${tree.length - 1} process(es) below it)`);   // tells the harness's exit from the app's own in logs/app.log
     await Promise.race([app.evaluate(({app: electron}) => electron.exit(0)).catch(() => {}), new Promise(resolve => setTimeout(resolve, 5000))]);
-    if (child.exitCode === null) child.kill('SIGKILL');
   } catch { /* the app is already gone */ }
+  const ended = await endTree(tree, {graceMs});
+  if (ended.length) console.log(`  e2e: ${ended.length} process(es) of the closed app were still running ${graceMs / 1000} s later and were ended: ${holdersOf(ended)}`);
 }
 
 /**

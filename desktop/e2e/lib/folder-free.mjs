@@ -55,11 +55,12 @@ export function fileHolders({run = spawnSync, platform = process.platform, dir =
 }
 
 // Windows: the parent and command line of the processes a `fileHolders` answer names ("pid name | pid name"), so the failure says whose they are: the old app's tree, or a copy that
-// started later. Why (31 Oct 2026, beta 41220959824: "files in it are open in: 8092 Electron" with no parent and the list cut at 25 entries). -> "pid <- parent command | …", or ''.
+// started later. Why (31 Oct 2026, beta 41220959824: "files in it are open in: 8092 Electron" with no parent and the list cut at 25 entries). -> "pid <- parent (parent state; started; window) command | …", or ''.
 export function describeHolders(answer, {run = spawnSync, platform = process.platform} = {}) {
   const pids = [...String(answer).matchAll(/(?:^| \| )(\d+) /g)].map(found => found[1]);
   if (platform !== 'win32' || !pids.length) return '';
-  const script = `Get-CimInstance Win32_Process | Where-Object { @(${pids.join(',')}) -contains $_.ProcessId } | ForEach-Object { "$($_.ProcessId) <- $($_.ParentProcessId) $($_.CommandLine)" }`;
+  // Why (1 Nov 2026, #2717): "8092 <- 7424" did not say whether 7424 still ran, when 8092 started, or whether it sat on a box (a window title). A parent that started after its child is a recycled pid: gone.
+  const script = `Get-CimInstance Win32_Process | Where-Object { @(${pids.join(',')}) -contains $_.ProcessId } | ForEach-Object { $up = Get-Process -Id $_.ParentProcessId -ErrorAction SilentlyContinue; $me = Get-Process -Id $_.ProcessId -ErrorAction SilentlyContinue; "$($_.ProcessId) <- $($_.ParentProcessId) ($(if ($up -and $up.StartTime -le $_.CreationDate) { 'parent running: ' + $up.ProcessName } else { 'parent gone' }); started $($_.CreationDate.ToString('HH:mm:ss')); window '$($me.MainWindowTitle)') $($_.CommandLine)" }`;
   try { return String(run('powershell', ['-NoProfile', '-Command', script], {encoding: 'utf8', timeout: POWERSHELL_MS, windowsHide: true}).stdout || '').trim().split(/\r?\n/).filter(Boolean).map(line => line.slice(0, 260)).join(' | '); } catch { return ''; }
 }
 
@@ -107,8 +108,9 @@ function withOwner(files, describe) {
 }
 
 /** The failure text of a folder that stayed held: how long, the OS error, whose files hold it, and the processes still running. */
-function heldMessage({waited, error, files, describe, who}) {
+function heldMessage({waited, error, files, describe, who, mainPid}) {
   const parts = [`the data folder stayed held by a process after the app exited (${waited / 1000} s): ${error.message}`];
+  if (mainPid) parts.push(`the app's launcher was pid ${mainPid}`);
   if (files) parts.push(`files in it are open in: ${withOwner(files, describe)}`);
   const running = who();
   if (running) parts.push(`processes still running: ${running}`);
@@ -126,7 +128,7 @@ export async function waitForFolderFree(dir, {timeout = 20000, every = 250, endA
   while (exists(dir)) {
     try { rename(dir, aside); rename(aside, dir); return waited; } catch (error) {
       if (!LOCKED.has(error.code)) throw error;
-      if (waited >= timeout) throw new Error(heldMessage({waited, error, files: whoHasFiles(), describe, who}));
+      if (waited >= timeout) throw new Error(heldMessage({waited, error, files: whoHasFiles(), describe, who, mainPid}));
       if (!ended && waited >= endAfter) { ended = true; const gone = end(mainPid); console.log(`  the data folder was still held after ${waited / 1000} s: ${gone.length ? `ended its leftover processes ${gone.join(', ')}` : `found none of the app's own processes to end (main pid ${mainPid || 'unknown'})`}`); }
       await pause(every); waited += every;
     }

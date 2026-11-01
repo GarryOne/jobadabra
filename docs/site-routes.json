@@ -148,6 +148,10 @@
    "kind": "app"
   },
   {
+   "path": "/api/synthetic/last",
+   "kind": "app"
+  },
+  {
    "path": "/api/trial/status",
    "kind": "app"
   },

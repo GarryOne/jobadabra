@@ -471,7 +471,7 @@ export default {
   // Cloudflare cron triggers (wrangler.toml): the pipeline's schedules start on time, with GitHub's own cron as the backup (src/scheduler.js).
   async scheduled(event, env, ctx) {
     // Awaited, not waitUntil: a start that failed then fails the cron itself, where Cloudflare's cron history shows it (scheduler.js).
-    await runScheduled(event, env, {dispatch, notify: text => reply(env, escapeHtml(text)).catch(() => {}), report: text => reportStart(env, text)});
+    await runScheduled(event, env, {dispatch, notify: text => reply(env, escapeHtml(text)).catch(() => {}), report: text => reportStart(env, text), heartbeatFetch: fetch});
   },
   async fetch(request, env, ctx) {
     const url = new URL(request.url);

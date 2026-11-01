@@ -11,6 +11,8 @@
 // One trigger for the night's four UTC hours (00-03): Cloudflare's free plan allows 5 cron triggers per ACCOUNT (other Workers hold 2), a sixth could not be registered
 // (5 Oct 2026), and a 4th trigger for this Worker was refused (14 Oct 2026): the hour that is 02:00 in Zurich starts the replay gate, the one that is 04:00 the nightly.
 // Why (31 Oct 2026, owner, "Worker cron"): GitHub never started #2648's sweep on schedule; reuse the stats trigger, keeping its UTC slots below.
+import {heartbeat} from './heartbeat.js';
+
 export const CRONS = ['0 0,1,2,3 * * *', '47 21,23,1 * * *', '*/10 * * * *'];
 
 // The night burn-in's five passes (UTC, HH:MM), spread over the night, never back to back. Each is the beta's own layout on the commit of pass 1 (e2e.yml input night_pass, desktop/e2e/lib/night-pass.mjs).
@@ -52,8 +54,10 @@ export const TITLES = {'desktop.yml': 'Nightly beta', 'e2e.yml': 'E2E check · o
 
 // dispatch(env, inputs, workflow) starts a workflow on main (index.js); notify(text) tells the owner when it could not, on Telegram; report(text) on GitHub, in the
 // watchdog's issue (watchdog.js), where the owner looks. Neither can reach anyone when the token is the problem: the GitHub-side watchdog covers that.
-export async function runScheduled(event, env, {dispatch, notify = async () => {}, report = async () => {}, now = new Date(event?.scheduledTime || Date.now())}) {
+// heartbeatFetch: on the ten-minute tick, ask the site from outside (heartbeat.js); null = not asked (the tests), index.js passes fetch.
+export async function runScheduled(event, env, {dispatch, notify = async () => {}, report = async () => {}, heartbeatFetch = null, now = new Date(event?.scheduledTime || Date.now())}) {
   const started = [], failed = [];
+  if (heartbeatFetch && event.cron === '*/10 * * * *') await heartbeat(now, {fetcher: heartbeatFetch, notify});   // never throws; first, so a failed start below cannot skip it
   for (const job of jobsFor(event.cron, now)) {
     try {
       try { await dispatch(env, job.inputs, job.workflow); }

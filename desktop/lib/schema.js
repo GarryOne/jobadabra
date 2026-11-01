@@ -12,6 +12,9 @@ import {call, normalise} from './notion.js';   // Notion-only: the Notion worksp
 // schema, the e2e harness's Notion stand-in included (it has only desktop/e2e's packages: '@anthropic-ai/sdk' not found on CI, 9 Oct 2026).
 import {ROOT as REPO} from './root.js';
 
+/** The one paragraph a page the app builds starts with; a page holding only this has nothing of the person's yet (lib/migrate.js 'strategy from this Mac' treats it as blank, #2759). */
+export const PLACEHOLDER = 'Filled in by Jobadabra.';
+
 export function load(file = path.join(REPO, 'config', 'notion_schema.json')) {
   try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return null; }
 }
@@ -164,7 +167,7 @@ export async function repair(token, ids, schema = load(), fetcher, root = null) 
     if (out.ids[env] || page.made_by) continue;
     const made = await api('POST', 'pages', {parent: {page_id: await parent()}, icon: {type: 'emoji', emoji: page.emoji},
       properties: {title: {title: [{text: {content: page.title}}]}},
-      children: [{object: 'block', type: 'paragraph', paragraph: {rich_text: [{type: 'text', text: {content: 'Filled in by Jobadabra.'}}]}}]});
+      children: [{object: 'block', type: 'paragraph', paragraph: {rich_text: [{type: 'text', text: {content: PLACEHOLDER}}]}}]});
     out.ids[env] = made.id.replace(/-/g, '');
     out.created.push(page.title);
   }

@@ -7,7 +7,7 @@ set -euo pipefail
 # org; it publishes to whichever exists (STARTER_REPO overrides), and never creates a repo by itself: a wrong name must not make a new public template.
 repo=${STARTER_REPO:-}
 for candidate in jobadabra/jobadabra-user-template GarryOne/job-pilotto-starter; do
-  [ -n "$repo" ] || { gh repo view "$candidate" >/dev/null 2>&1 && repo=$candidate; }
+  [ -n "$repo" ] || { gh api "repos/$candidate" >/dev/null 2>&1 && repo=$candidate; }
 done
 [ -n "$repo" ] || { echo "publish-starter: no starter template repo found (set STARTER_REPO)" >&2; exit 1; }
 root="$(git rev-parse --show-toplevel)"

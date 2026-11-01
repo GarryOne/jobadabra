@@ -40,3 +40,19 @@ test('closing an app that already exited by itself (a reset, an import) is quiet
   await closeApp(gone);
   await closeApp(gone, {how: 'crash', graceMs: 10});
 });
+
+// Why (1 Nov 2026, beta #4 run 41309751593, Windows apply-2of3): the close listed 155 processes "below" the app, because Windows keeps a dead parent's pid as the parent id of what it made and
+// a newer process can take that pid. The runner's own processes were among them and were ended. A process created before the app is not its child, whatever its parent id says.
+test('closing the app ends what the app started and leaves a live process whose parent id is the launcher\'s pid but was created before it', async t => {
+  const launcher = spawn(process.execPath, ['-e', START_THE_APP], {stdio: ['ignore', 'pipe', 'ignore']});
+  const app = Number(await firstLine(launcher.stdout));
+  const bystander = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], {stdio: 'ignore'});   // stands for a runner process: alive, not the app's
+  t.after(() => { for (const pid of [app, launcher.pid, bystander.pid]) { try { process.kill(pid, 'SIGKILL'); } catch (error) { if (error.code !== 'ESRCH') throw error; } } });
+  const row = (pid, ppid, started, command) => ({pid, ppid, started, command});
+  const list = () => [row(launcher.pid, process.pid, 2000, 'launcher'), row(app, launcher.pid, 2500, 'the app'), row(bystander.pid, launcher.pid, 1000, 'bystander: made before the launcher by the pid\'s earlier owner')];
+  const exits = once(launcher, 'exit');
+  const fake = {process: () => launcher, evaluate: async fn => { if (!/exit\(/.test(String(fn))) return ''; launcher.kill('SIGKILL'); await exits; }};
+  await closeApp(fake, {graceMs: 300, list});
+  assert.equal(isAlive(app), false, 'the program the launcher started is still running after the close');
+  assert.equal(isAlive(bystander.pid), true, 'a process that is not the app\'s was ended by the close (a stale parent id took it into the tree)');
+});

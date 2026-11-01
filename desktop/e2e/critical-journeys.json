@@ -28,6 +28,7 @@
    "id": "J2",
    "name": "Find jobs: a check reads feeds, drops wrong roles, scores",
    "steps": [
+    {"suite": "jobs", "step": "the app's next start links this workspace's Search settings page (so the check looks for this person's roles and places)"},
     {"suite": "jobs", "step": "a jobs check reads the fixture feeds, drops the wrong roles and scores the matching jobs"},
     {"suite": "jobs", "step": "every scored job in the Jobs list is its Job Matches record, with the same score, and none is missing"}
    ],
@@ -166,6 +167,14 @@
    "tier": 2,
    "steps": [
     {"suite": "settings", "step": "Settings render without layout problems"}
+   ]
+  },
+  {
+   "id": "J18",
+   "name": "Interviews: an interview is linked to a job and unlinked again",
+   "tier": 2,
+   "steps": [
+    {"suite": "interviews", "step": "an interview can be linked to a job and unlinked again, and Notion follows"}
    ]
   }
  ],

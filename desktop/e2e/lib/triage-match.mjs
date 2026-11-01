@@ -1,5 +1,6 @@
 // Self-healing triage, part 3: matching a finding to an open issue, sightings, regressions, ranking and priorities, the scorecard, and which issue is ready for a fixer.
 // Re-exported by triage.mjs; guarded by desktop/e2e/test/triage.test.mjs (and the other triage-*.test.mjs, severity, a11y, prejudge, regress-flaky tests).
+// Job: report health
 import {afterEpoch} from './stats-epoch.mjs';
 import {LABEL, NEEDS_HUMAN, FALSE_POSITIVE, CONFIRMED, NOT_SEEN, SIGHTINGS_NEEDED, LOGIC_KINDS, FIX_KINDS, allowedPath, labelFor} from './triage-findings.mjs';
 import {foundText, similar} from './triage-issues.mjs';
@@ -10,11 +11,21 @@ import {resolutionOf} from './resolution.mjs';
 // At most this many NEW issues from the AI screenshot review in one run, the highest severity first (owner, 4 Oct 2026: "no need to invent trivial bugs"). A full run that finds more than
 // this is more likely noisy than broken; the rest are dropped, and a real one shows again in the next run.
 export const MAX_NEW_AI_PER_RUN = 3;
-export function capNewAi(plan, max = MAX_NEW_AI_PER_RUN) {
-  const fresh = plan.filter(item => !item.existing && !item.twin && item.finding.source === 'ai-review');
-  const rank = item => ({high: 0, medium: 1, low: 2})[item.finding.severity] ?? 3;
+/** A finding no issue holds yet, in this run or on the Mac. */
+export const isFresh = ({existing, twin}) => !existing && !twin;
+/** Keeps at most `max` new AI-review findings: judged ones first (`judged(finding)` true), then the highest severity. */
+export function capNewAi(plan, max = MAX_NEW_AI_PER_RUN, judged = () => false) {
+  const fresh = plan.filter(item => isFresh(item) && item.finding.source === 'ai-review');
+  const rank = item => (judged(item.finding) ? 0 : 4) + (({high: 0, medium: 1, low: 2})[item.finding.severity] ?? 3);
   const keep = new Set([...fresh].sort((a, b) => rank(a) - rank(b)).slice(0, max));
   return plan.filter(item => !fresh.includes(item) || keep.has(item));
+}
+/** The cap after the pre-filing judge: findings judged noise take no slot, and one the judge let through goes before one it never read (owner via mac-07, 1 Nov 2026;
+ *  Gitar on #2853: past PREJUDGE_MAX a finding has no verdict). -> {plan, cut}: what goes on, and the new AI findings over the cap. */
+export function capAfterNoise(planAll, noise, judged = () => false, max = MAX_NEW_AI_PER_RUN) {
+  const rest = planAll.filter(item => !noise.includes(item));
+  const plan = capNewAi(rest, max, judged);
+  return {plan, cut: rest.filter(item => !plan.includes(item))};
 }
 // What the filters cut this run, as a table the owner can read (4 Oct 2026: to tell whether the Finder is too restrictive).
 export function droppedTable(dropped, max = 30) {

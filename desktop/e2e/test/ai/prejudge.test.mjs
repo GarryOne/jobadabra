@@ -78,6 +78,41 @@ test('a run with verdicts: noise is not filed and is remembered, real is filed c
   assert.deepEqual(next.pending.map(item => item.view), ['jobs'], 'the remembered noise is not judged again');
 });
 
+test('owner, 1 Nov 2026: only findings the judge let through use the 3-new-issues cap; noise never takes a slot from a real one (run 41314669803 filed 0, cut 7 unjudged)', async () => {
+  const {triage} = await import('../../triage.mjs');
+  const fs = await import('node:fs'), os = await import('node:os'), path = await import('node:path');
+  const run = (views, noisy) => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'prejudge-cap-'));
+    fs.mkdirSync(path.join(dir, 'e2e-artifacts-interactions'));
+    const findings = views.map(view => ({view, kind: 'functionality', severity: 'medium', title: `Retry on ${view} cannot work`, detail: `Retry shows on ${view} while no AI key is saved`, impact: 'they press it and nothing happens'}));
+    fs.writeFileSync(path.join(dir, 'e2e-artifacts-interactions', 'ai-findings.json'), JSON.stringify({findings}));
+    const created = [];
+    const gh = args => {
+      if (args[0] === 'issue' && args[1] === 'list') return '[]';
+      if (args[0] === 'issue' && args[1] === 'create') { const labels = args.includes('--label') ? args[args.indexOf('--label') + 1] : ''; if (labels !== 'noise-register') created.push(args[args.indexOf('--title') + 1]); return `https://github.com/o/r/issues/${created.length + 1}`; }
+      return args[0] === 'pr' ? '[]' : '';
+    };
+    const pending = triage({artifacts: dir, runUrl: 'https://x/runs/1', gh, pendingOnly: true}).pending;
+    const verdicts = Object.fromEntries(pending.map(item => [item.id, noisy.includes(item.view) ? 'false-positive\nWhy: by design.' : 'real\nWhy: desktop/renderer/pages/jobs.js:1 offers it.']));
+    triage({artifacts: dir, runUrl: 'https://x/runs/1', gh, verdicts});
+    return {pending: pending.map(item => item.view).sort(), filed: created.filter(title => title.startsWith('[auto-ui]')).map(title => title.split(':')[0].replace('[auto-ui] ', '')).sort()};
+  };
+  const five = run(['focus', 'jobs', 'actions', 'settings', 'strategy'], ['focus', 'jobs', 'actions']);
+  assert.equal(five.pending.length, 5, 'every new finding is judged, not only the first three');
+  assert.deepEqual(five.filed, ['settings', 'strategy'], 'the two real ones are filed though three noisy ones came first');
+  const six = run(['focus', 'jobs', 'actions', 'settings', 'strategy', 'profile'], ['focus']);
+  assert.equal(six.filed.length, 3, 'the cap still holds for findings the judge let through');
+});
+
+test('Gitar on #2853: past the judge\'s limit a finding has no verdict, and one the judge let through goes before it, even a lower one', async () => {
+  const {capAfterNoise} = await import('../../lib/triage.mjs');
+  const item = (id, severity) => ({finding: finding(id, severity), existing: null, twin: null});
+  const all = [item('u1', 'high'), item('u2', 'high'), item('j1', 'medium'), item('j2', 'medium'), item('n', 'high')];
+  const {plan, cut} = capAfterNoise(all, [all[4]], one => one.id.startsWith('j'));
+  assert.deepEqual(plan.map(one => one.finding.id), ['u1', 'j1', 'j2']);
+  assert.deepEqual(cut.map(one => one.finding.id), ['u2']);
+});
+
 test('noise judged before filing still counts: a false positive of its detector for the numbers and the weekly lessons, but not for the breaker', async () => {
   const {classify, detectorOf, build} = await import('../../lib/selfheal-stats.mjs');
   const {noiseTripped} = await import('../../lib/plan.mjs');

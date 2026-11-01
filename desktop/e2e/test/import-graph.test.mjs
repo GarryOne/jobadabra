@@ -73,15 +73,15 @@ test('the real tree: the audited PRs pick the watched suites their files reach, 
   assert.deepEqual(pick(['src/ai/mail_lines.py']), ['qualityai']);
 });
 
-test('every file a suite watches, imports included, starts pr-suites.yml (else the plan never runs: #2043)', async () => {
+test('every file a suite watches, imports included, starts main-steps.yml (else the plan never runs: #2043; since 1 Nov 2026 only after a merge)', async () => {
   const {suiteFacts} = await import('../plan-run.mjs');
   const facts = await suiteFacts();
   const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
-  const yml = (await import('node:fs')).readFileSync(path.join(repo, '.github', 'workflows', 'pr-suites.yml'), 'utf8');
+  const yml = (await import('node:fs')).readFileSync(path.join(repo, '.github', 'workflows', 'main-steps.yml'), 'utf8');
   const globs = [...yml.split('\npermissions:')[0].matchAll(/^\s+- '([^']+)'/gm)].map(m => m[1]);
   const starts = file => globs.some(glob => (glob.endsWith('/**') ? file.startsWith(glob.slice(0, -2)) : file === glob));
   const watched = watchesWithImports(facts.watches);
   assert.ok(watched.quality.includes('src/ai/schema_notes.py'), 'positive control');
   const missing = Object.entries(watched).flatMap(([suite, files]) => files.filter(file => !starts(file.endsWith('/') ? `${file}x.js` : file)).map(file => `${suite}: ${file}`));
-  assert.deepEqual(missing, [], 'add these to pr-suites.yml paths');
+  assert.deepEqual(missing, [], 'add these to main-steps.yml push paths');
 });

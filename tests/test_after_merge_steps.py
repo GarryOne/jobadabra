@@ -19,12 +19,13 @@ def paths(text, event):
 
 
 class MainSteps(unittest.TestCase):
-    def test_a_push_to_main_with_the_files_a_pr_check_watches(self):
+    def test_a_push_to_main_with_the_files_the_steps_watch(self):
         self.assertRegex(FLOW, r"(?m)^  push:\n    branches: \[main\]")
-        # Less the CI plumbing a PR watches only for its one Windows smoke (PR 3): after a merge no Windows check runs.
-        # Why (30 Oct 2026, a8, burn-in; 1 Nov 2026: admission dropped): lanes.json still starts a PR run (see pr-suites.yml), but after its merge there is nothing to plan from it.
-        pr = paths((ROOT / '.github/workflows/pr-suites.yml').read_text(), 'pull_request') - {'.github/workflows/pr-suites.yml', '.github/**', 'tools/*.sh', 'desktop/scripts/*.sh', 'desktop/e2e/lanes.json'}
-        self.assertEqual(paths(FLOW, 'push') - {'.github/workflows/main-steps.yml'}, pr, 'a file a PR runs steps for runs them after its merge too')
+        # Why (1 Nov 2026, owner: "No e2e on PRs"): pr-suites.yml is gone, so the steps of a change run only here, after its merge; the files that reach a step must start this workflow.
+        push = paths(FLOW, 'push')
+        for watched in ('desktop/renderer/**', 'desktop/lib/**', 'desktop/main.js', 'desktop/e2e/suites/**', 'desktop/e2e/lib/**', 'extension/**', 'src/ai/**'):
+            self.assertIn(watched, push)
+        self.assertFalse((ROOT / '.github/workflows/pr-suites.yml').exists(), 'no PR runs e2e')
 
     def test_plans_from_the_push_s_own_diff_and_starts_e2e_on_main(self):
         self.assertIn('BEFORE: ${{ github.event.before }}', FLOW)

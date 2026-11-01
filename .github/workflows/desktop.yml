@@ -1491,6 +1491,8 @@ jobs:
       cancel-in-progress: false   # two lanes at most: one runs, one waits, none is cancelled
     env:
       E2E_ARTIFACT_SECRET_NAMES: |
+        CI_ALERTS_TELEGRAM_BOT_TOKEN
+        CI_ALERTS_TELEGRAM_CHAT_ID
         GH_TOKEN
         GITHUB_TOKEN
       GH_TOKEN: ${{ github.token }}
@@ -1673,6 +1675,8 @@ jobs:
       cancel-in-progress: false   # two lanes at most: one runs, one waits, none is cancelled
     env:
       E2E_ARTIFACT_SECRET_NAMES: |
+        CI_ALERTS_TELEGRAM_BOT_TOKEN
+        CI_ALERTS_TELEGRAM_CHAT_ID
         GH_TOKEN
         GITHUB_TOKEN
       GH_TOKEN: ${{ github.token }}

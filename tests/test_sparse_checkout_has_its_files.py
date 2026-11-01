@@ -12,6 +12,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 WORKFLOWS = sorted((ROOT / '.github' / 'workflows').glob('*.yml'))
 SPARSE = re.compile(r'^(?P<indent> +)sparse-checkout: \|\n(?P<body>(?:(?P=indent) {2,}\S.*\n)+)', re.M)
+SPARSE_ONE_LINE = re.compile(r'^ +sparse-checkout: (?P<body>[^\s|#][^\n#]*?)\s*(?:#.*)?$', re.M)   # `sparse-checkout: worker`: the block form's twin
 RUNS = re.compile(r'(?<![\w/.-])(?:python3?|node|bash|sh)\s+"?(\$GITHUB_WORKSPACE/|\./)?((?:\.\./)*[\w][\w./-]*\.(?:py|mjs|js|sh))\b')
 CD = re.compile(r'^\s*(\()?\s*cd\s+([\w./-]+)\s*(?:&&|;|$)')   # `cd dir && cmd` or a line of its own; `(cd dir && cmd)` stays in its parentheses
 # A file a step runs that is not in the repo at the commit: made by an earlier step of the job. Why (1 Nov 2026, a8; Gitar on #2768): without this list a path the guard cannot
@@ -37,7 +38,10 @@ def checkout_of(step):
     path = re.search(r'^\s+path:\s*(\S+)', step, re.M)
     ref = re.search(r'^\s+ref:\s*(.+?)(?:\s+#.*)?$', step, re.M)
     sparse = SPARSE.search(step + '\n')   # the split ate the newline after the step's last line
-    return (path.group(1) if path else '', sparse.group('body').split() if sparse else None, ref.group(1).strip() if ref else None)
+    one_line = None if sparse else SPARSE_ONE_LINE.search(step)
+    # Why (1 Nov 2026, nm; found on schedule-watchdog.yml): the guard read only the block form, so `sparse-checkout: worker` counted as no sparse list and passed while the
+    # job ran app-core/scripts/watchdog.mjs, a file that checkout did not bring (the watchdog was dead behind `|| true` from #2882 until this guard saw it).
+    return (path.group(1) if path else '', sparse.group('body').split() if sparse else one_line.group('body').split() if one_line else None, ref.group(1).strip() if ref else None)
 
 
 def checkouts(job):

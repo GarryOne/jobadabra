@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {test} from 'node:test';
 import {TITLES} from '../src/scheduler.js';
-import {dueStarts, fires, issueBody, keyOf, missingStarts, recoveredComment, startedAt} from '../src/watchdog.js';
+import {dueStarts, fires, issueBody, keyOf, missingStarts, recoveredComment, ROUND_STALE_MIN, roundFromIssue, staleRound, startedAt} from '../src/watchdog.js';
 
 const at = iso => new Date(iso);
 
@@ -44,4 +44,36 @@ test('each workflow shows the title the scheduler gives its on-time start', () =
   const file = name => fs.readFileSync(new URL(`../../.github/workflows/${name}`, import.meta.url), 'utf8');
   for (const [workflow, title] of Object.entries(TITLES)) assert.ok(file(workflow).includes(`'${title}'`), `${workflow} run-name says '${title}'`);
   assert.match(file('self-heal-stats.yml'), /inputs:\n\s+scheduled:/, 'the stats workflow takes the input the Worker sends (an undeclared one is refused: 422)');
+});
+
+test('the probe round is one more missing start only when its newest stored round is older than 45 min; an unreadable or empty answer is not judged', () => {
+  const now = at('2026-11-01T12:00:00Z');
+  assert.equal(ROUND_STALE_MIN, 45);
+  assert.equal(staleRound({at: '2026-11-01T11:20:00Z'}, now), null, '40 min old: still on time');
+  const stale = staleRound({at: '2026-11-01T10:50:00Z'}, now);
+  assert.deepEqual([stale.round, stale.workflow, stale.at], [true, 'synthetic-probe-round', '2026-11-01T10:50:00Z']);
+  for (const unread of [null, undefined, {}, {at: null}, {at: 'not a date'}, {at: 5}]) assert.equal(staleRound(unread, now), null, JSON.stringify(unread));
+});
+
+test('the issue names the stale round and its tab; the check list is only for starts; the key does not change while the same round stays stale', () => {
+  const round = staleRound({at: '2026-11-01T10:50:00Z'}, at('2026-11-01T12:00:00Z'));
+  const only = issueBody([round], {checked: '2026-11-01T12:23:00Z'});
+  assert.match(only, /The site Worker's probe rounds stopped/);
+  assert.match(only, /none stored since 2026-11-01 10:50 UTC/);
+  assert.match(only, /Synthetic Monitoring tab/);
+  assert.doesNotMatch(only, /did not start|wrangler secret list/, 'no start is missing: the start checklist would send the reader the wrong way');
+  const both = issueBody([{workflow: 'e2e.yml', cron: '47 21,23,1 * * *', at: '2026-11-01T01:47:00.000Z'}, round], {checked: '2026-11-01T12:23:00Z'});
+  assert.match(both, /did not start this run on time/);
+  assert.match(both, /wrangler secret list/);
+  assert.match(both, /probe rounds/);
+  assert.equal(keyOf([round]), keyOf([staleRound({at: '2026-11-01T10:50:00Z'}, at('2026-11-01T14:00:00Z'))]), 'two hours later the same stale round gives the same key: no new comment');
+});
+
+test('a round the read could not judge keeps what the open issue says about it: the same key, never "recovered" (Gitar on #2895)', () => {
+  const round = staleRound({at: '2026-11-01T10:50:00Z'}, at('2026-11-01T12:00:00Z')), body = issueBody([round], {checked: '2026-11-01T12:23:00Z'});
+  const kept = roundFromIssue(body);
+  assert.equal(keyOf([kept]), keyOf([round]), 'carried over, the key is unchanged: no edit, no comment, no close');
+  assert.equal(kept.round, true);
+  assert.equal(roundFromIssue(issueBody([{workflow: 'e2e.yml', cron: '47 21,23,1 * * *', at: '2026-11-01T01:47:00.000Z'}], {checked: '2026-11-01T12:23:00Z'})), null, 'an issue about starts only has no round to keep');
+  for (const none of [undefined, null, '', 'no marker']) assert.equal(roundFromIssue(none), null);
 });

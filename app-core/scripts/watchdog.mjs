@@ -1,11 +1,11 @@
 // The watchdog of the Worker's on-time starts, on GitHub (schedule-watchdog.yml; the rules are src/watchdog.js):
 //   node app-core/scripts/watchdog.mjs [--dry]       needs gh (GH_TOKEN in CI). --dry prints what it would do and changes nothing.
-// A start missing -> one issue (label schedule-watchdog) is opened, or its body updated and a comment added when the missing set changed. Every start seen -> closed.
+// A start missing, or the probe round stale (45 min) -> one issue (label schedule-watchdog) is opened, or its body updated and a comment added when the missing set changed. Every start seen -> closed.
 import {execFileSync} from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {dueStarts, issueBody, keyOf, LABEL, missingStarts, recoveredComment, TITLE} from '../src/watchdog.js';
+import {dueStarts, issueBody, keyOf, LABEL, missingStarts, recoveredComment, roundFromIssue, staleRound, TITLE} from '../src/watchdog.js';
 
 const dry = process.argv.includes('--dry');
 const gh = args => execFileSync('gh', args, {encoding: 'utf8'});
@@ -16,10 +16,15 @@ const runUrl = process.env.GITHUB_RUN_ID ? `${process.env.GITHUB_SERVER_URL}/${p
 const due = dueStarts(now);
 const runsOf = Object.fromEntries(due.map(item => [item.workflow,
   JSON.parse(gh(['run', 'list', '--workflow', item.workflow, '--limit', '100', '--json', 'createdAt,displayTitle,event,url']))]));
-const missing = missingStarts(due, runsOf);
+// The site Worker's newest probe round, asked from outside Cloudflare (nm, rs, 1 Nov 2026): a failed read is not judged, never a missing round.
+const last = await fetch('https://www.jobadabra.top/api/synthetic/last', {signal: AbortSignal.timeout(15000)}).then(response => (response.ok ? response.json() : null)).catch(() => null);
+const [open] = JSON.parse(gh(['issue', 'list', '--label', LABEL, '--state', 'open', '--limit', '1', '--json', 'number,body']));
+// An unreadable round keeps what the open issue already says about it (not judged = unchanged, never recovered); a readable one decides.
+const round = last ? staleRound(last, now) : roundFromIssue(open?.body);
+console.log(`synthetic probe round: ${last ? `newest ${last.at || 'none stored'}` : `not readable, not judged${round ? ', the open issue keeps it' : ''}`}${round ? ': STALE' : ''}`);
+const missing = [...missingStarts(due, runsOf), ...(round ? [round] : [])];
 for (const item of due) console.log(`${item.workflow} due ${item.at}: ${missing.includes(item) ? 'MISSING' : 'started'}`);
 
-const [open] = JSON.parse(gh(['issue', 'list', '--label', LABEL, '--state', 'open', '--limit', '1', '--json', 'number,body']));
 const bodyFile = path.join(os.tmpdir(), 'watchdog-body.md');
 if (missing.length) {
   const body = issueBody(missing, {checked: now.toISOString(), runUrl});

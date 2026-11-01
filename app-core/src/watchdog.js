@@ -44,16 +44,41 @@ export function startedAt(due, runs = []) {
 // runsOf: {workflow: [{createdAt, displayTitle, event, url}]} -> the due starts that have no run.
 export const missingStarts = (due, runsOf) => due.filter(item => !startedAt(item, runsOf[item.workflow] || []));
 
+export const ROUND_STALE_MIN = 45;   // the site Worker's probe round runs every 15 min; shared/synthetic.js readCard() calls it stale after the same 45
+/**
+ * The site Worker's probe round as one more missing start: `last` is the answer of GET /api/synthetic/last ({at}), `null` when it could not be read.
+ * Stale only on a readable `at` older than ROUND_STALE_MIN; a failed read or a table with no round yet is not judged (a runner's network blip must not open an issue,
+ * and a dead site Worker already shows as its missing starts). `at` stays the newest stored round, so the issue key does not change while the round stays stale.
+ * Why (1 Nov 2026, nm, rs): the outside heartbeat lived in the bot Worker that is deleted; this is what of it the Worker-free watchdog can still say.
+ */
+export function staleRound(last, now = new Date()) {
+  const at = last && typeof last.at === 'string' && !Number.isNaN(Date.parse(last.at)) ? last.at : '';
+  if (!at || now.getTime() - Date.parse(at) <= ROUND_STALE_MIN * 60000) return null;
+  return {round: true, workflow: 'synthetic-probe-round', cron: ROUND_CRON, at};
+}
+const ROUND_CRON = '5,20,35,50 * * * *';
+/**
+ * The stale round an open issue already names in its key, for a run that could not read the round: "not judged" must mean "unchanged", never "recovered" (Gitar on #2895: one
+ * failed read closed the issue with "every start was seen again" and the next good read opened a new one). Only a successful read that finds the round fresh closes it.
+ */
+export function roundFromIssue(body) {
+  const found = /synthetic-probe-round@(\d{4}-\d{2}-\d{2}T\d{2}:\d{2})/.exec(String(body || ''));
+  return found ? {round: true, workflow: 'synthetic-probe-round', cron: ROUND_CRON, at: `${found[1]}:00.000Z`} : null;
+}
+
 const clock = iso => `${iso.slice(0, 10)} ${iso.slice(11, 16)} UTC`;
 /** The text the open issue is keyed by: each missing start as workflow[#night n/5]@time, so an unchanged set is not commented again. */
 export const keyOf = missing => missing.map(item => `${item.workflow}${item.night ? `#night${item.night}` : ''}@${item.at.slice(0, 16)}`).join(',');
 export function issueBody(missing, {checked, runUrl = ''} = {}) {
-  return [`**The Worker's cron did not start ${missing.length === 1 ? 'this run' : `these ${missing.length} runs`} on time** (checked ${clock(checked)}${runUrl ? `, [watchdog run](${runUrl})` : ''}):`, '',
-    '| Workflow | Due | Cron |', '|---|---|---|', ...missing.map(item => `| \`${item.workflow}\`${item.night ? ` night pass ${item.night}` : ''} | ${clock(item.at)} | \`${item.cron}\` |`), '',
-    "GitHub's own schedule still starts them, late or not at all (it skipped 4 of 6 stats runs on 5-6 Oct). What to check:",
+  const starts = missing.filter(item => !item.round), round = missing.find(item => item.round), seen = `(checked ${clock(checked)}${runUrl ? `, [watchdog run](${runUrl})` : ''})`;
+  return [starts.length ? `**The Worker's cron did not start ${starts.length === 1 ? 'this run' : `these ${starts.length} runs`} on time** ${seen}:` : `**The site Worker's probe rounds stopped** ${seen}:`, '',
+    '| Workflow | Due | Cron |', '|---|---|---|', ...missing.map(item => (item.round ? `| synthetic probe rounds | none stored since ${clock(item.at)} | \`${item.cron}\` |`
+      : `| \`${item.workflow}\`${item.night ? ` night pass ${item.night}` : ''} | ${clock(item.at)} | \`${item.cron}\` |`)), '',
+    ...(round ? ['The probe round (`shared/synthetic.js` in jobadabra-web, started by the site Worker) stored nothing for over 45 min while the site answers: see the Synthetic Monitoring tab in /admin/testing, the Worker logs and the `synthetic_probes` table.', ''] : []),
+    ...(starts.length ? ["GitHub's own schedule still starts them, late or not at all (it skipped 4 of 6 stats runs on 5-6 Oct). What to check:",
     '- the Worker\'s secrets: `cd worker && npx wrangler secret list` (GITHUB_TOKEN, TELEGRAM_BOT_TOKEN, OWNER_CHAT_ID; `npm run deploy` checks them)',
     "- a refused start is commented here by the Worker itself, with GitHub's answer",
-    '- the schedule: `app-core/src/scheduler.js` and `worker/wrangler.toml` [triggers]', '',
+    '- the schedule: `app-core/src/scheduler.js` and `worker/wrangler.toml` [triggers]', ''] : []),
     `<sub>Kept by \`.github/workflows/schedule-watchdog.yml\` (\`app-core/src/watchdog.js\`): updated each hour while a start is missing, closed when every one is seen again.</sub>`,
     `<!-- watchdog-missing: ${keyOf(missing)} -->`].join('\n');
 }

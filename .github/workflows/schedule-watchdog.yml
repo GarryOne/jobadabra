@@ -24,9 +24,9 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          sparse-checkout: worker
+          sparse-checkout: app-core   # Why (1 Nov 2026, nm): #2882 moved the script to app-core/ and left `worker` here, so every run died on a missing file behind `|| true`; guard tests/test_sparse_checkout_has_its_files.py
       - uses: actions/setup-node@v5
         with:
           node-version: '22'
       - name: The on-time starts, and the issue that says which are missing
-        run: node app-core/scripts/watchdog.mjs || true
+        run: node app-core/scripts/watchdog.mjs   # no `|| true` (1 Nov 2026, nm): a watchdog that cannot run must show red on the Scheduled tab, not stay silent

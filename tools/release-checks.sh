@@ -16,10 +16,10 @@ if [ "$mode" != after-ci ]; then
   # wait for it, bounded, and decide on its result; only red, cancelled (see below) or a run still going after the wait stop the release.
   wait_max=${RELEASE_CI_WAIT:-3600}; poll=${RELEASE_CI_POLL:-30}; waited=0; said=-60; seen=""
   while :; do
-    open=$(gh run list -R "$repo" --workflow build.yml --commit "$ref" --json status --jq '[.[] | select(.status != "completed")] | length' 2>/dev/null) || open=0
-    case "$open" in ''|*[!0-9]*) open=0;; esac
-    [ "$open" -gt 0 ] || break
-    seen="$seen $(gh run list -R "$repo" --workflow build.yml --commit "$ref" --json databaseId,status --jq '[.[] | select(.status != "completed") | .databaseId | tostring] | join(" ")' 2>/dev/null || true)"
+    # One read per poll: the count of open runs and their ids come from the same response, so a run that ends between two reads cannot be counted open and then lost (Gitar on #2896).
+    ids=$(gh run list -R "$repo" --workflow build.yml --commit "$ref" --json databaseId,status --jq '[.[] | select(.status != "completed") | .databaseId | tostring] | join(" ")' 2>/dev/null) || ids=""
+    [ -n "$ids" ] || break
+    seen="$seen $ids"
     if [ "$waited" -ge "$wait_max" ]; then echo "build.yml on ${ref:0:7} is still running after ${waited} s: not waiting any longer."; break; fi
     if [ $((waited - said)) -ge 60 ]; then echo "build.yml on ${ref:0:7} is still running; waiting (${waited} s of ${wait_max} s)"; said=$waited; fi
     sleep "$poll"; waited=$((waited + poll))

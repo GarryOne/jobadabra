@@ -19,14 +19,11 @@ import json, os, sys
 state = os.environ['FAKE_STATE']
 args = sys.argv[1:]
 if args[:2] == ['run', 'list']:
-    if 'databaseId,status' in args:   # the ids of the runs seen open
-        print('101')
-        sys.exit(0)
-    if '--jq' in args:
+    if 'databaseId,status' in args:   # the ids of the runs seen open, one read per poll: open.json gives the count of open runs at each call
         counts = json.load(open(os.path.join(state, 'open.json')))
         n = int(open(os.path.join(state, 'calls')).read() or 0) if os.path.exists(os.path.join(state, 'calls')) else 0
         open(os.path.join(state, 'calls'), 'w').write(str(n + 1))
-        print(counts[min(n, len(counts) - 1)])
+        print('101' if counts[min(n, len(counts) - 1)] > 0 else '')
     else:
         done = json.load(open(os.path.join(state, 'done.json')))
         if done and isinstance(done[0], list):   # one list per call: the completed list catching up after a run ends

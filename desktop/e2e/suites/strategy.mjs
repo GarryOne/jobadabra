@@ -12,6 +12,7 @@ import {clearData} from '../lib/start-state.mjs';
 import {forgetFixtureJobs} from '../lib/forget.mjs';
 import {ensureSetUp} from '../lib/seed.mjs';
 import {withRoles} from '../lib/search-roles.mjs';
+import {pollUntil, stepTimeLeft} from '../lib/wait-on-state.mjs';
 import {START, sqliteStart} from '../test/strategy-start.mjs';
 
 export const realAi = false;   // every AI call is answered by the stand-in below; the harness fails the run if one reaches a real model
@@ -24,6 +25,11 @@ export const name = 'strategy';
 const TITLE = '⚙️ Search settings';
 const ROLE = 'zebra wrangler', GIRAFFE = 'giraffe keeper', PLACE = 'lugano';
 
+/**
+ * The Strategy journey on the store the run is pinned to (ctx.store): takes the suite context (the app's window, the AI proxy, the fixture feeds, the Notion stand-in token);
+ * sets the start state, adds a role and a place in the app, then runs the 3 journey steps. A failed step is reported by the runner; its data comes from the fixture feeds and the
+ * profile's config files. Never reaches a real model (the stand-in answers scoring calls).
+ */
 export async function run(ctx) {
   const {page, token: NOTION} = ctx;
   const onNotion = ctx.store !== 'sqlite';
@@ -122,7 +128,7 @@ export async function run(ctx) {
     if (found.length !== 1 || found[0].id.replace(/-/g, '') !== pageId.replace(/-/g, '')) throw new Error(`expected exactly the linked ${TITLE} page, found ${found.length}`);
     // Connecting ran a Jobs check on whatever strategy the page held then (the previous run's end state: the Giraffe role). Wait for it, then forget what it kept, or the next
     // digest lists those postings as new although nobody asks for them any more.
-    await page.waitForFunction(() => document.querySelector('#activity')?.dataset.state !== 'busy', null, {timeout: 120000});
+    await pollUntil(() => page.evaluate(() => document.querySelector('#activity')?.dataset.state !== 'busy'), idle => idle, {capMs: stepTimeLeft()});   // the step's hang cap is its only clock (Rule B)
     const forgotten = forgetFixtureJobs(ctx.profile);
     if (forgotten) console.log(`  forgot ${forgotten} fixture posting(s) kept by the connect-time check`);
   }, {needs: ctx.needs});

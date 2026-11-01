@@ -3,9 +3,9 @@
 // Independent steps: one failing step is recorded and the next still runs, so a failure never hides the others. The suite fails at the end when any did.
 export function independent(ctx) {
   let failed = 0;
-  // safety: a step that proves a safety rule (lib/safety-steps.mjs) is never suspended.
+  // safety: a step that proves a safety rule (lib/safety-steps.mjs) is never suspended. data: a data-integrity step (same file): never retried in a beta.
   // needs: what this one step needs beyond the suite's (a missing one skips the step by name, lib/runner.mjs), e.g. a feature still being built on one store.
-  const step = async (name, fn, {needs = [], safety = false} = {}) => { try { await ctx.run(name, fn, {needs: [...(ctx.needs || []), ...needs], safety}); } catch { failed++; } };
+  const step = async (name, fn, {needs = [], safety = false, data = false} = {}) => { try { await ctx.run(name, fn, {needs: [...(ctx.needs || []), ...needs], safety, data}); } catch { failed++; } };
   const end = () => { if (failed) throw new Error(`${failed} step(s) failed`); };
   return {step, end};
 }

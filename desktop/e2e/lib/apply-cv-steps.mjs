@@ -40,7 +40,7 @@ export async function runCvSteps(ctx, h) {
     const {tab, state} = await apply(form, {viaApi: true});
     if (state.state === 'error') throw new Error(`the fill ended in an error: ${state.error}`);
     fail(cvProblems(await readForm(tab), {name: 'CV_Ada_Tester_E2E_Greenhouse_Labs.pdf', size}));   // the tailored file's bytes, under its own name: the form shows which CV it got
-  }, {needs: ctx.needs});
+  }, {needs: ctx.needs, data: true});
 
   // Why (27 Oct 2026, owner: "remove the line with 'general CV attached… Tailor in Jobadabra'"): the panel neither tailors nor links to it; Tailor lives on the session page,
   // and the app restarts the form when the tailored CV is ready, so it is attached from the start (desktop/lib/tailored-restart.js), with no Fill press; wait on that session's attachment (29 Oct 2026, ap).

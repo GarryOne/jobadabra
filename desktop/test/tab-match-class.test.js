@@ -73,10 +73,17 @@ const ADDRESS_MATCHERS = {
   'server-pages.js': 'sessionOfJob only picks which session card a notification opens; it writes nothing to a session',
   'server.js': 'matches a fill event to a JOB row (find), not to a session',
   'cv.js': 'matches a saved record by its job address; no session',
+  'ext-server-handlers.js': 'isFormOf only passed into identityServices (resolveSession asks heldElsewhere): checked below',
 };
 test('the class: no other file matches a session by a job address (isFormOf)', () => {
   const lib = path.join(here, '..', 'lib');
-  const users = fs.readdirSync(lib).filter(name => name.endsWith('.js') && /\bisFormOf\b/.test(fs.readFileSync(path.join(lib, name), 'utf8').replace(/\/\/.*$/gm, '')) && name !== 'ext-server-handlers.js');
+  const users = fs.readdirSync(lib).filter(name => name.endsWith('.js') && /\bisFormOf\b/.test(fs.readFileSync(path.join(lib, name), 'utf8').replace(/\/\/.*$/gm, '')));
   const unknown = users.filter(name => !(name in ADDRESS_MATCHERS));
   assert.deepEqual(unknown, [], `${unknown.join(', ')} matches by a job address: add it to MATCHERS (test above) and ADDRESS_MATCHERS, so a hidden-browser read tab cannot reach the person's session through it`);
+});
+
+test('the class: in ext-server-handlers.js every isFormOf goes through identityServices', () => {
+  const lines = fs.readFileSync(path.join(here, '..', 'lib', 'ext-server-handlers.js'), 'utf8').split('\n').map(line => line.replace(/\/\/.*$/, ''));
+  const stray = lines.map((line, at) => [at + 1, line]).filter(([, line]) => /\bisFormOf\b/.test(line) && !/identityServices|^import /.test(line));
+  assert.deepEqual(stray, [], 'ext-server-handlers.js matches a session by a job address outside identityServices (lib/journey-identity.js)');
 });

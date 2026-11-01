@@ -48,8 +48,8 @@
     wipe.observe(document, {childList: true, subtree: true});
     watch = setInterval(() => { if (!chrome.runtime?.id) lift(); }, 1000);   // the extension was reloaded: this script has no owner left
   }
-  chrome.runtime.onMessage.addListener(message => {
-    if (message?.type === 'stopped') lift();
+  chrome.runtime.onMessage.addListener((message, _, reply) => {
+    if (message?.type === 'stopped') { lift(); reply({stopped: true}); }   // the answer: a script of ours is on this page (stop.js, #2812)
     else if (message?.type === 'applyState') { if (message.state === 'working') on(); else lift(); }
   });
   // The page's first moment: ask the worker, so a verdict that came before this script existed lifts a layer drawn on a stale answer (early-dim.js injects only for a working tab).

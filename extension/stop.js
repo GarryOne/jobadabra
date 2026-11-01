@@ -81,6 +81,9 @@ export function startTab(tabId, who = '', wasStopped = false) {
 // Why (31 Oct 2026, a8; coordinator: "A Stop that failed must say so (rule 6, safety)"): every step's error was swallowed and the worker answered ok:true, so the panel went on as if
 // the Stop had worked. The steps that count are the ones that keep it from holding (the flag a restarted worker reads, a tab's armed marks, the page's own mark); a closed tab, the
 // debugger refusing a detach it does not own, the page's panel message and the app's report are best effort and never make the Stop fail.
+// Why (1 Nov 2026, #2812, a8's yes): the page's own mark counts only where a script of ours runs. A page Chrome guards (chrome://, the web store, an error page) refuses every
+// injection, and all of ours is injected (no content_scripts), so nothing of ours is there; it refused on every press and the Stop never read as done. Whether ours runs is the
+// page's answer to the 'stopped' message (review.js, panel-overlay.js reply), never the error's words or the page's address. Each failed step goes to the log, not the page.
 export async function stopAll(reason = 'the person pressed Stop') {
   const at = Date.now();
   const failed = [];
@@ -101,10 +104,13 @@ export async function stopAll(reason = 'the person pressed Stop') {
     const step = (what, work) => (gone ? Promise.resolve(work).catch(() => {}) : attempt(`tab ${tabId}: ${what}`, work));
     await step('its marks were not cleared', chrome.storage.session.remove([...IDENTITY_KEYS(tabId), `role:${tabId}`, `armed:${tabId}`, `carried:${tabId}`, `submit:${tabId}`, `judged:${tabId}`, `read:${tabId}`, `next:${tabId}`]));
     await chrome.storage.session.set({[`stoppedTab:${tabId}`]: at}).catch(() => {});   // still the app's tab for the person's own start (the popup's Apply on this page): its mark and arming are gone
-    await step('the page was not marked stopped', chrome.scripting.executeScript({target: {tabId, allFrames: true}, world: 'MAIN', func: stoppedPage}));
-    chrome.tabs.sendMessage(tabId, {type: 'stopped', at}).catch(() => {});   // at: the panel ignores a Stop older than the person's start on it (review.js)
+    const refused = await Promise.resolve().then(() => chrome.scripting.executeScript({target: {tabId, allFrames: true}, world: 'MAIN', func: stoppedPage})).then(() => null, error => error);
+    // at: the panel ignores a Stop older than the person's start on it (review.js). The answer says a script of ours is on the page.
+    const ours = await Promise.resolve().then(() => chrome.tabs.sendMessage(tabId, {type: 'stopped', at})).then(answer => answer?.stopped === true, () => false);
+    if (refused && !gone && ours) failed.push(`tab ${tabId}: the page was not marked stopped: ${String(refused?.message || refused).slice(0, 80)}`);
   }
   for (const fn of told) await Promise.resolve(fn(reason, ids.size)).catch(() => {});
+  if (failed.length) decide('stop', 'the Stop did not finish', {failed: failed.join(' | ').slice(0, 400)});
   return {tabs: ids.size, ok: failed.length === 0, failed};
 }
 

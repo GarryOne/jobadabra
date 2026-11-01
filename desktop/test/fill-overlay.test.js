@@ -52,7 +52,7 @@ test('the dim and the centring are one look: only look() sets either, a closed p
   assert.match(review, /overlay\.onLift\?\.\(/, 'the panel hears a lift it did not ask for (a verdict of the worker: Stop, done, your turn)');
   const overlay = read('extension/panel-overlay.js');
   // Why-changed: the layer-removed and Date.now() > until lifts went (owner, 27 Oct 2026: nothing lifts but the worker's verdict); a deleted layer is put back.
-  for (const why of [/!chrome\.runtime\?\.id\) lift\(\)/, /'stopped'\) lift\(\)/, /message\.state === 'working'\) on\(\); else lift\(\)/])
+  for (const why of [/!chrome\.runtime\?\.id\) lift\(\)/, /'stopped'\) (\{ )?lift\(\)/, /message\.state === 'working'\) on\(\); else lift\(\)/])
     assert.match(overlay, why, `every lift the overlay does by itself goes through lift(), which tells the panel: ${why}`);
 });
 

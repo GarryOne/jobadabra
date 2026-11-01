@@ -1,5 +1,5 @@
-// A saved local copy of /admin/form-filling/lab's ?json for the session tools (needs-fix-causes, needs-fix-order): fetched at most every 15 minutes, `--refresh` forces a fetch
-// (every live fetch costs the site's D1 budget, 11 Oct 2026). The owner key comes from the Keychain (job-pilotto.site.api_key), never printed. Guard: test/needs-fix-causes.test.js.
+// A saved local copy of /admin/form-filling/lab's ?json for the session tools (read by the private jobadabra-web: jobs/needs-fix-causes.mjs, jobs/needs-fix-order.mjs; grep jobadabra-web before deleting or renaming this file): fetched at most every 15 minutes, `--refresh` forces a fetch
+// (every live fetch costs the site's D1 budget, 11 Oct 2026). The owner key comes from the Keychain (job-pilotto.site.api_key), never printed. Guard: jobadabra-web test/admin/applying-budget.test.js and test/needs-fix-causes.test.js.
 import {execFileSync} from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';

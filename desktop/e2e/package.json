@@ -4,7 +4,7 @@
   "type": "module",
   "description": "End-to-end journey tests: Playwright drives the real Electron app (see README.md here). Kept out of ../package.json so the shipped app never bundles it.",
   "scripts": {
-    "test": "node --import ./test/stdout-to-stderr.mjs --test --test-timeout=180000 --test-reporter=spec test/*.test.mjs ../integration/extension/*.test.mjs",
+    "test": "node --import ./test/stdout-to-stderr.mjs --test --test-timeout=180000 --test-reporter=spec test/*.test.mjs ../integration/extension/*.test.mjs ../integration/store/*.test.mjs",
     "real-extension": "JP_LIVE=1 bash ../../tools/heavy-lock.sh real-extension node --test test/real-extension.test.mjs",
     "record-sites": "node record-sites.mjs",
     "smoke": "node -e \"console.error('renamed: npm run record-sites'); process.exit(1)\"",

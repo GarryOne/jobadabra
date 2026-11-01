@@ -3,13 +3,12 @@
 // Find new employers + the Employers & Sources data. A candidate list with every kind of company (two good boards, an empty one, one with only wrong roles, a dead
 // feed, a duplicate of a source already in use, an excluded company, a manual-watch company) is run from the Actions page; then what the scout decided, what it wrote
 // into Notion and into its run row, what a second run does, what the crawl would now read, and a Sonnet judge on whether the added employers suit the person.
-import {execFileSync} from 'node:child_process';
-import {python, pythonEnv} from '../lib/python.mjs';
+import {scoutState} from '../lib/python.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import {E2E} from '../lib/app.mjs';
 import {collect, judge as fitJudge, toFindings as fitFindings} from '../lib/fit.mjs';
-import {duplicates, EXPECTED, parseRunLine, rowProblems} from '../lib/employers.mjs';
+import {duplicates, parseRunLine} from '../lib/employers.mjs';
 import {judge, problems as judgeProblems} from '../lib/judge.mjs';
 import {finish, visit} from '../lib/layout.mjs';
 import {clearData} from '../lib/start-state.mjs';
@@ -44,32 +43,9 @@ const QUALITY_NOTE = 'Note: "quality" is a 0-100 score of the whole job feed, al
 // Product Designer is in Zurich too) as contradicting facts. The bar is said too: on a later run the judge called Orbit "coherent but weaker" (one relevant role in Zurich) and still
 // said no; the suite expects every board with a relevant role in the person's places to be added (EXPECTED: Orbit found, active).
 const FIELDS_NOTE = 'Fields: "postings" in "why" counts every posting on the board; "relevantRoles" counts only those matching the person\'s roles; "relevantRolesInPreferredPlaces" counts the relevant ones that are also in the person\'s places (a subset of relevantRoles); "citiesOfThose" lists the cities of exactly those relevant roles in preferred places. A posting outside the person\'s roles is counted in neither number, wherever it is. The bar: an employer with at least one relevant role in the person\'s places is worth following (fewer roles make it weaker, not wrong); answer no only when following it would not suit the person.';
-const ROOT = path.resolve(E2E, '..', '..');
 
-const find = dir => {
-  for (const entry of fs.readdirSync(dir, {withFileTypes: true})) {
-    const full = path.join(dir, entry.name);
-    if (entry.isDirectory()) { const hit = find(full); if (hit) return hit; } else if (entry.name === 'jobs.sqlite') return full;
-  }
-  return null;
-};
-
-// What the scout decided (its candidate table), the feeds it registered, and the list the jobs crawl would read (the engine's own active_sources: starter list + registered feeds).
-function engineState(ctx) {
-  const db = find(ctx.profile);
-  if (!db) throw new Error('the app has no jobs.sqlite in its data folder');
-  const script = `import json, sqlite3, sys
-from src import scout, store
-path, starter = sys.argv[1], json.load(open(sys.argv[2]))
-c = sqlite3.connect(path); c.row_factory = sqlite3.Row
-rows = lambda q: [dict(r) for r in c.execute(q)]
-with store.connect(__import__('pathlib').Path(path)) as db:
-    crawl = [s['company'] for s in scout.active_sources(db, None, starter)]
-print(json.dumps({'candidates': rows('select name, status, ats, slug, quality from scout_candidates'), 'registered': rows('select ats, slug, company, quality, active from feed_sources'), 'crawl': crawl}))`;
-  const out = execFileSync(python(), ['-c', script, db, path.join(ctx.profile, 'config', 'sources.json')],
-    {cwd: ROOT, env: pythonEnv({...env, JOB_PILOTTO_FIXTURE_DIR: ctx.feeds}, {home: ctx.profile})});   // isolated, UTF-8 (lib/python.mjs)
-  return JSON.parse(out.toString());
-}
+// What the scout decided, the feeds it registered and the jobs crawl's list (lib/python.mjs scoutState, shared with integration/store/employers-integration.test.mjs).
+const engineState = ctx => scoutState(ctx.profile, {...env, JOB_PILOTTO_FIXTURE_DIR: ctx.feeds});
 
 const scoutStarts = ctx => appLogLines(ctx.profile).filter(line => /\[run\] start: python -m src scout /.test(line)).length;
 
@@ -101,11 +77,6 @@ async function findEmployers(ctx) {
   return now.runs.slice(0, now.runs.length - before);
 }
 
-// The scout's rows in the store's run list (cron_runs: this Mac's or Notion's ⏱️ Search runs), oldest first, as numbers.
-async function storeRuns(ctx) {
-  const rows = ((await ctx.data('cron_runs', 'list', {})) || []).filter(row => row.mode === 'scout');
-  return rows.sort((a, b) => String(a.started_at).localeCompare(String(b.started_at))).map(row => ({row, line: parseRunLine(row.summary)}));
-}
 // Every employer the store holds, active or not.
 const employers = ctx => ctx.data('employers', 'list', {active: null});
 
@@ -138,65 +109,12 @@ export async function run(ctx) {
     if (failed.length) throw new Error(`the run failed: ${failed[0].result}`);
     if (state.runs.length !== 1) throw new Error(`the app lists ${state.runs.length} Find new employers runs for one click: ${JSON.stringify(state.runs)}`);
     state.first = engineState(ctx);
+    state.rows = await employers(ctx);   // what the judge below reads
   }, {needs: ctx.needs});
 
-  await ctx.run('each candidate ends in the right status, and only genuinely useful boards become sources', async () => {
-    const {candidates, registered} = state.first;
-    const status = Object.fromEntries(candidates.map(item => [item.name, item]));
-    const problems = [];
-    for (const [company, want] of Object.entries(EXPECTED)) {
-      const got = status[company];
-      if (want.status === 'excluded') { if (got) problems.push(`${company} is excluded but the scout kept it as a candidate (${got.status})`); continue; }
-      if (!got) { problems.push(`${company} was never a candidate`); continue; }
-      // The scout stores a duplicate as 'found' (it is a feed already in use), and tells it apart by not registering it again.
-      const shown = want.status === 'duplicate' ? 'found' : want.status;
-      if (got.status !== shown) problems.push(`${company}: status ${got.status}, expected ${want.status}`);
-    }
-    const sources = registered.map(item => item.company).sort();
-    const wanted = Object.entries(EXPECTED).filter(([, want]) => want.status === 'found').map(([company]) => company).sort();
-    if (JSON.stringify(sources) !== JSON.stringify(wanted)) problems.push(`registered sources are [${sources}], expected [${wanted}]${sources.includes('E2E Acme Labs') ? ' (E2E Acme Labs is the same board as the starter source E2E Acme)' : ''}`);
-    if (problems.length) throw new Error(problems.join('; '));
-    const [nimbus, orbit] = ['E2E Nimbus', 'E2E Orbit'].map(company => status[company].quality);
-    console.log(`  quality: Nimbus ${nimbus}, Orbit ${orbit}`);
-    if (!(nimbus > orbit)) throw new Error(`the board with 4 fresh roles in ${persona.cityName} (${nimbus}) must outscore the one with 1 old role there (${orbit})`);
-    if (nimbus - orbit < 20) throw new Error(`quality barely tells a strong board (${nimbus}) from a weak one (${orbit})`);
-  }, {needs: ctx.needs});
-
-  await ctx.run('Employers & Sources in Notion holds a complete, sensible row per candidate, and none for the duplicate or the excluded', async () => {
-    state.rows = await employers(ctx);
-    const byName = Object.fromEntries(state.rows.map(row => [row.name, row]));
-    const problems = [];
-    for (const [company, want] of Object.entries(EXPECTED)) {
-      const row = byName[company];
-      if (want.feed == null) { if (row) problems.push(`${company} must not have a row (${want.status}), it has one: ${row.feed_status}`); continue; }
-      if (!row) { problems.push(`${company} has no row in Employers & Sources`); continue; }
-      problems.push(...rowProblems(row, want.status));
-      if (row.feed_status !== want.feed) problems.push(`${company}: Feed status "${row.feed_status}", expected "${want.feed}"`);
-      if (row.active !== want.active) problems.push(`${company}: Active is ${row.active}, expected ${want.active}`);
-    }
-    // The numbers in a row come from the fixture boards: Nimbus has 5 postings, 4 of them relevant, all 4 in the person's city; Orbit 3, 2 and 1.
-    const nimbus = byName['E2E Nimbus'], orbit = byName['E2E Orbit'];
-    if (nimbus && !(nimbus.ats === 'greenhouse' && nimbus.slug === 'e2e-nimbus' && nimbus.relevant_roles === 4 && nimbus.in_preferred_places === 4 && persona.city.test(nimbus.cities) && /5 postings; 4 matching; 4 in preferred places/.test(nimbus.notes))) problems.push(`E2E Nimbus' row does not match its board: ${JSON.stringify({ats: nimbus.ats, slug: nimbus.slug, relevant: nimbus.relevant_roles, preferred: nimbus.in_preferred_places, cities: nimbus.cities, notes: nimbus.notes})}`);
-    if (orbit && !(orbit.relevant_roles === 2 && orbit.in_preferred_places === 1 && persona.city.test(orbit.cities) && !persona.elsewhere.test(orbit.cities))) problems.push(`E2E Orbit's row does not match its board (2 relevant, 1 in ${persona.cityName}, none elsewhere): ${JSON.stringify({relevant: orbit.relevant_roles, preferred: orbit.in_preferred_places, cities: orbit.cities})}`);
-    if (nimbus && orbit && !(nimbus.quality > orbit.quality)) problems.push(`Notion's quality does not order the boards: Nimbus ${nimbus.quality}, Orbit ${orbit.quality}`);
-    if (byName['E2E Quiet'] && !/quiet\.e2e\.test/.test(byName['E2E Quiet'].careers_url || '')) problems.push(`E2E Quiet's Careers link is "${byName['E2E Quiet'].careers_url}"`);
-    if (problems.length) throw new Error(problems.join('; '));
-  }, {needs: ctx.needs});
-
-  await ctx.run("the run's row says what happened, and the numbers are the real ones", async () => {
-    const runs = await storeRuns(ctx);
-    console.log(`  run rows: ${runs.map(item => item.row.summary).join(' | ')}`);
-    if (!runs.length) throw new Error('Find new employers left no row in the Notion run list');
-    const {line, row} = runs[0];
-    if (!line) throw new Error(`the run row says "${row.summary}": no "checked N" and no "N new sources"`);
-    const registered = state.first.registered.length;
-    if (line.checked !== state.first.candidates.length) throw new Error(`the row says checked ${line.checked}, the scout checked ${state.first.candidates.length}`);
-    if (line.added !== registered) throw new Error(`the row says ${line.added} new sources, the scout registered ${registered}`);
-    const shown = state.runs[0].result;
-    const app = parseRunLine(shown);
-    if (!app || app.checked !== line.checked || app.added !== line.added) throw new Error(`the app's Recent runs says "${shown}", Notion says "${row.summary}"`);
-  }, {needs: ctx.needs});
-
+  // Moved to layer 3 (owner, 1 Nov 2026: the beta keeps only the critical journeys): "each candidate ends in the right status", "Employers & Sources holds a complete, sensible row
+  // per candidate" and "the run's row says what happened" are desktop/integration/store/employers-integration.test.mjs, on this suite's fixtures and the same engine command. The crawl list and the
+  // second run stay here: they are data-integrity steps (coordinator, 1 Nov 2026).
   await ctx.run("the crawl's source list now holds the starter employers and the two new boards, and nothing else", async () => {
     const crawl = [...state.first.crawl].sort();
     const wanted = ['E2E Acme', 'E2E Beta', 'E2E Nimbus', 'E2E Orbit'];

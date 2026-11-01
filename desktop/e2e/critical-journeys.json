@@ -28,7 +28,6 @@
    "id": "J2",
    "name": "Find jobs: a check reads feeds, drops wrong roles, scores",
    "steps": [
-    {"suite": "jobs", "step": "the app's next start links this workspace's Search settings page (so the check looks for this person's roles and places)"},
     {"suite": "jobs", "step": "a jobs check reads the fixture feeds, drops the wrong roles and scores the matching jobs"},
     {"suite": "jobs", "step": "every scored job in the Jobs list is its Job Matches record, with the same score, and none is missing"}
    ],
@@ -201,5 +200,12 @@
   {"suite": "storemove", "step": "a move killed halfway changes nothing, and the next one goes on with nothing twice"},
   {"suite": "storemove", "step": "after the move the store is Notion, the Profile Notion had is kept, and this Mac's files are in the archive"},
   {"suite": "storemove", "step": "Jobs, Focus, Interviews and Recent activity show the same items from Notion"}
+ ],
+ "to_come": [
+  "J13 Strategy (tier 1): its 3 steps return with c27-int-store-c5's strategy restore PR; a8 adds them once both merge",
+  "Always on / Notion (tier 2): covered now at tier 1 by the kept storemove step 'Jobs, Focus, Interviews and Recent activity show the same items from Notion'; its own step returns with the strategy restore; a8 adds it",
+  "Profile's Experience (tier 1, in J14): a new step plus its integration counterpart, after round 2; a8 writes it",
+  "Cover letter (tier 2): no e2e step exists; a new short step (a job's letter reaches its form) plus its integration counterpart, after round 2; a8 writes it",
+  "Calendar and Focus (tier 2): their suites left e2e; one new short step each, after round 2; a8 writes them"
  ]
 }

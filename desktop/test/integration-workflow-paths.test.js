@@ -1,0 +1,40 @@
+// Every desktop file an integration test imports starts the integration workflow (owner, 1 Nov 2026: "CI · Integration tests" runs on a PR by `on: paths:`, which is that layer's reach).
+// A file the tests import that no path matches would let a PR break a test unseen. The imports are found by structure (tools/replay-files.mjs harnessFiles), never a hand list.
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import {test} from 'node:test';
+import {fileURLToPath} from 'node:url';
+import {harnessFiles} from '../../tools/replay-files.mjs';
+
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
+const workflow = fs.readFileSync(path.join(ROOT, '.github/workflows/integration.yml'), 'utf8');
+const block = /pull_request:\s*\n\s*branches:[^\n]*\n\s*paths:\s*\n((?:\s*-\s*[^\n]+\n)+)/.exec(workflow);
+const PATHS = block ? [...block[1].matchAll(/-\s*'([^']+)'/g)].map(found => found[1]) : [];
+const regex = pattern => new RegExp(`^${pattern.replace(/[.+^${}()|[\]\\?]/g, '\\$&').replace(/\*\*\//g, '\u0000').replace(/\*\*/g, '\u0001').replace(/\*/g, '[^/]*').replace(/\u0000/g, '(?:.*/)?').replace(/\u0001/g, '.*')}$`);
+const matched = file => PATHS.some(pattern => regex(pattern).test(file));
+const testFiles = layer => (fs.existsSync(path.join(ROOT, 'desktop/integration', layer)) ? fs.readdirSync(path.join(ROOT, 'desktop/integration', layer)).filter(name => /\.(m?js)$/.test(name)).map(name => `desktop/integration/${layer}/${name}`) : []);
+
+test('the workflow lists its paths (positive control) and each layer\'s imports are among them', () => {
+  assert.ok(PATHS.length > 10 && PATHS.includes('desktop/integration/**'), 'the list was read');
+  for (const layer of ['app', 'extension', 'store']) {
+    const reached = new Set(testFiles(layer).flatMap(file => [...harnessFiles(file, ROOT)]));
+    const missing = [...reached].filter(file => !matched(file));
+    assert.deepEqual(missing, [], `${layer}: files its tests import that start no integration run (add them to integration.yml's paths)`);
+  }
+  assert.ok(testFiles('app').length > 5, 'the app layer\'s tests were found (positive control)');
+});
+
+test('the globs the guard uses agree with GitHub on the shapes the list uses', () => {
+  assert.equal(matched('desktop/integration/app/a.test.js'), true);
+  assert.equal(matched('desktop/lib/ai/x.js'), true);
+  assert.equal(matched('desktop/e2e/suites/apply.mjs'), false, 'an e2e suite is not an integration input');
+  assert.equal(matched('docs/readme.md'), false);
+});
+
+test('npm test no longer runs the integration tests; the workflow does, with the results reporter', () => {
+  const unit = JSON.parse(fs.readFileSync(path.join(ROOT, 'desktop/package.json'), 'utf8')).scripts;
+  assert.doesNotMatch(unit.test, /integration\//, 'the unit job runs unit tests only');
+  assert.match(unit['test:integration:app'], /integration\/app\/\*\.test\.js/);
+  assert.match(workflow, /results-reporter\.mjs/);
+});

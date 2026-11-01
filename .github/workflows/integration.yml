@@ -1,0 +1,181 @@
+name: CI · Integration tests
+# The integration layer as its own visible check (owner, 1 Nov 2026, exact option "Yes, own workflow, 3 jobs (Recommended)"): "extension", "app (ubuntu-24.04)", "app (windows-latest)" and "store",
+# so each check name says its layer. A pull request starts it by `paths:` below (each layer's reach: desktop/integration/<layer>/** and what its tests import; desktop/test/integration-workflow-paths.test.js
+# fails when a file a test imports is missing); on main build.yml calls it as a job of CI · Tests on every push (as it does harness.yml and smoke.yml, owner 1 Nov 2026: "Parallel jobs"),
+# so a red integration test stays that run's red (tests/test_red_main.py) and its result files are artifacts of that run. Not a required check: a workflow `paths:` skip never reports, and a required one would block the PR
+# (tests/test_workflow_paths.py); "All checks passed" counts its run (tools/pr-verdict.py).
+# Why (owner, 1 Nov 2026): the integration tests ran inside `npm test` of two other jobs (desktop's unit job, the harness job), so a red one read "desktop" or "harness tests" and nobody could say how
+# long or how steady the layer is. Each job writes a node:test JSON result (desktop/integration/results-reporter.mjs) and uploads it as the artifact integration-results-<layer>[-<os>];
+# jobs/integration-intel.mjs of the private site repo reads them hourly for https://www.jobadabra.top/admin/operations/integrations (green share, speed, flaky, the move).
+# The extension and store jobs run nothing until their folders hold tests (hashFiles), so this file can land before the PRs that move those layers.
+on:
+  workflow_call:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'desktop/integration/**'
+      - 'desktop/e2e/lib/**'   # every layer's kit starts the app or the browser through the harness lib
+      - 'desktop/e2e/package.json'
+      - 'desktop/e2e/package-lock.json'
+      - 'desktop/lib/**'
+      - 'desktop/renderer/**'
+      - 'desktop/demo/**'
+      - 'desktop/cv/**'
+      - 'desktop/main.js'
+      - 'desktop/preload.cjs'
+      - 'desktop/start.js'
+      - 'desktop/scripts/**'
+      - 'desktop/package.json'
+      - 'desktop/package-lock.json'
+      - 'desktop/test/needs-electron.js'
+      - 'desktop/test/no-live-site.mjs'
+      - 'desktop/test/reporter-by-file.mjs'
+      - 'extension/**'
+      - 'src/**'   # the engine commands the kits run (python -m src.focus, src scout, src.stores.copy)
+      - 'worker/src/**'   # staged into desktop/shared/worker/, which the app's server imports
+      - 'config/**'
+      - 'requirements*.txt'
+      - '.github/workflows/integration.yml'
+      - '.github/actions/playwright-browser/**'
+
+permissions:
+  contents: read
+
+concurrency:   # a PR's newer push replaces its older run; each commit of main keeps its own (tests/test_pr_runs_cancel.py, tests/test_main_runs_finish.py)
+  group: integration-${{ github.event_name == 'pull_request' && github.head_ref || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  extension:
+    name: extension
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      INTEGRATION_LAYER: extension
+      INTEGRATION_PLATFORM: linux
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - name: Install the tests
+        if: hashFiles('desktop/integration/extension/*.test.mjs') != ''
+        working-directory: desktop/e2e
+        run: npm ci || npm install
+      - name: Install the app's own packages
+        if: hashFiles('desktop/integration/extension/*.test.mjs') != ''
+        working-directory: desktop
+        run: npm ci --omit=dev --ignore-scripts || npm install --omit=dev --ignore-scripts
+      - name: Stage the app's shared files
+        if: hashFiles('desktop/integration/extension/*.test.mjs') != ''
+        working-directory: desktop
+        run: node scripts/stage.mjs --files-only
+      - name: The browser (the full one loads the extension)
+        if: hashFiles('desktop/integration/extension/*.test.mjs') != ''
+        uses: ./.github/actions/playwright-browser
+        with: {working-directory: desktop/e2e, mode: both}
+      - name: The extension on recorded pages
+        if: hashFiles('desktop/integration/extension/*.test.mjs') != ''
+        working-directory: desktop/e2e
+        run: node --import ./test/stdout-to-stderr.mjs --test --test-timeout=180000 --test-reporter=spec --test-reporter-destination=stdout --test-reporter=../integration/results-reporter.mjs --test-reporter-destination="$RUNNER_TEMP/integration-results.json" ../integration/extension/*.test.mjs
+      - uses: actions/upload-artifact@v5
+        if: always() && hashFiles('desktop/integration/extension/*.test.mjs') != ''
+        with:
+          name: integration-results-extension
+          path: ${{ runner.temp }}/integration-results.json
+          retention-days: 35
+
+  app:
+    name: app (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: bash   # the test globs below, which pwsh would hand to node unexpanded
+    env:
+      INTEGRATION_LAYER: app
+      INTEGRATION_PLATFORM: ${{ matrix.os == 'windows-latest' && 'windows' || 'linux' }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      # The same install as the unit jobs (tests-desktop.yml, tests-desktop-windows.yml): dev dependencies included (scripts/stage.mjs needs esbuild); on Linux the Electron binary and a virtual
+      # display, so the window tests run; on Windows only the packages (the window tests skip there, as they did in the unit job).
+      - run: npm ci
+        working-directory: desktop
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: ${{ matrix.os == 'windows-latest' && '1' || '' }}
+      - name: The Electron binary (version 44 has no install script, so it would only download on the first launch)
+        if: runner.os == 'Linux'
+        timeout-minutes: 5
+        working-directory: desktop
+        run: node node_modules/electron/install.js
+      - name: A virtual display and Electron's libraries
+        if: runner.os == 'Linux'
+        timeout-minutes: 5
+        run: bash tools/apt-install.sh xvfb libnss3 libgbm1 libasound2t64 libgtk-3-0 libxss1 fonts-noto-color-emoji fonts-dejavu-core
+      - name: The app on a seeded store, a fake browser
+        working-directory: desktop
+        env:
+          ELECTRON_DISABLE_SANDBOX: '1'   # Ubuntu 24.04 runners refuse Chromium's sandbox, as the e2e harness knows (--no-sandbox)
+          DESKTOP_RENDER_REQUIRED: ${{ runner.os == 'Linux' && '1' || '' }}   # test/needs-electron.js: no electron or display is a red job on Linux, never a green skip
+          RESULTS: ${{ runner.temp }}/integration-results.json
+        run: |
+          run() { node --import ./test/no-live-site.mjs --test --test-reporter=./test/reporter-by-file.mjs --test-reporter-destination=stdout --test-reporter=./integration/results-reporter.mjs --test-reporter-destination="$RESULTS" integration/app/*.test.js; }
+          if [ "$RUNNER_OS" = Linux ]; then export -f run; xvfb-run -a --server-args='-screen 0 1440x900x24' bash -c run; else run; fi
+      - uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: integration-results-app-${{ matrix.os }}
+          path: ${{ runner.temp }}/integration-results.json
+          retention-days: 35
+
+  store:
+    name: store
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      INTEGRATION_LAYER: store
+      INTEGRATION_PLATFORM: linux
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        if: hashFiles('desktop/integration/store/*.test.mjs') != ''
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - name: The engine's packages
+        if: hashFiles('desktop/integration/store/*.test.mjs') != ''
+        run: pip install --quiet -r requirements.txt
+      - name: Install the tests
+        if: hashFiles('desktop/integration/store/*.test.mjs') != ''
+        working-directory: desktop/e2e
+        run: npm ci || npm install
+      - name: Install the app's own packages
+        if: hashFiles('desktop/integration/store/*.test.mjs') != ''
+        working-directory: desktop
+        run: npm ci --omit=dev --ignore-scripts || npm install --omit=dev --ignore-scripts
+      - name: Stage the app's shared files
+        if: hashFiles('desktop/integration/store/*.test.mjs') != ''
+        working-directory: desktop
+        run: node scripts/stage.mjs --files-only
+      - name: Store, strategy, scoring and dedupe on a real SQLite
+        if: hashFiles('desktop/integration/store/*.test.mjs') != ''
+        working-directory: desktop/e2e
+        run: node --import ./test/stdout-to-stderr.mjs --test --test-timeout=180000 --test-reporter=spec --test-reporter-destination=stdout --test-reporter=../integration/results-reporter.mjs --test-reporter-destination="$RUNNER_TEMP/integration-results.json" ../integration/store/*.test.mjs
+      - uses: actions/upload-artifact@v5
+        if: always() && hashFiles('desktop/integration/store/*.test.mjs') != ''
+        with:
+          name: integration-results-store
+          path: ${{ runner.temp }}/integration-results.json
+          retention-days: 35

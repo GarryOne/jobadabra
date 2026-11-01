@@ -10,7 +10,7 @@ import {suitesUsing} from './import-graph.mjs';
 
 const E2E = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
-/** @returns {{journeys: {id: string, name: string, steps: {suite: string, step: string, parts?: string[]}[]}[], kept: {suite: string, step: string, parts?: string[]}[]}} */
+/** @returns {{journeys: {id: string, name: string, tier: number, steps: ({suite: string, step: string, parts?: string[]} | {integration: string, test: string})[]}[], kept: {suite: string, step: string, parts?: string[]}[]}} */
 export function loadJourneys(e2eDir = E2E) {
   return JSON.parse(fs.readFileSync(path.join(e2eDir, 'critical-journeys.json'), 'utf8'));
 }
@@ -21,8 +21,8 @@ export const registrySteps = registry => [
   ...registry.kept.map(entry => ({...entry, group: 'kept'})),
 ];
 
-/** The suites holding at least one registry step, sorted. */
-export const journeySuites = registry => [...new Set(registrySteps(registry).map(entry => entry.suite))].sort();
+/** The suites holding at least one registry e2e step (a tier 2 journey's step is an integration test, it has no suite), sorted. */
+export const journeySuites = registry => [...new Set(registrySteps(registry).map(entry => entry.suite).filter(Boolean))].sort();
 
 // A suite's reachable source: its own file and every helper it imports, with `\'` read as `'` so a name quoted either way matches.
 function suiteTexts(e2eDir) {
@@ -40,19 +40,17 @@ function suiteTexts(e2eDir) {
  */
 export function missingSteps(registry, e2eDir = E2E) {
   const texts = suiteTexts(e2eDir);
-  return registrySteps(registry).filter(entry => !(entry.parts || [entry.step]).every(part => (texts[entry.suite] || '').includes(part)))
+  return registrySteps(registry).filter(entry => entry.suite).filter(entry => !(entry.parts || [entry.step]).every(part => (texts[entry.suite] || '').includes(part)))
     .map(({suite, step, group}) => ({suite, step, group}));
 }
 
-let loaded;
 /**
- * Whether a registry step is tier 2 (night and integration only): listed in a tier 2 journey and in no tier 1 journey or kept entry. The runner reads this in a beta.
- * A step named with `parts` matches when its name holds every part. The suite and step name must both match.
- * Why (1 Nov 2026, owner: "tier2 should not be part by beta"): once every tier 2 suite has left e2e (J8, J15-J19 converted to integration), no tier 2 step is left in the registry
- * and this reader, with the runner's beta skip, can be removed.
+ * The tier 2 steps whose integration test is gone: the file is missing or does not hold the test's exact name (a rename or a removal). A test name must appear whole in the file,
+ * with `\'` read as `'` so a name quoted either way matches. Takes the repository root (default: this checkout's).
+ * @returns {{integration: string, test: string, group: string}[]}
  */
-export function isTier2Step(suite, name, registry = (loaded ||= loadJourneys())) {
-  const matches = entry => entry.suite === suite && (entry.parts || [entry.step]).every(part => String(name).includes(part));
-  const inTier = tier => registry.journeys.some(journey => journey.tier === tier && journey.steps.some(matches));
-  return inTier(2) && !inTier(1) && !registry.kept.some(matches);
+export function missingIntegrationTests(registry, root = path.resolve(E2E, '..', '..')) {
+  const read = file => { try { return fs.readFileSync(path.join(root, file), 'utf8').replace(/\\(['"`])/g, '$1'); } catch { return null; } };
+  return registrySteps(registry).filter(entry => entry.integration).filter(entry => !(read(entry.integration) || '').includes(entry.test))
+    .map(({integration, test, group}) => ({integration, test, group}));
 }

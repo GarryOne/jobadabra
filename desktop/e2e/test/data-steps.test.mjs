@@ -11,7 +11,7 @@ import {dataNamesIn, dataStepNames, isDataStep, safetyNamesIn, safetyStepNames} 
 
 const DATA = [
   'finishing the setup without Notion opens the Job', 'a new install keeps its data on this Mac: the st', 'every scored job in the Jobs list is its Job Mat',
-  'the person submits a form: the page after Submit', 'Tailor CV on a job writes a CV from its posting:', 'the board shows the store', 'moving a card to Interviewing writes the stage a',
+  'the person submits a form: the page after Submit', 'the board shows the store', 'moving a card to Interviewing writes the stage a',
   'Your data: export with keys, reset, then import', 'Automatic backup: the backup file, imported afte', 'the export, imported into a fresh install, shows',
   'the imported install moves into an empty Notion:', 'the crawl', 'a second run writes nothing twice', 'a Save that Notion refuses is never shown as sav',
   'Automatic backup: Back up now writes a backup wi', 'Automatic backup: a due backup runs once at star', 'an app on this Mac', 'Export data writes this Mac',

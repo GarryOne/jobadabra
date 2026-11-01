@@ -79,7 +79,7 @@ test('once the in-app hold is over, none of the dismissed Up next cards comes ba
 });
 
 // A job dismissed while in process (3 Oct 2026: it was bouncing back to "Interview scheduled"): the store half. The Jobs list is the engine's own (`python -m src.desktop jobs`)
-// for the dummy search. "It leaves at once" stays in the e2e `focusdismiss` suite: the demo window answers a status change with "Demo mode: nothing is sent" (lib/demo.js BLOCKED).
+// for the dummy search. "It leaves at once" is not drawn here: the demo window answers a status change with "Demo mode: nothing is sent" (lib/demo.js BLOCKED); it is the renderer's (jobs-render.js setStatus → jobsChanged). The late-listing half is integration/store/dismiss-in-process.test.mjs (J19; the e2e `focusdismiss` suite is deleted).
 const EMBER = 'https://jobs.e2e.test/ember/platform';
 test('a job dismissed in process is Closed in the store, and the Jobs list built from it no longer has it in process', live, () => {
   const jobsStore = newStore();

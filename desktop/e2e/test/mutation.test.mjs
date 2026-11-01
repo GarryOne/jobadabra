@@ -43,13 +43,12 @@ function stepsRunBy(suite) {
 // 12 Oct 2026: raw-http-error named activityfailures, but the step that catches it (an HTML error page from Notion) had moved to failuresnotion when the suite was
 // split in three: the mutant "survived" a suite that never ran that step (#354). Each mutant names the words of the step that catches it, and they must be in
 // the steps its suite runs.
-// 27 Oct 2026: three Focus mutants named `focus`, whose catching steps run only in its other half (focusdismiss): the guard read the whole file and passed (#1907-#1909).
+// 27 Oct 2026: three Focus mutants named `focus`, whose catching steps ran only in its other half (focusdismiss, deleted 1 Nov 2026 with J19): the guard read the whole file and passed (#1907-#1909).
 test('every mutant names the step that catches it, and its suite runs that step', async () => {
   for (const mutant of mutants) {
     assert.ok(mutant.catches, `${mutant.id}: no "catches" (the words of the step that turns red when this bug is in the app)`);
     assert.ok(await stepRunBy(mutant.suite, mutant.catches), `${mutant.id}: the ${mutant.suite} suite runs no step with "${mutant.catches}"`);
   }
-  assert.equal(await stepRunBy('focusdismiss', 'Dismiss on a job in process'), true);   // R2, 1 Nov 2026: the one step focusdismiss still runs
   assert.ok(!stepsRunBy('activityfailures').includes('a Save that Notion refuses is never shown as saved'), 'the parts model is right: the AI part does not run the Notion steps');
 });
 

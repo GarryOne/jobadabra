@@ -1,7 +1,7 @@
 // The engine-backed kit of layer 3 (Node, no window): the app's own task code (lib/pipeline-tasks.js → lib/pipeline-run.js) runs the REAL Python engine on a temp install, with the
 // e2e stand-ins in front of everything outside: the AI (lib/ai-proxy.mjs, can answer 429/500/401/no credit or never answer), Notion (notion-fake + notion-proxy: busy, an HTML error
 // page, gone), Telegram (telegram-fake: a digest read, or refused) and Google (google-fake: a few emails, or a revoked sign-in). Created for the e2e suites activity, activityfailures,
-// failuresnotion and failureschannels (R2, 1 Nov 2026), whose "a run ends in words, nothing left Running" checks have nothing to do with a window.
+// failuresnotion and the deleted failureschannels (R2, 1 Nov 2026), whose "a run ends in words, nothing left Running" checks have nothing to do with a window.
 // Job: serve stored answers
 //
 // What one kit instance is: a temp install (settings, config, data, secrets), one free loopback port per stand-in (never 47111 or any port the owner's app may hold: asserted), the e2e

@@ -24,30 +24,15 @@
     "elapsedAssertions": 0,
     "clockWaits": 4
   },
-  "failureschannels": {
-    "fixedWaits": 0,
-    "elapsedAssertions": 0,
-    "clockWaits": 8
-  },
   "failuresnotion": {
     "fixedWaits": 0,
     "elapsedAssertions": 0,
     "clockWaits": 8
   },
-  "focusdismiss": {
-    "fixedWaits": 0,
-    "elapsedAssertions": 0,
-    "clockWaits": 1
-  },
   "interactions": {
     "fixedWaits": 1,
     "elapsedAssertions": 0,
     "clockWaits": 4
-  },
-  "interviews": {
-    "fixedWaits": 0,
-    "elapsedAssertions": 0,
-    "clockWaits": 2
   },
   "jobs": {
     "fixedWaits": 0,

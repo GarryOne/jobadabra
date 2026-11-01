@@ -112,9 +112,9 @@ import os from 'node:os';
 import path from 'node:path';
 import {spawnSync} from 'node:child_process';
 
-// Why (R2, 1 Nov 2026): 'employers' stands where the deleted `activity` suite stood in these fixtures: a real suite file the diff fixture can read, sorting before focusdismiss as `activity` did.
+// Why (R2 + J16/J19, 1 Nov 2026): 'failuresnotion' and 'linkedin' stand where the deleted `focusdismiss` and `interviews` suites stood, 'employers' where the deleted `activity` suite stood in these fixtures: a real suite file the diff fixture can read, sorting before failuresnotion as `activity` did.
 const cli = new URL('../pr-suites.mjs', import.meta.url);
-function cliPlan({catches, pullRequest = true, base = 'origin/main', listed = {}, checkoutLanes = {}, suites = ['wizard', 'storemove', 'stores', 'settings', 'jobs', 'interviews', 'focusdismiss', 'employers'], extraFiles = [], coverage = {}, baseSources = {}} = {}) {
+function cliPlan({catches, pullRequest = true, base = 'origin/main', listed = {}, checkoutLanes = {}, suites = ['wizard', 'storemove', 'stores', 'settings', 'jobs', 'linkedin', 'failuresnotion', 'employers'], extraFiles = [], coverage = {}, baseSources = {}} = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pr-cap-cli-'));
   try {
     const files = [...suites.map(s => `desktop/e2e/suites/${s}.mjs`), ...extraFiles];
@@ -148,7 +148,7 @@ syncBuiltinESMExports();`);
 
 test('CLI writes five whole suites and three deferrals with their reasons to stdout and GITHUB_OUTPUT', () => {
   const {values, text} = cliPlan();
-  assert.equal(values.suites, 'employers,focusdismiss,interviews,jobs,settings');
+  assert.equal(values.suites, 'employers,failuresnotion,jobs,linkedin,settings');
   assert.equal(values.left, 'wizard,storemove,stores');
   const steps = JSON.parse(values.steps);
   assert.deepEqual(Object.keys(steps), ['(parts)', '(why)']);
@@ -159,9 +159,9 @@ test('CLI writes five whole suites and three deferrals with their reasons to std
 });
 
 test('CLI reads catch counts only when supplied and applies the base registry before capping', () => {
-  assert.equal(cliPlan({catches: {wizard: 99}}).values.suites, 'wizard,employers,focusdismiss,interviews,jobs');
-  const {values} = cliPlan({listed: {employers: {lane: 'tolerant'}, focusdismiss: {lane: 'suspended'}}});
-  assert.equal(values.suites, 'interviews,jobs,settings,storemove,stores');
+  assert.equal(cliPlan({catches: {wizard: 99}}).values.suites, 'wizard,employers,failuresnotion,jobs,linkedin');
+  const {values} = cliPlan({listed: {employers: {lane: 'tolerant'}, failuresnotion: {lane: 'suspended'}}});
+  assert.equal(values.suites, 'jobs,linkedin,settings,storemove,stores');
   assert.equal(values.left, 'wizard');
   const main = cliPlan({pullRequest: false, catches: {wizard: 99}, listed: {employers: {lane: 'tolerant'}}});
   assert.equal(main.values.suites.split(',').length, 7);   // --base applies even without --pull-request
@@ -178,14 +178,14 @@ test('CLI never picks the night-report AI suite, even when BASE enables its info
 
 test('CLI labels only the capped Linux suite for merge, not the Mac-only loader', () => {
   const {values, text} = cliPlan({
-    suites: ['stores', 'settings', 'jobs', 'interviews', 'focusdismiss', 'employers'],
+    suites: ['stores', 'settings', 'jobs', 'linkedin', 'failuresnotion', 'employers'],
     extraFiles: ['cap-fixture.js'],
     coverage: {suites: {
       stores: {sha: 'fixture', files: {'cap-fixture.js': {loaded: true, lines: []}}, steps: {}},
       updates: {sha: 'fixture', files: {'cap-fixture.js': {loaded: true, lines: []}}, steps: {}},
     }},
   });
-  assert.equal(values.suites, 'employers,focusdismiss,interviews,jobs,settings');
+  assert.equal(values.suites, 'employers,failuresnotion,jobs,linkedin,settings');
   assert.equal(values.left, 'stores,updates');
   assert.ok(text.includes('| `stores` | run after merge | loads cap-fixture.js'));
   assert.ok(text.includes('| `updates` | not in this PR run | loads cap-fixture.js'));
@@ -225,15 +225,15 @@ test('after merge drops tolerant quality and retired mailreading but keeps reach
 });
 
 test('without --base the CLI reads the merged registry, including a lane changed by this merge', () => {
-  const {values} = cliPlan({pullRequest: false, base: '', suites: ['quality', 'qualityai', 'focusdismiss'],
+  const {values} = cliPlan({pullRequest: false, base: '', suites: ['quality', 'qualityai', 'failuresnotion'],
     checkoutLanes: {quality: {lane: 'tolerant'}, qualityai: {lane: 'tolerant'}}});
-  assert.equal(values.suites, 'focusdismiss');
+  assert.equal(values.suites, 'failuresnotion');
 });
 
 
 test('--base without --pull-request cannot use the checkout lane to exempt a reached suite', () => {
-  const {values} = cliPlan({pullRequest: false, suites: ['focusdismiss'], listed: {}, checkoutLanes: {focusdismiss: {lane: 'tolerant'}}});
-  assert.equal(values.suites, 'focusdismiss');
+  const {values} = cliPlan({pullRequest: false, suites: ['failuresnotion'], listed: {}, checkoutLanes: {failuresnotion: {lane: 'tolerant'}}});
+  assert.equal(values.suites, 'failuresnotion');
 });
 
 

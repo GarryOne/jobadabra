@@ -6,7 +6,7 @@ import {planRun, suiteFacts} from '../plan-run.mjs';
 import {planPrSuites} from '../lib/pr-suites.mjs';
 import {SLIM, autoSuites, suitesFor} from '../lib/plan.mjs';
 
-const KEEP = ['activityfailures', 'apply', 'applyflows', 'employers', 'failureschannels', 'settings'];
+const KEEP = ['activityfailures', 'apply', 'applyflows', 'employers', 'settings'];
 const NIGHT_REPORT = ['interactions', 'notion-real', 'quality', 'qualityai', 'wander'];   // once a night, report only, never in the beta (owner, 1 Nov 2026); each exports cadence 'night-report' itself
 const DROPPED = ['personas', 'pool'];   // R2, 1 Nov 2026: the retired `mailreading` pointer file is deleted (qualityai:mail is the way)
 const BY_HAND = ['explore'];   // never scheduled by design: it spends the owner's AI credit

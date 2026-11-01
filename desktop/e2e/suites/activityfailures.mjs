@@ -1,5 +1,5 @@
 /* global window */
-// Actions + Recent activity when things go WRONG, the part that needs the real window: the AI refusing the key (401), the Gmail check through a fake Google (failureschannels), a save Notion refuses
+// Actions + Recent activity when things go WRONG, the part that needs the real window: the AI refusing the key (401), a save Notion refuses
 // (failuresnotion) and quitting the app in the middle of a run. Starts from a set-up install; resets only its own run rows in Notion. Why (R2, 1 Nov 2026, owner: "only the critical e2e/user journeys"):
 // the AI failing as 429/500/spending-limit/silence, Notion failing under a run and the Telegram digest moved to desktop/integration/store/run-*.test.mjs, which run on every PR touching them.
 // Job: run the backbone
@@ -32,7 +32,7 @@ const disagreement = (mine, opened, run) => {
 export const offlineAi = true;
 export const realAi = false;
 export const aiAnswers = 'backbone';   // answers its AI from the stored table in every workflow (plan-run.mjs puts it in the matrix)
-export const minutes = 40;   // + Notion, Telegram and Gmail failures (5 Oct 2026)
+export const minutes = 40;   // + Notion failures (5 Oct 2026)
 // Measured caps and preserved inner-sequence allowances live in the shared table.
 export const aggregateBudget = false;
 export const hangCaps = hangCapsFor('activityfailures');
@@ -47,11 +47,9 @@ export const store = 'standin';
 export const keepGoing = true;
 // Notion fails on purpose too (lib/notion-proxy.mjs): busy, an HTML error page, the connection gone.
 export const notionProxy = true;
-// Gmail through a fake Google (lib/google-fake.mjs): three invented emails, and a revoked sign-in.
-export const google = true;
 // The app reads Notion's run history every 15 s and picks up the jobs of the last session 20 s after launch: both shortened for the journey (never for a user).
 export const env = {JOB_PILOTTO_E2E_HISTORY_MS: '3000', JOB_PILOTTO_E2E_RESUME_MS: '3000', JOB_PILOTTO_E2E_EXPECTS_FAILURES: '1'};   // this suite breaks things on purpose: its Sentry reports are tagged expected
-// The three parts are the suites activityfailures (the AI), failuresnotion and failureschannels (Telegram, Gmail, Google): each on its own Notion page, in parallel.
+// The two parts are the suites activityfailures (the AI) and failuresnotion: each on its own Notion page, in parallel.
 export async function runParts(ctx, parts) {
   const {proxy} = ctx;
   ctx.activityStateWaits = parts.includes('ai');
@@ -124,22 +122,7 @@ export async function runParts(ctx, parts) {
       if (problems.length) throw new Error(problems.join('; '));
     }, {needs: ctx.needs, faults: true, data: true});
   }
-  if (parts.includes('channels')) {
-    // ---------- (2d) Gmail (5 Oct 2026) ----------
-    await ctx.run('the Gmail check reads the inbox through Google and ends in words, with nothing left Running', async () => {
-      const before = ctx.google.stats.read;
-      const {fresh, shown} = await runTask(ctx, 'mail', {maxMs: 240000, kind: 'mail'});
-      const mine = shown.find(row => row.id === String(fresh[0].id));
-      console.log(`  gmail: ${ctx.google.stats.read - before} email(s) read of ${ctx.google.count}; ok=${fresh[0].ok}; list: "${mine?.result}" [${mine?.pill}]`);
-      const problems = [];
-      if (ctx.google.stats.read - before < 1) problems.push('no email was read, so nothing was tested');
-      if (!fresh[0].ok) problems.push(`the check did not end ok ("${mine?.result}")`);
-      const bad = badSummary(mine?.result);
-      if (bad) problems.push(`the list's words are wrong: ${bad}`);
-      if (problems.length) throw new Error(problems.join('; '));
-      await noRowStaysRunning(ctx);
-    }, {needs: ctx.needs, faults: true});
-  }
+  // Why (1 Nov 2026, owner: "Only tier 1 … should stay e2e"): the Gmail check (night journey J16, Tier 2; suite failureschannels) is an integration test: integration/store/run-channels.test.mjs.
   if (parts.includes('ai')) {
     // ---------- (3) two things at once, and a quit in the middle ----------
     // Removed 6 Oct 2026 (7-minute suite budget): a double-clicked Run (every task step already fails on a run listed twice: runTask), a Gmail check queued behind a

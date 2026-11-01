@@ -1,8 +1,8 @@
 /* global document, window */
 // The Interviews library, layer 2: what the window draws from the interviews this Mac's store hands it, moved from the e2e `interviews` suite (1 Nov 2026). The jobs and interviews
 // are the engine's own answers for a seeded SQLite store (screen-interviews-kit.js), shown in the app's demo window, no Notion, no AI.
-// What STAYS in e2e: the steps that write through the real app (link and unlink a job, a transcript imported and reviewed, review again, refresh insights: the AI's stored answers
-// and the store's rows meet there), and the one-time setup banner (its progress comes from the main process). Delete: the window's message, and the engine's delete in a separate test (the page's own delete call is not seen from here).
+// Nothing of Interviews stays in e2e (owner, 1 Nov 2026: only Tier 1 journeys are e2e). The links and the writes through the app are desktop/integration/store/interviews-flow.test.mjs; the one-time setup banner is here,
+// given the app's own progress steps (a test run never starts the real setup). Delete: the window's message, and the store's delete in interviews-flow (the window is read-only to the main process).
 import assert from 'node:assert/strict';
 import {after, before, test} from 'node:test';
 import {needsElectron} from '../../test/needs-electron.js';
@@ -64,6 +64,22 @@ before(async () => {
       consent.click(); await kit.until(() => record.disabled, 'Record to turn off after the consent box is unticked');
       return before;
     });
+    // The one-time setup banner (J18, moved from the e2e `interviews` suite, 1 Nov 2026): a test run never starts the real setup, so the page is given the app's own progress steps.
+    await section('banner', async () => {
+      await kit.open(4);
+      const {drawInterviewProgress} = await import('./pages/interviews-setup.js');
+      const banner = () => ({shown: !document.getElementById('iv-setup').hidden, text: document.getElementById('iv-setup-text').textContent,
+        bar: document.getElementById('iv-setup-bar').hidden ? null : document.getElementById('iv-setup-fill').style.width});
+      const draft = () => ({shown: !document.getElementById('iv-progress').hidden, text: document.getElementById('iv-progress-text').textContent, percent: document.getElementById('iv-progress-percent').textContent});
+      const open = 'the-open-draft';
+      // A setup step carries the id of the draft the person is reading or of none: either way the banner shows, the draft's own line only for its own id.
+      drawInterviewProgress({id: 'another-draft', percent: 40, setup: true, text: 'Downloading the speech models, only the first time (about 520 MB): asr'}, open);
+      const downloading = banner(), notMine = draft(), layout = kit.severe('interviews');
+      drawInterviewProgress({id: open, percent: null, setup: true, text: 'Unpacking the speech models (asr), a minute or two'}, open);
+      const unpacking = banner(), mineUnknown = draft();
+      drawInterviewProgress({id: open, percent: 10, text: 'Writing down what was said'}, open);
+      return {downloading, unpacking, transcribing: banner(), notMine, mineUnknown, mine: draft(), layout};
+    });
     await section('delete', async () => {
       await kit.open(4);
       await kit.choose(ids.neutral, /^Delete$/);
@@ -118,9 +134,22 @@ test('Record stays off until everyone has agreed, and says why', live, () => {
   assert.match(box, /Recording consent required/, 'the consent notice is not on the page');
 });
 
+test('the one-time setup banner shows its step and percent, then goes away when transcribing starts; a draft\'s own line is drawn only for its own id', live, () => {
+  const {downloading, unpacking, transcribing, notMine, mineUnknown, mine, layout} = facts('banner');
+  assert.equal(downloading.shown, true, 'the banner is not on screen while the speech models download');
+  assert.ok(/asr 40%/.test(downloading.text) && downloading.bar === '40%', `the setup banner shows "${downloading.text}" with a bar of ${downloading.bar}, expected asr 40% and 40%`);
+  assert.equal(unpacking.shown, true);
+  assert.equal(unpacking.bar, null, 'the bar stays while the percent is unknown');
+  assert.equal(transcribing.shown, false, 'the banner is still on screen after transcribing started');
+  assert.equal(notMine.shown, false, 'a step for another draft drew the open draft\'s own progress line');
+  assert.deepEqual([mineUnknown.shown, mineUnknown.percent], [true, ''], 'the open draft\'s progress line is missing, or shows a percent nobody sent');
+  assert.deepEqual([mine.text, mine.percent], ['Writing down what was said', '10%'], 'the open draft\'s progress line does not show its own step');
+  assert.deepEqual(layout, [], 'the banner has layout problems');
+});
+
 test('Delete, once the person agrees, says which interview was deleted', live, () => {
   // The window only shows the "Deleted …" line: demo mode writes nothing, and the bridge to the main process (window.pilot) is read-only, so which id the page asks the
-  // main process to delete is not seen here. The e2e interviews step 'Delete moves an interview to the Notion trash' stays for that (the real app deletes the real row).
+  // main process to delete is not seen here. The delete itself (the id reaches the store) is interviews-flow.test.mjs 'Delete takes an interview out of the store'.
   const {message} = facts('delete');
   assert.match(message, /Deleted "E2E Beta · Round 2"/, `no confirmation after deleting: "${message.trim()}"`);
 });

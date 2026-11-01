@@ -1,5 +1,5 @@
 {
- "_about": "The critical journeys the beta proves (owner, 1 Nov 2026), each with the steps that prove it, and the safety or data steps kept though no journey owns them. tier 1 = runs after every merge and blocks the beta (the owner's test: \"it blocks the user's flow\"); tier 2 = night burn-in only, reported, never blocks. The kept steps are tier 1. Safety and data marks live in code, never here. parts: literals of a name the code builds.",
+ "_about": "The critical journeys the beta proves (owner, 1 Nov 2026), each with the steps that prove it, and the safety or data steps kept though no journey owns them. tier 1 = runs after every merge and blocks the beta (the owner's test: \"it blocks the user's flow\"); tier 2 = an integration test only, never an e2e step (owner, 1 Nov 2026: \"tier2 should not be part by beta\", \"everything that's tier 2 should be dropped/converted to integrations\", \"Only tier 1 … should stay e2e\"). The kept steps are tier 1. A tier 1 step is {suite, step}; a tier 2 step is {integration: <desktop/integration path>, test: <exact test name>}. Safety and data marks live in code, never here. parts: literals of a name the code builds.",
  "journeys": [
   {
    "id": "J0",
@@ -84,8 +84,9 @@
    "id": "J8",
    "name": "Tailor a CV for a job",
    "steps": [
-    {"suite": "apply", "step": "Tailor CV on a job writes a CV from its posting: the PDF on this Mac, the file on the job in Notion, and the extension attaches it, not the base CV"},
-    {"suite": "apply", "step": "Tailor on the session page of a form restarts the form with the tailored CV under its own name"}
+    {"integration": "desktop/integration/store/tailored-cv.test.mjs", "test": "Tailor CV on a job: that job's form gets the tailored PDF under its own name, every other form the general CV"},
+    {"integration": "desktop/integration/store/tailored-cv.test.mjs", "test": "Tailor on the session page restarts only that job's open form, and it is handed the tailored CV under its own name"},
+    {"integration": "desktop/integration/extension/extension-form-shapes.test.mjs", "test": "a form whose app hands it a tailored CV gets that file attached, under its own name, and not the general CV"}
    ],
    "tier": 2
   },
@@ -158,8 +159,10 @@
    "name": "What we learned: sign-up answers stay out, a menu choice is remembered",
    "tier": 2,
    "steps": [
-    {"suite": "applyflows", "step": "a sign-up page before the form: the account step is kept apart from the application form"},
-    {"suite": "applyflows", "step": "a menu whose choices are not the answer's words: the choice that means the same is picked, then remembered for the next form on the site"}
+    {"integration": "desktop/integration/extension/extension-form-shapes.test.mjs", "test": "a sign-up page before the form: the account step is kept apart from the application form"},
+    {"integration": "desktop/integration/store/menu-choice.test.mjs", "test": "the menu's choice is picked once, armed, remembered for the site and handed to the next form"},
+    {"integration": "desktop/integration/extension/extension-form-shapes.test.mjs", "test": "a menu whose choices are not the answer's words: the form reports the menu with its choices, and the choice the app picks is put in it"},
+    {"integration": "desktop/integration/extension/extension-form-shapes.test.mjs", "test": "a menu choice the app remembers for the site is on the next form there at once, with nothing reported to ask about"}
    ]
   },
   {
@@ -167,7 +170,7 @@
    "name": "Gmail check: reads the inbox and ends in words",
    "tier": 2,
    "steps": [
-    {"suite": "activityfailures", "step": "the Gmail check reads the inbox through Google and ends in words, with nothing left Running"}
+    {"integration": "desktop/integration/store/run-channels.test.mjs", "test": "the Gmail check reads the inbox through Google and ends in words, with nothing left Running"}
    ]
   },
   {
@@ -175,7 +178,7 @@
    "name": "Settings render without layout problems",
    "tier": 2,
    "steps": [
-    {"suite": "settings", "step": "Settings render without layout problems"}
+    {"integration": "desktop/integration/app/screen-settings.test.js", "test": "every Settings section the page lists opens and has no layout problems"}
    ]
   },
   {
@@ -183,8 +186,8 @@
    "name": "Interviews: an interview is linked to a job and unlinked again",
    "tier": 2,
    "steps": [
-    {"suite": "interviews", "step": "an interview can be linked to a job and unlinked again, and Notion follows"},
-    {"suite": "interviews", "step": "the one-time setup banner shows its step and percent, then goes away when transcribing starts"}
+    {"integration": "desktop/integration/store/interviews-flow.test.mjs", "test": "an interview can be linked to a job and unlinked again, and the store follows"},
+    {"integration": "desktop/integration/app/screen-interviews.test.js", "test": "the one-time setup banner shows its step and percent, then goes away when transcribing starts"}
    ]
   },
   {
@@ -192,7 +195,7 @@
    "name": "Focus: a job dismissed from In process stays gone",
    "tier": 2,
    "steps": [
-    {"suite": "focusdismiss", "step": "Dismiss on a job in process leaves the In process list at once, and is still gone after a reload (it was bouncing back to \"Interview scheduled\", 3 Oct 2026)"}
+    {"integration": "desktop/integration/store/dismiss-in-process.test.mjs", "test": "a job dismissed in process stays out of the In process list: Closed in the store, gone from the saved list, not brought back by a late read"}
    ]
   }
  ],
@@ -223,7 +226,7 @@
  "to_come": [
  "Always on / Notion (tier 2): its own step is strategy.mjs 'an edit made directly on the Notion page is used by the next check, and a removed role stops matching', listed in J13 (tier 1); the kept storemove step 'Jobs, Focus, Interviews and Recent activity show the same items from Notion' also covers it",
   "Profile's Experience (tier 1, in J14): a new step plus its integration counterpart, after round 2; a8 writes it",
-  "Cover letter (tier 2): no e2e step exists; a new short step (a job's letter reaches its form) plus its integration counterpart, after round 2; a8 writes it",
-  "Calendar (tier 2): its suite left e2e; one new short step after round 2; a8 writes it"
+  "Cover letter (tier 2): integration test to write (a job's letter reaches its form); a8 writes it",
+  "Calendar (tier 2): integration test to write; a8 writes it"
  ]
 }

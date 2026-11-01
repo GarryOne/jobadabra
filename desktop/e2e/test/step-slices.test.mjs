@@ -27,7 +27,7 @@ test('every sliced step of apply and applyflows runs in exactly one slice, and w
   for (const [suite, {parts, seconds}] of Object.entries(SUITES)) {
     const {shards} = await import(`../suites/${suite}.mjs`), steps = stepsOf(parts);
     assert.equal(shards, {apply: 3, applyflows: 3}[suite], suite);
-    assert.ok(steps.length >= 10, `${suite}: only ${steps.length} steps read: the pattern no longer matches`);
+    assert.ok(steps.length >= 8, `${suite}: only ${steps.length} steps read: the pattern no longer matches`);
     const runs = Array.from({length: shards}, (_, at) => { const takes = stepSlicer({index: at + 1, count: shards}, {seconds, needs: apply.stepNeeds, setup: SETUP}); return steps.filter(name => takes(name)); });
     for (const name of steps) assert.equal(runs.filter(list => list.includes(name)).length, 1, `${suite}: "${name.slice(0, 60)}" runs in ${runs.filter(list => list.includes(name)).length} slices`);
     for (const list of runs) for (const name of list) for (const word of needsOf(name)) assert.ok(list.some(other => other !== name && other.includes(word)), `${suite}: "${name.slice(0, 50)}" runs without "${word}" in its slice`);
@@ -56,22 +56,23 @@ test('without a slice every step runs; a step nobody weighed takes turns', () =>
 });
 
 // 26 Oct 2026, beta 40275152602: applyflows took turns, one slice drew the heavy journeys and ran out of its 7 minutes; it is weighed like apply now.
-test('every journey of applyflows is weighed or follows one, no weight names a gone step, and its halves are near equal', () => {
+test('every journey of applyflows is weighed or follows one, no weight names a gone step, and its slices are near equal', () => {
   const steps = stepsOf(['flows']), heads = Object.keys(apply.flowSeconds);
   assert.deepEqual(steps.filter(name => !heads.some(head => name.startsWith(head)) && !needsOf(name).length), [], 'weigh the new journey in suites/apply.mjs flowSeconds');
   assert.deepEqual(heads.filter(head => !steps.some(name => name.startsWith(head))), []);
   for (const name of steps) assert.ok(heads.filter(head => name.startsWith(head)).length <= 1, `"${name.slice(0, 50)}" matches two weights`);
-  const owner = weighedSlices(apply.flowSeconds, 2), load = [1, 2].map(index => Object.entries(apply.flowSeconds).filter(([head]) => owner[head] === index).reduce((sum, [, s]) => sum + s, 0));
-  const mean = (load[0] + load[1]) / 2;
-  assert.ok(Math.abs(load[0] - load[1]) / mean < 0.1, `halves ${load.join(' vs ')} s`);
+  // Why (1 Nov 2026, J15 left e2e): the suite runs flows.shards slices (31 Oct, 06d73df: "three flow slices replace two halves"), so the balance is judged on those, not on two halves a greedy cut over 9 weights cannot split within 10%.
+  const owner = weighedSlices(apply.flowSeconds, flows.shards), load = Array.from({length: flows.shards}, (_, at) => Object.entries(apply.flowSeconds).filter(([head]) => owner[head] === at + 1).reduce((sum, [, s]) => sum + s, 0));
+  const mean = load.reduce((sum, s) => sum + s, 0) / flows.shards;
+  assert.ok((Math.max(...load) - Math.min(...load)) / mean < 0.1, `slices ${load.join(' vs ')} s`);
 });
 
 // Pinned observations supply the weights; these guards check placement and capacity, while the PR run proves current runtime.
-test('applyflows slices fit eight measured minutes, with two halves balanced against their mean', () => {
-  const halves = weighedSlices(apply.flowSeconds, 2);
-  const halfLoad = [1, 2].map(index => Object.entries(measured.applyflows).filter(([head]) => halves[head] === index).reduce((sum, [, seconds]) => sum + seconds, 0));
-  const mean = halfLoad.reduce((sum, seconds) => sum + seconds, 0) / 2;
-  assert.ok((Math.max(...halfLoad) - Math.min(...halfLoad)) / mean < 0.1, `measured halves ${halfLoad.join(' vs ')} s`);
+test('applyflows slices fit eight measured minutes, with its slices balanced against their mean', () => {
+  const owned = weighedSlices(apply.flowSeconds, flows.shards);
+  const sliceLoad = Array.from({length: flows.shards}, (_, at) => Object.entries(measured.applyflows).filter(([head]) => owned[head] === at + 1).reduce((sum, [, seconds]) => sum + seconds, 0));
+  const mean = sliceLoad.reduce((sum, seconds) => sum + seconds, 0) / flows.shards;
+  assert.ok((Math.max(...sliceLoad) - Math.min(...sliceLoad)) / mean < 0.1, `measured slices ${sliceLoad.join(' vs ')} s`);
   for (let index = 1; index <= flows.shards; index++) {
     const takes = stepSlicer({index, count: flows.shards}, {seconds: apply.flowSeconds, needs: apply.stepNeeds, setup: SETUP});
     const load = stepsOf(['flows']).filter(name => takes(name)).reduce((sum, name) => sum + (Object.entries(measured.applyflows).find(([head]) => name.startsWith(head))?.[1] || 0), 0);

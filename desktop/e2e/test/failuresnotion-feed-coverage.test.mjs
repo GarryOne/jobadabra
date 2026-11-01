@@ -21,6 +21,7 @@ const feed = file => read(`../fixtures/feeds/${file}`);
 const tuple = ({title, company, location}) => ({company: company.trim(), location: location.trim(), title: title.trim()});
 
 // Execute only the feed builder and literal fault data, with an in-memory writer and no app imports.
+// Why (J16, 1 Nov 2026): the Notion branch now ends where the AI branch starts (the channels branch, the Gmail check, is an integration test).
 // Why (R2, 1 Nov 2026): the Notion fault loop (one feed per fault mode) moved to integration/store/run-faults-notion.test.mjs, which runs no AI; only the Save step's feed is left here.
 const setFeedBody = helpers.match(/export function setFeed\([\s\S]*?\n}/);
 assert.ok(setFeedBody, 'the feed definition must remain enumerable');
@@ -28,7 +29,8 @@ const writes = new Map();
 const setFeed = runInNewContext(`const feedIds = new WeakMap(); (${setFeedBody[0].replace('export ', '')})`, {
   fs: {writeFileSync: (file, text) => writes.set(file, JSON.parse(text))}, path: {join: (...parts) => parts.join('/')},
 });
-const calls = activity.slice(activity.indexOf("if (parts.includes('notion'))"), activity.indexOf("if (parts.includes('channels'))"))
+const notionAt = activity.indexOf("if (parts.includes('notion'))");
+const calls = activity.slice(notionAt, activity.indexOf("if (parts.includes('ai'))", notionAt))
   .match(/setFeed\(ctx, [^;]+/g);
 assert.ok(calls?.length, 'the Notion branch must declare its feed calls');
 const company = feed('sources.json')[0].company;

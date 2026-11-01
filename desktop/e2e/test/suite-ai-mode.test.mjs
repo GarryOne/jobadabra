@@ -50,7 +50,7 @@ test('a wrapper importing a stubbing suite must declare its own AI mode', () => 
 });
 
 // A missing suite declaration must not send the seeded CV's contact ask to a hash cache or live AI.
-for (const name of ['focusdismiss']) test(`${name}: setup contact proposals use the existing reviewed answer`, async () => {
+for (const name of ['jobs']) test(`${name}: setup contact proposals use the existing reviewed answer`, async () => {
   const suite = await import(`../suites/${name}.mjs`);
   const wanted = ['phone', 'salutation', 'street', 'postal_code', 'place_of_origin', 'birth_date', 'linkedin', 'github', 'website'];
   const client = {messages: {create: async (body, options) => {

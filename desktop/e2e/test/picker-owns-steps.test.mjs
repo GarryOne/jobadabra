@@ -22,7 +22,7 @@ test('#2476: across the real registry, only wizard receives the new wizard step'
   const touched = pick.stepsTouched(sources['lib/wizard.mjs'], [[line, line]]);
   assert.deepEqual(touched, {steps: [name], whole: false});
   const users = suitesUsing('', sources)['lib/wizard.mjs'];
-  assert.ok(users.length >= 19, 'positive control: the shared lib reaches many suites');
+  assert.ok(users.length >= 16, 'positive control: the shared lib reaches many suites');
   const own = {};
   for (const suite of users.filter(suite => SUITES.includes(suite))) {
     const {ownsStep} = await import(`../suites/${suite}.mjs`);

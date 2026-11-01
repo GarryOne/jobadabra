@@ -71,12 +71,6 @@
       "standin": 351,
       "sqlite": 334
     },
-    "Mac + Linux · focusdismiss": {
-      "runs": 2,
-      "max": 130,
-      "standin": 124,
-      "sqlite": 130
-    },
     "Mac + Linux · applyflows-2of3": {
       "runs": 2,
       "max": 235,
@@ -136,12 +130,6 @@
       "max": 278,
       "standin": 113,
       "sqlite": 278
-    },
-    "Mac + Linux · failureschannels": {
-      "runs": 2,
-      "max": 46,
-      "standin": 46,
-      "sqlite": 41
     },
     "Mac + Linux · notion-real": {
       "runs": 2,

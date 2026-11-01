@@ -20,9 +20,6 @@
     "stores": {
       "aiMissesMax": 0
     },
-    "interviews": {
-      "aiMissesMax": 0
-    },
     "wander": {
       "lane": "tolerant",
       "input": "clock",
@@ -36,9 +33,6 @@
       "since": "2026-11-01",
       "why": "Owner, 1 Nov 2026: the beta keeps only the critical journeys; interactions is a finder that clicks every safe control and watches pages for late shifts, and reports once a night (cadence night-report), so its result depends on layout timing.",
       "returns": "Stays tolerant: it is a nightly report, not a gate."
-    },
-    "failureschannels": {
-      "aiMissesMax": 0
     },
     "activityfailures": {
       "aiMissesMax": 0
@@ -65,9 +59,6 @@
       "aiMissesMax": 0
     },
     "updates": {
-      "aiMissesMax": 0
-    },
-    "focusdismiss": {
       "aiMissesMax": 0
     },
     "failuresnotion": {

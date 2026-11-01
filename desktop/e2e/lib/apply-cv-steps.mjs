@@ -1,70 +1,19 @@
 /* global document, window */
-// The apply suite's tailored-CV steps (moved out of suites/apply.mjs, 8 Oct 2026): Tailor CV on a job, the panel's way to it in the app, Tailor CVs for top matches, Apply without a kit. Guards the CV flow in docs/flows/applying.md.
+// The apply suite's tailored-CV steps (moved out of suites/apply.mjs, 8 Oct 2026): Tailor CVs for top matches, Apply without a kit. Guards the CV flow in docs/flows/applying.md.
 // Job: wait on state
 import fs from 'node:fs';
 import crypto from 'node:crypto';
 import path from 'node:path';
-import {FORMS} from './forms.mjs';
 import {POSTING} from './apply-fixtures.mjs';
-import {waitForFill} from './fill-attempt.mjs';
 import {stepTimeLeft} from './wait-on-state.mjs';
-import {addKitJob, removeJobsByUrl, tailoredFiles} from './seed-data.mjs';
-import {cvProblems} from './applycheck.mjs';
-import {readForm, readPanel} from './extension.mjs';
+import {addKitJob, removeJobsByUrl} from './seed-data.mjs';
 import {showFilter} from './jobs-filter.mjs';
 import {openRunsList} from './runs-list.mjs';
 
 export async function runCvSteps(ctx, h) {
-  const {apply, cv, fail, page, proxy, until} = h;
-  await ctx.run('Tailor CV on a job writes a CV from its posting: the PDF on this Mac, the file on the job in Notion, and the extension attaches it, not the base CV', async () => {
-    const form = FORMS.greenhouse;
-    const code = crypto.createHash('sha1').update(form.url.trim()).digest('hex').slice(0, 8);
-    const tailoredPdf = path.join(ctx.profile, 'cv', 'tailored', `${code}.pdf`);
-    await page.click('.nav[data-view="jobs"]');
-    // Under "Everything", whatever filter an earlier step left on the list: this job is Opened/Form filled by now and is not under "New matches" (10 Oct 2026: Windows CI,
-    // "waiting for the More actions button of E2E Greenhouse Labs" for 30 s, the list showing other jobs).
-    await showFilter(page, 'everything');
-    const row = page.locator(`article.job-row[data-url=${JSON.stringify(form.url)}]`);
-    await row.waitFor({timeout: 60000})
-      .catch(() => { throw new Error(`${form.company} is not in the Jobs list even under Everything`); });
-    // An open ⋯ menu survives the list's redraws (components.js holdMenu; 31 Oct 2026): open it once and click.
-    await row.getByRole('button', {name: 'More actions'}).click();
-    const menu = await waitForFill({capMs: 2500, pickTab: () => ({tab: page}), readState: () => page.getByRole('menuitem').allInnerTexts(), accept: texts => texts.some(text => /Tailor CV/.test(text))});
-    if (!menu.ok) throw new Error(`the ⋯ menu of ${form.company} has no Tailor CV (it lists: ${menu.state.join(' | ') || 'nothing'})`);
-    await page.getByRole('menuitem', {name: /Tailor CV/}).click();
-    await until('Tailor CV wrote no PDF within two minutes (see the "Tailoring failed" toast)', () => fs.existsSync(tailoredPdf), 120000);
-    const size = fs.statSync(tailoredPdf).size;
-    if (size === cv.size) throw new Error('the tailored PDF is the size of the base CV: it was not written from the posting');
-    let files = 0;
-    await until(ctx.store === 'sqlite' ? 'the tailored CV is not among the job\'s files in this Mac\'s store (applications.attach)' : 'the tailored CV is not on the job\'s row in Notion (column "Tailored CV")', async () => { files = await tailoredFiles(ctx, form.url); return files; }, 30000);
-    const {tab, state} = await apply(form, {viaApi: true});
-    if (state.state === 'error') throw new Error(`the fill ended in an error: ${state.error}`);
-    fail(cvProblems(await readForm(tab), {name: 'CV_Ada_Tester_E2E_Greenhouse_Labs.pdf', size}));   // the tailored file's bytes, under its own name: the form shows which CV it got
-  }, {needs: ctx.needs, data: true});
-
-  // Why (27 Oct 2026, owner: "remove the line with 'general CV attached… Tailor in Jobadabra'"): the panel neither tailors nor links to it; Tailor lives on the session page,
-  // and the app restarts the form when the tailored CV is ready, so it is attached from the start (desktop/lib/tailored-restart.js), with no Fill press; wait on that session's attachment (29 Oct 2026, ap).
-  await ctx.run('Tailor on the session page of a form restarts the form with the tailored CV under its own name', async () => {
-    const form = FORMS.lever;
-    const code = crypto.createHash('sha1').update(form.url.trim()).digest('hex').slice(0, 8);
-    const tailoredPdf = path.join(ctx.profile, 'cv', 'tailored', `${code}.pdf`);
-    fs.rmSync(tailoredPdf, {force: true});
-    const {tab, state, session} = await apply(form, {viaApi: true});
-    if (state.state === 'error') throw new Error(`the fill ended in an error: ${state.error}`);
-    fail(cvProblems(await readForm(tab), cv).map(problem => `${problem} (before Tailor the form has the general CV)`));
-    await page.click('.nav[data-view="sessions"]');
-    await page.locator('#ss-list .ss-row').filter({hasText: form.company}).filter({hasText: form.title}).click({timeout: 15000}).catch(() => { throw new Error(`no session for ${form.company} on the Sessions page`); });
-    await page.waitForFunction(id => window.__jp.openSession?.id === id, session, {timeout: 20000});
-    const tailor = page.locator('#ss-before-cv-btn');
-    await tailor.waitFor({state: 'visible', timeout: 20000}).catch(() => { throw new Error(`the session page of ${form.company} has no Tailor button`); });
-    await tailor.click();
-    await until('Tailor on the session page wrote no tailored CV within two minutes', () => fs.existsSync(tailoredPdf), 120000);
-    // No Fill press: the app reloads the form's tab and its mark fills it again from the start, now with the tailored CV.
-    const expected = {name: 'CV_Ada_Tester_E2E_Lever_Systems.pdf', size: fs.statSync(tailoredPdf).size};
-    await tab.waitForFunction(wanted => [...document.querySelectorAll('input[type="file"]')].some(input => [...input.files].some(file => file.name === wanted.name && file.size === wanted.size)), expected, {timeout: 120000});
-    const after = await readPanel(tab).catch(() => null);
-    fail(cvProblems(await readForm(tab), expected).map(problem => `${problem} (the form did not restart with the tailored CV${after?.note ? `; the panel says: "${after.note}"` : ''})`));
-  }, {needs: ctx.needs});
+  const {page, proxy, until} = h;
+  // Why (1 Nov 2026, owner: "Only tier 1 … should stay e2e"): the two Tailor steps (Tailor CV on a job, Tailor on the session page; night journey J8, Tier 2) are integration tests now:
+  // desktop/integration/store/tailored-cv.test.mjs (what the app hands the form, the restart) and integration/extension/extension-form-shapes.test.mjs (the extension attaches it).
 
   // Tailor CVs for top matches (Actions): the best open jobs without a tailored CV, in fit order, only as many as asked. The stand-in AI answers the tailoring.
   const topUrls = [1, 2, 3].map(n => `https://boards.greenhouse.io/e2e-top/jobs/90000${n}`);

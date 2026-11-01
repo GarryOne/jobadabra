@@ -174,11 +174,3 @@ test('interviews stored replies survive the OpenAI following proxy', async t => 
   assert.equal(data.object, 'response');
   h.assertNoLive();
 });
-
-test('interviews declares offline AI, retains no-real-AI enforcement, and uses backbone on both workflow attempts', () => {
-  const source = fs.readFileSync(new URL('../suites/interviews.mjs', import.meta.url), 'utf8');
-  assert.match(source, /^export const offlineAi = true;/m);
-  assert.match(source, /^export const realAi = false;/m);
-  // The suite declares it; every workflow reads it from the matrix (plan-run.mjs, tests/test_workflow_ai_answers.py; beta 41078746088: a hand-kept list drifted).
-  assert.match(fs.readFileSync(new URL('../suites/interviews.mjs', import.meta.url), 'utf8'), /^export const aiAnswers = 'backbone';/m);
-});

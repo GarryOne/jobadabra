@@ -434,6 +434,18 @@ jobs:
           gh release upload "desktop-v${VERSION}" "${files[@]}" || { python "$GITHUB_WORKSPACE/tools/github_limit.py" explain "gh release upload"; exit 1; }
           GH_REPO="$GITHUB_REPOSITORY" "$tools_dir/release-file-names.sh" check mac "desktop-v${VERSION}"
           gh release edit "desktop-v${VERSION}" --draft=false --prerelease
+      # Why (1 Nov 2026, a8; owner: "Only on a proved commit"): the unit outcome was only a job output of this run, so a later run could not tell whether this build's unit tests were green.
+      # A named step inside this box (no box of its own). It runs only when Compile, Smoke and the upload above passed: a lane that did not get that far leaves no file, and
+      # tools/night_proof.py reads a missing file as "not proved" (tests/test_night_proof.py).
+      - name: Record the unit tests' outcome in the release (unit-mac.json, read by tools/night_proof.py)
+        timeout-minutes: 5
+        working-directory: desktop
+        env:
+          GH_TOKEN: ${{ github.token }}
+          UNIT: ${{ steps.unit.outcome }}
+        run: |
+          printf '{"lane":"mac","unit":"%s","sha":"%s","run":"%s"}\n' "$UNIT" "$GITHUB_SHA" "$GITHUB_RUN_ID" > unit-mac.json
+          gh release upload "desktop-v${VERSION}" unit-mac.json --clobber || { python "$GITHUB_WORKSPACE/tools/github_limit.py" explain "gh release upload"; exit 1; }
       - if: always()
         uses: ./.github/actions/gh-ledger
         with:
@@ -583,6 +595,16 @@ jobs:
           gh release upload "desktop-v${VERSION}" "${files[@]}" || { python "$GITHUB_WORKSPACE/tools/github_limit.py" explain "gh release upload"; exit 1; }
           GH_REPO="$GITHUB_REPOSITORY" "$tools_dir/release-file-names.sh" check windows "desktop-v${VERSION}"
           gh release edit "desktop-v${VERSION}" --draft=false --prerelease
+      # Why (1 Nov 2026, a8): as Build · Mac above: unit-windows.json, after Compile, Smoke and the upload passed, before the carry-over step (which runs on a failure only).
+      - name: Record the unit tests' outcome in the release (unit-windows.json, read by tools/night_proof.py)
+        timeout-minutes: 5
+        working-directory: desktop
+        env:
+          GH_TOKEN: ${{ github.token }}
+          UNIT: ${{ steps.unit.outcome }}
+        run: |
+          printf '{"lane":"windows","unit":"%s","sha":"%s","run":"%s"}\n' "$UNIT" "$GITHUB_SHA" "$GITHUB_RUN_ID" > unit-windows.json
+          gh release upload "desktop-v${VERSION}" unit-windows.json --clobber || { python "$GITHUB_WORKSPACE/tools/github_limit.py" explain "gh release upload"; exit 1; }
       # Build · Windows failed: the release carries the last working Windows installer, so the Windows download link of a release that becomes stable keeps working until a
       # Windows build passes again. It is never approved for Windows (E2E · Windows needs this build to pass). A step, not a job: no box of its own in the graph.
       - name: Build failed, so carry over the last working Windows installer

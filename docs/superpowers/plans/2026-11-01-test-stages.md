@@ -7,7 +7,8 @@
 - 1/5 folded into 4/5: main has no Mac unit run (c27-test-stages, build.yml run 41254459746); the beta's Mac unit step stays until a beta reuses the night's build with its unit results
 - [ ] 2/5 The beta runs the 13 journeys; the other suites move to the night (measured: e2e job-minutes per beta 151-161 → 77-87)
 - [ ] 3/5 The night drops its 3 scheduled "E2E check" runs, after 3 green burn-in nights (measured: 56-107 wall min a night)
-- [ ] 4/5 A beta starts only on a commit the night proved and reuses its build: first a read-only spike (estimate 3-5 min, not verified)
+- [ ] 4/5a A beta by hand starts only on a commit the night proved (`tools/night_proof.py`; `tools/beta-release.sh` refuses and names what is missing, no `--force` past it; Build writes `unit-mac.json` / `unit-windows.json` into the release)
+- [ ] 4/5b The promote run: a proved commit's beta reuses the night's build (estimate ~16 min, then 3-5 min, not verified); after 2/5, because the burn-in's layout must equal the beta's
 - [ ] 5/5 The stable canary says what its red is, instead of crashing (the verdict script had no checkout; the workflow's own tools come from its own commit; a guard loops over every workflow)
 
 Decided (owner, 1 Nov 2026, exact option "A: keep running to the end (Recommended)"): a red beta by hand still runs to the end and its reds are fixed in one batch; no PR stops a beta at its first red.

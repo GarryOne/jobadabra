@@ -34,7 +34,7 @@ class FailedLane(unittest.TestCase):
 class RateLimitIsSaid(unittest.TestCase):
     def test_both_release_uploads_say_a_spent_budget(self):
         uploads = re.findall(r'^ +gh release upload .*$', TEXT, re.M)
-        self.assertEqual(len(uploads), 3)   # Mac, Windows, and the last working Windows installer carried forward
+        self.assertEqual(len(uploads), 5)   # Mac, Windows, their two unit-<lane>.json outcomes (4/5a, --clobber so a re-run replaces it), and the last working Windows installer carried forward
         carried = [line for line in uploads if '--clobber' in line]
         for line in uploads:
             if line not in carried:

@@ -26,6 +26,7 @@ function artifacts({ui = [], ai = [], failures = [], pngs = [], withAi = true, f
 // A gh that remembers what it was asked: issues listed, created, commented, edited.
 function stub(initial = []) {
   const state = {issues: initial, created: [], comments: [], edits: [], prComments: [], prs: [], labels: []};
+  // clean-code-ok: Why (c27, 1 Nov 2026, area-folder move): moved unchanged from desktop/e2e/test/, already 28 on main; the lint sees a moved file as new
   const gh = args => {
     const [a, b] = args;
     if (a === 'issue' && b === 'list' && args.includes('top-issues')) return JSON.stringify(state.ranking ? [state.ranking] : []);   // the pinned ranked list (refreshRanking)

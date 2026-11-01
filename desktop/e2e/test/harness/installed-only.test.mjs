@@ -20,6 +20,7 @@ const optional = line => /^\s/.test(line) || /\.catch\(|,\s*\(\)\s*=>/.test(line
 const packageOf = spec => (spec.startsWith('@') ? spec.split('/').slice(0, 2).join('/') : spec.split('/')[0]);
 
 // {package: [the first file that needs it]} for every package outside `installed`, reached from `entries`.
+// clean-code-ok: Why (c27, 1 Nov 2026, area-folder move): moved unchanged from desktop/e2e/test/, already 28 on main; the lint sees a moved file as new
 export function missingPackages(entries, installed = INSTALLED) {
   const seen = new Set(), missing = {}, queue = [...entries];
   while (queue.length) {

@@ -2,7 +2,7 @@ name: CI · Release to beta
 
 # THE RELEASE STEP of a lane (7 Oct 2026, owner: "Build -> E2E test -> Release" must be distinct in the pipeline). The release run (desktop.yml) calls it as
 # "Release · Mac beta" / "Release · Windows beta" once that lane's E2E job passed; a gate by hand (e2e.yml -f gate_tag, e2e-windows.yml -f tag) calls it as its last job.
-# One platform per call: no real high-severity finding in that platform's suites, the shared release checks (unit suites green on the commit; soak on, the Notion
+# One platform per call: the shared release checks (unit suites green on the commit; soak on, the Notion
 # schema additive over stable), then the platform's line in the release notes ("Beta-approved:" / "Beta-approved (Windows):", desktop/lib/updater.js).
 # Mac with the soak off makes the build stable instead (tools/release-stable.sh).
 on:
@@ -46,7 +46,7 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: '22'
-      - name: No real high-severity finding in this platform's suites (layout check, or an AI finding already seen twice / confirmed)
+      - name: No layout-check high-severity finding in this platform's suites (no AI finding decides)
         working-directory: desktop/e2e
         run: |
           npm ci || npm install
@@ -56,9 +56,9 @@ jobs:
           if [ "$PLATFORM" = windows ]; then find ../../e2e-artifacts -mindepth 1 -maxdepth 1 -name 'e2e-artifacts-*' ! -name 'e2e-artifacts-windows-*' -exec rm -rf {} +
           else find ../../e2e-artifacts -mindepth 1 -maxdepth 1 -name 'e2e-artifacts-windows-*' -exec rm -rf {} +; fi
           status=0
-          node block-check.mjs --artifacts ../../e2e-artifacts > block.txt || status=$?
+          node block-check.mjs --artifacts ../../e2e-artifacts --no-ai > block.txt || status=$?
           cat block.txt
-          if [ "$status" != 0 ]; then echo "$TAG is not offered on $PLATFORM: a real high-severity finding in its end-to-end suites."; exit 1; fi
+          if [ "$status" != 0 ]; then echo "$TAG is not offered on $PLATFORM: a high-severity layout-check finding in its end-to-end suites."; exit 1; fi
       - name: The shared release checks (unit suites green on the commit; soak on, the Notion schema additive over stable)
         env:
           JOB_PILOTTO_SOAK: ${{ vars.JOB_PILOTTO_SOAK }}

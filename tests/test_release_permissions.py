@@ -30,4 +30,4 @@ class ReleaseJobsMayWriteIssues(unittest.TestCase):
         self.assertIn('--job e2e-screenshot-review', action, 'the screenshot review reports its cost')
         users = [f'{path.name}:{name}' for path in sorted(WORKFLOWS.glob('*.yml')) if '\njobs:\n' in path.read_text()
                  for name, job in jobs(path.read_text()) if 'uses: ./.github/actions/e2e-review' in job]
-        self.assertGreaterEqual(len(users), 4, users)   # e2e.yml, e2e-windows.yml and both release lanes of desktop.yml
+        self.assertGreaterEqual(len(users), 2, users)   # e2e.yml and e2e-windows.yml (1 Nov 2026: the beta's release lanes no longer review)

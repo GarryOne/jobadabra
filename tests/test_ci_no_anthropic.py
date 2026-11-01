@@ -23,7 +23,7 @@ USER_PIPELINES = {
 # Owned by the e2e / pool lane (the harness engine under test, the live pool, the PR prompt cases, the cost report): not part of the move above, still listed so the class cannot grow.
 E2E_LANE = {
     '.github/actions/e2e-review/action.yml': {'Anthropic', 'E2E_ANTHROPIC_KEY', 'anthropic-key', 'inputs.anthropic-key', 'secrets.E2E_ANTHROPIC_KEY'},
-    '.github/workflows/desktop.yml': {'E2E_ANTHROPIC_KEY', 'anthropic', 'anthropic-key', 'env.E2E_ANTHROPIC_KEY', 'secrets.E2E_ANTHROPIC_KEY'},
+    '.github/workflows/desktop.yml': {'E2E_ANTHROPIC_KEY', 'anthropic', 'env.E2E_ANTHROPIC_KEY', 'secrets.E2E_ANTHROPIC_KEY'},
     '.github/workflows/e2e-windows.yml': {'E2E_ANTHROPIC_KEY', 'anthropic', 'anthropic-key', 'env.E2E_ANTHROPIC_KEY', 'secrets.E2E_ANTHROPIC_KEY'},
     '.github/workflows/e2e.yml': {'E2E_ANTHROPIC_KEY', 'anthropic', 'anthropic-key', 'env.E2E_ANTHROPIC_KEY', 'secrets.E2E_ANTHROPIC_KEY'},
     '.github/workflows/prompt-cases.yml': {'@anthropic-ai/claude-code@2.1.296', 'PR_PROOF_ANTHROPIC_KEY', 'secrets.PR_PROOF_ANTHROPIC_KEY'},

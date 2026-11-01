@@ -354,3 +354,16 @@ test('cadence night-report: once a night, in no gate, schedule, push or PR, and 
   const later = await run({EVENT: 'workflow_dispatch', NIGHT_PASS: '3/5'});   // no pass-1 run listed: the pass tests its own head; the suites are the same, and no clock is read here
   assert.deepEqual(suitesOf(later), ['jobs', 'settings'], 'passes 2 to 5 are five looks at the gate suites, not five reports');
 });
+
+// Why (1 Nov 2026, owner via a8: "Also add integration shots", "restores a detector, report only"): the shots of the night-report suites are taken only in night pass 1, so pass 1 (and only it)
+// asks the AI to review them, in one batch, whatever changed since the last run. The findings are never filed: ui-findings.yml skips "Night burn-in" runs (asserted below).
+test('night pass 1 reviews the screenshots once; passes 2 to 5, a skipped pass and a pass with nothing to test do not', async () => {
+  const run = (pass, stub = {}) => planRun({env: {EVENT: 'workflow_dispatch', REPO: 'o/r', SHA: HEAD, NIGHT_PASS: pass}, gh: gh(stub), all: ['jobs', 'settings', 'wander'], cadence: {wander: 'night-report'}, minutes: () => 15, storeless: ['wander']});
+  const unchanged = {runs: [{event: 'schedule', headSha: HEAD, conclusion: 'success', displayTitle: 'E2E check'}]};   // main's last tested commit is this one: a day run would find nothing UI-related to review
+  assert.equal((await run('1/5', unchanged)).review, '1', 'pass 1 reviews even when the UI did not change since the last run: its suites are the ones nobody else shoots');
+  for (const pass of ['2/5', '3/5', '4/5', '5/5']) assert.equal((await run(pass, unchanged)).review, '0', `pass ${pass} repeats the gate suites the day runs review`);
+  const skipped = await run('1/5', {releasing: [{status: 'in_progress', displayTitle: 'Release'}]});
+  assert.deepEqual([skipped.count, skipped.review], ['0', '0'], 'a release run is testing: the pass runs nothing and reviews nothing');
+  const workflow = fs.readFileSync(new URL('../../../../.github/workflows/ui-findings.yml', import.meta.url), 'utf8');
+  assert.match(workflow, /!startsWith\(github\.event\.workflow_run\.display_title, 'Night burn-in'\)/, 'report only: a night run files no issue');
+});

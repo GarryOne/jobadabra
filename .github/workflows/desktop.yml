@@ -849,7 +849,7 @@ jobs:
           path: desktop/e2e/.ai-cache
           key: ai-answers-${{ matrix.key }}-${{ github.run_id }}-${{ github.run_attempt }}
       - name: Keep the live qualityai rate history, red or green on main
-        if: always() && matrix.suite == 'qualityai' && env.E2E_AI_REPLAY != '1' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/beta-pick/')) && hashFiles('desktop/e2e/.quality-rate/history.json') != '' && matrix.suite != 'unit'
+        if: always() && matrix.suite == 'qualityai' && env.E2E_AI_REPLAY != '1' && github.ref == 'refs/heads/main' && hashFiles('desktop/e2e/.quality-rate/history.json') != '' && matrix.suite != 'unit'
         timeout-minutes: 10
         uses: actions/cache/save@v5
         with:

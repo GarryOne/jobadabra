@@ -186,8 +186,12 @@ class DesktopWorkflowTest(unittest.TestCase):
         # Owner, 1 Nov 2026: the run says which commit it is built from and how far behind main (an annotation and the summary page).
         self.assertIn('::notice title=Built from ${GITHUB_SHA:0:7}::', job('changes'))
         self.assertIn('git rev-list --count "$GITHUB_SHA..origin/main"', job('changes'))
-        # Gitar on #2883: a beta built on a beta-pick/<sha7> branch (tools/beta-release.sh) still gets the AI credit alert and the quality-rate history.
-        self.assertNotIn("github.ref == 'refs/heads/main'", WORKFLOW.replace("(github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/beta-pick/'))", ''))
+        # Gitar on #2883: a beta built on a beta-pick/<sha7> branch (tools/beta-release.sh) still gets the AI credit alert. The quality-rate history save stays main-only:
+        # a cache saved on a branch is restored only by that branch and its children, so one saved on a beta-pick branch would never reach main's history.
+        loose = "(github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/beta-pick/'))"
+        self.assertIn(loose, job('ai-credit-health'))
+        self.assertEqual(WORKFLOW.replace(loose, '').count("github.ref == 'refs/heads/main'"), 1, 'only the history cache save is main-only')
+        self.assertIn("github.ref == 'refs/heads/main' && hashFiles('desktop/e2e/.quality-rate/history.json')", WORKFLOW)
         # only a nightly or a beta by hand is tested; the plan is made once, for both lanes
         self.assertIn("(github.event_name == 'schedule' || inputs.nightly || inputs.beta)", job('changes'))
         self.assertIn('node plan-run.mjs', job('changes'))

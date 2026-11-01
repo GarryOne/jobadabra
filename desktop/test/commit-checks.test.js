@@ -3,6 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {spawnSync} from 'node:child_process';
+import {fileURLToPath} from 'node:url';
 import {CHECKS, listRefusals} from '../../tools/commit-checks.mjs';
 
 const root = new URL('../../', import.meta.url);
@@ -32,7 +33,7 @@ test('the push hook runs them as one step, before the slow gates and before a PR
 });
 
 test('a push with no changes passes all of them, and --skip drops one by name', () => {
-  const run = args => spawnSync(process.execPath, ['tools/commit-checks.mjs', '--base', 'HEAD', ...args], {cwd: new URL('.', root).pathname, encoding: 'utf8'});
+  const run = args => spawnSync(process.execPath, ['tools/commit-checks.mjs', '--base', 'HEAD', ...args], {cwd: fileURLToPath(root), encoding: 'utf8'});
   assert.equal(run([]).status, 0, run([]).stderr);
   assert.equal(run(['--skip', 'e2e issue links,spec proof']).status, 0);
 });

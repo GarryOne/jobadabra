@@ -1,0 +1,150 @@
+{
+ "_about": "The critical journeys the beta proves (owner, 1 Nov 2026), each with the steps that prove it, and the safety or data steps kept though no journey owns them; a lib/ change runs every suite listed here (lib/journeys.mjs). Safety and data marks live in code, never here. parts: literals of a name the code builds.",
+ "journeys": [
+  {
+   "id": "J0",
+   "name": "The app starts and draws every screen (smoke)",
+   "steps": [
+    {"suite": "settings", "step": "every Settings section renders"}
+   ]
+  },
+  {
+   "id": "J1",
+   "name": "Set up the app: key, CV, strategy, first search",
+   "steps": [
+    {"suite": "wizard", "step": "the app starts on the welcome screen"},
+    {"suite": "wizard", "step": "a valid API key is accepted and saved"},
+    {"suite": "wizard", "step": "a CV is chosen and read"},
+    {"suite": "wizard", "step": "the strategy is built from the CV and shows roles to search for"},
+    {"suite": "wizard", "step": "saving the strategy reaches the finish action"},
+    {"suite": "wizard", "step": "finishing the setup without Notion opens the Jobs list, with the strategy kept on this Mac"},
+    {"suite": "wizard", "step": "Jobs opens on the Find jobs card; pressing it starts the first search"},
+    {"suite": "wizard", "step": "a new install keeps its data on this Mac: the store is set once at first start"}
+   ]
+  },
+  {
+   "id": "J2",
+   "name": "Find jobs: a check reads feeds, drops wrong roles, scores",
+   "steps": [
+    {"suite": "jobs", "step": "a jobs check reads the fixture feeds, drops the wrong roles and scores the matching jobs"},
+    {"suite": "jobs", "step": "every scored job in the Jobs list is its Job Matches record, with the same score, and none is missing"}
+   ]
+  },
+  {
+   "id": "J4",
+   "name": "LinkedIn (opt-in): reads with your session, leaks nothing, stops at checks",
+   "steps": [
+    {"suite": "linkedin", "step": "LinkedIn answers 429: one search is opened, LinkedIn is left alone for a day and the next press asks it for nothing"},
+    {"suite": "linkedin", "step": "LinkedIn on: a press reads the guest list in the app's hidden browser with the copied session, keeps the jobs, and leaves no LinkedIn cookie in that browser"},
+    {"suite": "linkedin", "step": "LinkedIn sends the read to its sign-in page: one search is opened, the read stops and says to sign in again"},
+    {"suite": "linkedin", "step": "LinkedIn shows a check: one search is opened, the read stops, the check is not answered"},
+    {"suite": "linkedin", "step": "Stop in the middle of a LinkedIn read closes its tab and takes the session out of the browser"},
+    {"suite": "linkedin", "step": "the copied session is in no log, run or store file of the app, only in the run's secrets file"},
+    {"suite": "linkedin", "step": "with the switch off a press asks LinkedIn for nothing and the session is gone from the secrets file"}
+   ]
+  },
+  {
+   "id": "J5",
+   "name": "Apply: the extension fills the form, you submit",
+   "steps": [
+    {"suite": "apply", "step": "a Greenhouse-like form: every kit answer and your details are filled, the CV is attached, the legal box is left, Submit untouched"},
+    {"suite": "apply", "step": "the person submits a form: the page after Submit is read, the job becomes Applied, its session leaves the list"},
+    {"suite": "apply", "step": "through all of it: Submit was never clicked or submitted, and no host but the fixture job sites was contacted"},
+    {"suite": "applyflows", "step": "through all of it: Submit was never clicked or submitted, and no host but the fixture job sites was contacted"}
+   ]
+  },
+  {
+   "id": "J6",
+   "name": "Full automation: asks once, submits once, Stop holds",
+   "steps": [
+    {"suite": "apply", "step": "Full automation presses Submit once on its own, and a Stop in the wait presses nothing"},
+    {"suite": "apply", "step": "Full automation hands a bot check to the person: the card says so with Submit off, and nothing is pressed or sent"},
+    {"suite": "apply", "step": "Full automation presses each queued job once, one at a time, in queue order, and a Stop on a queued job skips only that one"},
+    {"suite": "apply", "step": "Full automation asks once in Settings → Apply: Not now keeps the old mode and saves no confirmation, Turn on Full automation saves it"},
+    {"suite": "apply", "step": "Full automation saved without its confirmation: the app refuses to start, and nothing is filled or sent"},
+    {"suite": "apply", "step": "the app quits in Full automation's wait: after it starts again the job is handed to you, and nothing is pressed when the wait runs out"},
+    {"suite": "apply", "step": "Stop on the card in Full automation: the wait says when it will submit, Stop hands it to you, and nothing is posted past the due time"}
+   ]
+  },
+  {
+   "id": "J7",
+   "name": "Apply in the hidden browser: fills, you submit, queue in order",
+   "steps": [
+    {"suite": "apply", "step": "The hidden browser fills a form, the person's Submit in the live view posts it once and the job becomes Applied"}
+   ]
+  },
+  {
+   "id": "J8",
+   "name": "Tailor a CV for a job",
+   "steps": [
+    {"suite": "apply", "step": "Tailor CV on a job writes a CV from its posting: the PDF on this Mac, the file on the job in Notion, and the extension attaches it, not the base CV"}
+   ]
+  },
+  {
+   "id": "J9",
+   "name": "Track an application through its stages",
+   "steps": [
+    {"suite": "stores", "step": "the board shows the store's applications in their stage columns"},
+    {"suite": "stores", "step": "moving a card to Interviewing writes the stage and its event to the store, and it stays after a reload"}
+   ]
+  },
+  {
+   "id": "J10",
+   "name": "Your data stays yours: export, backup, import, move",
+   "steps": [
+    {"suite": "settings", "step": "Your data: export with keys, reset, then import from the setup brings this computer back as it was"},
+    {"suite": "settings", "step": "Automatic backup: the backup file, imported after a reset, brings this computer back as it was"},
+    {"suite": "storemove", "step": "the export, imported into a fresh install, shows the same on every screen (still this Mac's store)"},
+    {"suite": "storemove", "step": "the imported install moves into an empty Notion: its Profile and every record arrive once"}
+   ]
+  },
+  {
+   "id": "J11",
+   "name": "A run that fails ends in words, never Running for ever",
+   "steps": [
+    {
+     "suite": "activityfailures",
+     "step": "the AI says the key is invalid (401): the run ends as Failed or with warnings, in words, with nothing left Running",
+     "parts": [
+      "the AI says the key is invalid (401)",
+      ": the run ends as Failed or with warnings, in words, with nothing left Running"
+     ]
+    },
+    {"suite": "activityfailures", "step": "quitting the app in the middle of a run: it is not shown Running for ever, and the app says what became of it"}
+   ]
+  },
+  {
+   "id": "J12",
+   "name": "Updates: only approved builds are offered",
+   "steps": [
+    {"suite": "updates", "step": "a newer stable release is offered to everyone, in the menu foot"},
+    {"suite": "updates", "step": "an approved beta is offered only on the beta channel"},
+    {"suite": "updates", "step": "a pre-release the gate has not approved is never offered, even on the beta channel"}
+   ]
+  }
+ ],
+ "kept": [
+  {"suite": "apply", "step": "a Workday-shaped form: answers fill fields known only by opaque ids and aria labels, the list-button question is left for you by name, Submit untouched"},
+  {"suite": "apply", "step": "a multi-step form: step 1 is filled, step 2 only once you reach it, the consent is left to you, Submit untouched"},
+  {"suite": "apply", "step": "Background automation hands a bot check to the person: the card says so with Submit off, and nothing is sent"},
+  {"suite": "apply", "step": "Background automation fills several queued jobs one at a time, in queue order, and a Stop on a queued job skips only that one"},
+  {"suite": "apply", "step": "a real posting, watched live: the page kinds, stages and fills as they happen (nothing is pressed on the page)"},
+  {"suite": "apply", "step": "the app quits while Background automation holds a filled form: after it starts again the job is handed to you, and nothing is posted"},
+  {"suite": "apply", "step": "a silent Chrome in Full automation: a queued hidden-browser job says why it waits when the app's link is off, and never talks of the person's Chrome; nothing is submitted"},
+  {"suite": "apply", "step": "Stop on the card in Background automation: while the form is filling, Stop hands it to you and nothing is posted"},
+  {"suite": "apply", "step": "the triage bar moves per real read and Cancel during a held read stops before the next job, closes its page, and fills or sends nothing"},
+  {"suite": "apply", "step": "checking jobs before the form read exists reads nothing: every chip says \"Not checked\", no session starts, nothing is filled or sent"},
+  {"suite": "applyflows", "step": "a form drawn after a spinner: its submit is never pressed as Apply, and it is filled once its fields come"},
+  {"suite": "employers", "step": "the crawl's source list now holds the starter employers and the two new boards, and nothing else"},
+  {"suite": "employers", "step": "a second run writes nothing twice"},
+  {"suite": "failuresnotion", "step": "a Save that Notion refuses is never shown as saved: the person is told in words, and Notion and the list still agree"},
+  {"suite": "settings", "step": "Automatic backup: Back up now writes a backup with no keys in its folder, and View backups opens it"},
+  {"suite": "settings", "step": "Automatic backup: a due backup runs once at start and once on the weekly tick"},
+  {"suite": "storemove", "step": "an app on this Mac's store holds real-shaped data on every screen"},
+  {"suite": "storemove", "step": "Export data writes this Mac's data to one file"},
+  {"suite": "storemove", "step": "Notion connects with a Profile of its own; this Mac keeps its data until the move"},
+  {"suite": "storemove", "step": "a move killed halfway changes nothing, and the next one goes on with nothing twice"},
+  {"suite": "storemove", "step": "after the move the store is Notion, the Profile Notion had is kept, and this Mac's files are in the archive"},
+  {"suite": "storemove", "step": "Jobs, Focus, Interviews and Recent activity show the same items from Notion"}
+ ]
+}

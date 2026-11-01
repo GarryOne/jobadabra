@@ -74,9 +74,13 @@ _early = {}   # the slice's board proposal asked at the search's start (propose_
 
 
 def propose_early(search=None):
-    """Ask the slice's board proposal (board_ideas.ideas: its AI answers are cached per search) now, in the background, while the search
-    picks its employers -> its future, or None when the slice needs none (proven boards, the end-to-end fixture mode). The slice waits for
+    """Ask the slice's board proposal (board_ideas.ideas: its AI answers are cached per search) now, in the background, once the search has
+    named its employers (src/daily_search.py start_proposal), beside the reading -> its future, or None when the slice needs none (proven boards, the end-to-end fixture mode). The slice waits for
     it (_wait_early) and builds its list then, from the cached answers and the boards the pool serves at that time.
+    Why (#2913, 2 Nov 2026): no longer asked at second 0. Its serial calls (field, then slice: 73 s on the Codex relay) held the shared AI while
+    the employer pick's calls waited 15-25 s each, so the employers were named at 122 s and 0 of 15 were read (zero run 41346903877; the same step
+    took 4 s before the relay). FIRST priority (src/ai/slots.py) does not cure it: it orders who takes a free slot, a running 30-43 s call keeps
+    its slot, and the relay has no slots. The #2218 reason below still holds for asking inside the slice, so it is asked just before it.
     Why (#2218, 27 Oct 2026, benchmark run 40446066828): asked inside the slice, its 2 AI calls waited for Claude's 2 slots behind the
     employer titles and the web search, so the boards started at 41-63 s and the read cut (67 s) left them 5-26 s: 0 board jobs.
     Why (#2218, its rerun 40449103205): only the AI's answers are taken early, never the list: at 10 s the pool's index is not downloaded

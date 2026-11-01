@@ -254,7 +254,7 @@ class SearchCharacterization(unittest.TestCase):
 
     def test_first_slice_precedes_boards_and_full_gather(self):
         self.run_search(first_jobs=True)
-        self.assert_order('plan', 'proposal', 'web', 'sources', 'slice', 'boards first', 'gather')
+        self.assert_order('plan', 'web', 'sources', 'proposal', 'slice', 'boards first', 'gather')
 
     def test_only_visits_does_not_start_web_or_close_jobs(self):
         self.sources.append({'company': 'Browser', 'ats': 'visit', 'slug': 'browser'})

@@ -8,7 +8,7 @@ Owner, 1 Nov 2026: "Yes, delete Group 1 (Recommended)"; "First 3 rows (Recommend
 - [x] 1/4 Group 1: pr-gate step that cannot fail, "new e2e steps" and JS architecture off the local push, 4 one-off workflows, 3 uncalled tools (proof: tools/pre-push-check.sh @0cab422)
 - [x] 2/4 Nine trailer and comment checks become one commit-message check that lists every refusal together; the Owner-report and Prompt-case trailers are no longer asked (owner, 1 Nov 2026) (proof: desktop/test/commit-checks.test.js)
 - [x] 3/4 The workflow-paths family of 5 checks becomes 1: the harness.yml reach check and the per-workflow `replay-files.mjs --check` now live in `tests/test_workflow_paths.py`, run by the gate's single "workflow paths" step; nothing dropped (proof: tests/test_workflow_paths.py)
-- [ ] 4/4 The three ratchets (`timing`, `ai-misses`, `replay`) become one baseline file
+- [x] 4/4 The three ratchets (`timing`, `ai-misses`, `replay`) become one baseline file: not worth it, different writers (owner, 1 Nov 2026, "Keep the 3, close 4/4"); a shared counter file with two writers was already dropped once (harnessLines, 6 e2e PRs in conflict) (proof: none: the owner closed it, nothing was built)
 - [ ] Read-only: a table of each trailer rule, its stops in 30 days, its real catches and its origin; the owner decides per rule
 
 ## Rules for each PR

@@ -4,7 +4,8 @@
   python3 tools/affected-tests.py --files src/store.py desktop/lib/x.js
 
 A test is selected when (1) its transitive imports reach a changed file, (2) its text names a changed file (path, file name or a
-Python dotted name: covers fs reads, subprocess calls and fixtures), or (3) it scans the whole tree (always run). A change nothing
+Python dotted name: covers fs reads, subprocess calls and fixtures), or (3) it scans the whole tree (always run). The e2e harness's own tests (desktop/e2e/test) are an area too ("e2e"); their reach also
+comes from desktop/e2e/lib/test-reach.mjs (new URL(...) folder reads, "// Reaches:" lines), through tools/e2e-test-reach.mjs. A change nothing
 maps (dependency files, config, unknown top-level paths, an unreadable source) selects "all" for that area: when in doubt, run it.
 """
 import argparse
@@ -12,6 +13,7 @@ import ast
 import functools
 import json
 import re
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -22,7 +24,12 @@ JS_EXT = ('.js', '.mjs', '.cjs')
 IMPORT_RE = re.compile(r"""(?:require\(\s*|\bfrom\s+|\bimport\s*\(\s*|\bimport\s+)['"](\.[^'"]*)['"]""")
 SCANNER_RE = re.compile(r'''readdirSync|globSync|git ls-files|git ls-tree|['"]ls-(?:files|tree)['"]''')   # the last: execFileSync('git', ['ls-files', ...]) (15 Oct 2026)
 ENGINE_RE = re.compile(r'python|(?:^|[^A-Za-z])src[/.]')
-NODE_AREAS = {'desktop': 'desktop/test', 'worker': 'worker/test', 'site': 'test'}   # the website's tests: only in the joined tree of jobadabra-web
+NODE_AREAS = {'desktop': 'desktop/test', 'worker': 'worker/test', 'site': 'test', 'e2e': 'desktop/e2e/test'}   # site: the website's tests, only in the joined tree of jobadabra-web; e2e: the harness's own tests (c27, 1 Nov 2026)
+AREAS = ('python', 'desktop', 'worker', 'site', 'e2e')
+# Why (c27, 1 Nov 2026, owner "Yes, via affected-tests"): ~70 harness tests scan every suite (ratchets, step lists, guards); #2767 found them one CI round at a time (4 rounds).
+# They are picked as scanners only for a change the harness can read (the app, the extension, the Worker, the workflows); a Python-only edit picks them by reach or mention alone.
+E2E_SCAN_FOR = ('desktop/', 'extension/', 'worker/', '.github/')
+PREFIX = {'e2e': 'desktop/e2e/'}   # the folder a picked test path is printed relative to (default: the area name + '/')
 ALL_TRIGGERS = re.compile(r'(^|/)(package(-lock)?\.json|requirements[^/]*\.txt|pyproject\.toml|eslint\.config\.mjs)$|^\.github/workflows/build\.yml$')
 # A dependency file inside one JS area (desktop/e2e/package.json) makes THAT area run whole; the other areas still pick by imports and mentions (11 Oct 2026: 1 of 150 commits, the e2e
 # harness's package.json, ran Python, worker and site whole for nothing). A root-level file (package.json, requirements, pyproject) still runs everything.
@@ -94,6 +101,7 @@ def py_graph():
     return edges
 
 
+@functools.lru_cache(maxsize=None)   # called once per file a test reaches (85k times with the e2e area: 10 of 12 s); a path's answer never changes
 def is_tree_reader(f):
     """A module a guard test imports to read the repo (scripts/, tools/, test helpers). App code under lib/ scans the user's data folders, not the repo."""
     parts = f.relative_to(ROOT).parts if f.is_relative_to(ROOT) else ()
@@ -148,9 +156,51 @@ def mentions(text, changed, py_names):
     return False
 
 
+@functools.lru_cache(maxsize=None)
+def e2e_reach():
+    """{harness test path: [repo paths it reaches; a folder read ends with '/']} from the harness's own parser; {} when node or the helper is missing (the Python import graph still applies);
+    None when the helper is there and fails (a syntax error in test-reach.mjs): the caller picks the whole e2e area, as for any unreadable source (Gitar on #2774)."""
+    helper, node = ROOT / 'tools/e2e-test-reach.mjs', shutil.which('node')
+    if not node or not helper.is_file():
+        return {}
+    out = subprocess.run([node, str(helper)], cwd=ROOT, capture_output=True, text=True, check=False)
+    try:
+        return json.loads(out.stdout) if out.returncode == 0 else None
+    except ValueError:
+        return None
+
+
+def reaches_changed(paths, changed):
+    """Does a test's reach hold a changed file, or a folder it reads whole (a trailing '/') that holds one?"""
+    folders = [p for p in paths if p.endswith('/')]
+    return any(f in paths or any(f.startswith(d) for d in folders) for f in changed)
+
+
+def pick_node_area(area, folder, relevant, graph, engine_changed):
+    """The test files of one node area a change can break (paths relative to the area), or 'all' when the e2e reach helper is there and fails."""
+    changed_js = {(ROOT / f).resolve() for f in relevant}
+    tests = sorted((ROOT / folder).glob('*.test.*')) if (ROOT / folder).is_dir() else []
+    reached = e2e_reach() if area == 'e2e' else {}
+    if reached is None:
+        return 'all'
+    scan_ok = area != 'e2e' or any(f.startswith(E2E_SCAN_FOR) for f in relevant)
+    picked, scans = [], {}   # scans: file -> does its text scan the tree (a guard may scan through a module it imports, 10 Oct 2026)
+    for t in tests:
+        text = read(t)
+        reach = closure(t.resolve(), graph)
+        # e2e: not through desktop/e2e/lib (254 of 411 tests import a lib that lists a runtime folder: artifacts, logs, traces; c27, 1 Nov 2026); a lib that reads the repo is caught by reach
+        via = [f for f in reach if is_tree_reader(f) and not (area == 'e2e' and '/e2e/lib/' in f.as_posix())]
+        scanner = bool(SCANNER_RE.search(text)) or any(scans.setdefault(f, bool(SCANNER_RE.search(read(f)))) for f in via)
+        if (reach & changed_js) or mentions(text, relevant, {}) or (scanner and scan_ok) \
+                or reaches_changed(reached.get(rel(t), ()), relevant) \
+                or (area == 'desktop' and engine_changed and ENGINE_RE.search(text)):
+            picked.append(rel(t)[len(PREFIX.get(area, area + '/')):])
+    return picked
+
+
 def select(changed, base_ref=None):
     changed = sorted(set(changed))
-    result = {'python': [], 'desktop': [], 'worker': [], 'site': [], 'reasons': {}}
+    result = {'python': [], 'desktop': [], 'worker': [], 'site': [], 'e2e': [], 'reasons': {}}
     why = result['reasons']
     if not changed:
         return result
@@ -162,11 +212,12 @@ def select(changed, base_ref=None):
     areas = {'python': (lambda f: f.startswith(('src/', 'tests/', 'tools/', 'config/', 'templates/', '.github/workflows/')) or f == '.gitattributes'),
              'desktop': (lambda f: f.startswith(('desktop/', 'extension/')) or f == '.gitattributes'),
              'worker': (lambda f: f.startswith(('worker/', 'extension/'))),
-             'site': (lambda f: f.startswith(('site/', 'web/', 'admin/', 'api/', 'shared/', 'workers/', 'db/', 'test/', 'jobs/', 'media/', 'preview/')))}
+             'site': (lambda f: f.startswith(('site/', 'web/', 'admin/', 'api/', 'shared/', 'workers/', 'db/', 'test/', 'jobs/', 'media/', 'preview/'))),
+             'e2e': (lambda f: True)}   # any file may be read by a harness test: reach and mention decide
     unknown = [f for f in relevant if not f.startswith(KNOWN)]
     if everything or unknown:
         why['all'] = everything + unknown
-        return {**{k: 'all' for k in ('python', 'desktop', 'worker', 'site')}, 'reasons': why}
+        return {**{k: 'all' for k in AREAS}, 'reasons': why}
 
     # Python
     py_changed = [f for f in relevant if areas['python'](f)]
@@ -196,20 +247,30 @@ def select(changed, base_ref=None):
         if not any(areas[area](f) for f in relevant) and not (area == 'desktop' and engine_changed):
             continue
         graph = graph or js_graph()
-        changed_js = {(ROOT / f).resolve() for f in relevant}
-        tests = sorted((ROOT / folder).glob('*.test.*')) if (ROOT / folder).is_dir() else []
-        picked, scans = [], {}   # scans: file -> does its text scan the tree (a guard may scan through a module it imports, 10 Oct 2026)
-        for t in tests:
-            text = read(t)
-            reach = closure(t.resolve(), graph)
-            scanner = bool(SCANNER_RE.search(text)) or any(scans.setdefault(f, bool(SCANNER_RE.search(read(f)))) for f in reach if is_tree_reader(f))
-            if (reach & changed_js) or mentions(text, relevant, {}) or scanner \
-                    or (area == 'desktop' and engine_changed and ENGINE_RE.search(text)):
-                picked.append(rel(t)[len(area) + 1:])
+        picked = pick_node_area(area, folder, relevant, graph, engine_changed)
         result[area] = picked
+        if picked == 'all':
+            why[area] = 'tools/e2e-test-reach.mjs failed'
     for f in scoped:
         result[f.split('/')[0]] = 'all'; why[f.split('/')[0]] = f'dependency file: {f}'
+        if f.startswith('desktop/e2e/'):
+            result['e2e'] = 'all'; why['e2e'] = f'dependency file: {f}'
     return result
+
+
+def commands(result):
+    """A ready command per area that has picked tests (run from the repo root); an area picked whole is left to CI, so it gets none."""
+    out = {}
+    for area, picked in result.items():
+        if area == 'reasons' or not picked or picked == 'all':
+            continue
+        files = ' '.join(picked)
+        out[area] = {'python': f'python3 tools/py-shards.py {files}',
+                     'desktop': f'cd desktop && node --test {files}',
+                     'worker': f'cd worker && node --test {files}',
+                     'site': 'node --test ' + ' '.join(f'test/{name}' for name in picked),   # the site pick is relative to test/ (PREFIX strips 'site/', the same length)
+                     'e2e': f'cd desktop/e2e && node --import ./test/stdout-to-stderr.mjs --test {files}'}[area]
+    return out
 
 
 def git_changed(base):
@@ -227,9 +288,10 @@ def main(argv=None):
     args = ap.parse_args(argv)
     changed = args.files if args.files is not None else git_changed(args.base or 'origin/main')
     if changed is None:       # no way to know what changed: everything
-        print(json.dumps({'python': 'all', 'desktop': 'all', 'worker': 'all', 'site': 'all', 'reasons': {'all': ['git diff failed']}}))
+        print(json.dumps({**{k: 'all' for k in AREAS}, 'reasons': {'all': ['git diff failed']}}))
         return 0
-    print(json.dumps(select(changed)))
+    picked = select(changed)
+    print(json.dumps({**picked, 'commands': commands(picked)}))
     return 0
 
 

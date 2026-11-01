@@ -25,6 +25,7 @@ jobs:
       - name: Start changelog-publish.yml in jobadabra-web
         env:
           GH_TOKEN: ${{ secrets.WEB_DISPATCH_TOKEN }}
+          WEB_OWNER: ${{ vars.OWNER_OF_WEB || github.repository_owner }}
         run: |
-          if [ -z "$GH_TOKEN" ]; then echo "::warning::WEB_DISPATCH_TOKEN is not set in this repo: the What's new page waits for its hourly run (save it: gh secret set WEB_DISPATCH_TOKEN -R GarryOne/jobadabra)."; exit 0; fi
-          gh workflow run changelog-publish.yml -R GarryOne/jobadabra-web || echo "::warning::Could not start changelog-publish.yml in jobadabra-web (is WEB_DISPATCH_TOKEN expired or missing Actions: write?): the page waits for its hourly run."
+          if [ -z "$GH_TOKEN" ]; then echo "::warning::WEB_DISPATCH_TOKEN is not set in this repo: the What's new page waits for its hourly run (save it: gh secret set WEB_DISPATCH_TOKEN -R $GITHUB_REPOSITORY)."; exit 0; fi
+          gh workflow run changelog-publish.yml -R "$WEB_OWNER/jobadabra-web" || echo "::warning::Could not start changelog-publish.yml in jobadabra-web (is WEB_DISPATCH_TOKEN expired or missing Actions: write?): the page waits for its hourly run."

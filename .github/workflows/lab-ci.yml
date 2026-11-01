@@ -35,7 +35,7 @@ jobs:
         with:
           client-id: ${{ vars.CI_APP_CLIENT_ID }}
           private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
-          owner: GarryOne
+          owner: ${{ vars.OWNER_OF_LAB || github.repository_owner }}
           repositories: jobadabra-lab
           permission-contents: read
           permission-pull-requests: read

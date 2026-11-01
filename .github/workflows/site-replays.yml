@@ -115,7 +115,7 @@ jobs:
         with:
           client-id: ${{ vars.CI_APP_CLIENT_ID }}
           private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
-          owner: GarryOne
+          owner: ${{ vars.OWNER_OF_LAB || github.repository_owner }}
           repositories: jobadabra-lab
       - name: The release's bundles, still encrypted
         env:
@@ -174,7 +174,7 @@ jobs:
         with:
           client-id: ${{ vars.CI_APP_CLIENT_ID }}
           private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
-          owner: GarryOne
+          owner: ${{ vars.OWNER_OF_LAB || github.repository_owner }}
           repositories: jobadabra-lab
       - name: The pool's newest records (14 days), decrypted on the runner only
         working-directory: desktop/e2e
@@ -284,7 +284,7 @@ jobs:
         with:
           client-id: ${{ vars.CI_APP_CLIENT_ID }}
           private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
-          owner: GarryOne
+          owner: ${{ vars.OWNER_OF_LAB || github.repository_owner }}
           repositories: jobadabra-lab
       - name: Install the app and the tests
         run: |

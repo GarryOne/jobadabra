@@ -117,7 +117,7 @@ jobs:
         with:
           client-id: ${{ vars.CI_APP_CLIENT_ID }}
           private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
-          owner: GarryOne
+          owner: ${{ vars.OWNER_OF_LAB || github.repository_owner }}
           repositories: jobadabra-lab
       - name: The release's bundles, still encrypted
         env:
@@ -215,7 +215,7 @@ jobs:
         with:
           client-id: ${{ vars.CI_APP_CLIENT_ID }}
           private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
-          owner: GarryOne
+          owner: ${{ vars.OWNER_OF_LAB || github.repository_owner }}
           repositories: jobadabra-lab
       - name: Every recorded row, the estimate, the caps (main)
         id: pickmain
@@ -300,7 +300,7 @@ jobs:
         with:
           client-id: ${{ vars.CI_APP_CLIENT_ID }}
           private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
-          owner: GarryOne
+          owner: ${{ vars.OWNER_OF_LAB || github.repository_owner }}
           repositories: jobadabra-lab
       - name: The pool's newest records, decrypted on the runner only
         working-directory: desktop/e2e
@@ -404,7 +404,7 @@ jobs:
         with:
           client-id: ${{ vars.CI_APP_CLIENT_ID }}
           private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
-          owner: GarryOne
+          owner: ${{ vars.OWNER_OF_LAB || github.repository_owner }}
           repositories: jobadabra-lab
       - name: The records now, each refilled memo merged in (old answers never changed)
         if: steps.packs.outputs.packs != '0'

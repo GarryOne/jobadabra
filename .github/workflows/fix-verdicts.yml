@@ -80,7 +80,7 @@ jobs:
         with:
           client-id: ${{ vars.CI_APP_CLIENT_ID }}
           private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
-          owner: GarryOne
+          owner: ${{ vars.OWNER_OF_LAB || github.repository_owner }}
           repositories: jobadabra-lab
       - name: Which rows to replay
         if: steps.key.outputs.ok == '1' && steps.dup.outputs.skip != '1'
@@ -157,7 +157,7 @@ jobs:
         with:
           client-id: ${{ vars.CI_APP_CLIENT_ID }}
           private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
-          owner: GarryOne
+          owner: ${{ vars.OWNER_OF_LAB || github.repository_owner }}
           repositories: jobadabra-lab
       - name: The pool's records, decrypted on the runner only
         working-directory: desktop/e2e

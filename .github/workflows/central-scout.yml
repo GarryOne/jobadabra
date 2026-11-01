@@ -49,12 +49,12 @@ jobs:
         with:
           client-id: ${{ vars.CI_APP_CLIENT_ID }}
           private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
-          owner: GarryOne
+          owner: ${{ vars.OWNER_OF_LAB || github.repository_owner }}
           repositories: jobadabra-lab
       - name: The private repo (the curated seed lists and the discovery)
         uses: actions/checkout@v5
         with:
-          repository: GarryOne/jobadabra-lab
+          repository: ${{ vars.OWNER_OF_LAB || github.repository_owner }}/jobadabra-lab
           token: ${{ steps.ops_token.outputs.token }}
           path: ops
       - name: Load the private seed lists and starter feeds

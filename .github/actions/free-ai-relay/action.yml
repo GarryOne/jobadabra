@@ -12,6 +12,7 @@ inputs:
   cf-account: {description: 'secrets.CI_FREE_AI_CF_ACCOUNT_ID', required: false, default: ''}
   client-id: {description: 'vars.CI_APP_CLIENT_ID (the CI App reads jobadabra-web)', required: false, default: ''}
   app-key: {description: 'secrets.CI_APP_PRIVATE_KEY', required: false, default: ''}
+  owner: {description: 'vars.OWNER_OF_WEB: the owner of jobadabra-web (empty: the owner of this repo; a composite action cannot read vars, so the caller passes it)', required: false, default: ''}
   port: {description: 'the relay port on this runner', required: false, default: '8787'}
   public-tree: {description: "the public tree the relay runs in, relative to the workspace: '.' or the workflow's own commit checked out beside an older one under test (a bisect)", required: false, default: '.'}
 runs:
@@ -29,13 +30,13 @@ runs:
       with:
         client-id: ${{ inputs.client-id }}
         private-key: ${{ inputs.app-key }}
-        owner: GarryOne
+        owner: ${{ inputs.owner || github.repository_owner }}
         repositories: jobadabra-web
     - name: The site's Free AI handler
       if: inputs.cf-token != '' && inputs.client-id != ''
       uses: actions/checkout@v5
       with:
-        repository: GarryOne/jobadabra-web
+        repository: ${{ inputs.owner || github.repository_owner }}/jobadabra-web
         token: ${{ steps.site_token.outputs.token }}
         path: .free-ai-site
         persist-credentials: false

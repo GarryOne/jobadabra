@@ -10,6 +10,8 @@ import re
 import unittest
 
 WORKFLOWS = pathlib.Path(__file__).resolve().parent.parent / '.github' / 'workflows'
+# Why (1 Nov 2026, owner): the owner of jobadabra-lab is a repository variable, so moving the repo is one variable change, not a pull request.
+LAB_OWNER = '${{ vars.OWNER_OF_LAB || github.repository_owner }}'
 OLD = re.compile(r'secrets\.NET_RECORDS_(READ|WRITE)_TOKEN')
 GOOD = re.compile(r'\$\{\{ steps\.records_app\.outputs\.token \|\| secrets\.NET_RECORDS_(READ|WRITE)_TOKEN \}\}')
 
@@ -51,7 +53,7 @@ class RecordsTokenApp(unittest.TestCase):
                 step = body[body.rfind('      - ', 0, mint):]
                 step = step[:step.find('\n      - ', 5)] if '\n      - ' in step[5:] else step
                 for want in ('uses: actions/create-github-app-token@', 'client-id: ${{ vars.CI_APP_CLIENT_ID }}', 'private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}',
-                             'owner: GarryOne', 'repositories: jobadabra-lab', 'continue-on-error: true', "steps.records_app_key.outputs.set == 'true'"):
+                             'owner: ' + LAB_OWNER, 'repositories: jobadabra-lab', 'continue-on-error: true', "steps.records_app_key.outputs.set == 'true'"):
                     if want not in step:
                         bad.append(f'{where}: the records_app step lacks `{want}`')
                 if 'id: records_app_key' not in body[:mint]:

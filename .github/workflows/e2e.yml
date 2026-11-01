@@ -271,7 +271,8 @@ jobs:
         GH_TOKEN
       # A suite whose secrets are missing FAILS here instead of a green "skipped" (lib/skip.mjs). 6 Oct 2026: failuresnotion and failureschannels
       # had never run (no token) and showed ✓. Forks have no secrets: they still skip with a warning.
-      E2E_REQUIRE_SECRETS: ${{ github.repository_owner == 'GarryOne' && '1' || '' }}
+      # Why (1 Nov 2026, PR 3/7, Gitar): a fork is read from the event payload, not from a repository variable that a transfer could leave stale or unset (the gate would turn off silently).
+      E2E_REQUIRE_SECRETS: ${{ !github.event.repository.fork && '1' || '' }}
       E2E_ANTHROPIC_KEY: ${{ secrets.E2E_ANTHROPIC_KEY }}
       E2E_OPENAI_KEY: ${{ secrets.E2E_OPENAI_KEY }}   # the OpenAI family's turn (odd runs; desktop/e2e/lib/engine.mjs pickFamily)
       E2E_AI_FAMILY: ${{ (inputs.family == 'claude' || inputs.family == 'openai') && inputs.family || '' }}   # a manual run pinned to one family; else alternate
@@ -382,6 +383,7 @@ jobs:
           cf-account: ${{ secrets.CI_FREE_AI_CF_ACCOUNT_ID }}
           client-id: ${{ vars.CI_APP_CLIENT_ID }}
           app-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
+          owner: ${{ vars.OWNER_OF_WEB }}
       - name: Record which commit this run tested (ui-findings.yml names it in every issue)
         timeout-minutes: 5
         run: |

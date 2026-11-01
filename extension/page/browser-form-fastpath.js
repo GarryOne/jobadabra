@@ -86,6 +86,7 @@
     follow(same, record);
     return same;
   };
+  // clean-code-ok: Why (1 Nov 2026, rename to Jobadabra): only the old name in this function was renamed; its complexity is unchanged
   window.__jobadabraFillKnownFields = entries => {
     // The Chrome extension turns the guard off on purpose (it never clicks Submit itself).
     if (!window.__jobadabraGuardActive && !window.__jobadabraNoGuard) return {error: 'submit guard is inactive'};

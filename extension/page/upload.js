@@ -163,6 +163,7 @@
   // files: {resume, coverLetter} (each {data: base64, name, type} or absent). -> one result per slot:
   // {meaning, fp, recipe, ok, why, label} where ok is true/false only when the slot was operated (a failure is a miss to report);
   // a slot with no file for it, or with a wording nobody knows, is {ok: undefined, why} and is never touched.
+  // clean-code-ok: Why (1 Nov 2026, rename to Jobadabra): only the old name in this function was renamed; its complexity is unchanged
   async function fill(files, {aliases = window.__jobadabraAliases || [], recipes = window.__jobadabraRecipes || {}, doc = document} = {}) {
     const all = slots(doc);
     const results = [];

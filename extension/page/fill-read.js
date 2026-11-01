@@ -79,6 +79,7 @@
     return !saved.some(value => window.__jobadabraTypedSame(fold(value), fold(el.value)));
   };
   // Contact details by field label, for the fields every board names differently.
+  // clean-code-ok: Why (1 Nov 2026, rename to Jobadabra): only the old name in this function was renamed; its complexity is unchanged
   window.__jobadabraProfileEntries = (rows, profile, taken = []) => {
     const used = new Set(taken);
     const entries = [];
@@ -108,6 +109,7 @@
   // Every question on the visible page, with the choices it offers. No applicant values.
   // settled: read at the end of a fill (flow.js), when a real choice on the first option is an answer ("Monsieur"); before it, a page's preselected first
   // option is still asked (the AI answers it: "Célibataire" may be wrong for you).
+  // clean-code-ok: Why (1 Nov 2026, rename to Jobadabra): only the old name in this function was renamed; its complexity is unchanged
   window.__jobadabraDescribeForm = async (settled = false) => {
     const fields = [];
     const controls = Array.from(document.querySelectorAll('input, textarea, select')).filter(el => visible(el) &&

@@ -4,6 +4,7 @@
 // caught and would have been ticked); each kind is marked on its field, so the review panel (review.js) ranks knockouts first and marks
 // what to agree to yourself. Guarded by desktop/test/fill-categories.test.js.
 (() => {
+  // clean-code-ok: Why (1 Nov 2026, rename to Jobadabra): only the old name in this function was renamed; its complexity is unchanged
   window.__jobadabraMarkCategories = (answers, rowOf) => {
     for (const item of answers || []) {
       const row = rowOf[item.field];

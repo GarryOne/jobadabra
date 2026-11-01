@@ -164,6 +164,7 @@
       const attemptLog = window.__jobadabraAttempts;
       if (attemptLog && !attemptLog.mayTry(el, 'pick')) { window.__jobadabraLastPick = {asked: String(answer).split(' || ')[0], got: '', opened: false, found: false, refused: true, choices: []}; done(); return; }   // refused: never read as a pick (combo-click.js)
       const before = attemptLog ? attemptLog.stateOf(el) : '';
+      // clean-code-ok: Why (1 Nov 2026, rename to Jobadabra): only the old name in this function was renamed; its complexity is unchanged
       setTimeout(async () => { window.__jobadabraPicking = true; let took = null; try {   // flow.js/combo-click.js waits for it: no second click while the page is still deciding
         if (opts.suggest) { took = await suggestPick(el, answer, control, badge, done); return; }   // a box that only takes a suggestion the page offers (page/suggest-box.js)
         let option = null;

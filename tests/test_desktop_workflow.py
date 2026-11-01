@@ -132,8 +132,8 @@ class DesktopWorkflowTest(unittest.TestCase):
         self.assertNotIn('packaging', re.sub(r'#.*', '', job('windows')).replace('windows-smoke.mjs', ''))
         self.assertIn('windows-smoke.mjs "dist/Jobadabra-${VERSION}-x64.exe" smoke smoke', job('windows'))
         self.assertNotIn(' packaging', (pathlib.Path(__file__).resolve().parent.parent / '.github/workflows/windows-smoke.yml').read_text())   # the weekly run takes the default: full
-        self.assertIn('needs: [changes, build, ai-ready]', job('test-mac'))
-        self.assertIn('needs: [changes, windows, ai-ready]', job('test-windows'))
+        self.assertIn('needs: [changes, build]', job('test-mac'))   # Why-changed (1 Nov 2026, a8): no ai-ready job before the matrices (beta #7 made 0 live AI calls)
+        self.assertIn('needs: [changes, windows]', job('test-windows'))
         self.assertIn('fromJson(needs.changes.outputs.mac_matrix)', job('test-mac'))
         self.assertIn('fromJson(needs.changes.outputs.windows_matrix)', job('test-windows'))
         # A suite's Mac job and its Windows job share ONE Notion page, so they take the same lock (tools/e2e-lock.sh, key = the job's key) and WAIT for it. A concurrency group
@@ -176,11 +176,14 @@ class DesktopWorkflowTest(unittest.TestCase):
         job = WORKFLOW.split('\n  gate-ran:\n')[1].split('\n  prune:\n')[0]
         self.assertNotIn("count != '0'", job.split('steps:')[0], 'a zero-suite plan skips test-mac, which is the failure this job exists for')
 
-    def test_both_lanes_wait_for_one_ai_key_check(self):
+    def test_no_lane_waits_for_an_ai_key_check(self):
+        # Why-changed (1 Nov 2026, a8; owner: "take the AI out of the beta, in two steps"; beta #7, run 41333086670: 0 live AI calls in the 7 relay suites): this asserted every lane waits for
+        # the one "AI key ready?" job. The beta no longer has it; a refused token fails each relay suite by name (tests/test_ci_free_ai.py), and the night runs keep their preflight.
         for lane in ('test-mac', 'test-windows', 'gate-ran'):
             job = WORKFLOW.split(f'\n  {lane}:\n')[1].split('\n    runs-on')[0]
-            self.assertIn('ai-ready', job, f'{lane} must wait for the AI key check')
-        self.assertIn('node desktop/e2e/key-preflight.mjs', WORKFLOW.split('\n  ai-ready:\n')[1].split('\n  test-mac:')[0])
+            self.assertNotIn('ai-ready', job, f'{lane}: the beta has no AI key check job any more')
+        self.assertNotIn('\n  ai-ready:\n', WORKFLOW)
+        self.assertNotIn('key-preflight.mjs', WORKFLOW)
 
 
 if __name__ == '__main__':

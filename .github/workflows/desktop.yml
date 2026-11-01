@@ -577,39 +577,11 @@ jobs:
           phase: end
         timeout-minutes: 5
 
-  # One look at the AI key before ~60 suite jobs start: a refused key or an empty credit balance ("credit balance is too low") is one red line here, not a job each (run 11, 23 Oct 2026).
-  ai-ready:
-    name: AI key ready?
-    needs: [changes]
-    if: needs.changes.outputs.gate == 'true' && needs.changes.outputs.count != '0'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    env:
-      E2E_ANTHROPIC_KEY: ${{ secrets.E2E_ANTHROPIC_KEY }}
-      E2E_OPENAI_KEY: ${{ secrets.E2E_OPENAI_KEY }}
-      CI_FREE_AI_CF_TOKEN: ${{ secrets.CI_FREE_AI_CF_TOKEN }}   # set: the suites run on Free AI, so this token is what is checked (key-preflight.mjs)
-      CI_FREE_AI_CF_ACCOUNT_ID: ${{ secrets.CI_FREE_AI_CF_ACCOUNT_ID }}   # with the token: the day's $1 cap on Workers AI neurons (lib/ai-cap.mjs; owner, 28 Oct 2026)
-      CI_CF_ANALYTICS_TOKEN: ${{ secrets.CI_CF_ANALYTICS_TOKEN }}   # Account Analytics: Read only; unreadable count = the AI is capped (lib/ai-cap.mjs, fail closed)
-    steps:
-      - uses: actions/checkout@v5
-        timeout-minutes: 5
-      - uses: ./.github/actions/gh-ledger
-        with:
-          phase: start
-        timeout-minutes: 5
-      - run: node desktop/e2e/key-preflight.mjs
-        timeout-minutes: 5
-      - if: always()
-        uses: ./.github/actions/gh-ledger
-        with:
-          phase: end
-        timeout-minutes: 5
-
   # E2E: the gate suites on this build, one box (a matrix) per lane. The suite job of e2e.yml with the gate's settings (fixed path, replayed AI answers, paid judge);
   # a copy so the graph shows one box, not e2e.yml's plan/report/approve jobs (owner, 7 Oct 2026: "I want it to literally look that clean"). Keep the two in step.
   test-mac:
     name: ${{ matrix.name || format('E2E · Mac + Linux · {0}', matrix.key) }}   # the unit leg is named whole (lib/unit-leg.mjs): never an "E2E · " job
-    needs: [changes, build, ai-ready]
+    needs: [changes, build]
     if: needs.build.result == 'success' && needs.changes.outputs.gate == 'true' && needs.changes.outputs.count != '0'
     runs-on: ${{ matrix.os || 'macos-latest' }}   # Linux unless the suite needs the Mac (lib/plan.mjs runnerOf); a virtual display there
     timeout-minutes: 360   # the lock's wait (up to 3 h) plus the suite; each step below has its own limit, so this only ends a hung wait
@@ -971,7 +943,7 @@ jobs:
 
   test-windows:
     name: ${{ matrix.name || format('E2E · Windows · {0}', matrix.key) }}   # the unit leg is named whole (lib/unit-leg.mjs): never an "E2E · " job
-    needs: [changes, windows, ai-ready]
+    needs: [changes, windows]
     if: needs.windows.result == 'success' && needs.changes.outputs.gate == 'true' && needs.changes.outputs.count != '0'
     runs-on: windows-latest
     continue-on-error: ${{ matrix.tolerant == true }}
@@ -1611,7 +1583,7 @@ jobs:
   # A plan of ZERO suites is the same failure (count '0' skips test-mac too), so it is not excluded here (24 Oct 2026).
   gate-ran:
     name: Gate ran?
-    needs: [changes, build, windows, ai-ready, test-mac, test-windows]
+    needs: [changes, build, windows, test-mac, test-windows]
     if: always() && needs.changes.outputs.gate == 'true' && (needs.build.result == 'failure' || needs.windows.result == 'failure' || (needs.build.result == 'success' && needs.test-mac.result == 'skipped') || (needs.windows.result == 'success' && needs.test-windows.result == 'skipped'))
     runs-on: ubuntu-24.04
     steps:
@@ -1633,7 +1605,7 @@ jobs:
         if: (needs.build.result == 'success' && needs.test-mac.result == 'skipped') || (needs.windows.result == 'success' && needs.test-windows.result == 'skipped')
         timeout-minutes: 5
         run: |
-          echo "### ❌ The E2E gate was planned but did not run: no build was tested or approved. See the 'Plan the E2E suites' step of Anything new?. Or the AI key was refused: see 'AI key ready?'."
+          echo "### ❌ The E2E gate was planned but did not run: no build was tested or approved. See the 'Plan the E2E suites' step of Anything new?."
           echo "::error::The E2E gate was skipped after a green build."
           exit 1
       - if: always()
@@ -1674,69 +1646,6 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: python3 tools/sync_release_labels.py || echo "labels not refreshed"   # best effort, never fails a build
-      - if: always()
-        uses: ./.github/actions/gh-ledger
-        with:
-          phase: end
-        timeout-minutes: 5
-
-  # Why (31 Oct 2026, owner): "It should just raise an alert. And that's it." One credit alert per workflow run, never a beta hold.
-  ai-credit-health:
-    name: AI credit health
-    needs: [test-mac, test-windows]
-    if: always() && !cancelled() && github.ref == 'refs/heads/main'
-    continue-on-error: true
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    permissions:
-      contents: read
-      actions: read
-    env:
-      E2E_ARTIFACT_SECRET_NAMES: |
-        GH_TOKEN
-        CI_ALERTS_TELEGRAM_BOT_TOKEN
-        CI_ALERTS_TELEGRAM_CHAT_ID
-      GH_TOKEN: ${{ github.token }}
-      CI_ALERTS_TELEGRAM_BOT_TOKEN: ${{ secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN }}
-      CI_ALERTS_TELEGRAM_CHAT_ID: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}
-    steps:
-      - uses: actions/checkout@v5
-        timeout-minutes: 5
-        with:
-          sparse-checkout: |
-            desktop/e2e
-            tools/gh-ledger.sh
-            .github/actions/gh-ledger
-            tools/scan-e2e-artifacts.py
-      - uses: ./.github/actions/gh-ledger
-        with:
-          phase: start
-        timeout-minutes: 5
-      - uses: actions/setup-node@v5
-        timeout-minutes: 5
-        with:
-          node-version: '22'
-      - name: AI credit is an alert, never a hold
-        timeout-minutes: 5
-        run: |
-          gh run download "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --pattern 'e2e-artifacts-*' --dir ai-credit-health || echo "::notice::No suite artifacts available for AI credit health"
-          gh run download "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --name "ai-credit-alert-$GITHUB_RUN_ID" --dir ai-credit-alert || true
-          node desktop/e2e/credit-alert.mjs --artifacts ai-credit-health --marker ai-credit-alert/alert-sent.txt
-      - name: Scan artifact contents for CI secrets
-        timeout-minutes: 5
-        id: artifact_scan_1
-        if: always()
-        env:
-          E2E_ARTIFACT_PATHS: ai-credit-alert/alert-sent.txt
-        run: python tools/scan-e2e-artifacts.py
-      - name: Remember this run's single credit alert
-        if: (always() && hashFiles('ai-credit-alert/alert-sent.txt') != '') && steps.artifact_scan_1.outcome == 'success'
-        timeout-minutes: 5
-        uses: actions/upload-artifact@v6
-        with:
-          name: ai-credit-alert-${{ github.run_id }}
-          path: ai-credit-alert/alert-sent.txt
-          overwrite: true
       - if: always()
         uses: ./.github/actions/gh-ledger
         with:

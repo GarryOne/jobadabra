@@ -6,6 +6,7 @@ import path from 'node:path';
 import {test} from 'node:test';
 import {triageReadOrNull} from '../lib/apply-handlers.js';
 import {logTo} from '../lib/log.js';
+import {logText} from './log-text.mjs';
 
 // Gitar on #2867: the first version was handed the window log, which keeps a line only while a pipeline task runs; the default must be app.log itself.
 test('a read that fails answers null and writes why, with the job, to app.log (#2650)', async () => {
@@ -13,7 +14,7 @@ test('a read that fails answers null and writes why, with the job, to app.log (#
   logTo(folder);
   const answer = await triageReadOrNull(async () => { throw new Error('the hidden browser did not start'); }, 'https://jobs.example/1');
   assert.equal(answer, null);
-  const written = fs.readFileSync(path.join(folder, 'app.log'), 'utf8');
+  const written = logText(path.join(folder, 'app.log'));
   assert.match(written, /triage: the form read failed/);
   assert.match(written, /jobs\.example\/1/);
   assert.match(written, /the hidden browser did not start/);

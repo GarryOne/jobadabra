@@ -3,7 +3,7 @@
 // test files, so a default `Date.now()` inside library code that a test calls with fixed dates is invisible to it; 262 test files hold fixed 2026-10/11 timestamps. Only a moved clock finds them the night before.
 // Report only: it never gates a PR or a beta (CI · Clock moved, called by night pass 1 of e2e.yml). A file red on the real clock is no time bomb and is left out; a file that does not fail the same way twice is "unstable", not reported.
 // No faketime (or one that does not move the clock, proved by a probe in node and python before any test runs) = exit 2 saying so, never "no test depends on today's date". Guard: desktop/test/clock-moved.test.js.
-// Use: node tools/clock-moved.mjs [--area desktop,e2e,python] [--shifts 1,7] [--json report.json] [--summary summary.md]
+// Use: node tools/clock-moved.mjs [--area desktop,e2e,python] [--shifts 1,7] [--json report.json]
 import {spawn} from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -117,7 +117,6 @@ async function main(argv) {
   const text = reportText(result);
   console.log(text);
   if (value('--json')) fs.writeFileSync(value('--json'), JSON.stringify(result, null, 2));
-  if (value('--summary')) fs.appendFileSync(value('--summary'), `## Clock moved +1 d and +7 d\n\n${text}`);
   return 0;
 }
 

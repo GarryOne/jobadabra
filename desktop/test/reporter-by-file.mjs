@@ -17,6 +17,22 @@ export function countFiles(patterns = process.argv.slice(1), glob = fs.globSync)
 // The error's own lines, without Node's runner frames (node:internal, node:async_hooks): the first frames of the test file are what a person needs.
 const clip = (text, lines) => String(text || '').split('\n').filter(line => !/node:(internal|async_hooks)/.test(line)).slice(0, lines).join('\n');
 
+// One finished test counted into its file's entry. Returns the text to print at once when it is a failure (a suite and the parent of a failing subtest count nothing: the subtest is listed itself), else ''.
+function record(of, type, data) {
+  if (data.details?.type === 'suite') return '';   // a suite is its tests; counting it twice would show a pass for a failing file
+  const error = data.details?.error;
+  if (type === 'test:fail' && !data.skip && !data.todo && error?.code === 'ERR_TEST_FAILURE' && /subtests? failed/.test(error.message || '')) return '';
+  const entry = of(data);
+  if (nesting(data) === 0) entry.ms += data.details?.duration_ms || 0;
+  if (data.skip || data.todo) { entry.skipped++; return ''; }
+  if (type === 'test:pass') { entry.pass++; return ''; }
+  entry.fail++;
+  const failure = {name: data.name, message: clip(error?.cause?.stack || error?.cause?.message || error?.stack || error?.message || String(error || ''), 25)};
+  entry.failures.push(failure);
+  return `  ✖ ${failure.name}   (${path.relative(process.cwd(), data.file || '(unknown file)')})\n${indent(failure.message)}\n`;
+}
+const indent = text => text.split('\n').map(line => `      ${line}`).join('\n');
+
 export default async function* byFile(source) {
   const files = new Map();
   const of = data => {
@@ -41,19 +57,8 @@ export default async function* byFile(source) {
     pending = iterator.next();
     const {type, data} = next.value;
     if (type === 'test:pass' || type === 'test:fail') {
-      if (data.details?.type === 'suite') continue;   // a suite is its tests; counting it twice would show a pass for a failing file
-      const entry = of(data);
-      if (data.skip || data.todo) entry.skipped++;
-      else if (type === 'test:pass') entry.pass++;
-      else {
-        const error = data.details?.error;
-        if (error?.code === 'ERR_TEST_FAILURE' && /subtests? failed/.test(error.message || '')) continue;   // the parent of a failing subtest: the subtest is listed itself
-        entry.fail++; failed++;
-        const failure = {name: data.name, message: clip(error?.cause?.stack || error?.cause?.message || error?.stack || error?.message || String(error || ''), 25)};
-        entry.failures.push(failure);
-        yield `  ✖ ${failure.name}   (${path.relative(process.cwd(), data.file || '(unknown file)')})\n${failure.message.split('\n').map(line => `      ${line}`).join('\n')}\n`;   // at once, the end summary lists it again
-      }
-      if (nesting(data) === 0) entry.ms += data.details?.duration_ms || 0;
+      const text = record(of, type, data);
+      if (text) { failed++; yield text; }   // a failing test at once, the end summary lists it again
     } else if (type === 'test:diagnostic' && !/^(tests|suites|pass|fail|cancelled|skipped|todo|duration_ms) /.test(data.message)) diagnostics.push(data.message);
     if (total && files.size >= Math.ceil(total * step / 10)) { step = Math.floor(files.size * 10 / total) + 1; yield progress(); }   // every ~10% of the files
     else if (Date.now() - lastLine >= QUIET_MS) yield progress();
@@ -64,7 +69,7 @@ export default async function* byFile(source) {
   // What failed comes FIRST, in full, so a red log opens on the error; then one line per file (OK / FAILED); then the summary.
   if (fail) {
     yield `${fail} failing test${fail === 1 ? '' : 's'}:\n`;
-    for (const [file, entry] of sorted) for (const failure of entry.failures) yield `\n  ✖ ${failure.name}   (${file})\n${failure.message.split('\n').map(line => `      ${line}`).join('\n')}\n`;
+    for (const [file, entry] of sorted) for (const failure of entry.failures) yield `\n  ✖ ${failure.name}   (${file})\n${indent(failure.message)}\n`;
     yield '\nAll files:\n';
   }
   for (const [file, entry] of sorted) {

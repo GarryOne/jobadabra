@@ -1,5 +1,6 @@
 """The beta by hand is built from the newest fully green main commit, whatever workflow files changed since (owner, 1 Nov 2026: the beta promotes what main's CI already proved)."""
 import os
+import re
 import stat
 import subprocess
 import sys
@@ -204,6 +205,11 @@ class BetaPickBranch(unittest.TestCase):
         self.assertIn(f'--ref beta-pick/{self.sha["B"][:7]} -f beta=true', self.log.read_text())
         self.assertIn('Beta pick: the code of', git(self.origin, 'log', '-1', '--format=%B', built))
         self.assertEqual(git(self.origin, 'log', '-1', '--format=%s', built), 'commit B', "the green commit's own title")
+        # Gitar on #2927: the overlay has no build.yml run; desktop.yml's "built" step finds the green commit from the message with this very sed.
+        step = (ROOT / '.github' / 'workflows' / 'desktop.yml').read_text()
+        expr = re.search(r"sed -n '([^']*Beta pick: the code of[^']*)' \| tail -1", step).group(1)
+        found = subprocess.run(['sed', '-n', expr], input=git(self.origin, 'log', '-1', '--format=%B', built), capture_output=True, text=True).stdout.strip()
+        self.assertEqual(found, self.sha['B'], 'the CI wait reads the green commit, which is on main and has a run')
 
     def test_a_pick_with_the_heads_workflow_files_is_pushed_as_it_is(self):
         git(self.work, 'checkout', '-q', '-b', 'tmp', self.sha['C'])

@@ -254,6 +254,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          id=$(for wf in page-cases.yml recorded-pages.yml; do gh run list --repo "$GITHUB_REPOSITORY" --workflow "$wf" --branch main --event push --status success --limit 1 --json databaseId -q '.[0].databaseId' || true; done | head -n 1)   # recorded-pages.yml: the old file name, read until 17 Oct 2026 (3-day artifacts)
+          # Why (1 Nov 2026, Gitar on #2825): main's page cases run inside CI · Tests (build.yml calls this workflow as its `pages` job), so their artifacts sit in build.yml's
+          # runs; page-cases.yml has had no push run since 15 Oct, so the old lookup found nothing and this check only ever said "no main data".
+          id=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow build.yml --branch main --event push --status success --limit 1 --json databaseId -q '.[0].databaseId' || true)
           if [ -n "$id" ]; then gh run download "$id" --repo "$GITHUB_REPOSITORY" --pattern 'replay-results-*' --dir main-results || echo "fill time: main's results of run $id could not be read"; fi
           node replay-time.mjs --pr results/replay-results-*.json --main main-results/*/*.json   # one folder per artifact; an unmatched pattern is a missing file, skipped

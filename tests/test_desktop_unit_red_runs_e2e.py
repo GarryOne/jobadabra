@@ -61,8 +61,9 @@ class UnitRedRunsE2E(unittest.TestCase):
         for name, lane, _, release, unit in LANES:
             self.assertNotIn('outputs:', job(name).split('\n    steps:\n')[0], f'{lane}: the Build box has no unit output any more')
             gate = step(release, f'Not released on {lane}')
-            self.assertIn('--unit-mac "${{ needs.unit-mac.result }}"', gate)
-            self.assertIn('--unit-windows "${{ needs.unit-windows.result }}"', gate)
+            # Gitar on #2858: the gate only counts 'failure'; a unit job that ended cancelled or skipped must refuse the release too, so only 'success' passes as success.
+            self.assertIn("--unit-mac \"${{ needs.unit-mac.result == 'success' && 'success' || 'failure' }}\"", gate)
+            self.assertIn("--unit-windows \"${{ needs.unit-windows.result == 'success' && 'success' || 'failure' }}\"", gate)
         self.assertNotIn('outputs.unit', WORKFLOW)
 
     def test_the_e2e_jobs_never_wait_for_a_unit_job_and_both_release_jobs_do(self):

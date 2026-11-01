@@ -1488,9 +1488,11 @@ jobs:
           provider: ${{ inputs.ai_provider || vars.CI_AI_PROVIDER }}
           publish-key: ${{ secrets.AI_COST_PUBLISH_KEY }}
           github-token: ${{ github.token }}
+      # Why (1 Nov 2026, Gitar on #2858): the gate counts only 'failure' as red, and a unit JOB (unlike the old step inside Build) can also end cancelled or skipped without any e2e showing it;
+      # so anything but 'success' is passed as 'failure' and refuses the release.
       - name: Not released on Mac, an E2E suite failed on Mac + Linux or Windows, or a unit test failed
         timeout-minutes: 10
-        run: python3 tools/beta_rate_gate.py --repo "$GITHUB_REPOSITORY" --run "$GITHUB_RUN_ID" --e2e-only --platform mac --unit-mac "${{ needs.unit-mac.result }}" --unit-windows "${{ needs.unit-windows.result }}"
+        run: python3 tools/beta_rate_gate.py --repo "$GITHUB_REPOSITORY" --run "$GITHUB_RUN_ID" --e2e-only --platform mac --unit-mac "${{ needs.unit-mac.result == 'success' && 'success' || 'failure' }}" --unit-windows "${{ needs.unit-windows.result == 'success' && 'success' || 'failure' }}"
       - name: Tolerant AI rates against main's nightly band (report only)
         timeout-minutes: 10
         if: needs.changes.outputs.gate == 'true'
@@ -1624,9 +1626,11 @@ jobs:
           provider: ${{ inputs.ai_provider || vars.CI_AI_PROVIDER }}
           publish-key: ${{ secrets.AI_COST_PUBLISH_KEY }}
           github-token: ${{ github.token }}
+      # Why (1 Nov 2026, Gitar on #2858): the gate counts only 'failure' as red, and a unit JOB (unlike the old step inside Build) can also end cancelled or skipped without any e2e showing it;
+      # so anything but 'success' is passed as 'failure' and refuses the release.
       - name: Not released on Windows, an E2E suite failed on Mac + Linux or Windows, or a unit test failed
         timeout-minutes: 10
-        run: python3 tools/beta_rate_gate.py --repo "$GITHUB_REPOSITORY" --run "$GITHUB_RUN_ID" --e2e-only --platform windows --unit-mac "${{ needs.unit-mac.result }}" --unit-windows "${{ needs.unit-windows.result }}"
+        run: python3 tools/beta_rate_gate.py --repo "$GITHUB_REPOSITORY" --run "$GITHUB_RUN_ID" --e2e-only --platform windows --unit-mac "${{ needs.unit-mac.result == 'success' && 'success' || 'failure' }}" --unit-windows "${{ needs.unit-windows.result == 'success' && 'success' || 'failure' }}"
       - name: Tolerant AI rates against main's nightly band (report only)
         timeout-minutes: 10
         if: needs.changes.outputs.gate == 'true'

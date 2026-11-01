@@ -29,9 +29,8 @@ Anything new?\tUNKNOWN STEP\t2026-11-01T04:58:16.7893849Z \x1b[36;1m  echo "### 
 Release · Mac beta\tNot released on Mac, an E2E suite failed on Mac + Linux or Windows, or a unit test failed\t2026-11-01T05:23:47.5110906Z ##[error]Not released: red: Mac + Linux: focusdismiss
 Release · Windows beta\tNot released on Windows, an E2E suite failed on Mac + Linux or Windows, or a unit test failed\t2026-11-01T05:24:32.7160767Z ##[error]Not released: red: Mac + Linux: focusdismiss
 '''
-# From the workflow's source (desktop.yml): the output lines of a run that built nothing, next to the same words in the step's source.
-LOG_NOTHING_NEW = '''Anything new?\tUNKNOWN STEP\t2026-11-01T09:00:10.1000000Z \x1b[36;1m  echo "Nothing new for the app since ${tag}: no build tonight."\x1b[0m
-Anything new?\tUNKNOWN STEP\t2026-11-01T09:00:11.2000000Z Nothing new for the app since desktop-v0.8.67: no build tonight.
+# A run that fails before its own tag step (the log's last real line), and the workflow's own warning of a build that main's workflows superseded (desktop.yml: the output form next to the step's source).
+LOG_FAILED_EARLY = '''Anything new?\tUNKNOWN STEP\t2026-11-01T09:00:11.2000000Z ##[error]Process completed with exit code 1.
 '''
 LOG_SUPERSEDED = '''Anything new?\tUNKNOWN STEP\t2026-11-01T09:10:10.1000000Z \x1b[36;1m  echo "::warning::Workflows changed on main during this build: not released; a new build of main starts."\x1b[0m
 Anything new?\tUNKNOWN STEP\t2026-11-01T09:10:11.2000000Z ##[warning]Workflows changed on main during this build: not released; a new build of main starts.
@@ -51,7 +50,7 @@ esac
 '''
 
 
-def report(run, head, log, notes, tags=TAGS, started='2026-11-01T05:38:40Z', published='2026-11-01T05:48:49Z'):
+def report(run, head, log, notes, tags=TAGS, started='2026-11-01T05:38:40Z', published='2026-11-01T05:48:49Z', draft=False):
     with tempfile.TemporaryDirectory() as directory:
         folder = Path(directory)
         (folder / 'bin').mkdir()
@@ -62,7 +61,7 @@ def report(run, head, log, notes, tags=TAGS, started='2026-11-01T05:38:40Z', pub
         (folder / 'tags').write_text(tags)
         if notes is not None:
             (folder / 'notes').write_text(notes)
-        env = dict(os.environ, PATH=f"{folder / 'bin'}:{os.environ['PATH']}", FAKE_LOG=str(folder / 'log'), FAKE_TAGS=str(folder / 'tags'), FAKE_NOTES=str(folder / 'notes'), FAKE_HEAD=head, FAKE_STARTED=started, FAKE_PUBLISHED=published)
+        env = dict(os.environ, PATH=f"{folder / 'bin'}:{os.environ['PATH']}", FAKE_LOG=str(folder / 'log'), FAKE_TAGS=str(folder / 'tags'), FAKE_NOTES=str(folder / 'notes'), FAKE_HEAD=head, FAKE_STARTED=started, FAKE_PUBLISHED='' if draft else published)
         done = subprocess.run(['bash', str(ROOT / 'tools' / 'beta-release-report.sh'), run, URL + run], capture_output=True, text=True, env=env)
         assert done.returncode == 0, done.stderr
         return done.stdout
@@ -86,12 +85,16 @@ class TheBetaSaysWhichVersionItReleased(unittest.TestCase):
         self.assertIn('made no version tag at fffffff', out)
         self.assertNotIn('desktop-v0.8', out)
 
-    def test_a_run_with_nothing_new_is_not_credited_with_the_release_of_an_earlier_run(self):
-        # Gitar on #2819: a beta started on a commit the nightly already released builds and tags nothing; the nightly's tag and approvals are at that commit too.
-        out = report('41280000001', '649f9ddd286032c25ca916a81d9622259ff66940', LOG_NOTHING_NEW, NOTES_BOTH, started='2026-11-01T09:00:00Z')
+    def test_a_run_that_failed_before_its_tag_is_not_credited_with_the_release_of_an_earlier_run(self):
+        # Gitar on #2819: the nightly released this commit at 05:48; a beta by hand started later on it and failed before its Tag step, so the nightly's tag and approvals are what sits at the commit.
+        out = report('41280000001', '649f9ddd286032c25ca916a81d9622259ff66940', LOG_FAILED_EARLY, NOTES_BOTH, started='2026-11-01T09:00:00Z')
         self.assertTrue(out.startswith('This run released nothing: desktop-v0.8.67 at this commit was released earlier'), out)
         self.assertNotIn('approved,', out)
-        self.assertIn('Nothing new for the app since desktop-v0.8.67: no build tonight.', out)
+
+    def test_a_draft_release_of_this_run_is_a_draft_not_an_earlier_release(self):
+        # Gitar on #2819: the build lanes publish the draft; if both fail, publishedAt is empty.
+        out = report('41280000003', '649f9ddd286032c25ca916a81d9622259ff66940', LOG_FAILED_EARLY, NOTES_NONE, draft=True)
+        self.assertEqual(out.strip(), f'desktop-v0.8.67: a draft release, never published (a build lane did not finish): see {URL}41280000003')
 
     def test_a_superseded_build_quotes_the_workflows_warning(self):
         # desktop.yml: a build that cannot tag because main's workflows changed ends with this warning and no tag at all.

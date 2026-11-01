@@ -15,16 +15,19 @@ tag=$(gh api "repos/$repo/git/matching-refs/tags/desktop-v" --paginate --jq '.[]
 log() { gh run view "$id" -R "$repo" --log 2>/dev/null || true; }
 # The run's own one line of why, quoted. A run log holds the same words in its step source (lowercase, or inside an echo), which these patterns do not match.
 gate_why() { log | grep -o 'Not released: .*' | sort -u || true; }
-nothing_built_why() { log | grep -oE '(##\[warning\]Workflows changed on main during this build.*|Z Nothing new for the app since desktop-v[0-9.]+.*)' | sed -E 's/^(##\[warning\]|Z )//' | sort -u || true; }
+superseded_why() { log | grep -o '##\[warning\]Workflows changed on main during this build.*' | sed 's/^##\[warning\]//' | sort -u || true; }
 if [ -z "$tag" ]; then
   echo "This run made no version tag at ${head:0:7}: see $url"
-  nothing_built_why
+  superseded_why
 elif ! published=$(gh release view "$tag" -R "$repo" --json publishedAt -q .publishedAt 2>/dev/null); then
   echo "${tag}: tagged, but the build finished without a release: see $url"
+elif [ -z "$published" ]; then
+  # A release still a draft has an empty publishedAt: the tag and the draft are this run's, a build lane never published it.
+  echo "${tag}: a draft release, never published (a build lane did not finish): see $url"
 elif [[ "$published" < "$started" ]]; then
-  # Why (Gitar on #2819): a beta started on a commit an earlier run already released builds and tags nothing; that run's tag and approval lines are not this run's result.
+  # Why (Gitar on #2819): a run that fails before its own tag step, on a commit an earlier run already tagged and released, finds that run's tag at the commit; its approval lines are not this run's result.
   echo "This run released nothing: ${tag} at this commit was released earlier, at ${published}: see $url"
-  nothing_built_why
+  superseded_why
 else
   notes=$(gh release view "$tag" -R "$repo" --json body -q .body)
   mac=$(grep -q '^Beta-approved:' <<<"$notes" && echo "approved" || echo "NOT approved")

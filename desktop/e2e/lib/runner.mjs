@@ -6,7 +6,8 @@ import {ensureStaged} from './ensure-staged.mjs';
 import {refusalNote} from './ai-refused.mjs';
 import {capMessage, skipStepForCap, takeCapped} from './ai-cap.mjs';
 import {isEnvironment, RETRY_WAIT_MS} from './environment.mjs';
-import {mayRetry, retryLog} from './beta-retry.mjs';
+import {inBeta, mayRetry, retryLog} from './beta-retry.mjs';
+import {isTier2Step} from './critical-journeys.mjs';
 import {faultCheck, NEVER_FIRED, neverFiredNote} from './faults.mjs';
 import {codeLine} from './artifacts.mjs';
 import {causeOf, sharedCauseLines} from './step-cause.mjs';
@@ -137,6 +138,8 @@ export function createRunner(getSession, {suite = '', cadence = '', keepGoing = 
     const doneBefore = allFound();
     if (picked.includes(name.toLowerCase())) found.add(name.toLowerCase());
     if (buildsOn ? !critical && doneBefore : only.length && !critical && !only.some(word => name.toLowerCase().includes(word))) return;
+    // Why (1 Nov 2026, owner: "tier2 should not be part by beta"): a beta runs tier 1, safety and data steps only; a tier 2 step is skipped, never failed. Remove with the last tier 2 suite.
+    if (inBeta() && isTier2Step(suite, name)) { results.push({name, status: 'skipped', tier2: true}); console.log(`– ${name}: not in the beta (tier 2: night and integration only)`); await report?.skipStep(name).catch(() => {}); return; }
     const missing = needs.filter(item => !item.value);
     if (missing.length) { results.push({name, status: 'skipped'}); console.log(`- ${name}: skipped (needs ${missing.map(item => item.name).join(', ')})`); await report?.skipStep(name).catch(() => {}); return; }
     takeCapped();   // a cap refusal seen from here on belongs to this step

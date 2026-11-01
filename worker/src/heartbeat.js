@@ -3,6 +3,9 @@
 // Telegram bot, and asks two public questions: does the marker page answer, and is the newest probe round recent (GET /api/synthetic/last -> {at}). No store, no secret beyond the Telegram
 // token it already holds, no user data. Report only: it only sends a message.
 export const STALE_MIN = 45, TIMEOUT_MS = 10000;
+// Why (1 Nov 2026, Gitar on this PR): the two questions go to two hosts on purpose, so a broken custom domain and a broken Worker are told apart. The marker page is the custom domain users open;
+// the feed is the site Worker's own workers.dev address (script `www` in jobadabra-web workers/www/wrangler.toml, account subdomain `jobpilotto`; installed apps call it too and it never changes). Checked live
+// with curl on 1 Nov 2026: 200 {"at":"2026-11-01T19:05:00Z"}.
 export const SITE = 'https://www.jobadabra.top/', LAST = 'https://www.jobpilotto.workers.dev/api/synthetic/last';
 
 /** Why (1 Nov 2026, nm): the bot Worker keeps no state, so "once per hour" is a tick rule: the 10-minute trigger asks every tick, but a problem is TOLD only on the :00 and :30 ticks (at most twice an hour while it lasts, never later than 30 minutes after it began). */

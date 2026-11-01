@@ -29,7 +29,7 @@ permissions:
   contents: read
 
 concurrency:   # a PR's newer push replaces its older run; each commit of main keeps its own run (tests/test_pr_runs_cancel.py, tests/test_main_runs_finish.py)
-  group: smoke-${{ github.event_name == 'pull_request' && github.head_ref || github.sha }}
+  group: smoke-${{ github.event_name == 'pull_request' && github.head_ref || format('{0}-{1}', github.workflow, github.sha) }}   # Why (1 Nov 2026, a8): a called workflow reads the caller's github.workflow, so the beta's run of a commit does not queue behind main's run of the same commit
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:

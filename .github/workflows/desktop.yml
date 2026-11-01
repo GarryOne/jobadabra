@@ -3,7 +3,7 @@ name: Release · Build, test, beta
 # ONE RUN PER RELEASE, ONE LANE PER PLATFORM (owner, 7 Oct 2026: three runs chained by triggers were hard to follow; then "2 parallel pipelines"):
 #   Anything new? -+- Build · Mac     -> E2E · Mac + Linux -> Release · Mac beta     -> offer -+- Clean up old builds
 #                  +- Build · Windows -> E2E · Windows     -> Release · Windows beta -> offer -+
-#                  +- Main's CI on this commit (awaited from the start; both Release jobs read its result)
+#                  +- Integration, Recorded pages, Smoke (the jobs main runs on every push, run here on this commit from the start; both Release jobs read their results)
 # The two Release jobs run side by side (1 Nov 2026, owner); only each lane's tiny "offer" job, which writes its line into the release's notes, takes the one lock (release-promote).
 # One box per step (owner, 7 Oct 2026: "I want it to literally look that clean"): Anything new? also plans the suites, each E2E is one matrix box (the suite jobs of
 # e2e.yml / e2e-windows.yml, copied with the gate's settings), each Release also merges its lane's HTML report.
@@ -1306,38 +1306,33 @@ jobs:
           phase: end
         timeout-minutes: 5
 
-  # Why (1 Nov 2026, a8; owner: "the blocking of the main's CI"): main's build.yml on this commit is awaited from the START of a gated beta, beside Build and the E2E, so the Release
-  # jobs only read its result. They used to wait for it after their own work (beta 41333086670: Release · Mac waited ~8 min on a build.yml that started 17:41). tools/release-checks.sh
-  # stays the one place that knows the check (--wait-ci here, --after-ci in the Release jobs); a red, timed out, cancelled or skipped job refuses the release (the Release jobs read its result).
-  main-ci:
-    name: Main's CI on this commit
+  # Why (1 Nov 2026, owner: "If it takes so much and blocks us so much (consider frequent merges in main) maybe we should bring those tests at the beta pipeline level", "go"): the beta ran the jobs
+  # it relied on from main's build.yml (integration, recorded pages, smoke) by waiting for main's run of the same commit, which queues behind the run before it (CI · Tests holds one run at a time, ~30 min
+  # with its Linux suites) and is replaced by the next push (beta 41339598113 waited 24 min on three commits). They are called workflows (main and the PRs run the same files), so they run here, on this
+  # commit, beside Build and the E2E (~6 min, hidden behind the tests); both Release jobs need their results. Not here: "Linux suites" (python, worker, desktop run again on the Unit tests boxes; the
+  # fill check stays main's own red) and the harness tests (no release gate, owner 1 Nov 2026). The pages run dry here: no publish key, nothing reaches /admin/form-filling/lab (that shows main only).
+  integration:
     needs: changes
     if: needs.changes.outputs.gate == 'true'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 70   # Why (31 Oct 2026, a8; beta 41246139016): release-checks.sh waits up to RELEASE_CI_WAIT (3600 s) for main's build.yml; 5 minutes killed it in an all-green beta
     permissions:
       contents: read
-      actions: read   # build.yml's runs on the commit and on newer commits of main
-    env:
-      GH_TOKEN: ${{ github.token }}
-      TAG: desktop-v${{ needs.changes.outputs.version }}
-      REF: ${{ github.sha }}
-    steps:
-      - uses: actions/checkout@v5
-        timeout-minutes: 5
-      - uses: ./.github/actions/gh-ledger
-        with:
-          phase: start
-        timeout-minutes: 5
-      - name: Wait for main's build.yml on this commit and read its verdict
-        timeout-minutes: 65
-        shell: bash -eo pipefail {0}   # a program piped into tee/cat keeps its exit code (tests/test_workflow_pipefail.py)
-        run: tools/release-checks.sh --wait-ci "$TAG" "$REF"
-      - if: always()
-        uses: ./.github/actions/gh-ledger
-        with:
-          phase: end
-        timeout-minutes: 5
+    uses: ./.github/workflows/integration.yml
+
+  smoke:
+    needs: changes
+    if: needs.changes.outputs.gate == 'true'
+    permissions:
+      contents: read
+    uses: ./.github/workflows/smoke.yml
+
+  pages:
+    needs: changes
+    if: needs.changes.outputs.gate == 'true'
+    permissions:   # what page-cases.yml's report job asks for (tests/test_workflow_call_permissions.py)
+      contents: read
+      actions: read
+      pull-requests: read
+    uses: ./.github/workflows/page-cases.yml
 
   # RELEASE: the lane's HTML report (always), then, only when every E2E suite of BOTH lanes passed: no real high-severity finding, the shared release checks, and the
   # "Beta-approved:" line that offers the build to Mac beta testers (desktop/lib/updater.js). Red = not released on Mac.
@@ -1346,12 +1341,12 @@ jobs:
   # beta 41090972183 shipped Windows 0.8.53 while Mac + Linux applyflows was red. Both lanes green, or neither platform is offered.
   release-mac:
     name: Release · Mac beta
-    needs: [changes, build, windows, test-mac, test-windows, main-ci]
+    needs: [changes, build, windows, test-mac, test-windows, integration, smoke, pages]
     if: always() && needs.changes.outputs.gate == 'true' && needs.test-mac.result != 'skipped' && needs.test-mac.result != 'cancelled'
     outputs:
       retry: ${{ steps.retry.outputs.text }}   # the steps that passed on their retry, for the offer job's line in the notes
     runs-on: ubuntu-24.04
-    timeout-minutes: 40   # Why (1 Nov 2026, a8): the lane's checks (the e2e review left the beta, owner 1 Nov); main's CI is awaited by the main-ci job, not here (it was 90 min while this job waited up to 60 min for it; 20 once cut Windows off at 18 min, beta 41090972183)
+    timeout-minutes: 40   # Why (1 Nov 2026, a8): the lane's checks (the e2e review left the beta, owner 1 Nov); the integration, recorded-pages and smoke jobs run beside Build, not inside this job (it was 90 min while it waited up to 60 min on main's build.yml; 20 once cut Windows off at 18 min, beta 41090972183)
     permissions:
       contents: write   # the approval line (release-stable.sh when the soak is off)
       actions: write    # this run's artifacts, build.yml's verdict on the commit; release-stable.sh starts the Chrome Web Store publish
@@ -1439,19 +1434,23 @@ jobs:
           set -o pipefail   # a program piped into tee keeps its exit code (tests/test_workflow_pipefail.py)
           node passed-on-retry.mjs --artifacts ../../e2e-artifacts | tee ../../passed-on-retry.txt   # Why (1 Nov 2026, owner: "Auto-retry in betas only"): the beta released past these; empty when none retried
           { echo 'text<<RETRY_END'; cat ../../passed-on-retry.txt; echo RETRY_END; } >> "$GITHUB_OUTPUT"   # Why (1 Nov 2026, a8): the offer job writes the line into the notes
-      - name: Main's CI was green on this commit (the Main's CI job waited for it)
+      - name: Integration, recorded pages and smoke were green on this commit (called workflows, run beside Build)
         timeout-minutes: 5
         env:
-          MAIN_CI: ${{ needs.main-ci.result }}
+          INTEGRATION: ${{ needs.integration.result }}
+          SMOKE: ${{ needs.smoke.result }}
+          PAGES: ${{ needs.pages.result }}
         run: |
-          # Why (1 Nov 2026, a8; Gitar on #2858): only a result that said success is success; red, timed out, cancelled, skipped or missing all stop the release, with today's words.
-          if [ "$MAIN_CI" != success ]; then echo "$TAG stays a pre-release: build.yml is not green on its commit (the Main's CI job ended: ${MAIN_CI:-missing})."; exit 1; fi
-      - name: The shared release checks after main's CI (soak on, the Notion schema additive over stable)
-        timeout-minutes: 10   # Why (1 Nov 2026, a8): only the schema comparison is left here; the wait for main's build.yml moved to the main-ci job (it needed 65 min while it waited here)
+          # Why (1 Nov 2026, a8; Gitar on #2858, owner 1 Nov 2026: bring them to the beta): only a result that said success is success; red, timed out, cancelled, skipped or missing all stop the release.
+          red=""
+          for pair in integration="$INTEGRATION" smoke="$SMOKE" pages="$PAGES"; do [ "${pair#*=}" = success ] || red="$red ${pair%%=*}(${pair#*=})"; done
+          if [ -n "$red" ]; then echo "$TAG stays a pre-release: not green on its commit:$red."; exit 1; fi
+      - name: The shared release checks (soak on, the Notion schema additive over stable)
+        timeout-minutes: 10   # Why (1 Nov 2026, a8): only the schema comparison is left here; main's build.yml is no longer read by the beta (owner 1 Nov 2026)
         env:
           JOB_PILOTTO_SOAK: ${{ vars.JOB_PILOTTO_SOAK }}
         shell: bash -eo pipefail {0}   # a program piped into tee/cat keeps its exit code (tests/test_workflow_pipefail.py)
-        run: tools/release-checks.sh --after-ci "$TAG" "$REF"
+        run: tools/release-checks.sh --schema-only "$TAG" "$REF"
       - if: always()
         uses: ./.github/actions/gh-ledger
         with:
@@ -1518,12 +1517,12 @@ jobs:
   # "Beta-approved (Windows):" line that offers the build to Windows beta testers (desktop/lib/updater.js). Red = not released on Windows.
   release-windows:
     name: Release · Windows beta   # needs both lanes: the Why above release-mac
-    needs: [changes, build, windows, test-mac, test-windows, main-ci]
+    needs: [changes, build, windows, test-mac, test-windows, integration, smoke, pages]
     if: always() && needs.changes.outputs.gate == 'true' && needs.test-windows.result != 'skipped' && needs.test-windows.result != 'cancelled'
     outputs:
       retry: ${{ steps.retry.outputs.text }}   # the steps that passed on their retry, for the offer job's line in the notes
     runs-on: ubuntu-24.04
-    timeout-minutes: 40   # Why (1 Nov 2026, a8): the lane's checks (the e2e review left the beta, owner 1 Nov); main's CI is awaited by the main-ci job, not here (it was 90 min while this job waited up to 60 min for it; 20 once cut Windows off at 18 min, beta 41090972183)
+    timeout-minutes: 40   # Why (1 Nov 2026, a8): the lane's checks (the e2e review left the beta, owner 1 Nov); the integration, recorded-pages and smoke jobs run beside Build, not inside this job (it was 90 min while it waited up to 60 min on main's build.yml; 20 once cut Windows off at 18 min, beta 41090972183)
     permissions:
       contents: write   # the approval line (release-stable.sh when the soak is off)
       actions: write    # this run's artifacts, build.yml's verdict on the commit; release-stable.sh starts the Chrome Web Store publish
@@ -1607,19 +1606,23 @@ jobs:
           set -o pipefail   # a program piped into tee keeps its exit code (tests/test_workflow_pipefail.py)
           node passed-on-retry.mjs --artifacts ../../e2e-artifacts | tee ../../passed-on-retry.txt   # Why (1 Nov 2026, owner: "Auto-retry in betas only"): the beta released past these; empty when none retried
           { echo 'text<<RETRY_END'; cat ../../passed-on-retry.txt; echo RETRY_END; } >> "$GITHUB_OUTPUT"   # Why (1 Nov 2026, a8): the offer job writes the line into the notes
-      - name: Main's CI was green on this commit (the Main's CI job waited for it)
+      - name: Integration, recorded pages and smoke were green on this commit (called workflows, run beside Build)
         timeout-minutes: 5
         env:
-          MAIN_CI: ${{ needs.main-ci.result }}
+          INTEGRATION: ${{ needs.integration.result }}
+          SMOKE: ${{ needs.smoke.result }}
+          PAGES: ${{ needs.pages.result }}
         run: |
-          # Why (1 Nov 2026, a8; Gitar on #2858): only a result that said success is success; red, timed out, cancelled, skipped or missing all stop the release, with today's words.
-          if [ "$MAIN_CI" != success ]; then echo "$TAG stays a pre-release: build.yml is not green on its commit (the Main's CI job ended: ${MAIN_CI:-missing})."; exit 1; fi
-      - name: The shared release checks after main's CI (soak on, the Notion schema additive over stable)
-        timeout-minutes: 10   # Why (1 Nov 2026, a8): only the schema comparison is left here; the wait for main's build.yml moved to the main-ci job (it needed 65 min while it waited here)
+          # Why (1 Nov 2026, a8; Gitar on #2858, owner 1 Nov 2026: bring them to the beta): only a result that said success is success; red, timed out, cancelled, skipped or missing all stop the release.
+          red=""
+          for pair in integration="$INTEGRATION" smoke="$SMOKE" pages="$PAGES"; do [ "${pair#*=}" = success ] || red="$red ${pair%%=*}(${pair#*=})"; done
+          if [ -n "$red" ]; then echo "$TAG stays a pre-release: not green on its commit:$red."; exit 1; fi
+      - name: The shared release checks (soak on, the Notion schema additive over stable)
+        timeout-minutes: 10   # Why (1 Nov 2026, a8): only the schema comparison is left here; main's build.yml is no longer read by the beta (owner 1 Nov 2026)
         env:
           JOB_PILOTTO_SOAK: ${{ vars.JOB_PILOTTO_SOAK }}
         shell: bash -eo pipefail {0}   # a program piped into tee/cat keeps its exit code (tests/test_workflow_pipefail.py)
-        run: tools/release-checks.sh --after-ci "$TAG" "$REF"
+        run: tools/release-checks.sh --schema-only "$TAG" "$REF"
       - if: always()
         uses: ./.github/actions/gh-ledger
         with:

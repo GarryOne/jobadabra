@@ -28,7 +28,7 @@ class FailedLane(unittest.TestCase):
             self.assertIn('--mac "${{ needs.build.result }}" --windows "${{ needs.windows.result }}"', release, lane)
             self.assertLess(check, release.index('beta_rate_gate.py'), lane)
             self.assertLess(check, release.index('npm ci'), lane)
-            self.assertIn('needs: [changes, build, windows, test-mac, test-windows, main-ci]', release, lane)
+            self.assertIn('needs: [changes, build, windows, test-mac, test-windows, integration, smoke, pages]', release, lane)
 
 
 class RateLimitIsSaid(unittest.TestCase):

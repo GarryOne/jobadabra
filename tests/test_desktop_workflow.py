@@ -94,7 +94,9 @@ class DesktopWorkflowTest(unittest.TestCase):
     def test_each_lane_is_build_then_e2e_then_release_one_box_each(self):
         # Owner, 7 Oct 2026: "Anything new? -> Build -> E2E -> Release" per platform, "literally that clean": each step one box (a job or one matrix), no called workflows.
         job = lambda name: WORKFLOW.split(f'\n  {name}:\n')[1].split('\n\n  # ')[0]
-        self.assertNotIn('uses: ./.github/workflows/', WORKFLOW, 'a called workflow draws all its jobs in the graph')
+        # Why (1 Nov 2026, owner "go" on bringing main's integration, recorded pages and smoke into the beta; the 7 Oct 2026 "no called workflows" kept for everything else): a called workflow draws
+        # all its jobs in the graph, so only these three are called, and each one is one visible group.
+        self.assertEqual(sorted(re.findall(r'uses: \./\.github/workflows/([\w.-]+)', WORKFLOW)), ['integration.yml', 'page-cases.yml', 'smoke.yml'])
         self.assertIn('needs: changes ', job('build'))
         self.assertIn('needs: changes ', job('windows'))
         # The same unit tests on both platforms, only the desktop app's: Python pipeline + app, never the Worker or the site (own pipelines; owner, 10 Oct 2026). In a tested run they are
@@ -153,8 +155,8 @@ class DesktopWorkflowTest(unittest.TestCase):
             release = job(name)
             # Owner, 30 Oct 2026: both lanes green or neither platform is offered (Windows dropped its duplicates of the Mac + Linux suites).
             # Owner, 31 Oct 2026: + build, windows, whose unit step is red without stopping the e2e (tests/test_desktop_unit_red_runs_e2e.py).
-            # 1 Nov 2026 (a8): + main-ci, main's CI awaited in its own job from the start of the beta.
-            self.assertIn('needs: [changes, build, windows, test-mac, test-windows, main-ci]', release)
+            # 1 Nov 2026 (a8, owner): + integration, smoke, pages: main's own jobs, run in the beta on this commit instead of waiting for main's run.
+            self.assertIn('needs: [changes, build, windows, test-mac, test-windows, integration, smoke, pages]', release)
             # Owner, 31 Oct 2026 (a suite past its budget is our bug): the gate reads every lane's jobs and its own exit code is the verdict; no grey hold, held output or rerun.
             self.assertIn('--e2e-only', release)
             for gone in ('backbone_gate', 'outputs.held', 'beta-held', 'continue-on-error: true\n        run: python3 tools/beta_rate_gate.py'):
@@ -172,16 +174,21 @@ class DesktopWorkflowTest(unittest.TestCase):
             self.assertIn(f"if: needs.{name}.result == 'success'", offer)
             self.assertIn(f'needs: [changes, {name}]', offer)
         self.assertEqual(WORKFLOW.count('group: release-promote'), 2)
-        # Main's CI: awaited once, at the start (needs only `changes`, the gate's own condition), and a result that never said success refuses both lanes.
-        ci = job('main-ci')
-        self.assertIn('needs: changes', ci)
-        self.assertIn("if: needs.changes.outputs.gate == 'true'", ci)
-        self.assertIn('tools/release-checks.sh --wait-ci "$TAG" "$REF"', ci)
+        # Owner, 1 Nov 2026 ("bring those tests at the beta pipeline level"): main's integration, recorded pages and smoke run in the beta, on this commit, beside Build (they start with the
+        # gate's own condition and need only `changes`); the beta no longer waits for main's build.yml, and a result that never said success refuses both lanes.
+        for called, workflow in (('integration', 'integration.yml'), ('smoke', 'smoke.yml'), ('pages', 'page-cases.yml')):
+            ci = job(called)
+            self.assertIn('needs: changes', ci)
+            self.assertIn("if: needs.changes.outputs.gate == 'true'", ci)
+            self.assertIn(f'uses: ./.github/workflows/{workflow}', ci)
+            self.assertNotIn('secrets', ci, 'a beta never publishes the pages to /admin/form-filling/lab')
+        self.assertNotIn('\n  main-ci:\n', WORKFLOW)
         for name in ('release-mac', 'release-windows'):
             release = job(name)
-            self.assertIn('MAIN_CI: ${{ needs.main-ci.result }}', release)
-            self.assertIn('if [ "$MAIN_CI" != success ]', release)   # cancelled, skipped, failure and missing are all red
-            self.assertIn('tools/release-checks.sh --after-ci "$TAG" "$REF"', release)
+            for env in ('INTEGRATION: ${{ needs.integration.result }}', 'SMOKE: ${{ needs.smoke.result }}', 'PAGES: ${{ needs.pages.result }}'):
+                self.assertIn(env, release)
+            self.assertIn('[ "${pair#*=}" = success ]', release)   # cancelled, skipped, failure and missing are all red
+            self.assertIn('tools/release-checks.sh --schema-only "$TAG" "$REF"', release)
             self.assertNotIn('tools/release-checks.sh "$TAG"', release)
         # only a nightly or a beta by hand is tested; the plan is made once, for both lanes
         self.assertIn("(github.event_name == 'schedule' || inputs.nightly || inputs.beta)", job('changes'))
@@ -198,7 +205,7 @@ class DesktopWorkflowTest(unittest.TestCase):
         job = lambda name: WORKFLOW.split(f'\n  {name}:\n')[1].split('\n\n  # ')[0]
         for name in ('release-mac', 'release-windows'):
             release = job(name)
-            self.assertIn('needs: [changes, build, windows, test-mac, test-windows, main-ci]', release)
+            self.assertIn('needs: [changes, build, windows, test-mac, test-windows, integration, smoke, pages]', release)
             gate = release.split('python3 tools/beta_rate_gate.py --repo "$GITHUB_REPOSITORY" --run "$GITHUB_RUN_ID" --e2e-only')[0].rsplit('      - name:', 1)[1]
             self.assertNotIn('continue-on-error', gate, name)
             self.assertNotIn('\n        if:', gate, name)

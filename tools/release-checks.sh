@@ -2,16 +2,15 @@
 # The release checks every platform's beta approval shares (e2e.yml promote for Mac/Linux, e2e-windows.yml approve-windows): the unit suites are green on the
 # commit, and (soak on) the Notion schema is additive over the current stable. Each platform's own end-to-end suites are checked by its own job.
 #   tools/release-checks.sh <tag> <commit sha>      exit 1, with the reason on stdout, when the build must not be offered
-#   tools/release-checks.sh --wait-ci <tag> <sha>   only main's build.yml verdict (the wait): desktop.yml's "Main's CI" job, started with the beta
-#   tools/release-checks.sh --after-ci <tag> <sha>  only the rest (the soak's schema check): the Release jobs, after reading that job's result
+#   tools/release-checks.sh --schema-only <tag> <sha>   only the soak's schema check: desktop.yml's Release jobs (the beta runs main's integration, recorded-pages and smoke jobs itself, owner 1 Nov 2026)
 set -euo pipefail
-mode=all; case "${1:-}" in --wait-ci|--after-ci) mode=${1#--}; shift;; esac
-tag=${1:?usage: tools/release-checks.sh [--wait-ci|--after-ci] <tag> <sha>}; ref=${2:?usage: tools/release-checks.sh [--wait-ci|--after-ci] <tag> <sha>}
+mode=all; case "${1:-}" in --schema-only) mode=schema-only; shift;; esac
+tag=${1:?usage: tools/release-checks.sh [--schema-only] <tag> <sha>}; ref=${2:?usage: tools/release-checks.sh [--schema-only] <tag> <sha>}
 repo=${GITHUB_REPOSITORY:-GarryOne/jobadabra}
 
-# Why (1 Nov 2026, owner: "why Windows is waiting on Mac?", "the blocking of the main's CI"): the wait below runs once, in desktop.yml's "Main's CI" job started with the beta (--wait-ci),
-# not inside each Release job after its own work; the Release jobs run --after-ci.
-if [ "$mode" != after-ci ]; then
+# Why (1 Nov 2026, owner: "bring those tests at the beta pipeline level", "go"): desktop.yml's Release jobs no longer wait for main's build.yml (it queues behind the run before it and is replaced by the next
+# push: beta 41339598113 waited 24 min on three commits); the jobs they relied on run in the beta itself. This whole check, with the wait, is what beta-approve.yml (a beta approved after the fact) runs.
+if [ "$mode" != schema-only ]; then
   # A beta cut right after a push to main meets main's own build.yml still running on the same commit (beta 17, 24 Oct 2026: "build.yml on b5c13d0: none", the run was 35 min in):
   # wait for it, bounded, and decide on its result; only red, cancelled (see below) or a run still going after the wait stop the release.
   wait_max=${RELEASE_CI_WAIT:-3600}; poll=${RELEASE_CI_POLL:-30}; waited=0; said=-60
@@ -42,7 +41,7 @@ if [ "$mode" != after-ci ]; then
 fi
 
 # The schema is additive over the current stable, so "Back to stable" cannot split anybody's data.
-if [ "$mode" != wait-ci ] && [ "${JOB_PILOTTO_SOAK:-}" = on ]; then
+if [ "${JOB_PILOTTO_SOAK:-}" = on ]; then
   stable=$(gh release list -R "$repo" -L 20 --json tagName,isPrerelease,isDraft -q '[.[] | select(.isDraft | not) | select(.isPrerelease | not)][0].tagName')
   if [ -z "$stable" ] || [ "$stable" = "$tag" ]; then echo "No older stable to compare the schema with."; exit 0; fi
   tmp=$(mktemp -d)

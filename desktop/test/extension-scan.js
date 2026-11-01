@@ -17,19 +17,32 @@ export function extensionFiles(dir = 'extension') {
   return fs.readdirSync(path.join(REPO, dir), {recursive: true}).filter(f => /\.(js|mjs)$/.test(f)).map(f => `${dir}/${String(f).split(path.sep).join('/')}`).sort();
 }
 
-/** -> the text with comments blanked (same length) and string/template contents kept, so offsets stay valid. */
+const QUOTES = '\'"`';
+
+/** -> index just past the string or template that opens at `i` (src[i] is its quote). */
+function pastQuoted(src, i) {
+  let j = i + 1;
+  while (j < src.length && src[j] !== src[i]) j += src[j] === '\\' ? 2 : 1;
+  return j + 1;
+}
+
+/** -> index of the end of the comment that starts at `i`, or `i` when none starts there. */
+function commentEnd(src, i) {
+  if (src[i] !== '/') return i;
+  if (src[i + 1] === '/') { const nl = src.indexOf('\n', i); return nl < 0 ? src.length : nl; }
+  if (src[i + 1] === '*') { const close = src.indexOf('*/', i + 2); return close < 0 ? src.length : close + 2; }
+  return i;
+}
+
+/** -> the text with comments blanked (same length, newlines kept) and string/template contents kept, so offsets stay valid. */
 export function blankComments(src) {
   let out = '', i = 0;
   while (i < src.length) {
-    const c = src[i], n = src[i + 1];
-    if (c === '/' && n === '/') { while (i < src.length && src[i] !== '\n') { out += ' '; i++; } continue; }
-    if (c === '/' && n === '*') { while (i < src.length && !(src[i] === '*' && src[i + 1] === '/')) { out += src[i] === '\n' ? '\n' : ' '; i++; } out += '  '; i += 2; continue; }
-    if (c === '\'' || c === '"' || c === '`') {
-      const q = c; out += c; i++;
-      while (i < src.length && src[i] !== q) { if (src[i] === '\\') { out += src[i++]; } out += src[i++]; }
-      out += q; i++; continue;
-    }
-    out += c; i++;
+    const quoted = QUOTES.includes(src[i]), end = quoted ? pastQuoted(src, i) : commentEnd(src, i);
+    if (end === i) { out += src[i++]; continue; }
+    const piece = src.slice(i, end);
+    out += quoted ? piece : piece.replace(/[^\n]/g, ' ');
+    i = end;
   }
   return out;
 }
@@ -39,31 +52,53 @@ function closing(src, open) {
   const pairs = {'(': ')', '{': '}', '[': ']'}, stack = [];
   for (let i = open; i < src.length; i++) {
     const c = src[i];
-    if (c === '\'' || c === '"' || c === '`') { const q = c; i++; while (i < src.length && src[i] !== q) { if (src[i] === '\\') i++; i++; } continue; }
+    if (QUOTES.includes(c)) { i = pastQuoted(src, i) - 1; continue; }
     if (pairs[c]) stack.push(pairs[c]);
-    else if (c === ')' || c === '}' || c === ']') { if (stack.pop() !== c) return -1; if (!stack.length) return i; }
+    else if (')}]'.includes(c)) {
+      if (stack.pop() !== c) return -1;
+      if (!stack.length) return i;
+    }
   }
   return -1;
 }
 
-/** -> {keys: [name], spread: bool} of an object literal's top-level entries. */
-export function objectKeys(literal) {
-  const inner = literal.slice(1, -1), parts = [];
+/** -> the comma-separated entries at the top level of an object literal's inside. */
+function splitTop(inner) {
+  const parts = [];
   let depth = 0, start = 0;
   for (let i = 0; i < inner.length; i++) {
     const c = inner[i];
-    if (c === '\'' || c === '"' || c === '`') { const q = c; i++; while (i < inner.length && inner[i] !== q) { if (inner[i] === '\\') i++; i++; } continue; }
-    if ('({['.includes(c)) depth++; else if (')}]'.includes(c)) depth--;
+    if (QUOTES.includes(c)) { i = pastQuoted(inner, i) - 1; continue; }
+    if ('({['.includes(c)) depth++;
+    else if (')}]'.includes(c)) depth--;
     else if (c === ',' && depth === 0) { parts.push(inner.slice(start, i)); start = i + 1; }
   }
   parts.push(inner.slice(start));
+  return parts;
+}
+
+/** -> {keys: [name], spread: bool} of an object literal's top-level entries. */
+export function objectKeys(literal) {
   const keys = []; let spread = false;
-  for (const raw of parts.map(p => p.trim()).filter(Boolean)) {
-    if (raw.startsWith('...')) { spread = true; continue; }
-    const m = /^(?:\[[^\]]*\]|'([^']+)'|"([^"]+)"|([A-Za-z_$][\w$]*))\s*(?::|$|\()/.exec(raw);
-    if (m) keys.push(m[1] || m[2] || m[3]); else spread = true;   // a shape we can't read counts as unknown, never as "no keys"
+  for (const raw of splitTop(literal.slice(1, -1)).map(p => p.trim()).filter(Boolean)) {
+    const m = raw.startsWith('...') ? null : /^(?:\[[^\]]*\]|'([^']+)'|"([^"]+)"|([A-Za-z_$][\w$]*))\s*(?::|$|\()/.exec(raw);
+    if (m) keys.push(m[1] || m[2] || m[3]); else spread = true;   // a spread or a shape we can't read counts as unknown, never as "no keys"
   }
   return {keys, spread};
+}
+
+/** -> the call's body: {keys, spread, text} for a JSON object literal built in place, {keys: [], spread: false} for '{}', else {dynamic: true}. */
+function bodyOf(src, at, window) {
+  const j = window.indexOf('JSON.stringify(');
+  if (j < 0) return /body:\s*'\{\}'/.test(window) ? {keys: [], spread: false} : {dynamic: true};
+  const open = at + j + 'JSON.stringify'.length, arg = src.slice(open + 1, closing(src, open)).trim();
+  return arg.startsWith('{') && closing(arg, 0) === arg.length - 1 ? {...objectKeys(arg), text: arg} : {dynamic: true};
+}
+
+/** -> the text of this call alone: from the route to the next route or 900 characters. */
+function windowOf(src, at, routeLength) {
+  const ahead = src.slice(at, at + 900), next = ahead.indexOf('/extension/', routeLength);
+  return next > 0 ? ahead.slice(0, next) : ahead;
 }
 
 /**
@@ -75,20 +110,9 @@ export function extensionCalls(files = extensionFiles()) {
   for (const file of files) {
     const raw = fs.readFileSync(path.join(REPO, file), 'utf8'), src = blankComments(raw);
     for (const m of src.matchAll(ROUTE)) {
-      const at = m.index, route = m[1];
-      const ahead = src.slice(at, at + 900), next = ahead.indexOf('/extension/', m[0].length), window = next > 0 ? ahead.slice(0, next) : ahead;
-      const post = /method:\s*'POST'/.test(window.slice(0, window.search(/\n\s*\n|;\s*\n/) > 0 ? window.search(/;\s*\n/) : window.length));
-      const call = {route, file, line: raw.slice(0, at).split('\n').length, method: post ? 'POST' : 'GET', body: null};
-      if (post) {
-        const j = window.indexOf('JSON.stringify(');
-        if (j < 0) call.body = /body:\s*'\{\}'/.test(window) ? {keys: [], spread: false} : {dynamic: true};
-        else {
-          const open = at + j + 'JSON.stringify'.length, end = closing(src, open);
-          const arg = src.slice(open + 1, end).trim();
-          call.body = arg.startsWith('{') && closing(arg, 0) === arg.length - 1 ? {...objectKeys(arg), text: arg} : {dynamic: true};
-        }
-      }
-      calls.push(call);
+      const window = windowOf(src, m.index, m[0].length), statementEnd = window.search(/;\s*\n/);
+      const post = /method:\s*'POST'/.test(statementEnd > 0 ? window.slice(0, statementEnd) : window);
+      calls.push({route: m[1], file, line: raw.slice(0, m.index).split('\n').length, method: post ? 'POST' : 'GET', body: post ? bodyOf(src, m.index, window) : null});
     }
   }
   return calls;

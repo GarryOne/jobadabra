@@ -71,9 +71,10 @@ test('every answer field is built by the app and read by the extension', () => {
   assert.deepEqual(problems, []);
 });
 
-test('events: the types the extension sends, the app dispatches and the contract lists are the same set, with the same fields', () => {
-  const extTypes = new Map();   // type -> [{where, keys, spread}]
-  const add = (type, where, keys, spread) => extTypes.set(type, [...(extTypes.get(type) || []), {where, keys, spread}]);
+/** -> Map type -> [{where, keys, spread}] of the events the extension sends (bodies built in place, and the event('type', {...}) wrapper of flow.js). */
+function eventsSent() {
+  const sent = new Map();
+  const add = (type, where, keys, spread) => sent.set(type, [...(sent.get(type) || []), {where, keys, spread}]);
   for (const call of calls.filter(c => c.route === '/extension/event' && c.body && !c.body.dynamic)) {
     const type = /\btype:\s*'([\w-]+)'/.exec(call.body.text)?.[1];
     if (type) add(type, `${call.file}:${call.line}`, call.body.keys.filter(key => key !== 'type'), call.body.spread);
@@ -81,18 +82,29 @@ test('events: the types the extension sends, the app dispatches and the contract
   for (const file of extensionFiles()) for (const m of codeOf(file).matchAll(/\bevent\('([\w-]+)'(?:,\s*(\{[^}]*\}))?/g)) {
     add(m[1], file, ['url', ...(m[2] ? m[2].slice(1, -1).split(',').map(part => part.trim().split(':')[0]).filter(Boolean) : [])], false);
   }
-  const appTypes = new Set(['desktop/lib/server.js'].flatMap(file => literalsOf(file, /event\.type === '([\w-]+)'/g)));
-  assert.deepEqual([...extTypes.keys()].sort(), Object.keys(events).sort(), `event types the extension sends vs ${CONTRACT}`);
-  assert.deepEqual([...appTypes].sort(), Object.keys(events).sort(), `event types the app handles (desktop/lib/server.js) vs ${CONTRACT}`);
-  const handlers = ['desktop/lib/server.js', 'desktop/lib/ext-server-handlers.js', 'desktop/lib/apply-handlers.js', 'desktop/lib/page-step.js', 'desktop/lib/session-flow.js', 'desktop/lib/stop-all.js'];
+  return sent;
+}
+
+/** -> [message] for one event type: what each sending site builds against the contract's fields. */
+function sendProblems(type, fields, sites) {
   const problems = [];
-  for (const [type, fields] of Object.entries(events)) {
-    for (const sent of extTypes.get(type) || []) {
-      for (const key of sent.keys) if (!(key in fields)) problems.push(`event ${type}: ${sent.where} sends "${key}", which ${CONTRACT} does not list`);
-      if (!sent.spread) for (const key of required(fields)) if (!sent.keys.includes(key)) problems.push(`event ${type}: ${sent.where} does not send required "${key}" (${CONTRACT})`);
-    }
-    for (const field of names(fields)) if (!readsWord(handlers, field)) problems.push(`event ${type}: no app handler (${handlers.join(', ')}) reads "${field}" (${CONTRACT})`);
+  for (const site of sites) {
+    for (const key of site.keys) if (!(key in fields)) problems.push(`event ${type}: ${site.where} sends "${key}", which ${CONTRACT} does not list`);
+    if (site.spread) continue;
+    for (const key of required(fields)) if (!site.keys.includes(key)) problems.push(`event ${type}: ${site.where} does not send required "${key}" (${CONTRACT})`);
   }
+  return problems;
+}
+
+test('events: the types the extension sends, the app dispatches and the contract lists are the same set, with the same fields', () => {
+  const sent = eventsSent(), handlers = ['desktop/lib/server.js', 'desktop/lib/ext-server-handlers.js', 'desktop/lib/apply-handlers.js', 'desktop/lib/page-step.js', 'desktop/lib/session-flow.js', 'desktop/lib/stop-all.js'];
+  const appTypes = literalsOf('desktop/lib/server.js', /event\.type === '([\w-]+)'/g);
+  assert.deepEqual([...sent.keys()].sort(), Object.keys(events).sort(), `event types the extension sends vs ${CONTRACT}`);
+  assert.deepEqual([...new Set(appTypes)].sort(), Object.keys(events).sort(), `event types the app handles (desktop/lib/server.js) vs ${CONTRACT}`);
+  const problems = Object.entries(events).flatMap(([type, fields]) => [
+    ...sendProblems(type, fields, sent.get(type) || []),
+    ...names(fields).filter(field => !readsWord(handlers, field)).map(field => `event ${type}: no app handler (${handlers.join(', ')}) reads "${field}" (${CONTRACT})`),
+  ]);
   assert.deepEqual(problems, []);
 });
 

@@ -1,18 +1,26 @@
-name: CI · Upgrade + data test (daily, report only)
+name: CI · Upgrade + data test (weekly, report only)
 
-# Every day: the three newest stable releases each fill their own data folder (their bundled Python and store), the build of main replaces them the way an update does, the app opens
-# that folder, and every job, answer and setting must still be there (desktop/scripts/upgrade-data-proof.mjs, compare in desktop/lib/data-fingerprint.js). Mac and Windows.
-# Report only (owner, 1 Nov 2026, five new test methods): nothing waits for this run and a red one blocks no merge and no beta; a red day is a finding for the Testing Overview.
+# Each release fills its own data folder (its bundled Python and store), the build of main replaces it the way an update does, the app opens that folder, and every job, answer and setting
+# must still be there (desktop/scripts/upgrade-data-proof.mjs, compare in desktop/lib/data-fingerprint.js). Mac and Windows.
+# Cadence follows how likely each scenario is to break or change (owner, 1 Nov 2026: "their frequency should be different, based on the probability for that thing to break or to be
+# modified"): the newest stable release every week, the three newest on the 1st of the month (an old format drifts slowly); the folder-move logic, the likelier break, is a fast
+# test on the pull requests that touch it (next PR of the spec), not here. Weekly, not daily (owner, 1 Nov 2026: "We can have it but running weekly").
+# Report only (owner, 1 Nov 2026, five new test methods): nothing waits for this run and a red one blocks no merge and no beta; a red run is a finding for the Testing Overview.
 # Spec: docs/superpowers/specs/2026-11-01-upgrade-data-test-design.md. Never the owner's data, apps or port: a temp data folder, apps installed on the runner only.
 on:
   schedule:
-    - cron: '41 4 * * *'   # a backup start; the daily timer belongs to the Worker that starts the other jobs
+    - cron: '41 4 * * 1'   # Mondays: the newest stable release (a backup start; the timer belongs to the Worker that starts the other jobs)
+    - cron: '41 5 1 * *'   # the 1st of the month: the three newest
   workflow_dispatch:
     inputs:
       new_tag:
         description: 'A published build to update TO (empty: build main in this run, 15 to 25 minutes)'
         required: false
         default: ''
+      releases:
+        description: 'How many of the newest stable releases to update from (1 to 3)'
+        required: false
+        default: '1'
 
 permissions:
   contents: read
@@ -33,12 +41,13 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          # the three newest stable releases (no draft, no beta) that ship both generic installers
+          # the newest stable releases (no draft, no beta) that ship both generic installers: 3 on the monthly start, else the input (1)
+          if [ "${{ github.event.schedule }}" = "41 5 1 * *" ]; then want=3; else want="${{ inputs.releases || 1 }}"; fi
           tags=""
           for tag in $(gh release list --repo "$GITHUB_REPOSITORY" --limit 40 --json tagName,isDraft,isPrerelease -q '.[] | select((.isDraft | not) and (.isPrerelease | not)) | .tagName'); do
             names=$(gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json assets -q '.assets[].name')
             if echo "$names" | grep -qx 'Jobadabra-mac-arm64.zip' && echo "$names" | grep -qx 'Jobadabra-windows-x64.exe'; then tags="$tags $tag"; fi
-            [ "$(echo $tags | wc -w)" -ge 3 ] && break
+            [ "$(echo $tags | wc -w)" -ge "$want" ] && break
           done
           [ -n "$tags" ] || { echo "::error::No stable release with both installers"; exit 1; }
           echo "tags=$(echo $tags)" >> "$GITHUB_OUTPUT"

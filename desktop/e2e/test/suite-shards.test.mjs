@@ -101,9 +101,7 @@ test('every workflow job that runs a suite passes its slice and names everything
   const allowed = /suites\/\$\{\{ matrix\.suite \}\}\.mjs|suite\.mjs \$\{\{ matrix\.suite \}\}|again \$\{\{ matrix\.suite \}\}|once \$\{\{ matrix\.suite \}\}|\[ "\$\{\{ matrix\.suite \}\}" != quality|matrix\.suite == '|contains\(fromJSON\('[^']+'\), matrix\.suite\)|name: .*\$\{\{ matrix\.suite \}\} suite|fromJSON\(inputs\.pr_steps\)\[matrix\.suite\]|^\s*E2E_FALLBACK_SUITE: \$\{\{ matrix\.suite \}\}\s*$|report_only=\$\(SUITE='\$\{\{ matrix\.suite \}\}'/;
   for (const job of jobs) {
     assert.match(job.block, /JP_REPLAY_SHARD: \$\{\{ matrix\.shard \}\}/, `${job.file} ${job.id}: pass the slice to the suite (JP_REPLAY_SHARD: \${{ matrix.shard }})`);
-    // Burn-in names identify the full-suite attempt; artifact and concurrency identities still use the unique key.
-    const burnInName = "name: ${{ matrix.burnIn && format('{0} · burn-in {1}/5', matrix.suite, matrix.burnIn) || matrix.key }}";
-    for (const line of job.block.split('\n').filter(text => text.includes('matrix.suite') && !allowed.test(text) && text.trim() !== burnInName))
+    for (const line of job.block.split('\n').filter(text => text.includes('matrix.suite') && !allowed.test(text)))
       assert.fail(`${job.file} ${job.id}: name it by matrix.key, not matrix.suite (two slices would share it): ${line.trim()}`);
   }
 });

@@ -124,7 +124,6 @@ jobs:
             tools/pr_verdict_greys.py
             tools/main_e2e_state.py
             tools/pr_ai_number.py
-            tools/pr_burn_in.py
             tools/pr_health_greys.py
             tools/pr_speed_number.py
             tools/beta_rate_gate.py

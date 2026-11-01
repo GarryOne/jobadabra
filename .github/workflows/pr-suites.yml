@@ -16,7 +16,7 @@ on:
       - 'desktop/lib/**'
       - 'desktop/main.js'
       - 'desktop/e2e/suites/**'
-      - 'desktop/e2e/lanes.json'   # a promotion into backbone requires burn-in even without a suite-file edit
+      - 'desktop/e2e/lanes.json'   # TODO(AI): a lanes.json change no longer starts a burn-in (1 Nov 2026, admission dropped); drop this path if tools/replay-files.mjs and tests/test_workflow_paths.py agree
       - 'desktop/e2e/lib/**'
       - 'extension/**'
       # The files suites watch (their `export const watches`; #2043 changed quality's score.py and never started this: tests/test_workflow_paths.py)

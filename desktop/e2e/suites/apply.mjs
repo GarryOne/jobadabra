@@ -49,8 +49,9 @@ export const stepSharded = true;   // its slices are steps, not recorded cases (
 // Why (31 Oct 2026, a8; beta 41229992832, the stand-in leg): apply-3of3 ran 698 s of its 660. The weights were guessed seconds from one 26 Oct Notion run; added up they were close (1286 vs 1143 measured),
 // but a step weighed 140 s took 25 s and one weighed 45-90 s took 125-170 s, so the slices were not thirds. They are now the slowest seconds seen on the Mac jobs of the apply parts (beta 41229992832 and the runs
 // before it), a step's followers counted in it (multi-step + the session page). Refresh them after a beta from the Mac job logs: test/part-headroom.test.mjs fails "split apply further"
-// when a slice sits over the headroom of its budget, and this table is where the gate (tools/e2e-reliability-check.mjs) sees a re-cut.
-export const stepSeconds = {'Tailor CVs for top matches': 36.7, 'a multi-step form': 16.2,
+// when a slice sits over the headroom of its budget; this table, without the steps that left e2e (1 Nov 2026: "Tailor CVs for top matches", 36.7 s, is integration/store/tailor-top-matches.test.mjs),
+// is what the gate (tools/e2e-reliability-check.mjs) sees as a re-cut.
+export const stepSeconds = {'a multi-step form': 16.2,
   'Open in Chrome on a form the night filled': 19.2, 'the person submits a form': 30.3, 'a Greenhouse-like form': 20.8,
   'Apply on a saved job without a kit': 7.7, 'a Workday-shaped form': 7.4, 'The hidden browser fills a form': 18,
   'Full automation presses Submit once on its own': 109.2, 'a silent Chrome in Standard automation': 40.1, 'a silent Chrome in Full automation': 19, 'the app quits while Background automation holds a filled form': 24.7, 'the app quits in Full automation\'s wait': 24.2,
@@ -84,7 +85,7 @@ export const name = 'apply';
 // CI runs them within its 5 macOS jobs (test/apply-parts.test.mjs: each part in exactly one of them); `applyflows`
 // (suites/applyflows.mjs, manual) runs only the journeys, so the local scenario matrix runs forms and journeys in parallel. Each has its own Notion page and token.
 // The setup step and the final "Submit was never clicked" check run in all of them; each run seeds only the fixture jobs its steps use.
-const CV_STEPS = ['the form\'s panel offers a tailored CV', 'Tailor CVs for top matches', 'Apply on a saved job without a kit'];
+const CV_STEPS = ['the form\'s panel offers a tailored CV', 'Apply on a saved job without a kit'];
 const FLOW_STEPS = ['a posting whose Apply opens a new tab', 'two applications side by side', 'a form drawn after a spinner', 'a sign-in page before the form', '"Needs your attention" from the extension', 'the account and the application on one page',
   'the form tab is closed', 'a second browser with the extension'];
 const SHARED_STEPS = ['the app is seeded', 'the app has an applicant', 'through all of it'];

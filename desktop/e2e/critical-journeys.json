@@ -86,6 +86,7 @@
    "steps": [
     {"integration": "desktop/integration/store/tailored-cv.test.mjs", "test": "Tailor CV on a job: that job's form gets the tailored PDF under its own name, every other form the general CV"},
     {"integration": "desktop/integration/store/tailored-cv.test.mjs", "test": "Tailor on the session page restarts only that job's open form, and it is handed the tailored CV under its own name"},
+    {"integration": "desktop/integration/store/tailor-top-matches.test.mjs", "test": "asked for 2, it takes the two best open jobs without a CV in fit order and leaves the third alone; asked again, it takes the third; with every CV made there is nothing to do"},
     {"integration": "desktop/integration/extension/extension-form-shapes.test.mjs", "test": "a form whose app hands it a tailored CV gets that file attached, under its own name, and not the general CV"}
    ],
    "tier": 2

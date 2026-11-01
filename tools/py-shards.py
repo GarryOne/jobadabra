@@ -219,11 +219,8 @@ def main(argv=None):
     for t in threads:
         t.start()
     wait_with_progress(threads, shard_list, results, bad, started)
-    failed = ran = 0
-    for (shard, proc), (out, _) in zip(procs, results):
-        ran += sum(int(n) for n in re.findall(r'^Ran (\d+) tests?', out, re.M))
-        if ended_badly(out, proc.returncode):
-            failed += 1
+    failed = len(bad)   # counted once, when each shard ended (collect), so the live line and the verdict cannot drift apart
+    ran = sum(int(n) for out, _ in results for n in re.findall(r'^Ran (\d+) tests?', out, re.M))
     for folder in data_folders:
         shutil.rmtree(folder, ignore_errors=True)
     left_behind = leaked(before, checkout_state(ROOT))

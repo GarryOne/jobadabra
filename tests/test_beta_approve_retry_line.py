@@ -57,5 +57,57 @@ class TheNotesListARedMainThatDidNotStopTheBeta(unittest.TestCase):
         self.assertNotIn('Red on main', approve(None, ''))
 
 
+WORKFLOW = (ROOT / '.github' / 'workflows' / 'desktop.yml').read_text()
+
+
+def job_text(name):
+    return WORKFLOW.split(f'\n  {name}:\n')[1].split('\n\n  # ')[0]
+
+
+class TheRetryLineTravelsFromTheReleaseJobToTheOfferJob(unittest.TestCase):
+    """1 Nov 2026 (a8): the Release job passes the retry line to the lane's offer job as a multi-line job output; the real workflow lines are run here, not copies of them."""
+
+    def test_a_value_with_a_quote_and_a_newline_arrives_whole_in_the_notes(self):
+        sent = 'Passed on retry in this beta: jobs · the "list", focus · it\'s a card\nsecond line with $HOME and `ticks`'
+        step = job_text('release-mac').split('id: retry')[1].split('\n      - name:')[0]
+        send = next(line.strip() for line in step.splitlines() if "echo 'text<<RETRY_END'" in line)
+        offer = job_text('release-mac-offer')
+        receive = next(line.strip() for line in offer.splitlines() if line.strip().startswith('if [ -n "$RETRY" ]'))
+        with tempfile.TemporaryDirectory() as directory:
+            folder = Path(directory)
+            (folder / 'a' / 'b').mkdir(parents=True)
+            (folder / 'passed-on-retry.txt').write_text(sent + '\n')   # what passed-on-retry.mjs | tee wrote, two levels above the step's directory
+            out = folder / 'github_output'
+            subprocess.run(['bash', '-c', send], cwd=folder / 'a' / 'b', env=dict(os.environ, GITHUB_OUTPUT=str(out)), check=True)
+            lines = out.read_text().splitlines()   # GitHub's own heredoc reading: name<<DELIMITER, the value, the DELIMITER
+            self.assertEqual(lines[0], 'text<<RETRY_END')
+            self.assertEqual(lines[-1], 'RETRY_END')
+            retry = '\n'.join(lines[1:-1])
+            (folder / 'bin').mkdir()
+            gh = folder / 'bin' / 'gh'
+            gh.write_text(FAKE_GH)
+            gh.chmod(gh.stat().st_mode | stat.S_IEXEC)
+            temp = folder / 'runner'
+            temp.mkdir()
+            env = dict(os.environ, PATH=f"{folder / 'bin'}:{os.environ['PATH']}", FAKE_NOTES=str(folder / 'notes'), RETRY=retry, RUNNER_TEMP=str(temp), TAG='desktop-v0.8.70')
+            script = receive + '\nbash "$ROOT/tools/beta-approve.sh" "$TAG"'
+            subprocess.run(['bash', '-c', script], env=dict(env, ROOT=str(ROOT)), check=True, capture_output=True, text=True)
+            self.assertTrue((folder / 'notes').read_text().rstrip().endswith(sent), (folder / 'notes').read_text())
+
+    def test_no_retry_means_no_file_and_no_line(self):
+        offer = job_text('release-windows-offer')
+        receive = next(line.strip() for line in offer.splitlines() if line.strip().startswith('if [ -n "$RETRY" ]'))
+        with tempfile.TemporaryDirectory() as directory:
+            folder = Path(directory)
+            (folder / 'bin').mkdir()
+            gh = folder / 'bin' / 'gh'
+            gh.write_text(FAKE_GH)
+            gh.chmod(gh.stat().st_mode | stat.S_IEXEC)
+            env = dict(os.environ, PATH=f"{folder / 'bin'}:{os.environ['PATH']}", FAKE_NOTES=str(folder / 'notes'), RETRY='', RUNNER_TEMP=str(folder), TAG='desktop-v0.8.70', ROOT=str(ROOT))
+            subprocess.run(['bash', '-c', receive + '\nbash "$ROOT/tools/beta-approve.sh" --windows "$TAG"'], env=env, check=True, capture_output=True, text=True)
+            self.assertNotIn('Passed on retry', (folder / 'notes').read_text())
+            self.assertFalse((folder / 'passed-on-retry.txt').exists())
+
+
 if __name__ == '__main__':
     unittest.main()

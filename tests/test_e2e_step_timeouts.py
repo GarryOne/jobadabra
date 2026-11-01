@@ -63,7 +63,7 @@ def untimed(path):
 # Each entry: (a pattern that finds the step by what it runs, the script that waits, the env names whose seconds add up to its longest wait). A step's `env:` value wins over the script's
 # `NAME:-N` default, as it does when the script runs. A step that runs a waiting script and is not listed here is not checked: add the script when it gains a wait.
 WAITING = [
-    (r'tools/release-checks\.sh', 'tools/release-checks.sh', ['RELEASE_CI_WAIT']),
+    (r'tools/release-checks\.sh(?! --after-ci)', 'tools/release-checks.sh', ['RELEASE_CI_WAIT']),   # --after-ci (the Release jobs, 1 Nov 2026) never waits: only the schema check is left there
     (r'tools/red-main-gate\.sh(?! .*--status)', 'tools/red-main-gate.sh', ['RED_MAIN_FIND_S', 'RED_MAIN_WAIT_S']),
     (r'e2e-lock\.sh acquire', 'tools/e2e-lock.sh', ['E2E_LOCK_MAX']),
 ]
@@ -108,10 +108,12 @@ class E2eStepTimeouts(unittest.TestCase):
                 for script, _ in declared_waits(body):
                     seen[script] += 1
         self.assertEqual([script for script, count in seen.items() if not count], [], 'a WAITING entry no step runs any more: drop it, or fix its pattern')
-        self.assertGreaterEqual(seen['tools/release-checks.sh'], 2, 'the Mac and the Windows release jobs both run the shared release checks')
+        self.assertGreaterEqual(seen['tools/release-checks.sh'], 1, "desktop.yml's Main's CI job (1 Nov 2026: one wait, no longer one per Release job) runs the shared wait")
 
     def test_the_wait_is_read_from_the_step_then_the_script(self):
         self.assertEqual(declared_waits('run: tools/release-checks.sh "$TAG" "$REF"'), [('tools/release-checks.sh', 3600)])
+        self.assertEqual(declared_waits('run: tools/release-checks.sh --wait-ci "$TAG" "$REF"'), [('tools/release-checks.sh', 3600)])
+        self.assertEqual(declared_waits('run: tools/release-checks.sh --after-ci "$TAG" "$REF"'), [], 'the Release jobs only compare the schema now: no wait to outlive')
         self.assertEqual(declared_waits("env:\n  RELEASE_CI_WAIT: '600'\nrun: tools/release-checks.sh x"), [('tools/release-checks.sh', 600)])
         self.assertEqual(declared_waits('run: tools/red-main-gate.sh "$R" --status'), [])
 

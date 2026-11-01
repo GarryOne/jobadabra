@@ -64,8 +64,13 @@ def build(status='in_progress', conclusion=None, sha=NEWER):
 
 
 
+def code_lines(text):
+    """The text without its comment lines: a comment that names the script does not run it."""
+    return '\n'.join(line for line in text.splitlines() if not line.lstrip().startswith('#'))
+
+
 class ReleaseChecks(unittest.TestCase):
-    def run_checks(self, open_counts, done, wait='5', newer=None, compare=None, poll='1'):
+    def run_checks(self, open_counts, done, wait='5', newer=None, compare=None, poll='1', mode=None, soak=None):
         with tempfile.TemporaryDirectory() as tmp:
             bin_dir = Path(tmp) / 'bin'
             bin_dir.mkdir()
@@ -81,7 +86,9 @@ class ReleaseChecks(unittest.TestCase):
             sleep.chmod(sleep.stat().st_mode | stat.S_IEXEC)
             env = dict(os.environ, PATH=f'{bin_dir}{os.pathsep}{os.environ["PATH"]}', FAKE_STATE=tmp, RELEASE_CI_POLL=poll, RELEASE_CI_WAIT=wait, GITHUB_REPOSITORY='o/r')
             env.pop('JOB_PILOTTO_SOAK', None)
-            done_run = subprocess.run(['bash', str(SCRIPT), 'desktop-v9', 'b5c13d0c2abf3574fe01a8f2ecff527eaf485965'], env=env, capture_output=True, text=True, timeout=60)
+            if soak:
+                env['JOB_PILOTTO_SOAK'] = soak
+            done_run = subprocess.run(['bash', str(SCRIPT), *([mode] if mode else []), 'desktop-v9', 'b5c13d0c2abf3574fe01a8f2ecff527eaf485965'], env=env, capture_output=True, text=True, timeout=60)
             polls = Path(tmp) / 'polls'
             self.polls = polls.read_text().splitlines() if polls.exists() else []
             return done_run.returncode, done_run.stdout
@@ -162,31 +169,68 @@ class ReleaseChecks(unittest.TestCase):
         self.assertEqual(out.count("waiting for the newer commit 19220ef's build.yml"), 2)
         self.assertIn('is still running after 120 s', out)
 
+    # Owner, 1 Nov 2026 ("the blocking of the main's CI"): the wait for main's build.yml is its own job (--wait-ci); the Release jobs only run the rest (--after-ci).
+    def test_wait_ci_decides_on_main_s_build_and_never_reads_the_schema(self):
+        code, out = self.run_checks([1, 0], ['success'], mode='--wait-ci', soak='on')   # the fake gh fails any schema call: reaching it would exit 1
+        self.assertEqual(code, 0, out)
+        self.assertIn('build.yml on b5c13d0: green', out)
+        self.assertNotIn('Schema', out)
+
+    def test_wait_ci_refuses_a_red_or_a_still_running_build_with_the_same_words(self):
+        code, out = self.run_checks([1, 0], ['failure'], mode='--wait-ci')
+        self.assertEqual(code, 1, out)
+        self.assertIn('desktop-v9 stays a pre-release: build.yml is not green on its commit.', out)
+        code, out = self.run_checks([1], [], wait='2', mode='--wait-ci')
+        self.assertEqual(code, 1, out)
+        self.assertIn('is still running after 2 s: not waiting any longer', out)
+        self.assertIn('desktop-v9 stays a pre-release: build.yml is not green on its commit.', out)
+
+    def test_after_ci_neither_waits_for_nor_reads_the_build(self):
+        code, out = self.run_checks([1], ['failure'], mode='--after-ci')   # the build is red and running; this part must not look
+        self.assertEqual(code, 0, out)
+        self.assertNotIn('build.yml', out)
+        self.assertEqual(self.polls, [])
+
+    def test_no_mode_is_the_whole_check_as_before(self):
+        code, out = self.run_checks([1, 0], ['failure'])
+        self.assertEqual(code, 1, out)
+        self.assertIn('stays a pre-release', out)
+
     def test_every_release_job_goes_through_the_shared_checks(self):
         # The jobs that approve a beta (Mac, Windows/Linux in desktop.yml, beta-approve.yml) read build.yml's result only through tools/release-checks.sh.
-        callers = ['desktop.yml', 'beta-approve.yml']
-        for name in callers:
-            text = (ROOT / '.github' / 'workflows' / name).read_text()
-            self.assertIn('tools/release-checks.sh "$TAG" "$REF"', text, name)
+        # desktop.yml: the Main's CI job waits for it once (--wait-ci); the two Release jobs run the rest (--after-ci) and read that job's result.
+        desktop = code_lines((ROOT / '.github' / 'workflows' / 'desktop.yml').read_text())
+        self.assertEqual(desktop.count('tools/release-checks.sh --wait-ci "$TAG" "$REF"'), 1)
+        self.assertEqual(desktop.count('tools/release-checks.sh --after-ci "$TAG" "$REF"'), 2)
+        self.assertEqual(len(re.findall(r'tools/release-checks\.sh', desktop)), 3)
+        self.assertIn('tools/release-checks.sh "$TAG" "$REF"', (ROOT / '.github' / 'workflows' / 'beta-approve.yml').read_text())
         for path in sorted((ROOT / '.github' / 'workflows').glob('*.yml')):
             if path.name == 'build.yml':
                 continue
             self.assertIsNone(re.search(r'--workflow[ =]build\.yml', path.read_text()), f'{path.name} reads build.yml itself: use tools/release-checks.sh')
-        self.assertEqual(len(re.findall(r'tools/release-checks\.sh', (ROOT / '.github' / 'workflows' / 'desktop.yml').read_text())), 2)
 
-    def test_every_release_job_outlives_the_longest_wait_the_checks_allow(self):
+    def test_every_job_that_waits_outlives_the_longest_wait_the_checks_allow(self):
         # Why (30 Oct 2026, a8; beta 41090972183): the 20-minute Windows release job was cancelled at 1080 s of the checks' 3600 s wait while main's build ran 46 min.
         wait = int(re.search(r'RELEASE_CI_WAIT:-(\d+)', SCRIPT.read_text()).group(1))
         review = int(re.search(r'timeout (\d+) node review-ui\.mjs', (ROOT / '.github' / 'actions' / 'e2e-review' / 'action.yml').read_text()).group(1))
-        jobs = []
+        waiting, after = [], []
         for name in ['desktop.yml', 'beta-approve.yml']:
             text = (ROOT / '.github' / 'workflows' / name).read_text()
-            jobs += [(name, job) for job in re.split(r'\n  (?=[\w-]+:\n)', text) if 'tools/release-checks.sh' in job]
-        self.assertEqual(len(jobs), 3)
-        for name, job in jobs:
+            for job in re.split(r'\n  (?=[\w-]+:\n)', text):
+                code = code_lines(job)
+                if re.search(r'tools/release-checks\.sh(?! --after-ci)', code):
+                    waiting.append((name, job))
+                elif 'tools/release-checks.sh --after-ci' in code:
+                    after.append((name, job))
+        self.assertEqual(len(waiting), 2, "desktop.yml's Main's CI job and beta-approve.yml")
+        self.assertEqual(len(after), 2, 'the Mac and the Windows Release jobs')
+        for name, job in waiting:
             minutes = int(re.search(r'\n    timeout-minutes: (\d+)', job).group(1))
             needed = wait + (review if 'e2e-review' in job else 0) + 600   # 10 min for downloads, rates and the release itself
             self.assertGreaterEqual(minutes * 60, needed, f'{name} {job.split(":")[0]}: {minutes} min is shorter than the checks may wait ({needed // 60} min)')
+        for name, job in after:   # no wait left here: the review plus the lane's own steps
+            minutes = int(re.search(r'\n    timeout-minutes: (\d+)', job).group(1))
+            self.assertGreaterEqual(minutes * 60, review + 600, f'{name} {job.split(":")[0]}: {minutes} min is shorter than its review plus its steps')
 
 
 if __name__ == '__main__':

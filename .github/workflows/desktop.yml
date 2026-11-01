@@ -1,8 +1,10 @@
 name: Release · Build, test, beta
 # Job: run the backbone
 # ONE RUN PER RELEASE, ONE LANE PER PLATFORM (owner, 7 Oct 2026: three runs chained by triggers were hard to follow; then "2 parallel pipelines"):
-#   Anything new? -+- Build · Mac     -> E2E · Mac + Linux -> Release · Mac beta     -+- Clean up old builds
-#                  +- Build · Windows -> E2E · Windows     -> Release · Windows beta -+
+#   Anything new? -+- Build · Mac     -> E2E · Mac + Linux -> Release · Mac beta     -> offer -+- Clean up old builds
+#                  +- Build · Windows -> E2E · Windows     -> Release · Windows beta -> offer -+
+#                  +- Main's CI on this commit (awaited from the start; both Release jobs read its result)
+# The two Release jobs run side by side (1 Nov 2026, owner); only each lane's tiny "offer" job, which writes its line into the release's notes, takes the one lock (release-promote).
 # One box per step (owner, 7 Oct 2026: "I want it to literally look that clean"): Anything new? also plans the suites, each E2E is one matrix box (the suite jobs of
 # e2e.yml / e2e-windows.yml, copied with the gate's settings), each Release also merges its lane's HTML report.
 # Three distinct steps per lane (owner, 7 Oct 2026): Build publishes the files to the one pre-release (offered to nobody), E2E runs the gate suites on it, Release
@@ -1304,6 +1306,39 @@ jobs:
           phase: end
         timeout-minutes: 5
 
+  # Why (1 Nov 2026, a8; owner: "the blocking of the main's CI"): main's build.yml on this commit is awaited from the START of a gated beta, beside Build and the E2E, so the Release
+  # jobs only read its result. They used to wait for it after their own work (beta 41333086670: Release · Mac waited ~8 min on a build.yml that started 17:41). tools/release-checks.sh
+  # stays the one place that knows the check (--wait-ci here, --after-ci in the Release jobs); a red, timed out, cancelled or skipped job refuses the release (the Release jobs read its result).
+  main-ci:
+    name: Main's CI on this commit
+    needs: changes
+    if: needs.changes.outputs.gate == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 70   # Why (31 Oct 2026, a8; beta 41246139016): release-checks.sh waits up to RELEASE_CI_WAIT (3600 s) for main's build.yml; 5 minutes killed it in an all-green beta
+    permissions:
+      contents: read
+      actions: read   # build.yml's runs on the commit and on newer commits of main
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: desktop-v${{ needs.changes.outputs.version }}
+      REF: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v5
+        timeout-minutes: 5
+      - uses: ./.github/actions/gh-ledger
+        with:
+          phase: start
+        timeout-minutes: 5
+      - name: Wait for main's build.yml on this commit and read its verdict
+        timeout-minutes: 65
+        shell: bash -eo pipefail {0}   # a program piped into tee/cat keeps its exit code (tests/test_workflow_pipefail.py)
+        run: tools/release-checks.sh --wait-ci "$TAG" "$REF"
+      - if: always()
+        uses: ./.github/actions/gh-ledger
+        with:
+          phase: end
+        timeout-minutes: 5
+
   # RELEASE: the lane's HTML report (always), then, only when every E2E suite of BOTH lanes passed: no real high-severity finding, the shared release checks, and the
   # "Beta-approved:" line that offers the build to Mac beta testers (desktop/lib/updater.js). Red = not released on Mac.
 
@@ -1311,18 +1346,17 @@ jobs:
   # beta 41090972183 shipped Windows 0.8.53 while Mac + Linux applyflows was red. Both lanes green, or neither platform is offered.
   release-mac:
     name: Release · Mac beta
-    needs: [changes, build, windows, test-mac, test-windows]
+    needs: [changes, build, windows, test-mac, test-windows, main-ci]
     if: always() && needs.changes.outputs.gate == 'true' && needs.test-mac.result != 'skipped' && needs.test-mac.result != 'cancelled'
+    outputs:
+      retry: ${{ steps.retry.outputs.text }}   # the steps that passed on their retry, for the offer job's line in the notes
     runs-on: ubuntu-24.04
-    timeout-minutes: 90   # Why (30 Oct 2026, a8; beta 41090972183): covers the e2e review (15 min) plus release-checks.sh waiting up to 60 min for main's build; 20 cut Windows off at 18 min
+    timeout-minutes: 40   # Why (1 Nov 2026, a8): the e2e review (up to 22 min) plus the lane's checks; main's CI is awaited by the main-ci job, not here (it was 90 min while this job waited up to 60 min for it; 20 once cut Windows off at 18 min, beta 41090972183)
     permissions:
       contents: write   # the approval line (release-stable.sh when the soak is off)
       actions: write    # this run's artifacts, build.yml's verdict on the commit; release-stable.sh starts the Chrome Web Store publish
       id-token: write   # GitHub's per-run token the Codex broker checks (the screenshot review, lib/broker-client.mjs)
       issues: write     # block-check.mjs reads the UI-loop issues; the release scripts rewrite the pinned Release channels issue
-    concurrency:
-      group: release-promote   # one writer of a release's notes at a time: both lanes edit the same body
-      cancel-in-progress: false
     env:
       E2E_ARTIFACT_SECRET_NAMES: |
         ACTIONS_ID_TOKEN_REQUEST_TOKEN
@@ -1414,25 +1448,72 @@ jobs:
           cat block.txt
           if [ "$status" != 0 ]; then echo "$TAG is not offered on Mac: a real high-severity finding in its end-to-end suites."; exit 1; fi
       - name: Steps that passed on their retry (listed in the release notes)
+        id: retry
         timeout-minutes: 5
         working-directory: desktop/e2e
         run: |
           set -o pipefail   # a program piped into tee keeps its exit code (tests/test_workflow_pipefail.py)
           node passed-on-retry.mjs --artifacts ../../e2e-artifacts | tee ../../passed-on-retry.txt   # Why (1 Nov 2026, owner: "Auto-retry in betas only"): the beta released past these; empty when none retried
-      - name: The shared release checks (unit suites green on the commit; soak on, the Notion schema additive over stable)
-        timeout-minutes: 65   # Why (31 Oct 2026, a8; beta 41246139016): the shared release checks script waits up to RELEASE_CI_WAIT (3600 s) for main's build.yml; 5 minutes killed it in both Release jobs of an all-green beta (tests/test_e2e_step_timeouts.py)
+          { echo 'text<<RETRY_END'; cat ../../passed-on-retry.txt; echo RETRY_END; } >> "$GITHUB_OUTPUT"   # Why (1 Nov 2026, a8): the offer job writes the line into the notes
+      - name: Main's CI was green on this commit (the Main's CI job waited for it)
+        timeout-minutes: 5
+        env:
+          MAIN_CI: ${{ needs.main-ci.result }}
+        run: |
+          # Why (1 Nov 2026, a8; Gitar on #2858): only a result that said success is success; red, timed out, cancelled, skipped or missing all stop the release, with today's words.
+          if [ "$MAIN_CI" != success ]; then echo "$TAG stays a pre-release: build.yml is not green on its commit (the Main's CI job ended: ${MAIN_CI:-missing})."; exit 1; fi
+      - name: The shared release checks after main's CI (soak on, the Notion schema additive over stable)
+        timeout-minutes: 10   # Why (1 Nov 2026, a8): only the schema comparison is left here; the wait for main's build.yml moved to the main-ci job (it needed 65 min while it waited here)
         env:
           JOB_PILOTTO_SOAK: ${{ vars.JOB_PILOTTO_SOAK }}
         shell: bash -eo pipefail {0}   # a program piped into tee/cat keeps its exit code (tests/test_workflow_pipefail.py)
-        run: tools/release-checks.sh "$TAG" "$REF"
+        run: tools/release-checks.sh --after-ci "$TAG" "$REF"
+      - if: always()
+        uses: ./.github/actions/gh-ledger
+        with:
+          phase: end
+        timeout-minutes: 5
+
+  # Why (1 Nov 2026, a8; owner: "why Windows is waiting on Mac? Why they're not being released in parallel?"): the Release jobs run at once; the only thing that must be one at a time is the write into the
+  # release's notes (both lanes edit the same body, a read then an edit), so ONLY this tiny job holds the lock. A lane that did not pass its checks never reaches it, and offers nothing.
+  release-mac-offer:
+    name: Release · Mac beta · offer
+    needs: [changes, release-mac]
+    if: needs.release-mac.result == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write   # the approval line (release-stable.sh when the soak is off)
+      actions: write    # release-stable.sh starts the Chrome Web Store publish
+      issues: write     # the release scripts rewrite the pinned Release channels issue
+    concurrency:
+      group: release-promote   # one writer of a release's notes at a time: both lanes edit the same body
+      cancel-in-progress: false   # two lanes at most: one runs, one waits, none is cancelled
+    env:
+      E2E_ARTIFACT_SECRET_NAMES: |
+        GH_TOKEN
+        GITHUB_TOKEN
+      GH_TOKEN: ${{ github.token }}
+      CI_ALERTS_TELEGRAM_BOT_TOKEN: ${{ secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN }}   # release-stable.sh alerts once when a store publish does not start
+      CI_ALERTS_TELEGRAM_CHAT_ID: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}
+      TAG: desktop-v${{ needs.changes.outputs.version }}
+      REF: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v5
+        timeout-minutes: 5
+      - uses: ./.github/actions/gh-ledger
+        with:
+          phase: start
+        timeout-minutes: 5
       - name: Release it to Mac beta testers
         timeout-minutes: 5
         env:
           E2E_ALREADY_GREEN: '1'   # required Mac suites passed; outside health is reported separately
           SOAK: ${{ vars.JOB_PILOTTO_SOAK }}
-          PASSED_ON_RETRY_FILE: passed-on-retry.txt   # tools/beta-approve.sh adds its line to the notes
+          RETRY: ${{ needs.release-mac.outputs.retry }}   # tools/beta-approve.sh adds its line to the notes
           RED_ON_MAIN_NOTE: ${{ needs.changes.outputs.red_note }}   # Why (1 Nov 2026): the red steps the gate let through; tools/beta-approve.sh adds the line beside the retry line
         run: |
+          if [ -n "$RETRY" ]; then printf '%s\n' "$RETRY" > "$RUNNER_TEMP/passed-on-retry.txt"; export PASSED_ON_RETRY_FILE="$RUNNER_TEMP/passed-on-retry.txt"; fi
           echo "Outside-world health: see the notion-real job notice and Mac HTML report (tolerant; does not block beta)."
           if [ "$SOAK" = on ]; then
             tools/beta-approve.sh "$TAG"
@@ -1451,18 +1532,17 @@ jobs:
   # "Beta-approved (Windows):" line that offers the build to Windows beta testers (desktop/lib/updater.js). Red = not released on Windows.
   release-windows:
     name: Release · Windows beta   # needs both lanes: the Why above release-mac
-    needs: [changes, build, windows, test-mac, test-windows]
+    needs: [changes, build, windows, test-mac, test-windows, main-ci]
     if: always() && needs.changes.outputs.gate == 'true' && needs.test-windows.result != 'skipped' && needs.test-windows.result != 'cancelled'
+    outputs:
+      retry: ${{ steps.retry.outputs.text }}   # the steps that passed on their retry, for the offer job's line in the notes
     runs-on: ubuntu-24.04
-    timeout-minutes: 90   # Why (30 Oct 2026, a8; beta 41090972183): covers the e2e review (15 min) plus release-checks.sh waiting up to 60 min for main's build; 20 cut Windows off at 18 min
+    timeout-minutes: 40   # Why (1 Nov 2026, a8): the e2e review (up to 22 min) plus the lane's checks; main's CI is awaited by the main-ci job, not here (it was 90 min while this job waited up to 60 min for it; 20 once cut Windows off at 18 min, beta 41090972183)
     permissions:
       contents: write   # the approval line (release-stable.sh when the soak is off)
       actions: write    # this run's artifacts, build.yml's verdict on the commit; release-stable.sh starts the Chrome Web Store publish
       id-token: write   # GitHub's per-run token the Codex broker checks (the screenshot review, lib/broker-client.mjs)
       issues: write     # block-check.mjs reads the UI-loop issues; the release scripts rewrite the pinned Release channels issue
-    concurrency:
-      group: release-promote   # one writer of a release's notes at a time: both lanes edit the same body
-      cancel-in-progress: false
     env:
       E2E_ARTIFACT_SECRET_NAMES: |
         ACTIONS_ID_TOKEN_REQUEST_TOKEN
@@ -1550,25 +1630,72 @@ jobs:
           cat block.txt
           if [ "$status" != 0 ]; then echo "$TAG is not offered on Windows: a real high-severity finding in its end-to-end suites."; exit 1; fi
       - name: Steps that passed on their retry (listed in the release notes)
+        id: retry
         timeout-minutes: 5
         working-directory: desktop/e2e
         run: |
           set -o pipefail   # a program piped into tee keeps its exit code (tests/test_workflow_pipefail.py)
           node passed-on-retry.mjs --artifacts ../../e2e-artifacts | tee ../../passed-on-retry.txt   # Why (1 Nov 2026, owner: "Auto-retry in betas only"): the beta released past these; empty when none retried
-      - name: The shared release checks (unit suites green on the commit; soak on, the Notion schema additive over stable)
-        timeout-minutes: 65   # Why (31 Oct 2026, a8; beta 41246139016): the shared release checks script waits up to RELEASE_CI_WAIT (3600 s) for main's build.yml; 5 minutes killed it in both Release jobs of an all-green beta (tests/test_e2e_step_timeouts.py)
+          { echo 'text<<RETRY_END'; cat ../../passed-on-retry.txt; echo RETRY_END; } >> "$GITHUB_OUTPUT"   # Why (1 Nov 2026, a8): the offer job writes the line into the notes
+      - name: Main's CI was green on this commit (the Main's CI job waited for it)
+        timeout-minutes: 5
+        env:
+          MAIN_CI: ${{ needs.main-ci.result }}
+        run: |
+          # Why (1 Nov 2026, a8; Gitar on #2858): only a result that said success is success; red, timed out, cancelled, skipped or missing all stop the release, with today's words.
+          if [ "$MAIN_CI" != success ]; then echo "$TAG stays a pre-release: build.yml is not green on its commit (the Main's CI job ended: ${MAIN_CI:-missing})."; exit 1; fi
+      - name: The shared release checks after main's CI (soak on, the Notion schema additive over stable)
+        timeout-minutes: 10   # Why (1 Nov 2026, a8): only the schema comparison is left here; the wait for main's build.yml moved to the main-ci job (it needed 65 min while it waited here)
         env:
           JOB_PILOTTO_SOAK: ${{ vars.JOB_PILOTTO_SOAK }}
         shell: bash -eo pipefail {0}   # a program piped into tee/cat keeps its exit code (tests/test_workflow_pipefail.py)
-        run: tools/release-checks.sh "$TAG" "$REF"
+        run: tools/release-checks.sh --after-ci "$TAG" "$REF"
+      - if: always()
+        uses: ./.github/actions/gh-ledger
+        with:
+          phase: end
+        timeout-minutes: 5
+
+  # Why (1 Nov 2026, a8; owner: "why Windows is waiting on Mac? Why they're not being released in parallel?"): the Release jobs run at once; the only thing that must be one at a time is the write into the
+  # release's notes (both lanes edit the same body, a read then an edit), so ONLY this tiny job holds the lock. A lane that did not pass its checks never reaches it, and offers nothing.
+  release-windows-offer:
+    name: Release · Windows beta · offer
+    needs: [changes, release-windows]
+    if: needs.release-windows.result == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write   # the approval line (release-stable.sh when the soak is off)
+      actions: write    # release-stable.sh starts the Chrome Web Store publish
+      issues: write     # the release scripts rewrite the pinned Release channels issue
+    concurrency:
+      group: release-promote   # one writer of a release's notes at a time: both lanes edit the same body
+      cancel-in-progress: false   # two lanes at most: one runs, one waits, none is cancelled
+    env:
+      E2E_ARTIFACT_SECRET_NAMES: |
+        GH_TOKEN
+        GITHUB_TOKEN
+      GH_TOKEN: ${{ github.token }}
+      CI_ALERTS_TELEGRAM_BOT_TOKEN: ${{ secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN }}   # release-stable.sh alerts once when a store publish does not start
+      CI_ALERTS_TELEGRAM_CHAT_ID: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}
+      TAG: desktop-v${{ needs.changes.outputs.version }}
+      REF: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v5
+        timeout-minutes: 5
+      - uses: ./.github/actions/gh-ledger
+        with:
+          phase: start
+        timeout-minutes: 5
       - name: Release it to Windows beta testers
         timeout-minutes: 5
         env:
           E2E_ALREADY_GREEN: '1'   # every Windows suite passed on this commit, in this run
           SOAK: ${{ vars.JOB_PILOTTO_SOAK }}
-          PASSED_ON_RETRY_FILE: passed-on-retry.txt   # tools/beta-approve.sh adds its line to the notes
+          RETRY: ${{ needs.release-windows.outputs.retry }}   # tools/beta-approve.sh adds its line to the notes
           RED_ON_MAIN_NOTE: ${{ needs.changes.outputs.red_note }}   # Why (1 Nov 2026): the red steps the gate let through; tools/beta-approve.sh adds the line beside the retry line
         run: |
+          if [ -n "$RETRY" ]; then printf '%s\n' "$RETRY" > "$RUNNER_TEMP/passed-on-retry.txt"; export PASSED_ON_RETRY_FILE="$RUNNER_TEMP/passed-on-retry.txt"; fi
           set -o pipefail   # a program piped into tee/cat keeps its exit code (tests/test_workflow_pipefail.py)
           tools/beta-approve.sh --windows "$TAG"
       - if: always()
@@ -1616,7 +1743,7 @@ jobs:
 
   prune:
     name: Clean up old builds
-    needs: [changes, build, windows, test-mac, test-windows, release-mac, release-windows]
+    needs: [changes, build, windows, test-mac, test-windows, release-mac, release-windows, release-mac-offer, release-windows-offer]
     if: always() && needs.changes.outputs.released == 'true'
     runs-on: ubuntu-24.04
     permissions:

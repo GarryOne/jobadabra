@@ -153,19 +153,61 @@ class DesktopWorkflowTest(unittest.TestCase):
             release = job(name)
             # Owner, 30 Oct 2026: both lanes green or neither platform is offered (Windows dropped its duplicates of the Mac + Linux suites).
             # Owner, 31 Oct 2026: + build, windows, whose unit step is red without stopping the e2e (tests/test_desktop_unit_red_runs_e2e.py).
-            self.assertIn('needs: [changes, build, windows, test-mac, test-windows]', release)
+            # 1 Nov 2026 (a8): + main-ci, main's CI awaited in its own job from the start of the beta.
+            self.assertIn('needs: [changes, build, windows, test-mac, test-windows, main-ci]', release)
             # Owner, 31 Oct 2026 (a suite past its budget is our bug): the gate reads every lane's jobs and its own exit code is the verdict; no grey hold, held output or rerun.
             self.assertIn('--e2e-only', release)
             for gone in ('backbone_gate', 'outputs.held', 'beta-held', 'continue-on-error: true\n        run: python3 tools/beta_rate_gate.py'):
                 self.assertNotIn(gone, release)
-            self.assertIn(script, release)
+            # 1 Nov 2026 (a8): the approval line is written by the lane's own tiny offer job, so the Release jobs run side by side.
+            self.assertNotIn(script, release)
+            self.assertIn(script, job(f'{name}-offer'))
+        # Owner, 1 Nov 2026 ("why Windows is waiting on Mac? Why they're not being released in parallel?"): no lock on the Release jobs; ONLY the two offer jobs hold
+        # `release-promote`, and they never cancel each other (one runs, one waits). The lock is the writer's, not the lane's.
+        for name in ('release-mac', 'release-windows'):
+            self.assertNotIn('concurrency:', job(name))
+            offer = job(f'{name}-offer')
+            self.assertIn('group: release-promote', offer)
+            self.assertIn('cancel-in-progress: false', offer)
+            self.assertIn(f"if: needs.{name}.result == 'success'", offer)
+            self.assertIn(f'needs: [changes, {name}]', offer)
+        self.assertEqual(WORKFLOW.count('group: release-promote'), 2)
+        # Main's CI: awaited once, at the start (needs only `changes`, the gate's own condition), and a result that never said success refuses both lanes.
+        ci = job('main-ci')
+        self.assertIn('needs: changes', ci)
+        self.assertIn("if: needs.changes.outputs.gate == 'true'", ci)
+        self.assertIn('tools/release-checks.sh --wait-ci "$TAG" "$REF"', ci)
+        for name in ('release-mac', 'release-windows'):
+            release = job(name)
+            self.assertIn('MAIN_CI: ${{ needs.main-ci.result }}', release)
+            self.assertIn('if [ "$MAIN_CI" != success ]', release)   # cancelled, skipped, failure and missing are all red
+            self.assertIn('tools/release-checks.sh --after-ci "$TAG" "$REF"', release)
+            self.assertNotIn('tools/release-checks.sh "$TAG"', release)
         # only a nightly or a beta by hand is tested; the plan is made once, for both lanes
         self.assertIn("(github.event_name == 'schedule' || inputs.nightly || inputs.beta)", job('changes'))
         self.assertIn('node plan-run.mjs', job('changes'))
         # the Windows fallback is a step of Build · Windows, not a box
         self.assertIn('if: failure()', job('windows'))
         self.assertNotIn('\n  mac-only:\n', WORKFLOW)
-        self.assertIn('needs: [changes, build, windows, test-mac, test-windows, release-mac, release-windows]', WORKFLOW)
+        self.assertIn('needs: [changes, build, windows, test-mac, test-windows, release-mac, release-windows, release-mac-offer, release-windows-offer]', WORKFLOW)
+
+    def test_neither_platform_is_offered_unless_both_lanes_pass(self):
+        # Owner, 30 Oct 2026: "Both lanes green, or neither platform is offered" (kept on 1 Nov 2026 when the Release jobs went parallel). What enforces it: each Release job reads BOTH lanes
+        # (needs every build and test leg, the e2e-only gate reads every lane's jobs and fails the job), so a red lane turns both Release jobs red; an offer job runs only when its own
+        # Release job succeeded (no always(), no other need), so a red, cancelled or skipped Release job never reaches the notes write, and the other lane's offer is skipped just the same.
+        job = lambda name: WORKFLOW.split(f'\n  {name}:\n')[1].split('\n\n  # ')[0]
+        for name in ('release-mac', 'release-windows'):
+            release = job(name)
+            self.assertIn('needs: [changes, build, windows, test-mac, test-windows, main-ci]', release)
+            gate = release.split('python3 tools/beta_rate_gate.py --repo "$GITHUB_REPOSITORY" --run "$GITHUB_RUN_ID" --e2e-only')[0].rsplit('      - name:', 1)[1]
+            self.assertNotIn('continue-on-error', gate, name)
+            self.assertNotIn('\n        if:', gate, name)
+            offer = job(f'{name}-offer')
+            self.assertIn(f'needs: [changes, {name}]', offer)
+            self.assertIn(f"if: needs.{name}.result == 'success'\n", offer)
+            self.assertNotIn('always()', offer.split('steps:')[0])
+        self.assertEqual(len(re.findall(r'(?m)^  [a-z-]+-offer:$', WORKFLOW)), 2)
+
     def test_a_planned_gate_that_was_skipped_after_a_green_build_fails_the_run(self):
         job = WORKFLOW.split('\n  gate-ran:\n')[1].split('\n  prune:\n')[0]
         self.assertIn("needs.test-mac.result == 'skipped'", job)

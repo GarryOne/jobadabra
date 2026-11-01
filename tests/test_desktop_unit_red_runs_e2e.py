@@ -94,7 +94,7 @@ class UnitRedRunsE2E(unittest.TestCase):
         for name, lane, test, release in LANES:
             needs = re.search(r'(?m)^    needs: (\[[^\]]*\])', job(test)).group(1)
             self.assertEqual(needs, f'[changes, {name}]', lane)   # Why-changed (1 Nov 2026, a8): ai-ready left the beta (no live AI calls, beta #7)
-            self.assertEqual(re.search(r'(?m)^    needs: (\[[^\]]*\])', job(release)).group(1), '[changes, build, windows, test-mac, test-windows]', lane)
+            self.assertEqual(re.search(r'(?m)^    needs: (\[[^\]]*\])', job(release)).group(1), '[changes, build, windows, test-mac, test-windows, main-ci]', lane)   # + main-ci (1 Nov 2026, a8)
             self.assertIn(f"needs.{name}.result == 'success'", job(test))
 
     def test_compile_and_smoke_still_stop_the_e2e_and_only_the_build_only_unit_step_fails_quietly(self):
@@ -129,7 +129,13 @@ class UnitRedRunsE2E(unittest.TestCase):
         for _, lane, _, release in LANES:
             body = job(release)
             gate = step(release, f'Not released on {lane}')
-            self.assertLess(body.index(f'Not released on {lane}'), body.index('tools/beta-approve.sh'), f'{lane}: the refusal comes before the approval')
+            # 1 Nov 2026 (a8): the approval is the tiny `<release>-offer` job, which runs only when the Release job (and so its refusal) succeeded.
+            offer = job(f'{release}-offer')
+            self.assertIn(f'Not released on {lane}', body, lane)
+            self.assertNotIn('beta-approve', body, f'{lane}: the Release job only refuses; the offer job approves')
+            self.assertIn(f'needs: [changes, {release}]', offer, lane)
+            self.assertIn(f"if: needs.{release}.result == 'success'", offer, lane)
+            self.assertIn('tools/beta-approve.sh', offer, lane)
             self.assertNotIn('beta-approve', gate)
 
 

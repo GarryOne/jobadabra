@@ -58,7 +58,8 @@ test('restart arguments: into the demo adds the flag; back out removes it; the r
 
 test('demo mode answers the outside-reaching actions without running them', async () => {
   const registered = {};
-  const handle = demo.guard((name, listener) => { registered[name] = listener; });
+  const logged = [];
+  const handle = demo.guard((name, listener) => { registered[name] = listener; }, (area, text, fields) => logged.push([area, text, fields.name]));
   let ran = 0;
   for (const name of ['notionOAuth', 'checkMail', 'applyWithClaude', 'telegramConnect', 'lookAround', 'jobs']) handle(name, () => { ran++; return 'real'; });
   assert.deepEqual(await registered.notionOAuth(), {ok: false, error: demo.TEXT, text: demo.TEXT});
@@ -67,6 +68,7 @@ test('demo mode answers the outside-reaching actions without running them', asyn
   assert.equal((await registered.lookAround()).ok, false, 'no demo inside the demo');
   assert.equal(registered.jobs(), 'real', 'reading the demo data still works');
   assert.equal(ran, 1);
+  assert.deepEqual(logged.map(row => row.slice(2)), [['notionOAuth'], ['checkMail'], ['applyWithClaude'], ['lookAround']], 'each blocked call is logged by name, a reading call is not');
   handle('saveSecret', () => 'real');
   assert.throws(() => registered.saveSecret(), /Demo mode/);
 });

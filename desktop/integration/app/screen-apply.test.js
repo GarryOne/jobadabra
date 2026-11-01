@@ -2,7 +2,7 @@
 // Applying screens, layer 2: the Jobs popup of "See which jobs can apply automatically", the session page's "Before you submit" strip, and a queued hidden-browser job whose link to the app
 // is off. Moved from the e2e `apply` suite (1 Nov 2026) to the app's demo window on fictional jobs and sessions: nothing opens, fills or sends. What STAYS in e2e: every step that needs the
 // extension on a form, the real read of a form, a tailored CV, a stage change or the hidden browser, and every safety step (Stop, bot checks, queues, Full automation, the quit). The
-// demo cannot play a silent Chrome with the link up (it has only "link off"), so the Standard-automation card also stays.
+// Standard-automation silent card (link up, Chrome silent) is screen-apply-silent.test.js.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {before, test} from 'node:test';
@@ -22,7 +22,7 @@ const QUEUED = {id: 'silent-fill', kind: 'form', url: 'https://jobs.e2e.test/app
 // The Acme Robotics form's job is in the list, as the e2e step's job was: its CV row then says which CV goes in (a job not listed gets "Add this job" instead).
 const demoJobs = JSON.parse(fs.readFileSync(new URL('../../demo/jobs.json', import.meta.url), 'utf8'));
 const ACME = {...JOBS[0], id: 99, code: 'acme', title: 'Cloud Engineering Manager', company: 'Acme Robotics', url: 'https://jobs.example/acme/sre'};
-let popup, strip, silent, rows;
+let popup, strip, silent, rows, retry;
 
 before(() => {
   if (needsElectron.skip) return;
@@ -51,6 +51,18 @@ before(() => {
     first.querySelector('[aria-label="More actions"]').click();
     const items = await kit.until(() => [...document.querySelectorAll('[role="menuitem"]')].map(item => item.textContent.trim()).filter(Boolean), 'the ⋯ menu');
     return {rows: all.length, kitless: kitless.length, buttons: kitless.map(row => ({label: row.querySelector('.row-main')?.textContent.trim(), cls: row.querySelector('.row-main')?.className || '', prepare: /Prepare/.test(row.textContent)})), items};
+  }});
+  // Apply on a saved job without a kit prepares first; the demo refuses the draft (lib/demo.js BLOCKED prepareKit), so the kit "cannot be drafted": the button says Retry apply and applyOne is never called.
+  retry = probeWindow({files: {'jobs.json': {jobs: JOBS.map(job => ({...job, stage: null, status: 'unreviewed'})), total: JOBS.length, filtered: JOBS.length}}, timeout: 180000, script: async kit => {
+    await kit.until(() => document.querySelector('.nav[data-view=focus]:not([hidden])'), 'the menu');
+    await kit.go('jobs');
+    await kit.until(() => document.querySelectorAll('article.job-row').length >= 12, 'the twelve job rows');
+    const rowOf = url => [...document.querySelectorAll('article.job-row')].find(item => item.dataset.url === url);
+    const url = [...document.querySelectorAll('article.job-row')].find(item => !/📝 Kit/.test(item.textContent)).dataset.url;
+    const before = rowOf(url).querySelector('.row-main').textContent.trim();
+    rowOf(url).querySelector('.row-main').click();
+    const after = await kit.until(() => { const now = rowOf(url).querySelector('.row-main').textContent.trim(); return now === 'Retry apply' ? now : ''; }, 'the button to say Retry apply');
+    return {before, after};
   }});
   strip = probeWindow({files: {'jobs.json': {...demoJobs, jobs: [...demoJobs.jobs, ACME]}}, timeout: 180000, script: async kit => {
     await kit.until(() => document.querySelector('.nav[data-view=focus]:not([hidden])'), 'the menu');
@@ -96,6 +108,13 @@ test("a silent Chrome in Background automation: a queued hidden-browser job says
   assert.doesNotMatch(`${title} ${question} ${pill}`, /Chrome isn't reporting|Tab not found|Checking Chrome|Waiting for Chrome/i);
   assert.doesNotMatch(question, /Chrome/, 'a hidden-browser card names the person\'s Chrome');
   assert.deepEqual(buttons, ['Stop'], 'the only way on is Stop; nothing can submit while the link is off');
+});
+
+test('Apply on a saved job without a kit prepares first, and when the kit cannot be drafted says Retry apply and opens nothing', live, () => {
+  assert.equal(retry.result.before, 'Apply');
+  assert.equal(retry.result.after, 'Retry apply');
+  const called = retry.log.filter(line => line.includes('a blocked action was called')).map(line => /"name":"(\w+)"/.exec(line)?.[1]);
+  assert.deepEqual(called, ['prepareKit'], 'the press must draft the kit once and open no form (applyOne)');
 });
 
 test('a scored job without a kit shows the Apply button, never Prepare, and "Prepare only" in its ⋯ menu', live, () => {

@@ -45,7 +45,7 @@ test('shared lib ownership retains recorded steps, respects ownsStep, and accept
 });
 
 for (const [lib, name] of [
-  ['apply-journeys', 'two applications side by side: a new journey step'],
+  ['apply-journeys', 'a sign-up page before the form: a new journey step'],
   ['apply-live', 'a real posting, watched live: a new live step'],
 ]) test(`a new ${lib} step belongs to applyflows through its suite import`, async () => {
   const own = {};

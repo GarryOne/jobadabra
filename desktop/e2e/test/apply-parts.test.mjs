@@ -15,7 +15,7 @@ const journeySteps = () => [...fs.readFileSync(new URL('../lib/apply-journeys.mj
 
 test('every journey step is a flows step, where its fixture jobs and kits are seeded', () => {
   const steps = journeySteps();
-  assert.ok(steps.length >= 8, `only ${steps.length} journey steps read: the pattern no longer matches`);
+  assert.ok(steps.length >= 4, `only ${steps.length} journey steps read: the pattern no longer matches`);
   assert.deepEqual(steps.filter(name => partOf(name) !== 'flows'), []);
 });
 

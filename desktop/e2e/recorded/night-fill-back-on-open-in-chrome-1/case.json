@@ -1,0 +1,75 @@
+{
+ "origin": "hand-cut",
+ "control": {
+  "guard": "apply e2e step \"Open in Chrome on a form the night filled\" (moved here 1 Nov 2026, R3)"
+ },
+ "shape": "Ready to send's Open in Chrome on a form the night filled: the app hands the tab a hand-off marked fromNight, answers the page kind (a form) and the open question from the night's own answers, and the tab shows them",
+ "why": "18 Oct 2026 (owner: \"It should be all cached... instant\"): the morning visit puts the night's answer in the open question and the panel says \"Last night's fill is back\" instead of reading the page anew. The apply e2e step proved it with the app and a real Chrome; the page half (the answer from the night is typed, the panel's words) is this case, and desktop/integration/app/session-night.test.js holds the app's half (no page kind and no question goes to the AI). Planting the bug (the hand-off's mark not read, or the night's answer not typed) turns it red. (moved 1 Nov 2026, R3)",
+ "sample": "fixture form written by desktop/e2e/lib/forms.mjs (lever; hosts and text invented)",
+ "rung": 1,
+ "pages": [
+  {
+   "url": "https://jobs.lever.co/e2e/5e2e5e2e-0000-4000-8000-00000000a001/apply",
+   "file": "form.html"
+  }
+ ],
+ "ai": {
+  "/extension/ready-handoff": {
+   "ok": true,
+   "handoff": {
+    "url": "https://jobs.lever.co/e2e/5e2e5e2e-0000-4000-8000-00000000a001/apply",
+    "cookies": [],
+    "localStorage": {},
+    "sessionStorage": {},
+    "snapshot": {
+     "fields": [],
+     "files": []
+    },
+    "fromNight": true
+   }
+  },
+  "/extension/page-kind": {
+   "ok": true,
+   "kind": "form",
+   "role": "form",
+   "by": "night",
+   "confidence": 1,
+   "rung": 1,
+   "signal": "confident",
+   "applyButton": "",
+   "applyRoute": "",
+   "applyBy": "",
+   "applyEmail": "",
+   "accountStep": "",
+   "registerControl": "",
+   "signinControl": "",
+   "accountButton": ""
+  },
+  "/extension/answer": {
+   "ok": true,
+   "eligible": true,
+   "night": true,
+   "usd": 0,
+   "answers": [
+    {
+     "field": "why",
+     "question": "Why do you want to work at E2E Lever Systems?",
+     "value": "From last night: your platform team runs what I have built for six years.",
+     "confidence": "medium"
+    }
+   ]
+  }
+ },
+ "expect": {
+  "valueIs": [
+   "#why|From last night: your platform team runs what I have built for six years."
+  ],
+  "panelSays": [
+   "Last night’s fill is back"
+  ],
+  "notTold": [
+   "pressed the submit"
+  ],
+  "seconds": 60
+ }
+}

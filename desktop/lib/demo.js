@@ -63,7 +63,9 @@ export function blocked(name) {
   return {ok: false, error: TEXT, text: TEXT};
 }
 // ipcMain.handle, answering BLOCKED actions with blocked(name) (demo mode).
-export const guard = handle => (name, listener) => handle(name, BLOCKED.includes(name) ? () => blocked(name) : listener);
+// Why (1 Nov 2026, R3): `log` says which blocked action a window press reached, by name only, so a layer-2 window test can tell "the press drafted the kit and opened no form" (no applyOne) from
+// "it opened one": the demo answers both with the same words and the renderer cannot count its own IPC calls (contextBridge).
+export const guard = (handle, log = () => {}) => (name, listener) => handle(name, BLOCKED.includes(name) ? () => { log('demo', 'a blocked action was called', {name}); return blocked(name); } : listener);
 
 // Whether background jobs go to the person's GitHub repo (Always on). Never in the demo: its settings name a repo (so the app shows Always on), but a press on Find jobs
 // must run here, on the script (lib/demo-search.js), and send nothing anywhere. Every handler asks this through main.js `cloud()`.
@@ -73,7 +75,13 @@ export const cloudRuns = (settings, demo) => !demo && !!settings?.cloud?.repo;
 // the Applying card said "Checking Chrome for this application…" and then "Chrome isn't reporting" on every demo screen (owner, 24 Oct 2026: "Let it
 // show a more real/relevant status as form opened"). Guard: desktop/test/demo-forms-open.test.js.
 // settings.demoLinkOff: a shot of the "connection off" card (npm run shot --settings '{"demoLinkOff":true}').
-export const demoFormsOpen = (states, settings = {}) => settings.demoLinkOff ? {known: false, ids: [], linkOff: {port: DEFAULT_PORT, code: 'EADDRINUSE'}} : ({known: true, ids: (Array.isArray(states) ? states : []).map(state => String(state.id)), unsure: []});
+// settings.demoLinkSilent: the app's socket is open and Chrome reports nothing (Chrome closed, or its extension off): the "Chrome isn't reporting" card, once the window's clock is past WAIT_MS.
+// Why (1 Nov 2026, R3): the e2e step "a silent Chrome in Standard automation" moved to integration/app/screen-apply-silent.test.js, which needs this state without a real Chrome.
+export const demoFormsOpen = (states, settings = {}) => settings.demoLinkOff ? {known: false, ids: [], linkOff: {port: DEFAULT_PORT, code: 'EADDRINUSE'}} : settings.demoLinkSilent ? {known: false, ids: []} : ({known: true, ids: (Array.isArray(states) ? states : []).map(state => String(state.id)), unsure: []});
+
+// settings.demoTriageReads: {jobUrl: read} -- what the demo's "See which jobs can apply automatically" reads for a job (the mode table's flags, lib/triage-read.js readFromJudge); a job not listed reads nothing.
+// Why (1 Nov 2026, R3): the e2e step "each read verdict gives its own chip" moved to integration/app/screen-apply-triage.test.js, which draws every verdict without a hidden browser. Only `ipcMain.handle('triageRead')` asks.
+export const demoTriageRead = (settings, url) => settings?.demoTriageReads?.[url] ?? null;
 
 // Python jobs in demo mode: only the ones that read the demo folder (the Strategy page, a job's posting).
 const LOCAL = ['src.desktop strategy', 'src.desktop posting'];

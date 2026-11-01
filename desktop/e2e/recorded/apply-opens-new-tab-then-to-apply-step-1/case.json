@@ -1,0 +1,107 @@
+{
+ "origin": "hand-cut",
+ "control": {
+  "guard": "applyflows e2e step \"a posting whose Apply opens a new tab, then a To apply step, then the form\" (moved here 1 Nov 2026, R3)"
+ },
+ "shape": "a job board's posting that has only an Apply link opening a NEW tab, whose page has only a \"To apply\" button posting its form into another new tab, with the form behind it (jobs.ch to an agency's own site), floating labels on the form",
+ "why": "3 and 8 Oct 2026: the extension must press Apply, follow the new tab as the same application, press \"To apply\" there and fill the form it reaches, all in ONE tab (extension/same-tab.js), with the floating labels moved by a blur like a person's. The applyflows e2e step proved the journey with the app; the journey over its pages is this case (the form page here answers a GET too, the 'session expired' on a lost POST stays in the e2e fixture server). Planting the bug (a new tab followed but not closed, or the blur not sent) turns it red. (moved 1 Nov 2026, R3)",
+ "sample": "fixture pages written by desktop/e2e/lib/forms.mjs (CHAIN; hosts and text invented)",
+ "rung": 2,
+ "pages": [
+  {
+   "url": "https://boards.greenhouse.io/e2e/jobs/4001005",
+   "file": "posting.html"
+  },
+  {
+   "url": "https://e2e.recruitee.com/o/chain-step",
+   "file": "step.html"
+  },
+  {
+   "url": "https://e2e.recruitee.com/o/chain-form",
+   "file": "form.html"
+  }
+ ],
+ "ai": {
+  "/extension/page-kind": [
+   {
+    "when": {
+     "url": "https://e2e.recruitee.com/o/chain-form"
+    },
+    "answer": {
+     "ok": true,
+     "kind": "form",
+     "role": "form",
+     "by": "ai",
+     "confidence": 0.95,
+     "rung": 2,
+     "signal": "confident",
+     "applyButton": "",
+     "applyRoute": "",
+     "applyBy": "",
+     "applyEmail": "",
+     "accountStep": "",
+     "registerControl": "",
+     "signinControl": "",
+     "accountButton": ""
+    }
+   },
+   {
+    "answer": {
+     "ok": true,
+     "kind": "posting",
+     "role": "no-form",
+     "by": "ai",
+     "confidence": 0.95,
+     "rung": 2,
+     "signal": "confident",
+     "applyButton": "",
+     "applyRoute": "",
+     "applyBy": "",
+     "applyEmail": "",
+     "accountStep": "",
+     "registerControl": "",
+     "signinControl": "",
+     "accountButton": ""
+    }
+   }
+  ],
+  "/extension/answer": {
+   "ok": true,
+   "eligible": true,
+   "answers": [
+    {
+     "field": "question_3001",
+     "question": "Years of experience with Kubernetes",
+     "value": "7",
+     "confidence": "high"
+    }
+   ]
+  }
+ },
+ "expect": {
+  "told": [
+   "pressed the Apply button"
+  ],
+  "filled": [
+   "#first_name"
+  ],
+  "valueIs": [
+   "#first_name|Test",
+   "#last_name|Candidate",
+   "#email|test.candidate@example.com",
+   "#question_3001|7"
+  ],
+  "present": [
+   "label[for=first_name].up",
+   "label[for=last_name].up",
+   "label[for=email].up",
+   "label[for=question_3001].up"
+  ],
+  "notTold": [
+   "pressed the submit"
+  ],
+  "maxTabs": 1,
+  "seconds": 60,
+  "maxNewTabs": 0
+ }
+}

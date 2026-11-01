@@ -1,0 +1,17 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Platform Engineer at E2E Lever Systems</title>
+<style>body{font:15px/1.4 system-ui,sans-serif;max-width:640px;margin:24px auto;padding:0 16px}.field{margin:14px 0}label{display:block;margin-bottom:4px}input[type=text],input[type=email],input[type=tel],input[type=url],select,textarea{width:100%;padding:6px;box-sizing:border-box}</style></head>
+<body><h1>Platform Engineer</h1><p>E2E Lever Systems · Zurich, Switzerland</p>
+<form id="application_form">
+  <div class="field"><label for="name">Full name *</label><input id="name" name="name" type="text" required ></div><div class="field"><label for="email">Email *</label><input id="email" name="email" type="email" required ></div><div class="field"><label for="phone">Phone</label><input id="phone" name="phone" type="text" ></div>
+  <div class="field"><label for="resume">Resume/CV *</label><input id="resume" name="resume" type="file" required></div>
+  <div id="late-slot"></div>
+  <div class="field"><label for="urls[LinkedIn]">LinkedIn URL</label><input id="urls[LinkedIn]" name="urls[LinkedIn]" type="url" ></div>
+  <div class="field"><label for="heard">How did you hear about us? *</label><select id="heard" name="heard" required><option value="">Select…</option><option>Job board</option><option>Referral</option><option>Company website</option><option>Other</option></select></div>
+  <div class="field"><label for="why">Why do you want to work at E2E Lever Systems? *</label><textarea id="why" name="why" rows="4" required></textarea></div>
+  <div class="field"><button type="submit" id="submit_app">Submit Application</button></div></form>
+<script>
+const fired = kind => fetch('/__fired?kind=' + kind + '&form=' + encodeURIComponent(location.pathname), {method: 'POST', keepalive: true});
+document.addEventListener('click', event => { if (event.target.closest('[type=submit]')) fired('click'); }, true);
+document.addEventListener('submit', event => { event.preventDefault(); fired('submit'); }, true);
+setTimeout(() => { document.getElementById('late-slot').innerHTML = "<div class=\"field\"><label for=\"org\">Current company *</label><input id=\"org\" name=\"org\" type=\"text\" required ></div>"; }, 600);
+</script></body></html>

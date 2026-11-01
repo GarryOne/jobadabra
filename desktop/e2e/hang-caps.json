@@ -2,21 +2,9 @@
   "applyflows": {
     "provenance": "Measured hang caps for applyflows' state waits, keyed by the exact step names.\nWhy (29 Oct 2026, a8, 21b): 3 x calm main p95 from the measuring tool tools/e2e-step-timings.mjs (applyflows, 14 runs) on 29 Oct 2026 (13 runs, 25 calm shard-runs), rounded up to 5 s with a 30 s noise floor; applicant setup keeps its measured 305 s cap.\ntools/e2e-step-timings.mjs --suite applyflows --runs 14; inline p95 values are seconds.\ntools/e2e-step-timings.mjs: 6 main runs, 9/11 calm shard-runs.\nMain run IDs: 41153500920, 41157036555, 41158705592, 41166853012, 41173193229, 41180851813.\n3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.",
     "steps": {
-      "\"Needs your attention\" from the extension's fill: the left menu is listed with its proposal and choices, and Use fills the form": {
-        "seconds": 160,
-        "p95Seconds": 52.4
-      },
       "a form drawn after a spinner: its submit is never pressed as Apply, and it is filled once its fields come": {
         "seconds": 175,
         "p95Seconds": 58.2
-      },
-      "a posting whose Apply opens a new tab, then a \"To apply\" step, then the form: the journey is followed and the form filled": {
-        "seconds": 185,
-        "p95Seconds": 61.5
-      },
-      "a second browser with the extension and no tabs: the form open in the first stays open": {
-        "seconds": 285,
-        "p95Seconds": 93.7
       },
       "a sign-in page before the form that refuses the password: \"Sign in\" is pressed once, never again, and you are told; on the stuck sign-up page Take over with Claude only with Claude help on, never started": {
         "seconds": 275,
@@ -27,10 +15,6 @@
       "a sign-in page before the form: your email and saved password are filled, \"Sign in\" is pressed once, and the form behind it is filled": {
         "seconds": 190,
         "p95Seconds": 62.6
-      },
-      "the account and the application on one page: it is the application form, its passwords stay account fields": {
-        "seconds": 180,
-        "p95Seconds": 58.6
       },
       "the app has an applicant, jobs with drafted kits for every fixture form, and an AI that answers only what the kits do not": {
         "seconds": 305,
@@ -44,10 +28,6 @@
         "seconds": 35,
         "p95Seconds": 10.5
       },
-      "the form tab is closed: the app sees it and Reopen opens the form again, filled, for the same session": {
-        "seconds": 90,
-        "p95Seconds": 30
-      },
       "the Notion stand-in answered every request the app made": {
         "seconds": 30,
         "p95Seconds": 0.6
@@ -55,10 +35,6 @@
       "through all of it: Submit was never clicked or submitted, and no host but the fixture job sites was contacted": {
         "seconds": 55,
         "p95Seconds": 18.3
-      },
-      "two applications side by side, one whose Apply opens its form from script: each keeps one tab and its own kit": {
-        "seconds": 250,
-        "p95Seconds": 83.3
       },
       "no AI call of this suite reached a real model: the stand-in answered or refused every one": {
         "seconds": 30,
@@ -337,16 +313,8 @@
         "seconds": 195,
         "reason": "Preserved inline cap; see provenance."
       },
-      "Open in Chrome on a form the night filled": {
-        "seconds": 160,
-        "reason": "Preserved inline cap; see provenance."
-      },
       "a multi-step form": {
         "seconds": 300,
-        "reason": "Preserved inline cap; see provenance."
-      },
-      "Apply on a saved job without a kit": {
-        "seconds": 390,
         "reason": "Preserved inline cap; see provenance."
       },
       "the person submits a form": {
@@ -367,12 +335,6 @@
         "seconds": 385,
         "reason": "Preserved inline cap; see provenance."
       },
-      "a silent Chrome in Standard automation": {
-        "seconds": 215,
-        "reason": "Recent calm measurement exceeds the preserved 90 s lower bound.",
-        "n": 5,
-        "p95Seconds": 70.1
-      },
       "a silent Chrome in Full automation": {
         "seconds": 90,
         "reason": "Preserved inline cap; see provenance."
@@ -383,10 +345,6 @@
       },
       "the app quits in Full automation's wait": {
         "seconds": 420,
-        "reason": "Preserved inline cap; see provenance."
-      },
-      "each read verdict gives its own chip": {
-        "seconds": 360,
         "reason": "Preserved inline cap; see provenance."
       },
       "Stop on the card in Background automation": {

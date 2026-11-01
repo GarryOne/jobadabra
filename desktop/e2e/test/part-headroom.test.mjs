@@ -36,8 +36,8 @@ test('every slice of apply fits the budget with headroom on Mac + the Notion sta
 });
 
 // The red before: the old weights cut the same steps into slices whose slowest-leg seconds are not near a third (beta 41229992832: apply-3of3 ran 698 s).
-// Why (1 Nov 2026, Tailor CVs for top matches left e2e): its seconds left apply.stepSeconds; the red-before replays the beta's measured seconds, so they stay here as they were measured.
-const MEASURED_THEN = {...apply.stepSeconds, 'Tailor CVs for top matches': 36.7};
+// Why (1 Nov 2026, R3 and Tailor CVs for top matches): five of those steps left e2e (their seconds left apply.stepSeconds); the red-before replays the beta's measured seconds, so they stay here as they were measured.
+const MEASURED_THEN = {...apply.stepSeconds, 'Tailor CVs for top matches': 36.7, 'Open in Chrome on a form the night filled': 19.2, 'Apply on a saved job without a kit': 7.7, 'a silent Chrome in Standard automation': 40.1, 'each read verdict gives its own chip': 168};
 test('the guard sees the split the old weights made: a slice over the headroom', () => {
   const loads = sliceLoads(OLD_WEIGHTS, 3, MEASURED_THEN, SETUP_SECONDS);
   assert.ok(over(loads).length >= 1, `old split ${loads.map(load => load.toFixed(0)).join(' / ')} s`);

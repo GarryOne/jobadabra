@@ -10,7 +10,7 @@ import {stepSlicer} from '../lib/step-slices.mjs';
 import {tabGuard} from '../lib/tab-guard.mjs';
 import path from 'node:path';
 import {cvProblems, fillProblems, highlightProblems, leftProblems, notLeftProblems, submitProblems} from '../lib/applycheck.mjs';
-import {CHAIN, FORMS, HOSTS, LATE, SCRIPTED, SIGNIN, SIGNIN_REFUSED, SIGNUP, MENU_FIRST, MENU_AGAIN, PROPOSE, ONEPAGE} from '../lib/forms.mjs';
+import {FORMS, HOSTS, LATE, SIGNIN, SIGNIN_REFUSED, SIGNUP, MENU_FIRST, MENU_AGAIN} from '../lib/forms.mjs';
 import {formTab, launchBrowser, readForm, readPanel, fillState, fillNote} from '../lib/extension.mjs';
 import {waitForFill} from '../lib/fill-attempt.mjs';
 import {markedSession, sessionTabUrl} from '../../lib/session-tab.js';
@@ -21,7 +21,6 @@ import {livePosting, realKind, runLive} from '../lib/apply-live.mjs';
 import {runCvSteps} from '../lib/apply-cv-steps.mjs';
 import {runSilentChromeSteps} from '../lib/apply-silent-steps.mjs';
 import {runTriageSteps} from '../lib/apply-triage-steps.mjs';
-import {runTriageChipSteps} from '../lib/apply-triage-chip-steps.mjs';
 import {runReadSteps} from '../lib/apply-read-steps.mjs';
 import {runConfirmSteps} from '../lib/apply-confirm-steps.mjs';
 import {runTriageCancelSteps} from '../lib/apply-triage-cancel-steps.mjs';
@@ -52,10 +51,10 @@ export const stepSharded = true;   // its slices are steps, not recorded cases (
 // when a slice sits over the headroom of its budget; this table, without the steps that left e2e (1 Nov 2026: "Tailor CVs for top matches", 36.7 s, is integration/store/tailor-top-matches.test.mjs),
 // is what the gate (tools/e2e-reliability-check.mjs) sees as a re-cut.
 export const stepSeconds = {'a multi-step form': 16.2,
-  'Open in Chrome on a form the night filled': 19.2, 'the person submits a form': 30.3, 'a Greenhouse-like form': 20.8,
-  'Apply on a saved job without a kit': 7.7, 'a Workday-shaped form': 7.4, 'The hidden browser fills a form': 18,
-  'Full automation presses Submit once on its own': 109.2, 'a silent Chrome in Standard automation': 40.1, 'a silent Chrome in Full automation': 19, 'the app quits while Background automation holds a filled form': 24.7, 'the app quits in Full automation\'s wait': 24.2,
-  'each read verdict gives its own chip': 168, 'Stop on the card in Background automation': 18.3, 'Stop on the card in Full automation': 27.8,
+  'the person submits a form': 30.3, 'a Greenhouse-like form': 20.8,
+  'a Workday-shaped form': 7.4, 'The hidden browser fills a form': 18,
+  'Full automation presses Submit once on its own': 109.2, 'a silent Chrome in Full automation': 19, 'the app quits while Background automation holds a filled form': 24.7, 'the app quits in Full automation\'s wait': 24.2,
+  'Stop on the card in Background automation': 18.3, 'Stop on the card in Full automation': 27.8,
   'checking jobs before the form read exists': 1.3, 'the triage bar moves per real read': 125,
   'Background automation hands a bot check': 44.2, 'Full automation hands a bot check': 23.5, 'Background automation fills several queued jobs': 124.1,
   'Full automation presses each queued job': 68.9, 'Full automation asks once in Settings': 5.2, 'Full automation saved without its confirmation': 6.1};
@@ -68,9 +67,9 @@ export const engine = 'api';   // the form's open question is answered by the AI
 export const macos = 'release';   // a release, a gate and the night run it on a macOS runner (the real Chrome extension, opened through `open` as on a Mac); a PR's run on Linux (lib/plan.mjs runnerOf)
 // What a step needs from an earlier one when E2E_STEPS picks it (lib/runner.mjs wantedWords): every form step needs the applicant, the kits and the proxy's answers.
 const SETUP = 'the app has an applicant';
-export const stepNeeds = {'form': [SETUP], 'Tailor CV': [SETUP], 'tailored CV': [SETUP], 'without a kit': [SETUP],
-  'hidden browser fills a form': [SETUP], 'submits a form': [SETUP], 'Apply opens a new tab': [SETUP], 'side by side': [SETUP], 'sign-up page': [SETUP], 'sign-in page': [SETUP], 'Needs your attention" from': [SETUP], 'appears only when + is pressed': [SETUP], 'one page': [SETUP], 'tab is closed': [SETUP], 'second browser': [SETUP], 'wrong kind': [SETUP],
-  'each read verdict': [SETUP], 'the Jobs popup': [SETUP], 'queued job': [SETUP], 'checking jobs before': [SETUP],
+export const stepNeeds = {'form': [SETUP], 'Tailor CV': [SETUP], 'tailored CV': [SETUP],
+  'hidden browser fills a form': [SETUP], 'submits a form': [SETUP], 'sign-up page': [SETUP], 'sign-in page': [SETUP], 'appears only when + is pressed': [SETUP], 'wrong kind': [SETUP],
+  'the Jobs popup': [SETUP], 'queued job': [SETUP], 'checking jobs before': [SETUP],
   'the triage bar moves': [SETUP],
   'the app quits while': [SETUP], 'the app quits in': [SETUP],
   'Stop on the card': [SETUP]};
@@ -79,15 +78,14 @@ export const keepGoing = true;
 export const name = 'apply';
 
 
-// Parts of this file (6 Oct 2026, the 7-minute budget; the journeys split off on 8 Oct 2026): `apply` fills the forms and runs the tailored-CV and kitless-Apply
+// Parts of this file (6 Oct 2026, the 7-minute budget; the journeys split off on 8 Oct 2026): `apply` fills the forms and runs the tailored-CV
 // steps (moved here 9 Oct 2026: with them applycv ran over 7 minutes); `applyflows` (suites/applyflows.mjs) runs the journeys across pages and tabs (docs/flows/applying.md:
-// a posting that opens a new tab, two applications side by side, a sign-up before the form, account + form on one page, a closed tab, a wrong kind), which is how
+// a sign-up before the form, a sign-in, a menu worded differently, a form drawn late; the posting-that-opens-a-tab, side-by-side, one-page and closed-tab journeys moved to recorded pages and integration/app/session-*.test.js, R3, 1 Nov 2026), which is how
 // CI runs them within its 5 macOS jobs (test/apply-parts.test.mjs: each part in exactly one of them); `applyflows`
 // (suites/applyflows.mjs, manual) runs only the journeys, so the local scenario matrix runs forms and journeys in parallel. Each has its own Notion page and token.
 // The setup step and the final "Submit was never clicked" check run in all of them; each run seeds only the fixture jobs its steps use.
-const CV_STEPS = ['the form\'s panel offers a tailored CV', 'Apply on a saved job without a kit'];
-const FLOW_STEPS = ['a posting whose Apply opens a new tab', 'two applications side by side', 'a form drawn after a spinner', 'a sign-in page before the form', '"Needs your attention" from the extension', 'the account and the application on one page',
-  'the form tab is closed', 'a second browser with the extension'];
+const CV_STEPS = ['the form\'s panel offers a tailored CV'];
+const FLOW_STEPS = ['a form drawn after a spinner', 'a sign-in page before the form'];
 const SHARED_STEPS = ['the app is seeded', 'the app has an applicant', 'through all of it'];
 const LIVE_STEPS = ['a real posting, watched live'];
 export const partOf = name => (LIVE_STEPS.some(head => name.startsWith(head)) ? 'live' : SHARED_STEPS.some(head => name.startsWith(head)) ? 'both' : CV_STEPS.some(head => name.startsWith(head)) ? 'cv' : FLOW_STEPS.some(head => name.startsWith(head)) ? 'flows' : 'forms');
@@ -115,7 +113,7 @@ export async function runApply(ctx, parts) {
     return capped(name, fn, options);
   };
   // The jobs this part seeds: the journeys use their own fixtures, the forms and the CV steps the form fixtures.
-  const fixtures = [...(live ? [live] : []), ...(parts.some(part => !['flows', 'live'].includes(part)) ? Object.values(FORMS) : []), ...(parts.includes('flows') ? [CHAIN, SCRIPTED, LATE, SIGNUP, SIGNIN, SIGNIN_REFUSED, MENU_FIRST, MENU_AGAIN, PROPOSE, ONEPAGE] : [])];
+  const fixtures = [...(live ? [live] : []), ...(parts.some(part => !['flows', 'live'].includes(part)) ? Object.values(FORMS) : []), ...(parts.includes('flows') ? [LATE, SIGNUP, SIGNIN, SIGNIN_REFUSED, MENU_FIRST, MENU_AGAIN] : [])];
   const urls = fixtures.map(form => form.url);
   const cv = {name: 'cv.pdf', size: fs.statSync(path.join(ctx.profile, 'cv.pdf')).size};
 
@@ -215,33 +213,8 @@ export async function runApply(ctx, parts) {
     fail(leftProblems(panel.left, ['hear about us']));
   }, {safety: true, needs: ctx.needs});
 
-  // Ready to send's Open in Chrome (owner, 18 Oct 2026: "It should be all cached... instant"): the night's hand-off carries its page kind and AI answers; the app
-  // answers from them (lib/ready-handoff.js), so the extension fills with no page-kind ask and no question asked, and the panel says the fill is last night's.
-  await ctx.run('Open in Chrome on a form the night filled: the night\'s answer is typed, no page kind or question goes to the AI, and the panel says "Last night\'s fill is back"', async () => {
-    const form = FORMS.lever, night = 'From last night: your platform team runs what I have built for six years.';
-    const formUrl = `https://${form.host}${form.formPath}`;
-    await ctx.app.evaluate((_, given) => globalThis.__jpReadyHandoffs.keep(given, [given.posting]), {url: formUrl, posting: form.url, storage: {cookies: [], origins: []}, sessionStorage: {},
-      snapshot: {fields: [], files: []}, night: {role: 'form', answers: [{field: form.open.field, label: form.open.question, answer: {field: form.open.field, value: night, confidence: 'medium', note: ''}}]}});
-    const kinds = ctx.kindAsks || 0, answered = (ctx.answerAsks || []).length;
-    try {
-      const {tab, state} = await apply(form, {viaApi: true});
-      if (state.state === 'error') throw new Error(`the fill ended in an error: ${state.error}`);
-      const actual = await readForm(tab);
-      const problems = [];
-      if (actual[form.open.field]?.value !== night) problems.push(`the open question holds "${String(actual[form.open.field]?.value || '').slice(0, 60)}", not the night's answer`);
-      if ((ctx.kindAsks || 0) !== kinds) problems.push(`the page kind went to the AI ${(ctx.kindAsks || 0) - kinds} time(s): the night's kind was not used`);
-      const asked = (ctx.answerAsks || []).slice(answered);
-      if (asked.includes(form.open.field)) problems.push('the question the night answered went to the AI');
-      let said = '';
-      await until('the panel never showed last night\'s fill', async () => {
-        said = await tab.evaluate(() => document.getElementById('jobpilotto-review-host')?.shadowRoot?.querySelector('.pill small')?.textContent || '');
-        return /Last night.s fill is back/.test(said);
-      }, 10000);
-      if (!/Last night.s fill is back/.test(said)) problems.push(`the panel says "${said}", not "Last night's fill is back"`);
-      fail([...problems, ...submitProblems(forms.fired, form.path)]);
-      console.log(`  night's answer typed; page-kind asks ${(ctx.kindAsks || 0) - kinds}; questions asked: ${asked.join(', ') || 'none'}; panel: "${said}"`);
-    } finally { await ctx.app.evaluate(() => globalThis.__jpReadyHandoffs.clear()); }   // the later steps fill this form as any other
-  }, {needs: ctx.needs});
+  // Ready to send's Open in Chrome on a form the night filled (the night's answer typed, no page kind or question asked, "Last night's fill is back"): the recorded page night-fill-back-on-open-in-chrome-1
+  // and integration/app/session-night.test.js (moved 1 Nov 2026, R3).
 
   await ctx.run('a multi-step form: step 1 is filled, step 2 only once you reach it, the consent is left to you, Submit untouched', async () => {
     const form = FORMS.multistep;
@@ -306,7 +279,7 @@ export async function runApply(ctx, parts) {
   await runTriageSteps(ctx);   // lib/apply-triage-steps.mjs: the Jobs button's popup and the chips (spec 2026-10-30-apply-triage)
   await runReadSteps(ctx);   // lib/apply-read-steps.mjs: the Jobs button reads a fixture form in the hidden browser (spec 2026-10-30-apply-triage, C2a)
   await runTriageCancelSteps(ctx, {urls});
-  await runTriageChipSteps(ctx, {urls});   // lib/apply-triage-chip-steps.mjs: every reachable verdict and the renderer's chip words
+  // Every read verdict's chip on Jobs after a Check: integration/app/screen-apply-triage.test.js (moved 1 Nov 2026, R3). The real read in the hidden browser stays above (runReadSteps, a safety step).
 
   await ctx.run('through all of it: Submit was never clicked or submitted, and no host but the fixture job sites was contacted', async () => {
     fail(submitProblems(forms.fired, ''));

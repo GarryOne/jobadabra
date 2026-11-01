@@ -104,6 +104,9 @@ export async function judgePhase(item, scope) {
     valueIs: spec => page().evaluate(([css, text]) => (document.querySelector(css)?.value || '').trim() === text, spec.split('|')).catch(() => false),
     // panelHas: ["<text>"]: the extension's panel shows a visible button with exactly that text (its own open shadow root, which a page selector cannot reach).
     panelHas: text => page().evaluate(want => [...(document.getElementById('jobpilotto-review-host')?.shadowRoot?.querySelectorAll('button') || [])].some(button => button.textContent.trim() === want && button.getClientRects().length > 0), text).catch(() => false),
+    // reviewSays: ["<key>|<value>", ...]: ONE report the extension sent the app on /extension/review carries every pair (JSON values compared as text: "role|form", "account|true"). Unlike `told` it reads
+    // only that route, so a word the page's other requests also carry cannot satisfy it (R3, 1 Nov 2026: the one-page form's role next to the panel's raw password-box flag).
+    reviewSays: spec => { const pairs = [].concat(spec).map(one => one.split('|')); return mine().some(request => { if (request.route !== '/extension/review') return false; try { const body = JSON.parse(request.body); return pairs.every(([key, value]) => String(body[key]) === value); } catch { return false; } }); },
     gone: selector => page().evaluate(css => !document.querySelector(css)?.getClientRects().length, selector).catch(() => false),
     present: selector => page().evaluate(css => !!document.querySelector(css), selector).catch(() => false),
     // panelSays: ["<text>"]: the extension's panel (its own open shadow root) shows that text in a visible element (a warning line, a count; a hidden line does not count).

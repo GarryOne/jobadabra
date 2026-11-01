@@ -1,20 +1,19 @@
 /* global document, window, location */
-// The apply suite's journey steps (moved out of suites/apply.mjs, 8 Oct 2026): a posting that opens a tab, side-by-side applications, one page, a closed form tab, a wrong page kind. Guards the flows in docs/flows/applying.md.
+// The apply suite's journey steps (moved out of suites/apply.mjs, 8 Oct 2026): a form drawn late and the sign-in pages. The posting that opens a tab, side-by-side applications, "Needs your attention", the account and the application on one page, a closed form tab and a second browser moved to recorded pages and integration/app/session-*.test.js (R3, 1 Nov 2026). Guards the flows in docs/flows/applying.md.
 // Job: run the backbone
-import {CHAIN, LATE, NOTICE_CHOICES, ONEPAGE, PROPOSE, SCRIPTED, SIGNIN, SIGNIN_PASSWORD, SIGNIN_REFUSED} from './forms.mjs';
+import {LATE, SIGNIN, SIGNIN_PASSWORD, SIGNIN_REFUSED} from './forms.mjs';
 import {CONTACT, pause} from './apply-fixtures.mjs';
-import {appLogText, pollSessions} from './app-log.mjs';
-import {cvProblems, fillProblems, submitProblems} from './applycheck.mjs';
+import {pollSessions} from './app-log.mjs';
+import {submitProblems} from './applycheck.mjs';
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
-import {fillNote, fillSettled, fillState, launchBrowser, readForm} from './extension.mjs';
+import {fillNote, fillSettled, fillState, readForm} from './extension.mjs';
 import {writePrivate} from '../../lib/private-file.js';
-import {extensionDecisions, pollUntil, stepTimeLeft, waitCapNote, waitForDecisions, waitForFormValue, waitForStage, waitJobFormClosed} from './wait-on-state.mjs';
+import {extensionDecisions, pollUntil, stepTimeLeft, waitCapNote, waitForDecisions, waitForFormValue, waitForStage} from './wait-on-state.mjs';
 import {boxesOf, missedPressNote} from './account-press.mjs';
 
 export async function runJourneys(ctx, h) {
-  const {cv, dumpExtension, fail, forms, page} = h;
+  const {dumpExtension, fail, forms, page} = h;
   const tabsSeen = () => ctx.browser.context.pages().map(item => item.url().split('#')[0]);
   const arrived = async (read, what, lastSeen = tabsSeen) => {
     const {value, ms} = await pollUntil(read, Boolean, {capMs: stepTimeLeft()});
@@ -30,65 +29,6 @@ export async function runJourneys(ctx, h) {
     if (value?.state !== 'done') throw new Error(fillNote(value, ms / 1000, {pageKinds}));
     return value;
   };
-  // Found by asking "can the extension follow a journey from one tab to another?" (3 Oct 2026): a posting whose Apply opens a NEW tab (since 8 Oct 2026
-  // loaded in the posting's own tab instead, extension/same-tab.js), whose page has only a
-  // "To apply" link, and only then the form (jobs.ch -> an agency's own site). The extension must press Apply, follow the new tab as the same application, press
-  // "To apply" in it, and fill the form it reaches; Submit untouched.
-  await ctx.run('a posting whose Apply opens a new tab, then a "To apply" step, then the form: the journey is followed and the form filled', async () => {
-    const opened = ctx.browser.opened.length;
-    await page.click('.nav[data-view="jobs"]');
-    await page.locator('article.job-row').filter({hasText: CHAIN.company}).first().locator('.row-main').click();
-    for (let waited = 0; ctx.browser.opened.length === opened && waited < 30000; waited += 250) await pause(250);
-    if (ctx.browser.opened.length === opened) throw new Error('Apply did not open the posting in the browser');
-    const tab = await arrived(() => ctx.browser.context.pages().find(item => item.url().startsWith(CHAIN.formUrl)), 'the wait for the journey form');
-    // The form page answers only to the step's POST: "session expired" means the posted data was dropped (the address loaded again).
-    for (let waited = 0; waited < 10000 && !(await tab.locator('#application_form, form input').count().catch(() => 0)); waited += 500) await pause(500);
-    if (await tab.locator('#expired').count().catch(() => 0)) throw new Error('"To apply" posts its form into a new tab, and the form page said "session expired": the posted data was lost on the way to one tab');
-    // One tab for the whole journey (owner, 8 Oct 2026): the page Apply opened in a new tab loads in the posting's own tab, and the new tab closes.
-    const journey = ctx.browser.context.pages().filter(item => [CHAIN.url, CHAIN.stepUrl, CHAIN.formUrl].some(url => item.url().startsWith(url.split('#')[0])));
-    if (journey.length !== 1) throw new Error(`the journey was in ${journey.length} tabs, not one: ${journey.map(item => item.url().split('#')[0]).join(' | ')}`);
-    await filled(tab);
-    const actual = await readForm(tab);
-    fail([...fillProblems({expected: {first_name: CONTACT.first_name, last_name: CONTACT.last_name, email: CONTACT.email, question_3001: '7'}, actual}), ...cvProblems(actual, cv),
-      ...submitProblems(forms.fired, CHAIN.path), ...submitProblems(forms.fired, CHAIN.formPath)]);
-    // Floating labels: a filled field was left like a person leaves it (focus, then blur), so the site moved its label out of the way.
-    const stuckLabels = await tab.evaluate(() => ['first_name', 'last_name', 'email', 'question_3001'].filter(id => !document.querySelector(`label[for=${id}]`)?.classList.contains('up')));
-    if (stuckLabels.length) throw new Error(`filled, but the site never saw the field being left (its floating label stayed over the value): ${stuckLabels.join(', ')}`);
-    // "Let Claude finish this page" only when Claude is ready and the extension is stuck (owner, 9-10 Oct 2026): this form was filled, so the panel must not offer it.
-    // The stuck case: worker/test/extension-files.test.js, desktop/test/panel-claude.test.js and the twin.
-    const offered = await tab.evaluate(() => { const offer = document.getElementById('jobpilotto-review-host')?.shadowRoot?.querySelector('.claude-offer'); return !!offer && !offer.hidden; });
-    if (offered) throw new Error('the panel offers Claude on a filled form (nothing is stuck)');
-  }, {needs: ctx.needs});
-
-  // Two applications side by side (8 Oct 2026: Coop and Manor started seconds apart; Migros's sign-in page showed on Manor's card). SCRIPTED's Apply opens its
-  // form from the page's own script (nothing to point at the same tab: the new tab is followed, the posting closes); CHAIN's goes link → posted form. Started
-  // 2 s apart, each ends in one tab, filled from its OWN kit (9 vs 7: a form credited to the other job shows the wrong number).
-  await ctx.run('two applications side by side, one whose Apply opens its form from script: each keeps one tab and its own kit', async () => {
-    for (const item of ctx.browser.context.pages()) if ([CHAIN.url, CHAIN.stepUrl, CHAIN.formUrl, SCRIPTED.url, SCRIPTED.formUrl].some(url => item.url().startsWith(url))) await item.close();   // an earlier step's tabs
-    // Apply's own call (the row's button, which on a job already applying in an earlier step only opens its session): both start here.
-    const apply = job => page.evaluate(([url, details]) => window.pilot.applyOne(url, details), [job.url, {title: job.title, company: job.company}]);
-    await apply(SCRIPTED);
-    await pause(2000);
-    await apply(CHAIN);
-    const find = url => ctx.browser.context.pages().find(item => item.url().startsWith(url)) || null;
-    const [scripted, chain] = await arrived(() => {
-      const pair = [find(SCRIPTED.formUrl), find(CHAIN.formUrl)];
-      return pair.every(Boolean) ? pair : null;
-    }, 'the wait for both application forms');
-    const seen = () => tabsSeen().join(' | ');
-    const tabsOf = urls => ctx.browser.context.pages().filter(item => urls.some(url => item.url().startsWith(url))).length;
-    for (let waited = 0; waited < 10000 && tabsOf([SCRIPTED.url, SCRIPTED.formUrl]) > 1; waited += 500) await pause(500);   // the posting closes once its new tab is followed
-    const problems = [];
-    if (tabsOf([SCRIPTED.url, SCRIPTED.formUrl]) !== 1) problems.push(`the scripted application is in ${tabsOf([SCRIPTED.url, SCRIPTED.formUrl])} tabs, not one: ${seen()}`);
-    if (tabsOf([CHAIN.url, CHAIN.stepUrl, CHAIN.formUrl]) !== 1) problems.push(`the chain application is in ${tabsOf([CHAIN.url, CHAIN.stepUrl, CHAIN.formUrl])} tabs, not one: ${seen()}`);
-    for (const [tab, job, answer] of [[scripted, SCRIPTED, '9'], [chain, CHAIN, '7']]) {
-      await filled(tab);
-      const {value, ms} = await waitForFormValue(async () => { const read = (await readForm(tab)).question_3001; return String(read?.value ?? read ?? ''); }, answer);
-      if (value !== answer) problems.push(`${job.company}: Kubernetes years "${value}" after waiting ${ms} ms, its own kit says ${answer}${value === (answer === '9' ? '7' : '9') ? ' (the other job\'s kit)' : ''}`);
-    }
-    fail(problems);
-  }, {needs: ctx.needs});
-
   // A form drawn late (9 Oct 2026, SuccessFactors after a sign-in): judged while empty it reads as a posting whose "Apply" is the form's own submit span.
   // That is never pressed; once the fields come the page is looked at again (fill-flow.js watchForFields) and filled, with the panel on it.
   await ctx.run('a form drawn after a spinner: its submit is never pressed as Apply, and it is filled once its fields come', async () => {
@@ -206,127 +146,4 @@ export async function runJourneys(ctx, h) {
 
   // Why (1 Nov 2026, owner as above): 'a menu whose choices are not the answer's words' (J15, Tier 2) is two integration tests in the same file (the pick, the remembered choice); remembering is desktop/test/menu-choices.test.js.
 
-  // "Needs your attention" fed by the extension's fill (owner, 8 Oct 2026: "we had this, it got overwritten"): the kit says "3 months", the menu offers none that
-  // means it. The fill leaves it and proposes it; the session page lists the field with the proposal and the form's own choices; the person picks one and presses
-  // Use; the form gets it through the extension, and the row says it is filled. Producer parity: the rows once came only from Claude's message.
-  await ctx.run('"Needs your attention" from the extension\'s fill: the left menu is listed with its proposal and choices, and Use fills the form', async () => {
-    const problems = [];
-    await page.evaluate(([url, details]) => window.pilot.applyOne(url, details), [PROPOSE.url, {title: PROPOSE.title, company: PROPOSE.company}]);
-    const tab = await arrived(() => ctx.browser.context.pages().find(item => item.url().startsWith(PROPOSE.url)), 'the wait for the notice-period form');
-    await filled(tab);
-    if (await tab.locator('#notice_period').inputValue() !== '') problems.push(`the fill put "${await tab.locator('#notice_period').inputValue()}" in a menu where no choice means "3 months"`);
-    await page.click('.nav[data-view="sessions"]');
-    await page.locator('.view[data-view="sessions"]').getByText(PROPOSE.company).first().click({timeout: 15000}).catch(() => { throw new Error(`no session for ${PROPOSE.company} on the Sessions page`); });
-    const row = page.locator('li.ss-need').filter({hasText: 'Notice period'}).first();
-    await row.waitFor({state: 'visible', timeout: 30000}).catch(async () => {
-      throw new Error(`"Needs your attention" does not list Notice period (rows: ${(await page.locator('li.ss-need').allInnerTexts().catch(() => [])).map(text => text.replace(/\s+/g, ' ').slice(0, 60)).join(' | ') || 'none'})`);
-    });
-    const choice = row.locator('select.ss-ask-input');
-    // The row is drawn first and its menu a moment after (Windows, run 910: the check ran 0.7 s after the fill ended); a row that never gets one is the lost proposal.
-    await choice.first().waitFor({state: 'attached', timeout: 15000}).catch(() => {});
-    if (!await choice.count()) problems.push('the row has no menu of the form\'s choices (a bare row: the proposal was lost)');
-    else {
-      const offered = (await choice.locator('option').allInnerTexts()).filter(Boolean);   // read before Use: the row leaves once the form has the answer
-      if (NOTICE_CHOICES.some(option => !offered.includes(option))) problems.push(`the row offers ${offered.join(', ')}; the form's choices are ${NOTICE_CHOICES.join(', ')}`);
-      if (!/3 months/.test(await row.innerText({timeout: 5000}))) problems.push('the row does not say what the kit proposed ("3 months")');
-      await choice.selectOption('2 months', {timeout: 5000});
-      await row.getByRole('button', {name: 'Use'}).click({timeout: 5000});
-      let value = '';
-      for (let waited = 0; waited < 15000 && value !== '2 months'; waited += 500) { value = await tab.locator('#notice_period').inputValue().catch(() => ''); await pause(500); }
-      if (value !== '2 months') problems.push(`after Use the form's Notice period is "${value}", not the "2 months" picked in the app`);
-      // Then the row says it is filled, or leaves the list once the form reports the field filled (the session's count says all required fields are in).
-      let said = '', gone = false;
-      for (let waited = 0; waited < 15000 && !gone && !/Filled in the form/.test(said); waited += 500) {
-        const rows = page.locator('li.ss-need').filter({hasText: 'Notice period'});
-        gone = !(await rows.count());
-        said = gone ? '' : await rows.first().innerText({timeout: 1000}).catch(() => '');
-        await pause(500);
-      }
-      if (!gone && !/Filled in the form/.test(said)) problems.push(`after Use the row neither says it is filled nor leaves the list ("${said.replace(/\s+/g, ' ').slice(0, 120)}")`);
-    }
-    if (String((await readForm(tab)).question_3001?.value ?? '') !== '7') problems.push('Kubernetes years is not the kit\'s 7');
-    fail([...problems, ...submitProblems(forms.fired, PROPOSE.path)]);
-  }, {needs: ctx.needs});
-
-  // The account and the application on one page (Coop, 8 Oct 2026): a CV upload says it is the application. It is filled from the kit, the session is at the
-  // form step, and its password boxes are never counted as questions the fill missed.
-  await ctx.run('the account and the application on one page: it is the application form, its passwords stay account fields', async () => {
-    await page.evaluate(([url, details]) => window.pilot.applyOne(url, details), [ONEPAGE.url, {title: ONEPAGE.title, company: ONEPAGE.company}]);
-    const tab = await arrived(() => ctx.browser.context.pages().find(item => item.url().startsWith(ONEPAGE.url)), 'the wait for the one-page form');
-    await filled(tab, ['account']);
-    const problems = [];
-    {
-      const actual = await readForm(tab);
-      const value = id => String(actual[id]?.value ?? actual[id] ?? '');
-      if (value('first_name') !== CONTACT.first_name) problems.push(`first name "${value('first_name')}", expected ${CONTACT.first_name}`);
-      if (value('question_3001') !== '3') problems.push(`Kubernetes years "${value('question_3001')}", its kit says 3`);
-    }
-    const sessionNow = async () => (await page.evaluate(() => window.pilot.sessions())).find(item => String(item.url || '').replace(/\/$/, '') === ONEPAGE.url) || null;
-    const {value: at} = await waitForStage(sessionNow, value => value?.stage === 'form');
-    if (at?.stage !== 'form') problems.push(`the session is not at the form step (stage: ${at?.stage}, stuck: ${at?.stuck}): this page is the application`);
-    // The page's kind came from the AI (the stand-in), not the structure rule: the path every install takes when it has AI.
-    if (!/page kind: account-form/.test((await waitForDecisions(() => extensionDecisions(ctx), [/page kind: account-form/])).value)) problems.push('the one-page form\'s kind never came from the AI ("page kind: account-form" missing in the extension\'s decisions)');
-    fail(problems);
-  }, {needs: ctx.needs});
-
-  // The form tab closed (owner, 8 Oct 2026): the app sees it, and Reopen opens the form again with the fill mark, for the same session, filled again.
-  await ctx.run('the form tab is closed: the app sees it and Reopen opens the form again, filled, for the same session', async () => {
-    for (const item of ctx.browser.context.pages()) if (item.url().startsWith(ONEPAGE.url)) await item.close();   // an earlier step's tab of the same job
-    await waitJobFormClosed(page, ONEPAGE.url);
-    await page.evaluate(([url, details]) => window.pilot.applyOne(url, details), [ONEPAGE.url, {title: ONEPAGE.title, company: ONEPAGE.company}]);
-    const tabOf = () => ctx.browser.context.pages().find(item => item.url().startsWith(ONEPAGE.url)) || null;
-    // Why (28 Oct 2026, beta 2, Mac applyflows): a missing tab needs both the browser's list and the app's report.
-    const tab = await arrived(tabOf, 'the wait for the form page', async () => ({tabs: tabsSeen(), formsOpen: await page.evaluate(() => window.pilot.formsOpen()).catch(() => null)}));
-    await filled(tab);
-    const session = (await page.evaluate(() => window.pilot.sessions())).find(item => String(item.url || '').replace(/\/$/, '') === ONEPAGE.url);
-    if (!session) throw new Error('no session for the job');
-    await tab.close();
-    let forms = null;
-    for (let waited = 0; waited < 45000; waited += 1000) { forms = await page.evaluate(() => window.pilot.formsOpen()); if (forms?.known && !forms.ids.includes(session.id)) break; await pause(1000); }
-    const problems = [];
-    if (!forms?.known || forms.ids.includes(session.id)) problems.push(`the app never saw the tab closed (forms open: ${JSON.stringify(forms)})`);
-    const reopened = await page.evaluate(id => window.pilot.sessionReopen(id, false), session.id);
-    if (!reopened?.ok) problems.push(`Reopen failed: ${JSON.stringify(reopened)}`);
-    const again = await arrived(tabOf, 'the wait for the reopened form');
-    {
-      if (!again.url().includes('jobpilotto-fill')) problems.push(`the reopened tab has no fill mark: ${again.url()}`);
-      await filled(again);
-      const after = (await page.evaluate(() => window.pilot.sessions())).filter(item => String(item.url || '').replace(/\/$/, '') === ONEPAGE.url);
-      if (after.length !== 1 || after[0].id !== session.id) problems.push(`the reopened form is not the same session (${after.map(item => item.id).join(', ')} vs ${session.id})`);
-    }
-    fail(problems);
-  }, {needs: ctx.needs});
-
-  // A second browser with the extension (8 Oct 2026: a test Chrome paired to the owner's app reported no tabs every few seconds, and the owner's open
-  // Coop form flipped to "Form closed"). Each browser says what IT has open: a second one with no tabs never closes the first one's form.
-  await ctx.run('a second browser with the extension and no tabs: the form open in the first stays open', async () => {
-    for (const item of ctx.browser.context.pages()) if (item.url().startsWith(ONEPAGE.url)) await item.close();   // an earlier step's tab of the same job
-    await waitJobFormClosed(page, ONEPAGE.url);
-    await page.evaluate(([url, details]) => window.pilot.applyOne(url, details), [ONEPAGE.url, {title: ONEPAGE.title, company: ONEPAGE.company}]);
-    await arrived(() => ctx.browser.context.pages().find(item => item.url().startsWith(ONEPAGE.url)), 'the wait for the one-page form');
-    const session = (await page.evaluate(() => window.pilot.sessions())).find(item => String(item.url || '').replace(/\/$/, '') === ONEPAGE.url);
-    if (!session) throw new Error('no session for the job');
-    const openNow = async () => { const forms = await page.evaluate(() => window.pilot.formsOpen()); return forms?.known && forms.ids.includes(session.id); };
-    let open = false;
-    for (let waited = 0; waited < 60000 && !open; waited += 1000) { open = await openNow(); await pause(1000); }
-    if (!open) throw new Error('the app never saw the form open in the first browser (nothing to protect: the row proves nothing)');
-    const before = appLogText(ctx.profile).length;
-    const spool = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-e2e-second-spool-'));   // its own: the app's `open` still goes to the first browser
-    const second = await launchBrowser({port: forms.port, spool, extensionDir: ctx.extensionDir});
-    const problems = [];
-    try {
-      await second.serviceWorker();
-      // Proof the second browser reached the app (its own report), then one full report cycle after it (its reports come every 30 s, extension/tab-report.js):
-      // its second empty report lands inside the window. 35 s, not the minute it was (13 Oct 2026: 79 s, a third of applycv's steps); the two-browser logic
-      // itself is desktop/test/tab-identity.test.js's matrix.
-      let reached = false;
-      for (let waited = 0; waited < 60000 && !reached; waited += 1000) { reached = /another browser run reports its tabs/.test(appLogText(ctx.profile).slice(before)); await pause(1000); }
-      if (!reached) problems.push('the second browser never reported its tabs to the app ("another browser run reports its tabs" missing): the row proves nothing');
-      for (let waited = 0; reached && waited < 35000; waited += 2000) {
-        if (!(await openNow())) { problems.push(`the form was shown closed after the second browser reported (${Math.round(waited / 1000)} s in)`); break; }
-        await pause(2000);
-      }
-    } finally { await second.close(); fs.rmSync(spool, {recursive: true, force: true}); }
-    fail(problems);
-  }, {needs: ctx.needs});
 }

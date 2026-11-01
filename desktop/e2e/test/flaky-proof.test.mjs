@@ -93,9 +93,9 @@ async function journeyFailure(t, {head, showTab = true, state = null, immediate 
   return failure.message;
 }
 
-// Replay both incident situations through their producers; G5 reads only the new cap messages.
+// Replay the incident situation through its producer; G5 reads only the new cap messages.
+// Why (1 Nov 2026, R3): the one-page journey step left e2e (recorded page account-and-application-one-page-1), so its replays are the messages that step produced, fed to the classifier as they were.
 for (const [head, showTab] of [
-  ['the account and the application on one page', true],
   ['a form drawn after a spinner', false],
 ]) test(`a stalled journey reports timing without fallout: ${head}`, async t => {
   const message = await journeyFailure(t, {head, showTab});
@@ -104,17 +104,12 @@ for (const [head, showTab] of [
   assert.doesNotMatch(message, /first name ""|Kubernetes years ""/);
 });
 
-for (const state of ['done', 'error', 'stopped']) test(`a reported ${state} stays a wrong value`, async t => {
-  const message = await journeyFailure(t, {head: 'the account and the application on one page', state: {state}});
-  if (state === 'done') assert.match(message, /first name "", expected Ada; Kubernetes years "", its kit says 3; the session is not at the form step/);
-  else assert.equal(message, `state: {"state":"${state}"}`);
-  assert.equal(flakyProof(message).flaky, false);
-});
-
-test('a closed tab fails immediately and is a wrong value, never timing', async t => {
-  const state = {state: 'unreadable', closed: true, error: 'Target page has been closed'};
-  const message = await journeyFailure(t, {head: 'the account and the application on one page', state, immediate: true});
-  assert.equal(message, `state: ${JSON.stringify(state)}`);
+for (const [name, message] of [
+  ['done', 'first name "", expected Ada; Kubernetes years "", its kit says 3; the session is not at the form step'],
+  ['error', 'state: {"state":"error"}'],
+  ['stopped', 'state: {"state":"stopped"}'],
+  ['a closed tab', `state: ${JSON.stringify({state: 'unreadable', closed: true, error: 'Target page has been closed'})}`],
+]) test(`a reported ${name} stays a wrong value, never timing`, () => {
   assert.equal(flakyProof(message).flaky, false);
 });
 

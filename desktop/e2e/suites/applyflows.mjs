@@ -1,6 +1,5 @@
-// The journeys half of the apply suite (docs/flows/applying.md): a posting whose Apply opens a new tab, then a "To apply" step; two applications side by side; a sign-up
-// and a sign-in before the form; menus worded differently; an upload slot behind +; collapsed sections; the account and the application on one page; a closed form tab;
-// a second browser; a wrong page kind; "I submitted it". `apply` runs the single forms and the tailored CV. One suite everywhere (13 Oct 2026: it was two copies, applycv
+// The journeys half of the apply suite (docs/flows/applying.md): a form drawn late; a sign-up and a sign-in before the form; menus worded differently. The posting that opens a new tab,
+// side-by-side applications, the account and the application on one page, a closed form tab and a second browser moved to recorded pages and integration/app/session-*.test.js (R3, 1 Nov 2026). `apply` runs the single forms and the tailored CV. One suite everywhere (13 Oct 2026: it was two copies, applycv
 // on CI and applyflows on the Mac, with the same steps): the proxy replays the app's AI answers; each step waits on state with a measured hang cap, without an aggregate budget.
 //     `npm run live` (LIVE=1): the live run on a real posting instead of the journeys, on this Mac's Claude Code (lib/engine.mjs flowsEngine; LIVE_ENGINE overrides).
 // Fixture journeys pin SQLite for stored answers; they need no Notion secret.

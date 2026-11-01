@@ -1,4 +1,4 @@
-/* global window, document, performance */
+/* global window, document */
 // The apply suite's silent-Chrome steps, one per apply mode (Standard, Background and Full automation: renderer/apply-settings-model.js MODES): what an Applying card says and offers when the app
 // cannot hear Chrome. Why (30 Oct 2026, owner's demo: "I was not able to open the tab in Chrome on the applying… the cards in applying are just stuck in Checking"): a leaked test app held the
 // app's port for 27 h and no suite played a silent Chrome. Every wait is on a state the card shows; the window's clock is moved on, never waited out (CHECK_MS 45 s, WAIT_MS 60 s).
@@ -73,57 +73,9 @@ const readCard = page => page.evaluate(() => {
   return {title: text('#ss-next-title'), question: text('#ss-question'), buttons: [...document.querySelectorAll('#ss-actions button')].map(button => button.innerText.replace(/\s+/g, ' ').trim()).filter(Boolean)};
 });
 const rowPill = (page, form) => page.locator('#ss-list .ss-row').filter({hasText: form.company}).filter({hasText: form.title}).first().innerText().then(text => text.replace(/\s+/g, ' ')).catch(() => '');
-/** Moves the window's clock on, so the app's 45 s look and 60 s wait at Chrome are over at once (renderer/session-state.js CHECK_MS, WAIT_MS). */
-const clockOn = (page, ms) => page.evaluate(by => { const real = performance.now.bind(performance); performance.now = () => real() + by; }, ms);
-
 /** Throws when a step's port or the harness's app port is the production one (47111): no step here may touch the owner's app. */
 function assertOwnPort(ctx, port) {
   if (port === PRODUCTION_PORT || String(ctx.appPort) === String(PRODUCTION_PORT)) throw new Error('a silent-Chrome step must never use the production port 47111');
-}
-
-const STUCK = /Checking|Chrome isn't reporting|Tab not found|Waiting for Chrome/i;
-
-/** The Standard-automation step (the Chrome path): the app can't hear Chrome, then Chrome is silent. */
-async function standardStep(ctx, form, id) {
-  const mode = MODES.find(one => one.runner === 'chrome');
-  const kept = savedApply(ctx.profile);
-  try {
-    const held = await holdPort();
-    try {
-      assertOwnPort(ctx, held.port);
-      await ctx.relaunch({JOB_PILOTTO_PORT: String(held.port)}, profile => seedProfile(profile, mode.id, form, id));
-      await until(`the app did not say it cannot open port ${held.port}`, () => appLogText(ctx.profile).includes(`connection off: port ${held.port} is used by another program`), 30000);
-      await openCard(ctx.page, form, id);
-      // Link off: said at once, never the 45 s "Checking" guess.
-      const off = await until('the card did not say the app can\'t hear Chrome', async () => { const card = await readCard(ctx.page); return /can't hear Chrome/i.test(card.title) ? card : null; }, 30000);
-      if (!/Connection off/i.test(await rowPill(ctx.page, form))) throw new Error(`the session's list pill does not say "Connection off": "${await rowPill(ctx.page, form)}"`);
-      if (off.buttons.length) throw new Error(`a card whose cause is the app's own socket offers ${off.buttons.join(', ')}: none of them can help`);
-      // Port free again: the app's retry opens it; Chrome still reports elsewhere, so the app is listening but hears nothing.
-      await held.release();
-      await until('the app did not take its port again', () => /connection back: port/.test(appLogText(ctx.profile)), 30000);
-      // Why (30 Oct 2026, beta 41078746088): the clock moves only once the card has redrawn for the free port (the window's 2 s poll); moved before that redraw, the redraw itself read the moved clock
-      // (green on Linux), moved after it, nothing redrew the card (red on macOS). Then the card must move on by itself within a few 2 s ticks: a 30 s wait let the one-shot CHECK_MS redraw pass it by luck.
-      await until('the card still said the app can\'t hear Chrome after the port was free', async () => { const card = await readCard(ctx.page); return card.title && !/can't hear Chrome/i.test(card.title) ? card : null; }, 10000);
-      await clockOn(ctx.page, 70000);
-      const silent = await until('the card did not say Chrome isn\'t reporting by itself', async () => { const card = await readCard(ctx.page); return /Chrome isn't reporting/i.test(card.title) ? card : null; }, 10000);
-      if (silent.buttons[0] !== 'Open it again') throw new Error(`the first button of the silent card is "${silent.buttons[0]}", not "Open it again" (buttons: ${silent.buttons.join(', ')})`);
-      // Why (30 Oct 2026, #2586): the harness browser takes each page the app opens out of the opener's spool within milliseconds (lib/extension.mjs watcher), so a poll of the spool races it (2 of 4 runs missed the page). The app's own log line for the open stays.
-    const opens = () => appLogText(ctx.profile).split('\n').filter(line => line.includes('[apply] opened the form tab') && line.includes(`"session":"${id}"`));
-    const before = opens().length;
-    await ctx.page.locator('#ss-actions button', {hasText: 'Open it again'}).click();
-    const job = await until('Open it again opened no job tab', () => opens()[before] || null, 30000);
-    if (!job.includes(`"host":"${new URL(form.url).hostname}"`)) throw new Error(`Open it again opened another page than the job ${form.url}: ${job}`);
-    } finally { await held.release().catch(() => {}); }
-    // Chrome's extension reports to the app again (the app on its own port): the card gives a verdict and an action, never the silent state or the first-look wait for ever.
-    await ctx.relaunch({JOB_PILOTTO_PORT: String(ctx.appPort)});
-    await openCard(ctx.page, form, id);
-    await clockOn(ctx.page, 70000);
-    const settled = await until('the card is still silent or checking after Chrome reported', async () => { const card = await readCard(ctx.page); return card.title && !STUCK.test(card.title) || (/Tab not found/i.test(card.title) && card.buttons.includes('Open it again')) ? card : null; }, 90000);
-    console.log(`  after Chrome reported: "${settled.title}" · ${settled.buttons.join(' | ')}`);
-  } finally {
-    // The steps after this one run on the harness's own port and the person's saved mode, never the one this step seeded; also when it failed.
-    await ctx.relaunch({JOB_PILOTTO_PORT: String(ctx.appPort)}, profile => restoreApply(profile, kept, id)).catch(error => console.log(`  could not put the app back: ${error.message}`));
-  }
 }
 
 /** A hidden-browser mode's step (Background, Full): a queued job whose link is off says why. */
@@ -159,7 +111,7 @@ export async function runSilentChromeSteps(ctx) {
   const missing = MODES.filter(mode => !STEPPED.includes(mode.id)).map(mode => mode.id);
   if (missing.length) throw new Error(`apply mode(s) ${missing.join(', ')} have no silent-Chrome step: add one in lib/apply-silent-steps.mjs`);
   const mode = id => MODES.find(one => one.id === id);
-  await ctx.run('a silent Chrome in Standard automation: the card says the app can\'t hear Chrome at once, then asks for Chrome, and Open it again opens the job (not the extension\'s settings)', () => standardStep(ctx, form, 'silent-check'), {needs: ctx.needs});
+  // Standard automation (the person's Chrome): integration/app/screen-apply-silent.test.js (moved 1 Nov 2026, R3); 'check' stays in STEPPED so a new mode still fails here.
   // Background automation, a queued hidden-browser job whose link is off: integration/app/screen-apply.test.js (moved 1 Nov 2026); 'fill' stays in STEPPED so a new mode still fails here.
   await ctx.run('a silent Chrome in Full automation: a queued hidden-browser job says why it waits when the app\'s link is off, and never talks of the person\'s Chrome; nothing is submitted', () => hiddenStep(ctx, form, 'silent-auto', mode('auto')), {safety: true, needs: hidden});
 }

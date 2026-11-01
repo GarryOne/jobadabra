@@ -44,6 +44,15 @@ test('(a) in a beta every tier 2 step is skipped, says why in one line, and is n
   }
 });
 
+test('(a2) a tier 2 step marked safety or data still runs in a beta (the J8 Tailor CV write is a data step), once: no retry (Gitar on #2807)', async () => {
+  for (const options of [{data: true}, {safety: true}]) {
+    const {result, calls, lines} = await play(true, tier2[0].suite, nameOf(tier2[0]), options);
+    assert.equal(calls, 1, JSON.stringify(options));
+    assert.equal(result.status, 'failed');
+    assert.ok(!lines.some(line => line.includes('not in the beta')));
+  }
+});
+
 test('(b) outside a beta (PR, main, night, by hand) the same tier 2 steps run as today', async () => {
   for (const entry of tier2) {
     const {result, calls, lines} = await play(false, entry.suite, nameOf(entry));

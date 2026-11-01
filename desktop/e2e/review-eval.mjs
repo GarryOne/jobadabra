@@ -56,7 +56,7 @@ const cases = issues.map(issue => ({number: issue.number, resolution: label(issu
   found: (issue.body?.match(/### What was found\n+([\s\S]*?)\n###/)?.[1] || '').trim().slice(0, 600)}))
   .filter(item => ['resolution:fixed', ...FALSE_ALARMS].includes(item.resolution) && item.view && item.png).slice(0, LIMIT);
 const lessons = LESSONS === 'off' ? [] : await fetchLessons({repo: REPO, token});
-console.log(`${cases.length} labelled screenshots (${cases.filter(c => c.resolution === 'resolution:fixed').length} fixed, ${cases.filter(c => FALSE_ALARMS.includes(c.resolution)).length} by design), ${lessons.length} lessons, models: ${MODELS.join(', ')}`);
+console.log(`${cases.length} labelled screenshots (${cases.filter(c => c.resolution === 'resolution:fixed').length} fixed, ${cases.filter(c => FALSE_ALARMS.includes(c.resolution)).length} false alarms), ${lessons.length} lessons, models: ${MODELS.join(', ')}`);
 
 async function shot(item) {
   const file = path.join(OUT, 'shots', `${item.number}.png`);
@@ -93,7 +93,7 @@ for (const model of MODELS) for (const withLessons of LESSONS === 'both' ? [fals
     const findings = checklist ? checksToFindings(answer.message.content[0].text) : parseFindings(answer.message.content[0].text, item.view), judged = await same(item, findings);
     run.usd += (answer.usd || 0) + judged.usd;
     run.rows.push({number: item.number, resolution: item.resolution, view: item.view, findings: findings.length, same: judged.same});
-    console.log(`  #${item.number} ${item.resolution.slice(11).padEnd(9)} ${String(findings.length).padStart(2)} finding(s)${judged.same ? ', the same problem again' : ''}${judged.failed ? ' (judge failed)' : ''}`);
+    console.log(`  #${item.number} ${item.resolution.slice(11).padEnd(11)} ${String(findings.length).padStart(2)} finding(s)${judged.same ? ', the same problem again' : ''}${judged.failed ? ' (judge failed)' : ''}`);
   }
   runs.push(run);
 }
@@ -105,7 +105,7 @@ const score = run => {
 };
 const pct = (a, b) => (b ? `${Math.round((100 * a) / b)}%` : '-');
 const before = {seen: cases.filter(c => c.resolution === 'resolution:fixed').length, design: cases.filter(c => FALSE_ALARMS.includes(c.resolution)).length};
-console.log(`\n| Reviewer | Real bugs seen again | By-design raised again | Precision | Findings per shot | Cost |\n|---|---|---|---|---|---|`);
+console.log(`\n| Reviewer | Real bugs seen again | False alarms raised again | Precision | Findings per shot | Cost |\n|---|---|---|---|---|---|`);
 console.log(`| Claude Sonnet (filed them) | ${before.seen}/${before.seen} | ${before.design}/${before.design} | ${pct(before.seen, before.seen + before.design)} | - | ~$0.02 a shot |`);
 for (const run of runs) {
   const s = score(run);

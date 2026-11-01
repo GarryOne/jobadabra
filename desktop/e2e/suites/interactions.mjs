@@ -5,7 +5,7 @@
 // Job: wait on state
 import fs from 'node:fs';
 import path from 'node:path';
-import {finish, sweep, visitNarrow} from '../lib/layout.mjs';
+import {finish, sweep, visit, visitNarrow} from '../lib/layout.mjs';
 import {WINDOW_SIZES, createVariation} from '../lib/variation.mjs';
 import {probePage} from '../lib/interact.mjs';
 import {goTo as goToPage} from '../lib/leave-prompt.mjs';
@@ -62,6 +62,10 @@ export async function run(ctx) {
   console.log(vary.fixed ? '  variation: fixed path' : `  variation: seed ${vary.seed}, window ${size.join('x')}; replay with E2E_SEED=${vary.seed}`);
   // A page that has finished loading stays still (lib/shift.mjs): content that appears by itself seconds later and pushes the page down is a finding. Each page is watched untouched for STILL_MS.
   const STILL_MS = 7000;
+  // Why (1 Nov 2026, owner, 6/6a-2; a8): the UI Finder's shots ui-focus, ui-jobs and ui-actions came from the layout steps of jobs and wizard, which left e2e; this night-report step keeps them, taken first on the set-up install (before any control is pressed).
+  await ctx.run('the first screens of a set-up install (Focus, Jobs, Actions) are drawn, checked and photographed for the UI Finder', async () => {
+    await visit(ctx, ['focus', 'jobs', 'actions']);
+  }, {needs: ctx.needs});
   await page.evaluate(watchShifts);
   for (const view of VIEWS) {
     await ctx.run(`${view}: stays still once it has loaded`, async () => {

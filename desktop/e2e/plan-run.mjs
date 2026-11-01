@@ -77,7 +77,7 @@ export async function planRun({env, gh = realGh, all, minutes, os = async () => 
     pushReach = changedFiles.filter(file => suitesFor([file], all, pointing).includes('qualityai'));
   }
   else if (env.PROMOTE_TAG) suites = [];   // a manual dry run of the promotion step: no suites
-  // A night pass: the beta's own layout (the gate's suites, both stores), without the release steps and without a paid model. A release run that is testing owns the per-suite groups, so the pass
+  // A night pass: the beta's own layout (the gate's suites, both stores), without the release steps and without a paid model (except pass 1's one qualityai night-report run, lib/night-pass.mjs). A release run that is testing owns the per-suite groups, so the pass
   // skips itself rather than cancel a gate job waiting there (the same rule as a scheduled run's, below).
   else if (night) {
     const releasing = json(['run', 'list', '-R', repo, '--workflow', 'desktop.yml', '-L', '5', '--json', 'status,displayTitle']).filter(run => run.status !== 'completed' && !/^Build only/.test(run.displayTitle || ''));

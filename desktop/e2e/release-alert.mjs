@@ -26,6 +26,17 @@ export async function commitOf(tag, env = process.env, fetcher = fetch) {
   } catch { return null; }
 }
 
+/** Whether the tag's release is still a pre-release: true, false, or null when GitHub cannot say (then a beta alert is sent, never suppressed on a guess). */
+export async function isPrerelease(tag, env = process.env, fetcher = fetch) {
+  try {
+    const answer = await fetcher(`${env.GITHUB_API_URL || 'https://api.github.com'}/repos/${env.GITHUB_REPOSITORY}/releases/tags/${encodeURIComponent(tag)}`,
+      {headers: {Authorization: `Bearer ${env.GH_TOKEN || ''}`, Accept: 'application/vnd.github+json'}, signal: AbortSignal.timeout(15000)});
+    if (!answer.ok) return null;
+    const body = await answer.json();
+    return typeof body.prerelease === 'boolean' ? body.prerelease : null;
+  } catch { return null; }
+}
+
 /** The Telegram message: what was released (kind, version), its release page, the commit, and for a beta which lanes released. */
 export function releaseMessage({kind, tag, commit = null, lanes = [], env = process.env}) {
   const {icon, word, verdict} = KINDS[kind];
@@ -33,7 +44,7 @@ export function releaseMessage({kind, tag, commit = null, lanes = [], env = proc
   const version = String(tag).replace(/^desktop-v/, '');
   const run = env.GITHUB_RUN_ID && repo ? `${server}/${repo}/actions/runs/${env.GITHUB_RUN_ID}` : '';
   const released = lanes.filter(([, result]) => result === 'success').map(([name]) => name), missed = lanes.filter(([, result]) => result !== 'success').map(([name]) => name);
-  const said = kind === 'beta' && lanes.length ? (missed.length ? `Offered on ${released.join(' and ')} only; ${missed.join(' and ')} did not release` : `${verdict} on ${released.join(' and ')}`) : verdict;
+  const said = kind === 'beta' && lanes.length ? (missed.length ? `Offered on ${released.join(' and ')} only; ${missed.join(' and ')} was not offered` : `${verdict} on ${released.join(' and ')}`) : verdict;
   const when = commit?.date ? new Date(commit.date).toISOString().replace('T', ' ').slice(0, 16) + ' UTC' : '';
   return alertHtml({icon: missed.length ? '⚠️' : icon, title: `${word} ${version} released`, verdict: said,
     bullets: [
@@ -46,6 +57,8 @@ export function releaseMessage({kind, tag, commit = null, lanes = [], env = proc
 /** Looks the commit up, sends the alert; returns the line to print. Never throws, never prints the token. */
 export async function alertRelease({kind, tag, lanes = [], env = process.env, fetcher = fetch}) {
   if (!KINDS[kind] || !tag) return 'release-alert: nothing to send (needs beta|stable and a tag)';
+  // Why (1 Nov 2026, Gitar on #2923): with the soak off the offer jobs promote straight to stable, and release-stable.sh has already said "Stable"; a second "Beta" message for the same tag is wrong and a duplicate.
+  if (kind === 'beta' && await isPrerelease(tag, env, fetcher) === false) return 'release-alert: not sent (already stable: the stable alert covers it)';
   return send(releaseMessage({kind, tag, commit: await commitOf(tag, env, fetcher), lanes, env}), env, fetcher);
 }
 

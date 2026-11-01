@@ -1,13 +1,13 @@
 // A new version, beta or stable, is announced once on Telegram (release-alert.mjs): the version, links to its release and commit, which lanes released; nothing without the secrets, never the token.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {alertRelease, commitOf, parseLanes, releaseMessage} from '../../release-alert.mjs';
+import {alertRelease, commitOf, isPrerelease, parseLanes, releaseMessage} from '../../release-alert.mjs';
 
 const env = {GITHUB_REPOSITORY: 'o/r', GITHUB_RUN_ID: '42', GH_TOKEN: 'gh', CI_ALERTS_TELEGRAM_BOT_TOKEN: 'bot-secret-token', CI_ALERTS_TELEGRAM_CHAT_ID: '7'};
 const commit = {sha: 'abcdef1234567890', subject: 'Fix the wizard', date: '2026-11-01T21:53:10Z'};
-const github = (answer = {sha: commit.sha, commit: {message: `${commit.subject}\n\nbody`, committer: {date: commit.date}}}, ok = true) => async url => {
+const github = (answer = {sha: commit.sha, commit: {message: `${commit.subject}\n\nbody`, committer: {date: commit.date}}}, ok = true, prerelease = true) => async url => {
   if (!url.includes('api.github.com')) return {ok: true, json: async () => ({})};
-  return {ok, json: async () => answer};
+  return {ok, json: async () => url.includes('/releases/tags/') ? {prerelease} : answer};
 };
 
 test('a beta says its version, both lanes, the release and the commit as links, and the run', () => {
@@ -20,9 +20,9 @@ test('a beta says its version, both lanes, the release and the commit as links, 
   assert.match(text, /<a href="https:\/\/github\.com\/o\/r\/actions\/runs\/42">Open the run<\/a>/);
 });
 
-test('a beta that released on one lane only says which lane missed, with a warning icon', () => {
+test('a beta offered on one lane only says which lane was not offered, with a warning icon', () => {
   const {text} = releaseMessage({kind: 'beta', tag: 'desktop-v0.8.75', commit, lanes: parseLanes('Mac=success,Windows=failure'), env});
-  assert.match(text, /⚠️ <b>Beta 0\.8\.75 released<\/b> Offered on Mac only; Windows did not release/);
+  assert.match(text, /⚠️ <b>Beta 0\.8\.75 released<\/b> Offered on Mac only; Windows was not offered/);
 });
 
 test('a stable release says every app offers it, with no lane list', () => {
@@ -43,7 +43,7 @@ test('the alert looks the commit up by tag, sends once to Telegram, and never pr
   const sent = [];
   const fetcher = async (url, init) => {
     if (url.includes('api.telegram.org')) { sent.push({url, body: JSON.parse(init.body)}); return {ok: true}; }
-    assert.match(url, /\/repos\/o\/r\/commits\/desktop-v0\.8\.75$/);
+    assert.match(url, /\/repos\/o\/r\/(commits|releases\/tags)\/desktop-v0\.8\.75$/);
     return github()(url);
   };
   const line = await alertRelease({kind: 'beta', tag: 'desktop-v0.8.75', lanes: parseLanes('Mac=success,Windows=success'), env, fetcher});
@@ -64,4 +64,19 @@ test('without the Telegram secrets nothing is sent, and a tag or kind that is mi
 test('lanes parse from the workflow\'s text', () => {
   assert.deepEqual(parseLanes('Mac=success, Windows=skipped'), [['Mac', 'success'], ['Windows', 'skipped']]);
   assert.deepEqual(parseLanes(''), []);
+});
+
+test('a beta alert is skipped when the release is already stable (the soak is off), and sent when GitHub cannot say', async () => {
+  const sent = [];
+  const via = prerelease => async (url, init) => {
+    if (url.includes('api.telegram.org')) { sent.push(JSON.parse(init.body)); return {ok: true}; }
+    return github(undefined, true, prerelease)(url);
+  };
+  assert.equal(await isPrerelease('desktop-v0.8.75', env, via(false)), false);
+  assert.match(await alertRelease({kind: 'beta', tag: 'desktop-v0.8.75', env, fetcher: via(false)}), /already stable/);
+  assert.equal(sent.length, 0, 'the stable alert already covered it');
+  assert.equal(await isPrerelease('desktop-v0.8.75', env, async () => { throw new Error('offline'); }), null);
+  assert.equal(await alertRelease({kind: 'beta', tag: 'desktop-v0.8.75', env, fetcher: via(true)}), 'ci-alert: sent');
+  assert.equal(sent.length, 1);
+  assert.equal(await alertRelease({kind: 'stable', tag: 'desktop-v0.8.70', env, fetcher: via(false)}), 'ci-alert: sent', 'a stable alert never asks');
 });

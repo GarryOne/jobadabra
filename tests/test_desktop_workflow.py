@@ -194,7 +194,8 @@ class DesktopWorkflowTest(unittest.TestCase):
         self.assertIn("name: ${{ format('Beta {0} · clean up old builds', needs.changes.outputs.version) }}", job('prune'))
         # Owner, 1 Nov 2026: "I'd like to receive on Telegram, CI Alerts, when a new version (beta or stable) is released": the last job alerts once when a lane released.
         self.assertIn('node desktop/e2e/release-alert.mjs beta "$TAG" --lanes "$LANES"', job('prune'))
-        self.assertIn("if: always() && (needs.release-mac.result == 'success' || needs.release-windows.result == 'success')", job('prune'))
+        self.assertIn("if: always() && (needs.release-mac-offer.result == 'success' || needs.release-windows-offer.result == 'success')", job('prune'))
+        self.assertIn('LANES: Mac=${{ needs.release-mac-offer.result }},Windows=${{ needs.release-windows-offer.result }}', job('prune'))
         # Gitar on #2883: a cache saved on a branch is restored only by that branch and its children, so the quality-rate history save stays main-only.
         loose = "(github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/beta-pick/'))"
         self.assertEqual(WORKFLOW.replace(loose, '').count("github.ref == 'refs/heads/main'"), 1, 'only the history cache save is main-only')

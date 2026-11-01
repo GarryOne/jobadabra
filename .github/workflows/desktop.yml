@@ -1809,10 +1809,10 @@ jobs:
         run: python3 tools/sync_release_labels.py || echo "labels not refreshed"   # best effort, never fails a build
       # Why (1 Nov 2026, owner on beta 10's graph: "We're still showing AI Credit health"; Gitar on #2904): the beta's judge steps and relay still write ai-capped.json, so the alert stays, as steps of the run's last job instead of a box of its own.
       # Never a hold: every step is continue-on-error (owner, 31 Oct 2026: "It should just raise an alert. And that's it.").
-      # Why (1 Nov 2026, owner: "I'd like to receive on Telegram, CI Alerts, when a new version (beta or stable) is released"): one alert per beta, from the run's last job, when at least one lane released.
+      # Why (1 Nov 2026, owner: "I'd like to receive on Telegram, CI Alerts, when a new version (beta or stable) is released"): one alert per beta, from the run's last job, when at least one lane was offered to testers.
       # A stable release alerts from tools/release-stable.sh. Never a hold: a failed alert does not fail the run.
       - name: Tell the owner on Telegram that a beta was released
-        if: always() && (needs.release-mac.result == 'success' || needs.release-windows.result == 'success')
+        if: always() && (needs.release-mac-offer.result == 'success' || needs.release-windows-offer.result == 'success')   # the offer jobs hand the build to testers; the Release jobs only check the lane (Gitar on #2923)
         continue-on-error: true
         timeout-minutes: 5
         env:
@@ -1820,7 +1820,7 @@ jobs:
           CI_ALERTS_TELEGRAM_BOT_TOKEN: ${{ secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN }}
           CI_ALERTS_TELEGRAM_CHAT_ID: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}
           TAG: desktop-v${{ needs.changes.outputs.version }}
-          LANES: Mac=${{ needs.release-mac.result }},Windows=${{ needs.release-windows.result }}
+          LANES: Mac=${{ needs.release-mac-offer.result }},Windows=${{ needs.release-windows-offer.result }}
         run: node desktop/e2e/release-alert.mjs beta "$TAG" --lanes "$LANES"
       - uses: actions/setup-node@v5
         if: always() && !cancelled() && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/beta-pick/'))

@@ -1,6 +1,6 @@
 /* global document, window */
-// What the two activity suites (activity, activityfailures) share: reading the Actions page and Recent activity the way a person sees them, running a task and counting
-// its rows, the feed the engine reads, and the common start (a set-up install, its own run rows cleared, no schedule, the app quiet). The suites themselves are in suites/.
+// Reading the Actions page and Recent activity the way a person sees them, running a task and counting its rows, and the feed the engine reads;
+// shared by suites/jobs.mjs, lib/quality-journey.mjs and lib/storemove-steps.mjs (the activity suites and their common start are gone).
 // Job: wait on state
 import fs from 'node:fs';
 import {stepTimeLeft} from './wait-on-state.mjs';

@@ -11,6 +11,9 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from tools import main_e2e_state as m  # noqa: E402
 
+ROOT = Path(__file__).resolve().parent.parent
+REAL_SUITES = m.SUITES if hasattr(m, 'SUITES') else None   # read before setUp patches it
+
 
 def run(rid, title, conclusion='failure', sha='f' * 40, branch='main'):
     return {'id': rid, 'display_title': title, 'conclusion': conclusion, 'head_sha': sha, 'head_branch': branch, 'created_at': f't{rid}', 'html_url': f'u{rid}'}
@@ -44,6 +47,9 @@ class MainE2eState(unittest.TestCase):
         registry = patch.object(m, 'LANES', Path(tmp.name) / 'lanes.json')
         registry.start()
         self.addCleanup(registry.stop)
+        folder = patch.object(m, 'SUITES', Path(tmp.name) / 'suites')   # no folder: no red is dropped (the fictional suites below are kept)
+        folder.start()
+        self.addCleanup(folder.stop)
         self.state = m.state(RUNS, lambda rid: JOBS.get(rid, []))
 
     def test_red_suites_are_the_newest_main_check_result(self):
@@ -120,6 +126,28 @@ class MainE2eState(unittest.TestCase):
         self.assertEqual([s['suite'] for s in report['red']], ['apply'])
         report = self.report(json.dumps({'suites': {'quality': {'lane': 'tolerant'}, 'qualityai': {'lane': 'tolerant'}, 'apply': {'lane': 'retired'}}}))
         self.assertEqual(report['red'], [])
+
+    def test_a_suite_no_longer_on_main_is_never_red(self):
+        # Why (1 Nov 2026, the owner's beta by hand refused): #2808 deleted focusdismiss; its last main run (8fc460d) stayed red and the gate re-checked a suite
+        # the plan no longer knows ("unknown suite", run 41308204982). A job that is no suite file ("AI review of the screenshots") is the same shape.
+        self.state = m.state([run(9, 'E2E check · GitHub schedule (backup)')],
+                             lambda _: [{'name': name, 'conclusion': 'failure'} for name in ('focusdismiss', 'apply-3of3', 'AI review of the screenshots')]
+                             + [{'name': 'wizard', 'conclusion': 'success'}])
+        with tempfile.TemporaryDirectory() as tmp:
+            for suite in ('apply', 'wizard'):
+                (Path(tmp) / f'{suite}.mjs').write_text('// a suite on main\n')
+            with patch.object(m, 'SUITES', Path(tmp)):
+                self.assertEqual([suite for suite, _ in m.red(self.state)], ['apply'])
+                self.assertEqual([s['suite'] for s in self.report(None)['red']], ['apply'])
+            (Path(tmp) / 'apply.mjs').unlink()
+            (Path(tmp) / 'wizard.mjs').unlink()
+            with patch.object(m, 'SUITES', Path(tmp)):   # an empty or missing folder is unknown: every red stays (never a silent green)
+                self.assertEqual([suite for suite, _ in m.red(self.state)], ['AI review of the screenshots', 'apply', 'focusdismiss'])
+
+    def test_the_suite_folder_is_the_one_the_plan_reads(self):
+        self.assertEqual(REAL_SUITES, ROOT / 'desktop/e2e/suites')
+        self.assertIn('SUITES = readdirSync(path.join(E2E, \'suites\'))', (ROOT / 'desktop/e2e/lib/context.mjs').read_text())
+        self.assertTrue((REAL_SUITES / 'apply.mjs').exists())
 
     def test_an_older_green_does_not_hide_a_newer_red(self):
         self.assertEqual(self.state['interactions']['sha'], 'f' * 40)

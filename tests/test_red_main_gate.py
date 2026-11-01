@@ -56,7 +56,7 @@ RED_RUN = {'id': 2, 'display_title': 'E2E check · on time (Worker cron)', 'conc
 RED_JOBS = {'2': [{'name': 'cardstates', 'conclusion': 'failure'}, {'name': 'settings', 'conclusion': 'failure'}, {'name': 'jobs', 'conclusion': 'success'}]}
 
 
-def gate(data, *extra, lanes=None, verdict_tool=None):
+def gate(data, *extra, lanes=None, verdict_tool=None, suites=None):
     with tempfile.TemporaryDirectory() as tmp:
         tmp = Path(tmp)
         (tmp / 'bin').mkdir()
@@ -70,6 +70,9 @@ def gate(data, *extra, lanes=None, verdict_tool=None):
         if lanes is not None:
             (tmp / 'desktop/e2e').mkdir(parents=True, exist_ok=True)
             (tmp / 'desktop/e2e/lanes.json').write_text(lanes)
+        for suite in suites or ():   # main's suite files (desktop/e2e/suites); none = the folder is missing, which drops no red
+            (tmp / 'desktop/e2e/suites').mkdir(parents=True, exist_ok=True)
+            (tmp / f'desktop/e2e/suites/{suite}.mjs').write_text('// a suite on main\n')
         if verdict_tool is not None:   # tools/flaky-verdict.mjs, faked: the real one reads GitHub and git
             (tmp / 'tools/flaky-verdict.mjs').write_text(verdict_tool)
         gh = tmp / 'bin/gh'
@@ -131,6 +134,17 @@ class RedMainGate(unittest.TestCase):
         self.assertEqual(code, 0, out)
         self.assertIn('suite=cardstates,settings', dispatch)
         self.assertNotIn('jobs', dispatch.split('suite=')[1])
+
+    def test_a_red_of_a_suite_deleted_from_main_is_never_rechecked_nor_blocks(self):
+        # Why (1 Nov 2026, the owner's beta by hand refused): #2808 deleted focusdismiss; its last run on main (8fc460d) was red, so the gate re-checked it,
+        # the plan refused "unknown suite: focusdismiss" (run 41308204982), and that red run with no suite job read as unreadable results: no beta.
+        code, out, dispatch = gate({'runs': [RED_RUN], 'jobs': RED_JOBS, 'head': NEW_SHA, 'recheck': 'success'}, suites=('settings', 'jobs'))
+        self.assertEqual(code, 0, out)
+        self.assertIn('suite=settings', dispatch)
+        self.assertNotIn('cardstates', dispatch + out)
+        code, out, dispatch = gate({'runs': [RED_RUN], 'jobs': {'2': [{'name': 'cardstates', 'conclusion': 'failure'}]}, 'head': NEW_SHA}, suites=('settings',))
+        self.assertEqual((code, dispatch), (0, ''), out)
+        self.assertIn('no suite red', out)
 
     def test_red_rerun_still_red_refuses(self):
         code, out, _ = gate({'runs': [RED_RUN], 'jobs': RED_JOBS, 'head': NEW_SHA, 'recheck': 'failure'})

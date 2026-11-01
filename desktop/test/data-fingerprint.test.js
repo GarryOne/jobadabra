@@ -21,6 +21,8 @@ function folder(mutate = () => {}) {
   db.prepare('INSERT INTO notes VALUES (?, ?)').run('x', 'y');
   fs.writeFileSync(path.join(dir, 'profile.md'), '# Ada\n');
   fs.writeFileSync(path.join(dir, 'answers.md'), 'Why us? Because.\n');
+  fs.writeFileSync(path.join(dir, 'portrait.md'), 'A careful nurse.\n');
+  fs.writeFileSync(path.join(dir, 'cv.pdf'), '%PDF-1.4 demo');
   fs.writeFileSync(path.join(dir, 'cv', 'cv.json'), '{"summary":"s"}');
   fs.writeFileSync(path.join(dir, 'settings.json'), JSON.stringify({setupDone: true, cadence: 'daily', models: {a: 1, b: 2}}));
   fs.writeFileSync(path.join(dir, 'config', 'search.json'), JSON.stringify({roles: ['nurse'], places: ['Zurich']}));
@@ -35,7 +37,7 @@ test('the same folder twice is the same map: every row and column, whole text fi
   const a = prints(), b = prints();
   assert.deepEqual(a, b);
   assert.ok(Object.keys(a).length > 90, 'cells of 30 jobs x 3 columns + notes + files + keys (positive control: it reads something)');
-  assert.ok(a['sqlite:data/tracker.sqlite:jobs:7:stage'] && a['file:profile.md'] && a['file:cv/cv.json'] && a['json:settings.json:cadence'] && a['json:config/search.json:roles']);
+  assert.ok(a['sqlite:data/tracker.sqlite:jobs:7:stage'] && a['file:profile.md'] && a['file:portrait.md'] && a['file:cv.pdf'] && a['file:cv/cv.json'] && a['json:settings.json:cadence'] && a['json:config/search.json:roles']);
   assert.ok(!Object.keys(a).some(key => /secrets|SECRET/i.test(key)), 'secrets.json is never listed');
   assert.ok(!JSON.stringify(a).includes('SENTINEL'), 'and never hashed in');
   const result = compare(a, b);
@@ -63,6 +65,8 @@ test('each way an update hurts a user is red and named: a deleted row, a changed
     'a dropped column': [db => db.exec('ALTER TABLE jobs DROP COLUMN stage'), 'lost', 'sqlite:data/tracker.sqlite:jobs:3:stage'],
     'a dropped table': [db => db.exec('DROP TABLE notes'), 'lost', 'sqlite:data/tracker.sqlite:notes:1:a'],
     'a rewritten answer': [(db, dir) => fs.writeFileSync(path.join(dir, 'answers.md'), 'Why us? Different.\n'), 'changed', 'file:answers.md'],
+    'a deleted portrait': [(db, dir) => fs.rmSync(path.join(dir, 'portrait.md')), 'lost', 'file:portrait.md'],
+    'a replaced cv pdf': [(db, dir) => fs.writeFileSync(path.join(dir, 'cv.pdf'), 'other'), 'changed', 'file:cv.pdf'],
     'a lost cv file': [(db, dir) => fs.rmSync(path.join(dir, 'cv', 'cv.json')), 'lost', 'file:cv/cv.json'],
     'a removed setting': [(db, dir) => fs.writeFileSync(path.join(dir, 'settings.json'), JSON.stringify({setupDone: true, models: {a: 1, b: 2}})), 'lost', 'json:settings.json:cadence'],
     'a changed nested setting': [(db, dir) => fs.writeFileSync(path.join(dir, 'settings.json'), JSON.stringify({setupDone: true, cadence: 'daily', models: {b: 2, a: 9}})), 'changed', 'json:settings.json:models'],

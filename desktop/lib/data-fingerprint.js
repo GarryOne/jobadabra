@@ -5,11 +5,16 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import {createRequire} from 'node:module';
+import {CONFIG_FILES} from './config-text.js';
+import {TEXT_FILES as STORE_TEXTS} from './store/text-files.js';
+import {LIVE} from './tracker-snapshot.js';
 
-export const SQLITE_FILES = ['data/tracker.sqlite', 'data/jobs.sqlite'];
-export const TEXT_FILES = ['profile.md', 'answers.md', 'knowledge.md'];    // kept whole: an update must not rewrite what the person wrote
-export const JSON_FILES = ['settings.json', 'config/search.json', 'config/preferences.json', 'config/sources.json', 'config/scout_seeds.json'];   // kept per top-level key: an update may add keys
-export const FOLDERS = ['cv'];                                              // every file in them, whole
+// Why (1 Nov 2026, Gitar on this PR): the lists come from the files that own them, so a user file the store learns about (portrait.md was already missing from a typed copy) is checked at once.
+const asPath = rel => rel.split(path.sep).join('/');
+const SQLITE_FILES = [asPath(LIVE), 'data/jobs.sqlite'];                // the store's tracker, and the name storage.js still lists
+const TEXT_FILES = [...Object.values(STORE_TEXTS), 'cv.pdf'];          // kept whole: an update must not rewrite what the person wrote or uploaded
+const JSON_FILES = ['settings.json', ...CONFIG_FILES.map(name => `config/${name}`)];   // kept per top-level key: an update may add keys
+const FOLDERS = ['cv'];                                              // every file in them, whole
 const sqlite = () => createRequire(import.meta.url)('node:sqlite');
 
 const hash = value => crypto.createHash('sha256').update(typeof value === 'string' || Buffer.isBuffer(value) ? value : JSON.stringify(value) ?? 'undefined').digest('hex').slice(0, 16);

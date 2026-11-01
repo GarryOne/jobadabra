@@ -260,6 +260,7 @@ const REVEAL_PAGE = fixture => page(fixture, `<form id="application_form">${fiel
   }</script>`);
 
 export const MENU_CHOICES = ['Allemagne', 'Autriche', 'France', 'Italie', 'Liechtenstein', 'Suisse'];
+/** The application form of the menu fixtures (MENU_FIRST, MENU_AGAIN): a country-code menu whose choices (MENU_CHOICES) are not the answer's words. Takes the fixture ({url, host, ...}); returns its HTML. Exported for integration/extension/extension-form-shapes.test.mjs. */
 export const MENU_PAGE = fixture => page(fixture, `<form id="application_form">${field('first_name', 'Prénom', {required: true})}${field('last_name', 'Nom', {required: true})}${field('email', 'E-mail', {type: 'email', required: true})}${select('country_code', 'Indicatif de pays', MENU_CHOICES, {required: true})}${field('phone', 'Téléphone', {type: 'tel'})}${field('question_3001', 'Years of experience with Kubernetes', {required: true})}<div class="field"><button type="submit" id="submit_app">Envoyer la candidature</button></div></form>`);
 
 const SIGNIN_PAGES = {

@@ -1742,6 +1742,11 @@ jobs:
       contents: write   # delete the older test builds, retitle releases
       issues: write     # the pinned Release channels issue
       actions: read     # the credit alert downloads this run's suite artifacts
+    env:
+      E2E_ARTIFACT_SECRET_NAMES: |
+        GH_TOKEN
+        CI_ALERTS_TELEGRAM_BOT_TOKEN
+        CI_ALERTS_TELEGRAM_CHAT_ID
     steps:
       - uses: actions/checkout@v5
         timeout-minutes: 5
@@ -1779,10 +1784,6 @@ jobs:
         continue-on-error: true
         timeout-minutes: 5
         env:
-          E2E_ARTIFACT_SECRET_NAMES: |
-            GH_TOKEN
-            CI_ALERTS_TELEGRAM_BOT_TOKEN
-            CI_ALERTS_TELEGRAM_CHAT_ID
           GH_TOKEN: ${{ github.token }}
           CI_ALERTS_TELEGRAM_BOT_TOKEN: ${{ secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN }}
           CI_ALERTS_TELEGRAM_CHAT_ID: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}
@@ -1797,10 +1798,6 @@ jobs:
         timeout-minutes: 5
         env:
           E2E_ARTIFACT_PATHS: ai-credit-alert/alert-sent.txt
-          E2E_ARTIFACT_SECRET_NAMES: |
-            GH_TOKEN
-            CI_ALERTS_TELEGRAM_BOT_TOKEN
-            CI_ALERTS_TELEGRAM_CHAT_ID
           GH_TOKEN: ${{ github.token }}
           CI_ALERTS_TELEGRAM_BOT_TOKEN: ${{ secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN }}
           CI_ALERTS_TELEGRAM_CHAT_ID: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}

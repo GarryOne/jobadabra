@@ -10,6 +10,7 @@ import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {startRealExtension} from '../../e2e/lib/real-extension.mjs';
 import {extensionWorker} from '../../e2e/lib/own-worker.mjs';
+import {pollUntil} from '../../e2e/lib/wait-on-state.mjs';
 
 const POSTING = '<!doctype html><title>ML Engineer</title><body><h1>ML Engineer</h1><p>Company background and project description.</p><a href="https://jobs.example.test/form">Apply</a><script>if (location.pathname === \'/post\') setTimeout(() => location.replace(\'/post2\'), 500);</script>';
 const FORM = '<!doctype html><title>Apply</title><body><form><h1>Apply</h1><label>Full name <input name="n" required></label><label>Email <input name="e" type="email" required></label><label>Phone <input name="p" required></label><label>City <input name="c" required></label></form>';
@@ -36,7 +37,7 @@ const LOG_STATES = () => {
 test('an Apply from the posting to the fill\'s end is working then one verdict, and every document keeps its look from the first moment it showed it until that verdict', async () => {
   const app = await startRealExtension({extensionDir: process.env.REAL_EXTENSION_DIR || undefined, allowAllSites: true});
   const samples = [];
-  let states = [];
+  let states = [], pageEnd = '';
   try {
     const worker = await extensionWorker(app.context);
     await worker.evaluate(LOG_STATES);
@@ -49,14 +50,22 @@ test('an Apply from the posting to the fill\'s end is working then one verdict, 
     await app.page.waitForURL('**/post2', {timeout: 20000});
     await app.page.waitForFunction(ms => window.__sampledFrom !== undefined && performance.now() - window.__sampledFrom >= ms, LOOK_BY_MS + 20, {timeout: 20000});   // the sampler's own clock: the judge measures from the first sample
     await app.page.evaluate(() => { location.href = 'https://jobs.example.test/form'; });   // the Apply press: a page change, its address carries no mark
-    // The fill writes its own end on the page a few ms after the worker's verdict (so the worker's log is complete once it shows); the hang guard names the states the worker went through.
+    // The fill writes its own end on the page; the worker's verdict reaches its log asynchronously (storage.session.onChanged), so runStates reads until it is in. The hang guard names the states the worker went through.
     await app.page.waitForFunction(() => /"state":"(done|error|no-form|account)"/.test(document.documentElement.dataset.jobpilottoFill || ''), null, {timeout: 60000})
       .catch(async error => assert.fail(`the fill never wrote its end on the page: ${error.message}; the worker's states: ${JSON.stringify(await worker.evaluate(() => globalThis.__applyLog))}`));
-    states = await worker.evaluate(() => globalThis.__applyLog);
+    states = await runStates(() => worker.evaluate(() => globalThis.__applyLog));
+    pageEnd = await app.page.evaluate(() => document.documentElement.dataset.jobpilottoFill || '');
   } finally { await app.close(); }
-  assert.deepEqual(judgeRun(states, samples), [], 'the Apply broke its one-piece look (issue #2800)');
+  assert.deepEqual(judgeRun(states, samples), [], `the Apply broke its one-piece look (issue #2800); the page's end: ${pageEnd}`);
 });
 
+/** The worker's states for the run, read until its verdict is in the log; at the hang guard, what was read (the judge then says the verdict is missing). */
+// Why (1 Nov 2026, a8; #2813 run 41308778286, flaky): the page showed its end while chrome.storage.session.onChanged had not yet brought the verdict to the worker's log
+// (delivered async; a loaded runner), and one read held ["working"] alone. The run's end is the worker's verdict, so the read waits for it.
+export async function runStates(readLog, {capMs = 30000, pause} = {}) {
+  const {value} = await pollUntil(readLog, log => (log || []).length > 1 && log.at(-1).state !== 'working', {capMs, log: () => {}, ...(pause ? {pause} : {})});
+  return value || [];
+}
 // Why (1 Nov 2026, Gitar on #2802; the bounds are the replaced test's own, owner 27 Oct 2026: "appears and disappears"): a document born mid-run is given this long to show its dim and its complete look
 // (the worker dims at the page's commit, the panel's scripts load after it); both bounds were SETTLE 400 ms and "absent after 1.5 s" in the test this one replaces. A drop after the look shows has no bound.
 const DIM_BY_MS = 400, LOOK_BY_MS = 1500;
@@ -176,4 +185,13 @@ test('a run that went through no page change fails its positive control', () => 
 
 test('a run that was never sampled fails its positive control', () => {
   assert.match(judgeRun(RUN, []).join('\n'), /positive control: the run went through/);
+});
+
+test('the run is read once the worker has logged its verdict, not at the first read (#2813 run 41308778286: the page showed its end first)', async () => {
+  const reads = [[{at: 1, state: 'working'}], [{at: 1, state: 'working'}, {at: 9, state: 'done'}]];
+  let read = 0;
+  assert.deepEqual((await runStates(async () => reads[Math.min(read++, 1)], {pause: async () => {}})).map(s => s.state), ['working', 'done']);
+  assert.equal(read, 2, 'read again until the verdict came');
+  assert.deepEqual(await runStates(async () => [{at: 1, state: 'working'}], {capMs: 0}), [{at: 1, state: 'working'}], 'no verdict: the hang guard keeps what was read, and the judge says so');
+  assert.deepEqual(await runStates(async () => undefined, {capMs: 0}), []);
 });

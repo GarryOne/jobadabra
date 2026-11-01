@@ -11,6 +11,7 @@ import sys
 import unittest
 from pathlib import Path
 
+from tests.fake_gh_state import write_fresh
 from tests.ship_fixture import ROOT, ShipFixture, git
 
 
@@ -39,7 +40,7 @@ class ShipPrTest(ShipFixture):
         shim.chmod(shim.stat().st_mode | stat.S_IEXEC)
 
     def pr_ship(self, state=None, *flags, timeout=90, **extra):
-        self.state.write_text(json.dumps({'origin': str(self.origin), **(state or {})}))
+        write_fresh(self.state, {'origin': str(self.origin), **(state or {})})   # under the fake gh's lock: a watcher still polling must not write its old copy over it
         env = {**os.environ, 'PATH': f'{self.bin}{os.pathsep}{os.environ["PATH"]}', 'FAKE_GH_STATE': str(self.state), 'SHIP_MODE': 'pr', 'SHIP_REVIEW': '0', 'SHIP_WATCH': '0', 'SHIP_PR_POLL': '0', 'SHIP_RED_POLL': '0', 'JOB_PILOTTO_SESSION': '', 'JOB_PILOTTO_SESSION_SHORT': '', 'JP_SESSION': '', 'JP_SESSIONS_DIR': str(self.tmp / 'no-sessions'), 'SHIP_LOG': str(self.tmp / 'ship.log'), **extra}   # SHIP_REVIEW=0 by default: the auto-merge path
         started = time.monotonic()
         try:

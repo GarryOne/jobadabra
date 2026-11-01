@@ -75,7 +75,7 @@ async function same(item, findings) {
     messages: [{role: 'user', content: [{type: 'text', text: `EARLIER report: ${item.title}\n${item.found}\n\nNEW findings:\n${findings.map(f => `- ${f.title}: ${f.detail}`).join('\n')}`}]}]};
   const answer = await askFree(request, {model: JUDGE});
   const text = answer.ok ? answer.message.content[0].text : '';
-  return {same: /"same"\s*:\s*true/.test(text.replace(/<think>[\s\S]*?<\/think>/, '')), usd: answer.usd || 0, failed: !answer.ok};
+  return {same: /"same"\s*:\s*true/.test(text.replace(/<think>[\s\S]*?<\/think>/, '')), usd: answer.usd || 0, failed: answer.ok ? '' : `judge ${answer.status} ${answer.detail || ''}`.slice(0, 160), stop: ['capped', 'no-token'].includes(answer.status)};
 }
 
 const runs = [];
@@ -92,8 +92,16 @@ for (const model of MODELS) for (const withLessons of LESSONS === 'both' ? [fals
     if (!answer.ok) { run.rows.push({...item, failed: `${answer.status} ${answer.detail}`.slice(0, 160)}); console.log(`  #${item.number} ${model}: failed ${answer.status}`); continue; }
     const findings = checklist ? checksToFindings(answer.message.content[0].text) : parseFindings(answer.message.content[0].text, item.view), judged = await same(item, findings);
     run.usd += (answer.usd || 0) + judged.usd;
+    // Why (1 Nov 2026, tg; runs 41328602438, 41328800166): a failed judge was scored "not seen", so a capped judge printed 0/39 as a result; it is unscored now,
+    // and a judge that cannot answer at all (capped, no token) stops the run before more reviewer money is spent on rows nobody can score.
+    if (judged.failed) {
+      run.rows.push({number: item.number, resolution: item.resolution, view: item.view, findings: findings.length, failed: judged.failed});
+      console.log(`  #${item.number} not scored: ${judged.failed}`);
+      if (judged.stop) throw new Error(`the judge cannot answer (${judged.failed}): stopped after $${run.usd.toFixed(3)}`);
+      continue;
+    }
     run.rows.push({number: item.number, resolution: item.resolution, view: item.view, findings: findings.length, same: judged.same});
-    console.log(`  #${item.number} ${item.resolution.slice(11).padEnd(11)} ${String(findings.length).padStart(2)} finding(s)${judged.same ? ', the same problem again' : ''}${judged.failed ? ' (judge failed)' : ''}`);
+    console.log(`  #${item.number} ${item.resolution.slice(11).padEnd(11)} ${String(findings.length).padStart(2)} finding(s)${judged.same ? ', the same problem again' : ''}`);
   }
   runs.push(run);
 }

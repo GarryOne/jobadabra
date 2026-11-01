@@ -99,6 +99,11 @@ class CiFreeAiTests(unittest.TestCase):
                 missing += [f'{path.name} {name}: {lack}' for lack in lacking(text)]
         self.assertGreaterEqual(checked, 3, 'the jobs that run a suite were not found: this check would pass for nothing')
         self.assertEqual(missing, [], 'put these in the job-level env (not one step) of every job that runs a suite')
+        # Why (1 Nov 2026, tg; review-eval runs 41328602438, 41328800166): the cap reads the token in ANY job that calls Workers AI, not only a suite's;
+        # review-eval.yml passed the AI token without it, so every judge call was capped and the eval printed 0/39 as a score.
+        callers = [f'{path.name} {name}' for path in sorted(WORKFLOWS.glob('*.yml')) for name, text in jobs(path.read_text()).items()
+                   if 'CI_FREE_AI_CF_TOKEN:' in text and 'CI_CF_ANALYTICS_TOKEN:' not in text]
+        self.assertEqual(callers, [], 'a job that passes CI_FREE_AI_CF_TOKEN also needs CI_CF_ANALYTICS_TOKEN, or the cap refuses every call')
         suite = jobs((WORKFLOWS / 'e2e.yml').read_text())['suite']
         stripped = suite.replace(names[1], '')
         self.assertEqual(lacking(stripped), ['CI_CF_ANALYTICS_TOKEN'], 'positive control: a job without the token is flagged')

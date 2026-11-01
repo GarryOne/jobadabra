@@ -1,5 +1,5 @@
-// The Notion part of the failure checks: a Jobs check while Notion is busy, answers an HTML error page, or is gone; a Save that Notion refuses. Its own Notion page, in parallel
-// with activityfailures (the AI) and failureschannels (Telegram, Gmail, Google): the three halve the wall-clock time of the old single suite.
+// The Notion part of the failure checks: a Save that Notion refuses is never shown as saved (step in lib/run-parts.mjs), on its own Notion page. Notion busy / HTML
+// error page / connection gone under a run are integration/store/run-faults-notion.test.mjs; the former activityfailures suite left e2e on 1 Nov 2026.
 import {runParts} from '../lib/run-parts.mjs';
 
 // Why (30 Oct 2026, ap, main run 40985357367): every declared ask uses the stored backbone table without a live key.

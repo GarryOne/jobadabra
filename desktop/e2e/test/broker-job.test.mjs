@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {askOrSkip, cappedDir} from '../lib/broker-job.mjs';
+import {askOrSkip, cappedDir, noteSkipped} from '../lib/broker-job.mjs';
 import {alertCappedSteps} from '../credit-alert.mjs';
 
 const temp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'broker-job-'));
@@ -30,6 +30,16 @@ test('capped, no-token and unreachable skip with the reason, write the note and 
 
 test('any other broker failure is a real failure: the job goes red', async () => {
   await assert.rejects(askOrSkip({}, {job: 'x', env: env(temp()), ask: async () => ({ok: false, status: 422, detail: 'broker: reply-refused'})}), /failed \(422\)/);
+});
+
+test('off GitHub the skip is a plain line, on GitHub a warning annotation', () => {
+  const logged = [], log = console.log;
+  console.log = (...args) => { logged.push(args.join(' ')); };
+  try {
+    noteSkipped({job: 'x', why: 'capped', env: {}, dir: temp()});
+    noteSkipped({job: 'x', why: 'capped', env: {GITHUB_ACTIONS: 'true'}, dir: temp()});
+  } finally { console.log = log; }
+  assert.deepEqual(logged, ['AI skipped (x): capped', '::warning title=AI skipped (x)::capped']);
 });
 
 test('the note lives outside the checkout by default (the fixer\'s git status must not see it)', () => {

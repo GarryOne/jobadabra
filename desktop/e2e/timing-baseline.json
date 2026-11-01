@@ -140,7 +140,7 @@
     "clockWaits": 0
   },
   "visitsauto": {
-    "fixedWaits": 0,
+    "fixedWaits": 1,
     "elapsedAssertions": 0,
     "clockWaits": 1
   },

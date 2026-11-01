@@ -4,7 +4,9 @@
 // (and is read nowhere); a marked tab on a site the extension may read is read by itself, page after page, reported to the app and closed.
 // Simulated: Chrome's one-time "all sites" grant cannot be given from a script, so for the read step the extension's check of it is stubbed in its
 // worker; the reading itself runs on a job-system host the extension is already allowed on. No Notion, no AI, no real site.
-import {ALLOWED, OTHER, startRig, until, wait} from '../lib/visits-auto-rig.mjs';
+import {ALLOWED, OTHER, startRig, until} from '../lib/visits-auto-rig.mjs';
+
+const wait = ms => new Promise(done => setTimeout(done, ms));   // debt the timing ratchet counts (timing-baseline.json fixedWaits): the 3 s "left alone" check and the 10 s close race
 
 export const name = 'visitsauto';
 export const minutes = 4;

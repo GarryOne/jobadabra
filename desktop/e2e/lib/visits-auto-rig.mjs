@@ -14,10 +14,9 @@ import {browserChannel, copyExtension, freePort} from './extension.mjs';
 const FIXTURES = path.join(import.meta.dirname, '..', 'fixtures', 'visits');
 export const ALLOWED = 'jobs.lever.co';         // a job-system host in the extension's host_permissions
 export const OTHER = 'careers.example.ch';      // any other careers site: needs the one-time grant
-/** Resolves after `ms` milliseconds; only for letting a page's own timers run in a simulated flow, never to decide a result (use `until`). @param {number} ms @returns {Promise<void>} */
-export const wait = ms => new Promise(done => setTimeout(done, ms));
+const pause = ms => new Promise(done => setTimeout(done, ms));
 /** Polls `check` every 250 ms for at most `ms` (a hang guard, not a pause) and returns true as soon as it answers truthy, false when the time is up; `check` may be async. @param {() => unknown} check @param {number} [ms] @returns {Promise<boolean>} */
-export async function until(check, ms = 15000) { for (let waited = 0; waited < ms; waited += 250) { if (await check()) return true; await wait(250); } return false; }
+export async function until(check, ms = 15000) { for (let waited = 0; waited < ms; waited += 250) { if (await check()) return true; await pause(250); } return false; }
 
 // The app's side of the extension's calls: pairing, no recipe, no filters, each page read (its cards counted), and the done report.
 function standInApp(port) {

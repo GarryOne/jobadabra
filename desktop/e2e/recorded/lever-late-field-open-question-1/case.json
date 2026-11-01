@@ -1,5 +1,6 @@
 {
  "origin": "hand-cut",
+ "control": {"guard": "Lever-like form step of the apply e2e suite (moved here 1 Nov 2026): the late field and the AI-answered question are asserted by this case"},
  "shape": "a Lever-like form: the 'Current company' box is drawn by script 600 ms after the page loaded; a long open question no kit covers is answered by the AI",
  "why": "Lever-like step of the apply e2e suite, moved to a page case (1 Nov 2026): the late field is filled, the open question is typed from the AI's answer and marked for a read-through (data-jobpilotto-ai), a plain fact is not marked, and the extension asked about that question.",
  "sample": "fixture form written by desktop/e2e/lib/forms.mjs (hosts and text invented)",

@@ -4,6 +4,7 @@
 import {el, pill} from '../components.js';
 import {aiWriting} from '../ai-writing.js';
 import {docButton, docCard, docCopy, letterPanel, rows} from './documents-rows.js';
+import {plainError} from '../run-warnings.js';
 
 const FROM = {kit: 'From your application kit', ai: 'Written for this job', you: 'Edited by you'};
 
@@ -21,7 +22,7 @@ export function jobLetterView(job) {
       if (text.hidden) { text.hidden = false; shown.hidden = true; edit.textContent = 'Save'; return; }
       edit.textContent = 'Making the PDF…';
       const done = await window.pilot.jobLetterSave(key, text.value);
-      if (done.ok) draw(); else { message.textContent = done.error; edit.textContent = 'Save'; }
+      if (done.ok) draw(); else { message.textContent = plainError(done.error); edit.textContent = 'Save'; }
     });
     // Why (28 Oct 2026, owner: the letter's loading state): the button alone said "Writing…" while the old letter looked like the answer.
     const again = docButton('Write again', async () => {
@@ -43,7 +44,7 @@ export function jobLetterView(job) {
       writingPill.replaceWith(state);
       again.removeAttribute('aria-busy');
       locked.forEach(button => { button.disabled = false; });
-      if (done.ok) draw(); else { message.textContent = done.error; again.textContent = 'Write again'; }
+      if (done.ok) draw(); else { message.textContent = plainError(done.error); again.textContent = 'Write again'; }
     });
     const open = status.pdf ? [docButton('Open PDF', () => window.pilot.jobLetterOpen(key))] : [];
     const copy = docCopy(status.text, 'Copy', true);

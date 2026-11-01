@@ -5,6 +5,7 @@ import {el, pill, tag} from '../components.js';
 import {emptyState} from '../page-parts.js';
 import {$} from './core.js';
 import {PROFILE_TABS} from './profile-save-bar.js';
+import {plainError} from '../run-warnings.js';
 
 const TONE = {strengths: 'good', come_across: 'warn', short: 'lead'};   // the rule beside a statement: what stands out, what an employer may see
 const openTab = key => document.querySelector(`[data-profile-tab="${key}"]`)?.click();
@@ -103,7 +104,7 @@ function draw(status, note = '') {
 export async function loadPortrait() {
   if (!$('portrait-body')) return;
   const status = await window.pilot.portrait();
-  if (status?.ok === false) return $('portrait-body').replaceChildren(el('p', 'muted', status.error));
+  if (status?.ok === false) return $('portrait-body').replaceChildren(el('p', 'muted', plainError(status.error)));
   draw(status);
   if (loaded || status.state === 'current' || status.state === 'not_yet') return;
   loaded = true;

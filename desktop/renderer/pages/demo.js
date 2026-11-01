@@ -2,13 +2,14 @@
 // banner with "Set up my own" (back to the user's own setup, where it was). Main process side: lib/demo.js.
 import {shared} from './shared.js';
 import {$, show} from './core.js';
+import {plainError} from '../run-warnings.js';
 
 export async function init() {
   document.querySelectorAll('[data-look-around]').forEach(button => button.addEventListener('click', async () => {
     button.disabled = true;
     button.textContent = 'Opening the demo…';
     const result = await window.pilot.lookAround(button.dataset.lookAround).catch(error => ({ok: false, error: error.message}));
-    if (result?.ok === false) { button.disabled = false; button.textContent = result.error || 'The demo couldn\'t start'; }
+    if (result?.ok === false) { button.disabled = false; button.textContent = plainError(result.error || 'The demo couldn\'t start'); }
   }));
   const lookingAround = !!shared.state.demo?.lookAround;
   show($('demo-banner'), lookingAround);

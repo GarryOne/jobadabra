@@ -19,6 +19,7 @@ import {$} from './core.js';
 import {fromDetailsLine} from '../answered-from-details.js';
 import {alsoKeys} from '../question-wordings.js';
 import {ASKS, questionNav, shortTitle, sourceOf} from '../question-nav.js';
+import {plainError} from '../run-warnings.js';
 
 export {shortTitle};
 
@@ -115,7 +116,7 @@ function question(q) {
     body.append(keepIt);
   }
   if (state.saved) body.append(el('p', 'muted small qr-saved', state.saved));
-  if (state.error) body.append(el('p', 'message error', state.error));
+  if (state.error) body.append(el('p', 'message error', plainError(state.error)));
   if (state.consent) body.append(el('p', 'muted small qr-consent', 'Terms and consent boxes are ticked for you on each form (Settings → Consent boxes turns that off).'));
   const word = el('span', '', saveWord(q, drafts.get(q.key) ?? q.proposal ?? q.value ?? ''));
   const confirm = Object.assign(el('button', 'primary'), {type: 'button', id: 'qr-confirm'});

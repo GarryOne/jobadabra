@@ -9,6 +9,7 @@ import {renderSessionPage} from './session-log.js';
 import {badge, reviewStates, showInForm, smallButton, submitOnEnter, titleLine} from './session-needs.js';
 import {keyAsker, onChoices, pickProposal, rowPicks} from '../proposal-pick.js';
 import {storeName} from '../store-words.js';
+import {plainError} from '../run-warnings.js';
 
 // What the row needs besides the form's report, asked once per window and kept: your details, the CV's proposals, and which detail a
 // label asks for (Claude reads the labels the extension doesn't know: lib/contact-keys.js).
@@ -79,7 +80,7 @@ export function proposedRow(item, label, proposal, now = Date.now()) {
     if (!value) { note.textContent = 'Write an answer first'; input.focus(); return; }
     use.disabled = input.disabled = true;
     const filled = await window.pilot.sessionFillField(item.id, label, value).catch(error => ({ok: false, error: error.message}));
-    if (!filled?.ok) { use.disabled = input.disabled = false; note.textContent = filled?.error || 'Couldn\'t reach the form'; return; }
+    if (!filled?.ok) { use.disabled = input.disabled = false; note.textContent = plainError(filled?.error || 'Couldn\'t reach the form'); return; }
     noteUse(item.id, proposal.source, proposal.value && value === String(proposal.value).trim() ? 'used' : 'edited');
     // Kept for every later form: a contact detail in Your details, any other answer in your Answers (Notion).
     // Your saved detail, unchanged (or only put in this form's words, "Monsieur" as "Sir"): nothing to write.

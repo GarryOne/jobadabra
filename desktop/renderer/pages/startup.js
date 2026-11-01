@@ -19,6 +19,7 @@ import {TONES, toneOf} from '../toast-tone.js';
 import {icon} from '../icons.js';
 import {goStep} from './wizard.js';
 import {bindToast} from './linkedin-consent.js';
+import {plainError} from '../run-warnings.js';
 
 // toastMessage(title, body, target, tone) or toastMessage({title, body, target, tone, action, hint}). target: where a click leads (renderer/targets.js),
 // or a NO_PLACE reason when there is none; tone: bad | warn | good | info, its colour and icon (renderer/toast-tone.js). test/toast-targets.test.js
@@ -67,7 +68,7 @@ export function sayRefused(title, result, {place = null, retry = null} = {}) {
 export async function init() {
   applyAiNames();   // the static texts name the AI the user chose (renderer/ai-name.js)
   // A Free AI line found after a run or a refused AI step (lib/ai-caps.js): the top-up dialog, at most once per half hour for steps nobody pressed.
-  window.pilot.onAiCap?.(cap => openTopupDialog({cap: cap.capped, resetsAt: cap.resetsAt, text: cap.message}));
+  window.pilot.onAiCap?.(cap => openTopupDialog({cap: cap.capped, resetsAt: cap.resetsAt, text: plainError(cap.message)}));
   // ---------- start ----------
   // Set up: the app. Without Notion (Notion later) it is only trying, so it opens on Jobs; the pages that need Notion show a gate.
   if (shared.state.settings.setupDone) {

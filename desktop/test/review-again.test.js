@@ -51,7 +51,7 @@ test('a provider error is a sentence, not the API dump; a refused duplicate does
 
 test('the first review and the insights refresh say a provider error as a sentence too', () => {
   const page = fs.readFileSync(new URL('../renderer/pages/interviews.js', import.meta.url), 'utf8');
-  assert.ok(page.includes("import {humanError} from '../run-warnings.js'"));
+  assert.match(page, /import \{[^}]*\bhumanError\b[^}]*\} from '\.\.\/run-warnings\.js'/);
   assert.ok(page.includes(": humanError(result.error), result.ok ? 'ok' : 'error')"));
   assert.ok(page.includes("humanError(result.error || 'Could not refresh the insights')"));
   assert.ok(page.includes('result.already ? result.summary'));   // a refused duplicate review is not "on the Notion page"

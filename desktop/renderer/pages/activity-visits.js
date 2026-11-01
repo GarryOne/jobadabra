@@ -10,6 +10,7 @@ import {plural, runButton} from './activity-basics.js';
 import {showJobsIn} from './jobs.js';
 import {openView} from './nav.js';
 import {openActivity} from './activity-panel.js';
+import {plainError} from '../run-warnings.js';
 // A button on a card Recent activity redraws (on every log line and refresh): what it is doing lives here by key, not on the button, so a redraw
 // keeps "Starting Claude…" or its "✓", and the outcome lands on the button now on screen (7 Oct 2026: Read with Claude, then the few-jobs box,
 // showed no loading: the busy button was replaced by a fresh one). Every such button goes through keepPress + pressWhile (a test checks).
@@ -73,7 +74,7 @@ export function claudeReadButton(site, words) {
   claude.addEventListener('click', async () => {
     const started = await pressWhile(key, 'Starting Claude…', () => window.pilot.visitWithClaude(site.url, site.name)).catch(error => ({ok: false, error: error.message}));
     if (started?.ok) { setPress(key, {done: true, text: 'Claude is reading in Chrome'}); return; }
-    setPress(key, {text: 'Read with Claude', error: started?.error || 'Claude could not start.'});
+    setPress(key, {text: 'Read with Claude', error: plainError(started?.error || 'Claude could not start.')});
     const shown = pressedButton(key)?.closest('li')?.querySelector(WORDS);
     shown?.querySelector('.visit-claude-error')?.remove();
     shown?.append(el('span', 'muted visit-claude-error', pressError(key)));
@@ -145,7 +146,7 @@ export function renderVisitsCard(card, target = $('activity-card'), {list: withL
     presses.set(key, {...presses.get(key), idle});
     all.addEventListener('click', async () => {
       const started = await pressWhile(key, 'Starting Claude…', () => window.pilot.visitsWithClaude(stopped.map(site => ({url: site.url, name: site.name})))).catch(error => ({ok: false, error: error.message}));
-      if (!started?.ok) { setPress(key, {text: idle, error: started?.error || 'Claude could not start.'}); toastMessage('Claude did not start', started?.error || '', {activity: true}, 'bad'); return; }
+      if (!started?.ok) { setPress(key, {text: idle, error: plainError(started?.error || 'Claude could not start.')}); toastMessage('Claude did not start', started?.error || '', {activity: true}, 'bad'); return; }
       setPress(key, {done: true, text: `Claude is reading ${stopped.length} sites in Chrome`});
       claudeGroups.set(stopped[0].url, stopped.map(site => site.url));
       for (const site of stopped) setPress(`claude:${site.url}`, {done: true, text: 'Claude is reading in Chrome'});

@@ -11,6 +11,7 @@ import {detailsChanged, factsDirty, factsRead} from './details-drafts.js';
 import {factOf, factRow} from '../fact-line.js';
 import {countText, loadQuestions, questionsNow} from './jobs-questions.js';
 import {NATIONALITY, STATUSES, SUGGESTED, ZONES, freer, inZones, isAnswered, isAsked, isOldAsked, nationalityOf, zoneOfLabel, zonesOpenedBy} from '../work-eligibility.js';
+import {plainError} from '../run-warnings.js';
 
 export const KEYS = ['eligibility', 'availability', 'languages'];
 const box = key => document.querySelector(`[data-facts="${key}"]`);
@@ -145,12 +146,12 @@ export async function showFacts({redraw = false} = {}) {
   const quick = await swr('details-facts', () => window.pilot.detailsFactsNow(), {
     loading: () => skeletons(true),
     paint: paintFacts,
-    fail: result => { $('facts-message').textContent = result.error || ''; skeletons(false); draw({}); detailsChanged(); },
+    fail: result => { $('facts-message').textContent = plainError(result.error || ''); skeletons(false); draw({}); detailsChanged(); },
   });
   document.dispatchEvent(new CustomEvent('details-sorting', {detail: {on: true}}));
   const settled = await window.pilot.detailsFacts().catch(error => ({ok: false, error: error.message}));
   if (turn === settledFor && settled?.ok !== undefined) {
-    if (settled.ok) { keep('details-facts', settled); paintFacts(settled, false); } else if (settled.error) $('facts-message').textContent = settled.error;
+    if (settled.ok) { keep('details-facts', settled); paintFacts(settled, false); } else if (settled.error) $('facts-message').textContent = plainError(settled.error);
   }
   redrawing = false;
   document.dispatchEvent(new CustomEvent('details-sorting', {detail: {on: false, changed: settled?.changed || 0}}));

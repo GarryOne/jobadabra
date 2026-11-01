@@ -11,6 +11,7 @@ import {keyMessage, liveCard, toPage} from '../live-card.js';
 import {onLeaveView} from './view-leave.js';
 import {createLiveOpener} from '../live-opener.js';
 import {createLagMeter, createPictureSink, stageState} from '../live-frames.js';
+import {plainError} from '../run-warnings.js';
 
 const ZOOMS = [50, 75, 100, 125, 150];
 
@@ -42,7 +43,7 @@ function viewFor(item) {
   view = {id: item.id, root, img, marks, ask, filling, address, zoomText, screen, page, empty, w: 0, h: 0, facts: null, zoom: 100, item, error: '', shown: false};
   const mine = view;
   // Asked on every redraw until main says open (lib/live-view-handlers.js liveOpen): the hidden form may not exist yet when the card is first drawn (renderer/live-opener.js).
-  mine.opener = createLiveOpener(() => window.pilot.liveOpen(item.id), result => { if (view !== mine) return; mine.error = result.error; mine.address.textContent = mine.facts?.address || mine.error; drawStage(mine); });
+  mine.opener = createLiveOpener(() => window.pilot.liveOpen(item.id), result => { if (view !== mine) return; mine.error = result.error; mine.address.textContent = plainError(mine.facts?.address || mine.error); drawStage(mine); });
   const lag = createLagMeter();
   let reported = Date.now();
   // Pictures reach the image only through the sink: the newest, once per display refresh (renderer/live-frames.js).
@@ -149,7 +150,7 @@ function drawCard(item) {
   $('ss-form-state').replaceChildren();
   v.root.dataset.frame = card.frame;
   v.root.classList.toggle('is-filling', card.kind === 'filling');
-  v.address.textContent = v.facts?.address || v.error;
+  v.address.textContent = plainError(v.facts?.address || v.error);
   if (card.live) v.opener.ensure();   // a queued job has no page yet: nothing to ask main for
   v.filling.hidden = !card.filling;
   v.filling.replaceChildren(el('span', 'spinner'), el('span', '', `Filling "${card.filling}"…`));

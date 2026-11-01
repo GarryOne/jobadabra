@@ -6,6 +6,7 @@ import {ensureStaged} from './ensure-staged.mjs';
 import {refusalNote} from './ai-refused.mjs';
 import {capMessage, skipStepForCap, takeCapped} from './ai-cap.mjs';
 import {isEnvironment, RETRY_WAIT_MS} from './environment.mjs';
+import {mayRetry} from './beta-retry.mjs';
 import {faultCheck, NEVER_FIRED, neverFiredNote} from './faults.mjs';
 import {codeLine} from './artifacts.mjs';
 import {causeOf, sharedCauseLines} from './step-cause.mjs';
@@ -115,8 +116,9 @@ export function createRunner(getSession, {suite = '', cadence = '', keepGoing = 
   // elsewhere: the suite leaves this step to another slice of itself (step-sharded apply/applyflows): a picked name is still found, so the slice without it is not red.
   // safety: the step proves the Full automation confirmation, that nothing is posted/sent/pressed, or Stop (lib/safety-steps.mjs). Why (31 Oct 2026, owner: "Never suspend safety steps"):
   // it is never suspended, even when lanes.json lists it: it fails the suite and blocks the beta, and its result carries safety: true.
+  // data: the step proves a data-integrity rule (a store write, export/import/move, backup; marked like safety, read by lib/safety-steps.mjs): it gets no beta retry (lib/beta-retry.mjs).
   // clean-code-ok: Why (#2501; 30 Oct 2026, owner redesign): old function; reuse its cap and opt-in stopOnHang while preserving other suites' retry and keep-going defaults.
-  async function run(name, rawFn, {needs = [], faults = false, critical = false, stopOnHang = false, limitMs, hangError, elsewhere = false, safety = false} = {}) {
+  async function run(name, rawFn, {needs = [], faults = false, critical = false, stopOnHang = false, limitMs, hangError, elsewhere = false, safety = false, data = false} = {}) {
     if (elsewhere) { if (picked.includes(name.toLowerCase())) found.add(name.toLowerCase()); return; }
     const left = budgetMs - (Date.now() - suiteStarted);
     if (left <= 0) {
@@ -146,8 +148,9 @@ export function createRunner(getSession, {suite = '', cadence = '', keepGoing = 
       await getSession()?.traceGroup?.(name);   // the step's actions sit under its name in the trace (lib/app.mjs), and in the report's step
       try {
         try { await fn(); } catch (error) {
-          // The environment answered badly (an HTML error page, a dropped connection): one more try before it counts (#266).
-          if (faults || ownedHang(error, stopOnHang) || !isEnvironment(error.message)) throw error;
+          // The environment answered badly (an HTML error page, a dropped connection): one more try before it counts (#266). In a beta, any step but a safety or data step gets it
+          // (1 Nov 2026, owner: "Auto-retry in betas only"; lib/beta-retry.mjs). Not when the suite's budget is spent: the retry would run past it.
+          if (budgetMs - (Date.now() - suiteStarted) <= 0 || !mayRetry({error, faults, safety, data})) throw error;
           retried = String(error.message).slice(0, 200);
           console.log(`↻ ${name}: the environment failed (${retried.slice(0, 120)}), trying once more`);
           await new Promise(done => setTimeout(done, RETRY_WAIT_MS));
@@ -167,7 +170,7 @@ export function createRunner(getSession, {suite = '', cadence = '', keepGoing = 
       await (report ? report.step(name, attempt) : attempt());
       const seconds = ((Date.now() - started) / 1000).toFixed(1);
       const vacuous = unfired();
-      results.push({name, status: 'passed', seconds, ...(held ? {suspended: true} : {}), ...(safety ? {safety: true} : {}), ...(retried ? {retried} : {}), ...(vacuous ? {faultNeverFired: true} : {})});
+      results.push({name, status: 'passed', seconds, ...(held ? {suspended: true} : {}), ...(safety ? {safety: true} : {}), ...(data ? {data: true} : {}), ...(retried ? {retried} : {}), ...(vacuous ? {faultNeverFired: true} : {})});
       console.log(`✓ ${name} (${seconds}s)${retried ? ' after one retry' : ''}${vacuous ? ` ⚠ passed, but ${NEVER_FIRED}: it may test nothing` : ''}`);
     } catch (error) {
       // Why (31 Oct 2026, owner): "the fact that AI credit finished should not stop a beta from being green. It should just raise an alert. And that's it." Every capped step is skipped, including release gates.
@@ -194,7 +197,7 @@ export function createRunner(getSession, {suite = '', cadence = '', keepGoing = 
         if (getSession()?.page?.isClosed?.()) throw Object.assign(error, {suspendedStop: true, stoppedBecause: 'left the app closed'});
         return;
       }
-      results.push({name, status: 'failed', note, cause: causeOf(note), ...(safety ? {safety: true} : {}), ...(where ? {where} : {}), ...(refused || (!faults && isEnvironment(error.message)) ? {environment: true} : {}), ...(base !== error.message ? {faultNeverFired: true} : {})});
+      results.push({name, status: 'failed', note, cause: causeOf(note), ...(safety ? {safety: true} : {}), ...(data ? {data: true} : {}), ...(where ? {where} : {}), ...(refused || (!faults && isEnvironment(error.message)) ? {environment: true} : {}), ...(base !== error.message ? {faultNeverFired: true} : {})});
       console.log(`✗ ${name}: ${note}${where ? ` (at ${where})` : ''}`);
       if (keepGoing && !critical && !ownedHang(error, stopOnHang)) return;   // recorded: the suite still fails at the end, and the next step runs
       throw error;

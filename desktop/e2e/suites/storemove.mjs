@@ -71,7 +71,7 @@ export async function run(ctx) {
     // The positive control: the seed is what the screens show, so "the same after" means something.
     if (before.jobs.length < 4 || before.interviews.length !== 1 || !before.activity.length) throw new Error(`the seeded data is not on the screens: ${JSON.stringify(before)}`);
     console.log(`  before: ${JSON.stringify(before)}`);
-  }, {critical: true});
+  }, {critical: true, data: true});
 
   await ctx.run('Export data writes this Mac\'s data to one file', async () => {
     exportFile = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'jp-e2e-export-')), 'export.tar.gz');
@@ -80,7 +80,7 @@ export async function run(ctx) {
     await page.click('#export-data');
     await page.waitForFunction(() => /Exported ✓|Export failed/.test(document.getElementById('data-message')?.textContent || ''), null, {timeout: 60000});
     if (!fs.existsSync(exportFile) || fs.statSync(exportFile).size < 1000) throw new Error(`no export at ${exportFile}`);
-  });
+  }, {data: true});
 
   await ctx.run('Notion connects with a Profile of its own; this Mac keeps its data until the move', async () => {
     const ids = await buildStandIn(ctx.standIn);   // a workspace from before, as a person who used Notion earlier has
@@ -98,7 +98,7 @@ export async function run(ctx) {
     if (!await page.locator('#store-move').isVisible()) throw new Error('"Move my data to Notion" is not offered after connecting with data on this Mac');
     const gone = Object.keys(TEXTS).filter(name => !fs.existsSync(path.join(ctx.profile, `${name}.md`)));
     if (gone.length) throw new Error(`connecting Notion took ${gone.join(', ')} off this Mac while its data is still here (store sqlite)`);
-  });
+  }, {data: true});
 
   await ctx.run('a move killed halfway changes nothing, and the next one goes on with nothing twice', async () => {
     // The 6th write hangs (inside the applications: their pages, kit sections and file): the copy is then killed as a crash or a power cut would.
@@ -120,7 +120,7 @@ export async function run(ctx) {
     const done = await pressMove(page);
     if (!/Moved to Notion ✓/.test(done)) throw new Error(`the second move says "${done}"`);
     oncePerRecord(ctx.standIn, 'after a killed move and a second one');
-  });
+  }, {data: true});
 
   await ctx.run('after the move the store is Notion, the Profile Notion had is kept, and this Mac\'s files are in the archive', async () => {
     const settings = settingsOf(ctx.profile);
@@ -130,14 +130,14 @@ export async function run(ctx) {
     if (!profile.includes(NOTION_PROFILE) || profile.includes('ten years')) throw new Error(`the Notion Profile was not kept: "${profile.slice(0, 200)}"`);
     if (!/already had a Profile, so it was kept/.test(await storeMessage(page))) throw new Error(`the result does not say the Profile was kept: "${await storeMessage(page)}"`);
     if (!fs.readFileSync(path.join(settings.storeArchive, 'profile.md'), 'utf8').includes('ten years')) throw new Error('this Mac\'s Profile is not in the archive');
-  });
+  }, {data: true});
 
   await ctx.run('Jobs, Focus, Interviews and Recent activity show the same items from Notion', async () => {
     await page.reload();
     await page.waitForSelector('.view:not([hidden])', {timeout: 60000});
     const wanted = afterConnect || before;
     sameScreens(wanted, await screens(page, {jobs: wanted.jobs.length}));
-  });
+  }, {data: true});
 
   // A second install: the export, imported into a fresh profile, then moved into its own empty Notion.
   let second = null, standIn2 = null;
@@ -162,7 +162,7 @@ export async function run(ctx) {
       await second.page.waitForSelector('.view:not([hidden])', {timeout: 60000});
       if (settingsOf(profile).store !== 'sqlite') throw new Error(`the import's store is ${settingsOf(profile).store}`);
       sameScreens(before, await screens(second.page));
-    }, {needs: [{name: 'the export file', value: exportFile}]});
+    }, {needs: [{name: 'the export file', value: exportFile}], data: true});
 
     await ctx.run('the imported install moves into an empty Notion: its Profile and every record arrive once', async () => {
       if (!second) throw new Error('no second install');
@@ -182,7 +182,7 @@ export async function run(ctx) {
           + `\n  searches seen by its log: ${JSON.stringify(searches(second.profile))} (before the connect: ${JSON.stringify(mark)}); its log: ${JSON.stringify(logLines(second.profile, /\\[(store|data|run)\\]|search|daily/i))}`);
       }
       if (standIn2.stats.unknown.length) throw new Error(`the second stand-in met requests it does not know: ${standIn2.stats.unknown.join('; ')}`);
-    });
+    }, {data: true});
   } finally {
     await second?.close().catch(() => {});
     await standIn2?.close();

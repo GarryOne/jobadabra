@@ -92,7 +92,7 @@ export async function run(ctx) {
     await page.waitForFunction(pairs => pairs.every(([u, s]) => !!document.querySelector(`#jobs-board .board-column[data-stage="${s}"] .board-card[data-url="${u}"]`)), where, {timeout: 30000}).catch(() => {});   // the message below names the card that never came
     const placed = await inPlace();
     if (!placed.every(Boolean)) throw new Error(`a card is not in its column: ${where.filter((_, i) => !placed[i]).map(([url, stage]) => `${url} (not in ${stage})`).join(', ')}`);
-  });
+  }, {data: true});
 
   await ctx.run('moving a card to Interviewing writes the stage and its event to the store, and it stays after a reload', async () => {
     await page.click(`#jobs-board .board-card[data-url="${BOARD.applied}"] button`);   // its ⋯ "Move to"
@@ -108,5 +108,5 @@ export async function run(ctx) {
     await goBoard();
     await page.waitForFunction(u => !!document.querySelector(`#jobs-board .board-column[data-stage="Interviewing"] .board-card[data-url="${u}"]`), BOARD.applied, {timeout: 30000})
       .catch(() => { throw new Error('after a reload the card is not in Interviewing'); });
-  });
+  }, {data: true});
 }

@@ -98,7 +98,7 @@ export async function run(ctx) {
       await page.evaluate(() => (window.__jp.shared.allJobs || []).filter(job => /^E2E /.test(job.company || '') && job.fit != null && job.fit !== '').map(job => ({url: job.url, title: job.title, fit: job.fit}))),
       await ctx.data('matches', 'list', {})]);   // the store: only this run's fixture jobs, emptied at the start (Notion) or a fresh profile (this Mac's store)
     if (problems.length) throw new Error(problems.slice(0, 5).join('; '));
-  }, {needs: ctx.needs});
+  }, {needs: ctx.needs, data: true});
   // One Apply button (5 Oct 2026): a scored job with no kit is applied to like any other (the kit is drafted when Apply is pressed), and Prepare is only in the ⋯ menu.
   await ctx.run('a scored job without a kit shows the Apply button, never Prepare, and "Prepare only" in its ⋯ menu', async () => {
     await page.click('.nav[data-view="jobs"]');

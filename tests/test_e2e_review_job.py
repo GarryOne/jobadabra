@@ -29,6 +29,8 @@ class EveryLaneHasTheBatchReview(unittest.TestCase):
     def test_every_suite_job_that_uploads_screenshots_is_reviewed_after_by_its_lane(self):
         lanes = []
         for path in sorted(WORKFLOWS.glob('*.yml')):
+            if path.name == 'desktop.yml':
+                continue   # Why (1 Nov 2026, owner: "I don't think this should be a gate for beta, which is invariable (depending on the AI response)"): the beta no longer reviews; the night burn-in's e2e.yml and e2e-windows.yml do
             all_jobs = jobs(path.read_text())
             reviews = {name: job for name, job in all_jobs.items() if 'uses: ./.github/actions/e2e-review' in job}
             for name, job in all_jobs.items():
@@ -43,7 +45,7 @@ class EveryLaneHasTheBatchReview(unittest.TestCase):
                 self.assertRegex(after[0], r'(?m)^      issues: (read|write)', f'{path.name}: the lessons are read from the issues')
                 self.assertRegex(after[0], r'(?m)^      actions: (read|write)', f'{path.name}: the suites\' artifacts are downloaded')
                 self.assertRegex(after[0], r'if: always\(\)', f'{path.name}: a red suite\'s pages are reviewed too')
-        self.assertEqual(sorted(lanes), ['desktop.yml:test-mac:mac', 'desktop.yml:test-windows:windows', 'e2e-windows.yml:suite:windows', 'e2e.yml:suite:mac'])
+        self.assertEqual(sorted(lanes), ['e2e-windows.yml:suite:windows', 'e2e.yml:suite:mac'])
 
     def test_the_review_reads_each_lane_and_its_findings_reach_the_issue_filer(self):
         review = ACTION.read_text()
@@ -52,13 +54,10 @@ class EveryLaneHasTheBatchReview(unittest.TestCase):
         # Owner, 26 Oct 2026: Haiku 5.5 by batch (~$1 a month), not Sonnet (~$18) or Free AI (~$31 in Workers AI neurons).
         for needed in ('E2E_REVIEW_ENGINE: claude', 'E2E_REVIEW_MODEL: claude-haiku-5-5', 'E2E_REVIEW_PROMPT: checklist', "E2E_REVIEW_BATCH_MIN: '1'", 'run: timeout 900 node review-ui.mjs', '--job e2e-screenshot-review'):
             self.assertIn(needed, review)
-        # The release's block check reads the findings: the review comes before it, and before the step that stops a red lane (so a red lane's pages are reviewed too).
+        # Why (1 Nov 2026, owner): the beta's Release jobs hold no AI review and no block check; the findings are report only (the night burn-in's review artifact and ui-findings.yml).
         desktop = (WORKFLOWS / 'desktop.yml').read_text()
-        for lane, platform in (('mac', 'Mac'), ('windows', 'Windows')):
-            release = jobs(desktop)[f'release-{lane}']
-            at = release.index('uses: ./.github/actions/e2e-review')
-            self.assertLess(at, release.index(f'name: Not released on {platform}, an E2E suite failed'))
-            self.assertLess(at, release.index(f'name: No real high-severity finding in the {platform} suites'))
+        for lane in ('mac', 'windows'):
+            self.assertNotIn('actions/e2e-review', jobs(desktop)[f'release-{lane}'], f'release-{lane}: the beta is not gated on an AI answer')
         self.assertIn("--pattern 'e2e-artifacts-*'", (WORKFLOWS / 'ui-findings.yml').read_text(), 'the issue filer reads every e2e-artifacts-* artifact, the review\'s among them')
 
 

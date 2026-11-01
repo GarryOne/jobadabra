@@ -40,7 +40,7 @@ on:
         type: boolean
         default: false
       beta:
-        description: 'A beta by hand, in one shot: always builds, then the same e2e gate as the nightly (every gate suite, unit suites green, no high-severity finding, additive Notion schema) approves it for beta testers. Empty = a build for trying, offered to nobody'
+        description: 'A beta by hand, in one shot: always builds, then the same e2e gate as the nightly (every gate suite, unit suites green, additive Notion schema) approves it for beta testers. Empty = a build for trying, offered to nobody'
         type: boolean
         default: false
       over_red_main:
@@ -1339,7 +1339,7 @@ jobs:
           phase: end
         timeout-minutes: 5
 
-  # RELEASE: the lane's HTML report (always), then, only when every E2E suite of BOTH lanes passed: no real high-severity finding, the shared release checks, and the
+  # RELEASE: the lane's HTML report (always), then, only when every E2E suite of BOTH lanes passed: the shared release checks, and the
   # "Beta-approved:" line that offers the build to Mac beta testers (desktop/lib/updater.js). Red = not released on Mac.
 
   # Why (30 Oct 2026, owner): most Windows suites were dropped as duplicates of Mac + Linux, so a red there is unproven on Windows too, and a red on Windows holds Mac as well;
@@ -1351,19 +1351,15 @@ jobs:
     outputs:
       retry: ${{ steps.retry.outputs.text }}   # the steps that passed on their retry, for the offer job's line in the notes
     runs-on: ubuntu-24.04
-    timeout-minutes: 40   # Why (1 Nov 2026, a8): the e2e review (up to 22 min) plus the lane's checks; main's CI is awaited by the main-ci job, not here (it was 90 min while this job waited up to 60 min for it; 20 once cut Windows off at 18 min, beta 41090972183)
+    timeout-minutes: 40   # Why (1 Nov 2026, a8): the lane's checks (the e2e review left the beta, owner 1 Nov); main's CI is awaited by the main-ci job, not here (it was 90 min while this job waited up to 60 min for it; 20 once cut Windows off at 18 min, beta 41090972183)
     permissions:
       contents: write   # the approval line (release-stable.sh when the soak is off)
       actions: write    # this run's artifacts, build.yml's verdict on the commit; release-stable.sh starts the Chrome Web Store publish
-      id-token: write   # GitHub's per-run token the Codex broker checks (the screenshot review, lib/broker-client.mjs)
-      issues: write     # block-check.mjs reads the UI-loop issues; the release scripts rewrite the pinned Release channels issue
+      issues: write     # the release scripts rewrite the pinned Release channels issue (tools/sync_release_labels.py)
     env:
       E2E_ARTIFACT_SECRET_NAMES: |
-        ACTIONS_ID_TOKEN_REQUEST_TOKEN
-        AI_COST_PUBLISH_KEY
         CI_ALERTS_TELEGRAM_BOT_TOKEN
         CI_ALERTS_TELEGRAM_CHAT_ID
-        E2E_ANTHROPIC_KEY
         GH_TOKEN
         GITHUB_TOKEN
       GH_TOKEN: ${{ github.token }}
@@ -1405,8 +1401,6 @@ jobs:
         if: always()
         shell: bash
         env:
-          AI_COST_PUBLISH_KEY: ${{ secrets.AI_COST_PUBLISH_KEY }}
-          E2E_ANTHROPIC_KEY: ${{ secrets.E2E_ANTHROPIC_KEY }}
           GITHUB_TOKEN: ${{ github.token }}
           E2E_ARTIFACT_PATHS: |
             e2e-report
@@ -1419,16 +1413,6 @@ jobs:
           name: e2e-report   # admin/e2e-report.js serves it
           path: e2e-report
           compression-level: 0
-      # The AI screenshot review of this lane's suites, also when one failed, before the block check reads its findings (.github/actions/e2e-review: one Claude
-      # batch for every page, half the price; owner, 26 Oct 2026). Inside this job, so the release graph stays Build -> E2E -> Release.
-      - uses: ./.github/actions/e2e-review
-        timeout-minutes: 22
-        with:
-          lane: mac
-          anthropic-key: ${{ secrets.E2E_ANTHROPIC_KEY }}
-          provider: ${{ inputs.ai_provider || vars.CI_AI_PROVIDER }}
-          publish-key: ${{ secrets.AI_COST_PUBLISH_KEY }}
-          github-token: ${{ github.token }}
       - name: Not released on Mac, an E2E suite failed on Mac + Linux or Windows, or a unit test failed
         timeout-minutes: 10
         run: python3 tools/beta_rate_gate.py --repo "$GITHUB_REPOSITORY" --run "$GITHUB_RUN_ID" --e2e-only --platform mac
@@ -1436,17 +1420,6 @@ jobs:
         timeout-minutes: 10
         if: needs.changes.outputs.gate == 'true'
         run: python3 tools/beta_rate_gate.py --repo "$GITHUB_REPOSITORY" --run "$GITHUB_RUN_ID" --platform mac
-      - name: No real high-severity finding in the Mac suites
-        timeout-minutes: 5
-        working-directory: desktop/e2e
-        run: |
-          gh run download "${{ github.run_id }}" --repo "$GITHUB_REPOSITORY" --pattern 'e2e-artifacts-*' --dir ../../e2e-artifacts || echo "no artifacts to read"
-          mkdir -p ../../e2e-artifacts
-          find ../../e2e-artifacts -mindepth 1 -maxdepth 1 -name 'e2e-artifacts-windows-*' -exec rm -rf {} +
-          status=0
-          node block-check.mjs --artifacts ../../e2e-artifacts > block.txt || status=$?
-          cat block.txt
-          if [ "$status" != 0 ]; then echo "$TAG is not offered on Mac: a real high-severity finding in its end-to-end suites."; exit 1; fi
       - name: Steps that passed on their retry (listed in the release notes)
         id: retry
         timeout-minutes: 5
@@ -1530,7 +1503,7 @@ jobs:
           phase: end
         timeout-minutes: 5
 
-  # RELEASE: the lane's HTML report (always), then, only when every E2E suite of BOTH lanes passed: no real high-severity finding, the shared release checks, and the
+  # RELEASE: the lane's HTML report (always), then, only when every E2E suite of BOTH lanes passed: the shared release checks, and the
   # "Beta-approved (Windows):" line that offers the build to Windows beta testers (desktop/lib/updater.js). Red = not released on Windows.
   release-windows:
     name: Release · Windows beta   # needs both lanes: the Why above release-mac
@@ -1539,17 +1512,13 @@ jobs:
     outputs:
       retry: ${{ steps.retry.outputs.text }}   # the steps that passed on their retry, for the offer job's line in the notes
     runs-on: ubuntu-24.04
-    timeout-minutes: 40   # Why (1 Nov 2026, a8): the e2e review (up to 22 min) plus the lane's checks; main's CI is awaited by the main-ci job, not here (it was 90 min while this job waited up to 60 min for it; 20 once cut Windows off at 18 min, beta 41090972183)
+    timeout-minutes: 40   # Why (1 Nov 2026, a8): the lane's checks (the e2e review left the beta, owner 1 Nov); main's CI is awaited by the main-ci job, not here (it was 90 min while this job waited up to 60 min for it; 20 once cut Windows off at 18 min, beta 41090972183)
     permissions:
       contents: write   # the approval line (release-stable.sh when the soak is off)
       actions: write    # this run's artifacts, build.yml's verdict on the commit; release-stable.sh starts the Chrome Web Store publish
-      id-token: write   # GitHub's per-run token the Codex broker checks (the screenshot review, lib/broker-client.mjs)
-      issues: write     # block-check.mjs reads the UI-loop issues; the release scripts rewrite the pinned Release channels issue
+      issues: write     # the release scripts rewrite the pinned Release channels issue (tools/sync_release_labels.py)
     env:
       E2E_ARTIFACT_SECRET_NAMES: |
-        ACTIONS_ID_TOKEN_REQUEST_TOKEN
-        AI_COST_PUBLISH_KEY
-        E2E_ANTHROPIC_KEY
         GH_TOKEN
         GITHUB_TOKEN
       GH_TOKEN: ${{ github.token }}
@@ -1589,8 +1558,6 @@ jobs:
         if: always()
         shell: bash
         env:
-          AI_COST_PUBLISH_KEY: ${{ secrets.AI_COST_PUBLISH_KEY }}
-          E2E_ANTHROPIC_KEY: ${{ secrets.E2E_ANTHROPIC_KEY }}
           GITHUB_TOKEN: ${{ github.token }}
           E2E_ARTIFACT_PATHS: |
             e2e-report
@@ -1603,16 +1570,6 @@ jobs:
           name: e2e-report-windows   # admin/e2e-report.js serves it
           path: e2e-report
           compression-level: 0
-      # The AI screenshot review of this lane's suites, also when one failed, before the block check reads its findings (.github/actions/e2e-review: one Claude
-      # batch for every page, half the price; owner, 26 Oct 2026). Inside this job, so the release graph stays Build -> E2E -> Release.
-      - uses: ./.github/actions/e2e-review
-        timeout-minutes: 22
-        with:
-          lane: windows
-          anthropic-key: ${{ secrets.E2E_ANTHROPIC_KEY }}
-          provider: ${{ inputs.ai_provider || vars.CI_AI_PROVIDER }}
-          publish-key: ${{ secrets.AI_COST_PUBLISH_KEY }}
-          github-token: ${{ github.token }}
       - name: Not released on Windows, an E2E suite failed on Mac + Linux or Windows, or a unit test failed
         timeout-minutes: 10
         run: python3 tools/beta_rate_gate.py --repo "$GITHUB_REPOSITORY" --run "$GITHUB_RUN_ID" --e2e-only --platform windows
@@ -1620,17 +1577,6 @@ jobs:
         timeout-minutes: 10
         if: needs.changes.outputs.gate == 'true'
         run: python3 tools/beta_rate_gate.py --repo "$GITHUB_REPOSITORY" --run "$GITHUB_RUN_ID" --platform windows
-      - name: No real high-severity finding in the Windows suites
-        timeout-minutes: 5
-        working-directory: desktop/e2e
-        run: |
-          gh run download "${{ github.run_id }}" --repo "$GITHUB_REPOSITORY" --pattern 'e2e-artifacts-*' --dir ../../e2e-artifacts || echo "no artifacts to read"
-          mkdir -p ../../e2e-artifacts
-          find ../../e2e-artifacts -mindepth 1 -maxdepth 1 -name 'e2e-artifacts-*' ! -name 'e2e-artifacts-windows-*' -exec rm -rf {} +
-          status=0
-          node block-check.mjs --artifacts ../../e2e-artifacts > block.txt || status=$?
-          cat block.txt
-          if [ "$status" != 0 ]; then echo "$TAG is not offered on Windows: a real high-severity finding in its end-to-end suites."; exit 1; fi
       - name: Steps that passed on their retry (listed in the release notes)
         id: retry
         timeout-minutes: 5

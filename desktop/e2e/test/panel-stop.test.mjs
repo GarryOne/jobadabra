@@ -7,7 +7,7 @@ import {chromium} from 'playwright-core';
 import {isStopped, pressBudget, pressStop, readPanel} from '../lib/panel-stop.mjs';
 import {POLL_CAP_MS} from '../lib/wait-on-state.mjs';
 
-// mode: 'decoy' (a control of the page itself has the class `stop-btn` too), 'lateNever' (Stop disabled 900 ms, then never halts: the press itself spends part of the budget), 'late' (Stop disabled 400 ms, halts 100 ms after the press),'slow' (halts 700 ms after the press), 'never' (Stopping… and nothing else),
+// mode: 'decoy' (a control of the page itself has the class `stop-btn` too), 'late' (Stop disabled 400 ms, halts 100 ms after the press),'slow' (halts 700 ms after the press), 'never' (Stopping… and nothing else),
 // 'hidden' (no Stop is ever shown), 'pill' (the card is minimised, the pill's Stop halts at once), 'dim' (the step row ends and the dim over the page stays),
 // 'nocard' (the step row ends and the panel never says "Stopped by you").
 const PAGE = mode => `<body><div id="jobpilotto-review-host"></div><script>
@@ -15,19 +15,23 @@ const PAGE = mode => `<body><div id="jobpilotto-review-host"></div><script>
   const mode = ${JSON.stringify(mode)};
   root.innerHTML = '<div class="jp working"><div class="card"' + (mode === 'pill' ? ' hidden' : '') + '><div class="stopped" hidden>Stopped by you</div>'
     + '<div class="fill-box"><button class="primary fill is-busy">Choosing dropdown answers…</button>'
-    + '<button class="stop-btn" type="button" title="Stops everything"' + (mode === 'late' || mode === 'lateNever' ? ' disabled' : '') + (mode === 'hidden' ? ' style="display:none"' : '') + (mode === 'pill' ? ' style="display:none"' : '') + '>Stop</button></div></div>'
+    + '<button class="stop-btn" type="button" title="Stops everything"' + (mode === 'late' ? ' disabled' : '') + (mode === 'hidden' ? ' style="display:none"' : '') + (mode === 'pill' ? ' style="display:none"' : '') + '>Stop</button></div></div>'
     + '<button class="pill-stop" type="button" title="Stops everything" style="display:' + (mode === 'pill' ? 'block' : 'none') + '">Stop</button></div>';
   const halted = () => { const fill = root.querySelector('.fill'); fill.classList.remove('is-busy'); fill.textContent = 'Fill again'; if (mode !== 'nocard') root.querySelector('.stopped').hidden = false; if (mode === 'pill') root.querySelector('.card').hidden = true; };
   if (mode === 'decoy') document.body.append(Object.assign(document.createElement('button'), {className: 'stop-btn', textContent: 'Stop'}));   // the job form's own control with the same class
   if (mode === 'dim') document.body.append(Object.assign(document.createElement('div'), {id: 'jobpilotto-fill-overlay'}));
-  if (mode === 'late' || mode === 'lateNever') setTimeout(() => { root.querySelector('.stop-btn').disabled = false; }, mode === 'late' ? 400 : 900);
+  if (mode === 'late') setTimeout(() => { root.querySelector('.stop-btn').disabled = false; }, 400);
   for (const button of root.querySelectorAll('.stop-btn, .pill-stop')) button.onclick = event => {
     if (!event.isTrusted) return;
     button.disabled = true; button.textContent = 'Stopping…';
-    if (mode === 'never' || mode === 'lateNever') return;
+    if (mode === 'never') return;
     setTimeout(halted, mode === 'slow' ? 700 : mode === 'pill' ? 0 : 100);
   };
 </script></body>`;
+
+// Why (1 Nov 2026, a8): a limit here is a hang guard, never a budget under test. The slowest positive case took 1245 ms on CI (harness run 41265375751, browser launch included; the press itself < 800 ms), so 5000 ms is 4x; a case that must
+// FAIL on a stage it can only reach once the earlier stages passed gets the same guard, so a slow click cannot end the wait before that stage is read. The budget arithmetic is tested on an injected clock (test/panel-stop-verdict.test.mjs).
+const HANG_GUARD_MS = 5000;
 
 async function withPanel(mode, run) {
   const browser = await chromium.launch();
@@ -40,7 +44,7 @@ async function withPanel(mode, run) {
 
 test('a Stop that is disabled at first is pressed once it is enabled, and the panel is waited on until it shows stopped', async () => {
   await withPanel('late', async page => {
-    const {state} = await pressStop(page, {capMs: 5000});
+    const {state} = await pressStop(page, {capMs: HANG_GUARD_MS});
     assert.equal(isStopped(state), true);
     assert.deepEqual(state.stopButtons, ['Stopping… (disabled)', 'Stop'], 'it pressed the open panel\'s Stop, not the hidden pill');
   });
@@ -48,7 +52,7 @@ test('a Stop that is disabled at first is pressed once it is enabled, and the pa
 
 test('a panel that halts the fill late is waited for, not judged once right after the press', async () => {
   await withPanel('slow', async page => {
-    const {state, ms} = await pressStop(page, {capMs: 5000});
+    const {state, ms} = await pressStop(page, {capMs: HANG_GUARD_MS});
     assert.equal(isStopped(state), true);
     assert.ok(ms >= 500, `the verdict came after the panel changed (${ms} ms)`);
   });
@@ -67,19 +71,10 @@ test('a Stop that never halts the fill fails with the panel\'s last state in the
 
 test('each thing a Stop should change is waited for on its own and named: the dim that stays, the stopped card that never shows', async () => {
   await withPanel('dim', async page => {
-    await assert.rejects(pressStop(page, {capMs: 800}), error => /^Stop did not halt the fill: the dim over the page lifted did not finish/.test(error.message) && /"overlay":true/.test(error.message) && /"busy":false/.test(error.message));
+    await assert.rejects(pressStop(page, {capMs: HANG_GUARD_MS}), error => /^Stop did not halt the fill: the dim over the page lifted did not finish/.test(error.message) && /"overlay":true/.test(error.message) && /"busy":false/.test(error.message));
   });
   await withPanel('nocard', async page => {
-    await assert.rejects(pressStop(page, {capMs: 800}), error => /^Stop did not halt the fill: the panel showed "Stopped by you" \(or stayed minimised\) did not finish/.test(error.message) && /"stoppedShown":false/.test(error.message));
-  });
-});
-
-test('the time the press waits for an enabled Stop comes off the same budget the stages use', async () => {
-  await withPanel('lateNever', async page => {
-    const began = Date.now();
-    await assert.rejects(pressStop(page, {capMs: 1500}), /^Error: Stop did not halt the fill: the fill's step row ended/);
-    const took = Date.now() - began;
-    assert.ok(took < 2100, `one deadline from the press, not a fresh budget after the click (took ${took} ms of a 1500 ms cap)`);
+    await assert.rejects(pressStop(page, {capMs: HANG_GUARD_MS}), error => /^Stop did not halt the fill: the panel showed "Stopped by you" \(or stayed minimised\) did not finish/.test(error.message) && /"stoppedShown":false/.test(error.message));
   });
 });
 
@@ -91,7 +86,7 @@ test('a press outside a runner step still has one budget: the step\'s time, else
 
 test('only the panel\'s own Stop is pressed, not a control of the job form that has the same class', async () => {
   await withPanel('decoy', async page => {
-    const {state} = await pressStop(page, {capMs: 5000});
+    const {state} = await pressStop(page, {capMs: HANG_GUARD_MS});
     assert.equal(isStopped(state), true);
   });
 });
@@ -108,7 +103,7 @@ test('a Stop that is never pressable fails naming the control and the panel, not
 
 test('the minimised panel\'s pill Stop is pressed with the minimised option', async () => {
   await withPanel('pill', async page => {
-    const {state} = await pressStop(page, {capMs: 5000, minimised: true});
+    const {state} = await pressStop(page, {capMs: HANG_GUARD_MS, minimised: true});
     assert.equal(state.cardHidden, true);
     assert.equal(isStopped(state), true);
   });

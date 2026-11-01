@@ -12,6 +12,7 @@ export const fixtures = path.join(import.meta.dirname, '..', 'fixtures', 'visits
 const source = ['visit.js', 'visit-page.js'].map(file => fs.readFileSync(path.join(repo, 'extension', file), 'utf8')).join('\n');
 /** The source of one exported page function of extension/visit.js or visit-page.js, as plain `function name(...)`. @param {string} name @returns {string} */
 export const fn = name => { const match = new RegExp(`export (?:async )?function ${name}\\([^)]*\\) \\{[\\s\\S]*?\\n\\}\\n`).exec(source); if (!match) throw new Error(`${name} not found in extension/visit.js or visit-page.js`); return match[0].replace('export ', ''); };
+/** The source of one page function as an anonymous `function (...)`, to wrap as `(source)(args)` and run in a page; throws when the function is not in visit.js or visit-page.js. @param {string} name @returns {string} */
 export const anonymous = name => fn(name).replace(`function ${name}`, 'function');
 /** Run a page function inside the page and return what it answered. */
 export const call = (page, name) => page.evaluate(`(${anonymous(name)})()`);

@@ -175,9 +175,23 @@ test('no form: press refused, digest asked, state and dead end reported', async 
   assert.deepEqual(lines(r.calls), ['page kind: posting', 'no Apply button to press', 'no form on this page']);
   assert.deepEqual(named(r.calls, 'press'), [['press', 7, [], '', '', []]]);
   assert.deepEqual(named(r.calls, 'stall'), [['stall', tab, assertFunction(r.calls, 'stall'), '7 https://jobs.example.test/apply', kind]]);
-  assert.deepEqual(order(r.calls).slice(-10), ['backgroundPage', 'late', 'say', 'mark', 'late', 'script', 'applyState', 'decide', 'deadEnd', 'report']);
+  assert.deepEqual(order(r.calls).slice(-11), ['backgroundPage', 'late', 'tab', 'say', 'mark', 'late', 'script', 'applyState', 'decide', 'deadEnd', 'report']);
   assert.deepEqual(named(r.calls, 'deadEnd')[0][1], {job: 'https://jobs.example.test/job/1', host: 'jobs.example.test', why: 'no-form', tabId: 7, page: tab.url, needs: ''});
-  assert.deepEqual(sayings(r.calls), [['say', 7, 'Reading this page…'], ['say', 7, '', '', 'your-turn']]);
+  assert.deepEqual(sayings(r.calls), [['say', 7, 'Reading this page…'], ['say', 7, '', '', '']], 'the step is cleared; the verdict is the page-state write\'s');
+  assert.deepEqual(named(r.calls, 'applyState'), [['applyState', 7, 'done']], '#2800 try 2: ONE verdict per read (it said your-turn, then done a few ms later)');
+});
+
+// #2800 try 2 (CI run 41276590786: working -> your-turn -> done 67 ms later, 731 ms into the form's document): the posting's read, still the tab's current read because the form's read had not begun,
+// found the tab showing another page and said its verdict to it.
+test('watchPage: a read says no verdict to a tab that already shows another page (#2800 try 2)', async t => {
+  const kind = {role: 'no-form', kind: 'posting', by: 'ai'};
+  const r = await rig(t, {answers: [kind], counts: [{...shape, fields: 1}], ruled: 'no-form', tabs: [tab, {...tab, url: 'https://jobs.example.test/form'}]});
+  await r.run();
+  assert.ok(order(r.calls).includes('backgroundPage'), 'positive control: the read got as far as watchPage');
+  assert.deepEqual(sayings(r.calls), [['say', 7, 'Reading this page…']], 'no clear, no verdict');
+  assert.deepEqual(named(r.calls, 'applyState'), []);
+  assert.deepEqual(named(r.calls, 'script').filter(call => call[1]), [], 'nothing is written on the form the tab shows now');
+  assert.deepEqual(named(r.calls, 'deadEnd'), [], 'nothing is reported for the page the tab left');
 });
 
 // The real askKind callback is passed unchanged to the ladder.

@@ -205,9 +205,11 @@ export async function leavePage(step) {
 // Mark or watch a non-form page before writing its final state.
 async function watchPage(step) {
   const {tab, jobUrl, gen, role, kind, counts, pressed} = step;
-  const {progress, emptyShape, watchForFields, late, writeState} = step.flow;
-  if (late(tab, gen, 'page state')) return false;   // Why (#2800 try 2, local trace): only the tab's CURRENT read may say the person's turn. The posting's read, ending after the tab went on to the form, said it 34 ms before the form's own end (working -> your-turn -> done: "Fill again" mid-run). A stale read never writes the page's state (worker/test/read-generation.test.js)
-  await progress(tab.id, '', '', 'your-turn');   // no fill here: the panel's "Starting…" ends now, not after its 20 s (owner, 9 Oct 2026: it spun on a sign-in page left to them)
+  const {progress, emptyShape, watchForFields, late, writeState, sameWatchPage} = step.flow;
+  if (late(tab, gen, 'page state')) return false;   // Why (#2800 try 2): a read says a verdict only while it is the tab's current read AND the tab still shows its page. A stale read never writes the page's state (worker/test/read-generation.test.js)
+  const now = await chrome.tabs.get(tab.id).catch(() => null);
+  if (!now || !sameWatchPage(now.url, step.live?.url || tab.url)) { decide('fill', 'the tab moved on before this read said its end: the page it shows decides', {page: new URL(String(step.live?.url || tab.url)).pathname}); return false; }   // Why (#2800 try 2, CI run 41276590786: working -> your-turn -> done 67 ms later): the posting's read, still current because the form's read had not begun, said its end to the form
+  await progress(tab.id, '', '', '');   // the step ends now, not after the 20 s watch (owner, 9 Oct 2026: it spun on a sign-in page left to them). Why (#2800 try 2): only a clear; the verdict is the page-state write below, one per read (it said your-turn here, then done from the write, a few ms apart)
   // A check that the visitor is human in front of the page (the page-kind AI's bot_check): the person solves it in this tab; the form is watched for two
   // minutes and filled once it shows (SmartRecruiters, 9 Oct 2026: the check was read as an empty page, "no form", and nobody was told).
   const botCheck = role === 'no-form' && kind?.botCheck === true;

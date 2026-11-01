@@ -305,6 +305,7 @@ const fillFlowParts = {
   get fillOpenedTab() { return fillOpenedTab; },
   // Return the worker's current progress callback.
   get progress() { return progress; },
+  get sameWatchPage() { return sameWatchPage; },   // the one meaning of "the tab still shows this page" (a query-only change is the same page)
   askKind, sayStep, late, forgetKind, brokenPage, formAfterPress, blindVerdict,
   emptyShape, watchForFields, writeState, deadEndHere, consider, BOT_CHECK_NEED,
 };

@@ -6,7 +6,7 @@
 // desktop/test/apply-state-owner.test.js.
 // Design (#2800, 1 Nov 2026): working from the run's start to ONE end verdict. A piece of the run ending (a fill pass, a cleared step) is not a verdict: it clears its step and the tab stays working (sayApply). Run 41274202726: a pass's own `done`
 // came ~310 ms before the fill's end was written on its page, so the page drew "Fill again" (busy false, no dim) with the fill still going.
-// Try 2 (#2800): and only the tab's CURRENT read (read-gen.js) may say a verdict. The posting's read, ending after the tab went on to the form, said `done` / `your-turn` ahead of the form's own end (local trace, 2 of 8 runs): a stale read's verdict is dropped.
+// Try 2 (#2800): one verdict PER READ, from the tab's CURRENT read (read-gen.js) and only while the tab still shows its page. The posting's read, ending after the tab went on to the form, said `done` (local trace, 2 of 8 runs) and `your-turn` then `done` (CI run 41276590786) ahead of the form's own end; a no-form read said two verdicts itself (watchPage's your-turn, then writeState's done).
 // TODO(AI): sayStep(tab, '') in account-step.js and messages-panel.js still says done for a piece that is not the run's end, the same shape on those two paths, parked as JOB-180 (2026-11-01).
 // TODO(AI): a run that ends with no progress('') (a return that skips it) leaves its tab working until Stop, the panel's X or the tab's close: find such a path and give it a verdict (2026-10-27).
 export const WORKING = 'working';

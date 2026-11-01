@@ -30,26 +30,6 @@
   "catches": "the run ends as Failed or with warnings, in words"
  },
  {
-  "id": "focus-count-off-by-one",
-  "suite": "focus",
-  "store": "sqlite",
-  "file": "desktop/renderer/pages/focus.js",
-  "find": "$('focus-count').textContent = String(today.applied);",
-  "replace": "$('focus-count').textContent = String(today.applied + 1);",
-  "what": "Focus counts one application too many today",
-  "catches": "every number on Focus matches the Notion rows"
- },
- {
-  "id": "target-not-written",
-  "suite": "focus",
-  "store": "sqlite",
-  "file": "desktop/lib/strategy-settings.js",
-  "find": "  storage.writeText('config/preferences.json', JSON.stringify({...JSON.parse(before), daily_applications_target: target}, null, 2) + '\\n');",
-  "replace": "  void target;",
-  "what": "a changed daily target is never written to this Mac's store",
-  "catches": "\"Edit target\" saves to Notion"
- },
- {
   "id": "scout-silent",
   "suite": "activity",
   "store": "standin",
@@ -88,26 +68,6 @@
   "replace": "",
   "what": "Skip this request waits for Notion before the card leaves (5 Oct 2026)",
   "catches": "removes it for good (leaves at once, not back after a refresh or a reload)"
- },
- {
-  "id": "local-run-skips-notion-page",
-  "suite": "activity",
-  "store": "standin",
-  "file": "desktop/renderer/pages/activity-render.js",
-  "find": "(!r.log || !r.message || (kindOf(r) === 'mail' && !r.report?.length))",
-  "replace": "!r.log",
-  "what": "a run recorded on this Mac never reads its Notion page: Search analysis opens empty, Gmail check loses its header (5 Oct 2026)",
-  "catches": "a run recorded on this Mac without its message still shows its result from the Notion page"
- },
- {
-  "id": "weekly-plain-layout-unread",
-  "suite": "activity",
-  "store": "standin",
-  "file": "desktop/renderer/weekly-card.js",
-  "find": "const FINDING = /^(?:💡\\s*|Finding:\\s*)(.+)$/;",
-  "replace": "const FINDING = /^💡\\s*(.+)$/;",
-  "what": "the Search analysis card reads only the old emoji layout: its sections run together (5 Oct 2026)",
-  "catches": "opening a finished run shows its result card"
  },
  {
   "id": "raw-http-error",

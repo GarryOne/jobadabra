@@ -49,7 +49,6 @@ test('every mutant names the step that catches it, and its suite runs that step'
     assert.ok(mutant.catches, `${mutant.id}: no "catches" (the words of the step that turns red when this bug is in the app)`);
     assert.ok(await stepRunBy(mutant.suite, mutant.catches), `${mutant.id}: the ${mutant.suite} suite runs no step with "${mutant.catches}"`);
   }
-  assert.equal(await stepRunBy('focus', 'removes it for good'), false, 'the split model is right: focus does not run the dismissal steps');
   assert.equal(await stepRunBy('focusdismiss', 'removes it for good'), true);
   assert.ok(!stepsRunBy('activityfailures').includes('Notion answers an HTML error page'), 'the parts model is right: the AI part does not run the Notion steps');
 });

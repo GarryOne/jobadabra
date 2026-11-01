@@ -118,6 +118,7 @@ on:
       - 'app-core/src/extension-log.js'
       - 'app-core/src/extension-run-record.js'
       - 'app-core/src/extension.js'
+      - 'app-core/src/github-fetch.js'
       - 'app-core/src/job-answers.js'
       - 'app-core/src/owner-guard.js'
       - 'desktop/e2e/package.json'

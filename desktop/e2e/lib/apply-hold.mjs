@@ -47,7 +47,11 @@ export async function pollOwnedBackground(profile, {targets = hiddenTargets, eva
     // Why (1 Nov 2026, apply-3of3 41264415439 + 41264558340, no cause provable): the reply was empty with no error and no /extension/background-apply request reached the app, so the message
     // says what was asked: the reply, every service worker target and whether each one has the poll's global, instead of a guess at a cold or a stale worker.
     const workers = all.filter(target => target.type === 'service_worker');
-    const has = await Promise.all(workers.map(async target => `${String(target.url).slice(0, 70)} has the poll: ${await evaluate(target.webSocketDebuggerUrl, "typeof globalThis.__jobPilottoBackgroundSessions?.poll === 'function'").catch(error => `unreadable (${error.message})`)}`));
+    // Non-strict on purpose: a strict evaluate has no timer, so a dead worker would hang the step; the diagnostic read answers null on a failure, a close or its 4 s cap.
+    const has = await Promise.all(workers.map(async target => {
+      const seen = await evaluate(target.webSocketDebuggerUrl, "typeof globalThis.__jobPilottoBackgroundSessions?.poll === 'function'");
+      return `${String(target.url).slice(0, 70)} has the poll: ${seen ?? 'unreadable (no reply, closed or 4 s cap)'}`;
+    }));
     throw new Error(`the owned extension poll did not acknowledge completion (reply: ${JSON.stringify(acknowledged ?? null)}; asked ${String(worker.url).slice(0, 70)}; service workers: ${has.join(' | ')})`);
   }
   return true;

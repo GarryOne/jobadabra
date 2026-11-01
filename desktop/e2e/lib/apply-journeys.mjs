@@ -12,7 +12,7 @@ import {fillNote, fillSettled, fillState, launchBrowser, readForm} from './exten
 import {writePrivate} from '../../lib/private-file.js';
 import {pressed, ticked} from './free-click.mjs';
 import {extensionDecisions, pollUntil, stepTimeLeft, waitCapNote, waitForAccountSafety, waitForDecisions, waitForFormValue, waitForStage, waitJobFormClosed} from './wait-on-state.mjs';
-import {missedPressNote} from './account-press.mjs';
+import {boxesOf, missedPressNote} from './account-press.mjs';
 
 export async function runJourneys(ctx, h) {
   const {cv, dumpExtension, fail, forms, page} = h;
@@ -119,9 +119,10 @@ export async function runJourneys(ctx, h) {
     const find = url => ctx.browser.context.pages().find(item => item.url().startsWith(url)) || null;
     const tab = await arrived(() => find(SIGNUP.accountUrl), 'the wait for the sign-up page');
     const session = async () => (await page.evaluate(target => window.pilot.sessions(), null)).find(item => String(item.url || '').replace(/\/$/, '') === SIGNUP.url) || null;
-    let {value: at} = await waitForStage(session, value => value?.stage === 'account');
+    let {value: at, error: stageError} = await waitForStage(session, value => value?.stage === 'account');
     const problems = [];
-    if (at?.stage !== 'account') problems.push(`on the sign-up page the session is not at the account step (stage: ${at?.stage}, stuck: ${at?.stuck})`);
+    // Ends the step here: the wait spent the step's clock, and the sign-up below (typing, ticking, pressing) has timeouts of its own that would let the runner cut the step and lose this message.
+    if (at?.stage !== 'account') fail([`on the sign-up page the session is not at the account step (stage: ${at?.stage}, stuck: ${at?.stuck}${stageError ? `, last read error: ${stageError}` : ''})`]);
     // Every account page gets the normal fill (owner, 12 Oct 2026, 8691f97): the person's details by meaning may be in; what stays the person's or Claude's is the box and the button (the password is account-step.js's, as a password manager's).
     if (await tab.locator('#robot').isChecked()) problems.push('the extension ticked the sign-up page\'s box (it must leave that to the person)');
     // The person creates the account: typed fields (trusted input), the box ticked, Create account pressed. While the extension fills, its overlay holds the person's click (c09c6a8,
@@ -135,11 +136,11 @@ export async function runJourneys(ctx, h) {
     await filled(tab);
     {
       // The last fill pass can commit after "done" (13 Oct 2026, #558): wait for the box itself, with a hang cap and a measured wait.
-      const {value, ms} = await waitForFormValue(async () => { const read = (await readForm(tab)).question_3001; return String(read?.value ?? read ?? ''); }, '5');
+      const {value, ms} = await waitForFormValue(async () => { const read = (await readForm(tab)).question_3001; return String(read?.value ?? read ?? ''); }, '5', {capMs: stepTimeLeft()});
       if (value !== '5') problems.push(`the form after the sign-up has Kubernetes years "${value}" after waiting ${ms} ms, its kit says 5`);
     }
-    ({value: at} = await waitForStage(session, value => value?.stage === 'form'));
-    if (at?.stage !== 'form') problems.push(`on the application form the session did not move to the form step (stage: ${at?.stage})`);
+    ({value: at, error: stageError} = await waitForStage(session, value => value?.stage === 'form'));
+    if (at?.stage !== 'form') problems.push(`on the application form the session did not move to the form step (stage: ${at?.stage}${stageError ? `, last read error: ${stageError}` : ''})`);
     const {value: safety} = await waitForAccountSafety(() => extensionDecisions(ctx), {since, host: SIGNUP.accountHost, path: SIGNUP.accountPath});
     const log = safety.log;
     if (safety.missing.includes('account page: answers typed there are not learned')) problems.push('the answers typed on the sign-up page were not kept out of the learned answers (no "not learned" line in the extension\'s decisions)');
@@ -172,15 +173,15 @@ export async function runJourneys(ctx, h) {
   await ctx.run('a sign-in page before the form: your email and saved password are filled, "Sign in" is pressed once, and the form behind it is filled', async () => {
     const tab = await openAccount(SIGNIN);
     const problems = [];
-    const {ms: pressWaitMs} = await waitForStage(() => pressesOf(SIGNIN), list => list.length > 0);
+    const {ms: pressWaitMs, error: pressError} = await waitForStage(() => pressesOf(SIGNIN), list => list.length > 0);
     const presses = pressesOf(SIGNIN);
-    if (!presses.length) problems.push(missedPressNote({what: '"Sign in"', waitedMs: pressWaitMs, email: await tab.locator('#signin_email').inputValue().then(value => (value === CONTACT.email ? 'filled' : 'not filled')).catch(() => '?'),
-      password: await tab.locator('#signin_password').inputValue().then(value => (value ? 'filled' : 'empty')).catch(() => '?'), decisions: await extensionDecisions(ctx)}));
-    else if (!presses[0].email || !presses[0].password) problems.push(`"Sign in" was pressed with the wrong ${!presses[0].email ? 'email' : 'password'} (the saved one for this site was not used)`);
+    // Ends the step here when the press never came: the wait spent the step's clock and the rest would be cut by the runner, losing this note.
+    if (!presses.length) fail([missedPressNote({what: '"Sign in"', waitedMs: pressWaitMs, ...await boxesOf(tab, CONTACT.email), error: pressError, decisions: await extensionDecisions(ctx)})]);
+    if (!presses[0].email || !presses[0].password) problems.push(`"Sign in" was pressed with the wrong ${!presses[0].email ? 'email' : 'password'} (the saved one for this site was not used)`);
     if (presses.length) {
       await arrived(() => tab.url().startsWith(SIGNIN.formUrl), 'the wait for the application after sign-in');
       await filled(tab);
-      const {value, ms} = await waitForFormValue(async () => { const read = (await readForm(tab)).question_3001; return String(read?.value ?? read ?? ''); }, '4');
+      const {value, ms} = await waitForFormValue(async () => { const read = (await readForm(tab)).question_3001; return String(read?.value ?? read ?? ''); }, '4', {capMs: stepTimeLeft()});
       if (value !== '4') problems.push(`the form after signing in has Kubernetes years "${value}" after waiting ${ms} ms, its kit says 4`);
     }
     if (pressesOf(SIGNIN).length > 1) problems.push(`"Sign in" was pressed ${pressesOf(SIGNIN).length} times (once per tab is the floor)`);
@@ -202,9 +203,9 @@ export async function runJourneys(ctx, h) {
   await ctx.run('a sign-in page before the form that refuses the password: "Sign in" is pressed once, never again, and you are told; on the stuck sign-up page Take over with Claude only with Claude help on, never started', async () => {
     const tab = await openAccount(SIGNIN_REFUSED);
     const problems = [];
-    const {ms: pressWaitMs} = await waitForStage(() => pressesOf(SIGNIN_REFUSED), list => list.length > 0);
-    if (!pressesOf(SIGNIN_REFUSED).length) problems.push(missedPressNote({what: '"Sign in" on the refusing page', waitedMs: pressWaitMs, email: await tab.locator('#signin_email').inputValue().then(value => (value === CONTACT.email ? 'filled' : 'not filled')).catch(() => '?'),
-      password: await tab.locator('#signin_password').inputValue().then(value => (value ? 'filled' : 'empty')).catch(() => '?'), decisions: await extensionDecisions(ctx)}));
+    const {ms: pressWaitMs, error: pressError} = await waitForStage(() => pressesOf(SIGNIN_REFUSED), list => list.length > 0);
+    // Ends the step here when the press never came: the pauses and panel waits below have clocks of their own and would let the runner cut the step first.
+    if (!pressesOf(SIGNIN_REFUSED).length) fail([missedPressNote({what: '"Sign in" on the refusing page', waitedMs: pressWaitMs, ...await boxesOf(tab, CONTACT.email), error: pressError, decisions: await extensionDecisions(ctx)})]);
     const {value: at} = await waitForStage(() => sessionOf(SIGNIN_REFUSED), value => value?.stuck === 'account');
     await pause(12000);   // several more looks of the extension (it looks every few seconds): a second press would show here
     const presses = pressesOf(SIGNIN_REFUSED).length;

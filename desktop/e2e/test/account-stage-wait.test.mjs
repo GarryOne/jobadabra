@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {test} from 'node:test';
-import {missedPressNote} from '../lib/account-press.mjs';
+import {boxesOf, missedPressNote} from '../lib/account-press.mjs';
 import {stepClock, waitForStage} from '../lib/wait-on-state.mjs';
 
 const clock = () => {
@@ -18,7 +18,8 @@ test('a "Sign in" press that reaches the site 70 s after the page opened is seen
   try {
     const presses = [];
     const read = async () => { if (time.now() >= 70000 && !presses.length) presses.push({email: 'ada.tester@example.test', password: 'x'}); return presses; };
-    const {value, ms} = await waitForStage(read, list => list.length > 0, time);
+    const {value, ms, error} = await waitForStage(read, list => list.length > 0, time);
+    assert.equal(error, '');
     assert.equal(value.length, 1, 'the press was found');
     assert.equal(ms, 70000);
   } finally { stepClock(null); }
@@ -31,6 +32,16 @@ test('a press that never comes ends at the step\'s clock, not before, and return
     const {value, ms} = await waitForStage(async () => [], list => list.length > 0, time);
     assert.deepEqual(value, []);
     assert.ok(ms >= 180000 && ms <= 190000, `waited ${ms} ms`);
+  } finally { stepClock(null); }
+});
+
+test('a read that keeps throwing ends at the clock and says what it threw', async () => {
+  const time = clock();
+  stepClock(30000);
+  try {
+    const {value, error} = await waitForStage(async () => { throw new Error('Execution context was destroyed\n  at x'); }, at => at?.stage === 'form', time);
+    assert.equal(value, '');
+    assert.equal(error, 'Execution context was destroyed');
   } finally { stepClock(null); }
 });
 
@@ -53,6 +64,13 @@ test('a missed press names the waits, the boxes and the extension\'s slow calls'
   assert.match(note, /email box filled, password box filled/);
   assert.match(note, /slow push[^\n]*23775/, 'the extension\'s slow calls are in the failure');
   assert.match(note, /account button: pressed/, 'a press the extension made after the wait is named');
+});
+
+test('a box that cannot be read says why, not "?"', async () => {
+  const tab = {locator: () => ({inputValue: async () => { throw new Error('Target closed'); }})};
+  assert.deepEqual(await boxesOf(tab, 'a@b.test'), {email: 'unreadable: Target closed', password: 'unreadable: Target closed'});
+  const open = {locator: selector => ({inputValue: async () => (selector === '#signin_email' ? 'a@b.test' : '')})};
+  assert.deepEqual(await boxesOf(open, 'a@b.test'), {email: 'filled', password: 'empty'});
 });
 
 test('no account-flow wait in the journeys has a number of seconds of its own', () => {

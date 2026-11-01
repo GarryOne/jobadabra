@@ -1,4 +1,4 @@
-// The critical-journey registry (critical-journeys.json) names real steps, holds exactly the owner's twelve journeys and copies no safety or data mark.
+// The critical-journey registry (critical-journeys.json) names real steps, gives every journey a tier and copies no safety or data mark.
 // Reaches: ../critical-journeys.json, ../lib/critical-journeys.mjs
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
@@ -10,7 +10,7 @@ import {SUITES} from '../lib/context.mjs';
 ensureStaged(fileURLToPath(new URL('../..', import.meta.url)));
 const registry = loadJourneys();
 
-// Why (1 Nov 2026, owner via mac-07: "'Find jobs using your browser' this is not critical", "Move all 3 to integration"): J3 is out; the registry has J0-J2 and J4-J12.
+// Why (1 Nov 2026, owner via mac-07: "'Find jobs using your browser' this is not critical", "Move all 3 to integration"): J3 is out; the registry has J0-J2, J4-J12 and the tier additions J14-J18 (J13 Strategy waits for its suite to return).
 test('the registry holds the journeys J0-J2, J4-J12 and the tier additions, each with a name and steps', () => {
   assert.deepEqual(registry.journeys.map(journey => journey.id), ['J0', 'J1', 'J2', 'J4', 'J5', 'J6', 'J7', 'J8', 'J9', 'J10', 'J11', 'J12', 'J14', 'J15', 'J16', 'J17', 'J18']);
   for (const journey of registry.journeys) {

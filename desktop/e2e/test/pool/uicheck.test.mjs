@@ -1,5 +1,6 @@
-/* global document, getComputedStyle */
+/* global document, getComputedStyle, window, requestAnimationFrame, performance */
 // The layout checks must catch the bug that started them: a job row whose location list ran to twenty lines (2 Oct 2026).
+// Job: report health
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -7,6 +8,7 @@ import path from 'node:path';
 import {test} from 'node:test';
 import {chromium} from 'playwright-core';
 import {LIMITS, inspect} from '../../lib/uicheck.mjs';
+import {lateShiftFindings, nowInPage, shiftsIn, watchShifts} from '../../lib/shift.mjs';
 import {DESKTOP} from '../../lib/app.mjs';
 
 const css = path.join(DESKTOP, 'renderer');
@@ -247,10 +249,51 @@ test('rows of one list that look alike are not duplicates; a box printed twice o
   assert.ok((await kinds(page, `<div class="warn"><div>${ITEMS}</div></div><div class="warn2"><div>${ITEMS} again</div></div>`)).includes('duplicate-content'), 'two boxes of different classes, still caught');
 }));
 
-test('with the Recent activity panel open, the page behind it is not compared with the panel (#284)', () => withChrome(async page => {
+test('with the Recent activity panel open, the page behind it is not compared with the panel (#284, #281)', () => withChrome(async page => {
   const behind = `<section class="card actions-result">${ITEMS}</section>`;
   assert.ok((await kinds(page, `${behind}<div class="other-box">${ITEMS} again</div>`)).includes('duplicate-content'), 'no panel: two boxes in sight are compared');
   assert.ok(!(await kinds(page, `${behind}<div id="activity-panel"><pre id="activity-message">${ITEMS}</pre></div>`)).includes('duplicate-content'), 'panel open: the page behind it is not what is read');
+  assert.ok(!(await kinds(page, `${behind}<div id="activity-panel"><div class="ap-grid">${ITEMS}</div></div>`)).includes('duplicate-content'), 'panel open: its run list (#281) is not compared with the card behind it');
+}));
+
+// #1951 and #1712 were closed as detector mistakes, but the owner judged the same pair real in #1711 and fixed it (8e0d6e7, 27 Oct 2026: Always on kept "a second copy
+// of what Settings → Notifications keeps", so a person typed the address twice). The pair as it stood on 25 Oct must stay caught.
+const NOTIFY = `<div class="setting panel" id="setting-notify"><h3>Notifications</h3><div class="run-mode-main">
+  <div class="switch-row"><span class="switch"><input type="checkbox" aria-label="Tell me by email"><span></span></span><span><span>Email</span><span class="muted small">The same cards as Telegram, in your inbox.</span></span></div>
+  <label class="inline-field">Email address<input type="email" placeholder="you@example.com"></label>
+  <label class="inline-field">Everything except new matches<select><option value="daily">One email a day</option><option value="weekly">One email a week (Mondays)</option></select></label>
+  <label class="check-row"><input type="checkbox"><span><span>Also send me product news and the Pro launch offer (unsubscribe in one click)</span></span></label>
+  <div class="switch-row"><span class="switch"><input type="checkbox" aria-label="Tell me by app notifications"><span></span></span><span><span>App notifications</span><span class="muted small">A notification on this computer while the app is open.</span></span></div>
+  <div class="switch-row"><span class="switch"><input type="checkbox" aria-label="Tell me by Telegram"><span></span></span><span><span>Telegram</span><span class="muted small">Your own bot. Connect it in Settings → Connections.</span></span></div></div></div>`;
+const ALWAYS_ON = `<div class="setting panel"><h3>Always on</h3><div id="hosted-ask">
+  <div class="step-field"><label>Your email</label><input type="email" placeholder="you@example.com"><p class="muted small field-hint">We send the daily matches here. Unsubscribe in one click.</p></div>
+  <div class="switch-row"><span class="switch"><input type="checkbox" checked aria-label="Also send me product news and the Pro launch offer (unsubscribe in one click)"><span></span></span><span>Also send me product news and the Pro launch offer (unsubscribe in one click)</span></div></div></div>`;
+test('two cards that each ask for the email address and the product news are a duplicate (#1711, filed again as #1951 and #1712)', () => withChrome(async page => {
+  assert.ok((await kinds(page, `${NOTIFY}${ALWAYS_ON}`)).includes('duplicate-content'), 'the second copy of the Notifications fields');
+  assert.ok(!(await kinds(page, NOTIFY)).includes('duplicate-content'), 'Notifications alone, as on main since 8e0d6e7');
+}));
+
+// #1169: "late shift on jobs, first at span#activity-meta". The docked activity bar is one line that never wraps: its status filling in after the page is ready moves
+// words inside the bar, not the page. A card that pushes the page down is still a late shift (the positive control).
+test('the activity bar filling its status after ready is not a late shift (#1169); a card pushing the page down is', () => withChrome(async page => {
+  const bar = '<footer class="activity"><button class="activity-bar"><span class="activity-dot"></span><b id="t">No search yet</b><span class="activity-step" id="s"></span><span class="activity-meta" id="activity-meta"></span><span class="activity-open">Details ▴</span></button></footer>';
+  await page.setContent(`<link rel="stylesheet" href="file://${css}/tokens.css"><link rel="stylesheet" href="file://${css}/style.css"><section class="view" data-view="jobs"><h2>Jobs</h2>${'<p>A job row with its role, employer and place</p>'.repeat(20)}</section>${bar}`);
+  await page.evaluate(watchShifts);
+  // Why (1 Nov 2026, measured): Chromium marks every shift in the first ~500 ms after a load as recent input (445 ms: input, 727 ms: not), and input never counts.
+  await page.waitForFunction(() => performance.now() > 1000);
+  const since = await page.evaluate(nowInPage);
+  await page.evaluate(() => {
+    document.getElementById('t').textContent = 'Jobs check · done';
+    document.getElementById('s').textContent = '12 new jobs found, 3 strong matches';
+    document.getElementById('activity-meta').textContent = 'Mail checked 10:42 · Next refresh 14:00';
+  });
+  await page.evaluate(() => new Promise(done => requestAnimationFrame(() => requestAnimationFrame(done))));
+  const card = await page.evaluate(nowInPage);
+  await page.evaluate(() => document.querySelector('h2').insertAdjacentHTML('afterend', '<div style="height:180px">Your search may be too narrow</div>'));
+  await page.waitForFunction(at => (window.__jpShifts || []).some(item => item.at >= at), card);   // records arrive in order: the bar's are in once the card's is
+  const shifts = await page.evaluate(shiftsIn);
+  assert.deepEqual(lateShiftFindings({view: 'jobs', since, shifts: shifts.filter(item => item.at < card)}), [], 'the bar\'s own words');
+  assert.equal(lateShiftFindings({view: 'jobs', since: card, shifts})[0]?.kind, 'late-shift', 'a card that pushes the list down');
 }));
 
 test('technical text inside an on-purpose log is not shown to the person; the same text in plain view still is (#298)', () => withChrome(async page => {

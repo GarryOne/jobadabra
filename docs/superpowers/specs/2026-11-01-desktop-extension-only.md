@@ -1,6 +1,6 @@
 # jobadabra = desktop app + extension only (1 Nov 2026)
 
-> **Verdict:** 🟢 Owner picked "A: shared code renamed, shells move". The code the app runs stays here under a non-server name (`desktop/engine/`); only
+> **Verdict:** 🟢 Owner picked "A: shared code renamed, shells move". The code the app runs stays here under a non-server name (`app-core/`); only
 > deploy shells and server-only workflows leave. 6 PRs, session **rs**. The Worker switches to `jobadabra-web` by day only, with a8's yes.
 
 Owner, 1 Nov 2026: "jobadabra should have no web, no worker" · "it should be strictly desktop and extension". Rule in `CLAUDE.md`, guard
@@ -16,7 +16,7 @@ The first plan moved three folders whole. Each one is also code the shipped app 
 | scout (`src/scout*.py`, `digest.py`) | `central-scout.yml` (runs the public engine with no user data) | every module: `python -m src scout` is the app's "Find new employers" (`pipeline-tasks.js:64`); `scout_paste/probe/notion/index/kind_counts` are imported by the app and the engine |
 
 ## Design
-- **Engine** = `worker/src` + `worker/test` as a pure move to `desktop/engine/{src,test}`; the staged copy becomes `desktop/shared/engine`. One commit, one PR, alone.
+- **Engine** = `worker/src` + `worker/test` as a pure move to `app-core/{src,test}` (same folder depth as `worker/`, so the relative `../../extension`, `../../desktop`, `../../tools` imports of 113 files stay valid; `desktop/engine/` would add one `../` to each); the staged copy becomes `desktop/shared/app-core`. One commit, one PR, alone.
 - **Bot Worker** `sre-job-pilotto-bot` deploys from `jobadabra-web/workers/bot/`: its `wrangler.toml` (same name, crons, vars, bindings), `package.json`, `check-secrets.mjs`, a deploy workflow. `main` points at the engine, which the workflow checks out from public `jobadabra` (private reads public). Secrets stay in Cloudflare (same Worker name). Its GitHub token still dispatches jobadabra workflows.
 - **Hosted** `ready-fill` shared files move to `desktop/ready-fill/`; the image builds in web from a jobadabra checkout.
 - **Scout**: nothing under `src/` moves. `central-scout.yml` and `product-brain.yml` go to `jobadabra-lab`, `ai-cost-billed.yml` to `jobadabra-web`.
@@ -36,7 +36,7 @@ The first plan moved three folders whole. Each one is also code the shipped app 
 | n | Repo | What | Removes from the allowlist |
 |---|---|---|---|
 | 1 | jobadabra | Rule + guard + this spec | none (adds the list) |
-| 2 | jobadabra | Pure move `worker/{src,test}` → `desktop/engine`, `stage.mjs`, `tests-engine.yml`, every reader; shell left in `worker/` with `main` repointed | part of `worker` |
+| 2 | jobadabra | Pure move `worker/{src,test}` → `app-core`, `stage.mjs`, `tests-engine.yml`, every reader; shell left in `worker/` with `main` repointed | part of `worker` |
 | 3 | web | Bot Worker shell + deploy workflow (dispatch only; nothing deploys on merge) | none |
 | 4 | jobadabra | Delete the shell + `worker.yml`; the switch happens first, by day, a8 names the hour | `worker`, `worker.yml` |
 | 5 | web, then jobadabra | `hosted/` split | `hosted`, `ready-fill-image.yml` |
@@ -54,7 +54,7 @@ Order per move: the private side lands first, then the jobadabra removal. Before
 2. `central-scout.yml` left `jobadabra-lab` on 21 Oct 2026 because lab's Actions minutes were not payable. Check that is still true before PR 6; if so it goes to web (also private, runs workflows) instead of lab.
 
 ## Progress
-- [x] Import graph and reader inventory
+- [x] Import graph and reader inventory (proof: none: analysis only, the findings are the table above)
 - [ ] 1/6 rule + guard + spec
 - [ ] 2/6 engine rename
 - [ ] 3/6 web shell

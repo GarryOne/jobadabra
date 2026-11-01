@@ -15,6 +15,8 @@ on:
     paths:
       - 'desktop/integration/**'
       - 'desktop/e2e/lib/**'   # every layer's kit starts the app or the browser through the harness lib
+      - 'desktop/e2e/fixtures/cv.json'   # the store layer's seeded candidate
+      - 'desktop/e2e/test/strategy-start.mjs'   # the strategy tests' start state
       - 'desktop/e2e/package.json'
       - 'desktop/e2e/package-lock.json'
       - 'desktop/lib/**'

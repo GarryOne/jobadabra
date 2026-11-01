@@ -43,3 +43,16 @@ export function missingSteps(registry, e2eDir = E2E) {
   return registrySteps(registry).filter(entry => !(entry.parts || [entry.step]).every(part => (texts[entry.suite] || '').includes(part)))
     .map(({suite, step, group}) => ({suite, step, group}));
 }
+
+let loaded;
+/**
+ * Whether a registry step is tier 2 (night and integration only): listed in a tier 2 journey and in no tier 1 journey or kept entry. The runner reads this in a beta.
+ * A step named with `parts` matches when its name holds every part. The suite and step name must both match.
+ * Why (1 Nov 2026, owner: "tier2 should not be part by beta"): once every tier 2 suite has left e2e (J8, J15-J19 converted to integration), no tier 2 step is left in the registry
+ * and this reader, with the runner's beta skip, can be removed.
+ */
+export function isTier2Step(suite, name, registry = (loaded ||= loadJourneys())) {
+  const matches = entry => entry.suite === suite && (entry.parts || [entry.step]).every(part => String(name).includes(part));
+  const inTier = tier => registry.journeys.some(journey => journey.tier === tier && journey.steps.some(matches));
+  return inTier(2) && !inTier(1) && !registry.kept.some(matches);
+}

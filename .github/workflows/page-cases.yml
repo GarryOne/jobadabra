@@ -1,4 +1,4 @@
-name: CI · Page cases (all cases, real extension, Linux)
+name: CI · Integration · Page cases (all cases, real extension, Linux)
 # Job: serve stored answers
 # The net under the local push gate (owner, 11 Oct 2026, "CI heavy, local light"): every push to main replays ALL recorded cases (desktop/e2e/recorded) with the real extension,
 # offline, sharded across the matrix, 4 tabs at a time in one browser per job (desktop/e2e/lib/replay-browser.mjs). The local pre-push replays only the cases a change can affect.

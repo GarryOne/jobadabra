@@ -15,7 +15,7 @@ test('a change to the extension runs the apply suite', () => {
   assert.deepEqual(suitesFor(['extension/content/fill.js', 'extension/manifest.json'], ALL), ['apply']);
 });
 
-test('a recorded case or the replay harness runs no e2e suite: CI · Page cases replays them (1 Nov 2026, the recorded suite left e2e)', () => {
+test('a recorded case or the replay harness runs no e2e suite: CI · Integration · Page cases replays them (1 Nov 2026, the recorded suite left e2e)', () => {
   for (const file of ['desktop/e2e/recorded/workday-start-dialog-2/case.json', 'desktop/e2e/lib/page-replay.mjs']) assert.deepEqual(suitesFor([file], ALL), [], file);
   assert.ok(!suitesFor(['extension/background.js'], ALL).includes('recorded'));
 });

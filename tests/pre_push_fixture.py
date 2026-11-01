@@ -28,7 +28,7 @@ case "$*" in *"run view"*) echo "$GH_FAILED_JOBS" ;; *"run rerun"*) echo "$*" >>
 def runs_json(sha, tests=('completed', 'success'), pages=('completed', 'success'), run_id=42):
     """What `gh run list --json ...` says about main's CI runs of one commit (tools/red-main.sh reads it)."""
     rows = [{'workflowName': name, 'headSha': sha, 'status': st, 'conclusion': conc, 'databaseId': run_id + n, 'updatedAt': '2026-10-11T15:00:00Z', 'url': f'https://x/runs/{run_id + n}'}
-            for n, (name, (st, conc)) in enumerate((('CI · Tests', tests), ('CI · Page cases (all cases, real extension, Linux)', pages)))]
+            for n, (name, (st, conc)) in enumerate((('CI · Tests', tests), ('CI · Integration · Page cases (all cases, real extension, Linux)', pages)))]
     return json.dumps(rows)
 
 

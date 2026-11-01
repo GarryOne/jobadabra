@@ -195,7 +195,7 @@
    "name": "Focus: a job dismissed from In process stays gone",
    "tier": 2,
    "steps": [
-    {"integration": "desktop/integration/store/job-write-lag.test.mjs", "test": "Dismiss a job in process (#2758): the job reads as written in a read made inside Notion's listing lag, in the saved list, and after the lag ends"}
+    {"integration": "desktop/integration/store/job-write-lag.test.mjs", "test": "Dismiss a job in process (#2758): the job reads as written in a read made inside Notion's listing lag, in the saved list, and after the lag ends", "parts": ["Dismiss a job in process (#2758)", ": the job reads as written in a read made inside Notion's listing lag, in the saved list, and after the lag ends"]}
    ]
   }
  ],

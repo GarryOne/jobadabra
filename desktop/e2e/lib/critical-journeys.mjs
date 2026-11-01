@@ -45,12 +45,12 @@ export function missingSteps(registry, e2eDir = E2E) {
 }
 
 /**
- * The tier 2 steps whose integration test is gone: the file is missing or does not hold the test's exact name (a rename or a removal). A test name must appear whole in the file,
+ * The tier 2 steps whose integration test is gone: the file is missing or does not hold the test's exact name (a rename or a removal). A test name must appear whole in the file (or each literal in `parts`, for a name the test builds from pieces),
  * with `\'` read as `'` so a name quoted either way matches. Takes the repository root (default: this checkout's).
  * @returns {{integration: string, test: string, group: string}[]}
  */
 export function missingIntegrationTests(registry, root = path.resolve(E2E, '..', '..')) {
   const read = file => { try { return fs.readFileSync(path.join(root, file), 'utf8').replace(/\\(['"`])/g, '$1'); } catch { return null; } };
-  return registrySteps(registry).filter(entry => entry.integration).filter(entry => !(read(entry.integration) || '').includes(entry.test))
+  return registrySteps(registry).filter(entry => entry.integration).filter(entry => !(entry.parts || [entry.test]).every(part => (read(entry.integration) || '').includes(part)))
     .map(({integration, test, group}) => ({integration, test, group}));
 }

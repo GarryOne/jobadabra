@@ -34,7 +34,7 @@ after(async () => { await kit?.close(); });
 
 // [what the person did, the job (scenario row), the state before (lag off), the write, how the job must read afterwards]
 const CASES = [
-  {what: 'Dismiss a job in process (#2758)', title: "Dismiss a job in process (#2758): the job reads as written in a read made inside Notion's listing lag, in the saved list, and after the lag ends", job: 'ember/platform', write: url => call('setStatus', url, 'dismissed'), reads: list => shown(list, at('ember/platform')) === 'dismissed/Closed'},
+  {what: 'Dismiss a job in process (#2758)', job: 'ember/platform', write: url => call('setStatus', url, 'dismissed'), reads: list => shown(list, at('ember/platform')) === 'dismissed/Closed'},
   {what: 'Save a job with a kit ready', job: 'birch/platform', write: url => call('setStatus', url, 'saved'), reads: list => shown(list, at('birch/platform')) === 'saved/Saved'},
   {what: 'A session\'s Skip (pipeline.setStatus called directly, not the row\'s menu)', job: 'kestrel/principal', write: url => pipeline.setStatus(kit.storage, url, 'dismissed'), reads: list => shown(list, at('kestrel/principal')) === 'dismissed/Closed'},
   {what: 'Mark a job Applied', job: 'alder/sre', write: url => call('setStatus', url, 'applied'), reads: list => shown(list, at('alder/sre')) === 'applied/Applied'},
@@ -45,8 +45,7 @@ const CASES = [
 ];
 
 for (const one of CASES) {
-  // Why (#2758): J19's registry entry (e2e/critical-journeys.json) names this title whole; the guard looks it up as a literal, so the Dismiss case spells it out.
-  test(one.title ?? `${one.what}: the job reads as written in a read made inside Notion's listing lag, in the saved list, and after the lag ends`, async () => {
+  test(`${one.what}: the job reads as written in a read made inside Notion's listing lag, in the saved list, and after the lag ends`, async () => {
     const url = at(one.job);
     kit.notion.fake.setLag(0);
     if (one.before) assert.equal((await one.before(url))?.ok, true, 'the start state was not written');

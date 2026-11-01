@@ -21,7 +21,8 @@ function gh({runs = [], releasing = []} = {}) {
   };
 }
 const pass1 = {displayTitle: 'Night burn-in 1/5 · bbbbbbbb', headSha: FIRST, createdAt: '2026-10-31T21:00:08Z'};
-const plan = (pass, stub, extra = {}) => planRun({env: {EVENT: 'workflow_dispatch', REPO: 'o/r', SHA: HEAD, NIGHT_PASS: pass, ...extra}, gh: gh(stub), all: ALL, minutes: () => 15, cadence: CADENCE});
+// Why (1 Nov 2026): the clock is the fixture's NOW; planRun read Date.now(), so this file went red for every PR at 11:00 UTC (pass 1's 14 h window, lib/night-pass.mjs SPAN_MS) with no code change.
+const plan = (pass, stub, extra = {}) => planRun({env: {EVENT: 'workflow_dispatch', REPO: 'o/r', SHA: HEAD, NIGHT_PASS: pass, ...extra}, gh: gh(stub), all: ALL, minutes: () => 15, cadence: CADENCE, now: NOW});
 
 test('a pass is n/5 and nothing else', () => {
   assert.deepEqual(['1/5', '5/5', ' 3/5 ', '0/5', '6/5', '3/4', '', undefined, 'x'].map(passNumber), [1, 5, 3, 0, 0, 0, 0, 0, 0]);

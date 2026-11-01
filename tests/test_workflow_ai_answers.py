@@ -13,9 +13,9 @@ BACKBONE = tuple(sorted(path.stem for path in (ROOT / 'desktop/e2e/suites').glob
 WORKFLOWS = ROOT / '.github/workflows'
 
 
-def expression(value, event='workflow_dispatch', mode='off', attempt=1, suite='jobs', burn_in=0):
+def expression(value, event='workflow_dispatch', mode='off', attempt=1, suite='jobs'):
     """Evaluate ==, &&, || and contains(fromJSON(...), matrix.suite) over workflow inputs."""
-    context = {'github.event_name': event, 'inputs.ai_answers': mode, 'github.run_attempt': attempt, 'matrix.suite': suite, 'matrix.burnIn': burn_in,
+    context = {'github.event_name': event, 'inputs.ai_answers': mode, 'github.run_attempt': attempt, 'matrix.suite': suite,
                'matrix.aiAnswers': 'backbone' if suite in BACKBONE else ''}   # what plan-run.mjs puts in a suite's matrix entry
 
     def atom(token):
@@ -68,8 +68,8 @@ class WorkflowAiAnswers(unittest.TestCase):
         mode_line = re.search(r'(?m)^          E2E_AI_ANSWERS: (.+)$', first)
         self.assertIsNotNone(mode_line, 'the suite process must receive its answer mode')
         value = mode_line.group(1)
-        # Why (30 Oct 2026, a8, burn-in; ap): an admission leg always replays stored answers, never records; otherwise the suite's own aiAnswers decides (matrix.aiAnswers).
-        self.assertEqual(value, "${{ matrix.burnIn && 'backbone' || " + RECORD_GUARD + " && 'record' || matrix.aiAnswers || 'off' }}")
+        # Why (30 Oct 2026, a8, burn-in; ap; 1 Nov 2026: the burn-in legs are gone): the suite's own aiAnswers decides (matrix.aiAnswers).
+        self.assertEqual(value, "${{ " + RECORD_GUARD + " && 'record' || matrix.aiAnswers || 'off' }}")
         cases = [('workflow_dispatch', 'record', 1, 'record'),
                  ('workflow_dispatch', 'off', 1, 'off'),
                  ('workflow_dispatch', '', 1, 'off'),
@@ -82,7 +82,6 @@ class WorkflowAiAnswers(unittest.TestCase):
                 for suite in BACKBONE + ('qualityai', 'apply'):
                     expected = 'backbone' if suite in BACKBONE and want == 'off' else want
                     self.assertEqual(expression(value, event, mode, attempt, suite), expected, suite)
-                    self.assertEqual(expression(value, event, mode, attempt, suite, burn_in=3), 'backbone', f'{suite}: a burn-in leg never records')
 
     def test_the_suite_has_no_second_try_with_its_own_answer_mode(self):
         # Why (31 Oct 2026, owner): one try per suite; its E2E_AI_ANSWERS (checked above) is the only answer mode.

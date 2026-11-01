@@ -16,55 +16,6 @@ const eight = {
   covering: {'c-map': 'runs app.js:3', 'b-map': 'runs app.js:2', 'a-map': 'runs app.js:1'},
 };
 
-test('a stale branch never admits a suite main demoted after its merge-base', () => {
-  const tip = {suites: {quality: {lane: 'tolerant'}}};
-  const git = args => ({
-    'merge-base origin/main HEAD': 'fork\n',
-    'show origin/main:desktop/e2e/lanes.json': JSON.stringify(tip),
-    'show fork:desktop/e2e/lanes.json': '{"suites":{}}',
-    'show HEAD:desktop/e2e/lanes.json': '{"suites":{}}',
-  })[args.join(' ')];
-  assert.deepEqual(pick.admittedSuites({baseLanes: tip, headLanes: {suites: {}}}), ['quality'], 'main tip would falsely admit it');
-  assert.deepEqual(pick.admittedSuites(pick.admissionLanes(git, 'origin/main')), []);
-});
-
-test('dropping a tolerant entry since the merge-base admits a real promotion', () => {
-  const git = args => ({
-    'merge-base origin/main HEAD': 'fork\n',
-    'show fork:desktop/e2e/lanes.json': '{"suites":{"quality":{"lane":"tolerant"}}}',
-    'show HEAD:desktop/e2e/lanes.json': '{"suites":{}}',
-  })[args.join(' ')];
-  assert.deepEqual(pick.admittedSuites(pick.admissionLanes(git, 'origin/main')), ['quality']);
-});
-
-test('unreadable admission registries become empty independently', () => {
-  for (const unreadable of [undefined, 'not json', 'null', '{"suites":[]}']) {
-    const git = args => args[0] === 'merge-base' ? 'fork\n' : args[1].startsWith('HEAD:') ? '{"suites":{}}' : unreadable;
-    assert.deepEqual(pick.admissionLanes(git, 'origin/main'), {baseLanes: {}, headLanes: {suites: {}}});
-  }
-  assert.deepEqual(pick.admissionLanes(() => { throw new Error('git read failed'); }, 'origin/main'), {baseLanes: {}, headLanes: {}});
-});
-
-test('admission follows added files and BASE to HEAD backbone promotions only', () => {
-  const baseLanes = {suites: {quality: {lane: 'tolerant'}, paused: {lane: 'suspended'}, old: {lane: 'retired'}}};
-  const admitted = input => pick.admittedSuites({baseLanes, headLanes: baseLanes, ...input});
-  assert.deepEqual(admitted({addedFiles: ['desktop/e2e/suites/new.mjs']}), ['new']);
-  assert.deepEqual(admitted({headLanes: {suites: {paused: {lane: 'suspended'}, old: {lane: 'retired'}}}}), ['quality']);
-  assert.deepEqual(admitted({headLanes: {suites: {quality: {lane: 'backbone'}, paused: {lane: 'suspended'}, old: {lane: 'retired'}}}}), ['quality']);
-  assert.deepEqual(admitted({}), []);
-  assert.deepEqual(admitted({headLanes: {suites: {...baseLanes.suites, paused: {lane: 'tolerant'}}}}), []);
-  assert.deepEqual(admitted({baseLanes: {}, headLanes: {suites: {quality: {lane: 'tolerant'}}}}), []);
-  assert.deepEqual(admitted({addedFiles: ['desktop/e2e/suites/new.mjs'], headLanes: {suites: {...baseLanes.suites, new: {lane: 'tolerant'}}}}), []);
-  assert.deepEqual(admitted({headLanes: {}, deletedFiles: ['desktop/e2e/suites/quality.mjs', 'desktop/e2e/suites/paused.mjs', 'desktop/e2e/suites/old.mjs']}), []);
-});
-
-test('admission overrides BASE tolerance, Mac and cadence exclusions ahead of reach within five places', () => {
-  const out = pick.planPrSuites({...eight, admitted: ['quality'], lanes: {suites: {quality: {lane: 'tolerant', pr: 'number'}}},
-    cadence: {quality: 'manual'}, linux: suite => suite !== 'quality'});
-  assert.deepEqual(out.suites, ['quality', 'x-own', 'z-own', 'a-quote', 'b-quote']);
-  assert.equal(out.deferred.length, 4);
-});
-
 test('eight reached suites: own files above imports/quotes above coverage; three wait for merge', () => {
   const plan = pick.planPrSuites(eight);
   assert.deepEqual(plan.suites, ['x-own', 'z-own', 'a-quote', 'b-quote', 'y-import']);
@@ -184,7 +135,7 @@ import path from 'node:path';
 import {spawnSync} from 'node:child_process';
 
 const cli = new URL('../pr-suites.mjs', import.meta.url);
-function cliPlan({catches, pullRequest = true, base = 'origin/main', listed = {}, mergeBaseListed = listed, headListed = listed, checkoutLanes = {}, addedFiles = [], deletedFiles = [], suites = ['wizard', 'visitread', 'strategy', 'settings', 'jobs', 'interviews', 'focusdismiss', 'activity'], extraFiles = [], coverage = {}, baseSources = {}} = {}) {
+function cliPlan({catches, pullRequest = true, base = 'origin/main', listed = {}, checkoutLanes = {}, suites = ['wizard', 'visitread', 'strategy', 'settings', 'jobs', 'interviews', 'focusdismiss', 'activity'], extraFiles = [], coverage = {}, baseSources = {}} = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pr-cap-cli-'));
   try {
     const files = [...suites.map(s => `desktop/e2e/suites/${s}.mjs`), ...extraFiles];
@@ -194,7 +145,7 @@ function cliPlan({catches, pullRequest = true, base = 'origin/main', listed = {}
       return `--- a/${file}\n+++ b/${file}\n@@ -${line} +${line} @@\n-old\n+new`;
     }).join('\n');
     const bin = path.join(dir, 'bin'); fs.mkdirSync(bin);
-    fs.writeFileSync(path.join(bin, 'git'), `#!${process.execPath}\nconst args = process.argv.slice(2);\nif (args.includes('--name-only') && !args.includes(${JSON.stringify(`${base || 'origin/main'}...HEAD`)})) throw new Error('wrong diff base');\nif (args.includes('--diff-filter=A')) console.log(${JSON.stringify(addedFiles.join('\n'))});\nelse if (args.includes('--diff-filter=D')) console.log(${JSON.stringify(deletedFiles.join('\n'))});\nelse if (args.includes('--name-only')) console.log(${JSON.stringify(files.join('\n'))});\nelse if (args[0] === 'merge-base') console.log('fork');\nelse if (args[0] === 'show' && !args[1].endsWith('lanes.json')) { const file = args[1].split(':').slice(1).join(':'); const sources = ${JSON.stringify(baseSources)}; console.log(Object.hasOwn(sources, file) ? sources[file] : require('node:fs').readFileSync(require('node:path').join(${JSON.stringify(new URL('../../../', import.meta.url).pathname)}, file), 'utf8')); }\nelse if (args[0] === 'show') console.log(args[1].startsWith('HEAD:') ? ${JSON.stringify(JSON.stringify({suites: headListed}))} : args[1].startsWith('fork:') ? ${JSON.stringify(JSON.stringify({suites: mergeBaseListed}))} : ${JSON.stringify(JSON.stringify({suites: listed}))});\nelse console.log(${JSON.stringify(diff)});\n`, {mode: 0o755});
+    fs.writeFileSync(path.join(bin, 'git'), `#!${process.execPath}\nconst args = process.argv.slice(2);\nif (args.some(a => a.startsWith('--diff-filter')) || args[0] === 'merge-base' || (args[0] === 'show' && /^(HEAD|fork):/.test(args[1]))) throw new Error('admission read: ' + args.join(' '));\nif (args.includes('--name-only') && !args.includes(${JSON.stringify(`${base || 'origin/main'}...HEAD`)})) throw new Error('wrong diff base');\nif (args.includes('--name-only')) console.log(${JSON.stringify(files.join('\n'))});\nelse if (args[0] === 'show' && !args[1].endsWith('lanes.json')) { const file = args[1].split(':').slice(1).join(':'); const sources = ${JSON.stringify(baseSources)}; console.log(Object.hasOwn(sources, file) ? sources[file] : require('node:fs').readFileSync(require('node:path').join(${JSON.stringify(new URL('../../../', import.meta.url).pathname)}, file), 'utf8')); }\nelse if (args[0] === 'show') console.log(${JSON.stringify(JSON.stringify({suites: listed}))});\nelse console.log(${JSON.stringify(diff)});\n`, {mode: 0o755});
     fs.writeFileSync(path.join(bin, 'gh'), `#!${process.execPath}\nthrow new Error('Network forbidden in CLI test');\n`, {mode: 0o755});
     const output = path.join(dir, 'output'), map = path.join(dir, 'map.json');
     fs.writeFileSync(map, JSON.stringify(coverage));
@@ -267,17 +218,20 @@ test('CLI labels only the capped Linux suite for merge, not the Mac-only loader'
 });
 
 
-test('CLI admits a new file or a lane promotion even when no watched app line reaches it', () => {
-  const added = cliPlan({suites: ['settings'], addedFiles: ['desktop/e2e/suites/settings.mjs']});
-  assert.deepEqual(JSON.parse(added.values.steps)['(burn-in)'], ['settings']);
-  const promoted = cliPlan({suites: [], extraFiles: ['desktop/e2e/lanes.json'], listed: {quality: {lane: 'tolerant'}}, headListed: {}});
-  assert.ok(promoted.values.suites.split(',').includes('quality'));
-  assert.deepEqual(JSON.parse(promoted.values.steps)['(burn-in)'], ['quality']);
-  assert.match(promoted.text, /quality.*burn-in.*5/);
+// Why (1 Nov 2026, owner via mac-07: "Yes, journeys only (Recommended)": a PR that adds or changes a journey step runs it 5x, no other step and no suite admission): a new suite
+// file or a lane promotion is planned like any change, once; the night burn-in proves it.
+test('CLI: a new suite file or a lane promotion is planned once, with no admission legs', () => {
+  const added = cliPlan({suites: ['settings']});
+  assert.ok(added.values.suites.split(',').includes('settings'));
+  assert.equal(JSON.parse(added.values.steps)['(burn-in)'], undefined);
+  const promoted = cliPlan({suites: [], extraFiles: ['desktop/e2e/lanes.json'], listed: {}});
+  assert.ok(!promoted.values.suites.split(',').includes('quality'), 'nothing reaches quality, so the promotion alone plans nothing');
+  assert.equal(JSON.parse(promoted.values.steps)['(burn-in)'], undefined);
+  assert.doesNotMatch(promoted.text + added.text, /burn-in/);
 });
 
-test('CLI keeps main tip exemptions without burning in a stale branch after a main demotion', () => {
-  const {values} = cliPlan({suites: ['quality'], listed: {quality: {lane: 'tolerant'}}, mergeBaseListed: {}, headListed: {}});
+test('CLI: a suite BASE lists as tolerant stays out of the PR plan', () => {
+  const {values} = cliPlan({suites: ['quality'], listed: {quality: {lane: 'tolerant'}}});
   assert.equal(values.suites, '');
   assert.equal(values.left, '');
   assert.equal(JSON.parse(values.steps)['(burn-in)'], undefined);
@@ -340,15 +294,4 @@ test('CLI: a PR that adds a step to a backbone suite plans the suite and writes 
   assert.equal(steps['(step-burn-in)'], undefined);
   assert.equal(steps['(burn-in)'], undefined);
   assert.doesNotMatch(text, /burn-in 5\/5/);
-});
-
-test('admitted suites outrank ordinary reach so the cap cannot silently skip burn-in', () => {
-  const out = pick.planPrSuites({...eight, admitted: ['new-mac'], linux: suite => suite !== 'new-mac'});
-  assert.ok(out.suites.includes('new-mac'));
-  assert.equal(out.suites.length, 5);
-});
-
-
-test('more than five burn-in suites must be split, rather than defer an unproved suite', () => {
-  assert.throws(() => pick.planPrSuites({...args, admitted: ['a', 'b', 'c', 'd', 'e', 'f']}), {code: 'E2E_BURN_IN_CAPACITY'});
 });

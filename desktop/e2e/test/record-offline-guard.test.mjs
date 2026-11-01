@@ -27,12 +27,6 @@ test('a suite without offlineAi still plans in record mode, even when another su
   assert.equal(out.count, '1');
 });
 
-test('burn-in legs still use backbone even when the dispatch requests record', async () => {
-  const out = await plan('record', 'offline', {PR_SUITES: 'offline', PR_STEPS: '{"(burn-in)":["offline"]}'});
-  assert.equal(out.count, '5');
-  assert.ok(JSON.parse(out.matrix).include.every(leg => leg.burnIn));
-});
-
 test('the workflow supplies the planner only the first manual dispatch record request', () => {
   const workflow = fs.readFileSync(new URL('../../../.github/workflows/e2e.yml', import.meta.url), 'utf8');
   const planner = workflow.split('      - name: What to run (suites, commit, AI review, release to promote)')[1].split('        shell:')[0];

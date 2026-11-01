@@ -188,6 +188,8 @@ def compare(pr, main_runs):
         state, head = 'neutral', f'⚪ not measured ({unmeasured} of {len(PERSONAS)}): {next(r["not_measured"] for r in rows if r["not_measured"])}'
     else:
         state, head = 'success', '🟢 every press ≤ 180 s'
+    for row in rows:
+        row['measured_nothing'] = nothing   # the table marks every row grey then: a run that is not a pass has no green row (gitar on #2917)
     head += ' · ' + (f"quality: shown, gate starts at {QUALITY_MIN_RUNS} measured main runs, {quality_['measured']} so far" if quality_['mode'] == 'shown' else
                      f"quality: gated at total {quality_['floor']} (main's average minus {QUALITY_SPREADS} spreads over {quality_['measured']} runs)")
     return {'state': state, 'head': head, 'rows': rows, 'main_runs': len(main_runs), 'quality': quality_}
@@ -200,7 +202,7 @@ def table(verdict):
              f"| Persona | Main (last {MAIN_RUNS}) | This PR | Found | Press | Cost | |", '|---|---|---|---|---|---|---|']
     for r in verdict['rows']:
         main = ' · '.join(str(x) for x in r['main']) or '—'
-        mark = '🔴 ' + '; '.join(r['reasons']) if r['reasons'] else ('⚪' if r['not_measured'] else '🟢')
+        mark = '🔴 ' + '; '.join(r['reasons']) if r['reasons'] else ('⚪' if r['not_measured'] or r.get('measured_nothing') else '🟢')
         cell = lambda v, unit='': '—' if v is None else f'{v}{unit}'   # noqa: E731
         lines.append(f"| {r['label']} | {main} | {cell(r['local'])} | {cell(r['found'])} | {cell(r['seconds'], ' s')} | {'—' if r['usd'] is None else '$%.3f' % r['usd']} | {mark} |")
     lines += ['', '<sub>This PR / Main = jobs a blind judge (Codex small tier) called right role AND right place, of the jobs found; one press each, '

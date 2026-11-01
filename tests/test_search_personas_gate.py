@@ -176,6 +176,7 @@ class AGateThatSawNoJobHasMeasuredNothing(unittest.TestCase):
                 self.assertIn('not a pass', verdict['head'])
                 self.assertIn('measured nothing', gate.table(verdict))
                 self.assertNotIn('🟢 every press', verdict['head'])
+                self.assertNotIn('🟢', gate.table(verdict), 'no persona row is green under a run that measured nothing (gitar on #2917)')
 
     def test_the_main_column_does_not_show_the_zeros_of_runs_that_measured_nothing(self):
         measured = run([0, 0, 0, 5, 0, 0], [150] * 6, found=[2, 3, 4, 9, 1, 2])

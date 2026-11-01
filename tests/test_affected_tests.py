@@ -139,6 +139,27 @@ class AffectedTests(unittest.TestCase):
         for path in cmds['e2e'].split()[8:]:
             self.assertTrue((ROOT / 'desktop/e2e' / path).is_file(), path)
 
+    def test_a_failing_reach_helper_runs_the_harness_whole_but_a_missing_one_does_not(self):
+        # Gitar on #2774: a present helper that exits non-zero must not silently drop the tests picked only by reach
+        class Failed: returncode, stdout = 1, 'not json'
+        real_run, real_which = affected.subprocess.run, affected.shutil.which
+        try:
+            affected.subprocess.run = lambda *a, **k: Failed()
+            affected.e2e_reach.cache_clear()
+            got = affected.select(['desktop/e2e/lanes.json'])
+            self.assertEqual(got['e2e'], 'all')
+            self.assertIn('e2e', got['reasons'])
+            affected.shutil.which = lambda name: None          # no node: the Python import graph and mentions still pick
+            affected.e2e_reach.cache_clear()
+            self.assertEqual(affected.e2e_reach(), {})
+            self.assertNotEqual(affected.select(['desktop/e2e/lanes.json'])['e2e'], 'all')
+        finally:
+            affected.subprocess.run, affected.shutil.which = real_run, real_which
+            affected.e2e_reach.cache_clear()
+
+    def test_the_site_command_names_the_test_folder(self):
+        self.assertEqual(affected.commands({'site': ['x.test.js'], 'reasons': {}}), {'site': 'node --test test/x.test.js'})
+
 
 if __name__ == '__main__':
     unittest.main()

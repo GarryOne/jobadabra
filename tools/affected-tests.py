@@ -158,15 +158,16 @@ def mentions(text, changed, py_names):
 
 @functools.lru_cache(maxsize=None)
 def e2e_reach():
-    """{harness test path: [repo paths it reaches; a folder read ends with '/']} from the harness's own parser; {} when node or the helper is missing (the Python import graph still applies)."""
+    """{harness test path: [repo paths it reaches; a folder read ends with '/']} from the harness's own parser; {} when node or the helper is missing (the Python import graph still applies);
+    None when the helper is there and fails (a syntax error in test-reach.mjs): the caller picks the whole e2e area, as for any unreadable source (Gitar on #2774)."""
     helper, node = ROOT / 'tools/e2e-test-reach.mjs', shutil.which('node')
     if not node or not helper.is_file():
         return {}
     out = subprocess.run([node, str(helper)], cwd=ROOT, capture_output=True, text=True, check=False)
     try:
-        return json.loads(out.stdout)
+        return json.loads(out.stdout) if out.returncode == 0 else None
     except ValueError:
-        return {}
+        return None
 
 
 def reaches_changed(paths, changed):
@@ -227,6 +228,9 @@ def select(changed, base_ref=None):
         changed_js = {(ROOT / f).resolve() for f in relevant}
         tests = sorted((ROOT / folder).glob('*.test.*')) if (ROOT / folder).is_dir() else []
         reached = e2e_reach() if area == 'e2e' else {}
+        if reached is None:
+            result['e2e'] = 'all'; why['e2e'] = 'tools/e2e-test-reach.mjs failed'
+            continue
         scan_ok = area != 'e2e' or any(f.startswith(E2E_SCAN_FOR) for f in relevant)
         picked, scans = [], {}   # scans: file -> does its text scan the tree (a guard may scan through a module it imports, 10 Oct 2026)
         for t in tests:
@@ -257,7 +261,7 @@ def commands(result):
         out[area] = {'python': f'python3 tools/py-shards.py {files}',
                      'desktop': f'cd desktop && node --test {files}',
                      'worker': f'cd worker && node --test {files}',
-                     'site': f'node --test {files}',
+                     'site': 'node --test ' + ' '.join(f'test/{name}' for name in picked),   # the site pick is relative to test/ (PREFIX strips 'site/', the same length)
                      'e2e': f'cd desktop/e2e && node --import ./test/stdout-to-stderr.mjs --test {files}'}[area]
     return out
 

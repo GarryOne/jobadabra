@@ -104,6 +104,15 @@ test('owner, 1 Nov 2026: only findings the judge let through use the 3-new-issue
   assert.equal(six.filed.length, 3, 'the cap still holds for findings the judge let through');
 });
 
+test('Gitar on #2853: past the judge\'s limit a finding has no verdict, and one the judge let through goes before it, even a lower one', async () => {
+  const {capAfterNoise} = await import('../../lib/triage.mjs');
+  const item = (id, severity) => ({finding: finding(id, severity), existing: null, twin: null});
+  const all = [item('u1', 'high'), item('u2', 'high'), item('j1', 'medium'), item('j2', 'medium'), item('n', 'high')];
+  const {plan, cut} = capAfterNoise(all, [all[4]], one => one.id.startsWith('j'));
+  assert.deepEqual(plan.map(one => one.finding.id), ['u1', 'j1', 'j2']);
+  assert.deepEqual(cut.map(one => one.finding.id), ['u2']);
+});
+
 test('noise judged before filing still counts: a false positive of its detector for the numbers and the weekly lessons, but not for the breaker', async () => {
   const {classify, detectorOf, build} = await import('../../lib/selfheal-stats.mjs');
   const {noiseTripped} = await import('../../lib/plan.mjs');

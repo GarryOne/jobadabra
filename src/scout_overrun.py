@@ -3,7 +3,6 @@ Why: 20 Oct 2026, 2 of 6 central runs were cancelled at the job's 75 minutes wit
 Tests: tests/test_scout_overrun.py."""
 
 import contextlib
-import faulthandler
 import os
 import sys
 import threading
@@ -60,9 +59,8 @@ def arm(budget_s, grace_s=GRACE_S, file=None):
 
 
 def disarm():
-    """The run ended in time: no dump."""
+    """The run ended in time: the watchdog thread ends without another dump."""
     _stop.set()
-    faulthandler.cancel_dump_traceback_later()
 
 
 def leave_if_stuck(grace_s=LEAVE_GRACE_S):

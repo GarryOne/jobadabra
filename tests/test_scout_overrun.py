@@ -1,4 +1,5 @@
 """The central scout's overrun watchdog writes thread stacks when the run outlives its budget, and stays silent when it ends in time."""
+import faulthandler
 import io
 import tempfile
 import threading
@@ -38,7 +39,7 @@ class OverrunTest(unittest.TestCase):
         worker.start()
         self.addCleanup(worker.join)
         self.addCleanup(hang.set)
-        with mock.patch.object(scout_overrun.faulthandler, 'dump_traceback_later') as unsafe, \
+        with mock.patch.object(faulthandler, 'dump_traceback_later') as unsafe, \
                 tempfile.TemporaryDirectory() as folder, open(Path(folder) / 'log.txt', 'w+') as out:
             scout_overrun.arm(0.1, grace_s=0.1, file=out)
             time.sleep(0.6)
@@ -49,12 +50,14 @@ class OverrunTest(unittest.TestCase):
         self.assertIn('a_check_waiting_on_a_slow_site', text)   # the thread that holds the run
         self.assertIn('MainThread', text)   # the one the crashed dump never reached
 
-    def test_a_dump_that_fails_never_fails_the_run(self):
+    def test_a_dump_that_fails_is_said_once_per_interval_and_the_watchdog_keeps_going(self):
         with mock.patch.object(scout_overrun.traceback, 'format_stack', side_effect=RuntimeError('x')), \
+                mock.patch.object(scout_overrun.sys, 'stderr', io.StringIO()) as err, \
                 tempfile.TemporaryDirectory() as folder, open(Path(folder) / 'log.txt', 'w+') as out:
             scout_overrun.arm(0.1, grace_s=0.1, file=out)
-            time.sleep(0.5)
-            scout_overrun.disarm()   # the watchdog thread died quietly or logged; the main thread is untouched
+            time.sleep(0.9)
+            scout_overrun.disarm()
+        self.assertGreaterEqual(err.getvalue().count('scout: stack dump failed (RuntimeError: x)'), 2)
 
     def test_a_run_that_ends_in_time_leaves_nothing(self):
         with tempfile.TemporaryDirectory() as folder, open(Path(folder) / 'log.txt', 'w+') as out:

@@ -55,8 +55,18 @@ export async function revokeIfOff({chrome = globalThis.chrome, call = api, confi
   return {revoked: true};
 }
 
-/** Start the one-minute look that gives the LinkedIn permissions back when the app says the switch is off; called once from background.js. */
+/** A grant Chrome reports removed (the options page's toggle, Chrome's own settings, our revoke) is no longer this consent's: its note field is cleared.
+ *  Why (Gitar on #2845): the note survives a press while signed out (#2732), so without this a grant removed and then given again to another feature still read as ours, and an off took it. */
+export async function forgetRemoved(removed, {chrome = globalThis.chrome} = {}) {
+  const note = (await chrome.storage.local.get(GRANTED).catch(() => ({})))[GRANTED];
+  if (!note) return;
+  const gone = {cookies: (removed?.permissions || []).some(name => LINKEDIN.permissions.includes(name)), origin: (removed?.origins || []).some(origin => LINKEDIN.origins.includes(origin))};
+  await chrome.storage.local.set({[GRANTED]: {cookies: !!note.cookies && !gone.cookies, origin: !!note.origin && !gone.origin}}).catch(() => {});
+}
+
+/** Start the one-minute look that gives the LinkedIn permissions back when the app says the switch is off, and the watch that keeps the grant note true; called once from background.js. */
 export function startLinkedinSession({chrome = globalThis.chrome} = {}) {
   chrome.alarms.create(ALARM, {delayInMinutes: 1, periodInMinutes: 1});
   chrome.alarms.onAlarm.addListener(alarm => { if (alarm.name === ALARM) revokeIfOff({chrome}).catch(() => {}); });
+  chrome.permissions.onRemoved?.addListener(removed => forgetRemoved(removed, {chrome}).catch(() => {}));
 }

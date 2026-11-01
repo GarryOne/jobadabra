@@ -84,18 +84,18 @@ const gh = path => JSON.parse(run('gh', ['api', path]));
 export function fetchMerges({days, now, git = (...args) => run('git', args)}) {
   const since = new Date(now.getTime() - (days - 1) * 86400000).toISOString().slice(0, 10);
   const merges = [];
-  for (const line of git('log', '--first-parent', '--merges', `--since=${since}T00:00:00Z`, `--until=${new Date(now.getTime() + 86400000).toISOString().slice(0, 10)}`, '--format=%H%x1f%cs%x1f%s%x1f%b%x1e').split('\x1e')) {
-    const [sha, date, subject, body] = line.trim().split('\x1f');
+  for (const line of git('log', '--first-parent', '--merges', `--since=${since}T00:00:00Z`, `--until=${new Date(now.getTime() + 86400000).toISOString().slice(0, 10)}`, '--format=%H%x1f%cs%x1f%cI%x1f%s%x1f%b%x1e').split('\x1e')) {
+    const [sha, date, at, subject, body] = line.trim().split('\x1f');
     const match = /^Merge pull request #(\d+) from \S+?\/(\S+)/.exec(subject || '');
     if (!match) continue;
     const commits = [];
-    for (const block of git('log', '--reverse', '--numstat', '--format=%x1e%H%x1f%s', `${sha}^1..${sha}^2`).split('\x1e').slice(1)) {
-      const [head, ...rest] = block.split('\n'), [csha, csubject] = head.split('\x1f'), files = [];
+    for (const block of git('log', '--reverse', '--numstat', '--format=%x1e%H%x1f%aI%x1f%s', `${sha}^1..${sha}^2`).split('\x1e').slice(1)) {
+      const [head, ...rest] = block.split('\n'), [csha, cdate, csubject] = head.split('\x1f'), files = [];
       let lines = 0;
       for (const stat of rest.filter(Boolean)) { const [add, del, ...name] = stat.split('\t'); if (name.length) { files.push(name.join('\t')); lines += (Number(add) || 0) + (Number(del) || 0); } }
-      commits.push({sha: csha, subject: csubject, files, lines});
+      commits.push({sha: csha, date: cdate, subject: csubject, files, lines});   // the author date survives a rebase; the sha does not
     }
-    merges.push({pr: Number(match[1]), day: date, title: (body || '').split('\n')[0], branch: match[2], files: git('diff', '--name-only', `${sha}^1`, sha).split('\n').filter(Boolean), commits});
+    merges.push({pr: Number(match[1]), day: date, at, title: (body || '').split('\n')[0], branch: match[2], files: git('diff', '--name-only', `${sha}^1`, sha).split('\n').filter(Boolean), commits});
   }
   return merges;
 }

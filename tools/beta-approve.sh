@@ -17,6 +17,8 @@ line="$marker unit suites and every end-to-end suite passed on commit $sha ($(da
 [ -n "$windows" ] && line="$marker unit suites and every Windows end-to-end suite passed on commit $sha ($(date -u +%Y-%m-%d))"
 # Why (1 Nov 2026, owner: "Auto-retry in betas only"): a beta released past a step that passed on its retry lists it ("Passed on retry in this beta: <suite · step>, …"); desktop.yml writes the line to the file, empty when none retried.
 retry=''; [ -n "${PASSED_ON_RETRY_FILE:-}" ] && [ -s "$PASSED_ON_RETRY_FILE" ] && retry=$(cat "$PASSED_ON_RETRY_FILE")
-gh release edit "$tag" -R "$repo" --notes "$(printf '%s\n\n%s' "$body" "$line${retry:+$'\n'$retry}")"
+# Why (1 Nov 2026, owner: "Safety strict, rest tolerant"): the gate let a red through that is neither safety nor data ("Red on main, not safety or data: <suite · step>, …", tools/red-main-gate.sh); the notes carry it too.
+red="${RED_ON_MAIN_NOTE:-}"
+gh release edit "$tag" -R "$repo" --notes "$(printf '%s\n\n%s' "$body" "$line${retry:+$'\n'$retry}${red:+$'\n'$red}")"
 echo "$tag: $line"
 python3 "$(dirname "${BASH_SOURCE[0]}")/sync_release_labels.py" || echo "(release labels not refreshed: run tools/sync_release_labels.py)"

@@ -19,6 +19,10 @@ data = json.load(open(os.path.join(state, 'data.json')))
 args = sys.argv[1:]
 log = open(os.path.join(state, 'calls'), 'a'); log.write(' '.join(args) + '\n'); log.close()
 dispatched = os.path.exists(os.path.join(state, 'dispatched'))
+if args[:2] == ['run', 'download']:   # gh run download <id> -R repo -n <artifact> -D <dir>: the recorded steps.json of that artifact
+    table = data.get('artifacts', {}).get(args[2], {}).get(args[args.index('-n') + 1])
+    if table is None: sys.exit(1)
+    json.dump(table, open(os.path.join(args[args.index('-D') + 1], 'steps.json'), 'w')); sys.exit(0)
 if args[:2] == ['workflow', 'run']:
     open(os.path.join(state, 'dispatched'), 'w').write(' '.join(args)); sys.exit(0)
 endpoint = next(a for a in args if a.startswith('repos/'))
@@ -28,6 +32,10 @@ elif 'workflows/e2e.yml/runs?branch=main&status=completed' in endpoint:
     runs = list(data['runs'])
     if dispatched and data.get('recheck') == 'success': runs.insert(0, {'id': 99, 'display_title': 'E2E Mac + Linux · x · main', 'conclusion': 'success', 'head_sha': data['head'], 'head_branch': 'main'})
     print(json.dumps(runs))
+elif '/artifacts?per_page=100' in endpoint:
+    rid = endpoint.split('/runs/')[1].split('/')[0]
+    if data.get('artifacts_unreadable'): sys.exit(1)
+    print('\n'.join(data.get('artifacts', {}).get(rid, {})))
 elif endpoint.endswith('/jobs?per_page=100'):
     rid = endpoint.split('/runs/')[1].split('/')[0]
     print(json.dumps(data['jobs'].get(rid, data['recheck_jobs'] if rid == '99' else [])))
@@ -53,12 +61,14 @@ def gate(data, *extra, lanes=None, verdict_tool=None):
         tmp = Path(tmp)
         (tmp / 'bin').mkdir()
         (tmp / 'tools').mkdir()
-        for script in ('red-main-gate.sh', 'main_e2e_state.py'):
+        for script in ('red-main-gate.sh', 'main_e2e_state.py', 'red-main-verdict.mjs'):
             shutil.copyfile(ROOT / 'tools' / script, tmp / 'tools' / script)
+        (tmp / 'desktop/e2e').mkdir(parents=True)
+        (tmp / 'desktop/e2e/lib').symlink_to(ROOT / 'desktop/e2e/lib')   # the verdict tool's imports (suite-shards.mjs reads a chain of siblings)
         # The bisect's issue lifecycle is outside this gate test; never reach the real checkout or accounts.
         (tmp / 'tools/e2e_bisect.py').write_text('# Fake issue lifecycle boundary for gate tests.\n')
         if lanes is not None:
-            (tmp / 'desktop/e2e').mkdir(parents=True)
+            (tmp / 'desktop/e2e').mkdir(parents=True, exist_ok=True)
             (tmp / 'desktop/e2e/lanes.json').write_text(lanes)
         if verdict_tool is not None:   # tools/flaky-verdict.mjs, faked: the real one reads GitHub and git
             (tmp / 'tools/flaky-verdict.mjs').write_text(verdict_tool)
@@ -179,6 +189,79 @@ class RedMainGate(unittest.TestCase):
         self.assertEqual(code, 1, out)
         self.assertIn('cardstates', out)
         self.assertEqual(dispatch, '', '--status never starts a re-check')
+
+
+def table(*results):
+    return {'v': 1, 'suite': 'x', 'results': list(results)}
+
+
+def failed(name, **extra):
+    return {'name': name, 'status': 'failed', 'note': 'waitForFunction timed out (30000 ms)', **extra}
+
+
+SIGN_UP = 'a sign-up page before the form: the account step is kept apart from the application form'
+APPLYFLOWS_RED = {**RED_RUN, 'id': 2, 'html_url': 'https://github.com/o/r/actions/runs/2'}
+APPLYFLOWS_JOBS = {'2': [{'name': 'applyflows-1of2', 'conclusion': 'success'}, {'name': 'applyflows-2of2', 'conclusion': 'failure'}]}
+
+
+@unittest.skipUnless(shutil.which('node'), 'node runs the verdict tool')
+class RedStepsJudged(unittest.TestCase):
+    """Owner, 1 Nov 2026: "Safety strict, rest tolerant", a8's option "Same rule as the beta". Tonight's nightly (run 41267448030) built nothing over one flaky step (re-check run 41267492981).
+    The gate reads each red suite's steps.json (recorded here, no network); only a failed safety or data step, or results it cannot read, stops the beta."""
+
+    def red_main(self, results, *, rerun=False, extra=None):
+        """applyflows red on main with these step results; rerun: commits landed since, so the re-check (run 99) is red and holds them."""
+        run = '99' if rerun else '2'
+        data = {'runs': [APPLYFLOWS_RED], 'jobs': APPLYFLOWS_JOBS, 'head': NEW_SHA if rerun else RED_SHA, 'recheck': 'failure',
+                'artifacts': {run: {'e2e-view-applyflows-1of2': table({'name': 'a step', 'status': 'passed'}), 'e2e-view-applyflows-2of2': table(*results), 'e2e-coverage-applyflows-1of2': {}}}}
+        return gate({**data, **(extra or {})})
+
+    def test_a_red_step_that_is_not_safety_or_data_lets_tonights_beta_go_on_and_lists_it(self):
+        for rerun in (False, True):   # (a)/(e): nothing changed since the red run, and the re-check red again
+            code, out, dispatch = self.red_main([failed(SIGN_UP)], rerun=rerun)
+            self.assertEqual(code, 0, out)
+            self.assertIn(f'Red on main, not safety or data: applyflows · {SIGN_UP}', out)
+            self.assertEqual(bool(dispatch), rerun, 'the re-check itself is kept: it re-runs only when commits landed since')
+
+    def test_a_red_safety_step_stops_the_beta(self):
+        for rerun in (False, True):   # (b)
+            code, out, _ = self.red_main([failed(SIGN_UP), failed('Stop halts the fill', safety=True)], rerun=rerun)
+            self.assertEqual(code, 1, out)
+            self.assertIn('Stops the beta: applyflows · Stop halts the fill: a safety step failed', out)
+
+    def test_a_red_data_step_stops_the_beta(self):
+        for rerun in (False, True):   # (c)
+            code, out, _ = self.red_main([failed('a store move keeps the data', data=True)], rerun=rerun)
+            self.assertEqual(code, 1, out)
+            self.assertIn('a data step failed', out)
+
+    def test_results_that_cannot_be_read_stop_the_beta_and_say_why(self):
+        for rerun in (False, True):   # (d): the red run has no artifacts, or the artifact list cannot be fetched
+            for extra, why in (({'artifacts': {}}, 'no steps.json among the run'), ({'artifacts_unreadable': True}, 'could not be read')):
+                code, out, _ = self.red_main([failed(SIGN_UP)], rerun=rerun, extra=extra)
+                self.assertEqual(code, 1, out)
+                self.assertIn('Stops the beta: applyflows (run', out)
+                self.assertIn(why, out)
+                self.assertNotIn('Red on main, not safety or data', out)
+
+    def test_the_tool_runs_through_a_symlinked_path_and_never_exits_0_silently(self):
+        # 1 Nov 2026: on macOS the temp dir is /var → /private/var; the "am I the entry script" compare was false, main() never ran and the tool printed nothing and exited 0.
+        with tempfile.TemporaryDirectory() as tmp:
+            real, link = Path(tmp) / 'real', Path(tmp) / 'link'
+            (real / 'tools').mkdir(parents=True)
+            (real / 'desktop/e2e').mkdir(parents=True)
+            (real / 'desktop/e2e/lib').symlink_to(ROOT / 'desktop/e2e/lib')
+            shutil.copyfile(ROOT / 'tools/red-main-verdict.mjs', real / 'tools/red-main-verdict.mjs')
+            link.symlink_to(real)
+            done = subprocess.run(['node', str(link / 'tools/red-main-verdict.mjs')], capture_output=True, text=True)
+            self.assertEqual(done.returncode, 2, done.stdout + done.stderr)
+            self.assertIn('usage:', done.stderr)
+
+    def test_the_suite_names_the_nightly_reads_are_not_the_reasons(self):
+        # desktop.yml's nightly takes the indented lines after "Main's e2e is red:" as suite names: the verdict's lines must not start with spaces.
+        _, out, _ = self.red_main([failed('x', safety=True)])
+        self.assertTrue(all(not line.startswith('  ') or 'since' in line for line in out.splitlines() if 'Stops the beta' in line or 'Red on main' in line), out)
+
 
 class BetaRelease(unittest.TestCase):
     def test_beta_release_runs_the_gate_first_and_passes_a_force_reason_on(self):

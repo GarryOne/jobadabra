@@ -2,12 +2,14 @@
 # No beta while main's e2e is red (gate G2, owner's yes 26 Oct 2026). tools/beta-release.sh calls it before it dispatches a beta.
 #   main green (tools/main_e2e_state.py)                  → exit 0
 #   main's state unreadable (gh failed)                    → exit 1: unknown is never green (--force still goes on)
-#   red, and no commit on main since the red run           → exit 1: fix it first (the beta would show the same reds)
-#   red, commits landed since                              → re-runs ONLY the red suites on main now and waits: green → exit 0, red → exit 1
+#   red, and no commit on main since the red run           → judges the red steps (below): a safety or data step or unreadable results → exit 1 (fix it first); else exit 0
+#   red, commits landed since                              → re-runs ONLY the red suites on main now and waits: green → exit 0; red → judges the re-check's red steps (below)
+#   judging (tools/red-main-verdict.mjs, the one rule; owner, 1 Nov 2026: "Safety strict, rest tolerant", a8's option "Same rule as the beta"): only a failed step marked safety or data
+#   stops the beta, and so do results that cannot be read (a missing result is never a pass). Any other red goes on and prints "Red on main, not safety or data: <suite · step>, …".
 #   --force "<why>" (as beta-release.sh's)                → exit 0 with the reds named; beta-release.sh puts the reason in the beta run's log
 # Why: 25 Oct 2026, main's 21:47 run was red on cardstates, interactions and settings; beta 2 started 1.5 h later and failed on the same suites.
 # Usage: tools/red-main-gate.sh <repo> [--force "<why>" | --status]   --status only reads (exit 0 green, 1 red); any other option is refused and starts nothing (26 Oct 2026: a --dry-run was ignored and re-ran main's red suites)     RED_MAIN_POLL / RED_MAIN_FIND_S / RED_MAIN_WAIT_S for tests.
-# Tests: tests/test_red_main_gate.py
+# Tests: tests/test_red_main_gate.py, desktop/e2e/test/red-main-verdict.test.mjs
 set -uo pipefail
 repo="${1:?repo}"; shift
 force="" status=""
@@ -19,6 +21,14 @@ case "${1:-}" in
 esac
 here="$(cd "$(dirname "$0")" && pwd)"
 poll="${RED_MAIN_POLL:-30}" find_max="${RED_MAIN_FIND_S:-300}" wait_max="${RED_MAIN_WAIT_S:-3600}"
+
+# The one judgement of red steps, for both branches below. $1: lines "<suite><TAB><run id>". Prints the verdict; exit 0 = the beta may go on, 1 = it stops (or the results cannot be read).
+judge_reds() {
+  local specs args=() spec
+  specs="$(awk -F'\t' '{ a[$2] = a[$2] (a[$2] ? "," : "") $1 } END { for (r in a) print r "=" a[r] }' <<<"$1" | sort)"
+  while IFS= read -r spec; do [ -n "$spec" ] && args+=(--run "$spec"); done <<<"$specs"
+  node "$here/red-main-verdict.mjs" --repo "$repo" "${args[@]}"
+}
 
 state_json="$(python3 "$here/main_e2e_state.py" --repo "$repo" --json)"; read_rc=$?
 if [ "$read_rc" -ne 0 ]; then   # unknown is not green (26 Oct 2026: a failed read said "no suite red")
@@ -45,7 +55,12 @@ if [ -n "$force" ]; then echo "Starting the beta anyway (--force): $force"; exit
 head="$(gh api "repos/${repo}/commits/main" --jq .sha 2>/dev/null)"
 if [ -z "$head" ]; then echo "Could not read main's head: no beta. Re-run, or --force \"<why>\"."; exit 1; fi
 if ! awk -F'\t' -v h="${head:0:7}" '$2 != h { found = 1 } END { exit !found }' <<<"$reds"; then
-  echo "No commit on main since those runs: no beta (it would fail on the same suites). Fix them (skill fix-failing-e2e), or --force \"<why>\"."
+  if verdict="$(judge_reds "$(awk -F'\t' '{ n = split($4, p, "/"); print $1 "\t" p[n] }' <<<"$reds")")"; then
+    echo "No commit on main since those runs, but no red step is a safety or data step: the beta goes on."
+    echo "$verdict"; exit 0
+  fi
+  echo "$verdict"
+  echo "No commit on main since those runs: no beta (it would fail on the same steps). Fix them (skill fix-failing-e2e), or --force \"<why>\"."
   exit 1
 fi
 
@@ -74,7 +89,14 @@ if [ "${st#completed }" = success ]; then
   GITHUB_REPOSITORY="$repo" python3 "$here/e2e_bisect.py" after-run "$id" || true   # closes the red-main issues of the suites green again (gate G2b)
   exit 0
 fi
-echo "Re-check ${st#completed }: main is still red (${url}). No beta: fix the suite (skill fix-failing-e2e), or --force \"<why>\"."
+echo "Re-check ${st#completed }: main is still red (${url})."
 # Why (31 Oct 2026, owner: "You detect flakiness and immediately treat the flakiness root cause"): say whether each red step is flaky (it passed on code unchanged since) or changed (a likely regression), with the green run, so no person has to notice. Information only: a failed read prints nothing.
 if [ -f "$here/flaky-verdict.mjs" ]; then GITHUB_REPOSITORY="$repo" node "$here/flaky-verdict.mjs" --run "$id" --repo "$repo" 2>/dev/null | sed 's/^/  /'; fi
+# Why (1 Nov 2026, owner: "Safety strict, rest tolerant"): the nightly of 1 Nov (run 41267448030) built nothing over one flaky sign-up step (re-check run 41267492981); only a safety or data step stops a beta.
+if verdict="$(judge_reds "$(tr ',' '\n' <<<"$suites" | awk -v r="$id" '{ print $0 "\t" r }')")"; then
+  echo "No red step is a safety or data step: the beta goes on, and its own e2e (with the one retry) decides."
+  echo "$verdict"; exit 0
+fi
+echo "$verdict"
+echo "No beta: fix the suite (skill fix-failing-e2e), or --force \"<why>\"."
 exit 1

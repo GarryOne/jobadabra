@@ -32,19 +32,20 @@ export function recordAnswerRefusals(ctx, refused) {
 // Why (31 Oct 2026, owner; Gitar on #2664): new backbone suites inherit zero misses; only an explicit lane or a named exception exempts them, read from the one lane list and the registry's one exception rule.
 const missesExempt = lane => NON_BACKBONE.includes(lane?.lane) || namesException(lane);
 
-/** Pure verdict: backbone defaults to zero; diagnostics contain only the request key, never prompt text. */
-export function aiMissesVerdict(misses, lane, firstKey = '') {
+/** Pure verdict: backbone defaults to zero; diagnostics contain only the request key, never prompt text.
+ * `seeding` (lib/ai-meter.mjs seedingRun): the run started with no kept answer, so every ask was bound to miss; the misses are saved for the next run and are not a red. */
+export function aiMissesVerdict(misses, lane, firstKey = '', seeding = false) {
   const max = missesExempt(lane) ? null : (lane?.aiMissesMax ?? 0);
-  const ok = max === null || misses <= max;
+  const ok = max === null || seeding || misses <= max;
   return {ok, misses, max, message: ok ? '' : `AI asks with no stored answer: ${misses} (allowed ${max}); first ask key: ${firstKey}`};
 }
 
 /** Count miss JSON filenames without reading bodies; missing folders mean zero, and exempt suites do no I/O. */
-export function checkAiMisses(artifacts, lane) {
+export function checkAiMisses(artifacts, lane, seeding = false) {
   if (missesExempt(lane)) return aiMissesVerdict(0, lane);
   const dir = path.join(artifacts, 'ai-misses');
   let files;
   try { files = fs.readdirSync(dir, {withFileTypes: true}).filter(file => file.isFile() && file.name.endsWith('.json')).map(file => file.name).sort(); }
   catch (error) { if (error.code === 'ENOENT') return aiMissesVerdict(0, lane); throw error; }
-  return aiMissesVerdict(files.length, lane, files[0]?.slice(0, -5) || '');
+  return aiMissesVerdict(files.length, lane, files[0]?.slice(0, -5) || '', seeding);
 }

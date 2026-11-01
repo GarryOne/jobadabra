@@ -202,8 +202,9 @@ class TheCheckedPaths(unittest.TestCase):
 
     def test_harness_yml_starts_for_every_file_a_harness_test_reaches(self):
         # Moved from test/harness/test-reach.test.mjs (owner, 30 Oct 2026, option C: every harness PR runs every test file, so `paths:` must cover what a test reaches). The reach comes from the
-        # harness's own parser (tools/e2e-test-reach.mjs --all: e2e tests and the extension integration tests that `npm test` also runs).
-        reach = json.loads(node_out('tools/e2e-test-reach.mjs', '--all'))
+        # harness's own parser (tools/e2e-test-reach.mjs: the tests `npm test` runs in desktop/e2e). The extension integration tests are run by integration.yml, whose own paths
+        # desktop/test/integration-workflow-paths.test.js checks (Gitar on #2854: the old copy of this check wrongly counted them against harness.yml).
+        reach = json.loads(node_out('tools/e2e-test-reach.mjs'))
         self.assertTrue(len(reach) > 100 and pr_paths('harness.yml'), 'positive control: the reach is read and harness.yml filters by paths')
         self.assertFalse(starts('harness.yml', ['docs/unrelated-note.md']), 'positive control: a file no harness test reads does not start it')
         reached = {item for items in reach.values() for item in items}   # unique first: the tests share most paths, and every check below reads the workflow again

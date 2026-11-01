@@ -286,7 +286,7 @@ def check_google(now=None):
                      'README → Gmail and Calendar setup')
     fix = 'Sign in again: python3 -m src.sources.google auth --github  (add --client-json <file> if you use your own Google app)'
     try:
-        email = (client.profile().get('emailAddress', '?') if client.scopes is None or 'gmail' in client.scopes else client.account_email()) or '?'
+        email = (client.profile().get('emailAddress', '?') if client.scopes is None or 'gmail' in client.scopes else client.account_email()) or 'Google Calendar'
         said = google_scopes.say(client.scopes)
         if said:
             return Check('Health', 'Gmail + Calendar', WARN, f'{email}: {said}', 'Reconnect in the app: Settings → Connections → Gmail & Calendar')

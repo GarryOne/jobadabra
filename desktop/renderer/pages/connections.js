@@ -208,7 +208,7 @@ export async function showGoogle() {
   const google = await window.pilot.googleStatus().catch(() => ({connected: false}));
   const left = google.connected ? google.scopes?.missing || [] : [];
   googleOnly = left.length === 1 ? left[0] : undefined;
-  $('google-status').textContent = google.connected ? `${left.length ? '⚠' : '✓'} Connected as ${google.email}${left.length ? `. ${google.scopes.say}` : ''}` : google.error ? 'Sign-in expired: connect again' : 'Not connected';
+  $('google-status').textContent = google.connected ? `${left.length ? '⚠' : '✓'} Connected${google.email ? ` as ${google.email}` : ''}${left.length ? `. ${google.scopes.say}` : ''}` : google.error ? 'Sign-in expired: connect again' : 'Not connected';
   $('google-status').classList.toggle('on', !!google.connected);
   $('google-connect').textContent = google.connected ? 'Reconnect' : 'Connect Google';
   // A way out, like Always on's and Telegram buttons' (owner, 7 Oct 2026: "there is no way for me to disconnect from Gmail").

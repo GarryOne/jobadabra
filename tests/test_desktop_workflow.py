@@ -184,8 +184,13 @@ class DesktopWorkflowTest(unittest.TestCase):
             self.assertIn('tools/release-checks.sh --after-ci "$TAG" "$REF"', release)
             self.assertNotIn('tools/release-checks.sh "$TAG"', release)
         # Owner, 1 Nov 2026: the run says which commit it is built from and how far behind main (an annotation and the summary page).
-        self.assertIn('::notice title=Built from ${GITHUB_SHA:0:7}::', job('changes'))
-        self.assertIn('git rev-list --count "$GITHUB_SHA..origin/main"', job('changes'))
+        self.assertIn('::notice title=Built from ${built:0:7}::', job('changes'))
+        self.assertIn('git rev-list --count "$built..origin/main"', job('changes'))
+        # Gitar on #2927: a beta-pick overlay commit has no build.yml run; main's CI is read on the green commit its message names, in every job that reads it.
+        self.assertIn("Beta pick: the code of", job('changes'))
+        self.assertIn('ci_sha: ${{ steps.built.outputs.sha }}', WORKFLOW)
+        self.assertNotIn('REF: ${{ github.sha }}', WORKFLOW)
+        self.assertEqual(WORKFLOW.count('REF: ${{ needs.changes.outputs.ci_sha }}'), 5)
         # Owner, 1 Nov 2026, on beta 10's graph: the commit and its age are on a box of the graph, and the AI credit box is gone (its alert is steps of the last job, Gitar on #2904).
         self.assertIn('built_from: ${{ steps.built.outputs.label }}', WORKFLOW)
         self.assertIn("name: ${{ format('Main''s CI on {0}', needs.changes.outputs.built_from) }}", job('main-ci'))

@@ -8,6 +8,7 @@ import './journeys-profile.js';
 import './journeys-cover-letter-notice.js';
 import './journeys-eligibility.js';
 import './journeys-popup.js';
+import './journeys-linkedin-refresh.js';
 import * as terminals from '../lib/terminals.js';
 import * as apply from '../lib/apply.js';
 import * as review from '../lib/review.js';

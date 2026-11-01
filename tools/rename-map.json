@@ -26,8 +26,8 @@
    "why": "rs: deleted from this repo (5c, 4c)"
   },
   {
-   "path": "^\\.github/workflows/(ready-fill-image|worker|central-scout|product-brain|ai-cost-billed)\\.yml$",
-   "why": "rs: deleted or moved to another repo"
+   "path": "^\\.github/workflows/(ready-fill-image|worker)\\.yml$",
+   "why": "rs: deleted from this repo (5c, 4c)"
   },
   {
    "path": "^tests/test_release_file_names\\.py$",

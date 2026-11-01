@@ -29,9 +29,9 @@ concurrency:
 
 env:
   # No user is behind this run: nothing of Notion, Telegram or the AI can start, even if a variable leaks in.
-  JOB_PILOTTO_DISABLE: notion,telegram,mail,google_jobs,enrich,score,auto_kits,insights,index
+  JOBADABRA_DISABLE: notion,telegram,mail,google_jobs,enrich,score,auto_kits,insights,index
   # Worldwide places (not one user's search): the index serves users everywhere; each app filters by its own search.
-  JOB_PILOTTO_LOCATIONS_FILE: config/central_locations.json
+  JOBADABRA_LOCATIONS_FILE: config/central_locations.json
 
 jobs:
   scout:

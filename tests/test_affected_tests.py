@@ -139,6 +139,21 @@ class AffectedTests(unittest.TestCase):
         for path in cmds['e2e'].split()[8:]:
             self.assertTrue((ROOT / 'desktop/e2e' / path).is_file(), path)
 
+    def test_an_area_picked_whole_is_named_ci_only_with_its_reason_and_never_gets_a_command(self):
+        # a8, 1 Nov 2026 (#2766, #2763): "all" printed no command and no word why, so sessions ran nothing or a hand-built list
+        got = affected.with_ci_only(affected.select(['desktop/e2e/package.json']))
+        self.assertIn('desktop/e2e/package.json', got['ci_only']['e2e'])
+        self.assertIn('CI runs', got['ci_only']['e2e'])
+        self.assertIn('run nothing', got['ci_only']['e2e'])
+        self.assertEqual(set(got['ci_only']), {'e2e', 'desktop'})
+        self.assertFalse({'e2e', 'desktop'} & set(affected.commands(got)))          # a key in commands is always a command you can run
+        whole = affected.with_ci_only(affected.select(['package.json']))             # a root dependency file: every area, reason under "all"
+        self.assertEqual(set(whole['ci_only']), set(affected.AREAS))
+        self.assertTrue(all('package.json' in v for v in whole['ci_only'].values()))
+        lib = affected.with_ci_only(affected.select(['desktop/e2e/lib/test-reach.mjs']))   # a plain lib change: tests to run, nothing whole
+        self.assertEqual(lib['ci_only'], {})
+        self.assertIn('e2e', affected.commands(lib))
+
     def test_a_failing_reach_helper_runs_the_harness_whole_but_a_missing_one_does_not(self):
         # Gitar on #2774: a present helper that exits non-zero must not silently drop the tests picked only by reach
         class Failed: returncode, stdout = 1, 'not json'

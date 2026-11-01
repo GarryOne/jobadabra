@@ -2,6 +2,8 @@
 
   python3 tools/affected-tests.py --base origin/main            (JSON on stdout: per area a list of test files, or "all")
   python3 tools/affected-tests.py --files src/store.py desktop/lib/x.js
+Output keys: per area its tests or "all"; `reasons`; `commands.<area>` (always a command you can run, only for an area with a picked list); `ci_only.<area>` (an area picked
+whole: a sentence with the reason; run nothing locally for it, CI runs it).
 
 A test is selected when (1) its transitive imports reach a changed file, (2) its text names a changed file (path, file name or a
 Python dotted name: covers fs reads, subprocess calls and fixtures), or (3) it scans the whole tree (always run). The e2e harness's own tests (desktop/e2e/test) are an area too ("e2e"); their reach also
@@ -262,7 +264,7 @@ def commands(result):
     """A ready command per area that has picked tests (run from the repo root); an area picked whole is left to CI, so it gets none."""
     out = {}
     for area, picked in result.items():
-        if area == 'reasons' or not picked or picked == 'all':
+        if area not in AREAS or not picked or picked == 'all':   # the other keys (reasons, ci_only) are not areas
             continue
         files = ' '.join(picked)
         out[area] = {'python': f'python3 tools/py-shards.py {files}',
@@ -271,6 +273,20 @@ def commands(result):
                      'site': 'node --test ' + ' '.join(f'test/{name}' for name in picked),   # the site pick is relative to test/ (PREFIX strips 'site/', the same length)
                      'e2e': f'cd desktop/e2e && node --import ./test/stdout-to-stderr.mjs --test {files}'}[area]
     return out
+
+
+def with_ci_only(result):
+    """`result` plus "ci_only": {area: sentence} for every area picked whole. Such an area has no `commands` entry on purpose (never a whole suite or a hand-built list locally);
+    this says so in words, with the reason, so a session does not guess (a8, 1 Nov 2026, #2766 and #2763)."""
+    why = result.get('reasons', {})
+    out = {}
+    for area in AREAS:
+        if result.get(area) != 'all':
+            continue
+        reason = why.get(area) or why.get('all') or 'in doubt'
+        reason = '; '.join(reason) if isinstance(reason, list) else reason
+        out[area] = f'picked whole ({reason}): CI runs every {area} test; run nothing for this area here'
+    return {**result, 'ci_only': out}
 
 
 def git_changed(base):
@@ -288,9 +304,10 @@ def main(argv=None):
     args = ap.parse_args(argv)
     changed = args.files if args.files is not None else git_changed(args.base or 'origin/main')
     if changed is None:       # no way to know what changed: everything
-        print(json.dumps({**{k: 'all' for k in AREAS}, 'reasons': {'all': ['git diff failed']}}))
+        print(json.dumps(with_ci_only({**{k: 'all' for k in AREAS}, 'reasons': {'all': ['git diff failed']}})))
         return 0
     picked = select(changed)
+    picked = with_ci_only(picked)
     print(json.dumps({**picked, 'commands': commands(picked)}))
     return 0
 

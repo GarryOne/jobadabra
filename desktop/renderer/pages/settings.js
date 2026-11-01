@@ -17,6 +17,7 @@ import {byStore} from '../store-words.js';
 import {SERVICES, isRequired} from './services-list.js';
 import {openLinkedinConsent, refreshLinkedin, view as linkedinView} from './linkedin-consent.js';
 import {emailSetupCard} from './setup-email-card.js';
+import {plainError} from '../run-warnings.js';
 
 // ---------- Settings: sub-pages (Overview, Application profile, Automation, Connections, Data & backup, Advanced) ----------
 let pageNow = '';
@@ -340,11 +341,11 @@ export async function init() {
     $(`${where}-show`).addEventListener('click', async () => {
       const result = await window.pilot.sitePassword('show');
       if (result?.password) $(where).textContent = result.password;
-      $(said).textContent = result?.ok ? (result.password ? '' : 'Copied: paste it to read it.') : result?.error || '';
+      $(said).textContent = plainError(result?.ok ? (result.password ? '' : 'Copied: paste it to read it.') : result?.error || '');
     });
     $(`${where}-copy`).addEventListener('click', async () => {
       const result = await window.pilot.sitePassword('copy');
-      $(said).textContent = result?.ok ? 'Copied.' : result?.error || '';
+      $(said).textContent = plainError(result?.ok ? 'Copied.' : result?.error || '');
     });
   }
   // Data & backup and Advanced: explainers and the reset options open on demand; Diagnostics shows live status.
@@ -377,14 +378,14 @@ async function openCredentials() {
     reveal.addEventListener('click', async () => {
       if (reveal.textContent === 'Hide') { secret.textContent = '••••••••'; reveal.textContent = 'Show'; return; }
       const answer = await window.pilot.credentialReveal(row.key || row.host, 'show');
-      if (!answer?.ok) { $('credentials-message').textContent = answer?.error || ''; return; }
+      if (!answer?.ok) { $('credentials-message').textContent = plainError(answer?.error || ''); return; }
       secret.textContent = answer.password;
       reveal.textContent = 'Hide';
     });
     const copy = el('button', 'secondary small-button', 'Copy');
     copy.addEventListener('click', async () => {
       const answer = await window.pilot.credentialReveal(row.key || row.host, 'copy');
-      if (!answer?.ok) { $('credentials-message').textContent = answer?.error || ''; return; }
+      if (!answer?.ok) { $('credentials-message').textContent = plainError(answer?.error || ''); return; }
       await navigator.clipboard.writeText(answer.password);
       $('credentials-message').textContent = `Copied the password for ${row.host}.`;
     });
@@ -397,7 +398,7 @@ async function openCredentials() {
       sure.addEventListener('click', async () => {
         sure.disabled = keep.disabled = true;
         const answer = await window.pilot.credentialDelete(row.key || row.host);
-        if (!answer?.ok) { $('credentials-message').textContent = answer?.error || 'It could not be deleted.'; actions.replaceChildren(reveal, copy, remove); return; }
+        if (!answer?.ok) { $('credentials-message').textContent = plainError(answer?.error || 'It could not be deleted.'); actions.replaceChildren(reveal, copy, remove); return; }
         await openCredentials();
         $('credentials-message').textContent = `Deleted the saved password for ${row.host}.`;
       });
@@ -407,7 +408,7 @@ async function openCredentials() {
     const assign = el('button', 'secondary small-button', 'Assign');
     assign.addEventListener('click', async () => {
       const answer = await window.pilot.credentialAssign(row.key);
-      if (!answer?.ok) { $('credentials-message').textContent = answer?.error || ''; return; }
+      if (!answer?.ok) { $('credentials-message').textContent = plainError(answer?.error || ''); return; }
       await openCredentials();
       $('credentials-message').textContent = `${row.host} now belongs to this profile.`;
     });
@@ -416,5 +417,5 @@ async function openCredentials() {
     return line;
   }));
   show($('credentials-empty'), !rows.length);
-  $('credentials-message').textContent = result?.ok === false ? result.error : '';
+  $('credentials-message').textContent = plainError(result?.ok === false ? result.error : '');
 }

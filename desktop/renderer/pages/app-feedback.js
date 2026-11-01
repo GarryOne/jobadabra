@@ -3,6 +3,7 @@
 import {$} from './core.js';
 import {toastMessage} from './startup.js';
 import {NO_PLACE} from '../targets.js';
+import {plainError} from '../run-warnings.js';
 
 function open() {
   $('app-feedback-message').textContent = '';
@@ -21,7 +22,7 @@ export async function init() {
     const result = await window.pilot.sendFeedback($('app-feedback-text').value, $('app-feedback-contact').value)
       .catch(error => ({ok: false, error: error.message}));
     button.disabled = false;
-    if (!result?.ok) { $('app-feedback-message').textContent = result?.error || 'Couldn\'t send it.'; return; }
+    if (!result?.ok) { $('app-feedback-message').textContent = plainError(result?.error || 'Couldn\'t send it.'); return; }
     $('app-feedback-text').value = '';
     $('app-feedback-dialog').close();
     toastMessage('Thank you!', 'Your feedback went straight to the maker. If you left a contact, expect a reply.', NO_PLACE.done, 'good');

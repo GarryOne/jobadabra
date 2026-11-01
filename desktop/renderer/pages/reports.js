@@ -70,7 +70,7 @@ function feedbackChoice(item) {
     button.setAttribute('aria-pressed', String(item.feedback === value));
     button.addEventListener('click', async () => {
       const done = await window.pilot.insightFeedback(item.id, value).catch(error => ({ok: false, error: error.message}));
-      if (!done.ok) { $('reports-state').textContent = `Feedback not saved: ${done.error || 'try again'}`; return; }
+      if (!done.ok) { $('reports-state').textContent = plainError(`Feedback not saved: ${done.error || 'try again'}`); return; }
       const row = state.insights.find(each => each.id === item.id);
       if (row) row.fields = {...row.fields, feedback: value};
       $('reports-state').textContent = 'Feedback saved ✓';

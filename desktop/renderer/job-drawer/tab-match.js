@@ -4,6 +4,7 @@ import {matchGroups, matchView} from '../job-page-view.js';
 import {lastActivity} from '../pages/activity-render.js';
 import {fitDetail} from '../pages/jobs-fit.js';
 import {button, group, skeleton, stateCard} from './parts.js';
+import {plainError} from '../run-warnings.js';
 
 export function matchTab({job, page}) {
   const match = matchView(job, page);
@@ -31,7 +32,7 @@ function olderPlacesCard(job) {
     const control = event.currentTarget;
     control.disabled = true;
     const result = await window.pilot.refreshLocations(job.url).catch(error => ({ok: false, error: error.message}));
-    control.textContent = result.ok ? (result.queued ? 'Queued: the next check scores it again' : 'Nothing to refresh') : result.error || 'Not queued';
+    control.textContent = plainError(result.ok ? (result.queued ? 'Queued: the next check scores it again' : 'Nothing to refresh') : result.error || 'Not queued');
   });
   return stateCard({title: 'Scored with older places', text: 'Your locations changed after this score. It is kept as it is until you refresh it.', actions: [refresh]});
 }

@@ -6,6 +6,7 @@ import {shared} from './shared.js';
 import {notes} from '../notify-words.js';
 import {openSetting} from './settings.js';
 import {forgetEmailState} from './setup-email-card.js';
+import {plainError} from '../run-warnings.js';
 
 const BOXES = {email: 'notify-email', app: 'notify-app', telegram: 'notify-telegram'};
 let busy = false;
@@ -24,7 +25,7 @@ export async function showNotify(error = '') {
   $('notify-telegram-note').textContent = said.telegram;
   $('notify-telegram-connect').hidden = state.telegram;
   $('notify-email-note').textContent = said.email;
-  $('notify-message').textContent = said.message;
+  $('notify-message').textContent = plainError(said.message);
 }
 
 export function bindNotify({savedToast, updateRepo}) {

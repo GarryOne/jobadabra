@@ -36,6 +36,7 @@ import {jobWrites} from '../job-writes.js';
 import {jobPlace} from '../targets.js';
 import {wireApplyDialog} from './jobs-apply.js';
 import {wireTriage} from './jobs-triage.js';
+import {plainError} from '../run-warnings.js';
 
 // Every write that changes a job's stage or status ends in jobsChanged(row, patch): that row at once, then the list read again from the store
 // (renderer/job-writes.js: a read older than the write is never painted). The other reads of the list go through writes.read for the same reason.
@@ -89,7 +90,7 @@ export async function loadJobs() {
     const fresh = await writes.read();
     if (fresh) { showJobsData(fresh); freshJobs = !fresh.stale; }  // from Notion now, not the cache: safe to ask about what's still Applying. null: a job was written meanwhile, its own read paints
   } catch (error) {
-    $('jobs-stats').textContent = `Couldn't read your jobs: ${error.message}`;
+    $('jobs-stats').textContent = plainError(`Couldn't read your jobs: ${error.message}`);
   }
   jobsState.jobsLoading = false;
   jobsState.jobsRead = true;   // read or failed: the Find jobs card stops waiting for the count

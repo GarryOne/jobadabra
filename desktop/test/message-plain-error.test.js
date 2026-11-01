@@ -66,3 +66,21 @@ test('"Your details" answers in its own panel ("Fill from my CV", a failed load)
     assert.deepEqual(hidden, [], `#${slot} sits inside a hidden part of the panel (${hidden.join(' > ')})`);
   }
 });
+
+// Why (#2500, 1 Nov 2026): Your details wrote a handler's error straight into its message line, past message(), so a provider's raw error reached the
+// page. The class: any renderer line that puts a result's `.error` or an exception's `.message` on screen goes through plainError (or humanError, which it uses).
+test('no page puts a handler error or an exception message on screen without plainError', () => {
+  const root = new URL('../renderer/', import.meta.url);
+  const files = fs.readdirSync(root, {recursive: true}).filter(name => name.endsWith('.js'));
+  const raw = /\.(?:textContent|innerText)\s*=\s*[^;]*(?:\?\.|\.)(?:error\b(?!\s*\?\s*'|\s*\)\s*\?)|message\b)/;
+  const said = /plainError\(|humanError\(|cvError\(/;
+  const found = [];
+  for (const name of files) {
+    fs.readFileSync(new URL(name, root), 'utf8').split('\n').forEach((line, at) => {
+      if (raw.test(line) && !said.test(line)) found.push(`${name}:${at + 1}: ${line.trim().slice(0, 110)}`);
+    });
+  }
+  assert.ok(files.length > 50, 'the renderer files were read');
+  assert.ok(raw.test('note.textContent = done.error;') && said.test('note.textContent = plainError(done.error);'), 'positive control: a raw write is caught, a plainError one is not');
+  assert.deepEqual(found, [], 'show these through plainError (renderer/run-warnings.js)');
+});

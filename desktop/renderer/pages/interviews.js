@@ -7,7 +7,7 @@ import {searchSelect} from '../search-select.js';
 import {avatar, interviewJob, placeAndMode} from '../jobs-view.js';
 import {insightCard, insightSkeleton, insightView} from '../interview-insight.js';
 import {afterLoad} from '../interview-library.js';
-import {humanError} from '../run-warnings.js';
+import {humanError, plainError} from '../run-warnings.js';
 import {byStore, inNotion, storeName} from '../store-words.js';
 import {showReview} from '../interview-review-view.js';
 import {showJobsIn} from './jobs.js';
@@ -183,7 +183,7 @@ async function loadSavedOnce() {
     $('iv-saved').replaceChildren();
     renderInsight();
     show($('iv-empty'));
-    $('iv-empty').textContent = next.error;
+    $('iv-empty').textContent = plainError(next.error);
     return;
   }
   shownAt = null;
@@ -210,7 +210,7 @@ function renderAll() {
   try { renderSaved(); } catch (error) {
     failed('library', error);
     show($('iv-empty'));
-    $('iv-empty').textContent = `Couldn't show your interviews (${error?.message || error}). The details are in the app log.`;
+    $('iv-empty').textContent = plainError(`Couldn't show your interviews (${error?.message || error}). The details are in the app log.`);
   }
   try { renderInsight(); } catch (error) { failed('insights', error); show($('iv-insight'), false); }
 }

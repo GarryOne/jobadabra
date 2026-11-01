@@ -25,6 +25,7 @@ import {paintChartFirst, progressChart} from './focus-chart.js';
 import {byStore, storeName} from '../store-words.js';
 import {gatedOut} from './notion-connect.js';
 import {NO_PLACE} from '../targets.js';
+import {plainError} from '../run-warnings.js';
 
 // Focus page state, declared before the start-up code opens Focus (a later `let` isn't usable yet then).
 let focusLoading = null, focusShown = false;
@@ -122,7 +123,7 @@ export function loadFocus() {
     // Never a blank page: say what went wrong where the list goes.
     focusStatus('Could not load');
     const li = el('li', 'focus-item muted');
-    li.textContent = isOutdated(error) ? OUTDATED_LINE : `Focus could not load: ${error?.message || error}. Try Refresh.`;
+    li.textContent = plainError(isOutdated(error) ? OUTDATED_LINE : `Focus could not load: ${error?.message || error}. Try Refresh.`);
     if (isOutdated(error)) li.append(' ', restartButton());
     $('focus-list').replaceChildren(li);
   }).finally(() => { focusLoading = null; $('focus-refresh').disabled = false; });

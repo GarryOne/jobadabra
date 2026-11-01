@@ -12,6 +12,7 @@ import {keepPress, setPress, pressedButton, pressWhile} from './activity-visits.
 import {openActivity} from './activity-panel.js';
 import {startSearch} from './jobs.js';
 import {sayRefused} from './startup.js';
+import {plainError} from '../run-warnings.js';
 
 // A jobs check with few new jobs: why, and what would bring more, as buttons on the card itself (owner, 6 Oct 2026). The actions come from the
 // coverage answer (renderer/coverage-actions.js), least effort first; "Explain with AI" asks Claude only when clicked (src/ai/few_jobs.py).
@@ -77,7 +78,7 @@ export function withFewJobsHelp(runId) {
   explain.title = ai('{AI} reads the counts of this search (never your CV) and says why it found few jobs, and what to do first');
   keepButton('explain', explain);
   const settle = result => {
-    if (!result?.ok) { answer.textContent = result?.error || ai('{AI} could not answer now.'); return; }
+    if (!result?.ok) { answer.textContent = plainError(result?.error || ai('{AI} could not answer now.')); return; }
     showAnswer(result);
   };
   if (kept.explained) showAnswer(kept.explained);

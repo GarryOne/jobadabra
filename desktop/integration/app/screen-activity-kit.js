@@ -65,3 +65,7 @@ export const activityKit = base => {
     readable: () => READABLE.map(id => document.getElementById(id)).filter(node => node && !node.hidden && node.offsetParent !== null).map(node => node.innerText).join('\n'),
   };
 };
+
+/** The six failed or undelivered runs of STATES the night's AI screenshot review looks at (and screen-activity-failures.test.js reads), by short name. */
+export const FAILED_STATES = {limit: 'analyze--failed-api-spend-limit', credits: 'search--failed-api-credits-exhausted', telegram: 'search--completed-telegram-not-delivered', google: 'gmail--failed-google-signin-revoked',
+  unexplained: 'search--failed-unexplained', queued: 'tailor--failed-waiting-behind-another-run'};

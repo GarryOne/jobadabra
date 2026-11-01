@@ -681,11 +681,94 @@ jobs:
   # Nothing tested is never green (gate G7, owner's yes 26 Oct 2026). A scheduled run on main that planned no suite (a release run was testing, the commit's looks were
   # used up, nothing varies) used to end green: on 25 Oct the 23:33 and 23:47 runs skipped while beta 2 ran and read as a green main. It now says why and ends CANCELLED
   # (grey). plan-run.mjs counts only green or red runs as tested, so the next scheduled run tests this commit. Never in a gate (gate_tag): there it would cancel a release.
+  # Night pass 1 only (owner via a8, 1 Nov 2026: "Also add integration shots", "restores a detector, report only"): the app-layer integration file that takes a picture of each error and empty state
+  # (desktop/integration/app/night-shots.test.js, through window-probe.js `picture`) runs once with E2E_SHOTS_DIR set, and the review job below reads the pictures with the e2e ones. A PR never
+  # sets the variable, so a PR's run takes no picture and uploads nothing. REPORT ONLY, so that nothing it does can count in a gate, the scorecard or the night report: the tests step is
+  # continue-on-error (the job always ends green; a red test is a ::warning and its pictures still go up), the artifact is not named e2e-artifacts-* (every reader of that name expects a suite
+  # folder with a steps.json), nothing but the review job `needs` it, and it uses no secret. It runs only when the plan asked for the review (a paused or over-budget review takes no pictures).
+  integration-shots:
+    name: Integration shots (report only)
+    needs: plan
+    if: inputs.night_pass == '1/5' && needs.plan.outputs.count != '0' && needs.plan.outputs.review == '1'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    env:
+      E2E_SHOTS_DIR: ${{ github.workspace }}/integration-shots
+      ELECTRON_DISABLE_SANDBOX: '1'   # Ubuntu 24.04 runners refuse Chromium's sandbox, as integration.yml's app job sets it
+      E2E_ARTIFACT_SECRET_NAMES: |
+        GH_TOKEN
+        GITHUB_TOKEN
+    steps:
+      - uses: actions/checkout@v5
+        timeout-minutes: 5
+      - uses: ./.github/actions/gh-ledger
+        with:
+          phase: start
+        timeout-minutes: 5
+      - uses: actions/setup-node@v5
+        timeout-minutes: 5
+        with:
+          node-version: '22'
+      - name: The app's packages and Electron
+        timeout-minutes: 8
+        working-directory: desktop
+        run: |
+          npm ci
+          node node_modules/electron/install.js
+      - name: A virtual display and Electron's libraries
+        timeout-minutes: 5
+        run: bash tools/apt-install.sh xvfb libnss3 libgbm1 libasound2t64 libgtk-3-0 libxss1 fonts-noto-color-emoji fonts-dejavu-core
+      - name: Stage the app's shared files
+        timeout-minutes: 5
+        working-directory: desktop
+        run: node scripts/stage.mjs
+      - name: The screens' error and empty states, one picture each (integration/app/night-shots.test.js)
+        id: shots
+        timeout-minutes: 12
+        continue-on-error: true   # report only: a red test never reddens the night pass; its pictures are kept
+        working-directory: desktop
+        env:
+          DESKTOP_RENDER_REQUIRED: '1'
+        run: |
+          mkdir -p "$E2E_SHOTS_DIR"
+          xvfb-run -a --server-args='-screen 0 1440x900x24' node --import ./test/no-live-site.mjs --test integration/app/night-shots.test.js
+      - name: Say what was taken
+        if: always()
+        timeout-minutes: 5
+        run: |
+          echo "$(find "$E2E_SHOTS_DIR" -name 'ui-*.png' | wc -l | tr -d ' ') picture(s) taken for the night's AI review"
+          if [ "${{ steps.shots.outcome }}" != success ]; then echo "::warning title=Integration shots::a screen test was red (report only, the pictures it took are kept)"; fi
+      - name: Scan the pictures for CI secrets
+        id: shots_scan
+        if: always()
+        timeout-minutes: 5
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          E2E_ARTIFACT_PATHS: integration-shots
+        run: python "$GITHUB_WORKSPACE/tools/scan-e2e-artifacts.py"
+      - name: The pictures, for the review job
+        if: always() && steps.shots_scan.outcome == 'success'
+        timeout-minutes: 5
+        uses: actions/upload-artifact@v6
+        with:
+          name: integration-shots
+          path: integration-shots
+          if-no-files-found: ignore
+          retention-days: 7
+      - if: always()
+        uses: ./.github/actions/gh-ledger
+        with:
+          phase: end
+        timeout-minutes: 5
+
   # The AI screenshot review: every suite's pages in ONE Claude batch, after the suites (.github/actions/e2e-review; owner, 26 Oct 2026: "cut the costs in half, but close to the same quality as Claude").
 
   review:
     name: AI review of the screenshots
-    needs: [plan, suite]
+    needs: [plan, suite, integration-shots]   # integration-shots: night pass 1 only, otherwise skipped (always() below lets this job run after a skipped need)
     if: always() && needs.plan.result == 'success' && needs.plan.outputs.count != '0' && needs.plan.outputs.review == '1' && inputs.mutant == '' && inputs.pr_suites == ''   # a PR's run has no screenshot review
     runs-on: ubuntu-24.04
     timeout-minutes: 20   # the batch waits up to 6 min, then asks what is left directly

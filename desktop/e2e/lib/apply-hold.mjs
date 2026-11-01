@@ -3,6 +3,7 @@
 // Job: wait on state
 import {backgroundOf, describeHidden, evaluateOn, hiddenTargets, withFormJudge} from './background-proof.mjs';
 import {appLogLines} from './app-log.mjs';
+import {ownedWorkerOf} from './own-worker.mjs';
 import {pollUntil, stepTimeLeft} from './wait-on-state.mjs';
 
 const applyLines = profile => { try { return appLogLines(profile).filter(line => /\[apply\]/.test(line)).slice(-4).map(line => line.slice(0, 220)).join(' // '); } catch { return '(app log unreadable)'; } };
@@ -40,8 +41,7 @@ export function moveAppWaitClock(_electron, {module, dueAt}) {
 
 /** Ask the owned service worker to complete a fresh poll; a missing worker or missing acknowledgement is failed evidence. */
 export async function pollOwnedBackground(profile, {targets = hiddenTargets, evaluate = evaluateOn} = {}) {
-  const all = await targets(profile), worker = all.find(target => target.type === 'service_worker');
-  if (!worker) throw new Error(`no owned service worker for the due-time poll (targets: ${all.map(target => `${target.type} ${String(target.url).slice(0, 60)}`).join(' | ') || 'none'})`);
+  const all = await targets(profile), worker = ownedWorkerOf(all);   // by its URL, never the first one listed (lib/own-worker.mjs)
   const acknowledged = await evaluate(worker.webSocketDebuggerUrl, 'globalThis.__jobPilottoBackgroundSessions?.poll()', {strict: true});
   if (acknowledged !== true) {
     // Why (1 Nov 2026, apply-3of3 41264415439 + 41264558340, no cause provable): the reply was empty with no error and no /extension/background-apply request reached the app, so the message

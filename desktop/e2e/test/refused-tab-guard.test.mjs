@@ -7,6 +7,7 @@ import assert from 'node:assert/strict';
 import http from 'node:http';
 import {test} from 'node:test';
 import {startRealExtension} from '../lib/real-extension.mjs';
+import {extensionWorker} from '../lib/own-worker.mjs';
 
 const extensionDir = process.env.REAL_EXTENSION_DIR || undefined;
 
@@ -19,7 +20,7 @@ test('with no incognito access the tab step opens nothing and the fixture site s
   try {
     app = await startRealExtension({extensionDir, allowAllSites: true});
     await app.context.addCookies([{name: 'session', value: 'owner-login', url}]);
-    const worker = app.context.serviceWorkers()[0];
+    const worker = await extensionWorker(app.context);
     const id = new URL(worker.url()).host;
     const page = await app.context.newPage();
     await page.goto(`chrome-extension://${id}/options.html`);

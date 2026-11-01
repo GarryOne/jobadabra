@@ -4,6 +4,7 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {startRealExtension} from '../lib/real-extension.mjs';
+import {extensionWorker} from '../lib/own-worker.mjs';
 
 const FORM = `<!doctype html><title>Senior Site Reliability Engineer</title><form><h1>Apply</h1>
 <label>Full name <input name="n" required></label><label>Email <input name="e" type="email" required></label><label>Phone <input name="p" required></label><label>City <input name="c" required></label></form>`;
@@ -46,7 +47,7 @@ test('pressing the panel\'s Report opens a popup on the panel, bottom right, and
 test('after Stop, the panel\'s Report still opens the popup', async () => {
   const app = await start();
   try {
-    await app.context.serviceWorkers()[0].evaluate(async () => { await new Promise(resolve => chrome.runtime.sendMessage({type: 'stop', reason: 'test'}, resolve)); });
+    await (await extensionWorker(app.context)).evaluate(async () => { await new Promise(resolve => chrome.runtime.sendMessage({type: 'stop', reason: 'test'}, resolve)); });
     await app.page.waitForTimeout(1500);
     await openPanel(app.page);
     await pressReport(app.page);

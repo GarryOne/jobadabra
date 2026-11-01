@@ -1,4 +1,5 @@
 // Exercise the hidden-browser diagnostic waits with CDP messages, without launching a browser.
+/* global window */
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -166,22 +167,33 @@ test('the strict due-time poll has no clock of its own; a diagnostics read keeps
   const evaluateOn = vm.runInNewContext(source.slice(begin, end).replace('export const', 'const') + '; evaluateOn;', {WebSocket: Socket, setTimeout: fire => queueMicrotask(fire), clearTimeout: () => {}});
   assert.equal(await evaluateOn('ws://fixture', 'diagnostics()'), null, 'a diagnostics read still ends at its cap');
   const {pollOwnedBackground} = await import('../lib/apply-hold.mjs');
-  assert.equal(await pollOwnedBackground('/fixture', {targets: async () => [{type: 'service_worker', webSocketDebuggerUrl: 'ws://fixture'}], evaluate: evaluateOn}), true);
+  assert.equal(await pollOwnedBackground('/fixture', {targets: async () => [{type: 'service_worker', url: 'chrome-extension://fixture/background-owned.js', webSocketDebuggerUrl: 'ws://fixture'}], evaluate: evaluateOn}), true);
 });
 
 test('a due-time proof requires a live worker and an acknowledged extension poll', async () => {
   const {pollOwnedBackground} = await import('../lib/apply-hold.mjs');
   await assert.rejects(() => pollOwnedBackground('/fixture', {targets: async () => []}), /no.*service worker/);
   for (const result of [null, false, undefined]) {
-    await assert.rejects(() => pollOwnedBackground('/fixture', {targets: async () => [{type: 'service_worker', url: 'chrome-extension://fixture/background.js', webSocketDebuggerUrl: 'ws://fixture'}], evaluate: async () => result}), /poll.*acknowledge/);
+    await assert.rejects(() => pollOwnedBackground('/fixture', {targets: async () => [{type: 'service_worker', url: 'chrome-extension://fixture/background-owned.js', webSocketDebuggerUrl: 'ws://fixture'}], evaluate: async () => result}), /poll.*acknowledge/);
   }
   // A refused acknowledgement names what it asked: the reply and, per service worker, whether it has the poll (apply-3of3 41264415439 had neither).
-  await assert.rejects(() => pollOwnedBackground('/fixture', {targets: async () => [{type: 'page', url: 'https://x'}, {type: 'service_worker', url: 'chrome-extension://fixture/background.js', webSocketDebuggerUrl: 'ws://fixture'}],
-    evaluate: async (_url, expression) => (expression.startsWith('typeof') ? false : undefined)}), /reply: null; asked chrome-extension:\/\/fixture\/background\.js; service workers: chrome-extension:\/\/fixture\/background\.js has the poll: false/);
+  await assert.rejects(() => pollOwnedBackground('/fixture', {targets: async () => [{type: 'page', url: 'https://x'}, {type: 'service_worker', url: 'chrome-extension://fixture/background-owned.js', webSocketDebuggerUrl: 'ws://fixture'}],
+    evaluate: async (_url, expression) => (expression.startsWith('typeof') ? false : undefined)}), /reply: null; asked chrome-extension:\/\/fixture\/background-owned\.js; service workers: chrome-extension:\/\/fixture\/background-owned\.js has the poll: false/);
   // A worker that does not answer the diagnostic read says so, never "null".
-  await assert.rejects(() => pollOwnedBackground('/fixture', {targets: async () => [{type: 'service_worker', url: 'chrome-extension://fixture/background.js', webSocketDebuggerUrl: 'ws://fixture'}], evaluate: async () => null}),
+  await assert.rejects(() => pollOwnedBackground('/fixture', {targets: async () => [{type: 'service_worker', url: 'chrome-extension://fixture/background-owned.js', webSocketDebuggerUrl: 'ws://fixture'}], evaluate: async () => null}),
     /has the poll: unreadable \(no reply, closed or 4 s cap\)/);
-  assert.equal(await pollOwnedBackground('/fixture', {targets: async () => [{type: 'service_worker', webSocketDebuggerUrl: 'ws://fixture'}], evaluate: async () => true}), true);
+  assert.equal(await pollOwnedBackground('/fixture', {targets: async () => [{type: 'service_worker', url: 'chrome-extension://fixture/background-owned.js', webSocketDebuggerUrl: 'ws://fixture'}], evaluate: async () => true}), true);
+});
+
+test('the due-time poll asks the owned extension\'s worker, whatever order the hidden browser lists its service workers in', async () => {
+  const {pollOwnedBackground} = await import('../lib/apply-hold.mjs');
+  const asked = [], worker = (name, url) => ({type: 'service_worker', url: `chrome-extension://${name}/${url}`, webSocketDebuggerUrl: `ws://${name}`});
+  // apply-3of3 41267661024: thunk.js and another extension's background.js came before background-owned.js and have no poll.
+  const targets = async () => [worker('nkeim', 'thunk.js'), worker('glbjn', 'background.js'), worker('gpffo', 'background-owned.js')];
+  const evaluate = async url => { asked.push(url); return url === 'ws://gpffo'; };
+  assert.equal(await pollOwnedBackground('/fixture', {targets, evaluate}), true);
+  assert.deepEqual(asked, ['ws://gpffo'], 'a worker that is not the owned extension\'s was asked');
+  await assert.rejects(() => pollOwnedBackground('/fixture', {targets: async () => [worker('nkeim', 'thunk.js')], evaluate}), /no.*owned service worker.*thunk\.js/);
 });
 
 test('advancePastDue rejects an app-only verdict and accepts a fresh extension verdict', async () => {
@@ -243,4 +255,42 @@ test('the due-time CDP reader reports worker exceptions and protocol errors', as
       assert.equal(await evaluateOn('ws://fixture', 'poll()'), null, 'ordinary diagnostics retain their nonthrowing contract');
     }
   } finally { globalThis.WebSocket = previous; }
+});
+
+/** The app's session list as the proofs read it (window.pilot), driven from a plain page stand-in: evaluate(fn, arg) runs fn here. */
+const appOf = sessions => {
+  const skipped = [];
+  globalThis.window = {pilot: {sessions: async () => sessions.filter(item => !skipped.includes(item.id)), sessionSkip: async id => { if (id === 'broken') throw new Error('refused'); skipped.push(id); }}};
+  return {skipped, page: {evaluate: async (fn, arg) => fn(arg)}};
+};
+
+test('a step that throws ends the jobs it started before the error goes on; a step that finishes leaves them (rule 7)', async () => {
+  const {withJobsEnded} = await import('../lib/background-proof.mjs');
+  try {
+    const sessions = [{id: 'a', url: 'https://x/a'}, {id: 'b', url: 'https://x/b'}, {id: 'c', url: 'https://x/c'}];
+    const failing = appOf(sessions), boom = new Error('the poll did not acknowledge');
+    await assert.rejects(() => withJobsEnded({page: failing.page, profile: '/fixture'}, [{url: 'https://x/a'}, {url: 'https://x/b'}], async () => { throw boom; }), error => error === boom);
+    assert.deepEqual(failing.skipped, ['a', 'b'], 'the queued session of a job the failed step started stayed behind');
+    assert.deepEqual((await failing.page.evaluate(() => window.pilot.sessions())).map(item => item.id), ['c'], 'a session of a job this step did not start was touched');
+
+    const finished = appOf(sessions);
+    assert.equal(await withJobsEnded({page: finished.page, profile: '/fixture'}, [{url: 'https://x/a'}], async () => 'applied'), 'applied');
+    assert.deepEqual(finished.skipped, [], 'a finished step dismissed a job it had applied');
+
+    const refused = appOf([{id: 'broken', url: 'https://x/a'}, {id: 'b', url: 'https://x/b'}]);
+    await assert.rejects(() => withJobsEnded({page: refused.page, profile: '/fixture'}, [{url: 'https://x/a'}, {url: 'https://x/b'}], async () => { throw boom; }), error => error === boom, 'the original error was replaced');
+    assert.deepEqual(refused.skipped, ['b'], 'one refused skip stopped the others');
+  } finally { delete globalThis.window; }
+});
+
+test('a hang message leads with the hidden browser: the owned worker, its tabs and the app queue', async () => {
+  const {hiddenBrief} = await import('../lib/background-proof.mjs');
+  try {
+    const {page} = appOf([{id: 'fa69757f', url: 'https://x/a', background: {state: 'waiting_to_submit'}}, {id: 'e45acca5', url: 'https://x/b'}]);
+    const target = (type, url) => ({type, url});
+    const withWorker = await hiddenBrief('/fixture', page, {targets: async () => [target('service_worker', 'chrome-extension://nkeim/thunk.js'), target('service_worker', 'chrome-extension://gpffo/background-owned.js'), target('page', 'https://jobs.example/apply?check=auto')]});
+    assert.match(withWorker, /^hidden browser: owned worker yes; tabs: https:\/\/jobs\.example\/apply\?check=auto \| app queue: fa69757f:waiting_to_submit e45acca5:-$/);
+    assert.match(await hiddenBrief('/fixture', page, {targets: async () => [target('service_worker', 'chrome-extension://nkeim/thunk.js')]}), /owned worker NO; tabs: none/);
+    assert.match(await hiddenBrief('/fixture', page, {targets: async () => { throw new Error('no port'); }}), /hidden browser: not reachable \(no port\) \| app queue:/);
+  } finally { delete globalThis.window; }
 });

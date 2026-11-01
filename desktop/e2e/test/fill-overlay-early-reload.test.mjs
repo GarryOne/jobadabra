@@ -5,6 +5,7 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {startRealExtension} from '../lib/real-extension.mjs';
+import {extensionWorker} from '../lib/own-worker.mjs';
 
 // Two ways a posting replaces its own document at once: a reload (the mark stays in the address) and a script that moves to the same page without the mark (a redirect through the site's own router).
 const POSTING = how => `<!doctype html><title>ML Engineer</title><body><h1>ML Engineer</h1><p>Company background and project description.</p><script>if (!sessionStorage.once) { sessionStorage.once = '1'; setTimeout(() => { ${how} }, 350); }</script>`;
@@ -86,7 +87,7 @@ for (const [state, cause] of Object.entries(VERDICTS)) {
 // no per-document settle window may hide a later disappearance, and a worker verdict must still end the drawing.
 test('replacing the document root during an Apply keeps both drawings at every frame until Stop', async () => {
   const app = await startRealExtension({extensionDir: process.env.REAL_EXTENSION_DIR || undefined, allowAllSites: true, offline: true});
-  const workerStates = async () => (await app.context.serviceWorkers()[0].evaluate(() => chrome.storage.session.get(null)));
+  const workerStates = async () => (await (await extensionWorker(app.context)).evaluate(() => chrome.storage.session.get(null)));
   const working = states => Object.entries(states).some(([key, value]) => key.startsWith('apply:') && value === 'working');
   try {
     await app.context.route('https://jobs.example.test/**', route => route.fulfill({contentType: 'text/html', body: '<!doctype html><title>Application</title><body><h1>Application</h1>'}));

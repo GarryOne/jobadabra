@@ -4,6 +4,7 @@
 // (lib/offline-app.mjs: the fake applicant, the row's model answers from model-memo.json, a miss asks the plan's claude -p once and is kept). Nothing reaches a site:
 // an address the run did not record gets a 404 and a finding "route not recorded: <address>". Ends on the live run's still-clock and prints the same evidence lines.
 // -> {seconds, evidence, unrecorded, asks, coldAsks, requests}. CLI: row.mjs (npm run row). Guard: e2e/test/row-replay.test.mjs.
+// Job: serve stored answers
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -20,6 +21,7 @@ import {startRealExtension} from './real-extension.mjs';
 import {forceScrollbar} from './scrollbar.mjs';
 import {shotTab} from './end-shot.mjs';
 import {kindFromLog, stepShooter} from './step-shots.mjs';
+import {extensionWorker} from './own-worker.mjs';
 
 const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
 // The live harness's window (lib/extension.mjs: viewport null under --headless=new), measured on 11 Oct 2026: for a capture made before it recorded its own (journey view).
@@ -111,7 +113,7 @@ export async function openReplay(caseDirs, {extensionDir, ask = false, loose = f
   const run = await openBrowser({extensionDir, port: front.port});
   // The eligibility stop is OFF, as in the live pool row that made the capture (lib/pool-eligibility.mjs, cbf5ccc): with it on, a French posting stopped the fill before any field (12 Oct 2026, Ashby), so a fix
   // that acts on the fields could never show. Set through the extension's own switch before the tab opens, and read back.
-  await applyPoolEligibility(run.context.serviceWorkers()[0] || await run.context.waitForEvent('serviceworker', {timeout: 30000}), {env: {LIVE_ELIGIBILITY: 'off'}});
+  await applyPoolEligibility(await extensionWorker(run.context), {env: {LIVE_ELIGIBILITY: 'off'}});
   // Rows replay side by side, one tab each; rows that share a host never run together (replayRows), so an address, a request or a log line names its row by host.
   const rows = new Map(), active = new Set();   // page -> its row; the rows running now
   const rowOf = page => rows.get(page) || [...active].find(row => row.hosts.has(new URL(page.url() || 'about:blank').host)) || null;

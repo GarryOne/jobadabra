@@ -60,6 +60,34 @@ test('an Apply from the posting to the fill\'s end is working then one verdict, 
 // (the worker dims at the page's commit, the panel's scripts load after it); both bounds were SETTLE 400 ms and "absent after 1.5 s" in the test this one replaces. A drop after the look shows has no bound.
 const DIM_BY_MS = 400, LOOK_BY_MS = 1500;
 
+/** How long after its first sample a document first showed `look` (the sample's index and ms), and whether it was asked for it (it lived at least `bound` ms). */
+function showedWithin(mine, look, bound) {
+  const index = mine.findIndex(look), born = mine[0].at, lived = mine.at(-1).at - born;
+  const late = index < 0 ? lived >= bound : mine[index].at - born > bound;
+  return {index, late, text: index < 0 ? `none in ${lived} ms` : `${mine[index].at - born} ms`};
+}
+
+/** One document's verdicts: its dim and look in time, and where its dimmed and looking stretches start. -> {problems, dimmed, looking} */
+function judgeDocument(mine) {
+  const path = mine[0].path, dim = showedWithin(mine, s => s.dim, DIM_BY_MS), look = showedWithin(mine, s => s.dim && s.host && s.centred && s.busy, LOOK_BY_MS), problems = [];
+  if (dim.late) problems.push(`document ${path} showed no dim within ${DIM_BY_MS} ms of its first sample (${dim.text})`);
+  if (look.late) problems.push(`document ${path} showed no complete look within ${LOOK_BY_MS} ms of its first sample (${look.text})`);
+  return {problems, dimmed: dim.index < 0 ? [] : mine.slice(dim.index), looking: look.index < 0 ? [] : mine.slice(look.index)};
+}
+
+/** What dropped between a document's first look and the end verdict: the dim, the centred panel, the working look, the panel itself. */
+function judgeDrops(dimmed, looking) {
+  const show = bad => JSON.stringify(bad.slice(0, 3)), problems = [];
+  const checks = [
+    [dimmed.filter(s => !s.dim), bad => `the dim was off for ${bad.length} sample(s) between the start and the end verdict (document ${bad[0].path}): ${show(bad)}`],
+    [looking.filter(s => s.host && !s.centred), bad => `the panel left the centre ${bad.length} sample(s) mid-run: ${show(bad)}`],
+    [looking.filter(s => s.host && (!s.busy || s.label === 'Fill again')), bad => `the finished look ("Fill again", no step) was drawn ${bad.length} sample(s) mid-run: ${show(bad)}`],
+    [looking.filter(s => !s.host), bad => `the panel was absent ${bad.length} sample(s) after it first showed: ${show(bad)}`],
+  ];
+  for (const [bad, say] of checks) if (bad.length) problems.push(say(bad));
+  return problems;
+}
+
 /**
  * The verdicts about one recorded run. -> the list of what is wrong (empty when the run is clean).
  * Every document of the run is judged, the first one and each page change: it must show its dim within DIM_BY_MS and its complete look within LOOK_BY_MS of its first sample
@@ -75,28 +103,17 @@ export function judgeRun(states, samples) {
   // The run is one piece of work: working, then exactly one verdict. A `done` followed by `working` again is the glitch of issue #2800 (the page shows "Fill again" in between).
   if (states.length !== 2) problems.push(`the Apply must be working then one verdict, got ${JSON.stringify(states.map(s => s.state))} at ${JSON.stringify(states.map(s => s.at))}`);
   if (!states.length) return problems;
-  const startAt = states[0].at, endAt = states.at(-1).at, show = bad => JSON.stringify(bad.slice(0, 3));
-  const dimmed = [], looking = [];
+  const startAt = states[0].at, endAt = states.at(-1).at, dimmed = [], looking = [];
   for (const doc of docs) {
     const mine = samples.filter(s => s.doc === doc && s.at >= startAt && s.at < endAt);
     if (!mine.length) continue;
-    const born = mine[0].at, lived = mine.at(-1).at - born, path = mine[0].path;
-    const dimIndex = mine.findIndex(s => s.dim), lookIndex = mine.findIndex(s => s.dim && s.host && s.centred && s.busy);
-    if (dimIndex < 0 ? lived >= DIM_BY_MS : mine[dimIndex].at - born > DIM_BY_MS) problems.push(`document ${path} showed no dim within ${DIM_BY_MS} ms of its first sample (${dimIndex < 0 ? `none in ${lived} ms` : `${mine[dimIndex].at - born} ms`})`);
-    if (lookIndex < 0 ? lived >= LOOK_BY_MS : mine[lookIndex].at - born > LOOK_BY_MS) problems.push(`document ${path} showed no complete look within ${LOOK_BY_MS} ms of its first sample (${lookIndex < 0 ? `none in ${lived} ms` : `${mine[lookIndex].at - born} ms`})`);
-    if (dimIndex >= 0) dimmed.push(...mine.slice(dimIndex));
-    if (lookIndex >= 0) looking.push(...mine.slice(lookIndex));
+    const judged = judgeDocument(mine);
+    problems.push(...judged.problems);
+    dimmed.push(...judged.dimmed);
+    looking.push(...judged.looking);
   }
   if (looking.length < 100) problems.push(`positive control: the run was sampled (${looking.length} samples after each document showed its look)`);
-  const undimmed = dimmed.filter(s => !s.dim);
-  if (undimmed.length) problems.push(`the dim was off for ${undimmed.length} sample(s) between the start and the end verdict (document ${undimmed[0].path}): ${show(undimmed)}`);
-  const cornered = looking.filter(s => s.host && !s.centred);
-  if (cornered.length) problems.push(`the panel left the centre ${cornered.length} sample(s) mid-run: ${show(cornered)}`);
-  const finished = looking.filter(s => s.host && (!s.busy || s.label === 'Fill again'));
-  if (finished.length) problems.push(`the finished look ("Fill again", no step) was drawn ${finished.length} sample(s) mid-run: ${show(finished)}`);
-  const missing = looking.filter(s => !s.host);
-  if (missing.length) problems.push(`the panel was absent ${missing.length} sample(s) after it first showed: ${show(missing)}`);
-  return problems;
+  return [...problems, ...judgeDrops(dimmed, looking)];
 }
 
 // The verdicts, played on recorded-shape data (a clean run, then each way the owner's glitch shows): the browser test above only has to record, these say what is wrong.

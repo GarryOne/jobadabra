@@ -27,10 +27,13 @@ export function inheritedEntries(stored, opener, tabId) {
   return next;
 }
 
-// -> {session, job, url}: what the app needs to know which application a report is about.
+// The browser run this extension is in (tab-memory.js): the app refuses a job match across runs (#43, #2753), so every report that names a tab sends it.
+export const runId = async () => String((await sessionGet('boot')).boot || '');
+
+// -> {session, job, url, boot}: what the app needs to know which application a report is about, and which browser it comes from.
 export async function identityOf(tab) {
   const session = (await sessionOf(tab.id)) || parseMark(tab.url);   // the id in the address: owned at first sight, and again after Chrome restores the tab
-  return {session, job: String(await jobOf(tab)).split('#')[0], url: String(tab.url || '').split('#')[0]};
+  return {session, job: String(await jobOf(tab)).split('#')[0], url: String(tab.url || '').split('#')[0], boot: await runId()};
 }
 
 // The app answered which session it resolved: kept on the tab, so the next report carries it.

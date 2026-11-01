@@ -12,7 +12,7 @@ const POSTING = 'https://www.jobs.ch/en/vacancies/detail/12181ac1/', SIGNIN = 'h
 
 test('a sign-in tab with no session yet: its job is the posting that led to it; the answered session is kept and then carried', async () => {
   store['from:7'] = POSTING;
-  assert.deepEqual(await identityOf({id: 7, url: SIGNIN}), {session: '', job: POSTING, url: 'https://auth.jobs.ch/u/login/identifier?state=x'});
+  assert.deepEqual(await identityOf({id: 7, url: SIGNIN}), {session: '', job: POSTING, url: 'https://auth.jobs.ch/u/login/identifier?state=x', boot: ''});
   assert.equal(await bindSession(7, 'f8ddb7ed', ''), true);
   assert.equal((await identityOf({id: 7, url: SIGNIN})).session, 'f8ddb7ed');
   assert.equal(await bindSession(7, 'f8ddb7ed', 'f8ddb7ed'), false, 'the same id is not written again');

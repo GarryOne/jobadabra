@@ -6,7 +6,7 @@
 // Invariants (flow core: read before editing; changing one is the owner's call, said in the commit; each names the test that guards it):
 //  1. A form page is matched to its session by the job, the company, or neither (never a guess) (desktop/test/review.test.js).
 //  2. The last form states come back after a restart only for sessions that still exist (desktop/test/review.test.js).
-//  3. A job address alone never moves a session to a tab of another browser run that still reports; the tab's own session mark still does (desktop/test/session-tab.test.js).
+//  3. A job address alone never moves a session to a tab of another browser run that still reports; the tab's own session mark still does (desktop/test/session-tab.test.js). The same holds for every other job-address match (focus report, account handlers, stuck report): they ask this file's heldElsewhere (desktop/test/tab-match-class.test.js).
 import fs from 'node:fs';
 import {markedSession} from './session-tab.js';
 import {isFormOf} from './form-address.js';
@@ -50,7 +50,7 @@ export const onState = fn => { stateListeners.push(fn); };
 // stored on it by the extension), else 'job' (the page says which posting its tab was opened for: an exact match of that address). Nothing else: no score,
 // no company or title, no "the one free session" (owner, 12 Oct 2026; spec 2026-10-12-tab-owned.md). A page that carries a session that is gone
 // (cancelled, started again under a new id) is 'gone': its job may find the new one, never a guess.
-export function sessionFor(sessions, page, tab) { return pick(sessions, page, tab).session; }
+export function sessionFor(sessions, page, tab, boot = '') { return pick(sessions, page, tab, boot).session; }
 // `boot`: the browser run the tab reports from; '' when the caller has none (then every session may match by its job).
 function pick(sessions, page, tab, boot = '') {
   const named = [page.session, markedSession(page.url)].filter(Boolean);
@@ -101,7 +101,7 @@ export function tabsToArm(sessions, tabs, now = Date.now()) {
 }
 // The page scrolled, or looked and found no such field. Resolves whoever is waiting; kept if they ask just after.
 export function noteFocus(sessions, payload) {
-  const session = sessionFor(sessions, {url: String(payload?.url || ''), title: String(payload?.title || ''), job: String(payload?.job || ''), session: String(payload?.session || '')}, Number(payload?.tab));
+  const session = sessionFor(sessions, {url: String(payload?.url || ''), title: String(payload?.title || ''), job: String(payload?.job || ''), session: String(payload?.session || '')}, Number(payload?.tab), String(payload?.boot || ''));
   if (!session) return {ok: false};
   const found = !!payload?.found;
   focusAnswers.set(session.id, found);
@@ -147,7 +147,8 @@ let bootId = '', clock = () => Date.now();
 const liveRuns = () => { const now = clock(); for (const [key, run] of runs) if (now - run.at > RUN_MS) runs.delete(key); return [...runs.values()]; };
 const sameRun = (id, boot = bootId) => !runOf.get(id) || !boot || runOf.get(id) === boot;
 // The session's tab is in another browser that still reports (a restarted or silent browser holds nothing: its tab ids are closed tabs).
-const heldElsewhere = (id, boot) => !sameRun(id, boot) && liveRuns().some(run => run.boot === runOf.get(id));
+/** The ONE check every job-address match asks (pick here, journey-identity's resolveSession, session-flow's stuck report): is this session's tab in another browser run that still reports? (#43, #2747, #2753) */
+export const heldElsewhere = (id, boot) => !sameRun(id, boot) && liveRuns().some(run => run.boot === runOf.get(id));
 function bind(id, tab, boot, by, host = '', keep = true) {
   if (bound.get(id) === tab && runOf.get(id) === boot) return;
   bindLog({id, tab, before: bound.get(id) ?? null, by, host, ...(runOf.has(id) && runOf.get(id) !== boot ? {newRun: true} : {})});

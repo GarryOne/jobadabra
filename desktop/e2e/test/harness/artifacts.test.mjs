@@ -49,7 +49,7 @@ test('each failed step is a GitHub annotation "<suite> · <step>" with its first
 test('an unexpected error names its first line in our code, and the failure record carries it (#2266: "Unexpected end of JSON input" with no file)', () => {
   let thrown;
   try { JSON.parse(''); } catch (error) { thrown = error; }
-  assert.match(codeLine(thrown), /^desktop\/e2e\/test\/artifacts\.test\.mjs:\d+:\d+$/);
+  assert.match(codeLine(thrown), /^desktop\/e2e\/test\/harness\/artifacts\.test\.mjs:\d+:\d+$/);
   assert.equal(codeLine(new Error('the step\'s own check failed')), '', 'a step\'s own message needs no line');
   assert.equal(codeLine('not an error'), '');
   const elsewhere = new TypeError('x');

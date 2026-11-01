@@ -6,7 +6,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {test} from 'node:test';
-import {chromium} from 'playwright-core';
+import {chromium} from '../../e2e/lib/visit-page.mjs';
 
 // The page scripts are the extension's own list (extension/page-files.js), never a copy: a copy went stale when required-mark.js was added (10 Oct 2026, 19 tests red on main).
 import {PAGE_FILES} from '../../../extension/page-files.js';

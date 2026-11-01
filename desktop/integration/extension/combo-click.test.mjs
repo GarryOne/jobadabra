@@ -5,7 +5,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {test} from 'node:test';
-import {chromium} from 'playwright-core';
+import {chromium} from '../../e2e/lib/visit-page.mjs';
 import {PAGE_FILES} from '../../../extension/page-files.js';
 import {clickCombo} from '../../../extension/combo-click.js';
 

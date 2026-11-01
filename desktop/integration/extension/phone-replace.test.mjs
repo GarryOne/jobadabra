@@ -58,7 +58,7 @@ test('post-country phone writer replaces the existing number on every pass', asy
     await driver.goto(`${base}/options.html`);
     for (let pass = 0; pass < 2; pass++) {
       const results = await driver.evaluate(async url => {
-        const {clickCombos} = await import('../../e2e/test/flow.js');
+        const {clickCombos} = await import('./flow.js');
         const [tab] = await chrome.tabs.query({url});
         await chrome.storage.session.set({[`armed:${tab.id}`]: true});
         return clickCombos(tab.id);
@@ -74,7 +74,7 @@ test('post-country phone writer replaces the existing number on every pass', asy
       document.querySelector('#phone').addEventListener('focus', () => other.focus(), {once: true});
     });
     const refused = await driver.evaluate(async url => {
-      const {clickCombos} = await import('../../e2e/test/flow.js');
+      const {clickCombos} = await import('./flow.js');
       const [tab] = await chrome.tabs.query({url});
       return clickCombos(tab.id);
     }, FIXTURE_URL);

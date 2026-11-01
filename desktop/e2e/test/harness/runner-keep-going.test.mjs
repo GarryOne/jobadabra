@@ -24,6 +24,6 @@ test('a step that throws an unexpected error records where in our code it came f
   const runner = createRunner(() => null, {keepGoing: true});
   await runner.run('reads a half-written file', async () => { JSON.parse(''); });
   await runner.run('its own check', async () => { throw new Error('expected 3, saw 2'); });
-  assert.match(runner.results[0].where, /^desktop\/e2e\/test\/runner-keep-going\.test\.mjs:\d+:\d+$/);
+  assert.match(runner.results[0].where, /^desktop\/e2e\/test\/harness\/runner-keep-going\.test\.mjs:\d+:\d+$/);
   assert.equal('where' in runner.results[1], false);
 });

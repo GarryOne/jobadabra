@@ -13,11 +13,11 @@ const read = file => JSON.parse(fs.readFileSync(new URL(file, import.meta.url), 
 const source = file => fs.readFileSync(new URL(file, import.meta.url), 'utf8');
 const captured = read('../../fixtures/golden/failuresnotion-asks.json');
 const previous = ['failuresnotion-missing-keys.json', 'failuresnotion-run2-keys.json']
-  .flatMap(file => read(`../fixtures/golden/${file}`));
+  .flatMap(file => read(`../../fixtures/golden/${file}`));
 const activity = source('../../suites/activityfailures.mjs');
 const helpers = source('../../lib/activity-steps.mjs');
 const draft = read('../../../demo/draft.json').draft;
-const feed = file => read(`../fixtures/feeds/${file}`);
+const feed = file => read(`../../fixtures/feeds/${file}`);
 const tuple = ({title, company, location}) => ({company: company.trim(), location: location.trim(), title: title.trim()});
 
 // Execute only the feed builder and literal fault data, with an in-memory writer and no app imports.

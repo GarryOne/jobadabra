@@ -50,7 +50,7 @@ test('both suites share planner inputs and the golden journey, with separate clo
     assert.deepEqual(facts.judges[suite.name], quality.judges);
     assert.equal(await facts.minutes(suite.name), suite.name === 'qualityai' ? 24 : 3);
     assert.deepEqual(facts.watches[suite.name], suite.watches);
-    assert.match(source(`../suites/${suite.name}.mjs`), /quality-journey.mjs/);
+    assert.match(source(`../../suites/${suite.name}.mjs`), /quality-journey.mjs/);
   }
 });
 
@@ -86,7 +86,7 @@ test('the shared steps and the remaining backbone steps keep their names and ord
     'every Notion column the app promises is filled, and no text shows a programming accident',
     "the app\\'s list agrees with Notion (same jobs, same scores)"]);
   for (const suite of ['quality', 'qualityai']) {
-    const code = source(`../suites/${suite}.mjs`);
+    const code = source(`../../suites/${suite}.mjs`);
     const calls = ['await journey.setUp()', 'await journey.reset()', 'await journey.jobs()', 'every enriched fact', 'await soft(privacyLogs)'].map(call => code.indexOf(call));
     assert.ok(calls.every((at, i) => at >= 0 && (!i || calls[i - 1] < at)), `${suite}: shared journey order`);
   }

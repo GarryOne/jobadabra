@@ -96,7 +96,7 @@ test('an XHR reply is recorded from the response stage even when every later rea
 });
 
 test('on a real page that submits a form from an XHR answer and leaves, the answer is recorded every time (a local server, a real browser)', async () => {
-  const http = await import('node:http'), {chromium} = await import('playwright-core');
+  const http = await import('node:http'), {chromium} = await import('../../e2e/lib/visit-page.mjs');
   const page = '<!doctype html><button id=go>Apply</button><script>document.getElementById("go").addEventListener("click", async () => { const r = await fetch("/payload", {method: "POST", body: "{}"}); const j = await r.json(); const f = document.createElement("form"); f.method = "POST"; f.action = "/next"; const i = document.createElement("input"); i.name = "p"; i.value = j.payload; f.append(i); document.body.append(f); f.submit(); });</script>';
   const server = http.createServer((req, res) => {
     const send = (type, body, wait = 0) => setTimeout(() => { res.writeHead(200, {'content-type': type}); res.end(body); }, wait);
@@ -127,7 +127,7 @@ test('on a real page that submits a form from an XHR answer and leaves, the answ
 });
 
 test('a reply that stays open (an event stream) never makes the page wait for the recorder', async () => {
-  const http = await import('node:http'), {chromium} = await import('playwright-core');
+  const http = await import('node:http'), {chromium} = await import('../../e2e/lib/visit-page.mjs');
   const page = '<!doctype html><p id=t>wait</p><script>(async () => { const t0 = performance.now(); await fetch("/stream"); document.getElementById("t").textContent = String(Math.round(performance.now() - t0)); })();</script>';
   const server = http.createServer((req, res) => {
     req.resume();

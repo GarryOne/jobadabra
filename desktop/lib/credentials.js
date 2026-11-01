@@ -25,21 +25,25 @@ export const TEST_PREFIX = 'test-account.';
 
 // `security dump-keychain` (attributes only) → [{host, email, job, created}], newest first. The job-site password itself
 // (jobadabra.sites.password) is not a site.
+// Why (rename to Jobadabra, 1 Nov 2026, owner: "small fallbacks"): items made before the rename (job-pilotto.* with account job-pilotto) are listed too, under their new
+// name; when both exist for a site the newer one is the row. Removed 2 stable releases after the rename.
+const older = name => name.replace(/^job-pilotto\./, 'jobadabra.');
 export function parseDump(text, {profile: id = profile} = {}) {
   const rows = [];
   for (const block of String(text || '').split(/^keychain: /m)) {
     if (!/^class: "genp"/m.test(block)) continue;
     const attr = name => (block.match(new RegExp(`"${name}"<[a-z]+>="([^"]*)"`)) || [])[1] || '';
-    const scoped = attr('svce').match(SCOPED);
+    const svce = older(attr('svce')), scoped = svce.match(SCOPED);
     if (scoped && (!id || scoped[1] !== id)) continue;   // another profile's account: not this profile's to list
-    const key = scoped ? scoped[2] : (attr('svce').match(ITEM) || [])[1], test = !!key && !scoped && key.startsWith(TEST_PREFIX), host = test ? key.slice(TEST_PREFIX.length) : key;
-    if (!host || !host.includes('.') || attr('acct') !== 'jobadabra') continue;   // a site's host name: not 'sites' (the shared one) nor 'mac-sign'
+    const key = scoped ? scoped[2] : (svce.match(ITEM) || [])[1], test = !!key && !scoped && key.startsWith(TEST_PREFIX), host = test ? key.slice(TEST_PREFIX.length) : key;
+    if (!host || !host.includes('.') || !['jobadabra', 'job-pilotto'].includes(attr('acct'))) continue;   // a site's host name: not 'sites' (the shared one) nor 'mac-sign'
     const unassigned = !!id && !scoped && !test;
     const note = attr('icmt'), stamp = (block.match(/"cdat"<timedate>=0x[0-9A-F]+\s+"(\d{14})Z/) || [])[1] || '';
     rows.push({host, ...(test ? {test: true, key} : {}), ...(unassigned ? {unassigned: true, key: UNASSIGNED + host} : {}), email: (note.match(/(?:^|\s)email=(\S+)/) || [])[1] || '', job: (note.match(/(?:^|\s)job=(\S+)/) || [])[1] || '',
       created: stamp ? `${stamp.slice(0, 4)}-${stamp.slice(4, 6)}-${stamp.slice(6, 8)}T${stamp.slice(8, 10)}:${stamp.slice(10, 12)}:${stamp.slice(12, 14)}Z` : ''});
   }
-  return rows.sort((a, b) => b.created.localeCompare(a.created));
+  const seen = new Set();
+  return rows.sort((a, b) => b.created.localeCompare(a.created)).filter(row => { const k = row.key || row.host; return seen.has(k) ? false : (seen.add(k), true); });
 }
 
 export function list(platform = process.platform, exec = execFileSync) {   // unassigned rows are marked; the Settings page draws them apart

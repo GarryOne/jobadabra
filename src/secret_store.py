@@ -87,10 +87,28 @@ def _twin_may_read(service):
     return bool(os.getenv('JOBADABRA_TWIN')) and not os.getenv('JOBADABRA_E2E') and service in TWIN_MAY_READ
 
 
+LEGACY_PREFIX = 'job-pilotto.'   # Why (rename to Jobadabra, 1 Nov 2026, owner "small fallbacks"): items an install made before the rename sit under this prefix and account
+LEGACY_ACCOUNT = 'job-pilotto'
+
+
+def legacy_name(service, user):
+    """The (service, account) an install made before the rename stored this item under, or None when there is no older name. Removed 2 stable releases after the rename."""
+    if not str(service).startswith('jobadabra.'):
+        return None
+    return LEGACY_PREFIX + str(service)[len('jobadabra.'):], (LEGACY_ACCOUNT if user == 'jobadabra' else user)
+
+
 def get(service, user=None):
+    """The item under its Jobadabra name; else under the name it had before the rename (read-only: the old item is left as it is)."""
+    value = _get_one(service, user)
+    older = legacy_name(service, account() if user is None else user)
+    return value if value or not older else _get_one(older[0], older[1], allowed_as=service)
+
+
+def _get_one(service, user=None, allowed_as=None):
     if isolated():
         own = (_isolated_items()[1].get(service) or {}).get('value') or None
-        if own or not _twin_may_read(service):
+        if own or not _twin_may_read(allowed_as or service):   # a twin may read the owner's old-name Google items as it reads the new-name ones
             return own
     user = account() if user is None else user
     if sys.platform == 'darwin':
@@ -129,12 +147,14 @@ def delete(service, user=None):
             _isolated_save(path, items)
         return
     _refuse_real_write(_reaches_real_store())
-    if sys.platform == 'darwin':
-        subprocess.run(['security', 'delete-generic-password', '-a', user, '-s', service], capture_output=True)
-        return
-    store = _keyring()
-    if store:
-        try:
-            store.delete_password(service, user)
-        except Exception:  # keyring.errors.PasswordDeleteError: nothing stored
-            pass
+    older = legacy_name(service, user)
+    for name, who in ((service, user), *([older] if older else [])):   # both names: a deleted credential must not come back from the old item
+        if sys.platform == 'darwin':
+            subprocess.run(['security', 'delete-generic-password', '-a', who, '-s', name], capture_output=True)
+            continue
+        store = _keyring()
+        if store:
+            try:
+                store.delete_password(name, who)
+            except Exception:  # keyring.errors.PasswordDeleteError: nothing stored
+                pass

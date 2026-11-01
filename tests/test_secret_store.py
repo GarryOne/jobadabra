@@ -36,6 +36,39 @@ class RealStoreIsOffLimitsToTestsTest(unittest.TestCase):
         self.assertTrue(secret_store.under_test())
 
 
+class OldNameFallbackTest(unittest.TestCase):
+    """Rename to Jobadabra (1 Nov 2026, owner: "small fallbacks"): an install made before it keeps its items under job-pilotto.*; they are still found, the
+    new name wins, a write goes to the new name only, a delete removes both."""
+    def fake_keychain(self, items):
+        def run(args, **kwargs):
+            service, account = args[args.index('-s') + 1], args[args.index('-a') + 1]
+            if args[1] == 'find-generic-password':
+                value = items.get((service, account))
+                return mock.Mock(returncode=0 if value else 44, stdout=(value or '') + '\n')
+            if args[1] == 'add-generic-password':
+                items[(service, account)] = args[args.index('-w') + 1]
+            if args[1] == 'delete-generic-password':
+                items.pop((service, account), None)
+            return mock.Mock(returncode=0, stdout='')
+        return run
+
+    def test_an_old_item_is_found_the_new_name_wins_and_a_delete_takes_both(self):
+        items = {('job-pilotto.notion.token', 'job-pilotto'): 'old-secret', ('job-pilotto.google.scopes', 'igor'): 'old-scopes'}
+        with mock.patch.object(sys, 'platform', 'darwin'), mock.patch.object(secret_store, 'under_test', return_value=False), \
+                mock.patch.object(secret_store, '_reaches_real_store', return_value=False), mock.patch.object(secret_store.subprocess, 'run', self.fake_keychain(items)):
+            self.assertEqual(secret_store.get('jobadabra.notion.token', 'jobadabra'), 'old-secret')
+            self.assertEqual(secret_store.get('jobadabra.google.scopes', 'igor'), 'old-scopes')
+            secret_store.put('jobadabra.notion.token', 'new-secret', 'jobadabra')
+            self.assertEqual(secret_store.get('jobadabra.notion.token', 'jobadabra'), 'new-secret')
+            self.assertEqual(items[('job-pilotto.notion.token', 'job-pilotto')], 'old-secret')   # never written or touched
+            secret_store.delete('jobadabra.notion.token', 'jobadabra')
+            self.assertIsNone(secret_store.get('jobadabra.notion.token', 'jobadabra'))
+            self.assertNotIn(('job-pilotto.notion.token', 'job-pilotto'), items)
+
+    def test_a_name_that_is_not_ours_has_no_older_name(self):
+        self.assertIsNone(secret_store.legacy_name('other.service', 'igor'))
+
+
 class SecretStoreTest(unittest.TestCase):
     def test_windows_uses_the_credential_manager_through_keyring(self):
         store = FakeKeyring()
@@ -146,7 +179,7 @@ class EndToEndIsolationTest(unittest.TestCase):
         with mock.patch.object(sys, 'platform', 'darwin'), self._keychain_answers(), mock.patch.dict('os.environ', env), \
                 mock.patch('src.sources.google.os.getenv', side_effect=lambda name, default=None: {'JOBADABRA_E2E': '1'}.get(name, default)):
             self.assertIsNone(google.credentials())
-        with mock.patch.object(sys, 'platform', 'darwin'), mock.patch.object(telegram.subprocess, 'run',
+        with mock.patch.object(sys, 'platform', 'darwin'), mock.patch.object(secret_store.subprocess, 'run',
                 return_value=mock.Mock(stdout='123456:real-bot-token\n')) as asked, mock.patch.dict('os.environ', env):
             self.assertIsNone(telegram.keychain_token())
         asked.assert_not_called()
@@ -154,7 +187,7 @@ class EndToEndIsolationTest(unittest.TestCase):
     def test_telegram_keychain_token_does_not_need_os_uname_which_windows_lacks(self):
         from src import telegram
         with mock.patch.object(sys, 'platform', 'win32'), mock.patch.object(telegram.os, 'uname', side_effect=AttributeError("module 'os' has no attribute 'uname'"), create=True), \
-                mock.patch.object(telegram.subprocess, 'run') as asked, mock.patch.dict('os.environ'):
+                mock.patch.object(secret_store.subprocess, 'run') as asked, mock.patch.dict('os.environ'):
             os.environ.pop('JOBADABRA_E2E', None)
             self.assertIsNone(telegram.keychain_token())
         asked.assert_not_called()
@@ -162,13 +195,11 @@ class EndToEndIsolationTest(unittest.TestCase):
     def test_the_admin_key_and_the_notion_fallback_do_not_read_the_keychain_either(self):
         from src.ai import apply_run, budget
         env = {'JOBADABRA_E2E': '1'}
-        with mock.patch.object(sys, 'platform', 'darwin'), mock.patch.dict('os.environ', env), mock.patch.object(budget.subprocess, 'run') as budget_asked, \
-                mock.patch.object(apply_run.subprocess, 'run') as apply_asked:
+        with mock.patch.object(sys, 'platform', 'darwin'), mock.patch.dict('os.environ', env), mock.patch.object(secret_store.subprocess, 'run') as asked:   # both now read through the store
             os.environ.pop('ANTHROPIC_ADMIN_KEY', None)
             self.assertIsNone(budget.admin_key())
             self.assertEqual(apply_run._keychain_token(), '')
-        budget_asked.assert_not_called()
-        apply_asked.assert_not_called()
+        asked.assert_not_called()
 
     def test_writes_never_reach_the_keychain_and_go_to_the_runs_own_file(self):
         """8 Oct 2026: reads were isolated but put() was not, so `passwords new` on an account page made a "new" job-site password and

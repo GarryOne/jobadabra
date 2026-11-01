@@ -259,10 +259,7 @@ def _keychain_token():
     """The Notion token kept in the Keychain (the app's), for a run started without one in its environment."""
     if sys.platform != 'darwin' or secret_store.isolated():  # the end-to-end journey never reaches the owner's own Notion
         return ''
-    secret = subprocess.run(['security', 'find-generic-password', '-a', os.getenv('USER', ''),
-                             '-s', 'jobadabra.notion.token', '-w'], capture_output=True,
-                            text=True, check=False)
-    return secret.stdout.strip() if secret.returncode == 0 else ''
+    return secret_store.get('jobadabra.notion.token') or ''   # the store also finds the item an older install made as job-pilotto.notion.token
 
 
 def run(url, stores, *, codex=None, timeout=TIMEOUT):

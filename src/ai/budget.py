@@ -14,7 +14,6 @@ Levels, against JOBADABRA_MONTHLY_BUDGET_USD (your console limit, default 15):
 from datetime import datetime, timezone
 import json
 import os
-import subprocess
 import sys
 import urllib.parse
 import urllib.request
@@ -38,9 +37,7 @@ def admin_key():
     key = os.getenv('ANTHROPIC_ADMIN_KEY')
     if key or sys.platform != 'darwin' or secret_store.isolated():  # the end-to-end journey never reaches the owner's Anthropic organisation
         return key
-    found = subprocess.run(['security', 'find-generic-password', '-a', os.getenv('USER', ''),
-                            '-s', 'jobadabra.anthropic.admin-key', '-w'], capture_output=True, text=True)
-    return found.stdout.strip() or None
+    return secret_store.get('jobadabra.anthropic.admin-key') or None   # the store also finds the owner's old job-pilotto.anthropic.admin-key
 
 
 def month_start(now):

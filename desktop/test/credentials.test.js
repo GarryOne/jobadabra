@@ -83,5 +83,17 @@ test('a test account row shows the address kept in its sibling email item; a rea
   const {rows} = list('darwin', exec);
   const byHost = Object.fromEntries(rows.map(row => [row.host, row.email]));
   assert.deepEqual(byHost, {'a.example': 'owner+jp@example.com', 'b.example': '', 'c.example': ''});   // c: a test account with no email item says so; b: a real account, no address of its own
-  assert.deepEqual(asked.sort(), ['jobadabra.test-account.a.example.email', 'jobadabra.test-account.c.example.email']);   // only test rows ask, only for their own .email item, never a password
+  assert.deepEqual(asked.filter(service => service.startsWith('jobadabra.')).sort(), ['jobadabra.test-account.a.example.email', 'jobadabra.test-account.c.example.email']);   // only test rows ask, only for their own .email item, never a password
+});
+
+// Rename to Jobadabra (1 Nov 2026, owner: "small fallbacks"): accounts an older install saved as job-pilotto.<site>.password (account job-pilotto) are still listed;
+// when both names exist for a site, one row (the newer).
+test('accounts saved under the old job-pilotto.* names are listed, once per site', () => {
+  const dump = [
+    item('job-pilotto.career5.successfactors.eu.password', {account: 'job-pilotto', cdat: '20260928003603'}),
+    item('jobadabra.career2.successfactors.eu.password', {cdat: '20261020000000'}),
+    item('job-pilotto.career2.successfactors.eu.password', {account: 'job-pilotto', cdat: '20260901000000'}),
+    item('job-pilotto.sites.password', {account: 'job-pilotto'}),
+  ].join('');
+  assert.deepEqual(parseDump(dump).map(row => row.host), ['career2.successfactors.eu', 'career5.successfactors.eu']);
 });

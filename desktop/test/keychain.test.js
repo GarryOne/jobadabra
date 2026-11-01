@@ -99,7 +99,8 @@ test('Delete: isolated runs delete from their own file only; the app deletes the
   }
   const {calls, exec} = spy(() => '');
   assert.equal(keychain.remove('jobadabra.e2e.wd3.myworkdayjobs.com.password', {account: 'jobadabra', env: {}, exec, platform: 'darwin'}), true);
-  assert.deepEqual(calls, [['security', 'delete-generic-password', '-a', 'jobadabra', '-s', 'jobadabra.e2e.wd3.myworkdayjobs.com.password']]);
+  assert.deepEqual(calls, [['security', 'delete-generic-password', '-a', 'jobadabra', '-s', 'jobadabra.e2e.wd3.myworkdayjobs.com.password'],
+    ['security', 'delete-generic-password', '-a', 'job-pilotto', '-s', 'job-pilotto.e2e.wd3.myworkdayjobs.com.password']]);   // both names: the old item must not bring it back
   const none = spy(() => '');
   assert.equal(forget('sites', 'darwin', none.exec), false);   // the shared job-site password is not a site row
   assert.equal(forget('a b.com; rm', 'darwin', none.exec), false);
@@ -124,4 +125,19 @@ test('a test that passes no fake exec can never change the real Keychain (24 Oct
   const {calls, exec} = spy(() => '');
   assert.equal(keychain.write('jobadabra.x.token', 'v', {env: {NODE_TEST_CONTEXT: 'child-v8'}, exec, platform: 'darwin'}), true);   // a fake exec is fine
   assert.equal(calls.length, 1);
+});
+
+// Rename to Jobadabra (1 Nov 2026, owner: "small fallbacks"): an install made before it keeps its items under job-pilotto.* with account job-pilotto.
+test('an item an older install stored under job-pilotto.* is still read; the new name wins; nothing is written under the old name', () => {
+  const items = {'job-pilotto|job-pilotto.notion.token': 'old-secret', 'job-pilotto|job-pilotto.google.scopes': 'old-scopes'};
+  const key = args => `${args[args.indexOf('-a') + 1]}|${args[args.indexOf('-s') + 1]}`;
+  const {calls, exec} = spy(args => (args[0] === 'find-generic-password' && items[key(args)]) || (() => { throw new Error('not found'); })());
+  const env = {};
+  assert.equal(keychain.read('jobadabra.notion.token', {account: 'jobadabra', env, exec, platform: 'darwin'}), 'old-secret');
+  assert.equal(calls.length, 2);   // the new name first, then the old one
+  items['jobadabra|jobadabra.notion.token'] = 'new-secret';
+  assert.equal(keychain.read('jobadabra.notion.token', {account: 'jobadabra', env, exec, platform: 'darwin'}), 'new-secret');
+  assert.deepEqual(keychain.legacyName('jobadabra.sites.password', 'jobadabra'), {service: 'job-pilotto.sites.password', account: 'job-pilotto'});
+  assert.equal(keychain.legacyName('other.name', 'x'), null);
+  assert.ok(!calls.some(call => call.includes('add-generic-password')));
 });

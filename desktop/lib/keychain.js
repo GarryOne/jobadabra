@@ -31,6 +31,17 @@ export function isolatedItems(env = process.env) {
 const refuseRealChange = (exec, env) => { if (exec === execFileSync && (env.NODE_TEST_CONTEXT || env.JOBADABRA_UNDER_TEST)) throw new Error('A test tried to change the real Keychain: pass a fake exec or run isolated'); };
 const real = (exec, args) => { try { return exec('security', args, {encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 64 * 1024 * 1024}); } catch { return null; } };
 
+// Why (rename to Jobadabra, 1 Nov 2026, owner: "small fallbacks"): items an install made before the rename sit under job-pilotto.* with account job-pilotto. A read
+// that finds nothing under the new name asks for the old one; a delete takes both; a write only ever makes the new name. Removed 2 stable releases after the rename.
+// Same rule in src/secret_store.py (legacyName).
+export const legacyName = (service, account) => (String(service).startsWith('jobadabra.')
+  ? {service: `job-pilotto.${String(service).slice('jobadabra.'.length)}`, account: account === 'jobadabra' ? 'job-pilotto' : account} : null);
+const security = (exec, verb, service, account, tail = []) => real(exec, [verb, ...(account ? ['-a', account] : []), '-s', service, ...tail]);
+const securityOrOlder = (exec, verb, service, account, tail) => {
+  const found = security(exec, verb, service, account, tail), older = legacyName(service, account);
+  return found !== null || !older ? found : security(exec, verb, older.service, older.account, tail);
+};
+
 // One item's secret, or null. account: the item's -a (omitted: any account, as `security` matches).
 export function read(service, {account, env = process.env, exec = execFileSync, platform = process.platform} = {}) {
   if (isolated(env)) {
@@ -39,7 +50,7 @@ export function read(service, {account, env = process.env, exec = execFileSync, 
     if (!(env.JOBADABRA_TWIN && twinMayRead(service))) return null;
   }
   if (platform !== 'darwin') return null;
-  return String(real(exec, ['find-generic-password', ...(account ? ['-a', account] : []), '-s', service, '-w']) || '').trim() || null;
+  return String(securityOrOlder(exec, 'find-generic-password', service, account, ['-w']) || '').trim() || null;
 }
 
 // One item's comment ("email=… job=…"), never its secret; '' when there is none.
@@ -50,7 +61,7 @@ export function comment(service, {account, env = process.env, exec = execFileSyn
     if (!(env.JOBADABRA_TWIN && twinMayRead(service))) return '';
   }
   if (platform !== 'darwin') return '';
-  return (String(real(exec, ['find-generic-password', ...(account ? ['-a', account] : []), '-s', service]) || '').match(/"icmt"<blob>="([^"]*)"/) || [])[1] || '';
+  return (String(securityOrOlder(exec, 'find-generic-password', service, account) || '').match(/"icmt"<blob>="([^"]*)"/) || [])[1] || '';
 }
 
 // The Keychain's item attributes as `security dump-keychain` prints them (never a secret), or null when it can't be read. An isolated run gets its own
@@ -85,7 +96,9 @@ export function remove(service, {account, env = process.env, exec = execFileSync
   }
   if (platform !== 'darwin') return false;
   refuseRealChange(exec, env);
-  return real(exec, ['delete-generic-password', ...(account ? ['-a', account] : []), '-s', service]) !== null;
+  const older = legacyName(service, account);
+  const removed = security(exec, 'delete-generic-password', service, account) !== null;
+  return (older && security(exec, 'delete-generic-password', older.service, older.account) !== null) || removed;   // both names: a deleted credential must not come back from the old item
 }
 
 // Writes one item (the app moves an account to its profile, Settings → Credentials, 16 Oct 2026). Same isolation as every other call: a test run or the twin

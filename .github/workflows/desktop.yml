@@ -295,16 +295,18 @@ jobs:
           phase: end
         timeout-minutes: 5
 
-  # One box per lane step (owner, 10 Oct 2026: "Put Compile, Smoke inside the Build"). A build is: it compiles, the unit tests pass, and a very small, fast smoke test of the
-  # built app passes; they are NAMED STEPS of the one Build box (Unit tests · …, Compile · …, Smoke test · …), never boxes of their own.
+  # One box per lane step (owner, 10 Oct 2026: "Put Compile, Smoke inside the Build"). A build is: it compiles and a very small, fast smoke test of the built app passes; they are
+  # NAMED STEPS of the one Build box (Compile · …, Smoke test · …), never boxes of their own.
+  # Why (1 Nov 2026, owner: "Yes", to "should I move the unit tests into their own parallel job?"; replaces the 10 Oct line for the Unit tests step only): in a tested run "Unit tests · Mac"
+  # and "Unit tests · Windows" are their own jobs. Beta #6's Mac unit step took 6 min (Windows 4) before Compile, so every E2E started that much later than the build needed. They run
+  # beside Build, the E2E jobs do not wait for them, and both Release jobs do. A run that is NOT tested (no gate) runs the same action inline in Build, before Compile: Build publishes
+  # itself, and a job cannot wait on a sibling without `needs`, which would put the wait back into the beta path; so a Build only run never publishes a build whose unit tests are red.
   build:
     name: Build · Mac
     needs: changes   # the version and the draft release exist
     if: needs.changes.outputs.released == 'true'
     runs-on: macos-latest   # Apple Silicon; Why (30 Oct 2026, beta 41114966182): macOS 14 brownout; build on the image the e2e runs on.
     timeout-minutes: 30
-    outputs:
-      unit: ${{ steps.unit.outcome }}   # 'failure' = a unit test is red: the Release jobs refuse (tools/beta_rate_gate.py --unit-*); the box itself goes on to Compile and Smoke
     env:
       E2E_ARTIFACT_SECRET_NAMES: |
         CLIENT
@@ -325,7 +327,7 @@ jobs:
         timeout-minutes: 5
         with:
           node-version: '22'
-      - uses: actions/setup-python@v6   # only runs the pipeline tests; the app bundles its own Python
+      - uses: actions/setup-python@v6   # scripts/python.sh reads the standalone Python release list with python3; the app bundles its own Python
         timeout-minutes: 10
         with:
           python-version: '3.12'
@@ -333,36 +335,16 @@ jobs:
         timeout-minutes: 5
         working-directory: desktop
         run: npm ci
-      # The desktop app's unit tests, the SAME on Mac and Windows (owner, 10 Oct 2026: "both should have the full set of unit tests, only related to the desktop app; no site,
-      # no Cloudflare workers"): the Python pipeline the app bundles (`tools/check.sh --area python`) and the app's own tests (`--area desktop`: lint + node tests), side by side
-      # so the step takes the longer one. The site and the Worker are tested by CI · Tests on every push and deployed by their own pipelines (site.yml, worker.yml).
-      # Why (31 Oct 2026, owner: "D: unit red still runs e2e"; beta 41215677698): 1 flaky test of 5,102 stopped this step before Compile, so no app was built and every E2E suite was skipped, a
-      # 45-minute beta that told us nothing about the e2e. The step stays red here (its outcome is the job output `unit`), but Compile, Smoke and the e2e go on; the Release jobs refuse
-      # "Not released: red: Unit tests · <lane>". A failed Compile or Smoke still stops the e2e (no app to test). A run that is not tested (gate off) stops here as before.
+      # A run that is NOT tested (no gate) runs the unit tests here, as before; a tested run has them in "Unit tests · Mac" beside this job (see the comment above `build:`).
       - name: Unit tests · desktop app (Python pipeline and app, side by side)
         id: unit
+        if: needs.changes.outputs.gate != 'true'
         continue-on-error: true
         timeout-minutes: 17
-        env:
-          PYTHONUTF8: '1'   # as the app runs its own engine (lib/pipeline-env.js): files in UTF-8 on Windows too, whose default is the ANSI code page (the tests read UTF-8 files)
-          UNIT_AREAS: 'python desktop'
-          JOB_PILOTTO_PY_JOBS: '6'   # the Mac runner's cores / check slots gave 2 shards (the Python half took 5-6.5 min); the slow modules sleep and wait, so 6 overlap well (12 Oct 2026, as build.yml)
-        run: |
-          pids=""
-          for area in $UNIT_AREAS; do bash tools/check.sh --area "$area" > "unit-$area.log" 2>&1 & pids="$pids $area:$!"; done
-          status=0
-          # The answer on top, the detail one click away (owner, 10 Oct 2026: "human readable, without scrolling a lot"): a passing suite is ONE line here and its per-file log
-          # is collapsed; a failing suite prints its log in full, whose first lines are the failing tests and their errors. The same lines are the step's log.
-          for entry in $pids; do
-            area="${entry%%:*}"
-            if wait "${entry#*:}"; then result=passed; else result=FAILED; status=1; fi
-            line=$(grep -E '^(OK|FAILED): |^py-shards: .*(passed|FAILED)' "unit-$area.log" | tail -1)
-            echo "| $area | $result | ${line:-no summary line} |" >> unit-table.md
-            if [ "$result" = passed ]; then echo "✔ $area: ${line}"; echo "::group::$area · every test file"; cat "unit-$area.log"; echo "::endgroup::"
-            else echo "::error title=Unit tests · $area::The $area unit tests failed (the build and the E2E suites go on; the release refuses)"; cat "unit-$area.log"; fi
-          done
-          { echo "### Unit tests · desktop app"; echo; echo "| Suite | Result | Summary |"; echo "|---|---|---|"; cat unit-table.md; }
-          exit $status
+        uses: ./.github/actions/unit-tests
+        with:
+          areas: 'python desktop'
+          py-jobs: '6'
       - name: Unit tests failed, and this run is not tested here, so stop the build
         if: steps.unit.outcome == 'failure' && needs.changes.outputs.gate != 'true'
         timeout-minutes: 5
@@ -458,8 +440,6 @@ jobs:
     if: needs.changes.outputs.released == 'true'
     runs-on: windows-latest
     timeout-minutes: 40
-    outputs:
-      unit: ${{ steps.unit.outcome }}   # 'failure' = a unit test is red: the Release jobs refuse (tools/beta_rate_gate.py --unit-*); the box itself goes on to Compile and Smoke
     defaults:
       run:
         shell: bash
@@ -496,41 +476,17 @@ jobs:
         timeout-minutes: 5
         working-directory: desktop
         run: npm ci
-      # The desktop app's unit tests, the SAME on Mac and Windows (owner, 10 Oct 2026: "both should have the full set of unit tests, only related to the desktop app; no site,
-      # no Cloudflare workers"): the Python pipeline the app bundles (`tools/check.sh --area python`) and the app's own tests (`--area desktop`: lint + node tests), side by side
-      # so the step takes the longer one. The site and the Worker are tested by CI · Tests on every push and deployed by their own pipelines (site.yml, worker.yml).
-      # Windows has no time-zone database, and the Python tests load Europe/Zurich: the same tzdata the app bundles for Windows (requirements.txt, sys_platform == win32).
-      - name: Install · time-zone data for the Python tests
-        timeout-minutes: 5
-        run: python -m pip install tzdata
-      # Why (31 Oct 2026, owner: "D: unit red still runs e2e"; beta 41215677698): 1 flaky test of 5,102 stopped this step before Compile, so no app was built and every E2E suite was skipped, a
-      # 45-minute beta that told us nothing about the e2e. The step stays red here (its outcome is the job output `unit`), but Compile, Smoke and the e2e go on; the Release jobs refuse
-      # "Not released: red: Unit tests · <lane>". A failed Compile or Smoke still stops the e2e (no app to test). A run that is not tested (gate off) stops here as before.
+      # A run that is NOT tested (no gate) runs the unit tests here, as before; a tested run has them in "Unit tests · Windows" beside this job (see the comment above `build:`).
       - name: Unit tests · desktop app (Python pipeline and app, side by side)
         id: unit
+        if: needs.changes.outputs.gate != 'true'
         continue-on-error: true
         timeout-minutes: 17
-        env:
-          PYTHONUTF8: '1'   # as the app runs its own engine (lib/pipeline-env.js): files in UTF-8 on Windows too, whose default is the ANSI code page (the tests read UTF-8 files)
+        uses: ./.github/actions/unit-tests
+        with:
           # TEMPORARY (10 Oct 2026): 196 of the 1,943 Python tests fail on Windows for environmental reasons (SQLite files left open in temp folders, tests of the repo's own
           # dev scripts, a few Mac-only assumptions): until they are fixed the Windows build runs the app's tests only. Then this reads 'python desktop', as on the Mac.
-          UNIT_AREAS: 'desktop'
-        run: |
-          pids=""
-          for area in $UNIT_AREAS; do bash tools/check.sh --area "$area" > "unit-$area.log" 2>&1 & pids="$pids $area:$!"; done
-          status=0
-          # The answer on top, the detail one click away (owner, 10 Oct 2026: "human readable, without scrolling a lot"): a passing suite is ONE line here and its per-file log
-          # is collapsed; a failing suite prints its log in full, whose first lines are the failing tests and their errors. The same lines are the step's log.
-          for entry in $pids; do
-            area="${entry%%:*}"
-            if wait "${entry#*:}"; then result=passed; else result=FAILED; status=1; fi
-            line=$(grep -E '^(OK|FAILED): |^py-shards: .*(passed|FAILED)' "unit-$area.log" | tail -1)
-            echo "| $area | $result | ${line:-no summary line} |" >> unit-table.md
-            if [ "$result" = passed ]; then echo "✔ $area: ${line}"; echo "::group::$area · every test file"; cat "unit-$area.log"; echo "::endgroup::"
-            else echo "::error title=Unit tests · $area::The $area unit tests failed (the build and the E2E suites go on; the release refuses)"; cat "unit-$area.log"; fi
-          done
-          { echo "### Unit tests · desktop app"; echo; echo "| Suite | Result | Summary |"; echo "|---|---|---|"; cat unit-table.md; }
-          exit $status
+          areas: 'desktop'
       - name: Unit tests failed, and this run is not tested here, so stop the build
         if: steps.unit.outcome == 'failure' && needs.changes.outputs.gate != 'true'
         timeout-minutes: 5
@@ -614,6 +570,102 @@ jobs:
           else
             echo "::warning::Windows build failed and no earlier release has a Windows installer."
           fi
+      - if: always()
+        uses: ./.github/actions/gh-ledger
+        with:
+          phase: end
+        timeout-minutes: 5
+
+  # The desktop app's unit tests, the SAME action on Mac and Windows (owner, 10 Oct 2026: "both should have the full set of unit tests, only related to the desktop app; no site,
+  # no Cloudflare workers"): the Python pipeline the app bundles (`tools/check.sh --area python`) and the app's own tests (`--area desktop`: lint + node tests), side by side
+  # so the job takes the longer one. The site and the Worker are tested by CI · Tests on every push and deployed by their own pipelines (site.yml, worker.yml).
+  # Beside Build, not before it, and no E2E job needs them (owner, 1 Nov 2026: "Yes"; Why above `build:`). Tested runs only: a run without the gate runs the action inside Build.
+  # Why (31 Oct 2026, owner: "D: unit red still runs e2e"; beta 41215677698): 1 flaky test of 5,102 stopped the unit step before Compile, so no app was built and every E2E suite was skipped, a
+  # 45-minute beta that told us nothing about the e2e. A red unit job does not stop Compile, Smoke or the e2e (they never wait for it); the Release jobs read its result and refuse
+  # "Not released: red: Unit tests · <lane>". A failed Compile or Smoke still stops the e2e (no app to test).
+  unit-mac:
+    name: Unit tests · Mac
+    needs: changes
+    if: needs.changes.outputs.released == 'true' && needs.changes.outputs.gate == 'true'
+    runs-on: macos-latest   # the same image as Build · Mac and the e2e
+    timeout-minutes: 25   # the step's own 17 min limit ends a hang first, so the job reads 'failure', never 'cancelled'
+    env:
+      VERSION: ${{ needs.changes.outputs.version }}   # the same env the unit step had inside Build
+      EXTENSION_VERSION: ${{ needs.changes.outputs.extension_version }}
+    steps:
+      - uses: actions/checkout@v5
+        timeout-minutes: 5
+      - uses: ./.github/actions/gh-ledger
+        with:
+          phase: start
+        timeout-minutes: 5
+      - uses: actions/setup-node@v5
+        timeout-minutes: 5
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v6
+        timeout-minutes: 10
+        with:
+          python-version: '3.12'
+      - name: Install
+        timeout-minutes: 5
+        working-directory: desktop
+        run: npm ci
+      - name: Unit tests · desktop app (Python pipeline and app, side by side)
+        timeout-minutes: 17
+        uses: ./.github/actions/unit-tests
+        with:
+          areas: 'python desktop'
+          py-jobs: '6'
+      - if: always()
+        uses: ./.github/actions/gh-ledger
+        with:
+          phase: end
+        timeout-minutes: 5
+
+  unit-windows:
+    name: Unit tests · Windows
+    needs: changes
+    if: needs.changes.outputs.released == 'true' && needs.changes.outputs.gate == 'true'
+    runs-on: windows-latest
+    timeout-minutes: 25   # the step's own 17 min limit ends a hang first, so the job reads 'failure', never 'cancelled'
+    env:
+      VERSION: ${{ needs.changes.outputs.version }}   # the same env the unit step had inside Build
+      EXTENSION_VERSION: ${{ needs.changes.outputs.extension_version }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Speed · leave the build folders out of Windows Defender
+        timeout-minutes: 5
+        continue-on-error: true
+        shell: pwsh
+        run: Add-MpPreference -ExclusionPath "$env:GITHUB_WORKSPACE", "$env:LOCALAPPDATA\Programs", "$env:TEMP", "$env:RUNNER_TEMP"
+      - uses: actions/checkout@v5
+        timeout-minutes: 5
+      - uses: ./.github/actions/gh-ledger
+        with:
+          phase: start
+        timeout-minutes: 5
+      - uses: actions/setup-node@v5
+        timeout-minutes: 5
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v6
+        timeout-minutes: 10
+        with:
+          python-version: '3.12'
+      - name: Install
+        timeout-minutes: 5
+        working-directory: desktop
+        run: npm ci
+      - name: Unit tests · desktop app (Python pipeline and app, side by side)
+        timeout-minutes: 17
+        uses: ./.github/actions/unit-tests
+        with:
+          # TEMPORARY (10 Oct 2026): 196 of the 1,943 Python tests fail on Windows for environmental reasons (SQLite files left open in temp folders, tests of the repo's own
+          # dev scripts, a few Mac-only assumptions): until they are fixed the Windows unit job runs the app's tests only. Then this reads 'python desktop', as on the Mac.
+          areas: 'desktop'
       - if: always()
         uses: ./.github/actions/gh-ledger
         with:
@@ -1352,7 +1404,7 @@ jobs:
   # beta 41090972183 shipped Windows 0.8.53 while Mac + Linux applyflows was red. Both lanes green, or neither platform is offered.
   release-mac:
     name: Release · Mac beta
-    needs: [changes, build, windows, test-mac, test-windows]   # build, windows: their unit step's outcome (Why: the unit step no longer stops the e2e, 31 Oct 2026)
+    needs: [changes, build, windows, unit-mac, unit-windows, test-mac, test-windows]   # unit-*: their result decides the refusal; the e2e never waited for them (Why: 31 Oct and 1 Nov 2026)
     if: always() && needs.changes.outputs.gate == 'true' && needs.test-mac.result != 'skipped' && needs.test-mac.result != 'cancelled'
     runs-on: ubuntu-24.04
     timeout-minutes: 90   # Why (30 Oct 2026, a8; beta 41090972183): covers the e2e review (15 min) plus release-checks.sh waiting up to 60 min for main's build; 20 cut Windows off at 18 min
@@ -1438,7 +1490,7 @@ jobs:
           github-token: ${{ github.token }}
       - name: Not released on Mac, an E2E suite failed on Mac + Linux or Windows, or a unit test failed
         timeout-minutes: 10
-        run: python3 tools/beta_rate_gate.py --repo "$GITHUB_REPOSITORY" --run "$GITHUB_RUN_ID" --e2e-only --platform mac --unit-mac "${{ needs.build.outputs.unit }}" --unit-windows "${{ needs.windows.outputs.unit }}"
+        run: python3 tools/beta_rate_gate.py --repo "$GITHUB_REPOSITORY" --run "$GITHUB_RUN_ID" --e2e-only --platform mac --unit-mac "${{ needs.unit-mac.result }}" --unit-windows "${{ needs.unit-windows.result }}"
       - name: Tolerant AI rates against main's nightly band (report only)
         timeout-minutes: 10
         if: needs.changes.outputs.gate == 'true'
@@ -1492,7 +1544,7 @@ jobs:
   # "Beta-approved (Windows):" line that offers the build to Windows beta testers (desktop/lib/updater.js). Red = not released on Windows.
   release-windows:
     name: Release · Windows beta   # needs both lanes: the Why above release-mac
-    needs: [changes, build, windows, test-mac, test-windows]   # build, windows: their unit step's outcome (Why: the unit step no longer stops the e2e, 31 Oct 2026)
+    needs: [changes, build, windows, unit-mac, unit-windows, test-mac, test-windows]   # unit-*: their result decides the refusal; the e2e never waited for them (Why: 31 Oct and 1 Nov 2026)
     if: always() && needs.changes.outputs.gate == 'true' && needs.test-windows.result != 'skipped' && needs.test-windows.result != 'cancelled'
     runs-on: ubuntu-24.04
     timeout-minutes: 90   # Why (30 Oct 2026, a8; beta 41090972183): covers the e2e review (15 min) plus release-checks.sh waiting up to 60 min for main's build; 20 cut Windows off at 18 min
@@ -1574,7 +1626,7 @@ jobs:
           github-token: ${{ github.token }}
       - name: Not released on Windows, an E2E suite failed on Mac + Linux or Windows, or a unit test failed
         timeout-minutes: 10
-        run: python3 tools/beta_rate_gate.py --repo "$GITHUB_REPOSITORY" --run "$GITHUB_RUN_ID" --e2e-only --platform windows --unit-mac "${{ needs.build.outputs.unit }}" --unit-windows "${{ needs.windows.outputs.unit }}"
+        run: python3 tools/beta_rate_gate.py --repo "$GITHUB_REPOSITORY" --run "$GITHUB_RUN_ID" --e2e-only --platform windows --unit-mac "${{ needs.unit-mac.result }}" --unit-windows "${{ needs.unit-windows.result }}"
       - name: Tolerant AI rates against main's nightly band (report only)
         timeout-minutes: 10
         if: needs.changes.outputs.gate == 'true'

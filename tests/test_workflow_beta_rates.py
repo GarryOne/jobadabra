@@ -21,7 +21,7 @@ class BetaRates(unittest.TestCase):
             self.assertLess(job.index(rate), job.index('tools/beta-approve.sh'))
             failure = next(s for s in steps if 'an E2E suite failed' in s)
             # Owner, 30 Oct 2026: a red on either lane holds both platforms (Windows dropped its duplicates of the Mac + Linux suites).
-            self.assertIn('needs: [changes, build, windows, test-mac, test-windows]', job)   # + the Build boxes' unit outcome (owner, 31 Oct 2026)
+            self.assertIn('needs: [changes, build, windows, unit-mac, unit-windows, test-mac, test-windows]', job)   # + the Unit tests jobs' result (owner, 31 Oct and 1 Nov 2026)
             # Owner, 31 Oct 2026 (a suite past its budget is our bug): the gate's own exit code holds the beta; no grey hold, held output or continue-on-error.
             self.assertNotIn('if: needs.test-', failure, 'every lane job is read')
             self.assertNotIn('continue-on-error', failure)

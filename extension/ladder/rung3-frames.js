@@ -16,5 +16,5 @@
     return out.sort((a, b) => b.width * b.height - a.width * a.height).slice(0, 6);
   }
   const api = {frameCandidates};
-  if (typeof module !== 'undefined' && module.exports) module.exports = api; else window.__jobPilottoFrames = api;
+  if (typeof module !== 'undefined' && module.exports) module.exports = api; else window.__jobadabraFrames = api;
 })();

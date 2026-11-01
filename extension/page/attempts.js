@@ -2,23 +2,23 @@
 // dropdown). Every try on a control asks here first and is written here after: an operator's own retry (the fastpath typing a wiped box again, a menu's click or typed search,
 // real typing, a phone typed again in another writing) as much as a repair. A try is a verb (with a variant number, never a value) on the control's state (its one-reader state,
 // how many options it lists, shown or not): one that failed on that state is never made again, and a control gets CAP tries in all. A control that used them and still does not
-// hold its answer is given up: marked on itself (data-jobpilotto-gaveup) and listed once for the worker's log, so the ladder climbs and the person is told once, never a loop.
-// The log lives on the control (data-jobpilotto-tried), so every script world and every pass of the fill reads the same one. Page world, loaded first (page-files.js PAGE_FILES,
+// hold its answer is given up: marked on itself (data-jobadabra-gaveup) and listed once for the worker's log, so the ladder climbs and the person is told once, never a loop.
+// The log lives on the control (data-jobadabra-tried), so every script world and every pass of the fill reads the same one. Page world, loaded first (page-files.js PAGE_FILES,
 // the apply run's init scripts). Guard: app-core/test/attempts.test.js, the widget zoo's menu-never-takes page.
 (() => {
-  if (window.__jobPilottoAttempts) return;
+  if (window.__jobadabraAttempts) return;
   const CAP = 3;
   const own = el => !!el && typeof el.setAttribute === 'function';
   // The control's state, never its value: the one reader's state (page/read-back.js), how many options it lists, shown or not.
-  const stateOf = el => [window.__jobPilottoReadBack?.stateOf(el) || '', el.options?.length ?? '', el.getClientRects?.().length ? 1 : 0].join(':');
-  const holds = el => !!window.__jobPilottoReadBack?.holds(el);
+  const stateOf = el => [window.__jobadabraReadBack?.stateOf(el) || '', el.options?.length ?? '', el.getClientRects?.().length ? 1 : 0].join(':');
+  const holds = el => !!window.__jobadabraReadBack?.holds(el);
   const readable = el => ['INPUT', 'SELECT', 'TEXTAREA'].includes(el.tagName);   // the one reader reads it (a toggle group it cannot)
-  const read = el => { try { return JSON.parse(el.getAttribute('data-jobpilotto-tried') || '[]'); } catch { return []; } };
+  const read = el => { try { return JSON.parse(el.getAttribute('data-jobadabra-tried') || '[]'); } catch { return []; } };
   const kindOf = el => (el.type === 'file' ? 'file' : el.getAttribute?.('role') === 'combobox' ? 'combobox' : el.tagName === 'SELECT' ? 'select' : el.type || el.tagName?.toLowerCase() || '');
   const fresh = [];   // controls given up since the worker last asked: [{field, kind, tries}]
   const giveUp = (el, why) => {
-    if (el.hasAttribute('data-jobpilotto-gaveup') || (readable(el) && holds(el))) return;
-    el.setAttribute('data-jobpilotto-gaveup', why);
+    if (el.hasAttribute('data-jobadabra-gaveup') || (readable(el) && holds(el))) return;
+    el.setAttribute('data-jobadabra-gaveup', why);
     fresh.push({field: el.id || el.name || '', kind: kindOf(el), tries: read(el).length});
   };
   // May this try be made? false when the control used its tries (then it is given up) or this very try already failed on this state. No control to log on: the caller's own limit.
@@ -34,8 +34,8 @@
     if (!own(el)) return;
     const tried = read(el), ok = typeof worked === 'boolean' ? worked : holds(el);
     tried.push({k: `${verb}@${before ?? stateOf(el)}`, ok});
-    if (ok && typeof CustomEvent === 'function' && typeof document.dispatchEvent === 'function') document.dispatchEvent(new CustomEvent('jobpilotto:progress', {detail: 'value_stayed'}));   // the run's progress (hook.js relays it to ladder/progress.js): one event per try that worked
-    el.setAttribute('data-jobpilotto-tried', JSON.stringify(tried.slice(-8)));
+    if (ok && typeof CustomEvent === 'function' && typeof document.dispatchEvent === 'function') document.dispatchEvent(new CustomEvent('jobadabra:progress', {detail: 'value_stayed'}));   // the run's progress (hook.js relays it to ladder/progress.js): one event per try that worked
+    el.setAttribute('data-jobadabra-tried', JSON.stringify(tried.slice(-8)));
     if (!ok && tried.length >= CAP) giveUp(el, 'tries');
   };
   // One call for an operator: ask, run the try, write it down. try() -> its own result (anything); -> the result, or false when the try was not allowed.
@@ -51,14 +51,14 @@
   const summary = () => {
     const byTries = {}, worked = {};
     let gaveUp = 0;
-    for (const el of document.querySelectorAll('[data-jobpilotto-tried]')) {
+    for (const el of document.querySelectorAll('[data-jobadabra-tried]')) {
       const tried = read(el), n = tried.length;
       byTries[n] = (byTries[n] || 0) + 1;
       if (tried.some(entry => entry.ok)) worked[n] = (worked[n] || 0) + 1;
-      if (el.hasAttribute('data-jobpilotto-gaveup')) gaveUp += 1;
+      if (el.hasAttribute('data-jobadabra-gaveup')) gaveUp += 1;
     }
     return {byTries, worked, gaveUp};
   };
-  window.__jobPilottoAttempts = {CAP, mayTry, note, attempt, stateOf, summary,
-    count: el => (own(el) ? read(el).length : 0), gaveUp: el => (own(el) ? el.getAttribute('data-jobpilotto-gaveup') || '' : ''), drain: () => fresh.splice(0)};
+  window.__jobadabraAttempts = {CAP, mayTry, note, attempt, stateOf, summary,
+    count: el => (own(el) ? read(el).length : 0), gaveUp: el => (own(el) ? el.getAttribute('data-jobadabra-gaveup') || '' : ''), drain: () => fresh.splice(0)};
 })();

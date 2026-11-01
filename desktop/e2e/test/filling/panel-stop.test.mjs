@@ -10,8 +10,8 @@ import {POLL_CAP_MS} from '../../lib/wait-on-state.mjs';
 // mode: 'decoy' (a control of the page itself has the class `stop-btn` too), 'late' (Stop disabled 400 ms, halts 100 ms after the press),'slow' (halts 700 ms after the press), 'never' (Stopping… and nothing else),
 // 'hidden' (no Stop is ever shown), 'pill' (the card is minimised, the pill's Stop halts at once), 'dim' (the step row ends and the dim over the page stays),
 // 'nocard' (the step row ends and the panel never says "Stopped by you").
-const PAGE = mode => `<body><div id="jobpilotto-review-host"></div><script>
-  const root = document.getElementById('jobpilotto-review-host').attachShadow({mode: 'open'});
+const PAGE = mode => `<body><div id="jobadabra-review-host"></div><script>
+  const root = document.getElementById('jobadabra-review-host').attachShadow({mode: 'open'});
   const mode = ${JSON.stringify(mode)};
   root.innerHTML = '<div class="jp working"><div class="card"' + (mode === 'pill' ? ' hidden' : '') + '><div class="stopped" hidden>Stopped by you</div>'
     + '<div class="fill-box"><button class="primary fill is-busy">Choosing dropdown answers…</button>'
@@ -20,7 +20,7 @@ const PAGE = mode => `<body><div id="jobpilotto-review-host"></div><script>
   const halted = () => { const fill = root.querySelector('.fill'); fill.classList.remove('is-busy'); fill.textContent = 'Fill again'; if (mode !== 'nocard') root.querySelector('.stopped').hidden = false; if (mode === 'pill') root.querySelector('.card').hidden = true;
     if (mode === 'dim') for (const button of root.querySelectorAll('.stop-btn, .pill-stop')) { button.disabled = false; button.textContent = 'Stop'; } };   // the product's stoppedHere puts the labels back to Stop (extension/review.js) while the page's dim lifts later
   if (mode === 'decoy') document.body.append(Object.assign(document.createElement('button'), {className: 'stop-btn', textContent: 'Stop'}));   // the job form's own control with the same class
-  if (mode === 'dim') document.body.append(Object.assign(document.createElement('div'), {id: 'jobpilotto-fill-overlay'}));
+  if (mode === 'dim') document.body.append(Object.assign(document.createElement('div'), {id: 'jobadabra-fill-overlay'}));
   if (mode === 'late') setTimeout(() => { root.querySelector('.stop-btn').disabled = false; }, 400);
   for (const button of root.querySelectorAll('.stop-btn, .pill-stop')) button.onclick = event => {
     if (!event.isTrusted) return;

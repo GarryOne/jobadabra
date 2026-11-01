@@ -38,15 +38,15 @@ A form we have already seen should never be filled one field at a time with a sc
 field. The flow, for every agent and every tool:
 
 1. **Map once.** One page evaluation lists every field (id, type, label, required, filled) —
-   `window.__jobPilottoAuditVisibleFields()`.
+   `window.__jobadabraAuditVisibleFields()`.
 2. **Build the plan before filling.** Decide every field → value up front from the kit, the
    Profile and Application Answers (Profile's confirmed answers beat the kit's guesses). No
    deciding values mid-form.
 3. **One fill call.** Inject `tools/browser-submit-guard.js` then `tools/browser-form-fastpath.js`
    (Playwright init script, or the file's text passed to the page's JS tool), then fill every
-   plain field in one evaluation with `window.__jobPilottoFillKnownFields(plan)`. Fields it skips
+   plain field in one evaluation with `window.__jobadabraFillKnownFields(plan)`. Fields it skips
    (Greenhouse dropdowns are react-select comboboxes): open, read live option coordinates with
-   `window.__jobPilottoOptionPositions()`, click — no screenshot per field.
+   `window.__jobadabraOptionPositions()`, click — no screenshot per field.
 4. **Verify once** with the audit.
 5. **Upload the résumé** (last — Greenhouse can reset other fields after an upload).
 6. **Re-verify once**, then hand over. Never Submit.

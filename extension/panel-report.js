@@ -3,7 +3,7 @@
 // the result and answers with counts; Send sends that, Cancel drops it. Drawn inside the panel's own shadow root with the panel's CSS tokens (so its theme reaches it); review.js mounts it and opens it.
 // It still works after a Stop (the recording kept until then is what is sent). Guard: desktop/test/report-panel.test.js, desktop/e2e/test/report-button.test.mjs.
 (() => {
-  if (window.__jobPilottoReport) return;
+  if (window.__jobadabraReport) return;
   const STYLE = `.report-pop { position: fixed; right: 18px; bottom: 84px; width: 348px; max-width: calc(100vw - 36px); z-index: 2; padding: 14px; border-radius: 14px; color: var(--ink); background: var(--card);
       border: 1px solid var(--line); box-shadow: 0 10px 32px var(--shadow); pointer-events: auto; }
     .report-pop b { display: block; margin-bottom: 6px; font-size: 14px; } .report-pop p { margin: 0 0 8px; } .report-pop .muted { color: var(--muted); font-size: 12px; }
@@ -75,5 +75,5 @@
     (root.querySelector('.jp') || root).append(pop);   // inside the panel's own box: its fonts and colour tokens apply
     ask({type: 'report-state'}).then(onState);
   }
-  window.__jobPilottoReport = {mount, open, words: WORDS, sentence: refusal};   // words and sentence: for desktop/test/report-failures.test.js
+  window.__jobadabraReport = {mount, open, words: WORDS, sentence: refusal};   // words and sentence: for desktop/test/report-failures.test.js
 })();

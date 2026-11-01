@@ -1,11 +1,11 @@
 // The stuck page's Claude offer in the form panel (owner, 10 Oct 2026; spec docs/superpowers/specs/2026-10-10-claude-finishes-stuck-pages.md parts 1-4).
 // A classic panel script, injected before review.js (which stays frozen at its size: it only hands this file the panel's root and each render's facts through
-// window.__jobPilottoClaude). Owns: the three choices ("Let Claude finish this page" / "I'll do it myself" / "Always let Claude finish when I'm stuck"), the consent line on
+// window.__jobadabraClaude). Owns: the three choices ("Let Claude finish this page" / "I'll do it myself" / "Always let Claude finish when I'm stuck"), the consent line on
 // the first press, the visible 5 s countdown with Cancel for "always", and "Tell me what's needed" when Claude is not ready. It never clicks or types in the page: a press
 // asks the app (panelTakeOver), which starts Claude's session; Claude never presses Submit. Guards: desktop/test/panel-claude.test.js (the choices as a pure function),
 // the real-extension check (desktop/e2e/test/real-extension.test.mjs).
 (() => {
-  if (window.__jobPilottoClaude) return;
+  if (window.__jobadabraClaude) return;
   const COUNT = 5;   // seconds the person sees before "always" starts Claude
 
   // The view for the facts (info: on = Claude ready, stuck, auto = countdown allowed [always + "Do it for me"], consent) and what the person pressed.
@@ -97,5 +97,5 @@
     mem = result.mem;
     if (result.view !== shown) { shown = result.view; draw(result.view); }
   }
-  window.__jobPilottoClaude = {next, mount, render, act};
+  window.__jobadabraClaude = {next, mount, render, act};
 })();

@@ -25,17 +25,17 @@ export async function runRepairs(repairs, {page, click, closeLayer, sleep = ms =
       continue;
     }
     if (PAGE_VERBS.includes(verb)) {
-      const found = await page((number, name, chosen) => window.__jobPilottoRepairAct?.[name]?.(number, chosen) || {ok: false, why: 'no repair here'}, [n, verb, option || 0]).catch(() => null);
+      const found = await page((number, name, chosen) => window.__jobadabraRepairAct?.[name]?.(number, chosen) || {ok: false, why: 'no repair here'}, [n, verb, option || 0]).catch(() => null);
       done(!!found?.ok, found?.why || (found ? '' : 'the page did not answer'));
       continue;
     }
     if (CLICK_VERBS.includes(verb)) {
-      const before = await page((number, name) => window.__jobPilottoRepairAct?.mayClick(number, name) ?? null, [n, verb]).catch(() => null);
-      const spot = before === null ? null : await page(number => window.__jobPilottoRepairAct?.spot(number) || null, [n]).catch(() => null);
+      const before = await page((number, name) => window.__jobadabraRepairAct?.mayClick(number, name) ?? null, [n, verb]).catch(() => null);
+      const spot = before === null ? null : await page(number => window.__jobadabraRepairAct?.spot(number) || null, [n]).catch(() => null);
       if (!spot) { done(false, 'refused, or no place to click'); continue; }
       await click(spot.x, spot.y);
       await sleep(SETTLE_MS);
-      done(!!(await page((number, name, state) => window.__jobPilottoRepairAct?.clicked(number, name, state) || false, [n, verb, before]).catch(() => false)));
+      done(!!(await page((number, name, state) => window.__jobadabraRepairAct?.clicked(number, name, state) || false, [n, verb, before]).catch(() => false)));
       continue;
     }
     done(undefined, 'not done by repair yet');

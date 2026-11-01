@@ -4,15 +4,15 @@
 
 // Every input's, textarea's and select's text becomes transparent (and a password's dots), selected options too; nothing is changed, nothing is stored.
 export function hideValues() {
-  const id = 'jobpilotto-hide-values';
+  const id = 'jobadabra-hide-values';
   if (document.getElementById(id)) return true;
   const style = document.createElement('style');
   style.id = id;
-  style.textContent = 'input, textarea, select, option { color: transparent !important; text-shadow: none !important; -webkit-text-fill-color: transparent !important; caret-color: transparent !important; } input::placeholder, textarea::placeholder { color: transparent !important; } #jobpilotto-fill-overlay { display: none !important; } #jobpilotto-review-host { visibility: hidden !important; }';
+  style.textContent = 'input, textarea, select, option { color: transparent !important; text-shadow: none !important; -webkit-text-fill-color: transparent !important; caret-color: transparent !important; } input::placeholder, textarea::placeholder { color: transparent !important; } #jobadabra-fill-overlay { display: none !important; } #jobadabra-review-host { visibility: hidden !important; }';
   (document.head || document.documentElement).append(style);
   return true;
 }
 export function showValues() {
-  document.getElementById('jobpilotto-hide-values')?.remove();
+  document.getElementById('jobadabra-hide-values')?.remove();
   return true;
 }

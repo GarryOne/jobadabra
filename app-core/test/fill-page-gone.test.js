@@ -15,9 +15,9 @@ test('a page that goes away after the fill typed: every later page call is null,
     scripting: {executeScript: async ({func, args}) => {
       if (gone) return [{result: null}];   // the frame navigated: no page to run in
       if (!func) return [{}];
-      const window = {__jobPilottoDescribeForm: async () => FORM, __jobPilottoCheckboxQuestions: () => [], __jobPilottoPageText: () => '',
-        __jobPilottoProfileEntries: () => [{field: 'email'}], __jobPilottoArmedCount: () => 0,
-        __jobPilottoExtensionFill: () => { gone = true; return {filled: 2, todo: [], trace: []}; }};
+      const window = {__jobadabraDescribeForm: async () => FORM, __jobadabraCheckboxQuestions: () => [], __jobadabraPageText: () => '',
+        __jobadabraProfileEntries: () => [{field: 'email'}], __jobadabraArmedCount: () => 0,
+        __jobadabraExtensionFill: () => { gone = true; return {filled: 2, todo: [], trace: []}; }};
       globalThis.window = window;
       return [{result: await func(...(args || []))}];
     }},

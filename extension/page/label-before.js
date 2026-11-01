@@ -6,7 +6,7 @@
 // (aria-labelledby, aria-label) wins, else the NEAREST title before it that no other control owns (a <label for> of another box is that box's). One rule for every
 // reader that names a group: page/radios.js, page/controls.js, page/fill-labels.js, review.js. Guarded by app-core/test/label-before.test.js and the widget zoo.
 (() => {
-  if (window.__jobPilottoLabelBefore) return;
+  if (window.__jobadabraLabelBefore) return;
   const CONTROL = 'input:not([type=hidden]), select, textarea, button';
   const text = el => String(el.textContent || '').replace(/\s+/g, ' ').trim();
   const labelBefore = el => {
@@ -46,7 +46,7 @@
   };
   // The nearest title before el, a few boxes up: never inside el, never after it, never another control's label, never one with another control between it and el; when none
   // qualifies, the text right before el in its own row. -> the element, or null. selector: what counts as a title.
-  window.__jobPilottoTitleAbove = (el, selector = TITLE, levels = 5) => {
+  window.__jobadabraTitleAbove = (el, selector = TITLE, levels = 5) => {
     for (let up = el.parentElement, i = 0; up && i < levels; up = up.parentElement, i++) {
       const found = [...up.querySelectorAll(selector)].filter(item => !el.contains(item) && !item.contains(el) && text(item) && !othersLabel(item, el) && before(item, el));
       const nearest = found[found.length - 1];
@@ -56,19 +56,19 @@
   };
   // A group's own accessible name: the words of the elements its aria-labelledby names, else its aria-label. -> {text, el} or null.
   // Its words read as the panel reads a label: a required star and its spoken twin ("Required", "Pflichtfeld") left out (page/required-mark.js clean); the element keeps the mark.
-  const words = node => (window.__jobPilottoRequired?.clean ? text({textContent: window.__jobPilottoRequired.clean(node)}) : text(node));
-  window.__jobPilottoOwnName = group => {
+  const words = node => (window.__jobadabraRequired?.clean ? text({textContent: window.__jobadabraRequired.clean(node)}) : text(node));
+  window.__jobadabraOwnName = group => {
     const named = String(group.getAttribute?.('aria-labelledby') || '').split(/\s+/).map(id => id && document.getElementById(id)).filter(Boolean);
     const said = named.map(words).join(' ').trim();
     if (said) return {text: said, el: named[0]};
     const label = String(group.getAttribute?.('aria-label') || '').replace(/\s+/g, ' ').trim();
-    return label ? {text: window.__jobPilottoRequired?.clean ? window.__jobPilottoRequired.clean(label) : label, el: group} : null;
+    return label ? {text: window.__jobadabraRequired?.clean ? window.__jobadabraRequired.clean(label) : label, el: group} : null;
   };
   // A group's title: its own accessible name, else the nearest title before it. -> {text, el} or null (el: where a required mark would sit).
-  window.__jobPilottoGroupTitle = (group, selector = TITLE) => {
-    const own = window.__jobPilottoOwnName(group);
+  window.__jobadabraGroupTitle = (group, selector = TITLE) => {
+    const own = window.__jobadabraOwnName(group);
     if (own) return own;
-    const found = window.__jobPilottoTitleAbove(group, selector);
+    const found = window.__jobadabraTitleAbove(group, selector);
     return found ? {text: text(found), el: found} : null;
   };
   // A bare heading right above a control with no label of its own names it (17 Oct 2026, Breezy HR: <div><h3>Desired Salary</h3><select name=salaryCurrency><input name=cSalary></div>,
@@ -86,5 +86,5 @@
     }
     return '';
   };
-  window.__jobPilottoLabelBefore = el => labelBefore(el) || headingFor(el);   // the label right before the box, else the heading above its block
+  window.__jobadabraLabelBefore = el => labelBefore(el) || headingFor(el);   // the label right before the box, else the heading above its block
 })();

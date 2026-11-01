@@ -118,7 +118,7 @@ export function createBackgroundBrowser(storage, {find = findBackgroundBrowser, 
     const live = await connect();
     const worker = (await get(live.port, '/json/list')).find(target => target.type === 'service_worker' && target.url.endsWith('/background-owned.js'));
     if (!worker) return false;
-    const expression = `globalThis.__jobPilottoBackgroundSessions?.${action}(${JSON.stringify(session)})`;
+    const expression = `globalThis.__jobadabraBackgroundSessions?.${action}(${JSON.stringify(session)})`;
     const result = await command(worker.webSocketDebuggerUrl, 'Runtime.evaluate', {expression, awaitPromise: true, returnByValue: true});
     return result.result?.value === true;
   }

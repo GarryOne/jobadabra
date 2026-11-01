@@ -12,7 +12,7 @@ const skip = JSDOM ? false : 'jsdom is not installed here (run npm install in wo
 const stateOfFirst = (html, id = 'f') => {
   const window = openPage(JSDOM, html);
   for (const el of window.document.querySelectorAll('*')) el.getClientRects = () => [{width: 1, height: 1}];   // jsdom draws nothing: every element counts as shown
-  const state = window.__jobPilottoReadBack.stateOf(window.document.getElementById(id));
+  const state = window.__jobadabraReadBack.stateOf(window.document.getElementById(id));
   window.close();
   return state;
 };

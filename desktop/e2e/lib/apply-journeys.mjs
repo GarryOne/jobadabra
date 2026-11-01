@@ -42,7 +42,7 @@ export async function runJourneys(ctx, h) {
       const read = (await readForm(tab)).question_3001, value = String(read?.value ?? read ?? '');
       if (value !== '5') problems.push(`Kubernetes years "${value}", the kit says 5`);
     }
-    if (!(await tab.evaluate(() => !!document.getElementById('jobpilotto-review-host')).catch(() => false))) problems.push('no panel on the form once its fields came');
+    if (!(await tab.evaluate(() => !!document.getElementById('jobadabra-review-host')).catch(() => false))) problems.push('no panel on the form once its fields came');
     if (problems.length) {
       await dumpExtension(); // Why (30 Oct 2026, applyflows 40992748380): app-only screenshots did not show whether the form appeared or the tab navigated away.
       const evidence = await tab.evaluate(() => ({url: location.href, ready: document.readyState, loading: !!document.getElementById('loading'), form: !!document.getElementById('application_form'), controls: [...document.querySelectorAll('input,textarea,select')].map(el => ({id: el.id, type: el.type, visible: !!el.getClientRects().length}))})).catch(error => ({error: error.message}));
@@ -122,9 +122,9 @@ export async function runJourneys(ctx, h) {
     // The session is stuck on the sign-up page the refusal led to (a box only a person can tick): Claude is OFFERED there, never started (owner, 9 Oct 2026).
     // Read the open panel (extension/panel-claude.js). Readiness is masked by the takeover flag in the report (lib/claude-ready.js); no Claude session starts by itself.
     const panelTakeOver = async () => {
-      await tab.waitForFunction(() => { const root = document.getElementById('jobpilotto-review-host')?.shadowRoot, card = root?.querySelector('.card'); if (card?.hidden) root.querySelector('.pill')?.click();
+      await tab.waitForFunction(() => { const root = document.getElementById('jobadabra-review-host')?.shadowRoot, card = root?.querySelector('.card'); if (card?.hidden) root.querySelector('.pill')?.click();
         return !!card && !card.hidden; }, null, {timeout: 45000, polling: 250}).catch(() => {});
-      return tab.evaluate(() => { const root = document.getElementById('jobpilotto-review-host')?.shadowRoot, card = root?.querySelector('.card'), offer = root?.querySelector('.claude-offer');
+      return tab.evaluate(() => { const root = document.getElementById('jobadabra-review-host')?.shadowRoot, card = root?.querySelector('.card'), offer = root?.querySelector('.claude-offer');
         return {url: location.pathname, panel: !!card && !card.hidden, offered: !!card && !card.hidden && !!offer && !offer.hidden && [...offer.querySelectorAll('button')].some(button => /Let Claude finish this page/.test(button.textContent))}; }).catch(error => ({error: String(error.message).slice(0, 80)}));
     };
     const claudes = async () => (await page.evaluate(() => window.pilot.sessions())).filter(item => (item.kind || 'claude') === 'claude' && String(item.url || '').replace(/\/$/, '') === SIGNIN_REFUSED.url).length;

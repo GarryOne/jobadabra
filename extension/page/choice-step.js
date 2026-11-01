@@ -19,5 +19,5 @@
     return [...parents].filter(([group, buttons]) => buttons.length >= 2 && buttons.length <= 4 && optionsOf(group).length === buttons.length && !group.querySelector('[disabled], [aria-disabled=true]')
       && buttons.every(isVisible) && buttons.every(button => named(button))).map(([group]) => group);
   }
-  window.__jobPilottoChoiceStep = {groups, waiting, optionsOf};
+  window.__jobadabraChoiceStep = {groups, waiting, optionsOf};
 })();

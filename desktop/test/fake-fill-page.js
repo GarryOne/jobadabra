@@ -15,7 +15,7 @@ const PAGE_SCRIPTS = ['page/required-mark.js', 'page/categories.js', 'page/radio
 export function fakeFillPage(rows, {audit = null, checkboxes = false} = {}) {
   const elements = Object.fromEntries(rows.map(row => [row.field, {id: row.field, type: row.type, checked: false, dataset: {}, clicks: 0,
     getClientRects() { return [1]; }, click() { this.clicks++; this.checked = !this.checked; }, getAttribute: name => (checkboxes && name === 'aria-label' ? row.label : null), setAttribute() {}, removeAttribute() {}, addEventListener() {}, removeEventListener() {}, classList: {add() {}, remove() {}}, parentElement: null, tagName: row.type === 'textarea' ? 'TEXTAREA' : 'INPUT', closest: () => null, labels: [], value: row.value || ''}]));
-  const window = {__jobPilottoGuardActive: true};
+  const window = {__jobadabraGuardActive: true};
   const document = {head: {append() {}}, createElement: () => ({}), getElementById: id => elements[id] || null, querySelector: () => null, querySelectorAll: selector => (checkboxes && /type=checkbox/.test(selector) ? Object.values(elements).filter(el => el.type === 'checkbox') : []), body: {innerText: ''},
     documentElement: {className: ''}};
   const context = vm.createContext({window, document, getComputedStyle: () => ({}), setTimeout, clearTimeout, CSS: {escape: s => s}, console,
@@ -23,15 +23,15 @@ export function fakeFillPage(rows, {audit = null, checkboxes = false} = {}) {
   for (const file of PAGE_SCRIPTS) vm.runInContext(fs.readFileSync(new URL(`../../extension/${file}`, import.meta.url), 'utf8'), context);
   const armed = [];   // the menus the fill armed for a real click (page/fill-menus.js armCombo): [field, value]
   Object.assign(window, {
-    __jobPilottoDescribeForm: async () => rows.map(row => ({...row})),
-    __jobPilottoCheckboxQuestions: () => [],
-    __jobPilottoFillKnownFields: () => ({filled: []}),
-    __jobPilottoProfileEntries: () => [],
-    __jobPilottoArmCombo: (field, value) => armed.push([field, value]),
-    __jobPilottoUpload: {fill: async () => []},
-    __jobPilottoAuditVisibleFields: () => (audit || rows).map(row => ({...row, legal: !!row.legal || elements[row.field]?.dataset.jobpilottoCategory === 'legal'})),
+    __jobadabraDescribeForm: async () => rows.map(row => ({...row})),
+    __jobadabraCheckboxQuestions: () => [],
+    __jobadabraFillKnownFields: () => ({filled: []}),
+    __jobadabraProfileEntries: () => [],
+    __jobadabraArmCombo: (field, value) => armed.push([field, value]),
+    __jobadabraUpload: {fill: async () => []},
+    __jobadabraAuditVisibleFields: () => (audit || rows).map(row => ({...row, legal: !!row.legal || elements[row.field]?.dataset.jobadabraCategory === 'legal'})),
   });
   // The fill as flow.js starts it: answers [{field, value, category?, use?}] -> its summary {trace, todo, ...}. A thrown error is the test's failure.
-  const fill = (answers, {profile = {}, resume = null, letter = '', consents = false} = {}) => window.__jobPilottoExtensionFill(answers, profile, resume, letter, consents);
+  const fill = (answers, {profile = {}, resume = null, letter = '', consents = false} = {}) => window.__jobadabraExtensionFill(answers, profile, resume, letter, consents);
   return {window, elements, armed, fill};
 }

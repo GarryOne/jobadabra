@@ -46,7 +46,7 @@ export const setReporter = fn => { reporter = fn; };
 const stateListeners = [];   // more readers of each new form state (lib/menu-rearm.js), beside the window's reporter
 export const onState = fn => { stateListeners.push(fn); };
 
-// The session a form page belongs to, and how that was decided: 'session' (the tab carries its session id: in its own address, #jobpilotto-fill=<id>, or
+// The session a form page belongs to, and how that was decided: 'session' (the tab carries its session id: in its own address, #jobadabra-fill=<id>, or
 // stored on it by the extension), else 'job' (the page says which posting its tab was opened for: an exact match of that address). Nothing else: no score,
 // no company or title, no "the one free session" (owner, 12 Oct 2026; spec 2026-10-12-tab-owned.md). A page that carries a session that is gone
 // (cancelled, started again under a new id) is 'gone': its job may find the new one, never a guess.

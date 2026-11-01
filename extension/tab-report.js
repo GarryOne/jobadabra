@@ -65,7 +65,7 @@ export function createTabReport(ctx) {
         .map(([key, id]) => [key.slice(8), String(id)]));
       const running = await runningVersion();
       // Why (#2536): the launcher sets this marker on its owned copy; the app's Chrome version notes must never use that copy's check-in.
-      const owned = globalThis.__jobPilottoBackgroundOwned === true;
+      const owned = globalThis.__jobadabraBackgroundOwned === true;
       const answer = await api(config, '/extension/tabs', {method: 'POST', body: JSON.stringify({urls, ids, boot, browser, worker: WORKER, reading, sessions, version: running, owned})});
       connected(true);
       await pollBackgroundApply(config);
@@ -85,7 +85,7 @@ export function createTabReport(ctx) {
       // report after the last one ends does it.
       // Why (2026-10-28, e2e proof of Background automation): the hidden browser's copy never reloads (extension/self-reload.js): Chrome disables a reloaded unpacked extension there.
       const {reloadedFor} = await chrome.storage.local.get('reloadedFor');
-      if (mayReloadSelf({latest: answer?.latest, running, reloadedFor, busy: readingNow() || fillsNow.size > 0, owned: globalThis.__jobPilottoBackgroundOwned === true, newer})) {
+      if (mayReloadSelf({latest: answer?.latest, running, reloadedFor, busy: readingNow() || fillsNow.size > 0, owned: globalThis.__jobadabraBackgroundOwned === true, newer})) {
         await chrome.storage.local.set({reloadedFor: answer.latest});
         await keepMemory().catch(() => {});   // the newest copy of the tabs' memory: the tabs outlive the reload (extension/tab-memory.js)
         await decide('worker', `reloading for version ${answer.latest}`);
@@ -100,7 +100,7 @@ export function createTabReport(ctx) {
   chrome.runtime.onMessage.addListener((message, sender, reply) => {
     if (message?.type === 'panelBuild' && sender.tab) { chrome.storage.local.get('appBuild').then(({appBuild}) => reply(appBuild || null), () => reply(null)); return true; }
     if (message?.type === 'panelReload' && sender.tab) {
-      if (!mayReloadSelf({panel: true, owned: globalThis.__jobPilottoBackgroundOwned === true})) { reply({ok: false}); return false; }   // the hidden browser's copy never reloads (extension/self-reload.js)
+      if (!mayReloadSelf({panel: true, owned: globalThis.__jobadabraBackgroundOwned === true})) { reply({ok: false}); return false; }   // the hidden browser's copy never reloads (extension/self-reload.js)
       keepMemory().catch(() => {}).then(() => { reply({ok: true}); chrome.runtime.reload(); }); return true; }
     return undefined;
   });
@@ -139,7 +139,7 @@ export function createTabReport(ctx) {
     for (const key of Object.keys(stored).filter(name => name.startsWith('armed:') && stored[name])) {
       const tab = await chrome.tabs.get(Number(key.slice(6))).catch(() => null);
       if (!tab || tab.status !== 'complete' || !/^https:/.test(tab.url || '') || neverForm(tab.url) || started.has(tab.id) || started.has(fillKey(tab.id, tab.url))) continue;
-      const [row] = await chrome.scripting.executeScript({target: {tabId: tab.id}, func: () => document.documentElement?.dataset.jobpilottoFill || document.documentElement?.dataset.jobpilottoFillId || ''}).catch(() => []);
+      const [row] = await chrome.scripting.executeScript({target: {tabId: tab.id}, func: () => document.documentElement?.dataset.jobadabraFill || document.documentElement?.dataset.jobadabraFillId || ''}).catch(() => []);
       if (!row || row.result) continue;   // unreadable, or it already has a state
       let host = '';
       try { host = new URL(tab.url).hostname; } catch { /* not a url */ }

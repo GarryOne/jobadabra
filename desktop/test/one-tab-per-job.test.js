@@ -38,7 +38,7 @@ for (const [name, press] of Object.entries(openers)) {
     await press(h, id);
     assert.equal(h.opened.length, 1, 'no second browser tab');
     assert.deepEqual(h.focused, [id], 'the open tab comes to the front');
-    const due = review.report([{id, url: JOB, kind: 'form'}], {url: JOB + '#jobpilotto-fill=' + id, session: id, tab: 5, boot: 'b1', total: 9, left: 0}).commands;
+    const due = review.report([{id, url: JOB, kind: 'form'}], {url: JOB + '#jobadabra-fill=' + id, session: id, tab: 5, boot: 'b1', total: 9, left: 0}).commands;
     assert.ok(due.some(command => command.reload), 'the open tab is told to reload, so its mark starts the fill again');
   });
   test(`${name}: with no open tab the press opens one`, async () => {

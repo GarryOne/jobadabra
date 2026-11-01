@@ -62,7 +62,7 @@ test('an apply tab on a site not allowed yet opens the Allow page and tells the 
   const run = await startRealExtension({extensionDir});
   try {
     const opened = run.context.waitForEvent('page', {predicate: page => /allow\.html$/.test(page.url()), timeout: 30000}).catch(() => null);
-    await run.page.goto(`${NOT_ALLOWED}#jobpilotto-fill`, {waitUntil: 'domcontentloaded'});
+    await run.page.goto(`${NOT_ALLOWED}#jobadabra-fill`, {waitUntil: 'domcontentloaded'});
     const allow = await opened;
     assert.ok(allow, 'the extension opened its Allow page beside the tab');
     assert.ok(await waitUntil(() => run.told('waits for Allow'), 30), 'the app log hears that the tab waits for Allow, and on which host');
@@ -95,7 +95,7 @@ test('a cookie dialog over an application page is closed by the extension', {ski
   const run = await startRealExtension({extensionDir, allowAllSites: true});
   try {
     await serve(run, `<body><h1>Application</h1>${CHOICE_STEP.replace('<body>', '')}${COOKIE_DIALOG}`);
-    await run.page.goto(`${DELOITTE}#jobpilotto-fill`, {waitUntil: 'domcontentloaded'});
+    await run.page.goto(`${DELOITTE}#jobadabra-fill`, {waitUntil: 'domcontentloaded'});
     const dialog = run.page.locator('#cookie-dialog');
     await dialog.waitFor({timeout: 30000});
     assert.ok(await waitUntil(async () => !(await dialog.isVisible().catch(() => false)), 60), 'the cookie dialog is gone');
@@ -111,7 +111,7 @@ test('a choice step that reveals its own file input: the CV is attached, the pas
   const run = await startRealExtension({extensionDir, cv: true, allowAllSites: true, answer: {'/extension/page-kind': () => ({ok: true, kind: 'posting', role: 'no-form', by: 'ai', confidence: 0.98, applyButton: 'upload cv'})}});
   try {
     await serve(run, CHOICE_STEP);
-    await run.page.goto(`${DELOITTE}#jobpilotto-fill`, {waitUntil: 'domcontentloaded'});
+    await run.page.goto(`${DELOITTE}#jobadabra-fill`, {waitUntil: 'domcontentloaded'});
     const attached = () => run.page.evaluate(() => document.getElementById('resumeFile')?.files.length || 0).catch(() => 0);
     assert.ok(await waitUntil(async () => (await attached()) === 1, 60), 'the CV is in the page\'s file input');
     assert.equal(await run.page.evaluate(() => !!document.getElementById('resumePaste')?.getClientRects().length), false, 'the paste box was not opened');
@@ -133,7 +133,7 @@ test('Apply on this page refills a tab the app opened, a reload refills, any oth
     await run.page.bringToFront();
     const attached = () => run.page.evaluate(() => document.getElementById('resumeFile')?.files.length || 0).catch(() => -1);
     const ask = (address) => popup.evaluate(async url => { const [tab] = await chrome.tabs.query({url}); return chrome.runtime.sendMessage({type: 'applyHere', tabId: tab.id}); }, address);
-    await run.page.goto(`${DELOITTE}#jobpilotto-fill`, {waitUntil: 'domcontentloaded'});
+    await run.page.goto(`${DELOITTE}#jobadabra-fill`, {waitUntil: 'domcontentloaded'});
     assert.ok(await waitUntil(async () => (await attached()) === 1, 60), 'the first fill attaches the CV');
     await run.page.evaluate(() => { document.getElementById('resumeFile').value = ''; });   // the person emptied it (or the page lost it): nothing is attached any more
     assert.equal(await attached(), 0, 'the input is empty');
@@ -154,18 +154,18 @@ test('Apply on this page refills a tab the app opened, a reload refills, any oth
 const STUCK_PAGE = '<body><h1>Create your account</h1><form><label>Name <input id="n" required></label><label>Email <input id="e" type="email" required></label><label>Country <input id="c" required></label><label>City <input id="t" required></label></form></body>';
 const takeOvers = run => run.requests.filter(request => request.route === '/extension/event' && request.body.includes('"take-over"')).map(request => JSON.parse(request.body));
 const offerOf = run => run.page.evaluate(() => {
-  const root = document.getElementById('jobpilotto-review-host')?.shadowRoot, box = root?.querySelector('.claude-offer');
+  const root = document.getElementById('jobadabra-review-host')?.shadowRoot, box = root?.querySelector('.claude-offer');
   if (root?.querySelector('.card')?.hidden) root.querySelector('.pill')?.click();
   return {shown: !!box && !box.hidden, text: (box?.textContent || '').replace(/\s+/g, ' ').trim(), buttons: [...(box?.querySelectorAll('button') || [])].map(button => button.textContent.trim())};
 });
-const pressInOffer = (run, name) => run.page.evaluate(label => [...document.getElementById('jobpilotto-review-host').shadowRoot.querySelectorAll('.claude-offer button')].find(button => button.textContent.trim() === label)?.click(), name);
+const pressInOffer = (run, name) => run.page.evaluate(label => [...document.getElementById('jobadabra-review-host').shadowRoot.querySelectorAll('.claude-offer button')].find(button => button.textContent.trim() === label)?.click(), name);
 
 test('a stuck page: the offer, the consent line on the first press, the countdown with Cancel for "always", and what is needed when Claude is not ready', {skip}, async () => {
   const facts = {claudeHelp: true, claudeAlways: false, claudeAuto: false, claudeConsent: false};
   const run = await startRealExtension({extensionDir, allowAllSites: true, answer: {'/extension/review': () => ({matched: 's1', session: {id: 's1', stuck: 'account', live: false, status: '', kind: 'form', url: DELOITTE}, ...facts})}});
   try {
     await serve(run, STUCK_PAGE);
-    const open = async () => { await run.page.goto('about:blank'); await run.page.goto(`${DELOITTE}#jobpilotto-fill`, {waitUntil: 'domcontentloaded'}); };   // a new document each time (the same address + fragment would not reload)
+    const open = async () => { await run.page.goto('about:blank'); await run.page.goto(`${DELOITTE}#jobadabra-fill`, {waitUntil: 'domcontentloaded'}); };   // a new document each time (the same address + fragment would not reload)
     // 1. offer: three choices, nothing started
     await open();
     assert.ok(await waitUntil(async () => (await offerOf(run)).buttons.includes('Let Claude finish this page'), 40), 'the stuck page offers "Let Claude finish this page"');
@@ -211,7 +211,7 @@ test('the page sketch the extension sends has exactly the fields the app forward
   const run = await startRealExtension({extensionDir, cv: false, allowAllSites: true, answer: {'/extension/page-kind': () => ({ok: true, kind: 'other', role: 'no-form', by: 'ai', confidence: 0.9})}});
   try {
     await serve(run, '<body><h1>Engineer</h1><main><p>Please send your application to jobs@example.com</p></main></body>');
-    await run.page.goto(`${DELOITTE}#jobpilotto-fill`, {waitUntil: 'domcontentloaded'});
+    await run.page.goto(`${DELOITTE}#jobadabra-fill`, {waitUntil: 'domcontentloaded'});
     const sent = () => run.requests.filter(request => request.route === '/extension/page-kind' && !JSON.parse(request.body || '{}').forget).map(request => JSON.parse(request.body));
     assert.ok(await waitUntil(async () => sent().length > 0, 40), 'the extension asks the app what kind of page this is');
     const keys = Object.keys(sent()[0]).filter(name => name !== 'fresh').sort();

@@ -29,7 +29,7 @@ test('only a real browser counts its visits in the site ledger', async () => {
 // app's first form; the form loaded in another tab (319271653, opened from the first) and the test watched the first pick for 90 s ("state: null").
 test('the form tab is the one that shows the form\'s address, not the harness\'s first pick', () => {
   const page = url => ({url: () => url, isClosed: () => false});
-  const url = 'https://boards.greenhouse.io/e2e/jobs/4001001#jobpilotto-fill=2ce1ef73';
+  const url = 'https://boards.greenhouse.io/e2e/jobs/4001001#jobadabra-fill=2ce1ef73';
   const picked = page('about:blank'), real = page(url);
   const browser = {pages: {[url]: picked}, context: {pages: () => [picked, real]}};
   assert.equal(formTab(browser, url), real);
@@ -45,7 +45,7 @@ test('the form tab is the one that shows the form\'s address, not the harness\'s
 test('a fill state that cannot be read says so and what it saw, never a bare null', async () => {
   const {fillState} = await import('../../lib/extension.mjs');
   const pageWith = attribute => ({evaluate: async fn => {
-    globalThis.document = {URL: 'https://e2e.wd3.myworkdayjobs.com/en-US/E2E/job/Zurich/x/apply#jobpilotto-fill=0a089404', documentElement: {dataset: attribute === undefined ? {} : {jobpilottoFill: attribute}}};
+    globalThis.document = {URL: 'https://e2e.wd3.myworkdayjobs.com/en-US/E2E/job/Zurich/x/apply#jobadabra-fill=0a089404', documentElement: {dataset: attribute === undefined ? {} : {jobadabraFill: attribute}}};
     try { return await fn(); } finally { delete globalThis.document; }
   }});
   try {
@@ -55,7 +55,7 @@ test('a fill state that cannot be read says so and what it saw, never a bare nul
     assert.equal(card.state, 'unreadable', 'the card id the fill leaves on the page is not a state');
     assert.equal(card.raw, '3f2a9c1e-7b64-4d0a-9a53-0c1d2e3f4a5b', 'what the page held');
     assert.equal(card.at, 'https://e2e.wd3.myworkdayjobs.com/en-US/E2E/job/Zurich/x/apply', 'on which address, without the mark');
-    const gone = await fillState({evaluate: async () => { throw new Error('page.evaluate: Target page, context or browser has been closed\n at ...'); }, url: () => 'https://e2e.wd3.myworkdayjobs.com/x#jobpilotto-fill=1', isClosed: () => true});
+    const gone = await fillState({evaluate: async () => { throw new Error('page.evaluate: Target page, context or browser has been closed\n at ...'); }, url: () => 'https://e2e.wd3.myworkdayjobs.com/x#jobadabra-fill=1', isClosed: () => true});
     assert.deepEqual(gone, {state: 'unreadable', error: 'page.evaluate: Target page, context or browser has been closed', at: 'https://e2e.wd3.myworkdayjobs.com/x', closed: true}, 'a read that threw');
   } finally { delete globalThis.document; }
 });
@@ -79,7 +79,7 @@ test('a known closed tab is a reported failure, not a wait that can still finish
 // Beta 41250138244 (31 Oct 2026), Windows apply-1of3, Edge, "a Workday-shaped form": "read on about:blank, 1 tab(s)". The watcher gave the form the blank tab it found, the extension's install then took a
 // tab for its settings page, and the form's navigation was lost (its error was swallowed). These tests play that order with a fake browser: no real browser, no clock.
 const SETTINGS = 'chrome-extension://abcdefghijklmnop/options.html';
-const FORM = 'https://e2e.wd3.myworkdayjobs.com/en-US/E2E/job/Zurich/x/apply#jobpilotto-fill=0a089404';
+const FORM = 'https://e2e.wd3.myworkdayjobs.com/en-US/E2E/job/Zurich/x/apply#jobadabra-fill=0a089404';
 
 // A browser context as Playwright shows it: pages(), newPage(), 'page' events; a page navigates by goto (the harness) or navigate (the browser itself, as the install does).
 function fakeContext({gotoFails = null} = {}) {
@@ -188,7 +188,7 @@ test('a navigation the browser refused is an error with the tab\'s trail, not a 
     await assert.rejects(tabs.loaded(FORM), error => {
       assert.match(error.message, /the browser could not open https:\/\/e2e\.wd3\.myworkdayjobs\.com\/en-US\/E2E\/job\/Zurich\/x\/apply in its own tab: page\.goto: net::ERR_ABORTED/);
       assert.match(error.message, /tab \d: tab \d \+\d+ ms open about:blank/);
-      assert.doesNotMatch(error.message, /jobpilotto-fill/, 'the fill mark is not part of the trail');
+      assert.doesNotMatch(error.message, /jobadabra-fill/, 'the fill mark is not part of the trail');
       return true;
     });
     assert.equal(tabs.trail.errors.length, 1);

@@ -1,15 +1,15 @@
 // Draw the form panel's review card, progress pill and actions without owning application state.
 (() => {
   // Create drawing helpers bound to this panel's root and existing field actions.
-  window.__jobPilottoPanelView = ({$, jp, night, MARK_WORDS, KNOCKOUT, AGREE, flash, written, stoppedCard, send}) => {
+  window.__jobadabraPanelView = ({$, jp, night, MARK_WORDS, KNOCKOUT, AGREE, flash, written, stoppedCard, send}) => {
     // Return the ready wording for the page's current account or person-needed state.
     function readyLabel(needsYou, account) {
-      return needsYou ? `Needs you: ${needsYou.replace(/^1$/, 'see what the page asks')}` : account ? (document.documentElement.getAttribute('data-jobpilotto-account-step') === 'sign_up' ? 'Ready to create the account' : document.documentElement.getAttribute('data-jobpilotto-account-step') === 'sign_in' ? 'Ready to sign in' : 'Ready to continue') : 'Ready to submit';   // the AI's veto (account-step.js, form-ready.js): a consent link or a widget the count cannot see
+      return needsYou ? `Needs you: ${needsYou.replace(/^1$/, 'see what the page asks')}` : account ? (document.documentElement.getAttribute('data-jobadabra-account-step') === 'sign_up' ? 'Ready to create the account' : document.documentElement.getAttribute('data-jobadabra-account-step') === 'sign_in' ? 'Ready to sign in' : 'Ready to continue') : 'Ready to submit';   // the AI's veto (account-step.js, form-ready.js): a consent link or a widget the count cannot see
     }
 
     // Return the review instruction for a ready form or account step.
     function reviewWords(account) {
-      return (account ? (document.documentElement.getAttribute('data-jobpilotto-account-step') === 'sign_up' ? 'Review, then create it' : document.documentElement.getAttribute('data-jobpilotto-account-step') === 'sign_in' ? 'Review, then sign in' : 'Review, then continue') : 'Review, then submit');
+      return (account ? (document.documentElement.getAttribute('data-jobadabra-account-step') === 'sign_up' ? 'Review, then create it' : document.documentElement.getAttribute('data-jobadabra-account-step') === 'sign_in' ? 'Review, then sign in' : 'Review, then continue') : 'Review, then submit');
     }
 
     // Return the pill's primary line, keeping moved and page-mark states ahead of counts.
@@ -158,7 +158,7 @@
     function renderActions({session, connection, claudeAsk, needsYou, handed, stopped, needs}) {
       // actions + connection
       $('.open-app').hidden = !session;
-      window.__jobPilottoClaude?.render({on: !!connection?.connected && !!connection.app && !!claudeAsk.help, stuck: !needsYou && handed && !stopped, always: !!claudeAsk.always, auto: !!claudeAsk.auto, consent: !!claudeAsk.consent, takeover: claudeAsk.takeover !== false, report: !!window.__jobPilottoReportOn, needs});   // offered, never automatic unless "always" (panel-claude.js)
+      window.__jobadabraClaude?.render({on: !!connection?.connected && !!connection.app && !!claudeAsk.help, stuck: !needsYou && handed && !stopped, always: !!claudeAsk.always, auto: !!claudeAsk.auto, consent: !!claudeAsk.consent, takeover: claudeAsk.takeover !== false, report: !!window.__jobadabraReportOn, needs});   // offered, never automatic unless "always" (panel-claude.js)
     }
 
     return {drawPill, renderHeader, renderProgress, renderFill, renderRemaining, renderActions, renderFooter};

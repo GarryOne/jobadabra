@@ -13,7 +13,7 @@ const FORM = `<form>
 
 test('a required password box is left by the rule, never typed, and its record names the rule', { skip: !JSDOM }, async () => {
   const window = openPage(JSDOM, FORM);
-  const summary = await window.__jobPilottoExtensionFill([], { email: 'ada.tester@example.test' }, null, '', false);
+  const summary = await window.__jobadabraExtensionFill([], { email: 'ada.tester@example.test' }, null, '', false);
   const rows = Array.from(summary.trace).filter(row => /password/i.test(row.label)).map(row => [row.label, row.outcome, row.reason]);
   const typed = ['pw', 'pw2'].map(id => window.document.getElementById(id).value);
   window.close();

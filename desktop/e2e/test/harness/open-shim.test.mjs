@@ -9,7 +9,7 @@ import {browserCommand} from '../../../lib/browser-launch.js';
 import path from 'node:path';
 import {makeOpenShim, opensIntoSpool} from '../../lib/extension.mjs';
 
-const URL = 'https://boards.greenhouse.io/e2e/jobs/4001001#jobpilotto-fill=abc';
+const URL = 'https://boards.greenhouse.io/e2e/jobs/4001001#jobadabra-fill=abc';
 const recorded = spool => fs.readdirSync(spool).filter(name => name.endsWith('.url')).map(name => fs.readFileSync(`${spool}/${name}`, 'utf8'));
 // A browser with a last-used profile: the launch names it after the URL.
 const withProfile = () => {

@@ -178,8 +178,8 @@ export async function runApply(ctx, parts) {
   }
   // The panel opens by itself while a fill runs; open it only when it is closed (a click on the pill toggles).
   const panelOf = async tab => {
-    const closed = await tab.evaluate(() => document.getElementById('jobpilotto-review-host')?.shadowRoot?.querySelector('.card')?.hidden);
-    if (closed) await tab.locator('#jobpilotto-review-host .pill').click({timeout: 15000});
+    const closed = await tab.evaluate(() => document.getElementById('jobadabra-review-host')?.shadowRoot?.querySelector('.card')?.hidden);
+    if (closed) await tab.locator('#jobadabra-review-host .pill').click({timeout: 15000});
     const result = await waitForFill({pickTab: () => ({tab, tabs: ctx.browser.context.pages().length}), readState: readPanel, accept: panel => !!panel?.progress});
     if (!result.ok) throw new Error(`the form panel did not become readable within ${Math.round(result.ms / 1000)} s (last read: ${JSON.stringify(result.state)})`);
     return result.state;
@@ -228,7 +228,7 @@ export async function runApply(ctx, parts) {
     await tab.click('#next_step');   // the person goes on to step 2 (never Submit)
     const panel = await panelOf(tab);
     if (!panel) throw new Error('no Jobadabra panel on the form');
-    await tab.locator('#jobpilotto-review-host .fill').click({timeout: 15000});
+    await tab.locator('#jobadabra-review-host .fill').click({timeout: 15000});
     await tab.waitForFunction(() => document.getElementById('salary')?.value, null, {timeout: 60000}).catch(() => { throw new Error('"Fill again" did not fill step 2 (salary stayed empty)'); });
     // The consent boxes are ticked at the end of the fill, after the answers: the salary showing is not the end of it.
     await tab.waitForFunction(ids => ids.every(id => document.getElementById(id)?.checked), form.consent, {timeout: 15000}).catch(() => { throw new Error('"Fill again" did not tick the fixture consent boxes within 15 s'); });

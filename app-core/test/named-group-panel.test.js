@@ -18,13 +18,13 @@ test('a required group named by aria-labelledby, read by the fill, is counted as
   for (const chip of window.document.querySelectorAll('.chip')) chip.addEventListener('click', () => chip.classList.toggle('is-on'));
   window.chrome = { runtime: { id: 'test', getManifest: () => ({ version: 'test' }), sendMessage: async (message) => (message.type === 'panelAllowed' ? { ok: true } : {}), onMessage: { addListener() {} } } };
   window.eval(read('extension/page/skeleton.js'));
-  window.document.documentElement.setAttribute('data-jobpilotto-page', 'form');
-  const field = (await window.__jobPilottoDescribeForm()).find((row) => row.label === 'Work model').field;
+  window.document.documentElement.setAttribute('data-jobadabra-page', 'form');
+  const field = (await window.__jobadabraDescribeForm()).find((row) => row.label === 'Work model').field;
   evalPanel(window);
   await new Promise((resolve) => setTimeout(resolve, 50));
-  const pill = () => window.document.getElementById('jobpilotto-review-host')?.shadowRoot?.querySelector('.pill b')?.textContent;
+  const pill = () => window.document.getElementById('jobadabra-review-host')?.shadowRoot?.querySelector('.pill b')?.textContent;
   try { assert.equal(pill(), '1 left'); } catch (error) { window.close(); throw error; }
-  await window.__jobPilottoExtensionFill([{ field, value: 'Remote', source: 'kit' }], {}, null, '', false);
+  await window.__jobadabraExtensionFill([{ field, value: 'Remote', source: 'kit' }], {}, null, '', false);
   await new Promise((resolve) => setTimeout(resolve, 3500));
   assert.notEqual(pill(), '1 left');
   window.close();

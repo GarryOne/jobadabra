@@ -126,8 +126,8 @@ test('the class: every report entry point hands the trace over; nothing reloads 
     assert.ok(!/Page\.reload|chrome\.tabs\.reload|location\.reload|report-start|report-stop|moveTab/.test(code(file).split('\n').filter(line => !/^\s*\/\//.test(line)).join('\n').replace(/\s\/\/ .*$/gm, '')), `${file} reloads or records again`);
   }
   assert.equal((code('extension/messages-report.js').match(/'report-send'/g) || []).length >= 1, true);
-  assert.match(code('extension/review.js'), /__jobPilottoReport\.open\(\)/, 'the footer\'s Report opens the one popup');
-  assert.doesNotMatch(code('extension/panel-claude.js'), /jobpilotto-report-open/, 'the stuck card has no second Report button (owner, 19 Oct 2026: one Report on the panel)');
+  assert.match(code('extension/review.js'), /__jobadabraReport\.open\(\)/, 'the footer\'s Report opens the one popup');
+  assert.doesNotMatch(code('extension/panel-claude.js'), /jobadabra-report-open/, 'the stuck card has no second Report button (owner, 19 Oct 2026: one Report on the panel)');
   assert.deepEqual([...new Set(code('extension/panel-report.js').match(/type: 'report-[a-z]+'/g))].sort(), ["type: 'report-cancel'", "type: 'report-confirm'", "type: 'report-send'", "type: 'report-state'"], 'the panel sends only these four');
   // one debugger owner: no other file attaches or detaches (stop.js only detaches everything when Stop is pressed)
   const {readdirSync} = fs, walk = dir => readdirSync(new URL(`../../${dir}`, import.meta.url), {withFileTypes: true}).flatMap(entry => (entry.isDirectory() ? walk(`${dir}/${entry.name}`) : [`${dir}/${entry.name}`]));

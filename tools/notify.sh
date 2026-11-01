@@ -54,7 +54,7 @@ esac
 
 notifier="$(command -v terminal-notifier || true)"
 if [ -n "$notifier" ]; then
-  args=(-title "Jobadabra" -subtitle "$board job $id" -message "$message" -sound Glass -group "jobpilotto-$id")
+  args=(-title "Jobadabra" -subtitle "$board job $id" -message "$message" -sound Glass -group "jobadabra-$id")
   [ -n "$tty" ] && args+=(-execute "'$here/focus-terminal.sh' '$tty'")
   # Fails (exit 3) when macOS hasn't allowed terminal-notifier's notifications: fall back below.
   "$notifier" "${args[@]}" >/dev/null 2>&1 && exit 0

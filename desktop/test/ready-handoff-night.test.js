@@ -16,7 +16,7 @@ const HANDOFF = {url: PAGE, storage: {cookies: [], origins: []}, sessionStorage:
 test('the night\'s answers stay in the app; the tab only learns the night filled it', () => {
   clear();
   assert.equal(keep(HANDOFF, ['https://boards.example.com/acme/jobs/1?src=x']), true);
-  const given = take(`${PAGE}#jobpilotto-fill=s1`);
+  const given = take(`${PAGE}#jobadabra-fill=s1`);
   assert.equal(given.fromNight, true);
   assert.ok(!JSON.stringify(given).includes('Because'), 'no answer goes to the tab');
   assert.equal(nightKind(PAGE), 'form', 'kept after the one take: the fill asks after the tab loaded');
@@ -48,7 +48,7 @@ test('the app\'s page kind for the night\'s page: form at once, no AI; a fresh r
   const storage = {path: name => path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'jp-night-kind-')), name)};
   let asked = 0;
   const decide = async () => { asked++; return {kind: 'posting', role: 'no-form', confidence: 0.9, by: 'ai', rung: 2}; };
-  const answer = await decidePageKind(storage, {url: `${PAGE}#jobpilotto-fill=s1`, controls: []}, {decide, client: null});
+  const answer = await decidePageKind(storage, {url: `${PAGE}#jobadabra-fill=s1`, controls: []}, {decide, client: null});
   assert.equal(answer.role, 'form'); assert.equal(answer.by, 'night'); assert.equal(asked, 0, 'no AI');
   await decidePageKind(storage, {url: PAGE, controls: [], fresh: true}, {decide, client: null});
   assert.equal(asked, 1, 'a fresh read (the page still drawing) is the AI\'s');
@@ -60,7 +60,7 @@ test('the night\'s stand-in keeps each answer it gave with its question, never a
   const standIn = await createStandIn({jobs: [{id: 'j1', url: PAGE, kit: {}}]}, {answer});
   try {
     const post = body => fetch(`http://127.0.0.1:${standIn.port}/extension/answer`, {method: 'POST', body: JSON.stringify(body)}).then(r => r.json());
-    await post({url: `${PAGE}#jobpilotto-fill=n`, fields: [{field: 'q_why', label: 'Why us?'}, {field: 'q_skip', label: 'Optional'}]});
+    await post({url: `${PAGE}#jobadabra-fill=n`, fields: [{field: 'q_why', label: 'Why us?'}, {field: 'q_skip', label: 'Optional'}]});
     assert.deepEqual(standIn.said(PAGE), [{field: 'q_why', label: 'Why us?', answer: {field: 'q_why', value: 'Because'}}], 'an empty answer and one for a question not asked are not kept');
     standIn.reset(PAGE);
     assert.deepEqual(standIn.said(PAGE), []);

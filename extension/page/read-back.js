@@ -5,14 +5,14 @@
 // stateOf(el) -> committed (holds a value: the one the fill typed, when it typed one) | mismatch (the fill typed, the box holds something else) | empty | unknown (only the extension's
 // own mark says a file went in: the slot shows no file). An upload slot is read by what it shows: the file in its input, or a file name shown in the slot's own area (a custom uploader
 // clears input.files and shows the file as a chip), never by the extension's mark alone. pass() is the fill's end read once the page settled: it writes each state on its control
-// (data-jobpilotto-r0; unreachable when a dialog or a big fixed layer is drawn at the control's centre) and returns the states. Values never leave the page. Guard: app-core/test/read-back.test.js.
+// (data-jobadabra-r0; unreachable when a dialog or a big fixed layer is drawn at the control's centre) and returns the states. Values never leave the page. Guard: app-core/test/read-back.test.js.
 (() => {
-  if (window.__jobPilottoReadBack) return;
+  if (window.__jobadabraReadBack) return;
   const visible = el => !!(el.getClientRects().length && getComputedStyle(el).visibility !== 'hidden');
   const textOf = el => el?.innerText ?? el?.textContent ?? '';
   // aria-hidden marks a helper input (react-select's "required" input) that is no field; a select that still holds choices is the field a menu library hides beside its own box (Select2).
   const hiddenAway = el => el.getAttribute('aria-hidden') === 'true' && !(el.tagName === 'SELECT' && el.options.length > 1);
-  const own = el => !!el.closest?.('[id^=jobpilotto], [id^=jobadabra]');   // the extension's own panel
+  const own = el => !!el.closest?.('[id^=jobadabra], [id^=jobadabra]');   // the extension's own panel
   // A file name: a stem that starts with a letter or digit, then its extension ("cv.pdf"); a format hint ("(.pdf, .docx, max 5 MB)") holds no name.
   const FILE_NAMES = /[\p{L}\p{N}][^\s\\/]*\.(?:pdf|docx?|rtf|txt|odt)\b/giu;
   const namesIn = text => [...new Set(String(text || '').match(FILE_NAMES) || [])];
@@ -62,7 +62,7 @@
     return null;
   };
   // The file this extension attached to a slot (page/upload.js marks the input and the slot with its name), if any.
-  const ours = input => input.dataset?.jobPilottoFile || input.closest?.('[data-jobpilotto-file]')?.dataset.jobpilottoFile || '';
+  const ours = input => input.dataset?.jobadabraFile || input.closest?.('[data-jobadabra-file]')?.dataset.jobadabraFile || '';
   // What an upload slot shows: its area up from the input while no other visible control lives there (at most 10 boxes), and the slot this extension marked when it attached.
   const slotText = input => {
     let box = input;
@@ -71,13 +71,13 @@
       if ([...up.querySelectorAll('input, textarea, select')].some(other => other !== input && other.type !== 'file' && other.type !== 'hidden' && visible(other))) break;
       box = up;
     }
-    const marked = input.closest?.('[data-jobpilotto-file]');
+    const marked = input.closest?.('[data-jobadabra-file]');
     return `${textOf(box)} ${marked && !box.contains(marked) ? textOf(marked) : ''}`;
   };
   // The file names the slot showed at first sight, kept on its input: written by the first reader in either world, and by page/upload.js before it attaches anything.
   const baseline = input => {
-    if (!input.hasAttribute('data-jobpilotto-names-first')) input.setAttribute('data-jobpilotto-names-first', JSON.stringify(namesIn(slotText(input)).slice(0, 8)));
-    try { return JSON.parse(input.getAttribute('data-jobpilotto-names-first')) || []; } catch { return []; }
+    if (!input.hasAttribute('data-jobadabra-names-first')) input.setAttribute('data-jobadabra-names-first', JSON.stringify(namesIn(slotText(input)).slice(0, 8)));
+    try { return JSON.parse(input.getAttribute('data-jobadabra-names-first')) || []; } catch { return []; }
   };
   // committed: the input holds a file, or the slot shows the file this extension attached, or a file name that was not there at first sight (a chip the uploader drew).
   // unknown: only the extension's own mark says a file went in, or the slot showed a name from the start (an example in a hint, a file attached before anyone looked):
@@ -90,14 +90,14 @@
   };
   // A box: empty when it holds nothing or only a calling code (page/typed-check.js); mismatch when the fill typed it and it holds something else now.
   const boxState = el => {
-    if (!(window.__jobPilottoBoxGiven ? window.__jobPilottoBoxGiven(el.value) : !!String(el.value ?? '').trim())) return 'empty';
-    const typed = el.getAttribute('data-jobpilotto-typed');
-    return typed && window.__jobPilottoTypedSame && !window.__jobPilottoTypedSame(typed, el.value) ? 'mismatch' : 'committed';
+    if (!(window.__jobadabraBoxGiven ? window.__jobadabraBoxGiven(el.value) : !!String(el.value ?? '').trim())) return 'empty';
+    const typed = el.getAttribute('data-jobadabra-typed');
+    return typed && window.__jobadabraTypedSame && !window.__jobadabraTypedSame(typed, el.value) ? 'mismatch' : 'committed';
   };
-  // The fill picked one option (data-jobpilotto-picked: its letters and digits, page/browser-form-fastpath.js, page/fill-menus.js) and the menu shows another: the page set it
+  // The fill picked one option (data-jobadabra-picked: its letters and digits, page/browser-form-fastpath.js, page/fill-menus.js) and the menu shows another: the page set it
   // back to its own (cc's review of #507: a country menu on the page's default read as answered).
   const alnum = text => String(text ?? '').toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
-  const pickedOther = (el, shown) => { const picked = el.getAttribute('data-jobpilotto-picked'), now = alnum(shown); return !!picked && now !== picked && !(/^\d{1,4}$/.test(now) && picked.endsWith(now)); };   // a picker that shows the picked option's calling code only ("Switzerland +41" -> "+41") is that option
+  const pickedOther = (el, shown) => { const picked = el.getAttribute('data-jobadabra-picked'), now = alnum(shown); return !!picked && now !== picked && !(/^\d{1,4}$/.test(now) && picked.endsWith(now)); };   // a picker that shows the picked option's calling code only ("Switzerland +41" -> "+41") is that option
   // What a custom dropdown shows of its choice: a chip's words; for a labelled hidden input, which holds a key ("688", SuccessFactors), the words in the box itself. A pick
   // counts as kept only when the box shows it: an empty box beside a key proves nothing (cc, 14 Oct 2026). Since ad30229 the key itself was compared with the picked option,
   // so every correct pick read as another one (Breitling: Country and language left). Guard: app-core/test/picklist-hidden-key.test.js.
@@ -130,7 +130,7 @@
   // Until the page has been still for quietMs (our own marks and panel do not count), at most maxMs.
   const settle = (quietMs, maxMs) => new Promise(resolve => {
     let last = Date.now();
-    const started = last, watch = new MutationObserver(records => { if (records.some(record => !own(record.target.nodeType === 1 ? record.target : record.target.parentElement || document.body) && !String(record.attributeName || '').startsWith('data-jobpilotto'))) last = Date.now(); });
+    const started = last, watch = new MutationObserver(records => { if (records.some(record => !own(record.target.nodeType === 1 ? record.target : record.target.parentElement || document.body) && !String(record.attributeName || '').startsWith('data-jobadabra'))) last = Date.now(); });
     watch.observe(document.documentElement, {subtree: true, childList: true, attributes: true, characterData: true});
     const tick = () => { if (Date.now() - last >= quietMs || Date.now() - started >= maxMs) { watch.disconnect(); resolve(); } else setTimeout(tick, 100); };
     setTimeout(tick, 100);
@@ -144,13 +144,13 @@
       if (SKIP.includes(el.type) || el.disabled || own(el) || (el.type !== 'file' && !visible(el))) continue;
       let state = stateOf(el);
       if (state !== 'committed' && el.type !== 'file' && covered(el)) state = 'unreachable';
-      el.setAttribute('data-jobpilotto-r0', state);
+      el.setAttribute('data-jobadabra-r0', state);
       rows.push({field: el.id || el.name || '', type: el.type === 'file' ? 'file' : el.getAttribute('role') === 'combobox' ? 'combobox' : el.tagName === 'SELECT' ? 'select' : el.type || 'text', state,
-        ...(el.type === 'file' && ours(el) ? {file: ours(el)} : {}), ...(el.hasAttribute('data-jobpilotto-gaveup') ? {gaveUp: true} : {})});   // gaveUp: its attempt log is spent (page/attempts.js)
+        ...(el.type === 'file' && ours(el) ? {file: ours(el)} : {}), ...(el.hasAttribute('data-jobadabra-gaveup') ? {gaveUp: true} : {})});   // gaveUp: its attempt log is spent (page/attempts.js)
     }
     return rows;
   };
-  window.__jobPilottoChosen = chosen;   // the name the audit and coverage.js call it by
+  window.__jobadabraChosen = chosen;   // the name the audit and coverage.js call it by
   // Custom dropdowns that are no input (<div role=combobox>, <button aria-haspopup=listbox>): fields the form reader and the audit both list, shown and not wrapping a real control
   // (a combobox that holds its own input is read through the input). The list they open sits in the page, named by aria-controls or beside the trigger.
   // The trigger's own wrapper holds its real field: one box beside it in a wrapper that is no form or fieldset (a trigger set straight in a form among its other boxes is the question
@@ -162,5 +162,5 @@
     const list = (el.getAttribute('aria-controls') && document.getElementById(el.getAttribute('aria-controls'))) || el.parentElement?.parentElement?.querySelector('[role=listbox]');
     return Array.from(list?.querySelectorAll('[role=option]') || [], o => String(o.textContent || '').replace(/\s+/g, ' ').trim()).filter(Boolean).slice(0, 80);
   };
-  window.__jobPilottoReadBack = {customSelects, choicesOf, stateOf, holds: el => stateOf(el) === 'committed', chosen, hiddenAway, comboValue, fileState, baseline, namesIn, shownSlot, pass};
+  window.__jobadabraReadBack = {customSelects, choicesOf, stateOf, holds: el => stateOf(el) === 'committed', chosen, hiddenAway, comboValue, fileState, baseline, namesIn, shownSlot, pass};
 })();

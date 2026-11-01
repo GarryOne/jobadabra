@@ -24,7 +24,7 @@ test('tab reports carry the launcher\'s owned marker, never a version-based gues
     webNavigation: {onCommitted: events}, alarms: {get: async () => ({}), onAlarm: events},
     action: {setBadgeText: async () => {}, setTitle: async () => {}},
   };
-  t.after(() => { globalThis.chrome = before; delete globalThis.__jobPilottoBackgroundOwned; });
+  t.after(() => { globalThis.chrome = before; delete globalThis.__jobadabraBackgroundOwned; });
   t.mock.method(globalThis, 'fetch', async (url, options) => {
     assert.equal(url, 'http://127.0.0.1:48993/extension/tabs', 'only intercepted tab reports: no live app, AI or network');
     calls.push(JSON.parse(options.body));
@@ -36,7 +36,7 @@ test('tab reports carry the launcher\'s owned marker, never a version-based gues
   await setImmediate();   // the worker's first report
   calls.length = 0;
   for (const owned of [false, true]) {
-    globalThis.__jobPilottoBackgroundOwned = owned;
+    globalThis.__jobadabraBackgroundOwned = owned;
     await reporter.reportTabs();
     assert.equal(calls.at(-1).owned, owned);
     assert.equal(calls.at(-1).version, '0.9', 'the same version can belong to either browser');
@@ -65,5 +65,5 @@ test('tab-report.js asks the helper at both places it reloads, with the owned fl
   assert.equal((report.match(/chrome\.runtime\.reload\(\)/g) || []).length, 2, 'two reload calls, each behind the helper');
   assert.equal((report.match(/mayReloadSelf\(/g) || []).length, 2);
   const copy = fs.readFileSync(new URL('../../desktop/ready-fill/extension-copy.mjs', import.meta.url), 'utf8');
-  assert.match(copy, /globalThis\.__jobPilottoBackgroundOwned = true/, 'the flag the helper reads is the one the owned copy sets');
+  assert.match(copy, /globalThis\.__jobadabraBackgroundOwned = true/, 'the flag the helper reads is the one the owned copy sets');
 });

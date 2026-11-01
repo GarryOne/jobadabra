@@ -51,10 +51,10 @@ const plant = (p) => ({ [p.file]: (source) => {
 // One fill, as the extension runs it: the trace, and the snapshots flow.js takes of the fields left for a mechanical reason.
 async function fill(html, patch) {
   const window = openPage(JSDOM, html, { url: `https://${SITE}/acme/1/application`, patch });
-  const summary = await window.__jobPilottoExtensionFill([], {}, null, '', false);
+  const summary = await window.__jobadabraExtensionFill([], {}, null, '', false);
   const trace = Array.from(summary.trace, (row) => ({ ...row }));
   const reading = trace.filter((row) => READING.test(row.reason));
-  const snapshots = JSON.parse(JSON.stringify(window.__jobPilottoSnapshots(reading.map((row) => ({ label: row.label, field: '' })), [])));
+  const snapshots = JSON.parse(JSON.stringify(window.__jobadabraSnapshots(reading.map((row) => ({ label: row.label, field: '' })), [])));
   window.close();
   return { trace, reading, snapshots };
 }

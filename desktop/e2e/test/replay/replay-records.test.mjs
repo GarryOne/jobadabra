@@ -45,7 +45,7 @@ test('a row is the same as live only with every live ask answered, no extra ask 
 test('a record says where it was made (its own word, else the Mac release folder) and when; an unnamed record finds its pool row by address; a deferred row carries its reason', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-records-'));
   fs.mkdirSync(path.join(root, 'mac', 'x'), {recursive: true});
-  fs.writeFileSync(path.join(root, 'mac', 'x', 'record.json'), JSON.stringify({url: 'https://jobs.a.test/job?id=1#jobpilotto-fill=ab', startMs: Date.parse('2026-10-13T22:00:00Z')}));
+  fs.writeFileSync(path.join(root, 'mac', 'x', 'record.json'), JSON.stringify({url: 'https://jobs.a.test/job?id=1#jobadabra-fill=ab', startMs: Date.parse('2026-10-13T22:00:00Z')}));
   const [row] = newestPerRow(root, new Map([['https://jobs.a.test/job?id=1', 'Row A (found 2026-10-10)']]));
   assert.equal(row.name, 'Row A (found 2026-10-10)');
   const record = fidelityRecord(row, {liveAsks: 2, liveHit: 2, misses: 0, counts: {}}, {deferred: {'Row A (found 2026-10-10)': 'replay lags'}});

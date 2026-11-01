@@ -1,15 +1,15 @@
 // Plans matched answers and fills plain fields, choices and armed menus in their original page order.
 // Invariants: answer order is preserved; only existing field operators write, and consent authorization stays with fillPage.
 (() => {
-  if (window.__jobPilottoFillPlanLoaded) return;
-  window.__jobPilottoFillPlanLoaded = true;
-  const {LEGAL, norm, asksQuestion, PROFILE_LABELS, DIAL, dialOf, phoneParts, armCombo, radioOps, setCheckbox, pickCheckboxOption} = window.__jobPilottoFillKit;
+  if (window.__jobadabraFillPlanLoaded) return;
+  window.__jobadabraFillPlanLoaded = true;
+  const {LEGAL, norm, asksQuestion, PROFILE_LABELS, DIAL, dialOf, phoneParts, armCombo, radioOps, setCheckbox, pickCheckboxOption} = window.__jobadabraFillKit;
 
   // Strip reminder lines before choosing answers that may be typed.
   const prepareAnswers = (all) => {
     // Why (#2198, owner): a reminder line in a value is never typed (page/fill-marks.js splitReminders): the rest is typed, the reminders go with the answer; nothing left = the AI's reading only.
     for (const a of all || []) if (typeof a.value === 'string' && /•\s*Add:/.test(a.value)) {
-      const {text, remind} = window.__jobPilottoFillKit.splitReminders(a.value);
+      const {text, remind} = window.__jobadabraFillKit.splitReminders(a.value);
       Object.assign(a, {value: text, remind: [...(a.remind || []), ...remind]}, text ? (a.draft ? {draft: 'outline'} : {}) : {use: 'kind', draft: undefined});
     }
     const answers = (all || []).filter(a => a.use !== 'propose' && a.use !== 'kind');
@@ -43,13 +43,13 @@
   // Describe the form and categories before matching answers and proposals.
   const describePlan = async (all, answers) => {
     let proposedOf = {};   // built below, once the answers' fields are matched to the rows
-    const form = await window.__jobPilottoDescribeForm();
-    for (const group of window.__jobPilottoCheckboxQuestions()) {
+    const form = await window.__jobadabraDescribeForm();
+    for (const group of window.__jobadabraCheckboxQuestions()) {
       form.push({field: `group:${group.question}`, question: group.question, label: group.question, type: 'checkbox-group', options: group.options,
         filled: false, legal: LEGAL.test(group.question)});
     }
     const rowOf = Object.fromEntries(form.map(row => [row.field, row]));
-    window.__jobPilottoMarkCategories?.([...answers, ...(all || []).filter(a => a.use === 'kind')], rowOf);   // the AI's reading, any language: legal never filled (page/categories.js)
+    window.__jobadabraMarkCategories?.([...answers, ...(all || []).filter(a => a.use === 'kind')], rowOf);   // the AI's reading, any language: legal never filled (page/categories.js)
     matchCheckboxGroups(answers, form, rowOf);
     const reach = matchQuestions(all, form, rowOf);
     proposedOf = Object.fromEntries((all || []).filter(a => a.use === 'propose').map(a => [a.field, a]));
@@ -59,15 +59,15 @@
   // Prefer the AI contact reading while preserving edits made by the person.
   const planContact = (answers, form, profile) => {
     // Why (#2200, owner): the AI's reading of what a contact box means wins over the quick step's label pattern (owner, 27 Oct 2026; form 103 "Preferred First & Last Name" typed "Tester"):
-    // where its answer disagrees, the AI's is typed, now (the pattern's entry is dropped) or over the box the quick step typed earlier (data-jobpilotto-contact), never over the person's edit.
+    // where its answer disagrees, the AI's is typed, now (the pattern's entry is dropped) or over the box the quick step typed earlier (data-jobadabra-contact), never over the person's edit.
     const alnum = text => String(text ?? '').toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
     const byAI = Object.fromEntries(answers.filter(a => a.use === 'fill' && typeof a.value === 'string' && a.value.trim() && !/^(your details|standard answer)/.test(a.source || '')).map(a => [a.field, a.value]));
     const sameReading = (a, b) => a === b || (/^\d{8,}$/.test(a) && /^\d{8,}$/.test(b) && a.slice(-8) === b.slice(-8));   // strict: "Tester" is not "Ada Tester" (a containment test would say it is)
     const disagrees = (field, value) => byAI[field] !== undefined && !sameReading(alnum(value), alnum(byAI[field]));
-    const contact = window.__jobPilottoProfileEntries(form, profile || {}).filter(entry => !disagrees(entry.field, entry.value));
+    const contact = window.__jobadabraProfileEntries(form, profile || {}).filter(entry => !disagrees(entry.field, entry.value));
     for (const row of form) {
-      const el = row.filled && document.getElementById(row.field), typed = el?.getAttribute?.('data-jobpilotto-typed');
-      if (typed && el.hasAttribute('data-jobpilotto-contact') && disagrees(row.field, typed)) row.filled = false;
+      const el = row.filled && document.getElementById(row.field), typed = el?.getAttribute?.('data-jobadabra-typed');
+      if (typed && el.hasAttribute('data-jobadabra-contact') && disagrees(row.field, typed)) row.filled = false;
     }
     const contactFields = new Set(contact.map(entry => entry.field)), fromCvFields = new Set(contact.filter(entry => entry.fromCv).map(entry => entry.field));
     return {contact, contactFields, fromCvFields};
@@ -87,7 +87,7 @@
 
   // Mark contact writes and ask for review when replacing a page guess.
   const markContact = (contact, typed, rowOf, review) => {
-    for (const entry of contact) if ((typed.filled || []).includes(entry.field)) (document.getElementById(entry.field) || document.querySelector(`[name="${CSS.escape(entry.field)}"]`))?.setAttribute('data-jobpilotto-contact', '');   // typed by the quick step: the AI's reading may replace it
+    for (const entry of contact) if ((typed.filled || []).includes(entry.field)) (document.getElementById(entry.field) || document.querySelector(`[name="${CSS.escape(entry.field)}"]`))?.setAttribute('data-jobadabra-contact', '');   // typed by the quick step: the AI's reading may replace it
     // A place the page had guessed, now the saved one: the person checks it (page/fill-read.js pageGuess). The page's old text never leaves the page.
     for (const entry of contact) if (entry.pageGuess && (typed.filled || []).includes(entry.field)) review.push(`Check: ${rowOf[entry.field]?.label || entry.field} (it held the page's own text before the fill; your saved one is in now)`);
   };
@@ -96,7 +96,7 @@
   const rearmLostText = async (contact, plain, typed, rowOf, armed, filled) => {
     // A box that empties itself when focus leaves took text it was not offered (a job board's own place widget takes only one of its suggestions): armed as a type-to-search box, typed for real
     // and chosen by meaning when its click comes (page/suggest-box.js, page/fill-menus.js suggestPick).
-    for (const entry of await (window.__jobPilottoSuggest?.lostOnBlur([...contact, ...plain], typed.filled || []) ?? [])) {
+    for (const entry of await (window.__jobadabraSuggest?.lostOnBlur([...contact, ...plain], typed.filled || []) ?? [])) {
       if (armCombo(entry.field, entry.value, {suggest: true})) { armed.push(rowOf[entry.field]?.label || entry.field); filled = Math.max(0, filled - 1); }
     }
     return filled;
@@ -157,7 +157,7 @@
       if (country && armCombo(country.field, DIAL[dial])) {
         armed.push(country.label); answers.push({field: country.field, value: DIAL[dial], source: 'your details (phone prefix)'});
         answered.add(country.field);
-        window.__jobPilottoPhone = {field: phoneRow.field, national: String(profile.phone).replace(/\s/g, '').slice(dial.length)};
+        window.__jobadabraPhone = {field: phoneRow.field, national: String(profile.phone).replace(/\s/g, '').slice(dial.length)};
       }
     }
   };
@@ -172,5 +172,5 @@
     }
   };
 
-  Object.assign(window.__jobPilottoFillKit, {prepareAnswers, describePlan, planContact, planPlain, markContact, rearmLostText, fillAnswerChoices, armDemographics, armPhoneCountry, armProfileMenus});
+  Object.assign(window.__jobadabraFillKit, {prepareAnswers, describePlan, planContact, planPlain, markContact, rearmLostText, fillAnswerChoices, armDemographics, armPhoneCountry, armProfileMenus});
 })();

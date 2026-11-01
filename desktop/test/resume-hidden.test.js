@@ -54,7 +54,7 @@ test('class: the takeover is off in the app and the extension reads the same fla
   // The panel: flag off -> the Report this form button where Claude's offer was (or "needs" when the report switch is off); flag on -> the offer as before.
   globalThis.window = {};
   await import('../../extension/panel-claude.js');
-  const {next} = globalThis.window.__jobPilottoClaude;
+  const {next} = globalThis.window.__jobadabraClaude;
   const info = extra => ({on: true, stuck: true, auto: true, consent: true, ...extra});
   const fresh = {phase: null, dismissed: false};
   assert.equal(next(info({takeover: false, report: true}), fresh).view, 'report');

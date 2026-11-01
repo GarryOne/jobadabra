@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {createBackgroundSession} from '../../extension/background-session.mjs';
 
-const parseMark = url => new URL(url).hash.match(/(?:^#|&)jobpilotto-fill=([^&]+)/)?.[1] || '';
+const parseMark = url => new URL(url).hash.match(/(?:^#|&)jobadabra-fill=([^&]+)/)?.[1] || '';
 
 function browser() {
   let next = 1, stored = {}, shown = [];
@@ -30,17 +30,17 @@ function browser() {
 test('Background and Full automation create one unfocused session and reveal that same session on request', async () => {
   for (const mode of ['fill', 'auto']) {
     const fake = browser(), run = createBackgroundSession({chrome: fake.chrome, parseMark});
-    const created = await run.start({session: `s-${mode}`, url: `https://jobs.example.test/app#jobpilotto-fill=s-${mode}`, mode});
+    const created = await run.start({session: `s-${mode}`, url: `https://jobs.example.test/app#jobadabra-fill=s-${mode}`, mode});
     assert.equal(created.ok, true);
     assert.equal(created.reused, false);
-    assert.equal(await run.start({session: `s-${mode}`, url: `https://jobs.example.test/app#jobpilotto-fill=s-${mode}`, mode}).then(result => result.reused), true);
+    assert.equal(await run.start({session: `s-${mode}`, url: `https://jobs.example.test/app#jobadabra-fill=s-${mode}`, mode}).then(result => result.reused), true);
     assert.equal(await run.reveal(`s-${mode}`), true);
     assert.deepEqual(fake.shown, [{id: created.window, state: 'normal', focused: true}]);
   }
 });
 
 test('manual override survives runner recreation and challenge resolution cannot resume automation', async () => {
-  const fake = browser(), args = {session: 'captcha-job', url: 'https://jobs.example.test/app#jobpilotto-fill=captcha-job', mode: 'auto'};
+  const fake = browser(), args = {session: 'captcha-job', url: 'https://jobs.example.test/app#jobadabra-fill=captcha-job', mode: 'auto'};
   let run = createBackgroundSession({chrome: fake.chrome, parseMark});
   await run.start(args);
   assert.equal(await run.mayContinue(args.session), true);
@@ -53,21 +53,21 @@ test('manual override survives runner recreation and challenge resolution cannot
 
 test('invalid mode or session mark fails closed before creating a browser window', async () => {
   const fake = browser(), run = createBackgroundSession({chrome: fake.chrome, parseMark});
-  assert.equal((await run.start({session: 's1', url: 'https://jobs.example.test/app#jobpilotto-fill=s1', mode: 'check'})).ok, false);
-  assert.equal((await run.start({session: 's1', url: 'https://jobs.example.test/app#jobpilotto-fill=s2', mode: 'fill'})).ok, false);
+  assert.equal((await run.start({session: 's1', url: 'https://jobs.example.test/app#jobadabra-fill=s1', mode: 'check'})).ok, false);
+  assert.equal((await run.start({session: 's1', url: 'https://jobs.example.test/app#jobadabra-fill=s2', mode: 'fill'})).ok, false);
   assert.equal(fake.windows.size, 0);
 });
 
 test('two concurrent extension polls cannot create two windows for the same marked application', async () => {
   const fake = browser(), run = createBackgroundSession({chrome: fake.chrome, parseMark});
-  const command = {session: 'race', url: 'https://jobs.example.test/app#jobpilotto-fill=race', mode: 'fill'};
+  const command = {session: 'race', url: 'https://jobs.example.test/app#jobadabra-fill=race', mode: 'fill'};
   await Promise.all([run.start(command), run.start(command)]);
   assert.equal(fake.windows.size, 1);
 });
 
 test('a challenge after any observed form is runtime even when its new page has no form; unexpected accounts hand off before filling', async () => {
   const fake = browser(), run = createBackgroundSession({chrome: fake.chrome, parseMark});
-  const args = {session: 'phase', url: 'https://jobs.example.test/app#jobpilotto-fill=phase', mode: 'auto'};
+  const args = {session: 'phase', url: 'https://jobs.example.test/app#jobadabra-fill=phase', mode: 'auto'};
   await run.start(args);
   assert.equal(await run.observe('phase', 'no-form', true), 'captcha_preflight');
   assert.equal(await run.observe('phase', 'form', false), '');
@@ -78,10 +78,10 @@ test('a challenge after any observed form is runtime even when its new page has 
 
 test('cancel never closes a recycled tab id belonging to another application', async () => {
   const fake = browser(), run = createBackgroundSession({chrome: fake.chrome, parseMark});
-  const created = await run.start({session: 'close', url: 'https://jobs.example.test/app#jobpilotto-fill=close', mode: 'fill'});
+  const created = await run.start({session: 'close', url: 'https://jobs.example.test/app#jobadabra-fill=close', mode: 'fill'});
   let closed = false;
   fake.chrome.tabs.remove = async () => { closed = true; };
-  fake.tabs.get(created.tab).url = 'https://jobs.example.test/other#jobpilotto-fill=other';
+  fake.tabs.get(created.tab).url = 'https://jobs.example.test/other#jobadabra-fill=other';
   assert.equal(await run.closeSession('close'), false);
   assert.equal(closed, false);
   assert.equal(await run.mayContinue('close'), false);
@@ -90,8 +90,8 @@ test('cancel never closes a recycled tab id belonging to another application', a
 test('cancel closes a read whose page has not committed: the mark is only in pendingUrl', async () => {
   const fake = browser(), run = createBackgroundSession({chrome: fake.chrome, parseMark});
   fake.chrome.tabs.remove = async id => { fake.tabs.delete(id); };
-  const created = await run.start({session: 'held', url: 'https://jobs.example.test/read#jobpilotto-fill=held', mode: 'read'});
-  Object.assign(fake.tabs.get(created.tab), {url: '', pendingUrl: 'https://jobs.example.test/read#jobpilotto-fill=held'});
+  const created = await run.start({session: 'held', url: 'https://jobs.example.test/read#jobadabra-fill=held', mode: 'read'});
+  Object.assign(fake.tabs.get(created.tab), {url: '', pendingUrl: 'https://jobs.example.test/read#jobadabra-fill=held'});
   assert.equal(await run.closeSession('held'), true);
   assert.equal(fake.tabs.size, 0, 'the held read tab is gone');
 });
@@ -99,10 +99,10 @@ test('cancel closes a read whose page has not committed: the mark is only in pen
 test('a triage read opens its own unfocused session in mode read and closes the tab when asked', async () => {
   const fake = browser(), run = createBackgroundSession({chrome: fake.chrome, parseMark});
   fake.chrome.tabs.remove = async id => { fake.tabs.delete(id); };
-  const created = await run.start({session: 'tr1', url: 'https://jobs.example.test/read#jobpilotto-fill=tr1', mode: 'read'});
+  const created = await run.start({session: 'tr1', url: 'https://jobs.example.test/read#jobadabra-fill=tr1', mode: 'read'});
   assert.equal(created.ok, true);
   assert.equal((await run.inspect('tr1')).mode, 'read');
   assert.equal(await run.closeSession('tr1'), true);
   assert.equal(fake.tabs.size, 0, 'the read tab is gone');
-  assert.equal((await run.start({session: 'x', url: 'https://jobs.example.test/x#jobpilotto-fill=x', mode: 'bogus'})).ok, false, 'an unknown mode is still refused');
+  assert.equal((await run.start({session: 'x', url: 'https://jobs.example.test/x#jobadabra-fill=x', mode: 'bogus'})).ok, false, 'an unknown mode is still refused');
 });

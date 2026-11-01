@@ -35,7 +35,7 @@ const presses = {get: tabId => pressedAt.get(tabId) || applyPressed.get(tabId)};
 
 // A tab opened by an armed tab (Apply in a new tab) is the same session. A tab the user opened is not.
 // The mark the app puts on a tab it opens for a job (background.js FILL_MARK; a test keeps the two equal).
-export const APP_TAB_MARK = 'jobpilotto-fill';
+export const APP_TAB_MARK = 'jobadabra-fill';
 // Tabs the fill mark handler (background.js) has claimed for the app's job, noted before its first await. A tab created before its
 // address is known passes the mark check below, and the mark handler's from: lands while followOpener reads the opener's keys: on
 // 9 Oct 2026 (e2e rerun-apply, found by mac-bc) the opener's session, job and from were then written over it, and the Lever form
@@ -43,7 +43,7 @@ export const APP_TAB_MARK = 'jobpilotto-fill';
 const appTabs = new Set();
 export function claimAppTab(tabId, url = '') {
   let host = ''; try { host = new URL(url).hostname; } catch { /* no address: the permission is missing or the page is not http */ }
-  decide('tab', 'tab with the fill mark seen', {host, tab: tabId, session: /#jobpilotto-fill=/.test(url)});   // the app's "opened the form tab" without this line: the extension never saw it
+  decide('tab', 'tab with the fill mark seen', {host, tab: tabId, session: /#jobadabra-fill=/.test(url)});   // the app's "opened the form tab" without this line: the extension never saw it
   const restarted = restart();
   if (restarted) decide('stop', 'started again: the app opened a tab for a job', {host});   // Apply in the app is the person's word to start again (stop.js)
   restored.then(() => { if (restarted || !applyState(tabId)) setApply(tabId, WORKING); });   // after the states a sleeping worker kept are back, so a finished tab is not started again   // the app's open of a tab starts its Apply before any page loads (apply-state.js); a later event of a tab with a verdict never restarts it   // Apply in the app is the person's word to start again (stop.js)

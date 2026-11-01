@@ -23,7 +23,7 @@ function open() {
 
 test('only a big, visible, https frame of another host is a candidate; its address stays whole inside the extension', { skip: !JSDOM }, () => {
   const window = open();
-  const found = Array.from(window.__jobPilottoFrames.frameCandidates());
+  const found = Array.from(window.__jobadabraFrames.frameCandidates());
   assert.equal(found.length, 1);
   assert.equal(found[0].host, 'job-boards.greenhouse.io');
   assert.equal(found[0].path, '/embed/job_app');
@@ -33,15 +33,15 @@ test('only a big, visible, https frame of another host is a candidate; its addre
 
 test('what would go to the AI (host, path, size) holds no query string or token', { skip: !JSDOM }, () => {
   const window = open();
-  const sent = Array.from(window.__jobPilottoFrames.frameCandidates()).map(({ host, path, width, height }) => ({ host, path, width, height }));
+  const sent = Array.from(window.__jobadabraFrames.frameCandidates()).map(({ host, path, width, height }) => ({ host, path, width, height }));
   assert.ok(!/token|\?/.test(JSON.stringify(sent)));
 });
 
 test('a page with no frame has no candidate, and the biggest frame comes first', { skip: !JSDOM }, () => {
   const none = openPage(JSDOM, '<main><p>No frames</p></main>', { url: 'https://careers.example.com/x' });
-  assert.equal(none.__jobPilottoFrames.frameCandidates().length, 0);
+  assert.equal(none.__jobadabraFrames.frameCandidates().length, 0);
   const window = open();
   window.document.body.insertAdjacentHTML('beforeend', '<iframe id="small" src="https://other.example.org/form"></iframe>');
   SIZES.small = [400, 300];
-  assert.deepEqual(Array.from(window.__jobPilottoFrames.frameCandidates()).map((item) => item.host), ['job-boards.greenhouse.io', 'other.example.org']);
+  assert.deepEqual(Array.from(window.__jobadabraFrames.frameCandidates()).map((item) => item.host), ['job-boards.greenhouse.io', 'other.example.org']);
 });

@@ -19,7 +19,7 @@ export async function prepareFillPage({tab, config}) {
   if (gate.held) return {held: true, layer: gate.layer, note: HELD, usd: 0};
   await expandSections(tab);   // collapsed sections open first, so their fields are read (a no-op when consider already did: sections.js marks what it opened)
   // No Submit guard for the extension: it never submits, and the user presses Submit themselves.
-  await chrome.scripting.executeScript({target: {tabId: tab.id}, world: 'MAIN', func: () => { window.__jobPilottoNoGuard = true; }});
+  await chrome.scripting.executeScript({target: {tabId: tab.id}, world: 'MAIN', func: () => { window.__jobadabraNoGuard = true; }});
   await chrome.scripting.executeScript({target: {tabId: tab.id}, world: 'MAIN', files: PAGE_FILES});
   await chrome.scripting.executeScript({target: {tabId: tab.id, allFrames: true}, files: ['guard-bridge.js']}).catch(() => {});   // the gate's isolated-world half (guard-bridge.js); without it the fill never waits
   await loadRecipes(tab, config);
@@ -32,11 +32,11 @@ async function loadRecipes(tab, config) {
   // Recipes for the kinds of control on this form, asked of the app by fingerprint (it asks the site, and remembers). A recipe
   // only configures a generic operator; no recipe, or no answer, and the operators work with their own defaults.
   try {
-    const prints = await chrome.scripting.executeScript({target: {tabId: tab.id}, world: 'MAIN', func: () => window.__jobPilottoControls?.fingerprints?.() || []})
+    const prints = await chrome.scripting.executeScript({target: {tabId: tab.id}, world: 'MAIN', func: () => window.__jobadabraControls?.fingerprints?.() || []})
       .then(rows => rows?.[0]?.result || []);
     if (prints.length) {
       const found = await apiFor(tab.id, config, '/extension/recipes', {method: 'POST', body: JSON.stringify({fingerprints: prints})});
-      await chrome.scripting.executeScript({target: {tabId: tab.id}, world: 'MAIN', args: [found?.recipes || {}], func: recipes => { window.__jobPilottoRecipes = recipes; }});
+      await chrome.scripting.executeScript({target: {tabId: tab.id}, world: 'MAIN', args: [found?.recipes || {}], func: recipes => { window.__jobadabraRecipes = recipes; }});
     }
   } catch { /* recipes are a bonus: the operators work without them */ }
 }
@@ -47,18 +47,18 @@ async function loadAliases(tab, config) {
   // only for a question no built-in pattern placed. No answer, and the built-in patterns work as before.
   try {
     const packs = await apiFor(tab.id, config, '/extension/aliases', {method: 'POST', body: '{}'});
-    await chrome.scripting.executeScript({target: {tabId: tab.id}, world: 'MAIN', args: [Array.isArray(packs?.aliases) ? packs.aliases.slice(0, 2000) : []], func: aliases => { window.__jobPilottoAliases = aliases; }});
+    await chrome.scripting.executeScript({target: {tabId: tab.id}, world: 'MAIN', args: [Array.isArray(packs?.aliases) ? packs.aliases.slice(0, 2000) : []], func: aliases => { window.__jobadabraAliases = aliases; }});
   } catch { /* aliases are a bonus */ }
 }
 
 // Loads the optional CV upload choice before reading the form.
 async function pickUpload(tab, config) {
   // Two or more upload slots that could take the CV (the page's own "import my details from my CV" feature has a file input of its own): the app's AI names the one that takes the
-  // CV as a document, from their titles, kept (upload-pick.js). No answer: the operator behaves as before. page/upload.js reads window.__jobPilottoUploadChoice.
+  // CV as a document, from their titles, kept (upload-pick.js). No answer: the operator behaves as before. page/upload.js reads window.__jobadabraUploadChoice.
   try {
-    const titles = await chrome.scripting.executeScript({target: {tabId: tab.id}, world: 'MAIN', func: () => window.__jobPilottoUpload?.cvCandidates?.() || []}).then(rows => rows?.[0]?.result || []);
+    const titles = await chrome.scripting.executeScript({target: {tabId: tab.id}, world: 'MAIN', func: () => window.__jobadabraUpload?.cvCandidates?.() || []}).then(rows => rows?.[0]?.result || []);
     const picked = titles.length > 1 ? (await apiFor(tab.id, config, '/extension/pick-upload', {method: 'POST', body: JSON.stringify({titles})}))?.title : '';
-    await chrome.scripting.executeScript({target: {tabId: tab.id}, world: 'MAIN', args: [picked || ''], func: title => { window.__jobPilottoUploadChoice = title ? {resume: title} : null; }});
+    await chrome.scripting.executeScript({target: {tabId: tab.id}, world: 'MAIN', args: [picked || ''], func: title => { window.__jobadabraUploadChoice = title ? {resume: title} : null; }});
   } catch { /* the choice is a bonus: the operator works without it */ }
 }
 
@@ -132,7 +132,7 @@ export function rememberedFillChoices({tab, debug, me}) {
 // Records the form even when AI is off, before choosing remembered answers.
 export async function recordFillForm({tab, debug, inPage}) {
   if (!debug.form) {  // filled from the kit: still record the form as read, for the run log
-    const seen = await inPage(tab.id, () => window.__jobPilottoDescribeForm()).catch(() => []);
+    const seen = await inPage(tab.id, () => window.__jobadabraDescribeForm()).catch(() => []);
     debug.form = (seen || []).map(({field, label, type, required, filled, legal, options}) =>
       ({field, label, type, required, filled, legal, options: (options || []).slice(0, 30)}));
   }
@@ -145,7 +145,7 @@ export async function fillKnownFields({tab, config, answers, ai, me, coverLetter
   debug.details = {coverLetterState: me?.coverLetterStatus?.state || 'unknown', coverLetterSource: me?.coverLetterStatus?.source || '', coverLetterFile: !!me?.coverLetterFile, fields: Object.keys(me?.contact || {}), source: me?.contactSource || null, cv: me?.resume?.name || null, tailoredCv: !!me?.resume?.tailored};
   if (me?.contactError) debug.errors.push(`your details: ${me.contactError}`);
   const letter = coverLetter || ai?.cover_letter || me?.coverLetterText || '';
-  const summary = await pageStarted(tab.id).then(() => inPage(tab.id, (list, profile, resume, letter, consents) => window.__jobPilottoExtensionFill(list, profile, resume, letter, consents),   // pageStarted: a start just now cleared the page's own Stop first (stop.js startTab)
+  const summary = await pageStarted(tab.id).then(() => inPage(tab.id, (list, profile, resume, letter, consents) => window.__jobadabraExtensionFill(list, profile, resume, letter, consents),   // pageStarted: a start just now cleared the page's own Stop first (stop.js startTab)
     [answers, me?.contact || config.profile || {}, withLetterFile(me?.resume || config.resume || null, me?.coverLetterFile, me?.coverLetterStatus), letter, (me?.acceptConsents ?? config.acceptConsents) !== false]));
   // The page fill threw or returned nothing (a control it did not expect, or the page went away): said as it is, never read as a result (page/fill.js reports the error and where).
   if (!summary || summary.error) {

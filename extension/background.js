@@ -1,4 +1,4 @@
-// The background worker: tabs the app opens to fill (#jobpilotto-fill), the next page in that tab, a tab that tab
+// The background worker: tabs the app opens to fill (#jobadabra-fill), the next page in that tab, a tab that tab
 // opens, Apply with Claude's hand-off, the ring's messages to the app, and the connection check. The result of a
 // fill shows in a panel on the page and in the icon badge.
 import {NO_APP, api, fillTab, settings} from './flow.js';
@@ -53,10 +53,10 @@ async function note(tabId, text, url = '') {
   }}).catch(() => {});
 }
 
-// "Apply to N jobs" in the desktop app opens each job with #jobpilotto-fill. That mark is the only way a tab
+// "Apply to N jobs" in the desktop app opens each job with #jobadabra-fill. That mark is the only way a tab
 // becomes one the extension may touch: the panel, the fill and the submit listener never start on a page
 // the user opened themselves.
-export const FILL_MARK = 'jobpilotto-fill';
+export const FILL_MARK = 'jobadabra-fill';
 const started = new Set();
 const armedLogged = new Set();
 const panelRefused = new Set();
@@ -227,11 +227,11 @@ const stepNow = new Map();
 // The floating step box: drawn, updated, or (with no text) removed. Only for pages whose panel can't show the step.
 function stepBox(tabId, message) {
   return chrome.scripting.executeScript({target: {tabId}, world: 'MAIN', args: [message], func: message => {
-    let box = document.getElementById('jobpilotto-progress');
+    let box = document.getElementById('jobadabra-progress');
     // The panel (review.js) shows the step itself: never a second copy of it in the corner.
-    if (!message || document.getElementById('jobpilotto-review-host')) { box?.remove(); return; }
+    if (!message || document.getElementById('jobadabra-review-host')) { box?.remove(); return; }
     if (!box) {
-      box = Object.assign(document.createElement('div'), {id: 'jobpilotto-progress'});
+      box = Object.assign(document.createElement('div'), {id: 'jobadabra-progress'});
       box.style.cssText = 'position:fixed;top:12px;right:12px;z-index:2147483647;max-width:320px;background:#132439;color:#fff;' +
         'border-radius:10px;padding:12px 14px;font:13px/1.45 system-ui,sans-serif;box-shadow:0 6px 24px #0008;display:flex;gap:10px';
       const spin = document.createElement('span');
@@ -248,8 +248,8 @@ function stepBox(tabId, message) {
 async function ineligibleNote(tabId, reason, partly = false) {   // partly: your details were filled before the verdict came (flow.js, owner 11 Oct 2026)
   if (await tellPanel(tabId, partly ? `Jobadabra filled only your details on this form: ${reason || 'not eligible'}` : `Jobadabra didn't fill this form: ${reason || 'not eligible'}`, true)) return;   // the panel's note line, with its Fill anyway
   await chrome.scripting.executeScript({target: {tabId}, args: [String(reason || 'not eligible'), !!partly], func: (text, partly) => {   // an app reply without a note must not crash the note (10 Oct 2026, the Aldi replay)
-    document.getElementById('jobpilotto-note')?.remove();
-    const box = Object.assign(document.createElement('div'), {id: 'jobpilotto-note'});
+    document.getElementById('jobadabra-note')?.remove();
+    const box = Object.assign(document.createElement('div'), {id: 'jobadabra-note'});
     box.style.cssText = 'position:fixed;top:12px;right:12px;z-index:2147483647;max-width:340px;background:#132439;color:#fff;' +
       'border-radius:10px;padding:12px 14px;font:13px/1.45 system-ui,sans-serif;box-shadow:0 6px 24px #0008';
     const message = Object.assign(document.createElement('div'), {textContent: partly ? `Jobadabra filled only your details on this form: ${text}` : `Jobadabra didn't fill this form: ${text}`});
@@ -316,7 +316,7 @@ function reportControls(config, tab, operated, trace, card = null, uploads = [],
 }
 // Labels of filled fields the person later changed by hand (page/fill.js watchCorrection): sent once, then forgotten.
 async function reportCorrections(config, tabId) {
-  const frames = await chrome.scripting.executeScript({target: {tabId, allFrames: true}, func: () => (window.__jobPilottoCorrections || []).splice(0)}).catch(() => []);
+  const frames = await chrome.scripting.executeScript({target: {tabId, allFrames: true}, func: () => (window.__jobadabraCorrections || []).splice(0)}).catch(() => []);
   const corrections = frames.flatMap(frame => frame.result || []).slice(0, 40);
   if (!corrections.length) return;
   const tab = await chrome.tabs.get(tabId).catch(() => null);
@@ -402,7 +402,7 @@ async function fillOpenedTabNow(tab, url, force = false, {fast = false, quiet = 
 async function handOff(tab, job, ticket) {
   await arm(tab.id);
   const token = crypto.randomUUID(), state = value => chrome.scripting.executeScript({target: {tabId: tab.id}, args: [JSON.stringify(value), token, value.state],
-    func: (text, token, now) => { if (now === 'running') window.__jobPilottoFillToken = token; else if (now !== 'error' && window.__jobPilottoFillToken !== token) return; document.documentElement.dataset.jobpilottoFill = text; }}).catch(() => {});   // done only into the page this fill started on (fill-flow.js writeState); an error may come before it started
+    func: (text, token, now) => { if (now === 'running') window.__jobadabraFillToken = token; else if (now !== 'error' && window.__jobadabraFillToken !== token) return; document.documentElement.dataset.jobadabraFill = text; }}).catch(() => {});   // done only into the page this fill started on (fill-flow.js writeState); an error may come before it started
   try {
     const config = await settings();
     const checked = await api(config, '/extension/ticket', {method: 'POST', body: JSON.stringify({ticket, job})});
@@ -436,7 +436,7 @@ chrome.runtime.onMessage.addListener((message, sender, reply) => {
 });
 
 // Just loaded: open the settings page, which connects to the Jobadabra Mac app by itself.
-chrome.runtime.onInstalled.addListener(({reason}) => { if (reason === 'install' && !globalThis.__jobPilottoBackgroundOwned) chrome.runtime.openOptionsPage(); });
+chrome.runtime.onInstalled.addListener(({reason}) => { if (reason === 'install' && !globalThis.__jobadabraBackgroundOwned) chrome.runtime.openOptionsPage(); });
 
 const settleOpenTabs = createSettleOpenTabs({arm, memoryReady: () => memoryReady});   // settle-tabs.js: after a reload the panel is put back on the app's tabs and taken off every other page
 chrome.runtime.onInstalled.addListener(settleOpenTabs);

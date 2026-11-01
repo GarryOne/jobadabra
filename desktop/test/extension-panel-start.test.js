@@ -7,9 +7,9 @@ import {noteStart, STARTING} from '../../extension/panel-start.js';
 test('Starting… is set once per tab and page, never over a real step, and clears itself when no fill follows', () => {
   const stepNow = new Map(), timers = [];
   const later = (fn, ms) => timers.push({fn, ms});
-  assert.equal(noteStart(stepNow, 1, 'https://a.example/job#jobpilotto-fill', later), true);
+  assert.equal(noteStart(stepNow, 1, 'https://a.example/job#jobadabra-fill', later), true);
   assert.equal(stepNow.get(1), STARTING);
-  assert.equal(noteStart(stepNow, 1, 'https://a.example/job#jobpilotto-fill', later), false);   // the same page loading again
+  assert.equal(noteStart(stepNow, 1, 'https://a.example/job#jobadabra-fill', later), false);   // the same page loading again
   stepNow.set(2, 'Reading the form…');
   assert.equal(noteStart(stepNow, 2, 'https://b.example/form', later), false);   // the fill already said its step
   assert.equal(stepNow.get(2), 'Reading the form…');

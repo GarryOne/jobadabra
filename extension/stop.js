@@ -34,14 +34,14 @@ export function restart(who) {
 // The panel stays and says "Stopped by you" with "Check form again" itself (review.js hears `stopped`; owner mockup 03): the note below is only for a page without the panel,
 // never a second box beside it saying something else (owner, 27 Oct 2026: the panel came back centred and working, undimmed, under "Jobadabra is stopped on this page").
 function stoppedPage() {
-  window.__jobPilottoStopped = true;
-  try { const clean = location.href.replace(/#jobpilotto-fill(=[A-Za-z0-9_-]{1,64})?$/, ''); if (clean !== location.href) history.replaceState(history.state, '', clean); } catch { /* sandboxed page */ }
-  for (const id of ['jobpilotto-progress', 'jobpilotto-note', 'jobpilotto-fill-overlay']) document.getElementById(id)?.remove();
+  window.__jobadabraStopped = true;
+  try { const clean = location.href.replace(/#jobadabra-fill(=[A-Za-z0-9_-]{1,64})?$/, ''); if (clean !== location.href) history.replaceState(history.state, '', clean); } catch { /* sandboxed page */ }
+  for (const id of ['jobadabra-progress', 'jobadabra-note', 'jobadabra-fill-overlay']) document.getElementById(id)?.remove();
   if (!document.documentElement) return;
-  document.documentElement.dataset.jobpilottoFill = JSON.stringify({state: 'stopped'});
-  if (window.top !== window || document.getElementById('jobpilotto-review-host')) return;
+  document.documentElement.dataset.jobadabraFill = JSON.stringify({state: 'stopped'});
+  if (window.top !== window || document.getElementById('jobadabra-review-host')) return;
   const box = document.createElement('div');
-  box.id = 'jobpilotto-note';
+  box.id = 'jobadabra-note';
   box.dataset.stopped = '1';
   box.style.cssText = 'position:fixed;top:12px;right:12px;z-index:2147483647;max-width:320px;background:#132439;color:#fff;border-radius:10px;padding:12px 14px;font:13px/1.45 system-ui,sans-serif;box-shadow:0 6px 24px #0008';
   box.textContent = 'Jobadabra is stopped on this page. Press Apply in the app to start again.';
@@ -51,10 +51,10 @@ function stoppedPage() {
 
 // A page the person starts again: its own Stop goes (the flag, the stopped mark, the stopped note). -> whether it was stopped. Runs in every frame.
 function startedPage() {
-  const was = !!window.__jobPilottoStopped;
-  delete window.__jobPilottoStopped;
-  document.querySelector('#jobpilotto-note[data-stopped]')?.remove();
-  try { if (JSON.parse(document.documentElement?.dataset.jobpilottoFill || '{}').state === 'stopped') delete document.documentElement.dataset.jobpilottoFill; } catch { /* not our mark */ }
+  const was = !!window.__jobadabraStopped;
+  delete window.__jobadabraStopped;
+  document.querySelector('#jobadabra-note[data-stopped]')?.remove();
+  try { if (JSON.parse(document.documentElement?.dataset.jobadabraFill || '{}').state === 'stopped') delete document.documentElement.dataset.jobadabraFill; } catch { /* not our mark */ }
   return was;
 }
 
@@ -93,7 +93,7 @@ export async function stopAll(reason = 'the person pressed Stop') {
   decide('stop', 'stopped: nothing more is done on any tab', {reason: String(reason).slice(0, 80)});
   const stored = await chrome.storage.session.get(null).catch(() => ({}));
   const ids = new Set(Object.keys(stored).filter(key => key.startsWith('armed:') && stored[key]).map(key => Number(key.slice(6))).filter(Number.isInteger));
-  for (const tab of await chrome.tabs.query({}).catch(() => [])) if (tab.id != null && String(tab.url || '').includes('#jobpilotto-fill')) ids.add(tab.id);
+  for (const tab of await chrome.tabs.query({}).catch(() => [])) if (tab.id != null && String(tab.url || '').includes('#jobadabra-fill')) ids.add(tab.id);
   const held = new Set(ids);
   for (const target of await chrome.debugger.getTargets().catch(() => [])) if (target.attached && Number.isInteger(target.tabId)) held.add(target.tabId);
   for (const tabId of held) await chrome.debugger.detach({tabId}).catch(() => {});   // only ours detaches; any other client's attach refuses and is left alone

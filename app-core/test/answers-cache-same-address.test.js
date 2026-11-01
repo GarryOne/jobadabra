@@ -15,8 +15,8 @@ async function run(kept, form) {
     storage: {session: {get: async () => (kept ? {'fill:1': kept} : {}), set: async () => {}}, local: {get: async () => ({})}},
     scripting: {executeScript: async ({func, args}) => {
       if (!func) return [{}];
-      globalThis.window = {__jobPilottoDescribeForm: async () => form, __jobPilottoCheckboxQuestions: () => [], __jobPilottoPageText: () => '', __jobPilottoProfileEntries: () => [],
-        __jobPilottoExtensionFill: () => ({filled: 0, todo: []}), __jobPilottoArmedCount: () => 0};
+      globalThis.window = {__jobadabraDescribeForm: async () => form, __jobadabraCheckboxQuestions: () => [], __jobadabraPageText: () => '', __jobadabraProfileEntries: () => [],
+        __jobadabraExtensionFill: () => ({filled: 0, todo: []}), __jobadabraArmedCount: () => 0};
       return [{result: await func(...(args || []))}];
     }},
   };

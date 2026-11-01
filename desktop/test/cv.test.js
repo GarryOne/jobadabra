@@ -130,11 +130,11 @@ test('the extension gets the tailored CV on that job\'s page and the base CV els
   cv.save(storage, 'ab12cd34', {job: {code: 'ab12cd34', url: 'https://boards.example/jobs/1', title: 'SRE', company: 'Acme'},
     createdAt: new Date().toISOString(), model: cv.MODEL, usd: 0.05, changes: [], warnings: [], cv: tailored, review}, Buffer.from('TAILORED'));
   assert.ok(cv.exists(storage, 'ab12cd34'));
-  assert.equal(cv.forUrl(storage, 'https://boards.example/jobs/1/#jobpilotto-fill').job.code, 'ab12cd34');
+  assert.equal(cv.forUrl(storage, 'https://boards.example/jobs/1/#jobadabra-fill').job.code, 'ab12cd34');
   // The form of a posting lives at another address (Ashby: <posting>/application): the tailored CV is still the one attached.
   cv.save(storage, 'aa11bb22', {job: {code: 'aa11bb22', url: 'https://jobs.ashbyhq.com/openai/621bb104-9daa-4c9e-949a-03d5730334e8', title: 'SE', company: 'OpenAI'},
     createdAt: new Date().toISOString(), model: cv.MODEL, usd: 0.05, changes: [], warnings: [], cv: tailored, review}, Buffer.from('FOR OPENAI'));
-  assert.equal(cv.forUrl(storage, 'https://jobs.ashbyhq.com/openai/621bb104-9daa-4c9e-949a-03d5730334e8/application#jobpilotto-fill').job.code, 'aa11bb22');
+  assert.equal(cv.forUrl(storage, 'https://jobs.ashbyhq.com/openai/621bb104-9daa-4c9e-949a-03d5730334e8/application#jobadabra-fill').job.code, 'aa11bb22');
   assert.equal(cv.forUrl(storage, 'https://jobs.ashbyhq.com/openai/aaaaaaaa-9daa-4c9e-949a-03d5730334e8/application'), null, 'another posting at the same company is not this job');
   const onJob = await me(storage, 'https://boards.example/jobs/1');
   assert.equal(Buffer.from(onJob.resume.data, 'base64').toString(), 'TAILORED');
@@ -161,7 +161,7 @@ test('the extension gets the tailored CV on that job\'s page and the base CV els
   // The clean PDF has a name to send, and the window says which is the final CV and which only previews the changes.
   assert.match(page, /Final CV: send this one/);
   assert.match(page, /Preview of changes/);
-  assert.match(page, /jobpilotto-cv:reveal/);
+  assert.match(page, /jobadabra-cv:reveal/);
   const finalPdf = cv.finalCopy(storage, cv.load(storage, 'ab12cd34'));
   assert.match(path.basename(finalPdf), /^CV_.*Acme\.pdf$/);
   assert.equal(fs.readFileSync(finalPdf, 'utf8'), 'TAILORED');

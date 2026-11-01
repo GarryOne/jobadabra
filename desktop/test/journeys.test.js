@@ -226,8 +226,8 @@ test('scenario: four open applications focus only the requested job, despite an 
   const {tabOfSession} = await import('../lib/session-tab.js');
   review._reset();
   const sessions = [1, 2, 3, 4].map(n => ({id: 'focus-' + n, company: 'Employer ' + n, url: 'https://forms.example/employer-' + n + '/job', status: 'done'}));
-  const account = {id: 101, url: 'https://accounts.example/#jobpilotto-fill', title: 'Sign in'};
-  const forms = sessions.map((s, n) => ({id: 102 + n, url: s.url + '/application#jobpilotto-fill=' + s.id, title: s.company}));
+  const account = {id: 101, url: 'https://accounts.example/#jobadabra-fill', title: 'Sign in'};
+  const forms = sessions.map((s, n) => ({id: 102 + n, url: s.url + '/application#jobadabra-fill=' + s.id, title: s.company}));
   sessions.forEach((s, n) => review.report(sessions, {session: s.id, tab: forms[n].id, url: forms[n].url, total: 3, left: 0}));
   for (const [n, session] of sessions.entries()) {
     assert.equal(tabOfSession(session.id, [account, ...forms], review.tabOf(session.id)), forms[n]);
@@ -242,7 +242,7 @@ test('scenario: Claude opens the form tab with the session in the mark, the sign
     async get(keys) { return Object.fromEntries([].concat(keys).filter(key => key in store).map(key => [key, store[key]])); }, async set(items) { Object.assign(store, items); }, async remove() {}}}};
   const {identityOf} = await import('../../extension/tab-identity.js');
   const {id} = journeyOf('f1');
-  const identity = await identityOf({id: 4, url: `${SIGNIN}#jobpilotto-fill=${id}`});   // no stored session, no job: the address alone says whose tab it is
+  const identity = await identityOf({id: 4, url: `${SIGNIN}#jobadabra-fill=${id}`});   // no stored session, no job: the address alone says whose tab it is
   const resolved = resolveSession(identity, {get: terminals.get, list: terminals.list, isFormOf: () => false});
   assert.equal(resolved, 'f1');
 });
@@ -269,7 +269,7 @@ test('scenario: the sessions page opens after a restart: a session with no evide
   const items = ids.map(id => ({id, kind: 'form', status: 'done', url: `https://forms.example/${id}`}));
   review.noteTabs({ids: [11], boot: 'run1', sessions: {11: 'c3'}}, new Set(ids));   // the extension's report: c3's tab is bound
   review.noteTabs({ids: [], boot: 'run1'}, new Set(ids));                          // and then it leaves
-  const live = sessionsWithTab(items, [{id: 21, url: 'https://forms.example/a1/application#jobpilotto-fill=a1'}], () => '');   // Chrome's list right now
+  const live = sessionsWithTab(items, [{id: 21, url: 'https://forms.example/a1/application#jobadabra-fill=a1'}], () => '');   // Chrome's list right now
   const {ids: open, unsure} = review.formStates(ids, live);
   assert.deepEqual([open, unsure], [['a1'], ['b2']]);                                // c3: closed (known gone); b2: nothing says either
   const forms = {known: true, ids: open, unsure};
@@ -283,7 +283,7 @@ test('scenario: Apply on an Ashby job opens the form address; its first report w
   const posting = 'https://jobs.ashbyhq.com/acme/621bb104-9daa-4c9e-949a-03d5730334e8';
   const sessions = [{id: 'k1', url: posting, company: 'Acme', kind: 'form', status: 'done', startedAt: '2026-10-12T10:00:00Z'}];
   const formAddress = `${posting}/application`;
-  const reply = review.report(sessions, {url: `${formAddress}#jobpilotto-fill`, job: formAddress, tab: 7, left: 2, total: 5, watch: []});
+  const reply = review.report(sessions, {url: `${formAddress}#jobadabra-fill`, job: formAddress, tab: 7, left: 2, total: 5, watch: []});
   assert.equal(reply.matched, 'k1');
   review.noteTabs({ids: [7], boot: 'run1', sessions: {7: 'k1'}}, new Set(['k1']));
   assert.equal(review.tabOpen('k1'), true);

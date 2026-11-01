@@ -13,8 +13,8 @@ const POSTING = how => `<!doctype html><title>ML Engineer</title><body><h1>ML En
 const SAMPLER = () => {
   const born = performance.now(), doc = Math.round(performance.timeOrigin + born);
   const sample = () => { try {
-    const h = document.getElementById('jobpilotto-review-host'), root = h?.shadowRoot, fill = document.documentElement.dataset.jobpilottoFill || '';
-    window.__rec({doc, path: location.pathname, age: Math.round(performance.now() - born), dim: !!document.getElementById('jobpilotto-fill-overlay'), host: !!h,
+    const h = document.getElementById('jobadabra-review-host'), root = h?.shadowRoot, fill = document.documentElement.dataset.jobadabraFill || '';
+    window.__rec({doc, path: location.pathname, age: Math.round(performance.now() - born), dim: !!document.getElementById('jobadabra-fill-overlay'), host: !!h,
       centred: !!h && /translate/.test(h.style.cssText), busy: !!root?.querySelector('.fill.is-busy'), label: root?.querySelector('.fill .label')?.textContent || '',
       over: /"state":"(done|error|no-form|account)"/.test(fill)}); } catch { /* no document element or no binding yet */ } };
   sample(); setInterval(sample, 5);
@@ -30,7 +30,7 @@ for (const [name, how] of [['reload (mark kept)', 'location.reload()'], ['same p
       await app.context.route('https://jobs.example.test/**', route => route.fulfill({status: 200, contentType: 'text/html', body: POSTING(how)}));
       await app.page.exposeFunction('__rec', sample => { samples.push(sample); });
       await app.page.addInitScript(SAMPLER);
-      await app.page.goto('https://jobs.example.test/post#jobpilotto-fill');   // the app opens the posting with the fill mark
+      await app.page.goto('https://jobs.example.test/post#jobadabra-fill');   // the app opens the posting with the fill mark
       await app.page.waitForTimeout(4000);
     } finally { await app.close(); }
     const docs = [...new Set(samples.map(s => s.doc))];
@@ -58,8 +58,8 @@ for (const [name, how] of [['reload (mark kept)', 'location.reload()'], ['same p
 // done = the run ends by itself (the fixture has no form), Stop = the panel's Stop button, your turn = the page needs the person (the panel reports it to the worker).
 const VERDICTS = {
   done: () => new Promise(resolve => setTimeout(resolve, 5000)),
-  stopped: async app => { const at = await app.page.evaluate(() => { const b = document.getElementById('jobpilotto-review-host').shadowRoot.querySelector('.stop-btn').getBoundingClientRect(); return {x: b.x + b.width / 2, y: b.y + b.height / 2}; }); await app.page.mouse.click(at.x, at.y); },
-  'your-turn': app => app.page.evaluate(() => document.documentElement.setAttribute('data-jobpilotto-needs', 'a captcha')),
+  stopped: async app => { const at = await app.page.evaluate(() => { const b = document.getElementById('jobadabra-review-host').shadowRoot.querySelector('.stop-btn').getBoundingClientRect(); return {x: b.x + b.width / 2, y: b.y + b.height / 2}; }); await app.page.mouse.click(at.x, at.y); },
+  'your-turn': app => app.page.evaluate(() => document.documentElement.setAttribute('data-jobadabra-needs', 'a captcha')),
 };
 for (const [state, cause] of Object.entries(VERDICTS)) {
   test(`the verdict "${state}" lifts the dim and the centred panel for good`, async () => {
@@ -69,10 +69,10 @@ for (const [state, cause] of Object.entries(VERDICTS)) {
       await app.context.route('https://jobs.example.test/**', route => route.fulfill({status: 200, contentType: 'text/html', body: '<!doctype html><title>ML Engineer</title><body><h1>ML Engineer</h1>'}));
       await app.page.exposeFunction('__rec', sample => { samples.push(sample); });
       await app.page.addInitScript(SAMPLER);
-      await app.page.goto('https://jobs.example.test/post#jobpilotto-fill');
-      await app.page.waitForFunction(() => document.getElementById('jobpilotto-fill-overlay') && document.getElementById('jobpilotto-review-host')?.shadowRoot?.querySelector('.stop-btn'), null, {timeout: 20000});
+      await app.page.goto('https://jobs.example.test/post#jobadabra-fill');
+      await app.page.waitForFunction(() => document.getElementById('jobadabra-fill-overlay') && document.getElementById('jobadabra-review-host')?.shadowRoot?.querySelector('.stop-btn'), null, {timeout: 20000});
       await cause(app);
-      await app.page.waitForFunction(() => !document.getElementById('jobpilotto-fill-overlay'), null, {timeout: 20000}).catch(() => {});
+      await app.page.waitForFunction(() => !document.getElementById('jobadabra-fill-overlay'), null, {timeout: 20000}).catch(() => {});
       await app.page.waitForTimeout(2500);
     } finally { await app.close(); }
     const lifted = samples.findIndex((s, i) => i > 0 && samples[i - 1].dim && !s.dim);
@@ -91,10 +91,10 @@ test('replacing the document root during an Apply keeps both drawings at every f
   const working = states => Object.entries(states).some(([key, value]) => key.startsWith('apply:') && value === 'working');
   try {
     await app.context.route('https://jobs.example.test/**', route => route.fulfill({contentType: 'text/html', body: '<!doctype html><title>Application</title><body><h1>Application</h1>'}));
-    await app.page.goto('https://jobs.example.test/post#jobpilotto-fill');
+    await app.page.goto('https://jobs.example.test/post#jobadabra-fill');
     await app.page.waitForFunction(() => {
-      const host = document.getElementById('jobpilotto-review-host');
-      return document.getElementById('jobpilotto-fill-overlay') && host?.shadowRoot?.querySelector('.fill.is-busy');
+      const host = document.getElementById('jobadabra-review-host');
+      return document.getElementById('jobadabra-fill-overlay') && host?.shadowRoot?.querySelector('.fill.is-busy');
     });
     assert.ok(working(await workerStates()), 'positive control: the worker is still working before the redraw');
     // Let the first render's app replies finish before reproducing hydration, so a pending first render cannot repair it by accident.
@@ -106,8 +106,8 @@ test('replacing the document root during an Apply keeps both drawings at every f
       requestAnimationFrame(() => {
         document.replaceChild(replacement, oldRoot);
         const sample = () => {
-          const host = document.getElementById('jobpilotto-review-host');
-          samples.push({rootReplaced: document.documentElement !== oldRoot, dim: !!document.getElementById('jobpilotto-fill-overlay'),
+          const host = document.getElementById('jobadabra-review-host');
+          samples.push({rootReplaced: document.documentElement !== oldRoot, dim: !!document.getElementById('jobadabra-fill-overlay'),
             host: !!host, centred: !!host && /translate/.test(host.style.cssText), busy: !!host?.shadowRoot?.querySelector('.fill.is-busy')});
           if (samples.length < 12) requestAnimationFrame(sample); else resolve(samples);
         };
@@ -117,17 +117,17 @@ test('replacing the document root during an Apply keeps both drawings at every f
     assert.ok(frames.every(frame => frame.rootReplaced), 'positive control: every checked frame uses the replacement root');
     assert.ok(working(await workerStates()), 'the redraw does not change the worker state');
     assert.deepEqual(frames.filter(frame => !frame.dim || !frame.host || !frame.centred || !frame.busy), [], 'the dim and centred working panel must remain at every rendered frame');
-    const button = app.page.locator('#jobpilotto-review-host').locator('.stop-btn');
+    const button = app.page.locator('#jobadabra-review-host').locator('.stop-btn');
     await button.click();
-    await app.page.waitForFunction(() => !document.getElementById('jobpilotto-fill-overlay'));
+    await app.page.waitForFunction(() => !document.getElementById('jobadabra-fill-overlay'));
     assert.ok(!working(await workerStates()), 'Stop ends the worker state');
     const afterStop = await app.page.evaluate(() => new Promise(resolve => {
       const replacement = document.createElement('html');
       replacement.innerHTML = '<head><title>Application</title></head><body><h1>Application</h1></body>';
       document.replaceChild(replacement, document.documentElement);
       requestAnimationFrame(() => {
-        const host = document.getElementById('jobpilotto-review-host');
-        resolve({dim: !!document.getElementById('jobpilotto-fill-overlay'),
+        const host = document.getElementById('jobadabra-review-host');
+        resolve({dim: !!document.getElementById('jobadabra-fill-overlay'),
           working: !!host && (/translate/.test(host.style.cssText) || !!host.shadowRoot?.querySelector('.fill.is-busy'))});
       });
     }));

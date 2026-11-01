@@ -18,7 +18,7 @@ const TABS = [
   [{url: 'chrome://extensions'}, false],
   [{}, false],
   [{url: 'https://www.notion.so/kit-123', armed: true}, false],                             // an apply tab sent to Notion is let go
-  [{url: 'https://apply.example.com/job/1#jobpilotto-fill'}, true],
+  [{url: 'https://apply.example.com/job/1#jobadabra-fill'}, true],
   [{url: 'https://calendly.com/acme/30min', armed: true}, true],                            // a later page of an apply tab
   [{url: 'https://www.jobs.ch/en/vacancies/#jp-read-filter-ab12'}, true],
   [{url: 'https://www.jobs.ch/en/vacancies/detail/e644/#jp-posting-ab12cd'}, true],

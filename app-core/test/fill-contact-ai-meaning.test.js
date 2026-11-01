@@ -18,7 +18,7 @@ const valueOf = (window, id) => window.document.getElementById(id).value;
 
 test('the AI\'s reading wins in the same pass where it disagrees; an agreeing answer leaves the pattern\'s value', { skip: !JSDOM }, async () => {
   const window = openPage(JSDOM, FORM);
-  await window.__jobPilottoExtensionFill([ai('preferred', 'Ada Tester'), ai('legal-first', 'Ada'), ai('email', 'ada.tester@example.test')], PROFILE, null, '', false);
+  await window.__jobadabraExtensionFill([ai('preferred', 'Ada Tester'), ai('legal-first', 'Ada'), ai('email', 'ada.tester@example.test')], PROFILE, null, '', false);
   assert.equal(valueOf(window, 'preferred'), 'Ada Tester');
   assert.equal(valueOf(window, 'legal-first'), 'Ada');
   assert.equal(valueOf(window, 'email'), 'ada.tester@example.test');
@@ -26,9 +26,9 @@ test('the AI\'s reading wins in the same pass where it disagrees; an agreeing an
 
 test('the AI\'s later answer replaces what the quick step typed (the answers come after the first fill)', { skip: !JSDOM }, async () => {
   const window = openPage(JSDOM, FORM);
-  await window.__jobPilottoExtensionFill([], PROFILE, null, '', false);
+  await window.__jobadabraExtensionFill([], PROFILE, null, '', false);
   assert.equal(valueOf(window, 'preferred'), 'Tester', 'the quick step alone reads the label pattern (the old behaviour this fixes)');
-  const summary = await window.__jobPilottoExtensionFill([ai('preferred', 'Ada Tester'), ai('email', 'ada.tester@example.test')], {}, null, '', false);
+  const summary = await window.__jobadabraExtensionFill([ai('preferred', 'Ada Tester'), ai('email', 'ada.tester@example.test')], {}, null, '', false);
   assert.equal(valueOf(window, 'preferred'), 'Ada Tester');
   assert.equal(valueOf(window, 'email'), 'ada.tester@example.test');
   assert.equal(summary.trace.find((row) => row.label === 'Preferred First & Last Name')?.outcome, 'filled');
@@ -36,10 +36,10 @@ test('the AI\'s later answer replaces what the quick step typed (the answers com
 
 test('a box the person edited after the quick step is never retyped by the AI\'s answer', { skip: !JSDOM }, async () => {
   const window = openPage(JSDOM, FORM);
-  await window.__jobPilottoExtensionFill([], PROFILE, null, '', false);
+  await window.__jobadabraExtensionFill([], PROFILE, null, '', false);
   const box = window.document.getElementById('preferred');
   box.value = 'Ada T.';
-  box.removeAttribute('data-jobpilotto-typed');   // what the person's own typing does (browser-form-fastpath.js follow: a trusted input event)
-  await window.__jobPilottoExtensionFill([ai('preferred', 'Ada Tester')], {}, null, '', false);
+  box.removeAttribute('data-jobadabra-typed');   // what the person's own typing does (browser-form-fastpath.js follow: a trusted input event)
+  await window.__jobadabraExtensionFill([ai('preferred', 'Ada Tester')], {}, null, '', false);
   assert.equal(valueOf(window, 'preferred'), 'Ada T.');
 });

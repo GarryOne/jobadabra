@@ -15,12 +15,12 @@ const opened = () => { const calls = []; const open = (...args) => { calls.push(
 const urlsOf = calls => calls.flatMap(args => args.flat(3).filter(item => typeof item === 'string' && item.startsWith('http')));
 
 test('a session\'s tab address names it, and a tab with no session is refused', () => {
-  assert.equal(sessionTabUrl('https://forms.example/a/1#top', 's9'), 'https://forms.example/a/1#jobpilotto-fill=s9');
+  assert.equal(sessionTabUrl('https://forms.example/a/1#top', 's9'), 'https://forms.example/a/1#jobadabra-fill=s9');
   const {calls, open} = opened();
   assert.equal(apply.openOne('https://forms.example/a/1', {open}).ok, false);
   assert.equal(calls.length, 0);
   assert.equal(apply.openOne('https://forms.example/a/1', {session: 's9', open}).ok, true);
-  assert.ok(urlsOf(calls).some(url => url.endsWith('#jobpilotto-fill=s9')));
+  assert.ok(urlsOf(calls).some(url => url.endsWith('#jobadabra-fill=s9')));
 });
 
 test('Apply: the tab it opens carries the id of the session it creates (an open session on the job keeps its own id)', async () => {
@@ -29,7 +29,7 @@ test('Apply: the tab it opens carries the id of the session it creates (an open 
   const first = await apply.applyOne({}, 'https://forms.example/a/1', {company: 'A'}, {open, id: () => 'f1', run: async () => {}});
   assert.equal(first.session.id, 'f1');
   await apply.applyOne({}, 'https://forms.example/a/1', {company: 'A'}, {open, id: () => 'f2', run: async () => {}});   // reopens only the tab: of the SAME session
-  assert.deepEqual(urlsOf(calls).map(url => url.split('#')[1]), ['jobpilotto-fill=f1', 'jobpilotto-fill=f1']);
+  assert.deepEqual(urlsOf(calls).map(url => url.split('#')[1]), ['jobadabra-fill=f1', 'jobadabra-fill=f1']);
 });
 
 test('Apply to N jobs: each tab carries the session made for its job', async () => {
@@ -40,7 +40,7 @@ test('Apply to N jobs: each tab carries the session made for its job', async () 
   assert.equal(result.ok, true, result.error);
   const marks = urlsOf(calls).map(url => url.split('#')[1]);
   assert.equal(marks.length, 2);
-  assert.deepEqual(marks.map(mark => mark.replace('jobpilotto-fill=', '')).sort(), terminals.list().map(session => session.id).sort());
+  assert.deepEqual(marks.map(mark => mark.replace('jobadabra-fill=', '')).sort(), terminals.list().map(session => session.id).sort());
 });
 
 test('nothing builds the fill mark by hand: the address always goes through sessionTabUrl (or the prompt that is given the session)', () => {
@@ -48,7 +48,7 @@ test('nothing builds the fill mark by hand: the address always goes through sess
   for (const name of fs.readdirSync(dir).filter(file => file.endsWith('.js'))) {
     if (['session-tab.js', 'review.js'].includes(name)) continue;   // the one builder; review.js only names the mark in a comment
     const lines = fs.readFileSync(path.join(dir, name), 'utf8').split('\n');
-    const hit = lines.findIndex(line => /#\$\{FILL_MARK\}|#jobpilotto-fill/.test(line.replace(/\/\/.*$/, '')) && !(name === 'claude-session.js' && /session/.test(line)));
+    const hit = lines.findIndex(line => /#\$\{FILL_MARK\}|#jobadabra-fill/.test(line.replace(/\/\/.*$/, '')) && !(name === 'claude-session.js' && /session/.test(line)));
     assert.equal(hit, -1, `${name}:${hit + 1} puts the fill mark on an address by hand: use sessionTabUrl(url, sessionId)`);
   }
 });

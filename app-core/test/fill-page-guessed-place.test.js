@@ -18,7 +18,7 @@ const valueOf = (window, id) => window.document.getElementById(id).value;
 
 test('a place the page guessed is replaced by the saved one, and the person is asked to check it', { skip: !JSDOM }, async () => {
   const window = openPage(JSDOM, page('Des Moines, United States of America'));
-  const summary = await window.__jobPilottoExtensionFill([], PROFILE, null, '', false);
+  const summary = await window.__jobadabraExtensionFill([], PROFILE, null, '', false);
   assert.equal(valueOf(window, 'address'), 'Musterstrasse 12');
   assert.ok(summary.todo.some(line => /^Check: Address \(it held the page's own text/.test(line)), summary.todo.join(' | '));
   assert.ok(!JSON.stringify(summary).includes('Des Moines'), 'the page\'s old value never leaves the page');
@@ -26,7 +26,7 @@ test('a place the page guessed is replaced by the saved one, and the person is a
 
 test('a place that agrees with the saved one is kept (another spelling, the city part)', { skip: !JSDOM }, async () => {
   const window = openPage(JSDOM, page('Musterstrasse 12'));
-  const summary = await window.__jobPilottoExtensionFill([], {...PROFILE, location_forms: ['Zürich', 'CH']}, null, '', false);
+  const summary = await window.__jobadabraExtensionFill([], {...PROFILE, location_forms: ['Zürich', 'CH']}, null, '', false);
   assert.equal(valueOf(window, 'address'), 'Musterstrasse 12');
   assert.equal(valueOf(window, 'city'), 'Zürich');
   assert.ok(!summary.todo.some(line => /page's own text/.test(line)), summary.todo.join(' | '));
@@ -34,17 +34,17 @@ test('a place that agrees with the saved one is kept (another spelling, the city
 
 test('an e-mail the page holds (a site account\'s own) is kept', { skip: !JSDOM }, async () => {
   const window = openPage(JSDOM, page('', 'ada@work.example'));
-  await window.__jobPilottoExtensionFill([], PROFILE, null, '', false);
+  await window.__jobadabraExtensionFill([], PROFILE, null, '', false);
   assert.equal(valueOf(window, 'email'), 'ada@work.example');
   assert.equal(valueOf(window, 'address'), 'Musterstrasse 12');
 });
 
 test('a box the person changed after the fill keeps the person\'s text', { skip: !JSDOM }, async () => {
   const window = openPage(JSDOM, page(''));
-  await window.__jobPilottoExtensionFill([], PROFILE, null, '', false);
+  await window.__jobadabraExtensionFill([], PROFILE, null, '', false);
   const box = window.document.getElementById('address');
   box.value = 'Bahnhofstrasse 5';
-  box.removeAttribute('data-jobpilotto-typed');   // what the person's own typing does (browser-form-fastpath.js follow: a trusted input event)
-  await window.__jobPilottoExtensionFill([], PROFILE, null, '', false);
+  box.removeAttribute('data-jobadabra-typed');   // what the person's own typing does (browser-form-fastpath.js follow: a trusted input event)
+  await window.__jobadabraExtensionFill([], PROFILE, null, '', false);
   assert.equal(valueOf(window, 'address'), 'Bahnhofstrasse 5');
 });

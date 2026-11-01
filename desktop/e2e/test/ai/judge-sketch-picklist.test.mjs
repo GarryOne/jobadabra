@@ -1,5 +1,5 @@
 // The judges' sketch (extension/account-fill.js accountSketch, run from its own source as ladder-capture.mjs does) reads a picklist's choice the way the panel
-// does (extension/review.js comboFilled, __jobPilottoChosen): a react-select chip, a labelled hidden input holding the value, never typed search text alone.
+// does (extension/review.js comboFilled, __jobadabraChosen): a react-select chip, a labelled hidden input holding the value, never typed search text alone.
 // Every picklist shape in one loop, and the form audit (page/browser-form-fastpath.js) must agree on each. Headless Chromium; skipped without Chromium.
 // 11 Oct 2026: a chosen Country (+41) read "empty", so the form-ready judge said "needs Country*" on a filled form.
 import assert from 'node:assert/strict';
@@ -42,7 +42,7 @@ test('every picklist shape reads chosen or not in the judges\' sketch, and the f
     const sketch = await page.evaluate(functionSource('account-fill.js', 'export function accountSketch'));
     assert.equal(sketch.controls.length, SHAPES.length, 'one control per shape');
     await page.addScriptTag({content: fs.readFileSync(path.join(root, 'extension/page/browser-form-fastpath.js'), 'utf8')});
-    const audit = await page.evaluate('window.__jobPilottoAuditVisibleFields()');
+    const audit = await page.evaluate('window.__jobadabraAuditVisibleFields()');
     SHAPES.forEach(([name, , want], index) => {
       assert.equal(sketch.controls[index].state, want, `judges' sketch: ${name}`);
       assert.equal(audit[index].filled, want === 'filled', `form audit: ${name}`);

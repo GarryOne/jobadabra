@@ -13,7 +13,7 @@ const UNTITLED = `<form><div><div class="q">Which plan?</div>
 
 test('a radio group read as one of its own choices is "question text not found", which the Worker keeps', { skip: !JSDOM }, async () => {
   const window = openPage(JSDOM, UNTITLED);
-  const summary = await window.__jobPilottoExtensionFill([], {}, null, '', false);
+  const summary = await window.__jobadabraExtensionFill([], {}, null, '', false);
   const row = Array.from(summary.trace).find((r) => r.type === 'radio');
   assert.equal(row.label, 'Basic');
   assert.equal(row.reason, 'question text not found on the page');

@@ -52,7 +52,7 @@ test('a rejected or personal-review AI reading cannot fall through to the legacy
     const decisions = await ask(fields,[answer({value:'checked',...over})]);
     const page = openPage(JSDOM,'<form><label><input id="a" type="checkbox" required>Aviso de datos personales</label></form>');
     try {
-      await page.__jobPilottoExtensionFill(decisions,{},null,'',true);
+      await page.__jobadabraExtensionFill(decisions,{},null,'',true);
       assert.equal(page.document.getElementById('a').checked,false,JSON.stringify(over));
     } finally {page.close();}
   }

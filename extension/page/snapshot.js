@@ -2,8 +2,8 @@
 // label, the nearest container, an open dropdown menu), scrubbed of every value and personal detail, ≤ 8 KB. It goes
 // with the fill-failure report to a public GitHub issue; app-core/test/fill-replay.test.js replays it as a fixture.
 (() => {
-  if (window.__jobPilottoSnapshotLoaded) return;
-  window.__jobPilottoSnapshotLoaded = true;
+  if (window.__jobadabraSnapshotLoaded) return;
+  window.__jobadabraSnapshotLoaded = true;
 
   // <scrub> The scrubber, a pure function of a {t, a, c} tree. This block is identical in app-core/src/snapshot.js,
   // which scrubs every report again (anyone can post one); app-core/test/snapshot.test.js fails when the two differ.
@@ -53,7 +53,7 @@
       const type = String(raw.type || '').toLowerCase();
       if (t === 'input' && /^(hidden|password)$/.test(type)) return null;
       // Jobadabra's own elements (the dropdown badge, which names the answer; the panel, styles); its classes on a field go.
-      if (/(^|\s)job-pilotto-badge(\s|$)/.test(String(raw.class || '')) || /^job-?pilotto/i.test(String(raw.id || ''))) return null;
+      if (/(^|\s)jobadabra-badge(\s|$)/.test(String(raw.class || '')) || /^job-?pilotto/i.test(String(raw.id || ''))) return null;
       const a = {};
       for (const [key, value] of Object.entries(raw)) {
         const name = String(key).toLowerCase();
@@ -117,10 +117,10 @@
     if (name.startsWith('radio:')) return document.querySelector(`input[type=radio][name="${CSS.escape(name.slice(6))}"]`);
     const byName = name && (document.getElementById(name) || document.querySelector(`[name="${CSS.escape(name)}"]`));
     if (byName) return byName;
-    const armed = label && Array.from(document.querySelectorAll('[data-jobpilotto-armed]')).find(el => el.dataset.jobpilottoArmed === label);
+    const armed = label && Array.from(document.querySelectorAll('[data-jobadabra-armed]')).find(el => el.dataset.jobadabraArmed === label);
     if (armed) return armed.querySelector('input, [role=combobox]') || armed;
     // A required question the reader did not read (page/coverage.js): its area, marked by the fill.
-    const unread = label && Array.from(document.querySelectorAll('[data-jobpilotto-unread]')).find(el => el.dataset.jobpilottoUnread === label);
+    const unread = label && Array.from(document.querySelectorAll('[data-jobadabra-unread]')).find(el => el.dataset.jobadabraUnread === label);
     return unread ? unread.querySelector('input, textarea, select, [role]') || unread : null;
   };
   // Containers from widest to narrowest: the group of a radio/checkbox, else the first ancestor holding the field's
@@ -138,7 +138,7 @@
   };
 
   // The scrubbed snapshot of one field: {tree, html} or null. target: {field, label}; secrets: the user's details.
-  window.__jobPilottoSnapshot = (target, secrets = []) => {
+  window.__jobadabraSnapshot = (target, secrets = []) => {
     const el = findField(target || {});
     if (!el) return null;
     // What was typed into a search box (a city) is the user's: it and the options it brought up are hidden.
@@ -158,15 +158,15 @@
   };
   // Snapshots for a run's report, by label: the menu as it opened when a dropdown was clicked (kept by fill.js), else
   // the field as it is now. Scrubbed again with the user's details (secrets), which are never kept on the page.
-  window.__jobPilottoSnapshots = (targets, secrets = []) => {
+  window.__jobadabraSnapshots = (targets, secrets = []) => {
     const out = {};
     for (const target of (targets || []).slice(0, 20)) {
-      const kept = window.__jobPilottoMenuSnapshots?.[target.label];
-      const fitted = kept ? snapshotFit(snapshotScrub(kept.tree, secrets)) : window.__jobPilottoSnapshot(target, secrets);
+      const kept = window.__jobadabraMenuSnapshots?.[target.label];
+      const fitted = kept ? snapshotFit(snapshotScrub(kept.tree, secrets)) : window.__jobadabraSnapshot(target, secrets);
       if (fitted) out[target.label] = fitted.tree;
     }
     return out;
   };
-  window.__jobPilottoScrubSnapshot = snapshotScrub;
-  window.__jobPilottoSnapshotFit = snapshotFit;
+  window.__jobadabraScrubSnapshot = snapshotScrub;
+  window.__jobadabraSnapshotFit = snapshotFit;
 })();

@@ -11,7 +11,7 @@ applied. Speed matters: a Greenhouse form should take under 3 minutes.
 
 **Golden rule (see `AGENTS.md`): map once → build the whole plan → one fill call → verify once →
 upload résumé → re-verify once.** Use the helpers in `tools/browser-form-fastpath.js`
-(`__jobPilottoAuditVisibleFields`, `__jobPilottoFillKnownFields`, `__jobPilottoOptionPositions`),
+(`__jobadabraAuditVisibleFields`, `__jobadabraFillKnownFields`, `__jobadabraOptionPositions`),
 injected after `tools/browser-submit-guard.js`; with claude-in-chrome, Read each file and pass its
 text to `javascript_tool`. Anything you end up doing by hand that could be deterministic belongs
 in that file next time — keep evolving it.
@@ -22,7 +22,7 @@ in that file next time — keep evolving it.
 0. **One context call first:** `python3 -m src.ai.apply_run --context <job URL>` prints the kit
    (JSON), Profile, Application Answers and recent learnings for that job board in one go (~8 s);
    don't fetch those pages separately. Apply the learnings.
-   While filling, stamp phases with `window.__jobPilottoStep('<name>')` inside JS calls you already
+   While filling, stamp phases with `window.__jobadabraStep('<name>')` inside JS calls you already
    make (the fast-path helpers stamp their own); the timings land in the run's Notion page.
 1. **Posting gone → close it, don't ask.** If the page says "Job not found"/404 or the board no
    longer lists it, run `python3 -m src.ai.apply_batch --mark-closed <job URL>` (Stage → Closed,
@@ -31,17 +31,17 @@ in that file next time — keep evolving it.
 1b. **Eligibility before filling.** Read the posting's location/residency and pay lines in step 1.
    If the job requires residence the owner doesn't have (e.g. "must be based in UK/SE/ES/DE/IE"),
    say so and stop before opening the form — don't fill a whole form and flag it at the end.
-2. **Greenhouse dropdowns: open, then `__jobPilottoClickOption('<exact text>')`.** Open the
+2. **Greenhouse dropdowns: open, then `__jobadabraClickOption('<exact text>')`.** Open the
    react-select (JS `.focus()` + a trusted click on its control, or click by ref), then call
    the helper: it clicks the option whose text *exactly* equals the answer and returns
    `{ok:false, options}` when there's no exact match. **Don't use type + Return** for fixed
    lists: it picks the first partial match — on a 26 Sep 2026 Canonical run "Male" became
    "Female" and "4" became "0". If a site ignores the JS click, click the returned `x, y`.
    Type + Return stays only for city/location search (first match is the intended one).
-   School/Degree/Discipline: type the query, wait, then `__jobPilottoClickOption`.
+   School/Degree/Discipline: type the query, wait, then `__jobadabraClickOption`.
 3. **Record the run at hand-over (Claude / manual runs):** note `date -u +%FT%TZ` when filling
    starts; at hand-over save `JSON.stringify({page_url: location.href, guard_active:
-   !!window.__jobPilottoGuardActive, fields: window.__jobPilottoAuditVisibleFields(), steps: window.__jobPilottoSteps || []})` to a
+   !!window.__jobadabraGuardActive, fields: window.__jobadabraAuditVisibleFields(), steps: window.__jobadabraSteps || []})` to a
    file and run `python3 -m src.ai.apply_run --record <job URL> --audit <file> --started <time>
    --learning "<one new finding, or empty>"` (needs
    `NOTION_TOKEN`). It writes the same run record as a Codex run (so `--status`, `--report` and the
@@ -197,21 +197,21 @@ in that file next time — keep evolving it.
    "will require sponsorship"). Only a required language the owner doesn't speak, or a hard
    location restriction the owner can't meet, is worth showing before opening the form.
 2. **Open the one form tab yourself, with the mark**: `tabs_context_mcp` with `createIfEmpty: true`, then navigate
-   that tab to `<job url>#jobpilotto-fill`. The app opens no tab (claude-in-chrome sees only its own tab group); never open another.
+   that tab to `<job url>#jobadabra-fill`. The app opens no tab (claude-in-chrome sees only its own tab group); never open another.
    Greenhouse: the form is on the job page (`job-boards.greenhouse.io/<board>/jobs/<id>`), below the
    description. A job board's page (jobs.ch, TechTree) or a careers page with only an Apply button: see
    "Reaching the form". **One tab per application** (owner, 8 Oct 2026; docs/flows/applying.md): before you click a link
    or button that would open a new tab (`target="_blank"`), prefer navigating this tab to its address. When a click opens a new tab
    anyway, continue in the new one (the extension follows it as the same session) and close the tab you came from in your group
    (`tabs_close_mcp`), unless the new one is a sign-in pop-up window, which closes by itself.
-3. **Extension first (Apply with Claude)**: your tab carries `#jobpilotto-fill`, and the
+3. **Extension first (Apply with Claude)**: your tab carries `#jobadabra-fill`, and the
    extension follows later pages in that tab and a tab that tab opens. When the page has
-   `<html data-jobpilotto-hook>`, read `data-jobpilotto-fill` and act on its `state`: `running` wait;
+   `<html data-jobadabra-hook>`, read `data-jobadabra-fill` and act on its `state`: `running` wait;
    `done` audit and fill only its `todo`, then press Next if the form has another page; `error` fill
    this page yourself; `no-form` press Apply or Next in this tab; `account` sign in or create the
    account (the extension does not type the password). After each navigation, wait for the new state.
    No hook after 10 s (site not allowed for the extension, app not running): do that step yourself.
-   Don't fire `jobpilotto:fill` yourself.
+   Don't fire `jobadabra:fill` yourself.
 3b. **Map fields in one JS pass**: list `form input, textarea` with `id`, `type`, `role`,
    `aria-required` and label text. Match kit answers by `field` (= element id; strip `[]`).
    **Keep the returned JSON compact** (short keys, truncate label text to ~60-80 chars, no
@@ -575,7 +575,7 @@ gate enforced in code rather than by the model's own judgment call." Re-test bef
 ## Log (newest first; one line per application or finding)
 - 2026-10-01 · process · The extension fills a later page in the opened tab, and a tab that tab opens. It leaves a password page and a page with no form, and says so (`account`, `no-form`) for Claude to click through.
 - 2026-09-28 · process · Apply with Claude hands known forms to the extension first (ticket from the
-  app, `jobpilotto:fill` event, result in `data-jobpilotto-fill`), then fills only what it left.
+  app, `jobadabra:fill` event, result in `data-jobadabra-fill`), then fills only what it left.
 - 2026-09-28 · process · Owner: the extension can't get past job board Apply → employer site →
   Apply now → sign-up (jobs.ch → a SuccessFactors career site). Apply with Claude (Desktop App row
   button, recommended) does it now: "Reaching the form" added; "never create accounts" replaced by
@@ -586,7 +586,7 @@ gate enforced in code rather than by the model's own judgment call." Re-test bef
   JS `.focus()` on each `input#question_<n>` + `computer` type of the option text + `Return` (trusted
   keys, reaches the real handler, no coordinates) — all four set in one `browser_batch`. Same for
   `candidate-location`: a coordinate click on the option from `getBoundingClientRect()` did not stick;
-  type city + `Return` (first match) did. Also fixed `__jobPilottoAuditVisibleFields`: its combobox
+  type city + `Return` (first match) did. Also fixed `__jobadabraAuditVisibleFields`: its combobox
   check matched a nearer `[class*=container]` and reported filled dropdowns as empty; it now prefers
   `select__container`. No education/EEOC/cover-letter file field on this form; cover letter went into
   "Anything else". Resume uploaded last, held.

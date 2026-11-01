@@ -84,7 +84,7 @@ test('Reopen form pressed twice opens one form', async () => {
 });
 test('the tab lookup finds a redirected tab by its mark on any host and window', async () => {
   const {tabOfSession} = await import('../lib/session-tab.js');
-  const tabs = [{id: '1', win: 1, url: 'https://news.example.test/'}, {id: '9', win: 2, url: 'https://career74.other-host.test/apply#jobpilotto-fill=f1'}];
+  const tabs = [{id: '1', win: 1, url: 'https://news.example.test/'}, {id: '9', win: 2, url: 'https://career74.other-host.test/apply#jobadabra-fill=f1'}];
   assert.equal(tabOfSession('f1', tabs, '')?.id, '9');
   assert.equal(tabOfSession('f2', tabs, ''), null);
 });

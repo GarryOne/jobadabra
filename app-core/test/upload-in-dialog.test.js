@@ -11,7 +11,7 @@ const VARIANT = `<div class="page"><aside role="dialog"><div><div><span>Nom</spa
   <p><input type="file" name="doc1" aria-label="Lebenslauf hochladen"> <b>Lebenslauf *</b></p></div></aside></div>`;
 const PICKER = `<div class="page"><button type="button" class="add">+</button><div role="dialog">Select a source <input type="file" id="p"></div></div>`;
 
-const slotsOf = async (html) => { const JSDOM = await loadJsdom(); return JSDOM ? openPage(JSDOM, html).__jobPilottoUpload : null; };
+const slotsOf = async (html) => { const JSDOM = await loadJsdom(); return JSDOM ? openPage(JSDOM, html).__jobadabraUpload : null; };
 
 for (const [name, html] of [['a sheet over the page', SHEET], ['another modal, other tags, label after the control, another language', VARIANT]]) {
   test(`the CV slot of a form inside a modal takes the file: ${name}`, async () => {

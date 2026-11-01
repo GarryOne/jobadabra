@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import {registerHooks} from 'node:module';
 import {test} from 'node:test';
 
-const tab = {id: 7, url: 'https://jobs.example.test/apply#jobpilotto-fill=s1'};
+const tab = {id: 7, url: 'https://jobs.example.test/apply#jobadabra-fill=s1'};
 const job = 'https://jobs.example.test/job/1#kit';
 const shape = {fields: 2, textareas: 0, files: 0, passwords: 0, choices: 0, nodes: 10};
 const form = {role: 'form', kind: 'form', by: 'ai', confidence: 0.9};

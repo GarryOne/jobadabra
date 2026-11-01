@@ -25,11 +25,11 @@ const GROUP = (picked) => `<form>
 async function panel(html, after) {
   const {window} = openPage(JSDOM, html);
   window.chrome = {runtime: {id: 'test', sendMessage: async (message) => (message.type === 'panelAllowed' ? {ok: true} : {}), onMessage: {addListener() {}}}};
-  window.document.documentElement.setAttribute('data-jobpilotto-page', 'form'); // the fill flow judged this page a form (extension/page-mark.js): only then may the panel say Ready
+  window.document.documentElement.setAttribute('data-jobadabra-page', 'form'); // the fill flow judged this page a form (extension/page-mark.js): only then may the panel say Ready
   window.eval(read('extension/page/skeleton.js'));
   evalPanel(window);
   await new Promise((resolve) => setTimeout(resolve, 50));
-  const pill = () => window.document.getElementById('jobpilotto-review-host')?.shadowRoot?.querySelector('.pill b')?.textContent;
+  const pill = () => window.document.getElementById('jobadabra-review-host')?.shadowRoot?.querySelector('.pill b')?.textContent;
   const before = pill();
   if (after) { after(window.document); await new Promise((resolve) => setTimeout(resolve, 3500)); }
   const result = {before, after: after ? pill() : null};

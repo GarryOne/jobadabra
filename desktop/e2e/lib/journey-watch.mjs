@@ -7,7 +7,7 @@ import {cardWords} from '../../renderer/session-state.js';
 
 // On the tab: the panel as drawn (all text trimmed; a panel not on the page is {present: false}).
 const panelInPage = () => {
-  const root = document.getElementById('jobpilotto-review-host')?.shadowRoot;
+  const root = document.getElementById('jobadabra-review-host')?.shadowRoot;
   if (!root) return {present: false};
   const text = selector => (root.querySelector(selector)?.textContent || '').replace(/\s+/g, ' ').trim();
   const shown = selector => { const node = root.querySelector(selector); return !!node && !node.hidden; };

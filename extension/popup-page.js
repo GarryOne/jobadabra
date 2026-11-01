@@ -7,7 +7,7 @@ export function findPopup(want = null) {
   const words = node => (node.innerText || node.value || node.getAttribute('aria-label') || node.getAttribute('title') || '').replace(/\s+/g, ' ').trim();
   const area = node => { const box = node.getBoundingClientRect(); return box.width * box.height; };
   const page = Math.max(1, (window.innerWidth || 1) * (window.innerHeight || 1));
-  const ours = node => node.closest('[id^=jobpilotto], [data-jobpilotto]');
+  const ours = node => node.closest('[id^=jobadabra], [data-jobadabra]');
   const layered = node => { const look = getComputedStyle(node); return (look.position === 'fixed' || look.position === 'sticky') && Number(look.zIndex) >= 10; };
   // Also inside open shadow roots: a banner drawn by web components (Usercentrics: div#usercentrics-root) is invisible to document.querySelectorAll (Hornbach, 11 Oct 2026). Same walk as fill-flow.js pageSketchOf.
   const deep = selector => { const found = []; const walk = root => { found.push(...root.querySelectorAll(selector)); for (const el of root.querySelectorAll('*')) if (el.shadowRoot && !/^job-?pilotto/.test(el.id)) walk(el.shadowRoot); }; walk(document); return found; };
@@ -23,6 +23,6 @@ export function findPopup(want = null) {
   const buttonsOf = box => [...box.querySelectorAll('button, a, [role=button], input[type=button], input[type=submit]')].filter(node => visible(node) && stays(node) && words(node) && words(node).length < 60);
   const withButtons = boxes.filter(box => buttonsOf(box).length);
   if (want?.list) { const box = withButtons[0]; return box ? {text: words(box).slice(0, 600), buttons: [...new Set(buttonsOf(box).map(words))].slice(0, 20)} : null; }
-  if (want?.press) { const button = withButtons.flatMap(buttonsOf).find(node => words(node) === want.press); if (button) (globalThis.__jobPilottoPress?.(button) || button.click()); return button && !window.__jobPilottoRefused ? words(button) : ''; }   // a press the floor refused (page/submit-press.js) is no press
+  if (want?.press) { const button = withButtons.flatMap(buttonsOf).find(node => words(node) === want.press); if (button) (globalThis.__jobadabraPress?.(button) || button.click()); return button && !window.__jobadabraRefused ? words(button) : ''; }   // a press the floor refused (page/submit-press.js) is no press
   return null;
 }

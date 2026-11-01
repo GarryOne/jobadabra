@@ -5,7 +5,7 @@ import {test} from 'node:test';
 
 globalThis.window = {};   // a classic panel script: it hangs its helpers on window (no DOM needed for the state function)
 await import('../../extension/panel-claude.js');
-const {next} = globalThis.window.__jobPilottoClaude;
+const {next} = globalThis.window.__jobadabraClaude;
 
 const info = (extra = {}) => ({on: true, stuck: true, auto: false, consent: true, ...extra});
 const fresh = () => ({phase: null, dismissed: false});

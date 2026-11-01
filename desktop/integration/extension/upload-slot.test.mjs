@@ -75,10 +75,10 @@ const open = async (html, run) => {
 };
 // Runs the real fill; -> what the panel and the report would see.
 const fill = (page, resume, {aliases = [], recipes = {}, choice = null} = {}) => page.evaluate(async ({resume, aliases, recipes, choice}) => {
-  window.__jobPilottoAliases = aliases; window.__jobPilottoRecipes = recipes; window.__jobPilottoUploadChoice = choice;
-  const rowsBefore = window.__jobPilottoAuditVisibleFields().filter(row => row.type === 'file');
-  const result = await window.__jobPilottoExtensionFill([], {}, resume);
-  return {rowsBefore, rowsAfter: window.__jobPilottoAuditVisibleFields().filter(row => row.type === 'file'), got: window.got || {}, resumeAttached: result.resumeAttached,
+  window.__jobadabraAliases = aliases; window.__jobadabraRecipes = recipes; window.__jobadabraUploadChoice = choice;
+  const rowsBefore = window.__jobadabraAuditVisibleFields().filter(row => row.type === 'file');
+  const result = await window.__jobadabraExtensionFill([], {}, resume);
+  return {rowsBefore, rowsAfter: window.__jobadabraAuditVisibleFields().filter(row => row.type === 'file'), got: window.got || {}, resumeAttached: result.resumeAttached,
     todo: result.todo, uploads: result.operated.filter(item => item.kind === 'upload'), unknown: result.unknownUploads};
 }, {resume, aliases, recipes, choice});
 
@@ -213,7 +213,7 @@ const IMPORT_SHAPE = `<body><div class="fast"><button type="button" id="importBt
   <style>.hidden{display:none}</style><div class="field"><div class="lab"><span>Currículo</span> <em>*</em></div><div class="drop"><button type="button" class="btn-upload" onclick="window.pressed = (window.pressed || 0) + 1">cargar archivo</button></div><input type="file" id="own" class="hidden" onchange="window.got = Object.assign(window.got || {}, {own: this.files[0].name})"></div></form></body>`;
 test('an import-from-CV input beside the form\'s own CV slot: the AI\'s choice gets the CV, the import input gets nothing', async () => {
   await open(IMPORT_SHAPE, async page => {
-    const wide = (await page.evaluate(() => window.__jobPilottoUpload.cvCandidates())).find(title => /Currículo/.test(title));
+    const wide = (await page.evaluate(() => window.__jobadabraUpload.cvCandidates())).find(title => /Currículo/.test(title));
     const result = await fill(page, CV_ONLY, {choice: {resume: wide}});
     assert.deepEqual(result.got, {own: 'cv.pdf'});
     assert.equal(await page.evaluate(() => window.pressed || 0), 0, 'the button is not pressed: it would open the system file dialog over the page');
@@ -227,11 +227,11 @@ test('no choice (no AI, or it said none): the operator behaves as before', async
 });
 test('the slots\' titles are listed for the app to ask about, only when two or more slots could take the CV', async () => {
   await open(IMPORT_SHAPE, async page => {
-    const titles = await page.evaluate(() => window.__jobPilottoUpload.cvCandidates());
+    const titles = await page.evaluate(() => window.__jobadabraUpload.cvCandidates());
     assert.equal(titles.length, 2); assert.ok(titles.some(title => /Currículo/.test(title)) && titles.some(title => /Importar datos/.test(title)), titles.join(' | '));
   });
   await open('<body><label>Attachment <input type="file" id="x"></label></body>', async page => {
-    assert.deepEqual(await page.evaluate(() => window.__jobPilottoUpload.cvCandidates()), []);
+    assert.deepEqual(await page.evaluate(() => window.__jobadabraUpload.cvCandidates()), []);
   });
 });
 
@@ -241,7 +241,7 @@ test('a slot\'s label reached only through aria-describedby/labelledby is part o
   await open(`<body><div class="fast"><button type="button" id="importBtn"><span id="importLbl">Importar datos desde mi CV</span></button><form><input type="file" id="imp" aria-labelledby="importLbl"></form></div>
     <div class="row"><div id="label_cv" class="lab">Currículo <em>*</em></div></div>
     <div class="box"><input type="text" id="decoy"><div class="drop"><button type="button" class="btn-upload" aria-describedby="help_cv label_cv">cargar archivo</button></div><input type="file" id="own" style="display:none"></div></body>`, async page => {
-    const titles = await page.evaluate(() => window.__jobPilottoUpload.cvCandidates());
+    const titles = await page.evaluate(() => window.__jobadabraUpload.cvCandidates());
     assert.ok(titles.some(title => /Currículo/.test(title)), titles.join(' | '));
   });
 });

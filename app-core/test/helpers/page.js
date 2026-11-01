@@ -44,7 +44,7 @@ export function openPage(JSDOM, html, { url = 'https://job-boards.greenhouse.io/
   window.EventTarget.prototype.removeEventListener = function (type, listener, options) {
     return remove.call(this, type, listeners.get(listener) || listener, options);
   };
-  window.__jobPilottoNoGuard = true;
+  window.__jobadabraNoGuard = true;
   for (const path of PAGE_SCRIPTS) window.eval(patch[path] ? patch[path](read(path)) : read(path));
   return window;
 }

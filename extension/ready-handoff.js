@@ -15,13 +15,13 @@ export function restoreInPage(handoff) {
   let put = 0;
   const into = (area, items) => { for (const [name, value] of Object.entries(items || {})) { try { if (area.getItem(name) === null) { area.setItem(name, value); put++; } } catch { /* storage refused */ } } };
   into(localStorage, handoff.localStorage); into(sessionStorage, handoff.sessionStorage);
-  if (handoff.fromNight) document.documentElement.setAttribute('data-jobpilotto-night', '1');   // the panel's words (review.js)
+  if (handoff.fromNight) document.documentElement.setAttribute('data-jobadabra-night', '1');   // the panel's words (review.js)
   return put;
 }
 
 // deps: {chrome, api(path, init), sessionGet(key), move(tabId, url): tabs.js moveTab (so the move counts as the extension's own, never an outside link), decide(what, fields),
 // mark: the app's fill mark (background.js FILL_MARK)}.
-export function createReadyHandoff({chrome, api, sessionGet, move, decide = () => {}, mark: fillMark = 'jobpilotto-fill'}) {
+export function createReadyHandoff({chrome, api, sessionGet, move, decide = () => {}, mark: fillMark = 'jobadabra-fill'}) {
   const asking = new Map();   // tabId -> {url, ask}: the ask still waiting on the app
   // While a marked tab first loads: ask once. -> true when the tab was sent on to the night's page (the caller stops; that load comes back here).
   // The page can finish loading while the app still answers (e2e, 18 Oct 2026: the fill began on the first page, then again on the night's): that

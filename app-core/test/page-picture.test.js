@@ -11,21 +11,21 @@ test('values are hidden by one style and shown again by removing it; nothing els
   Object.assign(globalThis, {document: dom.window.document});
   assert.equal(hideValues(), true);
   assert.equal(hideValues(), true);   // asked twice: still one style
-  const styles = [...document.querySelectorAll('#jobpilotto-hide-values')];
+  const styles = [...document.querySelectorAll('#jobadabra-hide-values')];
   assert.equal(styles.length, 1);
   assert.match(styles[0].textContent, /input[^}]*color: transparent !important/);
   assert.equal(document.getElementById('e').value, 'ada@example.com');   // the value itself is untouched: only its paint
   showValues();
-  assert.equal(document.querySelectorAll('#jobpilotto-hide-values').length, 0);
+  assert.equal(document.querySelectorAll('#jobadabra-hide-values').length, 0);
 });
 
 test('hideValues and showValues work injected alone, as executeScript runs them: no module scope (a module const threw in the page from 10 to 14 Oct)', () => {
   const dom = new JSDOM('<body><input id="e" value="ada@example.com"></body>', {runScripts: 'outside-only'});
   const hide = dom.window.eval(`(${hideValues.toString()})`), show = dom.window.eval(`(${showValues.toString()})`);
   assert.equal(hide(), true);
-  assert.equal(dom.window.document.querySelectorAll('#jobpilotto-hide-values').length, 1);
+  assert.equal(dom.window.document.querySelectorAll('#jobadabra-hide-values').length, 1);
   assert.equal(show(), true);
-  assert.equal(dom.window.document.querySelectorAll('#jobpilotto-hide-values').length, 0);
+  assert.equal(dom.window.document.querySelectorAll('#jobadabra-hide-values').length, 0);
 });
 
 test('the closer look takes no picture when the values could not be hidden', () => {

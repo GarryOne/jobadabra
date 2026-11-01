@@ -36,7 +36,7 @@ export function parseReadings(output) {
 // On the tab: the contact boxes (every frame) and the panel's count (its ring: a number, ✓ for none left, – for none counted).
 const boxesInPage = () => [...document.querySelectorAll('input[autocomplete], input[type=email]')].filter(el => el.getClientRects().length && getComputedStyle(el).visibility !== 'hidden')
   .map(el => ({autocomplete: el.getAttribute('autocomplete') || '', type: el.type, value: el.value || ''}));
-const ringInPage = () => (document.getElementById('jobpilotto-review-host')?.shadowRoot?.querySelector('.ring span')?.textContent || '').trim();
+const ringInPage = () => (document.getElementById('jobadabra-review-host')?.shadowRoot?.querySelector('.ring span')?.textContent || '').trim();
 
 // The whole reading of a live row's last application tab. -> {failures, boxes} (boxes: how many contact boxes were read: 0 says truth had nothing to judge)
 export async function readLive(page, contact) {

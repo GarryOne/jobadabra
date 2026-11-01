@@ -102,7 +102,7 @@ async function sentAfterOwnPress(markup) {
   evalPanel(window);
   await new Promise((resolve) => setTimeout(resolve, 50));
   window.document.addEventListener('submit', (event) => event.preventDefault());
-  window.__jobPilottoPress(window.document.getElementById('x'));   // the extension's own press (every press site goes through this helper)
+  window.__jobadabraPress(window.document.getElementById('x'));   // the extension's own press (every press site goes through this helper)
   await new Promise((resolve) => setTimeout(resolve, 50));
   window.close();
   return sent.filter((message) => message.type === 'submitted').length;
@@ -121,7 +121,7 @@ test('the person pressing right after the extension still counts (the own press 
   evalPanel(window);
   await new Promise((resolve) => setTimeout(resolve, 50));
   window.document.addEventListener('submit', (event) => event.preventDefault());
-  window.__jobPilottoPress(window.document.getElementById('closer'));
+  window.__jobadabraPress(window.document.getElementById('closer'));
   await new Promise((resolve) => setTimeout(resolve, 50));
   assert.equal(sent.filter((message) => message.type === 'submitted').length, 0);
   const click = new window.MouseEvent('click', { bubbles: true, cancelable: true });
@@ -158,9 +158,9 @@ test('no extension file clicks a control without the marked press', () => {
   const root = new URL('../../extension', import.meta.url).pathname;
   const bare = [];
   for (const file of walk(root).filter((name) => name.endsWith('.js') && !/\/(review|page\/submit-press)\.js$/.test(name))) {
-    fs.readFileSync(file, 'utf8').split('\n').forEach((line, i) => { if (/\.click\(\)/.test(line.replace(/\/\/.*$/, '')) && !line.includes('__jobPilottoPress?.(')) bare.push(`${file.slice(root.length)}:${i + 1}`); });
+    fs.readFileSync(file, 'utf8').split('\n').forEach((line, i) => { if (/\.click\(\)/.test(line.replace(/\/\/.*$/, '')) && !line.includes('__jobadabraPress?.(')) bare.push(`${file.slice(root.length)}:${i + 1}`); });
   }
-  assert.deepEqual(bare, [], 'a press without globalThis.__jobPilottoPress?.(el) || el.click()');
+  assert.deepEqual(bare, [], 'a press without globalThis.__jobadabraPress?.(el) || el.click()');
 });
 
 // The extension's debugger presses are trusted clicks at a point: the element there is marked first (markAt), the click that arrives is the extension's own, and the person's next one counts.
@@ -175,7 +175,7 @@ test('a debugger press the extension marked first never counts, the person\'s ne
   await new Promise((resolve) => setTimeout(resolve, 50));
   window.document.addEventListener('submit', (event) => event.preventDefault());
   const trusted = () => { const click = new window.MouseEvent('click', { bubbles: true, cancelable: true }); click.__jpTrusted = true; return click; };
-  window.__jobPilottoSubmitPress.markAt(5, 5);
+  window.__jobadabraSubmitPress.markAt(5, 5);
   await new Promise((resolve) => setTimeout(resolve, 100));   // the debugger click crosses processes: the mark waits for it
   window.document.getElementById('x').dispatchEvent(trusted());
   await new Promise((resolve) => setTimeout(resolve, 50));
@@ -190,5 +190,5 @@ test('every debugger press in the extension marks its element first', () => {
   const walk = (dir) => fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => (entry.isDirectory() ? walk(`${dir}/${entry.name}`) : [`${dir}/${entry.name}`]));
   const root = new URL('../../extension', import.meta.url).pathname;
   const unmarked = walk(root).filter((name) => name.endsWith('.js') && fs.readFileSync(name, 'utf8').includes('Input.dispatchMouseEvent') && !fs.readFileSync(name, 'utf8').includes('markAt('));
-  assert.deepEqual(unmarked.map((name) => name.slice(root.length)), [], 'a debugger click without __jobPilottoSubmitPress.markAt(x, y) first');
+  assert.deepEqual(unmarked.map((name) => name.slice(root.length)), [], 'a debugger click without __jobadabraSubmitPress.markAt(x, y) first');
 });

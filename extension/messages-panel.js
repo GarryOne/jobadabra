@@ -42,7 +42,7 @@ export function createPanelMessages(ctx) {
         if (result?.error || result?.ineligible) return result;
         forgetJudged(sender.tab.id);
         sayStep(sender.tab.id, 'Checking the form…');
-        await chrome.scripting.executeScript({target: {tabId: sender.tab.id}, func: () => document.documentElement.removeAttribute('data-jobpilotto-needs')}).catch(() => {});   // the old verdict goes; the judges below set it again if the page still needs the person
+        await chrome.scripting.executeScript({target: {tabId: sender.tab.id}, func: () => document.documentElement.removeAttribute('data-jobadabra-needs')}).catch(() => {});   // the old verdict goes; the judges below set it again if the page still needs the person
         await handGivenUpToPerson(sender.tab, 0, result?.trace).catch(() => {});
         await formNext(sender.tab, 0).catch(() => {});
         sayStep(sender.tab.id, '');
@@ -61,7 +61,7 @@ export function createPanelMessages(ctx) {
         const tab = await chrome.tabs.get(message.tabId).catch(() => null);
         const kept = tab ? await chrome.storage.session.get([`armed:${tab.id}`, `stoppedTab:${tab.id}`]).catch(() => ({})) : {};
         const armed = tab && (kept[`armed:${tab.id}`] || kept[`stoppedTab:${tab.id}`]);   // a tab Stop cleared is still the app's: the person starts it again here (stop.js)
-        if (!tab || !/^https:/.test(tab.url || '') || !(armed || tab.url.includes('#jobpilotto-fill'))) return {ok: false, why: 'This page was not opened by the Jobadabra app: press Apply in the app.'};
+        if (!tab || !/^https:/.test(tab.url || '') || !(armed || tab.url.includes('#jobadabra-fill'))) return {ok: false, why: 'This page was not opened by the Jobadabra app: press Apply in the app.'};
         tabReloaded(tab.id);   // a page whose Apply press was tried once is pressed again: this is the person asking (a reload does the same, tab-report.js)
         decide('fill', 'Apply pressed in the extension popup', {host: new URL(tab.url).hostname});
         if (await readyHandoff.takeLate(tab.id, tab.url).catch(() => false)) return {ok: true};   // a load the worker missed: the night's page first (ready-handoff.js)

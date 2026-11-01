@@ -6,7 +6,7 @@ the ladder: [docs/flows/ladder.md](../flows/ladder.md).
 
 ## Written questions are drafted, never left bare (owner, 16 Oct 2026; changes the 11 Oct "expected hold")
 - An open question in the person's own words ("describe an incident you root-caused", "why us") gets a DRAFT from their facts only (CV, experience bank, LinkedIn export, saved answers, the posting for focus), in their voice. Thin facts: an outline of `• Add: ...` lines to complete. Never an invented employer, project, number or incident.
-- It is typed and marked (`data-jobpilotto-draft`): the panel lists it "Drafted for you: review"; it counts as left (never "Ready to submit") until the person edits it or presses Keep as is; an outline until its Add lines are gone.
+- It is typed and marked (`data-jobadabra-draft`): the panel lists it "Drafted for you: review"; it counts as left (never "Ready to submit") until the person edits it or presses Keep as is; an outline until its Add lines are gone.
 - "Review my answer" (`extension/panel-written.js`, `/extension/review-answer`) reads the person's text or the draft and offers one improved version; it types only on the person's "Use this version" press, and never over text that changed since the review.
 - Guards: `app-core/test/written-answer.test.js`, `app-core/test/written-panel.test.js`, `desktop/test/written-draft.test.js`. Why: [why.md](why.md).
 

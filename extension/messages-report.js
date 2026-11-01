@@ -8,7 +8,7 @@ import {isStopped, onStopped} from './stop.js';
 import {sessionGet} from './tab-memory.js';
 
 const ROUTE = '/extension/report-form';
-const FILL_MARK = 'jobpilotto-fill';
+const FILL_MARK = 'jobadabra-fill';
 const STATE_TTL_MS = 30e3;
 // Any frame of the tab holding a password field: a sign-in page is never kept.
 // Why a call to the app failed, as the panel's kinds: no answer at all (the app is closed or the connection broke) is "app"; an answer that is an error is not (the app is open).

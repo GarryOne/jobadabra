@@ -104,7 +104,7 @@ export async function startReplayBrowser(items, {extensionDir, appPort = 0, cdp 
       };
       const ours = open => !isExtensionPage(open) && open !== run.page && (open === tab || state.shared === false || hosts.some(host => open.url().includes(host)) || !/^https?:/.test(open.url()));   // alone: every tab is the case's
       await step('routes', () => routeSyntheticNavigation(run.context, tab, item, route => answerPage(route, files, statuses, delays, redirects)));
-      await step('goto', () => tab.goto(`${navigation.startUrl}#jobpilotto-fill`, {waitUntil: 'domcontentloaded'}));
+      await step('goto', () => tab.goto(`${navigation.startUrl}#jobadabra-fill`, {waitUntil: 'domcontentloaded'}));
       const result = await step('judge', () => judge(item, {run, page: tab, pages: () => run.context.pages().filter(ours), mine: () => (state.shared ? loose() : run.requests.slice(first)), strict: state.shared ? strict : null, otherHosts: state.shared ? allHosts.filter(host => !hosts.includes(host)) : null,
         every: () => run.requests.slice(first), all: () => (state.shared ? loose() : run.requests.slice(first)), opened: () => theTabs().ours.length, unplacedTabs: () => theTabs().unplaced.length}));
       await step('fillSettled', () => fillSettled(tab));

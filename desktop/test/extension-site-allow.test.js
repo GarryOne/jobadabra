@@ -30,10 +30,10 @@ test('an apply tab on a site not allowed waits visibly, opens Allow once, and sa
   const chrome = fakeChrome();
   const said = [];
   const decide = async (kind, text, fields) => said.push({kind, text, fields});
-  const url = 'https://www.jobs.ch/en/vacancies/detail/a601bb40/#jobpilotto-fill';
+  const url = 'https://www.jobs.ch/en/vacancies/detail/a601bb40/#jobadabra-fill';
   await fillWaitsForAllow(12, url, {chrome, decide});
   await fillWaitsForAllow(12, url, {chrome, decide});   // the same page loading again
-  await fillWaitsForAllow(13, 'https://www.jobup.ch/x#jobpilotto-fill', {chrome, decide});
+  await fillWaitsForAllow(13, 'https://www.jobup.ch/x#jobadabra-fill', {chrome, decide});
   assert.ok(chrome.calls.some(([kind, text]) => kind === 'badge' && text === '!'), 'the tab is badged: waiting for you');
   assert.ok(chrome.calls.some(([kind, title]) => kind === 'title' && /press Allow/.test(title)));
   assert.equal(chrome.calls.filter(([kind]) => kind === 'created').length, 1, 'one Allow page for every waiting tab');
@@ -44,8 +44,8 @@ test('an apply tab on a site not allowed waits visibly, opens Allow once, and sa
 
 test('Allow pressed: every waiting apply tab loads again and starts', async () => {
   const chrome = fakeChrome({allowed: true});
-  chrome.session['fillwait:12'] = 'https://www.jobs.ch/x#jobpilotto-fill';
-  chrome.session['fillwait:13'] = 'https://www.jobup.ch/x#jobpilotto-fill';
+  chrome.session['fillwait:12'] = 'https://www.jobs.ch/x#jobadabra-fill';
+  chrome.session['fillwait:13'] = 'https://www.jobup.ch/x#jobadabra-fill';
   chrome.session['waiting:20'] = 'a reading tab: visit.js resumes it, not this';
   const said = [];
   assert.equal(await resumeFillWaiting({chrome, decide: async (kind, text, fields) => said.push(fields)}), 2);
@@ -57,7 +57,7 @@ test('Allow pressed: every waiting apply tab loads again and starts', async () =
 
 test('a permission added for something else starts nothing', async () => {
   const chrome = fakeChrome({allowed: false});
-  chrome.session['fillwait:12'] = 'https://www.jobs.ch/x#jobpilotto-fill';
+  chrome.session['fillwait:12'] = 'https://www.jobs.ch/x#jobadabra-fill';
   assert.equal(await resumeFillWaiting({chrome}), 0);
   assert.ok(chrome.session['fillwait:12']);
 });
@@ -71,10 +71,10 @@ test('the tab is seen through webNavigation, which has the address on a site tab
   const said = [];
   const check = watchUnallowedFillTabs({chrome, decide: async (kind, text, fields) => said.push(fields.host)});
   assert.deepEqual(listeners.map(([name]) => name), ['completed', 'fragment'], 'a page load and a mark added to an open tab');
-  await check({frameId: 0, tabId: 5, url: 'https://www.jobs.ch/x/#jobpilotto-fill'});
-  await check({frameId: 1, tabId: 5, url: 'https://ads.example/#jobpilotto-fill'});   // a frame inside the page
+  await check({frameId: 0, tabId: 5, url: 'https://www.jobs.ch/x/#jobadabra-fill'});
+  await check({frameId: 1, tabId: 5, url: 'https://ads.example/#jobadabra-fill'});   // a frame inside the page
   await check({frameId: 0, tabId: 6, url: 'https://www.jobs.ch/x/'});                 // no mark: a tab the person opened
-  await check({frameId: 0, tabId: 7, url: 'https://jobs.lever.co/x#jobpilotto-fill'}); // allowed: background.js fills it
+  await check({frameId: 0, tabId: 7, url: 'https://jobs.lever.co/x#jobadabra-fill'}); // allowed: background.js fills it
   assert.deepEqual(said, ['www.jobs.ch']);
   assert.ok(chrome.session['fillwait:5'] && !chrome.session['fillwait:7']);
 });

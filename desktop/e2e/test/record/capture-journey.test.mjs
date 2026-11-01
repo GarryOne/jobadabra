@@ -95,7 +95,7 @@ test('a page that changes in place (a dialog a press opens) is kept again once s
     const page = await context.newPage();
     await page.goto('https://jobs.example.test/o/role/apply');
     for (let i = 0; i < 3; i++) await journey.tick();
-    await page.evaluate(() => { const box = Object.assign(document.createElement('div'), {id: 'jobpilotto-note'}); box.innerHTML = '<button>Fill anyway</button><button>Close</button>'; document.body.append(box); });
+    await page.evaluate(() => { const box = Object.assign(document.createElement('div'), {id: 'jobadabra-note'}); box.innerHTML = '<button>Fill anyway</button><button>Close</button>'; document.body.append(box); });
     for (let i = 0; i < 3; i++) await journey.tick();
     await page.evaluate(() => { document.body.insertAdjacentHTML('beforeend', '<dialog open><h2>Create an account</h2><button>Continue without an account</button><button>Sign in</button></dialog>'); });
     for (let i = 0; i < 3; i++) await journey.tick();

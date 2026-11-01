@@ -20,7 +20,7 @@ before(async () => {
 after(async () => { handoffs?.clear(); await kit?.close(); });
 
 test('the tab is handed the night\'s mark and nothing of its answers', () => {
-  const given = handoffs.take(`${POSTING}#jobpilotto-fill=night-1`);
+  const given = handoffs.take(`${POSTING}#jobadabra-fill=night-1`);
   assert.equal(given.fromNight, true);
   assert.ok(!JSON.stringify(given).includes('six years'), 'a night answer went to the tab');
 });

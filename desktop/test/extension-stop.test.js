@@ -26,7 +26,7 @@ globalThis.chrome = {
     async getTargets() { return attachedTargets; },
     onDetach: {addListener(fn) { detachListener = fn; }},
   },
-  tabs: {async get(id) { if (fail.gone.has(id)) throw new Error(`No tab with id: ${id}`); return null; }, async query() { return [{id: 5, url: 'https://github.com/x/y/pull/1#jobpilotto-fill=s1'}, {id: 6, url: 'https://example.com/'}]; }, async sendMessage(id, message) { calls.told.push([id, message.type]); if (message.type === 'stopped' && fail.heard.has(id)) return {stopped: true}; if (message.type === 'stopped') throw new Error('Could not establish connection. Receiving end does not exist.'); }, onRemoved: {addListener() {}}},
+  tabs: {async get(id) { if (fail.gone.has(id)) throw new Error(`No tab with id: ${id}`); return null; }, async query() { return [{id: 5, url: 'https://github.com/x/y/pull/1#jobadabra-fill=s1'}, {id: 6, url: 'https://example.com/'}]; }, async sendMessage(id, message) { calls.told.push([id, message.type]); if (message.type === 'stopped' && fail.heard.has(id)) return {stopped: true}; if (message.type === 'stopped') throw new Error('Could not establish connection. Receiving end does not exist.'); }, onRemoved: {addListener() {}}},
   scripting: {async executeScript(options) { if (fail.page && options.func?.name === 'stoppedPage') throw new Error('cannot access a chrome:// page'); calls.scripted.push(options.target.tabId); calls.funcs.push([options.target.tabId, options.func?.name || '']); return options.func?.name === 'startedPage' ? [{result: pageWasStopped}] : []; }},
 };
 const reached = [];   // every network call a test tried: none leaves (the stub refuses), and none may aim at this Mac's app (CLAUDE.md: tests never touch the owner's live app)
@@ -38,7 +38,7 @@ const reset = () => { fail.keep = false; fail.page = false; fail.marks = false; 
 
 test('Stop clears every armed tab\'s state, keeps what is not a tab\'s, and says it is stopped', async () => {
   reset();
-  Object.assign(store, {'armed:5': true, 'session:5': 's1', 'from:5': 'https://x.test/job', 'job:5': 'https://x.test/job', 'carried:5': 'https://x.test/job#jobpilotto-fill', 'submit:5': 1, 'judged:5': 1,
+  Object.assign(store, {'armed:5': true, 'session:5': 's1', 'from:5': 'https://x.test/job', 'job:5': 'https://x.test/job', 'carried:5': 'https://x.test/job#jobadabra-fill', 'submit:5': 1, 'judged:5': 1,
     'armed:7': true, 'session:7': 's2', boot: 'run-1', 'armed:8': false});
   assert.equal(stop.isStopped(), false);
   const done = await stop.stopAll('the person pressed Stop');
@@ -135,8 +135,8 @@ test('the class: the debugger is attached in one place, and every press site ask
 test('the class: the fill\'s entry points and the page-side gate check stopped', () => {
   const read = file => fs.readFileSync(path.join(root, file), 'utf8');
   assert.match(read('fill-flow.js'), /export async function consider[\s\S]{0,400}?isStopped\(\)/, 'consider() looks first');
-  assert.match(read('page/guard-gate.js'), /__jobPilottoStopped/, 'the fill\'s stage gate holds when stopped');
-  assert.match(read('page/fill.js'), /__jobPilottoStopped/, 'the fill\'s first look');
+  assert.match(read('page/guard-gate.js'), /__jobadabraStopped/, 'the fill\'s stage gate holds when stopped');
+  assert.match(read('page/fill.js'), /__jobadabraStopped/, 'the fill\'s first look');
   assert.match(read('messages-app.js'), /isStopped\(\)/, 'a stopped worker answers no report, password or judgment');
   assert.match(read('visit.js'), /mayAct\(\)\) return;/, 'no read of a job list starts while stopped');
 });
@@ -190,9 +190,9 @@ test('every person-pressed start on a tab clears that page\'s own Stop, tells it
 
 test('the page fill waits for the page\'s Stop to clear before it starts', () => {
   const flow = fs.readFileSync(new URL('../../extension/fill-tab-inputs.js', import.meta.url), 'utf8');
-  assert.match(flow, /const summary = await pageStarted\(tab\.id\)\.then\(\(\) => inPage\(tab\.id, \(list, profile, resume, letter, consents\) => window\.__jobPilottoExtensionFill/, 'flow.js awaits pageStarted right before the page fill');
+  assert.match(flow, /const summary = await pageStarted\(tab\.id\)\.then\(\(\) => inPage\(tab\.id, \(list, profile, resume, letter, consents\) => window\.__jobadabraExtensionFill/, 'flow.js awaits pageStarted right before the page fill');
   const stopFile = fs.readFileSync(new URL('../../extension/stop.js', import.meta.url), 'utf8');
-  assert.doesNotMatch(stopFile.match(/function stoppedPage\(\) \{[\s\S]*?\n\}/)[0].match(/for \(const id of \[[^\]]*\]\) document\.getElementById\(id\)\?\.remove\(\)/)[0], /'jobpilotto-review-host'/, 'Stop keeps the panel: it says "Stopped by you" with Check form again (owner mockup 03), never a panel taken away and drawn back working');
+  assert.doesNotMatch(stopFile.match(/function stoppedPage\(\) \{[\s\S]*?\n\}/)[0].match(/for \(const id of \[[^\]]*\]\) document\.getElementById\(id\)\?\.remove\(\)/)[0], /'jobadabra-review-host'/, 'Stop keeps the panel: it says "Stopped by you" with Check form again (owner mockup 03), never a panel taken away and drawn back working');
 });
 
 // Why (31 Oct 2026, a8; coordinator: "A Stop that failed must say so (rule 6, safety)"; the open-panel Stop flake of run 41250657527): stopAll swallowed every step's error and the

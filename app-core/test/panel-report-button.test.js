@@ -16,10 +16,10 @@ async function panel() {
 </form>`);
   window.chrome = { runtime: { id: 'test', getManifest: () => ({ version: 'test' }), sendMessage: async (message) => (message.type === 'panelAllowed' ? { ok: true } : {}), onMessage: { addListener() {} } } };
   window.eval(read('extension/page/skeleton.js'));
-  window.document.documentElement.setAttribute('data-jobpilotto-page', 'form');
+  window.document.documentElement.setAttribute('data-jobadabra-page', 'form');
   evalPanel(window);
   await new Promise((resolve) => setTimeout(resolve, 60));
-  return { window, button: () => window.document.getElementById('jobpilotto-review-host').shadowRoot.querySelector('.foot .report-btn') };
+  return { window, button: () => window.document.getElementById('jobadabra-review-host').shadowRoot.querySelector('.foot .report-btn') };
 }
 
 test('the panel footer has one Report button, always there, opening the same card; a page script cannot press it', { skip: !JSDOM }, async () => {
@@ -27,9 +27,9 @@ test('the panel footer has one Report button, always there, opening the same car
   try {
   assert.equal(button().textContent.trim(), 'Report');
   assert.equal(button().hidden, false, 'there before the app says anything');
-  assert.equal(window.document.getElementById('jobpilotto-review-host').shadowRoot.querySelector('.head .report-flag'), null, 'no header flag');
+  assert.equal(window.document.getElementById('jobadabra-review-host').shadowRoot.querySelector('.head .report-flag'), null, 'no header flag');
   let opened = 0;
-  window.__jobPilottoReport = { open: () => { opened += 1; } };
+  window.__jobadabraReport = { open: () => { opened += 1; } };
   button().onclick({ isTrusted: false });   // a page script's click: ignored
   assert.equal(opened, 0);
   button().onclick({ isTrusted: true });   // the person's press (jsdom cannot make a trusted click)

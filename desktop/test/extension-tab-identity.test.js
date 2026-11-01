@@ -8,7 +8,7 @@ globalThis.chrome = {runtime: {getManifest: () => ({version: 'test'}), sendMessa
   async set(items) { Object.assign(store, items); }, async remove(keys) { for (const key of [].concat(keys)) delete store[key]; }}}};
 const {bindSession, identityOf, jobOf} = await import('../../extension/tab-identity.js');
 
-const POSTING = 'https://www.jobs.ch/en/vacancies/detail/12181ac1/', SIGNIN = 'https://auth.jobs.ch/u/login/identifier?state=x#jobpilotto-fill';
+const POSTING = 'https://www.jobs.ch/en/vacancies/detail/12181ac1/', SIGNIN = 'https://auth.jobs.ch/u/login/identifier?state=x#jobadabra-fill';
 
 test('a sign-in tab with no session yet: its job is the posting that led to it; the answered session is kept and then carried', async () => {
   store['from:7'] = POSTING;
@@ -37,8 +37,8 @@ test('one owner: no extension file but tab-identity.js builds a session:/job:/fr
 // posting and session from the mark, so the page the tab moves to next still has its job (and its kit). A tab that already has its job is left alone.
 test('a slow-boot worker takes the posting and session from the mark of a tab it never saw open', async () => {
   const {createSettleOpenTabs} = await import('../../extension/settle-tabs.js');
-  const marked = 'https://boards.example/jobs/1#jobpilotto-fill=ca582c3c', armedTabs = [];
-  globalThis.chrome.tabs = {query: async () => [{id: 21, url: marked}, {id: 22, url: 'https://boards.example/jobs/2#jobpilotto-fill=feedbeef'}]};
+  const marked = 'https://boards.example/jobs/1#jobadabra-fill=ca582c3c', armedTabs = [];
+  globalThis.chrome.tabs = {query: async () => [{id: 21, url: marked}, {id: 22, url: 'https://boards.example/jobs/2#jobadabra-fill=feedbeef'}]};
   store['from:22'] = 'https://boards.example/jobs/OTHER';
   await createSettleOpenTabs({arm: async id => { armedTabs.push(id); }, memoryReady: () => Promise.resolve()})();
   assert.deepEqual(armedTabs, [21, 22]);

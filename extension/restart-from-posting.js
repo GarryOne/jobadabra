@@ -6,7 +6,7 @@ import {moveTab} from './tabs.js';
 import {pageKey} from './tab-pages.js';
 
 const ONCE_MS = 10 * 60 * 1000;
-const MARK = /#jobpilotto-fill(=[A-Za-z0-9_-]{1,64})?$/;
+const MARK = /#jobadabra-fill(=[A-Za-z0-9_-]{1,64})?$/;
 
 // -> true when the tab was sent back to the posting (the caller stops: the posting's own load runs the whole flow again).
 export async function restartFromPosting(tab, jobUrl, {decide = () => {}, move = moveTab, store = chrome.storage.session, now = Date.now()} = {}) {
@@ -16,7 +16,7 @@ export async function restartFromPosting(tab, jobUrl, {decide = () => {}, move =
   const seen = (await store.get(key).catch(() => ({})))[key];
   if (seen && now - seen < ONCE_MS) return false;
   await store.set({[key]: now}).catch(() => {});
-  const mark = (String(tab.url).match(MARK) || [''])[0] || '#jobpilotto-fill';   // the tab keeps its session
+  const mark = (String(tab.url).match(MARK) || [''])[0] || '#jobadabra-fill';   // the tab keeps its session
   let host = ''; try { host = new URL(tab.url).hostname; } catch { /* no address */ }
   decide('fill', 'a broken page mid-application: started again from the posting', {host});
   await move(tab.id, `${posting}${mark}`);

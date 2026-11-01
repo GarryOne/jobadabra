@@ -31,9 +31,9 @@ test('the press floor refuses what deletes, withdraws, signs out or declines a c
     const el = [...window.document.querySelectorAll('button, input, label')].find((node) => (node.innerText || node.textContent).trim() === label);
     let clicked = 0;
     el.click = () => { clicked += 1; };
-    assert.equal(window.__jobPilottoPress(el), true, what);
+    assert.equal(window.__jobadabraPress(el), true, what);
     assert.equal(clicked, pressed ? 1 : 0, `${what}: ${pressed ? 'must be pressed' : 'must be refused'}`);
-    assert.equal(!!window.__jobPilottoRefused, !pressed, `${what}: refusal recorded`);
+    assert.equal(!!window.__jobadabraRefused, !pressed, `${what}: refusal recorded`);
     window.close();
   }
 });
@@ -42,7 +42,7 @@ test('the press floor refuses what deletes, withdraws, signs out or declines a c
 test('every page-side press path ends in the marked press, which holds the floor', () => {
   const paths = ['extension/page/visit-page.js', 'extension/popup-page.js', 'extension/on-top.js', 'extension/account-fill.js', 'extension/next-step.js', 'extension/apply-press.js', 'extension/sections.js', 'extension/page/controls.js']
     .map((file) => (fs.existsSync(new URL(`../../${file}`, import.meta.url)) ? file : file.replace('extension/page/visit-page.js', 'extension/visit-page.js')));
-  for (const file of paths) assert.match(read(file), /__jobPilottoPress\?\.\(/, `${file} presses through the marked press`);
+  for (const file of paths) assert.match(read(file), /__jobadabraPress\?\.\(/, `${file} presses through the marked press`);
   assert.match(read('extension/page/submit-press.js'), /refused\(el\)/, 'the marked press checks the floor');
 });
 
@@ -75,7 +75,7 @@ test('a debugger click is refused on a submit, a decline in a statement and a de
     const { window } = openPage(JSDOM, markup);
     window.eval(read('extension/page/submit-press.js'));
     window.document.elementFromPoint = () => window.document.getElementById('t');
-    assert.equal(window.__jobPilottoSubmitPress.markAt(5, 5), allowed, what);
+    assert.equal(window.__jobadabraSubmitPress.markAt(5, 5), allowed, what);
     window.close();
   }
 });

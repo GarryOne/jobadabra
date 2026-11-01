@@ -2,11 +2,11 @@
 // A pure move out of review.js (E, 13 Oct 2026) so the file shrinks; `why` is new: one fixed cause per left control (extension/ladder/control-ending.js turns it into a reason class and an ending).
 // Page world, loaded with the panel (background.js). Guard: app-core/test/review-payload.test.js.
 (() => {
-  window.__jobPilottoReviewPayload = (state, watch, {agree, find}) => {
+  window.__jobadabraReviewPayload = (state, watch, {agree, find}) => {
     const visible = el => el.getClientRects().length && getComputedStyle(el).visibility !== 'hidden';
-    const letterGiven = state.list.some(f => f.el?.getAttribute('data-jobpilotto-letter') === '1' && f.filled);
-    const letterFailed = !letterGiven && (state.list.some(f => f.el?.hasAttribute('data-jobpilotto-letter-error') && !f.filled) || Array.from(document.querySelectorAll('[data-jobpilotto-letter-manual][data-jobpilotto-letter-error]')).some(visible));
-    return {letterFailed, letterAsked: state.list.some(f => f.el?.getAttribute('data-jobpilotto-letter') === '1') || Array.from(document.querySelectorAll('[data-jobpilotto-letter-manual]')).some(el => el.getClientRects().length && getComputedStyle(el).visibility !== 'hidden'), letterGiven: state.list.some(f => f.el?.getAttribute('data-jobpilotto-letter') === '1' && f.filled), url: location.href, title: document.title, page: (mark => mark || 'reading')(document.documentElement.getAttribute('data-jobpilotto-page') || ''), left: state.left, total: state.total, needs: document.documentElement.getAttribute('data-jobpilotto-needs') || '',   // the AI's veto of "ready" (form-ready.js)
+    const letterGiven = state.list.some(f => f.el?.getAttribute('data-jobadabra-letter') === '1' && f.filled);
+    const letterFailed = !letterGiven && (state.list.some(f => f.el?.hasAttribute('data-jobadabra-letter-error') && !f.filled) || Array.from(document.querySelectorAll('[data-jobadabra-letter-manual][data-jobadabra-letter-error]')).some(visible));
+    return {letterFailed, letterAsked: state.list.some(f => f.el?.getAttribute('data-jobadabra-letter') === '1') || Array.from(document.querySelectorAll('[data-jobadabra-letter-manual]')).some(el => el.getClientRects().length && getComputedStyle(el).visibility !== 'hidden'), letterGiven: state.list.some(f => f.el?.getAttribute('data-jobadabra-letter') === '1' && f.filled), url: location.href, title: document.title, page: (mark => mark || 'reading')(document.documentElement.getAttribute('data-jobadabra-page') || ''), left: state.left, total: state.total, needs: document.documentElement.getAttribute('data-jobadabra-needs') || '',   // the AI's veto of "ready" (form-ready.js)
         missing: state.list.filter(f => f.required && !f.filled).slice(0, 30).map(f => String(f.label || 'A required field').slice(0, 500)),
         // What is filled, so the app can tick each field off as it happens (it keeps the time it first saw each one).
         // What is left, counted as the ring counts it: required, or an answer Claude wrote that is empty again.

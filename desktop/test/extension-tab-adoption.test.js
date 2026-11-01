@@ -76,6 +76,6 @@ test('the class: every file whose background code clicks for the person\'s appli
   const clickers = files.filter(name => presser.test(readFileSync(new URL(name, root), 'utf8')));
   assert.ok(clickers.length >= 4, `expected the press sites, found ${clickers.join(', ')}`);
   for (const name of clickers) assert.match(readFileSync(new URL(name, root), 'utf8'), /notePress\(/, `${name} presses in a page without notePress`);
-  // and the page-side hook next-move adds (__jobPilottoPress) is not a way to open a followed tab: only these sites are
+  // and the page-side hook next-move adds (__jobadabraPress) is not a way to open a followed tab: only these sites are
   assert.ok(clickers.includes('apply-press.js') && clickers.includes('next-step.js') && clickers.includes('account-step.js') && clickers.includes('ladder/rung4-picture.js'));
 });

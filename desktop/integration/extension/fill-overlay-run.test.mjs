@@ -20,8 +20,8 @@ const SAMPLER = () => {
   const born = performance.now(), doc = Math.round(performance.timeOrigin + born);
   window.__sampledFrom = born;
   const sample = () => { try {
-    const h = document.getElementById('jobpilotto-review-host'), root = h?.shadowRoot;
-    window.__rec({doc, path: location.pathname, at: Math.round(performance.timeOrigin + performance.now()), dim: !!document.getElementById('jobpilotto-fill-overlay'), host: !!h,
+    const h = document.getElementById('jobadabra-review-host'), root = h?.shadowRoot;
+    window.__rec({doc, path: location.pathname, at: Math.round(performance.timeOrigin + performance.now()), dim: !!document.getElementById('jobadabra-fill-overlay'), host: !!h,
       centred: !!h && /translate/.test(h.style.cssText), busy: !!root?.querySelector('.fill.is-busy'), label: root?.querySelector('.fill .label')?.textContent || ''}); } catch { /* no document element or no binding yet */ } };
   sample(); setInterval(sample, 5);
 };
@@ -44,17 +44,17 @@ test('an Apply from the posting to the fill\'s end is working then one verdict, 
     await app.context.route('https://jobs.example.test/**', route => route.fulfill({status: 200, contentType: 'text/html', body: /\/form/.test(route.request().url()) ? FORM : POSTING}));
     await app.page.exposeFunction('__rec', sample => { samples.push(sample); });
     await app.page.addInitScript(SAMPLER);
-    await app.page.goto('https://jobs.example.test/post#jobpilotto-fill');   // the app opens the posting with the fill mark
+    await app.page.goto('https://jobs.example.test/post#jobadabra-fill');   // the app opens the posting with the fill mark
     // The posting reloads itself to /post2 (the second load of the owner's recording). The Apply press waits until that document has been sampled as long as the judge asks of it (the sampler's clock, not what it shows:
     // a document that shows nothing must reach the judge, which reports it), so every run covers the posting, its reload and the form.
     await app.page.waitForURL('**/post2', {timeout: 20000});
     await app.page.waitForFunction(ms => window.__sampledFrom !== undefined && performance.now() - window.__sampledFrom >= ms, LOOK_BY_MS + 20, {timeout: 20000});   // the sampler's own clock: the judge measures from the first sample
     await app.page.evaluate(() => { location.href = 'https://jobs.example.test/form'; });   // the Apply press: a page change, its address carries no mark
     // The fill writes its own end on the page; the worker's verdict reaches its log asynchronously (storage.session.onChanged), so runStates reads until it is in. The hang guard names the states the worker went through.
-    await app.page.waitForFunction(() => /"state":"(done|error|no-form|account)"/.test(document.documentElement.dataset.jobpilottoFill || ''), null, {timeout: 60000})
+    await app.page.waitForFunction(() => /"state":"(done|error|no-form|account)"/.test(document.documentElement.dataset.jobadabraFill || ''), null, {timeout: 60000})
       .catch(async error => assert.fail(`the fill never wrote its end on the page: ${error.message}; the worker's states: ${JSON.stringify(await worker.evaluate(() => globalThis.__applyLog))}`));
     states = await runStates(() => worker.evaluate(() => globalThis.__applyLog));
-    pageEnd = await app.page.evaluate(() => document.documentElement.dataset.jobpilottoFill || '');
+    pageEnd = await app.page.evaluate(() => document.documentElement.dataset.jobadabraFill || '');
   } finally { await app.close(); }
   assert.deepEqual(judgeRun(states, samples), [], `the Apply broke its one-piece look (issue #2800); the page's end: ${pageEnd}`);
 });

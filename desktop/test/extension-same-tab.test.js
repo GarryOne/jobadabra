@@ -4,7 +4,7 @@ import {test} from 'node:test';
 import {FOLD_MS, postingToClose, realOpener} from '../../extension/same-tab.js';
 
 const POSTING = 'https://live.solique.ch/manor/job/details/4080388/';
-const pressed = new Map([[7, {at: 1000, url: `${POSTING}#jobpilotto-fill`}]]);
+const pressed = new Map([[7, {at: 1000, url: `${POSTING}#jobadabra-fill`}]]);
 
 test('a tab the posting opens by script right after Apply was pressed: the posting closes, the new tab is the application', () => {
   assert.equal(postingToClose({id: 9, openerTabId: 7}, pressed, POSTING, 3000), 7);          // Manor: career55.sapsf.eu opened by script

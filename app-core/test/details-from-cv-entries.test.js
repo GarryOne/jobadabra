@@ -11,8 +11,8 @@ const FORM = `<form><label for="first_name">First Name</label><input id="first_n
 
 const entriesOf = (profile) => {
   const window = openPage(JSDOM, FORM);
-  const rows = [...window.document.querySelectorAll('input')].map((el) => ({ field: el.id, label: window.__jobPilottoFillKit.labelOf(el), type: el.type || 'text' }));
-  return JSON.parse(JSON.stringify(window.__jobPilottoProfileEntries(rows, profile)));   // jsdom objects come from another realm
+  const rows = [...window.document.querySelectorAll('input')].map((el) => ({ field: el.id, label: window.__jobadabraFillKit.labelOf(el), type: el.type || 'text' }));
+  return JSON.parse(JSON.stringify(window.__jobadabraProfileEntries(rows, profile)));   // jsdom objects come from another realm
 };
 
 test('the CV\'s names go in, marked fromCv; a saved detail is not marked', { skip }, () => {

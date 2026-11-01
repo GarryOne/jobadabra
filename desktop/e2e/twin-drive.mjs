@@ -62,7 +62,7 @@ const fieldStates = labels => labels.map(text => {
   if (el.type === 'password') return {label: text, type: 'password'};
   return {label: text, tag: el.tagName, type: el.type, role: el.getAttribute('role'), value: el.tagName === 'SELECT' ? el.options[el.selectedIndex]?.text : el.value,
     hidden: target?.type === 'hidden' ? target.value : undefined, marks: Object.keys(el.dataset).filter(key => key.startsWith('jobadabra')),
-    armed: !!el.closest('[data-jobpilotto-armed]') || !!area?.querySelector('[data-jobpilotto-armed]')};
+    armed: !!el.closest('[data-jobadabra-armed]') || !!area?.querySelector('[data-jobadabra-armed]')};
 });
 
 const commands = {

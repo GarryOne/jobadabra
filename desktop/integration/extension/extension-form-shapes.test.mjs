@@ -35,7 +35,7 @@ async function fillForm(form, html, via = run) {
     if (route.request().url().includes('/__fired')) { const query = new URL(route.request().url()).searchParams; fired.push({kind: query.get('kind'), form: query.get('form')}); return route.fulfill({status: 204, body: ''}); }
     return route.fulfill({status: 200, contentType: 'text/html; charset=utf-8', body: html});
   });
-  await page.goto(`${url}#jobpilotto-fill`, {waitUntil: 'domcontentloaded'});
+  await page.goto(`${url}#jobadabra-fill`, {waitUntil: 'domcontentloaded'});
   const done = await waitForFill({capMs: FILL_CAP_MS, pickTab: () => ({tab: page, tabs: 1}), readState: fillState});
   assert.ok(done.ok, `the extension never finished filling ${form.title} (last state ${JSON.stringify(done.state)})`);
   assert.notEqual(done.state.state, 'error', `the fill ended in an error: ${done.state.error}`);

@@ -12,7 +12,7 @@ try { ({chromium} = await import('playwright-core')); if (!fs.existsSync(chromiu
 // Options with no value attribute, as an Angular list draws them: the words are all that tell Yes from No. [name, picked option index or -1 for none]
 const GROUPS = [['q_picked_first', 0], ['q_picked_second', 1], ['q_none_picked', -1]];
 const group = ([name, picked]) => `<li><h3>${name} question?*</h3><ul>${['Yes', 'No'].map((word, index) =>
-  `<li><label><input type="radio" name="${name}" required data-jobpilotto-filled ${index === picked ? 'checked' : ''}><span>${word}</span></label></li>`).join('')}</ul></li>`;
+  `<li><label><input type="radio" name="${name}" required data-jobadabra-filled ${index === picked ? 'checked' : ''}><span>${word}</span></label></li>`).join('')}</ul></li>`;
 
 test('a radio option the fill did not pick is not a miss while its group holds a choice', {skip: !chromium && 'no Chromium installed'}, async () => {
   const browser = await chromium.launch({headless: true});

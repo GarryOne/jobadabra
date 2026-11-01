@@ -150,7 +150,7 @@ test('the hidden worker command awaits its poll promise before reading the reply
   }
   const begin = source.indexOf('export const evaluateOn ='), end = source.indexOf('/** The debugging port', begin);
   const evaluateOn = vm.runInNewContext(source.slice(begin, end).replace('export const', 'const') + '; evaluateOn;', {WebSocket: Socket, setTimeout, clearTimeout});
-  assert.equal(await evaluateOn('ws://fixture', 'globalThis.__jobPilottoBackgroundSessions?.poll()'), true);
+  assert.equal(await evaluateOn('ws://fixture', 'globalThis.__jobadabraBackgroundSessions?.poll()'), true);
   assert.equal(packet.params.awaitPromise, true);
 });
 

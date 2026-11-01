@@ -16,7 +16,7 @@ test('manual CAPTCHA state freezes consider after reload and worker recreation, 
   };
   try {
     const {consider} = await import('../../extension/fill-flow.js');
-    const tab = {id: 42, url: 'https://jobs.example.test/app#jobpilotto-fill=manual'};
+    const tab = {id: 42, url: 'https://jobs.example.test/app#jobadabra-fill=manual'};
     await consider(tab, tab.url);
     assert.equal(touched, 0);
     row = {...row}; // a fresh runtime reads the same persisted override

@@ -15,7 +15,7 @@ const LAYOUTS = {
 for (const [name, html] of Object.entries(LAYOUTS)) {
   test(`${name}: the radio group is named by its question`, { skip: !JSDOM }, async () => {
     const window = openPage(JSDOM, `<form>${html}</form>`);
-    const rows = await window.__jobPilottoDescribeForm();
+    const rows = await window.__jobadabraDescribeForm();
     const row = rows.find(r => r.type === 'radio');
     assert.equal(row.label, 'Anrede');
     assert.deepEqual([...row.options],['Frau', 'Herr']);
@@ -31,7 +31,7 @@ const NESTED = {
 for (const [name, html] of Object.entries(NESTED)) {
   test(`${name}: named by its question, not its first option`, { skip: !JSDOM }, async () => {
     const window = openPage(JSDOM, `<form>${html}</form>`);
-    const row = (await window.__jobPilottoDescribeForm()).find(r => r.type === 'radio');
+    const row = (await window.__jobadabraDescribeForm()).find(r => r.type === 'radio');
     assert.equal(row.label, 'What is your age range?');
     assert.deepEqual([...row.options], ['18-20', '21-29']);
   });
@@ -39,6 +39,6 @@ for (const [name, html] of Object.entries(NESTED)) {
 test('a wrapper row around two questions names neither by the other', { skip: !JSDOM }, async () => {
   const q = (n, t) => `<li class="question"><div>${t}</div><ul><li><label><input type="radio" name="${n}"><span>x${n}</span></label></li><li><label><input type="radio" name="${n}"><span>y${n}</span></label></li></ul></li>`;
   const window = openPage(JSDOM, `<form><div class="field"><ul>${q('a', 'First question')}${q('b', 'Second question')}</ul></div></form>`);
-  const labels = (await window.__jobPilottoDescribeForm()).filter(r => r.type === 'radio').map(r => r.label);
+  const labels = (await window.__jobadabraDescribeForm()).filter(r => r.type === 'radio').map(r => r.label);
   assert.deepEqual(Array.from(labels), ['First question', 'Second question']);
 });

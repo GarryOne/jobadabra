@@ -5,12 +5,12 @@
 export function fillAccountBoxes(password) {
   let filled = 0;
   for (const box of document.querySelectorAll('input[type=password]')) {
-    if (box.value === password && box.getClientRects().length) box.setAttribute('data-jobpilotto-filled', '1');   // already the right password (the browser's own autofill): ours too, not counted as filled now
+    if (box.value === password && box.getClientRects().length) box.setAttribute('data-jobadabra-filled', '1');   // already the right password (the browser's own autofill): ours too, not counted as filled now
     if (box.disabled || box.readOnly || box.value || !box.getClientRects().length) continue;
     Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(box, password);   // React/Vue see the change too
     box.dispatchEvent(new Event('input', {bubbles: true}));
     box.dispatchEvent(new Event('change', {bubbles: true}));
-    box.setAttribute('data-jobpilotto-filled', '1');
+    box.setAttribute('data-jobadabra-filled', '1');
     filled++;
   }
   return filled;
@@ -28,7 +28,7 @@ export function fillAccountEmail(email) {
   Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(boxes[0], String(email));   // React/Vue see the change too
   boxes[0].dispatchEvent(new Event('input', {bubbles: true}));
   boxes[0].dispatchEvent(new Event('change', {bubbles: true}));
-  boxes[0].setAttribute('data-jobpilotto-filled', '1');
+  boxes[0].setAttribute('data-jobadabra-filled', '1');
   return 1;
 }
 
@@ -42,7 +42,7 @@ export function fillCodeBox(label, code) {
   const set = (box, text) => {
     Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(box, text);
     box.dispatchEvent(new Event('input', {bubbles: true})); box.dispatchEvent(new Event('change', {bubbles: true}));
-    box.setAttribute('data-jobpilotto-filled', '1');
+    box.setAttribute('data-jobadabra-filled', '1');
   };
   const boxes = [...document.querySelectorAll('input')].filter(el => visible(el) && ['text', 'tel', 'number', ''].includes(el.type) && !String(el.value || '').trim());
   const singles = boxes.filter(el => el.maxLength === 1);
@@ -60,9 +60,9 @@ export function fillCodeBox(label, code) {
 // email-first page with no password yet (jobs.ch, 9 Oct 2026), the email the fill typed), no required control is empty (a second floor: the AI's "ready"
 // is the first), no frame inside the form (a bot check, whoever makes it). Returns a short reason code for the log.
 export function pressAccountButton(named = '') {
-  const box = document.querySelector('input[type=password][data-jobpilotto-filled]') || document.querySelector('input[data-jobpilotto-filled]:not([type=hidden]):not([type=checkbox]):not([type=radio])');
+  const box = document.querySelector('input[type=password][data-jobadabra-filled]') || document.querySelector('input[data-jobadabra-filled]:not([type=hidden]):not([type=checkbox]):not([type=radio])');
   if (!box) return 'not-filled';
-  if (document.documentElement.hasAttribute('data-jobpilotto-account-pressed')) return 'already-pressed';
+  if (document.documentElement.hasAttribute('data-jobadabra-account-pressed')) return 'already-pressed';
   const scope = box.form || document;
   const visible = el => el.getClientRects().length && !el.disabled;
   if ([...scope.querySelectorAll('iframe')].some(visible)) return 'bot-check';
@@ -83,55 +83,55 @@ export function pressAccountButton(named = '') {
   }
   const lone = buttons.length === 1 ? buttons[0] : null;
   if (!lone) return buttons.length ? 'several-buttons' : 'no-button';
-  document.documentElement.setAttribute('data-jobpilotto-account-pressed', '1');
-  (globalThis.__jobPilottoPress?.(lone) || lone.click());
+  document.documentElement.setAttribute('data-jobadabra-account-pressed', '1');
+  (globalThis.__jobadabraPress?.(lone) || lone.click());
   return 'pressed';
 }
 
 // What the AI is shown of the page (lib/account-judge.js): controls with their state but never their values, buttons and links, the short visible texts (messages,
 // errors) and the host names of visible frames. Injected into the page.
 export function accountSketch() {
-  const shown = el => el.getClientRects().length > 0 && !el.closest('[id^=jobpilotto], [id^=jobadabra]');   // never the extension's own UI (desktop/e2e/test/own-ui-not-read.test.mjs)
+  const shown = el => el.getClientRects().length > 0 && !el.closest('[id^=jobadabra], [id^=jobadabra]');   // never the extension's own UI (desktop/e2e/test/own-ui-not-read.test.mjs)
   const clean = (value, max) => String(value || '').replace(/\s+/g, ' ').trim().slice(0, max);
   // A control's state is the one reading the panel and the fill use (page/read-back.js; judge-sketch.js loads it first): a menu on a real option, a picklist by its chip or labelled
   // hidden input (its own value is only typed search text), a box holding more than a calling code, an upload slot by the file it shows (the extension's own mark alone is no file).
   // Guards: desktop/e2e/test/judge-sketch-picklist.test.mjs (11 Oct 2026: a chosen Country read "empty"), app-core/test/read-back.test.js.
-  const read = el => window.__jobPilottoReadBack ? window.__jobPilottoReadBack.stateOf(el) : 'unknown';
+  const read = el => window.__jobadabraReadBack ? window.__jobadabraReadBack.stateOf(el) : 'unknown';
   const given = el => ['committed', 'mismatch'].includes(read(el));   // it holds something; whether it is what the fill gave it is the match below
   // A field the page gives no label is named as the panel and the fill trace name it (page/fill-labels.js labelOf, in the page's own world: form-ready.js runs this there), else by its raw name.
   // The label the page gives the field keeps its required mark ("Country*": the judge reads the mark); only a field the old chain would call by its raw name asks the kit's reader for the question first.
-  const nameOf = el => el.labels?.[0]?.innerText || el.getAttribute('aria-label') || el.placeholder || (window.__jobPilottoFillKit?.labelOf ? window.__jobPilottoFillKit.labelOf(el) : '') || el.name || '';
+  const nameOf = el => el.labels?.[0]?.innerText || el.getAttribute('aria-label') || el.placeholder || (window.__jobadabraFillKit?.labelOf ? window.__jobadabraFillKit.labelOf(el) : '') || el.name || '';
   // Did the control keep what the fill gave it? Measured here, from the fill's own marks (what it typed, as letters and digits: page/browser-form-fastpath.js; that it set it: page/fill.js);
   // the value never leaves the page. yes | no | '' (the fill did not touch it). Read by the fill ladder's fill_verify (desktop/lib/ladder/fill-verify.js); the other judges ignore it.
   const matchOf = el => {
     // A radio question is one answer: an option the fill did not pick is not a miss while another option of its group is chosen (the repair rung would click it and flip a right answer).
     if (el.type === 'radio' && !el.checked && el.name && Array.from((el.form || document).querySelectorAll('input[type=radio]')).some(other => other.name === el.name && other.checked)) return '';
     const state = read(el);
-    if (el.hasAttribute('data-jobpilotto-typed') && state !== 'unknown') return state === 'committed' ? 'yes' : 'no';
-    if (el.hasAttribute('data-jobpilotto-nottaken')) return 'no';   // the fill gave it an answer and the page did not take it (page/fill-verify.js)
-    if (el.hasAttribute('data-jobpilotto-class')) return state === 'committed' ? 'yes' : 'no';   // the fill had an answer for it (page/value-class.js marks every answered control): a menu with no option for it is a miss, not untouched
-    if (!el.hasAttribute('data-jobpilotto-filled')) return '';
+    if (el.hasAttribute('data-jobadabra-typed') && state !== 'unknown') return state === 'committed' ? 'yes' : 'no';
+    if (el.hasAttribute('data-jobadabra-nottaken')) return 'no';   // the fill gave it an answer and the page did not take it (page/fill-verify.js)
+    if (el.hasAttribute('data-jobadabra-class')) return state === 'committed' ? 'yes' : 'no';   // the fill had an answer for it (page/value-class.js marks every answered control): a menu with no option for it is a miss, not untouched
+    if (!el.hasAttribute('data-jobadabra-filled')) return '';
     return state === 'committed' ? 'yes' : 'no';
   };
   // For the fill ladder's check and repair (desktop/lib/ladder/fill-verify.js, fill-repair.js), never a value: the kind of value the fill gave it (page/value-class.js), whether it is a
   // legal question (the AI's reading, page/categories.js, or the fill kit's floor: never repaired, always the person's), how many tries it had (page/attempts.js).
   const ladderOf = el => {
-    const answer = el.getAttribute('data-jobpilotto-class') || '', tried = (() => { try { return JSON.parse(el.getAttribute('data-jobpilotto-tried') || '[]').length; } catch { return 0; } })();
-    const legal = el.dataset?.jobpilottoCategory === 'legal' || !!window.__jobPilottoFillKit?.LEGAL?.test(nameOf(el));
+    const answer = el.getAttribute('data-jobadabra-class') || '', tried = (() => { try { return JSON.parse(el.getAttribute('data-jobadabra-tried') || '[]').length; } catch { return 0; } })();
+    const legal = el.dataset?.jobadabraCategory === 'legal' || !!window.__jobadabraFillKit?.LEGAL?.test(nameOf(el));
     // Its field box's fingerprint (page/skeleton.js: tags, roles and class words, never text, ids or values; the box: up from the control while no other control lives there, at
     // most 3 boxes): the key a repair that worked is kept by (desktop/lib/ladder/repair-kept.js), the same on every site that draws the same widget.
     let box = el;
     for (let i = 0; i < 3 && box.parentElement && box.parentElement.querySelectorAll('input:not([type=hidden]), select, textarea').length <= 1; i++) box = box.parentElement;
-    let fp = ''; try { fp = window.__jobPilottoSkeleton ? window.__jobPilottoSkeleton.fingerprint(window.__jobPilottoSkeleton.skeleton(box)) : ''; } catch { fp = ''; }
+    let fp = ''; try { fp = window.__jobadabraSkeleton ? window.__jobadabraSkeleton.fingerprint(window.__jobadabraSkeleton.skeleton(box)) : ''; } catch { fp = ''; }
     return {...(answer ? {answer} : {}), ...(legal ? {legal} : {}), ...(tried ? {tried} : {}), ...(fp ? {fp} : {})};
   };
-  const hiddenSlot = el => el.type === 'file' && !!window.__jobPilottoReadBack?.shownSlot(el) && !el.closest('[id^=jobpilotto], [id^=jobadabra]');   // a CV slot whose input the page hides, by its visible zone (read-back.js), as the panel counts it
+  const hiddenSlot = el => el.type === 'file' && !!window.__jobadabraReadBack?.shownSlot(el) && !el.closest('[id^=jobadabra], [id^=jobadabra]');   // a CV slot whose input the page hides, by its visible zone (read-back.js), as the panel counts it
   const listed = [...document.querySelectorAll('input, select, textarea')].filter(el => (shown(el) || hiddenSlot(el)) && !['hidden', 'submit', 'button', 'image', 'reset'].includes(el.type));
-  listed.forEach((el, index) => el.setAttribute('data-jobpilotto-n', String(index + 1)));   // the number the fill ladder's repair names a control by (page/repair-act.js); the judges number them the same way
+  listed.forEach((el, index) => el.setAttribute('data-jobadabra-n', String(index + 1)));   // the number the fill ladder's repair names a control by (page/repair-act.js); the judges number them the same way
   const controls = listed.map(el => ({
     type: el.type, label: clean(nameOf(el), 80), match: matchOf(el), ...ladderOf(el),
     required: !!el.required || el.getAttribute('aria-required') === 'true',
-    at: (box => `${Math.max(0, Math.min(100, Math.round(100 * (box.left + box.width / 2) / innerWidth)))},${Math.max(0, Math.min(100, Math.round(100 * (box.top + box.height / 2) / innerHeight)))}`)((shown(el) ? el : window.__jobPilottoReadBack.shownSlot(el)).getBoundingClientRect()),   // where it is on screen (% of the window): the closer look matches the picture to the control
+    at: (box => `${Math.max(0, Math.min(100, Math.round(100 * (box.left + box.width / 2) / innerWidth)))},${Math.max(0, Math.min(100, Math.round(100 * (box.top + box.height / 2) / innerHeight)))}`)((shown(el) ? el : window.__jobadabraReadBack.shownSlot(el)).getBoundingClientRect()),   // where it is on screen (% of the window): the closer look matches the picture to the control
     ...(el.tagName === 'SELECT' ? {options: [...el.options].map(item => clean(item.text, 40)).filter(Boolean).slice(0, 40)} : {}),
     state: el.type === 'checkbox' || el.type === 'radio' ? (el.checked ? 'checked' : 'unchecked') : (given(el) ? 'filled' : 'empty')}));   // an upload slot: the file it shows (read-back.js), not only the input's own list
   const buttons = [...new Set([...document.querySelectorAll('button, input[type=submit], input[type=button], [role=button], a')].filter(shown).map(el => clean(el.innerText || el.value || el.getAttribute('aria-label'), 60)).filter(Boolean))];
@@ -148,8 +148,8 @@ export function accountSketch() {
 
 // Says on the page what the person must do (the panel reads it): the label of the control that needs them, "1" when only that the site did not accept it, null to clear it.
 // What the AI says this page is (sign_in, sign_up, ...): the panel words its ready line from it. '' removes it.
-export function markAccountStep(step) { if (step) document.documentElement.setAttribute('data-jobpilotto-account-step', step); else document.documentElement.removeAttribute('data-jobpilotto-account-step'); }
-export function flagAccount(needs) { if (needs === null) document.documentElement.removeAttribute('data-jobpilotto-needs'); else document.documentElement.setAttribute('data-jobpilotto-needs', needs || '1'); }   // the panel reads it on account pages AND application forms   // null: nothing is owed any more
+export function markAccountStep(step) { if (step) document.documentElement.setAttribute('data-jobadabra-account-step', step); else document.documentElement.removeAttribute('data-jobadabra-account-step'); }
+export function flagAccount(needs) { if (needs === null) document.documentElement.removeAttribute('data-jobadabra-needs'); else document.documentElement.setAttribute('data-jobadabra-needs', needs || '1'); }   // the panel reads it on account pages AND application forms   // null: nothing is owed any more
 
 // A control the AI named (the register link of a sign-in page, a consent link or accept button, a consent checkbox's label), pressed once. Nothing is filled first.
 export function pressRegister(named) {
@@ -169,7 +169,7 @@ export function pressRegister(named) {
     if (best !== Infinity && nearest.length === 1) found = nearest;
   }
   if (found.length !== 1) return found.length ? 'several' : 'not-found';
-  (globalThis.__jobPilottoPress?.(found[0]) || found[0].click());
+  (globalThis.__jobadabraPress?.(found[0]) || found[0].click());
   return 'pressed';
 }
 
@@ -201,7 +201,7 @@ export function pressConsent(named) {
     const needed = box.required || box.getAttribute('aria-required') === 'true' || !!(button && button.disabled);
     if (!needed) return 'optional-box';
   }
-  (globalThis.__jobPilottoPress?.(el) || el.click());
+  (globalThis.__jobadabraPress?.(el) || el.click());
   return 'pressed';
 }
 
@@ -209,5 +209,5 @@ export function pressConsent(named) {
 // filled whose account button the AI-judged flow has not pressed yet. Injected into the page.
 export function passwordWork() {
   const boxes = [...document.querySelectorAll('input[type=password]')].filter(box => box.getClientRects().length && !box.disabled && !box.readOnly);
-  return {boxes: boxes.length, empty: boxes.filter(box => !box.value).length, pending: boxes.some(box => box.hasAttribute('data-jobpilotto-filled')) && !document.documentElement.hasAttribute('data-jobpilotto-account-pressed')};
+  return {boxes: boxes.length, empty: boxes.filter(box => !box.value).length, pending: boxes.some(box => box.hasAttribute('data-jobadabra-filled')) && !document.documentElement.hasAttribute('data-jobadabra-account-pressed')};
 }

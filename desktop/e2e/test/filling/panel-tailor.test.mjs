@@ -20,17 +20,17 @@ async function start({cv = {tailored: false, working: false}, silent = false} = 
     '/extension/event': body => { app.events.push(JSON.parse(body || '{}').type); return {ok: true}; }};
   const real = await startRealExtension({extensionDir: process.env.REAL_EXTENSION_DIR || undefined, allowAllSites: true, answer});
   await real.context.route('https://jobs.example.test/**', route => route.fulfill({status: 200, contentType: 'text/html', body: FORM}));
-  await real.page.goto(`${URL}#jobpilotto-fill`);   // the app opens the tab with the mark: the panel mounts
-  await real.page.waitForFunction(() => document.getElementById('jobpilotto-review-host')?.shadowRoot?.querySelector('.open-app:not([hidden])'), null, {timeout: 25000});
-  await real.page.waitForFunction(() => !document.getElementById('jobpilotto-review-host').shadowRoot.querySelector('.jp.working'), null, {timeout: 25000});   // the first fill is over
+  await real.page.goto(`${URL}#jobadabra-fill`);   // the app opens the tab with the mark: the panel mounts
+  await real.page.waitForFunction(() => document.getElementById('jobadabra-review-host')?.shadowRoot?.querySelector('.open-app:not([hidden])'), null, {timeout: 25000});
+  await real.page.waitForFunction(() => !document.getElementById('jobadabra-review-host').shadowRoot.querySelector('.jp.working'), null, {timeout: 25000});   // the first fill is over
   await real.page.waitForTimeout(1000);
-  const panel = () => real.page.evaluate(() => { const root = document.getElementById('jobpilotto-review-host').shadowRoot, link = root.querySelector('.open-app').getBoundingClientRect(), card = root.querySelector('.actions').getBoundingClientRect();
+  const panel = () => real.page.evaluate(() => { const root = document.getElementById('jobadabra-review-host').shadowRoot, link = root.querySelector('.open-app').getBoundingClientRect(), card = root.querySelector('.actions').getBoundingClientRect();
     return {row: !!root.querySelector('.tailor, .t-btn, .t-text'), offCentre: Math.round(Math.abs((link.x + link.width / 2) - (card.x + card.width / 2)))}; });
   const press = async selector => {   // a real click on the panel's own control
-    const box = await real.page.evaluate(sel => { const b = document.getElementById('jobpilotto-review-host').shadowRoot.querySelector(sel).getBoundingClientRect(); return {x: b.x + b.width / 2, y: b.y + b.height / 2}; }, selector);
+    const box = await real.page.evaluate(sel => { const b = document.getElementById('jobadabra-review-host').shadowRoot.querySelector(sel).getBoundingClientRect(); return {x: b.x + b.width / 2, y: b.y + b.height / 2}; }, selector);
     await real.page.mouse.click(box.x, box.y);
   };
-  const noteSays = pattern => real.page.waitForFunction(source => new RegExp(source).test(document.getElementById('jobpilotto-review-host').shadowRoot.querySelector('.note:not(.trace-note)')?.textContent || ''), pattern.source, {timeout: 10000});
+  const noteSays = pattern => real.page.waitForFunction(source => new RegExp(source).test(document.getElementById('jobadabra-review-host').shadowRoot.querySelector('.note:not(.trace-note)')?.textContent || ''), pattern.source, {timeout: 10000});
   return {real, app, panel, press, noteSays};
 }
 

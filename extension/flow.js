@@ -55,12 +55,12 @@ async function clickCombosNow(tabId) {
   const page = bound('page', (func, args = []) => chrome.scripting.executeScript({target: {tabId}, world: 'MAIN', func, args})
     .then(([r]) => r?.result));
   const results = [];
-  if (!(await page(() => window.__jobPilottoArmedCount?.() || 0))) return results;
+  if (!(await page(() => window.__jobadabraArmedCount?.() || 0))) return results;
   const target = {tabId};
   await within(STEP_MS.attach, 'attach', () => attachDebugger(tabId));
   const mouse = bound('mouse', (type, x, y) => chrome.debugger.sendCommand(target, 'Input.dispatchMouseEvent',
     {type, x, y, button: 'left', clickCount: 1}));
-  const click = async (x, y) => { if ((await page((px, py) => globalThis.__jobPilottoSubmitPress?.markAt(px, py), [x, y]).catch(() => true)) === false) return; await driving(tabId, async () => { await mouse('mouseMoved', x, y); await mouse('mousePressed', x, y); await mouse('mouseReleased', x, y); }); };   // the extension's own press: marked first (page/submit-press.js markAt)
+  const click = async (x, y) => { if ((await page((px, py) => globalThis.__jobadabraSubmitPress?.markAt(px, py), [x, y]).catch(() => true)) === false) return; await driving(tabId, async () => { await mouse('mouseMoved', x, y); await mouse('mousePressed', x, y); await mouse('mouseReleased', x, y); }); };   // the extension's own press: marked first (page/submit-press.js markAt)
   // A type-to-search box (page/fill-menus.js typeToSearch): the text typed over the box's content for real, and the AI's pick by meaning among the options it showed.
   const type = bound('type', (text, keys = false) => driving(tabId, async () => {
     await chrome.debugger.sendCommand(target, 'Input.dispatchKeyEvent', {type: 'rawKeyDown', key: 'a', code: 'KeyA', windowsVirtualKeyCode: 65, modifiers: 4, commands: ['selectAll']});
@@ -73,10 +73,10 @@ async function clickCombosNow(tabId) {
     const config = await settings().catch(() => null), reply = config ? await apiFor(tabId, config, '/extension/pick-choice', {method: 'POST', body: JSON.stringify({label, value: asked, options: choices, searchable, tried, consent})}).catch(() => null) : null;
     return searchable ? {choice: reply?.choice || '', searches: Array.isArray(reply?.searches) ? reply.searches.slice(0, 3) : []} : reply?.choice || '';   // a search box: also what to type in it next (page/fill-menus.js searchFor)
   });
-  const skip = [];   // the ids of the menus passed over in this pass (page/fill-menus.js __jobPilottoNextCombo): never a count, a disarmed one shifted the rest
+  const skip = [];   // the ids of the menus passed over in this pass (page/fill-menus.js __jobadabraNextCombo): never a count, a disarmed one shifted the rest
   try {
     for (let i = 0; i < 40; i++) {
-      const spot = await page(n => window.__jobPilottoNextCombo(n), [skip]);
+      const spot = await page(n => window.__jobadabraNextCombo(n), [skip]);
       if (!spot) break;
       if (givenUp.get(tabId)?.has(spot.label)) { skip.push(spot.id); continue; }
       const started = Date.now();
@@ -101,7 +101,7 @@ async function clickCombosNow(tabId) {
       if (!picked) skip.push(spot.id);
     }
     // A phone widget whose country was just picked: type the number for real, so the form registers it.
-    const phone = await page(() => window.__jobPilottoPhoneSpot?.());
+    const phone = await page(() => window.__jobadabraPhoneSpot?.());
     if (phone) {
       await click(phone.x, phone.y);
       const typed = await driving(tabId, async () => {
@@ -181,14 +181,14 @@ export async function cachedAI(tab, open = null) {
 }
 export function forgetAI(tab) { return chrome.storage.session.remove(cacheKey(tab)); }
 // The form as the AI is told about it: its fields and its checkbox questions (page scripts loaded).
-const readForm = tab => inPage(tab.id, async () => [...await window.__jobPilottoDescribeForm(),
-  ...window.__jobPilottoCheckboxQuestions().map(g => ({field: `group:${g.question}`, label: g.question, type: 'checkbox-group', options: g.options}))]);
+const readForm = tab => inPage(tab.id, async () => [...await window.__jobadabraDescribeForm(),
+  ...window.__jobadabraCheckboxQuestions().map(g => ({field: `group:${g.question}`, label: g.question, type: 'checkbox-group', options: g.options}))]);
 // What goes to Claude is only what nothing else answers: not a field the kit covers (answered, or left empty on purpose: an optional question it
 // chose to skip), not your contact details and CV (the app's, filled by the fill itself), not a file. A form the kit was drafted from needs no call.
 async function openQuestions(tab, form, kitAnswers, me, config) {
   const consentsOn = (me?.acceptConsents ?? config.acceptConsents) !== false;
   const fromKit = new Set(kitAnswers.filter(a => !consentsOn || a.category !== 'legal').map(a => a.field).filter(Boolean));
-  const contact = new Set((await inPage(tab.id, (rows, profile) => window.__jobPilottoProfileEntries(rows, profile).map(e => e.field),
+  const contact = new Set((await inPage(tab.id, (rows, profile) => window.__jobadabraProfileEntries(rows, profile).map(e => e.field),
     [form || [], me?.contact || config.profile || {}]).catch(() => [])) || []);
   const PERSONAL = /^(first_name|last_name|preferred_name|email|phone|resume|resume_text|cover_letter|cover_letter_text|longitude|latitude)$/;
   const ask = (form || []).filter(f => !f.filled && f.type !== 'file' && (f.legal ? consentsOn : !fromKit.has(f.field)) && !PERSONAL.test(f.field)).map(({field, label, type, custom, required, options, multiple}) => ({field, label, type: custom ? 'combobox' : type, required, options, ...(multiple ? {multiple} : {})}));
@@ -203,17 +203,17 @@ export function answersOrDropped(ai) {
 }
 // An unreadable reply (ai-reply.js) is asked again once, then fails: never kept as sure; the fill goes on without it.
 const askAnswers = async (tab, config, open) => {
-  const body = JSON.stringify({url: tab.url, fields: open, page_text: await inPage(tab.id, () => window.__jobPilottoPageText()), test: !!config.testMode});
+  const body = JSON.stringify({url: tab.url, fields: open, page_text: await inPage(tab.id, () => window.__jobadabraPageText()), test: !!config.testMode});
   const ask = () => apiFor(tab.id, config, '/extension/answer', {method: 'POST', body}).then(readReply);
   return ask().catch(error => { if (!error.unreadable) throw error; decide('fill', 'Claude reply unreadable: asking again once', {fields: open.length}); return ask(); });
 };
 // Shared read-only preparation: the scripts define readers and operators but invoke no fill or click.
 async function prepareAnswerPage(tab, config) {
-  await chrome.scripting.executeScript({target: {tabId: tab.id}, world: 'MAIN', func: () => { window.__jobPilottoNoGuard = true; }});
+  await chrome.scripting.executeScript({target: {tabId: tab.id}, world: 'MAIN', func: () => { window.__jobadabraNoGuard = true; }});
   await chrome.scripting.executeScript({target: {tabId: tab.id}, world: 'MAIN', files: PAGE_FILES});
   try {   // the label meanings, as the fill loads them, so both read the form alike
     const packs = await apiFor(tab.id, config, '/extension/aliases', {method: 'POST', body: '{}'});
-    await chrome.scripting.executeScript({target: {tabId: tab.id}, world: 'MAIN', args: [Array.isArray(packs?.aliases) ? packs.aliases.slice(0, 2000) : []], func: aliases => { window.__jobPilottoAliases = aliases; }});
+    await chrome.scripting.executeScript({target: {tabId: tab.id}, world: 'MAIN', args: [Array.isArray(packs?.aliases) ? packs.aliases.slice(0, 2000) : []], func: aliases => { window.__jobadabraAliases = aliases; }});
   } catch { /* aliases are a bonus */ }
 }
 

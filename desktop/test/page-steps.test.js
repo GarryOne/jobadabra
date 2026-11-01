@@ -58,14 +58,14 @@ test('a broken page mid-application goes back to its posting once; never from th
   globalThis.chrome = {storage: {session: {}}};
   const store = {get: async key => ({[key]: stored[key]}), set: async values => Object.assign(stored, values)};
   const {restartFromPosting} = await import('../../extension/restart-from-posting.js');
-  const tab = {id: 7, url: 'https://career74.example.test/portalcareer#jobpilotto-fill=s9'};
+  const tab = {id: 7, url: 'https://career74.example.test/portalcareer#jobadabra-fill=s9'};
   const posting = 'https://careers.example.test/job/1';
   const go = (at, on = tab) => restartFromPosting(on, posting, {decide: (_, line) => said.push(line), move: async (id, url) => moves.push([id, url]), store, now: at});
   assert.equal(await go(1000), true);
-  assert.deepEqual(moves, [[7, 'https://careers.example.test/job/1#jobpilotto-fill=s9']], 'the posting, with the session\'s own mark');
+  assert.deepEqual(moves, [[7, 'https://careers.example.test/job/1#jobadabra-fill=s9']], 'the posting, with the session\'s own mark');
   assert.equal(await go(2000), false, 'once: a posting that keeps failing ends in its plain report');
   assert.equal(await go(1000 + 11 * 60 * 1000), true, 'again after ten minutes');
-  assert.equal(await go(5000, {id: 8, url: `${posting}#jobpilotto-fill=s9`}), false, 'already on the posting');
+  assert.equal(await go(5000, {id: 8, url: `${posting}#jobadabra-fill=s9`}), false, 'already on the posting');
   assert.ok(said.every(line => line === 'a broken page mid-application: started again from the posting'));
 });
 

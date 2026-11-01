@@ -6,11 +6,11 @@
 // app it still shows the form's progress, and fills through the extension's own connection.
 // The panel itself never types, ticks or clicks anything in the form: filling goes through the extension's fill.
 // This file owns the panel's state, drawing, fill button and the sync with the app. Its parts are injected before it (panel-files.js): panel-form.js reads the form,
-// panel-markup.js is the styles and markup, panel-learn.js reports what the person did. They share window.__jobPilottoPanel* (a content script has no imports).
+// panel-markup.js is the styles and markup, panel-learn.js reports what the person did. They share window.__jobadabraPanel* (a content script has no imports).
 (() => {
   // Once per page, but a copy left behind by an extension reload (its chrome.runtime is gone) gives way to the new one.
-  if (window.__jobPilottoReviewAlive?.() || ['Required', 'ReadBack', 'TitleAbove', 'GroupTitle', 'PanelForm', 'PanelMarkup', 'CoverLetterNotice', 'PanelLearn', 'PanelWritten', 'Overlay', 'PanelView'].some(name => !window['__jobPilotto' + name] && (console.warn('Jobadabra panel: helper script missing:', name), true))) return;   // only some helper scripts ran (a reload with the tab open): draw nothing, say which, the next full injection mounts; the option grouping alone is soft
-  window.__jobPilottoReviewAlive = () => !!chrome.runtime?.id;
+  if (window.__jobadabraReviewAlive?.() || ['Required', 'ReadBack', 'TitleAbove', 'GroupTitle', 'PanelForm', 'PanelMarkup', 'CoverLetterNotice', 'PanelLearn', 'PanelWritten', 'Overlay', 'PanelView'].some(name => !window['__jobadabra' + name] && (console.warn('Jobadabra panel: helper script missing:', name), true))) return;   // only some helper scripts ran (a reload with the tab open): draw nothing, say which, the next full injection mounts; the option grouping alone is soft
+  window.__jobadabraReviewAlive = () => !!chrome.runtime?.id;
   let askedPassword = 0;
   const send = message => (chrome.runtime?.id ? chrome.runtime.sendMessage(message) : Promise.reject(new Error('reloaded')));
   // The desktop app is the only way onto a page. Anywhere else this script was injected (an old "every site"
@@ -18,27 +18,27 @@
   send({type: 'panelAllowed'}).then(answer => { if (answer?.ok) mount(); }).catch(() => {});
 
   function mount() {
-  document.getElementById('jobpilotto-review-host')?.remove();
+  document.getElementById('jobadabra-review-host')?.remove();
 
   const MIN_FIELDS = 3;
   // A form the night filled, opened in the morning (ready-handoff.js marks the page): the panel says so instead of a new reading (owner, 18 Oct 2026: "Last night's fill is back").
-  const night = () => document.documentElement.getAttribute('data-jobpilotto-night') === '1';
+  const night = () => document.documentElement.getAttribute('data-jobadabra-night') === '1';
   const MARK_WORDS = {get reading() { return night() ? 'Putting back last night\u2019s fill…' : 'Reading this page…'; }, other: 'This page shows no application', 'signing-in': 'Logging in…', 'signing-up': 'Creating your account…'};   // page-mark.js; a posting: the owner's own words
-  const {KNOCKOUT, AGREE, fields, find, flash} = window.__jobPilottoPanelForm;
+  const {KNOCKOUT, AGREE, fields, find, flash} = window.__jobadabraPanelForm;
   const NOTE = '.note:not(.trace-note)';
 
   // ---- the panel (its own shadow root: the page's styles can't touch it, it can't touch the page) ----
-  const host = Object.assign(document.createElement('div'), {id: 'jobpilotto-review-host'});
+  const host = Object.assign(document.createElement('div'), {id: 'jobadabra-review-host'});
   host.style.cssText = 'position:fixed;right:18px;bottom:18px;z-index:2147483646;pointer-events:none;';   // only the card and the pill take clicks (.jp > *)
   const root = host.attachShadow({mode: 'open'});
-  root.innerHTML = window.__jobPilottoPanelMarkup;
+  root.innerHTML = window.__jobadabraPanelMarkup;
   const $ = selector => root.querySelector(selector);
   const jp = $('.jp'), card = $('.card'), pill = $('.pill');
   // While a fill step shows, the page is dimmed (panel-overlay.js) and the panel is centred, bigger, with what it is doing (owner, 19 Oct 2026); at the end the panel goes back to its corner.
   // ONE look: look(true) dims AND centres, look(false) does neither; nothing else turns either on or off, and when the worker's verdict lifts the dim (done, Stop, your turn:
   // apply-state.js) the step ends with it (owner, 27 Oct 2026: "everytime when the extension is working... it should be centered and there should be dark/glowing background").
   // Working = a step shows: the worker's fill steps (panelStep), this panel's own fill, and the page being read or routed (WORKING_MARKS). Not working: done, stopped, needs you, stuck, closed.
-  const overlay = window.__jobPilottoOverlay, HOME = host.style.cssText, steps = [];
+  const overlay = window.__jobadabraOverlay, HOME = host.style.cssText, steps = [];
   const WORKING_MARKS = ['reading', 'posting', 'opening', 'signing-in', 'signing-up'];  let markStepWords = '';
   const place = working => { host.style.cssText = working ? 'position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2147483646;pointer-events:none;' : HOME; jp.classList.toggle('working', working); };
   // The Apply's state is the worker's (apply-state.js); this page draws it. applyWorking: the last thing the worker said (its answer at the first draw, then its pushes); this panel's own fill counts too.
@@ -47,13 +47,13 @@
   overlay.onRestore?.(() => { if (!host.isConnected && applyWorking && !host.hidden) document.documentElement.append(host); });
   const look = working => { const on = working && (applyWorking || filling) && !host.hidden; if (on) overlay.on(); else overlay.off(); place(on); };   // a closed panel (its X) has no Stop on the page: never dimmed (#1558)
   const stepShowing = () => $('.fill').classList.contains('is-busy');
-  const markWorking = () => applyWorking && WORKING_MARKS.includes(document.documentElement.getAttribute('data-jobpilotto-page') || '') && !stopped && !moved;
+  const markWorking = () => applyWorking && WORKING_MARKS.includes(document.documentElement.getAttribute('data-jobadabra-page') || '') && !stopped && !moved;
   // Why (2026-10-27, owner, replacing #2221's end gap and its timers): the look ends on the worker's verdict only; it reaches the overlay (panel-overlay.js), which tells this panel here.
   let workerStep = '';
   overlay.onLift?.(() => { applyWorking = false; if (stepShowing()) endStep(); else look(false); });
   const drawSteps = () => $('.steps').replaceChildren(...steps.slice(-6, -1).map(text => Object.assign(document.createElement('li'), {textContent: text})));
-  const written = window.__jobPilottoPanelWritten.start({send, alive: () => host.isConnected});   // Review my answer beside each written question's box (panel-written.js)
-  window.__jobPilottoClaude?.mount(root, send);   // the stuck page's Claude offer: its own script (panel-claude.js)
+  const written = window.__jobadabraPanelWritten.start({send, alive: () => host.isConnected});   // Review my answer beside each written question's box (panel-written.js)
+  window.__jobadabraClaude?.mount(root, send);   // the stuck page's Claude offer: its own script (panel-claude.js)
   const SHOW_TIPS = false;   // the tip line (Fact / Recruiters say / Tip / Worth trying) is off for now (owner, 15 Oct 2026: "hide, disable it, we'll get back to it"); true brings it back
   let stopped = false, stuckSince = 0, stepAt = 0, lastStuck = '', startedAt = 0;   // stopped: the person's Stop reached this page (stop.js), until they start again here (`started`); stuckSince/stepAt: which came last
   let counts = {total: 0, left: 0}, moved = false, movedTab = null, open = false, shown = [], job = null, session = null, connection = null, build = null, claudeAsk = {}, filling = false, userMoved = false, cv = null, tipFor = null, coverLetterStatus = null;
@@ -67,21 +67,21 @@
   // "Report", the one entry, in the footer of every state (owner, 16 Oct 2026): a popup on the panel (panel-report.js) that says what goes, takes a note and sends. A page script's click is ignored; a press that cannot open it says why.
   $('.report-btn').onclick = event => {
     if (!event.isTrusted) return;
-    if (window.__jobPilottoReport) window.__jobPilottoReport.open();
+    if (window.__jobadabraReport) window.__jobadabraReport.open();
     else note('Report could not open on this page. Reload the page and try again.');
   };
 
   // Chrome's debugging bar is explained once, where a fill starts, the first time a trace is kept (the trace: trace.js; owner, 16 Oct 2026).
-  window.__jobPilottoReport?.mount(root, send, state => { if (state?.enabled) window.__jobPilottoReportOn = true; if (state?.tracing) traceOn(); });   // the first state answer: whether the switch is on, and whether a trace is kept (the bar note)
+  window.__jobadabraReport?.mount(root, send, state => { if (state?.enabled) window.__jobadabraReportOn = true; if (state?.tracing) traceOn(); });   // the first state answer: whether the switch is on, and whether a trace is kept (the bar note)
   const traceOn = async () => { const {traceBarSeen} = await chrome.storage.local.get('traceBarSeen').catch(() => ({})); if (!traceBarSeen) $('.trace-note').hidden = false; };
   $('.trace-note .got-it').onclick = () => { $('.trace-note').hidden = true; chrome.storage.local.set({traceBarSeen: true}).catch(() => {}); };
 
-  const view = window.__jobPilottoPanelView({$, jp, night, MARK_WORDS, KNOCKOUT, AGREE, flash, written, stoppedCard, send});
+  const view = window.__jobadabraPanelView({$, jp, night, MARK_WORDS, KNOCKOUT, AGREE, flash, written, stoppedCard, send});
 
   // ---- drawing ----
   // Draw the current page state in the pill and, when open, the review card.
   function render(list = fields()) {
-    const needsNow = document.documentElement.getAttribute('data-jobpilotto-needs');
+    const needsNow = document.documentElement.getAttribute('data-jobadabra-needs');
     const account = !!document.querySelector('input[type=password]');
     requestPassword(account);
     // A sign-in page is too small for a panel, unless the AI says it needs the person, or the extension works on it: then the panel shows what it does (and Stop), centred over the dim.
@@ -105,7 +105,7 @@
   function requestPassword(account) {
     // An empty password box is filled from the Keychain (asked again now and then; the value never comes to this panel). Asked BEFORE the
     // field count below: a sign-in page has two boxes (Coop's SuccessFactors, live run 8 Oct 2026), too few for a panel.
-    if (account && Date.now() - askedPassword > 2000 && [...document.querySelectorAll('input[type=password]')].some(box => (!box.value || (box.hasAttribute('data-jobpilotto-filled') && !document.documentElement.hasAttribute('data-jobpilotto-account-pressed'))) && box.getClientRects().length)) {
+    if (account && Date.now() - askedPassword > 2000 && [...document.querySelectorAll('input[type=password]')].some(box => (!box.value || (box.hasAttribute('data-jobadabra-filled') && !document.documentElement.hasAttribute('data-jobadabra-account-pressed'))) && box.getClientRects().length)) {
       askedPassword = Date.now();
       send({type: 'sitePassword'}).catch(() => {});
     }
@@ -127,7 +127,7 @@
   // Draw the worker's routing words without changing who owns the working look.
   function renderMark(handed) {
     // The extension reading or routing a page (page-mark.js: reading, posting, opening, signing-in/up) is working like a fill: the same layer and one step row, ending when the mark moves on.
-    const markNow = document.documentElement.getAttribute('data-jobpilotto-page') || '';
+    const markNow = document.documentElement.getAttribute('data-jobadabra-page') || '';
     const markWorks = applyWorking && WORKING_MARKS.includes(markNow) && !handed && !moved;
     if (markWorks && !filling) { const words = MARK_WORDS[markNow] || 'Apply button detected. Redirecting…'; if (markStepWords !== words) { const first = !markStepWords; markStepWords = words; const was = stepped; showStep(words); stepped = was; if (first && !userMoved && !open) setOpen(true); } }
     // Why (#2221, owner 27 Oct 2026; now by the one state owner): the mark moved on: only its words end, never the look: a fill step still running under it (the worker's, or this panel's fill) gets its row back, and the dim and
@@ -137,14 +137,14 @@
 
   // Draw the cover-letter notice and return the original missing-letter value.
   function renderLetter(list, account) {
-    const letterAsked = list.some(f => f.el?.getAttribute('data-jobpilotto-letter') === '1') || Array.from(document.querySelectorAll('[data-jobpilotto-letter-manual]')).some(el => el.getClientRects().length && getComputedStyle(el).visibility !== 'hidden');
-    const letterGiven = list.some(f => f.el?.getAttribute('data-jobpilotto-letter') === '1' && f.filled);
-    const failedManual = Array.from(document.querySelectorAll('[data-jobpilotto-letter-manual][data-jobpilotto-letter-error]')).find(el => el.getClientRects().length && getComputedStyle(el).visibility !== 'hidden');
-    const letterRejected = list.find(f => f.el?.hasAttribute('data-jobpilotto-letter-error') && !f.filled) || (failedManual && {el: failedManual});
+    const letterAsked = list.some(f => f.el?.getAttribute('data-jobadabra-letter') === '1') || Array.from(document.querySelectorAll('[data-jobadabra-letter-manual]')).some(el => el.getClientRects().length && getComputedStyle(el).visibility !== 'hidden');
+    const letterGiven = list.some(f => f.el?.getAttribute('data-jobadabra-letter') === '1' && f.filled);
+    const failedManual = Array.from(document.querySelectorAll('[data-jobadabra-letter-manual][data-jobadabra-letter-error]')).find(el => el.getClientRects().length && getComputedStyle(el).visibility !== 'hidden');
+    const letterRejected = list.find(f => f.el?.hasAttribute('data-jobadabra-letter-error') && !f.filled) || (failedManual && {el: failedManual});
     const letterMissing = !account && letterAsked && !letterGiven && (letterRejected || coverLetterStatus && !coverLetterStatus.ready);
     $('.letter-setup').hidden = moved || !letterMissing;
     // Why (2026-10-27, owner): keep each letter status truthful while sharing the same compact notice and routing setup through the app.
-    const letterCopy = window.__jobPilottoCoverLetterNotice(coverLetterStatus, !!letterRejected);
+    const letterCopy = window.__jobadabraCoverLetterNotice(coverLetterStatus, !!letterRejected);
     $('.letter-title').textContent = letterCopy.title;
     $('.letter-reason').textContent = letterMissing ? letterCopy.reason : '';
     $('.letter-action').textContent = letterCopy.action;
@@ -159,7 +159,7 @@
     const needed = list.filter(f => f.required || f.ai || f.changed || f.draft);
     shown = needed.filter(f => !f.filled);
     const letterMissing = renderLetter(list, account);
-    const total = needed.length, left = shown.length, pageMark = (m => (['form', 'account', 'sign-up'].includes(m) ? '' : m || 'reading'))(document.documentElement.getAttribute('data-jobpilotto-page') || ''), ready = !moved && !pageMark && total > 0 && left === 0 && !letterMissing, needsYou = document.documentElement.getAttribute('data-jobpilotto-needs');
+    const total = needed.length, left = shown.length, pageMark = (m => (['form', 'account', 'sign-up'].includes(m) ? '' : m || 'reading'))(document.documentElement.getAttribute('data-jobadabra-page') || ''), ready = !moved && !pageMark && total > 0 && left === 0 && !letterMissing, needsYou = document.documentElement.getAttribute('data-jobadabra-needs');
     counts = {total, left};   // the stopped note says what the page holds
     const done = total ? Math.round(100 * (total - left) / total) : 0;
     const readyWords = view.drawPill({moved, pageMark, ready, needsYou, total, left, done, account, job, session, letterMissing});
@@ -226,7 +226,7 @@
     if (on) $('.stopped .s-text').textContent = `${Math.max(0, counts.total - counts.left)} required fields currently contain values.`;
   }
   $('.recheck').onclick = () => { stoppedCard(false); fill(); };
-  // 04 Your action needed: the page waits for the person (the AI's word in data-jobpilotto-needs): a warm card, Show on form (scrolls to the first thing left), Check again (reads the form now).
+  // 04 Your action needed: the page waits for the person (the AI's word in data-jobadabra-needs): a warm card, Show on form (scrolls to the first thing left), Check again (reads the form now).
   $('.verify .v-show').onclick = () => shown[0] && flash(shown[0].el);
   // Check again reads the form again like Check form again: the fill runs (what the person did is kept, what is left is filled) and, at its end, the AI judges the page anew (messages-panel.js
   // panelFill). It only redrew the panel before, and the AI's "needs you" stayed until the page claimed every field filled (owner, 27 Oct 2026: "clicking "check again" does nothing").
@@ -311,7 +311,7 @@
     if (message.state === 'working') { applyWorking = true; if (!stepShowing() && host.isConnected) { const was = stepped; showStep(workerStep || 'Starting…'); stepped = was; if (!open) setOpen(true); } }
   });
 
-  const learn = window.__jobPilottoPanelLearn.start({send, alive: () => host.isConnected, form: window.__jobPilottoPanelForm, mine: {box: $('.mine'), list: $('.mine-list')}});
+  const learn = window.__jobadabraPanelLearn.start({send, alive: () => host.isConnected, form: window.__jobadabraPanelForm, mine: {box: $('.mine'), list: $('.mine-list')}});
 
   // ---- in step with the app ----
   let watch = [], timer = null, busy = false, jobAsked = '';
@@ -324,7 +324,7 @@
     learn.showMine();
     busy = true;
     try {
-      const payload = window.__jobPilottoReviewPayload(state, watch, {agree: AGREE, find});
+      const payload = window.__jobadabraReviewPayload(state, watch, {agree: AGREE, find});
       const reply = await send({type: 'review', payload});
       moved = !!reply?.moved; movedTab = Number.isInteger(reply?.tab) ? reply.tab : null;
       session = reply?.session || null; claudeAsk = {takeover: reply?.claudeTakeover !== false, help: !!reply?.claudeHelp, always: !!reply?.claudeAlways, auto: !!reply?.claudeAuto, consent: !!reply?.claudeConsent};   // the app's Claude readiness and choices (lib/claude-ready.js)

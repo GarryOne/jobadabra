@@ -19,14 +19,14 @@ const PAGE = `<form>
 
 test('every label reader leaves out an icon\'s undrawn words', { skip: !JSDOM }, () => {
   const window = openPage(JSDOM, PAGE);
-  const kit = window.__jobPilottoFillKit, byId = id => window.document.getElementById(id);
+  const kit = window.__jobadabraFillKit, byId = id => window.document.getElementById(id);
   const readers = {
     'the label element (el.labels)': kit.labelOf(byId('address')),
     'aria-labelledby': kit.labelOf(byId('first')),
     'a loose label tied to no control': kit.looseLabel(byId('postcode')),
     'a title block beside the box': kit.labelOf(byId('town')),
     'a group\'s first title': kit.questionOf(byId('move-yes')),
-    'the words reader itself': window.__jobPilottoRequired.read(byId('r1-words')),
+    'the words reader itself': window.__jobadabraRequired.read(byId('r1-words')),
   };
   for (const [reader, words] of Object.entries(readers)) {
     assert.ok(words, `${reader}: read something`);
@@ -38,7 +38,7 @@ test('every label reader leaves out an icon\'s undrawn words', { skip: !JSDOM },
 test('a place box whose label holds an icon still takes the saved place over the page\'s guess', { skip: !JSDOM }, async () => {
   const window = openPage(JSDOM, PAGE);
   window.document.getElementById('address').value = 'Des Moines, United States of America';   // the page's own guess from the visitor's IP
-  await window.__jobPilottoExtensionFill([], {first_name: 'Ada', street: 'Musterstrasse 12', location: 'Zurich, Switzerland'}, null, '', false);
+  await window.__jobadabraExtensionFill([], {first_name: 'Ada', street: 'Musterstrasse 12', location: 'Zurich, Switzerland'}, null, '', false);
   assert.equal(window.document.getElementById('first').value, 'Ada');
   assert.equal(window.document.getElementById('address').value, 'Musterstrasse 12');
 });

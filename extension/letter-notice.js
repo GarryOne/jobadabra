@@ -13,7 +13,7 @@
   };
 
   // Return the title, reason, and next action for one live cover-letter status.
-  window.__jobPilottoCoverLetterNotice = (status, rejected = false) => {
+  window.__jobadabraCoverLetterNotice = (status, rejected = false) => {
     if (rejected) return {...DELIVERY_FAILURE};
     const copy = STATUS_COPY[status?.state] || {
       title: 'Cover letter needs attention',

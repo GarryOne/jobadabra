@@ -27,24 +27,24 @@ const WRAPPED = `<form>
   <div class="q"><label for="gone">Teléfono</label><div class="wrap"><input name="surname" type="tel" id="a3"></div></div>
   <div class="q"><label for="a4">Notizen</label><textarea name="n" id="a4"></textarea></div></form>`;
 
-const labels = (window) => [...window.document.querySelectorAll('input, textarea')].filter((el) => el.type !== 'hidden').map((el) => window.__jobPilottoFillKit.labelOf(el));
+const labels = (window) => [...window.document.querySelectorAll('input, textarea')].filter((el) => el.type !== 'hidden').map((el) => window.__jobadabraFillKit.labelOf(el));
 
 test('the label before a box names it when its `for` names no box (flat form)', { skip }, () => {
   const window = openPage(JSDOM, FLAT);
   assert.deepEqual(labels(window), ['Civilité : Mlle / Mme / M', 'Prénom', 'Nom', 'E-mail']);
-  const pairs = Object.fromEntries(['Prénom', 'Nom'].map((label) => [label, window.__jobPilottoFillKit.PROFILE_LABELS.find(([, pattern]) => pattern.test(label))?.[0] || '']));
+  const pairs = Object.fromEntries(['Prénom', 'Nom'].map((label) => [label, window.__jobadabraFillKit.PROFILE_LABELS.find(([, pattern]) => pattern.test(label))?.[0] || '']));
   assert.equal(pairs['Prénom'], 'first_name', 'a label read as "Prénom" is the first name whatever the box is named');
 });
 
 test('variant: other languages, wrappers, tags and names pointing the wrong way', { skip }, () => {
   const window = openPage(JSDOM, WRAPPED);
   assert.deepEqual(labels(window), ['Nachname', 'Vorname', 'Teléfono', 'Notizen']);
-  assert.equal(window.__jobPilottoFillKit.PROFILE_LABELS.find(([, pattern]) => pattern.test('Vorname'))[0], 'first_name');
+  assert.equal(window.__jobadabraFillKit.PROFILE_LABELS.find(([, pattern]) => pattern.test('Vorname'))[0], 'first_name');
 });
 
 test('a label tied to another box is not borrowed, and a label past other text or a box is not either', { skip }, () => {
   const window = openPage(JSDOM, `<form><label for="b">Eins</label><input id="b"><input id="c"> <label>Zwei</label> Text <input id="d"><label for="zz">Drei</label><div><input id="e"><input id="f"></div></form>`);
-  const before = (id) => window.__jobPilottoLabelBefore(window.document.getElementById(id));
+  const before = (id) => window.__jobadabraLabelBefore(window.document.getElementById(id));
   assert.equal(before('c'), '', 'the label before it belongs to the box before');
   assert.equal(before('d'), '', 'text sits between');
   assert.equal(before('e'), '', 'a wrapper with two boxes is no one box');
@@ -52,20 +52,20 @@ test('a label tied to another box is not borrowed, and a label past other text o
 
 test('a class or attribute that says "required" marks the box; a lookalike word does not', { skip }, () => {
   const window = openPage(JSDOM, `<input id="a" class="validate[required]"><input id="b" class="validate[required,custom[email]]"><input id="c" class="is-required"><input id="d" aria-required="true"><input id="e" class="not-requiredish unrequired"><input id="f" class="validate[custom[email]]">`);
-  const marked = (id) => window.__jobPilottoRequired.marked(window.document.getElementById(id));
+  const marked = (id) => window.__jobadabraRequired.marked(window.document.getElementById(id));
   assert.deepEqual(['a', 'b', 'c', 'd', 'e', 'f'].map(marked), [true, true, true, true, false, false]);
 });
 
 test('the describe-form read shows both pages\' boxes as required with their labels', { skip }, async () => {
   for (const [html, want] of [[FLAT, ['Prénom', 'Nom']], [WRAPPED, ['Nachname', 'Vorname']]]) {
     const window = openPage(JSDOM, html);
-    const rows = (await window.__jobPilottoDescribeForm(false));
+    const rows = (await window.__jobadabraDescribeForm(false));
     for (const label of want) assert.equal(rows.find((row) => row.label === label)?.required, true, label);
   }
 });
 
 test('the Playwright audit reads the same required mark as the panel and the fill (a class that says required)', { skip }, () => {
-  const required = (html, id) => openPage(JSDOM, html).__jobPilottoAuditVisibleFields().find((row) => row.field === id)?.required;
+  const required = (html, id) => openPage(JSDOM, html).__jobadabraAuditVisibleFields().find((row) => row.field === id)?.required;
   assert.equal(required(FLAT, 'form-validation-field-0'), true, 'validate[required] on a flat form');
   assert.equal(required(FLAT, 'form-validation-field-1'), true, 'validate[required,custom[email]]');
   assert.equal(required(WRAPPED, 'a1'), true, 'is-required');
@@ -84,7 +84,7 @@ const TOGGLE = (groupAttrs, between = '') => `<form>
 </form>`;
 
 test('a group is named by its own accessible name, else the nearest title before it that is no other box\'s label', {skip}, () => {
-  const name = (html) => { const window = openPage(JSDOM, html); const group = window.document.querySelector('[role=group]'); const found = window.__jobPilottoGroupTitle(group); window.close(); return found?.text || ''; };
+  const name = (html) => { const window = openPage(JSDOM, html); const group = window.document.querySelector('[role=group]'); const found = window.__jobadabraGroupTitle(group); window.close(); return found?.text || ''; };
   assert.equal(name(TOGGLE('aria-labelledby="q"', '<label id="q">Are you open to occasional business travel?</label>')), 'Are you open to occasional business travel?', 'aria-labelledby');
   assert.equal(name(TOGGLE('aria-label="Do you need a visa?"')), 'Do you need a visa?', 'aria-label alone');
   assert.equal(name(TOGGLE('', '<label>Willing to relocate?</label>')), 'Willing to relocate?', 'no aria: the nearest free title before it');
@@ -93,7 +93,7 @@ test('a group is named by its own accessible name, else the nearest title before
 
 test('on the toggle page every field has its own label: the group its question, First name its box', {skip}, async () => {
   const window = openPage(JSDOM, TOGGLE('aria-labelledby="q"', '<label id="q">Are you open to occasional business travel?</label>'));
-  const labels = (await window.__jobPilottoDescribeForm()).map(row => row.label);
+  const labels = (await window.__jobadabraDescribeForm()).map(row => row.label);
   assert.equal(new Set(labels).size, labels.length, `two fields share one label: ${labels.join(' | ')}`);
   assert.ok(labels.includes('Are you open to occasional business travel?'), labels.join(' | '));
   assert.ok(labels.includes('First name'));
@@ -111,11 +111,11 @@ const ROWS = `<form>
 
 test('a group never takes a title that another control sits between: the previous question\'s, a text box\'s; its own row\'s text names it', {skip}, async () => {
   const window = openPage(JSDOM, ROWS);
-  const name = id => window.__jobPilottoGroupTitle(window.document.getElementById(id))?.text || '';
+  const name = id => window.__jobadabraGroupTitle(window.document.getElementById(id))?.text || '';
   assert.equal(name('g1'), 'Are you fluent in English?');
   assert.equal(name('g2'), 'Do you need a visa to work here?', 'not the fluency question before the first group');
   assert.equal(name('g3'), 'Willing to relocate?', 'not the notice period box\'s title');
-  const labels = (await window.__jobPilottoDescribeForm()).map(row => row.label).filter(Boolean);
+  const labels = (await window.__jobadabraDescribeForm()).map(row => row.label).filter(Boolean);
   assert.equal(new Set(labels).size, labels.length, `two fields share one label: ${labels.join(' | ')}`);
   window.close();
 });
@@ -133,12 +133,12 @@ const SECTIONS = `<form><div><h3>Contact</h3>
 
 test('a heading right above a box with no label of its own names it', { skip }, () => {
   const window = openPage(JSDOM, HEADINGS);
-  const all = [...window.document.querySelectorAll('input, select')].map((el) => window.__jobPilottoFillKit.labelOf(el));
+  const all = [...window.document.querySelectorAll('input, select')].map((el) => window.__jobadabraFillKit.labelOf(el));
   assert.deepEqual(all, ['Desired Salary', 'Desired Salary', 'Provide your city and state of residence', 'LinkedIn Profile link']);
 });
 
 test('a section heading over labelled boxes or over more than three boxes names none of them', { skip }, () => {
   const window = openPage(JSDOM, SECTIONS);
-  const all = [...window.document.querySelectorAll('input')].map((el) => window.__jobPilottoFillKit.labelOf(el));
+  const all = [...window.document.querySelectorAll('input')].map((el) => window.__jobadabraFillKit.labelOf(el));
   assert.deepEqual(all, ['Email', 'phone', 'zip', 'town', 'Name', 'nick']);
 });

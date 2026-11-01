@@ -59,7 +59,7 @@ test('Chrome mode marks each job link so the extension fills every tab by itself
     {url: 'https://jobs.lever.co/b/2', status: 'saved', fit: 60, title: 'DevOps', company: 'B', kit: true}]});
   const result = await apply.start(storage, {n: 2, mode: 'chrome'}, fakeSpawn, fakeList);
   assert.equal(result.ok, true);
-  const ids = spawned[0].slice(3).map(address => address.split('#jobpilotto-fill=')[1]);   // each tab carries the form session made for its job
+  const ids = spawned[0].slice(3).map(address => address.split('#jobadabra-fill=')[1]);   // each tab carries the form session made for its job
   assert.deepEqual(spawned[0].slice(0, 3), ['open', '-a', 'Google Chrome']);
   assert.deepEqual(spawned[0].slice(3).map(address => address.split('#')[0]), ['https://jobs.lever.co/b/2', 'https://job-boards.greenhouse.io/a/jobs/1']);
   assert.ok(ids.every(Boolean) && new Set(ids).size === 2, ids.join());
@@ -114,7 +114,7 @@ test('Apply on one job opens it in Chrome with the fill marker; no link, no Chro
   const calls = [];
   const open = (...args) => { calls.push(args); return {unref() {}}; };
   assert.deepEqual(apply.openOne('https://jobs.lever.co/acme/1#top', {session: 's1', open}), {ok: true});
-  assert.deepEqual(calls[0].slice(0, 2), ['open', ['-a', 'Google Chrome', 'https://jobs.lever.co/acme/1#jobpilotto-fill=s1']]);
+  assert.deepEqual(calls[0].slice(0, 2), ['open', ['-a', 'Google Chrome', 'https://jobs.lever.co/acme/1#jobadabra-fill=s1']]);
   assert.equal(apply.openOne('', {session: 's1', open}).ok, false);
   assert.equal(calls.length, 1);
 });
@@ -196,7 +196,7 @@ test('claude is found outside the shell PATH, where the installer puts it', () =
 test('Apply with Claude tickets: one job, three hours, unknown ones refused', async () => {
   const server = await import('../lib/server.js');
   const now = Date.parse('2026-09-28T10:00:00Z');
-  const ticket = server.issueTicket('https://boards.greenhouse.io/acme/jobs/1#jobpilotto-fill', now);
+  const ticket = server.issueTicket('https://boards.greenhouse.io/acme/jobs/1#jobadabra-fill', now);
   assert.match(ticket, /^[0-9a-f]{32}$/);
   assert.equal(server.checkTicket(ticket, 'https://boards.greenhouse.io/acme/jobs/1/', now + 1000), true);
   assert.equal(server.checkTicket(ticket, 'https://boards.greenhouse.io/acme/jobs/2', now), false);

@@ -13,7 +13,7 @@ const FORM = `<form>
 
 test('a known detail with no saved value says so (no_data); an unknown question stays a wording to learn', { skip: !JSDOM }, async () => {
   const window = openPage(JSDOM, FORM);
-  const summary = await window.__jobPilottoExtensionFill([], {}, null, '', false);
+  const summary = await window.__jobadabraExtensionFill([], {}, null, '', false);
   const rows = Array.from(summary.trace);
   const origin = rows.find((r) => /origine/i.test(r.label)), years = rows.find((r) => /expérience/i.test(r.label));
   assert.match(origin.reason, /^a detail of yours not saved yet \(place_of_origin\)$/);

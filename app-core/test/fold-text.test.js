@@ -19,8 +19,8 @@ const MATCHERS = {
   'armed menu (page/fill-menus.js matchOption)': async (window, answer) => {
     const picked = [];
     window.document.addEventListener('click', (event) => { const option = event.target.closest?.('[role=option]'); if (option) picked.push(option.textContent.trim()); }, true);
-    await window.__jobPilottoExtensionFill([{ field: 'location', value: answer, question: 'Location', source: 'kit' }], {}, null, '', false);
-    const armed = window.document.querySelector('[data-jobpilotto-armed]');
+    await window.__jobadabraExtensionFill([{ field: 'location', value: answer, question: 'Location', source: 'kit' }], {}, null, '', false);
+    const armed = window.document.querySelector('[data-jobadabra-armed]');
     if (armed) userClick(window, armed);
     for (let waited = 0; waited < 3000 && !picked.length; waited += 50) await wait(50);
     return picked[0] ?? null;
@@ -29,23 +29,23 @@ const MATCHERS = {
     const box = window.document.getElementById('group');
     const pressed = [];
     for (const button of box.querySelectorAll('button')) button.addEventListener('click', () => pressed.push(button.textContent.trim()));
-    await window.__jobPilottoControls.setToggleGroup(box, answer, { option: 'button' });
+    await window.__jobadabraControls.setToggleGroup(box, answer, { option: 'button' });
     return pressed[0] ?? null;
   },
   'custom select (page/controls.js setCustomSelect)': async (window, answer) => {
     const picked = [];
     window.document.addEventListener('click', (event) => { const option = event.target.closest?.('[role=option]'); if (option) picked.push(option.textContent.trim()); }, true);
-    await window.__jobPilottoControls.setCustomSelect(window.document.getElementById('trigger'), answer, window.document, {});
+    await window.__jobadabraControls.setCustomSelect(window.document.getElementById('trigger'), answer, window.document, {});
     return picked[0] ?? null;
   },
   'click an option (page/browser-form-fastpath.js)': async (window, answer) => {
     const picked = [];
     window.document.addEventListener('click', (event) => { const option = event.target.closest?.('[class*=option]'); if (option) picked.push(option.textContent.trim()); }, true);
-    window.__jobPilottoClickOption(answer);
+    window.__jobadabraClickOption(answer);
     return picked[0] ?? null;
   },
   'option that fits an answer (page/value-class.js fits)': async (window, answer) => {
-    return ['Zurich, Netherlands', OPTION].find((text) => window.__jobPilottoValueClass.fits(answer, text)) ?? null;
+    return ['Zurich, Netherlands', OPTION].find((text) => window.__jobadabraValueClass.fits(answer, text)) ?? null;
   },
 };
 const PAGES = {
@@ -73,6 +73,6 @@ test('the matchers named here are all the page scripts that compare an answer wi
   // A page script that defines its own accent-blind text key for options must be listed here as a reviewed exception (the page's own text on both sides).
   const OWN_KEY = /(?:const|let) (?:norm|fold) *= *(?:\(?\w*\)?|text|t) *=> *[^;]*toLowerCase\(\)/;
   const reviewed = new Set(['fold-text.js', 'menu-pick.js', 'review.js', 'coverage.js', 'propose.js', 'upload.js']);   // menu-pick: the box's value against the option's own text, both from the page
-  const offenders = files.filter((name) => !reviewed.has(name) && OWN_KEY.test(fs.readFileSync(new URL(`../../extension/page/${name}`, import.meta.url), 'utf8')) && !/__jobPilottoFold/.test(fs.readFileSync(new URL(`../../extension/page/${name}`, import.meta.url), 'utf8')));
-  assert.deepEqual(offenders, [], 'a page script defines its own accent-blind norm/fold: use window.__jobPilottoFold (page/fold-text.js)');
+  const offenders = files.filter((name) => !reviewed.has(name) && OWN_KEY.test(fs.readFileSync(new URL(`../../extension/page/${name}`, import.meta.url), 'utf8')) && !/__jobadabraFold/.test(fs.readFileSync(new URL(`../../extension/page/${name}`, import.meta.url), 'utf8')));
+  assert.deepEqual(offenders, [], 'a page script defines its own accent-blind norm/fold: use window.__jobadabraFold (page/fold-text.js)');
 });

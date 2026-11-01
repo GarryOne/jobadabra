@@ -11,8 +11,8 @@
 const PATIENCE = {first: 1500, loading: 5000, option: 4500, deciding: 9000, ceiling: 15000, hard: 30000, slowCall: 150};
 
 // type(text): real typing over the box's content. choose({asked, choices, label}): the AI's pick of one choice by meaning, or ''.
-// page(func, args): runs func in the page (MAIN world). click(x, y): a trusted click. spot: the armed menu's spot from __jobPilottoNextCombo.
-// Returns {picked, last}: whether the armed count dropped, and what the page observed (__jobPilottoLastPick, read once the page is done).
+// page(func, args): runs func in the page (MAIN world). click(x, y): a trusted click. spot: the armed menu's spot from __jobadabraNextCombo.
+// Returns {picked, last}: whether the armed count dropped, and what the page observed (__jobadabraLastPick, read once the page is done).
 export async function clickCombo({page, click, spot, skip = 0, type = null, choose = null, sleep = ms => new Promise(r => setTimeout(r, ms)), now = Date.now, marks = []}) {
   let picked = false, last = null, capped = false;
   const began = now();
@@ -24,8 +24,8 @@ export async function clickCombo({page, click, spot, skip = 0, type = null, choo
   const over = () => now() - began >= PATIENCE.hard || now() - began - busy >= PATIENCE.ceiling;
   const mark = tag => { marks.push(`${tag}@${now() - began}`); if (marks.length > 40) marks.shift(); };   // where the time went, said when a menu is given up (flow.js)   // every wait below is REAL time: counting 100 ms ticks let a busy page (each call taking a second or more) stretch a 1.5 s wait to 30 s
   for (let attempt = 1; attempt <= 2 && !picked; attempt++) {
-    const before = await page(() => window.__jobPilottoArmedCount());
-    const at = attempt === 1 ? spot : await page(n => window.__jobPilottoNextCombo(n), [skip]);
+    const before = await page(() => window.__jobadabraArmedCount());
+    const at = attempt === 1 ? spot : await page(n => window.__jobadabraNextCombo(n), [skip]);
     if (!at) break;
     mark(`click${attempt}`);
     await click(at.x, at.y);
@@ -39,32 +39,32 @@ export async function clickCombo({page, click, spot, skip = 0, type = null, choo
       mark('turn');
       await sleep(100);
       waited = waitedNow();
-      if ((await page(() => window.__jobPilottoArmedCount())) < before) break;
+      if ((await page(() => window.__jobadabraArmedCount())) < before) break;
       if (over()) { capped = true; break; }   // after every slow call, not once a turn: a busy page makes a turn many seconds long
       // The menu ignored a scripted click on its option: the page left the option's spot, clicked here for real once (page/fill-menus.js armCombo).
-      const spotAt = spotClicked ? null : await page(() => window.__jobPilottoPickSpot || null);
+      const spotAt = spotClicked ? null : await page(() => window.__jobadabraPickSpot || null);
       if (spotAt) { spotClicked = true; await click(spotAt.x, spotAt.y); limit = Math.max(limit, waited + PATIENCE.option); }
       // The page needs what only the extension can do (page/fill-menus.js typeToSearch): type for real, or have the AI pick from the options shown.
-      const needed = await page(() => { const need = window.__jobPilottoNeed; window.__jobPilottoNeed = null; return need || null; });
+      const needed = await page(() => { const need = window.__jobadabraNeed; window.__jobadabraNeed = null; return need || null; });
       if (needed) {
         mark(`need-${needed.kind}`);
         const value = needed.kind === 'type' ? await type?.(needed.text, needed.keys).then(() => true, () => false) : await choose?.(needed).catch(() => '');
-        await page(done => { window.__jobPilottoNeedDone = done; }, [value ?? false]);
+        await page(done => { window.__jobadabraNeedDone = done; }, [value ?? false]);
         limit = Math.max(limit, waited + PATIENCE.deciding);
       }
       if (over()) { capped = true; break; }
       if (limit < PATIENCE.loading && await loading()) limit = PATIENCE.loading;
-      // The page is still deciding (page/fill-menus.js __jobPilottoPicking): its answer comes before any second click.
-      if (limit < PATIENCE.deciding && await page(() => !!window.__jobPilottoPicking)) limit = PATIENCE.deciding;
+      // The page is still deciding (page/fill-menus.js __jobadabraPicking): its answer comes before any second click.
+      if (limit < PATIENCE.deciding && await page(() => !!window.__jobadabraPicking)) limit = PATIENCE.deciding;
     }
-    picked = (await page(() => window.__jobPilottoArmedCount())) < before && !(await page(() => !!window.__jobPilottoLastPick?.refused));   // a menu its attempt log refused was disarmed, not picked
+    picked = (await page(() => window.__jobadabraArmedCount())) < before && !(await page(() => !!window.__jobadabraLastPick?.refused));   // a menu its attempt log refused was disarmed, not picked
     if (picked) break;
     // What the page saw this time. A menu that opened and showed no choice for the answer is not helped by a second click: it shuts the open menu and
     // the second pick overwrites the true observation with "did not open" (the Ocado runs). Retry only when the page never opened it.
-    last = await page(() => window.__jobPilottoLastPick || null);
+    last = await page(() => window.__jobadabraLastPick || null);
     await click(5, 5).catch(() => {}); await sleep(100);  // close the menu
     if (last?.opened || capped) break;
   }
-  last = await page(() => { const pick = window.__jobPilottoLastPick || null; window.__jobPilottoLastPick = null; return pick; }) || last;
+  last = await page(() => { const pick = window.__jobadabraLastPick || null; window.__jobadabraLastPick = null; return pick; }) || last;
   return {picked, last, capped};
 }

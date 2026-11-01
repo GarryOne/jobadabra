@@ -65,7 +65,7 @@ export async function turnOn(storage, token, {fetcher, telegram = telegramApi, b
     if (!account) return {ok: false, error: 'This Cloudflare token sees no account. Create it with "Account Settings: Read" too.'};
     let subdomain;
     try { subdomain = (await cf('GET', `/accounts/${account.id}/workers/subdomain`)).subdomain; } catch {}
-    if (!subdomain) subdomain = (await cf('PUT', `/accounts/${account.id}/workers/subdomain`, {subdomain: `jobpilotto-${random().slice(0, 6)}`})).subdomain;
+    if (!subdomain) subdomain = (await cf('PUT', `/accounts/${account.id}/workers/subdomain`, {subdomain: `jobadabra-${random().slice(0, 6)}`})).subdomain;
     const webhookSecret = random();
     const form = new FormData();
     form.append('metadata', new Blob([JSON.stringify({main_module: 'index.js', compatibility_date: '2026-09-01',

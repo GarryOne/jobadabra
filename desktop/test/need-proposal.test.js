@@ -29,7 +29,7 @@ test('the proposed answer: what the fill proposed, else your detail, else the CV
 test('the form\'s report keeps the proposals (cleaned) and "Use" reaches the form\'s panel as one fill command', () => {
   review._reset();
   const sessions = [{id: 's1', url: 'https://jobs.coop.ch/job/1/', company: 'Coop Suisse', status: 'done', startedAt: '2026-10-08T13:09:00Z'}];
-  const page = {url: 'https://career2.successfactors.eu/careers?company=Coop#jobpilotto-fill', title: 'Coop', session: 's1', tab: 7, left: 2, total: 19,
+  const page = {url: 'https://career2.successfactors.eu/careers?company=Coop#jobadabra-fill', title: 'Coop', session: 's1', tab: 7, left: 2, total: 19,
     pending: ['Formule d\'appel', 'Rue et numéro'], proposals: [{label: 'Formule d\'appel', value: 'Monsieur'}, {label: 'Numéro de téléphone', key: 'phone'},
       {label: 'x', key: 'not-a-detail'}, {label: '', value: 'y'}]};
   review.report(sessions, page);

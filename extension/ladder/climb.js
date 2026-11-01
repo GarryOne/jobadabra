@@ -25,7 +25,7 @@ export const blindOr = (tabId, signal) => (blindOn(tabId) ? 'blind' : signal);  
 export const forgetClimb = tabId => { for (const key of [...digested]) if (key.startsWith(`${tabId} `)) digested.delete(key); pressedProofs.delete(tabId); signals.delete(tabId); sketched.delete(tabId); ended.delete(tabId); frames.delete(tabId); for (const key of [...opened]) if (key.startsWith(`${tabId} `)) opened.delete(key); for (const key of [...looked]) if (key.startsWith(`${tabId} `)) looked.delete(key); };
 
 // The numbered candidates of the page (extension/ladder/rung3-candidates.js). The page files live in the page's own (MAIN) world; the finder is injected when this page has not loaded it yet.
-const look = tabId => chrome.scripting.executeScript({target: {tabId}, world: 'MAIN', func: () => window.__jobPilottoCandidates?.candidatesOf?.()}).then(rows => rows?.[0]?.result).catch(() => undefined);
+const look = tabId => chrome.scripting.executeScript({target: {tabId}, world: 'MAIN', func: () => window.__jobadabraCandidates?.candidatesOf?.()}).then(rows => rows?.[0]?.result).catch(() => undefined);
 export async function candidatesOf(tabId) {
   let found = await look(tabId);
   if (!found) { await chrome.scripting.executeScript({target: {tabId}, world: 'MAIN', files: ['ladder/rung3-candidates.js']}).catch(() => {}); found = await look(tabId); }
@@ -100,7 +100,7 @@ export const noteFrames = (tabId, list) => frames.set(tabId, Array.isArray(list)
 export const frameSketch = list => (Array.isArray(list) ? list : []).map(({host, path, width, height}) => ({host, path, width, height}));
 export const frameSrcOf = (tabId, index) => { const src = Number.isInteger(index) ? frames.get(tabId)?.[index]?.src : ''; return typeof src === 'string' && src.startsWith('https://') ? src : ''; };
 export const claimFrame = key => (opened.has(key) ? false : (opened.add(key), true));
-const lookFrames = tabId => chrome.scripting.executeScript({target: {tabId}, world: 'MAIN', func: () => window.__jobPilottoFrames?.frameCandidates?.()}).then(rows => rows?.[0]?.result).catch(() => undefined);
+const lookFrames = tabId => chrome.scripting.executeScript({target: {tabId}, world: 'MAIN', func: () => window.__jobadabraFrames?.frameCandidates?.()}).then(rows => rows?.[0]?.result).catch(() => undefined);
 // A frame that is a candidate NOW but was not in the list the judgment carried (Datadog, 11 Oct 2026: the hosted board's iframe is born 150 px high, below the finder's
 // size floor, and is 2432 px high 0.6 s later; its host was already counted, so the watch of a page judged without a form never looked again). By address, never by size.
 export const frameGrew = (tabId, now) => { const had = new Set((frames.get(tabId) || []).map(item => item.src)); return (Array.isArray(now) ? now : []).some(item => !had.has(item.src)); };

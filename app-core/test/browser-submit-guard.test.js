@@ -33,7 +33,7 @@ function event(target) {
 
 test('guard blocks submit methods and submit events', () => {
   const {listeners, HTMLFormElement, window} = loadedGuard();
-  assert.equal(window.__jobPilottoGuardActive, true);
+  assert.equal(window.__jobadabraGuardActive, true);
   const form = new HTMLFormElement();
   assert.throws(() => form.submit(), /blocked/);
   assert.throws(() => form.requestSubmit(), /blocked/);
@@ -65,9 +65,9 @@ test('guard releases only after explicit review confirmation', () => {
   listeners.DOMContentLoaded();
   const release = created[2];
   release.click({stopPropagation() {}});
-  assert.equal(window.__jobPilottoGuardActive, true);
+  assert.equal(window.__jobadabraGuardActive, true);
   window.confirm = () => true;
   release.click({stopPropagation() {}});
-  assert.equal(window.__jobPilottoGuardActive, false);
+  assert.equal(window.__jobadabraGuardActive, false);
   assert.equal(new HTMLFormElement().submit(), 'submitted');
 });

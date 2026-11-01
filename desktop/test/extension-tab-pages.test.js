@@ -9,7 +9,7 @@ import {startsOwnJob, kitStance, pickApplyButton, pickNamedButton, confirmationO
 const JOB = 'https://job-boards.greenhouse.io/canonical/jobs/3014391';
 
 test('the panel runs only on a tab the desktop app opened', () => {
-  assert.equal(tabArmed({url: `${JOB}#jobpilotto-fill`}), true);
+  assert.equal(tabArmed({url: `${JOB}#jobadabra-fill`}), true);
   assert.equal(tabArmed({url: 'https://calendly.com/acme/30min', armed: true}), true);
   assert.equal(tabArmed({url: 'https://calendly.com/acme/30min'}), false);
   assert.equal(tabArmed({url: JOB}), false);
@@ -20,8 +20,8 @@ test('the panel runs only on a tab the desktop app opened', () => {
 // added to popupMode without a row here fails.
 test('the popup offers what fits the tab: apply, read by itself, read on a click, nothing', () => {
   const cases = [
-    [{url: `${JOB}#jobpilotto-fill`}, 'fill'],
-    [{url: 'https://www.jobs.ch/en/vacancies/detail/e644/#jobpilotto-fill'}, 'fill'],
+    [{url: `${JOB}#jobadabra-fill`}, 'fill'],
+    [{url: 'https://www.jobs.ch/en/vacancies/detail/e644/#jobadabra-fill'}, 'fill'],
     [{url: 'https://calendly.com/acme/30min', armed: true}, 'fill'],             // a later page of an apply tab
     [{url: 'https://www.notion.so/kit-123', armed: true}, 'browse'],             // an apply tab sent to Notion is let go
     [{url: 'https://www.jobs.ch/en/vacancies/#jp-read'}, 'read'],
@@ -75,12 +75,12 @@ test('a submit is asked about once the page changes, with or without a redirect'
 });
 
 test('the same page ignores the fill marker and a trailing slash', () => {
-  assert.equal(samePage(`${JOB}#jobpilotto-fill`, JOB), true);
+  assert.equal(samePage(`${JOB}#jobadabra-fill`, JOB), true);
   assert.equal(samePage(`${JOB}/`, JOB), true);
   assert.equal(samePage(JOB, 'https://job-boards.greenhouse.io/canonical/jobs/5002072'), false);
   assert.equal(samePage('', JOB), false);
   assert.equal(samePage(JOB, undefined), false);
-  assert.equal(pageKey(`${JOB}?utm=x#jobpilotto-fill`), `${JOB}?utm=x`);
+  assert.equal(pageKey(`${JOB}?utm=x#jobadabra-fill`), `${JOB}?utm=x`);
 });
 
 test('a fill may keep drawing while the form moves inside its own site, never onto another', () => {
@@ -95,7 +95,7 @@ test('a fill may keep drawing while the form moves inside its own site, never on
 
 test('only the job\'s own page or its confirmation counts as "this job"', () => {
   assert.equal(forJob(JOB, JOB), true);
-  assert.equal(forJob(`${JOB}#jobpilotto-fill`, JOB), true);
+  assert.equal(forJob(`${JOB}#jobadabra-fill`, JOB), true);
   assert.equal(forJob('https://job-boards.greenhouse.io/canonical/jobs/3014391/confirmation', JOB), true);
   assert.equal(forJob('https://jobs.lever.co/acme/abc/thanks', 'https://jobs.lever.co/acme/abc'), true);
   // The case that was wrong: any other host passed (`elsewhere`), so a Google search page was read.
@@ -123,7 +123,7 @@ test('a session\'s form counts as open by the id in a reported tab address, and 
   const {sessionsNamedIn} = await import('../lib/session-tab.js');
   const session = {id: 'a1', url: 'https://job-boards.greenhouse.io/n26/jobs/7768035', company: 'N26'};
   const embed = 'https://job-boards.greenhouse.io/embed/job_app?for=n26&token=7768035';
-  assert.deepEqual([...sessionsNamedIn([session], [`${embed}#jobpilotto-fill=a1`])], ['a1']);
+  assert.deepEqual([...sessionsNamedIn([session], [`${embed}#jobadabra-fill=a1`])], ['a1']);
   assert.deepEqual([...sessionsNamedIn([session], [embed, session.url])], []);
   assert.deepEqual([...sessionsNamedIn([session], [])], []);
 });
@@ -157,8 +157,8 @@ test('a person walking away ends the application tab; a page moving on keeps it,
   assert.equal(navigationKind({transitionType: 'link', transitionQualifiers: ['from_address_bar']}), 'by-hand');
   for (const transitionType of ['link', 'form_submit', 'reload']) assert.equal(navigationKind({transitionType}), 'page');
   assert.equal(navigationKind({transitionType: 'link', transitionQualifiers: ['client_redirect']}), 'page');
-  assert.equal(withMark('https://api.easytemp.ch/live/bew/1.php'), 'https://api.easytemp.ch/live/bew/1.php#jobpilotto-fill');
-  assert.equal(withMark('https://x.test/a?b=1'), 'https://x.test/a?b=1#jobpilotto-fill');
+  assert.equal(withMark('https://api.easytemp.ch/live/bew/1.php'), 'https://api.easytemp.ch/live/bew/1.php#jobadabra-fill');
+  assert.equal(withMark('https://x.test/a?b=1'), 'https://x.test/a?b=1#jobadabra-fill');
   assert.equal(withMark('https://x.test/#/apply'), '');  // the page's own fragment is not touched
   assert.equal(withMark('chrome://settings'), '');
 });
@@ -222,9 +222,9 @@ test('a start-applying phrase learned by the service is added to the built-in wo
 });
 
 test('a page the app opens starts its own job; the same page loading again (a form\'s result after Submit) keeps the job it has', () => {
-  assert.equal(startsOwnJob(undefined, 'https://api.easytemp.ch/live/bew/1-FR.php#jobpilotto-fill'), true);
-  assert.equal(startsOwnJob('https://boards.greenhouse.io/a/jobs/1', 'https://jobs.lever.co/b/2/apply#jobpilotto-fill'), true);
-  assert.equal(startsOwnJob('https://api.easytemp.ch/live/bew/1-FR.php', 'https://api.easytemp.ch/live/bew/1-FR.php#jobpilotto-fill'), false);
+  assert.equal(startsOwnJob(undefined, 'https://api.easytemp.ch/live/bew/1-FR.php#jobadabra-fill'), true);
+  assert.equal(startsOwnJob('https://boards.greenhouse.io/a/jobs/1', 'https://jobs.lever.co/b/2/apply#jobadabra-fill'), true);
+  assert.equal(startsOwnJob('https://api.easytemp.ch/live/bew/1-FR.php', 'https://api.easytemp.ch/live/bew/1-FR.php#jobadabra-fill'), false);
 });
 
 test('Find jobs using your browser tabs are reported by ticket, from the mark or kept after a redirect dropped it', async () => {
@@ -255,7 +255,7 @@ test('a sign-in or sign-up page is told apart from the application form by one r
   const signIn = 'https://career55.sapsf.eu/careers?career_ns=job_application';
   assert.equal(pageRole({fields: 3, passwords: 1}, signIn), 'account');      // Manor's sign-in: email, password, "not a robot"
   assert.equal(pageRole({fields: 9, files: 1}, 'https://career55.sapsf.eu/careers/apply'), 'form');
-  assert.equal(isAccountPage({role: 'account', page: signIn}, `${signIn}#jobpilotto-fill`), true);
+  assert.equal(isAccountPage({role: 'account', page: signIn}, `${signIn}#jobadabra-fill`), true);
   assert.equal(isAccountPage({role: 'form', page: signIn}, signIn), false);
   assert.equal(isAccountPage({role: 'account', page: signIn}, 'https://career55.sapsf.eu/careers/apply'), false);   // the rule was for another page
   assert.equal(isAccountPage(null, signIn, true), true);                       // the panel sees a password box now

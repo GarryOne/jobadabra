@@ -49,7 +49,7 @@ const snapshotScrub = (root, secretValues = []) => {
     const type = String(raw.type || '').toLowerCase();
     if (t === 'input' && /^(hidden|password)$/.test(type)) return null;
     // Jobadabra's own elements (the dropdown badge, which names the answer; the panel, styles); its classes on a field go.
-    if (/(^|\s)job-pilotto-badge(\s|$)/.test(String(raw.class || '')) || /^job-?pilotto/i.test(String(raw.id || ''))) return null;
+    if (/(^|\s)jobadabra-badge(\s|$)/.test(String(raw.class || '')) || /^job-?pilotto/i.test(String(raw.id || ''))) return null;
     const a = {};
     for (const [key, value] of Object.entries(raw)) {
       const name = String(key).toLowerCase();

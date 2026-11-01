@@ -29,10 +29,10 @@ async function run(delay) {
     const p = await browser.newPage();
     await p.setContent(MENU(delay));
     for (const file of PAGE_FILES) await p.addScriptTag({content: fs.readFileSync(new URL(`../../../extension/${file}`, import.meta.url), 'utf8')});
-    await p.evaluate(() => window.__jobPilottoExtensionFill([{field: 'rtw', value: 'Yes'}], {}, null, '', false));
+    await p.evaluate(() => window.__jobadabraExtensionFill([{field: 'rtw', value: 'Yes'}], {}, null, '', false));
     const page = (func, args = []) => p.evaluate(({f, a}) => new Function(`return (${f})`)()(...a), {f: func.toString(), a: args});
     const click = (x, y) => p.mouse.click(x, y);
-    const spot = await page(n => window.__jobPilottoNextCombo(n), [0]);
+    const spot = await page(n => window.__jobadabraNextCombo(n), [0]);
     const result = await clickCombo({page, click, spot, skip: 0});
     return {...result, value: await p.evaluate(() => document.getElementById('rtw').value), clicks: await p.evaluate(() => window.clicks)};
   } finally { await browser.close(); }
@@ -51,9 +51,9 @@ test('a menu with no choice that matches says what it saw, after the page is don
     const p = await browser.newPage();
     await p.setContent(MENU(300).replace("'Yes', 'No, I require a visa'", "'Maybe', 'Perhaps'"));
     for (const file of PAGE_FILES) await p.addScriptTag({content: fs.readFileSync(new URL(`../../../extension/${file}`, import.meta.url), 'utf8')});
-    await p.evaluate(() => window.__jobPilottoExtensionFill([{field: 'rtw', value: 'Yes'}], {}, null, '', false));
+    await p.evaluate(() => window.__jobadabraExtensionFill([{field: 'rtw', value: 'Yes'}], {}, null, '', false));
     const page = (func, args = []) => p.evaluate(({f, a}) => new Function(`return (${f})`)()(...a), {f: func.toString(), a: args});
-    const spot = await page(n => window.__jobPilottoNextCombo(n), [0]);
+    const spot = await page(n => window.__jobadabraNextCombo(n), [0]);
     const {picked, last} = await clickCombo({page, click: (x, y) => p.mouse.click(x, y), spot, skip: 0});
     assert.equal(picked, false);
     assert.deepEqual({opened: last?.opened, found: last?.found, choices: last?.choices}, {opened: true, found: false, choices: ['Maybe', 'Perhaps']});
@@ -97,12 +97,12 @@ async function runTypeahead(kind, answer, chosen) {
     await p.setContent(typeaheadPage(config, kind));
     for (const file of PAGE_FILES) await p.addScriptTag({content: fs.readFileSync(new URL(`../../../extension/${file}`, import.meta.url), 'utf8')});
     const id = kind === 'plain' ? 'loc' : 'ort-9';
-    await p.evaluate(({id, answer}) => window.__jobPilottoExtensionFill([{field: id, value: answer}], {}, null, '', false), {id, answer});
+    await p.evaluate(({id, answer}) => window.__jobadabraExtensionFill([{field: id, value: answer}], {}, null, '', false), {id, answer});
     const page = (func, args = []) => p.evaluate(({f, a}) => new Function(`return (${f})`)()(...a), {f: func.toString(), a: args});
     const asked = [];
     const type = async text => { await p.keyboard.press('ControlOrMeta+a'); await p.keyboard.insertText(text); };
     const choose = async request => { asked.push(request); return chosen(request.choices); };
-    const spot = await page(n => window.__jobPilottoNextCombo(n), [0]);
+    const spot = await page(n => window.__jobadabraNextCombo(n), [0]);
     const result = await clickCombo({page, click: (x, y) => p.mouse.click(x, y), spot, skip: 0, type, choose});
     return {...result, value: await p.evaluate(id => document.getElementById(id).value, id), asked, searches: await p.evaluate(() => window.searches)};
   } finally { await browser.close(); }
@@ -153,9 +153,9 @@ for (const [name, shape] of Object.entries(SENTENCES)) {
       const p = await browser.newPage();
       await p.setContent(sentencePage(shape));
       for (const file of PAGE_FILES) await p.addScriptTag({content: fs.readFileSync(new URL(`../../../extension/${file}`, import.meta.url), 'utf8')});
-      await p.evaluate(() => window.__jobPilottoExtensionFill([{field: 'rtw', value: 'Yes'}], {}, null, '', false));
+      await p.evaluate(() => window.__jobadabraExtensionFill([{field: 'rtw', value: 'Yes'}], {}, null, '', false));
       const page = (func, args = []) => p.evaluate(({f, a}) => new Function(`return (${f})`)()(...a), {f: func.toString(), a: args});
-      const spot = await page(n => window.__jobPilottoNextCombo(n), [0]);
+      const spot = await page(n => window.__jobadabraNextCombo(n), [0]);
       const asked = [];
       const choose = async seen => { asked.push(seen); return seen.choices.includes(shape.want) ? shape.want : ''; };   // the app's answer, a fixed choice from the list
       const {picked, last} = await clickCombo({page, click: (x, y) => p.mouse.click(x, y), spot, skip: 0, choose});
@@ -174,9 +174,9 @@ test('a menu with no choice that means the answer is left (the app names none), 
     const p = await browser.newPage();
     await p.setContent(sentencePage(SENTENCES.plain));
     for (const file of PAGE_FILES) await p.addScriptTag({content: fs.readFileSync(new URL(`../../../extension/${file}`, import.meta.url), 'utf8')});
-    await p.evaluate(() => window.__jobPilottoExtensionFill([{field: 'rtw', value: 'Yes'}], {}, null, '', false));
+    await p.evaluate(() => window.__jobadabraExtensionFill([{field: 'rtw', value: 'Yes'}], {}, null, '', false));
     const page = (func, args = []) => p.evaluate(({f, a}) => new Function(`return (${f})`)()(...a), {f: func.toString(), a: args});
-    const spot = await page(n => window.__jobPilottoNextCombo(n), [0]);
+    const spot = await page(n => window.__jobadabraNextCombo(n), [0]);
     let calls = 0;
     const {picked, last} = await clickCombo({page, click: (x, y) => p.mouse.click(x, y), spot, skip: 0, choose: async () => { calls++; return ''; }});
     assert.deepEqual({picked, calls, found: last?.found, opened: last?.opened}, {picked: false, calls: 1, found: false, opened: true});
@@ -191,9 +191,9 @@ test('a menu that showed its choices is never typed at: one pick by meaning, no 
     const p = await browser.newPage();
     await p.setContent(sentencePage(SENTENCES.plain));
     for (const file of PAGE_FILES) await p.addScriptTag({content: fs.readFileSync(new URL(`../../../extension/${file}`, import.meta.url), 'utf8')});
-    await p.evaluate(() => window.__jobPilottoExtensionFill([{field: 'rtw', value: 'Yes'}], {}, null, '', false));
+    await p.evaluate(() => window.__jobadabraExtensionFill([{field: 'rtw', value: 'Yes'}], {}, null, '', false));
     const page = (func, args = []) => p.evaluate(({f, a}) => new Function(`return (${f})`)()(...a), {f: func.toString(), a: args});
-    const spot = await page(n => window.__jobPilottoNextCombo(n), [0]);
+    const spot = await page(n => window.__jobadabraNextCombo(n), [0]);
     let typed = 0, asked = 0;
     const {picked} = await clickCombo({page, click: (x, y) => p.mouse.click(x, y), spot, skip: 0,
       type: async () => { typed++; }, choose: async seen => { asked++; return seen.choices[0]; }});

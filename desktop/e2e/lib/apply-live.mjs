@@ -51,7 +51,7 @@ export async function stallReport(tab, say) {
       return `${el.type}·${label}${el.required || el.getAttribute('aria-required') === 'true' ? '·required' : ''}${(el.type === 'checkbox' ? el.checked : el.value) ? '·filled' : '·EMPTY'}`;
     }),
     buttons: [...document.querySelectorAll('button, input[type=submit], a')].filter(el => el.getClientRects().length).map(el => (el.innerText || el.value || '').replace(/\s+/g, ' ').trim().slice(0, 30)).filter(Boolean).slice(0, 12),
-    panel: document.getElementById('jobpilotto-review-host')?.shadowRoot?.querySelector('.card')?.innerText?.replace(/\s+/g, ' ').slice(0, 260) || ''})).catch(error => ({error: String(error).slice(0, 80)}));
+    panel: document.getElementById('jobadabra-review-host')?.shadowRoot?.querySelector('.card')?.innerText?.replace(/\s+/g, ' ').slice(0, 260) || ''})).catch(error => ({error: String(error).slice(0, 80)}));
   say(`  live STALL (12 s without a change; held by the test: ${process.env.LIVE_SUBMIT ? 'no' : 'YES, nothing is pressed'}): ${JSON.stringify(view)}`);
 }
 
@@ -83,7 +83,7 @@ export async function lookViaWorker(ctx, tab, say) {
   const url = tab.url().split('#')[0];
   const action = await worker.evaluate(async address => {
     const tabs = await chrome.tabs.query({}), found = tabs.find(item => String(item.url).startsWith(address));
-    const decided = await globalThis.__jobPilottoCloserLook(found, 0, 'the live test asked for a closer look');
+    const decided = await globalThis.__jobadabraCloserLook(found, 0, 'the live test asked for a closer look');
     return `${decided} (tabs: ${JSON.stringify(tabs.map(item => [item.id, item.active, item.windowId, String(item.url).slice(0, 30)]))})`;   // set by extension/ladder/rung4-picture.js
   }, url).catch(error => `error: ${String(error).slice(0, 100)}`);
   say(`  live look: the closer look decided ${JSON.stringify(action)}`);

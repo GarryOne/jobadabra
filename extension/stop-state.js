@@ -27,7 +27,7 @@ export async function attachDebugger(tabId) {
   if (isStopped()) throw new Error('stopped: the person pressed Stop');
   const key = `armed:${tabId}`;
   let armed = !!(await chrome.storage.session.get(key).catch(() => ({})))[key];
-  if (!armed) armed = String((await chrome.tabs.get(tabId).catch(() => null))?.url || '').includes('#jobpilotto-fill');
+  if (!armed) armed = String((await chrome.tabs.get(tabId).catch(() => null))?.url || '').includes('#jobadabra-fill');
   if (!armed) throw new Error('not one of the tabs the app opened for an application');
   if (!users.get(tabId)) await chrome.debugger.attach({tabId}, '1.3');
   users.set(tabId, (users.get(tabId) || 0) + 1);

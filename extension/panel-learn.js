@@ -1,8 +1,8 @@
 // What the panel learns from the person and reports to the app, never typing or clicking in the form: controls the form model did not read (kind and shape
 // only), what you answered yourself and what the fill missed (labels and kinds, never a value), and the Submit press. Injected before review.js (panel-files.js);
-// review.js calls window.__jobPilottoPanelLearn.start(...) once the panel mounts. Guarded by app-core/test/submit-press, panel-widgets, extension-files.
+// review.js calls window.__jobadabraPanelLearn.start(...) once the panel mounts. Guarded by app-core/test/submit-press, panel-widgets, extension-files.
 (() => {
-  window.__jobPilottoPanelLearn = {start({send, alive, form, mine}) {
+  window.__jobadabraPanelLearn = {start({send, alive, form, mine}) {
   const {fields, question, visible, clean} = form;
   // ---- controls the form model did not read (learning input; see page/skeleton.js) ----
   // A widget that is not a native input and is part of no field the panel counted: its fingerprint, structure (no text) and
@@ -10,7 +10,7 @@
   const missSent = new Set();
   let missChecked = 0;
   function reportMisses(list) {
-    const kit = window.__jobPilottoSkeleton;
+    const kit = window.__jobadabraSkeleton;
     if (!kit || Date.now() - missChecked < 8000 || missSent.size >= 10) return;
     missChecked = Date.now();
     const items = [];
@@ -133,22 +133,22 @@
     submitNoted = Date.now();
     const answered = byYou(fields());
     // The fill's record (fill-card.js), so the digest knows this form was submitted and what you answered yourself.
-    const fillId = document.documentElement.dataset.jobpilottoFillId || '';
+    const fillId = document.documentElement.dataset.jobadabraFillId || '';
     if (answered.length || fillId) send({type: 'formLearning', url: location.href, byYou: answered, fillId, submitted: true, account: accountNow()}).catch(() => {});
     // Still here a moment later: the page refused the submit; what it flags is what was missed or wrong.
     setTimeout(() => {
       if (!alive()) return;
       const invalid = flagged();
-      if (invalid.length) send({type: 'formLearning', url: location.href, invalid, fillId: document.documentElement.dataset.jobpilottoFillId || '', account: accountNow()}).catch(() => {});
+      if (invalid.length) send({type: 'formLearning', url: location.href, invalid, fillId: document.documentElement.dataset.jobadabraFillId || '', account: accountNow()}).catch(() => {});
     }, 2500);
   };
   const noteSubmit = () => { noteLearned(); noteMissed(); send({type: 'submitted', url: location.href, snapshot: snapshot(), account: accountNow()}).catch(() => {}); };
-  document.addEventListener('submit', event => { if (window.__jobPilottoSubmitPress?.person(event) !== false) noteSubmit(); }, true);   // a form the extension's own press submitted is not the person's submit
+  document.addEventListener('submit', event => { if (window.__jobadabraSubmitPress?.person(event) !== false) noteSubmit(); }, true);   // a form the extension's own press submitted is not the person's submit
   document.addEventListener('click', event => {
     const button = event.target?.closest?.('button, input[type=submit], [role=button]');
-    if (window.__jobPilottoSubmitPress?.person(event) === false || !button) return;   // a script's click is the extension's own press, never the person's
+    if (window.__jobadabraSubmitPress?.person(event) === false || !button) return;   // a script's click is the extension's own press, never the person's
     const words = `${button.textContent || ''} ${button.getAttribute?.('aria-label') || ''} ${button.name || ''} ${button.value || ''}`;
-    if (window.__jobPilottoSubmitPress?.counts(button, words)) noteSubmit();   // page/submit-press.js: written type=submit, or the Submit floor; never the typeless default
+    if (window.__jobadabraSubmitPress?.counts(button, words)) noteSubmit();   // page/submit-press.js: written type=submit, or the Submit floor; never the typeless default
   }, true);
   return {reportMisses, showMine};
   }};

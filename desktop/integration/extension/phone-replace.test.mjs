@@ -25,7 +25,7 @@ test('real retyping replaces a different existing phone beside a country selecto
     await app.page.addScriptTag({path: new URL('../../../extension/page/fill-verify.js', import.meta.url).pathname});
     const cdp = await app.context.newCDPSession(app.page);
     for (let pass = 0; pass < 2; pass++) {
-      await app.page.evaluate(() => window.__jobPilottoNoteNotTaken('phone', '+41795550123'));
+      await app.page.evaluate(() => window.__jobadabraNoteNotTaken('phone', '+41795550123'));
       const result = await typeNotTakenForReal({
         page: (func, args = []) => app.page.evaluate(({source, args}) => (0, eval)(`(${source})`)(...args), {source: func.toString(), args}),
         send: (method, params) => cdp.send(method, params),
@@ -49,9 +49,9 @@ test('post-country phone writer replaces the existing number on every pass', asy
     for (const file of PAGE_FILES) await app.page.addScriptTag({content: fs.readFileSync(new URL(`../../../extension/${file}`, import.meta.url), 'utf8')});
     // Isolate the post-menu writer: the country is already selected, so there is no menu work left.
     await app.page.evaluate(() => {
-      document.querySelector('#country').setAttribute('data-jobpilotto-armed', 'Country');
-      window.__jobPilottoNextCombo = () => null;
-      window.__jobPilottoPhone = {field: 'phone', national: '+41795550123'};
+      document.querySelector('#country').setAttribute('data-jobadabra-armed', 'Country');
+      window.__jobadabraNextCombo = () => null;
+      window.__jobadabraPhone = {field: 'phone', national: '+41795550123'};
     });
     const driver = await app.context.newPage();
     const base = (await extensionWorker(app.context)).url().split('/').slice(0, 3).join('/');

@@ -26,13 +26,13 @@ test('fast path fills only safe known fields and reports gaps without values', (
   const submit = new HTMLInputElement('submit', 'submit');
   const elements = [email, legal, submit];
   const document = {querySelectorAll(selector) { return /role=combobox/.test(selector) ? [] : elements; }};   // no custom dropdowns on this page
-  const window = {__jobPilottoGuardActive: true};
+  const window = {__jobadabraGuardActive: true};
   const code = fs.readFileSync(new URL('../../tools/browser-form-fastpath.js', import.meta.url), 'utf8');
   // The one control reader loads first, as everywhere the fastpath runs (the extension's PAGE_FILES, the apply run's init scripts): its audit asks it.
   const context = vm.createContext({window, document, HTMLInputElement, HTMLTextAreaElement, getComputedStyle: () => ({visibility: 'visible'}), Event: class {}});
   for (const file of ['../../extension/page/typed-check.js', '../../extension/page/read-back.js']) vm.runInContext(fs.readFileSync(new URL(file, import.meta.url), 'utf8'), context);
   vm.runInContext(code, context);
-  const outcome = window.__jobPilottoFillKnownFields([
+  const outcome = window.__jobadabraFillKnownFields([
     {field: 'email', value: 'sample@example.test'},
     {field: 'privacy_consent', value: 'yes'},
     {field: 'submit', value: 'clicked'},
@@ -42,7 +42,7 @@ test('fast path fills only safe known fields and reports gaps without values', (
   assert.equal(email.value, 'sample@example.test');
   assert.equal(legal.value, '');
   assert.equal(submit.value, '');
-  const audited = window.__jobPilottoAuditVisibleFields();
+  const audited = window.__jobadabraAuditVisibleFields();
   assert.equal(audited.length, 2);
   assert.equal(audited[0].filled, true);
   assert.equal(audited[1].legal, true);
@@ -55,13 +55,13 @@ test('option picker needs an exact match, so "Male" never picks "Female"', () =>
     getBoundingClientRect: () => ({x: 0, y: 0, width: 10, height: 10}), click() { clicked.push(text); }});
   const options = [option('Female'), option('Male'), option('Decline To Self Identify')];
   const document = {querySelectorAll: selector => (selector.includes('option') ? options : [])};
-  const window = {__jobPilottoGuardActive: true};
+  const window = {__jobadabraGuardActive: true};
   const code = fs.readFileSync(new URL('../../tools/browser-form-fastpath.js', import.meta.url), 'utf8');
   vm.runInNewContext(code, {window, document, HTMLInputElement: class {}, HTMLTextAreaElement: class {},
     getComputedStyle: () => ({visibility: 'visible'}), Event: class {}, innerHeight: 800});
-  assert.equal(window.__jobPilottoClickOption('male').ok, true);
+  assert.equal(window.__jobadabraClickOption('male').ok, true);
   assert.deepEqual(clicked, ['Male']);
-  const missing = window.__jobPilottoClickOption('Other');
+  const missing = window.__jobadabraClickOption('Other');
   assert.equal(missing.ok, false);
   assert.equal(missing.why, 'no exact match');
 });
@@ -80,11 +80,11 @@ test('fast path types fields for the Chrome extension, which switches the guard 
   });
   const first = new HTMLInputElement('first_name');
   const document = {querySelectorAll() { return [first]; }};
-  const window = {__jobPilottoGuardActive: false, __jobPilottoNoGuard: true};
+  const window = {__jobadabraGuardActive: false, __jobadabraNoGuard: true};
   const code = fs.readFileSync(new URL('../../tools/browser-form-fastpath.js', import.meta.url), 'utf8');
   vm.runInNewContext(code, {window, document, HTMLInputElement, HTMLTextAreaElement: class {},
     getComputedStyle: () => ({visibility: 'visible'}), Event: class {}});
-  const outcome = window.__jobPilottoFillKnownFields([{field: 'first_name', value: 'Ada'}]);
+  const outcome = window.__jobadabraFillKnownFields([{field: 'first_name', value: 'Ada'}]);
   assert.deepEqual(Array.from(outcome.filled), ['first_name']);
   assert.equal(first.value, 'Ada');
 });
@@ -105,11 +105,11 @@ test('a read-only box (a date picker keeps its box so) takes a date while empty;
   const start = new HTMLInputElement('start_on'), name = new HTMLInputElement('full_name'), taken = new HTMLInputElement('ends_on');
   taken.value = '01.01.2027';
   const elements = [start, name, taken];
-  const window = {__jobPilottoGuardActive: true, __jobPilottoValueClass: {of: value => (/^\d\d\.\d\d\.\d{4}$/.test(value) ? 'date' : 'free_text')}};
+  const window = {__jobadabraGuardActive: true, __jobadabraValueClass: {of: value => (/^\d\d\.\d\d\.\d{4}$/.test(value) ? 'date' : 'free_text')}};
   const context = vm.createContext({window, document: {querySelectorAll: () => elements}, HTMLInputElement, HTMLTextAreaElement: class {}, getComputedStyle: () => ({visibility: 'visible'}), Event: class {}});
   for (const file of ['../../extension/page/typed-check.js', '../../extension/page/read-back.js']) vm.runInContext(fs.readFileSync(new URL(file, import.meta.url), 'utf8'), context);
   vm.runInContext(fs.readFileSync(new URL('../../tools/browser-form-fastpath.js', import.meta.url), 'utf8'), context);
-  const outcome = window.__jobPilottoFillKnownFields([
+  const outcome = window.__jobadabraFillKnownFields([
     {field: 'start_on', value: '14.11.2026'}, {field: 'full_name', value: 'Sample Person'}, {field: 'ends_on', value: '02.02.2027'},
   ]);
   assert.deepEqual(Array.from(outcome.filled), ['start_on']);

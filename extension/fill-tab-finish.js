@@ -41,7 +41,7 @@ export function noteFirstFill({summary, pendingAI, later, me, step}) {
 
 // Chooses the first pass's armed menus, preserving the page's reasons when no click reaches them.
 export async function chooseFillMenus({tab, config, summary, debug, onStep, step, inPage, notClicked}) {
-  const armedLeft = () => inPage(tab.id, () => window.__jobPilottoArmedCount?.() || 0);
+  const armedLeft = () => inPage(tab.id, () => window.__jobadabraArmedCount?.() || 0);
   const clickDropdowns = config.clickDropdowns !== false;  // on unless turned off in Settings
   if (!clickDropdowns) notClicked('"Fill drop-down menus too" is off');
   if (!clickDropdowns && await armedLeft()) {
@@ -60,7 +60,7 @@ export async function chooseFillMenus({tab, config, summary, debug, onStep, step
       if (picked) {
         summary.filled = (summary.filled || 0) + picked;
         summary.todo = (summary.todo || []).filter(item => !/highlighted dropdown/.test(item));
-        const left = await inPage(tab.id, () => window.__jobPilottoArmedCount());
+        const left = await inPage(tab.id, () => window.__jobadabraArmedCount());
         if (left) summary.todo.unshift(`Click the ${left} highlighted dropdown(s); each picks its answer when opened`);
       }
     } catch (error) {
@@ -100,7 +100,7 @@ export async function fillLaterAnswers(run) {
 async function fillExtraAnswers(run, ai, extra) {
   const {tab, config, withKit, coverLetter, me, inPage, debug, summary, notClicked, step} = run;
   // Only Claude's answers this time: no contact details or CV again (they're in already).
-  const more = await inPage(tab.id, (list, letter, consents) => window.__jobPilottoExtensionFill(list, {}, null, letter, consents),
+  const more = await inPage(tab.id, (list, letter, consents) => window.__jobadabraExtensionFill(list, {}, null, letter, consents),
     [extra, withKit ? '' : coverLetter || ai?.cover_letter || '', (me?.acceptConsents ?? config.acceptConsents) !== false]);
   if (more?.held) return {held: true, layer: await layerOnTop(tab.id), note: HELD, usd: 0};   // the same, in the later pass
   const reach = more?.reach; if (reach) decide('fill', 'answers reached rows', reach).catch(() => {});   // counts only: asked, matched an id, matched by question, none (a page that re-created its controls)
@@ -121,7 +121,7 @@ async function fillExtraAnswers(run, ai, extra) {
 export async function snapshotFill({tab, config, summary, debug, me, inPage}) {
   // Fields left for a mechanical reason (a widget the extension couldn't operate): a scrubbed HTML snapshot of each,
   // for the fill-failure report's replay test (page/snapshot.js). Your details are passed only to hide them.
-  return await inPage(tab.id, (targets, secrets) => window.__jobPilottoSnapshots?.(targets, secrets) || {},
+  return await inPage(tab.id, (targets, secrets) => window.__jobadabraSnapshots?.(targets, secrets) || {},
     [(summary.trace || []).filter(row => MECHANICAL.some(reason => String(row.reason || '').startsWith(reason))).map(row =>
       ({label: row.label, field: (debug.form || []).find(f => f.label === row.label)?.field || ''})),
     Object.values(me?.contact || config.profile || {}).filter(value => typeof value === 'string')]).catch(() => ({}));
@@ -130,7 +130,7 @@ export async function snapshotFill({tab, config, summary, debug, me, inPage}) {
 // Retypes boxes wiped by the page, then retries real typing through the shared debugger turn.
 export async function retryFill({tab, step, inPage}) {
   // A page's own autofill after an upload can empty boxes we typed: they are typed again, once (now, and while the page is watched for 15 s) (page/browser-form-fastpath.js).
-  const retyped = await inPage(tab.id, () => window.__jobPilottoRetypeWiped?.(15000) || 0).catch(() => 0);
+  const retyped = await inPage(tab.id, () => window.__jobadabraRetypeWiped?.(15000) || 0).catch(() => 0);
   if (retyped) step(`typed ${retyped} box${retyped === 1 ? '' : 'es'} again that the page emptied`);
   // Rung 0 of the fill ladder: a text box that did not take its answer is typed again for real, one key at a time, and read back (extension/fill-verify.js); same debugger turn as the menus.
   const real = await debuggerTurn(() => typeNotTakenOnTab(tab.id)).catch(() => ({tried: 0, taken: 0}));
@@ -140,10 +140,10 @@ export async function retryFill({tab, step, inPage}) {
 // Settles every trace row from the final form and read-back after the fill ladder.
 export async function settleFill({tab, config, summary, me, inPage}) {
   // Every field's outcome as the page holds it once all passes are done (extension/trace-settle.js).
-  const finalForm = await inPage(tab.id, () => window.__jobPilottoDescribeForm?.(true)).catch(() => null);   // settled: a real first choice is an answer
-  const gaveUp = await inPage(tab.id, () => window.__jobPilottoRetypeGaveUp?.() || []).catch(() => []);
+  const finalForm = await inPage(tab.id, () => window.__jobadabraDescribeForm?.(true)).catch(() => null);   // settled: a real first choice is an answer
+  const gaveUp = await inPage(tab.id, () => window.__jobadabraRetypeGaveUp?.() || []).catch(() => []);
   // Rung 0 of the fill ladder: the one read of every control once the page settled (page/read-back.js), written on each control; the trace takes it, so it says what the panel says.
-  const settleStart = Date.now(), readBack = (await inPage(tab.id, () => window.__jobPilottoReadBack?.pass() || []).catch(() => [])) || [];   // null: the page went away (a press during the fill)
+  const settleStart = Date.now(), readBack = (await inPage(tab.id, () => window.__jobadabraReadBack?.pass() || []).catch(() => [])) || [];   // null: the page went away (a press during the fill)
   if (readBack.length) decide('fill', 'read back after the page settled', {...readBackCounts(readBack), ms: Date.now() - settleStart}).catch(() => {});   // ms: what the settle wait costs (spec budget: <= +1 s on a clean page)
   await logFillAttempts(tab, inPage);
   const lastRead = (await climbFill(tab, config, {turn: debuggerTurn}).catch(() => null))?.readBack || readBack;   // the fill ladder's repair (test switch only) and the read after a late retype (ladder/fill-climb.js)
@@ -153,8 +153,8 @@ export async function settleFill({tab, config, summary, me, inPage}) {
 
 // Logs drained control attempts and their counts without applicant values.
 async function logFillAttempts(tab, inPage) {
-  for (const spent of await inPage(tab.id, () => window.__jobPilottoAttempts?.drain() || []).catch(() => []) || []) { decide('fill', 'a control used its tries: left for the person', {kind: spent.kind, tries: spent.tries}).catch(() => {}); controlDoor({rung: 0, signal: 'stalled', reason: 'tries', tried: spent.tries}, decide); }   // once per control (page/attempts.js)
-  const tries = await inPage(tab.id, () => window.__jobPilottoAttempts?.summary() || null).catch(() => null);
+  for (const spent of await inPage(tab.id, () => window.__jobadabraAttempts?.drain() || []).catch(() => []) || []) { decide('fill', 'a control used its tries: left for the person', {kind: spent.kind, tries: spent.tries}).catch(() => {}); controlDoor({rung: 0, signal: 'stalled', reason: 'tries', tried: spent.tries}, decide); }   // once per control (page/attempts.js)
+  const tries = await inPage(tab.id, () => window.__jobadabraAttempts?.summary() || null).catch(() => null);
   if (tries && Object.keys(tries.byTries).length) decide('fill', 'tries per control', tries).catch(() => {});   // measures the attempt log's cap (spec amendment 1): counts only
 }
 

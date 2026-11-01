@@ -39,7 +39,7 @@ const looseHitsOf = file => { try { return fs.readFileSync(file, 'utf8').split('
 // upload emptied the boxes the extension typed; a build that retypes them ends with them filled (fix 2f6a91e), one that does not, empty.
 /* global document */
 export async function boxesOf(tab) {
-  const read = () => [...document.querySelectorAll('input, textarea')].filter(el => el.getClientRects().length && !el.closest('[id^=jobpilotto], [id^=jobadabra]') && !/^(hidden|file|submit|button|image|reset|checkbox|radio|password)$/i.test(el.type || '')).map(el => {
+  const read = () => [...document.querySelectorAll('input, textarea')].filter(el => el.getClientRects().length && !el.closest('[id^=jobadabra], [id^=jobadabra]') && !/^(hidden|file|submit|button|image|reset|checkbox|radio|password)$/i.test(el.type || '')).map(el => {
     const label = (el.labels?.[0]?.innerText || el.getAttribute('aria-label') || el.placeholder || el.name || '').replace(/\s+/g, ' ').trim().slice(0, 60);
     return label ? [label, el.value.trim() ? 'filled' : 'empty'] : null;
   }).filter(Boolean);
@@ -200,7 +200,7 @@ export async function openReplay(caseDirs, {extensionDir, ask = false, loose = f
       await tab.setViewportSize({width: view.width, height: view.height}).catch(() => {});
       if (await forceScrollbar(tab, states[0]?.view?.scrollbar)) say(`row: ${name}: the live page's scrollbar forced: ${states[0].view.scrollbar} px (lib/scrollbar.mjs)`);   // the live run's window size (a frame's size is in the AI's sketch)
       say(`row: ${name}: ${row.documents.size} pages, ${row.sheets.size} stylesheets, ${presses.length} live presses`);
-      await tab.goto(`${start.url.replace(/#.*$/, '')}#jobpilotto-fill`, {waitUntil: 'domcontentloaded'}).catch(() => {});
+      await tab.goto(`${start.url.replace(/#.*$/, '')}#jobadabra-fill`, {waitUntil: 'domcontentloaded'}).catch(() => {});
       const clock = stillClock({seconds: stillSeconds, startedAt: Date.now()});
       const steps = stepShooter({tabOf: () => tab, kindOf: () => kindFromLog(log()), dir: shotDir || caseDir, prefix: 'replay-step'});   // one full-page picture per recorded state the replay reaches, beside end-replay.png
       let followed = 0, divergence = '', firstMissMs = null, endedBy = 'cap';

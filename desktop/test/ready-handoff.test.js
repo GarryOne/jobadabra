@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {clear, cookiesFor, forExtension, keep, keepForJob, pageKey, take} from '../lib/ready-handoff.js';
 
-const PAGE = 'https://job-boards.greenhouse.io/doctolib/jobs/7819133003?gh_src=x#jobpilotto-fill=s1';
+const PAGE = 'https://job-boards.greenhouse.io/doctolib/jobs/7819133003?gh_src=x#jobadabra-fill=s1';
 const HANDOFF = {url: 'https://job-boards.greenhouse.io/doctolib/jobs/7819133003',
   storage: {cookies: [
     {name: 'gh_session', value: 'a', domain: 'job-boards.greenhouse.io', path: '/', expires: -1, httpOnly: true, secure: true, sameSite: 'Lax'},
@@ -38,7 +38,7 @@ test('the extension gets the page, its cookies, its own origin\'s storage and th
 });
 
 test('kept under the job link, its form address and the night\'s page; taken once, by any of them', () => {
-  for (const asked of ['https://boards.example.com/acme/123', 'https://boards.example.com/acme/123/apply#jobpilotto-fill=s9', PAGE]) {
+  for (const asked of ['https://boards.example.com/acme/123', 'https://boards.example.com/acme/123/apply#jobadabra-fill=s9', PAGE]) {
     clear();
     assert.ok(keep(HANDOFF, ['https://boards.example.com/acme/123', 'https://boards.example.com/acme/123/apply']));
     assert.equal(take(asked)?.url, HANDOFF.url, asked);

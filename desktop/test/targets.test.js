@@ -54,7 +54,7 @@ test('a session target opens that session\'s card, and every application notific
     {id: 'new', url: 'https://jobs.coop.ch/job/1', startedAt: '2026-10-08T13:09:00Z'},
     {id: 'sent', url: 'https://jobs.coop.ch/job/1', startedAt: '2026-10-08T14:00:00Z', outcome: 'submitted'},
     {id: 'other', url: 'https://jobs.migros.ch/job/2', startedAt: '2026-10-08T14:00:00Z'}];
-  assert.equal(sessionOfJob('https://jobs.coop.ch/job/1#jobpilotto-fill', list), 'new');
+  assert.equal(sessionOfJob('https://jobs.coop.ch/job/1#jobadabra-fill', list), 'new');
   assert.equal(sessionOfJob('https://example.com/', list), '');
   // The class: a notification about filling a form, or a session needing you, carries its session (a window toast too).
   const fs = await import('node:fs');

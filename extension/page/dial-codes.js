@@ -27,6 +27,6 @@
   '+996': 'KG', '+998': 'UZ'};
   let names = null;
   try { names = new Intl.DisplayNames(['en'], {type: 'region'}); } catch { names = null; }
-  window.__jobPilottoDialRegion = REGION;   // code -> region, for the value class's country names (page/value-class.js)
-  window.__jobPilottoDial = Object.fromEntries(Object.entries(REGION).map(([code, region]) => [code, names?.of(region) || region]));
+  window.__jobadabraDialRegion = REGION;   // code -> region, for the value class's country names (page/value-class.js)
+  window.__jobadabraDial = Object.fromEntries(Object.entries(REGION).map(([code, region]) => [code, names?.of(region) || region]));
 })();

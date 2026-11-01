@@ -3,7 +3,7 @@
 // the coverage (page/coverage.js), the radio groups (page/radios.js) and the proposer (page/propose.js) all ask it, so they cannot disagree.
 // Injected in both worlds (page-files.js, and the panel's list in background.js). Guarded by app-core/test/required-mark.test.js.
 (() => {
-  if (window.__jobPilottoRequired) return;
+  if (window.__jobadabraRequired) return;
   const STAR = '[*\\u2217\\uFF0A\\u2731\\u2733]';   // * ∗ ＊ ✱ ✳
   const TRAILING = new RegExp(`\\s*${STAR}+\\s*[:\\uFF1A.]?\\s*$`);
   const LEADING = new RegExp(`^\\s*${STAR}+\\s*`);
@@ -88,7 +88,7 @@
   const starred = doc => {
     let n = 0;
     for (const el of doc.querySelectorAll('label, legend, th, td, dt, span, div, p, b, strong, em, i, abbr')) {
-      if (el.closest('#jobpilotto-review-host, .job-pilotto-badge, [id^=jobpilotto]')) continue;
+      if (el.closest('#jobadabra-review-host, .jobadabra-badge, [id^=jobadabra]')) continue;
       const t = text(el.textContent);
       if (t.length > 80 || !new RegExp(STAR).test(t) || !/\p{L}/u.test(t) || LEGEND.test(t)) continue;
       if (Array.from(el.children).some(child => { const c = text(child.textContent); return c.length <= 80 && new RegExp(STAR).test(c) && /\p{L}/u.test(c) && !LEGEND.test(c) && child.matches('label, legend, th, td, dt, span, div, p, b, strong, em, i, abbr'); })) continue;   // the innermost one only
@@ -101,5 +101,5 @@
   // A control whose label (or aria-labelledby element) carries the mark, with no required attribute on the control itself (a page that checks in its script).
   const labelMarked = el => [...(el.labels || []), ...String(el.getAttribute?.('aria-labelledby') || '').split(/\s+/).map(id => el.ownerDocument.getElementById(id))].some(label => !!label && has(label));
   const marked = el => !!el && (labelMarked(el) || el.required || el.getAttribute('aria-required') === 'true' || /(^|[\s_\[,-])required([\s_\],-]|$)/i.test(String(el.className?.baseVal ?? el.className ?? '')));
-  window.__jobPilottoRequired = {has, clean, read, rowTitle, starred, marked, hiddenIn};
+  window.__jobadabraRequired = {has, clean, read, rowTitle, starred, marked, hiddenIn};
 })();

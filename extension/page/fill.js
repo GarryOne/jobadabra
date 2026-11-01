@@ -3,15 +3,15 @@
 // attaches the CV, and shows what is left in a panel on the page. It never clicks Submit; consent
 // controls require the saved authorization and an explicit validated AI agreement reading.
 // Its helpers come first, each a concern of its own (FILL_FILES in extension/page-files.js): fill-labels.js (names, LEGAL), fill-read.js (the
-// reader), fill-menus.js (dropdowns), fill-checks.js (checkboxes, consents), fill-marks.js (the AI glow), shared through window.__jobPilottoFillKit.
+// reader), fill-menus.js (dropdowns), fill-checks.js (checkboxes, consents), fill-marks.js (the AI glow), shared through window.__jobadabraFillKit.
 (() => {
-  if (window.__jobPilottoFillLoaded) return;
-  window.__jobPilottoFillLoaded = true;
+  if (window.__jobadabraFillLoaded) return;
+  window.__jobadabraFillLoaded = true;
   const {LEGAL, clean, norm, once, sleep, visible, labelOf, questionOf, radioOps, tickConsents, fillConsentChoices, markAttention,
     prepareAnswers, describePlan, planContact, planPlain, markContact, rearmLostText, fillAnswerChoices, armDemographics, armPhoneCountry, armProfileMenus,
-    buildTrace, markReviewAnswers} = window.__jobPilottoFillKit;
+    buildTrace, markReviewAnswers} = window.__jobadabraFillKit;
 
-  const letterBoxes = () => Array.from(document.querySelectorAll('textarea')).filter(el => visible(el) && window.__jobPilottoUpload.fileKind(`${el.id} ${el.name} ${labelOf(el)}`, window.__jobPilottoAliases || []) === 'cover_letter');
+  const letterBoxes = () => Array.from(document.querySelectorAll('textarea')).filter(el => visible(el) && window.__jobadabraUpload.fileKind(`${el.id} ${el.name} ${labelOf(el)}`, window.__jobadabraAliases || []) === 'cover_letter');
 
   // The same visible manual-entry shape drives filling and missing-letter observation.
   const manualLetterButton = () => {
@@ -26,7 +26,7 @@
     if (!box) {
       const manual = manualLetterButton();
       if (!manual) return false;
-      (globalThis.__jobPilottoPress?.(manual) || manual.click());
+      (globalThis.__jobadabraPress?.(manual) || manual.click());
       for (let i = 0; i < 10 && !box; i++) { await sleep(150); box = find(); }
     }
     if (!box || String(box.value || '').trim()) return false;
@@ -41,14 +41,14 @@
     let filled = 0;
     // Controls the form reader above does not set (pressable Yes/No groups, custom dropdowns, date pickers): the generic
     // operators (page/controls.js) get the same answers, act only on a control an answer was matched to, and verify each.
-    const operated = await window.__jobPilottoControls.fill(answers, {skip: question => LEGAL.test(question)}).catch(() => []);
+    const operated = await window.__jobadabraControls.fill(answers, {skip: question => LEGAL.test(question)}).catch(() => []);
     for (const result of operated) {
       if (result.unmatched) continue;   // a control no answer fit: only counted for learning (page/controls.js), no row to the person
       if (result.ok) filled += 1; else todo.push(`Pick "${result.value}" for: ${result.question}${result.why ? ` (${result.why})` : ''}`);
     }
     // Which kind of control and fingerprint worked or not: no question, no answer.
-    window.__jobPilottoOperatedQuestions = operated.filter(result => !result.unmatched).map(result => result.question);
-    window.__jobPilottoOperated = operated.map(({kind, fp, recipe, ok, why}) => ({kind, fp, recipe: recipe || 0, ok, why: why || ''}));
+    window.__jobadabraOperatedQuestions = operated.filter(result => !result.unmatched).map(result => result.question);
+    window.__jobadabraOperated = operated.map(({kind, fp, recipe, ok, why}) => ({kind, fp, recipe: recipe || 0, ok, why: why || ''}));
     return filled;
   };
 
@@ -56,16 +56,16 @@
   const recordUploads = (uploads, resume) => {
     // What a pass on this page attached, by meaning: its slot's title. A field the page redraws after the file went in has no slot for a while (the live chip came 4.5 s
     // or more after the file), so a later pass then keeps the file as given; a slot that comes back empty is a slot again, and the upload above gives it the file.
-    const given = window.__jobPilottoUploadsGiven ||= {};
+    const given = window.__jobadabraUploadsGiven ||= {};
     for (const item of uploads) if (item.ok && item.meaning && item.label) given[item.meaning] = item.label;
     const resumeAttached = uploads.some(item => item.meaning === 'resume' && item.ok) || (!uploads.some(item => item.meaning === 'resume') && !!given.resume);
     const letterFileAttached = uploads.some(item => item.meaning === 'cover_letter' && item.ok);
     // Which letter this extension put in (kept for later passes; a file the person chose names none): the fill record shows it (owner, 18 Oct 2026).
-    if (uploads.some(item => item.meaning === 'cover_letter' && item.ok && !item.why) && resume?.coverLetterFile) window.__jobPilottoLetterGiven = resume.coverLetterFile.tailored ? 'this job\'s letter' : 'your base letter';
-    window.__jobPilottoOperated = [...(window.__jobPilottoOperated || []), ...uploads.filter(item => item.ok !== undefined)
+    if (uploads.some(item => item.meaning === 'cover_letter' && item.ok && !item.why) && resume?.coverLetterFile) window.__jobadabraLetterGiven = resume.coverLetterFile.tailored ? 'this job\'s letter' : 'your base letter';
+    window.__jobadabraOperated = [...(window.__jobadabraOperated || []), ...uploads.filter(item => item.ok !== undefined)
       .map(({fp, recipe, ok, why}) => ({kind: 'upload', fp, recipe: recipe || 0, ok, why: why || ''}))];
     // Wordings nobody knew (no text of yours: the slot's own title), for the service to give a meaning once.
-    window.__jobPilottoUnknownUploads = uploads.filter(item => item.why === 'wording unknown' && item.label).map(item => item.label);
+    window.__jobadabraUnknownUploads = uploads.filter(item => item.why === 'wording unknown' && item.label).map(item => item.label);
     return {given, resumeAttached, letterFileAttached};
   };
 
@@ -102,7 +102,7 @@
       if (q) groupOf.set(b.id || b.name, q);
     }
     const seenGroups = new Set();
-    const after = window.__jobPilottoAuditVisibleFields().flatMap(row => row.type === 'radio'
+    const after = window.__jobadabraAuditVisibleFields().flatMap(row => row.type === 'radio'
       ? auditRadio(row, rowOf, seenGroups) : auditCheckbox(row, groupOf, seenGroups));
     // Required questions the page shows that nothing above read (page/coverage.js): a layout the reader doesn't know. Each is
     // listed for you, counted as required, and traced as a reading failure, so it is reported (with its HTML) and learned.
@@ -117,18 +117,18 @@
   // Append required unread questions and mark their page areas.
   const addUnreadQuestions = (after, form, uploads, given) => {
     const unread = [];
-    if (window.__jobPilottoCoverage) {
+    if (window.__jobadabraCoverage) {
       // Read = asked about: the described fields and the widgets an operator answered. Not the audit's rows: a field can be on
       // the page (and in the audit) without its question ever having been asked.
       // The upload slots' titles too (page/upload.js): their own rows say filled or left, even while the page redraws a field after the file went in.
-      const read = [...form.map(row => row.label), ...(window.__jobPilottoOperatedQuestions || []), ...uploads.map(item => item.label).filter(Boolean), ...Object.values(given)];
-      for (const item of window.__jobPilottoCoverage.unread(document, read, visible)) {
-        item.area.setAttribute('data-jobpilotto-unread', item.question);
+      const read = [...form.map(row => row.label), ...(window.__jobadabraOperatedQuestions || []), ...uploads.map(item => item.label).filter(Boolean), ...Object.values(given)];
+      for (const item of window.__jobadabraCoverage.unread(document, read, visible)) {
+        item.area.setAttribute('data-jobadabra-unread', item.question);
         unread.push(item);
         const same = after.find(row => norm(row.label) === norm(item.question));
         if (same) Object.assign(same, {required: true, unread: true});
         else after.push({field: `unread:${item.question}`, label: item.question, type: item.kinds[0] || '', required: true,
-          filled: !item.shared && window.__jobPilottoCoverage.answered(item.area), legal: LEGAL.test(item.question), unread: true});
+          filled: !item.shared && window.__jobadabraCoverage.answered(item.area), legal: LEGAL.test(item.question), unread: true});
       }
     }
   };
@@ -164,7 +164,7 @@
 
   // Mark letter upload slots and delivery failures without changing their contents.
   const markLetterSlots = (resume) => {
-    for (const slot of (window.__jobPilottoUpload.slots?.() || [])) if (window.__jobPilottoUpload.meaningOf(slot, window.__jobPilottoAliases || []) === 'cover_letter') for (const el of new Set([slot.el, slot.input].filter(Boolean))) { el.setAttribute('data-jobpilotto-letter', '1'); el.toggleAttribute('data-jobpilotto-letter-error', !!(resume?.coverLetterFile && !slot.filled)); }
+    for (const slot of (window.__jobadabraUpload.slots?.() || [])) if (window.__jobadabraUpload.meaningOf(slot, window.__jobadabraAliases || []) === 'cover_letter') for (const el of new Set([slot.el, slot.input].filter(Boolean))) { el.setAttribute('data-jobadabra-letter', '1'); el.toggleAttribute('data-jobadabra-letter-error', !!(resume?.coverLetterFile && !slot.filled)); }
   };
 
   // Prepend missing or failed letter messages in their original priority order.
@@ -181,9 +181,9 @@
     const coverLetterStatus = resume?.coverLetterStatus || null;
     const letterGiven = letterFileAttached || letterBoxes().some(el => String(el.value || '').trim());
     const manualLetter = manualLetterButton();
-    manualLetter?.setAttribute('data-jobpilotto-letter-manual', '1');
-    manualLetter?.toggleAttribute('data-jobpilotto-letter-error', !!coverLetter && !letterGiven);
-    for (const box of letterBoxes()) box.setAttribute('data-jobpilotto-letter', '1');
+    manualLetter?.setAttribute('data-jobadabra-letter-manual', '1');
+    manualLetter?.toggleAttribute('data-jobadabra-letter-error', !!coverLetter && !letterGiven);
+    for (const box of letterBoxes()) box.setAttribute('data-jobadabra-letter', '1');
     markLetterSlots(resume);
     letterProblems(resume, coverLetter, uploads, coverLetterStatus, manualLetter, letterGiven, todo);
     return coverLetterStatus;
@@ -191,22 +191,22 @@
 
   // answers: [{field, value, question?, confidence?, note?}] merged by the extension (AI + kit).
   const fillPage = async (all, profile, resume, coverLetter = '', acceptConsents = false) => {
-    if (!('__jobPilottoGuardActive' in window)) return {error: 'The page helpers did not load; nothing was filled.'};
-    if (window.__jobPilottoStopped) return {error: 'Stopped by you.', stopped: true};
+    if (!('__jobadabraGuardActive' in window)) return {error: 'The page helpers did not load; nothing was filled.'};
+    if (window.__jobadabraStopped) return {error: 'Stopped by you.', stopped: true};
     // The AI's likely answers it was not told (use: "propose", app-core/src/extension.js): shown to you as proposals, never typed.
     // A kind only (use: "kind", no value): the AI's reading of a legal question, marked below and never filled (app-core/src/extension.js answerForm).
     // The popup guard (page/guard-gate.js): between the stages a layer that opened over the form is closed by the extension, or the fill is held and types nothing more.
     let held = false;
-    const gate = async () => { if (!held && await (window.__jobPilottoGate?.() ?? true) === false) held = true; return !held; };
+    const gate = async () => { if (!held && await (window.__jobadabraGate?.() ?? true) === false) held = true; return !held; };
     const answers = prepareAnswers(all);
     const {form, rowOf, reach, proposedOf} = await describePlan(all, answers);
     const {contact, contactFields, fromCvFields} = planContact(answers, form, profile);
-    const todo = [], review = [], armed = []; document.querySelectorAll('.job-pilotto-badge').forEach(badge => badge.remove());
+    const todo = [], review = [], armed = []; document.querySelectorAll('.jobadabra-badge').forEach(badge => badge.remove());
     const consentChoices = await gate() ? fillConsentChoices(all, form, acceptConsents) : {filled: [], armed: []};
     armed.push(...consentChoices.armed.map(field => rowOf[field]?.label || field));
     let filled = consentChoices.filled.length;
     const plain = planPlain(answers, rowOf, contactFields);
-    const typed = window.__jobPilottoFillKnownFields([...contact, ...plain]);
+    const typed = window.__jobadabraFillKnownFields([...contact, ...plain]);
     filled += (typed.filled || []).length;
     markContact(contact, typed, rowOf, review);
     filled = await rearmLostText(contact, plain, typed, rowOf, armed, filled);
@@ -216,9 +216,9 @@
     armPhoneCountry(form, profile, answers, answered, armed);
     armProfileMenus(form, profile, answers, answered, armed);
     if (armed.length) todo.unshift(`Click the ${armed.length} highlighted dropdown(s); each picks its answer when opened`);
-    if (window.__jobPilottoControls && await gate()) filled += await fillControls(answers, todo);
+    if (window.__jobadabraControls && await gate()) filled += await fillControls(answers, todo);
     // The files (page/upload.js): each upload slot is operated by what it asks for; a miss is reported by fingerprint like any control's.
-    const uploads = !(await gate()) ? [] : await window.__jobPilottoUpload.fill({resume: resume?.data ? resume : null, coverLetter: resume?.coverLetterFile || null}).catch(() => []);
+    const uploads = !(await gate()) ? [] : await window.__jobadabraUpload.fill({resume: resume?.data ? resume : null, coverLetter: resume?.coverLetterFile || null}).catch(() => []);
     const {given, resumeAttached, letterFileAttached} = recordUploads(uploads, resume);
     if (letterFileAttached) filled += 1;
     await gate();   // after the upload's own waits: a layer the page opened meanwhile
@@ -236,8 +236,8 @@
     const coverLetterStatus = checkCoverLetter(resume, coverLetter, uploads, letterFileAttached, todo);
     const unfilledRequired = after.filter(row => row.required && !row.filled && !(row.field === 'resume' && resumeAttached)).length;
     const trace = buildTrace(after, all, answers, {rowOf, fromCvFields, contactFields, proposedOf, armedFields}, resumeAttached, resume);
-    window.__jobPilottoValueClass?.mark([...contact, ...answers]);   // each answered control's kind of value, never the value: the fill check and the repair see it (page/value-class.js)
-    const summary = {coverLetterStatus, reach, filled, unfilledRequired, starred: window.__jobPilottoRequired.starred(document), contact: contact.length, resumeAttached, trace, operated: window.__jobPilottoOperated || [], unknownUploads: window.__jobPilottoUnknownUploads || [], todo: [...new Set([...todo, ...review, ...legal])].slice(0, 25)};
+    window.__jobadabraValueClass?.mark([...contact, ...answers]);   // each answered control's kind of value, never the value: the fill check and the repair see it (page/value-class.js)
+    const summary = {coverLetterStatus, reach, filled, unfilledRequired, starred: window.__jobadabraRequired.starred(document), contact: contact.length, resumeAttached, trace, operated: window.__jobadabraOperated || [], unknownUploads: window.__jobadabraUnknownUploads || [], todo: [...new Set([...todo, ...review, ...legal])].slice(0, 25)};
     markReviewAnswers(answers, rowOf, contactFields, summary);
     const letterBox = letterBoxes()[0];
     if (coverLetter && letterBox?.value) markAttention(letterBox.id || letterBox.name, 'Cover letter');
@@ -245,7 +245,7 @@
     return summary;
   };
   // The page fill never throws into the extension: a control it did not expect is a page error, said with where it happened (flow.js shows it, never "moved to another tab").
-  window.__jobPilottoExtensionFill = async (...args) => {
+  window.__jobadabraExtensionFill = async (...args) => {
     try {
       const result = await fillPage(...args);
       // Chrome hands the extension null for a result it cannot copy (a DOM node, a function inside it): the keys that cannot go are dropped and named, the rest is kept.

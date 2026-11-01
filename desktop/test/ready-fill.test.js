@@ -55,7 +55,7 @@ test('the stand-in answers from the batch by the job address and keeps only coun
   const app = await createStandIn(batch);
   const call = async (route, init = {}) => (await fetch(`http://127.0.0.1:${app.port}${route}`, init)).json();
   try {
-    const me = await call(`/extension/me?url=${encodeURIComponent('https://boards.example.com/a/1#jobpilotto-fill')}`);
+    const me = await call(`/extension/me?url=${encodeURIComponent('https://boards.example.com/a/1#jobadabra-fill')}`);
     assert.equal(me.contact.first_name, 'Ada'); assert.equal(me.resume.data, 'Q1ZCQVNF'); assert.equal(me.coverLetterFile.data, 'TEVUVEVS');
     assert.equal((await call(`/extension/me?url=${encodeURIComponent('https://jobs.example.org/p/2')}`)).resume, undefined);   // no CV for this job: none invented
     assert.equal((await call(`/extension/kit?url=${encodeURIComponent('https://boards.example.com/a/1')}`)).kit.answers[0].answer, '8');
@@ -87,7 +87,7 @@ test('the night opens the form the app would open, and the form\'s reports count
   const call = async (route, init = {}) => (await fetch(`http://127.0.0.1:${app.port}${route}`, init)).json();
   try {
     for (const page of [formUrl(POSTING), `${POSTING}/application/step-2`]) {
-      assert.equal((await call(`/extension/me?url=${encodeURIComponent(`${page}#jobpilotto-fill`)}`)).resume.data, 'Q1ZCQVNF', page);
+      assert.equal((await call(`/extension/me?url=${encodeURIComponent(`${page}#jobadabra-fill`)}`)).resume.data, 'Q1ZCQVNF', page);
       assert.ok((await call(`/extension/kit?url=${encodeURIComponent(page)}`)).kit, page);
     }
     await call('/extension/event', {method: 'POST', body: JSON.stringify({type: 'fill-started', url: formUrl(POSTING)})});

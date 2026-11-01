@@ -9,7 +9,7 @@ import {prepare} from '../lib/report-form.js';
 import {registerReportHandlers} from '../lib/report-handlers.js';
 import {visitMore} from '../lib/server-hooks.js';
 
-const TAB = 7, URL_A = 'https://jobs.example.test/apply#jobpilotto-fill';
+const TAB = 7, URL_A = 'https://jobs.example.test/apply#jobadabra-fill';
 const read = file => fs.readFileSync(new URL(`../../${file}`, import.meta.url), 'utf8');
 const entry = url => ({method: 'GET', url, type: 'xhr', mode: 'cors', startMs: 0, waitMs: 5, bodyKey: '', status: 200, failed: false, headers: {'content-type': 'application/json'}, hadCookie: false, body: Buffer.from('{}').toString('base64'), size: 2});
 
@@ -90,7 +90,7 @@ test('the app not answering the switch question is "app" at the press, not "turn
 function panelWords() {
   const window = {}, document = {createElement: () => ({}), };
   vm.runInNewContext(read('extension/panel-report.js'), {window, document});
-  return window.__jobPilottoReport;
+  return window.__jobadabraReport;
 }
 test('every kind a failed Report can have has its own true sentence; only "app" asks if the app is open', () => {
   const {words, sentence} = panelWords();

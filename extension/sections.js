@@ -20,14 +20,14 @@ export function openClosedSections() {
   const FIELD = 'input:not([type=hidden]), select, textarea, [role=radiogroup], [role=radio], [role=checkbox], [role=combobox], [role=listbox]';
   const bodyAfter = el => (next => (next && (next.hidden || next.getClientRects().length === 0) ? next : null))(el.nextElementSibling);
   // Looked into in an earlier round: kept open when its body drew something to fill, else closed again.
-  for (const el of document.querySelectorAll('[data-jobpilotto-opened="look"]')) {
-    el.setAttribute('data-jobpilotto-opened', 'looked');
-    if (el.getAttribute('aria-expanded') === 'true' && !el.nextElementSibling?.querySelector(FIELD)) (globalThis.__jobPilottoPress?.(el) || el.click());
+  for (const el of document.querySelectorAll('[data-jobadabra-opened="look"]')) {
+    el.setAttribute('data-jobadabra-opened', 'looked');
+    if (el.getAttribute('aria-expanded') === 'true' && !el.nextElementSibling?.querySelector(FIELD)) (globalThis.__jobadabraPress?.(el) || el.click());
   }
   let opened = 0;
   for (const el of document.querySelectorAll('button[aria-expanded="false"], [role=button][aria-expanded="false"]')) {
     if (opened >= MAX) break;
-    if (el.hasAttribute('data-jobpilotto-opened') || el.disabled || el.getAttribute('aria-disabled') === 'true' || el.getClientRects().length === 0) continue;
+    if (el.hasAttribute('data-jobadabra-opened') || el.disabled || el.getAttribute('aria-disabled') === 'true' || el.getClientRects().length === 0) continue;
     const haspopup = el.getAttribute('aria-haspopup');
     if ((haspopup && haspopup !== 'false') || ['combobox', 'menuitem', 'tab', 'switch', 'option', 'checkbox', 'radio'].includes(el.getAttribute('role') || '')) continue;
     if (el.tagName === 'A' || fenced(el) || submits(el)) continue;
@@ -35,8 +35,8 @@ export function openClosedSections() {
     if (controlled.some(region => region.querySelector('[type=submit], input[type=image]'))) continue;
     const look = !heading(el) && controlled.length === 0;
     if (look && !bodyAfter(el)) continue;   // not a disclosure: a button that happens to say "expanded false"
-    el.setAttribute('data-jobpilotto-opened', look ? 'look' : '1');
-    (globalThis.__jobPilottoPress?.(el) || el.click());
+    el.setAttribute('data-jobadabra-opened', look ? 'look' : '1');
+    (globalThis.__jobadabraPress?.(el) || el.click());
     opened++;
   }
   for (const details of document.querySelectorAll('details:not([open])')) {

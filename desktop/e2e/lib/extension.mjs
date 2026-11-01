@@ -136,15 +136,15 @@ export function formTab(browser, url) {
 export const readForm = page => page.evaluate(() => Object.fromEntries([...document.querySelectorAll('input, select, textarea')]
   .filter(el => el.type !== 'submit' && el.type !== 'button')
   .map(el => [el.id || el.name, {type: el.type, value: el.type === 'file' ? '' : el.value, checked: !!el.checked, hidden: el.getClientRects().length === 0,
-    files: [...(el.files || [])].map(file => ({name: file.name, size: file.size})), ai: el.hasAttribute('data-jobpilotto-ai')}])));
+    files: [...(el.files || [])].map(file => ({name: file.name, size: file.size})), ai: el.hasAttribute('data-jobadabra-ai')}])));
 
-// What the page says the extension is doing: the state the extension writes for Claude on <html data-jobpilotto-fill> ({state: running|done|error|no-form|account, ...}).
+// What the page says the extension is doing: the state the extension writes for Claude on <html data-jobadabra-fill> ({state: running|done|error|no-form|account, ...}).
 // Written by the app's hand-off fill only (background.js handOff): a fill pressed on the panel leaves the last hand-off's state, so wait on readPanel's `filling` for that one.
 // -> null (nothing written yet), the state object, or {state: 'unreadable', raw|error, at, closed?}: a mark that is not JSON (the fill's card id, flow.js) or a read that threw.
 // Why (beta 40748263936, 28 Oct 2026, owner's blocked Windows release): "state: null" stood for a wrong tab (26 Oct), a card id left over and a read that threw, and every
 // caller's `.catch(() => null)` hid the third. A wait that compares to a name (`state?.state === 'done'`) is unchanged by it; a wait that only asks "is there a state" reads fillStateOf.
 export const fillState = page => page.evaluate(() => {
-  const raw = document.documentElement?.dataset.jobpilottoFill, at = document.URL.split('#')[0].slice(0, 100);
+  const raw = document.documentElement?.dataset.jobadabraFill, at = document.URL.split('#')[0].slice(0, 100);
   if (!raw) return null;
   try { return JSON.parse(raw); } catch { return {state: 'unreadable', raw: raw.slice(0, 80), at}; }
 }).catch(error => ({state: 'unreadable', error: String(error?.message || error).split('\n')[0].slice(0, 160), at: String(page.url?.() || '').split('#')[0].slice(0, 100), closed: !!page.isClosed?.()}));
@@ -163,7 +163,7 @@ export const fillNote = (state, seconds, options = {}) => (fillSettled(state, op
 
 // The panel the extension draws on the page (bottom right, an open shadow root).
 export const readPanel = page => page.evaluate(() => {
-  const root = document.getElementById('jobpilotto-review-host')?.shadowRoot;
+  const root = document.getElementById('jobadabra-review-host')?.shadowRoot;
   if (!root) return null;
   const text = selector => (root.querySelector(selector)?.textContent || '').replace(/\s+/g, ' ').trim();
   return {pill: text('.pill'), progress: text('.progress-line'), note: root.querySelector('.note:not(.trace-note)')?.hidden ? '' : text('.note:not(.trace-note)'),

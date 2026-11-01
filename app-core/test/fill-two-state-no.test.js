@@ -15,7 +15,7 @@ for (const [kind, html] of Object.entries(KINDS)) {
   for (const value of ['no', 'false', 'unchecked']) {
     test(`${kind} answered "${value}" and left unchecked is kept, not "did not take it"`, {skip: !JSDOM}, async () => {
       const window = openPage(JSDOM, `<form>${html}</form>`, {url: 'https://example.com/apply'});
-      const summary = await window.__jobPilottoExtensionFill([{field: 'emp', value, question: 'I am an employee of the group', source: 'Claude (on the page)', guess: true}], {}, null, '', false);
+      const summary = await window.__jobadabraExtensionFill([{field: 'emp', value, question: 'I am an employee of the group', source: 'Claude (on the page)', guess: true}], {}, null, '', false);
       const row = (summary.trace || []).find(item => /employee/.test(item.label));
       assert.ok(row, 'the box is traced');
       assert.equal(window.document.getElementById('emp').checked, false, 'nothing was pressed');
@@ -28,14 +28,14 @@ for (const [kind, html] of Object.entries(KINDS)) {
 test('a box answered yes that stays unchecked is still "did not take it"', {skip: !JSDOM}, async () => {
   const window = openPage(JSDOM, `<form>${KINDS.checkbox}</form>`, {url: 'https://example.com/apply'});
   window.document.getElementById('emp').addEventListener('click', event => event.preventDefault());
-  const summary = await window.__jobPilottoExtensionFill([{field: 'emp', value: 'yes', question: 'I am an employee of the group', source: 'kit'}], {}, null, '', false);
+  const summary = await window.__jobadabraExtensionFill([{field: 'emp', value: 'yes', question: 'I am an employee of the group', source: 'kit'}], {}, null, '', false);
   assert.match((summary.trace || []).find(item => /employee/.test(item.label)).reason, /did not take/);
 });
 
 const answered = async (html, value, tweak) => {
   const window = openPage(JSDOM, `<form>${html}</form>`, {url: 'https://example.com/apply'});
   tweak?.(window.document.getElementById('emp'));
-  const summary = await window.__jobPilottoExtensionFill([{field: 'emp', value, question: 'I am an employee of the group', source: 'Claude (on the page)'}], {}, null, '', false);
+  const summary = await window.__jobadabraExtensionFill([{field: 'emp', value, question: 'I am an employee of the group', source: 'Claude (on the page)'}], {}, null, '', false);
   return (summary.trace || []).find(item => /employee/.test(item.label)).reason;
 };
 

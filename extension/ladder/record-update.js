@@ -46,9 +46,9 @@ async function resettle(tabId, state) {
   state.running = true;
   try {
     const ask = func => state.inPage(tabId, func).catch(() => null);
-    const finalForm = await ask(() => window.__jobPilottoDescribeForm?.(true));
-    const gaveUp = await ask(() => window.__jobPilottoRetypeGaveUp?.() || []);
-    const readBack = await ask(() => window.__jobPilottoReadBack?.pass() || []);
+    const finalForm = await ask(() => window.__jobadabraDescribeForm?.(true));
+    const gaveUp = await ask(() => window.__jobadabraRetypeGaveUp?.() || []);
+    const readBack = await ask(() => window.__jobadabraReadBack?.pass() || []);
     if (armed.get(tabId) !== state) return false;   // the page was left meanwhile
     const next = settleTrace(state.trace, Array.isArray(finalForm) ? finalForm : [], Array.isArray(gaveUp) ? gaveUp : [], Array.isArray(readBack) ? readBack : [], state.resumeName);
     const now = outcomes(next);

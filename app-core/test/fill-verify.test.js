@@ -23,25 +23,25 @@ function box(id, {type = 'text', readOnly = false, disabled = false, role = null
 test('only plain typable boxes that do not hold their answer are listed, at most 8', () => {
   const boxes = [box('city'), box('pw', {type: 'password'}), box('ro', {readOnly: true}), box('off', {disabled: true}), box('combo', {role: 'combobox'}), box('done', {value: 'Zurich'})];
   const window = page(boxes);
-  for (const one of boxes) window.__jobPilottoNoteNotTaken(one.id, 'Zurich');
-  assert.deepEqual([...window.__jobPilottoNotTakenSpots().map(spot => spot.field)], ['city']);
+  for (const one of boxes) window.__jobadabraNoteNotTaken(one.id, 'Zurich');
+  assert.deepEqual([...window.__jobadabraNotTakenSpots().map(spot => spot.field)], ['city']);
   assert.ok(boxes[0].scrolled);
   const many = Array.from({length: 12}, (_, i) => box(`b${i}`));
   const w2 = page(many);
-  for (const one of many) w2.__jobPilottoNoteNotTaken(one.id, 'x');
-  assert.equal(w2.__jobPilottoNotTakenSpots().length, 8);
+  for (const one of many) w2.__jobadabraNoteNotTaken(one.id, 'x');
+  assert.equal(w2.__jobadabraNotTakenSpots().length, 8);
 });
 
 test('a box read back with its answer is marked as filled and no longer listed', () => {
   const city = box('city');
   const window = page([city]);
-  window.__jobPilottoNoteNotTaken('city', 'Zürich');
-  assert.equal(window.__jobPilottoTakenNow('city'), false);
+  window.__jobadabraNoteNotTaken('city', 'Zürich');
+  assert.equal(window.__jobadabraTakenNow('city'), false);
   city.value = 'Zürich';
-  assert.equal(window.__jobPilottoTakenNow('city'), true);
-  assert.equal(city.attrs['data-jobpilotto-filled'], '');
+  assert.equal(window.__jobadabraTakenNow('city'), true);
+  assert.equal(city.attrs['data-jobadabra-filled'], '');
   assert.ok(city.blurred >= 2);
-  assert.equal(window.__jobPilottoNotTakenSpots().length, 0);
+  assert.equal(window.__jobadabraNotTakenSpots().length, 0);
 });
 
 test('a character becomes a real key down and up; a control character or a newline is never typed', () => {
@@ -55,7 +55,7 @@ test('each listed box gets a click, select-all and its characters as key events;
   const spots = [{field: 'city', x: 50, y: 35, text: 'Zug'}, {field: 'zip', x: 50, y: 80, text: '8001'}];
   let focus = '';
   const page = async (func, args = []) => vm.runInNewContext(`(${func.toString()})(...args)`, {
-    args, window: {__jobPilottoNotTakenSpots: () => spots, __jobPilottoTakenNow: field => field === 'city'},
+    args, window: {__jobadabraNotTakenSpots: () => spots, __jobadabraTakenNow: field => field === 'city'},
     document: {activeElement: {id: focus, tagName: 'INPUT', type: 'text', value: typed[focus] || '', selectionStart: 0, selectionEnd: 0,
       select() { this.selectionEnd = this.value.length; }}},
   });   // the zip box keeps rejecting its answer on read-back; selection still succeeds
@@ -80,14 +80,14 @@ test('no box listed: nothing is sent', async () => {
 test('a box the fill answered and the page did not take is marked, with no value, so the judges\' match says no; a box read back with its answer loses the mark', () => {
   const city = box('city'), date = box('start');
   const window = page([city, date]);
-  window.__jobPilottoNoteNotTaken('city', 'Zürich');
-  window.__jobPilottoNoteNotTaken('start', '2026-11-02');
-  assert.equal(city.attrs['data-jobpilotto-nottaken'], '');
-  assert.equal(date.attrs['data-jobpilotto-nottaken'], '');
+  window.__jobadabraNoteNotTaken('city', 'Zürich');
+  window.__jobadabraNoteNotTaken('start', '2026-11-02');
+  assert.equal(city.attrs['data-jobadabra-nottaken'], '');
+  assert.equal(date.attrs['data-jobadabra-nottaken'], '');
   assert.ok(!JSON.stringify(city.attrs).includes('Zürich'));
   city.value = 'Zürich';
-  assert.equal(window.__jobPilottoTakenNow('city'), true);
-  assert.ok(!('data-jobpilotto-nottaken' in city.attrs));
+  assert.equal(window.__jobadabraTakenNow('city'), true);
+  assert.ok(!('data-jobadabra-nottaken' in city.attrs));
 });
 
 test('a point the press floor refuses (markAt false) is never clicked or typed into', async () => {

@@ -30,7 +30,7 @@ function behave(window) {
 
 test('an ARIA radio group is read as one choice field: its question and options by their accessible names', { skip: !JSDOM }, async () => {
   const window = openPage(JSDOM, FORM);
-  const fields = await window.__jobPilottoDescribeForm();
+  const fields = await window.__jobadabraDescribeForm();
   const employed = fields.find((field) => field.field === 'aria:employed');
   assert.ok(employed, 'the group is a field');
   assert.equal(employed.label, 'Are you or were you employed by this group?');
@@ -44,7 +44,7 @@ test('an ARIA radio group is read as one choice field: its question and options 
 test('the answer picks the option by its name, the field counts as filled, and nothing is left "not read"', { skip: !JSDOM }, async () => {
   const window = openPage(JSDOM, FORM);
   behave(window);
-  const summary = await window.__jobPilottoExtensionFill([
+  const summary = await window.__jobadabraExtensionFill([
     { field: 'name', value: 'Ada Tester', source: 'kit' },
     { field: 'aria:employed', value: 'No', source: 'kit' },
     { field: 'aria:terms', value: 'I accept', source: 'kit' },
@@ -60,7 +60,7 @@ test('the answer picks the option by its name, the field counts as filled, and n
 test('an unanswered ARIA question is listed as left, by its question, not as unread', { skip: !JSDOM }, async () => {
   const window = openPage(JSDOM, FORM);
   behave(window);
-  const summary = await window.__jobPilottoExtensionFill([{ field: 'name', value: 'Ada Tester', source: 'kit' }], {}, null, '', false);
+  const summary = await window.__jobadabraExtensionFill([{ field: 'name', value: 'Ada Tester', source: 'kit' }], {}, null, '', false);
   const row = Array.from(summary.trace).find((item) => item.label === 'Are you or were you employed by this group?');
   assert.ok(row, 'listed');
   assert.notEqual(row.outcome, 'filled');
@@ -69,23 +69,23 @@ test('an unanswered ARIA question is listed as left, by its question, not as unr
 
 test('a proposal for an ARIA question is kept on its group, for the panel and the app\'s "Needs your attention" row', { skip: !JSDOM }, async () => {
   const window = openPage(JSDOM, FORM);
-  window.__jobPilottoMarkProposal({ field: 'aria:employed', filled: false, legal: false, options: ['Yes', 'No'] }, { value: 'No' });
+  window.__jobadabraMarkProposal({ field: 'aria:employed', filled: false, legal: false, options: ['Yes', 'No'] }, { value: 'No' });
   const group = window.document.getElementById('employed');
-  assert.equal(group.dataset.jobpilottoSuggested, 'No');
-  assert.deepEqual(JSON.parse(group.dataset.jobpilottoOptions), ['Yes', 'No']);
+  assert.equal(group.dataset.jobadabraSuggested, 'No');
+  assert.deepEqual(JSON.parse(group.dataset.jobadabraOptions), ['Yes', 'No']);
 });
 
 test('the AI\'s likely answer (use: propose) is never typed: it is the question\'s proposal, marked as a guess, "proposed for you to confirm"', { skip: !JSDOM }, async () => {
   const window = openPage(JSDOM, FORM);
   behave(window);
-  const summary = await window.__jobPilottoExtensionFill([
+  const summary = await window.__jobadabraExtensionFill([
     { field: 'name', value: 'Ada Tester', source: 'kit' },
     { field: 'aria:employed', value: 'No', source: 'Claude (on the page)', use: 'propose', category: 'normal' },
   ], {}, null, '', false);
   const group = window.document.getElementById('employed');
   assert.equal(window.document.querySelector('[aria-labelledby="employed-o1"]').getAttribute('aria-checked'), 'false');   // not picked for you
-  assert.equal(group.dataset.jobpilottoSuggested, 'No');
-  assert.equal(group.dataset.jobpilottoGuess, '1');
+  assert.equal(group.dataset.jobadabraSuggested, 'No');
+  assert.equal(group.dataset.jobadabraGuess, '1');
   const row = Array.from(summary.trace).find((item) => item.label === 'Are you or were you employed by this group?');
   assert.equal(row.outcome, 'left');
   assert.equal(row.reason, 'proposed for you to confirm');
@@ -117,7 +117,7 @@ function pressing(window) {
 
 test('a group of pressable buttons is read as one choice field, by structure: its title above, its buttons as options, in any language', { skip: !JSDOM }, async () => {
   const window = openPage(JSDOM, TOGGLES);
-  const fields = (await window.__jobPilottoDescribeForm()).filter((field) => String(field.field).startsWith('aria:'));
+  const fields = (await window.__jobadabraDescribeForm()).filter((field) => String(field.field).startsWith('aria:'));
   assert.deepEqual(Array.from(fields.map((field) => field.label)), ['Are you authorized to work here?', 'Wie gross ist Ihr Team?', 'I accept the terms']);
   const [yesNo, team] = fields;
   assert.equal(yesNo.type, 'radio');
@@ -133,9 +133,9 @@ test('a group of pressable buttons is read as one choice field, by structure: it
 test('the answer presses the button by its name, counts as filled, and nothing is left "not read"; a legal option is never pressed', { skip: !JSDOM }, async () => {
   const window = openPage(JSDOM, TOGGLES);
   pressing(window);
-  const form = await window.__jobPilottoDescribeForm();
+  const form = await window.__jobadabraDescribeForm();
   const keyOf = (label) => form.find((field) => field.label === label).field;
-  const summary = await window.__jobPilottoExtensionFill([
+  const summary = await window.__jobadabraExtensionFill([
     { field: 'name', value: 'Ada Tester', source: 'kit' },
     { field: keyOf('Are you authorized to work here?'), value: 'No', source: 'kit' },
     { field: keyOf('Wie gross ist Ihr Team?'), value: 'Mittel', source: 'kit' },
@@ -154,7 +154,7 @@ test('the answer presses the button by its name, counts as filled, and nothing i
 test('an unanswered pressable-button question is listed as left, by its question, not as unread', { skip: !JSDOM }, async () => {
   const window = openPage(JSDOM, TOGGLES);
   pressing(window);
-  const summary = await window.__jobPilottoExtensionFill([{ field: 'name', value: 'Ada Tester', source: 'kit' }], {}, null, '', false);
+  const summary = await window.__jobadabraExtensionFill([{ field: 'name', value: 'Ada Tester', source: 'kit' }], {}, null, '', false);
   const row = Array.from(summary.trace).find((item) => item.label === 'Are you authorized to work here?');
   assert.ok(row, 'listed');
   assert.notEqual(row.outcome, 'filled');

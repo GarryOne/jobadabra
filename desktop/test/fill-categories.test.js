@@ -12,8 +12,8 @@ test('a consent the AI read as legal is never ticked, in any language; its kind 
   const {elements, fill} = fakeFillPage(rows);
   await fill([{field: 'privacidade', value: 'checked', category: 'legal'}, {field: 'visto', value: 'Não', category: 'knockout'}]);
   assert.equal(elements.privacidade.clicks, 0, 'never ticked by us');
-  assert.equal(elements.privacidade.dataset.jobpilottoCategory, 'legal');
-  assert.equal(elements.visto.dataset.jobpilottoCategory, 'knockout');
+  assert.equal(elements.privacidade.dataset.jobadabraCategory, 'legal');
+  assert.equal(elements.visto.dataset.jobadabraCategory, 'knockout');
 });
 
 test('a voluntary question the AI read as demographic is declined, in any language, like the English words', async () => {
@@ -26,13 +26,13 @@ test('a voluntary question the AI read as demographic is declined, in any langua
 test('every calling code names a country; the codes the filler named before keep their exact names', () => {
   const window = {};
   vm.runInContext(fs.readFileSync(new URL('../../extension/page/dial-codes.js', import.meta.url), 'utf8'), vm.createContext({window, Intl}));
-  const dial = window.__jobPilottoDial;
+  const dial = window.__jobadabraDial;
   assert.ok(Object.keys(dial).length >= 200);
   for (const [code, country] of [['+852', 'Hong Kong'], ['+90', 'T'], ['+65', 'Singapore'], ['+7', 'Russia'], ['+27', 'South Africa'], ['+57', 'Colombia']]) {
     assert.ok(String(dial[code]).startsWith(country), `${code}: ${dial[code]}`);
   }
   const fill = fs.readFileSync(new URL('../../extension/page/fill-menus.js', import.meta.url), 'utf8');
-  assert.match(fill, /const DIAL = \{\.\.\.\(window\.__jobPilottoDial \|\| \{\}\), '\+1': 'United States'/);   // the old names win (after the spread)
+  assert.match(fill, /const DIAL = \{\.\.\.\(window\.__jobadabraDial \|\| \{\}\), '\+1': 'United States'/);   // the old names win (after the spread)
   assert.match(fill, /'\+420': 'Czech Republic'/);
 });
 
@@ -41,14 +41,14 @@ test('a legal question the AI returned as a kind only (no value) is marked legal
   const rows = [{field: 'certify', label: 'I certify that the information provided in this application is true', type: 'combobox', required: true, filled: false, legal: false}];
   const {elements, armed, fill} = fakeFillPage(rows);   // the post-fill audit reads legal as the real one does (fake-fill-page.js)
   const summary = await fill([{field: 'certify', value: '', category: 'legal', use: 'kind'}]);
-  assert.equal(elements.certify.dataset.jobpilottoCategory, 'legal');
+  assert.equal(elements.certify.dataset.jobadabraCategory, 'legal');
   assert.deepEqual(armed, []);
   const row = (summary.trace || []).find(item => item.label.startsWith('I certify'));
   assert.ok(row, `the trace lists it: ${JSON.stringify(summary.trace).slice(0, 300)}`);
   assert.equal(row.reason, 'legal/consent: always your choice');
   assert.equal(row.source, '');
   const audit = fs.readFileSync(new URL('../../extension/page/browser-form-fastpath.js', import.meta.url), 'utf8');
-  assert.match(audit, /legal: forbidden\.test\(label\(el\)\) \|\| el\.dataset\?\.jobpilottoCategory === 'legal'/, 'the post-fill audit honours the AI\'s legal mark');
+  assert.match(audit, /legal: forbidden\.test\(label\(el\)\) \|\| el\.dataset\?\.jobadabraCategory === 'legal'/, 'the post-fill audit honours the AI\'s legal mark');
 });
 
 test('a question the form reader called legal stays legal in the trace when the post-fill audit\'s own floor misses its wording', async () => {
@@ -65,7 +65,7 @@ test('an open question the AI returned as a "written" kind (no value) is left as
   const rows = [{field: 'why', label: 'Quelles sont vos motivations pour rejoindre Pennylane ?', type: 'text', required: true, filled: false, legal: false}];
   const {elements, fill} = fakeFillPage(rows);
   const summary = await fill([{field: 'why', value: '', category: 'written', use: 'kind'}]);
-  assert.equal(elements.why.dataset.jobpilottoCategory, 'written');
+  assert.equal(elements.why.dataset.jobadabraCategory, 'written');
   const row = summary.trace.find(item => item.label.startsWith('Quelles'));
   assert.deepEqual([row.outcome, row.reason, row.source], ['left', 'written: your own words to write', '']);
 });

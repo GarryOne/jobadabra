@@ -5,7 +5,7 @@
 (() => {
   const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
   const clean = text => String(text || '').replace(/\s+/g, ' ').replace(/\s*\*+\s*$/, '').trim();
-  const norm = text => (window.__jobPilottoFold ? window.__jobPilottoFold(clean(text)) : clean(text).toLowerCase()).replace(/[^\p{L}\p{N}]+/gu, ' ').trim();   // accents ignored (page/fold-text.js)
+  const norm = text => (window.__jobadabraFold ? window.__jobadabraFold(clean(text)) : clean(text).toLowerCase()).replace(/[^\p{L}\p{N}]+/gu, ' ').trim();   // accents ignored (page/fold-text.js)
 
   // ---- answers -> what a control can take ----
   const YES = new Set(['yes', 'y', 'true', 'ja', 'oui', 'si', 'sim', 'da']);
@@ -47,7 +47,7 @@
   // ---- finding the question a control answers ----
   // Its own accessible name, else the nearest title before it that no other control owns (page/label-before.js: one rule for every group and unlabelled control).
   function titleOf(el) {
-    return clean((window.__jobPilottoGroupTitle ? window.__jobPilottoGroupTitle(el)?.text : '') || '');
+    return clean((window.__jobadabraGroupTitle ? window.__jobadabraGroupTitle(el)?.text : '') || '');
   }
   // The ids a page may give the control: its own and its hidden input's, and the field entry's path (Ashby).
   function idsOf(el) {
@@ -90,7 +90,7 @@
     if (refuses(target)) return REFUSED;
     const on = button => (params.onAttr ? button.getAttribute(params.onAttr) === (params.onValue ?? 'true')
       : button.getAttribute('aria-pressed') === 'true' || button.getAttribute('aria-checked') === 'true');
-    if (!on(target)) (globalThis.__jobPilottoPress?.(target) || target.click());
+    if (!on(target)) (globalThis.__jobadabraPress?.(target) || target.click());
     await wait(120);
     return on(target) ? {ok: true} : {ok: false, why: 'the option did not stay selected'};
   }
@@ -111,7 +111,7 @@
     const wanted = norm(value);
     const opener = (params.trigger && trigger.querySelector?.(params.trigger)) || trigger;
     if (refuses(opener)) return REFUSED;
-    (globalThis.__jobPilottoPress?.(opener) || opener.click());
+    (globalThis.__jobadabraPress?.(opener) || opener.click());
     let options = [];
     for (let i = 0; i < 8 && !options.length; i++) {
       await wait(100);
@@ -121,8 +121,8 @@
     }
     const pick = options.find(option => norm(option.textContent) === wanted) || options.find(option => norm(option.textContent).startsWith(wanted));
     if (pick && refuses(pick)) return REFUSED;
-    if (!pick) { (globalThis.__jobPilottoPress?.(opener) || opener.click()); return {ok: false, why: options.length ? `no option "${clean(value)}"` : 'the list did not open'}; }
-    (globalThis.__jobPilottoPress?.(pick) || pick.click());
+    if (!pick) { (globalThis.__jobadabraPress?.(opener) || opener.click()); return {ok: false, why: options.length ? `no option "${clean(value)}"` : 'the list did not open'}; }
+    (globalThis.__jobadabraPress?.(pick) || pick.click());
     await wait(150);
     return norm(trigger.textContent || trigger.value).includes(norm(pick.textContent)) ? {ok: true} : {ok: false, why: 'the choice did not show'};
   }
@@ -133,12 +133,12 @@
   const looksLikeDate = input => input.type === 'date' || /date/i.test(`${input.placeholder || ''} ${input.className || ''}`);
 
   // The fingerprints of the controls here that the operators handle: what the app is asked recipes for.
-  function fingerprints({doc = document, kit = window.__jobPilottoSkeleton} = {}) {
+  function fingerprints({doc = document, kit = window.__jobadabraSkeleton} = {}) {
     const visible = el => !!el.getClientRects().length;
     const found = new Set();
     for (const {el, kind} of kit ? kit.widgets(doc, visible) : []) if (OPERATOR_OF[kind]) found.add(fingerprintOf(el, kit));
     for (const input of doc.querySelectorAll('input')) if (looksLikeDate(input) && visible(input)) found.add(fingerprintOf(input, kit));
-    for (const fp of window.__jobPilottoUpload?.fingerprints?.(doc) || []) found.add(fp);   // upload slots (page/upload.js)
+    for (const fp of window.__jobadabraUpload?.fingerprints?.(doc) || []) found.add(fp);   // upload slots (page/upload.js)
     found.delete('');
     return [...found].slice(0, 30);
   }
@@ -146,7 +146,7 @@
   // Offer every control the normal fill left to the operators, with the same answers. Returns what happened per control.
   // `skip(question)` says a question is off limits (consent, terms): such controls are never touched. `recipes` (by
   // fingerprint, from the app) configure an operator for the controls they fit; the result says which version was used.
-  async function fill(answers, {skip = () => false, doc = document, kit = window.__jobPilottoSkeleton, recipes = window.__jobPilottoRecipes || {}} = {}) {
+  async function fill(answers, {skip = () => false, doc = document, kit = window.__jobadabraSkeleton, recipes = window.__jobadabraRecipes || {}} = {}) {
     const results = [];
     const open = (answers || []).filter(answer => answer && answer.value !== undefined && answer.value !== '');
     const visible = el => !!(el.getClientRects().length && (typeof getComputedStyle !== 'function' || getComputedStyle(el).visibility !== 'hidden'));
@@ -164,7 +164,7 @@
       const fp = fingerprintOf(el, kit);
       const recipe = recipes[fp] && recipes[fp].operator === OPERATOR_OF[kind] ? recipes[fp] : null;
       // An operator's try counts in the control's one attempt log (page/attempts.js): refused once it used its tries or this try failed on this state.
-      const log = window.__jobPilottoAttempts, verb = `operate:${kind}`;
+      const log = window.__jobadabraAttempts, verb = `operate:${kind}`;
       if (log && !log.mayTry(el, verb)) { results.push({question, kind, fp, recipe: recipe ? recipe.version : 0, value: answer.value, ok: false, why: 'its tries are used'}); return; }
       const before = log?.stateOf(el);
       const result = await run(answer.value, recipe?.params || {}).catch(error => ({ok: false, why: error.message}));
@@ -183,5 +183,5 @@
   }
 
   const api = {yesNo, parseDate, formatDate, matchAnswer, titleOf, idsOf, setToggleGroup, setDate, setCustomSelect, fill, fingerprints, norm};
-  if (typeof module !== 'undefined' && module.exports) module.exports = api; else window.__jobPilottoControls = api;
+  if (typeof module !== 'undefined' && module.exports) module.exports = api; else window.__jobadabraControls = api;
 })();

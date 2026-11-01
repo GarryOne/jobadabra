@@ -17,11 +17,11 @@ const PAGE = `<form><div class="field-wrapper"><label for="first">First Name*</l
 
 test('a file input under its own button, in a wrapper named for uploads, is one slot per widget, titled by the field\'s label', {skip: !JSDOM}, () => {
   const window = openPage(JSDOM, PAGE);
-  const slots = window.__jobPilottoUpload.slots();
+  const slots = window.__jobadabraUpload.slots();
   assert.equal(slots.length, 2, `one slot per widget, got ${JSON.stringify(slots.map(slot => slot.title))}`);
   assert.deepEqual(JSON.parse(JSON.stringify(slots.map(slot => slot.input?.id))), ['resume', 'cover_letter'], 'each slot keeps its own file input');
   assert.match(slots[0].title, /^Resume\/CV/);
   assert.match(slots[1].title, /^Cover Letter/);
-  const rows = JSON.parse(JSON.stringify(window.__jobPilottoUpload.rows().map(row => [row.field, row.required])));
+  const rows = JSON.parse(JSON.stringify(window.__jobadabraUpload.rows().map(row => [row.field, row.required])));
   assert.deepEqual(rows, [['resume', true], ['cover_letter', false]]);
 });

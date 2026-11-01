@@ -16,7 +16,7 @@ const LAYOUTS = {
 for (const [name, html] of Object.entries(LAYOUTS)) {
   test(`${name}: the field is read by the question, and nothing is listed unread`, { skip: !JSDOM }, async () => {
     const window = openPage(JSDOM, `<form>${html}</form>`);
-    const summary = await window.__jobPilottoExtensionFill([], {}, null, '', false);
+    const summary = await window.__jobadabraExtensionFill([], {}, null, '', false);
     const rows = Array.from(summary.trace);
     const row = rows.find(r => /textarea|text/.test(r.type) && r.type !== '');
     assert.equal(row.label, Q);
@@ -26,7 +26,7 @@ for (const [name, html] of Object.entries(LAYOUTS)) {
 }
 
 test('the required mark knows the heavy asterisk', { skip: !JSDOM }, () => {
-  const mark = openPage(JSDOM, '<form></form>').__jobPilottoRequired;
+  const mark = openPage(JSDOM, '<form></form>').__jobadabraRequired;
   for (const t of ['Notice period✱', 'Notice period ✱', '✱ Notice period', 'Notice ✳']) assert.equal(mark.has(t), true, t);
   assert.equal(mark.clean('Notice period✱'), 'Notice period');
 });

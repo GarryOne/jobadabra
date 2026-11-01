@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 
-const TAB = 7, URL_A = 'https://jobs.example.test/apply#jobpilotto-fill';
+const TAB = 7, URL_A = 'https://jobs.example.test/apply#jobadabra-fill';
 function stand() {
   const listeners = {debugger: [], navigate: [], committed: [], removed: []}, calls = [];
   const chrome = {

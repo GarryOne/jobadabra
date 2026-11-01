@@ -3,10 +3,10 @@
 // once focus has left (lostOnBlur), the options that appeared next to a box once it was typed in for real (snapshot/appeared: new visible text nodes beside it, whatever their markup), and whether the box
 // holds a chosen option (holds). fill.js arms the lost boxes as type-to-search boxes (page/fill-menus.js pickSuggestion). Guarded by desktop/e2e/recorded/suggest-only-place-*.
 (() => {
-  if (window.__jobPilottoSuggest) return;
+  if (window.__jobadabraSuggest) return;
   const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
-  const fold = window.__jobPilottoFold;   // page/fold-text.js, loaded first: accents, case and spacing ignored
-  const OWN = '[class*="jobadabra"], [id*="jobadabra"], [id*="jobpilotto"], [data-jobpilotto-armed]';
+  const fold = window.__jobadabraFold;   // page/fold-text.js, loaded first: accents, case and spacing ignored
+  const OWN = '[class*="jobadabra"], [id*="jobadabra"], [id*="jobadabra"], [data-jobadabra-armed]';
   // Every visible text node's element with no element inside (a suggestion row, a notice), the extension's own boxes left out.
   const leaves = () => Array.from(document.body.querySelectorAll('*')).filter(node => !node.children.length && fold(node.textContent) && node.offsetParent !== null && !node.closest(OWN));
   const snapshot = () => new Set(leaves());
@@ -32,5 +32,5 @@
   };
   // The box holds the option the page was asked for: its text is the option's and the option's list is gone.
   const holds = (el, option) => fold(el.value) === fold(option.textContent) && (!option.isConnected || option.offsetParent === null);
-  window.__jobPilottoSuggest = {snapshot, appeared, lostOnBlur, holds, textBox};
+  window.__jobadabraSuggest = {snapshot, appeared, lostOnBlur, holds, textBox};
 })();

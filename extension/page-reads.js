@@ -23,7 +23,7 @@ export function pageShape(tabId) {
 }
 // The question steps drawn with plain buttons (page/choice-step.js: structure only, while a control waits for the answer). The finder is injected when this page has not loaded it yet.
 async function choiceGroups(tabId) {
-  const look = () => chrome.scripting.executeScript({target: {tabId}, world: 'MAIN', func: () => window.__jobPilottoChoiceStep?.groups().length}).then(rows => rows?.[0]?.result).catch(() => undefined);
+  const look = () => chrome.scripting.executeScript({target: {tabId}, world: 'MAIN', func: () => window.__jobadabraChoiceStep?.groups().length}).then(rows => rows?.[0]?.result).catch(() => undefined);
   let found = await look();
   if (found == null) { await chrome.scripting.executeScript({target: {tabId}, world: 'MAIN', files: ['page/choice-step.js']}).catch(() => {}); found = await look(); }   // null: executeScript gives no result for an undefined one
   return Number(found) || 0;
@@ -34,17 +34,17 @@ async function choiceGroups(tabId) {
 export const labelReaderIn = tabId => chrome.scripting.executeScript({target: {tabId}, files: ['page/required-mark.js', 'page/label-before.js']}).catch(() => {});
 export function pageSketchOf(tabId) {
   return chrome.scripting.executeScript({target: {tabId}, func: () => {   // a closed script: desktop/e2e/ladder-capture.mjs runs its body on its own (no arguments)
-    // Never the extension's own UI (the panel's shadow root, the step box, the note, the Submit guard: ids jobpilotto-*, jobadabra-*): what the AI is shown is the page,
+    // Never the extension's own UI (the panel's shadow root, the step box, the note, the Submit guard: ids jobadabra-*, jobadabra-*): what the AI is shown is the page,
     // not our panel's state at that moment (speed-5x, 11 Oct 2026: "Tailor my CV", "77 left required fields" in the sketch). Guard: desktop/e2e/test/own-ui-not-read.test.mjs.
-    const shown = el => el.getClientRects().length > 0 && !el.closest('[id^=jobpilotto], [id^=jobadabra]');
+    const shown = el => el.getClientRects().length > 0 && !el.closest('[id^=jobadabra], [id^=jobadabra]');
     const text = el => String(el?.textContent || '').replace(/\s+/g, ' ').trim();
-    const labelOf = el => text(el.labels?.[0]) || el.getAttribute('aria-label') || el.getAttribute('placeholder') || (el.type !== 'hidden' && window.__jobPilottoLabelBefore?.(el)) || el.name || '';
+    const labelOf = el => text(el.labels?.[0]) || el.getAttribute('aria-label') || el.getAttribute('placeholder') || (el.type !== 'hidden' && window.__jobadabraLabelBefore?.(el)) || el.name || '';
     // Also inside open shadow roots: a page built of web components (SmartRecruiters, 9 Oct 2026) otherwise reads as empty.
     const all = selector => { const found = []; const walk = root => { found.push(...root.querySelectorAll(selector)); for (const el of root.querySelectorAll('*')) if (el.shadowRoot && !/^job-?pilotto/.test(el.id)) walk(el.shadowRoot); }; walk(document); return found; };
     const controls = all('input, select, textarea')
       .filter(el => el.type === 'file' || (el.type !== 'hidden' && shown(el)))   // an upload behind a button keeps its input hidden
       .filter(el => !['submit', 'button', 'reset', 'image'].includes(el.type))
-      .map(el => ({type: el.tagName === 'INPUT' ? el.type : el.tagName.toLowerCase(), label: labelOf(el).slice(0, 80), required: window.__jobPilottoRequired?.marked ? window.__jobPilottoRequired.marked(el) : (!!el.required || el.getAttribute('aria-required') === 'true')}));
+      .map(el => ({type: el.tagName === 'INPUT' ? el.type : el.tagName.toLowerCase(), label: labelOf(el).slice(0, 80), required: window.__jobadabraRequired?.marked ? window.__jobadabraRequired.marked(el) : (!!el.required || el.getAttribute('aria-required') === 'true')}));
     // An open modal dialog (a start step over the posting: jobs.ch "Create an account to apply faster", 11 Oct 2026) sits last in the DOM, behind the page's own navigation, so the 20-button cap cut it off and
     // the AI never saw its routes. What a person can act on is the dialog: its buttons and headings come first (found by structure only: a dialog the page shows, with or without the `open` attribute (jobs.ch shows its <dialog> by CSS, no `open`; its buttons are only listed when shown, so a closed one adds nothing); the AI still decides what they mean). Order only: the list is the same.
     const modalFirst = els => { const inModal = el => !!el.closest?.('dialog, [role=dialog], [role=alertdialog], [aria-modal=true]'); return [...els.filter(inModal), ...els.filter(el => !inModal(el))]; };

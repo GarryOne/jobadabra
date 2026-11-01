@@ -122,13 +122,13 @@ async function panel(options = {}) {
   window.chrome = {runtime: {id: 'test', getManifest: () => ({version: '0.9.test'}), onMessage: {addListener: fn => listeners.push(fn)},
     sendMessage: async message => { messages.push(plain(message)); events.push(['send', plain(message)]); return {ok: true}; }},
   storage: {local: {get: async () => ({}), set: async () => {}}}};
-  for (const name of ['Required', 'ReadBack', 'TitleAbove', 'GroupTitle']) window[`__jobPilotto${name}`] ||= {};
-  window.__jobPilottoPanelForm = {KNOCKOUT: /permit/i, AGREE: /agree/i, fields: () => fields,
+  for (const name of ['Required', 'ReadBack', 'TitleAbove', 'GroupTitle']) window[`__jobadabra${name}`] ||= {};
+  window.__jobadabraPanelForm = {KNOCKOUT: /permit/i, AGREE: /agree/i, fields: () => fields,
     find: () => fields[0], flash: el => events.push(['flash', el.id])};
-  window.__jobPilottoPanelWritten = {start: () => ({update: list => events.push(['written', list.map(f => f.el.id)]), review: f => events.push(['review', f.el.id])})};
-  window.__jobPilottoPanelLearn = {start: () => ({reportMisses() {}, showMine() {}})};
-  window.__jobPilottoOverlay = {on: () => events.push(['overlay', true]), off: () => events.push(['overlay', false])};
-  window.__jobPilottoClaude = {mount() {}, render: facts => events.push(['claude', plain(facts)])};
+  window.__jobadabraPanelWritten = {start: () => ({update: list => events.push(['written', list.map(f => f.el.id)]), review: f => events.push(['review', f.el.id])})};
+  window.__jobadabraPanelLearn = {start: () => ({reportMisses() {}, showMine() {}})};
+  window.__jobadabraOverlay = {on: () => events.push(['overlay', true]), off: () => events.push(['overlay', false])};
+  window.__jobadabraClaude = {mount() {}, render: facts => events.push(['claude', plain(facts)])};
   // Load real markup/copy and any drawing helpers through the production classic-script list.
   const mocked = ['panel-form.js', 'panel-learn.js', 'panel-written.js', 'panel-overlay-fx.js', 'panel-overlay.js', 'panel-report.js'];
   for (const file of PANEL_FILES.filter(file => file !== 'review.js' && !mocked.includes(file))) window.eval(read(file));
@@ -145,9 +145,9 @@ async function panel(options = {}) {
   const api = window.__renderTest;
   assert.ok(api);
   // No automatic sync runs: the host is obtained from a first render, then each case starts clean.
-  document.documentElement.setAttribute('data-jobpilotto-page', 'form');
+  document.documentElement.setAttribute('data-jobadabra-page', 'form');
   api.set({}); api.render();
-  const mounted = document.getElementById('jobpilotto-review-host');
+  const mounted = document.getElementById('jobadabra-review-host');
   events.length = 0; messages.length = 0;
   const root = mounted.shadowRoot;
   // State flags normally drive this card via setOpen; keep it consistent without adding an extra render.
@@ -155,8 +155,8 @@ async function panel(options = {}) {
   root.querySelector('.card').hidden = options.state?.open === false;
   if (options.fields) { fields.length = 0; fields.push(...options.fields(document)); }
   for (const [name, value] of Object.entries(options.attrs || {})) {
-    if (value === null) document.documentElement.removeAttribute(`data-jobpilotto-${name}`);
-    else document.documentElement.setAttribute(`data-jobpilotto-${name}`, value);
+    if (value === null) document.documentElement.removeAttribute(`data-jobadabra-${name}`);
+    else document.documentElement.setAttribute(`data-jobadabra-${name}`, value);
   }
   options.prepare?.({window, document, root, api, fields});
   events.length = 0; messages.length = 0;
@@ -182,8 +182,8 @@ const cases = {
   'small-step': {fields: () => [], prepare: p => p.api.showStep('Reading the form…')},
   'small-mark': {fields: () => [], state: {applyWorking: true}, attrs: {page: 'reading'}},
   'password-empty': {prepare: account('')}, 'password-filled': {prepare: account('secret')},
-  'password-refill': {prepare: p => { account('secret')(p); p.document.getElementById('a').setAttribute('data-jobpilotto-filled', '1'); }},
-  'password-pressed': {attrs: {'account-pressed': '1'}, prepare: p => { account('secret')(p); p.document.getElementById('a').setAttribute('data-jobpilotto-filled', '1'); }},
+  'password-refill': {prepare: p => { account('secret')(p); p.document.getElementById('a').setAttribute('data-jobadabra-filled', '1'); }},
+  'password-pressed': {attrs: {'account-pressed': '1'}, prepare: p => { account('secret')(p); p.document.getElementById('a').setAttribute('data-jobadabra-filled', '1'); }},
   'password-hidden': {prepare: p => { account('')(p); p.document.getElementById('a').hidden = true; }},
   'account-ready': {fields: allFilled, prepare: account('secret')},
   'account-sign-up': {fields: allFilled, attrs: {'account-step': 'sign_up'}, prepare: account('secret')},
@@ -234,13 +234,13 @@ for (const page of ['', 'reading', 'other', 'posting', 'opening', 'signing-in', 
 }
 for (const state of ['missing', 'draft', 'invalid', 'unknown', 'ready']) {
   cases[`letter-${state}`] = {state: {coverLetterStatus: {state, ready: state === 'ready', reason: 'Status reason'}},
-    prepare: p => p.document.getElementById('a').setAttribute('data-jobpilotto-letter', '1')};
+    prepare: p => p.document.getElementById('a').setAttribute('data-jobadabra-letter', '1')};
 }
 for (const kind of ['manual', 'manual-hidden', 'manual-error', 'rejected', 'given', 'account', 'moved']) {
   cases[`letter-${kind}`] = {state: {moved: kind === 'moved', coverLetterStatus: {state: 'missing', ready: false}},
     prepare: p => { const el = p.document.getElementById('a');
-      if (kind.startsWith('manual')) { el.setAttribute('data-jobpilotto-letter-manual', '1'); if (kind === 'manual-error') el.setAttribute('data-jobpilotto-letter-error', '1'); if (kind === 'manual-hidden') el.style.visibility = 'hidden'; }
-      else { el.setAttribute('data-jobpilotto-letter', '1'); if (kind === 'rejected') el.setAttribute('data-jobpilotto-letter-error', '1'); }
+      if (kind.startsWith('manual')) { el.setAttribute('data-jobadabra-letter-manual', '1'); if (kind === 'manual-error') el.setAttribute('data-jobadabra-letter-error', '1'); if (kind === 'manual-hidden') el.style.visibility = 'hidden'; }
+      else { el.setAttribute('data-jobadabra-letter', '1'); if (kind === 'rejected') el.setAttribute('data-jobadabra-letter-error', '1'); }
       if (kind === 'account') account('secret')(p);
       if (kind === 'given') p.fields[0].filled = true;
     }};
@@ -278,7 +278,7 @@ test('rendered controls keep their targets, propagation, busy labels and message
 
 test('letter actions open setup or focus the rejected control; password requests remain throttled', {skip: !JSDOM}, async () => {
   const p = await panel({state: {coverLetterStatus: {state: 'missing', ready: false}}, prepare: q => {
-    q.document.getElementById('a').setAttribute('data-jobpilotto-letter', '1'); account('')(q);
+    q.document.getElementById('a').setAttribute('data-jobadabra-letter', '1'); account('')(q);
   }});
   try {
     p.api.render(); p.api.render();
@@ -290,7 +290,7 @@ test('letter actions open setup or focus the rejected control; password requests
     await flush();
     assert.equal(action.disabled, false); assert.equal(action.textContent, 'Create in Profile');
     assert.deepEqual(p.messages.at(-1), {type: 'panelOpenApp', session: 'setup:cover-letter'});
-    p.document.getElementById('a').setAttribute('data-jobpilotto-letter-error', '1');
+    p.document.getElementById('a').setAttribute('data-jobadabra-letter-error', '1');
     p.api.render(); p.events.length = 0; action.click();
     assert.deepEqual(plain(p.events), [['flash', 'a']]);
   } finally { p.close(); }
@@ -300,7 +300,7 @@ test('mark transitions, minimization and stopped/done states keep the same DOM a
   const p = await panel({state: {applyWorking: true, userMoved: false, open: false}, attrs: {page: 'reading'}});
   try {
     const actual = [];
-    for (const mark of ['reading', 'posting', 'form']) { p.document.documentElement.setAttribute('data-jobpilotto-page', mark); p.events.length = 0; actual.push(capture(p, p.api.render())); }
+    for (const mark of ['reading', 'posting', 'form']) { p.document.documentElement.setAttribute('data-jobadabra-page', mark); p.events.length = 0; actual.push(capture(p, p.api.render())); }
     p.root.querySelector('.min').click(); p.events.length = 0; actual.push(capture(p, p.api.render()));
     p.api.stoppedHere(); p.events.length = 0; actual.push(capture(p, p.api.render()));
     p.api.endStep(); p.events.length = 0; actual.push(capture(p, p.api.render()));

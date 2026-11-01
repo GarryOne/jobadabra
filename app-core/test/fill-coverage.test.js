@@ -19,7 +19,7 @@ const UNKNOWN = `<form>
 
 test('a required question the reader did not read is traced, listed and counted', { skip: !JSDOM }, async () => {
   const window = openPage(JSDOM, UNKNOWN);
-  const summary = await window.__jobPilottoExtensionFill([{ field: 'name', value: 'Ada Tester', source: 'kit' }], {}, null, '', false);
+  const summary = await window.__jobadabraExtensionFill([{ field: 'name', value: 'Ada Tester', source: 'kit' }], {}, null, '', false);
   const rows = Array.from(summary.trace).filter((r) => r.reason === 'question on the page not read');
   assert.deepEqual(rows.map((r) => r.label), ['How many players at most?']);
   assert.equal(rows[0].required, true);
@@ -28,7 +28,7 @@ test('a required question the reader did not read is traced, listed and counted'
   assert.equal(sanitize({ site: 'forms.example.com', fields: [{ label: rows[0].label, reason: rows[0].reason }] }).fields.length, 1);
   assert.equal(leftReason(rows[0].reason), 'unread');
   // Its HTML for the report: the area the fill marked.
-  const snaps = window.__jobPilottoSnapshots([{ label: rows[0].label, field: '' }], []);
+  const snaps = window.__jobadabraSnapshots([{ label: rows[0].label, field: '' }], []);
   assert.ok(snaps['How many players at most?'], 'a snapshot of the unread question');
 });
 
@@ -36,6 +36,6 @@ test('a form whose required questions are all read reports nothing unread', { sk
   const window = openPage(JSDOM, `<form><label for="a">Email *</label><input id="a" type="email" required>
     <fieldset><legend>Do you need a visa? *</legend><input type="radio" id="y" name="v"><label for="y">Yes</label>
     <input type="radio" id="n" name="v"><label for="n">No</label></fieldset></form>`);
-  const summary = await window.__jobPilottoExtensionFill([], {}, null, '', false);
+  const summary = await window.__jobadabraExtensionFill([], {}, null, '', false);
   assert.equal(Array.from(summary.trace).filter((r) => r.reason === 'question on the page not read').length, 0);
 });

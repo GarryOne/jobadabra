@@ -77,10 +77,10 @@ test('a later live state is played INTO the page: the box the extension typed in
   const browser = await chromium.launch({headless: true});
   try {
     const page = await (await browser.newContext()).newPage();
-    await page.setContent('<html><head><title>a</title></head><body><form><label for="a">First</label><input id="a" name="first" type="text"><input id="b" type="text"><input type="file" id="f"></form><p>Upload</p><div id="jobpilotto-box">ui</div></body></html>');
+    await page.setContent('<html><head><title>a</title></head><body><form><label for="a">First</label><input id="a" name="first" type="text"><input id="b" type="text"><input type="file" id="f"></form><p>Upload</p><div id="jobadabra-box">ui</div></body></html>');
     await page.evaluate(() => { window.held = document.getElementById('a'); window.held.value = 'Ada'; document.getElementById('b').value = 'Tester'; });
     await page.evaluate(swapInPage, '<html><head><title>b</title></head><body><form><label for="a">First</label><input id="a" name="first" type="text"><input id="b" type="text"><input type="file" id="f"></form><p>Autofill completed!</p><section id="more">review</section></body></html>');
-    const seen = await page.evaluate(() => ({same: window.held === document.getElementById('a') && window.held.isConnected, first: window.held.value, second: document.getElementById('b').value, text: document.body.innerText, ui: !!document.getElementById('jobpilotto-box'), more: !!document.getElementById('more'), title: document.title}));
+    const seen = await page.evaluate(() => ({same: window.held === document.getElementById('a') && window.held.isConnected, first: window.held.value, second: document.getElementById('b').value, text: document.body.innerText, ui: !!document.getElementById('jobadabra-box'), more: !!document.getElementById('more'), title: document.title}));
     assert.deepEqual(seen.same, true, 'the element the extension typed in is still the page\'s element');
     assert.deepEqual([seen.first, seen.second], ['', ''], 'its value emptied: the capture holds none');
     assert.match(seen.text, /Autofill completed!/);

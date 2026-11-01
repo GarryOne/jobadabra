@@ -38,7 +38,7 @@ test('a layer fixed over the page counts, with no role at all', { skip: !JSDOM }
 test('never offered: a form in a dialog, a password box, the extension\'s own panel', { skip: !JSDOM }, async () => {
   const form = '<div role="dialog"><input type="text"><input type="email"><input type="tel"><button>Next</button></div>';
   const login = '<div role="dialog"><input type="password"><button>Sign in</button></div>';
-  const ours = '<div id="jobpilotto-panel" role="dialog"><button>Hide</button></div>';
+  const ours = '<div id="jobadabra-panel" role="dialog"><button>Hide</button></div>';
   for (const html of [form, login, ours]) await inPage(html, ({ findPopup }) => assert.equal(findPopup({ list: true }), null, html));
 });
 

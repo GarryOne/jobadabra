@@ -13,15 +13,15 @@ globalThis.chrome = {
   tabs: {get: async id => (id === 7 ? {id: 7, url: current.local.backgroundApplySessions[SESSION].url, windowId: 3} : null), remove: async id => { current.removed.push(id); }},
   scripting: {executeScript: async ({files, func, args = []}) => {
     if (files) { current.files.push(...files); return []; }
-    const window = {__jobPilottoDescribeForm: async () => current.form, __jobPilottoCheckboxQuestions: () => [],
-      __jobPilottoProfileEntries: (rows, profile) => rows.filter(row => profile[row.field]).map(row => ({field: row.field})), __jobPilottoPageText: () => 'Fictional form'};
+    const window = {__jobadabraDescribeForm: async () => current.form, __jobadabraCheckboxQuestions: () => [],
+      __jobadabraProfileEntries: (rows, profile) => rows.filter(row => profile[row.field]).map(row => ({field: row.field})), __jobadabraPageText: () => 'Fictional form'};
     return [{result: await vm.runInNewContext(`(${func.toString()})(...args)`, {window, args})}];
   }},
 };
 
 function install(t, {mode = 'read', form = [{field: 'a', required: true, type: 'text'}], answers = [], fail = false, dropped = false, contact = {}} = {}) {
   current = {form, files: [], removed: [], posted: [], session: {'session:7': SESSION},
-    local: {backgroundOwner: 'o1', workerUrl: 'http://127.0.0.1:47111', token: 'fictional', backgroundApplySessions: {[SESSION]: {session: SESSION, mode, tab: 7, window: 3, url: `https://jobs.example.test/a#jobpilotto-fill=${SESSION}`, manualRequired: false}}}};
+    local: {backgroundOwner: 'o1', workerUrl: 'http://127.0.0.1:47111', token: 'fictional', backgroundApplySessions: {[SESSION]: {session: SESSION, mode, tab: 7, window: 3, url: `https://jobs.example.test/a#jobadabra-fill=${SESSION}`, manualRequired: false}}}};
   t.mock.method(globalThis, 'fetch', async (url, init) => {
     current.posted.push({url: String(url), body: JSON.parse(init?.body || '{}')});
     if (url.endsWith('/extension/answer') && fail) throw new Error('fictional failure');
@@ -119,10 +119,10 @@ test('a read never starts the speculative early answer call before its form judg
 test('the owned browser poll command uses the same ownership-checked poll as the report alarm', async t => {
   const state = install(t);
   await import('../../extension/background-apply.js');
-  assert.equal(await globalThis.__jobPilottoBackgroundSessions.poll(), true);
+  assert.equal(await globalThis.__jobadabraBackgroundSessions.poll(), true);
   assert.deepEqual(state.posted.map(call => call.body.action), ['poll']);
   delete state.local.backgroundOwner;
-  await assert.rejects(() => globalThis.__jobPilottoBackgroundSessions.poll(), /poll/);
+  await assert.rejects(() => globalThis.__jobadabraBackgroundSessions.poll(), /poll/);
   assert.deepEqual(state.posted.map(call => call.body.action), ['poll'], 'an ordinary browser cannot poll background applications');
 });
 
@@ -139,7 +139,7 @@ test('a forced poll waits for an in-flight alarm then makes its own extension re
   });
   const alarm = pollBackgroundApply(current.local);
   await opened;
-  const forced = globalThis.__jobPilottoBackgroundSessions.poll().then(value => { settled = true; return value; });
+  const forced = globalThis.__jobadabraBackgroundSessions.poll().then(value => { settled = true; return value; });
   await new Promise(resolve => setImmediate(resolve));
   const wasSettled = settled;
   release();

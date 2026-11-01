@@ -13,20 +13,20 @@ const extensionDir = process.env.REAL_EXTENSION_DIR || undefined;
 async function start(answer = {}) {
   const app = await startRealExtension({extensionDir, allowAllSites: true, answer: {'/extension/report-form': () => ({ok: true, enabled: true}), ...answer}});
   await app.context.route('https://jobs.example.test/**', route => route.fulfill({status: 200, contentType: 'text/html', body: FORM}));
-  await app.page.goto('https://jobs.example.test/apply#jobpilotto-fill');   // the app opens the tab with the mark: the recording starts as it loads
-  await app.page.waitForFunction(() => document.getElementById('jobpilotto-review-host')?.shadowRoot?.querySelector('.report-btn'), null, {timeout: 20000});
+  await app.page.goto('https://jobs.example.test/apply#jobadabra-fill');   // the app opens the tab with the mark: the recording starts as it loads
+  await app.page.waitForFunction(() => document.getElementById('jobadabra-review-host')?.shadowRoot?.querySelector('.report-btn'), null, {timeout: 20000});
   // The page's own first fill runs first: while it works, Report is not drawn (owner, 27 Oct 2026: a button that cannot act while working is hidden); its end brings it back.
-  await app.page.waitForFunction(() => !document.getElementById('jobpilotto-review-host').shadowRoot.querySelector('.jp.working'), null, {timeout: 30000});
+  await app.page.waitForFunction(() => !document.getElementById('jobadabra-review-host').shadowRoot.querySelector('.jp.working'), null, {timeout: 30000});
   await app.page.waitForTimeout(1000);
   return app;
 }
-const openPanel = page => page.evaluate(() => { const root = document.getElementById('jobpilotto-review-host').shadowRoot; if (root.querySelector('.card').hidden) root.querySelector('.pill').click(); });
+const openPanel = page => page.evaluate(() => { const root = document.getElementById('jobadabra-review-host').shadowRoot; if (root.querySelector('.card').hidden) root.querySelector('.pill').click(); });
 const pressReport = async page => {
-  const box = await page.evaluate(() => { const b = document.getElementById('jobpilotto-review-host').shadowRoot.querySelector('.report-btn').getBoundingClientRect(); return {x: b.x + b.width / 2, y: b.y + b.height / 2}; });
+  const box = await page.evaluate(() => { const b = document.getElementById('jobadabra-review-host').shadowRoot.querySelector('.report-btn').getBoundingClientRect(); return {x: b.x + b.width / 2, y: b.y + b.height / 2}; });
   await page.mouse.click(box.x, box.y);   // a real click: the popup ignores a script's
 };
-const popup = page => page.evaluate(() => { const pop = document.getElementById('jobpilotto-review-host').shadowRoot.querySelector('.report-pop'); const r = pop.getBoundingClientRect(); return {hidden: pop.hidden, text: pop.textContent.replace(/\s+/g, ' ').trim(), right: window.innerWidth - r.right, bottom: window.innerHeight - r.bottom, left: r.left}; });
-const popupText = async (page, pattern) => { await page.waitForFunction(source => new RegExp(source).test(document.getElementById('jobpilotto-review-host').shadowRoot.querySelector('.report-pop').textContent), pattern.source, {timeout: 8000}).catch(() => {}); return popup(page); };
+const popup = page => page.evaluate(() => { const pop = document.getElementById('jobadabra-review-host').shadowRoot.querySelector('.report-pop'); const r = pop.getBoundingClientRect(); return {hidden: pop.hidden, text: pop.textContent.replace(/\s+/g, ' ').trim(), right: window.innerWidth - r.right, bottom: window.innerHeight - r.bottom, left: r.left}; });
+const popupText = async (page, pattern) => { await page.waitForFunction(source => new RegExp(source).test(document.getElementById('jobadabra-review-host').shadowRoot.querySelector('.report-pop').textContent), pattern.source, {timeout: 8000}).catch(() => {}); return popup(page); };
 
 test('pressing the panel\'s Report opens a popup on the panel, bottom right, and the old bottom-left ⚑ and Stop-side card are gone', async () => {
   const app = await start();
@@ -38,7 +38,7 @@ test('pressing the panel\'s Report opens a popup on the panel, bottom right, and
     assert.equal(shown.hidden, false, 'the Report press opened no popup');
     assert.ok(shown.right < 40 && shown.left > 200, `the popup is over the panel on the right, not another corner: ${JSON.stringify(shown)}`);
     assert.match(shown.text, /Send this form's recording\?|Nothing to send/);
-    assert.equal(await app.page.evaluate(() => !!document.getElementById('jobpilotto-report-host')), false, 'no separate ⚑ chip host any more');
+    assert.equal(await app.page.evaluate(() => !!document.getElementById('jobadabra-report-host')), false, 'no separate ⚑ chip host any more');
     await app.page.screenshot({path: process.env.SHOT || undefined});
   } finally { await app.close(); }
 });

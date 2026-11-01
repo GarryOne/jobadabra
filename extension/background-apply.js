@@ -10,7 +10,7 @@ import {allFactsSavedOf} from './triage-facts.js';
 
 let runner = null, watcher = () => {}, polling = null;
 const owned = () => (runner ||= createBackgroundSession({chrome, parseMark}));
-globalThis.__jobPilottoBackgroundSessions = {reveal: session => owned().reveal(session), closeSession: session => owned().closeSession(session),
+globalThis.__jobadabraBackgroundSessions = {reveal: session => owned().reveal(session), closeSession: session => owned().closeSession(session),
   // The owned browser can request the alarm's ordinary poll after its app's e2e clock moved; the poll still checks ownership and every submit guard.
   poll: async () => {
     const config = await settings();
@@ -49,7 +49,7 @@ export async function backgroundChallenge(tabId, reason = 'captcha_runtime') {  
   const context = await backgroundContext(tabId);
   if (!context) return false;
   await owned().requireManual(context.session, reason);
-  await chrome.scripting.executeScript({target: {tabId, allFrames: true}, world: 'MAIN', func: () => { window.__jobPilottoStopped = true; }}).catch(() => {});
+  await chrome.scripting.executeScript({target: {tabId, allFrames: true}, world: 'MAIN', func: () => { window.__jobadabraStopped = true; }}).catch(() => {});
   await request(context, {action: 'manual', reason}).catch(() => null);
   const row = await owned().inspect(context.session);
   if (reason !== 'captcha_preflight' && !row.revealedAt) await owned().reveal(context.session);   // words-ok: our own hand-off reason id / user-facing word, not page knowledge

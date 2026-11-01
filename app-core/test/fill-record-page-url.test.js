@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-const FORM_URL = 'https://careers.example.test/careers?job=restored#jobpilotto-fill';
+const FORM_URL = 'https://careers.example.test/careers?job=restored#jobadabra-fill';
 const JOB_URL = 'http://careers.example.test/careers?job=original';
 const NEXT_URL = 'https://careers.example.test/confirmation';
 
@@ -15,8 +15,8 @@ test('the run records the filled page snapshot, not the kit address or the tab a
     storage: {session: {get: async () => ({}), set: async () => {}}, local: {get: async () => ({})}},
     scripting: {executeScript: async ({func, args}) => {
       if (!func) return [{}];
-      globalThis.window = {__jobPilottoDescribeForm: () => [], __jobPilottoCheckboxQuestions: () => [], __jobPilottoPageText: () => '',
-        __jobPilottoProfileEntries: () => [], __jobPilottoExtensionFill: () => ({filled: 1, todo: [], trace: []}), __jobPilottoArmedCount: () => 0};
+      globalThis.window = {__jobadabraDescribeForm: () => [], __jobadabraCheckboxQuestions: () => [], __jobadabraPageText: () => '',
+        __jobadabraProfileEntries: () => [], __jobadabraExtensionFill: () => ({filled: 1, todo: [], trace: []}), __jobadabraArmedCount: () => 0};
       return [{result: await func(...(args || []))}];
     }},
   };

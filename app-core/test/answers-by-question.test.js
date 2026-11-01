@@ -14,7 +14,7 @@ const rowOf = (summary, label) => Array.from(summary.trace).find((row) => row.la
 
 test('an answer for a gone id is typed in the row with the same question; a proposal reads as proposed', {skip}, async () => {
   const window = openPage(JSDOM, PAGE);
-  const summary = await window.__jobPilottoExtensionFill([
+  const summary = await window.__jobadabraExtensionFill([
     {field: '__input1-inner', value: 'Platform', question: 'Team name', source: 'Claude (on the page)', use: 'fill'},
     {field: '__input2-inner', value: 'P4711', question: 'Project code', source: 'Claude (on the page)', use: 'propose'},
   ], {}, null, '', false);
@@ -27,7 +27,7 @@ test('an answer for a gone id is typed in the row with the same question; a prop
 
 test('two rows with one question are not told apart: the answer is lost, never guessed', {skip}, async () => {
   const window = openPage(JSDOM, PAGE.replace('Project code', 'Team name'));
-  const summary = await window.__jobPilottoExtensionFill([{field: '__input1-inner', value: 'Platform', question: 'Team name', source: 'Claude (on the page)', use: 'fill'}], {}, null, '', false);
+  const summary = await window.__jobadabraExtensionFill([{field: '__input1-inner', value: 'Platform', question: 'Team name', source: 'Claude (on the page)', use: 'fill'}], {}, null, '', false);
   assert.equal(window.document.getElementById('__input31-inner').value, '');
   assert.deepEqual({...summary.reach}, {asked: 1, matched: 0, byQuestion: 0, lost: 1});
   window.close();
@@ -35,7 +35,7 @@ test('two rows with one question are not told apart: the answer is lost, never g
 
 test('an answer whose id is still on the page is matched by id, as before', {skip}, async () => {
   const window = openPage(JSDOM, PAGE);
-  const summary = await window.__jobPilottoExtensionFill([{field: '__input31-inner', value: 'Platform', question: 'Project code', source: 'Claude (on the page)', use: 'fill'}], {}, null, '', false);
+  const summary = await window.__jobadabraExtensionFill([{field: '__input31-inner', value: 'Platform', question: 'Project code', source: 'Claude (on the page)', use: 'fill'}], {}, null, '', false);
   assert.equal(window.document.getElementById('__input31-inner').value, 'Platform');
   assert.deepEqual({...summary.reach}, {asked: 1, matched: 1, byQuestion: 0, lost: 0});
   window.close();

@@ -17,7 +17,7 @@ function page(form) {
   const inPage = async (tabId, func) => (String(func).includes('DescribeForm') ? form.rows : String(func).includes('GaveUp') ? [] : String(func).includes('ReadBack') ? [] : null);
   return {lines, inPage, decide: (kind, text, data) => { lines.push({kind, text, data}); return Promise.resolve(); }};
 }
-const arm = (tabId, host, extra = {}) => armRecordUpdate(tabId, {page: 'https://jobs.example.com/apply#jobpilotto-fill', trace: TRACE, resumeName: '', inPage: host.inPage, decide: host.decide, quietMs: 0, ...extra});
+const arm = (tabId, host, extra = {}) => armRecordUpdate(tabId, {page: 'https://jobs.example.com/apply#jobadabra-fill', trace: TRACE, resumeName: '', inPage: host.inPage, decide: host.decide, quietMs: 0, ...extra});
 
 test('a retype after the record was sent logs ONE updated fields line, with the new outcomes', async () => {
   const form = {rows: [{label: 'First name', field: 'first_name', filled: true}, {label: 'Email', field: 'email', filled: true}]};
@@ -27,7 +27,7 @@ test('a retype after the record was sent logs ONE updated fields line, with the 
   assert.equal(host.lines.length, 1);
   assert.equal(host.lines[0].text, 'fields (updated after a late retype): 2 filled, 0 left');
   assert.deepEqual(host.lines[0].data.fields.map(row => [row.label, row.outcome]), [['First name', 'filled'], ['Email', 'filled']]);
-  assert.equal(host.lines[0].data.url, 'https://jobs.example.com/apply#jobpilotto-fill', 'the page of the fill line it replaces');
+  assert.equal(host.lines[0].data.url, 'https://jobs.example.com/apply#jobadabra-fill', 'the page of the fill line it replaces');
   assert.deepEqual(seen, [['First name:filled', 'Email:filled']]);
   disarmRecordUpdate(1);
 });

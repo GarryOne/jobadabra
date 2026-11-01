@@ -7,7 +7,7 @@ import {fileURLToPath} from 'node:url';
 import {quiet, runsData} from './activity-steps.mjs';
 import {ensureSetUp} from './seed.mjs';
 import {clearData} from './start-state.mjs';
-import {rewriteTextLines} from './seed-texts.mjs';
+import {rewriteTextLines, textOf} from './seed-texts.mjs';
 import {MATCHES, matchRowsOf} from './quality-rows.mjs';
 import {capViolations, checkFacts, fingerprints, leaks, matchRows, normalizeUrl, rankingViolations, workLeft} from './quality.mjs';
 import {withRoles} from './search-roles.mjs';
@@ -170,7 +170,10 @@ export function qualityJourney(ctx, {strict = false, wait = {}} = {}) {
     // The Profile through the store the app uses (this Mac's profile.md or Notion's Profile page).
     const set = [await rewriteTextLines(ctx, 'profile', /^\s*(?:[-*]\s*)?(?:\*\*)?Target:/, 'Target: CHF 170,000 per year in Switzerland'),
       await rewriteTextLines(ctx, 'profile', /^\s*(?:[-*]\s*)?(?:\*\*)?Minimum acceptable:/, 'Minimum acceptable: CHF 140,000 per year in Switzerland')];
-    if (set.some(count => count !== 1)) throw new Error(`the Profile should have one Target line and one Minimum acceptable line, found ${set.join(' and ')}`);
+    if (set.some(count => count !== 1)) {   // Why (#2759, 1 Nov 2026, a8): "found 0 and 1" could not tell a blank template from an AI draft with no Target line; the page's size and first lines can.
+      const held = (await textOf(ctx, 'profile')) || '';
+      throw new Error(`the Profile should have one Target line and one Minimum acceptable line, found ${set.join(' and ')}; it holds ${held.length} characters, ${held.split('\n').filter(line => line.trim()).length} non-empty lines: ${JSON.stringify(held.split('\n').filter(line => line.trim()).slice(0, 6))}`);
+    }
     }
     // The golden postings replace the shared fixture feeds: one board, twelve postings (one is a duplicate).
       for (const file of fs.readdirSync(ctx.feeds)) fs.rmSync(path.join(ctx.feeds, file), {force: true, recursive: true});

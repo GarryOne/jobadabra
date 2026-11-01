@@ -2,7 +2,6 @@
 //   Rung: <0-6 | router | judges>        Fixture: <fixture id[, id] | none: <why>>
 // Fake commit ranges; the hook must not ask a push that touches no flow file.
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import {test} from 'node:test';
 import {isFlowPush, missingTrailer} from '../../tools/rung-trailer.mjs';
 import {FLOW_FILES} from '../e2e/flows.mjs';
@@ -50,8 +49,4 @@ test('a wrong value is named: an unknown rung, an unknown fixture, a "none" with
   assert.match(ask(FLOW, ['Rung: 2\nFixture: aldi-suisse, nope']), /no fixture "nope"/);
   assert.match(ask(FLOW, ['Rung: 2\nFixture: none']), /needs a reason/);
   assert.match(ask(FLOW, ['Rung: 2\nFixture: none: ']), /needs a reason/);
-});
-
-test('the check is wired into the push hook', () => {
-  assert.match(fs.readFileSync(new URL('../../tools/pre-push-check.sh', import.meta.url), 'utf8'), /node tools\/rung-trailer\.mjs --base origin\/main/);
 });

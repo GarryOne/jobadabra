@@ -62,10 +62,3 @@ test('every prompt the registry names exists in its file, and every case file ex
     }
   }
 });
-
-test('the push gate runs it beside the Why check, before a PR push stops', () => {
-  const hook = fs.readFileSync(new URL('tools/pre-push-check.sh', root), 'utf8');
-  const at = hook.indexOf('node tools/prompt-cases.mjs --base origin/main');
-  assert.ok(at > 0 && Math.abs(at - hook.indexOf('node tools/why-changed.mjs --base origin/main')) < 2000);
-  assert.ok(at < hook.indexOf('case "$command" in *SHIP_PR=1*|*CI_GATES=1*)'));
-});

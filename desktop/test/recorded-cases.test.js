@@ -89,8 +89,8 @@ test('the push\'s own recorded cases are named, for the fails-on-old replay', ()
   assert.deepEqual(casesOf(['desktop/e2e/recorded/a-1/case.json', 'desktop/e2e/recorded/a-1/pages/1.html', 'desktop/e2e/recorded/b-1/case.json', 'extension/log.js', 'desktop/test/journeys.test.js']), ['a-1', 'b-1']);
 });
 
-test('the check is wired into the push hook', () => {
-  assert.match(fs.readFileSync(new URL('../../tools/pre-push-check.sh', import.meta.url), 'utf8'), /node tools\/recorded-cases\.mjs --base origin\/main/);
+test('report is a label of the case, not part of the replay; the hook wiring is tested in commit-checks.test.js', () => {
+  assert.ok(LABEL_KEYS.includes('report'));
 });
 
 test('a push that adds a recorded case names the pool row it fixes, or says none and why (the Fixed tab lists fixes by row)', () => {

@@ -13,7 +13,7 @@ GATE = (ROOT / 'tools' / 'pre-push-check.sh').read_text()
 class GateOrderTest(unittest.TestCase):
     def test_cheap_checks_run_before_the_slow_gates(self):
         slow = GATE.index('gate_run() {')
-        for cheap in ('timed "file size"', 'timed "recorded cases"', 'timed "rung trailer"', 'timed "e2e issue links"'):
+        for cheap in ('timed "file size"', 'timed "commit checks"'):
             self.assertLess(GATE.index(cheap), slow, f'{cheap} must run before the journey and ladder gates')
 
 

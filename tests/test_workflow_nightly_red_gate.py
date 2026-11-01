@@ -103,6 +103,25 @@ class NightlyRedGateRuns(unittest.TestCase):
         self.assertEqual(sent, "Nightly skipped: main's e2e still red on apply,employers (re-check https://example.test/runs/99)")
         self.assertIn('::notice title=Nightly skipped::' + sent, stdout)
 
+    def test_a_red_that_is_not_safety_or_data_goes_on_and_its_line_reaches_the_release_notes(self):
+        # Owner, 1 Nov 2026: "Safety strict, rest tolerant". The gate exits 0 with one line; the night builds, and the line rides the `changes` job output to both release jobs.
+        line = 'Red on main, not safety or data: applyflows · a sign-up page before the form'
+        code, out, sent, _ = run_step(0, f"Main's e2e is red:\n  applyflows (since 1234567, https://example.test/runs/1)\n{line}\n")
+        self.assertEqual(code, 0)
+        self.assertEqual(out.splitlines(), ['red=false', f'note={line}'])
+        self.assertEqual(sent, '')
+        self.assertIn("red_note: ${{ steps.redmain.outputs.note || inputs.red_not_blocking }}", first_job())
+        for job in ('release-mac', 'release-windows'):
+            text = TEXT.split(f'\n  {job}:\n', 1)[1].split('\n  gate-ran:\n' if job == 'release-windows' else '\n  release-windows:\n', 1)[0]
+            self.assertIn('RED_ON_MAIN_NOTE: ${{ needs.changes.outputs.red_note }}', text, job)
+        self.assertIn('RED_ON_MAIN_NOTE', (ROOT / 'tools/beta-approve.sh').read_text())
+        self.assertIn('-f red_not_blocking="$red_note"', (ROOT / 'tools/beta-release.sh').read_text())
+
+    def test_a_skipped_night_says_which_safety_or_data_step_stopped_it(self):
+        output = RED_OUTPUT.replace('Re-check failure', 'Stops the beta: apply · Stop halts the fill: a safety step failed\nRe-check failure')
+        _, _, sent, _ = run_step(1, output)
+        self.assertEqual(sent, "Nightly skipped: main's e2e still red on apply,employers — apply · Stop halts the fill: a safety step failed (re-check https://example.test/runs/99)")
+
     def test_an_unreadable_main_is_not_green_either(self):
         code, out, sent, _ = run_step(1, 'Could not read main\'s e2e state: unknown, not green.\n')
         self.assertEqual((code, out.strip()), (0, 'red=true'))

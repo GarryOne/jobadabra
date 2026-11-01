@@ -18,7 +18,7 @@ esac
 '''
 
 
-def approve(retry_text):
+def approve(retry_text, red=None):
     with tempfile.TemporaryDirectory() as directory:
         folder = Path(directory)
         (folder / 'bin').mkdir()
@@ -29,6 +29,8 @@ def approve(retry_text):
         if retry_text is not None:
             (folder / 'retry.txt').write_text(retry_text)
             env['PASSED_ON_RETRY_FILE'] = str(folder / 'retry.txt')
+        if red is not None:
+            env['RED_ON_MAIN_NOTE'] = red
         subprocess.run(['bash', str(ROOT / 'tools' / 'beta-approve.sh'), 'desktop-v0.8.70'], capture_output=True, text=True, env=env, check=True)
         return (folder / 'notes').read_text()
 
@@ -42,6 +44,17 @@ class TheNotesListWhatPassedOnRetry(unittest.TestCase):
     def test_nothing_is_added_when_no_step_retried(self):
         for text in ('', None):
             self.assertNotIn('Passed on retry', approve(text), repr(text))
+
+
+class TheNotesListARedMainThatDidNotStopTheBeta(unittest.TestCase):
+    def test_the_gates_line_follows_the_retry_line(self):
+        # Owner, 1 Nov 2026: "Safety strict, rest tolerant": a red on main that is not safety or data does not stop a beta; its notes list it (tools/red-main-gate.sh prints the line).
+        notes = approve('Passed on retry in this beta: jobs · the list\n', 'Red on main, not safety or data: applyflows · a sign-up page before the form')
+        self.assertTrue(notes.rstrip().endswith('Passed on retry in this beta: jobs · the list\nRed on main, not safety or data: applyflows · a sign-up page before the form'), notes)
+
+    def test_it_stands_alone_and_an_empty_note_adds_nothing(self):
+        self.assertTrue(approve(None, 'Red on main, not safety or data: a · b').rstrip().endswith('Red on main, not safety or data: a · b'))
+        self.assertNotIn('Red on main', approve(None, ''))
 
 
 if __name__ == '__main__':

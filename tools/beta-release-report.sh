@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # What a beta by hand did, in one line: which version it built and whether each platform approved it. Called by tools/beta-release.sh after the run ends.
 #   tools/beta-release-report.sh <run id> <run url>
-# Why (1 Nov 2026, #41277723872): the report read the version from the run log's "Releasing X" line, which the log now shows first as the step's own source (`echo "Releasing $version"`), so the version
-# came out empty and a released beta (desktop-v0.8.67, approved on both platforms) was reported as "finished without a release". It reads what the run leaves behind instead: the version tag the build
-# made at the run's head commit, the release notes' "Beta-approved" lines, and the release gate's own "Not released: <why>" line (tools/beta_rate_gate.py).
+# Why (1 Nov 2026, run 41277723872): the report took the version from the run log's Releasing line, but the log shows the step's own source first, so the version came out empty and a released beta
+# (desktop-v0.8.67, approved on both platforms) was reported as finished without a release. It reads what the run leaves behind instead: the version tag the build made at the run's head commit, the
+# release notes' approval lines, and the release gate's own one line of why (tools/beta_rate_gate.py).
 set -euo pipefail
 repo=${BETA_REPO:-GarryOne/jobadabra}
 id=${1:?usage: beta-release-report.sh <run id> <run url>}

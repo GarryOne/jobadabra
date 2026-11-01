@@ -48,6 +48,17 @@ class PrePushPrTest(PrePushFixture):
                 else:
                     self.assertNotIn('Push blocked', err)
 
+    def test_the_lane_registry_is_left_to_the_pr_on_a_ship_push_only(self):
+        # Why (1 Nov 2026, Gitar on #2765): the check was skipped for every push without CI_GATES=1, which also covers a direct push to main; no pr-gate runs for that one,
+        # so rule E went unchecked. Only the ship push (SHIP_PR=1) leaves it to the PR's Fast checks.
+        self.needed_committed()
+        self.commit('Lane registry refuses', {'tools/lanes-check.mjs': "console.log('lane registry refusal');\nprocess.exit(1);\n"})
+        for push, blocked in (('SHIP_PR=1 git push origin topic', False), ('CI_GATES=1 git push origin topic', True), ('git push origin HEAD:main', True)):
+            with self.subTest(push=push):
+                code, err = self.hook(push)
+                self.assertEqual(code, 2 if blocked else 0, err)
+                self.assertEqual('lane registry refusal' in err, blocked, err)
+
     def test_the_same_push_without_the_marker_still_runs_the_suites(self):
         self.needed_committed()
         self.assertEqual(self.hook('git push origin HEAD:main')[0], 0)

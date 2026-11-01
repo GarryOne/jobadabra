@@ -10,7 +10,7 @@ import {routeTable} from './server-routes.js';
 import {POST_CORS, tokenRequest, jsonHeaders, jsonBody} from './server-http.js';
 import {handleExtension} from '../shared/worker/extension.js';
 import {log as appLog} from './log.js';
-import {timed} from './ext-http-timing.js';
+import {timed, noteConnection} from './ext-http-timing.js';
 import {listen, portFrom, DEFAULT_PORT} from './server-listen.js';
 import * as pipeline from './pipeline.js';
 import * as viewCache from './view-cache.js';
@@ -190,6 +190,7 @@ export function requestListener(storage, timing = {}) {
 // -> a loopback HTTP server; routes share this storage and report listener errors to onError.
 export function start(storage, onError = () => {}) {
   const server = http.createServer(requestListener(storage));
+  server.on('connection', socket => noteConnection(socket));   // #2608: the slow-request line says how long a new connection waited and what held the others
   listen(server, PORT, {onError});   // lib/server-listen.js: a busy port is said and retried, a test app without its own port stays off
   return server;
 }

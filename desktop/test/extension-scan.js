@@ -1,8 +1,9 @@
 // Reads the extension's source and says, per /extension/ route, which files call it and which JSON keys each call sends (statically; no browser).
 import fs from 'node:fs';
 import path from 'node:path';
+import {fileURLToPath} from 'node:url';
 
-export const REPO = new URL('../../', import.meta.url).pathname;
+export const REPO = fileURLToPath(new URL('../../', import.meta.url));   // Why (#2762, Gitar): URL.pathname is /C:/... on Windows
 
 /** -> the file's source with comments blanked (strings kept), for word searches that must not match prose. */
 const kept = new Map();
@@ -110,7 +111,7 @@ export function extensionCalls(files = extensionFiles()) {
   for (const file of files) {
     const raw = fs.readFileSync(path.join(REPO, file), 'utf8'), src = blankComments(raw);
     for (const m of src.matchAll(ROUTE)) {
-      const window = windowOf(src, m.index, m[0].length), statementEnd = window.search(/;\s*\n/);
+      const window = windowOf(src, m.index, m[0].length), statementEnd = window.search(/\n\s*\n|;\s*\n/);
       const post = /method:\s*'POST'/.test(statementEnd > 0 ? window.slice(0, statementEnd) : window);
       calls.push({route: m[1], file, line: raw.slice(0, m.index).split('\n').length, method: post ? 'POST' : 'GET', body: post ? bodyOf(src, m.index, window) : null});
     }

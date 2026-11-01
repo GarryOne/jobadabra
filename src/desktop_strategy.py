@@ -9,7 +9,7 @@ import sys
 from . import digest, levels, target_roles
 from .ai import locations, score
 from .ai.insights_data import is_finding
-from .desktop_jobs import stage_status
+from .desktop_jobs import blank_profile, stage_status
 
 
 COMPONENTS = (('role_fit', 'Role fit'), ('location', 'Location fit'), ('compensation', 'Compensation'),
@@ -194,7 +194,7 @@ def strategy(db, tracker=None, stores=None):
     # The Profile still the empty template (an import or a new workspace): fit scores are paused (score.unfilled); the page says so.
     from .paths import local_profile
     own = local_profile()
-    profile_empty = score.unfilled(own) if own else (score.unfilled(profile) if (tracker or stores.name != 'notion') and profile is not None else False)
+    profile_empty = blank_profile(profile, own, bool(tracker or stores.name != 'notion'))
     sent = sum(n for stage, n in stages.items() if stage not in ('Saved', 'Kit ready', 'Applying', 'Dismissed', 'Closed', 'Recruiter lead'))
     return {
         'roles': unique([role['title'] for role in roles]),

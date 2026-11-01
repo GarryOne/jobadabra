@@ -13,6 +13,7 @@ import {toastMessage} from './startup.js';
 import {offered, shownLists} from '../key-sources.js';
 import {titleCase} from './strategy-review.js';
 import {showSearchChanged, wireSearchChanged} from '../search-changed.js';
+import {showProfileEmpty} from '../profile-empty.js';
 import {exclusionGroups, withTyped} from '../strategy-parts.js';
 import {inDraft, sink} from '../strategy-sink.js';
 import {strategyState} from './strategy-state.js';
@@ -293,7 +294,7 @@ export function renderCards() {
 export function renderStrategy(data) {
   strategyState.strategyShown = true;
   strategyState.lastStrategy = data;
-  show($('strategy-profile-empty'), !!data.profile_empty);
+  showProfileEmpty(!!data.profile_empty);   // Strategy's notice and Jobs' copy (profile-empty.js)
   wireSearchChanged();
   showSearchChanged(shared.state?.settings);   // scores are paused until it is filled (src/ai/score.py unfilled)
   drawOutdated(data.outdated, loadStrategy);   // "N jobs were scored using previous search settings", from the saved settings, never the draft

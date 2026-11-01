@@ -6,6 +6,7 @@ import {applicationStats, inboundCount, inProcess, jobCounts, statClick, takenDo
 import {shared} from './shared.js';
 import {keepRunLine} from '../run-lines.js';
 import {refreshBusy, showSearchChanged, wireSearchChanged} from '../search-changed.js';
+import {showProfileEmpty, wireProfileEmpty} from '../profile-empty.js';
 import {openActivity, refreshActivity, showSearchStatus} from './activity.js';
 import {paintFindCardFirst, renderFindCard, showFindRefused, wireFindCard} from './jobs-find.js';
 import {$, message, savedAgo} from './core.js';
@@ -85,7 +86,7 @@ export async function loadJobs() {
     // The last good list at once (lib/view-cache.js), then the fresh one from Notion replaces it.
     if (!shared.allJobs.length) {
       const saved = await window.pilot.cached('jobs');
-      if (saved?.result?.jobs) { showJobsData(saved.result); jobsState.jobsLoading = false; renderJobs(); $('jobs-stats').textContent += ` · saved ${savedAgo(saved.at)}, updating…`; jobsState.jobsLoading = true; }
+      if (saved?.result?.jobs) { showJobsData(withoutProfileVerdict(saved.result)); jobsState.jobsLoading = false; renderJobs(); $('jobs-stats').textContent += ` · saved ${savedAgo(saved.at)}, updating…`; jobsState.jobsLoading = true; }
     }
     const fresh = await writes.read();
     if (fresh) { showJobsData(fresh); freshJobs = !fresh.stale; }  // from Notion now, not the cache: safe to ask about what's still Applying. null: a job was written meanwhile, its own read paints
@@ -148,12 +149,15 @@ function reloadQuietly() {
       .catch(() => {}).finally(() => { quietReload = null; });
   }, wait);
 }
+// Why (#2759, as strategy.js's saved copy): a saved list older than a Profile rebuild would bring "Your Profile is empty" back for the seconds before the fresh read; only the fresh read says it.
+const withoutProfileVerdict = ({profile_empty, ...rest}) => rest;
 export function showJobsData(data) {
   jobsState.lastJobsData = data;
   renderFindCard();   // its count decides "empty" (no jobs yet)
   // "Your search changed" until a refresh has finished: the settings as they are now (a refresh that just ended set lastSearchAt).
   wireSearchChanged();
   window.pilot.state().then(state => { shared.state = state; showSearchChanged(state.settings); }).catch(() => {});
+  if ('profile_empty' in data) showProfileEmpty(!!data.profile_empty);   // "Your Profile is empty, so fit scores are paused" (#2759): setup ends here
   {
     for (const job of takenDown(shared.allJobs, data.jobs)) {
       toastMessage('Posting taken down', `${job.company ? `${job.company} · ` : ''}${job.title || job.url}: its job board no longer lists it, so it moved to Closed. Your kit is kept.`, jobPlace(job), 'warn');
@@ -362,6 +366,7 @@ export async function init() {
   wireFindCard(() => startSearch());
   paintFindCardFirst();
 
+  wireProfileEmpty();
   $('jobs-unscored-go').addEventListener('click', () => $('refresh').click());
   wireApplyDialog({startedApplying});
   wireTriage({read: job => window.pilot.triageRead({url: job.url}), cancel: () => window.pilot.triageCancel(), rerender: () => renderJobs(), toast: toastMessage});

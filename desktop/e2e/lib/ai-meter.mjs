@@ -79,6 +79,32 @@ export function requestKey(url, body) {
 
 const cacheDir = (env = process.env) => env.E2E_AI_CACHE || '';
 export const replaying = (env = process.env) => env.E2E_AI_REPLAY === '1' && !!cacheDir(env);
+
+// Store ids in an ask. The model echoes ids back, and a store makes new ones every run (the Notion stand-in's block ids: `section:profile:<uuid>`, `profile:<uuid>`), so a key over
+// the raw body never matches the next run's ask.
+// Why (1 Nov 2026, a8; wizard-standin red in 3 night burn-ins, 41252826403 / 41261381533 / 41269467529): the organize ask carried 11-13 fresh block ids a night, so it could never be replayed.
+// Invariant: the key reads the ids by order of first appearance (the same id twice stays one id, two ids stay two), and an answer is kept and replayed in that same naming, then
+// written back with the current run's ids. A body with no UUID keeps the key it always had.
+const UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
+const slot = n => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
+const swap = (text, from, to) => from.reduce((out, id, n) => out.replaceAll(new RegExp(id, 'gi'), () => to(n)), text);
+/** -> {key, ids}: the request key with its UUIDs renamed by order of first appearance, and those UUIDs. Pure. */
+export function askKey(url, body) {
+  const text = body.toString('utf8'), ids = [];
+  for (const id of text.match(UUID) || []) if (!ids.some(seen => seen.toLowerCase() === id.toLowerCase())) ids.push(id);
+  if (!ids.length) return {key: requestKey(url, body), ids};
+  return {key: requestKey(url, Buffer.from(swap(text, ids, slot))), ids};
+}
+/** A kept answer for this ask: the one saved under its ids-free key (written back with this run's ids), else the one saved under the raw key before ids were renamed. */
+export function recallAsk(ask, url, body, env = process.env) {
+  const kept = recall(ask.key, env);
+  if (kept && ask.ids.length) return {...kept, body: Buffer.from(swap(kept.body.toString('utf8'), ask.ids.map((_, n) => slot(n)), n => ask.ids[n]))};
+  return kept || (ask.ids.length ? recall(requestKey(url, body), env) : null);
+}
+/** Keep a paid answer under the ids-free key, naming the ids it echoes by the same order. */
+export function keepAsk(ask, answer, env = process.env) {
+  keep(ask.key, ask.ids.length ? {...answer, body: Buffer.from(swap(Buffer.from(answer.body).toString('utf8'), ask.ids, slot))} : answer, env);
+}
 // Everything inside fn asks the model, whatever E2E_AI_REPLAY says; replay is back after it. For a check whose point is a second, independent answer (quality's
 // second scoring: replayed, it got the first answers back and always read ±0, 26 Oct 2026). Guard: test/ai-meter.test.mjs.
 export async function fresh(fn, env = process.env) {

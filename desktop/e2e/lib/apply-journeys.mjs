@@ -4,6 +4,7 @@
 import {LATE, SIGNIN, SIGNIN_PASSWORD, SIGNIN_REFUSED} from './forms.mjs';
 import {CONTACT, pause} from './apply-fixtures.mjs';
 import {pollSessions} from './app-log.mjs';
+import {lostTabIn} from './tab-bound.mjs';
 import {submitProblems} from './applycheck.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -26,7 +27,7 @@ export async function runJourneys(ctx, h) {
   };
   const filled = async (tab, pageKinds = []) => {
     const {value, ms} = await pollUntil(() => fillState(tab), state => fillSettled(state, {pageKinds}), {capMs: stepTimeLeft(), tickMs: 500});
-    if (value?.state !== 'done') throw new Error(fillNote(value, ms / 1000, {pageKinds}));
+    if (value?.state !== 'done') throw new Error(fillNote(value, ms / 1000, {pageKinds, lost: lostTabIn(ctx.profile)}));
     return value;
   };
   // A form drawn late (9 Oct 2026, SuccessFactors after a sign-in): judged while empty it reads as a posting whose "Apply" is the form's own submit span.

@@ -5,6 +5,7 @@ name: CI · Stable canary
 # drifts under a frozen build (Notion's API, the job sites' forms, an expired certificate). It runs the e2e journey on the stable tag (no paid AI judge) and:
 #   red   -> one issue labelled `stable-canary` (a regression reached users: decide to fix forward or roll back; it is NOT in the UI loop's backlog and the AI fixer never touches it)
 #   plan job failed (our harness; no suite ran on the build) -> this job fails, no issue, no comment: the build was not tested
+#   every failed step only ran out of time (no wrong answer) -> one issue/comment "timeouts only: re-look before any rollback"; never "promote the previous build"
 #   green -> that issue, if open, gets a comment and is closed.
 # Skipped when the stable build's own e2e run (the gate) passed in the last 20 hours: nothing could have drifted since.
 on:
@@ -69,7 +70,12 @@ jobs:
           echo "run=https://github.com/$REPO/actions/runs/$id" >> "$GITHUB_OUTPUT"
           if gh run watch "$id" -R "$REPO" --exit-status > /dev/null; then echo "result=green" >> "$GITHUB_OUTPUT"
           # red = a suite on the stable build failed; harness = only main's own plan job did (unit tests, suite list): no suite ever ran on the build
-          else v=$(gh run view "$id" -R "$REPO" --json jobs | python3 tools/canary_verdict.py); [ "$v" = harness ] && echo "result=harness" >> "$GITHUB_OUTPUT" || echo "result=red" >> "$GITHUB_OUTPUT"; fi
+          # timeouts = every failed step only ran out of time (tools/canary_verdict.py reads the suites' own failure records from the run's artifacts): not "the build is broken", not "promote previous"
+          else
+            gh run download "$id" -R "$REPO" --pattern 'e2e-artifacts-*' --dir canary-artifacts || echo "no failure records to read: a failed job is a stable red"
+            v=$(gh run view "$id" -R "$REPO" --json jobs | python3 tools/canary_verdict.py --failures canary-artifacts)
+            case "$v" in harness) echo "result=harness" >> "$GITHUB_OUTPUT";; timeouts) echo "result=timeouts" >> "$GITHUB_OUTPUT";; *) echo "result=red" >> "$GITHUB_OUTPUT";; esac
+          fi
       - name: Alarm, or all clear
         if: steps.stable.outputs.skip == '0' && steps.run.outputs.result != ''
         timeout-minutes: 5
@@ -83,6 +89,15 @@ jobs:
           open=$(gh issue list -R "$REPO" --label stable-canary --state open --json number -q '.[0].number // empty')
           if [ "$RESULT" = harness ]; then
             echo "The canary could not test \`$TAG\`: the run's plan job failed before any suite ran on it (main's harness, not the stable build): $RUN"; exit 1
+          fi
+          # Why (1 Nov 2026, a8; run 41312012476): three waits ran out and the issue said "promote the previous build"; the cause was a form tab the extension never saw. A red of waits only
+          # asks for a look at the run's notes and logs first, and never names a rollback (owner: "Fix the input, no retry"; v0.8.60 stayed).
+          if [ "$RESULT" = timeouts ]; then
+            note="The stable build \`$TAG\` (\`${SHA:0:7}\`): every failed step ran out of time, none gave a wrong answer: $RUN"
+            if [ -n "$open" ]; then gh issue comment "$open" -R "$REPO" --body "Still timing out. $note"
+            else gh issue create -R "$REPO" --label stable-canary --title "Stable $TAG: end-to-end steps ran out of time" \
+              --body "$note"$'\n\nTimeouts only: re-look before any rollback. Read each failed step\'s note and the suite\'s app.log in the run\'s artifacts first: a wait can run out because the runner was slow, because a tab or the extension never answered, or because the build is broken, and the canary cannot tell which. Compare with the same suite in the last gate run on this commit.'; fi
+            echo "$note"; exit 1
           fi
           if [ "$RESULT" = red ]; then
             note="The stable build \`$TAG\` (\`${SHA:0:7}\`) FAILED the end-to-end journey: $RUN"

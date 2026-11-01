@@ -5,7 +5,7 @@ Spend comes from Anthropic's Usage & Cost Admin API when an Admin API key is ava
 console shows. Without one (Admin keys need an organization account), it is the sum of this month's runs' AI cost
 (stores.cron_runs: ⏱️ Search runs "AI cost (USD)" in Notion), which every AI run logs (crawls, kits, insights, interviews, mail).
 
-Levels, against JOB_PILOTTO_MONTHLY_BUDGET_USD (your console limit, default 15):
+Levels, against JOBADABRA_MONTHLY_BUDGET_USD (your console limit, default 15):
   ok     below 70%
   warn   70% or more: one Telegram alert
   pause  90% or more: one Telegram alert, and the scheduled crawl skips optional AI (auto-kits, scoring
@@ -29,7 +29,7 @@ PAUSED_SCORE_MAX, PAUSED_ENRICH_MAX = 10, 30
 
 def monthly_budget():
     try:
-        return float(os.getenv('JOB_PILOTTO_MONTHLY_BUDGET_USD') or 15)
+        return float(os.getenv('JOBADABRA_MONTHLY_BUDGET_USD') or 15)
     except ValueError:
         return 15.0
 
@@ -107,7 +107,7 @@ def alert_once(db, info, send, now=None):
     if info['level'] == 'pause':
         text = (f"⚠️ <b>AI budget</b>\n{info['pct']:.0%} used · {describe(info)}\n\n<b>What is paused</b>\n"
                 "Auto-kits and extra scoring, until the limit resets on the 1st. Mail, insights and interview reviews keep running.\n\n"
-                "<b>Next step</b>\nTo resume now, raise the limit in the Anthropic console and JOB_PILOTTO_MONTHLY_BUDGET_USD.")
+                "<b>Next step</b>\nTo resume now, raise the limit in the Anthropic console and JOBADABRA_MONTHLY_BUDGET_USD.")
     else:
         text = (f"💸 <b>AI budget</b>\n{info['pct']:.0%} used · {describe(info)}\n\n<b>What happens next</b>\n"
                 "At 90% the optional AI steps pause so the essentials keep running.")
@@ -128,7 +128,7 @@ def apply_caps(args, info, warnings):
     if args.enrich_max:
         args.enrich_max = min(args.enrich_max, PAUSED_ENRICH_MAX)
     # The AI that helps find sources (careers pages, alert emails, scout ideas) is optional too: off until the month resets.
-    off = [name for name in (os.getenv('JOB_PILOTTO_DISABLE') or '').split(',') if name.strip()]
-    os.environ['JOB_PILOTTO_DISABLE'] = ','.join(dict.fromkeys(off + ['page_reader', 'job_alerts', 'scout_ai']))
+    off = [name for name in (os.getenv('JOBADABRA_DISABLE') or '').split(',') if name.strip()]
+    os.environ['JOBADABRA_DISABLE'] = ','.join(dict.fromkeys(off + ['page_reader', 'job_alerts', 'scout_ai']))
     warnings.append(f"budget {info['pct']:.0%}: auto-kits off, scoring capped at {PAUSED_SCORE_MAX}, AI source reading off")
     return True

@@ -1,5 +1,5 @@
 {
- "_comment": "The places the CENTRAL scout treats as wanted, worldwide (the index serves users everywhere; each user's own search.json decides which of its jobs they see). Every kind of role counts there (src/scout_probe.py counted, 19 Oct 2026). Used only via JOB_PILOTTO_LOCATIONS_FILE by the ops repo's central-scout workflow.",
+ "_comment": "The places the CENTRAL scout treats as wanted, worldwide (the index serves users everywhere; each user's own search.json decides which of its jobs they see). Every kind of role counts there (src/scout_probe.py counted, 19 Oct 2026). Used only via JOBADABRA_LOCATIONS_FILE by the ops repo's central-scout workflow.",
  "locations": {
   "top_tier": [
    "\\bzurich\\b",

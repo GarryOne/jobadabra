@@ -2,8 +2,8 @@
 Credential Manager (through `keyring`, bundled with the Windows app). Elsewhere (CI, Linux) there is none:
 reads return None and writes raise, so callers fall back to the environment.
 
-A test run (JOB_PILOTTO_E2E) or a live-test twin (JOB_PILOTTO_TWIN) never reads or writes the real store: what it saves goes to the
-run's own file (JOB_PILOTTO_ISOLATED_SECRETS, set by the app: desktop/lib/keychain.js), and reads see only that file. 8 Oct 2026: reads
+A test run (JOBADABRA_E2E) or a live-test twin (JOBADABRA_TWIN) never reads or writes the real store: what it saves goes to the
+run's own file (JOBADABRA_ISOLATED_SECRETS, set by the app: desktop/lib/keychain.js), and reads see only that file. 8 Oct 2026: reads
 were isolated but writes were not, so a local e2e run made a "new" job-site password and overwrote the owner's real one."""
 import getpass
 import json
@@ -17,7 +17,7 @@ _REAL_RUN = subprocess.run   # a test that replaces these has a fake store; only
 def under_test():
     """True while a test suite runs this code (unittest, pytest, or the flag a harness sets)."""
     argv0 = (sys.argv[0] if sys.argv else '').replace(os.sep, '/')   # unittest's own runner renames it "python3.x -m unittest"
-    return bool(os.getenv('JOB_PILOTTO_UNDER_TEST') or os.getenv('PYTEST_CURRENT_TEST')
+    return bool(os.getenv('JOBADABRA_UNDER_TEST') or os.getenv('PYTEST_CURRENT_TEST')
                 or ' -m unittest' in argv0 or argv0.endswith('unittest/__main__.py'))
 
 
@@ -28,7 +28,7 @@ def _reaches_real_store():
 
 def _refuse_real_write(real):
     """24 Oct 2026: a test's refused-scope check wrote job-pilotto.google.scopes into the owner's real Keychain. A test never writes or
-    deletes in the real store: it patches secret_store.put/delete, replaces subprocess.run / _keyring, or runs isolated (JOB_PILOTTO_E2E)."""
+    deletes in the real store: it patches secret_store.put/delete, replaces subprocess.run / _keyring, or runs isolated (JOBADABRA_E2E)."""
     if real and under_test():
         raise RuntimeError('A test tried to change the real secret store (Keychain / Credential Manager). Patch secret_store.put/delete or run isolated.')
 
@@ -52,13 +52,13 @@ _REAL_KEYRING = _keyring
 
 
 def isolated():
-    """True in the end-to-end journey (the app sets JOB_PILOTTO_E2E) and in a live-test twin (JOB_PILOTTO_TWIN, desktop/lib/twin.js): both run on
+    """True in the end-to-end journey (the app sets JOBADABRA_E2E) and in a live-test twin (JOBADABRA_TWIN, desktop/lib/twin.js): both run on
     the owner's own Mac, whose store holds their real Google sign-in and Telegram bot, so they see none."""
-    return bool(os.getenv('JOB_PILOTTO_E2E') or os.getenv('JOB_PILOTTO_TWIN'))
+    return bool(os.getenv('JOBADABRA_E2E') or os.getenv('JOBADABRA_TWIN'))
 
 
 def _isolated_items():
-    path = os.getenv('JOB_PILOTTO_ISOLATED_SECRETS')
+    path = os.getenv('JOBADABRA_ISOLATED_SECRETS')
     if not path:
         return path, {}
     try:
@@ -84,7 +84,7 @@ TWIN_MAY_READ = ('job-pilotto.google.client-id', 'job-pilotto.google.client-secr
 
 
 def _twin_may_read(service):
-    return bool(os.getenv('JOB_PILOTTO_TWIN')) and not os.getenv('JOB_PILOTTO_E2E') and service in TWIN_MAY_READ
+    return bool(os.getenv('JOBADABRA_TWIN')) and not os.getenv('JOBADABRA_E2E') and service in TWIN_MAY_READ
 
 
 def get(service, user=None):

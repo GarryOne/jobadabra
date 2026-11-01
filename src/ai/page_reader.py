@@ -175,7 +175,7 @@ def read(url, markup, client=None, db=None, careers_page=False):
 
 
 def usable():
-    """The AI reader may run: an AI key or Claude Code, and not switched off (JOB_PILOTTO_DISABLE=page_reader)."""
+    """The AI reader may run: an AI key or Claude Code, and not switched off (JOBADABRA_DISABLE=page_reader)."""
     from .. import features
     return features.enabled('page_reader') and engine.ready()
 

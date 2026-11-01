@@ -112,7 +112,7 @@ class OpenAIApiTests(unittest.TestCase):
     def test_big_is_the_main_model_thinking_harder_and_a_named_effort_wins(self):
         self.assertEqual(models.for_family('claude-opus-5-5', 'openai'), ('gpt-6.1-sol', 'high'))
         self.assertEqual(models.for_family('claude-opus-5-5', 'openai', 'low'), ('gpt-6.1-sol', 'low'))
-        self.assertEqual(models.for_family('claude-sonnet-5-5', 'openai', None, {'JOB_PILOTTO_OPENAI_MAIN_MODEL': 'gpt-x'}), ('gpt-x', None))
+        self.assertEqual(models.for_family('claude-sonnet-5-5', 'openai', None, {'JOBADABRA_OPENAI_MAIN_MODEL': 'gpt-x'}), ('gpt-x', None))
         self.assertEqual(models.for_family('gpt-6-luna', 'openai'), ('gpt-6-luna', None))   # already OpenAI's: kept
 
     def test_web_search_a_pdf_and_no_schema(self):
@@ -219,12 +219,12 @@ class CodexTests(unittest.TestCase):
         with mock.patch('src.ai.providers.openai_api.sdk', lambda action='': api), \
                 mock.patch('src.ai.providers.codex_cli.find_binary', lambda env=None: '/fake/codex'), \
                 mock.patch('subprocess.run', codex_run(failed, returncode=1)):
-            ticked = engine.client({'JOB_PILOTTO_AI_ENGINE': 'codex', 'JOB_PILOTTO_AI_FALLBACK': 'openai', 'OPENAI_API_KEY': 'k'})
+            ticked = engine.client({'JOBADABRA_AI_ENGINE': 'codex', 'JOBADABRA_AI_FALLBACK': 'openai', 'OPENAI_API_KEY': 'k'})
             ticked.run, ticked.log = codex_run(failed, returncode=1), (lambda t: None)
             self.assertEqual(json.loads(ticked.messages.create(**PARAMS).content[0].text), {'answer': 'yes'})
             self.assertTrue(ticked.fell_back)
-            self.assertIsNone(engine.client({'JOB_PILOTTO_AI_ENGINE': 'codex', 'JOB_PILOTTO_AI_FALLBACK': 'api', 'ANTHROPIC_API_KEY': 'k'}).fallback)
-            self.assertIsNone(engine.client({'JOB_PILOTTO_AI_ENGINE': 'codex', 'OPENAI_API_KEY': 'k'}).fallback)   # no tick, no fallback
+            self.assertIsNone(engine.client({'JOBADABRA_AI_ENGINE': 'codex', 'JOBADABRA_AI_FALLBACK': 'api', 'ANTHROPIC_API_KEY': 'k'}).fallback)
+            self.assertIsNone(engine.client({'JOBADABRA_AI_ENGINE': 'codex', 'OPENAI_API_KEY': 'k'}).fallback)   # no tick, no fallback
 
     def test_a_wrong_answer_is_repaired_once(self):
         bad = [{'type': 'item.completed', 'item': {'type': 'agent_message', 'text': 'Sure!'}}, {'type': 'turn.completed', 'usage': {}}]
@@ -252,11 +252,11 @@ class WordsTests(unittest.TestCase):
     def test_limits_and_plan_lines_name_the_chosen_engine(self):
         from src import daily_helpers, scout
         from src.ai import providers
-        with mock.patch.dict('os.environ', {'JOB_PILOTTO_AI_ENGINE': 'codex'}):
+        with mock.patch.dict('os.environ', {'JOBADABRA_AI_ENGINE': 'codex'}):
             self.assertIn('Codex', daily_helpers.left_out({'pending': 2, 'done': 0, 'limit': 'cli'}, 'scored')[0])
             self.assertIn('ChatGPT plan (Codex', scout.ai_cost_line('scout run', 0.0, 0, 3, 3))
             self.assertEqual(cost.limit_reason(contract.AiLimit('x')), 'Codex (your ChatGPT plan) cannot go on')
-        with mock.patch.dict('os.environ', {'JOB_PILOTTO_AI_ENGINE': 'openai'}):
+        with mock.patch.dict('os.environ', {'JOBADABRA_AI_ENGINE': 'openai'}):
             self.assertIn('OpenAI API', daily_helpers.left_out({'pending': 1, 'done': 0, 'limit': 'cli'}, 'read by AI')[0])
         self.assertEqual(set(providers.ENGINES), {'api', 'cli', 'openai', 'codex'})
 

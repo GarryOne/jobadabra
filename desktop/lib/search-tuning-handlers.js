@@ -24,7 +24,7 @@ export function registerSearchTuningHandlers(ctx) {
   ipcMain.handle('searchCoverage', async () => {
     if (DEMO) return {ok: true, coverage: JSON.parse(fs.readFileSync(demoPath(here, 'coverage.json'), 'utf8'))};   // the Strategy cards and the few-jobs buttons, shown
     // A test run can make the engine's answer as slow as it is on a real machine (a Python start over a big data folder): the card must not arrive late and push the page.
-    if (process.env.JOB_PILOTTO_E2E && Number(process.env.JOB_PILOTTO_E2E_COVERAGE_MS) > 0) await new Promise(resolve => setTimeout(resolve, Number(process.env.JOB_PILOTTO_E2E_COVERAGE_MS)));
+    if (process.env.JOBADABRA_E2E && Number(process.env.JOBADABRA_E2E_COVERAGE_MS) > 0) await new Promise(resolve => setTimeout(resolve, Number(process.env.JOBADABRA_E2E_COVERAGE_MS)));
     const {code, stdout} = await pipeline.run(storage, ['src.desktop', 'coverage']);
     if (code !== 0) return {ok: false, error: 'Could not read the coverage (see the activity log)'};
     try { return {ok: true, coverage: JSON.parse(stdout.trim().split('\n').pop())}; } catch { return {ok: true, coverage: null}; }
@@ -183,8 +183,8 @@ export function registerSearchTuningHandlers(ctx) {
     } catch (error) { return {ok: false, error: error.message}; }
   });
   ipcMain.handle('strategyData', sharedRead('strategyData', async () => {
-    // Demo mode: JOB_PILOTTO_DEMO_STRATEGY_DELAY ms first, to see (and screenshot) the loading state.
-    if (DEMO && process.env.JOB_PILOTTO_DEMO_STRATEGY_DELAY) await new Promise(resolve => setTimeout(resolve, Number(process.env.JOB_PILOTTO_DEMO_STRATEGY_DELAY)));
+    // Demo mode: JOBADABRA_DEMO_STRATEGY_DELAY ms first, to see (and screenshot) the loading state.
+    if (DEMO && process.env.JOBADABRA_DEMO_STRATEGY_DELAY) await new Promise(resolve => setTimeout(resolve, Number(process.env.JOBADABRA_DEMO_STRATEGY_DELAY)));
     if (!DEMO) await strategy.oneRolesList(storage, settingsDeps()).then(merged => merged && appLog('strategy', 'roles and searches merged into one list')).catch(error => appLog('strategy', 'roles not merged', {error: error.message}));
     const {code, stdout} = await pipeline.run(storage, ['src.desktop', 'strategy']);
     if (code !== 0) return {ok: false, error: 'Could not read your strategy (see the activity log)'};

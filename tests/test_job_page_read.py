@@ -53,7 +53,7 @@ class JobPageReadTests(unittest.TestCase):
     def test_the_cli_answers_sections_events_interviews_and_nothing_else(self):
         stores = memory.open_store()
         out = io.StringIO()
-        with mock.patch.object(cli, 'open_stores', return_value=stores), mock.patch.dict(os.environ, {'JOB_PILOTTO_STORE': 'memory'}):
+        with mock.patch.object(cli, 'open_stores', return_value=stores), mock.patch.dict(os.environ, {'JOBADABRA_STORE': 'memory'}):
             code = cli.main(['call', 'job_page', 'read', json.dumps({'app_id': 'nope'})], out=out)
             self.assertEqual((code, sorted(json.loads(out.getvalue())['result'])), (0, ['events', 'interviews', 'sections']))
             out2 = io.StringIO()
@@ -63,7 +63,7 @@ class JobPageReadTests(unittest.TestCase):
         # 21 Oct 2026 (7cc945d): the three reads ran in pool threads, and a SQLite connection refuses another thread: every drawer on the default store said
         # "Could not read this job" (the beta gate's stores suite). A store with no Notion tracker has no network GET to overlap: it is read in turn.
         with tempfile.TemporaryDirectory() as folder:
-            stores = sqlite.open_store({'JOB_PILOTTO_DATA_DIR': folder})
+            stores = sqlite.open_store({'JOBADABRA_DATA_DIR': folder})
             answer = job_page.read(stores, 'nope')
         self.assertEqual(sorted(answer), ['events', 'interviews', 'sections'])
 

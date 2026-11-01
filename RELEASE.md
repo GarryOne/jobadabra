@@ -95,14 +95,14 @@ Older builds are `0.4.0-alpha.N`; the updater and the release tools still order 
 - 🚪 **Escape hatch:** menu → **Update to the Newest Test Build Now…** installs the newest build and leaves this
   canary's trial (no more offers until the canary changes). Friends (stable) are unaffected.
 
-> 🔑 **Secret to set once:** repo secret `JOB_PILOTTO_TELEMETRY_KEY` = the site's stats key
+> 🔑 **Secret to set once:** repo secret `JOBADABRA_TELEMETRY_KEY` = the site's stats key
 > (same value as the Worker's `STATS_KEY`, Keychain `job-pilotto.site.stats_key`). Without it, it always waits.
 
 | | |
 |---|---|
-| **Turn on** | `gh variable set JOB_PILOTTO_AUTO_PROMOTE -R GarryOne/jobadabra --body on` |
-| **Stop it** | `gh variable set JOB_PILOTTO_AUTO_PROMOTE -R GarryOne/jobadabra --body off` (or delete the variable) |
-| **See the decision** | `python3 tools/canary_promote.py --dry-run` (changes nothing; with `JOB_PILOTTO_TELEMETRY_KEY` set to see the usage numbers) |
+| **Turn on** | `gh variable set JOBADABRA_AUTO_PROMOTE -R GarryOne/jobadabra --body on` |
+| **Stop it** | `gh variable set JOBADABRA_AUTO_PROMOTE -R GarryOne/jobadabra --body off` (or delete the variable) |
+| **See the decision** | `python3 tools/canary_promote.py --dry-run` (changes nothing; with `JOBADABRA_TELEMETRY_KEY` set to see the usage numbers) |
 
 While off, it still runs daily as a dry run. Promoting by hand (above) keeps working either way.
 

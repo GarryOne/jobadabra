@@ -42,7 +42,7 @@ export function missing(storage) {
 export function bindings(storage, webhookSecret) {
   const settings = storage.settings();
   const plain = {OWNER_CHAT_ID: String(settings.telegramChatId), GITHUB_REPO: settings.cloud.repo, WORKFLOW_FILE: 'daily.yml',
-    JOB_PILOTTO_KIT_MODEL: MODELS.kit, ...Object.fromEntries(Object.entries(settings.notionIds || {}).filter(([, v]) => v))};
+    JOBADABRA_KIT_MODEL: MODELS.kit, ...Object.fromEntries(Object.entries(settings.notionIds || {}).filter(([, v]) => v))};
   const secret = {TELEGRAM_BOT_TOKEN: storage.secret('TELEGRAM_BOT_TOKEN'), WEBHOOK_SECRET: webhookSecret,
     GITHUB_TOKEN: storage.secret('GITHUB_TOKEN'), NOTION_TOKEN: storage.secret('NOTION_TOKEN'),
     ANTHROPIC_API_KEY: storage.secret('ANTHROPIC_API_KEY')};

@@ -127,7 +127,7 @@ class EngineAsTheWorkflowRunsItTests(unittest.TestCase):
             user['role_keywords'] = ['copied from your settings repo']
             (config / 'search.json').write_text(json.dumps(user))  # the "Your settings" copy step
             (config / 'preferences.json').write_text(json.dumps({'excluded_companies': ['Copied Corp']}))
-            env['JOB_PILOTTO_CONFIG_DIR'] = str(config)
+            env['JOBADABRA_CONFIG_DIR'] = str(config)
             done = subprocess.run([sys.executable, '-c', FAKE_NOTION], cwd=ROOT, env=env, capture_output=True, text=True)
             self.assertEqual(done.returncode, 0, done.stderr)
             return (json.loads(done.stdout.strip().splitlines()[-1]), json.loads((config / 'search.json').read_text()),

@@ -1,6 +1,6 @@
 // An in-memory Notion for the e2e suites (6 Oct 2026, the hybrid plan): fresh, private and instant for every suite run, so no token, no shared page, no leftovers
 // and no lag. It answers exactly the requests the app and the engine make (docs/notion-surface.md), in Notion's own response shapes, at the URL the app already
-// honours in a test run (JOB_PILOTTO_E2E_NOTION_BASE_URL). Real Notion behaviour the app must handle is kept where it is cheap (editing an archived page fails);
+// honours in a test run (JOBADABRA_E2E_NOTION_BASE_URL). Real Notion behaviour the app must handle is kept where it is cheap (editing an archived page fails);
 // lag is off unless a suite turns it on (`setLag(ms)`, 27 Oct 2026: focusdismiss, which is about Notion listing a write late): then a database query answers
 // each row as it stood `ms` ago, as Notion's query does, while a page read by its id is fresh. `seed(snapshot)` loads a scenario as plain data.
 // Job: run the backbone

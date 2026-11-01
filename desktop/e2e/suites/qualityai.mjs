@@ -143,7 +143,7 @@ async function runJourney(ctx, measured) {
     // The CV match (desktop/lib/match-check.js) on three golden postings with a fixed CV, judged by plain text rules, no second model: the terms the posting and the CV
     // both state must come back as found, and the code has to correct the model's claims about the CV only rarely (it corrects them; this watches how often).
     await soft(() => ctx.run('the CV match is right about the CV on golden postings: required terms found, few claims corrected', async () => {
-      process.env.JOB_PILOTTO_MODEL_OVERRIDE ||= env.JOB_PILOTTO_MODEL_OVERRIDE;
+      process.env.JOBADABRA_MODEL_OVERRIDE ||= env.JOBADABRA_MODEL_OVERRIDE;
       const {check, cvText} = await loadAppModule('match-check.js');
       const cv = persona?.cvMatch?.cv ?? {summary: 'Senior Site Reliability Engineer, nine years in cloud infrastructure, Kubernetes, observability and incident response.', skills: 'Kubernetes, Terraform, AWS, Datadog, OpenTelemetry, SLOs',
         jobs: [{company: 'Acme Cloud', roles: [{title: 'Senior SRE', period: '2022 – Present', place: 'Zurich', skills: 'AWS EKS, Terraform, Datadog',

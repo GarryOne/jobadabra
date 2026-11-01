@@ -26,7 +26,7 @@ jobs:
     timeout-minutes: 60
     continue-on-error: true   # report only
     env:
-      JOB_PILOTTO_DISABLE: mail,notion,telegram,google_jobs   # as tools/check.py sets it for the python unit job
+      JOBADABRA_DISABLE: mail,notion,telegram,google_jobs   # as tools/check.py sets it for the python unit job
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
@@ -57,7 +57,7 @@ jobs:
     continue-on-error: true   # report only
     env:
       ELECTRON_DISABLE_SANDBOX: '1'
-      JOB_PILOTTO_DISABLE: mail,notion,telegram,google_jobs
+      JOBADABRA_DISABLE: mail,notion,telegram,google_jobs
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6

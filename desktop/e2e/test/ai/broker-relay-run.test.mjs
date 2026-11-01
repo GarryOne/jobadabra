@@ -64,9 +64,9 @@ test('every refusal tells the SDK not to retry it, so one refused item is one co
 
 test('the command gets the relay address, a dummy key and the cap as its limit, and no other AI address or key', () => {
   const env = childEnv({PATH: '/bin', ANTHROPIC_API_KEY: 'sk-real', ANTHROPIC_BASE_URL: 'https://api.anthropic.com', OPENAI_API_KEY: 'sk-o'}, 'http://127.0.0.1:5', 40);
-  assert.equal(env.JOB_PILOTTO_AI_BASE_URL, 'http://127.0.0.1:5');
+  assert.equal(env.JOBADABRA_AI_BASE_URL, 'http://127.0.0.1:5');
   assert.equal(env.ANTHROPIC_API_KEY, 'codex-relay-local');
-  assert.equal(env.JOB_PILOTTO_CENTRAL_MAX_CALLS, '40');
+  assert.equal(env.JOBADABRA_CENTRAL_MAX_CALLS, '40');
   assert.equal(env.ANTHROPIC_BASE_URL, undefined);
   assert.equal(env.OPENAI_API_KEY, undefined);
   assert.doesNotMatch(JSON.stringify(env), /sk-real|api\.anthropic\.com/);
@@ -75,7 +75,7 @@ test('the command gets the relay address, a dummy key and the cap as its limit, 
 test('a run whose calls fail stays green but says so: warning, ai-capped.json for the one alert, skipped=true', async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'relay-run-'));
   const env = {...process.env, GITHUB_ACTIONS: 'true', GITHUB_OUTPUT: path.join(dir, 'out')};   // GITHUB_ACTIONS fixed: on GitHub the skip is an annotation, the same on a laptop (console.log is captured below)
-  const caller = "const b=JSON.stringify({model:'m',messages:[]});(async()=>{for(let i=0;i<3;i++)await fetch(process.env.JOB_PILOTTO_AI_BASE_URL+'/v1/messages',{method:'POST',body:b});})()";
+  const caller = "const b=JSON.stringify({model:'m',messages:[]});(async()=>{for(let i=0;i<3;i++)await fetch(process.env.JOBADABRA_AI_BASE_URL+'/v1/messages',{method:'POST',body:b});})()";
   const logged = [];
   const log = console.log;
   console.log = (...args) => { logged.push(args.join(' ')); };
@@ -91,7 +91,7 @@ test('a run whose calls fail stays green but says so: warning, ai-capped.json fo
 test('a run whose calls all answer says nothing is skipped and leaves no note', async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'relay-run-'));
   const env = {...process.env, GITHUB_OUTPUT: path.join(dir, 'out')};
-  const caller = "(async()=>{const r=await fetch(process.env.JOB_PILOTTO_AI_BASE_URL+'/v1/messages',{method:'POST',body:'{}'});process.exit(r.status===200?0:3)})()";
+  const caller = "(async()=>{const r=await fetch(process.env.JOBADABRA_AI_BASE_URL+'/v1/messages',{method:'POST',body:'{}'});process.exit(r.status===200?0:3)})()";
   const log = console.log;
   console.log = () => {};
   let code;

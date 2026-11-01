@@ -99,10 +99,10 @@ disown
 # Notion workspace and folder, not ~/jobadabra/.env. They go to each window through a private file (umask 077)
 # that the new shell reads and deletes at once; the folder is removed after a minute anyway.
 write_session_env() {
-  [ -n "${JOB_PILOTTO_CONFIG_DIR:-}" ] || return 0
+  [ -n "${JOBADABRA_CONFIG_DIR:-}" ] || return 0
   (umask 077; python3 - "$1" <<'PY'
 import os, re, shlex, sys
-keep = re.compile(r'^(NOTION_[A-Z0-9_]+|JOB_PILOTTO_[A-Z0-9_]+|TELEGRAM_BOT_TOKEN|TELEGRAM_CHAT_ID)$')
+keep = re.compile(r'^(NOTION_[A-Z0-9_]+|JOBADABRA_[A-Z0-9_]+|TELEGRAM_BOT_TOKEN|TELEGRAM_CHAT_ID)$')
 with open(sys.argv[1], 'w') as out:
     for key, value in sorted(os.environ.items()):
         if keep.match(key):
@@ -121,7 +121,7 @@ for url in "${urls[@]}"; do
   [ -f "$env_file" ] && load_env=". '$env_file' && rm -f '$env_file' && "
   # A ticket from the Jobadabra app (when it's running) lets this session hand the form to the Chrome
   # extension for its fast fill first (extension/hook.js); without one the session fills everything itself.
-  ticket="$(curl -s -m 3 -X POST -H 'X-Job-Pilotto: launcher' -H 'Content-Type: application/json' \
+  ticket="$(curl -s -m 3 -X POST -H 'X-Jobadabra: launcher' -H 'Content-Type: application/json' \
     --data "$(python3 -c 'import json,sys; print(json.dumps({"job": sys.argv[1]}))' "$url")" \
     http://127.0.0.1:47111/claude/ticket 2>/dev/null | python3 -c 'import json,sys; print(json.load(sys.stdin).get("ticket",""))' 2>/dev/null || true)"
   handoff=""

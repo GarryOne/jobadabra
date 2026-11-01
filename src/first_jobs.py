@@ -48,7 +48,7 @@ def board_jobs(say=print, search=None):
     """The jobs (as read) of the job boards that gave installs like this one the most jobs in their places (no AI call: the pool's
     ranking, src/ai/board_ideas.py proven), else of the first boards proposed for this search's countries that never refused us; read now,
     and the full search's board read reuses the pages fetched here. Touches no job cache: it runs beside the employer sites' read."""
-    if os.getenv('JOB_PILOTTO_FIXTURE_DIR'):   # the end-to-end fixture mode never reaches a live site (as aggregators.scan)
+    if os.getenv('JOBADABRA_FIXTURE_DIR'):   # the end-to-end fixture mode never reaches a live site (as aggregators.scan)
         return []
     from .ai import board_ideas
     from .paths import load_search_config
@@ -81,7 +81,7 @@ def propose_early(search=None):
     employer titles and the web search, so the boards started at 41-63 s and the read cut (67 s) left them 5-26 s: 0 board jobs.
     Why (#2218, its rerun 40449103205): only the AI's answers are taken early, never the list: at 10 s the pool's index is not downloaded
     yet, and an early list lost its shared boards (aviationcv.com, hipo.ro)."""
-    if os.getenv('JOB_PILOTTO_FIXTURE_DIR'):
+    if os.getenv('JOBADABRA_FIXTURE_DIR'):
         return None
     from .ai import board_ideas
     from .paths import load_search_config

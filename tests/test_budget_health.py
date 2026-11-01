@@ -41,7 +41,7 @@ class BudgetTests(unittest.TestCase):
         self.addCleanup(patcher.stop)
 
     def test_levels_from_the_run_log(self):
-        with mock.patch.dict('os.environ', {'JOB_PILOTTO_MONTHLY_BUDGET_USD': '15'}):
+        with mock.patch.dict('os.environ', {'JOBADABRA_MONTHLY_BUDGET_USD': '15'}):
             ok = budget.status(run_history((3.0, '2026-09-20T10:00:00+00:00'), (2.0, '2026-09-21T10:00:00+00:00')), NOW)
             warn = budget.status(run_history((11.0, '2026-09-20T10:00:00+00:00')), NOW)
             pause = budget.status(run_history((14.0, '2026-09-20T10:00:00+00:00')), NOW)
@@ -100,7 +100,7 @@ class HealthTests(unittest.TestCase):
         self.assertIn('--client-json', check.fix)
         ok = mock.Mock(scopes=None, profile=mock.Mock(return_value={'emailAddress': 'me@gmail.com'}))
         with mock.patch('src.sources.google.Google.from_env', return_value=ok), \
-                mock.patch.dict('os.environ', {'JOB_PILOTTO_GOOGLE_AUTH_AT': '2026-09-22T12:00:00+00:00'}):
+                mock.patch.dict('os.environ', {'JOBADABRA_GOOGLE_AUTH_AT': '2026-09-22T12:00:00+00:00'}):
             check = doctor.check_google(NOW)
         self.assertEqual(check.state, doctor.WARN)
         self.assertIn('expires in about 2 day(s)', check.detail)

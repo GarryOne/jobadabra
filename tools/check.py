@@ -23,7 +23,7 @@ def node_supported(version):
 
 def find_node(env=None):
     env = os.environ if env is None else env
-    candidates = [env.get('JOB_PILOTTO_CHECK_NODE'), shutil.which('node')]
+    candidates = [env.get('JOBADABRA_CHECK_NODE'), shutil.which('node')]
     nvm = Path(env.get('NVM_DIR', str(Path.home() / '.nvm'))) / 'versions/node'
     if nvm.exists():
         candidates += [str(path / 'bin/node') for path in sorted(nvm.glob('v*'), reverse=True)]
@@ -36,14 +36,14 @@ def find_node(env=None):
                 return str(Path(candidate).resolve()), version.strip()
         except (OSError, ValueError, subprocess.CalledProcessError):
             continue
-    raise RuntimeError('Node 22.13+ or 24+ is required. Use nvm use 22 or set JOB_PILOTTO_CHECK_NODE.')
+    raise RuntimeError('Node 22.13+ or 24+ is required. Use nvm use 22 or set JOBADABRA_CHECK_NODE.')
 
 
 def affected(base):
     """The tests a change can break (tools/affected-tests.py), or None: run everything. Local pushes only; CI never passes --affected-from."""
     if not base:
         return None
-    listed = os.environ.get('JOB_PILOTTO_AFFECTED_FILES', '').splitlines()   # the Stop hook: the changed files incl. uncommitted ones (a commit-only diff misses them)
+    listed = os.environ.get('JOBADABRA_AFFECTED_FILES', '').splitlines()   # the Stop hook: the changed files incl. uncommitted ones (a commit-only diff misses them)
     out = subprocess.run([sys.executable, str(ROOT / 'tools/affected-tests.py'), *(['--files', *listed] if listed else ['--base', base])], capture_output=True, text=True, check=False)
     try:
         return json.loads(out.stdout)
@@ -56,7 +56,7 @@ def commands(area, fast, node, npm, picked='all', app_only=False):
     if area == 'python':
         if picked != 'all':
             return [(ROOT, [sys.executable, 'tools/py-shards.py', *picked])] if picked else []
-        if os.environ.get('JOB_PILOTTO_PY_SERIAL'):      # the old single-process run, to compare with the shards
+        if os.environ.get('JOBADABRA_PY_SERIAL'):      # the old single-process run, to compare with the shards
             return [(ROOT, [sys.executable, '-m', 'unittest', 'discover', '-s', 'tests', '-q'])]
         return [(ROOT, [sys.executable, 'tools/py-shards.py', *(['--app-only'] if app_only else [])])]
     if area == 'site':   # the website's tests sit in test/ at the top level of the joined tree (jobadabra-web, 21 Oct 2026)
@@ -86,7 +86,7 @@ def main(argv=None):
         print('check: Python 3.12+ is required.', file=sys.stderr)
         return 2
     env = dict(os.environ)
-    env['JOB_PILOTTO_DISABLE'] = 'mail,notion,telegram,google_jobs'
+    env['JOBADABRA_DISABLE'] = 'mail,notion,telegram,google_jobs'
     # Match CI even when the developer's global npm config skips peer dependencies.
     env['npm_config_legacy_peer_deps'] = 'false'
     node = npm = None

@@ -1,11 +1,11 @@
 """The AI engine every AI step calls through: one factory, `client()`, over the engines in src/ai/providers/.
 
-JOB_PILOTTO_AI_ENGINE picks it, as the user chose it (Settings → Connections → AI in the app):
+JOBADABRA_AI_ENGINE picks it, as the user chose it (Settings → Connections → AI in the app):
   api    (default; GitHub / Always on, the Telegram worker, Free AI)  the Anthropic SDK, their key (providers/anthropic_api.py)
   cli    (the app, on the user's Mac)                                           their own Claude Code, Claude plan (providers/claude_code.py)
   openai (the app or Always on)                                                  OpenAI's Responses API, their key (providers/openai_api.py)
   codex  (the app, on the user's Mac)                                           their own Codex CLI, ChatGPT plan (providers/codex_cli.py)
-Nothing is chosen for the user: no automatic switch. JOB_PILOTTO_AI_FALLBACK=api|openai (the user's own tick, "If my plan's limit is hit,
+Nothing is chosen for the user: no automatic switch. JOBADABRA_AI_FALLBACK=api|openai (the user's own tick, "If my plan's limit is hit,
 use my API key") lets a plan engine hand the rest of a run to the API key of the SAME family; never Claude to OpenAI or back.
 
 Every engine is an adapter behind one contract (providers/contract.py): `client().messages.create(**the SDK's arguments)` returns an

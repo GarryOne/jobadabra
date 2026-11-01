@@ -97,8 +97,8 @@ for case in data:
     found.update({text: result[key] for key, text in items.items()})
 print(json.dumps(found))
 `], {cwd: fileURLToPath(new URL('../../../../', import.meta.url)),
-    env: pythonEnv({PYTHONDONTWRITEBYTECODE: '1', JOB_PILOTTO_DATA_DIR: dir,
-      JOB_PILOTTO_CONFIG_DIR: dir, JOB_PILOTTO_APP_DIR: dir}, {home: dir}),
+    env: pythonEnv({PYTHONDONTWRITEBYTECODE: '1', JOBADABRA_DATA_DIR: dir,
+      JOBADABRA_CONFIG_DIR: dir, JOBADABRA_APP_DIR: dir}, {home: dir}),
     input: JSON.stringify(cases), encoding: 'utf8', timeout: 10000});
   assert.deepEqual(JSON.parse(parsed), Object.fromEntries(verdicts));
   h.assertNoLive();

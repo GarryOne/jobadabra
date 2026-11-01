@@ -84,7 +84,7 @@ async function hiddenStep(ctx, form, id, mode) {
   try {
     assertOwnPort(ctx, held.port);
     const submitted = ctx.forms?.fired?.length || 0;
-    await ctx.relaunch({JOB_PILOTTO_PORT: String(held.port)}, profile => seedProfile(profile, mode.id, form, id));
+    await ctx.relaunch({JOBADABRA_PORT: String(held.port)}, profile => seedProfile(profile, mode.id, form, id));
     await until(`the app did not say it cannot open port ${held.port}`, () => appLogText(ctx.profile).includes(`connection off: port ${held.port} is used by another program`), 30000);
     await openCard(ctx.page, form, id);
     // The card follows the app's 2 s report of its own connection: wait on what it says, then read both places.
@@ -99,7 +99,7 @@ async function hiddenStep(ctx, form, id, mode) {
   } finally {
     await held.release().catch(() => {});
     // The steps after this one run on the harness's own port and the person's saved mode, never the one this step seeded.
-    await ctx.relaunch({JOB_PILOTTO_PORT: String(ctx.appPort)}, profile => restoreApply(profile, kept, id));
+    await ctx.relaunch({JOBADABRA_PORT: String(ctx.appPort)}, profile => restoreApply(profile, kept, id));
   }
 }
 

@@ -1,6 +1,6 @@
 // The model-call cache of the e2e harness (spec: speed-5x landing 1, owner 11 Oct 2026): a live pool run keeps each answer the model gave, keyed by a hash of the
 // request with its volatile parts normalised, so an offline replay of that run gets the same answers at once and asks the model only for what really changed.
-// It exists only under the e2e env (JOB_PILOTTO_E2E and JOB_PILOTTO_MODEL_MEMO=<file>): the person's app never memoizes, and never into the app's own folder.
+// It exists only under the e2e env (JOBADABRA_E2E and JOBADABRA_MODEL_MEMO=<file>): the person's app never memoizes, and never into the app's own folder.
 // The file holds the hash and the answer, never the request text. Wired in one place: lib/ai/index.js client(). Guard: desktop/test/model-memo.test.js.
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -135,38 +135,38 @@ const insideRealData = file => everyRealDataFolder().some(real => (path.resolve(
 
 // -> the cache file for this process, or '' (no cache).
 export function memoFile(env = process.env) {
-  const file = env.JOB_PILOTTO_E2E ? String(env.JOB_PILOTTO_MODEL_MEMO || '') : '';
+  const file = env.JOBADABRA_E2E ? String(env.JOBADABRA_MODEL_MEMO || '') : '';
   return file && !insideRealData(file) ? file : '';
 }
 
 // Memo-only (an offline row replay, e2e/lib/offline-app.mjs): a miss is refused, never asked: the plan's claude -p carries the signed-in account (11 Oct 2026:
 // a form answer guessed the owner's name from it), so an offline replay answers only what the live run already asked.
-export const memoOnly = (env = process.env) => !!env.JOB_PILOTTO_E2E && env.JOB_PILOTTO_MODEL_MEMO_ONLY === '1';
+export const memoOnly = (env = process.env) => !!env.JOBADABRA_E2E && env.JOBADABRA_MODEL_MEMO_ONLY === '1';
 
 // Fill (an ask the recording lacks, spec record-once "An ask the recording does not have"): a memo-only replay on the MAC that asks the model for the asks the memo lacks
 // (a fix changed what the app asks) and keeps each answer in the memo, so the next replay hits it; a kept ask is still served as before, never asked again.
-// e2e env + memo-only + JOB_PILOTTO_MODEL_MEMO_FILL=1, never on CI (no claude -p there). The plan path carries the owner's identity: the caller's tripwire and the fake applicant stay on.
+// e2e env + memo-only + JOBADABRA_MODEL_MEMO_FILL=1, never on CI (no claude -p there). The plan path carries the owner's identity: the caller's tripwire and the fake applicant stay on.
 // CI only through the refill workflow's own flag (JP_REFILL_CI, e2e/lib/refill.mjs: its own API key, replay-refill.yml): the asks then go to the API, not the plan.
-export const fillOn = (env = process.env) => memoOnly(env) && env.JOB_PILOTTO_MODEL_MEMO_FILL === '1' && ((!env.CI && !env.GITHUB_ACTIONS) || env.JP_REFILL_CI === '1');
+export const fillOn = (env = process.env) => memoOnly(env) && env.JOBADABRA_MODEL_MEMO_FILL === '1' && ((!env.CI && !env.GITHUB_ACTIONS) || env.JP_REFILL_CI === '1');
 
 // Loose lookup (owner, 12 Oct 2026): the CI replay of a row case (e2e/lib/row-case-run.mjs) and `npm run row --loose` serve a kept answer whose USER-message parts and output schema match although the system side
 // (instructions, profile, search, knowledge) or the model changed since the capture: a prompt or seed change would otherwise turn every row case's answer asks cold, and CI has no claude -p. Each such hit is
-// appended to the file named by JOB_PILOTTO_MODEL_MEMO_LOOSE (e2e only) with the parts that differ. A changed job / form_fields block is still a miss.
-// JOB_PILOTTO_MODEL_MEMO_MISSLOG=<file> (e2e only): each memo-only miss as a JSON line {differs, volatile}, whole (a log line is cut at its length: "differs in use) {"). Read by the row replay.
-// JOB_PILOTTO_MODEL_MEMO_LATENCY=1 (e2e only): a replay serves a kept answer after the time the live ask took (recorded as `<key>#ms`, at most LATENCY_CAP_MS): the extension's concurrent flows (a popup dismissed
+// appended to the file named by JOBADABRA_MODEL_MEMO_LOOSE (e2e only) with the parts that differ. A changed job / form_fields block is still a miss.
+// JOBADABRA_MODEL_MEMO_MISSLOG=<file> (e2e only): each memo-only miss as a JSON line {differs, volatile}, whole (a log line is cut at its length: "differs in use) {"). Read by the row replay.
+// JOBADABRA_MODEL_MEMO_LATENCY=1 (e2e only): a replay serves a kept answer after the time the live ask took (recorded as `<key>#ms`, at most LATENCY_CAP_MS): the extension's concurrent flows (a popup dismissed
 // while the page-kind ask is out, a widget reacting to the upload) then interleave as they did live, not by how fast this machine answers (12 Oct 2026: a row case green on a Mac, red on the Linux runner).
-export const latencyOn = (env = process.env) => !!env.JOB_PILOTTO_E2E && env.JOB_PILOTTO_MODEL_MEMO_LATENCY === '1';
+export const latencyOn = (env = process.env) => !!env.JOBADABRA_E2E && env.JOBADABRA_MODEL_MEMO_LATENCY === '1';
 export const LATENCY_CAP_MS = 3000;
-// JOB_PILOTTO_MODEL_MEMO_LATENCY_CAP_MS (e2e only): a network replay serves each kept answer at its live time, uncapped (lib/net-record.mjs: the extension's pace as live).
-const latencyCap = env => Number(env.JOB_PILOTTO_E2E && env.JOB_PILOTTO_MODEL_MEMO_LATENCY_CAP_MS) || LATENCY_CAP_MS;
-// JOB_PILOTTO_MODEL_MEMO_LATENCY_SCALE / _PAD_MS (e2e only): a slowed replay (row-to-case's second speed): every kept answer takes SCALE times as long and PAD ms more, also one with no recorded time.
-const later = (ms, env) => { const wait = Math.min(latencyCap(env), Math.max(0, ms || 0) * (Number(env.JOB_PILOTTO_MODEL_MEMO_LATENCY_SCALE) || 1)) + (Number(env.JOB_PILOTTO_MODEL_MEMO_LATENCY_PAD_MS) || 0); return wait > 0 ? new Promise(resolve => setTimeout(resolve, wait)) : null; };
-// JOB_PILOTTO_MODEL_MEMO_ORDINAL=<file> (e2e only; CI's row cases, never the row-to-case proof): an ask with no kept answer, exact or loose, gets the n-th kept answer of its kind (same model and system prompt), n = how many
+// JOBADABRA_MODEL_MEMO_LATENCY_CAP_MS (e2e only): a network replay serves each kept answer at its live time, uncapped (lib/net-record.mjs: the extension's pace as live).
+const latencyCap = env => Number(env.JOBADABRA_E2E && env.JOBADABRA_MODEL_MEMO_LATENCY_CAP_MS) || LATENCY_CAP_MS;
+// JOBADABRA_MODEL_MEMO_LATENCY_SCALE / _PAD_MS (e2e only): a slowed replay (row-to-case's second speed): every kept answer takes SCALE times as long and PAD ms more, also one with no recorded time.
+const later = (ms, env) => { const wait = Math.min(latencyCap(env), Math.max(0, ms || 0) * (Number(env.JOBADABRA_MODEL_MEMO_LATENCY_SCALE) || 1)) + (Number(env.JOBADABRA_MODEL_MEMO_LATENCY_PAD_MS) || 0); return wait > 0 ? new Promise(resolve => setTimeout(resolve, wait)) : null; };
+// JOBADABRA_MODEL_MEMO_ORDINAL=<file> (e2e only; CI's row cases, never the row-to-case proof): an ask with no kept answer, exact or loose, gets the n-th kept answer of its kind (same model and system prompt), n = how many
 // asks of that kind this replay has made; each is noted in the file. A row case then holds in CI whatever the order the extension's concurrent flows ask in (12 Oct 2026), and the run prints it as a warning.
-export const ordinalFile = (env = process.env) => (env.JOB_PILOTTO_E2E ? String(env.JOB_PILOTTO_MODEL_MEMO_ORDINAL || '') : '');
+export const ordinalFile = (env = process.env) => (env.JOBADABRA_E2E ? String(env.JOBADABRA_MODEL_MEMO_ORDINAL || '') : '');
 const kindOf = parts => `${parts.model}|${parts.system ?? parts['system:0'] ?? ''}`;
-export const missLogFile = (env = process.env) => (env.JOB_PILOTTO_E2E ? String(env.JOB_PILOTTO_MODEL_MEMO_MISSLOG || '') : '');
-export const looseFile = (env = process.env) => (env.JOB_PILOTTO_E2E ? String(env.JOB_PILOTTO_MODEL_MEMO_LOOSE || '') : '');
+export const missLogFile = (env = process.env) => (env.JOBADABRA_E2E ? String(env.JOBADABRA_MODEL_MEMO_MISSLOG || '') : '');
+export const looseFile = (env = process.env) => (env.JOBADABRA_E2E ? String(env.JOBADABRA_MODEL_MEMO_LOOSE || '') : '');
 const isPageSide = name => name === 'output' || /^(user|assistant):/.test(name);
 export function looseMatch(parts, kept) {
   const mine = Object.entries(parts).filter(([name]) => isPageSide(name));
@@ -192,8 +192,8 @@ export function withMemo(client, file = memoFile(), {only = memoOnly(), fill = f
     if (ordinal) served[kind] = (served[kind] || 0) + 1;
     // An offline replay serves the page scrubbed (lib/live-capture.js fakeContacts): the answer the AI gave to the live page is scrubbed the same way, so an address it
     // read off the page (apply_email) is still on the replayed page.
-    // JOB_PILOTTO_MODEL_MEMO_HITS=<file> (e2e only): each kept answer served, by key: a replay counts which of the live run's asks it made.
-    if (kept[key] && only && env.JOB_PILOTTO_E2E && env.JOB_PILOTTO_MODEL_MEMO_HITS) try { fs.appendFileSync(env.JOB_PILOTTO_MODEL_MEMO_HITS, `${key}\n`); } catch { /* a report only */ }
+    // JOBADABRA_MODEL_MEMO_HITS=<file> (e2e only): each kept answer served, by key: a replay counts which of the live run's asks it made.
+    if (kept[key] && only && env.JOBADABRA_E2E && env.JOBADABRA_MODEL_MEMO_HITS) try { fs.appendFileSync(env.JOBADABRA_MODEL_MEMO_HITS, `${key}\n`); } catch { /* a report only */ }
     if (kept[key]) { if (only && latency) await later(Number(kept[key + MS]), env); return only ? JSON.parse(fakeContacts(JSON.stringify(kept[key]))) : kept[key]; }
     if (only && loose) {
       const hit = looseMatch(memoParts(params), kept);
@@ -214,8 +214,8 @@ export function withMemo(client, file = memoFile(), {only = memoOnly(), fill = f
       }
     }
     if (only && !fill) {
-      // JOB_PILOTTO_MODEL_MEMO_MISSES=<file> (e2e only): the normalised request of each miss, to see what differs from the live run's ask.
-      if (process.env.JOB_PILOTTO_E2E && process.env.JOB_PILOTTO_MODEL_MEMO_MISSES) try { fs.appendFileSync(process.env.JOB_PILOTTO_MODEL_MEMO_MISSES, `${normalise(JSON.stringify({model: params.model, system: params.system ?? '', messages: params.messages ?? [], output_config: params.output_config ?? null, tools: params.tools ?? null}))}\n`); } catch { /* a debug aid */ }
+      // JOBADABRA_MODEL_MEMO_MISSES=<file> (e2e only): the normalised request of each miss, to see what differs from the live run's ask.
+      if (process.env.JOBADABRA_E2E && process.env.JOBADABRA_MODEL_MEMO_MISSES) try { fs.appendFileSync(process.env.JOBADABRA_MODEL_MEMO_MISSES, `${normalise(JSON.stringify({model: params.model, system: params.system ?? '', messages: params.messages ?? [], output_config: params.output_config ?? null, tools: params.tools ?? null}))}\n`); } catch { /* a debug aid */ }
       const differs = nearestDiffers(memoParts(params), kept, memoLines(params)), volatile = volatileParts(params);
       if (missLog) try { fs.appendFileSync(missLog, `${JSON.stringify({differs: differs || [], volatile})}\n`); } catch { /* a report only */ }
       throw new Error(`model memo: not in the row's kept answers (an offline replay never asks the model)${differs ? `; the nearest kept ask differs in: ${differs.join(', ') || 'nothing I can see (the same parts)'}` : ''}${volatile.length ? `; a clock time or date in ${volatile.join(', ')} can never match` : ''}`);

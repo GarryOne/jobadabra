@@ -81,7 +81,7 @@ class FirstPageTest(unittest.TestCase):
             postings = [{'externalPath': f'/job/{i}', 'title': f'Pilot {i}', 'locationsText': 'Paris'} for i in range(45)][offset:offset + 20]
             return Response(json.dumps({'total': 45, 'jobPostings': postings}).encode())
         with mock.patch.object(ats.host_pace, 'open', opened), mock.patch.object(ats, 'workday_terms', lambda search=None: []), \
-                mock.patch.dict('os.environ', {'JOB_PILOTTO_FIXTURE_DIR': ''}):
+                mock.patch.dict('os.environ', {'JOBADABRA_FIXTURE_DIR': ''}):
             with ats.conditional(None) as state:
                 ats.fetch('workday', 'air.wd3.Careers')
             first = len(sent)
@@ -107,7 +107,7 @@ class FirstPageTest(unittest.TestCase):
         def opened(request, timeout):
             sent.append(request.get_header('If-none-match'))
             return Response()
-        with mock.patch.object(ats.host_pace, 'open', opened), mock.patch.dict('os.environ', {'JOB_PILOTTO_FIXTURE_DIR': ''}), \
+        with mock.patch.object(ats.host_pace, 'open', opened), mock.patch.dict('os.environ', {'JOBADABRA_FIXTURE_DIR': ''}), \
                 ats.conditional('head:0123456789abcdef'):
             ats._get('https://x.test/list')
         self.assertEqual(sent, [None])

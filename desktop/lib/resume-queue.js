@@ -12,7 +12,7 @@ export const resumeDelay = (env = process.env) => e2eMs('RESUME_MS', 20 * 1000, 
 
 // Owner, 7 Oct 2026: what was running or waiting when you quit is not started again by itself: the app asks, "Start again" or "Leave stopped"
 // (left stopped, the run stays Interrupted in Recent activity, with its log and a Run again). `ask` shows the question and resolves to the
-// button's index. The end-to-end journey cannot press a native dialog: it answers JOB_PILOTTO_E2E_RESUME (start | leave; start when unset).
+// button's index. The end-to-end journey cannot press a native dialog: it answers JOBADABRA_E2E_RESUME (start | leave; start when unset).
 export function resumeQuestion(names) {
   const list = names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names.at(-1)}` : names[0];
   return {type: 'question', buttons: ['Start again', 'Leave stopped'], defaultId: 0, cancelId: 1,
@@ -22,7 +22,7 @@ export function resumeQuestion(names) {
 }
 export async function askResume(names, {ask, env = process.env} = {}) {
   if (!names.length) return {start: false, decidedBy: 'nothing to ask'};
-  if (env.JOB_PILOTTO_E2E) return {start: env.JOB_PILOTTO_E2E_RESUME !== 'leave', decidedBy: 'e2e'};
+  if (env.JOBADABRA_E2E) return {start: env.JOBADABRA_E2E_RESUME !== 'leave', decidedBy: 'e2e'};
   const {response} = await ask(resumeQuestion(names));
   return {start: response === 0, decidedBy: 'you'};
 }

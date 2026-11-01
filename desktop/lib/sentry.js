@@ -16,7 +16,7 @@ export function parseDsn(dsn) {
     if (!url.username || !project || !/^\d+$/.test(project.split('/').pop())) return null;
     const id = project.split('/').pop(), base = `${url.protocol}//${url.host}/api/${id}`;
     return {key: url.username, project: id, envelope: `${base}/envelope/`, minidump: `${base}/minidump/?sentry_key=${url.username}`,
-      auth: `Sentry sentry_version=7, sentry_key=${url.username}, sentry_client=job-pilotto/1`};
+      auth: `Sentry sentry_version=7, sentry_key=${url.username}, sentry_client=jobadabra/1`};
   } catch { return null; }
 }
 
@@ -41,7 +41,7 @@ const normal = text => String(text ?? '').replace(/0x[0-9a-f]+|\b[0-9a-f]{8,}\b|
 
 // An end-to-end run (environment e2e) is synthetic monitoring: its reports say which suite made them and whether that suite makes failures on purpose (the spend limit, a hung task),
 // so an alert or a fixer can tell the expected from a surprise. Empty for a user's install.
-export const e2eTags = (env = process.env) => (env.JOB_PILOTTO_E2E_SUITE ? {suite: env.JOB_PILOTTO_E2E_SUITE, expected: env.JOB_PILOTTO_E2E_EXPECTS_FAILURES ? 'yes' : 'no'} : {});
+export const e2eTags = (env = process.env) => (env.JOBADABRA_E2E_SUITE ? {suite: env.JOBADABRA_E2E_SUITE, expected: env.JOBADABRA_E2E_EXPECTS_FAILURES ? 'yes' : 'no'} : {});
 
 export function buildEvent(kind, fields = {}, {release = '', environment = 'production', installId = '', platform = process.platform, os = '', now = Date.now(), trail = [], tags = {}} = {}) {
   if (kind === 'extension_error') { fields = extensionFields(fields); trail = []; }

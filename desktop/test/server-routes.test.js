@@ -51,7 +51,7 @@ registerHooks({load(url, context, next) {
 // Reserve a test port before importing PORT, so the owner's fixed port is never used.
 const probe = http.createServer().listen(0, '127.0.0.1');
 await once(probe, 'listening');
-process.env.JOB_PILOTTO_PORT = String(probe.address().port);
+process.env.JOBADABRA_PORT = String(probe.address().port);
 await new Promise(resolve => probe.close(resolve));
 const server = await import('../lib/server.js');
 const pageRender = await import('../lib/page-render.js');
@@ -168,17 +168,17 @@ test('every local route preserves its access, malformed-body, method and preflig
       {url:`http://127.0.0.1:${server.PORT}`,token},{...jsonHeaders,'access-control-allow-origin':origin});
     for (const from of [foreign,null]) reply(await request('/extension/pair',{from}),403,{error:'Only the Jobadabra extension can pair'},jsonHeaders);
   });
-  const launcher = {'x-job-pilotto':'launcher'};
+  const launcher = {'x-jobadabra':'launcher'};
   await t.test('render has its own key, method and no-Origin checks; errors retain the catch reply', async () => {
-    for (const auth of [token,'wrong',null]) reply(await request('/engine/render',{auth,from:null,headers:{'x-job-pilotto-render':pageRender.TOKEN},body:'{"url":"page"}'}),200,{html:'page',agent:'Jobadabra browser'},jsonHeaders);
+    for (const auth of [token,'wrong',null]) reply(await request('/engine/render',{auth,from:null,headers:{'x-jobadabra-render':pageRender.TOKEN},body:'{"url":"page"}'}),200,{html:'page',agent:'Jobadabra browser'},jsonHeaders);
     for (const opts of [{headers:{}},{from:foreign},{method:'DELETE'}]) reply(await request('/engine/render',{
-      from:null,headers:{'x-job-pilotto-render':pageRender.TOKEN},...opts}),403,{error:'Not allowed'},jsonHeaders);
-    reply(await request('/engine/render',{from:null,headers:{'x-job-pilotto-render':pageRender.TOKEN},body:'{'}),200,{html:'',agent:'Jobadabra browser'},jsonHeaders);
+      from:null,headers:{'x-jobadabra-render':pageRender.TOKEN},...opts}),403,{error:'Not allowed'},jsonHeaders);
+    reply(await request('/engine/render',{from:null,headers:{'x-jobadabra-render':pageRender.TOKEN},body:'{'}),200,{html:'',agent:'Jobadabra browser'},jsonHeaders);
     state.failRender = true;
-    reply(await request('/engine/render',{from:null,headers:{'x-job-pilotto-render':pageRender.TOKEN}}),500,{error:'render failed'},jsonHeaders);
+    reply(await request('/engine/render',{from:null,headers:{'x-jobadabra-render':pageRender.TOKEN}}),500,{error:'render failed'},jsonHeaders);
     state.failRender = false;
     server.setRenderer(null);
-    reply(await request('/engine/render',{from:null,headers:{'x-job-pilotto-render':pageRender.TOKEN}}),403,{error:'Not allowed'},jsonHeaders);
+    reply(await request('/engine/render',{from:null,headers:{'x-jobadabra-render':pageRender.TOKEN}}),403,{error:'Not allowed'},jsonHeaders);
   });
   await t.test('launcher routes ignore extension tokens and enforce local headers, Origin and method', async () => {
     for (const [url,body,bad] of [['/claude/ticket','{"job":"job"}',{error:'Not allowed'}],

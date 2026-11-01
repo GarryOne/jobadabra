@@ -53,11 +53,11 @@ def funnel(lines):
 def kinds():
     """The role kinds the search looked for (src/role_kinds.of_search, the engine's own answer, from its decision cache), or None outside an install."""
     import os
-    if not os.environ.get('JOB_PILOTTO_CONFIG_DIR'):
+    if not os.environ.get('JOBADABRA_CONFIG_DIR'):
         return None
     try:
         from src import role_kinds
-        with open(os.path.join(os.environ['JOB_PILOTTO_CONFIG_DIR'], 'search.json'), encoding='utf-8') as file:
+        with open(os.path.join(os.environ['JOBADABRA_CONFIG_DIR'], 'search.json'), encoding='utf-8') as file:
             found = role_kinds.of_search(json.load(file))
         return sorted(found) if found else []
     except Exception:   # a funnel line never fails the press

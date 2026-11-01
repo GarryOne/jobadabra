@@ -143,7 +143,7 @@ class RenderGuardTests(unittest.TestCase):
                 self.assertIsNone(careers.renderer())
             with mock.patch.object(render, 'available', return_value=True):
                 self.assertIs(careers.renderer(), render.render)
-            with mock.patch.dict('os.environ', {'JOB_PILOTTO_RENDER': '0'}):
+            with mock.patch.dict('os.environ', {'JOBADABRA_RENDER': '0'}):
                 self.assertIsNone(careers.renderer())
         finally:
             careers.RENDER = saved

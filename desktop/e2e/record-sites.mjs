@@ -67,7 +67,7 @@ function liveRun(posting, seconds, captureDir = '', engine = smokeEngine()) {
       child.on('close', (code, signal) => resolve({output, code, signal, seconds: Math.round((Date.now() - started) / 1000)}));
       return;
     }
-    const child = spawn('node', ['run-all.mjs', '--only', 'applyflows'], {cwd: here, env: {...poolEnv(), E2E_ARTIFACTS: runArtifacts(), LIVE: '1', LIVE_URL: posting.url, LIVE_TITLE: posting.title || '', LIVE_COMPANY: posting.company || '', LIVE_SECONDS: String(seconds), LIVE_CAPTURE_DIR: captureDir, ...(captureDir ? {JOB_PILOTTO_MODEL_MEMO: path.join(captureDir, 'model-memo.json')} : {}), LIVE_ENGINE: process.env.LIVE_ENGINE || 'cli'}});
+    const child = spawn('node', ['run-all.mjs', '--only', 'applyflows'], {cwd: here, env: {...poolEnv(), E2E_ARTIFACTS: runArtifacts(), LIVE: '1', LIVE_URL: posting.url, LIVE_TITLE: posting.title || '', LIVE_COMPANY: posting.company || '', LIVE_SECONDS: String(seconds), LIVE_CAPTURE_DIR: captureDir, ...(captureDir ? {JOBADABRA_MODEL_MEMO: path.join(captureDir, 'model-memo.json')} : {}), LIVE_ENGINE: process.env.LIVE_ENGINE || 'cli'}});
     let output = '';
     child.stdout.on('data', chunk => { output += chunk; });
     child.stderr.on('data', chunk => { output += chunk; });

@@ -2,21 +2,21 @@
 # 12 Oct 2026: a cancelled replay's wrapper was orphaned (parent gone) and its children hung at 0% CPU; the lock stayed held 27 min while five sessions waited.
 # A slot records its wrapper's `pid`, the run's process group `pgid` and the Claude session's `session_pid`. A waiter frees a live slot when
 #   - its session is gone: session_pid is dead, or the wrapper's parent is pid 1 (orphaned)            -> "freed: session gone"
-#   - its process group used no CPU for the idle limit: JOB_PILOTTO_HEAVY_IDLE seconds, else 3 x the run's median (gate-timing.log, default 70 s), at least JOB_PILOTTO_HEAVY_IDLE_MIN (120)  -> "freed: idle <n>s"
+#   - its process group used no CPU for the idle limit: JOBADABRA_HEAVY_IDLE seconds, else 3 x the run's median (gate-timing.log, default 70 s), at least JOBADABRA_HEAVY_IDLE_MIN (120)  -> "freed: idle <n>s"
 # and kills the old tree by the recorded pgid (never by a name pattern). A busy holder is never freed: any CPU used (0.2 s or more since the last look) restarts the idle clock.
-# JOB_PILOTTO_SESSION_PID names the session pid when the caller knows it (ship.sh --background has no Claude among its parents); else the nearest ancestor with ~/.claude/sessions/<pid>.json.
-reap_timing_path() { echo "${JOB_PILOTTO_HEAVY_TIMING_LOG:-$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)/gate-timing.log}"; }
+# JOBADABRA_SESSION_PID names the session pid when the caller knows it (ship.sh --background has no Claude among its parents); else the nearest ancestor with ~/.claude/sessions/<pid>.json.
+reap_timing_path() { echo "${JOBADABRA_HEAVY_TIMING_LOG:-$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)/gate-timing.log}"; }
 expected_secs() {  # what -> the median run seconds of that kind from gate-timing.log (default 70)
   local timing m; timing="$(reap_timing_path)"
   m="$([ -f "$timing" ] && sed -nE "s/^# [^ ]+ heavy lock run=([0-9]+)s .*what=$1( .*|$)/\1/p" "$timing" | sort -n | awk '{a[NR]=$1} END {if (NR) print a[int((NR + 1) / 2)]}')"
   echo "${m:-70}"
 }
 idle_limit() {  # what -> seconds without CPU after which a holder is idle
-  [ -n "${JOB_PILOTTO_HEAVY_IDLE:-}" ] && { echo "$JOB_PILOTTO_HEAVY_IDLE"; return; }
-  local l=$(( $(expected_secs "$1") * 3 )) min="${JOB_PILOTTO_HEAVY_IDLE_MIN:-120}"; [ "$l" -lt "$min" ] && l="$min"; echo "$l"
+  [ -n "${JOBADABRA_HEAVY_IDLE:-}" ] && { echo "$JOBADABRA_HEAVY_IDLE"; return; }
+  local l=$(( $(expected_secs "$1") * 3 )) min="${JOBADABRA_HEAVY_IDLE_MIN:-120}"; [ "$l" -lt "$min" ] && l="$min"; echo "$l"
 }
 find_session_pid() {  # the Claude session this process runs under (the nearest ancestor with a session file), or nothing
-  [ -n "${JOB_PILOTTO_SESSION_PID:-}" ] && { echo "$JOB_PILOTTO_SESSION_PID"; return; }
+  [ -n "${JOBADABRA_SESSION_PID:-}" ] && { echo "$JOBADABRA_SESSION_PID"; return; }
   local pid="$$" hops=0 dir="${JP_SESSIONS_DIR:-$HOME/.claude/sessions}"
   while [ -n "$pid" ] && [ "$pid" != 1 ] && [ "$hops" -lt 12 ]; do
     [ -f "$dir/$pid.json" ] && { echo "$pid"; return; }

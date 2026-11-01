@@ -59,8 +59,8 @@ def _keychain(service):
 
 def e2e_url(url):
     """In a test run, Google's hosts become the end-to-end tests' fake (desktop/e2e/lib/google-fake.mjs): <base>/<host>/<path>."""
-    base = os.environ.get('JOB_PILOTTO_E2E_GOOGLE_BASE_URL', '')
-    if not (os.environ.get('JOB_PILOTTO_E2E') and base):
+    base = os.environ.get('JOBADABRA_E2E_GOOGLE_BASE_URL', '')
+    if not (os.environ.get('JOBADABRA_E2E') and base):
         return url
     parts = urllib.parse.urlsplit(url)
     return f"{base.rstrip('/')}/{parts.netloc}{parts.path}{'?' + parts.query if parts.query else ''}"
@@ -97,7 +97,7 @@ class Google:
     @classmethod
     def from_env(cls):
         from ..features import disabled
-        if disabled('mail'):  # JOB_PILOTTO_DISABLE=mail
+        if disabled('mail'):  # JOBADABRA_DISABLE=mail
             return None
         found = credentials()
         return cls(*found, scopes=google_scopes.from_env(_keychain)) if found else None
@@ -385,9 +385,9 @@ def store(client_id, client_secret, refresh_token, production, github, parts=Non
         for name, value in values.items():
             subprocess.run(['gh', 'secret', 'set', name], input=value, text=True, check=True)
         if signed_in:
-            subprocess.run(['gh', 'variable', 'set', 'JOB_PILOTTO_GOOGLE_AUTH_AT', '--body', signed_in], check=True)
+            subprocess.run(['gh', 'variable', 'set', 'JOBADABRA_GOOGLE_AUTH_AT', '--body', signed_in], check=True)
         else:
-            subprocess.run(['gh', 'variable', 'delete', 'JOB_PILOTTO_GOOGLE_AUTH_AT'], capture_output=True)
+            subprocess.run(['gh', 'variable', 'delete', 'JOBADABRA_GOOGLE_AUTH_AT'], capture_output=True)
         print('Set GitHub secrets:', ', '.join(values))
 
 

@@ -322,7 +322,7 @@ NOT_CONNECTED = 'Connect Notion first: interviews are kept in 🎤 Interviews.'
 
 
 def notion_unusable(env):
-    """True when the store is Notion but it can't be reached: no token, or JOB_PILOTTO_DISABLE=notion (as no token)."""
+    """True when the store is Notion but it can't be reached: no token, or JOBADABRA_DISABLE=notion (as no token)."""
     return chosen(env) == 'notion' and (disabled('notion') or not env.get('NOTION_TOKEN'))
 
 

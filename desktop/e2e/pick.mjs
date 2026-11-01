@@ -38,7 +38,7 @@ if (import.meta.url === pathToFileURL(process.argv[1] || '').href) {
     process.exit(0);
   }
   let candidate = chooseCandidate();
-  // Nothing to fix: judge a one-off finding instead, without editing anything (only when the repo variable JOB_PILOTTO_FIXER_VERDICTS is "on": it spends AI credit).
+  // Nothing to fix: judge a one-off finding instead, without editing anything (only when the repo variable JOBADABRA_FIXER_VERDICTS is "on": it spends AI credit).
   if (!candidate && process.env.VERDICTS === 'on') candidate = chooseVerdictCandidate();
   if (candidate) writeCandidate(candidate, outDir);
   const summary = fixerSummary({candidate});

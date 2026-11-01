@@ -18,7 +18,7 @@ class CheckTests(unittest.TestCase):
 
     def test_fallback_from_stale_node(self):
         with mock.patch.object(check.shutil, 'which', return_value='/old/node'), mock.patch.object(check.subprocess, 'check_output', side_effect=['v22.23.1']):
-            node, version = check.find_node({'JOB_PILOTTO_CHECK_NODE': '/new/node', 'NVM_DIR': '/nonexistent'})
+            node, version = check.find_node({'JOBADABRA_CHECK_NODE': '/new/node', 'NVM_DIR': '/nonexistent'})
             self.assertEqual(node, '/new/node')
             self.assertEqual(version, 'v22.23.1')
         with mock.patch.object(check.shutil, 'which', return_value='/old/node'), mock.patch.object(check.subprocess, 'check_output', return_value='v12.0.0'):
@@ -34,7 +34,7 @@ class CheckTests(unittest.TestCase):
         self.assertIn('test/app-scenarios.test.js', fast[-1][1])
         # 9 Oct 2026: the full Python suite runs sharded (same tests, tools/py-shards.py); the old single process stays behind an env switch.
         self.assertEqual(check.commands('python', False, None, None)[0][1][1:], ['tools/py-shards.py'])
-        with mock.patch.dict(check.os.environ, {'JOB_PILOTTO_PY_SERIAL': '1'}):
+        with mock.patch.dict(check.os.environ, {'JOBADABRA_PY_SERIAL': '1'}):
             self.assertEqual(check.commands('python', False, None, None)[0][1][1:4], ['-m', 'unittest', 'discover'])
         # A local push with a picked subset runs just those files; an empty pick runs no tests (desktop still lints).
         self.assertEqual(check.commands('python', False, None, None, ['test_a'])[0][1][1:], ['tools/py-shards.py', 'test_a'])
@@ -46,7 +46,7 @@ class CheckTests(unittest.TestCase):
     def test_failure_propagates_and_external_services_are_disabled(self):
         with mock.patch.object(check.subprocess, 'run', return_value=mock.Mock(returncode=3)) as run:
             self.assertEqual(check.main(['--area', 'python']), 1)
-            self.assertEqual(run.call_args.kwargs['env']['JOB_PILOTTO_DISABLE'], 'mail,notion,telegram,google_jobs')
+            self.assertEqual(run.call_args.kwargs['env']['JOBADABRA_DISABLE'], 'mail,notion,telegram,google_jobs')
             self.assertEqual(run.call_args.kwargs['env']['npm_config_legacy_peer_deps'], 'false')
 
     def test_missing_dependencies_are_actionable(self):

@@ -52,11 +52,11 @@ test('a failed ask is not kept', async () => {
 
 test('the cache exists only under the e2e env, and never in the app\'s own folder', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-memo-'));
-  assert.equal(memoFile({JOB_PILOTTO_MODEL_MEMO: path.join(dir, 'm.json')}), '', 'no JOB_PILOTTO_E2E: the person\'s app never memoizes');
-  assert.equal(memoFile({JOB_PILOTTO_E2E: '1'}), '');
-  assert.equal(memoFile({JOB_PILOTTO_E2E: '1', JOB_PILOTTO_MODEL_MEMO: path.join(dir, 'm.json')}), path.join(dir, 'm.json'));
+  assert.equal(memoFile({JOBADABRA_MODEL_MEMO: path.join(dir, 'm.json')}), '', 'no JOBADABRA_E2E: the person\'s app never memoizes');
+  assert.equal(memoFile({JOBADABRA_E2E: '1'}), '');
+  assert.equal(memoFile({JOBADABRA_E2E: '1', JOBADABRA_MODEL_MEMO: path.join(dir, 'm.json')}), path.join(dir, 'm.json'));
   const real = path.join(os.homedir(), 'Library', 'Application Support', 'Job Pilotto', 'model-memo.json');
-  assert.equal(memoFile({JOB_PILOTTO_E2E: '1', JOB_PILOTTO_MODEL_MEMO: real}), '');
+  assert.equal(memoFile({JOBADABRA_E2E: '1', JOBADABRA_MODEL_MEMO: real}), '');
 });
 
 test('the app\'s AI client is memoized through one place only', () => {
@@ -79,8 +79,8 @@ test('memo-only (an offline row replay): a kept answer is given, a miss is refus
   assert.deepEqual((await offline.messages.create(ask('a kept page'))).content, [{type: 'text', text: 'kept'}]);
   await assert.rejects(offline.messages.create(ask('a page the live run never asked about')), /not in the row's kept answers/);
   assert.equal(asked, 0, 'the model is never asked');
-  assert.equal(memoOnly({JOB_PILOTTO_E2E: '1', JOB_PILOTTO_MODEL_MEMO_ONLY: '1'}), true);
-  assert.equal(memoOnly({JOB_PILOTTO_MODEL_MEMO_ONLY: '1'}), false, 'only under the e2e env');
+  assert.equal(memoOnly({JOBADABRA_E2E: '1', JOBADABRA_MODEL_MEMO_ONLY: '1'}), true);
+  assert.equal(memoOnly({JOBADABRA_MODEL_MEMO_ONLY: '1'}), false, 'only under the e2e env');
 });
 
 test('the key scrubs contacts as the page capture does: the live ask (the page\'s real email) and its replay (the scrubbed page) are one key', () => {
@@ -188,11 +188,11 @@ test('loose: a schema that only gained a listed added property still matches the
   await assert.rejects(loose.messages.create(withSchema(answerAsk('Seller in Zurich'), {mood: {type: 'string'}})), /not in the row's kept answers/);
 });
 
-test('loose lookup is read from the environment too (JOB_PILOTTO_MODEL_MEMO_LOOSE=<hits file>, e2e only) and is off without it', async () => {
+test('loose lookup is read from the environment too (JOBADABRA_MODEL_MEMO_LOOSE=<hits file>, e2e only) and is off without it', async () => {
   const {looseFile} = await import('../lib/ai/model-memo.js');
   assert.equal(looseFile({}), '');
-  assert.equal(looseFile({JOB_PILOTTO_E2E: '1', JOB_PILOTTO_MODEL_MEMO_LOOSE: '/tmp/x'}), '/tmp/x');
-  assert.equal(looseFile({JOB_PILOTTO_MODEL_MEMO_LOOSE: '/tmp/x'}), '', 'never outside the e2e env');
+  assert.equal(looseFile({JOBADABRA_E2E: '1', JOBADABRA_MODEL_MEMO_LOOSE: '/tmp/x'}), '/tmp/x');
+  assert.equal(looseFile({JOBADABRA_MODEL_MEMO_LOOSE: '/tmp/x'}), '', 'never outside the e2e env');
 });
 
 test('a kept ask whose prompt carries a clock time or a date keeps the names of those parts beside it (the class check at capture time); a clean one keeps none', async () => {
@@ -227,8 +227,8 @@ test('the live ask\'s duration is kept beside its answer (#ms); a replay serves 
   assert.ok(await replayed({latency: false}) < 40, 'off: answered at once');
   assert.ok(await replayed({latency: true}) >= 45, 'on: after the live duration');
   assert.equal(LATENCY_CAP_MS, 3000, 'the cap');
-  assert.equal(latencyOn({JOB_PILOTTO_E2E: '1', JOB_PILOTTO_MODEL_MEMO_LATENCY: '1'}), true);
-  assert.equal(latencyOn({JOB_PILOTTO_MODEL_MEMO_LATENCY: '1'}), false, 'only under the e2e env');
+  assert.equal(latencyOn({JOBADABRA_E2E: '1', JOBADABRA_MODEL_MEMO_LATENCY: '1'}), true);
+  assert.equal(latencyOn({JOBADABRA_MODEL_MEMO_LATENCY: '1'}), false, 'only under the e2e env');
 });
 
 test('a slowed replay scales the live duration and pads every kept answer, also one with no recorded time (row-to-case\'s second speed)', async () => {
@@ -237,7 +237,7 @@ test('a slowed replay scales the live duration and pads every kept answer, also 
   fs.writeFileSync(file, JSON.stringify({[key]: {content: [{type: 'text', text: '{}'}]}}));   // no #ms: answered at once unless padded
   const timed = async env => { const client = {messages: {create: async () => { throw new Error('never asked'); }}}; const at = Date.now(); await withMemo(client, file, {only: true, latency: true, env}).messages.create(ask('a page')); return Date.now() - at; };
   assert.ok(await timed({}) < 40, 'normal speed: at once');
-  assert.ok(await timed({JOB_PILOTTO_MODEL_MEMO_LATENCY_PAD_MS: '80'}) >= 70, 'slowed: padded');
+  assert.ok(await timed({JOBADABRA_MODEL_MEMO_LATENCY_PAD_MS: '80'}) >= 70, 'slowed: padded');
 });
 
 test('ordinal (CI row cases): an ask with no kept answer gets the n-th kept answer of its kind, and says so; another kind is a miss; without the option nothing is served by order', async () => {
@@ -281,7 +281,7 @@ test('a frame\'s pixel size is layout, not meaning: a replay on another machine 
   const reply = {content: [{type: 'text', text: '{"kind":"form"}'}], stop_reason: 'end_turn', usage: {input_tokens: 9, output_tokens: 3}};
   const live = withMemo({engine: 'cli', messages: {create: async () => { calls += 1; return reply; }}}, file, {only: false});
   await live.messages.create(page(6993));
-  const env = {JOB_PILOTTO_E2E: '1', JOB_PILOTTO_MODEL_MEMO_HITS: hits};
+  const env = {JOBADABRA_E2E: '1', JOBADABRA_MODEL_MEMO_HITS: hits};
   const replay = withMemo({engine: 'cli', messages: {create: async () => { throw new Error('never asked'); }}}, file, {only: true, env});
   assert.deepEqual(await replay.messages.create(page(6869)), reply);
   assert.equal(calls, 1);
@@ -302,7 +302,7 @@ test('a record made before the size-free key still matches when one frame size m
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-memo-')), file = path.join(dir, 'model-memo.json'), hits = path.join(dir, 'hits.txt');
   const reply = {content: [{type: 'text', text: '{"kind":"form"}'}], stop_reason: 'end_turn', usage: {input_tokens: 9, output_tokens: 3}};
   fs.writeFileSync(file, JSON.stringify({[memoKey(text(1426))]: reply}));
-  const replay = withMemo({engine: 'cli', messages: {create: async () => { throw new Error('never asked'); }}}, file, {only: true, env: {JOB_PILOTTO_E2E: '1', JOB_PILOTTO_MODEL_MEMO_HITS: hits}});
+  const replay = withMemo({engine: 'cli', messages: {create: async () => { throw new Error('never asked'); }}}, file, {only: true, env: {JOBADABRA_E2E: '1', JOBADABRA_MODEL_MEMO_HITS: hits}});
   assert.deepEqual(await replay.messages.create(text(1430)), reply);
   assert.equal(fs.readFileSync(hits, 'utf8').trim(), memoKey(text(1426)), 'the hit counts as the live ask');
 });
@@ -322,8 +322,8 @@ test('fill (an ask the recording lacks, Mac only): a kept answer is served, a mi
   const offline = {messages: {create: async () => { throw new Error('must not ask'); }}};
   withMemo(offline, file, {only: true});
   assert.deepEqual((await offline.messages.create(ask('a page with a new field'))).content, [{type: 'text', text: 'new'}], 'the filled answer is in the memo');
-  assert.equal(fillOn({JOB_PILOTTO_E2E: '1', JOB_PILOTTO_MODEL_MEMO_ONLY: '1', JOB_PILOTTO_MODEL_MEMO_FILL: '1'}), true);
-  assert.equal(fillOn({JOB_PILOTTO_MODEL_MEMO_ONLY: '1', JOB_PILOTTO_MODEL_MEMO_FILL: '1'}), false, 'only under the e2e env');
-  assert.equal(fillOn({JOB_PILOTTO_E2E: '1', JOB_PILOTTO_MODEL_MEMO_FILL: '1'}), false, 'only with memo-only: a fill is a replay that may ask');
-  assert.equal(fillOn({JOB_PILOTTO_E2E: '1', JOB_PILOTTO_MODEL_MEMO_ONLY: '1', JOB_PILOTTO_MODEL_MEMO_FILL: '1', CI: 'true'}), false, 'never on CI: no claude -p there');
+  assert.equal(fillOn({JOBADABRA_E2E: '1', JOBADABRA_MODEL_MEMO_ONLY: '1', JOBADABRA_MODEL_MEMO_FILL: '1'}), true);
+  assert.equal(fillOn({JOBADABRA_MODEL_MEMO_ONLY: '1', JOBADABRA_MODEL_MEMO_FILL: '1'}), false, 'only under the e2e env');
+  assert.equal(fillOn({JOBADABRA_E2E: '1', JOBADABRA_MODEL_MEMO_FILL: '1'}), false, 'only with memo-only: a fill is a replay that may ask');
+  assert.equal(fillOn({JOBADABRA_E2E: '1', JOBADABRA_MODEL_MEMO_ONLY: '1', JOBADABRA_MODEL_MEMO_FILL: '1', CI: 'true'}), false, 'never on CI: no claude -p there');
 });

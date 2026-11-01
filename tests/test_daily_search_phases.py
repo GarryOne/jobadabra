@@ -41,8 +41,8 @@ class SearchCharacterization(unittest.TestCase):
         self.import_report = store.import_watch_report
         self.enrich_error = self.score_error = None
         patches = [
-            mock.patch.dict(os.environ, {'JOB_PILOTTO_DATA_DIR': str(self.root), 'JOB_PILOTTO_CONFIG_DIR': str(self.root),
-                                        'JOB_PILOTTO_DISABLE': 'mail,notion,google_jobs,job_alerts'}),
+            mock.patch.dict(os.environ, {'JOBADABRA_DATA_DIR': str(self.root), 'JOBADABRA_CONFIG_DIR': str(self.root),
+                                        'JOBADABRA_DISABLE': 'mail,notion,google_jobs,job_alerts'}),
             mock.patch.object(socket.socket, 'connect', side_effect=AssertionError('network forbidden')),
             mock.patch.object(engine, 'client', side_effect=AssertionError('AI forbidden')),
             mock.patch.object(engine, 'ready', return_value=True),

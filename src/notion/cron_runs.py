@@ -32,8 +32,8 @@ def new_run(mode):
     """The run dict an AI job fills for its ⏰ Cronjob Runs row; trigger and link come from GitHub Actions.
     Every AI job logs one (crawls, kits, insights, interviews, mail), so the rows add up to the month's spend."""
     event = os.getenv('GITHUB_EVENT_NAME', '')
-    # The desktop app says what started it (JOB_PILOTTO_TRIGGER: "Mac schedule" or "Mac (you)").
-    trigger = os.getenv('JOB_PILOTTO_TRIGGER') or {'schedule': 'Schedule', '': 'Local'}.get(event, 'Manual')
+    # The desktop app says what started it (JOBADABRA_TRIGGER: "Mac schedule" or "Mac (you)").
+    trigger = os.getenv('JOBADABRA_TRIGGER') or {'schedule': 'Schedule', '': 'Local'}.get(event, 'Manual')
     run = {'mode': mode, 'started_at': datetime.now(timezone.utc).isoformat(timespec='seconds'),
            'trigger': trigger, 'warnings': [], 'run_id': run_result.current_id()}
     if os.getenv('GITHUB_RUN_ID'):
@@ -230,8 +230,8 @@ TIME_UP_WORDS = "Ended at the search's 3 minutes: what it had not reached waits 
 
 def stop_reason():
     """(words, failed, stopped) for a SIGTERM. The app ends a step at the press's 180 s (desktop/lib/search-steps.js) and creates the file named by
-    JOB_PILOTTO_TIME_UP_FILE just before its SIGTERM: that stop is a time-up, not a Stop press (its row is not Failed, and does not say Stop was pressed)."""
-    marker = os.environ.get('JOB_PILOTTO_TIME_UP_FILE')
+    JOBADABRA_TIME_UP_FILE just before its SIGTERM: that stop is a time-up, not a Stop press (its row is not Failed, and does not say Stop was pressed)."""
+    marker = os.environ.get('JOBADABRA_TIME_UP_FILE')
     if marker and os.path.exists(marker):
         return TIME_UP_WORDS, False, False
     return STOPPED_WORDS, True, True

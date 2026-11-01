@@ -103,7 +103,7 @@ class ScoutUsesTheBrokerTest(unittest.TestCase):
         code = '\n'.join(line for line in workflow.splitlines() if not line.lstrip().startswith('#'))
         self.assertIn('broker-relay-run.mjs --job central-scout', code)
         self.assertNotRegex(code, r'(?i)anthropic', 'the scout holds no Anthropic key and no base URL')
-        self.assertNotRegex(code, r'(?i)free_ai|JOB_PILOTTO_AI_ENGINE', 'the scout never switches to Free AI or another engine')
+        self.assertNotRegex(code, r'(?i)free_ai|JOBADABRA_AI_ENGINE', 'the scout never switches to Free AI or another engine')
 
     def test_the_run_cap_is_one_env_value_and_items_past_it_stay_unjudged(self):
         import os
@@ -111,14 +111,14 @@ class ScoutUsesTheBrokerTest(unittest.TestCase):
 
         from src import scout_core
         with mock.patch.object(scout_core, 'CENTRAL', True):
-            with mock.patch.dict('os.environ', {'JOB_PILOTTO_CENTRAL_MAX_CALLS': '40'}):
+            with mock.patch.dict('os.environ', {'JOBADABRA_CENTRAL_MAX_CALLS': '40'}):
                 self.assertEqual(decide.limit(), 40)
-            with mock.patch.dict('os.environ', {'JOB_PILOTTO_CENTRAL_MAX_CALLS': 'not a number'}):
+            with mock.patch.dict('os.environ', {'JOBADABRA_CENTRAL_MAX_CALLS': 'not a number'}):
                 self.assertEqual(decide.limit(), decide.CENTRAL_MAX_CALLS)
             with mock.patch.dict('os.environ'):
-                os.environ.pop('JOB_PILOTTO_CENTRAL_MAX_CALLS', None)
+                os.environ.pop('JOBADABRA_CENTRAL_MAX_CALLS', None)
                 self.assertEqual(decide.limit(), decide.CENTRAL_MAX_CALLS)
-        with mock.patch.dict('os.environ', {'JOB_PILOTTO_CENTRAL_MAX_CALLS': '40'}):
+        with mock.patch.dict('os.environ', {'JOBADABRA_CENTRAL_MAX_CALLS': '40'}):
             self.assertEqual(decide.limit(), decide.MAX_CALLS_PER_RUN, "an install never reads the scout's cap")
 
 

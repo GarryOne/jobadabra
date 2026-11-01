@@ -1,5 +1,5 @@
 {
-  "name": "job-pilotto-e2e",
+  "name": "jobadabra-e2e",
   "private": true,
   "type": "module",
   "description": "End-to-end journey tests: Playwright drives the real Electron app (see README.md here). Kept out of ../package.json so the shipped app never bundles it.",

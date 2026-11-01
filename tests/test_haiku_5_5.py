@@ -44,8 +44,8 @@ class SmallModelIsData(unittest.TestCase):
         run = lambda env: subprocess.run([sys.executable, '-c', 'from src.ai import models, title_triage; print(models.SMALL_MODEL, title_triage.MODEL)'],
                                          cwd=ROOT, env=env, capture_output=True, text=True, check=True).stdout.split()
         import os
-        self.assertEqual(run({**os.environ, 'JOB_PILOTTO_SMALL_MODEL': 'claude-haiku-9'}), ['claude-haiku-9', 'claude-haiku-9'])
-        self.assertEqual(run({k: v for k, v in os.environ.items() if k != 'JOB_PILOTTO_SMALL_MODEL'}), ['claude-haiku-5-5', 'claude-haiku-5-5'])
+        self.assertEqual(run({**os.environ, 'JOBADABRA_SMALL_MODEL': 'claude-haiku-9'}), ['claude-haiku-9', 'claude-haiku-9'])
+        self.assertEqual(run({k: v for k, v in os.environ.items() if k != 'JOBADABRA_SMALL_MODEL'}), ['claude-haiku-5-5', 'claude-haiku-5-5'])
         for path in (ROOT / 'src').rglob('*.py'):
             if path.name not in ('models.py', 'cost.py', 'features.py'):
                 self.assertNotRegex(path.read_text(), r"(?m)= '?claude-haiku-[0-9-]+'$", f'{path.relative_to(ROOT)}: use models.SMALL_MODEL')
@@ -56,13 +56,13 @@ if __name__ == '__main__':
 
 
 class EveryTierFollowsTheOneModelOverride(unittest.TestCase):
-    """The one-model override (JOB_PILOTTO_MODEL_OVERRIDE -> desktop/lib/pipeline-env.js) reaches every tier, so a Haiku-only run never has a
+    """The one-model override (JOBADABRA_MODEL_OVERRIDE -> desktop/lib/pipeline-env.js) reaches every tier, so a Haiku-only run never has a
     step on Sonnet or Opus (27 Oct 2026: the job-boards proposal ran Sonnet in the Haiku-only benchmark). Without the variables nothing changes."""
     def test_each_tier_reads_its_variable_and_keeps_its_default(self):
         import os, subprocess, sys
         tiers = 'from src.ai import models; print(*(models.model_for("claude", t) for t in ("small", "main", "big")))'
         run = lambda env: subprocess.run([sys.executable, '-c', tiers], cwd=ROOT, env=env, capture_output=True, text=True, check=True).stdout.split()
-        names = ('JOB_PILOTTO_SMALL_MODEL', 'JOB_PILOTTO_MAIN_MODEL', 'JOB_PILOTTO_BIG_MODEL')
+        names = ('JOBADABRA_SMALL_MODEL', 'JOBADABRA_MAIN_MODEL', 'JOBADABRA_BIG_MODEL')
         clean = {k: v for k, v in os.environ.items() if k not in names}
         self.assertEqual(run({**clean, **{n: 'claude-haiku-9' for n in names}}), ['claude-haiku-9'] * 3)
         self.assertEqual(run(clean), ['claude-haiku-5-5', 'claude-sonnet-5-5', 'claude-opus-5-5'])

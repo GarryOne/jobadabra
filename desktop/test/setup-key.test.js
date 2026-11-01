@@ -13,9 +13,9 @@ function setup(t, e2e, outcome = 'accept', status = 200) {
   t.after(() => fs.rmSync(dir, {recursive: true, force: true}));
   const storage = createStorage(dir, {encrypt: value => value, decrypt: value => value});
   storage.saveSettings({anthropicKeyTest: outcome});
-  const before = process.env.JOB_PILOTTO_E2E;
-  if (e2e) process.env.JOB_PILOTTO_E2E = '1'; else delete process.env.JOB_PILOTTO_E2E;
-  t.after(() => { if (before === undefined) delete process.env.JOB_PILOTTO_E2E; else process.env.JOB_PILOTTO_E2E = before; });
+  const before = process.env.JOBADABRA_E2E;
+  if (e2e) process.env.JOBADABRA_E2E = '1'; else delete process.env.JOBADABRA_E2E;
+  t.after(() => { if (before === undefined) delete process.env.JOBADABRA_E2E; else process.env.JOBADABRA_E2E = before; });
   const calls = [];
   t.mock.method(globalThis, 'fetch', async (url, init) => {
     calls.push({url: String(url), key: new Headers(init.headers).get('x-api-key')});

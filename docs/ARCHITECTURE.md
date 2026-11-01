@@ -20,7 +20,7 @@ sources → crawl → SQLite cache → AI → Notion + Telegram → you submit �
 5. **Act, locally.** The desktop app and the Chrome extension fill the form. The owner reviews and submits. How an application starts, who fills, and what is still open: [docs/apply-flow.md](apply-flow.md).
 6. **Learn.** Read-only Gmail and Calendar update stages. Interview recordings are transcribed on the machine. A daily insight and a Monday report go back to Telegram.
 
-The core crawl and printed digest need no accounts. Everything else turns on when its keys exist, and `JOB_PILOTTO_DISABLE` can switch a feature off. The registry is `src/features.py`.
+The core crawl and printed digest need no accounts. Everything else turns on when its keys exist, and `JOBADABRA_DISABLE` can switch a feature off. The registry is `src/features.py`.
 
 ## Five runtimes, one engine
 
@@ -37,7 +37,7 @@ The core crawl and printed digest need no accounts. Everything else turns on whe
 **What lives on the user's side, and how it stays in step** (8 Oct 2026). At every app start: the repo's workflow files are rewritten,
 pinned to the app's own release (`desktop-v<version>`); our retired ones (first line `# Jobadabra`) are deleted, the user's own kept;
 secrets and variables (models included) are sent again when their fingerprint changed (`github.js` `updateRepo`); the Telegram Worker is
-redeployed when its code or settings changed (`telegram-cloud.js` `refresh`). Model IDs are data: `JOB_PILOTTO_SMALL_MODEL` and the stage
+redeployed when its code or settings changed (`telegram-cloud.js` `refresh`). Model IDs are data: `JOBADABRA_SMALL_MODEL` and the stage
 variables (`src/ai/models.py`), so a new model needs no engine release. Not synced: a secret removed on the Mac stays in the repo
 (a failed Keychain read must never wipe Always on), except the explicit sign-outs (`removeRepoSecrets`). A repo whose app is never opened
 keeps its last release: old engine tags must keep working against our site's API.

@@ -14,7 +14,7 @@ test('only a run on the real workspace needs the lock: sqlite and the stand-in n
   assert.equal(lockNeeded({store: 'notion', env: {}}), true);
   for (const store of ['sqlite', 'standin', '']) assert.equal(lockNeeded({store, env: {}}), false, store);
   assert.equal(lockNeeded({store: 'notion', env: {CI: 'true'}}), false, 'a CI job has its own runner');
-  assert.equal(lockNeeded({store: 'notion', env: {JOB_PILOTTO_NOTION_LOCK: '0'}}), false, 'the escape hatch');
+  assert.equal(lockNeeded({store: 'notion', env: {JOBADABRA_NOTION_LOCK: '0'}}), false, 'the escape hatch');
 });
 
 test('the holder is written with pid, session, what and since; release frees it', async () => {

@@ -15,7 +15,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-os.environ['JOB_PILOTTO_AI_ENGINE'] = 'cli'   # the person's own Claude Code: the eval never reaches an API account
+os.environ['JOBADABRA_AI_ENGINE'] = 'cli'   # the person's own Claude Code: the eval never reaches an API account
 os.environ['ANTHROPIC_API_KEY'] = ''
 
 from src.ai import engine, kit  # noqa: E402

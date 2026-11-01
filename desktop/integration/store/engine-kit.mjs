@@ -5,8 +5,8 @@
 // Job: serve stored answers
 //
 // What one kit instance is: a temp install (settings, config, data, secrets), one free loopback port per stand-in (never 47111 or any port the owner's app may hold: asserted), the e2e
-// fixture feeds copied into the install, and the app's own `pipelineEnv` pointed at the stand-ins by the e2e variables (it passes them only when JOB_PILOTTO_E2E is set).
-// What it never does: reach the owner's folders (the engine would refuse them without JOB_PILOTTO_DATA_DIR and CONFIG_DIR: `refusesRealFolder`), a real network, a real AI (the proxy refuses
+// fixture feeds copied into the install, and the app's own `pipelineEnv` pointed at the stand-ins by the e2e variables (it passes them only when JOBADABRA_E2E is set).
+// What it never does: reach the owner's folders (the engine would refuse them without JOBADABRA_DATA_DIR and CONFIG_DIR: `refusesRealFolder`), a real network, a real AI (the proxy refuses
 // every call no test answered, and its upstream is an address nothing listens on), or a model: the key is a dummy.
 // Data comes from the engine's own commands: the applicant's strategy is saved by the app's own writer (lib/strategy-settings.js keepLocally), rows are read with `storeCall`.
 //
@@ -79,7 +79,7 @@ export async function startEngineKit({ai = true, store = 'sqlite', telegram = fa
   // backbone mode refuses a question the table lacks, never passing it on).
   if (!answers) proxy.setCanned(() => ({refuse: 'no-credit'}));
   assertSafePort(proxy.url);
-  const env = {JOB_PILOTTO_E2E: '1', JOB_PILOTTO_FIXTURE_DIR: feeds, JOB_PILOTTO_FOLLOW_APP: '0', JOB_PILOTTO_E2E_AI_BASE_URL: proxy.url, JOB_PILOTTO_E2E_EXPECTS_FAILURES: '1', HOME: profile};
+  const env = {JOBADABRA_E2E: '1', JOBADABRA_FIXTURE_DIR: feeds, JOBADABRA_FOLLOW_APP: '0', JOBADABRA_E2E_AI_BASE_URL: proxy.url, JOBADABRA_E2E_EXPECTS_FAILURES: '1', HOME: profile};
   const kit = {profile, feeds, proxy, tasks: null, storage: null, notion: null, telegram: null, google: null};
 
   if (store === 'notion') {
@@ -89,19 +89,19 @@ export async function startEngineKit({ai = true, store = 'sqlite', telegram = fa
     closers.push(() => farSide.close(), () => fake.close());
     assertSafePort(fake.url); assertSafePort(farSide.url);
     kit.notion = Object.assign(farSide, {fake, token: fake.token, ids: await buildStandIn(standIn)});
-    Object.assign(env, {JOB_PILOTTO_E2E_NOTION_BASE_URL: farSide.url, JOB_PILOTTO_E2E_NOTION_STANDIN: '1'});
+    Object.assign(env, {JOBADABRA_E2E_NOTION_BASE_URL: farSide.url, JOBADABRA_E2E_NOTION_STANDIN: '1'});
   }
   if (telegram) {
     kit.telegram = await startTelegramFake();
     closers.push(() => kit.telegram.close());
     assertSafePort(kit.telegram.url);
-    env.JOB_PILOTTO_E2E_TELEGRAM_BASE_URL = kit.telegram.url;
+    env.JOBADABRA_E2E_TELEGRAM_BASE_URL = kit.telegram.url;
   }
   if (google) {
     kit.google = await startGoogleFake({emails: emails.length ? emails : mailFixtures()});
     closers.push(() => kit.google.close());
     assertSafePort(kit.google.url);
-    Object.assign(env, {JOB_PILOTTO_E2E_GOOGLE_BASE_URL: kit.google.url, GOOGLE_CLIENT_ID: 'e2e-client', GOOGLE_CLIENT_SECRET: 'e2e-secret', GOOGLE_REFRESH_TOKEN: 'e2e-refresh'});
+    Object.assign(env, {JOBADABRA_E2E_GOOGLE_BASE_URL: kit.google.url, GOOGLE_CLIENT_ID: 'e2e-client', GOOGLE_CLIENT_SECRET: 'e2e-secret', GOOGLE_REFRESH_TOKEN: 'e2e-refresh'});
   }
   if (answers) Object.assign(env, {E2E_AI_ANSWERS: 'backbone', E2E_SUITE: answers, E2E_ARTIFACTS: path.join(profile, 'artifacts')});
   // The app's modules read these at import and at each spawn: set them first, import after.
@@ -139,7 +139,7 @@ export async function startEngineKit({ai = true, store = 'sqlite', telegram = fa
   kit.feed([]);
   // The harness reads the store straight from the stand-in, not through the fault proxy: a read of what became of a run must not itself be failed.
   const storeCtx = () => ({profile, store: store === 'notion' ? 'standin' : 'sqlite', token: kit.notion?.token || '',
-    appEnv: store === 'notion' ? {JOB_PILOTTO_E2E_NOTION_BASE_URL: kit.notion.fake.url, JOB_PILOTTO_E2E_NOTION_STANDIN: '1'} : {}});
+    appEnv: store === 'notion' ? {JOBADABRA_E2E_NOTION_BASE_URL: kit.notion.fake.url, JOBADABRA_E2E_NOTION_STANDIN: '1'} : {}});
   kit.storedRuns = async () => storeCall(storeCtx(), 'cron_runs', 'list', {});
   /** One call of the store's own command (`python -m src.stores call`), the way the e2e suites seed and read: data comes from the engine, never hand-written rows. */
   kit.data = (entity, method, kwargs = {}) => storeCall(storeCtx(), entity, method, kwargs);
@@ -173,7 +173,7 @@ export async function startEngineKit({ai = true, store = 'sqlite', telegram = fa
 }
 
 /**
- * The engine, started with no data or config folder set while an app is "set up" in a fake app folder (JOB_PILOTTO_APP_DIR, a temp folder), refuses to open it (src/paths.py
+ * The engine, started with no data or config folder set while an app is "set up" in a fake app folder (JOBADABRA_APP_DIR, a temp folder), refuses to open it (src/paths.py
  * follow_app): proof that a run of this kit that lost its folders would stop, not touch the owner's. -> the engine's stderr ('' if it did not refuse). Nothing real is read.
  */
 export async function refusesRealFolder() {
@@ -181,7 +181,7 @@ export async function refusesRealFolder() {
   try {
     fs.mkdirSync(path.join(home, 'data'), {recursive: true});
     fs.writeFileSync(path.join(home, 'settings.json'), JSON.stringify({setupDone: true, notionIds: {NOTION_JOBS_DB: '0123456789abcdef0123456789abcdef'}}));
-    const env = {PATH: process.env.PATH, HOME: home, USERPROFILE: home, APPDATA: home, JOB_PILOTTO_APP_DIR: home, PYTHONUTF8: '1'};
+    const env = {PATH: process.env.PATH, HOME: home, USERPROFILE: home, APPDATA: home, JOBADABRA_APP_DIR: home, PYTHONUTF8: '1'};
     return await promisify(execFile)(python(), ['-c', 'from src import paths'], {cwd: REPO, env}).then(() => '', error => String(error.stderr || error.message));
   } finally { fs.rmSync(home, {recursive: true, force: true}); }
 }

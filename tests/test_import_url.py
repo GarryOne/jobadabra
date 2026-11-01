@@ -21,7 +21,7 @@ FIT = {'score': 81, 'tier': 'A', 'reason': 'AWS/EKS ownership', 'strengths': ['E
 POSTING = 'Own AWS and EKS: networking, DNS, load balancing. Run Aurora PostgreSQL in production. Terraform + Argo CD. ' * 2
 URL = 'https://boards.greenhouse.io/acme/jobs/1'
 AI_ON = {'ANTHROPIC_API_KEY': 'sk-test', 'NOTION_TOKEN': 'secret-test',
-         'JOB_PILOTTO_ENRICH_MODEL': 'claude-haiku-5-5', 'JOB_PILOTTO_SCORE_MODEL': 'claude-sonnet-5-5'}
+         'JOBADABRA_ENRICH_MODEL': 'claude-haiku-5-5', 'JOBADABRA_SCORE_MODEL': 'claude-sonnet-5-5'}
 META = {'title': 'Senior DevOps Engineer', 'company': 'Acme', 'location': 'Remote', 'description': POSTING}
 
 

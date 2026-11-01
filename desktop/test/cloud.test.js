@@ -146,7 +146,7 @@ test('not installed yet: it says so, with the two setup links', async () => {
   assert.match(await github.createUrl(async url => (url.endsWith('/GarryOne/job-pilotto-starter') ? {ok: true, json: async () => ({is_template: true})} : {ok: false})), /template_name=job-pilotto-starter.*visibility=private/);
   assert.match(await github.createUrl(async () => ({ok: true, json: async () => ({is_template: true})})), /template_name=jobadabra-user-template&template_owner=jobadabra&name=jobadabra-personal-always-on&visibility=private/);
   assert.match(github.INSTALL_URL, /github\.com\/apps\/.+\/installations\/new/);
-  if (!process.env.JOB_PILOTTO_GITHUB_APP) assert.equal(github.INSTALL_URL, 'https://github.com/apps/jobadabra/installations/new', 'the app is named Jobadabra on GitHub since 26 Oct 2026; apps/job-pilotto answers 404');
+  if (!process.env.JOBADABRA_GITHUB_APP) assert.equal(github.INSTALL_URL, 'https://github.com/apps/jobadabra/installations/new', 'the app is named Jobadabra on GitHub since 26 Oct 2026; apps/job-pilotto answers 404');
 });
 
 test('installed on several repositories: the user chooses one; the choice is used', async () => {

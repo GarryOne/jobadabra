@@ -9,7 +9,7 @@ import {pageText, settingsOf} from '../../e2e/lib/storemove-steps.mjs';
 
 // The app's own isolation switches, set before the app's modules read them (lib/notion-core.js reads the base URL when it loads).
 const standIn = await startNotionFake();
-Object.assign(process.env, {JOB_PILOTTO_E2E: '1', JOB_PILOTTO_E2E_NOTION_BASE_URL: standIn.url, JOB_PILOTTO_E2E_NOTION_STANDIN: '1', JOB_PILOTTO_FOLLOW_APP: '0'});
+Object.assign(process.env, {JOBADABRA_E2E: '1', JOBADABRA_E2E_NOTION_BASE_URL: standIn.url, JOBADABRA_E2E_NOTION_STANDIN: '1', JOBADABRA_FOLLOW_APP: '0'});
 const {createStorage} = await import('../../lib/storage.js');
 const {moveToNotion} = await import('../../lib/store-move.js');
 const {ensureKnowledgePage} = await import('../../lib/store/notion.js');

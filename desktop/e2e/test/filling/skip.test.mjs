@@ -42,8 +42,8 @@ test('suite.mjs itself: offline settings needs no AI secret; a live Notion suite
   }
   // The real-Notion suite still requires its own workspace token, even though its AI is offline.
   const clean = Object.fromEntries(Object.entries(process.env).filter(([key]) => !/^E2E_/.test(key)));
-  // Nothing heavy runs here (the suite skips at once), so it must not queue behind another session's browser suite for the heavy-run lock (JOB_PILOTTO_HEAVY=0).
-  const run = env => spawnSync('node', ['suite.mjs', 'notion-real'], {cwd: new URL('../..', import.meta.url).pathname, env: {...clean, CI: 'true', JOB_PILOTTO_HEAVY: '0', E2E_REPORT: '0', ...env}, encoding: 'utf8', timeout: 60000});
+  // Nothing heavy runs here (the suite skips at once), so it must not queue behind another session's browser suite for the heavy-run lock (JOBADABRA_HEAVY=0).
+  const run = env => spawnSync('node', ['suite.mjs', 'notion-real'], {cwd: new URL('../..', import.meta.url).pathname, env: {...clean, CI: 'true', JOBADABRA_HEAVY: '0', E2E_REPORT: '0', ...env}, encoding: 'utf8', timeout: 60000});
   const plain = run({}), inRun = run({E2E_SKIP_EXIT: '3'}), required = run({E2E_REQUIRE_SECRETS: '1'});
   for (const result of [plain, inRun, required]) {
     assert.ifError(result.error);

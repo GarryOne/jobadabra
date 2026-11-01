@@ -275,7 +275,7 @@ def scan(db, search, now=None, readers=None, on_jobs=None, ahead=None):
     report = {'jobs': [], 'sources': []}
     # The end-to-end fixture mode reads feeds from files and never reaches a live site (careers.py does the same): real postings from a public API would land in a test's data
     # (3 Oct 2026: jobicy rows in the quality suite). `readers` given = a test of this function itself.
-    if readers is None and os.getenv('JOB_PILOTTO_FIXTURE_DIR'):
+    if readers is None and os.getenv('JOBADABRA_FIXTURE_DIR'):
         return _done(report)
     now = now or datetime.now(timezone.utc)
     db.execute(TABLE)

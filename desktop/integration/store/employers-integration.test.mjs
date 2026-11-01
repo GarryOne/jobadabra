@@ -47,10 +47,10 @@ async function install(persona) {
   fs.copyFileSync(path.join(FEEDS, 'sources.json'), path.join(profile, 'config', 'sources.json'));   // E2E Acme and E2E Beta are already sources
   fs.copyFileSync(path.join(FEEDS, 'employers', 'scout_seeds.json'), path.join(profile, 'config', 'scout_seeds.json'));
   fs.writeFileSync(path.join(profile, 'settings.json'), JSON.stringify({store: 'notion', notionIds: await buildStandIn(fake)}));
-  const ctx = {profile, store: 'standin', token: fake.token, appEnv: {JOB_PILOTTO_E2E_NOTION_BASE_URL: fake.url, JOB_PILOTTO_E2E_NOTION_STANDIN: '1'}};
+  const ctx = {profile, store: 'standin', token: fake.token, appEnv: {JOBADABRA_E2E_NOTION_BASE_URL: fake.url, JOBADABRA_E2E_NOTION_STANDIN: '1'}};
   const env = {...Object.fromEntries(['PATH', 'TMPDIR', 'LANG', 'SYSTEMROOT', 'TEMP', 'TMP'].filter(name => process.env[name]).map(name => [name, process.env[name]])), PYTHONUTF8: '1',
-    ...storeEnv({profile, token: fake.token, notionUrl: fake.url, standIn: true}), JOB_PILOTTO_DISABLE: 'mail,telegram,google_jobs',
-    JOB_PILOTTO_FIXTURE_DIR: feeds, JOB_PILOTTO_LOCATIONS_FILE: path.join(FEEDS, persona.dir, 'person.json')};
+    ...storeEnv({profile, token: fake.token, notionUrl: fake.url, standIn: true}), JOBADABRA_DISABLE: 'mail,telegram,google_jobs',
+    JOBADABRA_FIXTURE_DIR: feeds, JOBADABRA_LOCATIONS_FILE: path.join(FEEDS, persona.dir, 'person.json')};
   return {fake, ctx, env, profile};
 }
 

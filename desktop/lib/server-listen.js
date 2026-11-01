@@ -16,19 +16,19 @@ export const linkOffOf = current => (current?.ok === false && current.code !== '
 export const unheardForms = current => ({known: false, ids: [], ...(linkOffOf(current) ? {linkOff: linkOffOf(current)} : {})});
 
 /**
- * -> the port this app listens on: JOB_PILOTTO_PORT when it names a whole port, else the production one. The port is fixed because the extension has it built in
- * (extension/flow.js); JOB_PILOTTO_PORT moves it for a test app that runs next to the user's own (the e2e suites copy the extension with the same port, e2e/lib/extension.mjs).
+ * -> the port this app listens on: JOBADABRA_PORT when it names a whole port, else the production one. The port is fixed because the extension has it built in
+ * (extension/flow.js); JOBADABRA_PORT moves it for a test app that runs next to the user's own (the e2e suites copy the extension with the same port, e2e/lib/extension.mjs).
  */
-export const portFrom = (env = process.env) => (/^\d+$/.test(env.JOB_PILOTTO_PORT || '') && Number(env.JOB_PILOTTO_PORT) > 0 && Number(env.JOB_PILOTTO_PORT) < 65536 ? Number(env.JOB_PILOTTO_PORT) : DEFAULT_PORT);
+export const portFrom = (env = process.env) => (/^\d+$/.test(env.JOBADABRA_PORT || '') && Number(env.JOBADABRA_PORT) > 0 && Number(env.JOBADABRA_PORT) < 65536 ? Number(env.JOBADABRA_PORT) : DEFAULT_PORT);
 
 /**
- * -> whether a test process is about to take the production port (the owner's app, 47111): an e2e app (JOB_PILOTTO_E2E) or a file run by `node --test` (Node sets
+ * -> whether a test process is about to take the production port (the owner's app, 47111): an e2e app (JOBADABRA_E2E) or a file run by `node --test` (Node sets
  * NODE_TEST_CONTEXT in it), when the port it opens, or the one its env gives, is 47111. Such a process never listens; a person's app has neither variable.
- * Why (30 Oct 2026, owner's demo): "no JOB_PILOTTO_PORT" alone let a test told 47111, or a bad port that falls back to it, take the owner's port.
- * A test that opens a free port must also put it in `env.JOB_PILOTTO_PORT` before lib/server.js is first imported (it reads PORT once): the env's port counts too, so a free port
+ * Why (30 Oct 2026, owner's demo): "no JOBADABRA_PORT" alone let a test told 47111, or a bad port that falls back to it, take the owner's port.
+ * A test that opens a free port must also put it in `env.JOBADABRA_PORT` before lib/server.js is first imported (it reads PORT once): the env's port counts too, so a free port
  * beside an env without one stays off, silently (`onError` is not called).
  */
-export const testWithoutOwnPort = (env = process.env, port = portFrom(env)) => (!!env.JOB_PILOTTO_E2E || !!env.NODE_TEST_CONTEXT) && (port === DEFAULT_PORT || portFrom(env) === DEFAULT_PORT);
+export const testWithoutOwnPort = (env = process.env, port = portFrom(env)) => (!!env.JOBADABRA_E2E || !!env.NODE_TEST_CONTEXT) && (port === DEFAULT_PORT || portFrom(env) === DEFAULT_PORT);
 
 /**
  * Listen on 127.0.0.1:port. A busy port is logged once, kept in listenState() and tried again every retryMs until it is free.

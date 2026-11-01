@@ -63,12 +63,12 @@ class HostedRun(unittest.TestCase):
         self.server.shutdown()
 
     def test_environment_holds_the_run_token_and_no_other_credential(self):
-        base = {'NOTION_TOKEN': 'n', 'TELEGRAM_BOT_TOKEN': 't', 'ANTHROPIC_API_KEY': 'sk-mine', 'OPENAI_API_KEY': 'o', 'JOB_PILOTTO_TRIAL_KEY': 'JPF1.x.y', 'PATH': '/bin'}
+        base = {'NOTION_TOKEN': 'n', 'TELEGRAM_BOT_TOKEN': 't', 'ANTHROPIC_API_KEY': 'sk-mine', 'OPENAI_API_KEY': 'o', 'JOBADABRA_TRIAL_KEY': 'JPF1.x.y', 'PATH': '/bin'}
         env = hosted_run.environment(self.folder, self.site, 'HR1.run.tok', base)
         self.assertEqual(env['ANTHROPIC_API_KEY'], 'HR1.run.tok')
-        self.assertEqual(env['JOB_PILOTTO_AI_BASE_URL'], f'{self.site}/api/ai')
-        self.assertEqual(env['JOB_PILOTTO_STORE'], 'sqlite')
-        for name in ('NOTION_TOKEN', 'TELEGRAM_BOT_TOKEN', 'OPENAI_API_KEY', 'JOB_PILOTTO_TRIAL_KEY'):
+        self.assertEqual(env['JOBADABRA_AI_BASE_URL'], f'{self.site}/api/ai')
+        self.assertEqual(env['JOBADABRA_STORE'], 'sqlite')
+        for name in ('NOTION_TOKEN', 'TELEGRAM_BOT_TOKEN', 'OPENAI_API_KEY', 'JOBADABRA_TRIAL_KEY'):
             self.assertNotIn(name, env)
 
     def test_new_matches_are_only_the_ones_the_run_added_best_first(self):
@@ -128,7 +128,7 @@ class HostedRun(unittest.TestCase):
         (self.folder / 'config').mkdir(); (self.folder / 'data').mkdir()
         inbox = self.folder / 'inbox.json'
         inbox.write_text(json.dumps([{'url': 'https://a/1', 'title': 'One', 'company': 'Co', 'fit': 7, 'line': 'good'}, {'url': '', 'title': 'no url'}]))
-        env = {**os.environ, 'JOB_PILOTTO_STORE': 'sqlite', 'JOB_PILOTTO_DISABLE': 'notion', 'JOB_PILOTTO_CONFIG_DIR': str(self.folder / 'config'), 'JOB_PILOTTO_DATA_DIR': str(self.folder / 'data')}
+        env = {**os.environ, 'JOBADABRA_STORE': 'sqlite', 'JOBADABRA_DISABLE': 'notion', 'JOBADABRA_CONFIG_DIR': str(self.folder / 'config'), 'JOBADABRA_DATA_DIR': str(self.folder / 'data')}
         run = lambda: subprocess.run([sys.executable, '-m', 'src', 'hosted', '--merge', str(inbox)], env=env, capture_output=True, text=True, check=True).stdout
         self.assertIn('1 new matches added', run())
         self.assertIn('0 new matches added', run())   # the second time the job is already there

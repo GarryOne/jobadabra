@@ -62,7 +62,7 @@ export async function startTabs({context, spool, fresh, real = false, guardMs = 
       const url = fs.readFileSync(path.join(spool, file), 'utf8').trim();
       fs.rmSync(path.join(spool, file));
       if (!/^https:\/\//.test(url)) continue;   // the app asked `open` for something else: nothing to do here
-      try { visitGuard(real)(url, {who: process.env.JOB_PILOTTO_SESSION || 'browser'}); } catch (error) { console.error(error.message); continue; }   // the per-site daily limit (lib/site-ledger.mjs): a refused address is not opened
+      try { visitGuard(real)(url, {who: process.env.JOBADABRA_SESSION || 'browser'}); } catch (error) { console.error(error.message); continue; }   // the per-site daily limit (lib/site-ledger.mjs): a refused address is not opened
       const tab = await context.newPage();
       pages[url] = tab;
       opened.push(url);

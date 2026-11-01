@@ -26,19 +26,19 @@ from .providers.contract import detail, reason
 
 # Bump when the prompt or schema changes so every job is re-scored once.
 SCORER_VERSION = 2
-DEFAULT_MODEL = os.getenv('JOB_PILOTTO_SCORE_MODEL', MAIN_MODEL)
+DEFAULT_MODEL = os.getenv('JOBADABRA_SCORE_MODEL', MAIN_MODEL)
 # How hard the scorer thinks (medium by default; Haiku has no such setting and ignores it).
-EFFORT = os.getenv('JOB_PILOTTO_SCORE_EFFORT', 'medium')
+EFFORT = os.getenv('JOBADABRA_SCORE_EFFORT', 'medium')
 # A cheaper first pass (e.g. claude-haiku-5-5): every pending job gets it, and only jobs whose first-pass score reaches
 # ESCALATE_MIN are scored again by the main model. Off when empty. MEASURED 2 Oct 2026 (tools/score_eval.py, 60 jobs): Haiku agrees
 # poorly with Sonnet (rank correlation 0.70, scores 14 points high) and the cascade costs 123-152% of Sonnet alone, so leave it OFF.
 # Sonnet at effort "low" agreed as well as Sonnet agrees with its own re-run (0.92 vs 0.89) and was 19% cheaper per job.
-FIRST_PASS_MODEL = os.getenv('JOB_PILOTTO_SCORE_FIRST_PASS_MODEL', '')
-ESCALATE_MIN = int(os.getenv('JOB_PILOTTO_SCORE_ESCALATE_MIN', '40') or 40)
+FIRST_PASS_MODEL = os.getenv('JOBADABRA_SCORE_FIRST_PASS_MODEL', '')
+ESCALATE_MIN = int(os.getenv('JOBADABRA_SCORE_ESCALATE_MIN', '40') or 40)
 # After a Profile edit only jobs that scored at least this (the digest's own bar) are re-scored on their own; the rest keep their score,
 # marked "Previous scoring method", until the user asks (Strategy → Re-score them now). Spending on jobs that were never going to show
 # is what a Profile tweak used to cost (28 Sep: 60 re-scores, no new job, about $0.6).
-RESCORE_MIN = int(os.getenv('JOB_PILOTTO_RESCORE_MIN', '50') or 50)
+RESCORE_MIN = int(os.getenv('JOBADABRA_RESCORE_MIN', '50') or 50)
 
 SCORES_TABLE = """
 CREATE TABLE IF NOT EXISTS scores (
@@ -372,7 +372,7 @@ def stale_count(db, candidates, profile):
 
 def run(db, candidates, profile, model, max_jobs, client=None, workers=5, stats=None, first_pass=None, escalate_min=None, on_scored=None, every=10, only_ids=None):
     """Score up to max_jobs pending candidates; returns a one-line summary. profile: the whole Profile text (the
-    scoring part is taken here). With a first_pass model (default: JOB_PILOTTO_SCORE_FIRST_PASS_MODEL) every job gets the
+    scoring part is taken here). With a first_pass model (default: JOBADABRA_SCORE_FIRST_PASS_MODEL) every job gets the
     cheap model first and only those scoring at least escalate_min are scored again by `model`; the rest keep the quick score."""
     first_pass = FIRST_PASS_MODEL if first_pass is None else first_pass
     escalate_min = ESCALATE_MIN if escalate_min is None else escalate_min

@@ -20,7 +20,7 @@ function repoStorage(settings = {}) {
 }
 
 test('the Always on repo follows every choice: Telegram turned off stops Telegram there too; no choice keeps the old Telegram-only default', () => {
-  const told = settings => { const {variables, removed} = github.payload(repoStorage(settings)); return variables.JOB_PILOTTO_NOTIFY ?? (removed.includes('JOB_PILOTTO_NOTIFY') ? 'removed' : 'kept'); };
+  const told = settings => { const {variables, removed} = github.payload(repoStorage(settings)); return variables.JOBADABRA_NOTIFY ?? (removed.includes('JOBADABRA_NOTIFY') ? 'removed' : 'kept'); };
   assert.equal(told({}), 'removed', 'nothing chosen: no variable, as before (pool-share test)');
   assert.equal(told({notifyBy: ['telegram', 'app']}), 'removed', 'Telegram chosen: the default already says so');
   assert.equal(told({notifyBy: ['email', 'app'], notifyEmail: 'a@b.co'}), 'email,app');
@@ -29,7 +29,7 @@ test('the Always on repo follows every choice: Telegram turned off stops Telegra
 });
 
 test('the window state carries whether our sender is on and whether the person unsubscribed', async () => {
-  const s = {settings: () => ({notifyEmail: 'a@b.co'}), saveSettings: () => {}, secret: name => (name === 'JOB_PILOTTO_TRIAL_KEY' ? 'JPF1.i.t' : '')};
+  const s = {settings: () => ({notifyEmail: 'a@b.co'}), saveSettings: () => {}, secret: name => (name === 'JOBADABRA_TRIAL_KEY' ? 'JPF1.i.t' : '')};
   const answer = body => async () => ({json: async () => body});
   const off = await state(s, answer({ok: true, email: 'a@b.co', confirmed: true, sending: false, serviceOff: true}));
   assert.deepEqual([off.sending, off.serviceOff], [false, true]);

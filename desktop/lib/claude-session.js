@@ -25,7 +25,7 @@ const browserFlags = dir => flagsFor(dir, process.env, {secrets: twinBrowser() ?
 
 // What a session gets from the app on top of the user's own environment: Notion, Telegram and the app's
 // folders. Never ANTHROPIC_API_KEY: Claude Code runs on the user's own Claude login, not their API key.
-const KEEP = /^(NOTION_[A-Z0-9_]+|JOB_PILOTTO_[A-Z0-9_]+|TELEGRAM_BOT_TOKEN|TELEGRAM_CHAT_ID)$/;
+const KEEP = /^(NOTION_[A-Z0-9_]+|JOBADABRA_[A-Z0-9_]+|TELEGRAM_BOT_TOKEN|TELEGRAM_CHAT_ID)$/;
 const GAP_MS = 3000;  // between windows, so they don't all hit Chrome and Notion at once
 
 // `python3` for the session's commands (the skill's), pointing at the app's own Python: a friend's computer
@@ -45,8 +45,8 @@ export function sessionEnv(storage, parent = process.env, platform = process.pla
   delete env.ANTHROPIC_API_KEY;
   delete env.ANTHROPIC_BASE_URL;  // Claude Code uses the user's own Claude login, never Free AI
   for (const [key, value] of Object.entries(app)) if (KEEP.test(key)) env[key] = value;
-  env.JOB_PILOTTO_PYTHON = pipeline.python();
-  env.JOB_PILOTTO_APPLY_RUN_DIR = storage.path('apply-runs');
+  env.JOBADABRA_PYTHON = pipeline.python();
+  env.JOBADABRA_APPLY_RUN_DIR = storage.path('apply-runs');
   const pathKey = Object.keys(env).find(key => key.toUpperCase() === 'PATH') || 'PATH';
   if (shim) env[pathKey] = [shim, env[pathKey]].filter(Boolean).join(platform === 'win32' ? ';' : ':');
   return env;
@@ -165,7 +165,7 @@ export async function launch(storage, urls, {claude, platform = process.platform
 
 // In the app (the default when the terminal module loads): each session runs in a pseudo-terminal the app owns
 // (terminals.js), shown as a card in the window's session dock and as a full terminal on a click. Hooks and
-// tools/notify.sh report its state (JOB_PILOTTO_SESSION names it). Resolves with the sessions started.
+// tools/notify.sh report its state (JOBADABRA_SESSION names it). Resolves with the sessions started.
 export async function launchInApp(storage, urls, {claude, platform = process.platform, pipelineRun = pipeline.run,
   gap = GAP_MS, term = terminals, port = PORT, details = {}, open = () => {}} = {}) {
   if (isTwin() && !twinBrowser()) throw new Error('Apply with Claude is off in a live-test twin without its own browser: Claude would drive your own Chrome.');   // lib/twin.js
@@ -192,7 +192,7 @@ export async function launchInApp(storage, urls, {claude, platform = process.pla
     const {file, args} = platform === 'win32'
       ? {file: process.env.ComSpec || 'cmd.exe', args: ['/d', '/s', '/c', claude, ...flags, ask]}
       : {file: claude, args: [...flags, ask]};
-    started.push(await term.start({id, url, claudeId, file, args, cwd: repo, env: {...env, JOB_PILOTTO_SESSION: id}, ...(details[url] || {})}));
+    started.push(await term.start({id, url, claudeId, file, args, cwd: repo, env: {...env, JOBADABRA_SESSION: id}, ...(details[url] || {})}));
   }
   // The prompt, settings and audit files: kept for the sessions' first minutes, then removed.
   setTimeout(() => fs.rmSync(dir, {recursive: true, force: true}), 3 * 3600 * 1000).unref();
@@ -246,7 +246,7 @@ export async function launchRead(storage, url, name, {claude, platform = process
   const flags = [...browserFlags(dir), '--permission-mode', 'bypassPermissions', '--settings', settingsFile, '--session-id', crypto.randomUUID()];
   const ask = `Read the file ${promptFile.replaceAll('\\', '/')} and do exactly what it says.`;
   const {file, args} = platform === 'win32' ? {file: process.env.ComSpec || 'cmd.exe', args: ['/d', '/s', '/c', claude, ...flags, ask]} : {file: claude, args: [...flags, ask]};
-  return term.start({id, url, claudeId: null, file, args, cwd: pipeline.REPO, env: {...env, JOB_PILOTTO_SESSION: id}, company: name, title: `Read jobs: ${name}`, kind: 'read'});
+  return term.start({id, url, claudeId: null, file, args, cwd: pipeline.REPO, env: {...env, JOBADABRA_SESSION: id}, company: name, title: `Read jobs: ${name}`, kind: 'read'});
 }
 
 // Starts Claude again in the conversation of a session that isn't running (the app was closed, or it stopped).
@@ -269,7 +269,7 @@ export async function resumeInApp(storage, id, {claude, platform = process.platf
     ? {file: process.env.ComSpec || 'cmd.exe', args: ['/d', '/s', '/c', claude, ...flags, ...ask]}
     : {file: claude, args: [...flags, ...ask]};
   try {
-    const resumed = await term.resume(id, {file, args, cwd: repo, env: {...env, JOB_PILOTTO_SESSION: id}});
+    const resumed = await term.resume(id, {file, args, cwd: repo, env: {...env, JOBADABRA_SESSION: id}});
     return {ok: true, session: resumed};
   } catch (error) { return {ok: false, error: error.message}; }
 }

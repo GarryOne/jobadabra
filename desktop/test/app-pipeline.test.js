@@ -34,28 +34,28 @@ test('the pipeline runs on the user folder, with AI models only when a key is se
   pipeline.ensureConfig(storage);
   assert.ok(fs.existsSync(storage.path('config/search.json')));
   let env = pipeline.pipelineEnv(storage);
-  assert.equal(env.JOB_PILOTTO_DATA_DIR, storage.path('data'));
-  assert.equal(env.JOB_PILOTTO_PROFILE_FILE, undefined);  // no file on this Mac yet
-  assert.equal(env.JOB_PILOTTO_SCORE_MODEL, undefined);
+  assert.equal(env.JOBADABRA_DATA_DIR, storage.path('data'));
+  assert.equal(env.JOBADABRA_PROFILE_FILE, undefined);  // no file on this Mac yet
+  assert.equal(env.JOBADABRA_SCORE_MODEL, undefined);
   storage.setSecret('ANTHROPIC_API_KEY', 'sk-ant-x');
   env = pipeline.pipelineEnv(storage);
   assert.equal(env.ANTHROPIC_API_KEY, 'sk-ant-x');
-  assert.equal(env.JOB_PILOTTO_SCORE_MODEL, 'claude-sonnet-5-5');
+  assert.equal(env.JOBADABRA_SCORE_MODEL, 'claude-sonnet-5-5');
 });
 
 test('the end-to-end stand-ins reach the engine only in a test run (its env is a whitelist)', () => {
   const storage = tempStorage();
-  const parent = {PATH: '/bin', JOB_PILOTTO_E2E_NOTION_BASE_URL: 'http://127.0.0.1:1', JOB_PILOTTO_E2E_TELEGRAM_BASE_URL: 'http://127.0.0.1:2',
-    JOB_PILOTTO_E2E_GOOGLE_BASE_URL: 'http://127.0.0.1:3', JOB_PILOTTO_E2E_NOTION_STANDIN: '1', GOOGLE_CLIENT_ID: 'id', GOOGLE_CLIENT_SECRET: 's', GOOGLE_REFRESH_TOKEN: 'r'};
+  const parent = {PATH: '/bin', JOBADABRA_E2E_NOTION_BASE_URL: 'http://127.0.0.1:1', JOBADABRA_E2E_TELEGRAM_BASE_URL: 'http://127.0.0.1:2',
+    JOBADABRA_E2E_GOOGLE_BASE_URL: 'http://127.0.0.1:3', JOBADABRA_E2E_NOTION_STANDIN: '1', GOOGLE_CLIENT_ID: 'id', GOOGLE_CLIENT_SECRET: 's', GOOGLE_REFRESH_TOKEN: 'r'};
   const user = pipeline.pipelineEnv(storage, parent);
-  assert.equal(user.JOB_PILOTTO_E2E_NOTION_BASE_URL, undefined);
-  assert.equal(user.JOB_PILOTTO_E2E_NOTION_STANDIN, undefined);
+  assert.equal(user.JOBADABRA_E2E_NOTION_BASE_URL, undefined);
+  assert.equal(user.JOBADABRA_E2E_NOTION_STANDIN, undefined);
   assert.equal(user.GOOGLE_REFRESH_TOKEN, undefined);
-  const e2e = pipeline.pipelineEnv(storage, {...parent, JOB_PILOTTO_E2E: '1'});
-  assert.equal(e2e.JOB_PILOTTO_E2E_NOTION_BASE_URL, 'http://127.0.0.1:1');
-  assert.equal(e2e.JOB_PILOTTO_E2E_NOTION_STANDIN, '1');
-  assert.equal(e2e.JOB_PILOTTO_E2E_TELEGRAM_BASE_URL, 'http://127.0.0.1:2');
-  assert.equal(e2e.JOB_PILOTTO_E2E_GOOGLE_BASE_URL, 'http://127.0.0.1:3');
+  const e2e = pipeline.pipelineEnv(storage, {...parent, JOBADABRA_E2E: '1'});
+  assert.equal(e2e.JOBADABRA_E2E_NOTION_BASE_URL, 'http://127.0.0.1:1');
+  assert.equal(e2e.JOBADABRA_E2E_NOTION_STANDIN, '1');
+  assert.equal(e2e.JOBADABRA_E2E_TELEGRAM_BASE_URL, 'http://127.0.0.1:2');
+  assert.equal(e2e.JOBADABRA_E2E_GOOGLE_BASE_URL, 'http://127.0.0.1:3');
   assert.equal(e2e.GOOGLE_REFRESH_TOKEN, 'r');
 });
 
@@ -87,8 +87,8 @@ finally:
     Path(pace.pace_file(tracker.token)).unlink(missing_ok=True)
 `;
   for (const [flag, seconds] of [[undefined, 6.46], ['1', 0]]) {
-    const parent = {PATH: process.env.PATH, HOME: storage.path(''), JOB_PILOTTO_E2E: '1', JOB_PILOTTO_E2E_NOTION_BASE_URL: 'http://127.0.0.1',
-      ...(flag ? {JOB_PILOTTO_E2E_NOTION_STANDIN: flag} : {})};
+    const parent = {PATH: process.env.PATH, HOME: storage.path(''), JOBADABRA_E2E: '1', JOBADABRA_E2E_NOTION_BASE_URL: 'http://127.0.0.1',
+      ...(flag ? {JOBADABRA_E2E_NOTION_STANDIN: flag} : {})};
     const result = JSON.parse(execFileSync(pipeline.python(), ['-c', code], {cwd: pipeline.REPO, env: pipeline.pipelineEnv(storage, parent), encoding: 'utf8'}));
     assert.deepEqual(result, {calls: 20, pacing_seconds: seconds}, `app engine stand-in flag ${flag || '(absent)'}`);
   }
@@ -97,15 +97,15 @@ finally:
 test('Trying (no Notion): the engine reads the Profile and answers from this Mac; connected, it never does', () => {
   const storage = tempStorage();
   storage.writeText('profile.md', 'P');
-  assert.equal(pipeline.pipelineEnv(storage).JOB_PILOTTO_PROFILE_FILE, storage.path('profile.md'));
-  assert.equal(pipeline.pipelineEnv(storage).JOB_PILOTTO_ANSWERS_FILE, undefined);  // no answers.md
+  assert.equal(pipeline.pipelineEnv(storage).JOBADABRA_PROFILE_FILE, storage.path('profile.md'));
+  assert.equal(pipeline.pipelineEnv(storage).JOBADABRA_ANSWERS_FILE, undefined);  // no answers.md
   storage.writeText('answers.md', 'A');
-  assert.equal(pipeline.pipelineEnv(storage).JOB_PILOTTO_ANSWERS_FILE, storage.path('answers.md'));
+  assert.equal(pipeline.pipelineEnv(storage).JOBADABRA_ANSWERS_FILE, storage.path('answers.md'));
   storage.setSecret('NOTION_TOKEN', 'ntn_x');
   storage.saveSettings({notionIds: {NOTION_PROFILE_PAGE_ID: 'profile'}});
   const env = pipeline.pipelineEnv(storage);
-  assert.equal(env.JOB_PILOTTO_PROFILE_FILE, undefined);  // Notion is the source of truth once connected
-  assert.equal(env.JOB_PILOTTO_ANSWERS_FILE, undefined);
+  assert.equal(env.JOBADABRA_PROFILE_FILE, undefined);  // Notion is the source of truth once connected
+  assert.equal(env.JOBADABRA_ANSWERS_FILE, undefined);
 });
 
 test('demo mode: the engine reads the demo\'s own Profile, though its fictional Notion counts as connected', () => {
@@ -115,9 +115,9 @@ test('demo mode: the engine reads the demo\'s own Profile, though its fictional 
   storage.saveSettings({notionIds: {NOTION_PROFILE_PAGE_ID: 'profile'}});
   try {
     pipeline.setDemo(true);
-    assert.equal(pipeline.pipelineEnv(storage).JOB_PILOTTO_PROFILE_FILE, storage.path('profile.md'));
+    assert.equal(pipeline.pipelineEnv(storage).JOBADABRA_PROFILE_FILE, storage.path('profile.md'));
   } finally { pipeline.setDemo(false); }
-  assert.equal(pipeline.pipelineEnv(storage).JOB_PILOTTO_PROFILE_FILE, undefined, 'a real connected install still reads Notion');
+  assert.equal(pipeline.pipelineEnv(storage).JOBADABRA_PROFILE_FILE, undefined, 'a real connected install still reads Notion');
 });
 
 test('strategy draft: CV as a PDF document, structured output; only the search settings cache is saved on the Mac', async () => {
@@ -157,12 +157,12 @@ test('strategy draft: CV as a PDF document, structured output; only the search s
 test('the pipeline never inherits the developer\'s tokens or .env', () => {
   const storage = tempStorage();
   const env = pipeline.pipelineEnv(storage, {PATH: '/usr/bin', HOME: '/Users/x', NOTION_TOKEN: 'owner', SERPAPI_API_KEY: 'owner',
-    GITHUB_TOKEN: 'owner', JOB_PILOTTO_ENRICH_MODEL: 'x', TELEGRAM_CHAT_ID: '1'});
+    GITHUB_TOKEN: 'owner', JOBADABRA_ENRICH_MODEL: 'x', TELEGRAM_CHAT_ID: '1'});
   assert.equal(env.PATH, '/usr/bin');
-  for (const leaked of ['NOTION_TOKEN', 'SERPAPI_API_KEY', 'GITHUB_TOKEN', 'JOB_PILOTTO_ENRICH_MODEL', 'TELEGRAM_CHAT_ID']) {
+  for (const leaked of ['NOTION_TOKEN', 'SERPAPI_API_KEY', 'GITHUB_TOKEN', 'JOBADABRA_ENRICH_MODEL', 'TELEGRAM_CHAT_ID']) {
     assert.equal(env[leaked], undefined, leaked);
   }
-  assert.equal(env.JOB_PILOTTO_NO_DOTENV, '1');
+  assert.equal(env.JOBADABRA_NO_DOTENV, '1');
 });
 
 test('the user\'s own Adzuna and Jooble keys reach the engine, and a developer\'s never do', () => {
@@ -176,17 +176,17 @@ test('the user\'s own Adzuna and Jooble keys reach the engine, and a developer\'
 });
 
 test('the end-to-end journey\'s fixture feeds and its fictional candidate reach the engine; nothing else of the shell does', () => {
-  const env = pipeline.pipelineEnv(tempStorage(), {PATH: '/usr/bin', JOB_PILOTTO_FIXTURE_DIR: '/fx', JOB_PILOTTO_LOCATIONS_FILE: '/fx/person.json', JOB_PILOTTO_EXCLUDED_COMPANIES: 'Acme'});
-  assert.equal(env.JOB_PILOTTO_FIXTURE_DIR, '/fx');
-  assert.equal(env.JOB_PILOTTO_LOCATIONS_FILE, '/fx/person.json');   // dropped before, so the scout judged feeds for the example Amsterdam analyst, not the test candidate
-  assert.equal(env.JOB_PILOTTO_EXCLUDED_COMPANIES, undefined);
+  const env = pipeline.pipelineEnv(tempStorage(), {PATH: '/usr/bin', JOBADABRA_FIXTURE_DIR: '/fx', JOBADABRA_LOCATIONS_FILE: '/fx/person.json', JOBADABRA_EXCLUDED_COMPANIES: 'Acme'});
+  assert.equal(env.JOBADABRA_FIXTURE_DIR, '/fx');
+  assert.equal(env.JOBADABRA_LOCATIONS_FILE, '/fx/person.json');   // dropped before, so the scout judged feeds for the example Amsterdam analyst, not the test candidate
+  assert.equal(env.JOBADABRA_EXCLUDED_COMPANIES, undefined);
 });
 
 test('the persona search check\'s tape reaches the engine (src/search_tape.py)', () => {
-  const tape = {JOB_PILOTTO_SEARCH_TAPE: '/tape', JOB_PILOTTO_SEARCH_TAPE_MODE: 'replay', JOB_PILOTTO_TAPE_WAIT_SCALE: '0', JOB_PILOTTO_TAPE_LIVE: '0'};
+  const tape = {JOBADABRA_SEARCH_TAPE: '/tape', JOBADABRA_SEARCH_TAPE_MODE: 'replay', JOBADABRA_TAPE_WAIT_SCALE: '0', JOBADABRA_TAPE_LIVE: '0'};
   const env = pipeline.pipelineEnv(tempStorage(), {PATH: '/usr/bin', ...tape});
   for (const [name, value] of Object.entries(tape)) assert.equal(env[name], value);
-  assert.equal(pipeline.pipelineEnv(tempStorage(), {PATH: '/usr/bin'}).JOB_PILOTTO_SEARCH_TAPE, undefined);
+  assert.equal(pipeline.pipelineEnv(tempStorage(), {PATH: '/usr/bin'}).JOBADABRA_SEARCH_TAPE, undefined);
 });
 
 test('with Notion connected, the Profile comes from Notion, not the local file', () => {
@@ -194,7 +194,7 @@ test('with Notion connected, the Profile comes from Notion, not the local file',
   storage.setSecret('NOTION_TOKEN', 'ntn_x');
   storage.saveSettings({notionIds: {NOTION_APPLICATIONS_DB: 'abc'}});
   const env = pipeline.pipelineEnv(storage, {PATH: '/usr/bin'});
-  assert.equal(env.JOB_PILOTTO_PROFILE_FILE, undefined);
+  assert.equal(env.JOBADABRA_PROFILE_FILE, undefined);
   assert.equal(env.NOTION_TOKEN, 'ntn_x');
   assert.equal(env.NOTION_APPLICATIONS_DB, 'abc');
 });

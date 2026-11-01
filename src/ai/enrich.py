@@ -24,7 +24,7 @@ from .providers.contract import detail, reason
 
 # Bump when the prompt or schema changes so every job is re-extracted once.
 EXTRACTOR_VERSION = 4   # 4: responsibilities; 3: contract, deadline, posted (a bump re-reads every job on the next search, newest and best first: the backfill)
-DEFAULT_MODEL = os.getenv('JOB_PILOTTO_ENRICH_MODEL') or SMALL_MODEL
+DEFAULT_MODEL = os.getenv('JOBADABRA_ENRICH_MODEL') or SMALL_MODEL
 
 ENRICHMENT_TABLE = """
 CREATE TABLE IF NOT EXISTS enrichments (

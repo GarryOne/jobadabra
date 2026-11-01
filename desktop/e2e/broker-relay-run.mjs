@@ -14,7 +14,7 @@ import {startRelay} from './lib/broker-relay-serve.mjs';
 export function childEnv(env, url, cap) {
   const rest = {...env};
   for (const name of ['ANTHROPIC_BASE_URL', 'OPENAI_API_KEY', 'OPENAI_BASE_URL']) delete rest[name];
-  return {...rest, JOB_PILOTTO_AI_BASE_URL: url, ANTHROPIC_API_KEY: 'codex-relay-local', ...(cap ? {JOB_PILOTTO_CENTRAL_MAX_CALLS: String(cap)} : {})};
+  return {...rest, JOBADABRA_AI_BASE_URL: url, ANTHROPIC_API_KEY: 'codex-relay-local', ...(cap ? {JOBADABRA_CENTRAL_MAX_CALLS: String(cap)} : {})};
 }
 
 /**

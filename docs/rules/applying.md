@@ -146,7 +146,7 @@ Spec: `docs/superpowers/specs/2026-10-10-applying-reliability-layers.md`.
   on the page. About 3 minutes.
 - **`npm run twin`** ([docs/live-test.md](../live-test.md)): the owner's real state mirrored, only when the owner's own data matters. A new outward
   path in the app (a sender, a schedule, AppleScript) gets its twin guard in the same change (`desktop/test/twin.test.js`).
-- **Per-site daily limit (owner, 11 Oct 2026; `desktop/e2e/lib/site-ledger.mjs`):** at most 3 live visits per host per day across all sessions and live paths; a 4th is refused naming the site and the last run, and a host that showed a block page rests until tomorrow. Only the owner lifts it: `JOB_PILOTTO_SITE_LIMIT_OVERRIDE=<host>` (logged); never work around it.
+- **Per-site daily limit (owner, 11 Oct 2026; `desktop/e2e/lib/site-ledger.mjs`):** at most 3 live visits per host per day across all sessions and live paths; a 4th is refused naming the site and the last run, and a host that showed a block page rests until tomorrow. Only the owner lifts it: `JOBADABRA_SITE_LIMIT_OVERRIDE=<host>` (logged); never work around it.
 - **A held run says so** (`HELD by the live test` in the log, the banner and the stall report; `LIVE_SUBMIT=1` lets the consent and the account
   button through). Before starting one, tell the owner what the window will and will not do; watch it with Monitor (global rules).
 - Report what it showed: what worked, what did not, what the log cannot tell (then add the log line).

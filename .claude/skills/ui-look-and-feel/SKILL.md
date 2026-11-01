@@ -49,7 +49,7 @@ Design system page, built from the repo: `cd desktop && npm run design-system` �
 - Prose that holds several values (a salary per country, "No French or Italian") is split: values into their controls, the rest into a note.
 - Many values of one kind (salaries per country) read as a small `.data-table`, not a box each.
 - Chips show what a person would write: the screen turns syntax into meaning first ("Tax" in quotes → the group "Whole word only"; "Zurich,Zurich,Switzerland · de" → "Zurich, Switzerland · German").
-- After rendering, `npm run shot` prints any saved value cut by its box: fix each one. Look at the result in light and dark (`JOB_PILOTTO_THEME=light npm run shot -- …`, then `=dark`).
+- After rendering, `npm run shot` prints any saved value cut by its box: fix each one. Look at the result in light and dark (`JOBADABRA_THEME=light npm run shot -- …`, then `=dark`).
 
 ### 0b. Cards: read → Edit → editor, one save bar (owner, 18 Oct 2026)
 Profile and Strategy cards: a read summary (`readRows`, `chipLine` from `card-shell.js`), a quiet **✎ Edit** at the header's right (`cardEdit`), the editor in place
@@ -140,11 +140,11 @@ Before drawing a review list, an empty state, figures with icons, a "From Your d
 Render the screen with the demo data (fictional, no real profile), then open the image:
 ```
 cd desktop && D=$(mktemp -d) && for f in demo/*; do [ "$(basename $f)" != jobs.json ] && cp "$f" "$D/"; done
-JOB_PILOTTO_DEMO=1 JOB_PILOTTO_USER_DATA=$D JOB_PILOTTO_SMOKE=/tmp/shot.png \
-  JOB_PILOTTO_SMOKE_JS="document.querySelector('.nav[data-view=actions]').click(); new Promise(r => setTimeout(r, 1000))" \
+JOBADABRA_DEMO=1 JOBADABRA_USER_DATA=$D JOBADABRA_SMOKE=/tmp/shot.png \
+  JOBADABRA_SMOKE_JS="document.querySelector('.nav[data-view=actions]').click(); new Promise(r => setTimeout(r, 1000))" \
   ./node_modules/.bin/electron .
 ```
-- Demo data a new screen needs goes in `desktop/demo/` (fictional names), served in `JOB_PILOTTO_DEMO` mode.
+- Demo data a new screen needs goes in `desktop/demo/` (fictional names), served in `JOBADABRA_DEMO` mode.
 - Compare with the mockup side by side: layout, density, what's primary. Fix what differs, then say done.
 - Add the screen to `SCREENS` in `desktop/scripts/ui-shots.mjs`, run `npm run ui-shots`, commit the image.
 
@@ -156,8 +156,8 @@ that yourself, drop a fixture in it, and run Electron directly (note the `env -u
 ```sh
 D=$(mktemp -d); for f in demo/*; do [ "$(basename "$f")" != jobs.json ] && cp "$f" "$D/"; done
 cp /tmp/fixture-runs.json "$D/runs.json"
-env -u ELECTRON_RUN_AS_NODE JOB_PILOTTO_DEMO=1 JOB_PILOTTO_USER_DATA="$D" \
-  JOB_PILOTTO_SMOKE=/tmp/shot.png ./node_modules/.bin/electron .
+env -u ELECTRON_RUN_AS_NODE JOBADABRA_DEMO=1 JOBADABRA_USER_DATA="$D" \
+  JOBADABRA_SMOKE=/tmp/shot.png ./node_modules/.bin/electron .
 ```
 
 - **Never put real data in `desktop/demo/`** — it is committed and fictional. Fixtures live in `/tmp`.

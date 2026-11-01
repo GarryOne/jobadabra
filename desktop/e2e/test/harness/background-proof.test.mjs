@@ -124,8 +124,8 @@ test('the app clock bridge moves the already loaded ESM clock through the Node i
   const {Session} = await import('node:inspector');
   const {moveAppWaitClock} = await import('../../lib/apply-hold.mjs');
   const module = new URL('../../../lib/background-apply-clock.js', import.meta.url).href;
-  const clock = await import(module), session = new Session(), previous = process.env.JOB_PILOTTO_E2E;
-  process.env.JOB_PILOTTO_E2E = '1';
+  const clock = await import(module), session = new Session(), previous = process.env.JOBADABRA_E2E;
+  process.env.JOBADABRA_E2E = '1';
   session.connect();
   try {
     const dueAt = clock.backgroundWaitNow() + 60000;
@@ -137,7 +137,7 @@ test('the app clock bridge moves the already loaded ESM clock through the Node i
     assert.ok(clock.backgroundWaitNow() >= reply.result.value, 'the inspector moved the app clock, not another module instance');
   } finally {
     session.disconnect();
-    if (previous === undefined) delete process.env.JOB_PILOTTO_E2E; else process.env.JOB_PILOTTO_E2E = previous;
+    if (previous === undefined) delete process.env.JOBADABRA_E2E; else process.env.JOBADABRA_E2E = previous;
   }
 });
 

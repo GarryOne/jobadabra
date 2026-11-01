@@ -32,7 +32,7 @@ test('every error line is classified, and ordinary decisions are not', () => {
 test('a fake fill error gives one Sentry event with no personal data and one notice per hour', () => {
   const sent = [], notices = [];
   let clock = 1_000_000;
-  const client = sentry.create({dsn: DSN, release: 'job-pilotto@0.9.12', installId: 'inst-1', fetcher: (url, init) => { sent.push(JSON.parse(init.body.split('\n')[2])); return Promise.resolve({}); }, now: () => clock});
+  const client = sentry.create({dsn: DSN, release: 'jobadabra@0.9.12', installId: 'inst-1', fetcher: (url, init) => { sent.push(JSON.parse(init.body.split('\n')[2])); return Promise.resolve({}); }, now: () => clock});
   const watch = createWatcher({sentry: client.capture, notice: text => notices.push(text), now: () => clock});
   watch([failing]);
   watch([failing]);   // the same error again at once: no second notice, no second event

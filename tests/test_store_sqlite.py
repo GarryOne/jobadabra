@@ -15,7 +15,7 @@ class _Folder:
     def setUp(self):
         self.folder = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, self.folder, True)
-        self.env = {'JOB_PILOTTO_DATA_DIR': str(self.folder)}
+        self.env = {'JOBADABRA_DATA_DIR': str(self.folder)}
         super().setUp()
 
 
@@ -65,7 +65,7 @@ class SqliteOwnTests(_Folder, unittest.TestCase):
     def test_texts_are_the_apps_files_when_named_else_data_texts(self):
         profile = self.folder / 'app' / 'profile.md'
         knowledge = self.folder / 'app' / 'knowledge.md'
-        s = sqlite.open_store({**self.env, 'JOB_PILOTTO_PROFILE_FILE': str(profile), 'JOB_PILOTTO_KNOWLEDGE_FILE': str(knowledge)})
+        s = sqlite.open_store({**self.env, 'JOBADABRA_PROFILE_FILE': str(profile), 'JOBADABRA_KNOWLEDGE_FILE': str(knowledge)})
         s.texts.set('profile', '# Igor')
         s.texts.set('knowledge', 'Workday: no cover letter')
         s.texts.set('answers', 'Notice: 3 months')

@@ -1,5 +1,5 @@
 """The lock tests run on a PR only when it touches the lock or what they test (owner, 12 Oct 2026: ~150 s of every PR's python check and the day's top flake, on PRs that never touched the lock).
-tools/py-shards.py leaves the lock family out when JOB_PILOTTO_PY_CHANGED_FILE lists the PR's changed files and none is a lock path; a push to main (no list) runs everything.
+tools/py-shards.py leaves the lock family out when JOBADABRA_PY_CHANGED_FILE lists the PR's changed files and none is a lock path; a push to main (no list) runs everything.
 The guard: every tools/ file a lock test names is a lock path, so a change to it always runs them."""
 import importlib.util
 import os
@@ -47,7 +47,7 @@ class LockTestScope(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             listing = Path(d) / 'changed.txt'
             listing.write_text(''.join(f'{p}\n' for p in changed))
-            env = {**os.environ, 'JOB_PILOTTO_PY_CHANGED_FILE': listing.as_posix(), 'JOB_PILOTTO_PY_DRY_RUN': '1'}
+            env = {**os.environ, 'JOBADABRA_PY_CHANGED_FILE': listing.as_posix(), 'JOBADABRA_PY_DRY_RUN': '1'}
             return subprocess.run([sys.executable, str(ROOT / 'tools/py-shards.py')], env=env, capture_output=True, text=True, timeout=60).stdout
 
     def test_a_pr_that_touches_no_lock_path_leaves_the_family_out_and_says_so(self):
@@ -62,7 +62,7 @@ class LockTestScope(unittest.TestCase):
 
     def test_the_pr_job_passes_the_changed_files(self):
         python = (ROOT / '.github/workflows/tests-python.yml').read_text()   # the PR's python suite (14 Oct 2026: build.yml runs on main and calls it)
-        self.assertIn('JOB_PILOTTO_PY_CHANGED_FILE', python)
+        self.assertIn('JOBADABRA_PY_CHANGED_FILE', python)
         self.assertIn('github.event.pull_request.base.sha', python)
         self.assertIn('fetch-depth: 0', python)
 

@@ -349,7 +349,7 @@ def main(argv=None):
     parser.add_argument('--talking', action='store_true', help="you've already said yes to the recruiter")
     args = parser.parse_args(argv)
     try:
-        stores = open_stores()   # the active store (JOB_PILOTTO_STORE): this Mac's, or Notion, which makes its own client
+        stores = open_stores()   # the active store (JOBADABRA_STORE): this Mac's, or Notion, which makes its own client
     except LookupError:          # Notion chosen and not connected (no NOTION_TOKEN)
         raise SystemExit('Connect Notion first: logged messages are kept on your jobs there.') from None
     text = open(args.text_file, encoding='utf-8').read() if args.text_file else ('' if args.image else sys.stdin.read())

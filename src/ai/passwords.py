@@ -44,8 +44,8 @@ WORDS = ('amber apple arrow basil beach blue bread brick cedar chalk cloud coast
 
 def service(host):
     """The Keychain item of a site's account. It belongs to one profile (owner, 16 Oct 2026): job-pilotto.profile-<id>.<host>.password, the id from the app
-    (JOB_PILOTTO_PROFILE_ID); with none (a hand-run tool) the old name, which the app lists as unassigned."""
-    profile = os.environ.get('JOB_PILOTTO_PROFILE_ID', '')
+    (JOBADABRA_PROFILE_ID); with none (a hand-run tool) the old name, which the app lists as unassigned."""
+    profile = os.environ.get('JOBADABRA_PROFILE_ID', '')
     return f'job-pilotto.{profile}.{host}.password' if re.fullmatch(r'profile-[0-9a-f]{12}', profile) else f'job-pilotto.{host}.password'
 
 

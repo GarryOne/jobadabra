@@ -63,7 +63,7 @@ export async function runWizard(ctx) {
       await ctx.expectStep('cv');
     });
   } else if (ctx.family === 'free') {
-    // CI on Free AI (lib/engine.mjs freeAi): the Free card, pressed as a person would. The app takes the relay's JPF1 key (JOB_PILOTTO_E2E_FREE_AI_KEY,
+    // CI on Free AI (lib/engine.mjs freeAi): the Free card, pressed as a person would. The app takes the relay's JPF1 key (JOBADABRA_E2E_FREE_AI_KEY,
     // desktop/lib/ai-free.js start) instead of asking the website; the API key field takes only sk-ant- keys (26 Oct 2026, beta 40261885119: wizard red).
     await ctx.run('Free AI is chosen and the AI step continues on it', async () => {
       await page.locator('[data-choice="free"]').click();

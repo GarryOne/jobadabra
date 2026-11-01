@@ -16,7 +16,7 @@ from tests.store_contract import JOB
 WRITER = """
 import sys
 from src.stores import sqlite
-store = sqlite.open_store({'JOB_PILOTTO_DATA_DIR': sys.argv[1]})
+store = sqlite.open_store({'JOBADABRA_DATA_DIR': sys.argv[1]})
 print('ready', flush=True)
 n = 0
 while True:
@@ -36,7 +36,7 @@ class KilledMidWriteTests(unittest.TestCase):
         time.sleep(0.5)   # long enough that it is saving items, not starting
         os.kill(child.pid, signal.SIGKILL)   # SIGKILL: no handler runs, the worst case of the app's hard end
         child.wait()
-        store = sqlite.open_store({'JOB_PILOTTO_DATA_DIR': str(folder)})
+        store = sqlite.open_store({'JOBADABRA_DATA_DIR': str(folder)})
         rows = store.applications.list()
         self.assertGreater(len(rows), 0, 'the items saved before the kill are kept')
         for row in rows:
@@ -52,7 +52,7 @@ class StopReasonTests(unittest.TestCase):
         from src.notion import cron_runs
         marker = Path(tempfile.mkdtemp()) / 'timeup'
         self.addCleanup(shutil.rmtree, marker.parent, True)
-        with mock.patch.dict(os.environ, {'JOB_PILOTTO_TIME_UP_FILE': str(marker)}):
+        with mock.patch.dict(os.environ, {'JOBADABRA_TIME_UP_FILE': str(marker)}):
             self.assertEqual(cron_runs.stop_reason(), (cron_runs.STOPPED_WORDS, True, True), 'no marker: a Stop press')
             marker.write_text('')
             self.assertEqual(cron_runs.stop_reason(), (cron_runs.TIME_UP_WORDS, False, False))

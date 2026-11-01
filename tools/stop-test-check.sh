@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Claude Code Stop hook (.claude/settings.json): before Claude says it's done, run the test suites that match the
 # files changed vs origin/main in each worktree this session touched, the way CI runs them, and send failures back.
-#   src/ tests/ tools/ config/ templates/ -> Python, as CI sees it (JOB_PILOTTO_DISABLE=..., no Keychain credentials)
+#   src/ tests/ tools/ config/ templates/ -> Python, as CI sees it (JOBADABRA_DISABLE=..., no Keychain credentials)
 #   desktop/ -> desktop npm test    app-core/ extension/ -> app-core npm test    site/ -> site npm test
 #   a file added, removed or renamed anywhere -> desktop's code-map test (its header comment says what it does)
 # Uses Python >= 3.11 and Node 22 (nvm) whatever is first on PATH. Each suite is time-boxed; a tree state that
@@ -10,13 +10,13 @@
 set -uo pipefail
 
 input="$(cat)"
-# An "Apply with Claude" session of the desktop app runs in this checkout on the owner's Mac and has JOB_PILOTTO_SESSION set:
+# An "Apply with Claude" session of the desktop app runs in this checkout on the owner's Mac and has JOBADABRA_SESSION set:
 # it fills a job form and changes no code, so its end must not start the test suites (1 Oct 2026: the app showed "Claude
 # needs your answer" while the hook ran them for minutes, and Claude wrote a report about unrelated failing tests).
-[ -n "${JOB_PILOTTO_SESSION:-}" ] && exit 0
+[ -n "${JOBADABRA_SESSION:-}" ] && exit 0
 jqr() { jq -r "$1" <<<"$input" 2>/dev/null; }
 cwd="$(jqr '.cwd // ""')"; transcript="$(jqr '.transcript_path // ""')"; again="$(jqr '.stop_hook_active // false')"
-limit="${JOB_PILOTTO_STOP_TIMEBOX:-240}"   # seconds per suite
+limit="${JOBADABRA_STOP_TIMEBOX:-240}"   # seconds per suite
 cache="${TMPDIR:-/tmp}/jobadabra-stop-hook"; mkdir -p "$cache"
 
 # Worktrees to check: the one the session runs in, and every worktree it CHANGED: an Edit/Write/NotebookEdit path in it, or a Bash call naming it that
@@ -60,15 +60,15 @@ source "$(dirname "$0")/gate-cache.sh" 2>/dev/null || gate_cache_run() { shift 3
 source "$(dirname "$0")/test-log-failures.sh"   # failing_files / failing_names: either reporter's shape
 export GATE_CACHE_DIRTY=1 GATE_CACHE_NOTES; GATE_CACHE_NOTES="$(mktemp)"   # the working tree counts, uncommitted files too; the same pass store as the push gate
 boxed() { if [ -n "$tbin" ]; then "$tbin" -k 10 "$limit" "$@"; else "$@"; fi; }
-# The suites wait for a check slot like a push gate does (tools/check-slot.sh, JOB_PILOTTO_CHECK_SLOTS at a time on this Mac): several sessions' Stop hooks plus pushes plus a hand-run `npm test` ran
-# whole lint and test suites at once (11 Oct 2026: 1-minute load 160-205, live proofs held for minutes). One line says it waits; JOB_PILOTTO_STOP_SLOT_WAIT seconds at most (default 120, then it runs
+# The suites wait for a check slot like a push gate does (tools/check-slot.sh, JOBADABRA_CHECK_SLOTS at a time on this Mac): several sessions' Stop hooks plus pushes plus a hand-run `npm test` ran
+# whole lint and test suites at once (11 Oct 2026: 1-minute load 160-205, live proofs held for minutes). One line says it waits; JOBADABRA_STOP_SLOT_WAIT seconds at most (default 120, then it runs
 # anyway: a Stop hook must not hang a session); STOP_CHECK_NO_SLOT=1 skips the slot. Guarded by tests/test_stop_hook_slot.py.
 slot_taken=""
 take_slot() {
   [ -z "$slot_taken" ] || return 0; slot_taken=1
   [ -z "${STOP_CHECK_NO_SLOT:-}" ] || return 0
   source "$(dirname "$0")/check-slot.sh" 2>/dev/null || return 0
-  JOB_PILOTTO_CHECK_WAIT="${JOB_PILOTTO_STOP_SLOT_WAIT:-120}" slot_acquire
+  JOBADABRA_CHECK_WAIT="${JOBADABRA_STOP_SLOT_WAIT:-120}" slot_acquire
   trap 'slot_release' EXIT
 }
 
@@ -128,7 +128,7 @@ for repo in "${repos[@]}"; do
     out="$logs/$s.log"; [ "$s" = python ] && out=/dev/null   # unittest reports on stderr; the tests' prints are noise
     if [ "$s" = codemap ]; then run=(boxed "${cmd[@]}"); else run=(gate_cache_run "$repo" "$s" "flag=$affected_flag args= pick=$pick" boxed "${cmd[@]}"); fi
     take_slot
-    ( cd "$dir" && JOB_PILOTTO_AFFECTED_FILES="$files" "${run[@]}" >"$out" 2>>"$logs/$s.log"; echo $? >"$logs/$s.code" ) &
+    ( cd "$dir" && JOBADABRA_AFFECTED_FILES="$files" "${run[@]}" >"$out" 2>>"$logs/$s.log"; echo $? >"$logs/$s.code" ) &
     pids+=($!)
   done
   [ ${#pids[@]} -gt 0 ] && wait "${pids[@]}"
@@ -143,7 +143,7 @@ for repo in "${repos[@]}"; do
     if [ "$code" = 124 ] || [ "$code" = 137 ]; then timeouts+="$s in $repo took over ${limit}s (not counted as a failure). "; continue; fi
     [ "$code" = 0 ] && continue
     case "$s" in
-      python) how="JOB_PILOTTO_DISABLE=mail,notion,telegram,google_jobs $py -m unittest discover -s tests" ;;
+      python) how="JOBADABRA_DISABLE=mail,notion,telegram,google_jobs $py -m unittest discover -s tests" ;;
       codemap) how="cd desktop && node --test test/codemap.test.js (a new file needs a one-line header saying what it does)" ;;
       *) how="cd $s && npm test" ;;
     esac

@@ -25,7 +25,7 @@ def start(cls):
         cls.server.kill()
         raise RuntimeError('the Notion stand-in did not start')
     cls.url, cls.token = found['url'], found['token']
-    cls.env = mock.patch.dict(os.environ, {'JOB_PILOTTO_E2E': '1', 'JOB_PILOTTO_E2E_NOTION_BASE_URL': cls.url})
+    cls.env = mock.patch.dict(os.environ, {'JOBADABRA_E2E': '1', 'JOBADABRA_E2E_NOTION_BASE_URL': cls.url})
     cls.env.start()
 
 

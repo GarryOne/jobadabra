@@ -25,7 +25,7 @@ class _Opened(Exception):
 
 
 def sqlite_env(folder):
-    return {'JOB_PILOTTO_STORE': 'sqlite', 'JOB_PILOTTO_DATA_DIR': folder, 'PATH': os.environ.get('PATH', '')}
+    return {'JOBADABRA_STORE': 'sqlite', 'JOBADABRA_DATA_DIR': folder, 'PATH': os.environ.get('PATH', '')}
 
 
 def opened_notion(test, run, env):
@@ -121,7 +121,7 @@ class ApplyRunOnTheStoreTests(unittest.TestCase):
         keychain.assert_called_once()   # only when the environment has none
 
     def test_a_test_run_never_reads_the_keychain(self):
-        with mock.patch.object(sys, 'platform', 'darwin'), mock.patch.dict(os.environ, {'JOB_PILOTTO_E2E': '1'}, clear=True), \
+        with mock.patch.object(sys, 'platform', 'darwin'), mock.patch.dict(os.environ, {'JOBADABRA_E2E': '1'}, clear=True), \
                 mock.patch.object(apply_run.subprocess, 'run') as asked:
             self.assertEqual(apply_run._keychain_token(), '')
         asked.assert_not_called()

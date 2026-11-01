@@ -1,7 +1,7 @@
 """Time to first relevant job (owner, 18 Oct 2026: "time to first relevant job as fast as possible"), from the first Find jobs press of a persona
 install (tools/persona-search/run.mjs adds it to press 1's row): seconds until the 1st and 10th open job in the user's places appeared (the Jobs
 list shows it then), and until the 1st and 10th scored fit 70+. Run from the repo root with PYTHONPATH=. and the persona's
-JOB_PILOTTO_CONFIG_DIR / JOB_PILOTTO_DATA_DIR. Prints one JSON line. Optional argv[1]: the press-1 log, for step times."""
+JOBADABRA_CONFIG_DIR / JOBADABRA_DATA_DIR. Prints one JSON line. Optional argv[1]: the press-1 log, for step times."""
 import json
 import re
 import sqlite3

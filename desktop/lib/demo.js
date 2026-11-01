@@ -6,9 +6,9 @@ import os from 'node:os';
 import path from 'node:path';
 import {DEFAULT_PORT} from './server-listen.js';
 
-// The folder the demo reads its fictional data from: the app's demo/, or JOB_PILOTTO_DEMO_DIR (the product media,
+// The folder the demo reads its fictional data from: the app's demo/, or JOBADABRA_DEMO_DIR (the product media,
 // recorded in the private site repo). Every demo read goes through demoPath (desktop/test/demo-dir.test.js).
-export const folder = (here, env = process.env) => env.JOB_PILOTTO_DEMO_DIR || path.join(here, 'demo');
+export const folder = (here, env = process.env) => env.JOBADABRA_DEMO_DIR || path.join(here, 'demo');
 export const demoPath = (here, name) => path.join(folder(here), name);
 
 export const FLAG = '--jobadabra-demo';
@@ -89,10 +89,10 @@ export const pipelineAllowed = args => LOCAL.some(prefix => args.join(' ').start
 
 // The Log box's confirmation step in demo mode: a fictional reading, nothing read. The default is the 30 Sep 2026
 // case (a LinkedIn chat screenshot without a year, a call mentioned without a date: both asked, the kind to check);
-// JOB_PILOTTO_DEMO_LEAD=existing shows a job already tracked (no company or "first contact" questions); =unclear a new
+// JOBADABRA_DEMO_LEAD=existing shows a job already tracked (no company or "first contact" questions); =unclear a new
 // recruiter pitch whose reply leaves open whether you agreed to talk (asked: "Did you agree to talk to the recruiter?");
 // =which a message Claude couldn't place among two jobs from the same agency (asked: "Which job is this?").
-export function leadProposal(target = '', kind = process.env.JOB_PILOTTO_DEMO_LEAD) {
+export function leadProposal(target = '', kind = process.env.JOBADABRA_DEMO_LEAD) {
   const existing = kind === 'existing' || kind === 'origin' || (target && target !== 'new');
   const kinds = ['Recruiter outreach', 'Applied', 'Confirmation received', 'Reply received', 'Interview scheduled', 'Rejected', 'Offer', 'Feedback received'];
   const fields = {

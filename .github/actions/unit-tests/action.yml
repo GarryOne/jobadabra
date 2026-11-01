@@ -8,7 +8,7 @@ inputs:
     description: Space-separated tools/check.sh areas to run at once, e.g. "python desktop"
     required: true
   py-jobs:
-    description: JOB_PILOTTO_PY_JOBS for the Python half; empty = tools/check.sh's own default
+    description: JOBADABRA_PY_JOBS for the Python half; empty = tools/check.sh's own default
     default: ''
 runs:
   using: composite
@@ -33,7 +33,7 @@ runs:
             E2E_*|CI_*|FREE_AI_*|AI_COST_*|GH_TOKEN|GITHUB_TOKEN|ACTIONS_ID_TOKEN_REQUEST_*|MAC_SIGN_*|CLIENT) unset "$name" ;;
           esac
         done
-        if [ -n "$PY_JOBS" ]; then export JOB_PILOTTO_PY_JOBS="$PY_JOBS"; fi
+        if [ -n "$PY_JOBS" ]; then export JOBADABRA_PY_JOBS="$PY_JOBS"; fi
         pids=""
         for area in $UNIT_AREAS; do bash tools/check.sh --area "$area" > "unit-$area.log" 2>&1 & pids="$pids $area:$!"; done
         status=0

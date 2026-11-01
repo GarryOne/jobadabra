@@ -16,7 +16,7 @@ if sys.platform == 'win32':
         _init(self, suffix, prefix, dir, ignore_cleanup_errors, **kwargs)
     tempfile.TemporaryDirectory.__init__ = _lenient_init
 
-if os.environ.get('JOB_PILOTTO_AUDIT_CHECKOUT_DATA'):   # set by tools/py-shards.py: the test that writes into the checkout's data/ fails by name
+if os.environ.get('JOBADABRA_AUDIT_CHECKOUT_DATA'):   # set by tools/py-shards.py: the test that writes into the checkout's data/ fails by name
     import checkout_data_audit
     checkout_data_audit.install(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -27,7 +27,7 @@ IDS = {name: f'test-{name.lower().replace("_", "-")}' for name in (
 for name, value in IDS.items():
     os.environ[name] = value
 # The employer index download must never leave the machine in tests: a refused connection means "use the starter list".
-os.environ.setdefault('JOB_PILOTTO_INDEX_URL', 'http://127.0.0.1:9/api/index')
+os.environ.setdefault('JOBADABRA_INDEX_URL', 'http://127.0.0.1:9/api/index')
 
 
 class NotionIdTests(unittest.TestCase):

@@ -14,8 +14,8 @@ import tempfile
 import threading
 import time
 
-# ~3 requests a second; a GitHub run sets JOB_PILOTTO_NOTION_GAP_MS higher, leaving room for the user's app (same limit).
-GAP_MS = int(os.getenv('JOB_PILOTTO_NOTION_GAP_MS') or 340)
+# ~3 requests a second; a GitHub run sets JOBADABRA_NOTION_GAP_MS higher, leaving room for the user's app (same limit).
+GAP_MS = int(os.getenv('JOBADABRA_NOTION_GAP_MS') or 340)
 LOCK_STALE_MS = 3000
 LOCK_TRIES = 200
 
@@ -25,8 +25,8 @@ _next_local = 0
 
 def _standin():
     """Only the explicit in-memory e2e service omits pacing; the loopback rule matches desktop/lib/notion-pace.js."""
-    return bool(os.getenv('JOB_PILOTTO_E2E') and os.getenv('JOB_PILOTTO_E2E_NOTION_STANDIN') == '1'
-                and re.match(r'^http://127\.0\.0\.1(?::\d+)?(?:/|$)', os.getenv('JOB_PILOTTO_E2E_NOTION_BASE_URL', '')))
+    return bool(os.getenv('JOBADABRA_E2E') and os.getenv('JOBADABRA_E2E_NOTION_STANDIN') == '1'
+                and re.match(r'^http://127\.0\.0\.1(?::\d+)?(?:/|$)', os.getenv('JOBADABRA_E2E_NOTION_BASE_URL', '')))
 
 
 def pace_file(token):

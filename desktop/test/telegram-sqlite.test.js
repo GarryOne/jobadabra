@@ -13,11 +13,11 @@ import {handleUpdate} from '../shared/app-core/index.js';
 import {telegramStore} from '../lib/store/telegram-store.js';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-const python = process.env.JOB_PILOTTO_CHECK_PYTHON || (process.platform === 'win32' ? 'python' : 'python3');
+const python = process.env.JOBADABRA_CHECK_PYTHON || (process.platform === 'win32' ? 'python' : 'python3');
 const folder = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-telegram-sqlite-'));
 const data = path.join(folder, 'data');
-const env = {PATH: process.env.PATH, HOME: folder, JOB_PILOTTO_STORE: 'sqlite', JOB_PILOTTO_DATA_DIR: data, JOB_PILOTTO_FOLLOW_APP: '0',
-  JOB_PILOTTO_DISABLE: 'mail,notion,telegram,google_jobs', PYTHONUTF8: '1'};
+const env = {PATH: process.env.PATH, HOME: folder, JOBADABRA_STORE: 'sqlite', JOBADABRA_DATA_DIR: data, JOBADABRA_FOLLOW_APP: '0',
+  JOBADABRA_DISABLE: 'mail,notion,telegram,google_jobs', PYTHONUTF8: '1'};
 const call = async (_storage, entity, method, kwargs = {}) => {
   const out = execFileSync(python, ['-m', 'src.stores', 'call', entity, method, JSON.stringify(kwargs)], {cwd: REPO, env, encoding: 'utf8'});
   const answer = JSON.parse(out.trim().split('\n').pop());

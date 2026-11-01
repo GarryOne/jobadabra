@@ -24,7 +24,7 @@ uploaded to Notion (expiring links), views.
 
 ## New workspace for the Desktop App, filled with existing data
 1. **Fresh app profile:** quit the app; rename `~/Library/Application Support/Job Pilotto` to
-   `Jobadabra (<old workspace>)` (kept: start it again with `JOB_PILOTTO_USER_DATA=<that folder> npm start`).
+   `Jobadabra (<old workspace>)` (kept: start it again with `JOBADABRA_USER_DATA=<that folder> npm start`).
 2. **Setup wizard from scratch** (owner, in the app): Notion step → duplicate the template into the target
    Notion → new connection that can see only the new **Jobadabra** page → paste its token. The app adds any
    missing columns/pages from `config/notion_schema.json`. Finish the wizard (a first search may run; its rows

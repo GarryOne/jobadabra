@@ -23,7 +23,7 @@ class CrashReportingTests(unittest.TestCase):
 
     def test_event_has_type_scrubbed_message_frames_and_no_personal_data(self):
         exc_type, exc, tb = raised()
-        env = {'JOB_PILOTTO_APP_VERSION': '0.5.250', 'JOB_PILOTTO_RUN_ID': 'run1', 'JOB_PILOTTO_INSTALL_ID': 'inst-1'}
+        env = {'JOBADABRA_APP_VERSION': '0.5.250', 'JOBADABRA_RUN_ID': 'run1', 'JOBADABRA_INSTALL_ID': 'inst-1'}
         event = cr.build_event(exc_type, exc, tb, env)
         text = json.dumps(event)
         for leaked in ('ada@example.com', 'sk-ant-abc123', '/Users/ada'):
@@ -31,7 +31,7 @@ class CrashReportingTests(unittest.TestCase):
         value = event['exception']['values'][0]
         self.assertEqual(value['type'], 'ValueError')
         self.assertEqual(value['stacktrace']['frames'][-1]['function'], 'raised')
-        self.assertEqual([event['release'], event['user']['id'], event['tags']['run_id']], ['job-pilotto@0.5.250', 'inst-1', 'run1'])
+        self.assertEqual([event['release'], event['user']['id'], event['tags']['run_id']], ['jobadabra@0.5.250', 'inst-1', 'run1'])
         again = cr.build_event(exc_type, ValueError(str(exc).replace('42', '57')), tb, env)
         self.assertEqual(event['fingerprint'], again['fingerprint'])   # numbers do not make a different problem
 
@@ -53,7 +53,7 @@ class CrashReportingTests(unittest.TestCase):
 
     def test_off_without_a_dsn_and_the_hook_reports_then_keeps_the_normal_traceback(self):
         self.assertFalse(cr.install({}))
-        self.assertFalse(cr.install({'JOB_PILOTTO_SENTRY_DSN': 'garbage'}))
+        self.assertFalse(cr.install({'JOBADABRA_SENTRY_DSN': 'garbage'}))
         original, calls, sent = sys.excepthook, [], []
         try:
             sys.excepthook = lambda *args: calls.append(args[0])
@@ -61,7 +61,7 @@ class CrashReportingTests(unittest.TestCase):
                 status = 200
                 def __enter__(self): return self
                 def __exit__(self, *args): return False
-            self.assertTrue(cr.install({'JOB_PILOTTO_SENTRY_DSN': DSN}, urlopen=lambda request, timeout: (sent.append(request), Response())[1]))
+            self.assertTrue(cr.install({'JOBADABRA_SENTRY_DSN': DSN}, urlopen=lambda request, timeout: (sent.append(request), Response())[1]))
             exc_type, exc, tb = raised()
             sys.excepthook(exc_type, exc, tb)
             sys.excepthook(KeyboardInterrupt, KeyboardInterrupt(), None)   # a Ctrl-C is not a crash

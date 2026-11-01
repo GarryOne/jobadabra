@@ -239,7 +239,7 @@ class OnlyVisitsTest(unittest.TestCase):
         # Why (31 Oct 2026, a8): the child is not a unit test process, so without a data folder it wrote the checkout's data/field_stamp.json and run.lock (tools/py-shards.py names such a leak).
         with tempfile.TemporaryDirectory() as data:
             done = subprocess.run([sys.executable, '-m', 'src', 'daily', '--mode', 'run', '--only-visits'], capture_output=True, text=True,
-                                  env={**__import__('os').environ, 'JOB_PILOTTO_FOLLOW_APP': '0', 'JOB_PILOTTO_DISABLE': 'mail,notion,telegram,google_jobs', 'JOB_PILOTTO_DATA_DIR': data})
+                                  env={**__import__('os').environ, 'JOBADABRA_FOLLOW_APP': '0', 'JOBADABRA_DISABLE': 'mail,notion,telegram,google_jobs', 'JOBADABRA_DATA_DIR': data})
         self.assertEqual(done.returncode, 2)
         self.assertIn('--only-visits needs --mode today', done.stderr)
 
@@ -369,7 +369,7 @@ class PoolLayoutTests(unittest.TestCase):
     def test_a_served_layout_is_used_once_then_kept_and_can_be_turned_off(self):
         self.index.write_text(json.dumps({'sites': [{'host': 'careers.richemont.com', 'kind': 'layout', 'recipe': self.RECIPE, 'installs': 3},
                                                     {'host': 'evil.test', 'kind': 'layout', 'recipe': {**self.RECIPE, 'selector': 'x<y'}, 'installs': 5}]}))
-        with mock.patch.dict('os.environ', {'JOB_PILOTTO_DISABLE': 'pool_layouts'}):
+        with mock.patch.dict('os.environ', {'JOBADABRA_DISABLE': 'pool_layouts'}):
             self.assertIsNone(visits.recipe_for('https://careers.richemont.com/en/jobs/iwc'), 'switched off')
         self.assertEqual(visits.recipe_for('https://careers.richemont.com/en/jobs/iwc'), self.RECIPE)
         self.assertTrue(visits._load()['recipes']['careers.richemont.com']['pooled'], 'kept like a learned one, marked as from the pool')

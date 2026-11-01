@@ -24,7 +24,7 @@ flags=""; keep=1; background=0; args=()
 for arg in "$@"; do
   case "$arg" in
     --full) flags="PUSH_FULL=1 $flags"; args+=("$arg") ;;
-    --fix) flags="CI_RED_OK=1 $flags"; export JOB_PILOTTO_RED_FIX=1; args+=("$arg") ;;   # the fix of a red main goes first: no landing queue, no check-slot wait, heavy-lock class fix
+    --fix) flags="CI_RED_OK=1 $flags"; export JOBADABRA_RED_FIX=1; args+=("$arg") ;;   # the fix of a red main goes first: no landing queue, no check-slot wait, heavy-lock class fix
     --keep) keep=1; args+=("$arg") ;;
     --remove) keep=0; args+=("$arg") ;;
     --background) background=1 ;;
@@ -66,9 +66,9 @@ fi
 # Another repo's log carries its name (26 Oct 2026: node24-actions shipped from jobadabra and jobadabra-web at once shared one log, and their events mixed).
 repo_tag=""; [ -z "$external" ] || { repo_tag="$(git remote get-url origin 2>/dev/null)"; repo_tag="${repo_tag##*/}"; repo_tag="${repo_tag%.git}-"; }
 log="${SHIP_LOG:-${TMPDIR:-/tmp}/ship-${repo_tag}${branch//\//-}.log}"
-[ -f "$tools/session-name.sh" ] && source "$tools/session-name.sh" || { session_name() { echo "${JOB_PILOTTO_SESSION:-?}"; }; session_short() { echo "${JOB_PILOTTO_SESSION_SHORT:-?}"; }; }
+[ -f "$tools/session-name.sh" ] && source "$tools/session-name.sh" || { session_name() { echo "${JOBADABRA_SESSION:-?}"; }; session_short() { echo "${JOBADABRA_SESSION_SHORT:-?}"; }; }
 if [ "$background" = 1 ]; then
-  export JOB_PILOTTO_SESSION="$(session_name)" JOB_PILOTTO_SESSION_SHORT="$(session_short)"   # the detached run has no Claude session among its parents any more
+  export JOBADABRA_SESSION="$(session_name)" JOBADABRA_SESSION_SHORT="$(session_short)"   # the detached run has no Claude session among its parents any more
   : > "$log"; echo 0 > "$log.seen"   # the new run's log starts empty, and so does the cursor tools/ship-wait.sh reads from
   # Its own session (setsid; macOS has no such command, python's os.setsid does the same): the caller's process-group kill or hangup when its
   # call ends (a tool timeout, a closed terminal) must not reach the run. nohup alone only ignores SIGHUP (10 Oct 2026: a killed run logged DONE).
@@ -155,7 +155,7 @@ mode="$(ship_mode)"
 slow_gate_paths="extension desktop/lib desktop/test desktop/e2e desktop/scripts desktop/package.json desktop/package-lock.json app-core/src docs/flows"
 case "${SHIP_LANDING_LOCK:-auto}" in
   1) queue=1 ;; 0) queue=0 ;;
-  *) if [ "${JOB_PILOTTO_RED_FIX:-}" = 1 ] || [ "$mode" = pr ]; then queue=0; else git fetch -q origin; if [ -n "$(git diff --name-only origin/main...HEAD -- $slow_gate_paths 2>/dev/null)" ]; then queue=1; else queue=0; fi; fi ;;
+  *) if [ "${JOBADABRA_RED_FIX:-}" = 1 ] || [ "$mode" = pr ]; then queue=0; else git fetch -q origin; if [ -n "$(git diff --name-only origin/main...HEAD -- $slow_gate_paths 2>/dev/null)" ]; then queue=1; else queue=0; fi; fi ;;
 esac
 if [ "$queue" = 1 ]; then
   step "queueing for the landing lock (this landing runs the slow gates; SHIP_LANDING_LOCK=0 skips the queue)"

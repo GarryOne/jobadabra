@@ -244,7 +244,7 @@ def parse(text, to_fragment=None, join_legacy=True):
 
 def _is_tracked_example_dir():
     from ..paths import ROOT
-    return (not os.getenv('JOB_PILOTTO_CONFIG_DIR') and not os.getenv('GITHUB_ACTIONS') and not os.getenv('JOB_PILOTTO_ALLOW_REPO_CONFIG')
+    return (not os.getenv('JOBADABRA_CONFIG_DIR') and not os.getenv('GITHUB_ACTIONS') and not os.getenv('JOBADABRA_ALLOW_REPO_CONFIG')
             and 'unittest' not in sys.modules and CONFIG == ROOT / 'config')
 
 
@@ -271,7 +271,7 @@ def apply(values, files=None):
         # A source checkout with no config folder of its own: config/ here is the example files the repo ships (public). The user's
         # real settings must never be written over them (1 Oct 2026: they were, then nearly committed). The desktop app and the
         # scheduled runs set their own folder, so they are not affected.
-        print('Search settings: not written into the repo\'s example config/ (set JOB_PILOTTO_CONFIG_DIR to use your own).')
+        print('Search settings: not written into the repo\'s example config/ (set JOBADABRA_CONFIG_DIR to use your own).')
         return files
     CONFIG.mkdir(parents=True, exist_ok=True)
     for name in ('search', 'preferences'):

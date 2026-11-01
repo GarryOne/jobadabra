@@ -75,7 +75,7 @@ jobs:
             else find e2e-artifacts -mindepth 1 -maxdepth 1 -name 'e2e-artifacts-windows-*' -exec rm -rf {} +; fi
           fi
       # JUDGE BEFORE FILING (desktop/e2e/lib/prejudge.mjs): the run's new findings (at most 3) are judged in one Codex call before any issue opens; noise is
-      # never filed. Only with JOB_PILOTTO_FIXER_VERDICTS = "on" (Codex plan, one broker call per run); a refused call (budget, login, broker down) skips the judging and everything is filed as before.
+      # never filed. Only with JOBADABRA_FIXER_VERDICTS = "on" (Codex plan, one broker call per run); a refused call (budget, login, broker down) skips the judging and everything is filed as before.
       # Why (31 Oct 2026, owner: "Why Anthropic is reached? We should use fully the Codex"): this step ran claude-code-action on an API key; desktop/e2e/judge-codex.mjs asks the broker instead.
       - name: New findings to judge before filing
         id: pending

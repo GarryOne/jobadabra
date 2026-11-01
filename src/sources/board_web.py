@@ -7,7 +7,7 @@ grows while it stays thin: 1, 2, 4, then RECENT days (owner's yes, 26 Oct 2026: 
 The search runs on the user's own plan (Claude Code, Codex: the engine, or signed in beside Free AI or a key: web_search.plan_client) or an
 Anthropic API key (about $0.07 a search: up to 6 planned web searches, owner's yes 26 Oct 2026), or for Free AI alone the site's capped web search lane. Only boards whose address the search showed; each is marked origin 'web'
 (its own yield in found_boards.json), joins the cached proposal (found_boards.json 'ideas'), and one that gives nothing is checked like any
-(src/sources/board_check.py). Off while the AI page reader is off (tests), in the fixture mode, or with JOB_PILOTTO_DISABLE=web_search.
+(src/sources/board_check.py). Off while the AI page reader is off (tests), in the fixture mode, or with JOBADABRA_DISABLE=web_search.
 Tests: tests/test_board_web.py, tests/test_board_web_thin.py, tests/test_web_first.py."""
 import json
 import os
@@ -284,7 +284,7 @@ def _judged(found, roles, fetch):
 def search(search_config, known, client=None, now=None, fetch=None, data=None):
     """The specialist and local boards one web search found for this search's proposal (validated, new hosts only), joined to the proposal;
     [] when off, not due, or the search fails. data: the caller's found_boards.json, written by the caller (start); else loaded and saved."""
-    if careers.READER is None or disabled('web_search') or os.getenv('JOB_PILOTTO_FIXTURE_DIR'):
+    if careers.READER is None or disabled('web_search') or os.getenv('JOBADABRA_FIXTURE_DIR'):
         return []
     from ..ai import board_ideas, cost, engine
     from ..ai.models import SMALL_MODEL

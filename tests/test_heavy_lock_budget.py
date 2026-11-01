@@ -21,9 +21,9 @@ class HeavyLockBudgetTest(unittest.TestCase):
         self.gates = self.tmp / 'gates'
         self.procs = []
         self.addCleanup(lambda: [p.kill() for p in self.procs])
-        self.env = {**{k: v for k, v in os.environ.items() if not k.startswith(('JOB_PILOTTO_HEAVY', 'JP_HEAVY'))}, 'JOB_PILOTTO_HEAVY_DIR': (self.tmp / 'heavy').as_posix(),
-                    'JOB_PILOTTO_HEAVY_LOAD': '0', 'JOB_PILOTTO_HEAVY_POLL': '0.1', 'JOB_PILOTTO_HEAVY_TIMING_LOG': (self.tmp / 'gate-timing.log').as_posix(), 'JOB_PILOTTO_HEAVY_SHARED': str(LOCK),
-                    'JOB_PILOTTO_HEAVY_RAMP': '3600'}   # a just-started run's reservation lasts the whole test, however slow the runner (the default 90 s could lapse mid-test)
+        self.env = {**{k: v for k, v in os.environ.items() if not k.startswith(('JOBADABRA_HEAVY', 'JP_HEAVY'))}, 'JOBADABRA_HEAVY_DIR': (self.tmp / 'heavy').as_posix(),
+                    'JOBADABRA_HEAVY_LOAD': '0', 'JOBADABRA_HEAVY_POLL': '0.1', 'JOBADABRA_HEAVY_TIMING_LOG': (self.tmp / 'gate-timing.log').as_posix(), 'JOBADABRA_HEAVY_SHARED': str(LOCK),
+                    'JOBADABRA_HEAVY_RAMP': '3600'}   # a just-started run's reservation lasts the whole test, however slow the runner (the default 90 s could lapse mid-test)
 
     def memory(self, free_gb, swap_used_pct=10):
         bin_dir = self.tmp / 'bin'
@@ -39,11 +39,11 @@ class HeavyLockBudgetTest(unittest.TestCase):
         """Start a gated run and wait until THIS run (its pid) holds a slot or has its ticket in the queue: the next run is then younger in line."""
         proc = subprocess.Popen(['bash', str(LOCK), what, 'bash', '-c', gated(self.trace, name, self.gates)], env={**self.env, **env}, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         self.procs.append(proc)
-        wait_in_books(self.env['JOB_PILOTTO_HEAVY_DIR'], proc, procs=self.procs, env=self.env)
+        wait_in_books(self.env['JOBADABRA_HEAVY_DIR'], proc, procs=self.procs, env=self.env)
         return proc
 
     def why(self):
-        return evidence(self.env['JOB_PILOTTO_HEAVY_DIR'], env=self.env)
+        return evidence(self.env['JOBADABRA_HEAVY_DIR'], env=self.env)
 
     def words(self):
         try:
@@ -106,7 +106,7 @@ class HeavyLockBudgetTest(unittest.TestCase):
         self.finish()
 
     def test_the_replay_switch_restores_arrival_order(self):
-        self.replay_behind_a_waiting_live_proof(JOB_PILOTTO_HEAVY_REPLAY_SKIP='0')
+        self.replay_behind_a_waiting_live_proof(JOBADABRA_HEAVY_REPLAY_SKIP='0')
         self.assertEqual(self.settle(), ['+a'])
         self.finish()
 
@@ -143,7 +143,7 @@ class HeavyLockBudgetTest(unittest.TestCase):
     def test_the_slot_cap_can_be_set_back_to_two(self):
         self.memory(free_gb=20)
         for n in 'abc':
-            self.launch('recorded-replay', n, JOB_PILOTTO_HEAVY_SLOTS='2', JOB_PILOTTO_HEAVY_REPLAY_SKIP='0')   # (replays may skip the queue: here only the cap is looked at, in arrival order)
+            self.launch('recorded-replay', n, JOBADABRA_HEAVY_SLOTS='2', JOBADABRA_HEAVY_REPLAY_SKIP='0')   # (replays may skip the queue: here only the cap is looked at, in arrival order)
         wait_trace(self.trace, 2, why=self.why)
         self.assertEqual(sorted(self.settle()), ['+a', '+b'])
         release(self.gates, 'a')

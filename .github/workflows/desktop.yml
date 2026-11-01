@@ -1478,7 +1478,7 @@ jobs:
       - name: The shared release checks after main's CI (soak on, the Notion schema additive over stable)
         timeout-minutes: 10   # Why (1 Nov 2026, a8): only the schema comparison is left here; the wait for main's build.yml moved to the main-ci job (it needed 65 min while it waited here)
         env:
-          JOB_PILOTTO_SOAK: ${{ vars.JOB_PILOTTO_SOAK }}
+          JOBADABRA_SOAK: ${{ vars.JOB_PILOTTO_SOAK }}
         shell: bash -eo pipefail {0}   # a program piped into tee/cat keeps its exit code (tests/test_workflow_pipefail.py)
         run: tools/release-checks.sh --after-ci "$TAG" "$REF"
       - if: always()
@@ -1646,7 +1646,7 @@ jobs:
       - name: The shared release checks after main's CI (soak on, the Notion schema additive over stable)
         timeout-minutes: 10   # Why (1 Nov 2026, a8): only the schema comparison is left here; the wait for main's build.yml moved to the main-ci job (it needed 65 min while it waited here)
         env:
-          JOB_PILOTTO_SOAK: ${{ vars.JOB_PILOTTO_SOAK }}
+          JOBADABRA_SOAK: ${{ vars.JOB_PILOTTO_SOAK }}
         shell: bash -eo pipefail {0}   # a program piped into tee/cat keeps its exit code (tests/test_workflow_pipefail.py)
         run: tools/release-checks.sh --after-ci "$TAG" "$REF"
       - if: always()

@@ -11,7 +11,7 @@ import {NAMES} from '../lib/ai/index.js';
 import {rowOf, waitingOf} from '../renderer/pages/ready-rows.js';
 
 useKeychainReader(() => null);   // no test reads this Mac's Keychain
-const storage = (extra = {}) => ({secret: name => (name === 'JOB_PILOTTO_TRIAL_KEY' || /TRIAL/.test(name) ? 'JPF1.install.token' : ''), settings: () => extra, saveSettings: patch => Object.assign(extra, patch), path: name => `/nowhere/${name}`});
+const storage = (extra = {}) => ({secret: name => (name === 'JOBADABRA_TRIAL_KEY' || /TRIAL/.test(name) ? 'JPF1.install.token' : ''), settings: () => extra, saveSettings: patch => Object.assign(extra, patch), path: name => `/nowhere/${name}`});
 const site = (status = 200, body = {ok: true}) => { const seen = []; return {seen, fetcher: async (url, init) => { seen.push({url, init}); return new Response(JSON.stringify(body), {status}); }}; };
 
 test('the owner is whoever the site says yes to; 401 and 404 are no', async () => {

@@ -50,7 +50,7 @@ export async function runLiveRow({posting, captureDir, extensionDir, ask = true,
   const refill = fill && isCi() && process.env.JP_REFILL_CI === '1';   // the refill workflow (lib/refill.mjs): its own key, no other
   if (refill && keyRefusal()) throw new Error(keyRefusal());
   if (ask && isCi() && !aiProxy && !testKey()) throw new Error(`live row on CI: no ${keySecret('api')} (the Tests key); the app has no other way to ask the AI on a runner`);
-  guardLiveVisit(posting.url, {who: process.env.JOB_PILOTTO_SESSION || 'live row'});   // the per-site daily limit (lib/site-ledger.mjs): refused before anything starts
+  guardLiveVisit(posting.url, {who: process.env.JOBADABRA_SESSION || 'live row'});   // the per-site daily limit (lib/site-ledger.mjs): refused before anything starts
   ensureStagedWorker({say});   // a worker edit since the last staging would run the old prompt
   const started = Date.now();
   let shotAsked = false;

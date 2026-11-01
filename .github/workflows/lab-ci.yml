@@ -45,5 +45,5 @@ jobs:
           LAB_TOKEN: ${{ steps.lab_token.outputs.token }}
           LAB_EVENT: ${{ github.event_name == 'schedule' && (github.event.schedule == '25 5 * * *' && 'schedule-main' || 'schedule') || github.event_name }}
           LAB_PR: ${{ inputs.pr }}
-          JOB_PILOTTO_PUBLIC: ${{ github.workspace }}   # the lab's discovery tests read this engine checkout
+          JOBADABRA_PUBLIC: ${{ github.workspace }}   # the lab's discovery tests read this engine checkout
         run: python3 tools/lab_ci.py

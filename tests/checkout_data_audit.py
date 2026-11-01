@@ -39,6 +39,6 @@ def install(root):
         else:
             return
         if _inside(path.decode() if isinstance(path, bytes) else path, folders):
-            raise CheckoutDataWrite(f'a test wrote into the checkout\'s data folder: {path} (use a temp folder, or set JOB_PILOTTO_DATA_DIR for a subprocess)')
+            raise CheckoutDataWrite(f'a test wrote into the checkout\'s data folder: {path} (use a temp folder, or set JOBADABRA_DATA_DIR for a subprocess)')
 
     sys.addaudithook(hook)

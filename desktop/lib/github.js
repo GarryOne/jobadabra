@@ -22,8 +22,8 @@ export {setEngineRef, resolveEngineRepo, currentEngineRepo, ENGINE_REPO} from '.
 
 // The Jobadabra GitHub App (public identifiers; device flow needs no client secret). Its permissions,
 // on the one repository it's installed on: Actions, Contents, Secrets, Variables and Workflows (write).
-export const CLIENT_ID = process.env.JOB_PILOTTO_GITHUB_CLIENT_ID || 'Iv23liEIBvK1hG0oejDr';
-export const APP_SLUG = process.env.JOB_PILOTTO_GITHUB_APP || 'jobadabra';   // renamed from job-pilotto on 26 Oct 2026: the old address answers 404
+export const CLIENT_ID = process.env.JOBADABRA_GITHUB_CLIENT_ID || 'Iv23liEIBvK1hG0oejDr';
+export const APP_SLUG = process.env.JOBADABRA_GITHUB_APP || 'jobadabra';   // renamed from job-pilotto on 26 Oct 2026: the old address answers 404
 // New repos are named jobadabra-personal-always-on (owner, 24 Oct 2026); repos made before keep job-pilotto-private and are still found.
 export const REPO_NAME = 'jobadabra-personal-always-on';
 export const REPO_NAMES = [REPO_NAME, 'job-pilotto-private'];
@@ -107,7 +107,7 @@ export function client(token, fetcher = globalThis.fetch) {
     const response = await fetcher(`${API}${route}`, {
       method, body: body === undefined ? undefined : JSON.stringify(body),
       headers: {Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28',
-        'User-Agent': 'job-pilotto-desktop', ...(body === undefined ? {} : {'Content-Type': 'application/json'})},
+        'User-Agent': 'jobadabra-desktop', ...(body === undefined ? {} : {'Content-Type': 'application/json'})},
     });
     if (response.status === 204) return null;
     const data = await response.json().catch(() => null);

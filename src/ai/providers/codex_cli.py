@@ -40,9 +40,9 @@ DROP_ENV = ('OPENAI_API_KEY', 'OPENAI_BASE_URL', 'CODEX_API_KEY', 'ANTHROPIC_API
 
 
 def find_binary(env=None, exists=os.path.exists):
-    """The user's `codex`: as the app found it (JOB_PILOTTO_CODEX_BIN), else on PATH, else where its installers put it."""
+    """The user's `codex`: as the app found it (JOBADABRA_CODEX_BIN), else on PATH, else where its installers put it."""
     env = os.environ if env is None else env
-    given = env.get('JOB_PILOTTO_CODEX_BIN')
+    given = env.get('JOBADABRA_CODEX_BIN')
     if given and exists(given):
         return given
     on_path = shutil.which('codex', path=env.get('PATH'))

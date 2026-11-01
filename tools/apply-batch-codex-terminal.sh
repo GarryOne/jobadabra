@@ -109,7 +109,7 @@ on run argv
   set codexBin to item 2 of argv
   set npxBin to item 3 of argv
   set jobUrl to item 4 of argv
-  set shellCommand to "cd " & quoted form of repoDir & " && JOB_PILOTTO_CODEX_BIN=" & quoted form of codexBin & " JOB_PILOTTO_NPX_BIN=" & quoted form of npxBin & " python3 -m src.ai.apply_run " & quoted form of jobUrl
+  set shellCommand to "cd " & quoted form of repoDir & " && JOBADABRA_CODEX_BIN=" & quoted form of codexBin & " JOBADABRA_NPX_BIN=" & quoted form of npxBin & " python3 -m src.ai.apply_run " & quoted form of jobUrl
   set wasRunning to application "Terminal" is running
   tell application "Terminal"
     -- A fresh launch opens its own empty window; run in it instead of opening a second one.

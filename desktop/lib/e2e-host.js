@@ -9,7 +9,7 @@ import path from 'node:path';
 /** Answer as an already prepared install in e2e; otherwise preserve setup and its progress events. */
 export function prefetchForRun(prefetch, env = process.env) {
   // Why (29 Oct 2026, owner): backbone runs must not install libraries or download speech models when a page opens.
-  return env.JOB_PILOTTO_E2E ? {ok: true} : prefetch();
+  return env.JOBADABRA_E2E ? {ok: true} : prefetch();
 }
 
 // [object on `host`, method, what the real one returns when it works]: the doors a test run closes.
@@ -23,13 +23,13 @@ export const DOORS = [
 ];
 
 /**
- * Replaces each door on `host` ({shell, clipboard, app}) with a recorder, only in a test run (`JOB_PILOTTO_E2E`, or `JOB_PILOTTO_SMOKE` for a screenshot): an app a person runs is never touched.
+ * Replaces each door on `host` ({shell, clipboard, app}) with a recorder, only in a test run (`JOBADABRA_E2E`, or `JOBADABRA_SMOKE` for a screenshot): an app a person runs is never touched.
  * @param {{shell?: object, clipboard?: object, app?: object}} host  @param {NodeJS.ProcessEnv} env  @returns {string[]} the doors closed, as "shell.openExternal"
  */
 export function standInHost(host, env = process.env) {
-  if (!env.JOB_PILOTTO_E2E && !env.JOB_PILOTTO_SMOKE) return [];   // Why (#2367, Gitar on #2363): the three shell stand-ins lived in lib/e2e-hidden.js and covered hidden runs only; one list now, for every test run
+  if (!env.JOBADABRA_E2E && !env.JOBADABRA_SMOKE) return [];   // Why (#2367, Gitar on #2363): the three shell stand-ins lived in lib/e2e-hidden.js and covered hidden runs only; one list now, for every test run
   const log = globalThis.__jpHost = globalThis.__jpHost || [];
-  const spool = env.JOB_PILOTTO_E2E_OPEN_DIR;
+  const spool = env.JOBADABRA_E2E_OPEN_DIR;
   const closed = [];
   for (const [owner, method, result] of DOORS) {
     const target = host[owner];
@@ -47,22 +47,22 @@ export function standInHost(host, env = process.env) {
 
 /**
  * A test app ends when the runner that started it is gone, however the runner went (a timeout, a kill, a crash): no handler runs there, and the OS gives a child no signal when its parent dies.
- * Only in a run that names its runner (`JOB_PILOTTO_E2E_RUNNER_PID`, set by e2e/lib/app.mjs): an app a person runs has none and is never watched. Calls `exit` once the runner's process is gone,
+ * Only in a run that names its runner (`JOBADABRA_E2E_RUNNER_PID`, set by e2e/lib/app.mjs): an app a person runs has none and is never watched. Calls `exit` once the runner's process is gone,
  * and kills this process outright if it is still alive after a grace (an app that ignores being asked to quit).
  * Why (28 Oct 2026, owner: "what loads my computer", load 52): four test apps from runs that had died ran 5 to 7 hours at about 15% CPU each, parent launchd, and ignored SIGTERM.
  * Guard: test/e2e-runner-watch.test.js (kills a real runner, with a child that has no watch as the positive control).
  * @param {() => void} exit  @param {NodeJS.ProcessEnv} env  @returns {NodeJS.Timeout|null} the timer, or null when there is no runner to watch
  */
 export function watchRunner(exit, env = process.env) {
-  const runner = Number(env.JOB_PILOTTO_E2E_RUNNER_PID);
+  const runner = Number(env.JOBADABRA_E2E_RUNNER_PID);
   if (!Number.isInteger(runner) || runner <= 0) return null;
   const alive = () => { try { process.kill(runner, 0); return true; } catch (error) { return error.code === 'EPERM'; } };
   const timer = setInterval(() => {
     if (alive()) return;
     clearInterval(timer);
     try { exit(); } catch { /* the force below ends it */ }
-    setTimeout(() => process.kill(process.pid, 'SIGKILL'), Number(env.JOB_PILOTTO_E2E_RUNNER_GRACE_MS) || 3000);   // not unref'd: an exit that returns and ends nothing is still ended
-  }, Number(env.JOB_PILOTTO_E2E_RUNNER_POLL_MS) || 2000);
+    setTimeout(() => process.kill(process.pid, 'SIGKILL'), Number(env.JOBADABRA_E2E_RUNNER_GRACE_MS) || 3000);   // not unref'd: an exit that returns and ends nothing is still ended
+  }, Number(env.JOBADABRA_E2E_RUNNER_POLL_MS) || 2000);
   timer.unref?.();   // the watch alone never keeps an app alive
   return timer;
 }

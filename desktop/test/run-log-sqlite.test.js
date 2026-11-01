@@ -1,7 +1,7 @@
 // A run the engine logs on this Mac's store (src/run_log.py) is the one Recent activity lists: the engine writes it into a
 // temporary data/tracker.sqlite and the desktop's sqlite store (lib/store/sqlite.js) reads it back through the engine
 // (`python -m src.stores call`), as the app does. Isolated: a temp data folder, the sqlite store, no Notion token, the app's
-// own folder not followed (JOB_PILOTTO_FOLLOW_APP=0), so nothing reaches the owner's data or Notion.
+// own folder not followed (JOBADABRA_FOLLOW_APP=0), so nothing reaches the owner's data or Notion.
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
 import fs from 'node:fs';
@@ -15,10 +15,10 @@ import {recordLink} from '../lib/run-rows.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(here, '../..');
-const python = process.env.JOB_PILOTTO_CHECK_PYTHON || (process.platform === 'win32' ? 'python' : 'python3');
+const python = process.env.JOBADABRA_CHECK_PYTHON || (process.platform === 'win32' ? 'python' : 'python3');
 const data = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-runlog-'));
-const env = {...process.env, JOB_PILOTTO_STORE: 'sqlite', JOB_PILOTTO_DATA_DIR: data, JOB_PILOTTO_FOLLOW_APP: '0',
-  JOB_PILOTTO_TRIGGER: 'Mac (you)', PYTHONUTF8: '1', PYTHONIOENCODING: 'utf-8'};
+const env = {...process.env, JOBADABRA_STORE: 'sqlite', JOBADABRA_DATA_DIR: data, JOBADABRA_FOLLOW_APP: '0',
+  JOBADABRA_TRIGGER: 'Mac (you)', PYTHONUTF8: '1', PYTHONIOENCODING: 'utf-8'};
 for (const name of ['NOTION_TOKEN', 'GITHUB_RUN_ID', 'GITHUB_EVENT_NAME', 'ANTHROPIC_API_KEY']) delete env[name];
 
 // The engine's side: a Gmail check that sent its message, logged by run_log.

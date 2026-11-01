@@ -18,7 +18,7 @@ test('no git (a packaged app, a copy without .git): no branch, no crash', () => 
 test('a live-test twin says TWIN where a source run says DEV: title, Dock badge, sidebar tag', async () => {
   const {mark} = await import('../lib/dev-marker.js');
   assert.equal(mark({}), 'DEV');
-  assert.equal(mark({JOB_PILOTTO_TWIN: '1'}), 'TWIN');
+  assert.equal(mark({JOBADABRA_TWIN: '1'}), 'TWIN');
   assert.equal(title(true, 'main', 'TWIN'), 'Jobadabra · TWIN · main');
   assert.equal(title(false, '', 'TWIN'), 'Jobadabra · TWIN');        // a twin is never mistaken for the installed app either
   assert.equal(title(false, '', 'DEV'), 'Jobadabra');

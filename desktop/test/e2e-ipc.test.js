@@ -1,5 +1,5 @@
 // The end-to-end journey records which calls the window made to the app and how long each took (so a click that reaches nothing, or an action that takes seconds with no
-// sign of work, can be told apart from a working one). Only with JOB_PILOTTO_E2E: main.js wraps ipcMain.handle with this.
+// sign of work, can be told apart from a working one). Only with JOBADABRA_E2E: main.js wraps ipcMain.handle with this.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {recordIpc} from '../lib/e2e-ipc.js';

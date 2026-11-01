@@ -29,7 +29,7 @@ jobs:
     timeout-minutes: 45
     continue-on-error: true   # report only: a red here never reddens the night pass that called it
     env:
-      JOB_PILOTTO_DISABLE: mail,notion,telegram,google_jobs   # as tools/check.py sets it for the python unit job
+      JOBADABRA_DISABLE: mail,notion,telegram,google_jobs   # as tools/check.py sets it for the python unit job
       ELECTRON_DISABLE_SANDBOX: '1'
     steps:
       - uses: actions/checkout@v5

@@ -39,7 +39,7 @@ test('the placeholder key is shaped like a key and is never a real one', () => {
 });
 
 test('CI forces the cheap model; a Mac lets the app use its own production models', () => {
-  assert.deepEqual(appModelEnv({CI: 'true'}), {JOB_PILOTTO_MODEL_OVERRIDE: 'claude-haiku-5-5'});
+  assert.deepEqual(appModelEnv({CI: 'true'}), {JOBADABRA_MODEL_OVERRIDE: 'claude-haiku-5-5'});
   assert.deepEqual(appModelEnv({}), {});
 });
 
@@ -68,12 +68,12 @@ test('the AI family alternates per CI run (odd: OpenAI, even: Claude), never wit
 test('live runs ask on their own key (a recording run by hand), the Tests key until it is set; the name is said, never the value', async () => {
   const {liveKeyName, testKey} = await import('../../lib/engine.mjs');
   const env = {CI: 'true', E2E_ANTHROPIC_KEY: 'tests', LIVE_POOL_ANTHROPIC_KEY: 'pool'};
-  assert.deepEqual([liveKeyName({...env, JOB_PILOTTO_VISIT_KIND: 'hand'}), testKey({...env, JOB_PILOTTO_VISIT_KIND: 'hand'})], ['LIVE_POOL_ANTHROPIC_KEY', 'pool']);
+  assert.deepEqual([liveKeyName({...env, JOBADABRA_VISIT_KIND: 'hand'}), testKey({...env, JOBADABRA_VISIT_KIND: 'hand'})], ['LIVE_POOL_ANTHROPIC_KEY', 'pool']);
   assert.deepEqual([liveKeyName(env), testKey(env)], ['E2E_ANTHROPIC_KEY', 'tests'], 'an e2e suite (no visit kind): the Tests key');
-  const notYet = {CI: 'true', E2E_ANTHROPIC_KEY: 'tests', JOB_PILOTTO_VISIT_KIND: 'hand'};
+  const notYet = {CI: 'true', E2E_ANTHROPIC_KEY: 'tests', JOBADABRA_VISIT_KIND: 'hand'};
   assert.deepEqual([liveKeyName(notYet), testKey(notYet)], ['E2E_ANTHROPIC_KEY', 'tests'], 'its own key not set yet: the Tests key');
-  assert.equal(testKey({...env, CI: '', JOB_PILOTTO_VISIT_KIND: 'hand'}), '', 'never on a Mac');
-  assert.equal(liveKeyName({...env, JOB_PILOTTO_VISIT_KIND: 'hand'}, 'openai'), 'E2E_OPENAI_KEY', 'an OpenAI engine keeps its own Tests key');
+  assert.equal(testKey({...env, CI: '', JOBADABRA_VISIT_KIND: 'hand'}), '', 'never on a Mac');
+  assert.equal(liveKeyName({...env, JOBADABRA_VISIT_KIND: 'hand'}, 'openai'), 'E2E_OPENAI_KEY', 'an OpenAI engine keeps its own Tests key');
 });
 
 // Owner, 26 Oct 2026 (CI's Anthropic credit ran out): "Let's just switch to Free AI (CloudFlare workers AI). I don't want to top up anymore". With the relay up on the

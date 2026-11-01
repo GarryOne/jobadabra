@@ -5,10 +5,10 @@ import {DEFAULT_APP_PORT, freePort, ownPortEnv} from '../../lib/own-port.mjs';
 
 test('a test app with no port named gets a free one that is not 47111; a named port is kept', async () => {
   for (let tries = 0; tries < 20; tries++) {
-    const {JOB_PILOTTO_PORT} = await ownPortEnv({});
-    assert.match(JOB_PILOTTO_PORT, /^\d+$/);
-    assert.notEqual(Number(JOB_PILOTTO_PORT), DEFAULT_APP_PORT);
+    const {JOBADABRA_PORT} = await ownPortEnv({});
+    assert.match(JOBADABRA_PORT, /^\d+$/);
+    assert.notEqual(Number(JOBADABRA_PORT), DEFAULT_APP_PORT);
   }
-  assert.deepEqual(await ownPortEnv({JOB_PILOTTO_PORT: '48123'}), {JOB_PILOTTO_PORT: '48123'});
+  assert.deepEqual(await ownPortEnv({JOBADABRA_PORT: '48123'}), {JOBADABRA_PORT: '48123'});
   assert.notEqual(await freePort(), DEFAULT_APP_PORT);
 });

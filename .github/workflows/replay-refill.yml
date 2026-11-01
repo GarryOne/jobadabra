@@ -251,7 +251,7 @@ jobs:
       matrix:
         row: ${{ fromJSON(needs.pick.outputs.rows) }}
     env:
-      JOB_PILOTTO_HEAVY: '0'
+      JOBADABRA_HEAVY: '0'
       JP_REFILL_CI: '1'   # the fill replay may ask the API on CI (lib/ai/model-memo.js fillOn); the key itself is given to the one step below
     steps:
       - uses: actions/checkout@v5
@@ -345,7 +345,7 @@ jobs:
       matrix:
         group: ${{ fromJSON(needs.pick.outputs.groups) }}
     env:
-      JOB_PILOTTO_HEAVY: '0'
+      JOBADABRA_HEAVY: '0'
     steps:
       - uses: actions/checkout@v5
         with:

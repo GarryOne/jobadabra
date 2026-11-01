@@ -30,7 +30,7 @@ export function parseCommand(text) {
 // Telegram's Bot API; in the desktop app's end-to-end tests, their fake (desktop/e2e/lib/telegram-fake.mjs). A Cloudflare worker has no `process`: always the real API.
 function telegramBase() {
   const env = globalThis.process?.env || {};
-  return env.JOB_PILOTTO_E2E && env.JOB_PILOTTO_E2E_TELEGRAM_BASE_URL ? env.JOB_PILOTTO_E2E_TELEGRAM_BASE_URL.replace(/\/$/, '') : 'https://api.telegram.org';
+  return env.JOBADABRA_E2E && env.JOBADABRA_E2E_TELEGRAM_BASE_URL ? env.JOBADABRA_E2E_TELEGRAM_BASE_URL.replace(/\/$/, '') : 'https://api.telegram.org';
 }
 
 async function telegram(env, method, body) {

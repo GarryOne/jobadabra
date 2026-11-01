@@ -26,8 +26,8 @@ const fake = await startNotionFake();
 useNotionAt(fake.url);
 const feeds = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-strategy-feeds-'));
 fs.cpSync(FEEDS, feeds, {recursive: true});
-Object.assign(process.env, {JOB_PILOTTO_E2E: '1', JOB_PILOTTO_FIXTURE_DIR: feeds, JOB_PILOTTO_FOLLOW_APP: '0',
-  JOB_PILOTTO_E2E_NOTION_BASE_URL: fake.url, JOB_PILOTTO_E2E_NOTION_STANDIN: '1'});
+Object.assign(process.env, {JOBADABRA_E2E: '1', JOBADABRA_FIXTURE_DIR: feeds, JOBADABRA_FOLLOW_APP: '0',
+  JOBADABRA_E2E_NOTION_BASE_URL: fake.url, JOBADABRA_E2E_NOTION_STANDIN: '1'});
 const {createStorage} = await import('../../lib/storage.js');
 const {ensureConfig} = await import('../../lib/pipeline-env.js');
 const pipelineRun = await import('../../lib/pipeline-run.js');
@@ -48,7 +48,7 @@ const install = () => {
 };
 const {profile, storage} = install();
 const read = (file, folder = profile) => JSON.parse(fs.readFileSync(path.join(folder, 'config', file), 'utf8'));
-const exec = (s, args, onLine, extra, options) => pipelineRun.run(s, args, onLine, {...extra, JOB_PILOTTO_STORE: 'notion', JOB_PILOTTO_FOLLOW_APP: '0'}, options);
+const exec = (s, args, onLine, extra, options) => pipelineRun.run(s, args, onLine, {...extra, JOBADABRA_STORE: 'notion', JOBADABRA_FOLLOW_APP: '0'}, options);
 const deps = {run: exec, ensurePage: notion.ensurePage, writePage: notion.writePage};
 const settingsPage = () => storage.settings().notionIds.NOTION_SEARCH_SETTINGS_PAGE;
 const sections = () => pageSections(fake.token, settingsPage());

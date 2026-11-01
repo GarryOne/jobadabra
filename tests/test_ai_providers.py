@@ -181,7 +181,7 @@ class RegistryTests(unittest.TestCase):
 
     def test_nothing_is_chosen_for_the_user(self):
         self.assertEqual(providers.choice({}), 'api')
-        self.assertEqual(providers.choice({'JOB_PILOTTO_AI_ENGINE': 'auto'}), 'api')
+        self.assertEqual(providers.choice({'JOBADABRA_AI_ENGINE': 'auto'}), 'api')
 
     def test_a_fallback_stays_in_its_family(self):
         for item in providers.ENGINES.values():
@@ -211,9 +211,9 @@ class SchemaTests(unittest.TestCase):
 # Each engine: the environment that picks it, and the adapter class it builds.
 ENGINE_CASES = {
     'api': ({'ANTHROPIC_API_KEY': 'k'}, 'AnthropicApi'),
-    'cli': ({'JOB_PILOTTO_AI_ENGINE': 'cli', 'JOB_PILOTTO_CLAUDE_BIN': sys.executable}, 'ClaudeCode'),
-    'openai': ({'JOB_PILOTTO_AI_ENGINE': 'openai', 'OPENAI_API_KEY': 'sk-test-not-real'}, 'OpenAIApi'),
-    'codex': ({'JOB_PILOTTO_AI_ENGINE': 'codex', 'JOB_PILOTTO_CODEX_BIN': sys.executable}, 'Codex'),
+    'cli': ({'JOBADABRA_AI_ENGINE': 'cli', 'JOBADABRA_CLAUDE_BIN': sys.executable}, 'ClaudeCode'),
+    'openai': ({'JOBADABRA_AI_ENGINE': 'openai', 'OPENAI_API_KEY': 'sk-test-not-real'}, 'OpenAIApi'),
+    'codex': ({'JOBADABRA_AI_ENGINE': 'codex', 'JOBADABRA_CODEX_BIN': sys.executable}, 'Codex'),
 }
 
 if __name__ == '__main__':

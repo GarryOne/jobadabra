@@ -1,6 +1,6 @@
 // Every Notion request, one line each, for debugging and tuning: <data folder>/logs/notion-requests.log for today,
 // notion-requests-YYYY-MM-DD.log for the last 30 days (lib/log-days.js; only the app rolls and caps it). Written by the app (lib/notion.js) and its Python jobs (src/notion/client.py, told the path through
-// JOB_PILOTTO_NOTION_LOG), so one file shows who asked what, when:
+// JOBADABRA_NOTION_LOG), so one file shows who asked what, when:
 //   2026-09-29T18:54:58.564Z  app:extension  GET  pages/3e96…  429  183ms  try 1
 // Routes and statuses only: never a request's content.
 import fs from 'node:fs';

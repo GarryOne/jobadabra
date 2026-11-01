@@ -27,7 +27,7 @@ class WorkdayTermsTests(unittest.TestCase):
                         for i in range(count)]
             return mock.MagicMock(__enter__=lambda self: io.BytesIO(json.dumps({'jobPostings': postings}).encode()), __exit__=lambda *a: None)
         with mock.patch.object(ats, 'workday_terms', lambda search=None: ['photographe', 'vendeur magasin']), \
-                mock.patch.object(ats.urllib.request, 'urlopen', urlopen), mock.patch.dict('os.environ', {'JOB_PILOTTO_FIXTURE_DIR': ''}):
+                mock.patch.object(ats.urllib.request, 'urlopen', urlopen), mock.patch.dict('os.environ', {'JOBADABRA_FIXTURE_DIR': ''}):
             jobs = ats.workday('richemont.wd3.richemont')
         self.assertEqual(asked, [('', 0), ('', 20), ('', 40), ('photographe', 0), ('vendeur magasin', 0)])
         self.assertEqual(len(jobs), 20 + 20 + 3 + 3 + 3)

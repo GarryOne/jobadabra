@@ -21,7 +21,7 @@ SCHEMA_COLUMNS = {'apps': set(_SCHEMA['NOTION_APPLICATIONS_DB']['columns']), 'ev
 
 def stores_for(tracker):
     """The Notion store over a fake tracker, as the Gmail check opens it: chosen explicitly, whatever the environment says."""
-    return open_stores({**os.environ, 'JOB_PILOTTO_STORE': 'notion'}, tracker=tracker)
+    return open_stores({**os.environ, 'JOBADABRA_STORE': 'notion'}, tracker=tracker)
 
 
 def content(prop):

@@ -3,7 +3,7 @@ name: CI · UI verdicts
 # THE VERDICT PASS, in parallel. After every filing of the UI loop (ui-findings.yml), up to five one-off findings (seen on one build, not yet judged) are
 # read by Codex, one job each, read-only: it opens the code and the screenshot and answers real / false-positive / needs-human. A real one is labelled
 # `confirmed` (the fixer takes it next), a false positive is closed `wontfix-auto`, the rest `needs-human`. Why: the fixer judged one finding per run, so a run
-# that filed a dozen took days to sort (4 Oct 2026). Only with the repo variable JOB_PILOTTO_FIXER_VERDICTS = "on" (it spends Codex plan).
+# that filed a dozen took days to sort (4 Oct 2026). Only with the repo variable JOBADABRA_FIXER_VERDICTS = "on" (it spends Codex plan).
 # AI: Codex plan through the broker, one call per finding (desktop/e2e/judge-codex.mjs). Why (31 Oct 2026, owner: "Why Anthropic is reached? We should use fully the Codex"): the Claude step failed four jobs
 # red on "Credit balance is too low" and each sent its own alert. A refused call (budget until Codex resets, login, broker down) skips the job with its reason; one alert per run (ai-skipped job).
 on:

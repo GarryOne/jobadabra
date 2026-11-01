@@ -120,7 +120,7 @@ jobs:
       max-parallel: 4   # one workflow never holds most of the 20 runners (owner, 15 Oct 2026)
       matrix: ${{ fromJSON(needs.plan.outputs.jobs) }}
     env:
-      JOB_PILOTTO_HEAVY: '0'   # the heavy lock is a Mac's machine-wide queue; this runner is its own machine
+      JOBADABRA_HEAVY: '0'   # the heavy lock is a Mac's machine-wide queue; this runner is its own machine
     steps:
       - uses: actions/checkout@v5
         with:

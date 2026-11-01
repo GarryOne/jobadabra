@@ -13,8 +13,8 @@ import {seedImportedCv} from './applicant-seed.mjs';
 import {watchRunner} from '../../lib/e2e-host.js';
 
 const E2E = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const dir = process.env.JOB_PILOTTO_USER_DATA;
-if (!dir || !process.env.JOB_PILOTTO_E2E || !process.env.JOB_PILOTTO_PORT) throw new Error('offline app: start it through lib/offline-app.mjs (e2e env, own folder, own port)');
+const dir = process.env.JOBADABRA_USER_DATA;
+if (!dir || !process.env.JOBADABRA_E2E || !process.env.JOBADABRA_PORT) throw new Error('offline app: start it through lib/offline-app.mjs (e2e env, own folder, own port)');
 watchRunner(() => process.exit(0));   // the harness that started it is gone (killed, crashed, timed out): end too, from the first line, as the Electron test app does (main.js)
 guardNetwork();
 // A positive control: the guard took effect in this process (an outward fetch is refused and named) before anything is served.
@@ -39,8 +39,8 @@ const storage = createStorage(dir, {encrypt: value => value, decrypt: value => v
 const draft = (await import('./applicant-seed.mjs')).applicantDraft();   // JP_APPLICANT=grown: the grown applicant
 (await import('../../lib/strategy.js')).keepLocally(storage, {...draft, contact: STAND_IN});
 // A CI runner (lib/offline-app.mjs api): the app's API engine on the key it was handed, through the harness's proxy on this computer (ANTHROPIC_BASE_URL); else the plan.
-const apiKey = process.env.JOB_PILOTTO_E2E_API_KEY || '';
-delete process.env.JOB_PILOTTO_E2E_API_KEY;
+const apiKey = process.env.JOBADABRA_E2E_API_KEY || '';
+delete process.env.JOBADABRA_E2E_API_KEY;
 if (apiKey) storage.setSecret('ANTHROPIC_API_KEY', apiKey);
 storage.saveSettings({aiEngine: apiKey ? 'api' : 'cli', ...(apiKey ? {} : {claudeCode: {path: realClaude()}}), store: 'sqlite', setupDone: true, cvName: 'cv.pdf', telemetry: false, shareEmployers: false});
 if (process.env.E2E_IMPORT_VIA_UPLOAD) {   // the app's own upload path: setCv on the fake CV, cv.json made by the real import (plan path); npm run cv-facts-cases then reads it
@@ -52,7 +52,7 @@ if (process.env.E2E_IMPORT_VIA_UPLOAD) {   // the app's own upload path: setCv o
 }
 const {start, PORT, EXTENSION_ID} = await import('../../lib/server.js');
 const {extensionToken} = await import('../../lib/server-env.js');
-if (String(PORT) !== process.env.JOB_PILOTTO_PORT) throw new Error(`offline app: the server took port ${PORT}, not ${process.env.JOB_PILOTTO_PORT}`);
+if (String(PORT) !== process.env.JOBADABRA_PORT) throw new Error(`offline app: the server took port ${PORT}, not ${process.env.JOBADABRA_PORT}`);
 (await import('../../lib/server-hooks.js')).setSitePasswordHandler((await import('./offline-site-password.mjs')).offlineSitePassword(storage, {email: async () => (await import('../../lib/contact.js')).read(storage)}));   // a seeded test account signs in; nothing is made (lib/offline-site-password.mjs)
 if (process.env.JP_JOURNEY === '1' || process.env.JP_REVIEW === '1') {   // JP_REVIEW: only the panel's report reaches the review state (a harness run that accepts proposals: lib/proposals-to-use.mjs); the page step stays as in a plain replay   // a journey test (replay-net.mjs --journey): the card follows the page and the panel's report as the app's own handlers do (lib/page-step.js, ext-server-handlers.js setReviewHandler), so the sampler reads what the card shows
   const hooks = await import('../../lib/server-hooks.js'), review = await import('../../lib/review.js'), terminals = await import('../../lib/terminals.js');

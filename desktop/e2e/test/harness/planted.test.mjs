@@ -18,7 +18,7 @@ const LIB = path.dirname(fileURLToPath(new URL('../../lib/planted.mjs', import.m
 test('markPlanted writes the kinds a plant causes, and does nothing without a file', () => {
   const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'jp-planted-')), 'planted.log');
   assert.equal(markPlanted('x', undefined, {}), false);
-  const env = {JOB_PILOTTO_E2E: '1', JOB_PILOTTO_E2E_PLANTED_FILE: file};
+  const env = {JOBADABRA_E2E: '1', JOBADABRA_E2E_PLANTED_FILE: file};
   assert.equal(markPlanted('ai server-error', undefined, env, 1000), true);
   assert.equal(markPlanted('ai hang', HUNG_REPORTS, env, 1000), true);
   assert.equal(markPlanted('recall x', RECALL_REPORTS, env, 1000), true);
@@ -33,7 +33,7 @@ test('markPlanted writes the kinds a plant causes, and does nothing without a fi
 
 test('an extension plant records its source and exact frame, hiding only that exception', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-extension-plant-'));
-  const env = {JOB_PILOTTO_E2E: '1', JOB_PILOTTO_E2E_PLANTED_FILE: path.join(root, 'planted.log')};
+  const env = {JOBADABRA_E2E: '1', JOBADABRA_E2E_PLANTED_FILE: path.join(root, 'planted.log')};
   try {
     markPlanted('extension exception', {kinds: ['extension_error'], source: 'extension', frame: 'sentry-plant.js:3:'}, env, 1000);
     const report = {kind: 'extension_error', source: 'extension', message: 'Uncaught TypeError', stack: 'at sentry-plant.js:3:17'};
@@ -45,7 +45,7 @@ test('an extension plant records its source and exact frame, hiding only that ex
 
 test('every fake that serves a failure marks it planted', async () => {
   const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'jp-planted-')), 'planted.log');
-  process.env.JOB_PILOTTO_E2E_PLANTED_FILE = file;
+  process.env.JOBADABRA_E2E_PLANTED_FILE = file;
   const lines = () => (fs.existsSync(file) ? fs.readFileSync(file, 'utf8').trim().split('\n').filter(Boolean).length : 0);
   const ai = await startAiProxy(), notion = await startNotionProxy(), telegram = await startTelegramFake(), google = await startGoogleFake();
   try {
@@ -56,7 +56,7 @@ test('every fake that serves a failure marks it planted', async () => {
       ['google', async () => { google.revoke(); await fetch(`${google.url}/oauth2.googleapis.com/token`, {method: 'POST'}).then(r => r.text()); google.pass(); }],
     ];
     for (const [name, serve] of cases) { const before = lines(); await serve(); assert.ok(lines() > before, `the ${name} fake served a failure and did not mark it planted`); }
-  } finally { delete process.env.JOB_PILOTTO_E2E_PLANTED_FILE; await Promise.all([ai.close(), notion.close(), telegram.close(), google.close()]); }
+  } finally { delete process.env.JOBADABRA_E2E_PLANTED_FILE; await Promise.all([ai.close(), notion.close(), telegram.close(), google.close()]); }
 });
 
 test('a new fake or plant that counts failures cannot skip the mark', () => {

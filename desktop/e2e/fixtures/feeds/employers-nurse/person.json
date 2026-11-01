@@ -1,5 +1,5 @@
 {
- "_comment": "The fictional candidate of the employers suite in its nurse persona (E2E_EMPLOYERS_PERSONA=nurse): a band 6 registered nurse in Manchester. Read through JOB_PILOTTO_LOCATIONS_FILE like the SRE one. The boards beside it replace the SRE boards of the same names, so every expectation of the suite holds with a different profession: 5 postings with 4 relevant in Manchester, 3 with 2 relevant and 1 in Manchester, wrong roles only, nothing, an excluded company.",
+ "_comment": "The fictional candidate of the employers suite in its nurse persona (E2E_EMPLOYERS_PERSONA=nurse): a band 6 registered nurse in Manchester. Read through JOBADABRA_LOCATIONS_FILE like the SRE one. The boards beside it replace the SRE boards of the same names, so every expectation of the suite holds with a different profession: 5 postings with 4 relevant in Manchester, 3 with 2 relevant and 1 in Manchester, wrong roles only, nothing, an excluded company.",
  "role_keywords": [
   "registered nurse",
   "\\bnurse\\b",

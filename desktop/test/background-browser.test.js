@@ -19,15 +19,15 @@ test('background browser launch uses only its owned profile and starts without a
 
 test('the e2e harness may point the hidden browser at the test forms, nobody else: only under the e2e flag, only a host map, the test certificate and no-sandbox', () => {
   const extra = JSON.stringify(['--host-resolver-rules=MAP boards.greenhouse.io 127.0.0.1:5', '--ignore-certificate-errors', '--no-sandbox', '--proxy-server=http://evil.example', '--remote-debugging-address=0.0.0.0']);
-  const asked = {JOB_PILOTTO_E2E_BACKGROUND_BROWSER_ARGS: extra};
+  const asked = {JOBADABRA_E2E_BACKGROUND_BROWSER_ARGS: extra};
   assert.deepEqual(browserArguments('/p', '/e', asked), browserArguments('/p', '/e', {}), 'a person\'s environment never changes the launch, even with the variable set');
-  const args = browserArguments('/p', '/e', {...asked, JOB_PILOTTO_E2E: '1'});
+  const args = browserArguments('/p', '/e', {...asked, JOBADABRA_E2E: '1'});
   assert.ok(args.includes('--host-resolver-rules=MAP boards.greenhouse.io 127.0.0.1:5'));
   assert.ok(args.includes('--ignore-certificate-errors'));
   assert.ok(args.includes('--no-sandbox'), 'under e2e only: a CI runner may not allow the sandbox');
   assert.equal(browserArguments('/p', '/e', {}).includes('--no-sandbox'), false, 'a person\'s browser keeps its sandbox');
   assert.equal(args.some(arg => /proxy-server|remote-debugging-address/.test(arg)), false, 'nothing else is let through');
-  assert.deepEqual(browserArguments('/p', '/e', {JOB_PILOTTO_E2E: '1', JOB_PILOTTO_E2E_BACKGROUND_BROWSER_ARGS: 'not json'}), browserArguments('/p', '/e', {}));
+  assert.deepEqual(browserArguments('/p', '/e', {JOBADABRA_E2E: '1', JOBADABRA_E2E_BACKGROUND_BROWSER_ARGS: 'not json'}), browserArguments('/p', '/e', {}));
 });
 
 test('a cached CDP port is accepted only after the browser proves the exact owned profile', () => {
@@ -61,7 +61,7 @@ test('send runs one CDP command on the verified browser, targetSocket finds one 
 
 test('the owned browser is never disguised: no user-agent, fingerprint, stealth or automation-hiding flag, with or without the e2e map (LinkedIn jobs 2/3, owner: "never disguise a browser as a person")', () => {
   const disguise = /user-agent|useragent|stealth|fingerprint|disable-blink-features|AutomationControlled|webdriver|excludeSwitches|lang=|accept-lang|platform/i;
-  for (const env of [{}, {JOB_PILOTTO_E2E: '1', JOB_PILOTTO_E2E_BACKGROUND_BROWSER_ARGS: JSON.stringify(['--user-agent=Mozilla/5.0', '--disable-blink-features=AutomationControlled', '--host-resolver-rules=MAP a 127.0.0.1:1'])}]) {
+  for (const env of [{}, {JOBADABRA_E2E: '1', JOBADABRA_E2E_BACKGROUND_BROWSER_ARGS: JSON.stringify(['--user-agent=Mozilla/5.0', '--disable-blink-features=AutomationControlled', '--host-resolver-rules=MAP a 127.0.0.1:1'])}]) {
     assert.equal(browserArguments('/p', '/e', env).filter(arg => disguise.test(arg)).length, 0, JSON.stringify(browserArguments('/p', '/e', env).filter(arg => disguise.test(arg))));
   }
   assert.ok(browserArguments('/p', '/e').includes('--enable-automation'), 'it says what it is');

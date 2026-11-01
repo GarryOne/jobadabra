@@ -7,8 +7,8 @@ export const PLANT_WINDOW_MS = 120_000;   // what a planted failure causes (a ru
 
 // report: {kind, message, source?, stack?}; extension plants name their own frame because arbitrary error messages are deliberately dropped.
 export function causedByPlant(report, env = process.env, now = Date.now(), read = file => fs.readFileSync(file, 'utf8')) {
-  const file = env.JOB_PILOTTO_E2E_PLANTED_FILE;
-  if (!file || !env.JOB_PILOTTO_E2E) return false;
+  const file = env.JOBADABRA_E2E_PLANTED_FILE;
+  if (!file || !env.JOBADABRA_E2E) return false;
   try {
     const message = String(report?.message ?? '').toLowerCase();
     return read(file).split('\n').some(line => {

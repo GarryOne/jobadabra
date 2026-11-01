@@ -58,7 +58,7 @@ class StoreRunTests(Quiet):
     def stores(self):
         folder = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, folder, True)
-        return [memory.open_store(), sqlite.open_store({'JOB_PILOTTO_DATA_DIR': str(folder)})]
+        return [memory.open_store(), sqlite.open_store({'JOBADABRA_DATA_DIR': str(folder)})]
 
     def test_a_run_opens_shows_progress_and_closes_with_todays_words_and_numbers(self):
         for stores in self.stores():
@@ -125,7 +125,7 @@ class CallerTests(Quiet):
         from src import scout
         folder = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, folder, True)
-        env = {'JOB_PILOTTO_STORE': 'sqlite', 'JOB_PILOTTO_DATA_DIR': str(folder)}
+        env = {'JOBADABRA_STORE': 'sqlite', 'JOBADABRA_DATA_DIR': str(folder)}
         from src import store
         with store.connect(folder / 'jobs.sqlite') as db:  # the scout's tables, as an install that ran it has them
             db.executescript(scout.TABLES)

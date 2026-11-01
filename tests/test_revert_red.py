@@ -36,7 +36,7 @@ class RevertRedTest(ShipFixture):
         self.data['pulls'] = [{'number': 42, 'merged_at': '2026-10-28T09:00:00Z',
                                'base': {'ref': 'main'}, 'merge_commit_sha': self.bad}]
         self.evidence = self.tmp / 'evidence.json'
-        self.env = {**os.environ, 'PATH': f'{bin_dir}{os.pathsep}{os.environ["PATH"]}', 'JOB_PILOTTO_SESSION': 'test-session', 'PAYLOAD_FILE': str(self.tmp / 'payload.json'), 'GITHUB_REPOSITORY': 'GarryOne/jobadabra'}
+        self.env = {**os.environ, 'PATH': f'{bin_dir}{os.pathsep}{os.environ["PATH"]}', 'JOBADABRA_SESSION': 'test-session', 'PAYLOAD_FILE': str(self.tmp / 'payload.json'), 'GITHUB_REPOSITORY': 'GarryOne/jobadabra'}
 
     def revert(self, *args):
         self.evidence.write_text(json.dumps(self.data))

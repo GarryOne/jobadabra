@@ -60,7 +60,7 @@ export function registerTelemetryHandlers(ctx) {
     // Electron's own reporter. Nothing a person wrote or read is part of any of it (lib/sentry.js, lib/analytics.js).
     const keys = analyticsConfig.load(pipeline.REPO);
     const identity = {installId: sentryOnly ? 'e2e' : telemetryInstallId(storage), version: app.getVersion(), os: os.release()};
-    const sentryClient = sentryLib.create({dsn: keys.sentryDsn, release: `job-pilotto@${identity.version}`, installId: identity.installId, os: identity.os,
+    const sentryClient = sentryLib.create({dsn: keys.sentryDsn, release: `jobadabra@${identity.version}`, installId: identity.installId, os: identity.os,
       ...(sentryOnly ? {environment: 'e2e', tags: sentryLib.e2eTags(), enabled: (kind, fields = {}) => !causedByPlant({kind, source: fields.source, stack: fields.stack, message: fields.message ?? fields.error ?? fields.warning ?? fields.action ?? ''})} : {enabled: telemetry.enabled})});
     if (sentryClient.active) {
       const record = telemetry.record.bind(telemetry);
@@ -71,7 +71,7 @@ export function registerTelemetryHandlers(ctx) {
       // rides along with a failed or hung run's report to Sentry (never to our own telemetry store).
       const logLines = kind => (['run_failed', 'stuck'].includes(kind) && testerOn() && testerLogsOn()) ? engineLog.tailLines(200) : undefined;
       telemetry.record = (kind, fields) => { record(kind, fields); sentryClient.capture(kind, {...fields, logLines: logLines(kind)}); };
-      if (sentryOnly || telemetry.enabled()) sentryLib.startNativeCrashes(crashReporter, {dsn: keys.sentryDsn, release: `job-pilotto@${identity.version}`, installId: identity.installId});
+      if (sentryOnly || telemetry.enabled()) sentryLib.startNativeCrashes(crashReporter, {dsn: keys.sentryDsn, release: `jobadabra@${identity.version}`, installId: identity.installId});
       pipeline.setCrashReports({dsn: keys.sentryDsn, version: identity.version, installId: identity.installId, enabled: sentryOnly ? () => false : telemetry.enabled});   // the engine's own reports carry no environment tag: off in the journey
     }
     analytics = sentryOnly ? null : analyticsLib.create({key: keys.posthogKey, host: keys.posthogHost, installId: identity.installId, version: identity.version, os: identity.os, enabled: telemetry.enabled});

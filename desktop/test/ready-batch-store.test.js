@@ -17,7 +17,7 @@ import {startNotionFake} from '../e2e/lib/notion-fake.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(here, '../..');
-const python = process.env.JOB_PILOTTO_CHECK_PYTHON || (process.platform === 'win32' ? 'python' : 'python3');
+const python = process.env.JOBADABRA_CHECK_PYTHON || (process.platform === 'win32' ? 'python' : 'python3');
 const SCHEMA = JSON.parse(fs.readFileSync(path.join(root, 'config', 'notion_schema.json'), 'utf8'));
 // Async, never spawnSync: the Notion stand-in answers from this same process, so a blocked event loop would time the engine out.
 const py = (args, env) => new Promise(resolve => execFile(python, args, {cwd: root, env, encoding: 'utf8', maxBuffer: 1 << 24}, (error, stdout, stderr) => resolve({code: error ? (error.code ?? 1) : 0, stdout, stderr})));
@@ -40,8 +40,8 @@ print('SEEDED ' + row['id'])
 `;
 
 const baseEnv = () => {
-  const env = {...process.env, JOB_PILOTTO_DATA_DIR: fs.mkdtempSync(path.join(os.tmpdir(), 'jp-ready-data-')),
-    JOB_PILOTTO_CONFIG_DIR: fs.mkdtempSync(path.join(os.tmpdir(), 'jp-ready-config-')), JOB_PILOTTO_FOLLOW_APP: '0', PYTHONUTF8: '1', PYTHONIOENCODING: 'utf-8'};
+  const env = {...process.env, JOBADABRA_DATA_DIR: fs.mkdtempSync(path.join(os.tmpdir(), 'jp-ready-data-')),
+    JOBADABRA_CONFIG_DIR: fs.mkdtempSync(path.join(os.tmpdir(), 'jp-ready-config-')), JOBADABRA_FOLLOW_APP: '0', PYTHONUTF8: '1', PYTHONIOENCODING: 'utf-8'};
   for (const name of Object.keys(env)) if (/^NOTION_|^GITHUB_RUN_ID$|^ANTHROPIC_API_KEY$/.test(name)) delete env[name];
   return env;
 };
@@ -49,7 +49,7 @@ const baseEnv = () => {
 async function notionEnv(fake) {
   const post = async (route, body) => (await fetch(`${fake.url}/v1/${route}`, {method: 'POST', body: JSON.stringify(body),
     headers: {Authorization: `Bearer ${fake.token}`, 'Content-Type': 'application/json', 'Notion-Version': '2022-06-28'}})).json();
-  const env = {...baseEnv(), JOB_PILOTTO_STORE: 'notion', NOTION_TOKEN: fake.token, JOB_PILOTTO_E2E: '1', JOB_PILOTTO_E2E_NOTION_BASE_URL: fake.url};
+  const env = {...baseEnv(), JOBADABRA_STORE: 'notion', NOTION_TOKEN: fake.token, JOBADABRA_E2E: '1', JOBADABRA_E2E_NOTION_BASE_URL: fake.url};
   for (const [variable, spec] of Object.entries(SCHEMA.databases)) {
     const properties = Object.fromEntries(Object.entries(spec.columns).filter(([, column]) => !COMPUTED.has(column.type)).map(([name, column]) => [name, {[column.type]: {}}]));
     env[variable] = (await post('databases', {parent: {page_id: 'stand-in-root'}, title: [{text: {content: spec.title}}], properties})).id;
@@ -76,7 +76,7 @@ async function batchOn(env) {
 test('tonight\'s batch is the same from SQLite and from Notion, with the kit\'s answers and letter', async () => {
   const fake = await startNotionFake();
   try {
-    const on = {sqlite: await batchOn({...baseEnv(), JOB_PILOTTO_STORE: 'sqlite'}), notion: await batchOn(await notionEnv(fake))};
+    const on = {sqlite: await batchOn({...baseEnv(), JOBADABRA_STORE: 'sqlite'}), notion: await batchOn(await notionEnv(fake))};
     for (const [name, {batch, skipped, found}] of Object.entries(on)) {
       assert.deepEqual(skipped, [], `${name}: nothing left out`);
       assert.equal(batch.jobs.length, 1, name);

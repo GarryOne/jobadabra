@@ -5,8 +5,8 @@ import {e2eMs} from '../lib/e2e-timing.js';
 
 test('a wait is shortened only in the journey, only by a number', () => {
   assert.equal(e2eMs('HISTORY_MS', 15000, {}), 15000);
-  assert.equal(e2eMs('HISTORY_MS', 15000, {JOB_PILOTTO_E2E_HISTORY_MS: '3000'}), 15000, 'a user never gets it');
-  assert.equal(e2eMs('HISTORY_MS', 15000, {JOB_PILOTTO_E2E: '1', JOB_PILOTTO_E2E_HISTORY_MS: '3000'}), 3000);
-  assert.equal(e2eMs('HISTORY_MS', 15000, {JOB_PILOTTO_E2E: '1', JOB_PILOTTO_E2E_HISTORY_MS: 'fast'}), 15000);
-  assert.equal(e2eMs('HISTORY_MS', 15000, {JOB_PILOTTO_E2E: '1'}), 15000);
+  assert.equal(e2eMs('HISTORY_MS', 15000, {JOBADABRA_E2E_HISTORY_MS: '3000'}), 15000, 'a user never gets it');
+  assert.equal(e2eMs('HISTORY_MS', 15000, {JOBADABRA_E2E: '1', JOBADABRA_E2E_HISTORY_MS: '3000'}), 3000);
+  assert.equal(e2eMs('HISTORY_MS', 15000, {JOBADABRA_E2E: '1', JOBADABRA_E2E_HISTORY_MS: 'fast'}), 15000);
+  assert.equal(e2eMs('HISTORY_MS', 15000, {JOBADABRA_E2E: '1'}), 15000);
 });

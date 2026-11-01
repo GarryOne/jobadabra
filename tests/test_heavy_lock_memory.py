@@ -11,7 +11,7 @@ from tests.heavy_wait import wait_in_books, gate_loop
 class HeavyLockMemoryTest(HeavyLockFixture):
     def overlap(self, second='replay', heavy_dir='heavy', **env):
         """Starts a gated holder (it runs until released), then a second run; True when the second ran while the holder still ran. heavy_dir: its own lock folder, so scenarios can run side by side."""
-        env = {**env, 'JOB_PILOTTO_HEAVY_DIR': str(self.tmp / heavy_dir)}
+        env = {**env, 'JOBADABRA_HEAVY_DIR': str(self.tmp / heavy_dir)}
         go = self.tmp / f'go-{heavy_dir}'
         holder = self.start('pool run', 'bash', '-c', f'{gate_loop(go.as_posix(), 0.05)}', **env)
         self.addCleanup(holder.kill)
@@ -63,7 +63,7 @@ class HeavyLockMemoryTest(HeavyLockFixture):
         for run in (first, second):
             self.addCleanup(run.kill)
         for run in (first, second):   # both hold (each by its own pid in a slot)
-            wait_in_books(self.env['JOB_PILOTTO_HEAVY_DIR'], run, ('holds',), procs=[first, second], env={**self.env, **env})
+            wait_in_books(self.env['JOBADABRA_HEAVY_DIR'], run, ('holds',), procs=[first, second], env={**self.env, **env})
         third = self.start_logged('third', 'echo', 'ran', **env)
         self.said(third, 'third waits', first, second)   # it looked at the two holders and waits
         time.sleep(1.2)   # clock: a third run must NOT start; nothing changes while both hold, so this only gives a wrong admission time to show

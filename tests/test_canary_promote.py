@@ -177,7 +177,7 @@ class CanaryPromoteTests(unittest.TestCase):
         self.wait_with('not fresh', usage=evidence(first=90, last=30))
 
     def test_missing_key_or_unreachable_site_waits(self):
-        self.wait_with('JOB_PILOTTO_TELEMETRY_KEY is not set', unavailable='JOB_PILOTTO_TELEMETRY_KEY is not set')
+        self.wait_with('JOBADABRA_TELEMETRY_KEY is not set', unavailable='JOBADABRA_TELEMETRY_KEY is not set')
         with self.assertRaises(canary.EvidenceUnavailable):
             canary.GitHub(key=None).usage('0.5.65', '0.5.60')
 

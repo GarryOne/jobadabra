@@ -37,7 +37,7 @@ export function backgroundApplyFor(storage) {
 export function createBackgroundApplyController(storage, {store = null, browser = null, terminals = terminalsDefault,
   config = () => applyOf(storage.settings()), now = backgroundWaitNow, uuid = randomUUID, stop = stopAsked, notify = (...args) => notifyDefault(...args),   // Why (2026-10-28, bot review #2324; 31 Oct 2026, owner): read the late-wired notifier live; share the gated wait clock with the store so moving it wakes the same due job
  log = appLog, reader = createTriageReader(), started = APP_STARTED,   // `started`: when this run of the app began; a job held before it was cut off by a quit
-  port = Number(process.env.JOB_PILOTTO_PORT || 47111), token = () => extensionToken(storage)} = {}) {
+  port = Number(process.env.JOBADABRA_PORT || 47111), token = () => extensionToken(storage)} = {}) {
   store ||= createBackgroundApplyStore(storage, {stopped: stop, now});
   // Why (2026-10-28, CI #2324): the controller is created when the apply handlers register, before any background job exists; the browser reads storage.path, so it is built on first use.
   const browserOf = () => (browser ||= createBackgroundBrowser(storage));
@@ -52,7 +52,7 @@ export function createBackgroundApplyController(storage, {store = null, browser 
     if (!record || !state) return;
     const previous = record.background?.waitDecision;
     const verdict = previous?.reason === 'authorized' ? previous : decision || previous;
-    const testClock = process.env.JOB_PILOTTO_E2E === '1' ? {waitClockOffset: now() - Date.now(), ...(verdict ? {waitDecision: verdict} : {})} : {};
+    const testClock = process.env.JOBADABRA_E2E === '1' ? {waitClockOffset: now() - Date.now(), ...(verdict ? {waitDecision: verdict} : {})} : {};
     record.background = {...testClock, mode: state.mode, state: state.state, reason: state.reason || '', readyAt: state.readyAt || 0,
       dueAt: state.mode === 'auto' && state.readyAt ? state.readyAt + (config().auto?.waitMin ?? AUTO_DEFAULTS.waitMin) * 60000 : 0, manualOverride: !!state.manualOverride};
     const words = state.state === 'ready_for_review' ? 'Form filled — review the same background form and Submit' : state.state === 'waiting_to_submit' ? 'Filled — waiting before automatic submission; Stop is available' : state.state === 'submitting' ? 'Submission attempted — waiting for the site receipt' : HANDOFF.has(state.state) ? NOTICES[state.reason] || 'This application needs you. Review and submit the same form yourself.' : 'Filling in the background';
@@ -109,7 +109,7 @@ export function createBackgroundApplyController(storage, {store = null, browser 
   }
   // Only an extension request can supply the e2e proof that it looked at this due job; app clock wakes are not evidence.
   function decisionForPoll(state, dueAt, via) {
-    if (process.env.JOB_PILOTTO_E2E !== '1' || via !== 'extension' || state.mode !== 'auto' || !dueAt) return null;
+    if (process.env.JOBADABRA_E2E !== '1' || via !== 'extension' || state.mode !== 'auto' || !dueAt) return null;
     if (state.state !== 'waiting_to_submit' && !HANDOFF.has(state.state)) return null;
     const reason = HANDOFF.has(state.state) ? state.reason : now() >= dueAt ? 'due' : 'waiting';
     return {via, at: now(), dueAt, state: state.state, reason};

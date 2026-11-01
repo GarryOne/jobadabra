@@ -36,7 +36,7 @@ def ask(profile, jobs, open_url=urlopen, env=None):
     env = os.environ if env is None else env
     base = env.get('ANTHROPIC_BASE_URL', '')
     address = urlparse(base)
-    if env.get('JOB_PILOTTO_PERSONA_CODEX') != '1' or address.scheme != 'http' or address.hostname != '127.0.0.1':
+    if env.get('JOBADABRA_PERSONA_CODEX') != '1' or address.scheme != 'http' or address.hostname != '127.0.0.1':
         raise ValueError('the judge requires the local Codex relay')
     prompt = profile + '\n\nJOBS\n' + '\n'.join(f'{j["n"]}. {j["title"]} | {j["company"] or "?"} | {j["location"] or "(no place)"}' for j in jobs)
     body = {'model': MODEL, 'max_tokens': 8000, 'system': SYSTEM, 'messages': [{'role': 'user', 'content': prompt}]}

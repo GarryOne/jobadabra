@@ -17,18 +17,18 @@ ADAPTERS = {
 
 
 def chosen(env=None):
-    """The adapter's name: JOB_PILOTTO_STORE (the app passes its `store` setting), else notion when a token is
+    """The adapter's name: JOBADABRA_STORE (the app passes its `store` setting), else notion when a token is
     set (Always on, the terminal, every install from before 9 Oct 2026: no change), else sqlite."""
     env = os.environ if env is None else env
-    return env.get('JOB_PILOTTO_STORE') or ('notion' if env.get('NOTION_TOKEN') else 'sqlite')
+    return env.get('JOBADABRA_STORE') or ('notion' if env.get('NOTION_TOKEN') else 'sqlite')
 
 
 def open_stores(env=None, tracker=None) -> Stores:
     """The active store. tracker: a Notion client the caller already holds (an engine command's, a test's fake): the
-    caller is on Notion, so the store is JOB_PILOTTO_STORE or notion, and the notion adapter uses that client
+    caller is on Notion, so the store is JOBADABRA_STORE or notion, and the notion adapter uses that client
     instead of making a second one from the environment."""
     env = os.environ if env is None else env
-    name = (env.get('JOB_PILOTTO_STORE') or 'notion') if tracker is not None else chosen(env)
+    name = (env.get('JOBADABRA_STORE') or 'notion') if tracker is not None else chosen(env)
     if name not in ADAPTERS:
         raise LookupError(f'no store adapter "{name}" (known: {", ".join(sorted(ADAPTERS))})')
     module = importlib.import_module(ADAPTERS[name])

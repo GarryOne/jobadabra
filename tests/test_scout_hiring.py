@@ -80,13 +80,13 @@ class HiringSearchTest(unittest.TestCase):
         boards = {'candidates': [{'name': 'Zauber'}], 'queries': 6, 'note': '1 boards from 6 searches'}
         with mock.patch.object(scout_role_search, 'run', lambda *a: boards), \
                 mock.patch.object(scout_hiring, 'run', lambda *a: {'candidates': [{'name': 'Rosewood'}], 'queries': 1, 'note': '1 employers hiring from 1 search'}), \
-                mock.patch.dict('os.environ', {'JOB_PILOTTO_FIXTURE_DIR': ''}):
+                mock.patch.dict('os.environ', {'JOBADABRA_FIXTURE_DIR': ''}):
             both = scout_role_search.guarded(db, SEARCH)
         self.assertEqual([c['name'] for c in both['candidates']], ['Zauber', 'Rosewood'])
         def broken(*a):
             raise RuntimeError('search down')
         with mock.patch.object(scout_role_search, 'run', lambda *a: boards), mock.patch.object(scout_hiring, 'run', broken), \
-                mock.patch.dict('os.environ', {'JOB_PILOTTO_FIXTURE_DIR': ''}):
+                mock.patch.dict('os.environ', {'JOBADABRA_FIXTURE_DIR': ''}):
             self.assertEqual([c['name'] for c in scout_role_search.guarded(db, SEARCH)['candidates']], ['Zauber'])
 
 

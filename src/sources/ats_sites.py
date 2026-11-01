@@ -49,7 +49,7 @@ def workday(slug):
             body = json.dumps({'appliedFacets': {}, 'limit': 20, 'offset': 20 * page, 'searchText': term}).encode()
             request = urllib.request.Request(f'{base}/wday/cxs/{tenant}/{site}/jobs', data=body, headers={
                 'User-Agent': USER_AGENT, 'Content-Type': 'application/json', 'Accept': 'application/json'})
-            fixtures = os.getenv('JOB_PILOTTO_FIXTURE_DIR')
+            fixtures = os.getenv('JOBADABRA_FIXTURE_DIR')
             if fixtures:
                 data = json.loads(_fixture(fixtures, request.full_url))
             else:

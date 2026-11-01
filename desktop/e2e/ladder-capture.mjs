@@ -120,7 +120,7 @@ async function main() {
           await page.route(url => !url.href.startsWith('file:'), route => route.abort());
           await page.goto(pathToFileURL(path.join(E2E, fixture.capture.page)).href, {waitUntil: 'load'});
         } else {
-          guardLiveVisit(fixture.capture.url, {who: process.env.JOB_PILOTTO_SESSION || 'ladder-capture'});   // the per-site daily limit (lib/site-ledger.mjs)
+          guardLiveVisit(fixture.capture.url, {who: process.env.JOBADABRA_SESSION || 'ladder-capture'});   // the per-site daily limit (lib/site-ledger.mjs)
           await page.goto(fixture.capture.url, {waitUntil: 'domcontentloaded', timeout: 30000});
           await page.waitForTimeout(4000);
           url = (await page.evaluate(() => location.href)).split(/[?#]/)[0];

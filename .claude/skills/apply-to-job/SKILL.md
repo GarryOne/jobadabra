@@ -17,8 +17,8 @@ text to `javascript_tool`. Anything you end up doing by hand that could be deter
 in that file next time — keep evolving it.
 
 **Speed defaults learned 26 Sep 2026 (a 3-minute Grafana run; aim for under 2):**
--1. **The owner's own run uses the app's data on purpose:** every `python3 -m src...` command below runs with `JOB_PILOTTO_FOLLOW_APP=1` in its environment
-   (the engine refuses the app's folder otherwise, 18 Oct 2026). Never in a test or an exploration: those set their own temp `JOB_PILOTTO_DATA_DIR` + `JOB_PILOTTO_CONFIG_DIR`.
+-1. **The owner's own run uses the app's data on purpose:** every `python3 -m src...` command below runs with `JOBADABRA_FOLLOW_APP=1` in its environment
+   (the engine refuses the app's folder otherwise, 18 Oct 2026). Never in a test or an exploration: those set their own temp `JOBADABRA_DATA_DIR` + `JOBADABRA_CONFIG_DIR`.
 0. **One context call first:** `python3 -m src.ai.apply_run --context <job URL>` prints the kit
    (JSON), Profile, Application Answers and recent learnings for that job board in one go (~8 s);
    don't fetch those pages separately. Apply the learnings.
@@ -183,7 +183,7 @@ in that file next time — keep evolving it.
 | No kit yet | `gh workflow run daily.yml -R GarryOne/jobadabra -f mode=prepare -f job=<job URL or 8-hex code>`; wait ~1 min (`gh run watch`). Or the 📝 Prepare button in Telegram. |
 | Standard answers | Notion page Application Answers `3e562be8fd868108ae38d1f47d52a811` |
 | Profile | Notion page `3e562be8fd8681579078d09829921b8c` |
-| CV (upload + contact details) | `$JOB_PILOTTO_CV_PATH` (see `.env`) |
+| CV (upload + contact details) | `$JOBADABRA_CV_PATH` (see `.env`) |
 
 ## Steps
 1. **Kit + both Notion pages.** Get the kit JSON, and read **both** the Profile page and the
@@ -424,8 +424,8 @@ cases.
 
 1. **Crawl/score** — already automatic, every 4h.
 2. **Auto-draft kits** — `src/ai/kit.py:auto_run`, wired into `daily.py` for `scheduled`/`run`/`today`
-   modes when the repository variable `JOB_PILOTTO_AUTO_KIT_MAX` is set (score ≥
-   `JOB_PILOTTO_AUTO_KIT_MIN_SCORE`, default 50; capped per run). No manual 📝 Prepare tap needed for
+   modes when the repository variable `JOBADABRA_AUTO_KIT_MAX` is set (score ≥
+   `JOBADABRA_AUTO_KIT_MIN_SCORE`, default 50; capped per run). No manual 📝 Prepare tap needed for
    jobs that qualify; a short Telegram message lists what was drafted. Idempotent — table
    `auto_kits` in the canonical DB remembers which jobs already got one, so it never re-drafts.
    Manual 📝 Prepare still works for anything below the threshold or that needs a fresh draft.

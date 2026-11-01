@@ -20,12 +20,12 @@ class HeavyLockFixture(unittest.TestCase):
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, self.tmp, True)
-        self.env = {**{k: v for k, v in os.environ.items() if not k.startswith(('JOB_PILOTTO_HEAVY', 'JP_HEAVY'))},
-                    'JOB_PILOTTO_HEAVY_DIR': str(self.tmp / 'heavy'), 'JOB_PILOTTO_HEAVY_LOAD': '0', 'JOB_PILOTTO_HEAVY_POLL': '0.1',   # the script looks at the queue every 0.1 s here, not every second
-                    'JOB_PILOTTO_HEAVY_TIMING_LOG': str(self.tmp / 'gate-timing.log'),
-                    'JOB_PILOTTO_HEAVY_SHARED': str(LOCK),   # this file IS the copy under test: never hand off to the primary checkout's
-                    'JOB_PILOTTO_HEAVY_SLOTS': '1',         # one at a time unless a test opens the memory-gated 2nd slot
-                    'JOB_PILOTTO_HEAVY_RAMP': '0'}           # these tests check the floors only; tests/test_heavy_lock_budget.py checks the reservation of a run that just started
+        self.env = {**{k: v for k, v in os.environ.items() if not k.startswith(('JOBADABRA_HEAVY', 'JP_HEAVY'))},
+                    'JOBADABRA_HEAVY_DIR': str(self.tmp / 'heavy'), 'JOBADABRA_HEAVY_LOAD': '0', 'JOBADABRA_HEAVY_POLL': '0.1',   # the script looks at the queue every 0.1 s here, not every second
+                    'JOBADABRA_HEAVY_TIMING_LOG': str(self.tmp / 'gate-timing.log'),
+                    'JOBADABRA_HEAVY_SHARED': str(LOCK),   # this file IS the copy under test: never hand off to the primary checkout's
+                    'JOBADABRA_HEAVY_SLOTS': '1',         # one at a time unless a test opens the memory-gated 2nd slot
+                    'JOBADABRA_HEAVY_RAMP': '0'}           # these tests check the floors only; tests/test_heavy_lock_budget.py checks the reservation of a run that just started
 
     def memory(self, free_gb, swap_used_pct):
         """Fake vm_stat and sysctl on PATH: free+inactive memory and swap use as given; returns the env for a 2-slot run."""
@@ -36,7 +36,7 @@ class HeavyLockFixture(unittest.TestCase):
         (bin_dir / 'sysctl').write_text('#!/bin/sh\ncase "$*" in *swapusage*) ' f'echo "total = 4096.00M  used = {4096 * swap_used_pct / 100:.2f}M  free = 0.00M  (encrypted)";; *) echo 8;; esac\n')
         for name in ('vm_stat', 'sysctl'):
             (bin_dir / name).chmod(0o755)
-        return {'PATH': f'{bin_dir}{os.pathsep}{os.environ["PATH"]}', 'JOB_PILOTTO_HEAVY_SLOTS': '2'}
+        return {'PATH': f'{bin_dir}{os.pathsep}{os.environ["PATH"]}', 'JOBADABRA_HEAVY_SLOTS': '2'}
 
     def start(self, what, *command, **env):
         return subprocess.Popen(['bash', str(LOCK), what, *command], env={**self.env, **env}, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -46,7 +46,7 @@ class HeavyLockFixture(unittest.TestCase):
         go = self.tmp / f'go-{what.replace(" ", "-")}'
         proc = self.start(what, 'bash', '-c', f'{gate_loop(go.as_posix(), 0.05)}', **env)
         self.addCleanup(lambda: (go.write_text('go'), proc.poll() is None and proc.communicate(timeout=30)))
-        wait_in_books(env.get('JOB_PILOTTO_HEAVY_DIR', self.env['JOB_PILOTTO_HEAVY_DIR']), proc, ('holds',), env={**self.env, **env})
+        wait_in_books(env.get('JOBADABRA_HEAVY_DIR', self.env['JOBADABRA_HEAVY_DIR']), proc, ('holds',), env={**self.env, **env})
         def let_go():
             go.write_text('go')
             return proc.communicate(timeout=30)
@@ -63,7 +63,7 @@ class HeavyLockFixture(unittest.TestCase):
 
     def said(self, proc, text, *others):
         """Wait until the run has said `text` (it looked at the lock and decided); fails at once if it ended without saying it, with the lock's evidence."""
-        return wait_said(proc.err_path, text, proc, why=lambda: evidence(self.env['JOB_PILOTTO_HEAVY_DIR'], [proc, *others], self.env))
+        return wait_said(proc.err_path, text, proc, why=lambda: evidence(self.env['JOBADABRA_HEAVY_DIR'], [proc, *others], self.env))
 
     def run_lock(self, what, *command, **env):
         return subprocess.run(['bash', str(LOCK), what, *command], env={**self.env, **env}, capture_output=True, text=True)

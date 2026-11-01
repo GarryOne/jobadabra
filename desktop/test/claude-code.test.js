@@ -63,22 +63,22 @@ test('the engine is the user\'s choice; an install with a key from before keeps 
 });
 
 test('jobs on this Mac get the choice; the plan-limit fallback only when ticked and a key exists', () => {
-  assert.deepEqual(claudeCode.pipelineVariables({}, true), {JOB_PILOTTO_AI_ENGINE: 'api'});
+  assert.deepEqual(claudeCode.pipelineVariables({}, true), {JOBADABRA_AI_ENGINE: 'api'});
   // Free AI or a key answers, the user's plan is signed in: its CLI does the web searches (owner, 26 Oct 2026)
   const signedIn = {claudeCode: {authenticated: true, path: '/x/claude'}, codex: {authenticated: true, path: '/x/codex'}};
   assert.deepEqual(claudeCode.pipelineVariables({aiEngine: 'api', ...signedIn}, true),
-    {JOB_PILOTTO_AI_ENGINE: 'api', JOB_PILOTTO_PLAN_SEARCH: 'claude', JOB_PILOTTO_CLAUDE_BIN: '/x/claude'});
+    {JOBADABRA_AI_ENGINE: 'api', JOBADABRA_PLAN_SEARCH: 'claude', JOBADABRA_CLAUDE_BIN: '/x/claude'});
   assert.deepEqual(claudeCode.pipelineVariables({aiEngine: 'api', codex: signedIn.codex, claudeCode: {authenticated: false, path: '/x/claude'}}, true),
-    {JOB_PILOTTO_AI_ENGINE: 'api', JOB_PILOTTO_PLAN_SEARCH: 'codex', JOB_PILOTTO_CODEX_BIN: '/x/codex'});
-  assert.deepEqual(claudeCode.pipelineVariables({aiEngine: 'api', claudeCode: {installed: true, path: '/x/claude'}}, true), {JOB_PILOTTO_AI_ENGINE: 'api'}, 'signed out: no plan search');
+    {JOBADABRA_AI_ENGINE: 'api', JOBADABRA_PLAN_SEARCH: 'codex', JOBADABRA_CODEX_BIN: '/x/codex'});
+  assert.deepEqual(claudeCode.pipelineVariables({aiEngine: 'api', claudeCode: {installed: true, path: '/x/claude'}}, true), {JOBADABRA_AI_ENGINE: 'api'}, 'signed out: no plan search');
   assert.deepEqual(claudeCode.pipelineVariables({aiEngine: 'cli', claudeCode: {path: '/x/claude'}}, true),
-    {JOB_PILOTTO_AI_ENGINE: 'cli', JOB_PILOTTO_CLAUDE_BIN: '/x/claude'});
-  assert.deepEqual(claudeCode.pipelineVariables({aiEngine: 'cli', aiFallback: true}, true), {JOB_PILOTTO_AI_ENGINE: 'cli', JOB_PILOTTO_AI_FALLBACK: 'api'});
-  assert.deepEqual(claudeCode.pipelineVariables({aiEngine: 'cli', aiFallback: true}, false), {JOB_PILOTTO_AI_ENGINE: 'cli'});
+    {JOBADABRA_AI_ENGINE: 'cli', JOBADABRA_CLAUDE_BIN: '/x/claude'});
+  assert.deepEqual(claudeCode.pipelineVariables({aiEngine: 'cli', aiFallback: true}, true), {JOBADABRA_AI_ENGINE: 'cli', JOBADABRA_AI_FALLBACK: 'api'});
+  assert.deepEqual(claudeCode.pipelineVariables({aiEngine: 'cli', aiFallback: true}, false), {JOBADABRA_AI_ENGINE: 'cli'});
   // pipelineEnv: Claude Code without a key still gets the models, so the AI steps run.
   const env = pipeline.pipelineEnv(storage({aiEngine: 'cli', claudeCode: {path: '/x/claude'}}), {PATH: '/usr/bin'});
-  assert.equal(env.JOB_PILOTTO_AI_ENGINE, 'cli');
-  assert.equal(env.JOB_PILOTTO_SCORE_MODEL, 'claude-sonnet-5-5');
+  assert.equal(env.JOBADABRA_AI_ENGINE, 'cli');
+  assert.equal(env.JOBADABRA_SCORE_MODEL, 'claude-sonnet-5-5');
   assert.equal(env.ANTHROPIC_API_KEY, undefined);
   // Claude Code's headless sign-in reaches the engine (a runner or Linux has no Keychain sign-in); absent, nothing is added.
   assert.equal(pipeline.pipelineEnv(storage({aiEngine: 'cli', claudeCode: {path: '/x/claude'}}), {PATH: '/usr/bin', CLAUDE_CODE_OAUTH_TOKEN: 't'}).CLAUDE_CODE_OAUTH_TOKEN, 't');
@@ -205,7 +205,7 @@ test('Always on (GitHub) never gets the Claude Code engine: it runs on the API k
   const st = {settings: () => ({aiEngine: 'cli', aiFallback: true, claudeCode: {path: '/x/claude'}}), saveSettings: () => {},
     secret: name => ({ANTHROPIC_API_KEY: 'sk-test', NOTION_TOKEN: 'ntn'})[name] || '', readText: () => ''};
   const {variables, secrets} = github.payload(st);
-  for (const name of ['JOB_PILOTTO_AI_ENGINE', 'JOB_PILOTTO_CLAUDE_BIN', 'JOB_PILOTTO_AI_FALLBACK']) assert.ok(!(name in variables), name);
+  for (const name of ['JOBADABRA_AI_ENGINE', 'JOBADABRA_CLAUDE_BIN', 'JOBADABRA_AI_FALLBACK']) assert.ok(!(name in variables), name);
   assert.equal(secrets.ANTHROPIC_API_KEY, 'sk-test');
 });
 

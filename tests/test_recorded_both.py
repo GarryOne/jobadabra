@@ -25,9 +25,9 @@ class RecordedBothTest(unittest.TestCase):
         (bin_dir / 'npm').write_text(f'#!/bin/bash\necho "$* old=${{REAL_EXTENSION_DIR:-}} held=${{JP_HEAVY_HELD:-}} cases=${{JP_REPLAY_CASES:-}}" >> "{log}"\n'
                                      'if [ -n "${REAL_EXTENSION_DIR:-}" ]; then exit "${OLD_EXIT:-1}"; else exit "${NEW_EXIT:-0}"; fi\n')
         (bin_dir / 'npm').chmod(0o755)
-        self.env = {**{k: v for k, v in os.environ.items() if not k.startswith(('JOB_PILOTTO_HEAVY', 'JP_HEAVY', 'REAL_EXTENSION'))}, 'PATH': f'{bin_dir.as_posix()}{os.pathsep}{os.environ["PATH"]}',
-                    'JOB_PILOTTO_HEAVY_DIR': (self.tmp / 'heavy').as_posix(), 'JOB_PILOTTO_HEAVY_SHARED': str(LOCK), 'JOB_PILOTTO_HEAVY_TIMING_LOG': (self.tmp / 'gate-timing.log').as_posix(),
-                    'JOB_PILOTTO_HEAVY_LOAD': '0', 'JOB_PILOTTO_HEAVY_SLOTS': '1'}
+        self.env = {**{k: v for k, v in os.environ.items() if not k.startswith(('JOBADABRA_HEAVY', 'JP_HEAVY', 'REAL_EXTENSION'))}, 'PATH': f'{bin_dir.as_posix()}{os.pathsep}{os.environ["PATH"]}',
+                    'JOBADABRA_HEAVY_DIR': (self.tmp / 'heavy').as_posix(), 'JOBADABRA_HEAVY_SHARED': str(LOCK), 'JOBADABRA_HEAVY_TIMING_LOG': (self.tmp / 'gate-timing.log').as_posix(),
+                    'JOBADABRA_HEAVY_LOAD': '0', 'JOBADABRA_HEAVY_SLOTS': '1'}
 
     def run_both(self, *args, **env):
         return subprocess.run(['bash', str(LOCK), 'recorded-replay', 'bash', str(SCRIPT), *args], capture_output=True, text=True, timeout=60, env={**self.env, **env})

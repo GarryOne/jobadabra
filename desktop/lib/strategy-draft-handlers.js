@@ -27,7 +27,7 @@ export function registerStrategyDraftHandlers(ctx) {
       const demo = JSON.parse(fs.readFileSync(demoPath(here, 'draft.json'), 'utf8')).draft;
       demo.profile_markdown = strategy.withNote(demo.profile_markdown, answers);
       send({part: 'Proposing your goals', percent: 20, notes: [aiText(storage, 'Sent your CV to {AI} (demo: nothing is sent)'), aiText(storage, '{AI} read your CV')]});
-      await new Promise(resolve => setTimeout(resolve, Number(process.env.JOB_PILOTTO_DEMO_STRATEGY_DELAY) || 300));
+      await new Promise(resolve => setTimeout(resolve, Number(process.env.JOBADABRA_DEMO_STRATEGY_DELAY) || 300));
       return demo;
     }
     const kb = Math.round(fs.statSync(storage.path('cv.pdf')).size / 1024);

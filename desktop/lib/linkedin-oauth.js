@@ -4,7 +4,7 @@
 // registered companies, so this is identity: the Experience tab's data comes from the CVs and the data-export ZIP. Guarded by test/linkedin-oauth.test.js.
 import crypto from 'node:crypto';
 
-export const SITE = process.env.JOB_PILOTTO_SITE || 'https://www.jobpilotto.top';
+export const SITE = process.env.JOBADABRA_SITE || 'https://www.jobpilotto.top';
 
 let current = null;  // one sign-in at a time; a new click cancels the previous wait
 export function cancel() { if (current) current.cancelled = true; }

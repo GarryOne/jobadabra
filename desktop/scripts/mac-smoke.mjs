@@ -44,8 +44,8 @@ say(py(['-c', "from src import secret_store as s; s.put('job-pilotto.smoke.test'
 const data = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-smoke-data-'));
 for (const sub of ['config', 'data']) fs.mkdirSync(path.join(data, sub), {recursive: true});
 for (const name of fs.readdirSync(path.join(pilot, 'config')).filter(n => n.endsWith('.json'))) fs.copyFileSync(path.join(pilot, 'config', name), path.join(data, 'config', name));
-const jobs = py(['-m', 'src.desktop', 'jobs'], {JOB_PILOTTO_NO_DOTENV: '1', JOB_PILOTTO_CONFIG_DIR: path.join(data, 'config'),
-  JOB_PILOTTO_DATA_DIR: path.join(data, 'data')}).split(/\r?\n/).pop();
+const jobs = py(['-m', 'src.desktop', 'jobs'], {JOBADABRA_NO_DOTENV: '1', JOBADABRA_CONFIG_DIR: path.join(data, 'config'),
+  JOBADABRA_DATA_DIR: path.join(data, 'data')}).split(/\r?\n/).pop();
 JSON.parse(jobs);
 say(`pipeline jobs list ok: ${jobs.slice(0, 80)}`);
 

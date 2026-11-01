@@ -40,7 +40,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     env:
-      JOB_PILOTTO_PY_JOBS: 6   # the runner's 4 cores / 2 check slots gave 2 shards (157 s, the slowest required PR check); the slow modules wait on git and sleep, so 6 overlap well (12 Oct 2026)
+      JOBADABRA_PY_JOBS: 6   # the runner's 4 cores / 2 check slots gave 2 shards (157 s, the slowest required PR check); the slow modules wait on git and sleep, so 6 overlap well (12 Oct 2026)
     steps:
       - uses: actions/checkout@v5
         with:
@@ -52,5 +52,5 @@ jobs:
         if: github.event_name == 'pull_request'
         run: git diff --name-only "${{ github.event.pull_request.base.sha }}...HEAD" > "$RUNNER_TEMP/changed.txt" || rm -f "$RUNNER_TEMP/changed.txt"
       - run: |
-          [ -s "$RUNNER_TEMP/changed.txt" ] && export JOB_PILOTTO_PY_CHANGED_FILE="$RUNNER_TEMP/changed.txt"
+          [ -s "$RUNNER_TEMP/changed.txt" ] && export JOBADABRA_PY_CHANGED_FILE="$RUNNER_TEMP/changed.txt"
           bash tools/check.sh --area python

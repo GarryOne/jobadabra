@@ -130,7 +130,7 @@ class DoubledPageTests(unittest.TestCase):
             (fake_root / 'config').mkdir()
             with mock.patch.object(s, 'CONFIG', fake_root / 'config'), mock.patch('src.paths.ROOT', fake_root), \
                     mock.patch.dict('os.environ', {}, clear=False), mock.patch.object(s.sys, 'modules', {}):
-                for name in ('JOB_PILOTTO_CONFIG_DIR', 'GITHUB_ACTIONS', 'JOB_PILOTTO_ALLOW_REPO_CONFIG'):
+                for name in ('JOBADABRA_CONFIG_DIR', 'GITHUB_ACTIONS', 'JOBADABRA_ALLOW_REPO_CONFIG'):
                     s.os.environ.pop(name, None)
                 s.apply({('preferences', ('daily_applications_target',)): 20}, json.loads(json.dumps(FILES)))
                 self.assertEqual(list((fake_root / 'config').iterdir()), [])   # nothing written

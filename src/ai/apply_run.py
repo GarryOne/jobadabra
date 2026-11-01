@@ -24,7 +24,7 @@ GUARD = ROOT / 'tools' / 'browser-submit-guard.js'
 FASTPATH = ROOT / 'tools' / 'browser-form-fastpath.js'
 # The one control reader the fastpath's audit asks (extension/page/read-back.js and the typed-box rule it uses) and the attempt log its retypes ask: loaded first, as the extension loads them.
 READER = [ROOT / 'extension' / 'page' / 'typed-check.js', ROOT / 'extension' / 'page' / 'read-back.js', ROOT / 'extension' / 'page' / 'attempts.js']
-STATE_DIR = Path(os.getenv('JOB_PILOTTO_APPLY_RUN_DIR',
+STATE_DIR = Path(os.getenv('JOBADABRA_APPLY_RUN_DIR',
                            str(Path.home() / 'Library' / 'Application Support' / 'JobPilotto' / 'apply-runs')))
 TIMEOUT = 45 * 60
 
@@ -304,8 +304,8 @@ def run(url, stores, *, codex=None, timeout=TIMEOUT):
     trace_path = STATE_DIR / f'{job_code(url)}.jsonl'
     result_path = STATE_DIR / f'{job_code(url)}.result.json'
     result_path.unlink(missing_ok=True)
-    codex = codex or os.getenv('JOB_PILOTTO_CODEX_BIN', 'codex')
-    npx = os.getenv('JOB_PILOTTO_NPX_BIN', 'npx')
+    codex = codex or os.getenv('JOBADABRA_CODEX_BIN', 'codex')
+    npx = os.getenv('JOBADABRA_NPX_BIN', 'npx')
     command = [codex, 'exec', '--json', '--output-schema', str(SCHEMA),
                '--output-last-message', str(result_path), '-C', str(ROOT),
                '-c', f'mcp_servers.playwright.command={json.dumps(npx)}',
@@ -384,7 +384,7 @@ def main(argv=None):
         items = apply_record.learnings(stores, board)
         print(f'\n## Learnings from earlier runs on {board}')
         print('\n'.join(f'- {day} {company}: {text}' for day, _, company, _, text in items) or '- none yet')
-        notes = service.playbook(board) if not os.getenv('JOB_PILOTTO_NO_SERVICE') else ''
+        notes = service.playbook(board) if not os.getenv('JOBADABRA_NO_SERVICE') else ''
         print(f'\n## Platform notes for {board} (private playbook)')
         print(notes or '- none available (offline, or nothing recorded for this board yet): use the generic rules in the skill')
         return 0

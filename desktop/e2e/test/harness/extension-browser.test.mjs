@@ -15,7 +15,7 @@ test('only a real browser counts its visits in the site ledger', async () => {
   const fs = await import('node:fs'), os = await import('node:os'), path = await import('node:path');
   const {visitGuard} = await import('../../lib/extension.mjs');
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-ledger-'));
-  const env = {JOB_PILOTTO_SITE_LEDGER_DIR: dir, JOB_PILOTTO_SITE_LIMIT: '1'};
+  const env = {JOBADABRA_SITE_LEDGER_DIR: dir, JOBADABRA_SITE_LIMIT: '1'};
   try {
     for (let i = 0; i < 3; i++) visitGuard(false)('https://jobs.lever.co/e2e/1/apply', {env, who: 'browser'});
     assert.equal(fs.existsSync(path.join(dir, 'ledger.json')) ? Object.keys(JSON.parse(fs.readFileSync(path.join(dir, 'ledger.json'), 'utf8'))).length : 0, 0, 'a fixture visit was written to the ledger');

@@ -52,31 +52,31 @@ permissions:
 
 
 # Optional features can be switched off without deleting their secrets (src/features.py),
-# e.g. repository variable JOB_PILOTTO_DISABLE=google_jobs,mail.
+# e.g. repository variable JOBADABRA_DISABLE=google_jobs,mail.
 env:
   # The model of the small AI steps (title and page checks, triage, search picks), as the app sets it in this repo (desktop/lib/github.js).
-  JOB_PILOTTO_SMALL_MODEL: ${{ vars.JOB_PILOTTO_SMALL_MODEL }}
+  JOBADABRA_SMALL_MODEL: ${{ vars.JOB_PILOTTO_SMALL_MODEL }}
   # The AI engine the user chose for Always on (api: Anthropic key, openai: OpenAI key; never a CLI here) and the OpenAI tiers' models,
   # as the app sets them in this repo (desktop/lib/github.js; src/ai/providers, src/ai/models.py).
-  JOB_PILOTTO_AI_ENGINE: ${{ vars.JOB_PILOTTO_AI_ENGINE }}
-  JOB_PILOTTO_OPENAI_SMALL_MODEL: ${{ vars.JOB_PILOTTO_OPENAI_SMALL_MODEL }}
-  JOB_PILOTTO_OPENAI_MAIN_MODEL: ${{ vars.JOB_PILOTTO_OPENAI_MAIN_MODEL }}
-  JOB_PILOTTO_OPENAI_BIG_MODEL: ${{ vars.JOB_PILOTTO_OPENAI_BIG_MODEL }}
+  JOBADABRA_AI_ENGINE: ${{ vars.JOB_PILOTTO_AI_ENGINE }}
+  JOBADABRA_OPENAI_SMALL_MODEL: ${{ vars.JOB_PILOTTO_OPENAI_SMALL_MODEL }}
+  JOBADABRA_OPENAI_MAIN_MODEL: ${{ vars.JOB_PILOTTO_OPENAI_MAIN_MODEL }}
+  JOBADABRA_OPENAI_BIG_MODEL: ${{ vars.JOB_PILOTTO_OPENAI_BIG_MODEL }}
   # Help the pool grow, as the app sets it in this repo (desktop/lib/pool-share.js): an Always on run shares like the app (6 Oct 2026: it never did).
-  JOB_PILOTTO_SHARE_EMPLOYERS: ${{ vars.JOB_PILOTTO_SHARE_EMPLOYERS }}
-  JOB_PILOTTO_INSTALL_ID: ${{ vars.JOB_PILOTTO_INSTALL_ID }}
+  JOBADABRA_SHARE_EMPLOYERS: ${{ vars.JOB_PILOTTO_SHARE_EMPLOYERS }}
+  JOBADABRA_INSTALL_ID: ${{ vars.JOB_PILOTTO_INSTALL_ID }}
   # The free trial, as the app sets it in this repo (desktop/lib/github.js): the install's key, the first-run day and a license key; src/trial.py asks the website
-  # whether new work may start. JOB_PILOTTO_AI_BASE_URL points the AI at Free AI (src/ai/providers/anthropic_api.py) when the key is a Free AI one.
-  JOB_PILOTTO_TRIAL_KEY: ${{ secrets.JOB_PILOTTO_TRIAL_KEY }}
-  JOB_PILOTTO_LICENSE_KEY: ${{ secrets.JOB_PILOTTO_LICENSE_KEY }}
-  JOB_PILOTTO_FIRST_RUN: ${{ vars.JOB_PILOTTO_FIRST_RUN }}
-  JOB_PILOTTO_AI_BASE_URL: ${{ vars.JOB_PILOTTO_AI_BASE_URL }}
+  # whether new work may start. JOBADABRA_AI_BASE_URL points the AI at Free AI (src/ai/providers/anthropic_api.py) when the key is a Free AI one.
+  JOBADABRA_TRIAL_KEY: ${{ secrets.JOB_PILOTTO_TRIAL_KEY }}
+  JOBADABRA_LICENSE_KEY: ${{ secrets.JOB_PILOTTO_LICENSE_KEY }}
+  JOBADABRA_FIRST_RUN: ${{ vars.JOB_PILOTTO_FIRST_RUN }}
+  JOBADABRA_AI_BASE_URL: ${{ vars.JOB_PILOTTO_AI_BASE_URL }}
   # Notion's limit (~3 requests a second) is shared with the user's app on their computer: this run takes ~1.4/s.
-  JOB_PILOTTO_NOTION_GAP_MS: '700'
+  JOBADABRA_NOTION_GAP_MS: '700'
   MODE: ${{ inputs.mode || 'scheduled' }}
-  JOB_PILOTTO_DISABLE: ${{ vars.JOB_PILOTTO_DISABLE }}
+  JOBADABRA_DISABLE: ${{ vars.JOB_PILOTTO_DISABLE }}
   # How the person wants to be told (the app sets it, desktop/lib/github.js): email, telegram, app. E-mail goes through the website with the install's key (src/notify.py).
-  JOB_PILOTTO_NOTIFY: ${{ vars.JOB_PILOTTO_NOTIFY }}
+  JOBADABRA_NOTIFY: ${{ vars.JOB_PILOTTO_NOTIFY }}
   # Your Notion workspace: database and page IDs, as repository variables (the Desktop App sets them).
   NOTION_APPLICATIONS_DB: ${{ vars.NOTION_APPLICATIONS_DB }}
   NOTION_MATCHES_DB: ${{ vars.NOTION_MATCHES_DB }}
@@ -174,28 +174,28 @@ jobs:
           JOOBLE_API_KEY: ${{ secrets.JOOBLE_API_KEY }}
           # AI stage 1 stays off until this repository variable names a model,
           # so no API credits are spent by accident.
-          JOB_PILOTTO_ENRICH_MODEL: ${{ vars.JOB_PILOTTO_ENRICH_MODEL }}
+          JOBADABRA_ENRICH_MODEL: ${{ vars.JOB_PILOTTO_ENRICH_MODEL }}
           # AI stage 2 (fit scoring) is switched on the same way by its own variable.
-          JOB_PILOTTO_SCORE_MODEL: ${{ vars.JOB_PILOTTO_SCORE_MODEL }}
+          JOBADABRA_SCORE_MODEL: ${{ vars.JOB_PILOTTO_SCORE_MODEL }}
           # Application kits run only when asked (📝 Prepare); optional model override.
-          JOB_PILOTTO_KIT_MODEL: ${{ vars.JOB_PILOTTO_KIT_MODEL || 'claude-sonnet-5-5' }}
+          JOBADABRA_KIT_MODEL: ${{ vars.JOB_PILOTTO_KIT_MODEL || 'claude-sonnet-5-5' }}
           # Your digest's display name; the tool's own name stays generic (Jobadabra).
           DIGEST_BRAND_NAME: ${{ vars.DIGEST_BRAND_NAME }}
           # Auto-draft kits for the best new matches each run; 0/unset = off (📝 Prepare still works manually).
-          JOB_PILOTTO_AUTO_KIT_MAX: ${{ vars.JOB_PILOTTO_AUTO_KIT_MAX }}
-          JOB_PILOTTO_AUTO_KIT_MIN_SCORE: ${{ vars.JOB_PILOTTO_AUTO_KIT_MIN_SCORE }}
+          JOBADABRA_AUTO_KIT_MAX: ${{ vars.JOB_PILOTTO_AUTO_KIT_MAX }}
+          JOBADABRA_AUTO_KIT_MIN_SCORE: ${{ vars.JOB_PILOTTO_AUTO_KIT_MIN_SCORE }}
           # Daily insight (first scheduled run after 04:00 UTC); off until this names a model.
-          JOB_PILOTTO_INSIGHT_MODEL: ${{ vars.JOB_PILOTTO_INSIGHT_MODEL }}
+          JOBADABRA_INSIGHT_MODEL: ${{ vars.JOB_PILOTTO_INSIGHT_MODEL }}
           # Lets apply/add runs start the Gmail check 5 minutes later (mail.yml).
           GITHUB_TOKEN: ${{ github.token }}
           # AI budget guard and the daily health check (optional Admin key: exact spend from Anthropic).
-          JOB_PILOTTO_MONTHLY_BUDGET_USD: ${{ vars.JOB_PILOTTO_MONTHLY_BUDGET_USD }}
+          JOBADABRA_MONTHLY_BUDGET_USD: ${{ vars.JOB_PILOTTO_MONTHLY_BUDGET_USD }}
           ANTHROPIC_ADMIN_KEY: ${{ secrets.ANTHROPIC_ADMIN_KEY }}
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
           GOOGLE_REFRESH_TOKEN: ${{ secrets.GOOGLE_REFRESH_TOKEN }}
           GOOGLE_SCOPES: ${{ secrets.GOOGLE_SCOPES }}   # which of Gmail / Calendar the user allowed (src/sources/google_scopes.py)
-          JOB_PILOTTO_GOOGLE_AUTH_AT: ${{ vars.JOB_PILOTTO_GOOGLE_AUTH_AT }}
+          JOBADABRA_GOOGLE_AUTH_AT: ${{ vars.JOB_PILOTTO_GOOGLE_AUTH_AT }}
           GH_TOKEN: ${{ github.token }}
           JOB: ${{ inputs.job }}
           ACTION: ${{ inputs.action || 'applied' }}
@@ -204,25 +204,25 @@ jobs:
           FILE: ${{ inputs.file }}
           NOTE: ${{ inputs.note }}
           INTERVIEW: ${{ inputs.interview }}
-          JOB_PILOTTO_RUN_ID: ${{ github.run_id }}
+          JOBADABRA_RUN_ID: ${{ github.run_id }}
         run: |
-          echo "run_id=${JOB_PILOTTO_RUN_ID}"
+          echo "run_id=${JOBADABRA_RUN_ID}"
           send=""
           if [ -n "$TELEGRAM_BOT_TOKEN" ] && [ -n "$TELEGRAM_CHAT_ID" ]; then send="--send"; fi
-          case ",$JOB_PILOTTO_NOTIFY," in *,email,*) send="--send" ;; esac   # e-mail chosen: src/notify.py
+          case ",$JOBADABRA_NOTIFY," in *,email,*) send="--send" ;; esac   # e-mail chosen: src/notify.py
           ai=""
-          if [ -n "$JOB_PILOTTO_ENRICH_MODEL$JOB_PILOTTO_SCORE_MODEL$JOB_PILOTTO_AUTO_KIT_MAX$JOB_PILOTTO_INSIGHT_MODEL" ] || [ "$MODE" = prepare ] || [ "$MODE" = kits ] || [ "$MODE" = insight ] || [ "$MODE" = weekly ] || [ "$MODE" = interview ]; then pip install --quiet -r requirements.txt; fi
+          if [ -n "$JOBADABRA_ENRICH_MODEL$JOBADABRA_SCORE_MODEL$JOBADABRA_AUTO_KIT_MAX$JOBADABRA_INSIGHT_MODEL" ] || [ "$MODE" = prepare ] || [ "$MODE" = kits ] || [ "$MODE" = insight ] || [ "$MODE" = weekly ] || [ "$MODE" = interview ]; then pip install --quiet -r requirements.txt; fi
           # Stage 1 runs before stage 2 in every mode that scores, so scores always see the facts.
-          if [ -n "$JOB_PILOTTO_ENRICH_MODEL" ] && { [ "$MODE" = scheduled ] || [ "$MODE" = run ] || [ "$MODE" = today ]; }; then
+          if [ -n "$JOBADABRA_ENRICH_MODEL" ] && { [ "$MODE" = scheduled ] || [ "$MODE" = run ] || [ "$MODE" = today ]; }; then
             ai="$ai --enrich-max 100"
           fi
-          if [ -n "$JOB_PILOTTO_SCORE_MODEL" ] && { [ "$MODE" = scheduled ] || [ "$MODE" = run ] || [ "$MODE" = today ]; }; then
+          if [ -n "$JOBADABRA_SCORE_MODEL" ] && { [ "$MODE" = scheduled ] || [ "$MODE" = run ] || [ "$MODE" = today ]; }; then
             ai="$ai --score-max 60"
           fi
-          if [ -n "$JOB_PILOTTO_AUTO_KIT_MAX" ] && { [ "$MODE" = scheduled ] || [ "$MODE" = run ] || [ "$MODE" = today ]; }; then
-            ai="$ai --auto-kit-max $JOB_PILOTTO_AUTO_KIT_MAX ${JOB_PILOTTO_AUTO_KIT_MIN_SCORE:+--auto-kit-min-score $JOB_PILOTTO_AUTO_KIT_MIN_SCORE}"
+          if [ -n "$JOBADABRA_AUTO_KIT_MAX" ] && { [ "$MODE" = scheduled ] || [ "$MODE" = run ] || [ "$MODE" = today ]; }; then
+            ai="$ai --auto-kit-max $JOBADABRA_AUTO_KIT_MAX ${JOBADABRA_AUTO_KIT_MIN_SCORE:+--auto-kit-min-score $JOBADABRA_AUTO_KIT_MIN_SCORE}"
           fi
-          if [ -n "$JOB_PILOTTO_INSIGHT_MODEL" ] && [ "$MODE" = scheduled ]; then ai="$ai --insight"; fi
+          if [ -n "$JOBADABRA_INSIGHT_MODEL" ] && [ "$MODE" = scheduled ]; then ai="$ai --insight"; fi
           # --log-run: every run leaves its ⏱️ Search runs row (running, then result and log), Telegram or not.
           # shellcheck disable=SC2086  # $send and $ai are lists of flags, split on purpose
           python -m src daily $send --log-run --mode "$MODE" ${JOB:+--job "$JOB" --action "$ACTION"} ${PAGE:+--page "$PAGE"} ${SEED:+--seed "$SEED"} ${FILE:+--file "$FILE"} ${NOTE:+--note "$NOTE"} ${INTERVIEW:+--interview "$INTERVIEW"} $ai
@@ -234,7 +234,7 @@ jobs:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           [ -n "$TELEGRAM_BOT_TOKEN" ] && [ -n "$TELEGRAM_CHAT_ID" ] || exit 0
-          case ",$JOB_PILOTTO_NOTIFY," in ,,|*,telegram,*) ;; *) exit 0 ;; esac   # Telegram turned off in Settings → Notifications
+          case ",$JOBADABRA_NOTIFY," in ,,|*,telegram,*) ;; *) exit 0 ;; esac   # Telegram turned off in Settings → Notifications
           curl -fsS "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
             --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
             --data-urlencode "text=❌ Jobadabra ${MODE} run failed: ${RUN_URL}" > /dev/null

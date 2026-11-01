@@ -76,7 +76,7 @@ class Saved(unittest.TestCase):
     def test_sqlite(self):
         import tempfile
         with tempfile.TemporaryDirectory() as folder:
-            self.check(sqlite.open_store({'JOB_PILOTTO_DATA_DIR': folder}))
+            self.check(sqlite.open_store({'JOBADABRA_DATA_DIR': folder}))
 
 
 if __name__ == '__main__':

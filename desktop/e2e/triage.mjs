@@ -402,7 +402,7 @@ export function fixerSummary({gh = realGh, now = Date.now(), candidate = null} =
   return readinessSummary(issues, {openBranches: branches, now, candidate});
 }
 
-// A verdict-only pass (off unless the repo variable JOB_PILOTTO_FIXER_VERDICTS is "on": it spends AI credit): an open finding seen on ONE commit, which the fixer will not touch, is read by Claude
+// A verdict-only pass (off unless the repo variable JOBADABRA_FIXER_VERDICTS is "on": it spends AI credit): an open finding seen on ONE commit, which the fixer will not touch, is read by Claude
 // WITHOUT editing anything. It says `false-positive` (the issue is closed `wontfix-auto`) or `real` (labelled `confirmed`, so the next normal run fixes it). Six of fourteen issues on 3 Oct 2026
 // were false positives that a person had to find by reading the handler. Most critical first; never one already judged, parked, or clean in the latest run.
 // Up to `max` of them, most critical first: ui-verdict.yml judges several at once, in parallel (one per fixer run took days for a run's worth of findings).

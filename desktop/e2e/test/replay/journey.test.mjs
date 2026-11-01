@@ -47,7 +47,7 @@ test('the e2e app runs in the zone the suites check against, or the one a suite 
   assert.equal(zoneOf({TZ: 'Asia/Tokyo'}), 'Asia/Tokyo');
   const fs = await import('node:fs');
   const source = fs.readFileSync(new URL('../../lib/app.mjs', import.meta.url), 'utf8');
-  assert.match(source, /TZ: zoneOf\(env\), JOB_PILOTTO_TZ: env\.JOB_PILOTTO_TZ \|\| zoneOf\(env\)/);
+  assert.match(source, /TZ: zoneOf\(env\), JOBADABRA_TZ: env\.JOBADABRA_TZ \|\| zoneOf\(env\)/);
 });
 
 test('the test profile\'s undecryptable seeded secrets are not the app\'s error (#217)', () => {

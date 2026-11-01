@@ -1,6 +1,6 @@
 """Every test starts with no store chosen, and a test that leaves one chosen fails by name.
 
-open_stores() reads JOB_PILOTTO_STORE (and the sqlite folder JOB_PILOTTO_DATA_DIR) from os.environ, so a value from the shell,
+open_stores() reads JOBADABRA_STORE (and the sqlite folder JOBADABRA_DATA_DIR) from os.environ, so a value from the shell,
 a developer's .env or an earlier test silently turned open_stores(tracker=fake) into sqlite/memory instead of Notion (9 Oct
 2026, three times in one session). Rather than each test guarding itself, unittest discovery loads this file second (sorted
 names, after test_0_notion_ids) and wraps TestCase.run for the whole suite: before each test the variables are removed, after
@@ -15,7 +15,7 @@ import re
 import sys
 import unittest
 
-STEERING = ('JOB_PILOTTO_STORE', 'JOB_PILOTTO_DATA_DIR')
+STEERING = ('JOBADABRA_STORE', 'JOBADABRA_DATA_DIR')
 NOTION = re.compile(r'^NOTION_(TOKEN|\w+_DB|\w*PAGE\w*)$')
 _run = unittest.TestCase.run
 
@@ -74,18 +74,18 @@ class StoreEnvGuardTests(unittest.TestCase):
     def test_a_leaking_test_fails_and_the_next_one_is_not_steered(self):
         class Leaks(unittest.TestCase):
             def test_leak(self):
-                os.environ['JOB_PILOTTO_STORE'] = 'sqlite'
+                os.environ['JOBADABRA_STORE'] = 'sqlite'
 
             def test_tidy(self):
                 from unittest import mock
-                with mock.patch.dict(os.environ, {'JOB_PILOTTO_STORE': 'memory'}):
+                with mock.patch.dict(os.environ, {'JOBADABRA_STORE': 'memory'}):
                     pass
 
         result = unittest.TestResult()
         unittest.defaultTestLoader.loadTestsFromTestCase(Leaks).run(result)
         self.assertEqual([test.id().rsplit('.', 1)[-1] for test, _ in result.failures], ['test_leak'])
-        self.assertIn("'JOB_PILOTTO_STORE': 'sqlite'", result.failures[0][1])
-        self.assertNotIn('JOB_PILOTTO_STORE', os.environ)
+        self.assertIn("'JOBADABRA_STORE': 'sqlite'", result.failures[0][1])
+        self.assertNotIn('JOBADABRA_STORE', os.environ)
 
     def test_a_test_that_changes_the_notion_connection_fails_and_it_is_put_back(self):
         from unittest import mock

@@ -83,7 +83,7 @@ jobs:
       - name: New test pages fail on the old build
         if: ${{ !cancelled() }}
         env:
-          JOB_PILOTTO_HEAVY: '0'   # the Mac's one-at-a-time lock means nothing on a runner of its own
+          JOBADABRA_HEAVY: '0'   # the Mac's one-at-a-time lock means nothing on a runner of its own
         run: |
           [ -n "${{ steps.which.outputs.cases }}" ] || { echo "no recorded case in this PR: nothing to replay"; exit 0; }
           node tools/recorded-fails-on-old.mjs --base origin/main

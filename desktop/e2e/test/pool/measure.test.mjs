@@ -98,7 +98,7 @@ test('every recorded run setting: replayed as recorded, and a capture missing it
     const missing = settingsOf({settings: rest});
     assert.equal(missing.why, name === 'applicant' ? 'applicant not recorded' : `${name} not recorded`);
   }
-  assert.equal(settingsOf({settings: {...full.settings, model: 'default'}}).env.JOB_PILOTTO_MODEL_OVERRIDE, '', 'the default model: the variable is cleared');
+  assert.equal(settingsOf({settings: {...full.settings, model: 'default'}}).env.JOBADABRA_MODEL_OVERRIDE, '', 'the default model: the variable is cleared');
   assert.match(settingsOf({settings: {...full.settings, store: 'notion'}}).why, /store notion is not replayed offline/);
   const {applicant: _applicant, ...noApplicant} = full.settings;
   assert.equal(settingsOf({settings: noApplicant, result: {applicant: 'grown'}}).env.JP_APPLICANT, 'grown', 'an older capture kept its applicant in its result');

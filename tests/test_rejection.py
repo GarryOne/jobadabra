@@ -131,7 +131,7 @@ class GmailCheckTriggersTests(unittest.TestCase):
             self.assertIn('🛠 Why rejected · Scale AI', stats['updates'])
 
     def test_turned_off_it_does_nothing(self):
-        with mock.patch.dict('os.environ', {'JOB_PILOTTO_DISABLE': 'rejection_review'}):
+        with mock.patch.dict('os.environ', {'JOBADABRA_DISABLE': 'rejection_review'}):
             self.assertEqual(mail.review_rejections(memory.open_store(), None, [(app('p1', 'A', 'x'), email('m', 's'))], {}), [])
 
 

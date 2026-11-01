@@ -34,7 +34,7 @@ class Base(unittest.TestCase):
     def setUp(self):
         self.dir = tempfile.TemporaryDirectory()
         self.addCleanup(self.dir.cleanup)
-        for patch in (mock.patch.dict(os.environ, {'JOB_PILOTTO_SEARCH_TAPE': self.dir.name}), mock.patch('src.paths.DATA', Path(self.dir.name)),
+        for patch in (mock.patch.dict(os.environ, {'JOBADABRA_SEARCH_TAPE': self.dir.name}), mock.patch('src.paths.DATA', Path(self.dir.name)),
                       mock.patch.object(page_reader, 'wanted_text', lambda: re.compile(r'site reliability', re.I)), mock.patch.object(page_reader.cost, 'side')):
             patch.start()
             self.addCleanup(patch.stop)
@@ -47,7 +47,7 @@ class Base(unittest.TestCase):
         page_reader._reads.clear()
         page_reader._reads['n'] = 0
         decide._calls['n'] = 0
-        return mock.patch.dict(os.environ, {'JOB_PILOTTO_SEARCH_TAPE_MODE': mode})
+        return mock.patch.dict(os.environ, {'JOBADABRA_SEARCH_TAPE_MODE': mode})
 
 
 class WithinTest(Base):
@@ -68,7 +68,7 @@ class WithinTest(Base):
         self.assertEqual(again, got)
 
     def test_without_a_tape_it_is_the_plain_count(self):
-        with mock.patch.dict(os.environ, {'JOB_PILOTTO_SEARCH_TAPE': ''}):
+        with mock.patch.dict(os.environ, {'JOBADABRA_SEARCH_TAPE': ''}):
             self.assertEqual([budget_tape.within('reads', 'a', used, 2) for used in (0, 1, 2, 3)], [True, True, False, False])
 
 

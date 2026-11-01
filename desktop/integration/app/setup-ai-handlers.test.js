@@ -42,7 +42,7 @@ async function openAiStandIn(t, valid) {
 }
 
 test('an invalid API key is rejected without saving: the words name the key, no secret and no engine change', async t => {
-  const {storage, invoke} = wizardApp(t, {JOB_PILOTTO_E2E: '1'});
+  const {storage, invoke} = wizardApp(t, {JOBADABRA_E2E: '1'});
   storage.saveSettings({anthropicKeyTest: 'reject'});
   const result = await invoke('checkAnthropic', `${ANTHROPIC}-rejected`);
   assert.equal(result.ok, false);
@@ -79,7 +79,7 @@ test('an OpenAI key the check refuses says so in words and is not saved', async 
 });
 
 test('Free AI is chosen: the app keeps the Free key, is on Free AI, and its engine is the API one', async t => {
-  const {storage, invoke} = wizardApp(t, {JOB_PILOTTO_E2E: '1', JOB_PILOTTO_E2E_FREE_AI_KEY: 'JPF1.integration.relay'});
+  const {storage, invoke} = wizardApp(t, {JOBADABRA_E2E: '1', JOBADABRA_E2E_FREE_AI_KEY: 'JPF1.integration.relay'});
   assert.deepEqual(await invoke('startFreeAi'), {ok: true});
   const {aiFree, aiEngine} = storage.settings();
   assert.deepEqual({aiFree, aiEngine}, {aiFree: true, aiEngine: 'api'});

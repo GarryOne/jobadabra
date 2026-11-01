@@ -20,7 +20,7 @@ const ready = (id, pattern) => `(async () => { for (let i = 0; i < 80 && !${patt
 export const SCREENS = [
   ['focus', 'Focus: Up next rows, Insight, funnel; side column (progress, reminders, your focus); sessions dock', `${open('focus')} ${wait(900)}`],
   ['focus-loading', 'Loading state: skeleton cards in the page\'s shape, "Syncing…" by Refresh', `${open('focus')} ${wait(900)}`,
-    {JOB_PILOTTO_DEMO_FOCUS_DELAY: '60000'}],
+    {JOBADABRA_DEMO_FOCUS_DELAY: '60000'}],
   ['jobs', 'Jobs: stat tiles, toolbar, job rows (fit ring, tags, status pill, main action, ⋯)', `${open('jobs')} ${wait(1200)}`],
   ['session', 'Session page: list, job header, compact next-step banner (title · state, one line, actions, Claude\'s message on demand), What Claude needs from you (❓ suggested answer + save tick, ⚖️, 👀), What happened (problems first, form audit), folded session log',
     `document.getElementById('sd-all').click(); ${wait(1500)}`],
@@ -30,7 +30,7 @@ export const SCREENS = [
   ['settings', 'Settings: setting rows (title, explanation, control)', `${open('settings')} ${wait(1200)}`],
   ['strategy', 'Strategy: targeting rows with chips, score bars, Avoid; side glance card', `${open('strategy')} ${ready('strategy-synced', /^Synced/)}`],
   ['strategy-loading', 'Strategy loading: each card in its final shape, greyed; "Loading strategy…" pill', `${open('strategy')} ${wait(900)}`,
-    {JOB_PILOTTO_DEMO_STRATEGY_DELAY: '60000'}],
+    {JOBADABRA_DEMO_STRATEGY_DELAY: '60000'}],
 ];
 
 // npm run ui-shots [-- name …]: every screen, or only the named ones; several at once (each its own demo folder).
@@ -48,7 +48,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     const png = path.join(data, 'shot.png');
     // Why (30 Oct 2026): child.kill() below reaches only the `.bin/electron` shim; the app ends when this script does (lib/e2e-host.js watchRunner).
     const child = spawn(electron, ['.'], {cwd: desktop, stdio: 'ignore', env: {...process.env, ...env,
-      JOB_PILOTTO_DEMO: '1', JOB_PILOTTO_E2E_RUNNER_PID: String(process.pid), JOB_PILOTTO_USER_DATA: data, JOB_PILOTTO_SMOKE: png, JOB_PILOTTO_SMOKE_JS: js}});
+      JOBADABRA_DEMO: '1', JOBADABRA_E2E_RUNNER_PID: String(process.pid), JOBADABRA_USER_DATA: data, JOBADABRA_SMOKE: png, JOBADABRA_SMOKE_JS: js}});
     const timer = setTimeout(() => child.kill(), 90000);
     child.on('exit', () => {
       clearTimeout(timer);

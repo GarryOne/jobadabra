@@ -19,8 +19,8 @@ def sdk(action=''):
     told apart there (site/src/trial.js); Anthropic itself ignores it. Nothing about the job or the user is in it."""
     import anthropic
     options = {}
-    if os.environ.get('JOB_PILOTTO_AI_BASE_URL'):   # an Always on run on Free AI: the repo variable the app sets (an empty ANTHROPIC_BASE_URL would break the SDK)
-        options['base_url'] = os.environ['JOB_PILOTTO_AI_BASE_URL']
+    if os.environ.get('JOBADABRA_AI_BASE_URL'):   # an Always on run on Free AI: the repo variable the app sets (an empty ANTHROPIC_BASE_URL would break the SDK)
+        options['base_url'] = os.environ['JOBADABRA_AI_BASE_URL']
     if action in ACTIONS:
         options['default_headers'] = {'x-jp-action': action}
     return anthropic.Anthropic(**options)

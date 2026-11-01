@@ -3,9 +3,9 @@
 /** Create the wait clock with injectable wall time/environment for offline tests. */
 export function createBackgroundWaitClock({wallNow = Date.now, env = process.env} = {}) {
   let offset = 0;
-  const now = () => wallNow() + (env.JOB_PILOTTO_E2E === '1' ? offset : 0);
+  const now = () => wallNow() + (env.JOBADABRA_E2E === '1' ? offset : 0);
   return {now, moveTo(at) {
-    if (env.JOB_PILOTTO_E2E !== '1') throw new Error('The background wait clock is e2e only');
+    if (env.JOBADABRA_E2E !== '1') throw new Error('The background wait clock is e2e only');
     const wall = wallNow();
     if (!Number.isSafeInteger(at) || at < 0) throw new Error('Move the background wait clock forward to a finite timestamp');
     offset = Math.max(offset, at - wall);
@@ -15,7 +15,7 @@ export function createBackgroundWaitClock({wallNow = Date.now, env = process.env
 const clock = createBackgroundWaitClock(), listeners = new Set();
 /** Register a scheduler wake only inside e2e; moving the clock can restart the browser without consuming its queued commands. */
 export function onBackgroundWaitMove(wake) {
-  if (process.env.JOB_PILOTTO_E2E === '1') listeners.add(wake);
+  if (process.env.JOBADABRA_E2E === '1') listeners.add(wake);
 }
 /** Read the app's shared wait clock; normal launches always read Date.now(). */
 export const backgroundWaitNow = () => clock.now();

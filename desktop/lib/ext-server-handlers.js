@@ -34,7 +34,7 @@ import {startForm, stopLiveForms} from './stop-all.js';
 import {registerReportHandlers} from './report-handlers.js';
 import {createUploader} from './report-upload.js';
 // A test run never counts; a live-test twin does: its fills are real use (owner, 9 Oct 2026; lib/telemetry.js learningOff).
-const testRun = () => !!process.env.JOB_PILOTTO_E2E;
+const testRun = () => !!process.env.JOBADABRA_E2E;
 
 export function registerExtServerHandlers(ctx) {
   const {DEMO, app, createWindow, cvOf, flow, ipcMain, notify, readSites, scoreVisitJobs, sessionNeedsYou, storage, getTelemetry, toWindow, getWindow, setRecipeReporter} = ctx;
@@ -149,7 +149,7 @@ export function registerExtServerHandlers(ctx) {
   server.setSharedLogger(shared);
   server.setRecipesHandler(payload => recipeLibrary.lookup(storage, payload.fingerprints, {onSent: shared}));
   server.setAliasesHandler(() => aliasLibrary.forExtension(storage, {onSent: shared}));   // shared meanings + this Mac's (lib/contact-keys.js)
-  const owner = () => !!process.env.JOB_PILOTTO_OWNER;   // the owner's own installs name sites in plain, to debug with
+  const owner = () => !!process.env.JOBADABRA_OWNER;   // the owner's own installs name sites in plain, to debug with
   // Sites only you can open (lib/visits.js): the extension sends each page of a tab the app opened to read.
   server.setVisitFilters(page => visits.filters(storage, page));
   server.setVisitRoute('/extension/visit-understand', outline => visits.understand(storage, outline));

@@ -28,7 +28,7 @@ async function exercise(start) {
   const port = await freePort(), sent = [], logged = [], captures = [];
   let on = true, packaged = true, time = 100_000;
   const reports = telemetry({settings: () => ({telemetry: on})});
-  const client = create({dsn: `http://key@127.0.0.1:${port}/1`, release: 'job-pilotto@test', installId: 'isolated-install', now: () => time,
+  const client = create({dsn: `http://key@127.0.0.1:${port}/1`, release: 'jobadabra@test', installId: 'isolated-install', now: () => time,
     enabled: () => !reportingOff({}, {packaged}) && reports.enabled(),
     fetcher: async (url, init) => {
       assert.equal(new URL(url).host, `127.0.0.1:${port}`);
@@ -82,7 +82,7 @@ globalThis.plantSentry = plant;   // a service worker cannot import() dynamicall
     assert.equal(event.exception.values[0].type, 'TypeError');
     assert.ok(event.exception.values[0].stacktrace.frames.some(frame => frame.filename === 'sentry-plant.js' && frame.lineno === 3));
     assert.ok(event.tags.extVersion);
-    assert.equal(event.release, 'job-pilotto@test');
+    assert.equal(event.release, 'jobadabra@test');
     assert.equal(event.user.id, 'isolated-install');
     await plant(false);
     assert.equal(sent.length, 1, 'a repeated error is held');
@@ -104,7 +104,7 @@ globalThis.plantSentry = plant;   // a service worker cannot import() dynamicall
     assert.doesNotMatch(sent.join(''), /PAGE_TEXT_CANARY|URL_CANARY|private\.example|chrome-extension:\/\//);
     assert.deepEqual([...browser.requested].filter(host => host !== '127.0.0.1'), [], 'only localhost was requested');
     const captured = captures[0];
-    const env = {JOB_PILOTTO_E2E: '1', JOB_PILOTTO_E2E_PLANTED_FILE: path.join(root, 'planted.log')};
+    const env = {JOBADABRA_E2E: '1', JOBADABRA_E2E_PLANTED_FILE: path.join(root, 'planted.log')};
     markPlanted('extension exception', {kinds: ['extension_error'], source: 'extension', frame: 'sentry-plant.js:3:'}, env, time);
     assert.equal(causedByPlant(captured, env, time), true);
     assert.equal(causedByPlant({...captured, stack: 'at fill.js:3:1'}, env, time), false);

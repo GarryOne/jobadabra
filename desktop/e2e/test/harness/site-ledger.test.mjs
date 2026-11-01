@@ -9,7 +9,7 @@ import {fileURLToPath} from 'node:url';
 import {BOT_CHECK_SURE, SiteLimitError, blockSignal, blockVerdict, guardLiveVisit, markBlocked, siteOf} from '../../lib/site-ledger.mjs';
 
 const E2E = fileURLToPath(new URL('../..', import.meta.url));
-const fresh = () => ({JOB_PILOTTO_SITE_LEDGER_DIR: fs.mkdtempSync(path.join(os.tmpdir(), 'jp-ledger-'))});
+const fresh = () => ({JOBADABRA_SITE_LEDGER_DIR: fs.mkdtempSync(path.join(os.tmpdir(), 'jp-ledger-'))});
 const day = (n = 0) => new Date(2026, 9, 12 + n, 10, 0, 0);
 // One visit by "another process": the ledger counts a process once per host, so each call here is a new run.
 let fakePid = 0;
@@ -39,13 +39,13 @@ test('a blocked host is refused for the rest of the day, whoever asks, and again
 });
 
 test('the override lets the named host through, both limit and block, and each use is logged', () => {
-  const env = {...fresh(), JOB_PILOTTO_SITE_LIMIT_OVERRIDE: 'busy.example.com'};
+  const env = {...fresh(), JOBADABRA_SITE_LIMIT_OVERRIDE: 'busy.example.com'};
   for (let n = 0; n < 5; n++) assert.doesNotThrow(() => visit('https://busy.example.com/', {env, now: day()}));
   markBlocked('https://busy.example.com/', 'bot check', {env, now: day()});
   assert.doesNotThrow(() => visit('https://busy.example.com/', {env, now: day()}));
-  assert.throws(() => visit('https://not-named.example.com/', {env: {...env, JOB_PILOTTO_SITE_LIMIT: '1'}, now: day()}) && visit('https://not-named.example.com/', {env: {...env, JOB_PILOTTO_SITE_LIMIT: '1'}, now: day()}), SiteLimitError);
-  const logged = fs.readFileSync(path.join(env.JOB_PILOTTO_SITE_LEDGER_DIR, 'override.log'), 'utf8').trim().split('\n');
-  assert.ok(logged.length >= 3 && logged.every(line => /busy\.example\.com/.test(line) && /JOB_PILOTTO_SITE_LIMIT_OVERRIDE/.test(line)));
+  assert.throws(() => visit('https://not-named.example.com/', {env: {...env, JOBADABRA_SITE_LIMIT: '1'}, now: day()}) && visit('https://not-named.example.com/', {env: {...env, JOBADABRA_SITE_LIMIT: '1'}, now: day()}), SiteLimitError);
+  const logged = fs.readFileSync(path.join(env.JOBADABRA_SITE_LEDGER_DIR, 'override.log'), 'utf8').trim().split('\n');
+  assert.ok(logged.length >= 3 && logged.every(line => /busy\.example\.com/.test(line) && /JOBADABRA_SITE_LIMIT_OVERRIDE/.test(line)));
 });
 
 test('loopback, file and plain-http addresses are not real sites: never counted', () => {
@@ -83,7 +83,7 @@ test('two writers at once lose no visit', async () => {
   const {spawn} = await import('node:child_process');
   const code = `import {guardLiveVisit} from ${JSON.stringify(path.join(E2E, 'lib/site-ledger.mjs'))}; guardLiveVisit('https://race.example.com/', {env: process.env, now: new Date(2026, 9, 12, 10), log: () => {}});`;
   await Promise.all([...Array(3)].map(() => new Promise(resolve => spawn('node', ['--input-type=module', '-e', code], {env: {...process.env, ...env}}).on('close', resolve))));
-  const ledger = JSON.parse(fs.readFileSync(path.join(env.JOB_PILOTTO_SITE_LEDGER_DIR, 'ledger.json'), 'utf8'));
+  const ledger = JSON.parse(fs.readFileSync(path.join(env.JOBADABRA_SITE_LEDGER_DIR, 'ledger.json'), 'utf8'));
   assert.equal(ledger['2026-10-12']['race.example.com'].visits.length, 3);
 });
 
@@ -105,7 +105,7 @@ test('every file that sends a browser to a real site calls guardLiveVisit', () =
 test('live-check refuses a host at its limit before any lock, and counts nothing', async () => {
   const {spawnSync} = await import('node:child_process');
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'site-ledger-check-'));
-  const env = {...process.env, JOB_PILOTTO_SITE_LEDGER_DIR: dir, JOB_PILOTTO_SITE_LIMIT: '1', JOB_PILOTTO_SITE_LIMIT_OVERRIDE: ''};
+  const env = {...process.env, JOBADABRA_SITE_LEDGER_DIR: dir, JOBADABRA_SITE_LIMIT: '1', JOBADABRA_SITE_LIMIT_OVERRIDE: ''};
   const run = url => spawnSync('node', [path.join(E2E, 'live-check.mjs'), url], {env, encoding: 'utf8'});
   assert.equal(run('https://full.example.com/job').status, 0, 'nothing counted yet');
   assert.equal(run('https://full.example.com/job').status, 0, 'the check itself counts nothing');
@@ -118,13 +118,13 @@ test('live-check refuses a host at its limit before any lock, and counts nothing
 
 // 15 Oct 2026: no visit is kept back for another run: a by-hand CI recording may use all of a host's daily visits, and each visit says its kind; a Mac run names no kind.
 test('a by-hand CI run may use all the day\'s visits; each visit says its kind', () => {
-  const env = {...fresh(), JOB_PILOTTO_SITE_LIMIT: '2', JOB_PILOTTO_VISIT_KIND: 'hand'};
+  const env = {...fresh(), JOBADABRA_SITE_LIMIT: '2', JOBADABRA_VISIT_KIND: 'hand'};
   assert.equal(visit('https://jobs.personio.example/1', {env, now: day()}).count, 1);
   assert.equal(visit('https://jobs.personio.example/2', {env, now: day()}).count, 2, 'the second visit is allowed');
   assert.throws(() => visit('https://jobs.personio.example/3', {env, now: day()}), /2 live visits today \(limit 2\)/, 'the third is refused');
-  const ledger = JSON.parse(fs.readFileSync(path.join(env.JOB_PILOTTO_SITE_LEDGER_DIR, 'ledger.json'), 'utf8'));
+  const ledger = JSON.parse(fs.readFileSync(path.join(env.JOBADABRA_SITE_LEDGER_DIR, 'ledger.json'), 'utf8'));
   assert.deepEqual(Object.values(ledger)[0]['jobs.personio.example'].visits.map(item => item.kind), ['hand', 'hand']);
-  const mac = {...fresh(), JOB_PILOTTO_SITE_LIMIT: '2'};   // no kind, as on the Mac
+  const mac = {...fresh(), JOBADABRA_SITE_LIMIT: '2'};   // no kind, as on the Mac
   assert.equal(visit('https://mac.example/1', {env: mac, now: day()}).count, 1);
   assert.equal(visit('https://mac.example/2', {env: mac, now: day()}).count, 2);
 });

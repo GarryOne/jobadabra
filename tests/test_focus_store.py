@@ -12,7 +12,7 @@ from src.stores import base, open_stores
 class FocusOnTheStoreTests(unittest.TestCase):
     def test_focus_reads_a_sqlite_store_with_its_funnel(self):
         with tempfile.TemporaryDirectory() as tmp:
-            stores = open_stores({'JOB_PILOTTO_STORE': 'sqlite', 'JOB_PILOTTO_DATA_DIR': tmp})
+            stores = open_stores({'JOBADABRA_STORE': 'sqlite', 'JOBADABRA_DATA_DIR': tmp})
             self.assertNotIn(base.CLOUD, stores.caps)
             stores.applications.create({'url': 'https://jobs.test/a', 'title': 'SRE', 'company': 'Acme', 'applied_on': '2026-10-08'}, 'Applied')
             stores.applications.create({'url': 'https://jobs.test/b', 'title': 'SRE', 'company': 'Beta'}, 'Kit ready')
@@ -36,7 +36,7 @@ class FocusOnTheStoreTests(unittest.TestCase):
     def test_a_rejection_insight_names_its_job(self):
         """Its Suggestions entry opens the job's Review tab when there is no Notion page (renderer/suggestions.js open_rejection)."""
         with tempfile.TemporaryDirectory() as tmp:
-            stores = open_stores({'JOB_PILOTTO_STORE': 'sqlite', 'JOB_PILOTTO_DATA_DIR': tmp})
+            stores = open_stores({'JOBADABRA_STORE': 'sqlite', 'JOBADABRA_DATA_DIR': tmp})
             app = stores.applications.create({'url': 'https://jobs.test/r', 'title': 'SRE', 'company': 'Acme'}, 'Rejected')
             stores.applications.update(app['id'], {'rejection': 'Hard skills', 'rejection_lesson': 'Lead with Go. Then SLOs.'})
             found = focus.load(stores, target=5, now=datetime.now(timezone.utc), gmail=False)['suggestions']

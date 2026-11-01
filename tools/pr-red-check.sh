@@ -10,7 +10,7 @@
 # on two desktop jobs for hours and nobody reacted until the owner asked; #1356, #1362 and #1350 then sat CONFLICTING. Guard: tests/test_pr_red_hook.py.
 set -uo pipefail
 [ "${PR_RED_CHECK:-1}" != 0 ] || exit 0
-[ -z "${JOB_PILOTTO_SESSION:-}" ] || exit 0   # an "Apply with Claude" session of the desktop app changes no code
+[ -z "${JOBADABRA_SESSION:-}" ] || exit 0   # an "Apply with Claude" session of the desktop app changes no code
 command -v gh >/dev/null && command -v jq >/dev/null || exit 0
 # Why (owner, 27 Oct 2026, try 3 on "GraphQL runs out": "No GraphQL in our tools"): every look is REST with the last ETag (tools/pr-rest-lib.sh); this hook runs on every prompt of every session.
 . "$(cd "$(dirname "$0")" && pwd)/pr-rest-lib.sh"; . "$(cd "$(dirname "$0")" && pwd)/pr-comments-lib.sh"

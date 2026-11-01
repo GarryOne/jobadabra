@@ -108,7 +108,7 @@ def repeat_of(events, kind, outcome_stages, *, source_id='', interview_at='', at
 
 def moment(value):
     """An event time as a comparable UTC datetime. A date without a time counts as midnight in the
-    owner's time zone (JOB_PILOTTO_TZ), so "2026-09-26" sorts before a 01:26 email that day even
+    owner's time zone (JOBADABRA_TZ), so "2026-09-26" sorts before a 01:26 email that day even
     when Notion returns the email in UTC ("2026-09-25T23:26Z"). Unparseable -> the earliest time."""
     from zoneinfo import ZoneInfo
     value = (value or '').replace('Z', '+00:00')

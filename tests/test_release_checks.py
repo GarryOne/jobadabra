@@ -104,9 +104,9 @@ class ReleaseChecks(unittest.TestCase):
             sleep.write_text(FAKE_SLEEP)
             sleep.chmod(sleep.stat().st_mode | stat.S_IEXEC)
             env = dict(os.environ, PATH=f'{bin_dir}{os.pathsep}{os.environ["PATH"]}', FAKE_STATE=tmp, RELEASE_CI_POLL=poll, RELEASE_CI_WAIT=wait, GITHUB_REPOSITORY='o/r')
-            env.pop('JOB_PILOTTO_SOAK', None)
+            env.pop('JOBADABRA_SOAK', None)
             if soak:
-                env['JOB_PILOTTO_SOAK'] = soak
+                env['JOBADABRA_SOAK'] = soak
             done_run = subprocess.run(['bash', str(SCRIPT), *([mode] if mode else []), 'desktop-v9', 'b5c13d0c2abf3574fe01a8f2ecff527eaf485965'], env=env, capture_output=True, text=True, timeout=60)
             polls = Path(tmp) / 'polls'
             self.polls = polls.read_text().splitlines() if polls.exists() else []

@@ -220,7 +220,7 @@ test('mail SDK request uses the existing Codex judge provider, without handing P
   });
   const measured = await runMailReading({engine: 'api', key: DUMMY_KEY, judgeKey: 'judge-only', needs: [], run: async (_name, fn) => fn()}, {
     execFile: (_python, _args, options, done) => {
-      assert.equal(options.env.JOB_PILOTTO_AI_ENGINE, 'api');
+      assert.equal(options.env.JOBADABRA_AI_ENGINE, 'api');
       assert.equal(options.env.ANTHROPIC_API_KEY, DUMMY_KEY);
       assert.equal(options.env.OPENAI_API_KEY, undefined);
       void localFetch(`${options.env.ANTHROPIC_BASE_URL}/v1/messages`, {method: 'POST', body: JSON.stringify({model: 'claude-haiku-5-5', messages: [{role: 'user', content: 'invented mail'}]})})

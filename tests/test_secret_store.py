@@ -26,7 +26,7 @@ class RealStoreIsOffLimitsToTestsTest(unittest.TestCase):
     """24 Oct 2026: a test wrote job-pilotto.google.scopes into the owner's real Keychain. An unmocked write or delete from a test now raises."""
     def test_an_unmocked_change_fails_loudly_and_reaches_nothing(self):
         for platform in ('darwin', 'win32'):
-            with mock.patch.object(sys, 'platform', platform), mock.patch.dict('os.environ', {'JOB_PILOTTO_E2E': '', 'JOB_PILOTTO_TWIN': ''}), \
+            with mock.patch.object(sys, 'platform', platform), mock.patch.dict('os.environ', {'JOBADABRA_E2E': '', 'JOBADABRA_TWIN': ''}), \
                     mock.patch.object(secret_store.subprocess, 'Popen', side_effect=AssertionError('reached the real tool')):
                 for change in (lambda: secret_store.put('job-pilotto.x.token', 'v'), lambda: secret_store.delete('job-pilotto.x.token')):
                     with self.assertRaisesRegex(RuntimeError, 'real secret store'):
@@ -69,9 +69,9 @@ class SecretStoreTest(unittest.TestCase):
         self.assertEqual(passwords.note('', ''), None)
 
     def test_a_site_account_is_named_after_the_profile_so_profiles_never_share_one(self):
-        with mock.patch.dict('os.environ', {'JOB_PILOTTO_PROFILE_ID': 'profile-0123456789ab'}):
+        with mock.patch.dict('os.environ', {'JOBADABRA_PROFILE_ID': 'profile-0123456789ab'}):
             self.assertEqual(passwords.service('a.example.com'), 'job-pilotto.profile-0123456789ab.a.example.com.password')
-        with mock.patch.dict('os.environ', {'JOB_PILOTTO_PROFILE_ID': 'x; evil'}):   # not an id: the old name, which the app lists as unassigned
+        with mock.patch.dict('os.environ', {'JOBADABRA_PROFILE_ID': 'x; evil'}):   # not an id: the old name, which the app lists as unassigned
             self.assertEqual(passwords.service('a.example.com'), 'job-pilotto.a.example.com.password')
 
     def test_new_with_no_copy_stores_and_leaves_the_clipboard_alone(self):
@@ -102,13 +102,13 @@ class SecretStoreTest(unittest.TestCase):
 
 class EndToEndIsolationTest(unittest.TestCase):
     """The end-to-end test app runs on the owner's own Mac: the Keychain there holds the owner's real Google sign-in and Telegram bot (2 Oct 2026: a test
-    "Gmail check" read the owner's real mail). With JOB_PILOTTO_E2E set the engine sees no Keychain at all."""
+    "Gmail check" read the owner's real mail). With JOBADABRA_E2E set the engine sees no Keychain at all."""
 
     def _keychain_answers(self):
         return mock.patch.object(secret_store.subprocess, 'run', return_value=mock.Mock(returncode=0, stdout='real-secret\n'))
 
     def test_the_keychain_is_not_read(self):
-        with mock.patch.object(sys, 'platform', 'darwin'), self._keychain_answers() as asked, mock.patch.dict('os.environ', {'JOB_PILOTTO_E2E': '1'}):
+        with mock.patch.object(sys, 'platform', 'darwin'), self._keychain_answers() as asked, mock.patch.dict('os.environ', {'JOBADABRA_E2E': '1'}):
             self.assertIsNone(secret_store.get('job-pilotto.google.refresh-token', 'igor'))
         asked.assert_not_called()
 
@@ -120,7 +120,7 @@ class EndToEndIsolationTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             path = os.path.join(folder, 'isolated-secrets.json')
             with mock.patch.object(sys, 'platform', 'darwin'), self._keychain_answers() as asked, \
-                    mock.patch.dict('os.environ', {'JOB_PILOTTO_TWIN': '1', 'JOB_PILOTTO_ISOLATED_SECRETS': path}):
+                    mock.patch.dict('os.environ', {'JOBADABRA_TWIN': '1', 'JOBADABRA_ISOLATED_SECRETS': path}):
                 for service in google_items:
                     self.assertEqual(secret_store.get(service, 'igor'), 'real-secret', service)
                 asked.reset_mock()
@@ -131,20 +131,20 @@ class EndToEndIsolationTest(unittest.TestCase):
                 self.assertEqual(secret_store.get('job-pilotto.google.refresh-token', 'igor'), 'twin-made')
                 writes = [call for call in asked.call_args_list if 'add-generic-password' in call.args[0]]
                 self.assertEqual(writes, [])
-        with mock.patch.object(sys, 'platform', 'darwin'), self._keychain_answers() as asked, mock.patch.dict('os.environ', {'JOB_PILOTTO_TWIN': '1', 'JOB_PILOTTO_E2E': '1'}):
+        with mock.patch.object(sys, 'platform', 'darwin'), self._keychain_answers() as asked, mock.patch.dict('os.environ', {'JOBADABRA_TWIN': '1', 'JOBADABRA_E2E': '1'}):
             self.assertIsNone(secret_store.get('job-pilotto.google.refresh-token', 'igor'))   # a test run is never a twin: it reads nothing
         asked.assert_not_called()
 
     def test_without_the_flag_the_keychain_is_read_as_before(self):
         with mock.patch.object(sys, 'platform', 'darwin'), self._keychain_answers(), mock.patch.dict('os.environ'):
-            os.environ.pop('JOB_PILOTTO_E2E', None)
+            os.environ.pop('JOBADABRA_E2E', None)
             self.assertEqual(secret_store.get('job-pilotto.google.refresh-token', 'igor'), 'real-secret')
 
     def test_google_is_not_connected_and_telegram_has_no_token(self):
         from src import telegram
-        env = {'JOB_PILOTTO_E2E': '1'}
+        env = {'JOBADABRA_E2E': '1'}
         with mock.patch.object(sys, 'platform', 'darwin'), self._keychain_answers(), mock.patch.dict('os.environ', env), \
-                mock.patch('src.sources.google.os.getenv', side_effect=lambda name, default=None: {'JOB_PILOTTO_E2E': '1'}.get(name, default)):
+                mock.patch('src.sources.google.os.getenv', side_effect=lambda name, default=None: {'JOBADABRA_E2E': '1'}.get(name, default)):
             self.assertIsNone(google.credentials())
         with mock.patch.object(sys, 'platform', 'darwin'), mock.patch.object(telegram.subprocess, 'run',
                 return_value=mock.Mock(stdout='123456:real-bot-token\n')) as asked, mock.patch.dict('os.environ', env):
@@ -155,13 +155,13 @@ class EndToEndIsolationTest(unittest.TestCase):
         from src import telegram
         with mock.patch.object(sys, 'platform', 'win32'), mock.patch.object(telegram.os, 'uname', side_effect=AttributeError("module 'os' has no attribute 'uname'"), create=True), \
                 mock.patch.object(telegram.subprocess, 'run') as asked, mock.patch.dict('os.environ'):
-            os.environ.pop('JOB_PILOTTO_E2E', None)
+            os.environ.pop('JOBADABRA_E2E', None)
             self.assertIsNone(telegram.keychain_token())
         asked.assert_not_called()
 
     def test_the_admin_key_and_the_notion_fallback_do_not_read_the_keychain_either(self):
         from src.ai import apply_run, budget
-        env = {'JOB_PILOTTO_E2E': '1'}
+        env = {'JOBADABRA_E2E': '1'}
         with mock.patch.object(sys, 'platform', 'darwin'), mock.patch.dict('os.environ', env), mock.patch.object(budget.subprocess, 'run') as budget_asked, \
                 mock.patch.object(apply_run.subprocess, 'run') as apply_asked:
             os.environ.pop('ANTHROPIC_ADMIN_KEY', None)
@@ -174,11 +174,11 @@ class EndToEndIsolationTest(unittest.TestCase):
         """8 Oct 2026: reads were isolated but put() was not, so `passwords new` on an account page made a "new" job-site password and
         overwrote the owner's real job-pilotto.sites.password (-U). A test run and a twin write to their own file only."""
         import tempfile
-        for flag in ('JOB_PILOTTO_E2E', 'JOB_PILOTTO_TWIN'):
+        for flag in ('JOBADABRA_E2E', 'JOBADABRA_TWIN'):
             with self.subTest(flag=flag), tempfile.TemporaryDirectory() as folder:
                 path = os.path.join(folder, 'isolated-secrets.json')
                 with mock.patch.object(sys, 'platform', 'darwin'), self._keychain_answers() as asked, \
-                        mock.patch.dict('os.environ', {flag: '1', 'JOB_PILOTTO_ISOLATED_SECRETS': path}), \
+                        mock.patch.dict('os.environ', {flag: '1', 'JOBADABRA_ISOLATED_SECRETS': path}), \
                         mock.patch.object(passwords, 'copy'), mock.patch('sys.stdout'):
                     self.assertEqual(passwords.main(['new', 'e2e.wd3.myworkdayjobs.com', '--email', 'e2e@example.com']), 0)
                     own = secret_store.get('job-pilotto.e2e.wd3.myworkdayjobs.com.password', 'job-pilotto')
@@ -190,15 +190,15 @@ class EndToEndIsolationTest(unittest.TestCase):
                 self.assertTrue(os.path.exists(path), 'the run\'s own file was written')
 
     def test_an_isolated_run_without_its_own_file_keeps_nothing(self):
-        with mock.patch.object(sys, 'platform', 'darwin'), self._keychain_answers() as asked, mock.patch.dict('os.environ', {'JOB_PILOTTO_E2E': '1'}):
-            os.environ.pop('JOB_PILOTTO_ISOLATED_SECRETS', None)
+        with mock.patch.object(sys, 'platform', 'darwin'), self._keychain_answers() as asked, mock.patch.dict('os.environ', {'JOBADABRA_E2E': '1'}):
+            os.environ.pop('JOBADABRA_ISOLATED_SECRETS', None)
             secret_store.put('job-pilotto.sites.password', 'Made-In-A-Test-42', 'job-pilotto')
             self.assertIsNone(secret_store.get('job-pilotto.sites.password', 'job-pilotto'))
         asked.assert_not_called()
 
     def test_a_users_app_still_writes_the_keychain(self):
         with mock.patch.object(sys, 'platform', 'darwin'), self._keychain_answers() as asked, mock.patch.dict('os.environ'):
-            for name in ('JOB_PILOTTO_E2E', 'JOB_PILOTTO_TWIN', 'JOB_PILOTTO_ISOLATED_SECRETS'):
+            for name in ('JOBADABRA_E2E', 'JOBADABRA_TWIN', 'JOBADABRA_ISOLATED_SECRETS'):
                 os.environ.pop(name, None)
             secret_store.put('job-pilotto.example.com.password', 'p', 'job-pilotto')
         self.assertEqual(asked.call_args[0][0][:3], ['security', 'add-generic-password', '-U'])

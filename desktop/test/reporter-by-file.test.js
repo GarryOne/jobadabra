@@ -64,7 +64,7 @@ test('a failing test shows at once, with its error, while the other file is stil
 });
 
 test('a quiet stretch prints a progress line with the files seen, the failures and the time', async () => {
-  const result = await live("test('fine', () => {});", /tests: 1\/2 files · 0 failed · \d+s/, {JOB_PILOTTO_PROGRESS_MS: '150'});
+  const result = await live("test('fine', () => {});", /tests: 1\/2 files · 0 failed · \d+s/, {JOBADABRA_PROGRESS_MS: '150'});
   assert.equal(result.seenBeforeEnd, true, result.out);
   assert.equal(result.code, 0, result.out);
 });

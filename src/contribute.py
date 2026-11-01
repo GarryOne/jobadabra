@@ -2,7 +2,7 @@
 
 Only public facts go up (ATS, board slug, company, a fixed board id, job counts; facts about sites: a company's job page without its query,
 a site only a browser reads, a dead page) plus role families and regions from fixed lists, and up to 40 public posting addresses (src/contribute_candidates.py: address, host and
-source only, for the daily discovery batch). Nothing else about jobs, applications, the CV or the person. Sent only when JOB_PILOTTO_SHARE_EMPLOYERS=1 (the app sets it: on unless the user switched it off);
+source only, for the daily discovery batch). Nothing else about jobs, applications, the CV or the person. Sent only when JOBADABRA_SHARE_EMPLOYERS=1 (the app sets it: on unless the user switched it off);
 `python -m src contribute --show` prints exactly what would be sent, on or off.
 """
 import argparse
@@ -311,7 +311,7 @@ def payload(feed_list, report, stores=None, install=None, search=None, db=None, 
                 for tag, n in line[key].items():
                     merged[key][tag] = merged[key].get(tag, 0) + n
     boards = [_with_outcomes(board, by_board.get(board['board'])) for board in boards]
-    return {'v': 2, 'install': install or os.getenv('JOB_PILOTTO_INSTALL_ID', ''), 'roles': roles, 'regions': regions, **fine_tags(search),
+    return {'v': 2, 'install': install or os.getenv('JOBADABRA_INSTALL_ID', ''), 'roles': roles, 'regions': regions, **fine_tags(search),
             'feeds': feeds[:MAX_FEEDS], **({'nofeed': nofeed} if nofeed else {}), **({'boards': boards} if boards else {}),
             **({'sites': sites} if (sites := site_facts(db=db)) else {}), **({'candidates': found} if (found := contribute_candidates.candidates(db, stages)) else {}),
             **({'served': served} if (served := pool_served.load()) else {})}   # steps skipped thanks to the pool: a running total per fixed kind
@@ -320,7 +320,7 @@ def payload(feed_list, report, stores=None, install=None, search=None, db=None, 
 def enabled(env=None):
     from .features import disabled
     env = os.environ if env is None else env
-    return env.get('JOB_PILOTTO_SHARE_EMPLOYERS') == '1' and bool(env.get('JOB_PILOTTO_INSTALL_ID')) and not disabled('contribute', env)
+    return env.get('JOBADABRA_SHARE_EMPLOYERS') == '1' and bool(env.get('JOBADABRA_INSTALL_ID')) and not disabled('contribute', env)
 
 
 def due(now=None, stamp=None):
@@ -334,10 +334,10 @@ def due(now=None, stamp=None):
 
 def send(body, url=None, post=None, now=None, stamp=None):
     """POST the payload; True when accepted. Never raises: the pool is a favour, not part of the run."""
-    if os.getenv('JOB_PILOTTO_FIXTURE_DIR') and not url and not post:   # a fixture run (tests, desktop/e2e) never reaches the real pool
+    if os.getenv('JOBADABRA_FIXTURE_DIR') and not url and not post:   # a fixture run (tests, desktop/e2e) never reaches the real pool
         return False   # (7 Oct 2026: "E2E Ghost" and "E2E Hollow" were in the central "no readable site" list)
     stamp = STAMP if stamp is None else stamp
-    url = url or os.getenv('JOB_PILOTTO_CONTRIBUTE_URL') or URL
+    url = url or os.getenv('JOBADABRA_CONTRIBUTE_URL') or URL
 
     def default_post(request):
         with urllib.request.urlopen(request, timeout=20) as response:
@@ -372,7 +372,7 @@ def share_now(feed=None, dead=None, post=None, url=None):
     if not enabled():
         return False
     roles, regions = tags()
-    body = {'v': 2, 'install': os.getenv('JOB_PILOTTO_INSTALL_ID', ''), 'roles': roles, 'regions': regions, **fine_tags(),
+    body = {'v': 2, 'install': os.getenv('JOBADABRA_INSTALL_ID', ''), 'roles': roles, 'regions': regions, **fine_tags(),
             'feeds': [{'matched': False, 'own': False, 'failed': False, **feed}] if feed else [], **({'nofeed': [dead]} if dead else {})}
     return send(body, url=url, post=post, stamp=False)   # a one-item share does not mark the full share as done
 

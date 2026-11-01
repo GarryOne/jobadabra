@@ -30,11 +30,11 @@ class FollowAppTests(unittest.TestCase):
 
     def test_ids_and_folders_come_from_the_app(self):
         folder = app({'setupDone': True, 'notionIds': {'NOTION_APPLICATIONS_DB': 'new-apps', 'NOTION_MATCHES_DB': 'new-matches'}})
-        env = {'NOTION_MATCHES_DB': 'new-matches', 'JOB_PILOTTO_FOLLOW_APP': '1'}  # the same ID in .env is fine; FOLLOW_APP=1: the owner's own run
+        env = {'NOTION_MATCHES_DB': 'new-matches', 'JOBADABRA_FOLLOW_APP': '1'}  # the same ID in .env is fine; FOLLOW_APP=1: the owner's own run
         self.follow(env, folder)
         self.assertEqual(env['NOTION_APPLICATIONS_DB'], 'new-apps')
-        self.assertEqual(env['JOB_PILOTTO_DATA_DIR'], str(folder / 'data'))
-        self.assertEqual(env['JOB_PILOTTO_CONFIG_DIR'], str(folder / 'config'))
+        self.assertEqual(env['JOBADABRA_DATA_DIR'], str(folder / 'data'))
+        self.assertEqual(env['JOBADABRA_CONFIG_DIR'], str(folder / 'config'))
 
     def test_env_pointing_at_another_workspace_keeps_that_run_separate(self):
         folder = app({'setupDone': True, 'notionIds': {'NOTION_APPLICATIONS_DB': 'new-apps', 'NOTION_MATCHES_DB': 'new-matches'}})
@@ -44,7 +44,7 @@ class FollowAppTests(unittest.TestCase):
 
     def test_nothing_taken_when_the_app_runs_it_is_switched_off_or_not_set_up(self):
         folder = app({'setupDone': True, 'notionIds': {'NOTION_APPLICATIONS_DB': 'x'}})
-        for env in ({'JOB_PILOTTO_NO_DOTENV': '1'}, {'JOB_PILOTTO_FOLLOW_APP': '0'}):
+        for env in ({'JOBADABRA_NO_DOTENV': '1'}, {'JOBADABRA_FOLLOW_APP': '0'}):
             self.assertEqual(self.follow(dict(env), folder), {})
         self.assertEqual(self.follow({}, app({'setupDone': False, 'notionIds': {'NOTION_APPLICATIONS_DB': 'x'}})), {})
         self.assertEqual(self.follow({}, Path(tempfile.mkdtemp())), {})  # no app on this computer
@@ -54,12 +54,12 @@ class FollowAppTests(unittest.TestCase):
         folder = app(settings)
         own = tempfile.mkdtemp()
         cases = [  # (env, outcome)
-            ({'JOB_PILOTTO_FOLLOW_APP': '1'}, 'app'),                                   # the owner's own run, said on purpose
-            ({'JOB_PILOTTO_DATA_DIR': own, 'JOB_PILOTTO_CONFIG_DIR': own, 'NOTION_APPLICATIONS_DB': 'x'}, 'nothing'),  # own folders: nothing taken
-            ({'JOB_PILOTTO_DATA_DIR': own, 'NOTION_APPLICATIONS_DB': 'x'}, 'refused'),  # the config folder would be the app's
+            ({'JOBADABRA_FOLLOW_APP': '1'}, 'app'),                                   # the owner's own run, said on purpose
+            ({'JOBADABRA_DATA_DIR': own, 'JOBADABRA_CONFIG_DIR': own, 'NOTION_APPLICATIONS_DB': 'x'}, 'nothing'),  # own folders: nothing taken
+            ({'JOBADABRA_DATA_DIR': own, 'NOTION_APPLICATIONS_DB': 'x'}, 'refused'),  # the config folder would be the app's
             ({}, 'refused'),                                                            # a terminal, an agent: nothing set
-            ({'JOB_PILOTTO_FOLLOW_APP': '0'}, 'nothing'),                               # the repo's example data, on purpose
-            ({'JOB_PILOTTO_NO_DOTENV': '1'}, 'nothing'),                                # the app itself passes everything
+            ({'JOBADABRA_FOLLOW_APP': '0'}, 'nothing'),                               # the repo's example data, on purpose
+            ({'JOBADABRA_NO_DOTENV': '1'}, 'nothing'),                                # the app itself passes everything
         ]
         for env, outcome in cases:
             with self.subTest(env=env):
@@ -67,8 +67,8 @@ class FollowAppTests(unittest.TestCase):
                 if outcome == 'refused':
                     with self.assertRaises(SystemExit) as caught:
                         self.follow(env, folder)
-                    self.assertIn('JOB_PILOTTO_DATA_DIR', str(caught.exception))
-                    self.assertNotIn('JOB_PILOTTO_DATA_DIR', env if 'JOB_PILOTTO_DATA_DIR' not in env else {})
+                    self.assertIn('JOBADABRA_DATA_DIR', str(caught.exception))
+                    self.assertNotIn('JOBADABRA_DATA_DIR', env if 'JOBADABRA_DATA_DIR' not in env else {})
                 else:
                     taken = self.follow(env, folder)
                     self.assertEqual(bool(taken), outcome == 'app')

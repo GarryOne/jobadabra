@@ -70,7 +70,7 @@ def books(heavy_dir):
 
 
 def status(env):
-    """`heavy-lock.sh status` for this test's lock folder (env carries JOB_PILOTTO_HEAVY_DIR), as evidence."""
+    """`heavy-lock.sh status` for this test's lock folder (env carries JOBADABRA_HEAVY_DIR), as evidence."""
     try:
         return subprocess.run(['bash', str(LOCK), 'status'], env=env, capture_output=True, text=True, timeout=20).stdout.strip()
     except (OSError, subprocess.SubprocessError) as e:

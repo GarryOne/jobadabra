@@ -5,7 +5,7 @@ so a second run after a crash or a lost connection skips what is already there i
 source is never changed: the caller switches the active store only after `copy` returned without error, and keeps
 the source as an archive (one copy in use, D2/D3 of docs/superpowers/specs/2026-10-09-store-adapters.md).
 CLI: `python -m src.stores.copy --to notion [--journal PATH] [--source-texts-win]` (the source is the active store's env
-with JOB_PILOTTO_STORE=sqlite). --source-texts-win: the target workspace was just built (its pages hold only the template's
+with JOBADABRA_STORE=sqlite). --source-texts-win: the target workspace was just built (its pages hold only the template's
 placeholder text), so the source's texts are written over it instead of being kept as "the target already had". Progress lines on stdout: `moving <entity> <done>/<total>`. Guarded by tests/test_store_copy.py.
 """
 import argparse
@@ -111,8 +111,8 @@ def main(argv=None):
     args = parser.parse_args(argv)
     if args.source == args.to:
         parser.error('--from and --to are the same store')
-    source = open_stores({**os.environ, 'JOB_PILOTTO_STORE': args.source})
-    target = open_stores({**os.environ, 'JOB_PILOTTO_STORE': args.to})
+    source = open_stores({**os.environ, 'JOBADABRA_STORE': args.source})
+    target = open_stores({**os.environ, 'JOBADABRA_STORE': args.to})
     from ..paths import DATA
     journal = Journal(args.journal or Path(DATA) / f'move-{args.source}-to-{args.to}.json')
     counts = copy(source, target, journal, lambda entity, done, total: print(f'moving {entity} {done}/{total}', flush=True),

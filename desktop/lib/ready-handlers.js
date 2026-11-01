@@ -52,7 +52,7 @@ export function registerReadyHandlers({ipcMain, notify = () => {}, shell, storag
   // Which jobs the night filled and left ready to submit (ready-rows.js readyToSubmit): the Jobs list marks them. Light, no job read; a kept answer for 30 s.
   let codesAt = 0, codesKept = null;
   ipcMain.handle('readyCodes', async () => {
-    if (process.env.JOB_PILOTTO_DEMO) { try { return {ok: true, codes: (JSON.parse(fs.readFileSync(storage.path('ready.json'), 'utf8')).site?.jobs || []).filter(readyToSubmit).map(job => job.job)}; } catch { return {ok: false}; } }
+    if (process.env.JOBADABRA_DEMO) { try { return {ok: true, codes: (JSON.parse(fs.readFileSync(storage.path('ready.json'), 'utf8')).site?.jobs || []).filter(readyToSubmit).map(job => job.job)}; } catch { return {ok: false}; } }
     if (codesKept && Date.now() - codesAt < 30000) return codesKept;
     const rows = await site.status(storage).catch(() => ({ok: false}));
     if (!rows.ok) return {ok: false};
@@ -60,7 +60,7 @@ export function registerReadyHandlers({ipcMain, notify = () => {}, shell, storag
     return codesKept;
   });
   ipcMain.handle('readyState', async () => {
-    if (process.env.JOB_PILOTTO_DEMO) { try { return JSON.parse(fs.readFileSync(storage.path('ready.json'), 'utf8')); } catch { return {owner: false}; } }   // the demo's fictional night (desktop/demo/ready.json)
+    if (process.env.JOBADABRA_DEMO) { try { return JSON.parse(fs.readFileSync(storage.path('ready.json'), 'utf8')); } catch { return {owner: false}; } }   // the demo's fictional night (desktop/demo/ready.json)
     const rows = await site.status(storage);
     if (!rows.ok) return {owner: false, why: rows.why};   // the card shows this, its buttons off
     const mine = settings();
@@ -79,7 +79,7 @@ export function registerReadyHandlers({ipcMain, notify = () => {}, shell, storag
   };
   // Sent by itself when tonight's list changes and before the laptop goes off (lib/ready-auto.js); only on the owner's install (its owner key).
   // Not before the person chose how Jobadabra applies (the first-Apply dialog). The twin shares the owner's install: it never sends by itself (it would replace his night); nor do demo, test, CI and smoke runs.
-  const ownApp = () => applyChosen(storage.settings()) && !isTwin() && !['JOB_PILOTTO_DEMO', 'JOB_PILOTTO_E2E', 'JOB_PILOTTO_SMOKE', 'CI'].some(name => process.env[name]) && !!site.ownerSecret(storage);
+  const ownApp = () => applyChosen(storage.settings()) && !isTwin() && !['JOBADABRA_DEMO', 'JOBADABRA_E2E', 'JOBADABRA_SMOKE', 'CI'].some(name => process.env[name]) && !!site.ownerSecret(storage);
   const autoSend = createAutoSend({storage, eligible: ownApp, tonightCodes: () => pickToSend(cached(), settings()).map(job => job.code),
     sendNow: sendTonight, log: (message, extra) => appLog('ready', message, extra)});
   startAutoSend(autoSend.check, {app, powerMonitor});
@@ -123,12 +123,12 @@ export function registerReadyHandlers({ipcMain, notify = () => {}, shell, storag
     return opened.ok ? {ok: true} : opened;
   });
   setVisitRoute('/extension/ready-handoff', payload => ({ok: true, handoff: handoffs.take(payload?.url)}));
-  if (process.env.JOB_PILOTTO_E2E) globalThis.__jpReadyHandoffs = handoffs;   // the apply suite's Open in Chrome step hands the app a night's hand-off (a test has no Ready site)
+  if (process.env.JOBADABRA_E2E) globalThis.__jpReadyHandoffs = handoffs;   // the apply suite's Open in Chrome step hands the app a night's hand-off (a test has no Ready site)
   // Fill now (owner, 18 Oct 2026: "make the Fill now work"): one press sends tonight's ready jobs and starts them; after a yes, the jobs you opened and did not submit.
   // Started, nothing sent by itself replaces that night (ranNight).
   // Fill now's popup (owner, 19 Oct 2026): the top jobs not on the server yet, what each lacks, and the cost line for each chip. From the kept list at once; no AI, nothing sent.
   ipcMain.handle('readyTop', async () => {
-    if (process.env.JOB_PILOTTO_DEMO) { try { return JSON.parse(fs.readFileSync(storage.path('ready-top.json'), 'utf8')); } catch { return {ok: false}; } }   // the demo's fictional pick (desktop/demo/ready-top.json)
+    if (process.env.JOBADABRA_DEMO) { try { return JSON.parse(fs.readFileSync(storage.path('ready-top.json'), 'utf8')); } catch { return {ok: false}; } }   // the demo's fictional pick (desktop/demo/ready-top.json)
     const all = cached().length ? cached() : await jobs().catch(() => []), rows = await site.rows(storage).catch(() => ({}));
     const picked = pickTop(all, Math.max(...CHIPS), {minFit: settings().minFit, skip: new Set((rows.jobs || []).filter(job => !job.cleared_at).map(job => job.job))});
     return {ok: true, picked: picked.map(({code, title, company, fit, needsKit, needsCv}) => ({code, name: `${title} · ${company}`, fit, needsKit, needsCv})), chips: CHIPS, lines: Object.fromEntries(CHIPS.map(count => [count, costLine(picked, count, {showCost: costVisible(storage)})]))};

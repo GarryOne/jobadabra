@@ -60,7 +60,7 @@ class BoardsRestOneByOne(unittest.TestCase):
         aggregators.mark_read(db, boards_ahead.NAME, NOW - timedelta(minutes=37), PILOT)
         reader = lambda search, since=None: asked.append(since) or []
         with mock.patch.object(aggregators, 'sources', return_value=[(boards_ahead.NAME, reader)]), \
-                mock.patch.dict('os.environ', {'JOB_PILOTTO_FIXTURE_DIR': ''}):
+                mock.patch.dict('os.environ', {'JOBADABRA_FIXTURE_DIR': ''}):
             ahead = boards_ahead.start(db, PILOT, now=NOW)
             self.assertIsNotNone(ahead, 'the old code returned None: no board read, so the early web search was never finished')
             ahead.wait()
@@ -92,7 +92,7 @@ class WebSearchSaysWhy(unittest.TestCase):
         with mock.patch('src.ai.board_ideas.asked_for', return_value=('k', ['Austria'], ['first officer'], [], ['europe'])), \
                 mock.patch.object(board_web, '_next_search', return_value=None if due else NOW + timedelta(days=7)), \
                 mock.patch.object(board_web, '_searcher', return_value=client), \
-                mock.patch.object(board_web, 'disabled', return_value=False), mock.patch.dict('os.environ', {'JOB_PILOTTO_FIXTURE_DIR': ''}):
+                mock.patch.object(board_web, 'disabled', return_value=False), mock.patch.dict('os.environ', {'JOBADABRA_FIXTURE_DIR': ''}):
             return lines(lambda: board_web.search(PILOT, [], now=NOW, data=data))
 
     def test_no_ai_that_searches_the_web_is_said(self):

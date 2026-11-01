@@ -229,7 +229,7 @@ export async function answerForm(env, { url, fields, page_text, test = false }, 
   const job = found || { title: '', company: '', url };
   const anthropic = client || anthropicClient(anthropicKey(env));
   const ask = (list, note = '') => anthropic.messages.create({
-    model: env.JOB_PILOTTO_KIT_MODEL || DEFAULT_MODEL,
+    model: env.JOBADABRA_KIT_MODEL || DEFAULT_MODEL,
     max_tokens: 16000,
     // The profile and standard answers are the same for every form: cached, so a multi-page form
     // or the next application within five minutes pays a tenth for them.
@@ -407,7 +407,7 @@ export async function handleExtension(request, env) {
       try {
         const ctx = await answerContext(env, body.url);
         const out = await reviewAnswer(ctx, { question: body.question, text: body.text, url: body.url }, aiClient || anthropicClient(anthropicKey(env)),
-          { model: env.JOB_PILOTTO_KIT_MODEL || DEFAULT_MODEL, price: PRICE, billedTo, cvFactsRule: ctx.cvFacts ? `\n${CV_FACTS_RULE}` : '' });
+          { model: env.JOBADABRA_KIT_MODEL || DEFAULT_MODEL, price: PRICE, billedTo, cvFactsRule: ctx.cvFacts ? `\n${CV_FACTS_RULE}` : '' });
         await env.onReviewAnswer?.({ chars: String(body.text).length, usd: out.usd, billed_to: out.billed_to, missing: out.missing.length });   // counts only, never the text
         return json(out);
       } catch (error) {

@@ -23,12 +23,12 @@ class ToolTests(unittest.TestCase):
         return Path(folder.name)
 
     def test_it_runs_on_the_plan_only_and_in_its_own_folder(self):
-        work, env = self.folder(), {'ANTHROPIC_API_KEY': 'sk-test', 'JOB_PILOTTO_AI_FALLBACK': 'api', 'JOB_PILOTTO_AI_ENGINE': 'api'}
+        work, env = self.folder(), {'ANTHROPIC_API_KEY': 'sk-test', 'JOBADABRA_AI_FALLBACK': 'api', 'JOBADABRA_AI_ENGINE': 'api'}
         recount.prepare(work, env)
-        self.assertEqual(env['JOB_PILOTTO_AI_ENGINE'], 'cli')
+        self.assertEqual(env['JOBADABRA_AI_ENGINE'], 'cli')
         self.assertNotIn('ANTHROPIC_API_KEY', env)
-        self.assertNotIn('JOB_PILOTTO_AI_FALLBACK', env)
-        self.assertEqual((env['JOB_PILOTTO_DATA_DIR'], env['JOB_PILOTTO_CONFIG_DIR']), (str(work / 'data'), str(work / 'config')))
+        self.assertNotIn('JOBADABRA_AI_FALLBACK', env)
+        self.assertEqual((env['JOBADABRA_DATA_DIR'], env['JOBADABRA_CONFIG_DIR']), (str(work / 'data'), str(work / 'config')))
 
     def test_titles_are_read_once_and_page_readers_are_left_to_the_scout(self):
         work, reads = self.folder(), []

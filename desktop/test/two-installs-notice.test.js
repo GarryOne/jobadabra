@@ -38,7 +38,7 @@ test('one copy, or not Windows, or a test/demo data folder: no note and nothing 
   assert.equal((await ask(0, {platform: 'darwin'})).result, 'skipped');
   const source = await ask(0, {packaged: false});
   assert.deepEqual([source.result, source.calls.dialog.length, source.storage.saved], ['skipped', 0, {}], 'from source (npm start) nothing is asked and no flag is set in the dev folder');
-  const test = await ask(0, {env: {JOB_PILOTTO_USER_DATA: '/tmp/x'}});
+  const test = await ask(0, {env: {JOBADABRA_USER_DATA: '/tmp/x'}});
   assert.equal(test.result, 'skipped');
   assert.deepEqual([test.calls.dialog.length, test.storage.saved], [0, {}], 'a test or demo run never opens a dialog');
   assert.equal((await ask(0, {dialog: {showMessageBox: async () => { throw new Error('no window'); }}})).result, 'failed', 'a dialog that throws never rejects');

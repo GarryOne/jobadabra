@@ -84,7 +84,7 @@ test('the summary shows only the rows this run ran (the day report may hold othe
 });
 
 // 12 Oct 2026: a CI recording run (#455) was green in 1 minute and ran nothing (the site limit had refused its row); the owner rightly asked whether it works at all.
-const LIMIT = 'site-ledger: seitenbau-gmbh.jobs.personio.de is not visited: 2 live visits today (limit 2), the last at 11:20 by record-sites CI run 38242323673. Counted from the machine-wide ledger (/x); the owner can allow it with JOB_PILOTTO_SITE_LIMIT_OVERRIDE=seitenbau-gmbh.jobs.personio.de.';
+const LIMIT = 'site-ledger: seitenbau-gmbh.jobs.personio.de is not visited: 2 live visits today (limit 2), the last at 11:20 by record-sites CI run 38242323673. Counted from the machine-wide ledger (/x); the owner can allow it with JOBADABRA_SITE_LIMIT_OVERRIDE=seitenbau-gmbh.jobs.personio.de.';
 const nothingRan = extra => ({day: '2026-10-12', results: {}, thisRun: {ran: [], unfinished: [], skipped: [], cut: [], stopped: '', usd: 0, maxUsd: 0.5, maxRows: 1, ...extra}});
 test('a run where no row ran is never a pass: red, and its FIRST line says NOT RUN, why, and when the next visit is possible', () => {
   const now = new Date('2026-10-12T12:30:00Z');

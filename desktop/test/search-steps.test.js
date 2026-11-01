@@ -52,7 +52,7 @@ const stale = () => new Date(Date.now() - 2 * 86400000).toISOString();
 test('every step of one press counts from the press: one 3-minute deadline', async () => {
   for (const trigger of ['first', 'you']) {
     const {calls} = await press({lastScoutAt: undefined}, trigger);
-    const at = new Set(calls.map(c => c.env?.JOB_PILOTTO_SEARCH_AT));
+    const at = new Set(calls.map(c => c.env?.JOBADABRA_SEARCH_AT));
     assert.equal(at.size, 1, `${trigger}: every step gets the same press time`);
     assert.equal(Number([...at][0]), Date.parse('2026-10-26T06:21:11Z') / 1000);
     for (const {step, args} of calls) assert.ok(flag(args, '--budget') > 0 && flag(args, '--budget') <= SEARCH_BUDGET_S, `${trigger}: ${step} has the press's clock`);

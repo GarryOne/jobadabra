@@ -1,5 +1,5 @@
 {
-  "name": "job-pilotto-desktop",
+  "name": "jobadabra-desktop",
   "productName": "Job Pilotto",
   "version": "0.8.0",
   "private": true,
@@ -20,7 +20,7 @@
     "test:scenarios": "node scripts/stage.mjs && node --test test/app-scenarios.test.js",
     "build": "node scripts/stage.mjs --app && electron-builder --mac --publish never -c.productName=Jobadabra",
     "screenshots": "node scripts/stage.mjs && node scripts/screenshots.mjs",
-    "gallery": "JOB_PILOTTO_DEMO=1 JOB_PILOTTO_PAGE=gallery.html JOB_PILOTTO_USER_DATA=${TMPDIR:-/tmp}/jobadabra-gallery electron .",
+    "gallery": "JOBADABRA_DEMO=1 JOBADABRA_PAGE=gallery.html JOBADABRA_USER_DATA=${TMPDIR:-/tmp}/jobadabra-gallery electron .",
     "build:win": "node scripts/stage.mjs --app && electron-builder --win --publish never",
     "ui-shots": "node scripts/stage.mjs && node scripts/ui-shots.mjs",
     "shot": "node scripts/stage.mjs && node scripts/shot.mjs",

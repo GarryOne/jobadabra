@@ -24,9 +24,9 @@ ALLOWED = {
     ('src/doctor.py', 'client'): 'the doctor checks the Notion connection when there is one',
     ('src/doctor.py', 'request'): 'the doctor pings users/me',
     # The one client a run makes (src/store_access.py open_run, used by daily and the scout), handed to run_stores: kept only while
-    # the active store is Notion (JOB_PILOTTO_STORE from the app; NOTION_TOKEN alone for Always on and the terminal, D7).
+    # the active store is Notion (JOBADABRA_STORE from the app; NOTION_TOKEN alone for Always on and the terminal, D7).
     ('src/store_access.py', 'client'): 'open_run: the engine client, kept by run_stores only while the store is Notion',
-    ('src/desktop_tracker.py', 'client'): 'run_stores / open_stores(tracker=): the app passes JOB_PILOTTO_STORE',
+    ('src/desktop_tracker.py', 'client'): 'run_stores / open_stores(tracker=): the app passes JOBADABRA_STORE',
 }
 
 
@@ -77,7 +77,7 @@ class OnlyOnTheNotionStoreTest(unittest.TestCase):
 
     def setUp(self):
         folder = tempfile.mkdtemp()
-        self.env = mock.patch.dict(os.environ, {'JOB_PILOTTO_STORE': 'sqlite', 'JOB_PILOTTO_DATA_DIR': folder, 'JOB_PILOTTO_FOLLOW_APP': '0'})
+        self.env = mock.patch.dict(os.environ, {'JOBADABRA_STORE': 'sqlite', 'JOBADABRA_DATA_DIR': folder, 'JOBADABRA_FOLLOW_APP': '0'})
         self.env.start()
         self.addCleanup(self.env.stop)
         self.tracker = mock.Mock(name='a Notion client')   # any request on it would be recorded

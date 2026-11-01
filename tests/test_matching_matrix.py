@@ -39,9 +39,9 @@ def kept(search, postings, cache=None):
                      'locations': {'top_tier': ['zurich'], 'country_wide': [], 'abroad': []}})
         base.update(search)
         (Path(tmp) / 'search.json').write_text(json.dumps(base))
-        env = {k: v for k, v in os.environ.items() if k != 'JOB_PILOTTO_LOCATIONS_FILE'}
+        env = {k: v for k, v in os.environ.items() if k != 'JOBADABRA_LOCATIONS_FILE'}
         done = subprocess.run([sys.executable, '-c', RUN, str(ROOT), json.dumps(rows)], capture_output=True, text=True, timeout=60,
-                              env={**env, 'JOB_PILOTTO_CONFIG_DIR': tmp, 'JOB_PILOTTO_DATA_DIR': data})
+                              env={**env, 'JOBADABRA_CONFIG_DIR': tmp, 'JOBADABRA_DATA_DIR': data})
     assert done.returncode == 0, done.stderr
     return [row[0] if row[1] == 'Zurich, Switzerland' and isinstance(postings[i], str) else (row[0], row[1])
             for i, row in enumerate(json.loads(done.stdout.strip().splitlines()[-1])) if row[2]]

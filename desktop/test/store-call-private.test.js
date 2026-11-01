@@ -20,7 +20,7 @@ test('a store call\'s arguments and answer never reach engine.log, app.log or a 
   const ended = [];
   pipelineRun.onRunEnd(run => ended.push(run));
   // Isolated: the memory store (nothing persists), no Notion token, no .env, never the Desktop App's folder.
-  const isolated = {JOB_PILOTTO_STORE: 'memory', JOB_PILOTTO_FOLLOW_APP: '0', JOB_PILOTTO_NO_DOTENV: '1', NOTION_TOKEN: ''};
+  const isolated = {JOBADABRA_STORE: 'memory', JOBADABRA_FOLLOW_APP: '0', JOBADABRA_NO_DOTENV: '1', NOTION_TOKEN: ''};
   const run = (s, args, onLine, extra, options) => pipelineRun.run(s, args, onLine, {...extra, ...isolated}, options);
   const marker = `private-${process.pid}-${Date.now()}`;
   const answer = await engine.call(storage, 'applications', 'set_stage', {job: {url: `https://x.example/${marker}`, title: marker}, stage: 'Saved'}, {run});

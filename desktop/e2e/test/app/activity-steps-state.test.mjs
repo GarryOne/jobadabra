@@ -75,7 +75,7 @@ test('silence setup failure restores the normal instance, and closed teardown ca
     relaunch: async env => { launches.push(env); if (env) throw new Error('startup failed'); }};
   assert.equal(typeof steps.withSilenceLimit, 'function');
   await assert.rejects(steps.withSilenceLimit(ctx, async () => assert.fail('setup did not finish')), /startup failed/);
-  assert.deepEqual(launches, [{JOB_PILOTTO_E2E_IDLE_MS: '10000'}, undefined]);
+  assert.deepEqual(launches, [{JOBADABRA_E2E_IDLE_MS: '10000'}, undefined]);
   assert.deepEqual(modes, ['pass']);
   closed = true; launches.length = 0;
   await assert.rejects(steps.withSilenceLimit(ctx, async () => {}), /startup failed/);

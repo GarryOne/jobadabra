@@ -1,4 +1,4 @@
-// A fake GitHub release list for the update flow (suites/updates.mjs): the app's updater reads it through JOB_PILOTTO_E2E_UPDATES_URL (lib/updater.js apiBase,
+// A fake GitHub release list for the update flow (suites/updates.mjs): the app's updater reads it through JOBADABRA_E2E_UPDATES_URL (lib/updater.js apiBase,
 // e2e only). `set(releases)` replaces the list; every installer download is counted. Nothing reaches GitHub.
 import http from 'node:http';
 

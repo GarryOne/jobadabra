@@ -9,9 +9,9 @@ import {fileURLToPath} from 'node:url';
 import {funnelRows, improveLines, insightItems, weeklyCardOf, weeklyReports} from '../renderer/reports-view.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const python = process.env.JOB_PILOTTO_CHECK_PYTHON || (process.platform === 'win32' ? 'python' : 'python3');
+const python = process.env.JOBADABRA_CHECK_PYTHON || (process.platform === 'win32' ? 'python' : 'python3');
 const run = spawnSync(python, [path.join(here, 'fixtures/report_insights.py')], {cwd: path.join(here, '../..'), encoding: 'utf8',
-  env: {...process.env, PYTHONUTF8: '1', PYTHONIOENCODING: 'utf-8', JOB_PILOTTO_FOLLOW_APP: '0'}});
+  env: {...process.env, PYTHONUTF8: '1', PYTHONIOENCODING: 'utf-8', JOBADABRA_FOLLOW_APP: '0'}});
 assert.equal(run.status, 0, run.stderr);
 const insights = JSON.parse(run.stdout);
 const words = group => group.lines.map(line => line.text ?? line.fold);

@@ -23,7 +23,7 @@ from .daily_helpers import log_store_job
 def _run_store(stores, message):
     """The run's store (opened here when the caller passed none), or SystemExit(message) when the data is in Notion but Notion can't be
     used: Notion chosen without a token (the store can't open), or a Notion store the engine got no client for (Tracker.from_env:
-    JOB_PILOTTO_DISABLE=notion). Exactly the old `not tracker and chosen() == 'notion'`; this Mac's store runs without Notion."""
+    JOBADABRA_DISABLE=notion). Exactly the old `not tracker and chosen() == 'notion'`; this Mac's store runs without Notion."""
     if stores is None:
         try:
             stores = open_run()

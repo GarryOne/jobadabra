@@ -31,7 +31,7 @@ const freePort = () => new Promise(resolve => { const probe = net.createServer()
 
 // #2536: the owner's current Chrome and Full automation's base-version copy alternate every 30 seconds.
 test('only the person\'s copy controls the older note and repair decisions', async t => {
-  process.env.JOB_PILOTTO_PORT = String(await freePort());
+  process.env.JOBADABRA_PORT = String(await freePort());
   const server = await import('../lib/server.js');
   assert.notEqual(server.PORT, 47111, 'never the owner\'s app socket');
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-browser-versions-'));

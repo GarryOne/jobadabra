@@ -43,7 +43,7 @@ class Words(NamedTuple):
 
 def ai_on():
     """The AI may judge page words in this process: the page reader is on (not the tests' None, not a fixture run) and an AI is ready."""
-    if os.getenv('JOB_PILOTTO_FIXTURE_DIR'):
+    if os.getenv('JOBADABRA_FIXTURE_DIR'):
         return False
     from ..sources import careers
     if careers.READER != 'auto':

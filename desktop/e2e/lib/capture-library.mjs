@@ -37,9 +37,9 @@ export function pruneCaptures(root, {today = new Date().toISOString().slice(0, 1
 // its form answer). Each: how a live run's env records it, and the env a replay sets from it (null: shown only, a kept answer stands for it; `only`: the one value a replay can use).
 export const RUN_SETTINGS = {
   applicant: {recorded: env => env.JP_APPLICANT || 'thin', replayEnv: 'JP_APPLICANT'},
-  model: {recorded: env => env.JOB_PILOTTO_MODEL_OVERRIDE || 'default', replayEnv: 'JOB_PILOTTO_MODEL_OVERRIDE'},
+  model: {recorded: env => env.JOBADABRA_MODEL_OVERRIDE || 'default', replayEnv: 'JOBADABRA_MODEL_OVERRIDE'},
   engine: {recorded: env => env.LIVE_ENGINE || (env.CI ? 'api' : 'cli'), replayEnv: null},
-  store: {recorded: env => env.JOB_PILOTTO_STORE || 'sqlite', replayEnv: null, only: 'sqlite'},
+  store: {recorded: env => env.JOBADABRA_STORE || 'sqlite', replayEnv: null, only: 'sqlite'},
 };
 export const runSettings = (env = process.env) => Object.fromEntries(Object.entries(RUN_SETTINGS).map(([name, setting]) => [name, setting.recorded(env)]));
 

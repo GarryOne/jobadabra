@@ -18,16 +18,16 @@ export function apply(settings, env = process.env) {
   if (isOn(settings)) env.ANTHROPIC_BASE_URL = FREE_BASE;
   else delete env.ANTHROPIC_BASE_URL;
   // The end-to-end journey (desktop/e2e) sends the app's own AI calls through its test proxy, as lib/pipeline.js does for the engine.
-  if (env.JOB_PILOTTO_E2E && env.JOB_PILOTTO_E2E_AI_BASE_URL) env.ANTHROPIC_BASE_URL = env.JOB_PILOTTO_E2E_AI_BASE_URL;
+  if (env.JOBADABRA_E2E && env.JOBADABRA_E2E_AI_BASE_URL) env.ANTHROPIC_BASE_URL = env.JOBADABRA_E2E_AI_BASE_URL;
   // The same for the OpenAI SDK (it follows OPENAI_BASE_URL): the e2e meters and replays the app's OpenAI calls too. Never set for a user.
-  if (env.JOB_PILOTTO_E2E && env.JOB_PILOTTO_E2E_OPENAI_BASE_URL) env.OPENAI_BASE_URL = env.JOB_PILOTTO_E2E_OPENAI_BASE_URL;
+  if (env.JOBADABRA_E2E && env.JOBADABRA_E2E_OPENAI_BASE_URL) env.OPENAI_BASE_URL = env.JOBADABRA_E2E_OPENAI_BASE_URL;
 }
 
 // Turn Free AI on: mint this install's token, keep JPF1.<install>.<token> as the Anthropic key. -> {ok, error?}
 export async function start(storage, env = process.env, fetcher = globalThis.fetch) {
   // The end-to-end journey on CI's Free AI relay (desktop/e2e, lib/engine.mjs freeAi): the relay hands its own JPF1 key, so the Free card is pressed as a person
-  // would, and the website is never asked. Never set for a user (the variable alone, without JOB_PILOTTO_E2E, changes nothing).
-  const relayKey = env.JOB_PILOTTO_E2E && isFreeKey(env.JOB_PILOTTO_E2E_FREE_AI_KEY) ? env.JOB_PILOTTO_E2E_FREE_AI_KEY : '';
+  // would, and the website is never asked. Never set for a user (the variable alone, without JOBADABRA_E2E, changes nothing).
+  const relayKey = env.JOBADABRA_E2E && isFreeKey(env.JOBADABRA_E2E_FREE_AI_KEY) ? env.JOBADABRA_E2E_FREE_AI_KEY : '';
   if (relayKey) storage.setSecret('ANTHROPIC_API_KEY', relayKey);
   else if (siteOffForUser()) return {ok: false, error: 'This is not a regular install, so Free AI is not asked.'};
   else try {
@@ -67,7 +67,7 @@ export function leave(storage, env = process.env) {
 
 // The install's token for the free trial's status (GET /api/trial/status, site/src/trial.js), for an install whose Free AI is not on (it has its own key): Always on
 // sends it as a repo secret, so its runs stop new work at the trial's end like the app. Kept under this name; never throws.
-export const TRIAL_KEY = 'JOB_PILOTTO_TRIAL_KEY';
+export const TRIAL_KEY = 'JOBADABRA_TRIAL_KEY';
 export async function ensureTrialKey(storage, fetcher = globalThis.fetch) {
   if (storage.secret(TRIAL_KEY) || /^JPF1\./.test(storage.secret('ANTHROPIC_API_KEY') || '') || siteOffForUser()) return;
   const install = installId(storage);

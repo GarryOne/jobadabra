@@ -9,7 +9,7 @@ import {refresh as realRefresh} from './linkedin-refresh.js';
 import * as visits from './visits.js';
 
 /** -> {step(signal, onLine), searches(), score(fits, onLine)} for withLinkedin (lib/search-beside.js). */
-export function linkedinSeams(storage, {browser = null, runEngine = pipeline.run, run = visits.runAll, end = visits.done, port = Number(process.env.JOB_PILOTTO_PORT || 47111), refresh = realRefresh} = {}) {
+export function linkedinSeams(storage, {browser = null, runEngine = pipeline.run, run = visits.runAll, end = visits.done, port = Number(process.env.JOBADABRA_PORT || 47111), refresh = realRefresh} = {}) {
   let owned = browser;
   const searches = async () => {
     const {code, stdout} = await runEngine(storage, ['src.desktop', 'linkedin-searches']).catch(() => ({code: 1, stdout: ''}));

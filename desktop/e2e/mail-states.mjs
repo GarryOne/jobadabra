@@ -25,7 +25,7 @@ const demoFocus = JSON.parse(fs.readFileSync(focusFile, 'utf8'));
 fs.writeFileSync(focusFile, JSON.stringify({...demoFocus, items: [...focus.open, ...demoFocus.items], answered_questions: focus.answered}, null, 1));
 
 // Demo mode reads Focus from the app's demo/focus.json unless told otherwise: without this the question states drew as answered.
-const session = await launch({profile, env: {JOB_PILOTTO_DEMO: '1', JOB_PILOTTO_DEMO_FOCUS: focusFile}});
+const session = await launch({profile, env: {JOBADABRA_DEMO: '1', JOBADABRA_DEMO_FOCUS: focusFile}});
 await session.page.waitForSelector('.nav[data-view=focus]:not([hidden])', {timeout: 30000});
 await session.app.evaluate(({BrowserWindow}) => {
   const win = BrowserWindow.getAllWindows()[0];

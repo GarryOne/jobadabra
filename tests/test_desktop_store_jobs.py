@@ -67,10 +67,10 @@ class StoreJobsTests(unittest.TestCase):
                     mock.patch.object(desktop.store, 'connect', create=True), redirect_stdout(out):
                 desktop.main(['jobs'])
             return json.loads(out.getvalue().strip().splitlines()[-1])['jobs']
-        self.assertEqual(len(listed({'JOB_PILOTTO_STORE': 'sqlite'})), 3)
+        self.assertEqual(len(listed({'JOBADABRA_STORE': 'sqlite'})), 3)
         with mock.patch.dict('os.environ', {}, clear=False):
             import os
-            os.environ.pop('JOB_PILOTTO_STORE', None)
+            os.environ.pop('JOBADABRA_STORE', None)
             self.assertIsNone(listed({}), 'no store chosen: the list is the cache, as before')
 
     def test_a_token_left_from_before_a_move_never_reaches_notion(self):
@@ -86,7 +86,7 @@ class StoreJobsTests(unittest.TestCase):
         def jobs(db, limit, notion_jobs=None, kit_inputs=None, **kw):
             seen['inputs'] = kit_inputs
             return {'jobs': notion_jobs}
-        with mock.patch.dict('os.environ', {'JOB_PILOTTO_STORE': 'sqlite'}), mock.patch.object(client.Tracker, 'from_env', return_value=tracker), \
+        with mock.patch.dict('os.environ', {'JOBADABRA_STORE': 'sqlite'}), mock.patch.object(client.Tracker, 'from_env', return_value=tracker), \
                 mock.patch('src.stores.open_stores', return_value=stores), mock.patch.object(desktop, 'jobs', side_effect=jobs), \
                 mock.patch.object(desktop.store, 'connect', create=True), redirect_stdout(out):
             desktop.main(['jobs'])

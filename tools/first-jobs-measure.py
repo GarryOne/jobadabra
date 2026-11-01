@@ -71,10 +71,10 @@ def main():
         'import time\nimport src.sources.ats as ats\n_read = ats._fixture\n'
         f'def _fixture(folder, url):\n    time.sleep({args.delay})\n    return _read(folder, url)\nats._fixture = _fixture\n') if args.delay else None
     (work / 'profile.md').write_text(PROFILE)
-    env = {**os.environ, 'PYTHONUNBUFFERED': '1', 'PYTHONUTF8': '1', 'JOB_PILOTTO_NO_DOTENV': '1', 'JOB_PILOTTO_FOLLOW_APP': '0', 'JOB_PILOTTO_E2E': '1',
-           'JOB_PILOTTO_CONFIG_DIR': str(config), 'JOB_PILOTTO_DATA_DIR': str(data), 'JOB_PILOTTO_FIXTURE_DIR': str(fixtures),
-           'JOB_PILOTTO_PROFILE_FILE': str(work / 'profile.md'), 'JOB_PILOTTO_STORE': 'sqlite', 'JOB_PILOTTO_AI_ENGINE': 'cli',
-           'JOB_PILOTTO_DISABLE': 'mail,notion,telegram,google_jobs,index,job_alerts'}
+    env = {**os.environ, 'PYTHONUNBUFFERED': '1', 'PYTHONUTF8': '1', 'JOBADABRA_NO_DOTENV': '1', 'JOBADABRA_FOLLOW_APP': '0', 'JOBADABRA_E2E': '1',
+           'JOBADABRA_CONFIG_DIR': str(config), 'JOBADABRA_DATA_DIR': str(data), 'JOBADABRA_FIXTURE_DIR': str(fixtures),
+           'JOBADABRA_PROFILE_FILE': str(work / 'profile.md'), 'JOBADABRA_STORE': 'sqlite', 'JOBADABRA_AI_ENGINE': 'cli',
+           'JOBADABRA_DISABLE': 'mail,notion,telegram,google_jobs,index,job_alerts'}
     if args.delay:
         env['PYTHONPATH'] = os.pathsep.join([str(work / 'patch'), str(repo)])
     for name in ('NOTION_TOKEN', 'ANTHROPIC_API_KEY', 'OPENAI_API_KEY', 'TELEGRAM_BOT_TOKEN'):

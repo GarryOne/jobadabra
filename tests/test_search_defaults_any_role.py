@@ -44,9 +44,9 @@ class ShippedDefaultsTest(unittest.TestCase):
 
     def test_the_run_on_the_defaults_wants_no_title_and_is_not_an_it_search(self):
         with tempfile.TemporaryDirectory() as data:
-            env = {k: v for k, v in os.environ.items() if k != 'JOB_PILOTTO_LOCATIONS_FILE'}
+            env = {k: v for k, v in os.environ.items() if k != 'JOBADABRA_LOCATIONS_FILE'}
             done = subprocess.run([sys.executable, '-c', RUN, str(ROOT), json.dumps(list(TECH_TITLES))], capture_output=True, text=True, timeout=60,
-                                  env={**env, 'JOB_PILOTTO_CONFIG_DIR': str(ROOT / 'config'), 'JOB_PILOTTO_DATA_DIR': data})
+                                  env={**env, 'JOBADABRA_CONFIG_DIR': str(ROOT / 'config'), 'JOBADABRA_DATA_DIR': data})
         self.assertEqual(done.returncode, 0, done.stderr)
         got = json.loads(done.stdout.strip().splitlines()[-1])
         self.assertEqual(got['wanted'], [False] * len(TECH_TITLES), 'no role words: no title is a sure match')

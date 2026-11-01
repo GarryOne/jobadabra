@@ -13,7 +13,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 // The engine's variable for each text kept on this Mac (src/stores sqlite adapter).
-const LOCAL_TEXTS = {JOB_PILOTTO_PROFILE_FILE: TEXT_FILES.profile, JOB_PILOTTO_ANSWERS_FILE: TEXT_FILES.answers, JOB_PILOTTO_KNOWLEDGE_FILE: TEXT_FILES.knowledge};
+const LOCAL_TEXTS = {JOBADABRA_PROFILE_FILE: TEXT_FILES.profile, JOBADABRA_ANSWERS_FILE: TEXT_FILES.answers, JOBADABRA_KNOWLEDGE_FILE: TEXT_FILES.knowledge};
 
 import {ROOT} from './root.js';
 import {isolatedFile} from './keychain.js';
@@ -21,7 +21,7 @@ import {notifyEnv} from './notify-channel.js';
 import {CONFIG_FILES, cleanConfigFiles, copyWithoutNotes} from './config-text.js';
 
 export const REPO = ROOT;
-const OVERRIDE = process.env.JOB_PILOTTO_MODEL_OVERRIDE;   // set only by the end-to-end journey (desktop/e2e): every step on one cheap model
+const OVERRIDE = process.env.JOBADABRA_MODEL_OVERRIDE;   // set only by the end-to-end journey (desktop/e2e): every step on one cheap model
 // small: the engine's small AI steps (src/ai/models.py), sent as data so a newer model needs no engine release.
 export const MODELS = OVERRIDE ? {enrich: OVERRIDE, score: OVERRIDE, kit: OVERRIDE, insight: OVERRIDE, small: OVERRIDE}
   : {enrich: 'claude-haiku-5-5', score: 'claude-sonnet-5-5', kit: 'claude-sonnet-5-5', insight: 'claude-sonnet-5-5', small: 'claude-haiku-5-5'};
@@ -54,8 +54,8 @@ export function ensureConfig(storage) {
 // On Windows, Python can't open a socket without SystemRoot, and finds the user's folders through the rest.
 const SYSTEM = ['PATH', 'HOME', 'USER', 'LOGNAME', 'SHELL', 'TMPDIR', 'LANG', 'LC_ALL', 'LC_CTYPE', 'SSL_CERT_FILE',
   'SystemRoot', 'SYSTEMROOT', 'windir', 'USERPROFILE', 'USERNAME', 'APPDATA', 'LOCALAPPDATA', 'TEMP', 'TMP', 'ComSpec', 'PATHEXT',
-  'JOB_PILOTTO_FIXTURE_DIR', 'JOB_PILOTTO_LOCATIONS_FILE',   // these two: the end-to-end journey's fixture feeds and fictional candidate (desktop/e2e), never set for a user
-  'JOB_PILOTTO_SEARCH_TAPE', 'JOB_PILOTTO_SEARCH_TAPE_MODE', 'JOB_PILOTTO_TAPE_WAIT_SCALE', 'JOB_PILOTTO_TAPE_LIVE',   // the persona search check's tape (src/search_tape.py, tools/persona-search), never set for a user
+  'JOBADABRA_FIXTURE_DIR', 'JOBADABRA_LOCATIONS_FILE',   // these two: the end-to-end journey's fixture feeds and fictional candidate (desktop/e2e), never set for a user
+  'JOBADABRA_SEARCH_TAPE', 'JOBADABRA_SEARCH_TAPE_MODE', 'JOBADABRA_TAPE_WAIT_SCALE', 'JOBADABRA_TAPE_LIVE',   // the persona search check's tape (src/search_tape.py, tools/persona-search), never set for a user
   // Claude Code's own headless sign-in (`claude setup-token`): where there is no Keychain sign-in (Linux, a CI runner) it is the only way
   // the user's Claude Code answers. It goes to the engine only to reach the user's own `claude -p` (27 Oct 2026: on a runner every AI step
   // of a search failed as "signed out" because this was left out).
@@ -71,21 +71,21 @@ export function pipelineEnv(storage, parent = process.env) {
     ...Object.fromEntries(SYSTEM.filter(name => parent[name]).map(name => [name, parent[name]])),
     PYTHONUNBUFFERED: '1',
     PYTHONUTF8: '1',  // files and pipes in UTF-8 on Windows too (its default is the ANSI code page)
-    JOB_PILOTTO_NO_DOTENV: '1',
-    ...(parent.JOB_PILOTTO_E2E ? {JOB_PILOTTO_E2E: '1'} : {}),
-    ...(parent.JOB_PILOTTO_TWIN ? {JOB_PILOTTO_TWIN: '1'} : {}),
-    ...(isolatedFile(parent) ? {JOB_PILOTTO_ISOLATED_SECRETS: isolatedFile(parent)} : {}),   // their secrets: the run's own file, never the Keychain (lib/keychain.js)  // a live-test twin (lib/twin.js): the engine sees no Keychain either  // the end-to-end journey: the engine ignores this Mac's Keychain (src/secret_store.py)
-    ...(/^profile-[0-9a-f]{12}$/.test(settings.profileId || '') ? {JOB_PILOTTO_PROFILE_ID: settings.profileId} : {}),   // the engine names a site's account item after the profile (src/ai/passwords.py)
-    JOB_PILOTTO_SOURCE: 'Jobadabra app',  // the Source of Applications rows the app creates
-    JOB_PILOTTO_TZ: process.env.JOB_PILOTTO_TZ || Intl.DateTimeFormat().resolvedOptions().timeZone,  // the user's own time zone (dates, interview times)
-    JOB_PILOTTO_CONFIG_DIR: storage.path('config'),
-    JOB_PILOTTO_DATA_DIR: storage.path('data'),
-    JOB_PILOTTO_CV_PATH: storage.path('cv.pdf'),
-    JOB_PILOTTO_LETTER_STYLE_FILE: storage.path('cover-letter/style.json'),   // the cover letter style (lib/letter-style.js): a kit's letter follows it
-    ...(requestLog.logPath() ? {JOB_PILOTTO_NOTION_LOG: requestLog.logPath()} : {}),  // Python's Notion requests: same file
+    JOBADABRA_NO_DOTENV: '1',
+    ...(parent.JOBADABRA_E2E ? {JOBADABRA_E2E: '1'} : {}),
+    ...(parent.JOBADABRA_TWIN ? {JOBADABRA_TWIN: '1'} : {}),
+    ...(isolatedFile(parent) ? {JOBADABRA_ISOLATED_SECRETS: isolatedFile(parent)} : {}),   // their secrets: the run's own file, never the Keychain (lib/keychain.js)  // a live-test twin (lib/twin.js): the engine sees no Keychain either  // the end-to-end journey: the engine ignores this Mac's Keychain (src/secret_store.py)
+    ...(/^profile-[0-9a-f]{12}$/.test(settings.profileId || '') ? {JOBADABRA_PROFILE_ID: settings.profileId} : {}),   // the engine names a site's account item after the profile (src/ai/passwords.py)
+    JOBADABRA_SOURCE: 'Jobadabra app',  // the Source of Applications rows the app creates
+    JOBADABRA_TZ: process.env.JOBADABRA_TZ || Intl.DateTimeFormat().resolvedOptions().timeZone,  // the user's own time zone (dates, interview times)
+    JOBADABRA_CONFIG_DIR: storage.path('config'),
+    JOBADABRA_DATA_DIR: storage.path('data'),
+    JOBADABRA_CV_PATH: storage.path('cv.pdf'),
+    JOBADABRA_LETTER_STYLE_FILE: storage.path('cover-letter/style.json'),   // the cover letter style (lib/letter-style.js): a kit's letter follows it
+    ...(requestLog.logPath() ? {JOBADABRA_NOTION_LOG: requestLog.logPath()} : {}),  // Python's Notion requests: same file
     // Pages that only exist after their scripts run, rendered in the app's own Chromium (lib/page-render.js, src/sources/render.py).
-    ...(pageRender.address() ? {JOB_PILOTTO_RENDER_URL: pageRender.address(), JOB_PILOTTO_RENDER_TOKEN: pageRender.TOKEN} : {}),
-    ...(crashReports?.enabled() ? {JOB_PILOTTO_SENTRY_DSN: crashReports.dsn, JOB_PILOTTO_APP_VERSION: crashReports.version, JOB_PILOTTO_INSTALL_ID: crashReports.installId} : {}),
+    ...(pageRender.address() ? {JOBADABRA_RENDER_URL: pageRender.address(), JOBADABRA_RENDER_TOKEN: pageRender.TOKEN} : {}),
+    ...(crashReports?.enabled() ? {JOBADABRA_SENTRY_DSN: crashReports.dsn, JOBADABRA_APP_VERSION: crashReports.version, JOBADABRA_INSTALL_ID: crashReports.installId} : {}),
   };
   // The Profile and standard answers are read from Notion; before it is connected (Trying) from this Mac's files
   // (src/paths.py local_text). Never set when connected: the local file would win over Notion.
@@ -95,47 +95,47 @@ export function pipelineEnv(storage, parent = process.env) {
   }
   // Demo mode too: its "connected" Notion is fictional, and the Strategy page's goals come from the demo's own profile.md (desktop/demo/).
   if (!notionGate.notionInUse(storage) || demoMode) {
-    for (const [variable, name] of [['JOB_PILOTTO_PROFILE_FILE', 'profile.md'], ['JOB_PILOTTO_ANSWERS_FILE', 'answers.md']]) {
+    for (const [variable, name] of [['JOBADABRA_PROFILE_FILE', 'profile.md'], ['JOBADABRA_ANSWERS_FILE', 'answers.md']]) {
       if (fs.existsSync(storage.path(name))) env[variable] = storage.path(name);
     }
   }
   // The store the person chose (lib/store/index.js): the engine opens the same one (src/stores chosen()); unset, it decides as before.
   // On this Mac the texts are the app's own files, read and written by the app and the engine alike (one copy).
   // Notion chosen but not connected: the engine runs as while trying (#410: else the search crashed on "needs NOTION_TOKEN").
-  if (settings.store && notionGate.tracking(storage)) env.JOB_PILOTTO_STORE = settings.store;
+  if (settings.store && notionGate.tracking(storage)) env.JOBADABRA_STORE = settings.store;
   if (settings.store === 'sqlite') {
     for (const [variable, name] of Object.entries(LOCAL_TEXTS)) env[variable] = storage.path(name);
   }
   // Free AI (lib/ai-free.js): the Python SDK follows ANTHROPIC_BASE_URL like the app's.
   if (aiFree.isOn(settings)) env.ANTHROPIC_BASE_URL = aiFree.FREE_BASE; else delete env.ANTHROPIC_BASE_URL;
   // The end-to-end journey (desktop/e2e) sends the engine's AI calls through its own slow proxy to reproduce a slow AI; never set for a user.
-  if (parent.JOB_PILOTTO_E2E && parent.JOB_PILOTTO_E2E_AI_BASE_URL) env.ANTHROPIC_BASE_URL = parent.JOB_PILOTTO_E2E_AI_BASE_URL;
-  if (parent.JOB_PILOTTO_E2E && parent.JOB_PILOTTO_E2E_OPENAI_BASE_URL) env.OPENAI_BASE_URL = parent.JOB_PILOTTO_E2E_OPENAI_BASE_URL;   // the Python OpenAI SDK too
+  if (parent.JOBADABRA_E2E && parent.JOBADABRA_E2E_AI_BASE_URL) env.ANTHROPIC_BASE_URL = parent.JOBADABRA_E2E_AI_BASE_URL;
+  if (parent.JOBADABRA_E2E && parent.JOBADABRA_E2E_OPENAI_BASE_URL) env.OPENAI_BASE_URL = parent.JOBADABRA_E2E_OPENAI_BASE_URL;   // the Python OpenAI SDK too
   // The end-to-end journey's stand-ins for Notion, Telegram and Google (desktop/e2e/lib/*-proxy|fake.mjs), and the fake Google sign-in that goes with its fake Gmail.
   // Only in a test run: the engine's env is a whitelist, so without this the engine's own calls went straight to the real services (5 Oct 2026).
-  if (parent.JOB_PILOTTO_E2E) {
-    for (const name of ['JOB_PILOTTO_E2E_NOTION_BASE_URL', 'JOB_PILOTTO_E2E_NOTION_STANDIN', 'JOB_PILOTTO_E2E_TELEGRAM_BASE_URL', 'JOB_PILOTTO_E2E_GOOGLE_BASE_URL']) if (parent[name]) env[name] = parent[name];
-    if (parent.JOB_PILOTTO_E2E_GOOGLE_BASE_URL) for (const name of ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'GOOGLE_REFRESH_TOKEN']) if (parent[name]) env[name] = parent[name];
+  if (parent.JOBADABRA_E2E) {
+    for (const name of ['JOBADABRA_E2E_NOTION_BASE_URL', 'JOBADABRA_E2E_NOTION_STANDIN', 'JOBADABRA_E2E_TELEGRAM_BASE_URL', 'JOBADABRA_E2E_GOOGLE_BASE_URL']) if (parent[name]) env[name] = parent[name];
+    if (parent.JOBADABRA_E2E_GOOGLE_BASE_URL) for (const name of ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'GOOGLE_REFRESH_TOKEN']) if (parent[name]) env[name] = parent[name];
     // A fictional candidate's Profile (the quality suite's personas, desktop/e2e/fixtures/golden-*): a file the engine scores against instead of the test page's Profile. Test runs only.
-    if (parent.JOB_PILOTTO_E2E_PROFILE_FILE) env.JOB_PILOTTO_PROFILE_FILE = parent.JOB_PILOTTO_E2E_PROFILE_FILE;
+    if (parent.JOBADABRA_E2E_PROFILE_FILE) env.JOBADABRA_PROFILE_FILE = parent.JOBADABRA_E2E_PROFILE_FILE;
     // The e2e Python step map (desktop/e2e/lib/pycov, main's coverage runs): the recorder rides in on PYTHONPATH. A user's own PYTHONPATH never gets through.
     if (parent.E2E_PY_COVERAGE_DIR && parent.PYTHONPATH) Object.assign(env, {E2E_PY_COVERAGE_DIR: parent.E2E_PY_COVERAGE_DIR, PYTHONPATH: parent.PYTHONPATH});
   }
   // The AI engine the user chose (lib/claude-code.js): their own Claude Code or Codex on this Mac, or an API key (Anthropic or OpenAI).
   Object.assign(env, claudeCode.pipelineVariables(settings, !!env.ANTHROPIC_API_KEY, !!env.OPENAI_API_KEY));
   if (claudeCode.aiReady(settings, !!env.ANTHROPIC_API_KEY, !!env.OPENAI_API_KEY)) {
-    env.JOB_PILOTTO_ENRICH_MODEL = MODELS.enrich;
-    env.JOB_PILOTTO_SCORE_MODEL = MODELS.score;
-    env.JOB_PILOTTO_KIT_MODEL = MODELS.kit;
-    env.JOB_PILOTTO_INSIGHT_MODEL = MODELS.insight;
-    env.JOB_PILOTTO_MAIL_MODEL = MODELS.enrich;
-    env.JOB_PILOTTO_SMALL_MODEL = MODELS.small;
+    env.JOBADABRA_ENRICH_MODEL = MODELS.enrich;
+    env.JOBADABRA_SCORE_MODEL = MODELS.score;
+    env.JOBADABRA_KIT_MODEL = MODELS.kit;
+    env.JOBADABRA_INSIGHT_MODEL = MODELS.insight;
+    env.JOBADABRA_MAIL_MODEL = MODELS.enrich;
+    env.JOBADABRA_SMALL_MODEL = MODELS.small;
   }
   // The end-to-end journey: every other AI step the engine has (interview review, prep, rejection review) on the same cheap model, so a step added to
   // the journey later can never quietly run on Opus or Sonnet.
   // The engine's main and big tiers too (src/ai/models.py: the job-boards proposal ran Sonnet under the override, 27 Oct 2026).
-  if (OVERRIDE) Object.assign(env, {JOB_PILOTTO_INTERVIEW_MODEL: OVERRIDE, JOB_PILOTTO_PREP_MODEL: OVERRIDE, JOB_PILOTTO_REJECTION_MODEL: OVERRIDE,
-    JOB_PILOTTO_MAIN_MODEL: OVERRIDE, JOB_PILOTTO_BIG_MODEL: OVERRIDE});
+  if (OVERRIDE) Object.assign(env, {JOBADABRA_INTERVIEW_MODEL: OVERRIDE, JOBADABRA_PREP_MODEL: OVERRIDE, JOBADABRA_REJECTION_MODEL: OVERRIDE,
+    JOBADABRA_MAIN_MODEL: OVERRIDE, JOBADABRA_BIG_MODEL: OVERRIDE});
   Object.assign(env, poolShare.variables(storage) || {});  // "Help the pool grow": only when the user turned it on
   if (settings.telegramChatId) env.TELEGRAM_CHAT_ID = String(settings.telegramChatId);
   Object.assign(env, notifyEnv(storage));   // how the person wants to be told (Settings → Automation → Notifications): src/notify.py

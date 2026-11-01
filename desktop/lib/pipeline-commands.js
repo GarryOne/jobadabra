@@ -99,7 +99,7 @@ export async function posting(storage, code) {
 // Why a rejected application was turned down (src/ai/rejection.py, Claude Sonnet 5): verdict + lesson on its
 // Applications row and page. The last output line is the one-line summary.
 export async function reviewRejection(storage, url, onLine = () => {}) {
-  const {code, stdout} = await run(storage, ['src.ai.rejection', '--job', url], onLine, {JOB_PILOTTO_TRIGGER: 'Mac (you)'});
+  const {code, stdout} = await run(storage, ['src.ai.rejection', '--job', url], onLine, {JOBADABRA_TRIGGER: 'Mac (you)'});
   const lines = stdout.trim().split('\n').filter(Boolean);
   const summary = lines.find(line => line.includes('Why rejected')) || '';
   return {ok: code === 0 && !!summary, text: summary || lines.pop() || 'The review failed (see the activity log)'};

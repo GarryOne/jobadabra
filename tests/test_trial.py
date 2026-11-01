@@ -11,7 +11,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from src import daily, trial  # noqa: E402
 from src.ai.providers import anthropic_api  # noqa: E402
 
-ENV = {'JOB_PILOTTO_TRIAL_KEY': 'JPF1.install-0001.tok', 'JOB_PILOTTO_FIRST_RUN': '2026-08-01T00:00:00Z'}
+ENV = {'JOBADABRA_TRIAL_KEY': 'JPF1.install-0001.tok', 'JOBADABRA_FIRST_RUN': '2026-08-01T00:00:00Z'}
 
 
 def site(body, asked=None):
@@ -34,7 +34,7 @@ class TrialTests(unittest.TestCase):
         trial.status(20, urlopen=site({'ok': True, 'ended': True}, asked), env=ENV)
         url, headers = asked[0]
         self.assertIn('/api/trial/status?applied=20&first=2026-08-01T00%3A00%3A00Z', url)
-        self.assertEqual(headers['X-api-key'], ENV['JOB_PILOTTO_TRIAL_KEY'])
+        self.assertEqual(headers['X-api-key'], ENV['JOBADABRA_TRIAL_KEY'])
 
     def test_new_work_modes_pause_after_the_wall_and_tracking_modes_do_not(self):
         over = site({'ok': True, 'ended': True, 'pro': False})
@@ -51,7 +51,7 @@ class TrialTests(unittest.TestCase):
 
     def test_the_license_key_is_sent_so_a_founder_key_lifts_the_wall(self):
         asked = []
-        trial.status(0, urlopen=site({'ok': True}, asked), env={**ENV, 'JOB_PILOTTO_LICENSE_KEY': 'JP1.a.b'})
+        trial.status(0, urlopen=site({'ok': True}, asked), env={**ENV, 'JOBADABRA_LICENSE_KEY': 'JP1.a.b'})
         self.assertEqual(asked[0][1]['X-jp-license'], 'JP1.a.b')
 
 
@@ -94,9 +94,9 @@ import importlib.util  # noqa: E402
 @unittest.skipUnless(importlib.util.find_spec('anthropic'), 'the anthropic SDK is not installed here')
 class AiLaneTests(unittest.TestCase):
     def test_the_sdk_follows_the_repo_variable_to_free_ai_and_stays_default_without_it(self):
-        with mock.patch.dict(os.environ, {'ANTHROPIC_API_KEY': 'JPF1.i.t', 'JOB_PILOTTO_AI_BASE_URL': 'https://www.jobpilotto.top/api/ai'}):
+        with mock.patch.dict(os.environ, {'ANTHROPIC_API_KEY': 'JPF1.i.t', 'JOBADABRA_AI_BASE_URL': 'https://www.jobpilotto.top/api/ai'}):
             self.assertEqual(str(anthropic_api.sdk('score').base_url).rstrip('/'), 'https://www.jobpilotto.top/api/ai')
-        env = {k: v for k, v in os.environ.items() if k not in ('JOB_PILOTTO_AI_BASE_URL', 'ANTHROPIC_BASE_URL')}
+        env = {k: v for k, v in os.environ.items() if k not in ('JOBADABRA_AI_BASE_URL', 'ANTHROPIC_BASE_URL')}
         with mock.patch.dict(os.environ, {**env, 'ANTHROPIC_API_KEY': 'k'}, clear=True):
             self.assertIn('api.anthropic.com', str(anthropic_api.sdk('score').base_url))
 

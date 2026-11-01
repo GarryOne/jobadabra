@@ -83,7 +83,7 @@ class ChecksTest(unittest.TestCase):
         line = doctor.check_notion(FakeTracker(fail=True), 'sqlite')
         self.assertEqual((line.state, line.fix), (INFO, ''))
         self.assertIn('this Mac', line.detail)
-        with mock.patch.dict(doctor.os.environ, {'JOB_PILOTTO_STORE': 'sqlite', 'NOTION_TOKEN': 'secret_x'}), \
+        with mock.patch.dict(doctor.os.environ, {'JOBADABRA_STORE': 'sqlite', 'NOTION_TOKEN': 'secret_x'}), \
                 mock.patch.object(doctor.notion, 'Tracker', side_effect=AssertionError('no Notion client on this Mac\'s store')), \
                 mock.patch.object(doctor, 'active_store', return_value=memory.open_store()) as opened, \
                 mock.patch.object(doctor, 'run_checks', return_value=[]) as ran, mock.patch('sys.argv', ['doctor', '--json']), \
@@ -118,7 +118,7 @@ class ChecksTest(unittest.TestCase):
 
     def test_features_line_lists_on_off_and_switched_off(self):
         env = {'NOTION_TOKEN': 'set', 'TELEGRAM_BOT_TOKEN': 'set', 'TELEGRAM_CHAT_ID': 'set',
-               'SERPAPI_API_KEY': 'set', 'JOB_PILOTTO_DISABLE': 'google_jobs'}
+               'SERPAPI_API_KEY': 'set', 'JOBADABRA_DISABLE': 'google_jobs'}
         check = doctor.check_features(env)
         self.assertEqual(check.state, OK)
         self.assertIn('on: discover, telegram, notion, scout', check.detail)
@@ -127,7 +127,7 @@ class ChecksTest(unittest.TestCase):
         parked = doctor.check_features({'GOOGLE_REFRESH_TOKEN': 'set', 'ANTHROPIC_API_KEY': 'set'}).detail.split('parked: ')[1]
         for name in ('job_alerts', 'adzuna', 'jooble', 'google_jobs', 'brave_search'):
             self.assertIn(name, parked)
-        self.assertEqual(doctor.check_features({'JOB_PILOTTO_DISABLE': 'all'}).state, INFO)
+        self.assertEqual(doctor.check_features({'JOBADABRA_DISABLE': 'all'}).state, INFO)
 
     def test_no_kits_points_to_prepare_top(self):
         with mock.patch.object(doctor.apply_batch, 'ready_jobs', return_value=[]):

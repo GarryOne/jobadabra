@@ -42,8 +42,8 @@ export function format(area, message, data, at = new Date()) {
 }
 export function log(area, message, data) {
   const line = format(area, message, data);
-  // The terminal (npm start) shows only what went wrong; everything is in logs/app.log. JOB_PILOTTO_VERBOSE=1: all of it.
-  if (process.env.JOB_PILOTTO_VERBOSE || data?.error || /\b(fail|error|refused|429)\b/i.test(message)) console.log(line);
+  // The terminal (npm start) shows only what went wrong; everything is in logs/app.log. JOBADABRA_VERBOSE=1: all of it.
+  if (process.env.JOBADABRA_VERBOSE || data?.error || /\b(fail|error|refused|429)\b/i.test(message)) console.log(line);
   if (!file) return;
   newDay(new Date());
   if (write) { try { write(line); return; } catch {} }

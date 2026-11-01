@@ -274,7 +274,7 @@ def prepare_kit(db, code, stores, client=None, model=kit.DEFAULT_MODEL, opener=N
 
 
 def apply_switches(args):
-    """JOB_PILOTTO_DISABLE (src/features.py) wins over the flags the workflow passes."""
+    """JOBADABRA_DISABLE (src/features.py) wins over the flags the workflow passes."""
     for name, flag in (('enrich', 'enrich_max'), ('score', 'score_max'), ('auto_kits', 'auto_kit_max')):
         if features.disabled(name):
             setattr(args, flag, 0)
@@ -339,8 +339,8 @@ def downloaded_index():
     if features.disabled('index'):
         return []
     index = employer_index.load()
-    # Default: only feeds with roles in your places. JOB_PILOTTO_INDEX_ALL=1 crawls the whole worldwide index.
-    if os.getenv('JOB_PILOTTO_INDEX_ALL'):
+    # Default: only feeds with roles in your places. JOBADABRA_INDEX_ALL=1 crawls the whole worldwide index.
+    if os.getenv('JOBADABRA_INDEX_ALL'):
         return index
     kinds = role_kinds.of_search(load_search_config())
     me = employer_index.me_now()

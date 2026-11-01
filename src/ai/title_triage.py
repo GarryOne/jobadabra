@@ -4,7 +4,7 @@ scored. Now a title in the user's places that the words miss is shown to Haiku w
 could fit, and each decision is kept per search (data/title_triage.json), so a title is asked about once. The fit score then grades them.
 
 What Haiku sees: job titles and the search's own words, nothing else (no CV, no profile, no employer). Off without AI, or with
-JOB_PILOTTO_DISABLE=title_triage: the exact role words only, as before.
+JOBADABRA_DISABLE=title_triage: the exact role words only, as before.
 """
 import hashlib
 import json

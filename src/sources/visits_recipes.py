@@ -30,7 +30,7 @@ def layout_ok(recipe):
 def recipe_for(url, now=None):
     """The reading recipe learned for this site (src/ai/visit_reader.py), or None. With none learned here, a layout at least 3 installs share for
     this host (the central pool, 8 Oct 2026: no Claude call to learn a site others already read), checked again and kept like a learned one,
-    so it is forgotten after RECIPE_MISSES misses like any other. JOB_PILOTTO_DISABLE=pool_layouts turns that off."""
+    so it is forgotten after RECIPE_MISSES misses like any other. JOBADABRA_DISABLE=pool_layouts turns that off."""
     kept = ((visits._load().get('recipes') or {}).get(visits.host_of(url)) or {}).get('recipe')
     if kept:
         return kept

@@ -26,7 +26,7 @@ registerHooks({load(url, context, next) {
 test('form knowledge and readiness follow any browser, independently of Chrome version identity', async t => {
   const probe = net.createServer().listen(0, '127.0.0.1');
   await once(probe, 'listening');
-  process.env.JOB_PILOTTO_PORT = String(probe.address().port);
+  process.env.JOBADABRA_PORT = String(probe.address().port);
   await new Promise(resolve => probe.close(resolve));
   const server = await import('../lib/server.js');
   assert.notEqual(server.PORT, 47111, 'never the owner\'s app port');

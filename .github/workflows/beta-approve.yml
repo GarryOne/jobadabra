@@ -61,7 +61,7 @@ jobs:
           if [ "$status" != 0 ]; then echo "$TAG is not offered on $PLATFORM: a high-severity layout-check finding in its end-to-end suites."; exit 1; fi
       - name: The shared release checks (unit suites green on the commit; soak on, the Notion schema additive over stable)
         env:
-          JOB_PILOTTO_SOAK: ${{ vars.JOB_PILOTTO_SOAK }}
+          JOBADABRA_SOAK: ${{ vars.JOB_PILOTTO_SOAK }}
         shell: bash -eo pipefail {0}   # a program piped into tee/cat keeps its exit code (tests/test_workflow_pipefail.py)
         run: tools/release-checks.sh "$TAG" "$REF"
       - name: Release it to this platform's beta testers (Mac with the soak off, stable)

@@ -51,9 +51,9 @@ class EmployersFixturesTest(unittest.TestCase):
             for board in (FEEDS / cls.PERSONA).glob('*.json'):
                 if board.name != 'person.json':
                     shutil.copy(board, feeds / 'employers' / board.name)
-        # JOB_PILOTTO_FOLLOW_APP=0: the child process is not under unittest, so on a Mac with the app set up it read the app's own scout
+        # JOBADABRA_FOLLOW_APP=0: the child process is not under unittest, so on a Mac with the app set up it read the app's own scout
         # state (7 Oct 2026: E2E Ghost and Hollow went missing on the owner's Mac only, CI green).
-        env = dict(os.environ, JOB_PILOTTO_FIXTURE_DIR=str(feeds), JOB_PILOTTO_LOCATIONS_FILE=str(FEEDS / cls.PERSONA / 'person.json'), JOB_PILOTTO_FOLLOW_APP='0')
+        env = dict(os.environ, JOBADABRA_FIXTURE_DIR=str(feeds), JOBADABRA_LOCATIONS_FILE=str(FEEDS / cls.PERSONA / 'person.json'), JOBADABRA_FOLLOW_APP='0')
         out = subprocess.run([sys.executable, '-c', SCRIPT], cwd=ROOT, env=env, capture_output=True, text=True, timeout=120)
         assert out.returncode == 0, out.stderr[-2000:]
         cls.data = json.loads(out.stdout.strip().splitlines()[-1])

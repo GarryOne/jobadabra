@@ -21,7 +21,7 @@ def fields(line):
 
 class ShipTimelineTest(ShipFixture):
     def ship_env(self, **extra):
-        return {**os.environ, 'JOB_PILOTTO_SESSION': 'test-session', **extra}
+        return {**os.environ, 'JOBADABRA_SESSION': 'test-session', **extra}
 
     def test_a_landing_appends_one_complete_line_and_the_next_one_is_appended_not_overwritten(self):
         self.change(self.tree, 'tools/pre-push-check.sh', '#!/bin/sh\ncat >/dev/null\necho "    7s  python (clean checkout)" >&2\necho "    2s  worker (clean checkout)" >&2\n', 'Hook with steps')
@@ -69,8 +69,8 @@ class HeavyLineTest(unittest.TestCase):
     def test_every_hold_logs_branch_session_run_seconds_and_load(self):
         with tempfile.TemporaryDirectory() as d:
             log = Path(d) / 'gate-timing.log'
-            env = {**{k: v for k, v in os.environ.items() if not k.startswith(('JOB_PILOTTO_HEAVY', 'JP_HEAVY'))}, 'JOB_PILOTTO_HEAVY_DIR': str(Path(d) / 'heavy'), 'JOB_PILOTTO_HEAVY_SHARED': str(LOCK), 'JOB_PILOTTO_HEAVY_TIMING_LOG': str(log),
-                   'JOB_PILOTTO_SESSION': 'sess-x', 'JOB_PILOTTO_HEAVY_SLOTS': '1'}
+            env = {**{k: v for k, v in os.environ.items() if not k.startswith(('JOBADABRA_HEAVY', 'JP_HEAVY'))}, 'JOBADABRA_HEAVY_DIR': str(Path(d) / 'heavy'), 'JOBADABRA_HEAVY_SHARED': str(LOCK), 'JOBADABRA_HEAVY_TIMING_LOG': str(log),
+                   'JOBADABRA_SESSION': 'sess-x', 'JOBADABRA_HEAVY_SLOTS': '1'}
             self.assertEqual(subprocess.run(['bash', str(LOCK), 'row-replay', 'bash', '-c', 'exit 3'], env=env, capture_output=True, text=True).returncode, 3)
             line = log.read_text().splitlines()[-1]
             data = fields(line)
@@ -84,13 +84,13 @@ class SessionNameTest(unittest.TestCase):
         return subprocess.run(['bash', '-c', f'source {ROOT / "tools" / "session-name.sh"}; session_name'], capture_output=True, text=True, env={**os.environ, **env}).stdout.strip()
 
     def test_the_env_names_win_and_the_sessions_folder_is_walked_through_the_parents(self):
-        self.assertEqual(self.name(JOB_PILOTTO_SESSION='a', JP_SESSION='b'), 'a')
-        self.assertEqual(self.name(JOB_PILOTTO_SESSION='', JP_SESSION='b'), 'b')
+        self.assertEqual(self.name(JOBADABRA_SESSION='a', JP_SESSION='b'), 'a')
+        self.assertEqual(self.name(JOBADABRA_SESSION='', JP_SESSION='b'), 'b')
         with tempfile.TemporaryDirectory() as d:
             # a session file for this python process: bash's parent chain reaches it
             (Path(d) / f'{os.getpid()}.json').write_text(json.dumps({'name': 'found-by-walk'}))
-            self.assertEqual(self.name(JOB_PILOTTO_SESSION='', JP_SESSION='', JP_SESSIONS_DIR=d), 'found-by-walk')
-            self.assertEqual(self.name(JOB_PILOTTO_SESSION='', JP_SESSION='', JP_SESSIONS_DIR=d + '-none'), '?')
+            self.assertEqual(self.name(JOBADABRA_SESSION='', JP_SESSION='', JP_SESSIONS_DIR=d), 'found-by-walk')
+            self.assertEqual(self.name(JOBADABRA_SESSION='', JP_SESSION='', JP_SESSIONS_DIR=d + '-none'), '?')
 
 
 @unittest.skipUnless(shutil.which('node'), 'needs node')

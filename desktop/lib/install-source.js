@@ -22,7 +22,7 @@ export function consume(dir, storage) {
 // An app downloaded with a button has no install-source.txt: at its first start it asks the website once which channel the
 // download click from this network came from (site/src/attribution.js) and keeps that label the same way. One try, ever
 // (settings.installSourceAsked): no answer, no channel, and the app never asks again.
-export const ATTRIBUTION = `${process.env.JOB_PILOTTO_SITE || 'https://www.jobpilotto.top'}/api/attribution`;
+export const ATTRIBUTION = `${process.env.JOBADABRA_SITE || 'https://www.jobpilotto.top'}/api/attribution`;
 export async function attribute(storage, {platform = process.platform, fetcher = globalThis.fetch, timeoutMs = 5000} = {}) {
   const settings = storage.settings();
   if (settings.installSource || settings.installSourceAsked) return null;

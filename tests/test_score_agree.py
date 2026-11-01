@@ -9,8 +9,8 @@ from unittest import mock
 
 from src.ai import score
 
-FREE_AI = {'JOB_PILOTTO_AI_ENGINE': 'api', 'ANTHROPIC_API_KEY': 'JPF1.test-install'}
-CLAUDE = {'JOB_PILOTTO_AI_ENGINE': 'api', 'ANTHROPIC_API_KEY': 'sk-ant-test'}
+FREE_AI = {'JOBADABRA_AI_ENGINE': 'api', 'ANTHROPIC_API_KEY': 'JPF1.test-install'}
+CLAUDE = {'JOBADABRA_AI_ENGINE': 'api', 'ANTHROPIC_API_KEY': 'sk-ant-test'}
 JOB = {'id': 1, 'title': 'Platform Engineer', 'company': 'Acme', 'location': 'Zurich', 'description': 'Kubernetes, Terraform.',
        'ai': {'salary': {'stated': False}, 'seniority': {'value': 'unknown'}}}
 

@@ -17,7 +17,7 @@ class ScoutTapeTest(unittest.TestCase):
     def setUp(self):
         self.dir = tempfile.TemporaryDirectory()
         self.addCleanup(self.dir.cleanup)
-        for patch in (mock.patch.dict(os.environ, {'JOB_PILOTTO_SEARCH_TAPE': self.dir.name}), mock.patch('src.paths.DATA', Path(self.dir.name)),
+        for patch in (mock.patch.dict(os.environ, {'JOBADABRA_SEARCH_TAPE': self.dir.name}), mock.patch('src.paths.DATA', Path(self.dir.name)),
                       mock.patch.object(scout_core, 'CENTRAL', True)):
             patch.start()
             self.addCleanup(patch.stop)
@@ -33,7 +33,7 @@ class ScoutTapeTest(unittest.TestCase):
             t[0] += step
             return []
         with tempfile.TemporaryDirectory() as tmp, job_store.connect(Path(tmp) / 'jobs.sqlite') as db, \
-                mock.patch.dict(os.environ, {'JOB_PILOTTO_SEARCH_TAPE_MODE': mode}), mock.patch.object(scout.time, 'monotonic', lambda: t[0]), \
+                mock.patch.dict(os.environ, {'JOBADABRA_SEARCH_TAPE_MODE': mode}), mock.patch.object(scout.time, 'monotonic', lambda: t[0]), \
                 contextlib_quiet():
             names = [f'Co{i}' for i in range(10)]
             scout.harvest(db, SEEDS, sources=[lambda: [dict(name=n, origin='AI idea', priority=99 - i) for i, n in enumerate(names)]])
@@ -48,7 +48,7 @@ class ScoutTapeTest(unittest.TestCase):
                 self.assertEqual(self.checked('replay', step), recorded)
 
     def test_a_live_run_keeps_its_own_clock(self):
-        with mock.patch.dict(os.environ, {'JOB_PILOTTO_SEARCH_TAPE': ''}):
+        with mock.patch.dict(os.environ, {'JOBADABRA_SEARCH_TAPE': ''}):
             self.assertEqual(len(self.checked('record', 0.0)), 10, 'no time used: every employer is checked')
             self.assertLess(len(self.checked('record', 0.2)), 10)
         self.assertFalse((Path(self.dir.name) / 'budget.jsonl').exists(), 'a live run writes no tape')

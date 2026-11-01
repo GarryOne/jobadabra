@@ -104,8 +104,8 @@ test('a two-way relation gets its other side on the target, and a rename of that
 test('a second install of the app connects to the workspace the first one built on the stand-in', async () => {
   const {startNotionFake} = await import('../../lib/notion-fake.mjs');
   const fake = await startNotionFake();
-  const before = {flag: process.env.JOB_PILOTTO_E2E, url: process.env.JOB_PILOTTO_E2E_NOTION_BASE_URL};
-  Object.assign(process.env, {JOB_PILOTTO_E2E: '1', JOB_PILOTTO_E2E_NOTION_BASE_URL: fake.url});   // read when the app's Notion module loads (lib/notion-core.js)
+  const before = {flag: process.env.JOBADABRA_E2E, url: process.env.JOBADABRA_E2E_NOTION_BASE_URL};
+  Object.assign(process.env, {JOBADABRA_E2E: '1', JOBADABRA_E2E_NOTION_BASE_URL: fake.url});   // read when the app's Notion module loads (lib/notion-core.js)
   // Only the stand-in: a request anywhere else (real Notion) fails the test instead of leaving this computer.
   const fetcher = (url, options) => { if (!String(url).startsWith(fake.url)) throw new Error(`the test reached ${url}`); return fetch(url, options); };
   try {
@@ -116,7 +116,7 @@ test('a second install of the app connects to the workspace the first one built 
     assert.deepEqual({ok: second.ok, missing: second.missing, problems: second.problems}, {ok: true, missing: [], problems: []});
     assert.deepEqual(second.ids, first.ids);
   } finally {
-    for (const [name, value] of [['JOB_PILOTTO_E2E', before.flag], ['JOB_PILOTTO_E2E_NOTION_BASE_URL', before.url]]) if (value === undefined) delete process.env[name]; else process.env[name] = value;
+    for (const [name, value] of [['JOBADABRA_E2E', before.flag], ['JOBADABRA_E2E_NOTION_BASE_URL', before.url]]) if (value === undefined) delete process.env[name]; else process.env[name] = value;
     await fake.close();
   }
 });

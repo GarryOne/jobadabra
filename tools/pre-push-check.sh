@@ -248,7 +248,7 @@ fi
 failed=()
 log="$(mktemp)"
 # Local pushes run only the tests the change can break (tools/affected-tests.py: imports + mentions, "all" when in doubt); CI and
-# PUSH_FULL=1 always run everything. Areas run side by side, and at most JOB_PILOTTO_CHECK_SLOTS push checks run on this Mac at once.
+# PUSH_FULL=1 always run everything. Areas run side by side, and at most JOBADABRA_CHECK_SLOTS push checks run on this Mac at once.
 affected_flag="--affected-from origin/main"
 case "$command" in *PUSH_FULL=1*) affected_flag="" ;; esac
 [ -z "$changed" ] && affected_flag=""
@@ -259,8 +259,8 @@ picks=""; [ -n "$affected_flag" ] && picks="$(cd "$repo" && python3 tools/affect
 case "$command" in *PUSH_FULL=1*) export GATE_CACHE_FRESH=1 ;; esac
 # Tiers by what the change can break (landing-speed, 11 Oct 2026; AGENTS.md "Change tiers"): an area whose affected-tests pick is EMPTY is not started at all
 # (a docs, skill or tools-only push no longer pays desktop's stage + lint and a fresh checkout per area). Desktop keeps its lint when a JS file changed.
-# `JOB_PILOTTO_TIERS=0` runs every area the path list wants, as before. The journey, ladder and recorded gates above run on their own file lists, not on this.
-if [ -n "$affected_flag" ] && [ "${JOB_PILOTTO_TIERS:-1}" != 0 ] && command -v jq >/dev/null; then
+# `JOBADABRA_TIERS=0` runs every area the path list wants, as before. The journey, ladder and recorded gates above run on their own file lists, not on this.
+if [ -n "$affected_flag" ] && [ "${JOBADABRA_TIERS:-1}" != 0 ] && command -v jq >/dev/null; then
   pick_json="$(cd "$repo" && python3 tools/affected-tests.py --base origin/main 2>/dev/null)"
   skipped=""
   for area in python worker desktop; do
@@ -269,7 +269,7 @@ if [ -n "$affected_flag" ] && [ "${JOB_PILOTTO_TIERS:-1}" != 0 ] && command -v j
     [ "$area" = desktop ] && grep -qE '\.(js|mjs|cjs)$' <<<"$changed" && continue
     printf -v "$want" 0; skipped="$skipped $area"
   done
-  [ -n "$skipped" ] && echo "pre-push: nothing in$skipped can break from this change (no affected tests): not run (JOB_PILOTTO_TIERS=0 runs them)" >&2
+  [ -n "$skipped" ] && echo "pre-push: nothing in$skipped can break from this change (no affected tests): not run (JOBADABRA_TIERS=0 runs them)" >&2
 fi
 area_whole() {  # 1 when this area runs its WHOLE suite (no affected-test list, a clean install, or the picker says "all"): such a step may be deferred to CI at the budget; a picked list never is
   if [ -z "$affected_flag" ] || [ -n "$clean_install" ] || [ -z "${pick_json:-}" ]; then echo 1; return; fi
@@ -319,7 +319,7 @@ verify_area() {  # area [extra check.sh flags]
   (cd "$tree" && gate_cache_run "$repo" "$area" "flag=$affected_flag args=$* pick=$picks" bash tools/check.sh --area "$area" $affected_flag "$@")
 }
 source "$repo/tools/check-slot.sh" 2>/dev/null || { slot_acquire() { :; }; slot_release() { :; }; }
-case "$command" in *CI_RED_OK=1*) export JOB_PILOTTO_RED_FIX=1 ;; esac   # the fix of a red main does not wait for a slot (tools/check-slot.sh)
+case "$command" in *CI_RED_OK=1*) export JOBADABRA_RED_FIX=1 ;; esac   # the fix of a red main does not wait for a slot (tools/check-slot.sh)
 slot_acquire
 if [ "$want_workflows" = 1 ]; then
   run "CI installs dev dependencies (build.yml)" ci_installs_dev

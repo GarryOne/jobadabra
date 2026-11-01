@@ -28,8 +28,8 @@ def seed(data_dir):
     folder = Path(data_dir).resolve()
     if not str(folder).startswith(str(Path(tempfile.gettempdir()).resolve())):
         raise SystemExit(f'refused: {folder} is not a temporary folder (the e2e app\'s profile lives in the temp folder)')
-    os.environ.update({'JOB_PILOTTO_STORE': 'sqlite', 'JOB_PILOTTO_DATA_DIR': str(folder), 'JOB_PILOTTO_FOLLOW_APP': '0',
-                       'JOB_PILOTTO_NO_DOTENV': '1'})
+    os.environ.update({'JOBADABRA_STORE': 'sqlite', 'JOBADABRA_DATA_DIR': str(folder), 'JOBADABRA_FOLLOW_APP': '0',
+                       'JOBADABRA_NO_DOTENV': '1'})
     os.environ.pop('NOTION_TOKEN', None)
     sys.path.insert(0, str(REPO))
     from src.stores import sqlite

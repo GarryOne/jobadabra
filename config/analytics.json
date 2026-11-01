@@ -1,5 +1,5 @@
 {
-  "_comment": "Where the app sends crash reports (Sentry) and usage events (PostHog), when Technical reports is on and the app is an installed build. Both values are public by design (a Sentry DSN and a PostHog project key only let a client send events). Empty = off. Env JOB_PILOTTO_SENTRY_DSN / JOB_PILOTTO_POSTHOG_KEY override. See docs/analytics.md.",
+  "_comment": "Where the app sends crash reports (Sentry) and usage events (PostHog), when Technical reports is on and the app is an installed build. Both values are public by design (a Sentry DSN and a PostHog project key only let a client send events). Empty = off. Env JOBADABRA_SENTRY_DSN / JOBADABRA_POSTHOG_KEY override. See docs/analytics.md.",
   "sentry_dsn": "https://d7ab6709e9a87838df67ca2fee42ad07@o4512186257244160.ingest.de.sentry.io/4512186268516432",
   "posthog_key": "phc_ueCQ3oQokV6nFCPvFFRVvsVTMfB5n2KXJmE8NW3RS5vv",
   "posthog_host": "https://eu.i.posthog.com"

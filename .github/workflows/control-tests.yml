@@ -41,7 +41,7 @@ jobs:
         working-directory: desktop/e2e
         env:
           JP_REPLAY: 1
-          JOB_PILOTTO_HEAVY: 0
+          JOBADABRA_HEAVY: 0
           REPLAY_LOG: 1   # the extension's decision lines per page: why a miss happened
         run: node widget-zoo.mjs --json widget-zoo.json
       - uses: actions/upload-artifact@v6

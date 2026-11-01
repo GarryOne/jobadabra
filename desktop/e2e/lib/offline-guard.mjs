@@ -1,5 +1,5 @@
 // The e2e env of an app server under test, and a guard that keeps it on this computer (speed-5x landing 1, owner 11 Oct 2026: a prototype of the app's own server
-// under plain node reached the live site for the alias pack). offlineEnv: the journey's env (no telemetry, no pool sharing: lib/telemetry.js reads JOB_PILOTTO_E2E),
+// under plain node reached the live site for the alias pack). offlineEnv: the journey's env (no telemetry, no pool sharing: lib/telemetry.js reads JOBADABRA_E2E),
 // its own data folder, no Anthropic key (a Mac uses the plan path), never the twin. guardNetwork: fetch, http and https refuse any host but loopback, and name it.
 // The AI is the one exception by design: `claude -p` is its own process (the plan path), not this process's network. Guard: e2e/test/offline-guard.test.mjs.
 import http from 'node:http';
@@ -10,12 +10,12 @@ import {everyRealDataFolder} from '../../lib/app-identity.js';
 import {withoutWrappers} from './real-claude.mjs';   // never a terminal's claude wrapper (e2e/test/real-claude.test.mjs)
 
 const REALS = everyRealDataFolder();
-const DROPPED = ['REPLAY_REFILL_ANTHROPIC_KEY', 'ANTHROPIC_API_KEY', 'ANTHROPIC_BASE_URL', 'OPENAI_API_KEY', 'JOB_PILOTTO_TWIN', 'JOB_PILOTTO_PORT'];
+const DROPPED = ['REPLAY_REFILL_ANTHROPIC_KEY', 'ANTHROPIC_API_KEY', 'ANTHROPIC_BASE_URL', 'OPENAI_API_KEY', 'JOBADABRA_TWIN', 'JOBADABRA_PORT'];
 
 export function offlineEnv(dir, parent = process.env) {
   if (REALS.some(real => (path.resolve(dir) + path.sep).startsWith(path.resolve(real) + path.sep))) throw new Error(`refusing the app's real folder for a test app: ${dir}`);
   const env = Object.fromEntries(Object.entries(parent).filter(([name]) => !DROPPED.includes(name)));
-  return withoutWrappers({...env, JOB_PILOTTO_E2E: '1', ...ownerGuardEnv(), JOB_PILOTTO_USER_DATA: dir, JOB_PILOTTO_NO_DOTENV: '1'});
+  return withoutWrappers({...env, JOBADABRA_E2E: '1', ...ownerGuardEnv(), JOBADABRA_USER_DATA: dir, JOBADABRA_NO_DOTENV: '1'});
 }
 
 const LOOPBACK = /^(127\.\d+\.\d+\.\d+|localhost|::1|\[::1\])$/i;

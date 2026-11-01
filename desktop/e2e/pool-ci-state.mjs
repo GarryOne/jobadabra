@@ -1,5 +1,5 @@
 // node pool-ci-state.mjs prepare <states folder> <baseline file> | save <smoke reports folder> <state file>: the CI pool run's hand-over (lib/pool-ci-state.mjs).
-// prepare: the earlier runs' states (downloaded by .github/workflows/record-sites.yml) -> today's CI-wide site ledger in JOB_PILOTTO_SITE_LEDGER_DIR and each row's
+// prepare: the earlier runs' states (downloaded by .github/workflows/record-sites.yml) -> today's CI-wide site ledger in JOBADABRA_SITE_LEDGER_DIR and each row's
 // baseline; save: this run's ledger and the rows it ran -> its state, uploaded for the next runs.
 import fs from 'node:fs';
 import path from 'node:path';

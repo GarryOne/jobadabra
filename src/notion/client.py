@@ -19,8 +19,8 @@ from . import origin, retry, titles
 
 def api_base():
     """Notion's API, or the end-to-end tests' stand-in that can fail on purpose (desktop/e2e/lib/notion-proxy.mjs): only in a test run."""
-    override = os.environ.get('JOB_PILOTTO_E2E_NOTION_BASE_URL', '')
-    if os.environ.get('JOB_PILOTTO_E2E') and override:
+    override = os.environ.get('JOBADABRA_E2E_NOTION_BASE_URL', '')
+    if os.environ.get('JOBADABRA_E2E') and override:
         return override.rstrip('/') + '/v1'
     return 'https://api.notion.com/v1'
 
@@ -75,9 +75,9 @@ def _who():
 
 def _log_request(method, path, status, started, attempt):
     """One line per Notion request in the app's notion-requests.log (desktop/lib/request-log.js has the format), when the
-    app gave its path (JOB_PILOTTO_NOTION_LOG). Routes and statuses only, never content. Appends only: the app rolls the
+    app gave its path (JOBADABRA_NOTION_LOG). Routes and statuses only, never content. Appends only: the app rolls the
     file by day and caps it (desktop/lib/log-days.js); a rename from here too would race it."""
-    target = os.getenv('JOB_PILOTTO_NOTION_LOG')
+    target = os.getenv('JOBADABRA_NOTION_LOG')
     if not target:
         return
     try:
@@ -110,7 +110,7 @@ class Tracker:
     def from_env(cls):
         from ..features import disabled
         token = os.getenv('NOTION_TOKEN')
-        if disabled('notion'):  # JOB_PILOTTO_DISABLE=notion: run as if no token were set
+        if disabled('notion'):  # JOBADABRA_DISABLE=notion: run as if no token were set
             return None
         return cls(token, os.getenv('NOTION_APPLICATIONS_DB') or DEFAULT_DATABASE_ID) if token else None
 
@@ -319,8 +319,8 @@ class Tracker:
             'Location': text(job.get('location')),
             'Job URL': {'url': job['url']},
             'Stage': {'select': {'name': stage}},
-            # Where the row came from: the desktop app sets JOB_PILOTTO_SOURCE; the bot and CI keep Telegram.
-            'Source': {'select': {'name': os.getenv('JOB_PILOTTO_SOURCE') or 'Telegram'}},
+            # Where the row came from: the desktop app sets JOBADABRA_SOURCE; the bot and CI keep Telegram.
+            'Source': {'select': {'name': os.getenv('JOBADABRA_SOURCE') or 'Telegram'}},
         }
         ats = next((name for key, name in (('greenhouse', 'Greenhouse'), ('ashbyhq', 'Ashby'), ('lever.co', 'Lever'),
                                            ('workable', 'Workable')) if key in job['url']), None)

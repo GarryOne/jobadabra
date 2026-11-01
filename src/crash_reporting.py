@@ -1,6 +1,6 @@
 """Crash reports from the engine to Sentry, without Sentry's SDK (see desktop/lib/sentry.js for why): only the exception type, a scrubbed
 message, stack frames (file names without folders above the app, function, line), the app version, the platform and the run id.
-No local variables, no request data. Off unless the desktop app sets JOB_PILOTTO_SENTRY_DSN (it does only for an installed build with
+No local variables, no request data. Off unless the desktop app sets JOBADABRA_SENTRY_DSN (it does only for an installed build with
 "Technical reports" on). `python -m src …` installs it as the unhandled-exception hook; it never raises."""
 import json
 import os
@@ -33,7 +33,7 @@ def parse_dsn(dsn):
         if not url.username or not project.isdigit():
             return None
         return (f'{url.scheme}://{url.hostname}{":" + str(url.port) if url.port else ""}/api/{project}/envelope/',
-                f'Sentry sentry_version=7, sentry_key={url.username}, sentry_client=job-pilotto-engine/1')
+                f'Sentry sentry_version=7, sentry_key={url.username}, sentry_client=jobadabra-engine/1')
     except ValueError:
         return None
 
@@ -56,8 +56,8 @@ def build_event(exc_type, exc, tb, env=None, now=None):
     command = ' '.join(sys.argv[:1])
     return {
         'event_id': secrets.token_hex(16), 'timestamp': now or time.time(), 'platform': 'python', 'level': 'error',
-        'release': f"job-pilotto@{env.get('JOB_PILOTTO_APP_VERSION', 'dev')}", 'environment': env.get('JOB_PILOTTO_ENV', 'production'),
-        'user': {'id': env.get('JOB_PILOTTO_INSTALL_ID', '')}, 'tags': {'where': 'engine', 'os': platform.system(), 'run_id': env.get('JOB_PILOTTO_RUN_ID', ''),
+        'release': f"jobadabra@{env.get('JOBADABRA_APP_VERSION', 'dev')}", 'environment': env.get('JOBADABRA_ENV', 'production'),
+        'user': {'id': env.get('JOBADABRA_INSTALL_ID', '')}, 'tags': {'where': 'engine', 'os': platform.system(), 'run_id': env.get('JOBADABRA_RUN_ID', ''),
                                                                          'command': scrub(command, 60)},
         'fingerprint': ['engine', kind, re.sub(r'\d+', '#', message)[:120]],
         'exception': {'values': [{'type': kind, 'value': message, 'stacktrace': {'frames': frames(tb)}}]},
@@ -87,7 +87,7 @@ def send(event, dsn, urlopen=urllib.request.urlopen):
 def install(env=None, urlopen=urllib.request.urlopen):
     """Report unhandled exceptions (then the normal traceback). A no-op without a DSN."""
     env = os.environ if env is None else env
-    dsn = env.get('JOB_PILOTTO_SENTRY_DSN', '').strip()
+    dsn = env.get('JOBADABRA_SENTRY_DSN', '').strip()
     if not dsn or not parse_dsn(dsn):
         return False
     previous = sys.excepthook
@@ -109,8 +109,8 @@ def build_warning(topic, details, env=None, now=None):
     shown = ', '.join(f'{key}={scrub(value, 80)}' for key, value in details.items())
     return {
         'event_id': secrets.token_hex(16), 'timestamp': now or time.time(), 'platform': 'python', 'level': 'warning',
-        'release': f"job-pilotto@{env.get('JOB_PILOTTO_APP_VERSION', 'dev')}", 'environment': env.get('JOB_PILOTTO_ENV', 'production'),
-        'user': {'id': env.get('JOB_PILOTTO_INSTALL_ID', '')}, 'tags': {'where': 'engine', 'os': platform.system(), 'run_id': env.get('JOB_PILOTTO_RUN_ID', ''),
+        'release': f"jobadabra@{env.get('JOBADABRA_APP_VERSION', 'dev')}", 'environment': env.get('JOBADABRA_ENV', 'production'),
+        'user': {'id': env.get('JOBADABRA_INSTALL_ID', '')}, 'tags': {'where': 'engine', 'os': platform.system(), 'run_id': env.get('JOBADABRA_RUN_ID', ''),
                                                                          'warning': scrub(topic, 60)},
         'fingerprint': ['engine-warning', scrub(topic, 60)], 'message': f'{scrub(topic, 60)}: {shown}'[:300],
     }
@@ -121,7 +121,7 @@ def warn(topic, details, env=None, urlopen=urllib.request.urlopen, marker_dir=No
     Off without a DSN, like every report; never raises. True when sent."""
     env = os.environ if env is None else env
     try:
-        dsn = env.get('JOB_PILOTTO_SENTRY_DSN', '').strip()
+        dsn = env.get('JOBADABRA_SENTRY_DSN', '').strip()
         if not dsn or not parse_dsn(dsn):
             return False
         marker = os.path.join(marker_dir or tempfile.gettempdir(), f"jp-warned-{re.sub(r'[^a-z0-9]+', '-', topic.lower())}-{time.strftime('%Y%m%d')}")

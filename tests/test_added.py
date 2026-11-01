@@ -21,7 +21,7 @@ FACTS = {'languages': [], 'english_is_enough': {'value': 'yes', 'evidence': ''},
 FIT = {'score': 81, 'tier': 'A', 'reason': 'AWS/EKS ownership', 'strengths': ['EKS'], 'gaps': ['Aurora'], 'confidence': 'high',
        'components': {'role_fit': 90, 'location': 80, 'compensation': 60, 'growth': 70, 'risk': 40}}
 POSTING = 'Own AWS and EKS: networking, DNS, load balancing. Run Aurora PostgreSQL in production. Terraform + Argo CD. ' * 2
-AI_ON = {'ANTHROPIC_API_KEY': 'sk-test', 'NOTION_TOKEN': 'secret-test', 'JOB_PILOTTO_ENRICH_MODEL': 'claude-haiku-5-5', 'JOB_PILOTTO_SCORE_MODEL': 'claude-sonnet-5-5'}
+AI_ON = {'ANTHROPIC_API_KEY': 'sk-test', 'NOTION_TOKEN': 'secret-test', 'JOBADABRA_ENRICH_MODEL': 'claude-haiku-5-5', 'JOBADABRA_SCORE_MODEL': 'claude-sonnet-5-5'}
 
 
 class Client:
@@ -112,7 +112,7 @@ class AddedTests(unittest.TestCase):
         self.assertEqual(job['application_fields']['fit'], 81)   # the same values as store fields
 
     def test_nothing_runs_without_the_ai_stages_or_a_description_or_for_a_job_already_scored(self):
-        env_off = {'JOB_PILOTTO_DISABLE': 'score'}
+        env_off = {'JOBADABRA_DISABLE': 'score'}
         self.assertIsNone(self.process(Tracker(), Client(), env={**AI_ON, **env_off})[0])
         self.assertIsNone(self.process(Tracker(), Client(), job={'title': 'SRE', 'description': 'short'})[0])
         self.process(Tracker(), Client(FACTS, FIT))

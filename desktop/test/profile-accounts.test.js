@@ -11,7 +11,7 @@ import * as accounts from '../lib/profile-accounts.js';
 const A = 'profile-aaaaaaaaaaaa', B = 'profile-bbbbbbbbbbbb';
 const fresh = () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-accounts-'));
-  const env = {JOB_PILOTTO_E2E: '1', JOB_PILOTTO_USER_DATA: dir};
+  const env = {JOBADABRA_E2E: '1', JOBADABRA_USER_DATA: dir};
   const put = (service, value, comment = '') => keychain.write(service, value, {account: 'job-pilotto', comment, env});
   return {dir, env, opts: {env}, put};
 };

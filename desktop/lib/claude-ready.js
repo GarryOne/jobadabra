@@ -11,7 +11,7 @@ export const _resetClaudeReady = () => { cached = null; };
 
 export function claudeOffered(storage, prereqs = claudePrereqs) {
   if (!claudeFamily(storage)) return false;
-  const forced = process.env.JOB_PILOTTO_E2E && storage.settings().claudeReadyTest;   // the end-to-end run has no Claude Code of its own: its step says on or off
+  const forced = process.env.JOBADABRA_E2E && storage.settings().claudeReadyTest;   // the end-to-end run has no Claude Code of its own: its step says on or off
   if (forced) return forced === 'on';
   if (!cached || Date.now() - cached.at > 30000) { const p = prereqs(); cached = {at: Date.now(), ok: !!p.claude && !!p.signedIn && (!p.windows || !!p.git)}; }
   return cached.ok;

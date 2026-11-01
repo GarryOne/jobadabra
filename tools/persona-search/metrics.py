@@ -1,6 +1,6 @@
 """One persona's job cache as numbers for the persona search check (tools/persona-search/run.mjs): open jobs, those in the places (the engine's own
 place check), scored, fit 70+, the top 10 with their fit, and the last run's yield per source (src/source_yield.py). Prints one JSON line.
-Run with the persona's JOB_PILOTTO_CONFIG_DIR / JOB_PILOTTO_DATA_DIR set (run.mjs does), from the repository root.
+Run with the persona's JOBADABRA_CONFIG_DIR / JOBADABRA_DATA_DIR set (run.mjs does), from the repository root.
 """
 import json
 import sqlite3

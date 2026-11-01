@@ -30,8 +30,8 @@ test('files are withheld only in a twin, and only while its twin-no-files marker
   const fs = await import('node:fs'), os = await import('node:os'), path = await import('node:path');
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-twin-files-'));
   const storage = {path: name => path.join(dir, name)};
-  assert.equal(withholdFiles(storage, {JOB_PILOTTO_TWIN: '1'}), false);   // no marker: files go as usual
+  assert.equal(withholdFiles(storage, {JOBADABRA_TWIN: '1'}), false);   // no marker: files go as usual
   fs.writeFileSync(storage.path('twin-no-files'), '');
-  assert.equal(withholdFiles(storage, {JOB_PILOTTO_TWIN: '1'}), true);
+  assert.equal(withholdFiles(storage, {JOBADABRA_TWIN: '1'}), true);
   assert.equal(withholdFiles(storage, {}), false);                         // a real install never withholds
 });

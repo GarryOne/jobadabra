@@ -2,7 +2,7 @@
 and read back in a replay, so a replay takes the same path whatever the replaying computer's speed or thread timing (owner, 18 Oct 2026: two
 replays of one tape disagreed, 35 vs 39 places and 67 vs 522 missing web answers, because a decision read a wall clock).
 A loop with its own deadline (the scout's minutes) asks through until() the same way.
-Off unless JOB_PILOTTO_SEARCH_TAPE is set; a live run never touches it. A decision the tape lacks (a changed search asks a new question) is
+Off unless JOBADABRA_SEARCH_TAPE is set; a live run never touches it. A decision the tape lacks (a changed search asks a new question) is
 computed from the clock, as in a live run. Each process that starts a budget is the run's next search (new_search), so one tape holds every press. Same-key decisions are matched by their order (over() only ever flips false to true, so threads
 asking at once still see the same number of false answers). Tests: tests/test_budget_tape.py, tests/test_scout_budget_tape.py."""
 import json
@@ -18,7 +18,7 @@ _tape = {}      # key -> [recorded values], read once per process
 
 
 def _folder():
-    folder = os.getenv('JOB_PILOTTO_SEARCH_TAPE')
+    folder = os.getenv('JOBADABRA_SEARCH_TAPE')
     return Path(folder) if folder else None
 
 
@@ -27,7 +27,7 @@ def active():
 
 
 def _mode():
-    return os.getenv('JOB_PILOTTO_SEARCH_TAPE_MODE', 'replay')
+    return os.getenv('JOBADABRA_SEARCH_TAPE_MODE', 'replay')
 
 
 def _load():

@@ -13,7 +13,7 @@ const URL = 'https://boards.greenhouse.io/e2e/jobs/4001001#jobadabra-fill=abc';
 const recorded = spool => fs.readdirSync(spool).filter(name => name.endsWith('.url')).map(name => fs.readFileSync(`${spool}/${name}`, 'utf8'));
 // A browser with a last-used profile: the launch names it after the URL.
 const withProfile = () => {
-  const [, args] = browserCommand([URL], 'darwin', {HOME: '/home/e2e', JOB_PILOTTO_E2E: '1'}, file => file === '/Applications/Google Chrome.app', '',
+  const [, args] = browserCommand([URL], 'darwin', {HOME: '/home/e2e', JOBADABRA_E2E: '1'}, file => file === '/Applications/Google Chrome.app', '',
     () => JSON.stringify({profile: {last_used: 'Profile 2'}}));
   return args;
 };
@@ -27,7 +27,7 @@ test('the launch the app sends ends with the profile flag, not the URL (the shap
 test('the shell stand-in records the URL, with or without flags after it; a call without a URL records nothing', {skip: process.platform === 'win32'}, () => {
   for (const args of [withProfile(), ['-g', '-a', 'Google Chrome', URL], ['-a', 'Finder', '/tmp']]) {
     const shim = makeOpenShim();
-    execFileSync(`${shim.bin}/open`, args, {env: {...process.env, JOB_PILOTTO_E2E_OPEN_DIR: shim.spool}});
+    execFileSync(`${shim.bin}/open`, args, {env: {...process.env, JOBADABRA_E2E_OPEN_DIR: shim.spool}});
     assert.deepEqual(recorded(shim.spool), args.includes(URL) ? [URL] : [], args.join(' '));
   }
 });
@@ -35,17 +35,17 @@ test('the shell stand-in records the URL, with or without flags after it; a call
 test('the Windows stand-in (node script) reads the URL the same way', () => {
   for (const args of [[URL, '--profile-directory=Profile 2'], ['--profile-directory=Default', URL], ['--new-window']]) {
     const shim = makeOpenShim();
-    execFileSync(process.execPath, [shim.script, ...args], {env: {...process.env, JOB_PILOTTO_E2E_OPEN_DIR: shim.spool}});
+    execFileSync(process.execPath, [shim.script, ...args], {env: {...process.env, JOBADABRA_E2E_OPEN_DIR: shim.spool}});
     assert.deepEqual(recorded(shim.spool), args.includes(URL) ? [URL] : [], args.join(' '));
   }
 });
 
 test('a run opens into the spool only with the shim first on PATH: the owner\'s own PATH or a missing spool fails the guard (#2350)', () => {
   const shim = makeOpenShim(), owners = process.env.PATH;
-  const env = {PATH: `${shim.bin}${path.delimiter}${owners}`, JOB_PILOTTO_E2E_OPEN_DIR: shim.spool, JOB_PILOTTO_E2E_OPENER: shim.script};
+  const env = {PATH: `${shim.bin}${path.delimiter}${owners}`, JOBADABRA_E2E_OPEN_DIR: shim.spool, JOBADABRA_E2E_OPENER: shim.script};
   assert.equal(opensIntoSpool(env, 'darwin'), true);
   assert.equal(opensIntoSpool(env, 'win32'), true);
   assert.equal(opensIntoSpool({...env, PATH: owners}, 'darwin'), false, 'the real open first: a page would reach the owner\'s Chrome');
-  assert.equal(opensIntoSpool({...env, JOB_PILOTTO_E2E_OPEN_DIR: ''}, 'darwin'), false);
-  assert.equal(opensIntoSpool({...env, JOB_PILOTTO_E2E_OPENER: ''}, 'win32'), false);
+  assert.equal(opensIntoSpool({...env, JOBADABRA_E2E_OPEN_DIR: ''}, 'darwin'), false);
+  assert.equal(opensIntoSpool({...env, JOBADABRA_E2E_OPENER: ''}, 'win32'), false);
 });

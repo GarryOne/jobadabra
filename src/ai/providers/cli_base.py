@@ -59,7 +59,7 @@ class CliAdapter(Adapter):
     billing = SUBSCRIPTION
     tool = ''                  # the CLI's name, in words ("Claude Code")
     folder = ''                # the call folders' name: jobadabra-<folder>-…
-    timeout_env = 'JOB_PILOTTO_CLI_TIMEOUT'
+    timeout_env = 'JOBADABRA_CLI_TIMEOUT'
     missing_text = not_answering_text = ''
     _slots = Slots(2)   # a subclass sets its own (served by priority: src/ai/slots.py)
 

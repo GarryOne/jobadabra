@@ -1,5 +1,5 @@
 // A local Messages endpoint that answers through the Codex broker, for a program that only knows how to call the Anthropic API (the central scout's Python SDK client).
-//   const relay = await startRelay({cap: 40});   relay.url -> 'http://127.0.0.1:<port>' (JOB_PILOTTO_AI_BASE_URL);   relay.stats; await relay.close();
+//   const relay = await startRelay({cap: 40});   relay.url -> 'http://127.0.0.1:<port>' (JOBADABRA_AI_BASE_URL);   relay.stats; await relay.close();
 // Why (31 Oct 2026, owner: "Why Anthropic is reached? We should use fully the Codex"; coordinator: the relay binds 127.0.0.1 only): the scout's judgments run in the PUBLIC engine (src/ai/decide.py), which
 // calls the Anthropic SDK. The relay lets it keep doing that with a dummy key while every call is answered by lib/broker-relay.mjs; a broker "no" is an error answer, never another provider.
 // Why a purpose-built server and not lib/ai-proxy.mjs (31 Oct 2026): that one is the test harness's (stored replays, faults, canned answers, a test-key upstream); a production job needs none of it, and its

@@ -25,35 +25,35 @@ class WebSearchTests(unittest.TestCase):
     def test_brave_first_then_serpapi_and_nothing_without_a_key(self):
         asked = []
         get = lambda url, headers=None: asked.append((url, headers)) or BRAVE
-        with mock.patch.dict(os.environ, {'BRAVE_SEARCH_API_KEY': 'b', 'SERPAPI_API_KEY': 's', 'JOB_PILOTTO_DISABLE': '', 'JOB_PILOTTO_ENABLE': KEYS}):
+        with mock.patch.dict(os.environ, {'BRAVE_SEARCH_API_KEY': 'b', 'SERPAPI_API_KEY': 's', 'JOBADABRA_DISABLE': '', 'JOBADABRA_ENABLE': KEYS}):
             self.assertEqual(web_search.job_sites('Coop', 'fr', get), ['https://www.coopjobs.ch/de.html', 'https://jobs.coop.ch/'])
         self.assertIn('api.search.brave.com', asked[0][0])
         self.assertIn('Coop+jobs+emplois', asked[0][0], 'the jobs word of the language goes into the search')
-        with mock.patch.dict(os.environ, {'BRAVE_SEARCH_API_KEY': '', 'SERPAPI_API_KEY': 's', 'JOB_PILOTTO_DISABLE': '', 'JOB_PILOTTO_ENABLE': KEYS}):
+        with mock.patch.dict(os.environ, {'BRAVE_SEARCH_API_KEY': '', 'SERPAPI_API_KEY': 's', 'JOBADABRA_DISABLE': '', 'JOBADABRA_ENABLE': KEYS}):
             self.assertEqual(web_search.provider(), 'serpapi')
-        with mock.patch.dict(os.environ, {'BRAVE_SEARCH_API_KEY': '', 'SERPAPI_API_KEY': '', 'JOB_PILOTTO_DISABLE': '', 'JOB_PILOTTO_ENABLE': KEYS}):
+        with mock.patch.dict(os.environ, {'BRAVE_SEARCH_API_KEY': '', 'SERPAPI_API_KEY': '', 'JOBADABRA_DISABLE': '', 'JOBADABRA_ENABLE': KEYS}):
             self.assertEqual(web_search.job_sites('Coop', 'fr', get), [])
-        with mock.patch.dict(os.environ, {'BRAVE_SEARCH_API_KEY': 'b', 'JOB_PILOTTO_DISABLE': 'web_search'}):
+        with mock.patch.dict(os.environ, {'BRAVE_SEARCH_API_KEY': 'b', 'JOBADABRA_DISABLE': 'web_search'}):
             self.assertIsNone(web_search.provider())
 
     def test_parked_keys_are_not_used_and_the_plan_search_still_is(self):
         """Owner, 26 Oct 2026: the Brave and SerpApi keys are parked (src/features.py PARKED). A saved key is left alone, unused; the user's own
         plan (Claude Code or Codex) still searches, with or without a key."""
-        with mock.patch.dict(os.environ, {'BRAVE_SEARCH_API_KEY': 'b', 'SERPAPI_API_KEY': 's', 'JOB_PILOTTO_DISABLE': '', 'JOB_PILOTTO_ENABLE': ''}):
+        with mock.patch.dict(os.environ, {'BRAVE_SEARCH_API_KEY': 'b', 'SERPAPI_API_KEY': 's', 'JOBADABRA_DISABLE': '', 'JOBADABRA_ENABLE': ''}):
             self.assertIsNone(web_search.provider())
             with mock.patch.object(web_search, '_claude_code', lambda: True), mock.patch.object(web_search, '_plan_engine', lambda: 'claude'):
                 self.assertEqual(web_search.provider(), 'claude')
-        with mock.patch.dict(os.environ, {'BRAVE_SEARCH_API_KEY': '', 'SERPAPI_API_KEY': '', 'JOB_PILOTTO_DISABLE': '', 'JOB_PILOTTO_ENABLE': ''}), \
+        with mock.patch.dict(os.environ, {'BRAVE_SEARCH_API_KEY': '', 'SERPAPI_API_KEY': '', 'JOBADABRA_DISABLE': '', 'JOBADABRA_ENABLE': ''}), \
                 mock.patch.object(web_search, '_claude_code', lambda: True), mock.patch.object(web_search, '_plan_engine', lambda: 'codex'):
             self.assertEqual(web_search.provider(), 'codex')
         for enable, expected in (('brave_search', 'brave'), ('google_jobs', 'serpapi')):
-            with mock.patch.dict(os.environ, {'BRAVE_SEARCH_API_KEY': 'b', 'SERPAPI_API_KEY': 's', 'JOB_PILOTTO_DISABLE': '', 'JOB_PILOTTO_ENABLE': enable}):
+            with mock.patch.dict(os.environ, {'BRAVE_SEARCH_API_KEY': 'b', 'SERPAPI_API_KEY': 's', 'JOBADABRA_DISABLE': '', 'JOBADABRA_ENABLE': enable}):
                 self.assertEqual(web_search.provider(), expected)
 
     def test_a_failed_search_is_an_empty_answer(self):
         def boom(url, headers=None):
             raise OSError('down')
-        with mock.patch.dict(os.environ, {'BRAVE_SEARCH_API_KEY': 'b', 'JOB_PILOTTO_DISABLE': '', 'JOB_PILOTTO_ENABLE': KEYS}):
+        with mock.patch.dict(os.environ, {'BRAVE_SEARCH_API_KEY': 'b', 'JOBADABRA_DISABLE': '', 'JOBADABRA_ENABLE': KEYS}):
             self.assertEqual(web_search.job_sites('Coop', '', boom), [])
 
     def test_the_scout_searches_only_when_name_website_and_job_hosts_found_nothing(self):
@@ -73,7 +73,7 @@ class WebSearchTests(unittest.TestCase):
 
 class ClaudeCodeSearchTests(unittest.TestCase):
     def test_claude_code_comes_first_and_only_its_answers_own_sites_are_kept(self):
-        with mock.patch.object(web_search, '_claude_code', lambda: True), mock.patch.dict(os.environ, {'BRAVE_SEARCH_API_KEY': 'b', 'JOB_PILOTTO_DISABLE': '', 'JOB_PILOTTO_ENABLE': KEYS}), \
+        with mock.patch.object(web_search, '_claude_code', lambda: True), mock.patch.dict(os.environ, {'BRAVE_SEARCH_API_KEY': 'b', 'JOBADABRA_DISABLE': '', 'JOBADABRA_ENABLE': KEYS}), \
                 mock.patch.object(web_search, 'only_job_lists', lambda company, site, urls, client=None: urls), \
                 mock.patch.object(web_search, '_claude_search', lambda company, language, site='': ['https://jobs.coop.ch/viewalljobs/', 'https://www.linkedin.com/jobs/coop',
                                                                                           'https://www.coopjobs.ch/fr.html']):
@@ -102,10 +102,10 @@ class AppRenderTests(unittest.TestCase):
         sent = []
         def urlopen(request, timeout=None):
             body = json.loads(request.data)
-            sent.append((request.full_url, request.get_header('X-job-pilotto-render'), body['user_agent']))
+            sent.append((request.full_url, request.get_header('X-jobadabra-render'), body['user_agent']))
             import io
             return mock.MagicMock(__enter__=lambda self: io.BytesIO(json.dumps(answers['no' if 'coop' in body['url'] else 'ok']).encode()), __exit__=lambda *a: None)
-        with mock.patch.dict(os.environ, {'JOB_PILOTTO_RENDER_URL': 'http://127.0.0.1:47111/engine/render', 'JOB_PILOTTO_RENDER_TOKEN': 'k'}), \
+        with mock.patch.dict(os.environ, {'JOBADABRA_RENDER_URL': 'http://127.0.0.1:47111/engine/render', 'JOBADABRA_RENDER_TOKEN': 'k'}), \
                 mock.patch.object(render.urllib.request, 'urlopen', urlopen):
             self.assertTrue(render.available())
             self.assertIn('Vendeur', render.render('https://jobs.migros.ch/de'))

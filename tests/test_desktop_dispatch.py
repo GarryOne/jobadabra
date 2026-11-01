@@ -30,8 +30,8 @@ class DispatchTests(unittest.TestCase):
         self.addCleanup(self.stack.close)
         self.folder = Path(self.stack.enter_context(tempfile.TemporaryDirectory()))
         self.stack.enter_context(mock.patch.dict(os.environ, {
-            'JOB_PILOTTO_DATA_DIR': str(self.folder), 'JOB_PILOTTO_CONFIG_DIR': str(self.folder),
-            'JOB_PILOTTO_STORE': 'notion', 'JOB_PILOTTO_NO_DOTENV': '1', 'NOTION_TOKEN': '',
+            'JOBADABRA_DATA_DIR': str(self.folder), 'JOBADABRA_CONFIG_DIR': str(self.folder),
+            'JOBADABRA_STORE': 'notion', 'JOBADABRA_NO_DOTENV': '1', 'NOTION_TOKEN': '',
         }))
         self.patch('socket.create_connection', side_effect=AssertionError('network forbidden'))
         self.patch('urllib.request.urlopen', side_effect=AssertionError('network forbidden'))
@@ -66,9 +66,9 @@ class DispatchTests(unittest.TestCase):
         config = self.folder / 'config'
         shutil.copytree(root / 'config', config)
         env = {'PATH': os.environ.get('PATH', ''), 'SYSTEMROOT': os.environ.get('SYSTEMROOT', ''),
-               'JOB_PILOTTO_DATA_DIR': str(self.folder / 'data'), 'JOB_PILOTTO_CONFIG_DIR': str(config),
-               'JOB_PILOTTO_APP_DIR': str(self.folder / 'app'), 'JOB_PILOTTO_NO_DOTENV': '1',
-               'JOB_PILOTTO_FOLLOW_APP': '0', 'PYTHONDONTWRITEBYTECODE': '1'}
+               'JOBADABRA_DATA_DIR': str(self.folder / 'data'), 'JOBADABRA_CONFIG_DIR': str(config),
+               'JOBADABRA_APP_DIR': str(self.folder / 'app'), 'JOBADABRA_NO_DOTENV': '1',
+               'JOBADABRA_FOLLOW_APP': '0', 'PYTHONDONTWRITEBYTECODE': '1'}
         script = '''import importlib.abc, socket, sys
 from unittest import mock
 sys.path.insert(0, sys.argv[1])
@@ -403,7 +403,7 @@ import src.desktop
         inputs.side_effect = OSError()
         self.call('jobs', JOBS_OUT, outside=True)
         listed.assert_called_with(self.db, 200, notion_jobs=rows, kit_inputs=None, hide_unscored=False)
-        os.environ['JOB_PILOTTO_STORE'] = 'sqlite'
+        os.environ['JOBADABRA_STORE'] = 'sqlite'
         local = self.patch('src.desktop_store_jobs.store_jobs', return_value=rows)
         inputs.side_effect = None
         self.call('jobs', JOBS_OUT, outside=True)

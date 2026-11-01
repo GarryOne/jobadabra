@@ -49,8 +49,8 @@ class CrawlCharacterization(unittest.TestCase):
         self.addCleanup(self.stack.close)
         folder = self.stack.enter_context(tempfile.TemporaryDirectory())
         self.stack.enter_context(mock.patch.dict(os.environ, {
-            'JOB_PILOTTO_DATA_DIR': folder, 'JOB_PILOTTO_CONFIG_DIR': folder,
-            'JOB_PILOTTO_NO_DOTENV': '1', 'JOB_PILOTTO_FIXTURE_DIR': '', 'JOB_PILOTTO_SEARCH_TAPE': '',
+            'JOBADABRA_DATA_DIR': folder, 'JOBADABRA_CONFIG_DIR': folder,
+            'JOBADABRA_NO_DOTENV': '1', 'JOBADABRA_FIXTURE_DIR': '', 'JOBADABRA_SEARCH_TAPE': '',
         }))
         self.db = sqlite3.connect(':memory:')
         self.db.row_factory = sqlite3.Row

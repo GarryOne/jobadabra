@@ -9,7 +9,7 @@ import * as requestLog from './request-log.js';
 import {ROOT as REPO} from './root.js';   // the repo's folder only: pipeline.js would bring the engine runner and the AI client (see schema.js)
 
 // The end-to-end tests put a Notion stand-in in between that can fail on purpose (desktop/e2e/lib/notion-proxy.mjs); honoured only in a test run.
-const API = process.env.JOB_PILOTTO_E2E && process.env.JOB_PILOTTO_E2E_NOTION_BASE_URL ? `${process.env.JOB_PILOTTO_E2E_NOTION_BASE_URL.replace(/\/$/, '')}/v1/` : 'https://api.notion.com/v1/';
+const API = process.env.JOBADABRA_E2E && process.env.JOBADABRA_E2E_NOTION_BASE_URL ? `${process.env.JOBADABRA_E2E_NOTION_BASE_URL.replace(/\/$/, '')}/v1/` : 'https://api.notion.com/v1/';
 export const TEMPLATE = JSON.parse(fs.readFileSync(path.join(REPO, 'config', 'notion_template.json'), 'utf8'));
 
 // Notion answers 429 when a workspace sends more than ~3 requests a second (the app often reads several things at

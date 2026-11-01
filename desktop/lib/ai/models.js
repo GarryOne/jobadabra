@@ -1,6 +1,6 @@
 // The models each AI engine family uses, by tier (owner-approved 9 Oct 2026): data, never literals in the AI modules.
 // A module asks for a tier (`model('small')`) or sends a Claude model id; an OpenAI engine maps that id to its tier's model.
-// Environment overrides: JOB_PILOTTO_OPENAI_SMALL_MODEL / _MAIN_MODEL / _BIG_MODEL. Prices are $ per million tokens.
+// Environment overrides: JOBADABRA_OPENAI_SMALL_MODEL / _MAIN_MODEL / _BIG_MODEL. Prices are $ per million tokens.
 // Mirrors the engine's tiers (src/ai/providers). Guarded by test/ai-contract.test.js.
 
 export const TIERS = {
@@ -17,7 +17,7 @@ export const tierOf = id => (/haiku/.test(id) ? 'small' : /opus/.test(id) ? 'big
 export function model(tier, family = 'claude', env = process.env) {
   const row = TIERS[tier] || TIERS.main;
   if (family !== 'openai') return row.claude;
-  return env[`JOB_PILOTTO_OPENAI_${tier.toUpperCase()}_MODEL`] || row.openai;
+  return env[`JOBADABRA_OPENAI_${tier.toUpperCase()}_MODEL`] || row.openai;
 }
 
 // What an OpenAI engine runs for the model a caller sent: a Claude id maps by tier; anything else is taken as an OpenAI id.

@@ -82,7 +82,7 @@ class ScheduledRunOnTheStoreTests(unittest.TestCase):
         early_reads = dict(eures._early)
         argv = ['daily', '--mode', 'scheduled', '--log-run', '--insight', '--db', str(self.tmp / 'jobs.sqlite'), *extra]
         out = io.StringIO()
-        with mock.patch.object(sys, 'argv', argv), mock.patch.dict('os.environ', env or {'JOB_PILOTTO_STORE': 'memory', 'JOB_PILOTTO_DISABLE': 'mail,notion,google_jobs'}), \
+        with mock.patch.object(sys, 'argv', argv), mock.patch.dict('os.environ', env or {'JOBADABRA_STORE': 'memory', 'JOBADABRA_DISABLE': 'mail,notion,google_jobs'}), \
                 contextlib.redirect_stdout(out):
             code = daily.main()
         self.assertEqual(eures._early, early_reads, 'the isolated store run leaves no background EURES read')
@@ -152,12 +152,12 @@ class ScheduledRunOnTheStoreTests(unittest.TestCase):
                 self.assertEqual(daily_helpers.profile_source(self.stores)(), 'as the page reads')   # texts.plain: Notion's page text
 
     def test_a_scheduled_run_never_reads_job_alert_emails_while_they_are_parked(self):
-        """Owner, 26 Oct 2026: job alerts parked (src/features.py PARKED). Gmail and the AI ready: no scan, unless JOB_PILOTTO_ENABLE names it."""
+        """Owner, 26 Oct 2026: job alerts parked (src/features.py PARKED). Gmail and the AI ready: no scan, unless JOBADABRA_ENABLE names it."""
         from src.ai import engine
         from src.sources import google as google_api, job_alerts
-        env = {'JOB_PILOTTO_STORE': 'memory', 'GOOGLE_REFRESH_TOKEN': 't', 'JOB_PILOTTO_AI_ENGINE': 'cli',
-               'JOB_PILOTTO_DISABLE': 'mail,notion,google_jobs,page_reader,scout_ai,title_triage,place_triage,found_boards,role_ideas'}
-        for extra, read in (({}, False), ({'JOB_PILOTTO_ENABLE': 'job_alerts'}, True)):   # the second: proof the run reaches the switch
+        env = {'JOBADABRA_STORE': 'memory', 'GOOGLE_REFRESH_TOKEN': 't', 'JOBADABRA_AI_ENGINE': 'cli',
+               'JOBADABRA_DISABLE': 'mail,notion,google_jobs,page_reader,scout_ai,title_triage,place_triage,found_boards,role_ideas'}
+        for extra, read in (({}, False), ({'JOBADABRA_ENABLE': 'job_alerts'}, True)):   # the second: proof the run reaches the switch
             with self.subTest(extra=extra), mock.patch.object(engine, 'ready', return_value=True), \
                     mock.patch.object(engine, 'client', return_value=object()), \
                     mock.patch.object(google_api.Google, 'from_env', return_value=mock.Mock(scopes=None)), \
@@ -208,7 +208,7 @@ class ModesOnTheStoreTests(unittest.TestCase):
         out = io.StringIO()
         argv = ['daily', '--mode', 'add', '--job', url, '--note', '', '--log-run', '--job-title', 'Platform Engineer',
                 '--job-company', 'Acme', '--db', str(pathlib.Path(tempfile.mkdtemp()) / 'jobs.sqlite')]
-        with mock.patch.object(sys, 'argv', argv), mock.patch.dict('os.environ', {'JOB_PILOTTO_STORE': 'memory'}), \
+        with mock.patch.object(sys, 'argv', argv), mock.patch.dict('os.environ', {'JOBADABRA_STORE': 'memory'}), \
                 mock.patch.object(socket.socket, 'connect', side_effect=AssertionError('the run reached the network')), \
                 mock.patch.object(daily.notion.Tracker, 'from_env', return_value=None), \
                 mock.patch.object(store_access, 'open_stores', lambda tracker=None: stores), \

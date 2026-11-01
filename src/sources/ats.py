@@ -25,7 +25,7 @@ DESCRIPTION_LIMIT = 12000
 
 
 def _fixture(folder, url):
-    """JOB_PILOTTO_FIXTURE_DIR (the end-to-end journey, desktop/e2e): a feed is read from <folder>/routes.json -> file instead of the network,
+    """JOBADABRA_FIXTURE_DIR (the end-to-end journey, desktop/e2e): a feed is read from <folder>/routes.json -> file instead of the network,
     so the test is the same every day. A URL with no route fails like an unreachable feed; nothing leaves the computer."""
     routes = json.loads((Path(folder) / 'routes.json').read_text())
     for part, name in routes.items():
@@ -35,7 +35,7 @@ def _fixture(folder, url):
 
 
 def _get(url):
-    fixtures = os.getenv('JOB_PILOTTO_FIXTURE_DIR')
+    fixtures = os.getenv('JOBADABRA_FIXTURE_DIR')
     if fixtures:
         return _fixture(fixtures, url)
     state = conditional_state()

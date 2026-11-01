@@ -68,8 +68,8 @@ export const onRunEnd = listener => runEnd.add(listener);
 // A run of the engine (`python -m …`, every command but UNWATCHED) that stops talking, or lasts far too long, is stopped, said so in the log and reported (technical
 // reports: run_failed with timedOut). 2 Oct 2026: a friend's search sat "Running" for 40 minutes (every AI call waiting on a Claude Code that
 // did not answer) and nothing, not the row in Notion, not a report, said it was stuck. SIGTERM lets the engine close its Notion row.
-// The end-to-end journey shortens the silence limit (JOB_PILOTTO_E2E_IDLE_MS) so a hung AI can be tested in under a minute; never set for a user.
-const E2E_IDLE = process.env.JOB_PILOTTO_E2E ? Number(process.env.JOB_PILOTTO_E2E_IDLE_MS) || 0 : 0;
+// The end-to-end journey shortens the silence limit (JOBADABRA_E2E_IDLE_MS) so a hung AI can be tested in under a minute; never set for a user.
+const E2E_IDLE = process.env.JOBADABRA_E2E ? Number(process.env.JOBADABRA_E2E_IDLE_MS) || 0 : 0;
 export const LIMITS = {idleMs: E2E_IDLE || 15 * 60 * 1000, totalMs: 45 * 60 * 1000, checkMs: E2E_IDLE ? 1000 : 5000, killAfterMs: E2E_IDLE ? 3000 : 8000, watchAll: false};   // watchAll: tests watch the UNWATCHED commands too
 // What a person reads when the app stopped a silent run (the row, its detail, the toast, the bottom bar). #185: it said only "no output for 10 s", with no
 // next step. The prefix stays: tests and the technical log match it.
@@ -94,7 +94,7 @@ function runNow(storage, args, onLine = () => {}, extraEnv = {}, {stopAfterMs = 
   const told = onLine;
   // The run's output is written down as it comes (logs/engine.log) and its two markers go to the app log, so a run
   // that went wrong can be read back afterwards instead of being lost with the window (1 Oct 2026).
-  const runId = extraEnv.JOB_PILOTTO_RUN_ID || randomBytes(6).toString('hex');
+  const runId = extraEnv.JOBADABRA_RUN_ID || randomBytes(6).toString('hex');
   const resultFile = path.join(os.tmpdir(), `jp-result-${runId}.json`);
   engineLog.start(shown, new Date(), runId);
   appLog('run', `start: python -m ${shown.join(' ')}`, {run_id: runId});
@@ -105,7 +105,7 @@ function runNow(storage, args, onLine = () => {}, extraEnv = {}, {stopAfterMs = 
   if (owner?.stopped) { engineLog.end({code: null, seconds: 0, runId}); return Promise.resolve({code: null, stdout: '', result: null, runId, timedOut: false}); }
   const start = aboutFile => new Promise((resolve, reject) => {
     const child = spawn(python(), ['-m', ...args], {cwd: REPO, detached: process.platform !== 'win32', env: {...pipelineEnv(storage), ...extraEnv,
-      JOB_PILOTTO_RUN_ID: runId, JOB_PILOTTO_RESULT_FILE: resultFile, JOB_PILOTTO_TIME_UP_FILE: path.join(os.tmpdir(), `jp-timeup-${runId}`), ...(aboutFile ? {JOB_PILOTTO_ABOUT_YOU_FILE: aboutFile} : {})}});
+      JOBADABRA_RUN_ID: runId, JOBADABRA_RESULT_FILE: resultFile, JOBADABRA_TIME_UP_FILE: path.join(os.tmpdir(), `jp-timeup-${runId}`), ...(aboutFile ? {JOBADABRA_ABOUT_YOU_FILE: aboutFile} : {})}});
     children.add(child);
     onChild?.(child);   // a caller that must end this one command by itself (Cancel sign-in), by the child's own handle
     owner?.children.add(child);

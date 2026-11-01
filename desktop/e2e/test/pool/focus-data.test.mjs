@@ -106,6 +106,6 @@ test('the seed and the reset on Notion (the stand-in)', {timeout: 120000}, async
   const fake = await startNotionFake();
   try {
     const ids = await buildStandIn(fake);
-    await seedAndReset({profile: profileWith({notionIds: ids}), store: 'standin', token: fake.token, appEnv: {JOB_PILOTTO_E2E_NOTION_BASE_URL: fake.url}});
+    await seedAndReset({profile: profileWith({notionIds: ids}), store: 'standin', token: fake.token, appEnv: {JOBADABRA_E2E_NOTION_BASE_URL: fake.url}});
   } finally { await fake.close(); }
 });

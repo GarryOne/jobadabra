@@ -14,7 +14,7 @@ class MemoryStoreTests(StoreContract, unittest.TestCase):
 
 class OpenStoresTests(unittest.TestCase):
     def test_the_setting_wins_then_a_notion_token_then_sqlite(self):
-        self.assertEqual(stores.chosen({'JOB_PILOTTO_STORE': 'memory', 'NOTION_TOKEN': 't'}), 'memory')
+        self.assertEqual(stores.chosen({'JOBADABRA_STORE': 'memory', 'NOTION_TOKEN': 't'}), 'memory')
         self.assertEqual(stores.chosen({'NOTION_TOKEN': 't'}), 'notion')
         self.assertEqual(stores.chosen({}), 'sqlite')
 
@@ -23,12 +23,12 @@ class OpenStoresTests(unittest.TestCase):
         with mock.patch('src.stores.notion.open_store', return_value='notion-with-held') as notion:
             self.assertEqual(stores.open_stores({}, tracker=held), 'notion-with-held')
         notion.assert_called_once_with({}, tracker=held)
-        self.assertEqual(stores.open_stores({'JOB_PILOTTO_STORE': 'memory'}, tracker=held).name, 'memory')
+        self.assertEqual(stores.open_stores({'JOBADABRA_STORE': 'memory'}, tracker=held).name, 'memory')
 
     def test_open_stores_gives_the_chosen_adapter_and_refuses_an_unknown_one(self):
-        self.assertEqual(stores.open_stores({'JOB_PILOTTO_STORE': 'memory'}).name, 'memory')
+        self.assertEqual(stores.open_stores({'JOBADABRA_STORE': 'memory'}).name, 'memory')
         with self.assertRaises(LookupError):
-            stores.open_stores({'JOB_PILOTTO_STORE': 'nosuch'})
+            stores.open_stores({'JOBADABRA_STORE': 'nosuch'})
 
 
 if __name__ == '__main__':

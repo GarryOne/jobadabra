@@ -20,7 +20,7 @@ class PublishPathTest(unittest.TestCase):
         def build_index(db, sources, **kwargs):
             seen['check_deadline'] = kwargs['deadline']
             return [feed], []
-        patches = [mock.patch.dict(os.environ, {'INDEX_PUBLISH_KEY': 'k', 'JOB_PILOTTO_INDEX_URL': 'http://127.0.0.1:1/api/index',
+        patches = [mock.patch.dict(os.environ, {'INDEX_PUBLISH_KEY': 'k', 'JOBADABRA_INDEX_URL': 'http://127.0.0.1:1/api/index',
                                              'JOB_STARTED_AT': str(int(time.time()) - 20 * 60)}),   # the job began 20 min ago: the publish deadline is near, as in a slow run
                    mock.patch.object(scout, 'employer_store', lambda: None), mock.patch.object(scout, 'synced_key', lambda stores: False), mock.patch.object(trial, 'pause_run', lambda *a, **k: False),
                    mock.patch.object(scout, 'run', lambda *a, **k: ({}, [])), mock.patch.object(scout, 'telegram_summary', lambda *a, **k: 'summary'),

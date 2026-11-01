@@ -27,7 +27,7 @@ export const store = 'standin';
 export const variesPlace = true;
 export const varies = true;
 export const minutes = 15;
-export const env = {JOB_PILOTTO_E2E_EXPECTS_FAILURES: '1'};   // the AI is made to fail on purpose in some walks: its Sentry reports are tagged expected
+export const env = {JOBADABRA_E2E_EXPECTS_FAILURES: '1'};   // the AI is made to fail on purpose in some walks: its Sentry reports are tagged expected
 export const watches = ['desktop/renderer/', 'desktop/lib/'];
 
 export async function run(ctx) {

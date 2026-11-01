@@ -2,7 +2,7 @@
 import json, os, sys
 repo, out = sys.argv[1], sys.argv[2]
 sys.path.insert(0, repo)
-os.environ.update({'JOB_PILOTTO_DATA_DIR': os.environ['RD'] + '/data', 'JOB_PILOTTO_CONFIG_DIR': os.environ['RD'] + '/config', 'JOB_PILOTTO_FOLLOW_APP': '0'})
+os.environ.update({'JOBADABRA_DATA_DIR': os.environ['RD'] + '/data', 'JOBADABRA_CONFIG_DIR': os.environ['RD'] + '/config', 'JOBADABRA_FOLLOW_APP': '0'})
 from src.sources import boards, careers, visits
 lists = {n: getattr(careers, n) for n in ('CAREER_WORDS', 'JOB_PATH', 'NO_JOBS', 'STRONG_WORDS', 'JOB_HOST', 'NOT_JOBS', 'TITLE_LIKE', 'NOT_A_JOB')}
 lists.update({'CAREER': boards.CAREER, 'JOBLIST': visits.JOBLIST, 'NOT_A_LIST': visits.NOT_A_LIST})

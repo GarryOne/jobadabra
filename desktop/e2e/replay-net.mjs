@@ -33,11 +33,11 @@ if (zoneOf(record)) process.env.TZ = zoneOf(record);   // the live run's time zo
 const bodies = new Map(fs.readdirSync(path.join(recordDir, 'bodies')).map(hash => [hash, fs.readFileSync(path.join(recordDir, 'bodies', hash))]));
 fs.mkdirSync(out, {recursive: true});
 if (fs.existsSync(path.join(recordDir, 'model-memo.json'))) fs.copyFileSync(path.join(recordDir, 'model-memo.json'), path.join(out, 'model-memo.json')); else fs.writeFileSync(path.join(out, 'model-memo.json'), '{}');   // a live run whose AI was refused kept no answers: every ask is reported missing   // a copy: the live run's kept answers stay as they were
-process.env.JOB_PILOTTO_SITE_LEDGER_DIR = path.join(out, 'ledger');   // no site is visited: never a visit in the Mac's ledger
+process.env.JOBADABRA_SITE_LEDGER_DIR = path.join(out, 'ledger');   // no site is visited: never a visit in the Mac's ledger
 delete process.env.JP_NET_RECORD_DIR;
-process.env.JOB_PILOTTO_MODEL_MEMO_MISSLOG = path.join(out, 'misslog.jsonl');   // each miss's whole list of differing parts (the app log cuts it): the gate's "recording out of date" (replay-gate.mjs)
-process.env.JOB_PILOTTO_MODEL_MEMO_HITS = path.join(out, 'hits.txt');   // each kept answer the replay used (lib/ai/model-memo.js): test (a), every live ask hits
-process.env.JOB_PILOTTO_MODEL_MEMO_LATENCY_CAP_MS ||= '20000';   // the live AI's own time, not capped at 3 s: the replay keeps the live pace (P0b's gap)
+process.env.JOBADABRA_MODEL_MEMO_MISSLOG = path.join(out, 'misslog.jsonl');   // each miss's whole list of differing parts (the app log cuts it): the gate's "recording out of date" (replay-gate.mjs)
+process.env.JOBADABRA_MODEL_MEMO_HITS = path.join(out, 'hits.txt');   // each kept answer the replay used (lib/ai/model-memo.js): test (a), every live ask hits
+process.env.JOBADABRA_MODEL_MEMO_LATENCY_CAP_MS ||= '20000';   // the live AI's own time, not capped at 3 s: the replay keeps the live pace (P0b's gap)
 const SW_BLOCK = () => { if (navigator.serviceWorker) navigator.serviceWorker.register = async () => {}; };
 
 let replay = null;

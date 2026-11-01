@@ -23,11 +23,11 @@ test('a schedule\'s own jobs are not started again, and neither are searches and
   assert.deepEqual(kept.map(item => item.kind), ['insight']);
 });
 
-// The journey shortens the 20-second wait before the jobs of the last session start again, so the quit-in-the-middle test does not sit through it (JOB_PILOTTO_E2E_RESUME_MS).
+// The journey shortens the 20-second wait before the jobs of the last session start again, so the quit-in-the-middle test does not sit through it (JOBADABRA_E2E_RESUME_MS).
 import {resumeDelay} from '../lib/resume-queue.js';
 test('the resume wait is 20 s for a user, and shortened only in the end-to-end journey', () => {
   assert.equal(resumeDelay({}), 20000);
-  assert.equal(resumeDelay({JOB_PILOTTO_E2E_RESUME_MS: '3000'}), 20000, 'a user never gets it');
-  assert.equal(resumeDelay({JOB_PILOTTO_E2E: '1', JOB_PILOTTO_E2E_RESUME_MS: '3000'}), 3000);
-  assert.equal(resumeDelay({JOB_PILOTTO_E2E: '1', JOB_PILOTTO_E2E_RESUME_MS: 'soon'}), 20000);
+  assert.equal(resumeDelay({JOBADABRA_E2E_RESUME_MS: '3000'}), 20000, 'a user never gets it');
+  assert.equal(resumeDelay({JOBADABRA_E2E: '1', JOBADABRA_E2E_RESUME_MS: '3000'}), 3000);
+  assert.equal(resumeDelay({JOBADABRA_E2E: '1', JOBADABRA_E2E_RESUME_MS: 'soon'}), 20000);
 });

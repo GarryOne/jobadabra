@@ -12,7 +12,7 @@ LAB = 'GarryOne/jobadabra-lab'
 CONTEXT = 'lab-ci'
 DESCRIPTION = 'pr-description'   # the lab's own Actions cannot run until 1 Nov 2026: the description check runs here and reports on the lab PR
 API = 'https://api.github.com'
-SAFE_ENV = ('PATH', 'HOME', 'LANG', 'TMPDIR', 'JOB_PILOTTO_PUBLIC')   # the tests see no token, no workflow secret; JOB_PILOTTO_PUBLIC = this checkout (the lab's discovery tests read the engine)
+SAFE_ENV = ('PATH', 'HOME', 'LANG', 'TMPDIR', 'JOBADABRA_PUBLIC')   # the tests see no token, no workflow secret; JOBADABRA_PUBLIC = this checkout (the lab's discovery tests read the engine)
 
 
 def parse_summary(output):

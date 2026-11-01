@@ -358,12 +358,12 @@ def harvest(db, seeds, sources=None, skip=(), until=None):
 
 def _harvest(db, seeds, sources, skip, until):
     ensure_tables(db)
-    extra = [name for name in os.getenv('JOB_PILOTTO_EXCLUDED_COMPANIES', '').split(',') if name.strip()]
+    extra = [name for name in os.getenv('JOBADABRA_EXCLUDED_COMPANIES', '').split(',') if name.strip()]
     excluded = {key_for(name.strip()) for name in seeds.get('excluded', []) + extra}
     known = {row['key'] for row in db.execute('SELECT key FROM scout_candidates')}
     if sources is None:
-        # JOB_PILOTTO_FIXTURE_DIR (the end-to-end journey, desktop/e2e): the seeds only, no Hacker News or whiteboard crawl.
-        sources = [lambda: seed_candidates(seeds)] if os.getenv('JOB_PILOTTO_FIXTURE_DIR') else default_sources(db, seeds, search_countries(), skip)
+        # JOBADABRA_FIXTURE_DIR (the end-to-end journey, desktop/e2e): the seeds only, no Hacker News or whiteboard crawl.
+        sources = [lambda: seed_candidates(seeds)] if os.getenv('JOBADABRA_FIXTURE_DIR') else default_sources(db, seeds, search_countries(), skip)
     added = 0
     for number, source in enumerate(sources):
         if until is not None and time.monotonic() >= until:

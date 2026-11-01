@@ -230,7 +230,7 @@ class EveryStageOnlyQueuesPastTheRunsTime(Isolated):
 class OnePressOneDeadline(Isolated):
     """A Find jobs press runs the job boards' step (src discover) before daily: one deadline from the press for both (owner's 06:21 press,
     26 Oct 2026: 269 s, discover 177 s of it with no clock, then daily's own 3 minutes). Each step counts from the press (the app's
-    JOB_PILOTTO_SEARCH_AT), and discover ends at its share of it (desktop/test/search-steps.test.js gives every step the press)."""
+    JOBADABRA_SEARCH_AT), and discover ends at its share of it (desktop/test/search-steps.test.js gives every step the press)."""
 
     def test_a_step_counts_from_the_press_not_from_its_own_start(self):
         with mock.patch.dict(os.environ, {time_budget.SEARCH_AT: str(time.time() - 1)}):
@@ -246,7 +246,7 @@ class OnePressOneDeadline(Isolated):
             release.wait(10)
             raise OSError('the test is over')
         argv = ['python -m src discover', '--pages', '5', '--max-companies', '40', '--budget', str(BUDGET)]
-        env = {k: v for k, v in os.environ.items() if k != 'JOB_PILOTTO_FIXTURE_DIR'}
+        env = {k: v for k, v in os.environ.items() if k != 'JOBADABRA_FIXTURE_DIR'}
         with mock.patch.object(sys, 'argv', argv), mock.patch.dict(os.environ, {**env, time_budget.SEARCH_AT: str(time.time())}, clear=True), \
                 mock.patch.object(boards, 'boards', return_value=[]), mock.patch('src.ai.board_ideas.ideas', return_value=[board(i) for i in range(6)]), \
                 mock.patch.object(found_boards, 'read_board', side_effect=slow), mock.patch.object(board_web, 'start', return_value=None), \
@@ -264,7 +264,7 @@ class OnePressOneDeadline(Isolated):
         no page; the searches not asked go on next time from where this one stopped (rotation)."""
         asked = []
         argv = ['python -m src discover', '--budget', str(BUDGET)]
-        env = {k: v for k, v in os.environ.items() if k != 'JOB_PILOTTO_FIXTURE_DIR'}
+        env = {k: v for k, v in os.environ.items() if k != 'JOBADABRA_FIXTURE_DIR'}
         with mock.patch.object(sys, 'argv', argv), mock.patch.dict(os.environ, {**env, time_budget.SEARCH_AT: str(time.time() - BUDGET)}, clear=True), \
                 mock.patch.object(boards, 'boards', return_value=['jobs.ch', 'SwissDevJobs', 'TechTree']), \
                 mock.patch.object(boards, 'jobsch_terms', return_value=['pilot']), mock.patch.object(boards, 'jobsch_places', return_value=['Zurich']), \
@@ -280,7 +280,7 @@ class OnePressOneDeadline(Isolated):
         """A recorded search's decisions are numbered by the processes that start a budget (src/budget_tape.py): discover's clock keeps its
         own count, so a tape recorded before it had one still replays daily's decisions as daily's."""
         tape = self.data / 'tape'
-        with mock.patch.dict(os.environ, {'JOB_PILOTTO_SEARCH_TAPE': str(tape), 'JOB_PILOTTO_SEARCH_TAPE_MODE': 'record'}):
+        with mock.patch.dict(os.environ, {'JOBADABRA_SEARCH_TAPE': str(tape), 'JOBADABRA_SEARCH_TAPE_MODE': 'record'}):
             time_budget.start(BUDGET, stage=boards.SHARE_S, name='discover')
             self.assertFalse((self.data / 'budget_epoch.txt').exists())
             time_budget.start(BUDGET)

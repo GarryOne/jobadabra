@@ -41,7 +41,7 @@ class ShipPrTest(ShipFixture):
 
     def pr_ship(self, state=None, *flags, timeout=90, **extra):
         write_fresh(self.state, {'origin': str(self.origin), **(state or {})})   # under the fake gh's lock: a watcher still polling must not write its old copy over it
-        env = {**os.environ, 'PATH': f'{self.bin}{os.pathsep}{os.environ["PATH"]}', 'FAKE_GH_STATE': str(self.state), 'SHIP_MODE': 'pr', 'SHIP_REVIEW': '0', 'SHIP_WATCH': '0', 'SHIP_PR_POLL': '0', 'SHIP_RED_POLL': '0', 'JOB_PILOTTO_SESSION': '', 'JOB_PILOTTO_SESSION_SHORT': '', 'JP_SESSION': '', 'JP_SESSIONS_DIR': str(self.tmp / 'no-sessions'), 'SHIP_LOG': str(self.tmp / 'ship.log'), **extra}   # SHIP_REVIEW=0 by default: the auto-merge path
+        env = {**os.environ, 'PATH': f'{self.bin}{os.pathsep}{os.environ["PATH"]}', 'FAKE_GH_STATE': str(self.state), 'SHIP_MODE': 'pr', 'SHIP_REVIEW': '0', 'SHIP_WATCH': '0', 'SHIP_PR_POLL': '0', 'SHIP_RED_POLL': '0', 'JOBADABRA_SESSION': '', 'JOBADABRA_SESSION_SHORT': '', 'JP_SESSION': '', 'JP_SESSIONS_DIR': str(self.tmp / 'no-sessions'), 'SHIP_LOG': str(self.tmp / 'ship.log'), **extra}   # SHIP_REVIEW=0 by default: the auto-merge path
         started = time.monotonic()
         try:
             return subprocess.run(['bash', str(self.tree / 'tools' / 'ship.sh'), *flags], cwd=self.tree, capture_output=True, text=True, timeout=timeout, env=env)
@@ -119,7 +119,7 @@ class ShipPrTest(ShipFixture):
         self.assertFalse([c for c in self.calls() if 'pr create' in c], 'no PR is opened')
         # a later ship of the open PR never needs it and never retitles it
         open_pr = {'state': 'OPEN', 'head': 'topic', 'title': '[9f] Whole change'}
-        self.pr_ship(open_pr, JOB_PILOTTO_SESSION='jobadabra-9f')
+        self.pr_ship(open_pr, JOBADABRA_SESSION='jobadabra-9f')
         self.assertFalse([c for c in self.calls() if 'pr edit' in c and '--title' in c])
         # --title= with 2+ commits and the "[xx] " tag are covered by the title cases above and test_the_pr_title_names_the_session_that_opened_it
 
@@ -137,10 +137,10 @@ class ShipPrTest(ShipFixture):
     def test_a_title_that_already_has_the_session_tag_keeps_one(self):
         # 24 Oct 2026: --title="[d8] ..." became "[d8] [d8] ..." (#1750), on a new PR and on a retitle.
         self.change(self.tree, 'mine.txt', 'y\n', 'My change')
-        self.pr_ship(None, '--title=[9f] Tagged words', JOB_PILOTTO_SESSION='jobadabra-9f')
+        self.pr_ship(None, '--title=[9f] Tagged words', JOBADABRA_SESSION='jobadabra-9f')
         self.assertIn('--title [9f] Tagged words --body', ' | '.join(self.calls()))
         self.change(self.tree, 'more.txt', 'z\n', 'More')
-        self.pr_ship({'state': 'OPEN', 'head': 'topic'}, '--title=[9f] Tagged again', JOB_PILOTTO_SESSION='jobadabra-9f')
+        self.pr_ship({'state': 'OPEN', 'head': 'topic'}, '--title=[9f] Tagged again', JOBADABRA_SESSION='jobadabra-9f')
         self.assertIn('pr edit 1 --title [9f] Tagged again', ' | '.join(self.calls()))
         self.assertNotIn('[9f] [9f]', ' | '.join(self.calls()))
 
@@ -148,10 +148,10 @@ class ShipPrTest(ShipFixture):
         # 21 Oct 2026: site#18 and #19 were opened or retitled by hand without the "[xx] " tag
         self.change(self.tree, 'mine.txt', 'y\n', 'My change')
         open_pr = {'state': 'OPEN', 'head': 'topic', 'title': 'Hand made title'}
-        self.pr_ship(open_pr, JOB_PILOTTO_SESSION='jobadabra-9f')
+        self.pr_ship(open_pr, JOBADABRA_SESSION='jobadabra-9f')
         self.assertIn('pr edit 1 --title [9f] Hand made title', ' | '.join(self.calls()))
         self.change(self.tree, 'more.txt', 'z\n', 'More')
-        self.pr_ship({'state': 'OPEN', 'head': 'topic', 'title': '[9f] Tagged already'}, JOB_PILOTTO_SESSION='jobadabra-9f')
+        self.pr_ship({'state': 'OPEN', 'head': 'topic', 'title': '[9f] Tagged already'}, JOBADABRA_SESSION='jobadabra-9f')
         self.assertNotIn('Tagged already', ' | '.join(c for c in self.calls() if 'pr edit' in c), 'a tagged title is left alone')
 
     def test_a_branch_carrying_another_open_prs_commit_is_refused_before_any_push(self):
@@ -173,7 +173,7 @@ class ShipPrTest(ShipFixture):
         """Owner, 27 Oct 2026, try 3 on "GraphQL runs out" ("No GraphQL in our tools"): #2288, #2290 and bench #9 were opened over REST by hand and went red without the
         [xx] tag or pr-body.sh's layout. Ship opens over REST itself and keeps both; the only GraphQL left is a draft's ready and auto-merge."""
         self.change(self.tree, 'mine.txt', 'y\n', 'My change')
-        result = self.pr_ship(JOB_PILOTTO_SESSION='jobadabra-9f')
+        result = self.pr_ship(JOBADABRA_SESSION='jobadabra-9f')
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         state = json.loads(self.state.read_text())
         self.assertEqual(state['title'], '[9f] My change')
@@ -184,7 +184,7 @@ class ShipPrTest(ShipFixture):
     def test_the_pr_title_names_the_session_that_opened_it(self):
         # Owner, 15 Oct 2026: "add in the PR title the name of the session that opened that PR".
         self.change(self.tree, 'mine.txt', 'y\n', 'My change')
-        result = self.pr_ship(JOB_PILOTTO_SESSION='jobadabra-9f')
+        result = self.pr_ship(JOBADABRA_SESSION='jobadabra-9f')
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn('--title [9f] My change', ' | '.join(self.calls()))
         self.assertIn('My change', git(self.origin, 'log', '--format=%s', 'main'), 'the commit subject itself stays as written')
@@ -195,10 +195,10 @@ class ShipPrTest(ShipFixture):
         for n, name in enumerate(('jobadabra-9f', 'jobadabra-9f', 'jobadabra-claude-x1b2-9f')):
             with self.subTest(name):
                 self.change(self.tree, f'shape{n}.txt', 'y\n', f'Change {n}')
-                self.pr_ship(None, JOB_PILOTTO_SESSION=name)
+                self.pr_ship(None, JOBADABRA_SESSION=name)
                 self.assertIn(f'--title [9f] Change {n}', ' | '.join(self.calls()))
                 self.change(self.tree, f'shape{n}b.txt', 'z\n', f'More {n}')
-                self.pr_ship({'state': 'OPEN', 'head': 'topic', 'title': f'Hand made {n}'}, JOB_PILOTTO_SESSION=name)
+                self.pr_ship({'state': 'OPEN', 'head': 'topic', 'title': f'Hand made {n}'}, JOBADABRA_SESSION=name)
                 self.assertIn(f'pr edit 1 --title [9f] Hand made {n}', ' | '.join(self.calls()))
 
     def test_the_session_tag_is_the_short_name_the_owner_sees_in_cmux(self):
@@ -207,14 +207,14 @@ class ShipPrTest(ShipFixture):
         sessions, kept = self.tmp / 'sessions', self.tmp / 'assignments'
         sessions.mkdir(); kept.mkdir()
         probe = 'printf \'{"name": "mac-07", "sessionId": "S1"}\' > "$JP_SESSIONS_DIR/$$.json"; . tools/session-name.sh; session_short'
-        env = {**os.environ, 'JOB_PILOTTO_SESSION': '', 'JOB_PILOTTO_SESSION_SHORT': '', 'JP_SESSION': '', 'JP_SESSIONS_DIR': str(sessions), 'JP_ASSIGNMENTS_DIR': str(kept)}
+        env = {**os.environ, 'JOBADABRA_SESSION': '', 'JOBADABRA_SESSION_SHORT': '', 'JP_SESSION': '', 'JP_SESSIONS_DIR': str(sessions), 'JP_ASSIGNMENTS_DIR': str(kept)}
         short = lambda: subprocess.run(['bash', '-c', probe], cwd=ROOT, env=env, capture_output=True, text=True).stdout.strip()
         self.assertEqual(short(), '07', "positive control: with no kept short name, the Claude name's last part")
         (kept / 'S1.short').write_text('27\n')
         self.assertEqual(short(), '27')
         # ship.sh --background exports the short name before it detaches (no Claude parent to walk after that): the PR is tagged with it
         self.change(self.tree, 'mine.txt', 'y\n', 'My change')
-        self.pr_ship(None, '--title=[27] Coordinator change', JOB_PILOTTO_SESSION='mac-07', JOB_PILOTTO_SESSION_SHORT='27')
+        self.pr_ship(None, '--title=[27] Coordinator change', JOBADABRA_SESSION='mac-07', JOBADABRA_SESSION_SHORT='27')
         self.assertIn('--title [27] Coordinator change --body', ' | '.join(self.calls()))
         self.assertNotIn('[07]', ' | '.join(self.calls()))
 

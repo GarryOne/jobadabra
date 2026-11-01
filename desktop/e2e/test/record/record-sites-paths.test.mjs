@@ -105,7 +105,7 @@ test('record-sites.mjs re-runs a refused row on Electron and applies the settled
 // jobs.ch, 12 Oct 2026: the plain leg took the site's last visit of the day; the Electron leg then ran ~190 s of app start, was refused inside the suite,
 // and the pass read "Electron reached nothing" as a path difference. Every Electron leg (fell, refused, paired) asks the ledger first and is skipped, not paired.
 test('an Electron leg is asked of the site ledger first: refused when the plain leg took the last visit, never a pair', () => {
-  const env = {JOB_PILOTTO_SITE_LEDGER_DIR: fs.mkdtempSync(path.join(os.tmpdir(), 'jp-ledger-')), JOB_PILOTTO_SITE_LIMIT: '2'};
+  const env = {JOBADABRA_SITE_LEDGER_DIR: fs.mkdtempSync(path.join(os.tmpdir(), 'jp-ledger-')), JOBADABRA_SITE_LIMIT: '2'};
   const real = process.pid;
   const visitAs = pid => { Object.defineProperty(process, 'pid', {value: pid, configurable: true}); try { guardLiveVisit(URL, {env, log: () => {}}); } finally { Object.defineProperty(process, 'pid', {value: real, configurable: true}); } };
   const guard = (url, options) => guardLiveVisit(url, {...options, env, log: () => {}});
@@ -125,7 +125,7 @@ test('record-sites.mjs asks the ledger before every Electron leg it starts', () 
 
 // The paired sample needs two visits of a site (plain node, then Electron): a row with one left would only be skipped at its Electron leg, so it is not picked.
 test('the paired sample picks only rows whose site has two visits left today; a row with no known address is picked as before', () => {
-  const env = {JOB_PILOTTO_SITE_LEDGER_DIR: fs.mkdtempSync(path.join(os.tmpdir(), 'jp-ledger-')), JOB_PILOTTO_SITE_LIMIT: '3'};
+  const env = {JOBADABRA_SITE_LEDGER_DIR: fs.mkdtempSync(path.join(os.tmpdir(), 'jp-ledger-')), JOBADABRA_SITE_LIMIT: '3'};
   const real = process.pid;
   const visitAs = (url, pid) => { Object.defineProperty(process, 'pid', {value: pid, configurable: true}); try { guardLiveVisit(url, {env, log: () => {}}); } finally { Object.defineProperty(process, 'pid', {value: real, configurable: true}); } };
   const guard = (url, options) => guardLiveVisit(url, {...options, env, log: () => {}});

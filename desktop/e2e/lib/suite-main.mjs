@@ -124,7 +124,7 @@ export async function runSuite(name, report = null) {
     // Errors over the whole suite (lib/journey.mjs): added to its findings, so even a suite without layout checks reports a renderer exception.
     if (ctx && !ctx.skipAll && !suite.light) {
       const {journey, journeyFindings} = await import('./journey.mjs');
-      const extra = journeyFindings(journey, {suite: name, expectsFailures: !!suite.env?.JOB_PILOTTO_E2E_EXPECTS_FAILURES});
+      const extra = journeyFindings(journey, {suite: name, expectsFailures: !!suite.env?.JOBADABRA_E2E_EXPECTS_FAILURES});
       if (extra.length) { ctx.findings = [...(ctx.findings || []), ...extra]; console.log(`  journey: ${extra.map(item => item.detail).join(' | ')}`); }
       // Accessibility: one finding per axe rule over the suite's pages; a11y.json says what was checked, so the Finder can clear a rule that is gone.
       if (ctx.a11y?.checked) {

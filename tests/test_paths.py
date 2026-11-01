@@ -14,23 +14,23 @@ class DotenvTests(unittest.TestCase):
         self.saved_root = paths.ROOT
         self.tmp = Path(tempfile.mkdtemp())
         self.addCleanup(lambda: paths.__setattr__('ROOT', self.saved_root))
-        self.addCleanup(os.environ.pop, 'JOB_PILOTTO_TEST_VAR', None)
-        self.addCleanup(os.environ.pop, 'JOB_PILOTTO_TEST_EXISTING', None)
+        self.addCleanup(os.environ.pop, 'JOBADABRA_TEST_VAR', None)
+        self.addCleanup(os.environ.pop, 'JOBADABRA_TEST_EXISTING', None)
 
     def test_loads_unset_vars_without_overriding_existing_ones(self):
         (self.tmp / '.env').write_text(
             '# a comment\n'
             '\n'
-            'JOB_PILOTTO_TEST_VAR=hello world\n'
-            'JOB_PILOTTO_TEST_EXISTING=from-dotenv\n'
-            'export JOB_PILOTTO_TEST_QUOTED="quoted value"\n'
+            'JOBADABRA_TEST_VAR=hello world\n'
+            'JOBADABRA_TEST_EXISTING=from-dotenv\n'
+            'export JOBADABRA_TEST_QUOTED="quoted value"\n'
         )
-        os.environ['JOB_PILOTTO_TEST_EXISTING'] = 'from-shell'
+        os.environ['JOBADABRA_TEST_EXISTING'] = 'from-shell'
         paths.ROOT = self.tmp
         paths._load_dotenv()
-        self.assertEqual(os.environ['JOB_PILOTTO_TEST_VAR'], 'hello world')
-        self.assertEqual(os.environ['JOB_PILOTTO_TEST_EXISTING'], 'from-shell')
-        self.assertEqual(os.environ.pop('JOB_PILOTTO_TEST_QUOTED'), 'quoted value')
+        self.assertEqual(os.environ['JOBADABRA_TEST_VAR'], 'hello world')
+        self.assertEqual(os.environ['JOBADABRA_TEST_EXISTING'], 'from-shell')
+        self.assertEqual(os.environ.pop('JOBADABRA_TEST_QUOTED'), 'quoted value')
 
     def test_missing_env_file_is_a_no_op(self):
         paths.ROOT = self.tmp  # no .env written here
@@ -47,14 +47,14 @@ class WorkspaceRepoTests(unittest.TestCase):
     has no NOTION_* variables, so every submitted application queued a run that could only fail)."""
 
     def setUp(self):
-        self.saved = os.environ.pop('JOB_PILOTTO_CLOUD_REPO', None)
-        self.addCleanup(lambda: os.environ.pop('JOB_PILOTTO_CLOUD_REPO', None))
+        self.saved = os.environ.pop('JOBADABRA_CLOUD_REPO', None)
+        self.addCleanup(lambda: os.environ.pop('JOBADABRA_CLOUD_REPO', None))
         if self.saved:
-            self.addCleanup(os.environ.__setitem__, 'JOB_PILOTTO_CLOUD_REPO', self.saved)
+            self.addCleanup(os.environ.__setitem__, 'JOBADABRA_CLOUD_REPO', self.saved)
         self.tmp = Path(tempfile.mkdtemp())
 
     def test_from_the_environment_first(self):
-        os.environ['JOB_PILOTTO_CLOUD_REPO'] = 'someone/workspace'
+        os.environ['JOBADABRA_CLOUD_REPO'] = 'someone/workspace'
         self.assertEqual(paths.workspace_repo(self.tmp), 'someone/workspace')  # even with no settings file
 
     def test_from_the_desktop_apps_settings(self):

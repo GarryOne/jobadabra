@@ -27,9 +27,9 @@ before(async () => {
   profile = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-tailor-top-'));
   fs.writeFileSync(path.join(profile, 'settings.json'), JSON.stringify({store: 'sqlite'}));
   // The engine child inherits these: its own secrets file (never the Keychain) and the test marker (lib/pipeline-env.js).
-  const kept = {JOB_PILOTTO_E2E: process.env.JOB_PILOTTO_E2E, JOB_PILOTTO_ISOLATED_SECRETS: process.env.JOB_PILOTTO_ISOLATED_SECRETS, HOME: process.env.HOME};
-  process.env.JOB_PILOTTO_E2E = '1';
-  process.env.JOB_PILOTTO_ISOLATED_SECRETS = path.join(profile, 'isolated-secrets.json');
+  const kept = {JOBADABRA_E2E: process.env.JOBADABRA_E2E, JOBADABRA_ISOLATED_SECRETS: process.env.JOBADABRA_ISOLATED_SECRETS, HOME: process.env.HOME};
+  process.env.JOBADABRA_E2E = '1';
+  process.env.JOBADABRA_ISOLATED_SECRETS = path.join(profile, 'isolated-secrets.json');
   process.env.HOME = profile;
   restore = () => { for (const [name, value] of Object.entries(kept)) { if (value === undefined) delete process.env[name]; else process.env[name] = value; } };
   const {createStorage} = await loadAppModule('storage.js');

@@ -50,11 +50,11 @@ test('one pace for the whole app: calls take turns ~340 ms apart, and a 429 make
 });
 
 test('the local e2e HTTP stand-in answers a burst without real Notion pacing', async t => {
-  const names = ['JOB_PILOTTO_E2E', 'JOB_PILOTTO_E2E_NOTION_BASE_URL', 'JOB_PILOTTO_E2E_NOTION_STANDIN'];
+  const names = ['JOBADABRA_E2E', 'JOBADABRA_E2E_NOTION_BASE_URL', 'JOBADABRA_E2E_NOTION_STANDIN'];
   const previous = names.map(name => process.env[name]);
-  process.env.JOB_PILOTTO_E2E = '1';
-  process.env.JOB_PILOTTO_E2E_NOTION_BASE_URL = 'http://127.0.0.1:12345';
-  process.env.JOB_PILOTTO_E2E_NOTION_STANDIN = '1';
+  process.env.JOBADABRA_E2E = '1';
+  process.env.JOBADABRA_E2E_NOTION_BASE_URL = 'http://127.0.0.1:12345';
+  process.env.JOBADABRA_E2E_NOTION_STANDIN = '1';
   t.after(() => {
     for (const [index, name] of names.entries()) {
       if (previous[index] === undefined) delete process.env[name]; else process.env[name] = previous[index];
@@ -77,7 +77,7 @@ test('the local e2e HTTP stand-in answers a burst without real Notion pacing', a
 });
 
 test('the shared stand-in pacer ignores slot and 429 clocks, with or without a loopback port', async t => {
-  const names = ['JOB_PILOTTO_E2E', 'JOB_PILOTTO_E2E_NOTION_BASE_URL', 'JOB_PILOTTO_E2E_NOTION_STANDIN'];
+  const names = ['JOBADABRA_E2E', 'JOBADABRA_E2E_NOTION_BASE_URL', 'JOBADABRA_E2E_NOTION_STANDIN'];
   const previous = names.map(name => process.env[name]);
   t.after(() => {
     for (const [index, name] of names.entries()) {
@@ -86,7 +86,7 @@ test('the shared stand-in pacer ignores slot and 429 clocks, with or without a l
   });
   const pace = await import('../lib/notion-pace.js');
   for (const base of ['http://127.0.0.1', 'http://127.0.0.1:12345']) {
-    Object.assign(process.env, {JOB_PILOTTO_E2E: '1', JOB_PILOTTO_E2E_NOTION_BASE_URL: base, JOB_PILOTTO_E2E_NOTION_STANDIN: '1'});
+    Object.assign(process.env, {JOBADABRA_E2E: '1', JOBADABRA_E2E_NOTION_BASE_URL: base, JOBADABRA_E2E_NOTION_STANDIN: '1'});
     const token = `standin-shared-${process.pid}-${encodeURIComponent(base)}`;
     t.after(() => notion._pace.reset(token));
     await pace.calmUntil(token, 1_005_000);
@@ -95,9 +95,9 @@ test('the shared stand-in pacer ignores slot and 429 clocks, with or without a l
 });
 
 test('a stand-in 429 keeps its retry backoff without recording shared cool-down state', async t => {
-  const names = ['JOB_PILOTTO_E2E', 'JOB_PILOTTO_E2E_NOTION_BASE_URL', 'JOB_PILOTTO_E2E_NOTION_STANDIN'];
+  const names = ['JOBADABRA_E2E', 'JOBADABRA_E2E_NOTION_BASE_URL', 'JOBADABRA_E2E_NOTION_STANDIN'];
   const previous = names.map(name => process.env[name]);
-  Object.assign(process.env, {JOB_PILOTTO_E2E: '1', JOB_PILOTTO_E2E_NOTION_BASE_URL: 'http://127.0.0.1:12345', JOB_PILOTTO_E2E_NOTION_STANDIN: '1'});
+  Object.assign(process.env, {JOBADABRA_E2E: '1', JOBADABRA_E2E_NOTION_BASE_URL: 'http://127.0.0.1:12345', JOBADABRA_E2E_NOTION_STANDIN: '1'});
   t.after(() => {
     for (const [index, name] of names.entries()) {
       if (previous[index] === undefined) delete process.env[name]; else process.env[name] = previous[index];
@@ -123,7 +123,7 @@ for (const [title, e2e, standin, base, expected] of [
   ['a marker outside e2e', '', '1', 'http://127.0.0.1:12345', 'https://api.notion.com/v1/'],
   ['a marker on the real API', '1', '1', 'https://api.notion.com', 'https://api.notion.com/v1/'],
 ]) test(`${title} still takes real Notion turns`, async t => {
-  const names = ['JOB_PILOTTO_E2E', 'JOB_PILOTTO_E2E_NOTION_BASE_URL', 'JOB_PILOTTO_E2E_NOTION_STANDIN'];
+  const names = ['JOBADABRA_E2E', 'JOBADABRA_E2E_NOTION_BASE_URL', 'JOBADABRA_E2E_NOTION_STANDIN'];
   const previous = names.map(name => process.env[name]);
   for (const [index, value] of [e2e, base, standin].entries()) process.env[names[index]] = value;
   t.after(() => {

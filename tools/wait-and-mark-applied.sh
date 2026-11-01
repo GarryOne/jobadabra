@@ -29,7 +29,7 @@ say "watching for submission of $url"
 notify() { "$repo/tools/notify.sh" "$url" "$1"; }
 
 # Latest form snapshot, named by the job code (first 8 hex of sha1(url)) like the apply-run records.
-snap_dir="${JOB_PILOTTO_FORM_SNAPSHOT_DIR:-$HOME/Library/Application Support/JobPilotto/form-snapshots}"
+snap_dir="${JOBADABRA_FORM_SNAPSHOT_DIR:-$HOME/Library/Application Support/JobPilotto/form-snapshots}"
 mkdir -p "$snap_dir" && chmod 700 "$snap_dir"
 snap_file="$snap_dir/$(printf '%s' "$url" | shasum | cut -c1-8).json"
 snap_warned=
@@ -50,7 +50,7 @@ snapshot() {
 # NOTION_* variables, so dispatching mail.yml here starts a run that can only fail (1 Oct 2026: every submitted
 # application queued one, and the app's doctor showed "last mail check failure").
 workspace_repo() {
-  if [ -n "${JOB_PILOTTO_CLOUD_REPO:-}" ]; then printf '%s' "$JOB_PILOTTO_CLOUD_REPO"; return; fi
+  if [ -n "${JOBADABRA_CLOUD_REPO:-}" ]; then printf '%s' "$JOBADABRA_CLOUD_REPO"; return; fi
   (cd "$repo" && python3 -c 'from src.paths import workspace_repo; print(workspace_repo())' 2>/dev/null) || true
 }
 

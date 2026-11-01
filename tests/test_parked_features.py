@@ -1,4 +1,4 @@
-"""Parked features (src/features.py PARKED): off unless JOB_PILOTTO_ENABLE names them, and no visible entry in the app for any of them.
+"""Parked features (src/features.py PARKED): off unless JOBADABRA_ENABLE names them, and no visible entry in the app for any of them.
 
 Owner, 26 Oct 2026, of the job-alert emails in Connections: "let's park/disable/hid this functionality for now. It's too advanced."
 Owner, 26 Oct 2026, of the Adzuna and Jooble card: "let's hide/disable this functionality for noow. Is to hadr to use for my users." With its two
@@ -63,8 +63,8 @@ class ParkedFeatureTests(unittest.TestCase):
                 self.assertTrue(features.configured(name, EVERYTHING))
                 self.assertFalse(features.enabled(name, EVERYTHING))
                 self.assertTrue(features.parked(name, EVERYTHING))
-                self.assertTrue(features.enabled(name, {**EVERYTHING, 'JOB_PILOTTO_ENABLE': f'other, {name.upper()} '}))
-                self.assertFalse(features.enabled(name, {**EVERYTHING, 'JOB_PILOTTO_ENABLE': name, 'JOB_PILOTTO_DISABLE': name}))
+                self.assertTrue(features.enabled(name, {**EVERYTHING, 'JOBADABRA_ENABLE': f'other, {name.upper()} '}))
+                self.assertFalse(features.enabled(name, {**EVERYTHING, 'JOBADABRA_ENABLE': name, 'JOBADABRA_DISABLE': name}))
                 states = {f.name: state for f, state, _ in features.status(EVERYTHING)}
                 self.assertEqual(states[name], 'parked')
         self.assertFalse(features.parked('mail', EVERYTHING))

@@ -4,7 +4,7 @@ import {test} from 'node:test';
 import {causedByPlant, PLANT_WINDOW_MS} from '../lib/planted.js';
 import {create} from '../lib/sentry.js';
 
-const E2E = {JOB_PILOTTO_E2E: '1', JOB_PILOTTO_E2E_PLANTED_FILE: '/x'};
+const E2E = {JOBADABRA_E2E: '1', JOBADABRA_E2E_PLANTED_FILE: '/x'};
 const line = plant => `${JSON.stringify(plant)}\n`;
 const AI = line({at: 99_000, why: 'ai limit', kinds: ['run_warning', 'run_failed'], text: ''});
 const RECALL = line({at: 99_000, why: 'recall tiny', kinds: ['crash'], text: 'recall planted'});
@@ -40,7 +40,7 @@ test('an old plant, an unreadable file, a missing file and a user install drop n
   assert.equal(asked(report, AI, 99_000 + PLANT_WINDOW_MS + 1), false);
   assert.equal(asked(report, 'not json\n\n'), false);
   assert.equal(causedByPlant(report, E2E, 100_000, () => { throw new Error('ENOENT'); }), false);
-  assert.equal(asked(report, AI, 100_000, {JOB_PILOTTO_E2E_PLANTED_FILE: '/x'}), false, 'only the journey');
+  assert.equal(asked(report, AI, 100_000, {JOBADABRA_E2E_PLANTED_FILE: '/x'}), false, 'only the journey');
   assert.equal(asked(report, AI, 100_000, {}), false, 'a user install has no planted file');
 });
 

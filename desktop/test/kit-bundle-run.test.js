@@ -11,7 +11,7 @@ import * as pipeline from '../lib/pipeline.js';
 import {draftsKits} from '../lib/pipeline-args.js';
 
 const PROBE = `import json, os
-file = os.environ.get('JOB_PILOTTO_ABOUT_YOU_FILE', '')
+file = os.environ.get('JOBADABRA_ABOUT_YOU_FILE', '')
 print('ABOUT', json.dumps({'name': file and json.load(open(file, encoding='utf-8'))['parts']['cv']['name'], 'file': file}))
 `;
 

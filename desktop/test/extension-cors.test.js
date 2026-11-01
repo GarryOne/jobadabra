@@ -15,7 +15,7 @@ const called = [...new Set(fs.readdirSync(extensionDir).filter(name => name.ends
   .filter(url => url !== '/extension/pair');   // pairing answers only the extension's own origin, by its own test (automation.test.js)
 
 test('every /extension address the extension calls answers the preflight from the extension', async () => {
-  process.env.JOB_PILOTTO_PORT = String(await freePort());
+  process.env.JOBADABRA_PORT = String(await freePort());
   const server = await import('../lib/server.js');
   const storage = createStorage(fs.mkdtempSync(path.join(os.tmpdir(), 'jp-cors-')), {encrypt: s => s, decrypt: s => s});
   const running = server.start(storage, error => assert.fail(error));

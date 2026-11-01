@@ -235,7 +235,7 @@ class TheJudgeIsBlindAndOnCodex(unittest.TestCase):
                 'usage': {'input_tokens': 10, 'output_tokens': 5}}).encode()
             return response
         got = gate_judge.ask('Profile', [{'n': 1, 'title': 't', 'company': 'c', 'location': 'l'}], open_url=open_url,
-                             env={'JOB_PILOTTO_PERSONA_CODEX': '1', 'ANTHROPIC_BASE_URL': 'http://127.0.0.1:1234', 'ANTHROPIC_API_KEY': 'other'})
+                             env={'JOBADABRA_PERSONA_CODEX': '1', 'ANTHROPIC_BASE_URL': 'http://127.0.0.1:1234', 'ANTHROPIC_API_KEY': 'other'})
         self.assertEqual(got[1]['role'], 'yes')
         self.assertEqual(seen[0].full_url, 'http://127.0.0.1:1234/v1/messages')
         self.assertNotIn('other', str(seen[0].headers))
@@ -266,7 +266,7 @@ class TheWorkflowRunsOnCodex(unittest.TestCase):
         self.assertIn('needs: persona', WORKFLOW.split('\n  compare:\n', 1)[1])
 
     def test_every_ai_step_uses_the_oidc_broker_without_a_secret(self):
-        self.assertRegex(WORKFLOW, r'(?m)^  JOB_PILOTTO_MODEL_OVERRIDE: claude-haiku-5-5\b')
+        self.assertRegex(WORKFLOW, r'(?m)^  JOBADABRA_MODEL_OVERRIDE: claude-haiku-5-5\b')
         self.assertIn('id-token: write', WORKFLOW)
         self.assertIn('CI_AI_PROVIDER: codex', WORKFLOW)
         self.assertIn('E2E_AI_PROVIDER: codex', WORKFLOW)

@@ -160,11 +160,11 @@ class StrategyTests(unittest.TestCase):
             def fails():
                 raise RuntimeError('no Notion')
             tracker = SimpleNamespace(url_stages=lambda: {}, page_text=fails, _request=lambda *a, **k: {'results': []})
-            with mock.patch.dict(os.environ, {'JOB_PILOTTO_PROFILE_FILE': str(Path(tmp, 'profile.md'))}), \
+            with mock.patch.dict(os.environ, {'JOBADABRA_PROFILE_FILE': str(Path(tmp, 'profile.md'))}), \
                     mock.patch.object(desktop.digest, 'eligible_jobs', lambda db: ([], [])), mock.patch('src.paths.load_search_config', lambda matching=True: {}):
                 data = desktop.strategy(db, tracker)
             with mock.patch.dict(os.environ, {}, clear=False):
-                os.environ.pop('JOB_PILOTTO_PROFILE_FILE', None)
+                os.environ.pop('JOBADABRA_PROFILE_FILE', None)
                 with mock.patch.object(desktop.digest, 'eligible_jobs', lambda db: ([], [])), mock.patch('src.paths.load_search_config', lambda matching=True: {}):
                     connected = desktop.strategy(db, tracker)
             db.close()
@@ -185,7 +185,7 @@ class StrategyTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             db = store.connect(Path(tmp) / 'j.sqlite')
             tracker = SimpleNamespace(url_stages=lambda: {}, page_text=lambda: profile, _request=lambda *a, **k: {'results': []})
-            os.environ.pop('JOB_PILOTTO_PROFILE_FILE', None)
+            os.environ.pop('JOBADABRA_PROFILE_FILE', None)
             with mock.patch.object(desktop.digest, 'eligible_jobs', lambda db: ([], [])), mock.patch('src.paths.load_search_config', lambda matching=True: {}), \
                     mock.patch('src.paths.local_profile', lambda: ''):
                 data = desktop.strategy(db, tracker)
@@ -353,10 +353,10 @@ class DeleteTests(unittest.TestCase):
             file = Path(tmp, 'profile.md')
             for text, expected in ((blank, True), (filled, False)):
                 file.write_text(text, encoding='utf-8')
-                with mock.patch.dict(os.environ, {'JOB_PILOTTO_PROFILE_FILE': str(file)}):
+                with mock.patch.dict(os.environ, {'JOBADABRA_PROFILE_FILE': str(file)}):
                     self.assertEqual(desktop._profile_blank(None, None), expected, 'this Mac\'s Profile file')
             with mock.patch.dict(os.environ, {}, clear=False):
-                os.environ.pop('JOB_PILOTTO_PROFILE_FILE', None)
+                os.environ.pop('JOBADABRA_PROFILE_FILE', None)
                 self.assertTrue(desktop._profile_blank(SimpleNamespace(page_text=lambda: blank), None), 'a blank Notion page')
                 self.assertFalse(desktop._profile_blank(SimpleNamespace(page_text=lambda: filled), None))
                 def fails():

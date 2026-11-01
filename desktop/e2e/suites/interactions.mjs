@@ -35,7 +35,7 @@ export const variesPlace = true;
 export const aggregateBudget = false;
 export const minutes = 25;   // was 10: the suite grew (sweeps of sizes, themes, time zones, the late-shift watch) and was cancelled at 10 min in two gate runs in a row (5 Oct 2026), its partial findings filed as issues
 // The engine's coverage answer takes seconds on a real machine (the owner's: about 5): a card that arrives that late must not move the page (lib/shift.mjs, #strategy-coverage-checking).
-export const env = {JOB_PILOTTO_E2E_COVERAGE_MS: '4500'};
+export const env = {JOBADABRA_E2E_COVERAGE_MS: '4500'};
 // A suite that walks a different seeded path on each scheduled run (lib/variation.mjs). Exploring runs on an unchanged commit run only these: the other suites would repeat themselves.
 export const varies = true;
 export const watches = ['desktop/renderer/', 'desktop/lib/e2e-ipc.js'];

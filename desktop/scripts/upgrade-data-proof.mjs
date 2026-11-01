@@ -29,7 +29,7 @@ const finish = (state, code, note = '') => {
 };
 
 const expected = JSON.parse(fs.readFileSync(path.join(here, 'upgrade-expected.json'), 'utf8'));
-const userData = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-upgrade-data-'));   // never the person's folder: the app is told to use this one by JOB_PILOTTO_USER_DATA
+const userData = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-upgrade-data-'));   // never the person's folder: the app is told to use this one by JOBADABRA_USER_DATA
 let code = 2;
 try {
   const old = await system.install(oldArchive);
@@ -37,8 +37,8 @@ try {
   fs.mkdirSync(path.join(userData, 'data'), {recursive: true});
   fs.mkdirSync(path.join(userData, 'config'), {recursive: true});
   const seeded = spawnSync(old.python, [path.join(here, 'upgrade-seed.py')], {cwd: old.pilot, encoding: 'utf8', timeout: 120000,
-    env: {...process.env, PYTHONUTF8: '1', PYTHONDONTWRITEBYTECODE: '1', JOB_PILOTTO_NO_DOTENV: '1', JOB_PILOTTO_STORE: 'sqlite',
-      JOB_PILOTTO_DATA_DIR: path.join(userData, 'data'), JOB_PILOTTO_CONFIG_DIR: path.join(userData, 'config')}});
+    env: {...process.env, PYTHONUTF8: '1', PYTHONDONTWRITEBYTECODE: '1', JOBADABRA_NO_DOTENV: '1', JOBADABRA_STORE: 'sqlite',
+      JOBADABRA_DATA_DIR: path.join(userData, 'data'), JOBADABRA_CONFIG_DIR: path.join(userData, 'config')}});
   if (seeded.status === 3) { code = finish('seed-failed', 3, `release ${label} could not fill its own store: ${(seeded.stderr || '').trim().split('\n').pop()}`); throw code; }
   if (seeded.status !== 0) throw new Error(`the seed script exited ${seeded.status}: ${(seeded.stderr || seeded.error || '').toString().trim().split('\n').slice(-3).join(' | ')}`);
   seedFiles(userData);

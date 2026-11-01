@@ -258,7 +258,7 @@ class ScoutTests(unittest.TestCase):
     def test_companies_excluded_from_the_environment_are_never_harvested(self):
         seeds = dict(SEEDS, excluded=[])
         with tempfile.TemporaryDirectory() as tmp, \
-                mock.patch.dict('os.environ', {'JOB_PILOTTO_EXCLUDED_COMPANIES': ' Acme , Other'}):
+                mock.patch.dict('os.environ', {'JOBADABRA_EXCLUDED_COMPANIES': ' Acme , Other'}):
             with job_store.connect(Path(tmp) / 'jobs.sqlite') as db:
                 scout.harvest(db, seeds, sources=[lambda: scout.seed_candidates(seeds)])
                 names = {row['name'] for row in db.execute('SELECT name FROM scout_candidates')}

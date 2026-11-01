@@ -6,7 +6,7 @@ const RUNTIME = new Set(['PATH', 'Path', 'HOME', 'USERPROFILE', 'HOMEDRIVE', 'HO
 export function appLaunchEnv(base, overrides = {}) {
   const result = Object.fromEntries(Object.entries(base).filter(([name]) => RUNTIME.has(name.toUpperCase())));
   for (const [name, value] of Object.entries(overrides)) {
-    if (RUNTIME.has(name.toUpperCase()) || name.startsWith('JOB_PILOTTO_') || ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'GOOGLE_REFRESH_TOKEN'].includes(name)) result[name] = value;
+    if (RUNTIME.has(name.toUpperCase()) || name.startsWith('JOBADABRA_') || ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'GOOGLE_REFRESH_TOKEN'].includes(name)) result[name] = value;
   }
   // withoutWrappers reads a plain object's PATH; Windows commonly supplies Path instead.
   result.PATH ??= Object.entries(result).find(([name]) => name.toUpperCase() === 'PATH')?.[1];

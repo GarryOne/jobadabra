@@ -33,7 +33,7 @@ from ..stores.notion_blocks import to_markdown
 from . import cost, engine
 from .models import SMALL_MODEL
 
-DEFAULT_MODEL = os.getenv('JOB_PILOTTO_MAIL_MODEL') or SMALL_MODEL
+DEFAULT_MODEL = os.getenv('JOBADABRA_MAIL_MODEL') or SMALL_MODEL
 LEAD_STAGE = 'Recruiter lead'
 HEADING = '🤝 Recruiter message'
 MIN_TEXT = 40  # shorter than this isn't a recruiter's message (e.g. a date after /add)
@@ -294,7 +294,7 @@ def main(argv=None):
     add.add_argument('--talking', action='store_true', help="you've already replied yes: Stage Screening")
     sub.add_parser('backfill', help='fill "Reached via" on leads tracked before the column existed')
     args = parser.parse_args(argv)
-    stores = open_stores()  # the active store: this Mac's (sqlite) or Notion; JOB_PILOTTO_STORE picks it
+    stores = open_stores()  # the active store: this Mac's (sqlite) or Notion; JOBADABRA_STORE picks it
     if args.command == 'backfill':
         print(f'Reached via filled on {backfill_reached(stores)} lead(s)')
         return 0

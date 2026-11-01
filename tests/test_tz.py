@@ -14,7 +14,7 @@ class NoTimeZoneDatabaseTests(unittest.TestCase):
         self.assertEqual(datetime.now(zone).utcoffset(), datetime.now().astimezone().utcoffset())
 
     def test_a_known_zone_is_still_the_named_one(self):
-        with mock.patch.dict('os.environ', {'JOB_PILOTTO_TZ': 'Europe/Zurich'}):
+        with mock.patch.dict('os.environ', {'JOBADABRA_TZ': 'Europe/Zurich'}):
             self.assertEqual(str(tz.local_zone()), 'Europe/Zurich')
 
 

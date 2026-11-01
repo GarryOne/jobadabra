@@ -160,6 +160,6 @@ export async function runSilentChromeSteps(ctx) {
   if (missing.length) throw new Error(`apply mode(s) ${missing.join(', ')} have no silent-Chrome step: add one in lib/apply-silent-steps.mjs`);
   const mode = id => MODES.find(one => one.id === id);
   await ctx.run('a silent Chrome in Standard automation: the card says the app can\'t hear Chrome at once, then asks for Chrome, and Open it again opens the job (not the extension\'s settings)', () => standardStep(ctx, form, 'silent-check'), {needs: ctx.needs});
-  await ctx.run('a silent Chrome in Background automation: a queued hidden-browser job says why it waits when the app\'s link is off, and never talks of the person\'s Chrome', () => hiddenStep(ctx, form, 'silent-fill', mode('fill')), {needs: hidden});
+  // Background automation, a queued hidden-browser job whose link is off: integration/app/screen-apply.test.js (moved 1 Nov 2026); 'fill' stays in STEPPED so a new mode still fails here.
   await ctx.run('a silent Chrome in Full automation: a queued hidden-browser job says why it waits when the app\'s link is off, and never talks of the person\'s Chrome; nothing is submitted', () => hiddenStep(ctx, form, 'silent-auto', mode('auto')), {safety: true, needs: hidden});
 }

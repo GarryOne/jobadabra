@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {test} from 'node:test';
-import {needsBrowser} from '../renderer/apply-settings-model.js';
+import {MODES, needsBrowser} from '../renderer/apply-settings-model.js';
 import {browserView} from '../renderer/pages/browser-progress.js';
 
 test('the saved mode decides whether the browser is offered', () => {
@@ -11,6 +11,14 @@ test('the saved mode decides whether the browser is offered', () => {
   assert.equal(needsBrowser({apply: {mode: 'check'}}), false);
   assert.equal(needsBrowser({}), false, 'nothing saved is Standard automation');
   assert.equal(needsBrowser(undefined), false);
+});
+
+// #2485: Full automation runs in the same hidden browser, but its save read as "no browser needed", so the download offer stayed hidden and every start failed with BACKGROUND_BROWSER_MISSING.
+test('every mode that runs in the hidden browser offers its download, Full automation included', () => {
+  const hidden = MODES.filter(mode => mode.runner === 'background').map(mode => mode.id);
+  assert.deepEqual(hidden, ['fill', 'auto']);
+  for (const id of hidden) assert.equal(needsBrowser({apply: {mode: id, chosenAt: '2026-11-01T10:00:00.000Z', autoConfirmedAt: '2026-11-01T10:00:00.000Z'}}), true, id);
+  for (const mode of MODES.filter(item => item.runner !== 'background')) assert.equal(needsBrowser({apply: {mode: mode.id}}), false, mode.id);
 });
 
 test('a change from Standard to Background automation turns the offer on at once, and back off', () => {

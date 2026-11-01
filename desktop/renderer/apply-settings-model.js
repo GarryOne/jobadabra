@@ -54,8 +54,9 @@ export const applyChosen = settings => !!settings?.apply?.chosenAt;
 export const autoConfirmed = settings => !!applyOf(settings).autoConfirmedAt;
 /** True when a save would turn Full automation on without a confirmation yet: the dialog must ask first (save() in pages/apply-settings.js). */
 export const needsAutoConfirm = (change, settings) => change.mode === 'auto' && !change.autoConfirmedAt && !autoConfirmed(settings);
-/** Background automation (the mode that runs in Jobadabra's own browser) is the saved mode, so the Applying page offers that browser's download. One rule for the start-up and for a change in Settings. */
-export const needsBrowser = settings => applyOf(settings).mode === 'fill';
+/** A mode that runs in Jobadabra's own hidden browser (Background or Full automation) is the saved mode, so the Applying page offers that browser's download. One rule for the start-up and for a change in Settings.
+ *  Why (1 Nov 2026, #2485): keyed on the runner, not on the id 'fill': Full automation shares the runner and the controller refuses its start without the browser (lib/background-apply-controller.js enqueue). */
+export const needsBrowser = settings => modeRunner(applyOf(settings).mode) === 'background';
 
 // The settings patch for a change: the whole apply object (saveSettings merges one level). `chosen` stamps the confirmation.
 export function applyPatch(settings, change = {}, {chosen = false, now = new Date()} = {}) {

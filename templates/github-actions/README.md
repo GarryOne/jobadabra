@@ -2,7 +2,7 @@
 
 These three files are what keeps Jobadabra working while your Mac is off. They live in a
 **private** repository of yours, created from the public starter template
-(GarryOne/job-pilotto-starter), and each one calls the matching workflow in this public repo, which runs
+(jobadabra/jobadabra-user-template), and each one calls the matching workflow in this public repo, which runs
 the code with *your* repository's secrets and variables. Your logs, job database and results
 never touch the public repo, and every fix released here reaches your runs automatically.
 

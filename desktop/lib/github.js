@@ -17,7 +17,7 @@ import {MODELS, REPO} from './pipeline.js';
 import {tar} from './tar.js';
 import {channelsOf} from './notify-channel.js';
 import {pinned, resolveEngineRepo} from './engine-repo.js';
-import {STARTER} from './repos.js';
+import {STARTER_CANDIDATES} from './repos.js';
 export {setEngineRef, resolveEngineRepo, currentEngineRepo, ENGINE_REPO} from './engine-repo.js';
 
 // The Jobadabra GitHub App (public identifiers; device flow needs no client secret). Its permissions,
@@ -27,9 +27,24 @@ export const APP_SLUG = process.env.JOB_PILOTTO_GITHUB_APP || 'jobadabra';   // 
 // New repos are named jobadabra-personal-always-on (owner, 24 Oct 2026); repos made before keep job-pilotto-private and are still found.
 export const REPO_NAME = 'jobadabra-personal-always-on';
 export const REPO_NAMES = [REPO_NAME, 'job-pilotto-private'];
-export {STARTER};
 // Step 1: a new private repo from the starter template. Step 2: install the app on it only.
-export const CREATE_URL = `https://github.com/new?template_name=${STARTER.split('/')[1]}&template_owner=${STARTER.split('/')[0]}&name=${REPO_NAME}&visibility=private`;
+// Which starter exists: the first candidate the API shows as a template (so the rename and the move of the repo need no app release in step);
+// not answered (offline, rate limit) keeps the last one found, else the old name, which GitHub redirects after a rename.
+let starter = STARTER_CANDIDATES.at(-1);
+export const currentStarter = () => starter;
+export async function resolveStarter(fetcher = globalThis.fetch) {
+  for (const name of STARTER_CANDIDATES) {
+    try {
+      const response = await fetcher(`${API}/repos/${name}`, {headers: {Accept: 'application/vnd.github+json'}});
+      if (response.ok && (await response.json())?.is_template) { starter = name; return starter; }
+    } catch { /* offline: try the next, then keep the last */ }
+  }
+  return starter;
+}
+export const createUrl = async (fetcher = globalThis.fetch) => {
+  const [owner, name] = (await resolveStarter(fetcher)).split('/');
+  return `https://github.com/new?template_name=${name}&template_owner=${owner}&name=${REPO_NAME}&visibility=private`;
+};
 export const INSTALL_URL = `https://github.com/apps/${APP_SLUG}/installations/new`;
 const API = 'https://api.github.com';
 

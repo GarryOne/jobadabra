@@ -68,5 +68,5 @@ test('the user\'s repo is found by its new name and by the name it had before 24
     };
     assert.equal((await github.findRepo(api)).repo, `me/${name}`);
   }
-  assert.match(github.CREATE_URL, /name=jobadabra-personal-always-on&/);
+  assert.match(await github.createUrl(async () => ({ok: false})), /name=jobadabra-personal-always-on&/, 'users keep their own default repo name, whatever the template is called');
 });

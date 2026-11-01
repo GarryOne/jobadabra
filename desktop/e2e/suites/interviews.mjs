@@ -1,19 +1,21 @@
 /* global document, window */
 // Job: wait on state
-// Interviews: the library on dummy rows written through the Notion API, a transcript imported through the page's own button and reviewed with stored answers,
-// the failure path (a failing AI), review again, link, delete, the consent rule of the recorder. Starts from a set-up install; resets only its own rows.
+// Interviews: what writes through the real app: the one-time setup banner, link and unlink a job, a transcript imported through the page's own button and reviewed with stored answers,
+// the failure path (a failing AI), review again, refresh insights, Delete (the id the page sends reaches the store). Starts from a set-up install; resets only its own rows.
+// Why (1 Nov 2026, owner: "the beta [keeps] only the critical e2e/user journeys"): the library's screens (list, job names, filters, Open review, the consent rule, Delete) are
+// desktop/integration/app/screen-interviews.test.js; the Calendar is screen-calendar.test.js.
 import fs from 'node:fs';
 import path from 'node:path';
 import {pickFile} from '../lib/app.mjs';
-import {TRANSCRIPT, addDays, newestFirst} from '../lib/interview-data.mjs';
+import {TRANSCRIPT, addDays} from '../lib/interview-data.mjs';
 import {addInterview, addTrackedJob} from '../lib/seed-data.mjs';
 import {clearData} from '../lib/start-state.mjs';
 import {finish, snap} from '../lib/layout.mjs';
 import {pickJob} from '../lib/picker.mjs';
 import {ensureSetUp} from '../lib/seed.mjs';
-import {answerConfirms, captureExternal, ids, independent} from '../lib/steps.mjs';
+import {answerConfirms, independent} from '../lib/steps.mjs';
 import {goView} from '../lib/go-view.mjs';
-import {pollUntil, stepTimeLeft, stepWait} from '../lib/wait-on-state.mjs';
+import {stepWait} from '../lib/wait-on-state.mjs';
 
 // Why (29 Oct 2026, ap): rule A serves declared reviews and patterns; the no-credit fault still precedes the table.
 export const offlineAi = true;
@@ -35,7 +37,6 @@ export async function run(ctx) {
   const today = new Date().toISOString().slice(0, 10);
   const seed = {};
   const message = () => page.locator('#iv-message').innerText();
-  const tableIds = () => page.$$eval('#iv-saved tr[data-id]', trs => trs.map(tr => tr.dataset.id));
   const row = id => page.locator(`#iv-saved tr[data-id="${id}"]`);
   const openInterviews = async expected => {
     await page.click('.nav[data-view="focus"]');
@@ -65,7 +66,6 @@ export async function run(ctx) {
   const reviewHeadings = async id => headingsOf((await interviewOf(id))?.review);
 
   await ensureSetUp(ctx);
-  const external = await captureExternal(app);
   await answerConfirms(page);
 
   // Dummy rows, written once: three jobs in the tracker, four interviews (three reviewed with different outcomes and one not).
@@ -93,84 +93,6 @@ export async function run(ctx) {
     if (count < 3) throw new Error(`the app's job list has ${count} job(s) after three were added to the store`);
   });
   if (!seed.ivFresh) throw new Error('the dummy rows were not written: the other steps cannot run');
-
-  await step('the library lists every interview, newest first, with its outcome', async () => {
-    await openInterviews(4);
-    const order = await tableIds();
-    const expected = [seed.ivFresh, seed.ivNegative, seed.ivNeutral, seed.ivPositive].map(item => item.page);
-    if (JSON.stringify(order) !== JSON.stringify(expected)) throw new Error(`the rows are not newest first: shown ${order.map(id => ids(id).slice(-4))}, expected ${expected.map(id => ids(id).slice(-4))}`);
-    if (!newestFirst(order.map(id => Object.values(seed).find(item => item.page === id).day))) throw new Error('the seeded dates are not newest first (test bug)');
-    const pill = async item => (await row(item.page).locator('td').nth(4).innerText()).trim();
-    const got = {positive: await pill(seed.ivPositive), neutral: await pill(seed.ivNeutral), negative: await pill(seed.ivNegative), fresh: await pill(seed.ivFresh)};
-    const want = {positive: 'Positive', neutral: 'Neutral', negative: 'Negative', fresh: 'Not reviewed'};
-    for (const key of Object.keys(want)) if (got[key] !== want[key]) throw new Error(`the ${key} interview shows the outcome "${got[key]}", expected "${want[key]}"`);
-    if ((await page.locator('#iv-lib-stats').innerText()).trim() !== SAVED_TO) throw new Error(`the library does not say where it is kept: "${await page.locator('#iv-lib-stats').innerText()}", expected "${SAVED_TO}"`);
-    await snap(ctx, 'interviews', {situation: 'The library with four dummy interviews: three reviewed (positive, neutral, negative) and one not reviewed'});
-  });
-
-  // Its job by name, on every store (on this Mac's store the library finds the job by its store id: renderer/pages/interview-lists.js jobForPage, mac-27 8c65d67).
-  await step('the library shows each interview\'s job by name (opening it in the Jobs list), and "Link a job" when there is none', async () => {
-    await openInterviews(4);
-    const job = async item => (await row(item.page).locator('td').nth(1).innerText()).replace(/\s+/g, ' ');
-    if (!(await job(seed.ivPositive)).includes('E2E Acme')) throw new Error(`the Acme interview shows the job "${await job(seed.ivPositive)}"`);
-    if (!(await job(seed.ivNegative)).includes('Link a job')) throw new Error(`an interview without a job does not offer "Link a job": "${await job(seed.ivNegative)}"`);
-    // The job's name opens it in the Jobs list, alone.
-    await row(seed.ivPositive.page).locator('td').nth(1).getByRole('button', {name: /E2E Acme/}).click();
-    await page.waitForFunction(() => document.querySelector('.view[data-view="jobs"]:not([hidden])'), null, {timeout: 15000});
-    const shown = await page.$$eval('.view[data-view="jobs"]:not([hidden]) .job-row', rowsOnScreen => rowsOnScreen.map(item => item.innerText));
-    if (shown.length !== 1 || !/Acme/.test(shown[0])) throw new Error(`the Jobs list shows ${shown.length} job(s) after opening the Acme job, expected only that one`);
-  });
-
-  await step('the search box and the outcome filter narrow the library, and say so when nothing matches', async () => {
-    await openInterviews(4);
-    await page.fill('#iv-filter', 'beta');
-    await page.waitForFunction(() => document.querySelectorAll('#iv-saved tr[data-id]').length === 1);
-    if ((await tableIds())[0] !== seed.ivNeutral.page) throw new Error('searching "beta" did not leave the Beta interview');
-    await page.fill('#iv-filter', 'zzz-no-such-interview');
-    await page.waitForFunction(() => !document.getElementById('iv-empty').hidden);
-    if (!/No interview matches/.test(await page.locator('#iv-empty').innerText())) throw new Error('an empty search does not say that nothing matches');
-    await page.fill('#iv-filter', '');
-    await page.selectOption('#iv-outcome', 'none');
-    await page.waitForFunction(() => document.querySelectorAll('#iv-saved tr[data-id]').length === 1);
-    if ((await tableIds())[0] !== seed.ivFresh.page) throw new Error('"Not reviewed" did not leave the one unreviewed interview');
-    await page.selectOption('#iv-outcome', 'negative');
-    await page.waitForFunction(() => document.querySelectorAll('#iv-saved tr[data-id]').length === 1);
-    await page.selectOption('#iv-outcome', '');
-    await page.waitForFunction(() => document.querySelectorAll('#iv-saved tr[data-id]').length === 4);
-  });
-
-  // On Notion "Open review" opens the interview's page; on this Mac's store there is none, so it opens the review in the app (renderer/interview-review-view.js, #review-dialog).
-  await step(ctx.store === 'sqlite' ? 'a reviewed row opens its review in the app' : 'a reviewed row opens its review in Notion', async () => {
-    await openInterviews(4);
-    await external.clear();
-    await row(seed.ivPositive.page).getByRole('button', {name: 'Open review'}).click();
-    if (ctx.store === 'sqlite') {
-      const dialog = page.locator('#review-dialog[open]');
-      await dialog.waitFor({timeout: 15000}).catch(() => { throw new Error('"Open review" opened no review in the app'); });
-      const text = await dialog.innerText();
-      if (!/E2E Acme · Round 1/.test(text) || !/SEED summary ivPositive/.test(text)) throw new Error(`the review shown is not this interview's: "${text.slice(0, 160)}"`);
-      if ((await external.urls()).length) throw new Error(`"Open review" also opened ${JSON.stringify(await external.urls())} outside the app`);
-      await page.keyboard.press('Escape');
-      await page.locator('#review-dialog[open]').waitFor({state: 'detached', timeout: 5000}).catch(async () => {
-        if (await page.locator('#review-dialog').evaluate(dialog => dialog.open)) throw new Error('the review stayed open after Escape');
-      });
-    } else {
-      const {value: opened} = await pollUntil(external.urls, urls => urls.length > 0, {capMs: stepTimeLeft()});
-      if (!opened.some(url => url.includes(ids(seed.ivPositive.page)))) throw new Error(`"Open review" opened ${JSON.stringify(opened)}, not the interview's Notion page`);
-    }
-  });
-
-  await step('Record stays off until everyone has agreed, and says why', async () => {
-    await openInterviews();
-    const record = page.locator('#iv-record');
-    if (!(await record.isDisabled())) throw new Error('Record is enabled before the consent box is ticked');
-    if (!/everyone on the call agreed/i.test(await record.getAttribute('title') || '')) throw new Error(`the disabled Record button gives no reason: title "${await record.getAttribute('title')}"`);
-    if (!/Recording consent required/.test(await page.locator('#iv-consent-box').innerText())) throw new Error('the consent notice is not on the page');
-    await page.check('#iv-consent');
-    if (await record.isDisabled()) throw new Error('Record stays disabled after the consent box is ticked');
-    await page.uncheck('#iv-consent');
-    if (!(await record.isDisabled())) throw new Error('Record is still enabled after the consent box is unticked');
-  });
 
   // The one-time setup (add-on + speech models) shows a banner only on a Mac without the models, and a test run never starts that setup (desktop/lib/e2e-host.js prefetchForRun, 29 Oct 2026): send the app's own progress events instead,
   // so the banner is on screen for the checks and the screenshot review (it was invisible to them, and its spinner was stretched, 6 Oct 2026).

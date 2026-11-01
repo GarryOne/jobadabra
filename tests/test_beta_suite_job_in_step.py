@@ -14,9 +14,6 @@ DIFFERENT = {
         'E2E_AI_ANSWERS': 'Only standalone first attempts can record or force burn-in; the common replay mode is checked separately below.',
         'E2E_AI_FAMILY': 'Only standalone manual dispatches pin a family; the gate uses engine.mjs run-number rotation.',
         'E2E_STORE': 'plan-run.mjs documents GATE_STORE_LEGS=one: the gate keeps one alternating store until both stores run in one job.',
-        # Why (2026-10-31, owner a8): new-step admission is PR-only; beta jobs keep whole-suite journeys.
-        'E2E_STEPS': 'plan-run.mjs filters only the additional new-step PR burn-in legs; beta jobs run whole suites.',
-        'E2E_BURN_IN_STEPS': 'Only new-step PR legs verify passed first-try evidence; beta jobs do not admit new steps.',
         'E2E_STEP_NAMES': 'runner.mjs selects PR steps; the beta runs the whole suite.',
         'E2E_FALLBACK_SUITES': 'red-steps.mjs caps renamed PR picks; the beta has no picked steps to fall back from.',
         'E2E_FALLBACK_SUITE': 'red-steps.mjs identifies a reserved PR leg; the beta runs full suites.',

@@ -75,7 +75,7 @@ Owner: "look on the entire harness/workflow of our development ... agents writin
 - [x] Page, ingest, table and demo seed built in `jobadabra-web` (proof: none: the code is in the jobadabra-web PR #248)
 - [x] Preview (fictional data, desktop | phone) and owner's yes ("Yes, build it (Recommended)") (proof: none: the owner's answer, relayed by mac-07; the image is in the web PR)
 - [x] `jobadabra-web` PR opened: ingest, table, page, menu, tests (Operations row limit 8 → 9, owner pick) (proof: none: jobadabra-web PR #248)
-- [x] `jobadabra` PR: `tools/gate-stats.mjs` + uploader + `tools/agent-coding-stats.mjs` + workflow + tests (proof: tools/gate-stats.mjs, tools/agent-coding-stats.mjs)
+- [x] `jobadabra` PR: `tools/gate-stats.mjs` + uploader + `tools/agent-coding-stats.mjs` + workflow + tests (proof: tools/gate-stats.mjs @d786f55, tools/agent-coding-stats.mjs @b6d27ee)
 - [x] Menu split into 🧪 Testing and 🤖 Agents (owner pick "2 groups") (proof: none: jobadabra-web PR #249, merged)
 - [x] v2: the SDLC tab (own spec and preview, designed on real numbers) (proof: docs/superpowers/specs/2026-11-01-agent-coding-sdlc-design.md)
 - [x] Both PRs READY (checks green, Gitar approved, no open comment) (proof: none: #2835 and web #248 merged by the owner)

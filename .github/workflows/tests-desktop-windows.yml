@@ -58,6 +58,7 @@ on:
       - 'desktop/lib/win-path.js'
       - 'desktop/main.js'
       - 'desktop/preload.cjs'
+      - 'desktop/ready-fill/fill-video.mjs'
       - 'desktop/renderer/os.js'
       - 'desktop/renderer/pages/office-progress.js'
       - 'desktop/renderer/pages/startup.js'

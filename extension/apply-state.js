@@ -6,7 +6,7 @@
 // desktop/test/apply-state-owner.test.js.
 // Design (#2800, 1 Nov 2026): working from the run's start to ONE end verdict. A piece of the run ending (a fill pass, a cleared step) is not a verdict: it clears its step and the tab stays working (sayApply). Run 41274202726: a pass's own `done`
 // came ~310 ms before the fill's end was written on its page, so the page drew "Fill again" (busy false, no dim) with the fill still going.
-// TODO(AI): `sayStep(tab, '')` (account-step.js, messages-panel.js) still says `done` for a piece that is not the run's end: the same shape on those two paths (#2800, 2026-11-01).
+// TODO(AI): sayStep(tab, '') in account-step.js and messages-panel.js still says done for a piece that is not the run's end, the same shape on those two paths (JOB-180, 2026-11-01).
 // TODO(AI): a run that ends with no progress('') (a return that skips it) leaves its tab working until Stop, the panel's X or the tab's close: find such a path and give it a verdict (2026-10-27).
 export const WORKING = 'working';
 export const VERDICTS = ['done', 'stopped', 'your-turn'];

@@ -18,7 +18,7 @@ test('closing the app ends the program the launcher started, when only the launc
   assert.ok(isAlive(app), 'positive control: the program is running before the close');
   // electron.exit(0) on Windows: the program the launcher started is tearing down, the launcher (a shell) is what Node sees leave first.
   const exits = once(launcher, 'exit');
-  const fake = {process: () => launcher, evaluate: async () => { launcher.kill('SIGKILL'); await exits; }};
+  const fake = {process: () => launcher, evaluate: async fn => { if (!/exit\(/.test(String(fn))) return ''; launcher.kill('SIGKILL'); await exits; }};   // other asks (the Windows key wait) are answered, only the exit ends the launcher
   await closeApp(fake, {graceMs: 300});
   assert.equal(isAlive(app), false, 'the program the launcher started is still running after the close: it would hold the profile the next start uses');
 });

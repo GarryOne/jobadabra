@@ -142,15 +142,18 @@ export const pickFile = (app, file) => app.evaluate(({dialog}, filePath) => {
 export async function closeApp(app, {how = 'crash', graceMs = 5000, exitCapMs} = {}) {
   if (how === 'quit') return quitApp(app, exitCapMs === undefined ? {} : {exitCapMs});
   const child = app.process();
-  let tree = [{pid: child.pid, ppid: 0, command: 'the launcher'}];
+  if (process.platform === 'win32') await keyWritten(app);
+  const rows = listProcesses();
+  const tree = [{pid: child.pid, ppid: 0, command: 'the launcher'}, ...descendantsOf(rows, child.pid)];
+  // A lister that failed (the Windows query has a 15 s limit) answers nothing, which looks like "nothing below": say it, or a red looks like this fix does not work.
+  console.log(`  ${new Date().toISOString()} e2e: closing the app (pid ${child.pid}, ${tree.length - 1} process(es) below it${rows.length ? '' : '; the process list came back empty, so the app\'s tree is not known'})`);   // tells the harness's exit from the app's own in logs/app.log
+  try { await Promise.race([app.evaluate(({app: electron}) => electron.exit(0)).catch(() => {}), new Promise(resolve => setTimeout(resolve, 5000))]); } catch { /* the app is already gone */ }
+  // Why (1 Nov 2026, review of #2717): closeApp runs inside the teardown chain (ctx.close), where a throw would skip closing the test servers and writing the artifacts, and in launch()'s
+  // refusal path, where it would replace the refusal. A process that survives its kill is said here, loudly; the next start's folder wait names it again.
   try {
-    if (process.platform === 'win32') await keyWritten(app);
-    tree = [...tree, ...descendantsOf(listProcesses(), child.pid)];
-    console.log(`  ${new Date().toISOString()} e2e: closing the app (pid ${child.pid}, ${tree.length - 1} process(es) below it)`);   // tells the harness's exit from the app's own in logs/app.log
-    await Promise.race([app.evaluate(({app: electron}) => electron.exit(0)).catch(() => {}), new Promise(resolve => setTimeout(resolve, 5000))]);
-  } catch { /* the app is already gone */ }
-  const ended = await endTree(tree, {graceMs});
-  if (ended.length) console.log(`  e2e: ${ended.length} process(es) of the closed app were still running ${graceMs / 1000} s later and were ended: ${holdersOf(ended)}`);
+    const ended = await endTree(tree, {graceMs});
+    if (ended.length) console.log(`  e2e: ${ended.length} process(es) of the closed app were still running ${graceMs / 1000} s later and were ended: ${holdersOf(ended)}`);
+  } catch (error) { console.log(`  e2e: ${error.message}`); }
 }
 
 /**
@@ -170,8 +173,9 @@ async function quitApp(app, {exitCapMs = stepTimeLeft() ?? 30000} = {}) {
   const verdict = await Promise.race([exited.then(() => 'exited'), new Promise(resolve => { timer = setTimeout(() => resolve('late'), exitCapMs); })]);
   clearTimeout(timer);
   if (verdict === 'late') {   // Why (1 Nov 2026, #2717): killing only the launcher left the app below it (Windows shell) running; the whole tree goes, then the verdict is said.
-    await endTree([{pid: child.pid, ppid: 0, command: 'the launcher'}, ...tree], {graceMs: 0});
-    throw new Error(`the app did not quit by itself within ${exitCapMs / 1000} s after the quit (killed)`);
+    let stuck = '';
+    try { await endTree([{pid: child.pid, ppid: 0, command: 'the launcher'}, ...tree], {graceMs: 0}); } catch (error) { stuck = `; ${error.message}`; }
+    throw new Error(`the app did not quit by itself within ${exitCapMs / 1000} s after the quit (killed)${stuck}`);
   }
   const left = await waitTreeGone(tree);
   for (const row of left) { try { process.kill(row.pid, 'SIGKILL'); } catch { /* gone meanwhile */ } }   // never leave them behind, whatever the verdict

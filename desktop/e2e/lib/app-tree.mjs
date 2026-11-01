@@ -54,7 +54,7 @@ export async function waitTreeGone(tree, {alive = isAlive, capMs = stepTimeLeft(
  */
 export async function endTree(tree, {graceMs = 5000, settleMs = 5000, wait = waitTreeGone, kill = process.kill.bind(process)} = {}) {
   const left = await wait(tree, {capMs: graceMs});
-  for (const row of left) { try { kill(row.pid, 'SIGKILL'); } catch (error) { if (error.code !== 'ESRCH') throw error; } }   // ESRCH: gone since the check
+  for (const row of left) { try { kill(row.pid, 'SIGKILL'); } catch { /* ESRCH: gone since the check; EPERM: it stays and the wait below names it, the other rows are still ended */ } }
   const stayed = await wait(left, {capMs: settleMs});
   if (stayed.length) throw new Error(`${stayed.length} process(es) of the closed app are still running after being killed: ${holdersOf(stayed)}`);
   return left;

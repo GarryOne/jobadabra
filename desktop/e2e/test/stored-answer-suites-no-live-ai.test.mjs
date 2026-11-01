@@ -23,8 +23,7 @@ const request = (action, body = {model: 'test', messages: [{role: 'user', conten
   method: 'POST', headers: {'content-type': 'application/json', 'x-jp-action': action}, body: JSON.stringify(body),
 });
 
-// Why (31 Oct 2026, owner saved gates): interactions, failureschannels and activity share setup reads, so all three use the same stored-answer and no-live guards.
-// Why (R2, 1 Nov 2026): the activity suite moved to desktop/integration/store (its setup reads are the same stored table), so two suites remain here.
+// Why (31 Oct 2026, owner saved gates; R2, 1 Nov 2026): interactions and failureschannels share setup reads, so both use the same stored-answer and no-live guards (the activity suite, a third, was deleted: its runs are desktop/integration/store).
 for (const suite of ['interactions', 'failureschannels']) {
   for (const family of ['claude', 'openai']) test(`${suite} setup answers and named refusals stop before live ${family} AI`, async t => {
     const h = await backboneHarness(t, suite, family);

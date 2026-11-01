@@ -69,13 +69,19 @@ The PR description opens with this table; review commit by commit.
 3. mac-07 renames the GitHub variables / secrets; then the `vars.` / `secrets.` keeps go.
 4. The owner renames the Notion pages the e2e suites search for.
 
+## After the merge (not code)
+
+- **Owner's Mac:** `tools/keychain-copy-to-jobadabra.sh` (dry run), then `--go`, copies the `job-pilotto.*` Keychain items to `jobadabra.*` for the tools and e2e scripts that call `security` themselves; the app and engine read the old name on their own. Item names were checked by exit code only; the real Anthropic admin item is `job-pilotto.anthropic.admin_key` (the docs said `admin-key`: corrected).
+- **Sibling repos** `jobadabra-web` (12 files) and `jobadabra-lab` (4 files) still set `JOB_PILOTTO_*` for code that now reads `JOBADABRA_*`: a PR in each, set both names first, then drop the old.
+- **mac-07:** GitHub variables / secrets `JOB_PILOTTO_*` (list in the PR); `~/.claude/skills/trello/SKILL.md:85` and six memory notes name `job-pilotto.*` items.
+
 ## Progress
 
 - [x] Inventory measured on origin/main (proof: none: `git grep` counts, 1 Nov 2026)
-- [ ] 1 Spec
-- [ ] 2 Map + scripts
-- [ ] 3 Prose and local names
-- [ ] 4 In-page names
-- [ ] 5 Env, header, labels, package names
-- [ ] 6 Keychain with fallback
-- [ ] 7 Guard
+- [x] 1 Spec
+- [x] 2 Map + scripts (`tools/rename-map.json`, `rename-inventory.mjs`, `rename-apply.mjs`)
+- [x] 3 Prose and local names
+- [x] 4 In-page names
+- [x] 5 Env, header, labels, package names
+- [x] 6 Keychain with read-old fallback (`src/secret_store.py`, `desktop/lib/keychain.js`, `credentials.js`) and the one-time copy script
+- [x] 7 Guard (`desktop/test/rename-guard.test.js` runs `rename-inventory.mjs --check`)

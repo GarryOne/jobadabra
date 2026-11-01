@@ -7,6 +7,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {ensureConfig} from '../../lib/pipeline-env.js';
+import {ZONE} from '../../e2e/lib/focus-data.mjs';
 import {storeEnv} from '../../e2e/lib/store-call.mjs';
 import {python} from '../../e2e/lib/python.mjs';
 
@@ -19,7 +20,8 @@ export function newStore() {
   fs.writeFileSync(path.join(profile, 'settings.json'), JSON.stringify({store: 'sqlite'}));
   fs.mkdirSync(path.join(profile, 'data'), {recursive: true});
   ensureConfig({path: name => path.join(profile, name), readText: name => fs.readFileSync(path.join(profile, name), 'utf8'), writeText: (name, text) => fs.writeFileSync(path.join(profile, name), text)});
-  const env = () => ({...Object.fromEntries(SHELL.filter(name => process.env[name]).map(name => [name, process.env[name]])), PYTHONUTF8: '1', ...storeEnv({profile})});
+  // Why (2 Nov 2026, flaky on the clock): the Focus seed counts Zurich days (e2e/lib/focus-data.mjs); this env had no TZ, so the engine's "today" was the machine's: a UTC runner saw 6 applied where the store says 5 from 23:00 to 24:00 UTC. window-probe.js pins the app the same way (e2e/lib/app.mjs zoneOf pinned both before the move).
+  const env = () => ({...Object.fromEntries(SHELL.filter(name => process.env[name]).map(name => [name, process.env[name]])), PYTHONUTF8: '1', TZ: ZONE, ...storeEnv({profile})});
   const run = args => execFileSync(python(), args, {cwd: REPO, env: env(), encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, timeout: 120000});
   return {
     profile,

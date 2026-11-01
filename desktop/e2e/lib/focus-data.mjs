@@ -1,3 +1,4 @@
+// Job: serve stored answers
 // The Focus suite's data: a dummy job search written through the store the app uses (ctx.data, lib/store-call.mjs: this Mac's store or Notion,
 // fictional employers only), and an independent "numbers match the source" oracle that works out, from the store's records alone, what Focus must
 // show. The oracle is deliberately a second implementation of the rules written from the product's spec (src/focus.py, src/notion/funnel.py), not a
@@ -6,7 +7,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {call} from './notion.mjs';
 
-const ZONE = 'Europe/Zurich';
+export const ZONE = 'Europe/Zurich';   // Why (2 Nov 2026, Gitar on #2930): the seed's zone; the screen tests pin the window and the engine to it (integration/app/window-probe.js, screen-store.js)
 
 // ---------- dates (Focus counts days in Zurich time) ----------
 export const zurichDay = date => new Intl.DateTimeFormat('en-CA', {timeZone: ZONE}).format(new Date(date));   // 2026-10-02

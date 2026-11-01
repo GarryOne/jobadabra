@@ -9,6 +9,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {appLogLines} from '../../e2e/lib/app-log.mjs';
+import {ZONE} from '../../e2e/lib/focus-data.mjs';
 import {LIMITS, inspect} from '../../e2e/lib/uicheck.mjs';
 
 const desktop = fileURLToPath(new URL('../..', import.meta.url));
@@ -72,8 +73,9 @@ export function probeWindow({script, after = null, use = [], files = {}, setting
     const readBack = `(() => { const before = JSON.parse(sessionStorage.getItem('__probeBefore')); if (before?.__error) throw new Error(before.__error); return before; })()`;
     const code = after ? `(() => { const before = JSON.parse(sessionStorage.getItem('__probeBefore')); if (before?.__error) throw new Error(before.__error); return (${after.toString()})(${helpers}, before); })()` : keep ? readBack : `(${script.toString()})(${helpers})`;
     const first = after || keep ? park : '';
+    // Why (2 Nov 2026, flaky on the clock): the Focus seed counts days in Zurich time (e2e/lib/focus-data.mjs) and the app in the computer's zone; the e2e launcher pinned TZ (e2e/lib/app.mjs zoneOf), the move to integration dropped it, so a UTC runner failed Focus's 14-day count from 23:00 to 24:00 UTC. A test that needs another zone passes TZ in `env`, which comes last.
     const run = spawnSync(path.join(desktop, 'node_modules', '.bin', 'electron'), ['.'], {cwd: desktop, encoding: 'utf8', timeout, env: {
-      ...process.env, JOB_PILOTTO_DEMO: '1', JOB_PILOTTO_DEMO_DIR: folder, JOB_PILOTTO_USER_DATA: folder, JOB_PILOTTO_SMOKE: out, ...(keep ? {} : {JOB_PILOTTO_SMOKE_NO_PICTURE: '1'}), JOB_PILOTTO_E2E_OPEN_DIR: folder,
+      ...process.env, TZ: ZONE, JOB_PILOTTO_DEMO: '1', JOB_PILOTTO_DEMO_DIR: folder, JOB_PILOTTO_USER_DATA: folder, JOB_PILOTTO_SMOKE: out, ...(keep ? {} : {JOB_PILOTTO_SMOKE_NO_PICTURE: '1'}), JOB_PILOTTO_E2E_OPEN_DIR: folder,
       JOB_PILOTTO_SMOKE_EVAL: code, ...(after ? {JOB_PILOTTO_SMOKE_JS: first, JOB_PILOTTO_SMOKE_RELOAD_JS: '0'} : keep ? {JOB_PILOTTO_SMOKE_JS: first} : {}), JOB_PILOTTO_E2E_RUNNER_PID: String(process.pid), ...env}});
     const answer = `${out}.json`;
     if (!fs.existsSync(answer)) throw new Error(`the app wrote no answer (exit ${run.status}, signal ${run.signal}): ${(run.stderr || run.stdout || '').slice(-600)}`);

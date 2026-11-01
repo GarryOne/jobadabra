@@ -212,7 +212,7 @@ class RedStepsJudged(unittest.TestCase):
     def red_main(self, results, *, rerun=False, extra=None):
         """applyflows red on main with these step results; rerun: commits landed since, so the re-check (run 99) is red and holds them."""
         run = '99' if rerun else '2'
-        data = {'runs': [APPLYFLOWS_RED], 'jobs': APPLYFLOWS_JOBS, 'head': NEW_SHA if rerun else RED_SHA, 'recheck': 'failure',
+        data = {'runs': [APPLYFLOWS_RED], 'jobs': APPLYFLOWS_JOBS, 'recheck_jobs': APPLYFLOWS_JOBS['2'], 'head': NEW_SHA if rerun else RED_SHA, 'recheck': 'failure',
                 'artifacts': {run: {'e2e-view-applyflows-1of2': table({'name': 'a step', 'status': 'passed'}), 'e2e-view-applyflows-2of2': table(*results), 'e2e-coverage-applyflows-1of2': {}}}}
         return gate({**data, **(extra or {})})
 
@@ -222,6 +222,18 @@ class RedStepsJudged(unittest.TestCase):
             self.assertEqual(code, 0, out)
             self.assertIn(f'Red on main, not safety or data: applyflows · {SIGN_UP}', out)
             self.assertEqual(bool(dispatch), rerun, 'the re-check itself is kept: it re-runs only when commits landed since')
+
+    def test_a_suite_green_in_the_recheck_is_not_judged(self):
+        # Gitar on #2786: main red on two suites, the re-check passes one and fails the other on an ordinary step: the beta goes on and lists only the still-red step.
+        runs = [{**APPLYFLOWS_RED, 'display_title': 'E2E check · on time (Worker cron)'}]
+        jobs = {'2': [{'name': 'apply', 'conclusion': 'failure'}, {'name': 'employers', 'conclusion': 'failure'}]}
+        recheck_jobs = [{'name': 'apply', 'conclusion': 'success'}, {'name': 'employers', 'conclusion': 'failure'}]
+        artifacts = {'99': {'e2e-view-apply': table({'name': 'ok', 'status': 'passed'}), 'e2e-view-employers': table(failed('an ordinary step'))}}
+        code, out, dispatch = gate({'runs': runs, 'jobs': jobs, 'head': NEW_SHA, 'recheck': 'failure', 'recheck_jobs': recheck_jobs, 'artifacts': artifacts})
+        self.assertEqual(code, 0, out)
+        self.assertIn('Red on main, not safety or data: employers · an ordinary step', out)
+        self.assertNotIn('apply ·', out.split('Red on main, not safety or data')[1])
+        self.assertIn('suite=apply,employers', dispatch)
 
     def test_a_red_safety_step_stops_the_beta(self):
         for rerun in (False, True):   # (b)

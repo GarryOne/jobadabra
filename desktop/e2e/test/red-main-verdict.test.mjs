@@ -71,12 +71,29 @@ test('a step red on both store legs is listed once; nothing red tolerated gives 
 
 test('the reader picks the artifacts of the red suite only (store legs and shards of it), and a table that throws blocks', async () => {
   const tables = {'e2e-view-apply-1of2': table(failed('plain')), 'e2e-view-apply-2of2': table(passed('ok')), 'e2e-view-jobs': table(failed('other suite', {safety: true}))};
-  const io = {names: async () => [...Object.keys(tables), 'e2e-coverage-apply-1of2', 'e2e-view-applyflows'], stepsOf: async (runId, name) => tables[name]};
+  const io = {names: async () => [...Object.keys(tables), 'e2e-coverage-apply-1of2', 'e2e-view-applyflows'], failedSuites: async () => new Set(['apply']), stepsOf: async (runId, name) => tables[name]};
   const verdict = await verdictOfReds([{runId: '5', suites: ['apply']}], io);
   assert.equal(verdict.block, false);
   assert.deepEqual(verdict.notBlocking, ['apply · plain']);
   const broken = await verdictOfReds([{runId: '5', suites: ['apply']}], {...io, stepsOf: async () => { throw new Error('expired'); }});
   assert.equal(broken.block, true);
-  const down = await verdictOfReds([{runId: '5', suites: ['apply']}], {names: async () => { throw new Error('HTTP 502\nmore'); }});
+  const down = await verdictOfReds([{runId: '5', suites: ['apply']}], {names: async () => { throw new Error('HTTP 502\nmore'); }, failedSuites: async () => new Set(['apply'])});
   assert.match(down.reasons[0], /\(HTTP 502\)/);
+});
+
+test('a suite that came back green in the re-check is not judged; only the suites with a failed job are', async () => {
+  const tables = {'e2e-view-apply': table(passed('ok')), 'e2e-view-employers': table(failed('plain'))};
+  const io = {names: async () => Object.keys(tables), failedSuites: async () => new Set(['employers']), stepsOf: async (runId, name) => tables[name]};
+  const verdict = await verdictOfReds([{runId: '99', suites: ['apply', 'employers']}], io);
+  assert.equal(verdict.block, false, verdict.reasons.join('; '));
+  assert.deepEqual(verdict.notBlocking, ['employers · plain']);
+});
+
+test('a red run where none of the asked suites has a failed job, or whose jobs cannot be read, stops the beta', async () => {
+  const none = await verdictOfReds([{runId: '99', suites: ['apply']}], {names: async () => [], failedSuites: async () => new Set()});
+  assert.equal(none.block, true);
+  assert.match(none.reasons[0], /none of these suites has a failed job/);
+  const unreadable = await verdictOfReds([{runId: '99', suites: ['apply']}], {names: async () => [], failedSuites: async () => { throw new Error('HTTP 502'); }});
+  assert.equal(unreadable.block, true);
+  assert.match(unreadable.reasons[0], /its jobs could not be read: HTTP 502/);
 });

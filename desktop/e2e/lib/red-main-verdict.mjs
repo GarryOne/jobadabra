@@ -13,8 +13,9 @@ export const notBlockingLine = items => (items.length ? `Red on main, not safety
  */
 export function judgeReds(found) {
   const reasons = [], tolerated = new Set();
-  for (const {suite, runId, tables, error} of found) {
+  for (const {suite, runId, tables, error, noFailedJob} of found) {
     const where = `${suite} (run ${runId})`;
+    if (noFailedJob) { reasons.push(`${where}: the run is red but none of these suites has a failed job`); continue; }
     if (error) { reasons.push(`${where}: its results could not be read (${error})`); continue; }
     if (!tables?.length) { reasons.push(`${where}: its results could not be read (no steps.json among the run's artifacts)`); continue; }
     const broken = tables.filter(item => !Array.isArray(item.table?.results));

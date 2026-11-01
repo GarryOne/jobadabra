@@ -19,6 +19,9 @@ const gh = args => execFileSync('gh', args, {encoding: 'utf8', maxBuffer: 64 << 
 /** The real reads: a run's non-expired artifact names, and one artifact's steps.json. */
 export const ghStepsIo = repo => ({
   names: async runId => gh(['api', '--paginate', `repos/${repo}/actions/runs/${runId}/artifacts?per_page=100`, '--jq', '.artifacts[] | select(.expired == false) | .name']).split('\n').filter(Boolean),
+  /** The suites that have a failed job in a run (the same read as tools/main_e2e_state.py). */
+  failedSuites: async runId => new Set((JSON.parse(gh(['api', `repos/${repo}/actions/runs/${runId}/jobs?per_page=100`, '--jq', '.jobs']) || 'null') || [])
+    .filter(job => job.conclusion === 'failure').map(job => suiteOfKey(job.name))),
   stepsOf: async (runId, name) => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'red-main-art-'));
     try {
@@ -28,12 +31,23 @@ export const ghStepsIo = repo => ({
   },
 });
 
-/** reds: [{runId, suites}] -> the verdict of judgeReds; a read that fails is carried as that suite's error, never as a pass. */
+/**
+ * reds: [{runId, suites}] -> the verdict of judgeReds; a read that fails is carried as that suite's error, never as a pass.
+ * Only suites with a failed job in that run are judged: a suite green in the re-check has no failed step and must not read as "red with nothing recorded" (Gitar on #2786).
+ * A run where none of the asked suites has a failed job is itself unexplained, so it stops the beta.
+ */
 export async function verdictOfReds(reds, io) {
   const found = [];
   const namesOf = new Map();
   for (const {runId, suites} of reds) {
-    for (const suite of suites) {
+    let stillRed;
+    try { stillRed = await io.failedSuites(runId); } catch (error) {
+      found.push(...suites.map(suite => ({suite, runId, error: `its jobs could not be read: ${String(error.message || error).split('\n')[0].slice(0, 160)}`})));
+      continue;
+    }
+    const judged = suites.filter(suite => stillRed.has(suite));
+    if (!judged.length) { found.push({suite: suites.join(','), runId, tables: [], noFailedJob: true}); continue; }
+    for (const suite of judged) {
       try {
         if (!namesOf.has(runId)) namesOf.set(runId, await io.names(runId));
         const names = namesOf.get(runId).filter(name => name.startsWith('e2e-view-') && suiteOfKey(name.slice('e2e-view-'.length)) === suite);

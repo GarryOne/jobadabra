@@ -18,6 +18,15 @@ on:
       - 'desktop/e2e/lib/**'   # every layer's kit starts the app or the browser through the harness lib
       - 'desktop/e2e/fixtures/cv.json'   # the store layer's seeded candidate
       - 'desktop/e2e/test/strategy-start.mjs'   # the strategy tests' start state
+      - 'desktop/e2e/test/record/recorded-pages.test.mjs'   # applying-report.test.mjs reads recorded-pages.test.mjs's source; these are what that file loads
+      - 'desktop/e2e/fixtures/slice-ci-seconds.json'   # applying-report.test.mjs reads recorded-pages.test.mjs's source; these are what that file loads
+      - 'desktop/e2e/replay-accepts.mjs'   # applying-report.test.mjs reads recorded-pages.test.mjs's source; these are what that file loads
+      - 'desktop/e2e/replay-records.mjs'   # applying-report.test.mjs reads recorded-pages.test.mjs's source; these are what that file loads
+      - 'desktop/e2e/replay-net.mjs'   # applying-report.test.mjs reads recorded-pages.test.mjs's source; these are what that file loads
+      - 'desktop/e2e/replay-gate.mjs'   # applying-report.test.mjs reads recorded-pages.test.mjs's source; these are what that file loads
+      - 'desktop/e2e/smoke-sites.json'   # applying-report.test.mjs reads recorded-pages.test.mjs's source; these are what that file loads
+      - 'desktop/e2e/replay-faithful.json'   # applying-report.test.mjs reads recorded-pages.test.mjs's source; these are what that file loads
+      - 'desktop/e2e/replay-deferred.json'   # applying-report.test.mjs reads recorded-pages.test.mjs's source; these are what that file loads
       - 'desktop/e2e/package.json'
       - 'desktop/e2e/package-lock.json'
       - 'desktop/lib/**'

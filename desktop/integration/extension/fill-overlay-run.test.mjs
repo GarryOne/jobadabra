@@ -30,7 +30,7 @@ const SAMPLER = () => {
 const LOG_STATES = () => {
   globalThis.__applyLog = [];
   chrome.storage.session.onChanged.addListener(changes => {
-    for (const [key, change] of Object.entries(changes)) if (key.startsWith('apply:')) globalThis.__applyLog.push({at: Date.now(), key, state: change.newValue || ''});
+    for (const [key, change] of Object.entries(changes)) if (key.startsWith('apply:')) globalThis.__applyLog.push({at: Date.now(), key, state: change.newValue || ''});   // clock: relative, only differences of these stamps are read (lived, startAt/endAt)
   });
 };
 

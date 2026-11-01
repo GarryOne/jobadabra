@@ -9,7 +9,7 @@
 #   --force "<why>" (as beta-release.sh's)                → exit 0 with the reds named; beta-release.sh puts the reason in the beta run's log
 # Why: 25 Oct 2026, main's 21:47 run was red on cardstates, interactions and settings; beta 2 started 1.5 h later and failed on the same suites.
 # Usage: tools/red-main-gate.sh <repo> [--force "<why>" | --status]   --status only reads (exit 0 green, 1 red); any other option is refused and starts nothing (26 Oct 2026: a --dry-run was ignored and re-ran main's red suites)     RED_MAIN_POLL / RED_MAIN_FIND_S / RED_MAIN_WAIT_S for tests.
-# Tests: tests/test_red_main_gate.py, desktop/e2e/test/red-main-verdict.test.mjs
+# Tests: tests/test_red_main_gate.py, desktop/e2e/test/harness/red-main-verdict.test.mjs
 set -uo pipefail
 repo="${1:?repo}"; shift
 force="" status=""

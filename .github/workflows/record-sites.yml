@@ -6,7 +6,7 @@
 # Record sites: this workflow's ONE job is recording (owner, 14 Oct 2026: record each site once, then test offline; renamed from "Pool smoke" on 15 Oct 2026, spec
 # docs/superpowers/specs/2026-10-15-record-once.md). It visits the pool's sites on a GitHub runner, started BY HAND (owner, 12 Oct 2026: this changes the 11 Oct rule "the pool runs locally only, never in CI";
 # start simple, grow it over time, report to the coordinator before growing it). By hand, plus the daily batch above: never another schedule, a push or a pull request (owner, 13 Oct 2026:
-# "I don't want PR to generate an AI cost"; a fix is confirmed OFFLINE on a recording, never by a live run: record-once spec 15 Oct 2026). Guard: e2e/test/pool-ci-triggers.test.mjs.
+# "I don't want PR to generate an AI cost"; a fix is confirmed OFFLINE on a recording, never by a live run: record-once spec 15 Oct 2026). Guard: e2e/test/pool/pool-ci-triggers.test.mjs.
 # - Rows: the pool list in the repo (desktop/e2e/smoke-sites.json: every row since 12 Oct 2026; postings are public pages, the owner's details never enter a run).
 # - Floors unchanged: the fake applicant, HELD (never Submit, no account or consent button, no password, no captcha), the privacy tripwire on, nothing uploaded
 #   (lib/applying-report.mjs refuses CI) but what the last step sends with the narrow REPLAYS_PUBLISH_KEY: the rows' results (a run on main only), their endings, and the ladder moves the rows' pages

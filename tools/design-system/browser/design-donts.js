@@ -1,6 +1,6 @@
 // The design-system page's "Don't / Do" pairs, one per rule from the owner's UI feedback (18 Oct 2026, docs/rules/desktop-ui.md "Read views, lists, buttons and choices"),
 // redrawn with fictional data from the shared parts (never the owner's screenshots: they hold his real data). Each "Don't" box carries data-expect = the check in
-// desktop/e2e/lib/design-rules.mjs it must trip, and each "Do" box must trip none (desktop/e2e/test/design-rules.test.mjs; the checks are parked by the owner, 18 Oct 2026).
+// desktop/e2e/lib/design-rules.mjs it must trip, and each "Do" box must trip none (desktop/e2e/test/pool/design-rules.test.mjs; the checks are parked by the owner, 18 Oct 2026).
 import {chip, el, pill} from '../r/components.js';
 import {chipLine, editRows, readRows} from '../r/card-shell.js';
 import {refresh, segmented} from '../r/question-control-values.js';

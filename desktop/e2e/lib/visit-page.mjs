@@ -5,6 +5,8 @@ import fs from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
 import {chromium} from 'playwright-core';
+// Why (c27, 1 Nov 2026, area folders): tests under desktop/integration cannot resolve this folder's own playwright-core, so they take chromium from here.
+export {chromium};
 
 export const repo = path.resolve(import.meta.dirname, '..', '..', '..');
 export const fixtures = path.join(import.meta.dirname, '..', 'fixtures', 'visits');

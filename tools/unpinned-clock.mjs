@@ -7,7 +7,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
-const TOP = ['desktop/test', 'desktop/e2e/test', 'tests'];
+const TOP = ['desktop/test', 'desktop/e2e/test', 'desktop/integration/extension', 'tests'];
 const READ = /\bDate\.now\(\)|\bnew Date\(\)|\bdatetime\.(?:utc)?(?:now|today)\(|\bdate\.today\(\)|\btime\.time\(\)/;
 const NOW = String.raw`(?:Date\.now\(\)|time\.time\(\))`;
 // Why (31 Oct 2026, a8; Gitar on #2734): a span is one reading minus an earlier one, a comparison against a deadline, the anchor a span starts from, or a poll deadline set from now: all measure a duration and cannot depend on the calendar day.

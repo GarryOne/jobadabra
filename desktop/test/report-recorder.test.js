@@ -44,7 +44,7 @@ test('prepare: scrubbed, searched again, held in memory with a readable preview;
 // the extension must pause each XHR/fetch reply until it's saved. Allow it, with a test proving it reads only the reply's id, status and content type (never request headers, cookies or post data),
 // reads nothing on sign-in pages, and holds no reply over 500 ms (live streams not at all)?" Answer: "Yes, with that test". Fetch interception hands the code the paused REQUEST with its headers,
 // cookies and post data, so what may be read from it is an allow-list, checked here on the source; the behaviour (nothing read on a sign-in page, a stream let go unread, the 500 ms limit) is tested in
-// trace.test.js and, on a real browser, e2e/test/trace-real-browser.test.mjs.
+// trace.test.js and, on a real browser, e2e/test/replay/trace-real-browser.test.mjs.
 test('the reply hold (Fetch interception) reads only the reply\'s id, status and content type, never the paused request', () => {
   const code = fs.readFileSync(new URL('../../extension/trace.js', import.meta.url), 'utf8').split('\n').filter(line => !/^\s*\/\//.test(line)).join('\n').replace(/\s\/\/ .*$/gm, '');
   const start = code.indexOf('async function holdReply('), end = code.indexOf('async function onFinished(');

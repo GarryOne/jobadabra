@@ -13,7 +13,7 @@ LINUX_SUITES = {   # what a PR's workflow runs -> a line of its step in build.ym
     'tests-python.yml': 'bash tools/check.sh --area python',
     'tests-worker.yml': 'bash tools/check.sh --area worker',
     'tests-desktop.yml': 'bash tools/check.sh --area desktop',
-    'page-cases.yml': 'node --test --test-concurrency=1 test/recorded-pages.test.mjs',
+    'page-cases.yml': 'node --test --test-concurrency=1 test/record/recorded-pages.test.mjs',
     'control-tests.yml': 'node widget-zoo.mjs --json widget-zoo.json',
 }
 # Why (owner, 27 Oct 2026: "Main, red on regression"): main runs the zoo inside the fill check (zoo + recorded pages vs main's last green), not the by-hand zoo command;

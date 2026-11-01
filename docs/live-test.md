@@ -28,7 +28,7 @@
 - **Update it live, without closing it: `npm run twin:drive -- refresh [--tabs]`** (9 Oct 2026). The twin's worktree goes to `origin/main`; a changed extension is rewritten in place and reloaded
   through `chrome://extensions` (NOT `chrome.runtime.reload()`: Chrome 153 leaves a command-line extension disabled after it); a change to the app's main process (`desktop/lib`, `main.js`, `worker/src`) restarts
   the app alone, with its whole process group and its ports; anything else reloads the window. The browser, its tabs and sign-ins stay (`--tabs` also reloads the tabs so their panel gets the new script, which
-  loses those pages' fill state). Not covered: a change to `twin.mjs` itself needs one restart of the twin. Code: `e2e/lib/twin-refresh.mjs`, guarded by `e2e/test/twin-refresh.test.mjs`.
+  loses those pages' fill state). Not covered: a change to `twin.mjs` itself needs one restart of the twin. Code: `e2e/lib/twin-refresh.mjs`, guarded by `e2e/test/harness/twin-refresh.test.mjs`.
 
   | Command | Does |
   |---|---|
@@ -91,4 +91,4 @@ After merges that touch `extension/` or the fill, one command runs 5 real forms 
 - **Needs the owner's yes in the session's window each time.** `cd desktop/e2e && npm run twin-check` prints the one-line ask (sha, forms, minutes, cost) and starts nothing; `-- --yes` runs it (background + Monitor on its log).
 - It runs the rows through `npm run live` (the app's path without Electron: the real extension of this checkout on the real site, the privacy tripwire, the per-site daily limit, never Submit), not the twin's window: one machinery, no second one to keep.
 - **Red** on: a fill error (an error line, a thrown error in the app log or the extension's console), a press the safety floor refuses (Submit words, or "Decline/Reject…" as a press), the tripwire, or a drop vs that row's last check (a step less, fewer fields filled). A popup close that says no is shown yellow.
-- Reports: `~/Library/Application Support/Job Pilotto QA/twin-checks/<time>-<sha>.json` + `table.md` + each row's `end.png` (the panel picture). Guard: `desktop/e2e/test/twin-check.test.mjs`.
+- Reports: `~/Library/Application Support/Job Pilotto QA/twin-checks/<time>-<sha>.json` + `table.md` + each row's `end.png` (the panel picture). Guard: `desktop/e2e/test/harness/twin-check.test.mjs`.

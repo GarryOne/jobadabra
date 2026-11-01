@@ -113,12 +113,12 @@ class AffectedTests(unittest.TestCase):
     def test_a_suite_and_baseline_change_like_2767_picks_the_harness_tests_that_scan_the_suites(self):
         picked = set(affected.select(self.PR_2767)['e2e'])
         for test in ('timing-ratchet', 'suite-ai-mode', 'owns-step', 'suite-hang-caps'):   # the last two read every literal ctx.run step
-            self.assertIn(f'test/{test}.test.mjs', picked, test)
+            self.assertIn(f'test/harness/{test}.test.mjs', picked, test)
 
     def test_a_harness_test_that_reads_a_folder_by_new_url_is_picked_for_a_file_inside_it(self):
         # timing-ratchet reads ../suites/ by new URL(..., import.meta.url) and ../lanes.json: no import, no scanner call that names the file
         for changed in ('desktop/e2e/suites/zz_not_there.mjs', 'desktop/e2e/lanes.json'):
-            self.assertIn('test/timing-ratchet.test.mjs', affected.select([changed])['e2e'], changed)
+            self.assertIn('test/harness/timing-ratchet.test.mjs', affected.select([changed])['e2e'], changed)
 
     def test_a_python_only_edit_picks_no_scanning_harness_test(self):
         self.assertEqual(affected.select(['tests/test_ship.py'])['e2e'], [])
@@ -133,7 +133,7 @@ class AffectedTests(unittest.TestCase):
         got = affected.select(self.PR_2767)
         cmds = affected.commands(got)
         self.assertTrue(cmds['e2e'].startswith('cd desktop/e2e && node --import ./test/stdout-to-stderr.mjs --test test/'), cmds['e2e'])
-        self.assertIn('test/timing-ratchet.test.mjs', cmds['e2e'].split())
+        self.assertIn('test/harness/timing-ratchet.test.mjs', cmds['e2e'].split())
         self.assertTrue(cmds['desktop'].startswith('cd desktop && node --test test/'))
         self.assertEqual(affected.commands({'python': 'all', 'e2e': [], 'reasons': {}}), {})   # a whole area is CI's; an empty pick runs nothing
         for path in cmds['e2e'].split()[8:]:

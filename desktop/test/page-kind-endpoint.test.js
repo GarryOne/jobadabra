@@ -31,7 +31,7 @@ test('the endpoint passes the sketch\'s address lines to the decision and return
 });
 
 // One list of sketch fields (lib/page-kind.js SKETCH_FIELDS): the endpoint forwards exactly these, so a field the extension adds can no longer be forgotten here
-// (frames, 9 Oct 2026; mails, 10 Oct 2026). The extension's side is checked in e2e/test/real-extension.test.mjs ("the page sketch the extension sends").
+// (frames, 9 Oct 2026; mails, 10 Oct 2026). The extension's side is checked in e2e/test/replay/real-extension.test.mjs ("the page sketch the extension sends").
 import {SKETCH_FIELDS} from '../lib/page-kind.js';
 test('the endpoint forwards every field of the shared sketch list to the decision, and nothing else', async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-kind-endpoint-'));

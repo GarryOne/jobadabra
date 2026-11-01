@@ -185,6 +185,8 @@ def pick_node_area(area, folder, relevant, graph, engine_changed):
     # sub-folders (app, extension, store); it is picked by the same reach, mention and scanner rules as the unit tests, not by a second picker.
     pattern = '**/*.test.*' if area == 'integration' else '*.test.*'
     tests = sorted((ROOT / folder).glob(pattern)) if (ROOT / folder).is_dir() else []
+    if area == 'e2e':   # Why (c27, 1 Nov 2026, area folders): the harness tests sit one folder down (test/<area>/x.test.mjs); test/fixtures holds stand-ins, never tests
+        tests += sorted(t for t in (ROOT / folder).glob('*/*.test.*') if t.parent.name != 'fixtures')
     reached = e2e_reach() if area == 'e2e' else {}
     if reached is None:
         return 'all'

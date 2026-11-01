@@ -9,7 +9,7 @@ const SUITES = ['settings', 'apply', 'applyflows', 'quality'];
 test('a push changing an e2e suite or its lib needs "E2E-cause:"; a harness test or the app alone does not', () => {
   assert.equal(isE2ePush(['desktop/e2e/suites/settings.mjs']), true);
   assert.equal(isE2ePush(['desktop/e2e/lib/pr-suites.mjs']), true);
-  assert.equal(isE2ePush(['desktop/e2e/test/pr-suites.test.mjs', 'desktop/lib/server.js']), false);
+  assert.equal(isE2ePush(['desktop/e2e/test/harness/pr-suites.test.mjs', 'desktop/lib/server.js']), false);
   assert.match(missingCause(['desktop/e2e/suites/settings.mjs'], ['Expect the backup message to name the file']), /no commit says why the suite was red/,
     '27 Oct 2026: a harness-only fix carried no cause and the page could only guess drift or test bug');
   assert.equal(missingCause(['desktop/lib/server.js'], ['Fix the backup name']), '');

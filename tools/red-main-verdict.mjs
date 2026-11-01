@@ -4,7 +4,7 @@
 //   exit 0: nothing blocks; prints "Red on main, not safety or data: <suite · step>, …" (the beta lists it in its release notes)
 //   exit 1: blocks, or the results cannot be read (a missing result is never a pass); prints one "Stops the beta: <reason>" line each   exit 2: bad usage
 // Used by tools/red-main-gate.sh, the one caller for the nightly (gate G2) and the beta by hand (tools/beta-release.sh). Why (1 Nov 2026, owner: "Safety strict, rest tolerant").
-// Tests: tests/test_red_main_gate.py, desktop/e2e/test/red-main-verdict.test.mjs
+// Tests: tests/test_red_main_gate.py, desktop/e2e/test/harness/red-main-verdict.test.mjs
 // Job: report health
 import {execFileSync} from 'node:child_process';
 import fs from 'node:fs';

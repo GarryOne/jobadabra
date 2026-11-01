@@ -244,7 +244,7 @@ test('an unchanged bound moved to another file or removed is free; a raised or n
   for (const added of ['while (Date.now() - start < 20000) await pause(250);', "await page.waitForSelector('#x', {timeout: 5_000});"]) {
     assert.equal(newClockWaits([{file: 'desktop/e2e/suites/apply.mjs', before: '', after: added}]).length, 1, added);
   }
-  assert.deepEqual(newClockWaits([{file: 'desktop/e2e/test/wait-on-state.test.mjs', before: '', after: 'pollUntil(read, ok, {capMs: 500})'}]), []);
+  assert.deepEqual(newClockWaits([{file: 'desktop/e2e/test/harness/wait-on-state.test.mjs', before: '', after: 'pollUntil(read, ok, {capMs: 500})'}]), []);
   assert.deepEqual(newClockWaits([{file: journeys, before: '', after: '// waited < 10000 in a comment, and "capMs: 1" in a string'}]), []);
 });
 

@@ -43,7 +43,7 @@ async function replay(desktop, changed) {
   const load = os.loadavg()[0].toFixed(0), failed = failedCases(run.stdout);
   // A case that fails in the full replay and passes alone is load-sensitive (11 Oct 2026: workday-start-dialog-1 at load 147): said as FLAKY, never a silent pass.
   if (failed.length && failed.length <= MAX_RETRIED) {
-    const alone = failed.map(name => ({name, ok: spawnSync('node', ['--test', 'test/recorded-pages.test.mjs'], {cwd: e2e, encoding: 'utf8', timeout: 2 * 60 * 1000,
+    const alone = failed.map(name => ({name, ok: spawnSync('node', ['--test', 'test/record/recorded-pages.test.mjs'], {cwd: e2e, encoding: 'utf8', timeout: 2 * 60 * 1000,
       env: {...process.env, JP_REPLAY: '1', REPLAY_ONLY: name}}).status === 0}));
     if (alone.every(r => r.ok)) { console.log(`journey gate: FLAKY under load (load average ${load}): ${failed.join(', ')} failed in the full replay and passed alone; counted as passed`); return 0; }
   }

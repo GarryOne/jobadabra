@@ -11,7 +11,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {aboutFor, aboutText, baseCv, MODEL} from './cv.js';
 import {writePrivate} from './private-file.js';
-import {WRITING_RULES} from '../shared/worker/writing-rules.js';
+import {WRITING_RULES} from '../shared/app-core/writing-rules.js';
 
 const PRICE = {input: 2, output: 10};  // USD per million tokens
 // USD cost of one response's usage ({input_tokens, output_tokens, billing}), rounded to a cent; 0 on a subscription or without usage. Shared by the letter and the portrait.

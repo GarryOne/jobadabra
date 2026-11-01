@@ -1,12 +1,12 @@
 // Fill-failure snapshots for replay tests: the HTML structure of a field the extension couldn't operate (the field, its
 // label, the nearest container, an open dropdown menu), scrubbed of every value and personal detail, ≤ 8 KB. It goes
-// with the fill-failure report to a public GitHub issue; worker/test/fill-replay.test.js replays it as a fixture.
+// with the fill-failure report to a public GitHub issue; app-core/test/fill-replay.test.js replays it as a fixture.
 (() => {
   if (window.__jobPilottoSnapshotLoaded) return;
   window.__jobPilottoSnapshotLoaded = true;
 
-  // <scrub> The scrubber, a pure function of a {t, a, c} tree. This block is identical in worker/src/snapshot.js,
-  // which scrubs every report again (anyone can post one); worker/test/snapshot.test.js fails when the two differ.
+  // <scrub> The scrubber, a pure function of a {t, a, c} tree. This block is identical in app-core/src/snapshot.js,
+  // which scrubs every report again (anyone can post one); app-core/test/snapshot.test.js fails when the two differ.
   // Kept: tags, type, role, id/name/for, class names (react-select's select__control…), aria-* structure, label and
   // option texts. Dropped: every value the user typed or chose, hidden and password inputs, textarea contents, data-*,
   // links, styles, scripts, images, Jobadabra's own marks. Emails, URLs, phone-like numbers, long tokens and the

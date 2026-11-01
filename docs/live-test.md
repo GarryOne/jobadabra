@@ -26,7 +26,7 @@
 - **Drive it with `npm run twin:drive -- <command>`** (in `desktop/`; `desktop/e2e/twin-drive.mjs`). Every click and keystroke is outlined in
   orange with a "Claude: …" caption first, so the owner watching sees what is pressed; a form's Submit is refused in any language.
 - **Update it live, without closing it: `npm run twin:drive -- refresh [--tabs]`** (9 Oct 2026). The twin's worktree goes to `origin/main`; a changed extension is rewritten in place and reloaded
-  through `chrome://extensions` (NOT `chrome.runtime.reload()`: Chrome 153 leaves a command-line extension disabled after it); a change to the app's main process (`desktop/lib`, `main.js`, `worker/src`) restarts
+  through `chrome://extensions` (NOT `chrome.runtime.reload()`: Chrome 153 leaves a command-line extension disabled after it); a change to the app's main process (`desktop/lib`, `main.js`, `app-core/src`) restarts
   the app alone, with its whole process group and its ports; anything else reloads the window. The browser, its tabs and sign-ins stay (`--tabs` also reloads the tabs so their panel gets the new script, which
   loses those pages' fill state). Not covered: a change to `twin.mjs` itself needs one restart of the twin. Code: `e2e/lib/twin-refresh.mjs`, guarded by `e2e/test/harness/twin-refresh.test.mjs`.
 

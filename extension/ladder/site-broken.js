@@ -2,7 +2,7 @@
 // that could not be loaded or read at all, while it shows no form. It is loaded again a few times, then reported plainly ('site_broken', the status in the need), never left silent.
 // The server's status code is a fixed number (structure), never page words; it only counts when the page shows no form (a site that serves its form with an error code is filled).
 // A page a form submission led to is never loaded again (a reload could send the form a second time): it is reported at once.
-// Guards: worker/test/site-broken.test.js (the rule, the tries), desktop/e2e/recorded/site-error-then-form-1 and posting-gone-1 (the replays).
+// Guards: app-core/test/site-broken.test.js (the rule, the tries), desktop/e2e/recorded/site-error-then-form-1 and posting-gone-1 (the replays).
 // Reads no chrome API but the two listeners below (guarded, so node tests load it).
 export const GONE = [404, 410];
 // -> 'gone' | 'error' | 'unreadable' | null. shape: pageShape's counts (null when the page could not be read), with the document's status (0 when unknown).

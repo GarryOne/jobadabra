@@ -7,7 +7,7 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-PACKAGES = ('.venv', 'desktop/node_modules', 'desktop/e2e/node_modules', 'worker/node_modules', 'site/node_modules')
+PACKAGES = ('.venv', 'desktop/node_modules', 'desktop/e2e/node_modules', 'app-core/node_modules', 'site/node_modules')
 
 
 def git(cwd, *args):
@@ -26,7 +26,7 @@ class WorktreeTest(unittest.TestCase):
         (self.main / 'tools' / 'githooks').mkdir()
         shutil.copy(ROOT / 'tools' / 'githooks' / 'post-checkout', self.main / 'tools' / 'githooks' / 'post-checkout')
         (self.main / '.gitignore').write_text('.venv\nnode_modules\n.claude/\n')
-        for name in ('desktop', 'desktop/e2e', 'worker', 'site'):
+        for name in ('desktop', 'desktop/e2e', 'app-core', 'site'):
             (self.main / name).mkdir(parents=True, exist_ok=True)
             (self.main / name / 'keep.txt').write_text(name)
         git(self.main, 'init', '-q', '-b', 'main')

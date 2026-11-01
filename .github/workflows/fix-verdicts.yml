@@ -57,7 +57,7 @@ jobs:
           read -r sha at <<< "${last:-}"
           [ -z "${sha:-}" ] && { echo "replay-verify: no green run yet: replaying"; exit 0; }
           records=$(gh release view net-records -R "$GITHUB_REPOSITORY" --json assets --jq '[.assets[].updatedAt] | max // ""' 2>/dev/null || true)
-          if git cat-file -e "$sha" 2>/dev/null && git diff --quiet "$sha" HEAD -- desktop extension src worker/src .github/workflows/fix-verdicts.yml ':!desktop/test' ':!desktop/e2e/test' \
+          if git cat-file -e "$sha" 2>/dev/null && git diff --quiet "$sha" HEAD -- desktop extension src app-core/src .github/workflows/fix-verdicts.yml ':!desktop/test' ':!desktop/e2e/test' \
              && { [ -z "$records" ] || [[ "$records" < "$at" ]]; }; then
             echo "replay-verify: nothing changed since the last green run (${sha::7}, $at): nothing to do"; echo "skip=1" >> "$GITHUB_OUTPUT"
           else echo "replay-verify: changed since ${sha::7}: replaying"; fi

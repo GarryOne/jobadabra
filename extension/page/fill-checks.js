@@ -18,7 +18,7 @@
     return best.checked;
   };
 
-  // The fixed answer of a two-state control is "checked" or "unchecked" (worker/src/extension.js); yes/true and no/false are the same two, spelled the other way.
+  // The fixed answer of a two-state control is "checked" or "unchecked" (app-core/src/extension.js); yes/true and no/false are the same two, spelled the other way.
   // Anything else (empty, another language) is neither: it is never read as "no".
   const wantsChecked = answer => /^(checked|yes|true)$/i.test(answer);
   const wantsUnchecked = answer => /^(unchecked|no|false)$/i.test(answer);

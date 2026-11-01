@@ -23,7 +23,7 @@ class AffectedTests(unittest.TestCase):
 
     def test_a_dependency_file_inside_one_area_runs_that_area_whole_and_the_others_by_mention(self):
         # 11 Oct 2026: desktop/e2e/package.json ran Python, worker and site whole for nothing
-        for f, area in (('desktop/package.json', 'desktop'), ('desktop/e2e/package.json', 'desktop'), ('worker/package-lock.json', 'worker')):
+        for f, area in (('desktop/package.json', 'desktop'), ('desktop/e2e/package.json', 'desktop'), ('app-core/package-lock.json', 'worker')):
             got = affected.select([f])
             self.assertEqual(got[area], 'all', f)
             self.assertTrue(all(got[other] != 'all' for other in ('python', 'desktop', 'worker', 'site') if other != area), f)
@@ -73,7 +73,7 @@ class AffectedTests(unittest.TestCase):
         self.assertLessEqual({'test/hardcoded-page-words.test.js'}, picked)
 
     def test_a_worker_change_runs_worker_tests_only(self):
-        got = affected.select(['worker/src/report.js'])
+        got = affected.select(['app-core/src/report.js'])
         self.assertTrue(got['worker'])
         self.assertEqual((got['python'], got['site']), ([], []))
 

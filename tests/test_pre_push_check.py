@@ -44,7 +44,7 @@ class PrePushCheckTest(PrePushFixture):
     def linked_worktree(self):
         """A linked worktree of the fixture repo with one desktop change, whose main checkout HAS the installed folders (what a session's bare `git worktree add` looks like)."""
         self.needed_committed()
-        for folder in ('desktop/node_modules', 'worker/node_modules'):
+        for folder in ('desktop/node_modules', 'app-core/node_modules'):
             (self.repo / folder).mkdir(parents=True)   # the main checkout's install; git-ignored in the real repo
         tree = self.tmp / 'wt'
         git(self.repo, 'worktree', 'add', '-q', str(tree), '-b', 'wt')
@@ -71,7 +71,7 @@ class PrePushCheckTest(PrePushFixture):
 
     def test_the_same_worktree_with_its_links_pushes(self):   # the positive control of the test above: only the links differ
         tree = self.linked_worktree()
-        for folder in ('desktop/node_modules', 'worker/node_modules'):
+        for folder in ('desktop/node_modules', 'app-core/node_modules'):
             (tree / folder).symlink_to(self.repo / folder)
         code, err = self.hook_in(tree, 'git push origin HEAD:main')
         self.assertEqual(code, 0, err)

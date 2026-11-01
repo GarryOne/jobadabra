@@ -54,7 +54,7 @@ and set it on the Worker (`cd worker && npx wrangler@4 secret put EXTENSION_TOKE
 
 - `page/browser-submit-guard.js` and `page/browser-form-fastpath.js` are copies of the originals in
   `tools/`; run `./sync.sh` after changing those (a Worker test fails while they differ).
-- Worker endpoints: `worker/src/extension.js` (`GET /extension/kit?url=`, 
+- Worker endpoints: `app-core/src/extension.js` (`GET /extension/kit?url=`, 
   `POST /extension/answer`, `POST /extension/applied`); secrets `EXTENSION_TOKEN`, `ANTHROPIC_API_KEY`.
 - `flow.js` is one fill run (describe → answer → fill), shared by the popup and `background.js`.
-- Tests: `cd worker && npm test`.
+- Tests: `cd app-core && npm test`.

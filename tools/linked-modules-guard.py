@@ -8,7 +8,7 @@ import re
 import sys
 
 INSTALL = re.compile(r'\bnpm\b[^;&|\n)]*?\s(ci|install|i|add|update|up|uninstall|rebuild|dedupe|prune)(\s|$|;|\))')
-PACKAGE_DIRS = ('.', 'desktop', 'desktop/e2e', 'worker', 'site')   # the folders tools/worktree.sh links
+PACKAGE_DIRS = ('.', 'desktop', 'desktop/e2e', 'app-core', 'site')   # the folders tools/worktree.sh links
 
 
 def repo_root(start):

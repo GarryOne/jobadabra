@@ -1,7 +1,7 @@
 name: CI · Schedule watchdog
-# Did the Worker's cron start the scheduled runs on time (worker/src/scheduler.js)? Checked here, on GitHub, where the owner looks: one issue
+# Did the Worker's cron start the scheduled runs on time (app-core/src/scheduler.js)? Checked here, on GitHub, where the owner looks: one issue
 # "⏰ On-time starts missing" (label schedule-watchdog) stays open while a start is missing and closes when every one is seen again
-# (worker/src/watchdog.js). GitHub's own schedule runs this late or skips an hour now and then; for a watchdog that is fine, it only has to run
+# (app-core/src/watchdog.js). GitHub's own schedule runs this late or skips an hour now and then; for a watchdog that is fine, it only has to run
 # eventually (6 Oct 2026: the Worker had lost its secrets and nothing started on time for a day, with no sign of it on GitHub).
 on:
   schedule:
@@ -29,4 +29,4 @@ jobs:
         with:
           node-version: '22'
       - name: The on-time starts, and the issue that says which are missing
-        run: node worker/scripts/watchdog.mjs || true
+        run: node app-core/scripts/watchdog.mjs || true

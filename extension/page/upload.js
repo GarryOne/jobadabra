@@ -5,7 +5,7 @@
 // knows is left empty and reported so the pack can learn it. The result is verified by re-reading the page, and the slot's fingerprint
 // lets the recipe library (extension/recipe-schema.js, operator "upload", param "trigger") say what opens a slot this code cannot.
 // It never presses anything that looks like a submit control. Loaded in the page before fill.js (PAGE_FILES in extension/flow.js); guarded by
-// desktop/e2e/test/upload-slot.test.mjs (the shapes of slots; JP_LIVE=1 also the real Coop form) and worker/test/upload.test.js.
+// desktop/e2e/test/upload-slot.test.mjs (the shapes of slots; JP_LIVE=1 also the real Coop form) and app-core/test/upload.test.js.
 (() => {
   const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
   const visible = el => !!(el.getClientRects().length && getComputedStyle(el).visibility !== 'hidden');

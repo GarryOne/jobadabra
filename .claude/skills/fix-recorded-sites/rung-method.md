@@ -33,7 +33,7 @@ Flow-core files (`page-kind.js`, `fill-flow.js`, `session-flow.js`, `escalate.js
 | `npm run ladder-score -- --offline` and `node --test test/ladder-ratchet.test.js` | no stored fixture got worse (what the push gate runs) |
 | `cd desktop/e2e && npm run recorded` | fixed sites still replay (also with `REAL_EXTENSION_DIR=<old extension/>` it must FAIL: the positive control) |
 | `cd desktop/e2e && npm run real-extension` | the extension alone, if `extension/` changed |
-| `cd desktop && npm test`, `cd worker && npm test` | the rest |
+| `cd desktop && npm test`, `cd app-core && npm test` | the rest |
 
 ### R5. Update the baseline honestly
 - Better fixtures: `npm run ladder-score -- --offline --update-baseline "<what improved and why>"` (re-record the answers first with `--record` if the prompt changed).

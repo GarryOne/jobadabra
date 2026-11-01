@@ -1,5 +1,5 @@
 // A desktop test runs on CI with only desktop/'s packages installed. A package it reaches through a file outside desktop/ (jsdom through
-// worker/test/helpers/page.js) loads locally through the worktree's links and fails only on CI: #2429, 29 Oct 2026. DOM tests go in worker/test.
+// app-core/test/helpers/page.js) loads locally through the worktree's links and fails only on CI: #2429, 29 Oct 2026. DOM tests go in app-core/test.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {builtinModules} from 'node:module';
@@ -36,5 +36,5 @@ function missingFrom(testFiles) {
 test('no desktop test reaches a package that desktop/ does not install, through a file outside desktop/', () => {
   const dir = path.join(DESKTOP, 'test');
   const found = missingFrom(fs.readdirSync(dir).filter(name => /\.m?js$/.test(name)).map(name => path.join(dir, name)));
-  assert.deepEqual(found, [], 'a desktop test reaches these through files outside desktop/: move it to the suite that installs the package (a DOM test: worker/test)');
+  assert.deepEqual(found, [], 'a desktop test reaches these through files outside desktop/: move it to the suite that installs the package (a DOM test: app-core/test)');
 });

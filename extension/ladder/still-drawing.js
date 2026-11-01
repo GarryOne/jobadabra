@@ -1,6 +1,6 @@
 // Reads a page again while the page-kind AI says it is still being drawn (a placeholder, a cover over an empty shell, a "Loading" notice): a fill planned from a half-drawn page asks about the wrong controls.
 // The AI judges "ready?" (its fixed answer stillDrawing, desktop/lib/ladder/rung2-sketch.js); this file only waits for the page to be still and asks again, at most MAX_LOOKS times. At the cap the last answer
-// is used as it is (today's way) and the cause is logged, never a loop and never a silent stop. Guard: worker/test/still-drawing.test.js.
+// is used as it is (today's way) and the cause is logged, never a loop and never a silent stop. Guard: app-core/test/still-drawing.test.js.
 export const MAX_LOOKS = 2;
 // afterChange: a page that is quiet because its content has not come yet is waited on (until it changes and is still, at most maxMs), not read again after half a second of silence.
 export const STILL_MS = {quietMs: 500, maxMs: 2500, afterChange: true};

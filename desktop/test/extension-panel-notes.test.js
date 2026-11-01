@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {test} from 'node:test';
-import {readPanel} from '../../worker/test/helpers/panel.js';
+import {readPanel} from '../../app-core/test/helpers/panel.js';
 
 const read = name => fs.readFileSync(new URL(`../../extension/${name}`, import.meta.url), 'utf8');
 

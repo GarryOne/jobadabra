@@ -17,7 +17,7 @@ export function schemaProblems(value, schema, at = '$') {
   return found;
 }
 
-// What a written answer puts in the box: its text before the first "• Add:" reminder (those are shown beside the box, never typed: worker/src/written-answer.js splitReminders, #2198).
+// What a written answer puts in the box: its text before the first "• Add:" reminder (those are shown beside the box, never typed: app-core/src/written-answer.js splitReminders, #2198).
 const typed = answer => answer?.category === 'written' ? String(answer.value ?? '').split(/\s*•\s*Add:/)[0].trim() : String(answer?.value ?? '');
 /**
  * A form-answer reply against what each field should get (the eval cases in tools/free-ai-form-list.mjs).
@@ -28,7 +28,7 @@ const typed = answer => answer?.category === 'written' ? String(answer.value ?? 
  * A written answer is judged on what is typed: its text before the first "• Add:" reminder.
  */
 export function answerProblems(data, expect) {
-  // What reaches the page: the product floors a proposal on a legal or demographic question to an empty kind (worker/src/extension.js answerForm), an unchecked box is no answer, and a
+  // What reaches the page: the product floors a proposal on a legal or demographic question to an empty kind (app-core/src/extension.js answerForm), an unchecked box is no answer, and a
   // proposal is shown, never typed, so an "empty" expectation only fails on a typed answer. A multi-choice value (" && ") is right when every part is.
   const answers = (Array.isArray(data?.answers) ? data.answers : []).map(a => (a.use === 'propose' && ['legal', 'demographic'].includes(a.category)) || a.value === 'unchecked' ? {...a, value: ''} : a), found = [];
   for (const [field, want] of Object.entries(expect)) {

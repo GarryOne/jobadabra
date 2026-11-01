@@ -48,7 +48,7 @@ jobs:
         id: worker
         continue-on-error: true
         run: |
-          (cd worker && npm ci)
+          (cd app-core && npm ci)
           bash tools/check.sh --area worker || { echo "::error title=Suite failed::worker: the job fails at \"Every suite passed\""; exit 1; }
       # Install exactly what a developer has, dev dependencies included: `npm test` runs scripts/stage.mjs, which needs esbuild. Electron's binary too, under a virtual
       # display, as in tests-desktop.yml (the desktop tests that render the app run on CI, not only on a Mac).

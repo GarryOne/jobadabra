@@ -1,7 +1,7 @@
 // The closer look's two hands besides a click (extension/ladder/rung4-picture.js; spec docs/superpowers/specs/2026-10-08-ai-escalation.md), injected into the page.
 // fill: one listed text box that is still empty gets a value the app resolved from the person's contact details (never a password: the account step fills those, never a box
 // that already holds something). choose: one listed native dropdown gets one of its own options. Controls are found by the label the sketch listed (account-fill.js accountSketch).
-// Each answers a word the caller logs (never the value): filled | chosen, or why nothing was done. Guard: worker/test/account-act.test.js.
+// Each answers a word the caller logs (never the value): filled | chosen, or why nothing was done. Guard: app-core/test/account-act.test.js.
 export function fillControl(wanted, value) {
   if (!wanted || !String(value || '').trim()) return 'nothing-to-fill';
   const label = el => String((el.labels?.[0]?.innerText ?? el.labels?.[0]?.textContent) || el.getAttribute('aria-label') || el.placeholder || el.name || '').replace(/\s+/g, ' ').trim().slice(0, 80).toLowerCase();   // inline: this function is injected into the page alone

@@ -66,7 +66,7 @@ jobs:
           [ -z "${sha:-}" ] && { echo "replay-offline: no green run yet: replaying"; exit 0; }
           ci=$(gh run list -R "$GITHUB_REPOSITORY" --workflow record-sites.yml --limit 1 --json createdAt --jq '.[0].createdAt // ""' 2>/dev/null || true)   # a recording run's artifact net-records-<run> is a new recording too (15 Oct 2026)
           records=$(gh release view net-records -R "$GITHUB_REPOSITORY" --json assets --jq '[.assets[].updatedAt] | max // ""' 2>/dev/null || true)
-          if git cat-file -e "$sha" 2>/dev/null && git diff --quiet "$sha" HEAD -- desktop extension worker/src .github/workflows/site-replays.yml ':!desktop/test' ':!desktop/e2e/test' \
+          if git cat-file -e "$sha" 2>/dev/null && git diff --quiet "$sha" HEAD -- desktop extension app-core/src .github/workflows/site-replays.yml ':!desktop/test' ':!desktop/e2e/test' \
              && { [ -z "$records" ] || [[ "$records" < "$at" ]]; } && { [ -z "$ci" ] || [[ "$ci" < "$at" ]]; }; then
             echo "replay-offline: nothing changed since the last green replay (${sha::7}, $at): nothing to do"; echo "skip=1" >> "$GITHUB_OUTPUT"
           else echo "replay-offline: changed since ${sha::7}: replaying"; fi

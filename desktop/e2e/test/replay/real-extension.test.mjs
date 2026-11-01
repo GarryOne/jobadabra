@@ -122,7 +122,7 @@ test('a choice step that reveals its own file input: the CV is attached, the pas
 // 10 Oct 2026: after a refresh nothing started and there was no button. The toolbar popup's "Apply on this page" (message applyHere) fills again on a tab the app opened, never on another page;
 // a real reload does the same. WHAT THIS PROVES: the wiring (the message is accepted, the fill runs, a reload refills, a page the app did not open is refused). WHAT IT DOES NOT: that the
 // popup's press needs forgetApplyTries (messages-panel.js): this fixture shows its file input at once, so the build without that call also passes (control run, 10 Oct 2026). The case that needs it
-// is a fresh document with the input hidden after an Apply press was tried: on the real Deloitte page the press failed without the call and filled with it; worker/test/visit-consent.test.js guards the call.
+// is a fresh document with the input hidden after an Apply press was tried: on the real Deloitte page the press failed without the call and filled with it; app-core/test/visit-consent.test.js guards the call.
 test('Apply on this page refills a tab the app opened, a reload refills, any other page is refused', {skip}, async () => {
   const run = await startRealExtension({extensionDir, cv: true, allowAllSites: true, answer: {'/extension/page-kind': () => ({ok: true, kind: 'posting', role: 'no-form', by: 'ai', confidence: 0.98, applyButton: 'upload cv'})}});
   try {

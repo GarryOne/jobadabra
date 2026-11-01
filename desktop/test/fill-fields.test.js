@@ -24,10 +24,10 @@ test('background.js logs the fill line through loggedFields, never its own copy 
 });
 
 // The LAST layer the evidence reaches (11 Oct 2026, Datadog round 2): c67f153 kept `required` in the extension's line, but the log boundary
-// (worker/src/extension.js fieldRows) let only five keys through, so app.log and the smoke report still said "required=?". This test goes the
+// (app-core/src/extension.js fieldRows) let only five keys through, so app.log and the smoke report still said "required=?". This test goes the
 // whole way: the extension's entry -> the app's /extension/log handler -> its onLog -> app.log -> the smoke report's field reader.
 test('required reaches the app log and the smoke report\'s field list, through the log boundary', async () => {
-  const {handleExtension} = await import('../shared/worker/extension.js');
+  const {handleExtension} = await import('../shared/app-core/extension.js');
   const server = await import('../lib/server.js');
   const log = await import('../lib/log.js');
   const os = await import('node:os'), path = await import('node:path');

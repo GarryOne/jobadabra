@@ -1,5 +1,6 @@
 /* global chrome */
 // Live update of a running twin (owner, 9 Oct 2026: "if we push a change, can we avoid closing the twin app?", "we're losing the browser/tab state every time").
+// Job: run the backbone
 // The launcher (twin.mjs) owns the browser and keeps it; this file is what a refresh does: bring the twin's worktree to origin/main, say what the
 // change touches, and put the extension's new files into the copy the browser already has loaded. The app window is reloaded (renderer) or the app
 // alone restarted (its main process) by twin.mjs / twin-drive.mjs; the browser and its tabs stay. Guarded by test/twin-refresh.test.mjs.
@@ -15,7 +16,7 @@ import {copyExtension} from './extension.mjs';
 export function classify(files) {
   const has = test => files.some(file => test.test(file));
   return {
-    app: has(/^desktop\/(lib|shared)\//) || has(/^desktop\/[^/]+\.(c?js|mjs|json)$/) || has(/^(worker\/src|shared)\//),
+    app: has(/^desktop\/(lib|shared)\//) || has(/^desktop\/[^/]+\.(c?js|mjs|json)$/) || has(/^(app-core\/src|shared)\//),
     renderer: has(/^desktop\/renderer\//),
     extension: has(/^extension\//),
   };

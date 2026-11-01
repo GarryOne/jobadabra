@@ -1,7 +1,7 @@
 // The form filler's reading helpers (split from page/fill.js, 9 Oct 2026): a field's name, the question a radio group or checkbox belongs to,
 // whether it is required, a combobox's control and value, the legal-words floor (LEGAL) and the native/ARIA radio operators (page/radios.js).
 // Injected first of the fill files (FILL_FILES in extension/page-files.js); shared through window.__jobPilottoFillKit, read by fill-read.js,
-// fill-menus.js, fill-checks.js, fill-marks.js and fill.js. Guarded by worker/test/fill-learning.test.js (plants), extension-files.test.js.
+// fill-menus.js, fill-checks.js, fill-marks.js and fill.js. Guarded by app-core/test/fill-learning.test.js (plants), extension-files.test.js.
 (() => {
   if (window.__jobPilottoFillLabelsLoaded) return;
   window.__jobPilottoFillLabelsLoaded = true;

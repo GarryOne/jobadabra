@@ -1,4 +1,4 @@
-// Free AI writing cases for the form textareas (worker/src/extension.js answerForm, action 'answer') and the CV tailoring (desktop/lib/cv.js tailor, action 'tailor'), 5 invented cases each, for tools/free-ai-writing-pairwise.mjs.
+// Free AI writing cases for the form textareas (app-core/src/extension.js answerForm, action 'answer') and the CV tailoring (desktop/lib/cv.js tailor, action 'tailor'), 5 invented cases each, for tools/free-ai-writing-pairwise.mjs.
 // The app's own request is captured through a stub client that records the call and throws, so the prompts are never copied here. Fictional only (the demo profile): the cases go to a third party.
 // Why (27 Oct 2026, owner): "for CV tailoring, or form answers... especially those textarea forms" were never measured. Not covered: the other 'tailor' calls (CV transcription and the CV-change review read, they do not write).
 import fs from 'node:fs';
@@ -23,7 +23,7 @@ const area = (field, label, required = true) => ({field, label, type: 'textarea'
 
 /** The five textarea-form cases: the app's answerForm request over invented forms. @returns {Promise<object[]>} cases with feature 'answers' */
 export async function answersCases() {
-  const {answerForm} = await import('../worker/src/extension.js');   // Why (27 Oct 2026, #2277): on demand; the desktop CI job has no worker/node_modules
+  const {answerForm} = await import('../app-core/src/extension.js');   // Why (27 Oct 2026, #2277): on demand; the desktop CI job has no app-core/node_modules
   const env = {PROFILE_TEXT: PROFILE, ANSWERS_TEXT: ANSWERS, KNOWLEDGE_TEXT: '', SEARCH_TEXT: '', CV_FACTS_TEXT: ''};
   const make = async (id, posting, fields, trap) => ({feature: 'answers', id: `answers-${id}`, trap,
     params: await capture(client => answerForm(env, {url: `https://example.com/jobs/${posting.id}`, fields, page_text: `${posting.title} at ${posting.company}, ${posting.location}. ${posting.description}`}, client))});

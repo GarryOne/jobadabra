@@ -20,7 +20,7 @@ HERE = Path(__file__).resolve().parent
 CHECKS_OWN = re.compile(r'^(tools/(pre-push-check|affected-tests|gate-cache|check-slot|heavy-lock|gate-cache-ignore|file-size|journey-gate)[^/]*|\.claude/settings\.json|\.github/workflows/.*)$')
 DEPENDENCY = re.compile(r'(^|/)(package(-lock)?\.json|requirements[^/]*\.txt|pyproject\.toml)$')
 # The paths the journey and ladder gates read (ship.sh slow_gate_paths).
-SLOW_GATE = ('extension', 'desktop/lib', 'desktop/test', 'desktop/e2e', 'desktop/scripts', 'worker/src', 'docs/flows')
+SLOW_GATE = ('extension', 'desktop/lib', 'desktop/test', 'desktop/e2e', 'desktop/scripts', 'app-core/src', 'docs/flows')
 
 
 def picker():

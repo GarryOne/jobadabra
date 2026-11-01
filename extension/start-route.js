@@ -3,9 +3,9 @@
 // the button it picked (desktop/lib/page-kind.js ROUTES). Decisions: the route and the button are the AI's; structure only finds the button by its text (fill-flow.js
 // pressApply); the floors are here: only the manual route is ever pressed, a third-party sign-in (LinkedIn, Google, Apple…) never, one look per tab and page.
 // Invariants (flow core: read before editing; changing one is the owner's call, said in the commit; each names the test that guards it):
-//  1. Only the manual route is pressed; reuse_previous and third_party_account are reported, never pressed (worker/test/start-route.test.js).
-//  2. One look per tab and page; a new tab or a reload (forgetRouteTries) may look again (worker/test/start-route.test.js).
-//  3. No AI answer, no route: nothing is pressed (worker/test/start-route.test.js).
+//  1. Only the manual route is pressed; reuse_previous and third_party_account are reported, never pressed (app-core/test/start-route.test.js).
+//  2. One look per tab and page; a new tab or a reload (forgetRouteTries) may look again (app-core/test/start-route.test.js).
+//  3. No AI answer, no route: nothing is pressed (app-core/test/start-route.test.js).
 const tried = new Set();
 export const forgetRouteTries = tabId => { for (const key of [...tried]) if (key.startsWith(`${tabId} `)) tried.delete(key); };
 

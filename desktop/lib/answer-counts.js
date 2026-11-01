@@ -1,4 +1,4 @@
-// Each AI answer call for a form (worker/src/extension.js answerForm -> env.onAnswer trace), summed per engine for the site's per-AI-family
+// Each AI answer call for a form (app-core/src/extension.js answerForm -> env.onAnswer trace), summed per engine for the site's per-AI-family
 // metrics (owner, 9 Oct 2026: compare the AI itself, Claude vs OpenAI, not the user mix). Counts only: never a field id, a label or an answer.
 // Pure: the site imports the lists to validate what it stores (site/src/knowledge.js). Guarded by desktop/test/answer-counts.test.js.
 

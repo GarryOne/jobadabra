@@ -2,7 +2,7 @@
 // autofill can empty a box a few seconds AFTER that (an upload's "autofill from resume"), the retype watcher (page/browser-form-fastpath.js) types it again, and the sent record still says
 // "left" for a box that holds its value (or the reverse). The page tells the worker a try worked (ladder/progress.js, value_stayed); this settles the record again (rung 0: the same read of
 // every control as at the end of the fill, extension/trace-settle.js) and, only when an outcome changed, writes ONE "fields (updated after a late retype)" line (fill-fields.js logFieldsLine),
-// at most MAX_UPDATES a run. The pool's ending reads the later line (desktop/e2e/lib/record-sites.mjs). onUpdate gets the new trace (the run row's update, a later PR). Guard: worker/test/record-update.test.js.
+// at most MAX_UPDATES a run. The pool's ending reads the later line (desktop/e2e/lib/record-sites.mjs). onUpdate gets the new trace (the run row's update, a later PR). Guard: app-core/test/record-update.test.js.
 import {loggedFields, logFieldsLine} from '../fill-fields.js';
 import {settleTrace} from '../trace-settle.js';
 

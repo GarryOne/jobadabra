@@ -8,7 +8,7 @@ import {ClaudeCode} from './claude-code-cli.js';
 import {Codex} from './codex-cli.js';
 import {OpenAiApi} from './openai-api.js';
 import {memoFile, withMemo} from './model-memo.js';
-import {anthropicClient} from '../../shared/worker/ai.js';
+import {anthropicClient} from '../../shared/app-core/ai.js';
 
 // localOnly: runs the user's own CLI, so this computer only, never GitHub (Always on). key: the secret an API engine needs.
 export const ENGINES = {

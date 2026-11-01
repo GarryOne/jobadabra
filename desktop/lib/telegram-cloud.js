@@ -1,5 +1,5 @@
 // "Telegram buttons, always on": the user's own small Cloudflare Worker (free plan) runs the
-// Telegram bot (worker/src, bundled into shared/bot-worker.js by scripts/stage.mjs) and answers button taps
+// Telegram bot (app-core/src, bundled into shared/bot-worker.js by scripts/stage.mjs) and answers button taps
 // and commands by starting runs in their private GitHub repo (Always on). The app
 // deploys it with a Cloudflare API token the user creates, points their bot's webhook at it, and stops its own
 // long polling (a bot has one listener: a webhook or getUpdates, never both). Turning it off reverses that.

@@ -1,6 +1,6 @@
 // The panel's report to the app (review.js sends it; lib/review.js reads it): what is left, filled, proposed and optional, as labels and fixed words only, never an answer the person typed.
 // A pure move out of review.js (E, 13 Oct 2026) so the file shrinks; `why` is new: one fixed cause per left control (extension/ladder/control-ending.js turns it into a reason class and an ending).
-// Page world, loaded with the panel (background.js). Guard: worker/test/review-payload.test.js.
+// Page world, loaded with the panel (background.js). Guard: app-core/test/review-payload.test.js.
 (() => {
   window.__jobPilottoReviewPayload = (state, watch, {agree, find}) => {
     const visible = el => el.getClientRects().length && getComputedStyle(el).visibility !== 'hidden';

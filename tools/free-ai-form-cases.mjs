@@ -1,7 +1,7 @@
-// Builds the Free AI quality cases for form answers (tools/free-ai-eval.mjs): the extension's real answer ask (worker/src/extension.js answerForm), captured, never copied.
+// Builds the Free AI quality cases for form answers (tools/free-ai-eval.mjs): the extension's real answer ask (app-core/src/extension.js answerForm), captured, never copied.
 // Usage: node tools/free-ai-form-cases.mjs --profile <profile.md> --answers <answers.md> --out <cases.json> [--set real]   (FICTIONAL demo profile only: the cases go to a third party).
 import fs from 'node:fs';
-import {answerForm, ANSWER_SCHEMA_FOR_TESTS} from '../worker/src/extension.js';
+import {answerForm, ANSWER_SCHEMA_FOR_TESTS} from '../app-core/src/extension.js';
 import {FORMS as REAL_FORMS} from './free-ai-form-asks.mjs';
 import {FORMS, field} from './free-ai-form-list.mjs';
 import {APPLICANTS} from './free-ai-form-applicants.mjs';

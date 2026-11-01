@@ -9,10 +9,10 @@ on:
   push:
     branches: [main]
     paths:
-      - 'worker/src/**'
+      - 'app-core/src/**'
       - 'worker/wrangler.toml'
       - 'worker/package.json'
-      - 'worker/package-lock.json'
+      - 'app-core/package-lock.json'
       - 'worker/scripts/**'
   workflow_dispatch:
 
@@ -43,11 +43,11 @@ jobs:
           node-version: '22'
       - name: Install
         if: env.CLOUDFLARE_API_TOKEN != ''
-        working-directory: worker
+        working-directory: app-core
         run: npm ci
       - name: Tests · Worker
         if: env.CLOUDFLARE_API_TOKEN != ''
-        working-directory: worker
+        working-directory: app-core
         run: npm test
       # `npm run deploy` = wrangler deploy, then check-secrets.mjs: red when the deployed Worker lacks a secret its schedules need (5 Oct 2026: a Worker created afresh had none).
       - name: Deploy to Cloudflare

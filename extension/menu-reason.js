@@ -2,7 +2,7 @@
 // Until 9 Oct 2026 every armed menu left empty was "dropdown that opens only on a real click" (cause real_click): a label, not a measurement,
 // so the learning digest ranked the wrong cause (Migros: the menu opened and the option was found, but a scripted click did not select it).
 // One row per observation: the reason text the fill row carries, the fixed cause word the fill card and the site count (fill-card.js CAUSES,
-// desktop/lib/question-labels.js LEFT_REASONS, site/src/knowledge.js). Guarded by worker/test/menu-reason.test.js.
+// desktop/lib/question-labels.js LEFT_REASONS, site/src/knowledge.js). Guarded by app-core/test/menu-reason.test.js.
 export const MENU_REASONS = [
   {text: 'dropdown not clicked', cause: 'menu_not_clicked'},                         // no trusted click: the setting is off, or the click failed
   {text: 'dropdown clicked, but its menu did not open', cause: 'menu_not_opened'},

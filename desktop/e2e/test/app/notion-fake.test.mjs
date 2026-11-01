@@ -126,7 +126,7 @@ test('url filters as Notion has them, and a request the stand-in does not know i
   const db = call(fake, 'POST', 'databases', {parent: {page_id: fake.root.id}, title: text('T'), properties: {Job: {title: {}}, 'Job URL': {url: {}}}}).body;
   call(fake, 'POST', 'pages', {parent: {database_id: db.id}, properties: {Job: {title: text('Lever')}, 'Job URL': {url: 'https://jobs.lever.co/e2e/5e2e'}}});
   const count = filter => call(fake, 'POST', `databases/${db.id}/query`, {filter}).body.results?.length;
-  assert.equal(count({property: 'Job URL', url: {contains: '/e2e/5E2E'}}), 1, 'a form page\'s URL finds its job (worker/src/extension.js findRow)');
+  assert.equal(count({property: 'Job URL', url: {contains: '/e2e/5E2E'}}), 1, 'a form page\'s URL finds its job (app-core/src/extension.js findRow)');
   assert.equal(count({property: 'Job URL', url: {does_not_contain: 'lever'}}), 0);
   assert.equal(count({property: 'Job URL', url: {is_not_empty: true}}), 1);
   assert.deepEqual(fake.stats.unknown, []);

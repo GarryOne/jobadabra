@@ -44,7 +44,7 @@ on:
       - 'desktop/test/reporter-by-file.mjs'
       - 'extension/**'
       - 'src/**'   # the engine commands the kits run (python -m src.focus, src scout, src.stores.copy)
-      - 'worker/src/**'   # staged into desktop/shared/worker/, which the app's server imports
+      - 'app-core/src/**'   # staged into desktop/shared/app-core/, which the app's server imports
       - 'config/**'
       - 'requirements*.txt'
       - '.github/workflows/integration.yml'

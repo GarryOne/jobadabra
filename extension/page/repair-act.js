@@ -3,7 +3,7 @@
 // picks the one option that shows the answer in another writing, checked here against the answer (page/value-class.js optionFor; none or two fit: nothing), retype puts the fill's own
 // answer back, commit leaves the control as a person does. Floors (AND, never moved): never a legal or knockout question, a password, a button, a native radio or checkbox (a click there can only flip the answer, 15 Oct 2026) or a control the fill gave no answer; every repair is
 // a try in the control's one attempt log (page/attempts.js, verb "repair:<verb>"). spot() gives a trusted click's place (the worker clicks: extension/ladder/fill-repair.js).
-// Values never leave the page: each verb returns {ok, why} only. Guard: worker/test/repair-act.test.js.
+// Values never leave the page: each verb returns {ok, why} only. Guard: app-core/test/repair-act.test.js.
 (() => {
   if (window.__jobPilottoRepairAct) return;
   const holds = el => !!window.__jobPilottoReadBack?.holds(el);

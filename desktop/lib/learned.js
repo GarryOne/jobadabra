@@ -3,7 +3,7 @@
 //   - a personal fact (street, postal code, place of origin, date of birth) -> Your details (the Notion Profile), only
 //     when that detail is still empty, so a value you already keep is never overwritten;
 //   - anything else short -> a "Question: answer" line of What we learned (the answers page, lib/questions.js remember), which every
-//     later fill's AI reads (worker/src/extension.js answerContext). Why (PR B1, owner 28 Oct 2026 "Retire now, no replay"): the 🧠 Form
+//     later fill's AI reads (app-core/src/extension.js answerContext). Why (PR B1, owner 28 Oct 2026 "Retire now, no replay"): the 🧠 Form
 //     knowledge notes it wrote before are retired; old ones stay in the store, unread.
 // Nothing leaves your store. You can read, fix or delete every line there.
 import {asksQuestion} from './label-shape.js';

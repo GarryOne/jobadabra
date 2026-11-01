@@ -3,7 +3,7 @@
 // again the way a person presses: a trusted click through Chrome's debugger (fill-verify.js sends it, inside the driver gap) on the spot the page names (page/press-real.js), for a dropdown the opener first and then the option
 // the page shows with the fill's answer, then read back. Rung 0's sibling of the real typing (fill-verify.js), in the same debugger turn. Floors: each point is checked by the
 // press floor first (page/submit-press.js markAt: never a submit, never a delete/withdraw/decline), at most 6 controls, no key is pressed. Counts only leave this file.
-// Guard: worker/test/hybrid-moves.test.js; the widget zoo's radio-trusted-only-1 and custom-select-1.
+// Guard: app-core/test/hybrid-moves.test.js; the widget zoo's radio-trusted-only-1 and custom-select-1.
 const MAX = 6, SETTLE_MS = 300;
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 

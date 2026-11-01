@@ -1,7 +1,7 @@
 // The panel's footer names the extension build (owner, 11 Oct 2026: a bug screenshot did not say which version ran, so the cause could not be placed on a build).
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {readPanel} from '../../worker/test/helpers/panel.js';
+import {readPanel} from '../../app-core/test/helpers/panel.js';
 
 const review = readPanel();
 

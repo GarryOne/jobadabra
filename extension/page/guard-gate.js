@@ -2,7 +2,7 @@
 // awaits window.__jobPilottoGate() between its stages; a throttled MutationObserver notes that the page changed, and only then the gate asks the extension whether a layer covers the form
 // (the isolated-world bridge extension/guard-bridge.js carries the question to the worker, which finds it by occlusion, closes it with the AI's non-agreeing button, kept, or says "held").
 // -> true: go on (nothing new, closed, or nobody answered: the fill never waits long for a bridge that is not there); false: held, the fill types nothing more. The decision is the worker's;
-// this page only learns "done" or "held" (two event names, no data), so a page script can at most delay the fill. Guards: worker/test/guard-gate.test.js, recorded cases.
+// this page only learns "done" or "held" (two event names, no data), so a page script can at most delay the fill. Guards: app-core/test/guard-gate.test.js, recorded cases.
 (() => {
   if (window.__jobPilottoGate) return;
   let dirty = false, lastAsk = 0;

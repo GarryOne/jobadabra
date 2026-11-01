@@ -1,13 +1,13 @@
 """The names of the scheduled runs on GitHub's Actions list (owner, 12 Oct 2026): ONE "Nightly beta" a day, the Worker's 04:00 start; every other scheduled run
 (the three e2e looks a day, either started by the Worker or by GitHub's own schedule, and the nightly's backup start) is an "E2E check". Guarded with
-tests/test_desktop_workflow.py (the desktop run-name) and worker/test/watchdog.test.js (the Worker's titles are in the run-names)."""
+tests/test_desktop_workflow.py (the desktop run-name) and app-core/test/watchdog.test.js (the Worker's titles are in the run-names)."""
 import re
 import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 E2E = (ROOT / '.github/workflows/e2e.yml').read_text()
-SCHEDULER = (ROOT / 'worker/src/scheduler.js').read_text()
+SCHEDULER = (ROOT / 'app-core/src/scheduler.js').read_text()
 
 
 class RunNamesTest(unittest.TestCase):

@@ -29,7 +29,7 @@ export function openaiModel(id, effort = null, env = process.env) {
 }
 
 // The price per million tokens for a call's usage: the OpenAI model's own for an OpenAI API call (its adapter records usage.model),
-// else the caller's Claude price. A subscription call costs 0 wherever the caller checks usage.billing. worker/src/ai.js has the same
+// else the caller's Claude price. A subscription call costs 0 wherever the caller checks usage.billing. app-core/src/ai.js has the same
 // (the Worker cannot import the app); test/ai-contract.test.js keeps the two equal.
 export const priceOf = (usage, claudePrice) => (usage?.provider === 'openai'
   ? OPENAI_PRICES[usage.model] || OPENAI_PRICES[TIERS.main.openai] : claudePrice);

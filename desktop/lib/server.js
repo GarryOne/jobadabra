@@ -1,5 +1,5 @@
 // The Chrome extension talks to the app on this computer (127.0.0.1) instead of a Cloudflare Worker.
-// Same endpoints and code as the Worker (worker/src/extension.js), with the user's local Profile,
+// Same endpoints and code as the Worker (app-core/src/extension.js), with the user's local Profile,
 // keys from the Keychain-backed store, and the local job list. Only this computer can connect, and
 // every call still needs the extension token. This file is the HTTP routes (start); the pieces it re-exports:
 // server-hooks.js (what main.js plugs in), server-env.js (token, tickets, localEnv), server-contact.js (/extension/me),
@@ -8,7 +8,7 @@ import {isFormOf} from './apply.js';
 import http from 'node:http';
 import {routeTable} from './server-routes.js';
 import {POST_CORS, tokenRequest, jsonHeaders, jsonBody} from './server-http.js';
-import {handleExtension} from '../shared/worker/extension.js';
+import {handleExtension} from '../shared/app-core/extension.js';
 import {log as appLog} from './log.js';
 import {timed, noteConnection} from './ext-http-timing.js';
 import {listen, portFrom, DEFAULT_PORT} from './server-listen.js';

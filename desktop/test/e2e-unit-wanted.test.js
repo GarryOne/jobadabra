@@ -11,7 +11,7 @@ test('a push touching the harness, the extension, the ladder or the page-kind co
 });
 
 test('a push that touches none of them does not pay the extra minute: docs, the renderer, the worker, the site, python', () => {
-  assert.equal(wantsE2eUnit(['docs/flows/ladder.md', 'desktop/renderer/pages/jobs.js', 'desktop/lib/notion.js', 'worker/src/x.js', 'site/src/y.js', 'src/daily.py', 'tests/test_x.py']), false);
+  assert.equal(wantsE2eUnit(['docs/flows/ladder.md', 'desktop/renderer/pages/jobs.js', 'desktop/lib/notion.js', 'app-core/src/x.js', 'site/src/y.js', 'src/daily.py', 'tests/test_x.py']), false);
   assert.equal(wantsE2eUnit([]), false);
 });
 

@@ -3,7 +3,7 @@
 // through the live press path's floors WITHOUT pressing (apply-press.js wouldPress), and both are logged beside the stop with the door's id, so agree / better / worse is
 // computed from the row's real ending (cc, 13 Oct 2026). Nothing acts: no press, no kept answer, no climb signal (askKind's shadow option). Fixed values only, never page text.
 // Not asked again where the stop came from the digest itself (its next rung, the picture, is off), nor when the tab left the stop's page. Whether the move WOULD act is the one rule of
-// ladder/next-move.js (box 5): a sure press past the floors is asked a second time, and acts only when both name the same control. Guard: worker/test/fallback.test.js.
+// ladder/next-move.js (box 5): a sure press past the floors is asked a second time, and acts only when both name the same control. Guard: app-core/test/fallback.test.js.
 import {effectOf, mayAct, needsSecondAsk} from './next-move.js';
 
 let ask = async () => null, floor = async () => ({press: false, why: null}), log = () => {}, digestAsked = () => false, acts = async () => false, act = async () => null, look = async () => 'none';

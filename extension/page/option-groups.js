@@ -1,6 +1,6 @@
 // One question is one control, however its options are named (flow-checks' rule from #569, 13 Oct 2026; NICE's Greenhouse form, pool run 38325149096: a required fieldset of checkboxes with
 // their own ids and a []-name read as 1 + every option, 16 against the panel's 8). The panel (review.js) and the replay's truth reader (desktop/e2e/lib/replay-truth.mjs, which injects this
-// file's source into the page) take their groups from here, so they cannot drift apart. Read only: it never changes the page. Guard: worker/test/option-groups.test.js.
+// file's source into the page) take their groups from here, so they cannot drift apart. Read only: it never changes the page. Guard: app-core/test/option-groups.test.js.
 //   groupOf(el) -> {key, box, options, title} | null: the group an option belongs to, null for a control that is not an option of a group (a lone box, a text field).
 //     Options join by the box that holds ONLY options (a fieldset, an ARIA group): a box that also holds a text box, a select or a textarea (hidden inputs ignored) never merges its
 //     checkboxes (a fieldset wrapping the whole form). Else by a shared name (radios with no name: by the container that holds only them). An element with an option role that wraps a hidden native radio is not a box of options: it joins its radiogroup.

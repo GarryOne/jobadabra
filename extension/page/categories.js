@@ -1,4 +1,4 @@
-// The kind of question the AI read, in any language (src/ai/kit.py / worker/src/extension.js answer `category`: knockout, legal, demographic),
+// The kind of question the AI read, in any language (src/ai/kit.py / app-core/src/extension.js answer `category`: knockout, legal, demographic),
 // used by the form filler before it fills anything (page/fill.js __jobPilottoExtensionFill): a legal one (a consent, terms, a certification) is
 // never filled by us, whatever the English words of LEGAL say (8 Oct 2026: a Portuguese "Li e aceito a política de privacidade" was not
 // caught and would have been ticked); each kind is marked on its field, so the review panel (review.js) ranks knockouts first and marks

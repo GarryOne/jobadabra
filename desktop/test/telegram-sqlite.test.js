@@ -1,5 +1,5 @@
 // Telegram's buttons with the data on this Mac, against the REAL SQLite store (D6 audit, 9 Oct 2026): the bot's own handler
-// (shared/worker handleUpdate) with the store seam (lib/store/telegram-store.js) reading and writing a temp data folder through the engine's
+// (shared/app-core handleUpdate) with the store seam (lib/store/telegram-store.js) reading and writing a temp data folder through the engine's
 // adapter, and the engine mode a dispatched button starts (src/daily.py --mode apply). Isolated: a temp folder, no Notion token, no app-following,
 // Telegram's API stubbed (nothing leaves this process but the python calls).
 import assert from 'node:assert/strict';
@@ -9,7 +9,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {test} from 'node:test';
 import {fileURLToPath} from 'node:url';
-import {handleUpdate} from '../shared/worker/index.js';
+import {handleUpdate} from '../shared/app-core/index.js';
 import {telegramStore} from '../lib/store/telegram-store.js';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');

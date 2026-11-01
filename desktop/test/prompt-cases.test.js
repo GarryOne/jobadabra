@@ -24,11 +24,11 @@ test('only a change inside a prompt counts; an edit beside it does not', () => {
   assert.deepEqual(changedPrompts('', JS), ['FACT_RULE'], 'a new prompt is a change');
 });
 
-const FACT = [{file: 'worker/src/answer-facts.js', name: 'FACT_RULE'}];
+const FACT = [{file: 'app-core/src/answer-facts.js', name: 'FACT_RULE'}];
 const added = files => file => (files[file] || 0);
 
 test('a prompt change with no case added to its set is refused, naming the set and its files', () => {
-  const problem = missingCase(FACT, added({'worker/src/answer-facts.js': 1}), ['Reword the salary rule'], registry);
+  const problem = missingCase(FACT, added({'app-core/src/answer-facts.js': 1}), ['Reword the salary rule'], registry);
   assert.match(problem, /FACT_RULE: add the case this change fixes to the "form" set \(tools\/free-ai-form-asks\.mjs/);
 });
 
@@ -45,7 +45,7 @@ test('a prompt in no set is refused until it gets one or the commit says why', (
 });
 
 test('the live sets a push reaches: a changed prompt of a live set or a changed case file; a set that is not live never runs', () => {
-  assert.deepEqual(liveSets(FACT, ['worker/src/answer-facts.js'], registry), ['form']);
+  assert.deepEqual(liveSets(FACT, ['app-core/src/answer-facts.js'], registry), ['form']);
   assert.deepEqual(liveSets([], ['tools/free-ai-form-asks.mjs'], registry), ['form']);
   assert.deepEqual(liveSets([{file: 'src/ai/mail_config.py', name: 'SYSTEM'}], ['src/ai/mail_config.py'], registry), []);
   assert.deepEqual(liveSets([], ['README.md'], registry), []);

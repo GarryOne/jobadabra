@@ -2,7 +2,7 @@
 // (a page that keeps its own state from real key presses and writes it back on blur) is typed again the way a person types: one real click on the box, then each
 // character as a real key event through Chrome's debugger, then read back (page/fill-verify.js). The second way of the ladder; what still does not hold stays "left".
 // Floors: only the boxes the page lists (plain text boxes, never a password, read-only, disabled or a menu's search box), no Enter, no Tab, no other key; at most 8 boxes;
-// one debugger at a time (the caller passes the turn it shares with the dropdown clicks). Counts only leave this file, never a value. Guard: worker/test/fill-verify.test.js.
+// one debugger at a time (the caller passes the turn it shares with the dropdown clicks). Counts only leave this file, never a value. Guard: app-core/test/fill-verify.test.js.
 import {attachDebugger, detachDebugger} from './stop-state.js';
 import {selectForReplacement} from './text-replace.js';
 import {driving} from './input-gap.js';

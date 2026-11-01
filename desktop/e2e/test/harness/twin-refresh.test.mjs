@@ -14,7 +14,7 @@ test('what a change asks of the twin: the app restarts only for its main process
   assert.equal(classify(['desktop/lib/server-env.js']).app, true);
   assert.equal(classify(['desktop/main.js']).app, true);
   assert.equal(classify(['desktop/preload.cjs']).app, true);
-  assert.equal(classify(['worker/src/extension.js']).app, true);   // staged into the app: the app's main process runs it
+  assert.equal(classify(['app-core/src/extension.js']).app, true);   // staged into the app: the app's main process runs it
   assert.deepEqual(classify(['src/ai/insights.py', 'docs/flows/applying.md', 'CODEMAP.md']), {app: false, renderer: false, extension: false});   // the engine starts afresh each run
   assert.deepEqual(classify([]), {app: false, renderer: false, extension: false});
 });

@@ -6,7 +6,7 @@
 // (desktop/e2e/ladder-fixtures/: the proof of a decision fix, CLAUDE.md "Where a fix lives"; owner 15 Oct 2026, row-to-case dropped: 0 row cases ever landed), or each such commit says "Recorded-unneeded: <why>".
 // "Recorded-unneeded:" is only for a change that fixes no failure seen: a commit that touches a covered file AND names a pool row ("Pool-row:") or an issue ("Fixes/Closes/Resolves/Refs #N") cannot use it.
 // A recorded page the push adds or changes must FAIL on the code before the push (tools/recorded-fails-on-old.mjs, a replay on origin/main's code): a case that passes on the old code proves nothing.
-// A field-level fill replay (worker/test/fixtures/fill/) is NOT proof (owner, 10 Oct 2026): it never reaches the Fixed-site replays list on /admin/form-filling/lab.
+// A field-level fill replay (app-core/test/fixtures/fill/) is NOT proof (owner, 10 Oct 2026): it never reaches the Fixed-site replays list on /admin/form-filling/lab.
 //   node tools/recorded-cases.mjs [--base origin/main]      exit 1 with the reason. Guard: desktop/test/recorded-cases.test.js.
 import {execFileSync} from 'node:child_process';
 import path from 'node:path';
@@ -99,7 +99,7 @@ Add the case that shows the fix (CLAUDE.md "Where a fix lives"):
 - a wrong decision (which button, route, page kind, when to stop): a ladder fixture in desktop/e2e/ladder-fixtures/ with its stored answer (npm run ladder-score -- --record --missing) and the baseline;
 - a field or control the fill cannot read or set: a hand-made recorded page (desktop/e2e/recorded/<case>/) or a widget-zoo page, seen failing on the old build (REAL_EXTENSION_DIR=<old extension/>);
 - a flow change the replay's app does not load: a scenario in desktop/test/journeys.test.js.
-A fill fixture (worker/test/fixtures/fill/) alone does not count. Cases cut from live captures (row-to-case) are no longer made (owner, 15 Oct 2026).
+A fill fixture (app-core/test/fixtures/fill/) alone does not count. Cases cut from live captures (row-to-case) are no longer made (owner, 15 Oct 2026).
 Only a change that fixes no failure seen (a log line, a comment, a refactor the gates already cover) may say so: "Recorded-unneeded: <why>" (not with a Pool-row or an issue it fixes).`;
 }
 

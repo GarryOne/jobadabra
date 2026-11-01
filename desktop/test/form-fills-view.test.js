@@ -1,11 +1,11 @@
 // Reports → Form fills, its reading of one agent run (renderer/form-fills-view.js), fed by each producer's OWN writer: the extension's
-// runRecord (shared/worker/extension.js) and an Apply with Claude session's numbers (lib/session-stats.js plain). A shape change on either
+// runRecord (shared/app-core/extension.js) and an Apply with Claude session's numbers (lib/session-stats.js plain). A shape change on either
 // side fails here, so both paths keep the screen's features (the field table, Left for you, steps / timeline, numbers, outcome).
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {shortDay} from '../renderer/date.js';
 import * as stats from '../lib/session-stats.js';
-import {runRecord} from '../shared/worker/extension.js';
+import {runRecord} from '../shared/app-core/extension.js';
 import {agentOf, fieldRows, filterRuns, learnings, leftForYou, listLine, outcomeTone, sessionNumbers, steps, summary, timeline} from '../renderer/form-fills-view.js';
 
 const fill = {url: 'https://boards.greenhouse.io/acme/jobs/1', started: '2026-10-09T10:00:00Z', ended: '2026-10-09T10:03:00Z', fields: 2, unfilled: 1, kit: true,

@@ -2,7 +2,7 @@
 // or one the Submit floor's words name. A <button> with no type attribute reports .type === "submit" in every browser, so the property says nothing: an answer
 // button (a Yes/No choice, "Next") has it. A typeless button that really submits fires the form's own submit event, which review.js hears separately.
 // A press the extension makes itself (a popup closer, a route press, a menu open) is marked by `press(el)` and is never the person's submit: `person(event)` says so for a click,
-// and for the form's submit event the button that caused it (event.submitter) was one of those own presses, still in the same task. Structure and one floor of words, no site. Injected before review.js (background.js). Guarded by worker/test/submit-press.test.js.
+// and for the form's submit event the button that caused it (event.submitter) was one of those own presses, still in the same task. Structure and one floor of words, no site. Injected before review.js (background.js). Guarded by app-core/test/submit-press.test.js.
 (() => {
   if (window.__jobPilottoSubmitPress) return;
   const SUBMIT_WORDS = /\b(submit|send application)\b/i;
@@ -21,11 +21,11 @@
     if (refused(control) || (pressable(control) && (says(control) || SUBMIT_WORDS.test(textOf(control))))) { window.__jobPilottoRefused = textOf(control).slice(0, 60) || 'x'; return false; }
     mark(el, 1500); return true;
   };
-  // The extension's own presses all go through here (a popup closer, a route press, a menu open: `globalThis.__jobPilottoPress?.(el) || el.click()` at every site, guarded by worker/test/submit-press.test.js).
+  // The extension's own presses all go through here (a popup closer, a route press, a menu open: `globalThis.__jobPilottoPress?.(el) || el.click()` at every site, guarded by app-core/test/submit-press.test.js).
   // The site's scripts click too (a styled "Send" that clicks a hidden submit button): their click stays the person's.
   // The press floor (safety, 15 Oct 2026: a "Decline" of a Data Privacy Consent Statement opened "Delete All Data"): whatever named the control, the extension never presses one that deletes or removes an
   // account or data, withdraws an application or signs out, nor one that DECLINES inside a dialog that is no cookie or tracking notice. A refused press answers true (the callers' `|| el.click()` stays unused)
-  // and is left in window.__jobPilottoRefused. Words are an extra floor ANDed with the AI's answer (desktop/lib/popup-pick.js `effect`), never the judge. Guard: worker/test/press-floor.test.js.
+  // and is left in window.__jobPilottoRefused. Words are an extra floor ANDed with the AI's answer (desktop/lib/popup-pick.js `effect`), never the judge. Guard: app-core/test/press-floor.test.js.
   const NEVER = /\b(delete|remove|erase|deactivate|withdraw|cancel|close)\b.{0,24}\b(account|data|profile|application)\b|\b(sign|log) ?out\b|\bdelete all\b|löschen|konto entfernen|supprimer|se déconnecter|eliminar cuenta|elimina (account|dati)|abmelden/i;   // words-ok: a safety floor ANDed with the AI answer, never the judge
   const DECLINE = /^\W*(decline|reject|refuse|deny|disagree|i (do not|don't) (agree|accept|consent)|ablehnen|nicht zustimmen|refuser|rifiuta|rechazar)\b/i;   // words-ok: a safety floor ANDed with the AI answer, never the judge
   const ABOUT_COOKIES = /cookie|tracking|traceurs/i;   // words-ok: a safety floor ANDed with the AI answer, never the judge

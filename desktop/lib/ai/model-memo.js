@@ -82,8 +82,8 @@ function walkParts(params, add) {
 }
 // Schema properties added after captures were made, whose absence the code handles (an older answer without it keeps its old meaning): left out of the
 // parts' output hash only (the exact key keeps them), so a row case's kept answer still matches loosely. Dated; add one only with that handling in place.
-export const ADDED_SCHEMA_KEYS = {fact: '2026-10-12: the saved fact a form answer rests on (worker/src/answer-facts.js; no fact = as before)',
-  pay_asks: '2026-10-15: a salary asked in another currency or period, converted by the code (worker/src/pay-convert.js; none = as before)'};
+export const ADDED_SCHEMA_KEYS = {fact: '2026-10-12: the saved fact a form answer rests on (app-core/src/answer-facts.js; no fact = as before)',
+  pay_asks: '2026-10-15: a salary asked in another currency or period, converted by the code (app-core/src/pay-convert.js; none = as before)'};
 function withoutAdded(value) {
   if (Array.isArray(value)) return value.map(withoutAdded).filter(item => !(typeof item === 'string' && item in ADDED_SCHEMA_KEYS));
   if (!value || typeof value !== 'object') return value;

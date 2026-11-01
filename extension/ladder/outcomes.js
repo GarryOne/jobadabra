@@ -3,8 +3,8 @@
 // FINDS what the AI is shown (the sentences and mailto links that carry an address: never the body); the floors live in the app (the named address must stand
 // in what was found) and here: nothing is sent, opened or pressed, one report per tab and page (fill-flow.js already asks once per key).
 // Invariants (flow core: read before editing; changing one is the owner's call, said in the commit; each names the test that guards it):
-//  1. Only sentences (at most 3, 160 characters) and mailto links (at most 5 entries in all) that carry an address leave the page (desktop/test/page-kind.test.js caps; worker/test/non-form.test.js).
-//  2. The report is made only for an AI answer of apply_by email with its address; nothing else becomes an email outcome (worker/test/non-form.test.js).
+//  1. Only sentences (at most 3, 160 characters) and mailto links (at most 5 entries in all) that carry an address leave the page (desktop/test/page-kind.test.js caps; app-core/test/non-form.test.js).
+//  2. The report is made only for an AI answer of apply_by email with its address; nothing else becomes an email outcome (app-core/test/non-form.test.js).
 
 // The addresses on the page, found by structure: mailto links first, then the lines of visible text that contain one.
 export function mailsOf(tabId) {

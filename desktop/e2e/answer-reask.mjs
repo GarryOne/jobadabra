@@ -1,13 +1,14 @@
 // Re-asks a pool day's captured form questions (replay candidates' /extension/answer calls) with the seeded fake applicant, on the plan path ($0):
+// Job: serve stored answers
 // how many answers are set from saved facts, proposed, or left, per row and overall. Measures an answer-prompt change on the same questions.
-// Usage: node e2e/answer-reask.mjs --day <replay-candidates/<day> dir> --out <file.json> [--only <row>] [--jobs 3] [--worker <a copy's worker/src/extension.js>]
+// Usage: node e2e/answer-reask.mjs --day <replay-candidates/<day> dir> --out <file.json> [--only <row>] [--jobs 3] [--worker <a copy's app-core/src/extension.js>]
 //        node e2e/answer-reask.mjs --compare <before.json> <after.json>
 // Reads captures read-only; writes only --out. Never the API key (the app's Claude Code client, lib/ladder-score-path.mjs). The privacy tripwire (lib/privacy-tripwire.mjs) checks every
 // answer: the plan's claude -p knows the signed-in account, so an owner value is counted (owner: <kind>) and never written. Guard: test/answer-reask.test.mjs.
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {cvFactsText} from '../../worker/src/cv-facts.js';
+import {cvFactsText} from '../../app-core/src/cv-facts.js';
 import {scoringClient} from './lib/ladder-score-path.mjs';   // the product's own Claude Code client (native --json-schema), as the ladder score uses
 import {applicantDraft} from './lib/applicant-seed.mjs';
 import {matchesOwner, ownerValues} from './lib/privacy-tripwire.mjs';
@@ -81,7 +82,7 @@ export function compare(before, after) {
 }
 
 async function reask({dayDir, out, only, jobs, worker: workerFile}) {
-  const {answerForm} = await import(workerFile ? path.resolve(workerFile) : '../../worker/src/extension.js');   // --worker: the same questions to another build (origin/main) for a before/after
+  const {answerForm} = await import(workerFile ? path.resolve(workerFile) : '../../app-core/src/extension.js');   // --worker: the same questions to another build (origin/main) for a before/after
   const env = applicantEnv(), client = scoringClient(), owner = ownerValues(), asks = capturedAsks(dayDir, only), results = [];
   let next = 0;
   const worker = async () => {

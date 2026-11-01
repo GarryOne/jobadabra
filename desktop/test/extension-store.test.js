@@ -1,9 +1,9 @@
-// The extension's routes give one answer whichever store holds the data (worker/src/extension.js): fed from Notion (env.notionCall) and
+// The extension's routes give one answer whichever store holds the data (app-core/src/extension.js): fed from Notion (env.notionCall) and
 // from the store on this Mac (env.store = lib/store/extension-store.js), the kit route answers the same job and kit, and a fill run is
 // logged with the same values.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {handleExtension} from '../shared/worker/extension.js';
+import {handleExtension} from '../shared/app-core/extension.js';
 import {KIT_SECTION, extensionStore, kitOf} from '../lib/store/extension-store.js';
 
 const URL_ = 'https://job-boards.greenhouse.io/acme/jobs/123';

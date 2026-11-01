@@ -61,7 +61,7 @@ if [ -n "$last_cd" ]; then
   case "$last_cd" in /*) dir="$last_cd" ;; *) dir="$dir/$last_cd" ;; esac
 fi
 repo="$(git -C "$dir" rev-parse --show-toplevel 2>/dev/null)" || exit 0
-[ -f "$repo/src/daily.py" ] && [ -d "$repo/worker" ] || exit 0   # only this project
+[ -f "$repo/src/daily.py" ] && [ -d "$repo/app-core" ] || exit 0   # only this project
 
 # Don't stack commits on a red main: when main's state (tools/red-main.sh: the newest commit with a finished verdict, a failed job in a running build counts) is red, block the push unless the
 # command says it is the fix or a revert: `CI_RED_OK=1 git push ...`. A fix still building does NOT let others through (11 Oct 2026: four landings went in on top of a fix attempt that ended red):
@@ -127,7 +127,7 @@ esac
 # Every workflow starts on the files its tests read (18 Oct 2026: #1443 made a desktop test read src/notion/cron_report.py, its own PR touched only desktop/ so the
 # Python suite never started, and main went red). Pure and a couple of seconds, so it runs on every PR; `WORKFLOW_PATHS_OK=1 git push ...` skips it.
 # Why (prune audit 3/4, 1 Nov 2026, owner "First 3 rows"): this ONE step holds the whole workflow-paths family: the paths the tests read, the harness.yml reach and the per-workflow
-# `tools/replay-files.mjs --check` (#1638, 20 Oct 2026: worker/src/answer-declarations.js missing opened a PR red) now live in tests/test_workflow_paths.py (TheCheckedPaths), not in a loop of their own here.
+# `tools/replay-files.mjs --check` (#1638, 20 Oct 2026: app-core/src/answer-declarations.js missing opened a PR red) now live in tests/test_workflow_paths.py (TheCheckedPaths), not in a loop of their own here.
 case "$command" in *WORKFLOW_PATHS_OK=1*) ;; *)
   if [ -f "$repo/tests/test_workflow_paths.py" ]; then   # a repo without the test (the hook's own fixtures) has nothing to check
     PATH_TESTS="tests.test_workflow_paths tests.test_windows_paths"   # every test that keeps a workflow's paths: complete (#1447 missed the Windows one)
@@ -207,7 +207,7 @@ report_blocks   # a push to main: every pure check's refusal at once, before the
 # Both gates key their pass on the files they read, not the whole tree (owner, 11 Oct 2026: a push refused because main moved re-ran ~10 min of replay after a rebase
 # over commits that touched neither): the extension, the app's lib/tests/e2e/scripts, the worker, the flow docs, the gate tools. Unsure = add the path.
 # The extra text is the changed files inside those paths (they decide which parts run). A new reader of a file outside this list: add it (tests/test_gate_order.py).
-gate_paths="extension desktop/lib desktop/test desktop/e2e desktop/scripts desktop/package.json desktop/package-lock.json worker/src docs/flows tools/journey-gate.mjs tools/ladder-gate.mjs"
+gate_paths="extension desktop/lib desktop/test desktop/e2e desktop/scripts desktop/package.json desktop/package-lock.json app-core/src docs/flows tools/journey-gate.mjs tools/ladder-gate.mjs"
 gate_touched() { git -C "$repo" diff --name-only origin/main..HEAD -- $gate_paths 2>/dev/null | shasum -a 256 | cut -c1-16; }
 # The two gates run BESIDE the area suites (owner, 11 Oct 2026: a fresh flow-code push took the lock wait, then the journey gate, then the slowest suite, one after another):
 # started with the suites below, collected with them; their whole output is shown when one fails. JP_GATE_SERIAL=1 runs them first, one after the other, as before (said below).
@@ -238,7 +238,7 @@ else
   while IFS= read -r file; do
     case "$file" in
       *.md|docs/*|LICENSE*|.gitignore|*/.gitignore) ;;
-      worker/*) want_worker=1 ;;
+      app-core/*|worker/*) want_worker=1 ;;
       site/*|web/*|admin/*|api/*|shared/*|workers/*|db/*|test/*|jobs/*|media/*|preview/*) ;;   # the site lives in the private repo jobadabra-web: no suite here (1 Nov 2026, test stages 3-5)
       desktop/*|extension/*) want_desktop=1 ;;
       requirements*|pyproject.toml) want_python=1; want_desktop=1; clean_install=--clean-install ;;
@@ -262,8 +262,8 @@ fi
 common="$(git -C "$repo" rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)"; main="$(dirname "${common:-$repo/.git}")"
 if [ -d "$main" ] && [ "$(cd "$main" && pwd -P)" != "$(cd "$repo" && pwd -P)" ]; then
   missing=""
-  for dir in desktop worker; do
-    want="want_$dir"
+  for dir in desktop app-core; do
+    want="want_$dir"; [ "$dir" = app-core ] && want=want_worker   # Why (1 Nov 2026): the suite area is still called worker, its folder is app-core
     [ "${!want}" = 1 ] && [ -d "$main/$dir/node_modules" ] && [ ! -e "$repo/$dir/node_modules" ] && missing="$missing $dir/node_modules"
   done
   [ -z "$missing" ] || { echo "Push blocked: this worktree has no$missing, which the main checkout has: the suites cannot run here. Run tools/link-modules.sh in it (tools/worktree.sh and the post-checkout hook do this for a new worktree), or npm ci there if it is meant to have its own (tools/worktree.sh own-modules), then push again." >&2; exit 2; }
@@ -331,9 +331,9 @@ verify_area() {  # area [extra check.sh flags]
   local area="$1"; shift
   local name="tree_$area"; local tree="${!name:-}"
   [ -n "$tree" ] || { echo "fatal: git could not make a clean checkout for $area"; return 1; }
-  # Why (29 Oct 2026, fresh review of the link fix): the post-checkout hook has already linked the main checkout's folders into this clean checkout; `ln -s` onto such a link would add a link INSIDE the shared folder.
+  # Why (29 Oct 2026, fresh review of the link fix): the post-checkout hook has already linked the main checkout's folders (desktop, desktop/e2e, app-core) into this clean checkout; `ln -s` onto such a link would add a link INSIDE the shared folder.
   # The pushing checkout's own folders win (a worktree with its own install after `worktree.sh own-modules`), so a link the hook made is replaced, never added to. Guard: tests/test_pre_push_check.py.
-  for dir in desktop desktop/e2e worker; do
+  for dir in desktop desktop/e2e app-core; do
     [ -L "$tree/$dir/node_modules" ] && rm "$tree/$dir/node_modules"
     [ -e "$repo/$dir/node_modules" ] && ln -s "$repo/$dir/node_modules" "$tree/$dir/node_modules"
   done

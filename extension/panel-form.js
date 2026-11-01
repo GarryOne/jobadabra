@@ -1,6 +1,6 @@
 // The panel's reading of the form (read only): each question's text, which are required, which are filled, find by label, and the amber flash that points at one.
 // Owns fields(), question(), find(), flash() and the knockout / agreement word lists the panel draws with. Injected before review.js (panel-files.js), shared as
-// window.__jobPilottoPanelForm (a content script has no imports). Guarded by worker/test/panel-widgets, option-groups, control-marks, aria-hidden-select,
+// window.__jobPilottoPanelForm (a content script has no imports). Guarded by app-core/test/panel-widgets, option-groups, control-marks, aria-hidden-select,
 // select-chosen and desktop/test/typed-match, extension-files (the knockout words agree with the app's).
 (() => {
   const SKIP = ['hidden', 'submit', 'button', 'reset', 'search', 'image'];

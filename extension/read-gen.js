@@ -1,13 +1,13 @@
 // Which read of a tab an async answer belongs to (one per consider() of fill-flow.js): "is this result still about the tab's current read?" asked in ONE place. A read begins when a page of the
 // tab is considered; a newer read of the same tab makes every answer still on its way to the older one late (pool run 38325158956, HelloFresh: the digest asked for the first, empty read landed
 // after the second read had judged the form, and a "no form" dead end was reported mid-fill). The fill's own end-state write keeps its token in the page (fill-flow.js writeState: it guards what
-// the PAGE shows, this guards what the FLOW decides). Guard: worker/test/read-generation.test.js.
+// the PAGE shows, this guards what the FLOW decides). Guard: app-core/test/read-generation.test.js.
 import {isStopped} from './stop-state.js';
 const gens = new Map();   // tabId -> the latest read's number
 
 export const beginRead = tabId => { const gen = (gens.get(tabId) || 0) + 1; gens.set(tabId, gen); return gen; };
 export const isCurrent = (tabId, gen) => !isStopped() && gens.get(tabId) === gen;   // Stop makes every read late: no answer on its way is applied (stop.js)
-// The two decisions of a read that can strand a page (17 Oct 2026, SuccessFactors journey: 260 s of nothing after a sign-in), pure so a test can script the sequence (worker/test/read-generation.test.js).
+// The two decisions of a read that can strand a page (17 Oct 2026, SuccessFactors journey: 260 s of nothing after a sign-in), pure so a test can script the sequence (app-core/test/read-generation.test.js).
 // openRead: a read that finds the tab already moved on (`moved`) gives its page key back and begins nothing, so the live read of the page the tab is on stays current -> the generation, or 0.
 // dropIfLate: a read whose answer is late gives its page key back, so when the tab returns to that page it is read again -> true when dropped.
 export function openRead(tabId, key, started, moved) {
@@ -25,7 +25,7 @@ globalThis.chrome?.tabs?.onRemoved?.addListener(forgetReads);
 // The one guard for every async AI answer applied to a page (owner, 13 Oct 2026, the Richemont stop: a digest asked for an unsure first read landed 1 s after a confident read of the same page and
 // replaced it; the generation above does not see it, both belong to one read). An answer is applied only if no newer judgment of the same page landed after its ask started: a page-kind answer is
 // then replaced by that judgment, any other answer is dropped (the caller treats it as no answer, as when the app is closed). A page the tab left since the ask is dropped too. Every ask with a tab
-// goes through api() in flow.js, which calls guarded() for the routes named here; a route used with a tab but named in neither list fails worker/test/ask-guard.test.js.
+// goes through api() in flow.js, which calls guarded() for the routes named here; a route used with a tab but named in neither list fails app-core/test/ask-guard.test.js.
 const FAMILIES = {'/extension/page-kind': 'page', '/extension/escalate': 'page', '/extension/account-judge': 'account', '/extension/answer': 'answer'};
 export const GUARDED_ROUTES = Object.keys(FAMILIES);
 // Routes asked with a tab that are NOT an AI answer applied to a page (a record, a secret, a ticket, a popup choice, a count): nothing to go stale.

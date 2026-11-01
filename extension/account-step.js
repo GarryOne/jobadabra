@@ -3,7 +3,7 @@
 // AI (desktop/lib/account-judge.js) says, BEFORE the button, whether everything the person owes is given (a consent may be a link), and AFTER it what became of it.
 // The app says whether THIS email has an account on the host (mode). The code only executes the validated answers and keeps its floors: one register press and one submit
 // press per tab (a failed sign-in reloads the page, so the extension remembers), nothing pressed when the AI is absent, unsure, or sees a bot check.
-// Scenarios owned: "Sign-up page before the form", "Sign-in page where we have no account". Guards: worker/test/account-step.test.js, account-fill.test.js, npm run live.
+// Scenarios owned: "Sign-up page before the form", "Sign-in page where we have no account". Guards: app-core/test/account-step.test.js, account-fill.test.js, npm run live.
 import {apiFor, settings} from './flow.js';
 import {decide} from './log.js';
 import {askKind, readAgain, sayStep} from './fill-flow.js';

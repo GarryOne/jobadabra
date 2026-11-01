@@ -34,7 +34,7 @@ Chrome loads this repo's `extension/` itself; its version stays the base (`"0.9"
 
 The Chrome extension connects to the app on this Mac (`http://127.0.0.1:47111` plus a token shown
 in Settings) instead of a Cloudflare Worker; it reuses the same endpoint code
-(`worker/src/extension.js`) with your local Profile.
+(`app-core/src/extension.js`) with your local Profile.
 
 ## Layout
 

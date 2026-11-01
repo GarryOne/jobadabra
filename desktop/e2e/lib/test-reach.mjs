@@ -13,7 +13,7 @@ const SPECIFIERS = [
   /new URL\(\s*['"](\.{1,2}\/[^'"]*)['"]\s*,\s*import\.meta\.url\s*\)/g,
 ];
 // desktop/shared/ is staged, never in a diff (desktop/scripts/stage.mjs copies it): a reach into it is a reach into the file it was copied from (review on #2241).
-const STAGED = [[/^desktop\/shared\/worker\//, 'worker/src/'], [/^desktop\/shared\/bot-worker\.js$/, 'worker/src/'], [/^desktop\/shared\/ladder-core\.js$/, 'extension/ladder/core.js'],
+const STAGED = [[/^desktop\/shared\/app-core\//, 'app-core/src/'], [/^desktop\/shared\/bot-worker\.js$/, 'app-core/src/'], [/^desktop\/shared\/ladder-core\.js$/, 'extension/ladder/core.js'],
   [/^desktop\/shared\/ladder\//, 'extension/ladder/'], [/^desktop\/shared\/(recipe|alias)-schema\.js$/, 'extension/$1-schema.js']];
 /** A staged desktop/shared/ path -> the repo file or folder it is copied from; any other path as it is. @param {string} file @returns {string} */
 export const unstage = file => { for (const [from, to] of STAGED) if (from.test(file)) return file.replace(from, to); return file; };

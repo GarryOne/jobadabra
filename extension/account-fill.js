@@ -1,7 +1,7 @@
 // What the extension types into a sign-in or sign-up page and presses (owner, 8 Oct 2026): the one site password into its password boxes, then the
 // control the AI named. Injected into the page by account-step.js (each export must stand alone: no imports, nothing from this file's scope). The
 // person's details (email, names, country) are NOT here: the normal fill puts them in by the label meanings, in any language (fill-flow.js).
-// Guard: worker/test/account-fill.test.js, the live run (npm run live).
+// Guard: app-core/test/account-fill.test.js, the live run (npm run live).
 export function fillAccountBoxes(password) {
   let filled = 0;
   for (const box of document.querySelectorAll('input[type=password]')) {
@@ -95,7 +95,7 @@ export function accountSketch() {
   const clean = (value, max) => String(value || '').replace(/\s+/g, ' ').trim().slice(0, max);
   // A control's state is the one reading the panel and the fill use (page/read-back.js; judge-sketch.js loads it first): a menu on a real option, a picklist by its chip or labelled
   // hidden input (its own value is only typed search text), a box holding more than a calling code, an upload slot by the file it shows (the extension's own mark alone is no file).
-  // Guards: desktop/e2e/test/judge-sketch-picklist.test.mjs (11 Oct 2026: a chosen Country read "empty"), worker/test/read-back.test.js.
+  // Guards: desktop/e2e/test/judge-sketch-picklist.test.mjs (11 Oct 2026: a chosen Country read "empty"), app-core/test/read-back.test.js.
   const read = el => window.__jobPilottoReadBack ? window.__jobPilottoReadBack.stateOf(el) : 'unknown';
   const given = el => ['committed', 'mismatch'].includes(read(el));   // it holds something; whether it is what the fill gave it is the match below
   // A field the page gives no label is named as the panel and the fill trace name it (page/fill-labels.js labelOf, in the page's own world: form-ready.js runs this there), else by its raw name.

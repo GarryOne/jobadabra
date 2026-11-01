@@ -2,7 +2,7 @@
 //
 // Type words: string number boolean array object any; a trailing ? makes a field optional. `open: true` = the extension spreads more keys of a page sketch into the body, so
 // extra keys are allowed (the listed ones still are the only ones the app reads). `unread` = sent by the extension, read by no app handler (said, not hidden).
-// `readIn` = extension files besides the caller that read the answer. `by: 'worker'` = served by worker/src/extension.js (the same code runs in the app, desktop/shared/worker, and on a Cloudflare Worker).
+// `readIn` = extension files besides the caller that read the answer. `by: 'worker'` = served by app-core/src/extension.js (the same code runs in the app, desktop/shared/app-core, and on a Cloudflare Worker).
 // Why (1 Nov 2026, owner: "let's start a session to implement it", JOB-172): contracts existed for IPC, store, AI engines, ladder and Notion but not for this seam, so a field renamed
 // on one side passed every lower test and failed only in a beta. Rule: a message is added or changed HERE first; the test fails on the side that was not changed.
 
@@ -71,14 +71,14 @@ export const routes = {
   '/extension/refused-judge': {auth: 'token', open: 'a fetched page', handles: [L('refused-reads-handlers.js')], request: {}, response: {}},
   '/extension/refused-outcome': {auth: 'token', open: true, handles: [L('refused-reads-handlers.js'), L('refused-reads.js')], request: {url: 'string?', status: 'number?', html: 'string?', step: 'string?'}, response: {stop: 'any?'}},
   '/extension/refused-done': {auth: 'token', handles: [L('refused-reads-handlers.js')], request: {}, response: {}},
-  // Served by worker/src/extension.js (in the app too: desktop/lib/server.js handleExtension).
+  // Served by app-core/src/extension.js (in the app too: desktop/lib/server.js handleExtension).
   '/extension/me': {auth: 'token', by: 'worker', method: 'GET', handles: [L('server-contact.js')], request: {url: 'string'}, response: {contact: 'any?', resume: 'any?', acceptConsents: 'boolean?'}},
-  '/extension/kit': {auth: 'token', by: 'worker', method: 'GET', handles: ['worker/src/extension.js'], request: {url: 'string'}, response: {kit: 'any?', job: 'any?'}},
-  '/extension/answer': {auth: 'token', by: 'worker', open: true, readIn: ['extension/fill-tab-finish.js', 'extension/fill-tab-inputs.js'], handles: ['worker/src/extension.js'], request: {url: 'string', fields: 'array', page_text: 'string?', test: 'boolean?'}, response: {answers: 'array?', eligible: 'boolean?', error: 'string?'}},
-  '/extension/review-answer': {auth: 'token', by: 'worker', handles: ['worker/src/extension.js'], request: {url: 'string', question: 'string', text: 'string'}, response: {ok: 'boolean?', error: 'string?'}},
-  '/extension/run': {auth: 'token', by: 'worker', open: 'a run record (fill-tab-finish.js runBody)', handles: ['worker/src/extension.js'], request: {url: 'string?', update: 'string?'}, response: {url: 'string?', id: 'string?'}},
-  '/extension/applied': {auth: 'token', by: 'worker', calledBy: 'the daily workflow (apply mode), by URL: no sender in extension/', handles: ['worker/src/extension.js'], request: {url: 'string', why: 'string?', evidence: 'object?'}, response: {}},
-  '/extension/log': {auth: 'token', by: 'worker', handles: ['worker/src/extension.js'], request: {entries: 'array'}, response: {ok: 'boolean', kept: 'number'}},
+  '/extension/kit': {auth: 'token', by: 'worker', method: 'GET', handles: ['app-core/src/extension.js'], request: {url: 'string'}, response: {kit: 'any?', job: 'any?'}},
+  '/extension/answer': {auth: 'token', by: 'worker', open: true, readIn: ['extension/fill-tab-finish.js', 'extension/fill-tab-inputs.js'], handles: ['app-core/src/extension.js'], request: {url: 'string', fields: 'array', page_text: 'string?', test: 'boolean?'}, response: {answers: 'array?', eligible: 'boolean?', error: 'string?'}},
+  '/extension/review-answer': {auth: 'token', by: 'worker', handles: ['app-core/src/extension.js'], request: {url: 'string', question: 'string', text: 'string'}, response: {ok: 'boolean?', error: 'string?'}},
+  '/extension/run': {auth: 'token', by: 'worker', open: 'a run record (fill-tab-finish.js runBody)', handles: ['app-core/src/extension.js'], request: {url: 'string?', update: 'string?'}, response: {url: 'string?', id: 'string?'}},
+  '/extension/applied': {auth: 'token', by: 'worker', calledBy: 'the daily workflow (apply mode), by URL: no sender in extension/', handles: ['app-core/src/extension.js'], request: {url: 'string', why: 'string?', evidence: 'object?'}, response: {}},
+  '/extension/log': {auth: 'token', by: 'worker', handles: ['app-core/src/extension.js'], request: {entries: 'array'}, response: {ok: 'boolean', kept: 'number'}},
 };
 
 /** Events the extension reports through POST /extension/event: type -> its fields (besides `type`). One row per `event.type === '...'` in the app. */

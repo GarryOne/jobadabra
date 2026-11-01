@@ -8,7 +8,7 @@ import {test} from 'node:test';
 
 const ROOT = fileURLToPath(new URL('../../', import.meta.url));
 const manifest = JSON.parse(readFileSync(join(ROOT, 'docs/site-routes.json'), 'utf8'));
-const SHIPPED = ['desktop/lib', 'desktop/main.js', 'desktop/renderer', 'extension', 'src', 'worker/src', 'hosted'];
+const SHIPPED = ['desktop/lib', 'desktop/main.js', 'desktop/renderer', 'extension', 'src', 'app-core/src', 'hosted'];
 const TEXT = /\.(js|mjs|cjs|py|html)$/;
 
 function files(path) {

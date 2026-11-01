@@ -7,7 +7,9 @@ tree="${1:-$PWD}"
 common="$(git -C "$tree" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)" || exit 0
 main="$(dirname "$common")"
 [ -d "$main" ] && [ "$(cd "$main" && pwd -P)" != "$(cd "$tree" && pwd -P)" ] || exit 0   # the main checkout itself, or a clone: nothing to link from
-for dir in desktop/node_modules desktop/e2e/node_modules worker/node_modules site/node_modules .venv; do
+for dir in desktop/node_modules desktop/e2e/node_modules app-core/node_modules site/node_modules .venv; do
+  # Why (1 Nov 2026): until the main checkout has its own app-core/node_modules, it holds this folder as worker/node_modules: link that one meanwhile.
+  [ "$dir" = app-core/node_modules ] && [ ! -d "$main/$dir" ] && [ -d "$main/worker/node_modules" ] && [ ! -e "$tree/$dir" ] && [ -d "$tree/app-core" ] && { ln -s "$main/worker/node_modules" "$tree/$dir"; continue; }
   [ -d "$main/$dir" ] && [ ! -e "$tree/$dir" ] && [ -d "$tree/$(dirname "$dir")" ] && ln -s "$main/$dir" "$tree/$dir"
 done
 exit 0

@@ -64,7 +64,7 @@
     el.addEventListener('input', check);
   };
   // Why (#2198, owner: "Never type them"): a "• Add: ..." reminder is never typed: every answer's value is split before the fill types it, its reminders kept on the answer (remind) for the panel.
-  // The answers call already splits them (worker/src/written-answer.js splitReminders, the same rule); this is the floor for a cached answer or an older service.
+  // The answers call already splits them (app-core/src/written-answer.js splitReminders, the same rule); this is the floor for a cached answer or an older service.
   const splitReminders = value => {
     const remind = [];
     const text = String(value ?? '').split('\n').map(line => {

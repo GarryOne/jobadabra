@@ -17,7 +17,7 @@ import * as verdicts from './question-verdicts.js';
 import {claudeAi} from './question-ai.js';
 import * as terminals from './terminals.js';
 import * as reports from './reports.js';
-import {jobKey} from '../shared/worker/extension.js';
+import {jobKey} from '../shared/app-core/extension.js';
 import {log as appLog} from './log.js';
 import {pageKey} from './server-pages.js';
 import {devVersion} from './dev-extension-version.js';
@@ -27,7 +27,7 @@ import * as learnings from './learnings.js';
 import {nightAnswers} from './ready-handoff.js';
 import {answerReporter, appliedHook, errorWatcher, formIssue, jobName, notify, proposalReporter, sharedLogger, tellWindow} from './server-hooks.js';
 import {NAMES} from './ai/names.js';
-import {cvFactsText} from '../shared/worker/cv-facts.js';
+import {cvFactsText} from '../shared/app-core/cv-facts.js';
 import {configForPrompt} from './config-text.js';
 import {factsOf} from './base-facts.js';
 import {OWNER_VALUES} from './owner-guard-env.js';   // test harness only: null in a user's app
@@ -82,7 +82,7 @@ export function cvFactsOf(storage) {
 }
 
 /**
- * The extension's environment on this Mac (worker/src/extension.js `env`): the job's kit, the Profile and answers texts, the AI client, and the one irreversible step `markApplied`.
+ * The extension's environment on this Mac (app-core/src/extension.js `env`): the job's kit, the Profile and answers texts, the AI client, and the one irreversible step `markApplied`.
  * `submitted` ends the session behind a confirmed submit. Tests inject `find` (the job list's lookup), `setStatus` (saves the stage) and `runs` (the store holding the fill rows); the defaults are the real ones.
  * Failures: `markApplied` returns {ok: false, error} when the job is unknown or its stage cannot be saved; a fill row that cannot be stamped Submitted is logged and never undoes Applied.
  */
@@ -112,7 +112,7 @@ export function localEnv(storage, submitted = sessionSubmitted, {find: injected,
     return done ? done.counts.added + done.counts.extended + done.counts.conflicts : 0;
   };
   return {
-    // With the data on this Mac: the job, its kit and the fill's record from the store (worker/src/extension.js env.store).
+    // With the data on this Mac: the job, its kit and the fill's record from the store (app-core/src/extension.js env.store).
     ...(!notionTexts && notionGate.tracking(storage) ? {store: extensionStore(storage)} : {}),
     notionCall: (route, method = 'GET', body) => notion.call(notionToken, method, route, body),
     get PROFILE_TEXT() { return kept('profile', ids.NOTION_PROFILE_PAGE_ID); },
@@ -163,7 +163,7 @@ export function localEnv(storage, submitted = sessionSubmitted, {find: injected,
         appLog('extension', `${entry?.kind || 'note'}: ${entry?.text || ''}`, {...entry?.fields, ...times});
       }
     },
-    // Each AI answer for a form's questions (worker/src/extension.js answerForm): counts and field ids only, in the log; counts only to the site.
+    // Each AI answer for a form's questions (app-core/src/extension.js answerForm): counts and field ids only, in the log; counts only to the site.
     ownerValues: OWNER_VALUES,   // the e2e harness's list of the owner's own values (answers matching it are never typed); null outside the harness
     onAnswerCall: call => { captureAnswer(call); },
     nightAnswers: (url, fields) => nightAnswers(url, fields),   // Ready to send's Open in Chrome: the night's answers for the page it filled (lib/ready-handoff.js)
@@ -173,7 +173,7 @@ export function localEnv(storage, submitted = sessionSubmitted, {find: injected,
       if (trace.withheld?.length) appLog('privacy', `owner's own value kept out of ${trace.withheld.length} field(s): ${trace.withheld.map(w => `${w.field} (${w.kind})`).join(', ')}`);   // field ids and kinds, never the value
       answerReporter(trace);
     },
-    onReviewAnswer: call => { appLog('fill', `Reviewed one written answer (${call.chars} characters)`, call); },   // counts and cost only, never the text (worker/src/written-answer.js)
+    onReviewAnswer: call => { appLog('fill', `Reviewed one written answer (${call.chars} characters)`, call); },   // counts and cost only, never the text (app-core/src/written-answer.js)
     onRun: async run => {
       // A running count of forms the extension filled (technical reports' daily health line: how much it helps).
       storage.saveSettings({formsFilled: (storage.settings().formsFilled || 0) + 1});

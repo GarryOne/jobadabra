@@ -129,7 +129,7 @@ export function createPanelMessages(ctx) {
       })().catch(() => reply({ok: false}));
       return true;
     }
-    // "Review my answer" on an open written question (panel-written.js): the app's AI reads the person's text or the draft; the answer is shown, never typed (worker/src/written-answer.js).
+    // "Review my answer" on an open written question (panel-written.js): the app's AI reads the person's text or the draft; the answer is shown, never typed (app-core/src/written-answer.js).
     if (message?.type === 'panelReviewAnswer' && sender.tab) {
       (async () => {
         const job = String(await jobOf(sender.tab)).split('#')[0];

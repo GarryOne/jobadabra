@@ -3,14 +3,6 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "pretest": "node scripts/stage-shared.mjs",
-    "test": "node --test --test-reporter=../desktop/test/reporter-by-file.mjs test/*.test.js",
     "deploy": "npx wrangler@4 deploy && node scripts/check-secrets.mjs"
-  },
-  "dependencies": {
-    "@anthropic-ai/sdk": "^0.128.0"
-  },
-  "devDependencies": {
-    "jsdom": "^26.1.0"
   }
 }

@@ -21,12 +21,12 @@ test('a full staging builds elsewhere and swaps shared/ in with renames, never d
 // copy found a file missing or empty and a test such as stalled-press-wired.test.js failed with no text (desktop jobs 123231146287, 123402443226, run 40859572591).
 // It stages into its own folder, and no test file may run stage.mjs onto the shared one.
 test('after a staging, the folder is complete, no temporary folder is left behind, and the live shared/ is not rewritten', () => {
-  const live = path.join(desktop, 'shared', 'worker', 'extension.js');
+  const live = path.join(desktop, 'shared', 'app-core', 'extension.js');
   const before = fs.existsSync(live) ? fs.statSync(live) : null;
   const into = fs.mkdtempSync(path.join(os.tmpdir(), 'stage-atomic-'));
   try {
     execFileSync('node', ['scripts/stage.mjs', '--files-only', '--into', into], {cwd: desktop, stdio: 'ignore'});
-    for (const file of ['recipe-schema.js', 'alias-schema.js', 'ladder-core.js', 'worker']) assert.ok(fs.existsSync(path.join(into, file)), file);
+    for (const file of ['recipe-schema.js', 'alias-schema.js', 'ladder-core.js', 'app-core']) assert.ok(fs.existsSync(path.join(into, file)), file);
   } finally { fs.rmSync(into, {recursive: true, force: true}); }
   assert.deepEqual(fs.readdirSync(desktop).filter(name => /^\.shared-staging-|^shared\.old-/.test(name)), []);
   if (before) {

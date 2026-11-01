@@ -21,7 +21,7 @@ class PrePushCheckTest(PrePushFixture):
     def test_only_the_areas_a_push_touches_run(self):
         self.needed_committed()
         self.assertEqual(self.areas_run()[:2], (0, ['desktop']))
-        self.commit('Worker only', {'worker/a.js': 'x'})
+        self.commit('Worker only', {'app-core/a.js': 'x'})
         self.assertEqual(self.areas_run()[:2], (0, ['desktop', 'worker']))   # origin/main..HEAD still holds the desktop commit
         git(self.repo, 'push', '-q', 'origin', 'HEAD:main')
         self.commit('Engine change', {'src/ai/x.py': 'x'})

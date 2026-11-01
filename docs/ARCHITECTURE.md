@@ -111,4 +111,4 @@ flowchart LR
 - Submit is never automated. Legal checkboxes stay with the owner.
 - AI spend is gated. New models or large re-runs need a yes first. A monthly budget pauses optional AI steps.
 - Several agents share this checkout and push to `main`. Code changes go in a worktree (`tools/worktree.sh`), then a normal fast-forward push. No force-push.
-- Tests are three suites: `python3 -m unittest discover -s tests`, `cd worker && npm test`, `cd desktop && npm test`.
+- Tests are three suites: `python3 -m unittest discover -s tests`, `cd app-core && npm test`, `cd desktop && npm test`.

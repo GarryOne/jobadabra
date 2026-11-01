@@ -4,7 +4,7 @@ name: CI · Coverage report (nightly, report only)
 # Why (1 Nov 2026, owner via a8: "Yes, nightly report (Recommended)"): nobody could say how much code each layer runs. REPORT ONLY, allowed under the owner's freeze (no new guard, gate or check until 3 green nights):
 # no pull_request trigger, no required check, nothing `needs` it, every job continue-on-error, and a missing source is printed "not measured", never 0%. Started by e2e.yml's night pass 1 (`night_pass: 1/5`,
 # the Worker's slot: no new cron), or by hand: gh workflow run coverage-report.yml.
-# Sources: coverage.py (Python unit tests), NODE_V8_COVERAGE (desktop/test, worker/test and desktop/integration/{store,extension,app}), and the code → suite map that e2e.yml's coverage-map job keeps from main's
+# Sources: coverage.py (Python unit tests), NODE_V8_COVERAGE (desktop/test, app-core/test and desktop/integration/{store,extension,app}), and the code → suite map that e2e.yml's coverage-map job keeps from main's
 # e2e runs (the app window, extension and engine lines lib/coverage.mjs records; a night pass itself records none, E2E_COVERAGE is off there). Cost: coverage slows the tests, so they run here and nowhere else.
 # The report is printed in the `report` job's log, named in ::notice annotations (no step summaries: owner, 26 Oct 2026) and kept as the artifact `coverage-report` (report.md, report.json).
 on:
@@ -87,17 +87,17 @@ jobs:
         with: {working-directory: desktop/e2e, mode: both}
       - name: The worker packages
         timeout-minutes: 5
-        working-directory: worker
+        working-directory: app-core
         run: |
           npm ci
           node scripts/stage-shared.mjs
       # Each run below writes its V8 files into its own folder (NODE_V8_COVERAGE is inherited by the processes a test starts). A red file is the unit/integration workflows' business, not this report's.
-      - name: Unit tests (desktop/test, worker/test)
+      - name: Unit tests (desktop/test, app-core/test)
         timeout-minutes: 25
         run: |
           mkdir -p "$RUNNER_TEMP/v8/unit"
           (cd desktop && NODE_V8_COVERAGE="$RUNNER_TEMP/v8/unit" xvfb-run -a --server-args='-screen 0 1440x900x24' env DESKTOP_RENDER_REQUIRED=1 node --import ./test/no-live-site.mjs --test test/*.test.js) || echo "some desktop unit tests were red"
-          (cd worker && NODE_V8_COVERAGE="$RUNNER_TEMP/v8/unit" node --test test/*.test.js) || echo "some worker tests were red"
+          (cd app-core && NODE_V8_COVERAGE="$RUNNER_TEMP/v8/unit" node --test test/*.test.js) || echo "some worker tests were red"
       - name: Integration tests (store, extension, app)
         timeout-minutes: 25
         run: |

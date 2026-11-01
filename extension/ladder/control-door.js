@@ -2,7 +2,7 @@
 // door (dead-end.js) as "dead end: <signal>" with its own door id and `level: 'control'`, so a reader that counts page stops skips it by that field, never by its words (ending.mjs, desktop/e2e/lib/pool-shadow.mjs,
 // desktop/e2e/lib/pool-gaps.mjs). Signals mirror core.js: stalled (the control used its tries), contradicted (the check says the page holds another answer), failed (the check could not reach it or the try
 // did not work), refused (a repair was declined or left to the person), unsure. Evidence is fixed values only (dead-end.js evidenceOf): the control's fingerprint, never its label or value.
-// Logging only: nothing here changes what the fill does. next-move adds `resolved: {by, verb, candidate, form}` to the same line. Guard: worker/test/control-door.test.js.
+// Logging only: nothing here changes what the fill does. next-move adds `resolved: {by, verb, candidate, form}` to the same line. Guard: app-core/test/control-door.test.js.
 import {evidenceOf, nextDoor} from './dead-end.js';
 
 export const CONTROL_SIGNALS = ['stalled', 'contradicted', 'refused', 'unsure', 'failed'];

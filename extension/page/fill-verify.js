@@ -1,7 +1,7 @@
 // Rung 0 of the fill ladder, the page's side (spec docs/superpowers/specs/2026-10-12-fill-ladder.md): the text boxes the fill answered that did not take the answer
 // (page/fill.js notes them: "answer given, but the field did not take it") are listed with their spot, so the worker types them again for real (extension/fill-verify.js),
 // and each is read back after. Only plain text boxes: never a password, a read-only or disabled box, a menu's search box (combo-click.js owns those) or a select.
-// Values stay in the page: the worker gets the text to type for the box it clicks, never a list of values to report. Guard: worker/test/fill-verify.test.js.
+// Values stay in the page: the worker gets the text to type for the box it clicks, never a list of values to report. Guard: app-core/test/fill-verify.test.js.
 (() => {
   if (window.__jobPilottoFillVerifyLoaded) return;
   window.__jobPilottoFillVerifyLoaded = true;

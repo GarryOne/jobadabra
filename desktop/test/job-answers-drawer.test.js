@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {install} from './tiny-dom.js';
-import {JOB_ANSWERS_SECTION} from '../shared/worker/job-answers.js';
+import {JOB_ANSWERS_SECTION} from '../shared/app-core/job-answers.js';
 import * as lists from '../lib/question-lists.js';
 import {keyOf} from '../renderer/question-filter.js';
 

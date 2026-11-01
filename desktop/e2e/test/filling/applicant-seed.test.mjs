@@ -21,7 +21,7 @@ test('the seed version is a short hash of the applicant both e2e apps seed, and 
   assert.notEqual(seedVersion(file), seedVersion());
 });
 
-// Every place a capture's case.json is written (the smoke's candidate here; the plain-node live row in test/live-row.test.mjs) records the seed.
+// Every place a capture's case.json is written (the smoke's candidate here; the plain-node live row in test/replay/live-row.test.mjs) records the seed.
 test('a capture records the seed it ran with; a replay names one recorded with another seed or none, and says what to do', () => {
   const folder = saveCandidate({dir: temp(), day: '2026-10-11', shape: 'Teamtailor form', result: {url: 'https://jobs.example.com/o/1', reached: 'posting'}, html: '<p>x</p>'});
   assert.equal(JSON.parse(fs.readFileSync(path.join(folder, 'case.json'), 'utf8')).seed, seedVersion());

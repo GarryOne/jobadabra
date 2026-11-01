@@ -97,7 +97,7 @@ test('every file that sends a browser to a real site calls guardLiveVisit', () =
     const rel = path.relative(E2E, file).split(path.sep).join('/');
     if (rel === 'lib/site-ledger.mjs' || OFFLINE.has(rel) || live.includes(rel)) continue;
     const source = fs.readFileSync(file, 'utf8');
-    assert.ok(!/\.goto\(/.test(source) || /guardLiveVisit\(/.test(source), `${rel} navigates a browser: call guardLiveVisit(url) before it, or list it as offline in test/site-ledger.test.mjs`);
+    assert.ok(!/\.goto\(/.test(source) || /guardLiveVisit\(/.test(source), `${rel} navigates a browser: call guardLiveVisit(url) before it, or list it as offline in test/harness/site-ledger.test.mjs`);
   }
 });
 

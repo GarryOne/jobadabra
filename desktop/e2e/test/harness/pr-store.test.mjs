@@ -113,7 +113,7 @@ test('one replay of the recorded cases per PR, in CI · Integration · Page case
   // #2164 replayed every case twice: page-cases 2 jobs and 5 runner-min, e2e's recorded 5 jobs and 44.
   // Owner, 27 Oct 2026: slow cases stay off PRs ("One bug in hundreds of PRs, that's low value": #1621 was the one escape since 17 Oct).
   const {splitForPr} = await import('../../lib/replay-slow.mjs');
-  assert.ok(!fs.existsSync(new URL('../../suites/recorded.mjs', import.meta.url)), 'the recorded cases are no e2e suite: test/recorded-pages.test.mjs is their only home');
+  assert.ok(!fs.existsSync(new URL('../../suites/recorded.mjs', import.meta.url)), 'the recorded cases are no e2e suite: test/record/recorded-pages.test.mjs is their only home');
   const workflow = name => fs.readFileSync(new URL(`../../../../.github/workflows/${name}`, import.meta.url), 'utf8');
   assert.ok(!fs.existsSync(new URL('../../../../.github/workflows/pr-suites.yml', import.meta.url)), 'no PR starts e2e (owner, 1 Nov 2026: "No e2e on PRs"): the steps run after the merge, main-steps.yml');
   const pages = workflow('page-cases.yml');

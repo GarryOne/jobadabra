@@ -10,7 +10,7 @@ import {recordVar} from '../../../../tools/record-env.mjs';
 
 const ROOT = path.resolve(new URL('../../../..', import.meta.url).pathname);
 const READERS = ['.github/workflows/record-sites.yml', 'desktop/e2e/captures.mjs', 'desktop/e2e/pool-ci-wait.mjs'];
-const ALLOWED = [...READERS, 'tests/test_red_main.py', 'desktop/e2e/test/record-sites-rename.test.mjs'];
+const ALLOWED = [...READERS, 'tests/test_red_main.py', 'desktop/e2e/test/record/record-sites-rename.test.mjs'];
 const read = file => fs.readFileSync(path.join(ROOT, file), 'utf8');
 
 test('the workflow file is record-sites.yml; the old name is only in the readers of earlier runs', () => {
@@ -38,7 +38,7 @@ test('the recording command is npm run record-sites; npm run smoke only says so'
   assert.doesNotMatch(scripts.smoke, /smoke\.mjs/, 'the old command no longer runs a visit');
   let found = '';
   // pool-ci-triggers.test.mjs names the old command on purpose: no workflow may run a visit under either name.
-  try { found = execFileSync('git', ['grep', '-l', 'npm run smoke', '--', '.', ':!docs/superpowers/specs', ':!desktop/e2e/test/record-sites-rename.test.mjs', ':!desktop/e2e/test/pool-ci-triggers.test.mjs'], {cwd: ROOT, encoding: 'utf8'}); } catch (error) { if (error.status !== 1) throw error; }   // 1 = no match
+  try { found = execFileSync('git', ['grep', '-l', 'npm run smoke', '--', '.', ':!docs/superpowers/specs', ':!desktop/e2e/test/record/record-sites-rename.test.mjs', ':!desktop/e2e/test/pool/pool-ci-triggers.test.mjs'], {cwd: ROOT, encoding: 'utf8'}); } catch (error) { if (error.status !== 1) throw error; }   // 1 = no match
   const files = found.split('\n').filter(Boolean);
   assert.deepEqual(files, [], 'the old command in docs or code');
 });
@@ -54,9 +54,9 @@ const gitGrep = (pattern, ...excluded) => {
 test('no file, script or doc names smoke.mjs or the SMOKE_ settings any more', () => {
   assert.ok(fs.existsSync(path.join(ROOT, 'desktop/e2e/record-sites.mjs')));
   assert.ok(!fs.existsSync(path.join(ROOT, 'desktop/e2e/smoke.mjs')) && !fs.existsSync(path.join(ROOT, 'desktop/e2e/lib/smoke.mjs')));
-  assert.deepEqual(gitGrep('(?<![-\\w])smoke\\.(test\\.)?mjs', 'desktop/e2e/test/record-sites-rename.test.mjs'), [], 'smoke.mjs in code or docs');
+  assert.deepEqual(gitGrep('(?<![-\\w])smoke\\.(test\\.)?mjs', 'desktop/e2e/test/record/record-sites-rename.test.mjs'), [], 'smoke.mjs in code or docs');
   // The fallback (tools/record-env.mjs) is the only place that may spell an old SMOKE_ name, and the tests that prove it; JOB_PILOTTO_SMOKE_* is the app's own hook.
-  const old = gitGrep(`(?<![A-Z_])SMOKE_(${SETTINGS.join('|')})(?![A-Z_])`, 'tools/record-env.mjs', 'desktop/e2e/test/record-sites-rename.test.mjs', 'desktop/e2e/test/record-sites.test.mjs');
+  const old = gitGrep(`(?<![A-Z_])SMOKE_(${SETTINGS.join('|')})(?![A-Z_])`, 'tools/record-env.mjs', 'desktop/e2e/test/record/record-sites-rename.test.mjs', 'desktop/e2e/test/record/record-sites.test.mjs');
   assert.deepEqual(old, [], 'an old SMOKE_ setting named outside the fallback (new code uses RECORD_ + recordVar)');
 });
 

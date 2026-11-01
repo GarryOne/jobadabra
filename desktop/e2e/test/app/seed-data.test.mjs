@@ -8,7 +8,7 @@ import {test} from 'node:test';
 import {buildStandIn, startNotionFake} from '../../lib/notion-fake.mjs';
 import {addInterview, addKitJob, addTrackedJob, DESCRIPTION_SECTION, KIT_SECTION, removeJobsByUrl, stageOf} from '../../lib/seed-data.mjs';
 import {storeCall} from '../../lib/store-call.mjs';
-import {kitOf} from '../../../lib/store/kit-section.js';   // a leaf module: no app imports (test/installed-only.test.mjs)
+import {kitOf} from '../../../lib/store/kit-section.js';   // a leaf module: no app imports (test/harness/installed-only.test.mjs)
 
 const KIT = {answers: [{field: 'question_2001', question: 'Years of experience with Terraform', answer: '6'}], cover_letter: '', check_before_sending: []};
 const URL = 'https://boards.greenhouse.io/e2e/jobs/4001001';

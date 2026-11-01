@@ -31,7 +31,7 @@ const PAGE = mode => `<body><div id="jobpilotto-review-host"></div><script>
 </script></body>`;
 
 // Why (1 Nov 2026, a8): a limit here is a hang guard, never a budget under test. The slowest positive case took 1245 ms on CI (harness run 41265375751, browser launch included; the press itself < 800 ms), so 5000 ms is 4x; a case that must
-// FAIL on a stage it can only reach once the earlier stages passed gets the same guard, so a slow click cannot end the wait before that stage is read. The budget arithmetic is tested on an injected clock (test/panel-stop-verdict.test.mjs).
+// FAIL on a stage it can only reach once the earlier stages passed gets the same guard, so a slow click cannot end the wait before that stage is read. The budget arithmetic is tested on an injected clock (test/filling/panel-stop-verdict.test.mjs).
 const HANG_GUARD_MS = 5000;
 
 async function withPanel(mode, run) {

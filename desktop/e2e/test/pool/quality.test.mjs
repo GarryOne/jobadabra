@@ -102,7 +102,7 @@ test('leaks: a posting sentence, an email or a token in a log is found; clean lo
   assert.deepEqual(fingerprints('short'), []);
 });
 
-// Score steadiness is a rate over the last 90 pairs (lib/quality-rate.mjs, test/quality-rate.test.mjs); a judged text may still slip one in six.
+// Score steadiness is a rate over the last 90 pairs (lib/quality-rate.mjs, test/pool/quality-rate.test.mjs); a judged text may still slip one in six.
 test('noise allowance: one text in six may slip, to the nearest text, more is not', () => {
   // The gate judges one replayed scoring, 9 texts (27 Oct 2026, #2210: 2 of 9 flagged on the recorded answers; floor allowed 1, so the replayed gate was red on every try).
   assert.ok(judgeVerdict(['x', 'y'], 9).ok);                                                          // owner, 27 Oct 2026: "2 of 9"

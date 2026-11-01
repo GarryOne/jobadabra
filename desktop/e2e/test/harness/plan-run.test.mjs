@@ -279,7 +279,7 @@ test('the gate runs each suite that keeps data on both stores, one job each; oth
 });
 
 test('an exhausted schedule stays "Nothing tested" and needs no AI', async () => {
-  // Why (1 Nov 2026, c27 6/6a): the daily outside run and the 'outside' cadence are gone (real Notion is a night-report suite, test/suite-cadence.test.mjs); this keeps the schedule's exhaustion case.
+  // Why (1 Nov 2026, c27 6/6a): the daily outside run and the 'outside' cadence are gone (real Notion is a night-report suite, test/harness/suite-cadence.test.mjs); this keeps the schedule's exhaustion case.
   const all = ['settings', 'notion-real'], cadence = {'notion-real': 'night-report'};
   const plan = (env, runs = []) => planRun({env: {EVENT: 'schedule', REPO: 'o/r', SHA: HEAD, ...env}, gh: gh({runs}), all, cadence,
     offlineAi: all, storeless: ['notion-real'], minutes: () => 15, os: () => 'ubuntu-24.04'});

@@ -22,7 +22,7 @@ test('a shared file (one every case runs), a flow-core file and a replay-tool fi
   assert.equal(pick(['extension/background.js']).all, true);
   assert.equal(pick(['extension/flow-core.js']).all, true);
   assert.equal(pick(['desktop/e2e/lib/replay-browser.mjs']).all, true);
-  assert.equal(pick(['desktop/e2e/test/recorded-pages.test.mjs']).all, true);
+  assert.equal(pick(['desktop/e2e/test/record/recorded-pages.test.mjs']).all, true);
 });
 
 test('a changed file that no case runs (new, or never executed) runs ALL cases', () => {

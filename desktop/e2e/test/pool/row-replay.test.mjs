@@ -1,5 +1,5 @@
 // lib/row-replay.mjs, the parts that need no browser: a pool row is found by its name (the newest day first) or its folder, and its recorded journey is read as
-// pages and frames under their own addresses (no query string) plus the stylesheets of styles.har.json. The replay itself: e2e/test/row-replay-guard.test.mjs.
+// pages and frames under their own addresses (no query string) plus the stylesheets of styles.har.json. The replay itself: e2e/test/pool/row-replay-guard.test.mjs.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';

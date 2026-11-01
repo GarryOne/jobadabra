@@ -27,7 +27,7 @@ test('shared test code runs the cheap, AI-free settings suite as a smoke test, n
 });
 
 test('the unit tests of the tests and the docs run no suite (the plan job runs the unit tests itself)', () => {
-  assert.deepEqual(suitesFor(['desktop/e2e/test/plan.test.mjs', 'desktop/e2e/README.md'], ALL), []);
+  assert.deepEqual(suitesFor(['desktop/e2e/test/harness/plan.test.mjs', 'desktop/e2e/README.md'], ALL), []);
   assert.deepEqual(suitesFor([], ALL), []);
 });
 

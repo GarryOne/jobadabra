@@ -1,5 +1,5 @@
 // The start state of the strategy tests and of the 3 journey steps in suites/strategy.mjs (moved out of it when the rest of that suite became integration/store/strategy-integration.test.mjs and strategy-notion-integration.test.mjs,
-// owner, 1 Nov 2026): the page's sections and the same values in the config files' shape. Guarded by test/strategy-start.test.mjs and test/strategy-headings.test.mjs.
+// owner, 1 Nov 2026): the page's sections and the same values in the config files' shape. Guarded by test/app/strategy-start.test.mjs and test/app/strategy-headings.test.mjs.
 import {withRoles} from '../lib/search-roles.mjs';
 
 // The start state of every section these steps change (snapshot preseeding, lib/notion.mjs restoreSections). Roles: the persona's own, none of which a fixture

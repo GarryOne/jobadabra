@@ -1,5 +1,5 @@
 // The scoring of the fast local checks (check:fill) without a browser: a failure lands in the bucket the form benchmark would give it, a drop from main's numbers is red,
-// a quick run is compared only over its own cases, and a harness that ran nothing is never a pass. Run: node --test test/check-fill.test.mjs
+// a quick run is compared only over its own cases, and a harness that ran nothing is never a pass. Run: node --test test/filling/check-fill.test.mjs
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {bucketOf, compare, replayedNothing, summarize} from '../../lib/check-fill-score.mjs';

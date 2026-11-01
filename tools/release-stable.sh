@@ -72,8 +72,12 @@ elif [ "${SKIP_E2E:-0}" != 1 ]; then
 fi
 
 if [ "${DRY_RUN:-0}" = 1 ]; then echo "Dry run: would make $tag stable (its Windows installer is its own, the end-to-end gate holds)."; exit 0; fi
+was_beta=$(gh release view "$tag" -R "$repo" --json isPrerelease -q .isPrerelease 2>/dev/null || echo true)
 gh release edit "$tag" -R "$repo" --prerelease=false --latest
 echo "Stable: $tag (friends' apps offer it within 10 minutes, or at their next start)"
+# Why (1 Nov 2026, owner: "I'd like to receive on Telegram, CI Alerts, when a new version (beta or stable) is released"): one Telegram alert on EVERY way a release becomes stable (all of them end here),
+# only when this run made it stable: a re-run on a tag that already is stable says nothing. A failed alert never hides or undoes the promotion.
+if [ "$was_beta" = true ]; then GITHUB_REPOSITORY="$repo" node "$here/../desktop/e2e/release-alert.mjs" stable "$tag" || echo "(release alert not sent)" >&2; fi
 # Both store publishes start on EVERY way a release becomes stable (the daily canary, the release run, beta-approve with the soak off, the hot path): the switches above
 # (SKIP_E2E, E2E_NO_START, ...) only skip the end-to-end gate, and only DRY_RUN stops before this point. A start that fails never undoes the promotion, but it is no longer one echoed line
 # in a green run. Why (31 Oct 2026, owner: "We should have this always, even if we go on the hot path"): the job ends red (exit 4 below), with an annotation and one Telegram alert.

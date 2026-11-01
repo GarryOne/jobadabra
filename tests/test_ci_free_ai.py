@@ -89,7 +89,7 @@ class CiFreeAiTests(unittest.TestCase):
         # ai-capped.json, so the one alert is a set of nonblocking steps of the run's last job.
         self.assertNotIn('ai-credit-health', beta)
         self.assertIn('node desktop/e2e/credit-alert.mjs --artifacts credit-artifacts', beta['prune'])
-        self.assertEqual(beta['prune'].count('continue-on-error: true'), 5, 'neither the run page card nor the alert holds the run: card, setup, alert, scan and marker steps')
+        self.assertEqual(beta['prune'].count('continue-on-error: true'), 6, 'none of the run page card, the Telegram release alert and the credit alert holds the run: card, release alert, setup, credit alert, scan and marker steps')
         for name in ('test-mac', 'test-windows'):
             self.assertRegex(re.search(r'(?m)^    needs: (\[[^\]]*\])', beta[name]).group(1), r'^\[changes, (build|windows)\]$', name)
             self.assertIn('Free AI relay', beta[name], f'{name} still starts the relay in its own step')

@@ -374,16 +374,18 @@ import src.desktop
     def test_jobs_sources_kits_errors_and_options(self):
         ready = self.patch('src.ai.engine.ready', return_value=True)
         listed = self.patch('src.desktop.jobs', side_effect=lambda *a, **k: dict(VALUE))
-        self.call('jobs', VALUE, outside=True)
+        self.patch('src.desktop._profile_blank', return_value=False)   # the Profile verdict Jobs carries (#2759); its own test is test_desktop.py
+        JOBS_OUT = {**VALUE, 'profile_empty': False}
+        self.call('jobs', JOBS_OUT, outside=True)
         listed.assert_called_once_with(self.db, 200, notion_jobs=[], kit_inputs=None, hide_unscored=True)
-        self.call('jobs', VALUE, '--limit', '7', '--first-run', outside=True)
+        self.call('jobs', JOBS_OUT, '--limit', '7', '--first-run', outside=True)
         listed.assert_called_with(self.db, 7, notion_jobs=[], kit_inputs=None, hide_unscored=False)
         ready.return_value = False
         self.tracker.notion_jobs.side_effect = OSError('offline')
-        self.call('jobs', {**VALUE, 'stale': True}, outside=True, err='Warning: Notion unavailable, showing the cached list: OSError: offline\n')
+        self.call('jobs', {**VALUE, 'stale': True, 'profile_empty': False}, outside=True, err='Warning: Notion unavailable, showing the cached list: OSError: offline\n')
         listed.assert_called_with(self.db, 200, notion_jobs=None, kit_inputs=None, hide_unscored=False)
         self.from_env.return_value = None
-        self.call('jobs', VALUE, outside=True)
+        self.call('jobs', JOBS_OUT, outside=True)
         rows = [{'stage': 'Kit ready', 'next_step': 'é'}]
         self.patch('src.desktop._kit', return_value=True)
         self.tracker.notion_jobs.side_effect = None
@@ -392,18 +394,18 @@ import src.desktop
         answers = self.patch('src.ai.kit.standard_answers', return_value='answers')
         inputs = self.patch('src.desktop.provenance.kit_inputs', return_value='inputs')
         self.stores.texts.plain.return_value = 'profile'
-        self.call('jobs', VALUE, outside=True)
+        self.call('jobs', JOBS_OUT, outside=True)
         answers.assert_called_once_with(self.stores)
         inputs.assert_called_once_with('profile', 'answers')
         listed.assert_called_with(self.db, 200, notion_jobs=rows, kit_inputs='inputs', hide_unscored=False)
         self.open_stores.assert_called_with(tracker=self.tracker)
         inputs.side_effect = OSError()
-        self.call('jobs', VALUE, outside=True)
+        self.call('jobs', JOBS_OUT, outside=True)
         listed.assert_called_with(self.db, 200, notion_jobs=rows, kit_inputs=None, hide_unscored=False)
         os.environ['JOB_PILOTTO_STORE'] = 'sqlite'
         local = self.patch('src.desktop_store_jobs.store_jobs', return_value=rows)
         inputs.side_effect = None
-        self.call('jobs', VALUE, outside=True)
+        self.call('jobs', JOBS_OUT, outside=True)
         local.assert_called_once_with(self.stores)
         self.open_stores.assert_called_with()
 

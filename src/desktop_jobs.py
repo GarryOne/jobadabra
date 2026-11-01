@@ -34,6 +34,15 @@ def skills_of(value):
     return list(dict.fromkeys(str(item).strip() for item in items if str(item).strip()))[:8]
 
 
+def blank_profile(profile, local=None, readable=True):
+    """Whether fit scores are paused for want of a Profile (score.unfilled): the one test behind Strategy's and Jobs' "Your Profile is empty" notice (#2759).
+    `local`: the Profile file on this Mac (paths.local_profile()), which wins when there is one. `profile`: the store's Profile text, or None when it
+    could not be read; `readable` False when no store holds it (Notion not connected): nothing is said then."""
+    if local:
+        return score.unfilled(local)
+    return score.unfilled(profile) if readable and profile is not None else False
+
+
 def _kit(stage, step):
     return stage == 'Kit ready' or step.startswith(('📝 Kit ready', NOT_ELIGIBLE))
 

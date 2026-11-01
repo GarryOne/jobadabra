@@ -342,3 +342,25 @@ class DeleteTests(unittest.TestCase):
         lagging = [{'url': 'https://x.test/a', 'stage': 'Dismissed', 'title': 'Staff Software Engineer', 'company': 'Anthropic', 'location': 'Remote'},
                    {'url': 'https://x.test/b', 'stage': 'Saved', 'title': 'Photographer', 'company': 'Studio', 'location': 'Geneva'}]
         self.assertEqual([job['url'] for job in desktop.jobs(self.db, notion_jobs=lagging)['jobs']], ['https://x.test/b'])
+
+    def test_jobs_says_when_the_profile_is_still_blank(self):
+        """Jobs carries the verdict Strategy shows ("Your Profile is empty", #2759): one test, this Mac's file first, then the store's page."""
+        import os
+        from types import SimpleNamespace
+        from unittest import mock
+        blank, filled = '# Profile\n\n- Target: \u2753\n', '# Profile\n\n' + 'I am a nurse with ten years on a surgical ward. ' * 6
+        with tempfile.TemporaryDirectory() as tmp:
+            file = Path(tmp, 'profile.md')
+            for text, expected in ((blank, True), (filled, False)):
+                file.write_text(text, encoding='utf-8')
+                with mock.patch.dict(os.environ, {'JOB_PILOTTO_PROFILE_FILE': str(file)}):
+                    self.assertEqual(desktop._profile_blank(None, None), expected, 'this Mac\'s Profile file')
+            with mock.patch.dict(os.environ, {}, clear=False):
+                os.environ.pop('JOB_PILOTTO_PROFILE_FILE', None)
+                self.assertTrue(desktop._profile_blank(SimpleNamespace(page_text=lambda: blank), None), 'a blank Notion page')
+                self.assertFalse(desktop._profile_blank(SimpleNamespace(page_text=lambda: filled), None))
+                def fails():
+                    raise RuntimeError('no Notion')
+                self.assertFalse(desktop._profile_blank(SimpleNamespace(page_text=fails), None), 'a Profile that cannot be read says nothing')
+        # the same test Strategy uses
+        self.assertTrue(desktop.blank_profile(blank)); self.assertFalse(desktop.blank_profile(blank, readable=False)); self.assertFalse(desktop.blank_profile(None))

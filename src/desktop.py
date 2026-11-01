@@ -23,7 +23,7 @@ from .paths import JOBS_DB
 
 # The pieces live in desktop_jobs.py, desktop_status.py and desktop_strategy.py; their names stay reachable here (src.desktop.jobs, ...),
 # and the tests patch the shared modules (digest, score, store) through this one.
-from .desktop_jobs import (GONE, MIN_POSTING, NO_POSTING, NOT_ELIGIBLE, NOT_YET, _deleted_urls, _fit_detail, _kit, jobs, store_posting, posting,  # noqa: F401
+from .desktop_jobs import (GONE, blank_profile, MIN_POSTING, NO_POSTING, NOT_ELIGIBLE, NOT_YET, _deleted_urls, _fit_detail, _kit, jobs, store_posting, posting,  # noqa: F401
                            stage_status)
 from .desktop_status import NOTION_STAGES, InProcess, _mark, _matches_rows, delete_job, set_status  # noqa: F401
 from .desktop_strategy import (COMPONENTS, GOAL_ROWS, _goals, _quietly, _readable, _section, _visits, calendar_jobs,  # noqa: F401
@@ -226,6 +226,25 @@ def _strategy(db, args):
     return strategy(db, tracker), False
 
 
+def _profile_blank(notion, stores):
+    """Is the Profile still the blank template? Read as Strategy reads it (desktop_strategy.strategy): this Mac's file first, else Notion's page (kept
+    on disk between runs, one request when unchanged) or the Mac store's text. A Profile that cannot be read says nothing."""
+    from .paths import local_profile
+    own = local_profile()
+    if own:
+        return blank_profile(None, own)
+    try:
+        if notion:
+            return blank_profile(notion.page_text())
+        from .stores import open_stores
+        found = stores or open_stores()
+        if found.name == 'notion':
+            return False
+        return blank_profile(found.texts.get('profile') or None)
+    except Exception:  # noqa: BLE001 — an unread Profile is not "empty"
+        return False
+
+
 # -> the chosen job list with current kit inputs and cache freshness.
 def _jobs(db, args):
     tracker = _tracker()
@@ -259,6 +278,7 @@ def _jobs(db, args):
     fresh = found is not None
     if notion and not fresh:
         result['stale'] = True
+    result['profile_empty'] = _profile_blank(notion, stores)   # Jobs says fit scores are paused (#2759); setup ends on this page
     return result, False
 
 

@@ -72,10 +72,11 @@ test('CI minutes per push: runs of one commit added together, the slowest start 
 });
 
 test('merges are read from git: the PR number, the title line, the branch, the files and the commits oldest first', () => {
-  const log = ['M1\x1f2026-11-01\x1fMerge pull request #12 from GarryOne/fix-the-dim\x1f[ac] Fix the dim\n\nmore\x1e', 'M2\x1f2026-11-01\x1fRevert something\x1f\x1e'].join('\n');
+  const log = ['M1\x1f2026-11-01\x1f2026-11-01T10:00:00+00:00\x1fMerge pull request #12 from GarryOne/fix-the-dim\x1f[ac] Fix the dim\n\nmore\x1e', 'M2\x1f2026-11-01\x1f2026-11-01T11:00:00+00:00\x1fRevert something\x1f\x1e'].join('\n');
   const git = (...args) => (args[0] === 'diff' ? 'src/a.py\ntools/b.sh\n' : args.includes('--numstat') ? '\x1ec1\x1fFirst\n3\t1\tsrc/a.py\n\x1ec2\x1fSecond\n10\t0\ttools/b.sh\n' : log);
   const [one, ...rest] = fetchMerges({days: 3, now, git});
   assert.equal(rest.length, 0);
+  assert.equal(one.at, '2026-11-01T10:00:00+00:00', 'the merge time, for ordering against runs');
   assert.deepEqual([one.pr, one.title, one.branch, one.files], [12, '[ac] Fix the dim', 'fix-the-dim', ['src/a.py', 'tools/b.sh']]);
-  assert.deepEqual(one.commits.map(item => [item.sha, item.lines]), [['c1', 4], ['c2', 10]]);
-});
+  assert.deepEqual(one.commits.map(item => [item.sha, item.lines, item.subject]), [['c1', 4, 'First'], ['c2', 10, 'Second']]);
+  });

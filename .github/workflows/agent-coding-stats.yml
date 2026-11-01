@@ -1,6 +1,7 @@
 name: CI · Agent coding stats
 # Daily (owner, 1 Nov 2026: "New page incl. push gate"): the CI side of https://www.jobpilotto.top/admin/operations/agent-coding, from GitHub and git only (tools/agent-coding-stats.mjs):
 # merged PRs and the share that change CI or tooling, what fixed each red, fix PRs per area, CI minutes per push. Report only: it never blocks anything. No AI, $0.
+# The SDLC tab's numbers (tools/sdlc-stats.mjs: per check and layer, the four phases) ride on the same run, after the weekly ones, and a failure there never stops the weekly upload.
 # It runs on the workflow's own GITHUB_TOKEN (its own rate limit, not the owner's shared 5,000 an hour). By hand: Actions → run workflow (days up to 14; end = the last day, to fill older days).
 on:
   schedule:
@@ -18,6 +19,7 @@ permissions:
   contents: read
   actions: read
   pull-requests: read
+  issues: read   # the bug issues people filed (tools/sdlc-stats.mjs)
 
 concurrency:
   group: agent-coding-stats-${{ github.run_id }}   # a run of its own (tests/test_workflow_contract.py)
@@ -53,4 +55,22 @@ jobs:
             curl -sS -o /dev/null --fail -X PUT -H "Authorization: Bearer ${SELFHEAL_PUBLISH_KEY}" --data-binary "@$RUNNER_TEMP/agent-coding.json" "https://www.jobpilotto.top/agent-coding/data"
           else
             echo "::notice::SELFHEAL_PUBLISH_KEY is not set: nothing stored."
+          fi
+      - name: Count the SDLC numbers (the tab "SDLC")
+        continue-on-error: true   # a report: the weekly numbers above are already stored
+        env:
+          END: ${{ inputs.end }}
+          DAYS: ${{ inputs.days || '3' }}
+        run: |
+          # Same input checks as above (a dispatch input is data, never script text).
+          case "$END" in ''|[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]) ;; *) echo "::error::end must be YYYY-MM-DD"; exit 1 ;; esac
+          case "$DAYS" in [0-9]|[0-9][0-9]) ;; *) echo "::error::days must be a number from 1 to 14"; exit 1 ;; esac
+          node tools/sdlc-stats.mjs --days "$DAYS" ${END:+--end "$END"} --out "$RUNNER_TEMP/sdlc.json"
+      - name: Store the SDLC numbers
+        continue-on-error: true
+        run: |
+          if [ -n "$SELFHEAL_PUBLISH_KEY" ] && [ -s "$RUNNER_TEMP/sdlc.json" ]; then
+            curl -sS -o /dev/null --fail -X PUT -H "Authorization: Bearer ${SELFHEAL_PUBLISH_KEY}" --data-binary "@$RUNNER_TEMP/sdlc.json" "https://www.jobpilotto.top/agent-coding/data"
+          else
+            echo "::notice::Nothing stored (no key, or no SDLC numbers)."
           fi

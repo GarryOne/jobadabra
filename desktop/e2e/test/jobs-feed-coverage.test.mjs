@@ -60,8 +60,8 @@ function addVariedPostings(t, postings, sources, feed) {
 }
 
 function addSlowPostings(postings, company) {
-  // The slow-check titles live in the suite itself. Read its literal rather than maintaining a second list.
-  const suite = fs.readFileSync(new URL('../suites/jobs.mjs', import.meta.url), 'utf8');
+  // The slow-check titles live in the test that runs the slow check (moved from the jobs suite, R2, 1 Nov 2026). Read its literal rather than maintaining a second list.
+  const suite = fs.readFileSync(new URL('../../integration/store/jobs-run.test.mjs', import.meta.url), 'utf8');
   const slow = /const more = (\[[^\n]+\]);/.exec(suite);
   assert.ok(slow, 'jobs slow-check posting fixture must remain enumerable');
   const slowTitles = vm.runInNewContext(slow[1]);

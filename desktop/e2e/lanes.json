@@ -8,7 +8,8 @@
       "since": "2026-10-29",
       "pr": "number",
       "why": "A live Jobs check on the golden postings measures the model's facts, scores and judge texts as rates.",
-      "returns": "Stays tolerant: it measures the live model."
+      "returns": "Stays tolerant: it measures the live model.",
+      "cadence": "night-report: one run a night (night burn-in pass 1), never a gate, beta, canary, push or PR (owner via a8, 1 Nov 2026, 6/6a-2)."
     },
     "notion-real": {
       "lane": "tolerant",

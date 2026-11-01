@@ -9,7 +9,7 @@ import {NIGHT_REPORT, autoSuites} from './plan.mjs';
 
 export const NIGHT_PASSES = 5;
 export const NIGHT_TITLE = 'Night burn-in';   // the run-name's first words; every list of "runs that are not main's check" holds it (tools/main_e2e_state.py NOT_MAIN_CHECK and its siblings)
-const LIVE_AI = ['qualityai'];   // the suites that ask the model live in every run (e2e.yml E2E_AI_REPLAY is '0' for them); a night pass has no AI budget
+const LIVE_AI = ['qualityai'];   // the suites that ask the model live in every run (e2e.yml E2E_AI_REPLAY is '0' for them); a night pass has no AI budget except pass 1's one night-report run of them (qualityai, owner via a8, 1 Nov 2026), so passes 2-5 never pay for it
 const SPAN_MS = 14 * 3600 * 1000;   // pass 1 is at 21:00 UTC and pass 5 at 05:30: a pass looks for pass 1 within the night, never a previous one
 
 /** "3/5" -> 3; anything else (including 0 and 6) -> 0. */

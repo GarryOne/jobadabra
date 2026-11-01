@@ -38,7 +38,7 @@ Owner, 1 Nov 2026: "look on the entire harness/workflow of our development and .
 - [x] Owner direction recorded (above) (proof: docs/superpowers/specs/2026-11-01-agent-coding-sdlc-design.md)
 - [x] Spec read against real numbers: 5 days, 11,209 runs, 443 merges (proof: none: a one-off run of tools/sdlc-stats.mjs, numbers in the PR body)
 - [x] Preview (desktop | phone, real numbers) and the owner's yes: "Yes, build it as shown (Recommended)", "Accept, show it plainly (Recommended)" (proof: none: the owner's answers, the image is in the web PR)
-- [ ] PR 1/3 `sdlc-stats` and workflow step (proof: tools/sdlc-stats.mjs, desktop/test/sdlc-stats.test.js)
-- [ ] PR 2/3 the tab and grid (jobadabra-web)
-- [ ] Hook counter: the owner's own yes on the exact diff, then PR 3/3
-- [ ] First `sdlc` upload seen on the live page
+- [x] PR 1/3 `sdlc-stats` and workflow step (proof: tools/sdlc-stats.mjs, desktop/test/sdlc-stats.test.js)
+- [x] PR 2/3 the tab and grid (proof: none: the code is in jobadabra-web PR #251, merged)
+- [ ] Hook counter (not started): the owner's own yes on the exact diff, then PR 3/3
+- [x] First `sdlc` upload seen on the live page: 5 days, 11,452 runs, "5 slow checks caught nothing real (50.9 h in 4 weeks)" (proof: none: workflow run 41330739611 and the live tab)

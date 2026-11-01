@@ -9,6 +9,14 @@ export const FORM = new Set(['recorded cases', 'rung trailer', 'e2e cause traile
 export const SUITES = new Set(['desktop (clean checkout)', 'python (clean checkout)', 'worker (clean checkout)', 'site (clean checkout)', 'e2e unit tests (desktop/e2e npm test, as CI)',
   'renderer class tests', 'journey gate', 'ladder gate', 'places check (real AI)']);
 
+// Why (1 Nov 2026, owner's yes on the layer-0 counter): the agent's own hooks (~/.claude/hooks/count-blocks.sh) log "<UTC date> <label>" for each block; only these four fixed labels count, so no text can leave.
+export const HOOKS = new Set(['guard-primary-checkout', 'background-tee', 'foreground-long-run', 'session-cap']);
+// One owner of a day card's empty shape: a push day and a day with only hook blocks both start from it (Gitar on #2860).
+const emptyCard = day => ({day, pushes: 0, secs: 0, stopped: {form: 0, real: 0, other: 0}, stoppedSecs: {form: 0, real: 0, other: 0}, steps: {}});
+/** The hook-block log text -> [{day, label}] for the known labels only; anything else on a line is ignored. */
+export function parseHookLog(text) {
+  return String(text || '').split('\n').map(line => /^(\d{4}-\d\d-\d\d) (\S+)$/.exec(line)).filter(match => match && HOOKS.has(match[2])).map(match => ({day: match[1], label: match[2]}));
+}
 // A push-check name -> 'real' (a suite), 'form' (a trailer, comment, list, count or size check) or 'other'; an unknown name is 'other', never an error.
 export const classOf = name => (SUITES.has(name) ? 'real' : FORM.has(name) ? 'form' : 'other');
 // The log text -> [{day, secs, steps: [{name, secs, exit}]}], one per push header with a total.
@@ -33,10 +41,10 @@ export function stoppedAs(push) {
   return failed.some(name => SUITES.has(name)) ? 'real' : failed.every(name => FORM.has(name)) ? 'form' : 'other';
 }
 // Pushes -> one card per day, the last `days` days up to `now`, oldest first. Shape: admin/agent-coding.js cleanGate.
-export function byDay(pushes, {days = 35, now = new Date()} = {}) {
+export function byDay(pushes, {days = 35, now = new Date(), hooks = []} = {}) {
   const since = new Date(now.getTime() - days * 86400000).toISOString().slice(0, 10), cards = new Map();
   for (const push of pushes.filter(item => item.day >= since)) {
-    const card = cards.get(push.day) || {day: push.day, pushes: 0, secs: 0, stopped: {form: 0, real: 0, other: 0}, stoppedSecs: {form: 0, real: 0, other: 0}, steps: {}};
+    const card = cards.get(push.day) || emptyCard(push.day);
     cards.set(push.day, card);
     card.pushes++; card.secs += push.secs;
     const kind = stoppedAs(push);
@@ -45,6 +53,11 @@ export function byDay(pushes, {days = 35, now = new Date()} = {}) {
       const at = card.steps[step.name] ||= {runs: 0, fails: 0, secs: 0, cls: classOf(step.name)};
       at.runs++; at.secs += step.secs; if (step.exit !== 0) at.fails++;
     }
+  }
+  for (const block of hooks.filter(item => item.day >= since)) {
+    const card = cards.get(block.day) || emptyCard(block.day);
+    cards.set(block.day, card);
+    (card.hooks ||= {})[block.label] = (card.hooks[block.label] || 0) + 1;
   }
   return [...cards.values()].sort((a, b) => a.day.localeCompare(b.day));
 }

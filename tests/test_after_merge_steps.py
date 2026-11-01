@@ -22,7 +22,7 @@ class MainSteps(unittest.TestCase):
     def test_a_push_to_main_with_the_files_a_pr_check_watches(self):
         self.assertRegex(FLOW, r"(?m)^  push:\n    branches: \[main\]")
         # Less the CI plumbing a PR watches only for its one Windows smoke (PR 3): after a merge no Windows check runs.
-        # Why (30 Oct 2026, a8, burn-in): a lanes.json change starts a PR's burn-in (admission is decided on the PR only); after its merge there is nothing to admit.
+        # Why (30 Oct 2026, a8, burn-in; 1 Nov 2026: admission dropped): lanes.json still starts a PR run (see pr-suites.yml), but after its merge there is nothing to plan from it.
         pr = paths((ROOT / '.github/workflows/pr-suites.yml').read_text(), 'pull_request') - {'.github/workflows/pr-suites.yml', '.github/**', 'tools/*.sh', 'desktop/scripts/*.sh', 'desktop/e2e/lanes.json'}
         self.assertEqual(paths(FLOW, 'push') - {'.github/workflows/main-steps.yml'}, pr, 'a file a PR runs steps for runs them after its merge too')
 

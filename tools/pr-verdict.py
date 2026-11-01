@@ -121,7 +121,7 @@ def running_minutes(spans, now=None):
     return (total + (hi - lo).total_seconds()) / 60
 
 
-def verdict(runs, files=(), messages=(), jobs=None, me=None, my_status='', now=None, spans=None, greys=(), reports=(), burn_in=None):
+def verdict(runs, files=(), messages=(), jobs=None, me=None, my_status='', now=None, spans=None, greys=(), reports=()):
     """-> (state or None, description, the runs counted, the ids of other jobs finishing now, the run to link). None: no run of a pull request on this commit.
     jobs: {run id: [job]} for the runs read job by job (not ended, or red); me: the id of the job this runs in, my_status its status so far.
     spans: [(started_at, completed_at)] of every job of the counted runs (a CI change only, job_spans): the budget counts their running time, else the wall time.
@@ -141,7 +141,6 @@ def verdict(runs, files=(), messages=(), jobs=None, me=None, my_status='', now=N
             continue
         numbered = any(suite_of(job.get('name', '')) in reports for job in listed)   # Why (30 Oct 2026, owner/review): qualityai evidence overrides report/grey exemptions, including unknown reads.
         states = [(job, quality.get(job.get('id'), 'grey' if job.get('id') in greys else job_state(job, me, my_status))) for job in listed if job.get('name') not in REPORT_JOBS and (suite_of(job.get('name', '')) not in reports or job.get('id') in quality)]
-        states = ((burn_in or main_state_module('', '', 'pr_burn_in').failures)(r, listed, lambda job: job_state(job, me, my_status)) if any(' · burn-in ' in job.get('name', '') for job in listed) else []) + states
         grey += [(job['name'], getattr(reports, 'reasons', {}).get(job.get('id'), 'qualityai') if job.get('id') in quality else greys.get(job['id'], 'main') if isinstance(greys, dict) else 'main') for job, state in states if state == 'grey']
         ending = [job['id'] for job, state in states if state == 'finishing' or job.get('id') == me]
         if any(state in RED for _, state in states):
@@ -250,7 +249,7 @@ def list_runs(repo, sha):
 def read(repo, sha):
     """Read the PR's runs and deciding jobs; a matching completed event outranks a lagging list.
     Invariant: completion evidence applies only to the same head, run id and attempt, never a rerun.
-    Red E2E job details still decide lane exemptions and burn-in admission.
+    Red E2E job details still decide lane exemptions.
     Only a pending result reads live-looking runs by id, stopping at the first live run or red.
     """
     runs = list_runs(repo, sha)
@@ -429,7 +428,7 @@ def main():
         except Exception as error:
             print(f'AI number unavailable ({type(error).__name__}): required verdict unchanged')
     spans = job_spans(a.repo, runs, reports) if ci_change(files) and (reports or not any(r.get('status') != 'completed' for r in counted(runs))) else None
-    judge = lambda greys: verdict(runs, files, messages, jobs, spans=spans, greys=greys, reports=reports, burn_in=lambda *args: main_state_module(a.repo, ref, 'pr_burn_in').failures(*args))
+    judge = lambda greys: verdict(runs, files, messages, jobs, spans=spans, greys=greys, reports=reports)
     state, why, live, _, target = judge(())
     if state == 'failure':   # main's reds are read only for a red: a green PR costs no extra call
         greys = {**{job_id: 'main' for job_id in main_red_greys(a.repo, runs, jobs, ref=ref)}, **lane_greys(a.repo, runs, jobs),

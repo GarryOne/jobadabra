@@ -116,7 +116,7 @@ async function extensionLog(t, reply, {serial = false, kept: start = []} = {}) {
   const batches = [];
   const oldChrome = globalThis.chrome;
   t.after(() => { if (oldChrome === undefined) delete globalThis.chrome; else globalThis.chrome = oldChrome; });
-  globalThis.chrome = {runtime: {getManifest: () => ({version: '0.9'})}, storage: {local: {
+  globalThis.chrome = {runtime: {getManifest: () => ({version: '0.9'}), getURL: () => 'chrome-extension://test/'}, storage: {local: {
     get: () => once(() => structuredClone(kept)), set: patch => once(() => { kept = structuredClone({...kept, ...patch}); }),
   }}};
   t.mock.method(globalThis, 'fetch', async (_url, init) => {
@@ -250,6 +250,20 @@ for (const order of ['the tick runs before the cycle ends', 'the cycle ends befo
   assert.equal(lines.length, 1, 'one line for the one late tick');
   assert.equal(lines[0].fields.lagMs, 11000);
   assert.equal(lines[0].fields.burstTicks, 1);
+});
+
+// #2796 red: extension-sentry.test.mjs fakes `self` and imports log.js; the probe's real interval held that process open until the 180 s test timeout.
+test('in a worker the probe starts one 1 s interval whose handle does not hold a process open', async t => {
+  const started = [];
+  const oldSelf = globalThis.self;
+  t.after(() => { if (oldSelf === undefined) delete globalThis.self; else globalThis.self = oldSelf; });
+  globalThis.self = {addEventListener: () => {}};
+  let unref = 0;
+  t.mock.method(globalThis, 'setInterval', (_tick, ms) => { started.push(ms); return {unref: () => { unref++; }}; });
+  const log = await extensionLog(t);
+  assert.deepEqual(started, [1000], 'one interval, 1 s');
+  assert.equal(unref, 1, 'the handle was unref-ed');
+  assert.equal(log.lagProbe.worstSince(0), 0, 'the probe is running');
 });
 
 test('without a running probe (a harness, a test) "slow push" has no tick-lag field', async t => {

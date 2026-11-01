@@ -181,7 +181,9 @@ async function pushNow() {
 // Uncaught worker errors keep their local decision line and reach the app's reporter through the same authenticated log channel.
 if (typeof self !== 'undefined' && typeof self.addEventListener === 'function') {
   const origin = chrome.runtime.getURL('');
-  lagProbe.start((tick, ms) => setInterval(tick, ms));   // the one timer of this file; it dies with an idle worker and never wakes one (sw-lag.js Design)
+  // The one timer of this file; it dies with an idle worker and never wakes one (sw-lag.js Design).
+  // Why (1 Nov 2026, a8, #2796 red: extension-sentry.test.mjs timed out at 180 s): a test that fakes `self` and imports this file under Node got a real interval that held the process open. A spectator holds nothing open: unref where the handle has it (Node); a browser's handle is a number.
+  lagProbe.start((tick, ms) => { setInterval(tick, ms)?.unref?.(); });
   self.addEventListener('error', event => {
     decide('error', 'uncaught error', errorReport(event?.error, {origin, filename: event?.filename, lineno: event?.lineno, colno: event?.colno})).catch(() => {});
   });

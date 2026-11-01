@@ -1,0 +1,8 @@
+2026-11-01T13:37:45.013Z [apply] opened the form tab {"session":"76c5ed6f","host":"jobs.lever.co","mark":true,"browser":"Google Chrome"}
+2026-11-01T13:37:47.699Z [extension] tab: tab with the fill mark seen {"host":"jobs.lever.co","logBoot":"mvxvkdagwp66","session":true,"tab":1633127927,"version":"0.9.725","extensionAt":"2026-11-01T13:37:47.133Z"}
+2026-11-01T13:38:16.929Z [apply] opened the form tab {"session":"efa5be5b","host":"jobs.lever.co","mark":true,"browser":"Google Chrome"}
+2026-11-01T13:38:17.976Z [review] forms open in Chrome: 76c5ed6f (not known: efa5be5b) {"sessions":2}
+2026-11-01T13:42:37.161Z [apply] opened the form tab {"session":"3053bc08","host":"e2e.wd3.myworkdayjobs.com","mark":true,"browser":"Google Chrome"}
+2026-11-01T13:42:46.898Z [extension] tab: tab with the fill mark seen {"host":"jobs.lever.co","session":true,"tab":1633127928,"version":"0.9.725","extensionAt":"2026-11-01T13:38:17.544Z","receivedAt":"2026-11-01T13:42:46.898Z"}
+2026-11-01T13:42:46.899Z [extension] tab: tab with the fill mark seen {"host":"jobs.lever.co","session":true,"tab":1633127928,"version":"0.9.725","extensionAt":"2026-11-01T13:42:46.506Z"}
+2026-11-01T13:42:46.927Z [extension] log: slow push {"lines":2,"markMs":0,"postMs":179,"readMs":6,"settingsMs":269187,"version":"0.9.725","extensionAt":"2026-11-01T13:42:46.916Z"}

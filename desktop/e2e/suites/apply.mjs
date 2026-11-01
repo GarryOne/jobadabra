@@ -17,6 +17,7 @@ import {markedSession, sessionTabUrl} from '../../lib/session-tab.js';
 import {addKitJob, removeJobsByUrl, seedLivePosting, stageOf} from '../lib/seed-data.mjs';
 import {ensureSetUp} from '../lib/seed.mjs';
 import {appLogLines} from '../lib/app-log.mjs';
+import {lostTabIn} from '../lib/tab-bound.mjs';
 import {livePosting, realKind, runLive} from '../lib/apply-live.mjs';
 import {runCvSteps} from '../lib/apply-cv-steps.mjs';
 import {runSilentChromeSteps} from '../lib/apply-silent-steps.mjs';
@@ -144,6 +145,7 @@ export async function runApply(ctx, parts) {
     ctx.browser.trail?.write(ctx.ARTIFACTS);   // every tab's opens, navigations and closes, and any navigation error (lib/tab-trail.mjs)
   }
   // The person's click on a job's Apply button; the form opens in the browser with the extension, which fills it by itself. -> the tab, once the fill is over.
+  const lostTab = () => lostTabIn(ctx.profile);   // lib/tab-bound.mjs: read only when a fill failed
   async function apply(form, {viaApi = false} = {}) {
     const opened = ctx.browser.opened.length;
     // A job whose form tab is still open keeps it (22 Oct 2026, 0e359e1): the app has that tab reload and fill again instead of opening a second one, so a reload of an open tab counts as the open.
@@ -171,7 +173,7 @@ export async function runApply(ctx, parts) {
       const result = await waitForFill({pickTab, readState: fillState});   // the step's clock: no cap of its own under it (lib/fill-attempt.mjs Why)
       if (result.ok) return {...result, session: markedSession(attemptUrl)};
       await dumpExtension();
-      throw new Error(`the extension never finished filling ${form.title} (${fillNote(result.state, Math.round(result.ms / 1000))}, read on ${result.url}, ${result.tabs} tab(s)${ctx.browser.trail ? `; ${ctx.browser.trail.describe(result.tab)}` : ''})`);   // the picked tab's last navigations and any navigation error (lib/tab-trail.mjs)
+      throw new Error(`the extension never finished filling ${form.title} (${fillNote(result.state, Math.round(result.ms / 1000), {lost: lostTab()})}, read on ${result.url}, ${result.tabs} tab(s)${ctx.browser.trail ? `; ${ctx.browser.trail.describe(result.tab)}` : ''})`);   // the picked tab's last navigations and any navigation error (lib/tab-trail.mjs)
     } finally { for (const [tab, onLoad] of listeners) tab.off('load', onLoad); }
   }
   // The panel opens by itself while a fill runs; open it only when it is closed (a click on the pill toggles).

@@ -1,0 +1,39 @@
+{
+ "run": "41312012476",
+ "why": "stable canary on desktop-v0.8.60 (6f9b552), 1 Nov 2026: the red the verdict called a stable failure and the issue called for promoting the previous build. jobs = the run's jobs (name, conclusion); failures = the failed job's suite-failures.json with each note cut to 400 characters. A CI log: no profile paths, tokens or personal data.",
+ "jobs": [
+  {
+   "name": "plan",
+   "conclusion": "success"
+  },
+  {
+   "name": "applyflows-1of3",
+   "conclusion": "success"
+  },
+  {
+   "name": "applyflows-3of3",
+   "conclusion": "success"
+  },
+  {
+   "name": "applyflows-2of3",
+   "conclusion": "failure"
+  }
+ ],
+ "failures": [
+  {
+   "suite": "applyflows",
+   "step": "a form with collapsed sections: they are opened and the questions inside are filled",
+   "message": "the fill did not finish within 257.365 s (last seen: null)"
+  },
+  {
+   "suite": "applyflows",
+   "step": "the account and the application on one page: it is the application form, its passwords stay account fields",
+   "message": "the fill did not finish within 176.41 s (last seen: null)"
+  },
+  {
+   "suite": "applyflows",
+   "step": "the form tab is closed: the app sees it and Reopen opens the form again, filled, for the same session",
+   "message": "the app never saw the earlier form closed after waiting 45027 ms (last report: {\"forms\":{\"known\":true,\"ids\":[\"76c5ed6f\",\"efa5be5b\",\"3053bc08\"],\"unsure\":[]},\"sessions\":[{\"id\":\"76c5ed6f\",\"kind\":\"form\",\"url\":\"https://jobs.lever.co/e2e-signup/4001007\",\"title\":\"Store Associate, Sign-up First\",\"company\":\"E2E Sign-up Retail\",\"status\":\"done\",\"note\":\"Form open in Chrome\",\"outcome\":\"\",\"background\":null,\"liv"
+  }
+ ]
+}

@@ -75,13 +75,13 @@ export function judge(compared) {
 const quoted = step => `“${String(step).length > 90 ? `${String(step).slice(0, 89)}…` : step}”`;
 const short = sha => String(sha || '').slice(0, 7);
 
-/** One line for the gate, the alert and the PR verdict. input: {step, verdict, green, files, compared, redSha, store, otherStore}. */
-export function sayLine({step, verdict, green, files = [], redSha = '', store, otherStore = 0}) {
+/** One line for the gate, the alert and the PR verdict. input: {step, verdict, green, files, compared, redSha, store, otherStore, reason}; an unknown says why (no green in N runs since <date>, read cut at N of M, the store cannot be told). */
+export function sayLine({step, verdict, green, files = [], redSha = '', store, otherStore = 0, reason = ''}) {
   if (verdict === 'flaky') {
     const same = green.sha === redSha ? `the same commit ${short(redSha)}` : `${short(green.sha)}, and none of its files changed up to ${short(redSha)}`;
     return `Flaky: ${quoted(step)} passed on ${same} (${green.url}): fix the non-deterministic input it depends on, not the step`;
   }
   if (verdict === 'changed') return `Changed: ${quoted(step)} differs from its newest green ${short(green.sha)} (${green.url}) in ${files.slice(0, SHOWN).join(', ')}${files.length > SHOWN ? ` +${files.length - SHOWN} more` : ''}: a likely regression`;
   const elsewhere = otherStore ? `; ${otherStore} green(s) ran another store than the red's (${store || 'none'}) and say nothing about it` : '';
-  return `Unknown: ${quoted(step)} has no green to compare with in the recent runs${elsewhere}`;
+  return `Unknown: ${quoted(step)} has no green to compare with${reason ? ` (${reason})` : ' in the recent runs'}${elsewhere}`;
 }

@@ -29,7 +29,9 @@ def lines(repo, runs, run=subprocess.run, which=shutil.which, tool=None, clock=t
         if not str(r.get('displayTitle', '')).startswith(E2E_PR_TITLE) or r.get('conclusion') != 'failure':
             continue
         try:
-            done = run(['node', tool, '--run', str(r['databaseId']), '--repo', repo, '--window', WINDOW], capture_output=True, text=True, encoding='utf-8', timeout=min(TIMEOUT_S, left))
+            budget = min(TIMEOUT_S, left)
+            # Why (1 Nov 2026): the tool ends its own read 5 s before this kill ("unknown: read cut at N of M runs"); a killed tool printed nothing.
+            done = run(['node', tool, '--run', str(r['databaseId']), '--repo', repo, '--window', WINDOW, '--deadline', str(max(5, int(budget) - 5))], capture_output=True, text=True, encoding='utf-8', timeout=budget)
         except (OSError, subprocess.SubprocessError):
             continue
         out += [line for line in done.stdout.splitlines() if re.match(r'(Flaky|Changed|Unknown): ', line)]

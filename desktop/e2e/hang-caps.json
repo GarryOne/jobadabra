@@ -818,81 +818,6 @@
       }
     }
   },
-  "calendar": {
-    "provenance": "tools/e2e-step-timings.mjs: 12 main runs, 9/12 calm shard-runs.\nMain run IDs: 40796899545, 40799225090, 40802551247, 40836904987, 40960750830, 40975522762, 40985357367, 40987937824, 41133640727, 41146558456, 41157036555, 41180851813.\n3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.",
-    "steps": {
-      "a day with more than three meetings shows three and says how many more": {
-        "seconds": 30,
-        "n": 9,
-        "p95Seconds": 2.1
-      },
-      "an empty calendar says nothing is scheduled and shows no meeting": {
-        "seconds": 30,
-        "n": 9,
-        "p95Seconds": 4.8
-      },
-      "Calendar renders without layout problems": {
-        "seconds": 30,
-        "n": 9,
-        "p95Seconds": 0.3
-      },
-      "no AI call of this suite reached a real model: the stand-in answered or refused every one": {
-        "shared": "applyflows",
-        "n": 4,
-        "p95Seconds": 0.3
-      },
-      "nothing was queued to report to the product": {
-        "seconds": 30,
-        "n": 9,
-        "p95Seconds": 0.3
-      },
-      "on this Mac's store a meeting opens its job's side panel, from the grid and from the agenda": {
-        "seconds": 30,
-        "n": 9,
-        "p95Seconds": 5.7
-      },
-      "the agenda lists what is coming soonest first and what is past latest first": {
-        "seconds": 30,
-        "n": 9,
-        "p95Seconds": 2.1
-      },
-      "the app is set up on this Mac's store with the applicant's strategy": {
-        "seconds": 30,
-        "n": 9,
-        "p95Seconds": 5.2
-      },
-      "the app runs in the time zone the test asked for": {
-        "seconds": 30,
-        "n": 9,
-        "p95Seconds": 0.4
-      },
-      "the grid shows every meeting on its own day, in the app's time zone, with its time": {
-        "seconds": 30,
-        "n": 9,
-        "p95Seconds": 4.3
-      },
-      "the month arrows move through the months and Today comes back": {
-        "seconds": 30,
-        "n": 9,
-        "p95Seconds": 2.4
-      },
-      "the same meetings fall on other days and hours in another time zone": {
-        "seconds": 50,
-        "n": 9,
-        "p95Seconds": 15.6
-      },
-      "this suite starts with no jobs and no interviews in its Notion page": {
-        "seconds": 30,
-        "n": 9,
-        "p95Seconds": 0.6
-      },
-      "this suite writes its dummy meetings to the store": {
-        "seconds": 30,
-        "n": 9,
-        "p95Seconds": 1.7
-      }
-    }
-  },
   "employers": {
     "provenance": "tools/e2e-step-timings.mjs: 6 main runs, 6/6 calm shard-runs.\nMain run IDs: 41147458356, 41157036555, 41158705592, 41166853012, 41173193229, 41180851813.\n3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.",
     "steps": {
@@ -1113,11 +1038,6 @@
   "interviews": {
     "provenance": "tools/e2e-step-timings.mjs: 11 main runs, 8/11 calm shard-runs.\nMain run IDs: 40796899545, 40799225090, 40802551247, 40836904987, 40960750830, 40975522762, 40985357367, 40987937824, 41133640727, 41146558456, 41157036555.\n3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.",
     "steps": {
-      "a reviewed row opens its review in the app": {
-        "seconds": 30,
-        "n": 8,
-        "p95Seconds": 3.4
-      },
       "a transcript imported through the page is reviewed for real: outcome, strengths, next step, the right job, and the insights follow": {
         "seconds": 75,
         "n": 8,
@@ -1153,11 +1073,6 @@
         "n": 8,
         "p95Seconds": 0.3
       },
-      "Record stays off until everyone has agreed, and says why": {
-        "seconds": 30,
-        "n": 8,
-        "p95Seconds": 3.1
-      },
       "Refresh insights without a new review says it is up to date and spends nothing": {
         "seconds": 50,
         "n": 8,
@@ -1183,25 +1098,10 @@
         "n": 8,
         "p95Seconds": 1.5
       },
-      "the library lists every interview, newest first, with its outcome": {
-        "seconds": 85,
-        "n": 8,
-        "p95Seconds": 27.4
-      },
-      "the library shows each interview's job by name (opening it in the Jobs list), and \"Link a job\" when there is none": {
-        "seconds": 30,
-        "n": 8,
-        "p95Seconds": 3.2
-      },
       "the one-time setup banner shows its step and percent, then goes away when transcribing starts": {
         "seconds": 30,
         "n": 8,
         "p95Seconds": 5
-      },
-      "the search box and the outcome filter narrow the library, and say so when nothing matches": {
-        "seconds": 30,
-        "n": 8,
-        "p95Seconds": 3.8
       },
       "this suite starts from its own dummy jobs and interviews in the store": {
         "seconds": 30,

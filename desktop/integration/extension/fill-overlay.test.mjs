@@ -19,7 +19,7 @@ const open = async (answer = {}) => {
   await app.page.evaluate(() => { location.hash = 'jobpilotto-fill'; });
   await app.page.waitForFunction(() => document.getElementById('jobpilotto-review-host')?.shadowRoot?.querySelector('.report-btn'), null, {timeout: 20000});
   const worker = await extensionWorker(app.context);
-  // Why-changed (27 Oct 2026, owner: one state, changed only on a verdict): a step is the worker saying the run is on (apply-state.js: `working`), an empty one its end (`done`), exactly as background.js progress() does;
+  // Why-changed (27 Oct 2026, owner: one state, changed only on a verdict): a step is the worker saying the run is on (apply-state.js: `working`); an empty one stands here for the run's end verdict (`done`): a fill pass inside the page no longer says done since #2803, only the fill's end does;
   // the page draws what it is told. `verdict(state)` pushes any other state the way the worker does.
   const verdict = state => worker.evaluate(async word => { const [tab] = await chrome.tabs.query({url: 'https://jobs.example.test/*'}); return chrome.tabs.sendMessage(tab.id, {type: 'applyState', state: word}); }, state);
   const step = async text => { await verdict(text ? 'working' : 'done'); return worker.evaluate(async words => { const [tab] = await chrome.tabs.query({url: 'https://jobs.example.test/*'}); return chrome.tabs.sendMessage(tab.id, {type: 'panelStep', text: words}); }, text); };

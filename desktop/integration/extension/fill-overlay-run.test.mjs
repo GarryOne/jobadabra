@@ -17,6 +17,7 @@ const FORM = '<!doctype html><title>Apply</title><body><form><h1>Apply</h1><labe
 // Every document samples its own look every 5 ms from its first moment and hands it to the test (an exposed function survives page changes).
 const SAMPLER = () => {
   const born = performance.now(), doc = Math.round(performance.timeOrigin + born);
+  window.__sampledFrom = born;
   const sample = () => { try {
     const h = document.getElementById('jobpilotto-review-host'), root = h?.shadowRoot;
     window.__rec({doc, path: location.pathname, at: Math.round(performance.timeOrigin + performance.now()), dim: !!document.getElementById('jobpilotto-fill-overlay'), host: !!h,
@@ -43,10 +44,10 @@ test('an Apply from the posting to the fill\'s end is working then one verdict, 
     await app.page.exposeFunction('__rec', sample => { samples.push(sample); });
     await app.page.addInitScript(SAMPLER);
     await app.page.goto('https://jobs.example.test/post#jobpilotto-fill');   // the app opens the posting with the fill mark
-    // The posting reloads itself to /post2 (the second load of the owner's recording). The Apply press waits until that document has lived as long as the judge asks of it (its own clock, not what it shows:
+    // The posting reloads itself to /post2 (the second load of the owner's recording). The Apply press waits until that document has been sampled as long as the judge asks of it (the sampler's clock, not what it shows:
     // a document that shows nothing must reach the judge, which reports it), so every run covers the posting, its reload and the form.
     await app.page.waitForURL('**/post2', {timeout: 20000});
-    await app.page.waitForFunction(ms => performance.now() >= ms, LOOK_BY_MS, {timeout: 20000});
+    await app.page.waitForFunction(ms => window.__sampledFrom !== undefined && performance.now() - window.__sampledFrom >= ms, LOOK_BY_MS + 20, {timeout: 20000});   // the sampler's own clock: the judge measures from the first sample
     await app.page.evaluate(() => { location.href = 'https://jobs.example.test/form'; });   // the Apply press: a page change, its address carries no mark
     // The fill writes its own end on the page a few ms after the worker's verdict (so the worker's log is complete once it shows); the hang guard names the states the worker went through.
     await app.page.waitForFunction(() => /"state":"(done|error|no-form|account)"/.test(document.documentElement.dataset.jobpilottoFill || ''), null, {timeout: 60000})

@@ -8,6 +8,7 @@ import * as storeEngine from './store/engine.js';
 import {byStore} from './store/words.js';
 import {demoPath} from './demo.js';
 import {prefetchForRun} from './e2e-host.js';
+import {REVIEW_WINDOW_MS, mayStart} from './interview-review-window.js';
 
 export function registerInterviewHandlers(ctx) {
   const writeHandle = (channel, fn) => ipcMain.handle(channel, afterWrite(fn));   // a finished write closes the running reads' join (shared-read.js)
@@ -86,10 +87,6 @@ export function registerInterviewHandlers(ctx) {
   writeHandle('ivSave', (_, id) => needsNotion('interviews') || interviews.save(storage, id));
   ipcMain.handle('ivLink', (_, pageId, jobUrl) => needsNotion('interviews') || interviews.link(storage, pageId, jobUrl));
   // A row already reviewed is reviewed again by the same run (⋯ Review again: src/ai/interviews.py review_again).
-  // One review costs ~$0.25 and takes about a minute, so a second ask for the same interview inside that window is a
-  // duplicate, whoever made it: 1 Oct 2026 produced two GitHub runs 38 s apart, two Notion rows and two different
-  // reviews of one transcript. The window is short enough that a deliberate "Review again" later still runs.
-  const REVIEW_WINDOW_MS = 2 * 60 * 1000;
   const reviewingStarted = new Map();  // interview page id -> when its review was last started
   // `why` comes from the window (the row's Review, ⋯ Review again, Save & review): the log then names the button, not
   // just "the app", which is what makes a second dispatch attributable.
@@ -98,7 +95,7 @@ export function registerInterviewHandlers(ctx) {
     const gate = needsNotion('interviews');
     if (gate) return gate;
     const id = String(pageId), caller = `Interview review (${why || 'interviews page'})`;
-    if (Date.now() - (reviewingStarted.get(id) || 0) < REVIEW_WINDOW_MS) {
+    if (!mayStart(reviewingStarted, id)) {
       appLog('dispatch', `refused ${caller} → daily.yml (interview) in ${storage.settings().cloud?.repo || 'this Mac'}: already started within ${REVIEW_WINDOW_MS / 60000} min`);
       return {ok: true, already: true, summary: 'Already reviewing this interview — it shows in Recent activity'};
     }

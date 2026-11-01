@@ -183,7 +183,16 @@
    "name": "Interviews: an interview is linked to a job and unlinked again",
    "tier": 2,
    "steps": [
-    {"suite": "interviews", "step": "an interview can be linked to a job and unlinked again, and Notion follows"}
+    {"suite": "interviews", "step": "an interview can be linked to a job and unlinked again, and Notion follows"},
+    {"suite": "interviews", "step": "the one-time setup banner shows its step and percent, then goes away when transcribing starts"}
+   ]
+  },
+  {
+   "id": "J19",
+   "name": "Focus: a job dismissed from In process stays gone",
+   "tier": 2,
+   "steps": [
+    {"suite": "focusdismiss", "step": "Dismiss on a job in process leaves the In process list at once, and is still gone after a reload (it was bouncing back to \"Interview scheduled\", 3 Oct 2026)"}
    ]
   }
  ],
@@ -215,6 +224,6 @@
  "Always on / Notion (tier 2): its own step is strategy.mjs 'an edit made directly on the Notion page is used by the next check, and a removed role stops matching', listed in J13 (tier 1); the kept storemove step 'Jobs, Focus, Interviews and Recent activity show the same items from Notion' also covers it",
   "Profile's Experience (tier 1, in J14): a new step plus its integration counterpart, after round 2; a8 writes it",
   "Cover letter (tier 2): no e2e step exists; a new short step (a job's letter reaches its form) plus its integration counterpart, after round 2; a8 writes it",
-  "Calendar and Focus (tier 2): their suites left e2e; one new short step each, after round 2; a8 writes them"
+  "Calendar (tier 2): its suite left e2e; one new short step after round 2; a8 writes it"
  ]
 }

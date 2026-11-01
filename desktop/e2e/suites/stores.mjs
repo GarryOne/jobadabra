@@ -47,22 +47,7 @@ export async function run(ctx) {
     if (settings.store !== 'sqlite') throw new Error(`the setting did not stick: store=${JSON.stringify(settings.store)}`);   // the positive control
   }, {critical: true});
 
-  await ctx.run('a remembered answer is kept in this Mac\'s Availability & compensation', async () => {
-    const before = ctx.proxy.canned();
-    // Why (29 Oct 2026, run 40836904987; #2427 exposed it): the backbone proves persistence in the returned home, given a fixed classification.
-    ctx.proxy.setCanned(body => body.messages?.[0]?.content === JSON.stringify([{id: 'q', line: 'What is your notice period?: Three months, negotiable'}])
-      ? JSON.stringify({items: [{id: 'q', home: 'availability', topic: 'notice period', clarity: 'clear'}]}) : {refuse: 'invalid-key'});
-    try {
-      await ctx.withApi(async () => {
-        const result = await page.evaluate(() => window.pilot.rememberAnswer('What is your notice period?', 'Three months, negotiable'));
-        if (!result?.ok || result.home !== 'availability') throw new Error(`rememberAnswer did not save to Availability & compensation: ${JSON.stringify(result)}`);
-        const saved = await page.evaluate(() => window.pilot.detailsFactsNow());
-        if (!saved?.ok || !saved.sections?.[result.home]?.some(field => field.label === 'What is your notice period?' && field.value === 'Three months, negotiable')) {
-          throw new Error(`${result.homeName} does not hold the remembered answer`);
-        }
-      });
-    } finally { ctx.proxy.setCanned(before); }
-  });
+  // A remembered answer kept in Availability & compensation: desktop/integration/store/remember-answer.test.mjs (moved 1 Nov 2026, R2).
 
   // Jobs → Board and the saved views (renderer/jobs-board-rules.js, pages/jobs-board.js): two applications made on the store, then moved
   // through the board's own menu, as a person would; the stage and its event must be in the store after a reload.

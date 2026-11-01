@@ -5,18 +5,17 @@ The **real** Jobadabra app, driven by Playwright on a throwaway profile, in suit
 | Suite | Starts from | Covers | Time |
 |---|---|---|---|
 | `wizard` | an emptied Notion page | the first-run path: key, Notion workspace, CV, strategy, finish | ~2.5 min |
-| `jobs` | a set-up install, its own jobs and runs reset | Actions, Recent activity, jobs check on fixture feeds, scoring, a **slow AI** (live log, no silence), Find employers, Focus/Jobs/Actions layout | ~4 min |
-| `interviews` | a set-up install, its own interview and job rows reset | the one-time setup banner, link/unlink a job, a transcript **imported through the page and reviewed for real**, a **failing AI** (clear message, no half-written row), review again (guard and replace), insights | ~4 min |
+| `jobs` | a set-up install, its own jobs and runs reset | a jobs check on the fixture feeds, scoring, and every scored job in the Jobs list against its store record. (R2, 1 Nov 2026: Find employers and the slow AI check are `integration/store/jobs-run.test.mjs`) | ~3 min |
+| `interviews` | a set-up install, its own interview and job rows reset | the one-time setup banner, link/unlink a job (night journey J18), Delete. (R2, 1 Nov 2026: reviews, a failing AI, review again and insights are `integration/store/interviews-flow.test.mjs`) | ~1 min |
 | `settings` | a set-up install | every Settings section, the AI engine panel with each engine chosen | ~30 s |
 | `personas` (**manual**) | a set-up install | one of two fictional users per run (a data analyst in Austin, a marketing manager in São Paulo; `E2E_PERSONA` picks, else they alternate by day): nothing Swiss or EU in the UI, digest or Notion; the visa flag follows citizenship and places; their search regions, Google Jobs places and currencies | ~7 min |
 | `employers` | a set-up install, its own employer rows and runs reset | Find new employers on a candidate list of every kind (good board, empty, wrong roles, dead feed, duplicate, excluded, manual watch): statuses, quality order, Employers & Sources rows, the run row's counts, a second run, the crawl's source list, a Sonnet judge | ~1 min |
 | `apply` | a set-up install + 4 kit jobs it writes | the real **Chrome extension** on fixture forms: Apply click → fill from the kit, CV, legal boxes left, AI answers highlighted, late field, multi-step, unknown widget, Submit never touched | ~3 min |
 | `qualityai:mail` (**watched part**) | the AI key only: no app, no Notion, no browser | 16 invented emails through the mail check prompt (`tools/mail_eval.py`), reported as right/total and strict misses; unavailable AI is grey | ~15 s, about a cent |
-| `activity` | a set-up install, its own run rows reset, schedule off | every task on Actions (one row, an end, plain words, a log without keys/emails/paths, no Notion row left Running) and Actions → Runs: the filters, "View all runs" (Actions → Runs), a finished run's result card, a run read only from Notion | ~4 min |
-| `activityfailures` | the same, on its own Notion page, in parallel | what goes **wrong**: the AI answering **429, 500, 401, no credit** and **never answering** (`lib/ai-proxy.mjs` modes), a spend-limit pause, a double click, a Gmail check queued behind a search, **quitting mid-run**. Shared steps: `lib/activity-steps.mjs` | ~5 min |
-| `failuresnotion` | split from `activityfailures` (6 Oct 2026), own Notion page, in parallel | Notion busy (429), an HTML error page, the connection gone, a refused Save: a clear end in words |
+| `activityfailures` | a set-up install, its own Notion page | what goes **wrong**, the part that needs the window: the AI refusing the key (**401**), **quitting mid-run**. (R2, 1 Nov 2026: 429, 500, the spending limit, silence and Notion/Telegram faults are `integration/store/run-*.test.mjs`.) Shared steps: `lib/activity-steps.mjs` | ~3 min |
+| `failuresnotion` | split from `activityfailures` (6 Oct 2026), own Notion page, in parallel | a refused Save: a clear end in words, Notion and the list agree. (Notion busy / HTML error page / connection gone under a run: `integration/store/run-faults-notion.test.mjs`) |
 | `notion-real` | the one suite on REAL Notion (P7, 9 Oct 2026), nightly gate only; borrows failuresnotion's token and page (`notionPage` guard), empties it at start and end | an app on this Mac's store connects the test workspace and moves its data there: every record once, the kit, record, interview and file read back from Notion's pages, the same screens |
-| `failureschannels` | split from `activityfailures` (6 Oct 2026), own Notion page, in parallel | the Telegram digest and a bot that refuses it, the Gmail check, a revoked Google sign-in |
+| `failureschannels` | split from `activityfailures` (6 Oct 2026), own Notion page, in parallel | the Gmail check through a fake Google (night journey J16). (The Telegram digest: `integration/store/run-channels.test.mjs`) |
 | `quality` (**nightly**) | a set-up install, golden postings, stored/replayed AI answers | exact facts, duplicates, ranking/caps, columns, app/store agreement and private logs; no judge | replayed backbone |
 | `qualityai` (**nightly**) | the same golden journey with live AI answers | live fact and score rates, Haiku judge, CV match and fresh rescore steadiness | live rates |
 | `pool` | nothing: the real engine against a stand-in website (`tools/pool_e2e.py`), a fictional photographer in Geneva | the shared pool: Find new employers sends each find and dead end at once, Search for jobs every feed and board it read, only what changed, nothing when switched off, never the search's own words; the crawl leaves out software firms and feeds where no photographer found a job; employers and job sources ranked for people like them; the central list checked hourly by its publish time | ~10 s |
@@ -153,7 +152,7 @@ journey step checks that nothing was queued to send. (2 Oct 2026: before this, t
 - **A push to `main`:** runs no e2e. Suites run only in the release run's gates (`desktop.yml`: Test · Mac + Linux, Test · Windows), on the three scheduled runs, or by hand. (`lib/plan.mjs` still knows how to pick suites from changed files, for a manual run.)
 - The UI-heal loop only follows scheduled and manual runs.
 
-## Why `activity` is two suites
+## Why `activity` was two suites (history: the task presses are now `integration/store/run-tasks.test.mjs`, R2, 1 Nov 2026)
 One suite took about 10 minutes, the slowest by far (the others 1 to 4). It is split into two that run at the same time, each on its own Notion page, and the waits were cut:
 the app's history poll (`JOB_PILOTTO_E2E_HISTORY_MS`), its resume wait (`JOB_PILOTTO_E2E_RESUME_MS`) and the watchdog's silence limit (`JOB_PILOTTO_E2E_IDLE_MS`) are shortened in the journey only
 (`desktop/lib/e2e-timing.js`), and the AI proxy's refusals ask for an immediate retry.
@@ -309,7 +308,6 @@ folded steps and probe path, and the same facts as one hidden `<!-- replay: {…
 - **To check the spend:** the Claude Console's API keys page shows the cost per key (`job-pilotto-e2e-testing` was $34.89 on 5 Oct 2026); it should not grow from local runs.
 
 
-The retired `mailreading` file is a pointer because lanes-check requires registry entries to have a file.
 The after-merge plan (a PR runs no e2e since 1 Nov 2026: unit + integration on the PR, journeys after the merge on main, in the night burn-in and the beta) reads changed files as it does for `watches`, including one-hop Python imports. It emits
 `(parts).qualityai` in `pr_steps`; plan-run carries that as `matrix.qualityParts`, and e2e.yml passes
 `E2E_QUALITY_PARTS`. Mail-only changes run only the mail eval, without the Jobs journey. Unrelated

@@ -21,10 +21,9 @@ const feed = file => read(`../fixtures/feeds/${file}`);
 const tuple = ({title, company, location}) => ({company: company.trim(), location: location.trim(), title: title.trim()});
 
 // Execute only the feed builder and literal fault data, with an in-memory writer and no app imports.
-const faultList = activity.match(/const NOTION_FAULTS = (\[[\s\S]*?\n    \]);/);
+// Why (R2, 1 Nov 2026): the Notion fault loop (one feed per fault mode) moved to integration/store/run-faults-notion.test.mjs, which runs no AI; only the Save step's feed is left here.
 const setFeedBody = helpers.match(/export function setFeed\([\s\S]*?\n}/);
-assert.ok(faultList && setFeedBody, 'Notion fault/feed definitions must remain enumerable');
-const faults = runInNewContext(faultList[1]);
+assert.ok(setFeedBody, 'the feed definition must remain enumerable');
 const writes = new Map();
 const setFeed = runInNewContext(`const feedIds = new WeakMap(); (${setFeedBody[0].replace('export ', '')})`, {
   fs: {writeFileSync: (file, text) => writes.set(file, JSON.parse(text))}, path: {join: (...parts) => parts.join('/')},
@@ -34,8 +33,8 @@ const calls = activity.slice(activity.indexOf("if (parts.includes('notion'))"), 
 assert.ok(calls?.length, 'the Notion branch must declare its feed calls');
 const company = feed('sources.json')[0].company;
 const generated = [];
-for (const call of calls) for (const fault of call.includes('fault.mode') ? faults : [null]) {
-  runInNewContext(call, {ctx: {feeds: 'memory'}, fault, setFeed});
+for (const call of calls) {
+  runInNewContext(call, {ctx: {feeds: 'memory'}, setFeed});
   generated.push(...writes.get('memory/acme.json').jobs.map(job => ({title: job.title, company, location: job.location.name})));
 }
 const routes = feed('routes.json');

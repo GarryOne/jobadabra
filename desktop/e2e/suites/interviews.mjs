@@ -1,17 +1,13 @@
 /* global document, window */
 // Job: wait on state
-// Interviews: what writes through the real app: the one-time setup banner, link and unlink a job, a transcript imported through the page's own button and reviewed with stored answers,
-// the failure path (a failing AI), review again, refresh insights, Delete (the id the page sends reaches the store). Starts from a set-up install; resets only its own rows.
+// Interviews: what needs the real app: the one-time setup banner, link and unlink a job (night journey J18) and Delete (the id the page sends reaches the store). Starts from a set-up install;
+// resets only its own rows. Reviews, review again and Refresh insights are desktop/integration/store/interviews-flow.test.mjs.
 // Why (1 Nov 2026, owner: "the beta [keeps] only the critical e2e/user journeys"): the library's screens (list, job names, filters, Open review, the consent rule, Delete) are
 // desktop/integration/app/screen-interviews.test.js; the Calendar is screen-calendar.test.js.
-import fs from 'node:fs';
-import path from 'node:path';
-import {pickFile} from '../lib/app.mjs';
 import {TRANSCRIPT, addDays} from '../lib/interview-data.mjs';
 import {addInterview, addTrackedJob} from '../lib/seed-data.mjs';
 import {clearData} from '../lib/start-state.mjs';
 import {finish, snap} from '../lib/layout.mjs';
-import {pickJob} from '../lib/picker.mjs';
 import {ensureSetUp} from '../lib/seed.mjs';
 import {answerConfirms, independent} from '../lib/steps.mjs';
 import {goView} from '../lib/go-view.mjs';
@@ -24,14 +20,11 @@ export const aiAnswers = 'backbone';   // answers its AI from the stored table i
 export const name = 'interviews';
 // Why (30 Oct 2026, ap): SQLite keeps stored answers on one setup path without the stand-in's paced Notion requests; all steps support SQLite.
 export const store = 'sqlite';
-const REVIEW_MS = 5 * 60 * 1000;
 
 export async function run(ctx) {
-  const {page, app, proxy} = ctx;
+  const {page, app} = ctx;
   // Where the library says it is kept (renderer/pages/interviews.js savedTo): Notion's database, or the app itself on this Mac's store.
   const SAVED_TO = ctx.store === 'sqlite' ? 'Saved in Jobadabra' : 'Saved to Notion 🎤 Interviews';
-  // A finished review says where it went (interviews.js: byStore 'The review is on the Notion page.' / 'The review is saved with it.').
-  const REVIEW_DONE = ctx.store === 'sqlite' ? 'The review is saved with it' : 'The review is on the Notion page';
   ctx.findings = [];
   const {step, end} = independent(ctx);
   const today = new Date().toISOString().slice(0, 10);
@@ -60,10 +53,7 @@ export async function run(ctx) {
   // The interviews as the store keeps them (any store): {id, title, overall, next_step, app_id, transcript, review}; transcript and review are whole Markdown (spec §4).
   const notionRows = async () => (await ctx.data('interviews', 'list', {})) || [];
   const interviewOf = id => ctx.data('interviews', 'get', {interview_id: id});
-  const byTitle = (list, title) => list.find(item => item.title === title);
   const sameId = (a, b) => String(a || '').replace(/-/g, '') === String(b || '').replace(/-/g, '');
-  const headingsOf = markdown => String(markdown || '').split('\n').map(line => /^#{1,4}\s+(.+?)\s*$/.exec(line)?.[1]).filter(Boolean);
-  const reviewHeadings = async id => headingsOf((await interviewOf(id))?.review);
 
   await ensureSetUp(ctx);
   await answerConfirms(page);
@@ -134,135 +124,9 @@ export async function run(ctx) {
     if (linked) throw new Error('the store still links the interview to a job after it was unlinked');
   });
 
-  await step('a transcript that fails to review leaves one saved row, not reviewed, and a clear message', () => ctx.withApi(async () => {   // the proxy's refusal needs the API engine (dummy key)
-    const file = path.join(ctx.profile, 'recruiter-call-failing.txt');
-    fs.writeFileSync(file, TRANSCRIPT);
-    const before = (await notionRows()).length;
-    await pickFile(app, file);
-    await openInterviews();
-    await page.click('#iv-add');
-    await page.locator('#iv-ready').waitFor({state: 'visible', timeout: 90000});
-    if (!(await page.inputValue('#iv-text')).includes('Terraform at scale')) throw new Error('the imported transcript is not in the editor');
-    await pickJob(page.locator('#iv-job'), seed.gamma.url);
-    proxy.setMode('no-credit');
-    const callsBefore = proxy.stats.calls;
-    try {
-      await page.click('#iv-save-review');
-      await page.waitForFunction(want => document.getElementById('iv-message').textContent.includes(want) || document.getElementById('iv-message').classList.contains('error'), SAVED_TO, {timeout: 60000});
-      await page.waitForFunction(() => document.getElementById('iv-message').classList.contains('error') && !/Saving|reviewing the interview/.test(document.getElementById('iv-message').textContent), null, {timeout: 240000});
-    } finally { proxy.setMode('pass'); }
-    const said = (await message()).trim();
-    console.log(`  the page said: ${said.slice(0, 160)}`);
-    if (proxy.stats.calls === callsBefore) throw new Error('the review never reached the AI path (test setup)');
-    if (!said || /Traceback|\{'type'|\{"type"|BadRequestError|Error code|undefined|\[object/.test(said)) throw new Error(`the failure message is not a clear sentence: "${said.slice(0, 200)}"`);
-    const after = await notionRows();
-    if (after.length !== before + 1) throw new Error(`Notion has ${after.length} interviews after the failed review, expected ${before + 1} (the saved transcript, once)`);
-    const saved = byTitle(after, 'recruiter-call-failing') || after.find(item => !seed.page && String(item.title || '').includes('failing'));
-    if (!saved) throw new Error('the saved transcript is not in the store');
-    if ((await interviewOf(saved.id))?.overall) throw new Error('the interview has an outcome although its review failed');
-    const headings = await reviewHeadings(saved.id);
-    if (headings.some(text => ['Strengths', 'Questions', 'Weak spots'].includes(text))) throw new Error(`a half-written review was saved: ${headings}`);
-    if (!/Terraform at scale/.test((await interviewOf(saved.id))?.transcript || '')) throw new Error('the saved row lost its transcript');
-    seed.failed = {page: saved.id};
-    await page.waitForFunction(id => /^Review$/.test(document.querySelector(`#iv-saved tr[data-id="${id}"] .iv-main`)?.textContent.trim() || ''), saved.id, {timeout: 60000}).catch(() => {});
-    const label = (await row(saved.id).locator('.iv-main').innerText()).trim();
-    if (label !== 'Review') throw new Error(`the row's button says "${label}" after the failure, so it cannot be retried`);
-  }));
-
-  await step('a transcript imported through the page is reviewed for real: outcome, strengths, next step, the right job, and the insights follow', async () => {
-    const file = path.join(ctx.profile, 'recruiter-call-gamma.txt');
-    fs.writeFileSync(file, TRANSCRIPT);
-    const before = await notionRows();
-    await pickFile(app, file);
-    await openInterviews();
-    await page.click('#iv-add');
-    await page.locator('#iv-ready').waitFor({state: 'visible', timeout: 90000});
-    await pickJob(page.locator('#iv-job'), seed.gamma.url);
-    const calls = proxy.stats.calls;
-    await page.click('#iv-save-review');
-    await page.waitForFunction(done => { const text = document.getElementById('iv-message').textContent; return (text.includes(done) || /failed|Could not|error/i.test(text)) && !/reviewing the interview/.test(text); }, REVIEW_DONE,
-      {timeout: REVIEW_MS, polling: 2000});
-    const said = (await message()).trim();
-    if (!said.includes(REVIEW_DONE)) throw new Error(`the review did not finish: "${said.slice(0, 240)}"`);
-    const after = await notionRows();
-    const added = after.filter(item => !before.some(old => old.id === item.id));
-    if (added.length !== 1) throw new Error(`${added.length} new interview rows in the store after one import, expected 1`);
-    const saved = added[0];
-    seed.imported = {page: saved.id};
-    const overall = (await interviewOf(saved.id))?.overall;
-    if (!['positive', 'neutral', 'negative'].includes(overall)) throw new Error(`the row has no outcome (Overall "${overall}")`);
-    const reviewed = await interviewOf(saved.id);
-    if (!sameId(reviewed?.app_id, seed.gamma.id)) throw new Error('the interview is not linked to the Gamma job that was chosen');
-    if (!String(reviewed?.next_step || '').trim()) throw new Error('the review has no next step although the call names one');
-    const headings = await reviewHeadings(saved.id);
-    for (const wanted of ['Strengths', 'Questions']) if (!headings.includes(wanted)) throw new Error(`the review has no "${wanted}" section: ${headings}`);
-    if (!headings.some(text => ['Weak spots', 'Practise before the next round'].includes(text))) throw new Error(`the review names no gap and no practice step: ${headings}`);
-    console.log(`  reviewed: ${overall}; ${proxy.stats.calls - calls} AI call(s); sections: ${headings.join(', ')}`);
-    await page.waitForFunction(id => /Positive|Neutral|Negative/.test(document.querySelector(`#iv-saved tr[data-id="${id}"] td:nth-child(5)`)?.innerText || ''), saved.id, {timeout: 90000});
-    // The insights card appears (reviewed interviews exist) and the review's own refresh wrote the "Interview patterns" row.
-    await page.waitForFunction(() => !document.getElementById('iv-insight').hidden, null, {timeout: 60000});
-    const patterns = ((await ctx.data('insights', 'list', {category: 'Interview patterns'})) || []).filter(item => item.category === 'Interview patterns');
-    if (patterns.length !== 1) throw new Error(`${patterns.length} "Interview patterns" insights in the store, expected exactly 1`);
-    await snap(ctx, 'interviews-reviewed', {situation: 'After importing a transcript and reviewing it: the library with the new outcome, and the Insights card'});
-  });
-
-  await step('Review again right after a review starts nothing: no second call, no duplicate row, no duplicate review', async () => {
-    if (!seed.imported) throw new Error('needs the imported interview of the previous step');
-    if (ctx.engine !== 'api') return console.log('  not checked on Claude Code: this step counts AI calls at the proxy, which Claude Code does not use (CI checks it)');
-    await openInterviews();
-    const before = await notionRows();
-    const calls = proxy.stats.calls;
-    await chooseFromMenu(seed.imported.page, 'Review again');
-    // reviewAgainRow publishes this terminal message only after iv.review returns.
-    await stepWait('the interview review message settled', timeout => page.waitForFunction(() => !/reviewing the interview again/.test(document.getElementById('iv-message').textContent) && document.getElementById('iv-message').textContent.trim() !== '', null, {timeout}));
-    const said = (await message()).trim();
-    // Retained: the terminal message cannot rule out a late second dispatch; no app signal closes that observation window.
-    await page.waitForTimeout(3000);
-    if (proxy.stats.calls !== calls) throw new Error(`a second review started within the guard window: ${proxy.stats.calls - calls} AI call(s)`);
-    if ((await notionRows()).length !== before.length) throw new Error('Review again added or removed an interview row');
-    const headings = await reviewHeadings(seed.imported.page);
-    if (headings.filter(text => text === 'Questions').length !== 1) throw new Error(`the review is on the page ${headings.filter(text => text === 'Questions').length} times`);
-    if (/was replaced/.test(said)) throw new Error(`the page claims "${said}" although no review ran`);
-  });
-
-  await step('Review again on an older review replaces it: same row, one review, the old text gone', async () => {
-    await openInterviews();
-    const before = await notionRows();
-    const calls = proxy.stats.calls;
-    await chooseFromMenu(seed.ivPositive.page, 'Review again');
-    await page.waitForFunction(() => /was replaced|failed/i.test(document.getElementById('iv-message').textContent), null, {timeout: REVIEW_MS, polling: 2000});
-    const said = (await message()).trim();
-    if (!/was replaced/.test(said)) throw new Error(`review again did not finish: "${said.slice(0, 240)}"`);
-    if (ctx.engine === 'api' && proxy.stats.calls === calls) throw new Error('review again made no AI call');   // Claude Code does not go through the proxy; "was replaced" above proves a review ran
-    const after = await notionRows();
-    if (after.length !== before.length) throw new Error(`review again changed the number of rows: ${before.length} → ${after.length}`);
-    const again = await interviewOf(seed.ivPositive.page);
-    if (/SEED/.test(again?.review || '')) throw new Error('the old (seeded) review text is still in the review');
-    for (const heading of ['Strengths', 'Questions']) {
-      const count = headingsOf(again?.review).filter(text => text === heading).length;
-      if (count !== 1) throw new Error(`"${heading}" is in the review ${count} times after review again`);
-    }
-    if (!/Terraform at scale/.test(again?.transcript || '')) throw new Error('review again lost the transcript');
-  });
-
-  await step('Refresh insights without a new review says it is up to date and spends nothing', async () => {
-    await openInterviews();
-    await page.waitForFunction(() => !document.getElementById('iv-insight').hidden, null, {timeout: 60000});
-    // The review above changed a row: one refresh brings the card up to date, the next one finds nothing to do.
-    const refresh = page.locator('.iv-insight-refresh');
-    await refresh.click();
-    await page.waitForFunction(() => !document.querySelector('.iv-insight-refresh')?.disabled, null, {timeout: REVIEW_MS, polling: 2000});
-    const calls = proxy.stats.calls;
-    await refresh.click();
-    await page.waitForFunction(() => /up to date/i.test(document.getElementById('iv-message').textContent), null, {timeout: 120000}).catch(async () => {
-      // On the stand-in store with the API engine (CI) this step never saw "up to date" (12 Oct 2026); on Claude Code it does. Say what the page and the proxy saw.
-      const said = ((await page.locator('#iv-message').textContent().catch(() => '')) || '').replace(/\s+/g, ' ').trim().slice(0, 240);
-      const busy = await refresh.isDisabled().catch(() => null);
-      throw new Error(`the second refresh never said "up to date" in 2 minutes; the page says "${said}"; the button is ${busy ? 'still busy' : 'free'}; AI calls since the first refresh ended: ${proxy.stats.calls - calls}`);
-    });
-    if (proxy.stats.calls !== calls) throw new Error('a refresh with nothing changed still called the AI');
-  });
-
+  // Why (R2, 1 Nov 2026, owner: "only the critical e2e/user journeys"): the failed review, the imported and reviewed transcript, Review again (right after, and on an older review) and Refresh insights
+  // moved to desktop/integration/store/interviews-flow.test.mjs and desktop/test/interview-review-window.test.js, which run on every PR touching Interviews. Kept here: the setup banner (sent by the main process),
+  // link and unlink (night journey J18) and Delete (the id the page sends).
   await step('Delete moves an interview to the Notion trash and takes it off the page', async () => {
     await openInterviews();
     const target = seed.ivNeutral.page;

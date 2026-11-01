@@ -10,9 +10,9 @@ import {SUITES} from '../lib/context.mjs';
 ensureStaged(fileURLToPath(new URL('../..', import.meta.url)));
 const registry = loadJourneys();
 
-// Why (1 Nov 2026, owner via mac-07: "'Find jobs using your browser' this is not critical", "Move all 3 to integration"): J3 is out; the registry has J0-J2, J4-J12 and the tier additions J13-J18.
-test('the registry holds the journeys J0-J2, J4-J12 and the tier additions J13-J18, each with a name and steps', () => {
-  assert.deepEqual(registry.journeys.map(journey => journey.id), ['J0', 'J1', 'J2', 'J4', 'J5', 'J6', 'J7', 'J8', 'J9', 'J10', 'J11', 'J12', 'J13', 'J14', 'J15', 'J16', 'J17', 'J18']);
+// Why (1 Nov 2026, owner via mac-07: "'Find jobs using your browser' this is not critical", "Move all 3 to integration"): J3 is out; the registry has J0-J2, J4-J12 and the tier additions J13-J19.
+test('the registry holds the journeys J0-J2, J4-J12 and the tier additions J13-J19, each with a name and steps', () => {
+  assert.deepEqual(registry.journeys.map(journey => journey.id), ['J0', 'J1', 'J2', 'J4', 'J5', 'J6', 'J7', 'J8', 'J9', 'J10', 'J11', 'J12', 'J13', 'J14', 'J15', 'J16', 'J17', 'J18', 'J19']);
   for (const journey of registry.journeys) {
     assert.ok(journey.name.length > 10, `${journey.id} has the owner's name`);
     assert.ok(journey.steps.length > 0, `${journey.id} has steps`);

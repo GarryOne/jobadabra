@@ -16,14 +16,21 @@ import {newStore} from './screen-store.js';
 import {probeWindow} from './window-probe.js';
 
 const live = {skip: needsElectron.skip};
-/** What each failed run's screen must say before its picture is kept (regex sources, matched in the window): the screen is the state it is named for. */
-const SAYS = {limit: 'spend(ing)? limit|AI limit', credits: 'credit', telegram: 'telegram', google: 'google|gmail|sign.?in', unexplained: 'failed|couldn.t|did not', queued: 'another|waiting|running|queue'};
+/** What each failed run's screen says, as the window draws it (read from the app, 1 Nov 2026): the words only that state has, so the state is the one the picture is named for. The pattern is matched in the window. */
+const SCREEN = {
+  limit: 'Your API spend limit was reached', credits: 'API credits are exhausted', telegram: 'Telegram message not delivered',
+  google: 'Google sign-in expired or was revoked', unexplained: 'An unexpected error interrupted this run', queued: 'waiting for another Jobadabra run',
+};
+const SAYS = Object.fromEntries(Object.entries(SCREEN).map(([key, text]) => [key, text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')]));
 const PICTURES = [...Object.keys(FAILED_STATES).map(key => `activity-failed-${key}`), 'calendar-empty', 'focus-empty-account', 'interviews-search-empty'];
 
-test('every picture of the night has its own lower case name, and a "says" check, so one state cannot stand in for another', () => {
+test('every picture of the night has its own lower case name, and each failed run has words only its own screen says', () => {
   assert.equal(new Set(PICTURES).size, PICTURES.length);
   for (const name of PICTURES) assert.match(name, /^[a-z0-9-]+$/);
   assert.deepEqual(Object.keys(SAYS), Object.keys(FAILED_STATES));
+  for (const [key, pattern] of Object.entries(SAYS)) {
+    for (const [other, text] of Object.entries(SCREEN)) assert.equal(new RegExp(pattern, 'i').test(text), key === other, `/${pattern}/ ${key === other ? 'does not match its own screen' : `also matches the ${other} screen`}`);
+  }
 });
 
 if (process.env.E2E_SHOTS_DIR) {

@@ -703,6 +703,10 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         timeout-minutes: 5
+      - uses: ./.github/actions/gh-ledger
+        with:
+          phase: start
+        timeout-minutes: 5
       - uses: actions/setup-node@v5
         timeout-minutes: 5
         with:
@@ -754,6 +758,11 @@ jobs:
           path: integration-shots
           if-no-files-found: ignore
           retention-days: 7
+      - if: always()
+        uses: ./.github/actions/gh-ledger
+        with:
+          phase: end
+        timeout-minutes: 5
 
   # The AI screenshot review: every suite's pages in ONE Claude batch, after the suites (.github/actions/e2e-review; owner, 26 Oct 2026: "cut the costs in half, but close to the same quality as Claude").
 

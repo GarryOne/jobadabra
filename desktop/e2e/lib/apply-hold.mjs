@@ -40,10 +40,16 @@ export function moveAppWaitClock(_electron, {module, dueAt}) {
 
 /** Ask the owned service worker to complete a fresh poll; a missing worker or missing acknowledgement is failed evidence. */
 export async function pollOwnedBackground(profile, {targets = hiddenTargets, evaluate = evaluateOn} = {}) {
-  const worker = (await targets(profile)).find(target => target.type === 'service_worker');
-  if (!worker) throw new Error('no owned service worker for the due-time poll');
+  const all = await targets(profile), worker = all.find(target => target.type === 'service_worker');
+  if (!worker) throw new Error(`no owned service worker for the due-time poll (targets: ${all.map(target => `${target.type} ${String(target.url).slice(0, 60)}`).join(' | ') || 'none'})`);
   const acknowledged = await evaluate(worker.webSocketDebuggerUrl, 'globalThis.__jobPilottoBackgroundSessions?.poll()', {strict: true});
-  if (acknowledged !== true) throw new Error('the owned extension poll did not acknowledge completion');
+  if (acknowledged !== true) {
+    // Why (1 Nov 2026, apply-3of3 41264415439 + 41264558340, no cause provable): the reply was empty with no error and no /extension/background-apply request reached the app, so the message
+    // says what was asked: the reply, every service worker target and whether each one has the poll's global, instead of a guess at a cold or a stale worker.
+    const workers = all.filter(target => target.type === 'service_worker');
+    const has = await Promise.all(workers.map(async target => `${String(target.url).slice(0, 70)} has the poll: ${await evaluate(target.webSocketDebuggerUrl, "typeof globalThis.__jobPilottoBackgroundSessions?.poll === 'function'").catch(error => `unreadable (${error.message})`)}`));
+    throw new Error(`the owned extension poll did not acknowledge completion (reply: ${JSON.stringify(acknowledged ?? null)}; asked ${String(worker.url).slice(0, 70)}; service workers: ${has.join(' | ')})`);
+  }
   return true;
 }
 

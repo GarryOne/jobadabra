@@ -173,8 +173,11 @@ test('a due-time proof requires a live worker and an acknowledged extension poll
   const {pollOwnedBackground} = await import('../lib/apply-hold.mjs');
   await assert.rejects(() => pollOwnedBackground('/fixture', {targets: async () => []}), /no.*service worker/);
   for (const result of [null, false, undefined]) {
-    await assert.rejects(() => pollOwnedBackground('/fixture', {targets: async () => [{type: 'service_worker', webSocketDebuggerUrl: 'ws://fixture'}], evaluate: async () => result}), /poll.*acknowledge/);
+    await assert.rejects(() => pollOwnedBackground('/fixture', {targets: async () => [{type: 'service_worker', url: 'chrome-extension://fixture/background.js', webSocketDebuggerUrl: 'ws://fixture'}], evaluate: async () => result}), /poll.*acknowledge/);
   }
+  // A refused acknowledgement names what it asked: the reply and, per service worker, whether it has the poll (apply-3of3 41264415439 had neither).
+  await assert.rejects(() => pollOwnedBackground('/fixture', {targets: async () => [{type: 'page', url: 'https://x'}, {type: 'service_worker', url: 'chrome-extension://fixture/background.js', webSocketDebuggerUrl: 'ws://fixture'}],
+    evaluate: async (_url, expression) => (expression.startsWith('typeof') ? false : undefined)}), /reply: null; asked chrome-extension:\/\/fixture\/background\.js; service workers: chrome-extension:\/\/fixture\/background\.js has the poll: false/);
   assert.equal(await pollOwnedBackground('/fixture', {targets: async () => [{type: 'service_worker', webSocketDebuggerUrl: 'ws://fixture'}], evaluate: async () => true}), true);
 });
 

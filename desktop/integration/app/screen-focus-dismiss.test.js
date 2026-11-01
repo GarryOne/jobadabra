@@ -1,4 +1,4 @@
-/* global document, window */
+/* global document, window, localStorage */
 // Focus, layer 2: the five ways to finish an Up next card, moved from the e2e `focus` and `focusdismiss` suites (5 Oct 2026, owner: a card was dismissed, came back after a
 // refresh, then left again). The window side: each card leaves at once, stays gone after a refresh and after a reload while the engine still lists it (the in-app hold,
 // pages/focus.js, covers the store's lag). The store side: the engine command each button runs, and the next payload no longer lists the card ("once the hold is over").
@@ -53,7 +53,9 @@ before(() => {
     const ways = ['Osprey Agency', 'Plover Partners', 'Wren Labs', 'Heron Data', 'Lark Systems'];
     await kit.until(() => document.querySelector('.nav[data-view=focus]:not([hidden])'), 'the menu');
     await kit.open(); kit.showAll();
-    return {...before, afterReload: ways.map(who => ({who, back: !!kit.row(who)}))};
+    // How long the saved holds still last after the reload (pages/focus.js HOLD_MS): the shortest, in ms.
+    const holds = Object.values(JSON.parse(localStorage.getItem('focusHolds') || '{}')).map(until => until - Date.now());
+    return {...before, afterReload: ways.map(who => ({who, back: !!kit.row(who)})), holdLeftMs: holds.length ? Math.min(...holds) : null};
   }, env: {}});
 });
 after(() => store?.remove());
@@ -67,6 +69,13 @@ for (const way of WAYS) {
     assert.equal(ran.result.afterReload.find(one => one.who === way.who).back, false, `the ${way.kind} card for ${way.who} is listed again after a reload`);
   });
 }
+
+// A planted code bug (desktop/e2e/mutants.json focus-hold-one-minute; 5 Oct 2026, the hold ended after a minute): a hold shorter than the store takes to list a write
+// lets a dismissed card come back. The store can take minutes (#315), so after the reload every hold still has minutes left, not seconds.
+test('the in-app hold on a dismissed card outlives the store\'s lag: minutes are left after the reload', live, () => {
+  assert.ok(ran.result.holdLeftMs !== null, 'no hold was saved for the dismissed cards');
+  assert.ok(ran.result.holdLeftMs >= 5 * 60000, `the shortest hold has ${Math.round(ran.result.holdLeftMs / 1000)} s left after the reload`);
+});
 
 test('once the in-app hold is over, none of the dismissed Up next cards comes back from the store', () => {
   const item = way => payload.items.find(one => one.kind === way.kind && way.card.test(one.headline || ''));

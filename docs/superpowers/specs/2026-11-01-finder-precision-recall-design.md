@@ -47,8 +47,8 @@ beyond the flips between them (about ±8 of 39). Memory `feedback-eval-bar-needs
 ## Progress
 - [x] Measure the 4 items on origin/main (this spec, the sketch) (proof: docs/superpowers/specs/2026-11-01-finder-precision-recall-design.md)
 - [x] Item 1: table to a8; no code (mac-07, 1 Nov 2026) (proof: none: a decision sent to a8 and mac-07, no file changes)
-- [ ] [fr] 1/3 layout fixtures (#281, #1169, #1711 pair) + this spec
-- [ ] #1951, #1712 relabelled `resolution:duplicate` (needs the owner's OK to write to GitHub issues)
+- [x] [fr] 1/3 layout fixtures (#281, #1169, #1711 pair) + this spec (proof: desktop/e2e/test/pool/uicheck.test.mjs @deb7e00)
+- [x] #1951, #1712 relabelled `resolution:duplicate` (proof: none: GitHub labels the owner set on 1 Nov 2026; the scorecard reads Layout and DOM checks 42% to 45%, overall 53% to 54%)
 - [ ] [fr] 2/3 the 2-run line in the triage skill and `lib/vision.mjs`
-- [ ] [fr] 3/3 planted code bugs on unit and integration tests; /self-heal shows n of 12
+- [x] [fr] 3/3 planted code bugs on unit and integration tests; /self-heal shows n of 12 (proof: desktop/e2e/mutate-tests.mjs)
 - [ ] Before/after precision and recall to mac-07

@@ -82,3 +82,12 @@ test('a meeting\'s job id: the store\'s page_id on every store, else the Notion 
   assert.equal(c.page({page_id: '', notion_url: 'https://www.notion.so/SRE-0123abcd'}), '0123abcd');
   assert.equal(c.page({}), '');
 });
+
+// A planted code bug (desktop/e2e/mutants.json calendar-day-dropped; #120 and #122 were this bug): the grid marked one day as outside its month. Every month, every day of it is in.
+test('the month grid holds every day of its month once, and no day of another month as its own', () => {
+  for (const [year, month] of [[2026, 0], [2026, 1], [2028, 1], [2026, 9], [2026, 11]]) {
+    const days = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+    const inMonth = c.monthGrid(year, month, [], '').flat().filter(cell => cell.inMonth).map(cell => cell.num);
+    assert.deepEqual(inMonth, Array.from({length: days}, (_, i) => i + 1), `${year}-${month + 1}`);
+  }
+});

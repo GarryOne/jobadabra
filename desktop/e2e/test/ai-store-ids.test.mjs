@@ -1,13 +1,12 @@
-// A replayed AI ask must not depend on the ids a store made up for this run (Notion block ids on the stand-in leg), and a leg whose answer cache is empty is a seeding run (lib/ai-meter.mjs).
+// A replayed AI ask must not depend on the ids a store made up for this run (Notion block ids on the stand-in leg; lib/ai-meter.mjs askKey).
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
-import {askKey, noteCacheStart, resetSeeding, resetUsage, seedingRun, usage} from '../lib/ai-meter.mjs';
+import {askKey, resetUsage, usage} from '../lib/ai-meter.mjs';
 import {startAiProxy} from '../lib/ai-proxy.mjs';
-import {aiMissesVerdict, checkAiMisses} from '../lib/no-real-ai.mjs';
 
 const uuid = n => `${String(n).padStart(8, '0')}-aaaa-4bbb-8ccc-${String(n).padStart(12, '0')}`;
 // The shape of the organize ask captured from night burn-in 41269467529 (wizard-standin): destinations and lines carry the store's own block ids.
@@ -77,31 +76,4 @@ test('an answer kept under the old raw key still replays for the same ids', asyn
   assert.equal(got.content[0].text, 'old answer');
   assert.equal(upstream.seen.calls, 0);
   await proxy.close();
-});
-
-test('a leg that starts with an empty answer cache is a seeding run: its misses are saved for the next run, not a red', t => {
-  const cache = fs.mkdtempSync(path.join(os.tmpdir(), 'ai-seed-')), artifacts = fs.mkdtempSync(path.join(os.tmpdir(), 'ai-seed-art-'));
-  t.after(() => { resetSeeding(); fs.rmSync(cache, {recursive: true, force: true}); fs.rmSync(artifacts, {recursive: true, force: true}); });
-  fs.mkdirSync(path.join(artifacts, 'ai-misses')); fs.writeFileSync(path.join(artifacts, 'ai-misses', 'a.json'), '{}');
-  const env = {E2E_AI_CACHE: cache, E2E_AI_REPLAY: '1'};
-  resetSeeding(); noteCacheStart(env);
-  assert.equal(seedingRun(env), true);
-  assert.equal(checkAiMisses(artifacts, {aiMissesMax: 0}, seedingRun(env)).ok, true, 'seeding: not red');
-  assert.equal(checkAiMisses(artifacts, {aiMissesMax: 0}, seedingRun(env)).misses, 1, 'the miss is still counted');
-  assert.equal(checkAiMisses(artifacts, {aiMissesMax: 0}, false).ok, false, 'positive control: the same miss on a seeded leg is red');
-  assert.equal(aiMissesVerdict(3, {aiMissesMax: 0}, 'k', false).ok, false);
-});
-
-test('a leg with kept answers, a backbone suite, or no replay is never a seeding run', t => {
-  const cache = fs.mkdtempSync(path.join(os.tmpdir(), 'ai-seed2-'));
-  t.after(() => { resetSeeding(); fs.rmSync(cache, {recursive: true, force: true}); });
-  const env = {E2E_AI_CACHE: cache, E2E_AI_REPLAY: '1'};
-  resetSeeding(); noteCacheStart(env);
-  assert.equal(seedingRun({...env, E2E_AI_ANSWERS: 'backbone'}), false, 'a backbone suite keeps its zero ceiling');
-  assert.equal(seedingRun({...env, E2E_AI_REPLAY: '0'}), false);
-  fs.writeFileSync(path.join(cache, 'x.json'), '{}');
-  resetSeeding(); noteCacheStart(env);
-  assert.equal(seedingRun(env), false, 'one kept answer: the ceiling applies');
-  resetSeeding();
-  assert.equal(seedingRun(env), false, 'never noted: not seeding');
 });

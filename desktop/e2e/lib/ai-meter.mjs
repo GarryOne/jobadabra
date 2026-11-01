@@ -105,18 +105,6 @@ export function recallAsk(ask, url, body, env = process.env) {
 export function keepAsk(ask, answer, env = process.env) {
   keep(ask.key, ask.ids.length ? {...answer, body: Buffer.from(swap(Buffer.from(answer.body).toString('utf8'), ask.ids, slot))} : answer, env);
 }
-
-// A leg whose answer cache is empty at the start (a new leg, or one GitHub dropped) can only ask live: every ask is a miss, the ceiling fails, and a red run never saves its cache,
-// so the next run starts empty again. Why (1 Nov 2026, a8): wizard-standin had no `ai-answers-wizard-standin-*` cache in any of 3 night burn-ins; none of the 28 suites' stand-in legs had one.
-// Invariant: only a replaying, non-backbone run that started with no kept answer is seeding; a backbone suite answers from its table and keeps its zero.
-let cacheAtStart = null;
-const entriesIn = dir => { try { return fs.readdirSync(dir).filter(name => name.endsWith('.json')).length; } catch (error) { if (error.code === 'ENOENT') return 0; throw error; } };
-/** Count the kept answers once, before the first ask. */
-export function noteCacheStart(env = process.env) { if (cacheAtStart === null && replaying(env)) cacheAtStart = entriesIn(cacheDir(env)); }
-/** Forget the noted cache start (a test, or a second suite in one process). */
-export const resetSeeding = () => { cacheAtStart = null; };
-/** -> true when this run replays, is not a backbone suite, and started with no kept answer (see noteCacheStart); false before it was noted. */
-export const seedingRun = (env = process.env) => cacheAtStart === 0 && replaying(env) && env.E2E_AI_ANSWERS !== 'backbone';
 // Everything inside fn asks the model, whatever E2E_AI_REPLAY says; replay is back after it. For a check whose point is a second, independent answer (quality's
 // second scoring: replayed, it got the first answers back and always read ±0, 26 Oct 2026). Guard: test/ai-meter.test.mjs.
 export async function fresh(fn, env = process.env) {

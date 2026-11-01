@@ -8,7 +8,7 @@ import {upstreamCredentials} from './proxy-credentials.mjs';
 import {HUNG_REPORTS, markPlanted} from './planted.mjs';
 import {keyFingerprint} from './key-check.mjs';
 import {capMessage, capReached, noteCapped} from './ai-cap.mjs';
-import {askKey, count, countError, countReplay, keepAsk, keepMiss, noteCacheStart, recallAsk, usageOf} from './ai-meter.mjs';
+import {askKey, count, countError, countReplay, keepAsk, keepMiss, recallAsk, usageOf} from './ai-meter.mjs';
 import {keepCandidateBody, message, storedAnswer} from './ai-answers.mjs';
 // Why (#2450 slice 3): test/ai-answers.test.mjs and test/applycheck.test.mjs still import this shared wrapper here.
 export {message} from './ai-answers.mjs';
@@ -87,7 +87,6 @@ async function serveFault(control, fault, ready, res, openai) {
 // turn too (9 Oct 2026: the first OpenAI run let every stand-in pass through to the real model). shape 'openai': the Responses API, translated both ways.
 /** Start the app's AI proxy with fault controls, stored answers and metered live fallback. */
 export async function startAiProxy({delayMs = 0, target = 'https://api.anthropic.com', kind = 'app', metered = /\/messages(\?|$)/, shape = 'anthropic', follow = null, maxCalls = 0, relay = null, credentials = {}} = {}) {   // maxCalls: the refill's per-row cap on paid calls (lib/refill.mjs): the next one is refused here, before Anthropic
-  noteCacheStart();   // before any answer is kept: a run that starts with none is a seeding run (lib/ai-meter.mjs seedingRun)
   const stats = {calls: 0, delayMs, mode: 'pass', canned: 0, armed: 0, failed: 0, fault: faultScope('pass')};   // armed / failed: the runner's check that a step's fault fired (lib/faults.mjs)
   const pending = new Set();
   let canned = null;   // (request body as an object) -> the text a model would answer, or null to pass the call through to Anthropic

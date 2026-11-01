@@ -80,6 +80,7 @@ jobs:
       review: ${{ steps.plan.outputs.review }}
       red_note: ${{ steps.redmain.outputs.note || inputs.red_not_blocking }}   # Why (1 Nov 2026, owner: "Safety strict, rest tolerant"): a red that is not safety or data does not stop a beta; the release notes list it
       over: ${{ steps.spend.outputs.over }}                # today's e2e AI budget is spent
+      built_from: ${{ steps.built.outputs.label }}         # "5f3d29b · main's head · 4 minutes ago": the commit this run is built from and its age, shown on the graph
     permissions:
       contents: write   # the tag and the draft release
       actions: write    # a fresh build of main when this one can't be released
@@ -97,6 +98,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Which commit this run is built from (an annotation on the run)
+        id: built
         timeout-minutes: 5
         run: |
           # Why (1 Nov 2026, owner: "We should show though, on the beta pipeline, as an annotation. What is the commit chosen and how old it is... or both"): a by-hand beta is built from the newest
@@ -111,6 +113,9 @@ jobs:
           if [ "$behind" = 0 ]; then where="the newest commit of main (its head)"; else where="the ${n}${sfx} newest commit of main, $behind behind the head $(git rev-parse --short origin/main) and $older older than it"; fi
           echo "::notice title=Built from ${GITHUB_SHA:0:7}::$subject ($where, committed $ago)"
           echo "Built from ${GITHUB_SHA:0:7}: $subject ($where, committed $ago)"
+          # Why (1 Nov 2026, owner, on beta 10's graph: "I don't see where it says how old is the commit"): the annotation sits below the graph; the short label is the name of a box in it.
+          if [ "$behind" = 0 ]; then place="main's head"; else place="$behind behind main's head"; fi
+          echo "label=${GITHUB_SHA:0:7} · $place · $ago" >> "$GITHUB_OUTPUT"
       - uses: ./.github/actions/gh-ledger
         with:
           phase: start
@@ -1325,7 +1330,7 @@ jobs:
   # jobs only read its result. They used to wait for it after their own work (beta 41333086670: Release · Mac waited ~8 min on a build.yml that started 17:41). tools/release-checks.sh
   # stays the one place that knows the check (--wait-ci here, --after-ci in the Release jobs); a red, timed out, cancelled or skipped job refuses the release (the Release jobs read its result).
   main-ci:
-    name: Main's CI on this commit
+    name: ${{ format('Main''s CI on {0}', needs.changes.outputs.built_from) }}
     needs: changes
     if: needs.changes.outputs.gate == 'true'
     runs-on: ubuntu-24.04
@@ -1736,6 +1741,7 @@ jobs:
     permissions:
       contents: write   # delete the older test builds, retitle releases
       issues: write     # the pinned Release channels issue
+      actions: read     # the credit alert downloads this run's suite artifacts
     steps:
       - uses: actions/checkout@v5
         timeout-minutes: 5
@@ -1760,63 +1766,48 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: python3 tools/sync_release_labels.py || echo "labels not refreshed"   # best effort, never fails a build
-      - if: always()
-        uses: ./.github/actions/gh-ledger
-        with:
-          phase: end
-        timeout-minutes: 5
-
-  # Why (31 Oct 2026, owner): "It should just raise an alert. And that's it." One credit alert per workflow run, never a beta hold.
-  ai-credit-health:
-    name: AI credit health
-    needs: [test-mac, test-windows]
-    if: always() && !cancelled() && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/beta-pick/'))
-    continue-on-error: true
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    permissions:
-      contents: read
-      actions: read
-    env:
-      E2E_ARTIFACT_SECRET_NAMES: |
-        GH_TOKEN
-        CI_ALERTS_TELEGRAM_BOT_TOKEN
-        CI_ALERTS_TELEGRAM_CHAT_ID
-      GH_TOKEN: ${{ github.token }}
-      CI_ALERTS_TELEGRAM_BOT_TOKEN: ${{ secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN }}
-      CI_ALERTS_TELEGRAM_CHAT_ID: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}
-    steps:
-      - uses: actions/checkout@v5
-        timeout-minutes: 5
-        with:
-          sparse-checkout: |
-            desktop/e2e
-            tools/gh-ledger.sh
-            .github/actions/gh-ledger
-            tools/scan-e2e-artifacts.py
-      - uses: ./.github/actions/gh-ledger
-        with:
-          phase: start
-        timeout-minutes: 5
+      # Why (1 Nov 2026, owner on beta 10's graph: "We're still showing AI Credit health"; Gitar on #2904): the beta's judge steps and relay still write ai-capped.json, so the alert stays, as steps of the run's last job instead of a box of its own.
+      # Never a hold: every step is continue-on-error (owner, 31 Oct 2026: "It should just raise an alert. And that's it.").
       - uses: actions/setup-node@v5
+        if: always() && !cancelled() && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/beta-pick/'))
+        continue-on-error: true
         timeout-minutes: 5
         with:
           node-version: '22'
       - name: AI credit is an alert, never a hold
+        if: always() && !cancelled() && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/beta-pick/'))
+        continue-on-error: true
         timeout-minutes: 5
+        env:
+          E2E_ARTIFACT_SECRET_NAMES: |
+            GH_TOKEN
+            CI_ALERTS_TELEGRAM_BOT_TOKEN
+            CI_ALERTS_TELEGRAM_CHAT_ID
+          GH_TOKEN: ${{ github.token }}
+          CI_ALERTS_TELEGRAM_BOT_TOKEN: ${{ secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN }}
+          CI_ALERTS_TELEGRAM_CHAT_ID: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}
         run: |
-          gh run download "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --pattern 'e2e-artifacts-*' --dir ai-credit-health || echo "::notice::No suite artifacts available for AI credit health"
+          gh run download "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --pattern 'e2e-artifacts-*' --dir credit-artifacts || echo "::notice::No suite artifacts available for the AI credit alert"
           gh run download "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --name "ai-credit-alert-$GITHUB_RUN_ID" --dir ai-credit-alert || true
-          node desktop/e2e/credit-alert.mjs --artifacts ai-credit-health --marker ai-credit-alert/alert-sent.txt
+          node desktop/e2e/credit-alert.mjs --artifacts credit-artifacts --marker ai-credit-alert/alert-sent.txt
       - name: Scan artifact contents for CI secrets
-        timeout-minutes: 5
         id: artifact_scan_1
-        if: always()
+        if: always() && !cancelled() && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/beta-pick/'))
+        continue-on-error: true
+        timeout-minutes: 5
         env:
           E2E_ARTIFACT_PATHS: ai-credit-alert/alert-sent.txt
-        run: python tools/scan-e2e-artifacts.py
+          E2E_ARTIFACT_SECRET_NAMES: |
+            GH_TOKEN
+            CI_ALERTS_TELEGRAM_BOT_TOKEN
+            CI_ALERTS_TELEGRAM_CHAT_ID
+          GH_TOKEN: ${{ github.token }}
+          CI_ALERTS_TELEGRAM_BOT_TOKEN: ${{ secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN }}
+          CI_ALERTS_TELEGRAM_CHAT_ID: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}
+        run: python3 tools/scan-e2e-artifacts.py
       - name: Remember this run's single credit alert
         if: (always() && hashFiles('ai-credit-alert/alert-sent.txt') != '') && steps.artifact_scan_1.outcome == 'success'
+        continue-on-error: true
         timeout-minutes: 5
         uses: actions/upload-artifact@v6
         with:

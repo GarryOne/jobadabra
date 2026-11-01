@@ -57,6 +57,32 @@ class UnknownGrantLearnsTest(unittest.TestCase):
         self.assertEqual(client.scopes, ('calendar',))
 
 
+class CalendarOnlyAccountTest(unittest.TestCase):
+    """GitHub #2589: with only Calendar allowed, the primary calendar's title stands in for the address; it is one only while it looks like one."""
+
+    @staticmethod
+    def calendar_only(title):
+        client = google.Google('id', 'secret', 'refresh', scopes=('calendar',),
+                               opener=lambda request, timeout=None: io.BytesIO(json.dumps({'summary': title}).encode()))
+        client._token = 'access'
+        return client
+
+    def test_a_renamed_calendar_is_not_shown_as_the_address(self):
+        for title in ('Personal', 'Work calendar', '', 'Holidays in Romania'):
+            self.assertEqual(self.calendar_only(title).account_email(), '', title)
+
+    def test_a_calendar_titled_with_the_address_keeps_it(self):
+        self.assertEqual(self.calendar_only('me@gmail.com').account_email(), 'me@gmail.com')
+
+    def test_the_doctor_names_the_service_not_the_calendar_title(self):
+        from src import doctor
+        with mock.patch.object(google.Google, 'from_env', return_value=self.calendar_only('Personal')), \
+                mock.patch.object(doctor, '_google_auth_age', return_value=1):
+            check = doctor.check_google()
+        self.assertTrue(check.detail.startswith('Google Calendar: '), check.detail)
+        self.assertNotIn('Personal', check.detail)
+
+
 class CheckKeepsTheAllowedPartTest(unittest.TestCase):
     def test_a_missing_calendar_keeps_the_mail_results(self):
         # The owner's crash (24 Oct 2026): "8 of 22 emails", then the calendar pass died with a raw traceback.

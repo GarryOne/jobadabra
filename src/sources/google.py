@@ -128,14 +128,14 @@ class Google:
             raise
 
     def account_email(self):
-        """The signed-in address: Gmail's profile, or the events list's calendar title when only Calendar was allowed. Why (30 Oct 2026): events.readonly cannot read calendars/primary."""
+        """The signed-in address: Gmail's profile, or (Calendar only) the primary calendar's title if it is an address, else ''. Why (#2589): the title is the address only until it is renamed ("Personal"); no new scope."""
         if self.scopes is None or google_scopes.GMAIL in self.scopes:
             try:
                 return self.profile()['emailAddress']
             except MissingScope:   # an older sign-in without Gmail: learned just now, Calendar names the account
                 pass
         self.need(google_scopes.CALENDAR)
-        return self.get('https://www.googleapis.com/calendar/v3/calendars/primary/events', {'maxResults': 1}).get('summary', '')
+        return title if re.fullmatch(r'[^@\s]+@[^@\s]+\.[^@\s]+', title := (self.get('https://www.googleapis.com/calendar/v3/calendars/primary/events', {'maxResults': 1}).get('summary') or '').strip()) else ''   # format check, not a judgment
 
     # ---------- Gmail ----------
 

@@ -9,7 +9,7 @@ import path from 'node:path';
 import {fileURLToPath, pathToFileURL} from 'node:url';
 import {ensureStaged} from './lib/ensure-staged.mjs';
 import {suitesUsing, watchesWithImports} from './lib/import-graph.mjs';
-import {tolerantMatrixFlag, autoSuites, cadenceOf, exploreDecision, onWindows, runnerOf, noiseTripped, reviewNeeded, suitesFor, suitesNamed, suitePartsFor, waitingFindings} from './lib/plan.mjs';
+import {NIGHT_REPORT, tolerantMatrixFlag, autoSuites, cadenceOf, exploreDecision, onWindows, runnerOf, noiseTripped, reviewNeeded, suitesFor, suitesNamed, suitePartsFor, waitingFindings} from './lib/plan.mjs';
 import {nightRef, nightSuites, NIGHT_TITLE} from './lib/night-pass.mjs';
 import {asIssues, REGISTER_LIST, registerEntries} from './lib/prejudge.mjs';
 import {shardLegs, suiteOfKey, windowsMatrix} from './lib/suite-shards.mjs';
@@ -131,7 +131,7 @@ export async function planRun({env, gh = realGh, all, minutes, os = async () => 
   else suites = String(env.ONLY || '').trim() ? suitesNamed(env.ONLY, all) : autoSuites(all, cadence, false, !!env.TARGET_REF);
 
   // Stale PR/after-merge dispatch inputs must never reintroduce the outside world.
-  if (env.PR_SUITES || event === 'pull_request') suites = suites.filter(suite => !['outside', 'night-report'].includes(cadence[suite]));
+  if (env.PR_SUITES || event === 'pull_request') suites = suites.filter(suite => !['outside', NIGHT_REPORT].includes(cadence[suite]));
 
   const files = lastSha ? changed(lastSha, ref) : null;
   let review = !night && (exploring || reviewNeeded({files: files || [], waiting, known: files !== null}));   // an exploring run exists for what the AI review sees

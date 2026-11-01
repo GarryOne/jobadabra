@@ -28,7 +28,7 @@ import {tellPanel} from './page-notes.js';
 import {fillWaitsForAllow, resumeFillWaiting, watchUnallowedFillTabs} from './site-allow.js';
 import {createReadyHandoff} from './ready-handoff.js';
 import {startRefusedReads} from './refused-read.js'; import {startLinkedinSession} from './linkedin-session.js';
-import {startEarlyDim} from './early-dim.js'; import {applyState, setApply, forgetApply} from './apply-state.js';
+import {startEarlyDim} from './early-dim.js'; import {sayApply, forgetApply} from './apply-state.js';
 
 // The tab we may touch: Chrome reuses a tab id after its tab closes, and the user can navigate the tab elsewhere
 // while a fill is still running, so every injection asks the tab what it shows first (tab-pages.js).
@@ -210,8 +210,8 @@ chrome.tabs.onCreated.addListener(async tab => {
 // A progress panel on the page while a tab fills itself (the popup is closed then). `url`: the page being filled —
 // nothing is drawn when that tab has moved on to another site (or its id came back as a different tab).
 async function progress(tabId, text, url = '', verdict = 'done') {
-  // Why (2026-10-27, owner, replacing #2262's step-on-tab rule): the run's end is the verdict that lifts the dim, whichever site the tab is on (apply-state.js): a progress with no text is `done`, or `your-turn` when the fill hands the page over.
-  if (!text) { stepNow.delete(tabId); setApply(tabId, verdict); } else { if (applyState(tabId) === 'done') setApply(tabId, 'working'); if (applyState(tabId) !== 'working') return; }   // a step after a `done` (a no-form read, then a fill) is the run being on again; after Stop or your-turn only the person's own start brings it back, and a step is drawn only while working
+  // Why (2026-10-27, owner, replacing #2262's step-on-tab rule): the run's end is the verdict that lifts the dim, whichever site the tab is on (apply-state.js): a progress with no text and a verdict is `done`, or `your-turn` when the fill hands the page over. Why (#2800): `verdict` '' only clears the step (a fill pass inside fillPage; its end is written on the page next).
+  if (!text) stepNow.delete(tabId); if (!sayApply(tabId, text, verdict)) return;   // a step is drawn only while working (apply-state.js)
   if (url && !(await onPage(tabId, url))) return;
   // The page's panel (review.js) shows it when it is there; the floating box is for pages without one. Whichever
   // takes it, the other is cleared: a box drawn before the panel opened used to stay on the page for good, above a
@@ -345,7 +345,7 @@ async function fillOpenedTab(tab, ...rest) {
     try { return await fillOpenedTabNow(tab, ...rest); } finally { fillsNow.delete(tab.id); }
   }, {onJoin: () => decide('fill', 'a fill is already running on this tab: this ask joins it', {tab: tab.id})});
 }
-async function fillOpenedTabNow(tab, url, force = false, {fast = false, quiet = false} = {}) {
+async function fillOpenedTabNow(tab, url, force = false, {fast = false, quiet = false, endsRun = true} = {}) {   // endsRun: whether this fill's end is the run's verdict; fillPage says false, it writes the fill's end on its page right after, so the pass only clears its step (#2800)
   await arm(tab.id);
   if (!fast) await new Promise(resolve => setTimeout(resolve, 1500)); // forms render after the load event
   const page = tab.url || url;  // the page this fill belongs to: progress is only ever drawn while the tab shows it
@@ -365,7 +365,7 @@ async function fillOpenedTabNow(tab, url, force = false, {fast = false, quiet = 
     const me = await ready.me.catch(() => null);  // missing: fillTab fetches it and says what's wrong
     const result = await fillTab(tab, config, {jobUrl: url, kitAnswers: kit.kit?.answers || [], hasKit: !!kit.kit, coverLetter: kit.kit?.cover_letter || '', force, me,
       onStep: text => progress(tab.id, text, page)});
-    if (result?.held) return holdFill(tab, page, result, {decide, progress, note});   // a dialog covers the form and nothing closes it: nothing was typed (dialog-after-fill.js)
+    if (result?.held) return holdFill(tab, page, result, {decide, progress: (id, text, at) => progress(id, text, at, endsRun ? 'done' : ''), note});   // a dialog covers the form and nothing closes it: nothing was typed (dialog-after-fill.js)
     reportControls(config, tab, result?.operated, result?.trace, result?.card, result?.unknownUploads, result?.starred);
     // The kit's eligibility verdict, as a reminder (applying anyway was the user's choice).
     if (kit.kit?.eligible === false) await note(tab.id, `⛔ Reminder from your kit: ${kit.kit.eligibility_note}`, page);
@@ -378,7 +378,7 @@ async function fillOpenedTabNow(tab, url, force = false, {fast = false, quiet = 
       api(config, '/extension/event', {method: 'POST', body: JSON.stringify({type: 'ai-failed', url, host: (() => { try { return new URL(tab.url).hostname; } catch { return ''; } })(), why})}).catch(() => {});
     }
     await closeFillDialogs(tab, {close: closePopupOrLayer, look: layerOnTop, decide});   // dialog-after-fill.js
-    await progress(tab.id, '', page);
+    await progress(tab.id, '', page, endsRun ? 'done' : '');
     if (result.ineligible && await onPage(tab.id, page)) await ineligibleNote(tab.id, result.note, result.partly);
     decide('fill', result.ineligible ? `did not fill: ${result.note || 'ineligible'}` : 'filled the form',
       {url: page, ineligible: !!result.ineligible, aiEligible: result.aiEligible ?? null, forced: result.forced || ''});   // the AI's own verdict and who passed a "no" (eligibility-verdict.js)
@@ -388,7 +388,7 @@ async function fillOpenedTabNow(tab, url, force = false, {fast = false, quiet = 
     chrome.action.setBadgeText({tabId: tab.id, text: result.ineligible ? '!' : '✓'}).catch(() => {});  // the tab may already be closed
     return result;
   } catch (error) {
-    await progress(tab.id, '', page);
+    await progress(tab.id, '', page, endsRun ? 'done' : '');
     decide('fill', `failed: ${error.message}`, {url: page});
     // An automatic fill (the page was not asked for by you, just reached in an armed tab) fails quietly: logged, never a popup.
     if (!quiet) await note(tab.id, `✈️ Jobadabra couldn't fill this page: ${plainWhy(error)}. If the form is behind an "Apply" button, open that form from the Jobadabra app.`, page);

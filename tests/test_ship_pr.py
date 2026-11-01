@@ -14,6 +14,20 @@ from pathlib import Path
 from tests.ship_fixture import ROOT, ShipFixture, git
 
 
+def timeout_report(error, elapsed, log=None, tail=40):
+    """What a ship.sh that outlived its limit was doing: the seconds it ran, what it had printed, and the end of its own log (None or missing: said, not guessed).
+    Why (1 Nov 2026, CI run 41256371919: test_review_starts_one_watcher_and_a_second_ship_replaces_it, TimeoutExpired after 90.2 s while it takes ~8 s): the failure carried no output,
+    so nothing said what ship.sh was waiting on. Flaky, cause unknown: this makes the next red carry it. No limit changed."""
+    text = lambda data: data.decode('utf-8', 'replace') if isinstance(data, bytes) else (data or '')
+    lines = [f'ship.sh timed out after {elapsed:.1f} s (limit {error.timeout} s)', '--- its stdout ---', text(error.stdout).rstrip() or '(nothing)', '--- its stderr ---', text(error.stderr).rstrip() or '(nothing)']
+    if log is None or not Path(log).exists():
+        lines += [f'--- its log: {log} does not exist ---']
+    else:
+        age = time.time() - Path(log).stat().st_mtime
+        lines += [f'--- the last {tail} lines of its log {log} (last written {age:.0f} s ago) ---', *Path(log).read_text(errors='replace').splitlines()[-tail:]]
+    return '\n'.join(lines)
+
+
 class ShipPrTest(ShipFixture):
     def setUp(self):
         super().setUp()
@@ -26,8 +40,13 @@ class ShipPrTest(ShipFixture):
 
     def pr_ship(self, state=None, *flags, timeout=90, **extra):
         self.state.write_text(json.dumps({'origin': str(self.origin), **(state or {})}))
-        env = {**os.environ, 'PATH': f'{self.bin}{os.pathsep}{os.environ["PATH"]}', 'FAKE_GH_STATE': str(self.state), 'SHIP_MODE': 'pr', 'SHIP_REVIEW': '0', 'SHIP_WATCH': '0', 'SHIP_PR_POLL': '0', 'SHIP_RED_POLL': '0', 'JOB_PILOTTO_SESSION': '', 'JOB_PILOTTO_SESSION_SHORT': '', 'JP_SESSION': '', 'JP_SESSIONS_DIR': str(self.tmp / 'no-sessions'), **extra}   # SHIP_REVIEW=0 by default: the auto-merge path
-        return subprocess.run(['bash', str(self.tree / 'tools' / 'ship.sh'), *flags], cwd=self.tree, capture_output=True, text=True, timeout=timeout, env=env)
+        env = {**os.environ, 'PATH': f'{self.bin}{os.pathsep}{os.environ["PATH"]}', 'FAKE_GH_STATE': str(self.state), 'SHIP_MODE': 'pr', 'SHIP_REVIEW': '0', 'SHIP_WATCH': '0', 'SHIP_PR_POLL': '0', 'SHIP_RED_POLL': '0', 'JOB_PILOTTO_SESSION': '', 'JOB_PILOTTO_SESSION_SHORT': '', 'JP_SESSION': '', 'JP_SESSIONS_DIR': str(self.tmp / 'no-sessions'), 'SHIP_LOG': str(self.tmp / 'ship.log'), **extra}   # SHIP_REVIEW=0 by default: the auto-merge path
+        started = time.monotonic()
+        try:
+            return subprocess.run(['bash', str(self.tree / 'tools' / 'ship.sh'), *flags], cwd=self.tree, capture_output=True, text=True, timeout=timeout, env=env)
+        except subprocess.TimeoutExpired as hung:   # fails as before; only says first what ship.sh was doing (SHIP_LOG names its log, tools/ship.sh line 17)
+            print(timeout_report(hung, time.monotonic() - started, Path(env['SHIP_LOG'])), file=sys.stderr, flush=True)
+            raise
 
     def calls(self):
         return json.loads(self.state.read_text()).get('calls', [])
@@ -407,6 +426,24 @@ class ShipPrTest(ShipFixture):
         self.pr_ship({}, SHIP_REVIEW='1')   # setUp's SHIP_WATCH=0
         time.sleep(0.5)
         self.assertIsNone(self.pid())
+
+
+class TimeoutReportTest(unittest.TestCase):
+    def test_a_timed_out_ship_says_how_long_what_it_printed_and_the_end_of_its_log(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as folder:
+            log = Path(folder) / 'ship-topic.log'
+            log.write_text('\n'.join(f'ship: step {number}' for number in range(100)) + '\n')
+            hung = subprocess.TimeoutExpired(['bash', 'tools/ship.sh'], 90, output=b'ship: pushing topic\n', stderr='warning: x\n')
+            report = timeout_report(hung, 90.2, log, tail=3)
+            self.assertIn('ship.sh timed out after 90.2 s (limit 90 s)', report)
+            self.assertIn('ship: pushing topic', report)
+            self.assertIn('warning: x', report)
+            self.assertIn('the last 3 lines of its log', report)
+            self.assertIn('ship: step 99', report)
+            self.assertNotIn('ship: step 96', report, 'only the end of the log')
+            self.assertIn('does not exist', timeout_report(hung, 1, Path(folder) / 'missing.log'))
+            self.assertIn('(nothing)', timeout_report(subprocess.TimeoutExpired('x', 5), 5, None))
 
 
 if __name__ == '__main__':

@@ -243,3 +243,12 @@ test('#2731: a copy that never arrives leaves the held one in use, so an expired
   assert.equal(result.state, 'signed-out');
   assert.match(r.lines.join('\n'), /sign in again in Chrome, then press Find jobs/);
 });
+
+test('#2731 (Gitar on #2849) the step hands its own signal to refresh, so Stop and the press\'s deadline end the wait', async () => {
+  const r = rig(), stop = new AbortController();
+  let got = null;
+  r.args.signal = stop.signal;
+  r.args.refresh = async ({signal}) => { got = signal; return 'fresh'; };
+  await linkedinStep(r.args);
+  assert.equal(got, stop.signal, 'the same signal the press aborts at its deadline');
+});

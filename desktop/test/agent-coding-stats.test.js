@@ -44,6 +44,14 @@ test('a red on a merged PR is found by its branch when the run no longer lists i
   assert.deepEqual(today.reds, {product: 1, test: 0, ci: 0, form: 0, nofix: 0});
 });
 
+test('two merged PRs that used the same branch name each keep their own reds', () => {
+  const first = merge(7, 'x', [], [commit('a', 'Add', ['src/x.py']), commit('b', 'Fix it', ['src/x.py'], 30)], {branch: 'issue-5'});
+  const second = merge(8, 'y', [], [commit('c', 'Add', ['src/y.py']), commit('d', 'Fix it', ['tests/y.py'], 30)], {branch: 'issue-5'});
+  const runs = [run('CI · Tests', 'a', 'failure', null, {branch: 'issue-5'}), run('CI · Tests', 'b', 'success', null, {branch: 'issue-5'}), run('CI · Tests', 'c', 'failure', null, {branch: 'issue-5'}), run('CI · Tests', 'd', 'success', null, {branch: 'issue-5'})];
+  const [, , today] = compute({merges: [first, second], runs}, {days: 3, now});
+  assert.deepEqual(today.reds, {product: 1, test: 1, ci: 0, form: 0, nofix: 0});
+});
+
 test('what a fixing commit was: product code, test drift, CI/tooling, or form', () => {
   assert.equal(classifyFix(commit('x', 'Handle the empty list', ['src/a.py'], 40)), 'product');
   assert.equal(classifyFix(commit('x', 'Update', ['tests/test_a.py', 'desktop/test/b.js'])), 'test');

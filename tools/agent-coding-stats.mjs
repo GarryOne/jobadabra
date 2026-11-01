@@ -46,7 +46,8 @@ export function compute(input, {days = 3, now = new Date()} = {}) {
   const inWindow = date => date >= from && date <= now.toISOString().slice(0, 10);
   const byPr = new Map((input.merges || []).map(merge => [merge.pr, merge]));
   // Why (1 Nov 2026, owner: the page showed no reds): a run of a merged PR no longer lists its pull request (0 of 29 measured), so the run's branch joins it to its merge.
-  const byBranch = new Map((input.merges || []).map(merge => [merge.branch, merge]));
+  const byBranch = new Map();   // a branch name can be reused by a later PR: keep every merge and pick the one that holds the red's commit
+  for (const merge of input.merges || []) byBranch.set(merge.branch, [...(byBranch.get(merge.branch) || []), merge]);
   for (const merge of (input.merges || []).filter(item => inWindow(item.day))) {
     const card = at(merge.day);
     card.prs.merged++;
@@ -67,7 +68,7 @@ export function compute(input, {days = 3, now = new Date()} = {}) {
   // A red on a merged PR: the first later commit of that PR whose run of the same workflow is green fixed it. Not on a merged PR, or its commit gone (force push): not seen.
   const green = new Set((input.runs || []).filter(run => run.conclusion === 'success').map(run => `${run.name}|${run.head_sha}`));
   for (const run of (input.runs || []).filter(item => ['failure', 'timed_out'].includes(item.conclusion) && inWindow(day(item.created_at)))) {
-    const merge = byPr.get(run.pr) || byBranch.get(run.branch), at0 = merge ? merge.commits.findIndex(commit => commit.sha === run.head_sha) : -1;
+    const merge = byPr.get(run.pr) || (byBranch.get(run.branch) || []).find(item => item.commits.some(commit => commit.sha === run.head_sha)), at0 = merge ? merge.commits.findIndex(commit => commit.sha === run.head_sha) : -1;
     if (at0 < 0) continue;
     const fix = merge.commits.slice(at0 + 1).find(commit => green.has(`${run.name}|${commit.sha}`));
     at(day(run.created_at)).reds[fix ? classifyFix(fix) : 'nofix']++;

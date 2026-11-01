@@ -280,6 +280,7 @@ jobs:
           SHA: ${{ github.sha }}
           TARGET_REF: desktop-v${{ steps.version.outputs.version }}
           GATE_TAG: desktop-v${{ steps.version.outputs.version }}
+          GATE_UNIT: '1'   # Why (1 Nov 2026, owner): the desktop unit tests are one more leg of each lane's Test matrix (lib/unit-leg.mjs), not a step of Build; e2e.yml never sets this
           GATE_STORE_LEGS: one   # one Mac job per suite: this workflow's copy of the job does not pass the leg's store to the suite (desktop/e2e/plan-run.mjs says why)
           GATE_KIND: ${{ (github.event_name == 'schedule' || inputs.nightly) && 'nightly' || 'beta' }}   # a beta by hand runs quality only when what it watches changed
           OVER: ${{ steps.spend.outputs.over }}
@@ -295,16 +296,18 @@ jobs:
           phase: end
         timeout-minutes: 5
 
-  # One box per lane step (owner, 10 Oct 2026: "Put Compile, Smoke inside the Build"). A build is: it compiles, the unit tests pass, and a very small, fast smoke test of the
-  # built app passes; they are NAMED STEPS of the one Build box (Unit tests · …, Compile · …, Smoke test · …), never boxes of their own.
+  # One box per lane step (owner, 10 Oct 2026: "Put Compile, Smoke inside the Build"). A build is: it compiles and a very small, fast smoke test of the built app passes; they are
+  # NAMED STEPS of the one Build box (Compile · …, Smoke test · …), never boxes of their own.
+  # Why (1 Nov 2026, owner: "Yes", then "let's go this way" to the Test-matrix leg; replaces the 10 Oct line for the Unit tests step only): in a TESTED run the unit tests are not a step of
+  # Build but a leg of the Test matrix ("Unit tests · Mac" / "· Windows", beside the E2E suites; planned by plan-run.mjs GATE_UNIT). Beta #6's Mac unit step took 6 min (Windows 4) before
+  # Compile, so every E2E started that much later than the build needed. A run that is NOT tested (no gate) has no Test matrix, and Build publishes itself: it runs the same action inline,
+  # before Compile, with the stop step before the publish, so a Build only run never publishes a build whose unit tests are red.
   build:
     name: Build · Mac
     needs: changes   # the version and the draft release exist
     if: needs.changes.outputs.released == 'true'
     runs-on: macos-latest   # Apple Silicon; Why (30 Oct 2026, beta 41114966182): macOS 14 brownout; build on the image the e2e runs on.
     timeout-minutes: 30
-    outputs:
-      unit: ${{ steps.unit.outcome }}   # 'failure' = a unit test is red: the Release jobs refuse (tools/beta_rate_gate.py --unit-*); the box itself goes on to Compile and Smoke
     env:
       E2E_ARTIFACT_SECRET_NAMES: |
         CLIENT
@@ -325,7 +328,7 @@ jobs:
         timeout-minutes: 5
         with:
           node-version: '22'
-      - uses: actions/setup-python@v6   # only runs the pipeline tests; the app bundles its own Python
+      - uses: actions/setup-python@v6   # scripts/python.sh reads the standalone Python release list with python3; the app bundles its own Python
         timeout-minutes: 10
         with:
           python-version: '3.12'
@@ -333,36 +336,16 @@ jobs:
         timeout-minutes: 5
         working-directory: desktop
         run: npm ci
-      # The desktop app's unit tests, the SAME on Mac and Windows (owner, 10 Oct 2026: "both should have the full set of unit tests, only related to the desktop app; no site,
-      # no Cloudflare workers"): the Python pipeline the app bundles (`tools/check.sh --area python`) and the app's own tests (`--area desktop`: lint + node tests), side by side
-      # so the step takes the longer one. The site and the Worker are tested by CI · Tests on every push and deployed by their own pipelines (site.yml, worker.yml).
-      # Why (31 Oct 2026, owner: "D: unit red still runs e2e"; beta 41215677698): 1 flaky test of 5,102 stopped this step before Compile, so no app was built and every E2E suite was skipped, a
-      # 45-minute beta that told us nothing about the e2e. The step stays red here (its outcome is the job output `unit`), but Compile, Smoke and the e2e go on; the Release jobs refuse
-      # "Not released: red: Unit tests · <lane>". A failed Compile or Smoke still stops the e2e (no app to test). A run that is not tested (gate off) stops here as before.
+      # A run that is NOT tested (no gate) runs the unit tests here; a tested run has them as a leg of the Test matrix, "Unit tests · Mac" (see the comment above `build:`).
       - name: Unit tests · desktop app (Python pipeline and app, side by side)
         id: unit
+        if: needs.changes.outputs.gate != 'true'
         continue-on-error: true
         timeout-minutes: 17
-        env:
-          PYTHONUTF8: '1'   # as the app runs its own engine (lib/pipeline-env.js): files in UTF-8 on Windows too, whose default is the ANSI code page (the tests read UTF-8 files)
-          UNIT_AREAS: 'python desktop'
-          JOB_PILOTTO_PY_JOBS: '6'   # the Mac runner's cores / check slots gave 2 shards (the Python half took 5-6.5 min); the slow modules sleep and wait, so 6 overlap well (12 Oct 2026, as build.yml)
-        run: |
-          pids=""
-          for area in $UNIT_AREAS; do bash tools/check.sh --area "$area" > "unit-$area.log" 2>&1 & pids="$pids $area:$!"; done
-          status=0
-          # The answer on top, the detail one click away (owner, 10 Oct 2026: "human readable, without scrolling a lot"): a passing suite is ONE line here and its per-file log
-          # is collapsed; a failing suite prints its log in full, whose first lines are the failing tests and their errors. The same lines are the step's log.
-          for entry in $pids; do
-            area="${entry%%:*}"
-            if wait "${entry#*:}"; then result=passed; else result=FAILED; status=1; fi
-            line=$(grep -E '^(OK|FAILED): |^py-shards: .*(passed|FAILED)' "unit-$area.log" | tail -1)
-            echo "| $area | $result | ${line:-no summary line} |" >> unit-table.md
-            if [ "$result" = passed ]; then echo "✔ $area: ${line}"; echo "::group::$area · every test file"; cat "unit-$area.log"; echo "::endgroup::"
-            else echo "::error title=Unit tests · $area::The $area unit tests failed (the build and the E2E suites go on; the release refuses)"; cat "unit-$area.log"; fi
-          done
-          { echo "### Unit tests · desktop app"; echo; echo "| Suite | Result | Summary |"; echo "|---|---|---|"; cat unit-table.md; }
-          exit $status
+        uses: ./.github/actions/unit-tests
+        with:
+          areas: 'python desktop'
+          py-jobs: '6'
       - name: Unit tests failed, and this run is not tested here, so stop the build
         if: steps.unit.outcome == 'failure' && needs.changes.outputs.gate != 'true'
         timeout-minutes: 5
@@ -458,8 +441,6 @@ jobs:
     if: needs.changes.outputs.released == 'true'
     runs-on: windows-latest
     timeout-minutes: 40
-    outputs:
-      unit: ${{ steps.unit.outcome }}   # 'failure' = a unit test is red: the Release jobs refuse (tools/beta_rate_gate.py --unit-*); the box itself goes on to Compile and Smoke
     defaults:
       run:
         shell: bash
@@ -496,41 +477,17 @@ jobs:
         timeout-minutes: 5
         working-directory: desktop
         run: npm ci
-      # The desktop app's unit tests, the SAME on Mac and Windows (owner, 10 Oct 2026: "both should have the full set of unit tests, only related to the desktop app; no site,
-      # no Cloudflare workers"): the Python pipeline the app bundles (`tools/check.sh --area python`) and the app's own tests (`--area desktop`: lint + node tests), side by side
-      # so the step takes the longer one. The site and the Worker are tested by CI · Tests on every push and deployed by their own pipelines (site.yml, worker.yml).
-      # Windows has no time-zone database, and the Python tests load Europe/Zurich: the same tzdata the app bundles for Windows (requirements.txt, sys_platform == win32).
-      - name: Install · time-zone data for the Python tests
-        timeout-minutes: 5
-        run: python -m pip install tzdata
-      # Why (31 Oct 2026, owner: "D: unit red still runs e2e"; beta 41215677698): 1 flaky test of 5,102 stopped this step before Compile, so no app was built and every E2E suite was skipped, a
-      # 45-minute beta that told us nothing about the e2e. The step stays red here (its outcome is the job output `unit`), but Compile, Smoke and the e2e go on; the Release jobs refuse
-      # "Not released: red: Unit tests · <lane>". A failed Compile or Smoke still stops the e2e (no app to test). A run that is not tested (gate off) stops here as before.
+      # A run that is NOT tested (no gate) runs the unit tests here; a tested run has them as a leg of the Test matrix, "Unit tests · Windows" (see the comment above `build:`).
       - name: Unit tests · desktop app (Python pipeline and app, side by side)
         id: unit
+        if: needs.changes.outputs.gate != 'true'
         continue-on-error: true
         timeout-minutes: 17
-        env:
-          PYTHONUTF8: '1'   # as the app runs its own engine (lib/pipeline-env.js): files in UTF-8 on Windows too, whose default is the ANSI code page (the tests read UTF-8 files)
+        uses: ./.github/actions/unit-tests
+        with:
           # TEMPORARY (10 Oct 2026): 196 of the 1,943 Python tests fail on Windows for environmental reasons (SQLite files left open in temp folders, tests of the repo's own
           # dev scripts, a few Mac-only assumptions): until they are fixed the Windows build runs the app's tests only. Then this reads 'python desktop', as on the Mac.
-          UNIT_AREAS: 'desktop'
-        run: |
-          pids=""
-          for area in $UNIT_AREAS; do bash tools/check.sh --area "$area" > "unit-$area.log" 2>&1 & pids="$pids $area:$!"; done
-          status=0
-          # The answer on top, the detail one click away (owner, 10 Oct 2026: "human readable, without scrolling a lot"): a passing suite is ONE line here and its per-file log
-          # is collapsed; a failing suite prints its log in full, whose first lines are the failing tests and their errors. The same lines are the step's log.
-          for entry in $pids; do
-            area="${entry%%:*}"
-            if wait "${entry#*:}"; then result=passed; else result=FAILED; status=1; fi
-            line=$(grep -E '^(OK|FAILED): |^py-shards: .*(passed|FAILED)' "unit-$area.log" | tail -1)
-            echo "| $area | $result | ${line:-no summary line} |" >> unit-table.md
-            if [ "$result" = passed ]; then echo "✔ $area: ${line}"; echo "::group::$area · every test file"; cat "unit-$area.log"; echo "::endgroup::"
-            else echo "::error title=Unit tests · $area::The $area unit tests failed (the build and the E2E suites go on; the release refuses)"; cat "unit-$area.log"; fi
-          done
-          { echo "### Unit tests · desktop app"; echo; echo "| Suite | Result | Summary |"; echo "|---|---|---|"; cat unit-table.md; }
-          exit $status
+          areas: 'desktop'
       - name: Unit tests failed, and this run is not tested here, so stop the build
         if: steps.unit.outcome == 'failure' && needs.changes.outputs.gate != 'true'
         timeout-minutes: 5
@@ -651,7 +608,7 @@ jobs:
   # E2E: the gate suites on this build, one box (a matrix) per lane. The suite job of e2e.yml with the gate's settings (fixed path, replayed AI answers, paid judge);
   # a copy so the graph shows one box, not e2e.yml's plan/report/approve jobs (owner, 7 Oct 2026: "I want it to literally look that clean"). Keep the two in step.
   test-mac:
-    name: E2E · Mac + Linux · ${{ matrix.key }}
+    name: ${{ matrix.name || format('E2E · Mac + Linux · {0}', matrix.key) }}   # the unit leg is named whole (lib/unit-leg.mjs): never an "E2E · " job
     needs: [changes, build, ai-ready]
     if: needs.build.result == 'success' && needs.changes.outputs.gate == 'true' && needs.changes.outputs.count != '0'
     runs-on: ${{ matrix.os || 'macos-latest' }}   # Linux unless the suite needs the Mac (lib/plan.mjs runnerOf); a virtual display there
@@ -669,7 +626,7 @@ jobs:
         CI_CF_ANALYTICS_TOKEN
         CI_FREE_AI_CF_ACCOUNT_ID
         E2E_ANTHROPIC_KEY
-        ${{ matrix.offlineAi != true && 'E2E_FREE_AI_KEY' || '' }}
+        ${{ matrix.offlineAi != true && matrix.suite != 'unit' && 'E2E_FREE_AI_KEY' || '' }}
         E2E_LOCK_TOKEN
         E2E_NOTION_TOKEN
         E2E_NOTION_TOKEN_ACTIVITY
@@ -768,7 +725,7 @@ jobs:
         with:
           python-version: '3.12'
       - name: Free AI relay (CI's AI since 26 Oct 2026; the site's handler on this runner, CI's own Workers AI token)
-        if: matrix.offlineAi != true
+        if: matrix.offlineAi != true && matrix.suite != 'unit'
         timeout-minutes: 5
         uses: ./.github/actions/free-ai-relay
         with:
@@ -777,6 +734,7 @@ jobs:
           client-id: ${{ vars.CI_APP_CLIENT_ID }}
           app-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
       - name: Record which commit this run tested (ui-findings.yml names it in every issue)
+        if: matrix.suite != 'unit'
         timeout-minutes: 5
         run: |
           mkdir -p "$E2E_ARTIFACTS"
@@ -785,25 +743,35 @@ jobs:
         timeout-minutes: 5
         working-directory: desktop
         run: npm ci
+      - name: Unit tests · desktop app (Python pipeline and app, side by side)
+        if: matrix.suite == 'unit'
+        timeout-minutes: 17
+        uses: ./.github/actions/unit-tests
+        with:
+          areas: 'python desktop'
+          py-jobs: '6'
       - name: Install the tests
+        if: matrix.suite != 'unit'
         timeout-minutes: 5
         working-directory: desktop/e2e
         run: npm ci || npm install
       - name: Chromium for the suites that use a browser (the real extension, the extension's page code)
+        if: matrix.suite != 'unit'
         timeout-minutes: 5
         working-directory: desktop/e2e
         # A suite says it needs one: `export const browser = true` (the app's extension browser) or `export const needsChromium = true` (a plain Chromium).
         run: |
           if grep -qE '^export const (browser|needsChromium) = true' "suites/${{ matrix.suite }}.mjs"; then npx playwright-core install chromium; else echo "no browser needed"; fi
       - name: Python packages the engine needs
+        if: matrix.suite != 'unit'
         timeout-minutes: 5
         run: pip install --quiet -r requirements.txt
       - name: A virtual display and Electron's libraries (Linux only)
         timeout-minutes: 5
-        if: runner.os == 'Linux'
+        if: runner.os == 'Linux' && matrix.suite != 'unit'
         run: bash tools/apt-install.sh xvfb libnss3 libgbm1 libasound2t64 libgtk-3-0 libxss1 fonts-noto-color-emoji fonts-dejavu-core
       - name: Earlier AI answers (replayed instead of paid again; lib/ai-meter.mjs)
-        if: env.E2E_ANTHROPIC_KEY != ''
+        if: env.E2E_ANTHROPIC_KEY != '' && matrix.suite != 'unit'
         timeout-minutes: 5
         uses: actions/cache/restore@v5
         with:
@@ -811,7 +779,7 @@ jobs:
           key: ai-answers-${{ matrix.key }}-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: ai-answers-${{ matrix.key }}-
       - name: The live qualityai rate history (lib/quality-rate.mjs)
-        if: matrix.suite == 'qualityai'
+        if: matrix.suite == 'qualityai' && matrix.suite != 'unit'
         timeout-minutes: 10
         uses: actions/cache/restore@v5
         with:
@@ -820,6 +788,7 @@ jobs:
           restore-keys: quality-rate-
       # The lock is taken as late as possible (after the installs, which never touch the suite's Notion page): a waiting job holds its runner.
       - name: The App token for the lock (a re-run attempt's workflow token cannot create refs)
+        if: matrix.suite != 'unit'
         timeout-minutes: 5
         id: lock_app
         continue-on-error: true   # a failed mint falls back to the workflow token
@@ -829,12 +798,14 @@ jobs:
           private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
           permission-contents: write
       - name: Take the suite's lock (only a suite on the real Notion workspace; waits, never dropped)
+        if: matrix.suite != 'unit'
         timeout-minutes: 185
         env:
           GH_TOKEN: ${{ github.token }}
           E2E_LOCK_TOKEN: ${{ steps.lock_app.outputs.token }}
         run: bash lock-tools/tools/e2e-lock.sh acquire "${{ matrix.key }}"
       - name: Run the ${{ matrix.suite }} suite (the only try)
+        if: matrix.suite != 'unit'
         id: suite_run
         # Why (31 Oct 2026, owner: "Is this expected? Error but step passed green ?", "And why should we accept/allow that?", "Let's go and handle this"): this step's own exit code is the verdict.
         # No continue-on-error, no second try: a failed backbone try shows a red step and a red job (guard tests/test_e2e_single_try.py); a tolerant leg (AI, clock, outside) reports a ::warning and a rate, as before (Rule S, Gitar on #2682).
@@ -850,14 +821,14 @@ jobs:
             || { if [ "${{ matrix.tolerant }}" = true ]; then echo "::warning title=Tolerant suite failed::The ${{ matrix.key }} suite failed (a rate, not a verdict: it never holds a beta)"; echo "tolerant_failed=1" >> "$GITHUB_OUTPUT"; exit 0; fi
                  echo "::error title=Suite failed::The ${{ matrix.key }} suite failed (its one try is the verdict: no second try)"; exit 1; }
       - name: Outside-world health
-        if: always() && matrix.tolerant == true
+        if: always() && matrix.tolerant == true && matrix.suite != 'unit'
         timeout-minutes: 5
         env:
           OUTCOME: ${{ steps.suite_run.outputs.tolerant_failed == '1' && 'failure' || steps.suite_run.outcome }}
         run: |
           echo "::notice title=Outside-world health::${{ matrix.key }}: $OUTCOME (tolerant; does not block beta). Steps, screenshots and failures are in the Mac HTML report and e2e-artifacts-${{ matrix.key }}."
       - name: What the suite spent on Free AI (the relay's own meter)
-        if: always() && env.E2E_FREE_AI_URL != ''
+        if: always() && env.E2E_FREE_AI_URL != '' && matrix.suite != 'unit'
         timeout-minutes: 5
         continue-on-error: true   # a report never decides a run
         shell: bash
@@ -866,7 +837,7 @@ jobs:
           echo "Free AI (Workers AI) this suite: $spent"
           echo "$spent" > "$E2E_ARTIFACTS/free-ai-spend.json" || true
       - name: Report what the suite paid for AI to /ai-cost (the app under test and the judges)
-        if: always() && env.E2E_ANTHROPIC_KEY != ''
+        if: always() && env.E2E_ANTHROPIC_KEY != '' && matrix.suite != 'unit'
         timeout-minutes: 5
         continue-on-error: true   # a report never decides a run
         env:
@@ -880,16 +851,16 @@ jobs:
           done
       - name: Keep the AI answers for the next run
         timeout-minutes: 5
-        if: always() && env.E2E_ANTHROPIC_KEY != '' && hashFiles('desktop/e2e/.ai-cache/*.json') != ''
+        if: always() && env.E2E_ANTHROPIC_KEY != '' && hashFiles('desktop/e2e/.ai-cache/*.json') != '' && matrix.suite != 'unit'
         run: find desktop/e2e/.ai-cache -name '*.json' -mtime +7 -delete   # an answer not replayed for a week is dropped (a replay touches it)
-      - if: success() && steps.suite_run.outputs.tolerant_failed != '1' && env.E2E_ANTHROPIC_KEY != '' && hashFiles('desktop/e2e/.ai-cache/*.json') != ''
+      - if: success() && steps.suite_run.outputs.tolerant_failed != '1' && env.E2E_ANTHROPIC_KEY != '' && hashFiles('desktop/e2e/.ai-cache/*.json') != '' && matrix.suite != 'unit'
         timeout-minutes: 5
         uses: actions/cache/save@v5
         with:
           path: desktop/e2e/.ai-cache
           key: ai-answers-${{ matrix.key }}-${{ github.run_id }}-${{ github.run_attempt }}
       - name: Keep the live qualityai rate history, red or green on main
-        if: always() && matrix.suite == 'qualityai' && env.E2E_AI_REPLAY != '1' && github.ref == 'refs/heads/main' && hashFiles('desktop/e2e/.quality-rate/history.json') != ''
+        if: always() && matrix.suite == 'qualityai' && env.E2E_AI_REPLAY != '1' && github.ref == 'refs/heads/main' && hashFiles('desktop/e2e/.quality-rate/history.json') != '' && matrix.suite != 'unit'
         timeout-minutes: 10
         uses: actions/cache/save@v5
         with:
@@ -899,7 +870,7 @@ jobs:
         timeout-minutes: 5
         working-directory: ${{ github.workspace }}
         id: artifact_scan_3
-        if: always()
+        if: always() && matrix.suite != 'unit'
         shell: bash
         env:
           AI_COST_PUBLISH_KEY: ${{ secrets.AI_COST_PUBLISH_KEY }}
@@ -911,7 +882,7 @@ jobs:
             blob-report
         run: python "$GITHUB_WORKSPACE/lock-tools/tools/scan-e2e-artifacts.py"
       - name: The suite's part of the HTML report
-        if: (always()) && steps.artifact_scan_3.outcome == 'success'
+        if: (always()) && steps.artifact_scan_3.outcome == 'success' && matrix.suite != 'unit'
         timeout-minutes: 5
         uses: actions/upload-artifact@v6
         with:
@@ -925,7 +896,7 @@ jobs:
         timeout-minutes: 5
         working-directory: ${{ github.workspace }}
         id: artifact_scan_4
-        if: always()
+        if: always() && matrix.suite != 'unit'
         shell: bash
         env:
           AI_COST_PUBLISH_KEY: ${{ secrets.AI_COST_PUBLISH_KEY }}
@@ -938,7 +909,7 @@ jobs:
             e2e-artifacts/${{ matrix.key }}/trace-*.zip
         run: python "$GITHUB_WORKSPACE/lock-tools/tools/scan-e2e-artifacts.py"
       - name: Steps and trace for /admin/e2e
-        if: (always()) && steps.artifact_scan_4.outcome == 'success'
+        if: (always()) && steps.artifact_scan_4.outcome == 'success' && matrix.suite != 'unit'
         timeout-minutes: 5
         uses: actions/upload-artifact@v6
         with:
@@ -953,7 +924,7 @@ jobs:
         timeout-minutes: 5
         working-directory: ${{ github.workspace }}
         id: artifact_scan_5
-        if: always()
+        if: always() && matrix.suite != 'unit'
         shell: bash
         env:
           AI_COST_PUBLISH_KEY: ${{ secrets.AI_COST_PUBLISH_KEY }}
@@ -965,7 +936,7 @@ jobs:
             e2e-artifacts/${{ matrix.key }}
         run: python "$GITHUB_WORKSPACE/lock-tools/tools/scan-e2e-artifacts.py"
       - name: Screenshots and timings
-        if: (always()) && steps.artifact_scan_5.outcome == 'success'
+        if: (always()) && steps.artifact_scan_5.outcome == 'success' && matrix.suite != 'unit'
         timeout-minutes: 5
         uses: actions/upload-artifact@v6
         with:
@@ -976,7 +947,7 @@ jobs:
       - name: The App token to give the lock back (the first one may have expired)
         timeout-minutes: 5
         id: lock_app_end
-        if: always()
+        if: always() && matrix.suite != 'unit'
         continue-on-error: true   # a failed mint falls back to the workflow token
         uses: actions/create-github-app-token@v3
         with:
@@ -984,7 +955,7 @@ jobs:
           private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
           permission-contents: write
       - name: Give the suite's lock back
-        if: always()
+        if: always() && matrix.suite != 'unit'
         timeout-minutes: 5
         env:
           GH_TOKEN: ${{ github.token }}
@@ -999,7 +970,7 @@ jobs:
   # The Windows lane's E2E box: e2e-windows.yml's suite job with the gate's settings, the same suites as the Mac lane (planned once, in Anything new?).
 
   test-windows:
-    name: E2E · Windows · ${{ matrix.key }}
+    name: ${{ matrix.name || format('E2E · Windows · {0}', matrix.key) }}   # the unit leg is named whole (lib/unit-leg.mjs): never an "E2E · " job
     needs: [changes, windows, ai-ready]
     if: needs.windows.result == 'success' && needs.changes.outputs.gate == 'true' && needs.changes.outputs.count != '0'
     runs-on: windows-latest
@@ -1018,7 +989,7 @@ jobs:
         CI_CF_ANALYTICS_TOKEN
         CI_FREE_AI_CF_ACCOUNT_ID
         E2E_ANTHROPIC_KEY
-        E2E_FREE_AI_KEY
+        ${{ matrix.suite != 'unit' && 'E2E_FREE_AI_KEY' || '' }}
         E2E_LOCK_TOKEN
         E2E_NOTION_TOKEN
         E2E_NOTION_TOKEN_ACTIVITY
@@ -1103,6 +1074,7 @@ jobs:
         with:
           python-version: '3.12'
       - name: Free AI relay (CI's AI since 26 Oct 2026; the site's handler on this runner, CI's own Workers AI token)
+        if: matrix.suite != 'unit'
         timeout-minutes: 5
         uses: ./.github/actions/free-ai-relay
         with:
@@ -1111,6 +1083,7 @@ jobs:
           client-id: ${{ vars.CI_APP_CLIENT_ID }}
           app-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
       - name: Record which commit this run tested (ui-findings.yml names it in every issue)
+        if: matrix.suite != 'unit'
         timeout-minutes: 5
         run: |
           mkdir -p "$E2E_ARTIFACTS"
@@ -1119,11 +1092,21 @@ jobs:
         timeout-minutes: 5
         working-directory: desktop
         run: npm ci
+      - name: Unit tests · desktop app (Python pipeline and app, side by side)
+        if: matrix.suite == 'unit'
+        timeout-minutes: 17
+        uses: ./.github/actions/unit-tests
+        with:
+          # TEMPORARY (10 Oct 2026): 196 of the 1,943 Python tests fail on Windows for environmental reasons (SQLite files left open in temp folders, tests of the repo's own
+          # dev scripts, a few Mac-only assumptions): until they are fixed the Windows unit leg runs the app's tests only. Then this reads 'python desktop', as on the Mac.
+          areas: 'desktop'
       - name: Install the tests
+        if: matrix.suite != 'unit'
         timeout-minutes: 5
         working-directory: desktop/e2e
         run: npm ci || npm install
       - name: Chromium for the suites that use a browser (the real extension, the extension's page code)
+        if: matrix.suite != 'unit'
         timeout-minutes: 5
         working-directory: desktop/e2e
         # As on the Mac (e2e.yml): the suite says it needs one (`export const browser = true` or `export const needsChromium = true`). A list of suite names here
@@ -1131,10 +1114,11 @@ jobs:
         run: |
           if [ -f "suites/${{ matrix.suite }}.mjs" ] && grep -qE '^export const (browser|needsChromium) = true' "suites/${{ matrix.suite }}.mjs"; then npx playwright-core install chromium; else echo "no browser needed"; fi
       - name: Python packages the engine needs
+        if: matrix.suite != 'unit'
         timeout-minutes: 5
         run: pip install --quiet -r requirements.txt
       - name: Earlier AI answers (replayed instead of paid again; lib/ai-meter.mjs)
-        if: env.E2E_ANTHROPIC_KEY != ''
+        if: env.E2E_ANTHROPIC_KEY != '' && matrix.suite != 'unit'
         timeout-minutes: 5
         uses: actions/cache/restore@v5
         with:
@@ -1143,6 +1127,7 @@ jobs:
           restore-keys: ai-answers-windows-${{ matrix.key }}-
       # The lock is taken as late as possible (after the installs, which never touch the suite's Notion page): a waiting job holds its runner.
       - name: The App token for the lock (a re-run attempt's workflow token cannot create refs)
+        if: matrix.suite != 'unit'
         timeout-minutes: 5
         id: lock_app
         continue-on-error: true   # a failed mint falls back to the workflow token
@@ -1152,12 +1137,14 @@ jobs:
           private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
           permission-contents: write
       - name: Take the suite's lock (only a suite on the real Notion workspace; waits, never dropped)
+        if: matrix.suite != 'unit'
         timeout-minutes: 185
         env:
           GH_TOKEN: ${{ github.token }}
           E2E_LOCK_TOKEN: ${{ steps.lock_app.outputs.token }}
         run: bash lock-tools/tools/e2e-lock.sh acquire "${{ matrix.key }}"
       - name: Run the ${{ matrix.suite }} suite on Windows (the only try)
+        if: matrix.suite != 'unit'
         id: suite_run
         working-directory: desktop/e2e
         env:
@@ -1169,14 +1156,14 @@ jobs:
             || { if [ "${{ matrix.tolerant }}" = true ]; then echo "::warning title=Tolerant suite failed::The ${{ matrix.key }} suite failed (a rate, not a verdict: it never holds a beta)"; echo "tolerant_failed=1" >> "$GITHUB_OUTPUT"; exit 0; fi
                  echo "::error title=Suite failed::The ${{ matrix.key }} suite failed (its one try is the verdict: no second try)"; exit 1; }
       - name: Outside-world health
-        if: always() && matrix.tolerant == true
+        if: always() && matrix.tolerant == true && matrix.suite != 'unit'
         timeout-minutes: 5
         env:
           OUTCOME: ${{ steps.suite_run.outputs.tolerant_failed == '1' && 'failure' || steps.suite_run.outcome }}
         run: |
           echo "::notice title=Outside-world health::${{ matrix.key }}: $OUTCOME (tolerant; does not block beta). Steps, screenshots and failures are in the Windows HTML report and e2e-artifacts-windows-${{ matrix.key }}."
       - name: The apply suite again in Microsoft Edge (the Windows default; preinstalled on the runner)
-        if: matrix.suite == 'apply'
+        if: matrix.suite == 'apply' && matrix.suite != 'unit'
         working-directory: desktop/e2e
         timeout-minutes: 30
         env:
@@ -1185,7 +1172,7 @@ jobs:
           E2E_ARTIFACTS: ${{ github.workspace }}/e2e-artifacts-windows/apply-edge   # its own folder: the Chromium run's evidence stays
         run: node suite.mjs apply
       - name: What the suite spent on Free AI (the relay's own meter)
-        if: always() && env.E2E_FREE_AI_URL != ''
+        if: always() && env.E2E_FREE_AI_URL != '' && matrix.suite != 'unit'
         timeout-minutes: 5
         continue-on-error: true   # a report never decides a run
         shell: bash
@@ -1194,7 +1181,7 @@ jobs:
           echo "Free AI (Workers AI) this suite: $spent"
           echo "$spent" > "$E2E_ARTIFACTS/free-ai-spend.json" || true
       - name: Report what the suite paid for AI to /ai-cost (the app under test and the judges)
-        if: always() && env.E2E_ANTHROPIC_KEY != ''
+        if: always() && env.E2E_ANTHROPIC_KEY != '' && matrix.suite != 'unit'
         timeout-minutes: 5
         continue-on-error: true   # a report never decides a run
         env:
@@ -1211,9 +1198,9 @@ jobs:
           done
       - name: Keep the AI answers for the next run
         timeout-minutes: 5
-        if: always() && env.E2E_ANTHROPIC_KEY != '' && hashFiles('desktop/e2e/.ai-cache/*.json') != ''
+        if: always() && env.E2E_ANTHROPIC_KEY != '' && hashFiles('desktop/e2e/.ai-cache/*.json') != '' && matrix.suite != 'unit'
         run: find desktop/e2e/.ai-cache -name '*.json' -mtime +7 -delete   # an answer not replayed for a week is dropped (a replay touches it)
-      - if: success() && steps.suite_run.outputs.tolerant_failed != '1' && env.E2E_ANTHROPIC_KEY != '' && hashFiles('desktop/e2e/.ai-cache/*.json') != ''
+      - if: success() && steps.suite_run.outputs.tolerant_failed != '1' && env.E2E_ANTHROPIC_KEY != '' && hashFiles('desktop/e2e/.ai-cache/*.json') != '' && matrix.suite != 'unit'
         timeout-minutes: 5
         uses: actions/cache/save@v5
         with:
@@ -1223,7 +1210,7 @@ jobs:
         timeout-minutes: 5
         working-directory: ${{ github.workspace }}
         id: artifact_scan_7
-        if: always()
+        if: always() && matrix.suite != 'unit'
         shell: bash
         env:
           AI_COST_PUBLISH_KEY: ${{ secrets.AI_COST_PUBLISH_KEY }}
@@ -1235,7 +1222,7 @@ jobs:
             blob-report
         run: python "$GITHUB_WORKSPACE/lock-tools/tools/scan-e2e-artifacts.py"
       - name: The suite's part of the HTML report
-        if: (always()) && steps.artifact_scan_7.outcome == 'success'
+        if: (always()) && steps.artifact_scan_7.outcome == 'success' && matrix.suite != 'unit'
         timeout-minutes: 5
         uses: actions/upload-artifact@v6
         with:
@@ -1249,7 +1236,7 @@ jobs:
         timeout-minutes: 5
         working-directory: ${{ github.workspace }}
         id: artifact_scan_8
-        if: always()
+        if: always() && matrix.suite != 'unit'
         shell: bash
         env:
           AI_COST_PUBLISH_KEY: ${{ secrets.AI_COST_PUBLISH_KEY }}
@@ -1262,7 +1249,7 @@ jobs:
             e2e-artifacts-windows/${{ matrix.key }}/trace-*.zip
         run: python "$GITHUB_WORKSPACE/lock-tools/tools/scan-e2e-artifacts.py"
       - name: Steps and trace for /admin/e2e
-        if: (always()) && steps.artifact_scan_8.outcome == 'success'
+        if: (always()) && steps.artifact_scan_8.outcome == 'success' && matrix.suite != 'unit'
         timeout-minutes: 5
         uses: actions/upload-artifact@v6
         with:
@@ -1277,7 +1264,7 @@ jobs:
         timeout-minutes: 5
         working-directory: ${{ github.workspace }}
         id: artifact_scan_9
-        if: always()
+        if: always() && matrix.suite != 'unit'
         shell: bash
         env:
           AI_COST_PUBLISH_KEY: ${{ secrets.AI_COST_PUBLISH_KEY }}
@@ -1289,7 +1276,7 @@ jobs:
             e2e-artifacts-windows/${{ matrix.key }}
         run: python "$GITHUB_WORKSPACE/lock-tools/tools/scan-e2e-artifacts.py"
       - name: Screenshots and logs
-        if: (always()) && steps.artifact_scan_9.outcome == 'success'
+        if: (always()) && steps.artifact_scan_9.outcome == 'success' && matrix.suite != 'unit'
         timeout-minutes: 5
         uses: actions/upload-artifact@v6
         with:
@@ -1302,7 +1289,7 @@ jobs:
         timeout-minutes: 5
         working-directory: ${{ github.workspace }}
         id: artifact_scan_10
-        if: always()
+        if: always() && matrix.suite != 'unit'
         shell: bash
         env:
           AI_COST_PUBLISH_KEY: ${{ secrets.AI_COST_PUBLISH_KEY }}
@@ -1314,7 +1301,7 @@ jobs:
             e2e-artifacts-windows/apply-edge
         run: python "$GITHUB_WORKSPACE/lock-tools/tools/scan-e2e-artifacts.py"
       - name: The Edge pass's screenshots and logs
-        if: (always() && matrix.suite == 'apply') && steps.artifact_scan_10.outcome == 'success'
+        if: (always() && matrix.suite == 'apply') && steps.artifact_scan_10.outcome == 'success' && matrix.suite != 'unit'
         timeout-minutes: 5
         uses: actions/upload-artifact@v6
         with:
@@ -1325,7 +1312,7 @@ jobs:
       - name: The App token to give the lock back (the first one may have expired)
         timeout-minutes: 5
         id: lock_app_end
-        if: always()
+        if: always() && matrix.suite != 'unit'
         continue-on-error: true   # a failed mint falls back to the workflow token
         uses: actions/create-github-app-token@v3
         with:
@@ -1333,7 +1320,7 @@ jobs:
           private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
           permission-contents: write
       - name: Give the suite's lock back
-        if: always()
+        if: always() && matrix.suite != 'unit'
         timeout-minutes: 5
         env:
           GH_TOKEN: ${{ github.token }}
@@ -1352,7 +1339,7 @@ jobs:
   # beta 41090972183 shipped Windows 0.8.53 while Mac + Linux applyflows was red. Both lanes green, or neither platform is offered.
   release-mac:
     name: Release · Mac beta
-    needs: [changes, build, windows, test-mac, test-windows]   # build, windows: their unit step's outcome (Why: the unit step no longer stops the e2e, 31 Oct 2026)
+    needs: [changes, build, windows, test-mac, test-windows]
     if: always() && needs.changes.outputs.gate == 'true' && needs.test-mac.result != 'skipped' && needs.test-mac.result != 'cancelled'
     runs-on: ubuntu-24.04
     timeout-minutes: 90   # Why (30 Oct 2026, a8; beta 41090972183): covers the e2e review (15 min) plus release-checks.sh waiting up to 60 min for main's build; 20 cut Windows off at 18 min
@@ -1438,7 +1425,7 @@ jobs:
           github-token: ${{ github.token }}
       - name: Not released on Mac, an E2E suite failed on Mac + Linux or Windows, or a unit test failed
         timeout-minutes: 10
-        run: python3 tools/beta_rate_gate.py --repo "$GITHUB_REPOSITORY" --run "$GITHUB_RUN_ID" --e2e-only --platform mac --unit-mac "${{ needs.build.outputs.unit }}" --unit-windows "${{ needs.windows.outputs.unit }}"
+        run: python3 tools/beta_rate_gate.py --repo "$GITHUB_REPOSITORY" --run "$GITHUB_RUN_ID" --e2e-only --platform mac
       - name: Tolerant AI rates against main's nightly band (report only)
         timeout-minutes: 10
         if: needs.changes.outputs.gate == 'true'
@@ -1492,7 +1479,7 @@ jobs:
   # "Beta-approved (Windows):" line that offers the build to Windows beta testers (desktop/lib/updater.js). Red = not released on Windows.
   release-windows:
     name: Release · Windows beta   # needs both lanes: the Why above release-mac
-    needs: [changes, build, windows, test-mac, test-windows]   # build, windows: their unit step's outcome (Why: the unit step no longer stops the e2e, 31 Oct 2026)
+    needs: [changes, build, windows, test-mac, test-windows]
     if: always() && needs.changes.outputs.gate == 'true' && needs.test-windows.result != 'skipped' && needs.test-windows.result != 'cancelled'
     runs-on: ubuntu-24.04
     timeout-minutes: 90   # Why (30 Oct 2026, a8; beta 41090972183): covers the e2e review (15 min) plus release-checks.sh waiting up to 60 min for main's build; 20 cut Windows off at 18 min
@@ -1574,7 +1561,7 @@ jobs:
           github-token: ${{ github.token }}
       - name: Not released on Windows, an E2E suite failed on Mac + Linux or Windows, or a unit test failed
         timeout-minutes: 10
-        run: python3 tools/beta_rate_gate.py --repo "$GITHUB_REPOSITORY" --run "$GITHUB_RUN_ID" --e2e-only --platform windows --unit-mac "${{ needs.build.outputs.unit }}" --unit-windows "${{ needs.windows.outputs.unit }}"
+        run: python3 tools/beta_rate_gate.py --repo "$GITHUB_REPOSITORY" --run "$GITHUB_RUN_ID" --e2e-only --platform windows
       - name: Tolerant AI rates against main's nightly band (report only)
         timeout-minutes: 10
         if: needs.changes.outputs.gate == 'true'

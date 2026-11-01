@@ -19,10 +19,18 @@ def steps(text):
     return out
 
 
+def with_action_body(block):
+    """A step that calls a repo composite action (`uses: ./.github/actions/<x>`) runs that action's commands: read them as the step's own (owner, 1 Nov 2026: the desktop unit step moved into .github/actions/unit-tests)."""
+    called = re.search(r'(?m)^\s+uses: \./\.github/actions/([\w-]+)\s*$', block)
+    action = WORKFLOWS.parent / 'actions' / called.group(1) / 'action.yml' if called else None
+    return block + '\n' + action.read_text(encoding='utf-8') if action and action.exists() else block
+
+
 def quiet_suite_steps():
     found = []
     for path in sorted(WORKFLOWS.glob('*.yml')):
         for name, block in steps(path.read_text(encoding='utf-8')):
+            block = with_action_body(block)
             if re.search(r'(?m)^        continue-on-error:', block) and SUITE.search(block):
                 found.append((path.name, name, block))
     return found

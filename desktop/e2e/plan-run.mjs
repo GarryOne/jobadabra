@@ -14,6 +14,7 @@ import {nightRef, nightSuites, NIGHT_TITLE} from './lib/night-pass.mjs';
 import {asIssues, REGISTER_LIST, registerEntries} from './lib/prejudge.mjs';
 import {shardLegs, suiteOfKey, windowsMatrix} from './lib/suite-shards.mjs';
 import {STORES, WHY} from './lib/pick-why.mjs';
+import {UNIT_SUITE, withUnitLeg} from './lib/unit-leg.mjs';
 
 // A PR's (or an after-merge run's) pr_steps: {suite: [step names], "(stores)": {suite: store}, "(why)": [lines]} (pr-suites.mjs). Unreadable: none.
 export const prSteps = env => { try { const steps = JSON.parse(env.PR_STEPS || '{}'); return steps && typeof steps === 'object' && !Array.isArray(steps) ? steps : {}; } catch { return {}; } };
@@ -154,7 +155,10 @@ export async function planRun({env, gh = realGh, all, minutes, os = async () => 
   // Windows runs apply and the settings smoke of these (lib/plan.mjs WINDOWS, the e2e audit 26 Oct 2026), never one that judges what is the same on every OS
   // (quality: the AI's answers; owner, 7 Oct 2026: Windows paid $1.36 a day for it).
   const windows = onWindows(suites.filter(suite => !sameOnEveryOs.includes(suite)));
-  return {...aiPlanOutputs(suites, offlineAi, review), matrix: JSON.stringify({include}), count: String(include.length), suites: suites.join(','), windows_suites: windows.join(','), windows_matrix: JSON.stringify(windowsMatrix(windows, shards)), ref, tag, why};
+  // GATE_UNIT=1 (the release run, desktop.yml): the desktop unit tests are one more leg of each lane's matrix. `count`, `suites` and `windows_suites` stay the E2E legs and suites: a plan
+  // that picked no suite must still read '0' so the Test matrix is skipped and "Gate ran?" names the failure (Gitar on #2858; the 24 Oct 2026 guard, tests/test_desktop_workflow.py).
+  const macMatrix = withUnitLeg({include}, 'Mac', env), windowsPlan = withUnitLeg(windowsMatrix(windows, shards), 'Windows', env);
+  return {...aiPlanOutputs(suites, offlineAi, review), matrix: JSON.stringify(macMatrix), count: String(include.length), suites: suites.join(','), windows_suites: windows.join(','), windows_matrix: JSON.stringify(windowsPlan), ref, tag, why};
 }
 
 // What every suite says about itself (cadence, watches, varies, minutes, runner): planRun's inputs from the real suites. plan-windows.mjs plans the Windows gate with it too.
@@ -170,7 +174,7 @@ export async function suiteFacts() {
 if (import.meta.url === pathToFileURL(process.argv[1] || '').href) {
   const out = await planRun({env: process.env, ...(await suiteFacts())});
   for (const [key, value] of Object.entries(out)) console.log(`${key}=${value}`);
-  const suites = [...new Set(JSON.parse(out.matrix).include.map(item => item.suite))];   // the matrix has one entry per OS
+  const suites = [...new Set(JSON.parse(out.matrix).include.map(item => item.suite).filter(suite => suite !== UNIT_SUITE))];   // the matrix has one entry per OS
   console.error([`### E2E plan · commit \`${String(out.ref).slice(0, 7)}\``,
     `- **Suites (${suites.length}):** ${suites.map(suite => `\`${suite}\``).join(' ') || '(none)'}`,
     ...(out.tag ? [`- **Promotes:** \`${out.tag}\` when all pass`] : []),

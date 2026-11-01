@@ -62,14 +62,18 @@ def blocking_lanes(jobs, registry):
     return [f'{LANE_NAMES[lane]}: {suite}' for lane in LANE_NAMES for suite in blocking_jobs(jobs, registry, lane)]
 
 
-def backbone_check(jobs, registry, unit=None):
+# Why (1 Nov 2026, owner: "let's go this way"): the desktop unit tests are a leg of each lane's Test matrix, a job named whole ("Unit tests · Mac"), not a step of the Build box.
+UNIT_JOBS = ('Unit tests · Mac', 'Unit tests · Windows')
+
+
+def backbone_check(jobs, registry):
     """Hold either beta on any backbone job that is not green; a suite's single try is the verdict (spec rule L, 31 Oct 2026).
 
-    `unit` maps a lane label to its Build box's unit-step outcome. Why (31 Oct 2026, owner, "D: unit red still runs e2e"): the unit step no longer stops the e2e
-    (beta 41215677698 lost 45 minutes of e2e to 1 flaky unit test), so the release is where one unit red still refuses both platforms. Only 'failure' counts: a unit
-    step that did not run ('' / skipped / cancelled) means the build did not finish, which the e2e jobs already show.
+    The "Unit tests · <lane>" job is read here too. Why (31 Oct 2026, owner, "D: unit red still runs e2e"): a red unit test does not stop the e2e (beta 41215677698 lost 45 minutes
+    of e2e to 1 flaky unit test), so the release is where one unit red still refuses both platforms. Anything but conclusion 'success' is red, and so is a missing job: a unit leg that was
+    cancelled or skipped never passed (Gitar on #2858), and the e2e jobs do not show it.
     """
-    red = {f'Unit tests · {lane}' for lane, outcome in (unit or {}).items() if outcome == 'failure'}
+    red = {name for name in UNIT_JOBS if next((job for job in jobs if job.get('name') == name), {}).get('conclusion') != 'success'}
     for lane, label in LANE_NAMES.items():
         prefix = f'E2E · {label} · '
         lane_jobs = [job for job in jobs if job.get('name', '').startswith(prefix)]
@@ -161,8 +165,6 @@ def main():
     parser.add_argument('--run', required=True)
     parser.add_argument('--e2e-only', action='store_true', help='block on any red gate suite of either lane')
     parser.add_argument('--platform', choices=('mac', 'windows'), default='mac')
-    parser.add_argument('--unit-mac', default='', help="the Build · Mac unit step's outcome ('failure' holds both betas)")
-    parser.add_argument('--unit-windows', default='', help="the Build · Windows unit step's outcome ('failure' holds both betas)")
     args = parser.parse_args()
     try:
         registry = json.loads(LANES.read_text())['suites']
@@ -170,7 +172,7 @@ def main():
         print('::warning::AI rate registry unavailable; report only' if not args.e2e_only else '::error::Backbone registry unavailable')
         return int(args.e2e_only)
     if args.e2e_only:
-        status, lines = backbone_check(jobs_of(args.repo, args.run, gh), registry, {'Mac': args.unit_mac, 'Windows': args.unit_windows})
+        status, lines = backbone_check(jobs_of(args.repo, args.run, gh), registry)
         for line in lines:
             print('::error::' + line)
         if status:

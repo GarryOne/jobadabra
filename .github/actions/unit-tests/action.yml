@@ -1,0 +1,51 @@
+name: Desktop app unit tests
+description: >-
+  The desktop app's unit tests (tools/check.sh --area <each of `areas`>, side by side) with one result table and one `::error title=Unit tests · <area>` annotation per red area.
+  One body for the Unit tests leg of the Test matrix in desktop.yml and for the Build jobs of a run that is not tested (no gate), so no copy grows (a8, 1 Nov 2026).
+  The tests run with every token of the calling job's environment removed (the e2e jobs hold live Notion, AI and GitHub tokens that a unit test must never reach).
+inputs:
+  areas:
+    description: Space-separated tools/check.sh areas to run at once, e.g. "python desktop"
+    required: true
+  py-jobs:
+    description: JOB_PILOTTO_PY_JOBS for the Python half; empty = tools/check.sh's own default
+    default: ''
+runs:
+  using: composite
+  steps:
+    # Windows has no time-zone database, and the Python tests load Europe/Zurich: the same tzdata the app bundles for Windows (requirements.txt, sys_platform == win32).
+    - name: Install · time-zone data for the Python tests
+      if: runner.os == 'Windows'
+      shell: bash
+      run: python -m pip install tzdata
+    - name: Run the areas side by side
+      shell: bash
+      env:
+        PYTHONUTF8: '1'   # as the app runs its own engine (lib/pipeline-env.js): files in UTF-8 on Windows too, whose default is the ANSI code page (the tests read UTF-8 files)
+        UNIT_AREAS: ${{ inputs.areas }}
+        PY_JOBS: ${{ inputs.py-jobs }}   # Mac: the runner's cores / check slots gave 2 shards (the Python half took 5-6.5 min); the slow modules sleep and wait, so 6 overlap well (12 Oct 2026, as build.yml)
+      run: |
+        # Why (1 Nov 2026, owner's rule "tests never touch live accounts or paid APIs"; the Test matrix's job env holds E2E_ANTHROPIC_KEY, E2E_OPENAI_KEY, E2E_NOTION_TOKEN*, GH_TOKEN, CI_* …):
+        # a denylist, not `env -i` (desktop.yml never runs on a PR, so a Windows variable an allowlist forgot would only show up as a red beta). By prefix and by exact name; tests/test_unit_leg_env.py
+        # derives every secret of the calling jobs from desktop.yml and asserts each is covered here. Build's own unit step never had these tokens, so the tests do not need them.
+        for name in $(compgen -e); do
+          case "$name" in
+            E2E_*|CI_*|FREE_AI_*|AI_COST_*|GH_TOKEN|GITHUB_TOKEN|ACTIONS_ID_TOKEN_REQUEST_*|MAC_SIGN_*|CLIENT) unset "$name" ;;
+          esac
+        done
+        if [ -n "$PY_JOBS" ]; then export JOB_PILOTTO_PY_JOBS="$PY_JOBS"; fi
+        pids=""
+        for area in $UNIT_AREAS; do bash tools/check.sh --area "$area" > "unit-$area.log" 2>&1 & pids="$pids $area:$!"; done
+        status=0
+        # The answer on top, the detail one click away (owner, 10 Oct 2026: "human readable, without scrolling a lot"): a passing suite is ONE line here and its per-file log
+        # is collapsed; a failing suite prints its log in full, whose first lines are the failing tests and their errors. The same lines are the step's log.
+        for entry in $pids; do
+          area="${entry%%:*}"
+          if wait "${entry#*:}"; then result=passed; else result=FAILED; status=1; fi
+          line=$(grep -E '^(OK|FAILED): |^py-shards: .*(passed|FAILED)' "unit-$area.log" | tail -1)
+          echo "| $area | $result | ${line:-no summary line} |" >> unit-table.md
+          if [ "$result" = passed ]; then echo "✔ $area: ${line}"; echo "::group::$area · every test file"; cat "unit-$area.log"; echo "::endgroup::"
+          else echo "::error title=Unit tests · $area::The $area unit tests failed (the E2E suites go on; the release refuses)"; cat "unit-$area.log"; fi
+        done
+        { echo "### Unit tests · desktop app"; echo; echo "| Suite | Result | Summary |"; echo "|---|---|---|"; cat unit-table.md; }
+        exit $status

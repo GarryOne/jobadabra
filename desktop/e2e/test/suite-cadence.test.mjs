@@ -6,9 +6,9 @@ import {planRun, suiteFacts} from '../plan-run.mjs';
 import {planPrSuites} from '../lib/pr-suites.mjs';
 import {SLIM, autoSuites, suitesFor} from '../lib/plan.mjs';
 
-const KEEP = ['activity', 'activityfailures', 'apply', 'applyflows', 'employers', 'failureschannels', 'qualityai', 'settings'];
+const KEEP = ['activityfailures', 'apply', 'applyflows', 'employers', 'failureschannels', 'qualityai', 'settings'];
 const NIGHT_REPORT = ['interactions', 'notion-real', 'quality', 'wander'];   // once a night, report only, never in the beta (owner, 1 Nov 2026); each exports cadence 'night-report' itself
-const DROPPED = ['mailreading', 'personas', 'pool'];
+const DROPPED = ['personas', 'pool'];   // R2, 1 Nov 2026: the retired `mailreading` pointer file is deleted (qualityai:mail is the way)
 const BY_HAND = ['explore'];   // never scheduled by design: it spends the owner's AI credit
 
 const SHA = 'a'.repeat(40);
@@ -51,7 +51,7 @@ test('a dropped suite runs only by name', async () => {
     const planned = await plan(env);
     assert.deepEqual(DROPPED.filter(suite => planned.has(suite)), [], `${env.EVENT} planned a dropped suite`);
   }
-  assert.ok((await plan({EVENT: 'workflow_dispatch', ONLY: 'mailreading'})).has('mailreading'));
+  assert.ok((await plan({EVENT: 'workflow_dispatch', ONLY: 'personas'})).has('personas'));
 });
 
 test('autoSuites: slim is an always suite except in a repeat', () => {

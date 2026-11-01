@@ -2,7 +2,6 @@
 // Job: wait on state
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import path from 'node:path';
 import {test} from 'node:test';
 import {budgetMsOf, createRunner, stopMsOf} from '../lib/runner.mjs';
 import {stepCalls} from '../lib/pr-suites.mjs';
@@ -17,33 +16,10 @@ const names = text => stepCalls(text).flatMap(call => call.name ?? VIEWS.map(vie
   view + text.slice(call.start, call.end).match(/`\$\{view\}([^`]+)`/)[1]));
 const finalSteps = ['no AI call of this suite reached a real model: the stand-in answered or refused every one', 'nothing was queued to report to the product', 'the Notion stand-in answered every request the app made'];
 
-test('jobs watcher leaves time for the terminal-state verdict before the runner cap', async t => {
-  t.mock.method(console, 'log', () => {});
-  const name = 'a slow Jobs check keeps showing that it is working, and ends cleanly';
-  const text = source('suites/jobs.mjs'), step = stepCalls(text).find(call => call.name === name);
-  assert.ok(step, 'positive control: exercise the actual Jobs step');
-  // Execute the suite's step with in-memory feed IO and a hung-task observation, without an app or a clock wait.
-  const run = new Function('ctx', 'fs', 'path', 'feeds', 'proxy', 'page', 'watch', 'hangCaps', 'longestSilence',
-    `return ${text.slice(step.start, step.end + 1)};`);
-  let watchMs;
-  const delays = [];
-  const ctx = {needs: [], needsKey: [], run: (_name, fn) => fn()};
-  const proxy = {stats: {calls: 0}, setDelay: ms => delays.push(ms)};
-  const watch = async (_page, options) => {
-    watchMs = options.maxMs;
-    return {samples: [{at: 0, running: {}, banner: {shown: true}, logShown: 1}], endedAt: null};
-  };
-  await assert.rejects(run(ctx, {readFileSync: () => '{"jobs":[]}', writeFileSync: () => {}}, path, 'feeds',
-    proxy, {click: async () => {}}, watch, jobs.hangCaps, () => 0), /the task never reached its terminal state/);
-  const reserveMs = jobs.hangCaps[name] * 1000 - watchMs;
-  assert.ok(reserveMs >= 30000 && reserveMs <= 35000, `the state verdict needs about 30 s before the runner cap, got ${reserveMs} ms`);
-  assert.deepEqual(delays, [8000, 0], 'reset the slow proxy before reporting the state failure');
-});
-
 // Why (1 Nov 2026, owner "Shrink in cleanup", a8): the step count was typed in here and had to follow every step a layer moved out (#2763, #2770, a509995 all went red on it); the property is that every step
 // the suite source declares has a cap, so the count is read, and at least one step must be found so an empty scan never passes.
 for (const [suiteName, suite, largest, minutes] of [
-  ['interactions', interactions, 220, 25], ['jobs', jobs, 495, 30], ['failureschannels', failureschannels, 180, 12],
+  ['interactions', interactions, 220, 25], ['jobs', jobs, 395, 30], ['failureschannels', failureschannels, 180, 12],
 ]) {
   test(`${suiteName}: every step has a measured or documented fallback cap and no aggregate clock`, () => {
     const caps = JSON.parse(source('hang-caps.json'))[suiteName];

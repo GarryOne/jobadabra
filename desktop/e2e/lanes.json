@@ -10,12 +10,6 @@
       "why": "A live Jobs check on the golden postings measures the model's facts, scores and judge texts as rates.",
       "returns": "Stays tolerant: it measures the live model."
     },
-    "mailreading": {
-      "lane": "retired",
-      "since": "2026-10-31",
-      "why": "The live mail-reading eval now runs as a watched part of qualityai, keeping one tolerant AI suite.",
-      "returns": "Retired permanently; use qualityai:mail for a manual mail-reading eval."
-    },
     "notion-real": {
       "lane": "tolerant",
       "input": "outside",
@@ -90,9 +84,6 @@
       "aiMissesMax": 0
     },
     "visitsauto": {
-      "aiMissesMax": 0
-    },
-    "activity": {
       "aiMissesMax": 0
     },
     "personas": {

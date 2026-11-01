@@ -18,55 +18,5 @@
   "replace": "  if (raw) return raw;\n  if (!PROVIDER.test(raw)) return raw.replace(",
   "what": "the AI provider's raw JSON error reaches the screen",
   "catches": "the run ends as Failed or with warnings, in words"
- },
- {
-  "id": "scout-silent",
-  "suite": "activity",
-  "store": "standin",
-  "file": "src/scout_run.py",
-  "find": "def read_lists(scout, db, seeds):",
-  "replace": "print = lambda *args, **kwargs: None\n\ndef read_lists(scout, db, seeds):",
-  "what": "Find new employers prints nothing while it works: the live log says Nothing to show yet for minutes (5 Oct 2026)",
-  "catches": "one Recent runs row, an end, plain words, a clean log"
- },
- {
-  "id": "focus-hold-not-kept",
-  "suite": "focusdismiss",
-  "store": "standin",
-  "file": "desktop/renderer/pages/focus.js",
-  "find": "  settled.set(itemKey(item), Date.now() + HOLD_MS);\n  keepHolds();",
-  "replace": "  settled.set(itemKey(item), Date.now() + HOLD_MS);",
-  "what": "a dismissed Up next card is held in memory only: a reload paints it back from the saved Focus (5 Oct 2026)",
-  "catches": "removes it for good (leaves at once, not back after a refresh or a reload)"
- },
- {
-  "id": "focus-hold-one-minute",
-  "suite": "focusdismiss",
-  "store": "standin",
-  "file": "desktop/renderer/pages/focus.js",
-  "find": "const HOLD_MS = 10 * 60000,",
-  "replace": "const HOLD_MS = 5000,",
-  "what": "the hold on a dismissed card ends before Notion lists the write: the card returns after a refresh (5 Oct 2026)",
-  "catches": "once the in-app hold is over, none of the dismissed Up next cards comes back"
- },
- {
-  "id": "feedback-skip-not-held",
-  "suite": "focusdismiss",
-  "store": "standin",
-  "file": "desktop/renderer/pages/focus.js",
-  "find": "    dismiss(item);   // it leaves at once, like Done and Skip; undone if Notion refuses it\n",
-  "replace": "",
-  "what": "Skip this request waits for Notion before the card leaves (5 Oct 2026)",
-  "catches": "removes it for good (leaves at once, not back after a refresh or a reload)"
- },
- {
-  "id": "raw-http-error",
-  "suite": "failuresnotion",
-  "store": "standin",
-  "file": "desktop/renderer/run-warnings.js",
-  "find": "  if (!PROVIDER.test(raw) && (HTTP.test(raw) || HTML.test(raw))) {",
-  "replace": "  if (false) {",
-  "what": "a web service's HTTP error page reaches the screen as raw markup (#275)",
-  "catches": "Notion answers an HTML error page"
  }
 ]

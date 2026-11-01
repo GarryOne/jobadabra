@@ -137,11 +137,6 @@
         "n": 9,
         "p95Seconds": 4.4
       },
-      "with Telegram connected, a Jobs check sends one readable digest to the person's chat": {
-        "seconds": 85,
-        "n": 9,
-        "p95Seconds": 27.6
-      },
       "no AI call of this suite reached a real model: the stand-in answered or refused every one": {
         "shared": "applyflows",
         "n": 1,
@@ -291,20 +286,10 @@
         "n": 8,
         "p95Seconds": 130.5
       },
-      "a slow Jobs check keeps showing that it is working, and ends cleanly": {
-        "seconds": 495,
-        "n": 8,
-        "p95Seconds": 163.9
-      },
       "every scored job in the Jobs list is its Job Matches record, with the same score, and none is missing": {
         "seconds": 335,
         "n": 8,
         "p95Seconds": 110.8
-      },
-      "Find new employers probes the seed company and lists it in the store (Employers & Sources)": {
-        "seconds": 55,
-        "n": 8,
-        "p95Seconds": 16.9
       },
       "nothing was queued to report to the product": {
         "seconds": 30,
@@ -586,45 +571,17 @@
         "seconds": 30,
         "reason": "Preserved inline cap; see provenance."
       },
-      "the AI answers 429 (rate limit): the run ends as Failed or with warnings, in words, with nothing left Running": {
-        "seconds": 105,
-        "reason": "Recent calm measurement exceeds the preserved 90 s lower bound.",
-        "n": 10,
-        "p95Seconds": 34.8
-      },
-      "the AI answers 500: the run ends as Failed or with warnings, in words, with nothing left Running": {
-        "seconds": 70,
-        "reason": "Recent calm measurement exceeds the preserved 60 s lower bound.",
-        "n": 10,
-        "p95Seconds": 23.2
-      },
       "the AI says the key is invalid (401): the run ends as Failed or with warnings, in words, with nothing left Running": {
         "seconds": 65,
         "reason": "Recent calm measurement exceeds the preserved 60 s lower bound.",
         "n": 10,
         "p95Seconds": 21
       },
-      "the AI says the credit balance is empty (the spending limit): the run ends as Failed or with warnings, in words, with nothing left Running": {
-        "seconds": 70,
-        "reason": "Recent calm measurement exceeds the preserved 65 s lower bound.",
-        "n": 10,
-        "p95Seconds": 22.4
-      },
-      "the AI never answers: the run is stopped after its silence limit and ends as Stopped, in words, with nothing left Running": {
-        "seconds": 170,
-        "reason": "Recent calm measurement exceeds the preserved 155 s lower bound.",
-        "n": 10,
-        "p95Seconds": 55.7
-      },
       "quitting the app in the middle of a run: it is not shown Running for ever, and the app says what became of it": {
         "seconds": 495,
         "reason": "Recent calm measurement exceeds the preserved 475 s lower bound.",
         "n": 10,
         "p95Seconds": 164.6
-      },
-      "the failure and queued states render without layout problems": {
-        "seconds": 30,
-        "reason": "Preserved inline cap; see provenance."
       },
       "no AI call of this suite reached a real model: the stand-in answered or refused every one": {
         "seconds": 30,
@@ -719,71 +676,6 @@
         "seconds": 30,
         "recordSeconds": 90,
         "reason": "Preserved quality state cap, previously selected by its empty-prefix entry."
-      }
-    }
-  },
-  "activity": {
-    "provenance": "tools/e2e-step-timings.mjs: 11 main runs, 10/11 calm shard-runs.\nMain run IDs: 40796899545, 40799225090, 40802551247, 40836904987, 40975522762, 40985357367, 40987937824, 41133640727, 41146558456, 41157036555, 41180851813.\n3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.",
-    "steps": {
-      "Analyze my job search: one Recent runs row, an end, plain words, a clean log, and no row left Running": {
-        "seconds": 55,
-        "n": 10,
-        "p95Seconds": 17.8
-      },
-      "Check Gmail & Calendar with no Google connection: one Recent runs row, an end, plain words, a clean log, and no row left Running": {
-        "seconds": 30,
-        "n": 10,
-        "p95Seconds": 6.1
-      },
-      "Find jobs (an empty feed: nothing new): one Recent runs row, an end, plain words, a clean log, and no row left Running": {
-        "seconds": 85,
-        "n": 10,
-        "p95Seconds": 27.1
-      },
-      "no AI call of this suite reached a real model: the stand-in answered or refused every one": {
-        "shared": "activityfailures",
-        "n": 1,
-        "p95Seconds": 0.1
-      },
-      "nothing was queued to report to the product": {
-        "seconds": 30,
-        "n": 10,
-        "p95Seconds": 0.2
-      },
-      "the Actions page and Recent runs render without layout problems after every task": {
-        "seconds": 30,
-        "n": 10,
-        "p95Seconds": 2.3
-      },
-      "the app is quiet before the first task: no schedule, no first search, its history read": {
-        "seconds": 30,
-        "n": 10,
-        "p95Seconds": 9.2
-      },
-      "the app is seeded as a set-up install from the existing workspace": {
-        "seconds": 50,
-        "n": 5,
-        "p95Seconds": 15.7
-      },
-      "the app is set up on this Mac's store with the applicant's strategy": {
-        "seconds": 30,
-        "n": 5,
-        "p95Seconds": 3.5
-      },
-      "the Notion stand-in answered every request the app made": {
-        "seconds": 30,
-        "n": 5,
-        "p95Seconds": 0.2
-      },
-      "this suite starts with no job rows in its store's Job Matches": {
-        "seconds": 30,
-        "n": 10,
-        "p95Seconds": 0.4
-      },
-      "this suite starts with no run rows in its store": {
-        "seconds": 30,
-        "n": 10,
-        "p95Seconds": 5.7
       }
     }
   },
@@ -917,30 +809,10 @@
         "n": 10,
         "p95Seconds": 26.7
       },
-      "five more Up next cards, one for each way to finish one, are written to Notion": {
-        "seconds": 50,
-        "n": 11,
-        "p95Seconds": 16.4
-      },
-      "Focus finishes loading with no error text": {
-        "seconds": 30,
-        "n": 5,
-        "p95Seconds": 8.8
-      },
-      "Focus finishes loading within 20 seconds, with no error text": {
-        "seconds": 30,
-        "n": 6,
-        "p95Seconds": 9
-      },
       "nothing was queued to report to the product": {
         "seconds": 30,
         "n": 11,
         "p95Seconds": 0.2
-      },
-      "once the in-app hold is over, none of the dismissed Up next cards comes back from Notion": {
-        "seconds": 30,
-        "n": 11,
-        "p95Seconds": 8.7
       },
       "the app is seeded as a set-up install from the existing workspace": {
         "seconds": 50,
@@ -956,52 +828,12 @@
         "seconds": 30,
         "n": 8,
         "p95Seconds": 0.3
-      },
-      "Up next \"details\" card: Skip button removes it for good (leaves at once, not back after a refresh or a reload)": {
-        "seconds": 110,
-        "n": 11,
-        "p95Seconds": 36.3
-      },
-      "Up next \"feedback\" card: \u22ef Skip this request removes it for good (leaves at once, not back after a refresh or a reload)": {
-        "seconds": 75,
-        "n": 11,
-        "p95Seconds": 24.7
-      },
-      "Up next \"nudge\" card: \u22ef I'm out: withdraw removes it for good (leaves at once, not back after a refresh or a reload)": {
-        "seconds": 80,
-        "n": 11,
-        "p95Seconds": 25.4
-      },
-      "Up next \"prepare\" card: \u22ef Dismiss interview removes it for good (leaves at once, not back after a refresh or a reload)": {
-        "seconds": 75,
-        "n": 11,
-        "p95Seconds": 24.6
-      },
-      "Up next \"reply\" card: Done button removes it for good (leaves at once, not back after a refresh or a reload)": {
-        "seconds": 90,
-        "n": 11,
-        "p95Seconds": 28.6
-      },
-      "Focus renders without layout problems on a real store": {
-        "seconds": 30,
-        "n": 7,
-        "p95Seconds": 0.2
       }
     }
   },
   "interviews": {
     "provenance": "tools/e2e-step-timings.mjs: 11 main runs, 8/11 calm shard-runs.\nMain run IDs: 40796899545, 40799225090, 40802551247, 40836904987, 40960750830, 40975522762, 40985357367, 40987937824, 41133640727, 41146558456, 41157036555.\n3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.",
     "steps": {
-      "a transcript imported through the page is reviewed for real: outcome, strengths, next step, the right job, and the insights follow": {
-        "seconds": 75,
-        "n": 8,
-        "p95Seconds": 23.5
-      },
-      "a transcript that fails to review leaves one saved row, not reviewed, and a clear message": {
-        "seconds": 60,
-        "n": 8,
-        "p95Seconds": 18.8
-      },
       "an interview can be linked to a job and unlinked again, and Notion follows": {
         "seconds": 30,
         "n": 8,
@@ -1026,21 +858,6 @@
         "seconds": 30,
         "n": 8,
         "p95Seconds": 0.3
-      },
-      "Refresh insights without a new review says it is up to date and spends nothing": {
-        "seconds": 50,
-        "n": 8,
-        "p95Seconds": 15.3
-      },
-      "Review again on an older review replaces it: same row, one review, the old text gone": {
-        "seconds": 30,
-        "n": 8,
-        "p95Seconds": 9.1
-      },
-      "Review again right after a review starts nothing: no second call, no duplicate row, no duplicate review": {
-        "seconds": 30,
-        "n": 8,
-        "p95Seconds": 6.1
       },
       "the app is set up on this Mac's store with the applicant's strategy": {
         "seconds": 30,
@@ -1172,11 +989,6 @@
   "stores": {
     "provenance": "tools/e2e-step-timings.mjs: 9 main runs, 9/9 calm shard-runs.\nMain run IDs: 40796899545, 40799225090, 40836904987, 40975522762, 40985357367, 41133640727, 41146558456, 41157036555, 41180851813.\n3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.",
     "steps": {
-      "a remembered answer is kept in this Mac's Availability & compensation": {
-        "seconds": 30,
-        "n": 6,
-        "p95Seconds": 0.5
-      },
       "moving a card to Interviewing writes the stage and its event to the store, and it stays after a reload": {
         "seconds": 30,
         "n": 9,

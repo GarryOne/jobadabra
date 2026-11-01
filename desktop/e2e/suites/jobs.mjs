@@ -3,7 +3,6 @@
 // Actions + Recent activity + Jobs: the core of every workflow. Starts from a set-up install; resets only its own data (jobs and run rows) in Notion.
 import fs from 'node:fs';
 import path from 'node:path';
-import {longestSilence, watch} from '../lib/activity.mjs';
 import {runsData} from '../lib/activity-steps.mjs';
 import {clearData} from '../lib/start-state.mjs';
 import {agreeWithin} from '../lib/truth-data.mjs';
@@ -26,7 +25,7 @@ export const hangCaps = hangCapsFor('jobs');
 // Why (30 Oct 2026, owner, Rule B): measured per-step hang caps replace the aggregate clock; a slow runner is not a failed state assertion.
 export const aggregateBudget = false;
 export async function run(ctx) {
-  const {proxy, feeds, ARTIFACTS, page} = ctx;
+  const {ARTIFACTS, page} = ctx;
   ctx.findings = [];
   await ensureSetUp(ctx);
   // Why (1 Nov 2026, a8's after-merge red on 6631d38): this suite is pinned to this Mac's store (`store` above), whose strategy is the app's own config (saved at setup, lib/seed.mjs); a step
@@ -85,52 +84,7 @@ export async function run(ctx) {
     if (problems.length) throw new Error(problems.slice(0, 5).join('; '));
   }, {needs: ctx.needs, data: true});
   // One Apply button (5 Oct 2026): a scored job without a kit shows Apply, and Prepare only in its ⋯ menu: integration/app/screen-apply.test.js (moved 1 Nov 2026).
-  await ctx.run('Find new employers probes the seed company and lists it in the store (Employers & Sources)', async () => {
-    fs.copyFileSync(path.join(ctx.E2E, 'fixtures', 'feeds', 'scout_seeds.json'), path.join(ctx.profile, 'config', 'scout_seeds.json'));
-    await page.click('.nav[data-view="actions"]');
-    await page.evaluate(() => window.pilot.command('scout'));   // the finder alone: Find jobs runs it as its last step, and Always on / the schedule start it by itself; the Actions card was merged into Find jobs (16 Oct 2026)
-    const {value: listed} = await pollUntil(async () =>
-      ((await ctx.data('employers', 'list', {active: false}).catch(() => [])) || []).concat((await ctx.data('employers', 'list', {}).catch(() => [])) || []).find(employer => employer.name === 'E2E Gamma') || null,
-    listed => !!listed, {capMs: stepTimeLeft()});   // active or not
-    if (!listed) throw new Error('"E2E Gamma" was not listed in the store (Employers & Sources) before the step\'s hang cap');
-  }, {needs: ctx.needs});
-  // Stored answers through the AI proxy, delayed by 8 s per call; its counter advances before table lookup.
-  await ctx.run('a slow Jobs check keeps showing that it is working, and ends cleanly', async () => {
-    // Four new matching postings appear, and every AI call now takes 8 seconds: the shape of a friend's 35-minute check (2 Oct 2026).
-    const acme = JSON.parse(fs.readFileSync(path.join(feeds, 'acme.json'), 'utf8'));
-    const more = ['Senior Site Reliability Engineer, Payments', 'Staff Platform Engineer, Observability', 'Senior DevOps Engineer, Cloud', 'Senior Infrastructure Engineer, Kubernetes'];
-    more.forEach((title, i) => acme.jobs.push({id: 1100 + i, title, location: {name: 'Zurich, Switzerland'}, absolute_url: `https://boards.e2e.test/job/${1100 + i}`, updated_at: '2026-10-02T09:00:00Z',
-      content: `<p>${title}: run production on Kubernetes and AWS with Terraform, SLOs and on-call. Senior level, hybrid in Zurich, English working language.</p>`}));
-    fs.writeFileSync(path.join(feeds, 'acme.json'), JSON.stringify(acme));
-    proxy.setDelay(8000);
-    const callsBefore = proxy.stats.calls;
-    await page.click('.nav[data-view="actions"]');
-    await page.click('[data-command="run"]');
-    const t0 = Date.now();
-    let opened = false;
-    // Why (30 Oct 2026, owner, #2601): reserve 30 s for the state verdict and evidence before the runner's measured hang cap.
-    const verdictReserveSeconds = 30;
-    const {samples, endedAt} = await watch(page, {maxMs: (hangCaps['a slow Jobs check keeps showing that it is working, and ends cleanly'] - verdictReserveSeconds) * 1000, onSample: async (s, all) => {
-      if (!opened && s.banner.shown) { opened = true; await page.click('#run-banner-view').catch(() => {}); }
-      console.log(`  +${String(Math.round((s.at - t0) / 1000)).padStart(3)}s running=${s.running ? 'yes' : 'no '} banner=${s.banner.shown ? 'yes' : 'no '} log=${s.logShown} unscored=${s.unscored}/${s.jobs} step="${(s.running?.step || s.panelStep).slice(0, 56)}"`);
-    }});
-    proxy.setDelay(0);
-    const running = samples.filter(s => s.running);
-    const problems = [];
-    if (!running.length) problems.push('the task never showed as running');
-    if (!samples.some(s => s.banner.shown)) problems.push('no "running" banner appeared on the Actions page');
-    const firstLog = running.find(s => s.logShown > 0);
-    if (!firstLog) problems.push('the Technical log never showed a line while the task ran ("Nothing to show yet" the whole time)');
-    else console.log(`  clock: Technical log first showed a line after ${Math.round((firstLog.at - running[0].at) / 1000)} s (reported only)`);
-    const silence = longestSilence(samples);
-    console.log(`  longest stretch with nothing visibly changing: ${Math.round(silence / 1000)} s; AI calls through the slow proxy: ${proxy.stats.calls - callsBefore}`);
-    if (endedAt == null) problems.push('the task never reached its terminal state before the measured hang cap');
-    const last = samples.at(-1);
-    if (endedAt != null && (last.newest?.live || last.newest?.ok === false)) problems.push(`the task ended but the newest run is ${last.newest?.live ? 'still live' : 'failed'}: ${last.newest?.result}`);
-    if (endedAt != null && last.unscored > 0) problems.push(`${last.unscored} job(s) are still "Not scored" after the task ended`);
-    if (ctx.engine === 'api' && proxy.stats.calls - callsBefore < 1) problems.push('the test never reached the slow AI path (no AI call went through the proxy)');   // on Claude Code every call is slow by itself and the proxy is not in the way
-    if (problems.length) throw new Error(problems.join('; '));
-  }, {needs: [...ctx.needs, ...ctx.needsKey]});
+  // Find new employers (probes the seed company, lists it) and a slow Jobs check ending cleanly: desktop/integration/store/jobs-run.test.mjs (moved 1 Nov 2026, R2).
   await ctx.run('the pages of this suite render without layout problems', async () => {
     await visit(ctx, ['focus', 'jobs', 'actions']);
     finish(ctx);

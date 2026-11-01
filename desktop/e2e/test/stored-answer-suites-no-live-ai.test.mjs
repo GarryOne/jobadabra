@@ -24,7 +24,8 @@ const request = (action, body = {model: 'test', messages: [{role: 'user', conten
 });
 
 // Why (31 Oct 2026, owner saved gates): interactions, failureschannels and activity share setup reads, so all three use the same stored-answer and no-live guards.
-for (const suite of ['interactions', 'failureschannels', 'activity']) {
+// Why (R2, 1 Nov 2026): the activity suite moved to desktop/integration/store (its setup reads are the same stored table), so two suites remain here.
+for (const suite of ['interactions', 'failureschannels']) {
   for (const family of ['claude', 'openai']) test(`${suite} setup answers and named refusals stop before live ${family} AI`, async t => {
     const h = await backboneHarness(t, suite, family);
     t.after(() => h.assertNoLive());
@@ -117,7 +118,7 @@ for (const family of ['claude', 'openai']) test(`failureschannels opportunity ex
 
 // CI refused these organizer bodies although their question meaning was already stored.
 test('activity captured UUID organizer asks and weekly report replay before every transport', async t => {
-  const h = await backboneHarness(t, 'activity');
+  const h = await backboneHarness(t, 'failureschannels');   // R2, 1 Nov 2026: the activity suite is gone; the table is the same for every suite
   t.after(() => h.assertNoLive());
   const entries = Object.entries(table.requests['app.kind']).filter(([id]) => id.startsWith('activity-organizer/') || id === 'insight');
   assert.equal(entries.length, 3);

@@ -16,7 +16,7 @@
 | New | | one more owner of the CI App, tokens that do not hang on a personal login, a name that matches the product |
 
 ## What the inventory found (origin/main, 1 Nov 2026)
-`GarryOne` appears in **jobadabra 127 files** (~290 lines, tests and docs included), **jobadabra-web 83**, **jobadabra-lab 13**, **jobadabra-benchmarks 6**, the user-facing templates, and settings that are not in git.
+`GarryOne` appears in **jobadabra 127 files** (221 lines on origin/main: 91 in code, workflows and tools, 101 in tests, 28 in docs; `git grep -I -n GarryOne origin/main | wc -l`, split by path), **jobadabra-web 83**, **jobadabra-lab 13**, **jobadabra-benchmarks 6**, the user-facing templates, and settings that are not in git.
 
 | # | Place | What breaks on transfer | Fix |
 |---|---|---|---|
@@ -43,7 +43,7 @@
 - **The `JOB_PILOTTO` → `jobadabra` code rename (queued, not started)** touches the same lines in three places: `desktop/lib/github.js:27-31` (`REPO_NAMES` has `job-pilotto-private`, `STARTER` is `job-pilotto-starter`), `engine-repo.js:30` (the regexes accept `job-pilotto|jobadabra`), and the env/variable names `JOB_PILOTTO_*` in the always-on repo's variables. This work keeps those lines as they are except the owner part, so the later rename is a name swap inside `repos.js`.
 
 ## Guard (PR 6/7)
-`tests/test_repos_owner.py`: no tracked file names the personal owner (`GarryOne`) as a repo owner, except the allowlist: dated specs (history), `desktop/lib/repos.js` (the old name, kept for the redirect check), the `engine-repo` test, and this spec. A new hard-coded owner in a workflow or tool fails the test, the same shape as `tests/test_engine_repo_name.py`. Value: it protects a name change that would otherwise break POSTs silently; the move itself is the proof that ~85 literals existed.
+`tests/test_repos_owner.py`: no tracked file names the personal owner (`GarryOne`) as a repo owner, except the allowlist: dated specs (history), `desktop/lib/repos.js` (the old name, kept for the redirect check), the `engine-repo` test, and this spec. A new hard-coded owner in a workflow or tool fails the test, the same shape as `tests/test_engine_repo_name.py`. Value: it protects a name change that would otherwise break POSTs silently; the 91 code, workflow and tool lines above are the literals it keeps out.
 
 ## Plan (n/N, one PR each, no stacking)
 | PR | Repo | What | Needs |
@@ -53,7 +53,7 @@
 | 3/7 | jobadabra | `owner: ${{ vars.OWNER_OF_* }}` in the 17 workflow steps and `repository:` checkouts | owner sets the 3 variables to `GarryOne` first |
 | 4/7 | jobadabra-web | broker accepts both owners; `api/*.js` repo from env; the same `OWNER_OF_*` in its 4 steps | ab informed for the broker |
 | 5/7 | lab + benchmarks | the `repository:` literals read the variables | owner sets variables |
-| 6/7 | all | literal sweep to the org after the last move + the guard | all 5 moved |
+| 6/7 | all | literal sweep to the org after the last move + the guard | all 6 transfers done (benchmarks, always-on, lab, web, starter, jobadabra) |
 | 7/7 | none | night slot + beta green from the org, report | a8's hours |
 
 ## Owner steps (each is sent to mac-07 as one exact instruction when its turn comes)

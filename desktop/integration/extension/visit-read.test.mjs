@@ -2,8 +2,7 @@
 // Integration test (layer 1, owner 1 Nov 2026: "beta = only the critical journeys; the others run separately"): "Read the jobs on this page" on recorded fixture pages.
 // The extension's own page functions (extension/visit.js and visit-page.js: extractPage, goNext, collectControls ... as they run inside a page) in a real Chromium on
 // fixtures/visits, then the engine's reader (src/sources/visits.py) on what they sent. No app, no Notion, no AI, no outside site: every page is served from this machine
-// and Claude's answers are stand-ins (the engine code that validates them is the real one). Moved here from the visitread e2e suite; only its bot-check step stays in e2e
-// (a safety journey). What it does not cover: the popup click and Chrome's access prompt.
+// and Claude's answers are stand-ins (the engine code that validates them is the real one). Moved here from the visitread e2e suite (the whole suite, bot-check page included, left e2e on 1 Nov 2026). What it does not cover: the popup click and Chrome's access prompt.
 // Why this folder (1 Nov 2026, owner: integration tests live in desktop/integration/<layer>/): CI · Harness tests (npm test in desktop/e2e) runs ../integration/extension/*.test.mjs with the full Chromium on a PR that touches extension/, src/ or desktop/.
 import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
@@ -32,6 +31,13 @@ const withPage = fnTest => async () => {
   const page = await browser.newPage();
   try { await fnTest(page); } finally { await page.close(); }
 };
+
+test('a bot-check page stops it: nothing read, the person answers it', withPage(async page => {
+  await page.goto(`${base}/check.html`);
+  const seen = await call(page, 'extractPage');
+  assert.ok(seen.challenge, 'the check page was not recognised');
+  assert.deepEqual(seen.cards ?? [], [], 'nothing is read from a bot-check page');
+}));
 
 test('the extension reads a list page as you see it: each card\'s title, address and visible lines', withPage(async page => {
   await page.goto(`${base}/list-1.html`);

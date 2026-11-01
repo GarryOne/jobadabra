@@ -131,12 +131,6 @@
       "standin": 83,
       "sqlite": 86
     },
-    "Mac + Linux · visitread": {
-      "runs": 2,
-      "max": 10,
-      "standin": 10,
-      "sqlite": 10
-    },
     "Mac + Linux · visitsauto": {
       "runs": 2,
       "max": 21,

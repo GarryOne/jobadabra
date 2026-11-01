@@ -59,7 +59,7 @@ test('every engine spawn in suites/ and lib/ is isolated', () => {
     }
   }
   const files = new Set(spawns);
-  for (const known of ['suites/personas.mjs', 'suites/employers.mjs', 'suites/pool.mjs', 'lib/quality-mail.mjs', 'suites/visitread.mjs', 'lib/forget.mjs', 'lib/store-call.mjs']) {
+  for (const known of ['suites/personas.mjs', 'suites/employers.mjs', 'suites/pool.mjs', 'lib/quality-mail.mjs', 'lib/forget.mjs', 'lib/store-call.mjs']) {
     assert.ok(files.has(known), `the check no longer sees ${known} start Python: ${[...files].join(', ')}`);
   }
 });

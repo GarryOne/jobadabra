@@ -10,7 +10,7 @@ import {withDerived} from '../../lib/target-roles.js';
 
 const E2E = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const FILES = ['suites', 'lib'].flatMap(dir => fs.readdirSync(path.join(E2E, dir)).filter(name => name.endsWith('.mjs')).map(name => path.join(E2E, dir, name)));
-const OTHER_LANGUAGE = new Set(['visitread.mjs']);   // role_keywords inside a Python snippet, no draft
+const OTHER_LANGUAGE = new Set([]);   // role_keywords inside a Python snippet, no draft
 
 test('every suite or lib that writes role_keywords goes through withRoles', () => {
   const offenders = FILES.filter(file => {

@@ -1727,16 +1727,6 @@
       }
     }
   },
-  "visitread": {
-    "provenance": "tools/e2e-step-timings.mjs: 11 main runs, 11/11 calm shard-runs.\nMain run IDs: 40789795183, 40799225090, 40802551247, 40960750830, 40975522762, 40985357367, 40987937824, 41133640727, 41146558456, 41157036555, 41180851813.\n3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.",
-    "steps": {
-      "a bot-check page stops it: nothing read, the person answers it": {
-        "seconds": 30,
-        "n": 11,
-        "p95Seconds": 0
-      }
-    }
-  },
   "visitsauto": {
     "provenance": "tools/e2e-step-timings.mjs: 10 main runs, 10/10 calm shard-runs.\nMain run IDs: 40789795183, 40799225090, 40802551247, 40836904987, 40960750830, 40975522762, 40987937824, 41146558456, 41157036555, 41180851813.\n3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.",
     "steps": {
@@ -1744,11 +1734,6 @@
         "seconds": 30,
         "n": 10,
         "p95Seconds": 0.4
-      },
-      "a marked tab whose site redirects by script and drops the mark is still read by itself": {
-        "seconds": 30,
-        "n": 10,
-        "p95Seconds": 5.1
       },
       "a marked tab, once allowed, is read by itself over its pages, reported to the app as done, and closed": {
         "seconds": 30,

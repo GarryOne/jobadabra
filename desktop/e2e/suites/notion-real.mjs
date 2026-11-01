@@ -18,8 +18,9 @@ export const store = 'notion';
 export const notionTokenOf = 'failuresnotion';   // its Keychain item and GitHub secret (a hyphen-free name: E2E_NOTION_TOKEN_FAILURESNOTION)
 export const notionPage = 'Job Pilotto E2E — Failures Notion';   // the one page it may empty (lib/context.mjs fails on any other)
 export const fresh = true;                       // the page starts empty: last night's workspace would make the move land in an existing one
-// Why (28 Oct 2026, owner): the reliability design rule C supersedes the 26 Oct audit: nightly + before beta, tolerant outside-world health, never PR/push reach.
-export const cadence = 'outside';
+// Why (1 Nov 2026, owner: "I'd like the beta to have only the critical e2e/user journeys. ALl the others, to run separately less frequently"; supersedes the 28 Oct rule C): outside-world
+// health on a real workspace, once a night and reported only, never in the beta, a gate, a push or a PR (lib/plan.mjs NIGHT_REPORT; a tolerant lane in lanes.json).
+export const cadence = 'night-report';
 export const realAi = false;   // the harness fails the run if an AI call reaches a real model
 export const offlineAi = true;   // dummy keys and refusing local proxies: real Notion, zero live AI
 export const keepGoing = true;

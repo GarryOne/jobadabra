@@ -62,15 +62,17 @@ test('autoSuites: slim is an always suite except in a repeat', () => {
   assert.deepEqual(autoSuites(all, cadence, false, true), ['a', 'c']);
 });
 
-// Outside-world availability changes without a source diff: never let reach pick it.
-test('real Notion runs in nightly and beta gates and its own daily run, never a look or PR/push reach', async () => {
+// Outside-world availability changes without a source diff: never let reach pick it. Why (1 Nov 2026, owner: "the beta [has] only the critical e2e/user journeys. ALl the others,
+// to run separately less frequently"): real Notion is a night-report suite (night pass 1 only, tolerant lane, test below): no gate, no beta, no look, no daily outside run.
+test('real Notion is a night-report suite: never a look, a gate, the daily outside run, PR/push reach or a repeat', async () => {
   const facts = await suiteFacts();
-  assert.equal(facts.cadence['notion-real'], 'outside');
+  assert.equal(facts.cadence['notion-real'], 'night-report');
   assert.ok(!(await plan({EVENT: 'schedule'})).has('notion-real'), 'a look never checks real Notion');
-  assert.ok((await plan({EVENT: 'schedule', OUTSIDE: '1'})).has('notion-real'), 'the daily outside run (e2e.yml OUTSIDE) checks real Notion');
+  assert.ok(!(await plan({EVENT: 'schedule', OUTSIDE: '1'})).has('notion-real'), 'the daily outside run no longer checks real Notion: it runs in night pass 1');
+  assert.ok((await plan({EVENT: 'workflow_dispatch', NIGHT_PASS: '1/5'})).has('notion-real'), 'night pass 1 checks real Notion');
   for (const kind of ['nightly', 'beta']) {
     const env = {EVENT: 'gate', GATE_TAG: 'desktop-v9.9', TARGET_REF: 'desktop-v9.9', GATE_KIND: kind};
-    assert.ok((await plan(env)).has('notion-real'), JSON.stringify(env));
+    assert.ok(!(await plan(env)).has('notion-real'), JSON.stringify(env));
   }
   const reach = {pointed: OUTSIDE, direct: OUTSIDE, hits: {'notion-real': ['text']}, covering: {'notion-real': 'runs touched lines'}, cadence: facts.cadence, linux: () => true};
   for (const pullRequest of [true, false]) assert.deepEqual(planPrSuites({...reach, pullRequest}).suites, [], 'PR and after-merge reach stay offline');

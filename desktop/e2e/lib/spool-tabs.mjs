@@ -3,13 +3,15 @@
 // Why (a8, 1 Nov 2026, owner's manifest "Anchor every tab"; beta 41250138244, Windows apply-1of3, Edge, "a Workday-shaped form": "read on about:blank, 1 tab(s)"): the watcher gave the form the
 // blank tab it found, the extension's install took a tab for its settings page (background.js onInstalled), and the form's navigation was lost; `goto(...).catch(() => {})` hid the error.
 // Hypothesis until the next Windows run shows the trail (lib/tab-trail.mjs). The same install race was named once before on Edge (beta 40281407461); that fix only changed how the test picks the tab.
+// Why the blank tab stays (a8, 1 Nov 2026; Gitar on #2754): the owner's 8 Oct 2026 "I want to avoid having 2 tabs all the times" asked for no settings tab beside the test's tab; that settings tab IS closed now. The one blank tab left is the browser's anchor: closing the last tab ends it, and the tab guard closes each step's form tab. Closing the anchor too needs the guard to change: asked of a8.
 // Invariants: (1) on a fresh profile nothing is opened before the install's settings page was seen, then it is closed; the browser keeps ONE blank tab (the start tab, or a new one when the settings page
 // was the start tab): closing the last tab ends the browser, and the tab guard (lib/tab-guard.mjs) closes every tab a step opened; (2) a spool address never reuses an existing tab;
-// (3) a failed navigation is logged, kept in the trail and thrown by loaded(url) unless the tab shows the address anyway; nothing is retried.
+// (3) a navigation's wait ends with the step's clock (lib/wait-on-state.mjs stepWait); a failed navigation is logged, kept in the trail and thrown by loaded(url) unless the tab shows the address anyway; nothing is retried.
 // Tests: test/extension-browser.test.mjs
 import fs from 'node:fs';
 import path from 'node:path';
 import {guardLiveVisit} from './site-ledger.mjs';
+import {stepWait} from './wait-on-state.mjs';
 import {plain, tabTrail} from './tab-trail.mjs';
 
 // The per-site daily limit is for live visits: a fixture browser's addresses resolve to the fixture server and are never counted
@@ -64,7 +66,8 @@ export async function startTabs({context, spool, fresh, real = false, guardMs = 
       const tab = await context.newPage();
       pages[url] = tab;
       opened.push(url);
-      loads.set(url, tab.goto(url, {waitUntil: 'domcontentloaded', timeout: guardMs}).then(() => null, error => {
+      // Why (Gitar on #2754, 1 Nov 2026): the form's load is bounded by the running step's own clock (stepWait: its hang cap, never a zero timeout), not by the launch's 60 s; guardMs is the install page's guard only.
+      loads.set(url, stepWait('the form to load', timeout => tab.goto(url, {waitUntil: 'domcontentloaded', timeout})).then(() => null, error => {
         if (!stopped) { trail.failed(tab, url, error); console.error(`the browser could not open ${plain(url)}: ${firstLine(error)}`); }
         return error;
       }));

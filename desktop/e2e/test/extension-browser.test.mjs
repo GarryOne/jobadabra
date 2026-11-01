@@ -89,7 +89,7 @@ function fakeContext({gotoFails = null} = {}) {
     const emit = (name, ...args) => (listeners[name] || []).forEach(fn => fn(...args));
     const page = {gotos: [], closed: false, url: () => url, isClosed: () => page.closed, mainFrame: () => frame, on: (name, fn) => (listeners[name] ||= []).push(fn),
       navigate(target) { url = target; emit('framenavigated', frame); },
-      async goto(target) { page.gotos.push(target); if (gotoFails) throw new Error(gotoFails); page.navigate(target); },
+      async goto(target, options) { page.gotos.push(target); page.options = options; if (gotoFails) throw new Error(gotoFails); page.navigate(target); },
       async close() { page.closed = true; list.splice(list.indexOf(page), 1); emit('close'); }};
     list.push(page);
     return page;
@@ -213,4 +213,24 @@ test('the trail keeps every tab\'s opens, navigations and closes without the fil
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-trail-'));
   try { trail.write(dir); assert.equal(JSON.parse(fs.readFileSync(path.join(dir, 'tab-trail.json'), 'utf8')).entries.length, 5, 'the artifact holds the same entries'); }
   finally { fs.rmSync(dir, {recursive: true, force: true}); }
+});
+
+// Gitar on #2754: the form's load has no clock of its own: the running step's hang cap bounds it (stepWait), and with no step running Playwright's own default applies.
+test('a form\'s navigation is bounded by the running step\'s clock, not by the launch\'s', async () => {
+  const {startTabs} = await import('../lib/spool-tabs.mjs'), {stepClock} = await import('../lib/wait-on-state.mjs');
+  const {context, open} = fakeContext(), {spool, remove} = await spooled(FORM);
+  try {
+    const starting = startTabs({context, spool, fresh: true, pollMs: 0, guardMs: 60000});
+    open(SETTINGS);
+    const tabs = await starting;
+    stepClock(10000);
+    await tabs.drain();
+    const timeout = tabs.pages[FORM].options.timeout;
+    assert.ok(timeout > 0 && timeout <= 8000, `the step's clock minus the report time bounds the load, got ${timeout}`);
+    stepClock(null);
+    const fs = await import('node:fs'), path = await import('node:path'), second = `${FORM}2`;
+    fs.writeFileSync(path.join(spool, 'second.url'), second);
+    await tabs.drain();
+    assert.equal(tabs.pages[second].options.timeout, undefined, 'no step running: no bound of our own, Playwright\'s default applies');
+  } finally { stepClock(null); remove(); }
 });

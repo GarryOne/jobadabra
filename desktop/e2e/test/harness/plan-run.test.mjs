@@ -264,7 +264,7 @@ test('the release run and every other run give a backbone suite its stored answe
     assert.deepEqual(JSON.parse(out.matrix).include.map(({suite, aiAnswers}) => `${suite}:${aiAnswers || 'off'}`), ['jobs:backbone', 'updates:off']);
   }
   const {backbone} = await suiteFacts();
-  for (const suite of ['quality', 'stores', 'wander', 'activityfailures', 'storemove', 'failuresnotion', 'jobs', 'applyflows']) assert.ok(backbone.includes(suite), suite);
+  for (const suite of ['quality', 'wander', 'storemove', 'failuresnotion', 'jobs', 'applyflows']) assert.ok(backbone.includes(suite), suite);
   assert.ok(!backbone.includes('qualityai') && !backbone.includes('apply'), 'a live or off-mode suite never gets stored answers by accident');
 });
 

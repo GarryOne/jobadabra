@@ -49,10 +49,10 @@ test('#2156: settings stays on SQLite without the stand-in-only setup step; stra
 
 test('a PR run puts the picked store in the matrix; without one the job falls back to SQLite', async () => {
   const SHA = 'a'.repeat(40), gh = args => (args[0] === 'api' && /commits\//.test(args.join(' ')) ? SHA : '[]');
-  const steps = JSON.stringify({stores: ['before any change'], settings: ['x'], [STORES]: {stores: 'standin'}, [WHY]: ['stores [standin] · "before any change" ← runs a.js:1']});
-  const out = await planRun({env: {REPO: 'o/r', SHA, EVENT: 'workflow_dispatch', ONLY: 'stores,settings', PR_SUITES: 'stores,settings', PR_STEPS: steps}, gh, ...(await suiteFacts())});
+  const steps = JSON.stringify({strategy: ['before any change'], settings: ['x'], [STORES]: {strategy: 'standin'}, [WHY]: ['strategy [standin] · "before any change" ← runs a.js:1']});
+  const out = await planRun({env: {REPO: 'o/r', SHA, EVENT: 'workflow_dispatch', ONLY: 'strategy,settings', PR_SUITES: 'strategy,settings', PR_STEPS: steps}, gh, ...(await suiteFacts())});
   const store = Object.fromEntries(JSON.parse(out.matrix).include.map(item => [item.suite, item.store]));
-  assert.deepEqual(store, {settings: '', stores: 'standin'});
+  assert.deepEqual(store, {settings: '', strategy: 'standin'});
   assert.deepEqual(prSteps({PR_STEPS: 'not json'}), {});
   const workflow = fs.readFileSync(new URL('../../../../.github/workflows/e2e.yml', import.meta.url), 'utf8');
   assert.match(workflow, /E2E_STORE: \$\{\{ matrix\.store \|\| \(inputs\.pr_suites != '' && 'sqlite'\)/, 'the matrix store wins; a PR without one runs SQLite');

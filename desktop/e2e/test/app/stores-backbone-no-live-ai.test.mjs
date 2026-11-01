@@ -1,6 +1,5 @@
 // Prove stores' declared background kinds resolve at every seam without a key or live transport.
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import {test} from 'node:test';
 import {loadTable, storedAnswer} from '../../lib/ai-answers.mjs';
 import {FAILURES} from '../../lib/ai-proxy.mjs';
@@ -79,8 +78,3 @@ test('stores stored refusals keep the OpenAI error shape through its following p
   h.assertNoLive();
 });
 
-test('stores keeps its offline declaration and the no-real-AI guard enabled', () => {
-  const source = fs.readFileSync(new URL('../../suites/stores.mjs', import.meta.url), 'utf8');
-  assert.match(source, /^export const offlineAi = true;/m);
-  assert.match(source, /^export const realAi = false;/m);
-});

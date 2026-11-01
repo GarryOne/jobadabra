@@ -425,56 +425,6 @@
       }
     }
   },
-  "activityfailures": {
-    "provenance": "Measured caps: nearest-rank p95 of completed main first-try runs (fixtures/activityfailures-main-timings.json), later re-measured below. Caps are hang stops rounded up to 5 s with a 30 s floor, not speed assertions; the suite has no aggregate speed budget.\ntools/e2e-step-timings.mjs: 10 main runs, 10/10 calm shard-runs.\nMain run IDs: 40836904987, 40975522762, 40985357367, 40987937824, 41000326672, 41072228094, 41133640727, 41146558456, 41157036555, 41180851813.\n3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.\n31 Oct 2026 (a8 2/5): the inline table moved here; hand-raised inner-sequence allowances stay as minimum bounds, and a larger recent calm measurement takes precedence.",
-    "steps": {
-      "this suite starts with no run rows in its store": {
-        "seconds": 30,
-        "reason": "Preserved inline cap; see provenance."
-      },
-      "this suite starts with no job rows in its store's Job Matches": {
-        "seconds": 30,
-        "reason": "Preserved inline cap; see provenance."
-      },
-      "the app is seeded as a set-up install from the existing workspace": {
-        "seconds": 50,
-        "reason": "Preserved inline cap; see provenance."
-      },
-      "the app is quiet before the first task: no schedule, no first search, its history read": {
-        "seconds": 30,
-        "reason": "Preserved inline cap; see provenance."
-      },
-      "the AI says the key is invalid (401): the run ends as Failed or with warnings, in words, with nothing left Running": {
-        "seconds": 65,
-        "reason": "Recent calm measurement exceeds the preserved 60 s lower bound.",
-        "n": 10,
-        "p95Seconds": 21
-      },
-      "quitting the app in the middle of a run: it is not shown Running for ever, and the app says what became of it": {
-        "seconds": 495,
-        "reason": "Recent calm measurement exceeds the preserved 475 s lower bound.",
-        "n": 10,
-        "p95Seconds": 164.6
-      },
-      "no AI call of this suite reached a real model: the stand-in answered or refused every one": {
-        "seconds": 30,
-        "reason": "Preserved inline cap; see provenance."
-      },
-      "nothing was queued to report to the product": {
-        "seconds": 30,
-        "reason": "Preserved inline cap; see provenance."
-      },
-      "the Notion stand-in answered every request the app made": {
-        "seconds": 30,
-        "reason": "Preserved inline cap; see provenance."
-      },
-      "the app is set up on this Mac's store with the applicant's strategy": {
-        "shared": "applyflows",
-        "n": 3,
-        "p95Seconds": 2.2
-      }
-    }
-  },
   "quality": {
     "provenance": "Quality uses measured replay caps or live RECORD caps (recordSeconds, never below the replay cap), and no aggregate speed budget.\n29 Oct 2026 (qu 3/4): seven calm green main runs measured the Jobs check at 42.6 s, the whole suite at 54.2 s, setup at 7 s or less and every other step at 4.8 s or less; the 127.8 s Jobs and 30 s state caps are kept. RECORD keeps 360 s for the Jobs check and 90 s for state steps.\ntools/e2e-step-timings.mjs: 6 main runs, 5/6 calm shard-runs.\nMain run IDs: 37939133100, 40362764325, 40508145728, 40526061842, 40992748380, 41000326672.\n3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.\n31 Oct 2026 (a8 2/5): the inline caps moved here; a larger recent calm measurement takes precedence. test/quality-clock.test.mjs pins these numbers to lib/quality-waits.mjs, whose clocks still bound quality-journey's Jobs check.",
     "steps": {
@@ -549,63 +499,6 @@
         "seconds": 30,
         "recordSeconds": 90,
         "reason": "Preserved quality state cap, previously selected by its empty-prefix entry."
-      }
-    }
-  },
-  "employers": {
-    "provenance": "tools/e2e-step-timings.mjs: 6 main runs, 6/6 calm shard-runs.\nMain run IDs: 41147458356, 41157036555, 41158705592, 41166853012, 41173193229, 41180851813.\n3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.",
-    "steps": {
-      "a second run writes nothing twice": {
-        "seconds": 125,
-        "n": 6,
-        "p95Seconds": 40.8
-      },
-      "no AI call of this suite reached a real model: the stand-in answered or refused every one": {
-        "shared": "applyflows",
-        "n": 3,
-        "p95Seconds": 0.2
-      },
-      "nothing was queued to report to the product": {
-        "seconds": 30,
-        "n": 6,
-        "p95Seconds": 0.2
-      },
-      "one click on Find new employers is one run, and it ends": {
-        "seconds": 195,
-        "n": 6,
-        "p95Seconds": 63.5
-      },
-      "the Actions page renders without layout problems after the runs": {
-        "seconds": 30,
-        "n": 6,
-        "p95Seconds": 2.6
-      },
-      "the app is seeded as a set-up install from the existing workspace": {
-        "seconds": 45,
-        "n": 6,
-        "p95Seconds": 14.9
-      },
-      "the crawl's source list now holds the starter employers and the two new boards, and nothing else": {
-        "seconds": 30,
-        "n": 6,
-        "p95Seconds": 0.2
-      },
-      "the Notion stand-in answered every request the app made": {
-        "seconds": 30,
-        "n": 6,
-        "p95Seconds": 0.3
-      },
-      "this suite starts with no employers and no runs in its Notion page, and a candidate list of every kind": {
-        "seconds": 30,
-        "n": 6,
-        "p95Seconds": 0.3
-      },
-      "a Sonnet judge finds each added employer sensible for the candidate": {
-        "seconds": 30,
-        "n": 4,
-        "maxSeconds": 0.2,
-        "provisional": true,
-        "reason": "provisional: 3 x its slowest calm sample, 30 s floor, rounded up to 5 s; regenerate after 5 main runs (tools/e2e-step-timings.mjs)"
       }
     }
   },
@@ -771,36 +664,6 @@
         "seconds": 30,
         "n": 6,
         "p95Seconds": 0.2
-      }
-    }
-  },
-  "stores": {
-    "provenance": "tools/e2e-step-timings.mjs: 9 main runs, 9/9 calm shard-runs.\nMain run IDs: 40796899545, 40799225090, 40836904987, 40975522762, 40985357367, 41133640727, 41146558456, 41157036555, 41180851813.\n3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.",
-    "steps": {
-      "moving a card to Interviewing writes the stage and its event to the store, and it stays after a reload": {
-        "seconds": 30,
-        "n": 9,
-        "p95Seconds": 5.5
-      },
-      "no AI call of this suite reached a real model: the stand-in answered or refused every one": {
-        "seconds": 30,
-        "n": 6,
-        "p95Seconds": 0.1
-      },
-      "nothing was queued to report to the product": {
-        "seconds": 30,
-        "n": 9,
-        "p95Seconds": 0.2
-      },
-      "the app is set up on the SQLite store, with no Notion token": {
-        "seconds": 30,
-        "n": 9,
-        "p95Seconds": 6.7
-      },
-      "the board shows the store's applications in their stage columns": {
-        "seconds": 30,
-        "n": 9,
-        "p95Seconds": 5.4
       }
     }
   },

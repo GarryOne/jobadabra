@@ -14,7 +14,7 @@ const source = file => fs.readFileSync(new URL(file, import.meta.url), 'utf8');
 const captured = read('../../fixtures/golden/failuresnotion-asks.json');
 const previous = ['failuresnotion-missing-keys.json', 'failuresnotion-run2-keys.json']
   .flatMap(file => read(`../../fixtures/golden/${file}`));
-const activity = source('../../suites/activityfailures.mjs');
+const activity = source('../../lib/run-parts.mjs');   // Why (1 Nov 2026): the Notion branch moved here from suites/activityfailures.mjs when that suite left e2e
 const helpers = source('../../lib/activity-steps.mjs');
 const draft = read('../../../demo/draft.json').draft;
 const feed = file => read(`../../fixtures/feeds/${file}`);
@@ -30,7 +30,7 @@ const setFeed = runInNewContext(`const feedIds = new WeakMap(); (${setFeedBody[0
   fs: {writeFileSync: (file, text) => writes.set(file, JSON.parse(text))}, path: {join: (...parts) => parts.join('/')},
 });
 const notionAt = activity.indexOf("if (parts.includes('notion'))");
-const calls = activity.slice(notionAt, activity.indexOf("if (parts.includes('ai'))", notionAt))
+const calls = activity.slice(notionAt)
   .match(/setFeed\(ctx, [^;]+/g);
 assert.ok(calls?.length, 'the Notion branch must declare its feed calls');
 const company = feed('sources.json')[0].company;

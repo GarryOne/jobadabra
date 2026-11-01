@@ -18,7 +18,6 @@
     "wizard": "node suite.mjs wizard",
     "jobs": "node suite.mjs jobs",
     "settings": "node suite.mjs settings",
-    "employers": "node suite.mjs employers",
     "focus": "node suite.mjs focus",
     "apply": "node suite.mjs apply",
     "quality": "node suite.mjs quality",

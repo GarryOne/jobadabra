@@ -9,7 +9,7 @@ import {pollUntil, stepWait, waitForLogLine} from './wait-on-state.mjs';
 const SEEDED = 'Platform engineer with 8 years on AWS, written by the e2e suite.';
 const EDITED = 'Site reliability engineer who has run on-call for 40 services, edited by the e2e suite.';
 
-const outlineOf = ctx => ctx.page.evaluate(() => window.pilot.textOutline('profile'));
+const outlineOf = ctx => ctx.page.evaluate(() => window.pilot.textOutline('profile'));   // -> {ok, items, store, link}: the parts model reads `.items`
 const summaryOf = outline => (outline?.items ? (profileParts(outline.items).summary?.lines || []).map(line => line.text) : []);
 
 // Poll the store's Profile until its summary lines are `want`; the error names the lines it saw last.
@@ -25,6 +25,19 @@ async function openExperience(ctx) {
 }
 
 /**
+ * Put exactly one summary line (SEEDED) in the Profile through the app's own textEdit, so the card has one box to edit, and wait until the store reads it back.
+ * `ctx.page` only needs `evaluate` (the window's `window.pilot`); throws when textEdit refuses or the store never shows the line (test/harness/profile-experience-seed.test.mjs).
+ */
+export async function seedSummary(ctx) {
+  const seed = changesFor('summary', profileParts((await outlineOf(ctx)).items).summary, [SEEDED]);
+  if (seed.length) {
+    const seeded = await ctx.page.evaluate(changes => window.pilot.textEdit('profile', changes), seed);
+    if (!seeded.ok) throw new Error(`the e2e summary could not be put in the Profile: ${seeded.error}`);
+  }
+  await waitForSummary(ctx, [SEEDED], 'after seeding');
+}
+
+/**
  * The J14 Experience step on the running app (`ctx`: a set-up install on any store): seed one summary line through the app's textEdit, edit it in Profile → Experience,
  * press Save all changes, quit and start the app again, and check the card and the store hold the edit. Reads and writes only the suite's own data folder.
  * Throws a message naming the summary lines last seen when a wait ends, or the step that could not be reached.
@@ -33,13 +46,7 @@ export async function profileExperienceStep(ctx) {
   // The start-up move into the store finishes first: it may drop this Mac's profile copy once Notion has it (see settings.mjs roundTrip).
   await waitForLogLine(ctx.profile, /startup moves finished/g, {what: 'the app\'s start-up move into the store'});
 
-  // Seed through the app's own textEdit: exactly one summary line, so the card has one box to edit.
-  const seed = changesFor('summary', profileParts(await outlineOf(ctx)).summary, [SEEDED]);
-  if (seed.length) {
-    const seeded = await ctx.page.evaluate(changes => window.pilot.textEdit('profile', changes), seed);
-    if (!seeded.ok) throw new Error(`the e2e summary could not be put in the Profile: ${seeded.error}`);
-  }
-  await waitForSummary(ctx, [SEEDED], 'after seeding');
+  await seedSummary(ctx);
   await ctx.page.reload();   // the Profile page reads the store afresh
 
   await openExperience(ctx);

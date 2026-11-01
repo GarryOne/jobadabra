@@ -99,21 +99,10 @@
   "failureschannels": {
     "provenance": "Generated state-wait hang caps for failureschannels; never a speed assertion.\ntools/e2e-step-timings.mjs: 9 main runs, 9/9 calm shard-runs.\nSparse shared steps use the applyflows entry's measurements.\nMain run IDs: 40610690663, 40617153757, 40650235925, 40796899545, 40799225090, 40802551247, 40836904987, 40960750830, 40975522762.\n3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.\ntools/e2e-step-timings.mjs: 6 main runs, 5/6 calm shard-runs.\nMain run IDs: 40796899545, 40799225090, 40960750830, 40985357367, 41133640727, 41146558456.\n3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.",
     "steps": {
-      "Google access revoked: the Gmail check says so in words (connect Google again), never a plain Completed, never Google's raw answer": {
-        "seconds": 50,
-        "n": 5,
-        "p95Seconds": 15.6,
-        "reason": "Recent calm measurement exceeds the preserved 45 s lower bound."
-      },
       "nothing was queued to report to the product": {
         "seconds": 30,
         "n": 9,
         "p95Seconds": 0.2
-      },
-      "Telegram refuses the digest (the bot was blocked): the run says so in words, never a plain Completed, nothing left Running": {
-        "seconds": 105,
-        "n": 9,
-        "p95Seconds": 33.7
       },
       "the app is quiet before the first task: no schedule, no first search, its history read": {
         "seconds": 30,
@@ -370,11 +359,6 @@
   "settings": {
     "provenance": "Generated state-wait hang caps for settings; never a speed assertion.\ntools/e2e-step-timings.mjs: 10 main runs, 9/10 calm shard-runs.\nSparse shared steps use the applyflows entry's measurements.\nMain run IDs: 40135785331, 40152010902, 40252278499, 40274183649, 40428980247, 40434672283, 40589724303, 40610690663, 40799225090, 40802551247.\n3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.\ntools/e2e-step-timings.mjs: 9 main runs, 6/9 calm shard-runs.\nMain run IDs: 40796899545, 40799225090, 40836904987, 40960750830, 40985357367, 40987937824, 41146558456, 41157036555, 41180851813.\n3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.",
     "steps": {
-      "⌘K opens the palette: every page is listed, a typed command opens its page, Esc closes it": {
-        "seconds": 30,
-        "n": 9,
-        "p95Seconds": 2.4
-      },
       "Automatic backup: a due backup runs once at start and once on the weekly tick": {
         "seconds": 65,
         "n": 9,
@@ -405,11 +389,6 @@
         "seconds": 30,
         "n": 9,
         "p95Seconds": 0.4
-      },
-      "the AI engine panel is coherent with each engine chosen (a key is saved in both)": {
-        "seconds": 30,
-        "n": 9,
-        "p95Seconds": 2.7
       },
       "the app is seeded as a set-up install from the existing workspace": {
         "shared": "applyflows",
@@ -681,21 +660,11 @@
         "n": 10,
         "p95Seconds": 22.4
       },
-      "a search analysis paused by the spending limit is a run with a warning that names the limit, not a failure": {
-        "seconds": 65,
-        "reason": "Recent calm measurement exceeds the preserved 60 s lower bound.",
-        "n": 10,
-        "p95Seconds": 20.8
-      },
       "the AI never answers: the run is stopped after its silence limit and ends as Stopped, in words, with nothing left Running": {
         "seconds": 170,
         "reason": "Recent calm measurement exceeds the preserved 155 s lower bound.",
         "n": 10,
         "p95Seconds": 55.7
-      },
-      "the AI out of credit while reading the CV: the card says it in words, never the API's JSON (#94)": {
-        "seconds": 30,
-        "reason": "Preserved inline cap; see provenance."
       },
       "quitting the app in the middle of a run: it is not shown Running for ever, and the app says what became of it": {
         "seconds": 495,
@@ -806,16 +775,6 @@
   "activity": {
     "provenance": "tools/e2e-step-timings.mjs: 11 main runs, 10/11 calm shard-runs.\nMain run IDs: 40796899545, 40799225090, 40802551247, 40836904987, 40975522762, 40985357367, 40987937824, 41133640727, 41146558456, 41157036555, 41180851813.\n3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.",
     "steps": {
-      "a run read only from Notion (a fresh start, no local record) still shows its log": {
-        "seconds": 75,
-        "n": 10,
-        "p95Seconds": 23.7
-      },
-      "a run recorded on this Mac without its message still shows its result from the Notion page": {
-        "seconds": 95,
-        "n": 10,
-        "p95Seconds": 30.5
-      },
       "Analyze my job search: one Recent runs row, an end, plain words, a clean log, and no row left Running": {
         "seconds": 55,
         "n": 10,
@@ -825,11 +784,6 @@
         "seconds": 30,
         "n": 10,
         "p95Seconds": 6.1
-      },
-      "clicking the pop-up of a finished task opens that task's result in Recent activity": {
-        "seconds": 30,
-        "n": 10,
-        "p95Seconds": 4
       },
       "Find jobs (an empty feed: nothing new): one Recent runs row, an end, plain words, a clean log, and no row left Running": {
         "seconds": 85,
@@ -845,11 +799,6 @@
         "seconds": 30,
         "n": 10,
         "p95Seconds": 0.2
-      },
-      "opening a finished run shows its result card and its Technical log": {
-        "seconds": 30,
-        "n": 10,
-        "p95Seconds": 4
       },
       "the Actions page and Recent runs render without layout problems after every task": {
         "seconds": 30,
@@ -870,11 +819,6 @@
         "seconds": 30,
         "n": 5,
         "p95Seconds": 3.5
-      },
-      "The link to all runs opens Actions → Runs, and its task filter keeps one kind of run at a time": {
-        "seconds": 30,
-        "n": 10,
-        "p95Seconds": 4.9
       },
       "the Notion stand-in answered every request the app made": {
         "seconds": 30,
@@ -965,46 +909,6 @@
         "seconds": 30,
         "n": 9,
         "p95Seconds": 1.7
-      }
-    }
-  },
-  "cardstates": {
-    "provenance": "tools/e2e-step-timings.mjs: 9 main runs, 9/9 calm shard-runs.\nMain run IDs: 40789795183, 40802551247, 40836904987, 40960750830, 40985357367, 40987937824, 41133640727, 41146558456, 41157036555.\n3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.",
-    "steps": {
-      "a live run, mocked: Queued, then Running with its log open and Live, Jump to latest when scrolled up, then Completed keeps what you chose; reopened, folded": {
-        "seconds": 30,
-        "n": 9,
-        "p95Seconds": 0.6
-      },
-      "a partial Tailor run: its counts, its row actions and its warning status agree": {
-        "seconds": 30,
-        "n": 9,
-        "p95Seconds": 1
-      },
-      "every finished state reads in plain words, with its technical log folded": {
-        "seconds": 115,
-        "n": 9,
-        "p95Seconds": 37.4
-      },
-      "Find jobs using your browser: its card counts the sites and jobs; a stopped site offers Open it myself, and Read with Claude only with Claude help on": {
-        "seconds": 30,
-        "n": 9,
-        "p95Seconds": 2.4
-      },
-      "Gmail \"which job?\" answers: three questions open, then each answer its own saved outcome": {
-        "seconds": 30,
-        "n": 9,
-        "p95Seconds": 5
-      },
-      "Gmail connected now: past not-connected and revoked runs stay as history, without a button": {
-        "seconds": 30,
-        "n": 9,
-        "p95Seconds": 5.6
-      },
-      "Gmail disconnected now: one way to connect, and the schedule says it waits for it": {
-        "seconds": 30,
-        "n": 9,
-        "p95Seconds": 6.2
       }
     }
   },
@@ -1140,81 +1044,6 @@
       }
     }
   },
-  "focus": {
-    "provenance": "tools/e2e-step-timings.mjs: 10 main runs, 7/10 calm shard-runs.\nMain run IDs: 40796899545, 40799225090, 40802551247, 40836904987, 40960750830, 40985357367, 40987937824, 41133640727, 41157036555, 41180851813.\n3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.\nGenerated step labels share their source template prefix; p95 is recomputed from the raw calm samples, not averaged from per-label percentiles.",
-    "steps": {
-      "\"Edit target\" saves to Notion, survives a reload and changes the progress ratio": {
-        "seconds": 30,
-        "n": 7,
-        "p95Seconds": 7.1
-      },
-      "\"Up next\" lists what can't wait and Suggestions the rest, in the right order, each with the right buttons": {
-        "seconds": 30,
-        "n": 7,
-        "p95Seconds": 1.4
-      },
-      "a fresh account gets a helpful Focus: nothing urgent, one suggested next step, zeros, a funnel that says it fills in later, no insight, no raw errors": {
-        "seconds": 30,
-        "n": 7,
-        "p95Seconds": 8.5
-      },
-      "a search with applications in every stage is written to the store (dummy employers, target 5)": {
-        "seconds": 30,
-        "n": 7,
-        "p95Seconds": 4.8
-      },
-      "clicking an Up next or Suggestions row opens the right place: the mail, Jobs, the feedback box": {
-        "seconds": 30,
-        "n": 7,
-        "p95Seconds": 2.2
-      },
-      "every number on Focus matches the Notion rows (today, target, 14-day chart, funnel, inbound funnel)": {
-        "seconds": 30,
-        "n": 7,
-        "p95Seconds": 0.8
-      },
-      "Focus finishes loading": {
-        "seconds": 30,
-        "n": 7,
-        "p95Seconds": 8.4
-      },
-      "Focus renders without layout problems, with data and without": {
-        "seconds": 30,
-        "n": 7,
-        "p95Seconds": 0.2
-      },
-      "marking an action Done removes it, writes it to Notion and updates the counts": {
-        "seconds": 30,
-        "n": 7,
-        "p95Seconds": 3.8
-      },
-      "nothing was queued to report to the product": {
-        "seconds": 30,
-        "n": 7,
-        "p95Seconds": 0.2
-      },
-      "rows edited by hand in Notion (an unknown stage, an empty title, a very long note, other scripts) leave Focus working and its numbers right": {
-        "seconds": 40,
-        "n": 7,
-        "p95Seconds": 12.8
-      },
-      "Skip dismisses \"Add details\" for good: it leaves, Notion records it, a refresh does not bring it back": {
-        "seconds": 30,
-        "n": 7,
-        "p95Seconds": 9.9
-      },
-      "Suggestions lead with the latest rejection lesson, with a button to review it": {
-        "seconds": 30,
-        "n": 7,
-        "p95Seconds": 2.1
-      },
-      "the app is set up on this Mac's store with the applicant's strategy": {
-        "seconds": 30,
-        "n": 7,
-        "p95Seconds": 4.3
-      }
-    }
-  },
   "focusdismiss": {
     "provenance": "tools/e2e-step-timings.mjs: 11 main runs, 11/11 calm shard-runs.\nMain run IDs: 40799225090, 40802551247, 40836904987, 40960750830, 40985357367, 40987937824, 41114032271, 41133640727, 41146558456, 41157036555, 41180851813.\n3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.",
     "steps": {
@@ -1292,58 +1121,11 @@
         "seconds": 90,
         "n": 11,
         "p95Seconds": 28.6
-      }
-    }
-  },
-  "foryou": {
-    "provenance": "tools/e2e-step-timings.mjs: 6 main runs, 6/6 calm shard-runs.\nMain run IDs: 40144173581, 40151661424, 40152010902, 40237153490, 40255698407, 40255953518.\n3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.",
-    "steps": {
-      "\"Employers hiring people like you\": Review lists employers with their interviews, and was recorded as shown": {
-        "seconds": 30,
-        "n": 6,
-        "p95Seconds": 0.3
       },
-      "a chip opens the Jobs list searched for that employer, and is recorded as taken": {
+      "Focus renders without layout problems, with data and without": {
         "seconds": 30,
-        "n": 6,
-        "p95Seconds": 0.6
-      },
-      "a jobs check with few new jobs offers the same advice as rows with a Review button, recorded as shown": {
-        "seconds": 60,
-        "n": 6,
-        "p95Seconds": 18.7
-      },
-      "a strategy draft: one card's editor, Unsaved badge, the page bar on every tab, typed text kept, leaving asks, Save clears it": {
-        "seconds": 30,
-        "n": 6,
-        "p95Seconds": 4.3
-      },
-      "adding a suggested role says the next step: the pop-up offers Find jobs": {
-        "seconds": 30,
-        "n": 6,
-        "p95Seconds": 0.5
-      },
-      "Review opens Strategy with that suggestion's options showing": {
-        "seconds": 30,
-        "n": 6,
-        "p95Seconds": 0.3
-      },
-      "the demo window opens on Strategy with the shared pool's answer": {
-        "seconds": 30,
-        "n": 6,
-        "p95Seconds": 9.3
-      },
-      "what is recorded holds fixed words only: never a role word, a place or an employer's name": {
-        "seconds": 30,
-        "n": 6,
-        "p95Seconds": 0
-      },
-      "the job sources card is not offered: every source it could list needs a key of the person's own": {
-        "seconds": 30,
-        "n": 4,
-        "maxSeconds": 0.6,
-        "provisional": true,
-        "reason": "provisional: 3 x its slowest calm sample, 30 s floor, rounded up to 5 s; regenerate after 5 main runs (tools/e2e-step-timings.mjs)"
+        "n": 7,
+        "p95Seconds": 0.2
       }
     }
   },
@@ -2310,25 +2092,10 @@
   "stores": {
     "provenance": "tools/e2e-step-timings.mjs: 9 main runs, 9/9 calm shard-runs.\nMain run IDs: 40796899545, 40799225090, 40836904987, 40975522762, 40985357367, 41133640727, 41146558456, 41157036555, 41180851813.\n3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.",
     "steps": {
-      "a job's page shows its kit, prep and history from the store": {
-        "seconds": 30,
-        "n": 9,
-        "p95Seconds": 7.1
-      },
       "a remembered answer is kept in this Mac's Availability & compensation": {
         "seconds": 30,
         "n": 6,
         "p95Seconds": 0.5
-      },
-      "a saved view chip narrows the list: Saved shows the saved application only": {
-        "seconds": 30,
-        "n": 9,
-        "p95Seconds": 2
-      },
-      "Interviews opens without asking to connect Notion": {
-        "seconds": 30,
-        "n": 9,
-        "p95Seconds": 1.3
       },
       "moving a card to Interviewing writes the stage and its event to the store, and it stays after a reload": {
         "seconds": 30,
@@ -2345,16 +2112,6 @@
         "n": 9,
         "p95Seconds": 0.2
       },
-      "Reports → Funnel shows the Pipeline table from the store's applications": {
-        "seconds": 30,
-        "n": 9,
-        "p95Seconds": 2
-      },
-      "Reports shows the weekly report and the insights; a feedback is kept in the store and after a reload": {
-        "seconds": 30,
-        "n": 9,
-        "p95Seconds": 7.1
-      },
       "the app is set up on the SQLite store, with no Notion token": {
         "seconds": 30,
         "n": 9,
@@ -2364,11 +2121,6 @@
         "seconds": 30,
         "n": 9,
         "p95Seconds": 5.4
-      },
-      "with no store chosen and no Notion, Interviews still asks to connect (no change for anyone)": {
-        "seconds": 30,
-        "n": 9,
-        "p95Seconds": 2.2
       }
     }
   },

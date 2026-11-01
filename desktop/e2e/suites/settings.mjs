@@ -1,6 +1,7 @@
 /* global document, window */
 // Job: wait on state
-// Settings: every section, with each AI engine chosen. Starts from a set-up install (a key saved, a workspace connected).
+// Settings: every section renders, the CV check on real PDFs, Automatic backup and Your data (export / reset / import). Why (1 Nov 2026): the AI engine panel and ⌘K moved to desktop/test/screen-settings.test.js.
+// Was: every section, with each AI engine chosen. Starts from a set-up install (a key saved, a workspace connected).
 import {finish, snap} from '../lib/layout.mjs';
 import fs from 'node:fs';
 import {appLogText, currentLaunchLog} from '../lib/app-log.mjs';
@@ -16,8 +17,6 @@ import {backupNowStep, backupTimerStep, makeBackupFile} from '../lib/backup-step
 import {exportedFileDigests} from '../lib/export-snapshot.mjs';
 import {roundTripFileDifferences} from '../lib/roundtrip-files.mjs';
 
-// What a step needs from an earlier one when E2E_STEPS picks it (lib/runner.mjs wantedWords).
-export const stepNeeds = {'AI engine panel': ['every Settings section renders']};
 export const name = 'settings';
 import {hangCapsFor} from '../lib/hang-caps.mjs'; export const hangCaps = hangCapsFor('settings');
 // Why (29 Oct 2026, owner, Rule B): measured per-step hang caps replace the aggregate clock; a slow runner is not a failed state assertion.
@@ -44,46 +43,6 @@ export async function run(ctx) {
       await snap(ctx, `settings-${section}`, {view: 'settings'});
     }
   }, {needs: ctx.needs});
-  await ctx.run('the AI engine panel is coherent with each engine chosen (a key is saved in both)', async () => {
-    // The family under test's pair (lib/engine.mjs): Claude Code and the Anthropic key, or Codex and the OpenAI key (9 Oct 2026: the first OpenAI run looked for
-    // Claude Code in a panel that showed OpenAI's cards). This step goes from the API key to the family's CLI and back. A Mac is seeded on the CLI (lib/seed.mjs): start from the key, as CI does.
-    const openai = ctx.family === 'openai';
-    const pair = openai ? {cli: 'codex', api: 'openai', name: 'Codex', notice: 'codexNotice', status: 'codexStatus'} : {cli: 'cli', api: 'api', name: 'Claude Code', notice: 'claudeCodeNotice', status: 'claudeCodeStatus'};
-    if (['cli', 'codex'].includes(ctx.engine)) {
-      await page.evaluate(async ({api, notice}) => { await window.pilot.setAiEngine(api); await window.pilot.saveSettings({[notice]: false}); }, pair);   // the seed accepted the one-time notice
-      await page.reload();
-      await page.waitForSelector('.view:not([hidden])', {timeout: 60000});
-    }
-    await page.click('[data-settings-go="connections"]');
-    // The engine panel opens from its service row's Manage button (the "AI" row: "Claude or OpenAI: …"), as it does for a person; it shows the chosen engine's family.
-    const service = page.locator('#conn-on .service-card, #conn-off .service-card').filter({hasText: 'Claude or OpenAI'});
-    const services = await service.count();
-    if (services !== 1) throw new Error(`expected exactly one Claude or OpenAI service card, found ${services}`);
-    await service.getByRole('button').click();
-    const card = id => `#ai-engine-settings [data-choice="${id}"]`;
-    await page.locator(card(pair.cli)).waitFor({state: 'visible', timeout: 15000});
-    // Choosing the CLI selects its card at once and shows a note under it (no confirm); the engine is saved once it can run. Then back to the API key, which switches at once.
-    // A CI runner has no Claude Code or Codex (6 Oct 2026, the first real CI run of this suite): there the app must refuse the switch and say why; on a Mac with it, switch.
-    const installed = (await page.evaluate(status => window.pilot[status](), pair.status))?.installed;
-    await page.locator(card(pair.cli)).click();
-    if (!installed) {
-      await page.waitForFunction(() => /not installed|not found/i.test(document.getElementById('ai-engine-settings')?.textContent || ''), null, {timeout: 15000})
-        .catch(() => { throw new Error(`without ${pair.name} the panel does not say it is not installed`); });
-      if ((await page.evaluate(() => window.pilot.state())).settings.aiEngine === pair.cli) throw new Error(`the app saved ${pair.name} as the engine although it is not installed`);
-      await snap(ctx, `settings-engine-${pair.cli}-missing`, {view: 'settings', situation: `${pair.name} chosen on a computer where it is not installed: the API key stays the engine`});
-      return;
-    }
-    await page.waitForFunction(selector => document.querySelector(selector)?.getAttribute('aria-checked') === 'true', card(pair.cli), {timeout: 15000});
-    // Why (29 Oct 2026, st): poll resolved state so an async predicate's Promise cannot finish the wait at once.
-    const {value: cliChosen} = await pollUntil(() => page.evaluate(async id => (await window.pilot.state()).settings.aiEngine === id, pair.cli), value => value, {capMs: 15000, log: () => {}});
-    if (!cliChosen) throw new Error(`${pair.name} engine selection never finished`);
-    await snap(ctx, `settings-engine-${pair.cli}-chosen`, {view: 'settings', situation: `${pair.name} is the chosen engine, and an ${openai ? 'OpenAI' : 'Anthropic'} API key is saved`});
-    await page.locator(card(pair.api)).click();
-    await page.waitForFunction(selector => document.querySelector(selector)?.getAttribute('aria-checked') === 'true', card(pair.api), {timeout: 15000});
-    const {value: apiChosen} = await pollUntil(() => page.evaluate(async id => (await window.pilot.state()).settings.aiEngine === id, pair.api), value => value, {capMs: 15000, log: () => {}});
-    if (!apiChosen) throw new Error(`${pair.api} engine selection never finished`);
-    await snap(ctx, `settings-engine-${pair.api}-chosen`, {view: 'settings', situation: `The ${openai ? 'OpenAI' : 'Anthropic'} API key is the chosen engine`});
-  }, {needs: ctx.needs});
   await ctx.run('the CV check reads real PDFs: a plain CV passes, each known problem is found, a picture of a CV fails', async () => {
     const target = path.join(ctx.profile, 'cv.pdf'), original = fs.existsSync(target) ? fs.readFileSync(target) : null;
     try {
@@ -105,58 +64,6 @@ export async function run(ctx) {
         console.log(`  ${name}: score ${result.ats.score}, flagged ${result.ats.checks.filter(item => item.status !== 'pass').map(item => item.id).join(', ') || 'nothing'}`);
       }
     } finally { if (original) fs.writeFileSync(target, original); }
-  }, {needs: ctx.needs});
-  // ⌘K (6 Oct 2026: the palette had no end-to-end step). Every page is listed, Enter on a typed command opens it, Esc closes. Only "Open <page>" commands are
-  // run here: an Actions command starts its task at once (a paid run).
-  await ctx.run('⌘K opens the palette: every page is listed, a typed command opens its page, Esc closes it', async () => {
-    const pages = await page.evaluate(() => [...new Map([...document.querySelectorAll('.nav[data-view]')].map(nav => [nav.dataset.view, (nav.getAttribute('aria-label') || nav.title || nav.textContent).trim()])).entries()]);
-    if (pages.length < 5) throw new Error(`only ${pages.length} pages in the sidebar: this step would test little`);
-    await page.click('.nav[data-view="focus"]');
-    await page.keyboard.press('ControlOrMeta+k');
-    await page.locator('#palette[open]').waitFor({timeout: 5000}).catch(() => { throw new Error('⌘K did not open the palette'); });
-    const listed = await page.locator('#palette-list [role="option"]').allInnerTexts();
-    const opens = listed.filter(text => /^Open /.test(text.trim())).length;
-    if (opens < new Set(pages.map(([view]) => view)).size) throw new Error(`the palette lists ${opens} "Open …" commands for ${pages.length} pages: ${listed.slice(0, 12).join(' | ')}`);
-    // Settings, the whole class: every page, every section heading, and Export/Import data (6 Oct 2026: Export and Import were not in ⌘K). A Settings row shows
-    // its path (27 Oct 2026): "Settings → Connections → Chrome extension", each step without its leading emoji.
-    const wanted = await page.evaluate(() => {
-      const name = node => node?.textContent.replace(/\s+/g, ' ').trim().replace(/^\P{L}+/u, '');
-      return [
-        ...[...new Map([...document.querySelectorAll('[data-settings-go]')].reverse().map(go => [go.dataset.settingsGo, name(go)])).values()].map(page => `Settings → ${page}`),   // one a page: its first button
-        ...[...document.querySelectorAll('[data-settings-page] .setting[id]')].filter(section => !section.closest('[hidden]:not(.view):not([data-settings-page])'))
-          .map(section => name(section.querySelector('h3') || section.querySelector('h4, summary'))).filter(Boolean),
-        'Move your data → Export data', 'Move your data → Import data'];
-    });
-    const text = listed.map(item => item.replace(/\s+/g, ' '));
-    const absent = wanted.filter(label => !text.some(item => item.includes(label)));
-    if (absent.length) throw new Error(`not in ⌘K: ${absent.join(' | ')}`);
-    // One row per card (owner, 27 Oct 2026: "when searching for Extension, I see too many options. I'd expect to see Settings -> Connections -> Chrome extension.
-    // and that's pretty much it"): typed, "extension" lists that card alone; over the card names people type, no row twice and no row found only by its hint or
-    // keywords beside a label match (palette.js rank; the demo-app twin with exact top rows: test/palette-one-row-per-card.test.js, local only).
-    await page.locator('#palette[open] input').fill('extension');
-    const extension = (await page.locator('#palette-list [role="option"]').allInnerTexts()).map(item => item.split('\n')[0].trim());
-    if (extension.length !== 1 || !extension[0].endsWith('Connections → Chrome extension')) throw new Error(`⌘K "extension" should list Settings → Connections → Chrome extension alone: ${extension.join(' | ')}`);
-    const crowded = await page.evaluate(async queries => {
-      const {rank, shownLabel} = await import(new URL('palette.js', document.baseURI).href);
-      const entries = window.__jp.paletteCommands(), words = text => String(text).toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
-      const named = (command, query) => words(query).some(term => words(`${command.label} ${command.alias || ''}`).some(word => word.startsWith(term)));
-      return queries.flatMap(query => {
-        const rows = rank(entries, query), shown = rows.map(row => `${row.group}|${shownLabel(row)}`);
-        const twice = shown.filter((row, i) => shown.indexOf(row) !== i), weak = rows.some(row => named(row, query)) ? rows.filter(row => !named(row, query)) : [];
-        return [...twice.map(row => `"${query}" lists ${row} twice`), ...weak.map(row => `"${query}" lists ${shownLabel(row)}, found only by its hint or keywords`)];
-      });
-    }, ['extension', 'chrome', 'telegram', 'gmail', 'notion', 'calendar', 'cv', 'profile', 'plan', 'promo', 'find jobs']);
-    if (crowded.length) throw new Error(`⌘K lists more than the card asked for: ${crowded.join(' | ')}`);
-    await page.locator('#palette[open] input').fill('');   // Esc in a search box with text clears the text first
-    await page.keyboard.press('Escape');
-    await page.locator('#palette[open]').waitFor({state: 'detached', timeout: 5000}).catch(async () => {
-      if (await page.locator('#palette[open]').count()) throw new Error('Esc did not close the palette');
-    });
-    await page.keyboard.press('ControlOrMeta+k');
-    await page.locator('#palette[open] input').fill('open interviews');
-    await page.keyboard.press('Enter');
-    await page.locator('.view[data-view="interviews"]:not([hidden])').waitFor({timeout: 5000}).catch(() => { throw new Error('Enter on "open interviews" did not open the Interviews page'); });
-    if (await page.locator('#palette[open]').count()) throw new Error('the palette stayed open after running a command');
   }, {needs: ctx.needs});
   await ctx.run('Settings render without layout problems', async () => { finish(ctx); }, {needs: ctx.needs});
   await ctx.run('Automatic backup: Back up now writes a backup with no keys in its folder, and View backups opens it', () => backupNowStep(ctx), {needs: ctx.needs});

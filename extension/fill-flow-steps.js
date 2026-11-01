@@ -206,6 +206,7 @@ export async function leavePage(step) {
 async function watchPage(step) {
   const {tab, jobUrl, gen, role, kind, counts, pressed} = step;
   const {progress, emptyShape, watchForFields, late, writeState} = step.flow;
+  if (late(tab, gen, 'page state')) return false;   // Why (#2800 try 2, local trace): only the tab's CURRENT read may say the person's turn. The posting's read, ending after the tab went on to the form, said it 34 ms before the form's own end (working -> your-turn -> done: "Fill again" mid-run). A stale read never writes the page's state (worker/test/read-generation.test.js)
   await progress(tab.id, '', '', 'your-turn');   // no fill here: the panel's "Starting…" ends now, not after its 20 s (owner, 9 Oct 2026: it spun on a sign-in page left to them)
   // A check that the visitor is human in front of the page (the page-kind AI's bot_check): the person solves it in this tab; the form is watched for two
   // minutes and filled once it shows (SmartRecruiters, 9 Oct 2026: the check was read as an empty page, "no form", and nobody was told).
@@ -216,7 +217,7 @@ async function watchPage(step) {
   await markPage(tab.id, role, pressed, kind, {working: !!watching});
   // Why (30 Oct 2026, applyflows 40992748380): only recovery waits for the watch; bot-check requests and page state must reach the person immediately.
   if (watching) step.watch = watchForFields(tab, jobUrl, undefined, botCheck ? 60 : 10, counts?.frameHosts || [], () => markPage(tab.id, role, pressed, kind)).catch(async () => { await markPage(tab.id, role, pressed, kind); return false; });
-  if (late(tab, gen, 'page state')) return false;   // a stale read never writes the page's state (worker/test/read-generation.test.js)
+  if (late(tab, gen, 'page state')) return false;   // a stale read never writes the page's state (worker/test/read-generation.test.js): checked again here, nothing between it and the write
   await writeState(tab.id, {state: role});
   step.botCheck = botCheck;
   return true;
@@ -251,7 +252,7 @@ function endingLine(role, {botCheck, email, told, closed, other}) {
 // Fill once and write the result only on the document that started it.
 export async function fillPage(step) {
   const {tab, jobUrl, live, gen, kind, pressed, noted, carried, host} = step;
-  const {late, writeState, fillOpenedTab, reportFlow, progress} = step.flow;
+  const {late, writeState, fillOpenedTab, reportFlow} = step.flow;
   forgetGivenUp(tab.id);   // a new fill: its menus are tried afresh
   decide('fill', 'filling', {host, job: new URL(String(jobUrl || tab.url)).pathname, page: new URL(tab.url).pathname});   // which posting's kit this page uses
   if (late(tab, gen, 'fill start')) return false;   // the closer looks above wait too: only the tab's current read fills it
@@ -262,8 +263,7 @@ export async function fillPage(step) {
   const still = await chrome.tabs.get(tab.id).catch(() => null);
   if (!still || String(still.url || '').split('#')[0] === String(live.url || tab.url).split('#')[0]) await writeState(tab.id, result?.error ? {state: 'error', error: String(result.error).slice(0, 160)}
     : {state: 'done', filled: result?.filled || 0, left: (result?.todo || []).length, todo: (result?.todo || []).slice(0, 20)}, fillToken);
-  else { await progress(tab.id, '', '');   // Why (#2800): the pass no longer says `done` itself, and no page of the moved-on tab may ever write a verdict: this piece's end clears the dim, a next page's step turns it on again
-    decide('fill', 'the tab moved on during the fill: its end state is left to the next page', {page: new URL(String(live.url || tab.url)).pathname}).catch(() => {}); }
+  else decide('fill', 'the tab moved on during the fill: its end state is left to the next page', {page: new URL(String(live.url || tab.url)).pathname}).catch(() => {});   // Why (#2800 try 2, local trace: 2 of 8 runs): no verdict here either. The posting's fill, ending after the tab went on to the form, said `done` 4 ms before the form's first step turned it back on (the dim flashed off); the next page's read owns the end
   reportFlow(tab, {role: 'form', ok: !result?.error});
   const requiredIn = (result?.trace || []).filter(row => row.required && row.outcome === 'filled').length; if (!result?.error && requiredIn) noteProgress(tab.id, 'required_down', {filled: requiredIn});
   const filledProof = !result?.error && result?.filled > 0 && !pressed && !noted ? confirmedBody(kind?.role === 'form' ? kind : null, tab.url, controlsOf(tab.id), 'filled') : null;   // the page took the fill: the decision that called it a form is counted (a kind the structure overrode is the rule's, rung 0)

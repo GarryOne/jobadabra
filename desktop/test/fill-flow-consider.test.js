@@ -148,12 +148,23 @@ test('fillPage: an end write the page rejects still ends the run with done (#280
   assert.deepEqual(named(r.calls, 'applyState'), [['applyState', 7, 'done']]);
 });
 
-test('fillPage: a tab that moved on during the fill gets the piece\'s end from the pass, not a page write (#2800)', async t => {
+test('fillPage: a tab that moved on during the fill gets no verdict from this read: the next page\'s read owns the end (#2800 try 2)', async t => {
   const r = await rig(t, {tabs: [tab, {...tab, url: 'https://jobs.example.test/next'}]});
   await r.run();
   assert.deepEqual(named(r.calls, 'applyState'), [], 'no page write, so no verdict from writeState');
-  assert.deepEqual(sayings(r.calls).slice(-1), [['say', 7, '', '']], 'the dim would otherwise stay until Stop: the clear names the end');
+  assert.deepEqual(sayings(r.calls).filter(call => call.length > 3), [], 'local trace, 2 of 8 runs: this stale read\'s `done` came 4 ms before the form\'s first step turned it back on (the dim flashed off)');
   assert.ok(lines(r.calls).includes('the tab moved on during the fill: its end state is left to the next page'));
+});
+
+// #2800 try 2: a read that is no longer the tab's current one (the posting's, while the tab went on to the form) says no verdict to the tab.
+test('watchPage: a stale read says no your-turn to a tab a newer read owns (#2800 try 2)', async t => {
+  const kind = {role: 'no-form', kind: 'posting', by: 'ai'}, PAGE_STATE_GUARD = 6;   // the read's 6th late() is the verdict guard of watchPage (the 7th, before its state write, is pinned by read-generation.test.js); the positive control below fails loudly if a late() is added before it
+  const r = await rig(t, {answers: [kind], counts: [{...shape, fields: 1}], ruled: 'no-form', lateAt: PAGE_STATE_GUARD});
+  await r.run();
+  assert.equal(named(r.calls, 'late').length, PAGE_STATE_GUARD, 'positive control: the read reached its page-state guard and was late there');
+  assert.deepEqual(named(r.calls, 'deadEnd'), [], 'positive control: a stale read reports nothing');
+  assert.deepEqual(sayings(r.calls).filter(call => call.length > 3), [], 'no verdict from a stale read');
+  assert.deepEqual(named(r.calls, 'applyState'), []);
 });
 
 test('no form: press refused, digest asked, state and dead end reported', async t => {
@@ -164,7 +175,7 @@ test('no form: press refused, digest asked, state and dead end reported', async 
   assert.deepEqual(lines(r.calls), ['page kind: posting', 'no Apply button to press', 'no form on this page']);
   assert.deepEqual(named(r.calls, 'press'), [['press', 7, [], '', '', []]]);
   assert.deepEqual(named(r.calls, 'stall'), [['stall', tab, assertFunction(r.calls, 'stall'), '7 https://jobs.example.test/apply', kind]]);
-  assert.deepEqual(order(r.calls).slice(-9), ['backgroundPage', 'say', 'mark', 'late', 'script', 'applyState', 'decide', 'deadEnd', 'report']);
+  assert.deepEqual(order(r.calls).slice(-10), ['backgroundPage', 'late', 'say', 'mark', 'late', 'script', 'applyState', 'decide', 'deadEnd', 'report']);
   assert.deepEqual(named(r.calls, 'deadEnd')[0][1], {job: 'https://jobs.example.test/job/1', host: 'jobs.example.test', why: 'no-form', tabId: 7, page: tab.url, needs: ''});
   assert.deepEqual(sayings(r.calls), [['say', 7, 'Reading this page…'], ['say', 7, '', '', 'your-turn']]);
 });

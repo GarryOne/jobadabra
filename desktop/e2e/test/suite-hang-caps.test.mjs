@@ -41,7 +41,7 @@ test('jobs watcher leaves time for the terminal-state verdict before the runner 
 });
 
 // Why (1 Nov 2026, owner "Shrink in cleanup", a8): the step count was typed in here and had to follow every step a layer moved out (#2763, #2770, a509995 all went red on it); the property is that every step
-// the suite source declares has a cap, so the count is read, and at least one step must be found so an empty scan never passes.
+// the suite source declares has a cap, so the count is read, and the suite's own scan (not the list padded with the 3 final steps) must find at least one step.
 for (const [suiteName, suite, largest, minutes] of [
   ['interactions', interactions, 220, 25], ['jobs', jobs, 495, 30], ['failureschannels', failureschannels, 180, 12],
 ]) {
@@ -57,7 +57,7 @@ for (const [suiteName, suite, largest, minutes] of [
       preparation = source('lib/activity-steps.mjs');
     }
     const required = [...names(direct), ...names(preparation), ...names(source('lib/seed.mjs')), ...finalSteps];
-    assert.ok(required.length > 0, 'positive control: the suite\'s steps were read, an empty scan never passes');
+    assert.ok(names(direct).length > 0, 'positive control: the suite\'s own steps were read from its source, an empty scan never passes');
     assert.deepEqual(Object.keys(suite.hangCaps).sort(), [...new Set(required)].sort());
     assert.equal(suite.aggregateBudget, false);
     assert.equal(budgetMsOf(suite), Infinity);

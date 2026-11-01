@@ -42,7 +42,7 @@ CI_FILES = re.compile(r'^(\.github/|tools/pr-|desktop/e2e/(lib/plan|lib/pr-suite
 # the nightly, a release) never runs on a PR, so editing it does not slow a PR: #2137 went red at 11.4 min, every check green, for daily/scout/mail.yml.
 # Guard: tests/test_pr_verdict.py recomputes it from .github/workflows (a new PR workflow fails there until listed).
 PR_WORKFLOWS = {'conflict-label.yml', 'extension-store-publish.yml', 'gitar-label.yml', 'harness.yml', 'integration.yml', 'key-org-proof.yml',
-                'office-addon.yml', 'page-cases.yml', 'pr-closed-cancel.yml', 'pr-gate.yml', 'ready-fill-image.yml', 'search-personas.yml', 'smoke.yml', 'tests-desktop-windows.yml',
+                'office-addon.yml', 'page-cases.yml', 'pr-closed-cancel.yml', 'pr-gate.yml', 'search-personas.yml', 'smoke.yml', 'tests-desktop-windows.yml',
                 'tests-desktop.yml', 'tests-python.yml', 'tests-worker.yml'}
 
 

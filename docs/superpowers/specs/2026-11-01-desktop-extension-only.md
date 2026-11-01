@@ -72,10 +72,10 @@ Order per move: the private side lands first, then the jobadabra removal. Before
 - [x] 1/6 rule + guard + spec (proof: tests/test_desktop_extension_only.py @fc869fb)
 - [x] 2/6 engine rename (proof: app-core/package.json)
 - [x] 3/6 web shell (proof: none: merged as jobadabra-web#274, e8a1907; deleted again in 4c)
-- [ ] 4a/6 timers on the site Worker, off (web)
+- [x] 4a/6 timers on the site Worker, off (proof: none: merged as jobadabra-web#279, 5e8a58f)
 - [ ] 4b/6 the switch by day
 - [ ] 4c/6 delete the bot Worker and shells
-- [ ] 5a/6 shared ready-fill files to desktop/ready-fill (public #2891)
-- [ ] 5b/6 container shell + ready-fill-image.yml to web
-- [ ] 5c/6 delete hosted/
+- [x] 5a/6 shared ready-fill files to desktop/ready-fill (proof: desktop/ready-fill/night.mjs @5a58de5)
+- [x] 5b/6 container shell + ready-fill-image.yml to web (proof: none: merged as jobadabra-web#280, 67b76e8)
+- [x] 5c/6 delete hosted/ and ready-fill-image.yml (proof: tests/test_desktop_extension_only.py)
 - [ ] 6/6 server workflows

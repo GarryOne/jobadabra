@@ -104,6 +104,11 @@
     "elapsedAssertions": 0,
     "clockWaits": 10
   },
+  "strategy": {
+    "fixedWaits": 0,
+    "elapsedAssertions": 0,
+    "clockWaits": 2
+  },
   "stores": {
     "fixedWaits": 0,
     "elapsedAssertions": 0,

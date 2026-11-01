@@ -5,7 +5,8 @@ import {test} from 'node:test';
 import {extensionWorker, ownedWorkerOf} from '../lib/own-worker.mjs';
 
 const target = (id, file) => ({type: 'service_worker', url: `chrome-extension://${id}/${file}`, webSocketDebuggerUrl: `ws://${id}`});
-const worker = (id, file) => ({url: () => `chrome-extension://${id}/${file}`, id});
+/** A Playwright worker: its URL and what its own manifest says (`name`; null = the worker cannot be read). */
+const worker = (id, file, name = id === 'ours' ? 'Jobadabra' : 'Other extension') => ({url: () => `chrome-extension://${id}/${file}`, id, evaluate: async () => { if (name === null) throw new Error('worker not ready'); return name; }});
 /** A Playwright-like context: a list of workers and the 'serviceworker' event. */
 const contextOf = workers => Object.assign(new EventEmitter(), {serviceWorkers: () => workers});
 
@@ -21,15 +22,17 @@ test('no owned worker: the failure names every service worker it saw, and guesse
   assert.throws(() => ownedWorkerOf([]), /seen: none$/);
 });
 
-test("a Playwright context gives the extension's worker even when a foreign one is listed first", async () => {
+test("a Playwright context gives the extension's worker even when a foreign thunk.js AND a foreign background.js are listed first", async () => {
   const ours = worker('ours', 'background.js');
-  assert.equal(await extensionWorker(contextOf([worker('nkeim', 'thunk.js'), ours])), ours);
+  assert.equal(await extensionWorker(contextOf([worker('nkeim', 'thunk.js'), worker('glbjn', 'background.js'), ours])), ours);
+  assert.equal(await extensionWorker(contextOf([ours, worker('glbjn', 'background.js')])), ours, 'the order does not matter');
 });
 
 test('a worker that is not listed yet is taken from its own creation event, not from the foreign one that is', async () => {
   const context = contextOf([worker('nkeim', 'thunk.js')]), ours = worker('ours', 'background.js');
   const waiting = extensionWorker(context, {timeout: 5000});
   context.emit('serviceworker', worker('other', 'thunk.js'));   // a foreign worker's event does not answer
+  context.emit('serviceworker', worker('glbjn', 'background.js'));   // nor does another extension's background.js
   context.emit('serviceworker', ours);
   assert.equal(await waiting, ours);
   assert.equal(context.listenerCount('serviceworker'), 0, 'the listener was left behind');
@@ -37,6 +40,7 @@ test('a worker that is not listed yet is taken from its own creation event, not 
 
 test('no extension worker in time: the failure names every worker seen', async () => {
   const context = contextOf([worker('nkeim', 'thunk.js')]);
-  await assert.rejects(() => extensionWorker(context, {timeout: 20}), /no extension service worker .* within 20 ms among the service workers seen: chrome-extension:\/\/nkeim\/thunk\.js$/);
+  await assert.rejects(() => extensionWorker(contextOf([worker('nkeim', 'thunk.js'), worker('glbjn', 'background.js'), worker('slow', 'background.js', null)]), {timeout: 50}),
+    /no extension service worker of "Jobadabra" within 50 ms among the service workers seen: chrome-extension:\/\/nkeim\/thunk\.js not a background\.js \| chrome-extension:\/\/glbjn\/background\.js manifest "Other extension" \| chrome-extension:\/\/slow\/background\.js unreadable \(worker not ready\)$/);
   assert.equal(context.listenerCount('serviceworker'), 0, 'the listener was left behind');
 });

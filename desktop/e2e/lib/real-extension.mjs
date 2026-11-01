@@ -24,7 +24,7 @@ import {extensionWorker} from './own-worker.mjs';
 
 // The extension's stored settings (chrome.storage.local as JSON) -> '' or why it is not isolated: its app address is not the stand-in's port, or an address
 // on the live app's port 47111 is stored anywhere. An ADDRESS, never the bare digits: 27 Oct 2026 (run 40447725087) a stored timestamp, "boot":"1793074711121",
-// contains 47111 and failed an isolated run as "NOT ISOLATED" (the second try passed with another timestamp). Guard: test/isolation-check.test.mjs.
+// contains 47111 and failed an isolated run as "NOT ISOLATED" (the second try passed with another timestamp). Guard: test/harness/isolation-check.test.mjs.
 const LIVE_ADDRESS = /(?:127\.0\.0\.1|localhost|\[::1\]):47111(?!\d)/;
 export function isolationProblem(stored, port) {
   const text = String(stored || ''), wrongUrl = !text.includes(`"workerUrl":"http://127.0.0.1:${port}"`), live = LIVE_ADDRESS.exec(text);

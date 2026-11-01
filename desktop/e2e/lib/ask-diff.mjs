@@ -1,5 +1,5 @@
 // Where a replay's model ask differs from the live run's (npm run row, when an ask misses its kept answer): the app's capture (ai-calls.json: the page-kind, form-answer and form-judge asks as the app received them)
-// against the requests the replayed extension sent, per route in order, as short "path: live X | now Y" lines. Only keys the live call has are compared. Guard: e2e/test/ask-diff.test.mjs.
+// against the requests the replayed extension sent, per route in order, as short "path: live X | now Y" lines. Only keys the live call has are compared. Guard: e2e/test/ai/ask-diff.test.mjs.
 const cut = value => { const text = typeof value === 'string' ? value : JSON.stringify(value); return String(text ?? 'undefined').replace(/\s+/g, ' ').slice(0, 90); };
 
 function walk(live, now, at, out) {

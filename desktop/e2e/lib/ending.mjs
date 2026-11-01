@@ -1,6 +1,6 @@
 // The outcome contract's classifier (owner, 12 Oct 2026; spec docs/superpowers/specs/2026-10-12-one-next-move.md, phase 1a): ONE ending per pool row (extension/ladder/endings.js ENDINGS),
 // from the row's EXISTING report: where it got to (reached), the notes the run parser wrote (lib/record-sites.mjs parseLive), each required field's outcome and reason (our own trace words,
-// extension/page/fill.js, mapped by the fill card's causeOf), and, when given, the extension's own stop line in the row's app log. Never page text. Pure. Guard: e2e/test/ending.test.mjs.
+// extension/page/fill.js, mapped by the fill card's causeOf), and, when given, the extension's own stop line in the row's app log. Never page text. Pure. Guard: e2e/test/filling/ending.test.mjs.
 // A row that is not an application outcome is not counted: {ending: null, why}: the harness did not finish, the privacy tripwire, a refused AI, and the TEST's own holds (cc/owner,
 // 12 Oct 2026): the pool never presses an account button with fake data (ACCOUNT_HELD), and a CI runner's data-center address meets bot walls a person's would not. Those are shown apart
 // ("held by the test, not measured"), never counted resolved. 'handed' is only a real wall the run names: a bot check on a person's address, a sign-in to an existing account (LOGIN_WALL).
@@ -9,7 +9,7 @@ import {CAUSES, ENDINGS, endingOfStuck, resolved} from '../../../extension/ladde
 import {ACCOUNT_HELD, APPLY_BY_EMAIL, LOGIN_WALL, PAGE_TELLS, SITE_REFUSED} from './record-sites.mjs';
 
 // The trace words the classifier reads, as the code named writes them (no structured code travels in the report; a guard test checks each is still written there, so a reworded
-// reason fails a test instead of silently moving rows: e2e/test/ending.test.mjs). The rest goes through the fill card's causeOf (extension/fill-card.js).
+// reason fails a test instead of silently moving rows: e2e/test/filling/ending.test.mjs). The rest goes through the fill card's causeOf (extension/fill-card.js).
 export const REASONS = {legal: 'legal/consent: always your choice', written: 'written: your own words to write', demographic: 'demographic: your own choice',   // extension/page/fill.js
   noSlot: 'no place to attach it was found on this page', noFile: 'upload: no file for this question', details: 'your details'};   // extension/page/fill.js
 export const RUN_ERRORS = {dialogLeft: 'a dialog was left open over the form', dialogCovers: 'held: a dialog covers the form', blocked: 'form judge: the page is blocked',
@@ -50,7 +50,7 @@ const accountStep = result => {
 // ONE ending rule for a stop (cc's review, 12 Oct 2026): the replays and this classifier both take it from endingOfStuck (extension/ladder/endings.js), so the score and the replays
 // cannot drift. A stop is (the reason, whether a need is named). Its source, newest first: the dead-end door's line in the row's app log ("dead end: <why>" with {named}:
 // extension/ladder/dead-end.js), then, for a build before the door, the extension's own stop lines (extension/fill-flow.js and ladder/site-broken.js `decide('fill', ...)`), each
-// read as the stop it reports (STOP_STUCK). Guarded: a rename fails the test, and e2e/test/ending.test.mjs feeds both views the same stops.
+// read as the stop it reports (STOP_STUCK). Guarded: a rename fails the test, and e2e/test/filling/ending.test.mjs feeds both views the same stops.
 export const STOP_LINES = {email: 'the posting asks for the application by email', told: 'the page tells what to do', botCheck: 'a bot check in front of the page', unreadable: 'the page could not be read', broken: 'a broken page: reported as site_broken',
   other: 'the ladder ended at the person: reported as other', noForm: 'no form on this page', account: 'account page left for Claude'};
 export const STOP_STUCK = {email: ['email', true], told: ['told', true], botCheck: ['no-form', true], unreadable: ['site_broken', false], broken: ['site_broken', false], other: ['other', false],

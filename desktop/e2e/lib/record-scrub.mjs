@@ -1,7 +1,7 @@
 // Scrubs a network record ON DISK before it is published for the PR replay (records-publish.mjs): every text response body, and the record's text files (app.log, asks.jsonl, model-memo.json),
 // lose the person's own values and any e-mail address that is not an example one, by the one set of definitions the product's report scrub uses (lib/report-scrub.js scrubPersonal). A body that
 // changed gets its new hash (the file bodies/<hash>, the entry's hash and size); one that did not is untouched, so a replay serves exactly what the site sent. gateRecordDir() then searches
-// everything again, in every decoded form; a hit means the row is not published. Kinds and counts only, never a value. Guard: e2e/test/record-scrub.test.mjs.
+// everything again, in every decoded form; a hit means the row is not published. Kinds and counts only, never a value. Guard: e2e/test/record/record-scrub.test.mjs.
 import fs from 'node:fs';
 import path from 'node:path';
 import {personalHits, scrubPersonal} from '../../lib/report-scrub.js';

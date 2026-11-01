@@ -1,6 +1,6 @@
 // The gates a row's case folder passes before npm run row-to-case writes it into the cases folder (public today, private from the eval-data move): privacy (the rules of the recorded-pages privacy test, one
 // function for both) and size (owner-approved limits, 11 Oct 2026, measured on three real captures: 84-168 KB after shrinking). Findings name the kind and the file, never the value.
-// Guard: e2e/test/row-case-gates.test.mjs; desktop/test/recorded-privacy.test.js calls privacyFindings.
+// Guard: e2e/test/pool/row-case-gates.test.mjs; desktop/test/recorded-privacy.test.js calls privacyFindings.
 export const CASE_WARN = 200 * 1024, CASE_FAIL = 300 * 1024, FOLDER_FAIL = 8 * 1024 * 1024;
 export const sizeVerdict = bytes => (bytes > CASE_FAIL ? 'fail' : bytes > CASE_WARN ? 'warn' : 'ok');
 export const folderVerdict = bytes => (bytes > FOLDER_FAIL ? 'fail' : 'ok');

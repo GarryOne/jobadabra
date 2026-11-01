@@ -1,6 +1,6 @@
 // The owner's one decision on a red replay gate (owner, 14 Oct 2026: a label, no button): a PR merged into main since the baseline run, labeled `replay-accepted`, with a comment
 // `Replay-accept: <reason>` (all its worse rows) or `Replay-accept: <row name> — <reason>` (named rows only), accepts those rows. Only a comment by the repo's owner, a member or a collaborator counts.
-// Two readers: the PRs merged since the baseline (the nightly) and the PR's own label + comments (readPrAccepts: the PR gate, site-replays-pr.yml). Pure parts (guard: e2e/test/replay-accepts.test.mjs) + one gh reader. Run: node replay-accepts.mjs <baseline results.json | -> <out accepts.json>   (REPLAY_ACCEPTS_FAKE=<file>: a test's list of PRs instead of gh)
+// Two readers: the PRs merged since the baseline (the nightly) and the PR's own label + comments (readPrAccepts: the PR gate, site-replays-pr.yml). Pure parts (guard: e2e/test/replay/replay-accepts.test.mjs) + one gh reader. Run: node replay-accepts.mjs <baseline results.json | -> <out accepts.json>   (REPLAY_ACCEPTS_FAKE=<file>: a test's list of PRs instead of gh)
 import fs from 'node:fs';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';

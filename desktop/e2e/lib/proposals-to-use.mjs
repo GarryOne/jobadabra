@@ -1,7 +1,7 @@
 // Which proposed answers a harness run takes the way the person's "Use" press does (17 Oct 2026: a held run stopped at "1 of 9 required left" because nothing accepted the AI's proposals, so
 // a Workday test account never got past My Information). Pure: states are the app's review states ({id, proposals: [{label, value, options}]}), `done` the "<id> <label>" keys already used.
 // A menu's proposal is taken only when one of the form's own choices says it (the window asks the AI to map the rest: not here); a proposal with no value (a contact key) is not taken.
-// Guard: test/proposals-to-use.test.mjs.
+// Guard: test/ai/proposals-to-use.test.mjs.
 export function proposalsToUse(states, done = new Set()) {
   const use = [], skipped = [];
   for (const state of states || []) for (const item of state.proposals || []) {

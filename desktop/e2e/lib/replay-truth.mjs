@@ -4,14 +4,14 @@
 //  TRUTH: every field the case's AI answers name holds THAT answer, compared by the value itself on the runner (a value class is too weak: Israel and Switzerland are both countries);
 //  AGREEMENT: the panel's missing == the fill record's left (/extension/run trace) >= the page's own empty required controls; no "ready" with one left; no CV counted in with no file.
 // The applicant and the answers are the case's fake data; nothing here is sent anywhere. Used by lib/page-replay.mjs judgeCase.
-// Guards: e2e/test/replay-truth.test.mjs (pure parts), e2e/test/recorded-pages.test.mjs (every case).
+// Guards: e2e/test/replay/replay-truth.test.mjs (pure parts), e2e/test/record/recorded-pages.test.mjs (every case).
 
 import fs from 'node:fs';
 import vm from 'node:vm';
 import {FALSE_READINGS} from './recorded-false-readings.mjs';
 
 // The extension's one grouping rule (page/option-groups.js), injected into the page before the required controls are read: readRequiredInPage runs in the page's MAIN world, where the
-// extension's own content scripts are not (and a plain page has none: e2e/test/replay-truth-page.test.mjs).
+// extension's own content scripts are not (and a plain page has none: e2e/test/replay/replay-truth-page.test.mjs).
 const OPTION_GROUPS = fs.readFileSync(new URL('../../../extension/page/option-groups.js', import.meta.url), 'utf8');
 
 // The file the stand-in app gives as the CV (real-extension.mjs pdf('cv.pdf')), named here, not imported: that file loads playwright, and lib/record-sites.mjs (desktop's unit

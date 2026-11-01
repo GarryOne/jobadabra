@@ -1,7 +1,7 @@
 // The automatic refill's first question (.github/workflows/replay-refill.yml, a push to main): did this merge change what the AI is asked? Prints the reasons, then "changed" or "same" as the LAST line.
 //   node refill-trigger.mjs <ladder-baseline.json before the merge | -> <ladder-baseline.json now> [<commit before the merge>]
 // Two ways to change it: a ladder prompt fingerprint differs (a score update alone does not), or a file that builds the ask (lib/prompt-sources.mjs: the worker's instructions, fact rule, field list, CV facts)
-// differs between the commit before and HEAD. No commit given or known: only the baseline is compared. Guard: e2e/test/refill.test.mjs.
+// differs between the commit before and HEAD. No commit given or known: only the baseline is compared. Guard: e2e/test/filling/refill.test.mjs.
 import fs from 'node:fs';
 import {fingerprintChanged} from './lib/refill.mjs';
 import {blobsAt, sourcesChanged} from './lib/prompt-sources.mjs';

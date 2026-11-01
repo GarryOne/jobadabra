@@ -1,7 +1,7 @@
 // The refill's per-row result, ready to leave a runner: the row's model-memo.json encrypted with the repo's PUBLIC key (net-record.pub.pem, as records-publish.mjs does: the memo carries
 // the ask's page parts, so it never sits in an artifact in the clear) beside a meta.json with the row's name and spend (no page, no value). Only the publish job (NET_RECORD_KEY) opens it.
 //   node refill-pack.mjs <records dir> "<row>" <fill out dir> <pack dir>      (pack dir: memo.enc, k.enc, meta.json)
-// refill-merge.mjs reads the pack. Guard: e2e/test/refill.test.mjs.
+// refill-merge.mjs reads the pack. Guard: e2e/test/filling/refill.test.mjs.
 import fs from 'node:fs';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';

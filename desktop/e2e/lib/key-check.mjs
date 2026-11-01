@@ -1,13 +1,13 @@
 // Fails a CI suite at once, with the key's name, when the AI test key is refused (401/403) or a model a suite asks for is refused: free calls (the model list, then
 // count_tokens per model: no tokens are produced, nothing is billed). Before it, a refusal showed only as a bare "400" or "AI limit reached" in the engine log and a step that
-// expected an AI answer (17 Oct 2026, strategy). Guarded by test/key-check.test.mjs.
+// expected an AI answer (17 Oct 2026, strategy). Guarded by test/ai/key-check.test.mjs.
 // Job: run the backbone
 import crypto from 'node:crypto';
 const CHECKS = {
   openai: {secret: 'E2E_OPENAI_KEY', url: 'https://api.openai.com/v1/models', headers: key => ({authorization: `Bearer ${key}`})},
   api: {secret: 'E2E_ANTHROPIC_KEY', url: 'https://api.anthropic.com/v1/models', headers: key => ({'x-api-key': key, 'anthropic-version': '2023-06-01'})},
 };
-// The Claude models the app and the suites call (src/ai/models.py SMALL/MAIN/BIG; test/key-check.test.mjs keeps this list equal to that file).
+// The Claude models the app and the suites call (src/ai/models.py SMALL/MAIN/BIG; test/ai/key-check.test.mjs keeps this list equal to that file).
 export const CLAUDE_MODELS = ['claude-haiku-5-5', 'claude-sonnet-5-5', 'claude-opus-5-5'];
 const COUNT_TOKENS = 'https://api.anthropic.com/v1/messages/count_tokens';
 const MESSAGES = 'https://api.anthropic.com/v1/messages';

@@ -1,5 +1,5 @@
 // The network recorder and replayer of a live row (spec docs/superpowers/specs/2026-10-13-replay-by-network.md): the recorder keeps every response the browser
-// got (request headers and request bodies never; cookies only the kind a page script reads, see cookiesOf); the replayer serves it back by the spec's rules. Guard: e2e/test/net-record.test.mjs.
+// got (request headers and request bodies never; cookies only the kind a page script reads, see cookiesOf); the replayer serves it back by the spec's rules. Guard: e2e/test/record/net-record.test.mjs.
 import fs from 'node:fs';
 import {normalise} from '../../lib/ai/model-memo.js';
 import {EMAIL, PHONE} from '../../lib/live-capture.js';
@@ -123,7 +123,7 @@ export function echo(body, sentValues) {
 // an A/B variant from a cookie the server set replayed with the default: jobs.ch's survey box, 3 of 3 replays). Kept: the name, value, path, secure flag and the
 // Domain of a cookie a page script can read. Never kept: an HttpOnly cookie (a login, a session), a Domain outside the request's own site, a deleted one (Max-Age 0 or a past
 // Expires), a value over 1024 characters, an e-mail address, a phone number or any value of the person (`owner`: the app's personal values, as a Map). The record is
-// encrypted like the rest; keepRecord drops a third party's. Guard: test/net-record.test.mjs. -> [{name, value, path, secure, domain?}]
+// encrypted like the rest; keepRecord drops a third party's. Guard: test/record/net-record.test.mjs. -> [{name, value, path, secure, domain?}]
 export function cookiesOf(header, url, owner = new Map()) {
   const host = new URL(url).hostname, out = [];
   for (const line of String(header || '').split('\n')) {

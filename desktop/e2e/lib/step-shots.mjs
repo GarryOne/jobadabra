@@ -1,7 +1,7 @@
 // Full-page pictures of the application tab, and one per step (11 Oct 2026, owner: "full page: if there is scrolling, we miss parts of the form"; "one per step").
 // fullPageShot photographs the whole page, also when a panel inside the page scrolls and the body does not; a height and byte cap say "cut at <n> px" when hit.
 // stepShooter takes one picture each time the tab reaches a new page or step: <dir>/step-01-<kind>.png, step-02-<kind>.png, ... (a per-run cap, then only the end picture).
-// Fake applicant only, local, never uploaded; they live in the capture folder, so the privacy tripwire's delete takes them too. Guard: test/step-shots.test.mjs.
+// Fake applicant only, local, never uploaded; they live in the capture folder, so the privacy tripwire's delete takes them too. Guard: test/harness/step-shots.test.mjs.
 /* global document, location, getComputedStyle, window */
 import fs from 'node:fs';
 import path from 'node:path';

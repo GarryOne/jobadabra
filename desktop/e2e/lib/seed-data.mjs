@@ -1,5 +1,5 @@
 // A suite's own data, written through the store the app uses (ctx.data, lib/store-call.mjs), so one seed works on this Mac's store and on Notion (P7 step 4).
-// Each helper writes what the app itself would: the same entities, fields and sections. Guarded by test/seed-data.test.mjs.
+// Each helper writes what the app itself would: the same entities, fields and sections. Guarded by test/app/seed-data.test.mjs.
 import {tailoredFiles as notionTailoredFiles} from './notion.mjs';
 
 export const KIT_SECTION = '📝 Application kit';         // src/stores/base.py KIT_SECTION

@@ -1,6 +1,6 @@
 // The replay ratchet (owner, 15 Oct 2026: "~40 fixes and still some old replays don't work anymore"): replay-faithful.json pins every row that was proven same as live, per
 // place (mac, runner) with the commit it was proven on. The gate's baseline is that file, not the last green run, so a lost row can never leave the counted set on its own.
-// The tool only RAISES the file (pin); a row leaves it only in a PR that names it in a Replay-accept line. Pure parts here; guard: e2e/test/replay-ratchet.test.mjs.
+// The tool only RAISES the file (pin); a row leaves it only in a PR that names it in a Replay-accept line. Pure parts here; guard: e2e/test/replay/replay-ratchet.test.mjs.
 import fs from 'node:fs';
 import path from 'node:path';
 import {platformOf} from './platform.mjs';

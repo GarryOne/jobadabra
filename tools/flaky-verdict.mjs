@@ -3,7 +3,7 @@
 // Used by tools/red-main-gate.sh and tools/pr-verdict.py (via tools/pr_flaky.py); the Telegram alert calls the same library (desktop/e2e/ci-alert.mjs).
 // Usage: node tools/flaky-verdict.mjs --run <red e2e run id> [--repo owner/repo] [--window <runs>] [--json]        exit 0 always (it informs, never blocks); 2 on bad usage
 // Why (31 Oct 2026, owner: "You detect flakiness and immediately treat the flakiness root cause"): the tools say "flaky" on the red so no person has to.
-// Tests: desktop/e2e/test/flaky-verdict.test.mjs, desktop/e2e/test/flaky-evidence.test.mjs
+// Tests: desktop/e2e/test/pool/flaky-verdict.test.mjs, desktop/e2e/test/pool/flaky-evidence.test.mjs
 // Job: report health
 import {execFileSync} from 'node:child_process';
 import path from 'node:path';

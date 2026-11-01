@@ -3,7 +3,7 @@
 // what the window would: save the applicant's contact, press Apply (the app hands the posting's address to this browser), then watch. Nothing is pressed on the
 // page by the harness, never Submit. Every page is captured as the Electron run captures it (lib/capture-journey.mjs, at the extension's ask), and the privacy
 // tripwire (lib/privacy-tripwire.mjs) checks every field every few seconds and before anything is written. -> {seconds, opened, evidence, tripped}.
-// CLI: live-row.mjs. Guard: e2e/test/live-row.test.mjs (a fake site, memo-only).
+// CLI: live-row.mjs. Guard: e2e/test/replay/live-row.test.mjs (a fake site, memo-only).
 // Job: serve stored answers
 /* global document, location */
 import {liveVideo} from './live-video.mjs';

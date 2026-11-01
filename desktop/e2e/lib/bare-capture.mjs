@@ -1,6 +1,6 @@
 // A live capture folder (npm run live: journey.json, pages/, ai-calls.json, app.log; no case.json) made into a replay candidate, so `npm run row-to-case -- <that folder> <case>` takes it as it is
 // (12 Oct 2026: fix-import-dialog had to call saveCandidate from a scratch script). The candidate is written to a temp folder with the pool's own saveCandidate: the same case.json, presses and answers as a smoke run.
-// Guard: e2e/test/bare-capture.test.mjs.
+// Guard: e2e/test/record/bare-capture.test.mjs.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';

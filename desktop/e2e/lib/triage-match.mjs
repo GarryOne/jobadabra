@@ -1,5 +1,5 @@
 // Self-healing triage, part 3: matching a finding to an open issue, sightings, regressions, ranking and priorities, the scorecard, and which issue is ready for a fixer.
-// Re-exported by triage.mjs; guarded by desktop/e2e/test/triage.test.mjs (and the other triage-*.test.mjs, severity, a11y, prejudge, regress-flaky tests).
+// Re-exported by triage.mjs; guarded by desktop/e2e/test/pool/triage.test.mjs (and the other triage-*.test.mjs, severity, a11y, prejudge, regress-flaky tests).
 import {afterEpoch} from './stats-epoch.mjs';
 import {LABEL, NEEDS_HUMAN, FALSE_POSITIVE, CONFIRMED, NOT_SEEN, SIGHTINGS_NEEDED, LOGIC_KINDS, FIX_KINDS, allowedPath, labelFor} from './triage-findings.mjs';
 import {foundText, similar} from './triage-issues.mjs';

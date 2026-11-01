@@ -1,5 +1,5 @@
 // Dummy data for the Interviews and Calendar suites, written to the test Notion page through its API (no AI call), and the small pure checks the suites
-// assert with. Everything here is tested in test/interview-data.test.mjs, including the cases that must fail.
+// assert with. Everything here is tested in test/app/interview-data.test.mjs, including the cases that must fail.
 // Job: run the backbone
 import {paragraph, richText} from './notion.mjs';
 
@@ -45,7 +45,7 @@ export function weekDays(today) {
   return dom + 3 <= last ? {days: [1, 2, 3].map(n => addDays(today, n)), future: true} : {days: [3, 2, 1].map(n => addDays(today, -n)), future: false};
 }
 
-// Building an Intl formatter costs ~50 µs; the sweep in test/interview-data.test.mjs asks thousands of times, so each (locale, zone, options) is built once.
+// Building an Intl formatter costs ~50 µs; the sweep in test/app/interview-data.test.mjs asks thousands of times, so each (locale, zone, options) is built once.
 const formatters = new Map();
 const formatter = (locale, zone, options) => {
   const key = `${locale}|${zone}|${JSON.stringify(options)}`;
@@ -69,7 +69,7 @@ export function monthsBetween(shown, want) {
   return index(want) - index(shown);
 }
 
-// ---- the Calendar suite's dates: every one derived from `now`, so test/interview-data.test.mjs can run them over the calendar's edges ----
+// ---- the Calendar suite's dates: every one derived from `now`, so test/app/interview-data.test.mjs can run them over the calendar's edges ----
 // Why (a8, 31 Oct 2026): the suite went red on its date twice in 7 days (fdc31ca: Tokyo's "today" in next month's grid; #2718: month titles compared as text),
 // each found only by a beta on the one evening that hits it. Both are deterministic once `now` is fixed, so `now` is an argument here, never read inside.
 export const TOKYO = 'Asia/Tokyo';

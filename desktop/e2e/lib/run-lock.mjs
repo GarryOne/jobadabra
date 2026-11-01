@@ -1,6 +1,6 @@
 // Waits until no earlier run holds the engine's run lock, so a step that times a run (the hung-AI one) measures that run alone (#1662).
 // The holder writes {pid, label, at} into <data>/run.lock (src/paths.py run_lock) and leaves it there on release, so "held" = the noted pid is alive.
-// Tests: desktop/e2e/test/run-lock.test.mjs.
+// Tests: desktop/e2e/test/harness/run-lock.test.mjs.
 import fs from 'node:fs';
 import path from 'node:path';
 

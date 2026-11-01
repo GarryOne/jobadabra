@@ -5,7 +5,7 @@
 # The verdict file: first line the word (real | false-positive | harness | needs-human | fixed), then "Why: …", "Cause: …" (a false positive's), "Severity: high|medium|low",
 # evidence as file:line (desktop/e2e/lib/verdict-comment.mjs parses it). What it does: the comment (banner, why, evidence, next step); the judge's severity on a real or parked
 # finding (severity.mjs); the labels the stats read (confirmed, wontfix-auto, harness, needs-human, resolution:<why>, lib/resolution.mjs); closing a false positive, a harness
-# finding or a fixed one. Guarded by desktop/e2e/test/apply-verdict.test.mjs.
+# finding or a fixed one. Guarded by desktop/e2e/test/filling/apply-verdict.test.mjs.
 set -euo pipefail
 NUMBER="$1"; FILE="$2"; REPO="${3:-${REPO:-GarryOne/jobadabra}}"
 HERE="$(cd "$(dirname "$0")" && pwd)"

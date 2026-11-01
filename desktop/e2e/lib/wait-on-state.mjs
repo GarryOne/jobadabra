@@ -18,7 +18,7 @@ export const stepTimeLeft = () => (stepEndsAt === null ? undefined : Math.max(0,
  * Run a Playwright-style wait `run(timeout)` for as long as the step's clock leaves; with the clock spent, throw "the step's clock ran out before <what>" instead.
  * Why (31 Oct 2026, owner: "E: no zero timeouts"; a8 2/5 #2701, beta gate run 41200878403 apply-1of3 stalled 6.6 min): stepTimeLeft() is 0 once the clock is spent, and
  * Playwright reads `timeout: 0` as NO timeout, so a cleanup wait outlived its step and only the runner's generic report showed. stepTimeLeft() stays a cap for pollUntil
- * (0 there ends the wait at once); every Playwright timeout goes through here (guard test/no-zero-timeouts.test.mjs). With no runner step (a unit test): the wait's own default.
+ * (0 there ends the wait at once); every Playwright timeout goes through here (guard test/harness/no-zero-timeouts.test.mjs). With no runner step (a unit test): the wait's own default.
  */
 export async function stepWait(what, run) {
   const left = stepTimeLeft();

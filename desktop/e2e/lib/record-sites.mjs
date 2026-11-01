@@ -1,6 +1,6 @@
 // Layer 3 of applying reliability (spec: docs/superpowers/specs/2026-10-10-applying-reliability-layers.md): the hand-started live smoke's logic, no browser here.
 // parseLive reads where a live run got to from its own printed log lines (lib/apply-live.mjs), compare finds what reached less than last time, pickPosting
-// rotates through the owner's postings of each site shape. Runner: e2e/record-sites.mjs. Guard: e2e/test/record-sites.test.mjs.
+// rotates through the owner's postings of each site shape. Runner: e2e/record-sites.mjs. Guard: e2e/test/record/record-sites.test.mjs.
 import {causeOf} from '../../../extension/fill-card.js';
 import {recordVar} from '../../../tools/record-env.mjs';
 import {PAGE_LINE} from './live-still.mjs';

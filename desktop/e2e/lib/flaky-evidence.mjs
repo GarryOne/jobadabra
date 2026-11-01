@@ -7,7 +7,7 @@
 // both stores of a suite, Gitar on #2726); other-store greens are counted, not compared.
 // Invariants: every read is injected (`io`), so tests never reach GitHub; a read that fails leaves that green uncomparable ("unknown"), never "changed" or "flaky". Without io.storesOf the store is not looked at.
 // Not covered: Mac vs Linux (a suite moves runners only when the run sets all_on_mac; the artifacts do not record the OS); Windows lanes are keyed apart (windows-<suite>).
-// Tests: test/flaky-evidence.test.mjs
+// Tests: test/pool/flaky-evidence.test.mjs
 // Job: report health
 import {execFileSync} from 'node:child_process';
 import fs from 'node:fs';

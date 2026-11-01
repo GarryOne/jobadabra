@@ -1,6 +1,6 @@
 // The page's Math.random from one seed, the same in the live run that records and in its replay (lib/live-row.mjs, replay-net.mjs): a site that shows a
 // survey or picks a variant by a random draw draws the same way both times (13 Oct 2026: a job board's "Your opinion matters" survey showed in a replay only).
-// Each document starts the sequence again from the seed. Guard: e2e/test/net-record.test.mjs.
+// Each document starts the sequence again from the seed. Guard: e2e/test/record/net-record.test.mjs.
 /* global window */
 
 // A small, fast, deterministic generator (mulberry32): -> a function returning [0, 1).

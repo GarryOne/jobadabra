@@ -1,7 +1,7 @@
 // The replay's page clock (14 Oct 2026): the page sees the live run's DATE (Date, Date.now) flowing from the record's start, while its timers stay real,
 // and the live run's TIME ZONE (zoneOf: a runner in UTC showed Databricks' OneTrust banner that the Zurich live run and the Mac replay never drew, 1/8 vs 8/8).
 // Playwright's clock.install also fakes setTimeout/setInterval/requestAnimationFrame: Databricks' OneTrust banner then showed on the replay (never live) and every
-// AI ask after it missed (0/8); with real timers it replays 8/8 as live. Guard: e2e/test/replay-date.test.mjs. Used by replay-net.mjs.
+// AI ask after it missed (0/8); with real timers it replays 8/8 as live. Guard: e2e/test/replay/replay-date.test.mjs. Used by replay-net.mjs.
 
 // The script the page runs first: Date shifted by a fixed offset (computed once in node, so time flows on across pages and frames), nothing else touched.
 export function dateShiftScript({offset}) {

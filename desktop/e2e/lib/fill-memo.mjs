@@ -1,5 +1,5 @@
 // Keeps what a fill replay (replay-net.mjs --fill-memo) added to a recording's model answers: the new keys of the replay's memo are merged into the record's own
-// model-memo.json, never a changed or removed one, and the network record beside it is never written. Guard: e2e/test/fill-memo.test.mjs.
+// model-memo.json, never a changed or removed one, and the network record beside it is never written. Guard: e2e/test/filling/fill-memo.test.mjs.
 import fs from 'node:fs';
 import path from 'node:path';
 

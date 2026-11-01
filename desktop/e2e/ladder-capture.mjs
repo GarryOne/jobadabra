@@ -4,7 +4,7 @@
 //   capture.page: a page of this repo (relative to desktop/e2e/), loaded from disk with the network blocked.
 //   capture.url:  a public posting, read once (a plain GET, nothing pressed, nothing typed); the sketch is stored without its query string, with any email turned into contact@example.com.
 //                 A page with another host's iframe waits (<= 20 s) for one to pass the frame finder's floor and lists it in frameCandidates (extension/ladder/rung3-frames.js + climb.js frameSketch);
-//                 capture.frame says whether one qualified (none = a finding). Guard: e2e/test/ladder-capture-frames.test.mjs.
+//                 capture.frame says whether one qualified (none = a finding). Guard: e2e/test/filling/ladder-capture-frames.test.mjs.
 //   --from-candidates [--day <YYYY-MM-DD>] [--candidates-dir <folder>] [--only <shape>]: the pool run's replay candidates (e2e/lib/ladder-candidates.mjs) that did NOT reach the form become fixtures with expect `pending` (the page.html
 //     of the candidate, loaded from disk with the network blocked; scrubbed); a fixture that exists is kept (--force replaces it); --only takes a candidate whatever it reached.
 //   node desktop/e2e/ladder-capture.mjs [--only <id>] [--force] [--candidates] [--dir <fixtures folder>]      Used when a fixture is added or a page changed; the committed sketch is what the tests use.

@@ -1,6 +1,6 @@
 // What "Confirmed offline" will replay (owner, 14 Oct 2026; .github/workflows/fix-verdicts.yml): per landed fix, the row's newest recording made BEFORE the fix (else its newest recording, replayed on the build before the fix as "before"); per row whose newest
 // recording got less far than an older one, the newest recording and the older one's build. A row without any recording with a live outcome gets its verdict now ("Needs a recording"). Writes <out>:
-// {jobs: [{kind, row, ...}], verdicts: [...]}. Run: node verify-plan.mjs <records dir> <out file>. Guard: e2e/test/verify-plan.test.mjs.
+// {jobs: [{kind, row, ...}], verdicts: [...]}. Run: node verify-plan.mjs <records dir> <out file>. Guard: e2e/test/filling/verify-plan.test.mjs.
 import fs from 'node:fs';
 import {buildLedger} from './lib/fix-ledger.mjs';
 import {poolByUrl} from './replay-records.mjs';

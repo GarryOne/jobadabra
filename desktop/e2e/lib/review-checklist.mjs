@@ -1,6 +1,6 @@
 // The 10-point checklist prompt for a screenshot review: the model answers every check yes/no with quoted evidence, and only a "yes" with evidence becomes a
 // finding. Built for the Free AI review (#2046, 26 Oct 2026: 71-79% of the judged bugs); here so a Claude model can be scored with it too (review-eval.mjs
-// "claude-haiku-5-5+checklist"). Guarded by test/review-checklist.test.mjs.
+// "claude-haiku-5-5+checklist"). Guarded by test/pool/review-checklist.test.mjs.
 import {expectedFor} from './vision.mjs';
 
 export const CHECKS = [

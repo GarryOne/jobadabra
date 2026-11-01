@@ -1,7 +1,7 @@
 // The harness runs the Claude Code install itself, never a wrapper a terminal put first on PATH (owner, 11 Oct 2026: a terminal's `claude` was a shell script that
 // added its session's settings and hooks, which carry the owner's identity, to every `claude -p`; asked a form's "Full name" for the fake applicant it answered with the
 // owner's real name). By structure, no tool names: a `claude` on PATH that is a shell script (#! sh, bash, zsh, ksh, dash) is a wrapper; the install is a native binary
-// or a node script. Used by every place that starts the app under test or `claude` (the list is in e2e/test/real-claude.test.mjs, which fails on a new one).
+// or a node script. Used by every place that starts the app under test or `claude` (the list is in e2e/test/replay/real-claude.test.mjs, which fails on a new one).
 import fs from 'node:fs';
 import path from 'node:path';
 

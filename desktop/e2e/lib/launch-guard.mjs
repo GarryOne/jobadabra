@@ -1,6 +1,6 @@
 // One browser that did not start stops the whole run: every later start in the same process fails at once with the first reason, never waits again.
 // Why: on 13 Oct 2026 a local run of the 93 recorded cases waited 180 s for a browser that never started, once per case and again per case "alone": hours, no case ran.
-// Used by lib/real-extension.mjs (the one place every runner starts the real extension: recorded pages, row cases, replay-records). Guard: e2e/test/launch-guard.test.mjs.
+// Used by lib/real-extension.mjs (the one place every runner starts the real extension: recorded pages, row cases, replay-records). Guard: e2e/test/harness/launch-guard.test.mjs.
 export const LAUNCH_TIMEOUT_MS = 60000;   // a start takes seconds; a loaded Mac needs more, never three minutes
 
 export function makeLaunchGuard() {

@@ -1,6 +1,6 @@
 // One row case (case.json `replay: "row"`, made by npm run row-to-case) replayed the way CI replays it: on the row path (lib/row-replay.mjs, the case's pages, presses and kept model answers, nothing from
 // the network) and judged by its `expect` (lib/row-signature.mjs). A cold ask (a model call not in the case's kept answers: CI has no claude -p) and an address the case never recorded fail it too.
-// -> {name, ok, failures, seconds}. replay: injectable for tests. Used by e2e/test/recorded-pages.test.mjs and row-to-case.mjs. Guard: e2e/test/row-case-run.test.mjs.
+// -> {name, ok, failures, seconds}. replay: injectable for tests. Used by e2e/test/record/recorded-pages.test.mjs and row-to-case.mjs. Guard: e2e/test/pool/row-case-run.test.mjs.
 import {checkSignature, signatureOf} from './row-signature.mjs';
 import {replayRow} from './row-replay.mjs';
 import {movesFromLog} from './ladder-moves.mjs';

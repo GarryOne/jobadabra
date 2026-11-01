@@ -1,7 +1,7 @@
 // Measured seconds of every e2e suite part on each store leg, from the jobs of finished beta/gate runs: the data the part-headroom guard reads.
 // Job: pick the suites
 // Why (31 Oct 2026, a8; beta 41229992832): apply-3of3 went over its 11-minute budget on the Mac + Notion stand-in leg after months at ~5% margin. Weights and budgets came from the default
-// store only (tools/e2e-step-timings.mjs skips the -standin/-sqlite artifacts), so the slowest leg was never measured. Guard: desktop/e2e/test/part-headroom.test.mjs.
+// store only (tools/e2e-step-timings.mjs skips the -standin/-sqlite artifacts), so the slowest leg was never measured. Guard: desktop/e2e/test/harness/part-headroom.test.mjs.
 //   node tools/e2e-part-times.mjs --runs <id,id,...> [--out desktop/e2e/fixtures/part-seconds.json]    (reads the jobs and artifact names of each run: about 4 gh calls per run)
 import {execFileSync} from 'node:child_process';
 import fs from 'node:fs';

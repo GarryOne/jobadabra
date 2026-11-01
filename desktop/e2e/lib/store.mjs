@@ -1,7 +1,7 @@
 // Where the app under test keeps the person's data in a run (spec docs/superpowers/specs/2026-10-09-store-adapters.md, P7: every suite runs with
 // NO Notion token). 'sqlite': this Mac's store (settings.store = 'sqlite'), no Notion at all. 'standin': the Notion store on the in-memory
 // Notion (lib/notion-fake.mjs), fresh per run. 'notion': the real test workspace with a token, only for a suite that pins it (`export const
-// store = 'notion'`, the release gate's notion-real). Guarded by test/store.test.mjs.
+// store = 'notion'`, the release gate's notion-real). Guarded by test/app/store.test.mjs.
 import {isCi} from './engine.mjs';
 
 export const STORES = ['sqlite', 'standin', 'notion'];

@@ -1,6 +1,6 @@
 // Repairs a stored record folder whose kept bodies were saved double-encoded (UTF-8 text read as windows-1252) before the recorder was fixed (c91645b, 15 Oct 2026): the refill republishes
 // the row's OLD folder, so the record guard refused it ("kept pages are double-encoded", Aldi, replay-refill run 38819507828). Same definition as the recorder and the guard (repairUnlabeledText).
-// Guard: e2e/test/record-repair.test.mjs.
+// Guard: e2e/test/record/record-repair.test.mjs.
 import fs from 'node:fs';
 import path from 'node:path';
 import {repairUnlabeledText, sha} from '../../lib/net-keep.js';

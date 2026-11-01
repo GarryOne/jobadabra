@@ -3,7 +3,7 @@
 // `node records-publish.mjs <records dir>` adds them to the private release so the PR replay and /admin/form-filling/lab see them (spec docs/superpowers/specs/2026-10-15-report-this-form.md §5).
 //   node reports-fetch.mjs <records dir> [--dry]
 // Keys (Keychain, never printed): job-pilotto.site.api_key (the scripts' key for the site), job-pilotto.capture.key (the private key; PEM, or base64 of it as in the NET_RECORD_KEY secret).
-// Env overrides for tests: JP_SITE, JP_ADMIN_KEY, JP_PRIVATE_KEY. Guard: test/reports-fetch.test.mjs.
+// Env overrides for tests: JP_SITE, JP_ADMIN_KEY, JP_PRIVATE_KEY. Guard: test/pool/reports-fetch.test.mjs.
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';

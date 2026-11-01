@@ -2,7 +2,7 @@
 // In a shared browser the lines of every tab arrive in the same pushes, so the case's name used to sit on other cases' lines (14 Oct 2026: a work-permit
 // dropdown of another case under combo-never-opens-late-answers-1). A line is the case's when it names the case's host, or sits on a tab that did;
 // it is dropped when it names another case's host or a tab that did; a line that names neither is counted, never printed under a case's name.
-// Guard: e2e/test/replay-lines.test.mjs.
+// Guard: e2e/test/replay/replay-lines.test.mjs.
 const tabOf = entry => { const tab = entry?.fields?.tab ?? entry?.fields?.tabId; return tab == null || tab === '' ? null : String(tab); };
 const names = (entry, hosts) => { const text = `${entry.text} ${JSON.stringify(entry.fields || {})}`; return hosts.some(host => text.includes(host)); };
 

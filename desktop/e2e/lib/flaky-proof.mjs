@@ -6,7 +6,7 @@
 // Why: #1897 (25 Oct): failuresnotion's "the list says Completed and the panel Completed with warnings" failed, passed on the rerun, was labelled flaky
 // ("the test is the problem"), ranked last, closed after two clean runs, and failed beta 2; it was a product bug (bd368f8 fixed it).
 // Only the failure message is read, never the step's name: that step is called "Notion is busy (429) …", which reads like an environment failure.
-// Tests: test/flaky-proof.test.mjs
+// Tests: test/pool/flaky-proof.test.mjs
 // Job: run the backbone
 import {isEnvironment} from './environment.mjs';
 import {FLAKY, TIMEOUT_FAILURE, flakyComment} from './triage-match.mjs';

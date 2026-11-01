@@ -1,13 +1,13 @@
 // The e2e env of an app server under test, and a guard that keeps it on this computer (speed-5x landing 1, owner 11 Oct 2026: a prototype of the app's own server
 // under plain node reached the live site for the alias pack). offlineEnv: the journey's env (no telemetry, no pool sharing: lib/telemetry.js reads JOB_PILOTTO_E2E),
 // its own data folder, no Anthropic key (a Mac uses the plan path), never the twin. guardNetwork: fetch, http and https refuse any host but loopback, and name it.
-// The AI is the one exception by design: `claude -p` is its own process (the plan path), not this process's network. Guard: e2e/test/offline-guard.test.mjs.
+// The AI is the one exception by design: `claude -p` is its own process (the plan path), not this process's network. Guard: e2e/test/harness/offline-guard.test.mjs.
 import http from 'node:http';
 import https from 'node:https';
 import path from 'node:path';
 import {ownerGuardEnv} from './owner-guard-env.mjs';
 import {everyRealDataFolder} from '../../lib/app-identity.js';
-import {withoutWrappers} from './real-claude.mjs';   // never a terminal's claude wrapper (e2e/test/real-claude.test.mjs)
+import {withoutWrappers} from './real-claude.mjs';   // never a terminal's claude wrapper (e2e/test/replay/real-claude.test.mjs)
 
 const REALS = everyRealDataFolder();
 const DROPPED = ['REPLAY_REFILL_ANTHROPIC_KEY', 'ANTHROPIC_API_KEY', 'ANTHROPIC_BASE_URL', 'OPENAI_API_KEY', 'JOB_PILOTTO_TWIN', 'JOB_PILOTTO_PORT'];

@@ -21,7 +21,7 @@ import {probe, problems, waitForRail} from '../lib/rail-markers.mjs';
 export const offlineAi = true;
 export const realAi = false;
 export const aiAnswers = 'backbone';   // answers its AI from the stored table in every workflow (plan-run.mjs puts it in the matrix)
-// Why (30 Oct 2026, bb 3/9): stored answers follow one store path (test/store.test.mjs), so the suite is pinned to the store it already ran its Notion/run-history steps on.
+// Why (30 Oct 2026, bb 3/9): stored answers follow one store path (test/app/store.test.mjs), so the suite is pinned to the store it already ran its Notion/run-history steps on.
 export const store = 'sqlite';   // one store, so its stored answers follow one path (it ran on both before; Why above)
 export const macos = true;   // runs on a macOS runner: pixels, fonts and window sizes: judged on the Mac people use (lib/plan.mjs runnerOf)
 export const name = 'interactions';

@@ -1,5 +1,5 @@
 // Self-healing triage, part 2: the text of an issue (body, evidence, comments, labels), reading a finding back out of an issue body, and similar().
-// Re-exported by triage.mjs; guarded by desktop/e2e/test/triage.test.mjs (and the other triage-*.test.mjs, severity, a11y, prejudge, regress-flaky tests).
+// Re-exported by triage.mjs; guarded by desktop/e2e/test/pool/triage.test.mjs (and the other triage-*.test.mjs, severity, a11y, prejudge, regress-flaky tests).
 import {replayBlock, replayCommand, replayComment} from './replay.mjs';
 import {CONFIRMED, NOT_SEEN} from './triage-findings.mjs';
 

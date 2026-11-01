@@ -1,7 +1,7 @@
 // Wrong values at an offline replay's end (spec docs/superpowers/specs/2026-10-14-wrong-values.md; owner, 14 Oct 2026, Discussion #650). Today a field filled with the wrong
 // value counts as filled. Layer 1 "typed = decided": every field the app's /extension/answer reply filled holds THAT answer, read by lib/replay-truth.mjs (the replays' one reader).
 // Layer 2 "decided = right": an answer resting on a saved contact fact holds the fake applicant's own value (yes/no facts need the question's direction: AI only, not here).
-// The app's replies are kept in memory by lib/app-front.mjs (ai-calls.json holds no values). All data is the fake applicant's. Guard: e2e/test/wrong-values.test.mjs.
+// The app's replies are kept in memory by lib/app-front.mjs (ai-calls.json holds no values). All data is the fake applicant's. Guard: e2e/test/filling/wrong-values.test.mjs.
 import {expectedAnswers, readTab, sameAnswer} from './replay-truth.mjs';
 
 const bodyOf = reply => { try { return JSON.parse(reply.body); } catch { return null; } };

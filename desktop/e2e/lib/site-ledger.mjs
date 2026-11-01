@@ -5,7 +5,7 @@
 // The owner's override is an environment flag only: JOB_PILOTTO_SITE_LIMIT_OVERRIDE=<host>[,<host>] lets those hosts through (the count and the block both), and each use is logged to
 // <ledger folder>/override.log. Counting starts at the landing (11 Oct 2026): earlier visits are not back-filled. The same process visiting the same host again (the Electron leg's
 // apply-live and its tab opener) counts once. Loopback, file and non-https addresses are not real sites and never counted.
-// Live paths (the class; test/site-ledger.test.mjs fails when one is missing): lib/live-row.mjs (npm run live, the pool's plain leg, row-to-case captures), lib/apply-live.mjs +
+// Live paths (the class; test/harness/site-ledger.test.mjs fails when one is missing): lib/live-row.mjs (npm run live, the pool's plain leg, row-to-case captures), lib/apply-live.mjs +
 // lib/extension.mjs (the Electron leg, the twin), ladder-capture.mjs (a fixture's live read). Windows/Linux-safe: os.tmpdir, path.join, a mkdir lock.
 import fs from 'node:fs';
 import os from 'node:os';

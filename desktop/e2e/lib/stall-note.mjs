@@ -1,5 +1,5 @@
 // A run ended by its cap while the extension was still "deciding" says how long the app log had been quiet and after which extension line (17 Oct 2026: a bare "(284 s)" hid a 214 s stall).
-// Guard: test/stall-note.test.mjs.
+// Guard: test/filling/stall-note.test.mjs.
 const LINE = /^(\d{4}-\d\d-\d\dT[\d:.]+Z) \[extension\] (.*)$/;
 
 // -> '' when the log has no extension line or the quiet is under `minSeconds`; else 'stalled N s after "<line>"' (the line cut to 90 characters, page words and braces left out).

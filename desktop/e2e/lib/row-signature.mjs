@@ -1,6 +1,6 @@
 // What a row replay (or the live run) DID, as a small comparable signature, and the three things the row-to-case proof needs from it (owner, 11-12 Oct 2026: a case's `expect` comes from the live
 // run's own result and the new build's replay, never from the fixer's hand): signatureOf(replay result) / baselineSignature(the capture's case.json), expectFrom(baseline, new) = the improvement
-// (a later page kind, more presses, a field whose outcome or reason changed: "no answer" -> "proposed for you to confirm"), checkSignature(replay, expect) = the failures. Guard: test/row-signature.test.mjs.
+// (a later page kind, more presses, a field whose outcome or reason changed: "no answer" -> "proposed for you to confirm"), checkSignature(replay, expect) = the failures. Guard: test/pool/row-signature.test.mjs.
 import {replayPresses} from './row-follow.mjs';
 
 const PAGE_KIND = /\[extension\] page kind: ([a-z-]+)/, KIND_LINE = /^page kind: ([a-z-]+)/;

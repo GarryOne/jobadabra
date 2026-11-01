@@ -9,8 +9,12 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const folder = 'desktop/e2e/test';
 const cache = new Map();
 const out = {};
-for (const name of fs.readdirSync(path.join(root, folder)).filter(file => /\.test\.[mc]?js$/.test(file)).sort()) {
-  const file = `${folder}/${name}`;
-  out[file] = [...reach(root, file, cache).paths];
+// Why (c27, 1 Nov 2026, area folders): the tests sit in test/<area>/; `fixtures` holds stand-ins, never tests.
+const areas = fs.readdirSync(path.join(root, folder), {withFileTypes: true}).filter(item => item.isDirectory() && item.name !== 'fixtures').map(item => item.name).sort();
+for (const area of areas) {
+  for (const name of fs.readdirSync(path.join(root, folder, area)).filter(file => /\.test\.[mc]?js$/.test(file)).sort()) {
+    const file = `${folder}/${area}/${name}`;
+    out[file] = [...reach(root, file, cache).paths];
+  }
 }
 process.stdout.write(JSON.stringify(out));

@@ -2,7 +2,7 @@
 // failing, keeps its whole journey (lib/replay-candidate.mjs saveCandidate: pages, styles, model answers, presses, AI calls) plus its app log, the build that
 // made it and the live result, under <root>/<day>/<row>/, so `npm run measure` can re-run any build on it offline, with no site visit. Mac: <QA folder>/captures
 // (outside the repo); CI: RECORD_CAPTURES, uploaded as the 30-day artifact pool-captures-<run> (owner, 13 Oct 2026). Days older than 30 are pruned (owner).
-// Used by record-sites.mjs and live.mjs. Guard: e2e/test/capture-library.test.mjs.
+// Used by record-sites.mjs and live.mjs. Guard: e2e/test/record/capture-library.test.mjs.
 import {execFileSync} from 'node:child_process';
 import {recordVar} from '../../../tools/record-env.mjs';
 import fs from 'node:fs';

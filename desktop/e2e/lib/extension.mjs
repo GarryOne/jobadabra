@@ -59,7 +59,7 @@ export function makeOpenShim() {
   const bin = path.join(root, 'bin'), spool = path.join(root, 'spool');
   fs.mkdirSync(bin); fs.mkdirSync(spool);
   // The URL is the first http(s) argument, not the last: `open -a "Google Chrome" <url> --args --profile-directory=<p>` (lib/browser-launch.js) ends
-  // with a flag (16 Oct 2026: on a Mac with Chrome the stand-in recorded the flag, so every Apply looked unopened). Guard: e2e/test/open-shim.test.mjs.
+  // with a flag (16 Oct 2026: on a Mac with Chrome the stand-in recorded the flag, so every Apply looked unopened). Guard: e2e/test/harness/open-shim.test.mjs.
   fs.writeFileSync(path.join(bin, 'open'), '#!/bin/sh\nurl=\nfor a; do case "$a" in http://*|https://*) [ -z "$url" ] && url=$a;; esac; done\n[ -n "$url" ] || exit 0\n'
     + 'f=$(mktemp "$JOB_PILOTTO_E2E_OPEN_DIR/open.XXXXXX") && printf \'%s\' "$url" > "$f" && mv "$f" "$f.url"\n', {mode: 0o755});
   // Windows has no `open`: the app runs `node <script> <urls>` instead (lib/apply.js chromeCommand, JOB_PILOTTO_E2E_OPENER). Same spool, same .url files.
@@ -81,7 +81,7 @@ export function opensIntoSpool(env, platform = process.platform) {
 export const browserChannel = (env = process.env) => (env.E2E_BROWSER === 'msedge' ? {channel: 'msedge'} : {});
 
 // -> {context, opened: [url], serviceWorker(), page(url), close()}. Every URL the app opens is opened here, in a new tab.
-export {visitGuard};   // moved to lib/spool-tabs.mjs with the navigation it guards (test/extension-browser.test.mjs imports it from here)
+export {visitGuard};   // moved to lib/spool-tabs.mjs with the navigation it guards (test/harness/extension-browser.test.mjs imports it from here)
 // `real`: a live-test twin's window (e2e/twin.mjs): real sites (no fixture host mapping), always visible.
 // `profile`: a browser profile kept between runs (the twin's: site sign-ins and cookies survive); else a fresh temp one.
 // `installs`: this start is a fresh install of the extension (it opens its settings page). A fresh temp profile is; a profile kept between runs is not, unless the caller says so (the twin copies sign-ins into a NEW folder).

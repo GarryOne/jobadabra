@@ -141,7 +141,7 @@ test('a case.json edit that changes only label keys brings no case: neither proo
 });
 
 test('the replay reads a label key only for its test\'s title and failure message, so a label edit cannot change a verdict', () => {
-  const replayPath = ['e2e/test/recorded-pages.test.mjs', 'e2e/lib/page-replay.mjs', 'e2e/lib/row-case-run.mjs', 'e2e/lib/row-replay.mjs', 'e2e/lib/replay-browser.mjs'];
+  const replayPath = ['e2e/test/record/recorded-pages.test.mjs', 'e2e/lib/page-replay.mjs', 'e2e/lib/row-case-run.mjs', 'e2e/lib/row-replay.mjs', 'e2e/lib/replay-browser.mjs'];
   const reads = new RegExp(`\\bitem\\.(${LABEL_KEYS.join('|')})\\b`);
   const found = replayPath.flatMap(file => fs.readFileSync(new URL(`../${file}`, import.meta.url), 'utf8').split('\n').filter(line => reads.test(line)).map(line => `${file}: ${line.trim()}`));
   const allowed = /^e2e\/test\/recorded-pages\.test\.mjs: (test\(`\$\{item\.name\}: \$\{item\.shape\}`|assert\.deepEqual\(result\.failures, \[\], `\$\{item\.name\} \(\$\{item\.why \|\| ''\}\)`\))/;

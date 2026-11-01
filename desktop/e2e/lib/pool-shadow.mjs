@@ -5,7 +5,7 @@
 //   agree      the fallback would not act (a person is needed, the way is not listed, unsure, a floor refused, one ask, two asks disagreed): it says what the stop said
 //   would_act     the fallback would act (sure, past the floors, two agreeing asks) where the stop was unresolved: a move the stop did not make; a candidate until the CI pool acts (box 8)
 //   worse      the fallback would act where the stop handed the page to the person (ending handed): any such row blocks the switch-on
-// A silent stop (seen in shadow, `shadow: true` plus a door id) is a stop of its own kind ('silent'): the question is asked at it too (owner, 13 Oct 2026); a seen notice with no door id is not a stop. The page kind the run judged last is kept on the stop (an account page is told apart for the acting run's judgement). Pure: callers provide the logs; lib/measure.mjs reads captures. Guard: e2e/test/pool-shadow.test.mjs.
+// A silent stop (seen in shadow, `shadow: true` plus a door id) is a stop of its own kind ('silent'): the question is asked at it too (owner, 13 Oct 2026); a seen notice with no door id is not a stop. The page kind the run judged last is kept on the stop (an account page is told apart for the acting run's judgement). Pure: callers provide the logs; lib/measure.mjs reads captures. Guard: e2e/test/pool/pool-shadow.test.mjs.
 const STOP = /^(\S+Z) \[extension\] fill: dead end: ([a-z_-]+) (\{.*\})\s*$/;
 const KIND = /^(\S+Z) \[extension\] fill: page kind: ([a-z_-]+) /;   // the page kind the run judged last: an account page is any kind that starts with "account"
 const PICTURE = /^(\S+Z) \[extension\] fill: dead end fallback \(picture\) (\{.*\})\s*$/;   // the look with the picture after "asked already" (ladder/fallback.js, CI pool only)

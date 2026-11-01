@@ -2,7 +2,7 @@
 // app process's stdin ({id, cmd, args}), one JSON line per answer on its stdout ({id, ok, result | error}); an Apply hands its address to the harness browser as
 // {event: 'open', url} (the app would launch Chrome). Each command calls the same function the window's IPC handler calls (lib/apply-handlers.js applyOne ->
 // lib/apply.js applyOne, lib/contact-handlers.js saveContact -> lib/contact.js save, lib/setup-handlers.js saveSettings -> storage.saveSettings).
-// Used by lib/offline-app-child.mjs; driven by lib/offline-app.mjs call(). Guard: e2e/test/offline-app.test.mjs.
+// Used by lib/offline-app-child.mjs; driven by lib/offline-app.mjs call(). Guard: e2e/test/replay/offline-app.test.mjs.
 import readline from 'node:readline';
 
 export function serveCommands(storage, {out = line => process.stdout.write(`${line}\n`)} = {}) {

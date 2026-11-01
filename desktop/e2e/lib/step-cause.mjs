@@ -3,7 +3,7 @@
 // The locator sat in a multi-line call log: all six clicked `#activity-recent li:not(.recent-group) button` (only .first()/.nth(n) differed), one cause that
 // hid the five real failures beta 2 then showed, a 45-minute beta later. Now the summary says the cause once: "one cause, 6 steps: click on <locator>".
 // Used by lib/runner.mjs (each failed result gets `cause`; the suite's end lists shared causes).
-// Tests: test/step-cause.test.mjs
+// Tests: test/harness/step-cause.test.mjs
 
 const ACTION = /^(?:[\w.]+\.)?(\w+): Timeout (\d+)\s?ms exceeded/;   // Playwright: "locator.click: Timeout 30000ms exceeded." / "page.waitForSelector: …"
 const WAITING = /waiting for (locator\(.*|getBy\w+\(.*|frameLocator\(.*)$/m;

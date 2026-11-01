@@ -7,7 +7,7 @@
 # - Judge: each fresh recording is judged by the discovery judge AND gets the journey check (journey-run.mjs --watch: the card and the panel at every step), then compared with the row's
 #   last live run (desktop/e2e/lib/watch-list.mjs). ONE Telegram message, only when a flow got WORSE than its previous live run (the first run sends nothing).
 # - The fresh recording is the row's debugging copy (net-records-<run>): no pin, no refill, and the daily offline replay skips watch rows (replay-records.mjs).
-# Never a PR trigger (no AI cost on a PR), never merges anything. Guard: e2e/test/pool-ci-triggers.test.mjs, e2e/test/watch-cli.test.mjs.
+# Never a PR trigger (no AI cost on a PR), never merges anything. Guard: e2e/test/pool/pool-ci-triggers.test.mjs, e2e/test/harness/watch-cli.test.mjs.
 name: CI · Daily watch list
 
 on:

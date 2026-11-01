@@ -1,7 +1,7 @@
 // A CI pool run's endings (the outcome contract, spec docs/superpowers/specs/2026-10-12-one-next-move.md, phase 1a): one record per row THIS run ran that has an ending word
 // (record-sites.mjs sets it from lib/ending.mjs: an ending, or 'held' for the test's own hold), sent in ONE PUT to /applying/endings with CI's narrow REPLAYS_PUBLISH_KEY (it writes only the
 // replays, the proven records, the test-source moves and these). The site keeps main's for the Resolution tile (site/src/applying-resolution.js). Names, words, a run id, a branch
-// and a sha only: never an address. CI only; JP_ENDINGS_DRY=1|true: say it, send nothing. Guard: e2e/test/pool-endings.test.mjs.
+// and a sha only: never an address. CI only; JP_ENDINGS_DRY=1|true: say it, send nothing. Guard: e2e/test/pool/pool-endings.test.mjs.
 import {ENDINGS} from '../../../extension/ladder/endings.js';
 
 export const ENDINGS_SITE = 'https://www.jobpilotto.top/applying/endings';

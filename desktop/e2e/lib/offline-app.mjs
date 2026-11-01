@@ -1,7 +1,7 @@
 // Starts the app's own extension server offline for a row replay (speed-5x landing 2): its own process (lib/offline-app-child.mjs), a temp folder with the fake
 // applicant, a free port (never the person's app's), the e2e env without keys or the twin (offlineEnv), the real Claude Code install (never a terminal's wrapper),
 // and the row's model answers (memo: the case's model-memo.json; a miss is refused unless ask: true). -> {port, token, url, dir, logText(), close()}.
-// Guard: e2e/test/offline-app.test.mjs.
+// Guard: e2e/test/replay/offline-app.test.mjs.
 // Job: serve stored answers
 // Reaches: ./offline-app-child.mjs   (spawned by path; lib/test-reach.mjs follows it, so harness.yml's paths start the harness tests when the app's server changes)
 import {execFileSync, spawn} from 'node:child_process';

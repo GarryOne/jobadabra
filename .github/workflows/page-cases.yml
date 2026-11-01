@@ -83,7 +83,7 @@ on:
       - 'desktop/e2e/recorded/**'
       - 'desktop/e2e/replay-time.mjs'
       - 'desktop/e2e/replays-report.mjs'
-      - 'desktop/e2e/test/recorded-pages.test.mjs'
+      - 'desktop/e2e/test/record/recorded-pages.test.mjs'
       - 'desktop/lib/**'
       - 'desktop/renderer/answers-model.js'
       - 'desktop/renderer/apply-settings-model.js'
@@ -197,7 +197,7 @@ jobs:
           JP_REPLAY_PR_SPLIT: ${{ github.event_name == 'pull_request' && '1' || '' }}   # a PR leaves the slow cases (desktop/e2e/slow-cases.json) to main and the daily run unless it touches their folder; main and the daily run replay all
           JP_REPLAY_CHANGED: ${{ steps.changed.outputs.files }}
           JP_REPLAY_RESULTS: replay-results-${{ matrix.shard }}.json
-        run: node --test --test-concurrency=1 test/recorded-pages.test.mjs
+        run: node --test --test-concurrency=1 test/record/recorded-pages.test.mjs
       - name: Keep this shard's results for the report
         if: always()
         timeout-minutes: 5

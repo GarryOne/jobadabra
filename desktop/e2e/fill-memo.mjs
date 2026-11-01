@@ -2,7 +2,7 @@
 // and merges the new answers into the record's model-memo.json (replay-net.mjs --fill-memo, lib/fill-memo.mjs); then replays it again WITHOUT asking to prove it is faithful.
 //   node fill-memo.mjs <records dir> "<row>" [--out <dir>]      (npm run fill-memo -- <records dir> "<row>"; publish after: node records-publish.mjs <records dir>)
 // Cost: the plan path, about $0.06 a row asked, once per changed ask; never an API key on a Mac. CI: only the refill workflow (.github/workflows/replay-refill.yml, JP_REFILL_CI=1, its own
-// REPLAY_REFILL_ANTHROPIC_KEY, lib/refill.mjs). Old answers are never changed: a lost or changed old key fails the row. Guard: e2e/test/fill-memo.test.mjs, refill.test.mjs.
+// REPLAY_REFILL_ANTHROPIC_KEY, lib/refill.mjs). Old answers are never changed: a lost or changed old key fails the row. Guard: e2e/test/filling/fill-memo.test.mjs, refill.test.mjs.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';

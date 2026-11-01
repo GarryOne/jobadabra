@@ -1,5 +1,5 @@
 // The end check's page-side half (lib/end-shot.mjs): a cookie layer still open at the end of a run = a visible fixed or sticky overlay (or a dialog) that speaks of cookies and holds a button. -> its button labels.
-// By its own look, not by the extension's selector list: that list is broad on purpose and also matches a page-wide wrapper (Fidag's end check named the language switch and the map's controls). Guards: worker/test/cookie-layer-left.test.js, test/end-cookie-layer.test.mjs.
+// By its own look, not by the extension's selector list: that list is broad on purpose and also matches a page-wide wrapper (Fidag's end check named the language switch and the map's controls). Guards: worker/test/cookie-layer-left.test.js, test/filling/end-cookie-layer.test.mjs.
 /* global document, getComputedStyle */
 export function cookieLayerLeft() {
   const ABOUT = /cookie|gdpr|traceurs|tracking/i;

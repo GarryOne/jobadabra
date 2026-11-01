@@ -5,7 +5,7 @@
 //   3 new shapes in matches    a company-run career site (platform Custom) in today's matches, by host, none recorded yet; known ATS tenants share their platform's shape, so they are skipped here
 //   4 platform gaps            a platform with 2+ points more of the matches than of the pool (input.demand), unless every recorded row of it ended on a bot wall
 // A host already in the pool or recorded by an earlier batch is never picked again. The weekly spend cap (calendar week, UTC, counted from the batch's own spend lines) limits the rows.
-// Guard: e2e/test/discovery-pick.test.mjs.
+// Guard: e2e/test/pool/discovery-pick.test.mjs.
 import {platformOf} from './platform.mjs';
 import {mayVisit} from './record-sites.mjs';
 

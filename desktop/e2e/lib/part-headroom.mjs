@@ -2,7 +2,7 @@
 // Job: pick the suites
 // Why (31 Oct 2026, a8; beta 41229992832): apply-3of3 used 698 s of 660 on the stand-in leg after sitting at ~95% for weeks. A part blocks a beta only when it fits with headroom on its slowest leg.
 // HEADROOM 70% (462 s of 660; the owner chose it over 75%, 31 Oct 2026): in the 4 betas of that day apply-3of3 was at 106% and the five recorded parts at 70-71% (461-471 s),
-// so recorded got a 6th slice (its measured case seconds average 470 s a slice, over the limit however dealt). Guard: test/part-headroom.test.mjs.
+// so recorded got a 6th slice (its measured case seconds average 470 s a slice, over the limit however dealt). Guard: test/harness/part-headroom.test.mjs.
 import {TRY_MARGIN_MS} from './runner.mjs';
 import {weighedSlices} from './replay-shard.mjs';
 

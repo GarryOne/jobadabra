@@ -3,7 +3,7 @@
 //   mergeLedgers  today's CI-wide ledger (lib/site-ledger.mjs format): every run's visits of today, each counted once; a block page rests the host for all
 //   baselines     each row's newest usable CI result on main or on this PR, of the same test applicant (never another PR's build, never this run)
 //   fallsBelow    this run's row against its baseline, by lib/record-sites.mjs compare; a bot wall or refusal on the CI IP, a gone posting or a run without AI never counts
-// CLI: pool-ci-state.mjs. Guard: e2e/test/pool-ci-state.test.mjs.
+// CLI: pool-ci-state.mjs. Guard: e2e/test/pool/pool-ci-state.test.mjs.
 import {SITE_REFUSED, compare} from './record-sites.mjs';
 
 export function mergeLedgers(states, day) {

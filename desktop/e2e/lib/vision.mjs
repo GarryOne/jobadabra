@@ -99,7 +99,7 @@ export function buildRequest({view, pngBase64, rules = '', facts = null, lessons
 
 // USD per million tokens (Claude API, 25 Sep 2026); cache writes cost 1.25x input, cache reads 0.1x. An unknown model has no price: its cost is not guessed.
 export const PRICES = {'claude-sonnet-5-5': {input: 2, output: 10}, 'claude-haiku-5-5': {input: 0.1, output: 0.5}, 'claude-haiku-4-5': {input: 1, output: 5}, 'claude-opus-5-5': {input: 4, output: 20},
-  // The OpenAI family (the app's own table: desktop/lib/ai/models.js OPENAI_PRICES, held equal by test/ai-meter.test.mjs); cachedInput is OpenAI's own cached price.
+  // The OpenAI family (the app's own table: desktop/lib/ai/models.js OPENAI_PRICES, held equal by test/ai/ai-meter.test.mjs); cachedInput is OpenAI's own cached price.
   'gpt-6-luna': {input: 0.10, cachedInput: 0.01, output: 0.50}, 'gpt-6.1-sol': {input: 2.00, cachedInput: 0.10, output: 10.00}};
 // -> the call's cost in USD from the API's own usage figures, or null when the model's price is not known.
 // batch: the Message Batches API bills half of every token.

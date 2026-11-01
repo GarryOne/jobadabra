@@ -1,7 +1,7 @@
 // The pool's row names, for the "Pool-row:" trailer: the public desktop/e2e/smoke-sites.json plus this Mac's own list (RECORD_SITES, or the QA folder of desktop/e2e/record-sites.mjs),
 // a row's capture-folder slug (desktop/e2e/lib/replay-candidate.mjs slug), the row a slug stands for, and the closest name to suggest.
 // Read by tools/rung-trailer.mjs (commit hook and push gate refuse a value that is no row name), tools/claim-shape.mjs (a claim names a row) and desktop/e2e/lib/fix-ledger.mjs (a slug becomes its row).
-// Guard: desktop/test/commit-trailers.test.js, desktop/test/claim-shape.test.js, desktop/e2e/test/fix-ledger.test.mjs.
+// Guard: desktop/test/commit-trailers.test.js, desktop/test/claim-shape.test.js, desktop/e2e/test/pool/fix-ledger.test.mjs.
 import fs from 'node:fs';
 import {recordVar} from './record-env.mjs';
 import os from 'node:os';

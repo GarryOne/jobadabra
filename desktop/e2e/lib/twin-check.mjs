@@ -1,5 +1,5 @@
 // The post-merge live check's pure parts (npm run twin-check): which pool row stands for each platform, what makes a row red (a fill error, a press the safety floor refuses,
-// a drop vs that row's last check) and the one table it reports. The runner is e2e/twin-check.mjs; guard: e2e/test/twin-check.test.mjs.
+// a drop vs that row's last check) and the one table it reports. The runner is e2e/twin-check.mjs; guard: e2e/test/harness/twin-check.test.mjs.
 import {livePresses} from './replay-candidate.mjs';
 import {rank} from './record-sites.mjs';
 

@@ -3,7 +3,7 @@
 // the dead-end tables by lib/pool-shadow.mjs and lib/pool-acted.mjs. It owns only the safeguards that keep an offline number from passing for a live one (owner via cc,
 // 13 Oct 2026): every table labelled offline (memo|plan), never beside a live number; a row with ANY ask its capture has no kept answer for is "not measured", by route and differing part (13 Oct 2026: one missed page-kind ask of 16 took a fill from 5 to 1);
 // a press the capture never saw is "unseen", never worked or failed; "unverified" until the positive control passed. Pure but for the captures' files.
-// CLI: measure.mjs (npm run measure). Guard: e2e/test/measure.test.mjs.
+// CLI: measure.mjs (npm run measure). Guard: e2e/test/pool/measure.test.mjs.
 import fs from 'node:fs';
 import path from 'node:path';
 import {RUN_SETTINGS} from './capture-library.mjs';

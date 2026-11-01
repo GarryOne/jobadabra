@@ -1,5 +1,5 @@
 // A pool row's fill video for the Lab's "▶ Watch" (owner, 18 Oct 2026): one PUT to /applying/video with CI's narrow REPLAYS_PUBLISH_KEY, a run on main only, as lib/pool-ci-rows.mjs does for the row's result.
-// The row's name and the video's length go in the address, never the page's address; the file is removed after a send. JP_CI_ROWS_DRY=1|true: say it, send nothing. Guard: e2e/test/lab-video-upload.test.mjs.
+// The row's name and the video's length go in the address, never the page's address; the file is removed after a send. JP_CI_ROWS_DRY=1|true: say it, send nothing. Guard: e2e/test/pool/lab-video-upload.test.mjs.
 import fs from 'node:fs';
 
 export const LAB_VIDEO_SITE = 'https://www.jobpilotto.top/applying/video';

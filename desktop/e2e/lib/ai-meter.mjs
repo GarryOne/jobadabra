@@ -106,7 +106,7 @@ export function keepAsk(ask, answer, env = process.env) {
   keep(ask.key, ask.ids.length ? {...answer, body: Buffer.from(swap(Buffer.from(answer.body).toString('utf8'), ask.ids, slot))} : answer, env);
 }
 // Everything inside fn asks the model, whatever E2E_AI_REPLAY says; replay is back after it. For a check whose point is a second, independent answer (quality's
-// second scoring: replayed, it got the first answers back and always read ±0, 26 Oct 2026). Guard: test/ai-meter.test.mjs.
+// second scoring: replayed, it got the first answers back and always read ±0, 26 Oct 2026). Guard: test/ai/ai-meter.test.mjs.
 export async function fresh(fn, env = process.env) {
   const saved = env.E2E_AI_REPLAY;
   env.E2E_AI_REPLAY = '0';
@@ -144,7 +144,7 @@ export function keepMiss(key, url, body, env = process.env) {
 
 // Keep a successful answer (CI only: E2E_AI_CACHE is set by the workflow; a Mac never records).
 // Why (#2231, updated 29 Oct 2026): reject empty replies so retries cannot reuse a relay's empty 200 response (#2205, run 40451177894).
-// JSON Messages and OpenAI replies need text or a tool call; streams and other shapes are kept unchanged. Guard: test/ai-meter.test.mjs.
+// JSON Messages and OpenAI replies need text or a tool call; streams and other shapes are kept unchanged. Guard: test/ai/ai-meter.test.mjs.
 export function usable(contentType, body) {
   if (!/json/i.test(contentType || '')) return true;
   let data;

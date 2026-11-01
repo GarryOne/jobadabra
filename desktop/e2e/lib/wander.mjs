@@ -1,5 +1,5 @@
 // A seeded random walk through the app (5 Oct 2026): the other suites do the same steps in another order; this one takes steps nobody scripted, from a start state nobody
-// scripted, with outside services failing at a moment nobody scripted. The plan is PURE (the same seed gives the same plan, tested in test/wander.test.mjs); the suite
+// scripted, with outside services failing at a moment nobody scripted. The plan is PURE (the same seed gives the same plan, tested in test/pool/wander.test.mjs); the suite
 // (suites/wander.mjs) carries it out. No seed = a short fixed plan, so the release gate stays comparable.
 import {generator} from './variation.mjs';
 import {VIEWS} from './uicheck.mjs';

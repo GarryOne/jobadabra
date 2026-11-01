@@ -2,7 +2,7 @@
 // A watch row is a pool row of desktop/e2e/smoke-sites.json with "stage": "watch" (the life cycle's Daily watch stage); the batch adds a row when it finds a new platform.
 // The verdict per row is the discovery judge's (lib/discovery-judge.mjs); a flow is WORSE when its verdict got more severe, it reached an earlier step, it filled fewer fields on the same
 // posting (lib/record-sites.mjs compare), or its journey check failed after passing. A row that was not measured (held, bot wall, gone posting) is never worse and never the next baseline.
-// Guard: e2e/test/watch-list.test.mjs.
+// Guard: e2e/test/harness/watch-list.test.mjs.
 import {compare} from './record-sites.mjs';
 import {judgeRow, verdictWord} from './discovery-judge.mjs';
 

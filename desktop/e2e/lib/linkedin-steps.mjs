@@ -18,7 +18,7 @@ const searchesOf = fx => fx.requests.filter(item => item.path.startsWith('/jobs/
 
 /** The settings the app keeps for the switch, the last result and the pause. */
 const linkedinSettings = page => page.evaluate(async () => (await window.pilot.state()).settings?.linkedinJobs || {});
-// Why (31 Oct 2026): not lib/activity-steps.mjs runsData: that helper carries clock waits the ratchet would count against this new suite (test/timing-ratchet.test.mjs).
+// Why (31 Oct 2026): not lib/activity-steps.mjs runsData: that helper carries clock waits the ratchet would count against this new suite (test/harness/timing-ratchet.test.mjs).
 const searchRuns = page => page.evaluate(async () => {
   const data = await window.pilot.runs();
   return {running: !!data.running, runs: (data.runs || []).filter(run => run.kind === 'search').map(run => ({id: run.id}))};

@@ -1,5 +1,5 @@
 // A live or smoke run uses desktop/shared/worker, a copy of worker/src that `node scripts/stage.mjs` makes: after a worker edit a stale copy ran the OLD prompt (11 Oct 2026).
-// ensureStagedWorker compares the two folders and re-stages when they differ (one line says so); staging that does not fix it throws. Guard: test/staged-worker.test.mjs.
+// ensureStagedWorker compares the two folders and re-stages when they differ (one line says so); staging that does not fix it throws. Guard: test/harness/staged-worker.test.mjs.
 import fs from 'node:fs';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';

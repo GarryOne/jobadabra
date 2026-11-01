@@ -1,6 +1,6 @@
 // Telegram alerts for the scheduled CI checks (owner, 14 Oct 2026): a failure of e2e.yml (scheduled and gate runs) and site-replays.yml sends 🔴 once per commit and set of failed jobs (16 Oct 2026), and the
 // first success after a failure sends 🟢. Bot @jobpilotto_ci_alerts_bot: CI_ALERTS_TELEGRAM_BOT_TOKEN + CI_ALERTS_TELEGRAM_CHAT_ID (missing: one line, no send).
-// The token is never printed; no AI. Guard: e2e/test/ci-alert.test.mjs.
+// The token is never printed; no AI. Guard: e2e/test/harness/ci-alert.test.mjs.
 //   node ci-alert.mjs <failure|success> "<cause in a few words>" "<the one next action>"      (GITHUB_* and GH_TOKEN from the runner)
 // Job: report health
 import path from 'node:path';

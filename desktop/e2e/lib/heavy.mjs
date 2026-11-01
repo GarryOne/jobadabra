@@ -1,4 +1,4 @@
-// Takes the machine-wide heavy-run lock (tools/heavy-lock.sh) for an e2e entry point started by hand, by re-running itself under the lock; guarded by test/heavy.test.mjs.
+// Takes the machine-wide heavy-run lock (tools/heavy-lock.sh) for an e2e entry point started by hand, by re-running itself under the lock; guarded by test/replay/heavy.test.mjs.
 // Call heavy('name', import.meta.url) right after the imports of a script that opens browsers or apps. It does nothing when the file is only imported (a unit test),
 // when the lock is already held by a parent run (JP_HEAVY_HELD), when JOB_PILOTTO_HEAVY=0, for --list / --help, or when bash or the script is not there.
 import {spawnSync} from 'node:child_process';

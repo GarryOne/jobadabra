@@ -5,7 +5,7 @@
 //    `ladder: learned answer confirmed`, `ladder: learned answer dropped (one miss)`, `page kind forgotten: ...` (desktop/lib/server-pages.js decidePageKind);
 //  - movesFromRequests(requests): the extension's bodies to a stand-in app (a page case: lib/real-extension.mjs), shaped by the app's own key (rung1-kept.js kindKey).
 // sendMoves(rows, {source}): ONE POST to the site's learning batch (POST /api/controls, `ladder` + `source`: site/src/ladder-moves.js), Bearer REPLAYS_PUBLISH_KEY (CI's narrow key);
-// CI only, never a control run on an old build; JP_MOVES_DRY=1|true: say it, send nothing. Guard: e2e/test/ladder-moves.test.mjs.
+// CI only, never a control run on an old build; JP_MOVES_DRY=1|true: say it, send nothing. Guard: e2e/test/filling/ladder-moves.test.mjs.
 import {execFileSync} from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';

@@ -28,7 +28,7 @@ export const sameOnEveryOs = PLANNER.sameOnEveryOs;
 // the new answers for main; a line in them is never "shared code" another suite runs for it (lib/coverage-pick.mjs stepsCovering). #2234 changed place_triage.py
 // and only activity ran it; main's quality then asked 1-6 questions live and went red.
 // Again on 28 Oct: #2337 reworded the question-reuse prompt and no suite ran, so the beta's quality asked it live. Every app prompt file this suite asks is in watches
-// (guard: e2e/test/quality-watches-prompts.test.mjs). Since qu 1/4 (29 Oct 2026) the lists live once in PLANNER (lib/quality-journey.mjs), shared with qualityai.
+// (guard: e2e/test/pool/quality-watches-prompts.test.mjs). Since qu 1/4 (29 Oct 2026) the lists live once in PLANNER (lib/quality-journey.mjs), shared with qualityai.
 export const judges = PLANNER.judges;
 export const watches = PLANNER.watches;
 export const env = PLANNER.env;

@@ -1,6 +1,6 @@
 // Education and current job on a form, tested on their own on the plan path: a form with School, Degree, start and end year, Current company and Job title in English, German
 // and French, asked through the plain-node app's fill route (/extension/answer) against the seeded fake applicant, whose imported CV (fixtures/cv.json) states them.
-// Run by hand: `npm run cv-facts-cases` (claude -p; no API key). Guard: test/cv-facts-cases.test.mjs (the scoring, on a stub). Pool: EQT's Greenhouse form left these empty (11 Oct 2026).
+// Run by hand: `npm run cv-facts-cases` (claude -p; no API key). Guard: test/filling/cv-facts-cases.test.mjs (the scoring, on a stub). Pool: EQT's Greenhouse form left these empty (11 Oct 2026).
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';

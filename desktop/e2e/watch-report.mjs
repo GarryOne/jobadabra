@@ -1,6 +1,6 @@
 // node watch-report.mjs <smoke reports dir> <picked.json> <out dir> <states dir> [journey log]: after the watch's live recording and its journey check, the verdict per row against the row's
 // last live run (lib/watch-list.mjs), ONE Telegram message only when a flow got worse (none on the first run), this run's state file (<out dir>/watch.json: spend, each row's last measured state)
-// and the job log. Never fails the job on a Telegram problem. Guard: e2e/test/watch-cli.test.mjs.
+// and the job log. Never fails the job on a Telegram problem. Guard: e2e/test/harness/watch-cli.test.mjs.
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';

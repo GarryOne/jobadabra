@@ -1,7 +1,7 @@
 // Test accounts a live pool row may sign in with (docs/rules/applying.md "Signing in", owner 13 Oct 2026): only hosts listed in the Keychain
 // (job-pilotto.test-account.<host>.email / .password) on a Mac, or in the POOL_TEST_ACCOUNTS secret ({"<host>": {"email", "password"}}) on CI. Never a person's
 // own data. They go into the TEST app's own secrets file (never the Keychain: lib/keychain.js), where the product's saved-password sign-in finds them.
-// Guard: e2e/test/test-accounts.test.mjs.
+// Guard: e2e/test/filling/test-accounts.test.mjs.
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';

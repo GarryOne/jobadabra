@@ -15,7 +15,7 @@ import {copyExtension, freePort, launchBrowser, makeOpenShim} from './lib/extens
 import {grantAllSites, killGroup, portsFree, refresh, reloadExtension} from './lib/twin-refresh.mjs';
 import {realFolder} from '../lib/twin.js';
 import {TOKEN_VAR} from './lib/real-notion-token.mjs';
-import {withoutWrappers} from './lib/real-claude.mjs';   // never a terminal's claude wrapper (e2e/test/real-claude.test.mjs)
+import {withoutWrappers} from './lib/real-claude.mjs';   // never a terminal's claude wrapper (e2e/test/replay/real-claude.test.mjs)
 
 const DESKTOP = path.resolve(import.meta.dirname, '..'), REPO = path.resolve(DESKTOP, '..');
 const REAL = realFolder(), LIVE = path.join(path.dirname(REAL), 'Job Pilotto (live test)'), HOME = path.join(LIVE, 'home');

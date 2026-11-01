@@ -99,7 +99,7 @@ test('helpers: the first failure line, the pool order, the file lists the unit j
   assert.equal(firstFailure({code: 3, output: ''}), 'exit 3');
   assert.deepEqual(await pool([3, 1, 2], 2, async n => n * 2), [6, 2, 4]);
   const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-  const names = {desktop: 'test/clock-moved.test.js', e2e: 'test/night-pass.test.mjs', python: 'tests/test_unpinned_clock.py'};
+  const names = {desktop: 'test/clock-moved.test.js', e2e: 'test/harness/night-pass.test.mjs', python: 'tests/test_unpinned_clock.py'};
   const {AREAS} = await import('../../tools/clock-moved.mjs');
   for (const area of AREAS) assert.ok(filesOf(root, area).includes(names[area.name].replace(/^tests?\//, area.dir + '/')), `${area.name} lists its test files`);
   const slow = await execute(['node', '-e', 'setTimeout(() => {}, 5000)'], {cwd: root, timeoutMs: 200});

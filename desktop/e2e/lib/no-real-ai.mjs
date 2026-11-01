@@ -15,7 +15,7 @@ export function assertNoRealAi(ctx) {
 
 /** Run the suite's declared AI checks through the captured, unfiltered critical-step runner. */
 export async function runAiGuards(suite, ctx, runAlways) {
-  // A suite that declares `export const realAi = false` answers every AI call with a stand-in: one that reached a real model fails the run (test/suite-ai-mode.test.mjs).
+  // A suite that declares `export const realAi = false` answers every AI call with a stand-in: one that reached a real model fails the run (test/harness/suite-ai-mode.test.mjs).
   if (suite.realAi === false) await runAlways('no AI call of this suite reached a real model: the stand-in answered or refused every one', async () => { assertNoRealAi(ctx); }, {critical: true});
 }
 

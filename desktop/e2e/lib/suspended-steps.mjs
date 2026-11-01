@@ -2,7 +2,7 @@
 // A suspended step still runs and shows its result (steps.json status `suspended`), but never fails the job and never blocks a beta (lib/runner.mjs); the owner issue holds the evidence.
 // Why (31 Oct 2026, owner: "Means its flaky, Means our redesign and guardarails are not fully working"; spec row 33): a step red on unchanged code is suspended by name, not its whole suite.
 // Invariants: the registry is edited by a PR only (tools/suspend-flip.mjs proposes, never writes); matching is by exact step name.
-// Tests: test/suspended-steps.test.mjs
+// Tests: test/harness/suspended-steps.test.mjs
 // Job: report health
 import fs from 'node:fs';
 

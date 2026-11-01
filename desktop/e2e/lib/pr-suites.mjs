@@ -28,7 +28,7 @@ export function removedStrings(diff) {
 // the suites do; a deeper lib is named by its own importer). Returns {suite: [strings]}.
 // The parts of an e2e file that can expect the app's words: comments, step names (`ctx.run('<name>'`), `needs`/`name:` labels and the messages a test writes
 // (`new Error`, `console.log`, `problems.push`) are blanked, same length, so positions stay. #2157 (27 Oct 2026) removed the UI words "Notion page": 25 e2e files
-// said them only in step names, labels, messages and comments, and 17 suites ran whole. Tests: test/pr-store.test.mjs
+// said them only in step names, labels, messages and comments, and 17 suites ran whole. Tests: test/harness/pr-store.test.mjs
 const LIT = String.raw`(['"\`])(?:\\[\s\S]|(?!\1)[\s\S])*?\1`;
 const DESCRIBING = new RegExp(String.raw`(?:\bctx\.run\(\s*|\bname:\s*|\bnew Error\(\s*|\bconsole\.(?:log|warn|error)\(\s*|\bproblems\.push\(\s*)` + LIT, 'g');
 const blank = text => text.replace(/[^\n]/g, ' ');
@@ -132,7 +132,7 @@ export function deferredLines({left = [], ...evidence}) {
  * the ones before it. Why (owner, 28 Oct 2026, design #2336: "To be as journeys? … I'm fine with that. I agree"): steps picked alone went red where the app was fine
  * (#2342 "Edit target" with no target, #2350 "Up next"; 15 of 149 red runs, 14–28 Oct). After a merge (main-steps.yml) the picked steps still run.
  * By kind: pointedElse (a helper, the extension, the harness), a quote or change outside a named step, a line nobody ran → whole; else the steps the changed lines,
- * removed quotes and the suite's own file reach. Guard: test/pr-suites-whole.test.mjs
+ * removed quotes and the suite's own file reach. Guard: test/harness/pr-suites-whole.test.mjs
  */
 export function stepLists({suites, pullRequest = false, pointedElse = [], quoting = {}, picked = {}, byLines = {}, own = {}}) {
   const steps = {};

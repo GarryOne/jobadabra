@@ -1,7 +1,7 @@
 // The one decision "does a red on main stop a beta?": only a failed step marked safety or data does; any other red goes on and is listed. Pure: the caller reads the steps.json tables.
 // Why (1 Nov 2026, owner: "Safety strict, rest tolerant", then a8's option "Same rule as the beta"): the nightly (run 41267448030) built nothing over one flaky sign-up step (applyflows, run 41267492981).
 // Both callers use this: tools/red-main-gate.sh (the nightly's gate G2 and tools/beta-release.sh) through tools/red-main-verdict.mjs. A missing or unreadable result is never a pass.
-// Tests: test/red-main-verdict.test.mjs, tests/test_red_main_gate.py
+// Tests: test/harness/red-main-verdict.test.mjs, tests/test_red_main_gate.py
 // Job: report health
 
 /** The line the beta carries to its release notes (beside "Passed on retry in this beta"), or '' when nothing was red but tolerated. */

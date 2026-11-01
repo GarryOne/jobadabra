@@ -1,5 +1,5 @@
 // A folder of its own for each run's artifacts and a safe way to save a shared memo, so two runs at once never write the same files (lib/app.mjs ARTIFACTS is per SUITE,
-// and every pool run is the applyflows suite). Guarded by test/run-artifacts.test.mjs.
+// and every pool run is the applyflows suite). Guarded by test/harness/run-artifacts.test.mjs.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';

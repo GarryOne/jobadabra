@@ -5,7 +5,7 @@
 //   4. the OLD build (--old <extension folder>) must replay the live run's page kinds and presses (else the case is not the live run) and must FAIL the case (else exit 3, as recorded-both).
 // --fixed: the capture came from a build that already has the fix (a regression case, no failing live run): expect = the live run itself and the old build must fail it (exit 3 when it does not).
 // Exit codes: 0 written; 1 the new build fails its own case; 2 refused before replaying (gates, an existing case, no old build); 3 the old build passes (the control proves nothing); 4 not provable
-// (a cold ask is left, nothing improved, a regression, the old build does not replay the live run). -> {code, lines}; nothing reaches the cases folder unless code is 0. Guard: e2e/test/row-to-case.test.mjs.
+// (a cold ask is left, nothing improved, a regression, the old build does not replay the live run). -> {code, lines}; nothing reaches the cases folder unless code is 0. Guard: e2e/test/pool/row-to-case.test.mjs.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';

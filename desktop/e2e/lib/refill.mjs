@@ -1,5 +1,5 @@
 // The rules of the CI refill (.github/workflows/replay-refill.yml; owner, 15 Oct 2026: "a separate CI workflow only for that, with a separate Anthropic API Key"): which pinned rows
-// to refill, what it may cost, which key it may use, and which PRs may start it. Pure parts; guard: e2e/test/refill.test.mjs. The key REPLAY_REFILL_ANTHROPIC_KEY has NO fallback
+// to refill, what it may cost, which key it may use, and which PRs may start it. Pure parts; guard: e2e/test/filling/refill.test.mjs. The key REPLAY_REFILL_ANTHROPIC_KEY has NO fallback
 // (no Tests key, no live-pool key): missing = the job says so and stops. Fake applicant only, a replay of the network record (no site visit), never Submit.
 import {askChanged, keptOutcome, outdated} from '../replay-gate.mjs';
 

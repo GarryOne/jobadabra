@@ -10,7 +10,7 @@ import {aiProvider} from './ai-provider.mjs';
 import {askBroker} from './broker-client.mjs';
 import {judgeFamily, pickEngine} from './engine.mjs';
 import {count, countReplay, keep, keepMiss, recall, requestKey, usageOf} from './ai-meter.mjs';
-import {withoutWrappers} from './real-claude.mjs';   // never a terminal's claude wrapper (e2e/test/real-claude.test.mjs)
+import {withoutWrappers} from './real-claude.mjs';   // never a terminal's claude wrapper (e2e/test/replay/real-claude.test.mjs)
 import {keepCandidate, keepCandidateBody, storedAnswer} from './ai-answers.mjs';
 
 // A bare `claude -p` loads the owner's MCP servers, skills and settings: 106k tokens for a one-word answer. These flags leave about 400.

@@ -1,6 +1,6 @@
 // node pool-ai-cost.mjs <smoke reports folder> <out file>: a CI pool run's AI spend for /admin/intelligence/ai-cost (owner, 12 Oct 2026, cost safety: the recording runs report
 // like every scheduled AI job). Writes {usd, calls} of THIS run (the day report's thisRun: record-sites.mjs sums its rows' spend; the calls are its rows' own, lib/record-sites.mjs parseLive aiCalls)
-// to the file desktop/e2e/ai-cost-report.mjs --file sends (job pool-live: .github/workflows/record-sites.yml). Never fails the job. Guard: e2e/test/pool-ai-cost.test.mjs.
+// to the file desktop/e2e/ai-cost-report.mjs --file sends (job pool-live: .github/workflows/record-sites.yml). Never fails the job. Guard: e2e/test/pool/pool-ai-cost.test.mjs.
 import fs from 'node:fs';
 import path from 'node:path';
 import {pathToFileURL} from 'node:url';

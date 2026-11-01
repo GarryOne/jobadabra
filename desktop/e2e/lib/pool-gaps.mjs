@@ -3,7 +3,7 @@
 // Reads the extension's "progress: <kind>" lines (extension/ladder/progress.js) from each row's app log. A row is one application: a gap is the wall-clock time between two notes in
 // any of its tabs (the extension's per-tab sinceMs would count the posting tab as silent forever once Apply opened a new one); the tail is the silence from the last note to the log's
 // end. Activity without progress (presses, judgments) counts as silence. The silent rule is applied to the same lines with the extension's own rule (ladder/silence.js isSilent,
-// handedToPerson), so the detector's recall and false fires are measured offline on any run (phase 2 box 3). Pure: callers provide report data and log text. Guard: e2e/test/pool-gaps.test.mjs.
+// handedToPerson), so the detector's recall and false fires are measured offline on any run (phase 2 box 3). Pure: callers provide report data and log text. Guard: e2e/test/pool/pool-gaps.test.mjs.
 import {PROGRESS_KINDS} from '../../../extension/ladder/progress.js';
 import {SILENT_AFTER_MS, handedToPerson} from '../../../extension/ladder/silence.js';
 import {STEPS} from './record-sites.mjs';

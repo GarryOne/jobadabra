@@ -1,5 +1,5 @@
 // One formatter for the messages the alert bots send (owner, 16 Oct 2026): Telegram HTML with a bold title, a blank line, "•" bullets, named links, never a bare URL.
-// Pure and dependency-free, so a Cloudflare Worker can import it as it is (the Sentry alerts bot does). Guard: e2e/test/telegram-html.test.mjs.
+// Pure and dependency-free, so a Cloudflare Worker can import it as it is (the Sentry alerts bot does). Guard: e2e/test/app/telegram-html.test.mjs.
 // Job: report health
 //   alertHtml({icon, title, verdict, bullets: [{label, parts: [text | {text, url}]}], links: [{text, url}]}) -> {text, parse_mode: 'HTML', link_preview_options}
 //   alertHtml({icon, title, verdict, blocks: [[{label?, bullet?, parts}]], links}): paragraphs of plain lines ("•" only where bullet is set); the links close the last one.

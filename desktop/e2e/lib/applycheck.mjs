@@ -1,4 +1,4 @@
-// The apply suite's judgements as pure functions of what was read from a form, so each one can be shown to fail on a wrong input (test/applycheck.test.mjs).
+// The apply suite's judgements as pure functions of what was read from a form, so each one can be shown to fail on a wrong input (test/filling/applycheck.test.mjs).
 // `actual` is readForm()'s answer: {field id: {type, value, checked, files: [{name, size}], ai}}.
 
 // Every kit answer is in its field (a checkbox: ticked), and what the person must decide (legal consents) is untouched, kit or no kit.

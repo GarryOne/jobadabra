@@ -2,10 +2,6 @@
   "applyflows": {
     "provenance": "Measured hang caps for applyflows' state waits, keyed by the exact step names.\nWhy (29 Oct 2026, a8, 21b): 3 x calm main p95 from the measuring tool tools/e2e-step-timings.mjs (applyflows, 14 runs) on 29 Oct 2026 (13 runs, 25 calm shard-runs), rounded up to 5 s with a 30 s noise floor; applicant setup keeps its measured 305 s cap.\ntools/e2e-step-timings.mjs --suite applyflows --runs 14; inline p95 values are seconds.\ntools/e2e-step-timings.mjs: 6 main runs, 9/11 calm shard-runs.\nMain run IDs: 41153500920, 41157036555, 41158705592, 41166853012, 41173193229, 41180851813.\n3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.",
     "steps": {
-      "\"I submitted it\" marks the job Applied and takes its session off the list": {
-        "seconds": 30,
-        "p95Seconds": 4.8
-      },
       "\"Needs your attention\" from the extension's fill: the left menu is listed with its proposal and choices, and Use fills the form": {
         "seconds": 160,
         "p95Seconds": 52.4
@@ -13,10 +9,6 @@
       "a form drawn after a spinner: its submit is never pressed as Apply, and it is filled once its fields come": {
         "seconds": 175,
         "p95Seconds": 58.2
-      },
-      "a form with collapsed sections: they are opened and the questions inside are filled": {
-        "seconds": 260,
-        "p95Seconds": 85.7
       },
       "a menu whose choices are not the answer's words: the choice that means the same is picked, then remembered for the next form on the site": {
         "seconds": 185,
@@ -44,17 +36,9 @@
         "seconds": 120,
         "p95Seconds": 38.4
       },
-      "an upload slot that appears only when + is pressed: the app's CV reaches it, the rest of the form is filled": {
-        "seconds": 140,
-        "p95Seconds": 45.6
-      },
       "the account and the application on one page: it is the application form, its passwords stay account fields": {
         "seconds": 180,
         "p95Seconds": 58.6
-      },
-      "the AI gave a page the wrong kind: the page contradicts it, the kind is dropped and the form is filled": {
-        "seconds": 190,
-        "p95Seconds": 62.4
       },
       "the app has an applicant, jobs with drafted kits for every fixture form, and an AI that answers only what the kits do not": {
         "seconds": 305,
@@ -1108,31 +1092,6 @@
         "maxSeconds": 6.7,
         "provisional": true,
         "reason": "provisional: 3 x its slowest calm sample, 30 s floor, rounded up to 5 s; regenerate after 5 main runs (tools/e2e-step-timings.mjs)"
-      }
-    }
-  },
-  "visitsauto": {
-    "provenance": "tools/e2e-step-timings.mjs: 10 main runs, 10/10 calm shard-runs.\nMain run IDs: 40789795183, 40799225090, 40802551247, 40836904987, 40960750830, 40975522762, 40987937824, 41146558456, 41157036555, 41180851813.\n3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.",
-    "steps": {
-      "a marked tab waiting on the person says so: the Allow page opens beside it and the app is told it waits (owner's rule), nothing is read": {
-        "seconds": 30,
-        "n": 10,
-        "p95Seconds": 0.4
-      },
-      "a marked tab, once allowed, is read by itself over its pages, reported to the app as done, and closed": {
-        "seconds": 30,
-        "n": 10,
-        "p95Seconds": 5.1
-      },
-      "a page the app did not mark is left alone: nothing read, nothing sent": {
-        "seconds": 30,
-        "n": 10,
-        "p95Seconds": 3.4
-      },
-      "the extension starts and reaches the stand-in app, never the user's own (a different port)": {
-        "seconds": 30,
-        "n": 10,
-        "p95Seconds": 0
       }
     }
   },

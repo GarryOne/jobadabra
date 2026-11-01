@@ -114,7 +114,7 @@ import {spawnSync} from 'node:child_process';
 
 // Why (R2, 1 Nov 2026): 'employers' stands where the deleted `activity` suite stood in these fixtures: a real suite file the diff fixture can read, sorting before focusdismiss as `activity` did.
 const cli = new URL('../pr-suites.mjs', import.meta.url);
-function cliPlan({catches, pullRequest = true, base = 'origin/main', listed = {}, checkoutLanes = {}, suites = ['wizard', 'visitsauto', 'stores', 'settings', 'jobs', 'interviews', 'focusdismiss', 'employers'], extraFiles = [], coverage = {}, baseSources = {}} = {}) {
+function cliPlan({catches, pullRequest = true, base = 'origin/main', listed = {}, checkoutLanes = {}, suites = ['wizard', 'storemove', 'stores', 'settings', 'jobs', 'interviews', 'focusdismiss', 'employers'], extraFiles = [], coverage = {}, baseSources = {}} = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pr-cap-cli-'));
   try {
     const files = [...suites.map(s => `desktop/e2e/suites/${s}.mjs`), ...extraFiles];
@@ -149,7 +149,7 @@ syncBuiltinESMExports();`);
 test('CLI writes five whole suites and three deferrals with their reasons to stdout and GITHUB_OUTPUT', () => {
   const {values, text} = cliPlan();
   assert.equal(values.suites, 'employers,focusdismiss,interviews,jobs,settings');
-  assert.equal(values.left, 'wizard,visitsauto,stores');
+  assert.equal(values.left, 'wizard,storemove,stores');
   const steps = JSON.parse(values.steps);
   assert.deepEqual(Object.keys(steps), ['(parts)', '(why)']);
   for (const suite of values.left.split(',')) {
@@ -161,7 +161,7 @@ test('CLI writes five whole suites and three deferrals with their reasons to std
 test('CLI reads catch counts only when supplied and applies the base registry before capping', () => {
   assert.equal(cliPlan({catches: {wizard: 99}}).values.suites, 'wizard,employers,focusdismiss,interviews,jobs');
   const {values} = cliPlan({listed: {employers: {lane: 'tolerant'}, focusdismiss: {lane: 'suspended'}}});
-  assert.equal(values.suites, 'interviews,jobs,settings,stores,visitsauto');
+  assert.equal(values.suites, 'interviews,jobs,settings,storemove,stores');
   assert.equal(values.left, 'wizard');
   const main = cliPlan({pullRequest: false, catches: {wizard: 99}, listed: {employers: {lane: 'tolerant'}}});
   assert.equal(main.values.suites.split(',').length, 7);   // --base applies even without --pull-request

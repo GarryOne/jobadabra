@@ -86,9 +86,6 @@
     "pool": {
       "aiMissesMax": 0
     },
-    "visitsauto": {
-      "aiMissesMax": 0
-    },
     "personas": {
       "lane": "tolerant",
       "input": "ai",

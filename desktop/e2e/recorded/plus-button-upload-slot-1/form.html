@@ -1,0 +1,20 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Platform Engineer, Plus-Button Upload at E2E Reveal Retail</title>
+<style>body{font:15px/1.4 system-ui,sans-serif;max-width:640px;margin:24px auto;padding:0 16px}.field{margin:14px 0}label{display:block;margin-bottom:4px}input[type=text],input[type=email],input[type=tel],input[type=url],select,textarea{width:100%;padding:6px;box-sizing:border-box}</style></head>
+<body><h1>Platform Engineer, Plus-Button Upload</h1><p>E2E Reveal Retail · Zurich, Switzerland</p>
+<form id="application_form"><div class="field"><label for="first_name">Vorname *</label><input id="first_name" name="first_name" type="text" required ></div><div class="field"><label for="last_name">Nachname *</label><input id="last_name" name="last_name" type="text" required ></div><div class="field"><label for="email">E-Mail *</label><input id="email" name="email" type="email" required ></div>
+  <div class="field"><div class="lab">Lebenslauf *</div><div class="attachWrapper"><div class="box">Datei hinzufügen</div><span role="button" tabindex="0" class="addAttachments" id="cv_plus" onclick="openPopup('cv_plus')">+</span><div class="ok" id="cv_ok" hidden>hochgeladen</div></div></div>
+  <div class="field"><label for="question_3001">Years of experience with Kubernetes *</label><input id="question_3001" name="question_3001" type="text" required ></div><div class="field"><button type="submit" id="submit_app">Bewerbung absenden</button></div></form>
+  <div id="popup" hidden>Quelle wählen <button type="button">Vom Gerät</button></div><script>
+  window.got = {};
+  function openPopup(id) {
+    const popup = document.getElementById('popup'); popup.hidden = false; popup.querySelector('input')?.remove();
+    const input = document.createElement('input'); input.type = 'file'; input.name = 'fileData' + id;
+    input.addEventListener('change', () => { const file = input.files[0]; window.got[id] = file ? {name: file.name, size: file.size} : null; document.getElementById('cv_ok').hidden = !file; });
+    popup.appendChild(input);
+  }</script>
+<script>
+const fired = kind => fetch('/__fired?kind=' + kind + '&form=' + encodeURIComponent(location.pathname), {method: 'POST', keepalive: true});
+document.addEventListener('click', event => { if (event.target.closest('[type=submit]')) fired('click'); }, true);
+document.addEventListener('submit', event => { event.preventDefault(); fired('submit'); }, true);
+
+</script></body></html>

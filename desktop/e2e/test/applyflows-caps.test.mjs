@@ -40,7 +40,7 @@ for (const {name, options, ms, caps = {'measured journey': 45}} of [
 
 test('every applyflows journey and setup has a cap, and no cap names a missing step', () => {
   const journeys = names('lib/apply-journeys.mjs');
-  assert.ok(journeys.length >= 14, 'positive control: read the literal journey names');
+  assert.ok(journeys.length >= 11, 'positive control: read the literal journey names');
   const steps = [
     ...journeys,
     ...names('lib/no-real-ai.mjs'),

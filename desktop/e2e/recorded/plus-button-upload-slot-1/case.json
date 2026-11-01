@@ -1,0 +1,64 @@
+{
+ "origin": "hand-cut",
+ "control": {
+  "guard": "applyflows e2e step \"an upload slot that appears only when + is pressed\" (moved here 1 Nov 2026)"
+ },
+ "shape": "an upload slot with no file input until its + is pressed (a popup built by script): the CV reaches the input the + makes, the rest of the form is filled",
+ "why": "Journey step of the applyflows e2e suite, page-shape half moved to a page case (1 Nov 2026, R2); Coop on SuccessFactors, 8 Oct 2026. It pins behaviour the e2e step already proved; planting the bug in the extension turns it red.",
+ "sample": "fixture form written by desktop/e2e/lib/forms.mjs (hosts and text invented)",
+ "rung": 2,
+ "pages": [
+  {
+   "url": "https://jobs.lever.co/e2e-reveal/4001013",
+   "file": "form.html"
+  }
+ ],
+ "ai": {
+  "/extension/page-kind": {
+   "ok": true,
+   "kind": "form",
+   "role": "form",
+   "by": "ai",
+   "confidence": 0.95,
+   "rung": 2,
+   "signal": "confident",
+   "applyButton": "",
+   "applyRoute": "",
+   "applyBy": "",
+   "applyEmail": "",
+   "accountStep": "",
+   "registerControl": "",
+   "signinControl": "",
+   "accountButton": ""
+  },
+  "/extension/answer": {
+   "ok": true,
+   "eligible": true,
+   "answers": [
+    {
+     "field": "question_3001",
+     "question": "Years of experience with Kubernetes",
+     "value": "8",
+     "confidence": "high"
+    }
+   ]
+  }
+ },
+ "expect": {
+  "attached": [
+   "#popup input[type=file]"
+  ],
+  "filled": [
+   "#first_name",
+   "#email"
+  ],
+  "valueIs": [
+   "#question_3001|8"
+  ],
+  "notTold": [
+   "pressed the submit"
+  ],
+  "seconds": 60
+ },
+ "start": "panel"
+}

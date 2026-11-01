@@ -1,6 +1,6 @@
 // Job: wait on state
 // Reaches: ../fixtures/visits/
-// The rig for "Find jobs using your browser" (7 Oct 2026), shared by the visitsauto e2e suite and integration/extension/visits-auto.test.mjs: the REAL extension (a copy that talks to a
+// The rig for "Find jobs using your browser" (7 Oct 2026), used by integration/extension/visits-auto.test.mjs (the visitsauto e2e suite is gone, 1 Nov 2026): the REAL extension (a copy that talks to a
 // stand-in app on a free port) in a real Chromium, fixture job lists served over HTTPS under two host names, the stand-in app counting each call. No Notion, no AI, no real site.
 import {execFileSync} from 'node:child_process';
 import fs from 'node:fs';

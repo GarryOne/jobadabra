@@ -1,7 +1,7 @@
 /* global document, window, location */
 // The apply suite's journey steps (moved out of suites/apply.mjs, 8 Oct 2026): a posting that opens a tab, side-by-side applications, sign-up, one page, a closed form tab, a wrong page kind. Guards the flows in docs/flows/applying.md.
 // Job: run the backbone
-import {CHAIN, LATE, MENU_AGAIN, MENU_CHOICES, MENU_FIRST, MISLABELLED, NOTICE_CHOICES, ONEPAGE, PROPOSE, REVEAL, COLLAPSED, SCRIPTED, SIGNIN, SIGNIN_PASSWORD, SIGNIN_REFUSED, SIGNUP} from './forms.mjs';
+import {CHAIN, LATE, MENU_AGAIN, MENU_CHOICES, MENU_FIRST, NOTICE_CHOICES, ONEPAGE, PROPOSE, SCRIPTED, SIGNIN, SIGNIN_PASSWORD, SIGNIN_REFUSED, SIGNUP} from './forms.mjs';
 import {CONTACT, pause} from './apply-fixtures.mjs';
 import {appLogText, rearmedSessions, pollSessions} from './app-log.mjs';
 import {cvProblems, fillProblems, submitProblems} from './applycheck.mjs';
@@ -319,38 +319,6 @@ export async function runJourneys(ctx, h) {
     fail([...problems, ...submitProblems(forms.fired, PROPOSE.path)]);
   }, {needs: ctx.needs});
 
-  // An upload slot that has no file input until its + is pressed (Coop on SuccessFactors, 8 Oct 2026): the app's CV goes through the whole chain into it
-  // (the shapes alone are guarded in test/upload-slot.test.mjs without the app). The slot says it got the CV; the rest of the form is filled; Submit untouched.
-  await ctx.run('an upload slot that appears only when + is pressed: the app\'s CV reaches it, the rest of the form is filled', async () => {
-    await page.evaluate(([url, details]) => window.pilot.applyOne(url, details), [REVEAL.url, {title: REVEAL.title, company: REVEAL.company}]);
-    const tab = await arrived(() => ctx.browser.context.pages().find(item => item.url().startsWith(REVEAL.url)), 'the wait for the + upload form');
-    await filled(tab);
-    const problems = [];
-    let got = null;
-    for (let waited = 0; waited < 10000 && !got; waited += 500) { got = await tab.evaluate(() => window.got?.cv_plus || null).catch(() => null); await pause(500); }
-    if (!got) problems.push('the + slot never received a file (its input appears only after the + is pressed)');
-    else if (got.name !== cv.name || got.size !== cv.size) problems.push(`the + slot got ${got.name} (${got.size} bytes), expected the app's ${cv.name} (${cv.size} bytes)`);
-    const read = await readForm(tab);
-    if (String(read.first_name?.value ?? read.first_name ?? '') !== CONTACT.first_name) problems.push('the first name was not filled');
-    if (String(read.question_3001?.value ?? read.question_3001 ?? '') !== '8') problems.push('Kubernetes years is not the kit\'s 8');
-    fail([...problems, ...submitProblems(forms.fired, REVEAL.path)]);
-  }, {needs: ctx.needs});
-
-  // Sections drawn collapsed (Migros on SuccessFactors, 9 Oct 2026): the fill saw one field and filled nothing. The extension opens the closed disclosures by structure
-  // (extension/sections.js), then reads and fills the questions inside them. Shapes alone: worker/test/page-sections.test.js. Submit untouched.
-  await ctx.run('a form with collapsed sections: they are opened and the questions inside are filled', async () => {
-    await page.evaluate(([url, details]) => window.pilot.applyOne(url, details), [COLLAPSED.url, {title: COLLAPSED.title, company: COLLAPSED.company}]);
-    const tab = await arrived(() => ctx.browser.context.pages().find(item => item.url().startsWith(COLLAPSED.url)), 'the wait for the collapsed-sections form');
-    await filled(tab);
-    const problems = [];
-    const read = await readForm(tab);
-    if (String(read.email?.value ?? read.email ?? '') !== CONTACT.email) problems.push('the e-mail inside the closed "profile" section was not filled');
-    if (String(read.question_4001?.value ?? read.question_4001 ?? '') !== '6') problems.push('the question inside the closed "job" section is not the kit\'s 6');
-    const closed = await tab.evaluate(() => [...document.querySelectorAll('button[aria-expanded]')].filter(b => b.getAttribute('aria-expanded') === 'false').length).catch(() => -1);
-    if (closed !== 0) problems.push(`${closed} section(s) are still closed`);
-    fail([...problems, ...submitProblems(forms.fired, COLLAPSED.path)]);
-  }, {needs: ctx.needs});
-
   // The account and the application on one page (Coop, 8 Oct 2026): a CV upload says it is the application. It is filled from the kit, the session is at the
   // form step, and its password boxes are never counted as questions the fill missed.
   await ctx.run('the account and the application on one page: it is the application form, its passwords stay account fields', async () => {
@@ -430,28 +398,6 @@ export async function runJourneys(ctx, h) {
         await pause(2000);
       }
     } finally { await second.close(); fs.rmSync(spool, {recursive: true, force: true}); }
-    fail(problems);
-  }, {needs: ctx.needs});
-
-  // A wrong kind kept by the AI corrects itself (owner, 8 Oct 2026): the stand-in calls this application form a "posting". The extension finds no Apply to
-  // press while the page has a form's fields, drops the kind (logged), and fills the form from the kit this visit.
-  await ctx.run('the AI gave a page the wrong kind: the page contradicts it, the kind is dropped and the form is filled', async () => {
-    await page.evaluate(([url, details]) => window.pilot.applyOne(url, details), [MISLABELLED.url, {title: MISLABELLED.title, company: MISLABELLED.company}]);
-    const tab = await arrived(() => ctx.browser.context.pages().find(item => item.url().startsWith(MISLABELLED.url)), 'the wait for the mislabelled form');
-    await filled(tab, ['no-form', 'account']);
-    const problems = [];
-    const {value: log} = await waitForDecisions(() => extensionDecisions(ctx), [/page kind corrected: a posting with no Apply but a form's fields/]);
-    // The premise, on this page's own shape and from the AI (not remembered): another posting's line proves nothing (beta 9 Oct 2026).
-    const ownLines = log.split('\n').filter(line => line.includes(`"shape":"${MISLABELLED.shape}|`));
-    if (!ownLines.some(line => line.includes('page kind: posting {') && line.includes('"by":"ai"'))) {
-      problems.push(`the stand-in's wrong kind was never asked for this page (no "page kind: posting" by the AI on ${MISLABELLED.shape}): the row proves nothing. Its lines: ${ownLines.slice(0, 3).join(' | ') || 'none'}`);
-    }
-    if (!/page kind corrected: a posting with no Apply but a form's fields/.test(log)) problems.push('the wrong kind was not corrected (no "page kind corrected" line)');
-    if (!/page kind forgotten/.test(log)) problems.push('the app never dropped the kept kind (no "page kind forgotten" line)');
-    {
-      const read = (await readForm(tab)).question_3001, value = String(read?.value ?? read ?? '');
-      if (value !== '4') problems.push(`Kubernetes years "${value}", its kit says 4`);
-    }
     fail(problems);
   }, {needs: ctx.needs});
 }

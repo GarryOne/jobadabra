@@ -312,6 +312,9 @@ jobs:
       - name: Add them to smoke-sites.json and open the PR
         env:
           PR_TOKEN: ${{ steps.pr_app.outputs.token }}
+          # Why (1 Nov 2026, owner: "let's fix this"): the push below named $REPO and nothing defined it, so every day the batch found a new shape died with "repository 'https://github.com/.git/' not found"
+          # (red from 28 Oct, tests/test_record_sites_pool_pr.py). The workflow's own repo, never a hardcoded owner (it moves into an org).
+          REPO: ${{ github.repository }}
         run: |
           [ -s discovery-out/pool-add.json ] || { echo "no new shape"; exit 0; }
           added=$(node desktop/e2e/discovery-pool-add.mjs discovery-out/pool-add.json)
@@ -323,6 +326,7 @@ jobs:
           git checkout -b "$branch"
           git add desktop/e2e/smoke-sites.json
           tools/bot-commit.sh "Add the daily discovery batch's new shapes to the pool" "a pool list entry, no code the app runs" "$added"
+          [ -n "$PR_TOKEN" ] || echo "::warning title=Pool PR opened without checks::the CI App token was not minted (see the 'The App token' step's log for why), so the push and the PR use the workflow token and the PR's checks will not start"
           git push -q "https://x-access-token:${PR_TOKEN:-$GH_TOKEN}@github.com/$REPO.git" "$branch"
           printf '%s\n\nOpened by record-sites.yml (daily discovery batch). The owner merges it; nothing here merges.\n' "$added" > pr-detail.md
           tools/bot-pr-body.sh HEAD~1 --verdict='🟢 The daily discovery batch reached new flow shapes: they join the pool.' --why='the daily discovery batch (record-sites.yml) found sites with shapes the pool lacks' \

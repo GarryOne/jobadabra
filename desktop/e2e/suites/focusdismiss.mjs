@@ -1,10 +1,10 @@
 /* global document, MutationObserver */
 // Job: serve stored answers
-// The dismissal half of Focus, on a REAL Notion page (6 Oct 2026; the rest of the Focus checks moved to desktop/test/screen-focus*.test.js on 1 Nov 2026, owner: "I'd like the beta
+// The dismissal half of Focus, on a REAL Notion page (6 Oct 2026; the rest of the Focus checks moved to desktop/integration/app/screen-focus*.test.js on 1 Nov 2026, owner: "I'd like the beta
 // to have only the critical e2e/user journeys"). What stays here is what a window on a fake store cannot prove: the five ways to finish an Up next card against a store that lists a write
 // LATE (the stand-in's lag, lib/notion-fake.mjs setLag), the in-app hold that covers that lag, and Dismiss on a job in process written through the real app.
 import {actionScenario, addFocusData, resetFocusData, readData, scenario} from '../lib/focus-data.mjs';
-import {finish} from '../lib/layout.mjs';
+import {finish, snap} from '../lib/layout.mjs';
 import {ensureSetUp} from '../lib/seed.mjs';
 import {pollUntil, stepTimeLeft, stepWait} from '../lib/wait-on-state.mjs';
 
@@ -69,6 +69,7 @@ async function runFocus(ctx) {
     const started = Date.now();
     await goFocus();
     await focusReady();
+    await snap(ctx, 'focus', {view: 'focus', situation: 'a search with applications in every stage, on a real Notion page'});   // Why (1 Nov 2026, Gitar on #2767): feeds ctx.findings, else the layout step below asserts nothing
     const seconds = (Date.now() - started) / 1000;
     const text = await page.evaluate(() => document.querySelector('.view[data-view="focus"]').innerText);
     const bad = text.match(ERROR_WORDS);
@@ -170,5 +171,5 @@ async function runFocus(ctx) {
     await goFocus();   // the next step starts on Focus
   }, {needs: ctx.needs});
 
-  await ctx.run('Focus renders without layout problems, with data and without', async () => { finish(ctx); }, {needs: ctx.needs});
+  await ctx.run('Focus renders without layout problems on a real store', async () => { finish(ctx); }, {needs: ctx.needs});
 }

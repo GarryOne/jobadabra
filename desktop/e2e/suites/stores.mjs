@@ -1,7 +1,7 @@
 /* global document, window */
 // The store setting (docs/superpowers/specs/2026-10-09-store-adapters.md): an app on the SQLite store tracks with no Notion at all, and one with no
 // store chosen behaves as before. No Notion page and no token: `notion = false`. What stays here is what writes through the real app (the board's stage columns, moving a card,
-// a remembered answer). Why (1 Nov 2026): the Jobs saved view, a job's page, Reports, the Funnel and Interviews' gate moved to desktop/test/screen-stores.test.js.
+// a remembered answer). Why (1 Nov 2026): the Jobs saved view, a job's page, Reports, the Funnel and Interviews' gate moved to desktop/integration/app/screen-stores.test.js.
 import {execFileSync} from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';

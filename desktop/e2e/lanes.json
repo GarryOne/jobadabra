@@ -17,9 +17,6 @@
       "why": "The one suite on a real Notion workspace (cadence night-report: once a night, reported, never in the beta or a PR): what the in-memory stand-in cannot prove depends on Notion's own pages and rate limits, which are not ours.",
       "returns": "Stays tolerant: it tests Notion itself."
     },
-    "stores": {
-      "aiMissesMax": 0
-    },
     "wander": {
       "lane": "tolerant",
       "input": "clock",
@@ -34,16 +31,10 @@
       "why": "Owner, 1 Nov 2026: the beta keeps only the critical journeys; interactions is a finder that clicks every safe control and watches pages for late shifts, and reports once a night (cadence night-report), so its result depends on layout timing.",
       "returns": "Stays tolerant: it is a nightly report, not a gate."
     },
-    "activityfailures": {
-      "aiMissesMax": 0
-    },
     "jobs": {
       "aiMissesMax": 0
     },
     "strategy": {
-      "aiMissesMax": 0
-    },
-    "employers": {
       "aiMissesMax": 0
     },
     "settings": {
@@ -89,17 +80,6 @@
     }
   },
   "steps": {
-    "activityfailures": {
-      "the AI never answers: the run is stopped after its silence limit and ends as Stopped, in words, with nothing left Running": {
-        "lane": "suspended",
-        "input": "the closing of the old app instance's hung AI request after a relaunch; not yet measured: its engine child outliving the quit, or the proxy seeing the socket close late",
-        "since": "2026-10-31",
-        "owner": "GarryOne",
-        "issue": "https://github.com/GarryOne/jobadabra/issues/2712",
-        "why": "Red on 1eda1d3 (run 41217478444, 1 hung AI request still open 45 s after the relaunch) and green on 68ec575 (run 41215275975) with none of the 519 files it runs changed between them.",
-        "returns": "Back to the backbone when its fix PR lands and the next 3 main runs pass it."
-      }
-    },
     "settings": {
       "Your data: export with keys, reset, then import from the setup brings this computer back as it was": {
         "lane": "suspended",

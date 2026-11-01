@@ -21,7 +21,6 @@ on:
       - '!desktop/e2e/ladder-fixtures/**'
       - '!desktop/e2e/widget-zoo/**'
       # ... except the ones a harness test reads (a later pattern wins)
-      - 'desktop/e2e/fixtures/activityfailures-main-timings.json'
       - 'desktop/e2e/fixtures/slice-ci-seconds.json'
       - 'desktop/e2e/fixtures/part-seconds.json'
       - 'desktop/e2e/fixtures/cv.json'

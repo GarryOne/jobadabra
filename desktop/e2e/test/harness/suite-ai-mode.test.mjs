@@ -27,9 +27,9 @@ test('a suite that installs or imports AI stubs declares its own realAi mode', (
   assert.deepEqual(missing, [], `add "export const realAi = false;" (every AI call is a stand-in: the harness fails the run if one reaches a real model) or "= true" (some calls go on to the real model, metered): ${missing.join(', ')}`);
 });
 
-test('a declaration is a boolean or explicit live-mode choice, and employers declares false', () => {
+test('a declaration is a boolean or explicit live-mode choice, and jobs declares false', () => {
   for (const [file, source] of sources) if (/export const realAi\b/.test(source)) assert.ok(declared(source), `${file}: realAi must be a literal true or false`);
-  assert.equal(declared(sources.find(([file]) => file === 'employers.mjs')[1]), 'false');
+  assert.equal(declared(sources.find(([file]) => file === 'jobs.mjs')[1]), 'false');
 });
 
 test('the harness runs the real-AI check for a suite declaring false', () => {

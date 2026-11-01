@@ -82,7 +82,8 @@ for (const suite of ['interactions', 'activityfailures']) {
     assert.equal(error.code, missing.code); assert.match(error.message, missing.message);
   });
 
-  test(`${suite} opts into stored answers and the real-AI guard in every workflow`, () => {
+  // Why (1 Nov 2026): the activityfailures suite left e2e (J11 is an integration test); its answer table still serves the integration kit (answers: 'activityfailures'), so only the suite file's declarations go.
+  if (suite === 'interactions') test(`${suite} opts into stored answers and the real-AI guard in every workflow`, () => {
     const source = fs.readFileSync(new URL(`../../suites/${suite}.mjs`, import.meta.url), 'utf8');
     assert.match(source, /^export const offlineAi = true;/m);
     assert.match(source, /^export const realAi = false;/m);

@@ -89,11 +89,6 @@ const fixture = JSON.parse(fs.readFileSync(new URL('../../fixtures/golden/employ
 const request = ask => ({method: 'POST', headers: {'content-type': 'application/json', ...(ask.action ? {'x-jp-action': ask.action} : {})}, body: JSON.stringify(ask.body)});
 const dataOf = reply => JSON.parse(reply.content[0].text);
 
-test('employers declares offline backbone answers for both workflow attempts', () => {
-  const source = fs.readFileSync(new URL('../../suites/employers.mjs', import.meta.url), 'utf8');
-  for (const declaration of ['offlineAi = true', 'realAi = false', "aiAnswers = 'backbone'", "store = 'standin'"]) assert.ok(source.includes(`export const ${declaration};`), declaration);
-});
-
 for (const family of ['claude', 'openai']) test(`employers captured and reconstructed asks resolve at stored, direct and ${family} proxy seams with cache off`, async t => {
   const h = await backboneHarness(t, 'employers', family);
   Object.assign(h.env, {E2E_AI_REPLAY: '0', E2E_AI_CACHE: ''});

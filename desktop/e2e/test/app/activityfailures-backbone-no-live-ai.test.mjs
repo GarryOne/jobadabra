@@ -10,8 +10,6 @@ import {FAILURES} from '../../lib/ai-proxy.mjs';
 import {answersTableFile, backboneHarness} from '../../lib/backbone-harness.mjs';
 import {modelFetch} from '../../lib/model.mjs';
 import {bodyOf, engineCases} from '../ai-answers-engine-fixtures.mjs';
-import * as activityfailures from '../../suites/activityfailures.mjs';
-import {suitesFor} from '../../lib/plan.mjs';
 
 const {request: captured, requests: capturedMore, seededPlaceQuestions} = JSON.parse(fs.readFileSync(new URL('../../fixtures/golden/activityfailures-decide.json', import.meta.url), 'utf8'));
 // organize_lines is authored (empty items) since wander (30 Oct 2026); activityfailures asks it too and gets that reply.
@@ -299,20 +297,6 @@ test('activityfailures stored metro answers also resolve through the OpenAI foll
   const reply = await response.json();
   assert.deepEqual(JSON.parse(reply.output[0].content[0].text), results);
   h.assertNoLive();
-});
-
-test('activityfailures keeps its offline declaration and no-real-AI guard enabled', () => {
-  const source = fs.readFileSync(new URL('../../suites/activityfailures.mjs', import.meta.url), 'utf8');
-  assert.match(source, /^export const offlineAi = true;/m);
-  assert.match(source, /^export const realAi = false;/m);
-});
-
-
-test('changing activityfailures answer fixtures selects its own whole CI journey', () => {
-  for (const file of ['desktop/e2e/fixtures/golden/activityfailures-decide.json',
-    'desktop/e2e/fixtures/golden/activityfailures-feed-asks.json', 'desktop/e2e/fixtures/golden/ai-answers.json']) {
-    assert.deepEqual(suitesFor([file], ['activityfailures'], {watches: {activityfailures: activityfailures.watches}}), ['activityfailures'], file);
-  }
 });
 
 test('the captured title-sort context and restart question match the finite authored catalog', () => {

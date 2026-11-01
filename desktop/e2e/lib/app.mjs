@@ -2,7 +2,7 @@
 // Job: wait on state
 // Launch the real Jobadabra app (Electron) with a throwaway profile, like a first-time user, and drive it through Playwright.
 // Nothing here touches the real user's data: JOB_PILOTTO_USER_DATA points at a fresh temp folder and no .env is read.
-import {descendantsOf, endTree, holdersOf, listProcesses, waitTreeGone} from './app-tree.mjs';
+import {endTree, holdersOf, listProcesses, treeOf, waitTreeGone} from './app-tree.mjs';
 import {appLaunchEnv} from './app-env.mjs';
 import {journey} from './journey.mjs';
 import {ownerGuardEnv} from './owner-guard-env.mjs';
@@ -142,21 +142,21 @@ const EXIT_GUARD_MS = 5000;
  * `child` while the app was still tearing down left the app running with its parent gone (pid 8092), holding the profile the next start of it uses; 20 s later the reset's folder wait failed.
  * The tree is taken before the exit (a child's parent is lost once the parent dies). Guard: test/close-app-tree.test.mjs.
  */
-export async function closeApp(app, {how = 'crash', graceMs = EXIT_GUARD_MS, exitCapMs} = {}) {
+export async function closeApp(app, {how = 'crash', graceMs = EXIT_GUARD_MS, exitCapMs, list = listProcesses} = {}) {
   if (how === 'quit') return quitApp(app, exitCapMs === undefined ? {} : {exitCapMs});
   let child;
   // Why (1 Nov 2026, #2755 Linux settings red): an app that ended by itself (a reset, an import) cannot say its process any more: Playwright throws a TypeError. Nothing is left to end then.
   try { child = app.process(); } catch { return; }
   if (process.platform === 'win32') await keyWritten(app);
-  const rows = listProcesses();
-  const tree = [{pid: child.pid, ppid: 0, command: 'the launcher'}, ...descendantsOf(rows, child.pid)];
+  const rows = list();
+  const tree = treeOf(rows, child.pid);   // the launcher as listed (pid + start) and what it started; never the harness or anything above it
   // A lister that failed (the Windows query has a 15 s limit) answers nothing, which looks like "nothing below": say it, or a red looks like this fix does not work.
-  console.log(`  ${new Date().toISOString()} e2e: closing the app (pid ${child.pid}, ${tree.length - 1} process(es) below it${rows.length ? '' : '; the process list came back empty, so the app\'s tree is not known'})`);   // tells the harness's exit from the app's own in logs/app.log
+  console.log(`  ${new Date().toISOString()} e2e: closing the app (pid ${child.pid}, ${Math.max(0, tree.length - 1)} process(es) below it${!rows.length ? '; the process list came back empty, so the app\'s tree is not known' : rows.some(row => row.started) ? '' : '; the process list has no start times, so stale parent ids cannot be told from real ones'})`);   // tells the harness's exit from the app's own in logs/app.log
   try { await Promise.race([app.evaluate(({app: electron}) => electron.exit(0)).catch(() => {}), new Promise(resolve => setTimeout(resolve, EXIT_GUARD_MS))]); } catch { /* the app is already gone */ }
   // Why (1 Nov 2026, review of #2717): closeApp runs inside the teardown chain (ctx.close), where a throw would skip closing the test servers and writing the artifacts, and in launch()'s
   // refusal path, where it would replace the refusal. A process that survives its kill is said here, loudly; the next start's folder wait names it again.
   try {
-    const ended = await endTree(tree, {graceMs});
+    const ended = await endTree(tree, {graceMs, list});
     if (ended.length) console.log(`  e2e: ${ended.length} process(es) of the closed app were still running ${graceMs / 1000} s later and were ended: ${holdersOf(ended)}`);
   } catch (error) { console.log(`  e2e: ${error.message}`); }
 }
@@ -171,7 +171,7 @@ async function quitApp(app, {exitCapMs = stepTimeLeft() ?? 30000} = {}) {
   const child = app.process();
   const exited = child.exitCode !== null || child.signalCode ? Promise.resolve() : new Promise(resolve => child.once('exit', resolve));
   if (process.platform === 'win32') await keyWritten(app);
-  const tree = descendantsOf(listProcesses(), child.pid);   // taken last before the quit (after the Windows key wait): what the app has started
+  const whole = treeOf(listProcesses(), child.pid), tree = whole.slice(1);   // taken last before the quit (after the Windows key wait): what the app has started
   console.log(`  ${new Date().toISOString()} e2e: quitting the app (pid ${child.pid}, ${tree.length} process(es) below it)`);
   await app.evaluate(({app: electron, dialog}) => { dialog.showMessageBoxSync = () => 1; electron.quit(); }).catch(() => {});   // the process may end before evaluate answers
   let timer;
@@ -179,7 +179,7 @@ async function quitApp(app, {exitCapMs = stepTimeLeft() ?? 30000} = {}) {
   clearTimeout(timer);
   if (verdict === 'late') {   // Why (1 Nov 2026, #2717): killing only the launcher left the app below it (Windows shell) running; the whole tree goes, then the verdict is said.
     let stuck = '';
-    try { await endTree([{pid: child.pid, ppid: 0, command: 'the launcher'}, ...tree], {graceMs: 0}); } catch (error) { stuck = `; ${error.message}`; }
+    try { await endTree(whole, {graceMs: 0}); } catch (error) { stuck = `; ${error.message}`; }
     throw new Error(`the app did not quit by itself within ${exitCapMs / 1000} s after the quit (killed)${stuck}`);
   }
   const left = await waitTreeGone(tree);

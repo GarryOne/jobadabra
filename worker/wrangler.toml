@@ -10,7 +10,7 @@ compatibility_date = "2026-09-01"
 crons = ["0 0,1,2,3 * * *", "47 21,23,1 * * *", "*/10 * * * *"]
 
 [vars]
-GITHUB_REPO = "GarryOne/jobadabra"
+GITHUB_REPO = "jobadabra/jobadabra"
 WORKFLOW_FILE = "daily.yml"
 NOTION_APPLICATIONS_DB = "f56b68942d3b43cbb85a7b1ebfe2df1b"
 NOTION_EVENTS_DB = "95ae2d6b81804e838985d0de5cbd945b"

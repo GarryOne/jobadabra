@@ -142,3 +142,20 @@ test('when the rate limit trips in the middle of a squash-merged PR, that PR kee
   const [one] = fetchMerges({days: 3, now, git: squashGit, api});
   assert.deepEqual([one.pr, one.branch, one.commits], [2891, 'big', []]);
 });
+
+test('when the rate limit trips on the second page of a squash-merged PR\'s commit list, the first page is dropped too', () => {
+  // The limit is checked on every 25th call, counted across PRs: PR 1 (pull + list + 21 details = 23 calls) puts PR 2's second list call on call 125.
+  const log = ['S1\x1f2026-11-01\x1f2026-11-01T11:00:00+00:00\x1fSmall PR (#2891)\x1f\x1e', 'S2\x1f2026-11-01\x1f2026-11-01T10:00:00+00:00\x1fBig PR (#2892)\x1f\x1e'].join('\n');
+  let checks = 0;
+  const api = path => {
+    if (path === 'rate_limit') return {resources: {core: {remaining: checks++ === 5 ? 10 : 4000}}};
+    if (/pulls\/\d+$/.test(path)) return {head: {ref: `b${path.split('/').pop()}`}};
+    if (path.includes('/pulls/2891/commits')) return Array.from({length: 21}, (_, n) => ({sha: `s${n}`, commit: {message: 'c'}}));
+    if (path.includes('/pulls/2892/commits')) return path.endsWith('page=1') ? Array.from({length: 100}, (_, n) => ({sha: `k${n}`, commit: {message: 'c'}})) : [{sha: 'k100', commit: {message: 'c'}}];
+    return {files: []};
+  };
+  const merges = fetchMerges({days: 3, now, git: (...args) => (args.includes('--first-parent') ? log : squashGit(...args)), api});
+  const byPr = Object.fromEntries(merges.map(item => [item.pr, item.commits.length]));
+  assert.deepEqual(byPr, {2891: 21, 2892: 0}, 'the PR read before the stop is whole; PR 2892 keeps none of its page 1');
+  assert.ok(checks >= 6, 'the stop was tripped by the page-2 call, not earlier');
+});

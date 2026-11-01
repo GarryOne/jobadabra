@@ -118,12 +118,13 @@ export function fetchMerges({days, now, repo = process.env.REPO || 'GarryOne/job
       const list = call(`repos/${repo}/pulls/${pr}/commits?per_page=100&page=${page}`) || [];
       for (const item of list) {
         const detail = call(`repos/${repo}/commits/${item.sha}`);
-        if (!detail) { commits = []; break; }
+        if (!detail) break;
         const changed = detail.files || [];
         commits.push({sha: item.sha, subject: String(item.commit?.message || '').split('\n')[0], files: changed.map(file => file.filename), lines: changed.reduce((n, file) => n + (file.additions || 0) + (file.deletions || 0), 0)});
       }
       if (stopped || list.length < 100) break;
     }
+    if (stopped) commits = [];   // whichever call tripped the stop (a page or a commit), this PR is never half-read
     merges.push({pr, day: date, at, title: squash[1], branch: pull?.head?.ref ?? null, files, commits});
   }
   return merges;

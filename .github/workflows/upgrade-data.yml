@@ -107,8 +107,8 @@ jobs:
         if: always()
         working-directory: desktop
         run: |
-          echo '| From | OS | State | Lost | Changed | Note |' >> "$GITHUB_STEP_SUMMARY"; echo '|---|---|---|---|---|---|' >> "$GITHUB_STEP_SUMMARY"
-          for f in upgrade/upgrade-*.json; do [ -f "$f" ] && jq -r '"| \(.from) | \(.os) | \(.state) | \(.lost | length) | \(.changed | length) | \(.note) |"' "$f" >> "$GITHUB_STEP_SUMMARY"; done; true
+          # the job log, not a step summary (owner, 26 Oct 2026: no CI job writes one; tests/test_no_step_summaries.py)
+          for f in upgrade/upgrade-*.json; do [ -f "$f" ] && jq -r '"\(.os) from \(.from): \(.state), \(.lost | length) lost, \(.changed | length) changed \(.note)"' "$f"; done; true
       - name: Keep the screenshots and results
         if: always()
         uses: actions/upload-artifact@v6
@@ -173,8 +173,8 @@ jobs:
         if: always()
         working-directory: desktop
         run: |
-          echo '| From | OS | State | Lost | Changed | Note |' >> "$GITHUB_STEP_SUMMARY"; echo '|---|---|---|---|---|---|' >> "$GITHUB_STEP_SUMMARY"
-          for f in upgrade/upgrade-*.json; do [ -f "$f" ] && jq -r '"| \(.from) | \(.os) | \(.state) | \(.lost | length) | \(.changed | length) | \(.note) |"' "$f" >> "$GITHUB_STEP_SUMMARY"; done; true
+          # the job log, not a step summary (owner, 26 Oct 2026: no CI job writes one; tests/test_no_step_summaries.py)
+          for f in upgrade/upgrade-*.json; do [ -f "$f" ] && jq -r '"\(.os) from \(.from): \(.state), \(.lost | length) lost, \(.changed | length) changed \(.note)"' "$f"; done; true
       - name: Keep the screenshots and results
         if: always()
         uses: actions/upload-artifact@v6

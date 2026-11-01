@@ -31,7 +31,7 @@ export function catchOf(red, greens, fixes) {
   return fix ? classifyFix(fix) : 'flaky';
 }
 const DAY_MS = 86400000;
-/** The next green run of the red's workflow on the same branch within a day, on different code: [{red, green}] pairs whose diff says what the fix was; null when green again on the same commit, or never green. */
+/** The next green run of the red's workflow on the same branch within a day: 'same' when the red's own commit went green again (a re-run), else the earliest green run on different code, or null when there is none. */
 export function nextGreen(red, runs) {
   const greens = runs.filter(item => item.conclusion === 'success' && item.name === red.name && item.branch === red.branch && Date.parse(item.created_at) > Date.parse(red.created_at) && Date.parse(item.created_at) - Date.parse(red.created_at) < DAY_MS);
   if (greens.some(item => item.head_sha === red.head_sha)) return 'same';

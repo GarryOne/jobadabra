@@ -40,7 +40,7 @@ on:
         type: boolean
         default: false
       beta:
-        description: 'A beta by hand, in one shot: always builds, then the same e2e gate as the nightly (every gate suite, unit suites green, additive Notion schema) approves it for beta testers. Empty = a build for trying, offered to nobody'
+        description: 'A beta by hand, in one shot: always builds, then the same e2e gate as the nightly (every gate suite, unit suites green, no high-severity finding, additive Notion schema) approves it for beta testers. Empty = a build for trying, offered to nobody'
         type: boolean
         default: false
       over_red_main:
@@ -1339,7 +1339,7 @@ jobs:
           phase: end
         timeout-minutes: 5
 
-  # RELEASE: the lane's HTML report (always), then, only when every E2E suite of BOTH lanes passed: the shared release checks, and the
+  # RELEASE: the lane's HTML report (always), then, only when every E2E suite of BOTH lanes passed: no real high-severity finding, the shared release checks, and the
   # "Beta-approved:" line that offers the build to Mac beta testers (desktop/lib/updater.js). Red = not released on Mac.
 
   # Why (30 Oct 2026, owner): most Windows suites were dropped as duplicates of Mac + Linux, so a red there is unproven on Windows too, and a red on Windows holds Mac as well;
@@ -1355,7 +1355,7 @@ jobs:
     permissions:
       contents: write   # the approval line (release-stable.sh when the soak is off)
       actions: write    # this run's artifacts, build.yml's verdict on the commit; release-stable.sh starts the Chrome Web Store publish
-      issues: write     # the release scripts rewrite the pinned Release channels issue (tools/sync_release_labels.py)
+      issues: write     # block-check.mjs reads the UI-loop issues; the release scripts rewrite the pinned Release channels issue
     env:
       E2E_ARTIFACT_SECRET_NAMES: |
         CI_ALERTS_TELEGRAM_BOT_TOKEN
@@ -1420,6 +1420,17 @@ jobs:
         timeout-minutes: 10
         if: needs.changes.outputs.gate == 'true'
         run: python3 tools/beta_rate_gate.py --repo "$GITHUB_REPOSITORY" --run "$GITHUB_RUN_ID" --platform mac
+      - name: No layout-check high-severity finding in the Mac suites (no AI finding decides)
+        timeout-minutes: 5
+        working-directory: desktop/e2e
+        run: |
+          gh run download "${{ github.run_id }}" --repo "$GITHUB_REPOSITORY" --pattern 'e2e-artifacts-*' --dir ../../e2e-artifacts || echo "no artifacts to read"
+          mkdir -p ../../e2e-artifacts
+          find ../../e2e-artifacts -mindepth 1 -maxdepth 1 -name 'e2e-artifacts-windows-*' -exec rm -rf {} +
+          status=0
+          node block-check.mjs --artifacts ../../e2e-artifacts --no-ai > block.txt || status=$?
+          cat block.txt
+          if [ "$status" != 0 ]; then echo "$TAG is not offered on Mac: a high-severity layout-check finding in its end-to-end suites."; exit 1; fi
       - name: Steps that passed on their retry (listed in the release notes)
         id: retry
         timeout-minutes: 5
@@ -1503,7 +1514,7 @@ jobs:
           phase: end
         timeout-minutes: 5
 
-  # RELEASE: the lane's HTML report (always), then, only when every E2E suite of BOTH lanes passed: the shared release checks, and the
+  # RELEASE: the lane's HTML report (always), then, only when every E2E suite of BOTH lanes passed: no real high-severity finding, the shared release checks, and the
   # "Beta-approved (Windows):" line that offers the build to Windows beta testers (desktop/lib/updater.js). Red = not released on Windows.
   release-windows:
     name: Release · Windows beta   # needs both lanes: the Why above release-mac
@@ -1516,7 +1527,7 @@ jobs:
     permissions:
       contents: write   # the approval line (release-stable.sh when the soak is off)
       actions: write    # this run's artifacts, build.yml's verdict on the commit; release-stable.sh starts the Chrome Web Store publish
-      issues: write     # the release scripts rewrite the pinned Release channels issue (tools/sync_release_labels.py)
+      issues: write     # block-check.mjs reads the UI-loop issues; the release scripts rewrite the pinned Release channels issue
     env:
       E2E_ARTIFACT_SECRET_NAMES: |
         GH_TOKEN
@@ -1577,6 +1588,17 @@ jobs:
         timeout-minutes: 10
         if: needs.changes.outputs.gate == 'true'
         run: python3 tools/beta_rate_gate.py --repo "$GITHUB_REPOSITORY" --run "$GITHUB_RUN_ID" --platform windows
+      - name: No layout-check high-severity finding in the Windows suites (no AI finding decides)
+        timeout-minutes: 5
+        working-directory: desktop/e2e
+        run: |
+          gh run download "${{ github.run_id }}" --repo "$GITHUB_REPOSITORY" --pattern 'e2e-artifacts-*' --dir ../../e2e-artifacts || echo "no artifacts to read"
+          mkdir -p ../../e2e-artifacts
+          find ../../e2e-artifacts -mindepth 1 -maxdepth 1 -name 'e2e-artifacts-*' ! -name 'e2e-artifacts-windows-*' -exec rm -rf {} +
+          status=0
+          node block-check.mjs --artifacts ../../e2e-artifacts --no-ai > block.txt || status=$?
+          cat block.txt
+          if [ "$status" != 0 ]; then echo "$TAG is not offered on Windows: a high-severity layout-check finding in its end-to-end suites."; exit 1; fi
       - name: Steps that passed on their retry (listed in the release notes)
         id: retry
         timeout-minutes: 5

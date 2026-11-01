@@ -58,6 +58,8 @@ class EveryLaneHasTheBatchReview(unittest.TestCase):
         desktop = (WORKFLOWS / 'desktop.yml').read_text()
         for lane in ('mac', 'windows'):
             self.assertNotIn('actions/e2e-review', jobs(desktop)[f'release-{lane}'], f'release-{lane}: the beta is not gated on an AI answer')
+            self.assertIn('block-check.mjs --artifacts ../../e2e-artifacts --no-ai', jobs(desktop)[f'release-{lane}'], f'release-{lane}: the layout-check gate stays, without AI findings')
+        self.assertIn('block-check.mjs --artifacts ../../e2e-artifacts --no-ai', (WORKFLOWS / 'beta-approve.yml').read_text())
         self.assertIn("--pattern 'e2e-artifacts-*'", (WORKFLOWS / 'ui-findings.yml').read_text(), 'the issue filer reads every e2e-artifacts-* artifact, the review\'s among them')
 
 

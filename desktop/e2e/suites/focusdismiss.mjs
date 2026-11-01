@@ -17,6 +17,7 @@ export const store = 'standin';
 export const minutes = 15;
 // What a step needs from an earlier one when E2E_STEPS picks it (lib/runner.mjs wantedWords).
 export const stepNeeds = {'in-app hold': ['five more Up next', 'removes it for good'], 'removes it for good': ['five more Up next']};
+/** The suite entry: runs the dismissal steps in order on ctx; a failing step is reported by the runner. */
 export const run = ctx => runFocus(ctx);
 
 const LIST_LAG_MS = 15000;   // the stand-in's listing lag for the dismissal steps (lib/notion-fake.mjs setLag)

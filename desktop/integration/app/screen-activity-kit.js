@@ -18,6 +18,7 @@ export function stateFiles(now, demoFocus) {
   const runs = STATES.map(({run}, i) => { const at = new Date(now - (i + 1) * 60000).toISOString(); return {trigger: 'you', log: [], ...run, id: now - i, startedAt: at, endedAt: at}; });
   return {'runs.json': runs, 'focus.json': {...demoFocus, items: [...MAIL.focus.open, ...demoFocus.items], answered_questions: MAIL.focus.answered}};
 }
+/** The demo's focus.json, read fresh; throws if the demo folder moved. */
 export const demoFocus = () => JSON.parse(fs.readFileSync(new URL('../../demo/focus.json', import.meta.url), 'utf8'));
 /** The env that shows Gmail disconnected now (the header, the schedule and the box follow the current connection). */
 export const googleEnv = google => (google === 'off' ? {JOB_PILOTTO_DEMO_GOOGLE: 'off'} : {});
@@ -27,6 +28,7 @@ export const googleEnv = google => (google === 'off' ? {JOB_PILOTTO_DEMO_GOOGLE:
  * Why (1 Nov 2026): the state names and their places live in the fixture, which the window cannot import.
  */
 export const withData = (data, script) => new Function('kit', `return (${script.toString()})(kit, ${JSON.stringify(data)});`);
+/** Place of the state called `name` in STATES; throws (naming it) when no state has that name. */
 export const indexOf = name => { const at = STATES.findIndex(state => state.name === name); if (at < 0) throw new Error(`no state named ${name}`); return at; };
 
 /** In the window: open Actions → Runs with every row loaded, select a state by its place in STATES, read its card. Serialised: no closure over this file. */

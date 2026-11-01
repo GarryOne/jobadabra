@@ -150,36 +150,18 @@ if command -v node >/dev/null && [ -f "$repo/tools/replay-files.mjs" ]; then
     drift="$(cd "$repo" && timed "workflow paths $wf" node tools/replay-files.mjs --check "$wf" 2>&1)" || block "$drift"
   done
 fi
-# The cheap checks on commit messages run BEFORE the journey and ladder gates (owner, 11 Oct 2026: a missing "Rung:" line was found only after a
-# 255 s journey gate, three times in one landing): seconds first, minutes last.
-# Never fix the same website twice (owner, 10 Oct 2026): a push changing how the extension acts on pages brings its recorded page (desktop/e2e/recorded) or
-# journey scenario, or a commit says "Recorded-unneeded: <why>" (tools/recorded-cases.mjs).
-if command -v node >/dev/null && [ -f "$repo/tools/recorded-cases.mjs" ] && git -C "$repo" rev-parse --verify -q origin/main >/dev/null; then
-  cases="$(cd "$repo" && timed "recorded cases" node tools/recorded-cases.mjs --base origin/main 2>&1)" || block "$cases"
-fi
-# A fix for a bug the owner saw is proven on his own page (owner, 16 Oct 2026): "Owner-report: <id>" and a captured case with that report id (tools/owner-report.mjs).
-if command -v node >/dev/null && [ -f "$repo/tools/owner-report.mjs" ] && git -C "$repo" rev-parse --verify -q origin/main >/dev/null; then
-  ownerrep="$(cd "$repo" && timed "owner report" node tools/owner-report.mjs --base origin/main 2>&1)" || block "$ownerrep"
-fi
-# The rung trailer (docs/flows/ladder.md): a push touching the ladder's flow code carries "Rung: <0-6|router|judges>" and "Fixture: <id | none: why>" in a commit message (tools/rung-trailer.mjs).
-if command -v node >/dev/null && [ -f "$repo/tools/rung-trailer.mjs" ] && git -C "$repo" rev-parse --verify -q origin/main >/dev/null; then
-  trailer="$(cd "$repo" && timed "rung trailer" node tools/rung-trailer.mjs --base origin/main 2>&1)" || block "$trailer"
-fi
-# A line guarded by a "Why (<PR or date>): <reason>" comment changes only on purpose: "Why-changed: <which> — <reason>" in a commit message (tools/why-changed.mjs; owner, 27 Oct 2026).
-if command -v node >/dev/null && [ -f "$repo/tools/why-changed.mjs" ] && git -C "$repo" rev-parse --verify -q origin/main >/dev/null; then
-  whychanged="$(cd "$repo" && timed "why comments" node tools/why-changed.mjs --base origin/main 2>&1)" || block "$whychanged"
-fi
-# New code's comments: a new exported function has a doc comment; a debt note reads "TODO(AI): <what> (<date or #PR>)" or "FIXME: <what>" (tools/new-code-comments.mjs; owner, 27 Oct 2026).
-if command -v node >/dev/null && [ -f "$repo/tools/new-code-comments.mjs" ] && git -C "$repo" rev-parse --verify -q origin/main >/dev/null; then
-  newcomments="$(cd "$repo" && timed "new code comments" node tools/new-code-comments.mjs --base origin/main 2>&1)" || block "$newcomments"
+# The commit-message and comment checks run together and list every refusal at once (tools/commit-checks.mjs; prune audit 2/4, owner, 1 Nov 2026): recorded cases (owner, 10 Oct 2026: never fix
+# the same website twice), the rung trailer (docs/flows/ladder.md), the Why-changed trailer (27 Oct), new code's comments (27 Oct), a ticked Progress box's proof file, the open e2e issues a suite
+# change names (`E2E_ISSUE_OK=1` on the push skips that one) and the E2E-cause trailer (27 Oct). They run BEFORE the journey and ladder gates (owner, 11 Oct 2026: a missing "Rung:" line was
+# found only after a 255 s journey gate, three times in one landing): seconds first, minutes last.
+if command -v node >/dev/null && [ -f "$repo/tools/commit-checks.mjs" ] && git -C "$repo" rev-parse --verify -q origin/main >/dev/null; then
+  commit_skip=""
+  case "$command" in *E2E_ISSUE_OK=1*) commit_skip="e2e issue links" ;; esac
+  commitchecks="$(cd "$repo" && timed "commit checks" node tools/commit-checks.mjs --base origin/main --skip "$commit_skip" 2>&1)" || block "$commitchecks"
 fi
 # A suite leaves the e2e backbone only by naming the input its result depends on (ai, clock, outside) and why: an entry of desktop/e2e/lanes.json (tools/lanes-check.mjs; spec rule E).
 if [ "$ship_push" = 0 ] && command -v node >/dev/null && [ -f "$repo/tools/lanes-check.mjs" ] && git -C "$repo" rev-parse --verify -q origin/main >/dev/null; then
   lanes="$(cd "$repo" && timed "lane registry" node tools/lanes-check.mjs --base origin/main 2>&1)" || block "$lanes"
-fi
-# A changed AI prompt brings the case it fixed into its fixed case set (tools/prompt-cases.json), or a commit says "Prompt-case: none <why>" (tools/prompt-cases.mjs; owner, 27 Oct 2026).
-if command -v node >/dev/null && [ -f "$repo/tools/prompt-cases.mjs" ] && git -C "$repo" rev-parse --verify -q origin/main >/dev/null; then
-  promptcases="$(cd "$repo" && timed "prompt cases" node tools/prompt-cases.mjs --base origin/main 2>&1)" || block "$promptcases"
 fi
 # Rules E/F: expectation edits cite their reason; changed harness modules name their job (push and CI use this same fast gate).
 if command -v node >/dev/null && [ -f "$repo/tools/e2e-reliability-check.mjs" ] && git -C "$repo" rev-parse --verify -q origin/main >/dev/null; then
@@ -207,28 +189,12 @@ if [ "$ship_push" = 0 ] && command -v python3 >/dev/null && [ -f "$repo/tools/ar
     block "$architecture"
   fi
 fi
-# A Progress box a pull request ticks names its proof file, and the pull request contains it (or names the commit on main that changed it): tools/spec-proof.mjs.
-if command -v node >/dev/null && [ -f "$repo/tools/spec-proof.mjs" ] && git -C "$repo" rev-parse --verify -q origin/main >/dev/null; then
-  proof="$(cd "$repo" && timed "spec proof" node tools/spec-proof.mjs --base origin/main 2>&1)" || block "$proof"
-fi
 # A list CI checks against the files it must cover (LOCK_PATHS, red-main CLASSIFIED) fails here in about a second, not ~10 min later on the PR (18 Oct 2026: three PRs red on one missing LOCK_PATHS entry): tools/registry-check.py.
 if command -v python3 >/dev/null && [ -f "$repo/tools/registry-check.py" ]; then
   registry="$(cd "$repo" && timed "registry lists" python3 tools/registry-check.py 2>&1)" || block "$registry"
 fi
 # The Applying scenario matrix is not a push gate any more (owner, 9 Oct 2026): its steps run with every other e2e on CI (apply, applyflows: schedule and beta gate);
 # `cd desktop && npm run flows` stays an on-demand check. (8 Oct-9 Oct it blocked pushes that touched FLOW_CORE: one recorded catch in 186 commits, 28 skips.)
-# A push that changes an e2e suite names the open failed-step issues of that suite (6 Oct 2026: #310 and #315 were fixed in the test by commits that never named them,
-# and were diagnosed again from scratch): "Fixes #N", "Refs #N" or "E2E-issue: none <why>" (tools/e2e-issue-links.mjs). `E2E_ISSUE_OK=1` on the push skips it.
-case "$command" in *E2E_ISSUE_OK=1*) ;; *)
-  if command -v node >/dev/null && [ -f "$repo/tools/e2e-issue-links.mjs" ] && git -C "$repo" rev-parse --verify -q origin/main >/dev/null; then
-    links="$(cd "$repo" && timed "e2e issue links" node tools/e2e-issue-links.mjs --base origin/main 2>&1)" || block "$links"
-  fi ;;
-esac
-# A push that changes an e2e suite or its lib says why the suite was red, in /admin/operations/e2e's words (owner, 27 Oct 2026: "let's improve the process"; the page
-# could only guess drift, test bug or product bug from a fix): "E2E-cause: <cause> [suites]" or "E2E-cause: none <why>" (tools/e2e-cause-trailer.mjs).
-if command -v node >/dev/null && [ -f "$repo/tools/e2e-cause-trailer.mjs" ] && git -C "$repo" rev-parse --verify -q origin/main >/dev/null; then
-  ecause="$(cd "$repo" && timed "e2e cause trailer" node tools/e2e-cause-trailer.mjs --base origin/main 2>&1)" || block "$ecause"
-fi
 # A push to a pull request branch (tools/ship.sh, 12 Oct 2026: `SHIP_PR=1 git push`) stops here: everything above is seconds. The suites, the journey and ladder gates and the
 # recorded-page replays run in CI on the PR (.github/workflows/pr-gate.yml, build.yml, page-cases.yml), in parallel, not on this Mac behind the heavy lock.
 # CI runs this same script for the pure checks above: CI_GATES=1 (no red-main look, no AI place check). Only the workflow lint stays local.

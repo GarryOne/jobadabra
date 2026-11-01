@@ -25,7 +25,6 @@ on:
       - 'tools/design-system/**'   # desktop/test/design-system-page.test.js builds the page with it
       - 'docs/rules/desktop-ui.md'
       - '.claude/skills/ui-look-and-feel/SKILL.md'
-      - 'hosted/**'   # ready-fill.test.js imports the night's filler; site-routes.test.js reads every shipped folder
       - 'src/**'   # settings-paths-exist, bridge-registry, plan-promo, run-lines-plain, site-routes and identity-rule read engine text (#2099 changed only src/ai/decide.py and main went red)
       - 'app-core/src/**'   # identity-rule.test.js, site-routes.test.js
       - 'app-core/test/helpers/panel.js'   # the panel tests load the panel scripts through readPanel

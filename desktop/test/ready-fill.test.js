@@ -156,8 +156,7 @@ test('a fresh extension worker is written only once chrome.storage exists, and e
     await assert.rejects(setExtensionStorage(worker, {a: 1}, 100), /did not appear/);
   } finally { globalThis.chrome = before; if (before === undefined) delete globalThis.chrome; }
   const root = fileURLToPath(new URL('../../', import.meta.url));   // the class: no direct chrome.storage write through a worker's evaluate
-  // Why (1 Nov 2026, owner: desktop + extension only): the night's shell files (main.mjs …) move to jobadabra-web, so hosted/ready-fill is walked only where it is laid.
-  for (const dir of ['desktop/ready-fill', 'hosted/ready-fill', 'desktop/e2e/lib', 'desktop/e2e'].filter(d => fs.existsSync(root + d))) for (const file of fs.readdirSync(root + dir).filter(f => f.endsWith('.mjs') && f !== 'extension-storage.mjs')) {
+  for (const dir of ['desktop/ready-fill', 'desktop/e2e/lib', 'desktop/e2e']) for (const file of fs.readdirSync(root + dir).filter(f => f.endsWith('.mjs') && f !== 'extension-storage.mjs')) {
     assert.ok(!/evaluate\([^\n]*chrome\.storage\.local\.set/.test(fs.readFileSync(`${root}${dir}/${file}`, 'utf8')), `${dir}/${file}: use setExtensionStorage (the API is missing right after start)`);
   }
 });

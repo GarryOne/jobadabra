@@ -1,6 +1,0 @@
-{
-  "name": "jp-ready-fill",
-  "private": true,
-  "type": "module",
-  "dependencies": {"@anthropic-ai/sdk": "^0.128.0", "playwright": "1.49.1", "ws": "8.18.0"}
-}

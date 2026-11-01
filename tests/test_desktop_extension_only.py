@@ -18,11 +18,9 @@ DEPLOY_MARK = re.compile(r'wrangler|docker (build|buildx)|docker/build-push|CLOU
 # Left to move, with the PR that removes the entry (spec "Plan").
 ALLOWED_FOLDERS = {
     'worker': 'PR 2 renames worker/src + worker/test to app-core; PR 4 removes the deploy shell (wrangler.toml, scripts, package.json)',
-    'hosted': 'PR 5 moves the shared ready-fill to desktop/ready-fill and the Dockerfiles + main.mjs + image-check.mjs to jobadabra-web',
 }
 ALLOWED_WORKFLOWS = {
     'worker.yml': 'PR 4: the bot Worker deploys from jobadabra-web',
-    'ready-fill-image.yml': 'PR 5: the image builds in jobadabra-web',
     'central-scout.yml': 'PR 6: jobadabra-lab',
     'product-brain.yml': 'PR 6: jobadabra-lab',
     'ai-cost-billed.yml': 'PR 6: jobadabra-web',

@@ -1,7 +1,7 @@
 // Layer 3 (Node + the engine's real SQLite store + the Notion stand-in, no window): "Move my data to Notion" (desktop/lib/store-move.js, src/stores/copy.py).
 // The same check as the storemove e2e step (a data-integrity step, so it stays in e2e too until the owner decides; coordinator, 1 Nov 2026):
 //   - "a move killed halfway changes nothing, and the next one goes on with nothing twice"
-// TODO(AI): drop one of the two copies (this Node test or the storemove e2e step) once the owner decides which stays; until then both run and must not drift (2026-11-01, #2763)
+// TODO(AI): drop one of the two copies (this Node test or the storemove e2e step) once the owner decides which stays; until then both run and must not drift (#2763)
 // The empty-Notion move is storemove-empty-notion.test.mjs (one stand-in per file: lib/notion-core.js reads the base URL when it loads).
 // The move is the real one (moveToNotion → `python -m src.stores.copy` through lib/pipeline-run.js) on a seeded SQLite store in a temp folder; only Notion is the stand-in.
 import assert from 'node:assert/strict';

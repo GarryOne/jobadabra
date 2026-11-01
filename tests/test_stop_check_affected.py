@@ -27,7 +27,7 @@ class StopCheckAffected(unittest.TestCase):
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, self.tmp, True)
-        self.repo, origin = self.tmp / 'job-pilotto', self.tmp / 'origin.git'   # (the hook follows paths of a folder named like the project)
+        self.repo, origin = self.tmp / 'jobadabra', self.tmp / 'origin.git'   # (the hook follows paths of a folder named like the project)
         self.log = self.tmp / 'check.log'
         for folder in ('src', 'app-core', 'tools', 'tests', 'desktop/node_modules', 'desktop/test'):
             (self.repo / folder).mkdir(parents=True)

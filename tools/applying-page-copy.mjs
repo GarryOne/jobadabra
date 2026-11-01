@@ -7,7 +7,7 @@ import path from 'node:path';
 
 const SITE = 'https://www.jobpilotto.top/admin/form-filling/lab?json';
 export const MAX_AGE_MS = 15 * 60000;
-export const COPY = path.join(os.tmpdir(), 'job-pilotto-applying-page.json');
+export const COPY = path.join(os.tmpdir(), 'jobadabra-applying-page.json');
 
 // -> the page's data: the saved copy when it is younger than maxAge (and refresh is false), else a fresh GET saved to the copy. fetchLive and file are injectable for tests.
 export function pageJson({caller = 'page-copy', refresh = false, maxAge = MAX_AGE_MS, file = COPY, now = Date.now(), fetchLive = () => liveJson(caller)} = {}) {

@@ -24,20 +24,20 @@ export function buildBrief(groups, cause, listing, {oneLine = ''} = {}) {
   const group = groups.find(item => item.label.toLowerCase() === String(cause || '').toLowerCase());
   if (group && group.key === 'run-first') return {ok: false, text: 'run these first: "Run first" rows (never run, or no run since their fix) need a pool run, not a fix, so no fixer brief.\n' + group.rows.map((row, at) => `  ${row.name}  (${group.reasons[at] || 'needs a run'})`).join('\n')};
   if (!group) return {ok: false, text: `unknown cause "${cause || ''}". Known causes: ` + (known.map(item => `"${item.label}" (${item.count})`).join(', ') || 'none')};
-  const slug = slugOf(group.label), session = 'job-pilotto-fix-' + slug;
+  const slug = slugOf(group.label), session = 'jobadabra-fix-' + slug;
   const captures = group.rows.map(row => ({row, folder: captureOf(row, listing)}));
   const rowBlocks = captures.map(({row, folder}) => [rowLine(row),
     '  capture: ' + (folder ? `${QA_ROOT}/${folder}` : 'none: ask the pool owner for a capture (one live run, ~1 min); do not hand-build a page instead'),
     `  replay: cd desktop/e2e && npm run row -- "${row.name}"`,
     `  case:   cd desktop/e2e && npm run row-to-case -- ${folder ? `"${QA_ROOT}/${folder}"` : `"${row.name}"`} ${slugOf(row.shape || row.name)}-${slug} --old-commit <your fix's commit hash> [--fixed]`].join('\n'));
   const text = [
-    `You are session ${session} (Job Pilotto), one fixer for ONE cause, started by the coordinator job-pilotto-cc on the owner's paste. Report to job-pilotto-cc when each step lands.`,
+    `You are session ${session} (Jobadabra), one fixer for ONE cause, started by the coordinator jobadabra-cc on the owner's paste. Report to jobadabra-cc when each step lands.`,
     ...(oneLine ? ['', 'Coordinator\'s judgment: ' + oneLine] : []),
     '', `CAUSE: "${group.label}" (${group.count} row${group.count === 1 ? '' : 's'}, ${group.claimed} claimed). Rows, as /admin/form-filling/lab shows them:`,
     ...rowBlocks, '',
     'TARGET: rows of this cause Confirmed by a pool run (two clean runs by the pool owner on main). You land after the live row (step 3) and go idle; you never queue for the batch.', '',
     'Start with: tools/worktree.sh ' + slug + '; read .claude/skills/fix-recorded-sites/SKILL.md (section 0a) and docs/rules/rounds.md. Say the tier and the test method first. One fix for the shape of the cause, never a site (no site names, hosts or word lists).', '',
-    'ORDER OF PROOF, fastest first (10 minutes per step, then use the real capture or tell job-pilotto-cc):',
+    'ORDER OF PROOF, fastest first (10 minutes per step, then use the real capture or tell jobadabra-cc):',
     '1. The failing unit test, then 3 of 3 real asks of the app\'s AI on the saved page (`ladder-score`, plan path).',
     '2. The row replayed offline with its command above (15-90 s): it must reach further, and `--old` must not.',
     '3. A recorded case from the capture with the row-to-case command above (exit 3 = the old build passes, 4 = not provable; `--ask-cold` when the fix changes a prompt; `--old-commit <hash>` builds the old extension from your checkout with that commit taken out, or `--old <folder>` names one; `--fixed` when the capture was taken on a build that already has the fix: expect = the live run and the old build must fail it). Then ONE live run of the single row from your worktree, held, ~1 min (`npm run live -- <url>`), through the heavy lock.',
@@ -50,6 +50,6 @@ export function buildBrief(groups, cause, listing, {oneLine = ''} = {}) {
     '- Land with `tools/ship.sh --background` and wait with `tools/ship-wait.sh <log>` in the background (run it again after each event until MERGED, CLOSED, DONE or FAILED); no edits in the worktree until DONE. Never remove another session\'s worktree.',
     '- Files stay at 500 lines or less; a new file starts with a one-line purpose comment. Tests also run on Windows and Linux CI.',
     '- No subagents. No new tooling during the round: a gap goes on a list.', '',
-    'WHEN IT LANDS, report five lines to job-pilotto-cc: time per step (pick the cause, decide, code and failing tests, real asks, replay/capture, live row, ship), the ladder numbers, and the hash on origin/main.'].join('\n');
+    'WHEN IT LANDS, report five lines to jobadabra-cc: time per step (pick the cause, decide, code and failing tests, real asks, replay/capture, live row, ship), the ladder numbers, and the hash on origin/main.'].join('\n');
   return {ok: true, text};
 }

@@ -31,7 +31,7 @@ def _standin():
 
 def pace_file(token):
     digest = hashlib.sha256(str(token).encode()).hexdigest()[:12]
-    return os.path.join(tempfile.gettempdir(), f'job-pilotto-notion-{digest}.pace')
+    return os.path.join(tempfile.gettempdir(), f'jobadabra-notion-{digest}.pace')
 
 
 clock = time.time  # the pace's clock; tests set a fake one, so waits don't depend on the machine's speed

@@ -435,7 +435,7 @@ class Tracker:
     def upload_file(self, name, data, content_type):
         """Upload bytes to Notion (≤ 5 MB on the free plan); returns the file upload id, for a file/image block."""
         created = self._request('POST', 'file_uploads', {'filename': name, 'content_type': content_type})
-        boundary = f'jobpilotto{os.urandom(8).hex()}'
+        boundary = f'jobadabra{os.urandom(8).hex()}'
         body = (f'--{boundary}\r\nContent-Disposition: form-data; name="file"; filename="{name}"\r\n'
                 f'Content-Type: {content_type}\r\n\r\n').encode() + data + f'\r\n--{boundary}--\r\n'.encode()
         request = urllib.request.Request(

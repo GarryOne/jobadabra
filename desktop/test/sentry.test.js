@@ -110,7 +110,7 @@ test('the trail keeps the last 25 step names and rides on the next report; a run
   const sent = [];
   const client = sentry.create({dsn: DSN, release: 'job-pilotto@1', installId: 'i', fetcher: (...args) => { sent.push(args); return Promise.resolve(); }});
   for (let n = 0; n < 30; n++) client.note('page_view', {page: `p${n}`});
-  client.capture('run_failed', {job: 'src daily', error: 'boom', logLines: ['ok line', 'mail igor@example.com failed with key sk-ant-abc123', '/Users/igor/job-pilotto/x.py']});
+  client.capture('run_failed', {job: 'src daily', error: 'boom', logLines: ['ok line', 'mail igor@example.com failed with key sk-ant-abc123', '/Users/igor/jobadabra/x.py']});
   const parts = sent[0][1].body.split('\n');
   const event = JSON.parse(parts[2]);
   assert.equal(event.breadcrumbs.values.length, 25);

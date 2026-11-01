@@ -179,7 +179,7 @@ export async function verifyCodex(storage, {binary = codexBinary, spawnFn, run =
   const file = binary();
   let result = {installed: !!file, path: file, authenticated: false, error: file ? '' : MISSING_TEXT};
   if (file) {
-    const folder = fs.mkdtempSync(path.join(os.tmpdir(), 'job-pilotto-codex-'));
+    const folder = fs.mkdtempSync(path.join(os.tmpdir(), 'jobadabra-codex-'));
     try {
       const args = [...lockedArgs(folder, openaiModel('claude-haiku').model, await features(file, run)), '-'];
       const finished = await runProcess(file, args, 'Reply with the single word OK.',

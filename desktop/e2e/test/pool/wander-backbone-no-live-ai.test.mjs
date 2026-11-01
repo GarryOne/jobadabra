@@ -208,7 +208,7 @@ test('wander stored successes and refusals also survive the OpenAI following pro
   const h = await harness(t, 'openai');
   for (const kind of [...Object.keys(empty), ...refused]) {
     const init = {method: 'POST', headers: {'content-type': 'application/json'},
-      body: JSON.stringify({model: 'test', input: 'different profile', prompt_cache_key: `job-pilotto-${kind}`})};
+      body: JSON.stringify({model: 'test', input: 'different profile', prompt_cache_key: `jobadabra-${kind}`})};
     const response = await h.localFetch(`${h.openaiProxy.url}/v1/responses`, init);
     assert.equal(response.status, refused.includes(kind) ? 401 : 200, kind);
     if (empty[kind]) assert.deepEqual(JSON.parse((await response.json()).output[0].content[0].text), empty[kind]);

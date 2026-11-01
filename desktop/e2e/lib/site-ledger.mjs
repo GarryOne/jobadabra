@@ -1,5 +1,5 @@
 // The per-site daily limit for live visits (owner, 11 Oct 2026: our runs go out from the owner's home network, the one they apply from; SmartRecruiters, Louis Vuitton and H&M
-// refused us after dozens of visits). ONE machine-wide ledger of live visits per host and day, shared by every worktree and session (<tmpdir>/job-pilotto-site-ledger, as the
+// refused us after dozens of visits). ONE machine-wide ledger of live visits per host and day, shared by every worktree and session (<tmpdir>/jobadabra-site-ledger, as the
 // heavy lock's folder), and ONE function every live path calls before it reaches a real site: guardLiveVisit(url). It refuses the 4th visit of a host in a day (JOB_PILOTTO_SITE_LIMIT
 // changes 3), and any visit to a host that showed a block page that day (markBlocked: a digest "refused", a bot check, access denied) until the next day, whoever asks.
 // The owner's override is an environment flag only: JOB_PILOTTO_SITE_LIMIT_OVERRIDE=<host>[,<host>] lets those hosts through (the count and the block both), and each use is logged to
@@ -18,7 +18,7 @@ export class SiteLimitError extends Error {
   constructor(message, details) { super(message); this.name = 'SiteLimitError'; Object.assign(this, details); }
 }
 
-export const ledgerDir = (env = process.env) => env.JOB_PILOTTO_SITE_LEDGER_DIR || path.join(os.tmpdir(), 'job-pilotto-site-ledger');
+export const ledgerDir = (env = process.env) => env.JOB_PILOTTO_SITE_LEDGER_DIR || path.join(os.tmpdir(), 'jobadabra-site-ledger');
 export const dayOf = (now = new Date()) => `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
 // The site of an address: its host without a leading www.; '' for anything that is not a real https site of the internet.

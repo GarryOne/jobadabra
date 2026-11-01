@@ -300,7 +300,7 @@ folded steps and probe path, and the same facts as one hidden `<!-- replay: {…
 - **Steps that need the AI proxy in front of the app** (a refusal, a delay, silence, a canned answer: the activity suite's failure and concurrency steps, the whole `apply` suite) switch to the API engine **with the placeholder key** (`ctx.withApi(fn)`, or `export const engine = 'api'`): the proxy answers before anything reaches Anthropic, so it costs nothing.
 - **The wizard suite** picks the Claude Code choice on a Mac; CI types the key, so both paths stay tested. The product's own wizard is unchanged.
 - **How it is enforced:** `testKey()` is empty on a Mac whatever the environment holds; `run-all.mjs` never reads the Keychain item `job-pilotto.e2e.anthropic_key`; `E2E_AI_ENGINE=api` is refused on a Mac; `test/no-local-key.test.mjs` fails when a suite or helper fetches the API itself or reads the key, so **a new suite must ask a model through `lib/model.mjs`**. The AI screenshot review (`review-ui.mjs`) and the Finder's CI tooling keep the CI key.
-- **To check the spend:** the Claude Console's API keys page shows the cost per key (`job-pilotto-e2e-testing` was $34.89 on 5 Oct 2026); it should not grow from local runs.
+- **To check the spend:** the Claude Console's API keys page shows the cost per key (`jobadabra-e2e-testing` was $34.89 on 5 Oct 2026); it should not grow from local runs.
 
 
 The after-merge plan (a PR runs no e2e since 1 Nov 2026: unit + integration on the PR, journeys after the merge on main, in the night burn-in and the beta) reads changed files as it does for `watches`, including one-hop Python imports. It emits

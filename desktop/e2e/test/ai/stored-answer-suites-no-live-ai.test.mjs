@@ -40,7 +40,7 @@ for (const suite of ['interactions', 'activityfailures']) {
         assert.deepEqual(await (await modelFetch('http://127.0.0.1:1/v1/messages', init, h.options)).json(), found.reply);
       }
       const url = family === 'openai' ? `${h.openaiProxy.url}/v1/responses` : `${h.proxy.url}/v1/messages`;
-      const body = family === 'openai' ? {model: 'test', input: 'Setup background read', prompt_cache_key: `job-pilotto-${kind}`} : undefined;
+      const body = family === 'openai' ? {model: 'test', input: 'Setup background read', prompt_cache_key: `jobadabra-${kind}`} : undefined;
       const response = await h.localFetch(url, request(kind, body));
       assert.equal(response.status, found.refuse ? 401 : 200, kind);
       const data = await response.json();
@@ -109,7 +109,7 @@ for (const family of ['claude', 'openai']) test(`activityfailures opportunity ex
   });
   assert.deepEqual(await (await modelFetch('http://127.0.0.1:1/v1/messages', init, h.options)).json(), found.reply);
   const url = family === 'openai' ? `${h.openaiProxy.url}/v1/responses` : `${h.proxy.url}/v1/messages`;
-  const body = family === 'openai' ? {model: 'test', input: entry.request.messages[0].content, prompt_cache_key: 'job-pilotto-opportunity'} : entry.request;
+  const body = family === 'openai' ? {model: 'test', input: entry.request.messages[0].content, prompt_cache_key: 'jobadabra-opportunity'} : entry.request;
   const response = await h.localFetch(url, request('opportunity', body));
   assert.equal(response.status, 200);
   const data = await response.json();

@@ -23,7 +23,7 @@ export function registerLeadsHandlers(ctx) {
   const withShots = async (image, task) => {
     const exts = {'image/png': '.png', 'image/jpeg': '.jpg', 'image/webp': '.webp', 'image/gif': '.gif'};
     const shots = (Array.isArray(image) ? image : image ? [image] : []).filter(shot => exts[shot?.type]).slice(0, 5);
-    const files = shots.map((shot, i) => path.join(app.getPath('temp'), `job-pilotto-shot-${Date.now()}-${i}${exts[shot.type]}`));
+    const files = shots.map((shot, i) => path.join(app.getPath('temp'), `jobadabra-shot-${Date.now()}-${i}${exts[shot.type]}`));
     try {
       shots.forEach((shot, i) => {
         const data = Buffer.from(String(shot.data), 'base64');
@@ -42,7 +42,7 @@ export function registerLeadsHandlers(ctx) {
     const problem = leadCheck();
     if (problem) return problem;
     if (earlier) {
-      const reading = path.join(app.getPath('temp'), `job-pilotto-reading-${Date.now()}.json`);
+      const reading = path.join(app.getPath('temp'), `jobadabra-reading-${Date.now()}.json`);
       try {
         fs.writeFileSync(reading, JSON.stringify(earlier));
         return await pipeline.proposeLead(storage, String(text || ''), leadLine, {target: String(target || ''), reading});
@@ -55,7 +55,7 @@ export function registerLeadsHandlers(ctx) {
       title: 'Platform Engineer', jobUrl: 'https://example.com/lead/9', created: true}};
     const problem = leadCheck();
     if (problem) return problem;
-    const reading = proposal ? path.join(app.getPath('temp'), `job-pilotto-reading-${Date.now()}.json`) : '';
+    const reading = proposal ? path.join(app.getPath('temp'), `jobadabra-reading-${Date.now()}.json`) : '';
     try {
       if (reading) fs.writeFileSync(reading, JSON.stringify(proposal));
       return await withShots(image, file => pipeline.addLead(storage, String(text || ''), leadLine,

@@ -9,7 +9,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { snapshotFromReport } from '../app-core/src/snapshot.js';
 
-export const MARK = '<!-- job-pilotto:snapshot v1 -->';
+export const MARK = '<!-- jobadabra:snapshot v1 -->';
 export const DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../app-core/test/fixtures/fill');
 const slug = (text) => String(text).toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60).replace(/-$/, '');
 

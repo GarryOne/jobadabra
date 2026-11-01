@@ -15,7 +15,7 @@ const kept = url => /^https?:\/\//.test(url);
 
 // What makes a page "still arriving": its ready state, how many controls it shows, how much text (in steps of 500 characters).
 function shapeInPage() {
-  const shown = [...document.querySelectorAll('input, select, textarea, button, a, iframe, dialog')].filter(el => el.getClientRects().length && !el.closest('[id^=jobpilotto], [id^=job-pilotto]')).length;
+  const shown = [...document.querySelectorAll('input, select, textarea, button, a, iframe, dialog')].filter(el => el.getClientRects().length && !el.closest('[id^=jobpilotto], [id^=jobadabra]')).length;
   return `${document.readyState}|${shown}|${Math.round((document.body?.innerText || '').length / 500)}`;
 }
 

@@ -67,6 +67,6 @@ export function browserFlags(dir, env = process.env, {secrets = []} = {}) {
 // First in the prompt: it overrides the apply skill's claude-in-chrome steps, which this session does not have.
 export const twinNote = (env = process.env) => (twinBrowser(env) ? 'LIVE TEST (a twin of the app). This overrides every claude-in-chrome step of the skill: '
   + 'your browser is the twin\'s own Chromium, reached ONLY through the Playwright MCP tools (mcp__playwright__*). It is a real Chromium with the '
-  + 'Job Pilotto extension installed and the person\'s sign-ins; the form tab is already open there (mcp__playwright__browser_tabs to select it). '
+  + 'Jobadabra extension installed and the person\'s sign-ins; the form tab is already open there (mcp__playwright__browser_tabs to select it). '
   + 'Use browser_navigate / browser_snapshot / browser_click / browser_type / browser_evaluate where the skill says navigate / read_page / '
   + 'computer / form_input / javascript_tool. There is no claude-in-chrome here and that is expected: never stop to ask for it. Never press Submit.\n\n' : '');

@@ -120,7 +120,7 @@ class CliClientTests(unittest.TestCase):
         # The user's own sign-in: the API key and the relay the app gives Python never reach Claude Code.
         self.assertIsNone(call['api_key'])
         self.assertIsNone(call['base_url'])
-        self.assertTrue(Path(call['cwd']).name.startswith('job-pilotto-claude-'))
+        self.assertTrue(Path(call['cwd']).name.startswith('jobadabra-claude-'))
         self.assertFalse(Path(call['cwd']).exists())  # the fresh folder is gone afterwards
 
     def test_models_map_to_claude_code_aliases(self):

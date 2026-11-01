@@ -10,7 +10,7 @@ TAP = """ok 367 - something else
 not ok 368 - the extension files match the fingerprint recorded with its version
   ---
   duration_ms: 3.1
-  location: '/home/runner/work/job-pilotto/job-pilotto/desktop/test/extension-version.test.js:6:1'
+  location: '/home/runner/work/jobadabra/jobadabra/desktop/test/extension-version.test.js:6:1'
   failureType: 'testCodeFailure'
   ...
 """

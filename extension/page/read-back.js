@@ -12,7 +12,7 @@
   const textOf = el => el?.innerText ?? el?.textContent ?? '';
   // aria-hidden marks a helper input (react-select's "required" input) that is no field; a select that still holds choices is the field a menu library hides beside its own box (Select2).
   const hiddenAway = el => el.getAttribute('aria-hidden') === 'true' && !(el.tagName === 'SELECT' && el.options.length > 1);
-  const own = el => !!el.closest?.('[id^=jobpilotto], [id^=job-pilotto]');   // the extension's own panel
+  const own = el => !!el.closest?.('[id^=jobpilotto], [id^=jobadabra]');   // the extension's own panel
   // A file name: a stem that starts with a letter or digit, then its extension ("cv.pdf"); a format hint ("(.pdf, .docx, max 5 MB)") holds no name.
   const FILE_NAMES = /[\p{L}\p{N}][^\s\\/]*\.(?:pdf|docx?|rtf|txt|odt)\b/giu;
   const namesIn = text => [...new Set(String(text || '').match(FILE_NAMES) || [])];

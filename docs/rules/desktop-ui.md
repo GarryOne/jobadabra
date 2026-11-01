@@ -29,7 +29,7 @@ Living copy: `npm run gallery` (sections "Chips" and "Value → control", drawn 
 
 ## Cards: read → Edit → editor; one save bar (owner, 18 Oct 2026, UI redesign)
 Every Profile and Strategy card works one way ("so nice, so clean"). Parts: `renderer/card-shell.js` + `card-shell.css`, `components.js` `cardEdit`, `renderer/save-bar.js`;
-living copy: `npm run gallery` → "Card shell"; API for other sessions: `~/job-pilotto-ui-mockups-2026-10-18/SHARED-PARTS.md`.
+living copy: `npm run gallery` → "Card shell"; API for other sessions: `~/jobadabra-ui-mockups-2026-10-18/SHARED-PARTS.md`.
 - **Header:** icon, title, one-line description (`.panel-lead`), then at the right a quiet **✎ Edit** (`cardEdit`: neutral outline, pencil + word, always visible) and the chevron. Same place on every card.
 - **Read view by default** (`.card-read`): `readRows` (label → value; empty = `pill('Not set', 'warn')`; a note for the AI is a muted line under its value) and `chipLine`
   for several values ("English · B2", "Romanian · Native"). Never the editor's controls just to read.

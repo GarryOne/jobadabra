@@ -75,7 +75,7 @@ def within_places(config, search_config):
 
 
 def _get(url, params, opener=urllib.request.urlopen):
-    request = urllib.request.Request(f'{url}?{urlencode(params)}', headers={'User-Agent': 'job-pilotto'})
+    request = urllib.request.Request(f'{url}?{urlencode(params)}', headers={'User-Agent': 'jobadabra'})
     with opener(request, timeout=40) as response:
         return json.load(response)
 

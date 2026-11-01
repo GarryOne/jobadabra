@@ -29,7 +29,7 @@ with no accounts and no keys, then turn on the rest one piece at a time, only if
 Needs Python 3.10+ and nothing else: the core uses only the standard library.
 
 ```bash
-git clone https://github.com/<you>/job-pilotto && cd job-pilotto
+git clone https://github.com/<you>/jobadabra && cd jobadabra
 python3 -m src discover     # job boards (jobs.ch, TechTree): their jobs, and new employers to watch
                             # (SwissDevJobs is tried too, but it blocks automated access)
 python3 -m src daily        # crawl every employer feed, add the board jobs, rank, print the digest
@@ -915,7 +915,7 @@ guides: [Desktop app credentials](https://developers.google.com/workspace/guides
 <details><summary>What it does, step by step (to do it by hand)</summary>
 
 1. `gcloud auth login you@gmail.com`, then
-   `gcloud projects create job-pilotto-$RANDOM --name="Jobadabra" --account=you@gmail.com` and
+   `gcloud projects create jobadabra-$RANDOM --name="Jobadabra" --account=you@gmail.com` and
    `gcloud services enable gmail.googleapis.com calendar-json.googleapis.com --project=<id> --account=you@gmail.com`.
 2. [Google Auth Platform](https://console.cloud.google.com/auth/overview) → Get started: app name, your
    email, audience **External** → Create.

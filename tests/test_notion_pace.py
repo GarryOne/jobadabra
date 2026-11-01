@@ -49,8 +49,8 @@ class SharedPaceTest(unittest.TestCase):
             self.assertEqual(pace.claim(self.token), 1_002_000)
 
     def test_same_file_as_the_app(self):
-        # desktop/lib/notion-pace.js: <tmp>/job-pilotto-notion-<sha256(token)[:12]>.pace
-        self.assertRegex(os.path.basename(pace.pace_file('abc')), r'^job-pilotto-notion-ba7816bf8f01\.pace$')
+        # desktop/lib/notion-pace.js: <tmp>/jobadabra-notion-<sha256(token)[:12]>.pace
+        self.assertRegex(os.path.basename(pace.pace_file('abc')), r'^jobadabra-notion-ba7816bf8f01\.pace$')
 
     def test_a_request_waits_for_its_turn(self):
         waits = []

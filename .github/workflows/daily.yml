@@ -100,7 +100,7 @@ jobs:
     # Runs share one SQLite state file; never let two overlap. Apply, more, prepare, insight, weekly,
     # interview and add runs only read it, so they get their own group and a queued run can't displace them.
     concurrency:
-      group: ${{ (inputs.mode == 'apply' || inputs.mode == 'more' || inputs.mode == 'prepare' || inputs.mode == 'insight' || inputs.mode == 'weekly' || inputs.mode == 'interview' || inputs.mode == 'add') && format('read-{0}', github.run_id) || 'job-pilotto-state' }}
+      group: ${{ (inputs.mode == 'apply' || inputs.mode == 'more' || inputs.mode == 'prepare' || inputs.mode == 'insight' || inputs.mode == 'weekly' || inputs.mode == 'interview' || inputs.mode == 'add') && format('read-{0}', github.run_id) || 'jobadabra-state' }}
       cancel-in-progress: false
     # An interview recording is transcribed on the runner first (about 5 minutes for an hour of audio).
     timeout-minutes: ${{ inputs.mode == 'interview' && 30 || 15 }}
@@ -133,8 +133,8 @@ jobs:
         uses: actions/cache/restore@v5
         with:
           path: data/jobs.sqlite
-          key: job-pilotto-db-${{ github.run_id }}
-          restore-keys: job-pilotto-db-
+          key: jobadabra-db-${{ github.run_id }}
+          restore-keys: jobadabra-db-
       - name: Install the headless browser
         # Job boards and careers pages built by scripts are read in it (src/sources/render.py; owner, 19 Oct 2026). Downloaded here in the
         # run, never in the app's installer. A failure never stops the search: those pages stay "open it yourself" visits.
@@ -155,8 +155,8 @@ jobs:
         if: inputs.mode == 'interview' && inputs.file != ''
         uses: actions/cache@v5
         with:
-          path: ~/.cache/job-pilotto/models
-          key: job-pilotto-speech-models-v1
+          path: ~/.cache/jobadabra/models
+          key: jobadabra-speech-models-v1
       - name: Install the transcription add-on
         if: inputs.mode == 'interview' && inputs.file != ''
         run: pip install --quiet -r requirements-transcribe.txt
@@ -249,7 +249,7 @@ jobs:
         uses: actions/cache/save@v5
         with:
           path: data/jobs.sqlite
-          key: job-pilotto-db-${{ github.run_id }}
+          key: jobadabra-db-${{ github.run_id }}
       - name: Backup job database
         # Separate from the cache above: a cache entry can be evicted (GitHub prunes under
         # storage pressure or after ~7 days unused) without warning. An artifact isn't subject to
@@ -260,7 +260,7 @@ jobs:
         if: always() && env.MODE != 'apply' && env.MODE != 'more' && env.MODE != 'prepare' && env.MODE != 'insight' && env.MODE != 'weekly' && env.MODE != 'interview' && env.MODE != 'add'
         uses: actions/upload-artifact@v6
         with:
-          name: job-pilotto-jobs-db
+          name: jobadabra-jobs-db
           path: |
             data/jobs.sqlite
             data/coverage.json
@@ -270,7 +270,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v6
         with:
-          name: job-pilotto-${{ github.run_number }}
+          name: jobadabra-${{ github.run_number }}
           path: |
             reports/
             data/jobs.sqlite

@@ -6,11 +6,11 @@
  },
  "watch": {
   "jobs.ch -> Deloitte: email-first account, email code, CV choice step": {
-   "owner": "job-pilotto-cc",
+   "owner": "jobadabra-cc",
    "recheck": "2026-10-21"
   },
   "Datadog careers (Greenhouse behind its own site)": {
-   "owner": "job-pilotto-cc",
+   "owner": "jobadabra-cc",
    "recheck": "2026-10-21"
   }
  }

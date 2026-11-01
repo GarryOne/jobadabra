@@ -42,10 +42,10 @@ test('a Pool-row trailer that holds a row\'s slug is sent as that row, so the Fi
 
 test('privacy: nothing but fixed words leaves the Mac, no address, no query string, no session name', () => {
   assert.equal(cleanRow('https://jobs.x.com/job/1?token=abc'), ''); assert.equal(cleanRow('Site ?q=1'), ''); assert.equal(cleanRow('a@b.com'), ''); assert.equal(cleanRow('Hornbach SuccessFactors'), 'Hornbach SuccessFactors');
-  const rows = claimRows([{name: 'Hornbach SuccessFactors', session: 'job-pilotto-81', at: Date.parse('2026-10-11T06:00:00Z')}, {name: 'e2e-page', session: 'x', at: 1}, {name: 'flow-core', session: 'y', at: 1}]);
+  const rows = claimRows([{name: 'Hornbach SuccessFactors', session: 'jobadabra-81', at: Date.parse('2026-10-11T06:00:00Z')}, {name: 'e2e-page', session: 'x', at: 1}, {name: 'flow-core', session: 'y', at: 1}]);
   assert.deepEqual(rows, [{name: 'Hornbach SuccessFactors', since: '2026-10-11T06:00:00.000Z'}]);   // names and since only; the locks are not rows
   const text = JSON.stringify([buildLedger({git: fakeGit, fixes: []}), rows]);
-  assert.doesNotMatch(text, /https?:|\?|job-pilotto-\d|@/);
+  assert.doesNotMatch(text, /https?:|\?|jobadabra-\d|@/);
 });
 
 test('the data file: every commit exists on main and its site is a plain name (skipped on a shallow clone)', () => {

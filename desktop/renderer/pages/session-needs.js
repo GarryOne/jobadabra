@@ -24,7 +24,7 @@ import {plainError} from '../run-warnings.js';
 // A handled row stays, marked done, until the page is closed.
 // What you did on each row ("Done", "Looks right", ticked in the form), kept across a reload (⌘R) and a restart: in this
 // window's local storage (a note of what you clicked, not data: Notion and the form hold the answers).
-const KEPT = 'jobpilotto.session-rows';
+const KEPT = 'jobadabra.session-rows';
 const keptRows = (() => { try { return JSON.parse(localStorage.getItem(KEPT) || '{}'); } catch { return {}; } })();
 const keep = () => { try { localStorage.setItem(KEPT, JSON.stringify({handled: [...handled], synced: [...syncedDone], saved: [...savedAnswers], forgot: [...forgotten]})); } catch {} };
 const remembered = (map, entries) => { for (const [key, value] of entries || []) map.set(key, value); return map; };

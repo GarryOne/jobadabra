@@ -17,7 +17,7 @@ import {mayAct} from './stop-state.js';
 const PAGE_BUTTONS = 'a[href], button, [role="button"], input[type="button"]';
 function applyCandidates(tabId, listed = PAGE_BUTTONS) {   // listed: PAGE_BUTTONS for the phrase path, NAMED_BUTTONS (the page sketch's own list) when the AI named the control
   return chrome.scripting.executeScript({target: {tabId}, func: selector => [...document.querySelectorAll(selector)].map((el, index) => {
-    if (el.closest('[id^=jobpilotto], [id^=job-pilotto]')) return null;   // never the extension's own UI; the index stays the page's (desktop/e2e/test/own-ui-not-read.test.mjs)
+    if (el.closest('[id^=jobpilotto], [id^=jobadabra]')) return null;   // never the extension's own UI; the index stays the page's (desktop/e2e/test/own-ui-not-read.test.mjs)
     const box = el.getBoundingClientRect(), style = getComputedStyle(el);
     return {index, tag: el.tagName.toLowerCase(), text: (el.innerText || el.value || el.getAttribute('aria-label') || '').slice(0, 80),
       area: Math.round(box.width * box.height), visible: el.getClientRects().length > 0 && style.visibility !== 'hidden',

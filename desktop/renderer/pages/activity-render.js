@@ -46,7 +46,7 @@ export const showMoreRuns = () => { shownRuns += RUNS_PAGE; };
 // The panel's height, as you drag its top edge: never smaller than this, never taller than 90% of the window, kept
 // for the next time the app opens.
 const PANEL_MIN = 320;
-export const PANEL_HEIGHT = 'jobpilotto.activity-height';
+export const PANEL_HEIGHT = 'jobadabra.activity-height';
 const panelMax = () => Math.round(window.innerHeight * 0.9);
 export function setPanelHeight(height, keep = true) {
   const value = Math.max(PANEL_MIN, Math.min(panelMax(), Math.round(height)));

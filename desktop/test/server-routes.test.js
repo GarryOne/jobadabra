@@ -170,10 +170,10 @@ test('every local route preserves its access, malformed-body, method and preflig
   });
   const launcher = {'x-job-pilotto':'launcher'};
   await t.test('render has its own key, method and no-Origin checks; errors retain the catch reply', async () => {
-    for (const auth of [token,'wrong',null]) reply(await request('/engine/render',{auth,from:null,headers:{'x-job-pilotto-render':pageRender.TOKEN},body:'{"url":"page"}'}),200,{html:'page',agent:'JobPilotto browser'},jsonHeaders);
+    for (const auth of [token,'wrong',null]) reply(await request('/engine/render',{auth,from:null,headers:{'x-job-pilotto-render':pageRender.TOKEN},body:'{"url":"page"}'}),200,{html:'page',agent:'Jobadabra browser'},jsonHeaders);
     for (const opts of [{headers:{}},{from:foreign},{method:'DELETE'}]) reply(await request('/engine/render',{
       from:null,headers:{'x-job-pilotto-render':pageRender.TOKEN},...opts}),403,{error:'Not allowed'},jsonHeaders);
-    reply(await request('/engine/render',{from:null,headers:{'x-job-pilotto-render':pageRender.TOKEN},body:'{'}),200,{html:'',agent:'JobPilotto browser'},jsonHeaders);
+    reply(await request('/engine/render',{from:null,headers:{'x-job-pilotto-render':pageRender.TOKEN},body:'{'}),200,{html:'',agent:'Jobadabra browser'},jsonHeaders);
     state.failRender = true;
     reply(await request('/engine/render',{from:null,headers:{'x-job-pilotto-render':pageRender.TOKEN}}),500,{error:'render failed'},jsonHeaders);
     state.failRender = false;

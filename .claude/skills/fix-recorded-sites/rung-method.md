@@ -3,7 +3,7 @@
 Moved from SKILL.md section 3b (pure move, 15 Oct 2026). Skill: `fix-recorded-sites`.
 
 Map: `docs/flows/ladder.md` (rungs, owners, fixed answers, what may change). Spec: `docs/superpowers/specs/2026-10-10-ai-ladder.md`. Rule of the product: **never fix a website; fix a shape.** The site is one live sample.
-Non-negotiables (the ladder designer's, job-pilotto-cc): the rung map first; the failing page captured as a fixture BEFORE the fix (`node desktop/e2e/ladder-capture.mjs`, seen wrong); the smallest fix at the lowest rung that has the information, data before code;
+Non-negotiables (the ladder designer's, jobadabra-cc): the rung map first; the failing page captured as a fixture BEFORE the fix (`node desktop/e2e/ladder-capture.mjs`, seen wrong); the smallest fix at the lowest rung that has the information, data before code;
 `npm run ladder-score` live and `--offline`; the baseline updated only with `--update-baseline "<why>"` (never edit an expectation to pass); a recorded page that fails on the old build; the commit trailers `Rung: <n>` and `Fixture: <id>`.
 
 ### R1. Find the rung that decided wrong (5 min, no edits)

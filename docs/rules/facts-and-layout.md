@@ -36,7 +36,7 @@ Reference, read when the task touches these areas. Linked from CLAUDE.md. For an
 - Workflows `daily.yml`, `scout.yml`, `mail.yml` are reusable (`workflow_call`) with no schedule; schedules live in each user's private repo from
   `templates/github-actions/` (the owner's: `GarryOne/jobadabra-personal-always-on`).
 - `desktop/lib/github.js`: **Always on** as a GitHub App on one repo (`<user>/jobadabra-personal-always-on`, older `job-pilotto-private`, from template `jobadabra/jobadabra-user-template` (`GarryOne/job-pilotto-starter` until the rename; the app asks the API which exists),
-  published by `tools/publish-starter.sh`); the Jobs list then comes from the latest `job-pilotto-jobs-db` artifact.
+  published by `tools/publish-starter.sh`); the Jobs list then comes from the latest `jobadabra-jobs-db` artifact.
 - Form-filling improvement: each fill logs to Agent Runs; `tools/fill-failures.py` groups what was left; skill `record-applying-sites`. Fill failures
   are fixed by recipes (the proposer and the canary); triage lives in `jobadabra-lab`.
 - Notion IDs have no defaults in code: `.env`, repository variables, or the Desktop App.

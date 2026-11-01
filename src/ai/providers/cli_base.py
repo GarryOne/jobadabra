@@ -58,7 +58,7 @@ def conversation(request, names=()):
 class CliAdapter(Adapter):
     billing = SUBSCRIPTION
     tool = ''                  # the CLI's name, in words ("Claude Code")
-    folder = ''                # the call folders' name: job-pilotto-<folder>-…
+    folder = ''                # the call folders' name: jobadabra-<folder>-…
     timeout_env = 'JOB_PILOTTO_CLI_TIMEOUT'
     missing_text = not_answering_text = ''
     _slots = Slots(2)   # a subclass sets its own (served by priority: src/ai/slots.py)
@@ -114,7 +114,7 @@ class CliAdapter(Adapter):
 
     def complete(self, request):
         schema = request.schema
-        with tempfile.TemporaryDirectory(prefix=f'job-pilotto-{self.folder or self.name}-') as folder:
+        with tempfile.TemporaryDirectory(prefix=f'jobadabra-{self.folder or self.name}-') as folder:
             files = write_files(request, folder)
             args, prompt, native = self.build(request, folder, files)
             if schema is not None and not native:

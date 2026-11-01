@@ -29,7 +29,7 @@ export const TIMEOUT_TEXT = 'Codex: could not read the PDF (it took over 30 s). 
 // ([base64 PDF]) -> [{pages: [base64 PNG], text}]: the reader main.js gives the Codex engine. ONE hidden window per call reads every PDF
 // of the request (cv-change.js sends two) and is closed once at the end, whatever happened (mac-3f's live check, 9 Oct 2026).
 export const electronPdfReader = (BrowserWindow, {maxPages = MAX_PAGES, timeoutMs = TIMEOUT_MS, probe: open = probeWindow} = {}) => async list => {
-  const folder = fs.mkdtempSync(path.join(os.tmpdir(), 'job-pilotto-pdf-'));
+  const folder = fs.mkdtempSync(path.join(os.tmpdir(), 'jobadabra-pdf-'));
   let probe = null, timer = null;
   const work = (async () => {
     const out = [];

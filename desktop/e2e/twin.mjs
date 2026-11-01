@@ -18,7 +18,7 @@ import {TOKEN_VAR} from './lib/real-notion-token.mjs';
 import {withoutWrappers} from './lib/real-claude.mjs';   // never a terminal's claude wrapper (e2e/test/real-claude.test.mjs)
 
 const DESKTOP = path.resolve(import.meta.dirname, '..'), REPO = path.resolve(DESKTOP, '..');
-const REAL = realFolder(), LIVE = path.join(path.dirname(REAL), 'Job Pilotto (live test)'), HOME = path.join(LIVE, 'home');
+const REAL = realFolder(), LIVE = path.join(path.dirname(REAL), 'Jobadabra (live test)'), HOME = path.join(LIVE, 'home');
 const MIRROR_TOKEN = 'job-pilotto.notion.token-live-test';
 const keychain = service => execFileSync('security', ['find-generic-password', '-s', service, '-w'], {encoding: 'utf8'}).trim();
 const say = text => console.log(`twin: ${text}`);

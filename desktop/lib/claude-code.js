@@ -64,7 +64,7 @@ export async function detect({binary = claudeBinary, run = execFile} = {}) {
   return {installed: !!found, path: file, version: found};
 }
 
-const freshFolder = () => fs.mkdtempSync(path.join(os.tmpdir(), 'job-pilotto-claude-'));
+const freshFolder = () => fs.mkdtempSync(path.join(os.tmpdir(), 'jobadabra-claude-'));
 
 // Windows: the Claude Desktop app is a chat app and does not include Claude Code (the `claude` command); what installs it is told here.
 const hint = (platform = process.platform) => platform === 'win32'

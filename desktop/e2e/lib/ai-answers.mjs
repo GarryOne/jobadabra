@@ -80,7 +80,7 @@ const parsed = body => {
 };
 // Why (30 Oct 2026, qu): score/caption identities and refusal previews retain their permissive text extraction; engine parsers require strict text-only blocks.
 const textOf = content => typeof content === 'string' ? content : (Array.isArray(content) ? content.map(part => part?.text || '').join('\n') : '');
-const actionOf = (headers, body) => new Headers(headers || {}).get('x-jp-action') || String(body.prompt_cache_key || '').replace(/^job-pilotto-/, '');
+const actionOf = (headers, body) => new Headers(headers || {}).get('x-jp-action') || String(body.prompt_cache_key || '').replace(/^jobadabra-/, '');
 
 /** Identify one posting by its golden row, or by its trimmed feed identity when no golden row matches. */
 // Why (30 Oct 2026, qu+ap): a suite scoring its own feed postings needs stored answers keyed by the question.

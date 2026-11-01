@@ -9,7 +9,7 @@ const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '.
 export function sessionShortName() {
   const run = spawnSync('bash', ['-c', 'source "$1"; session_name', 'x', path.join(repo, 'tools', 'session-name.sh')], {encoding: 'utf8'});
   const who = run.status === 0 ? run.stdout.trim() : '';
-  return who && who !== '?' ? who.replace(/^job-pilotto-/, '') : '?';
+  return who && who !== '?' ? who.replace(/^jobadabra-/, '') : '?';
 }
 
 // `out` with "<short>-" in front of the file NAME (never the folder), unless it already starts with it; an unknown session leaves it as given.

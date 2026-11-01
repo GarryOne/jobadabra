@@ -61,7 +61,7 @@ if (process.argv.includes('--app')) {
   const extensionVersion = forBuild();
   stamp(path.join(pilot, 'extension'), extensionVersion);
   console.log(`Extension version ${extensionVersion}`);
-  for (const doc of ['notion-profile-template.md', 'job-pilotto-guide.md']) copy(`docs/${doc}`, path.join(pilot, 'docs', doc));
+  for (const doc of ['notion-profile-template.md', 'jobadabra-guide.md']) copy(`docs/${doc}`, path.join(pilot, 'docs', doc));
   // The skill Apply with Claude sessions follow: they start in this folder, where Claude Code finds .claude/skills.
   copy('.claude/skills/apply-to-job', path.join(pilot, '.claude', 'skills', 'apply-to-job'));
   if (keepPython) { fs.renameSync(path.join(keepPython, 'python'), python); fs.rmSync(keepPython, {recursive: true}); }

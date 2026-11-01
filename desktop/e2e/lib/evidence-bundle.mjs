@@ -1,4 +1,4 @@
-// The evidence bundle of a smoke run: everything a fixer needs to name the blocker without a re-run (job-pilotto-cc's post-mortem, 11 Oct 2026: about 40% of every
+// The evidence bundle of a smoke run: everything a fixer needs to name the blocker without a re-run (jobadabra-cc's post-mortem, 11 Oct 2026: about 40% of every
 // fix was a wrong first guess because the first run did not show what the AI was asked, what it answered and what was pressed). One folder per day and shape:
 // evidence.md (the four lines that matter), run.log, app.log (the app's whole log) and ai-calls.json (the live page-kind calls and the form-answer calls: fields asked and answer kinds, desktop/lib/live-capture.js).
 // Also: a run that was killed or cut short did not finish, and records and uploads nothing (eb's killed Datadog run left a 23 s row). Guard: test/evidence-bundle.test.mjs.
@@ -58,7 +58,7 @@ export function writeBundle({dir, day, shape, output = '', appLog = '', aiCalls 
 }
 
 // The paired Electron leg's own evidence (the app log and the end picture its capture folder holds), kept beside the plain run's bundle in <bundle>/electron/, so a row whose
-// plain run was refused shows what Electron saw (job-pilotto-cc, 11 Oct 2026: the H&M settle dropped a hold and the Electron output was gone). -> the folder, or '' when nothing was kept.
+// plain run was refused shows what Electron saw (jobadabra-cc, 11 Oct 2026: the H&M settle dropped a hold and the Electron output was gone). -> the folder, or '' when nothing was kept.
 export function saveElectronLeg({dir, day, shape, output = '', captureDir = ''}) {
   const folder = path.join(dir, day, slug(shape), 'electron');
   fs.mkdirSync(folder, {recursive: true});

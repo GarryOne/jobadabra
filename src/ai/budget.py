@@ -55,7 +55,7 @@ def admin_spend(key, now, opener=urllib.request.urlopen):
     while True:
         query = dict(params, **({'page': page} if page else {}))
         request = urllib.request.Request(f'{COST_REPORT}?{urllib.parse.urlencode(query)}', headers={
-            'x-api-key': key, 'anthropic-version': '2023-06-01', 'User-Agent': 'JobPilotto/1.0'})
+            'x-api-key': key, 'anthropic-version': '2023-06-01', 'User-Agent': 'Jobadabra/1.0'})
         with opener(request, timeout=20) as response:
             data = json.load(response)
         for bucket in data.get('data', []):

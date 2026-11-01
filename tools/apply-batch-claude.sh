@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # apply-batch-claude.sh — open one new Terminal window per job, each running its own
-# interactive Claude Code session in the job-pilotto repo, pre-seeded with an apply-to-job prompt.
+# interactive Claude Code session in the jobadabra repo, pre-seeded with an apply-to-job prompt.
 #
 # Unlike send-to-chatgpt.sh (which has to paste into a single shared desktop-app window because
 # there's no CLI/API access to it), Claude Code has a real CLI — so this spawns genuinely separate

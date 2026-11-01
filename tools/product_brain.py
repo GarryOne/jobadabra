@@ -46,7 +46,7 @@ def lens_of_the_day(day: dt.date) -> str:
 def _request(url: str, method: str = 'GET', body: dict | None = None, headers: dict | None = None) -> dict:
     data = json.dumps(body).encode() if body is not None else None
     req = urllib.request.Request(url, data=data, method=method, headers={  # Cloudflare blocks the default Python agent (1010)
-        'Content-Type': 'application/json', 'User-Agent': 'job-pilotto-product-brain', **(headers or {})})
+        'Content-Type': 'application/json', 'User-Agent': 'jobadabra-product-brain', **(headers or {})})
     for attempt in (1, 2):  # one retry: a reset connection now and then shouldn't cost the brief
         try:
             with urllib.request.urlopen(req, timeout=30) as response:

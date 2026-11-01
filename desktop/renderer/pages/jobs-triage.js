@@ -19,7 +19,7 @@ export function triageChip(job) {
 }
 
 // The seconds each real read took on this Mac (the last ten), so the popup's estimate learns from them; a window with no storage keeps them for this session only.
-const TIMINGS_KEY = 'jobpilotto.triage-seconds';
+const TIMINGS_KEY = 'jobadabra.triage-seconds';
 let timings = [];
 try { timings = (JSON.parse(localStorage.getItem(TIMINGS_KEY) || '[]') || []).filter(Number.isFinite).slice(-KEEP_TIMINGS); } catch { timings = []; }
 const rememberTiming = seconds => { timings = [...timings, seconds].slice(-KEEP_TIMINGS); try { localStorage.setItem(TIMINGS_KEY, JSON.stringify(timings)); } catch { /* no storage: this session only */ } };

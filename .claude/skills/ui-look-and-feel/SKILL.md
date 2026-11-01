@@ -170,7 +170,7 @@ env -u ELECTRON_RUN_AS_NODE JOB_PILOTTO_DEMO=1 JOB_PILOTTO_USER_DATA="$D" \
   overflows it: compare `scrollWidth` with `clientWidth` to catch a collision (a strip passed such a check while its
   text sat on top of "Manage schedule").
 - **The activity panel's geometry**, so a layout change starts from the truth: fixed height, dragged from its top edge
-  and kept in `localStorage` (`jobpilotto.activity-height`; min 320 px, max 90vh); `.ap-grid` is `minmax(320px, 38%)`;
+  and kept in `localStorage` (`jobadabra.activity-height`; min 320 px, max 90vh); `.ap-grid` is `minmax(320px, 38%)`;
   the list and the detail column each scroll; the schedule strip drops its own label under 900 px (container query) so
   the checks stay on one line.
 

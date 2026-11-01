@@ -21,7 +21,7 @@ export const isLoopback = value => /^http:\/\/127\.0\.0\.1(?::\d+)?(?:\/|$)/.tes
 export const isStandIn = (env = process.env) => !!env.JOB_PILOTTO_E2E && env.JOB_PILOTTO_E2E_NOTION_STANDIN === '1' && isLoopback(env.JOB_PILOTTO_E2E_NOTION_BASE_URL);
 
 export const paceFile = token => path.join(os.tmpdir(),
-  `job-pilotto-notion-${crypto.createHash('sha256').update(String(token)).digest('hex').slice(0, 12)}.pace`);
+  `jobadabra-notion-${crypto.createHash('sha256').update(String(token)).digest('hex').slice(0, 12)}.pace`);
 
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
 

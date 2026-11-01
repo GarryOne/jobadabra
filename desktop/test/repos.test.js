@@ -28,7 +28,7 @@ test('the starter is whichever candidate GitHub shows as a template: works befor
   assert.equal(await github.resolveStarter(offline), OLD_STARTER, 'unanswered: the old name, never an unverified one');
   assert.equal(await github.resolveStarter(template([STARTER])), STARTER);
   assert.equal(await github.resolveStarter(offline), STARTER, 'unanswered after a good answer: the last one found');
-  assert.ok(!/GarryOne|job-pilotto/.test(await github.createUrl(template([STARTER]))), 'the link names the new template only');
+  assert.ok(!/GarryOne|jobadabra/.test(await github.createUrl(template([STARTER]))), 'the link names the new template only');
   // After the rename the API answers the OLD name with a 301 to the new repo: the link must carry the API's name, never the old one (item 15 of the spec).
   const redirected = async url => (url.endsWith(`/${STARTER}`) ? {ok: false, status: 404} : {ok: true, json: async () => ({is_template: true, full_name: STARTER})});
   assert.equal(await github.resolveStarter(redirected), STARTER, 'an old name that redirects resolves to the new template');

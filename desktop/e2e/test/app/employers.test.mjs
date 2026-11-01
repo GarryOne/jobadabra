@@ -110,7 +110,7 @@ for (const family of ['claude', 'openai']) test(`employers captured and reconstr
     assert.deepEqual(await response.json(), expected);
     if (family === 'openai') {
       const body = {model: 'test', instructions: ask.body.system, input: ask.body.messages,
-        ...(ask.body.output_config ? {text: {format: ask.body.output_config.format}} : {}), prompt_cache_key: `job-pilotto-${ask.action}`};
+        ...(ask.body.output_config ? {text: {format: ask.body.output_config.format}} : {}), prompt_cache_key: `jobadabra-${ask.action}`};
       const response = await h.localFetch(`${h.openaiProxy.url}/v1/responses`, {...init, body: JSON.stringify(body)});
       assert.equal(response.status, 200, ask.source);
       assert.deepEqual(JSON.parse((await response.json()).output[0].content[0].text), dataOf(expected));

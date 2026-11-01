@@ -1,5 +1,5 @@
 // Every recorded case says where its page came from (desktop/e2e/lib/recorded-origin.mjs): 'captured' from a real page or 'hand-cut'. A new case without it fails here, so the
-// replays table can never call a hand-cut page a site (owner, 12 Oct 2026, via job-pilotto-cc).
+// replays table can never call a hand-cut page a site (owner, 12 Oct 2026, via jobadabra-cc).
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';

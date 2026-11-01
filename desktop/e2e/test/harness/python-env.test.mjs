@@ -31,7 +31,7 @@ test('a key the caller names gets through; a CLI step keeps this computer\'s HOM
   const cli = pythonEnv({}, {realHome: true});
   assert.equal(cli.HOME, os.homedir());
   for (const name of ['JOB_PILOTTO_DATA_DIR', 'JOB_PILOTTO_CONFIG_DIR']) assert.ok(cli[name].startsWith(os.tmpdir()) || cli[name].startsWith(fs.realpathSync(os.tmpdir())), `${name} with the real HOME is ${cli[name]}`);
-  assert.throws(() => pythonEnv({JOB_PILOTTO_DATA_DIR: path.join(os.homedir(), 'job-pilotto', 'data')}, {realHome: true}), /DATA_DIR is not a temp folder/, 'the real HOME never comes with the person\'s own data');
+  assert.throws(() => pythonEnv({JOB_PILOTTO_DATA_DIR: path.join(os.homedir(), 'jobadabra', 'data')}, {realHome: true}), /DATA_DIR is not a temp folder/, 'the real HOME never comes with the person\'s own data');
   const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-python-env-'));
   assert.equal(pythonEnv({}, {home: profile}).HOME, profile);
   assert.throws(() => pythonEnv({}, {home: os.homedir()}), /HOME is not a temp folder/);

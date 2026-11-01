@@ -112,7 +112,7 @@ class AppRenderTests(unittest.TestCase):
             with self.assertRaises(render.Refused):
                 render.render('https://www.coop.ch/')
         self.assertEqual(sent[0][1], 'k')
-        self.assertTrue(sent[0][2].startswith('JobPilotto/') and sent[0][2].endswith(' browser'))
+        self.assertTrue(sent[0][2].startswith('Jobadabra/') and sent[0][2].endswith(' browser'))
 
 
 class JobPagePickTests(unittest.TestCase):

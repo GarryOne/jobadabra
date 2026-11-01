@@ -114,5 +114,5 @@ export function cssRecorder(context, {maxSheet = 2e6, maxAll = 2e7} = {}) {
     request: {method: 'GET', url, httpVersion: 'HTTP/1.1', headers: [], queryString: [], cookies: [], headersSize: -1, bodySize: -1},
     response: {status: 200, statusText: 'OK', httpVersion: 'HTTP/1.1', headers: [{name: 'content-type', value: 'text/css'}], cookies: [], redirectURL: '', headersSize: -1, bodySize: -1,
       content: {size: text.length, mimeType: 'text/css', text}}});
-  return {har: async () => { await Promise.all([...pending]); return {log: {version: '1.2', creator: {name: 'job-pilotto capture', version: '1'}, entries: [...sheets].map(([url, text]) => entry(url, text))}}; }};
+  return {har: async () => { await Promise.all([...pending]); return {log: {version: '1.2', creator: {name: 'jobadabra capture', version: '1'}, entries: [...sheets].map(([url, text]) => entry(url, text))}}; }};
 }

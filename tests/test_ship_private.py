@@ -24,7 +24,7 @@ class ShipPrivateRepoTest(unittest.TestCase):
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, self.tmp, True)
-        self.origin, self.repo = self.tmp / 'origin.git', self.tmp / 'job-pilotto-site-topic'
+        self.origin, self.repo = self.tmp / 'origin.git', self.tmp / 'jobadabra-site-topic'
         subprocess.run(['git', 'init', '-q', '--bare', '-b', 'main', str(self.origin)], check=True)
         self.repo.mkdir()
         git(self.repo, 'init', '-q', '-b', 'main')

@@ -74,7 +74,7 @@ jobs:
     runs-on: ubuntu-24.04
     # Shares the SQLite state with the digest workflow, so the two never overlap.
     concurrency:
-      group: job-pilotto-state
+      group: jobadabra-state
       cancel-in-progress: false
     timeout-minutes: 20
     steps:
@@ -101,8 +101,8 @@ jobs:
         uses: actions/cache/restore@v5
         with:
           path: data/jobs.sqlite
-          key: job-pilotto-db-${{ github.run_id }}
-          restore-keys: job-pilotto-db-
+          key: jobadabra-db-${{ github.run_id }}
+          restore-keys: jobadabra-db-
       - name: Install the AI library
         run: pip install --quiet -r requirements.txt
       - name: Install the headless browser
@@ -156,7 +156,7 @@ jobs:
         uses: actions/cache/save@v5
         with:
           path: data/jobs.sqlite
-          key: job-pilotto-db-${{ github.run_id }}
+          key: jobadabra-db-${{ github.run_id }}
       - name: Backup job database
         # See daily.yml's own "Backup job database" step: separate from the cache above because
         # a cache entry can be evicted without warning; an artifact just expires on its own
@@ -164,7 +164,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v6
         with:
-          name: job-pilotto-jobs-db
+          name: jobadabra-jobs-db
           path: data/jobs.sqlite
           retention-days: 90
           if-no-files-found: warn

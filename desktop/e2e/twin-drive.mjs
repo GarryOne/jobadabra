@@ -61,7 +61,7 @@ const fieldStates = labels => labels.map(text => {
   if (!el) return {label: text, found: false};
   if (el.type === 'password') return {label: text, type: 'password'};
   return {label: text, tag: el.tagName, type: el.type, role: el.getAttribute('role'), value: el.tagName === 'SELECT' ? el.options[el.selectedIndex]?.text : el.value,
-    hidden: target?.type === 'hidden' ? target.value : undefined, marks: Object.keys(el.dataset).filter(key => key.startsWith('jobpilotto')),
+    hidden: target?.type === 'hidden' ? target.value : undefined, marks: Object.keys(el.dataset).filter(key => key.startsWith('jobadabra')),
     armed: !!el.closest('[data-jobpilotto-armed]') || !!area?.querySelector('[data-jobpilotto-armed]')};
 });
 
@@ -93,7 +93,7 @@ const commands = {
     const tab = tabOf(browser.pages, part);
     if (!tab) { await browser.close(); throw new Error(`no tab with ${part}`); }
     const target = tab.locator(selector).first();
-    const ours = await target.evaluate(el => !!el.getRootNode()?.host?.id?.startsWith('jobpilotto'));
+    const ours = await target.evaluate(el => !!el.getRootNode()?.host?.id?.startsWith('jobadabra'));
     if (looksLikeSubmit(await target.evaluate(el => `${el.type === 'submit' && el.tagName === 'INPUT' ? 'submit' : ''} ${el.textContent || ''} ${el.value || ''}`), ours)) {
       await browser.close(); throw new Error('refused: that looks like the form\'s Submit');
     }

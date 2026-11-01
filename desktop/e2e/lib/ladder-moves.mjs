@@ -134,7 +134,7 @@ export const distinctRepairs = lists => {
   return [...sum.values()];
 };
 
-// The control level's kept repairs travel in the same batch (job-pilotto-fill-ladder, 12 Oct 2026: one delivery path): {fp (page/skeleton.js control fingerprint), verb (a fill_repair
+// The control level's kept repairs travel in the same batch (jobadabra-fill-ladder, 12 Oct 2026: one delivery path): {fp (page/skeleton.js control fingerprint), verb (a fill_repair
 // verb), ok, failed}, fixed words and integers only; the site's handling of `repairs` is the fill ladder's.
 export const cleanRepair = raw => (/^[a-z0-9]{6,16}$/.test(String(raw?.fp ?? '')) && /^[a-z_]{2,24}$/.test(String(raw?.verb ?? '')) && [raw?.ok, raw?.failed].every(n => Number.isInteger(n) && n >= 0 && n <= 1e6) && raw.ok + raw.failed > 0
   ? {fp: raw.fp, verb: raw.verb, ok: raw.ok, failed: raw.failed} : null);

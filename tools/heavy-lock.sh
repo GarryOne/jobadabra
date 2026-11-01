@@ -2,7 +2,7 @@
 # Heavy runs on this Mac: browser suites, recorded replays, real-extension and the e2e harness take this lock; unit tests never do.
 #   bash tools/heavy-lock.sh <what> <command...>      waits for a slot (says who holds them), waits while the load is high, runs, frees it, keeps the exit code
 # ONE copy for every session (owner, 11 Oct 2026): a worktree's copy hands off to the primary checkout's (<git common dir>/..), so all queue in one order.
-# Slots = directories <TMPDIR>/job-pilotto-heavy/lock and lock.2 holding pid, what, since, cwd; stale when the pid is gone (taken over by an atomic rename).
+# Slots = directories <TMPDIR>/jobadabra-heavy/lock and lock.2 holding pid, what, since, cwd; stale when the pid is gone (taken over by an atomic rename).
 # The first heavy run always starts; more start beside it only while the memory gate has room (tools/heavy-lock-memory.sh: macOS pressure, available memory, swap-outs). Ports are free per run and the real Notion page has its own lock (desktop/e2e/lib/notion-page-lock.mjs).
 # First come, first served (11 Oct 2026: the pool's per-site runs re-took a just-freed lock while a replay starved 6+ min): each waiter holds a ticket
 # <root>/queue/<nanoseconds>-<pid> ("<pid> <what>") and takes a slot only when no live older ticket is ahead; a dead waiter's ticket is dropped.
@@ -36,7 +36,7 @@ if [ -z "$shared" ]; then common="$(git -C "$(dirname "$0")" rev-parse --path-fo
 real() { echo "$(cd "$(dirname "$1")" 2>/dev/null && pwd -P)/$(basename "$1")"; }
 if [ -n "$shared" ] && [ -f "$shared" ] && [ "$(real "$shared")" != "$(real "$0")" ]; then JOB_PILOTTO_HEAVY_SHARED="$shared" exec bash "$shared" "$what" "$@"; fi
 
-root="${JOB_PILOTTO_HEAVY_DIR:-${TMPDIR:-/tmp}/job-pilotto-heavy}"; lock=""
+root="${JOB_PILOTTO_HEAVY_DIR:-${TMPDIR:-/tmp}/jobadabra-heavy}"; lock=""
 mkdir -p "$root"
 say() { echo "heavy-lock: $*" >&2; }
 # Every hold is logged with the branch and session it belongs to and the load at queueing and at start, so a fix's proof waits can be summed (tools/landing-report.mjs).

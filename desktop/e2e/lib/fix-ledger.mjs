@@ -22,7 +22,7 @@ export const cleanRow = value => { const name = String(value || '').trim(); retu
 const defaultGit = (...args) => execFileSync('git', ['-C', ROOT, ...args], {encoding: 'utf8', maxBuffer: 64 << 20});
 // A commit's facts never change, so each is read from git once per Mac (14 Oct 2026: 5 git calls per commit, one a ~1 s rev-list, made the smoke run look hung
 // for minutes after its report). Keyed by the full hash; a missing or broken file only costs the git calls again.
-const MEMO_FILE = path.join(os.tmpdir(), 'job-pilotto-fix-ledger-memo.json');
+const MEMO_FILE = path.join(os.tmpdir(), 'jobadabra-fix-ledger-memo.json');
 const readMemo = () => { try { return JSON.parse(fs.readFileSync(MEMO_FILE, 'utf8')); } catch { return {}; } };
 const saveMemo = memo => { try { fs.writeFileSync(MEMO_FILE, JSON.stringify(memo)); } catch { /* best effort */ } };
 

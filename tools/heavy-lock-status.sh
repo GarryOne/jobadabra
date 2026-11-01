@@ -3,7 +3,7 @@
 # Expected wait = the soonest a holder is likely to finish (its kind's median run, from the `run=` lines of gate-timing.log, default 70 s, minus its running time) plus the median runs of the waiters that would go
 # before a new run of that class, spread over the holders. It is a guess to plan with, said as "about". Guarded by tests/test_heavy_lock_status.py.
 here="$(cd "$(dirname "$0")" && pwd)"; source "$here/heavy-lock-classes.sh"; source "$here/heavy-lock-reap.sh"
-root="${JOB_PILOTTO_HEAVY_DIR:-${TMPDIR:-/tmp}/job-pilotto-heavy}"; now=$(date +%s)
+root="${JOB_PILOTTO_HEAVY_DIR:-${TMPDIR:-/tmp}/jobadabra-heavy}"; now=$(date +%s)
 timing="${JOB_PILOTTO_HEAVY_TIMING_LOG:-$(git -C "$here" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)/gate-timing.log}"
 median() { expected_secs "$1"; }   # what -> median run seconds from the log (default 70), shared with the idle watchdog (tools/heavy-lock-reap.sh)
 age_of() { local ns="${1%%-*}"; echo $(( now - ns / 1000000000 )); }

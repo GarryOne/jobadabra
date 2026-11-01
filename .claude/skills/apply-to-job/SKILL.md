@@ -652,7 +652,7 @@ gate enforced in code rather than by the model's own judgment call." Re-test bef
   CV uploaded, all 4 dropdowns), verified field-by-field, left open for the owner; nothing
   submitted. One misclick along the way (screenshot-scale bug, see above), caught and corrected.
 - 2026-09-25 · Greenhouse · Canonical Senior SRE · form filled from a session that started outside
-  job-pilotto (had to `cd` in and read SKILL.md as a plain file — the `Skill` tool never picked up the
+  jobadabra (had to `cd` in and read SKILL.md as a plain file — the `Skill` tool never picked up the
   project-scoped skill after `cd`, see "Before you start" above). Owner self-assessed dead time
   afterward and asked for fixes: added the skip-schema-fetch SQL shortcut for kit lookup, the
   phone-country-code-vs-work-country field disambiguation, and the resume-upload verification note

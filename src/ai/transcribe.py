@@ -48,7 +48,7 @@ MODELS = {
 def models_dir():
     if os.getenv('JOB_PILOTTO_MODELS_DIR'):
         return Path(os.environ['JOB_PILOTTO_MODELS_DIR'])
-    return Path.home() / ('Library/Caches' if sys.platform == 'darwin' else '.cache') / 'job-pilotto' / 'models'
+    return Path.home() / ('Library/Caches' if sys.platform == 'darwin' else '.cache') / 'jobadabra' / 'models'
 
 
 def addon_dir():

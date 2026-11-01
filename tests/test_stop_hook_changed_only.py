@@ -16,7 +16,7 @@ class StopHookChangedOnlyTest(unittest.TestCase):
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, self.tmp, True)
-        self.repo = self.tmp / 'job-pilotto'   # the hook only follows paths of this project (a folder named like it)
+        self.repo = self.tmp / 'jobadabra'   # the hook only follows paths of this project (a folder named like it)
         for d in ('src', 'app-core', 'tools', 'tests', 'desktop'):
             (self.repo / d).mkdir(parents=True)
         (self.repo / 'src' / 'daily.py').write_text('x = 1\n')

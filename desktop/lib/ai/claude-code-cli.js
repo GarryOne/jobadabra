@@ -129,7 +129,7 @@ export class ClaudeCode extends CliAdapter {
     const answered = runProcess(this.binary, args, message, {cwd: folder, env, timeout: this.timeout, spawnFn: this.spawnFn, tool: this.constructor.tool, started});
     // The next one starts once this question is answered: started beside it, its ~2 s of start-up slowed this answer by ~0.5 s (replay, 11 Oct 2026).
     return answered.finally(() => this.constructor.spares.keep(key, () => {
-      const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'job-pilotto-claude-'));
+      const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'jobadabra-claude-'));
       const child = this.spawnFn(this.binary, args, {cwd, env, stdio: ['pipe', 'pipe', 'pipe']});
       child.on?.('close', () => fs.rmSync(cwd, {recursive: true, force: true}));
       return child;

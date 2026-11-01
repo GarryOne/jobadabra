@@ -126,7 +126,7 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 // Demo mode (JOB_PILOTTO_DEMO=1, with JOB_PILOTTO_USER_DATA pointing at a copy of demo/): fictional
 // profile and jobs for screenshots (scripts/screenshots.mjs). Nothing is contacted: no Python, Telegram,
 // GitHub or local server, and the keys in demo/secrets.json are placeholders stored unencrypted.
-// "Look around first" (setup wizard, lib/demo.js) starts it too, with --job-pilotto-demo=<a fresh copy of demo/>:
+// "Look around first" (setup wizard, lib/demo.js) starts it too, with --jobadabra-demo=<a fresh copy of demo/>:
 // the same, plus the banner with "Set up my own", and the actions that would reach outside answer "demo".
 const DEMO_FOLDER = demo.folderFrom(process.argv);
 const LOOK_AROUND = !!DEMO_FOLDER;

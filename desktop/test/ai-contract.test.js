@@ -97,7 +97,7 @@ test('OpenAI API: the Responses body, cached tokens, refusal, cut-off, and error
   assert.equal(sent.model, 'gpt-6.1-sol');   // sonnet -> main tier
   assert.equal(sent.instructions, 'Be brief.');
   assert.equal(sent.store, false);
-  assert.equal(sent.prompt_cache_key, 'job-pilotto-cv');
+  assert.equal(sent.prompt_cache_key, 'jobadabra-cv');
   assert.deepEqual(sent.input[0].content.map(part => part.type), ['input_file', 'input_image', 'input_text']);
   assert.match(sent.input[0].content[0].file_data, /^data:application\/pdf;base64,/);
   assert.deepEqual(sent.text.format.schema, strict(SCHEMA));

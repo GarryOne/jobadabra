@@ -12,7 +12,7 @@
   const HELD = ['pointerdown', 'pointerup', 'mousedown', 'mouseup', 'click', 'dblclick', 'auxclick', 'contextmenu', 'keydown', 'keyup', 'keypress', 'wheel', 'touchstart', 'touchmove', 'dragstart', 'selectstart'];
   let layer = null, watch = null, wipe = null, lifted = () => {}, restorePanel = () => {};
   document.getElementById(ID)?.remove();   // a copy left by an extension reload: its owner is gone
-  const ours = event => (event.composedPath?.() || [event.target]).some(node => typeof node?.id === 'string' && node.id.startsWith('jobpilotto'));
+  const ours = event => (event.composedPath?.() || [event.target]).some(node => typeof node?.id === 'string' && node.id.startsWith('jobadabra'));
   const hold = event => {
     if (!event.isTrusted || document.documentElement.hasAttribute('data-jobpilotto-driving') || ours(event)) return;
     event.stopImmediatePropagation();

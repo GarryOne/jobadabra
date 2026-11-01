@@ -113,7 +113,7 @@ def main(argv=None):
     if args.clean_install:
         for area in [a for a in ('desktop', 'worker') if (ROOT / AREA_DIR.get(a, a)).is_dir()]:
             folder = ROOT / AREA_DIR.get(area, area)
-            with tempfile.TemporaryDirectory(prefix='job-pilotto-check-') as scratch:
+            with tempfile.TemporaryDirectory(prefix='jobadabra-check-') as scratch:
                 for name in ('package.json', 'package-lock.json'):
                     shutil.copyfile(folder / name, Path(scratch) / name)
                 print(f'check: {area} clean npm ci', flush=True)

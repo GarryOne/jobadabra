@@ -416,7 +416,7 @@ class GitHub:
             raise EvidenceUnavailable(f'{KEY_ENV} is not set (the site\'s stats key), so usage can\'t be checked')
         query = {'v': version, **({'compare': stable_version} if stable_version else {})}
         request = urllib.request.Request(f'{self.url}?{urllib.parse.urlencode(query)}', headers={
-            'Authorization': f'Bearer {self.key}', 'User-Agent': 'job-pilotto-canary', 'Accept': 'application/json'})
+            'Authorization': f'Bearer {self.key}', 'User-Agent': 'jobadabra-canary', 'Accept': 'application/json'})
         try:
             with urllib.request.urlopen(request, timeout=30) as response:
                 data = json.loads(response.read())

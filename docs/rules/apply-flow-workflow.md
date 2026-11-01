@@ -1,7 +1,7 @@
 # The apply-flow workflow: record once, work offline
 
 > **Verdict (owner, 14 Oct 2026):** we record each site once and do all testing, fixing and verifying offline ($0).
-> Live visits happen only to record. You start step 3; the coordinator (job-pilotto-cc) routes; the rest runs by itself.
+> Live visits happen only to record. You start step 3; the coordinator (jobadabra-cc) routes; the rest runs by itself.
 
 | # | Step | Who / what | Live? | Cost |
 |---|---|---|---|---|
@@ -9,7 +9,7 @@
 | 2 | **Detect**: a small daily replay (~7 rows, one per kind of form users meet) | CI: `site-replays.yml` once a day, never on a PR → `/admin/form-filling/lab`; Telegram only on a worse outcome | no | $0 |
 | 3 | **Fix** the top 🔴 row | skill `/fix-recorded-sites` | no | $0 + the fix session |
 | 4 | **Verify** the fix | CI after merge: "Confirmed offline" on the Fixed tab (2 agreeing replays) | no | $0 |
-| 5 | **Benchmark** (occasional) | bake-off: the extension vs other agents on the same forms (repo job-pilotto-bakeoff) | yes | dollars: owner's OK |
+| 5 | **Benchmark** (occasional) | bake-off: the extension vs other agents on the same forms (repo jobadabra-bakeoff) | yes | dollars: owner's OK |
 
 ## The rule for recordings and replays (owner, 17 Oct 2026: "Yes, adopt it")
 - **Recordings are a debugging tool, not a gate.** A failure (a person's "Report this form", the daily replay, a bake-off row) → record THAT one site once →
@@ -74,12 +74,12 @@ with a test in `desktop/test/app-scenarios.test.js`. The twin (docs/live-test.md
 
 | Gap | Where |
 |---|---|
-| "Confirmed offline" and the regression verdict (Our build / Site changed) | job-pilotto-8e PR; bisect to the first bad commit next |
-| The pool becomes a recorder; skill rename; re-record signals on the page | job-pilotto-cf, spec `docs/superpowers/specs/2026-10-15-record-once.md` (A) |
-| A CI recording never updates the pool table (`applying-report.mjs` refuses CI) and must reach the replay's records | job-pilotto-cf (A), its first PR |
-| Rules, skills and e2e pieces that required a live proof (B1: e2e, workflow, docs; B2: the site's live-proof store and column) | job-pilotto-70 |
-| Recording past where the extension stops (full journey) | job-pilotto-cf (C) |
-| `fix-recorded-sites` still describes live runs, the heavy lock, `npm run row`, `twin:drive` | job-pilotto-cf (B) |
+| "Confirmed offline" and the regression verdict (Our build / Site changed) | jobadabra-8e PR; bisect to the first bad commit next |
+| The pool becomes a recorder; skill rename; re-record signals on the page | jobadabra-cf, spec `docs/superpowers/specs/2026-10-15-record-once.md` (A) |
+| A CI recording never updates the pool table (`applying-report.mjs` refuses CI) and must reach the replay's records | jobadabra-cf (A), its first PR |
+| Rules, skills and e2e pieces that required a live proof (B1: e2e, workflow, docs; B2: the site's live-proof store and column) | jobadabra-70 |
+| Recording past where the extension stops (full journey) | jobadabra-cf (C) |
+| `fix-recorded-sites` still describes live runs, the heavy lock, `npm run row`, `twin:drive` | jobadabra-cf (B) |
 </details>
 
 ## Pool life cycle (stages of a pool row)

@@ -32,6 +32,14 @@
   {
    "path": "^tests/test_release_file_names\\.py$",
    "why": "guards the release asset names; spells the old ones"
+  },
+  {
+   "path": "^tests/test_brand_wording\\.py$",
+   "why": "the existing brand guard: spells the old name and its KEPT list"
+  },
+  {
+   "path": "^desktop/test/(legacy-name-literals|app-menu)\\.test\\.js$",
+   "why": "guards that assert the old name is absent or pinned"
   }
  ],
  "rules": [
@@ -45,14 +53,14 @@
   {
    "id": "keep-api-host",
    "match": "pilotto",
-   "after": "^\\.top\\b",
+   "after": "^\\\\?\\.(?:\\(\\?:)?(top\\b|workers)",
    "keep": "installed apps call www.jobpilotto.top: a live address, not a name",
    "expires": "never"
   },
   {
    "id": "keep-workers-dev",
    "match": "pilotto",
-   "after": "^[a-z0-9.-]*\\.workers\\.dev",
+   "after": "^[a-z0-9.-]*\\\\?\\.workers\\\\?\\.dev",
    "keep": "installed apps POST to these workers.dev hosts",
    "expires": "never"
   },
@@ -78,7 +86,7 @@
   },
   {
    "id": "keep-notion-names",
-   "match": "^Job Pilotto$",
+   "match": "^[Jj]ob [Pp]ilotto$",
    "after": "^ (E2E|2|Tests|Self-heal|QA|Brain|Live|Backups)",
    "keep": "Notion pages and folders the suites search for; the owner renames them",
    "expires": "when the owner renames the Notion pages"
@@ -99,8 +107,8 @@
   },
   {
    "id": "keep-app-paths",
-   "match": "^(Job Pilotto|jobpilotto)$",
-   "before": "(Logs|Programs|Support|Roaming|APPDATA)[/\\\\'\" ]*$",
+   "match": "^(Job Pilotto|jobpilotto|JobPilotto|job-pilotto)$",
+   "before": "(Logs|Programs|Support|Roaming|APPDATA|config|Applications|MacOS)[^A-Za-z0-9]{0,8}$",
    "keep": "folders named by productName or the legacy data folder (productName stays until the later release)",
    "expires": "after the both-names updater was on stable for 2 releases"
   },
@@ -175,9 +183,54 @@
    "expires": "when mac-07 has renamed the variables and secrets"
   },
   {
+   "id": "keep-sentry-short-ids",
+   "match": "^JOB-PILOTTO-APP-",
+   "keep": "Sentry issue ids (JOB-PILOTTO-APP-14): ids that exist on sentry.io",
+   "expires": "never"
+  },
+  {
+   "id": "keep-old-repo-names",
+   "match": "^job-pilotto-(private|starter)$",
+   "keep": "names of users' repos made before the rename: the app still finds them (REPO_NAMES, OLD_STARTER)",
+   "expires": "2 stable releases after the release carrying the rename PR"
+  },
+  {
+   "id": "go-owner-pattern",
+   "match": "^job-pilotto$",
+   "line": "OWNER_PATTERN|\\$\\{OWNER\\}",
+   "owner": "go: repo and owner names (1e, PR 6/7)"
+  },
+  {
+   "id": "keep-history-words",
+   "match": "^(Job Pilotto|Job-Pilotto|job-pilotto|jobpilotto)$",
+   "line": "renamed from|used to be|was called|formerly|old name|before the rename|after the rename",
+   "keep": "a sentence about what the old name was",
+   "expires": "not extended here"
+  },
+  {
+   "id": "keep-launchd-label",
+   "match": "^jobpilotto$",
+   "before": "com\\.$",
+   "keep": "label of the launch agent already loaded on the owner's Mac (a new label would leave the old one running)",
+   "expires": "never"
+  },
+  {
+   "id": "keep-owner-keychain-odd",
+   "match": "^token-job-pilotto-2$",
+   "keep": "the owner's second Notion token item",
+   "expires": "never"
+  },
+  {
+   "id": "keep-ai-provider-key-names",
+   "match": "^job-pilotto-",
+   "paths": "ai-meter",
+   "keep": "names of API keys and workspaces at the AI provider: external",
+   "expires": "when the provider keys are renamed"
+  },
+  {
    "id": "keychain-item",
    "match": "^job-pilotto$",
-   "after": "^\\.[a-z*]",
+   "after": "^\\\\?\\.(?:[a-z*]|\\$\\{|\\{|\\(|\\[)",
    "step": 6,
    "kind": "keychain",
    "readers": "app (JS), engine (Python), tools, owner hooks"
@@ -185,7 +238,7 @@
   {
    "id": "keychain-account",
    "match": "^job-pilotto$",
-   "line": "account|acct|ACCOUNT|-a ['\"]|security (add|find|delete)",
+   "line": "account|acct|ACCOUNT|-a ['\"]|security (add|find|delete)|\\.password|[Kk]eychain|KEYCHAIN",
    "step": 6,
    "kind": "keychain",
    "readers": "app (JS), engine (Python), tools"
@@ -207,7 +260,7 @@
   {
    "id": "telemetry",
    "match": "^job-pilotto(-engine)?$",
-   "line": "\\$lib|sentry_client|release:|release=|@\\$\\{",
+   "line": "\\$lib|sentry_client|['\"]?release['\"]?\\s*[:=]|@\\$\\{|@\\{|@[0-9t]",
    "step": 5,
    "kind": "telemetry",
    "readers": "Sentry and PostHog dashboards"
@@ -218,6 +271,13 @@
    "step": 5,
    "kind": "package",
    "readers": "npm, electron-builder"
+  },
+  {
+   "id": "keep-old-new-pair",
+   "match": "^(Job Pilotto|job-pilotto|jobpilotto)$",
+   "line": "[Jj]obadabra",
+   "keep": "a line that names both: a reader of the old name next to the new one (or a sentence about the move)",
+   "expires": "not extended here"
   },
   {
    "id": "prose-and-locals",

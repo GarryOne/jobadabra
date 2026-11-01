@@ -17,7 +17,7 @@ input="$(cat)"
 jqr() { jq -r "$1" <<<"$input" 2>/dev/null; }
 cwd="$(jqr '.cwd // ""')"; transcript="$(jqr '.transcript_path // ""')"; again="$(jqr '.stop_hook_active // false')"
 limit="${JOB_PILOTTO_STOP_TIMEBOX:-240}"   # seconds per suite
-cache="${TMPDIR:-/tmp}/job-pilotto-stop-hook"; mkdir -p "$cache"
+cache="${TMPDIR:-/tmp}/jobadabra-stop-hook"; mkdir -p "$cache"
 
 # Worktrees to check: the one the session runs in, and every worktree it CHANGED: an Edit/Write/NotebookEdit path in it, or a Bash call naming it that
 # writes (git commit/add/apply/checkout/restore, sed -i, tools/ship.sh). One it only read or ran tests in is another session's work, not tested here (11 Oct 2026).
@@ -35,7 +35,7 @@ if [ -f "$transcript" ]; then
       | if ($call.name | test("^(Edit|Write|NotebookEdit|MultiEdit)$")) then (.file_path // .notebook_path // empty)
         elif ($call.name == "Bash") and ((.command // "") | test("git +(-C +[^ ]+ +)?(commit|add|apply|checkout|restore|mv|rm|stash)|sed +-i|tools/ship\\.sh")) then .command
         else empty end' 2>/dev/null |
-      grep -oE '(/[^[:space:]"'"'"'`;|&()]+)' | grep -E '\.claude/worktrees/|/job-pilotto' |
+      grep -oE '(/[^[:space:]"'"'"'`;|&()]+)' | grep -E '\.claude/worktrees/|/jobadabra' |
       sed -E 's#(\.claude/worktrees/[^/]+).*#\1#' | sort -u | head -50)
 fi
 repos=()

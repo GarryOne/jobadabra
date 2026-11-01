@@ -171,11 +171,11 @@ export const windowsExplanation = update => ({type: 'info', buttons: ['Install n
 // closes, the installer shows its progress, the app opens again), so the closing window is never a surprise.
 export async function install(update, {exe, pid = process.pid, quit, onStep = () => {}, logFile = '', fetcher = globalThis.fetch,
   platform = process.platform, spawn: run = spawn, explain = async () => {}}) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'job-pilotto-update-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'jobadabra-update-'));
   onStep('Downloading…');
   const response = await fetcher(update.download);
   if (!response.ok) throw new Error(`Download failed (${response.status})`);
-  const file = path.join(dir, platform === 'win32' ? 'Job-Pilotto-Setup.exe' : 'update.zip');
+  const file = path.join(dir, platform === 'win32' ? 'Jobadabra-Setup.exe' : 'update.zip');
   fs.writeFileSync(file, Buffer.from(await response.arrayBuffer()));
   if (platform === 'win32') {
     onStep('Ready to install…');

@@ -106,7 +106,7 @@ test('Delete: isolated runs delete from their own file only; the app deletes the
   assert.deepEqual(none.calls, []);
 });
 
-test('the twin also reads the one Ready to send owner secret item, read-only, and no other job-pilotto item', () => {
+test('the twin also reads the one Ready to send owner secret item, read-only, and no other jobadabra item', () => {
   const dir = folder(), env = {JOB_PILOTTO_TWIN: '1', JOB_PILOTTO_USER_DATA: dir};
   const {calls, exec} = spy(() => 'real-secret\n');
   assert.equal(keychain.read('job-pilotto.ready.owner_secret', {env, exec, platform: 'darwin'}), 'real-secret');

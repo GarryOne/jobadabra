@@ -168,7 +168,7 @@ test('interviews no-credit fault precedes even a real stored review, then pass m
 test('interviews stored replies survive the OpenAI following proxy', async t => {
   const h = await harness(t, 'openai');
   const response = await h.localFetch(`${h.openaiProxy.url}/v1/responses`, {method: 'POST', headers: {'content-type': 'application/json'},
-    body: JSON.stringify({model: 'test', input: 'different aggregate', prompt_cache_key: 'job-pilotto-interview_patterns'})});
+    body: JSON.stringify({model: 'test', input: 'different aggregate', prompt_cache_key: 'jobadabra-interview_patterns'})});
   assert.equal(response.status, 200);
   const data = await response.json();
   assert.equal(data.object, 'response');

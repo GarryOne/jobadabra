@@ -55,7 +55,7 @@ export function keychainEnv(suites, {env = process.env, read = defaultRead} = {}
 }
 function defaultRead(service) {
   if (process.platform !== 'darwin') return '';
-  try { return execFileSync('security', ['find-generic-password', '-a', 'job-pilotto', '-s', service, '-w'], {encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore']}).trim(); } catch { return ''; }
+  try { return execFileSync('security', ['find-generic-password', '-a', 'jobadabra', '-s', service, '-w'], {encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore']}).trim(); } catch { return ''; }
 }
 
 const run = (suite, env, quiet) => new Promise(resolve => {

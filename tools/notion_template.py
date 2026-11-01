@@ -36,7 +36,7 @@ DATABASES = {
     'NOTION_EMPLOYERS_DB': 'c7fe8570c2ff414086ae9bb1ee2dbf64',
 }
 # Pages with no code reading them: created from a docs file, for the user.
-GUIDES = [('📖', 'How Jobadabra works', 'docs/job-pilotto-guide.md')]
+GUIDES = [('📖', 'How Jobadabra works', 'docs/jobadabra-guide.md')]
 PAGES = {
     'NOTION_PROFILE_PAGE_ID': ('👤', 'Profile — CV and Preferences'),
     'NOTION_ANSWERS_PAGE_ID': ('📝', 'Application Answers — Standard Form Fields'),

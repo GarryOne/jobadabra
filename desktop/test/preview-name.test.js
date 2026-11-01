@@ -17,7 +17,7 @@ test('a name that already starts with it is kept; an unknown session still write
 
 test('the short name comes from the session lookup (JP_SESSION) without the project prefix', () => {
   const was = process.env.JP_SESSION; delete process.env.JOB_PILOTTO_SESSION;
-  process.env.JP_SESSION = 'job-pilotto-zz';
+  process.env.JP_SESSION = 'jobadabra-zz';
   try { assert.equal(sessionShortName(), 'zz'); } finally { was === undefined ? delete process.env.JP_SESSION : process.env.JP_SESSION = was; }
 });
 

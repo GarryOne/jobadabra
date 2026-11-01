@@ -64,7 +64,7 @@ test('a changed key or setting is sent at the next start; the result names it, n
 
 test('a workflow this app no longer ships is deleted; the user\'s own workflows stay', async () => {
   const storage = setUp();
-  const gh = fakeGitHub({'.github/workflows/old.yml': '# Job Pilotto — a check we stopped shipping\non: push\n',
+  const gh = fakeGitHub({'.github/workflows/old.yml': '# Jobadabra — a check we stopped shipping\non: push\n',
     '.github/workflows/mine.yml': '# my own\non: push\n'});
   const changed = await github.updateRepo(storage, {fetcher: gh.fetcher});
   assert.ok(changed.includes('removed .github/workflows/old.yml'), changed.join(', '));

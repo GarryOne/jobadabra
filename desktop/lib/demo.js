@@ -11,11 +11,11 @@ import {DEFAULT_PORT} from './server-listen.js';
 export const folder = (here, env = process.env) => env.JOB_PILOTTO_DEMO_DIR || path.join(here, 'demo');
 export const demoPath = (here, name) => path.join(folder(here), name);
 
-export const FLAG = '--job-pilotto-demo';
-export const PREFIX = 'job-pilotto-demo-';
+export const FLAG = '--jobadabra-demo';
+export const PREFIX = 'jobadabra-demo-';
 export const TEXT = 'Demo mode: nothing is sent. Click "Set up my own" to use this with your own data.';
 
-// Only a folder this module made (in the temp folder, named job-pilotto-demo-…): the flag can never point the
+// Only a folder this module made (in the temp folder, named jobadabra-demo-…): the flag can never point the
 // demo's unencrypted store at the user's real data folder.
 export function isDemoFolder(folder, tmp = os.tmpdir()) {
   if (!folder || !path.isAbsolute(folder)) return false;
@@ -23,7 +23,7 @@ export function isDemoFolder(folder, tmp = os.tmpdir()) {
   return path.dirname(resolved) === path.resolve(tmp) && path.basename(resolved).startsWith(PREFIX);
 }
 
-// The demo folder named on the command line (--job-pilotto-demo=<folder>), or null.
+// The demo folder named on the command line (--jobadabra-demo=<folder>), or null.
 export function folderFrom(argv, tmp = os.tmpdir()) {
   const arg = argv.find(item => String(item).startsWith(`${FLAG}=`));
   const folder = arg ? arg.slice(FLAG.length + 1) : '';

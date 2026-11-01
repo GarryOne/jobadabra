@@ -9,7 +9,7 @@
 SLOT_MINE=""
 
 slot_claim() {  # try every slot; sets SLOT_MINE
-  local slots="${JOB_PILOTTO_CHECK_SLOTS:-2}" root="${JOB_PILOTTO_CHECK_SLOT_DIR:-${TMPDIR:-/tmp}/job-pilotto-check-slots}" i dir pid
+  local slots="${JOB_PILOTTO_CHECK_SLOTS:-2}" root="${JOB_PILOTTO_CHECK_SLOT_DIR:-${TMPDIR:-/tmp}/jobadabra-check-slots}" i dir pid
   mkdir -p "$root"
   for i in $(seq 1 "$slots"); do
     dir="$root/slot$i"

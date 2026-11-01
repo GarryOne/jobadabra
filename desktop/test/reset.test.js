@@ -317,10 +317,10 @@ test('an export is written as "Jobadabra" and an old "Job Pilotto" export is sti
   const old = path.join(a.base, 'old-export');
   fs.mkdirSync(old);
   await archive.unpack(file, old);
-  fs.writeFileSync(path.join(old, 'manifest.json'), JSON.stringify({...manifest, app: 'Job Pilotto'}));
+  fs.writeFileSync(path.join(old, 'manifest.json'), JSON.stringify({...manifest, app: 'Jobadabra'}));
   const oldFile = path.join(a.base, 'old.tar.gz');
   await archive.pack(old, oldFile, {names: fs.readdirSync(old)});
-  assert.equal((await reset.stageImport(b.dir, oldFile)).app, 'Job Pilotto');
+  assert.equal((await reset.stageImport(b.dir, oldFile)).app, 'Jobadabra');
 
   fs.writeFileSync(path.join(old, 'manifest.json'), JSON.stringify({app: 'Something else'}));
   const badFile = path.join(a.base, 'bad.tar.gz');

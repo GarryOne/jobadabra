@@ -80,7 +80,7 @@ export function samePress(mine, live, k) {
 export function swapInPage(html) {
   /* global document, DOMParser */
   const next = new DOMParser().parseFromString(html, 'text/html');
-  const ours = node => node.nodeType === 1 && /^(jobpilotto|job-pilotto)/.test(node.id || '');
+  const ours = node => node.nodeType === 1 && /^(jobadabra|jobadabra)/.test(node.id || '');
   const sameKind = (a, b) => a.nodeType === b.nodeType && a.nodeName === b.nodeName && (a.nodeType !== 1 || (a.id || '') === (b.id || ''));
   const morph = (from, to) => {
     if (from.nodeType === 3 || from.nodeType === 8) { if (from.nodeValue !== to.nodeValue) from.nodeValue = to.nodeValue; return; }

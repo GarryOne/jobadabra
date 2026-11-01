@@ -23,7 +23,7 @@ const PAGE = `<!doctype html><html><head><title>Engineer</title></head><body sty
   <div id="jobpilotto-note" style="position:fixed;top:80px;right:12px;z-index:2147483647;width:340px;height:120px"><div>Jobadabra didn't fill this form: cookie consent</div>
     <button type="button">Fill anyway</button><button type="button">Close note</button></div>
   <div id="jobpilotto-reading" role="status" style="position:fixed;right:16px;bottom:200px;z-index:2147483647">Jobadabra is reading</div>
-  <div id="job-pilotto-submit-guard" style="position:fixed;bottom:12px;left:12px;z-index:2147483647"><span>Submit and legal consent paused. </span><button>Unlock Submit</button></div>
+  <div id="jobadabra-submit-guard" style="position:fixed;bottom:12px;left:12px;z-index:2147483647"><span>Submit and legal consent paused. </span><button>Unlock Submit</button></div>
   <script>
     const shadow = document.getElementById('jobpilotto-review-host').attachShadow({mode: 'open'});
     shadow.innerHTML = '<div class="jp" role="dialog" style="position:fixed;right:18px;bottom:18px;z-index:5000;width:420px;height:420px;background:#fff">'

@@ -430,7 +430,7 @@ export async function syncDatabase(storage, {fetcher = globalThis.fetch, unzip} 
   const {repo} = storage.settings().cloud || {};
   if (!repo) return false;
   const api = client(storage.secret('GITHUB_TOKEN'), fetcher);
-  const {artifacts} = await api('GET', `/repos/${repo}/actions/artifacts?name=job-pilotto-jobs-db&per_page=1`);
+  const {artifacts} = await api('GET', `/repos/${repo}/actions/artifacts?name=jobadabra-jobs-db&per_page=1`);
   const latest = artifacts?.find(artifact => !artifact.expired);
   if (!latest || latest.id === storage.settings().cloud.artifactId) return false;
   const response = await fetcher(latest.archive_download_url, {headers: {Authorization: `Bearer ${storage.secret('GITHUB_TOKEN')}`}});

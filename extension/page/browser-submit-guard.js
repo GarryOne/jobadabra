@@ -59,13 +59,13 @@
   // with consents ticked, so the user only presses Submit. The extension itself never submits.
   window.__jobPilottoHandOver = () => {
     active = false;
-    const box = document.getElementById('job-pilotto-submit-guard');
+    const box = document.getElementById('jobadabra-submit-guard');
     if (box) box.firstChild.textContent = 'Jobadabra: filled, consents ticked. Review everything, then press Submit yourself. ';
     box?.querySelector('button')?.remove();
   };
   const showUnlock = () => {
     const box = document.createElement('div');
-    box.id = 'job-pilotto-submit-guard';
+    box.id = 'jobadabra-submit-guard';
     box.style.cssText = 'position:fixed;bottom:12px;right:12px;z-index:2147483647;background:#132439;color:white;padding:10px 12px;border-radius:8px;font:13px sans-serif;box-shadow:0 2px 12px #0008';
     const status = document.createElement('span');
     status.textContent = 'Jobadabra: Submit and legal consent paused. ';

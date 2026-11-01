@@ -66,7 +66,7 @@ jobs:
   mail:
     runs-on: ubuntu-24.04
     concurrency:
-      group: job-pilotto-mail
+      group: jobadabra-mail
       cancel-in-progress: false
     timeout-minutes: 20
     env:
@@ -113,8 +113,8 @@ jobs:
         uses: actions/cache/restore@v5
         with:
           path: data/mail-state.json
-          key: job-pilotto-mail-${{ github.run_id }}
-          restore-keys: job-pilotto-mail-
+          key: jobadabra-mail-${{ github.run_id }}
+          restore-keys: jobadabra-mail-
       - name: Wait
         if: env.GOOGLE_REFRESH_TOKEN != '' && env.NOTION_APPLICATIONS_DB != '' && inputs.delay && inputs.delay != '0'
         run: sleep $(( ${{ inputs.delay }} * 60 ))
@@ -160,4 +160,4 @@ jobs:
         uses: actions/cache/save@v5
         with:
           path: data/mail-state.json
-          key: job-pilotto-mail-${{ github.run_id }}
+          key: jobadabra-mail-${{ github.run_id }}

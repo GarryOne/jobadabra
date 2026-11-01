@@ -6,7 +6,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-export const LOCK = path.join(process.env.TMPDIR || os.tmpdir(), 'job-pilotto-notion-page', 'lock');
+export const LOCK = path.join(process.env.TMPDIR || os.tmpdir(), 'jobadabra-notion-page', 'lock');
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 const read = (lock, name) => { try { return fs.readFileSync(path.join(lock, name), 'utf8').trim(); } catch { return ''; } };
 const pidAlive = pid => { try { process.kill(Number(pid), 0); return true; } catch (error) { return error.code === 'EPERM'; } };

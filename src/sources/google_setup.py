@@ -55,7 +55,7 @@ def gcloud(*args, account):
 
 
 def project_id():
-    return 'job-pilotto-' + ''.join(secrets.choice(string.ascii_lowercase + string.digits) for _ in range(6))
+    return 'jobadabra-' + ''.join(secrets.choice(string.ascii_lowercase + string.digits) for _ in range(6))
 
 
 def newest_client_file(since, folder='~/Downloads'):

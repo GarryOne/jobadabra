@@ -28,7 +28,7 @@ WAITING = 40      # sites kept waiting per country
 
 
 def _get(url, params, opener=urllib.request.urlopen):
-    request = urllib.request.Request(f'{url}?{urllib.parse.urlencode(params)}', headers={'User-Agent': 'job-pilotto'})
+    request = urllib.request.Request(f'{url}?{urllib.parse.urlencode(params)}', headers={'User-Agent': 'jobadabra'})
     with opener(request, timeout=40) as response:
         return json.load(response)
 

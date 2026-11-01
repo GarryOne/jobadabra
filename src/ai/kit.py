@@ -144,7 +144,7 @@ def form_questions(url, opener=None):
     if not ref:
         return []
     api = f'https://boards-api.greenhouse.io/v1/boards/{ref[0]}/jobs/{ref[1]}?questions=true'
-    request = urllib.request.Request(api, headers={'User-Agent': 'JobPilotto/0.1 (personal job search)'})
+    request = urllib.request.Request(api, headers={'User-Agent': 'Jobadabra/0.1 (personal job search)'})
     with (opener or urllib.request.urlopen)(request, timeout=20) as response:
         data = json.load(response)
     groups = [('', data.get('questions') or []), ('', data.get('location_questions') or [])]

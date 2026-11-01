@@ -13,7 +13,7 @@
 //   --no-picture       only the --eval result, no screenshot
 //   --output <file>    a recorded terminal output to show as the session's log (e.g. a real session's)
 //   --width <px>       the window's width, to check a narrow layout (default 1280; the window's minimum is lib/main-window.js MIN_WIDTH)
-//   --out <file.png>   where the picture goes (default: $TMPDIR/job-pilotto-shot.png)
+//   --out <file.png>   where the picture goes (default: $TMPDIR/jobadabra-shot.png)
 //   --search <json>    written as config/search.json (a state the demo lacks: the strategy's lists)
 //   --theme <light|dark>  the app's theme; the demo's default is dark. The one way: the app's own JOB_PILOTTO_THEME (lib/main-window.js applyTheme), which this option sets and an exported
 //                      JOB_PILOTTO_THEME also does. A data-theme attribute set by --js does nothing: the CSS follows Electron's theme source.
@@ -63,7 +63,7 @@ if (option('search')) {
   fs.mkdirSync(path.join(data, 'config'), {recursive: true});
   fs.writeFileSync(path.join(data, 'config', 'search.json'), option('search'));
 }
-const out = path.resolve(option('out') || path.join(os.tmpdir(), 'job-pilotto-shot.png'));
+const out = path.resolve(option('out') || path.join(os.tmpdir(), 'jobadabra-shot.png'));
 fs.rmSync(`${out}.json`, {force: true});
 // Why (30 Oct 2026): the timeout below kills only the `.bin/electron` shim; the app itself ends when this script does (lib/e2e-host.js watchRunner), never left running for days.
 const env = {...process.env, JOB_PILOTTO_DEMO: '1', JOB_PILOTTO_E2E_RUNNER_PID: String(process.pid), JOB_PILOTTO_USER_DATA: data, JOB_PILOTTO_SMOKE: out, JOB_PILOTTO_SMOKE_JS: script(steps.join('\n'))};

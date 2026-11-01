@@ -104,7 +104,7 @@ class Client:
         if not self.refresh and path.exists() and time.time()-path.stat().st_mtime<21600:
             return json.loads(path.read_text())
         from . import host_pace   # each site at its own learned pace (jobs.ch refused a fast burst, 403, 6 Oct 2026)
-        with host_pace.open(Request(url,headers={'User-Agent':'JobPilotto/0.1 (personal job discovery)'}),15) as r:
+        with host_pace.open(Request(url,headers={'User-Agent':'Jobadabra/0.1 (personal job discovery)'}),15) as r:
             data={'url':r.url,'html':r.read(5_000_000).decode('utf-8',errors='replace')}
         path.write_text(json.dumps(data));return data
 

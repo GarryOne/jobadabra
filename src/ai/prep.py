@@ -95,7 +95,7 @@ def role_text(stores, record, db_path=None):
     sections = stores.applications.sections(record['id'])
     known = [sections.get(name, '') for name in SECTIONS if sections.get(name)]
     url = record.get('url') or ''
-    if url and not re.search(r'mail\.google|linkedin\.com/messaging|jobpilotto', url):
+    if url and not re.search(r'mail\.google|linkedin\.com/messaging|jobadabra', url):
         try:
             from .. import store
             from ..paths import jobs_db

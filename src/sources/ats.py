@@ -19,7 +19,7 @@ from pathlib import Path
 from . import host_pace, posting_text
 from .ats_conditional import HEAD, Unchanged, conditional, conditional_state, first_page  # noqa: F401  (re-exported: ats.Unchanged, ats.first_page)
 
-USER_AGENT = 'JobPilotto/0.1 (personal job search; contact via GitHub GarryOne/jobadabra)'
+USER_AGENT = 'Jobadabra/0.1 (personal job search; contact via GitHub GarryOne/jobadabra)'
 TIMEOUT = 20
 DESCRIPTION_LIMIT = 12000
 

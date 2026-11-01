@@ -56,7 +56,7 @@ export function parseLive(output) {
   let fillVideo = null, derived = null, told = null, onAccount = false, digestHold = '', dialogLeft = false, usd = null, aiCalls = null, tripped = false, aiRefused = null;
   const openFills = new Map();   // page -> the line its fill started on, while it has not reported (fill: filling {page})
   let countPage = '', lastReport = '', countAt = -1;   // the page the counted "fields:" line belongs to
-  const pageKindErrors = [];   // the AI's own words when a page-kind answer had no kind (usage limit, CLI failure...): job-pilotto-54 found a fast null answer with nothing saying why
+  const pageKindErrors = [];   // the AI's own words when a page-kind answer had no kind (usage limit, CLI failure...): jobadabra-54 found a fast null answer with nothing saying why
   const reach = step => { if (rank(step) > rank(reached)) reached = step; };
   for (const [index, line] of lines.entries()) {
     if (/Apply pressed on /.test(line)) reach('posting');

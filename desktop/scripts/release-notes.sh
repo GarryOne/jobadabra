@@ -9,7 +9,7 @@ max=40
 prev=$(git describe --tags --match 'desktop-v*' --abbrev=0 "$sha^" 2>/dev/null || true)
 # Keep in sync with the paths that trigger .github/workflows/desktop.yml.
 paths=(desktop src config tools extension app-core/src requirements.txt
-       docs/notion-profile-template.md docs/job-pilotto-guide.md)
+       docs/notion-profile-template.md docs/jobadabra-guide.md)
 
 changes=$(git log --no-merges --format='- %s (%h)' "${prev:+$prev..}$sha" -- "${paths[@]}")
 count=$(printf '%s' "$changes" | grep -c '^- ' || true)

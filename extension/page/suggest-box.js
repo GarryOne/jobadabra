@@ -6,7 +6,7 @@
   if (window.__jobPilottoSuggest) return;
   const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
   const fold = window.__jobPilottoFold;   // page/fold-text.js, loaded first: accents, case and spacing ignored
-  const OWN = '[class*="job-pilotto"], [id*="job-pilotto"], [id*="jobpilotto"], [data-jobpilotto-armed]';
+  const OWN = '[class*="jobadabra"], [id*="jobadabra"], [id*="jobpilotto"], [data-jobpilotto-armed]';
   // Every visible text node's element with no element inside (a suggestion row, a notice), the extension's own boxes left out.
   const leaves = () => Array.from(document.body.querySelectorAll('*')).filter(node => !node.children.length && fold(node.textContent) && node.offsetParent !== null && !node.closest(OWN));
   const snapshot = () => new Set(leaves());

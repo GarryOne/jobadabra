@@ -1,5 +1,5 @@
 """Every place that tells a session how a tools/ship.sh run ends names every ending: DONE (merged), FAILED, REVIEW (green, the owner merges by hand), then MERGED / CLOSED / RED from the watcher (tools/ship-watch.sh, 18 Oct 2026).
-12 Oct 2026: review mode ends with 'ship: REVIEW #n'; ship's own announcement named only DONE and FAILED, and job-pilotto-next-move waited 10 min in the
+12 Oct 2026: review mode ends with 'ship: REVIEW #n'; ship's own announcement named only DONE and FAILED, and jobadabra-next-move waited 10 min in the
 foreground for a line it never prints. A new doc, skill or tool line that names the endings without REVIEW fails here."""
 import re
 import subprocess

@@ -21,7 +21,7 @@ JOB_WORDS = {'fr': 'emplois carrières', 'de': 'Stellen Jobs', 'it': 'lavoro car
 
 
 def _get(url, headers=None):
-    request = urllib.request.Request(url, headers={'Accept': 'application/json', 'User-Agent': 'JobPilotto/1.0', **(headers or {})})
+    request = urllib.request.Request(url, headers={'Accept': 'application/json', 'User-Agent': 'Jobadabra/1.0', **(headers or {})})
     with urllib.request.urlopen(request, timeout=20) as response:
         return json.load(response)
 

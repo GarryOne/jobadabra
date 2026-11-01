@@ -207,11 +207,11 @@ export function designRules({view, limits, scope = ''}) {
 // Screens that broke a rule before it was written (18 Oct 2026), with the session fixing each: `${view}|${kind}|${card}` -> who; view = the page's data-view,
 // card '*' = any card of that page (a session card is named after its job). Shrink-only: a fixed screen comes off (the test counts them), a new one is never added.
 // Measured on the demo pages (npm run shot --eval, loaded, folds open) on 18 Oct 2026.
-const CLEANUP = 'design-cleanup (to start; job-pilotto-75 proposes it)';
+const CLEANUP = 'design-cleanup (to start; jobadabra-75 proposes it)';
 const STRATEGY = 'the mockup rebuild session (Strategy from mockup 03)', CV_CHECK = 'the mockup rebuild session (CV check from mockup 08)';
 export const KNOWN_LEFT = {
   // The design-system page's "Value → control" section draws answerControl (question-control*.js): its period, net/gross, unit and few-option menus are selects.
-  'value-control|small-select|page': 'the editors session (Availability, Work eligibility, answer kinds) proposed by job-pilotto-75',
+  'value-control|small-select|page': 'the editors session (Availability, Work eligibility, answer kinds) proposed by jobadabra-75',
   // Up next: each item's own orange button (Open LinkedIn, Open email, Build new prep kit…).
   'focus|many-primaries|Up next': CLEANUP,
   // Jobs' list filter (7 views) and sort (3) menus; Interviews' outcome filter (4).

@@ -69,9 +69,9 @@ class OpenAIApiTests(unittest.TestCase):
         client = OpenAIApi(client=fake, action='mail')
         client.messages.create(**dict(PARAMS, extra_headers={'x-jp-action': 'opportunity'}))
         self.assertEqual(fake.sent[0]['extra_headers'], {'x-jp-action': 'opportunity'})
-        self.assertEqual(fake.sent[0]['prompt_cache_key'], 'job-pilotto-opportunity')
+        self.assertEqual(fake.sent[0]['prompt_cache_key'], 'jobadabra-opportunity')
         client.messages.create(**PARAMS)
-        self.assertEqual(fake.sent[1]['prompt_cache_key'], 'job-pilotto-mail')
+        self.assertEqual(fake.sent[1]['prompt_cache_key'], 'jobadabra-mail')
         self.assertNotIn('extra_headers', fake.sent[1])
 
     def test_a_structured_call_with_an_image_reads_like_claudes(self):
@@ -82,7 +82,7 @@ class OpenAIApiTests(unittest.TestCase):
         self.assertEqual(sent['instructions'], 'Rules.\n\nProfile.')
         self.assertEqual(sent['reasoning'], {'effort': 'low'})
         self.assertFalse(sent['store'])                                     # OpenAI keeps no copy
-        self.assertEqual(sent['prompt_cache_key'], 'job-pilotto-decide')
+        self.assertEqual(sent['prompt_cache_key'], 'jobadabra-decide')
         fmt = sent['text']['format']
         self.assertEqual((fmt['type'], fmt['strict'], fmt['schema']['required']), ('json_schema', True, ['answer', 'why', 'items']))
         self.assertEqual(sent['input'][0]['content'][1], {'type': 'input_image', 'image_url': f'data:image/png;base64,{PNG}'})

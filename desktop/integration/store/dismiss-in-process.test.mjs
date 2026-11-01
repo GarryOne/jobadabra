@@ -59,7 +59,8 @@ test('a job dismissed in process stays out of the In process list: Closed in the
   let release, gotAnswer;
   const gate = new Promise(resolve => { release = resolve; });
   const answered = new Promise(resolve => { gotAnswer = resolve; });
-  const late = pipeline.jobs(storage, 200, async (...args) => { const answer = await pipelineRun.run(...args); gotAnswer(); await gate; return answer; });
+  let rawAnswer;
+  const late = pipeline.jobs(storage, 200, async (...args) => { const answer = await pipelineRun.run(...args); rawAnswer = answer; gotAnswer(); await gate; return answer; });
   await answered;
 
   const result = await handlers.get('setStatus')({}, EMBER, 'dismissed');
@@ -76,5 +77,7 @@ test('a job dismissed in process stays out of the In process list: Closed in the
   const reloaded = await reloading;
   assert.ok(!inProcess(ember(reloaded)), `after a reload the dismissed job is back in process (${JSON.stringify(ember(reloaded))})`);
 
-  assert.ok(inProcess(ember(await late)), 'the control: the late read does list the job in process, so the reload above was proven against a store listing it late');
+  // Why (#2758): the control is the engine's own late answer (the store listing the job in process after the write); the Jobs read the app returns shows the write (lib/view-cache.js withHeldWrites).
+  assert.ok(inProcess(ember(JSON.parse(rawAnswer.stdout.trim().split('\n').pop()))), 'the control: the engine answered late with the job in process, so the reload above was proven against a store listing it late');
+  assert.ok(!inProcess(ember(await late)), 'the late read, returned by the app, shows the job dismissed (the app holds its own write)');
 });

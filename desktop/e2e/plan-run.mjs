@@ -38,12 +38,12 @@ function aiPlanOutputs(suites, offlineAi, review) {
 
 // all: every suite; cadence / watches: what each suite exports (lib/plan.mjs says what they mean).
 // clean-code-ok: Why (29 Oct 2026, st): old function; this change adds one option to its signature (offlineAi) and its score falls (63 to 62)
-export async function planRun({env, gh = realGh, all, minutes, os = async () => 'macos-latest', cadence = {}, watches = {}, parts = {}, judges = {}, varies = [], sameOnEveryOs = [], storeless = [], shards = {}, offlineAi = [], backbone = []}) {
+export async function planRun({env, gh = realGh, all, minutes, os = async () => 'macos-latest', cadence = {}, watches = {}, parts = {}, judges = {}, varies = [], sameOnEveryOs = [], storeless = [], shards = {}, offlineAi = [], backbone = [], now = Date.now()}) {
   const {EVENT: event, REPO: repo, SHA: sha} = env;
   // TARGET_REF (the gate, the soak top-ups and the stable canary): test THAT release's commit, with this workflow file. The workflow file of an old tag does not know newer
   // inputs (canary, soak), so the run is started on main and told which tag to check out.
   // NIGHT_PASS ("3/5", lib/night-pass.mjs): one of the five nightly full runs; each tests the commit of pass 1.
-  const night = env.NIGHT_PASS ? nightRef({pass: env.NIGHT_PASS, sha, now: Date.now(), runs: JSON.parse(gh(['run', 'list', '-R', repo, '--workflow', 'e2e.yml', '-L', '40', '--json', 'headSha,createdAt,displayTitle']) || '[]')}) : null;
+  const night = env.NIGHT_PASS ? nightRef({pass: env.NIGHT_PASS, sha, now, runs: JSON.parse(gh(['run', 'list', '-R', repo, '--workflow', 'e2e.yml', '-L', '40', '--json', 'headSha,createdAt,displayTitle']) || '[]')}) : null;
   const targetRef = env.TARGET_REF || (night && night.ref !== sha ? night.ref : '');
   let target = '';
   if (targetRef) {

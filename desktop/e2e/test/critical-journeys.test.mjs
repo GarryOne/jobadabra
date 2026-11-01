@@ -43,6 +43,14 @@ test('every tier 2 journey\'s integration test exists (a rename or a removal fai
   assert.ok(registrySteps(registry).some(entry => entry.integration), 'the control: the registry lists integration tests');
 });
 
+test('an integration step that lists literal parts is reported when one part is gone (a name the test builds from pieces)', () => {
+  const edited = structuredClone(registry);
+  const step = edited.journeys.find(journey => journey.id === 'J19').steps[0];
+  assert.ok(step.parts?.length > 1, 'the control: J19 lists its title in parts');
+  step.parts = [...step.parts, 'a part the test does not hold'];
+  assert.deepEqual(missingIntegrationTests(edited).map(({group}) => group), ['J19']);
+});
+
 test('an integration test renamed in its file is reported with its group', () => {
   const renamed = structuredClone(registry);
   const step = renamed.journeys.find(journey => journey.id === 'J16').steps[0];

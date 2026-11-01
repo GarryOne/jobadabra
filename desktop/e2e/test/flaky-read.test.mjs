@@ -105,6 +105,17 @@ test('runs(): the newest at or before the red, plus the 6 h after it, each in it
   assert.deepEqual((await none.runs(100)).map(item => item.id), [7], 'without a red time: the newest runs, as before');
 });
 
+test('runs(): the 6 h after the red is read whole, so the runs just after it survive a small window (GitHub lists newest first)', async () => {
+  // Why (#2828, Gitar): a 15-run page of the after-window held the runs 4-6 h away; the greens right after the red never got compared.
+  const after = Array.from({length: 40}, (_, i) => ({id: 100 + i, sha: 's', at: new Date(Date.parse(RED_AT) + (40 - i) * 8 * 60000).toISOString(), title: 't', url: 'u'}));   // newest first, like GitHub
+  const asked = [];
+  const io = ghIo({repo: 'o/r', run: fakeGh([[/created=%3C%3D/, '[]'], [/created=2026-11-01T03%3A30%3A39Z\.\./, args => { asked.push(args.join(' ')); return JSON.stringify(after.slice(0, Number(/per_page=(\d+)/.exec(args.join(' '))[1]))); }]])});
+  const listed = await io.runs(15, {redAt: RED_AT});
+  assert.match(asked[0], /per_page=100/, 'the after-window is asked for in one full page, whatever the window');
+  assert.equal(listed.length, 40, 'every run of the 6 h after the red is returned; the caller cuts to its window after sorting nearest first');
+  assert.ok(listed.some(item => item.id === 139), 'the run 8 minutes after the red is among them');
+});
+
 test('storesOf(): an unsuffixed key beside its own -standin sibling is the sqlite leg of a gate/night run, with no coverage artifact needed', async () => {
   const listing = ['1\t3240\te2e-view-apply-1of3', '2\t3790\te2e-view-apply-1of3-standin', '3\t3000\te2e-view-apply-2of3', '4\t3000\te2e-view-settings'].join('\n');
   const io = ghIo({repo: 'o/r', run: fakeGh([[/artifacts\?per_page=100/, listing]])});

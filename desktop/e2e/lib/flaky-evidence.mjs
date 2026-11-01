@@ -271,10 +271,10 @@ export function ghIo({repo, root = process.cwd(), run: runGh = gh, remoteUrl = `
     /** The runs of e2e.yml nearest the red in time: the `limit` newest up to the red, and (for a red with a known time) the ones in the 6 h after it. Without redAt, the newest `limit`. */
     runs: async (limit, {redAt} = {}) => {
       const fields = '[.workflow_runs[] | {id, sha: .head_sha, at: .created_at, title: .display_title, url: .html_url}]';
-      const page = created => JSON.parse(run(['api', `repos/${repo}/actions/workflows/e2e.yml/runs?status=completed&per_page=${Math.min(limit, 100)}${created ? `&created=${encodeURIComponent(created)}` : ''}`, '--jq', fields]));
+      const page = (created, size = Math.min(limit, 100)) => JSON.parse(run(['api', `repos/${repo}/actions/workflows/e2e.yml/runs?status=completed&per_page=${size}${created ? `&created=${encodeURIComponent(created)}` : ''}`, '--jq', fields]));
       if (!redAt || Number.isNaN(Date.parse(redAt))) return page('');
       const until = new Date(Date.parse(redAt) + AFTER_RED_MS).toISOString().replace('.000Z', 'Z');
-      const before = page(`<=${redAt}`), after = page(`${redAt}..${until}`);
+      const before = page(`<=${redAt}`), after = page(`${redAt}..${until}`, 100);   // Why (#2828, Gitar): GitHub lists newest first, so a `limit`-sized page of the after-window kept the runs 4-6 h away; nearestFirst + the caller's slice cut it down
       return [...before, ...after.filter(item => !before.some(known => known.id === item.id))];
     },
     viewNames: async runId => (await artifactsOf(runId)).map(item => item.name),

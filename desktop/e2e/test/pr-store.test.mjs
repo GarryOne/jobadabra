@@ -109,7 +109,7 @@ test('#2157: removed UI words count only where a suite expects them, not in step
   assert.match(checkedText(named), /'https:\/\/x\.test\/a'/, 'a URL is no comment');
 });
 
-test('one replay of the recorded cases per PR, in CI · Page cases only (no `recorded` e2e suite since 1 Nov 2026); it leaves the slow ones to main, extension change or not', async () => {
+test('one replay of the recorded cases per PR, in CI · Integration · Page cases only (no `recorded` e2e suite since 1 Nov 2026); it leaves the slow ones to main, extension change or not', async () => {
   // #2164 replayed every case twice: page-cases 2 jobs and 5 runner-min, e2e's recorded 5 jobs and 44.
   // Owner, 27 Oct 2026: slow cases stay off PRs ("One bug in hundreds of PRs, that's low value": #1621 was the one escape since 17 Oct).
   const {splitForPr} = await import('../lib/replay-slow.mjs');

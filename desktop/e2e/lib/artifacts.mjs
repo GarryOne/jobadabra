@@ -96,7 +96,10 @@ export const annotationLines = records => records.slice(0, 3)
   .map(record => `::error title=${escapeProperty(`${record.suite} · ${record.step}`)}::${escapeData(fitItems(String(record.message || '').split('\n')[0]) || 'failed')}`);
 
 // suite-failures.json, every run: the failed steps, or an empty list; on GitHub also one annotation per failed step.
-export function writeSuiteFailures(dir, suite, results, env = process.env) {
+// Why (1 Nov 2026, owner saw 2 errors on a green harness job, #2784): the env argument has no default. A test that fell back to process.env printed real error annotations
+// whenever GITHUB_ACTIONS=true leaked in, so every caller now says which env it means (production passes process.env; a test passes an empty object or its own).
+export function writeSuiteFailures(dir, suite, results, env) {
+  if (!env) throw new Error('writeSuiteFailures needs an explicit env (process.env in production, {} in a test): see the Why above');
   fs.mkdirSync(dir, {recursive: true});
   const records = failureRecords(suite, results, aiFailureEvidence(dir));
   fs.writeFileSync(path.join(dir, 'suite-failures.json'), JSON.stringify(records, null, 2));

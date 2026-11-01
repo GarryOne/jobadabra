@@ -310,7 +310,7 @@ folded steps and probe path, and the same facts as one hidden `<!-- replay: {…
 
 
 The retired `mailreading` file is a pointer because lanes-check requires registry entries to have a file.
-The PR plan reads changed files as it does for `watches`, including one-hop Python imports. It emits
+The after-merge plan (a PR runs no e2e since 1 Nov 2026: unit + integration on the PR, journeys after the merge on main, in the night burn-in and the beta) reads changed files as it does for `watches`, including one-hop Python imports. It emits
 `(parts).qualityai` in `pr_steps`; plan-run carries that as `matrix.qualityParts`, and e2e.yml passes
 `E2E_QUALITY_PARTS`. Mail-only changes run only the mail eval, without the Jobs journey. Unrelated
 changes, schedules and nightly gates never add mail. Name `qualityai:mail` in e2e.yml's suite input

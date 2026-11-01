@@ -23,7 +23,7 @@ export function passNumber(text) {
  * suites (lib/plan.mjs): once a night is a report; five looks at them would be five reports.
  */
 export const nightSuites = (all, cadence, pass = 0) => {
-  const gate = autoSuites(all, cadence).filter(suite => cadence[suite] !== 'outside' && !LIVE_AI.includes(suite));
+  const gate = autoSuites(all, cadence).filter(suite => !LIVE_AI.includes(suite));
   return all.filter(suite => gate.includes(suite) || (pass === 1 && cadence[suite] === NIGHT_REPORT));
 };
 

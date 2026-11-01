@@ -101,8 +101,6 @@ export async function planRun({env, gh = realGh, all, minutes, os = async () => 
       if (skip.length) { suites = suites.filter(suite => !skip.includes(suite)); why = `${skip.join(', ')} not run: nothing it watches changed since the last Mac-approved release (the nightly runs it)`; }
     }
   }
-  // Why (30 Oct 2026, a8, #2502): the outside world has its own daily cron (e2e.yml OUTSIDE), never inferred from run history: the Worker starts looks as dispatches.
-  else if (env.OUTSIDE) suites = all.filter(suite => cadence[suite] === 'outside');
   else if (event === 'schedule') {   // the three-a-day schedule: the always suites, on a new commit, for a finding that waits, or while exploring still finds something
     const decision = exploreDecision({head: ref, lastSha, runsOnHead: runs.filter(own)});
     exploring = decision.exploring; why = decision.why;
@@ -116,8 +114,8 @@ export async function planRun({env, gh = realGh, all, minutes, os = async () => 
   // names: exactly those, even a manual one; none: everything not manual. A release's repeat (TARGET_REF without a gate: a soak top-up, the stable canary) leaves the slim ones out.
   else suites = String(env.ONLY || '').trim() ? suitesNamed(env.ONLY, all) : autoSuites(all, cadence, false, !!env.TARGET_REF);
 
-  // Stale PR/after-merge dispatch inputs must never reintroduce the outside world.
-  if (env.PR_SUITES || event === 'pull_request') suites = suites.filter(suite => !['outside', NIGHT_REPORT].includes(cadence[suite]));
+  // Stale PR/after-merge dispatch inputs must never reintroduce a night-report suite.
+  if (env.PR_SUITES || event === 'pull_request') suites = suites.filter(suite => cadence[suite] !== NIGHT_REPORT);
 
   const files = lastSha ? changed(lastSha, ref) : null;
   let review = !night && (exploring || reviewNeeded({files: files || [], waiting, known: files !== null}));   // an exploring run exists for what the AI review sees

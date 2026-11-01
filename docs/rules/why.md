@@ -201,7 +201,7 @@ An e2e job's "Run the apply-1of2 suite (first try)" step showed a green tick whi
 - The owner's Mac sat at load 89: session 8b ran `node --test` over a grep-built list of e2e harness tests (fill-overlay, panel-tailor… open Chrome for
   Testing), and session 33 ran the full `python3 -m unittest discover` (the heavy-lock tests spawn processes and wait on clocks). Owner: "are now sessions
   again required to run e2e tests locally? That loads my mac" / "I didn't want that" / "It should run only on CI" / "and locally, only very isolated".
-- Rule: in a session, one named test file or one e2e step; CI runs every suite on the PR. Gate: `~/.claude/hooks/foreground-long-run.py` refuses a whole-suite
+- Rule: in a session, one named test file or one e2e step; a PR runs unit + integration on CI, and the journeys run after each merge on main, in the night burn-in and the beta (1 Nov 2026: "No e2e on PRs"). Gate: `~/.claude/hooks/foreground-long-run.py` refuses a whole-suite
   command (background or not; cases in `foreground-long-run.cases.sh`); escape `E2E_LOCAL_OK=1` only on the owner's word.
 
 ## The central scout's own AI cap, and a sample per employer (26 Oct 2026)

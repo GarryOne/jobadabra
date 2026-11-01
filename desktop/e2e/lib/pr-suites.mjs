@@ -106,7 +106,7 @@ export function report({strings, hits, changedFiles, sources}) {
 export function planPrSuites({pointed = [], hits = {}, covering = {}, direct = [], catches = {}, lanes = {}, linux, cadence = {}, pullRequest = false}) {
   const reports = pullRequest ? new Set(Object.entries(lanes.suites || {}).filter(([suite, entry]) => entry?.lane === 'tolerant' && entry.pr === 'number').map(([suite]) => suite)) : new Set();
   const wanted = [...new Set([...pointed, ...Object.keys(hits), ...Object.keys(covering)])].filter(suite => (
-    !['manual', 'outside', NIGHT_REPORT].includes(cadence[suite]) &&
+    !['manual', NIGHT_REPORT].includes(cadence[suite]) &&
     (reports.has(suite) || isBackbone(lanes, suite))));
   let run = wanted.filter(suite => linux(suite) || pointed.includes(suite) || String(covering[suite] || '').startsWith('runs '));
   const numbers = run.filter(suite => reports.has(suite));

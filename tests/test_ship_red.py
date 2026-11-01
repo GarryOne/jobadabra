@@ -29,7 +29,7 @@ class ShipRedTest(ShipFixture):
 
     def runs(self, minutes_ago=1, red=True):
         rows = [{'workflowName': name, 'headSha': self.tip, 'status': 'completed', 'conclusion': 'failure' if (red and n == 0) else 'success', 'databaseId': 40 + n, 'updatedAt': iso(minutes_ago), 'url': f'https://x/runs/{40 + n}'}
-                for n, name in enumerate(('CI · Tests', 'CI · Page cases (all cases, real extension, Linux)'))]
+                for n, name in enumerate(('CI · Tests', 'CI · Integration · Page cases (all cases, real extension, Linux)'))]
         self.write_runs(rows)
 
     def write_runs(self, rows):

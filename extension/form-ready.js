@@ -1,7 +1,7 @@
 // The AI's veto on an APPLICATION form's "Ready to submit" (owner, 8 Oct 2026: the account page's "ready?" judgment, ported). The panel counts required boxes by HTML; when that count says
 // everything is filled, the AI reads the page's real state (a consent that is a link, a custom picklist, an error shown) and may say "needs you: <label>"; the worker then sets the page's
 // data-jobpilotto-needs, which the panel shows instead of "Ready". It only ever VETOES a ready claim: it never accepts a consent, never presses Submit, and without AI nothing changes.
-// The answer is kept per tab for the sketch it was given (asked again only when the page changed), one look at a time. Guards: worker/test/form-ready.test.js, desktop/test/form-judge.test.js.
+// The answer is kept per tab for the sketch it was given (asked again only when the page changed), one look at a time. Guards: app-core/test/form-ready.test.js, desktop/test/form-judge.test.js.
 import {backgroundContext, backgroundFormReady} from './background-apply.js';
 import {apiFor, gaveUpOn, settings} from './flow.js';
 import {decide} from './log.js';
@@ -19,7 +19,7 @@ export const blockedWords = kind => BLOCKED_WORDS[kind] || BLOCKED_WORDS.overlay
 // A blocked page is judged once more a little later (11 Oct 2026, Louis Vuitton: a "wait, importing" dialog covered the form for a few seconds and then went): a page that recovers is not a failure, one that does not stays blocked.
 export const timing = {recheckMs: 8000};
 // A page the judge never answers (no AI, an answer that is not one of the fixed words) is asked a few times, then left to the panel's own count until the page changes: every look
-// before this asked again (beta 17 Oct 2026, a sign-in form ending at the person: 595 account-judge calls in 5 minutes, one a second, to the end of the run). Guard: worker/test/form-ready.test.js.
+// before this asked again (beta 17 Oct 2026, a sign-in form ending at the person: 595 account-judge calls in 5 minutes, one a second, to the end of the run). Guard: app-core/test/form-ready.test.js.
 export const MAX_NO_ANSWER = 3;
 const looking = new Set(), judged = new Map(), unanswered = new Map();
 // The structure says the form is ready: every counted required field is filled, on an application page (not an account page).
@@ -30,7 +30,7 @@ const run = (tab, frameId, func, args = [], world) => chrome.scripting.executeSc
 
 // The fill of this tab still running (fill-flow.js writes <html data-jobpilotto-fill> on the top page): the page is half filled while the AI's answers are on their way, so the panel's count can
 // look ready over boxes not written yet (12 Oct 2026, HelloFresh in the app: "needs First Name*" 0.6 s after the first fields, over a sketch with every box empty; the stale flag stayed and the
-// phone retry never ran). The panel's claim is not judged then: the fill's own end judges the settled page (formNext). Guard: worker/test/form-ready.test.js, recorded case judge-waits-for-fill-1.
+// phone retry never ran). The panel's claim is not judged then: the fill's own end judges the settled page (formNext). Guard: app-core/test/form-ready.test.js, recorded case judge-waits-for-fill-1.
 const fillRunning = tab => run(tab, 0, () => { try { return JSON.parse(document.documentElement?.dataset.jobpilottoFill || '{}').state === 'running'; } catch { return false; } }).then(Boolean);
 
 export async function formReady(tab, frameId, payload) {
@@ -52,7 +52,7 @@ export const forgetJudged = tabId => { judged.delete(tabId); unanswered.delete(t
 
 // The fill ladder's fill_verify in SHADOW (spec docs/superpowers/specs/2026-10-12-fill-ladder.md, PR 3; owner, 12 Oct 2026: one zoo pass + one pool pass, then repair goes live): asked
 // on the same settled sketch when a control did not keep what the fill gave it (match "no"), or the judge names as missing a control the fill's match says it kept. Its verdicts are only
-// logged; nothing acts on them. Not awaited: the panel never waits for it. Guard: worker/test/form-ready.test.js.
+// logged; nothing acts on them. Not awaited: the panel never waits for it. Guard: app-core/test/form-ready.test.js.
 // The kinds of value that are contact details: one that sits in a sentence asking something (a phone number in a yes/no question) is asked about too, though the box holds it (13 Oct 2026).
 const CONTACT_KINDS = ['phone', 'email_shaped', 'dial_code'];
 const asksQuestion = label => { const words = String(label || '').replace(/[\s*]+$/, '').split(/\s+/).filter(Boolean); return words.length >= 4 && /[?？]$/.test(words.at(-1)) || words.length > 8; };
@@ -98,7 +98,7 @@ async function askForm(tab, frameId, again = false) {
 
 // A fill that gave up on a REQUIRED control it can never settle (a suggest-only combobox whose list never offers a match) ends at the person, whatever the AI judge says or whether it answers
 // (14 Oct 2026, the combo stall's required variant: the run had no end, "dead end: silent" fired 31 s after the fill): the same hand-off as the judge's needs_person (the page flag
-// names the field, the silent clock ends). `trace`: the fill's own rows. -> the labels handed over. Guard: worker/test/form-ready.test.js.
+// names the field, the silent clock ends). `trace`: the fill's own rows. -> the labels handed over. Guard: app-core/test/form-ready.test.js.
 export async function handGivenUpToPerson(tab, frameId, trace) {
   const gaveUp = new Set(gaveUpOn(tab.id));
   const owed = [...new Set((trace || []).filter(row => row.required && row.outcome === 'left' && gaveUp.has(row.label)).map(row => String(row.label).replace(/\s+/g, ' ').trim()).filter(Boolean))];

@@ -1,6 +1,6 @@
 // What the panel learns from the person and reports to the app, never typing or clicking in the form: controls the form model did not read (kind and shape
 // only), what you answered yourself and what the fill missed (labels and kinds, never a value), and the Submit press. Injected before review.js (panel-files.js);
-// review.js calls window.__jobPilottoPanelLearn.start(...) once the panel mounts. Guarded by worker/test/submit-press, panel-widgets, extension-files.
+// review.js calls window.__jobPilottoPanelLearn.start(...) once the panel mounts. Guarded by app-core/test/submit-press, panel-widgets, extension-files.
 (() => {
   window.__jobPilottoPanelLearn = {start({send, alive, form, mine}) {
   const {fields, question, visible, clean} = form;

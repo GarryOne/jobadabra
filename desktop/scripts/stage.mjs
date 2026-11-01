@@ -1,5 +1,5 @@
 // Build staging: copies the worker, recipe format and (with --app) the pipeline, config and extension into the app.
-//   node scripts/stage.mjs          copy worker/src into shared/worker and the recipe format into shared/ (the app imports them; also run by
+//   node scripts/stage.mjs          copy app-core/src into shared/app-core and the recipe format into shared/ (the app imports them; also run by
 //                                   npm start and npm test, so dev and packaged use the same files)
 //   node scripts/stage.mjs --files-only   only the plain copies, nothing removed first, no bundle: for code that imports shared/ where the app's
 //                                   dependencies are not installed (the e2e tests' own tests on CI's plan job, 9 Oct 2026: esbuild missing failed them)
@@ -26,7 +26,7 @@ const into = process.argv.indexOf('--into');
 const shared = into > 0 ? path.resolve(process.argv[into + 1]) : path.join(desktop, 'shared');
 const out = filesOnly ? shared : path.join(desktop, `.shared-staging-${process.pid}`);
 if (!filesOnly) fs.rmSync(out, {recursive: true, force: true});
-copy('worker/src', path.join(out, 'worker'));
+copy('app-core/src', path.join(out, 'app-core'));
 // The recipe format, one source for the site, the extension and the app (extension/recipe-schema.js).
 fs.copyFileSync(path.join(repo, 'extension', 'recipe-schema.js'), path.join(out, 'recipe-schema.js'));
 // The label meanings format (extension/alias-schema.js): the app validates the aliases it passes on and cleans question wording with it.
@@ -39,7 +39,7 @@ for (const file of ['endings.js', 'control-ending.js']) fs.copyFileSync(path.joi
 if (filesOnly) { console.log('Staged shared/ (files only, no bot bundle)'); process.exit(0); }
 // The Telegram bot as ONE file (its Anthropic dependency inside), which the app uploads to the user's own
 // Cloudflare account for "Telegram buttons, always on" (lib/telegram-cloud.js).
-await (await import('esbuild')).build({entryPoints: [path.join(repo, 'worker', 'src', 'index.js')], bundle: true,
+await (await import('esbuild')).build({entryPoints: [path.join(repo, 'app-core', 'src', 'index.js')], bundle: true,
   format: 'esm', platform: 'browser', conditions: ['workerd', 'worker', 'browser'], target: 'es2022', minify: true,
   nodePaths: [path.join(desktop, 'node_modules')], outfile: path.join(out, 'bot-worker.js'), logLevel: 'warning'});
 // The swap: two renames, so a reader never sees a half-built shared/ (only the instant between them); the old copy is removed afterwards.
@@ -82,4 +82,4 @@ if (process.argv.includes('--app')) {
   fs.writeFileSync(path.join(desktop, 'build-info.json'), JSON.stringify(info, null, 2) + '\n');
   console.log(`Build info: build ${info.build}, ${info.commit}`);
 }
-console.log('Staged shared/worker');
+console.log('Staged shared/app-core');

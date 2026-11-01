@@ -1,7 +1,7 @@
 // Runs inside a page (injected by consent.js): finds a popup in the way (a dialog, a modal, a layer fixed over the page: a cookie notice, a newsletter
 // offer, an alert prompt, a chat invitation) by STRUCTURE only, lists its text and its own buttons for the app's AI to choose from, and presses the
 // one the AI named. It decides nothing about meaning: no words here. Floors: a layer with a password field, or with several fields (a form in a
-// dialog is the task, not a popup), is never offered; only a label that is on the popup is pressed. Guard: worker/test/popup-page.test.js.
+// dialog is the task, not a popup), is never offered; only a label that is on the popup is pressed. Guard: app-core/test/popup-page.test.js.
 export function findPopup(want = null) {
   const visible = node => { const box = node.getBoundingClientRect(); const look = getComputedStyle(node); return box.width > 0 && box.height > 0 && look.visibility !== 'hidden' && look.display !== 'none'; };
   const words = node => (node.innerText || node.value || node.getAttribute('aria-label') || node.getAttribute('title') || '').replace(/\s+/g, ' ').trim();
@@ -18,7 +18,7 @@ export function findPopup(want = null) {
     && !node.querySelector('input[type=password]') && fields(node) <= 1);
   boxes = boxes.filter(node => !boxes.some(other => other !== node && other.contains(node)));   // the outer layer, once
   // A link to another address, or one that opens a new tab, is no dismiss control (jobs.ch, 10 Oct 2026: "Cookie notice" opened a tab per press, each with the same banner): "#", script and same-page links stay.
-  const leavesPage = node => { const link = node.closest && node.closest('a[href]'); if (!link) return false; if (/^(_blank|_top|_parent)$/i.test(link.getAttribute('target') || '')) return true; try { const to = new URL(link.href, location.href); return to.protocol !== 'javascript:' && to.href.split('#')[0] !== location.href.split('#')[0]; } catch { return true; } };   // the shared floor (worker/test/popup-press-stays.test.js: the same text in popup-page.js, visit-page.js and on-top.js)
+  const leavesPage = node => { const link = node.closest && node.closest('a[href]'); if (!link) return false; if (/^(_blank|_top|_parent)$/i.test(link.getAttribute('target') || '')) return true; try { const to = new URL(link.href, location.href); return to.protocol !== 'javascript:' && to.href.split('#')[0] !== location.href.split('#')[0]; } catch { return true; } };   // the shared floor (app-core/test/popup-press-stays.test.js: the same text in popup-page.js, visit-page.js and on-top.js)
   const stays = node => !leavesPage(node);
   const buttonsOf = box => [...box.querySelectorAll('button, a, [role=button], input[type=button], input[type=submit]')].filter(node => visible(node) && stays(node) && words(node) && words(node).length < 60);
   const withButtons = boxes.filter(box => buttonsOf(box).length);

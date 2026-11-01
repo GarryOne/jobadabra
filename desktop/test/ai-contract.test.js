@@ -1,7 +1,7 @@
 // The AI engine contract (lib/ai/): every adapter answers the same request with the same response shape, refuses what the contract does
 // not carry, and turns its provider's failures into the contract's errors. Recorded answers only: fake SDKs and a fake process spawner,
 // no network, no key, no real Claude Code or Codex. Also: no `new Anthropic` outside lib/ai/anthropic-api.js, and the price table the
-// Worker keeps (worker/src/ai.js) equals the app's.
+// Worker keeps (app-core/src/ai.js) equals the app's.
 import assert from 'node:assert/strict';
 import {EventEmitter} from 'node:events';
 import fs from 'node:fs';
@@ -19,7 +19,7 @@ import * as ai from '../lib/ai/index.js';
 import {OPENAI_PRICES, model, openaiModel, priceOf} from '../lib/ai/models.js';
 import {dropNulls, strict} from '../lib/ai/schema.js';
 import * as claudeCode from '../lib/claude-code.js';
-import * as worker from '../../worker/src/ai-prices.js';   // not ai.js: it imports the Worker's SDK, which the desktop job does not install
+import * as worker from '../../app-core/src/ai-prices.js';   // not ai.js: it imports the Worker's SDK, which the desktop job does not install
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const SCHEMA = {type: 'object', required: ['summary'], properties: {summary: {type: 'string'}, note: {type: 'string'}}};
@@ -381,6 +381,6 @@ test('the step that asks (x-jp-action) reaches the Anthropic SDK as a header, an
   await api.messages.create(ask);
   assert.deepEqual(seen, [{headers: {'x-jp-action': 'tailor'}}, undefined]);
   // The class: every call site that writes prose for the person (and the form-answer call) names its step.
-  const named = {'lib/cv.js': 'tailor', 'lib/cv-change.js': 'tailor', 'lib/cv-check.js': 'tailor', 'lib/cover-letter.js': 'cover_letter', '../worker/src/extension.js': 'answer', '../worker/src/written-answer.js': 'answer_review'};
+  const named = {'lib/cv.js': 'tailor', 'lib/cv-change.js': 'tailor', 'lib/cv-check.js': 'tailor', 'lib/cover-letter.js': 'cover_letter', '../app-core/src/extension.js': 'answer', '../app-core/src/written-answer.js': 'answer_review'};
   for (const [file, action] of Object.entries(named)) assert.match(fs.readFileSync(new URL(`../${file}`, import.meta.url), 'utf8'), new RegExp(`'x-jp-action': '${action}'`), file);
 });

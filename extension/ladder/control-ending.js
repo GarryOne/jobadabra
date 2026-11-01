@@ -1,5 +1,5 @@
 // The ending and the reason class of one control the fill left (spec fill-ladder, E): every left control names one fixed ending (the list is next-move's, extension/ladder/endings.js) and one
-// reason class the person card says in plain words. Pure (no chrome API, no import): the panel (review.js), the app (lib/review.js) and the test harness read the same list. Guard: worker/test/control-ending.test.js.
+// reason class the person card says in plain words. Pure (no chrome API, no import): the panel (review.js), the app (lib/review.js) and the test harness read the same list. Guard: app-core/test/control-ending.test.js.
 //   no_answer   nothing in the kit, Profile or details answers it (or the AI's answer is only proposed): the person gives it once          -> data_missing
 //   unread      the question on the page was not read, so no answer was looked for                                                       -> blind
 //   tries       the control used its tries and the page did not keep the answer (the attempt log gave it up)                            -> unresolved (a counted bug)

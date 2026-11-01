@@ -5,9 +5,9 @@
 // background.js hands over what lives on with the worker (initFillFlow): the tabs a fill started on, the fill itself, its report, onPage.
 // Invariants (flow core: read before editing; changing one is the owner's call, said in the commit; each names the test that guards it):
 //  1. Apply is pressed once per tab and page; only a reload or the person's "Apply on this page" clears that, never a press itself (dede94a, 6065c87; desktop/e2e/test/replay/real-extension.test.mjs).
-//  2. A popup is closed before the page is read, and a link that leaves the page is never pressed (fdd9638; worker/test/visit-consent.test.js, worker/test/popup-page.test.js).
+//  2. A popup is closed before the page is read, and a link that leaves the page is never pressed (fdd9638; app-core/test/visit-consent.test.js, app-core/test/popup-page.test.js).
 //  3. A fill that put nothing in climbs the closer-look ladder, then reports 'incomplete', kept until something is filled (c1a2fcc; desktop/test/session-flow.test.js).
-//  4. After a fill the AI is asked what the page needs next; a middle step's Next is pressed under the Submit floors, Submit never (worker/test/form-ready.test.js).
+//  4. After a fill the AI is asked what the page needs next; a middle step's Next is pressed under the Submit floors, Submit never (app-core/test/form-ready.test.js).
 import {preparePage, readPage, askPage, correctPage, describePage} from './fill-flow-read.js';
 import {pressPosting, correctPosting, climbPosting, lookAtPosting, leavePage, fillPage, afterFill} from './fill-flow-steps.js';
 import {backgroundMayFill, backgroundPage, backgroundRead} from './background-apply.js';
@@ -112,7 +112,7 @@ export async function askKind(tab, {fresh = false, digest = false, shadow = fals
     return answer?.role ? answer : null;
   } catch (error) { decide('fill', 'page kind: the app could not be asked', {class: String(error?.name || 'Error').slice(0, 40), ms: Date.now() - askedAt, digest}); return null; }   // the class only: a message can carry page text
 }
-// Claude reads this on <html data-jobpilotto-fill>. States: running, done, error, no-form, account. A fill's end goes only into the page it started on (its token, kept in this script world; 13 Oct 2026: a sign-up page's "done" landed on the form after it). Guard: worker/test/fill-mark-own-page.test.js. Only JSON states go here; the fill's card id has its own <html data-jobpilotto-fill-id> (fill-card.js markCardId).
+// Claude reads this on <html data-jobpilotto-fill>. States: running, done, error, no-form, account. A fill's end goes only into the page it started on (its token, kept in this script world; 13 Oct 2026: a sign-up page's "done" landed on the form after it). Guard: app-core/test/fill-mark-own-page.test.js. Only JSON states go here; the fill's card id has its own <html data-jobpilotto-fill-id> (fill-card.js markCardId).
 export function writeState(tabId, value, token = '') {
   return chrome.scripting.executeScript({target: {tabId}, args: [JSON.stringify(value), token, value.state],
     func: (text, token, now) => { if (now === 'running') window.__jobPilottoFillToken = token; else if (token && window.__jobPilottoFillToken !== token) return false; if (document.documentElement) document.documentElement.dataset.jobpilottoFill = text; return true; }})
@@ -147,7 +147,7 @@ export async function stuck(job, host, why, tabId = null, page = '', needs = '',
   const session = await sessionOf(tabId);
   try { await apiFor(tabId, await settings(), '/extension/event', {method: 'POST', body: JSON.stringify({type: 'stuck', url: job, host, why, needs: String(needs || '').slice(0, 80), accountStep: String(accountStep || '').slice(0, 16), tab: tabId, session, boot: await runId(), page: String(page || '').split('#')[0]})}); } catch { /* the app is closed */ }
 }
-useReporter(stuck);   // the only way to it: every give-up goes through ladder/dead-end.js deadEnd (worker/test/dead-end.test.js)
+useReporter(stuck);   // the only way to it: every give-up goes through ladder/dead-end.js deadEnd (app-core/test/dead-end.test.js)
 // In the CI pool only (the harness's ladderAct switch), the move the one rule lets act is pressed through the live Apply press and its effect checked: a form on the page, or a new page with fields.
 const actOnMove = async (tab, move) => {
   if (!(await backgroundMayFill(tab.id))) return;

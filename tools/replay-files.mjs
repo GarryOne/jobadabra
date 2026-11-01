@@ -74,13 +74,13 @@ export function workflowFiles(workflow, root = ROOT) {
   return withSharedSources(files, root);
 }
 
-// desktop/shared is generated (stage.mjs, gitignored): present in CI, maybe not here. Its sources stand in: shared/worker/<f> is worker/src/<f> (and what it imports),
+// desktop/shared is generated (stage.mjs, gitignored): present in CI, maybe not here. Its sources stand in: shared/app-core/<f> is app-core/src/<f> (and what it imports),
 // the rest are extension files (extension/** is listed whole).
 export function withSharedSources(files, root = ROOT) {
   const texts = [...files].filter(file => /\.m?js$/.test(file) && fs.existsSync(path.join(root, file))).map(file => fs.readFileSync(path.join(root, file), 'utf8')).join('\n');
-  const worker = [...texts.matchAll(/shared\/worker\/([\w./-]+\.js)/g)].map(found => `worker/src/${found[1]}`);
+  const worker = [...texts.matchAll(/shared\/app-core\/([\w./-]+\.js)/g)].map(found => `app-core/src/${found[1]}`);
   for (const file of [...files]) if (file.startsWith('desktop/shared/')) files.delete(file);
-  for (const file of closure(root, worker, (spec, from) => [path.posix.join(path.posix.dirname(from), spec)], file => file.startsWith('worker/src/'))) files.add(file);
+  for (const file of closure(root, worker, (spec, from) => [path.posix.join(path.posix.dirname(from), spec)], file => file.startsWith('app-core/src/'))) files.add(file);
   return files;
 }
 

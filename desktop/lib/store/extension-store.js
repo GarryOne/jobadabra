@@ -1,10 +1,10 @@
-// The extension's routes with the data on this Mac (worker/src/extension.js env.store): the tracked job for a form, its kit and the fill
+// The extension's routes with the data on this Mac (app-core/src/extension.js env.store): the tracked job for a form, its kit and the fill
 // run's record, from the engine's store (lib/store/engine.js) instead of Notion. The values are the shared worker's own (runRecord), so a
 // fill logs the same thing in either store. Guarded by test/extension-store.test.js.
 import * as engine from './engine.js';
-import {jobKey, runRecord} from '../../shared/worker/extension.js';
+import {jobKey, runRecord} from '../../shared/app-core/extension.js';
 import {KIT_SECTION, kitOf} from './kit-section.js';
-import {JOB_ANSWERS_SECTION, jobAnswersOf} from '../../shared/worker/job-answers.js';
+import {JOB_ANSWERS_SECTION, jobAnswersOf} from '../../shared/app-core/job-answers.js';
 
 export {KIT_SECTION, kitOf};   // their home is ./kit-section.js (a leaf module)
 

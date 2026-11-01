@@ -67,8 +67,8 @@ async function main(argv) {
   const jobs = Number(option('jobs', 6)), maxCalls = Number(option('max-calls', 140)), maxUsd = Number(option('max-usd', MAX_USD));
   const apiKey = process.env.PR_PROOF_ANTHROPIC_KEY;
   if (!apiKey) throw new Error('PR_PROOF_ANTHROPIC_KEY is not set: the prompt cases are not asked');
-  const modules = path.join(baseTree, 'worker/node_modules');   // the worker's packages (its ai.js imports the SDK): the PR checkout's, linked
-  if (!fs.existsSync(modules) && fs.existsSync(path.join(root, 'worker/node_modules'))) fs.symlinkSync(path.join(root, 'worker/node_modules'), modules, 'dir');
+  const modules = path.join(baseTree, 'app-core/node_modules');   // the worker's packages (its ai.js imports the SDK): the PR checkout's, linked
+  if (!fs.existsSync(modules) && fs.existsSync(path.join(root, 'app-core/node_modules'))) fs.symlinkSync(path.join(root, 'app-core/node_modules'), modules, 'dir');
   const baseIds = buildCases(baseTree).map(item => item.id);
   for (const file of CASE_FILES) fs.copyFileSync(path.join(root, file), path.join(baseTree, file));   // main's prompts, the PR's case list
   const baseCases = buildCases(baseTree), headCases = buildCases(root);

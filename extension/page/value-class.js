@@ -3,7 +3,7 @@
 // (desktop/lib/ladder/fill-verify.js, fill-repair.js) can see that a calling code went into a country menu without ever seeing the value. Shapes only, no word list: calling codes
 // and country names come from the dial-code table (page/dial-codes.js) named by the browser itself (Intl.DisplayNames, in the page's language and English).
 // The fill marks each answered control with its class (data-jobpilotto-class, page/fill.js); the judges' sketch reads that mark (extension/account-fill.js).
-// The list is the desktop's VALUE_CLASSES too (desktop/lib/ladder/fill-repair.js; desktop/test/fill-repair.test.js fails when they differ). Guard: worker/test/value-class.test.js.
+// The list is the desktop's VALUE_CLASSES too (desktop/lib/ladder/fill-repair.js; desktop/test/fill-repair.test.js fails when they differ). Guard: app-core/test/value-class.test.js.
 (() => {
   if (window.__jobPilottoValueClass) return;
   const CLASSES = ['dial_code', 'country_name', 'email_shaped', 'phone', 'date', 'number', 'url', 'free_text', 'none'];

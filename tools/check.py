@@ -10,6 +10,9 @@ import time
 import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
+# Why (1 Nov 2026, owner: jobadabra is desktop + extension only): the `worker` suite's code moved to app-core/; the area key keeps its name so check names, caches and
+# required checks stay (renaming it is parked in Linear).
+AREA_DIR = {'worker': 'app-core'}
 AREAS = ('python', 'worker', 'site', 'desktop') if (ROOT / 'admin').is_dir() else ('python', 'worker', 'desktop')   # the website is in the private repo jobadabra-web: its CI lays web/, admin/, api/, test/ … over this tree
 
 
@@ -58,7 +61,7 @@ def commands(area, fast, node, npm, picked='all', app_only=False):
         return [(ROOT, [sys.executable, 'tools/py-shards.py', *(['--app-only'] if app_only else [])])]
     if area == 'site':   # the website's tests sit in test/ at the top level of the joined tree (jobadabra-web, 21 Oct 2026)
         return [(ROOT, [node, '--test', *(picked if picked != 'all' else ['test/**/*.test.js'])])]
-    folder = ROOT / area
+    folder = ROOT / AREA_DIR.get(area, area)
     if picked != 'all':
         pre = {'desktop': [(folder, [node, 'scripts/stage.mjs']), (folder, [npm, 'run', 'lint'])],
                'worker': [(folder, [node, 'scripts/stage-shared.mjs'])]}.get(area, [])
@@ -97,18 +100,19 @@ def main(argv=None):
             print(f'check: Node {version}', flush=True)
         print(f'check: Python {sys.version.split()[0]}', flush=True)
         for area in areas:
-            package = json.loads((ROOT / ('workers/www' if area == 'site' else area) / 'package.json').read_text()) if area != 'python' else {}
+            package = json.loads((ROOT / ('workers/www' if area == 'site' else AREA_DIR.get(area, area)) / 'package.json').read_text()) if area != 'python' else {}
             needs_modules = bool(package.get('dependencies') or package.get('devDependencies'))
-            if needs_modules and not (ROOT / area / 'node_modules').is_dir():
-                raise RuntimeError(f'{area}/node_modules is missing. Use tools/worktree.sh or run npm ci in {area}/.')
+            where = AREA_DIR.get(area, area)
+            if needs_modules and not (ROOT / where / 'node_modules').is_dir():
+                raise RuntimeError(f'{where}/node_modules is missing. Use tools/worktree.sh or run npm ci in {where}/.')
             if area == 'desktop' and not (ROOT / 'desktop/node_modules/eslint').exists():
                 raise RuntimeError('Desktop dependencies are outdated: run npm ci in desktop/.')
     except RuntimeError as error:
         print(f'check: {error}', file=sys.stderr)
         return 2
     if args.clean_install:
-        for area in [a for a in ('desktop', 'worker') if (ROOT / a).is_dir()]:
-            folder = ROOT / area
+        for area in [a for a in ('desktop', 'worker') if (ROOT / AREA_DIR.get(a, a)).is_dir()]:
+            folder = ROOT / AREA_DIR.get(area, area)
             with tempfile.TemporaryDirectory(prefix='job-pilotto-check-') as scratch:
                 for name in ('package.json', 'package-lock.json'):
                     shutil.copyfile(folder / name, Path(scratch) / name)

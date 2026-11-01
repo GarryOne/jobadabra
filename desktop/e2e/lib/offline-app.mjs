@@ -31,7 +31,7 @@ export async function startOfflineApp({memo = '', ask = false, loose = '', missL
   if (fill && (ask || (api && !refill) || (isCi(parent) && !refill) || (refill && !api))) throw new Error('offline app: fill is a memo-only replay on a Mac (the plan\'s claude -p), or on CI only through the refill workflow with its proxy; never with ask or another API key');
   if (!memo) { memo = path.join(dir, 'model-memo.json'); fs.mkdirSync(dir, {recursive: true}); }
   // The app imports the worker from desktop/shared/ (scripts/stage.mjs, run by npm start and npm test): a fresh worktree has none yet.
-  if (!fs.existsSync(path.join(DESKTOP, 'shared', 'worker', 'extension.js'))) execFileSync(process.execPath, [path.join(DESKTOP, 'scripts', 'stage.mjs'), '--files-only'], {cwd: DESKTOP, stdio: 'ignore'});
+  if (!fs.existsSync(path.join(DESKTOP, 'shared', 'app-core', 'extension.js'))) execFileSync(process.execPath, [path.join(DESKTOP, 'scripts', 'stage.mjs'), '--files-only'], {cwd: DESKTOP, stdio: 'ignore'});
   const port = await freePort();
   if (port === LIVE_PORT) throw new Error('offline app: never the live app\'s port');
   const env = {...offlineEnv(dir, parent), ...(api ? {ANTHROPIC_BASE_URL: api.url, JOB_PILOTTO_E2E_API_KEY: api.key} : {}), JOB_PILOTTO_PORT: String(port), JOB_PILOTTO_MODEL_MEMO: memo, ...(ask ? {} : {JOB_PILOTTO_MODEL_MEMO_ONLY: '1', ...(fill ? {JOB_PILOTTO_MODEL_MEMO_FILL: '1'} : {}), JOB_PILOTTO_MODEL_MEMO_LATENCY: '1', ...(slow ? {JOB_PILOTTO_MODEL_MEMO_LATENCY_SCALE: '1.6', JOB_PILOTTO_MODEL_MEMO_LATENCY_PAD_MS: '300'} : {})}),   // latency: a kept answer comes after the time the live ask took (lib/ai/model-memo.js: the live interleaving, not this machine's speed)

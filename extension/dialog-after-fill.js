@@ -1,7 +1,7 @@
 // After a fill: a dialog that opened while the form was filled (often our own upload or typing: a site's "your fields may be replaced, continue?") is closed
 // with the button the app's AI names for "close without agreeing" (consent.js closePopup, popup-pick.js), and one still over the form after that is reported,
 // so a run never ends "5 of 8 filled" with a modal covering the form (Louis Vuitton jobs, 11 Oct 2026). Found by structure (popup-page.js), no words here.
-// Guards: worker/test/dialog-after-fill.test.js.
+// Guards: app-core/test/dialog-after-fill.test.js.
 import {onTop} from './on-top.js';
 export const LEFT_OPEN = 'a dialog was left open over the form';
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));

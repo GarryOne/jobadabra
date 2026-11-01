@@ -34,8 +34,8 @@ test('the patterns cases are the app\'s own request over valid reviewed-intervie
   }
 });
 
-// Why (27 Oct 2026, #2277): the form answers come from worker/src, whose package the desktop CI job does not install; that half runs where the worker's packages are.
-const workerInstalled = fs.existsSync(path.join(path.dirname(fileURLToPath(import.meta.url)), '../../worker/node_modules'));
+// Why (27 Oct 2026, #2277): the form answers come from app-core/src, whose package the desktop CI job does not install; that half runs where the worker's packages are.
+const workerInstalled = fs.existsSync(path.join(path.dirname(fileURLToPath(import.meta.url)), '../../app-core/node_modules'));
 
 test('the textarea-form cases are captured from the app\'s own call, never copied', {skip: !workerInstalled && 'worker packages are not installed'}, async () => {
   const answers = await answersCases();

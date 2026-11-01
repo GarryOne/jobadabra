@@ -6,7 +6,7 @@ COPY hosted/ready-fill/package.json ./
 RUN npm install --no-audit --no-fund --omit=dev
 COPY hosted/ready-fill/*.mjs ./
 COPY extension ./extension
-COPY worker/src ./worker/src
+COPY app-core/src ./app-core/src
 # The app's form-address rule, at /desktop/lib so `../../desktop/lib/form-address.js` resolves from /night as it does in the repo; its package.json says it is an ES module.
 COPY desktop/lib/form-address.js /desktop/lib/form-address.js
 COPY desktop/package.json /desktop/package.json

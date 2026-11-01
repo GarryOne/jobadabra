@@ -7,7 +7,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {copyExtension, freePort, launchBrowser} from '../../lib/extension.mjs';
-import {cleanEntries} from '../../../../worker/src/extension-log.js';   // not extension.js: it imports the AI SDK, which the desktop CI job does not install
+import {cleanEntries} from '../../../../app-core/src/extension-log.js';   // not extension.js: it imports the AI SDK, which the desktop CI job does not install
 import {createWatcher} from '../../../lib/real-errors.js';
 import {create} from '../../../lib/sentry.js';
 import {create as telemetry, reportingOff} from '../../../lib/telemetry.js';
@@ -39,7 +39,7 @@ async function exercise(start) {
   const app = http.createServer(async (req, res) => {
     let body = '';
     for await (const chunk of req) body += chunk;
-    // The route's own cleaning (worker/src/extension.js, /extension/log) with the real field whitelist; the route file itself needs the worker's packages.
+    // The route's own cleaning (app-core/src/extension.js, /extension/log) with the real field whitelist; the route file itself needs the worker's packages.
     const cors = {'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS', 'Access-Control-Allow-Headers': 'Authorization, Content-Type'};
     if (req.method === 'OPTIONS') { res.writeHead(204, cors); res.end(); return; }   // the browser's preflight, as handleExtension answers it
     const authorised = req.headers.authorization === 'Bearer isolated-token';

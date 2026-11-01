@@ -1,5 +1,5 @@
 """The one writing-rules block every prompt that writes prose for the person includes (letters, written answers, answer review, prep, insights, rejection reviews).
-The Worker's copy (worker/src/writing-rules.js) is checked equal by tests/test_writing_rules.py. The judge's rubric (tools/free-ai-writing-judge.mjs) is the same six rules."""
+The Worker's copy (app-core/src/writing-rules.js) is checked equal by tests/test_writing_rules.py. The judge's rubric (tools/free-ai-writing-judge.mjs) is the same six rules."""
 
 RULES = """Writing rules (every text you write for the person):
 - Voice: where the person speaks (letter, answer, message) write as them, in the first person ("I"). Never their name in the third person, never a name as the opening words ("Alex Morgan, Senior SRE ..."). A note to the person speaks to them ("you") or stays neutral.

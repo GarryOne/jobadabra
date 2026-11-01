@@ -170,7 +170,7 @@ test('loose: a changed job block or form_fields block is still a miss; strict mo
 });
 
 // A schema property added after the captures (ADDED_SCHEMA_KEYS, dated), whose absence the code handles, does not turn every row case cold in CI (12 Oct 2026: the
-// form answers' `fact`, worker/src/answer-facts.js); any other schema change is still a miss.
+// form answers' `fact`, app-core/src/answer-facts.js); any other schema change is still a miss.
 const withSchema = (ask, extra = {}) => {
   const item = {type: 'object', required: ['field', 'value', ...Object.keys(extra)], properties: {field: {type: 'string'}, value: {type: 'string'}, ...extra}};
   return {...ask, output_config: {format: {type: 'json_schema', schema: {type: 'object', required: ['answers'], properties: {answers: {type: 'array', items: item}}}}}};

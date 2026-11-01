@@ -22,7 +22,7 @@ const BUDGET = 12000;   // characters of the rendered bundle per reader unless i
 // Who takes what (spec table; ★ owner decisions): noSalary: CV tailoring and letters (★). A sensitive learning reaches no reader here.
 // learned 'summary': CV tailoring may use a learning in the summary only, never in a role (★); the reader's prompt says so.
 // Why (owner, 28 Oct 2026, D1b option A): form filling and kit answers take every part, so they keep reading the full Profile and answers pages
-// (worker/src/extension.js, src/ai/kit.py); kits take only the CV + Experience bank from here, which they lacked. Form filling is no reader here.
+// (app-core/src/extension.js, src/ai/kit.py); kits take only the CV + Experience bank from here, which they lacked. Form filling is no reader here.
 export const READERS = {
   // Why (D1b, measured 28 Oct 2026): CV JSON is ~1.9 characters a token; 16000 keeps a two-page CV with its bank bullets whole, ~8k tokens a kit at most.
   kit: {parts: ['cv'], budget: 16000},

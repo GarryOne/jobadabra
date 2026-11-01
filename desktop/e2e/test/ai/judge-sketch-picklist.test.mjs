@@ -16,7 +16,7 @@ try { ({chromium} = await import('playwright-core')); if (!fs.existsSync(chromiu
 // react-select as a hosted board draws it: the chip (or a placeholder) beside a search input whose own value stays empty.
 const reactSelect = (id, inner, typed = '') => `<div class="select__container"><label for="${id}">${id}*</label><div class="select-shell"><div class="select__control"><div class="select__value-container">${inner}
   <div class="select__input-container"><input class="select__input" id="${id}" role="combobox" aria-required="true" type="text" value="${typed}"></div></div></div></div></div>`;
-// A type-to-search picklist that keeps its choice in a hidden input its label points to (worker/test/panel-widgets.test.js PICKLIST).
+// A type-to-search picklist that keeps its choice in a hidden input its label points to (app-core/test/panel-widgets.test.js PICKLIST).
 const picklist = (id, code, typed) => `<div class="row"><label for="${id}__h">${id} *</label><div class="field"><div><span><div class="fd-input-group--control">
   <input type="text" role="combobox" aria-required="true" aria-label="${id}" value="${typed}"></div></span></div><input type="hidden" id="${id}__h" value="${code}"></div></div>`;
 const menu = (id, options) => `<div class="row"><label for="${id}">${id}</label><select id="${id}" required>${options}</select></div>`;

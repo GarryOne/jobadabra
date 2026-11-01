@@ -43,7 +43,7 @@ class DesktopWorkflowTest(unittest.TestCase):
         # A late start still builds (4 Oct 2026: both runs came six hours late and the old 04-05 guard skipped them): 04:00-15:59.
         self.assertIn('[ $((10#$hour)) -lt 4 ] || [ $((10#$hour)) -gt 15 ]', WORKFLOW)
         self.assertIn('workflow_dispatch:', triggers)
-        # The Worker's cron starts the nightly on time (worker/src/scheduler.js): named, diffed like the schedule, and with no 04:00-15:59 window of its own.
+        # The Worker's cron starts the nightly on time (app-core/src/scheduler.js): named, diffed like the schedule, and with no 04:00-15:59 window of its own.
         # ONE "Nightly beta" a day, the Worker's 04:00 start (owner, 12 Oct 2026): GitHub's backup schedule run is an "E2E check", never a second "Nightly beta".
         self.assertIn("run-name: ${{ inputs.nightly && 'Nightly beta' || github.event_name == 'schedule' && 'E2E check · nightly backup'", WORKFLOW)
         self.assertEqual(WORKFLOW.split('run-name:', 1)[1].split('\n', 1)[0].count("'Nightly beta'"), 1, "only the Worker's nightly is named Nightly beta")

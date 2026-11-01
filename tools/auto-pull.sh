@@ -3,7 +3,7 @@
 # A macOS launch agent runs it every 2 minutes. It only fast-forwards a clean `main`: a modified tracked file, another branch, a detached HEAD or a
 # diverged history is skipped (never a stash, reset or overwrite) and said after 10 minutes, hourly. A detached HEAD already on origin/main with no edited tracked file heals itself. After an update it says whether the app needs a
 # restart (main process, lib, preload, engine, extension) or only ⌘R (window). When the update touches what desktop/scripts/stage.mjs copies into
-# desktop/shared/ (worker/src, the recipe/alias schemas, the ladder files), it re-copies them (--files-only: overwrite, never delete or swap) so a
+# desktop/shared/ (app-core/src, the recipe/alias schemas, the ladder files), it re-copies them (--files-only: overwrite, never delete or swap) so a
 # running app that lazily imports a new lib file never hits a missing shared file (17 Oct 2026: ERR_MODULE_NOT_FOUND writing-rules.js). Guard: tests/test_auto_pull.py.
 #   tools/auto-pull.sh               one check (what the launch agent runs)
 #   tools/auto-pull.sh --install     write and load the launch agent (~/Library/LaunchAgents/com.jobpilotto.autopull.plist)
@@ -93,11 +93,11 @@ dirty="$(git status --porcelain --untracked-files=no | head -3 | cut -c4- | tr '
 git merge --ff-only --quiet origin/main 2>>"$LOG" || skip "fast-forward refused (see $LOG)" "read $LOG"
 clear_state
 changed="$(git diff --name-only "$old" "$new")"
-if echo "$changed" | grep -q -E '^(worker/src/|extension/(recipe-schema\.js|alias-schema\.js|ladder/)|desktop/scripts/stage\.mjs)'; then
+if echo "$changed" | grep -q -E '^(app-core/src/|extension/(recipe-schema\.js|alias-schema\.js|ladder/)|desktop/scripts/stage\.mjs)'; then
   command -v node >/dev/null 2>&1 && node desktop/scripts/stage.mjs --files-only >>"$LOG" 2>&1 \
     && log "restaged desktop/shared" || { log "restage of desktop/shared failed"; notify "Updated, but desktop/shared could not be re-copied: run npm start once"; }
 fi
-if echo "$changed" | grep -q -E '^(desktop/main\.js|desktop/lib/|desktop/preload\.cjs|desktop/shared/|src/|worker/src/|extension/)'; then
+if echo "$changed" | grep -q -E '^(desktop/main\.js|desktop/lib/|desktop/preload\.cjs|desktop/shared/|src/|app-core/src/|extension/)'; then
   what='restart the app'
 elif echo "$changed" | grep -q '^desktop/renderer/'; then
   what='press ⌘R in the window'

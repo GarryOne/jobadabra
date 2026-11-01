@@ -2,11 +2,11 @@
 // answered and with what signal; an unsure page, or a page with nothing to press and no form, climbs to the numbered digest (rung 3: extension/ladder/rung3-candidates.js, desktop/lib/ladder/rung3-digest.js), once.
 // The digest only INFORMS or names a button the page lists (the Apply floors still apply in the app); what the page says to do is reported to the app as the application's need (`told`).
 // Invariants (flow core: read before editing; changing one is the owner's call, said in the commit; each names the test that guards it):
-//  1. An unsure answer climbs to the digest; a confident one, or no signal, never asks again (worker/test/ladder-climb.test.js).
-//  2. A page without a form asks the digest at most once per tab and page, and never when the digest already answered (worker/test/ladder-climb.test.js).
-//  3. Only a tell_person answer is reported as told, with the page's own sentence; an email has its own report (worker/test/ladder-climb.test.js).
+//  1. An unsure answer climbs to the digest; a confident one, or no signal, never asks again (app-core/test/ladder-climb.test.js).
+//  2. A page without a form asks the digest at most once per tab and page, and never when the digest already answered (app-core/test/ladder-climb.test.js).
+//  3. Only a tell_person answer is reported as told, with the page's own sentence; an email has its own report (app-core/test/ladder-climb.test.js).
 //  4. The picture rung (4) is not offered to the router yet: it is wired for account pages only (lib/ladder/rung4-picture.js).
-//  5. A frame that becomes a form-frame candidate after the judgment makes the page be judged again, once; a candidate the judgment already carried never does (worker/test/ladder-climb.test.js).
+//  5. A frame that becomes a form-frame candidate after the judgment makes the page be judged again, once; a candidate the judgment already carried never does (app-core/test/ladder-climb.test.js).
 import {nextRung} from './core.js';
 
 const signals = new Map();   // tab id -> the last {rung, signal} the app answered with

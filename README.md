@@ -105,7 +105,7 @@ switched-off feature behaves exactly as if its keys were missing, and `doctor` l
 
 Something in Jobadabra is reading, suggesting or checking at each stop of the search: 47 steps today (AI, plus a few plain rules marked as such), each one yours to accept or ignore, none of them pressing Submit.
 Every step runs on the AI you choose: Claude or OpenAI, through an API key or your own Claude Code / Codex plan (setup step 5 below).
-The same list, with more detail, is on the website: [Intelligence](https://www.jobpilotto.top/intelligence.html). Every base prompt is in this repository (`src/ai/`, `desktop/lib/`, `worker/src/extension.js`); what is learned from installs is served as data, never as prompt text.
+The same list, with more detail, is on the website: [Intelligence](https://www.jobpilotto.top/intelligence.html). Every base prompt is in this repository (`src/ai/`, `desktop/lib/`, `app-core/src/extension.js`); what is learned from installs is served as data, never as prompt text.
 
 **Find: Finds what is worth your time**
 
@@ -1001,7 +1001,7 @@ tools/
 .claude/skills/      apply-to-job (how to fill a form from a kit), and the dev skills
 docs/                Notion schema, paste-ready Notion page templates, benchmark procedure, screenshots
 AGENTS.md            instructions for any agent (Claude, Codex, or other) working in this repo
-tests/               Python tests; Worker tests live in worker/test/
+tests/               Python tests; Worker tests live in app-core/test/
 .github/workflows/   daily.yml (every 4 h + on demand), scout.yml (daily), mail.yml (3x a day + after applying)
 ```
 
@@ -1057,7 +1057,7 @@ Contributing (the change loop, where things go): [CONTRIBUTING.md](CONTRIBUTING.
 
 ```sh
 python3 -m unittest discover -s tests
-cd worker && npm test
+cd app-core && npm test
 ```
 
 ## First-time setup
@@ -1130,7 +1130,7 @@ Then help me set this up for myself, step by step:
    `python3 -c "import re,json; c=json.load(open('config/search.json')); print(bool(re.search('|'.join(c['role_keywords']), 'my target title', re.I)))"`
    should print `True`) before moving on. Mark anything I haven't given a clear answer for with ❓ in
    Notion, never invent one.
-6. Run the test suites (python3 -m unittest discover -s tests, and cd worker && npm test) and fix
+6. Run the test suites (python3 -m unittest discover -s tests, and cd app-core && npm test) and fix
    anything that fails before calling this done.
 7. Trigger one real run (mode `run`) and show me what came back in Telegram.
 8. If I want the local form filling (macOS): copy .env.example to .env with JOB_PILOTTO_CV_PATH set

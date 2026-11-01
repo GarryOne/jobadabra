@@ -19,8 +19,8 @@ test('a fill or flow change without a case is stopped; a case, a scenario or a s
   assert.equal(missingCase([commit(['extension/page/controls.js', 'desktop/e2e/recorded/menu-1/case.json'])], covered), '');
   assert.equal(missingCase([commit(['extension/fill-flow.js', 'desktop/test/journeys.test.js'])], covered), '');
   // A field replay alone is not proof (10 Oct 2026: an Ashby fix passed with one and never reached the Fixed-site replays list); with a recorded page it is fine.
-  assert.match(missingCase([commit(['extension/page/radios.js', 'worker/test/fixtures/fill/acme--salary.html'], 'Fix a group')], covered), /does not count/);
-  assert.equal(missingCase([commit(['extension/page/radios.js', 'worker/test/fixtures/fill/acme--salary.html', 'desktop/e2e/recorded/acme-1/case.json'])], covered), '');
+  assert.match(missingCase([commit(['extension/page/radios.js', 'app-core/test/fixtures/fill/acme--salary.html'], 'Fix a group')], covered), /does not count/);
+  assert.equal(missingCase([commit(['extension/page/radios.js', 'app-core/test/fixtures/fill/acme--salary.html', 'desktop/e2e/recorded/acme-1/case.json'])], covered), '');
   assert.equal(missingCase([commit(['extension/fill-flow.js'], 'Log the press\n\nRecorded-unneeded: a log line only')], covered), '');
 });
 
@@ -48,7 +48,7 @@ test('the marker works in extension/ too: a file that acts on no page (the Linke
   fs.writeFileSync(path.join(dir, 'extension/copy.js'), "// Display-only: copies cookies.\nimport {api} from './flow.js';\n");
   assert.deepEqual(displayOnlyProblems(dir, ['extension/copy.js']), ['extension/copy.js is marked Display-only but imports extension/flow.js'], 'a marked extension file that imports a page-acting one fails: the claim is checked by structure');
   assert.equal(isDisplayOnly(dir, 'extension/flow.js'), false);
-  assert.equal(isDisplayOnly(dir, 'worker/src/x.js'), false, 'only desktop/lib and extension take the marker');
+  assert.equal(isDisplayOnly(dir, 'app-core/src/x.js'), false, 'only desktop/lib and extension take the marker');
 });
 
 test('a marked file that gains a judging or filling import fails; an unmarked one is covered', () => {

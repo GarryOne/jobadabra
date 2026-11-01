@@ -99,7 +99,7 @@ export function forCv(storage, options = {}) {   // the same CV asked twice at o
   return options.again || !options.cvHash ? forCvNow(storage, options) : once(options.cvHash, () => forCvNow(storage, options));
 }
 // What the applicant has stated, beside the CV: the Profile and the standard Answers, each under its name, the same texts the form AI reads
-// (worker/src/extension.js). 9 Oct 2026, the twin: Coop's town was stated only in Knowledge, so the form AI proposed it once and this call never
+// (app-core/src/extension.js). 9 Oct 2026, the twin: Coop's town was stated only in Knowledge, so the form AI proposed it once and this call never
 // could. Why (PR B1, owner 28 Oct 2026 "Retire now, no replay"): the Knowledge page is no longer read by either; what you type is in the Answers.
 export const statedText = ({profile = '', answers = ''} = {}) => [['Profile', profile], ['Standard answers', answers]]
   .filter(([, text]) => String(text || '').trim()).map(([name, text]) => `## ${name}\n${String(text).trim()}`).join('\n\n');

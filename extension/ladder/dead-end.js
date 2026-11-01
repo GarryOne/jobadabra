@@ -1,7 +1,7 @@
 // The one door every give-up goes through (spec docs/superpowers/specs/2026-10-12-one-next-move.md, phase 2 box 1: "a dead-end detector must not become a new chain of
 // conditions"): each dead end is named (a reason of endings.js STUCK_REASONS), its ending named, its evidence kept as fixed values, and today's "can't reach" report sent unchanged.
 // In shadow: nothing here changes what happens; this is where the fallback (the one question at a dead end, phase 2) will be asked. The report is fill-flow.js stuck(), handed in once
-// (useReporter) so no file calls it directly. Guard: worker/test/dead-end.test.js (a stuck() call anywhere else in the extension fails; the evidence keeps no page text).
+// (useReporter) so no file calls it directly. Guard: app-core/test/dead-end.test.js (a stuck() call anywhere else in the extension fails; the evidence keeps no page text).
 import {STUCK_REASONS, UNRESOLVED, endingOfStuck} from './endings.js';
 import {endSilence} from './silence.js';
 import {askAtDeadEnd} from './fallback.js';
@@ -12,7 +12,7 @@ export const useReporter = fn => { report = fn; };
 
 // Evidence: our own facts about the stop, never the page's words. The keys a caller may log are a fixed list (cc's review, 12 Oct 2026: so a page word can never reach the log
 // through a new caller): text only under the keys that hold our own fixed words (a role, a kind, a signal, a step, a reason of the code), numbers and booleans under the rest.
-// Any other key is dropped. A new kind of evidence is a new key here, with its test (worker/test/dead-end.test.js checks every caller's keys are listed).
+// Any other key is dropped. A new kind of evidence is a new key here, with its test (app-core/test/dead-end.test.js checks every caller's keys are listed).
 export const EVIDENCE_KEYS = ['role', 'kind', 'signal', 'step', 'reason', 'rung', 'status', 'left', 'fields', 'frames', 'filled', 'botCheck', 'pressed', 'aiNamed', 'silentMs', 'level', 'tried', 'fp'];
 const WORD_KEYS = new Set(['role', 'kind', 'signal', 'step', 'reason', 'level', 'fp']);
 const WORD = /^[a-z0-9][a-z0-9 _.-]{0,39}$/i;

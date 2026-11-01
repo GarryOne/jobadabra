@@ -1,6 +1,6 @@
 // The form filler's reader (split from page/fill.js, 9 Oct 2026): every question on the visible page with its choices (__jobPilottoDescribeForm),
 // the page's text, checkbox groups that are one question, and your contact details placed by label (built-in patterns, then the service's
-// meanings). No applicant values are read. Needs page/fill-labels.js first. Guarded by worker/test/fill-learning.test.js, aliases.test.js.
+// meanings). No applicant values are read. Needs page/fill-labels.js first. Guarded by app-core/test/fill-learning.test.js, aliases.test.js.
 (() => {
   if (window.__jobPilottoFillReadLoaded) return;
   window.__jobPilottoFillReadLoaded = true;

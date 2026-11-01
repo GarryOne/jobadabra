@@ -9,7 +9,7 @@ import {nameOfClient} from './ai/names.js';
 import {anthropicApi} from './ai/anthropic-api.js';
 import {MODEL} from './cv.js';
 import {usdOf} from './cover-letter.js';
-import {WRITING_RULES} from '../shared/worker/writing-rules.js';
+import {WRITING_RULES} from '../shared/app-core/writing-rules.js';
 
 const PAGE = 'portrait';
 const TAB = {details: 'details', cv: 'cv', learned: 'answers', strategy: 'details', history: 'details', voice: 'letter'};   // the Profile tab where a source can be corrected

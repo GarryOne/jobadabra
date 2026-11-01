@@ -9,7 +9,7 @@
 |---|---|
 | Python pipeline | `python3 -m venv .venv && .venv/bin/pip install -r requirements.txt` |
 | Desktop app | `cd desktop && npm install && npm start` |
-| Telegram bot | `cd worker && npm install` (the website is in the private repo `jobadabra-web`, see `docs/rules/private-site.md`) |
+| Telegram bot | `cd app-core && npm install` (the website is in the private repo `jobadabra-web`, see `docs/rules/private-site.md`) |
 | Check your setup | `python3 -m src doctor` |
 
 Your own keys live in the macOS Keychain (`job-pilotto.*`), never in files you commit.
@@ -36,7 +36,7 @@ Your own keys live in the macOS Keychain (`job-pilotto.*`), never in files you c
    | Python | `python3 -m unittest discover -s tests` |
    | Desktop | `cd desktop && npm test` |
    | A screen | `cd desktop && npm run shot -- <page> [--select '<css>'] [--eval "…"]` → look at the PNG |
-   | Bot | `cd worker && npm test` (the website's tests run in the private repo `jobadabra-web`) |
+   | Bot | `cd app-core && npm test` (the website's tests run in the private repo `jobadabra-web`) |
 
 5. **Land it:** `git fetch && git rebase origin/main`, test again, `git push origin HEAD:main`.
    A hook (`tools/pre-push-check.sh`) runs every suite and lints the workflows first, and blocks a red push.

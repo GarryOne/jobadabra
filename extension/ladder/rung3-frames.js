@@ -1,7 +1,7 @@
 // Frames that may hold the application form (page/frames.js): the iframes of a page judged "no form" that are big enough to be one, by STRUCTURE only
 // (https, another host, visible, >= 300x200). Which of them IS the form is the page-kind AI's answer (an index into this list, `form_frame`; no
 // word, vendor or cookie list here). The full address (src) stays inside the extension: only host, path and size go to the AI, never a query string
-// (a form frame's address holds a token). Owner of the choice and the navigation: extension/fill-flow.js. Guard: worker/test/page-frames.test.js.
+// (a form frame's address holds a token). Owner of the choice and the navigation: extension/fill-flow.js. Guard: app-core/test/page-frames.test.js.
 (() => {
   // -> [{host, path, src, width, height}], biggest first. `src` is for the extension's own use (opening that frame), never sent anywhere.
   function frameCandidates(doc = document, here = location) {

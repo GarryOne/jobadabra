@@ -18,7 +18,7 @@ import {armRecordUpdate, runUpdateBody} from './ladder/record-update.js';
 // Why a field was left that is the extension's fault, not missing data (desktop/lib/reports.js reports these).
 const WRITTEN = 'written';   // page/fill.js's reason for an open question the AI read as the person's own words (category written)
 const KIND_REASON = /^(legal|demographic|the AI gave no answer)/;   // words-ok: our own trace reasons (page/fill.js): a kind the AI returned with no value, kept from the later pass like written
-const PROPOSED = 'proposed for you to confirm';   // page/fill.js's reason for a question the AI proposed an answer for (worker/test/fill-trace-proposed.test.js keeps them equal)
+const PROPOSED = 'proposed for you to confirm';   // page/fill.js's reason for a question the AI proposed an answer for (app-core/test/fill-trace-proposed.test.js keeps them equal)
 const MECHANICAL = [...MENU_REASONS.map(item => item.text), OLD_MENU_REASON,
   'answer given, but the field did not take it', 'question text not found on the page',
   'question on the page not read'];

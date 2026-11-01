@@ -1,5 +1,5 @@
 // What an unanswered required field was about, as one fixed word, and whether it was left on purpose: counts for the fill card ("Missing answers", 15 Oct 2026).
-// Never the question's wording or a value: the word comes from the AI's own fixed answer (worker/src/answer-facts.js FACT_KEYS, its category) or from the
+// Never the question's wording or a value: the word comes from the AI's own fixed answer (app-core/src/answer-facts.js FACT_KEYS, its category) or from the
 // meaning the built-in words or the pack gave the label; the site checks the same list again (extension/fill-card.js cleanCard). Guarded by desktop/test/fill-meaning.test.js.
 export const MEANINGS = ['work_permit', 'sponsorship', 'home_location', 'relocation', 'work_mode', 'languages', 'salary', 'notice_period', 'start_date',
   'years_experience', 'employment_history', 'education', 'links', 'referral_source', 'employee_of_this_company', 'relatives_at_this_company', 'contact',

@@ -6,7 +6,7 @@
 //  2. The record's last read: a box the page emptied after rung 0 read it (its own autofill after an upload) is typed again now (the fastpath's retype, within its attempt log), and
 //     when that or a repair changed anything the page is read again, so the fill's record (flow.js settleTrace, read by the replays' agreement check and the pool's endings,
 //     desktop/e2e/lib/ending.mjs) says what the page holds after the last action (cc, 13 Oct 2026).
-// Log lines: counts and verbs only, never a label or a value. Guard: worker/test/fill-climb.test.js.
+// Log lines: counts and verbs only, never a label or a value. Guard: app-core/test/fill-climb.test.js.
 import {apiFor} from '../flow.js';
 import {attachDebugger, detachDebugger} from '../stop-state.js';
 import {driving} from '../input-gap.js';

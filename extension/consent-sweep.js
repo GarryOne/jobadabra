@@ -1,4 +1,4 @@
-// A cookie banner that shows up late or is still open when the run ends (Fidag, 11 Oct 2026: the banner ships hidden and appears after the load, the one look at consent had passed): looked for again, cookies only, by the same closer. Guard: worker/test/consent-sweep.test.js.
+// A cookie banner that shows up late or is still open when the run ends (Fidag, 11 Oct 2026: the banner ships hidden and appears after the load, the one look at consent had passed): looked for again, cookies only, by the same closer. Guard: app-core/test/consent-sweep.test.js.
 import {closeConsentEverywhere} from './consent.js';
 import {decide} from './log.js';
 

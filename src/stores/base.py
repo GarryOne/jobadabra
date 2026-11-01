@@ -142,7 +142,7 @@ def check_extras(values, allowed):
 KIT_SECTION = '📝 Application kit'
 
 # An answer the person gave for ONE job only (the review drawer's "Reuse for matching questions" off): the section of that job's record that holds it,
-# one '- question — answer' line each, on every store. Read by the fill for that job's form only (worker/src/job-answers.js); never a standard answer.
+# one '- question — answer' line each, on every store. Read by the fill for that job's form only (app-core/src/job-answers.js); never a standard answer.
 # The sample both sides test against: tests/fixtures/stores/job-answers.md.
 JOB_ANSWERS_SECTION = '💬 Answers for this job only'
 

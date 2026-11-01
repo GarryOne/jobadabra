@@ -1,7 +1,7 @@
 // Closing a cookie banner, in every frame of a tab (moved out of visit.js, 9 Oct 2026: the apply flow needs it too; Deloitte's application page sat
 // behind one). Its words first (free); a banner in another language: the app picks, from the banner's own buttons, the one that refuses what is not
 // necessary, else the one that accepts (desktop/lib/server-pages.js pickChoice, by meaning, kept), and that one is pressed. The page-side half is
-// closeConsent in visit-page.js. Guards: worker/test (extension consent tests), desktop/e2e/test/consent.test.mjs.
+// closeConsent in visit-page.js. Guards: app-core/test (extension consent tests), desktop/e2e/test/consent.test.mjs.
 import {apiFor, settings} from './flow.js';
 import {closeConsent} from './visit-page.js';
 import {findPopup} from './popup-page.js';
@@ -10,7 +10,7 @@ import {decide} from './log.js';
 
 // A press that closes a layer leaves the tab on the same page. Some closers navigate by script (a button that calls the router: no link or form to see beforehand): the address
 // is read before and after, and a press that moved the tab is undone (back) and logged, so the page is never judged as the job's (Duolingo, 13 Oct 2026: "BACK TO HOME" of a layer
-// sent the tab to the careers home). Every press below goes through it. Guard: worker/test/popup-press-stays.test.js.
+// sent the tab to the careers home). Every press below goes through it. Guard: app-core/test/popup-press-stays.test.js.
 const MOVED_MS = 900;
 const here = url => String(url || '').split('#')[0];
 export const pressStays = async (tabId, press, {wait = ms => new Promise(resolve => setTimeout(resolve, ms)), onMoved = () => {}} = {}) => {

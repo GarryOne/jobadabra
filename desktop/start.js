@@ -9,7 +9,7 @@ import {fileURLToPath} from 'node:url';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const stage = path.join(here, 'scripts', 'stage.mjs');
-if (!fs.existsSync(path.join(here, 'shared', 'worker', 'extension.js')) && fs.existsSync(stage)) {
+if (!fs.existsSync(path.join(here, 'shared', 'app-core', 'extension.js')) && fs.existsSync(stage)) {
   try {
     execFileSync(process.execPath, [stage], {cwd: here, stdio: 'inherit', env: {...process.env, ELECTRON_RUN_AS_NODE: '1'}});
   } catch (error) { console.error(`Building shared/ failed: ${error.message}`); }

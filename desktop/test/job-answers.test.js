@@ -3,7 +3,7 @@
 // owner 28 Oct 2026: "there cannot be things that we learned and should be applied only to one job"); answers kept before still fill. Fake store call.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {JOB_ANSWERS_SECTION, withJobAnswer} from '../shared/worker/job-answers.js';
+import {JOB_ANSWERS_SECTION, withJobAnswer} from '../shared/app-core/job-answers.js';
 import {extensionStore} from '../lib/store/extension-store.js';
 import * as jobAnswers from '../lib/job-answers.js';
 

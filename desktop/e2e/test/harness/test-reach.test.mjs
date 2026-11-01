@@ -52,11 +52,11 @@ test('parent-only URL specifiers reach a directory with its trailing slash', t =
 });
 
 test('a reach into staged desktop/shared/ is a reach into the file stage.mjs copies it from (review on #2241)', () => {
-  assert.equal(unstage('desktop/shared/worker/ai.js'), 'worker/src/ai.js');
+  assert.equal(unstage('desktop/shared/app-core/ai.js'), 'app-core/src/ai.js');
   assert.equal(unstage('desktop/shared/ladder-core.js'), 'extension/ladder/core.js');
   assert.equal(unstage('desktop/shared/ladder/endings.js'), 'extension/ladder/endings.js');
   assert.equal(unstage('desktop/shared/alias-schema.js'), 'extension/alias-schema.js');
   assert.equal(unstage('desktop/lib/server.js'), 'desktop/lib/server.js');
   const cache = new Map();
-  assert.ok(allTests().some(file => [...reach(ROOT, file, cache).paths].some(item => item.startsWith('worker/src/'))), 'a worker file the app server imports through shared/ is reached');
+  assert.ok(allTests().some(file => [...reach(ROOT, file, cache).paths].some(item => item.startsWith('app-core/src/'))), 'a worker file the app server imports through shared/ is reached');
 });

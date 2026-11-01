@@ -20,7 +20,7 @@ export const SCOPE = [
   {folder: 'desktop/renderer', prefix: 'desktop/renderer/', lang: 'js'},
   {folder: 'desktop (main process)', prefix: 'desktop/', lang: 'js', topOnly: true},
   {folder: 'extension', prefix: 'extension/', lang: 'js'},
-  {folder: 'worker/src', prefix: 'worker/src/', lang: 'js'},
+  {folder: 'app-core/src', prefix: 'app-core/src/', lang: 'js'},
 ];
 const EXT = {py: /\.py$/, js: /\.(js|mjs|cjs)$/};
 const LEFT_OUT = /(^|\/)(node_modules|test|tests|fixtures|vendor|\.claude|\.git)\/|\.test\./;

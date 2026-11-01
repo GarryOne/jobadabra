@@ -65,7 +65,7 @@ on:
       - 'tools/sentry-fixer/codex-fix.mjs'
       - 'tools/sentry-fixer/lib.mjs'
       - 'tools/suspend-flip.mjs'
-      - 'worker/src/**'   # staged into desktop/shared/worker/, which the app's server imports (review on #2241)
+      - 'app-core/src/**'   # staged into desktop/shared/app-core/, which the app's server imports (review on #2241)
 
 permissions:
   contents: read

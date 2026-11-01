@@ -4,7 +4,7 @@ import {test} from 'node:test';
 import {offlineEnv} from '../../lib/offline-guard.mjs';
 import {ownerGuardEnv} from '../../lib/owner-guard-env.mjs';
 import {ownerValues} from '../../lib/privacy-tripwire.mjs';
-import {parseOwnerValues} from '../../../../worker/src/owner-guard.js';
+import {parseOwnerValues} from '../../../../app-core/src/owner-guard.js';
 
 const OWNER = ownerValues({texts: ['# Profile\nName: Ana Maria Popescu\nEmail: ana.popescu@gmail.com\nPhone: +41 79 555 12 34\nLocation: Port Vale, Atlantis'], accountEmail: 'anapopescu88@gmail.com'});
 

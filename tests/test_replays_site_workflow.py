@@ -85,7 +85,7 @@ class DailyOnlyNotOnPrs(unittest.TestCase):
             on = (self.WF / name).read_text().split('\njobs:')[0]
             self.assertNotRegex(on, r'(?m)^  (schedule|push):', f'{name}: replays are for debugging (owner, 17 Oct 2026)')
             self.assertIn('workflow_dispatch:', on, name)
-        scheduler = (ROOT / 'worker' / 'src' / 'scheduler.js').read_text()
+        scheduler = (ROOT / 'app-core' / 'src' / 'scheduler.js').read_text()
         self.assertNotIn("workflow: 'site-replays.yml'", scheduler, 'the Worker starts no replay')
         self.assertNotIn('gh workflow run replay-refill', (self.WF / 'site-replays.yml').read_text(), 'no refill trigger from the replay')
 

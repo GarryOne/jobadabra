@@ -60,7 +60,7 @@ class AutoPullTest(unittest.TestCase):
         staged = self.repo / 'staged.txt'
         staged.unlink(missing_ok=True)
         # the class: every input stage.mjs copies, and nothing else
-        for path in ('worker/src/a.js', 'extension/recipe-schema.js', 'extension/alias-schema.js', 'extension/ladder/core.js'):
+        for path in ('app-core/src/a.js', 'extension/recipe-schema.js', 'extension/alias-schema.js', 'extension/ladder/core.js'):
             self.commit(path, 'x')
             notices = self.run_pull()
             self.assertEqual(staged.read_text().splitlines()[-1], '--files-only', path)

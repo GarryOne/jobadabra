@@ -152,15 +152,15 @@ class TheClass(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder).resolve()
             (root / 'desktop/test').mkdir(parents=True)
-            (root / 'worker/node_modules').mkdir(parents=True)
-            (root / 'dependency-link').symlink_to(root / 'worker/node_modules', target_is_directory=True)
-            (root / 'worker/package.json').write_text('{}')
+            (root / 'app-core/node_modules').mkdir(parents=True)
+            (root / 'dependency-link').symlink_to(root / 'app-core/node_modules', target_is_directory=True)
+            (root / 'app-core/package.json').write_text('{}')
             test = root / 'desktop/test/probe.js'
-            test.write_text("new URL('../../worker/node_modules/', import.meta.url); "
+            test.write_text("new URL('../../app-core/node_modules/', import.meta.url); "
                             "new URL('../../dependency-link/', import.meta.url); "
-                            "new URL('../../worker/package.json', import.meta.url);")
+                            "new URL('../../app-core/package.json', import.meta.url);")
             with patch(__name__ + '.ROOT', root):
-                self.assertEqual(repo_reads(test, 'desktop'), {root / 'worker/package.json'})
+                self.assertEqual(repo_reads(test, 'desktop'), {root / 'app-core/package.json'})
 
     def test_every_file_a_suite_watches_starts_the_steps_after_a_merge(self):
         # #2043 (26 Oct 2026) changed src/ai/score.py and enrich.py, which the quality suite watches; the PR e2e workflow had no src/ path, so it never started and quality never ran.
@@ -248,9 +248,9 @@ class TheShapes(unittest.TestCase):
         self.assertLessEqual({'harness.yml', 'tests-desktop.yml', 'page-cases.yml'}, started)
 
     def test_a_worker_change_starts_its_suite_and_the_desktop_tests_that_read_it(self):
-        # identity-rule.test.js and site-routes.test.js walk all of worker/src (26 Oct 2026, the repo-root reads)
-        self.assertEqual(self.started(['worker/src/index.js']), {'tests-worker.yml', 'tests-desktop.yml', 'harness.yml', 'integration.yml'})   # integration.yml: the app's server imports worker/src too (owner, 1 Nov 2026); harness.yml: the app's server imports worker/src through desktop/shared/ (review on #2241)
-        self.assertEqual(self.started(['worker/src/report.js']), {'tests-worker.yml', 'tests-desktop.yml', 'harness.yml', 'integration.yml'}, 'a desktop test reads it; harness.yml and integration.yml: worker/src is staged into desktop/shared/ (#2241)')
+        # identity-rule.test.js and site-routes.test.js walk all of app-core/src (26 Oct 2026, the repo-root reads)
+        self.assertEqual(self.started(['app-core/src/index.js']), {'tests-worker.yml', 'tests-desktop.yml', 'harness.yml', 'integration.yml'})   # integration.yml: the app's server imports app-core/src too (owner, 1 Nov 2026); harness.yml: the app's server imports app-core/src through desktop/shared/ (review on #2241)
+        self.assertEqual(self.started(['app-core/src/report.js']), {'tests-worker.yml', 'tests-desktop.yml', 'harness.yml', 'integration.yml'}, 'a desktop test reads it; harness.yml and integration.yml: app-core/src is staged into desktop/shared/ (#2241)')
 
     def test_a_workflow_change_starts_that_workflow(self):
         for name in pr_workflows():

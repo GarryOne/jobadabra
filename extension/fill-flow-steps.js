@@ -206,7 +206,7 @@ export async function leavePage(step) {
 async function watchPage(step) {
   const {tab, jobUrl, gen, role, kind, counts, pressed} = step;
   const {progress, emptyShape, watchForFields, late, writeState, sameWatchPage} = step.flow;
-  if (late(tab, gen, 'page state')) return false;   // Why (#2800 try 2): a read says a verdict only while it is the tab's current read AND the tab still shows its page. A stale read never writes the page's state (worker/test/read-generation.test.js)
+  if (late(tab, gen, 'page state')) return false;   // Why (#2800 try 2): a read says a verdict only while it is the tab's current read AND the tab still shows its page. A stale read never writes the page's state (app-core/test/read-generation.test.js)
   const now = await chrome.tabs.get(tab.id).catch(() => null);
   if (!now || !sameWatchPage(now.url, step.live?.url || tab.url)) { decide('fill', 'the tab moved on before this read said its end: the page it shows decides', {page: new URL(String(step.live?.url || tab.url)).pathname}); return false; }   // Why (#2800 try 2, CI run 41276590786: working -> your-turn -> done 67 ms later): the posting's read, still current because the form's read had not begun, said its end to the form
   await progress(tab.id, '', '', '');   // the step ends now, not after the 20 s watch (owner, 9 Oct 2026: it spun on a sign-in page left to them). Why (#2800 try 2): only a clear; the verdict is the page-state write below, one per read (it said your-turn here, then done from the write, a few ms apart)
@@ -219,7 +219,7 @@ async function watchPage(step) {
   await markPage(tab.id, role, pressed, kind, {working: !!watching});
   // Why (30 Oct 2026, applyflows 40992748380): only recovery waits for the watch; bot-check requests and page state must reach the person immediately.
   if (watching) step.watch = watchForFields(tab, jobUrl, undefined, botCheck ? 60 : 10, counts?.frameHosts || [], () => markPage(tab.id, role, pressed, kind)).catch(async () => { await markPage(tab.id, role, pressed, kind); return false; });
-  if (late(tab, gen, 'page state')) return false;   // a stale read never writes the page's state (worker/test/read-generation.test.js): checked again here, nothing between it and the write
+  if (late(tab, gen, 'page state')) return false;   // a stale read never writes the page's state (app-core/test/read-generation.test.js): checked again here, nothing between it and the write
   await writeState(tab.id, {state: role});
   step.botCheck = botCheck;
   return true;

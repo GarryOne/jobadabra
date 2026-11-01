@@ -152,7 +152,7 @@ rebase() {
 # A landing through a pull request never queues (owner, 12 Oct 2026: "Everybody can open PR at any time"): the PR's required checks guard main,
 # and the queue was held until the PR merged (~4 min), so PRs waited for each other again. Guard: tests/test_ship_pr.py.
 mode="$(ship_mode)"
-slow_gate_paths="extension desktop/lib desktop/test desktop/e2e desktop/scripts desktop/package.json desktop/package-lock.json worker/src docs/flows"
+slow_gate_paths="extension desktop/lib desktop/test desktop/e2e desktop/scripts desktop/package.json desktop/package-lock.json app-core/src docs/flows"
 case "${SHIP_LANDING_LOCK:-auto}" in
   1) queue=1 ;; 0) queue=0 ;;
   *) if [ "${JOB_PILOTTO_RED_FIX:-}" = 1 ] || [ "$mode" = pr ]; then queue=0; else git fetch -q origin; if [ -n "$(git diff --name-only origin/main...HEAD -- $slow_gate_paths 2>/dev/null)" ]; then queue=1; else queue=0; fi; fi ;;

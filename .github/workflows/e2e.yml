@@ -47,11 +47,11 @@ on:
         type: boolean
         default: false
       night_pass:
-        description: 'Started by the Worker (worker/src/scheduler.js NIGHT_SLOTS): pass n/5 of the night burn-in, e.g. 3/5. The beta''s own layout (every gate suite, both stores, Windows following) on the commit of pass 1, fixed path, no paid AI except pass 1''s one qualityai night-report run (desktop/e2e/lib/night-pass.mjs)'
+        description: 'Started by the Worker (app-core/src/scheduler.js NIGHT_SLOTS): pass n/5 of the night burn-in, e.g. 3/5. The beta''s own layout (every gate suite, both stores, Windows following) on the commit of pass 1, fixed path, no paid AI except pass 1''s one qualityai night-report run (desktop/e2e/lib/night-pass.mjs)'
         type: string
         default: ''
       scheduled:
-        description: 'Started on time by the Worker (worker/src/scheduler.js) in place of the three-a-day schedule: planned exactly as a schedule event, no paid AI judge'
+        description: 'Started on time by the Worker (app-core/src/scheduler.js) in place of the three-a-day schedule: planned exactly as a schedule event, no paid AI judge'
         type: boolean
         default: false
       canary:

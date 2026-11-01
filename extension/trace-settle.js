@@ -1,7 +1,7 @@
 // The fill's per-field record, settled at the end: one row per field, its outcome what the page holds once every pass is done.
 // Each pass (the kit, the drop-down clicks, Claude on the page) wrote its own row at its own moment; a later pass, or a menu picked meanwhile,
 // left rows saying "left" for fields that were filled (8 Oct 2026, the live twin: Coop's "Formule d'appel"). Used by flow.js; guarded by
-// worker/test/trace-settle.test.js. finalFields: the form as described at the end ([{label, field, filled}]); missing → the rows decide.
+// app-core/test/trace-settle.test.js. finalFields: the form as described at the end ([{label, field, filled}]); missing → the rows decide.
 // gaveUp: boxes the page kept emptying after we typed them again, up to the limit ([{field, times}], page/browser-form-fastpath.js): the reason says so.
 // readBack: rung 0's read of every control once the page settled (page/read-back.js pass: [{field, type, state, file?}]), the one truth the panel reads too
 // (spec docs/superpowers/specs/2026-10-12-fill-ladder.md, amendment 4): it names why a box is left, and the CV row is what its slot shows (cvName: the CV's file name), not what the operator hoped.

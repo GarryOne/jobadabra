@@ -19,7 +19,7 @@ def dry(*args):
 
 class SearchCheck(unittest.TestCase):
     def test_a_worktree_is_staged_before_the_run(self):
-        # 26 Oct 2026: a check from a worktree died at "Cannot find module desktop/shared/worker/ai.js" after 20 s; it now stages first
+        # 26 Oct 2026: a check from a worktree died at "Cannot find module desktop/shared/app-core/ai.js" after 20 s; it now stages first
         source = (ROOT / 'tools' / 'persona-search' / 'search-check.mjs').read_text()
         self.assertIn("'scripts/stage.mjs'", source)
         self.assertLess(source.index("'scripts/stage.mjs'"), source.index('execFileSync(step.run[0]'), 'staged before the press runs')

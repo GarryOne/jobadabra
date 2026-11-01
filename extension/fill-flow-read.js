@@ -78,7 +78,7 @@ export async function askPage(step) {
   if (await ownSpan(tab.id, `askPage ${tab.id}/${gen} backgroundPage`, () => backgroundPage(tab.id, asked?.role || pageRole(counts, tab.url), asked?.botCheck === true))) return false;
   // The application form: fill it now; what became of the sign-up before it is the account AI's word a moment later, for the card only (owner, 9 Oct 2026: the fill
   // waited 40 s on it on Migros while the page was already the form). Any other page (an account page, a posting, nothing known) waits for it, as the sign-in →
-  // sign-up switch and the account step go by it. Guard: worker/test/account-step.test.js.
+  // sign-up switch and the account step go by it. Guard: app-core/test/account-step.test.js.
   if (asked?.role !== 'form') await outcomeLook;
   if (late(tab, gen, 'account outcome')) return false;
   const outcomeMs = Date.now() - lookedAt;   // what the fill waited before it could go on

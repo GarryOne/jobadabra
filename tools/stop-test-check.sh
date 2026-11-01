@@ -2,7 +2,7 @@
 # Claude Code Stop hook (.claude/settings.json): before Claude says it's done, run the test suites that match the
 # files changed vs origin/main in each worktree this session touched, the way CI runs them, and send failures back.
 #   src/ tests/ tools/ config/ templates/ -> Python, as CI sees it (JOB_PILOTTO_DISABLE=..., no Keychain credentials)
-#   desktop/ -> desktop npm test    worker/ extension/ -> worker npm test    site/ -> site npm test
+#   desktop/ -> desktop npm test    app-core/ extension/ -> app-core npm test    site/ -> site npm test
 #   a file added, removed or renamed anywhere -> desktop's code-map test (its header comment says what it does)
 # Uses Python >= 3.11 and Node 22 (nvm) whatever is first on PATH. Each suite is time-boxed; a tree state that
 # already passed is not tested again. Exit 2 + stderr keeps Claude working on the failure (once per stop chain).
@@ -43,7 +43,7 @@ for d in ${dirs[@]+"${dirs[@]}"}; do
   [ -n "$d" ] || continue
   while [ ! -d "$d" ] && [ "$d" != "/" ] && [ -n "$d" ]; do d="$(dirname "$d")"; done
   top="$(git -C "$d" rev-parse --show-toplevel 2>/dev/null)" || continue
-  [ -f "$top/src/daily.py" ] && [ -d "$top/worker" ] || continue   # only this project
+  [ -f "$top/src/daily.py" ] && [ -d "$top/app-core" ] || continue   # only this project
   case " ${repos[*]-} " in *" $top "*) ;; *) repos+=("$top") ;; esac
 done
 [ ${#repos[@]} -gt 0 ] || exit 0
@@ -92,7 +92,7 @@ for repo in "${repos[@]}"; do
   suites=()
   grep -qE '^(src|tests|tools|config|templates)/|^requirements[^/]*\.txt$' <<<"$files" && suites+=(python)
   grep -q '^desktop/' <<<"$files" && suites+=(desktop)
-  grep -qE '^(worker|extension)/' <<<"$files" && suites+=(worker)
+  grep -qE '^(app-core|worker|extension)/' <<<"$files" && suites+=(worker)
   grep -q '^site/' <<<"$files" && suites+=(site)
   if [ -n "$untracked" ] || grep -qE '^[ADR]' <<<"$status"; then
     case " ${suites[*]-} " in *" desktop "*) ;; *) suites+=(codemap) ;; esac

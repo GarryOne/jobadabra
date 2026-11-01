@@ -240,7 +240,7 @@ then say what passed** (learned 30 Sep 2026, each of these cost real time). **In
 
 ```sh
 python3 -m unittest tests.test_<the module you changed>       # CI: JOB_PILOTTO_DISABLE=mail,notion,telegram,google_jobs python3 -m unittest discover -s tests
-cd desktop && node --test test/<the file you changed>.test.js  # CI: cd desktop && npm test; cd worker && npm test
+cd desktop && node --test test/<the file you changed>.test.js  # CI: cd desktop && npm test; cd app-core && npm test
 ```
 
 - **`desktop/npm test` needs its `pretest`** (`scripts/stage.mjs`): in a fresh worktree, without staging, seven files

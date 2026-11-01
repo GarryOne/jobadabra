@@ -7,12 +7,12 @@ on:
   pull_request:
     branches: [main]
     paths:
-      - 'worker/**'
+      - 'app-core/**'
       - 'tools/check.sh'
       - 'tools/check.py'
-      # Files outside worker/ that its tests read (tests/test_workflow_paths.py fails when one is missing).
+      # Files outside app-core/ that its tests read (tests/test_workflow_paths.py fails when one is missing).
       - '.github/workflows/pr-verdict.yml'   # watchdog.test.js checks the Worker's sweep run-name
-      - 'hosted/ready-fill/**'   # the night's AI: worker/test/ready-night-ai.test.js imports it
+      - 'hosted/ready-fill/**'   # the night's AI: app-core/test/ready-night-ai.test.js imports it
       - 'desktop/demo/answers.md'
       - 'desktop/demo/job-pages.json'
       - 'desktop/demo/profile.md'
@@ -34,7 +34,7 @@ on:
       - 'tools/browser-submit-guard.js'
       - 'tools/fill-fixture.mjs'
       - 'desktop/test/reporter-by-file.mjs'   # worker's npm test prints through it
-      - 'desktop/test/fake-fill-page.js'   # worker/test/fill-page-characterization.test.js drives the page fill with it
+      - 'desktop/test/fake-fill-page.js'   # app-core/test/fill-page-characterization.test.js drives the page fill with it
       - '.github/workflows/tests-worker.yml'
 
 permissions:
@@ -59,5 +59,5 @@ jobs:
         with:
           node-version: '22'
       - run: npm ci
-        working-directory: worker
+        working-directory: app-core
       - run: bash tools/check.sh --area worker

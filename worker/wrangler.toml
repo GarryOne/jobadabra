@@ -1,6 +1,7 @@
 # Telegram webhook for @sre_job_pilotto_bot. Deploy: npm run deploy
 name = "sre-job-pilotto-bot"
-main = "src/index.js"
+# Why (1 Nov 2026, owner: desktop + extension only): the code is app-core/src, which the app also runs; this folder is only the deploy shell (it moves to jobadabra-web).
+main = "../app-core/src/index.js"
 compatibility_date = "2026-09-01"
 
 # On-time starts (src/scheduler.js): 04:00 Zurich nightly build, three e2e runs a day, PR verdict sweeps every 10 minutes and /self-heal numbers every 3 hours.

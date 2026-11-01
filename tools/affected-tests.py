@@ -26,18 +26,18 @@ JS_EXT = ('.js', '.mjs', '.cjs')
 IMPORT_RE = re.compile(r"""(?:require\(\s*|\bfrom\s+|\bimport\s*\(\s*|\bimport\s+)['"](\.[^'"]*)['"]""")
 SCANNER_RE = re.compile(r'''readdirSync|globSync|git ls-files|git ls-tree|['"]ls-(?:files|tree)['"]''')   # the last: execFileSync('git', ['ls-files', ...]) (15 Oct 2026)
 ENGINE_RE = re.compile(r'python|(?:^|[^A-Za-z])src[/.]')
-NODE_AREAS = {'desktop': 'desktop/test', 'worker': 'worker/test', 'site': 'test', 'e2e': 'desktop/e2e/test', 'integration': 'desktop/integration'}   # site: the website's tests, only in the joined tree of jobadabra-web; e2e: the harness's; integration: the app, extension and store layers own tests (c27, 1 Nov 2026)
+NODE_AREAS = {'desktop': 'desktop/test', 'worker': 'app-core/test', 'site': 'test', 'e2e': 'desktop/e2e/test', 'integration': 'desktop/integration'}   # site: the website's tests, only in the joined tree of jobadabra-web; e2e: the harness's; integration: the app, extension and store layers own tests (c27, 1 Nov 2026)
 AREAS = ('python', 'desktop', 'worker', 'site', 'e2e', 'integration')
-# Why (c27, 1 Nov 2026, owner "Yes, via affected-tests"): ~70 harness tests scan every suite (ratchets, step lists, guards); #2767 found them one CI round at a time (4 rounds).
+# Why (c27, 1 Nov 2026, owner "Yes, via affected-tests"): ~70 harness tests scan every suite (the folders desktop/, extension/, app-core/) (ratchets, step lists, guards); #2767 found them one CI round at a time (4 rounds).
 # They are picked as scanners only for a change the harness can read (the app, the extension, the Worker, the workflows); a Python-only edit picks them by reach or mention alone.
-E2E_SCAN_FOR = ('desktop/', 'extension/', 'worker/', '.github/')
-PREFIX = {'e2e': 'desktop/e2e/', 'integration': 'desktop/integration/'}   # the folder a picked test path is printed relative to (default: the area name + '/')
+E2E_SCAN_FOR = ('desktop/', 'extension/', 'app-core/', '.github/')
+PREFIX = {'worker': 'app-core/', 'e2e': 'desktop/e2e/', 'integration': 'desktop/integration/'}   # the folder a picked test path is printed relative to (default: the area name + '/')
 ALL_TRIGGERS = re.compile(r'(^|/)(package(-lock)?\.json|requirements[^/]*\.txt|pyproject\.toml|eslint\.config\.mjs)$|^\.github/workflows/build\.yml$')
 # A dependency file inside one JS area (desktop/e2e/package.json) makes THAT area run whole; the other areas still pick by imports and mentions (11 Oct 2026: 1 of 150 commits, the e2e
 # harness's package.json, ran Python, worker and site whole for nothing). A root-level file (package.json, requirements, pyproject) still runs everything.
-SCOPED_DEPS = re.compile(r'^(desktop|worker|workers/www)/(.+/)?package(-lock)?\.json$')
+SCOPED_DEPS = re.compile(r'^(desktop|app-core|worker|workers/www)/(.+/)?package(-lock)?\.json$')
 NO_TEST_EFFECT = re.compile(r'\.md$|^docs/|^LICENSE|\.gitignore$')
-KNOWN = ('src/', 'tests/', 'tools/', 'config/', 'templates/', 'desktop/', 'extension/', 'worker/', 'site/', 'web/', 'admin/', 'api/', 'shared/', 'workers/', 'db/', 'test/', 'jobs/', 'media/', 'preview/', '.github/', 'docs/', '.gitattributes')   # .gitattributes: the tests that name it (test_ship, merge-baseline) are picked by mention
+KNOWN = ('src/', 'tests/', 'tools/', 'config/', 'templates/', 'desktop/', 'extension/', 'app-core/', 'worker/', 'site/', 'web/', 'admin/', 'api/', 'shared/', 'workers/', 'db/', 'test/', 'jobs/', 'media/', 'preview/', '.github/', 'docs/', '.gitattributes')   # .gitattributes: the tests that name it (test_ship, merge-baseline) are picked by mention
 
 
 def walk(suffixes):
@@ -219,7 +219,7 @@ def select(changed, base_ref=None):
     everything = [f for f in relevant if (ALL_TRIGGERS.search(f) and f not in scoped) or f == 'tests/test_0_notion_ids.py']
     areas = {'python': (lambda f: f.startswith(('src/', 'tests/', 'tools/', 'config/', 'templates/', '.github/workflows/')) or f == '.gitattributes'),
              'desktop': (lambda f: f.startswith(('desktop/', 'extension/')) or f == '.gitattributes'),
-             'worker': (lambda f: f.startswith(('worker/', 'extension/'))),
+             'worker': (lambda f: f.startswith(('app-core/', 'extension/'))),
              'site': (lambda f: f.startswith(('site/', 'web/', 'admin/', 'api/', 'shared/', 'workers/', 'db/', 'test/', 'jobs/', 'media/', 'preview/'))),
              'e2e': (lambda f: True),   # any file may be read by a harness test: reach and mention decide
              'integration': (lambda f: f.startswith(('desktop/', 'extension/')))}
@@ -261,7 +261,8 @@ def select(changed, base_ref=None):
         if picked == 'all':
             why[area] = 'tools/e2e-test-reach.mjs failed'
     for f in scoped:
-        result[f.split('/')[0]] = 'all'; why[f.split('/')[0]] = f'dependency file: {f}'
+        area = 'worker' if f.startswith('app-core/') else f.split('/')[0]   # Why (1 Nov 2026): the area key `worker` is kept, its folder is app-core/
+        result[area] = 'all'; why[area] = f'dependency file: {f}'
         if f.startswith('desktop/e2e/'):
             result['e2e'] = 'all'; why['e2e'] = f'dependency file: {f}'
     return result
@@ -276,7 +277,7 @@ def commands(result):
         files = ' '.join(picked)
         out[area] = {'python': f'python3 tools/py-shards.py {files}',
                      'desktop': f'cd desktop && node --test {files}',
-                     'worker': f'cd worker && node --test {files}',
+                     'worker': f'cd app-core && node --test {files}',
                      'site': 'node --test ' + ' '.join(f'test/{name}' for name in picked),   # the site pick is relative to test/ (PREFIX strips 'site/', the same length)
                      'e2e': f'cd desktop/e2e && node --import ./test/stdout-to-stderr.mjs --test {files}',
                      'integration': f'cd desktop && node --import ./test/no-live-site.mjs --test {" ".join("integration/" + name for name in picked)}'}[area]

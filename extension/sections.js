@@ -7,7 +7,7 @@
 // logged, never a label. Hybrid fill move 3 (owner, 26 Oct 2026; widget zoo collapsed-section-1: an accordion head with no heading and no aria-controls, its body hidden right
 // after it): a head whose next sibling is its hidden body is a disclosure too; it is LOOKED INTO: the next round closes it again when its body drew nothing to fill, so a
 // toggle that only shows words is left as the page had it. Called by fill-flow.js consider (before the page is judged) and flow.js fillTab (before the form is read).
-// Guard: worker/test/page-sections.test.js; e2e step "a form with collapsed sections".
+// Guard: app-core/test/page-sections.test.js; e2e step "a form with collapsed sections".
 import {decide} from './log.js';
 
 // Runs IN the page (injected by executeScript: no imports, nothing from this file's scope). → how many it opened.

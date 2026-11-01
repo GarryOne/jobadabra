@@ -15,7 +15,7 @@ const GROUPS = [
   ['Desktop scripts', 'desktop/scripts', /\.(mjs|cjs|js)$/],
   ['Chrome extension', 'extension', /\.js$/],
   ['Python pipeline', 'src', /\.py$/, true],
-  ['Telegram bot (worker)', 'worker/src', /\.js$/],
+  ['Telegram bot (worker)', 'app-core/src', /\.js$/],
   ['Tools', 'tools', /\.(py|sh|mjs)$/],
 ];
 

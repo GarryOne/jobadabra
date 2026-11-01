@@ -25,7 +25,7 @@ test('every route the app or worker serves is in the contract, and every contrac
     ...literalsOf('desktop/lib/server-routes.js', /'(\/extension\/[a-z-]+)'/g),
     ...literalsOf('desktop/lib/server.js', /'(\/extension\/[a-z-]+)'/g),
     ...extensionFiles('desktop/lib').flatMap(file => literalsOf(file, /setVisitRoute\(\s*'(\/extension\/[a-z-]+)'/g)),
-    ...literalsOf('worker/src/extension.js', /pathname === '(\/extension\/[a-z-]+)'/g),
+    ...literalsOf('app-core/src/extension.js', /pathname === '(\/extension\/[a-z-]+)'/g),
   ]);
   const listed = new Set(Object.keys(routes));
   assert.deepEqual([...served].filter(route => !listed.has(route)), [], `the app serves routes that ${CONTRACT} does not list`);

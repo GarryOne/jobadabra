@@ -15,15 +15,15 @@
     },
     "form": {
       "live": true,
-      "about": "the form answers call (worker/src/extension.js answerForm): 60 forms of real-sized fields, each field's expected answer",
+      "about": "the form answers call (app-core/src/extension.js answerForm): 60 forms of real-sized fields, each field's expected answer",
       "cases": ["tools/free-ai-form-asks.mjs", "tools/free-ai-form-list.mjs"],
       "prompts": {
-        "worker/src/extension.js": ["INSTRUCTIONS"],
-        "worker/src/answer-facts.js": ["FACT_RULE", "LINK_RULE"],
-        "worker/src/answer-declarations.js": ["DECLARATION_RULE", "LEGAL_CHOICE_RULE", "CONSENT_RULE"],
-        "worker/src/answer-examples.js": ["ANSWER_EXAMPLES"],
-        "worker/src/cv-facts.js": ["CV_FACTS_RULE"],
-        "worker/src/written-answer.js": ["WRITTEN_RULE"]
+        "app-core/src/extension.js": ["INSTRUCTIONS"],
+        "app-core/src/answer-facts.js": ["FACT_RULE", "LINK_RULE"],
+        "app-core/src/answer-declarations.js": ["DECLARATION_RULE", "LEGAL_CHOICE_RULE", "CONSENT_RULE"],
+        "app-core/src/answer-examples.js": ["ANSWER_EXAMPLES"],
+        "app-core/src/cv-facts.js": ["CV_FACTS_RULE"],
+        "app-core/src/written-answer.js": ["WRITTEN_RULE"]
       }
     },
     "writing": {
@@ -31,8 +31,8 @@
       "about": "prose the app writes for the person: 5 invented cases per feature with the trap a careless writer falls in (tools/free-ai-writing-eval.mjs)",
       "cases": ["tools/free-ai-writing-cases.mjs"],
       "prompts": {
-        "worker/src/written-answer.js": ["REVIEW_INSTRUCTIONS"],
-        "worker/src/writing-rules.js": ["WRITING_RULES"],
+        "app-core/src/written-answer.js": ["REVIEW_INSTRUCTIONS"],
+        "app-core/src/writing-rules.js": ["WRITING_RULES"],
         "src/ai/writing_rules.py": ["RULES"],
         "src/ai/prep.py": ["SYSTEM"],
         "src/ai/insights_text.py": ["WEEKLY_SYSTEM"],

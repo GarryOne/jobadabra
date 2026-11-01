@@ -41,11 +41,11 @@ class PrePushFixture(unittest.TestCase):
         self.tmp = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, self.tmp, True)
         self.repo, origin, self.bin = self.tmp / 'repo', self.tmp / 'origin.git', self.tmp / 'bin'
-        for folder in ('src', 'worker', 'tools', 'desktop', 'admin'):
+        for folder in ('src', 'app-core', 'tools', 'desktop', 'admin'):
             (self.repo / folder).mkdir(parents=True)
         self.bin.mkdir()
         (self.repo / 'src' / 'daily.py').write_text('')
-        (self.repo / 'worker' / 'package.json').write_text('{}')
+        (self.repo / 'app-core' / 'package.json').write_text('{}')
         (self.repo / 'admin' / 'a.js').write_text('')   # the website's folder (in the real repo it is laid over by the private repo's CI); the hook skips the site area without it
         (self.repo / 'desktop' / '.gitignore').write_text('shared/\n')
         shutil.copy(HOOK, self.repo / 'tools' / 'pre-push-check.sh')

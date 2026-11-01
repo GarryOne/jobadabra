@@ -4,7 +4,7 @@
 // how many options it lists, shown or not): one that failed on that state is never made again, and a control gets CAP tries in all. A control that used them and still does not
 // hold its answer is given up: marked on itself (data-jobpilotto-gaveup) and listed once for the worker's log, so the ladder climbs and the person is told once, never a loop.
 // The log lives on the control (data-jobpilotto-tried), so every script world and every pass of the fill reads the same one. Page world, loaded first (page-files.js PAGE_FILES,
-// the apply run's init scripts). Guard: worker/test/attempts.test.js, the widget zoo's menu-never-takes page.
+// the apply run's init scripts). Guard: app-core/test/attempts.test.js, the widget zoo's menu-never-takes page.
 (() => {
   if (window.__jobPilottoAttempts) return;
   const CAP = 3;

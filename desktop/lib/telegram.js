@@ -1,7 +1,7 @@
 // Telegram from the desktop app: the user's own bot (made with @BotFather), no webhook, no Cloudflare.
 // The app long-polls Telegram for button taps and commands while it runs, and handles them with the
-// Worker's own code (worker/src/index.js handleUpdate); its "dispatch" runs the pipeline locally.
-import {handleAdd, handleCommand, handleUpdate} from '../shared/worker/index.js';
+// Worker's own code (app-core/src/index.js handleUpdate); its "dispatch" runs the pipeline locally.
+import {handleAdd, handleCommand, handleUpdate} from '../shared/app-core/index.js';
 import * as github from './github.js';
 import * as pipeline from './pipeline.js';
 import * as notionGate from './notion-gate.js';

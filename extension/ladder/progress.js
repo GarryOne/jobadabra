@@ -3,7 +3,7 @@
 // this file changes what happens. Kinds: navigated (a new page in the tab), new_controls (fields or a frame appeared on a page judged without a form), required_down (a fill put a
 // value in a required field), value_stayed (RESERVED for the fill ladder's attempt log, extension/page/attempts.js: its page script sends {type: 'progress', kind: 'value_stayed'};
 // this file never detects a value itself, cc 12 Oct 2026). Each note also restarts the application's silence clock (ladder/silence.js, the silent dead-end rule, in shadow: its notice
-// goes through the door with {shadow: true}). Guard: worker/test/progress.test.js.
+// goes through the door with {shadow: true}). Guard: app-core/test/progress.test.js.
 import {evidenceOf, seenDeadEnd} from './dead-end.js';
 import {forgetSilence, restartSilence, silenceTab, useSilence} from './silence.js';
 import {disarmRecordUpdate, noteLateRetype} from './record-update.js';

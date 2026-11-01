@@ -4,7 +4,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {buildOf, build, newer} from '../lib/reports.js';
-import {newer as workerNewer} from '../../worker/src/report.js';
+import {newer as workerNewer} from '../../app-core/src/report.js';
 
 const run = version => ({url: 'https://boards.example.com/jobs/1', debug: {version, form: [{label: 'Country', type: 'combobox', options: []}]},
   trace: [{label: 'Country', required: true, reason: 'dropdown not clicked: the click failed'}]});

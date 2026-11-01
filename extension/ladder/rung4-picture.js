@@ -1,6 +1,6 @@
 // The closer look (spec: docs/superpowers/specs/2026-10-08-ai-escalation.md; owner, 8 Oct 2026: off until he turns it on, account pages first). When the account AI is unsure twice about a page, or a control it
 // named cannot be found, the worker takes a screenshot of the tab (typed values hidden for the capture), asks the app (lib/ladder/rung4-picture.js: opt-in, capped, validated, remembered per page shape) and carries out
-// ONE action: click a control the page lists, wait, or ask the person. A click that moved the page on is reported back so the app remembers it. Only a tab in front can be photographed. Guard: worker/test/escalate.test.js.
+// ONE action: click a control the page lists, wait, or ask the person. A click that moved the page on is reported back so the app remembers it. Only a tab in front can be photographed. Guard: app-core/test/escalate.test.js.
 import {apiFor, settings} from '../flow.js';
 import {decide} from '../log.js';
 import {sketchOf} from '../judge-sketch.js';

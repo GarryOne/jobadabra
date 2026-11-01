@@ -1,5 +1,6 @@
 /* global document */
 // The privacy tripwire (owner, 11 Oct 2026; rule: tests never touch the owner's real data). The plan's claude -p carries the signed-in Claude account, and a held fill
+// Job: run the backbone
 // on a real site typed the owner's first name (guessed from the account e-mail) into the fake applicant's form. After every held fill of a live run (lib/apply-live.mjs
 // runLive), every value the page's fields hold (all frames, open shadow roots; never a password field) is compared with the owner's own values: his app's profile and
 // answers and contact details (capture-page.mjs appProfileTexts, personalValues), his place (12 Oct 2026: a plan-path model with no profile typed the account
@@ -13,7 +14,7 @@ import path from 'node:path';
 import {CONTACT} from './apply-fixtures.mjs';
 import {appProfileTexts, personalValues} from './capture-page.mjs';
 import {placesOf as placesIn} from '../../lib/owner-values.js';
-import {matchesOwner, plain} from '../../../worker/src/owner-guard.js';
+import {matchesOwner, plain} from '../../../app-core/src/owner-guard.js';
 import {passwordLeak} from './test-accounts.mjs';
 
 // The signed-in Claude account on this Mac (~/.claude.json oauthAccount): read here only, never printed. -> {email, names}
@@ -38,7 +39,7 @@ export function ownerValues({texts = appProfileTexts(), accountEmail, accountNam
   return values;
 }
 
-export {matchesOwner};   // the matcher is shared with the answer step (worker/src/owner-guard.js): the same list is checked before a keystroke and after
+export {matchesOwner};   // the matcher is shared with the answer step (app-core/src/owner-guard.js): the same list is checked before a keystroke and after
 
 // Runs in each frame: every field the page holds a value in, with its label (a password field is never read).
 function fieldsInPage() {

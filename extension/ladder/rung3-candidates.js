@@ -1,7 +1,7 @@
 // Numbered candidates of a page (page/candidates.js, rung 3 of the ladder): the sentences, links, buttons and addresses of the posting's own text, found by STRUCTURE only (region, element, an
 // email- or phone-shaped string; no word, vendor or language list), so the page-kind AI can answer "how is this applied to?" by NUMBER and never write text or actions (spec docs/superpowers/specs/2026-10-10-ai-ladder.md, rung 3).
 // At most 12, 160 characters each. A link carries its host only (never an address with a query string), nothing a person typed or a hidden text is read.
-// Owner of asking and acting on the answer: the flow core (desktop/lib/ladder/rung3-digest.js validates it). Guard: worker/test/page-candidates.test.js.
+// Owner of asking and acting on the answer: the flow core (desktop/lib/ladder/rung3-digest.js validates it). Guard: app-core/test/page-candidates.test.js.
 (() => {
   const MAX = 12, MAX_TEXT = 160;
   const MAIL = /[^\s@<>()]+@[^\s@<>()]+\.[a-z]{2,}/i;

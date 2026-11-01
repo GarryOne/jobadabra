@@ -25,7 +25,7 @@ The first plan moved three folders whole. Each one is also code the shipped app 
 | Workflow | Verdict | Target |
 |---|---|---|
 | `worker.yml` (deploy) | moves | web, PR 4 (switch by day) |
-| `tests-worker.yml` | stays, renamed `tests-engine.yml`, paths updated | PR 2 |
+| `tests-worker.yml` | stays; file and job names unchanged (they are required-check names), paths and working-directory point at `app-core/` | PR 2 |
 | `ready-fill-image.yml` | moves | web, PR 5 |
 | `central-scout.yml` | moves | lab, PR 6 |
 | `product-brain.yml` | moves | lab, PR 6 |
@@ -36,7 +36,7 @@ The first plan moved three folders whole. Each one is also code the shipped app 
 | n | Repo | What | Removes from the allowlist |
 |---|---|---|---|
 | 1 | jobadabra | Rule + guard + this spec | none (adds the list) |
-| 2 | jobadabra | Pure move `worker/{src,test}` → `app-core`, `stage.mjs`, `tests-engine.yml`, every reader; shell left in `worker/` with `main` repointed | part of `worker` |
+| 2 | jobadabra | Pure move `worker/{src,test,package*.json,scripts/stage-shared,scripts/watchdog}` → `app-core`, `stage.mjs`, tooling + every reader (area key `worker` kept, JOB-193); shell left in `worker/` with `main` repointed | part of `worker` |
 | 3 | web | Bot Worker shell + deploy workflow (dispatch only; nothing deploys on merge) | none |
 | 4 | jobadabra | Delete the shell + `worker.yml`; the switch happens first, by day, a8 names the hour | `worker`, `worker.yml` |
 | 5 | web, then jobadabra | `hosted/` split | `hosted`, `ready-fill-image.yml` |
@@ -56,7 +56,7 @@ Order per move: the private side lands first, then the jobadabra removal. Before
 ## Progress
 - [x] Import graph and reader inventory (proof: none: analysis only, the findings are the table above)
 - [ ] 1/6 rule + guard + spec
-- [ ] 2/6 engine rename
+- [x] 2/6 engine rename (proof: app-core/package.json)
 - [ ] 3/6 web shell
 - [ ] 4/6 switch + delete shell
 - [ ] 5/6 hosted split

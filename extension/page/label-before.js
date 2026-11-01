@@ -4,7 +4,7 @@
 // The title of a group or of a control with no label is the same rule's sibling (12 Oct 2026, widget zoo segmented-toggle-1: a role=group named by aria-labelledby was called
 // "First name", the FIRST label of its form, by a walk up its ancestors; the question was never asked and two fields shared one label): its own accessible name
 // (aria-labelledby, aria-label) wins, else the NEAREST title before it that no other control owns (a <label for> of another box is that box's). One rule for every
-// reader that names a group: page/radios.js, page/controls.js, page/fill-labels.js, review.js. Guarded by worker/test/label-before.test.js and the widget zoo.
+// reader that names a group: page/radios.js, page/controls.js, page/fill-labels.js, review.js. Guarded by app-core/test/label-before.test.js and the widget zoo.
 (() => {
   if (window.__jobPilottoLabelBefore) return;
   const CONTROL = 'input:not([type=hidden]), select, textarea, button';

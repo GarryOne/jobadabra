@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {test} from 'node:test';
-import {handleUpdate} from '../shared/worker/index.js';
+import {handleUpdate} from '../shared/app-core/index.js';
 import * as pipeline from '../lib/pipeline.js';
 import {due, mailDue, nextAt, nextMailAt, startSchedule} from '../lib/schedule.js';
 import {createStorage} from '../lib/storage.js';

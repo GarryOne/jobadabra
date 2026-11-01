@@ -12,7 +12,7 @@ import {anthropicApi} from './ai/anthropic-api.js';
 import {aboutFor, aboutText, baseCv, dir as cvDir, MODEL, style, usd} from './cv.js';
 import {writePrivate} from './private-file.js';
 import {DEFAULT_CSS, FONTS} from '../cv/template.js';
-import {WRITING_RULES} from '../shared/worker/writing-rules.js';
+import {WRITING_RULES} from '../shared/app-core/writing-rules.js';
 
 const safeCode = code => String(code).replace(/[^a-z0-9]/gi, '');
 export const dir = storage => storage.path('cover-letter/jobs');

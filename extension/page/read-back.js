@@ -5,7 +5,7 @@
 // stateOf(el) -> committed (holds a value: the one the fill typed, when it typed one) | mismatch (the fill typed, the box holds something else) | empty | unknown (only the extension's
 // own mark says a file went in: the slot shows no file). An upload slot is read by what it shows: the file in its input, or a file name shown in the slot's own area (a custom uploader
 // clears input.files and shows the file as a chip), never by the extension's mark alone. pass() is the fill's end read once the page settled: it writes each state on its control
-// (data-jobpilotto-r0; unreachable when a dialog or a big fixed layer is drawn at the control's centre) and returns the states. Values never leave the page. Guard: worker/test/read-back.test.js.
+// (data-jobpilotto-r0; unreachable when a dialog or a big fixed layer is drawn at the control's centre) and returns the states. Values never leave the page. Guard: app-core/test/read-back.test.js.
 (() => {
   if (window.__jobPilottoReadBack) return;
   const visible = el => !!(el.getClientRects().length && getComputedStyle(el).visibility !== 'hidden');
@@ -100,7 +100,7 @@
   const pickedOther = (el, shown) => { const picked = el.getAttribute('data-jobpilotto-picked'), now = alnum(shown); return !!picked && now !== picked && !(/^\d{1,4}$/.test(now) && picked.endsWith(now)); };   // a picker that shows the picked option's calling code only ("Switzerland +41" -> "+41") is that option
   // What a custom dropdown shows of its choice: a chip's words; for a labelled hidden input, which holds a key ("688", SuccessFactors), the words in the box itself. A pick
   // counts as kept only when the box shows it: an empty box beside a key proves nothing (cc, 14 Oct 2026). Since ad30229 the key itself was compared with the picked option,
-  // so every correct pick read as another one (Breitling: Country and language left). Guard: worker/test/picklist-hidden-key.test.js.
+  // so every correct pick read as another one (Breitling: Country and language left). Guard: app-core/test/picklist-hidden-key.test.js.
   const comboShown = (el, value) => (value.type === 'hidden' ? el.value : value.textContent || value.value);
   const stateOf = el => {
     if (!el) return 'empty';

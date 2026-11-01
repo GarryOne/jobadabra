@@ -4,7 +4,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {test} from 'node:test';
-import {readPanel} from '../../worker/test/helpers/panel.js';
+import {readPanel} from '../../app-core/test/helpers/panel.js';
 import {restartFormsOf} from '../lib/tailored-restart.js';
 
 const read = path => fs.readFileSync(new URL(`../../${path}`, import.meta.url), 'utf8');

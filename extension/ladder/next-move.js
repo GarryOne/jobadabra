@@ -1,7 +1,7 @@
 // The next move checked (spec docs/superpowers/specs/2026-10-12-one-next-move.md, phase 2 box 5, "Making the next move right"): the ONE rule that says whether the fallback's move
 // may act, and the effect each verb must show right after acting. Pure: the shadow question (ladder/fallback.js) logs what it would decide; the CI pool acting (box 8) uses it to act.
 // A move acts only when sure (>= 0.8: below, climb), past the floors (the live press path's own, checked by fallback.js), and a press only when a second ask names the same control
-// (the worthRetry idea: variance is caught by asking again). No effect after acting = failed: never repeated, the next rung is asked with what was tried. Guard: worker/test/next-move.test.js.
+// (the worthRetry idea: variance is caught by asking again). No effect after acting = failed: never repeated, the next rung is asked with what was tried. Guard: app-core/test/next-move.test.js.
 
 export const ACT_FROM = 0.8;
 const PRESSES = ['press', 'open'];

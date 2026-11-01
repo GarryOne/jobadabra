@@ -3,7 +3,7 @@
 // ended when the door spoke (ladder/dead-end.js deadEnd: every stop, the person-stops among them) or the page was handed to the person (form-ready.js: ready on the final step, so
 // Submit is theirs, or needs_person). Per APPLICATION (its job), not per tab: Apply opening a new tab moves the application on, it never leaves the posting tab "silent".
 // In SHADOW: a silence is noted once (progress.js hands the notice to the door, {shadow: true}); nothing else happens. The clock lives in the worker: a worker that sleeps forgets it
-// (a miss is today's behaviour). Pure apart from its timer, so the CI pool's logs are read with the same rule. Guard: worker/test/silence.test.js.
+// (a miss is today's behaviour). Pure apart from its timer, so the CI pool's logs are read with the same rule. Guard: app-core/test/silence.test.js.
 
 // T = 30 s, measured on the CI pool (13 Oct 2026: 4 runs, 12 rows, 43 gaps between progress notes; desktop/e2e/lib/pool-gaps.mjs) WITH the asks to the app taken out (the clock stands still while one is
 // out, below): the slowest normal quiet gap is 18.8 s (it was 51.5 s in wall time: a fill waiting for the AI's answers to 15 questions). On the 9 rows that reached the form: false fires 0 at 30 s

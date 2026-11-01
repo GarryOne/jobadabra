@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {REVIEW_INSTRUCTIONS, REVIEW_SCHEMA} from '../worker/src/written-answer.js';
+import {REVIEW_INSTRUCTIONS, REVIEW_SCHEMA} from '../app-core/src/written-answer.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url)), root = path.join(here, '..');
 const read = file => fs.readFileSync(path.join(root, file), 'utf8');

@@ -24,7 +24,7 @@ export const MECHANICAL = ['dropdown not clicked', 'dropdown clicked, but its me
 const SNAPPED = '#snapshot';  // reportedFailures entry "<label key> #snapshot": reported with its snapshot
 const AT = '@';               // reportedFailures entry "<label key> @<build>": reported from that extension build
 
-// Is build `build` later than `than`? The same rule as the Worker's (worker/src/report.js newer; test/reports-build.test.js keeps them equal).
+// Is build `build` later than `than`? The same rule as the Worker's (app-core/src/report.js newer; test/reports-build.test.js keeps them equal).
 export function newer(build, than) {
   const parts = text => { const m = /^(\d+(?:\.\d+)*)/.exec(String(text || '')); return m ? m[1].split('.').map(Number) : null; };
   const mine = parts(build), theirs = parts(than);

@@ -1,7 +1,7 @@
 // The next step of a multi-step application (owner, 10 Oct 2026: always on, the setting was dropped; the floors below are what keep it safe). When the form judge (form-ready.js) says THIS page state is
 // ready and names the control that goes on to the next step (desktop/lib/form-judge.js: a middle step, one of the page's own buttons), the extension presses it: once per page state per tab, kept in
 // session storage so a reload or a restarted worker never presses twice. Hard floor, by structure: never a control that submits a form, never one that reads
-// like Submit, never the last step. Logged with the control's own wording, never a value. Guarded by worker/test/next-step.test.js.
+// like Submit, never the last step. Logged with the control's own wording, never a value. Guarded by app-core/test/next-step.test.js.
 import {plainWhy} from './ai-reply.js';
 import {decide} from './log.js';
 import {notePress} from './tabs.js';

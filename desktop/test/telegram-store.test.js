@@ -1,9 +1,9 @@
-// The Telegram bot reads the same whichever store holds the data (worker/src/index.js env.store): /saved and /applied list the same jobs
+// The Telegram bot reads the same whichever store holds the data (app-core/src/index.js env.store): /saved and /applied list the same jobs
 // from Notion and from the store on this Mac (lib/store/telegram-store.js), only Notion's "Open in Notion" link differs; an outcome tap
 // writes the stage and one Telegram event.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {handleCommand, handleUpdate} from '../shared/worker/index.js';
+import {handleCommand, handleUpdate} from '../shared/app-core/index.js';
 import {telegramStore} from '../lib/store/telegram-store.js';
 
 // No network in this file: every call is answered by a stub below, and anything else fails the test (9 Oct 2026: a stale staged worker
@@ -22,7 +22,7 @@ const row = app => ({id: app.id, url: `https://www.notion.so/${app.id}`, propert
   Stage: {select: {name: app.stage}}, 'Applied on': {date: app.applied_on ? {start: app.applied_on} : null},
   'Next interview': {date: app.next_interview ? {start: app.next_interview} : null}, 'Job URL': {url: app.url || null}}});
 
-// Notion answers the bot's own queries (worker/src/index.js queryApplications / applied), filtered and sorted as Notion would.
+// Notion answers the bot's own queries (app-core/src/index.js queryApplications / applied), filtered and sorted as Notion would.
 async function withNotion(run) {
   globalThis.fetch = async (url, init) => {
     if (!String(url).startsWith('https://api.notion.com/v1/databases/apps/query')) return offline(url);

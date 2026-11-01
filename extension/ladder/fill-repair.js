@@ -2,7 +2,7 @@
 // [{n, verb, option, refused}]) with the extension's existing primitives. The page's verbs (choose_option, retype, commit) run in page/repair-act.js; a real click (trusted_click,
 // toggle) goes through Chrome's debugger at the spot the page gives; dismiss_layer is the layer closer (consent.js closeLayer), pressed only when the app's own pick for that layer
 // is the button the repair named (one dismiss per page); wait waits. open_section and upload are not done by repair yet (said, never guessed); ask_person and a refused repair do
-// nothing. At most 3 repairs (the question's cap). Counts and verbs leave this file, never a label or a value. Guard: worker/test/fill-climb.test.js.
+// nothing. At most 3 repairs (the question's cap). Counts and verbs leave this file, never a label or a value. Guard: app-core/test/fill-climb.test.js.
 const WAIT_MS = 1500, SETTLE_MS = 400, CAP = 3;
 const PAGE_VERBS = ['choose_option', 'retype', 'commit'], CLICK_VERBS = ['trusted_click', 'toggle'];
 

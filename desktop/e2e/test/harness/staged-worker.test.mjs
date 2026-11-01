@@ -1,4 +1,4 @@
-// Guard for lib/staged-worker.mjs: a live or smoke run never uses a stale desktop/shared/worker (11 Oct 2026: a worker prompt edit ran live on the staged copy from before it).
+// Guard for lib/staged-worker.mjs: a live or smoke run never uses a stale desktop/shared/app-core (11 Oct 2026: a worker prompt edit ran live on the staged copy from before it).
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -8,7 +8,7 @@ import {stagedWorkerDiffers, ensureStagedWorker} from '../../lib/staged-worker.m
 
 const tree = files => { const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'staged-worker-')); for (const [name, text] of Object.entries(files)) fs.writeFileSync(path.join(dir, name), text); return dir; };
 
-test('a staged copy equal to worker/src is fine; an edited, missing or extra file is stale', () => {
+test('a staged copy equal to app-core/src is fine; an edited, missing or extra file is stale', () => {
   const src = tree({'a.js': 'one', 'b.js': 'two'});
   assert.deepEqual(stagedWorkerDiffers(src, tree({'a.js': 'one', 'b.js': 'two'})), []);
   assert.deepEqual(stagedWorkerDiffers(src, tree({'a.js': 'one', 'b.js': 'CHANGED'})), ['b.js']);   // the deliberate break: a stale copy is caught

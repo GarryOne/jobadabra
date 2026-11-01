@@ -4,7 +4,7 @@
 // pressed on the option whose name is the fill's answer; and a custom dropdown trigger (div/button role=combobox, a button with a listbox popup), pressed to open, then on the
 // option drawn with the answer's name. Control mechanics only: the answer is the fill's own (the AI's or the person's), never chosen here. Floors: never a native input or a text
 // box (page/fill-verify.js types those), never a legal question (page/radios.js optionOf), within the control's one attempt log (page/attempts.js "press_real"); the worker checks
-// each point against the press floor too. Values stay in the page. Guard: worker/test/hybrid-moves.test.js; the widget zoo's radio-trusted-only-1 and custom-select-1.
+// each point against the press floor too. Values stay in the page. Guard: app-core/test/hybrid-moves.test.js; the widget zoo's radio-trusted-only-1 and custom-select-1.
 (() => {
   if (window.__jobPilottoPressSpots) return;
   const norm = text => window.__jobPilottoFold(text).replace(/[^\p{L}\p{N}]/gu, '');   // the shared accent-blind fold (page/fold-text.js): "Zurich" finds "Zürich"

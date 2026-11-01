@@ -10,7 +10,7 @@ name: Release · Build, test, beta
 # Three distinct steps per lane (owner, 7 Oct 2026): Build publishes the files to the one pre-release (offered to nobody), E2E runs the gate suites on it, Release
 # offers it to that platform's beta testers ("Beta-approved:" / "Beta-approved (Windows):", desktop/lib/updater.js). A lane never waits for the other. The same suite on both platforms takes turns (it owns one Notion test page: concurrency group e2e-<suite>).
 # The run is red when a lane is red; that platform's testers are then not offered it.
-# Names: the Worker's cron (worker/src/scheduler.js) starts the one "Nightly beta" a day; GitHub's schedule is only the backup start, an "E2E check · nightly backup" (owner, 12 Oct 2026); tools/beta-release.sh (-f beta=true) a "Beta by hand"; a plain
+# Names: the Worker's cron (app-core/src/scheduler.js) starts the one "Nightly beta" a day; GitHub's schedule is only the backup start, an "E2E check · nightly backup" (owner, 12 Oct 2026); tools/beta-release.sh (-f beta=true) a "Beta by hand"; a plain
 # gh workflow run desktop.yml is a "Build only": built and published as a pre-release for trying, never tested here, offered to nobody.
 run-name: ${{ inputs.nightly && 'Nightly beta' || github.event_name == 'schedule' && 'E2E check · nightly backup' || inputs.beta && 'Beta by hand' || 'Build only (by hand, not tested)' }}
 
@@ -24,7 +24,7 @@ on:
   # Nightly, and by hand (gh workflow run desktop.yml). Not on every push: with several pushes an hour, a release per push
   # was mostly noise and a macOS + Windows build each (2 Oct 2026). A night with nothing new for the app builds nothing.
   schedule:
-    # ONE backup start only (owner, 10 Oct 2026: "the nightly beta should run only once"). The nightly is started on time by the Worker's cron (worker/src/scheduler.js, 04:00
+    # ONE backup start only (owner, 10 Oct 2026: "the nightly beta should run only once"). The nightly is started on time by the Worker's cron (app-core/src/scheduler.js, 04:00
     # Zurich); this GitHub cron exists for the day the Worker fails, and runs only if no nightly has run yet today (the diff step below). It used to be four slots at :17 (02-05 UTC),
     # because GitHub starts scheduled runs late, up to six hours: all four then ran every night, each one listed as a "Nightly beta" and, after a nightly whose gate failed, able to
     # rebuild. A scheduled run is always recorded, so fewer crons is the only way to a shorter list. Not on the hour: :00 is GitHub's busiest minute.
@@ -36,7 +36,7 @@ on:
         type: string
         default: ''
       nightly:
-        description: 'The nightly build, started on time by the Worker (worker/src/scheduler.js): builds only when the app changed since the last release, and the e2e gate follows. Empty = a build by hand, which always builds'
+        description: 'The nightly build, started on time by the Worker (app-core/src/scheduler.js): builds only when the app changed since the last release, and the e2e gate follows. Empty = a build by hand, which always builds'
         type: boolean
         default: false
       beta:
@@ -142,7 +142,7 @@ jobs:
             --jq '[.[] | select(.draft | not) | select((.prerelease | not) or ((.body // "") | test("(^|\n)Beta-approved")))][0].tag_name // empty' || true)
           sha=$([ -n "$tag" ] && git rev-list -n 1 "$tag" 2>/dev/null || true)
           # The tests of the app (desktop/test, desktop/e2e) are not in the app: a night when only they changed builds nothing.
-          paths=(desktop src config templates tools extension worker/src requirements.txt requirements-transcribe.txt
+          paths=(desktop src config templates tools extension app-core/src requirements.txt requirements-transcribe.txt
                  docs/notion-profile-template.md docs/job-pilotto-guide.md .github/workflows/desktop.yml ':!desktop/e2e' ':!desktop/test')
           if [ -n "$sha" ] && git diff --quiet "$sha" HEAD -- "${paths[@]}"; then
             echo "Nothing new for the app since ${tag}: no build tonight."

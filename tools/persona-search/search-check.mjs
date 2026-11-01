@@ -55,8 +55,8 @@ if (import.meta.url === pathToFileURL(process.argv[1] || '').href) {
   let step;
   try { step = plan(process.argv.slice(2)); } catch (error) { console.error(error.message); process.exit(2); }
   if (process.argv.includes('--dry')) { console.log(JSON.stringify({...step, engine: 'cli (the Claude plan)', env_removed: FORBIDDEN_ENV}, null, 2)); process.exit(0); }
-  // A worktree has no desktop/shared until it is staged (26 Oct 2026: the pilot check died at "Cannot find module desktop/shared/worker/ai.js")
-  if (!fs.existsSync(path.join(ROOT, 'desktop', 'shared', 'worker', 'ai.js'))) execFileSync('node', ['scripts/stage.mjs'], {cwd: path.join(ROOT, 'desktop'), stdio: 'inherit'});
+  // A worktree has no desktop/shared until it is staged (26 Oct 2026: the pilot check died at "Cannot find module desktop/shared/app-core/ai.js")
+  if (!fs.existsSync(path.join(ROOT, 'desktop', 'shared', 'app-core', 'ai.js'))) execFileSync('node', ['scripts/stage.mjs'], {cwd: path.join(ROOT, 'desktop'), stdio: 'inherit'});
   const env = {...cleanEnv(process.env), JOB_PILOTTO_NO_DOTENV: '1'};
   console.log(`Check: ${step.who}${step.seed ? ` (seed ${step.seed})` : ''}, folder ${step.out}, on the Claude plan; takes about 5-12 minutes`);
   fs.mkdirSync(step.out, {recursive: true});

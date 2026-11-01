@@ -29,10 +29,10 @@ class StopCheckAffected(unittest.TestCase):
         self.addCleanup(shutil.rmtree, self.tmp, True)
         self.repo, origin = self.tmp / 'job-pilotto', self.tmp / 'origin.git'   # (the hook follows paths of a folder named like the project)
         self.log = self.tmp / 'check.log'
-        for folder in ('src', 'worker', 'tools', 'tests', 'desktop/node_modules', 'desktop/test'):
+        for folder in ('src', 'app-core', 'tools', 'tests', 'desktop/node_modules', 'desktop/test'):
             (self.repo / folder).mkdir(parents=True)
         (self.repo / 'src' / 'daily.py').write_text('')
-        (self.repo / 'worker' / 'package.json').write_text('{}')
+        (self.repo / 'app-core' / 'package.json').write_text('{}')
         (self.repo / 'desktop' / 'test' / 'codemap.test.js').write_text("import {test} from 'node:test';\ntest('a new file has a header', () => {});\n")   # an added file runs this one test
         (self.repo / '.gitignore').write_text('node_modules/\n.claude/\n')
         shutil.copy(HOOK, self.repo / 'tools' / 'stop-test-check.sh')

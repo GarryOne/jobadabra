@@ -10,12 +10,15 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 WORKFLOWS = ROOT / '.github' / 'workflows'
+# Why (1 Nov 2026, a8; owner: "take the AI out of the beta, in two steps", step 1): beta #7 (run 41333086670) made 0 live AI calls in the 7 of its 21 suites that have a relay, so the beta has no
+# "AI key ready?" job any more. Its relay suites still start the relay and lib/context.mjs asks it one question before any step (asserted below): a refused token fails each of them by name.
+# The night runs (e2e.yml, e2e-windows.yml) keep the one preflight (test_every_relay_matrix_checks_the_ai_once_first). The beta keeps its credit alert until step 2 (the review and judges still write ai-capped.json).
+BETA_NO_PREFLIGHT = {('desktop.yml', 'test-mac'), ('desktop.yml', 'test-windows')}
 ACTION = ROOT / '.github' / 'actions' / 'free-ai-relay' / 'action.yml'
 RELAY_STEP = re.compile(r'uses: \./(?:\.ci-relay/)?\.github/actions/free-ai-relay')   # from the workflow's own commit (.ci-relay) or the workspace's
 
 # Jobs that see E2E_ANTHROPIC_KEY but start no relay, each with its reason.
 NO_RELAY = {
-    ('desktop.yml', 'ai-ready'): 'the gate\'s preflight: it checks CI_FREE_AI_CF_TOKEN instead (asserted below)',
     ('e2e.yml', 'plan'): 'the one AI check before the suites (key-preflight.mjs, asserted below)',
     ('e2e-windows.yml', 'plan'): 'the one AI check before the suites (key-preflight.mjs, asserted below)',
     ('review-eval.yml', 'eval'): 'scores a review model on the judged issues, by hand; asks the model itself, runs no app',
@@ -79,9 +82,18 @@ class CiFreeAiTests(unittest.TestCase):
                 self.assertTrue(0 <= node < relay.start(), f'{path.name} {name}: Node 22 first (the relay uses node:sqlite)')
                 self.assertIn('secrets.CI_FREE_AI_CF_TOKEN', text, f'{path.name} {name}')
 
-    def test_the_gate_checks_the_free_ai_token(self):
-        gate = jobs((WORKFLOWS / 'desktop.yml').read_text())['ai-ready']
-        self.assertIn('CI_FREE_AI_CF_TOKEN: ${{ secrets.CI_FREE_AI_CF_TOKEN }}', gate)
+    def test_the_beta_has_no_ai_preflight_but_its_relay_suites_still_fail_by_name(self):
+        beta = jobs((WORKFLOWS / 'desktop.yml').read_text())
+        self.assertNotIn('ai-ready', beta, 'the beta makes no live AI calls (step 1, 1 Nov 2026): no preflight job before the matrices')
+        # Why (1 Nov 2026, a8; Gitar on #2869): the beta's AI screenshot review and judges still write ai-capped.json, and ai-credit-health is its only reader; it leaves with them in step 2.
+        self.assertIn('ai-credit-health', beta, 'the credit alert stays in the beta until the review and judge steps leave it (step 2)')
+        for name in ('test-mac', 'test-windows'):
+            self.assertRegex(re.search(r'(?m)^    needs: (\[[^\]]*\])', beta[name]).group(1), r'^\[changes, (build|windows)\]$', name)
+            self.assertIn('Free AI relay', beta[name], f'{name} still starts the relay in its own step')
+        context = (ROOT / 'desktop' / 'e2e' / 'lib' / 'context.mjs').read_text()
+        self.assertIn("await checkRelay({url: process.env.E2E_FREE_AI_URL, key})", context, 'a refused token still fails the suite by name, before its first step')
+        for night in ('e2e.yml', 'e2e-windows.yml'):
+            self.assertIn('ai-credit-health', jobs((WORKFLOWS / night).read_text()), f'{night} keeps the credit alert')
 
     def test_every_job_that_runs_a_suite_carries_the_caps_account_and_token(self):
         # Why (28 Oct 2026, beta 3: failureschannels, focusdismiss and every AI step red): lib/ai-cap.mjs runs inside the suite's own process, and the two names it reads
@@ -116,6 +128,8 @@ class CiFreeAiTests(unittest.TestCase):
             found = jobs(path.read_text())
             for name, text in found.items():
                 if not RELAY_STEP.search(text) or 'matrix:' not in text:
+                    continue
+                if (path.name, name) in BETA_NO_PREFLIGHT:
                     continue
                 need = re.search(r'(?m)^    needs: *\[?([^\]\n]*)', text)
                 needed = [n.strip() for n in need.group(1).split(',')] if need else []

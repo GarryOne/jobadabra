@@ -93,7 +93,7 @@ class UnitRedRunsE2E(unittest.TestCase):
     def test_the_e2e_jobs_wait_for_their_build_only_and_both_release_jobs_wait_for_every_test_leg(self):
         for name, lane, test, release in LANES:
             needs = re.search(r'(?m)^    needs: (\[[^\]]*\])', job(test)).group(1)
-            self.assertEqual(needs, f'[changes, {name}, ai-ready]', lane)
+            self.assertEqual(needs, f'[changes, {name}]', lane)   # Why-changed (1 Nov 2026, a8): ai-ready left the beta (no live AI calls, beta #7)
             self.assertEqual(re.search(r'(?m)^    needs: (\[[^\]]*\])', job(release)).group(1), '[changes, build, windows, test-mac, test-windows]', lane)
             self.assertIn(f"needs.{name}.result == 'success'", job(test))
 

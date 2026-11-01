@@ -203,7 +203,7 @@ class TheShapes(unittest.TestCase):
         self.assertEqual(self.started(['tools/ship.sh']), {'tests-python.yml', 'tests-desktop.yml'})   # desktop/test/merge-baseline.test.js reads it
 
     def test_the_apply_flow_starts_its_replays_and_desktop(self):
-        self.assertEqual(self.started(['extension/fill-flow.js']), {'tests-desktop.yml', 'tests-worker.yml', 'page-cases.yml', 'harness.yml', 'smoke.yml'})   # smoke.yml: the app starts from extension/ (owner, 1 Nov 2026); worker tests read extension/ (14 Oct 2026); harness.yml: the harness tests that load the extension (owner, 27 Oct 2026, "Yes, reached files")
+        self.assertEqual(self.started(['extension/fill-flow.js']), {'tests-desktop.yml', 'tests-worker.yml', 'page-cases.yml', 'harness.yml', 'smoke.yml', 'integration.yml'})   # integration.yml: the extension layer and the app serve extension/ (owner, 1 Nov 2026); smoke.yml: the app starts from extension/ (owner, 1 Nov 2026); worker tests read extension/ (14 Oct 2026); harness.yml: the harness tests that load the extension (owner, 27 Oct 2026, "Yes, reached files")
         self.assertNotIn('site-replays-pr.yml', self.started(['desktop/lib/server.js']), 'owner, 17 Oct 2026: site replays are off PRs, scheduled only')
         self.assertFalse((WORKFLOWS / 'site-replays-pr.yml').exists())
 
@@ -213,8 +213,8 @@ class TheShapes(unittest.TestCase):
 
     def test_a_worker_change_starts_its_suite_and_the_desktop_tests_that_read_it(self):
         # identity-rule.test.js and site-routes.test.js walk all of worker/src (26 Oct 2026, the repo-root reads)
-        self.assertEqual(self.started(['worker/src/index.js']), {'tests-worker.yml', 'tests-desktop.yml', 'harness.yml'})   # harness.yml: the app's server imports worker/src through desktop/shared/ (review on #2241)
-        self.assertEqual(self.started(['worker/src/report.js']), {'tests-worker.yml', 'tests-desktop.yml', 'harness.yml'}, 'a desktop test reads it; harness.yml: worker/src is staged into desktop/shared/ (#2241)')
+        self.assertEqual(self.started(['worker/src/index.js']), {'tests-worker.yml', 'tests-desktop.yml', 'harness.yml', 'integration.yml'})   # integration.yml: the app's server imports worker/src too (owner, 1 Nov 2026); harness.yml: the app's server imports worker/src through desktop/shared/ (review on #2241)
+        self.assertEqual(self.started(['worker/src/report.js']), {'tests-worker.yml', 'tests-desktop.yml', 'harness.yml', 'integration.yml'}, 'a desktop test reads it; harness.yml and integration.yml: worker/src is staged into desktop/shared/ (#2241)')
 
     def test_a_workflow_change_starts_that_workflow(self):
         for name in pr_workflows():

@@ -159,3 +159,10 @@ jobs:
     permissions:
       contents: read
     uses: ./.github/workflows/smoke.yml
+
+  # Why (owner, 1 Nov 2026, "Yes, own workflow, 3 jobs"): the integration layer is its own workflow with a job per layer; main runs it here, as a job beside the unit job, so a red one is this run's red
+  # and its integration-results-* artifacts are read from this run (/admin/operations/integrations).
+  integration:
+    permissions:
+      contents: read
+    uses: ./.github/workflows/integration.yml

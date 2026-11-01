@@ -19,6 +19,7 @@ on:
       - 'CI · Pull request'
       - 'CI · Control tests (measure, not required)'
       - 'CI · Harness tests'
+      - 'CI · Integration tests'
       - 'CI · Smoke (the app starts)'
       - 'CI · Hosted Always on cost probe (one-off)'
       - 'Proof · Codex subscription broker'

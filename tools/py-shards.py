@@ -154,6 +154,17 @@ def progress_line(shards, finished, failed, elapsed):
     return f'python tests: {len(finished)}/{len(shards)} shards done ({sum(len(shards[i]) for i in finished)}/{sum(len(x) for x in shards)} modules) · {failed} failed · {clock}'
 
 
+def wait_with_progress(threads, shard_list, results, bad, started):
+    """Block until every shard thread ends, printing progress_line() every PROGRESS_SECS. Why (1 Nov 2026, owner: "I don't see any live logs/updates of what being run"): shard ends
+    are said by collect(), the stretch between them used to be silent."""
+    next_line = time.monotonic() + PROGRESS_SECS
+    while any(t.is_alive() for t in threads):
+        time.sleep(min(0.2, PROGRESS_SECS))
+        if time.monotonic() >= next_line and any(t.is_alive() for t in threads):
+            print(progress_line(shard_list, [i for i, r in enumerate(results) if r is not None], len(bad), time.monotonic() - started), flush=True)
+            next_line = time.monotonic() + PROGRESS_SECS
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('modules', nargs='*', help='test modules to run (default: all)')
@@ -199,22 +210,15 @@ def main(argv=None):
         results[i] = (out, time.monotonic() - started)
         shard = procs[i][0]
         why = ended_badly(out, proc.returncode)
-        if why:
-            bad.append(i)
         print(f'py-shards: shard {"FAILED" if why else "done"} {results[i][1]:.1f}s, {len(shard)} modules ({", ".join(shard[:3])}{", ..." if len(shard) > 3 else ""})', flush=True)
         if why:   # Why (1 Nov 2026, owner: "live and summarized"): a failing shard shows its error the moment it ends, not after the slowest shard
+            bad.append(i)
             print(f'py-shards: shard FAILED, {why} ({len(shard)} modules: {", ".join(shard[:4])}...)\n{out}', file=sys.stderr, flush=True)
     print(f'py-shards: {len(procs)} shards started ({len(modules)} modules)', flush=True)
     threads = [threading.Thread(target=collect, args=(i, proc)) for i, (_, proc) in enumerate(procs)]
     for t in threads:
         t.start()
-    # Why (1 Nov 2026, owner: "I don't see any live logs/updates of what being run"): a progress line about every PROGRESS_SECS while shards run; shard ends are said by collect().
-    next_line = time.monotonic() + PROGRESS_SECS
-    while any(t.is_alive() for t in threads):
-        time.sleep(min(0.2, PROGRESS_SECS))
-        if time.monotonic() >= next_line and any(t.is_alive() for t in threads):
-            print(progress_line(shard_list, [i for i, r in enumerate(results) if r is not None], len(bad), time.monotonic() - started), flush=True)
-            next_line = time.monotonic() + PROGRESS_SECS
+    wait_with_progress(threads, shard_list, results, bad, started)
     failed = ran = 0
     for (shard, proc), (out, _) in zip(procs, results):
         ran += sum(int(n) for n in re.findall(r'^Ran (\d+) tests?', out, re.M))

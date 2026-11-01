@@ -300,7 +300,7 @@ def check_google(now=None):
         return Check('Health', 'Gmail + Calendar', WARN,
                      f'{email}; signed in {age:.0f} days ago — expires in about {left:.0f} day(s) while the app is in Testing',
                      fix)
-    return Check('Health', 'Gmail + Calendar', OK, (f'connected as {email}' if '@' in email else 'connected (Google Calendar)') + (f', signed in {age:.0f} day(s) ago' if age is not None else ''))
+    return Check('Health', 'Gmail + Calendar', OK, f'connected as {email}' + (f', signed in {age:.0f} day(s) ago' if age is not None else ''))
 
 
 def check_mail_workflow(now=None):

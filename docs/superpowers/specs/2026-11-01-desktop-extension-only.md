@@ -78,4 +78,7 @@ Order per move: the private side lands first, then the jobadabra removal. Before
 - [x] 5a/6 shared ready-fill files to desktop/ready-fill (proof: desktop/ready-fill/night.mjs @5a58de5)
 - [x] 5b/6 container shell + ready-fill-image.yml to web (proof: none: merged as jobadabra-web#280, 67b76e8)
 - [x] 5c/6 delete hosted/ and ready-fill-image.yml (proof: tests/test_desktop_extension_only.py)
-- [ ] 6/6 server workflows
+- [x] 6a/6 `ai-cost-billed.yml` to web (proof: tests/test_desktop_extension_only.py)
+- [x] 6b-1/6 the central scout and the product brain in lab, switched off (proof: none: merged as jobadabra-lab#65, 6d5ec76)
+- [ ] 6b-3/6 first by-hand scout in lab: AI calls answered, no "oidc" (needs the 6 org secrets and ab's OK)
+- [ ] 6b-4/6 the switch: public deletes both workflows and the tests that read them, lab turns the schedule on

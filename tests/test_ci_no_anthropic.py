@@ -35,7 +35,7 @@ E2E_LANE = {
 }
 ALLOWED = {**USER_PIPELINES, **E2E_LANE}
 
-# Allowed by name anywhere, not on the shrinking list (coordinator, 31 Oct 2026): the Admin key only READS what Anthropic billed (ai-cost-billed.yml, daily.yml); it makes no model call and spends nothing.
+# Allowed by name anywhere, not on the shrinking list (coordinator, 31 Oct 2026): the Admin key only READS what Anthropic billed (daily.yml here; ai-cost-billed.yml moved to jobadabra-web, rs 6a/6); it makes no model call and spends nothing.
 # The guard bans keys that buy model calls.
 COST_READERS = {'ANTHROPIC_ADMIN_KEY', 'secrets.ANTHROPIC_ADMIN_KEY'}
 

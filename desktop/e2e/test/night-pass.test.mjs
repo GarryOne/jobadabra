@@ -8,7 +8,7 @@ import {planRun} from '../plan-run.mjs';
 
 const HEAD = 'a'.repeat(40), FIRST = 'b'.repeat(40);
 const ALL = ['jobs', 'settings', 'qualityai', 'notion-real', 'pool'];
-const CADENCE = {qualityai: 'nightly', 'notion-real': 'night-report', pool: 'manual'};
+const CADENCE = {qualityai: 'night-report', 'notion-real': 'night-report', pool: 'manual'};   // qualityai: night-report since 1 Nov 2026 (6/6a-2)
 const NOW = Date.parse('2026-11-01T01:30:00Z');
 
 function gh({runs = [], releasing = []} = {}) {
@@ -44,6 +44,13 @@ test('a pass 1 from a previous night, or none at all, is not the commit: the pas
 
 test('a pass runs the gate\'s suites except the ones that ask the model live, the outside world and the manual ones', () => {
   assert.deepEqual(nightSuites(ALL, CADENCE), ['jobs', 'settings']);
+});
+
+// Why (1 Nov 2026, owner via a8, 6/6a-2): qualityai asks the live model, so it must run once a night and nowhere else: pass 1 only (never passes 2-5, which would be four more paid runs).
+test('qualityai, the live-model measurement, runs in night pass 1 only', () => {
+  assert.ok(nightSuites(ALL, CADENCE, 1).includes('qualityai'));
+  for (const pass of [0, 2, 3, 4, 5]) assert.ok(!nightSuites(ALL, CADENCE, pass).includes('qualityai'), `pass ${pass} ran qualityai`);
+  assert.ok(!nightSuites(ALL, {...CADENCE, qualityai: 'nightly'}, 1).includes('qualityai'), 'a live-model suite that is not night-report stays out of every pass');
 });
 
 test('the plan is the beta\'s layout: both stores for a suite that keeps data, no tag to approve, no AI review, the commit of pass 1', async () => {

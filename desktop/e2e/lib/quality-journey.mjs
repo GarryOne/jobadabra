@@ -22,7 +22,8 @@ const read = file => JSON.parse(fs.readFileSync(path.join(GOLDEN, file), 'utf8')
 
 /** Shared schedule and model inputs; budgetMinutes/minutes remain the live qualityai allowances only. */
 export const PLANNER = Object.freeze({
-  cadence: 'nightly', budgetMinutes: 10, minutes: 24,
+  // Why (1 Nov 2026, owner via a8, 6/6a-2): a measurement of the live model: one run a night (night burn-in pass 1), same model and caps; never a release gate, beta, canary, push or PR.
+  cadence: 'night-report', budgetMinutes: 10, minutes: 24,
   // It judges the AI's answers (scores, facts), which are the same on every OS: the Mac lane only, no Windows run (owner, 7 Oct 2026: $1.36 a day on Windows).
   sameOnEveryOs: true,
   judges: Object.freeze(['src/ai/']),

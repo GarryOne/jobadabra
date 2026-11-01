@@ -56,3 +56,8 @@ test('the pass inside fillPage clears its step only; a standalone fill (panel, F
   assert.match(background, /endsRun = true/, 'every other caller of a fill keeps ending the run itself');
   assert.equal((background.match(/progress\(tab\.id, '', page\)/g) || []).length, 0, 'no pass end names a verdict by default: it goes through the endsRun choice');
 });
+
+test('the fill\'s end still reaches the tab when the page cannot take it, and when the tab moved on (code review of #2800)', () => {
+  assert.match(read('fill-flow.js'), /\(\) => \{ if \(!\['running', 'received'\]\.includes\(value\.state\)\) setApply\(tabId/, 'a rejected end write (error page, frame gone) still gives the verdict: the pass no longer says `done` first');
+  assert.match(read('fill-flow-steps.js'), /else \{ await progress\(tab\.id, '', ''\);/, 'a tab that moved on during the fill gets this piece\'s end (the old pass-level done), a next page\'s step turns it on again');
+});

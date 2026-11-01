@@ -118,7 +118,8 @@ export function writeState(tabId, value, token = '') {
     func: (text, token, now) => { if (now === 'running') window.__jobPilottoFillToken = token; else if (token && window.__jobPilottoFillToken !== token) return false; if (document.documentElement) document.documentElement.dataset.jobpilottoFill = text; return true; }})
     // Why (#2221 "the fill writing its end frees the page at once", kept 2026-10-27 under the one state owner): the fill's end on its own page is the worker's verdict, said at once, not after the bookkeeping that follows (reports, notes, dialogs):
     // the person's first click after "done" is theirs (the apply suite's Next and Submit were held). `account` hands the page over. A write the token refused (another page's end) says nothing; a later step brings `working` back (background.js progress).
-    .then(rows => { if (rows?.[0]?.result && !['running', 'received'].includes(value.state)) setApply(tabId, value.state === 'account' ? 'your-turn' : 'done'); }, () => {});
+    .then(rows => { if (rows?.[0]?.result && !['running', 'received'].includes(value.state)) setApply(tabId, value.state === 'account' ? 'your-turn' : 'done'); },
+      () => { if (!['running', 'received'].includes(value.state)) setApply(tabId, value.state === 'account' ? 'your-turn' : 'done'); });   // Why (#2800): the page could not take the write (an error page, a frame gone) but the fill did end; its pass no longer says `done` first, so this is the verdict
 }
 // A page with no form control of any kind (fill-flow consider waits for it to stop growing before its kind is asked).
 export const BOT_CHECK_NEED = "This site wants a quick check: solve it, then I'll continue";   // said in the panel and the session (owner, 20 Oct 2026: the person solves a real captcha, we never do; the form fills after it) (desktop/lib/terminals.js noteStuck)

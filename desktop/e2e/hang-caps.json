@@ -277,6 +277,11 @@
         "shared": "applyflows",
         "n": 2
       },
+      "Profile Experience: an edited summary is saved with the Profile save bar, and is still there after a restart": {
+        "seconds": 90,
+        "provisional": true,
+        "reason": "provisional: 3 x the settings round-trip step (p95 13.4 s, which also restarts the app), 30 s floor; regenerate after 5 main runs (tools/e2e-step-timings.mjs)"
+      },
       "Your data: export with keys, reset, then import from the setup brings this computer back as it was": {
         "seconds": 45,
         "n": 6,

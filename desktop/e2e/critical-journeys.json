@@ -152,7 +152,8 @@
    "name": "Profile: the CV is read, its problems are found",
    "tier": 1,
    "steps": [
-    {"suite": "settings", "step": "the CV check reads real PDFs: a plain CV passes, each known problem is found, a picture of a CV fails"}
+    {"suite": "settings", "step": "the CV check reads real PDFs: a plain CV passes, each known problem is found, a picture of a CV fails"},
+    {"suite": "settings", "step": "Profile Experience: an edited summary is saved with the Profile save bar, and is still there after a restart"}
    ]
   },
   {
@@ -228,7 +229,6 @@
  ],
  "to_come": [
  "Always on / Notion (tier 2): its own step is strategy.mjs 'an edit made directly on the Notion page is used by the next check, and a removed role stops matching', listed in J13 (tier 1); the kept storemove step 'Jobs, Focus, Interviews and Recent activity show the same items from Notion' also covers it",
-  "Profile's Experience (tier 1, in J14): a new step plus its integration counterpart, after round 2; a8 writes it",
   "Cover letter (tier 2): integration test to write (a job's letter reaches its form); a8 writes it",
   "Calendar (tier 2): integration test to write; a8 writes it"
  ]

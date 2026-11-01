@@ -28,27 +28,31 @@ export const APP_SLUG = process.env.JOB_PILOTTO_GITHUB_APP || 'jobadabra';   // 
 export const REPO_NAME = 'jobadabra-personal-always-on';
 export const REPO_NAMES = [REPO_NAME, 'job-pilotto-private'];
 // Step 1: a new private repo from the starter template. Step 2: install the app on it only.
-// Which starter exists: the first candidate the API shows as a template (so the rename and the move of the repo need no app release in step);
-// not answered (offline, rate limit) keeps the last one found, else the old name, which GitHub redirects after a rename.
+// Which starter exists: the first candidate the API shows as a template, by the name the API reports (`full_name`: the API follows a rename's 301,
+// the github.com /new?template_name= page does NOT: measured 1 Nov 2026 on a throwaway, the old name opens a blank form with "No template").
+// So a redirected old name resolves to the new one, and the link never carries an old name once the rename is done. Not answered (offline,
+// rate limit, 5 s timeout) keeps the last one found, else the old name: wrong only if GitHub is unreachable AND the rename already happened.
 let starter = STARTER_CANDIDATES.at(-1);
 /** -> the starter template ("owner/name") the app last found, or the old name before the first look. */
 export const currentStarter = () => starter;
 /**
- * Asks the GitHub API which STARTER_CANDIDATES entry is a template, newest name first (fetcher: injectable for tests).
- * -> that "owner/name"; when none answers (offline, rate limit, 404) the last one found, else the old name. Never throws.
+ * Asks the GitHub API which STARTER_CANDIDATES entry is a template, newest name first (fetcher: injectable for tests; token: the user's, when
+ * known, so the lookup is not on the 60-an-hour anonymous limit).
+ * -> the API's own "owner/name" of that template; when none answers (offline, rate limit, 404, 5 s) the last one found, else the old name. Never throws.
  */
-export async function resolveStarter(fetcher = globalThis.fetch) {
+export async function resolveStarter(fetcher = globalThis.fetch, token = '') {
   for (const name of STARTER_CANDIDATES) {
     try {
-      const response = await fetcher(`${API}/repos/${name}`, {headers: {Accept: 'application/vnd.github+json'}});
-      if (response.ok && (await response.json())?.is_template) { starter = name; return starter; }
+      const response = await fetcher(`${API}/repos/${name}`, {headers: {Accept: 'application/vnd.github+json', ...(token ? {Authorization: `Bearer ${token}`} : {})}, signal: AbortSignal.timeout(5000)});
+      const repo = response.ok ? await response.json() : null;
+      if (repo?.is_template) { starter = /^[\w.-]+\/[\w.-]+$/.test(repo.full_name || '') ? repo.full_name : name; return starter; }
     } catch { /* offline: try the next, then keep the last */ }
   }
   return starter;
 }
 /** -> the github.com "create a repository from this template" link for the resolved starter, prefilled with the user's default repo name, private. */
-export const createUrl = async (fetcher = globalThis.fetch) => {
-  const [owner, name] = (await resolveStarter(fetcher)).split('/');
+export const createUrl = async (fetcher = globalThis.fetch, token = '') => {
+  const [owner, name] = (await resolveStarter(fetcher, token)).split('/');
   return `https://github.com/new?template_name=${name}&template_owner=${owner}&name=${REPO_NAME}&visibility=private`;
 };
 export const INSTALL_URL = `https://github.com/apps/${APP_SLUG}/installations/new`;

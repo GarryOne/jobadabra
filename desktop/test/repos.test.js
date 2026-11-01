@@ -29,6 +29,14 @@ test('the starter is whichever candidate GitHub shows as a template: works befor
   assert.equal(await github.resolveStarter(template([STARTER])), STARTER);
   assert.equal(await github.resolveStarter(offline), STARTER, 'unanswered after a good answer: the last one found');
   assert.ok(!/GarryOne|job-pilotto/.test(await github.createUrl(template([STARTER]))), 'the link names the new template only');
+  // After the rename the API answers the OLD name with a 301 to the new repo: the link must carry the API's name, never the old one (item 15 of the spec).
+  const redirected = async url => (url.endsWith(`/${STARTER}`) ? {ok: false, status: 404} : {ok: true, json: async () => ({is_template: true, full_name: STARTER})});
+  assert.equal(await github.resolveStarter(redirected), STARTER, 'an old name that redirects resolves to the new template');
+  assert.match(await github.createUrl(redirected), /template_name=jobadabra-user-template&template_owner=jobadabra/);
+  let seen;
+  await github.resolveStarter(async (url, options) => { seen = options; return {ok: false}; }, 'tok');
+  assert.equal(seen.headers.Authorization, 'Bearer tok', 'the user\'s token keeps the lookup off the anonymous limit');
+  assert.ok(seen.signal, 'a stalled network cannot hold the setup reply for minutes');
 });
 
 test('the updater follows the 301 GitHub answers on the old path after a transfer (a real HTTP round trip)', async () => {

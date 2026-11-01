@@ -33,7 +33,7 @@ export function registerCloudHandlers(ctx) {
       return {ok: true, ...result};
     } catch (error) {
       if (error.status === 401) storage.setSecret('GITHUB_TOKEN', '');  // revoked: sign in again next time
-      return {ok: false, error: error.message, ...(error.needsRepo ? {needsRepo: true, createUrl: await github.createUrl(), installUrl: github.INSTALL_URL} : {}),
+      return {ok: false, error: error.message, ...(error.needsRepo ? {needsRepo: true, createUrl: await github.createUrl(undefined, token), installUrl: github.INSTALL_URL} : {}),
         ...(error.needsChoice ? {needsChoice: true, repos: error.repos} : {})};
     }
   });

@@ -28,7 +28,7 @@ CLASSIFIED = {
     'CI · Conflict label': 'ignored: runs on a push to main, but only labels the open PRs that conflict; it tests nothing, so its result says nothing about main',
     'CI · Cancel the runs of a closed PR': 'ignored: pull_request_target on close; cancels the closed PR\'s own runs, never runs on main',
     'CI · Prompt cases (Haiku re-ask)': 'ignored: by hand only (paid Haiku calls); compares the selected ref with main, never a push check',
-    'CI · Integration · Page cases (all cases, real extension, Linux)': 'ignored: pull requests and by hand only; on main its cases are a step of CI · Tests (one Linux job, 15 Oct 2026)',
+    'CI · Integration · Page cases (all cases, real extension, Linux)': 'ignored: pull requests and by hand only; on main build.yml calls it as a job of CI · Tests (1 Nov 2026), so its red is CI · Tests\' red',
     'CI · Pull request': 'ignored: runs on pull requests only, never on main; its checks gate the merge',
     'CI · PR verdict': 'ignored: writes a pull request\'s "All checks passed" status when its workflows end; it runs on main\'s copy but judges PR commits only',
     'E2E · Bisect a red main suite': 'ignored: started by e2e.yml after a red main suite (gate G2b); it bisects, it never runs on a push to main',

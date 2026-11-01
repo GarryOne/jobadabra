@@ -1,6 +1,7 @@
 """A push to main starts two jobs: one Linux job running every Linux suite in sequence, and the Windows desktop tests (owner, 15 Oct 2026: "on main we don't need readability or
 speed, just as few runners as possible"; a push started ~10). Each suite is a named step that fails alone, and a last step lists every red one. A pull request keeps the parallel
-split (speed matters there). This test keeps main's one job complete: every suite a pull request can start has its step in build.yml."""
+split (speed matters there). This test keeps main's one job complete: every suite a pull request can start has its step in build.yml, or (the page cases since 1 Nov 2026, owner: "Split anyway") its
+called workflow is a job of build.yml."""
 import re
 import unittest
 from pathlib import Path
@@ -15,15 +16,17 @@ LINUX_SUITES = {   # what a PR's workflow runs -> a line of its step in build.ym
     'page-cases.yml': 'node --test --test-concurrency=1 test/recorded-pages.test.mjs',
     'control-tests.yml': 'node widget-zoo.mjs --json widget-zoo.json',
 }
-# Why (owner, 27 Oct 2026: "Main, red on regression"): main runs the zoo inside the fill check (zoo + recorded pages vs main's last green), not the by-hand zoo command.
-ON_MAIN_INSTEAD = {'control-tests.yml': 'node check-fill.mjs --all --baseline'}
+# Why (owner, 27 Oct 2026: "Main, red on regression"): main runs the zoo inside the fill check (zoo + recorded pages vs main's last green), not the by-hand zoo command;
+# (owner, 1 Nov 2026: "Split anyway") main runs the page cases by calling page-cases.yml (its 3 balanced parts) as the `pages` job, not as a step of the Linux job.
+ON_MAIN_INSTEAD = {'control-tests.yml': 'node check-fill.mjs --all --baseline',
+                   'page-cases.yml': 'uses: ./.github/workflows/page-cases.yml'}
 
 
 class MainOneJob(unittest.TestCase):
     def test_two_jobs_one_linux_and_the_windows_tests(self):
         jobs = re.findall(r'(?m)^  ([\w-]+):\n(?:    .*\n)', BUILD.split('\njobs:\n', 1)[1])
-        self.assertEqual(jobs, ['linux', 'windows', 'harness', 'smoke', 'integration'])   # Why (owner, 1 Nov 2026, test stages 3-5, "Parallel jobs"; item 27, #2783): the harness tests, the smoke and the integration layers are jobs of their own beside the unit job, so main stays as long as before
-        for called in ('tests-desktop-windows.yml', 'harness.yml', 'smoke.yml', 'integration.yml'):
+        self.assertEqual(jobs, ['linux', 'windows', 'harness', 'smoke', 'integration', 'pages'])   # Why (owner, 1 Nov 2026, test stages 3-5, "Parallel jobs"; item 27, #2783; and "Split anyway" for the page cases): the harness tests, the smoke, the integration layers and the page cases' 3 parts are jobs of their own beside the unit job, so main ends sooner
+        for called in ('tests-desktop-windows.yml', 'harness.yml', 'smoke.yml', 'integration.yml', 'page-cases.yml'):
             self.assertIn(f'uses: ./.github/workflows/{called}', BUILD)
         self.assertNotRegex(BUILD.split('\njobs:\n', 1)[1], r'(?m)^    strategy:', 'no matrix on main')
 
@@ -34,10 +37,10 @@ class MainOneJob(unittest.TestCase):
 
     def test_each_suite_fails_alone_and_a_last_step_lists_the_red_ones(self):
         steps = re.findall(r'(?ms)^      - name: (Suite · [^\n]*)\n(.*?)(?=^      - )', BUILD)
-        self.assertGreaterEqual(len(steps), 5)
+        self.assertGreaterEqual(len(steps), 4)   # python, worker, desktop, fill check (the page cases are the `pages` job since 1 Nov 2026)
         for name, body in steps:
             self.assertIn('continue-on-error: true', body, name)
-        for key in ('python', 'worker', 'desktop', 'pages'):
+        for key in ('python', 'worker', 'desktop', 'fillcheck'):
             self.assertIn(f'steps.{key}.outcome', BUILD, key)
         self.assertRegex(BUILD, r'(?s)if: always\(\)\n\s+env:\n\s+RESULTS:.*exit 1')
 

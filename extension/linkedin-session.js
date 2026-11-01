@@ -21,7 +21,9 @@ export async function readCookies(chrome = globalThis.chrome) {
 export async function connect({chrome = globalThis.chrome, call = api, config = null} = {}) {
   const had = {cookies: await chrome.permissions.contains({permissions: LINKEDIN.permissions}).catch(() => false), origin: await chrome.permissions.contains({origins: LINKEDIN.origins}).catch(() => false)};
   if (!(await chrome.permissions.request(LINKEDIN).catch(() => false))) return {ok: false, why: 'denied'};
-  await chrome.storage.local.set({[GRANTED]: {cookies: !had.cookies, origin: !had.origin}});
+  // Why (1 Nov 2026, #2732): a grant this consent added earlier (a press while signed out of LinkedIn) is held now, so it reads as "already there"; it stays noted as ours until given back.
+  const before = (await chrome.storage.local.get(GRANTED).catch(() => ({})))[GRANTED] || {};
+  await chrome.storage.local.set({[GRANTED]: {cookies: !!before.cookies || !had.cookies, origin: !!before.origin || !had.origin}});
   const cookies = await readCookies(chrome);
   if (!cookies.some(cookie => cookie.name === 'li_at')) return {ok: false, why: 'signed-out'};
   return call(config || await settings(), '/extension/linkedin-session', {method: 'POST', body: JSON.stringify({cookies})});
@@ -53,8 +55,18 @@ export async function revokeIfOff({chrome = globalThis.chrome, call = api, confi
   return {revoked: true};
 }
 
-/** Start the one-minute look that gives the LinkedIn permissions back when the app says the switch is off; called once from background.js. */
+/** A grant Chrome reports removed (the options page's toggle, Chrome's own settings, our revoke) is no longer this consent's: its note field is cleared.
+ *  Why (Gitar on #2845): the note survives a press while signed out (#2732), so without this a grant removed and then given again to another feature still read as ours, and an off took it. */
+export async function forgetRemoved(removed, {chrome = globalThis.chrome} = {}) {
+  const note = (await chrome.storage.local.get(GRANTED).catch(() => ({})))[GRANTED];
+  if (!note) return;
+  const gone = {cookies: (removed?.permissions || []).some(name => LINKEDIN.permissions.includes(name)), origin: (removed?.origins || []).some(origin => LINKEDIN.origins.includes(origin))};
+  await chrome.storage.local.set({[GRANTED]: {cookies: !!note.cookies && !gone.cookies, origin: !!note.origin && !gone.origin}}).catch(() => {});
+}
+
+/** Start the one-minute look that gives the LinkedIn permissions back when the app says the switch is off, and the watch that keeps the grant note true; called once from background.js. */
 export function startLinkedinSession({chrome = globalThis.chrome} = {}) {
   chrome.alarms.create(ALARM, {delayInMinutes: 1, periodInMinutes: 1});
   chrome.alarms.onAlarm.addListener(alarm => { if (alarm.name === ALARM) revokeIfOff({chrome}).catch(() => {}); });
+  chrome.permissions.onRemoved?.addListener(removed => forgetRemoved(removed, {chrome}).catch(() => {}));
 }

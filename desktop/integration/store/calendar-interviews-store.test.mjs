@@ -8,9 +8,9 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {test} from 'node:test';
-import {TRANSCRIPT, addDays, calendarDates, meetingSlots} from '../lib/interview-data.mjs';
-import {addInterview, addTrackedJob} from '../lib/seed-data.mjs';
-import {storeCall} from '../lib/store-call.mjs';
+import {TRANSCRIPT, addDays, calendarDates, meetingSlots} from '../../e2e/lib/interview-data.mjs';
+import {addInterview, addTrackedJob} from '../../e2e/lib/seed-data.mjs';
+import {storeCall} from '../../e2e/lib/store-call.mjs';
 
 const NOW = new Date('2026-11-01T10:00:00Z');
 const open = () => {

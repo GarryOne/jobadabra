@@ -3,8 +3,7 @@
 // Find new employers + the Employers & Sources data. A candidate list with every kind of company (two good boards, an empty one, one with only wrong roles, a dead
 // feed, a duplicate of a source already in use, an excluded company, a manual-watch company) is run from the Actions page; then what the scout decided, what it wrote
 // into Notion and into its run row, what a second run does, what the crawl would now read, and a Sonnet judge on whether the added employers suit the person.
-import {execFileSync} from 'node:child_process';
-import {python, pythonEnv} from '../lib/python.mjs';
+import {scoutState} from '../lib/python.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import {E2E} from '../lib/app.mjs';
@@ -44,32 +43,9 @@ const QUALITY_NOTE = 'Note: "quality" is a 0-100 score of the whole job feed, al
 // Product Designer is in Zurich too) as contradicting facts. The bar is said too: on a later run the judge called Orbit "coherent but weaker" (one relevant role in Zurich) and still
 // said no; the suite expects every board with a relevant role in the person's places to be added (EXPECTED: Orbit found, active).
 const FIELDS_NOTE = 'Fields: "postings" in "why" counts every posting on the board; "relevantRoles" counts only those matching the person\'s roles; "relevantRolesInPreferredPlaces" counts the relevant ones that are also in the person\'s places (a subset of relevantRoles); "citiesOfThose" lists the cities of exactly those relevant roles in preferred places. A posting outside the person\'s roles is counted in neither number, wherever it is. The bar: an employer with at least one relevant role in the person\'s places is worth following (fewer roles make it weaker, not wrong); answer no only when following it would not suit the person.';
-const ROOT = path.resolve(E2E, '..', '..');
 
-const find = dir => {
-  for (const entry of fs.readdirSync(dir, {withFileTypes: true})) {
-    const full = path.join(dir, entry.name);
-    if (entry.isDirectory()) { const hit = find(full); if (hit) return hit; } else if (entry.name === 'jobs.sqlite') return full;
-  }
-  return null;
-};
-
-// What the scout decided (its candidate table), the feeds it registered, and the list the jobs crawl would read (the engine's own active_sources: starter list + registered feeds).
-function engineState(ctx) {
-  const db = find(ctx.profile);
-  if (!db) throw new Error('the app has no jobs.sqlite in its data folder');
-  const script = `import json, sqlite3, sys
-from src import scout, store
-path, starter = sys.argv[1], json.load(open(sys.argv[2]))
-c = sqlite3.connect(path); c.row_factory = sqlite3.Row
-rows = lambda q: [dict(r) for r in c.execute(q)]
-with store.connect(__import__('pathlib').Path(path)) as db:
-    crawl = [s['company'] for s in scout.active_sources(db, None, starter)]
-print(json.dumps({'candidates': rows('select name, status, ats, slug, quality from scout_candidates'), 'registered': rows('select ats, slug, company, quality, active from feed_sources'), 'crawl': crawl}))`;
-  const out = execFileSync(python(), ['-c', script, db, path.join(ctx.profile, 'config', 'sources.json')],
-    {cwd: ROOT, env: pythonEnv({...env, JOB_PILOTTO_FIXTURE_DIR: ctx.feeds}, {home: ctx.profile})});   // isolated, UTF-8 (lib/python.mjs)
-  return JSON.parse(out.toString());
-}
+// What the scout decided, the feeds it registered and the jobs crawl's list (lib/python.mjs scoutState, shared with integration/store/employers-integration.test.mjs).
+const engineState = ctx => scoutState(ctx.profile, {...env, JOB_PILOTTO_FIXTURE_DIR: ctx.feeds});
 
 const scoutStarts = ctx => appLogLines(ctx.profile).filter(line => /\[run\] start: python -m src scout /.test(line)).length;
 
@@ -137,7 +113,7 @@ export async function run(ctx) {
   }, {needs: ctx.needs});
 
   // Moved to layer 3 (owner, 1 Nov 2026: the beta keeps only the critical journeys): "each candidate ends in the right status", "Employers & Sources holds a complete, sensible row
-  // per candidate" and "the run's row says what happened" are test/employers-integration.test.mjs, on this suite's fixtures and the same engine command. The crawl list and the
+  // per candidate" and "the run's row says what happened" are desktop/integration/store/employers-integration.test.mjs, on this suite's fixtures and the same engine command. The crawl list and the
   // second run stay here: they are data-integrity steps (coordinator, 1 Nov 2026).
   await ctx.run("the crawl's source list now holds the starter employers and the two new boards, and nothing else", async () => {
     const crawl = [...state.first.crawl].sort();

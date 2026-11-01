@@ -5,11 +5,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {test} from 'node:test';
 import {fileURLToPath} from 'node:url';
-import {START} from '../lib/strategy-start.mjs';
+import {START} from './strategy-start.mjs';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const headings = [...fs.readFileSync(path.join(ROOT, 'src', 'notion', 'search_settings.py'), 'utf8').matchAll(/^\s+\('([^']+)', '(?:search|preferences)',/gm)].map(match => match[1]);
-const suite = fs.readFileSync(path.join(ROOT, 'desktop', 'e2e', 'test', 'strategy-notion-integration.test.mjs'), 'utf8').replace(/\/\/.*$/gm, '');
+const suite = fs.readFileSync(path.join(ROOT, 'desktop', 'integration', 'store', 'strategy-notion-integration.test.mjs'), 'utf8').replace(/\/\/.*$/gm, '');
 
 test('every section the strategy tests start from is a heading the page has', () => {
   assert.ok(headings.length > 15, 'read the page\'s headings');

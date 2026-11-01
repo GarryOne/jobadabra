@@ -31,7 +31,7 @@ export async function run(ctx) {
   ctx.findings = [];
   await ensureSetUp(ctx);
   // On this Mac's store the strategy is the app's own config (saved at setup, lib/seed.mjs): no page to link, the check reads the file. That the file holds the applicant's roles is
-  // test/strategy-integration.test.mjs (moved from this suite, owner, 1 Nov 2026).
+  // desktop/integration/store/strategy-integration.test.mjs (moved from this suite, owner, 1 Nov 2026).
   if (ctx.store !== 'sqlite') await ctx.run("the app's next start links this workspace's Search settings page (so the check looks for this person's roles and places)", async () => {
     // The fast seed connects Notion and marks setup done without a restart; the app links the existing Search settings page in its start-up migration (migrate.js), which is
     // what a real person's next start does. Without it the engine keeps the example config (a data analyst in Amsterdam), drops every fixture job and the check finds "0 new jobs"

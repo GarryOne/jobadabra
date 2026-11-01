@@ -1,15 +1,14 @@
 // Layer 3 (Node + the engine's real SQLite store + the Notion stand-in, no window): "Move my data to Notion" (desktop/lib/store-move.js, src/stores/copy.py).
 // The same check as the storemove e2e step (a data-integrity step, so it stays in e2e too until the owner decides; coordinator, 1 Nov 2026):
 //   - "a move killed halfway changes nothing, and the next one goes on with nothing twice"
-// The empty-Notion move is test/storemove-empty-notion.test.mjs (one stand-in per file: lib/notion-core.js reads the base URL when it loads).
+// The empty-Notion move is storemove-empty-notion.test.mjs (one stand-in per file: lib/notion-core.js reads the base URL when it loads).
 // The move is the real one (moveToNotion → `python -m src.stores.copy` through lib/pipeline-run.js) on a seeded SQLite store in a temp folder; only Notion is the stand-in.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import {test} from 'node:test';
-import {buildStandIn, startNotionFake} from '../lib/notion-fake.mjs';
-import {NOTION_PROFILE, fileBlocks, journalOf, pageText, rowsIn, seedStore, settingsOf, writeProfile} from '../lib/storemove-steps.mjs';
+import {startNotionFake} from '../../e2e/lib/notion-fake.mjs';
+import {NOTION_PROFILE, journalOf, pageText, settingsOf, writeProfile} from '../../e2e/lib/storemove-steps.mjs';
 
 // The app's own isolation switches, set before the app's modules read them (lib/notion-core.js reads the base URL when it loads).
 const standIn = await startNotionFake();
@@ -19,27 +18,9 @@ const {moveToNotion, STOPPED} = await import('../../lib/store-move.js');
 const pipelineRun = await import('../../lib/pipeline-run.js');
 const {ensureKnowledgePage} = await import('../../lib/store/notion.js');
 
-const WANTED = {applications: 3, events: 2, interviews: 1, files: 1};
-const countsIn = fake => ({applications: rowsIn(fake, 'Job Tracker'), events: rowsIn(fake, 'Events'), interviews: rowsIn(fake, 'Interviews'), files: fileBlocks(fake)});
-const publish = async () => {};   // ⚙️ Search settings page: not part of the data move (test/store-move.test.js)
-const repair = async (_token, ids) => ({ids});   // the stand-in's workspace is built whole by buildStandIn
-
-// The Knowledge page is made before the copy writes it (lib/store-move.js): the app's own code, every request to this install's stand-in.
-const knowledgeOn = fake => storage => ensureKnowledgePage(storage, {fetcher: (url, options) => fetch(String(url).replace(/^(https:\/\/api\.notion\.com|http:\/\/127\.0\.0\.1:\d+)/, fake.url), options)});
-
-async function install(fake) {
-  process.env.JOB_PILOTTO_E2E_NOTION_BASE_URL = fake.url;   // the engine's copy takes its Notion from the environment the app gives it (lib/pipeline-env.js)
-  const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-storemove-int-'));
-  const storage = createStorage(profile, {encrypt: value => value, decrypt: value => value});
-  fs.mkdirSync(path.join(profile, 'data'), {recursive: true});
-  storage.saveSettings({store: 'sqlite', setupDone: true});
-  const seeded = seedStore(profile);
-  assert.equal(seeded.applications, 3, `the seed wrote ${JSON.stringify(seeded)}`);
-  const ids = await buildStandIn(fake);
-  storage.saveSettings({notionIds: ids});
-  storage.setSecret('NOTION_TOKEN', fake.token);
-  return {profile, storage, ids};
-}
+const {WANTED, countsIn, publish, repair, knowledgeOnWith, installerWith} = await import('./storemove-support.mjs');
+const knowledgeOn = knowledgeOnWith(ensureKnowledgePage);
+const install = installerWith(createStorage);
 
 test('a move killed halfway changes nothing, and the next one goes on with nothing twice', async () => {
   const {profile, storage, ids} = await install(standIn);

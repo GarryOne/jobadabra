@@ -1,5 +1,5 @@
 // Layer 3 (Node + the real engine + a temp data folder, no window): a change to the roles, places, level or companies to skip decides which postings the next Jobs check keeps
-// (desktop/e2e/suites/strategy.mjs, this Mac's store). The app's own writers (lib/strategy-settings.js: keepLocally is the window's saveStrategy without Notion, addRoles)
+// (the former strategy e2e suite, suites/strategy.mjs, removed with this test in #2763; this Mac's store). The app's own writers (lib/strategy-settings.js: keepLocally is the window's saveStrategy without Notion, addRoles)
 // change the files; the check is the very command list a Find jobs press runs (lib/search-steps.js searchSteps) over the suite's two fixture boards, with the AI answered locally
 // (a fixed good score for a scoring call, "no credit" for everything else) and the digest it wrote read back. Replaces these e2e steps (this Mac's store leg):
 //   - "before any change the check finds neither new posting"
@@ -15,21 +15,17 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {test} from 'node:test';
-import {digestTitles} from '../lib/digest.mjs';
-import {startAiProxy} from '../lib/ai-proxy.mjs';
-import {DUMMY_KEY} from '../lib/engine.mjs';
-import {applicantDraft} from '../lib/applicant-seed.mjs';
-import {withRoles} from '../lib/search-roles.mjs';
+import {startAiProxy} from '../../e2e/lib/ai-proxy.mjs';
+import {DUMMY_KEY} from '../../e2e/lib/engine.mjs';
+import {applicantDraft} from '../../e2e/lib/applicant-seed.mjs';
+import {withRoles} from '../../e2e/lib/search-roles.mjs';
+import {GIRAFFE, PLACE, ROLE, SKIP, addPosting as addPostingTo, checker, has, listed, localAnswers} from './strategy-support.mjs';
 
-const E2E = path.resolve(import.meta.dirname, '..');
+const E2E = path.resolve(import.meta.dirname, '..', '..', 'e2e');
 const FEEDS = path.join(E2E, 'fixtures', 'feeds');
-const ROLE = 'zebra wrangler', GIRAFFE = 'giraffe keeper', PLACE = 'lugano', SKIP = 'E2E Initech';
-// A scoring call gets a fixed good score (the digest leaves out a job still waiting for its score once an AI is ready); any other call is refused locally.
-const SCORE = {score: 80, tier: 'B', components: {role_fit: 80, location: 80, compensation: 70, growth: 70, risk: 20}, basis: {salary_stated: false, level_stated: true},
-  reason: 'stand-in score', strengths: ['stand-in'], gaps: [], confidence: 'high'};
 
 const proxy = await startAiProxy();
-proxy.setCanned(body => (body.output_config?.format?.schema?.properties?.score ? JSON.stringify(SCORE) : {refuse: 'no-credit'}));
+proxy.setCanned(localAnswers);
 const feeds = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-strategy-feeds-'));
 fs.cpSync(FEEDS, feeds, {recursive: true});
 // The app's own isolation switches, set before its modules read them.
@@ -39,7 +35,7 @@ const {ensureConfig} = await import('../../lib/pipeline-env.js');
 const pipelineRun = await import('../../lib/pipeline-run.js');
 const {searchSteps} = await import('../../lib/search-steps.js');
 const strategy = await import('../../lib/strategy-settings.js');
-const {START, sqliteStart} = await import('../lib/strategy-start.mjs');
+const {START, sqliteStart} = await import('../../e2e/test/strategy-start.mjs');
 
 // This Mac's store, set up the way the wizard leaves it: the key, the applicant's strategy kept here, no Notion.
 const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-strategy-int-'));
@@ -49,22 +45,8 @@ const exec = (s, args, onLine, extra, options) => pipelineRun.run(s, args, onLin
 const deps = {run: exec, ensurePage: async () => { throw new Error('no Notion page on this Mac\'s store'); }, writePage: async () => { throw new Error('no Notion page on this Mac\'s store'); }};
 // The window's saveStrategy on this Mac's store (lib/strategy-draft-handlers.js): only the accepted parts are written.
 const saveInApp = (search, preferences, parts) => strategy.keepLocally(storage, {profile_markdown: 'Placeholder.', answers_markdown: 'Placeholder.', contact: {}, search, preferences}, parts);
-const has = (list, word) => (list || []).some(entry => new RegExp(word, 'i').test(entry));
-const listed = (jobs, word, level) => jobs.some(job => new RegExp(word, 'i').test(job) && (!level || job.startsWith(level)));
-// A new posting on one of the boards (the seen ones are not "new" again, so each check is judged on postings added just before it).
-const addPosting = (file, id, title, place = 'Lugano') => {
-  const feed = path.join(feeds, file), data = JSON.parse(fs.readFileSync(feed, 'utf8'));
-  data.jobs.push({id, title, location: {name: place}, absolute_url: `https://boards.e2e.test/job/${id}`, updated_at: '2026-10-02T09:00:00Z',
-    content: `<p>${title}: run production on Kubernetes and AWS with Terraform, SLOs and on-call. Senior level, English working language, ${place}.</p>`});
-  fs.writeFileSync(feed, JSON.stringify(data));
-};
-// One Jobs check on the feeds: the steps of a Find jobs press, to their end; -> the titles its digest listed.
-const check = async () => {
-  const lines = [];
-  const done = await searchSteps(storage, line => lines.push(String(line)), 'run', 'you', exec);
-  assert.equal(done.code, 0, `the Jobs check failed: ${lines.slice(-8).join(' | ')}`);
-  return digestTitles(lines.join('\n'));
-};
+const addPosting = (...args) => addPostingTo(feeds, ...args);
+const check = checker(searchSteps, storage, exec);
 
 test('the Mac store starts with the applicant\'s strategy and this suite\'s start state: no job, two small boards, no strategy change', async () => {
   storage.saveSettings({store: 'sqlite', setupDone: true, aiEngine: 'api', lastScoutAt: new Date(0).toISOString()});   // lastScoutAt: no employer finder at the press's end

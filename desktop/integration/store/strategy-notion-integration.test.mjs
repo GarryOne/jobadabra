@@ -1,4 +1,4 @@
-// Layer 3 (Node + the real engine + the Notion stand-in, no window): the strategy suite's Notion leg (desktop/e2e/suites/strategy.mjs, store standin). The ⚙️ Search settings page
+// Layer 3 (Node + the real engine + the Notion stand-in, no window): the former strategy e2e suite's Notion leg (suites/strategy.mjs, removed with this test in #2763). The ⚙️ Search settings page
 // is a Notion rendering of the settings: a change made in the app reaches the page and config/search.json, an edit made on the page is used by the next check, and an app
 // connected again to the same page links it and keeps its settings. The app's own writers (lib/strategy-settings.js, lib/migrate.js) and the engine's page sync run for real
 // against the stand-in; the check is the steps of a Find jobs press over the suite's fixture boards, the AI answered locally. Replaces these e2e steps (Notion leg):
@@ -7,27 +7,25 @@
 //   - "an edit made directly on the Notion page is used by the next check, and a removed role stops matching"
 //   - "a region word and a level written on the Notion page decide which postings the next check keeps"
 //   - "a fresh install reconnecting to the same Notion page keeps the real settings and links the same page"
-// The Mac-store steps are test/strategy-integration.test.mjs; they share the check, the boards and the start state.
+// The Mac-store steps are strategy-integration.test.mjs; they share the check, the boards and the start state.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {test} from 'node:test';
-import {digestTitles} from '../lib/digest.mjs';
-import {startAiProxy} from '../lib/ai-proxy.mjs';
-import {DUMMY_KEY} from '../lib/engine.mjs';
-import {applicantDraft} from '../lib/applicant-seed.mjs';
-import {buildStandIn, startNotionFake} from '../lib/notion-fake.mjs';
-import {ensureSection, findPagesBeside, pageSections, restoreSections, setSection, useNotionAt} from '../lib/notion.mjs';
+import {startAiProxy} from '../../e2e/lib/ai-proxy.mjs';
+import {DUMMY_KEY} from '../../e2e/lib/engine.mjs';
+import {applicantDraft} from '../../e2e/lib/applicant-seed.mjs';
+import {buildStandIn, startNotionFake} from '../../e2e/lib/notion-fake.mjs';
+import {ensureSection, findPagesBeside, pageSections, restoreSections, setSection, useNotionAt} from '../../e2e/lib/notion.mjs';
+import {GIRAFFE, PLACE, ROLE, SKIP, addPosting as addPostingTo, checker, has, listed, localAnswers} from './strategy-support.mjs';
 
-const E2E = path.resolve(import.meta.dirname, '..');
+const E2E = path.resolve(import.meta.dirname, '..', '..', 'e2e');
 const FEEDS = path.join(E2E, 'fixtures', 'feeds');
-const ROLE = 'zebra wrangler', GIRAFFE = 'giraffe keeper', PLACE = 'lugano', SKIP = 'E2E Initech', TITLE = '⚙️ Search settings';
-const SCORE = {score: 80, tier: 'B', components: {role_fit: 80, location: 80, compensation: 70, growth: 70, risk: 20}, basis: {salary_stated: false, level_stated: true},
-  reason: 'stand-in score', strengths: ['stand-in'], gaps: [], confidence: 'high'};
+const TITLE = '⚙️ Search settings';
 
 const proxy = await startAiProxy();
-proxy.setCanned(body => (body.output_config?.format?.schema?.properties?.score ? JSON.stringify(SCORE) : {refuse: 'no-credit'}));
+proxy.setCanned(localAnswers);
 const fake = await startNotionFake();
 useNotionAt(fake.url);
 const feeds = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-strategy-feeds-'));
@@ -41,7 +39,7 @@ const {searchSteps} = await import('../../lib/search-steps.js');
 const strategy = await import('../../lib/strategy-settings.js');
 const migrate = await import('../../lib/migrate.js');
 const notion = await import('../../lib/notion.js');
-const {START} = await import('../lib/strategy-start.mjs');
+const {START} = await import('../../e2e/test/strategy-start.mjs');
 
 const ids = await buildStandIn(fake);
 const install = () => {
@@ -65,20 +63,8 @@ const saveInApp = async (search, preferences) => {
   strategy.save(storage, {search, preferences});
   await strategy.publishSearchSettings(storage, deps);
 };
-const has = (list, word) => (list || []).some(entry => new RegExp(word, 'i').test(entry));
-const listed = (jobs, word, level) => jobs.some(job => new RegExp(word, 'i').test(job) && (!level || job.startsWith(level)));
-const addPosting = (file, id, title, place = 'Lugano') => {
-  const feed = path.join(feeds, file), data = JSON.parse(fs.readFileSync(feed, 'utf8'));
-  data.jobs.push({id, title, location: {name: place}, absolute_url: `https://boards.e2e.test/job/${id}`, updated_at: '2026-10-02T09:00:00Z',
-    content: `<p>${title}: run production on Kubernetes and AWS with Terraform, SLOs and on-call. Senior level, English working language, ${place}.</p>`});
-  fs.writeFileSync(feed, JSON.stringify(data));
-};
-const check = async () => {
-  const lines = [];
-  const done = await searchSteps(storage, line => lines.push(String(line)), 'run', 'you', exec);
-  assert.equal(done.code, 0, `the Jobs check failed: ${lines.slice(-8).join(' | ')}`);
-  return digestTitles(lines.join('\n'));
-};
+const addPosting = (...args) => addPostingTo(feeds, ...args);
+const check = checker(searchSteps, storage, exec);
 
 test('the app links its Search settings page, which starts from this suite\'s start state, and the check keeps neither new posting', async () => {
   const draft = applicantDraft();

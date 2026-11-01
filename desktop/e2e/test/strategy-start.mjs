@@ -1,7 +1,6 @@
-// The start state of the strategy tests (moved out of suites/strategy.mjs when that suite became test/strategy-integration.test.mjs and test/strategy-notion-integration.test.mjs,
+// The start state of the strategy tests (moved out of suites/strategy.mjs when that suite became integration/store/strategy-integration.test.mjs and strategy-notion-integration.test.mjs,
 // owner, 1 Nov 2026): the page's sections and the same values in the config files' shape. Guarded by test/strategy-start.test.mjs and test/strategy-headings.test.mjs.
-// Job: run the backbone
-import {withRoles} from './search-roles.mjs';
+import {withRoles} from '../lib/search-roles.mjs';
 
 // The start state of every section these steps change (snapshot preseeding, lib/notion.mjs restoreSections). Roles: the persona's own, none of which a fixture
 // posting of this suite matches (so before any change the check keeps neither); places, level and companies empty; regions to skip: the real list, no test word.

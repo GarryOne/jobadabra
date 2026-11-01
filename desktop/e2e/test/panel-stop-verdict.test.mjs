@@ -50,6 +50,11 @@ test('only a Stop that was never seen pressable says "never pressable", with the
   await assert.rejects(pressStop(page, {capMs: 1000, ...options}), error => /^Stop was never pressable \(locator\.click: Timeout 1000ms exceeded\.\); the panel showed .*"busy":true/.test(error.message));
 });
 
+test('a panel that cannot be read after a failed click still says "never pressable" with the click error and the read error (Gitar on #2766)', async () => {
+  const {page, options} = fake({click: async (timeout, c) => { c.ms += timeout; throw new Error('locator.click: Timeout 1000ms exceeded.'); }, show: () => { throw new Error('page.evaluate: Execution context was destroyed'); }});
+  await assert.rejects(pressStop(page, {capMs: 1000, ...options}), error => /^Stop was never pressable \(locator\.click: Timeout 1000ms exceeded\.\); the panel showed .*Execution context was destroyed/.test(error.message));
+});
+
 test('the wait for a pressable Stop and the stages spend one budget: the click gets all of it, the stages what is left (injected clock)', async () => {
   const {page, clock, options} = fake({
     click: async (timeout, c) => { c.ms += 900; },   // the Stop became pressable 900 ms into the budget

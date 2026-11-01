@@ -32,3 +32,11 @@ test('a quit the app never answers ends the program the launcher started too, an
   await assert.rejects(closeApp(hung, {how: 'quit', exitCapMs: 300}), /did not quit by itself within 0\.3 s/);
   assert.equal(isAlive(app), false, 'the program the launcher started is still running after the late quit: it would hold the profile the next start uses');
 });
+
+// Why (1 Nov 2026, #2755 Linux settings red): a reset or an import ends the app by itself, then ctx.relaunch closes it again. Playwright cannot say the process of an app that is gone
+// ("Cannot read properties of undefined (reading '_object')"), and closeApp let that escape after a refactor moved app.process() out of its try.
+test('closing an app that already exited by itself (a reset, an import) is quiet, and has nothing to end', async () => {
+  const gone = {process: () => { throw new TypeError("Cannot read properties of undefined (reading '_object')"); }, evaluate: async () => { throw new Error('Target page, context or browser has been closed'); }};
+  await closeApp(gone);
+  await closeApp(gone, {how: 'crash', graceMs: 10});
+});

@@ -1008,6 +1008,16 @@ jobs:
     permissions:
       contents: read
 
+  # Night pass 1 only (owner via a8, 1 Nov 2026, "Yes, nightly report"): line % per layer and folder, and the GTM journeys with a test (coverage-report.yml, tools/coverage-report.mjs).
+  # REPORT ONLY, allowed under the owner's freeze: nothing `needs` this job, the called jobs are continue-on-error, and it has no pull_request trigger. It takes no Worker cron: it rides the slot of pass 1.
+  coverage-report:
+    name: Coverage report (report only)
+    if: inputs.night_pass == '1/5'
+    uses: ./.github/workflows/coverage-report.yml
+    permissions:
+      contents: read
+      actions: read   # the e2e coverage map of main's last run
+
   # Why (31 Oct 2026, owner): "It should just raise an alert. And that's it." One credit alert per workflow run, never a beta hold.
   ai-credit-health:
     name: AI credit health

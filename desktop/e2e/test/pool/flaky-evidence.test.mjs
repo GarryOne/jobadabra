@@ -155,7 +155,7 @@ test('a gate run with both legs: only the leg on the red\'s store counts, in eit
 
 test('the real reads: a view key\'s store is its store leg, else the "store" of its coverage artifact; none of either is unknown', async () => {
   const run = args => {
-    if (args.some(arg => String(arg).includes('/artifacts?per_page=100'))) return 'e2e-view-apply-1of3\ne2e-coverage-apply-1of3\ne2e-view-apply-1of3-standin\ne2e-view-settings\ne2e-view-quality-2of2\ne2e-coverage-quality-2of2\n';
+    if (args.some(arg => String(arg).includes('/artifacts?per_page=100'))) return ['e2e-view-apply-1of3', 'e2e-coverage-apply-1of3', 'e2e-view-apply-1of3-standin', 'e2e-view-settings', 'e2e-view-quality-2of2', 'e2e-coverage-quality-2of2'].map((name, i) => `${i}\t3000\t${name}`).join('\n');   // id, size, name
     const name = args[args.indexOf('-n') + 1], dir = args[args.indexOf('-D') + 1];
     fs.writeFileSync(path.join(dir, 'coverage-x-1.json'), JSON.stringify({store: name.includes('quality') ? '' : 'sqlite', steps: {}}));
     return '';

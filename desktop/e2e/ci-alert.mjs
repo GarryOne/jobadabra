@@ -84,12 +84,14 @@ export async function stepCauses(runId, env = process.env, fetcher = fetch, lane
  * Mark the failed steps that are flaky: red on code unchanged since a green of the same step (lib/flaky-verdict.mjs). Errors and a slow read: the causes as they were.
  * @returns {Promise<object[]>} causes, each flaky one with `flaky: {green: {sha, run, url}, sameCommit}`
  */
-export async function flakyCauses(causes, runId, env = process.env, fetcher = fetch, io = ghIo({repo: env.GITHUB_REPOSITORY}), deadlineMs = 90000) {
+export async function flakyCauses(causes, runId, env = process.env, fetcher = fetch, io, deadlineMs = 90000) {
   let timer;
+  const deadlineAt = Date.now() + deadlineMs;   // the one hang guard: the reads inside end by it too (flaky-evidence.mjs), not only this race
+  const reads = io || ghIo({repo: env.GITHUB_REPOSITORY, deadlineAt});
   try {
     const read = (async () => {
       const run = await get(`${API(env)}/repos/${env.GITHUB_REPOSITORY}/actions/runs/${runId}`, env, fetcher);
-      return {redSha: run.head_sha, found: await verdictsForCauses(causes, {redSha: run.head_sha, redRun: runId, redAt: run.created_at, io})};
+      return {redSha: run.head_sha, found: await verdictsForCauses(causes, {redSha: run.head_sha, redRun: runId, redAt: run.created_at, io: reads, deadlineAt})};
     })();
     const {redSha, found} = await Promise.race([read, new Promise((_, stop) => { timer = setTimeout(() => stop(new Error('flaky read took too long')), deadlineMs); })]);
     return causes.map(cause => {

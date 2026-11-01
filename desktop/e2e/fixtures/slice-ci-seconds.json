@@ -155,7 +155,6 @@
   ],
   "applyflows": {
     "the account and the application on one page": 85.6,
-    "a menu whose choices are not the answer": 127.4,
     "\"Needs your attention\" from the extension": 94.3,
     "the form tab is closed": 127,
     "a second browser with the extension": 93.7,
@@ -163,8 +162,7 @@
     "two applications side by side": 91.7,
     "a sign-in page before the form that refuses": 97,
     "a sign-in page before the form:": 62.6,
-    "a form drawn after a spinner": 58.4,
-    "a sign-up page before the form": 95.5
+    "a form drawn after a spinner": 58.4
   },
   "recorded": {
     "accordion-body-after-head-1": 7.4,

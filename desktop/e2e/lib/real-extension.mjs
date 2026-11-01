@@ -37,9 +37,9 @@ export const FIXTURE_CV = path.join(E2E, 'fixtures', 'cv.pdf');
 const pdf = (name, source = FIXTURE_CV) => ({data: fs.readFileSync(source).toString('base64'), name, type: 'application/pdf'});
 export const FAKE_CONTACT = {first_name: 'Test', last_name: 'Candidate', email: 'test.candidate@example.com'};
 
-// options: {extensionDir (default: this checkout's extension/), cv: true|false (the CV the app has), letter: true|false (an approved cover letter file),
+// options: {extensionDir (default: this checkout's extension/), cv: true|false (the CV the app has), resume: {data (base64), name, type} (the CV file the app hands over: a tailored one under its own name; default cv.pdf), menuChoices: [{host, label, value, choice}] (the choices the app remembers per site, lib/menu-choices.js), letter: true|false (an approved cover letter file),
 // contact (fake details)}. -> {context, page, port, requests, assertIsolated, panel, fillWithPanel, told, controlReports, close}
-export async function startRealExtension({extensionDir = EXTENSION_DIR, cv = true, letter = false, contact = FAKE_CONTACT, answer = {}, allowAllSites = false, offline = false, appPort = 0, cdp = false, timezoneId = '', contactFor = null, signal, onCleanup = () => {}} = {}) {   // answer: {route: () => body} the stub app gives instead of {} (e.g. the page-kind AI's word)
+export async function startRealExtension({extensionDir = EXTENSION_DIR, cv = true, resume = null, menuChoices = [], letter = false, contact = FAKE_CONTACT, answer = {}, allowAllSites = false, offline = false, appPort = 0, cdp = false, timezoneId = '', contactFor = null, signal, onCleanup = () => {}} = {}) {   // answer: {route: () => body} the stub app gives instead of {} (e.g. the page-kind AI's word)
   const port = appPort || await freePort();   // appPort: the caller's own stand-in app answers on it (row replay): this file starts no stub, and `answer`/`requests` stay unused
   const copy = copyExtension(port, extensionDir);
   // allowAllSites: a fresh test Chrome has not pressed the extension's Allow (the optional "any site" permission a person has granted once), so a site outside the
@@ -52,7 +52,7 @@ export async function startRealExtension({extensionDir = EXTENSION_DIR, cv = tru
   const requests = [];
   const answers = {'/extension/pair': () => ({url: `http://127.0.0.1:${port}`, token: 'e2e'}),
     '/extension/run': () => ({ok: true, id: 'e2e-run'}),   // the app's store answers with the run's id: the extension's record update is sent to that run (extension/ladder/record-update.js)
-    '/extension/me': (body, query) => ({contact: contactFor?.(query) || contact, contactSource: 'e2e', ...(cv ? {resume: pdf('cv.pdf')} : {}), ...(letter ? {coverLetterFile: pdf('letter.pdf')} : {})})};
+    '/extension/me': (body, query) => ({contact: contactFor?.(query) || contact, contactSource: 'e2e', ...(cv ? {resume: resume || pdf('cv.pdf')} : {}), ...(letter ? {coverLetterFile: pdf('letter.pdf')} : {}), ...(menuChoices.length ? {menuChoices} : {})})};
   const stub = appPort ? null : http.createServer((request, response) => {
     const headers = {'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization, content-type', 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS', 'Content-Type': 'application/json'};
     if (request.method === 'OPTIONS') { response.writeHead(204, headers); response.end(); return; }

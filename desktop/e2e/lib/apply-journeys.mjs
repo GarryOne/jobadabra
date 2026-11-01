@@ -1,17 +1,16 @@
 /* global document, window, location */
-// The apply suite's journey steps (moved out of suites/apply.mjs, 8 Oct 2026): a posting that opens a tab, side-by-side applications, sign-up, one page, a closed form tab, a wrong page kind. Guards the flows in docs/flows/applying.md.
+// The apply suite's journey steps (moved out of suites/apply.mjs, 8 Oct 2026): a posting that opens a tab, side-by-side applications, one page, a closed form tab, a wrong page kind. Guards the flows in docs/flows/applying.md.
 // Job: run the backbone
-import {CHAIN, LATE, MENU_AGAIN, MENU_CHOICES, MENU_FIRST, NOTICE_CHOICES, ONEPAGE, PROPOSE, SCRIPTED, SIGNIN, SIGNIN_PASSWORD, SIGNIN_REFUSED, SIGNUP} from './forms.mjs';
+import {CHAIN, LATE, NOTICE_CHOICES, ONEPAGE, PROPOSE, SCRIPTED, SIGNIN, SIGNIN_PASSWORD, SIGNIN_REFUSED} from './forms.mjs';
 import {CONTACT, pause} from './apply-fixtures.mjs';
-import {appLogText, rearmedSessions, pollSessions} from './app-log.mjs';
+import {appLogText, pollSessions} from './app-log.mjs';
 import {cvProblems, fillProblems, submitProblems} from './applycheck.mjs';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {fillNote, fillSettled, fillState, launchBrowser, readForm} from './extension.mjs';
 import {writePrivate} from '../../lib/private-file.js';
-import {pressed, ticked} from './free-click.mjs';
-import {extensionDecisions, pollUntil, stepTimeLeft, waitCapNote, waitForAccountSafety, waitForDecisions, waitForFormValue, waitForStage, waitJobFormClosed} from './wait-on-state.mjs';
+import {extensionDecisions, pollUntil, stepTimeLeft, waitCapNote, waitForDecisions, waitForFormValue, waitForStage, waitJobFormClosed} from './wait-on-state.mjs';
 import {boxesOf, missedPressNote} from './account-press.mjs';
 
 export async function runJourneys(ctx, h) {
@@ -110,44 +109,7 @@ export async function runJourneys(ctx, h) {
     }
     fail(problems);
   }, {safety: true, needs: ctx.needs});
-  // Account creation and the application form kept apart (owner, 8 Oct 2026). The posting's Apply leads to a sign-up page: the extension leaves it alone and
-  // the session shows the account step, no form progress (since 12 Oct 2026 the extension fills the page's detail fields by meaning, and presses neither the box nor the button). The test, as the person, creates the account; the form behind it is filled from the kit and the
-  // session moves on to the form. Nothing typed on the sign-up page is learned as an answer or a fill miss, and "Create account" is not the application sent.
-  await ctx.run('a sign-up page before the form: the account step is kept apart from the application form', async () => {
-    const since = new Date().toISOString();
-    await page.evaluate(([url, details]) => window.pilot.applyOne(url, details), [SIGNUP.url, {title: SIGNUP.title, company: SIGNUP.company}]);
-    const find = url => ctx.browser.context.pages().find(item => item.url().startsWith(url)) || null;
-    const tab = await arrived(() => find(SIGNUP.accountUrl), 'the wait for the sign-up page');
-    const session = async () => (await page.evaluate(target => window.pilot.sessions(), null)).find(item => String(item.url || '').replace(/\/$/, '') === SIGNUP.url) || null;
-    let {value: at, error: stageError} = await waitForStage(session, value => value?.stage === 'account');
-    const problems = [];
-    // Ends the step here: the wait spent the step's clock, and the sign-up below (typing, ticking, pressing) has timeouts of its own that would let the runner cut the step and lose this message.
-    if (at?.stage !== 'account') fail([`on the sign-up page the session is not at the account step (stage: ${at?.stage}, stuck: ${at?.stuck}${stageError ? `, last read error: ${stageError}` : ''})`]);
-    // Every account page gets the normal fill (owner, 12 Oct 2026, 8691f97): the person's details by meaning may be in; what stays the person's or Claude's is the box and the button (the password is account-step.js's, as a password manager's).
-    if (await tab.locator('#robot').isChecked()) problems.push('the extension ticked the sign-up page\'s box (it must leave that to the person)');
-    // The person creates the account: typed fields (trusted input), the box ticked, Create account pressed. While the extension fills, its overlay holds the person's click (c09c6a8,
-    // 19 Oct 2026), so the person waits for it to lift, as a real one would: a click made under it changes nothing.
-    await tab.fill('#signup_email', 'e2e.person@example.com');
-    await tab.fill('#signup_username', 'e2e-person');
-    await tab.fill('#signup_password', 'Fictional-Pass-1234');
-    await ticked(tab, '#robot');   // each waits for the overlay again and retries a click it swallowed (lib/free-click.mjs)
-    await pressed(tab, '#create_account', {landed: () => tab.url().startsWith(SIGNUP.formUrl)});   // counted only when the form behind it loads
-    await arrived(() => tab.url().startsWith(SIGNUP.formUrl), 'the wait for the application after sign-up');
-    await filled(tab);
-    {
-      // The last fill pass can commit after "done" (13 Oct 2026, #558): wait for the box itself, with a hang cap and a measured wait.
-      const {value, ms} = await waitForFormValue(async () => { const read = (await readForm(tab)).question_3001; return String(read?.value ?? read ?? ''); }, '5', {capMs: stepTimeLeft()});
-      if (value !== '5') problems.push(`the form after the sign-up has Kubernetes years "${value}" after waiting ${ms} ms, its kit says 5`);
-    }
-    ({value: at, error: stageError} = await waitForStage(session, value => value?.stage === 'form'));
-    if (at?.stage !== 'form') problems.push(`on the application form the session did not move to the form step (stage: ${at?.stage}${stageError ? `, last read error: ${stageError}` : ''})`);
-    const {value: safety} = await waitForAccountSafety(() => extensionDecisions(ctx), {since, host: SIGNUP.accountHost, path: SIGNUP.accountPath});
-    const log = safety.log;
-    if (safety.missing.includes('account page: answers typed there are not learned')) problems.push('the answers typed on the sign-up page were not kept out of the learned answers (no "not learned" line in the extension\'s decisions)');
-    if (safety.missing.includes('account page: a sign-in or sign-up press, not an application submit')) problems.push('"Create account" was not told apart from submitting the application');
-    if (/learned.*Username|Username.*learned/i.test(log)) problems.push('"Username" from the sign-up page reached the learned answers');
-    fail(problems);
-  }, {needs: ctx.needs});
+  // Why (1 Nov 2026, owner: "Only tier 1 … should stay e2e"): 'a sign-up page before the form' (night journey J15, Tier 2) is an integration test: integration/extension/extension-form-shapes.test.mjs.
   // A sign-in page before the form where we have an account (8 Oct 2026: a saved site password + "email=" on its item = sign-in). The run's own password store
   // (never the Keychain: lib/keychain.js) holds the fixture host's test password with the applicant's email. The extension fills the email and the password, presses
   // "Sign in" once on the account AI's "ready", and the form behind it is filled from the kit; Settings → Credentials lists the host with the email. Then the same
@@ -242,40 +204,7 @@ export async function runJourneys(ctx, h) {
     fail(problems);
   }, {needs: ctx.needs});
 
-  // A menu whose choices are not the answer's words (Coop, 8 Oct 2026: "+41" asked, country names listed). The fill cannot match it; the app asks the AI once for the choice that means the same, arms the menu with it, and remembers it for the site: the next form there gets "Suisse" at once, no AI call, no re-arm.
-  await ctx.run('a menu whose choices are not the answer\'s words: the choice that means the same is picked, then remembered for the next form on the site', async () => {
-    const problems = [];
-    const openForm = async fixture => {
-      await page.evaluate(([url, details]) => window.pilot.applyOne(url, details), [fixture.url, {title: fixture.title, company: fixture.company}]);
-      const tab = await arrived(() => ctx.browser.context.pages().find(item => item.url().startsWith(fixture.url)), `the wait for ${fixture.title}`);
-      await filled(tab);
-      return tab;
-    };
-    const menuOf = async (tab, within) => {
-      let value = '';
-      for (let waited = 0; waited <= within; waited += 500) { value = await tab.locator('#country_code').inputValue().catch(() => ''); if (value === 'Suisse') break; await pause(500); }
-      return value;
-    };
-    const asked = () => (ctx.optionPicks || []).filter(item => item.answer === '+41').length;
-    const first = await openForm(MENU_FIRST);
-    const value1 = await menuOf(first, 45000);
-    if (value1 !== 'Suisse') problems.push(`the first form's "Indicatif de pays" is "${value1}" (choices ${MENU_CHOICES.join(', ')}; the answer "+41" means Suisse)`);
-    if (asked() !== 1) problems.push(`the AI was asked ${asked()} time(s) for "+41" on the first form (once is right)`);
-    const kept = (() => { try { return JSON.parse(fs.readFileSync(path.join(ctx.profile, 'menu-choices.json'), 'utf8')); } catch { return null; } })();
-    if (!kept?.some(item => item.host === MENU_FIRST.host && item.value === '+41' && item.choice === 'Suisse')) problems.push(`the choice was not remembered for ${MENU_FIRST.host} (menu-choices.json: ${kept ? `${kept.length} item(s)` : 'missing'})`);
-    const logBefore = appLogText(ctx.profile).length;
-    const again = await openForm(MENU_AGAIN);
-    const value2 = await menuOf(again, 5000);
-    if (value2 !== 'Suisse') problems.push(`the next form on the site has "Indicatif de pays" "${value2}" a few seconds after its fill (the remembered choice is tried first)`);
-    if (asked() !== 1) problems.push(`the AI was asked again on the next form (${asked()} asks): the remembered choice needs none`);
-    const log = appLogText(ctx.profile), firstForm = rearmedSessions(log.slice(0, logBefore));   // Why (main 40508145728): the first form's own 10 s re-arm (lib/menu-rearm.js GAP_MS) may land after logBefore
-    if ([...rearmedSessions(log.slice(logBefore))].some(id => !firstForm.has(id))) problems.push('the next form\'s menu was re-armed (a detour the remembered choice avoids)');
-    for (const tab of [first, again]) {
-      const read = await readForm(tab);
-      if (String(read.question_3001?.value ?? read.question_3001 ?? '') !== '6') problems.push(`${tab.url()}: Kubernetes years is not the kit's 6`);
-    }
-    fail([...problems, ...submitProblems(forms.fired, MENU_FIRST.path), ...submitProblems(forms.fired, MENU_AGAIN.path)]);
-  }, {needs: ctx.needs});
+  // Why (1 Nov 2026, owner as above): 'a menu whose choices are not the answer's words' (J15, Tier 2) is two integration tests in the same file (the pick, the remembered choice); remembering is desktop/test/menu-choices.test.js.
 
   // "Needs your attention" fed by the extension's fill (owner, 8 Oct 2026: "we had this, it got overwritten"): the kit says "3 months", the menu offers none that
   // means it. The fill leaves it and proposes it; the session page lists the field with the proposal and the form's own choices; the person picks one and presses

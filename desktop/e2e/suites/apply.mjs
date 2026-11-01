@@ -51,8 +51,7 @@ export const stepSharded = true;   // its slices are steps, not recorded cases (
 // before it), a step's followers counted in it (multi-step + the session page). Refresh them after a beta from the Mac job logs: test/part-headroom.test.mjs fails "split apply further"
 // when a slice sits over the headroom of its budget, and this table is where the gate (tools/e2e-reliability-check.mjs) sees a re-cut.
 export const stepSeconds = {'Tailor CVs for top matches': 36.7, 'a multi-step form': 16.2,
-  'Tailor CV on a job': 22.7,
-  'Open in Chrome on a form the night filled': 19.2, 'Tailor on the session page of a form': 9.4, 'the person submits a form': 30.3, 'a Greenhouse-like form': 20.8,
+  'Open in Chrome on a form the night filled': 19.2, 'the person submits a form': 30.3, 'a Greenhouse-like form': 20.8,
   'Apply on a saved job without a kit': 7.7, 'a Workday-shaped form': 7.4, 'The hidden browser fills a form': 18,
   'Full automation presses Submit once on its own': 109.2, 'a silent Chrome in Standard automation': 40.1, 'a silent Chrome in Full automation': 19, 'the app quits while Background automation holds a filled form': 24.7, 'the app quits in Full automation\'s wait': 24.2,
   'each read verdict gives its own chip': 168, 'Stop on the card in Background automation': 18.3, 'Stop on the card in Full automation': 27.8,
@@ -69,7 +68,7 @@ export const macos = 'release';   // a release, a gate and the night run it on a
 // What a step needs from an earlier one when E2E_STEPS picks it (lib/runner.mjs wantedWords): every form step needs the applicant, the kits and the proxy's answers.
 const SETUP = 'the app has an applicant';
 export const stepNeeds = {'form': [SETUP], 'Tailor CV': [SETUP], 'tailored CV': [SETUP], 'without a kit': [SETUP],
-  'hidden browser fills a form': [SETUP], 'submits a form': [SETUP], 'Apply opens a new tab': [SETUP], 'side by side': [SETUP], 'sign-up page': [SETUP], 'sign-in page': [SETUP], 'menu whose choices': [SETUP], 'Needs your attention" from': [SETUP], 'appears only when + is pressed': [SETUP], 'one page': [SETUP], 'tab is closed': [SETUP], 'second browser': [SETUP], 'wrong kind': [SETUP],
+  'hidden browser fills a form': [SETUP], 'submits a form': [SETUP], 'Apply opens a new tab': [SETUP], 'side by side': [SETUP], 'sign-up page': [SETUP], 'sign-in page': [SETUP], 'Needs your attention" from': [SETUP], 'appears only when + is pressed': [SETUP], 'one page': [SETUP], 'tab is closed': [SETUP], 'second browser': [SETUP], 'wrong kind': [SETUP],
   'each read verdict': [SETUP], 'the Jobs popup': [SETUP], 'queued job': [SETUP], 'checking jobs before': [SETUP],
   'the triage bar moves': [SETUP],
   'the app quits while': [SETUP], 'the app quits in': [SETUP],
@@ -85,8 +84,8 @@ export const name = 'apply';
 // CI runs them within its 5 macOS jobs (test/apply-parts.test.mjs: each part in exactly one of them); `applyflows`
 // (suites/applyflows.mjs, manual) runs only the journeys, so the local scenario matrix runs forms and journeys in parallel. Each has its own Notion page and token.
 // The setup step and the final "Submit was never clicked" check run in all of them; each run seeds only the fixture jobs its steps use.
-const CV_STEPS = ['Tailor CV on a job', 'the form\'s panel offers a tailored CV', 'Tailor CVs for top matches', 'Apply on a saved job without a kit'];
-const FLOW_STEPS = ['a posting whose Apply opens a new tab', 'two applications side by side', 'a form drawn after a spinner', 'a sign-up page before the form', 'a sign-in page before the form', 'a menu whose choices', '"Needs your attention" from the extension', 'the account and the application on one page',
+const CV_STEPS = ['the form\'s panel offers a tailored CV', 'Tailor CVs for top matches', 'Apply on a saved job without a kit'];
+const FLOW_STEPS = ['a posting whose Apply opens a new tab', 'two applications side by side', 'a form drawn after a spinner', 'a sign-in page before the form', '"Needs your attention" from the extension', 'the account and the application on one page',
   'the form tab is closed', 'a second browser with the extension'];
 const SHARED_STEPS = ['the app is seeded', 'the app has an applicant', 'through all of it'];
 const LIVE_STEPS = ['a real posting, watched live'];

@@ -18,6 +18,7 @@ import {showPermission, startRecording, isRecording, stopRecording, onLevel, ope
 import {agoText, endPractice, showMoments, skeletonRows, startPractice} from './interview-practice.js';
 import {PASTE, jobForPage, jobList, jobOptions, jobUrlOf, renderDrafts as renderDraftList, renderSpeakers as renderSpeakerFields} from './interview-lists.js';
 import {gatedOut} from './notion-connect.js';
+import {showSetupProgress} from './interviews-setup.js';
 
 // ---------- interviews: drafts on this Mac, saved ones in Notion 🎤 Interviews ----------
 const iv = window.pilot.interviews;
@@ -446,13 +447,7 @@ export async function init() {
     if (meta.status !== 'ready') message('iv-message', meta.error || 'Transcription failed', 'error');
   });
   window.pilot.onInterviewProgress(({id, percent, text, setup}) => {
-    // The one-time downloads show at the top of the page whichever draft is open, or none.
-    show($('iv-setup'), !!setup);
-    if (setup) {
-      $('iv-setup-text').textContent = `${text}${percent == null ? '' : ` ${percent}%`}`;
-      show($('iv-setup-bar'), percent != null);
-      if (percent != null) $('iv-setup-fill').style.width = `${Math.max(2, percent)}%`;
-    }
+    showSetupProgress({percent, text, setup});   // the one-time downloads show at the top of the page whichever draft is open, or none
     if (id !== ivOpen) return;
     show($('iv-progress'));
     $('iv-progress-text').textContent = text;

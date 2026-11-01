@@ -6,7 +6,6 @@ The **real** Jobadabra app, driven by Playwright on a throwaway profile, in suit
 |---|---|---|---|
 | `wizard` | an emptied Notion page | the first-run path: key, Notion workspace, CV, strategy, finish | ~2.5 min |
 | `jobs` | a set-up install, its own jobs and runs reset | a jobs check on the fixture feeds, scoring, and every scored job in the Jobs list against its store record. (R2, 1 Nov 2026: Find employers and the slow AI check are `integration/store/jobs-run.test.mjs`) | ~3 min |
-| `interviews` | a set-up install, its own interview and job rows reset | the one-time setup banner, link/unlink a job (night journey J18), Delete. (R2, 1 Nov 2026: reviews, a failing AI, review again and insights are `integration/store/interviews-flow.test.mjs`) | ~1 min |
 | `settings` | a set-up install | every Settings section, the AI engine panel with each engine chosen | ~30 s |
 | `personas` (**manual**) | a set-up install | one of two fictional users per run (a data analyst in Austin, a marketing manager in São Paulo; `E2E_PERSONA` picks, else they alternate by day): nothing Swiss or EU in the UI, digest or Notion; the visa flag follows citizenship and places; their search regions, Google Jobs places and currencies | ~7 min |
 | `employers` | a set-up install, its own employer rows and runs reset | Find new employers on a candidate list of every kind (good board, empty, wrong roles, dead feed, duplicate, excluded, manual watch): statuses, quality order, Employers & Sources rows, the run row's counts, a second run, the crawl's source list, a Sonnet judge | ~1 min |
@@ -15,7 +14,6 @@ The **real** Jobadabra app, driven by Playwright on a throwaway profile, in suit
 | `activityfailures` | a set-up install, its own Notion page | what goes **wrong**, the part that needs the window: the AI refusing the key (**401**), **quitting mid-run**. (R2, 1 Nov 2026: 429, 500, the spending limit, silence and Notion/Telegram faults are `integration/store/run-*.test.mjs`.) Shared steps: `lib/activity-steps.mjs` | ~3 min |
 | `failuresnotion` | split from `activityfailures` (6 Oct 2026), own Notion page, in parallel | a refused Save: a clear end in words, Notion and the list agree. (Notion busy / HTML error page / connection gone under a run: `integration/store/run-faults-notion.test.mjs`) |
 | `notion-real` | the one suite on REAL Notion (P7, 9 Oct 2026), nightly gate only; borrows failuresnotion's token and page (`notionPage` guard), empties it at start and end | an app on this Mac's store connects the test workspace and moves its data there: every record once, the kit, record, interview and file read back from Notion's pages, the same screens |
-| `failureschannels` | split from `activityfailures` (6 Oct 2026), own Notion page, in parallel | the Gmail check through a fake Google (night journey J16). (The Telegram digest: `integration/store/run-channels.test.mjs`) |
 | `quality` (**nightly**) | a set-up install, golden postings, stored/replayed AI answers | exact facts, duplicates, ranking/caps, columns, app/store agreement and private logs; no judge | replayed backbone |
 | `qualityai` (**nightly**) | the same golden journey with live AI answers | live fact and score rates, Haiku judge, CV match and fresh rescore steadiness | live rates |
 | `pool` | nothing: the real engine against a stand-in website (`tools/pool_e2e.py`), a fictional photographer in Geneva | the shared pool: Find new employers sends each find and dead end at once, Search for jobs every feed and board it read, only what changed, nothing when switched off, never the search's own words; the crawl leaves out software firms and feeds where no photographer found a job; employers and job sources ranked for people like them; the central list checked hourly by its publish time | ~10 s |
@@ -42,7 +40,7 @@ The paid AI-judge steps (`employers`) also run only in the nightly gate and in m
 ```
 cd desktop/e2e && npm install
 node suite.mjs settings            # one suite, about half a minute (npm run settings)
-node suite.mjs wizard              # or jobs, interviews, focus
+node suite.mjs wizard              # or jobs, focus
 E2E_NOTION_TOKEN=ntn_… node suite.mjs settings     # runs on Claude Code: no Anthropic key on a Mac
 ```
 
@@ -272,7 +270,7 @@ Every open UI-loop issue carries one label `priority:P0` to `P3`, recomputed aft
 `apply` fills a form written the way Workday writes them (`FORMS.workday`, host `e2e.wd3.myworkdayjobs.com`): opaque ids, labels tied only by `aria-labelledby`, `aria-required`, a list button instead of a `<select>`. The kit's answers and the person's details must be filled, the list-button question left for the person by name, Submit untouched.
 
 ## One failed step never hides the rest (5 Oct 2026)
-A suite that exports `keepGoing = true` (activityfailures, activity, focus, settings, interactions; interviews uses `independent()`) records a failed step and runs the next one (`lib/runner.mjs`); the suite still fails at the end. Setup steps the others need pass `{critical: true}` and still stop it. Why: one outdated step hid fifteen later ones, twice in one day. The Finder still files the first failed step and lists the later ones under it.
+A suite that exports `keepGoing = true` (activityfailures, activity, focus, settings, interactions) records a failed step and runs the next one (`lib/runner.mjs`); the suite still fails at the end. Setup steps the others need pass `{critical: true}` and still stop it. Why: one outdated step hid fifteen later ones, twice in one day. The Finder still files the first failed step and lists the later ones under it.
 
 ## Regressions, flaky steps and the owner's corrections (5 Oct 2026)
 - **Regression:** a new finding that matches an issue a FIX closed (a commit said it fixes it, or the fixer merged) is labelled `regression`, gets a comment naming the old issue, and is P1 at least (`fixedBefore`).

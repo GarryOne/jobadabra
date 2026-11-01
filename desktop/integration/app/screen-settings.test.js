@@ -36,6 +36,21 @@ before(() => {
       const api = await choose('api');
       return {cards, cli, api};
     });
+    // Settings sections: every section the page lists is opened as a person does and checked for the layout problems that fail a step (the J17 check, moved from the e2e `settings` suite, 1 Nov 2026).
+    await section('sections', async () => {
+      const names = () => [...document.querySelectorAll('.settings-nav [data-settings-go]')].map(button => button.dataset.settingsGo);
+      await kit.go('settings');
+      const sections = names(), layout = [];
+      for (const name of sections) {
+        // Profile is its own page and hides Settings' list of sections: the next one is reached through the menu's Settings.
+        if (!document.querySelector('.settings-nav')?.offsetParent) await kit.go('settings');
+        document.querySelector(`.settings-nav [data-settings-go="${name}"]`).click();
+        await kit.until(() => document.querySelector(`[data-settings-page="${name}"]:not([hidden])`), `the ${name} section to show`);
+        const problems = kit.severe('settings');
+        if (problems.length) layout.push(`${name}: ${problems.join(' | ')}`);
+      }
+      return {sections, layout};
+    });
     await section('palette', async () => {
       const press = init => document.dispatchEvent(new KeyboardEvent('keydown', {bubbles: true, ...init}));
       const pages = [...new Map([...document.querySelectorAll('.nav[data-view]')].map(nav => [nav.dataset.view, (nav.getAttribute('aria-label') || nav.title || nav.textContent).trim()])).entries()];
@@ -72,6 +87,12 @@ test('the AI engine panel is coherent with each engine chosen: one card selected
   assert.deepEqual([cli.checked, cli.saved], [['cli'], 'cli']);
   assert.deepEqual([api.checked, api.saved], [['api'], 'api']);
   assert.deepEqual([...cli.severe, ...api.severe], []);
+});
+
+test('every Settings section the page lists opens and has no layout problems', live, () => {
+  const {sections, layout} = facts('sections');
+  assert.ok(sections.length >= 5, `Settings lists ${sections.length} sections: ${sections.join()}`);
+  assert.deepEqual(layout, [], 'layout problems');
 });
 
 test('⌘K opens the palette: every page is listed, every Settings page and section and Export/Import are reachable, a typed command opens its page', live, () => {

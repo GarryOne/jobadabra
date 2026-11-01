@@ -9,7 +9,6 @@ import {hangCapsFor} from '../lib/hang-caps.mjs';
 import {VIEWS} from '../lib/uicheck.mjs';
 import * as interactions from '../suites/interactions.mjs';
 import * as jobs from '../suites/jobs.mjs';
-import * as failureschannels from '../suites/failureschannels.mjs';
 
 const source = file => readFileSync(new URL(`../${file}`, import.meta.url), 'utf8');
 const names = text => stepCalls(text).flatMap(call => call.name ?? VIEWS.map(view =>
@@ -19,20 +18,12 @@ const finalSteps = ['no AI call of this suite reached a real model: the stand-in
 // Why (1 Nov 2026, owner "Shrink in cleanup", a8): the step count was typed in here and had to follow every step a layer moved out (#2763, #2770, a509995 all went red on it); the property is that every step
 // the suite source declares has a cap, so the count is read, and the suite's own scan (not the list padded with the 3 final steps) must find at least one step.
 for (const [suiteName, suite, largest, minutes] of [
-  ['interactions', interactions, 220, 25], ['jobs', jobs, 395, 30], ['failureschannels', failureschannels, 180, 12],
+  ['interactions', interactions, 220, 25], ['jobs', jobs, 395, 30],
 ]) {
   test(`${suiteName}: every step has a measured or documented fallback cap and no aggregate clock`, () => {
     const caps = JSON.parse(source('hang-caps.json'))[suiteName];
-    let direct = source(`suites/${suiteName}.mjs`);
-    let preparation = '';
-    if (suiteName === 'failureschannels') {
-      const activity = source('suites/activityfailures.mjs');
-      const start = activity.indexOf("  if (parts.includes('channels')) {");
-      assert.ok(start > 0, 'positive control: the delegated channels block exists');
-      direct = activity.slice(start, activity.indexOf("  if (parts.includes('ai')) {", start));
-      preparation = source('lib/activity-steps.mjs');
-    }
-    const required = [...names(direct), ...names(preparation), ...names(source('lib/seed.mjs')), ...finalSteps];
+    const direct = source(`suites/${suiteName}.mjs`);
+    const required = [...names(direct), ...names(source('lib/seed.mjs')), ...finalSteps];
     assert.ok(names(direct).length > 0, 'positive control: the suite\'s own steps were read from its source, an empty scan never passes');
     assert.deepEqual(Object.keys(suite.hangCaps).sort(), [...new Set(required)].sort());
     assert.equal(suite.aggregateBudget, false);

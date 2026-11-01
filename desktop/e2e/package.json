@@ -17,7 +17,6 @@
     "recorded-map": "bash ../../tools/heavy-lock.sh recorded-map node replay-map.mjs",
     "wizard": "node suite.mjs wizard",
     "jobs": "node suite.mjs jobs",
-    "interviews": "node suite.mjs interviews",
     "settings": "node suite.mjs settings",
     "employers": "node suite.mjs employers",
     "focus": "node suite.mjs focus",

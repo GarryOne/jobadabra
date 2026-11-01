@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 
-const suites = ['apply', 'activityfailures', 'quality', 'applyflows', 'failureschannels', 'interactions', 'jobs', 'settings'];
+const suites = ['apply', 'activityfailures', 'quality', 'applyflows', 'interactions', 'jobs', 'settings'];
 
 test('every suite exports the loader table', async () => {
   const {hangCapsFor} = await import('../lib/hang-caps.mjs');

@@ -2,7 +2,7 @@
 // Job: wait on state
 // Settings: every section renders, the CV check on real PDFs, Automatic backup and Your data (export / reset / import). Why (1 Nov 2026): the AI engine panel and ⌘K moved to desktop/integration/app/screen-settings.test.js.
 // Was: every section, with each AI engine chosen. Starts from a set-up install (a key saved, a workspace connected).
-import {finish, snap} from '../lib/layout.mjs';
+import {snap} from '../lib/layout.mjs';
 import fs from 'node:fs';
 import {appLogText, currentLaunchLog} from '../lib/app-log.mjs';
 import {pollUntil, waitForLogLine} from '../lib/wait-on-state.mjs';
@@ -65,7 +65,7 @@ export async function run(ctx) {
       }
     } finally { if (original) fs.writeFileSync(target, original); }
   }, {needs: ctx.needs});
-  await ctx.run('Settings render without layout problems', async () => { finish(ctx); }, {needs: ctx.needs});
+  // Why (1 Nov 2026, owner: "Only tier 1 … should stay e2e"): 'Settings render without layout problems' (night journey J17, Tier 2) is an integration test: integration/app/screen-settings.test.js 'every Settings section the page lists opens and has no layout problems'.
   await ctx.run('Automatic backup: Back up now writes a backup with no keys in its folder, and View backups opens it', () => backupNowStep(ctx), {needs: ctx.needs, data: true});
   await ctx.run('Automatic backup: a due backup runs once at start and once on the weekly tick', () => backupTimerStep(ctx), {needs: ctx.needs, data: true});
   // Last: it restarts the app twice (the steps above hold the first window).

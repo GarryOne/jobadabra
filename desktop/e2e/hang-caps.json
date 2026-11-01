@@ -10,10 +10,6 @@
         "seconds": 175,
         "p95Seconds": 58.2
       },
-      "a menu whose choices are not the answer's words: the choice that means the same is picked, then remembered for the next form on the site": {
-        "seconds": 185,
-        "p95Seconds": 60.2
-      },
       "a posting whose Apply opens a new tab, then a \"To apply\" step, then the form: the journey is followed and the form filled": {
         "seconds": 185,
         "p95Seconds": 61.5
@@ -31,10 +27,6 @@
       "a sign-in page before the form: your email and saved password are filled, \"Sign in\" is pressed once, and the form behind it is filled": {
         "seconds": 190,
         "p95Seconds": 62.6
-      },
-      "a sign-up page before the form: the account step is kept apart from the application form": {
-        "seconds": 120,
-        "p95Seconds": 38.4
       },
       "the account and the application on one page: it is the application form, its passwords stay account fields": {
         "seconds": 180,
@@ -77,54 +69,6 @@
         "seconds": 30,
         "n": 8,
         "p95Seconds": 0.5
-      }
-    }
-  },
-  "failureschannels": {
-    "provenance": "Generated state-wait hang caps for failureschannels; never a speed assertion.\ntools/e2e-step-timings.mjs: 9 main runs, 9/9 calm shard-runs.\nSparse shared steps use the applyflows entry's measurements.\nMain run IDs: 40610690663, 40617153757, 40650235925, 40796899545, 40799225090, 40802551247, 40836904987, 40960750830, 40975522762.\n3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.\ntools/e2e-step-timings.mjs: 6 main runs, 5/6 calm shard-runs.\nMain run IDs: 40796899545, 40799225090, 40960750830, 40985357367, 41133640727, 41146558456.\n3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.",
-    "steps": {
-      "nothing was queued to report to the product": {
-        "seconds": 30,
-        "n": 9,
-        "p95Seconds": 0.2
-      },
-      "the app is quiet before the first task: no schedule, no first search, its history read": {
-        "seconds": 30,
-        "n": 9,
-        "p95Seconds": 9.2
-      },
-      "the app is seeded as a set-up install from the existing workspace": {
-        "shared": "applyflows",
-        "n": 4
-      },
-      "the app is set up on this Mac's store with the applicant's strategy": {
-        "seconds": 30,
-        "n": 5,
-        "p95Seconds": 2.6
-      },
-      "the Gmail check reads the inbox through Google and ends in words, with nothing left Running": {
-        "seconds": 180,
-        "n": 9,
-        "p95Seconds": 58.5
-      },
-      "the Notion stand-in answered every request the app made": {
-        "shared": "applyflows",
-        "n": 4
-      },
-      "this suite starts with no job rows in its store's Job Matches": {
-        "seconds": 30,
-        "n": 9,
-        "p95Seconds": 0.4
-      },
-      "this suite starts with no run rows in its store": {
-        "seconds": 30,
-        "n": 9,
-        "p95Seconds": 4.4
-      },
-      "no AI call of this suite reached a real model: the stand-in answered or refused every one": {
-        "shared": "applyflows",
-        "n": 1,
-        "p95Seconds": 0.2
       }
     }
   },
@@ -339,11 +283,6 @@
         "n": 9,
         "p95Seconds": 0.3
       },
-      "Settings render without layout problems": {
-        "seconds": 30,
-        "n": 9,
-        "p95Seconds": 0.4
-      },
       "the app is seeded as a set-up install from the existing workspace": {
         "shared": "applyflows",
         "n": 2
@@ -406,16 +345,8 @@
         "seconds": 300,
         "reason": "Preserved inline cap; see provenance."
       },
-      "Tailor CV on a job": {
-        "seconds": 480,
-        "reason": "Preserved inline cap; see provenance."
-      },
       "Apply on a saved job without a kit": {
         "seconds": 390,
-        "reason": "Preserved inline cap; see provenance."
-      },
-      "Tailor on the session page": {
-        "seconds": 445,
         "reason": "Preserved inline cap; see provenance."
       },
       "the person submits a form": {
@@ -777,91 +708,6 @@
         "seconds": 30,
         "n": 5,
         "p95Seconds": 4.8
-      }
-    }
-  },
-  "focusdismiss": {
-    "provenance": "tools/e2e-step-timings.mjs: 11 main runs, 11/11 calm shard-runs.\nMain run IDs: 40799225090, 40802551247, 40836904987, 40960750830, 40985357367, 40987937824, 41114032271, 41133640727, 41146558456, 41157036555, 41180851813.\n3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.",
-    "steps": {
-      "a search with applications in every stage is written to the store (dummy employers, target 5)": {
-        "seconds": 155,
-        "n": 11,
-        "p95Seconds": 50.8
-      },
-      "Dismiss on a job in process leaves the In process list at once, and is still gone after a reload (it was bouncing back to \"Interview scheduled\", 3 Oct 2026)": {
-        "seconds": 85,
-        "n": 10,
-        "p95Seconds": 26.7
-      },
-      "nothing was queued to report to the product": {
-        "seconds": 30,
-        "n": 11,
-        "p95Seconds": 0.2
-      },
-      "the app is seeded as a set-up install from the existing workspace": {
-        "seconds": 50,
-        "n": 8,
-        "p95Seconds": 15.4
-      },
-      "the app is set up on this Mac's store with the applicant's strategy": {
-        "shared": "applyflows",
-        "n": 3,
-        "p95Seconds": 4.3
-      },
-      "the Notion stand-in answered every request the app made": {
-        "seconds": 30,
-        "n": 8,
-        "p95Seconds": 0.3
-      }
-    }
-  },
-  "interviews": {
-    "provenance": "tools/e2e-step-timings.mjs: 11 main runs, 8/11 calm shard-runs.\nMain run IDs: 40796899545, 40799225090, 40802551247, 40836904987, 40960750830, 40975522762, 40985357367, 40987937824, 41133640727, 41146558456, 41157036555.\n3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.",
-    "steps": {
-      "an interview can be linked to a job and unlinked again, and Notion follows": {
-        "seconds": 30,
-        "n": 8,
-        "p95Seconds": 7.4
-      },
-      "Delete moves an interview to the Notion trash and takes it off the page": {
-        "seconds": 30,
-        "n": 8,
-        "p95Seconds": 4.3
-      },
-      "Interviews renders without layout problems": {
-        "seconds": 30,
-        "n": 8,
-        "p95Seconds": 0.2
-      },
-      "no AI call of this suite reached a real model: the stand-in answered or refused every one": {
-        "seconds": 30,
-        "n": 5,
-        "p95Seconds": 0.3
-      },
-      "nothing was queued to report to the product": {
-        "seconds": 30,
-        "n": 8,
-        "p95Seconds": 0.3
-      },
-      "the app is set up on this Mac's store with the applicant's strategy": {
-        "seconds": 30,
-        "n": 8,
-        "p95Seconds": 4.6
-      },
-      "the app reads the new jobs, as it does when the Jobs page has loaded": {
-        "seconds": 30,
-        "n": 8,
-        "p95Seconds": 1.5
-      },
-      "the one-time setup banner shows its step and percent, then goes away when transcribing starts": {
-        "seconds": 30,
-        "n": 8,
-        "p95Seconds": 5
-      },
-      "this suite starts from its own dummy jobs and interviews in the store": {
-        "seconds": 30,
-        "n": 8,
-        "p95Seconds": 2
       }
     }
   },

@@ -1,7 +1,7 @@
 // Layer 3 (Node + the real engine + the Telegram and Google fakes, no window): with Telegram connected a Jobs check sends ONE readable digest to the person's chat, and the Gmail check reads the
 // inbox through Google and ends in words with nothing left Running. Moved from the e2e `activityfailures` suite's channels part (suite failureschannels, 1 Nov 2026, R2): "with Telegram connected,
-// a Jobs check sends one readable digest to the person's chat" and "the Gmail check reads the inbox through Google and ends in words, with nothing left Running". The Gmail e2e step stays too
-// (night journey J16, critical-journeys.json); this is its PR-time counterpart. Telegram refusing the digest and Google access revoked are drawn by screen-activity-failures.test.js.
+// a Jobs check sends one readable digest to the person's chat" and "the Gmail check reads the inbox through Google and ends in words, with nothing left Running". The Gmail e2e step is gone
+// (night journey J16, Tier 2 since 1 Nov 2026: critical-journeys.json lists this test as its proof, the e2e suite failureschannels is deleted). Telegram refusing the digest and Google access revoked are drawn by screen-activity-failures.test.js.
 // The AI is the kit's proxy, which refuses a call nobody answered: the Gmail check reads the three invented emails and the run still has to end in words.
 import assert from 'node:assert/strict';
 import {after, before, test} from 'node:test';

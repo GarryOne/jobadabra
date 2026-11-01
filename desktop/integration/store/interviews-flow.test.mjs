@@ -1,8 +1,7 @@
 // Layer 3 (Node + the real engine + a temp store, no window): what the Interviews page WRITES through the app's own module (lib/interviews.js), with the engine's real review and the e2e stored
 // AI answers (e2e/fixtures/golden/ai-answers.json, suite interviews). Moved from the e2e `interviews` suite (1 Nov 2026, R2): a transcript that fails to review leaves one saved row, a
-// transcript imported and reviewed for real, Review again on an older review, Refresh insights without a new review. The link/unlink step stays in e2e (night journey J18) and is repeated
-// here as its PR-time counterpart. What stays only in e2e: the setup banner (sent from the main process) and Delete (the id the page sends). The window side of all of them is
-// screen-interviews.test.js. Data comes from the store's own commands (kit.data), never hand-written rows.
+// transcript imported and reviewed for real, Review again on an older review, Refresh insights without a new review. Link/unlink (journey J18) and Delete are
+// here too; nothing of Interviews stays in e2e (owner, 1 Nov 2026: only Tier 1 journeys are e2e). The window side of all of them, and the setup banner, is screen-interviews.test.js. Data comes from the store's own commands (kit.data), never hand-written rows.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -113,4 +112,14 @@ test('Refresh insights without a new review says it is up to date and spends not
   assert.ok(second.ok, `the second refresh failed: ${JSON.stringify(second).slice(0, 300)}`);
   assert.equal(second.status, 'unchanged', `the second refresh should find nothing to do, it says: ${JSON.stringify(second).slice(0, 200)}`);
   assert.equal(kit.proxy.stats.calls, calls, 'a refresh with nothing changed still called the AI');
+});
+
+test('Delete takes an interview out of the store, and only that one (the id the page sends)', async () => {
+  const before = (await allInterviews()).map(item => item.id);
+  assert.ok(before.some(id => sameId(id, seed.ivPositive.id)), 'the control: the interview is in the store before Delete');
+  const gone = await interviews.remove(kit.storage, seed.ivPositive.id);
+  assert.ok(gone?.ok, `delete failed: ${JSON.stringify(gone)}`);
+  const after = (await allInterviews()).map(item => item.id);
+  assert.ok(!after.some(id => sameId(id, seed.ivPositive.id)), 'the interview is still in the store after Delete');
+  assert.equal(after.length, before.length - 1, 'Delete took more than the one interview');
 });

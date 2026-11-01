@@ -139,8 +139,8 @@ export const pickFile = (app, file) => app.evaluate(({dialog}, filePath) => {
  * `child` while the app was still tearing down left the app running with its parent gone (pid 8092), holding the profile the next start of it uses; 20 s later the reset's folder wait failed.
  * The tree is taken before the exit (a child's parent is lost once the parent dies). Guard: test/close-app-tree.test.mjs.
  */
-export async function closeApp(app, {how = 'crash', graceMs = 5000} = {}) {
-  if (how === 'quit') return quitApp(app);
+export async function closeApp(app, {how = 'crash', graceMs = 5000, exitCapMs} = {}) {
+  if (how === 'quit') return quitApp(app, exitCapMs === undefined ? {} : {exitCapMs});
   const child = app.process();
   let tree = [{pid: child.pid, ppid: 0, command: 'the launcher'}];
   try {
@@ -169,7 +169,10 @@ async function quitApp(app, {exitCapMs = stepTimeLeft() ?? 30000} = {}) {
   let timer;
   const verdict = await Promise.race([exited.then(() => 'exited'), new Promise(resolve => { timer = setTimeout(() => resolve('late'), exitCapMs); })]);
   clearTimeout(timer);
-  if (verdict === 'late') { child.kill('SIGKILL'); throw new Error(`the app did not quit by itself within ${exitCapMs / 1000} s after the quit (killed)`); }
+  if (verdict === 'late') {   // Why (1 Nov 2026, #2717): killing only the launcher left the app below it (Windows shell) running; the whole tree goes, then the verdict is said.
+    await endTree([{pid: child.pid, ppid: 0, command: 'the launcher'}, ...tree], {graceMs: 0});
+    throw new Error(`the app did not quit by itself within ${exitCapMs / 1000} s after the quit (killed)`);
+  }
   const left = await waitTreeGone(tree);
   for (const row of left) { try { process.kill(row.pid, 'SIGKILL'); } catch { /* gone meanwhile */ } }   // never leave them behind, whatever the verdict
   if (left.length) throw new Error(`the app quit but ${left.length} process(es) it started are still running: ${holdersOf(left)}`);

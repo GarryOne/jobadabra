@@ -22,3 +22,13 @@ test('closing the app ends the program the launcher started, when only the launc
   await closeApp(fake, {graceMs: 300});
   assert.equal(isAlive(app), false, 'the program the launcher started is still running after the close: it would hold the profile the next start uses');
 });
+
+test('a quit the app never answers ends the program the launcher started too, and still says it did not quit', async t => {
+  const launcher = spawn(process.execPath, ['-e', START_THE_APP], {stdio: ['ignore', 'pipe', 'ignore']});
+  const app = Number(await firstLine(launcher.stdout));
+  t.after(() => { for (const pid of [app, launcher.pid]) { try { process.kill(pid, 'SIGKILL'); } catch (error) { if (error.code !== 'ESRCH') throw error; } } });
+  assert.ok(isAlive(app), 'positive control: the program is running before the quit');
+  const hung = {process: () => launcher, evaluate: async () => {}};   // electron.quit() is asked and nothing happens
+  await assert.rejects(closeApp(hung, {how: 'quit', exitCapMs: 300}), /did not quit by itself within 0\.3 s/);
+  assert.equal(isAlive(app), false, 'the program the launcher started is still running after the late quit: it would hold the profile the next start uses');
+});

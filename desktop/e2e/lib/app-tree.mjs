@@ -48,14 +48,14 @@ export async function waitTreeGone(tree, {alive = isAlive, capMs = stepTimeLeft(
 }
 
 /**
- * Gives `tree` up to `graceMs` to leave by itself (state wait: every pid gone), then ends the rows still running and waits until they are gone too (the OS lets go of a killed
+ * Gives `tree` up to `graceMs` to leave by itself (state wait: every pid gone), then ends the rows still running and waits up to `settleMs` until they are gone too (the OS lets go of a killed
  * process's files a moment later). -> the rows that had to be ended ([] = all left on their own); throws naming the rows that outlive the kill.
  * Why (1 Nov 2026, #2717): a crash close ended the launcher and nothing below it; on Windows the launcher is a shell and the app is its child (Playwright, shell: true).
  */
-export async function endTree(tree, {graceMs = 5000, wait = waitTreeGone, kill = process.kill.bind(process)} = {}) {
+export async function endTree(tree, {graceMs = 5000, settleMs = 5000, wait = waitTreeGone, kill = process.kill.bind(process)} = {}) {
   const left = await wait(tree, {capMs: graceMs});
   for (const row of left) { try { kill(row.pid, 'SIGKILL'); } catch (error) { if (error.code !== 'ESRCH') throw error; } }   // ESRCH: gone since the check
-  const stayed = await wait(left, {capMs: graceMs});
+  const stayed = await wait(left, {capMs: settleMs});
   if (stayed.length) throw new Error(`${stayed.length} process(es) of the closed app are still running after being killed: ${holdersOf(stayed)}`);
   return left;
 }

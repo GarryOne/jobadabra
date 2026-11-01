@@ -142,7 +142,7 @@ export async function runSuite(name, report = null) {
       };
       await limitCloseDown(suite, ctx, report ? report.step('Close the app, save the artifacts', closeDown) : closeDown()).catch(error => console.log(`  (close-down: ${error.message})`));
       try { (await import('./ai-meter.mjs')).writeUsage(ctx.ARTIFACTS); } catch (error) { console.log(`  (AI usage not written: ${error.message})`); }   // what this suite paid, for /ai-cost (e2e.yml reports it)
-      // Why (30 Oct 2026, owner-approved rule A; run 40996297795): late answer misses must reach retry proof, not only stderr after an empty failure file.
+      // Why (30 Oct 2026, owner-approved rule A; run 40996297795): late answer misses must reach retry proof, not stderr alone after an empty failure file; the env is passed in (process.env here, so CI shows annotations; tests pass their own, 1 Nov 2026, #2784).
       if (writeFinalFailures(name, ctx, process.env)) code = 1;
       if (ctx.runner.summary()) code = 1;
       report?.decided?.(code);   // the exit code is known: lib/report.mjs stops a Playwright runner that stays open long after this (6 Oct 2026: wander hung 10 min)

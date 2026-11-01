@@ -1,4 +1,4 @@
-// The settings of a recording run (npm run record-sites) are RECORD_*; the old SMOKE_* names (until 15 Oct 2026) are still read, with one warning line. Guard: e2e/test/record-sites-rename.test.mjs.
+// The settings of a recording run (npm run record-sites) are RECORD_*; the old SMOKE_* names (until 15 Oct 2026) are still read, with one warning line. Guard: e2e/test/record/record-sites-rename.test.mjs.
 const warned = new Set();
 
 // recordVar('PAIRED') -> env.RECORD_PAIRED, else env.SMOKE_PAIRED (a warning once per name), else undefined. `old` is the setting's older suffix when it differs (SHARE: PER_NIGHT).

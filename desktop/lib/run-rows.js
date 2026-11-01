@@ -30,6 +30,13 @@ const placeOf = (written, runUrl, trigger) => {
   return runUrl ? 'github' : /^Mac/.test(trigger) ? 'mac' : 'elsewhere';
 };
 
+/** What a run's stored Telegram words say -> {telegram: whether a message went out, telegramNote: the words}. Both stores keep the engine's words
+ *  (src/daily_search_reporting.py deliver_digest; other kinds store 1). Why (1 Nov 2026, #2750): one rule for both readers; the Notion one took any text as a send (#1393 fixed only the other). */
+export function telegramOf(said) {
+  const words = String(said ?? '');
+  return {telegram: !!said && !/^(not sent|nothing)/i.test(words), telegramNote: words};
+}
+
 // One row as an activity record (the same shape as the Mac's own runs.json records).
 export function fromRow(page, now = Date.now()) {
   const p = page.properties || {};
@@ -56,7 +63,7 @@ export function fromRow(page, now = Date.now()) {
   const ok = status !== 'Failed' && !(status === 'Running');  // a stale "Running" row: the job never reported
   const job = ok ? rowJob(p, mode, summary) : null;
   return {...record, endedAt: ended, ok, warned: status === 'Warnings', new: p['New jobs']?.number ?? null, feeds: p.Feeds?.number ?? null, usd: p['AI cost (USD)']?.number || 0,
-    billing: p['Billed to']?.select?.name || null, telegram: !!text(p.Telegram),   // its message also went to Telegram
+    billing: p['Billed to']?.select?.name || null, ...telegramOf(text(p.Telegram)),
     result: result(summary, status, p['New jobs']?.number, mode), ...(job ? {job} : {})};
 }
 
@@ -95,6 +102,5 @@ export function fromRecord(row, now = Date.now()) {
   const ok = status !== 'Failed' && status !== 'Running';
   const job = ok && mode === 'add' && row.application ? {pageId: row.application, url: null, title: '', jobUrl: '', created: /^\W*Tracked\b/.test(summary)} : null;
   return {...record, endedAt: ended, ok, warned: status === 'Warnings', new: stats.new_jobs ?? null, feeds: stats.feeds ?? null, usd: stats.ai_cost_usd || 0,
-    billing: stats.billed_to || null, telegram: !!stats.telegram && !/^(not sent|nothing)/i.test(String(stats.telegram)),  // other kinds store 1; the search stores words, and 'not sent: …' is no send (#1393)
-    telegramNote: String(stats.telegram || ''), result: where === 'cloud' ? summary : result(summary, status, stats.new_jobs, mode), ...(job ? {job} : {})};
+    billing: stats.billed_to || null, ...telegramOf(stats.telegram), result: where === 'cloud' ? summary : result(summary, status, stats.new_jobs, mode), ...(job ? {job} : {})};
 }

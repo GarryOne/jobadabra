@@ -1,0 +1,56 @@
+name: CI · Agent coding stats
+# Daily (owner, 1 Nov 2026: "New page incl. push gate"): the CI side of https://www.jobpilotto.top/admin/operations/agent-coding, from GitHub and git only (tools/agent-coding-stats.mjs):
+# merged PRs and the share that change CI or tooling, what fixed each red, fix PRs per area, CI minutes per push. Report only: it never blocks anything. No AI, $0.
+# It runs on the workflow's own GITHUB_TOKEN (its own rate limit, not the owner's shared 5,000 an hour). By hand: Actions → run workflow (days up to 14; end = the last day, to fill older days).
+on:
+  schedule:
+    - cron: '41 4 * * *'
+  workflow_dispatch:
+    inputs:
+      days:
+        description: Days to count (1 to 14)
+        default: '3'
+      end:
+        description: Last day to count, YYYY-MM-DD (empty = today)
+        default: ''
+
+permissions:
+  contents: read
+  actions: read
+  pull-requests: read
+
+concurrency:
+  group: agent-coding-stats-${{ github.run_id }}   # a run of its own (tests/test_workflow_contract.py)
+  cancel-in-progress: false
+
+jobs:
+  stats:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+      SELFHEAL_PUBLISH_KEY: ${{ secrets.SELFHEAL_PUBLISH_KEY }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0   # the merge commits and the commits of each PR
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - name: Count the days
+        env:
+          END: ${{ inputs.end }}
+          DAYS: ${{ inputs.days || '3' }}
+        run: |
+          # Why (1 Nov 2026, Gitar on #2835): a dispatch input is data, never script text: it comes through env and is checked before use.
+          case "$END" in ''|[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]) ;; *) echo "::error::end must be YYYY-MM-DD"; exit 1 ;; esac
+          case "$DAYS" in [0-9]|[0-9][0-9]) ;; *) echo "::error::days must be a number from 1 to 14"; exit 1 ;; esac
+          node tools/agent-coding-stats.mjs --days "$DAYS" ${END:+--end "$END"} --out "$RUNNER_TEMP/agent-coding.json"
+      - name: Store it for the admin page
+        run: |
+          if [ -n "$SELFHEAL_PUBLISH_KEY" ]; then
+            curl -sS -o /dev/null --fail -X PUT -H "Authorization: Bearer ${SELFHEAL_PUBLISH_KEY}" --data-binary "@$RUNNER_TEMP/agent-coding.json" "https://www.jobpilotto.top/agent-coding/data"
+          else
+            echo "::notice::SELFHEAL_PUBLISH_KEY is not set: nothing stored."
+          fi

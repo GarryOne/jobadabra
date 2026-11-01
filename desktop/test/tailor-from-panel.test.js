@@ -1,6 +1,6 @@
 // Tailoring happens in the app, never on the form's panel (owner, 27 Oct 2026: "Send me to the app"; "I don't think the extension is that smart to adapt on the fly and replace the
 // general CV with the tailored one"), and the panel draws no CV row at all (owner, 27 Oct 2026: "let's remove the line with "general CV attached… Tailor in Jobadabra""): every Tailor in the
-// window marks the job and restarts the job's open form when the CV is ready. The browser test is desktop/e2e/test/panel-tailor.test.mjs; the journey step is in e2e/lib/apply-cv-steps.
+// window marks the job and restarts the job's open form when the CV is ready. The browser test is desktop/e2e/test/filling/panel-tailor.test.mjs; the journey step is in e2e/lib/apply-cv-steps.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {test} from 'node:test';

@@ -1,5 +1,5 @@
 // Auto-capture of the pool run's replay candidates (e2e/lib/ladder-candidates.mjs): a candidate that FAILED (the run did not reach the form) becomes a ladder fixture whose expectation is `pending`
-// (a human or the coordinator confirms it); the ratchet ignores pending fixtures and ladder-score lists them as "to confirm". Pure parts here; the browser part is in e2e/test/ladder-capture-candidates.test.mjs.
+// (a human or the coordinator confirms it); the ratchet ignores pending fixtures and ladder-score lists them as "to confirm". Pure parts here; the browser part is in e2e/test/filling/ladder-capture-candidates.test.mjs.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';

@@ -18,7 +18,7 @@ const DAY_MS = 86400000;
 /** The fast unit folders CI's unit jobs run (tests-desktop.yml, harness.yml, tests-python.yml), one process per file. Integration needs browsers and Electron and is not here. */
 export const AREAS = [
   {name: 'desktop', cwd: 'desktop', dir: 'test', match: /\.test\.js$/, command: file => ['node', '--import', './test/no-live-site.mjs', file]},
-  {name: 'e2e', cwd: 'desktop/e2e', dir: 'test', match: /\.test\.mjs$/, command: file => ['node', '--import', './test/stdout-to-stderr.mjs', file]},
+  {name: 'e2e', cwd: 'desktop/e2e', dir: 'test', nested: true, match: /\.test\.mjs$/, command: file => ['node', '--import', './test/stdout-to-stderr.mjs', file]},
   {name: 'python', cwd: '.', dir: 'tests', match: /^test_.*\.py$/, env: {PYTHONPATH: 'tests'},   // test_0_notion_ids sets the fake IDs every module imports against (tools/py-shards.py)
     command: file => ['python3', '-m', 'unittest', '-q', '-b', ...new Set(['test_0_notion_ids', path.basename(file, '.py')])]},
 ];
@@ -70,7 +70,12 @@ export async function probe({run = execute, areas = AREAS, days = SHIFTS[0], cwd
 }
 
 /** The test files of an area, relative to its cwd. */
-export const filesOf = (root, area) => fs.readdirSync(path.join(root, area.cwd, area.dir)).filter(name => area.match.test(name)).sort().map(name => path.posix.join(area.dir, name));
+// Why (c27, 1 Nov 2026, area folders): the e2e harness tests sit one folder down (test/<area>/x.test.mjs); `fixtures` holds stand-ins, never tests.
+export const filesOf = (root, area) => {
+  const base = path.join(root, area.cwd, area.dir);
+  const folders = ['', ...(area.nested ? fs.readdirSync(base, {withFileTypes: true}).filter(item => item.isDirectory() && item.name !== 'fixtures').map(item => item.name).sort() : [])];
+  return folders.flatMap(folder => fs.readdirSync(path.join(base, folder)).filter(name => area.match.test(name)).sort().map(name => path.posix.join(area.dir, folder, name)));
+};
 
 /**
  * The files that pass on the real clock and fail with it moved ahead. Pass 1 on the real clock; each shift runs only the files still standing, so a file is reported at the smallest shift that breaks it;

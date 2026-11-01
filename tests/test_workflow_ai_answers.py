@@ -137,7 +137,8 @@ class EveryWorkflowReadsTheSuitesOwnAnswerMode(unittest.TestCase):
     def test_the_beta_gate_runs_every_backbone_suite_on_stored_answers(self):
         line = next(line for line in (WORKFLOWS / 'desktop.yml').read_text(encoding='utf-8').splitlines() if 'E2E_AI_ANSWERS:' in line)
         value = line.split('E2E_AI_ANSWERS:', 1)[1].strip()
-        self.assertGreaterEqual(len(BACKBONE), 10, 'the suites stopped declaring aiAnswers')
+        # Why (1 Nov 2026, owner: only Tier 1 journeys stay e2e): a floor against the glob finding nothing, not a headcount; suites leaving e2e one by one (stores, activityfailures, employers: 11 -> 8) tripped the old 10.
+        self.assertGreaterEqual(len(BACKBONE), 5, 'the suites stopped declaring aiAnswers')
         for suite in BACKBONE + ('focus', 'apply', 'qualityai'):
             with self.subTest(suite=suite):
                 self.assertEqual(expression(value, event='workflow_dispatch', suite=suite), 'backbone' if suite in BACKBONE else 'off')

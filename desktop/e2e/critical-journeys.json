@@ -507,6 +507,43 @@
     {"integration": "desktop/integration/app/screen-stores.test.js", "test": "Reports shows the weekly report and the insights; a feedback is kept in the store and shown after a reload"},
     {"integration": "desktop/integration/app/screen-stores.test.js", "test": "Reports → Funnel shows the Pipeline table from the store's applications"}
    ]
+  },
+  {
+   "id": "J36",
+   "name": "The browser extension pairs with the app, and a lost pairing is repaired",
+   "tier": 2,
+   "steps": [
+    {"integration": "desktop/integration/app/extension-pairing.test.js", "test": "A web page cannot pair: only the Jobadabra extension is handed the app's token"},
+    {"integration": "desktop/integration/app/extension-pairing.test.js", "test": "The extension pairs and reports its tabs: the app sees it, and Apply stops asking to install it"},
+    {"integration": "desktop/integration/app/extension-pairing.test.js", "test": "A lost pairing is repaired: the old token is refused, pairing again gives one that works"}
+   ]
+  },
+  {
+   "id": "J37",
+   "name": "AI credit says what it buys, and the Plan section reads right for Free and Pro + AI",
+   "tier": 2,
+   "steps": [
+    {"integration": "desktop/integration/app/screen-plan-credit.test.js", "test": "a Free plan that offers Pro + AI says what its credit buys, and shows no dollars"},
+    {"integration": "desktop/integration/app/screen-plan-credit.test.js", "test": "a Pro + AI plan shows its credit left, warns under 30%, and each top-up says what it adds"}
+   ]
+  },
+  {
+   "id": "J38",
+   "name": "Add a job you applied to elsewhere, or one a recruiter sent first: it lands once as Applied",
+   "tier": 2,
+   "steps": [
+    {"integration": "desktop/integration/store/add-job-by-hand.test.mjs", "test": "A job applied to elsewhere: it is in the store once as Applied with its date and in the Jobs list as Applied, and adding the same link again adds nothing"},
+    {"integration": "desktop/integration/store/add-job-by-hand.test.mjs", "test": "A recruiter who wrote first: the job is added as Applied and Inbound, once, with its own Applied event"}
+   ]
+  },
+  {
+   "id": "J39",
+   "name": "A Telegram digest reaches your chat, and a refused send ends in words",
+   "tier": 2,
+   "steps": [
+    {"integration": "desktop/integration/store/run-channels.test.mjs", "test": "with Telegram connected, a Jobs check sends one readable digest to the person's chat"},
+    {"integration": "desktop/integration/store/run-faults-telegram.test.mjs", "test": "${what}: the Jobs check still ends, in words that name Telegram, with nothing left Running", "parts": [": the Jobs check still ends, in words that name Telegram, with nothing left Running"]}
+   ]
   }
  ],
  "kept": [

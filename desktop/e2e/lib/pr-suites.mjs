@@ -135,18 +135,17 @@ export function admittedSuites({addedFiles = [], deletedFiles = [], baseLanes = 
  */
 export function planPrSuites({pointed = [], hits = {}, covering = {}, direct = [], catches = {}, lanes = {}, admitted = [], linux, cadence = {}, pullRequest = false}) {
   const admissions = new Set(pullRequest ? admitted : []);
-  const proofs = admissions;
-  if (proofs.size > 5) throw Object.assign(new Error('More than five suites need burn-in: split this PR so every new suite is proved.'), {code: 'E2E_BURN_IN_CAPACITY'});
+  if (admissions.size > 5) throw Object.assign(new Error('More than five suites need burn-in: split this PR so every new suite is proved.'), {code: 'E2E_BURN_IN_CAPACITY'});
   const reports = pullRequest ? new Set(Object.entries(lanes.suites || {}).filter(([suite, entry]) => entry?.lane === 'tolerant' && entry.pr === 'number' && !admissions.has(suite)).map(([suite]) => suite)) : new Set();
-  const wanted = [...new Set([...proofs, ...pointed, ...Object.keys(hits), ...Object.keys(covering)])].filter(suite => proofs.has(suite) || (
+  const wanted = [...new Set([...admissions, ...pointed, ...Object.keys(hits), ...Object.keys(covering)])].filter(suite => admissions.has(suite) || (
     !['manual', 'outside', NIGHT_REPORT].includes(cadence[suite]) && !(pullRequest && ON_PR_ELSEWHERE[suite]) &&
     (reports.has(suite) || isBackbone(lanes, suite))));
-  let run = wanted.filter(suite => proofs.has(suite) || linux(suite) || pointed.includes(suite) || String(covering[suite] || '').startsWith('runs '));
+  let run = wanted.filter(suite => admissions.has(suite) || linux(suite) || pointed.includes(suite) || String(covering[suite] || '').startsWith('runs '));
   const numbers = run.filter(suite => reports.has(suite));
   run = run.filter(suite => !reports.has(suite));
   let deferred = [];
   if (pullRequest && run.length > 5) {
-    const reach = suite => proofs.has(suite) ? 4 : direct.includes(suite) ? 3 : (pointed.includes(suite) || Object.hasOwn(hits, suite)) ? 2 : 1;
+    const reach = suite => admissions.has(suite) ? 4 : direct.includes(suite) ? 3 : (pointed.includes(suite) || Object.hasOwn(hits, suite)) ? 2 : 1;
     const caught = suite => Number.isFinite(catches[suite]) && catches[suite] >= 0 ? catches[suite] : 0;
     const ranked = [...run].sort((a, b) => reach(b) - reach(a) || caught(b) - caught(a) || (a < b ? -1 : a > b ? 1 : 0));
     run = ranked.slice(0, 5);

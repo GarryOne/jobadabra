@@ -2,7 +2,7 @@
 // The Interviews library, layer 2: what the window draws from the interviews this Mac's store hands it, moved from the e2e `interviews` suite (1 Nov 2026). The jobs and interviews
 // are the engine's own answers for a seeded SQLite store (screen-interviews-kit.js), shown in the app's demo window, no Notion, no AI.
 // What STAYS in e2e: the steps that write through the real app (link and unlink a job, a transcript imported and reviewed, review again, refresh insights: the AI's stored answers
-// and the store's rows meet there), and the one-time setup banner (its progress comes from the main process). Delete: the screen here, the store's row below.
+// and the store's rows meet there), and the one-time setup banner (its progress comes from the main process). Delete: the window's message, and the engine's delete in a separate test (the page's own delete call is not seen from here).
 import assert from 'node:assert/strict';
 import {after, before, test} from 'node:test';
 import {needsElectron} from '../../test/needs-electron.js';
@@ -118,10 +118,15 @@ test('Record stays off until everyone has agreed, and says why', live, () => {
   assert.match(box, /Recording consent required/, 'the consent notice is not on the page');
 });
 
-test('Delete says the interview is deleted, and the store\'s list (what the page then draws) no longer has it', live, () => {
-  const {message} = facts('delete'), {seed, store} = held;
+test('Delete, once the person agrees, says which interview was deleted', live, () => {
+  // The window only shows the "Deleted …" line: demo mode writes nothing, and the bridge to the main process (window.pilot) is read-only, so which id the page asks the
+  // main process to delete is not seen here. The e2e interviews step 'Delete moves an interview to the Notion trash' stays for that (the real app deletes the real row).
+  const {message} = facts('delete');
   assert.match(message, /Deleted "E2E Beta · Round 2"/, `no confirmation after deleting: "${message.trim()}"`);
-  // The window deleted nothing (demo mode writes nothing); the store's own delete is the engine's command the app runs (lib/interviews.js remove).
+});
+
+test('the engine\'s own delete takes an interview out of the list the page draws (not through the window)', () => {
+  const {seed, store} = held;
   const gone = store.engine('src.ai.interviews', 'delete', seed.ivNeutral.id);
   assert.equal(gone.ok, true, JSON.stringify(gone));
   assert.deepEqual(store.engine('src.ai.interviews', 'list').interviews.map(row => row.id).sort(), [seed.ivFresh, seed.ivNegative, seed.ivPositive].map(item => item.id).sort(), 'the interview is still in the store after Delete');

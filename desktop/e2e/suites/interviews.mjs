@@ -1,7 +1,7 @@
 /* global document, window */
 // Job: wait on state
 // Interviews: what writes through the real app: the one-time setup banner, link and unlink a job, a transcript imported through the page's own button and reviewed with stored answers,
-// the failure path (a failing AI), review again, refresh insights. Starts from a set-up install; resets only its own rows.
+// the failure path (a failing AI), review again, refresh insights, Delete (the id the page sends reaches the store). Starts from a set-up install; resets only its own rows.
 // Why (1 Nov 2026, owner: "the beta [keeps] only the critical e2e/user journeys"): the library's screens (list, job names, filters, Open review, the consent rule, Delete) are
 // desktop/integration/app/screen-interviews.test.js; the Calendar is screen-calendar.test.js.
 import fs from 'node:fs';
@@ -13,7 +13,7 @@ import {clearData} from '../lib/start-state.mjs';
 import {finish, snap} from '../lib/layout.mjs';
 import {pickJob} from '../lib/picker.mjs';
 import {ensureSetUp} from '../lib/seed.mjs';
-import {independent} from '../lib/steps.mjs';
+import {answerConfirms, independent} from '../lib/steps.mjs';
 import {goView} from '../lib/go-view.mjs';
 import {stepWait} from '../lib/wait-on-state.mjs';
 
@@ -66,6 +66,7 @@ export async function run(ctx) {
   const reviewHeadings = async id => headingsOf((await interviewOf(id))?.review);
 
   await ensureSetUp(ctx);
+  await answerConfirms(page);
 
   // Dummy rows, written once: three jobs in the tracker, four interviews (three reviewed with different outcomes and one not).
   await ctx.run('this suite starts from its own dummy jobs and interviews in the store', async () => {
@@ -260,6 +261,17 @@ export async function run(ctx) {
       throw new Error(`the second refresh never said "up to date" in 2 minutes; the page says "${said}"; the button is ${busy ? 'still busy' : 'free'}; AI calls since the first refresh ended: ${proxy.stats.calls - calls}`);
     });
     if (proxy.stats.calls !== calls) throw new Error('a refresh with nothing changed still called the AI');
+  });
+
+  await step('Delete moves an interview to the Notion trash and takes it off the page', async () => {
+    await openInterviews();
+    const target = seed.ivNeutral.page;
+    const before = (await notionRows()).length;
+    await chooseFromMenu(target, /^Delete$/);
+    await page.waitForFunction(id => !document.querySelector(`#iv-saved tr[data-id="${id}"]`), target, {timeout: 120000});
+    if (!/Deleted/.test(await message())) throw new Error(`no confirmation after deleting: "${(await message()).trim()}"`);
+    const after = await notionRows();
+    if (after.length !== before - 1 || after.some(item => item.id === target)) throw new Error('the interview is still in the store after Delete');
   });
 
   await step('Interviews renders without layout problems', async () => { finish(ctx); });

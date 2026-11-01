@@ -251,18 +251,19 @@ function endingLine(role, {botCheck, email, told, closed, other}) {
 // Fill once and write the result only on the document that started it.
 export async function fillPage(step) {
   const {tab, jobUrl, live, gen, kind, pressed, noted, carried, host} = step;
-  const {late, writeState, fillOpenedTab, reportFlow} = step.flow;
+  const {late, writeState, fillOpenedTab, reportFlow, progress} = step.flow;
   forgetGivenUp(tab.id);   // a new fill: its menus are tried afresh
   decide('fill', 'filling', {host, job: new URL(String(jobUrl || tab.url)).pathname, page: new URL(tab.url).pathname});   // which posting's kit this page uses
   if (late(tab, gen, 'fill start')) return false;   // the closer looks above wait too: only the tab's current read fills it
   const fillToken = crypto.randomUUID(); await writeState(tab.id, {state: 'running'}, fillToken);
-  const result = await fillOpenedTab(live, String(jobUrl || tab.url).split('#')[0], false, {fast: true, quiet: true});
+  const result = await fillOpenedTab(live, String(jobUrl || tab.url).split('#')[0], false, {fast: true, quiet: true, endsRun: false});   // the pass clears its step only: this page's end is written right below (#2800)
   // The end state is this page's: a tab that moved on during the fill (the person pressed the page's own "Create account") shows another page, which writes its own
   // (13 Oct 2026: a sign-up's fill error was read on the application form after it, as if the form had failed).
   const still = await chrome.tabs.get(tab.id).catch(() => null);
   if (!still || String(still.url || '').split('#')[0] === String(live.url || tab.url).split('#')[0]) await writeState(tab.id, result?.error ? {state: 'error', error: String(result.error).slice(0, 160)}
     : {state: 'done', filled: result?.filled || 0, left: (result?.todo || []).length, todo: (result?.todo || []).slice(0, 20)}, fillToken);
-  else decide('fill', 'the tab moved on during the fill: its end state is left to the next page', {page: new URL(String(live.url || tab.url)).pathname}).catch(() => {});
+  else { await progress(tab.id, '', '');   // Why (#2800): the pass no longer says `done` itself, and no page of the moved-on tab may ever write a verdict: this piece's end clears the dim, a next page's step turns it on again
+    decide('fill', 'the tab moved on during the fill: its end state is left to the next page', {page: new URL(String(live.url || tab.url)).pathname}).catch(() => {}); }
   reportFlow(tab, {role: 'form', ok: !result?.error});
   const requiredIn = (result?.trace || []).filter(row => row.required && row.outcome === 'filled').length; if (!result?.error && requiredIn) noteProgress(tab.id, 'required_down', {filled: requiredIn});
   const filledProof = !result?.error && result?.filled > 0 && !pressed && !noted ? confirmedBody(kind?.role === 'form' ? kind : null, tab.url, controlsOf(tab.id), 'filled') : null;   // the page took the fill: the decision that called it a form is counted (a kind the structure overrode is the rule's, rung 0)

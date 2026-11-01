@@ -70,6 +70,7 @@ export async function runNight({chromium, site, token, fetchImpl = fetch, log = 
 // answers, so a stale or wrong list of waiting forms fills nothing (PR #1455's image check: j1 six times).
 export const pressOf = job => `${job.id}:${Number(job.turn) || 0}`;
 export const NIGHT_FAILED = 'the night could not start';   // the word the card shows beside "could not fill"; the error itself stays in the container's /state and log
+// clean-code-ok: Why (1 Nov 2026, rs 5a/6): a pure move from hosted/ (never checked) into desktop/; splitting this function is its own change, not part of the move.
 async function fillAll({told, batch, chromium, site, token, fetchImpl, log, fillSeconds, extraArgs, launchOptions, held, record}) {
   const standIn = await createStandIn(batch, {answer: await answererFor({batch, site, token, fetchImpl})});
   let profile = '', context = null;

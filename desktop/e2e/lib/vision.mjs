@@ -1,6 +1,7 @@
 // AI review of a page screenshot: finds what a person would call a bug or ugly (broken layout, clipped or overlapping text, an error shown to the
 // user, an empty screen where data should be, inconsistent spacing or tone). Pure functions here (build the request, validate the answer);
 // review-ui.mjs makes the call. The answer is checked against a fixed shape so a bad reply can never become a "finding".
+// Job: report health
 export const KINDS = ['layout', 'text', 'error-shown', 'empty-state', 'consistency', 'functionality', 'wrong-result'];
 export const SEVERITIES = ['high', 'medium', 'low'];
 export const MODEL = process.env.E2E_REVIEW_MODEL || 'claude-sonnet-5-5';
@@ -19,6 +20,32 @@ export const EXPECTED = {
 
 // settings-<section> and settings-connections-<engine>-chosen pages have no entry of their own: they are parts of the Settings page.
 export const expectedFor = view => (view === 'failure-screenshot' ? 'The whole app window at the moment a test step failed: any page. Judge only what would stop or mislead a person (an error, an empty or broken screen); the sidebar and the bottom bar look the same on every page and are not worth a finding here, and the failed step itself is not your concern.' : '') || EXPECTED[view.replace(/-narrow$/, '')] || (view.startsWith('activity-') ? `${EXPECTED.actions} The Recent activity panel is open over it, listing runs with a status pill, what each did and when; this screenshot shows ${view.replace('activity-', '').replace(/-/g, ' ')} state of a run. A Failed, Stopped, Not checked or With warnings pill must come with a reason in plain words and, when there is one, the way out (Run again, Try again, Connect Gmail, View technical log); the technical log stays folded unless the run is live.` : '') || (view.startsWith('settings-') ? `${EXPECTED.settings} This is the "${view.replace('settings-', '')}" part of Settings.` : 'its normal content');
+
+// Why (1 Nov 2026, owner via mac-07 "Teach the 2 AI judges"): one block for both screenshot prompts. CI asks the checklist (lib/review-checklist.mjs, since d1144b9)
+// and that prompt carried none of these lines, so shapes judged by design came back as issues (#2806, #2814, #2743, #2751). A new by-design shape goes here, once.
+export const NOT_FINDINGS = `The app runs here in a TEST profile with made-up demo data. Never report the demo data itself: invented names and companies (Fjord Networks, E2E Recruitee GmbH, Ada), lowercase hyphenated
+slugs used as titles (like "recruiter-call-failing"), round or implausible numbers, dates that are today's, an empty or "not connected" Notion, Gmail, Google or AI key, or a failing demo AI. A real
+person's data is not like that.
+Already judged BY DESIGN (a person decided these are fine; do not report them again): the tip banner on Focus, Jobs and Interviews is a text ticker that scrolls from right to left, so a frozen
+picture shows it cut off, in a failure screenshot too (#2806); the Jobs check card's "N open" and "View all N in Jobs" count different sets (the run's own message versus the jobs in the list); a Recent runs row is short on purpose and
+a warning's reason is in the detail pane; a result line such as "Done ($0.01)." shows the AI cost; at a short window the sidebar's menu list scrolls on its own with a thin visible scrollbar, so its last icon shown half-cut at the edge is the scroll, not a bug (#270, #271), but a menu item that cannot be reached at all is real; the Technical log text is technical by design; "Retry" on the Answer once card and a "not connected" Notion,
+Gmail or AI key are normal states of a new account.
+Also BY DESIGN, never report (they are how a TEST run looks, or a rule a person chose): the Ready to send card's reason "Not in the end-to-end journey: it never reaches our server" (a test run never reaches the site; a real install does not show it); a Technical log that stays open when a run you were watching stops (a run opened after it finished is folded; #1764); the status bar's "No search yet" beside applications and kits that come from Notion (it names this install's own searches; #1730).
+A FOLDED line (a one-line summary with Show, Details, a count or an arrow that opens it) keeps its reasons and its way out inside: a folded "Couldn't load your details · 1 …" with Show is not missing a reason or a fix.
+Report it only when the opened part is in the picture and still lacks them (#2814, #2743).
+A status code inside a plain sentence that says what happened and what to do ("the service was unavailable (HTTP 502). It is usually back within minutes: try again") is plain language, not raw
+technical text; raw is an error class, a stack trace, JSON, or a code with no such sentence around it (#2751).
+Do NOT report: anything you cannot see, brand-new accounts having empty lists where the page says so nicely, or things listed as expected.
+Do NOT report transient interface: a toast or notification (it goes away by itself, and one over the page is by design), a tooltip, a spinner, a menu in the middle of opening.
+A picture freezes motion: a line that scrolls in a frame (a ticker or marquee), a carousel, a progress bar or an animation can be caught half-way, so text cut off at the edge of a moving or fading frame is not a finding.
+A card or list that runs past the bottom edge of a page that scrolls goes on below the picture: that is not cut off.
+The FACTS may list "moving" (elements animating when the picture was taken) and "clippedOnPurpose" (text cut by design: an ellipsis, a line clamp, a fade). Text cut in those is not a finding,
+unless the cut hides the meaning and the full text is nowhere else on the page.
+Do NOT report a guess about how the app works inside or what it "should" know. A contradiction needs proof: two things you can SEE disagree, or the picture disagrees with a stated FACT; quote both.
+A status that merely looks odd, but that data the app keeps elsewhere could explain (a follow-up built from logged events while Gmail is disconnected), is not a contradiction. When you only suspect, say nothing.
+A list row that gives only a short summary is not missing its reason when the page also shows a detail pane or a selected item: the reason lives there. Two numbers or messages that count different things (a run's own message versus the items listed, a summary of one data source beside a list of another, an empty-list message with a filter off) are not a contradiction unless the labels say they count the same thing.
+Two statements about DIFFERENT things are not a contradiction either: two services (Gmail and Notion, the AI and the store), or an earlier run's result beside the state now (a run that failed before a connection was made, listed under that connection working now).
+The window is narrow (about 1024 px) in views whose name ends in -narrow: a single column and an icon-only sidebar are by design there, so do not compare it with the wide layout. Anything cut off, covered or unreachable there is still a real finding, because that is a window size people use.`;
 
 export const SYSTEM = `You are a person using the Jobadabra desktop app to find and win a job: you search, read matches, apply, track applications, prepare for interviews. You are looking at ONE screen
 (a screenshot) while trying to get something done. You are not a designer or a QA critic, and nobody wants a list of nitpicks.
@@ -40,27 +67,11 @@ You are also given FACTS the app holds about its own state (for example which AI
 report a place where what the page shows CONTRADICTS the facts, or would MISLEAD a person who knows those facts (a status like "Connected" or "Active" for something that is
 not in use in the chosen mode, a selected option whose own panel talks about another option, a count that does not match, a button that offers what the state makes impossible).
 Say which fact and which element disagree, as kind "wrong-result" (high: a person who believes it acts wrongly). These are the findings that matter most; a person cannot see them without knowing the state.
-The app runs here in a TEST profile with made-up demo data. Never report the demo data itself: invented names and companies (Fjord Networks, E2E Recruitee GmbH, Ada), lowercase hyphenated
-slugs used as titles (like "recruiter-call-failing"), round or implausible numbers, dates that are today's, an empty or "not connected" Notion, Gmail, Google or AI key, or a failing demo AI. A real
-person's data is not like that.
-Already judged BY DESIGN (a person decided these are fine; do not report them again): the tip banner on Focus, Jobs and Interviews is a text ticker that scrolls from right to left, so a frozen
-picture shows it cut off; the Jobs check card's "N open" and "View all N in Jobs" count different sets (the run's own message versus the jobs in the list); a Recent runs row is short on purpose and
-a warning's reason is in the detail pane; a result line such as "Done ($0.01)." shows the AI cost; at a short window the sidebar's menu list scrolls on its own with a thin visible scrollbar, so its last icon shown half-cut at the edge is the scroll, not a bug (#270, #271), but a menu item that cannot be reached at all is real; the Technical log text is technical by design; "Retry" on the Answer once card and a "not connected" Notion,
-Gmail or AI key are normal states of a new account.
-Also BY DESIGN, never report (they are how a TEST run looks, or a rule a person chose): the Ready to send card's reason "Not in the end-to-end journey: it never reaches our server" (a test run never reaches the site; a real install does not show it); a Technical log that stays open when a run you were watching stops (a run opened after it finished is folded; #1764); the status bar's "No search yet" beside applications and kits that come from Notion (it names this install's own searches; #1730).
-Do NOT report: anything you cannot see, brand-new accounts having empty lists where the page says so nicely, or things listed as expected.
-Do NOT report transient interface: a toast or notification (it goes away by itself, and one over the page is by design), a tooltip, a spinner, a menu in the middle of opening.
-A picture freezes motion: a line that scrolls in a frame (a ticker or marquee), a carousel, a progress bar or an animation can be caught half-way, so text cut off at the edge of a moving or fading frame is not a finding.
-The FACTS may list "moving" (elements animating when the picture was taken) and "clippedOnPurpose" (text cut by design: an ellipsis, a line clamp, a fade). Text cut in those is not a finding,
-unless the cut hides the meaning and the full text is nowhere else on the page.
+${NOT_FINDINGS}
 Content shown in the WRONG FORM is a finding (medium), even when it looks tidy: something the app normally draws as a card, list,
 link or chart shown as its raw source instead (text formatted for a chat app or an email, Markdown symbols, HTML tags or entities, a
 raw web address where a link belongs, a numbered list typed out in one paragraph), or the same information shown twice in one view
 (a card and its raw source, a warning repeated). Example: a jobs check's result as "✈️ … 🆕 4 new" chat text above its own card.
-Do NOT report a guess about how the app works inside or what it "should" know. A contradiction needs proof: two things you can SEE disagree, or the picture disagrees with a stated FACT; quote both.
-A status that merely looks odd, but that data the app keeps elsewhere could explain (a follow-up built from logged events while Gmail is disconnected), is not a contradiction. When you only suspect, say nothing.
-A list row that gives only a short summary is not missing its reason when the page also shows a detail pane or a selected item: the reason lives there. Two numbers or messages that count different things (a run's own message versus the items listed, a summary of one data source beside a list of another, an empty-list message with a filter off) are not a contradiction unless the labels say they count the same thing.
-The window is narrow (about 1024 px) in views whose name ends in -narrow: a single column and an icon-only sidebar are by design there, so do not compare it with the wide layout. Anything cut off, covered or unreachable there is still a real finding, because that is a window size people use.
 Severity is judged by what it does to the PERSON using the app, nothing else. Use all three levels: a page with a few findings usually has a mix, not three mediums.
 high = it BLOCKS their journey (they cannot finish a task: a control that is missing, disabled or does nothing where it is needed; a wrong result or a false status that would make them
 act wrongly; a raw error or stack trace; data they could lose), OR the experience is so bad that they must work around it at a real cost: they lose real time looking for the way, or they must

@@ -1,10 +1,11 @@
 // Scores a screenshot reviewer on the issues people already judged (owner, 26 Oct 2026: keep the scorecard's precision visible before/after, so a weaker
-// judge shows): every AI-review issue closed as resolution:fixed (a real bug: did the reviewer see it again?) or resolution:by-design (a false alarm: did it
+// judge shows): every AI-review issue closed as resolution:fixed (a real bug: did the reviewer see it again?) or resolution:by-design or fp:detector (a false alarm: did it
 // raise it again?), on the issue's own screenshot. "The same problem" is judged by a small Workers AI text model, never by word matching.
 //   CI_FREE_AI_CF_TOKEN=… CI_FREE_AI_CF_ACCOUNT_ID=… GITHUB_TOKEN=… node review-eval.mjs --out <dir> [--models a,b] [--lessons both|on|off] [--limit n]
 // A claude-* model is asked on E2E_ANTHROPIC_KEY (CI only: .github/workflows/review-eval.yml, by hand); the judge stays a small Workers AI text model.
 // Each by-design issue is scored with the lessons of the OTHER issues only (lib/review-lessons.mjs, exclude), so a lesson never grades itself.
 // Writes <dir>/review-eval.json and prints one table. Costs about $0.002 a screenshot per model on CI's Workers AI token (measured, Oct 2026).
+// Job: keep the scorecard
 import fs from 'node:fs';
 import path from 'node:path';
 import {DESKTOP} from './lib/app.mjs';
@@ -41,6 +42,9 @@ async function github(url) {
   return response.json();
 }
 const label = (issue, prefix) => issue.labels.map(item => item.name).find(name => name.startsWith(prefix));
+// Why (1 Nov 2026, tg): the verdict flow closes a misread screen as resolution:fp:detector (lib/resolution.mjs, since 5 Oct); this set read by-design only, so
+// those false alarms (#2814, #2743, #2751) were never scored against a prompt change.
+const FALSE_ALARMS = ['resolution:by-design', 'resolution:fp:detector'];
 const issues = [];
 for (let page = 1; page < 10; page++) {
   const got = await github(`https://api.github.com/repos/${REPO}/issues?state=all&labels=source:ai-review&per_page=100&page=${page}`);
@@ -50,9 +54,9 @@ for (let page = 1; page < 10; page++) {
 const cases = issues.map(issue => ({number: issue.number, resolution: label(issue, 'resolution:'), view: issue.body?.match(/Page `([^`]+)`/)?.[1],
   png: issue.body?.match(/!\[[^\]]*\]\((https:\/\/raw\.githubusercontent\.com\/[^)]+\.png)\)/)?.[1], title: issue.title.replace(/^\[auto-ui\]\s*[^:]*:\s*/, ''),
   found: (issue.body?.match(/### What was found\n+([\s\S]*?)\n###/)?.[1] || '').trim().slice(0, 600)}))
-  .filter(item => ['resolution:fixed', 'resolution:by-design'].includes(item.resolution) && item.view && item.png).slice(0, LIMIT);
+  .filter(item => ['resolution:fixed', ...FALSE_ALARMS].includes(item.resolution) && item.view && item.png).slice(0, LIMIT);
 const lessons = LESSONS === 'off' ? [] : await fetchLessons({repo: REPO, token});
-console.log(`${cases.length} labelled screenshots (${cases.filter(c => c.resolution === 'resolution:fixed').length} fixed, ${cases.filter(c => c.resolution === 'resolution:by-design').length} by design), ${lessons.length} lessons, models: ${MODELS.join(', ')}`);
+console.log(`${cases.length} labelled screenshots (${cases.filter(c => c.resolution === 'resolution:fixed').length} fixed, ${cases.filter(c => FALSE_ALARMS.includes(c.resolution)).length} false alarms), ${lessons.length} lessons, models: ${MODELS.join(', ')}`);
 
 async function shot(item) {
   const file = path.join(OUT, 'shots', `${item.number}.png`);
@@ -89,19 +93,19 @@ for (const model of MODELS) for (const withLessons of LESSONS === 'both' ? [fals
     const findings = checklist ? checksToFindings(answer.message.content[0].text) : parseFindings(answer.message.content[0].text, item.view), judged = await same(item, findings);
     run.usd += (answer.usd || 0) + judged.usd;
     run.rows.push({number: item.number, resolution: item.resolution, view: item.view, findings: findings.length, same: judged.same});
-    console.log(`  #${item.number} ${item.resolution.slice(11).padEnd(9)} ${String(findings.length).padStart(2)} finding(s)${judged.same ? ', the same problem again' : ''}${judged.failed ? ' (judge failed)' : ''}`);
+    console.log(`  #${item.number} ${item.resolution.slice(11).padEnd(11)} ${String(findings.length).padStart(2)} finding(s)${judged.same ? ', the same problem again' : ''}${judged.failed ? ' (judge failed)' : ''}`);
   }
   runs.push(run);
 }
 
 const score = run => {
-  const done = run.rows.filter(row => typeof row.same === 'boolean'), fixed = done.filter(row => row.resolution === 'resolution:fixed'), design = done.filter(row => row.resolution === 'resolution:by-design');
+  const done = run.rows.filter(row => typeof row.same === 'boolean'), fixed = done.filter(row => row.resolution === 'resolution:fixed'), design = done.filter(row => FALSE_ALARMS.includes(row.resolution));
   const seen = fixed.filter(row => row.same).length, again = design.filter(row => row.same).length;
   return {seen, fixed: fixed.length, again, design: design.length, precision: seen + again ? seen / (seen + again) : null, findings: done.reduce((sum, row) => sum + row.findings, 0) / (done.length || 1)};
 };
 const pct = (a, b) => (b ? `${Math.round((100 * a) / b)}%` : '-');
-const before = {seen: cases.filter(c => c.resolution === 'resolution:fixed').length, design: cases.filter(c => c.resolution === 'resolution:by-design').length};
-console.log(`\n| Reviewer | Real bugs seen again | By-design raised again | Precision | Findings per shot | Cost |\n|---|---|---|---|---|---|`);
+const before = {seen: cases.filter(c => c.resolution === 'resolution:fixed').length, design: cases.filter(c => FALSE_ALARMS.includes(c.resolution)).length};
+console.log(`\n| Reviewer | Real bugs seen again | False alarms raised again | Precision | Findings per shot | Cost |\n|---|---|---|---|---|---|`);
 console.log(`| Claude Sonnet (filed them) | ${before.seen}/${before.seen} | ${before.design}/${before.design} | ${pct(before.seen, before.seen + before.design)} | - | ~$0.02 a shot |`);
 for (const run of runs) {
   const s = score(run);

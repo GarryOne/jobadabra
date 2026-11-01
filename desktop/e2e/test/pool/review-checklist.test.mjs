@@ -8,7 +8,7 @@ import path from 'node:path';
 import {test} from 'node:test';
 import {promisify} from 'node:util';
 import {CHECKS, CHECK_SYSTEM, checklistAsFindingsText, checklistRequest, checksToFindings} from '../../lib/review-checklist.mjs';
-import {parseFindingsDetailed} from '../../lib/vision.mjs';
+import {NOT_FINDINGS, SYSTEM, parseFindingsDetailed} from '../../lib/vision.mjs';
 
 const ANSWER = JSON.stringify({checks: [{id: 'count-mismatch', answer: 'yes', where: 'header', evidence: '"6 recent" but 3 rows listed'},
   {id: 'cut-off', answer: 'yes', where: 'chip', evidence: 'the chip shows only "E…"'}, {id: 'raw-technical', answer: 'no', where: '', evidence: ''}]});
@@ -66,4 +66,12 @@ test('with E2E_REVIEW_PROMPT=checklist the review asks the checklist and writes 
     assert.deepEqual(written.findings.map(item => item.kind), ['wrong-result', 'layout']);
     assert.match(written.model, /checklist/);
   } finally { server.close(); }
+});
+
+// Owner via mac-07, 1 Nov 2026 ("Teach the 2 AI judges"): CI asks the checklist, which carried none of the by-design lines the long prompt keeps,
+// so a ticker, a folded bar and a status code in a plain sentence came back as issues (#2806, #2814, #2743, #2751).
+test('both screenshot prompts carry the same list of what is not a finding, with the shapes people closed', () => {
+  assert.ok(NOT_FINDINGS.length > 2000, 'the shared list is defined');
+  for (const [name, prompt] of [['the checklist', CHECK_SYSTEM], ['the long prompt', SYSTEM]]) assert.ok(prompt.includes(NOT_FINDINGS), `${name} carries the shared list`);
+  for (const shape of ['#2806', '#2814', '#2751', 'FOLDED', 'DIFFERENT things', 'scrolls from right to left', '-narrow']) assert.ok(NOT_FINDINGS.includes(shape), `the shared list names ${shape}`);
 });

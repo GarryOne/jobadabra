@@ -106,20 +106,31 @@ if __name__ == '__main__':
 class HeartbeatTests(unittest.TestCase):
     """7 Oct 2026: a running row is edited at least every HEARTBEAT_S, through quiet steps too, so the app can tell a lost run (desktop/lib/run-history.js)."""
     def test_an_open_row_gets_its_duration_until_the_run_is_completed(self):
+        import threading
         import time
         from unittest import mock
         from src.notion import cron_runs
         calls = []
         tracker = mock.Mock(_request=lambda method, path, body: calls.append((method, path, body)))
         run = {'mode': 'run'}
+
+        def beats():
+            return [body for _, path, body in calls if path == 'pages/p1']
+
+        # Why (1 Nov 2026, beta 41316938972 Mac unit shard, 6 shards at once): a fixed 0.3 s sleep saw one beat of a 0.05 s thread under load; the test waits for the
+        # thread's state instead, and 10 s is only a hang guard.
+        def until(done, cap_s=10.0):
+            end = time.monotonic() + cap_s
+            while not done() and time.monotonic() < end:
+                time.sleep(0.01)
+            return done()
+
         with mock.patch.object(cron_runs, 'HEARTBEAT_S', 0.05), mock.patch.dict(cron_runs._open, {'run': run, 'tracker': tracker, 'id': 'p1'}, clear=True):
+            before = set(threading.enumerate())
             cron_runs._heartbeat(run)
-            time.sleep(0.3)
-            beats = [body for _, path, body in calls if path == 'pages/p1']
-            self.assertGreaterEqual(len(beats), 2)
-            self.assertIn('Duration (s)', beats[0]['properties'])
+            thread = next(item for item in threading.enumerate() if item not in before and item.name == 'run-row-heartbeat')
+            self.assertTrue(until(lambda: len(beats()) >= 2), f'the open row got {len(beats())} beat(s), not 2')
+            self.assertIn('Duration (s)', beats()[0]['properties'])
             cron_runs._open['run'] = None   # log_run completed the row
-            time.sleep(0.15)
-            done = len(calls)
-            time.sleep(0.2)
-            self.assertEqual(len(calls), done, 'a completed row is not touched again')
+            thread.join(10)
+            self.assertFalse(thread.is_alive(), 'a completed row is not touched again: its heartbeat must end')

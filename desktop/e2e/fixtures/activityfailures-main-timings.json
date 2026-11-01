@@ -37,7 +37,7 @@
       "name": "the AI answers 429 (rate limit): the run ends as Failed or with warnings, in words, with nothing left Running",
       "seconds": [
         28.6,
-        30.0
+        30
       ]
     },
     {
@@ -51,7 +51,7 @@
       "name": "the AI says the key is invalid (401): the run ends as Failed or with warnings, in words, with nothing left Running",
       "seconds": [
         18.8,
-        20.0
+        20
       ]
     },
     {
@@ -62,13 +62,6 @@
       ]
     },
     {
-      "name": "a search analysis paused by the spending limit is a run with a warning that names the limit, not a failure",
-      "seconds": [
-        16.6,
-        18.9
-      ]
-    },
-    {
       "name": "the AI never answers: the run is stopped after its silence limit and ends as Stopped, in words, with nothing left Running",
       "seconds": [
         50.4,
@@ -76,17 +69,10 @@
       ]
     },
     {
-      "name": "the AI out of credit while reading the CV: the card says it in words, never the API's JSON (#94)",
-      "seconds": [
-        2.0,
-        2.4
-      ]
-    },
-    {
       "name": "quitting the app in the middle of a run: it is not shown Running for ever, and the app says what became of it",
       "seconds": [
         157.3,
-        158.0
+        158
       ]
     },
     {

@@ -162,7 +162,7 @@ import path from 'node:path';
 import {spawnSync} from 'node:child_process';
 
 const cli = new URL('../pr-suites.mjs', import.meta.url);
-function cliPlan({catches, pullRequest = true, base = 'origin/main', listed = {}, mergeBaseListed = listed, headListed = listed, checkoutLanes = {}, addedFiles = [], deletedFiles = [], suites = ['wizard', 'visitsauto', 'strategy', 'settings', 'jobs', 'interviews', 'focus', 'calendar'], extraFiles = [], coverage = {}, baseSources = {}} = {}) {
+function cliPlan({catches, pullRequest = true, base = 'origin/main', listed = {}, mergeBaseListed = listed, headListed = listed, checkoutLanes = {}, addedFiles = [], deletedFiles = [], suites = ['wizard', 'visitsauto', 'strategy', 'settings', 'jobs', 'interviews', 'focusdismiss', 'calendar'], extraFiles = [], coverage = {}, baseSources = {}} = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pr-cap-cli-'));
   try {
     const files = [...suites.map(s => `desktop/e2e/suites/${s}.mjs`), ...extraFiles];
@@ -196,7 +196,7 @@ syncBuiltinESMExports();`);
 
 test('CLI writes five whole suites and three deferrals with their reasons to stdout and GITHUB_OUTPUT', () => {
   const {values, text} = cliPlan();
-  assert.equal(values.suites, 'calendar,focus,interviews,jobs,settings');
+  assert.equal(values.suites, 'calendar,focusdismiss,interviews,jobs,settings');
   assert.equal(values.left, 'wizard,visitsauto,strategy');
   const steps = JSON.parse(values.steps);
   assert.deepEqual(Object.keys(steps), ['(parts)', '(why)']);
@@ -207,8 +207,8 @@ test('CLI writes five whole suites and three deferrals with their reasons to std
 });
 
 test('CLI reads catch counts only when supplied and applies the base registry before capping', () => {
-  assert.equal(cliPlan({catches: {wizard: 99}}).values.suites, 'wizard,calendar,focus,interviews,jobs');
-  const {values} = cliPlan({listed: {calendar: {lane: 'tolerant'}, focus: {lane: 'suspended'}}});
+  assert.equal(cliPlan({catches: {wizard: 99}}).values.suites, 'wizard,calendar,focusdismiss,interviews,jobs');
+  const {values} = cliPlan({listed: {calendar: {lane: 'tolerant'}, focusdismiss: {lane: 'suspended'}}});
   assert.equal(values.suites, 'interviews,jobs,settings,strategy,visitsauto');
   assert.equal(values.left, 'wizard');
   const main = cliPlan({pullRequest: false, catches: {wizard: 99}, listed: {calendar: {lane: 'tolerant'}}});
@@ -226,14 +226,14 @@ test('CLI picks a real watched AI suite only when BASE enables its informational
 
 test('CLI labels only the capped Linux suite for merge, not the Mac-only loader', () => {
   const {values, text} = cliPlan({
-    suites: ['strategy', 'settings', 'jobs', 'interviews', 'focus', 'calendar'],
+    suites: ['strategy', 'settings', 'jobs', 'interviews', 'focusdismiss', 'calendar'],
     extraFiles: ['cap-fixture.js'],
     coverage: {suites: {
       strategy: {sha: 'fixture', files: {'cap-fixture.js': {loaded: true, lines: []}}, steps: {}},
       updates: {sha: 'fixture', files: {'cap-fixture.js': {loaded: true, lines: []}}, steps: {}},
     }},
   });
-  assert.equal(values.suites, 'calendar,focus,interviews,jobs,settings');
+  assert.equal(values.suites, 'calendar,focusdismiss,interviews,jobs,settings');
   assert.equal(values.left, 'strategy,updates');
   assert.ok(text.includes('| `strategy` | run after merge | loads cap-fixture.js'));
   assert.ok(text.includes('| `updates` | not in this PR run | loads cap-fixture.js'));
@@ -270,15 +270,15 @@ test('after merge drops tolerant quality and retired mailreading but keeps reach
 });
 
 test('without --base the CLI reads the merged registry, including a lane changed by this merge', () => {
-  const {values} = cliPlan({pullRequest: false, base: '', suites: ['quality', 'qualityai', 'focus'],
+  const {values} = cliPlan({pullRequest: false, base: '', suites: ['quality', 'qualityai', 'focusdismiss'],
     checkoutLanes: {quality: {lane: 'tolerant'}, qualityai: {lane: 'tolerant'}}});
-  assert.equal(values.suites, 'focus');
+  assert.equal(values.suites, 'focusdismiss');
 });
 
 
 test('--base without --pull-request cannot use the checkout lane to exempt a reached suite', () => {
-  const {values} = cliPlan({pullRequest: false, suites: ['focus'], listed: {}, checkoutLanes: {focus: {lane: 'tolerant'}}});
-  assert.equal(values.suites, 'focus');
+  const {values} = cliPlan({pullRequest: false, suites: ['focusdismiss'], listed: {}, checkoutLanes: {focusdismiss: {lane: 'tolerant'}}});
+  assert.equal(values.suites, 'focusdismiss');
 });
 
 

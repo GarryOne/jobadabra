@@ -6,9 +6,9 @@ import {planRun, suiteFacts} from '../plan-run.mjs';
 import {planPrSuites} from '../lib/pr-suites.mjs';
 import {SLIM, autoSuites, suitesFor} from '../lib/plan.mjs';
 
-const KEEP = ['activity', 'activityfailures', 'apply', 'applyflows', 'cardstates', 'employers', 'failureschannels', 'qualityai', 'settings'];
+const KEEP = ['activity', 'activityfailures', 'apply', 'applyflows', 'employers', 'failureschannels', 'qualityai', 'settings'];
 const NIGHT_REPORT = ['interactions', 'quality', 'wander'];   // once a night, report only, never in the beta (owner, 1 Nov 2026); each exports cadence 'night-report' itself
-const DROPPED = ['foryou', 'mailreading', 'personas', 'pool'];
+const DROPPED = ['mailreading', 'personas', 'pool'];
 const OUTSIDE = ['notion-real'];
 const BY_HAND = ['explore'];   // never scheduled by design: it spends the owner's AI credit
 
@@ -52,7 +52,7 @@ test('a dropped suite runs only by name', async () => {
     const planned = await plan(env);
     assert.deepEqual(DROPPED.filter(suite => planned.has(suite)), [], `${env.EVENT} planned a dropped suite`);
   }
-  assert.ok((await plan({EVENT: 'workflow_dispatch', ONLY: 'foryou'})).has('foryou'));
+  assert.ok((await plan({EVENT: 'workflow_dispatch', ONLY: 'mailreading'})).has('mailreading'));
 });
 
 test('autoSuites: slim is an always suite except in a repeat', () => {

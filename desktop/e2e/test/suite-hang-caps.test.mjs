@@ -42,7 +42,7 @@ test('jobs watcher leaves time for the terminal-state verdict before the runner 
 });
 
 for (const [suiteName, suite, count, largest, minutes] of [
-  ['interactions', interactions, 26, 220, 25], ['jobs', jobs, 14, 495, 30], ['failureschannels', failureschannels, 12, 180, 12],
+  ['interactions', interactions, 26, 220, 25], ['jobs', jobs, 14, 495, 30], ['failureschannels', failureschannels, 10, 180, 12],
 ]) {
   test(`${suiteName}: every step has a measured or documented fallback cap and no aggregate clock`, () => {
     const caps = JSON.parse(source('hang-caps.json'))[suiteName];
@@ -109,7 +109,7 @@ for (const [suiteName, suite, count, largest, minutes] of [
   });
 }
 
-// Why (31 Oct 2026, owner, a8 2/5): a backbone suite names a cap for every step it runs, and every cap is below its job's budget. Setup caps are worst-case hang stops,
+// Why (31 Oct 2026, owner, a8 2/5; floor 20 -> 10 on 1 Nov 2026, owner: the beta keeps only critical journeys, 19 suites left after the layered move): a backbone suite names a cap for every step it runs, and every cap is below its job's budget. Setup caps are worst-case hang stops,
 // not what setup takes, so they are not added to a step's cap; the runner hands the step min(cap, budget left) and its own waits end first.
 test('every backbone suite has a cap table and every cap is a positive number below its job budget', async () => {
   const {readdirSync} = await import('node:fs');
@@ -127,7 +127,7 @@ test('every backbone suite has a cap table and every cap is a positive number be
       if (!Number.isFinite(seconds) || seconds <= 0 || seconds * 1000 >= budgetMs) violations.push(`${name}/${step}: cap ${seconds} s, job budget ${budgetMs / 1000} s`);
     }
   }
-  assert.ok(checked.length >= 20 && checked.includes('apply'), 'positive control: the class covers the backbone, not an empty list');
+  assert.ok(checked.length >= 10 && checked.includes('apply'), 'positive control: the class covers the backbone, not an empty list');
   assert.ok(!checked.includes('explore') && !checked.includes('personas'), 'explore is manual and personas is tolerant');
   assert.deepEqual(violations, [], violations.join('\n'));
 });
@@ -150,6 +150,6 @@ test('every literal step a backbone suite runs has a cap in some backbone table'
     checked.push(suite);
     for (const name of [`suites/${file}`, ...helpers].flatMap(literals)) if (!capped.some(head => name.startsWith(head))) uncapped.push(`${suite}: ${name}`);
   }
-  assert.ok(checked.length >= 20 && checked.includes('wizard'), 'positive control: the class reads the real backbone suites');
+  assert.ok(checked.length >= 10 && checked.includes('wizard'), 'positive control: the class reads the real backbone suites');
   assert.deepEqual(uncapped, [], `these steps would fail with "no hang cap":\n${uncapped.join('\n')}`);
 });

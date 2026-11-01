@@ -25,7 +25,13 @@ if args[:2] == ['run', 'list']:
         open(os.path.join(state, 'calls'), 'w').write(str(n + 1))
         print(counts[min(n, len(counts) - 1)])
     else:
-        print(json.dumps([{'conclusion': c} for c in json.load(open(os.path.join(state, 'done.json')))]))
+        done = json.load(open(os.path.join(state, 'done.json')))
+        if done and isinstance(done[0], list):   # one list per call: the completed list catching up after a run ends
+            path = os.path.join(state, 'done_calls')
+            n = int(open(path).read()) if os.path.exists(path) else 0
+            open(path, 'w').write(str(n + 1))
+            done = done[min(n, len(done) - 1)]
+        print(json.dumps([{'conclusion': c} for c in done]))
     sys.exit(0)
 if args[0] == 'api':
     endpoint = args[1]
@@ -97,6 +103,19 @@ class ReleaseChecks(unittest.TestCase):
         code, out = self.run_checks([1, 1, 0], ['success'])
         self.assertEqual(code, 0, out)
         self.assertIn('build.yml on b5c13d0: green', out)
+
+    def test_a_run_seen_open_but_not_yet_listed_as_completed_is_waited_for(self):
+        # Beta 9 (1 Nov 2026): the run ended seconds before the completed list was read; the list was empty and the release stopped on "none" although the build was green.
+        code, out = self.run_checks([1, 0], [[], [], ['success']])
+        self.assertEqual(code, 0, out)
+        self.assertIn('not listed as completed yet', out)
+        self.assertIn('build.yml on b5c13d0: green', out)
+
+    def test_no_run_at_all_is_still_none_when_none_was_ever_open(self):
+        code, out = self.run_checks([0], [[]])
+        self.assertEqual(code, 1, out)
+        self.assertIn('build.yml on b5c13d0: none', out)
+        self.assertNotIn('not listed as completed yet', out)
 
     def test_a_build_that_ends_red_stops_the_release(self):
         code, out = self.run_checks([1, 0], ['failure'])

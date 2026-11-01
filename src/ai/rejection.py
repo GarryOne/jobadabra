@@ -248,7 +248,7 @@ def main(argv=None):
         run_log.log_run(stores, log)
     if args.send and lines:
         token, chat_id = telegram.credentials()
-        telegram.send(tgcard.card('Why it was rejected', f"{len(lines)} application{'s' if len(lines) != 1 else ''} reviewed",
+        telegram.deliver(tgcard.card('Why it was rejected', f"{len(lines)} application{'s' if len(lines) != 1 else ''} reviewed",
                                   ['\n'.join(map(escape, lines))], emoji='🔎'), token, chat_id)
     print(f"Rejection review: {len(lines)} application(s) (${(stats or {}).get('usd', 0.0):.3f})")
     return 0

@@ -71,18 +71,34 @@ def send(text, token, chat_id, reply_markup=None, urgent=False, kind='activity')
     return payload
 
 
-def failure_words(error):
-    """What to tell the person when Telegram did not take the digest: one plain sentence, never Telegram's own JSON or the error class."""
+def deliver(text, token, chat_id, *args, **kwargs):
+    """send() for every site that has no use for the refusal itself: a blocked bot, a bad token, a Telegram error or no network
+    is ONE plain line in the run's log (failure_words), never a traceback or the person's paths, and the run goes on.
+    Returns Telegram's answer, or None when it was not delivered (a caller that records "sent" asks `is not None`).
+    Why (1 Nov 2026, #2908): a46307b guarded only the daily search's send; the employer finder and ten more sites crashed with a traceback on any refusal."""
+    try:
+        return send(text, token, chat_id, *args, **kwargs)
+    except Exception as error:  # noqa: BLE001  (urllib's HTTPError/URLError, a timeout, Telegram's "not ok" RuntimeError)
+        print(f'Warning: {failure_words(error, subject="message", retry=False)}', flush=True)
+        return None
+
+
+def failure_words(error, subject='digest', retry=True):
+    """What to tell the person when Telegram did not take a message: one plain sentence, never Telegram's own JSON or the error class.
+    subject: what was being sent; retry: whether it is listed again next time (true only for the digest)."""
+    again = ' It is listed again next time.' if retry else ''
     code = getattr(error, 'code', None)
     if code in (401, 404):
-        return 'Telegram refused the digest: the bot token is not valid. Connect Telegram again in Settings.'
+        return f'Telegram refused the {subject}: the bot token is not valid. Connect Telegram again in Settings.'
     if code == 403:
-        return 'Telegram refused the digest: the bot was blocked or removed from the chat. Start the bot again in Telegram, or connect it again in Settings.'
+        return f'Telegram refused the {subject}: the bot was blocked or removed from the chat. Start the bot again in Telegram, or connect it again in Settings.'
     if code == 429:
-        return 'Telegram is limiting the bot for a moment, so the digest was not sent. It is listed again next time.'
+        return f'Telegram is limiting the bot for a moment, so the {subject} was not sent.{again}'
     if code:
-        return f'Telegram did not accept the digest (error {code}). It is listed again next time.'
-    return 'Telegram could not be reached, so the digest was not sent. It is listed again next time.'
+        return f'Telegram did not accept the {subject} (error {code}).{again}'
+    if isinstance(error, RuntimeError):   # Telegram answered 200 with ok: false (send raises it)
+        return f'Telegram did not accept the {subject}.{again}'
+    return f'Telegram could not be reached, so the {subject} was not sent.{again}'
 
 
 def keychain_token():

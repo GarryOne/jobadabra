@@ -45,7 +45,8 @@ export async function importJob(storage, url, onLine = () => {}) {
 
 export async function addApplied(storage, url, when = '', onLine = () => {}, details = {}) {
   const inputs = {mode: 'add', job: url, note: when, jobTitle: details.title, jobCompany: details.company, jobText: details.text, origin: details.origin};
-  const {code, stdout, result} = await run(storage, dailyArgs(storage, inputs), onLine);
+  // Why (1 Nov 2026, #2909): --from-app is how the engine knows the caller is the app (Source "Jobadabra app"), as the two log paths below pass it.
+  const {code, stdout, result} = await run(storage, [...dailyArgs(storage, inputs), '--from-app'], onLine);
   const line = stdout.trim().split('\n').filter(Boolean).pop() || '';
   const text = readable(line);
   const ok = code === 0 && !text.startsWith('⚠️');

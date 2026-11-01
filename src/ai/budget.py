@@ -111,7 +111,8 @@ def alert_once(db, info, send, now=None):
     else:
         text = (f"💸 <b>AI budget</b>\n{info['pct']:.0%} used · {describe(info)}\n\n<b>What happens next</b>\n"
                 "At 90% the optional AI steps pause so the essentials keep running.")
-    send(text)
+    if send(text) is False:   # Why (1 Nov 2026, #2908): a caller whose send was refused answers False (daily_search_reporting turns telegram.deliver's None into False); the alert then stays unsent and the next run tries again
+        return False
     db.execute('INSERT OR IGNORE INTO budget_alerts VALUES (?, ?)', (month, info['level']))
     db.commit()
     return True

@@ -34,6 +34,12 @@ def _run_store(stores, message):
     return stores
 
 
+def _add_source(args, terminal='CLI'):
+    """Where an added job came from, told by the caller: the app (--from-app, even with --send), the bot (--send), else the terminal ('CLI', shown as Manual).
+    Why (1 Nov 2026, #2909): add_link_mode hard-coded 'Telegram', so a job added in the app said Telegram in its row and its Applied event; 0a3ef92 (25 Oct) had tagged only the log path."""
+    return APP_SOURCE if args.from_app else 'Telegram' if args.send else terminal
+
+
 def _gate(stores, message, on_store):
     """Who may run a mode: a Notion store the engine can read (store_access.notion_ready), or another store when the mode works on it
     (on_store). A Notion store it can't read keeps today's message; another store gets "only with Notion for now" for a mode not moved yet."""
@@ -76,7 +82,7 @@ def apply_mode(args, stores=None):
     print(reply)
     # Save/Dismiss are already confirmed on the button itself; only Applied gets a message (Notion link).
     if args.send and args.action == 'applied':
-        telegram.send(reply, *telegram.credentials())
+        telegram.deliver(reply, *telegram.credentials())
     return 0
 
 
@@ -141,7 +147,7 @@ def add_message_mode(args, stores=None):
             name, data = interviews.download(telegram.credentials()[0], args.file)
             image = (name, data, inbox.MEDIA.get(Path(name).suffix.lower(), 'image/jpeg'))
         # Where it was added: the app's Log box is the app even when its reply also goes to Telegram (--send).
-        source = APP_SOURCE if args.from_app else 'Telegram' if args.send else 'Manual'
+        source = _add_source(args, 'Manual')
         if args.propose:  # the app's step 1: nothing written; the proposal comes back to be confirmed
             # With --reading: the job you picked in the confirmation step (--target), for the same reading (no AI).
             earlier = json.loads(Path(args.reading).read_text(encoding='utf-8')) if args.reading else None
@@ -160,7 +166,7 @@ def add_message_mode(args, stores=None):
                                      first_contact=None if args.first_contact is None else args.first_contact == 'yes',
                                      agreed=None if args.agreed is None else args.agreed == 'yes', origin=args.origin)
         reply = escape(inbox.log(stores, text=args.note or '', image=image, source=source,
-                                 event_source=APP_SOURCE if args.from_app else 'Telegram' if args.send else 'CLI',
+                                 event_source=_add_source(args),
                                  talking=args.action == 'talking', stats=run['mail'], target=args.target,
                                  on_new=added.hook(stores, args.db, run), proposal=proposal, found=found))
         run['mail'].update(pending=1, done=1)
@@ -178,7 +184,7 @@ def add_message_mode(args, stores=None):
         log_ai_run(stores, run, args, failed=failed)
     print(log_text(reply))  # the log (and the app) get plain text; Telegram gets the HTML
     if args.send:
-        telegram.send(reply, *telegram.credentials())
+        telegram.deliver(reply, *telegram.credentials())
     return 1 if failed else 0
 
 
@@ -202,7 +208,7 @@ def add_link_mode(args, stores=None):
                 fit = added.process(db, args.job, meta, stats=run, stores=stores)
             except Exception as error:  # noqa: BLE001
                 print(f'Warning: AI stages skipped: {type(error).__name__}: {error}')
-            reply = '📥 ' + escape(ledger_store.add_application(stores, args.job, applied=applied, approx=approx, source='Telegram',
+            reply = '📥 ' + escape(ledger_store.add_application(stores, args.job, applied=applied, approx=approx, source=_add_source(args),
                                                                meta=meta, found=found, origin=args.origin))
             if fit:
                 reply += f' · {escape(fit)}'
@@ -226,7 +232,7 @@ def add_link_mode(args, stores=None):
         log_ai_run(stores, run, args, failed=failed)
     print(log_text(reply))  # the log (and the app) get plain text; Telegram gets the HTML
     if args.send:
-        telegram.send(reply, *telegram.credentials())
+        telegram.deliver(reply, *telegram.credentials())
     return 1 if failed else 0
 
 
@@ -235,7 +241,7 @@ def interview_mode(args, stores=None):
     # Telegram only to send the summary or fetch a file sent to the bot; the app's reviews work without it.
     from_bot = bool(args.file) and not Path(args.file).is_file()
     token, chat_id = telegram.credentials() if args.send or from_bot else (None, None)
-    sender = (lambda text: telegram.send(text, token, chat_id, urgent=True)) if args.send else None   # an interview review is answered at once, never held for a batch
+    sender = (lambda text: telegram.deliver(text, token, chat_id, urgent=True)) if args.send else None   # an interview review is answered at once, never held for a batch
     run = new_cron_run('interview')
     run['interview'] = {}
     reviewed = {}  # the job the interview is linked to, once known (interviews.run fills it)
@@ -285,7 +291,7 @@ def _close_unreviewed(stores, run, args, reason, headline):
 
 def insight_mode(args, stores=None):
     stores = _run_store(stores, f'--mode {args.mode} requires NOTION_TOKEN')
-    sender = (lambda text, markup: telegram.send(text, *telegram.credentials(), markup)) if args.send else telegram.to_app
+    sender = (lambda text, markup: telegram.deliver(text, *telegram.credentials(), markup)) if args.send else telegram.to_app
     with store.connect(args.db) as db:
         make = insights.run if args.mode == 'insight' else insights.weekly
         run = new_cron_run(args.mode)
@@ -303,7 +309,7 @@ def insight_mode(args, stores=None):
             message = cost.limit_message(error, f'the {args.mode} report')
             print(message)
             if args.send:
-                telegram.send(message, *telegram.credentials())
+                telegram.deliver(message, *telegram.credentials())
             else:
                 telegram.to_app(message)
             # Closed here as a warning that names the limit: left open, the end-of-process guard wrote the row as Failed ("Insight failed") while the run exited 0.

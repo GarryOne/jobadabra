@@ -4,7 +4,8 @@ Owner, 1 Nov 2026: "We can build 10-20 more journeys. for the integrations". Tie
 
 ## Progress
 - [x] 1/2 Register 16 journeys (J20-J35) from integration files that already prove a board journey, plus 3 additions to J11, J15, J19: Tier 2 9 → 25, files mapped 18 → 59 of 65. Registry rows only (#2900) (proof: desktop/e2e/critical-journeys.json @7542ed3)
-- [ ] 2/2 Four new journeys, each with a new integration test (J36 extension pairing, J37 AI credit wording in the Plan section, J38 add a job by hand, J39 Telegram digest + a refused send): Tier 2 25 → 29, files mapped 59 → 63 of 69.
+- [x] 2/2 Four new journeys, each with a new integration test (J36 extension pairing, J37 AI credit wording in the Plan section, J38 add a job by hand, J39 Telegram digest + a refused send): Tier 2 25 → 29, files mapped 59 → 63 of 69 (#2907) (proof: desktop/integration/store/run-faults-telegram.test.mjs @feb8cd8)
+- [ ] 3/3 The bugs those tests found (issues #2908, #2909; #2910 stays an issue): every Telegram send goes through one guarded `telegram.deliver`, and an add made in the app records the app as its source.
 
 Left unregistered on purpose: engine-kit, net-record-lost-body, replay-watch-window, applying-report (tooling) and cv-check, applied-by-hand, the strategy-integration setup tests (PR-time counterparts of Tier 1 J14, J5, J13; a Tier 1 journey holds e2e steps only).
 The GTM readiness page (jobadabra-web `jobs/gtm-readiness.mjs`) reads the registry through `loadJourneys()` and matches each `{integration, test}` to CI result names, so new rows need no web change.

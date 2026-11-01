@@ -326,7 +326,7 @@ jobs:
           git checkout -b "$branch"
           git add desktop/e2e/smoke-sites.json
           tools/bot-commit.sh "Add the daily discovery batch's new shapes to the pool" "a pool list entry, no code the app runs" "$added"
-          [ -n "$PR_TOKEN" ] || echo "::warning title=Pool PR opened without checks::the CI App token was not minted (its permission is missing), so the push and the PR use the workflow token and the PR's checks will not start"
+          [ -n "$PR_TOKEN" ] || echo "::warning title=Pool PR opened without checks::the CI App token was not minted (see the 'The App token' step's log for why), so the push and the PR use the workflow token and the PR's checks will not start"
           git push -q "https://x-access-token:${PR_TOKEN:-$GH_TOKEN}@github.com/$REPO.git" "$branch"
           printf '%s\n\nOpened by record-sites.yml (daily discovery batch). The owner merges it; nothing here merges.\n' "$added" > pr-detail.md
           tools/bot-pr-body.sh HEAD~1 --verdict='🟢 The daily discovery batch reached new flow shapes: they join the pool.' --why='the daily discovery batch (record-sites.yml) found sites with shapes the pool lacks' \

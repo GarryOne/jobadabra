@@ -60,7 +60,7 @@ test('a queued hidden job gets the lowest urgency, so the nav badge stays neutra
 });
 
 // Why (30 Oct 2026, owner's demo: cards stuck with no reason): with the app's connection for the extension closed, a queued hidden-browser job said "Waiting for its turn" behind a job
-// that did not exist. The e2e step "a silent Chrome in Background automation" plays it; this keeps the one status function and the card honest for every state.
+// that did not exist. integration/app/screen-apply.test.js ("a silent Chrome in Background automation") plays it in the window; this keeps the one status function and the card honest for every state.
 const LINK_OFF = {port: 47111, code: 'EADDRINUSE'};
 
 test('with the connection off a queued job says so in its pill and card; no other state changes', () => {

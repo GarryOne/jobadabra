@@ -28,37 +28,16 @@ async function openJobs(ctx) {
     .catch(() => { throw new Error('the Jobs list never held the twelve fictional jobs'); });
 }
 
-/** The popup as the person reads it: {count, start, disabled}. */
-const popup = page => page.evaluate(() => ({count: document.getElementById('triage-count').textContent.trim().split(' · ')[0], start: document.getElementById('triage-start').textContent.trim(), disabled: document.getElementById('triage-start').disabled}));
-const jobs = n => `${n} ${n === 1 ? 'job' : 'jobs'}`;
-
 /** Runs the triage steps; takes the harness context. Seeds and removes only its own twelve jobs. */
 export async function runTriageSteps(ctx) {
   const {page} = ctx;
   const urls = JOBS.map(job => job.url);
   try {
-    await ctx.run('the Jobs popup has one field, the first N best matching jobs not checked before, and says how many', async () => {
+    // The Jobs popup's one field, and how many jobs it says it will check: integration/app/screen-apply.test.js (moved 1 Nov 2026).
+    await ctx.run('checking jobs before the form read exists reads nothing: every chip says "Not checked", no session starts, nothing is filled or sent', async () => {
       await removeJobsByUrl(ctx, urls);
       for (const job of JOBS) await addKitJob(ctx, {title: job.title, company: job.company, url: job.url, kit: null, fit: job.fit, stage: 'Saved', nextStep: ''});
       await openJobs(ctx);
-      const listed = await page.evaluate(() => (window.__jp.shared.allJobs || []).filter(job => job.url).map(job => Number.isFinite(job.fit) ? job.fit : -1));
-      await page.click('#triage-open');
-      await page.waitForSelector('#triage-dialog[open]', {timeout: 5000});
-      let seen = await popup(page);
-      const best = Math.min(10, listed.length);
-      if (seen.count !== jobs(best) || seen.start !== `Check ${jobs(best)}`) throw new Error(`"First 10 best matching jobs" over ${listed.length} listed jobs should say ${jobs(best)}, the popup says ${JSON.stringify(seen)}`);
-      // The one field is how many of the best new jobs to check; asking for more than there are says so.
-      await page.fill('#triage-n', '3');
-      seen = await popup(page);
-      if (seen.count !== jobs(Math.min(3, listed.length)) || seen.start !== `Check ${jobs(Math.min(3, listed.length))}`) throw new Error(`"First 3 best matching jobs" over ${listed.length} listed jobs should say ${jobs(Math.min(3, listed.length))}, the popup says ${JSON.stringify(seen)}`);
-      await page.fill('#triage-n', '50');
-      seen = await popup(page);
-      if (listed.length < 50 && seen.count !== `${jobs(listed.length)} not checked yet`) throw new Error(`asking for 50 over ${listed.length} jobs should say "${jobs(listed.length)} not checked yet", the popup says ${JSON.stringify(seen)}`);
-      await page.fill('#triage-n', '10');
-      await page.click('#triage-close');
-    });
-
-    await ctx.run('checking jobs before the form read exists reads nothing: every chip says "Not checked", no session starts, nothing is filled or sent', async () => {
       const before = sessionsNow(ctx);
       await page.click('#triage-open');
       await page.waitForSelector('#triage-dialog[open]', {timeout: 5000});

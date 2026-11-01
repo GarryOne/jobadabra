@@ -27,8 +27,10 @@ async function handedOver(ctx, url, seen) {
 
 /** Runs the restart steps; takes the harness context and the suite's fixture job addresses `urls` (removed first, so the one job Start picks is this step's). */
 export async function runRestartSteps(ctx, {urls}) {
-  const form = FORMS.submitter;
-  const autoForm = autoFormOf(form, '?restart=1'), seed = kitSeeder(ctx, urls, POSTING), needs = [...ctx.needs, HIDDEN_NEED];
+  // Why (1 Nov 2026, a8; main run 41312448297 after #2813 re-cut the slices): on the submitter's own address this step followed "The hidden browser fills a form … becomes Applied" in one app,
+  // whose held write (lib/view-cache.js, 10 min) kept the re-created job Applied, so Start found no kit. Each hidden-browser step has its own address, as ?check=, ?stop=, ?queue= do.
+  const form = {...FORMS.submitter, url: `${FORMS.submitter.url}?restart=fill`};
+  const autoForm = autoFormOf(FORMS.submitter, '?restart=1'), seed = kitSeeder(ctx, urls, POSTING), needs = [...ctx.needs, HIDDEN_NEED];
   const filled = {what: '', state: ''}, waiting = {what: '', state: ''};
   await ctx.run('the app quits while Background automation holds a filled form: after it starts again the job is handed to you, and nothing is posted', async () => {
     const unlinked = linkRuntime(ctx.profile);

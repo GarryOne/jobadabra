@@ -1,4 +1,4 @@
-/* global document, location, window, chrome, innerWidth, getComputedStyle, performance */
+/* global document, location, window, chrome, innerWidth, getComputedStyle, performance, MutationObserver */
 // While the extension fills, the page is dimmed and the person's clicks, keys and scrolling are held back; the panel comes forward; every way the fill ends takes the overlay away
 // (real extension on a fixture form, fake data). The driver's own input passes through a gap flag; the overlay is invisible to hit-tests and reads (pointer-events: none).
 import assert from 'node:assert/strict';
@@ -296,20 +296,42 @@ test('back-to-back steps keep the dim and the centring at every frame: the mark 
 });
 
 // Owner, 27 Oct 2026: "at the time the webpage loads, can we instantly show the overlay dark/glowing background? Right now there is a 0.5 second until it appears".
-test('a page the app opened to fill is dimmed at load: the dim is on 50 ms after DOMContentLoaded, and the panel takes it over centred', async () => {
+// Why-changed (1 Nov 2026, a8, JOB-189): the test asserted the dim at "50 ms after DOMContentLoaded" on a real browser's wall clock; it failed once on CI under load (#2861,
+// run 41333627451: [false, true, true]) with the code unchanged. The ORDER is what the owner asked for and what is deterministic here: the page's form script is held by the test
+// (a parser-blocking script the route serves only on release), so the page stays "loading" and its form undrawn for as long as the test wants. A dim seen in that window came while the
+// page was loading (early-dim.js at the commit, or arm() at the tab's "loading" status, background.js: either is the owner's "instantly"); a dim that waited for the page to finish would
+// show only after the release and fail here with what the page showed. Planted check (1 Nov 2026): begin() in early-dim.js turned off -> red "no dim while the page was still loading".
+test('a page the app opened to fill is dimmed at load: the dim is on while the page is still loading, before its form is drawn, and the panel takes it over centred', async ctx => {
   const t = await open();
+  let release;
+  const held = new Promise(resolve => { release = resolve; });
   try {
     await fillOver(t);
-    // Like most application pages, the form is drawn by the page's script a moment after load (an empty shell first).
-    const LATE = `<!doctype html><title>Apply</title><body><div id="app">Loading…</div><script>setTimeout(() => { document.getElementById('app').innerHTML = ${JSON.stringify(FORM.replace(/^<!doctype html><title>[^<]*<\/title>/, ''))}; }, 1200);</script>`;
+    // Like most application pages, the form is drawn by the page's script after an empty shell; here the script's arrival is the test's to give.
+    const drawForm = `document.getElementById('app').innerHTML = ${JSON.stringify(FORM.replace(/^<!doctype html><title>[^<]*<\/title>/, ''))};`;
+    const LATE = '<!doctype html><title>Apply</title><body><div id="app">Loading…</div><script src="/hold/form.js"></script>';
     await t.app.context.route('https://jobs.example.test/late**', route => route.fulfill({status: 200, contentType: 'text/html', body: LATE}));
-    await t.app.page.addInitScript(() => document.addEventListener('DOMContentLoaded', () => { window.__dims = []; for (const ms of [50, 400, 900]) setTimeout(() => window.__dims.push(!!document.getElementById('jobpilotto-fill-overlay')), ms); }));
-    await t.app.page.goto('https://jobs.example.test/late#jobpilotto-fill');   // a fresh document with the mark, as the app opens it
-    await t.app.page.waitForFunction(() => window.__dims?.length === 3, null, {timeout: 10000});
-    assert.deepEqual(await t.app.page.evaluate(() => window.__dims), [true, true, true], 'the dim at 50, 400 and 900 ms after DOMContentLoaded, before the form is drawn');
+    await t.app.context.route('https://jobs.example.test/hold/form.js', async route => { await held; await route.fulfill({status: 200, contentType: 'text/javascript', body: drawForm}); });
+    // The page notes, in its own frame of mind, the first moment the dim is there and whether the form was drawn then (report only: `at` is never asserted).
+    await t.app.page.addInitScript(() => {
+      if (window !== window.top) return;
+      const seen = () => { if (window.__dimSeen || !document.getElementById('jobpilotto-fill-overlay')) return; window.__dimSeen = {at: Math.round(performance.now()), formDrawn: !!document.getElementById('n')}; };
+      new MutationObserver(seen).observe(document, {childList: true, subtree: true});
+      seen();
+    });
+    await t.app.page.goto('https://jobs.example.test/late#jobpilotto-fill', {waitUntil: 'commit'});   // a fresh document with the mark, as the app opens it; it stays loading until the release
+    await t.app.page.waitForFunction(() => !!window.__dimSeen, null, {polling: 50, timeout: 10000})   // Why: a hang guard only; polling by interval because a loading page may draw no frame
+      .catch(async () => assert.fail(`no dim while the page was still loading (the page shows ${JSON.stringify(await t.look())})`));
+    const seen = await t.app.page.evaluate(() => window.__dimSeen);
+    assert.equal(seen.formDrawn, false, 'the form was not yet drawn when the dim first showed');
+    assert.equal(await t.app.page.evaluate(() => !!document.getElementById('n')), false, 'positive control: the page is still held, its form is not drawn');
+    ctx.diagnostic(`the early dim showed ${seen.at} ms after the page's navigation started, with its form script still held (report only)`);
+    release();
+    await t.app.page.waitForFunction(() => !!document.getElementById('n'), null, {polling: 50, timeout: 10000})
+      .catch(() => assert.fail('positive control: the form was not drawn after the script was released'));
     await t.lookIs({dim: true, centred: true}, 'the panel takes the early dim over, centred');
     assert.equal(await t.app.page.evaluate(() => document.querySelectorAll('#jobpilotto-fill-overlay').length), 1, 'one dim layer, the early one and the panel\'s are the same');
-  } finally { await t.app.close(); }
+  } finally { release(); await t.app.close(); }
 });
 
 test('a page opened without the fill mark is never dimmed at load', async () => {

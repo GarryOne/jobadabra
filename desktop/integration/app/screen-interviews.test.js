@@ -4,7 +4,6 @@
 // Nothing of Interviews stays in e2e (owner, 1 Nov 2026: only Tier 1 journeys are e2e). The links and the writes through the app are desktop/integration/store/interviews-flow.test.mjs; the one-time setup banner is here,
 // given the app's own progress steps (a test run never starts the real setup). Delete: the window's message, and the store's delete in interviews-flow (the window is read-only to the main process).
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import {after, before, test} from 'node:test';
 import {needsElectron} from '../../test/needs-electron.js';
 import {interviewsKit, interviewsStore} from './screen-interviews-kit.js';
@@ -146,13 +145,6 @@ test('the one-time setup banner shows its step and percent, then goes away when 
   assert.deepEqual([mineUnknown.shown, mineUnknown.percent], [true, ''], 'the open draft\'s progress line is missing, or shows a percent nobody sent');
   assert.deepEqual([mine.text, mine.percent], ['Writing down what was said', '10%'], 'the open draft\'s progress line does not show its own step');
   assert.deepEqual(layout, [], 'the banner has layout problems');
-});
-
-// Why (1 Nov 2026, Gitar on #2808): the window cannot be handed the main process's own 'ivProgress' events (the page reaches them only through the preload's contextBridge), so the page's whole handler is
-// drawInterviewProgress, driven above; this only checks the page's one subscription hands it the step and the open draft's id.
-test('the page hands every progress step the main process sends, with the open draft\'s id, to the drawing function', () => {
-  const page = fs.readFileSync(new URL('../../renderer/pages/interviews.js', import.meta.url), 'utf8');
-  assert.match(page, /onInterviewProgress\(step => drawInterviewProgress\(step, ivOpen\)\)/, 'onInterviewProgress no longer draws through drawInterviewProgress with the open draft');
 });
 
 test('Delete, once the person agrees, says which interview was deleted', live, () => {

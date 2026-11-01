@@ -5,21 +5,22 @@
 import {execFileSync} from 'node:child_process';
 import {existsSync, readFileSync, writeFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
-import {byDay, parseLog} from './gate-stats.mjs';
+import {homedir} from 'node:os';
+import {byDay, parseHookLog, parseLog} from './gate-stats.mjs';
 
 export const URL_DEFAULT = 'https://www.jobpilotto.top/agent-coding/data';
 // Why (1 Nov 2026): 5 s so a slow site never holds a landing; the stamp keeps it to one call a day.
 const TIMEOUT_MS = 5000;
 
 // One upload: returns 'off' | 'no-log' | 'done-today' | 'no-key' | 'no-days' | 'sent' | 'refused: <status>' | 'failed'. Seams: read, key, send, stamp (files), so a test touches no network, Keychain or disk.
-export async function upload({log, stampFile, now = new Date(), force = false, read = path => readFileSync(path, 'utf8'), has = existsSync, key, send, writeStamp = (file, text) => writeFileSync(file, text)}) {
+export async function upload({log, hookLog, stampFile, now = new Date(), force = false, read = path => readFileSync(path, 'utf8'), has = existsSync, key, send, writeStamp = (file, text) => writeFileSync(file, text)}) {
   if (process.env.GATE_STATS_UPLOAD === '0') return 'off';
   if (!log || !has(log)) return 'no-log';
   const today = now.toISOString().slice(0, 10);
   if (!force && stampFile && has(stampFile) && read(stampFile).trim() === today) return 'done-today';
   const secret = await key();
   if (!secret) return 'no-key';
-  const days = byDay(parseLog(read(log)), {now});
+  const days = byDay(parseLog(read(log)), {now, hooks: hookLog && has(hookLog) ? parseHookLog(read(hookLog)) : []});
   if (!days.length) return 'no-days';
   const status = await send(JSON.stringify({kind: 'gate', days}), secret);
   if (status !== 200) return typeof status === 'number' ? `refused: ${status}` : 'failed';
@@ -34,7 +35,7 @@ const post = (body, secret) => fetch(process.env.GATE_STATS_URL || URL_DEFAULT, 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   try {
     const common = execFileSync('git', ['-C', fileURLToPath(new URL('..', import.meta.url)), 'rev-parse', '--path-format=absolute', '--git-common-dir'], {encoding: 'utf8'}).trim();
-    const result = await upload({log: `${common}/gate-timing.log`, stampFile: `${common}/gate-stats-upload.stamp`, force: process.argv.includes('--force'), key: async () => keychain(), send: post});
+    const result = await upload({log: `${common}/gate-timing.log`, hookLog: `${homedir()}/.claude/hook-blocks.log`, stampFile: `${common}/gate-stats-upload.stamp`, force: process.argv.includes('--force'), key: async () => keychain(), send: post});
     console.log(`gate-stats: ${result}`);
   } catch (error) { console.log(`gate-stats: failed (${error.code || 'error'})`); }
 }

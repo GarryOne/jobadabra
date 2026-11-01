@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {test} from 'node:test';
-import {byDay, classOf, parseLog, stoppedAs} from '../../tools/gate-stats.mjs';
+import {byDay, classOf, parseHookLog, parseLog, stoppedAs} from '../../tools/gate-stats.mjs';
 import {upload} from '../../tools/gate-stats-upload.mjs';
 
 const LOG = `# 2026-10-30T10:00:00Z push gate total=40s branch=secret-branch-name
@@ -84,4 +84,24 @@ test('ship.sh runs the uploader as its very last step, only when asked to, and n
   assert.match(ship, /trap 'code=\$\?;.*; gate_stats_tail' EXIT/s);
   assert.match(ship, /gate_stats_tail\(\) \{.*GATE_STATS_UPLOAD:-1.*gate-stats-upload\.mjs.*\|\| true/s);
   assert.match(ship, /ship_watch_start "\$review_n".*; gate_stats_tail' EXIT/s, 'the watcher is started before the upload, never after');
+});
+
+// Owner's yes, 1 Nov 2026 (layer 0 of the SDLC tab): the agent's hooks log "<date> <label>" per block (~/.claude/hooks/count-blocks.sh); only the four known labels are counted and no other text can leave.
+test('hook blocks are counted per day by their four fixed labels; any other line or label is ignored; a day with only blocks still gets a card', () => {
+  const blocks = parseHookLog('2026-10-31 session-cap\n2026-10-31 session-cap\n2026-11-01 foreground-long-run\n2026-11-01 some-secret-text here\n2026-11-01 unknown-hook\nnot a line\n');
+  assert.equal(blocks.length, 3);
+  const days = byDay(parseLog(LOG), {now, hooks: blocks});
+  assert.deepEqual(days.find(day => day.day === '2026-10-31').hooks, {'session-cap': 2});
+  assert.deepEqual(days.find(day => day.day === '2026-11-01').hooks, {'foreground-long-run': 1});
+  assert.equal(days.find(day => day.day === '2026-11-01').pushes, 0);
+  assert.ok(!JSON.stringify(days).includes('secret'));
+});
+
+test('the upload sends the hook counts with the gate days, and a missing hook log changes nothing', async () => {
+  const {state, args} = seams({hookLog: '/hooks', has: path => path === '/log' || path === '/hooks', read: path => (path === '/log' ? LOG : '2026-10-31 background-tee\n')});
+  assert.equal(await upload(args), 'sent');
+  assert.deepEqual(JSON.parse(state.sent[0].body).days.find(day => day.day === '2026-10-31').hooks, {'background-tee': 1});
+  const plain = seams({hookLog: '/none'});
+  assert.equal(await upload(plain.args), 'sent');
+  assert.ok(!JSON.parse(plain.state.sent[0].body).days.some(day => day.hooks));
 });

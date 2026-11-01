@@ -108,4 +108,7 @@ jobs:
       # The same command as harness-daily.yml: one list, the folder itself.
       - name: Every harness test (this part)
         working-directory: desktop/e2e
-        run: npm test -- --test-shard=${{ matrix.part }}/3
+        # Why (Gitar on #2793): node reads --test-shard only before the files, and npm adds extra arguments after the glob, where the flag is ignored and all 3 parts run the whole folder. The script carries the flag and reads this variable.
+        env:
+          TEST_SHARD: ${{ matrix.part }}/3
+        run: npm test

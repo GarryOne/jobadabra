@@ -37,7 +37,7 @@ def admin_key():
     key = os.getenv('ANTHROPIC_ADMIN_KEY')
     if key or sys.platform != 'darwin' or secret_store.isolated():  # the end-to-end journey never reaches the owner's Anthropic organisation
         return key
-    return secret_store.get('jobadabra.anthropic.admin-key') or None   # the store also finds the owner's old job-pilotto.anthropic.admin-key
+    return secret_store.get('jobadabra.anthropic.admin-key') or None   # the store also finds the owner's item under the pre-rename name
 
 
 def month_start(now):

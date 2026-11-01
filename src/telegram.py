@@ -106,6 +106,6 @@ def keychain_token():
     if sys.platform != 'darwin' or os.getenv('JOBADABRA_E2E'):  # the end-to-end journey never reaches the owner's real bot
         return None
     try:
-        return secret_store.get('jobadabra.telegram.bot-token') or None   # also finds the item an older install made as job-pilotto.telegram.bot-token
+        return secret_store.get('jobadabra.telegram.bot-token') or None   # also finds the item an older install made under the pre-rename name
     except OSError:
         return None

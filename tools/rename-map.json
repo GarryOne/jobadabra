@@ -228,6 +228,13 @@
    "expires": "when the provider keys are renamed"
   },
   {
+   "id": "keep-keychain-fallback",
+   "match": "^job-pilotto$",
+   "paths": "^(desktop/lib/(keychain|credentials)\\.js|desktop/test/(keychain|credentials)\\.test\\.js|src/secret_store\\.py|tests/test_(secret_store|keychain_copy_to_jobadabra)\\.py|tools/keychain-copy-to-jobadabra\\.sh)$",
+   "keep": "the read-old-name fallback of the Keychain, its tests and the one-time copy script",
+   "expires": "2 stable releases after the release carrying the rename PR"
+  },
+  {
    "id": "keychain-item",
    "match": "^job-pilotto$",
    "after": "^\\\\?\\.(?:[a-z*]|\\$\\{|\\{|\\(|\\[)",

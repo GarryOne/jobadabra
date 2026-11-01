@@ -122,7 +122,10 @@
    "name": "A run that fails ends in words, never Running for ever",
    "steps": [
     {"integration": "desktop/integration/store/run-faults-ai.test.mjs", "test": "the AI says the key is invalid (401): the run ends as Failed or with warnings, in words, with nothing left Running", "parts": ["the AI says the key is invalid (401)", ": the run ends as Failed or with warnings, in words, with nothing left Running"]},
-    {"integration": "desktop/integration/store/run-quit-midway.test.mjs", "test": "quitting the app in the middle of a run: it is not shown Running for ever, and the app says what became of it"}
+    {"integration": "desktop/integration/store/run-quit-midway.test.mjs", "test": "quitting the app in the middle of a run: it is not shown Running for ever, and the app says what became of it"},
+    {"integration": "desktop/integration/store/run-faults-notion.test.mjs", "test": "${fault.what} during a Jobs check: the run ends ${fault.recovers ? 'normally' : 'as Failed or with warnings'}, in words, with nothing left Running", "parts": ["during a Jobs check: the run ends",", in words, with nothing left Running"]},
+    {"integration": "desktop/integration/store/run-silence.test.mjs", "test": "the AI never answers: the run is stopped after its silence limit and ends as Stopped, in words, with nothing left Running"},
+    {"integration": "desktop/integration/store/jobs-run.test.mjs", "test": "a slow Jobs check ends cleanly: the newest run is finished and ok, nothing is left Not scored, nothing runs on"}
    ],
    "tier": 2
   },
@@ -162,7 +165,8 @@
     {"integration": "desktop/integration/extension/extension-form-shapes.test.mjs", "test": "a sign-up page before the form: the account step is kept apart from the application form"},
     {"integration": "desktop/integration/store/menu-choice.test.mjs", "test": "the menu's choice is picked once, armed, remembered for the site and handed to the next form"},
     {"integration": "desktop/integration/extension/extension-form-shapes.test.mjs", "test": "a menu whose choices are not the answer's words: the form reports the menu with its choices, and the choice the app picks is put in it"},
-    {"integration": "desktop/integration/extension/extension-form-shapes.test.mjs", "test": "a menu choice the app remembers for the site is on the next form there at once, with nothing reported to ask about"}
+    {"integration": "desktop/integration/extension/extension-form-shapes.test.mjs", "test": "a menu choice the app remembers for the site is on the next form there at once, with nothing reported to ask about"},
+    {"integration": "desktop/integration/store/remember-answer.test.mjs", "test": "a remembered answer is kept in this Mac's Availability & compensation"}
    ]
   },
   {
@@ -195,7 +199,313 @@
    "name": "Focus: a job dismissed from In process stays gone",
    "tier": 2,
    "steps": [
-    {"integration": "desktop/integration/store/job-write-lag.test.mjs", "test": "Dismiss a job in process (#2758): the job reads as written in a read made inside Notion's listing lag, in the saved list, and after the lag ends", "parts": ["Dismiss a job in process (#2758)", ": the job reads as written in a read made inside Notion's listing lag, in the saved list, and after the lag ends"]}
+    {"integration": "desktop/integration/store/job-write-lag.test.mjs", "test": "Dismiss a job in process (#2758): the job reads as written in a read made inside Notion's listing lag, in the saved list, and after the lag ends", "parts": ["Dismiss a job in process (#2758)", ": the job reads as written in a read made inside Notion's listing lag, in the saved list, and after the lag ends"]},
+    {"integration": "desktop/integration/app/screen-focus-dismiss.test.js", "test": "Up next \"${way.kind}\" card: ${way.how[0] === 'button' ? `${way.how[1]} button` : `⋯ ${way.how[1]}`} removes it for good (leaves at once, not back after a refresh or a reload)", "parts": ["Up next \"", "\" card: ", " removes it for good (leaves at once, not back after a refresh or a reload)"]},
+    {"integration": "desktop/integration/app/screen-focus-dismiss.test.js", "test": "the in-app hold on a dismissed card outlives the store's lag: minutes are left after the reload"},
+    {"integration": "desktop/integration/app/screen-focus-dismiss.test.js", "test": "once the in-app hold is over, none of the dismissed Up next cards comes back from the store"},
+    {"integration": "desktop/integration/app/screen-focus-dismiss.test.js", "test": "a job dismissed in process is Closed in the store, and the Jobs list built from it no longer has it in process"},
+    {"integration": "desktop/integration/store/dismiss-in-process.test.mjs", "test": "a job dismissed in process stays out of the In process list: Closed in the store, gone from the saved list, not brought back by a late read"}
+   ]
+  },
+  {
+   "id": "J20",
+   "name": "Choose the AI that runs the app; a bad key is refused in words",
+   "tier": 2,
+   "steps": [
+    {"integration": "desktop/integration/app/setup-ai-handlers.test.js", "test": "an invalid API key is rejected without saving: the words name the key, no secret and no engine change"},
+    {"integration": "desktop/integration/app/setup-ai-handlers.test.js", "test": "a pasted text that is not a key is refused with words"},
+    {"integration": "desktop/integration/app/setup-ai-handlers.test.js", "test": "a valid OpenAI API key is accepted and saved, and the engine becomes OpenAI"},
+    {"integration": "desktop/integration/app/setup-ai-handlers.test.js", "test": "an OpenAI key the check refuses says so in words and is not saved"},
+    {"integration": "desktop/integration/app/setup-ai-handlers.test.js", "test": "Free AI is chosen: the app keeps the Free key, is on Free AI, and its engine is the API one"},
+    {"integration": "desktop/integration/app/setup-ai-handlers.test.js", "test": "Codex and Claude Code are kept as the engine, each with its one-time notice answered"},
+    {"integration": "desktop/integration/app/screen-wizard.test.js", "test": "Start opens the AI step with both engines to choose from"},
+    {"integration": "desktop/integration/app/screen-wizard.test.js", "test": "the OpenAI side of the switch shows its two cards"},
+    {"integration": "desktop/integration/app/screen-wizard.test.js", "test": "Codex is chosen (confirmed once, then checked) and the AI step continues"},
+    {"integration": "desktop/integration/app/screen-wizard.test.js", "test": "Claude Code is chosen (confirmed once, then checked) and the AI step continues"},
+    {"integration": "desktop/integration/app/screen-wizard.test.js", "test": "Free AI is chosen and the AI step offers to continue on it"},
+    {"integration": "desktop/integration/app/screen-wizard.test.js", "test": "the AI step will not continue without a key"},
+    {"integration": "desktop/integration/app/screen-wizard.test.js", "test": "a key the check refuses is shown in words and never saved"},
+    {"integration": "desktop/integration/app/screen-wizard.test.js", "test": "on this Mac's store no page asks to connect Notion: Focus and Interviews open their own content"},
+    {"integration": "desktop/integration/app/screen-wizard.test.js", "test": "Focus shows Get started without Notion; Interviews asks to connect Notion, lists the advantages, and Not now with a reason closes the prompt"}
+   ]
+  },
+  {
+   "id": "J21",
+   "name": "Profile: a blank Profile pauses fit scores and offers Rebuild from CV; an edited summary survives a restart",
+   "tier": 2,
+   "steps": [
+    {"integration": "desktop/integration/app/screen-jobs-profile-empty.test.js", "test": "a Profile still blank: Jobs says fit scores are paused and offers Rebuild from CV; Strategy says the same"},
+    {"integration": "desktop/integration/app/screen-jobs-profile-empty.test.js", "test": "a filled Profile: Jobs shows no such notice"},
+    {"integration": "desktop/integration/store/profile-experience-edit.test.mjs", "test": "an edited summary is saved through textEdit, survives the app starting again, is what the apply side reads, and a stale edit overwrites nothing"}
+   ]
+  },
+  {
+   "id": "J22",
+   "name": "Strategy: a company to skip, a region word, a level or an edit on the Notion page steers the next check",
+   "tier": 2,
+   "steps": [
+    {"integration": "desktop/integration/store/strategy-integration.test.mjs", "test": "a company to skip, set in the app, reaches config/preferences.json; its new posting is not kept while the same role at the other board still is"},
+    {"integration": "desktop/integration/store/strategy-integration.test.mjs", "test": "a region word and a level set in the app decide which postings the next check keeps"},
+    {"integration": "desktop/integration/store/strategy-notion-integration.test.mjs", "test": "a role and a place added in the app reach the Notion page and config/search.json; a company to skip reaches Notion and config/preferences.json"},
+    {"integration": "desktop/integration/store/strategy-notion-integration.test.mjs", "test": "an edit made directly on the Notion page is used by the next check, and a removed role stops matching"},
+    {"integration": "desktop/integration/store/strategy-notion-integration.test.mjs", "test": "a region word and a level written on the Notion page decide which postings the next check keeps"},
+    {"integration": "desktop/integration/store/strategy-notion-integration.test.mjs", "test": "a fresh install reconnecting to the same Notion page keeps the real settings and links the same page"}
+   ]
+  },
+  {
+   "id": "J23",
+   "name": "Employers: suggestions you can act on, and a check that adds new employers once",
+   "tier": 2,
+   "steps": [
+    {"integration": "desktop/integration/app/screen-foryou.test.js", "test": "\"Employers hiring people like you\": Review lists employers with their interviews, and was recorded as shown"},
+    {"integration": "desktop/integration/app/screen-foryou.test.js", "test": "a chip opens the Jobs list searched for that employer, and is recorded as taken"},
+    {"integration": "desktop/integration/app/screen-foryou.test.js", "test": "the job sources card is not offered: every source it could list needs a key of the person's own"},
+    {"integration": "desktop/integration/app/screen-foryou.test.js", "test": "⋯ Not now hides the employers row, records it, and it stays hidden on the next visit"},
+    {"integration": "desktop/integration/app/screen-foryou.test.js", "test": "a jobs check with few new jobs offers the same advice as rows with a Review button, recorded as shown"},
+    {"integration": "desktop/integration/app/screen-foryou.test.js", "test": "Review opens Strategy with that suggestion's options showing"},
+    {"integration": "desktop/integration/app/screen-foryou.test.js", "test": "a strategy draft: one card's editor, Unsaved badge, the page bar on every tab, typed text kept, leaving asks, Save clears it"},
+    {"integration": "desktop/integration/app/screen-foryou.test.js", "test": "adding a suggested role says the next step: the pop-up offers Find jobs"},
+    {"integration": "desktop/integration/app/screen-foryou.test.js", "test": "Focus offers Strategy's search rows: the top option in one press, See both opens that row on Strategy, Not now hides it there too"},
+    {"integration": "desktop/integration/app/screen-foryou.test.js", "test": "what is recorded holds fixed words only: never a role word, a place or an employer's name"},
+    {"integration": "desktop/integration/store/employers-integration.test.mjs", "test": "${label}: every candidate ends in the right status, its row is complete, the run row has the real numbers, the crawl list is right, and a second run writes nothing twice", "parts": [": every candidate ends in the right status, its row is complete, the run row has the real numbers, the crawl list is right, and a second run writes nothing twice"]},
+    {"integration": "desktop/integration/store/jobs-run.test.mjs", "test": "Find new employers probes the seed company and lists it in the store (Employers & Sources)"}
+   ]
+  },
+  {
+   "id": "J24",
+   "name": "Focus each day: the numbers match the store, Edit target, Done and Skip stick, a fresh account is helpful",
+   "tier": 2,
+   "steps": [
+    {"integration": "desktop/integration/app/screen-focus.test.js", "test": "Focus finishes loading with no error text"},
+    {"integration": "desktop/integration/app/screen-focus.test.js", "test": "\"Up next\" lists what can't wait and Suggestions the rest, in the right order, each with the right buttons"},
+    {"integration": "desktop/integration/app/screen-focus.test.js", "test": "every number on Focus matches the store (today, target, 14-day chart, funnel, inbound funnel)"},
+    {"integration": "desktop/integration/app/screen-focus.test.js", "test": "Suggestions lead with the latest rejection lesson, with a button to review it"},
+    {"integration": "desktop/integration/app/screen-focus.test.js", "test": "clicking an Up next or Suggestions row opens the right place: the mail, Jobs, the feedback box"},
+    {"integration": "desktop/integration/app/screen-focus.test.js", "test": "\"Edit target\" keeps what is typed through a redraw and saves it; the saved target changes the progress ratio and survives a restart"},
+    {"integration": "desktop/integration/app/screen-focus.test.js", "test": "marking an action Done removes it, writes it to the store and updates the counts"},
+    {"integration": "desktop/integration/app/screen-focus.test.js", "test": "Skip dismisses \"Add details\" for good: it leaves, the store records it, a refresh does not bring it back"},
+    {"integration": "desktop/integration/app/screen-focus.test.js", "test": "Focus renders without layout problems, with data"},
+    {"integration": "desktop/integration/app/screen-focus-states.test.js", "test": "rows edited by hand (an unknown stage, an empty title, a very long note, other scripts) leave Focus working and its numbers right"},
+    {"integration": "desktop/integration/app/screen-focus-states.test.js", "test": "a fresh account gets a helpful Focus: nothing urgent, one suggested next step, zeros, a funnel that says it fills in later, no insight, no raw errors"},
+    {"integration": "desktop/integration/app/screen-focus-states.test.js", "test": "Focus renders without layout problems, without data"}
+   ]
+  },
+  {
+   "id": "J25",
+   "name": "Read job lists in a browser: a list, its next pages, filters, cookie banners and bot checks",
+   "tier": 2,
+   "steps": [
+    {"integration": "desktop/integration/extension/visit-read.test.mjs", "test": "a bot-check page stops it: nothing read, the person answers it"},
+    {"integration": "desktop/integration/extension/visit-read.test.mjs", "test": "the extension reads a list page as you see it: each card's title, address and visible lines"},
+    {"integration": "desktop/integration/extension/visit-read.test.mjs", "test": "it goes to the next page of the same list, reads it, and finds no page after the last"},
+    {"integration": "desktop/integration/extension/visit-read.test.mjs", "test": "filters: the page's own controls are listed for Claude, never Easy Apply, Sign in or Save; only its place step is kept and applied, a forbidden one refused"},
+    {"integration": "desktop/integration/extension/visit-read.test.mjs", "test": "filters: a place typed in a suggest box is picked from its suggestions before the search is sent (Van Cleef, 7 Oct 2026)"},
+    {"integration": "desktop/integration/extension/visit-read.test.mjs", "test": "filters: a plain box with its own suggestion list gets its place picked too, never a link already on the page (7 Oct 2026)"},
+    {"integration": "desktop/integration/extension/visit-read.test.mjs", "test": "a link whose address is template code (DHL, 7 Oct 2026) is never offered to Claude nor followed as the next page"},
+    {"integration": "desktop/integration/extension/visit-read.test.mjs", "test": "one posting: its main text is read for \"Jobs we couldn't read\", without the menu or footer; a sign-in page sends only why"},
+    {"integration": "desktop/integration/extension/visit-read.test.mjs", "test": "a job list drawn in a frame by another site is found (not the cookie or video frame), and resetting the filters is never a way on (7 Oct 2026)"},
+    {"integration": "desktop/integration/extension/visit-read.test.mjs", "test": "filters: a place typed in English is picked in the site's own spelling (\"geneva\" -> \"Genève (GE)\", Decathlon, 8 Oct 2026)"},
+    {"integration": "desktop/integration/extension/visit-read.test.mjs", "test": "any site: where the quick guess reads nothing, Claude's recipe from the page outline reads the jobs and finds the next page"},
+    {"integration": "desktop/integration/extension/visit-read.test.mjs", "test": "a home page is not a job list: the quick guess says so, and the engine finds the job list from its own links"},
+    {"integration": "desktop/integration/extension/visit-read.test.mjs", "test": "a cookie banner over the list is closed with the least consent offered (\"Reject all\", not \"Accept all\"), a sign-in box never touched"},
+    {"integration": "desktop/integration/extension/visit-read.test.mjs", "test": "a consent message drawn in an iframe is closed from inside the frame, with the least consent"},
+    {"integration": "desktop/integration/extension/visit-read.test.mjs", "test": "a page that draws nothing is seen as blank (said and stopped, not skipped as silent); a list page is not"},
+    {"integration": "desktop/integration/extension/visit-read.test.mjs", "test": "a page with no job list yet lists its ways on for Claude (never Sign in); the step Claude picks shows the jobs"},
+    {"integration": "desktop/integration/extension/visit-read.test.mjs", "test": "a second round of ways on never gives one id to two elements: the step Claude names is the one clicked (Fust, 7 Oct 2026)"},
+    {"integration": "desktop/integration/extension/visit-read.test.mjs", "test": "the engine keeps the pages of one visit as one feed (three jobs, each with its own employer and place, no duplicate) and reads the job data of an employer page without fetching"},
+    {"integration": "desktop/integration/extension/visits-auto.test.mjs", "test": "a page the app did not mark is left alone: nothing read, nothing sent"},
+    {"integration": "desktop/integration/extension/visits-auto.test.mjs", "test": "a marked tab waiting on the person says so: the Allow page opens beside it and the app is told it waits, nothing is read"},
+    {"integration": "desktop/integration/extension/visits-auto.test.mjs", "test": "a marked tab, once allowed, is read by itself over its pages, reported to the app as done, and closed"},
+    {"integration": "desktop/integration/extension/visits-auto.test.mjs", "test": "a marked tab whose site redirects by script and drops the mark is still read by itself, reported with its ticket"}
+   ]
+  },
+  {
+   "id": "J26",
+   "name": "Recent activity: every run reads in plain words and opens its result and log",
+   "tier": 2,
+   "steps": [
+    {"integration": "desktop/integration/app/screen-activity.test.js", "test": "the Actions page lists Recent runs: a kind, an end and a result in plain words for each"},
+    {"integration": "desktop/integration/app/screen-activity.test.js", "test": "the link to all runs opens Actions → Runs, and its task filter keeps one kind of run at a time"},
+    {"integration": "desktop/integration/app/screen-activity.test.js", "test": "opening a finished run shows its result card and its Technical log"},
+    {"integration": "desktop/integration/app/screen-activity.test.js", "test": "clicking the pop-up of a finished task opens that task's result in Recent activity"},
+    {"integration": "desktop/integration/app/screen-activity.test.js", "test": "a run recorded on this Mac without its message still shows its result from the Notion page, and keeps its own log"},
+    {"integration": "desktop/integration/app/screen-activity.test.js", "test": "a run read only from Notion (no local record) still shows its log, without a leak"},
+    {"integration": "desktop/integration/app/screen-activity.test.js", "test": "the Actions page and Recent runs render without layout problems"},
+    {"integration": "desktop/integration/app/screen-cardstates.test.js", "test": "every finished state reads in plain words, with its technical log folded"},
+    {"integration": "desktop/integration/app/screen-cardstates.test.js", "test": "Find jobs using your browser: its card counts the sites and jobs; a stopped site offers Open it myself and not Read with Claude (Claude takeover is off, owner 15 Oct 2026)"},
+    {"integration": "desktop/integration/app/screen-cardstates.test.js", "test": "a partial Tailor run: its counts, its row actions and its warning status agree"},
+    {"integration": "desktop/integration/app/screen-cardstates.test.js", "test": "Gmail \"which job?\" answers: three questions open, then each answer its own saved outcome"},
+    {"integration": "desktop/integration/app/screen-cardstates.test.js", "test": "Gmail connected now: past not-connected and revoked runs stay as history, without a button"},
+    {"integration": "desktop/integration/app/screen-cardstates.test.js", "test": "Gmail disconnected now: one way to connect, and the schedule says it waits for it"},
+    {"integration": "desktop/integration/app/screen-cardstates.test.js", "test": "a live run, mocked: Queued, then Running with its log open and Live, Jump to latest when scrolled up, then Completed keeps what you chose; reopened, folded"},
+    {"integration": "desktop/integration/store/run-tasks.test.mjs", "test": "Find jobs (an empty feed: nothing new): one Recent runs row, an end, plain words, a clean log, and no row left Running"},
+    {"integration": "desktop/integration/store/run-tasks.test.mjs", "test": "Check Gmail & Calendar with no Google connection: one Recent runs row, an end, plain words, a clean log, and no row left Running"},
+    {"integration": "desktop/integration/store/run-tasks.test.mjs", "test": "Analyze my job search: one Recent runs row, an end, plain words, a clean log, and no row left Running"}
+   ]
+  },
+  {
+   "id": "J27",
+   "name": "A failure is told in words on screen, never a plain Completed",
+   "tier": 2,
+   "steps": [
+    {"integration": "desktop/integration/app/screen-activity-failures.test.js", "test": "a search analysis stopped by the spending limit names the limit in words, with a way to raise it, and sends nobody to a terminal"},
+    {"integration": "desktop/integration/app/screen-activity-failures.test.js", "test": "Telegram refuses the digest: the run says so in words, never a plain Completed"},
+    {"integration": "desktop/integration/app/screen-activity-failures.test.js", "test": "Google access revoked: the Gmail check says so in words, never a plain Completed, never Google's raw answer"},
+    {"integration": "desktop/integration/app/screen-activity-failures.test.js", "test": "the AI out of credit while reading the CV: the CV card says it in words, never the API's JSON (#94)"},
+    {"integration": "desktop/integration/app/screen-activity-failures.test.js", "test": "the failure and queued states render without layout problems or technical text"},
+    {"integration": "desktop/integration/app/night-shots.test.js", "test": "Recent activity: the ${key} run, as a person sees it", "parts": ["Recent activity: the","run, as a person sees it"]},
+    {"integration": "desktop/integration/app/night-shots.test.js", "test": "Calendar with nothing scheduled"},
+    {"integration": "desktop/integration/app/night-shots.test.js", "test": "Focus of a fresh account: nothing waits, one suggested next step"},
+    {"integration": "desktop/integration/app/night-shots.test.js", "test": "Interviews when a search finds nothing"}
+   ]
+  },
+  {
+   "id": "J28",
+   "name": "Calendar: meetings on their own days in your time zone, each opens its job",
+   "tier": 2,
+   "steps": [
+    {"integration": "desktop/integration/app/screen-calendar.test.js", "test": "an empty calendar says nothing is scheduled and shows no meeting"},
+    {"integration": "desktop/integration/app/screen-calendar.test.js", "test": "the grid shows every meeting on its own day, in the app's time zone, with its time"},
+    {"integration": "desktop/integration/app/screen-calendar.test.js", "test": "a day with more than three meetings shows three and says how many more"},
+    {"integration": "desktop/integration/app/screen-calendar.test.js", "test": "the agenda lists what is coming soonest first and what is past latest first"},
+    {"integration": "desktop/integration/app/screen-calendar.test.js", "test": "the month arrows move through the months and Today comes back"},
+    {"integration": "desktop/integration/app/screen-calendar.test.js", "test": "a meeting opens its job in Notion, from the grid and from the agenda"},
+    {"integration": "desktop/integration/app/screen-calendar.test.js", "test": "on this Mac's store a meeting opens its job's side panel, from the grid and from the agenda"},
+    {"integration": "desktop/integration/app/screen-calendar.test.js", "test": "the same meetings fall on other days and hours in another time zone"},
+    {"integration": "desktop/integration/app/screen-calendar.test.js", "test": "the Calendar renders without layout problems, empty and with meetings"},
+    {"integration": "desktop/integration/store/calendar-interviews-store.test.mjs", "test": "calendar: six meetings on three days (four on one), a held recording of the first job and an old call with no job are written and read back"},
+    {"integration": "desktop/integration/store/calendar-interviews-store.test.mjs", "test": "interviews: three jobs and four interviews (three reviewed with different outcomes, one not) are written, read back whole, and the jobs list holds the three"}
+   ]
+  },
+  {
+   "id": "J29",
+   "name": "Apply from Jobs: prepares first, Check reads only, a silent Chrome says why it waits",
+   "tier": 2,
+   "steps": [
+    {"integration": "desktop/integration/app/screen-apply.test.js", "test": "the Jobs popup has one field, the first N best matching jobs not checked before, and says how many"},
+    {"integration": "desktop/integration/app/screen-apply.test.js", "test": "the session page says it too: \"Before you submit\" counts the knockout question that is still the person's, and says which CV goes in"},
+    {"integration": "desktop/integration/app/screen-apply.test.js", "test": "a silent Chrome in Background automation: a queued hidden-browser job says why it waits when the app's link is off, and never talks of the person's Chrome"},
+    {"integration": "desktop/integration/app/screen-apply.test.js", "test": "Apply on a saved job without a kit prepares first, and when the kit cannot be drafted says Retry apply and opens nothing"},
+    {"integration": "desktop/integration/app/screen-apply.test.js", "test": "a scored job without a kit shows the Apply button, never Prepare, and \"Prepare only\" in its ⋯ menu"},
+    {"integration": "desktop/integration/app/screen-apply-triage.test.js", "test": "every combination of the reader's flags reaches a chip, and every chip is reachable by a verdict (the pure half of the old step)"},
+    {"integration": "desktop/integration/app/screen-apply-triage.test.js", "test": "before any Check every job says Not checked; after one Check each row shows the chip and the reason of its own read"},
+    {"integration": "desktop/integration/app/screen-apply-triage.test.js", "test": "a Check reads only: the app is asked for no apply, no kit and no reopen (the demo logs every blocked action)"},
+    {"integration": "desktop/integration/app/screen-apply-silent.test.js", "test": "the app's own socket is off: the card says it can't hear Chrome at once, the pill says Connection off, and no button is offered"},
+    {"integration": "desktop/integration/app/screen-apply-silent.test.js", "test": "Chrome is silent with the link up: the card says Chrome isn't reporting, \"Open it again\" comes first and reopens the job, not the extension's settings"}
+   ]
+  },
+  {
+   "id": "J30",
+   "name": "A question the kit could not answer: pick from the left menu and Use fills it",
+   "tier": 2,
+   "steps": [
+    {"integration": "desktop/integration/app/screen-apply-needs.test.js", "test": "\"Needs your attention\" lists the left menu with what the kit proposed and the form's own choices"},
+    {"integration": "desktop/integration/app/screen-apply-needs.test.js", "test": "Use fills the picked choice and the row says so (or leaves the list)"},
+    {"integration": "desktop/integration/app/session-fill.test.js", "test": "the left menu reaches the session with its proposal and the form's choices, and Use comes back to the form as one fill command"},
+    {"integration": "desktop/integration/app/session-fill.test.js", "test": "Use with nothing written, or for a session that is gone, fills nothing"}
+   ]
+  },
+  {
+   "id": "J31",
+   "name": "Applications side by side keep their own forms; a closed tab Reopens; the night's answers reach the tab",
+   "tier": 2,
+   "steps": [
+    {"integration": "desktop/integration/app/session-tabs.test.js", "test": "the form tab is closed: the app sees it, and Reopen opens the form again with its fill mark, for the same session"},
+    {"integration": "desktop/integration/app/session-tabs.test.js", "test": "a second browser with the extension and no tabs: the form open in the first stays open"},
+    {"integration": "desktop/integration/app/session-tabs.test.js", "test": "two applications side by side: each form tab binds to its own session, and a report lands on its own card only"},
+    {"integration": "desktop/integration/app/session-night.test.js", "test": "the tab is handed the night's mark and nothing of its answers"},
+    {"integration": "desktop/integration/app/session-night.test.js", "test": "the page kind comes back as a form from the night, and the open question as the night answered it, with no AI asked (the kit's fetch refuses any call outside its own server)"},
+    {"integration": "desktop/integration/app/session-night.test.js", "test": "another page gets nothing from the night, and a contradicted kind is dropped"}
+   ]
+  },
+  {
+   "id": "J32",
+   "name": "Your details and CV land in the right fields: upload slot, letter slot, phone, required star",
+   "tier": 2,
+   "steps": [
+    {"integration": "desktop/integration/extension/upload-slot.test.mjs", "test": "${shape}: the CV goes into the one upload slot, which was a required unfilled row before and filled after", "parts": [": the CV goes into the one upload slot, which was a required unfilled row before and filled after"]},
+    {"integration": "desktop/integration/extension/upload-slot.test.mjs", "test": "${shape}: a slot that creates its input when + is pressed takes the CV, and the cover-letter slot only the letter", "parts": [": a slot that creates its input when + is pressed takes the CV, and the cover-letter slot only the letter"]},
+    {"integration": "desktop/integration/extension/upload-slot.test.mjs", "test": "${shape}: no cover-letter file means the cover-letter slot stays untouched, never the CV", "parts": [": no cover-letter file means the cover-letter slot stays untouched, never the CV"]},
+    {"integration": "desktop/integration/extension/upload-slot.test.mjs", "test": "without a CV in the app the required slot is listed as to do and nothing is attached"},
+    {"integration": "desktop/integration/extension/upload-slot.test.mjs", "test": "a wording nobody knows is left empty and reported; a phrase from the service then gives it a meaning"},
+    {"integration": "desktop/integration/extension/upload-slot.test.mjs", "test": "a pressable that opens nothing is a reported miss with the slot's fingerprint, and a recipe naming the trigger fixes it"},
+    {"integration": "desktop/integration/extension/upload-slot.test.mjs", "test": "a lone slot with a wording nobody knows takes the CV, as a lone file input always did"},
+    {"integration": "desktop/integration/extension/upload-slot.test.mjs", "test": "a choice that reveals an existing hidden input: the CV goes in, and the paste way is not pressed afterwards"},
+    {"integration": "desktop/integration/extension/upload-slot.test.mjs", "test": "a file already in the input: no trigger is pressed again (it would open the system file dialog over the person's page)"},
+    {"integration": "desktop/integration/extension/upload-slot.test.mjs", "test": "an import-from-CV input beside the form's own CV slot: the AI's choice gets the CV, the import input gets nothing"},
+    {"integration": "desktop/integration/extension/upload-slot.test.mjs", "test": "no choice (no AI, or it said none): the operator behaves as before"},
+    {"integration": "desktop/integration/extension/upload-slot.test.mjs", "test": "the slots' titles are listed for the app to ask about, only when two or more slots could take the CV"},
+    {"integration": "desktop/integration/extension/upload-slot.test.mjs", "test": "a slot's label reached only through aria-describedby/labelledby is part of the title the AI sees"},
+    {"integration": "desktop/integration/extension/upload-slot.test.mjs", "test": "${shape}: a pressable two levels under the container that names uploading takes the CV through the input the page already made, with no press", "parts": [": a pressable two levels under the container that names uploading takes the CV through the input the page already made, with no press"]},
+    {"integration": "desktop/integration/extension/phone-replace.test.mjs", "test": "real retyping replaces a different existing phone beside a country selector, including Fill again"},
+    {"integration": "desktop/integration/extension/phone-replace.test.mjs", "test": "post-country phone writer replaces the existing number on every pass"},
+    {"integration": "desktop/integration/extension/required-star.test.mjs", "test": "a field asked for by its label is found with the required star before or after it"}
+   ]
+  },
+  {
+   "id": "J33",
+   "name": "A menu question is answered by picking the right choice",
+   "tier": 2,
+   "steps": [
+    {"integration": "desktop/integration/extension/combo-click.test.mjs", "test": "a menu whose choices draw 2.5 s after the click is picked by one click"},
+    {"integration": "desktop/integration/extension/combo-click.test.mjs", "test": "a menu with no choice that matches says what it saw, after the page is done"},
+    {"integration": "desktop/integration/extension/combo-click.test.mjs", "test": "type-to-search box (${kind}): typed for real, the text that differs is picked by meaning from its options", "parts": ["type-to-search box (","): typed for real, the text that differs is picked by meaning from its options"]},
+    {"integration": "desktop/integration/extension/combo-click.test.mjs", "test": "type-to-search box: the answer already among the options needs no AI"},
+    {"integration": "desktop/integration/extension/combo-click.test.mjs", "test": "a menu whose choices say the answer in their own words is picked by meaning (${name})", "parts": ["a menu whose choices say the answer in their own words is picked by meaning ("]},
+    {"integration": "desktop/integration/extension/combo-click.test.mjs", "test": "a menu with no choice that means the answer is left (the app names none), not clicked again and again"},
+    {"integration": "desktop/integration/extension/combo-click.test.mjs", "test": "a menu that showed its choices is never typed at: one pick by meaning, no real typing"},
+    {"integration": "desktop/integration/extension/combo-click.test.mjs", "test": "a menu on a busy page (every call takes 3 s) that settles after 24 s is waited for, not given up"},
+    {"integration": "desktop/integration/extension/combo-click.test.mjs", "test": "a menu on a quiet page that never opens is still given up, quickly"},
+    {"integration": "desktop/integration/extension/combo-click.test.mjs", "test": "a menu on a busy page that never opens is still given up, by the hard cap"},
+    {"integration": "desktop/integration/extension/combo-click.test.mjs", "test": "a machine where every call takes 200 ms does not stretch the first look: a never-opening menu is left within a few seconds"},
+    {"integration": "desktop/integration/extension/menu-pick.test.mjs", "test": "a menu that takes only a real click on its option is picked through the trusted fallback, and says so"},
+    {"integration": "desktop/integration/extension/menu-pick.test.mjs", "test": "a plain menu is picked by script, no trusted click needed"},
+    {"integration": "desktop/integration/extension/menu-pick.test.mjs", "test": "a menu that never selects is NOT called picked: still armed, left to you, and the miss is observed as not selected"},
+    {"integration": "desktop/integration/extension/menu-pick.test.mjs", "test": "a menu that loads its choices page by page is scrolled until the answer appears, then picked"},
+    {"integration": "desktop/integration/extension/menu-pick.test.mjs", "test": "a menu that takes several choices gets each one picked with its own real click, not only the first"}
+   ]
+  },
+  {
+   "id": "J34",
+   "name": "While it fills, the page is dimmed, Stop works and the panel comes back",
+   "tier": 2,
+   "steps": [
+    {"integration": "desktop/integration/extension/fill-overlay.test.mjs", "test": "a fill step dims the page, holds the person's click, key and wheel, and centres the panel"},
+    {"integration": "desktop/integration/extension/fill-overlay.test.mjs", "test": "the end of the fill takes the overlay away and puts the panel back at its spot"},
+    {"integration": "desktop/integration/extension/fill-overlay.test.mjs", "test": "Stop (in the panel step row) takes the overlay away and is pressable above it"},
+    {"integration": "desktop/integration/extension/fill-overlay.test.mjs", "test": "a page that needs the person (a captcha left) takes the overlay away"},
+    {"integration": "desktop/integration/extension/fill-overlay.test.mjs", "test": "the app saying stuck after a step ends the working look; a newer step brings it back"},
+    {"integration": "desktop/integration/extension/fill-overlay.test.mjs", "test": "a navigation after the run leaves no overlay"},
+    {"integration": "desktop/integration/extension/fill-overlay.test.mjs", "test": "reading or routing a page covers it too, says it once in the step row, and lifts when the page is a form"},
+    {"integration": "desktop/integration/extension/fill-overlay.test.mjs", "test": "every working state dims the page and centres the panel, together; its end does neither"},
+    {"integration": "desktop/integration/extension/fill-overlay.test.mjs", "test": "every end of a working state takes the dim and the centring away together, never one of them"},
+    {"integration": "desktop/integration/extension/fill-overlay.test.mjs", "test": "after Stop, every restart on the page works again: Check form again, Fill again, Fill anyway, the popup's Apply on this page"},
+    {"integration": "desktop/integration/extension/fill-overlay.test.mjs", "test": "back-to-back steps keep the dim and the centring at every frame: the mark moving on mid-fill, an end with the next step a moment later"},
+    {"integration": "desktop/integration/extension/fill-overlay.test.mjs", "test": "a page the app opened to fill is dimmed at load: the dim is on while the page is still loading, before its form is drawn, and the panel takes it over centred"},
+    {"integration": "desktop/integration/extension/fill-overlay.test.mjs", "test": "a page opened without the fill mark is never dimmed at load"},
+    {"integration": "desktop/integration/extension/fill-overlay.test.mjs", "test": "the working status row is one line: spinner, the step left-aligned and cut with … , Stop at the right; the hint below"},
+    {"integration": "desktop/integration/extension/fill-overlay.test.mjs", "test": "while working, every panel button is hidden or works: Stop, minimise and the pill act, nothing else is drawn"},
+    {"integration": "desktop/integration/extension/fill-overlay.test.mjs", "test": "Check again on \"Your action is needed\" reads the form again and the AI judges it anew: the card goes when the page no longer needs you"},
+    {"integration": "desktop/integration/extension/fill-overlay.test.mjs", "test": "Check again keeps \"Your action is needed\" when the AI still says the page needs the person"},
+    {"integration": "desktop/integration/extension/fill-overlay.test.mjs", "test": "the fill writing its end on the page frees it at once: the person's first click after \"done\" lands, before the worker clears its step"},
+    {"integration": "desktop/integration/extension/fill-overlay-run.test.mjs", "test": "an Apply from the posting to the fill's end is working then one verdict, and every document keeps its look from the first moment it showed it until that verdict"},
+    {"integration": "desktop/integration/extension/fill-overlay-run.test.mjs", "test": "the posting that dims at once but shows its complete look late (a loaded machine) passes; a posting that never dims is reported"},
+    {"integration": "desktop/integration/extension/fill-overlay-run.test.mjs", "test": "the run is read once the worker has logged its verdict, not at the first read (#2813 run 41308778286: the page showed its end first)"},
+    {"integration": "desktop/integration/extension/fill-overlay-early-reload.test.mjs", "test": "an Apply whose posting is replaced at once (${name}) stays dimmed, centred and working at every sample", "parts": ["an Apply whose posting is replaced at once (",") stays dimmed, centred and working at every sample"]},
+    {"integration": "desktop/integration/extension/fill-overlay-early-reload.test.mjs", "test": "the verdict \"${state}\" lifts the dim and the centred panel for good", "parts": ["the verdict \"","\" lifts the dim and the centred panel for good"]},
+    {"integration": "desktop/integration/extension/fill-overlay-early-reload.test.mjs", "test": "replacing the document root during an Apply keeps both drawings at every frame until Stop"}
+   ]
+  },
+  {
+   "id": "J35",
+   "name": "Reports and saved views: the weekly report, the funnel and a saved view come from the store",
+   "tier": 2,
+   "steps": [
+    {"integration": "desktop/integration/app/screen-stores.test.js", "test": "with the data on this Mac, Interviews asks for no Notion; with no store chosen and no Notion it still asks to connect"},
+    {"integration": "desktop/integration/app/screen-stores.test.js", "test": "a saved view chip narrows the list: Saved shows the saved application only"},
+    {"integration": "desktop/integration/app/screen-stores.test.js", "test": "a job's page shows its kit, prep and history from the store, with no \"Open in Notion\""},
+    {"integration": "desktop/integration/app/screen-stores.test.js", "test": "Reports shows the weekly report and the insights; a feedback is kept in the store and shown after a reload"},
+    {"integration": "desktop/integration/app/screen-stores.test.js", "test": "Reports → Funnel shows the Pipeline table from the store's applications"}
    ]
   }
  ],
@@ -216,7 +526,6 @@
  ],
  "to_come": [
  "Always on / Notion (tier 2): integration only (strategy-notion-integration.test.mjs 'an edit made directly on the Notion page is used by the next check, and a removed role stops matching'); its e2e step left with the Notion-only steps (owner, 1 Nov 2026)",
-  "Cover letter (tier 2): integration test to write (a job's letter reaches its form); a8 writes it",
-  "Calendar (tier 2): integration test to write; a8 writes it"
+  "Cover letter (tier 2): integration test to write (a job's letter reaches its form); a8 writes it"
  ]
 }

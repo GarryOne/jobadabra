@@ -443,11 +443,6 @@
         "n": 6,
         "p95Seconds": 0.2
       },
-      "Tailor CVs for top matches: asked for 2, it tailors the two best open jobs without a CV, in fit order, and leaves the third alone": {
-        "seconds": 195,
-        "n": 6,
-        "p95Seconds": 65
-      },
       "the Notion stand-in answered every request the app made": {
         "seconds": 30,
         "n": 5,

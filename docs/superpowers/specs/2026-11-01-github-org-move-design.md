@@ -69,7 +69,7 @@
 - `OWNER_OF_*` variables instead of one-day flag edits? **Yes** (no red window; 3 variables).
 
 ## Progress
-- [x] 1/7 Inventory of all 6 repos and their settings (read-only)
+- [x] 1/7 Inventory of all 6 repos and their settings (read-only) (proof: docs/superpowers/specs/2026-11-01-github-org-move-design.md)
 - [ ] Step 0 proof: transfer `rename-proof-a-renamed` into the org; test `uses:` redirect, secrets kept, ruleset kept
 - [ ] 2/7 App constant + redirect test
 - [ ] 3/7 jobadabra workflows owner-neutral

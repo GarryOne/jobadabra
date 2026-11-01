@@ -1,9 +1,9 @@
-// The live view's core (hosted/ready-fill/live.mjs attachLive): frames out and the person's input in over a plain message channel (any client:
+// The live view's core (desktop/ready-fill/live.mjs attachLive): frames out and the person's input in over a plain message channel (any client:
 // the Mac app's screen now, a phone later), with the two bridges a hidden browser needs (B0, 28 Oct 2026): a native dropdown's list drawn by the
 // viewer, and a file the app resolves. Nothing here presses anything on its own. Fakes only: no browser, no page, no file outside the test's folder.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {attachLive, handoffOf, pageFacts, pressText} from '../../hosted/ready-fill/live.mjs';
+import {attachLive, handoffOf, pageFacts, pressText} from '../../desktop/ready-fill/live.mjs';
 
 function fakes({nodeAt = () => null, evaluate = () => ({}), cookies = []} = {}) {
   const sent = [], calls = [], handlers = new Map();

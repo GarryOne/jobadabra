@@ -86,6 +86,7 @@ on:
       - 'desktop/e2e/replays-report.mjs'
       - 'desktop/e2e/test/record/recorded-pages.test.mjs'
       - 'desktop/lib/**'
+      - 'desktop/ready-fill/extension-storage.mjs'
       - 'desktop/renderer/answers-model.js'
       - 'desktop/renderer/apply-settings-model.js'
       - 'desktop/renderer/countries.js'

@@ -64,6 +64,6 @@ test('tab-report.js asks the helper at both places it reloads, with the owned fl
   assert.match(report, /import \{mayReloadSelf\} from '\.\/self-reload\.js';/);
   assert.equal((report.match(/chrome\.runtime\.reload\(\)/g) || []).length, 2, 'two reload calls, each behind the helper');
   assert.equal((report.match(/mayReloadSelf\(/g) || []).length, 2);
-  const copy = fs.readFileSync(new URL('../../hosted/ready-fill/extension-copy.mjs', import.meta.url), 'utf8');
+  const copy = fs.readFileSync(new URL('../../desktop/ready-fill/extension-copy.mjs', import.meta.url), 'utf8');
   assert.match(copy, /globalThis\.__jobPilottoBackgroundOwned = true/, 'the flag the helper reads is the one the owned copy sets');
 });

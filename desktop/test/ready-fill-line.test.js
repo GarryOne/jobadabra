@@ -1,4 +1,4 @@
-// The night's forms in a line, in the container (hosted/ready-fill/night.mjs; owner, 18 Oct 2026: one server, forms in a line, a live line and Stop per row):
+// The night's forms in a line, in the container (desktop/ready-fill/night.mjs; owner, 18 Oct 2026: one server, forms in a line, a live line and Stop per row):
 // the site is faked at fetch and the browser by a small stand-in (no Chrome), so the line itself is what is tested: a form added while the night runs joins it,
 // each form's steps reach the site, a form the owner stopped is dropped without a result, and the night ends when its token is refused (no orphan run).
 import assert from 'node:assert/strict';
@@ -21,7 +21,7 @@ function fakeChromium() {
 }
 
 test('a form joins the running night, its steps reach the site, a stopped form sends no result, and a refused token ends the night', {timeout: 30000}, async () => {
-  const {runNight} = await import('../../hosted/ready-fill/night.mjs');
+  const {runNight} = await import('../../desktop/ready-fill/night.mjs');
   const calls = [];
   let reads = 0;
   const fetchImpl = async (url, init = {}) => {
@@ -47,7 +47,7 @@ test('a form joins the running night, its steps reach the site, a stopped form s
 });
 
 test('a site from before the line (it returns every form, not only those waiting) ends the night after its first list, never refilling the same form', {timeout: 20000}, async () => {
-  const {runNight} = await import('../../hosted/ready-fill/night.mjs');
+  const {runNight} = await import('../../desktop/ready-fill/night.mjs');
   const results = [];
   const fetchImpl = async (url, init = {}) => {
     const route = new URL(url).pathname.replace('/api/ready/', ''), body = init.body ? JSON.parse(init.body) : null;
@@ -60,7 +60,7 @@ test('a site from before the line (it returns every form, not only those waiting
 });
 
 test('the container fills each press of a form once: a stale list fills nothing more, a Fill again (its turn counted up) fills it again', {timeout: 30000}, async () => {
-  const {runNight, pressOf} = await import('../../hosted/ready-fill/night.mjs');
+  const {runNight, pressOf} = await import('../../desktop/ready-fill/night.mjs');
   assert.equal(pressOf({id: 'j1'}), 'j1:0');
   const results = [];
   let reads = 0;
@@ -78,7 +78,7 @@ test('the container fills each press of a form once: a stale list fills nothing 
 });
 
 test('the live line goes to the site when the step changes or every 10 s; a stop or a refused token says stop', async () => {
-  const {stepper} = await import('../../hosted/ready-fill/night.mjs');
+  const {stepper} = await import('../../desktop/ready-fill/night.mjs');
   let clock = 0, reply = {ok: true, stop: false};
   const sent = [];
   const step = stepper({fetchImpl: async (url, init) => { sent.push(JSON.parse(init.body)); return {json: async () => reply}; }, site: 'https://s', token: 't', job: 'j1', now: () => clock});

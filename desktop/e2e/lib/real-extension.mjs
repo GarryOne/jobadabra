@@ -18,7 +18,7 @@ import path from 'node:path';
 import {E2E} from './app.mjs';
 import {EXTENSION_DIR, browserChannel, copyExtension, freePort} from './extension.mjs';
 import {LAUNCH_TIMEOUT_MS, launchGuard} from './launch-guard.mjs';
-import {setExtensionStorage} from '../../../hosted/ready-fill/extension-storage.mjs';
+import {setExtensionStorage} from '../../../desktop/ready-fill/extension-storage.mjs';
 import {endBrowser} from './browser-end.mjs';
 import {extensionWorker} from './own-worker.mjs';
 import {stageWithin} from './wait-on-state.mjs';

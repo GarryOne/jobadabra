@@ -1,5 +1,5 @@
 // The app screen's thin connection to a hidden-browser session's live view (spec 2026-10-27-background-apply-execution, step B): the core is
-// hosted/ready-fill/live.mjs attachLive (any channel, any CDP session); here the channel is the window's IPC, so a phone viewer later reuses the
+// desktop/ready-fill/live.mjs attachLive (any channel, any CDP session); here the channel is the window's IPC, so a phone viewer later reuses the
 // core with its own channel. Guards: test/ipc.test.js (every call handled), test/live-view-handlers.test.js.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -9,7 +9,7 @@ import {openCdpSession} from './cdp-session.js';
 import {openFrameTargets} from './frame-targets.js';
 import {CV_FILES} from '../renderer/cv-files.js';
 
-const liveModule = () => import(pathToFileURL(path.join(ROOT, 'hosted', 'ready-fill', 'live.mjs')).href);
+const liveModule = () => import(pathToFileURL(path.join(ROOT, 'desktop', 'ready-fill', 'live.mjs')).href);
 
 /** "Open in my browser": the hand-off of the hidden tab at `address` (live.mjs handoffOf), read over its own short CDP session. */
 export async function readHandoff(address, openCdp = openCdpSession) {

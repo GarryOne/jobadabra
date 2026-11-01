@@ -1,3 +1,4 @@
+// Job: serve stored answers
 // Pool runs measure FILLING, so the extension's eligibility stop is off in them (owner via the coordinator, 11 Oct 2026): the fake applicant cannot take most
 // pool postings (Sydney, US on-site), and a stop hid how far the fill gets. record-sites.mjs gives every row, on BOTH paths (plain node: live.mjs -> lib/live-row.mjs;
 // Electron: the apply suite -> lib/apply-live.mjs), LIVE_ELIGIBILITY=off; each live runner sets the harness extension's chrome.storage.local
@@ -5,7 +6,7 @@
 // Guard: e2e/test/pool-eligibility.test.mjs.
 /* global chrome */
 import {recordVar} from '../../../tools/record-env.mjs';
-import {setExtensionStorage} from '../../../hosted/ready-fill/extension-storage.mjs';
+import {setExtensionStorage} from '../../../desktop/ready-fill/extension-storage.mjs';
 
 export const ELIGIBILITY_ENV = 'LIVE_ELIGIBILITY';
 

@@ -16,4 +16,6 @@ export default [
   },
   {files: ['desktop/renderer/**/*.js', 'desktop/demo/**/*.js', 'desktop/preload.cjs'], languageOptions: {globals: globals.browser}},
   {files: ['extension/**/*.js'], languageOptions: {globals: {...globals.browser, chrome: 'readonly'}}},
+  // Why (1 Nov 2026, rs 5a/6): the night's fill job runs these callbacks inside the page (page.evaluate); the file moved from hosted/ (never linted) into desktop/.
+  {files: ['desktop/ready-fill/fill-job.mjs'], languageOptions: {globals: globals.browser}},
 ];

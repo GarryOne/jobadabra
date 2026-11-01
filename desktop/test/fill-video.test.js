@@ -1,4 +1,4 @@
-// The fill video (hosted/ready-fill/fill-video.mjs): it finds Playwright's ffmpeg, writes the page's frames at a fixed rate, stops by itself at its limit
+// The fill video (desktop/ready-fill/fill-video.mjs): it finds Playwright's ffmpeg, writes the page's frames at a fixed rate, stops by itself at its limit
 // (never over 3 minutes, the owner's cap), and keeps no file when nothing was recorded. A fake page and a fake ffmpeg; the real encode is the PR's proof.
 import assert from 'node:assert/strict';
 import {EventEmitter} from 'node:events';
@@ -6,7 +6,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {test} from 'node:test';
-import {MAX_SECONDS, discard, ffmpegArgs, findFfmpeg, pickEncoder, startFillVideo} from '../../hosted/ready-fill/fill-video.mjs';
+import {MAX_SECONDS, discard, ffmpegArgs, findFfmpeg, pickEncoder, startFillVideo} from '../../desktop/ready-fill/fill-video.mjs';
 
 const JPEG = Buffer.from([0xff, 0xd8, 0xff, 0xd9]).toString('base64');
 

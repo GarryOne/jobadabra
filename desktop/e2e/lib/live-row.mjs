@@ -4,6 +4,7 @@
 // page by the harness, never Submit. Every page is captured as the Electron run captures it (lib/capture-journey.mjs, at the extension's ask), and the privacy
 // tripwire (lib/privacy-tripwire.mjs) checks every field every few seconds and before anything is written. -> {seconds, opened, evidence, tripped}.
 // CLI: live-row.mjs. Guard: e2e/test/live-row.test.mjs (a fake site, memo-only).
+// Job: serve stored answers
 /* global document, location */
 import {liveVideo} from './live-video.mjs';
 import {stallNote} from './stall-note.mjs';
@@ -38,6 +39,7 @@ import {appKey, isCi, keySecret, testKey} from './engine.mjs';
 import {keepRecord, netRecorder} from './net-record.mjs';
 import {seedRandom} from './seeded-random.mjs';
 import {hereZone} from './replay-date.mjs';
+import {extensionWorker} from './own-worker.mjs';
 
 const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -91,7 +93,7 @@ export async function runLiveRow({posting, captureDir, extensionDir, ask = true,
     return '';
   };
   try {
-    await applyPoolEligibility(run.context.serviceWorkers()[0] || await run.context.waitForEvent('serviceworker', {timeout: 30000}), {say});   // before Apply: a pool run measures filling
+    await applyPoolEligibility(await extensionWorker(run.context), {say});   // before Apply: a pool run measures filling
     await app.call('saveContact', contactFor(CONTACT, accounts, posting.url));   // a host with a test account: that account's email (lib/test-accounts.mjs contactFor)
     // The posting as the Electron path has it (suites/apply.mjs): tracked, Saved, no kit, in this app's own store (lib/seed-data.mjs seedLivePosting).
     const store = {store: 'sqlite', profile: app.dir};

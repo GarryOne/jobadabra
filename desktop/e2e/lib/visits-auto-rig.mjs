@@ -10,6 +10,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {chromium} from 'playwright-core';
 import {browserChannel, copyExtension, freePort} from './extension.mjs';
+import {extensionWorker} from './own-worker.mjs';
 
 const FIXTURES = path.join(import.meta.dirname, '..', 'fixtures', 'visits');
 export const ALLOWED = 'jobs.lever.co';         // a job-system host in the extension's host_permissions
@@ -76,7 +77,7 @@ export async function startRig() {
   });
   const close = async () => { await context.close().catch(() => {}); app.server.close(); sites.close(); };
   try {
-    const worker = context.serviceWorkers()[0] || await context.waitForEvent('serviceworker', {timeout: 30000});
+    const worker = await extensionWorker(context);
     return {app, appPort, context, worker, reads: () => app.calls.filter(call => call.path === '/extension/visit-read'), close};
   } catch (error) { await close(); throw error; }
 }

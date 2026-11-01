@@ -18,6 +18,7 @@ import {LAUNCH_TIMEOUT_MS, launchGuard} from './launch-guard.mjs';
 import {markedSession} from '../../lib/session-tab.js';
 import {startTabs, visitGuard} from './spool-tabs.mjs';
 import {DEFAULT_APP_PORT, freePort} from './own-port.mjs';
+import {extensionWorker} from './own-worker.mjs';
 
 export const EXTENSION_DIR = path.resolve(E2E, '..', '..', 'extension');
 export {DEFAULT_APP_PORT, freePort};   // moved so lib/app.mjs can use them without importing this file (it imports app.mjs)
@@ -107,7 +108,7 @@ export async function launchBrowser({port, spool, extensionDir, real = false, pr
     await context.close().catch(closeError => console.error(`closing the browser after a failed start: ${closeError.message}`));
     throw error;
   }
-  const serviceWorker = async () => context.serviceWorkers()[0] || await context.waitForEvent('serviceworker', {timeout: 30000});
+  const serviceWorker = () => extensionWorker(context);
   return {context, opened: tabs.opened, pages: tabs.pages, requested, trail: tabs.trail, loaded: tabs.loaded, serviceWorker,
     close: async () => {
       await tabs.stop();

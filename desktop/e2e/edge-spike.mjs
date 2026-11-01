@@ -1,11 +1,13 @@
 // Does the app's launcher find Microsoft Edge, and does Edge load the unpacked Jobadabra extension? Run by .github/workflows/edge-check.yml on a Windows runner (Edge is preinstalled there).
 // The launcher check must pass; whether branded Edge still honours --load-extension is reported, not enforced (Chrome 137+ stopped; Edge may have too).
+// Job: wait on state
 import {chromium} from 'playwright-core';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {browserCommand} from '../lib/browser-launch.js';
+import {extensionWorker} from './lib/own-worker.mjs';
 
 const extension = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'extension');
 const note = (level, text) => console.log(process.env.GITHUB_ACTIONS ? `::${level}::${text}` : `${level}: ${text}`);
@@ -20,8 +22,8 @@ const context = await chromium.launchPersistentContext(profile, {
   args: ['--headless=new', `--disable-extensions-except=${extension}`, `--load-extension=${extension}`, '--no-first-run'],
 });
 console.log('Edge version:', context.browser()?.version());
-let worker = context.serviceWorkers()[0];
-if (!worker) worker = await context.waitForEvent('serviceworker', {timeout: 20000}).catch(() => null);
+let worker = null, workerError = '';
+try { worker = await extensionWorker(context, {timeout: 20000}); } catch (error) { workerError = error.message; }   // a spike: no worker is a finding, said below
 if (worker) console.log('extension loaded in Edge:', worker.url());
-else note('warning', 'Edge started but did not load the unpacked extension (--load-extension ignored?)');
+else note('warning', `Edge started but did not load the unpacked extension (--load-extension ignored?): ${workerError}`);
 await context.close();

@@ -9,6 +9,7 @@ import {chromium} from 'playwright-core';
 import {INSTRUCTIONS as FORM_JUDGE} from '../../lib/form-judge.js';
 import {addKitJob, removeJobsByUrl, stageOf} from './seed-data.mjs';
 import {appLogLines} from './app-log.mjs';
+import {OWNED_WORKER} from './own-worker.mjs';
 
 const FOLDER = {darwin: 'chrome-mac-', linux: 'chrome-linux64', win32: 'chrome-win64'};
 /**
@@ -90,7 +91,7 @@ export const backgroundStateOf = async (page, url) => (await backgroundOf(page, 
  * Why (30 Oct 2026, found by the bot-check steps): Start takes the first eligible job and the suite's steps assume one is left, so a job a proof leaves handed over is started again by the next proof. */
 export async function skipJob(page, form) {
   const left = await sessionOf(page, form.url).catch(() => '');
-  if (left) await page.evaluate(session => window.pilot.sessionSkip(session), left).catch(() => {});
+  if (left) await page.evaluate(session => window.pilot.sessionSkip(session), left).catch(error => console.log(`  could not skip session ${left}: ${String(error?.message || error).slice(0, 120)}`));
 }
 
 /** Opens this application's session on the Sessions page: the card a click on its dock card or list row opens (pages/session-log.js openSession), picked by the session's id.
@@ -207,6 +208,36 @@ export async function closeHiddenBrowser(profile) {
 }
 
 /**
+ * The compact state a hang message leads with, so a cap that cuts the message still names the cause: whether the owned worker is there, the hidden browser's tabs, and the app's queue
+ * (each session with its background state). Never throws. Why (1 Nov 2026, apply-3of3 41269739097): the bot-check message was cut at 600 characters before it said anything about the browser.
+ */
+export async function hiddenBrief(profile, page, {targets: list = hiddenTargets} = {}) {
+  let browser;
+  try {
+    const targets = await list(profile);
+    browser = `owned worker ${targets.some(item => item.type === 'service_worker' && OWNED_WORKER.test(String(item.url))) ? 'yes' : 'NO'}; tabs: ${targets.filter(item => item.type === 'page').map(item => String(item.url).slice(0, 60)).join(' | ') || 'none'}`;
+  } catch (error) { browser = `not reachable (${String(error?.message || error).slice(0, 60)})`; }
+  let queue;
+  try { queue = (await page.evaluate(() => window.pilot.sessions())).map(item => `${item.id}:${item.background?.state || '-'}`).join(' ') || 'none'; } catch (error) { queue = `unreadable (${String(error?.message || error).slice(0, 60)})`; }
+  return `hidden browser: ${browser} | app queue: ${queue}`;
+}
+
+/**
+ * Runs a proof's `body`; when it throws, the jobs it started are ended the way the person ends them ("Skip this role") BEFORE the error goes on, and the hidden browser is closed on every path.
+ * Why (1 Nov 2026, rule 7, apply-3of3 41267661024): "Full automation presses Submit once" threw at its poll with its auto session still queued; the next steps found it first ("Stop on the card" read its
+ * card, "several queued jobs" counted it as one of the 4). A job that finished (Applied) is left as it is: only a failed step skips.
+ */
+export async function withJobsEnded(ctx, jobs, body) {
+  try { return await body(); }
+  catch (error) {
+    for (const job of jobs) await skipJob(ctx.page, job);
+    const left = (await Promise.all(jobs.map(job => sessionOf(ctx.page, job.url).catch(() => '')))).filter(Boolean);
+    if (left.length) console.log(`  after the failed step, ${left.length} session(s) are still listed: ${left.join(', ')}`);
+    throw error;
+  } finally { if (process.env.E2E_KEEP_HIDDEN !== '1') await closeHiddenBrowser(ctx.profile); }   // E2E_KEEP_HIDDEN=1: leave it running to probe by hand after a failure (local only)
+}
+
+/**
  * The proof: Background automation saved as the mode; the app fills the fixture form in its hidden browser and reaches Ready to review without posting; the person's Submit
  * (liveSubmit, the app re-reads the page first) posts exactly once and the job becomes Applied. `until(what, check, ms)` is the suite's state wait.
  */
@@ -216,7 +247,7 @@ export async function proveBackground(ctx, {form, seed, until}) {
   if (unlinked) { if (process.platform === 'win32') { console.log(`  skipped here: ${unlinked}`); return; } throw new Error(unlinked); }
   proxy.setCanned(withFormJudge(proxy.canned(), 'Submit Application'));
   await seed();
-  try {
+  await withJobsEnded(ctx, [form], async () => {
     await page.evaluate(chosenAt => window.pilot.saveSettings({apply: {mode: 'fill', chosenAt}}), new Date().toISOString());
     const posted = forms.posts.length;
     const started = await page.evaluate(() => window.pilot.apply({n: 1, mode: 'settings'}));
@@ -246,7 +277,7 @@ export async function proveBackground(ctx, {form, seed, until}) {
     if (!sent?.ok) throw new Error(`the person's Submit was refused: ${sent?.error}`);
     await until('the job never became Applied after the person submitted in the live view', async () => (await stageOf(ctx, form.url)) === 'Applied', 120000);
     if (forms.posts.length !== posted + 1) throw new Error(`expected the person's one Submit, the server saw ${forms.posts.length - posted}`);
-  } finally { if (process.env.E2E_KEEP_HIDDEN !== '1') await closeHiddenBrowser(ctx.profile); }   // E2E_KEEP_HIDDEN=1: leave it running to probe by hand after a failure (local only)
+  });
 }
 
 const HANDOFF = /^(needs_user_handoff|manual_submit_required)$/;
@@ -270,7 +301,7 @@ export async function proveBotCheck(ctx, {form, mode, seed, until}) {
     const started = await page.evaluate(() => window.pilot.apply({n: 1, mode: 'settings'}));
     if (started?.ok === false) throw new Error(`the app refused to start the ${mode} mode: ${started.error}`);
     const handed = await until('the hidden browser never handed the bot check to the person', async () => { const held = await backgroundOf(page, form.url); return HANDOFF.test(held?.state || '') ? held : null; }, 180000)
-      .catch(async error => { throw new Error(`${error.message} | ${await describeHidden(ctx.profile)} | state: ${(await backgroundOf(page, form.url))?.state || 'none'}`); });
+      .catch(async error => { throw new Error(`${await hiddenBrief(ctx.profile, page)} | state: ${(await backgroundOf(page, form.url))?.state || 'none'} | ${error.message} | ${await describeHidden(ctx.profile)}`); });
     if (!/^captcha_/.test(handed.reason)) throw new Error(`the hand-off reason is "${handed.reason}", not a bot check (captcha_*)`);
     await openSessionCard(page, form);
     const readCard = () => page.evaluate(() => ({title: document.querySelector('#ss-next-title')?.innerText || '', pill: document.querySelector('#ss-stage')?.innerText || '', open: document.querySelector('#ss-title, .ss-title')?.innerText || '',

@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {pressStop} from '../lib/panel-stop.mjs';
 import {startRealExtension} from '../lib/real-extension.mjs';
+import {extensionWorker} from '../lib/own-worker.mjs';
 
 const FORM = `<!doctype html><title>Senior Site Reliability Engineer</title><form><h1>Apply</h1>
 <label>Full name <input name="n" required></label><label>Email <input name="e" type="email" required></label><label>Phone <input name="p" required></label><label>City <input name="c" required></label></form>`;
@@ -15,7 +16,7 @@ const open = async () => {
   await app.page.goto('https://jobs.example.test/apply');
   await app.page.evaluate(() => { location.hash = 'jobpilotto-fill'; });
   await app.page.waitForFunction(() => document.getElementById('jobpilotto-review-host')?.shadowRoot?.querySelector('.report-btn'), null, {timeout: 20000});
-  const worker = app.context.serviceWorkers()[0];
+  const worker = await extensionWorker(app.context);
   const step = text => worker.evaluate(async words => { const [tab] = await chrome.tabs.query({url: 'https://jobs.example.test/*'}); return chrome.tabs.sendMessage(tab.id, {type: 'panelStep', text: words}); }, text);
   const press = selector => app.page.locator('#jobpilotto-review-host').locator(selector).click();   // a trusted click, after the live control is visible and stable
   const surface = () => app.page.evaluate(() => { const jp = document.getElementById('jobpilotto-review-host')?.shadowRoot?.querySelector('.jp'); return jp && {theme: jp.dataset.theme || '', card: getComputedStyle(jp.querySelector('.card')).backgroundColor}; });

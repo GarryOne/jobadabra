@@ -45,6 +45,7 @@ on:
       - 'desktop/e2e/lib/offline-site-password.mjs'
       - 'desktop/e2e/lib/owner-guard-env.mjs'
       - 'desktop/e2e/lib/own-port.mjs'
+      - 'desktop/e2e/lib/own-worker.mjs'
       - 'desktop/e2e/lib/page-replay.mjs'
       - 'desktop/e2e/lib/pool-eligibility.mjs'
       - 'desktop/e2e/lib/privacy-tripwire.mjs'

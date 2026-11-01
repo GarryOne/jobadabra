@@ -388,7 +388,7 @@ export async function runApply(ctx, parts) {
     if (forms.posts.length !== 1) throw new Error(`expected the person's one Submit, the server saw ${forms.posts.length}`);
     if (proxy.stats.canned - asked < 1) throw new Error('the page after Submit was never sent to the AI');
     await until('the job is Applied but its session is still on the list', async () => !(await sessionsOf(form.url)).length, 30000);
-  }, {needs: ctx.needs});
+  }, {needs: ctx.needs, data: true});
 
   // "I submitted it" (the session card's button; the app missed the submit): the job becomes Applied AND its sessions end, not only the Notion row (3 Oct 2026).
   await ctx.run('"I submitted it" marks the job Applied and takes its session off the list', async () => {

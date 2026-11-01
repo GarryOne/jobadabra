@@ -165,7 +165,7 @@ export async function runParts(ctx, parts) {
       if (!result?.ok && listed === 'saved') problems.push('the list shows the job as saved though the save failed');
       if (!result?.ok && /<!DOCTYPE|internal_server_error|"object":|Traceback/.test(String(result?.error || ''))) problems.push('the message for the person carries Notion\'s raw answer');
       if (problems.length) throw new Error(problems.join('; '));
-    }, {needs: ctx.needs, faults: true});
+    }, {needs: ctx.needs, faults: true, data: true});
   }
   if (parts.includes('channels')) {
     // ---------- (2c) Telegram (5 Oct 2026) ----------

@@ -119,7 +119,7 @@ export async function run(ctx) {
     const crawl = [...state.first.crawl].sort();
     const wanted = ['E2E Acme', 'E2E Beta', 'E2E Nimbus', 'E2E Orbit'];
     if (JSON.stringify(crawl) !== JSON.stringify(wanted)) throw new Error(`the crawl would read [${crawl}], expected [${wanted}]`);
-  }, {needs: ctx.needs});
+  }, {needs: ctx.needs, data: true});
 
   await ctx.run('a second run writes nothing twice', async () => {
     const rowsBefore = (await employers(ctx)).length;
@@ -134,7 +134,7 @@ export async function run(ctx) {
     if (after.registered.length !== state.first.registered.length) throw new Error(`the second run registered ${after.registered.length - state.first.registered.length} more source(s)`);
     const line = parseRunLine(state.second[0].result);
     if (!line || line.checked !== 0 || line.added !== 0) throw new Error(`the second run says "${state.second[0].result}": everything was checked, so it should say checked 0 and no new sources`);
-  }, {needs: ctx.needs});
+  }, {needs: ctx.needs, data: true});
 
   // The AI judge is paid for in the nightly release gate and in a manual run (E2E_FULL=1 in CI), not on the three-a-day schedule: what it judges is tuned once. On a Mac it always runs.
   const FULL = {name: 'the nightly or a manual run (E2E_FULL=1)', value: process.env.CI ? process.env.E2E_FULL : '1'};

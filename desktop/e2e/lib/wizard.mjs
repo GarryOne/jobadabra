@@ -137,7 +137,7 @@ export async function runWizard(ctx) {
     if (state.notion) throw new Error('the app says Notion is connected, but it was never connected');
     if (!state.hasProfile) throw new Error('the strategy was not kept on this Mac');
     if (!fs.existsSync(path.join(ctx.profile, 'profile.md'))) throw new Error('profile.md is not in the app folder');
-  }, {needs: ctx.needs});
+  }, {needs: ctx.needs, data: true});
   // Nothing starts behind the person's back (owner, 24 Oct 2026): Jobs shows the big Find jobs card, and the first search starts when it is pressed.
   await ctx.run('Jobs opens on the Find jobs card; pressing it starts the first search', async () => {
     await page.waitForFunction(() => document.body.dataset.findCard === 'empty', null, {timeout: 30000});
@@ -151,7 +151,7 @@ export async function runWizard(ctx) {
     await ctx.run('a new install keeps its data on this Mac: the store is set once at first start', async () => {
       const store = JSON.parse(fs.readFileSync(path.join(ctx.profile, 'settings.json'), 'utf8')).store;
       if (store !== 'sqlite') throw new Error(`a new install started on "${store}", not this Mac`);
-    }, {needs: ctx.needs});
+    }, {needs: ctx.needs, data: true});
   }
   // This Mac's store: no page carries the Notion prompt and there is nothing to connect.
   if (ctx.store === 'sqlite' || ctx.newInstall) {

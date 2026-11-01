@@ -85,6 +85,19 @@ export async function pollUntil(read, accepts, {capMs = POLL_CAP_MS, tickMs = 25
   }
 }
 
+/**
+ * Wait until `accepts(read())` under the running step's own clock (stepTimeLeft), never a number of seconds of its own; resolves {value: the last read, ms}. A read that throws
+ * (the page moves under it) is read again. For the account flow's press and the session's stage, where the extension's calls to the app can take tens of seconds on a loaded runner.
+ * Why (a8, 1 Nov 2026, main 3bd643e runs 41262512109 and 41263356357): both sign-in steps waited a loop of 60 s for the press inside a step with a measured 190 s cap; the press
+ * came 63-70 s after the page opened (extension calls to the app: "slow push" postMs 23775, page-kind fetch 23487 ms) and the step reported "never pressed".
+ */
+export async function waitForStage(read, accepts, options = {}) {
+  let error = '';   // the last read's error, shown by the caller: a read that keeps throwing must not look like a state that never came
+  const seen = async () => { try { const value = await read(); error = ''; return value; } catch (caught) { error = String(caught?.message || caught).split('\n')[0].slice(0, 160); throw caught; } };
+  const result = await pollUntil(tolerant(seen), accepts, {capMs: stepTimeLeft(), tickMs: 1000, label: ms => `the account flow reached its state ${ms} ms after the wait started`, ...options});
+  return {...result, error};
+}
+
 /** Wait for a matching form value or predicate, tolerating transient reads without accepting stale values. */
 export function waitForFormValue(read, wanted, options = {}) {
   const accepts = typeof wanted === 'function' ? wanted : value => value === wanted;

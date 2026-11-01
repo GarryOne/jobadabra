@@ -29,20 +29,6 @@ function gh({files = [], runs = [], issues = [], releases = [], build = 'success
 }
 const plan = (env, stub, varies = ['jobs']) => planRun({env: {REPO: 'o/r', ...env}, gh: gh(stub), all: ALL, minutes: () => 15, varies});
 
-test('a PR admission occupies one suite place and expands to five independent whole-suite legs', async () => {
-  const out = await planRun({env: {EVENT: 'workflow_dispatch', SHA: HEAD, ONLY: ALL.join(','), PR_SUITES: ALL.join(','),
-    PR_STEPS: JSON.stringify({'(burn-in)': ['settings']})}, gh: gh(), all: ALL, minutes: () => 15, shards: {settings: 2}});
-  const legs = JSON.parse(out.matrix).include;
-  assert.deepEqual(legs.filter(leg => leg.suite === 'settings').map(({burnIn, key, shard}) => ({burnIn, key, shard})),
-    [1, 2, 3, 4, 5].map(burnIn => ({burnIn, key: `settings-${burnIn}of5`, shard: ''})));
-  assert.equal(new Set(legs.map(leg => leg.key)).size, 8);
-  assert.equal(out.suites, ALL.join(','));
-  assert.equal(out.count, '8');
-  const main = await planRun({env: {EVENT: 'workflow_dispatch', SHA: HEAD, ONLY: 'settings', PR_STEPS: '{"(burn-in)":["settings"]}'},
-    gh: gh(), all: ALL, minutes: () => 15});
-  assert.equal(main.count, '1', 'admission applies only to the PR run');
-});
-
 test('only offline suites need no plan-level AI preflight or screenshot AI review; mixed runs still do', async () => {
   const run = only => planRun({env: {EVENT: 'workflow_dispatch', SHA: HEAD, ONLY: only}, gh: gh(), all: ALL,
     minutes: () => 15, offlineAi: ['settings']});
@@ -344,7 +330,7 @@ test('lanes.json alone marks every tolerant suite and every outside and night-re
 
 
 // Why (1 Nov 2026, owner: "Drop it entirely, now"; the question: PRs ran a new or changed beta step 5 times, which goes against "no repeat loops"): a PR that adds a backbone step
-// runs its suite once, one leg per shard. The night burn-in is the only repeat; a suite entering the backbone (admission) still runs five whole legs until its own removal.
+// runs its suite once, one leg per shard; a suite entering the backbone too (also "Drop it entirely, now"). The night burn-in is the only repeat.
 test('a PR that adds a backbone step plans that suite once, one leg per shard, not five', async () => {
   const run = async (extra, slices = 2) => JSON.parse((await planRun({env: {EVENT: 'workflow_dispatch', SHA: HEAD, ONLY: 'settings', PR_SUITES: 'settings',
     PR_STEPS: JSON.stringify(extra)}, gh: gh(), all: ALL, minutes: () => 15, os: () => 'macos-latest', shards: {settings: slices}})).matrix).include;
@@ -355,10 +341,8 @@ test('a PR that adds a backbone step plans that suite once, one leg per shard, n
     assert.ok(legs.every(leg => !leg.burnIn && !leg.burnInSteps && !leg.stepFilter), 'no repeat leg and no step filter');
   }
   assert.equal((await run({}, 5)).length, 5);
-  const admitted = await run({'(burn-in)': ['settings']});
-  assert.equal(admitted.length, 5, 'admission is unchanged here');
   const workflow = fs.readFileSync(new URL('../../../.github/workflows/e2e.yml', import.meta.url), 'utf8');
-  assert.doesNotMatch(workflow, /stepFilter|burnInSteps|E2E_BURN_IN_STEPS|Burn-in steps/);
+  assert.doesNotMatch(workflow, /stepFilter|burnInSteps|E2E_BURN_IN_STEPS|Burn-in steps|matrix\.burnIn/);
 });
 
 // Why (1 Nov 2026, owner: "I'd like the beta to have only the critical e2e/user journeys. ALl the others, to run separately less frequently"): a finder or explorer runs once a night,

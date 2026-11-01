@@ -66,11 +66,11 @@ export async function run(ctx) {
     } finally { if (original) fs.writeFileSync(target, original); }
   }, {needs: ctx.needs});
   await ctx.run('Settings render without layout problems', async () => { finish(ctx); }, {needs: ctx.needs});
-  await ctx.run('Automatic backup: Back up now writes a backup with no keys in its folder, and View backups opens it', () => backupNowStep(ctx), {needs: ctx.needs});
-  await ctx.run('Automatic backup: a due backup runs once at start and once on the weekly tick', () => backupTimerStep(ctx), {needs: ctx.needs});
+  await ctx.run('Automatic backup: Back up now writes a backup with no keys in its folder, and View backups opens it', () => backupNowStep(ctx), {needs: ctx.needs, data: true});
+  await ctx.run('Automatic backup: a due backup runs once at start and once on the weekly tick', () => backupTimerStep(ctx), {needs: ctx.needs, data: true});
   // Last: it restarts the app twice (the steps above hold the first window).
-  await ctx.run('Your data: export with keys, reset, then import from the setup brings this computer back as it was', () => roundTrip(ctx), {needs: ctx.needs});
-  await ctx.run('Automatic backup: the backup file, imported after a reset, brings this computer back as it was', async () => roundTrip(ctx, () => makeBackupFile(ctx)), {needs: ctx.needs});
+  await ctx.run('Your data: export with keys, reset, then import from the setup brings this computer back as it was', () => roundTrip(ctx), {needs: ctx.needs, data: true});
+  await ctx.run('Automatic backup: the backup file, imported after a reset, brings this computer back as it was', async () => roundTrip(ctx, () => makeBackupFile(ctx)), {needs: ctx.needs, data: true});
 }
 
 // Export -> reset (kept as a backup) -> the app opens at the setup -> "Import an export…" on its Welcome -> restart: the user's files come back

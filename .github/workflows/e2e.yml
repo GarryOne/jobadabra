@@ -224,7 +224,7 @@ jobs:
           phase: end
         timeout-minutes: 5
   suite:
-    name: ${{ matrix.burnIn && format('{0} · burn-in {1}/5', matrix.suite, matrix.burnIn) || matrix.key }}
+    name: ${{ matrix.key }}
     needs: plan
     if: needs.plan.outputs.count != '0'   # a push that changed no suite, a scheduled run with nothing new, or a night with no build: no suites
     runs-on: ${{ inputs.all_on_mac && 'macos-latest' || matrix.os || 'macos-latest' }}   # Linux unless the suite needs the Mac (lib/plan.mjs runnerOf); a virtual display there
@@ -300,7 +300,7 @@ jobs:
       E2E_NOTION_TOKEN_WANDER: ${{ secrets.E2E_NOTION_TOKEN_WANDER }}
       E2E_ARTIFACTS: ${{ github.workspace }}/e2e-artifacts/${{ matrix.key }}
       # A pull request runs only the steps its changed lines reach (owner, 26 Oct 2026: "not even an entire e2e suite, but just few tests/scenarios/cases"; lib/runner.mjs).
-      E2E_STEP_NAMES: ${{ !matrix.burnIn && inputs.pr_steps != '' && toJSON(fromJSON(inputs.pr_steps)[matrix.suite]) || '' }}
+      E2E_STEP_NAMES: ${{ inputs.pr_steps != '' && toJSON(fromJSON(inputs.pr_steps)[matrix.suite]) || '' }}
       E2E_FALLBACK_SUITES: ${{ matrix.fallbackSuites }}
       E2E_FALLBACK_SUITE: ${{ matrix.suite }}
       JP_REPLAY_SHARD: ${{ matrix.shard }}   # a sharded suite's slice (lib/suite-shards.mjs: the recorded replay, 13 Oct 2026); empty: the whole suite
@@ -463,8 +463,8 @@ jobs:
         id: suite_run
         env:
           E2E_TRY_MINUTES: 15   # = this step's timeout-minutes: a suite without an aggregate budget stops 4 min before it (its close-down cap + 1), with records that read as timing (lib/runner.mjs budgetMsOf; tests/test_e2e_try_minutes.py)
-          # Why (30 Oct 2026, ap; owner-approved rule A and burn-in): admission uses stored answers; manual first attempts may record; a suite that declares aiAnswers as backbone (plan-run.mjs puts it in matrix.aiAnswers) otherwise uses backbone answers without live AI.
-          E2E_AI_ANSWERS: ${{ matrix.burnIn && 'backbone' || github.event_name == 'workflow_dispatch' && github.run_attempt == 1 && inputs.ai_answers == 'record' && 'record' || matrix.aiAnswers || 'off' }}
+          # Why (30 Oct 2026, ap; owner-approved rule A; 1 Nov 2026: the PR burn-in legs are gone): manual first attempts may record; a suite that declares aiAnswers as backbone (plan-run.mjs puts it in matrix.aiAnswers) otherwise uses backbone answers without live AI.
+          E2E_AI_ANSWERS: ${{ github.event_name == 'workflow_dispatch' && github.run_attempt == 1 && inputs.ai_answers == 'record' && 'record' || matrix.aiAnswers || 'off' }}
         # Why (31 Oct 2026, owner: "Is this expected? Error but step passed green ?", "And why should we accept/allow that?", "Let's go and handle this"): this step's own exit code is the verdict.
         # No continue-on-error, no second try: a failed backbone try shows a red step and a red job (guard tests/test_e2e_single_try.py); a tolerant leg (AI, clock, outside) reports a ::warning and a rate, as before (Rule S, Gitar on #2682). The old "a red first run is not the verdict (owner, 6 Oct 2026)" quoted no owner words.
         working-directory: desktop/e2e

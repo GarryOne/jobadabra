@@ -18,6 +18,7 @@ DIFFERENT = {
         'E2E_FALLBACK_SUITES': 'red-steps.mjs caps renamed PR picks; the beta has no picked steps to fall back from.',
         'E2E_FALLBACK_SUITE': 'red-steps.mjs identifies a reserved PR leg; the beta runs full suites.',
         'E2E_FULL': 'The gate enables paid judges only for a nightly beta under budget; standalone dispatches may also request them.',
+        'E2E_BETA_RETRY': 'beta-retry.mjs gives a failed non-safety, non-data step one retry in a beta only (owner, 1 Nov 2026: "Auto-retry in betas only"); PR, main, night and standalone runs keep one try (tests/test_e2e_single_try.py).',
         'E2E_QUALITY_JUDGE_HISTORY': 'quality-rate.mjs treats old nights as information on PRs only; the beta keeps the default history verdict.',
         'E2E_RUN_KIND': 'replay.mjs always labels this release job gate; standalone runs use gate only when given a release tag.',
         'E2E_SEED': 'variation.mjs uses a fixed path for every beta; standalone non-gate runs can vary by run id.',
@@ -27,6 +28,7 @@ DIFFERENT = {
     },
     'windows': {
         'E2E_FULL': 'The beta omits duplicate paid Windows judges (owner, 7 Oct); standalone runs accept inputs.full.',
+        'E2E_BETA_RETRY': 'beta-retry.mjs gives a failed non-safety, non-data step one retry in a beta only (owner, 1 Nov 2026: "Auto-retry in betas only"); PR, main, night and standalone runs keep one try (tests/test_e2e_single_try.py).',
         'E2E_SEED': 'variation.mjs fixes every beta path; standalone Windows can follow a Mac run seed.',
         'E2E_RUN_KIND': 'replay.mjs always labels this release job gate; standalone Windows accepts an optional release tag.',
         'E2E_STEP_NAMES': 'runner.mjs selects standalone PR smoke steps; the beta runs the whole suite.',

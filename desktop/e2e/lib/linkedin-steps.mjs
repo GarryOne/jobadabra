@@ -175,7 +175,7 @@ async function offBody(ctx, fx) {
 export async function runLinkedinSteps(ctx) {
   const fx = ctx.forms.linkedin, unlinked = linkRuntime(ctx.profile);   // links the downloaded-browser stand-in where the app looks for it
   const needs = [...ctx.needs, unlinked ? {name: unlinked, value: false} : HIDDEN_NEED];
-  const step = (key, body) => ctx.run(NAMES[key], withDiagnosis(ctx, fx, body), {needs});
+  const step = (key, body) => ctx.run(NAMES[key], withDiagnosis(ctx, fx, body), {needs, data: true});   // data: the session is a credential and these steps prove where it goes and where it never goes (no beta retry, lib/beta-retry.mjs)
   try {
     await step('list', () => listBody(ctx, fx));
     for (const [key, state] of [['login', 'signed-out'], ['check', 'check'], ['limited', 'limited']]) await step(key, () => wallBody(ctx, fx, key, state));

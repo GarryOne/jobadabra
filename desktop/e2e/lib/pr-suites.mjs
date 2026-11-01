@@ -102,50 +102,22 @@ export function report({strings, hits, changedFiles, sources}) {
 // (owner, 27 Oct 2026: "Drop it"; slow cases stay on main, lib/replay-slow.mjs; #2164 replayed every case twice: page-cases 2 jobs and 5 runner-min, e2e's recorded 5 jobs and 44).
 // After a merge (main-steps.yml), main, the night and the gates still run it. Guard: test/pr-store.test.mjs
 export const ON_PR_ELSEWHERE = {recorded: 'page-cases.yml replays the recorded cases on this PR (the slow ones on main)'};
-/** Read admission registries through the injected git runner; unreadable registries become empty.
- * Invariant: admissions compare the merge-base with HEAD, never main's tip, matching the added/deleted file diff.
- */
-export function admissionLanes(git, base) {
-  const read = ref => {
-    try {
-      const lanes = JSON.parse(git(['show', `${ref}:desktop/e2e/lanes.json`]));
-      return lanes?.suites && typeof lanes.suites === 'object' && !Array.isArray(lanes.suites) ? lanes : {};
-    } catch { return {}; }
-  };
-  let baseLanes = {};
-  try { baseLanes = read(git(['merge-base', base, 'HEAD']).trim()); } catch { /* unavailable merge-base: no registry */ }
-  return {baseLanes, headLanes: read('HEAD')};
-}
-
-/** Suite names seeking backbone admission, from git's added/deleted files and BASE/HEAD lane registries.
- * Invariants: deleted suites and HEAD's non-backbone lanes never burn in; existing backbone edits keep their normal reach.
- */
-export function admittedSuites({addedFiles = [], deletedFiles = [], baseLanes = {}, headLanes = {}}) {
-  const nameOf = file => /^desktop\/e2e\/suites\/([^/]+)\.mjs$/.exec(file)?.[1];
-  const deleted = new Set(deletedFiles.map(nameOf));
-  const candidates = [...addedFiles.map(nameOf), ...Object.keys(baseLanes.suites || {}).filter(suite => !isBackbone(baseLanes, suite))];
-  return [...new Set(candidates)].filter(suite => suite && !deleted.has(suite) && isBackbone(headLanes, suite)).sort();
-}
-
 /** Pick reached backbone suites plus explicitly report-only numbers; only backbone uses the PR cap.
  * direct: suites whose own file or step file changed; pointed/hits: import, watch or quote reach; covering: recorded line reach.
- * admitted: git-derived backbone admissions outrank all reaches and override BASE exemptions.
  * lanes is the same {suites: {name: entry}} registry the verdict reads, supplied from the PR base or merged checkout by the CLI.
  * left keeps unrun backbone suites; report-only numbers use no place or deferral. deferred is ranked cap overflow.
  */
-export function planPrSuites({pointed = [], hits = {}, covering = {}, direct = [], catches = {}, lanes = {}, admitted = [], linux, cadence = {}, pullRequest = false}) {
-  const admissions = new Set(pullRequest ? admitted : []);
-  if (admissions.size > 5) throw Object.assign(new Error('More than five suites need burn-in: split this PR so every new suite is proved.'), {code: 'E2E_BURN_IN_CAPACITY'});
-  const reports = pullRequest ? new Set(Object.entries(lanes.suites || {}).filter(([suite, entry]) => entry?.lane === 'tolerant' && entry.pr === 'number' && !admissions.has(suite)).map(([suite]) => suite)) : new Set();
-  const wanted = [...new Set([...admissions, ...pointed, ...Object.keys(hits), ...Object.keys(covering)])].filter(suite => admissions.has(suite) || (
+export function planPrSuites({pointed = [], hits = {}, covering = {}, direct = [], catches = {}, lanes = {}, linux, cadence = {}, pullRequest = false}) {
+  const reports = pullRequest ? new Set(Object.entries(lanes.suites || {}).filter(([suite, entry]) => entry?.lane === 'tolerant' && entry.pr === 'number').map(([suite]) => suite)) : new Set();
+  const wanted = [...new Set([...pointed, ...Object.keys(hits), ...Object.keys(covering)])].filter(suite => (
     !['manual', 'outside', NIGHT_REPORT].includes(cadence[suite]) && !(pullRequest && ON_PR_ELSEWHERE[suite]) &&
     (reports.has(suite) || isBackbone(lanes, suite))));
-  let run = wanted.filter(suite => admissions.has(suite) || linux(suite) || pointed.includes(suite) || String(covering[suite] || '').startsWith('runs '));
+  let run = wanted.filter(suite => linux(suite) || pointed.includes(suite) || String(covering[suite] || '').startsWith('runs '));
   const numbers = run.filter(suite => reports.has(suite));
   run = run.filter(suite => !reports.has(suite));
   let deferred = [];
   if (pullRequest && run.length > 5) {
-    const reach = suite => admissions.has(suite) ? 4 : direct.includes(suite) ? 3 : (pointed.includes(suite) || Object.hasOwn(hits, suite)) ? 2 : 1;
+    const reach = suite => direct.includes(suite) ? 3 : (pointed.includes(suite) || Object.hasOwn(hits, suite)) ? 2 : 1;
     const caught = suite => Number.isFinite(catches[suite]) && catches[suite] >= 0 ? catches[suite] : 0;
     const ranked = [...run].sort((a, b) => reach(b) - reach(a) || caught(b) - caught(a) || (a < b ? -1 : a > b ? 1 : 0));
     run = ranked.slice(0, 5);

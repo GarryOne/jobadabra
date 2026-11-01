@@ -28,7 +28,7 @@ The first plan moved three folders whole. Each one is also code the shipped app 
 | Which Cloudflare trigger runs it | the site Worker `www` (`wrangler.toml` triggers `*/5` and `47 21,23,1 * * *`) | the day-time switch (4b) |
 | Whether it is on | `TIMERS=on` + the secret `TIMERS_GITHUB_TOKEN` on `www` (the owner's to set) | the switch |
 | Whether it ran | `schedule-watchdog.yml` on GitHub's cron (unchanged) | it files "⏰ On-time starts missing" |
-- **What dies with the bot:** the Telegram webhook and the inline digest buttons (`pick:<code>:<n>`, `ins:u|n|a`). The Python digest workflows (`daily.yml`, `mail.yml`, `scout.yml`) have not run since 1 Oct 2026; the owner accepted this via mac-07. The token is only ever sent with, so those workflows still send.
+- **What dies with the bot:** the Telegram webhook and every inline button family the webhook answers (`pick:<code>:<n>` in `src/digest.py`, `opick:<n>:<page>` outcome buttons on application rows, `ins:<u|n|a>:<page>` insight feedback). The Python digest workflows (`daily.yml`, `mail.yml`, `scout.yml`) have not run since 1 Oct 2026; the owner accepted this via mac-07. The `TELEGRAM_BOT_TOKEN` GitHub secret is only ever used to send (`sendMessage` from the workflows), so those workflows still send; only the taps on their buttons go unanswered.
 - **Failure of a start** no longer pages Telegram; it fails the trigger (Cloudflare cron history) and comments on the watchdog's GitHub issue.
 - **The account has 5 cron triggers, all used** (www 2 + bot 3): the swap removes the bot's three first, then adds `47 21,23,1 * * *` to `www`, by day and finished before 21:00 UTC.
 

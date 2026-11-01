@@ -23,7 +23,6 @@ ALLOWED_WORKFLOWS = {
     'worker.yml': 'PR 4: the bot Worker deploys from jobadabra-web',
     'central-scout.yml': 'PR 6: jobadabra-lab',
     'product-brain.yml': 'PR 6: jobadabra-lab',
-    'ai-cost-billed.yml': 'PR 6: jobadabra-web',
 }
 
 

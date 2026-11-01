@@ -103,7 +103,7 @@ async function getJson(fetcher, path, now = Date.now()) {
 
 // -> {version, name, notes, url} when a newer release is on offer, else null. Stable (the default): the latest stable release, if newer than `current`.
 // channel 'beta' (the person switched it on, Settings → Diagnostics → Beta): also pre-releases carrying the beta-approved line; the newest of them all wins.
-// channel 'test' (Settings → Diagnostics → Test builds): the newest release of any kind, approved or not: a "Build only" run (tools/test-build.sh) publishes one without the e2e gate, so a friend
+// channel 'test' (Settings → Diagnostics → Test builds): the newest release of any kind, approved or not: a "Build only" run of desktop.yml publishes one without the e2e gate, so a friend
 // who asked for it gets a fix in the time of a build instead of a gated beta. Nothing has checked it: that is the person's choice, and the label says so.
 export async function check(current, {channel = 'stable', fetcher = globalThis.fetch, platform = process.platform} = {}) {
   if (channel === 'beta' || channel === 'test') {

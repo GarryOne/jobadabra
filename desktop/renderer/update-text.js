@@ -9,7 +9,7 @@ export function updateText({offer, checkedAt, fromSource, fromStore} = {}, now =
   return {latest: true, text: `Up to date · checked ${ago(checkedAt, now)}`};
 }
 
-// Settings → Diagnostics → Test builds, from main's betaState: {test, on, fromSource, fromStore}. Builds made by hand (tools/test-build.sh) with no test run on them.
+// Settings → Diagnostics → Test builds, from main's betaState: {test, on, fromSource, fromStore}. Builds made by hand (a "Build only" run of desktop.yml) with no test run on them.
 export function testText({test, fromSource, fromStore} = {}) {
   if (fromStore) return {text: 'Not in the Microsoft Store copy: the Store sends its versions', toggle: ''};
   if (fromSource) return {text: 'Not in a build run from source', toggle: ''};

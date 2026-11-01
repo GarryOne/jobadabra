@@ -18,7 +18,6 @@
     "interviews": "node suite.mjs interviews",
     "settings": "node suite.mjs settings",
     "employers": "node suite.mjs employers",
-    "calendar": "node suite.mjs calendar",
     "focus": "node suite.mjs focus",
     "apply": "node suite.mjs apply",
     "quality": "node suite.mjs quality",

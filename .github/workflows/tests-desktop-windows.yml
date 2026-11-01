@@ -8,6 +8,7 @@ on:
   pull_request:
     branches: [main]
     paths:
+      - 'desktop/integration/results-reporter.mjs'   # separators of a test file's path (desktop/test/integration-results-reporter.test.js)
       - 'desktop/lib/ai/codex-cli.js'
       - 'desktop/lib/analytics.js'
       - 'desktop/lib/app-feedback.js'

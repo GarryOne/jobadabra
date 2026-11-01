@@ -7,7 +7,7 @@ import {capViolations, rankingViolations} from '../../lib/quality.mjs';
 
 const file = new URL('../../fixtures/golden/ai-answers.json', import.meta.url);
 const truth = JSON.parse(fs.readFileSync(new URL('../../fixtures/golden/truth.json', import.meta.url), 'utf8'));
-// Why (30 Oct 2026, bb; #2632): suite feed fixtures and captured channel score requests declare their own feed/<hash> keys outside golden truth; request identities are checked below, while golden ranking, cap and coverage still read golden rows alone.
+// Why (30 Oct 2026, bb; #2632; moved to test/pool/): suite feed fixtures and captured channel score requests declare their own feed/<hash> keys outside golden truth; request identities are checked below, while golden ranking, cap and coverage still read golden rows alone.
 const fixture = name => JSON.parse(fs.readFileSync(new URL(`../../fixtures/golden/${name}`, import.meta.url), 'utf8'));
 const capturedScores = fixture('ai-answers.json').requests['app.score'];
 const feedKeys = new Set([...['activityfailures-feed-asks.json', 'failuresnotion-asks.json'].flatMap(name => fixture(name).feedPostings.map(post => post.key)),

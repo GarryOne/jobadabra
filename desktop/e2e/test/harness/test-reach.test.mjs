@@ -8,7 +8,7 @@ import {fileURLToPath} from 'node:url';
 import {reach, specifiers, unstage} from '../../lib/test-reach.mjs';
 
 const ROOT = fileURLToPath(new URL('../../../../', import.meta.url));
-// Why (owner, 30 Oct 2026, option C; 1 Nov 2026, integration tests in desktop/integration/<layer>/): `npm test` runs every file of test/ and of ../integration/extension/ on each harness PR (harness.yml); no list picks files, so both folders are read here.
+// Why (owner, 30 Oct 2026, option C; 1 Nov 2026, integration tests in desktop/integration/<layer>/; moved to test/harness/): `npm test` runs every file of test/ and of ../integration/extension/ on each harness PR (harness.yml); no list picks files, so both folders are read here.
 // Why (c27, 1 Nov 2026, area folders): the e2e tests sit in test/<area>/ (one level), the extension ones directly in their folder; `fixtures` holds stand-ins, never tests.
 const listTests = (folder, repoDir) => {
   const base = new URL(folder, import.meta.url);

@@ -7,7 +7,7 @@ import {test} from 'node:test';
 import {loadTable, questionOf, storedAnswer} from '../../lib/ai-answers.mjs';
 
 const backbone = {E2E_AI_ANSWERS: 'backbone', E2E_SUITE: 'list-meanings-kind', E2E_ARTIFACTS: path.join(os.tmpdir(), 'list-meanings-kind')};
-// Why (30 Oct 2026, ap): the manifest's list_meanings entry is the request lib/list-meanings.js really builds, with the action header it really sends (tools/ai-format-capture.mjs runs the real sender and fails when the header differs), so this test needs no app import.
+// Why (30 Oct 2026, ap; moved to test/ai/): the manifest's list_meanings entry is the request lib/list-meanings.js really builds, with the action header it really sends (tools/ai-format-capture.mjs runs the real sender and fails when the header differs), so this test needs no app import.
 const entry = JSON.parse(fs.readFileSync(new URL('../../fixtures/golden/ai-format-manifest.json', import.meta.url), 'utf8')).entries.find(each => each.kind === 'list_meanings');
 const request = {url: '/v1/messages', headers: {'content-type': 'application/json', 'x-jp-action': entry?.action}, body: JSON.stringify(entry?.request)};
 

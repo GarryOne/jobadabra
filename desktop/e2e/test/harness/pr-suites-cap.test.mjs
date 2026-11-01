@@ -37,7 +37,7 @@ test('equal reach uses suite name independently of input order', () => {
 });
 
 test('five suite names defer nothing despite more than five jobs: fails if the planner counts jobs', async () => {
-  // Why (29 Oct 2026, a8; owner on #2421): a suite split into jobs takes one of the five places, so the five names stay whole; counting slice jobs would defer some of them.
+  // Why (29 Oct 2026, a8; owner on #2421; moved to test/harness/): a suite split into jobs takes one of the five places, so the five names stay whole; counting slice jobs would defer some of them.
   const {shards: apply} = await import('../../suites/apply.mjs');
   const {shards: applyflows} = await import('../../suites/applyflows.mjs');
   const shards = {apply, applyflows};
@@ -112,7 +112,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {spawnSync} from 'node:child_process';
 
-// Why (R2 + J16/J19, 1 Nov 2026): 'failuresnotion' and 'linkedin' stand where the deleted `focusdismiss` and `interviews` suites stood, 'employers' where the deleted `activity` suite stood in these fixtures: a real suite file the diff fixture can read, sorting before failuresnotion as `activity` did.
+// Why (R2 + J16/J19, 1 Nov 2026; moved to test/harness/): 'failuresnotion' and 'linkedin' stand where the deleted `focusdismiss` and `interviews` suites stood, 'employers' where the deleted `activity` suite stood in these fixtures: a real suite file the diff fixture can read, sorting before failuresnotion as `activity` did.
 const cli = new URL('../../pr-suites.mjs', import.meta.url);
 function cliPlan({catches, pullRequest = true, base = 'origin/main', listed = {}, checkoutLanes = {}, suites = ['wizard', 'storemove', 'stores', 'settings', 'jobs', 'linkedin', 'failuresnotion', 'employers'], extraFiles = [], coverage = {}, baseSources = {}} = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pr-cap-cli-'));

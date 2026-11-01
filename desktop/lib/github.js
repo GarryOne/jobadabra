@@ -31,7 +31,12 @@ export const REPO_NAMES = [REPO_NAME, 'job-pilotto-private'];
 // Which starter exists: the first candidate the API shows as a template (so the rename and the move of the repo need no app release in step);
 // not answered (offline, rate limit) keeps the last one found, else the old name, which GitHub redirects after a rename.
 let starter = STARTER_CANDIDATES.at(-1);
+/** -> the starter template ("owner/name") the app last found, or the old name before the first look. */
 export const currentStarter = () => starter;
+/**
+ * Asks the GitHub API which STARTER_CANDIDATES entry is a template, newest name first (fetcher: injectable for tests).
+ * -> that "owner/name"; when none answers (offline, rate limit, 404) the last one found, else the old name. Never throws.
+ */
 export async function resolveStarter(fetcher = globalThis.fetch) {
   for (const name of STARTER_CANDIDATES) {
     try {
@@ -41,6 +46,7 @@ export async function resolveStarter(fetcher = globalThis.fetch) {
   }
   return starter;
 }
+/** -> the github.com "create a repository from this template" link for the resolved starter, prefilled with the user's default repo name, private. */
 export const createUrl = async (fetcher = globalThis.fetch) => {
   const [owner, name] = (await resolveStarter(fetcher)).split('/');
   return `https://github.com/new?template_name=${name}&template_owner=${owner}&name=${REPO_NAME}&visibility=private`;

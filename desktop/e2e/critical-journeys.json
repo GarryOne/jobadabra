@@ -136,6 +136,16 @@
    "tier": 1
   },
   {
+   "id": "J13",
+   "name": "Strategy: a role or place change is used by the next check",
+   "steps": [
+    {"suite": "strategy", "step": "the next check keeps the posting that matches the new role and place, and still drops the other"},
+    {"suite": "strategy", "step": "a role changed in the app is used by the next check, and a removed role stops matching"},
+    {"suite": "strategy", "step": "an edit made directly on the Notion page is used by the next check, and a removed role stops matching"}
+   ],
+   "tier": 1
+  },
+  {
    "id": "J14",
    "name": "Profile: the CV is read, its problems are found",
    "tier": 1,
@@ -202,8 +212,7 @@
   {"suite": "storemove", "step": "Jobs, Focus, Interviews and Recent activity show the same items from Notion"}
  ],
  "to_come": [
-  "J13 Strategy (tier 1): its 3 steps return with c27-int-store-c5's strategy restore PR; a8 adds them once both merge",
-  "Always on / Notion (tier 2): covered now at tier 1 by the kept storemove step 'Jobs, Focus, Interviews and Recent activity show the same items from Notion'; its own step returns with the strategy restore; a8 adds it",
+ "Always on / Notion (tier 2): its own step is strategy.mjs 'an edit made directly on the Notion page is used by the next check, and a removed role stops matching', listed in J13 (tier 1); the kept storemove step 'Jobs, Focus, Interviews and Recent activity show the same items from Notion' also covers it",
   "Profile's Experience (tier 1, in J14): a new step plus its integration counterpart, after round 2; a8 writes it",
   "Cover letter (tier 2): no e2e step exists; a new short step (a job's letter reaches its form) plus its integration counterpart, after round 2; a8 writes it",
   "Calendar and Focus (tier 2): their suites left e2e; one new short step each, after round 2; a8 writes them"

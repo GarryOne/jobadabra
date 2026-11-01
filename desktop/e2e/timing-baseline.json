@@ -24,11 +24,6 @@
     "elapsedAssertions": 0,
     "clockWaits": 2
   },
-  "cardstates": {
-    "fixedWaits": 1,
-    "elapsedAssertions": 0,
-    "clockWaits": 1
-  },
   "employers": {
     "fixedWaits": 2,
     "elapsedAssertions": 0,
@@ -49,20 +44,10 @@
     "elapsedAssertions": 0,
     "clockWaits": 9
   },
-  "focus": {
-    "fixedWaits": 4,
-    "elapsedAssertions": 0,
-    "clockWaits": 2
-  },
   "focusdismiss": {
     "fixedWaits": 0,
     "elapsedAssertions": 0,
     "clockWaits": 2
-  },
-  "foryou": {
-    "fixedWaits": 3,
-    "elapsedAssertions": 0,
-    "clockWaits": 1
   },
   "interactions": {
     "fixedWaits": 1,

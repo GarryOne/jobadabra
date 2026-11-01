@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "pretest": "node scripts/stage-shared.mjs",
-    "test": "node --test test/*.test.js",
+    "test": "node --test --test-reporter=../desktop/test/reporter-by-file.mjs test/*.test.js",
     "deploy": "npx wrangler@4 deploy && node scripts/check-secrets.mjs"
   },
   "dependencies": {

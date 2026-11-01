@@ -144,6 +144,15 @@ def default_jobs(cores, slots, free):
     base = max(2, cores // (slots or 1))
     return min(max(base, cores * 3 // 4), base + 2) if free is not None and free > 3 and slots else base
 
+PROGRESS_SECS = float(os.environ.get('JOB_PILOTTO_PROGRESS_SECS') or 25)
+
+
+def progress_line(shards, finished, failed, elapsed):
+    """'python tests: 3/6 shards done (210/412 modules) · 1 failed · 1m20s'; finished = indexes of the shards that ended, failed = how many of them were bad."""
+    minutes, seconds = divmod(int(elapsed), 60)
+    clock = f'{minutes}m{seconds:02d}s' if minutes else f'{seconds}s'
+    return f'python tests: {len(finished)}/{len(shards)} shards done ({sum(len(shards[i]) for i in finished)}/{sum(len(x) for x in shards)} modules) · {failed} failed · {clock}'
+
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
@@ -181,6 +190,7 @@ def main(argv=None):
                                       env={**env, 'JOB_PILOTTO_TEST_DATA_DIR': folder}, stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT))
              for shard, log, folder in zip(shard_list, logs, data_folders)]
     results = [None] * len(procs)
+    bad = []
     def collect(i, proc):   # each shard's own end time, said the moment it ends (a live CI log is not blank until the last shard)
         proc.wait()
         logs[i].seek(0)
@@ -188,20 +198,28 @@ def main(argv=None):
         logs[i].close()
         results[i] = (out, time.monotonic() - started)
         shard = procs[i][0]
-        print(f'py-shards: shard {"FAILED" if ended_badly(out, proc.returncode) else "done"} {results[i][1]:.1f}s, {len(shard)} modules ({", ".join(shard[:3])}{", ..." if len(shard) > 3 else ""})', flush=True)
+        why = ended_badly(out, proc.returncode)
+        if why:
+            bad.append(i)
+        print(f'py-shards: shard {"FAILED" if why else "done"} {results[i][1]:.1f}s, {len(shard)} modules ({", ".join(shard[:3])}{", ..." if len(shard) > 3 else ""})', flush=True)
+        if why:   # Why (1 Nov 2026, owner: "live and summarized"): a failing shard shows its error the moment it ends, not after the slowest shard
+            print(f'py-shards: shard FAILED, {why} ({len(shard)} modules: {", ".join(shard[:4])}...)\n{out}', file=sys.stderr, flush=True)
     print(f'py-shards: {len(procs)} shards started ({len(modules)} modules)', flush=True)
     threads = [threading.Thread(target=collect, args=(i, proc)) for i, (_, proc) in enumerate(procs)]
     for t in threads:
         t.start()
-    for t in threads:
-        t.join()
+    # Why (1 Nov 2026, owner: "I don't see any live logs/updates of what being run"): a progress line about every PROGRESS_SECS while shards run; shard ends are said by collect().
+    next_line = time.monotonic() + PROGRESS_SECS
+    while any(t.is_alive() for t in threads):
+        time.sleep(min(0.2, PROGRESS_SECS))
+        if time.monotonic() >= next_line and any(t.is_alive() for t in threads):
+            print(progress_line(shard_list, [i for i, r in enumerate(results) if r is not None], len(bad), time.monotonic() - started), flush=True)
+            next_line = time.monotonic() + PROGRESS_SECS
     failed = ran = 0
     for (shard, proc), (out, _) in zip(procs, results):
         ran += sum(int(n) for n in re.findall(r'^Ran (\d+) tests?', out, re.M))
-        why = ended_badly(out, proc.returncode)
-        if why:
+        if ended_badly(out, proc.returncode):
             failed += 1
-            print(f'py-shards: shard FAILED, {why} ({len(shard)} modules: {", ".join(shard[:4])}...)\n{out}', file=sys.stderr)
     for folder in data_folders:
         shutil.rmtree(folder, ignore_errors=True)
     left_behind = leaked(before, checkout_state(ROOT))

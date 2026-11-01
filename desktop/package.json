@@ -29,7 +29,7 @@
     "drawer-shots": "node scripts/drawer-shots.mjs",
     "find-card-shots": "node scripts/find-card-shots.mjs",
     "ladder-score": "node e2e/ladder-score.mjs",
-    "lint": "cd .. && eslint --config eslint.config.mjs --max-warnings 0 desktop extension && node tools/clean-code-js.mjs",
+    "lint": "cd .. && echo lint: eslint started && eslint --config eslint.config.mjs --max-warnings 0 desktop extension && echo lint: eslint passed, clean-code started && node tools/clean-code-js.mjs && echo lint: passed",
     "mail-states": "node scripts/stage.mjs && node e2e/mail-states.mjs"
   },
   "devDependencies": {

@@ -9,6 +9,7 @@ import './journeys-cover-letter-notice.js';
 import './journeys-eligibility.js';
 import './journeys-popup.js';
 import './journeys-linkedin-refresh.js';
+import './journeys-no-browser.js';
 import * as terminals from '../lib/terminals.js';
 import * as apply from '../lib/apply.js';
 import * as review from '../lib/review.js';
@@ -397,6 +398,21 @@ test('scenario: the person presses Stop in the panel while another armed tab sit
   } finally { globalThis.chrome = saved.chrome; globalThis.fetch = saved.fetch; }
 });
 
+// #2732 (1 Nov 2026): a first Connect while signed out of LinkedIn added both grants and answered "signed-out"; the retry after signing in found them held and noted "this consent added
+// nothing", so turning LinkedIn jobs off left both permissions granted. The person's path through the extension's consent code, on a fake Chrome (no real cookie, no network).
+test('scenario: Connect while signed out of LinkedIn, sign in, Connect again, switch LinkedIn jobs off: both permissions are given back (#2732)', async () => {
+  const {connect, revokeIfOff} = await import('../../extension/linkedin-session.js');
+  const store = {}, removed = [], held = {now: false}, jar = [{name: 'bcookie', value: 'v=2&x', domain: '.linkedin.com'}];
+  const chrome = {permissions: {contains: async () => held.now, request: async () => { held.now = true; return true; }, remove: async asked => { removed.push(asked); return true; }},
+    storage: {local: {get: async key => ({[key]: store[key]}), set: async values => Object.assign(store, values), remove: async key => { delete store[key]; }}},
+    cookies: {getAll: async () => jar}};
+  assert.deepEqual(await connect({config: {}, chrome, call: async () => { throw new Error('nothing is sent while signed out'); }}), {ok: false, why: 'signed-out'});
+  jar.push({name: 'li_at', value: 'AQEDfake', domain: '.linkedin.com'});   // the person signed in to LinkedIn
+  assert.deepEqual(await connect({config: {}, chrome, call: async () => ({ok: true})}), {ok: true});
+  assert.deepEqual(await revokeIfOff({config: {}, chrome, call: async () => ({revoke: true})}), {revoked: true});
+  assert.deepEqual(removed, [{permissions: ['cookies'], origins: ['https://www.linkedin.com/*']}], 'both grants this consent added are given back');
+});
+
 // #961: the fill the Stop cut short reports "Stopped by you." as its error; the card stays Stopped and the error watcher (Sentry, Telegram) sees no error.
 test('scenario: a fill cut short by Stop reports its error late: the card stays Stopped and no fill error is raised (#961)', () => {
   const {flow, card} = journeyOf('f1');
@@ -452,25 +468,6 @@ test('scenario: Fill in Chrome pressed twice on one job with its tab open: one t
   const reply = review.report([{id: first.session.id, url: FORM, kind: 'form'}], {url: FORM, session: first.session.id, tab: 5, boot: 'b1', total: 9, left: 0});
   assert.ok(reply.commands.some(command => command.reload), 'the open tab reloads, so its mark fills the form again');
   assert.equal(review.tabOf(first.session.id), 5, 'the session stays on its one tab');
-});
-
-const storageOf = () => createStorage(fs.mkdtempSync(path.join(os.tmpdir(), 'pilot-')), {encrypt: v => Buffer.from(v).reverse().toString('base64'), decrypt: s => Buffer.from(s, 'base64').reverse().toString()});
-
-// #520: start() made a form session per job and then found no browser: the sessions stayed in the Applying page with no tab (applyOne already removes its own).
-test('scenario: Apply to N jobs with no browser installed leaves no form session behind in Applying (#520)', async () => {
-  const real = process.platform, home = {HOME: process.env.HOME, LOCALAPPDATA: process.env.LOCALAPPDATA, ProgramFiles: process.env.ProgramFiles, 'ProgramFiles(x86)': process.env['ProgramFiles(x86)']};
-  process.env.HOME = process.env.LOCALAPPDATA = process.env.ProgramFiles = process.env['ProgramFiles(x86)'] = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-home-'));   // a Windows runner has Chrome under Program Files   // the launcher reads a browser's profile folder: never the owner's
-  Object.defineProperty(process, 'platform', {value: 'win32'});   // the only launcher that returns null when no browser is installed
-  const before = terminals.list().map(s => s.id);
-  try {
-    const result = await apply.start(storageOf(), {n: 1, mode: 'chrome'}, () => ({unref() {}}),
-      async () => ({jobs: [{url: 'https://jobs.example.test/nochrome-520', status: 'saved', fit: 60, title: 'SRE', company: 'A', kit: true}]}));
-    assert.equal(result.ok, false);
-    assert.match(result.error, /No supported browser/, 'the test must reach the no-browser branch');
-    const left = terminals.list().filter(s => !before.includes(s.id));
-    left.forEach(s => terminals.remove(s.id));
-    assert.deepEqual(left.map(s => s.url), []);
-  } finally { Object.defineProperty(process, 'platform', {value: real}); for (const [name, value] of Object.entries(home)) { if (value === undefined) delete process.env[name]; else process.env[name] = value; } }
 });
 
 test('scenario: Apply answers after its job is marked Applying: a list read asked then is a fresh one, so the Jobs chips count it (#1737, 24 Oct 2026)', async () => {

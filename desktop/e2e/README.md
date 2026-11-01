@@ -8,10 +8,8 @@ The **real** Jobadabra app, driven by Playwright on a throwaway profile, in suit
 | `jobs` | a set-up install, its own jobs and runs reset | a jobs check on the fixture feeds, scoring, and every scored job in the Jobs list against its store record. (R2, 1 Nov 2026: Find employers and the slow AI check are `integration/store/jobs-run.test.mjs`) | ~3 min |
 | `settings` | a set-up install | every Settings section, the AI engine panel with each engine chosen | ~30 s |
 | `personas` (**manual**) | a set-up install | one of two fictional users per run (a data analyst in Austin, a marketing manager in São Paulo; `E2E_PERSONA` picks, else they alternate by day): nothing Swiss or EU in the UI, digest or Notion; the visa flag follows citizenship and places; their search regions, Google Jobs places and currencies | ~7 min |
-| `employers` | a set-up install, its own employer rows and runs reset | Find new employers on a candidate list of every kind (good board, empty, wrong roles, dead feed, duplicate, excluded, manual watch): statuses, quality order, Employers & Sources rows, the run row's counts, a second run, the crawl's source list, a Sonnet judge | ~1 min |
 | `apply` | a set-up install + 4 kit jobs it writes | the real **Chrome extension** on fixture forms: Apply click → fill from the kit, CV, legal boxes left, AI answers highlighted, late field, multi-step, unknown widget, Submit never touched | ~3 min |
 | `qualityai:mail` (**watched part**) | the AI key only: no app, no Notion, no browser | 16 invented emails through the mail check prompt (`tools/mail_eval.py`), reported as right/total and strict misses; unavailable AI is grey | ~15 s, about a cent |
-| `activityfailures` | a set-up install, its own Notion page | what goes **wrong**, the part that needs the window: the AI refusing the key (**401**), **quitting mid-run**. (R2, 1 Nov 2026: 429, 500, the spending limit, silence and Notion/Telegram faults are `integration/store/run-*.test.mjs`.) Shared steps: `lib/activity-steps.mjs` | ~3 min |
 | `notion-real` | the one suite on REAL Notion (P7, 9 Oct 2026), nightly gate only; borrows the old failuresnotion suite's token and page (`notionPage` guard; that suite left e2e on 1 Nov 2026: a refused Save is `integration/store/save-refused-notion.test.mjs`), empties it at start and end | an app on this Mac's store connects the test workspace and moves its data there: every record once, the kit, record, interview and file read back from Notion's pages, the same screens |
 | `quality` (**nightly**) | a set-up install, golden postings, stored/replayed AI answers | exact facts, duplicates, ranking/caps, columns, app/store agreement and private logs; no judge | replayed backbone |
 | `qualityai` (**night-report**) | the same golden journey with live AI answers | live fact and score rates, Haiku judge, CV match and fresh rescore steadiness | live rates |
@@ -31,8 +29,6 @@ A suite exports `cadence` (`lib/plan.mjs` decides, `plan-run.mjs` plans the CI r
 - **Clock moved** (night pass 1, report only; owner via a8, 1 Nov 2026: "Nightly report"): `clock-moved.yml` runs the fast unit folders (desktop/test, desktop/e2e/test, tests/) on today's clock and with it moved +1 d and +7 d (libfaketime) and lists the files that pass today and fail moved, at the end of each job's log, in a `::warning` per file, and the artifact `clock-moved-<folder>` (desktop, e2e, python). Not a suite, not a gate; `tools/clock-moved.mjs`, guard `desktop/test/clock-moved.test.js`.
 
 Also on night pass 1, report only (owner via a8, 1 Nov 2026, "Yes, nightly report"): `coverage-report.yml` prints line % per layer (unit Python, unit JS, integration, e2e) and per folder, and which of the GTM board's journeys have a test at which layer (`tools/coverage-report.mjs`, journeys in `docs/gtm-journeys.json`). A source that was not measured reads "not measured", never 0%; the e2e layer is main's last coverage map (a night pass records none itself).
-
-The paid AI-judge steps (`employers`) also run only in the nightly gate and in manual runs (`E2E_FULL=1`); on a Mac they always run.
 
 ## Running them all on this Mac
 `npm run all` runs every suite that is not manual, one after the other, and prints one table. `-- --only jobs,quality` runs exactly those (even a manual one), `-- --skip wizard` leaves some out,
@@ -71,12 +67,10 @@ It costs about $0.3 a run, like the default (the SRE). It is how scoring is prov
 ## What a strategy returns, without the app
 `tests/test_matching_matrix.py` is the fast proof (seconds, no Notion, no AI): strategy inputs (Swiss cities, regions and region words, levels, remote, skipped titles, accents) against fixture postings, with the kept and dropped lists written out; a known gap (`Asia`) is an expected failure so it stays visible. The `strategy` suite proves the same words through the real app and the Notion page.
 
-## The employers suite
-- **Personas.** `E2E_EMPLOYERS_PERSONA=nurse npm run all -- --only employers` runs the same suite for a band 6 nurse in Manchester: `fixtures/feeds/employers-nurse/` replaces the SRE boards of the same names (same counts, same expectations), so the scout, its Notion rows and the judge are proven for another profession. The default is the SRE in Zurich. `tests/test_e2e_employers_fixtures.py` proves both without the app, in seconds.
-- Fixtures: `fixtures/feeds/employers/` (the boards, `scout_seeds.json`, `person.json` = the fictional SRE in Zurich the scout judges for, via `JOB_PILOTTO_LOCATIONS_FILE`, so the test workspace's own search settings cannot change the outcome). A suite may export `env` for the app.
-- The expected outcomes are also proven without the app or Notion in `tests/test_e2e_employers_fixtures.py` (seconds).
-- `lib/judge.mjs`: a Haiku judge (no `temperature`) that says per added employer whether it suits the person; a missing or unreadable verdict is a failure, never a pass. `lib/employers.mjs` holds the pure row/run-line checks, tested in `test/employers.test.mjs`.
-- It empties only the Employers & Sources and run rows of its own page. Never run it on the wizard page while another suite uses that page (the fallback is for one suite at a time).
+## Find new employers (an integration test since 1 Nov 2026)
+- The `employers` suite left e2e (owner, 1 Nov 2026: "None of these are critical user journeys"). Its statuses, rows, run counts, crawl list and second run are `desktop/integration/store/employers-integration.test.mjs` (both personas run there).
+- Fixtures: `fixtures/feeds/employers/` and `employers-nurse/` (the boards, `scout_seeds.json`, `person.json`); the expected outcomes are also proven in `tests/test_e2e_employers_fixtures.py` (seconds). `lib/employers.mjs` holds the pure row/run-line checks, tested in `test/app/employers.test.mjs`.
+- The Sonnet judge of the added employers and the non-IT fit judge ran only in the nightly gate: they have no home yet (JOB-186).
 
 ## What is real, what is faked
 | Part | How |
@@ -255,7 +249,7 @@ Every open UI-loop issue carries one label `priority:P0` to `P3`, recomputed aft
 
 ## Notion failing on purpose (5 Oct 2026)
 - **`lib/notion-proxy.mjs`**: a pass-through stand-in for the Notion API, like the AI proxy. `ctx.notion.fail(mode, {times, writes})` with `rate-limit` (429), `server-error`, `unavailable`, `html` (an HTML error page instead of JSON), `hang`, `offline` (connection refused); `ctx.notion.pass()` ends it. A suite opts in with `export const notionProxy = true`; the app (`desktop/lib/notion.js`, `files.js`) and the engine (`src/notion/client.py` `api_base`) use it only with `JOB_PILOTTO_E2E` and `JOB_PILOTTO_E2E_NOTION_BASE_URL`.
-- **`activityfailures`** runs a Jobs check while Notion is busy, answers HTML, and while the connection is gone: a clear end in words, no raw HTML or JSON, nothing left Running.
+- **`integration/store/run-faults-notion.test.mjs`** runs a Jobs check while Notion is busy, answers HTML, and while the connection is gone: a clear end in words, no raw HTML or JSON, nothing left Running (it was the `activityfailures` suite).
 - A step that breaks things on purpose passes `{faults: true}` to `ctx.run`: it is never retried or filed as an environment failure, since handling the broken answer is the product's job.
 
 ## Judge before filing, and measure the judge (5 Oct 2026)
@@ -272,7 +266,7 @@ Every open UI-loop issue carries one label `priority:P0` to `P3`, recomputed aft
 `apply` fills a form written the way Workday writes them (`FORMS.workday`, host `e2e.wd3.myworkdayjobs.com`): opaque ids, labels tied only by `aria-labelledby`, `aria-required`, a list button instead of a `<select>`. The kit's answers and the person's details must be filled, the list-button question left for the person by name, Submit untouched.
 
 ## One failed step never hides the rest (5 Oct 2026)
-A suite that exports `keepGoing = true` (activityfailures, activity, focus, settings, interactions) records a failed step and runs the next one (`lib/runner.mjs`); the suite still fails at the end. Setup steps the others need pass `{critical: true}` and still stop it. Why: one outdated step hid fifteen later ones, twice in one day. The Finder still files the first failed step and lists the later ones under it.
+A suite that exports `keepGoing = true` (settings, interactions) records a failed step and runs the next one (`lib/runner.mjs`); the suite still fails at the end. Setup steps the others need pass `{critical: true}` and still stop it. Why: one outdated step hid fifteen later ones, twice in one day. The Finder still files the first failed step and lists the later ones under it.
 
 ## Regressions, flaky steps and the owner's corrections (5 Oct 2026)
 - **Regression:** a new finding that matches an issue a FIX closed (a commit said it fixes it, or the fixer merged) is labelled `regression`, gets a comment naming the old issue, and is P1 at least (`fixedBefore`).

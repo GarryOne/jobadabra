@@ -9,9 +9,10 @@ const manifest = JSON.parse(fs.readFileSync(new URL('../../extension/manifest.js
 const JAR = [{name: 'li_at', value: 'AQEDfake', domain: '.linkedin.com', path: '/', secure: true, httpOnly: true}, {name: 'JSESSIONID', value: '"ajax:1"', domain: '.www.linkedin.com'},
   {name: 'bcookie', value: 'v=2&x', domain: '.linkedin.com'}, {name: 'lidc', value: 'b=1', domain: '.linkedin.com'}];
 function fakeChrome({granted = true, had = {}, jar = JAR, stored = {}} = {}) {
-  const log = [], store = {...stored};
-  return {log, store, permissions: {request: async asked => { log.push(['request', asked]); return granted; }, remove: async asked => { log.push(['remove', asked]); return true; },
-    contains: async asked => { log.push(['contains', asked]); return asked.permissions ? !!had.cookies : !!had.origin; }},
+  const log = [], store = {...stored}, removedListeners = [];
+  return {log, store, fireRemoved: removed => Promise.all(removedListeners.map(fn => fn(removed))),
+    permissions: {request: async asked => { log.push(['request', asked]); return granted; }, remove: async asked => { log.push(['remove', asked]); return true; },
+      contains: async asked => { log.push(['contains', asked]); return asked.permissions ? !!had.cookies : !!had.origin; }, onRemoved: {addListener: fn => removedListeners.push(fn)}},
     storage: {local: {get: async key => ({[key]: store[key]}), set: async values => Object.assign(store, values), remove: async key => { delete store[key]; }}},
     cookies: {getAll: async filter => { log.push(['getAll', filter]); return jar; }}, alarms: {create: (name, info) => log.push(['alarm', name, info]), onAlarm: {addListener: fn => log.push(['listener', typeof fn])}}};
 }
@@ -69,6 +70,19 @@ test('Gitar on #2694: cookies the options page (Open in my browser) or every-sit
   assert.deepEqual(partly.log.at(-1), ['remove', {origins: ['https://www.linkedin.com/*']}], 'only the origin this consent added');
   const never2 = fakeChrome();
   assert.deepEqual(await revokeIfOff({config: {}, chrome: never2, call: async () => { throw new Error('no consent ever happened here: no call'); }}), {held: false});
+});
+
+test('Gitar on #2845: a grant Chrome removes another way is no longer ours, so a later off never takes the options page\'s cookies', async () => {
+  const had = {cookies: false, origin: false}, chrome = fakeChrome({had});
+  startLinkedinSession({chrome});
+  await connect({config: {}, chrome, call: async () => ({ok: true})});
+  assert.deepEqual(chrome.store.linkedinGranted, {cookies: true, origin: true});
+  await chrome.fireRemoved({permissions: ['cookies'], origins: []});   // the options page's cookie toggle off (or Chrome's own settings)
+  had.cookies = true;                                                   // ... and on again: cookies now belong to "Open in my browser"
+  await connect({config: {}, chrome, call: async () => ({ok: true})});
+  assert.deepEqual(chrome.store.linkedinGranted, {cookies: false, origin: true}, 'the removed grant is no longer noted as this consent\'s');
+  assert.deepEqual(await revokeIfOff({config: {}, chrome, call: async () => ({revoke: true})}), {revoked: true});
+  assert.deepEqual(chrome.log.filter(entry => entry[0] === 'remove').at(-1), ['remove', {origins: ['https://www.linkedin.com/*']}], 'only the origin; cookies stay with the options page');
 });
 
 test('the look starts one alarm a minute, and the manifest declares the origin and keeps cookies optional', () => {

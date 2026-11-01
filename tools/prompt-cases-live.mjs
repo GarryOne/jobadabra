@@ -53,7 +53,7 @@ export function caseArgs(tree, out) {
 }
 
 // The real-sized form cases a checkout builds with its own prompts (its tools/free-ai-form-cases.mjs).
-function buildCases(tree) {
+export function buildCases(tree) {
   const out = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'prompt-cases-')), 'cases.json');
   execFileSync('node', caseArgs(tree, out), {cwd: tree, stdio: ['ignore', 'ignore', 'inherit']});
   if (!fs.existsSync(out)) throw new Error(`${tree}: tools/free-ai-form-cases.mjs wrote no cases`);

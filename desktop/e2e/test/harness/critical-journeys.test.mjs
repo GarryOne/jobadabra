@@ -25,8 +25,8 @@ test('the registry holds the journeys J0-J2, J4-J12 and the tier additions J13-J
 test('every journey has tier 1 or 2, and the owner\'s first-tier journeys are tier 1', () => {
   for (const journey of registry.journeys) assert.ok([1, 2].includes(journey.tier), `${journey.id} has a tier`);
   const tier = id => registry.journeys.find(journey => journey.id === id)?.tier;
-  for (const id of ['J0', 'J1', 'J2', 'J4', 'J5', 'J6', 'J7', 'J9', 'J11', 'J12', 'J13', 'J14']) assert.equal(tier(id), 1, id);
-  for (const id of ['J8', 'J10', 'J15', 'J16', 'J17', 'J18', 'J19']) assert.equal(tier(id), 2, id);
+  for (const id of ['J0', 'J1', 'J2', 'J4', 'J5', 'J6', 'J7', 'J12', 'J13', 'J14']) assert.equal(tier(id), 1, id);
+  for (const id of ['J8', 'J9', 'J10', 'J11', 'J15', 'J16', 'J17', 'J18', 'J19']) assert.equal(tier(id), 2, id);
   assert.equal(tier('J8'), 2, 'Tailor CV: a failed tailor leaves the base CV, so it degrades but does not block');
 });
 

@@ -95,10 +95,10 @@
    "id": "J9",
    "name": "Track an application through its stages",
    "steps": [
-    {"suite": "stores", "step": "the board shows the store's applications in their stage columns"},
-    {"suite": "stores", "step": "moving a card to Interviewing writes the stage and its event to the store, and it stays after a reload"}
+    {"integration": "desktop/integration/store/board-stages.test.mjs", "test": "the board shows the store's applications in their stage columns"},
+    {"integration": "desktop/integration/store/board-stages.test.mjs", "test": "moving a card to Interviewing writes the stage and its event to the store, and it stays after a reload"}
    ],
-   "tier": 1
+   "tier": 2
   },
   {
    "id": "J10",
@@ -121,17 +121,10 @@
    "id": "J11",
    "name": "A run that fails ends in words, never Running for ever",
    "steps": [
-    {
-     "suite": "activityfailures",
-     "step": "the AI says the key is invalid (401): the run ends as Failed or with warnings, in words, with nothing left Running",
-     "parts": [
-      "the AI says the key is invalid (401)",
-      ": the run ends as Failed or with warnings, in words, with nothing left Running"
-     ]
-    },
-    {"suite": "activityfailures", "step": "quitting the app in the middle of a run: it is not shown Running for ever, and the app says what became of it"}
+    {"integration": "desktop/integration/store/run-faults-ai.test.mjs", "test": "the AI says the key is invalid (401): the run ends as Failed or with warnings, in words, with nothing left Running", "parts": ["the AI says the key is invalid (401)", ": the run ends as Failed or with warnings, in words, with nothing left Running"]},
+    {"integration": "desktop/integration/store/run-quit-midway.test.mjs", "test": "quitting the app in the middle of a run: it is not shown Running for ever, and the app says what became of it"}
    ],
-   "tier": 1
+   "tier": 2
   },
   {
    "id": "J12",
@@ -219,9 +212,7 @@
   {"suite": "apply", "step": "checking jobs before the form read exists reads nothing: every chip says \"Not checked\", no session starts, nothing is filled or sent"},
   {"suite": "apply", "step": "\"See which jobs can apply automatically\" reads a job's form in the hidden browser: You review and submit, the tab closes, and nothing is filled or sent", "parts": ["\"See which jobs can apply automatically\" reads a job's form in the hidden browser: ", "You review and submit", ", the tab closes, and nothing is filled or sent"]},
   {"suite": "apply", "step": "\"See which jobs can apply automatically\" reads a job's form in the hidden browser: Can apply automatically, the tab closes, and nothing is filled or sent", "parts": ["\"See which jobs can apply automatically\" reads a job's form in the hidden browser: ", "Can apply automatically", ", the tab closes, and nothing is filled or sent"]},
-  {"suite": "applyflows", "step": "a form drawn after a spinner: its submit is never pressed as Apply, and it is filled once its fields come"},
-  {"suite": "employers", "step": "the crawl's source list now holds the starter employers and the two new boards, and nothing else"},
-  {"suite": "employers", "step": "a second run writes nothing twice"}
+  {"suite": "applyflows", "step": "a form drawn after a spinner: its submit is never pressed as Apply, and it is filled once its fields come"}
  ],
  "to_come": [
  "Always on / Notion (tier 2): integration only (strategy-notion-integration.test.mjs 'an edit made directly on the Notion page is used by the next check, and a removed role stops matching'); its e2e step left with the Notion-only steps (owner, 1 Nov 2026)",

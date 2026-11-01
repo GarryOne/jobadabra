@@ -45,6 +45,9 @@ export function compute(input, {days = 3, now = new Date()} = {}) {
   for (let back = 0; back < days; back++) at(new Date(now.getTime() - back * 86400000).toISOString().slice(0, 10));
   const inWindow = date => date >= from && date <= now.toISOString().slice(0, 10);
   const byPr = new Map((input.merges || []).map(merge => [merge.pr, merge]));
+  // Why (1 Nov 2026, owner: the page showed no reds): a run of a merged PR no longer lists its pull request (0 of 29 measured), so the run's branch joins it to its merge.
+  const byBranch = new Map();   // a branch name can be reused by a later PR: keep every merge and pick the one that holds the red's commit
+  for (const merge of input.merges || []) byBranch.set(merge.branch, [...(byBranch.get(merge.branch) || []), merge]);
   for (const merge of (input.merges || []).filter(item => inWindow(item.day))) {
     const card = at(merge.day);
     card.prs.merged++;
@@ -65,7 +68,7 @@ export function compute(input, {days = 3, now = new Date()} = {}) {
   // A red on a merged PR: the first later commit of that PR whose run of the same workflow is green fixed it. Not on a merged PR, or its commit gone (force push): not seen.
   const green = new Set((input.runs || []).filter(run => run.conclusion === 'success').map(run => `${run.name}|${run.head_sha}`));
   for (const run of (input.runs || []).filter(item => ['failure', 'timed_out'].includes(item.conclusion) && inWindow(day(item.created_at)))) {
-    const merge = byPr.get(run.pr), at0 = merge ? merge.commits.findIndex(commit => commit.sha === run.head_sha) : -1;
+    const merge = byPr.get(run.pr) || (byBranch.get(run.branch) || []).find(item => item.commits.some(commit => commit.sha === run.head_sha)), at0 = merge ? merge.commits.findIndex(commit => commit.sha === run.head_sha) : -1;
     if (at0 < 0) continue;
     const fix = merge.commits.slice(at0 + 1).find(commit => green.has(`${run.name}|${commit.sha}`));
     at(day(run.created_at)).reds[fix ? classifyFix(fix) : 'nofix']++;
@@ -106,7 +109,7 @@ export function fetchRuns({repo, days, now, lowWater = 300}) {
     for (let page = 1; ; page++) {
       if (calls++ % 25 === 0 && Number(run('gh', ['api', 'rate_limit', '--jq', '.resources.core.remaining']).trim()) < lowWater) { console.error('agent-coding-stats: rate limit low, stopping with what is read'); return runs; }
       const list = gh(`repos/${repo}/actions/runs?event=pull_request&created=${range}&per_page=100&page=${page}`).workflow_runs || [];
-      for (const item of list) runs.push({name: item.name, head_sha: item.head_sha, conclusion: item.conclusion, created_at: item.created_at, run_started_at: item.run_started_at, updated_at: item.updated_at, pr: item.pull_requests?.[0]?.number ?? null});
+      for (const item of list) runs.push({name: item.name, head_sha: item.head_sha, conclusion: item.conclusion, created_at: item.created_at, run_started_at: item.run_started_at, updated_at: item.updated_at, pr: item.pull_requests?.[0]?.number ?? null, branch: item.head_branch ?? null});
       if (list.length < 100) break;
     }
   }

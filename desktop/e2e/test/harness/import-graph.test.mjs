@@ -28,7 +28,6 @@ test('suitesFor adds the few suites that use a changed helper, never a helper ev
 test('the real tree: the helpers #1941 changed point at the suites that use them', () => {
   const used = suitesUsing(path.resolve(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'), '..'));
   assert.ok(used['lib/apply-cv-steps.mjs'].includes('apply'));
-  assert.ok(used['lib/activity-steps.mjs'].includes('activityfailures'));   // activity-states.mjs lost its only suite when cardstates moved to desktop/test (1 Nov 2026); the activity suite itself left in R2 (1 Nov 2026)
 });
 
 // #2043 (26 Oct 2026): src/ai/schema_notes.py changed the scoring prompt; quality watches score.py, which imports it, yet quality never ran on the PR.

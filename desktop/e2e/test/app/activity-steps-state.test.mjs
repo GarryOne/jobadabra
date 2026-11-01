@@ -31,38 +31,6 @@ test('detail readiness requires the requested run, the selected run and complete
   assert.equal(steps.activityDetailReady(null), true, 'panel selection can be observed without a preknown id');
 });
 
-test('activityfailures has only measured per-step hang caps and no aggregate clock verdict', async t => {
-  const suite = await import('../../suites/activityfailures.mjs');
-  const {budgetMsOf, stopMsOf, createRunner} = await import('../../lib/runner.mjs');
-  const timings = JSON.parse(fs.readFileSync(new URL('../../fixtures/activityfailures-main-timings.json', import.meta.url)));
-  assert.equal(suite.aggregateBudget, false);
-  assert.equal(budgetMsOf(suite), Infinity);
-  assert.equal(stopMsOf(suite), null);
-  const required = [...timings.rows.map(row => row.name), "the app is set up on this Mac's store with the applicant's strategy"];
-  assert.deepEqual(Object.keys(suite.hangCaps).sort(), [...new Set(required)].sort());
-  t.mock.method(console, 'log', () => {});
-  t.mock.timers.enable({apis: ['setTimeout']});
-  const runner = createRunner(() => null, {keepGoing: true, budgetMs: budgetMsOf(suite), hangCaps: suite.hangCaps});
-  for (const row of timings.rows) {
-    assert.equal(row.seconds.length, timings.runs.length);
-    const latest = JSON.parse(fs.readFileSync(new URL('../../hang-caps.json', import.meta.url))).activityfailures.steps[row.name];
-    const cap = Math.max(30, Math.ceil(3 * Math.max(...row.seconds) / 5) * 5,
-      latest.p95Seconds === undefined ? 0 : Math.ceil(3 * latest.p95Seconds / 5) * 5);
-    assert.equal(suite.hangCaps[row.name], cap, row.name);
-    let entered;
-    const started = new Promise(resolve => { entered = resolve; });
-    const attempt = runner.run(row.name, () => { entered(); return new Promise(() => {}); });
-    await started;
-    t.mock.timers.tick(cap * 1000 - 1);
-    await new Promise(setImmediate);
-    assert.notEqual(runner.results.at(-1)?.name, row.name, 'no failure before the named hang cap');
-    t.mock.timers.tick(1);
-    await attempt;
-    assert.equal(runner.results.at(-1).status, 'failed');
-    assert.match(runner.results.at(-1).note, /it hung/);
-  }
-});
-
 test('the resume wait rejects old history and accepts only an active or newly finished search', async t => {
   const original = globalThis.window;
   t.after(() => { if (original === undefined) delete globalThis.window; else globalThis.window = original; });

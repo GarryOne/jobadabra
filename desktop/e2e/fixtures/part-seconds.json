@@ -47,12 +47,6 @@
       "standin": 100,
       "sqlite": 98
     },
-    "Mac + Linux · activityfailures": {
-      "runs": 2,
-      "max": 315,
-      "standin": 262,
-      "sqlite": 315
-    },
     "Mac + Linux · apply-3of3": {
       "runs": 2,
       "max": 698,
@@ -83,23 +77,11 @@
       "standin": 16,
       "sqlite": 16
     },
-    "Mac + Linux · stores": {
-      "runs": 2,
-      "max": 28,
-      "standin": 28,
-      "sqlite": 24
-    },
     "Mac + Linux · applyflows-1of3": {
       "runs": 2,
       "max": 252,
       "standin": 208,
       "sqlite": 252
-    },
-    "Mac + Linux · employers": {
-      "runs": 2,
-      "max": 86,
-      "standin": 83,
-      "sqlite": 86
     },
     "Mac + Linux · wizard": {
       "runs": 2,

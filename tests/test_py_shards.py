@@ -177,5 +177,22 @@ class CheckoutDataTests(unittest.TestCase):
             self.assertEqual(done.stdout.split(), [shard_folder, str(Path(shard_folder) / 'reports')], done.stderr)
 
 
+class ProgressLineTests(unittest.TestCase):
+    """Owner, 1 Nov 2026: "I don't see any live logs/updates of what being run": a long python run says how far it is."""
+    def test_the_progress_line_counts_finished_shards_modules_failures_and_time(self):
+        shard_list = [['a', 'b', 'c'], ['d'], ['e', 'f']]
+        self.assertEqual(shards.progress_line(shard_list, [1], 0, 7), 'python tests: 1/3 shards done (1/6 modules) · 0 failed · 7s')
+        self.assertEqual(shards.progress_line(shard_list, [0, 1], 1, 80), 'python tests: 2/3 shards done (4/6 modules) · 1 failed · 1m20s')
+
+    def test_a_run_longer_than_the_interval_prints_a_progress_line_before_the_end(self):
+        env = {**os.environ, 'JOB_PILOTTO_PROGRESS_SECS': '1', 'JOB_PILOTTO_PY_JOBS': '2'}
+        with tempfile.TemporaryDirectory() as tmp:
+            sleeper = Path(tmp) / 'test_zz_progress_sleeper.py'
+            sleeper.write_text('import time, unittest\nclass T(unittest.TestCase):\n    def test_slow(self):\n        time.sleep(3)\n')
+            env['PYTHONPATH'] = tmp
+            done = subprocess.run([sys.executable, str(ROOT / 'tools/py-shards.py'), 'test_zz_progress_sleeper'], capture_output=True, text=True, env=env, timeout=120, cwd=ROOT)
+        self.assertRegex(done.stdout, r'python tests: 0/1 shards done \(0/1 modules\) · 0 failed · \ds')
+
+
 if __name__ == '__main__':
     unittest.main()

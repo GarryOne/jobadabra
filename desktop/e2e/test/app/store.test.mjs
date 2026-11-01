@@ -9,7 +9,6 @@ import {notionFarSide, pickStore, runToken, STORES, storeSettings} from '../../l
 import {E2E} from '../../lib/app.mjs';
 import {SUITES} from '../../lib/context.mjs';
 import {suiteFacts} from '../../plan-run.mjs';
-import * as activityfailures from '../../suites/activityfailures.mjs';
 import * as quality from '../../suites/quality.mjs';
 import * as wander from '../../suites/wander.mjs';
 
@@ -43,7 +42,7 @@ test('quality pins SQLite for every CI store alternation so recorded answers use
   }
 });
 
-for (const [name, suite] of [['wander', wander], ['activityfailures', activityfailures]]) {
+for (const [name, suite] of [['wander', wander]]) {
   test(`${name} keeps its Notion faults reachable on the stand-in across CI store alternation and environment pins`, () => {
     assert.equal(suite.store, 'standin');
     for (const run of [0, 1, 2, 3]) {
@@ -59,10 +58,9 @@ test('every stored-answer backbone suite pins its store or bypasses store altern
   const {backbone: suites} = await suiteFacts();
   assert.ok(suites.length > 0, 'stored answers must name at least one suite');
   assert.ok(suites.includes('quality'), 'quality must use stored backbone answers');
-  assert.ok(suites.includes('stores'), 'stores must use declared backbone kinds');
   for (const name of suites) {
     const suite = await import(`../../suites/${name}.mjs`);
-    // Why (29 Oct 2026, ap): notion=false bypasses context's store alternation; stores sets up SQLite itself and its declared kind refusals contain no store-specific data.
+    // Why (29 Oct 2026, ap): notion=false bypasses context's store alternation (the suite sets up its own store; the `stores` suite did, until it left e2e on 1 Nov 2026).
     assert.ok(STORES.includes(suite.store) || suite.notion === false, `${name}: stored answers require a store pin or no store alternation`);
   }
 });

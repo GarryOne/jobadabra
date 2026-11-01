@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 
-const suites = ['apply', 'activityfailures', 'quality', 'applyflows', 'interactions', 'jobs', 'settings'];
+const suites = ['apply', 'quality', 'applyflows', 'interactions', 'jobs', 'settings'];
 
 test('every suite exports the loader table', async () => {
   const {hangCapsFor} = await import('../../lib/hang-caps.mjs');
@@ -43,7 +43,7 @@ test('a suite whose cadence is manual keeps the default cap; a nightly or slim o
   assert.equal(cadenceOf('explore', explore), 'manual', 'positive control: the real explore suite is manual');
   assert.equal(backboneSuite('explore', cadenceOf('explore', explore)), false);
   assert.equal(backboneSuite('apply', 'nightly'), true);
-  assert.equal(backboneSuite('stores', 'slim'), true);
+  assert.equal(backboneSuite('jobs', 'slim'), true);
   const runner = createRunner(() => null, {suite: 'explore', cadence: 'manual'});
   await runner.run('an exploring step', async () => {});
   assert.equal(runner.results[0].status, 'passed');

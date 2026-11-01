@@ -1018,6 +1018,17 @@ jobs:
       contents: read
       actions: read   # the e2e coverage map of main's last run
 
+  # Night pass 1 only (owner via mac-07, 1 Nov 2026, "Let the prompts being checked nightly and report"; a8 agreed): the live prompt-case set asked on the Codex plan, last night's results against tonight's main (prompt-cases-night.yml).
+  # REPORT ONLY, allowed under the owner's freeze: nothing `needs` this job, the called job is continue-on-error, it holds no suite lock, and it has no pull_request trigger. It takes no Worker cron: it rides the slot of pass 1.
+  prompt-cases-night:
+    name: Prompt cases (report only)
+    if: inputs.night_pass == '1/5'
+    uses: ./.github/workflows/prompt-cases-night.yml
+    permissions:
+      contents: read
+      actions: read    # last night's baseline artifact
+      id-token: write  # the per-run OIDC token for the Codex broker
+
   # Why (31 Oct 2026, owner): "It should just raise an alert. And that's it." One credit alert per workflow run, never a beta hold.
   ai-credit-health:
     name: AI credit health

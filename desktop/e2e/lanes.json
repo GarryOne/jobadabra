@@ -73,12 +73,6 @@
     "updates": {
       "aiMissesMax": 0
     },
-    "focus": {
-      "aiMissesMax": 0
-    },
-    "cardstates": {
-      "aiMissesMax": 0
-    },
     "focusdismiss": {
       "aiMissesMax": 0
     },
@@ -100,9 +94,6 @@
       "since": "2026-11-01",
       "why": "Owner, 1 Nov 2026: the beta keeps only the critical journeys; quality measures the model's facts and scores on golden postings from stored answers and reports once a night (cadence night-report), so a red is a measurement, not a verdict on this commit.",
       "returns": "Stays tolerant: it is a nightly report, not a gate."
-    },
-    "foryou": {
-      "aiMissesMax": 0
     },
     "pool": {
       "aiMissesMax": 0

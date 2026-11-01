@@ -36,13 +36,13 @@ test('suitesReading: a suite whose source (or an import of it) quotes an element
 
 test('#2694: the real Focus rows file is read by the focus suites, and a line 23 suites ran picks their steps, not the settings smoke alone', () => {
   const readers = read([FOCUS_ROWS])[FOCUS_ROWS];
-  for (const suite of ['focus', 'focusdismiss']) assert.ok(readers?.includes(suite), `${suite} reads ${FOCUS_ROWS}`);
+  for (const suite of ['focusdismiss']) assert.ok(readers?.includes(suite), `${suite} reads ${FOCUS_ROWS}`);
   const ran = {[FOCUS_ROWS]: lines([100, 200])};
   const entry = {sha: 'S', files: ran, steps: {'Focus finishes loading': ran, [SETUP]: ran}};
   const map = {suites: Object.fromEntries(['activity', 'apply', 'calendar', 'jobs', 'settings', 'wander', ...readers].map(name => [name, entry]))};
   const picked = stepsCovering(map, {S: {[FOCUS_ROWS]: [[156, 156]]}}, {reads: read([FOCUS_ROWS])});
   assert.deepEqual(Object.keys(picked).sort(), [...readers].sort());
-  assert.deepEqual(picked.focus.steps, ['Focus finishes loading']);
+  assert.deepEqual(picked.focusdismiss.steps, ['Focus finishes loading']);
 });
 
 // #2118 (app-notify.js:61) and #2119 (server.js:51) ran all 20 suites whole on 26 Oct 2026: the main process draws no element, so it has no reader and the shared rule still holds.

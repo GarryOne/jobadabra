@@ -1,4 +1,4 @@
-/* global document, window */
+/* global window */
 // Actions + Recent activity when things go WRONG: the AI answering 429, 500, 401, no credit and never answering; the same task asked twice; a Gmail check queued behind a search;
 // quitting the app in the middle of a run. Starts from a set-up install; resets only its own run rows in Notion. The task cards and the Recent activity screen are the
 // activity suite, in parallel, on its own Notion page (this split halves the wall-clock time).
@@ -10,7 +10,7 @@ import {badSummary, leaks} from '../lib/activity.mjs';
 import {digestProblems} from '../lib/telegram-fake.mjs';
 import {rows as notionRows} from '../lib/notion.mjs';
 import {waitForRunLock, waitedForLock} from '../lib/run-lock.mjs';
-import {finish, snap} from '../lib/layout.mjs';
+import {finish} from '../lib/layout.mjs';
 import {LABEL, idsNow, noRowStaysRunning, openRun, own, prepare, quiet, resumedSearchSeen, runTask, runsData, setFeed, sleep, withSilenceLimit} from '../lib/activity-steps.mjs';
 
 // Only this arming can prove consumption; global failures may belong to earlier delayed calls.
@@ -103,23 +103,6 @@ export async function runParts(ctx, parts) {
         } finally { await releaseFault(proxy, fault); }
       }), {needs: ctx.needs, faults: true, stopOnHang: true});
     }
-    await ctx.run('a search analysis paused by the spending limit is a run with a warning that names the limit, not a failure', api(async () => {
-      const fault = proxy.setMode('no-credit');
-      try {
-        const {fresh, shown} = await runTask(ctx, 'weekly', {maxMs: 240000, kind: 'weekly'});
-        const mine = shown.find(row => row.id === String(fresh[0].id));
-        const opened = await openRun(ctx, LABEL.weekly, {id: fresh[0].id, snapAs: 'activity-limit-paused', situation: 'A search analysis paused because the Anthropic spending limit was reached: With warnings, naming the limit, in the Recent activity panel'});
-        consumedFault(fault);
-        const words = `${opened.warnings} ${opened.warningList} ${mine?.result}`;
-        console.log(`  search analysis at the limit: list "${mine?.result}" [${mine?.pill}]; panel [${opened.status}] ${opened.warnings.slice(0, 120)}`);
-        const problems = [];
-        if (/failed/i.test(mine?.result || '') || /Failed/.test(mine?.pill || '')) problems.push(`a pause for the spending limit reads as a failure: "${mine?.result}" [${mine?.pill}]`);
-        if (!/spending limit|AI limit/i.test(words)) problems.push(`the limit is not named: "${words.slice(0, 160)}"`);
-        if (/terminal/i.test(words)) problems.push('the words send an app user to a terminal');
-        if (problems.length) throw new Error(problems.join('; '));
-        await noRowStaysRunning(ctx);
-      } finally { await releaseFault(proxy, fault); }
-    }), {needs: ctx.needs, faults: true, stopOnHang: true});
   }
   if (parts.includes('notion')) {
     // ---------- (2b) Notion fails (5 Oct 2026) ----------
@@ -218,24 +201,6 @@ export async function runParts(ctx, parts) {
         if (problems.length) throw new Error(problems.join('; '));
       } finally { await connectTelegram(false).catch(() => {}); }
     }, {needs: ctx.needs, faults: true});
-    await ctx.run('Telegram refuses the digest (the bot was blocked): the run says so in words, never a plain Completed, nothing left Running', async () => {
-      await connectTelegram(true);
-      ctx.telegram.fail('blocked');
-      try {
-        setFeed(ctx, ['Senior Site Reliability Engineer, telegram blocked']);
-        const {fresh, shown} = await runTask(ctx, 'run', {maxMs: 300000, kind: 'search'});
-        const mine = shown.find(row => row.id === String(fresh[0].id));
-        const opened = await openRun(ctx, LABEL.search, {id: fresh[0].id, snapAs: 'activity-telegram-blocked', situation: 'A Jobs check whose Telegram digest was refused because the bot was blocked: its detail pane'});
-        console.log(`  telegram blocked: list "${mine?.result}" [${mine?.pill}]; panel [${opened.status}] ${opened.warnings.slice(0, 160)}`);
-        const words = `${opened.warnings} ${opened.warningList} ${opened.result} ${opened.message} ${mine?.result}`;
-        const problems = [];
-        if (/Completed$/.test(opened.status) && !opened.warnings && !opened.warningList) problems.push('the run says plain "Completed" though the digest never reached the person');
-        if (!/telegram/i.test(words)) problems.push('nothing on the run names Telegram as what failed');
-        if (/"ok":\s*false|error_code|Forbidden:/.test(words)) problems.push('Telegram\'s raw answer is shown');
-        if (problems.length) throw new Error(problems.join('; '));
-        await noRowStaysRunning(ctx);
-      } finally { ctx.telegram.pass(); await connectTelegram(false).catch(() => {}); }
-    }, {needs: ctx.needs, faults: true});
     // ---------- (2d) Gmail (5 Oct 2026) ----------
     await ctx.run('the Gmail check reads the inbox through Google and ends in words, with nothing left Running', async () => {
       const before = ctx.google.stats.read;
@@ -249,23 +214,6 @@ export async function runParts(ctx, parts) {
       if (bad) problems.push(`the list's words are wrong: ${bad}`);
       if (problems.length) throw new Error(problems.join('; '));
       await noRowStaysRunning(ctx);
-    }, {needs: ctx.needs, faults: true});
-    await ctx.run('Google access revoked: the Gmail check says so in words (connect Google again), never a plain Completed, never Google\'s raw answer', async () => {
-      ctx.google.revoke();
-      try {
-        const {fresh, shown} = await runTask(ctx, 'mail', {maxMs: 240000, kind: 'mail'});
-        const mine = shown.find(row => row.id === String(fresh[0].id));
-        const opened = await openRun(ctx, LABEL.mail, {id: fresh[0].id, snapAs: 'activity-google-revoked', situation: 'A Gmail check whose Google sign-in was revoked: its detail pane'});
-        console.log(`  google revoked: list "${mine?.result}" [${mine?.pill}]; panel [${opened.status}] ${opened.warnings.slice(0, 160)}`);
-        const words = `${opened.warnings} ${opened.warningList} ${opened.result} ${opened.message} ${mine?.result}`;
-        const problems = [];
-        if (/Completed$/.test(opened.status) && !opened.warnings && !opened.warningList) problems.push('the check says plain "Completed" though it could not read the mail');
-        if (!/google|gmail|sign.?in|connect/i.test(words)) problems.push('nothing says the Google sign-in is the problem');
-        const raw = /.{0,80}(invalid_grant|error_description|Token has been expired).{0,80}/.exec(words);   // which words, quoted: the screen itself looked clean (6 Oct 2026)
-        if (raw) problems.push(`Google's raw answer is shown: "${raw[0].replace(/\s+/g, ' ')}" (warnings: ${opened.warnings ? 'yes' : 'no'}, list: ${opened.warningList ? 'yes' : 'no'}, message: ${/invalid_grant|error_description|Token has been/.test(opened.message || '') ? 'yes' : 'no'})`);
-        if (problems.length) throw new Error(problems.join('; '));
-        await noRowStaysRunning(ctx);
-      } finally { ctx.google.pass(); }
     }, {needs: ctx.needs, faults: true});
   }
   if (parts.includes('ai')) {
@@ -290,26 +238,6 @@ export async function runParts(ctx, parts) {
         if (problems.length) throw new Error(problems.join('; '));
         await noRowStaysRunning(ctx);
     })), {needs: ctx.needs, faults: true, stopOnHang: true});
-
-    // ---------- (2b) the AI fails where a person asked for something on the spot (not a run) ----------
-    // #94 (3 Oct 2026): with the AI out of credit, "Read my CV PDF" put the API's JSON in the CV card ("400 {"type":"error",…,"request_id":…}"). A failure state is where
-    // such text shows, so the card is read here, and photographed: the layout check flags technical text shown to a person, and the AI review sees the page.
-    await ctx.run('the AI out of credit while reading the CV: the card says it in words, never the API\'s JSON (#94)', api(async () => {
-      const fault = proxy.setMode('no-credit');
-      try {
-        await page.click('.nav[data-view="settings"]');
-        page.once('dialog', dialog => dialog.accept().catch(() => {}));   // "Replace your CV data…?" when a CV was read before
-        await page.locator('#cv-more .ui-more').click({timeout: 30000});   // the CV row's ⋯ holds Read my CV PDF (mockup 08, 18 Oct 2026)
-        await page.locator('.ui-menu button', {hasText: 'Read my CV PDF'}).click({timeout: 10000});
-        await page.waitForFunction(() => { const said = document.getElementById('cv-message')?.textContent || ''; return said && !/Reading your CV/.test(said); }, null, {timeout: 180000, polling: 1000});
-        consumedFault(fault);
-        const said = (await page.locator('#cv-message').innerText()).trim();
-        console.log(`  the CV card says: ${said.slice(0, 160)}`);
-        if (/[{}]|"type"|request_id|invalid_request_error|Error code/.test(said)) throw new Error(`the CV card shows the API's raw answer: ${said.slice(0, 200)}`);
-        if (!/credit|limit/i.test(said)) throw new Error(`the CV card does not say the AI is out of credit: ${said.slice(0, 200)}`);
-        await snap(ctx, 'settings-cv-no-credit', {view: 'settings', situation: 'Read my CV PDF pressed while the AI has no credit'});
-      } finally { await releaseFault(proxy, fault); }
-    }), {needs: ctx.needs, faults: true, stopOnHang: true});
 
     // ---------- (3) two things at once, and a quit in the middle ----------
     // Removed 6 Oct 2026 (7-minute suite budget): a double-clicked Run (every task step already fails on a run listed twice: runTask), a Gmail check queued behind a

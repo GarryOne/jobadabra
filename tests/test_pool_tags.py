@@ -31,7 +31,7 @@ class PoolTagsTest(unittest.TestCase):
             return {key: allowed[0] for key in items}
         with mock.patch.object(meanings.decide, 'decide', fake):
             pool_tags.places(['x'])
-        self.assertEqual(seen[0], (*pool_tags.COUNTRIES, 'none'))
+        self.assertIn((*pool_tags.COUNTRIES, 'none'), seen)   # the country and the metro are asked side by side (#2913): no order
 
     @needs_site
     def test_the_site_accepts_the_same_ids(self):

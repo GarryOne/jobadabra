@@ -156,11 +156,12 @@ def fine_tags(search=None):
     search = search or load_search_config(matching=False)
     places = search.get('locations', {})
     own = lambda groups: [_plain(p) for group in groups for p in places.get(group, [])]  # noqa: E731
-    from .together import together   # Why (#2913, 2 Nov 2026): three independent lookups, 3-6 AI calls: one after another they held the employer pick for tens of seconds
-    (countries, _), (_, metros), families = together(
-        lambda: pool_tags.places(own(('top_tier', 'country_wide', 'abroad'))),
-        lambda: pool_tags.places(own(('top_tier',))),   # metro areas: only the places named first, not a whole country
-        lambda: pool_tags.families([_plain(k) for k in search.get('role_keywords', [])]))
+    from .together import together   # Why (#2913, 2 Nov 2026): independent AI lookups, one after another they held the employer pick for tens of seconds
+    # The metros of the first places are asked AFTER the others: they are a subset of the all-places ask, so they are cache reads and the AI is asked
+    # exactly what the serial code asked (an old search tape has no request for them, and a cold cache would ask twice).
+    (countries, _), families = together(lambda: pool_tags.places(own(('top_tier', 'country_wide', 'abroad'))),
+                                        lambda: pool_tags.families([_plain(k) for k in search.get('role_keywords', [])]))
+    _, metros = pool_tags.places(own(('top_tier',)))   # metro areas: only the places named first, not a whole country
     return {'countries': countries, 'metros': metros, 'families': families}
 
 

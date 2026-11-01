@@ -36,24 +36,34 @@ class TogetherTests(unittest.TestCase):
 
 class ThePoolLabelsAreAskedAtOnce(unittest.TestCase):
     def test_every_label_lookup_of_a_search_is_in_flight_together(self):
-        """role-kind, pool-role, pool-region, two pool-country, two pool-metro and pool-family: all waiting for each other before any answers."""
-        gate = threading.Barrier(8, timeout=WAIT)
-        seen = []
+        """role-kind, pool-role, pool-region, pool-country, pool-metro and pool-family: all waiting for each other before any answers; the metros of
+        the first places come after, as cache reads, so the AI is asked exactly what a serial run asked (no duplicate, an old tape still matches)."""
+        gate = threading.Barrier(6, timeout=WAIT)
+        asked, lock = [], threading.Lock()
+
+        def ask(topic):
+            with lock:
+                first = topic not in asked   # the second pool-metro ask is the cache read: it never reaches the AI, so it does not wait
+                asked.append(topic)
+            if first:
+                gate.wait()
 
         def labels(topic, texts, choices, task):
-            seen.append(topic)
-            gate.wait()
+            ask(topic)
             return []
 
         def kinds(search):
-            seen.append('role-kind')
-            gate.wait()
+            ask('role-kind')
             return set()
+
+        def countries(texts):
+            ask('pool-country')
+            return []
         with mock.patch.object(meanings, 'labels', side_effect=labels), mock.patch.object(role_kinds, 'of_search', side_effect=kinds), \
-                mock.patch('src.pool_tags.countries', side_effect=lambda texts: (gate.wait(), [])[1]):
+                mock.patch('src.pool_tags.countries', side_effect=countries):
             me = employer_index.me_now(SEARCH)
         self.assertEqual(me['roles'], ['other'])
-        self.assertEqual(sorted(seen), sorted(['role-kind', 'pool-role', 'pool-region', 'pool-metro', 'pool-metro', 'pool-family']), seen)
+        self.assertEqual(sorted(set(asked)), ['pool-country', 'pool-family', 'pool-metro', 'pool-region', 'pool-role', 'role-kind'], asked)
         self.assertFalse(gate.broken)
 
     def test_the_result_is_the_one_a_serial_run_gave(self):

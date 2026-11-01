@@ -79,4 +79,41 @@ test('merges are read from git: the PR number, the title line, the branch, the f
   assert.equal(one.at, '2026-11-01T10:00:00+00:00', 'the merge time, for ordering against runs');
   assert.deepEqual([one.pr, one.title, one.branch, one.files], [12, '[ac] Fix the dim', 'fix-the-dim', ['src/a.py', 'tools/b.sh']]);
   assert.deepEqual(one.commits.map(item => [item.sha, item.lines, item.subject]), [['c1', 4, 'First'], ['c2', 10, 'Second']]);
-  });
+});
+
+// Owner, 1 Nov 2026: all 3 repos squash-merge only, so main holds one "<PR title> (#n)" commit per PR and no merge commit; the Agent coding tab missed every PR from 1 Nov.
+const squashLog = ['S1\x1f2026-11-01\x1f2026-11-01T10:00:00+00:00\x1f[ac] Fix the dim (#2891)\x1f\x1e', 'M1\x1f2026-10-31\x1f2026-10-31T10:00:00+00:00\x1fMerge pull request #12 from GarryOne/old-branch\x1f[ac] Old\x1e',
+  'D1\x1f2026-11-01\x1f2026-11-01T09:00:00+00:00\x1fDirect commit on main\x1f\x1e'].join('\n');
+const squashGit = (...args) => (args[0] === 'diff' ? 'src/a.py\ntools/b.sh\n' : args.includes('--numstat') ? '\x1ec1\x1fFirst\n3\t1\tsrc/old.py\n' : squashLog);
+const squashApi = (calls = []) => path => {
+  calls.push(path);
+  if (path === 'rate_limit') return {resources: {core: {remaining: 4000}}};
+  if (path.endsWith('/pulls/2891')) return {head: {ref: 'ac/fix-the-dim'}};
+  if (path.includes('/pulls/2891/commits')) return [{sha: 'k1', commit: {message: 'Add the dim\n\nbody'}}, {sha: 'k2', commit: {message: 'Fix it'}}];
+  if (path.endsWith('/commits/k1')) return {files: [{filename: 'src/a.py', additions: 5, deletions: 1}]};
+  if (path.endsWith('/commits/k2')) return {files: [{filename: 'tools/b.sh', additions: 2, deletions: 0}, {filename: 'desktop/test/a.test.js', additions: 1, deletions: 1}]};
+  throw new Error(`unexpected ${path}`);
+};
+
+test('a squash-merged PR (subject ends in "(#n)") counts as one PR with its branch and its commits from GitHub; old merge commits and direct commits stay as before', () => {
+  const merges = fetchMerges({days: 3, now, git: squashGit, api: squashApi()});
+  assert.deepEqual(merges.map(item => item.pr), [2891, 12], 'the squash commit and the old merge commit, the direct commit skipped');
+  const [one] = merges;
+  assert.deepEqual([one.title, one.branch, one.day, one.at, one.files], ['[ac] Fix the dim', 'ac/fix-the-dim', '2026-11-01', '2026-11-01T10:00:00+00:00', ['src/a.py', 'tools/b.sh']]);
+  assert.deepEqual(one.commits.map(item => [item.sha, item.subject, item.files, item.lines]), [['k1', 'Add the dim', ['src/a.py'], 6], ['k2', 'Fix it', ['tools/b.sh', 'desktop/test/a.test.js'], 4]]);
+  assert.deepEqual(merges[1].commits.map(item => item.sha), ['c1'], 'the old shape still reads <sha>^1..<sha>^2 from git');
+});
+
+test('the Agent coding card counts the squash-merged PR and joins its red to its green by branch and commit', () => {
+  const merges = fetchMerges({days: 3, now, git: squashGit, api: squashApi()});
+  const input = {merges, runs: [run('CI · Tests', 'k1', 'failure', null, {branch: 'ac/fix-the-dim'}), run('CI · Tests', 'k2', 'success', null, {branch: 'ac/fix-the-dim'})]};
+  const [, , today] = compute(input, {days: 3, now});
+  assert.deepEqual(today.prs, {merged: 1, ci: 1});
+  assert.deepEqual(today.reds, {product: 0, test: 0, ci: 1, form: 0, nofix: 0});
+});
+
+test('when the GitHub rate limit is low the squash-merged PR is still counted, without its branch and commits', () => {
+  const api = path => { if (path === 'rate_limit') return {resources: {core: {remaining: 10}}}; throw new Error(`no call after a low limit: ${path}`); };
+  const [one] = fetchMerges({days: 3, now, git: squashGit, api});
+  assert.deepEqual([one.pr, one.title, one.branch, one.commits], [2891, '[ac] Fix the dim', null, []]);
+});

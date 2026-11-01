@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {test} from 'node:test';
+import {beforeEach, test} from 'node:test';
 import {createStorage} from '../lib/storage.js';
 import * as viewCache from '../lib/view-cache.js';
 
@@ -12,6 +12,8 @@ const storage = () => {
   s.saveSettings({notionIds: {NOTION_APPLICATIONS_DB: 'ws-1'}, viewCache: true});
   return s;
 };
+
+beforeEach(() => viewCache.releaseHeldWrites());   // the ledger of the app's own recent writes is per process
 
 test('a good read is kept and handed back; errors and out-of-date lists are not kept', () => {
   const s = storage();
@@ -89,4 +91,65 @@ test('a Strategy read with jobs waiting for a new score is kept', () => {
   viewCache.remember(s, 'strategy', {ok: true, lists: {country: [{fragment: 'Romandie'}]}, remote_jobs: false, stale: 2594});
   const kept = viewCache.recall(s, 'strategy').result;
   assert.deepEqual([kept.lists.country[0].fragment, kept.remote_jobs], ['Romandie', false]);
+});
+
+// #2758: Notion lists a write late, so a Jobs read that began AFTER a write can still carry the old stage; pipeline.jobs shows it as written (withHeldWrites), then the handler saves it
+// (journey proof: integration/store/job-write-lag.test.mjs). These are the ledger's rules.
+const read = (s, jobs, total = jobs.length) => viewCache.remember(s, 'jobs', viewCache.withHeldWrites(s, {jobs, total}));
+const stageOf = (s, url) => viewCache.recall(s, 'jobs').result.jobs.find(job => job.url === url);
+
+test('a Jobs read that still lists the old stage is shown and saved as written, until the store lists the written value', () => {
+  const s = storage(), url = 'https://x/ember';
+  read(s, [{url, status: 'applied', stage: 'Interview scheduled'}]);
+  viewCache.statusChanged(s, url, 'dismissed', 'Closed');
+  const late = read(s, [{url, status: 'applied', stage: 'Interview scheduled'}]);
+  assert.deepEqual([late.jobs[0].status, late.jobs[0].stage], ['dismissed', 'Closed'], 'the window gets the written state');
+  assert.deepEqual([stageOf(s, url).status, stageOf(s, url).stage], ['dismissed', 'Closed'], 'the saved list has the written state');
+  read(s, [{url, status: 'dismissed', stage: 'Closed'}]);   // the store caught up: the hold ends
+  assert.equal(read(s, [{url, status: 'applied', stage: 'Offer'}]).jobs[0].stage, 'Offer', 'a change made elsewhere afterwards is not hidden');
+});
+
+test('a change made elsewhere before the store caught up is not hidden: only a state the job had before is replaced', () => {
+  const s = storage(), url = 'https://x/alder';
+  read(s, [{url, status: 'unreviewed', stage: 'Kit ready'}]);
+  viewCache.statusChanged(s, url, 'saved', 'Saved');
+  assert.equal(read(s, [{url, status: 'unreviewed', stage: 'Kit ready'}]).jobs[0].stage, 'Saved', 'the old listing is replaced by what was written');
+  assert.equal(read(s, [{url, status: 'applied', stage: 'Applying'}]).jobs[0].stage, 'Applying', 'Apply (written by the engine or the extension) is a newer state');
+  assert.equal(read(s, [{url, status: 'unreviewed', stage: 'Kit ready'}]).jobs[0].stage, 'Kit ready', 'and the hold ended with it');
+});
+
+test('with no saved list to read the prior state from, the first listing after the write is the stale one and a newer change is not hidden', () => {
+  const s = storage(); s.saveSettings({viewCache: false});   // recall() is null: no prior state known
+  const url = 'https://x/ember';
+  viewCache.statusChanged(s, url, 'dismissed', 'Closed');
+  assert.equal(read(s, [{url, status: 'applied', stage: 'Interview scheduled'}]).jobs[0].stage, 'Closed', 'the first listing, from before the write, is replaced');
+  assert.equal(read(s, [{url, status: 'applied', stage: 'Interview scheduled'}]).jobs[0].stage, 'Closed', 'and so is the next one');
+  assert.equal(read(s, [{url, status: 'applied', stage: 'Offer'}]).jobs[0].stage, 'Offer', 'a newer state is shown, and the hold ends');
+});
+
+test('two writes inside the lag: the listing from before either of them is still replaced by the last one', () => {
+  const s = storage(), url = 'https://x/ember';
+  read(s, [{url, status: 'applied', stage: 'Interview scheduled'}]);
+  viewCache.statusChanged(s, url, 'dismissed', 'Closed');
+  viewCache.statusChanged(s, url, 'applied', 'Applying');
+  assert.equal(read(s, [{url, status: 'applied', stage: 'Interview scheduled'}]).jobs[0].stage, 'Applying');
+  assert.equal(read(s, [{url, status: 'dismissed', stage: 'Closed'}]).jobs[0].stage, 'Applying', 'the first write, listed late, is stale too');
+});
+
+test('a deleted job is dropped from a Jobs read that still lists it, and the count follows', () => {
+  const s = storage(), url = 'https://x/gone';
+  viewCache.jobDeleted(s, url);
+  const late = read(s, [{url, status: 'dismissed', stage: 'Closed'}, {url: 'https://x/other', status: 'saved', stage: 'Saved'}], 2);
+  assert.deepEqual(late.jobs.map(job => job.url), ['https://x/other']);
+  assert.equal(late.total, 1);
+});
+
+test('a hold ends after ten minutes, and never reaches another Notion workspace', t => {
+  const s = storage(), url = 'https://x/ember', old = {url, status: 'applied', stage: 'Interview scheduled'};
+  read(s, [{...old}]);
+  viewCache.statusChanged(s, url, 'dismissed', 'Closed');
+  const other = storage(); other.saveSettings({notionIds: {NOTION_APPLICATIONS_DB: 'ws-2'}});
+  assert.equal(read(other, [{...old}]).jobs[0].stage, 'Interview scheduled', 'another workspace is not touched');
+  t.mock.timers.enable({apis: ['Date'], now: Date.now() + 10 * 60000 + 1});
+  assert.equal(read(s, [{...old}]).jobs[0].stage, 'Interview scheduled', 'ten minutes later the store is believed');
 });

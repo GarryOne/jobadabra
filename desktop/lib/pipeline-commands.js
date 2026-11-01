@@ -11,6 +11,7 @@ import {readable} from './pipeline-env.js';
 import {run} from './pipeline-run.js';
 const engineRun = run;   // the default of the shared reads below (a test passes its own)
 import {afterWrite, sharedRead} from './shared-read.js';
+import * as viewCache from './view-cache.js';
 
 // limit: how many of the best rows to send (the list's "Show more" raises it); the counts cover every row (src/desktop.py jobs).
 // One read at a time per limit, for every caller (17 Oct 2026: a card asked for the list on every activity event, each read took ~60 s on a slow Notion day and 187 Python runs piled up): a second ask joins the running one.
@@ -19,7 +20,7 @@ export const jobs = sharedRead('engine jobs', async (storage, limit = 200, run =
   const firstRun = !storage.settings().lastSearchAt;
   const {code, stdout} = await run(storage, ['src.desktop', 'jobs', '--limit', String(limit), ...(firstRun ? ['--first-run'] : [])]);
   if (code !== 0) throw new Error('Could not read the job list');
-  return markFinished(storage, JSON.parse(stdout.trim().split('\n').pop()));
+  return viewCache.withHeldWrites(storage, markFinished(storage, JSON.parse(stdout.trim().split('\n').pop())));   // Why (#2758): the app's own recent writes, for every caller of the list (view-cache.js)
 }, {keyOf: (storage, limit) => limit ?? 200});
 
 // The Calendar's jobs: Applications rows only (src/desktop.py calendar), a fraction of the full list's read.
@@ -161,15 +162,20 @@ export async function focusReminder(storage, send = false) {
 // The stage writes below are afterWrite: a job-list read asked after one must not join a read that began before it (shared-read.js), whoever
 // asked (a session's Cancel, a row's menu, the extension's submit report). test/job-writes.test.js finds every one by its engine command.
 // A session ended without a submission: the job goes back from Applying to Kit ready (in Notion first).
+// Why (#2758, 1 Nov 2026): a write whose new stage the engine's own answer states is held in the Jobs reads (view-cache.js withHeldWrites), as setStatus's is; Notion lists a write late.
 export const unapply = afterWrite(async (storage, url) => {
   const {stdout} = await run(storage, ['src.desktop', 'unapply', url]);
-  return JSON.parse(stdout.trim().split('\n').pop() || '{"ok":false}');
+  const result = JSON.parse(stdout.trim().split('\n').pop() || '{"ok":false}');
+  if (result.ok && result.notion === 'updated') viewCache.statusChanged(storage, url, 'unreviewed', 'Kit ready');
+  return result;
 });
 // The owner says an Applied was wrong (the extension inferred a submission that never happened): the engine puts the
 // stage back to Applying and trashes the false 📈 Applied event. Only a bare Applied is undone (src/desktop.py).
 export const notSubmitted = afterWrite(async (storage, url) => {
   const {stdout} = await run(storage, ['src.desktop', 'not-submitted', url]);
-  return JSON.parse(stdout.trim().split('\n').pop() || '{"ok":false}');
+  const result = JSON.parse(stdout.trim().split('\n').pop() || '{"ok":false}');
+  if (result.ok && result.notion === 'updated') viewCache.statusChanged(storage, url, 'applied', 'Applying');
+  return result;
 });
 // The user said how an application went (desktop/lib/outcomes.js): the same stage event the Gmail check writes, in Notion.
 export const markOutcome = afterWrite(async (storage, url, stage) => {
@@ -180,7 +186,9 @@ export const markOutcome = afterWrite(async (storage, url, stage) => {
 // A dismissed job deleted (src/desktop.py delete_job): its Notion pages to the trash, the local copy a marker.
 export const deleteJob = afterWrite(async (storage, url) => {
   const {stdout} = await run(storage, ['src.desktop', 'delete', url]);
-  try { return JSON.parse(stdout.trim().split('\n').pop() || '{}'); } catch { return {ok: false, error: 'The app could not read the answer.'}; }
+  let result; try { result = JSON.parse(stdout.trim().split('\n').pop() || '{}'); } catch { return {ok: false, error: 'The app could not read the answer.'}; }
+  if (result.ok) viewCache.jobDeleted(storage, url);   // out of the saved list, and held out of the reads while Notion lists it late
+  return result;
 });
 // Settings → Clear my job list (src/clear_jobs.py): `dryRun` only counts; the person's own dismissals are always kept.
 export const clearJobs = afterWrite(async (storage, {dryRun = false} = {}) => {
@@ -189,5 +197,7 @@ export const clearJobs = afterWrite(async (storage, {dryRun = false} = {}) => {
 });
 export const setStatus = afterWrite(async (storage, url, status) => {
   const {stdout} = await run(storage, ['src.desktop', 'status', url, status]);
-  return JSON.parse(stdout.trim().split('\n').pop() || '{}');
+  const result = JSON.parse(stdout.trim().split('\n').pop() || '{}');
+  if (result.ok) viewCache.statusChanged(storage, url, status, result.stage);   // whoever asked: the row's menu, a session's Skip or Close, the extension's report
+  return result;
 });

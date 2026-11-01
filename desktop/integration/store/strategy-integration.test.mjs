@@ -31,7 +31,7 @@ const {ensureConfig} = await import('../../lib/pipeline-env.js');
 const pipelineRun = await import('../../lib/pipeline-run.js');
 const {searchSteps} = await import('../../lib/search-steps.js');
 const strategy = await import('../../lib/strategy-settings.js');
-const {START, sqliteStart} = await import('../../e2e/test/strategy-start.mjs');
+const {sqliteStart} = await import('../../e2e/test/strategy-start.mjs');
 
 // This Mac's store, set up the way the wizard leaves it: the key, the applicant's strategy kept here, no Notion.
 const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-strategy-int-'));

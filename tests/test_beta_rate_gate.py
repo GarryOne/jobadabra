@@ -215,24 +215,27 @@ class Gate(unittest.TestCase):
         gate = self.gate()
         jobs = [{'id': 21, 'name': 'E2E · Mac + Linux · apply-1of2', 'conclusion': 'failure'},
                 {'id': 22, 'name': 'E2E · Windows · apply', 'conclusion': 'success'},
-                {'id': 23, 'name': 'E2E · Mac + Linux · settings', 'conclusion': 'success'}]
+                {'id': 23, 'name': 'E2E · Mac + Linux · settings', 'conclusion': 'success'}, *[{'name': f'Unit tests · {lane}', 'conclusion': 'success'} for lane in ('Mac', 'Windows')]]
         status, lines = gate.backbone_check(jobs, {})
         self.assertEqual(status, 1)
         self.assertEqual(lines, ['Not released: red: Mac + Linux: apply'])
         self.assertEqual(gate.backbone_check([{**job, 'conclusion': 'success'} for job in jobs], {}), (0, []), 'the control: all green is released')
 
-    def test_a_red_unit_step_holds_both_betas_even_when_every_e2e_job_passed(self):
-        # Owner, 31 Oct 2026 ("D: unit red still runs e2e"): the unit step no longer stops the e2e, so the release is where one unit red refuses both platforms.
+    def test_a_red_unit_leg_holds_both_betas_even_when_every_e2e_job_passed(self):
+        # Owner, 31 Oct 2026 ("D: unit red still runs e2e"): the unit tests do not stop the e2e, so the release is where one unit red refuses both platforms.
+        # Owner, 1 Nov 2026: they are a leg of the Test matrix, a job named "Unit tests · <lane>", which the gate finds by name in the run's jobs.
         gate = self.gate()
-        green = [{'id': 21, 'name': 'E2E · Mac + Linux · apply', 'conclusion': 'success'}, {'id': 22, 'name': 'E2E · Windows · apply', 'conclusion': 'success'}]
-        self.assertEqual(gate.backbone_check(green, {}, {'Mac': 'success', 'Windows': 'success'}), (0, []), 'the control: all green, units green')
-        self.assertEqual(gate.backbone_check(green, {}), (0, []), 'no unit outcomes given (the e2e check by itself)')
-        self.assertEqual(gate.backbone_check(green, {}, {'Mac': 'failure', 'Windows': 'success'}), (1, ['Not released: red: Unit tests · Mac']))
-        self.assertEqual(gate.backbone_check(green, {}, {'Mac': 'failure', 'Windows': 'failure'}), (1, ['Not released: red: Unit tests · Mac, Unit tests · Windows']))
-        red = [{**green[0], 'conclusion': 'failure'}, green[1]]
-        self.assertEqual(gate.backbone_check(red, {}, {'Windows': 'failure'}), (1, ['Not released: red: Mac + Linux: apply, Unit tests · Windows']), 'both reds in one line')
-        for unfinished in ('', 'skipped', 'cancelled'):
-            self.assertEqual(gate.backbone_check(green, {}, {'Mac': unfinished}), (0, []), f'a unit step that never ran ({unfinished!r}) is not a unit red')
+        e2e = [{'id': 21, 'name': 'E2E · Mac + Linux · apply', 'conclusion': 'success'}, {'id': 22, 'name': 'E2E · Windows · apply', 'conclusion': 'success'}]
+        unit = lambda mac, windows: [{'name': 'Unit tests · Mac', 'conclusion': mac}, {'name': 'Unit tests · Windows', 'conclusion': windows}]
+        self.assertEqual(gate.backbone_check(e2e + unit('success', 'success'), {}), (0, []), 'the control: all green, units green')
+        self.assertEqual(gate.backbone_check(e2e + unit('failure', 'success'), {}), (1, ['Not released: red: Unit tests · Mac']))
+        self.assertEqual(gate.backbone_check(e2e + unit('failure', 'failure'), {}), (1, ['Not released: red: Unit tests · Mac, Unit tests · Windows']))
+        red = [{**e2e[0], 'conclusion': 'failure'}, e2e[1]]
+        self.assertEqual(gate.backbone_check(red + unit('success', 'failure'), {}), (1, ['Not released: red: Mac + Linux: apply, Unit tests · Windows']), 'both reds in one line')
+        # Gitar on #2858: a unit leg that never passed is red, however it ended; the e2e jobs do not show it.
+        for unfinished in ('skipped', 'cancelled', 'timed_out', None):
+            self.assertEqual(gate.backbone_check(e2e + unit(unfinished, 'success'), {}), (1, ['Not released: red: Unit tests · Mac']), f'a unit leg that ended {unfinished!r} did not pass')
+        self.assertEqual(gate.backbone_check(e2e + unit('success', 'success')[:1], {}), (1, ['Not released: red: Unit tests · Windows']), 'a missing unit leg did not pass')
 
     def test_rate_only_standalone_import_needs_no_annotation_companion(self):
         # The PR verdict downloads each companion separately, before main_e2e_state may be loaded.

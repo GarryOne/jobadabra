@@ -4,8 +4,9 @@ Beta by hand 41215677698 stopped at "Build · Mac" on 1 of 5,102 unit tests: the
 45-minute beta that told us nothing about the e2e. A red unit test stops no Compile, Smoke or e2e gate; both Release jobs still refuse ("Not released: red: Unit tests · <lane>"),
 and a failed Compile or Smoke still stops the e2e (no app to test).
 
-Owner, 1 Nov 2026: "Yes" to moving the unit tests into their own parallel jobs ("Unit tests · Mac" / "Unit tests · Windows"): in a tested run they run beside Build, no E2E job needs
-them, both Release jobs do. A run that is not tested (no gate) runs the same action inside Build, before Compile, and stops the build on a red.
+Owner, 1 Nov 2026: "Yes" to moving the unit tests off the Build box's critical path, then "let's go this way" to making them a LEG of the Test matrix ("Unit tests · Mac" /
+"Unit tests · Windows", beside the E2E suites; Build → Test matrix [Unit | e2e suites] → Release). A run that is not tested (no gate) has no Test matrix: Build runs the same action
+inline, before Compile, and stops the build on a red.
 """
 import re
 import unittest
@@ -13,8 +14,11 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 WORKFLOW = (ROOT / '.github/workflows/desktop.yml').read_text()
-LANES = (('build', 'Mac', 'test-mac', 'release-mac', 'unit-mac'), ('windows', 'Windows', 'test-windows', 'release-windows', 'unit-windows'))
+ACTION = (ROOT / '.github/actions/unit-tests/action.yml').read_text()
+LANES = (('build', 'Mac', 'test-mac', 'release-mac'), ('windows', 'Windows', 'test-windows', 'release-windows'))
 UNIT_STEP = 'Unit tests · desktop app'
+# The steps a unit leg shares with the suite legs: the checkouts, the call ledger, node and python, and the app's `npm ci` the unit tests need.
+SHARED = ('uses: actions/checkout@', 'uses: ./.github/actions/gh-ledger', 'uses: actions/setup-node@', 'uses: actions/setup-python@', 'name: Install the app')
 
 
 def job(name):
@@ -33,52 +37,68 @@ def step(name, part):
 
 
 class UnitRedRunsE2E(unittest.TestCase):
-    def test_a_tested_run_has_the_unit_tests_in_their_own_job_beside_the_build(self):
-        for _, lane, _, _, unit in LANES:
-            body = job(unit)
-            self.assertIn(f'name: Unit tests · {lane}', body)
-            self.assertIn("needs: changes\n", body, f'{lane}: it starts with Build, not after it')
-            self.assertIn("needs.changes.outputs.released == 'true' && needs.changes.outputs.gate == 'true'", body, f'{lane}: a tested run only; a Build only run keeps the step inside Build')
-            self.assertEqual(len(re.findall(r'uses: \./\.github/actions/unit-tests', body)), 1, lane)
-            self.assertIn('Why (31 Oct 2026, owner', WORKFLOW.split(f'\n  {unit}:\n')[0][-2500:], f'{lane}: the decision carries its Why')
-            self.assertIn('Why (1 Nov 2026, owner', WORKFLOW.split('\n  build:\n')[0][-2500:], 'the move carries its Why, above the build jobs')
+    def test_the_unit_tests_are_a_leg_of_each_test_matrix_not_a_job_of_their_own(self):
+        for _, lane, test, _ in LANES:
+            self.assertNotIn('\n  unit-mac:\n', WORKFLOW)
+            self.assertNotIn('\n  unit-windows:\n', WORKFLOW)
+            body = job(test)
+            header = body.split('\n    steps:\n')[0]
+            prefix = 'E2E · Mac + Linux' if lane == 'Mac' else 'E2E · Windows'
+            # The unit leg is named whole and never starts with "E2E · ": every reader of the E2E jobs by that prefix (gate, canary, reports) ignores it.
+            self.assertIn("name: ${{ matrix.name || format('%s · {0}', matrix.key) }}" % prefix, header, lane)
+            self.assertNotIn('unit', re.search(r'(?m)^    needs: (\[[^\]]*\])', body).group(1), f'{lane}: the unit leg starts with the suites, when its build ends')
+            self.assertRegex(header, r'(?m)^      fail-fast: false', f'{lane}: a red unit leg must not cancel the e2e legs (owner, 31 Oct 2026: unit red still runs e2e)')
+            self.assertNotIn('continue-on-error: ${{ matrix.unit', header)
+            self.assertEqual(body.count("uses: ./.github/actions/unit-tests"), 1, lane)
+            self.assertIn("if: matrix.suite == 'unit'", step(test, UNIT_STEP), f'{lane}: the unit step runs on the unit leg only')
+
+    def test_every_step_of_the_test_jobs_is_a_suite_step_or_a_unit_step_or_shared(self):
+        for _, lane, test, _ in LANES:
+            for s in steps(test):
+                first = s.split('\n')[0]
+                if any(mark in first or mark in s.split('with:')[0].split('run:')[0] for mark in SHARED):
+                    continue
+                conditions = re.findall(r'(?m)^(?:if: |        if: )(.*)$', s)
+                self.assertTrue(conditions and ("matrix.suite != 'unit'" in conditions[0] or "matrix.suite == 'unit'" in conditions[0]),
+                                f"{lane}: this step has no leg condition, so the unit leg would run it: {first}")
+
+    def test_the_unit_leg_runs_the_tests_with_none_of_the_e2e_jobs_tokens(self):
+        # The test jobs' env holds live Notion, AI and GitHub tokens; the unit leg shares it, so the action unsets them (a denylist: tests/test_unit_leg_env.py derives the secrets).
+        for _, _, test, _ in LANES:
+            self.assertIn('uses: ./.github/actions/unit-tests', job(test))
+        self.assertIn('unset "$name"', ACTION)
+        self.assertIn('E2E_*|CI_*|FREE_AI_*|AI_COST_*', ACTION)
 
     def test_one_body_for_the_step_and_nothing_else_runs_the_checks(self):
-        action = (ROOT / '.github/actions/unit-tests/action.yml').read_text()
-        self.assertIn('for area in $UNIT_AREAS; do bash tools/check.sh --area "$area"', action)
+        self.assertIn('for area in $UNIT_AREAS; do bash tools/check.sh --area "$area"', ACTION)
         self.assertNotIn('bash tools/check.sh', WORKFLOW, 'the step body lives in the action, so no copy grows')
-        self.assertEqual(WORKFLOW.count('uses: ./.github/actions/unit-tests'), 4, 'two unit jobs, two Build only callers')
+        self.assertEqual(WORKFLOW.count('uses: ./.github/actions/unit-tests'), 4, 'two Test-matrix legs, two Build only callers')
         areas = lambda text: re.search(r"areas: '([^']*)'", text).group(1)
-        self.assertEqual(areas(job('unit-mac')), 'python desktop')
-        self.assertEqual(areas(job('build')), 'python desktop', 'a Build only run tests what the tested run does')
-        self.assertEqual(areas(job('unit-windows')), 'desktop')   # TEMPORARY since 10 Oct 2026: the 196 Windows-only Python reds
-        self.assertEqual(areas(job('windows')), 'desktop')
-        for area in ('worker', 'site'):
-            self.assertNotIn(f"areas: '{area}", WORKFLOW)
-        self.assertIn("if: runner.os == 'Windows'", action.split('python -m pip install tzdata')[0][-200:], 'Windows needs the time-zone data the tests load')
+        self.assertEqual(areas(step('test-mac', UNIT_STEP)), 'python desktop')
+        self.assertEqual(areas(step('build', UNIT_STEP)), 'python desktop', 'a Build only run tests what the tested run does')
+        self.assertEqual(areas(step('test-windows', UNIT_STEP)), 'desktop')   # TEMPORARY since 10 Oct 2026: the 196 Windows-only Python reds
+        self.assertEqual(areas(step('windows', UNIT_STEP)), 'desktop')
+        self.assertIn("if: runner.os == 'Windows'", ACTION.split('python -m pip install tzdata')[0][-200:], 'Windows needs the time-zone data the tests load')
 
-    def test_the_build_boxes_no_longer_publish_a_unit_output_the_release_reads_the_unit_jobs(self):
-        for name, lane, _, release, unit in LANES:
-            self.assertNotIn('outputs:', job(name).split('\n    steps:\n')[0], f'{lane}: the Build box has no unit output any more')
-            gate = step(release, f'Not released on {lane}')
-            # Gitar on #2858: the gate only counts 'failure'; a unit job that ended cancelled or skipped must refuse the release too, so only 'success' passes as success.
-            self.assertIn("--unit-mac \"${{ needs.unit-mac.result == 'success' && 'success' || 'failure' }}\"", gate)
-            self.assertIn("--unit-windows \"${{ needs.unit-windows.result == 'success' && 'success' || 'failure' }}\"", gate)
+    def test_the_plan_step_asks_for_the_unit_legs_and_the_release_reads_them_by_name(self):
+        plan = step('changes', 'Plan the E2E suites for both lanes')
+        self.assertIn("GATE_UNIT: '1'", plan)
+        for _, lane, _, release in LANES:
+            self.assertNotIn('--unit', WORKFLOW, 'the gate finds the unit legs among the run\'s jobs; no argument carries their result')
+            self.assertIn('beta_rate_gate.py --repo', step(release, f'Not released on {lane}'))
         self.assertNotIn('outputs.unit', WORKFLOW)
+        for name, *_ in LANES:
+            self.assertNotIn('outputs:', job(name).split('\n    steps:\n')[0], f'{name}: the Build box has no unit output any more')
 
-    def test_the_e2e_jobs_never_wait_for_a_unit_job_and_both_release_jobs_do(self):
-        for _, lane, test, release, _ in LANES:
+    def test_the_e2e_jobs_wait_for_their_build_only_and_both_release_jobs_wait_for_every_test_leg(self):
+        for name, lane, test, release in LANES:
             needs = re.search(r'(?m)^    needs: (\[[^\]]*\])', job(test)).group(1)
-            self.assertNotIn('unit', needs, f'{lane}: the e2e starts when its build is done, not when the unit tests are')
-            self.assertNotIn('unit-', job(test).split('\n    steps:\n')[0], f'{lane}: nothing in the e2e job header reads a unit job')
-            release_needs = re.search(r'(?m)^    needs: (\[[^\]]*\])', job(release)).group(1)
-            for unit in ('unit-mac', 'unit-windows'):
-                self.assertIn(unit, release_needs, f'{lane}: the release reads {unit}')
-        for name in ('ai-ready', 'gate-ran'):
-            self.assertNotIn('unit-', re.search(r'(?m)^    needs: (\[[^\]]*\])', job(name)).group(1))
+            self.assertEqual(needs, f'[changes, {name}, ai-ready]', lane)
+            self.assertEqual(re.search(r'(?m)^    needs: (\[[^\]]*\])', job(release)).group(1), '[changes, build, windows, test-mac, test-windows]', lane)
+            self.assertIn(f"needs.{name}.result == 'success'", job(test))
 
-    def test_only_the_unit_step_is_decoupled_compile_and_smoke_still_stop_the_e2e(self):
-        for name, lane, test, _, _ in LANES:
+    def test_compile_and_smoke_still_stop_the_e2e_and_only_the_build_only_unit_step_fails_quietly(self):
+        for name, lane, _, _ in LANES:
             for s in steps(name):
                 title = s.split('\n')[0]
                 if title.startswith('name: Compile') or title.startswith('name: Smoke'):
@@ -86,14 +106,11 @@ class UnitRedRunsE2E(unittest.TestCase):
                     self.assertNotIn('steps.unit', s, f'{lane}: {title} runs after a red unit step')
             quiet = [s.split('\n')[0] for s in steps(name) if re.search(r'(?m)^        continue-on-error:', s)]
             self.assertEqual([t for t in quiet if 'Unit tests' in t or 'Speed' in t], quiet, f'{lane}: only the Build only unit step (and the Defender speed-up) may fail quietly: {quiet}')
-            self.assertTrue(any('Unit tests' in t for t in quiet), lane)
-            # The e2e job waits on the build box's result: a failed Compile or Smoke fails the box, so the e2e skips.
-            self.assertIn("needs.build.result == 'success'" if name == 'build' else "needs.windows.result == 'success'", job(test))
 
     def test_a_build_only_run_that_is_not_tested_still_ends_red_on_a_unit_failure(self):
-        # Without the gate nothing else reads the unit result, and Build publishes itself: the unit step runs inside Build (the same action), before Compile and the release upload,
-        # and a red stops the box there. A tested run skips that step (its unit job runs beside Build).
-        for name, lane, _, _, _ in LANES:
+        # Without the gate there is no Test matrix, and Build publishes itself: the unit step runs inside Build (the same action), before Compile and the release upload, and a red
+        # stops the box there. A tested run skips that step (its unit leg runs in the Test matrix).
+        for name, lane, _, _ in LANES:
             inline = step(name, UNIT_STEP)
             self.assertIn("if: needs.changes.outputs.gate != 'true'", inline, lane)
             self.assertIn('uses: ./.github/actions/unit-tests', inline, lane)
@@ -109,7 +126,7 @@ class UnitRedRunsE2E(unittest.TestCase):
             self.assertLess(at, publish, f'{lane}: a red unit test stops the box before it publishes')
 
     def test_both_release_jobs_refuse_on_a_unit_red_even_when_every_e2e_passed(self):
-        for _, lane, _, release, _ in LANES:
+        for _, lane, _, release in LANES:
             body = job(release)
             gate = step(release, f'Not released on {lane}')
             self.assertLess(body.index(f'Not released on {lane}'), body.index('tools/beta-approve.sh'), f'{lane}: the refusal comes before the approval')

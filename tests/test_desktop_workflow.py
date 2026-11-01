@@ -98,10 +98,10 @@ class DesktopWorkflowTest(unittest.TestCase):
         self.assertIn('needs: changes ', job('build'))
         self.assertIn('needs: changes ', job('windows'))
         # The same unit tests on both platforms, only the desktop app's: Python pipeline + app, never the Worker or the site (own pipelines; owner, 10 Oct 2026). In a tested run they are
-        # the jobs "Unit tests · Mac/Windows" (owner, 1 Nov 2026), in a Build only run a step of the Build box; both call one action (tests/test_desktop_unit_red_runs_e2e.py).
+        # a leg "Unit tests · Mac/Windows" of the Test matrix (owner, 1 Nov 2026), in a Build only run a step of the Build box; both call one action (tests/test_desktop_unit_red_runs_e2e.py).
         unit_action = (pathlib.Path(__file__).resolve().parent.parent / '.github/actions/unit-tests/action.yml').read_text()
-        mac_unit = job('unit-mac').split('Unit tests · desktop app')[1].split('- if: always()')[0]
-        win_unit = job('unit-windows').split('Unit tests · desktop app')[1].split('- if: always()')[0]
+        mac_unit = job('test-mac').split('Unit tests · desktop app')[1].split('\n      - ')[0]
+        win_unit = job('test-windows').split('Unit tests · desktop app')[1].split('\n      - ')[0]
         # The same step on both platforms, apart from the list of areas: TEMPORARILY Windows runs only the app's tests (196 Python tests fail there for environmental reasons;
         # owner, 10 Oct 2026: fix them, then run both). When that is done: set Windows' areas to 'python desktop' in desktop.yml and delete WINDOWS_PYTHON_PENDING here.
         WINDOWS_PYTHON_PENDING = True
@@ -110,11 +110,11 @@ class DesktopWorkflowTest(unittest.TestCase):
         self.assertEqual(areas(win_unit), 'desktop' if WINDOWS_PYTHON_PENDING else 'python desktop')
         self.assertIn('for area in $UNIT_AREAS; do bash tools/check.sh --area "$area"', unit_action)
         for area in ('worker', 'site'):
-            self.assertNotIn(f'--area {area}', job('build') + job('windows') + job('unit-mac') + job('unit-windows'))
+            self.assertNotIn(f'--area {area}', job('build') + job('windows') + job('test-mac') + job('test-windows'))
             self.assertNotIn(f' {area} ', areas(mac_unit) + ' ')
         # A build is "compiles, the unit tests pass, a very small smoke passes" (owner, 10 Oct 2026), as NAMED STEPS of the one Build box, never boxes of their own
         # ("Put Compile, Smoke inside the Build"): the graph stays Anything new? -> Build -> E2E -> Release.
-        # Owner, 1 Nov 2026 ("Yes"): the Unit tests ARE boxes of their own now, beside Build (the line above is replaced for them only); Compile and Smoke stay in Build.
+        # Owner, 1 Nov 2026: the unit tests moved out of Build into the Test matrix (the line above is replaced for them only); Compile and Smoke stay in Build.
         for box in ('compile-mac', 'smoke-mac', 'compile-windows', 'smoke-windows', 'packaging-windows'):
             self.assertNotIn(f'\n  {box}:\n', WORKFLOW, f'{box} would be a box of its own in the graph')
         for name, steps in (('build', ('Compile · build and sign the app', 'Smoke test · the built app', 'mac-smoke.mjs')),
@@ -152,8 +152,8 @@ class DesktopWorkflowTest(unittest.TestCase):
         for name, script in (('release-mac', 'tools/beta-approve.sh "$TAG"'), ('release-windows', 'tools/beta-approve.sh --windows "$TAG"')):
             release = job(name)
             # Owner, 30 Oct 2026: both lanes green or neither platform is offered (Windows dropped its duplicates of the Mac + Linux suites).
-            # Owner, 31 Oct 2026: + the unit result, red without stopping the e2e; 1 Nov 2026: read from the Unit tests jobs (tests/test_desktop_unit_red_runs_e2e.py).
-            self.assertIn('needs: [changes, build, windows, unit-mac, unit-windows, test-mac, test-windows]', release)
+            # Owner, 31 Oct 2026: + build, windows, whose unit step is red without stopping the e2e (tests/test_desktop_unit_red_runs_e2e.py).
+            self.assertIn('needs: [changes, build, windows, test-mac, test-windows]', release)
             # Owner, 31 Oct 2026 (a suite past its budget is our bug): the gate reads every lane's jobs and its own exit code is the verdict; no grey hold, held output or rerun.
             self.assertIn('--e2e-only', release)
             for gone in ('backbone_gate', 'outputs.held', 'beta-held', 'continue-on-error: true\n        run: python3 tools/beta_rate_gate.py'):

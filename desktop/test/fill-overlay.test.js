@@ -1,4 +1,4 @@
-// The fill overlay's contracts, read from the source (the browser test is desktop/e2e/test/fill-overlay.test.mjs): every debugger input goes through the driver gap, every end removes the overlay,
+// The fill overlay's contracts, read from the source (the browser test is desktop/integration/extension/fill-overlay.test.mjs): every debugger input goes through the driver gap, every end removes the overlay,
 // and the overlay is hidden from the AI's picture.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';

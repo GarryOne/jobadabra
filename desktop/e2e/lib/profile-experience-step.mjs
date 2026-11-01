@@ -24,6 +24,11 @@ async function openExperience(ctx) {
   await stepWait('the Experience tab', timeout => ctx.page.getByRole('tab', {name: 'Experience', exact: true}).click({timeout}));
 }
 
+/**
+ * The J14 Experience step on the running app (`ctx`: a set-up install on any store): seed one summary line through the app's textEdit, edit it in Profile → Experience,
+ * press Save all changes, quit and start the app again, and check the card and the store hold the edit. Reads and writes only the suite's own data folder.
+ * Throws a message naming the summary lines last seen when a wait ends, or the step that could not be reached.
+ */
 export async function profileExperienceStep(ctx) {
   // The start-up move into the store finishes first: it may drop this Mac's profile copy once Notion has it (see settings.mjs roundTrip).
   await waitForLogLine(ctx.profile, /startup moves finished/g, {what: 'the app\'s start-up move into the store'});

@@ -67,12 +67,9 @@ test('capped release artifacts warn and send one existing-channel alert across s
   } finally { fs.rmSync(root, {recursive: true, force: true}); }
 });
 
-// Why-changed (1 Nov 2026, a8; owner: "take the AI out of the beta, in two steps", step 1): the beta (desktop.yml) made 0 live AI calls in its 7 relay suites (beta #7, run 41333086670),
-// so it has no credit alert job any more; the night runs (e2e.yml, e2e-windows.yml) keep theirs, and every assertion on that job below holds for both.
 test('every e2e workflow reports AI credit through one nonblocking aggregate alert job', async () => {
   const fs = await import('node:fs');
-  assert.doesNotMatch(fs.readFileSync(new URL('../../../../.github/workflows/desktop.yml', import.meta.url), 'utf8'), /\n {2}ai-credit-health:\n/, 'the beta spends no AI credit: no alert job');
-  for (const name of ['e2e', 'e2e-windows']) {
+  for (const name of ['desktop', 'e2e', 'e2e-windows']) {
     const text = fs.readFileSync(new URL(`../../../../.github/workflows/${name}.yml`, import.meta.url), 'utf8');
     const block = text.split('  ai-credit-health:\n')[1]?.split(/\n  [a-z][a-z-]*:/)[0] || '';
     assert.match(block, /continue-on-error: true/, name);

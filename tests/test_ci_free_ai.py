@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 WORKFLOWS = ROOT / '.github' / 'workflows'
 # Why (1 Nov 2026, a8; owner: "take the AI out of the beta, in two steps", step 1): beta #7 (run 41333086670) made 0 live AI calls in the 7 of its 21 suites that have a relay, so the beta has no
 # "AI key ready?" job any more. Its relay suites still start the relay and lib/context.mjs asks it one question before any step (asserted below): a refused token fails each of them by name.
-# The night runs (e2e.yml, e2e-windows.yml) keep the one preflight (test_every_relay_matrix_checks_the_ai_once_first).
+# The night runs (e2e.yml, e2e-windows.yml) keep the one preflight (test_every_relay_matrix_checks_the_ai_once_first). The beta keeps its credit alert until step 2 (the review and judges still write ai-capped.json).
 BETA_NO_PREFLIGHT = {('desktop.yml', 'test-mac'), ('desktop.yml', 'test-windows')}
 ACTION = ROOT / '.github' / 'actions' / 'free-ai-relay' / 'action.yml'
 RELAY_STEP = re.compile(r'uses: \./(?:\.ci-relay/)?\.github/actions/free-ai-relay')   # from the workflow's own commit (.ci-relay) or the workspace's
@@ -85,7 +85,8 @@ class CiFreeAiTests(unittest.TestCase):
     def test_the_beta_has_no_ai_preflight_but_its_relay_suites_still_fail_by_name(self):
         beta = jobs((WORKFLOWS / 'desktop.yml').read_text())
         self.assertNotIn('ai-ready', beta, 'the beta makes no live AI calls (step 1, 1 Nov 2026): no preflight job before the matrices')
-        self.assertNotIn('ai-credit-health', beta, 'the beta spends no AI credit: its credit alert lives in the night runs (e2e.yml, e2e-windows.yml)')
+        # Why (1 Nov 2026, a8; Gitar on #2869): the beta's AI screenshot review and judges still write ai-capped.json, and ai-credit-health is its only reader; it leaves with them in step 2.
+        self.assertIn('ai-credit-health', beta, 'the credit alert stays in the beta until the review and judge steps leave it (step 2)')
         for name in ('test-mac', 'test-windows'):
             self.assertRegex(re.search(r'(?m)^    needs: (\[[^\]]*\])', beta[name]).group(1), r'^\[changes, (build|windows)\]$', name)
             self.assertIn('Free AI relay', beta[name], f'{name} still starts the relay in its own step')

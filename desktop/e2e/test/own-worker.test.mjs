@@ -39,8 +39,8 @@ test('a worker that is not listed yet is taken from its own creation event, not 
 });
 
 test('no extension worker in time: the failure names every worker seen', async () => {
-  const context = contextOf([worker('nkeim', 'thunk.js')]);
-  await assert.rejects(() => extensionWorker(contextOf([worker('nkeim', 'thunk.js'), worker('glbjn', 'background.js'), worker('slow', 'background.js', null)]), {timeout: 50}),
+  const context = contextOf([worker('nkeim', 'thunk.js'), worker('glbjn', 'background.js'), worker('slow', 'background.js', null)]);
+  await assert.rejects(() => extensionWorker(context, {timeout: 50}),
     /no extension service worker of "Jobadabra" within 50 ms among the service workers seen: chrome-extension:\/\/nkeim\/thunk\.js not a background\.js \| chrome-extension:\/\/glbjn\/background\.js manifest "Other extension" \| chrome-extension:\/\/slow\/background\.js unreadable \(worker not ready\)$/);
   assert.equal(context.listenerCount('serviceworker'), 0, 'the listener was left behind');
 });

@@ -32,7 +32,7 @@ test('every slice of a sharded suite fits its budget on Windows (the slower lane
       assert.ok(seconds <= HEADROOM * budget, `${name} slice ${index}/${suite.shards}: ${slice} cases x ${suite.secondsPerCaseOnWindows} s = ${Math.round(seconds)} s, over ${HEADROOM * 100}% of its ${budget} s budget: raise ${name}'s shards (not its budget)`);
     }
   }
-  assert.ok(sharded.includes('recorded'), 'the recorded replay is sharded in the gates');
+  assert.ok(sharded.includes('apply'), 'apply is sharded in the gates');
 });
 
 test('a sharded suite becomes one job per slice on both lanes; the others stay one job each', async () => {

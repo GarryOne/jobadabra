@@ -104,28 +104,6 @@ test('five suite names defer nothing despite more than five jobs: fails if the p
   });
 });
 
-test('recorded takes no PR place (page-cases.yml replays it) and is one suite name with its slice jobs after merge', async () => {
-  const {shards} = await import('../suites/recorded.mjs');
-  const ordinary = ['strategy', 'settings', 'jobs', 'interviews', 'focus', 'calendar'];
-  const pointed = ['recorded', ...ordinary];
-  const plan = pick.planPrSuites({...args, pointed});
-  assert.deepEqual(plan, {
-    suites: ['calendar', 'focus', 'interviews', 'jobs', 'settings'],
-    left: ['strategy'], deferred: ['strategy'],
-  });
-  // Why (29 Oct 2026, a8): page-cases.yml replays recorded on a PR, so ON_PR_ELSEWHERE removes it before the cap counts anything.
-  assert.ok(!plan.suites.includes('recorded'));
-  assert.ok(!plan.deferred.includes('recorded'));
-
-  const main = pick.planPrSuites({...args, pointed, pullRequest: false});
-  assert.deepEqual(main, {suites: pointed, left: [], deferred: []});
-  assert.equal(main.suites.filter(suite => suite === 'recorded').length, 1);
-  const jobs = main.suites.flatMap(suite => shardLegs(suite, suite === 'recorded' ? shards : undefined).map(leg => ({suite, ...leg})));
-  assert.equal(jobs.filter(job => job.suite === 'recorded').length, shards);
-  assert.equal(jobs.length, ordinary.length + shards);
-  assert.ok(shards > 1, 'after merge, one recorded suite name expands into several slice jobs');
-});
-
 test('optional catch counts break a reach tie, never outrank a stronger reach', () => {
   const out = pick.planPrSuites({...eight, catches: {'c-map': 1000, 'y-import': 2, 'b-quote': 1}});
   assert.deepEqual(out.suites, ['x-own', 'z-own', 'y-import', 'b-quote', 'a-quote']);

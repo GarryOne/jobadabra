@@ -6,7 +6,6 @@ import {test} from 'node:test';
 import {stepSlicer} from '../lib/step-slices.mjs';
 import * as apply from '../suites/apply.mjs';
 import * as flows from '../suites/applyflows.mjs';
-import * as recorded from '../suites/recorded.mjs';
 import {loadCases} from '../lib/page-replay.mjs';
 import {costOf, shardOf, weighedSlices} from '../lib/replay-shard.mjs';
 
@@ -41,13 +40,12 @@ test('every forms and CV step of apply is weighed or follows one, and no weight 
   assert.deepEqual(heads.filter(head => !steps.some(name => name.startsWith(head))), []);
 });
 
-// Why (31 Oct 2026, owner chose "Split apply first"): two halves of ~640 s plus setup sat at the 11-minute budget; each third must stay near a third.
-test('apply\'s three slices are within a tenth of each other, and the hidden need of "Ready to submit" is said', () => {
+// Why (31 Oct 2026, owner chose "Split apply first"; 1 Nov 2026 no step reads another's tab any more): the apply suite is cut in three so each slice stays well under the 11-minute budget; every third must carry close to a third of the weighed seconds.
+test('apply\'s three slices are within a tenth of each other', () => {
   const owner = weighedSlices(apply.stepSeconds, apply.shards), load = [1, 2, 3].map(index => Object.entries(apply.stepSeconds).filter(([head]) => owner[head] === index).reduce((sum, [, s]) => sum + s, 0));
   const mean = load.reduce((sum, s) => sum + s, 0) / load.length;
   assert.equal(apply.shards, 3);
   assert.ok((Math.max(...load) - Math.min(...load)) / mean < 0.1, `slices ${load.join(' vs ')} s`);
-  assert.ok(apply.stepNeeds['Ready to submit']?.includes('cannot operate'), 'it reads the tab the "cannot operate" step left');
 });
 
 test('without a slice every step runs; a step nobody weighed takes turns', () => {
@@ -81,12 +79,14 @@ test('applyflows slices fit eight measured minutes, with two halves balanced aga
   }
 });
 
-test('recorded case slices balance measured seconds and each fits eight minutes', () => {
+// The recorded cases are no e2e suite since 1 Nov 2026: CI · Page cases (page-cases.yml, JP_REPLAY_SHARD_COUNT slices) is their only home.
+test('recorded case slices of page-cases.yml run each case once and balance measured seconds', () => {
+  const count = Number(/JP_REPLAY_SHARD_COUNT: (\d+)/.exec(fs.readFileSync(new URL('../../../.github/workflows/page-cases.yml', import.meta.url), 'utf8'))?.[1]);
+  assert.ok(count >= 1, 'page-cases.yml names its slice count');
   const cases = loadCases();
-  const slices = Array.from({length: recorded.shards}, (_, at) => shardOf(cases, at + 1, recorded.shards));
+  const slices = Array.from({length: count}, (_, at) => shardOf(cases, at + 1, count));
   assert.deepEqual(slices.flat().map(item => item.name).sort(), cases.map(item => item.name).sort(), 'each case runs once');
   const load = slices.map(slice => slice.reduce((sum, item) => sum + (measured.recorded[item.name] ?? costOf(item, measured.recorded)), 0));
   const mean = load.reduce((sum, seconds) => sum + seconds, 0) / load.length;
   assert.ok((Math.max(...load) - Math.min(...load)) / mean < 0.1, `recorded slices ${load.join(' vs ')} measured seconds`);
-  for (const [index, seconds] of load.entries()) assert.ok(seconds <= 480, `recorded ${index + 1}/${recorded.shards}: ${seconds} measured seconds exceeds eight minutes`);
 });

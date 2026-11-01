@@ -98,10 +98,9 @@ export function report({strings, hits, changedFiles, sources}) {
 // Why (2026-10-28, owner): rule G caps a PR at five suites; deferred suites run after merge. G2 still runs each chosen journey whole.
 // Catch-weighted ranking needs a PUBLIC scorecard snapshot (the site session owns that follow-up); today ties use reach, then name.
 // Optional catches are supplied explicitly, never fetched from the private site. Direct suite/step files outrank imports/quotes, then coverage.
-// Suites a pull request's e2e run never starts, and the workflow that runs the same on the PR: `recorded` replays the recorded cases page-cases.yml already replays
-// (owner, 27 Oct 2026: "Drop it"; slow cases stay on main, lib/replay-slow.mjs; #2164 replayed every case twice: page-cases 2 jobs and 5 runner-min, e2e's recorded 5 jobs and 44).
-// After a merge (main-steps.yml), main, the night and the gates still run it. Guard: test/pr-store.test.mjs
-export const ON_PR_ELSEWHERE = {recorded: 'page-cases.yml replays the recorded cases on this PR (the slow ones on main)'};
+// Suites a pull request's e2e run never starts, and the workflow that runs the same on the PR. Empty since 1 Nov 2026: `recorded` (the recorded cases page-cases.yml already
+// replays; owner, 27 Oct 2026: "Drop it") left e2e altogether, and test/recorded-pages.test.mjs in CI · Page cases is its only home. The mechanism stays for the next one.
+export const ON_PR_ELSEWHERE = {};
 /** Read admission registries through the injected git runner; unreadable registries become empty.
  * Invariant: admissions compare the merge-base with HEAD, never main's tip, matching the added/deleted file diff.
  */

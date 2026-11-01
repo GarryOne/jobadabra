@@ -1,0 +1,95 @@
+{
+ "origin": "moved from the apply e2e suite (1 Nov 2026)",
+ "shape": "a two-step form on one page: step 2 (salary, start date, a sponsorship question, a consent box, Submit) is hidden until the person presses Next",
+ "why": "Multi-step step of the apply e2e suite, moved to a page case (1 Nov 2026): step 1 is filled and step 2 is left alone while hidden; once the person has pressed Next and the panel's Fill again, step 2 is filled, the consent box is ticked (not left for the person), the sponsorship question stays the person's with a knockout warning, Submit untouched.",
+ "sample": "fixture form written by desktop/e2e/lib/forms.mjs (hosts and text invented)",
+ "pages": [
+  {
+   "url": "https://e2e.recruitee.com/o/devops-engineer",
+   "file": "form.html"
+  }
+ ],
+ "ai": {
+  "/extension/page-kind": {
+   "ok": true,
+   "kind": "form",
+   "role": "form",
+   "by": "ai",
+   "confidence": 0.95,
+   "rung": 2
+  },
+  "/extension/answer": {
+   "ok": true,
+   "eligible": true,
+   "answers": [
+    {
+     "field": "salary",
+     "question": "Salary expectation (CHF per year)",
+     "value": "140000",
+     "confidence": "high"
+    },
+    {
+     "field": "start_date",
+     "question": "Earliest start date",
+     "value": "1 December 2026",
+     "confidence": "high"
+    },
+    {
+     "field": "consent_data",
+     "category": "legal",
+     "use": "kind",
+     "consent": true,
+     "value": "checked"
+    }
+   ]
+  }
+ },
+ "expect": {
+  "valueIs": [
+   "#first_name|Test",
+   "#last_name|Candidate",
+   "#email|test.candidate@example.com"
+  ],
+  "attached": [
+   "#resume"
+  ],
+  "empty": [
+   "#salary",
+   "#start_date"
+  ],
+  "notTold": [
+   "pressed the submit"
+  ],
+  "seconds": 60
+ },
+ "start": "panel",
+ "then": {
+  "do": [
+   {
+    "click": "#next_step"
+   },
+   {
+    "panel": "Fill again"
+   }
+  ],
+  "expect": {
+   "valueIs": [
+    "#salary|140000",
+    "#start_date|1 December 2026"
+   ],
+   "chosen": [
+    "#consent_data"
+   ],
+   "pending": [
+    "Will you now or in the future require sponsorship for employment visa status?"
+   ],
+   "panelSays": [
+    "knockout rule"
+   ],
+   "notTold": [
+    "pressed the submit"
+   ],
+   "seconds": 60
+  }
+ }
+}

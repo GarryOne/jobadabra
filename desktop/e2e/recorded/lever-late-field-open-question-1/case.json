@@ -1,0 +1,78 @@
+{
+ "origin": "moved from the apply e2e suite (1 Nov 2026)",
+ "shape": "a Lever-like form: the 'Current company' box is drawn by script 600 ms after the page loaded; a long open question no kit covers is answered by the AI",
+ "why": "Lever-like step of the apply e2e suite, moved to a page case (1 Nov 2026): the late field is filled, the open question is typed from the AI's answer and marked for a read-through (data-jobpilotto-ai), a plain fact is not marked, and the extension asked about that question.",
+ "sample": "fixture form written by desktop/e2e/lib/forms.mjs (hosts and text invented)",
+ "pages": [
+  {
+   "url": "https://jobs.lever.co/e2e/5e2e5e2e-0000-4000-8000-00000000a001/apply",
+   "file": "form.html"
+  }
+ ],
+ "ai": {
+  "/extension/page-kind": {
+   "ok": true,
+   "kind": "form",
+   "role": "form",
+   "by": "ai",
+   "confidence": 0.95,
+   "rung": 2
+  },
+  "/extension/answer": {
+   "ok": true,
+   "eligible": true,
+   "answers": [
+    {
+     "field": "org",
+     "question": "Current company",
+     "value": "Acme Infrastructure AG",
+     "confidence": "high"
+    },
+    {
+     "field": "urls[LinkedIn]",
+     "question": "LinkedIn URL",
+     "value": "https://www.linkedin.com/in/ada-tester",
+     "confidence": "high"
+    },
+    {
+     "field": "heard",
+     "question": "How did you hear about us?",
+     "value": "Job board",
+     "confidence": "high"
+    },
+    {
+     "field": "why",
+     "question": "Why do you want to work at E2E Lever Systems?",
+     "value": "Because the platform work here is about reliability at scale, which is what I have done for eight years.",
+     "confidence": "medium",
+     "note": "inferred from the profile"
+    }
+   ]
+  }
+ },
+ "expect": {
+  "valueIs": [
+   "#org|Acme Infrastructure AG",
+   "#heard|Job board",
+   "#why|Because the platform work here is about reliability at scale, which is what I have done for eight years."
+  ],
+  "attached": [
+   "#resume"
+  ],
+  "present": [
+   "#why[data-jobpilotto-ai]"
+  ],
+  "absent": [
+   "#org[data-jobpilotto-ai]",
+   "#heard[data-jobpilotto-ai]"
+  ],
+  "asked": [
+   "Why do you want to work at E2E Lever Systems?"
+  ],
+  "notTold": [
+   "pressed the submit"
+  ],
+  "seconds": 60
+ },
+ "start": "panel"
+}

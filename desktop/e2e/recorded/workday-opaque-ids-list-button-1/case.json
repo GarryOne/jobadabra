@@ -1,0 +1,60 @@
+{
+ "origin": "moved from the apply e2e suite (1 Nov 2026)",
+ "shape": "a Workday-shaped form: opaque ids (input-7), labels tied only by aria-labelledby with the star in an <abbr>, aria-required instead of required, and a list-button question (not a select) the fill cannot answer",
+ "why": "5 Oct 2026, the apply e2e suite's Workday-shaped step, moved to a page case (1 Nov 2026): the details and the kit answers fill fields known only by opaque ids and aria labels, the CV is attached, the list-button question is left for the person by name, Submit is never pressed.",
+ "sample": "fixture form written by desktop/e2e/lib/forms.mjs (hosts and text invented)",
+ "pages": [
+  {
+   "url": "https://e2e.wd3.myworkdayjobs.com/en-US/E2E/job/Zurich/Site-Reliability-Engineer_R1001/apply",
+   "file": "form.html"
+  }
+ ],
+ "ai": {
+  "/extension/page-kind": {
+   "ok": true,
+   "kind": "form",
+   "role": "form",
+   "by": "ai",
+   "confidence": 0.95,
+   "rung": 2
+  },
+  "/extension/answer": {
+   "ok": true,
+   "eligible": true,
+   "answers": [
+    {
+     "field": "input-7",
+     "question": "How many years of experience do you have with AWS?",
+     "value": "6",
+     "confidence": "high"
+    },
+    {
+     "field": "input-9",
+     "question": "What is your notice period?",
+     "value": "3 months",
+     "confidence": "high"
+    }
+   ]
+  }
+ },
+ "expect": {
+  "valueIs": [
+   "#input-2|Test",
+   "#input-3|Candidate",
+   "#input-4|test.candidate@example.com",
+   "#input-7|6",
+   "#input-9|3 months"
+  ],
+  "attached": [
+   "#input-5"
+  ],
+  "pending": [
+   "How Did You Hear About Us?"
+  ],
+  "notTold": [
+   "pressed the submit"
+  ],
+  "seconds": 60
+ },
+ "start": "panel"
+}

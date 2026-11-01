@@ -12,7 +12,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 WORKFLOWS = sorted((ROOT / '.github' / 'workflows').glob('*.yml'))
 SPARSE = re.compile(r'^(?P<indent> +)sparse-checkout: \|\n(?P<body>(?:(?P=indent) {2,}\S.*\n)+)', re.M)
-RUNS = re.compile(r'(?<![\w/.-])(?:python3?|node|bash|sh)\s+"?(?:\$GITHUB_WORKSPACE/|\./)?((?:\.\./)*[\w][\w./-]*\.(?:py|mjs|js|sh))\b')
+RUNS = re.compile(r'(?<![\w/.-])(?:python3?|node|bash|sh)\s+"?(\$GITHUB_WORKSPACE/|\./)?((?:\.\./)*[\w][\w./-]*\.(?:py|mjs|js|sh))\b')
+CD = re.compile(r'^\s*(\()?\s*cd\s+([\w./-]+)\s*(?:&&|;|$)')   # `cd dir && cmd` or a line of its own; `(cd dir && cmd)` stays in its parentheses
+# A file a step runs that is not in the repo at the commit: made by an earlier step of the job. Why (1 Nov 2026, a8; Gitar on #2768): without this list a path the guard cannot
+# resolve would pass unchecked, as `cd dir && node scripts/x.mjs` did.
+GENERATED = {'desktop/node_modules/electron/install.js'}   # the electron package's own install script, run by hand in build.yml after the dependencies are in
 OWN_COMMIT = ('${{ github.sha }}', '${{ github.ref }}', '${{ github.event.repository.default_branch }}', 'main')   # refs that are this workflow's own commit or main
 # A step that runs a file of a commit it checked out on purpose (the thing it publishes), not this workflow's tools. Why (1 Nov 2026, a8): the extension store
 # publish uploads the build of the tag it is given, with that tag's own publisher script.
@@ -112,26 +116,56 @@ class EveryFileAStepRunsIsThere(unittest.TestCase):
     step reads (`lock-tools/` for the workflow's own tools), listing the file when the checkout is sparse, and at the workflow's own commit for `lock-tools/`."""
 
     def steps_that_run_a_file(self):
-        """-> (workflow, job, file from the repo root, the checkouts so far) for every step that runs a file of the repo. A path is read against the step's
-        `working-directory` (`bash ../../tools/x.sh` under `site/`); only a file that exists in the repo (or in `lock-tools/`) counts, so a generated one is not asked for."""
+        """-> (workflow, job, file from the repo root, the checkouts so far) for every step that runs a file. A path is read against the directory the step runs in:
+        the job's `defaults.run.working-directory`, the step's own, and any `cd dir` before it; `$GITHUB_WORKSPACE/` is the root. A file the repo does not hold is
+        yielded too: the caller decides (GENERATED, or a failure)."""
         for workflow in WORKFLOWS:
             for name, job in jobs(workflow.read_text()).items():
-                seen = []
+                seen, other_repos = [], []
+                default = re.search(r'^\s+defaults:\n\s+run:\n(?:\s+shell:.*\n)?\s+working-directory:\s*([\w./-]+)', job, re.M)
                 for step in re.split(r'\n(?=      - )', job):
                     found = checkout_of(step)
                     if found:
-                        seen.append(found)
+                        if re.search(r'^\s+repository:', step, re.M):
+                            other_repos.append(found[0] + '/')   # a checkout of another repository (the lab's ops/): its files are not this repo's
+                        else:
+                            seen.append(found)
                         continue
-                    directory = re.search(r'^\s+working-directory:\s*([\w./-]+)\s*$', step, re.M)
-                    code = '\n'.join(line for line in step.splitlines() if not line.lstrip().startswith('#'))   # a comment that names a command does not run it
-                    for written in RUNS.findall(code):
-                        file = posixpath.normpath(posixpath.join(directory.group(1) if directory else '', written))
-                        if file.startswith('lock-tools/') and (ROOT / file.removeprefix('lock-tools/')).exists() or (ROOT / file).exists():
-                            yield workflow.name, name, file, list(seen)
+                    own = re.search(r'^\s+working-directory:\s*([\w./-]+)\s*$', step, re.M)
+                    directory = own.group(1) if own else default.group(1) if default else ''
+                    for line in step.splitlines():
+                        line = re.sub(r'(^|\s)#(\s.*)?$', '', line)   # a comment, whole-line or trailing, that names a command does not run it
+                        if not line.strip():
+                            continue
+                        here = directory
+                        moved = CD.match(line)
+                        if moved:
+                            here = posixpath.normpath(posixpath.join(directory, moved.group(2)))
+                            if not moved.group(1):
+                                directory = here
+                        for root, written in RUNS.findall(line):
+                            file = posixpath.normpath(posixpath.join('' if root.startswith('$') else here, written))
+                            if not file.startswith(tuple(other_repos)):
+                                yield workflow.name, name, file, list(seen)
+
+    def exists(self, file):
+        return (ROOT / file.removeprefix('lock-tools/')).exists() if file.startswith('lock-tools/') else (ROOT / file).exists()
+
+    def test_a_cd_before_the_command_is_read(self):
+        """`cd desktop && node scripts/stage.mjs` (build.yml, search-personas.yml) runs desktop/scripts/stage.mjs: read from the root it is a file that does not exist, and the guard would skip it."""
+        files = {file for _, _, file, _ in self.steps_that_run_a_file()}
+        self.assertIn('desktop/scripts/stage.mjs', files)
+        self.assertNotIn('scripts/stage.mjs', files)
+
+    def test_every_file_a_step_runs_is_one_the_guard_can_check(self):
+        unknown = sorted({f'{workflow} {job}: {file}' for workflow, job, file, _ in self.steps_that_run_a_file() if not self.exists(file) and file not in GENERATED})
+        self.assertEqual(unknown, [], 'the guard cannot find these in the repo: fix the path the guard reads, or list a file an earlier step makes in GENERATED with a Why')
 
     def test_the_job_checked_out_the_file_before_running_it(self):
         missing = []
         for workflow, job, file, seen in self.steps_that_run_a_file():
+            if not self.exists(file):
+                continue
             where = 'lock-tools' if file.startswith('lock-tools/') else ''
             bare = file.removeprefix('lock-tools/')
             provided = any(path == where and (sparse is None or any(bare == e or bare.startswith(e.rstrip('/') + '/') for e in sparse)) for path, sparse, _ in seen)
@@ -142,7 +176,7 @@ class EveryFileAStepRunsIsThere(unittest.TestCase):
     def test_the_workflows_own_tools_come_from_the_workflows_own_commit(self):
         wrong = []
         for workflow, job, file, seen in self.steps_that_run_a_file():
-            if not file.startswith(('tools/', 'lock-tools/')) or (workflow, job, file) in FROM_ANOTHER_COMMIT_ON_PURPOSE:
+            if not file.startswith(('tools/', 'lock-tools/')) or not self.exists(file) or (workflow, job, file) in FROM_ANOTHER_COMMIT_ON_PURPOSE:
                 continue
             where = 'lock-tools' if file.startswith('lock-tools/') else ''
             refs = [ref for path, _, ref in seen if path == where]

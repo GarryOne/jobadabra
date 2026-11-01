@@ -1,4 +1,4 @@
-/* global document, getComputedStyle, window, requestAnimationFrame, performance */
+/* global document, getComputedStyle, window, performance */
 // The layout checks must catch the bug that started them: a job row whose location list ran to twenty lines (2 Oct 2026).
 // Job: report health
 import assert from 'node:assert/strict';
@@ -287,12 +287,14 @@ test('the activity bar filling its status after ready is not a late shift (#1169
     document.getElementById('s').textContent = '12 new jobs found, 3 strong matches';
     document.getElementById('activity-meta').textContent = 'Mail checked 10:42 · Next refresh 14:00';
   });
-  await page.evaluate(() => new Promise(done => requestAnimationFrame(() => requestAnimationFrame(done))));
+  await page.waitForFunction(() => (window.__jpShifts || []).some(item => !item.input && item.value > 0));   // the bar's words moved something, and it was recorded
   const card = await page.evaluate(nowInPage);
   await page.evaluate(() => document.querySelector('h2').insertAdjacentHTML('afterend', '<div style="height:180px">Your search may be too narrow</div>'));
   await page.waitForFunction(at => (window.__jpShifts || []).some(item => item.at >= at), card);   // records arrive in order: the bar's are in once the card's is
   const shifts = await page.evaluate(shiftsIn);
-  assert.deepEqual(lateShiftFindings({view: 'jobs', since, shifts: shifts.filter(item => item.at < card)}), [], 'the bar\'s own words');
+  const ownShifts = shifts.filter(item => item.at < card && !item.input);
+  assert.ok(ownShifts.some(item => item.value > 0), 'the bar\'s words did move something (the shift of #1169)');
+  assert.deepEqual(lateShiftFindings({view: 'jobs', since, shifts: ownShifts}), [], 'the bar\'s own words stay under the late-shift bar');
   assert.equal(lateShiftFindings({view: 'jobs', since: card, shifts})[0]?.kind, 'late-shift', 'a card that pushes the list down');
 }));
 

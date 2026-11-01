@@ -22,6 +22,9 @@ MAIN_RUNS = 3       # the per-persona "Main" column shows the newest 3 measured 
 # itself: no guessed number.
 QUALITY_MIN_RUNS = 10
 QUALITY_SPREADS = 2
+# Why (1 Nov 2026, #2901): main's last runs judged 0 jobs on all six personas (the press ran out of its 180 s before reading one), so "average minus two spreads" fell to -1.6..-6.3 and no total could be below it:
+# a search that finds nothing stayed green. A floor below one right job is no floor; a run whose six judges saw no job at all measured nothing (see _nothing).
+QUALITY_FLOOR_MIN = 1
 PERSONA_CAP_USD = 0.10   # Why (30 Oct 2026, owner; supersedes 27 Oct): Codex runs report $0 API charge; this cap only guards legacy API-key measurements (#2259: $0.045-0.079).
 COST = 'Codex subscription (ChatGPT plan; no API charge)'
 
@@ -135,10 +138,17 @@ def judge_one(row, mains):
     return reasons, seen   # right jobs are shown, never red per persona (quality(): the pooled total)
 
 
-def _total(run):
-    """The six personas' right jobs added up, or None when this run did not measure every persona (an errored, failed or unmeasured one)."""
+def _nothing(run):
+    """True when every persona's judge saw 0 jobs (judged.json `rows: []` on all six): the press never read a job, so this run measured nothing.
+    Invariant: only an explicit `found == 0` counts; a missing `found` (older recorded runs, errored rows) is unknown, never zero."""
     rows = [run.get(n) for n in range(1, len(PERSONAS) + 1)]
-    if any(r is None or r.get('not_measured') or r.get('error') or r.get('code') or r.get('crashes') or not isinstance(r.get('local'), int) for r in rows):
+    return all(r is not None and not r.get('not_measured') and not r.get('error') and type(r.get('found')) is int and r['found'] == 0 for r in rows)
+
+
+def _total(run):
+    """The six personas' right jobs added up, or None when this run did not measure every persona (an errored, failed or unmeasured one) or measured nothing."""
+    rows = [run.get(n) for n in range(1, len(PERSONAS) + 1)]
+    if any(r is None or r.get('not_measured') or r.get('error') or r.get('code') or r.get('crashes') or not isinstance(r.get('local'), int) for r in rows) or _nothing(run):
         return None
     return sum(r['local'] for r in rows)
 
@@ -151,7 +161,7 @@ def quality(pr, main_runs):
     total = _total(pr)
     if len(totals) < QUALITY_MIN_RUNS:
         return {'mode': 'shown', 'measured': len(totals), 'total': total, 'floor': None, 'red': False}
-    floor = statistics.mean(totals) - QUALITY_SPREADS * statistics.stdev(totals)
+    floor = max(statistics.mean(totals) - QUALITY_SPREADS * statistics.stdev(totals), QUALITY_FLOOR_MIN)
     return {'mode': 'gated', 'measured': len(totals), 'total': total, 'floor': round(floor, 1), 'red': total is not None and total < floor}
 
 
@@ -160,15 +170,20 @@ def compare(pr, main_runs):
     rows, red, unmeasured = [], 0, 0
     for n in range(1, len(PERSONAS) + 1):
         row = pr.get(n)
-        reasons, seen = judge_one(row, [run[n] for run in main_runs if n in run and not run[n].get('not_measured')])
+        reasons, seen = judge_one(row, [run[n] for run in main_runs if n in run and not run[n].get('not_measured') and not _nothing(run)])   # a run that measured nothing shows no zeros
         unmeasured += bool(row and row.get('not_measured'))
         red += bool(reasons)
         rows.append({'persona': n, 'label': label(n), 'main': seen, 'local': (row or {}).get('local'), 'found': (row or {}).get('found'),
                      'seconds': (row or {}).get('seconds'), 'usd': (row or {}).get('usd'), 'billing': (row or {}).get('billing'), 'reasons': reasons, 'not_measured': (row or {}).get('not_measured')})
     quality_ = quality(pr, main_runs)
+    nothing = _nothing(pr)   # grey in every mode, with or without main: a gate that saw no job at all has measured nothing, and is never read as a pass (#2901)
     if red or quality_['red']:
         parts = ([f'{red} persona(s) red'] if red else []) + ([f"total {quality_['total']} right jobs, below main's floor {quality_['floor']}"] if quality_['red'] else [])
         state, head = 'failure', '🔴 ' + ' · '.join(parts)
+    elif nothing:
+        # Why (1 Nov 2026, owner: "Guard grey now + Claude subscription"): until the press reads jobs again on the engine CI uses (cause: each Codex relay call takes 13-17 s, #2635), "measured nothing" is
+        # grey, not red: a red here would block every search PR and main push. TODO(AI): back to red once found > 0 on the Claude engine (#2901)
+        state, head = 'neutral', f'⚪ measured nothing: all {len(PERSONAS)} judges saw 0 jobs, so no press read a job (not a pass)'
     elif unmeasured:
         state, head = 'neutral', f'⚪ not measured ({unmeasured} of {len(PERSONAS)}): {next(r["not_measured"] for r in rows if r["not_measured"])}'
     else:
@@ -189,7 +204,7 @@ def table(verdict):
         cell = lambda v, unit='': '—' if v is None else f'{v}{unit}'   # noqa: E731
         lines.append(f"| {r['label']} | {main} | {cell(r['local'])} | {cell(r['found'])} | {cell(r['seconds'], ' s')} | {'—' if r['usd'] is None else '$%.3f' % r['usd']} | {mark} |")
     lines += ['', '<sub>This PR / Main = jobs a blind judge (Codex small tier) called right role AND right place, of the jobs found; one press each, '
-              'a fresh install. Red: a press over 180 s, or (from 10 measured main runs) the six-persona total below main\'s average minus twice its spread.</sub>']
+              'a fresh install. Red: a press over 180 s, or (from 10 measured main runs) the six-persona total below main\'s average minus twice its spread, never below 1. Grey: all six judges saw 0 jobs (measured nothing, not a pass).</sub>']
     return '\n'.join(lines) + '\n'
 
 

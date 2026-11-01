@@ -31,6 +31,7 @@ on:
       - 'desktop/e2e/fixtures/golden-photographer/sources.json'
       - 'desktop/e2e/fixtures/golden-photographer/truth.json'
       - 'desktop/e2e/fixtures/real-forms/**'
+      - 'desktop/e2e/fixtures/visits/**'
       - 'desktop/e2e/recorded/multi-select-menu-1/form.html'
       - 'extension/**'
       - 'src/**'   # test/quality.test.mjs reads the engine's folder

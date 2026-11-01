@@ -64,9 +64,6 @@
     "apply": {
       "aiMissesMax": 0
     },
-    "recorded": {
-      "aiMissesMax": 0
-    },
     "wizard": {
       "aiMissesMax": 0
     },
@@ -74,9 +71,6 @@
       "aiMissesMax": 0
     },
     "focusdismiss": {
-      "aiMissesMax": 0
-    },
-    "visitread": {
       "aiMissesMax": 0
     },
     "failuresnotion": {

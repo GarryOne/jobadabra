@@ -69,12 +69,11 @@ test('the suite passes its caps through context to the runner', () => {
   assert.match(read('lib/context.mjs'), /createRunner\(\(\) => session, \{[^\n]*\bhangCaps\b/);
 });
 
-// Why (31 Oct 2026, owner, a8 2/5): the real-forms cap was 5 forms x 165 s + 30 s = 855 s, above apply's 660 s job budget, so the budget would have cut it first;
-// it now follows its measurement like every other step (4 main runs: 105.3 s at most), and every cap stays below the budget.
+// Why (31 Oct 2026, owner, a8 2/5): a cap above apply's 660 s job budget would let the budget cut the step first (the real-forms step once had 5 x 165 s + 30 s);
+// every cap follows its measurement and stays below the budget. (The real-forms step moved to integration/extension/extension-form-shapes.test.mjs on 1 Nov 2026.)
 test('apply exports caps in seconds, each below its job budget', () => {
   assert.notEqual(apply.hangCaps, applyflows.hangCaps, 'each suite supplies its own table');
   for (const [name, seconds] of Object.entries(apply.hangCaps)) assert.ok(Number.isFinite(seconds) && seconds >= 5 && seconds <= 600, `${name}: ${seconds}`);
-  assert.equal(apply.hangCaps['real forms the extension once failed on'], 320);
 });
 
 test('apply delegates hang caps to the runner instead of passing a table-derived limitMs', () => {

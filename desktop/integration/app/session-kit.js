@@ -12,7 +12,18 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {registerHooks} from 'node:module';
-import {freePort} from '../store/engine-kit.mjs';
+import net from 'node:net';
+
+// Why (1 Nov 2026, R3): not engine-kit's freePort: that module imports e2e/lib (playwright-core), which the CI `app` job does not install (the three session tests died at load, ~100 ms, "test failed").
+// A free loopback port chosen by the OS; never the owner's app port 47111.
+async function freePort() {
+  const server = net.createServer();
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  const {port} = server.address();
+  await new Promise(resolve => server.close(resolve));
+  if (port === 47111) return freePort();
+  return port;
+}
 
 // Why (1 Nov 2026, R3): the same stub the unit test desktop/test/forms-open-liveness.test.js uses; the real lib/form-tab.js runs `osascript` against the person's Chrome on a Mac.
 registerHooks({load(url, context, next) {

@@ -80,7 +80,7 @@ export const cloudRuns = (settings, demo) => !demo && !!settings?.cloud?.repo;
 export const demoFormsOpen = (states, settings = {}) => settings.demoLinkOff ? {known: false, ids: [], linkOff: {port: DEFAULT_PORT, code: 'EADDRINUSE'}} : settings.demoLinkSilent ? {known: false, ids: []} : ({known: true, ids: (Array.isArray(states) ? states : []).map(state => String(state.id)), unsure: []});
 
 // settings.demoTriageReads: {jobUrl: read} -- what the demo's "See which jobs can apply automatically" reads for a job (the mode table's flags, lib/triage-read.js readFromJudge); a job not listed reads nothing.
-// Why (1 Nov 2026, R3): the e2e step "each read verdict gives its own chip" moved to integration/app/screen-apply-triage.test.js, which draws every verdict without a hidden browser. Only `ipcMain.handle('triageRead')` asks.
+// Why (1 Nov 2026, R3): the e2e step "each read verdict gives its own chip" moved to integration/app/screen-apply-triage.test.js, which draws every verdict without a hidden browser. Only the triageRead handler in lib/apply-handlers.js asks.
 export const demoTriageRead = (settings, url) => settings?.demoTriageReads?.[url] ?? null;
 
 // Python jobs in demo mode: only the ones that read the demo folder (the Strategy page, a job's posting).

@@ -1,5 +1,5 @@
 {
- "origin": "moved from the apply e2e suite (1 Nov 2026)",
+ "origin": "hand-cut",
  "shape": "a Workday-shaped form: opaque ids (input-7), labels tied only by aria-labelledby with the star in an <abbr>, aria-required instead of required, and a list-button question (not a select) the fill cannot answer",
  "why": "5 Oct 2026, the apply e2e suite's Workday-shaped step, moved to a page case (1 Nov 2026): the details and the kit answers fill fields known only by opaque ids and aria labels, the CV is attached, the list-button question is left for the person by name, Submit is never pressed.",
  "sample": "fixture form written by desktop/e2e/lib/forms.mjs (hosts and text invented)",

@@ -30,9 +30,10 @@ trap 'type slot_release >/dev/null 2>&1 && slot_release; [ -s "$GATE_CACHE_NOTES
 input="$(cat)"
 command="$(jq -r '.tool_input.command // ""' <<<"$input")"
 case "$command" in *PUSH_FULL=1*) PUSH_FULL_RUN=1 ;; esac   # a full run has no watchdog (tools/gate-watchdog.sh)
-# Why (1 Nov 2026, owner, test stages 3-5: "Drop all 4 from push"): the lane registry and renderer class tests run on the PR only (ci_run=1: pr-gate's "Fast checks", where CI_GATES=1), never on the push
-# that ship.sh makes; the push keeps only what stops a bad push itself and the cheap message checks. Tests: tests-desktop.yml runs both on the PR too (desktop/test/lanes-check.test.js, the class tests).
-ci_run=0; case "$command" in *CI_GATES=1*) ci_run=1 ;; esac
+# Why (1 Nov 2026, owner, test stages 3-5: "Drop all 4 from push"; narrowed after Gitar's review on #2765): the lane registry and renderer class tests are left to the PR's Fast checks (pr-gate, CI_GATES=1)
+# on the push that ship.sh makes (SHIP_PR=1) and only there. A direct push to main has no pr-gate, so it still runs them. Tests: tests-desktop.yml runs both on the PR too;
+# tests/test_pre_push_pr.py plays all three kinds of push.
+ship_push=0; case "$command" in *SHIP_PR=1*) ship_push=1 ;; esac
 # An npm install through a node_modules that is a link into another checkout empties that shared folder for every worktree (28 Oct 2026): refused before npm runs
 # (tools/linked-modules-guard.py; the way out is `tools/worktree.sh own-modules <dir>`; tests/test_linked_modules_guard.py).
 case "$command" in *npm*)
@@ -179,7 +180,7 @@ if command -v node >/dev/null && [ -f "$repo/tools/new-code-comments.mjs" ] && g
   newcomments="$(cd "$repo" && timed "new code comments" node tools/new-code-comments.mjs --base origin/main 2>&1)" || block "$newcomments"
 fi
 # A suite leaves the e2e backbone only by naming the input its result depends on (ai, clock, outside) and why: an entry of desktop/e2e/lanes.json (tools/lanes-check.mjs; spec rule E).
-if [ "$ci_run" = 1 ] && command -v node >/dev/null && [ -f "$repo/tools/lanes-check.mjs" ] && git -C "$repo" rev-parse --verify -q origin/main >/dev/null; then
+if [ "$ship_push" = 0 ] && command -v node >/dev/null && [ -f "$repo/tools/lanes-check.mjs" ] && git -C "$repo" rev-parse --verify -q origin/main >/dev/null; then
   lanes="$(cd "$repo" && timed "lane registry" node tools/lanes-check.mjs --base origin/main 2>&1)" || block "$lanes"
 fi
 # A changed AI prompt brings the case it fixed into its fixed case set (tools/prompt-cases.json), or a commit says "Prompt-case: none <why>" (tools/prompt-cases.mjs; owner, 27 Oct 2026).
@@ -193,7 +194,7 @@ fi
 # The renderer class tests (they read every renderer and lib file) run when a push touches those files: a CI red caught in 0.4 s here.
 # Why (28 Oct 2026): 10 of the last 34 red desktop-test PR runs that named a file failed in one of these seven (desktop/test/renderer-class-push.test.js); the whole desktop suite on push is 108 s (rule H).
 class_tests="test/card-system.test.js test/no-question-mark.test.js test/text-fields.test.js test/solid-buttons.test.js test/roomy-cards.test.js test/mac-words.test.js test/design.test.js"
-if [ "$ci_run" = 1 ] && command -v node >/dev/null && [ -d "$repo/desktop/test" ] && git -C "$repo" diff --name-only origin/main...HEAD 2>/dev/null | grep -qE '^desktop/(renderer|lib)/|^desktop/test/text-(buttons|fields)-allowed\.json$'; then
+if [ "$ship_push" = 0 ] && command -v node >/dev/null && [ -d "$repo/desktop/test" ] && git -C "$repo" diff --name-only origin/main...HEAD 2>/dev/null | grep -qE '^desktop/(renderer|lib)/|^desktop/test/text-(buttons|fields)-allowed\.json$'; then
   classes="$(cd "$repo/desktop" && timed "renderer class tests" node --test $class_tests 2>&1)" || block "a renderer class test fails (CI would be red):
 $(echo "$classes" | grep -E '^not ok|✖|^# fail' | head -6)"
 fi

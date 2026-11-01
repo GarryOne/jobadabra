@@ -33,7 +33,8 @@ test('apply and applyflows are the release-only Mac suites', () => {
 });
 
 test('a PR run puts every release-only Mac suite on Linux and keeps every Mac suite on the Mac', async () => {
-  const release = suitesWhere("'release'"), mac = suitesWhere('true');
+  const {cadence} = await suiteFacts();
+  const release = suitesWhere("'release'"), mac = suitesWhere('true').filter(suite => cadence[suite] !== 'night-report');   // a night-report suite never runs on a PR (owner, 1 Nov 2026)
   const os = await osBySuite({EVENT: 'workflow_dispatch', ONLY: [...release, ...mac].join(','), PR_SUITES: [...release, ...mac].join(',')});
   for (const suite of release) assert.equal(os[suite], 'ubuntu-24.04', `${suite} waits for a Mac in a PR run`);
   for (const suite of mac) assert.equal(os[suite], 'macos-latest', `${suite} needs the Mac itself, yet a PR run put it on Linux`);

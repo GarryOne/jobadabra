@@ -30,10 +30,18 @@
       "aiMissesMax": 0
     },
     "wander": {
-      "aiMissesMax": 0
+      "lane": "tolerant",
+      "input": "clock",
+      "since": "2026-11-01",
+      "why": "Owner, 1 Nov 2026: the beta keeps only the critical journeys; wander is an explorer that walks a seeded random path and reports once a night (cadence night-report), so what it finds depends on the path and the timing of that walk, never on this commit alone.",
+      "returns": "Stays tolerant: it is a nightly report, not a gate."
     },
     "interactions": {
-      "aiMissesMax": 0
+      "lane": "tolerant",
+      "input": "clock",
+      "since": "2026-11-01",
+      "why": "Owner, 1 Nov 2026: the beta keeps only the critical journeys; interactions is a finder that clicks every safe control and watches pages for late shifts, and reports once a night (cadence night-report), so its result depends on layout timing.",
+      "returns": "Stays tolerant: it is a nightly report, not a gate."
     },
     "failureschannels": {
       "aiMissesMax": 0
@@ -90,7 +98,11 @@
       "aiMissesMax": 0
     },
     "quality": {
-      "aiMissesMax": 0
+      "lane": "tolerant",
+      "input": "ai",
+      "since": "2026-11-01",
+      "why": "Owner, 1 Nov 2026: the beta keeps only the critical journeys; quality measures the model's facts and scores on golden postings from stored answers and reports once a night (cadence night-report), so a red is a measurement, not a verdict on this commit.",
+      "returns": "Stays tolerant: it is a nightly report, not a gate."
     },
     "foryou": {
       "aiMissesMax": 0

@@ -46,7 +46,7 @@ test('every macOS suite runs on a PR that changes it (its file, a helper it impo
   const {suiteFacts} = await import('../plan-run.mjs');
   const facts = await suiteFacts();
   const mac = [];
-  for (const suite of facts.all) if ((await facts.os(suite)) !== 'ubuntu-24.04' && (facts.cadence[suite] || 'always') !== 'manual') mac.push(suite);
+  for (const suite of facts.all) if ((await facts.os(suite)) !== 'ubuntu-24.04' && !['manual', 'night-report'].includes(facts.cadence[suite] || 'always')) mac.push(suite);   // a night-report suite (interactions) runs once a night, never on a PR (owner, 1 Nov 2026)
   assert.ok(mac.includes('apply') && mac.includes('applyflows'), `positive control: the macOS suites are ${mac.join(', ')}`);
   for (const suite of mac) {
     const plan = planPrSuites({pointed: [suite], linux: name => name !== suite, cadence: facts.cadence});

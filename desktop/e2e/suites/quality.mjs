@@ -1,6 +1,6 @@
 // Exact quality checks: the app keeps the golden facts and scores and protects private logs.
 /* global document */
-// Job: run the backbone
+// Job: run tolerant suites as rates
 import {hangCapsFor} from '../lib/hang-caps.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -19,12 +19,13 @@ export const store = 'sqlite';
 const clocks = qualityClocks();
 export const aggregateBudget = false;
 export const hangCaps = hangCapsFor('quality', {record: answersMode(process.env) === 'record'});
-export const cadence = PLANNER.cadence;
+export const cadence = 'night-report';   // Why (1 Nov 2026, owner: "Add them to #2761"): quality answers from stored answers, so it is a free measurement: once a night, report only, never in the beta (lib/plan.mjs). qualityai keeps PLANNER.cadence.
 // Why (30 Oct 2026, qu): plan-time imports keep replay's 3 min; e2e.yml's fixed 15-min run step already covers RECORD's 8 min.
 export const minutes = Math.ceil(clocks.suiteMs / 60000);
 export const sameOnEveryOs = PLANNER.sameOnEveryOs;
-// Why (27 Oct 2026, #2234): the AI files this suite judges. Its answers are replayed strictly, so a changed prompt it ran must run its own steps on the PR (which records
-// the new answers for main); a line in them is never "shared code" another suite runs for it (lib/coverage-pick.mjs stepsCovering). #2234 changed place_triage.py
+// Why (27 Oct 2026, #2234; 1 Nov 2026, owner): the AI files this suite judges. Its answers are replayed strictly. Since 1 Nov 2026 it is night-report, so a changed prompt no longer runs it
+// on its PR: stale stored answers show as a red in the nightly report, never on the PR or the beta (lib/plan.mjs NIGHT_REPORT). The 27 Oct reasoning, kept for the nightly: its steps record
+// the new answers for main; a line in them is never "shared code" another suite runs for it (lib/coverage-pick.mjs stepsCovering). #2234 changed place_triage.py
 // and only activity ran it; main's quality then asked 1-6 questions live and went red.
 // Again on 28 Oct: #2337 reworded the question-reuse prompt and no suite ran, so the beta's quality asked it live. Every app prompt file this suite asks is in watches
 // (guard: e2e/test/quality-watches-prompts.test.mjs). Since qu 1/4 (29 Oct 2026) the lists live once in PLANNER (lib/quality-journey.mjs), shared with qualityai.

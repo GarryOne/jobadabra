@@ -176,6 +176,28 @@ def reaches_changed(paths, changed):
     return any(f in paths or any(f.startswith(d) for d in folders) for f in changed)
 
 
+def pick_node_area(area, folder, relevant, graph, engine_changed):
+    """The test files of one node area a change can break (paths relative to the area), or 'all' when the e2e reach helper is there and fails."""
+    changed_js = {(ROOT / f).resolve() for f in relevant}
+    tests = sorted((ROOT / folder).glob('*.test.*')) if (ROOT / folder).is_dir() else []
+    reached = e2e_reach() if area == 'e2e' else {}
+    if reached is None:
+        return 'all'
+    scan_ok = area != 'e2e' or any(f.startswith(E2E_SCAN_FOR) for f in relevant)
+    picked, scans = [], {}   # scans: file -> does its text scan the tree (a guard may scan through a module it imports, 10 Oct 2026)
+    for t in tests:
+        text = read(t)
+        reach = closure(t.resolve(), graph)
+        # e2e: not through desktop/e2e/lib (254 of 411 tests import a lib that lists a runtime folder: artifacts, logs, traces; c27, 1 Nov 2026); a lib that reads the repo is caught by reach
+        via = [f for f in reach if is_tree_reader(f) and not (area == 'e2e' and '/e2e/lib/' in f.as_posix())]
+        scanner = bool(SCANNER_RE.search(text)) or any(scans.setdefault(f, bool(SCANNER_RE.search(read(f)))) for f in via)
+        if (reach & changed_js) or mentions(text, relevant, {}) or (scanner and scan_ok) \
+                or reaches_changed(reached.get(rel(t), ()), relevant) \
+                or (area == 'desktop' and engine_changed and ENGINE_RE.search(text)):
+            picked.append(rel(t)[len(PREFIX.get(area, area + '/')):])
+    return picked
+
+
 def select(changed, base_ref=None):
     changed = sorted(set(changed))
     result = {'python': [], 'desktop': [], 'worker': [], 'site': [], 'e2e': [], 'reasons': {}}
@@ -225,25 +247,10 @@ def select(changed, base_ref=None):
         if not any(areas[area](f) for f in relevant) and not (area == 'desktop' and engine_changed):
             continue
         graph = graph or js_graph()
-        changed_js = {(ROOT / f).resolve() for f in relevant}
-        tests = sorted((ROOT / folder).glob('*.test.*')) if (ROOT / folder).is_dir() else []
-        reached = e2e_reach() if area == 'e2e' else {}
-        if reached is None:
-            result['e2e'] = 'all'; why['e2e'] = 'tools/e2e-test-reach.mjs failed'
-            continue
-        scan_ok = area != 'e2e' or any(f.startswith(E2E_SCAN_FOR) for f in relevant)
-        picked, scans = [], {}   # scans: file -> does its text scan the tree (a guard may scan through a module it imports, 10 Oct 2026)
-        for t in tests:
-            text = read(t)
-            reach = closure(t.resolve(), graph)
-            # e2e: not through desktop/e2e/lib (254 of 411 tests import a lib that lists a runtime folder: artifacts, logs, traces; c27, 1 Nov 2026); a lib that reads the repo is caught by reach
-            via = [f for f in reach if is_tree_reader(f) and not (area == 'e2e' and '/e2e/lib/' in f.as_posix())]
-            scanner = bool(SCANNER_RE.search(text)) or any(scans.setdefault(f, bool(SCANNER_RE.search(read(f)))) for f in via)
-            if (reach & changed_js) or mentions(text, relevant, {}) or (scanner and scan_ok) \
-                    or reaches_changed(reached.get(rel(t), ()), relevant) \
-                    or (area == 'desktop' and engine_changed and ENGINE_RE.search(text)):
-                picked.append(rel(t)[len(PREFIX.get(area, area + '/')):])
+        picked = pick_node_area(area, folder, relevant, graph, engine_changed)
         result[area] = picked
+        if picked == 'all':
+            why[area] = 'tools/e2e-test-reach.mjs failed'
     for f in scoped:
         result[f.split('/')[0]] = 'all'; why[f.split('/')[0]] = f'dependency file: {f}'
         if f.startswith('desktop/e2e/'):

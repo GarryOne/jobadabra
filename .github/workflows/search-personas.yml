@@ -96,7 +96,7 @@ concurrency:   # a PR's newer push replaces its older run; a newer merge replace
 env:
   CI_AI_PROVIDER: codex
   E2E_AI_PROVIDER: codex
-  JOBADABRA_MODEL_OVERRIDE: claude-haiku-5-5   # Why (30 Oct 2026, owner): retain the small tier through the Codex broker; tests/test_search_personas_gate.py
+  JOBADABRA_MODEL_OVERRIDE: claude-haiku-5-5   # Why (30 Oct 2026, owner; names renamed 1 Nov 2026): retain the small tier through the Codex broker; tests/test_search_personas_gate.py
 
 jobs:
   persona:

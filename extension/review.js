@@ -143,7 +143,7 @@
     const letterRejected = list.find(f => f.el?.hasAttribute('data-jobadabra-letter-error') && !f.filled) || (failedManual && {el: failedManual});
     const letterMissing = !account && letterAsked && !letterGiven && (letterRejected || coverLetterStatus && !coverLetterStatus.ready);
     $('.letter-setup').hidden = moved || !letterMissing;
-    // Why (2026-10-27, owner): keep each letter status truthful while sharing the same compact notice and routing setup through the app.
+    // Why (2026-10-27, owner; names renamed 1 Nov 2026): keep each letter status truthful while sharing the same compact notice and routing setup through the app.
     const letterCopy = window.__jobadabraCoverLetterNotice(coverLetterStatus, !!letterRejected);
     $('.letter-title').textContent = letterCopy.title;
     $('.letter-reason').textContent = letterMissing ? letterCopy.reason : '';

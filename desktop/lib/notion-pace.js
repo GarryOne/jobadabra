@@ -17,7 +17,7 @@ const LOCK_TRIES = 200;
 export const isLoopback = value => /^http:\/\/127\.0\.0\.1(?::\d+)?(?:\/|$)/.test(String(value || ''));
 
 /** True only for an explicitly marked in-memory service in e2e; local fault proxies retain production pacing. */
-// Why (31 Oct 2026, owner review of bab7120): the shared pacer owns the exemption so every client and subprocess follows one rule.
+// Why (31 Oct 2026, owner review of bab7120; names renamed 1 Nov 2026): the shared pacer owns the exemption so every client and subprocess follows one rule.
 export const isStandIn = (env = process.env) => !!env.JOBADABRA_E2E && env.JOBADABRA_E2E_NOTION_STANDIN === '1' && isLoopback(env.JOBADABRA_E2E_NOTION_BASE_URL);
 
 export const paceFile = token => path.join(os.tmpdir(),

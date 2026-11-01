@@ -38,7 +38,7 @@ export async function startOfflineApp({memo = '', ask = false, loose = '', missL
    ...(loose && !ask ? {JOBADABRA_MODEL_MEMO_LOOSE: loose} : {}), ...(ordinal && !ask ? {JOBADABRA_MODEL_MEMO_ORDINAL: ordinal} : {}), ...(missLog && !ask ? {JOBADABRA_MODEL_MEMO_MISSLOG: missLog} : {}),   // loose: the file a loose memo hit is noted in (lib/ai/model-memo.js looseFile)
    
     JOBADABRA_E2E_OPENER: 'offline-app', ...(journey ? {JP_JOURNEY: '1'} : {}), ...(review ? {JP_REVIEW: '1'} : {}), ...(captureDir ? {LIVE_CAPTURE_DIR: captureDir} : {})};   // an Apply hands its address to the harness (lib/browser-launch.js), never a browser of this computer
-  // Why (30 Oct 2026, a8: an offline app from 27 Oct still ran 3 days later, parent launchd): the child ends with this process however it ends (lib/e2e-host.js watchRunner).
+  // Why (30 Oct 2026, a8: an offline app from 27 Oct still ran 3 days later, parent launchd; names renamed 1 Nov 2026): the child ends with this process however it ends (lib/e2e-host.js watchRunner).
   const child = spawn(process.execPath, [CHILD], {env: {...env, JOBADABRA_E2E_RUNNER_PID: String(process.pid)}, stdio: ['pipe', 'pipe', 'pipe']});
   let out = '', err = '';
   child.stderr.on('data', chunk => { err += chunk; });

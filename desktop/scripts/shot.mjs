@@ -65,7 +65,7 @@ if (option('search')) {
 }
 const out = path.resolve(option('out') || path.join(os.tmpdir(), 'jobadabra-shot.png'));
 fs.rmSync(`${out}.json`, {force: true});
-// Why (30 Oct 2026): the timeout below kills only the `.bin/electron` shim; the app itself ends when this script does (lib/e2e-host.js watchRunner), never left running for days.
+// Why (30 Oct 2026; names renamed 1 Nov 2026): the timeout below kills only the `.bin/electron` shim; the app itself ends when this script does (lib/e2e-host.js watchRunner), never left running for days.
 const env = {...process.env, JOBADABRA_DEMO: '1', JOBADABRA_E2E_RUNNER_PID: String(process.pid), JOBADABRA_USER_DATA: data, JOBADABRA_SMOKE: out, JOBADABRA_SMOKE_JS: script(steps.join('\n'))};
 if (option('theme')) env.JOBADABRA_THEME = option('theme');
 if (option('width')) env.JOBADABRA_SHOT_WIDTH = option('width');

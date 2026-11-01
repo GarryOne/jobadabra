@@ -58,7 +58,7 @@ const storage = createStorage(dir, {encrypt: value => value, decrypt: value => v
 ensureConfig(storage);
 // --engine api keeps the Messages SDK contract: the PR search check uses the Codex wrapper's relay and placeholder; standalone draws retain their own explicit API key.
 const api = engineName === 'api', replayOnly = api && process.argv.includes('--replay') && process.argv.includes('--no-live');   // an offline replay builds the API client but never calls it
-// Why (30 Oct 2026, owner): the CI wrapper supplies a broker-only loopback relay, never an API credential.
+// Why (30 Oct 2026, owner; names renamed 1 Nov 2026): the CI wrapper supplies a broker-only loopback relay, never an API credential.
 const apiKey = process.env.JOBADABRA_PERSONA_CODEX === '1' ? 'codex-relay-placeholder' : process.env.LAB_HEAL_ANTHROPIC_KEY || process.env.RANDOM_DRAWS_ANTHROPIC_KEY || process.env.PR_PROOF_ANTHROPIC_KEY || (replayOnly ? 'replay-only' : '');
 if (api && !apiKey) { console.error('--engine api needs LAB_HEAL_ANTHROPIC_KEY, RANDOM_DRAWS_ANTHROPIC_KEY or PR_PROOF_ANTHROPIC_KEY'); process.exit(2); }
 if (api) storage.setSecret('ANTHROPIC_API_KEY', apiKey);

@@ -105,7 +105,7 @@ export function registerSetupHandlers(ctx) {
     const {value: key, error} = cleanSecret(pasted);
     if (error) return {ok: false, error};
     try {
-      // Why (29 Oct 2026, run 40836904987; #2427 exposed it): backbone setup checks use a dummy key, never Anthropic; outside e2e the real validator is unchanged.
+      // Why (29 Oct 2026, run 40836904987; #2427 exposed it; names renamed 1 Nov 2026): backbone setup checks use a dummy key, never Anthropic; outside e2e the real validator is unchanged.
       const testKey = process.env.JOBADABRA_E2E && storage.settings().anthropicKeyTest;
       if (testKey === 'reject') throw Object.assign(new Error('Invalid test key'), {status: 401});
       if (testKey !== 'accept') {

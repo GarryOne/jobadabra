@@ -8,7 +8,7 @@ import path from 'node:path';
 
 /** Answer as an already prepared install in e2e; otherwise preserve setup and its progress events. */
 export function prefetchForRun(prefetch, env = process.env) {
-  // Why (29 Oct 2026, owner): backbone runs must not install libraries or download speech models when a page opens.
+  // Why (29 Oct 2026, owner; names renamed 1 Nov 2026): backbone runs must not install libraries or download speech models when a page opens.
   return env.JOBADABRA_E2E ? {ok: true} : prefetch();
 }
 
@@ -27,7 +27,7 @@ export const DOORS = [
  * @param {{shell?: object, clipboard?: object, app?: object}} host  @param {NodeJS.ProcessEnv} env  @returns {string[]} the doors closed, as "shell.openExternal"
  */
 export function standInHost(host, env = process.env) {
-  if (!env.JOBADABRA_E2E && !env.JOBADABRA_SMOKE) return [];   // Why (#2367, Gitar on #2363): the three shell stand-ins lived in lib/e2e-hidden.js and covered hidden runs only; one list now, for every test run
+  if (!env.JOBADABRA_E2E && !env.JOBADABRA_SMOKE) return [];   // Why (#2367, Gitar on #2363; names renamed 1 Nov 2026): the three shell stand-ins lived in lib/e2e-hidden.js and covered hidden runs only; one list now, for every test run
   const log = globalThis.__jpHost = globalThis.__jpHost || [];
   const spool = env.JOBADABRA_E2E_OPEN_DIR;
   const closed = [];

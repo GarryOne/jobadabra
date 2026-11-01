@@ -79,7 +79,7 @@ export function createBackgroundBrowser(storage, {find = findBackgroundBrowser, 
         copyForNight(appPort, path.join(root, 'extension'), extension, {owned: true});
         fs.mkdirSync(profile, {recursive: true, mode: 0o700});
         fs.rmSync(portFile, {force: true});
-        // Why (2026-10-28, #2364): under e2e the browser's own messages go to a file the harness prints when it does not start (a CI failure said only "did not start"); a person's browser keeps none.
+        // Why (2026-10-28, #2364; names renamed 1 Nov 2026): under e2e the browser's own messages go to a file the harness prints when it does not start (a CI failure said only "did not start"); a person's browser keeps none.
         const log = process.env.JOBADABRA_E2E === '1' ? fs.openSync(path.join(folder, 'e2e-browser.log'), 'w') : 'ignore';
         ownChild = spawn(executable, browserArguments(profile, extension), {detached: true, stdio: ['ignore', log, log], windowsHide: true});
         if (log !== 'ignore') fs.closeSync(log);

@@ -31,7 +31,7 @@
   }
   // The Apply is working: the layer (re)appears. Stays until a verdict.
   function on() {
-    if (layer?.isConnected || document.getElementById('jobadabra-review-host')?.hidden) return;   // Why (#1558): a closed panel (its X) has no Stop on the page: never dimmed
+    if (layer?.isConnected || document.getElementById('jobadabra-review-host')?.hidden) return;   // Why (#1558; names renamed 1 Nov 2026): a closed panel (its X) has no Stop on the page: never dimmed
     layer = Object.assign(document.createElement('div'), {id: ID});
     layer.style.cssText = 'position:fixed;inset:0;z-index:2147483645;pointer-events:none;background:rgba(19,36,57,.55);';
     document.documentElement.append(layer);

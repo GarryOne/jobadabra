@@ -47,5 +47,20 @@ export async function waitTreeGone(tree, {alive = isAlive, capMs = stepTimeLeft(
   return left;
 }
 
+/**
+ * Gives `tree` up to `graceMs` to leave by itself (state wait: every pid gone), then ends the rows still running and waits until they are gone too (the OS lets go of a killed
+ * process's files a moment later). -> the rows that had to be ended ([] = all left on their own); throws naming the rows that outlive the kill.
+ * Why (1 Nov 2026, #2717): a crash close ended the launcher and nothing below it; on Windows the launcher is a shell and the app is its child (Playwright, shell: true).
+ */
+export async function endTree(tree, {graceMs, wait = waitTreeGone, kill = process.kill.bind(process)} = {}) {
+  // Why (1 Nov 2026, #2755, Gitar): no default; the 5 s a closing app gets is lib/app.mjs EXIT_GUARD_MS, owned by the caller, so there is one copy of it.
+  if (!Number.isFinite(graceMs)) throw new Error('endTree: graceMs is the caller\'s (lib/app.mjs EXIT_GUARD_MS)');
+  const left = await wait(tree, {capMs: graceMs});
+  for (const row of left) { try { kill(row.pid, 'SIGKILL'); } catch { /* ESRCH: gone since the check; EPERM: it stays and the wait below names it, the other rows are still ended */ } }
+  const stayed = await wait(left);   // a pure state wait on the step's own clock (stepTimeLeft), not a bound of its own: the OS lets go of a killed process's files a moment later
+  if (stayed.length) throw new Error(`${stayed.length} process(es) of the closed app are still running after being killed: ${holdersOf(stayed)}`);
+  return left;
+}
+
 /** "pid command | pid command": who is still running. */
 export const holdersOf = rows => rows.map(row => `${row.pid} ${row.command}`).join(' | ');

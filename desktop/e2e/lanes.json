@@ -141,7 +141,7 @@
     "settings": {
       "Your data: export with keys, reset, then import from the setup brings this computer back as it was": {
         "lane": "suspended",
-        "input": "a process of the old app outliving its exit on Windows (an Electron process still held the data folder 20 s after the app exited); not yet measured which one, same family as #2712",
+        "input": "the harness's crash close killed only Playwright's shell on Windows (shell: true) while the app below it was still tearing down; the app (pid 8092, parent gone, no log line) went on holding the profile that the next start of it uses. Fixed in desktop/e2e/lib/app.mjs closeApp (#2717); the failure now also names each holder's start, parent state and window",
         "platforms": ["win32"],
         "since": "2026-10-31",
         "owner": "GarryOne",

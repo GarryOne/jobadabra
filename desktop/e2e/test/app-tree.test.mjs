@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import {spawn} from 'node:child_process';
 import test from 'node:test';
-import {descendantsOf, holdersOf, isAlive, listProcesses, parseProcessList, waitTreeGone} from '../lib/app-tree.mjs';
+import {descendantsOf, endTree, holdersOf, isAlive, listProcesses, parseProcessList, waitTreeGone} from '../lib/app-tree.mjs';
 
 const LIST = `  10     1 /Applications/Electron main
   11    10 Electron Helper (GPU)
@@ -49,4 +49,27 @@ test('a real process that ends after we look is waited for, a real one that stay
   const rows = [{pid: ends.pid, ppid: process.pid, command: 'ends'}, {pid: stays.pid, ppid: process.pid, command: 'stays'}];
   const left = await waitTreeGone(rows, {everyMs: 20, capMs: 3000});
   assert.deepEqual(left.map(row => row.command), ['stays']);
+});
+
+test('endTree: leaves alone what leaves by itself, kills what stays and waits for it, and says what outlives the kill', async () => {
+  const rows = parseProcessList(LIST).slice(0, 3);
+  const killed = [];
+  const kill = (pid, signal) => { killed.push(`${pid} ${signal}`); };
+  await assert.rejects(endTree(rows, {wait: async () => [], kill}), /graceMs is the caller's/, 'no default: the caller owns the grace');
+  assert.deepEqual(await endTree(rows, {graceMs: 1, wait: async () => [], kill}), []);
+  assert.deepEqual(killed, [], 'nothing is killed when the whole tree left on its own');
+
+  const waits = [[rows[1]], []];   // first wait: 11 stays; second wait (after the kill): gone
+  assert.deepEqual((await endTree(rows, {graceMs: 1, wait: async () => waits.shift(), kill})).map(row => row.pid), [11]);
+  assert.deepEqual(killed, ['11 SIGKILL']);
+
+  const gone = Object.assign(new Error('no such process'), {code: 'ESRCH'});
+  const waitsAgain = [[rows[2]], []];
+  assert.deepEqual((await endTree(rows, {graceMs: 1, wait: async () => waitsAgain.shift(), kill: () => { throw gone; }})).map(row => row.pid), [12], 'a process that went meanwhile is no error');
+  const tried = [], refused = Object.assign(new Error('access denied'), {code: 'EPERM'});
+  const waitsThird = [[rows[1], rows[2]], []];
+  await endTree(rows, {graceMs: 1, wait: async () => waitsThird.shift(), kill: pid => { tried.push(pid); if (pid === 11) throw refused; }});
+  assert.deepEqual(tried, [11, 12], 'a process that cannot be killed does not stop the others being ended');
+
+  await assert.rejects(endTree(rows, {graceMs: 1, wait: async () => [rows[2]], kill}), /1 process\(es\) of the closed app are still running after being killed: 12 python3 -m src\.focus/);
 });

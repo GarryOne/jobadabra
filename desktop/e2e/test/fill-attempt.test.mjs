@@ -76,13 +76,13 @@ test('opening waits check a tab first seen on the last read', async () => {
 
 // The apply() body runs on the step's clock, as in a step: ms the wait may take, plus the 2 s REPORT_MS the step keeps to name what was missing.
 const onStepClock = async (ms, run) => { stepClock(ms + 2000); try { return await run(); } finally { stepClock(null); } };
-function applyHarness({spooled = true, reloadOwn = false, doneAtMs = null} = {}) {
+function applyHarness({spooled = true, reloadOwn = false, doneAtMs = null, loaded = undefined} = {}) {
   const source = fs.readFileSync(new URL('../suites/apply.mjs', import.meta.url), 'utf8');
   const body = source.slice(source.indexOf('  async function apply('), source.indexOf('  // The panel opens'));
   const time = clock(), url = 'https://example.test/apply', marked = sessionTabUrl(url, 'ours');
   const own = page(marked), other = page(sessionTabUrl(url, 'other')), listeners = new Map();
   for (const tab of [own, other]) { tab.on = (_, fn) => listeners.set(tab, fn); tab.off = () => listeners.delete(tab); }
-  const browser = {opened: [], pages: {[marked]: own}, context: {pages: () => [own, other]}};
+  const browser = {opened: [], pages: {[marked]: own}, context: {pages: () => [own, other]}, ...(loaded ? {loaded} : {})};
   const ui = {click: async () => {}, evaluate: async () => [{id: 'ours'}], locator: () => ({locator: () => ({click: async () => {
     if (spooled) browser.opened.push(marked, sessionTabUrl('https://other.test', 'other'));
     listeners.get(reloadOwn ? own : other)?.();
@@ -101,6 +101,15 @@ test('Apply ignores the global spool tail and reports its rejected read even if 
   assert.equal(h.reads(), 3, 'no fresh state read while formatting the failure');
   assert.equal(h.dumps(), 1);
   assert.equal(h.listeners.size, 0, 'listeners leave with the attempt');
+});
+
+test('Apply stops at once with the browser\'s navigation error, before any fill read', async () => {
+  const asked = [];
+  const h = applyHarness({loaded: async url => { asked.push(url); throw new Error('the browser could not open https://example.test/apply in its own tab: net::ERR_ABORTED'); }});
+  await assert.rejects(onStepClock(1000, h.apply), /the browser could not open https:\/\/example\.test\/apply in its own tab: net::ERR_ABORTED/);
+  assert.deepEqual(asked, [sessionTabUrl('https://example.test/apply', 'ours')], 'asked for this attempt\'s address');
+  assert.equal(h.reads(), 0);
+  assert.equal(h.listeners.size, 0);
 });
 
 test('Apply ignores a reload of another session at the same address', async () => {

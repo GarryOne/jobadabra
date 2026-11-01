@@ -1,7 +1,6 @@
 // A suite that quotes UI text a PR removes runs only the step that quotes it (PR 2 of the PR-checks plan; on #1992 six suites ran whole for one removed label).
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import * as pick from '../lib/pr-suites.mjs';
 import {newSideRanges, stepCalls, stepsQuoting, stepsTouched} from '../lib/pr-suites.mjs';
 
 const SUITE = `import {x} from '../lib/y.mjs';

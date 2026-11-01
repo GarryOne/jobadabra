@@ -398,6 +398,21 @@ test('scenario: the person presses Stop in the panel while another armed tab sit
   } finally { globalThis.chrome = saved.chrome; globalThis.fetch = saved.fetch; }
 });
 
+// #2732 (1 Nov 2026): a first Connect while signed out of LinkedIn added both grants and answered "signed-out"; the retry after signing in found them held and noted "this consent added
+// nothing", so turning LinkedIn jobs off left both permissions granted. The person's path through the extension's consent code, on a fake Chrome (no real cookie, no network).
+test('scenario: Connect while signed out of LinkedIn, sign in, Connect again, switch LinkedIn jobs off: both permissions are given back (#2732)', async () => {
+  const {connect, revokeIfOff} = await import('../../extension/linkedin-session.js');
+  const store = {}, removed = [], held = {now: false}, jar = [{name: 'bcookie', value: 'v=2&x', domain: '.linkedin.com'}];
+  const chrome = {permissions: {contains: async () => held.now, request: async () => { held.now = true; return true; }, remove: async asked => { removed.push(asked); return true; }},
+    storage: {local: {get: async key => ({[key]: store[key]}), set: async values => Object.assign(store, values), remove: async key => { delete store[key]; }}},
+    cookies: {getAll: async () => jar}};
+  assert.deepEqual(await connect({config: {}, chrome, call: async () => { throw new Error('nothing is sent while signed out'); }}), {ok: false, why: 'signed-out'});
+  jar.push({name: 'li_at', value: 'AQEDfake', domain: '.linkedin.com'});   // the person signed in to LinkedIn
+  assert.deepEqual(await connect({config: {}, chrome, call: async () => ({ok: true})}), {ok: true});
+  assert.deepEqual(await revokeIfOff({config: {}, chrome, call: async () => ({revoke: true})}), {revoked: true});
+  assert.deepEqual(removed, [{permissions: ['cookies'], origins: ['https://www.linkedin.com/*']}], 'both grants this consent added are given back');
+});
+
 // #961: the fill the Stop cut short reports "Stopped by you." as its error; the card stays Stopped and the error watcher (Sentry, Telegram) sees no error.
 test('scenario: a fill cut short by Stop reports its error late: the card stays Stopped and no fill error is raised (#961)', () => {
   const {flow, card} = journeyOf('f1');

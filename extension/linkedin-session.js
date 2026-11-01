@@ -21,7 +21,9 @@ export async function readCookies(chrome = globalThis.chrome) {
 export async function connect({chrome = globalThis.chrome, call = api, config = null} = {}) {
   const had = {cookies: await chrome.permissions.contains({permissions: LINKEDIN.permissions}).catch(() => false), origin: await chrome.permissions.contains({origins: LINKEDIN.origins}).catch(() => false)};
   if (!(await chrome.permissions.request(LINKEDIN).catch(() => false))) return {ok: false, why: 'denied'};
-  await chrome.storage.local.set({[GRANTED]: {cookies: !had.cookies, origin: !had.origin}});
+  // Why (1 Nov 2026, #2732): a grant this consent added earlier (a press while signed out of LinkedIn) is held now, so it reads as "already there"; it stays noted as ours until given back.
+  const before = (await chrome.storage.local.get(GRANTED).catch(() => ({})))[GRANTED] || {};
+  await chrome.storage.local.set({[GRANTED]: {cookies: !!before.cookies || !had.cookies, origin: !!before.origin || !had.origin}});
   const cookies = await readCookies(chrome);
   if (!cookies.some(cookie => cookie.name === 'li_at')) return {ok: false, why: 'signed-out'};
   return call(config || await settings(), '/extension/linkedin-session', {method: 'POST', body: JSON.stringify({cookies})});

@@ -11,7 +11,8 @@ import path from 'node:path';
 import {fillNote, fillSettled, fillState, launchBrowser, readForm} from './extension.mjs';
 import {writePrivate} from '../../lib/private-file.js';
 import {pressed, ticked} from './free-click.mjs';
-import {extensionDecisions, pollUntil, stepTimeLeft, waitCapNote, waitForAccountSafety, waitForDecisions, waitForFormValue, waitJobFormClosed} from './wait-on-state.mjs';
+import {extensionDecisions, pollUntil, stepTimeLeft, waitCapNote, waitForAccountSafety, waitForDecisions, waitForFormValue, waitForStage, waitJobFormClosed} from './wait-on-state.mjs';
+import {missedPressNote} from './account-press.mjs';
 
 export async function runJourneys(ctx, h) {
   const {cv, dumpExtension, fail, forms, page} = h;
@@ -118,8 +119,7 @@ export async function runJourneys(ctx, h) {
     const find = url => ctx.browser.context.pages().find(item => item.url().startsWith(url)) || null;
     const tab = await arrived(() => find(SIGNUP.accountUrl), 'the wait for the sign-up page');
     const session = async () => (await page.evaluate(target => window.pilot.sessions(), null)).find(item => String(item.url || '').replace(/\/$/, '') === SIGNUP.url) || null;
-    let at = null;
-    for (let waited = 0; waited < 30000 && at?.stage !== 'account'; waited += 1000) { at = await session(); await pause(1000); }
+    let {value: at} = await waitForStage(session, value => value?.stage === 'account');
     const problems = [];
     if (at?.stage !== 'account') problems.push(`on the sign-up page the session is not at the account step (stage: ${at?.stage}, stuck: ${at?.stuck})`);
     // Every account page gets the normal fill (owner, 12 Oct 2026, 8691f97): the person's details by meaning may be in; what stays the person's or Claude's is the box and the button (the password is account-step.js's, as a password manager's).
@@ -138,7 +138,7 @@ export async function runJourneys(ctx, h) {
       const {value, ms} = await waitForFormValue(async () => { const read = (await readForm(tab)).question_3001; return String(read?.value ?? read ?? ''); }, '5');
       if (value !== '5') problems.push(`the form after the sign-up has Kubernetes years "${value}" after waiting ${ms} ms, its kit says 5`);
     }
-    for (let waited = 0; waited < 20000 && at?.stage !== 'form'; waited += 1000) { at = await session(); await pause(1000); }
+    ({value: at} = await waitForStage(session, value => value?.stage === 'form'));
     if (at?.stage !== 'form') problems.push(`on the application form the session did not move to the form step (stage: ${at?.stage})`);
     const {value: safety} = await waitForAccountSafety(() => extensionDecisions(ctx), {since, host: SIGNUP.accountHost, path: SIGNUP.accountPath});
     const log = safety.log;
@@ -172,9 +172,10 @@ export async function runJourneys(ctx, h) {
   await ctx.run('a sign-in page before the form: your email and saved password are filled, "Sign in" is pressed once, and the form behind it is filled', async () => {
     const tab = await openAccount(SIGNIN);
     const problems = [];
-    for (let waited = 0; waited < 60000 && !pressesOf(SIGNIN).length; waited += 500) await pause(500);
+    const {ms: pressWaitMs} = await waitForStage(() => pressesOf(SIGNIN), list => list.length > 0);
     const presses = pressesOf(SIGNIN);
-    if (!presses.length) problems.push(`"Sign in" was never pressed (email box "${await tab.locator('#signin_email').inputValue().catch(() => '?')}" is ${await tab.locator('#signin_email').inputValue().catch(() => '') === CONTACT.email ? 'filled' : 'not filled'}, password box ${await tab.locator('#signin_password').inputValue().then(value => (value ? 'filled' : 'empty')).catch(() => '?')})`);
+    if (!presses.length) problems.push(missedPressNote({what: '"Sign in"', waitedMs: pressWaitMs, email: await tab.locator('#signin_email').inputValue().then(value => (value === CONTACT.email ? 'filled' : 'not filled')).catch(() => '?'),
+      password: await tab.locator('#signin_password').inputValue().then(value => (value ? 'filled' : 'empty')).catch(() => '?'), decisions: await extensionDecisions(ctx)}));
     else if (!presses[0].email || !presses[0].password) problems.push(`"Sign in" was pressed with the wrong ${!presses[0].email ? 'email' : 'password'} (the saved one for this site was not used)`);
     if (presses.length) {
       await arrived(() => tab.url().startsWith(SIGNIN.formUrl), 'the wait for the application after sign-in');
@@ -183,8 +184,7 @@ export async function runJourneys(ctx, h) {
       if (value !== '4') problems.push(`the form after signing in has Kubernetes years "${value}" after waiting ${ms} ms, its kit says 4`);
     }
     if (pressesOf(SIGNIN).length > 1) problems.push(`"Sign in" was pressed ${pressesOf(SIGNIN).length} times (once per tab is the floor)`);
-    let at = null;
-    for (let waited = 0; waited < 20000 && at?.stage !== 'form'; waited += 1000) { at = await sessionOf(SIGNIN); await pause(1000); }
+    const {value: at} = await waitForStage(() => sessionOf(SIGNIN), value => value?.stage === 'form');
     if (at?.stage !== 'form') problems.push(`after signing in the session did not move to the form step (stage: ${at?.stage}, stuck: ${at?.stuck})`);
     // Why (9 Oct 2026; 30 Oct 2026, owner on #2612): read where the extension decides (its store), not app.log, which got them 14-62 s late (#2608).
     const {value: log} = await waitForDecisions(() => extensionDecisions(ctx), [/account button: pressed/, /account result: created/]);
@@ -202,10 +202,10 @@ export async function runJourneys(ctx, h) {
   await ctx.run('a sign-in page before the form that refuses the password: "Sign in" is pressed once, never again, and you are told; on the stuck sign-up page Take over with Claude only with Claude help on, never started', async () => {
     const tab = await openAccount(SIGNIN_REFUSED);
     const problems = [];
-    for (let waited = 0; waited < 60000 && !pressesOf(SIGNIN_REFUSED).length; waited += 500) await pause(500);
-    if (!pressesOf(SIGNIN_REFUSED).length) problems.push('"Sign in" was never pressed on the refusing page');
-    let at = null;
-    for (let waited = 0; waited < 30000 && at?.stuck !== 'account'; waited += 1000) { at = await sessionOf(SIGNIN_REFUSED); await pause(1000); }
+    const {ms: pressWaitMs} = await waitForStage(() => pressesOf(SIGNIN_REFUSED), list => list.length > 0);
+    if (!pressesOf(SIGNIN_REFUSED).length) problems.push(missedPressNote({what: '"Sign in" on the refusing page', waitedMs: pressWaitMs, email: await tab.locator('#signin_email').inputValue().then(value => (value === CONTACT.email ? 'filled' : 'not filled')).catch(() => '?'),
+      password: await tab.locator('#signin_password').inputValue().then(value => (value ? 'filled' : 'empty')).catch(() => '?'), decisions: await extensionDecisions(ctx)}));
+    const {value: at} = await waitForStage(() => sessionOf(SIGNIN_REFUSED), value => value?.stuck === 'account');
     await pause(12000);   // several more looks of the extension (it looks every few seconds): a second press would show here
     const presses = pressesOf(SIGNIN_REFUSED).length;
     if (presses > 1) problems.push(`after the site refused, "Sign in" was pressed again (${presses} presses): a refused sign-in is never retried`);
@@ -363,8 +363,7 @@ export async function runJourneys(ctx, h) {
       if (value('question_3001') !== '3') problems.push(`Kubernetes years "${value('question_3001')}", its kit says 3`);
     }
     const sessionNow = async () => (await page.evaluate(() => window.pilot.sessions())).find(item => String(item.url || '').replace(/\/$/, '') === ONEPAGE.url) || null;
-    let at = null;
-    for (let waited = 0; waited < 20000 && at?.stage !== 'form'; waited += 1000) { at = await sessionNow(); await pause(1000); }
+    const {value: at} = await waitForStage(sessionNow, value => value?.stage === 'form');
     if (at?.stage !== 'form') problems.push(`the session is not at the form step (stage: ${at?.stage}, stuck: ${at?.stuck}): this page is the application`);
     // The page's kind came from the AI (the stand-in), not the structure rule: the path every install takes when it has AI.
     if (!/page kind: account-form/.test((await waitForDecisions(() => extensionDecisions(ctx), [/page kind: account-form/])).value)) problems.push('the one-page form\'s kind never came from the AI ("page kind: account-form" missing in the extension\'s decisions)');

@@ -59,6 +59,14 @@ class WaitsThatRanOut(unittest.TestCase):
         jobs = RUN['jobs'] + [job('settings-1of2', 'failure')]
         self.assertEqual(verdict(jobs, RUN['failures']), 'stable')
 
+    def test_a_suite_whose_name_starts_another_suites_name_does_not_cover_it(self):
+        # Gitar on #2874: records of `apply` must not cover a crashed `applyflows-2of3`, nor `quality` cover `qualityai`
+        waits = [note('the fill did not finish within 90 s (last seen: null)', suite='apply')]
+        self.assertEqual(verdict([job('apply-1of3', 'failure')], waits), 'timeouts')
+        self.assertEqual(verdict([job('apply-1of3', 'failure'), job('applyflows-2of3', 'failure')], waits), 'stable')
+        self.assertEqual(verdict([job('windows-apply', 'failure')], waits), 'timeouts')
+        self.assertEqual(verdict([job('qualityai', 'failure')], [note('the step did not finish within 395 s (it hung)', suite='quality')]), 'stable')
+
     def test_a_plan_failure_is_still_the_harness_whatever_the_records_say(self):
         self.assertEqual(verdict([job('plan', 'failure'), job('applyflows-2of3', 'skipped')], RUN['failures']), 'harness')
 

@@ -13,13 +13,19 @@ TIMEOUT_NOTE = re.compile(r'did not (?:appear|finish|go quiet) within|never saw 
 FAILED = ('failure', 'timed_out', 'startup_failure')
 
 
+def suite_of(name):
+    """A job name's suite key: 'applyflows-2of3' -> 'applyflows', 'windows-apply' -> 'apply'.
+    Why (Gitar on #2874): a substring match let records of `apply` cover a crashed `applyflows-2of3` (same for quality/qualityai) and hide a real failure behind "re-look"."""
+    return re.sub(r'-\d+of\d+$', '', re.sub(r'^windows-', '', str(name)))
+
+
 def timeouts_only(bad, failures):
     """True when every failed job is a suite job with a recorded failure and every recorded failure note is a wait running out.
     `failures`: the run's suite-failures.json records ([{suite, step, message}]); `bad`: its failed jobs. No record for a failed job = a crash we cannot read: not timeouts."""
     if not failures or any(not TIMEOUT_NOTE.search(str(item.get('message', ''))) for item in failures):
         return False
     suites = {str(item.get('suite', '')) for item in failures if item.get('suite')}
-    return bool(suites) and all(any(suite in str(job.get('name', '')) for suite in suites) for job in bad)
+    return bool(suites) and all(suite_of(job.get('name', '')) in suites for job in bad)
 
 
 def verdict(jobs, failures=None):

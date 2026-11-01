@@ -1,5 +1,5 @@
 // Names a fill that never started because the app heard nothing from the extension about the tab it opened, from the app's own log (the extension's decisions are relayed into it).
-// Job: wait on state
+// Job: report health
 
 import {appLogText} from './app-log.mjs';
 

@@ -3,7 +3,7 @@
 // the step live reached. Against the record it replaces: it must reach at least that one's step or outcome, and a PINNED row (replay-faithful.json) must replay same as live
 // before it replaces anything. Only the owner's "<row> — <reason>" (passed as --accept) overrides, for that row only (the replay-accepts.mjs format; never posted by a session).
 // The garbled-page definition is the charset repair's own (desktop/lib/net-keep.js repairUnlabeledText, 15 Oct 2026): windows-1252 as well as Latin-1; never a grep for "Ã".
-// Pure but for the two folder readers; the replays are run by records-publish.mjs and passed in. Guard: e2e/test/harness/record-guard.test.mjs.
+// Pure but for the two folder readers; the replays are run by records-publish.mjs and passed in. Guard: e2e/test/record-guard.test.mjs.
 import fs from 'node:fs';
 import path from 'node:path';
 import {isSame} from '../replay-records.mjs';

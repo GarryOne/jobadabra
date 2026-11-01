@@ -81,7 +81,7 @@ export function argProblems(args, suites = []) {
 
 if (import.meta.url === pathToFileURL(process.argv[1] || '').href) {
   const option = flag => { const at = process.argv.indexOf(flag); return at < 0 ? '' : process.argv[at + 1] || ''; };
-  (await import('./lib/ensure-staged.mjs')).ensureStaged(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'));   // the suites load app code that needs desktop/shared/ (test/harness/ensure-staged.test.mjs)
+  (await import('./lib/ensure-staged.mjs')).ensureStaged(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'));   // the suites load app code that needs desktop/shared/ (test/ensure-staged.test.mjs)
   const {SUITES} = await import('./lib/context.mjs');
   const cadence = {}, tokenOf = {};   // tokenOf: a suite that uses another's Notion token (notion-real) gets that Keychain item loaded
   for (const suite of SUITES) { const module = await import(`./suites/${suite}.mjs`); if (cadenceOf(suite, module)) cadence[suite] = cadenceOf(suite, module); if (module.notionTokenOf) tokenOf[suite] = module.notionTokenOf; }

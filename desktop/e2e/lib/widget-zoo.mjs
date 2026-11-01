@@ -1,6 +1,6 @@
 // The widget zoo (spec docs/superpowers/specs/2026-10-12-fill-ladder.md, PR 1): one small hand-made page per control SHAPE (desktop/e2e/widget-zoo/<shape>-<n>/), in the recorded-case format
 // (lib/page-replay.mjs), replayed with the real extension. A MEASURE, not a gate: per page, did the fill READ the question (expect.asked) and did the value stay COMMITTED (every other
-// positive check)? A page that passes moves to e2e/recorded/ (then it guards); one that fails is a found bug for the fill ladder. Run: npm run widget-zoo. Guard: e2e/test/replay/widget-zoo.test.mjs.
+// positive check)? A page that passes moves to e2e/recorded/ (then it guards); one that fails is a found bug for the fill ladder. Run: npm run widget-zoo. Guard: e2e/test/widget-zoo.test.mjs.
 // Every page carries first name, last name and email in front of its widget: with fewer than 3 fields the structure rule (extension/tab-pages.js pageRole) calls a page no form and no panel comes.
 import path from 'node:path';
 import {E2E} from './app.mjs';

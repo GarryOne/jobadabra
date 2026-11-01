@@ -3,7 +3,7 @@
 // The one suite on REAL Notion (P7 step 5, spec docs/superpowers/specs/2026-10-09-store-adapters.md): what the in-memory stand-in cannot prove. An app on
 // this Mac's store with real-shaped data (lib/store_seed.py) connects a real test workspace, moves its data there, and the records, the kit, the application
 // record, the interview and the file read back from Notion's own pages; the screens show the same. Runs nightly and before beta as outside-world health.
-// Isolation: the only suite that may pin store 'notion' (test/app/store.test.mjs); its token is a pre-P7 suite's, idle since that suite runs on the stand-in
+// Isolation: the only suite that may pin store 'notion' (test/store.test.mjs); its token is a pre-P7 suite's, idle since that suite runs on the stand-in
 // (failuresnotion, owner's choice 9 Oct 2026); testRoot() refuses any workspace but "Job Pilotto 2" and any token that sees more than its one page. It writes
 // only under that page, starts from an emptied page (fresh) and empties it again at the end, asserting nothing is left. No AI: a dummy key, nothing scored.
 import fs from 'node:fs';

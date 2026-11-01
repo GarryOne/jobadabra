@@ -5,7 +5,7 @@
 // #2704 were suspended as flaky on 31 Oct; a suspended step shows its result but blocks nothing, which for these steps means a posting bug could ship while the proof is grey.
 // Invariants: a step name is matched by the text before its first interpolation (`'...' + expected + '...'` and `${}` names keep their literal start); the scan skips strings,
 // comments, regex literals and template text, so a `safety: true` inside a callback body or a string is not a mark.
-// Tests: test/harness/safety-steps.test.mjs
+// Tests: test/safety-steps.test.mjs
 // Job: report health
 import fs from 'node:fs';
 import path from 'node:path';

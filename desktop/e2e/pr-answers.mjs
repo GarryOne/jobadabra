@@ -2,7 +2,7 @@
 // Why: a PR replays its own cache (PR-scoped), which main cannot read; main then asked the PR's new questions live and could get other answers
 // (27 Oct 2026: #2180 green on its PR with 0 misses, main red after 8 live questions). The PR's green suite job uploads `ai-answers-<suite>` (e2e.yml).
 // Usage (e2e.yml, after-merge runs): node pr-answers.mjs <merged sha> <suite key> <cache dir>. Never fails the job: no answers found is one line.
-// Guards: test/harness/pr-answers.test.mjs, tests/test_workflow_ai_cache.py.
+// Guards: test/pr-answers.test.mjs, tests/test_workflow_ai_cache.py.
 import {execFileSync} from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';

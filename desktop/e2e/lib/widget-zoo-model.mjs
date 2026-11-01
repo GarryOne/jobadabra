@@ -1,6 +1,6 @@
 // The zoo's --model route (widget-zoo.mjs): the stand-in app's /extension/account-judge answered like the app does for the fill ladder: phase "fill" by the REAL model (the app's plan-path
 // client, lib/ladder-score-path.mjs; never an API key: assertNoApiSpend), any other phase by the form judge's canned "ready" so the page's own flow is unchanged. Verdicts are collected per
-// page host for the runner's table. Guard: test/replay/widget-zoo.test.mjs.
+// page host for the runner's table. Guard: test/widget-zoo.test.mjs.
 import {judgeFill} from '../../lib/ladder/fill-verify.js';
 import {pickEngine} from './engine.mjs';
 import {assertNoApiSpend} from './ladder-score.mjs';

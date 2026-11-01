@@ -1,5 +1,5 @@
 // The test app's process tree: list it before the app quits, then wait until every process of it is gone, naming the ones that are not (Windows: the holders of the data folder).
-// Why (31 Oct 2026, owner: quitting must end every engine child): the harness exited the app with electron.exit(0) and never looked at what it left behind. Guard: test/app/app-tree.test.mjs.
+// Why (31 Oct 2026, owner: quitting must end every engine child): the harness exited the app with electron.exit(0) and never looked at what it left behind. Guard: test/app-tree.test.mjs.
 // Job: wait on state
 import {spawnSync} from 'node:child_process';
 import fs from 'node:fs';

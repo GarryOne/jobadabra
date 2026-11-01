@@ -1,5 +1,5 @@
 // Waits until a folder is no longer held by a process that outlived the app (Windows: a child's working directory or open handle keeps the folder, not its files, from being renamed
-// or removed). The reset and the import of the next start need exactly that; a relaunch before it failed them (17 Oct 2026, Windows settings). Guarded by test/ai/folder-free.test.mjs.
+// or removed). The reset and the import of the next start need exactly that; a relaunch before it failed them (17 Oct 2026, Windows settings). Guarded by test/folder-free.test.mjs.
 // Job: wait on state
 import {spawnSync} from 'node:child_process';
 import fs from 'node:fs';

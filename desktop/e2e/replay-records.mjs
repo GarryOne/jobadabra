@@ -1,5 +1,5 @@
 // Replays every pool row's newest network record offline on this build (replay-net.mjs, one row after another) and writes one "Replay vs live" record per row
-// for desktop/e2e/fidelity-report.mjs, plus a Markdown summary on stdout. CI: .github/workflows/site-replays.yml. Guard: e2e/test/replay/replay-records.test.mjs.
+// for desktop/e2e/fidelity-report.mjs, plus a Markdown summary on stdout. CI: .github/workflows/site-replays.yml. Guard: e2e/test/replay-records.test.mjs.
 //   node replay-records.mjs <records dir> <out dir>   (<records dir>: unpacked net-records-<run> folders, each row a folder with record.json)
 import fs from 'node:fs';
 import path from 'node:path';
@@ -18,7 +18,7 @@ const bare = url => String(url || '').split('#')[0];
 
 // The newest record of each row, by its name (an older record: its pool row by address, else its posting host). -> [{name, dir, record}]
 // Two copies of ONE recording (same startMs: a refill changes only the answers beside the record) are told apart by their folder: folders are read in name order and a later one wins a tie,
-// so a refilled copy in a later bundle replaces the older one (15 Oct 2026: with `<` the first-read, OLDEST bundle won and no published refill was ever replayed). Guard: e2e/test/replay/replay-records.test.mjs.
+// so a refilled copy in a later bundle replaces the older one (15 Oct 2026: with `<` the first-read, OLDEST bundle won and no published refill was ever replayed). Guard: e2e/test/replay-records.test.mjs.
 export function newestPerRow(root, byUrl = poolByUrl()) {
   const found = new Map();
   const walk = dir => {

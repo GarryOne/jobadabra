@@ -1,6 +1,7 @@
 // Which recorded cases a change can affect (JP_GATE_REPLAY=1, the opt-in local replay; CI always replays all of them). Reads e2e/recorded-case-map.json, measured by `npm run recorded-map`
 // (lib/replay-coverage.mjs: the extension files each case really runs code from). ALL cases run when a shared file changes (one every case runs), a flow-core file, a replay-tool file, a file the
 // map has never seen (new, or never run), or the map is missing or stale. A case the map does not know always runs. Guard: e2e/test/replay/replay-select.test.mjs.
+// Job: pick the suites
 import fs from 'node:fs';
 import path from 'node:path';
 

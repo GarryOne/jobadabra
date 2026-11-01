@@ -1,4 +1,4 @@
-// Which e2e suites reach a helper file through their imports (plan.mjs suitesFor, so a changed helper runs the suites that use it, not only the settings smoke). Tests: test/harness/import-graph.test.mjs.
+// Which e2e suites reach a helper file through their imports (plan.mjs suitesFor, so a changed helper runs the suites that use it, not only the settings smoke). Tests: test/import-graph.test.mjs.
 // Job: pick the suites
 import fs from 'node:fs';
 import path from 'node:path';

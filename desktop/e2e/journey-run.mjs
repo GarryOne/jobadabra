@@ -1,5 +1,5 @@
 // Replays each journey of journeys.json from the newest record of its row and judges the card and the panel at every step (journey.mjs): the PR check for flow changes.
-//   node journey-run.mjs <records dir> <out dir> [--only=<row name>] [--watch]     --watch: the pool's daily watch rows instead of journeys.json (watch-live.yml). exit 1 when a journey fails or has no record. Guard: e2e/test/replay/journey-run.test.mjs.
+//   node journey-run.mjs <records dir> <out dir> [--only=<row name>] [--watch]     --watch: the pool's daily watch rows instead of journeys.json (watch-live.yml). exit 1 when a journey fails or has no record. Guard: e2e/test/journey-run.test.mjs.
 import {spawnSync} from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';

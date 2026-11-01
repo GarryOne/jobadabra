@@ -11,7 +11,7 @@ import {checkAiMisses, recordAnswerRefusals, runAiGuards} from './no-real-ai.mjs
 import {writeSuiteFailures} from './artifacts.mjs';
 
 // Why (29 Oct 2026, Gitar on #2479 x2; exported 31 Oct, #2654): the steps judge themselves by their own caps; close-down is bounded in finally on success or failure,
-// and only the caller exits the process. Exported because runner.mjs TRY_MARGIN_MS must hold this cap plus a minute before CI's try limit (test/harness/suite-budget.test.mjs).
+// and only the caller exits the process. Exported because runner.mjs TRY_MARGIN_MS must hold this cap plus a minute before CI's try limit (test/suite-budget.test.mjs).
 export const TEARDOWN_STOP_MS = 3 * 60000;
 const closeDownHangMessage = suite => `the ${suite.name} suite's close-down was still running 3 min after its steps ended: moving on (closing the app, a test server, or writing artifacts)`;
 

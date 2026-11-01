@@ -1,7 +1,7 @@
 // Which recorded cases a pull request's page-cases run leaves to main and the daily run: the slow ones (slow-cases.json, written by tools/slow-page-cases.mjs from measured seconds),
 // unless the PR touches that case's own folder (desktop/e2e/recorded/<case>/). Main and the daily run replay every case. Owner, 17 Oct 2026: PR page cases in half the time.
 // Also on an extension change (owner, 27 Oct 2026: "One bug in hundreds of PRs, that's low value": since 17 Oct one PR, #1621, broke two slow cases and main was red ~25 h; not worth +3 runner-min per shard on every extension PR).
-// Guard: e2e/test/replay/replay-slow.test.mjs (the split, the PR log line, the workflow sets it for pull_request only).
+// Guard: e2e/test/replay-slow.test.mjs (the split, the PR log line, the workflow sets it for pull_request only).
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';

@@ -1,7 +1,7 @@
 // The screenshot review's memory (owner, 26 Oct 2026: review only screenshots whose pixels changed since the last one judged, and keep each verdict):
 // one file per page and question (the view, the model, the instructions, the facts and lessons asked with it), holding the last picture judged (as
 // lib/png-grid.mjs strips) and its answer. A new shot of that page that looks the same (sameLook) gets that answer back, unasked. Before, the key was the
-// request's bytes, picture included: 0 of 29 pages ever hit (19-25 Oct 2026), since a build stamp or a clock is always new. Guarded by test/pool/review-cache.test.mjs.
+// request's bytes, picture included: 0 of 29 pages ever hit (19-25 Oct 2026), since a build stamp or a clock is always new. Guarded by test/review-cache.test.mjs.
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';

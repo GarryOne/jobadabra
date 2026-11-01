@@ -1,6 +1,6 @@
 // When a live run may end before its limit: the page (and what the app logs about it) has not changed for STILL seconds (11 Oct 2026, owner: "end a live run 20 s after the
 // page last changed, keep 90 s as the limit"). A still page is the end of the story: a held run waits for nothing more. A page that is only slow (a form drawn after a spinner,
-// a model answering) changes its tabs, its controls or the app's log, which moves the clock. LIVE_STILL_SECONDS=0 turns it off. Guard: test/replay/live-still.test.mjs.
+// a model answering) changes its tabs, its controls or the app's log, which moves the clock. LIVE_STILL_SECONDS=0 turns it off. Guard: test/live-still.test.mjs.
 export const STILL_SECONDS = 20;
 export const STILL_SECONDS_CLI = 45;   // plan-path (claude -p) asks take 5-12 s each: 20 s of quiet ended runs while the AI was still thinking, a false "form empty" (11 Oct 2026)
 export const stillSeconds = (env = process.env, engine = '') => (env.LIVE_STILL_SECONDS === undefined || env.LIVE_STILL_SECONDS === '' ? (engine === 'cli' ? STILL_SECONDS_CLI : STILL_SECONDS) : Math.max(0, Number(env.LIVE_STILL_SECONDS) || 0));

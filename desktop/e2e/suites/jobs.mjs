@@ -16,7 +16,7 @@ export const offlineAi = true;
 // Why (30 Oct 2026, ap): the harness must fail jobs if any question reaches a real model.
 export const realAi = false;
 export const aiAnswers = 'backbone';   // answers its AI from the stored table in every workflow (plan-run.mjs puts it in the matrix)
-// Why (30 Oct 2026, ap; a8's rule for calendar on #2565): stored answers need one store path (test/app/store.test.mjs); jobs takes the default store, SQLite, whose steps it already has.
+// Why (30 Oct 2026, ap; a8's rule for calendar on #2565): stored answers need one store path (test/store.test.mjs); jobs takes the default store, SQLite, whose steps it already has.
 export const store = 'sqlite';
 export const minutes = 30;
 export const name = 'jobs';

@@ -1,5 +1,5 @@
 // When the AI refuses every call (the key's spend limit, a bad key: 400 BadRequestError / "usage limits" / "credit balance"), a failed step says so instead of a
-// downstream symptom ("listed: nothing", "0 new jobs"). Read from the engine's log in the test profile; used by every suite through lib/runner.mjs. Guarded by test/ai/ai-refused.test.mjs.
+// downstream symptom ("listed: nothing", "0 new jobs"). Read from the engine's log in the test profile; used by every suite through lib/runner.mjs. Guarded by test/ai-refused.test.mjs.
 import fs from 'node:fs';
 import path from 'node:path';
 import {STUBBED} from './ai-proxy.mjs';

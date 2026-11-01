@@ -1,5 +1,5 @@
 // Self-healing triage, part 1: the label names and thresholds, what a fix may touch, finding severities and normalize() (ui + ai + suite findings -> one list).
-// Re-exported by triage.mjs; guarded by desktop/e2e/test/pool/triage.test.mjs (and the other triage-*.test.mjs, severity, a11y, prejudge, regress-flaky tests).
+// Re-exported by triage.mjs; guarded by desktop/e2e/test/triage.test.mjs (and the other triage-*.test.mjs, severity, a11y, prejudge, regress-flaky tests).
 // Job: report health
 import {fingerprint, cappedSeverity} from './vision.mjs';
 

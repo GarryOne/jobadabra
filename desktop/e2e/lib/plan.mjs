@@ -14,7 +14,7 @@ const SMOKE = 'settings';   // AI-free, about 30 s: proof that the shared test c
 // 'slim' runs like 'always' (the night's schedule, every release gate, a push that touches it) but never in a release's repeats: the soak top-ups and the stable canary
 // (`repeat`). The e2e audit's keep 11 / slim 15 / drop 4 (owner's yes, 26 Oct 2026): no product bug caught in 30 days, so a night and a beta are enough.
 // 'night-report' runs once a night (night burn-in pass 1, lib/night-pass.mjs) and in no release gate or beta, no schedule, no push and no PR; a person can still name it. It must also be a
-// tolerant lane in lanes.json (its result shows, a red never holds anything; guard: test/harness/plan-run.test.mjs). Why (1 Nov 2026, owner: "I'd like the beta to have only the critical
+// tolerant lane in lanes.json (its result shows, a red never holds anything; guard: test/plan-run.test.mjs). Why (1 Nov 2026, owner: "I'd like the beta to have only the critical
 // e2e/user journeys. ALl the others, to run separately less frequently"): the one cadence for finders, explorers and measurements (interactions, wander, quality, qualityai, notion-real).
 export const NIGHT_REPORT = 'night-report';
 export function autoSuites(all, cadence = {}, alwaysOnly = false, repeat = false) {
@@ -27,7 +27,7 @@ export function autoSuites(all, cadence = {}, alwaysOnly = false, repeat = false
 }
 
 // The slim suites, as one table here rather than a `cadence` export in each suite: a PR that edits a suite file runs that suite, so 15 exports would run 15 suites
-// on the PR that slims them. A dropped suite exports cadence 'manual' itself (a manual suite never runs on a PR). Guard: test/harness/suite-cadence.test.mjs.
+// on the PR that slims them. A dropped suite exports cadence 'manual' itself (a manual suite never runs on a PR). Guard: test/suite-cadence.test.mjs.
 export const SLIM = ['failuresnotion', 'jobs', 'linkedin', 'storemove', 'stores', 'strategy', 'updates', 'wizard'];
 // A suite's cadence from its module: the table's 'slim', else its own export. Every reader (plan-run.mjs suiteFacts, suite.mjs, run-all.mjs) goes through it.
 export const cadenceOf = (suite, module) => (SLIM.includes(suite) ? 'slim' : module.cadence);
@@ -41,7 +41,7 @@ export function suitesFor(files, all, {watches = {}, cadence = {}, uses = {}} = 
     const suite = /^desktop\/e2e\/suites\/([^/]+)\.mjs$/.exec(file)?.[1];
     if (suite) { if (all.includes(suite)) chosen.add(suite); continue; }
     if (/^extension\//.test(file)) { chosen.add('apply'); chosen.add('applyflows'); continue; }   // the recorded cases are replayed by page-cases.yml, not by an e2e suite (1 Nov 2026)
-    if (/^desktop\/e2e\/(recorded\/|lib\/page-replay\.mjs$)/.test(file)) { continue; }   // a recorded case or its harness: page-cases.yml replays them (test/record/recorded-pages.test.mjs); no e2e suite
+    if (/^desktop\/e2e\/(recorded\/|lib\/page-replay\.mjs$)/.test(file)) { continue; }   // a recorded case or its harness: page-cases.yml replays them (test/recorded-pages.test.mjs); no e2e suite
     if (/^desktop\/e2e\/test\//.test(file) || /\.md$/.test(file)) continue;   // unit tests run on their own; docs run nothing
     if (/^desktop\/e2e\//.test(file) || file === '.github/workflows/e2e.yml') {
       chosen.add(SMOKE);
@@ -117,12 +117,12 @@ export const reviewNeeded = ({files, waiting, known}) => !known || waiting > 0 |
 // itself (Keychain, `open` to Chrome and the extension, pixels and fonts), which exports `macos = true` with its reason. The Free plan runs at most 5 macOS jobs at once.
 // `macos = 'release'` (apply, applyflows: the real extension opened through `open`): the Mac for a release, a gate, the night and a run by hand, so the Mac path is
 // proved before every release; Linux for a pull request's run and the same steps after its merge (`pr`): no wait for a macOS slot (#2119's apply waited 17 min;
-// owner, 26 Oct 2026: "Both, PRs on Linux (Recommended)"). Guard: test/harness/pr-linux.test.mjs.
+// owner, 26 Oct 2026: "Both, PRs on Linux (Recommended)"). Guard: test/pr-linux.test.mjs.
 export const runnerOf = (module, {pr = false} = {}) => ((module.macos === true || (module.macos === 'release' && !pr)) ? 'macos-latest' : 'ubuntu-24.04');
 
 // What Windows runs, outside a run by hand that names its suites: apply (the fill, where Windows' own product reds came from: #2074's night fill) and the settings
 // smoke (the app launches and draws). The e2e audit (owner's yes, 26 Oct 2026): Windows was 38% of e2e runner-minutes, ~14,200 a month, and its other reds were CI
-// or test timing. Read by plan-run.mjs (the release run's Windows matrix) and plan-windows.mjs (after main's checks, a gate by hand). Guard: test/harness/windows-two.test.mjs.
+// or test timing. Read by plan-run.mjs (the release run's Windows matrix) and plan-windows.mjs (after main's checks, a gate by hand). Guard: test/windows-two.test.mjs.
 export const WINDOWS = ['apply', 'settings'];
 export const onWindows = suites => suites.filter(suite => WINDOWS.includes(suite));
 

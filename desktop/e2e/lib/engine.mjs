@@ -1,7 +1,7 @@
 // Which AI engine the app under test uses (the app's own "AI engine" setting: its API key, or the user's Claude Code on this Mac).
 import {execFileSync} from 'node:child_process';
 import {aiProvider} from './ai-provider.mjs';
-import {withoutWrappers} from './real-claude.mjs';   // never a terminal's claude wrapper (e2e/test/replay/real-claude.test.mjs)
+import {withoutWrappers} from './real-claude.mjs';   // never a terminal's claude wrapper (e2e/test/real-claude.test.mjs)
 
 // A saved key that is never valid: with the CLI engine chosen the key is not used, and a step that needs the API engine (the AI proxy answering 429, 500, a delay)
 // switches to it without spending a real key's credit, because the proxy answers or delays before anything reaches Anthropic.
@@ -71,7 +71,7 @@ export const keySecret = engine => (familyOf(engine) === 'openai' ? 'E2E_OPENAI_
 export const familySecret = (family, engine = 'api') => (family === 'free' ? 'E2E_FREE_AI_KEY' : keySecret(engine));
 // Live runs on real sites ask on their own Anthropic keys, so each one's cost shows apart in the Console and on /admin/intelligence/ai-cost (owner, 12 Oct 2026): a CI recording
 // run by hand (JOB_PILOTTO_VISIT_KIND=hand) on LIVE_POOL_ANTHROPIC_KEY; until the owner has set one, the Tests key. -> the NAME
-// the key comes from (for the job log), never its value. The one place that picks it (e2e/test/ai/no-local-key.test.mjs).
+// the key comes from (for the job log), never its value. The one place that picks it (e2e/test/no-local-key.test.mjs).
 export const LIVE_KEYS = {hand: 'LIVE_POOL_ANTHROPIC_KEY'};
 export const liveKeyName = (env = process.env, engine = 'api') => { const own = familyOf(engine) === 'claude' ? LIVE_KEYS[env.JOB_PILOTTO_VISIT_KIND] : ''; return own && env[own] ? own : keySecret(engine); };
 export const appSecretName = engine => (familyOf(engine) === 'openai' ? 'OPENAI_API_KEY' : 'ANTHROPIC_API_KEY');

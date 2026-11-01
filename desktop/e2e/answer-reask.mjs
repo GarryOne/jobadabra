@@ -3,7 +3,7 @@
 // Usage: node e2e/answer-reask.mjs --day <replay-candidates/<day> dir> --out <file.json> [--only <row>] [--jobs 3] [--worker <a copy's worker/src/extension.js>]
 //        node e2e/answer-reask.mjs --compare <before.json> <after.json>
 // Reads captures read-only; writes only --out. Never the API key (the app's Claude Code client, lib/ladder-score-path.mjs). The privacy tripwire (lib/privacy-tripwire.mjs) checks every
-// answer: the plan's claude -p knows the signed-in account, so an owner value is counted (owner: <kind>) and never written. Guard: test/ai/answer-reask.test.mjs.
+// answer: the plan's claude -p knows the signed-in account, so an owner value is counted (owner: <kind>) and never written. Guard: test/answer-reask.test.mjs.
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';

@@ -2,7 +2,7 @@
 // Job: report health
 // Why (31 Oct 2026, a8; budget burst 17:52-18:00 UTC): the whole event history was paginated, then cut to 600: all 170 pages (170 REST calls) per UI-verdict judge job, 12 jobs
 // a run = 2,040 calls in 5 minutes of the 5,000-an-hour budget every workflow shares; every later job failed on the 403. The endpoint is newest first and 27-42% of a page is a correction
-// kind (measured), so the first 600 matches are the first ~18 pages: the same events, read from the pages they are on. Guard: test/pool/reversals.test.mjs.
+// kind (measured), so the first 600 matches are the first ~18 pages: the same events, read from the pages they are on. Guard: test/reversals.test.mjs.
 
 export const WANTED = 600;
 export const PAGE_CAP = 60;   // a history with almost no corrections must not read every page either: the cap is said in the log when it ends the read

@@ -13,7 +13,7 @@ if (freeAiPlanned()) {
   await checkOtherKeys({engine: 'free'});   // the Claude and OpenAI keys: a warning each, never a stop
   process.exit(0);
 }
-const key = testKey(process.env, 'api');   // only lib/engine.mjs reads the key (test/ai/no-local-key.test.mjs)
+const key = testKey(process.env, 'api');   // only lib/engine.mjs reads the key (test/no-local-key.test.mjs)
 if (!key) { console.log('preflight: no test key here (a fork): nothing to check'); process.exit(0); }
 try {
   await checkKeyAccepted({engine: 'api', key});

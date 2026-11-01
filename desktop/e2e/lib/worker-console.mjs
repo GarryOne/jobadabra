@@ -1,6 +1,6 @@
 // The extension's service-worker console of a live run (the fill's own errors and waits, which the app log never sees), kept in the run's capture folder beside
 // app.log and ai-calls.json, on both live legs (lib/live-row.mjs plain node, lib/apply-live.mjs Electron). 12 Oct 2026, HelloFresh: the Electron leg's fill hung
-// after a menu and nothing showed where. A restarted worker is followed too. Fake applicant only, local only. Guard: test/record/evidence-bundle.test.mjs.
+// after a menu and nothing showed where. A restarted worker is followed too. Fake applicant only, local only. Guard: test/evidence-bundle.test.mjs.
 import fs from 'node:fs';
 import path from 'node:path';
 

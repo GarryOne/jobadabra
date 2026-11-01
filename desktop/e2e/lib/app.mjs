@@ -21,7 +21,7 @@ import {appLogText} from './app-log.mjs';
 import {stepTimeLeft} from './wait-on-state.mjs';
 import {keepRunLogs} from './run-logs.mjs';
 import {pythonCoverage, saveCoverage, startCoverage, takeSetup, takeStep} from './coverage.mjs';   // E2E_COVERAGE=1: what app code this session, and each step, ran (gate G1b)
-import {refuseWrapper, withoutWrappers} from './real-claude.mjs';   // never a terminal's claude wrapper (e2e/test/replay/real-claude.test.mjs)
+import {refuseWrapper, withoutWrappers} from './real-claude.mjs';   // never a terminal's claude wrapper (e2e/test/real-claude.test.mjs)
 const electronPath = () => {
   if (process.platform !== 'win32') return path.join(DESKTOP, 'node_modules', '.bin', 'electron');
   return createRequire(path.join(DESKTOP, 'package.json'))('electron');
@@ -140,7 +140,7 @@ const EXIT_GUARD_MS = 5000;
  * exit it directly, then give everything the launch started `graceMs` to leave and end what stays. Takes the Playwright app; resolves when the whole tree is gone.
  * Why (1 Nov 2026, #2717; beta 41220959824): on Windows Playwright starts Electron through a shell (shell: true), so app.process() is that shell and the app is its child. Killing only
  * `child` while the app was still tearing down left the app running with its parent gone (pid 8092), holding the profile the next start of it uses; 20 s later the reset's folder wait failed.
- * The tree is taken before the exit (a child's parent is lost once the parent dies). Guard: test/harness/close-app-tree.test.mjs.
+ * The tree is taken before the exit (a child's parent is lost once the parent dies). Guard: test/close-app-tree.test.mjs.
  */
 export async function closeApp(app, {how = 'crash', graceMs = EXIT_GUARD_MS, exitCapMs} = {}) {
   if (how === 'quit') return quitApp(app, exitCapMs === undefined ? {} : {exitCapMs});
@@ -165,7 +165,7 @@ export async function closeApp(app, {how = 'crash', graceMs = EXIT_GUARD_MS, exi
  * The person's quit (how: 'quit'): the quit question, if the app asks one, is answered "Quit now"; the app's own will-quit then ends its engine children and waits for their exit
  * (lib/lifecycle.js). Waits for the app's exit EVENT, then until every process it had started is gone, and fails naming the ones that are not (their pid and command line).
  * Why (31 Oct 2026, owner: quitting must end every engine child): electron.exit(0) skips the quit a person does, so an engine child stayed behind holding a hung AI call
- * (activityfailures CI 41217478444) and, on Windows, the data folder (settings, beta 41220959824). A crash step keeps how: 'crash'. Guard: test/app/app-tree.test.mjs.
+ * (activityfailures CI 41217478444) and, on Windows, the data folder (settings, beta 41220959824). A crash step keeps how: 'crash'. Guard: test/app-tree.test.mjs.
  */
 async function quitApp(app, {exitCapMs = stepTimeLeft() ?? 30000} = {}) {
   const child = app.process();

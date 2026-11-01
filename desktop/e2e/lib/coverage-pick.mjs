@@ -3,7 +3,7 @@
 // recorded run (lib/coverage.mjs); `steps` since PR 2 of the PR-checks plan (owner, 26 Oct 2026: "just few tests/scenarios/cases from that suite"), SETUP = lines no step ran.
 // Pick: a changed line inside lines a suite ran → that suite. A changed line no suite ran (a file's top level, a function never called, a CSS rule never used)
 // → every suite that loaded the file: a change nobody measured runs everyone who loads it, never no one.
-// Tests: test/replay/coverage.test.mjs
+// Tests: test/coverage.test.mjs
 // Job: pick the suites
 import {mergeRanges, SETUP, WHOLE} from './coverage.mjs';
 import {MAX_USERS} from './plan.mjs';

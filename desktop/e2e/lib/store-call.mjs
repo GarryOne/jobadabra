@@ -1,7 +1,7 @@
 // A suite reads and writes the person's data through the engine's own store command (`python -m src.stores call <entity> <method> '<json>'`, src/stores/__main__.py),
 // with the environment the app gives the engine (desktop/lib/pipeline-env.js): the same store the app opens, whichever it is (this Mac's or Notion, the stand-in in a test).
 // One seed helper then works on both stores (P7 step 4, spec 2026-10-09-store-adapters.md). The real-Notion helpers in lib/notion.mjs are for notion-real only.
-// Guarded by test/app/store-call.test.mjs.
+// Guarded by test/store-call.test.mjs.
 // Job: run the backbone
 import {execFile} from 'node:child_process';
 import fs from 'node:fs';

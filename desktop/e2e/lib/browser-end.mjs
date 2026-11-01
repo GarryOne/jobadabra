@@ -2,7 +2,7 @@
 // Ends a throwaway test browser by its process tree ending, and fails only when a process of it is still running afterwards.
 // Why (31 Oct 2026, a8, run 41239658001): close() waited 3.5 s for the browser's own graceful context.close() and re-threw on expiry, so a case whose assertions had
 // passed went red because a disposable profile closed slowly on a loaded runner (green on other branches the same minute). The profile is unique and has nothing to keep:
-// the end state is "no process of this profile is alive", not "the browser answered a close request". Guard: test/harness/browser-end.test.mjs.
+// the end state is "no process of this profile is alive", not "the browser answered a close request". Guard: test/browser-end.test.mjs.
 import {descendantsOf, holdersOf, isAlive, listProcesses, waitTreeGone} from './app-tree.mjs';
 
 const WHOLE_COMMAND = 100000;   // Chromium puts --user-data-dir after ~1500 characters of flags; app-tree's default 200 would never see it

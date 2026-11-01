@@ -1,5 +1,5 @@
 // The screenshot asks of a CI pool run, counted from its rows' app logs (the extension's "closer look: <action>" lines carry {picture: true, usd}; rung4-picture.js): how many pages were looked at with
-// their picture and what it cost, on its own line of the pool summary beside the AI spend (cc and the owner, 13 Oct 2026: the screenshot step is ON in CI pool runs only). Guard: e2e/test/ai/picture-asks.test.mjs.
+// their picture and what it cost, on its own line of the pool summary beside the AI spend (cc and the owner, 13 Oct 2026: the screenshot step is ON in CI pool runs only). Guard: e2e/test/picture-asks.test.mjs.
 import fs from 'node:fs';
 import path from 'node:path';
 

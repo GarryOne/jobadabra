@@ -1,5 +1,5 @@
 // What the evidence folder keeps (owner, 14 Oct 2026: 525 pictures, 360 MB in 5 days, never cleaned; end.png opened 60 times, step pictures 12): end.png of every run;
-// step pictures only of a run whose row needs a fix or is a site problem; older folders pruned at the start of a smoke run (the newest of each row always stays). Guard: test/record/evidence-clean.test.mjs.
+// step pictures only of a run whose row needs a fix or is a site problem; older folders pruned at the start of a smoke run (the newest of each row always stays). Guard: test/evidence-clean.test.mjs.
 import fs from 'node:fs';
 import path from 'node:path';
 import {rowStatus} from './applying-status.mjs';

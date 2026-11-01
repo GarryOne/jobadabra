@@ -2,7 +2,7 @@
 // every AI-review issue a person closed as resolution:by-design becomes one line in the next review of the same kind of page (its view, the finding's title,
 // and the verdict's "Why"), so the reviewer stops raising it in other words. The hand-written BY DESIGN list in lib/vision.mjs SYSTEM stays; this adds
 // to it without anyone editing a prompt. Read from GitHub at review time (GITHUB_TOKEN, issues: read); none readable: the review runs without them.
-// Guarded by test/pool/review-lessons.test.mjs.
+// Guarded by test/review-lessons.test.mjs.
 export const LESSON_LABELS = ['source:ai-review', 'resolution:by-design'];
 const MAX_LESSONS = 12;
 

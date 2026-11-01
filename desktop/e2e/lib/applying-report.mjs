@@ -1,7 +1,7 @@
 // Uploads a run of the recorded pages (layer 2) or of the nightly smoke (layer 3) to the site's /admin/form-filling/lab (site/src/applying.js), with the owner key from
 // the Keychain (never printed). Fixed words and hosts only: never a posting's address, never applicant data. Never from CI, nor from a control run against an
 // old build (REAL_EXTENSION_DIR: its failures are on purpose). The recorded replays are the other way round: only CI on a push to main sends them (uploadReplays,
-// replays-report.mjs), never a local run. Guard: integration/extension/applying-report.test.mjs.
+// replays-report.mjs), never a local run. Guard: e2e/test/applying-report.test.mjs.
 import {execFileSync} from 'node:child_process';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';

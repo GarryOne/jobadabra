@@ -20,7 +20,7 @@ export function macSuites(jobs, all = null) {
 }
 
 // The title e2e-windows.yml's run-name gives a run started after a Mac run. It was "Windows <sha>" until 7 Oct 2026; matching that old title meant a commit
-// already tested on Windows was never recognised (test/harness/plan-windows.test.mjs reads the workflow's run-name).
+// already tested on Windows was never recognised (test/plan-windows.test.mjs reads the workflow's run-name).
 export const macRunTitle = sha => `E2E Windows · the Mac run's suites · ${sha}`;
 // Earlier Windows runs that already tested this commit: finished, not cancelled, with at least one suite run.
 export const testedBefore = (runs, sha, current) => runs.filter(run => String(run.id) !== String(current) && run.title === macRunTitle(sha)
@@ -36,7 +36,7 @@ export function plan({only = '', all = [], mac = null, sha = '', review = false,
 
 if (import.meta.url === pathToFileURL(process.argv[1] || '').href) {
   const gh = args => execFileSync('gh', args, {encoding: 'utf8'});
-  (await import('./lib/ensure-staged.mjs')).ensureStaged(fileURLToPath(new URL('..', import.meta.url)));   // before anything loads a suite: its own imports below too (test/harness/ensure-staged.test.mjs)
+  (await import('./lib/ensure-staged.mjs')).ensureStaged(fileURLToPath(new URL('..', import.meta.url)));   // before anything loads a suite: its own imports below too (test/ensure-staged.test.mjs)
   const all = JSON.parse(execFileSync(process.execPath, ['suite.mjs', '--list'], {encoding: 'utf8'})).include.map(item => item.suite);
   const {MAC_RUN: id, SHA: sha = '', REPO: repo} = process.env;
   let mac = null, previous = [];

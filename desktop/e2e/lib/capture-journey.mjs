@@ -4,7 +4,7 @@
 // shape (ready state, visible controls, text size) held for one turn of the run's watch loop: the page as it arrived. A main page that then changes in place
 // and settles again (a dialog a press opened, a banner closed) is kept again as its next state, in order, with its time (speed-5x landing 2: a replay follows
 // the live run's states after each press; the extension's own boxes are no change). What is kept of a page is lib/capture-page.mjs snapshotInPage (structure, applied CSS, no script, no value), then the caller's scrub.
-// Used by lib/apply-live.mjs (tick() each turn of the watch, finish() and write() at the end). Guard: e2e/test/record/capture-journey.test.mjs.
+// Used by lib/apply-live.mjs (tick() each turn of the watch, finish() and write() at the end). Guard: e2e/test/capture-journey.test.mjs.
 import fs from 'node:fs';
 import path from 'node:path';
 import {snapshotInPage} from './capture-page.mjs';

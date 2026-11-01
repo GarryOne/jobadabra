@@ -1,7 +1,7 @@
 // A suite too long for one CI job says `export const shards = n` (the recorded replay): every gate lane runs it as n jobs, `JP_REPLAY_SHARD=i/n` each (lib/replay-shard.mjs
 // cuts the cases, as page-cases.yml does for the PR check). The matrix entries (plan-run.mjs, plan-windows.mjs) and the way back from a job's key to its suite live here.
 // Job: pick the suites
-// Guard: test/harness/suite-shards.test.mjs (every slice fits its budget at today's case count; every workflow that runs a suite passes the shard and names its job by key).
+// Guard: test/suite-shards.test.mjs (every slice fits its budget at today's case count; every workflow that runs a suite passes the shard and names its job by key).
 
 import {tolerantMatrixFlag} from './plan.mjs';
 

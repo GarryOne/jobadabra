@@ -3,7 +3,7 @@
 // Why (31 Oct 2026, owner: "How last time it didn't go red, but this time it went, without changing the code on that area. Means its flaky"; "why I need to flag this personally"):
 // since row 32 no job runs twice on a commit, so "same code, different result" is read from the step's files across two runs, and the tools say it on the red.
 // Invariants: a verdict errs towards "changed" (an unmapped step counts the whole desktop/ app; a computed import is not guessed); any one green with no change decides "flaky".
-// Tests: test/pool/flaky-verdict.test.mjs
+// Tests: test/flaky-verdict.test.mjs
 // Job: report health
 import path from 'node:path';
 import {SETUP} from './coverage.mjs';

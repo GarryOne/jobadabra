@@ -1,5 +1,5 @@
 // A replay draws the scrollbar the live run's page had (capture-journey.mjs records view.scrollbar: Linux Chrome 15 px, a Mac's overlay 0), so the page has the
-// same width on either system. Guard: e2e/test/pool/scrollbar.test.mjs (forced 15 and 0 measured on a real page).
+// same width on either system. Guard: e2e/test/scrollbar.test.mjs (forced 15 and 0 measured on a real page).
 /* global document */
 
 // The page's style for a scrollbar `width` px wide (0: none). -> CSS text.

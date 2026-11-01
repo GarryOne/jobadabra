@@ -1,5 +1,5 @@
 // The extension as it was before a fix (row-to-case --old-commit <sha>): this checkout's extension/ with that commit's changes taken back out, in a temp folder.
-// The manifest and the fingerprint file are left as they are (the version bump and its hash change with every commit; they are not the behaviour). Built from git objects only (temp index, no tar), so it works on every CI platform. Guard: e2e/test/replay/old-extension.test.mjs.
+// The manifest and the fingerprint file are left as they are (the version bump and its hash change with every commit; they are not the behaviour). Built from git objects only (temp index, no tar), so it works on every CI platform. Guard: e2e/test/old-extension.test.mjs.
 import {execFileSync} from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';

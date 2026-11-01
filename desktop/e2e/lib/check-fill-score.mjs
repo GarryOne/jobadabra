@@ -1,4 +1,4 @@
-// How check:fill scores one replayed case like the form benchmark (right / wrong / empty / not reached) and compares a run with main's stored numbers. Pure; guard: e2e/test/filling/check-fill.test.mjs.
+// How check:fill scores one replayed case like the form benchmark (right / wrong / empty / not reached) and compares a run with main's stored numbers. Pure; guard: e2e/test/check-fill.test.mjs.
 // Why (27 Oct 2026, owner): "We fixed the form filling hundreds of times and it's still regressing": a session needs one pass/fail line before any PR, not a CI wait.
 
 export const BUCKETS = ['right', 'wrong', 'empty', 'not reached'];

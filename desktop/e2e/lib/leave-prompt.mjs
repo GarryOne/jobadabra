@@ -1,6 +1,6 @@
 // Going to a page when the one being left may ask first: a page with unsaved edits opens its save bar's leave dialog (Keep editing / Discard all / Save,
 // renderer/save-bar.js leave; Strategy and Profile since 18 Oct 2026), a modal that covers every later click (CI run 241, 9 Oct 2026: six interactions steps timed out behind it).
-// A suite's own edits are nobody's: discard them and say so. Used by suites/interactions.mjs; guarded by test/ai/leave-prompt.test.mjs.
+// A suite's own edits are nobody's: discard them and say so. Used by suites/interactions.mjs; guarded by test/leave-prompt.test.mjs.
 // Job: wait on state
 /* global document, getComputedStyle */
 import {goView} from './go-view.mjs';

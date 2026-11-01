@@ -1,5 +1,5 @@
 // node discovery-pool-add.mjs <pool-add.json> [<pool file>]: the batch's rows that reached a flow shape the pool lacks join the repo's pool list (smoke-sites.json), for the PR the workflow opens and
-// the owner merges (owner, 17 Oct 2026). A name or posting already in the list is left alone; prints one line per row added and nothing else changes in the file. Guard: e2e/test/pool/discovery-cli.test.mjs.
+// the owner merges (owner, 17 Oct 2026). A name or posting already in the list is left alone; prints one line per row added and nothing else changes in the file. Guard: e2e/test/discovery-cli.test.mjs.
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';

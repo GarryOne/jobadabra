@@ -1,7 +1,7 @@
 // Builds the code → suite map from one e2e run's coverage files (gate G1b): e2e.yml's coverage-map job, after a scheduled main run or an after-merge run.
 //   node coverage-map.mjs --artifacts <dir with coverage-*.json, any depth> [--previous <coverage-map.json>] [--repo <git checkout with both commits>] --out <coverage-map.json>
 // A suite this run recorded whole replaces its entry; the others keep the previous map's (an exploring run records only the suites that vary). A suite run for some
-// steps only refreshes those, the rest moved to its commit by `git diff` in --repo (default: this checkout). Logic: lib/coverage-pick.mjs. Tests: test/replay/coverage-merge.test.mjs.
+// steps only refreshes those, the rest moved to its commit by `git diff` in --repo (default: this checkout). Logic: lib/coverage-pick.mjs. Tests: test/coverage-merge.test.mjs.
 import {execFileSync} from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';

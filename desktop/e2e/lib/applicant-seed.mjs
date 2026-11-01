@@ -1,6 +1,6 @@
 // Which applicant the e2e apps hold, as a short hash (no text): desktop/demo/draft.json, seeded by the Electron run (lib/seed.mjs fastSeed) and the plain-node app
 // (lib/offline-app-child.mjs, since 9f6ff67). Every capture records it (lib/replay-candidate.mjs saveCandidate, lib/live-row.mjs); a row replay (row.mjs) names a
-// capture made with another seed or none: its fill asks carry another profile, so they miss the row's kept answers. Guard: test/filling/applicant-seed.test.mjs.
+// capture made with another seed or none: its fill asks carry another profile, so they miss the row's kept answers. Guard: test/applicant-seed.test.mjs.
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';

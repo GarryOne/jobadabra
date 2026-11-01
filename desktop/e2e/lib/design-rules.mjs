@@ -1,8 +1,8 @@
 /* global document, getComputedStyle */
 // The design rules a screen can be checked against, from the owner's UI feedback (18 Oct 2026; docs/rules/desktop-ui.md "Read views, lists, buttons and choices").
 // designRules() runs inside the page (self-contained: page.evaluate sends only its source) on every view a journey visits (lib/layout.mjs snap) and on the
-// design-system page's examples (test/pool/design-rules.test.mjs). Each finding names its card: {view, severity, kind, card, detail}. A finding on a screen
-// that broke the rule before it was written is listed in KNOWN_LEFT (shrink-only, test/pool/design-rules.test.mjs) with the session fixing it; anything else is severe.
+// design-system page's examples (test/design-rules.test.mjs). Each finding names its card: {view, severity, kind, card, detail}. A finding on a screen
+// that broke the rule before it was written is listed in KNOWN_LEFT (shrink-only, test/design-rules.test.mjs) with the session fixing it; anything else is severe.
 // Parked by the owner on 18 Oct 2026 ("I can check by myself, on the before/after screenshots"): no journey, test or PR runs these checks while this is false.
 export const DESIGN_RULES_ON = false;
 export const RULE_LIMITS = {buttonHeight: 40, listItems: 12, chips: 12, selectOptions: 7, labelColumn: 240, dividedWidth: 560};

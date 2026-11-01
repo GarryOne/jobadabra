@@ -4,7 +4,7 @@
 // on the slow Mac runner; the part ran 716 s of 660 (cause not proven, but a pile of tabs is never what a step is meant to leave).
 // Invariants: the baseline is the set of live tabs when the step starts; a step that launched the browser has none (nothing to compare); a failed step still closes its tabs and its own error stays the error; a step that ends after a later one began does nothing (the runner left it);
 // `keepsTabs: '<key>'` hands this step's tabs to a later step on purpose and `closesTabs: '<key>'` makes that later step close the tabs kept under the same key (a pair, never all of them); with `close: false` the guard only reports (a red naming the step).
-// Tests: test/harness/tab-guard.test.mjs
+// Tests: test/tab-guard.test.mjs
 const live = page => page && !page.isClosed?.();
 const urlOf = page => { try { return String(page.url()).split(/[?#]/)[0].slice(0, 80); } catch { return '(closed)'; } };
 

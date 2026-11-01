@@ -32,7 +32,7 @@ export function withLimit(promise, ms, name, getSession = () => null, budget = 0
   stepClock(ms);   // the step's own waits run until this cap, never to a shorter one of their own (lib/wait-on-state.mjs)
   // Why (#2501; 30 Oct 2026, owner redesign; g2: hangError may be async, so a step whose waits carry no clock can read the hidden browser when its cap fires): a step keeps its evidence; only cap errors are marked so opted-in owned steps stop without retrying abandoned work. Other errors stay unchanged.
   // Why (31 Oct 2026, owner: "why it's flaky? Or it's a product bug?"): a step's own hang words ("the chip step hung within 129.72 s") hid that the suite's budget cut it, and the grey rule
-  // read a wrong value; the runner owns the cut-off verdict (timing), the step only adds what it saw (test/harness/step-limit.test.mjs).
+  // read a wrong value; the runner owns the cut-off verdict (timing), the step only adds what it saw (test/step-limit.test.mjs).
   const limit = new Promise((_, fail) => { timer = setTimeout(async () => {
     const cut = budget ? `the suite's ${Math.round(budget / 60000)}-minute budget ran out during this step (the suite is too long: split it)`
       : `the step did not finish within ${ms < 10 * 60000 ? `${ms / 1000} s` : `${Math.round(ms / 60000)} min`} (it hung)`;

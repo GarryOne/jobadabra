@@ -44,10 +44,10 @@ export const shards = 3;   // the forms and CV steps split across three gate job
 // took 6-6.5 min of its 7 and ran over on a slow attempt (beta 40155147300 too, 25 Oct): the same steps vary 2-4x between runners (real forms 46-122 s)
 // Why (31 Oct 2026, owner chose "Split apply first"): the first try is the verdict now (#2682), and re-check 41173193229's apply-1of2 ran out of its 11-minute
 // budget at 12.8 min on its first try (10.2 min on the second); two halves of 640 s of weighed steps plus setup sat at the budget, three thirds hold ~430 s each.
-export const stepSharded = true;   // its slices are steps, not recorded cases (test/harness/suite-shards.test.mjs)
+export const stepSharded = true;   // its slices are steps, not recorded cases (test/suite-shards.test.mjs)
 // Why (31 Oct 2026, a8; beta 41229992832, the stand-in leg): apply-3of3 ran 698 s of its 660. The weights were guessed seconds from one 26 Oct Notion run; added up they were close (1286 vs 1143 measured),
 // but a step weighed 140 s took 25 s and one weighed 45-90 s took 125-170 s, so the slices were not thirds. They are now the slowest seconds seen on the Mac jobs of the apply parts (beta 41229992832 and the runs
-// before it), a step's followers counted in it (multi-step + the session page). Refresh them after a beta from the Mac job logs: test/harness/part-headroom.test.mjs fails "split apply further"
+// before it), a step's followers counted in it (multi-step + the session page). Refresh them after a beta from the Mac job logs: test/part-headroom.test.mjs fails "split apply further"
 // when a slice sits over the headroom of its budget; this table, without the steps that left e2e (1 Nov 2026: "Tailor CVs for top matches", 36.7 s, is integration/store/tailor-top-matches.test.mjs),
 // is what the gate (tools/e2e-reliability-check.mjs) sees as a re-cut.
 export const stepSeconds = {'a multi-step form': 16.2,
@@ -81,7 +81,7 @@ export const name = 'apply';
 // Parts of this file (6 Oct 2026, the 7-minute budget; the journeys split off on 8 Oct 2026): `apply` fills the forms and runs the tailored-CV
 // steps (moved here 9 Oct 2026: with them applycv ran over 7 minutes); `applyflows` (suites/applyflows.mjs) runs the journeys across pages and tabs (docs/flows/applying.md:
 // a sign-up before the form, a sign-in, a menu worded differently, a form drawn late; the posting-that-opens-a-tab, side-by-side, one-page and closed-tab journeys moved to recorded pages and integration/app/session-*.test.js, R3, 1 Nov 2026), which is how
-// CI runs them within its 5 macOS jobs (test/filling/apply-parts.test.mjs: each part in exactly one of them); `applyflows`
+// CI runs them within its 5 macOS jobs (test/apply-parts.test.mjs: each part in exactly one of them); `applyflows`
 // (suites/applyflows.mjs, manual) runs only the journeys, so the local scenario matrix runs forms and journeys in parallel. Each has its own Notion page and token.
 // The setup step and the final "Submit was never clicked" check run in all of them; each run seeds only the fixture jobs its steps use.
 const CV_STEPS = ['the form\'s panel offers a tailored CV'];

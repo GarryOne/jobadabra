@@ -1,6 +1,6 @@
 // The person's texts (the Profile, src/stores/base.py TEXTS) and everything the store holds, read and changed through the store the app uses (ctx.data,
 // lib/store-call.mjs), so a suite works the same on this Mac's store (profile.md) and on Notion (the Profile page, read and written whole: its child pages
-// and files are kept, src/stores/notion_texts.py). P7 step 4. Guarded by test/app/seed-texts.test.mjs.
+// and files are kept, src/stores/notion_texts.py). P7 step 4. Guarded by test/seed-texts.test.mjs.
 
 // Every line of a text matching `pattern` replaced by `line`, keeping its indent and list marker ("- "), so a bullet stays a bullet. -> how many lines changed
 // (the caller says how many it expects).

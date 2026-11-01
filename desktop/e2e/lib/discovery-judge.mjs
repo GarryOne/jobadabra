@@ -5,7 +5,7 @@
 //   wrong          the form was reached and filled, then a dialog, error or overlay covered it, or a value was marked wrong
 //   stopped-early  the run ended before the form with no reason the person is told
 //   not-measured   the test's own hold, a bot wall on a CI address, a gone posting, a refused AI, a run that did not finish: never a failure
-// A failure is new when its row is new (the picker never picks a recorded host), so every failing row of the batch is listed. Guard: e2e/test/pool/discovery-judge.test.mjs.
+// A failure is new when its row is new (the picker never picks a recorded host), so every failing row of the batch is listed. Guard: e2e/test/discovery-judge.test.mjs.
 export const VERDICTS = ['fields-left', 'wrong', 'stopped-early', 'fine', 'not-measured'];
 export const FAILURES = ['fields-left', 'wrong', 'stopped-early'];
 const FIELD_CAUSES = new Set(['field-missed', 'ai-miss', 'control-unseen']);

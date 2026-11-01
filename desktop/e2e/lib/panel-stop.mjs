@@ -8,7 +8,7 @@
 // One owner (pressStop), one hang guard for the whole press; the click call's return is not a verdict; a press that landed is never repeated.
 // Invariants: the control is the open panel's `.stop-btn`, or with `minimised` the pill's `.pill-stop`, found at the moment of the press; the press is Playwright's trusted
 // click, which waits until the control is visible, enabled, still and not covered; each state the Stop should change (STOP_STAGES) is read from the panel in a loop and waited for on its own, never one combined wait at the end (one event per action); the loops end at the one deadline (the caller's cap or the step's clock).
-// Tests: test/filling/panel-stop-verdict.test.mjs (verdicts on a fake page and clock), test/filling/panel-stop.test.mjs (what needs a real browser)
+// Tests: test/panel-stop-verdict.test.mjs (verdicts on a fake page and clock), test/panel-stop.test.mjs (what needs a real browser)
 import {POLL_CAP_MS, pollUntil, stepTimeLeft, stepWait, waitCapNote} from './wait-on-state.mjs';
 
 const HOST = '#jobpilotto-review-host';

@@ -2,7 +2,7 @@
 // shape"). Bars: scores "Below 80% of last 90" pairs within 8 and "Above 2% of last 90" more than 20 apart; facts "≥ 99.5% of ~10 nights" exact; judge flags
 // "≤ 10% of last 90 texts". The live run adds its night to a history the workflow keeps between nights (e2e.yml, cache quality-rate-*), and a step is red only
 // when its rate breaks a bar; the gate (replayed answers) still checks every fact and the per-run judge allowance exactly. /admin/operations/e2e draws the same
-// rates (jobadabra-web admin/e2e-quality.js). Guard: test/pool/quality-rate.test.mjs.
+// rates (jobadabra-web admin/e2e-quality.js). Guard: test/quality-rate.test.mjs.
 // Job: run tolerant suites as rates
 import fs from 'node:fs';
 import path from 'node:path';

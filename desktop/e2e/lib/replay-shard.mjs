@@ -1,7 +1,7 @@
 // Splits the recorded cases across the CI matrix's jobs (.github/workflows/page-cases.yml): JP_REPLAY_SHARD="i/n" runs the i-th of n slices.
 // Job: pick the suites
 // Balanced by measured slow first-try CI seconds (fixtures/slice-ci-seconds.json, 24–31 Oct 2026 main/beta artifacts), else its declared window
-// (a case with only "must not happen" checks waits its whole window); every case in exactly one slice. Guard: e2e/test/replay/replay-shard.test.mjs.
+// (a case with only "must not happen" checks waits its whole window); every case in exactly one slice. Guard: e2e/test/replay-shard.test.mjs.
 import fs from 'node:fs';
 import {fileURLToPath} from 'node:url';
 const POSITIVE = ['told', 'filled', 'attached', 'judged', 'asked', 'pressed', 'gone'];
@@ -23,7 +23,7 @@ export function parseShard(spec) {
 }
 
 // A suite that runs steps, not cases (applyflows): the n-th step (0-based, in the order the suite meets them) belongs to slice `index` of `count` when this is true. Round-robin: every
-// step is in exactly one slice, and the costs alternate (test/harness/suite-shards.test.mjs).
+// step is in exactly one slice, and the costs alternate (test/suite-shards.test.mjs).
 export const shardTurn = (ordinal, shard) => !shard || ordinal % shard.count === shard.index - 1;
 
 /** Assign measured steps or cases to slices: costliest first into the lightest slice; each name has exactly one owner. */

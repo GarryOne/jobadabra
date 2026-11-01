@@ -2,7 +2,7 @@
 //   node passed-on-retry.mjs --artifacts <dir>
 // Why (1 Nov 2026, owner, "Auto-retry in betas only"): a beta releases past a step that passed on its retry, and the notes list it ("Passed on retry in this beta: <suite · step>, …").
 // Reads steps.json of every suite folder (lib/runner.mjs writes `retried` on a passed step); a suite run on two stores is listed once.
-// No reader of the list yet: the next night's fix list does not read `retried` (parked, not built). Tests: test/harness/runner-beta-retry.test.mjs
+// No reader of the list yet: the next night's fix list does not read `retried` (parked, not built). Tests: test/runner-beta-retry.test.mjs
 // Job: report health
 import fs from 'node:fs';
 import {pathToFileURL} from 'node:url';

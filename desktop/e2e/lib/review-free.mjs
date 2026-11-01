@@ -1,7 +1,7 @@
 // The screenshot review on Free AI (owner, 26 Oct 2026: "Free AI does the first pass; Claude looks only at what it flags", the Claude pass off until he funds
 // Claude): the same request lib/vision.mjs builds for Claude, asked of a Workers AI vision model over Cloudflare's REST API with CI's own token
 // (CI_FREE_AI_CF_TOKEN + CI_FREE_AI_CF_ACCOUNT_ID, never production's; docs/rules/why.md), answered in Claude's message shape so review-ui.mjs reads both alike.
-// Its cost comes from the answer's own token counts at Cloudflare's list price. Guarded by test/pool/review-free.test.mjs.
+// Its cost comes from the answer's own token counts at Cloudflare's list price. Guarded by test/review-free.test.mjs.
 import {capMessage, capReached, noteCapped} from './ai-cap.mjs';
 
 export const FREE_MODEL = process.env.E2E_REVIEW_FREE_MODEL || '@cf/meta/llama-4-scout-17b-16e-instruct';

@@ -2,7 +2,7 @@
 // that prove each, plus the safety or data steps kept though no journey owns them. Read by its guard test; 2/5b makes the beta run these suites.
 // Job: pick the suites
 // Why (1 Nov 2026, owner via mac-07: "Yes, all 13 journeys (Recommended)"): the registry is the one list of what the beta runs. Safety and data marks stay in code
-// (lib/safety-steps.mjs); this file never copies them. Tests: test/harness/critical-journeys.test.mjs
+// (lib/safety-steps.mjs); this file never copies them. Tests: test/critical-journeys.test.mjs
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';

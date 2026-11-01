@@ -2,7 +2,7 @@
 // main process's JS functions it ran, as repo lines, in <artifacts>/coverage-<suite>-<n>.json. coverage-map.mjs merges a run's files into the code → suite map that a
 // pull request's plan reads (lib/coverage-pick.mjs), so a PR runs the suites that run the code it changes. Why: on 25 Oct #1911 changed menu.css and broke interactions,
 // and #1913 changed the run views and broke cardstates; neither PR ran the suite. Never a reason to fail: a session that cannot record is only logged.
-// Tests: test/replay/coverage.test.mjs
+// Tests: test/coverage.test.mjs
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';

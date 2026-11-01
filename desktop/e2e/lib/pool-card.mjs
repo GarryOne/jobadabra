@@ -1,7 +1,7 @@
 // The nightly smoke pool as a second, labelled source for the form-filling learning loop (docs/superpowers/specs/2026-10-10-pool-feeds-learning.md): one fill card
 // per form reached, built by the SAME fillCard()/causeOf as a user's, sent to the same POST /api/controls with source 'pool' and the owner's key. Fixed words and
 // counts only: never a field label, an answer, a posting address or a host (only the board name, a known board or a short hash). Same guard as the applying report:
-// never from CI, a control run on an old build, or JP_NO_REPORT. Guard: test/pool/pool-card.test.mjs.
+// never from CI, a control run on an old build, or JP_NO_REPORT. Guard: test/pool-card.test.mjs.
 import crypto from 'node:crypto';
 import {fillCard, cleanCard} from '../../../extension/fill-card.js';
 import {boardName} from '../../lib/control-events.js';

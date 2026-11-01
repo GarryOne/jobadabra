@@ -1,6 +1,6 @@
 // node discovery-report.mjs <smoke reports dir> <picked.json> <out dir> <states dir>: after the batch's recording, the verdict per row (lib/discovery-judge.mjs), ONE Telegram message when
 // something new failed (Build Log bot; none when nothing did), this run's state file for the next runs (<out dir>/discovery.json: rows, spend, the week the cap alert went), the rows that
-// reached a new shape for the pool PR (<out dir>/pool-add.json), and the job log. Never fails the job on a Telegram problem. Guard: e2e/test/pool/discovery-cli.test.mjs.
+// reached a new shape for the pool PR (<out dir>/pool-add.json), and the job log. Never fails the job on a Telegram problem. Guard: e2e/test/discovery-cli.test.mjs.
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';

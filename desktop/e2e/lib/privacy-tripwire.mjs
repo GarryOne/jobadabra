@@ -6,7 +6,7 @@
 // holder's country and city; "Location:", "City:", "Country:", "Street:" lines) and his Claude account (e-mail, the name words in it, its full and display name).
 // What it could not find on this computer is said at the start of each run (coverageLine), never a silent "clean". A match fails the run, deletes what the
 // run saved and clears those fields on the page (nothing is ever submitted). Values stay on this Mac: compared, never printed or stored; only kinds and field labels.
-// Guard: e2e/test/app/privacy-tripwire.test.mjs.
+// Guard: e2e/test/privacy-tripwire.test.mjs.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';

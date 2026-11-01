@@ -12,7 +12,7 @@
 // (41253960704): runs are now taken around the red's time; (3) a failed shard's e2e-view artifact holds its kept traces (1,045,025,600 bytes for apply-3of3) and the whole zip was downloaded
 // for a 2 KB steps.json (143 s measured): steps.json is read by byte ranges (lib/zip-peek.mjs); (4) no line and no hang guard: a progress line and one deadline for the whole read.
 // Not covered: Mac vs Linux (a suite moves runners only when the run sets all_on_mac; the artifacts do not record the OS); Windows lanes are keyed apart (windows-<suite>).
-// Tests: test/pool/flaky-evidence.test.mjs, test/pool/zip-peek.test.mjs
+// Tests: test/flaky-evidence.test.mjs, test/zip-peek.test.mjs
 // Job: report health
 import {execFile, execFileSync} from 'node:child_process';
 import fs from 'node:fs';

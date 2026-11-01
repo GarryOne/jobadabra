@@ -1,5 +1,5 @@
 // A Finder issue closed by a fix: "Fixes #N" in a commit or a merged pull request closes it as completed with no verdict, so the stats never counted it
-// as a real bug (12 Oct 2026: #360 and #400). The labels a verdict would have set. Pure; fixed-close.mjs (issue-fixed.yml) applies them. Guarded by test/pool/fixed-close.test.mjs.
+// as a real bug (12 Oct 2026: #360 and #400). The labels a verdict would have set. Pure; fixed-close.mjs (issue-fixed.yml) applies them. Guarded by test/fixed-close.test.mjs.
 
 // A path a test fix touches: the tests, their harness and fixtures, the docs. A fix touching nothing else proves neither way: a test mistake (#350), or a real
 // bug whose product fix landed in another commit that did not name it (#400, e61e334). Left for a verdict.

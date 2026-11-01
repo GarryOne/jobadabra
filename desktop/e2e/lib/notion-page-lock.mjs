@@ -1,7 +1,7 @@
 // A machine-wide lock on the REAL Notion test page: only a run on store 'notion' (notion-real) uses it; runs on SQLite or the stand-in never do (lib/store.mjs).
 // Same shape as tools/heavy-lock.sh: a directory holding pid, session, what, since; stale when its pid is gone; the waiting run prints who holds it.
 // Taken once in lib/context.mjs openContext, so every caller gets it. Escape hatches, said in the log: JOB_PILOTTO_NOTION_LOCK=0 (no lock),
-// JOB_PILOTTO_NOTION_LOCK_WAIT=<s> (longest wait, default 1800). Guarded by test/app/notion-page-lock.test.mjs.
+// JOB_PILOTTO_NOTION_LOCK_WAIT=<s> (longest wait, default 1800). Guarded by test/notion-page-lock.test.mjs.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';

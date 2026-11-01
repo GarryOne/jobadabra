@@ -4,7 +4,7 @@
 // "Spread the 5 burn-in passes over the night at different hours, not back to back (keeps PR CI free by day, and catches time-of-day flakes like calendar's)"): the passes
 // are ordinary runs of e2e.yml on the beta's own layout (every suite, both stores, Windows following); the beta gate (a8, PR 2/3) folds their steps.json into its record like any run's.
 // Why (31 Oct 2026, a8 with the coordinator): no AI spend without the owner's yes, so a pass leaves out the suites that ask the model live and the paid judge steps (the one exception: qualityai, the night-report measurement, pays for one live run in pass 1 only, owner via a8, 1 Nov 2026); those get their
-// proof from the other runs that count. Guard: test/harness/night-pass.test.mjs.
+// proof from the other runs that count. Guard: test/night-pass.test.mjs.
 import {NIGHT_REPORT, autoSuites} from './plan.mjs';
 
 export const NIGHT_PASSES = 5;

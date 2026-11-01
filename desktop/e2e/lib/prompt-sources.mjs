@@ -1,5 +1,5 @@
 // The files that decide what the AI is asked when the app fills a form, beyond the ladder prompts the fingerprint already hashes: the automatic refill on main starts when a merge changes one (owner, 15 Oct 2026, after #904 and #912 changed the worker's field list and cv_facts rule and no refill ran).
-// A file here is hashed whole (its git blob), so a comment-only edit refills too (cents: only the missed asks are paid). Guard: e2e/test/filling/refill.test.mjs (every ladder prompt file is covered; the workflow's push paths list exactly these).
+// A file here is hashed whole (its git blob), so a comment-only edit refills too (cents: only the missed asks are paid). Guard: e2e/test/refill.test.mjs (every ladder prompt file is covered; the workflow's push paths list exactly these).
 import {execFileSync} from 'node:child_process';
 import {PROMPT_FILES} from './ladder-fingerprint.mjs';
 

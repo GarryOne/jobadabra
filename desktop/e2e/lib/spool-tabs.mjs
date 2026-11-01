@@ -7,7 +7,7 @@
 // Invariants: (1) on a fresh profile nothing is opened before the install's settings page was seen, then it is closed; the browser keeps ONE blank tab (the start tab, or a new one when the settings page
 // was the start tab): closing the last tab ends the browser, and the tab guard (lib/tab-guard.mjs) closes every tab a step opened; (2) a spool address never reuses an existing tab;
 // (3) a navigation's wait ends with the step's clock (lib/wait-on-state.mjs stepWait); a failed navigation is logged, kept in the trail and thrown by loaded(url) unless the tab shows the address anyway; nothing is retried.
-// Tests: test/harness/extension-browser.test.mjs
+// Tests: test/extension-browser.test.mjs
 import fs from 'node:fs';
 import path from 'node:path';
 import {guardLiveVisit} from './site-ledger.mjs';
@@ -15,7 +15,7 @@ import {stepWait} from './wait-on-state.mjs';
 import {plain, tabTrail} from './tab-trail.mjs';
 
 // The per-site daily limit is for live visits: a fixture browser's addresses resolve to the fixture server and are never counted
-// (12 Oct 2026: local apply runs used up jobs.lever.co's 3 a day and the next run's Lever step was refused). Guard: test/harness/extension-browser.test.mjs, test/harness/site-ledger.test.mjs.
+// (12 Oct 2026: local apply runs used up jobs.lever.co's 3 a day and the next run's Lever step was refused). Guard: test/extension-browser.test.mjs, test/site-ledger.test.mjs.
 export const visitGuard = real => (real ? (url, options) => guardLiveVisit(url, options) : () => null);
 
 const isSettings = url => /\/options\.html$/.test(String(url));

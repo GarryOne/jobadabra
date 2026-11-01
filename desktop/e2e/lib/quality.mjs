@@ -1,5 +1,5 @@
 // Pure checks on what the Jobs check produced, against the ground truth of the golden postings (fixtures/golden/truth.json). No app, no network: every check is
-// unit-tested against a deliberately wrong input (test/pool/quality.test.mjs), so a check that cannot fail cannot hide in the suite.
+// unit-tested against a deliberately wrong input (test/quality.test.mjs), so a check that cannot fail cannot hide in the suite.
 
 const digits = text => String(text || '').replace(/[^0-9]/g, ' ').split(/\s+/).filter(Boolean);
 

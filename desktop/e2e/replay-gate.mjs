@@ -2,7 +2,7 @@
 // against the baseline (the last green run: same recordings, same runner), never against live. A row COUNTS only when it was 100% the same as live in the baseline
 // ("only count the 100% same as live"); a counted row whose OUTCOME (step reached, boxes filled, boxes left) fell is worse; one whose outcome rose or only its
 // asks changed is "different": it passes and says "re-record to confirm". A worse row replayed again (--retry) that matches the baseline is noise.
-// Guard: e2e/test/replay/replay-gate.test.mjs. Run: node replay-gate.mjs <step-4 dir> <baseline results.json | -> <out results.json> [--retry <step-4 dir>] [--accepts <accepts.json>]
+// Guard: e2e/test/replay-gate.test.mjs. Run: node replay-gate.mjs <step-4 dir> <baseline results.json | -> <out results.json> [--retry <step-4 dir>] [--accepts <accepts.json>]
 import fs from 'node:fs';
 import path from 'node:path';
 import {rank} from './lib/record-sites.mjs';

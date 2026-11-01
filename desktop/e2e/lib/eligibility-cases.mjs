@@ -2,7 +2,7 @@
 // (desktop/demo/draft.json: Switzerland anywhere or remote within Europe, relocation only within Europe, fluent German or French disqualify, no US remote),
 // each asked through the plain-node app's own fill route (/extension/answer: the same prompt, applicant and plan path as a pool row) several times, each
 // ask with a fresh memo so it reaches the model. Run by hand: `npm run eligibility-cases` (claude -p on the plan; no API key, no money). Guard:
-// e2e/test/filling/eligibility-cases.test.mjs (the scoring, on a stub).
+// e2e/test/eligibility-cases.test.mjs (the scoring, on a stub).
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';

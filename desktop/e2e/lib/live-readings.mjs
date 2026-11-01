@@ -2,7 +2,7 @@
 // The false readings at a live row's end (the canary on flow PRs, owner 12 Oct 2026; the replays' own: lib/replay-truth.mjs). A live row has no kept AI answers and no
 // request list, so it reads the page: TRUTH for the applicant's contact boxes, known by the HTML autocomplete token or an email type (a standard, never a label word);
 // AGREEMENT between the panel's count and the page's own empty required controls; no "ready" with one left. A line never carries a value (a live box can hold the site's
-// words). Used by lib/live-row.mjs (prints the line), lib/record-sites.mjs parseLive (reads it) and lib/pool-ci.mjs (red). Guard: e2e/test/replay/live-readings.test.mjs.
+// words). Used by lib/live-row.mjs (prints the line), lib/record-sites.mjs parseLive (reads it) and lib/pool-ci.mjs (red). Guard: e2e/test/live-readings.test.mjs.
 import {readTab, sameAnswer} from './replay-truth.mjs';
 
 const TOKENS = {'given-name': 'first_name', 'family-name': 'last_name', name: 'full_name', email: 'email', tel: 'phone', 'tel-national': 'phone', 'postal-code': 'postal_code', 'address-line1': 'street', 'street-address': 'street'};

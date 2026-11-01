@@ -2,7 +2,7 @@
 // A row's pages shrunk for a case folder (npm run row-to-case; owner-approved 11 Oct 2026: real pages stay, fonts/images/scripts/tracking/queries go; sizes measured on three real captures, 84-168 KB):
 // the CSS is cut to the rules some captured state uses (a selector that matches an element in ANY state of the page keeps its rule, so a dialog shown by a class in a later state survives), fonts,
 // keyframes, imports and every url(...) are dropped, the sheets of one host become ONE stylesheet at <host>/__case/styles.css (linked from each page; the replay serves it like any sheet),
-// data: images go from the markup. Text and structure are untouched. Guard: e2e/test/pool/row-case-shrink.test.mjs.
+// data: images go from the markup. Text and structure are untouched. Guard: e2e/test/row-case-shrink.test.mjs.
 // pages: [{url, file, html}] (every state and frame), harCss: [css text of the run's cross-origin sheets]. -> {pages: [{url, file, html}], sheets: Map(<stylesheet address> -> css)}.
 
 // Runs IN the page: the rules of every sheet (the page's own, plus `extra` texts) kept when their selector matches something here. -> [cssText]

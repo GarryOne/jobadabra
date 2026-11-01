@@ -1,7 +1,7 @@
 // Every path a harness test reaches: its relative imports (static, dynamic, and files it reads via new URL(..., import.meta.url)), followed to the end.
 // Job: run the backbone
 // Why (owner, 30 Oct 2026, option C "run all on every PR"): every harness PR runs every test file, so nothing picks files any more; what is left is the
-// reach itself, which harness.yml's `on: paths:` must cover so a change a test reaches starts the run. Guard: test/harness/test-reach.test.mjs.
+// reach itself, which harness.yml's `on: paths:` must cover so a change a test reaches starts the run. Guard: test/test-reach.test.mjs.
 import fs from 'node:fs';
 import path from 'node:path';
 

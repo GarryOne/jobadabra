@@ -1,7 +1,7 @@
 // A journey test: replays a recorded network record (replay-net.mjs) with the real extension and the app, reads the card and the panel at every step, and checks what the
 // person saw against the live run (lib/journey-check.mjs). Exits 1 on any failure, printing the timeline.
 //   node journey.mjs <record dir> <out dir>          (the replay's own flags after them, e.g. --cpu=4)
-// The same through `npm run journey -- <record dir> <out dir>`. Writes <out>/journey-steps.json and <out>/journey-verdict.json. Guard: e2e/test/replay/journey-check.test.mjs.
+// The same through `npm run journey -- <record dir> <out dir>`. Writes <out>/journey-steps.json and <out>/journey-verdict.json. Guard: e2e/test/journey-check.test.mjs.
 import {spawnSync} from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';

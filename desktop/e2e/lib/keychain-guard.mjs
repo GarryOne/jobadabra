@@ -1,7 +1,7 @@
 // The owner's real Keychain is never touched by a test run (owner, 8-9 Oct 2026: a local run changed the shared job-site password and left fixture-host
 // items; desktop/lib/keychain.js now keeps test runs in their own file). This is the run's own proof: the Jobadabra items' attributes (service name and
 // modification date, never a secret) before the suite and after it; any item added, removed or modified fails the run. A Mac outside CI only (CI has none).
-// Guard: test/ai/keychain-guard.test.mjs.
+// Guard: test/keychain-guard.test.mjs.
 import {execFileSync} from 'node:child_process';
 
 // `security dump-keychain` text (attributes only, no -d) -> Map service -> modification date, for the job-pilotto.* items.

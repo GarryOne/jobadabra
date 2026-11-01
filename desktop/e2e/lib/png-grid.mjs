@@ -3,7 +3,7 @@
 // strips match either top-aligned or with one vertical shift: CI's window height changes between runs (991 vs 1025 px measured), which moves everything
 // anchored to the bottom (the bottom bar, the sidebar's foot) while the page stays put. A build stamp or a ticking clock changes a few cells; a missing,
 // moved or recoloured block changes hundreds. Measured on 9 Settings pairs of two CI runs (26 Oct 2026): 6 changed cells both ways on the 3 identical-looking pages (the build stamp),
-// 59-2114 on the others. Guarded by test/replay/png-grid.test.mjs.
+// 59-2114 on the others. Guarded by test/png-grid.test.mjs.
 import zlib from 'node:zlib';
 
 const CHANNELS = {0: 1, 2: 3, 4: 2, 6: 4};   // PNG colour type -> channels (grey, RGB, grey+alpha, RGBA); Chromium's screenshots have no palette

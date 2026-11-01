@@ -1,4 +1,4 @@
-// Which suites READ a page's elements: the link the code → suite map cannot give (it records what ran, not what a suite checks). Tests: test/replay/page-reach.test.mjs
+// Which suites READ a page's elements: the link the code → suite map cannot give (it records what ran, not what a suite checks). Tests: test/page-reach.test.mjs
 // Job: pick the suites
 // Why (31 Oct 2026, #2694): the app opens Focus in every suite, so focus-suggestions.js ran in 23 of them at the same breadth; the "shared code" rule gave a changed Focus row to the
 // settings smoke alone and no `focus` step ran. A file names the elements it draws into (`$('focus-suggestions-list')`), a suite names the ones it looks at

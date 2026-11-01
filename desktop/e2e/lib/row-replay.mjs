@@ -3,7 +3,7 @@
 // its stylesheets from styles.har.json) served to the real extension in one browser, the extension talking to the app's own server under plain node
 // (lib/offline-app.mjs: the fake applicant, the row's model answers from model-memo.json, a miss asks the plan's claude -p once and is kept). Nothing reaches a site:
 // an address the run did not record gets a 404 and a finding "route not recorded: <address>". Ends on the live run's still-clock and prints the same evidence lines.
-// -> {seconds, evidence, unrecorded, asks, coldAsks, requests}. CLI: row.mjs (npm run row). Guard: e2e/test/pool/row-replay.test.mjs.
+// -> {seconds, evidence, unrecorded, asks, coldAsks, requests}. CLI: row.mjs (npm run row). Guard: e2e/test/row-replay.test.mjs.
 // Job: serve stored answers
 import fs from 'node:fs';
 import os from 'node:os';

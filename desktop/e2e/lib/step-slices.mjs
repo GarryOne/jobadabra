@@ -2,7 +2,7 @@
 // Job: pick the suites
 // runs where that step ran; a weighed step goes where the greedy split of the measured seconds put it; any other step takes turns (lib/replay-shard.mjs shardTurn).
 // 26 Oct 2026: turn-taking put apply's two longest steps in one slice (349 s of a 420 s budget), and "Ready to submit" reads the tab "cannot operate" left
-// (its slice must be the same). Guard: test/harness/step-slices.test.mjs (every need shares its slice, every apply step is weighed, the halves are near equal).
+// (its slice must be the same). Guard: test/step-slices.test.mjs (every need shares its slice, every apply step is weighed, the halves are near equal).
 import {shardTurn, weighedSlices} from './replay-shard.mjs';
 
 // -> (step name) => true when this slice runs it. No shard: every step runs.

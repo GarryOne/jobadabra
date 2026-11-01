@@ -1,7 +1,7 @@
 // The evidence bundle of a smoke run: everything a fixer needs to name the blocker without a re-run (job-pilotto-cc's post-mortem, 11 Oct 2026: about 40% of every
 // fix was a wrong first guess because the first run did not show what the AI was asked, what it answered and what was pressed). One folder per day and shape:
 // evidence.md (the four lines that matter), run.log, app.log (the app's whole log) and ai-calls.json (the live page-kind calls and the form-answer calls: fields asked and answer kinds, desktop/lib/live-capture.js).
-// Also: a run that was killed or cut short did not finish, and records and uploads nothing (eb's killed Datadog run left a 23 s row). Guard: test/record/evidence-bundle.test.mjs.
+// Also: a run that was killed or cut short did not finish, and records and uploads nothing (eb's killed Datadog run left a 23 s row). Guard: test/evidence-bundle.test.mjs.
 import fs from 'node:fs';
 import path from 'node:path';
 import {stepFilesIn} from './step-shots.mjs';

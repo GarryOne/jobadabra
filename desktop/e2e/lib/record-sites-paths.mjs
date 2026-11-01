@@ -4,7 +4,7 @@
 //    too, else a "path difference" said at the top of the report;
 //  - a paired sample each pass: a few rows run on both paths, the least recently paired first; the report's first line says whether they agree within +-1.
 // "Less than its last result" is lib/record-sites.mjs compare() itself, so the re-run covers every kind of regression the pool counts. Used by record-sites.mjs.
-// Guard: e2e/test/record/record-sites-paths.test.mjs.
+// Guard: e2e/test/record-sites-paths.test.mjs.
 import {SITE_REFUSED, compare, rank} from './record-sites.mjs';
 import {recordVar} from '../../../tools/record-env.mjs';
 

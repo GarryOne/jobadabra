@@ -1,5 +1,5 @@
 // The app's own current Notion token, for the twin's one-way sync only (owner, 17 Oct 2026): read from the real secrets.json the way the app does (lib/storage.js), handed to the copy tool through the child's environment alone.
-// Never printed, logged, written to a file or put in argv. Runs under Electron (real-notion-token-main.mjs: safeStorage works only there). Guarded by test/replay/real-notion-token.test.mjs.
+// Never printed, logged, written to a file or put in argv. Runs under Electron (real-notion-token-main.mjs: safeStorage works only there). Guarded by test/real-notion-token.test.mjs.
 import {spawnSync} from 'node:child_process';
 import {createStorage, safeStorageCrypto} from '../../lib/storage.js';
 

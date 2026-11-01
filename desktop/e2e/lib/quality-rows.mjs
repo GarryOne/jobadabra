@@ -2,7 +2,7 @@
 // Notion (the stand-in, or the real test page): the Job Matches rows as they are, every column. This Mac's store: the store's match records (ctx.data matches.list),
 // with what a record carries (src/stores/base.py MATCH_FIELDS: title, company, location, work mode, fit, reason, status, the fit parts and gaps). The enriched
 // facts only Notion's columns hold today (ENRICHED) are checked where they exist; on this Mac's store a check of one says "not kept on this Mac's store" until the
-// record carries it (mac-70 is adding them to the record), and then switches on by itself. Guarded by test/pool/quality-rows.test.mjs.
+// record carries it (mac-70 is adding them to the record), and then switches on by itself. Guarded by test/quality-rows.test.mjs.
 import {databaseRows} from './notion.mjs';
 
 export const MATCHES = 'Job Matches — AI Scored';

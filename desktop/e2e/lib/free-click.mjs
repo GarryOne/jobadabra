@@ -37,7 +37,7 @@ export const ticked = (tab, selector) => whenFree(tab, options => tab.check(sele
 
 // A press counts only when what it does shows (`landed`, e.g. the page moved on): the overlay drops a trusted click without any error, so a click "succeeds"
 // and nothing happens (26 Oct 2026, beta 40275152602: "Create account" eaten after the overlay came back, the sign-up page never left, 91 s lost). Until it
-// shows (landMs per try), the click is made again once the overlay lifts. Guard: test/ai/free-click.test.mjs.
+// shows (landMs per try), the click is made again once the overlay lifts. Guard: test/free-click.test.mjs.
 export async function pressed(tab, selector, {landed, landMs = 8000, tries = 6, step = 250} = {}) {
   if (typeof landed !== 'function') throw new Error(`pressed(${selector}) needs landed(): a click the fill overlay held throws nothing`);
   let last = null;

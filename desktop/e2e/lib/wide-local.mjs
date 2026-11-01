@@ -1,6 +1,6 @@
 // Many-row offline replays run in CI, not on the Mac (owner, 15 Oct 2026: "as long as they are offline replays and they don't generate AI costs, then they can move to CI ... in parallel").
 // A 25-row before/after took 60+ min per side on a Mac at load ~110; site-replays.yml replays the same rows in ~14 min on 5 runners, $0 (no AI key, no site visit).
-// replay-records.mjs (the published network records, which CI has) asks wideLocalRefusal() before it starts; `npm run rows` replays the Mac's own captures (not in CI) and is not refused. Guard: test/record/wide-local.test.mjs.
+// replay-records.mjs (the published network records, which CI has) asks wideLocalRefusal() before it starts; `npm run rows` replays the Mac's own captures (not in CI) and is not refused. Guard: test/wide-local.test.mjs.
 
 export const MOST_LOCAL_ROWS = 3;   // the rows a fix is about; a wider check is CI's
 

@@ -1,5 +1,5 @@
 // node archive-pool-rows.mjs [--write] [--only fixed,posting-gone]: reads /admin/form-filling/lab's rows that may be archived (owner key from the Keychain, never printed), lists them with their
-// reason, and with --write marks them `stage: "archived"` in smoke-sites.json (lib/pool-archive.mjs) for a PR. Without --write it changes nothing. Guard: e2e/test/pool/pool-archive.test.mjs.
+// reason, and with --write marks them `stage: "archived"` in smoke-sites.json (lib/pool-archive.mjs) for a PR. Without --write it changes nothing. Guard: e2e/test/pool-archive.test.mjs.
 import {execFileSync} from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';

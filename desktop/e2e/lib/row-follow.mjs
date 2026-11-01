@@ -1,7 +1,7 @@
 // Following the live run in a row replay (speed-5x landing 2): a recorded page has no scripts, so what the site did after a press (a dialog its script opened, a
 // route it changed, a banner it closed) is played back from the live run's own states (lib/capture-journey.mjs: each settled state in order, with its time) once
 // the replay's extension makes the same press as the live run did at that point (presses.json, lib/replay-candidate.mjs livePresses). A different press stops the
-// replay: "pressed X, live pressed Y" is the finding a fix needs. Used by lib/row-replay.mjs. Guard: e2e/test/pool/row-follow.test.mjs.
+// replay: "pressed X, live pressed Y" is the finding a fix needs. Used by lib/row-replay.mjs. Guard: e2e/test/row-follow.test.mjs.
 
 // The presses the replay's extension logged (its /extension/log calls, our own wording), in order. -> [{what, label}]
 const PRESS = /^((?:pressed [^:]*?|closed a popup))(?::.*)?$/;   // words-ok: our own log's wording, not page text

@@ -10,7 +10,7 @@ import {keyFingerprint} from './key-check.mjs';
 import {capMessage, capReached, noteCapped} from './ai-cap.mjs';
 import {askKey, count, countError, countReplay, keepAsk, keepMiss, recallAsk, usageOf} from './ai-meter.mjs';
 import {keepCandidateBody, message, storedAnswer} from './ai-answers.mjs';
-// Why (#2450 slice 3): test/ai/ai-answers.test.mjs and test/filling/applycheck.test.mjs still import this shared wrapper here.
+// Why (#2450 slice 3): test/ai-answers.test.mjs and test/applycheck.test.mjs still import this shared wrapper here.
 export {message} from './ai-answers.mjs';
 
 // The stub modes any proxy of this run was armed with: a refusal that matches one came from the suite's own stub, not from the account (lib/ai-refused.mjs).

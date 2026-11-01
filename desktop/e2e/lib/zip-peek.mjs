@@ -2,7 +2,7 @@
 // Why (1 Nov 2026, mac-07: "node tools/flaky-verdict.mjs --run <id>" printed nothing in 150 s): e2e-view-apply-3of3 of a red run holds the kept traces (1,045,025,600 bytes)
 // and the flaky read downloaded all of it to get the 2 KB steps.json. Azure blob storage answers explicit ranges (not "bytes=-N") with 206.
 // Invariants: pure over an injected `range(start, end) -> Buffer` (inclusive, like HTTP); zip64 and encrypted entries are refused (throw), never guessed.
-// Tests: test/pool/zip-peek.test.mjs
+// Tests: test/zip-peek.test.mjs
 // Job: report health
 import zlib from 'node:zlib';
 

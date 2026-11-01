@@ -1,6 +1,6 @@
 // node watch-pick.mjs <out dir> <states dir>: the daily watch's first job (.github/workflows/watch-live.yml). Lists the pool's watch rows, reads the earlier watch runs' spend lines
 // (<states dir>/<run>/watch.json) and sets count/only/max_usd through GITHUB_OUTPUT; at the month's $25 cap it sets count=0 and tells Telegram once a month. No AI, no browser.
-// Guard: e2e/test/harness/watch-cli.test.mjs.
+// Guard: e2e/test/watch-cli.test.mjs.
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';

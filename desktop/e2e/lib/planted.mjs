@@ -1,7 +1,7 @@
 // Job: report health
 // (e2e reliability design rule F) a planted failure hides only the Sentry reports it causes, so CI e2e keeps reporting real errors.
 // A failure a test plants on purpose says so where it plants it (16 Oct 2026): the fakes (AI, Notion, Telegram, Google) and the recall benchmark call markPlanted(), and the
-// app's Sentry reporter (desktop/lib/planted.js) then drops only the reports that plant causes, so CI e2e keeps reporting real errors. Guard: desktop/e2e/test/harness/planted.test.mjs.
+// app's Sentry reporter (desktop/lib/planted.js) then drops only the reports that plant causes, so CI e2e keeps reporting real errors. Guard: desktop/e2e/test/planted.test.mjs.
 import fs from 'node:fs';
 
 // What a failing service makes the app report: a run's warning or failure (a hung one: a stopped run). A recall plant throws in the page: a crash that says "recall planted".

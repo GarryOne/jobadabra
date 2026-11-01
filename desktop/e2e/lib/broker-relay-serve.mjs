@@ -6,7 +6,7 @@
 // maxCalls check sits after the relay branch.
 // A spent Codex budget latches: the first "ai-capped" answer is returned as HTTP 429 ("AI limit reached"), which decide.py reads as a spent limit and stops asking for the run; every later call is
 // answered 429 at once, without another broker call (run 41192760002 logged 1,417 failed calls one by one).
-// Why (31 Oct 2026, harness tests on #2715): the counter is named refused, not the word a planted-fault guard looks for (test/harness/planted.test.mjs); this relay serves real refusals, not planted ones.
+// Why (31 Oct 2026, harness tests on #2715): the counter is named refused, not the word a planted-fault guard looks for (test/planted.test.mjs); this relay serves real refusals, not planted ones.
 // Job: report health
 import http from 'node:http';
 import {answerViaBroker} from './broker-relay.mjs';

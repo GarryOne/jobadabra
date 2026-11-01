@@ -1,6 +1,6 @@
 // The engine's Python for every suite or helper that runs it directly (pool, qualityai mail reading, visitread, personas, employers, forget, storemove, quality), with
 // Job: run the backbone
-// an environment that cannot reach anyone's real data. Guarded by test/harness/python-env.test.mjs.
+// an environment that cannot reach anyone's real data. Guarded by test/python-env.test.mjs.
 // PYTHONUTF8: files and pipes in UTF-8 on Windows too, whose default is the ANSI code page (7 Oct 2026: the pool suite stopped on Windows at
 // "'charmap' codec can't decode byte 0x8f" reading config/search.json, whose ⚙️ heading the app's engine reads fine).
 // Isolation (owner's rule: a test never touches the live app, real accounts or real data; 9 Oct 2026: personas and employers ran the engine with the whole

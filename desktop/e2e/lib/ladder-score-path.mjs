@@ -3,7 +3,7 @@
 // model id, no effort, the schema pasted into the system prompt) and one Datadog sketch answered differently there and in the app. Guard: test/ladder-score-path.test.js.
 // Never a key: the engine check (assertNoApiSpend in lib/ladder-score.mjs) runs before this client is made, and the adapter's `claude -p` bills the plan.
 import {cliClient} from '../../lib/ai/claude-code-cli.js';
-import {realClaude} from './real-claude.mjs';   // never a terminal's claude wrapper (e2e/test/replay/real-claude.test.mjs)
+import {realClaude} from './real-claude.mjs';   // never a terminal's claude wrapper (e2e/test/real-claude.test.mjs)
 
 export const scoringClient = ({binary = realClaude() || 'claude', ...options} = {}) => cliClient(binary, {lane: 'page', ...options});   // the page lane: the extension's questions
 

@@ -1,4 +1,4 @@
-// The refill's yellow state (owner, 17 Oct 2026): rows whose live site moved need a re-record; they are listed, never a red run. Merges the groups' --report files, words the one Telegram message, tells whether the set changed. Guard: e2e/test/filling/refill-yellow.test.mjs.
+// The refill's yellow state (owner, 17 Oct 2026): rows whose live site moved need a re-record; they are listed, never a red run. Merges the groups' --report files, words the one Telegram message, tells whether the set changed. Guard: e2e/test/refill-yellow.test.mjs.
 import {alertHtml} from './telegram-html.mjs';
 
 // ([group report: {published, rerecord: [{row, why}], hard}]) -> {published: n, rerecord: [{row, why}] sorted by row}

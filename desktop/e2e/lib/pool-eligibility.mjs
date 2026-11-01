@@ -2,7 +2,7 @@
 // pool postings (Sydney, US on-site), and a stop hid how far the fill gets. record-sites.mjs gives every row, on BOTH paths (plain node: live.mjs -> lib/live-row.mjs;
 // Electron: the apply suite -> lib/apply-live.mjs), LIVE_ELIGIBILITY=off; each live runner sets the harness extension's chrome.storage.local
 // checkEligibility=false before Apply and says so in the run's first lines. RECORD_ELIGIBILITY=on keeps the stop.
-// Guard: e2e/test/pool/pool-eligibility.test.mjs.
+// Guard: e2e/test/pool-eligibility.test.mjs.
 /* global chrome */
 import {recordVar} from '../../../tools/record-env.mjs';
 import {setExtensionStorage} from '../../../hosted/ready-fill/extension-storage.mjs';

@@ -1,6 +1,6 @@
 // CI on Free AI's two checks (owner, 26 Oct 2026: "Let's just switch to Free AI"). The gate checks CI's Workers AI token once with Cloudflare's free verify call
 // (key-preflight.mjs); each suite asks the relay on its runner one tiny question in the app's own shape, so a broken relay stops the suite named, before any step.
-// Guarded by test/ai/free-ai-check.test.mjs.
+// Guarded by test/free-ai-check.test.mjs.
 const VERIFY = 'https://api.cloudflare.com/client/v4/user/tokens/verify';
 
 // A down network is not a verdict on the token: only Cloudflare's own answer stops the run.

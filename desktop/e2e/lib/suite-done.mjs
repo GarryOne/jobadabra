@@ -1,4 +1,4 @@
-// A suite's own "I ended" marker: the process that ran it writes done.txt in the artifacts folder, and the process that started it under the heavy lock refuses an exit 0 without one. Guarded by test/harness/suite-done.test.mjs.
+// A suite's own "I ended" marker: the process that ran it writes done.txt in the artifacts folder, and the process that started it under the heavy lock refuses an exit 0 without one. Guarded by test/suite-done.test.mjs.
 // Why (12 Oct 2026): on Windows the lock's Python launcher ended at once with 0, the CI step went green in 10 s while the suite ran on and failed unseen. Silence is not success.
 import fs from 'node:fs';
 import path from 'node:path';

@@ -1,7 +1,7 @@
 // Replay candidates (owner, 10 Oct 2026, after a form filled 4 of 13 and nothing was kept to fix it from): when a nightly smoke run fails, its final page is saved, scrubbed, with what the run saw, as
 // the start of a fixed-site replay. It owns: which results are worth saving, and the folder written per failing shape. Used by record-sites.mjs after each site; the page itself is snapshotted in the live
 // run (apply-live.mjs, structure only, scrubbed). The folder is on this Mac (<QA folder>/replay-candidates/<day>/<shape>/), never the public repo: a person promotes a candidate to
-// desktop/e2e/recorded/ only when they fix the shape, with the AI answers of the failing run, and it must fail on the build before the fix (skill fix-recorded-sites). Guard: test/replay/replay-candidate.test.mjs.
+// desktop/e2e/recorded/ only when they fix the shape, with the AI answers of the failing run, and it must fail on the build before the fix (skill fix-recorded-sites). Guard: test/replay-candidate.test.mjs.
 import fs from 'node:fs';
 import path from 'node:path';
 import {seedVersion} from './applicant-seed.mjs';

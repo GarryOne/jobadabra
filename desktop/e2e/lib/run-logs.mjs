@@ -1,7 +1,7 @@
 // A run's logs kept with its artifacts, for every suite (lib/app.mjs keepLogs, at each app's close): the app's own logs, and always the two that answer
 // "what did this run reach?": notion-requests.log (every Notion request the app and its Python made: route and status, never content) and store-call.log
 // (every ctx.data call of the suite itself, lib/store-call.mjs: which store, which Notion host). A run that made none still leaves the file, empty: zero
-// is then a fact, not a missing file. Guarded by test/harness/run-logs.test.mjs.
+// is then a fact, not a missing file. Guarded by test/run-logs.test.mjs.
 import fs from 'node:fs';
 import path from 'node:path';
 

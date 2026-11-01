@@ -190,6 +190,8 @@ class DesktopWorkflowTest(unittest.TestCase):
         self.assertIn('built_from: ${{ steps.built.outputs.label }}', WORKFLOW)
         self.assertIn("name: ${{ format('Main''s CI on {0}', needs.changes.outputs.built_from) }}", job('main-ci'))
         self.assertNotIn('ai-credit-health', WORKFLOW)
+        # Owner, 1 Nov 2026, on beta 11's run page: the version is on the graph, and the last job writes its release and commit as links.
+        self.assertIn("name: ${{ format('Beta {0} · clean up old builds', needs.changes.outputs.version) }}", job('prune'))
         # Gitar on #2883: a cache saved on a branch is restored only by that branch and its children, so the quality-rate history save stays main-only.
         loose = "(github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/beta-pick/'))"
         self.assertEqual(WORKFLOW.replace(loose, '').count("github.ref == 'refs/heads/main'"), 1, 'only the history cache save is main-only')

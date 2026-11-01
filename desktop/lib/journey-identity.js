@@ -14,6 +14,7 @@ export function identityServices({terminals, review, isFormOf}) {
   return {get: id => terminals.get(id), list: () => terminals.list(), isFormOf, heldElsewhere: review.heldElsewhere};
 }
 
+/** The id of the live form session a report is about, '' when none. Takes the tab's identity {session, job, url, boot} and the services from identityServices; a job or address match skips a session held by another live browser run. */
 export function resolveSession({session, job, url, boot = ''} = {}, {get, list, isFormOf, heldElsewhere = () => false}) {
   const live = item => item && item.kind === 'form' && !item.outcome;
   const own = session ? get(String(session)) : null;

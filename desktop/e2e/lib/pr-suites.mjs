@@ -5,7 +5,6 @@
 import {whyLines} from './pick-why.mjs';
 import {NIGHT_REPORT} from './plan.mjs';
 import {isBackbone} from './suite-shards.mjs';
-import {suitesUsing} from './import-graph.mjs';
 
 const APP_FILE = /^desktop\/(renderer\/|lib\/|main\.js$|main\/|actions[^/]*\.js$|activity[^/]*\.js$)/;
 export const isAppFile = file => APP_FILE.test(file) && !/\.(test|spec)\.|\/test\//.test(file);
@@ -134,20 +133,19 @@ export function admittedSuites({addedFiles = [], deletedFiles = [], baseLanes = 
  * lanes is the same {suites: {name: entry}} registry the verdict reads, supplied from the PR base or merged checkout by the CLI.
  * left keeps unrun backbone suites; report-only numbers use no place or deferral. deferred is ranked cap overflow.
  */
-export function planPrSuites({pointed = [], hits = {}, covering = {}, direct = [], catches = {}, lanes = {}, admitted = [], stepBurnIn = {}, linux, cadence = {}, pullRequest = false}) {
+export function planPrSuites({pointed = [], hits = {}, covering = {}, direct = [], catches = {}, lanes = {}, admitted = [], linux, cadence = {}, pullRequest = false}) {
   const admissions = new Set(pullRequest ? admitted : []);
-  const proofs = new Set([...admissions, ...(pullRequest ? Object.keys(stepBurnIn) : [])]);
-  if (proofs.size > 5) throw Object.assign(new Error('More than five suites need burn-in: split this PR so every new step is proved.'), {code: 'E2E_BURN_IN_CAPACITY'});
+  if (admissions.size > 5) throw Object.assign(new Error('More than five suites need burn-in: split this PR so every new suite is proved.'), {code: 'E2E_BURN_IN_CAPACITY'});
   const reports = pullRequest ? new Set(Object.entries(lanes.suites || {}).filter(([suite, entry]) => entry?.lane === 'tolerant' && entry.pr === 'number' && !admissions.has(suite)).map(([suite]) => suite)) : new Set();
-  const wanted = [...new Set([...proofs, ...pointed, ...Object.keys(hits), ...Object.keys(covering)])].filter(suite => proofs.has(suite) || (
+  const wanted = [...new Set([...admissions, ...pointed, ...Object.keys(hits), ...Object.keys(covering)])].filter(suite => admissions.has(suite) || (
     !['manual', 'outside', NIGHT_REPORT].includes(cadence[suite]) && !(pullRequest && ON_PR_ELSEWHERE[suite]) &&
     (reports.has(suite) || isBackbone(lanes, suite))));
-  let run = wanted.filter(suite => proofs.has(suite) || linux(suite) || pointed.includes(suite) || String(covering[suite] || '').startsWith('runs '));
+  let run = wanted.filter(suite => admissions.has(suite) || linux(suite) || pointed.includes(suite) || String(covering[suite] || '').startsWith('runs '));
   const numbers = run.filter(suite => reports.has(suite));
   run = run.filter(suite => !reports.has(suite));
   let deferred = [];
   if (pullRequest && run.length > 5) {
-    const reach = suite => proofs.has(suite) ? 4 : direct.includes(suite) ? 3 : (pointed.includes(suite) || Object.hasOwn(hits, suite)) ? 2 : 1;
+    const reach = suite => admissions.has(suite) ? 4 : direct.includes(suite) ? 3 : (pointed.includes(suite) || Object.hasOwn(hits, suite)) ? 2 : 1;
     const caught = suite => Number.isFinite(catches[suite]) && catches[suite] >= 0 ? catches[suite] : 0;
     const ranked = [...run].sort((a, b) => reach(b) - reach(a) || caught(b) - caught(a) || (a < b ? -1 : a > b ? 1 : 0));
     run = ranked.slice(0, 5);
@@ -207,50 +205,6 @@ export function stepCalls(text) {
   }
   return calls;
 }
-/** Compare the step names a backbone suite owns at the merge-base and HEAD using the existing import/ownership rules.
- * Invariants: new suites/promotions use whole-suite admission; runtime-built names use their static prefix, as hang caps do.
- */
-export function addedBackboneSteps({baseSources, sources, headLanes = {}, admitted = [], ownsStep = {}, map = {}}) {
-  const inventory = files => {
-    const names = {};
-    for (const [file, suites] of Object.entries(suitesUsing('', files))) {
-      const calls = stepCalls(files[file]).map(call => call.name ?? call.prefix).filter(name => name?.trim());
-      for (const suite of suites) {
-        const owned = ownedStepNames({suite, file: `desktop/e2e/${file}`, names: calls, sources: files, map, ownsStep: ownsStep[suite]});
-        for (const name of owned) (names[suite] ||= new Set()).add(name);
-      }
-    }
-    return names;
-  };
-  const before = inventory(baseSources), after = inventory(sources), added = {};
-  for (const [suite, names] of Object.entries(after)) {
-    if (!baseSources[`suites/${suite}.mjs`] || admitted.includes(suite) || !isBackbone(headLanes, suite)) continue;
-    const fresh = [...names].filter(name => !before[suite]?.has(name));
-    if (fresh.length) added[suite] = fresh;
-  }
-  return added;
-}
-
-/** Reconstruct merge-base sources by replacing only changed step files; unchanged imports retain their checkout text.
- * Invariant: deleted helpers remain in the base inventory, so moving or removing a step never admits it again.
- */
-export function baseStepSources(git, base, changedFiles, sources) {
-  const fork = git(['merge-base', base, 'HEAD']).trim(), before = {...sources};
-  for (const file of changedFiles.filter(file => /^desktop\/e2e\/(suites|lib)\/[^/]+\.mjs$/.test(file))) {
-    const rel = file.slice('desktop/e2e/'.length);
-    try { before[rel] = git(['show', `${fork}:${file}`]); } catch { delete before[rel]; }
-  }
-  return before;
-}
-
-/** Require passed result evidence for every new literal name or runtime prefix; a skipped or missing step never passes burn-in. */
-export function unpassedBurnInSteps(names, results) {
-  return names.filter(name => {
-    const matching = results.filter(result => result.name.startsWith(name));
-    return !matching.length || matching.some(result => result.status !== 'passed' || result.retried || result.faultNeverFired);
-  });
-}
-
 export function stepsQuoting(hits, sources) {
   const out = {};
   for (const [suite, strings] of Object.entries(hits)) {

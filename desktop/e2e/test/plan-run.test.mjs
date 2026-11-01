@@ -343,38 +343,22 @@ test('lanes.json alone marks every tolerant suite and every outside and night-re
 });
 
 
-test('new backbone steps plan five native-OS filtered legs; admission still runs whole', async () => {
-  const {addedBackboneSteps} = await import('../lib/pr-suites.mjs');
-  const baseSources = {'suites/settings.mjs': "ctx.run('Existing step', async () => {});"};
-  const sources = {'suites/settings.mjs': baseSources['suites/settings.mjs'] + "ctx.run('New step, with detail', async () => {});"};
-  const stepBurnIn = addedBackboneSteps({baseSources, sources});
+// Why (1 Nov 2026, owner: "Drop it entirely, now"; the question: PRs ran a new or changed beta step 5 times, which goes against "no repeat loops"): a PR that adds a backbone step
+// runs its suite once, one leg per shard. The night burn-in is the only repeat; a suite entering the backbone (admission) still runs five whole legs until its own removal.
+test('a PR that adds a backbone step plans that suite once, one leg per shard, not five', async () => {
   const run = async (extra, slices = 2) => JSON.parse((await planRun({env: {EVENT: 'workflow_dispatch', SHA: HEAD, ONLY: 'settings', PR_SUITES: 'settings',
-    PR_STEPS: JSON.stringify({'(step-burn-in)': stepBurnIn, ...extra})}, gh: gh(), all: ALL,
-    minutes: () => 15, os: () => 'macos-latest', shards: {settings: slices}})).matrix).include;
-  const allLegs = await run({});
-  assert.equal(allLegs.length, 7, 'the two ordinary journey slices remain alongside five new-step legs');
-  assert.deepEqual(allLegs.filter(leg => !leg.burnIn).map(leg => leg.key), ['settings-1of2', 'settings-2of2']);
-  assert.equal(new Set(allLegs.map(leg => leg.key)).size, allLegs.length);
-  const legs = allLegs.filter(leg => leg.burnIn);
-  assert.equal(legs.length, 5);
-  assert.deepEqual(legs.map(leg => leg.burnIn), [1, 2, 3, 4, 5]);
-  assert.deepEqual(legs.map(leg => leg.key), [1, 2, 3, 4, 5].map(n => `settings-${n + 2}of7`));
-  for (const leg of legs) {
-    assert.equal(leg.os, 'macos-latest');
-    assert.equal(leg.shard, '');
-    assert.deepEqual(leg.burnInSteps, ['New step, with detail']);
-    assert.equal(leg.stepFilter, 'New step', 'commas delimit filters, not pieces of the step name');
-    assert.equal(leg.fallbackSuites, '', 'a burn-in leg never retries a renamed pick');
+    PR_STEPS: JSON.stringify(extra)}, gh: gh(), all: ALL, minutes: () => 15, os: () => 'macos-latest', shards: {settings: slices}})).matrix).include;
+  // The planner of the PR run (pr-suites.mjs) no longer writes '(step-burn-in)'; a stale key in the steps is ignored, never five more legs.
+  for (const extra of [{}, {'(step-burn-in)': {settings: ['New step, with detail']}}]) {
+    const legs = await run(extra);
+    assert.deepEqual(legs.map(leg => leg.key), ['settings-1of2', 'settings-2of2']);
+    assert.ok(legs.every(leg => !leg.burnIn && !leg.burnInSteps && !leg.stepFilter), 'no repeat leg and no step filter');
   }
-  const fiveShards = await run({}, 5);
-  assert.equal(fiveShards.length, 10);
-  assert.equal(new Set(fiveShards.map(leg => leg.key)).size, 10, 'normal five-shard keys cannot collide with proof keys');
+  assert.equal((await run({}, 5)).length, 5);
   const admitted = await run({'(burn-in)': ['settings']});
-  assert.equal(admitted.length, 5);
-  assert.ok(admitted.every(leg => !leg.burnInSteps && !leg.stepFilter));
+  assert.equal(admitted.length, 5, 'admission is unchanged here');
   const workflow = fs.readFileSync(new URL('../../../.github/workflows/e2e.yml', import.meta.url), 'utf8');
-  assert.match(workflow, /E2E_STEPS: \$\{\{ matrix\.stepFilter/);
-  assert.match(workflow, /Burn-in steps ·/);
+  assert.doesNotMatch(workflow, /stepFilter|burnInSteps|E2E_BURN_IN_STEPS|Burn-in steps/);
 });
 
 // Why (1 Nov 2026, owner: "I'd like the beta to have only the critical e2e/user journeys. ALl the others, to run separately less frequently"): a finder or explorer runs once a night,

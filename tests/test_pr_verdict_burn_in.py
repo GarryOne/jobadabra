@@ -14,13 +14,13 @@ spec.loader.exec_module(pv)
 
 
 class BurnIn(unittest.TestCase):
-    def verdict(self, outcomes, completed=True, steps=(), **kwargs):
+    def verdict(self, outcomes, completed=True, **kwargs):
         run = {'databaseId': 7, 'workflowName': 'CI · End-to-end on Mac + Linux', 'event': 'workflow_dispatch',
                'displayTitle': 'E2E for PR · quality · burn-in', 'createdAt': '2026-10-29T10:00:00Z',
                'updatedAt': '2026-10-29T10:04:00Z', 'status': 'completed' if completed else 'in_progress',
                'conclusion': 'success' if all(o == 'success' for o in outcomes) else 'failure'}
         jobs = [{'id': i, 'name': f'quality · burn-in {i}/5', 'status': 'in_progress' if o is None else 'completed',
-                 'conclusion': o, 'steps': [{'name': 'Burn-in steps · ' + ' | '.join(steps)}] if steps else []} for i, o in enumerate(outcomes, 1)]
+                 'conclusion': o, 'steps': []} for i, o in enumerate(outcomes, 1)]
         return pv.verdict([run], jobs={7: jobs}, **kwargs)[:2]
 
     def test_five_green_attempts_admit(self):
@@ -74,13 +74,12 @@ class BurnIn(unittest.TestCase):
                 self.assertIn(f'quality burn-in {passed}/5: not admitted', why)
 
 
-    def test_step_burn_in_requires_all_five_and_names_failed_or_missing_tries(self):
+    def test_admission_requires_all_five_and_names_failed_or_missing_tries(self):
         for outcomes, failed in ((['success'] * 4 + ['failure'], '5'),
                                  (['success', 'failure', 'success', 'cancelled', 'success'], '2,4'),
                                  (['success'] * 4, '5')):
             with self.subTest(outcomes=outcomes):
-                state, why = self.verdict(outcomes, steps=['New step'])
+                state, why = self.verdict(outcomes)
                 self.assertEqual(state, 'failure')
-                self.assertIn('New step', why)
                 self.assertIn('tries ' + failed, why)
-        self.assertEqual(self.verdict(['success'] * 5, steps=['New step'])[0], 'success')
+        self.assertEqual(self.verdict(['success'] * 5)[0], 'success')

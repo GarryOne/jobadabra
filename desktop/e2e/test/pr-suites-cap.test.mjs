@@ -328,23 +328,27 @@ test('mail part routing preserves helper, suite, mixed and recorded journey reac
 });
 
 
-test('CLI compares merge-base step names and emits step burn-in metadata', () => {
+// Why (1 Nov 2026, owner: "Drop it entirely, now"): a new step in a backbone suite is no longer proved five times; the PR plan names the suite and no repeat metadata.
+test('CLI: a PR that adds a step to a backbone suite plans the suite and writes no step burn-in', () => {
   const file = 'desktop/e2e/suites/settings.mjs';
   const head = fs.readFileSync(new URL('../../../' + file, import.meta.url), 'utf8');
   const [step] = pick.stepCalls(head).filter(call => call.name);
   const old = head.slice(0, step.start) + head.slice(step.end + 1);
-  const {values} = cliPlan({suites: ['settings'], baseSources: {[file]: old}});
-  assert.deepEqual(JSON.parse(values.steps)['(step-burn-in)'], {settings: [step.name]});
+  const {values, text} = cliPlan({suites: ['settings'], baseSources: {[file]: old}});
+  assert.ok(values.suites.split(',').includes('settings'));
+  const steps = JSON.parse(values.steps);
+  assert.equal(steps['(step-burn-in)'], undefined);
+  assert.equal(steps['(burn-in)'], undefined);
+  assert.doesNotMatch(text, /burn-in 5\/5/);
 });
 
-test('new-step suites outrank ordinary reach so the cap cannot silently skip burn-in', () => {
-  const out = pick.planPrSuites({...eight, stepBurnIn: {'new-mac': ['New step']}, linux: suite => suite !== 'new-mac'});
+test('admitted suites outrank ordinary reach so the cap cannot silently skip burn-in', () => {
+  const out = pick.planPrSuites({...eight, admitted: ['new-mac'], linux: suite => suite !== 'new-mac'});
   assert.ok(out.suites.includes('new-mac'));
   assert.equal(out.suites.length, 5);
 });
 
 
-test('more than five burn-in suites must be split, rather than defer an unproved step', () => {
-  const stepBurnIn = Object.fromEntries(['a', 'b', 'c', 'd', 'e', 'f'].map(suite => [suite, ['New step']]));
-  assert.throws(() => pick.planPrSuites({...args, stepBurnIn}), {code: 'E2E_BURN_IN_CAPACITY'});
+test('more than five burn-in suites must be split, rather than defer an unproved suite', () => {
+  assert.throws(() => pick.planPrSuites({...args, admitted: ['a', 'b', 'c', 'd', 'e', 'f']}), {code: 'E2E_BURN_IN_CAPACITY'});
 });

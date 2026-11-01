@@ -40,9 +40,9 @@ The workflow's own last run is enough for "last run / cadence" (`upgrade-data.ym
 Blocking anything; Linux; restoring the old app after the update; testing the Notion store (SQLite only, the default); comparing UI screenshots.
 
 ## Progress
-- [x] History read: windows-smoke/mac-smoke, updates suite, windows-upgrade-proof (25 Oct), demo.js, app-identity data files
-- [x] Choices (mac-07 for the owner, 1 Nov): a) the build of main is built inside the job, b) order: pure compare, then the runner on N-1..N-3, then the auto-update swap, c) extends the existing Windows upgrade workflow; all in `jobadabra` (desktop)
-- [x] PR 1/3: `data-fingerprint.js` + unit tests + positive control (expected-change keys take `*` anywhere, so a migration is allowed for one column only)
+- [x] History read: windows-smoke/mac-smoke, updates suite, windows-upgrade-proof (25 Oct), demo.js, app-identity data files (proof: none: reading only, findings are in this spec)
+- [x] Choices (mac-07 for the owner, 1 Nov): a) the build of main is built inside the job, b) order: pure compare, then the runner on N-1..N-3, then the auto-update swap, c) extends the existing Windows upgrade workflow; all in `jobadabra` (desktop) (proof: none: a scope choice relayed by the coordinator, 1 Nov 2026)
+- [x] PR 1/3: `data-fingerprint.js` + unit tests + positive control (expected-change keys take `*` anywhere, so a migration is allowed for one column only) (proof: desktop/test/data-fingerprint.test.js)
 - [ ] PR 2/N: `upgrade-data-proof.mjs` + `upgrade-data.yml` on Mac and Windows with N-1..N-3
 - [ ] PR 3/N: the auto-update path (fake release list, real installer step)
 - [ ] Merged, first daily run read

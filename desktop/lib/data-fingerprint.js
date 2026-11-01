@@ -48,7 +48,7 @@ export function fingerprintFolder(dir) {
   return out;
 }
 
-// Why (1 Nov 2026): `*` may stand anywhere (`...:jobs:*:stage`) so a migration that rewrites one column is allowed for that column only, never for the whole table.
+// Why (1 Nov 2026): a star may stand anywhere in an expected key, so a migration that rewrites one column is allowed for that column only, never for the whole table.
 const matches = (entry, key) => new RegExp(`^${entry.key.split('*').map(part => part.replace(/[.+?^${}()|[\]\\]/g, '\\$&')).join('.*')}$`).test(key);
 
 /**

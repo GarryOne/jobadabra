@@ -15,7 +15,7 @@ const SMOKE = 'settings';   // AI-free, about 30 s: proof that the shared test c
 // (`repeat`). The e2e audit's keep 11 / slim 15 / drop 4 (owner's yes, 26 Oct 2026): no product bug caught in 30 days, so a night and a beta are enough.
 // 'night-report' runs once a night (night burn-in pass 1, lib/night-pass.mjs) and in no release gate or beta, no schedule, no push and no PR; a person can still name it. It must also be a
 // tolerant lane in lanes.json (its result shows, a red never holds anything; guard: test/plan-run.test.mjs). Why (1 Nov 2026, owner: "I'd like the beta to have only the critical
-// e2e/user journeys. ALl the others, to run separately less frequently"): the one cadence for finders, explorers and measurements (interactions, wander, quality; qualityai and notion-real may follow).
+// e2e/user journeys. ALl the others, to run separately less frequently"): the one cadence for finders, explorers and measurements (interactions, wander, quality, qualityai, notion-real).
 export const NIGHT_REPORT = 'night-report';
 export function autoSuites(all, cadence = {}, alwaysOnly = false, repeat = false) {
   return all.filter(suite => {

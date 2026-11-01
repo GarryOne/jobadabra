@@ -185,6 +185,11 @@
         "n": 9,
         "p95Seconds": 27.2
       },
+      "the first screens of a set-up install (Focus, Jobs, Actions) are drawn, checked and photographed for the UI Finder": {
+        "seconds": 50,
+        "n": 10,
+        "p95Seconds": 16.2
+      },
       "the icon rail: every badge and dot sits inside its button, clear of the icon": {
         "seconds": 30,
         "n": 8,
@@ -236,11 +241,6 @@
       "the Notion stand-in answered every request the app made": {
         "shared": "applyflows",
         "n": 4
-      },
-      "the pages of this suite render without layout problems": {
-        "seconds": 35,
-        "n": 8,
-        "p95Seconds": 10.9
       },
       "this suite starts with no jobs and no runs in its Notion page": {
         "seconds": 30,
@@ -1023,11 +1023,6 @@
         "seconds": 30,
         "n": 10,
         "p95Seconds": 5.4
-      },
-      "the first screens after setup render without layout problems": {
-        "seconds": 50,
-        "n": 10,
-        "p95Seconds": 16.2
       },
       "the Notion stand-in answered every request the app made": {
         "seconds": 30,

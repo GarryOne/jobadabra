@@ -34,7 +34,7 @@ test('both suites share planner inputs and the golden journey, with separate clo
   assert.ok(Object.isFrozen(journeyLib.PLANNER));
   const facts = await suiteFacts();
   for (const suite of [quality, qualityai]) {
-    assert.equal(suite.cadence, suite.name === 'quality' ? 'night-report' : 'nightly');
+    assert.equal(suite.cadence, 'night-report');   // both measurements: once a night, report only (owner, 1 Nov 2026; qualityai since 6/6a-2)
     assert.equal(suite.store, 'sqlite');
     assert.equal(suite.sameOnEveryOs, true);
     assert.equal(suite.budgetMinutes, suite.name === 'qualityai' ? 10 : undefined);
@@ -44,7 +44,7 @@ test('both suites share planner inputs and the golden journey, with separate clo
     assert.deepEqual(suite.watches, suite.name === 'qualityai' ? [...journeyLib.PLANNER.watches, ...qualityai.parts.mail] : journeyLib.PLANNER.watches);
     assert.equal(suite.judges, journeyLib.PLANNER.judges);
     assert.ok(facts.all.includes(suite.name));
-    assert.equal(facts.cadence[suite.name], suite.name === 'quality' ? 'night-report' : 'nightly');
+    assert.equal(facts.cadence[suite.name], 'night-report');
     assert.ok(facts.sameOnEveryOs.includes(suite.name));
     assert.ok(facts.storeless.includes(suite.name));
     assert.deepEqual(facts.judges[suite.name], quality.judges);
@@ -148,14 +148,14 @@ test('mail watches choose only the mail part; unrelated and scheduled runs do no
   assert.deepEqual(suitePartsFor(['src/ai/mail.py'], parts), ['mail']);
   assert.deepEqual(suitePartsFor(['src/ai/mail_lines.py'], parts), ['mail']);
   assert.deepEqual(suitePartsFor(['src/ai/interviews.py'], parts), []);
-  assert.deepEqual(suitesFor(['src/ai/mail.py'], facts.all, facts), ['qualityai']);
+  assert.deepEqual(suitesFor(['src/ai/mail.py'], facts.all, facts), []);   // Why (1 Nov 2026, owner via a8, 6/6a-2): qualityai is night-report, so no push or PR picks it, not even for its mail part; a person can still name qualityai:mail
   assert.deepEqual(suitesNamed('qualityai:mail', facts.all), ['qualityai']);
   const plan = async env => JSON.parse((await planRun({env: {REPO: 'o/r', SHA: 'a'.repeat(40), ...env}, gh: () => '[]', ...facts})).matrix).include.find(leg => leg.suite === 'qualityai');
   assert.deepEqual((await plan({EVENT: 'workflow_dispatch', ONLY: 'qualityai:mail'})).qualityParts, ['mail']);
   const push = await planRun({env: {EVENT: 'push', REPO: 'o/r', SHA: 'head', BEFORE: 'base'},
     gh: args => args.join(' ').includes('/compare/') ? 'src/ai/mail.py' : '[]', ...facts});
-  assert.deepEqual(JSON.parse(push.matrix).include.find(leg => leg.suite === 'qualityai').qualityParts, ['mail']);
-  assert.deepEqual((await plan({EVENT: 'workflow_dispatch', ONLY: 'qualityai', PR_SUITES: 'qualityai', PR_STEPS: JSON.stringify({'(parts)': {qualityai: ['mail']}})})).qualityParts, ['mail']);
+  assert.ok(!JSON.parse(push.matrix).include.some(leg => leg.suite === 'qualityai'), 'a push touching the mail prompt planned qualityai');
+  assert.equal(await plan({EVENT: 'workflow_dispatch', ONLY: 'qualityai', PR_SUITES: 'qualityai', PR_STEPS: JSON.stringify({'(parts)': {qualityai: ['mail']}})}), undefined, 'a stale PR dispatch planned qualityai');
   for (const env of [{EVENT: 'schedule'}, {EVENT: 'gate', GATE_TAG: 'desktop-v9.9'}, {EVENT: 'workflow_dispatch', ONLY: 'qualityai'}]) {
     const leg = await plan(env);
     if (leg) assert.deepEqual(leg.qualityParts, ['journey']);

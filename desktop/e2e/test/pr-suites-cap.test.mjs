@@ -169,11 +169,11 @@ test('CLI reads catch counts only when supplied and applies the base registry be
   assert.equal(main.values.left, '');
 });
 
-test('CLI picks a real watched AI suite only when BASE enables its informational number', () => {
-  // qualityai is the real watched AI suite left on PRs; quality is night-report (never on a PR) since 1 Nov 2026.
+test('CLI never picks the night-report AI suite, even when BASE enables its informational number', () => {
+  // qualityai and quality are night-report (never on a PR) since 1 Nov 2026 (qualityai: 6/6a-2).
   const change = {suites: [], extraFiles: ['src/ai/score.py']};
   assert.ok(!cliPlan({...change, listed: {qualityai: {lane: 'tolerant'}}}).values.suites.split(',').includes('qualityai'));
-  assert.ok(cliPlan({...change, listed: {qualityai: {lane: 'tolerant', pr: 'number'}}}).values.suites.split(',').includes('qualityai'));
+  assert.ok(!cliPlan({...change, listed: {qualityai: {lane: 'tolerant', pr: 'number'}}}).values.suites.split(',').includes('qualityai'), 'qualityai is night-report: no PR number (6/6a-2)');
 });
 
 test('CLI labels only the capped Linux suite for merge, not the Mac-only loader', () => {
@@ -237,27 +237,13 @@ test('--base without --pull-request cannot use the checkout lane to exempt a rea
 });
 
 
-test('CLI transports watched mail parts from the actual PR changed files', () => {
+// Why (1 Nov 2026, owner via a8, 6/6a-2): qualityai is night-report (one live run a night), so no PR plans it or its mail part, whatever it watches; a person can still name qualityai:mail.
+test('CLI: qualityai and its mail part are never planned on a PR, even when BASE lists its number', () => {
   const listed = {qualityai: {lane: 'tolerant', pr: 'number'}};
-  const mail = cliPlan({suites: [], extraFiles: ['src/ai/mail.py'], listed});
-  assert.equal(mail.values.suites, 'qualityai');
-  assert.deepEqual(JSON.parse(mail.values.steps)['(parts)'].qualityai, ['mail']);
-  const unrelated = cliPlan({suites: [], extraFiles: ['src/ai/interviews.py'], listed});
-  assert.ok(!unrelated.values.suites.split(',').includes('qualityai'));
-  assert.deepEqual(JSON.parse(unrelated.values.steps)['(parts)'].qualityai, []);
-});
-
-
-test('mail part routing preserves helper, suite, mixed and recorded journey reach', () => {
-  const listed = {qualityai: {lane: 'tolerant', pr: 'number'}};
-  const parts = extraFiles => JSON.parse(cliPlan({suites: [], extraFiles, listed}).values.steps)['(parts)'].qualityai;
-  assert.deepEqual(parts(['desktop/e2e/lib/quality-mail.mjs']), ['mail']);
-  assert.deepEqual(parts(['src/ai/mail.py', 'desktop/e2e/lib/quality-journey.mjs']), ['journey', 'mail']);
-  assert.deepEqual(parts(['src/ai/mail.py', 'desktop/e2e/suites/qualityai.mjs']), ['journey', 'mail']);
-  assert.deepEqual(parts(['src/ai/mail.py', 'docs/ARCHITECTURE.md']), ['mail']);
-  const coverage = {suites: {qualityai: {sha: 'recorded', files: {'desktop/lib/some-loaded.js': {lines: [[1, 1]]}}}}};
-  const mapped = cliPlan({suites: [], extraFiles: ['src/ai/mail.py', 'desktop/lib/some-loaded.js'], listed, coverage});
-  assert.deepEqual(JSON.parse(mapped.values.steps)['(parts)'].qualityai, ['journey', 'mail']);
+  for (const extraFiles of [['src/ai/mail.py'], ['src/ai/score.py'], ['desktop/e2e/lib/quality-mail.mjs'], ['desktop/e2e/suites/qualityai.mjs'], ['src/ai/mail.py', 'desktop/e2e/lib/quality-journey.mjs']]) {
+    const plan = cliPlan({suites: [], extraFiles, listed});
+    assert.ok(!plan.values.suites.split(',').includes('qualityai'), `${extraFiles} planned qualityai`);
+  }
 });
 
 

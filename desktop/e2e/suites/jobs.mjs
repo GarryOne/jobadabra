@@ -6,7 +6,6 @@ import path from 'node:path';
 import {runsData} from '../lib/activity-steps.mjs';
 import {clearData} from '../lib/start-state.mjs';
 import {agreeWithin} from '../lib/truth-data.mjs';
-import {finish, visit} from '../lib/layout.mjs';
 import {ensureSetUp} from '../lib/seed.mjs';
 import {varyFeeds} from '../lib/feeds.mjs';
 import {hangCapsFor} from '../lib/hang-caps.mjs';
@@ -26,7 +25,6 @@ export const hangCaps = hangCapsFor('jobs');
 export const aggregateBudget = false;
 export async function run(ctx) {
   const {ARTIFACTS, page} = ctx;
-  ctx.findings = [];
   await ensureSetUp(ctx);
   // Why (1 Nov 2026, a8's after-merge red on 6631d38): this suite is pinned to this Mac's store (`store` above), whose strategy is the app's own config (saved at setup, lib/seed.mjs); a step
   // behind `ctx.store !== 'sqlite'` could never run, and the after-merge picker picked it. That the config holds the applicant's roles is desktop/integration/store/strategy-integration.test.mjs.
@@ -85,8 +83,5 @@ export async function run(ctx) {
   }, {needs: ctx.needs, data: true});
   // One Apply button (5 Oct 2026): a scored job without a kit shows Apply, and Prepare only in its ⋯ menu: integration/app/screen-apply.test.js (moved 1 Nov 2026).
   // Find new employers (probes the seed company, lists it) and a slow Jobs check ending cleanly: desktop/integration/store/jobs-run.test.mjs (moved 1 Nov 2026, R2).
-  await ctx.run('the pages of this suite render without layout problems', async () => {
-    await visit(ctx, ['focus', 'jobs', 'actions']);
-    finish(ctx);
-  }, {needs: ctx.needs});
+  // Layout of Focus, Jobs and Actions: suites/interactions.mjs (night-report) takes their Finder shots; integration/app/screen-focus*.test.js and screen-activity.test.js check them on PRs (moved 1 Nov 2026, 6/6a-2).
 }

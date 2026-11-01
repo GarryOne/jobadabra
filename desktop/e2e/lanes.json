@@ -8,7 +8,7 @@
       "since": "2026-10-29",
       "pr": "number",
       "why": "A live Jobs check on the golden postings measures the model's facts, scores and judge texts as rates.",
-      "returns": "Stays tolerant: it measures the live model."
+      "returns": "Stays tolerant: it measures the live model, as a nightly report, not a gate."
     },
     "notion-real": {
       "lane": "tolerant",

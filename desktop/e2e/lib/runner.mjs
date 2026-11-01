@@ -6,7 +6,7 @@ import {ensureStaged} from './ensure-staged.mjs';
 import {refusalNote} from './ai-refused.mjs';
 import {capMessage, skipStepForCap, takeCapped} from './ai-cap.mjs';
 import {isEnvironment, RETRY_WAIT_MS} from './environment.mjs';
-import {mayRetry, retryLog} from './beta-retry.mjs';
+import {inBeta, mayRetry, retryLog} from './beta-retry.mjs';
 import {faultCheck, NEVER_FIRED, neverFiredNote} from './faults.mjs';
 import {codeLine} from './artifacts.mjs';
 import {causeOf, sharedCauseLines} from './step-cause.mjs';

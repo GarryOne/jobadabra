@@ -12,7 +12,7 @@ import {clearData} from '../lib/start-state.mjs';
 import {forgetFixtureJobs} from '../lib/forget.mjs';
 import {ensureSetUp} from '../lib/seed.mjs';
 import {withRoles} from '../lib/search-roles.mjs';
-import {pollUntil, stepTimeLeft} from '../lib/wait-on-state.mjs';
+import {pollUntil, stepTimeLeft, waitForStage} from '../lib/wait-on-state.mjs';
 import {START, sqliteStart} from '../test/strategy-start.mjs';
 
 export const realAi = false;   // every AI call is answered by the stand-in below; the harness fails the run if one reaches a real model
@@ -41,14 +41,7 @@ export async function run(ctx) {
   await ensureSetUp(ctx);   // after the stand-in: the setup's own AI calls stay local too
   const read = file => JSON.parse(fs.readFileSync(path.join(ctx.profile, 'config', file), 'utf8'));
   // The app links (or creates) the page a moment after it connects (lib/migrate.js runs in the background): wait for it.
-  const linkedPage = async window_ => {
-    for (let i = 0; i < 45; i++) {
-      const id = await window_.evaluate(() => window.pilot.state()).then(s => s?.settings?.notionIds?.NOTION_SEARCH_SETTINGS_PAGE || '');
-      if (id) return id;
-      await new Promise(resolve => setTimeout(resolve, 2000));
-    }
-    return '';
-  };
+  const linkedPage = async window_ => (await waitForStage(() => window_.evaluate(() => window.pilot.state()).then(state => state?.settings?.notionIds?.NOTION_SEARCH_SETTINGS_PAGE || ''), id => Boolean(id))).value || '';
   // fastSeed connects Notion before "setup done" is saved, and the Notion-side moves (lib/migrate.js) only run for a finished setup: connect once more, as a user
   // reconnecting does, and they run.
   const reconnect = async window_ => {
@@ -67,13 +60,10 @@ export async function run(ctx) {
   const HEADINGS = ['Target roles', 'Best places', 'Companies to skip'];
   const sections = async () => {
     const id = await settingsPage();
-    let found = {};
-    for (let i = 0; i < 10; i++) {
-      found = await pageSections(NOTION, id);
-      if (HEADINGS.every(heading => found[heading])) return found;
-      await new Promise(resolve => setTimeout(resolve, 3000));
-    }
-    throw new Error(`the Search settings page (${id}) still lacks ${HEADINGS.filter(heading => !found[heading]).join(', ')} after 30 s; it reads: ${Object.keys(found).join(' | ') || 'no headings'}`);
+    const {value, error} = await waitForStage(() => pageSections(NOTION, id), got => HEADINGS.every(heading => got[heading]));
+    const found = value || {};
+    if (HEADINGS.every(heading => found[heading])) return found;
+    throw new Error(`the Search settings page (${id}) still lacks ${HEADINGS.filter(heading => !found[heading]).join(', ')} when the step's clock ran out; it reads: ${Object.keys(found).join(' | ') || 'no headings'}${error ? `; last read error: ${error}` : ''}`);
   };
   const has = (list, word) => (list || []).some(entry => new RegExp(word, 'i').test(entry));
 
@@ -83,8 +73,9 @@ export async function run(ctx) {
     const logStart = fs.existsSync(engineLog) ? fs.statSync(engineLog).size : 0;   // only what this check writes counts
     await page.click('.nav[data-view="jobs"]');
     await page.click('#refresh');
-    const {samples, endedAt} = await watch(page, {every: 3000, maxMs: 420000});
-    if (endedAt == null) throw new Error('the Jobs check was still running after 7 minutes');
+    const left = stepTimeLeft();   // Why (1 Nov 2026, Gitar on #2788, Rule B): the step's hang cap is the only clock; a reserve leaves time for this message before the runner's hang timer cuts the step
+    const {samples, endedAt} = await watch(page, {every: 3000, maxMs: left == null ? 420000 : Math.max(1000, left - 10000)});
+    if (endedAt == null) throw new Error('the Jobs check was still running when the step\'s clock ran out');
     if (samples.at(-1).newest?.ok === false) throw new Error(`the Jobs check failed: ${samples.at(-1).newest.result}`);
     // What the check told the person: the digest it just wrote to the engine log (it exists whether or not the AI scored the jobs, and it is after the person's own filters).
     const log = path.join(ctx.profile, 'logs', 'engine.log');
@@ -128,7 +119,8 @@ export async function run(ctx) {
     if (found.length !== 1 || found[0].id.replace(/-/g, '') !== pageId.replace(/-/g, '')) throw new Error(`expected exactly the linked ${TITLE} page, found ${found.length}`);
     // Connecting ran a Jobs check on whatever strategy the page held then (the previous run's end state: the Giraffe role). Wait for it, then forget what it kept, or the next
     // digest lists those postings as new although nobody asks for them any more.
-    await pollUntil(() => page.evaluate(() => document.querySelector('#activity')?.dataset.state !== 'busy'), idle => idle, {capMs: stepTimeLeft()});   // the step's hang cap is its only clock (Rule B)
+    const {value: idle} = await pollUntil(() => page.evaluate(() => document.querySelector('#activity')?.dataset.state !== 'busy'), state => state, {capMs: stepTimeLeft()});   // the step's hang cap is its only clock (Rule B)
+    if (!idle) throw new Error('the Jobs check the reconnect started was still running when the step\'s clock ran out');
     const forgotten = forgetFixtureJobs(ctx.profile);
     if (forgotten) console.log(`  forgot ${forgotten} fixture posting(s) kept by the connect-time check`);
   }, {needs: ctx.needs});

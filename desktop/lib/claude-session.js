@@ -58,7 +58,7 @@ export function prompt(url, {auditFile, session = ''}) {
   // only sees tabs in its own group, so a tab the app opened is invisible to it): the extension fills most fields in
   // seconds; this session does the rest.
   const identity = 'Use only the applicant details given here; never a name, e-mail address, phone number, country, city, street address or other location from any other context (such as an account you are signed in with): when a detail is not given, leave it empty. ';   // every claude session carries its account e-mail (11 Oct 2026)
-  const mark = session ? `#jobadabra-fill=${session}` : '#jobadabra-fill';   // the id makes the tab this session's from its first page
+  const mark = session ? `#jobpilotto-fill=${session}` : '#jobpilotto-fill';   // the id makes the tab this session's from its first page
   const handoff = `Open the form tab yourself, once: tabs_context_mcp with createIfEmpty true, then navigate that tab to ${url}${mark} ` +
     `(keep the ${mark} at the end, it arms the Jobadabra extension on the tab, which then fills the form by itself; whenever you navigate that tab to another address yourself, put ${mark} at the end of that address too, or the tab stops being part of this application). It is the ` +
     'only tab for this application: never open a second one. On each page, if <html> has data-jobadabra-hook, read ' +

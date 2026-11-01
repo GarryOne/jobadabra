@@ -35,7 +35,7 @@ export function restart(who) {
 // never a second box beside it saying something else (owner, 27 Oct 2026: the panel came back centred and working, undimmed, under "Jobadabra is stopped on this page").
 function stoppedPage() {
   window.__jobadabraStopped = true;
-  try { const clean = location.href.replace(/#jobadabra-fill(=[A-Za-z0-9_-]{1,64})?$/, ''); if (clean !== location.href) history.replaceState(history.state, '', clean); } catch { /* sandboxed page */ }
+  try { const clean = location.href.replace(/#jobpilotto-fill(=[A-Za-z0-9_-]{1,64})?$/, ''); if (clean !== location.href) history.replaceState(history.state, '', clean); } catch { /* sandboxed page */ }
   for (const id of ['jobadabra-progress', 'jobadabra-note', 'jobadabra-fill-overlay']) document.getElementById(id)?.remove();
   if (!document.documentElement) return;
   document.documentElement.dataset.jobadabraFill = JSON.stringify({state: 'stopped'});
@@ -93,7 +93,7 @@ export async function stopAll(reason = 'the person pressed Stop') {
   decide('stop', 'stopped: nothing more is done on any tab', {reason: String(reason).slice(0, 80)});
   const stored = await chrome.storage.session.get(null).catch(() => ({}));
   const ids = new Set(Object.keys(stored).filter(key => key.startsWith('armed:') && stored[key]).map(key => Number(key.slice(6))).filter(Number.isInteger));
-  for (const tab of await chrome.tabs.query({}).catch(() => [])) if (tab.id != null && String(tab.url || '').includes('#jobadabra-fill')) ids.add(tab.id);
+  for (const tab of await chrome.tabs.query({}).catch(() => [])) if (tab.id != null && String(tab.url || '').includes('#jobpilotto-fill')) ids.add(tab.id);
   const held = new Set(ids);
   for (const target of await chrome.debugger.getTargets().catch(() => [])) if (target.attached && Number.isInteger(target.tabId)) held.add(target.tabId);
   for (const tabId of held) await chrome.debugger.detach({tabId}).catch(() => {});   // only ours detaches; any other client's attach refuses and is left alone

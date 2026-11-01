@@ -13,7 +13,7 @@ let kit;
 before(async () => { kit = await startSessionKit(); });
 after(async () => { await kit?.close(); });
 
-const report = (extra = {}) => ({url: `${JOB.url}#jobadabra-fill=fill-one`, title: 'Cloud Engineer', tab: 31, session: 'fill-one', total: 5, left: 1, role: 'form', missing: ['Notice period'], pending: ['Notice period'],
+const report = (extra = {}) => ({url: `${JOB.url}#jobpilotto-fill=fill-one`, title: 'Cloud Engineer', tab: 31, session: 'fill-one', total: 5, left: 1, role: 'form', missing: ['Notice period'], pending: ['Notice period'],
   proposals: [{label: 'Notice period', value: '3 months', key: '', options: CHOICES}], ...extra});
 
 test('the left menu reaches the session with its proposal and the form\'s choices, and Use comes back to the form as one fill command', async () => {

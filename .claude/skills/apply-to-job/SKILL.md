@@ -197,14 +197,14 @@ in that file next time — keep evolving it.
    "will require sponsorship"). Only a required language the owner doesn't speak, or a hard
    location restriction the owner can't meet, is worth showing before opening the form.
 2. **Open the one form tab yourself, with the mark**: `tabs_context_mcp` with `createIfEmpty: true`, then navigate
-   that tab to `<job url>#jobadabra-fill`. The app opens no tab (claude-in-chrome sees only its own tab group); never open another.
+   that tab to `<job url>#jobpilotto-fill`. The app opens no tab (claude-in-chrome sees only its own tab group); never open another.
    Greenhouse: the form is on the job page (`job-boards.greenhouse.io/<board>/jobs/<id>`), below the
    description. A job board's page (jobs.ch, TechTree) or a careers page with only an Apply button: see
    "Reaching the form". **One tab per application** (owner, 8 Oct 2026; docs/flows/applying.md): before you click a link
    or button that would open a new tab (`target="_blank"`), prefer navigating this tab to its address. When a click opens a new tab
    anyway, continue in the new one (the extension follows it as the same session) and close the tab you came from in your group
    (`tabs_close_mcp`), unless the new one is a sign-in pop-up window, which closes by itself.
-3. **Extension first (Apply with Claude)**: your tab carries `#jobadabra-fill`, and the
+3. **Extension first (Apply with Claude)**: your tab carries `#jobpilotto-fill`, and the
    extension follows later pages in that tab and a tab that tab opens. When the page has
    `<html data-jobadabra-hook>`, read `data-jobadabra-fill` and act on its `state`: `running` wait;
    `done` audit and fill only its `todo`, then press Next if the form has another page; `error` fill

@@ -9,7 +9,7 @@ import {prepare} from '../lib/report-form.js';
 import {registerReportHandlers} from '../lib/report-handlers.js';
 import {visitMore} from '../lib/server-hooks.js';
 
-const TAB = 7, URL_A = 'https://jobs.example.test/apply#jobadabra-fill';
+const TAB = 7, URL_A = 'https://jobs.example.test/apply#jobpilotto-fill';
 const read = file => fs.readFileSync(new URL(`../../${file}`, import.meta.url), 'utf8');
 const entry = url => ({method: 'GET', url, type: 'xhr', mode: 'cors', startMs: 0, waitMs: 5, bodyKey: '', status: 200, failed: false, headers: {'content-type': 'application/json'}, hadCookie: false, body: Buffer.from('{}').toString('base64'), size: 2});
 

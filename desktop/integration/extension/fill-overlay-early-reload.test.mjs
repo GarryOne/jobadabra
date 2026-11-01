@@ -30,7 +30,7 @@ for (const [name, how] of [['reload (mark kept)', 'location.reload()'], ['same p
       await app.context.route('https://jobs.example.test/**', route => route.fulfill({status: 200, contentType: 'text/html', body: POSTING(how)}));
       await app.page.exposeFunction('__rec', sample => { samples.push(sample); });
       await app.page.addInitScript(SAMPLER);
-      await app.page.goto('https://jobs.example.test/post#jobadabra-fill');   // the app opens the posting with the fill mark
+      await app.page.goto('https://jobs.example.test/post#jobpilotto-fill');   // the app opens the posting with the fill mark
       await app.page.waitForTimeout(4000);
     } finally { await app.close(); }
     const docs = [...new Set(samples.map(s => s.doc))];
@@ -69,7 +69,7 @@ for (const [state, cause] of Object.entries(VERDICTS)) {
       await app.context.route('https://jobs.example.test/**', route => route.fulfill({status: 200, contentType: 'text/html', body: '<!doctype html><title>ML Engineer</title><body><h1>ML Engineer</h1>'}));
       await app.page.exposeFunction('__rec', sample => { samples.push(sample); });
       await app.page.addInitScript(SAMPLER);
-      await app.page.goto('https://jobs.example.test/post#jobadabra-fill');
+      await app.page.goto('https://jobs.example.test/post#jobpilotto-fill');
       await app.page.waitForFunction(() => document.getElementById('jobadabra-fill-overlay') && document.getElementById('jobadabra-review-host')?.shadowRoot?.querySelector('.stop-btn'), null, {timeout: 20000});
       await cause(app);
       await app.page.waitForFunction(() => !document.getElementById('jobadabra-fill-overlay'), null, {timeout: 20000}).catch(() => {});
@@ -91,7 +91,7 @@ test('replacing the document root during an Apply keeps both drawings at every f
   const working = states => Object.entries(states).some(([key, value]) => key.startsWith('apply:') && value === 'working');
   try {
     await app.context.route('https://jobs.example.test/**', route => route.fulfill({contentType: 'text/html', body: '<!doctype html><title>Application</title><body><h1>Application</h1>'}));
-    await app.page.goto('https://jobs.example.test/post#jobadabra-fill');
+    await app.page.goto('https://jobs.example.test/post#jobpilotto-fill');
     await app.page.waitForFunction(() => {
       const host = document.getElementById('jobadabra-review-host');
       return document.getElementById('jobadabra-fill-overlay') && host?.shadowRoot?.querySelector('.fill.is-busy');

@@ -41,7 +41,7 @@ test('Tailor CV on a job: that job\'s form gets the tailored PDF under its own n
   assert.ok(cv.exists(storage, 'gh001'), 'the tailored PDF is not kept on this Mac under the job\'s code');
   assert.ok(fs.statSync(cv.pdfPath(storage, 'gh001')).size !== Buffer.byteLength(BASE_BYTES), 'the tailored PDF is the size of the base CV: it was not written from the posting');
 
-  const mine = (await me(storage, `${GREENHOUSE}#jobadabra-fill`)).resume;
+  const mine = (await me(storage, `${GREENHOUSE}#jobpilotto-fill`)).resume;
   assert.deepEqual([mine.name, mine.tailored, bytesOf(mine)], ['CV_Ada_Tester_E2E_Greenhouse_Labs.pdf', true, TAILORED_BYTES], 'the form of the tailored job did not get the tailored CV');
   const other = (await me(storage, LEVER)).resume;
   assert.deepEqual([other.name, other.tailored, bytesOf(other)], ['CV.pdf', false, BASE_BYTES], 'another job\'s form got the tailored CV of Greenhouse Labs');
@@ -57,6 +57,6 @@ test('Tailor on the session page restarts only that job\'s open form, and it is 
   cv.save(storage, 'lv002', record('lv002', LEVER, 'E2E Lever Systems'), Buffer.from('%PDF-1.4 TAILORED CV for Lever Systems'));
   assert.deepEqual(restartFormsOf(storage, 'lv002', seams), ['open'], 'Tailor must restart the job\'s open form, and not a closed tab, a stopped or submitted form, or another job\'s');
   assert.deepEqual(reloaded, ['open']);
-  const again = (await me(storage, `${LEVER}#jobadabra-fill`)).resume;
+  const again = (await me(storage, `${LEVER}#jobpilotto-fill`)).resume;
   assert.deepEqual([again.name, again.tailored, bytesOf(again)], ['CV_Ada_Tester_E2E_Lever_Systems.pdf', true, '%PDF-1.4 TAILORED CV for Lever Systems'], 'the restarted form did not get the tailored CV');
 });

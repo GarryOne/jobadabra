@@ -2,13 +2,13 @@
 // Job: wait on state
 // Why (a8, 1 Nov 2026, beta 41250138244, Windows apply-1of3, Edge): "the extension never finished filling … read on about:blank, 1 tab(s)" carried no evidence of WHICH navigation took the form's
 // tab; the cause was a hypothesis read from code. With this list the next red names it (rule: if the red does not carry the evidence, make the failure self-explaining first).
-// Invariants: addresses lose the fill mark (#jobadabra-fill=…) and the query (no ids, no tokens in an artifact); entries are appended only, times are ms since the trail began (an injected clock in tests).
+// Invariants: addresses lose the fill mark (#jobpilotto-fill=…) and the query (no ids, no tokens in an artifact); entries are appended only, times are ms since the trail began (an injected clock in tests).
 // Tests: test/extension-browser.test.mjs
 import fs from 'node:fs';
 import path from 'node:path';
 
 /** An address as the trail keeps it: no fill mark, no query. */
-export const plain = url => String(url).replace(/#jobadabra-fill=[^#]*/, '').replace(/\?[^#]*/, '').slice(0, 160);
+export const plain = url => String(url).replace(/#jobpilotto-fill=[^#]*/, '').replace(/\?[^#]*/, '').slice(0, 160);
 
 /**
  * @param {{pages: () => object[], on: (name: string, fn: (page: object) => void) => void}} context  a Playwright browser context

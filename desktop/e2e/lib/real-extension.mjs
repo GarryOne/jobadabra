@@ -122,7 +122,7 @@ export async function startRealExtension({extensionDir = EXTENSION_DIR, cv = tru
   });
   // What the app does for "Apply" (the same tab, marked for the extension), then the person's own click on the panel's Fill button.
   const fillWithPanel = async (tab = page) => {
-    await tab.evaluate(() => { location.hash = 'jobadabra-fill'; });
+    await tab.evaluate(() => { location.hash = 'jobpilotto-fill'; });
     await tab.waitForFunction(() => document.getElementById('jobadabra-review-host')?.shadowRoot?.querySelector('button'), null, {timeout: 20000});
     await tab.waitForTimeout(3000);
     return tab.evaluate(() => {

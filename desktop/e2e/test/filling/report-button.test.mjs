@@ -13,7 +13,7 @@ const extensionDir = process.env.REAL_EXTENSION_DIR || undefined;
 async function start(answer = {}) {
   const app = await startRealExtension({extensionDir, allowAllSites: true, answer: {'/extension/report-form': () => ({ok: true, enabled: true}), ...answer}});
   await app.context.route('https://jobs.example.test/**', route => route.fulfill({status: 200, contentType: 'text/html', body: FORM}));
-  await app.page.goto('https://jobs.example.test/apply#jobadabra-fill');   // the app opens the tab with the mark: the recording starts as it loads
+  await app.page.goto('https://jobs.example.test/apply#jobpilotto-fill');   // the app opens the tab with the mark: the recording starts as it loads
   await app.page.waitForFunction(() => document.getElementById('jobadabra-review-host')?.shadowRoot?.querySelector('.report-btn'), null, {timeout: 20000});
   // The page's own first fill runs first: while it works, Report is not drawn (owner, 27 Oct 2026: a button that cannot act while working is hidden); its end brings it back.
   await app.page.waitForFunction(() => !document.getElementById('jobadabra-review-host').shadowRoot.querySelector('.jp.working'), null, {timeout: 30000});

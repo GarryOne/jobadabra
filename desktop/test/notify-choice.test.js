@@ -20,7 +20,7 @@ function repoStorage(settings = {}) {
 }
 
 test('the Always on repo follows every choice: Telegram turned off stops Telegram there too; no choice keeps the old Telegram-only default', () => {
-  const told = settings => { const {variables, removed} = github.payload(repoStorage(settings)); return variables.JOBADABRA_NOTIFY ?? (removed.includes('JOBADABRA_NOTIFY') ? 'removed' : 'kept'); };
+  const told = settings => { const {variables, removed} = github.payload(repoStorage(settings)); return variables.JOB_PILOTTO_NOTIFY ?? (removed.includes('JOB_PILOTTO_NOTIFY') ? 'removed' : 'kept'); };
   assert.equal(told({}), 'removed', 'nothing chosen: no variable, as before (pool-share test)');
   assert.equal(told({notifyBy: ['telegram', 'app']}), 'removed', 'Telegram chosen: the default already says so');
   assert.equal(told({notifyBy: ['email', 'app'], notifyEmail: 'a@b.co'}), 'email,app');

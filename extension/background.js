@@ -1,4 +1,4 @@
-// The background worker: tabs the app opens to fill (#jobadabra-fill), the next page in that tab, a tab that tab
+// The background worker: tabs the app opens to fill (#jobpilotto-fill), the next page in that tab, a tab that tab
 // opens, Apply with Claude's hand-off, the ring's messages to the app, and the connection check. The result of a
 // fill shows in a panel on the page and in the icon badge.
 import {NO_APP, api, fillTab, settings} from './flow.js';
@@ -53,10 +53,10 @@ async function note(tabId, text, url = '') {
   }}).catch(() => {});
 }
 
-// "Apply to N jobs" in the desktop app opens each job with #jobadabra-fill. That mark is the only way a tab
+// "Apply to N jobs" in the desktop app opens each job with #jobpilotto-fill. That mark is the only way a tab
 // becomes one the extension may touch: the panel, the fill and the submit listener never start on a page
 // the user opened themselves.
-export const FILL_MARK = 'jobadabra-fill';
+export const FILL_MARK = 'jobpilotto-fill';
 const started = new Set();
 const armedLogged = new Set();
 const panelRefused = new Set();

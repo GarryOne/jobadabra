@@ -47,7 +47,7 @@ test('what the app is told when a digest-named press led to a form: fixed values
 // the CI pool and the replays feed the learning. Fixed values only; a learned answer is a hit; a digest answer stays verifiedBody's; a kind the step did not confirm is never sent.
 test('a confirmed fast-tier move is told to the app with fixed values only: the press led to a form, the fill put values in', async () => {
   const {confirmedBody} = await import('../../extension/ladder/climb.js');
-  const url = 'https://jobs.example/careers/123?token=secret#jobadabra-fill=s1', controls = [{type: 'text', label: 'Postuler maintenant'}];
+  const url = 'https://jobs.example/careers/123?token=secret#jobpilotto-fill=s1', controls = [{type: 'text', label: 'Postuler maintenant'}];
   const sent = (kind, step) => confirmedBody(kind, url, controls, step);
   assert.deepEqual(sent({by: 'ai', rung: 2, kind: 'posting', applyButton: 'Postuler'}, 'pressed'), {verified: true, url: 'https://jobs.example/careers/123', controls, rung: 2, outcome: 'form', kind: 'posting', signal: 'confident'});
   assert.deepEqual(sent({by: 'remembered', rung: 1, kind: 'form'}, 'filled'), {verified: true, url: 'https://jobs.example/careers/123', controls, rung: 1, outcome: 'form', kind: 'form', signal: 'confident'});
@@ -59,7 +59,7 @@ test('a confirmed fast-tier move is told to the app with fixed values only: the 
     assert.equal(sent(kind, step), null, `${JSON.stringify(kind)} ${step}`);
   }
   assert.deepEqual([sent({by: 'ai', kind: 'posting'}, 'pressed').rung, sent({by: 'remembered', kind: 'form'}, 'filled').rung], [2, 1], 'an answer without its rung: the rung of who answered');
-  assert.ok(!JSON.stringify(sent({by: 'ai', rung: 2, kind: 'posting', applyButton: 'Postuler'}, 'pressed')).match(/token|secret|jobadabra-fill|Postuler\b(?! maintenant)/));
+  assert.ok(!JSON.stringify(sent({by: 'ai', rung: 2, kind: 'posting', applyButton: 'Postuler'}, 'pressed')).match(/token|secret|jobpilotto-fill|Postuler\b(?! maintenant)/));
 });
 
 test('an Apply press that moved the tab to another page is confirmed by that page taking the fill: kept per tab until the next page takes it, once', async () => {

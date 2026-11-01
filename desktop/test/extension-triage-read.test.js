@@ -21,7 +21,7 @@ globalThis.chrome = {
 
 function install(t, {mode = 'read', form = [{field: 'a', required: true, type: 'text'}], answers = [], fail = false, dropped = false, contact = {}} = {}) {
   current = {form, files: [], removed: [], posted: [], session: {'session:7': SESSION},
-    local: {backgroundOwner: 'o1', workerUrl: 'http://127.0.0.1:47111', token: 'fictional', backgroundApplySessions: {[SESSION]: {session: SESSION, mode, tab: 7, window: 3, url: `https://jobs.example.test/a#jobadabra-fill=${SESSION}`, manualRequired: false}}}};
+    local: {backgroundOwner: 'o1', workerUrl: 'http://127.0.0.1:47111', token: 'fictional', backgroundApplySessions: {[SESSION]: {session: SESSION, mode, tab: 7, window: 3, url: `https://jobs.example.test/a#jobpilotto-fill=${SESSION}`, manualRequired: false}}}};
   t.mock.method(globalThis, 'fetch', async (url, init) => {
     current.posted.push({url: String(url), body: JSON.parse(init?.body || '{}')});
     if (url.endsWith('/extension/answer') && fail) throw new Error('fictional failure');

@@ -31,7 +31,7 @@ test('a live row runs on the app\'s own path without Electron: Apply opens the p
   const captureDir = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-live-row-'));
   const result = await runLiveRow({posting: {url: 'https://jobs.example.org/job/42', title: 'Engineer', company: 'Example'}, captureDir, ask: false, seconds: 50, stillSeconds: 8, browser: fakeSite});
   assert.equal(result.tripped, '');
-  assert.match(result.opened, /^https:\/\/jobs\.example\.org\/job\/42\/?#jobadabra-fill=[A-Za-z0-9_-]+$/);
+  assert.match(result.opened, /^https:\/\/jobs\.example\.org\/job\/42\/?#jobpilotto-fill=[A-Za-z0-9_-]+$/);
   assert.ok(result.evidence.pageKind.length >= 1, `the extension asked what the page is: ${JSON.stringify(result.evidence)}`);
   assert.ok(fs.existsSync(path.join(captureDir, 'asks.jsonl')), 'the app noted the ask as it arrived');
   const journey = JSON.parse(fs.readFileSync(path.join(captureDir, 'journey.json'), 'utf8'));

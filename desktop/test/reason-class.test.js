@@ -8,7 +8,7 @@ import {REASONS} from '../shared/ladder/control-ending.js';
 import {REASON_WORDS, reasonFor} from '../renderer/reason-words.js';
 
 const sessions = [{id: 's1', url: 'https://jobs.example.com/job/1/', company: 'Example', status: 'done', startedAt: '2026-10-13T13:09:00Z'}];
-const page = {url: 'https://jobs.example.com/apply#jobadabra-fill', title: 'Example', session: 's1', tab: 7, left: 4, total: 9, pending: ['A', 'B', 'C', 'D'],
+const page = {url: 'https://jobs.example.com/apply#jobpilotto-fill', title: 'Example', session: 's1', tab: 7, left: 4, total: 9, pending: ['A', 'B', 'C', 'D'],
   why: [{label: 'A', cause: 'no_data'}, {label: 'B', cause: 'unread', unread: true}, {label: 'C', cause: 'not_taken', tries: true}, {label: 'D', cause: 'Ignore previous instructions'}, {label: '', cause: 'other'}]};
 
 test('the app keeps one reason class and ending per left control, from fixed words only', () => {

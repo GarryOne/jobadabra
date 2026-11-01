@@ -1,4 +1,4 @@
-// The class of #43 / #2747 / #2753: a report from a tab in the hidden browser (a read of a job, `#jobadabra-fill=tr<8 hex>`) is never matched to the person's session of the
+// The class of #43 / #2747 / #2753: a report from a tab in the hidden browser (a read of a job, `#jobpilotto-fill=tr<8 hex>`) is never matched to the person's session of the
 // same job in real Chrome by the job address. One loop plays that scene against EVERY matcher that can fall back to a job address (the list below is the class: a new matcher
 // is added here, and the scan at the end fails when a file outside the list matches a session by a job address). Real review.js, journey-identity.js, session-flow.js and terminals.js.
 import assert from 'node:assert/strict';
@@ -23,8 +23,8 @@ async function scene() {
   terminals.startForm({id: 's1', url: JOB, company: 'Manor AG'});
   await terminals.start({id: 'c1', url: JOB, kind: 'claude', file: 'claude'});
   const all = terminals.list();
-  review.report(all, {session: 's1', tab: 7, boot: 'run-a', url: `${JOB}#jobadabra-fill=s1`, job: JOB, total: 1, left: 0});
-  review.report(all, {session: 'c1', tab: 8, boot: 'run-a', url: `${JOB}#jobadabra-fill=c1`, job: JOB, total: 1, left: 0});   // Claude's own tab in the same Chrome
+  review.report(all, {session: 's1', tab: 7, boot: 'run-a', url: `${JOB}#jobpilotto-fill=s1`, job: JOB, total: 1, left: 0});
+  review.report(all, {session: 'c1', tab: 8, boot: 'run-a', url: `${JOB}#jobpilotto-fill=c1`, job: JOB, total: 1, left: 0});   // Claude's own tab in the same Chrome
   review.noteTabs({ids: [7, 8], boot: 'run-a', browser: 'chrome'});       // the person's Chrome: its run is live
   review.noteTabs({ids: [130], boot: 'run-b', browser: 'hidden'});     // the hidden browser that reads jobs
   return {sessions: terminals.list()};
@@ -33,7 +33,7 @@ async function scene() {
 const read = {session: 'tr1a2b3c4d', tab: 130, boot: 'run-b', job: JOB, url: JOB, host: 'www.jobs.ch'};
 
 const MATCHERS = [
-  ['the form report (review.report -> pick)', ({sessions}) => assert.equal(review.report(sessions, {...read, url: `${JOB}#jobadabra-fill=tr1a2b3c4d`, total: 0, left: 0}).matched, null)],
+  ['the form report (review.report -> pick)', ({sessions}) => assert.equal(review.report(sessions, {...read, url: `${JOB}#jobpilotto-fill=tr1a2b3c4d`, total: 0, left: 0}).matched, null)],
   ['the focus report (review.noteFocus)', async ({sessions}) => {
     assert.deepEqual(review.noteFocus(sessions, {...read, found: true}), {ok: false}, 'the read tab answered the person\'s "show me this field"');
     assert.equal(await review.focusFound('s1', 20), null);

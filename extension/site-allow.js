@@ -31,7 +31,7 @@ export async function fillWaitsForAllow(tabId, url, {chrome = globalThis.chrome,
 // webNavigation always carries the address, as the read path already uses it (visit.js marks). Allowed sites stay background.js's.
 export function watchUnallowedFillTabs({chrome = globalThis.chrome, decide} = {}) {
   const check = async details => {
-    if (details.frameId !== 0 || !String(details.url).includes('#jobadabra-fill')) return;
+    if (details.frameId !== 0 || !String(details.url).includes('#jobpilotto-fill')) return;
     let origin = '';
     try { origin = `${new URL(details.url).origin}/*`; } catch { return; }
     if (!/^https:/.test(origin) || await chrome.permissions.contains({origins: [origin]})) return;

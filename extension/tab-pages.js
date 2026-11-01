@@ -11,15 +11,15 @@
 
 import {buttonPhrase} from './alias-schema.js';
 
-// The fill mark, which may carry the session the app opened the tab for: #jobadabra-fill=<id> (spec 2026-10-12-tab-owned.md). Always the last part of the address.
-const MARK_RE = /#jobadabra-fill(?:=([A-Za-z0-9_-]{1,64}))?$/;
+// The fill mark, which may carry the session the app opened the tab for: #jobpilotto-fill=<id> (spec 2026-10-12-tab-owned.md). Always the last part of the address.
+const MARK_RE = /#jobpilotto-fill(?:=([A-Za-z0-9_-]{1,64}))?$/;
 export const parseMark = url => (MARK_RE.exec(String(url || '')) || [])[1] || '';
 export const stripMark = url => String(url || '').replace(MARK_RE, '');
 export const pageKey = url => String(url || '').split('#')[0].replace(/\/+$/, '');
 
-// The panel and the fill run only on a tab the desktop app opened (#jobadabra-fill) or has already armed.
+// The panel and the fill run only on a tab the desktop app opened (#jobpilotto-fill) or has already armed.
 // A page the user is just browsing, Calendly included, is not one of those.
-export const tabArmed = ({url, armed} = {}) => !!armed || String(url || '').includes('#jobadabra-fill');
+export const tabArmed = ({url, armed} = {}) => !!armed || String(url || '').includes('#jobpilotto-fill');
 
 // What the toolbar popup offers on a tab, one kind each (8 Oct 2026: a tab the app opened to apply showed the "read this job list" buttons):
 //   fill:   the app opened it to apply (Apply); the panel on the page does the work, nothing to read
@@ -160,7 +160,7 @@ export function originOf(url) {
   }
 }
 
-// The same page, ignoring the fill marker (#jobadabra-fill) and a trailing slash.
+// The same page, ignoring the fill marker (#jobpilotto-fill) and a trailing slash.
 export const samePage = (a, b) => !!a && !!b && pageKey(a) === pageKey(b);
 
 // The same site: what a fill may keep painting on while a form moves between its own steps (the ATS redirects
@@ -265,7 +265,7 @@ export function navigationKind({transitionType = '', transitionQualifiers = []} 
   return BY_HAND.has(transitionType) || qualifiers.includes('from_address_bar') || (qualifiers.includes('from_api') && !ours) ? 'by-hand' : 'page';
 }
 // The address with the fill mark, kept on every page of the application. Pages that use their own #fragment are left alone.
-export function withMark(url, mark = 'jobadabra-fill') {
+export function withMark(url, mark = 'jobpilotto-fill') {
   try {
     const parsed = new URL(String(url));
     if (!/^https?:$/.test(parsed.protocol) || parsed.hash) return '';

@@ -9,7 +9,7 @@ const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
 test('a second ask for the same page 0.2 s after the first joins it: one fill, one result', async () => {
   let starts = 0, joins = 0;
   const slow = () => new Promise(resolve => { starts++; setTimeout(() => resolve({filled: 4}), 60); });
-  const first = oneFillPerTab(7, 'https://x.test/a#jobadabra-fill', slow, {onJoin: () => joins++});
+  const first = oneFillPerTab(7, 'https://x.test/a#jobpilotto-fill', slow, {onJoin: () => joins++});
   await wait(20);
   const second = oneFillPerTab(7, 'https://x.test/a', slow, {onJoin: () => joins++});
   assert.deepEqual(await Promise.all([first, second]), [{filled: 4}, {filled: 4}]);
@@ -76,7 +76,7 @@ test('another tab and a failed fill do not block', async () => {
 });
 
 test('a fill writes its card id only while the tab is on its page', () => {
-  assert.equal(stillOnPage('https://x.test/signup#jobadabra-fill', 'https://x.test/signup'), true);
+  assert.equal(stillOnPage('https://x.test/signup#jobpilotto-fill', 'https://x.test/signup'), true);
   assert.equal(stillOnPage('https://x.test/signup', 'https://x.test/signup-application#job'), false);
   assert.equal(stillOnPage('https://x.test/signup', undefined), true, 'tab gone: nothing to protect');
 });

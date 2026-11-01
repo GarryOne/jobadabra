@@ -136,7 +136,7 @@
   // slot visibly changed. A file the person chose stays; one this extension attached earlier is replaced by a different file (a CV tailored later).
   async function attach(slot, input, file, revealed) {
     window.__jobadabraReadBack?.baseline(input);   // what the slot showed before our file (page/read-back.js): a name there now is not ours
-    const ours = input.dataset.jobadabraFile;
+    const ours = input.dataset.jobadabraInputFile;
     if (input.files?.length && !(ours && input.files[0].name === ours && ours !== file.name)) return {ok: true, why: 'already holds a file'};
     const holder = revealed ? input.closest('fieldset, form') || input.parentElement || slot.el : slot.el;   // a revealed input's own area, not the trigger's
     const before = holder.outerHTML.length;
@@ -144,7 +144,7 @@
     const transfer = new DataTransfer();
     transfer.items.add(new File([bytes], file.name, {type: file.type || 'application/pdf'}));
     input.files = transfer.files;
-    input.dataset.jobadabraFile = file.name;
+    input.dataset.jobadabraInputFile = file.name;
     slot.el.dataset.jobadabraFile = file.name;
     (window.__jobadabraAttached ||= new Set()).add(file.name);   // by name, for a field the page redraws (the mark above is lost with the element)
     input.dispatchEvent(new Event('input', {bubbles: true}));

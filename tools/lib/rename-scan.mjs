@@ -3,8 +3,9 @@
 import {execFileSync} from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
+import {fileURLToPath} from 'node:url';
 
-const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..', '..');
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');   // Why (1 Nov 2026, CI Windows red): URL.pathname is /D:/a/... there and doubled the drive letter
 export const MAP_FILE = path.join(root, 'tools', 'rename-map.json');
 const TOKEN = /[A-Za-z0-9_-]*job[-_ ]?pilotto[A-Za-z0-9_-]*/gi;
 const BINARY = /\.(png|jpe?g|gif|ico|icns|pdf|zip|woff2?|ttf|mp4|webm|gz|sqlite|dmg|exe)$/i;

@@ -5,7 +5,7 @@ import {ticked, pressed, whenFree} from '../../lib/free-click.mjs';
 
 const fakeTab = failures => {
   const calls = {waits: 0, checks: 0, clicks: 0};
-  return {calls, url: () => 'https://jobs.example/e2e/signup#jobadabra-fill', evaluate: async () => false, waitForFunction: async () => { calls.waits += 1; },
+  return {calls, url: () => 'https://jobs.example/e2e/signup#jobpilotto-fill', evaluate: async () => false, waitForFunction: async () => { calls.waits += 1; },
     check: async () => { calls.checks += 1; if (calls.checks <= failures) throw new Error('Clicking the checkbox did not change its state'); },
     click: async () => { calls.clicks += 1; }};
 };

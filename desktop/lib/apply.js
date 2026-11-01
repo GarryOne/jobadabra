@@ -21,7 +21,7 @@ import {expectTab} from './tab-expect.js';
 import * as review from './review.js';
 import {openFormTab} from './form-tab.js';
 
-export const FILL_MARK = 'jobadabra-fill'; // must match extension/background.js
+export const FILL_MARK = 'jobpilotto-fill'; // must match extension/background.js
 
 // Saved jobs first, then by fit.
 const best = (a, b) => (b.status === 'saved') - (a.status === 'saved') || (b.fit ?? -1) - (a.fit ?? -1);
@@ -229,7 +229,7 @@ export async function inApp(storage, available = terminals.available) {
 
 // The app opens no tab for an Apply with Claude session. claude-in-chrome acts only on tabs in its own group and
 // cannot see one the app opened (tabs_context_mcp: "No tab group exists for this session"), so Claude made a second
-// tab, without the mark, beside the app's (1 Oct 2026). The session opens the one tab itself, with #jobadabra-fill.
+// tab, without the mark, beside the app's (1 Oct 2026). The session opens the one tab itself, with #jobpilotto-fill.
 const openForm = () => {};
 
 export async function claudeOne(storage, url, launch = session.launch, binary = claudeBinary, kit = hasKit, details = null) {

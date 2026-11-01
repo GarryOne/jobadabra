@@ -43,12 +43,12 @@ export async function bindSession(tabId, answered, carried = '') {
   return true;
 }
 
-// The session named in the tab's own address (#jobadabra-fill=<id>) is kept on the tab at once; and the mark a carried page gets names it again.
+// The session named in the tab's own address (#jobpilotto-fill=<id>) is kept on the tab at once; and the mark a carried page gets names it again.
 export async function bindMark(tabId, url) {
   const named = parseMark(url);
   if (named) await chrome.storage.session.set({[KEY.session(tabId)]: named}).catch(() => {});
 }
 export async function markFor(tabId) {
   const owner = await sessionOf(tabId);
-  return owner ? `jobadabra-fill=${owner}` : 'jobadabra-fill';
+  return owner ? `jobpilotto-fill=${owner}` : 'jobpilotto-fill';
 }

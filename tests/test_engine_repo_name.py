@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-OLD = re.compile(r'GarryOne\\?/' + 'jobadabra' + r'(?![\w-])')   # also the escaped regex form GarryOne\/...
+OLD = re.compile(r'GarryOne\\?/' + 'job-pilotto' + r'(?![\w-])')   # also the escaped regex form GarryOne\/...
 # Dated specs are history; the app's own test feeds an old-name workflow file to prove the app rewrites it.
 ALLOWED = ('docs/superpowers/specs/', 'desktop/test/engine-repo.test.js')
 

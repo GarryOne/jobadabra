@@ -200,7 +200,7 @@ export async function openReplay(caseDirs, {extensionDir, ask = false, loose = f
       await tab.setViewportSize({width: view.width, height: view.height}).catch(() => {});
       if (await forceScrollbar(tab, states[0]?.view?.scrollbar)) say(`row: ${name}: the live page's scrollbar forced: ${states[0].view.scrollbar} px (lib/scrollbar.mjs)`);   // the live run's window size (a frame's size is in the AI's sketch)
       say(`row: ${name}: ${row.documents.size} pages, ${row.sheets.size} stylesheets, ${presses.length} live presses`);
-      await tab.goto(`${start.url.replace(/#.*$/, '')}#jobadabra-fill`, {waitUntil: 'domcontentloaded'}).catch(() => {});
+      await tab.goto(`${start.url.replace(/#.*$/, '')}#jobpilotto-fill`, {waitUntil: 'domcontentloaded'}).catch(() => {});
       const clock = stillClock({seconds: stillSeconds, startedAt: Date.now()});
       const steps = stepShooter({tabOf: () => tab, kindOf: () => kindFromLog(log()), dir: shotDir || caseDir, prefix: 'replay-step'});   // one full-page picture per recorded state the replay reaches, beside end-replay.png
       let followed = 0, divergence = '', firstMissMs = null, endedBy = 'cap';

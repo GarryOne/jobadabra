@@ -20,7 +20,7 @@ async function start({cv = {tailored: false, working: false}, silent = false} = 
     '/extension/event': body => { app.events.push(JSON.parse(body || '{}').type); return {ok: true}; }};
   const real = await startRealExtension({extensionDir: process.env.REAL_EXTENSION_DIR || undefined, allowAllSites: true, answer});
   await real.context.route('https://jobs.example.test/**', route => route.fulfill({status: 200, contentType: 'text/html', body: FORM}));
-  await real.page.goto(`${URL}#jobadabra-fill`);   // the app opens the tab with the mark: the panel mounts
+  await real.page.goto(`${URL}#jobpilotto-fill`);   // the app opens the tab with the mark: the panel mounts
   await real.page.waitForFunction(() => document.getElementById('jobadabra-review-host')?.shadowRoot?.querySelector('.open-app:not([hidden])'), null, {timeout: 25000});
   await real.page.waitForFunction(() => !document.getElementById('jobadabra-review-host').shadowRoot.querySelector('.jp.working'), null, {timeout: 25000});   // the first fill is over
   await real.page.waitForTimeout(1000);

@@ -62,7 +62,7 @@
     return null;
   };
   // The file this extension attached to a slot (page/upload.js marks the input and the slot with its name), if any.
-  const ours = input => input.dataset?.jobadabraFile || input.closest?.('[data-jobadabra-file]')?.dataset.jobadabraFile || '';
+  const ours = input => input.dataset?.jobadabraInputFile || input.closest?.('[data-jobadabra-file]')?.dataset.jobadabraFile || '';
   // What an upload slot shows: its area up from the input while no other visible control lives there (at most 10 boxes), and the slot this extension marked when it attached.
   const slotText = input => {
     let box = input;

@@ -74,7 +74,7 @@ test('the harness drives the app as its window would: settings, the contact, App
     const applied = await app.call('applyOne', 'https://jobs.example.org/job/42', {title: 'Engineer', company: 'Example'});
     assert.equal(applied.ok, true, JSON.stringify(applied));
     await new Promise(resolve => setTimeout(resolve, 200));
-    assert.ok(opened.some(url => url.startsWith('https://jobs.example.org/job/42') && url.includes('#jobadabra-fill')), `opened: ${JSON.stringify(opened)}`);
+    assert.ok(opened.some(url => url.startsWith('https://jobs.example.org/job/42') && url.includes('#jobpilotto-fill')), `opened: ${JSON.stringify(opened)}`);
     assert.ok((await app.call('sessions')).some(session => session.url === 'https://jobs.example.org/job/42'));
     await assert.rejects(app.call('noSuchCommand'), /unknown command/);
   } finally { await app.close(); }

@@ -69,7 +69,7 @@ test('Always on follows the switch: variables set when on, removed when off', as
   storage.setSecret('GITHUB_TOKEN', 'ghu_x');
   poolShare.set(storage, false);
   await github.updateRepo(storage, {fetcher});
-  assert.ok(calls.some(c => c.startsWith('DELETE') && c.includes('JOBADABRA_SHARE_EMPLOYERS')), calls.join('\n'));
+  assert.ok(calls.some(c => c.startsWith('DELETE') && c.includes('JOB_PILOTTO_SHARE_EMPLOYERS')), calls.join('\n'));
   assert.ok(!calls.some(c => c.startsWith('POST') && c.includes('/variables')));
   calls.length = 0;
   poolShare.set(storage, true);

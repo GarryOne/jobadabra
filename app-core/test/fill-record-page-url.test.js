@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-const FORM_URL = 'https://careers.example.test/careers?job=restored#jobadabra-fill';
+const FORM_URL = 'https://careers.example.test/careers?job=restored#jobpilotto-fill';
 const JOB_URL = 'http://careers.example.test/careers?job=original';
 const NEXT_URL = 'https://careers.example.test/confirmation';
 

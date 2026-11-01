@@ -44,7 +44,7 @@ test('an Apply from the posting to the fill\'s end is working then one verdict, 
     await app.context.route('https://jobs.example.test/**', route => route.fulfill({status: 200, contentType: 'text/html', body: /\/form/.test(route.request().url()) ? FORM : POSTING}));
     await app.page.exposeFunction('__rec', sample => { samples.push(sample); });
     await app.page.addInitScript(SAMPLER);
-    await app.page.goto('https://jobs.example.test/post#jobadabra-fill');   // the app opens the posting with the fill mark
+    await app.page.goto('https://jobs.example.test/post#jobpilotto-fill');   // the app opens the posting with the fill mark
     // The posting reloads itself to /post2 (the second load of the owner's recording). The Apply press waits until that document has been sampled as long as the judge asks of it (the sampler's clock, not what it shows:
     // a document that shows nothing must reach the judge, which reports it), so every run covers the posting, its reload and the form.
     await app.page.waitForURL('**/post2', {timeout: 20000});

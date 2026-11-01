@@ -6,7 +6,7 @@ import {test} from 'node:test';
 const calls = [];
 globalThis.chrome = {
   storage: {session: {get: async key => ({[key]: true}), set: async () => {}, remove: async () => {}}},
-  tabs: {get: async id => ({id, url: 'https://jobs.example.test/apply#jobadabra-fill'})},
+  tabs: {get: async id => ({id, url: 'https://jobs.example.test/apply#jobpilotto-fill'})},
   debugger: {attach: async target => { calls.push(['attach', target.tabId]); }, detach: async target => { calls.push(['detach', target.tabId]); }},
 };
 const {attachDebugger, debuggerUsers, detachDebugger, forgetDebuggerUsers} = await import('../../extension/stop-state.js');

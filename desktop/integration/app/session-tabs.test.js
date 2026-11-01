@@ -14,7 +14,7 @@ before(async () => { kit = await startSessionKit(); });
 after(async () => { await kit?.close(); });
 
 const formsOpen = () => kit.handlers.get('formsOpen')();
-const markOf = address => /#jobadabra-fill=([^&]+)/.exec(address)?.[1] || '';
+const markOf = address => /#jobpilotto-fill=([^&]+)/.exec(address)?.[1] || '';
 
 test('the form tab is closed: the app sees it, and Reopen opens the form again with its fill mark, for the same session', async () => {
   const {session} = await kit.applyOne(JOB.url, JOB, 'tab-closed');
@@ -62,8 +62,8 @@ test('two applications side by side: each form tab binds to its own session, and
   assert.deepEqual((await formsOpen()).ids.filter(id => id.startsWith('side-')).sort(), ['side-one', 'side-two']);
   // Both pages are on hosts that say nothing of their job (an agency's own site, as in the Coop and Manor case of 8 Oct 2026), so only the session the tab carries can place them.
   // The form of the second job reports 9 of 12 left; the first's page is a sign-in with nothing counted: neither shows on the other's card (8 Oct 2026: one job's sign-in page on another's card).
-  await chrome.reviewReport({url: 'https://forms.second-agency.test/apply/22#jobadabra-fill=side-two', title: 'Apply', tab: 22, session: 'side-two', total: 12, left: 9, role: 'form'});
-  await chrome.reviewReport({url: 'https://login.first-agency.test/signin#jobadabra-fill=side-one', title: 'Sign in', tab: 21, session: 'side-one', total: 2, left: 2, role: 'account'});
+  await chrome.reviewReport({url: 'https://forms.second-agency.test/apply/22#jobpilotto-fill=side-two', title: 'Apply', tab: 22, session: 'side-two', total: 12, left: 9, role: 'form'});
+  await chrome.reviewReport({url: 'https://login.first-agency.test/signin#jobpilotto-fill=side-one', title: 'Sign in', tab: 21, session: 'side-one', total: 2, left: 2, role: 'account'});
   const states = Object.fromEntries(kit.review.allStates().filter(state => state.id.startsWith('side-')).map(state => [state.id, state]));
   assert.deepEqual([states['side-two'].total, states['side-two'].left, !!states['side-two'].account], [12, 9, false], 'the second job\'s card does not show its own form');
   assert.equal(states['side-one'].account, true, 'the first job\'s card does not show its sign-in page');

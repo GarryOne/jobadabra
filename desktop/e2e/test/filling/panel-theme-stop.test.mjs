@@ -14,7 +14,7 @@ const open = async () => {
     '/extension/review': () => ({matched: 's1', theme: state.theme, session: {id: 's1', title: 'Senior Site Reliability Engineer', company: 'Acme', status: 'running', live: false, kind: 'form', url: 'https://jobs.example.test/apply'}, cv: {tailored: false, working: false}, watch: [], commands: []})}});
   await app.context.route('https://jobs.example.test/**', route => route.fulfill({status: 200, contentType: 'text/html', body: FORM}));
   await app.page.goto('https://jobs.example.test/apply');
-  await app.page.evaluate(() => { location.hash = 'jobadabra-fill'; });
+  await app.page.evaluate(() => { location.hash = 'jobpilotto-fill'; });
   await app.page.waitForFunction(() => document.getElementById('jobadabra-review-host')?.shadowRoot?.querySelector('.report-btn'), null, {timeout: 20000});
   const worker = await extensionWorker(app.context);
   const step = text => worker.evaluate(async words => { const [tab] = await chrome.tabs.query({url: 'https://jobs.example.test/*'}); return chrome.tabs.sendMessage(tab.id, {type: 'panelStep', text: words}); }, text);

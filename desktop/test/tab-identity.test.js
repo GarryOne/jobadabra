@@ -9,7 +9,7 @@ import * as review from '../lib/review.js';
 import {snapshot, startRun} from '../../extension/tab-memory.js';
 
 const coop = {id: 's1', url: 'https://jobs.coop.ch/Coop/job/Nyon-Assistante/1405093533/', company: 'Coop Suisse', status: 'ended', startedAt: '2026-10-08T13:09:15Z'};
-const form = (tab, boot, extra = {}) => ({url: 'https://career2.successfactors.eu/careers?company=Coop#jobadabra-fill', title: 'Career Opportunities', tab, boot, session: 's1', left: 13, total: 19, ...extra});
+const form = (tab, boot, extra = {}) => ({url: 'https://career2.successfactors.eu/careers?company=Coop#jobpilotto-fill', title: 'Career Opportunities', tab, boot, session: 's1', left: 13, total: 19, ...extra});
 const RUN = '1759928000000', NEXT = '1759990000000';
 let file;
 beforeEach(() => { review._reset(); file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'jp-tabs-')), 'review-states.json'); review.persist(file, ['s1']); });
@@ -27,7 +27,7 @@ test('the app restarts: the session knows its tab at once, and the next tab repo
 
 test('the extension reloads (its own update, or ↻ by hand): its tab memory and run id come back, the form stays open', () => {
   const items = {boot: RUN, 'session:812': 's1', 'armed:812': true, 'job:812': coop.url};
-  const tabs = [{id: 812, url: 'https://career2.successfactors.eu/careers?company=Coop#jobadabra-fill'}, {id: 9, url: 'https://www.youtube.com/'}];
+  const tabs = [{id: 812, url: 'https://career2.successfactors.eu/careers?company=Coop#jobpilotto-fill'}, {id: 9, url: 'https://www.youtube.com/'}];
   const kept = snapshot(items, tabs, 1000);
   assert.deepEqual(kept.tabs, {812: 'career2.successfactors.eu'});   // only the tabs it remembers something about
   const run = startRun({kept, tabsNow: tabs});               // no time limit: a reload by hand hours later is the same run
@@ -128,7 +128,7 @@ test('a session bound by its page keeps its tab even when the tab report carries
 // after Apply still has its kit. Held on 14 Oct 2026 when the sibling gap (a tab opened while the worker booted, settle-tabs.js) was fixed.
 test('a worker waking with empty storage gets each tab\'s posting and session back', () => {
   const items = {boot: RUN, 'from:7': 'https://boards.example/jobs/1', 'session:7': 'ca582c3c', 'armed:7': true};
-  const tabs = [{id: 7, url: 'https://boards.example/jobs/1#jobadabra-fill=ca582c3c'}];
+  const tabs = [{id: 7, url: 'https://boards.example/jobs/1#jobpilotto-fill=ca582c3c'}];
   const run = startRun({kept: snapshot(items, tabs, 1000), tabsNow: tabs});
   assert.equal(run.boot, RUN);
   assert.equal(run.restore['from:7'], 'https://boards.example/jobs/1');

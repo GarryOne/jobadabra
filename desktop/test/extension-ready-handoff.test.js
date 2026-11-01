@@ -7,7 +7,7 @@ import {createReadyHandoff, restoreInPage} from '../../extension/ready-handoff.j
 
 const HANDOFF = {url: 'https://job-boards.greenhouse.io/acme/jobs/1#x', cookies: [{url: 'https://job-boards.greenhouse.io/', name: 'gh', value: 'a'}, {url: 'https://job-boards.greenhouse.io/', name: 'bad', value: 'b'}],
   localStorage: {draft: '1'}, sessionStorage: {}, snapshot: {fields: [{id: 'first_name', type: 'text', value: 'Ada'}], files: []}};
-const MARKED = 'https://job-boards.greenhouse.io/acme/jobs/1?gh_src=x#jobadabra-fill=s1';
+const MARKED = 'https://job-boards.greenhouse.io/acme/jobs/1?gh_src=x#jobpilotto-fill=s1';
 
 function world(answer, granted = true) {
   const session = {}, cookies = [], updates = [], scripts = [], asks = [];
@@ -44,8 +44,8 @@ test('a hand-off: its cookies set, the night\'s page loaded with the same mark, 
   const w = world({ok: true, handoff: HANDOFF});
   assert.equal(await w.flow.takeHandoff(7, MARKED, 'loading'), true);
   assert.deepEqual(w.cookies.map(c => c.name), ['gh'], 'a cookie Chrome refuses is skipped');
-  assert.deepEqual(w.updates, [[7, 'https://job-boards.greenhouse.io/acme/jobs/1#jobadabra-fill=s1']], 'the fill mark (the app\'s session) goes with it');
-  assert.equal(await w.flow.takeHandoff(7, 'https://job-boards.greenhouse.io/acme/jobs/1#jobadabra-fill=s1', 'loading'), false, 'the second load is not asked again');
+  assert.deepEqual(w.updates, [[7, 'https://job-boards.greenhouse.io/acme/jobs/1#jobpilotto-fill=s1']], 'the fill mark (the app\'s session) goes with it');
+  assert.equal(await w.flow.takeHandoff(7, 'https://job-boards.greenhouse.io/acme/jobs/1#jobpilotto-fill=s1', 'loading'), false, 'the second load is not asked again');
   assert.equal(await w.flow.restoreHandoff(7), 1);
   assert.equal(w.scripts[0].snapshot.fields[0].value, 'Ada');
   assert.equal(await w.flow.restoreHandoff(7), 0, 'once');
@@ -66,7 +66,7 @@ test('the first page finishes loading while the app still answers: that load wai
     move: async (tabId, url) => { w.updates.push([tabId, url]); }});
   const loading = w.flow.takeHandoff(7, MARKED, 'loading');
   const complete = w.flow.takeHandoff(7, MARKED, 'complete');
-  const night = 'https://job-boards.greenhouse.io/acme/jobs/1#jobadabra-fill=s1';
+  const night = 'https://job-boards.greenhouse.io/acme/jobs/1#jobpilotto-fill=s1';
   assert.equal(await w.flow.takeHandoff(7, night, 'complete'), false, 'another address is not held');
   await new Promise(done => setTimeout(done, 5)); release();
   assert.deepEqual([await loading, await complete], [true, true], 'the first page\'s complete stops too: the fill waits for the night\'s page');
@@ -108,7 +108,7 @@ test('a marked tab looked at only after it loaded: the hand-off is asked now, th
   assert.equal(await w.flow.takeLate(7, MARKED), true, 'sent on to the night\'s page: the caller stops, that load fills it');
   assert.deepEqual(w.asks, [['/extension/ready-handoff', MARKED]]);
   assert.equal(w.updates.length, 1);
-  const night = 'https://job-boards.greenhouse.io/acme/jobs/1#jobadabra-fill=s1';
+  const night = 'https://job-boards.greenhouse.io/acme/jobs/1#jobpilotto-fill=s1';
   assert.equal(await w.flow.takeHandoff(7, night, 'loading'), false, 'the night\'s page loading is not asked again');
   assert.equal(await w.flow.restoreHandoff(7), 1);
   assert.equal(w.scripts[0].fromNight, true, 'the page is marked as the night\'s (restoreInPage)');
@@ -124,7 +124,7 @@ test('a late look with no hand-off, or one already asked, or a page the app did 
   assert.deepEqual([unmarked.asks, unmarked.updates], [[], []], 'a next page (no fill mark) is never asked');
   const waiting = world({ok: true, handoff: HANDOFF});
   await waiting.flow.takeHandoff(9, MARKED, 'loading');   // asked while loading, the night's page came: its storage still waits for the look
-  assert.equal(await waiting.flow.takeLate(9, 'https://job-boards.greenhouse.io/acme/jobs/1#jobadabra-fill=s1'), false);
+  assert.equal(await waiting.flow.takeLate(9, 'https://job-boards.greenhouse.io/acme/jobs/1#jobpilotto-fill=s1'), false);
   assert.equal(waiting.scripts.length, 1, 'the night\'s storage and mark are put back before the fill');
 });
 

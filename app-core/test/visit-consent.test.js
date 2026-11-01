@@ -89,7 +89,7 @@ test('a refresh looks at the page again, and the popup has a permanent Apply for
   assert.match(read('popup.html'), /id="apply-here" hidden/);
   assert.match(read('popup.js'), /show\(popupControls\(mode\)\);[\s\S]*type: 'applyHere'/);   // shown through the one gate (popup-controls.js: 'apply-here' on a tab opened to apply)
   const messages = read('messages-panel.js');
-  assert.match(messages, /message\?\.type === 'applyHere'[\s\S]*#jobadabra-fill[\s\S]*not opened by the Jobadabra app/);
+  assert.match(messages, /message\?\.type === 'applyHere'[\s\S]*#jobpilotto-fill[\s\S]*not opened by the Jobadabra app/);
 });
 
 // 10 Oct 2026: the popup's "Apply on this page" cleared `started` but not the "Apply already pressed on this page" memory (dede94a clears that on a reload only), so on a page

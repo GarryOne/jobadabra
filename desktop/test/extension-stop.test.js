@@ -26,7 +26,7 @@ globalThis.chrome = {
     async getTargets() { return attachedTargets; },
     onDetach: {addListener(fn) { detachListener = fn; }},
   },
-  tabs: {async get(id) { if (fail.gone.has(id)) throw new Error(`No tab with id: ${id}`); return null; }, async query() { return [{id: 5, url: 'https://github.com/x/y/pull/1#jobadabra-fill=s1'}, {id: 6, url: 'https://example.com/'}]; }, async sendMessage(id, message) { calls.told.push([id, message.type]); if (message.type === 'stopped' && fail.heard.has(id)) return {stopped: true}; if (message.type === 'stopped') throw new Error('Could not establish connection. Receiving end does not exist.'); }, onRemoved: {addListener() {}}},
+  tabs: {async get(id) { if (fail.gone.has(id)) throw new Error(`No tab with id: ${id}`); return null; }, async query() { return [{id: 5, url: 'https://github.com/x/y/pull/1#jobpilotto-fill=s1'}, {id: 6, url: 'https://example.com/'}]; }, async sendMessage(id, message) { calls.told.push([id, message.type]); if (message.type === 'stopped' && fail.heard.has(id)) return {stopped: true}; if (message.type === 'stopped') throw new Error('Could not establish connection. Receiving end does not exist.'); }, onRemoved: {addListener() {}}},
   scripting: {async executeScript(options) { if (fail.page && options.func?.name === 'stoppedPage') throw new Error('cannot access a chrome:// page'); calls.scripted.push(options.target.tabId); calls.funcs.push([options.target.tabId, options.func?.name || '']); return options.func?.name === 'startedPage' ? [{result: pageWasStopped}] : []; }},
 };
 const reached = [];   // every network call a test tried: none leaves (the stub refuses), and none may aim at this Mac's app (CLAUDE.md: tests never touch the owner's live app)
@@ -38,7 +38,7 @@ const reset = () => { fail.keep = false; fail.page = false; fail.marks = false; 
 
 test('Stop clears every armed tab\'s state, keeps what is not a tab\'s, and says it is stopped', async () => {
   reset();
-  Object.assign(store, {'armed:5': true, 'session:5': 's1', 'from:5': 'https://x.test/job', 'job:5': 'https://x.test/job', 'carried:5': 'https://x.test/job#jobadabra-fill', 'submit:5': 1, 'judged:5': 1,
+  Object.assign(store, {'armed:5': true, 'session:5': 's1', 'from:5': 'https://x.test/job', 'job:5': 'https://x.test/job', 'carried:5': 'https://x.test/job#jobpilotto-fill', 'submit:5': 1, 'judged:5': 1,
     'armed:7': true, 'session:7': 's2', boot: 'run-1', 'armed:8': false});
   assert.equal(stop.isStopped(), false);
   const done = await stop.stopAll('the person pressed Stop');

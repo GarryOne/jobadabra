@@ -259,13 +259,13 @@ test('Always on: the OpenAI family runs on GitHub as the OpenAI API engine with 
   const github = await import('../lib/github.js');
   const payload = (settings, secrets) => github.payload({settings: () => settings, saveSettings: () => {}, readText: () => '', secret: name => secrets[name] || ''});
   const codex = payload({aiEngine: 'codex', codex: {path: '/x/codex'}}, {OPENAI_API_KEY: 'sk-o', NOTION_TOKEN: 'ntn'});
-  assert.equal(codex.variables.JOBADABRA_AI_ENGINE, 'openai');
+  assert.equal(codex.variables.JOB_PILOTTO_AI_ENGINE, 'openai');
   assert.equal(codex.secrets.OPENAI_API_KEY, 'sk-o');
   assert.ok(!('JOBADABRA_CODEX_BIN' in codex.variables));
-  assert.ok(codex.variables.JOBADABRA_SCORE_MODEL, 'the AI steps run: the OpenAI key is there');
+  assert.ok(codex.variables.JOB_PILOTTO_SCORE_MODEL, 'the AI steps run: the OpenAI key is there');
   const claude = payload({aiEngine: 'cli'}, {ANTHROPIC_API_KEY: 'sk-a'});
   assert.ok(!('JOBADABRA_AI_ENGINE' in claude.variables));
-  assert.ok(claude.removed.includes('JOBADABRA_AI_ENGINE'));
+  assert.ok(claude.removed.includes('JOB_PILOTTO_AI_ENGINE'));
 });
 
 test('Codex Verify is as locked down as a call: same folder rules, tools and shell off, no web search; the result is kept', async () => {

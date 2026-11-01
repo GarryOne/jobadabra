@@ -21,7 +21,7 @@ export function restoreInPage(handoff) {
 
 // deps: {chrome, api(path, init), sessionGet(key), move(tabId, url): tabs.js moveTab (so the move counts as the extension's own, never an outside link), decide(what, fields),
 // mark: the app's fill mark (background.js FILL_MARK)}.
-export function createReadyHandoff({chrome, api, sessionGet, move, decide = () => {}, mark: fillMark = 'jobadabra-fill'}) {
+export function createReadyHandoff({chrome, api, sessionGet, move, decide = () => {}, mark: fillMark = 'jobpilotto-fill'}) {
   const asking = new Map();   // tabId -> {url, ask}: the ask still waiting on the app
   // While a marked tab first loads: ask once. -> true when the tab was sent on to the night's page (the caller stops; that load comes back here).
   // The page can finish loading while the app still answers (e2e, 18 Oct 2026: the fill began on the first page, then again on the night's): that

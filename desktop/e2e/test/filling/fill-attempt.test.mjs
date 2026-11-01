@@ -18,7 +18,7 @@ const page = url => ({url: () => url, isClosed: () => false});
 
 test('accepts done and error on the read after the last sleep', async () => {
   for (const terminal of ['done', 'error']) {
-    const time = clock(), tab = page('https://example.test/apply#jobadabra-fill=ours');
+    const time = clock(), tab = page('https://example.test/apply#jobpilotto-fill=ours');
     let reads = 0;
     const result = await waitForFill({...time, capMs: 1000, pickTab: () => ({tab, tabs: 1}),
       readState: async () => (++reads === 3 ? {state: terminal} : {state: 'running'})});
@@ -31,7 +31,7 @@ test('accepts done and error on the read after the last sleep', async () => {
 
 // Why (1 Nov 2026, main 47580bb run 41342226333): a fill read that never settled left extension-form-shapes silent until the file's 180 s limit; the wait now ends at its cap and names the read.
 test('a read of the page that never answers ends at the cap, names the read and keeps the last good state', async () => {
-  const tab = page('https://example.test/apply#jobadabra-fill=ours');
+  const tab = page('https://example.test/apply#jobpilotto-fill=ours');
   let reads = 0;
   const result = await waitForFill({capMs: 30, readGraceMs: 0, pickTab: () => ({tab, tabs: 1}), readState: () => (++reads === 1 ? Promise.resolve({state: 'running'}) : new Promise(() => {}))});
   assert.deepEqual([result.ok, result.hung, result.state.state, result.state.last], [false, true, 'unreadable', {state: 'running'}]);
@@ -39,7 +39,7 @@ test('a read of the page that never answers ends at the cap, names the read and 
 });
 
 test('exhaustion keeps the last rejected read, URL and tab count without reading again', async () => {
-  const time = clock(), tab = page('https://example.test/apply#jobadabra-fill=ours');
+  const time = clock(), tab = page('https://example.test/apply#jobpilotto-fill=ours');
   let reads = 0;
   const result = await waitForFill({...time, capMs: 750, pickTab: () => ({tab, tabs: 2}),
     readState: async () => (++reads <= 3 ? {state: 'unreadable', raw: `read-${reads}`} : {state: 'done'})});
@@ -53,13 +53,13 @@ test('exhaustion keeps the last rejected read, URL and tab count without reading
 });
 
 test('re-resolves this attempt among two tabs at one address, including after navigation', async () => {
-  const time = clock(), address = 'https://example.test/apply', url = `${address}#jobadabra-fill=ours`;
-  const old = page(`${address}#jobadabra-fill=old`), blank = page('about:blank');
+  const time = clock(), address = 'https://example.test/apply', url = `${address}#jobpilotto-fill=ours`;
+  const old = page(`${address}#jobpilotto-fill=old`), blank = page('about:blank');
   let tabs = [old, blank];
   const browser = {pages: {[url]: blank}, context: {pages: () => tabs}};
   const result = await waitForFill({...time, capMs: 1000, pickTab: () => ({tab: formTab(browser, url), tabs: tabs.length}),
     readState: async tab => {
-      if (time.now() === 0) { tabs = [old, page('https://example.test/next#jobadabra-fill=ours')]; return null; }
+      if (time.now() === 0) { tabs = [old, page('https://example.test/next#jobpilotto-fill=ours')]; return null; }
       return {state: tab === old || tab === blank ? 'running' : 'done'};
     }});
   assert.equal(result.ok, true);
@@ -76,7 +76,7 @@ test('a running fill at exhaustion is classified as timing by G5', async () => {
 });
 
 test('opening waits check a tab first seen on the last read', async () => {
-  const time = clock(), tab = page('https://example.test/apply#jobadabra-fill=ours');
+  const time = clock(), tab = page('https://example.test/apply#jobpilotto-fill=ours');
   const result = await waitForFill({...time, capMs: 500, pickTab: () => ({tab: time.now() ? tab : null, tabs: 1}),
     readState: async () => ({opened: true}), accept: state => state?.opened === true});
   assert.equal(result.ok, true);
@@ -106,7 +106,7 @@ function applyHarness({spooled = true, reloadOwn = false, doneAtMs = null, loade
 
 test('Apply ignores the global spool tail and reports its rejected read even if the dump sees done', async () => {
   const h = applyHarness();
-  await assert.rejects(onStepClock(1000, h.apply), /never finished filling Engineer \(the fill did not finish within 1 s \(last seen: {"state":"running","read":3}\), read on https:\/\/example.test\/apply#jobadabra-fill=ours, 2 tab\(s\)\)/);
+  await assert.rejects(onStepClock(1000, h.apply), /never finished filling Engineer \(the fill did not finish within 1 s \(last seen: {"state":"running","read":3}\), read on https:\/\/example.test\/apply#jobpilotto-fill=ours, 2 tab\(s\)\)/);
   assert.equal(h.reads(), 3, 'no fresh state read while formatting the failure');
   assert.equal(h.dumps(), 1);
   assert.equal(h.listeners.size, 0, 'listeners leave with the attempt');
@@ -159,7 +159,7 @@ test('every ordinary apply step has one hang cap and setup remains critical', ()
 
 // Night run 41253960704 (apply-3of3 Tailor CV, a macOS runner stalled ~25 s): the fill ended at 94 s, the wait's own 90 s cap had ended it at 90 s.
 test('a fill that ends after 90 s is read while the step\'s clock still runs: the wait has no cap of its own', async () => {
-  const time = clock(), tab = page('https://boards.example.test/job#jobadabra-fill=ours');
+  const time = clock(), tab = page('https://boards.example.test/job#jobpilotto-fill=ours');
   stepClock(300000);
   try {
     const result = await waitForFill({...time, pickTab: () => ({tab, tabs: 2}),

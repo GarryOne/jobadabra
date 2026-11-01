@@ -217,7 +217,7 @@ export async function runCase(item, {extensionDir} = {}) {
     await routeSyntheticNavigation(run.context, run.page, item, route => answerPage(route, pages, statuses, delays, navigation.redirects));
     let opened = 0;   // every tab a page or the extension opened during the run (a tab loop closes the tab behind it: the count at the end stays 1)
     run.context.on('page', open => { if (!open.url().startsWith('chrome-extension://')) opened += 1; });
-    await step('goto', () => run.page.goto(`${navigation.startUrl}#jobadabra-fill`, {waitUntil: 'domcontentloaded'}));
+    await step('goto', () => run.page.goto(`${navigation.startUrl}#jobpilotto-fill`, {waitUntil: 'domcontentloaded'}));
     const result = await step('judge', () => judgeCase(item, {run, page: run.page, pages: () => run.context.pages().filter(open => !isExtensionPage(open)), mine: () => run.requests, all: () => run.requests, opened: () => opened}));
     if (!(await step('isolation', () => run.assertIsolated()))) result.failures.push('isolation');
     await step('fillSettled', () => fillSettled(run.page));

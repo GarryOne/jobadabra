@@ -6,7 +6,7 @@
 import {isStopped} from './stop-state.js';
 import {applyState, isWorking, restored, setApply, WORKING} from './apply-state.js';
 
-const FILL_MARK = '#jobadabra-fill';
+const FILL_MARK = '#jobpilotto-fill';
 const WALKED_AWAY = ['typed', 'auto_bookmark', 'generated', 'keyword', 'keyword_generated'];
 
 /**

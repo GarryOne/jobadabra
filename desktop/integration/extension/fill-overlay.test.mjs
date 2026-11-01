@@ -16,7 +16,7 @@ const open = async (answer = {}) => {
   const app = await startRealExtension({extensionDir: process.env.REAL_EXTENSION_DIR || undefined, allowAllSites: true, answer});
   await app.context.route('https://jobs.example.test/**', route => route.fulfill({status: 200, contentType: 'text/html', body: FORM}));
   await app.page.goto(URL);
-  await app.page.evaluate(() => { location.hash = 'jobadabra-fill'; });
+  await app.page.evaluate(() => { location.hash = 'jobpilotto-fill'; });
   await app.page.waitForFunction(() => document.getElementById('jobadabra-review-host')?.shadowRoot?.querySelector('.report-btn'), null, {timeout: 20000});
   const worker = await extensionWorker(app.context);
   // Why-changed (27 Oct 2026, owner: one state, changed only on a verdict): a step is the worker saying the run is on (apply-state.js: `working`); an empty one stands here for the run's end verdict (`done`): a fill pass inside the page no longer says done since #2803, only the fill's end does;
@@ -319,7 +319,7 @@ test('a page the app opened to fill is dimmed at load: the dim is on while the p
       new MutationObserver(seen).observe(document, {childList: true, subtree: true});
       seen();
     });
-    await t.app.page.goto('https://jobs.example.test/late#jobadabra-fill', {waitUntil: 'commit'});   // a fresh document with the mark, as the app opens it; it stays loading until the release
+    await t.app.page.goto('https://jobs.example.test/late#jobpilotto-fill', {waitUntil: 'commit'});   // a fresh document with the mark, as the app opens it; it stays loading until the release
     await t.app.page.waitForFunction(() => !!window.__dimSeen, null, {polling: 50, timeout: 10000})   // Why: a hang guard only; polling by interval because a loading page may draw no frame
       .catch(async () => assert.fail(`no dim while the page was still loading (the page shows ${JSON.stringify(await t.look())})`));
     const seen = await t.app.page.evaluate(() => window.__dimSeen);

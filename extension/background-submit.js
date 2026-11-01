@@ -21,8 +21,8 @@ export async function submissionPage(action, {control = '', seal = ''} = {}) {
   const safe = !!button && !button.disabled && button.getAttribute?.('aria-disabled') !== 'true' && (onTop === button || button.contains(onTop)) && !blocked && !globalThis.__jobadabraStopped;
   const factsOnly = document.querySelectorAll('[data-jobadabra-grounding=unknown], [data-jobadabra-guess]').length === 0 && fields.every(el => {
     if (['submit', 'button', 'reset'].includes(el.type)) return true;
-    // Why (2026-10-28, found by the Full automation e2e): upload.js writes the input's own mark as dataset.jobadabraFile and only the slot's as data-jobadabra-file (read-back.js reads both); reading the slot's attribute on the input matched no CV, so every attachment handed the application over.
-    if (el.type === 'file') return !el.files?.length || (el.dataset?.jobadabraFile || el.closest?.('[data-jobadabra-file]')?.dataset?.jobadabraFile || el.getAttribute?.('data-jobadabra-file')) === el.files[0].name;
+    // Why (2026-10-28, found by the Full automation e2e): upload.js writes the input's own mark as dataset.jobadabraInputFile and only the slot's as data-jobadabra-file (read-back.js reads both); reading the slot's attribute on the input matched no CV, so every attachment handed the application over.
+    if (el.type === 'file') return !el.files?.length || (el.dataset?.jobadabraInputFile || el.closest?.('[data-jobadabra-file]')?.dataset?.jobadabraFile || el.getAttribute?.('data-jobadabra-file')) === el.files[0].name;
     if (['checkbox', 'radio'].includes(el.type) && !el.checked) return true;
     return !clean(el.value || el.getAttribute?.('aria-valuetext') || el.textContent) || el.getAttribute?.('data-jobadabra-grounding') === 'known';
   });

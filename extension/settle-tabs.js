@@ -17,7 +17,7 @@ export function createSettleOpenTabs({arm, memoryReady}) {
       if (armed) {
         // A tab the app opened while this worker was still booting (a Chrome the app started, a worker waking): its mark event was missed, so nobody bound its session or posting;
         // its next page (the form after Apply) then had no job and no kit (e2e Windows, 14 Oct 2026). The mark in its address names both: taken now.
-        if (String(tab.url).includes('#jobadabra-fill') && !(await fromOf(tab.id))) { await startJob(tab.id, stripMark(tab.url)); await bindMark(tab.id, tab.url); }
+        if (String(tab.url).includes('#jobpilotto-fill') && !(await fromOf(tab.id))) { await startJob(tab.id, stripMark(tab.url)); await bindMark(tab.id, tab.url); }
         await arm(tab.id, 'still open'); continue;
       }
       const frames = await chrome.scripting.executeScript({target: {tabId: tab.id, allFrames: true}, func: () => {

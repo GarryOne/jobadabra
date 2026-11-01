@@ -148,7 +148,7 @@ test('a kit fill starts at once: kit and contact details prefetched, no fixed wa
 
 test('a CV tailored after the first fill replaces the one the extension attached, never one the person chose', () => {
   const fill = read('extension/page/upload.js');   // page/upload.js owns attaching a file
-  assert.match(fill, /input\.dataset\.jobadabraFile = file\.name/);
+  assert.match(fill, /input\.dataset\.jobadabraInputFile = file\.name/);
   assert.match(fill, /ours && input\.files\[0\]\.name === ours && ours !== file\.name/);
   const review = readPanel();
   // Why (27 Oct 2026, owner: "remove the line with General CV attached… Tailor in Jobadabra"): the panel has no CV row; tailoring is the app's, which restarts the form with the new CV, so the panel never asks the app to tailor.

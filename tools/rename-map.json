@@ -10,10 +10,6 @@
    "why": "the rename tooling spells the old names"
   },
   {
-   "path": "^tests/test_jobadabra_rename_guard\\.py$",
-   "why": "the guard spells the old names"
-  },
-  {
    "path": "^desktop/lib/app-identity\\.js$",
    "why": "pins the old data folder and Safe Storage name"
   },
@@ -40,9 +36,25 @@
   {
    "path": "^desktop/test/(legacy-name-literals|app-menu)\\.test\\.js$",
    "why": "guards that assert the old name is absent or pinned"
+  },
+  {
+   "path": "^tests/test_engine_repo_name\\.py$",
+   "why": "guards that no file names the old engine repo slug; spells it"
+  },
+  {
+   "path": "^desktop/e2e/recorded/[^/]+/[^/]+\\.html$",
+   "why": "recorded captures of live pages with the extension's marks as they were on the day; a changed capture is a new recorded case that must fail on the old code (tools/recorded-fails-on-old.mjs)"
   }
  ],
  "rules": [
+  {
+   "id": "keep-recorded-why",
+   "match": ".",
+   "paths": "^desktop/e2e/recorded/[^/]+/case\\.json$",
+   "line": "^\\s*\"why\":",
+   "keep": "the story of a captured page, as written on the day",
+   "expires": "never"
+  },
   {
    "id": "keep-safe-storage",
    "match": "^Job Pilotto$",
@@ -159,6 +171,12 @@
    "expires": "after the both-names updater was on stable for 2 releases"
   },
   {
+   "id": "keep-fill-mark",
+   "match": "^jobpilotto-fill$",
+   "keep": "the #jobpilotto-fill address mark the app puts on the tabs it opens: the Chrome Web Store extension updates on its own and arms only on tabs that carry it; flipped in two steps (extension reads both, then the app writes the new one) after the extension rename has been in the store",
+   "expires": "JOB-199 (flip after the extension reading both marks is on the store)"
+  },
+  {
    "id": "in-page-global",
    "match": "^__jobPilotto",
    "step": 4,
@@ -183,7 +201,7 @@
   {
    "id": "keep-repo-var-names",
    "match": "^JOB_PILOTTO_",
-   "paths": "^desktop/(lib/github\\.js|test/(github|cloud|engine-repo)[^/]*)$",
+   "paths": "^desktop/(lib/github\\.js|test/(github|cloud|engine-repo|ai-contract|always-on-trial|notify-choice|telegram-cloud|pool-share)[^/]*)$",
    "line": "^(?!.*process\\.env)",
    "keep": "names of the GitHub secrets and variables the app writes into a user's repo; the public workflows read them as vars./secrets.; they change together with the GitHub-side rename",
    "expires": "when mac-07 has renamed the variables and secrets"
@@ -239,6 +257,13 @@
    "paths": "^(desktop/lib/(keychain|credentials)\\.js|desktop/test/(keychain|credentials)\\.test\\.js|src/secret_store\\.py|tests/test_(secret_store|keychain_copy_to_jobadabra)\\.py|tools/keychain-copy-to-jobadabra\\.sh)$",
    "keep": "the read-old-name fallback of the Keychain, its tests and the one-time copy script",
    "expires": "2 stable releases after the release carrying the rename PR"
+  },
+  {
+   "id": "keep-artifact-fallback",
+   "match": "^job-pilotto-jobs-db$",
+   "paths": "^desktop/(lib/github|test/github-sync-database[^/]*)\\.js$",
+   "keep": "the artifact name a repo's last pre-rename run uploaded: the app reads the new name, then this one",
+   "expires": "2 stable releases after the release carrying the rename PR (JOB-200)"
   },
   {
    "id": "keychain-item",

@@ -54,7 +54,7 @@ test('an upload slot is read by the file it shows: ours or a name that came afte
     const window = openPage(JSDOM, html), input = window.document.getElementById('cv'), RB = window.__jobadabraReadBack;
     const first = RB.fileState(input);   // the first sight: its baseline
     if (later) window.document.getElementById('zone').insertAdjacentHTML('beforeend', later);
-    if (mark) { input.dataset.jobadabraFile = 'cv.pdf'; window.document.getElementById('slot').dataset.jobadabraFile = 'cv.pdf'; }
+    if (mark) { input.dataset.jobadabraInputFile = 'cv.pdf'; window.document.getElementById('slot').dataset.jobadabraFile = 'cv.pdf'; }
     const now = RB.fileState(input);
     window.close();
     return [first, now];
@@ -77,7 +77,7 @@ test('an upload slot is read by the file it shows: ours or a name that came afte
 test('the fill\'s end pass writes each control\'s state on it and returns them, with the CV\'s file name', {skip: !JSDOM}, async () => {
   const window = openPage(JSDOM, SLOT('<div class="file-chip">cv.pdf</div>'));
   const input = window.document.getElementById('cv');
-  input.dataset.jobadabraFile = 'cv.pdf';
+  input.dataset.jobadabraInputFile = 'cv.pdf';
   const rows = JSON.parse(JSON.stringify(await window.__jobadabraReadBack.pass({quietMs: 50, maxMs: 500})));   // out of jsdom's realm
   assert.deepEqual(rows.map(row => [row.field, row.type, row.state]), [['first', 'text', 'committed'], ['cv', 'file', 'committed']]);
   assert.equal(rows[1].file, 'cv.pdf');

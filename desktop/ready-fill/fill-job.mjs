@@ -23,7 +23,7 @@ export const humanCheckIn = page => page.evaluate(() => !!document.querySelector
 
 // The app's "Apply" marks the tab with the address hash; the extension may start the fill by itself, and the person's click on Fill is the other way. Never both: a second pass only repeats the first.
 async function pressFill(page, standIn, address, seconds = 25) {
-  await page.evaluate(() => { location.hash = 'jobadabra-fill'; }).catch(() => {});
+  await page.evaluate(() => { location.hash = 'jobpilotto-fill'; }).catch(() => {});
   for (let waited = 0; waited < 8 && !standIn.started(address); waited++) await wait(1000);
   if (standIn.started(address)) return true;   // it started on its own
   const ready = await page.waitForFunction(() => document.getElementById('jobadabra-review-host')?.shadowRoot?.querySelector('button'), null, {timeout: seconds * 1000}).then(() => true, () => false);

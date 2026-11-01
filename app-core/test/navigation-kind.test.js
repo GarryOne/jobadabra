@@ -1,5 +1,5 @@
 // Which navigations of an armed tab keep the fill mark (extension/tab-pages.js navigationKind): the page moving on by itself does, an address handed in from outside does not
-// (14 Oct 2026: a GitHub PR page opened in an armed tab carried #jobadabra-fill=<session> and got the panel).
+// (14 Oct 2026: a GitHub PR page opened in an armed tab carried #jobpilotto-fill=<session> and got the panel).
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';

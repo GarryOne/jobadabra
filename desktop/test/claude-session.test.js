@@ -36,7 +36,7 @@ test('the prompt names the job and the audit file, uses the open form tab and th
   // Claude opens the one tab with the fill mark, and never fires the extension itself (no ticket, no event).
   assert.match(text, /Open the form tab yourself/);
   assert.match(text, /createIfEmpty true/);
-  assert.match(text, /https:\/\/jobs\.example\.com\/1#jobadabra-fill/);
+  assert.match(text, /https:\/\/jobs\.example\.com\/1#jobpilotto-fill/);
   assert.match(text, /never open a second one/);
   assert.match(text, /no-form/);
   assert.match(text, /read by an applicant, not a developer/);
@@ -133,5 +133,5 @@ test('a session opens its job in Chrome before Claude starts, once per job', asy
 
 test('Claude is told to put the fill mark on every address it navigates the tab to (an address handed in from outside is no longer carried by the extension, #742)', () => {
   const text = session.prompt('https://jobs.example.com/1', {auditFile: 'a.json', session: 'abc123'});
-  assert.match(text, /whenever you navigate that tab to another address yourself, put #jobadabra-fill=abc123 at the end of that address too/);
+  assert.match(text, /whenever you navigate that tab to another address yourself, put #jobpilotto-fill=abc123 at the end of that address too/);
 });

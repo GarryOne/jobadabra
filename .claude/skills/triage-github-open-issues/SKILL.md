@@ -116,6 +116,7 @@ change** in precision or recall, and **its test** (a fixture of a closed false p
 Prefer, in order: teaching the existing judge (lessons, the prejudge prompt, a severity cap in `lib/vision.mjs` `cappedSeverity`), fixing a
 detector's rule at its root, a new plant for an escape, a harness signature for a recurring test mistake (`lib/signatures.mjs` learns these
 on its own after 3 closures). Never a word list or a per-screen exception (CLAUDE.md "Universal first").
+A change to a judge's prompt or checklist is measured with `review-eval.yml` on **2 runs** of the same text first: one run flips about 8 of 39 each way, so a gain counts only beyond those flips (#2864, 1 Nov 2026). A habit, not a CI check.
 
 ## 5. The session report (always, at the end; owner, 9 Oct 2026)
 End every triage session with this report, in the reply (short table cells, explanations under the tables). Every number comes from this

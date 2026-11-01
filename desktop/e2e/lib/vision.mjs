@@ -23,7 +23,7 @@ export const expectedFor = view => (view === 'failure-screenshot' ? 'The whole a
 
 // Why (1 Nov 2026, owner via mac-07 "Teach the 2 AI judges"; #2857 measured): the shapes people closed as by design, the one part both screenshot prompts carry.
 // The checklist (lib/review-checklist.mjs, what CI asks) gets only these: given the whole NOT_FINDINGS list it saw 18 of 39 real bugs instead of 30 (review-eval
-// runs 41331643594, 41331646268). A new shape goes here once, with its issue, and the change is measured with review-eval.yml before it ships.
+// runs 41331643594, 41331646268). A new shape goes here once, with its issue, and the change is measured with review-eval.yml before it ships (the 2-run rule: triage-github-open-issues SKILL.md §4).
 export const BY_DESIGN_SHAPES = `Already judged BY DESIGN by a person (never report these):
 The tip line on Focus, Jobs and Interviews is a text ticker that scrolls from right to left; any picture of it, a failure screenshot too, catches it cut off (#2806).
 A FOLDED line (a one-line summary with Show, Details, a count or an arrow that opens it) keeps its reasons and its way out inside: a folded "Couldn't load your details · 1 …" with Show is not missing a reason or a fix.

@@ -358,8 +358,7 @@ doesn't.
   employer's site) fills with the same job's kit; any other site works with one click on the icon, or
   automatically with the "every job site" permission.
 - 🧠 **Learns per job site**: after a fill that left fields, Claude Haiku writes short reusable notes
-  for that site (about 1¢ per site, once), used on every later form there. With "Help improve Job
-  Pilotto" on, the *structure* of a field it couldn't operate (never your answers) becomes a GitHub
+  for that site (about 1¢ per site, once), used on every later form there. With "Help improve Jobadabra" on, the *structure* of a field it couldn't operate (never your answers) becomes a GitHub
   issue that a daily Claude Code run turns into a tested fix.
 - 📋 **Every fill logged** to 🤖 Agent Runs in Notion with a field-by-field table and debug data, and
   the job is marked Applied when the confirmation page appears.
@@ -750,7 +749,7 @@ overriding a variable your shell already has set. `.env` is git-ignored, never c
 | `OPENAI_API_KEY` | the OpenAI engine's key (Keychain `jobadabra.openai.api_key`, the app's secrets, a GitHub secret for Always on) |
 | `JOBADABRA_OPENAI_SMALL_MODEL`, `_MAIN_MODEL`, `_BIG_MODEL` | the OpenAI tiers' models (defaults `gpt-6-luna`, `gpt-6.1-sol`, `gpt-6.1-sol`) |
 | `JOBADABRA_MONTHLY_BUDGET_USD` | your Anthropic monthly spend limit, for the budget guard (repository variable; default 15) |
-| `ANTHROPIC_ADMIN_KEY` | optional Admin API key (`sk-ant-admin…`, GitHub secret or Keychain `jobadabra.anthropic.admin-key`): exact monthly spend from Anthropic's cost report |
+| `ANTHROPIC_ADMIN_KEY` | optional Admin API key (`sk-ant-admin…`, GitHub secret or Keychain `jobadabra.anthropic.admin_key`): exact monthly spend from Anthropic's cost report |
 | `JOBADABRA_GOOGLE_AUTH_AT` | when you last signed in to Google (set by `google auth --github`); the health check warns before the 7-day Testing limit |
 | `JOBADABRA_INTERVIEW_MODEL` | model for interview reviews (default `claude-sonnet-5-5`) |
 | `DIGEST_BRAND_NAME` | your digest's display name (default `Jobadabra`) — the tool's own name stays generic; this is what your Telegram messages say, e.g. `"SRE Jobadabra"` if you want to keep your own role in the name |
@@ -887,8 +886,7 @@ In the Mac app: **Settings → Gmail and Calendar → Connect Google**. From a t
 python3 -m src.sources.google auth --github
 ```
 
-A Google tab opens: pick your account → "Google hasn't verified this app" → **Advanced → Go to Job
-Pilotto** → tick both read-only permissions → Continue. That's all: the token goes to your Keychain
+A Google tab opens: pick your account → "Google hasn't verified this app" → **Advanced → Go to Jobadabra** → tick both read-only permissions → Continue. That's all: the token goes to your Keychain
 (`jobadabra.google.*`) and your fork's `GOOGLE_*` repository secrets, and it doesn't expire.
 
 This uses the published "Jobadabra" Google app, whose client ships inside the Mac app (it is not in

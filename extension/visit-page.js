@@ -143,7 +143,7 @@ export function closeConsent(want = null) {   // want: {list: true} -> the box's
   const visible = node => { const box = node.getBoundingClientRect(); const look = getComputedStyle(node); return box.width > 0 && box.height > 0 && look.visibility !== 'hidden' && look.display !== 'none'; };
   const words = node => (node.innerText || node.value || node.getAttribute('aria-label') || '').replace(/\s+/g, ' ').trim();
   // Also inside open shadow roots: a banner drawn by web components (Usercentrics: div#usercentrics-root) is invisible to document.querySelectorAll (Hornbach, 11 Oct 2026). Same walk as fill-flow.js pageSketchOf.
-  const deep = selector => { const found = []; const walk = root => { found.push(...root.querySelectorAll(selector)); for (const el of root.querySelectorAll('*')) if (el.shadowRoot && !/^job-?pilotto/.test(el.id)) walk(el.shadowRoot); }; walk(document); return found; };
+  const deep = selector => { const found = []; const walk = root => { found.push(...root.querySelectorAll(selector)); for (const el of root.querySelectorAll('*')) if (el.shadowRoot && !/^jobadabra/.test(el.id)) walk(el.shadowRoot); }; walk(document); return found; };
   const ABOUT = want?.cookiesOnly ? /cookie|traceurs|tracking/i : /cookie|consent|gdpr|privacy|datenschutz|confidentialit|traceurs|tracking/i;   // cookiesOnly: the application flow never touches a privacy or terms box
   // Inside a frame that is itself the consent message (Sourcepoint, TrustArc draw theirs in an iframe), the whole frame is the box.
   const framed = window !== window.top && ABOUT.test(document.body?.innerText || '') && !document.querySelector('input[type=password]') ? [document.body] : [];

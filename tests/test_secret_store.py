@@ -157,7 +157,7 @@ class EndToEndIsolationTest(unittest.TestCase):
                 for service in google_items:
                     self.assertEqual(secret_store.get(service, 'igor'), 'real-secret', service)
                 asked.reset_mock()
-                for service in ('jobadabra.telegram.bot-token', 'jobadabra.anthropic.admin-key', 'jobadabra.google.auth-at'):
+                for service in ('jobadabra.telegram.bot-token', 'jobadabra.anthropic.admin_key', 'jobadabra.google.auth-at'):
                     self.assertIsNone(secret_store.get(service, 'igor'), service)
                 asked.assert_not_called()
                 secret_store.put('jobadabra.google.refresh-token', 'twin-made', 'igor')   # a write stays in the twin's own file, and wins over the real one

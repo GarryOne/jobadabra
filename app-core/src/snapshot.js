@@ -49,13 +49,13 @@ const snapshotScrub = (root, secretValues = []) => {
     const type = String(raw.type || '').toLowerCase();
     if (t === 'input' && /^(hidden|password)$/.test(type)) return null;
     // Jobadabra's own elements (the dropdown badge, which names the answer; the panel, styles); its classes on a field go.
-    if (/(^|\s)jobadabra-badge(\s|$)/.test(String(raw.class || '')) || /^job-?pilotto/i.test(String(raw.id || ''))) return null;
+    if (/(^|\s)jobadabra-badge(\s|$)/.test(String(raw.class || '')) || /^jobadabra/i.test(String(raw.id || ''))) return null;
     const a = {};
     for (const [key, value] of Object.entries(raw)) {
       const name = String(key).toLowerCase();
       if (name === 'value' && !(t === 'option' || (t === 'input' && /^(radio|checkbox)$/.test(type)))) continue;
       if (name === 'class') {
-        const classes = ident(value, 300).split(' ').filter(c => c && !/job-?pilotto/i.test(c)).join(' ');
+        const classes = ident(value, 300).split(' ').filter(c => c && !/jobadabra/i.test(c)).join(' ');
         if (classes) a.class = classes;
       } else if (SNAPSHOT_IDENT.test(name)) a[name] = ident(value, 120);
       else if (SNAPSHOT_TEXT.test(name)) a[name] = text(value, 120).trim();

@@ -10,7 +10,7 @@ export function findPopup(want = null) {
   const ours = node => node.closest('[id^=jobadabra], [data-jobadabra]');
   const layered = node => { const look = getComputedStyle(node); return (look.position === 'fixed' || look.position === 'sticky') && Number(look.zIndex) >= 10; };
   // Also inside open shadow roots: a banner drawn by web components (Usercentrics: div#usercentrics-root) is invisible to document.querySelectorAll (Hornbach, 11 Oct 2026). Same walk as fill-flow.js pageSketchOf.
-  const deep = selector => { const found = []; const walk = root => { found.push(...root.querySelectorAll(selector)); for (const el of root.querySelectorAll('*')) if (el.shadowRoot && !/^job-?pilotto/.test(el.id)) walk(el.shadowRoot); }; walk(document); return found; };
+  const deep = selector => { const found = []; const walk = root => { found.push(...root.querySelectorAll(selector)); for (const el of root.querySelectorAll('*')) if (el.shadowRoot && !/^jobadabra/.test(el.id)) walk(el.shadowRoot); }; walk(document); return found; };
   const explicit = deep('[role=dialog], [role=alertdialog], [aria-modal=true], dialog[open]');
   const floating = deep('*').slice(0, 3000).filter(layered);
   const fields = box => [...box.querySelectorAll('input, select, textarea')].filter(node => !['hidden', 'checkbox', 'radio', 'button', 'submit', 'image'].includes(node.type)).length;

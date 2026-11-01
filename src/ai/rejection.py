@@ -2,8 +2,7 @@
 """Rejection review: why an application was turned down, and whether there's anything to improve.
 
 After each rejection (the Gmail check runs it when a rejection email moves an application to Rejected), or on
-demand (the Desktop App's job menu → "Why was I rejected?", or this command), Claude Sonnet 5 reads what Job
-Pilotto keeps about the application:
+demand (the Desktop App's job menu → "Why was I rejected?", or this command), Claude Sonnet 5 reads what Jobadabra keeps about the application:
 - the job posting and the answers and cover letter sent (the frozen 🗂 Application record), the fit score and
   its reasons;
 - the timeline (📈 Application Events: how far it got, how fast the answer came);

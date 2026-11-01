@@ -40,7 +40,7 @@ export function pageSketchOf(tabId) {
     const text = el => String(el?.textContent || '').replace(/\s+/g, ' ').trim();
     const labelOf = el => text(el.labels?.[0]) || el.getAttribute('aria-label') || el.getAttribute('placeholder') || (el.type !== 'hidden' && window.__jobadabraLabelBefore?.(el)) || el.name || '';
     // Also inside open shadow roots: a page built of web components (SmartRecruiters, 9 Oct 2026) otherwise reads as empty.
-    const all = selector => { const found = []; const walk = root => { found.push(...root.querySelectorAll(selector)); for (const el of root.querySelectorAll('*')) if (el.shadowRoot && !/^job-?pilotto/.test(el.id)) walk(el.shadowRoot); }; walk(document); return found; };
+    const all = selector => { const found = []; const walk = root => { found.push(...root.querySelectorAll(selector)); for (const el of root.querySelectorAll('*')) if (el.shadowRoot && !/^jobadabra/.test(el.id)) walk(el.shadowRoot); }; walk(document); return found; };
     const controls = all('input, select, textarea')
       .filter(el => el.type === 'file' || (el.type !== 'hidden' && shown(el)))   // an upload behind a button keeps its input hidden
       .filter(el => !['submit', 'button', 'reset', 'image'].includes(el.type))

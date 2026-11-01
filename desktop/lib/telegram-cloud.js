@@ -15,7 +15,7 @@ export const SCRIPT = 'job-pilotto-bot';
 const API = 'https://api.cloudflare.com/client/v4';
 const BUNDLE = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'shared', 'bot-worker.js');
 // A token with exactly what this needs, prefilled on Cloudflare's "Create token" page.
-export const TOKEN_URL = 'https://dash.cloudflare.com/profile/api-tokens?name=Job%20Pilotto%20Telegram&permissionGroupKeys=' +
+export const TOKEN_URL = 'https://dash.cloudflare.com/profile/api-tokens?name=Jobadabra%20Telegram&permissionGroupKeys=' +
   encodeURIComponent(JSON.stringify([{key: 'workers_scripts', type: 'edit'}, {key: 'account_settings', type: 'read'}]));
 
 async function cloudflare(token, method, route, body, fetcher = globalThis.fetch) {

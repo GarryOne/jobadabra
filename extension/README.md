@@ -11,8 +11,7 @@ Everything happens in **the panel**, bottom right of every application form (the
   filled. Click it to open the panel.
 - **Open:** the job (title, company, stage), what the extension is doing on it while it works on
   this form, the progress (*12 of 15 required fields filled*), **Fill this form**, what's **left for you** (click
-  one: the page scrolls to it; ⚖️ marks agreements only you may tick), and **Open in Job
-  Pilotto**. There is no "I submitted it": the extension sees the submission itself.
+  one: the page scrolls to it; ⚖️ marks agreements only you may tick), and **Open in Jobadabra**. There is no "I submitted it": the extension sees the submission itself.
 - **Fill this form** fills it the best way, the way the app does: the job's drafted kit first, then
   Claude answers only the questions the kit doesn't cover (about USD 0.03–0.06 when needed, nothing when the kit
   covers every question). Text fields, radios, non-legal checkboxes, selects, searchable dropdowns and your CV.

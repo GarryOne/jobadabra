@@ -1,7 +1,7 @@
 """Monthly AI budget: how much of this month's Anthropic spend limit is used, and what to do about it.
 
 Spend comes from Anthropic's Usage & Cost Admin API when an Admin API key is available
-(ANTHROPIC_ADMIN_KEY, or the Keychain entry jobadabra.anthropic.admin-key) — the exact figure the
+(ANTHROPIC_ADMIN_KEY, or the Keychain entry jobadabra.anthropic.admin_key) — the exact figure the
 console shows. Without one (Admin keys need an organization account), it is the sum of this month's runs' AI cost
 (stores.cron_runs: ⏱️ Search runs "AI cost (USD)" in Notion), which every AI run logs (crawls, kits, insights, interviews, mail).
 
@@ -37,7 +37,7 @@ def admin_key():
     key = os.getenv('ANTHROPIC_ADMIN_KEY')
     if key or sys.platform != 'darwin' or secret_store.isolated():  # the end-to-end journey never reaches the owner's Anthropic organisation
         return key
-    return secret_store.get('jobadabra.anthropic.admin-key') or None   # the store also finds the owner's item under the pre-rename name
+    return secret_store.get('jobadabra.anthropic.admin_key') or None   # the store also finds the owner's item under the pre-rename name
 
 
 def month_start(now):

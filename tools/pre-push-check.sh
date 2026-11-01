@@ -137,12 +137,6 @@ esac
 
 # The place sorter's real-AI check (tools/places_check.py, ~5 Haiku calls) is not a push check any more (1 Nov 2026, owner, test stages 3-5: 0 pushes blocked in 40 runs, 30 s each, paid AI
 # calls): run it by hand when src/ai/place_triage.py or src/sources/feeds.py changes.
-# A new e2e step must have been seen passing (6 Oct 2026: one that never had failed the 0.5.8 beta gate on its own premise): a local run of it, or an
-# "E2E-passed: <run url>" / "E2E-unverified: <why>" line in a commit message (tools/new-e2e-steps.mjs). No node, or no origin/main: skipped.
-if ! [[ "$command" == *CI_GATES=1* ]] && command -v node >/dev/null && [ -f "$repo/tools/new-e2e-steps.mjs" ] && git -C "$repo" rev-parse --verify -q origin/main >/dev/null; then   # CI has no local run to find: the commit message's E2E-passed line is read by the CI-less gate only
-  unseen="$(cd "$repo" && timed "new e2e steps" node tools/new-e2e-steps.mjs --base origin/main 2>&1)" || block "$unseen"
-fi
-
 # No source file over 500 lines; files already over it may only shrink (tools/file-size.mjs; owner, 8 Oct 2026). Any push, any area.
 if command -v node >/dev/null && [ -f "$repo/tools/file-size.mjs" ]; then
   sizes="$(cd "$repo" && timed "file size" node tools/file-size.mjs 2>&1)" || block "a file is too big:
@@ -204,7 +198,9 @@ if command -v python3 >/dev/null && [ -f "$repo/tools/clean-code-py.py" ] && git
   cleanpy="$(cd "$repo" && timed "clean code (python)" python3 tools/clean-code-py.py --base origin/main 2>&1)" || block "$cleanpy"
 fi
 # JS cycles and measured browser/runtime boundaries ratchet against main (owner, 29 Oct 2026); old violations never block.
-if command -v python3 >/dev/null && [ -f "$repo/tools/arch-check.py" ] && git -C "$repo" rev-parse --verify -q origin/main >/dev/null; then
+# Why (1 Nov 2026, owner "Yes, delete Group 1", prune audit pa): 12,394 s of 145,185 s of gate time in 30 days for 6 stops in 1,403 runs; the ship push (SHIP_PR=1) leaves it to the PR's Fast checks
+# (CI_GATES=1 runs this script), like the lane registry; CI_GATES=1 and a direct push to main still run it. Guard: tests/test_pre_push_pr.py.
+if [ "$ship_push" = 0 ] && command -v python3 >/dev/null && [ -f "$repo/tools/arch-check.py" ] && git -C "$repo" rev-parse --verify -q origin/main >/dev/null; then
   if architecture="$(cd "$repo" && timed "JS architecture" python3 tools/arch-check.py --base origin/main 2>&1)"; then
     [ -z "$architecture" ] || printf '%s\n' "$architecture" >&2
   else
@@ -235,7 +231,7 @@ if command -v node >/dev/null && [ -f "$repo/tools/e2e-cause-trailer.mjs" ] && g
 fi
 # A push to a pull request branch (tools/ship.sh, 12 Oct 2026: `SHIP_PR=1 git push`) stops here: everything above is seconds. The suites, the journey and ladder gates and the
 # recorded-page replays run in CI on the PR (.github/workflows/pr-gate.yml, build.yml, page-cases.yml), in parallel, not on this Mac behind the heavy lock.
-# CI runs this same script for the pure checks above: CI_GATES=1 (no red-main look, no AI place check, no local-run proof of new e2e steps). Only the workflow lint stays local.
+# CI runs this same script for the pure checks above: CI_GATES=1 (no red-main look, no AI place check). Only the workflow lint stays local.
 case "$command" in *SHIP_PR=1*|*CI_GATES=1*)
   if git -C "$repo" diff --name-only origin/main..HEAD 2>/dev/null | grep -q '^\.github/workflows/' && command -v actionlint >/dev/null; then
     lint="$(cd "$repo" && timed "workflow files (actionlint)" workflows_lint 2>&1)" || block "$lint"

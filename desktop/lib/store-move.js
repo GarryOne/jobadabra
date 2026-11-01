@@ -9,6 +9,7 @@ import * as notionGate from './notion-gate.js';
 import * as pipelineRun from './pipeline-run.js';
 import * as schema from './schema.js';
 import * as strategy from './strategy-settings.js';
+import * as inFlight from './engine-runs-in-flight.js';
 import {ensureKnowledgePage} from './store/notion.js';
 
 export const PROGRESS = /^moving (\w+) (\d+)\/(\d+)$/;
@@ -46,13 +47,16 @@ export async function moveToNotion(storage, {run = pipelineRun.run, publish = st
   // ⚙️ Search settings: their home stays config/*.json; with Notion they are also its readable page (as at a connect).
   await publish(storage, {run, ensurePage: notion.ensurePage, writePage: notion.writePage});
   const archive = storage.path(path.join('backup', `moved-to-notion-${stamp(now)}`));
+  // Why (1 Nov 2026, night run 41253960704): a refresh the window started during the move still held the sqlite store and opened a new empty one after the archive.
+  // The store switches first, so every run spawned from now on gets Notion; the runs already running end before their files go (lib/engine-runs-in-flight.js).
+  storage.saveSettings({store: 'notion', storeMovedAt: now.toISOString(), storeArchive: archive, storeTextsWin: undefined});
+  await inFlight.settled();
   for (const name of ARCHIVED) {
     const from = storage.path(name);
     if (!fs.existsSync(from)) continue;
     fs.mkdirSync(path.dirname(path.join(archive, name)), {recursive: true});
     fs.renameSync(from, path.join(archive, name));
   }
-  storage.saveSettings({store: 'notion', storeMovedAt: now.toISOString(), storeArchive: archive, storeTextsWin: undefined});
   const {kept = [], ...counts} = moved;
   log('store', 'moved', {to: 'notion', ...counts, kept: kept.length});
   return {ok: true, moved: counts, kept, archive};

@@ -6,6 +6,7 @@ import * as demo from './demo.js';
 import * as demoSearch from './demo-search.js';
 import * as engineLog from './engine-log.js';
 import {log as appLog} from './log.js';
+import * as inFlight from './engine-runs-in-flight.js';
 import {readResult} from './run-result.js';
 import {spawn} from 'node:child_process';
 import {killTree} from './kill-tree.js';
@@ -82,7 +83,10 @@ export const stoppedReason = timedOut => `Stopped by Jobadabra: ${timedOut}. The
 // The type of a private run's failure ("OperationalError" of {"error": "OperationalError: …"}); its message may hold the person's data, so only the type is kept.
 export const errorKindOf = stdout => /^"?([A-Za-z_][\w.]*(?:Error|Exception|Exit))\b/.exec(String((() => { try { return JSON.parse(String(stdout).trim().split('\n').pop()).error; } catch { return ''; } })() || ''))?.[1] || '';   // words-ok: matches a Python exception type name in our own engine's error, not page text
 
-export function run(storage, args, onLine = () => {}, extraEnv = {}, {stopAfterMs = 0, logArgs = null, privateOutput = false, inTask = '', onChild = null} = {}) {
+/** Runs `python -m <args>` (see runNow) and tells lib/engine-runs-in-flight.js about it, so a store move can wait for the runs already running. */
+export const run = (...call) => inFlight.track(runNow(...call), {bounded: isWatched(call[1][0])});
+
+function runNow(storage, args, onLine = () => {}, extraEnv = {}, {stopAfterMs = 0, logArgs = null, privateOutput = false, inTask = '', onChild = null} = {}) {
   if (isDemo() && demoSearch.isSearchRun(args)) return demoSearch.play(onLine);   // Find jobs in the demo: the scripted search (lib/demo-search.js)
   if (isDemo() && demoSearch.isQuietStep(args)) return Promise.resolve({code: 0, stdout: ''});
   if (isDemo() && !demo.pipelineAllowed(args)) { onLine('Demo mode: nothing runs and nothing is sent.'); return Promise.resolve({code: 1, stdout: ''}); }

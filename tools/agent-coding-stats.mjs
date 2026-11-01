@@ -111,12 +111,18 @@ export function fetchMerges({days, now, repo = process.env.REPO || 'GarryOne/job
       merges.push({pr: Number(old[1]), day: date, at, title: (body || '').split('\n')[0], branch: old[2], files, commits});
       continue;
     }
-    const pr = Number(squash[2]), pull = call(`repos/${repo}/pulls/${pr}`), commits = [];
-    if (pull) for (const item of call(`repos/${repo}/pulls/${pr}/commits?per_page=100`) || []) {
-      const detail = call(`repos/${repo}/commits/${item.sha}`);
-      if (!detail) break;
-      const changed = detail.files || [];
-      commits.push({sha: item.sha, subject: String(item.commit?.message || '').split('\n')[0], files: changed.map(file => file.filename), lines: changed.reduce((n, file) => n + (file.additions || 0) + (file.deletions || 0), 0)});
+    const pr = Number(squash[2]), pull = call(`repos/${repo}/pulls/${pr}`);
+    let commits = [];
+    // Why (1 Nov 2026, Gitar on #2893): a half-read commit list makes a red whose fix is in the missing tail count as "no fix"; so page through all commits and, if the rate-limit stop fires mid-PR, keep none of them.
+    for (let page = 1; pull; page++) {
+      const list = call(`repos/${repo}/pulls/${pr}/commits?per_page=100&page=${page}`) || [];
+      for (const item of list) {
+        const detail = call(`repos/${repo}/commits/${item.sha}`);
+        if (!detail) { commits = []; break; }
+        const changed = detail.files || [];
+        commits.push({sha: item.sha, subject: String(item.commit?.message || '').split('\n')[0], files: changed.map(file => file.filename), lines: changed.reduce((n, file) => n + (file.additions || 0) + (file.deletions || 0), 0)});
+      }
+      if (stopped || list.length < 100) break;
     }
     merges.push({pr, day: date, at, title: squash[1], branch: pull?.head?.ref ?? null, files, commits});
   }

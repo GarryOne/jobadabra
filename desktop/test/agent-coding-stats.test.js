@@ -117,3 +117,28 @@ test('when the GitHub rate limit is low the squash-merged PR is still counted, w
   const [one] = fetchMerges({days: 3, now, git: squashGit, api});
   assert.deepEqual([one.pr, one.title, one.branch, one.commits], [2891, '[ac] Fix the dim', null, []]);
 });
+
+// Gitar on #2893: a PR with more than 100 commits lost its tail; a rate-limit stop mid-PR left a half-read list that counted a red as "no fix".
+test('a squash-merged PR with 101 commits reads both pages of its commit list', () => {
+  const api = path => {
+    if (path === 'rate_limit') return {resources: {core: {remaining: 4000}}};
+    if (path.endsWith('/pulls/2891')) return {head: {ref: 'big'}};
+    if (path.includes('/pulls/2891/commits')) return Array.from({length: path.endsWith('page=1') ? 100 : 1}, (_, n) => ({sha: `k${(path.endsWith('page=1') ? 0 : 100) + n}`, commit: {message: 'c'}}));
+    return {files: []};
+  };
+  const [one] = fetchMerges({days: 3, now, git: squashGit, api});
+  assert.equal(one.commits.length, 101);
+  assert.equal(one.commits.at(-1).sha, 'k100');
+});
+
+test('when the rate limit trips in the middle of a squash-merged PR, that PR keeps no commits rather than the first few', () => {
+  let checks = 0;
+  const api = path => {
+    if (path === 'rate_limit') return {resources: {core: {remaining: checks++ ? 10 : 4000}}};
+    if (path.endsWith('/pulls/2891')) return {head: {ref: 'big'}};
+    if (path.includes('/pulls/2891/commits')) return Array.from({length: 40}, (_, n) => ({sha: `k${n}`, commit: {message: 'c'}}));
+    return {files: []};
+  };
+  const [one] = fetchMerges({days: 3, now, git: squashGit, api});
+  assert.deepEqual([one.pr, one.branch, one.commits], [2891, 'big', []]);
+});

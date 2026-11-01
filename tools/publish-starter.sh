@@ -1,14 +1,17 @@
 #!/usr/bin/env bash
-# Publishes templates/github-actions to the public starter template repo (GarryOne/job-pilotto-starter),
+# Publishes templates/github-actions to the public starter template repo (jobadabra/jobadabra-user-template; GarryOne/job-pilotto-starter until it is renamed and moved),
 # which users "Use this template" on to create their private jobadabra-personal-always-on. Run after changing the
 # templates. Needs gh signed in as the repo owner.
 set -euo pipefail
-repo=GarryOne/job-pilotto-starter
+# Why (1 Nov 2026, owner: "for us it should be joabdabra-....-template ... in the middle can be user, or byok, both"): the starter is renamed and moved to the
+# org; it publishes to whichever exists (STARTER_REPO overrides), and never creates a repo by itself: a wrong name must not make a new public template.
+repo=${STARTER_REPO:-}
+for candidate in jobadabra/jobadabra-user-template GarryOne/job-pilotto-starter; do
+  [ -n "$repo" ] || { gh api "repos/$candidate" >/dev/null 2>&1 && repo=$candidate; }
+done
+[ -n "$repo" ] || { echo "publish-starter: no starter template repo found (set STARTER_REPO)" >&2; exit 1; }
 root="$(git rev-parse --show-toplevel)"
 work="$(mktemp -d)"; trap 'rm -rf "$work"' EXIT
-if ! gh repo view "$repo" >/dev/null 2>&1; then
-  gh repo create "$repo" --public --description "Starter for your private Jobadabra repository: use this template, keep it private." >/dev/null
-fi
 gh repo edit "$repo" --template --homepage "https://www.jobpilotto.top" >/dev/null
 git clone -q "https://github.com/$repo.git" "$work/repo" 2>/dev/null || git init -q -b main "$work/repo"
 cd "$work/repo"

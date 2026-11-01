@@ -142,7 +142,9 @@ test('the schedule and job choices reach the repo: crons, kits on, insights off'
 test('not installed yet: it says so, with the two setup links', async () => {
   const gh = await fakeGitHub({repoExists: null});
   await assert.rejects(github.connect(userStorage(), 't', {fetcher: gh.fetcher}), error => error.needsRepo === true);
-  assert.match(github.CREATE_URL, /template_name=job-pilotto-starter.*visibility=private/);
+  // The starter named by the owner (1 Nov 2026) is jobadabra-user-template; until it exists the old template is the one that answers.
+  assert.match(await github.createUrl(async url => (url.endsWith('/GarryOne/job-pilotto-starter') ? {ok: true, json: async () => ({is_template: true})} : {ok: false})), /template_name=job-pilotto-starter.*visibility=private/);
+  assert.match(await github.createUrl(async () => ({ok: true, json: async () => ({is_template: true})})), /template_name=jobadabra-user-template&template_owner=jobadabra&name=jobadabra-personal-always-on&visibility=private/);
   assert.match(github.INSTALL_URL, /github\.com\/apps\/.+\/installations\/new/);
   if (!process.env.JOB_PILOTTO_GITHUB_APP) assert.equal(github.INSTALL_URL, 'https://github.com/apps/jobadabra/installations/new', 'the app is named Jobadabra on GitHub since 26 Oct 2026; apps/job-pilotto answers 404');
 });

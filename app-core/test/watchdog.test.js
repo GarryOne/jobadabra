@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {test} from 'node:test';
 import {TITLES} from '../src/scheduler.js';
-import {dueStarts, fires, issueBody, keyOf, missingStarts, recoveredComment, ROUND_STALE_MIN, staleRound, startedAt} from '../src/watchdog.js';
+import {dueStarts, fires, issueBody, keyOf, missingStarts, recoveredComment, ROUND_STALE_MIN, roundFromIssue, staleRound, startedAt} from '../src/watchdog.js';
 
 const at = iso => new Date(iso);
 
@@ -67,4 +67,13 @@ test('the issue names the stale round and its tab; the check list is only for st
   assert.match(both, /wrangler secret list/);
   assert.match(both, /probe rounds/);
   assert.equal(keyOf([round]), keyOf([staleRound({at: '2026-11-01T10:50:00Z'}, at('2026-11-01T14:00:00Z'))]), 'two hours later the same stale round gives the same key: no new comment');
+});
+
+test('a round the read could not judge keeps what the open issue says about it: the same key, never "recovered" (Gitar on #2895)', () => {
+  const round = staleRound({at: '2026-11-01T10:50:00Z'}, at('2026-11-01T12:00:00Z')), body = issueBody([round], {checked: '2026-11-01T12:23:00Z'});
+  const kept = roundFromIssue(body);
+  assert.equal(keyOf([kept]), keyOf([round]), 'carried over, the key is unchanged: no edit, no comment, no close');
+  assert.equal(kept.round, true);
+  assert.equal(roundFromIssue(issueBody([{workflow: 'e2e.yml', cron: '47 21,23,1 * * *', at: '2026-11-01T01:47:00.000Z'}], {checked: '2026-11-01T12:23:00Z'})), null, 'an issue about starts only has no round to keep');
+  for (const none of [undefined, null, '', 'no marker']) assert.equal(roundFromIssue(none), null);
 });

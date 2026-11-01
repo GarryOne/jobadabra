@@ -54,7 +54,16 @@ export const ROUND_STALE_MIN = 45;   // the site Worker's probe round runs every
 export function staleRound(last, now = new Date()) {
   const at = last && typeof last.at === 'string' && !Number.isNaN(Date.parse(last.at)) ? last.at : '';
   if (!at || now.getTime() - Date.parse(at) <= ROUND_STALE_MIN * 60000) return null;
-  return {round: true, workflow: 'synthetic-probe-round', cron: '5,20,35,50 * * * *', at};
+  return {round: true, workflow: 'synthetic-probe-round', cron: ROUND_CRON, at};
+}
+const ROUND_CRON = '5,20,35,50 * * * *';
+/**
+ * The stale round an open issue already names in its key, for a run that could not read the round: "not judged" must mean "unchanged", never "recovered" (Gitar on #2895: one
+ * failed read closed the issue with "every start was seen again" and the next good read opened a new one). Only a successful read that finds the round fresh closes it.
+ */
+export function roundFromIssue(body) {
+  const found = /synthetic-probe-round@(\d{4}-\d{2}-\d{2}T\d{2}:\d{2})/.exec(String(body || ''));
+  return found ? {round: true, workflow: 'synthetic-probe-round', cron: ROUND_CRON, at: `${found[1]}:00.000Z`} : null;
 }
 
 const clock = iso => `${iso.slice(0, 10)} ${iso.slice(11, 16)} UTC`;

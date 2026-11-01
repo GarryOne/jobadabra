@@ -24,8 +24,10 @@ test('with the preload, a line the runner prints (✗, ✓, ⚠) reaches stderr 
 
 test('no harness test writes to stdout by hand', () => {
   const dir = new URL('../', import.meta.url);
-  const writers = fs.readdirSync(dir).filter(file => file.endsWith('.test.mjs') && file !== 'runner-channel.test.mjs'
+  // Why (c27, 1 Nov 2026, area folders): the tests sit in test/<area>/ (and a stray flat one still runs), so the class reads both; `fixtures` holds stand-ins, never tests.
+  const files = fs.readdirSync(dir, {withFileTypes: true}).flatMap(item => (item.isDirectory() && item.name !== 'fixtures' ? fs.readdirSync(new URL(`${item.name}/`, dir)).map(file => `${item.name}/${file}`) : [item.name])).filter(file => file.endsWith('.test.mjs'));
+  const writers = files.filter(file => file !== 'harness/runner-channel.test.mjs'
     && /process\.stdout\.write|stdio:\s*'inherit'/.test(fs.readFileSync(new URL(file, dir), 'utf8')));
-  assert.ok(fs.readdirSync(dir).filter(file => file.endsWith('.test.mjs')).length > 100, 'positive control: the class reads the real folder');
+  assert.ok(files.length > 100, 'positive control: the class reads the real folder');
   assert.deepEqual(writers, []);
 });

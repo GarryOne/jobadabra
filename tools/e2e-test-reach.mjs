@@ -10,10 +10,10 @@ const folder = 'desktop/e2e/test';
 const cache = new Map();
 const out = {};
 // Why (c27, 1 Nov 2026, area folders): the tests sit in test/<area>/; `fixtures` holds stand-ins, never tests.
-const areas = fs.readdirSync(path.join(root, folder), {withFileTypes: true}).filter(item => item.isDirectory() && item.name !== 'fixtures').map(item => item.name).sort();
+const areas = ['', ...fs.readdirSync(path.join(root, folder), {withFileTypes: true}).filter(item => item.isDirectory() && item.name !== 'fixtures').map(item => item.name).sort()];   // '' = a flat file still runs (the npm script globs both)
 for (const area of areas) {
   for (const name of fs.readdirSync(path.join(root, folder, area)).filter(file => /\.test\.[mc]?js$/.test(file)).sort()) {
-    const file = `${folder}/${area}/${name}`;
+    const file = area ? `${folder}/${area}/${name}` : `${folder}/${name}`;
     out[file] = [...reach(root, file, cache).paths];
   }
 }

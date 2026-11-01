@@ -73,7 +73,7 @@ export async function probe({run = execute, areas = AREAS, days = SHIFTS[0], cwd
 // Why (c27, 1 Nov 2026, area folders): the e2e harness tests sit one folder down (test/<area>/x.test.mjs); `fixtures` holds stand-ins, never tests.
 export const filesOf = (root, area) => {
   const base = path.join(root, area.cwd, area.dir);
-  const folders = area.nested ? fs.readdirSync(base, {withFileTypes: true}).filter(item => item.isDirectory() && item.name !== 'fixtures').map(item => item.name).sort() : [''];
+  const folders = ['', ...(area.nested ? fs.readdirSync(base, {withFileTypes: true}).filter(item => item.isDirectory() && item.name !== 'fixtures').map(item => item.name).sort() : [])];
   return folders.flatMap(folder => fs.readdirSync(path.join(base, folder)).filter(name => area.match.test(name)).sort().map(name => path.posix.join(area.dir, folder, name)));
 };
 

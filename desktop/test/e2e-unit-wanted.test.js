@@ -5,7 +5,7 @@ import {test} from 'node:test';
 import {wantsE2eUnit} from '../../tools/e2e-unit-wanted.mjs';
 
 test('a push touching the harness, the extension, the ladder or the page-kind code runs the e2e unit tests', () => {
-  for (const file of ['desktop/e2e/lib/model.mjs', 'desktop/integration/extension/menu-pick.test.mjs', 'extension/page-files.js', 'extension/page/fill.js', 'desktop/lib/ladder/rung2-sketch.js', 'desktop/lib/page-kind.js', 'desktop/lib/account-judge.js', 'desktop/lib/form-judge.js']) {
+  for (const file of ['desktop/e2e/lib/model.mjs', 'desktop/e2e/test/harness/artifacts.test.mjs', 'extension/page-files.js', 'extension/page/fill.js', 'desktop/lib/ladder/rung2-sketch.js', 'desktop/lib/page-kind.js', 'desktop/lib/account-judge.js', 'desktop/lib/form-judge.js']) {
     assert.equal(wantsE2eUnit([file, 'README.md']), true, file);
   }
 });

@@ -45,14 +45,14 @@ class PlaywrightInstallAction(unittest.TestCase):
         # 27 Oct 2026: harness-daily installed only the headless shell, so its real-extension tests failed every day from 17 Oct with nobody told.
         # A job that runs the harness test folder (owner, 30 Oct 2026: every file, no sets) where one starts a real extension needs mode full or both.
         e2e = ROOT / 'desktop' / 'e2e'
-        starts = {f.name for f in (e2e / 'test').glob('*/*.test.mjs')
+        starts = {f.name for f in [*(e2e / 'test').glob('*.test.mjs'), *(e2e / 'test').glob('*/*.test.mjs')]
                   if re.search(r'(?m)^import .*lib/(real-)?extension\.mjs', f.read_text(encoding='utf-8'))}
         self.assertTrue(starts, 'no harness test starts a real extension: the pattern is stale')
         wrong = []
         for path in sorted(WORKFLOWS.glob('*.yml')):
             body = path.read_text(encoding='utf-8').split('\njobs:\n', 1)[-1]
             for job in re.split(r'(?m)^  [A-Za-z0-9_-]+:\s*$', body)[1:]:
-                folder = re.search(r'node --test[^\n]*test/\*/\*\.test\.mjs', job) or re.search(r'working-directory: desktop/e2e\n(\s+#.*\n)*\s+run: npm test\n', job)
+                folder = re.search(r'node --test[^\n]*test/\*\.test\.mjs', job) or re.search(r'working-directory: desktop/e2e\n(\s+#.*\n)*\s+run: npm test\n', job)
                 needs = sorted(starts) if folder else []
                 if not needs:
                     continue

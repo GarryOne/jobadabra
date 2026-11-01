@@ -144,7 +144,7 @@ test('the replay reads a label key only for its test\'s title and failure messag
   const replayPath = ['e2e/test/record/recorded-pages.test.mjs', 'e2e/lib/page-replay.mjs', 'e2e/lib/row-case-run.mjs', 'e2e/lib/row-replay.mjs', 'e2e/lib/replay-browser.mjs'];
   const reads = new RegExp(`\\bitem\\.(${LABEL_KEYS.join('|')})\\b`);
   const found = replayPath.flatMap(file => fs.readFileSync(new URL(`../${file}`, import.meta.url), 'utf8').split('\n').filter(line => reads.test(line)).map(line => `${file}: ${line.trim()}`));
-  const allowed = /^e2e\/test\/recorded-pages\.test\.mjs: (test\(`\$\{item\.name\}: \$\{item\.shape\}`|assert\.deepEqual\(result\.failures, \[\], `\$\{item\.name\} \(\$\{item\.why \|\| ''\}\)`\))/;
+  const allowed = /^e2e\/test\/record\/recorded-pages\.test\.mjs: (test\(`\$\{item\.name\}: \$\{item\.shape\}`|assert\.deepEqual\(result\.failures, \[\], `\$\{item\.name\} \(\$\{item\.why \|\| ''\}\)`\))/;
   assert.deepEqual(found.filter(line => !allowed.test(line)), [], 'a label key now decides a replay: take it out of LABEL_KEYS (tools/recorded-cases.mjs)');
   assert.equal(found.length, 2, 'the title and the failure message');
 });

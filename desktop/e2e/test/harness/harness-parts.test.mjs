@@ -12,7 +12,7 @@ const script = JSON.parse(fs.readFileSync(path.join(E2E, 'package.json'), 'utf8'
 const workflow = fs.readFileSync(path.join(E2E, '../../.github/workflows/harness.yml'), 'utf8');
 
 test('the npm script takes its part from TEST_SHARD, before the files', () => {
-  assert.match(script, /--test-shard=\$\{TEST_SHARD:-1\/1\} test\/\*\/\*\.test\.mjs/);
+  assert.match(script, /--test-shard=\$\{TEST_SHARD:-1\/1\} test\/\*\.test\.mjs test\/\*\/\*\.test\.mjs/);
 });
 
 test('harness.yml runs one job per part and hands each its TEST_SHARD', () => {
@@ -24,7 +24,7 @@ test('harness.yml runs one job per part and hands each its TEST_SHARD', () => {
 test('two parts of two files run one file each, and together both', () => {
   const ran = [];
   for (const part of ['1/2', '2/2']) {
-    const command = script.replace('test/*/*.test.mjs', 'test/fixtures/parts/part-a.test.mjs test/fixtures/parts/part-b.test.mjs').replace('--test-reporter=spec', '--test-reporter=tap');
+    const command = script.replace('test/*.test.mjs test/*/*.test.mjs', 'test/fixtures/parts/part-a.test.mjs test/fixtures/parts/part-b.test.mjs').replace('--test-reporter=spec', '--test-reporter=tap');
     const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => key !== 'NODE_TEST_CONTEXT'));
     const done = spawnSync('sh', ['-c', command], {cwd: E2E, env: {...env, TEST_SHARD: part}, encoding: 'utf8', timeout: 60000});
     assert.equal(done.status, 0, done.stdout + done.stderr);

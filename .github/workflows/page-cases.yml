@@ -4,7 +4,10 @@ name: CI · Integration · Page cases (all cases, real extension, Linux)
 # offline, sharded across the matrix, 4 tabs at a time in one browser per job (desktop/e2e/lib/replay-browser.mjs). The local pre-push replays only the cases a change can affect.
 # A failing case fails the run; the push hook then treats main as red (tools/pre-push-check.sh, AGENTS.md "Red main"). No AI, no network: the pages and answers come from the cases.
 on:
-  pull_request:   # GitHub's paths decide on a pull request (owner, 14 Oct 2026: "rely fully on gh workflow paths"); not required (a skipped workflow never reports); main runs it as a step of build.yml (CI · Tests)
+  workflow_call:   # main: build.yml (CI · Tests) calls it as its `pages` job, every case on every push (1 Nov 2026, owner: "Split anyway")
+    secrets:
+      REPLAYS_PUBLISH_KEY: {required: false}
+  pull_request:   # GitHub's paths decide on a pull request (owner, 14 Oct 2026: "rely fully on gh workflow paths"); not required (a skipped workflow never reports)
     branches: [main]
     paths:
       # Exactly what this workflow loads (tools/replay-files.mjs --paths page-cases.yml prints it; desktop/test/replay-workflow-paths.test.js fails when it drifts), plus its install files.
@@ -131,7 +134,7 @@ on:
   schedule:
     - cron: '0 3 * * *'   # daily, the FULL window (owner, 17 Oct 2026): a pull request ends a must-not-happen window early (JP_REPLAY_WINDOW=quick); main (build.yml) and this daily run wait the whole window, so a late forbidden action is caught once a day
 
-concurrency:   # newest wins (owner, 15 Oct 2026): a newer push replaces the PR's older run, (main runs these cases inside build.yml, so no push group here); a by-hand and the daily run is its own group and never cancelled
+concurrency:   # newest wins (owner, 15 Oct 2026): a newer push replaces the PR's older run; main's call, a by-hand and the daily run each have their own group (run_id; build.yml's ci-tests-main lets a started main run finish)
   group: recorded-pages-${{ github.event_name == 'pull_request' && github.head_ref || github.run_id }}
   cancel-in-progress: ${{ github.event_name != 'workflow_dispatch' }}
 
@@ -236,9 +239,14 @@ jobs:
         env:
           REPLAYS_PUBLISH_KEY: ${{ secrets.REPLAYS_PUBLISH_KEY }}
           JP_REPLAYS_DRY: ${{ github.event_name != 'push' || github.ref != 'refs/heads/main' }}
-        run: node replays-report.mjs "$JP_REPLAY_SHARD_COUNT" $(seq -f 'results/replay-results-%g.json' 1 "$JP_REPLAY_SHARD_COUNT")
-      # A PR's fill time per case against main's last replays (desktop/e2e/replay-time.mjs, owner 12 Oct 2026): a median +1 s fails. Main's results are the last successful
-      # push run's artifacts (kept 3 days); none, or too few cases in both: it says so and passes.
+        # Why (15 Oct 2026, kept on 1 Nov when main's cases moved here from a build.yml step): main's PUT is a publish, never a verdict: a failed send warns, it never turns
+        # main red; a PR's dry run proves the step, so there it fails.
+        run: |
+          node replays-report.mjs "$JP_REPLAY_SHARD_COUNT" $(seq -f 'results/replay-results-%g.json' 1 "$JP_REPLAY_SHARD_COUNT") && exit 0
+          [ "$JP_REPLAYS_DRY" = false ] || exit 1
+          echo "::warning::page cases report not sent to /admin/form-filling/lab (a publish, never main's verdict)"
+      # A PR's fill time per case against main's last replays (desktop/e2e/replay-time.mjs, owner 12 Oct 2026): a median +1 s fails. Main's results are the newest
+      # replay-results of a successful run on main (kept 3 days); none, or too few cases in both: it says so and passes.
       - name: Fill time vs main
         if: github.event_name == 'pull_request'
         timeout-minutes: 5
@@ -246,6 +254,14 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          id=$(for wf in page-cases.yml recorded-pages.yml; do gh run list --repo "$GITHUB_REPOSITORY" --workflow "$wf" --branch main --event push --status success --limit 1 --json databaseId -q '.[0].databaseId' || true; done | head -n 1)   # recorded-pages.yml: the old file name, read until 17 Oct 2026 (3-day artifacts)
+          # Why (1 Nov 2026, Gitar on #2825): main's page cases run inside CI · Tests (build.yml calls this workflow as its `pages` job), so their artifacts sit in its runs;
+          # page-cases.yml has had no push run since 15 Oct, so the old run lookup found nothing and this check only ever said "no main data". Found by artifact name,
+          # as build.yml's fill check finds its baseline (a workflow reading build.yml's runs by name is a release check: tests/test_release_checks.py).
+          # Only a successful run (Gitar on #2825): the shards upload even when a run is red or cancelled, and partial results must not become the baseline. 100 per page: PR runs
+          # upload the same artifact name and would crowd main's out of a short page.
+          id=""
+          for run in $(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=replay-results-1&per_page=100" --jq '.artifacts[] | select((.expired | not) and .workflow_run.head_branch == "main") | .workflow_run.id' || true); do
+            [ "$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run" --jq .conclusion || true)" = success ] && { id=$run; break; }
+          done
           if [ -n "$id" ]; then gh run download "$id" --repo "$GITHUB_REPOSITORY" --pattern 'replay-results-*' --dir main-results || echo "fill time: main's results of run $id could not be read"; fi
           node replay-time.mjs --pr results/replay-results-*.json --main main-results/*/*.json   # one folder per artifact; an unmatched pattern is a missing file, skipped

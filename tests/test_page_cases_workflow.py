@@ -27,7 +27,7 @@ def changed_step_script():
 
 class RecordedPagesWorkflow(unittest.TestCase):
     def test_it_runs_on_every_push_to_main_and_by_hand(self):
-        # since 15 Oct 2026 main runs every case as a step of build.yml's one Linux job (tests/test_main_one_job.py); this workflow is the PR split and the by-hand run
+        # main calls this workflow from build.yml (its `pages` job, 1 Nov 2026; tests/test_main_one_job.py), so no push trigger of its own; it is also the PR split and the by-hand run
         self.assertNotRegex(WORKFLOW, r'(?m)^  push:')
         self.assertIn('pull_request:', WORKFLOW)
         self.assertIn('workflow_dispatch', WORKFLOW)

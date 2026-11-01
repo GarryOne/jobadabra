@@ -5,7 +5,9 @@ name: CI · Tests
 # each its own named step that fails alone (continue-on-error), and a last step fails the job listing every red suite, so one red suite never hides another. The Windows desktop
 # tests stay a job of their own (another OS). A pull request keeps the split into fast parallel workflows, started by their `on: paths:` (tests-python.yml, tests-worker.yml,
 # tests-desktop.yml, page-cases.yml, control-tests.yml): speed matters there. The steps repeat what those workflows run: tests/test_main_one_job.py fails when one
-# suite is on a PR and not here. Page cases and the ops overview no longer start by themselves on a push: their runs are steps below.
+# suite is on a PR and not here. Page cases and the ops overview no longer start by themselves on a push: the ops overview is a step below, the page cases the `pages` job.
+# Why (1 Nov 2026, owner: "Split anyway", replacing the one-job rule for page cases only): as one step the page cases took 15 of the Linux job's ~30 min; as page-cases.yml's
+# 3 balanced parts main ends ~20 min sooner for +2 jobs a push (PRs waited 0.0 min for runners that day).
 on:
   push:
     branches: [main]
@@ -23,7 +25,7 @@ jobs:
   linux:
     name: Linux suites
     runs-on: ubuntu-24.04
-    timeout-minutes: 60   # the PR workflows' timeouts add up to ~75; the suites take ~25 min in sequence
+    timeout-minutes: 60   # the PR workflows' timeouts add up to ~75; the suites took ~25 min in sequence with the page cases, ~15 without
     env:
       JOB_PILOTTO_PY_JOBS: 6
       JOB_PILOTTO_HEAVY: 0   # the heavy lock is a Mac's machine-wide queue; this runner is its own machine
@@ -77,26 +79,6 @@ jobs:
         continue-on-error: true
         uses: ./.github/actions/playwright-browser
         with: {working-directory: desktop/e2e}
-      - name: Suite · page cases (every recorded case)
-        id: pages
-        continue-on-error: true
-        working-directory: desktop/e2e
-        env:
-          JP_REPLAY: 1
-          JP_REPLAY_TABS: 4
-          JP_REPLAY_SHARD: 1/1
-          JP_REPLAY_RESULTS: replay-results-1.json
-        run: |
-          node --test --test-concurrency=1 test/recorded-pages.test.mjs || { echo "::error title=Suite failed::page cases: the job fails at \"Every suite passed\""; exit 1; }
-      # /admin/form-filling/lab's Fixed-site replays show CI on main only: this build's results, ONE PUT with its sha (desktop/e2e/replays-report.mjs). Also when a case failed.
-      - name: Send the page cases to /admin/form-filling/lab
-        id: pages-report
-        continue-on-error: true
-        working-directory: desktop/e2e
-        env:
-          REPLAYS_PUBLISH_KEY: ${{ secrets.REPLAYS_PUBLISH_KEY }}
-          JP_REPLAYS_DRY: 'false'
-        run: node replays-report.mjs 1 replay-results-1.json
       # Why (owner, 27 Oct 2026: "Main, red on regression"): the widget zoo and every non-slow recorded page, each right / wrong / empty / not reached, against the
       # baseline main's last green run wrote (artifact check-fill-baseline); red when a case that was right is not. Replaces the zoo's warning-only step. No baseline yet: it only counts.
       - name: Suite · fill check (widget zoo + recorded pages vs main)
@@ -128,13 +110,10 @@ jobs:
       - name: Every suite passed
         if: always()
         env:
-          RESULTS: python=${{ steps.python.outcome }} worker=${{ steps.worker.outcome }} desktop=${{ steps.desktop.outcome }} replay-install=${{ steps.replay-install.outcome }} replay-chromium=${{ steps.replay-chromium.outcome }} page-cases=${{ steps.pages.outcome }} fill-check=${{ steps.fillcheck.outcome }}
-          WARNINGS: page-cases-report=${{ steps.pages-report.outcome }}
+          RESULTS: python=${{ steps.python.outcome }} worker=${{ steps.worker.outcome }} desktop=${{ steps.desktop.outcome }} replay-install=${{ steps.replay-install.outcome }} replay-chromium=${{ steps.replay-chromium.outcome }} fill-check=${{ steps.fillcheck.outcome }}
         run: |
           red=""
           for pair in $RESULTS; do case "${pair#*=}" in success|skipped) ;; *) red="$red ${pair%%=*}(${pair#*=})" ;; esac; done
-          # measured, never a verdict (the page-cases report is a publish): a warning, not a red main
-          for pair in $WARNINGS; do case "${pair#*=}" in success|skipped) ;; *) echo "::warning::${pair%%=*} ${pair#*=}"; echo "Warning: ${pair%%=*} ${pair#*=}" ;; esac; done
           if [ -n "$red" ]; then echo "::error::red suites:$red"; echo "Red suites:$red"; exit 1; fi
           echo "every Linux suite passed"
 
@@ -166,3 +145,13 @@ jobs:
     permissions:
       contents: read
     uses: ./.github/workflows/integration.yml
+
+  # Every recorded case, as the PR runs them (3 balanced parts) but the full watch window and the slow cases too; its report job PUTs main's results to /admin/form-filling/lab.
+  pages:
+    permissions:   # what page-cases.yml's report job asks for (tests/test_workflow_call_permissions.py)
+      contents: read
+      actions: read
+      pull-requests: read
+    uses: ./.github/workflows/page-cases.yml
+    secrets:
+      REPLAYS_PUBLISH_KEY: ${{ secrets.REPLAYS_PUBLISH_KEY }}

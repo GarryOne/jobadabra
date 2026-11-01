@@ -21,12 +21,15 @@ export const RECORDED_CASE = /^desktop\/e2e\/recorded\/([^/]+)\//;
 
 // The recorded cases (folder names) a push adds or changes.
 // The covered set: what a replay loads, plus every file of the flow.
+// Why (pa, 1 Nov 2026, owner via mac-07: "page-acting = files that act on a page"; extension/linkedin-session.js copies cookies and never touches a page, yet forced a journey scenario and a pure move on #2732):
+// the same marker works in extension/, with the same structural check, so the loaded-by-the-replay set no longer counts a file that acts on no page.
 // A desktop/lib file that only shows or keeps a run's result says so in its first comment: "// Display-only: <why>" (owner, 22 Oct 2026, #1687: run-rows.js asked for a recorded page).
 // Default is covered: an unmarked file, and every file that fills, judges or decides, still needs its page. A marker is checked by structure: a marked file imports only marked files,
 // so one that gains a judging or filling import (ladder/, ai/, a judge) fails displayOnlyProblems, and the gate with it. Guard: desktop/test/recorded-cases.test.js.
 export const DISPLAY_ONLY = /^\/\/\s*Display-only:\s*\S/m;
 const head = (root, file) => { try { return fs.readFileSync(path.join(root, file), 'utf8').split('\n').slice(0, 8).join('\n'); } catch { return ''; } };
-export const isDisplayOnly = (root, file) => file.startsWith('desktop/lib/') && DISPLAY_ONLY.test(head(root, file));
+// isDisplayOnly(root, file): true when a desktop/lib or extension file carries the marker in its first 8 lines (read from disk under root); false for any other path, and for an unreadable file.
+export const isDisplayOnly = (root, file) => /^(desktop\/lib|extension)\//.test(file) && DISPLAY_ONLY.test(head(root, file));
 export const localImports = (root, file) => {
   try {
     return [...fs.readFileSync(path.join(root, file), 'utf8').matchAll(/from\s+['"](\.[^'"]+)['"]|import\(['"](\.[^'"]+)['"]\)/g)].map(found => path.posix.normalize(path.posix.join(path.posix.dirname(file), found[1] || found[2])));

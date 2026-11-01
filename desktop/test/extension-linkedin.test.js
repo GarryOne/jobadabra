@@ -85,6 +85,15 @@ test('Gitar on #2845: a grant Chrome removes another way is no longer ours, so a
   assert.deepEqual(chrome.log.filter(entry => entry[0] === 'remove').at(-1), ['remove', {origins: ['https://www.linkedin.com/*']}], 'only the origin; cookies stay with the options page');
 });
 
+test('the file imports nothing: the caller passes the app transport and settings (pa, 1 Nov 2026), and without a config the passed settings are read', async () => {
+  assert.doesNotMatch(fs.readFileSync(new URL('../../extension/linkedin-session.js', import.meta.url), 'utf8').replace(/^\/\/.*$/gm, ''), /^\s*import\b/m, 'a Display-only file imports only Display-only files; this one needs none');
+  const calls = [], settings = async () => ({workerUrl: 'http://app'}), call = async (config, path) => { calls.push([config, path]); return {revoke: false, refresh: true}; };
+  const chrome = fakeChrome({had: {cookies: true, origin: true}, stored: {linkedinGranted: {cookies: false, origin: false}}});
+  assert.deepEqual(await revokeIfOff({chrome, call, settings}), {revoked: false});
+  assert.deepEqual(calls.map(entry => [entry[0], entry[1]]), [[{workerUrl: 'http://app'}, '/extension/linkedin-pending'], [{workerUrl: 'http://app'}, '/extension/linkedin-refresh']], 'the pending ask and the refresh it asked for both use the passed settings and transport');
+  await assert.rejects(refreshSession({chrome}), TypeError, 'no transport passed: it fails loudly, never a silent default');
+});
+
 test('the look starts one alarm a minute, and the manifest declares the origin and keeps cookies optional', () => {
   const chrome = fakeChrome();
   startLinkedinSession({chrome});

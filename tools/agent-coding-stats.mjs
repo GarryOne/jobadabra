@@ -16,6 +16,7 @@ const PRODUCT_DIRS = /^(src|desktop|extension|worker|site|prompts)\//;
 // Why (1 Nov 2026, pa's prune audit, about +-10 points): a fixing commit whose subject says it is about how a change is written down, and is small, is "form".
 export const FORM_WORDS = /trailer|comment|baseline|ratchet|lint|prettier|format|\bcount\b|file size|split|wording|rename|typo|why-changed|recorded-unneeded|pool-row|prompt-case|spec[- ]proof|registry|stale|expectation|paths:|gitar|\bdocs?\b|re-?run|retrigger|bump|declare|unused/i;
 
+// A changed file -> 'product' | 'test' | 'ci' (docs, workflows, tools, anything else counts as ci), by its path alone; never throws.
 export const kindOfFile = file => (/^(docs\/|\.github\/|tools\/)/.test(file) || file.endsWith('.md') ? 'ci' : TEST_DIRS.test(file) ? 'test' : PRODUCT_DIRS.test(file) ? 'product' : 'ci');
 // What a fixing commit was: 'product' | 'test' | 'ci' | 'form'.
 export function classifyFix({subject = '', files = [], lines = 0}) {
@@ -29,6 +30,7 @@ export function classifyFix({subject = '', files = [], lines = 0}) {
 }
 // The first two folders of a product file: desktop/renderer/x.js -> desktop/renderer; extension/x.js -> extension.
 export const areaOf = file => file.split('/').slice(0, -1).slice(0, 2).join('/');
+// A merged PR (its title and branch) -> true when it says "fix" in either, the owner's own wording of a fix PR; false on missing text.
 export const isFixPr = merge => /\bfix/i.test(merge.title || '') || /(^|\/)fix/i.test(merge.branch || '');
 
 const minutes = (from, to) => Math.max(0, (Date.parse(to) - Date.parse(from)) / 60000) || 0;
@@ -75,6 +77,7 @@ export function compute(input, {days = 3, now = new Date()} = {}) {
 const run = (command, args, options = {}) => execFileSync(command, args, {encoding: 'utf8', maxBuffer: 256 * 1024 * 1024, ...options});
 const gh = path => JSON.parse(run('gh', ['api', path]));
 
+// The merge commits of the window from the local git history (first parent of main) -> [{pr, day, title, branch, files, commits}] oldest commit first; `git` is a seam for tests.
 export function fetchMerges({days, now, git = (...args) => run('git', args)}) {
   const since = new Date(now.getTime() - (days - 1) * 86400000).toISOString().slice(0, 10);
   const merges = [];

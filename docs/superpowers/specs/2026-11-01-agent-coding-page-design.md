@@ -68,13 +68,13 @@ Owner: "look on the entire harness/workflow of our development ... agents writin
 - A workflow-contract test entry for the new workflow (existing `tests/test_workflow_contract.py`).
 
 ## Progress
-- [x] Owner decision and exceptions recorded (above)
-- [x] Read pr-checks page, scorecard tool and prune-audit scripts
-- [x] Upload path agreed: B, once a day from ship.sh (owner, 1 Nov 2026: "Once a day from ship.sh (Recommended)")
-- [x] Spec written (this file)
-- [x] Page, ingest, table and demo seed built in `jobadabra-web` (uncommitted until the owner's yes on the preview)
-- [x] Preview (fictional data, desktop | phone) and owner's yes ("Yes, build it (Recommended)")
-- [x] `jobadabra-web` PR opened: ingest, table, page, menu, tests (Operations row limit 8 → 9, owner pick)
+- [x] Owner decision and exceptions recorded (above) (proof: docs/superpowers/specs/2026-11-01-agent-coding-page-design.md)
+- [x] Read pr-checks page, scorecard tool and prune-audit scripts (proof: none: reading leaves no file)
+- [x] Upload path agreed: B, once a day from ship.sh (owner, 1 Nov 2026: "Once a day from ship.sh (Recommended)") (proof: tools/gate-stats-upload.mjs)
+- [x] Spec written (this file) (proof: docs/superpowers/specs/2026-11-01-agent-coding-page-design.md)
+- [x] Page, ingest, table and demo seed built in `jobadabra-web` (proof: none: the code is in the jobadabra-web PR #248)
+- [x] Preview (fictional data, desktop | phone) and owner's yes ("Yes, build it (Recommended)") (proof: none: the owner's answer, relayed by mac-07; the image is in the web PR)
+- [x] `jobadabra-web` PR opened: ingest, table, page, menu, tests (Operations row limit 8 → 9, owner pick) (proof: none: jobadabra-web PR #248)
 - [ ] `jobadabra` PR: `tools/gate-stats.mjs` + uploader + `tools/agent-coding-stats.mjs` + workflow + tests
 - [ ] Menu split into 🧪 Testing and 🤖 Agents (own web PR after this one; owner pick "2 groups")
 - [ ] v2: the SDLC tab (own spec and preview, designed on real numbers)

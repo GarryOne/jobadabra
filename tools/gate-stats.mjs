@@ -9,6 +9,7 @@ export const FORM = new Set(['recorded cases', 'rung trailer', 'e2e cause traile
 export const SUITES = new Set(['desktop (clean checkout)', 'python (clean checkout)', 'worker (clean checkout)', 'site (clean checkout)', 'e2e unit tests (desktop/e2e npm test, as CI)',
   'renderer class tests', 'journey gate', 'ladder gate', 'places check (real AI)']);
 
+// A push-check name -> 'real' (a suite), 'form' (a trailer, comment, list, count or size check) or 'other'; an unknown name is 'other', never an error.
 export const classOf = name => (SUITES.has(name) ? 'real' : FORM.has(name) ? 'form' : 'other');
 // The log text -> [{day, secs, steps: [{name, secs, exit}]}], one per push header with a total.
 export function parseLog(text) {

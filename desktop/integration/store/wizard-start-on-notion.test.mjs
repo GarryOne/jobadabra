@@ -64,6 +64,10 @@ test('with data already on this Mac the connect leaves the store where it is: th
   assert.deepEqual(moved, [], 'nothing moves into a Notion the data does not live in');
   assert.equal(startedOnNotion, false, 'a store with data became Notion without the move');
   assert.equal(JSON.parse(fs.readFileSync(path.join(install.profile, 'settings.json'), 'utf8')).store, 'sqlite');
+  // Moved from the storemove e2e step "Notion connects with a Profile of its own; this Mac keeps its data until the move" (1 Nov 2026): connecting takes nothing off this Mac.
+  assert.ok(fs.existsSync(path.join(install.profile, 'data', 'tracker.sqlite')), 'connecting Notion took the SQLite store off this Mac while its data is still here');
+  const gone = ['profile', 'answers', 'knowledge'].filter(name => !fs.existsSync(path.join(install.profile, `${name}.md`)));
+  assert.deepEqual(gone, [], 'connecting Notion took texts off this Mac while its data is still here (store sqlite)');
 });
 
 /** A page as the workspace builder leaves it (lib/schema.js repair): one paragraph, the placeholder. The stand-in is shared by the tests, so earlier text is cleared first. */

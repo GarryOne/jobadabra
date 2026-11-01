@@ -4,6 +4,7 @@
 # Why (1 Nov 2026, a8): the class is wider than the ledger: a step that runs a repo file must have a checkout in its job that brings that file, at the commit the step means.
 # It escaped 3 times in 8 days: the stable canary (26 Oct, bash tools/apt-install.sh missing at the tag it tested), tools/scan-e2e-artifacts.py (31 Oct, c124a28) and
 # python3 tools/canary_verdict.py in a job with no checkout (22 Oct to 1 Nov: every non-green canary crashed there). `EveryFileAStepRunsIsThere` loops over every workflow.
+import posixpath
 import re
 import unittest
 from pathlib import Path
@@ -11,7 +12,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 WORKFLOWS = sorted((ROOT / '.github' / 'workflows').glob('*.yml'))
 SPARSE = re.compile(r'^(?P<indent> +)sparse-checkout: \|\n(?P<body>(?:(?P=indent) {2,}\S.*\n)+)', re.M)
-RUNS = re.compile(r'(?<![\w/.-])(?:python3?|node|bash|sh)\s+(?:"?\$GITHUB_WORKSPACE/|\./)?((?:lock-tools/)?(?:tools|scripts|desktop|worker|extension|src|\.github)/[\w./-]+\.(?:py|mjs|js|sh))')
+RUNS = re.compile(r'(?<![\w/.-])(?:python3?|node|bash|sh)\s+"?(?:\$GITHUB_WORKSPACE/|\./)?((?:\.\./)*[\w][\w./-]*\.(?:py|mjs|js|sh))\b')
 OWN_COMMIT = ('${{ github.sha }}', '${{ github.ref }}', '${{ github.event.repository.default_branch }}', 'main')   # refs that are this workflow's own commit or main
 # A step that runs a file of a commit it checked out on purpose (the thing it publishes), not this workflow's tools. Why (1 Nov 2026, a8): the extension store
 # publish uploads the build of the tag it is given, with that tag's own publisher script.
@@ -25,16 +26,19 @@ def jobs(text):
     return {part.strip().split(':', 1)[0]: part for part in parts if part.strip()}
 
 
+def checkout_of(step):
+    """-> (path or '', the sparse list or None, ref or None) for an `actions/checkout` step, else None."""
+    if 'uses: actions/checkout@' not in step:
+        return None
+    path = re.search(r'^\s+path:\s*(\S+)', step, re.M)
+    ref = re.search(r'^\s+ref:\s*(.+?)(?:\s+#.*)?$', step, re.M)
+    sparse = SPARSE.search(step + '\n')   # the split ate the newline after the step's last line
+    return (path.group(1) if path else '', sparse.group('body').split() if sparse else None, ref.group(1).strip() if ref else None)
+
+
 def checkouts(job):
-    """-> [(path or '', the sparse list or None)] for each `actions/checkout` step of the job."""
-    found = []
-    for step in re.split(r'\n(?=      - )', job):
-        if 'uses: actions/checkout@' not in step:
-            continue
-        path = re.search(r'^\s+path:\s*(\S+)', step, re.M)
-        sparse = SPARSE.search(step + '\n')   # the split ate the newline after the step's last line
-        found.append((path.group(1) if path else '', sparse.group('body').split() if sparse else None))
-    return found
+    """-> [(path or '', the sparse list or None, ref or None)] for each `actions/checkout` step of the job."""
+    return [found for found in map(checkout_of, re.split(r'\n(?=      - )', job)) if found]
 
 
 class TheLedgerIsCheckedOut(unittest.TestCase):
@@ -46,7 +50,7 @@ class TheLedgerIsCheckedOut(unittest.TestCase):
                 local_action = './.github/actions/gh-ledger' in job
                 if not (from_lock_tools or local_action):
                     continue
-                for path, sparse in checkouts(job):
+                for path, sparse, _ in checkouts(job):
                     if sparse is None or (from_lock_tools and path != 'lock-tools') or (local_action and path):
                         continue
                     needed = ['tools/gh-ledger.sh'] + (['.github/actions/gh-ledger'] if local_action else [])
@@ -61,7 +65,7 @@ class SiblingsOfAListedToolAreListed(unittest.TestCase):
         missing = []
         for workflow in WORKFLOWS:
             for name, job in jobs(workflow.read_text()).items():
-                for _, sparse in checkouts(job):
+                for _, sparse, _ in checkouts(job):
                     for entry in sparse or []:
                         if not (entry.startswith('tools/') and entry.endswith('.py')) or not (ROOT / entry).exists():
                             continue
@@ -108,20 +112,22 @@ class EveryFileAStepRunsIsThere(unittest.TestCase):
     step reads (`lock-tools/` for the workflow's own tools), listing the file when the checkout is sparse, and at the workflow's own commit for `lock-tools/`."""
 
     def steps_that_run_a_file(self):
-        """-> (workflow, job, file as written, the checkouts so far as [(path, sparse list or None, ref or None)]) for every such step."""
+        """-> (workflow, job, file from the repo root, the checkouts so far) for every step that runs a file of the repo. A path is read against the step's
+        `working-directory` (`bash ../../tools/x.sh` under `site/`); only a file that exists in the repo (or in `lock-tools/`) counts, so a generated one is not asked for."""
         for workflow in WORKFLOWS:
             for name, job in jobs(workflow.read_text()).items():
                 seen = []
                 for step in re.split(r'\n(?=      - )', job):
-                    if 'uses: actions/checkout@' in step:
-                        path = re.search(r'^\s+path:\s*(\S+)', step, re.M)
-                        ref = re.search(r'^\s+ref:\s*(.+?)(?:\s+#.*)?$', step, re.M)
-                        sparse = SPARSE.search(step + '\n')
-                        seen.append((path.group(1) if path else '', sparse.group('body').split() if sparse else None, ref.group(1).strip() if ref else None))
+                    found = checkout_of(step)
+                    if found:
+                        seen.append(found)
                         continue
+                    directory = re.search(r'^\s+working-directory:\s*([\w./-]+)\s*$', step, re.M)
                     code = '\n'.join(line for line in step.splitlines() if not line.lstrip().startswith('#'))   # a comment that names a command does not run it
-                    for found in RUNS.finditer(code):
-                        yield workflow.name, name, found.group(1), list(seen)
+                    for written in RUNS.findall(code):
+                        file = posixpath.normpath(posixpath.join(directory.group(1) if directory else '', written))
+                        if file.startswith('lock-tools/') and (ROOT / file.removeprefix('lock-tools/')).exists() or (ROOT / file).exists():
+                            yield workflow.name, name, file, list(seen)
 
     def test_the_job_checked_out_the_file_before_running_it(self):
         missing = []

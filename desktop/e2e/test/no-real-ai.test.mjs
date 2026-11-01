@@ -60,7 +60,7 @@ test('the production finalizer rewrites an empty artifact after a late registry 
   assert.throws(() => storedAnswer({headers: {'x-jp-action': 'unrecorded-background'}, body: '{}'}, {
     E2E_AI_ANSWERS: 'backbone', E2E_AI_ANSWERS_FILE: table, E2E_ARTIFACTS: dir, E2E_SUITE: 'activityfailures',
   }), {code: 'E2E_AI_ANSWER_MISSING'});
-  assert.equal(writeFinalFailures('activityfailures', ctx), true);
+  assert.equal(writeFinalFailures('activityfailures', ctx, {}), true);
   const failures = JSON.parse(fs.readFileSync(path.join(dir, 'suite-failures.json')));
   assert.equal(failures.length, 1);
   assert.match(failures[0].message, /E2E_AI_ANSWER_MISSING.*unrecorded-background/);

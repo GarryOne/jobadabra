@@ -34,7 +34,7 @@ test('both suites share planner inputs and the golden journey, with separate clo
   assert.ok(Object.isFrozen(journeyLib.PLANNER));
   const facts = await suiteFacts();
   for (const suite of [quality, qualityai]) {
-    assert.equal(suite.cadence, 'nightly');
+    assert.equal(suite.cadence, suite.name === 'quality' ? 'night-report' : 'nightly');
     assert.equal(suite.store, 'sqlite');
     assert.equal(suite.sameOnEveryOs, true);
     assert.equal(suite.budgetMinutes, suite.name === 'qualityai' ? 10 : undefined);
@@ -44,7 +44,7 @@ test('both suites share planner inputs and the golden journey, with separate clo
     assert.deepEqual(suite.watches, suite.name === 'qualityai' ? [...journeyLib.PLANNER.watches, ...qualityai.parts.mail] : journeyLib.PLANNER.watches);
     assert.equal(suite.judges, journeyLib.PLANNER.judges);
     assert.ok(facts.all.includes(suite.name));
-    assert.equal(facts.cadence[suite.name], 'nightly');
+    assert.equal(facts.cadence[suite.name], suite.name === 'quality' ? 'night-report' : 'nightly');
     assert.ok(facts.sameOnEveryOs.includes(suite.name));
     assert.ok(facts.storeless.includes(suite.name));
     assert.deepEqual(facts.judges[suite.name], quality.judges);

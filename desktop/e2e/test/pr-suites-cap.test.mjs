@@ -184,7 +184,7 @@ import path from 'node:path';
 import {spawnSync} from 'node:child_process';
 
 const cli = new URL('../pr-suites.mjs', import.meta.url);
-function cliPlan({catches, pullRequest = true, base = 'origin/main', listed = {}, mergeBaseListed = listed, headListed = listed, checkoutLanes = {}, addedFiles = [], deletedFiles = [], suites = ['wizard', 'wander', 'strategy', 'settings', 'jobs', 'interviews', 'focus', 'calendar'], extraFiles = [], coverage = {}, baseSources = {}} = {}) {
+function cliPlan({catches, pullRequest = true, base = 'origin/main', listed = {}, mergeBaseListed = listed, headListed = listed, checkoutLanes = {}, addedFiles = [], deletedFiles = [], suites = ['wizard', 'visitread', 'strategy', 'settings', 'jobs', 'interviews', 'focus', 'calendar'], extraFiles = [], coverage = {}, baseSources = {}} = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pr-cap-cli-'));
   try {
     const files = [...suites.map(s => `desktop/e2e/suites/${s}.mjs`), ...extraFiles];
@@ -219,7 +219,7 @@ syncBuiltinESMExports();`);
 test('CLI writes five whole suites and three deferrals with their reasons to stdout and GITHUB_OUTPUT', () => {
   const {values, text} = cliPlan();
   assert.equal(values.suites, 'calendar,focus,interviews,jobs,settings');
-  assert.equal(values.left, 'wizard,wander,strategy');
+  assert.equal(values.left, 'wizard,visitread,strategy');
   const steps = JSON.parse(values.steps);
   assert.deepEqual(Object.keys(steps), ['(parts)', '(why)']);
   for (const suite of values.left.split(',')) {
@@ -231,7 +231,7 @@ test('CLI writes five whole suites and three deferrals with their reasons to std
 test('CLI reads catch counts only when supplied and applies the base registry before capping', () => {
   assert.equal(cliPlan({catches: {wizard: 99}}).values.suites, 'wizard,calendar,focus,interviews,jobs');
   const {values} = cliPlan({listed: {calendar: {lane: 'tolerant'}, focus: {lane: 'suspended'}}});
-  assert.equal(values.suites, 'interviews,jobs,settings,strategy,wander');
+  assert.equal(values.suites, 'interviews,jobs,settings,strategy,visitread');
   assert.equal(values.left, 'wizard');
   const main = cliPlan({pullRequest: false, catches: {wizard: 99}, listed: {calendar: {lane: 'tolerant'}}});
   assert.equal(main.values.suites.split(',').length, 7);   // --base applies even without --pull-request
@@ -240,10 +240,10 @@ test('CLI reads catch counts only when supplied and applies the base registry be
 });
 
 test('CLI picks a real watched AI suite only when BASE enables its informational number', () => {
-  // qualityai is not on this branch yet; quality exercises the same watches and base-registry path.
+  // qualityai is the real watched AI suite left on PRs; quality is night-report (never on a PR) since 1 Nov 2026.
   const change = {suites: [], extraFiles: ['src/ai/score.py']};
-  assert.ok(!cliPlan({...change, listed: {quality: {lane: 'tolerant'}}}).values.suites.split(',').includes('quality'));
-  assert.ok(cliPlan({...change, listed: {quality: {lane: 'tolerant', pr: 'number'}}}).values.suites.split(',').includes('quality'));
+  assert.ok(!cliPlan({...change, listed: {qualityai: {lane: 'tolerant'}}}).values.suites.split(',').includes('qualityai'));
+  assert.ok(cliPlan({...change, listed: {qualityai: {lane: 'tolerant', pr: 'number'}}}).values.suites.split(',').includes('qualityai'));
 });
 
 test('CLI labels only the capped Linux suite for merge, not the Mac-only loader', () => {
@@ -252,14 +252,14 @@ test('CLI labels only the capped Linux suite for merge, not the Mac-only loader'
     extraFiles: ['cap-fixture.js'],
     coverage: {suites: {
       strategy: {sha: 'fixture', files: {'cap-fixture.js': {loaded: true, lines: []}}, steps: {}},
-      interactions: {sha: 'fixture', files: {'cap-fixture.js': {loaded: true, lines: []}}, steps: {}},
+      updates: {sha: 'fixture', files: {'cap-fixture.js': {loaded: true, lines: []}}, steps: {}},
     }},
   });
   assert.equal(values.suites, 'calendar,focus,interviews,jobs,settings');
-  assert.equal(values.left, 'strategy,interactions');
+  assert.equal(values.left, 'strategy,updates');
   assert.ok(text.includes('| `strategy` | run after merge | loads cap-fixture.js'));
-  assert.ok(text.includes('| `interactions` | not in this PR run | loads cap-fixture.js'));
-  assert.ok(!text.includes('| `interactions` | run after merge |'));
+  assert.ok(text.includes('| `updates` | not in this PR run | loads cap-fixture.js'));
+  assert.ok(!text.includes('| `updates` | run after merge |'));
   const reasons = JSON.parse(values.steps)['(why)'];
   assert.deepEqual(reasons.filter(line => line.includes(' · run after merge ←')), [
     'strategy · run after merge ← desktop/e2e/suites/strategy.mjs (the suite watches or imports it, and its recorded run never loaded it)',

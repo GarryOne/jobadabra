@@ -19,7 +19,7 @@ export const store = 'sqlite';
 const clocks = qualityClocks();
 export const aggregateBudget = false;
 export const hangCaps = hangCapsFor('quality', {record: answersMode(process.env) === 'record'});
-export const cadence = PLANNER.cadence;
+export const cadence = 'night-report';   // Why (1 Nov 2026, owner: "Add them to #2761"): quality answers from stored answers, so it is a free measurement: once a night, report only, never in the beta (lib/plan.mjs). qualityai keeps PLANNER.cadence.
 // Why (30 Oct 2026, qu): plan-time imports keep replay's 3 min; e2e.yml's fixed 15-min run step already covers RECORD's 8 min.
 export const minutes = Math.ceil(clocks.suiteMs / 60000);
 export const sameOnEveryOs = PLANNER.sameOnEveryOs;

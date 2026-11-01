@@ -92,5 +92,14 @@ class PickCli(unittest.TestCase):
         self.assertEqual(self.pick('D', ['D', 'B'], '--commit', self.sha['C'][:7])[0], 1)
 
 
+class BetaReleaseFallback(unittest.TestCase):
+    def test_no_eligible_commit_builds_the_head_but_a_named_commit_still_stops(self):
+        # Beta 9 (1 Nov 2026, a8): main's head had just added a workflow file, so the picker found nothing and the one command stopped. Without --commit it now builds the head.
+        text = (ROOT / 'tools' / 'beta-release.sh').read_text()
+        self.assertIn("{ [ -n \"$commit\" ] && exit 1; echo \"Building main's head instead", text)
+        self.assertIn('pick=""\nif [ "$at" != head ]; then', text)
+        self.assertIn('if [ -n "$pick" ]; then', text)
+
+
 if __name__ == '__main__':
     unittest.main()

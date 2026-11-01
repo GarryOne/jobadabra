@@ -1,4 +1,4 @@
-// The old product name (job-pilotto in any spelling) does not come back: every use must be one the map keeps on purpose (tools/rename-map.json).
+// The old product name (see the map) does not come back: every use must be one the map keeps on purpose (tools/rename-map.json).
 // Why (rename to Jobadabra, 1 Nov 2026, owner: "it should be all jobadabra"; his brief: "A guard: no new old-name use outside an allow-list"): ~3,000 uses had to be renamed once.
 import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';

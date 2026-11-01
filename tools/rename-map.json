@@ -71,6 +71,12 @@
    "owner": "go: every GarryOne/ literal is swept by go (PRs 3/7 to 6/7)"
   },
   {
+   "id": "go-owner-line",
+   "match": "^job-pilotto$",
+   "line": "GarryOne",
+   "owner": "go: a line that names the owner and the repo is part of go's sweep (1e)"
+  },
+  {
    "id": "keep-vars-secrets",
    "match": "^JOB_PILOTTO",
    "before": "(vars|secrets)\\.$",

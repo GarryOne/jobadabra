@@ -47,7 +47,7 @@ test('every template that names the engine follows its new name and stays pinned
 test('since the engine became GarryOne/jobadabra, offline templates and old-name files both call it by that name', () => {
   assert.equal(github.ENGINE_REPO, 'GarryOne/jobadabra');
   const files = Object.entries(github.payload(storage()).files).filter(([name]) => name.startsWith('.github/workflows/'));
-  for (const [name, text] of files) assert.doesNotMatch(live(text), /GarryOne\/jobadabra(?![\w.-])/, name);
+  for (const [name, text] of files) assert.doesNotMatch(live(text), /GarryOne\/job-pilotto(?![\w.-])/, name);
   const old = 'uses: GarryOne/job-pilotto/.github/workflows/daily.yml@main\n      code_repository: GarryOne/job-pilotto\n';
   assert.equal(pinned(old), 'uses: GarryOne/jobadabra/.github/workflows/daily.yml@main\n      code_repository: GarryOne/jobadabra\n');
 });

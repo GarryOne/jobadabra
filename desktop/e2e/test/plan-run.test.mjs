@@ -323,7 +323,7 @@ test('the matrix marks tolerant suites from lanes.json, never backbone suites', 
   assert.equal(legs.find(leg => leg.suite === 'settings').tolerant, undefined);
 });
 
-test('lanes.json alone marks every tolerant suite and every outside cadence is tolerant; workflows never gate that lane', async () => {
+test('lanes.json alone marks every tolerant suite and every outside and night-report cadence is tolerant; workflows never gate that lane', async () => {
   const lanes = JSON.parse(fs.readFileSync(new URL('../lanes.json', import.meta.url), 'utf8')).suites;
   const facts = await suiteFacts();
   const all = Object.keys(lanes);
@@ -333,7 +333,7 @@ test('lanes.json alone marks every tolerant suite and every outside cadence is t
   for (const [suite, entry] of Object.entries(lanes)) {
     assert.equal(legs.find(leg => leg.suite === suite)?.tolerant, entry.lane === 'tolerant' ? true : undefined, suite);
   }
-  for (const [suite, cadence] of Object.entries(facts.cadence)) if (cadence === 'outside') assert.equal(lanes[suite]?.lane, 'tolerant', suite);
+  for (const [suite, cadence] of Object.entries(facts.cadence)) if (['outside', 'night-report'].includes(cadence)) assert.equal(lanes[suite]?.lane, 'tolerant', `${suite}: a ${cadence} suite is a tolerant lane (it shows its result and never holds a beta)`);
   for (const name of ['desktop', 'e2e', 'e2e-windows']) {
     const text = fs.readFileSync(new URL(`../../../.github/workflows/${name}.yml`, import.meta.url), 'utf8');
     assert.doesNotMatch(text, /matrix\.outside/, name);
@@ -375,4 +375,25 @@ test('new backbone steps plan five native-OS filtered legs; admission still runs
   const workflow = fs.readFileSync(new URL('../../../.github/workflows/e2e.yml', import.meta.url), 'utf8');
   assert.match(workflow, /E2E_STEPS: \$\{\{ matrix\.stepFilter/);
   assert.match(workflow, /Burn-in steps ·/);
+});
+
+// Why (1 Nov 2026, owner: "I'd like the beta to have only the critical e2e/user journeys. ALl the others, to run separately less frequently"): a finder or explorer runs once a night,
+// shows its result and never holds anything. `night-report` is the one cadence for it (interactions, wander; quality, qualityai and notion-real may follow).
+test('cadence night-report: once a night, in no gate, schedule, push or PR, and never holds a run', async () => {
+  const ALL3 = ['jobs', 'settings', 'wander'], cadence = {wander: 'night-report'};
+  const run = (env, stub = {}) => planRun({env: {REPO: 'o/r', SHA: HEAD, ...env}, gh: gh(stub), all: ALL3, cadence, minutes: () => 15, storeless: ['wander']});
+  for (const kind of ['nightly', 'beta']) {
+    const gate = await run({EVENT: 'workflow_dispatch', TARGET_REF: 'desktop-v1', GATE_TAG: 'desktop-v1', GATE_KIND: kind}, {releases: [['desktop-v1', HEAD]]});
+    assert.deepEqual(suitesOf(gate), ['jobs', 'settings'], `the ${kind} release gate must not run it`);
+  }
+  assert.deepEqual(suitesOf(await run({EVENT: 'schedule'}, {runs: [{event: 'schedule', headSha: OLD, conclusion: 'success'}], files: ['desktop/lib/x.js']})), ['jobs', 'settings'], 'the three-a-day schedule');
+  assert.equal((await run({EVENT: 'push', BEFORE: OLD}, {files: ['desktop/e2e/suites/wander.mjs', 'desktop/renderer/app.js']})).count, '0', 'a push does not reach it, not even by its own file or what it watches');
+  assert.ok(!suitesOf(await run({EVENT: 'workflow_dispatch', PR_SUITES: 'wander', ONLY: 'wander'})).includes('wander'), 'a stale PR pick cannot run it');
+  assert.deepEqual(suitesOf(await run({EVENT: 'workflow_dispatch', ONLY: 'wander'})), ['wander'], 'a person can still name it');
+  const first = await run({EVENT: 'workflow_dispatch', NIGHT_PASS: '1/5'});
+  assert.deepEqual(suitesOf(first), ['jobs', 'settings', 'wander'], 'night pass 1 runs it');
+  assert.deepEqual(JSON.parse(first.matrix).include.filter(leg => leg.suite === 'wander').map(leg => leg.tolerant), [true], 'it runs, shows its result, and never fails the run or holds a beta (the matrix says tolerant)');
+  assert.ok(!JSON.parse(first.matrix).include.filter(leg => leg.suite !== 'wander').some(leg => leg.tolerant), 'the other suites stay as they were');
+  const later = await run({EVENT: 'workflow_dispatch', NIGHT_PASS: '3/5'}, {runs: [{displayTitle: 'Night burn-in 1/5 · bbbbbbbb', headSha: HEAD, createdAt: new Date().toISOString()}]});
+  assert.deepEqual(suitesOf(later), ['jobs', 'settings'], 'passes 2 to 5 are five looks at the gate suites, not five reports');
 });

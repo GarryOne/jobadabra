@@ -139,7 +139,7 @@ export function planPrSuites({pointed = [], hits = {}, covering = {}, direct = [
   if (proofs.size > 5) throw Object.assign(new Error('More than five suites need burn-in: split this PR so every new step is proved.'), {code: 'E2E_BURN_IN_CAPACITY'});
   const reports = pullRequest ? new Set(Object.entries(lanes.suites || {}).filter(([suite, entry]) => entry?.lane === 'tolerant' && entry.pr === 'number' && !admissions.has(suite)).map(([suite]) => suite)) : new Set();
   const wanted = [...new Set([...proofs, ...pointed, ...Object.keys(hits), ...Object.keys(covering)])].filter(suite => proofs.has(suite) || (
-    !['manual', 'outside'].includes(cadence[suite]) && !(pullRequest && ON_PR_ELSEWHERE[suite]) &&
+    !['manual', 'outside', 'night-report'].includes(cadence[suite]) && !(pullRequest && ON_PR_ELSEWHERE[suite]) &&
     (reports.has(suite) || isBackbone(lanes, suite))));
   let run = wanted.filter(suite => proofs.has(suite) || linux(suite) || pointed.includes(suite) || String(covering[suite] || '').startsWith('runs '));
   const numbers = run.filter(suite => reports.has(suite));

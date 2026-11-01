@@ -38,6 +38,8 @@ A suite exports `cadence` (`lib/plan.mjs` decides, `plan-run.mjs` plans the CI r
 - `manual`: never by itself; a person names it (`gh workflow run e2e.yml -f suite=personas`, `npm run all -- --only personas`). `personas`, `explore` and the audit's dropped `foryou`, `pool`, `notion-real` are this: kept, not deleted.
 - `slim`: like `always`, but never in a release's repeats (the soak top-ups, the stable canary). Set in `SLIM` in `lib/plan.mjs`, not in the suite (an edited suite runs on its PR). The e2e audit (26 Oct 2026) slimmed 15 suites that caught no product bug in 30 days.
 
+- `night-report`: once a night (night burn-in pass 1), report only: never in a release gate or beta, a schedule, a push or a PR; a person can still name it. A `night-report` suite is also a `tolerant` lane in `lanes.json` (a red shows, it never holds anything; guard in `test/plan-run.test.mjs`). `interactions` and `wander` are this (owner, 1 Nov 2026: "I'd like the beta to have only the critical e2e/user journeys. ALl the others, to run separately less frequently"); `quality`, `qualityai` and `notion-real` may follow.
+
 The paid AI-judge steps (`employers`) also run only in the nightly gate and in manual runs (`E2E_FULL=1`); on a Mac they always run.
 
 ## Running them all on this Mac

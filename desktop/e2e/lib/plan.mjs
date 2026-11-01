@@ -14,9 +14,14 @@ const SMOKE = 'settings';   // AI-free, about 30 s: proof that the shared test c
 // 'outside' runs in the nightly and beta release gates and its own daily run (e2e.yml OUTSIDE cron), never on the three looks, by push/PR reach or in soak/canary repeats.
 // 'slim' runs like 'always' (the night's schedule, every release gate, a push that touches it) but never in a release's repeats: the soak top-ups and the stable canary
 // (`repeat`). The e2e audit's keep 11 / slim 15 / drop 4 (owner's yes, 26 Oct 2026): no product bug caught in 30 days, so a night and a beta are enough.
+// 'night-report' runs once a night (night burn-in pass 1, lib/night-pass.mjs) and in no release gate or beta, no schedule, no push and no PR; a person can still name it. It must also be a
+// tolerant lane in lanes.json (its result shows, a red never holds anything; guard: test/plan-run.test.mjs). Why (1 Nov 2026, owner: "I'd like the beta to have only the critical
+// e2e/user journeys. ALl the others, to run separately less frequently"): the one cadence for finders, explorers and measurements (interactions, wander; quality, qualityai, notion-real may follow).
+export const NIGHT_REPORT = 'night-report';
 export function autoSuites(all, cadence = {}, alwaysOnly = false, repeat = false) {
   return all.filter(suite => {
     const when = cadence[suite] || 'always';
+    if (when === NIGHT_REPORT) return false;
     if (when === 'outside') return !alwaysOnly && !repeat;
     if (when === 'slim') return !repeat;
     return alwaysOnly ? when === 'always' : (when !== 'manual' && when !== 'watched');
@@ -25,7 +30,7 @@ export function autoSuites(all, cadence = {}, alwaysOnly = false, repeat = false
 
 // The slim suites, as one table here rather than a `cadence` export in each suite: a PR that edits a suite file runs that suite, so 15 exports would run 15 suites
 // on the PR that slims them. A dropped suite exports cadence 'manual' itself (a manual suite never runs on a PR). Guard: test/suite-cadence.test.mjs.
-export const SLIM = ['calendar', 'failuresnotion', 'focus', 'focusdismiss', 'interviews', 'jobs', 'linkedin', 'recorded', 'storemove', 'stores', 'strategy', 'updates', 'visitread', 'visitsauto', 'wander', 'wizard'];
+export const SLIM = ['calendar', 'failuresnotion', 'focus', 'focusdismiss', 'interviews', 'jobs', 'linkedin', 'recorded', 'storemove', 'stores', 'strategy', 'updates', 'visitread', 'visitsauto', 'wizard'];
 // A suite's cadence from its module: the table's 'slim', else its own export. Every reader (plan-run.mjs suiteFacts, suite.mjs, run-all.mjs) goes through it.
 export const cadenceOf = (suite, module) => (SLIM.includes(suite) ? 'slim' : module.cadence);
 
@@ -49,7 +54,7 @@ export function suitesFor(files, all, {watches = {}, cadence = {}, uses = {}} = 
   for (const file of files.map(name => String(name).trim()).filter(Boolean)) {   // files a suite watches (the scoring prompt, a model id): that suite runs too
     for (const [suite, paths] of Object.entries(watches)) if (all.includes(suite) && paths.some(path => file === path || (path.endsWith('/') && file.startsWith(path)))) chosen.add(suite);
   }
-  return all.filter(suite => chosen.has(suite) && !['manual', 'outside'].includes(cadence[suite]));   // manual and outside suites are never chosen by a push
+  return all.filter(suite => chosen.has(suite) && !['manual', 'outside', NIGHT_REPORT].includes(cadence[suite]));   // manual, outside and night-report suites are never chosen by a push
 }
 
 // A manual run's `suite` input: "" = all, else a comma-separated list.

@@ -10,9 +10,9 @@ import {SUITES} from '../../lib/context.mjs';
 ensureStaged(fileURLToPath(new URL('../../..', import.meta.url)));
 const registry = loadJourneys();
 
-// Why (1 Nov 2026, owner via mac-07: "'Find jobs using your browser' this is not critical", "Move all 3 to integration"; owner: "We can build 10-20 more journeys. for the integrations", a8 yes via tj): J3 is out; the registry has J0-J2, J4-J12, the tier additions J13-J19 and J20-J35, Tier 2 journeys registered from integration files that already prove a board journey.
-test('the registry holds the journeys J0-J2, J4-J12, the tier additions J13-J19 and the integration journeys J20-J35, each with a name and steps', () => {
-  assert.deepEqual(registry.journeys.map(journey => journey.id), ['J0', 'J1', 'J2', 'J4', 'J5', 'J6', 'J7', 'J8', 'J9', 'J10', 'J11', 'J12', 'J13', 'J14', 'J15', 'J16', 'J17', 'J18', 'J19', 'J20', 'J21', 'J22', 'J23', 'J24', 'J25', 'J26', 'J27', 'J28', 'J29', 'J30', 'J31', 'J32', 'J33', 'J34', 'J35']);
+// Why (1 Nov 2026, owner via mac-07: "'Find jobs using your browser' this is not critical", "Move all 3 to integration"; owner: "We can build 10-20 more journeys. for the integrations", a8 yes via tj): J3 is out; the registry has J0-J2, J4-J12, the tier additions J13-J19 and J20-J39, Tier 2 journeys proved by integration files (J36-J39 each came with a new test).
+test('the registry holds the journeys J0-J2, J4-J12, the tier additions J13-J19 and the integration journeys J20-J39, each with a name and steps', () => {
+  assert.deepEqual(registry.journeys.map(journey => journey.id), ['J0', 'J1', 'J2', 'J4', 'J5', 'J6', 'J7', 'J8', 'J9', 'J10', 'J11', 'J12', 'J13', 'J14', 'J15', 'J16', 'J17', 'J18', 'J19', 'J20', 'J21', 'J22', 'J23', 'J24', 'J25', 'J26', 'J27', 'J28', 'J29', 'J30', 'J31', 'J32', 'J33', 'J34', 'J35', 'J36', 'J37', 'J38', 'J39']);
   for (const journey of registry.journeys) {
     assert.ok(journey.name.length > 10, `${journey.id} has the owner's name`);
     assert.ok(journey.steps.length > 0, `${journey.id} has steps`);
@@ -26,7 +26,7 @@ test('every journey has tier 1 or 2, and the owner\'s first-tier journeys are ti
   for (const journey of registry.journeys) assert.ok([1, 2].includes(journey.tier), `${journey.id} has a tier`);
   const tier = id => registry.journeys.find(journey => journey.id === id)?.tier;
   for (const id of ['J0', 'J1', 'J2', 'J4', 'J5', 'J6', 'J7', 'J12', 'J13', 'J14']) assert.equal(tier(id), 1, id);
-  for (const id of ['J8', 'J9', 'J10', 'J11', 'J15', 'J16', 'J17', 'J18', 'J19', ...Array.from({length: 16}, (_, i) => `J${20 + i}`)]) assert.equal(tier(id), 2, id);
+  for (const id of ['J8', 'J9', 'J10', 'J11', 'J15', 'J16', 'J17', 'J18', 'J19', ...Array.from({length: 20}, (_, i) => `J${20 + i}`)]) assert.equal(tier(id), 2, id);
   assert.equal(tier('J8'), 2, 'Tailor CV: a failed tailor leaves the base CV, so it degrades but does not block');
 });
 

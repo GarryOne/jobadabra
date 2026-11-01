@@ -64,16 +64,43 @@ function tolerant(read) {
 /** pollUntil's cap when the caller gives none; also what a helper that spends one budget across several waits falls back to. */
 export const POLL_CAP_MS = 45000;
 
+const HUNG = Symbol('a read did not answer');
+const MAX_TIMER_MS = 2 ** 31 - 1;
+const READ_GRACE_MS = 2000;   // a read that starts just before the cap may finish this long after it and still be judged; with the cap spent (a step's clock of 0) a read still gets this long
+/**
+ * `promise`, or HUNG once `ms` have passed with it still pending. The timer is real (a read hangs in real time), cleared as soon as the read settles (it must keep the event loop alive: a wait that is pending is not finished).
+ * Why (1 Nov 2026, main 47580bb run 41342226333): pollUntil checked its cap only between reads, so one page/worker evaluate that never settled outlived every cap and the file died silently
+ * at the 180 s limit. A read that settles in time keeps its value or its error; one abandoned here is marked handled, because the wait has already reported it (test/harness/wait-on-state.test.mjs).
+ */
+function withinCap(promise, left, graceMs) {
+  const ms = Math.max(left, 0) + graceMs;
+  let timer;
+  const cap = new Promise(resolve => { timer = setTimeout(() => resolve(HUNG), Math.min(ms, MAX_TIMER_MS)); });
+  Promise.resolve(promise).catch(() => {});   // Why: the outcome is reported by the race below; this only stops a read that fails after the cap from being an unhandled rejection
+  return Promise.race([promise, cap]).finally(() => clearTimeout(timer));
+}
+
+/**
+ * One Playwright call that has no timeout of its own (newPage, newCDPSession, a worker evaluate), bounded: its value, or an error naming `what` once `ms` pass with it pending.
+ * Why (1 Nov 2026, main 47580bb run 41342226333): such a call is the one place a test hangs silently until its file's 180 s limit; the error says which step it was in.
+ */
+export async function stageWithin(what, ms, promise) {
+  const result = await withinCap(promise, ms, 0);
+  if (result === HUNG) throw new Error(`${what} did not finish within ${Math.round(ms / 1000)} s (a browser call that never settled)`);
+  return result;
+}
+
 /**
  * Poll fresh reads until accepts succeeds or elapsed ms reaches capMs; return the last value and elapsed ms.
  * Read errors propagate unless the reader is composed with tolerant; unread values skip accepts.
  * Ticks are clipped to the remaining cap. The label formats slow successes; now/pause allow clock-free tests.
  */
-export async function pollUntil(read, accepts, {capMs = POLL_CAP_MS, tickMs = 250, label = ms => `the state was observed ${ms} ms after the wait started`, log = console.log, now = Date.now, pause = sleep} = {}) {
+export async function pollUntil(read, accepts, {capMs = POLL_CAP_MS, tickMs = 250, label = ms => `the state was observed ${ms} ms after the wait started`, log = console.log, now = Date.now, pause = sleep, readGraceMs = READ_GRACE_MS} = {}) {
   const start = now();
   let value = '';
   for (;;) {
-    const result = await read(), unread = result?.[UNREAD] === true;
+    const result = await withinCap(read(), capMs - (now() - start), readGraceMs), unread = result?.[UNREAD] === true;
+    if (result === HUNG) return {value, ms: Math.max(now() - start, capMs), hung: true};
     value = unread ? result.value : result;
     const ms = now() - start;
     if (!unread && accepts(value)) {

@@ -21,6 +21,9 @@ import {LAUNCH_TIMEOUT_MS, launchGuard} from './launch-guard.mjs';
 import {setExtensionStorage} from '../../../hosted/ready-fill/extension-storage.mjs';
 import {endBrowser} from './browser-end.mjs';
 import {extensionWorker} from './own-worker.mjs';
+import {stageWithin} from './wait-on-state.mjs';
+
+const CALL_CAP_MS = 30000;   // hang guard of one browser call that takes milliseconds (newPage, newCDPSession, the isolation read), far below the 180 s a test file gets
 
 // The extension's stored settings (chrome.storage.local as JSON) -> '' or why it is not isolated: its app address is not the stand-in's port, or an address
 // on the live app's port 47111 is stored anywhere. An ADDRESS, never the bare digits: 27 Oct 2026 (run 40447725087) a stored timestamp, "boot":"1793074711121",
@@ -95,17 +98,17 @@ export async function startRealExtension({extensionDir = EXTENSION_DIR, cv = tru
     throw error;
   }
   await checkCancelled();
-  await setExtensionStorage(worker, {workerUrl: `http://127.0.0.1:${port}`, token: 'e2e', ladderAct: true});   // ladderAct: the fill ladder's repair acts in test runs only (fake applicant; extension/ladder/fill-climb.js)
+  await stageWithin('the extension start: writing its settings', CALL_CAP_MS, setExtensionStorage(worker, {workerUrl: `http://127.0.0.1:${port}`, token: 'e2e', ladderAct: true}));   // ladderAct: the fill ladder's repair acts in test runs only (fake applicant; extension/ladder/fill-climb.js)
   await checkCancelled();
-  const page = await context.newPage();
+  const page = await stageWithin('the extension start: opening its first tab', CALL_CAP_MS, context.newPage());
   await checkCancelled();
-  control = await context.newCDPSession(page);
+  control = await stageWithin('the extension start: attaching to its first tab', CALL_CAP_MS, context.newCDPSession(page));
   await checkCancelled();
 
 
   // Fails the run unless the extension talks to the stand-in only (isolationProblem).
   const assertIsolated = async () => {
-    const problem = isolationProblem(await worker.evaluate(async () => JSON.stringify(await chrome.storage.local.get(null))), port);
+    const problem = isolationProblem(await stageWithin('the extension start: reading its stored settings', CALL_CAP_MS, worker.evaluate(async () => JSON.stringify(await chrome.storage.local.get(null)))), port);
     if (problem) throw new Error(problem);
     return true;
   };

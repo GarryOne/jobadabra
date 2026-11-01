@@ -6,7 +6,7 @@ import path from 'node:path';
 import {test} from 'node:test';
 import {currentLaunchLog} from '../../lib/app-log.mjs';
 import {withLimit} from '../../lib/runner.mjs';
-import {extensionDecisions, formsClosedForJob, pollUntil, stepClock, stepTimeLeft, waitForDecisions, waitForFormValue, waitForLogLine, waitJobFormClosed, waitCapNote} from '../../lib/wait-on-state.mjs';
+import {stageWithin, extensionDecisions, formsClosedForJob, pollUntil, stepClock, stepTimeLeft, waitForDecisions, waitForFormValue, waitForLogLine, waitJobFormClosed, waitCapNote} from '../../lib/wait-on-state.mjs';
 
 const clock = () => {
   let ms = 0;
@@ -62,6 +62,36 @@ test('read time counts toward the cap and a failed read preserves the last value
     if (++reads > 1) throw new Error('page navigating');
     return '7';
   }, '9', {...time, capMs: 1000}), {value: '7', ms: 1050});
+});
+
+// Why (1 Nov 2026, main 47580bb run 41342226333 + PR run 41343009693): extension-form-shapes printed no subtest and died at the file's 180 s limit. The cap was checked only BETWEEN reads, so one read
+// (a page or worker evaluate) that never settled outlived every cap. The real timer here is the point of the test: 30 ms stands for the cap, a read that never answers for the wedged page.
+test('a read that never answers ends the wait at the cap with the last value, marked hung (the cap was only checked between reads)', async () => {
+  let reads = 0;
+  const result = await pollUntil(() => (++reads === 1 ? Promise.resolve('7') : new Promise(() => {})), value => value === '9', {capMs: 30, tickMs: 1, readGraceMs: 0, log: () => {}});
+  assert.deepEqual([result.value, result.hung, reads], ['7', true, 2]);
+});
+
+test('a browser call that never settles fails naming its step; one that settles keeps its value and its error', async () => {
+  await assert.rejects(stageWithin('the extension start: opening its first tab', 30, new Promise(() => {})), /the extension start: opening its first tab did not finish within 0 s/);
+  assert.equal(await stageWithin('a call', 1000, Promise.resolve(7)), 7);
+  const error = new Error('page closed');
+  await assert.rejects(stageWithin('a call', 1000, Promise.reject(error)), failure => failure === error);
+});
+
+test('a read that fails after the wait gave up on it is not an unhandled rejection, and a read that fails in time still propagates', async () => {
+  const unhandled = [], listener = error => unhandled.push(error);
+  process.on('unhandledRejection', listener);
+  try {
+    let fail;
+    const late = new Promise((_, reject) => { fail = reject; });
+    const result = await pollUntil(() => late, () => false, {capMs: 20, tickMs: 1, readGraceMs: 0, log: () => {}});
+    fail(new Error('page closed after the cap'));
+    await new Promise(resolve => setImmediate(resolve));   // Why: lets Node deliver an unhandled rejection if there were one; a state wait is not possible for "nothing happened"
+    assert.deepEqual([result.hung, unhandled.length], [true, 0]);
+  } finally { process.off('unhandledRejection', listener); }
+  const error = new Error('read failed in time');
+  await assert.rejects(pollUntil(async () => { throw error; }, () => true, {capMs: 1000, log: () => {}}), failure => failure === error);
 });
 
 test('an untolerated poll propagates read errors without a tick', async () => {

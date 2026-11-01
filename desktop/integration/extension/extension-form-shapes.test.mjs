@@ -14,14 +14,17 @@ import {cvProblems, fillProblems, leftProblems, submitProblems} from '../../e2e/
 import {FORMS, MENU_FIRST, MENU_AGAIN, MENU_PAGE, REAL_FORMS, SIGNUP, SIGNUP_PAGES, formHtml, realFieldId, realPage} from '../../e2e/lib/forms.mjs';
 import {FAKE_CONTACT, FIXTURE_CV, startRealExtension} from '../../e2e/lib/real-extension.mjs';
 
+// Hang guards (1 Nov 2026, main 47580bb run 41342226333: this file printed no subtest and died at the run's 180 s file limit). Slowest measured test here: 5.9 s (run 41341289580), so 100 s is 17x.
+// Each test gets its own limit below the file's, so a hung one is named by the runner; the waits inside end earlier still and say which state they waited for.
+const TEST_CAP = {timeout: 100000}, FILL_CAP_MS = 60000, PANEL_CAP_MS = 20000;
 const KIND = {ok: true, kind: 'form', role: 'form', by: 'ai', confidence: 0.95, rung: 2};
 const CONTACT = FAKE_CONTACT;   // the applicant the stand-in app serves (lib/real-extension.mjs)
 let run;
 before(async () => {
   // No kit: the AI answers nothing beyond the page kind, so what the person's details cannot fill must be listed for them.
   run = await startRealExtension({offline: true, allowAllSites: true, answer: {'/extension/page-kind': () => KIND, '/extension/answer': () => ({ok: true, eligible: true, answers: []})}});
-});
-after(async () => { await run?.close(); });
+}, TEST_CAP);
+after(async () => { await run?.close(); }, TEST_CAP);
 
 // Open the form as the app's Apply does (the marked address), wait for the fill to end, read the form and the panel. The page closes at the end of the test.
 async function fillForm(form, html, via = run) {
@@ -33,16 +36,16 @@ async function fillForm(form, html, via = run) {
     return route.fulfill({status: 200, contentType: 'text/html; charset=utf-8', body: html});
   });
   await page.goto(`${url}#jobpilotto-fill`, {waitUntil: 'domcontentloaded'});
-  const done = await waitForFill({capMs: 90000, pickTab: () => ({tab: page, tabs: 1}), readState: fillState});
+  const done = await waitForFill({capMs: FILL_CAP_MS, pickTab: () => ({tab: page, tabs: 1}), readState: fillState});
   assert.ok(done.ok, `the extension never finished filling ${form.title} (last state ${JSON.stringify(done.state)})`);
   assert.notEqual(done.state.state, 'error', `the fill ended in an error: ${done.state.error}`);
-  const panelRead = await waitForFill({capMs: 30000, pickTab: () => ({tab: page, tabs: 1}), readState: readPanel, accept: panel => !!panel?.progress && !panel.filling});
+  const panelRead = await waitForFill({capMs: PANEL_CAP_MS, pickTab: () => ({tab: page, tabs: 1}), readState: readPanel, accept: panel => !!panel?.progress && !panel.filling});
   assert.ok(panelRead.ok, `the panel never became readable (last read ${JSON.stringify(panelRead.state)})`);
   return {page, fired, actual: await readForm(page), panel: panelRead.state};
 }
 
 for (const spec of REAL_FORMS) {
-  test(`real form ${spec.id}: your details are filled, and every required field it failed on is filled or listed for you by name, Submit untouched`, async () => {
+  test(`real form ${spec.id}: your details are filled, and every required field it failed on is filled or listed for you by name, Submit untouched`, TEST_CAP, async () => {
     const form = FORMS[`real-${spec.id}`];
     const {page, fired, actual, panel} = await fillForm(form, realPage(form));
     try {
@@ -60,7 +63,7 @@ for (const spec of REAL_FORMS) {
   });
 }
 
-test('a form with a control the extension cannot operate: the miss is reported to the app, the panel lists the question and does not say "Ready to submit" over it', async () => {
+test('a form with a control the extension cannot operate: the miss is reported to the app, the panel lists the question and does not say "Ready to submit" over it', TEST_CAP, async () => {
   const form = FORMS.unknown;
   const {page, fired, actual, panel} = await fillForm(form, formHtml('unknown'));
   try {
@@ -74,7 +77,7 @@ test('a form with a control the extension cannot operate: the miss is reported t
 
 // Night journey J8 (Tier 2 since 1 Nov 2026, so no longer an e2e step): the tailored CV reaches the form. Which CV the app hands the extension is desktop/integration/store/tailored-cv.test.mjs; here the
 // extension attaches exactly what the app hands it, under its own name and not the general CV. The stand-in app serves the tailored file the way lib/server-contact.js `me` does (resume: {data, name, type}).
-test('a form whose app hands it a tailored CV gets that file attached, under its own name, and not the general CV', async () => {
+test('a form whose app hands it a tailored CV gets that file attached, under its own name, and not the general CV', TEST_CAP, async () => {
   const tailored = Buffer.concat([fs.readFileSync(FIXTURE_CV), Buffer.from('\n% tailored for E2E Greenhouse Labs\n')]);
   const general = fs.readFileSync(FIXTURE_CV);
   const NAME = 'CV_Ada_Tester_E2E_Greenhouse_Labs.pdf';
@@ -96,7 +99,7 @@ test('a form whose app hands it a tailored CV gets that file attached, under its
 const ACCOUNT_KIND = {ok: true, by: 'ai', rung: 2, signal: 'confident', applyButton: '', applyRoute: '', applyBy: '', applyEmail: '', registerControl: '', signinControl: '', form_frame: -1, kind: 'account', role: 'account', confidence: 0.95,
   accountStep: 'sign_up', accountButton: 'Create account'};
 const sentLines = (via, ...phrases) => phrases.filter(phrase => via.requests.some(request => request.route === '/extension/log' && request.body.includes(phrase)));
-test('a sign-up page before the form: the account step is kept apart from the application form', async () => {
+test('a sign-up page before the form: the account step is kept apart from the application form', TEST_CAP, async () => {
   const accountRun = await startRealExtension({offline: true, allowAllSites: true, answer: {'/extension/page-kind': () => ACCOUNT_KIND, '/extension/answer': () => ({ok: true, eligible: true, answers: []}),
     '/extension/site-password': () => ({ok: true, email: CONTACT.email, mode: 'sign-up', automation: 'assist', session: ''})}});
   try {
@@ -142,12 +145,12 @@ async function menuFormAfterFill(fixture, menuChoices) {
     } finally { await page.close(); }
   } finally { await menuRun.close(); }
 }
-test('a menu whose choices are not the answer\'s words: the form reports the menu with its choices, and the choice the app picks is put in it', async () => {
+test('a menu whose choices are not the answer\'s words: the form reports the menu with its choices, and the choice the app picks is put in it', TEST_CAP, async () => {
   const first = await menuFormAfterFill(MENU_FIRST, []);
   assert.deepEqual([first.value, first.years, first.submits], ['Suisse', '6', []], `the "Indicatif de pays" is "${first.value}" after the form reported the menu ${first.reported} time(s)`);
   assert.ok(first.reported >= 1, 'the form never reported the menu and its choices to the app');
 });
-test('a menu choice the app remembers for the site is on the next form there at once, with nothing reported to ask about', async () => {
+test('a menu choice the app remembers for the site is on the next form there at once, with nothing reported to ask about', TEST_CAP, async () => {
   const remembered = [{host: MENU_AGAIN.host, label: 'Indicatif de pays', value: '+41', choice: 'Suisse'}];
   const again = await menuFormAfterFill(MENU_AGAIN, remembered);
   assert.deepEqual([again.value, again.reported, again.years, again.submits], ['Suisse', 0, '6', []], `the next form has "${again.value}" and reported the menu ${again.reported} time(s): the remembered choice is tried first, so there is nothing to ask`);

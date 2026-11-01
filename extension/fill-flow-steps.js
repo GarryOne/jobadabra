@@ -256,7 +256,7 @@ export async function fillPage(step) {
   decide('fill', 'filling', {host, job: new URL(String(jobUrl || tab.url)).pathname, page: new URL(tab.url).pathname});   // which posting's kit this page uses
   if (late(tab, gen, 'fill start')) return false;   // the closer looks above wait too: only the tab's current read fills it
   const fillToken = crypto.randomUUID(); await writeState(tab.id, {state: 'running'}, fillToken);
-  const result = await fillOpenedTab(live, String(jobUrl || tab.url).split('#')[0], false, {fast: true, quiet: true});
+  const result = await fillOpenedTab(live, String(jobUrl || tab.url).split('#')[0], false, {fast: true, quiet: true, endsRun: false});   // the pass clears its step only: this page's end is written right below (#2800)
   // The end state is this page's: a tab that moved on during the fill (the person pressed the page's own "Create account") shows another page, which writes its own
   // (13 Oct 2026: a sign-up's fill error was read on the application form after it, as if the form had failed).
   const still = await chrome.tabs.get(tab.id).catch(() => null);

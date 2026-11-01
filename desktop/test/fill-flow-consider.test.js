@@ -122,7 +122,7 @@ test('form filled: ordered asks, marks, token writes, fill, report and next-step
   const r = await rig(t);
   assert.equal(await r.run(), undefined);
   assert.deepEqual(order(r.calls), [...prefix, 'settings', 'early', 'say', 'mark', 'labels', 'outcome', 'sketch', 'frames', 'noteFrames', 'frameSketch', 'mails', 'script', 'settings', 'api', 'signal', 'late', 'drawing', 'late', 'backgroundPage', 'late', 'rule', 'late', 'decide', 'mark', 'takePressed', 'role', 'mark', 'backgroundPage', 'forget', 'decide', 'late', 'script', 'fill', 'tab', 'script', 'applyState', 'report', 'confirmed', 'hand', 'next']);
-  assert.deepEqual(named(r.calls, 'fill'), [['fill', tab, 'https://jobs.example.test/job/1', false, {fast: true, quiet: true}]]);
+  assert.deepEqual(named(r.calls, 'fill'), [['fill', tab, 'https://jobs.example.test/job/1', false, {fast: true, quiet: true, endsRun: false}]]);
   assert.deepEqual(named(r.calls, 'script').slice(1), [['script', [JSON.stringify({state: 'running'}), 'fill-token', 'running']], ['script', [JSON.stringify({state: 'done', filled: 2, left: 0, todo: []}), 'fill-token', 'done']]]);
   assert.deepEqual(lines(r.calls), ['page kind: form', 'filling']);
   assert.deepEqual(sayings(r.calls), [['say', 7, 'Reading this page…']]);

@@ -4,6 +4,8 @@
 // must act (your-turn). The page only DRAWS it (panel-overlay.js, review.js, early-dim.js): dim + centred panel while working, nothing decided by a timer, a page event or a removed layer.
 // Held in the worker and in chrome.storage.session (a sleeping worker wakes to the same answer); every change is pushed to the tab as {type: 'applyState'}. Guards: desktop/e2e/test/fill-overlay-early-reload.test.mjs,
 // desktop/test/apply-state-owner.test.js.
+// Design (#2800, 1 Nov 2026): working from the run's start to ONE end verdict. A piece of the run ending (a fill pass, a cleared step) is not a verdict: it clears its step and the tab stays working (sayApply). Run 41274202726: a pass's own `done`
+// came ~310 ms before the fill's end was written on its page, so the page drew "Fill again" (busy false, no dim) with the fill still going.
 // TODO(AI): a run that ends with no progress('') (a return that skips it) leaves its tab working until Stop, the panel's X or the tab's close: find such a path and give it a verdict (2026-10-27).
 export const WORKING = 'working';
 export const VERDICTS = ['done', 'stopped', 'your-turn'];
@@ -35,6 +37,20 @@ export function setApply(tabId, state) {
   if (changed) globalThis.chrome?.storage?.session?.set({[KEY(tabId)]: state}).catch(() => {});
   Promise.resolve().then(() => globalThis.chrome?.tabs?.sendMessage?.(tabId, {type: 'applyState', state})).catch(() => {});   // pushed again on a repeat: a page that drew a step locally meanwhile is set right; a page with no script yet asks on its first draw (panelApply)
   return changed;
+}
+
+/**
+ * A step of the run reaches the worker. With text: a step after a `done` is the run on again (a no-form read, then a fill); after Stop or your-turn only the person's own start brings it back. With no text the step is cleared and the state
+ * is untouched, unless the caller names the run's verdict. Why (#2800): clearing a step used to say `done` at once, which ended the run before the fill's own end was written.
+ * @param {number} tabId the tab
+ * @param {string} text the step, '' to clear it
+ * @param {'done'|'your-turn'|''} verdict the verdict that ends the run with this clear; '' = clear only
+ * @returns {boolean} whether the step may be drawn (always for a clear; text only while working)
+ */
+export function sayApply(tabId, text, verdict = '') {
+  if (!text) { if (verdict) setApply(tabId, verdict); return true; }
+  if (applyState(tabId) === 'done') setApply(tabId, WORKING);
+  return isWorking(tabId);
 }
 
 /** A closed tab's state goes with it. */

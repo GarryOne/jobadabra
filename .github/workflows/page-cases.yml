@@ -245,8 +245,8 @@ jobs:
           node replays-report.mjs "$JP_REPLAY_SHARD_COUNT" $(seq -f 'results/replay-results-%g.json' 1 "$JP_REPLAY_SHARD_COUNT") && exit 0
           [ "$JP_REPLAYS_DRY" = false ] || exit 1
           echo "::warning::page cases report not sent to /admin/form-filling/lab (a publish, never main's verdict)"
-      # A PR's fill time per case against main's last replays (desktop/e2e/replay-time.mjs, owner 12 Oct 2026): a median +1 s fails. Main's results are the last successful
-      # push run's artifacts (kept 3 days); none, or too few cases in both: it says so and passes.
+      # A PR's fill time per case against main's last replays (desktop/e2e/replay-time.mjs, owner 12 Oct 2026): a median +1 s fails. Main's results are the newest
+      # replay-results of a successful run on main (kept 3 days); none, or too few cases in both: it says so and passes.
       - name: Fill time vs main
         if: github.event_name == 'pull_request'
         timeout-minutes: 5
@@ -257,6 +257,11 @@ jobs:
           # Why (1 Nov 2026, Gitar on #2825): main's page cases run inside CI · Tests (build.yml calls this workflow as its `pages` job), so their artifacts sit in its runs;
           # page-cases.yml has had no push run since 15 Oct, so the old run lookup found nothing and this check only ever said "no main data". Found by artifact name,
           # as build.yml's fill check finds its baseline (a workflow reading build.yml's runs by name is a release check: tests/test_release_checks.py).
-          id=$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=replay-results-1&per_page=20" --jq '[.artifacts[] | select((.expired | not) and .workflow_run.head_branch == "main")][0].workflow_run.id // empty' || true)
+          # Only a successful run (Gitar on #2825): the shards upload even when a run is red or cancelled, and partial results must not become the baseline. 100 per page: PR runs
+          # upload the same artifact name and would crowd main's out of a short page.
+          id=""
+          for run in $(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=replay-results-1&per_page=100" --jq '.artifacts[] | select((.expired | not) and .workflow_run.head_branch == "main") | .workflow_run.id' || true); do
+            [ "$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run" --jq .conclusion || true)" = success ] && { id=$run; break; }
+          done
           if [ -n "$id" ]; then gh run download "$id" --repo "$GITHUB_REPOSITORY" --pattern 'replay-results-*' --dir main-results || echo "fill time: main's results of run $id could not be read"; fi
           node replay-time.mjs --pr results/replay-results-*.json --main main-results/*/*.json   # one folder per artifact; an unmatched pattern is a missing file, skipped

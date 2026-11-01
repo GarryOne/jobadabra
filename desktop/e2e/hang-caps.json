@@ -1122,7 +1122,7 @@
         "n": 11,
         "p95Seconds": 28.6
       },
-      "Focus renders without layout problems, with data and without": {
+      "Focus renders without layout problems on a real store": {
         "seconds": 30,
         "n": 7,
         "p95Seconds": 0.2

@@ -1,6 +1,6 @@
 /* global document, window */
 // Job: wait on state
-// Settings: every section renders, the CV check on real PDFs, Automatic backup and Your data (export / reset / import). Why (1 Nov 2026): the AI engine panel and ⌘K moved to desktop/test/screen-settings.test.js.
+// Settings: every section renders, the CV check on real PDFs, Automatic backup and Your data (export / reset / import). Why (1 Nov 2026): the AI engine panel and ⌘K moved to desktop/integration/app/screen-settings.test.js.
 // Was: every section, with each AI engine chosen. Starts from a set-up install (a key saved, a workspace connected).
 import {finish, snap} from '../lib/layout.mjs';
 import fs from 'node:fs';

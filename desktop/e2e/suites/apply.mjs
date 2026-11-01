@@ -159,7 +159,7 @@ export async function runApply(ctx, parts) {
       else await page.locator(`article.job-row[data-url=${JSON.stringify(form.url)}]`).locator('.row-main').click();
       let attemptUrl = '';
       const pickTab = () => ({tab: formTab(ctx.browser, attemptUrl), tabs: ctx.browser.context.pages().length});
-      const opening = await waitForFill({capMs: 30000, pickTab: async () => {
+      const opening = await waitForFill({pickTab: async () => {
         const sessions = await page.evaluate(url => window.pilot.sessions().then(list => list.filter(item => item.kind === 'form' && !item.outcome && item.url === url)), form.url);
         if (sessions.length !== 1) return {tab: null, tabs: ctx.browser.context.pages().length};
         attemptUrl = sessionTabUrl(form.url, sessions.pop().id);
@@ -170,18 +170,18 @@ export async function runApply(ctx, parts) {
         return openedHere || reloaded.has(picked.tab) ? picked : {...picked, tab: null};
       }, readState: async () => ({opened: true}), accept: state => state?.opened === true});
       if (!opening.ok) throw new Error(`Apply did not open ${form.title} in the browser (the app's open command was never called, and no open tab reloaded)`);
-      const result = await waitForFill({capMs: 90000, pickTab, readState: fillState});
+      const result = await waitForFill({pickTab, readState: fillState});   // the step's clock: no cap of its own under it (lib/fill-attempt.mjs Why)
       if (result.ok) return {...result, session: markedSession(attemptUrl)};
       await dumpExtension();
-      throw new Error(`the extension never finished filling ${form.title} (${fillNote(result.state, 90)}, read on ${result.url}, ${result.tabs} tab(s))`);
+      throw new Error(`the extension never finished filling ${form.title} (${fillNote(result.state, Math.round(result.ms / 1000))}, read on ${result.url}, ${result.tabs} tab(s))`);
     } finally { for (const [tab, onLoad] of listeners) tab.off('load', onLoad); }
   }
   // The panel opens by itself while a fill runs; open it only when it is closed (a click on the pill toggles).
   const panelOf = async tab => {
     const closed = await tab.evaluate(() => document.getElementById('jobpilotto-review-host')?.shadowRoot?.querySelector('.card')?.hidden);
     if (closed) await tab.locator('#jobpilotto-review-host .pill').click({timeout: 15000});
-    const result = await waitForFill({capMs: 30000, pickTab: () => ({tab, tabs: ctx.browser.context.pages().length}), readState: readPanel, accept: panel => !!panel?.progress});
-    if (!result.ok) throw new Error(`the form panel did not become readable within 30 s (last read: ${JSON.stringify(result.state)})`);
+    const result = await waitForFill({pickTab: () => ({tab, tabs: ctx.browser.context.pages().length}), readState: readPanel, accept: panel => !!panel?.progress});
+    if (!result.ok) throw new Error(`the form panel did not become readable within ${Math.round(result.ms / 1000)} s (last read: ${JSON.stringify(result.state)})`);
     return result.state;
   };
   let unknownTab = null;

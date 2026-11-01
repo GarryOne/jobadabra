@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import fs from 'node:fs';
 import {waitForFill} from '../lib/fill-attempt.mjs';
+import {stepClock} from '../lib/wait-on-state.mjs';
 import {fillNote, formTab} from '../lib/extension.mjs';
 import {flakyProof} from '../lib/flaky-proof.mjs';
 import {tabGuard} from '../lib/tab-guard.mjs';
@@ -73,7 +74,9 @@ test('opening waits check a tab first seen on the last read', async () => {
   assert.equal(result.tab, tab);
 });
 
-function applyHarness({spooled = true, reloadOwn = false} = {}) {
+// The apply() body runs on the step's clock, as in a step: ms the wait may take, plus the 2 s REPORT_MS the step keeps to name what was missing.
+const onStepClock = async (ms, run) => { stepClock(ms + 2000); try { return await run(); } finally { stepClock(null); } };
+function applyHarness({spooled = true, reloadOwn = false, doneAtMs = null} = {}) {
   const source = fs.readFileSync(new URL('../suites/apply.mjs', import.meta.url), 'utf8');
   const body = source.slice(source.indexOf('  async function apply('), source.indexOf('  // The panel opens'));
   const time = clock(), url = 'https://example.test/apply', marked = sessionTabUrl(url, 'ours');
@@ -87,14 +90,14 @@ function applyHarness({spooled = true, reloadOwn = false} = {}) {
   let reads = 0, dumps = 0;
   const apply = new Function('ctx', 'page', 'formTab', 'markedSession', 'sessionTabUrl', 'waitForFill', 'fillState', 'fillNote', 'dumpExtension', `return ${body}`)(
     {browser}, ui, formTab, markedSession, sessionTabUrl,
-    options => waitForFill({...options, ...time, capMs: 1000}),
-    async tab => { assert.equal(tab, own); return {state: dumps ? 'done' : 'running', read: ++reads}; }, fillNote, async () => { dumps++; });
+    options => waitForFill({...options, ...time}),   // no cap here: a cap passed by apply.mjs would show (Gitar on #2757); the step's clock is set by the test
+    async tab => { assert.equal(tab, own); return {state: dumps || (doneAtMs !== null && time.now() >= doneAtMs) ? 'done' : 'running', read: ++reads}; }, fillNote, async () => { dumps++; });
   return {apply: () => apply({url, title: 'Engineer'}), reads: () => reads, dumps: () => dumps, listeners};
 }
 
 test('Apply ignores the global spool tail and reports its rejected read even if the dump sees done', async () => {
   const h = applyHarness();
-  await assert.rejects(h.apply(), /never finished filling Engineer \(the fill did not finish within 90 s \(last seen: {"state":"running","read":3}\), read on https:\/\/example.test\/apply#jobpilotto-fill=ours, 2 tab\(s\)\)/);
+  await assert.rejects(onStepClock(1000, h.apply), /never finished filling Engineer \(the fill did not finish within 1 s \(last seen: {"state":"running","read":3}\), read on https:\/\/example.test\/apply#jobpilotto-fill=ours, 2 tab\(s\)\)/);
   assert.equal(h.reads(), 3, 'no fresh state read while formatting the failure');
   assert.equal(h.dumps(), 1);
   assert.equal(h.listeners.size, 0, 'listeners leave with the attempt');
@@ -102,14 +105,14 @@ test('Apply ignores the global spool tail and reports its rejected read even if 
 
 test('Apply ignores a reload of another session at the same address', async () => {
   const h = applyHarness({spooled: false});
-  await assert.rejects(h.apply(), /Apply did not open Engineer in the browser/);
+  await assert.rejects(onStepClock(1000, h.apply), /Apply did not open Engineer in the browser/);
   assert.equal(h.reads(), 0);
   assert.equal(h.listeners.size, 0);
 });
 
 test('Apply accepts a reload of its own session without a new spool entry', async () => {
   const h = applyHarness({spooled: false, reloadOwn: true});
-  await assert.rejects(h.apply(), /never finished filling Engineer/);
+  await assert.rejects(onStepClock(1000, h.apply), /never finished filling Engineer/);
   assert.equal(h.reads(), 3, 'the fill wait ran on the owned reload');
 });
 
@@ -131,4 +134,25 @@ test('every ordinary apply step has one hang cap and setup remains critical', ()
   ctx.run('the app is seeded as a set-up install', () => {}, {critical: true, needs: ['setup']});
   assert.deepEqual(seen[0][2], {critical: true, needs: ['setup']});
   assert.ok(caps['a multi-step form'] >= (30 + 90 + 45 + 15 + 60 + 15 + 15 + 30));
+});
+
+// Night run 41253960704 (apply-3of3 Tailor CV, a macOS runner stalled ~25 s): the fill ended at 94 s, the wait's own 90 s cap had ended it at 90 s.
+test('a fill that ends after 90 s is read while the step\'s clock still runs: the wait has no cap of its own', async () => {
+  const time = clock(), tab = page('https://boards.example.test/job#jobpilotto-fill=ours');
+  stepClock(300000);
+  try {
+    const result = await waitForFill({...time, pickTab: () => ({tab, tabs: 2}),
+      readState: async () => (time.now() >= 94000 ? {state: 'done'} : {state: 'running'})});
+    assert.equal(result.ok, true);
+    assert.equal(result.ms, 94000);
+    assert.equal(result.state.state, 'done');
+  } finally { stepClock(null); }
+});
+
+// The night's scenario through the real apply() body (its three waits, no cap of their own): the fill is done at 94 s of a 300 s step.
+test('apply() waits for a fill that ends after 90 s: the suite passes no cap of its own', async () => {
+  const h = applyHarness({doneAtMs: 94000});
+  const result = await onStepClock(300000, h.apply);
+  assert.equal(result.state.state, 'done');
+  assert.equal(h.dumps(), 0, 'no failure dump: the fill finished');
 });

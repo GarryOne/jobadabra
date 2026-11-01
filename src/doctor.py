@@ -474,7 +474,7 @@ def main():
         from . import telegram
         try:
             token, chat_id = telegram.credentials()
-            send = lambda text: telegram.send(text, token, chat_id)
+            send = lambda text: telegram.deliver(text, token, chat_id)
         except SystemExit:
             send = None
         print(alert(active_store(tracker), send))

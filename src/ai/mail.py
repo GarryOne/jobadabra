@@ -157,7 +157,7 @@ def main(argv=None):
     from ..features import disabled
     if args.send and not disabled('telegram'):
         token, chat_id = telegram.credentials()
-        sender = lambda text: telegram.send(text, token, chat_id)
+        sender = lambda text: telegram.deliver(text, token, chat_id)
     stats = {}
     logged = (args.send or args.log_run) and not args.dry_run
     if logged:

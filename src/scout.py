@@ -292,7 +292,7 @@ def main():
     log['subject'] = cron_runs.counted(sum(1 for _, outcome in results if outcome['status'] == 'found'), 'new feed')
     if args.send and not disabled('telegram'):
         print(message)
-        telegram.send(message, *telegram.credentials())
+        telegram.deliver(message, *telegram.credentials())
     else:
         telegram.to_app(message)  # no Telegram: the desktop app shows the summary
     if logged:

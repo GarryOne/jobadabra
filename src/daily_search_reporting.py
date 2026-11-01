@@ -103,11 +103,11 @@ def send_messages(messages, keyboards, token, chat_id):
 def after_delivery(args, stores, run, spend, token, chat_id, datetime):
     if spend and not run.get('telegram', '').startswith('not sent'):
         with store.connect(args.db) as db:
-            budget.alert_once(db, spend, lambda text: telegram.send(text, token, chat_id))
+            budget.alert_once(db, spend, lambda text: telegram.deliver(text, token, chat_id) is not None)
     if args.mode == 'scheduled' and datetime.now(timezone.utc).hour == doctor.HEALTH_HOUR_UTC:
         # Once a day: one Telegram line if a health check fails (Google sign-in, mail, budget, feeds).
         try:
-            print(doctor.alert(stores, lambda text: telegram.send(text, token, chat_id)))
+            print(doctor.alert(stores, lambda text: telegram.deliver(text, token, chat_id)))
         except Exception as error:
             print(f'Warning: health check skipped: {type(error).__name__}: {error}')
     if args.insight and args.mode == 'scheduled':
@@ -115,7 +115,7 @@ def after_delivery(args, stores, run, spend, token, chat_id, datetime):
         try:
             run['insight'] = {}
             with store.connect(args.db) as db:
-                print(insights.run(db, stores, send=lambda text, markup: telegram.send(text, token, chat_id, markup),
+                print(insights.run(db, stores, send=lambda text, markup: telegram.deliver(text, token, chat_id, markup),
                                    stats=run['insight']))
         except Exception as error:
             print(f'Warning: insight skipped: {type(error).__name__}: {error}')

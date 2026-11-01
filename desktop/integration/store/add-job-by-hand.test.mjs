@@ -35,8 +35,9 @@ test('A job applied to elsewhere: it is in the store once as Applied with its da
   const rows = await applicationsAt(url);
   assert.equal(rows.length, 1, 'one Applications row for the link');
   assert.deepEqual([rows[0].title, rows[0].company, rows[0].stage, rows[0].applied_on, rows[0].origin], ['Site Reliability Engineer', 'Acme Probe', 'Applied', '2026-10-20', 'Outbound']);
+  assert.equal(rows[0].source, 'Jobadabra app', 'a job added in the app says the app, not Telegram (#2909)');
   const events = await eventsOf(rows[0].id);
-  assert.deepEqual(events.map(event => [event.kind, event.at]), [['Applied', '2026-10-20']], 'one Applied event on the date the person gave');
+  assert.deepEqual(events.map(event => [event.kind, event.at, event.source]), [['Applied', '2026-10-20', 'Jobadabra app']], 'one Applied event on the date the person gave, from the app');
   const listed = await jobsAt(url);
   assert.equal(listed.length, 1, 'the Jobs list holds the job once');
   assert.deepEqual([listed[0].status, listed[0].stage, listed[0].company], ['applied', 'Applied', 'Acme Probe']);

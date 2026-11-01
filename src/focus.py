@@ -429,7 +429,7 @@ def main(argv=None):
             from .features import disabled
             if not disabled('telegram'):
                 token, chat_id = telegram.credentials()   # (None, None) = e-mail only
-                telegram.send(reminder_card(focus), token, chat_id)
+                telegram.deliver(reminder_card(focus), token, chat_id)
         print(json.dumps({'text': text}))
         return 0
     print(json.dumps(focus, ensure_ascii=False))

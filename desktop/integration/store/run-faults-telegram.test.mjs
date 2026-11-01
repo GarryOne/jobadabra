@@ -10,14 +10,9 @@ import {assertNothingRunning, commonProblems, whatARunShows} from './engine-supp
 import {startEngineKit} from './engine-kit.mjs';
 
 let kit;
-before(async () => {
-  kit = await startEngineKit({telegram: true});
-  // Why (1 Nov 2026, tj): the first Find jobs of a fresh install also runs the employer finder (search-steps.js: no lastScoutAt = due), whose own digest send (src/scout.py:295) is not guarded the way the
-  // search's is (a46307b): a refused send there ends in a Python traceback with home-folder paths in the Technical log. That is a product bug outside this journey (reported with this PR, not played here);
-  // the finder is marked as just run, so this file proves the search's digest, which is the one the person reads.
-  // TODO(AI): drop the lastScoutAt line below once the finder's send says a refusal in words too (1 Nov 2026)
-  kit.storage.saveSettings({lastScoutAt: new Date().toISOString()});
-});
+// Why (1 Nov 2026, tj, #2908): the first Find jobs of a fresh install also runs the employer finder (search-steps.js: no lastScoutAt = due), whose own digest send (src/scout.py) ended in a Python
+// traceback with home-folder paths in the Technical log. Every send now goes through telegram.deliver, so this journey plays that first press as it is: no setting hides the finder.
+before(async () => { kit = await startEngineKit({telegram: true}); });
 after(async () => { await kit?.close(); });
 
 const REFUSALS = [
@@ -31,12 +26,13 @@ for (const {fault, what} of REFUSALS) {
     assert.ok(TELEGRAM_FAILURES[fault], `the fake knows no failure called ${fault}`);
     kit.feed([`Senior Site Reliability Engineer, telegram ${fault}`]);
     const failedBefore = kit.telegram.stats.failed;
+    kit.storage.saveSettings({lastScoutAt: ''});   // the employer finder is due again, as on a fresh install's first press: its digest send meets the refusal too (#2908)
     kit.telegram.fail(fault);
     let done;
     try { done = await kit.runTask('refresh', 'run', 'you'); } finally { kit.telegram.pass(); }
     const seen = await whatARunShows(kit, done);
     const problems = commonProblems(kit, seen);
-    if (kit.telegram.stats.failed - failedBefore < 1) problems.push('Telegram was never asked while failing, so nothing was tested');
+    if (kit.telegram.stats.failed - failedBefore < 2) problems.push(`Telegram refused ${kit.telegram.stats.failed - failedBefore} send(s), the search digest and the employer finder's summary make 2: the finder did not run, so its send was not tested`);
     if (/^Completed$/.test(seen.pill)) problems.push('the run says plain "Completed" though its digest never reached the person');
     if (!/telegram/i.test(`${seen.words} ${seen.result}`)) problems.push(`nothing the person reads names Telegram: "${String(seen.result || seen.words).slice(0, 160)}"`);
     assert.deepEqual(problems, []);

@@ -68,6 +68,14 @@ class BudgetTests(unittest.TestCase):
         self.assertIn('starting_at=2026-09-01T00%3A00%3A00Z', seen[0])
         self.assertIn('page=p2', seen[1])
 
+    def test_an_alert_telegram_refused_is_tried_again_next_run(self):
+        """Why (1 Nov 2026, #2908 review): a caller whose send was refused answers False (telegram.deliver answers None; daily_search_reporting turns that into False); recording the alert then would hide "AI budget 90% used" for the whole month."""
+        info = {'spent': 13.8, 'budget': 15.0, 'pct': 0.92, 'level': 'pause', 'source': 'Jobadabra log'}
+        db, answers = sqlite3.connect(':memory:'), iter([False, True])
+        self.assertFalse(budget.alert_once(db, info, lambda text: next(answers), NOW))
+        self.assertTrue(budget.alert_once(db, info, lambda text: next(answers), NOW), 'the refused alert must be sent again, not recorded as sent')
+        self.assertFalse(budget.alert_once(db, info, lambda text: True, NOW))
+
     def test_pause_caps_optional_ai_and_alerts_once_per_month_and_level(self):
         args = Namespace(auto_kit_max=5, score_max=60, enrich_max=100)
         warnings = []

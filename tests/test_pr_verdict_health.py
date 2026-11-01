@@ -67,7 +67,7 @@ class HealthGreys(unittest.TestCase):
         self.assertEqual(self.grey(job, record['annotations']), {})
 
     def test_the_runners_own_credit_refusal_note_is_health_but_a_bare_400_and_a_stub_are_not(self):
-        # The note text is pinned by desktop/e2e/test/ai-refused.test.mjs (lib/ai-refused.mjs refusalNote); a change there fails that test first.
+        # The note text is pinned by desktop/e2e/test/ai/ai-refused.test.mjs (lib/ai-refused.mjs refusalNote); a change there fails that test first.
         job = RECORDED['ai_mixed']['job']
         credit = '✗ the first check: the AI refused (400) 4 times, first at 2026-10-17T10:29:15.000Z, spend limit or credit; the step then failed: listed: nothing'
         bare = '✗ the first check: the AI refused (400) 3 times, first at 2026-10-17T10:29:15.000Z; the step then failed: listed: nothing'

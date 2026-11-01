@@ -16,7 +16,7 @@ test('every flow-core file has an Invariants block in its header', () => {
 test('every test an invariants block names exists', () => {
   const absent = [];
   for (const file of FLOW_CORE) {
-    for (const [cited] of header(file).matchAll(/(?:desktop|worker)\/(?:e2e\/)?test\/[\w.-]+\.test\.m?js/g)) if (!fs.existsSync(new URL(cited, root))) absent.push(`${file}: ${cited}`);
+    for (const [cited] of header(file).matchAll(/(?:desktop|worker)\/(?:e2e\/)?test\/(?:[\w-]+\/)?[\w.-]+\.test\.m?js/g)) if (!fs.existsSync(new URL(cited, root))) absent.push(`${file}: ${cited}`);
   }
   assert.deepEqual(absent, []);
 });

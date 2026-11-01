@@ -96,12 +96,12 @@ a test bug, the PR's to fix. The gate tests "given the AI says X, the app does Y
 what the AI said keep", tolerant "the AI says keep". The "no live AI" ceiling is default-deny: every suite not tolerant, suspended or retired in
 `lanes.json` allows 0 asks without a stored answer unless it is named as an exception with its reason. Every live AI call lives in ONE tolerant suite (owner,
 31 Oct 2026: "All the AI calls should be in 1 or 2 suites… Better to be in one single… Where we test all the AI calls").
-Guard: `desktop/e2e/test/stored-answer-suites-no-live-ai.test.mjs`, `desktop/e2e/test/ai-misses-ratchet.test.mjs`.
+Guard: `desktop/e2e/test/ai/stored-answer-suites-no-live-ai.test.mjs`, `desktop/e2e/test/ai/ai-misses-ratchet.test.mjs`.
 
 **B · Clock.** Backbone steps wait on state (the row exists, the fill ended) with a cap of about 3× main's p95 that only catches hangs. No wall-clock limit is an
 assertion in the backbone. User promises (Find jobs ≤ 3 min, Focus ≤ 20 s) live in the `clock` lane: the median of main's nightly runs vs the promise.
 The same cap sits on every CI step around the suite run (scan, upload, report, lock, setup; 31 Oct 2026, a 17-min hung scan lost a job's logs): `timeout-minutes` of about 3× the step's p95, 5 min at least.
-Guard: `desktop/e2e/test/timing-ratchet.test.mjs`, `desktop/test/e2e-reliability-check.test.js`, `tests/test_e2e_step_timeouts.py`.
+Guard: `desktop/e2e/test/harness/timing-ratchet.test.mjs`, `desktop/test/e2e-reliability-check.test.js`, `tests/test_e2e_step_timeouts.py`.
 
 **C · Outside world.** Real Notion, the AI key's credit, real websites and runners are `outside`. The backbone stubs Notion; real Notion runs in one tolerant
 outside-world suite, nightly and before beta. The backbone has none of them (owner, 31 Oct 2026: "The backbone shouldn't have any external world, flaky related
@@ -141,13 +141,13 @@ Guard: `desktop/test/e2e-reliability-check.test.js`.
 **G · Budget and picking.** A PR runs at most 5 suites, in parallel, within about 10 minutes. When a diff reaches more, the scorecard picks the 5 that caught the
 most bugs for the files it touches; the rest run on main after merge. 10–20 suites run only on main, scheduled, or before a beta. Suites compete for the
 budget: a new suite earns its place by covering a gap better than one already there.
-Guard: `desktop/e2e/test/pr-suites-cap.test.mjs`.
+Guard: `desktop/e2e/test/harness/pr-suites-cap.test.mjs`.
 
 **G2 · A suite is a journey; a PR runs it whole.** (owner, 28 Oct 2026: "journeys … I'm fine with that. I agree".) A step stands on the steps before it, so a PR never
 runs a step alone: #2342's "Edit target" had no target, #2350's "Up next" no earlier state (15 of 149 red runs were picker reds). After a merge the picked steps still
 run. A red names the first failing step; later ones did not run. Every PR suite job is under 8 minutes on a green run (medians 3.9–7.5 min, 28 Oct); a suite that
 passes 8 is cut in two by journey, never picked. `recorded` is not run on PRs (page-cases.yml replays those cases there). Code: `lib/pr-suites.mjs stepLists`.
-Guard: `desktop/e2e/test/pr-suites.test.mjs`.
+Guard: `desktop/e2e/test/harness/pr-suites.test.mjs`.
 
 **G3 · A local run reaches nothing of the owner's.** (owner's safety rule; 28 Oct 2026: an interactions run put ch.indeed.com in their Chrome three times.) Every way the
 app reaches the owner's computer is closed for every suite where the app starts, and asserted before step 1; a run that finds one open stops. The doors today: `open` on

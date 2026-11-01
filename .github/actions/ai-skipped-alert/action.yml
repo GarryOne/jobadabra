@@ -3,7 +3,7 @@ description: >-
   One Telegram alert for a whole workflow run whose AI jobs were refused by the Codex broker (budget used up, login lost, broker down): reads the `ai-capped-*` artifacts
   the run's jobs uploaded (desktop/e2e/lib/broker-job.mjs writes one per skipped job) and sends a single message. No artifact: nothing is sent.
 # Why (31 Oct 2026, owner: "four identical Telegram alerts"; "one alert per run"): every matrix job sent its own alert when Anthropic's credit was 0, so one UI-verdict run sent four.
-# The jobs only write a note; this runs once per run, in the one job after them. The caller needs a checkout (desktop/e2e), Node 22 and `actions: read`. Guard: desktop/e2e/test/broker-job.test.mjs.
+# The jobs only write a note; this runs once per run, in the one job after them. The caller needs a checkout (desktop/e2e), Node 22 and `actions: read`. Guard: desktop/e2e/test/ai/broker-job.test.mjs.
 inputs:
   bot-token:
     description: 'secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN'

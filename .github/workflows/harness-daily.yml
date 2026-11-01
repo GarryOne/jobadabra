@@ -1,5 +1,5 @@
 name: CI · Harness tests · daily
-# Every harness test (desktop/e2e/test/*.test.mjs) once a day on main, with the same command a PR runs (harness.yml, `npm test`).
+# Every harness test (desktop/e2e/test/*/*.test.mjs) once a day on main, with the same command a PR runs (harness.yml, `npm test`).
 # Why (a8, 30 Oct 2026, option C): a PR runs the whole folder too, but only when it changes what a test reaches; this run catches what no PR starts: runner or package drift,
 # data outside harness.yml's paths, a test that depends on the date. One message to the CI alerts chat, only when something fails.
 on:

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Check for a branch/PR (a CI job; NOT in the push hook: the Mac's heavy lock queues, owner weighing PRs, 12 Oct 2026), owner 12 Oct 2026: a recorded case the push adds or changes must FAIL on the code before the push, or it proves nothing ("every fix lands with a case that fails on the old code").
 // Only the push's own cases (tools/recorded-cases.mjs casesOf) are replayed, on a detached worktree of the merge-base (origin/main: the app's desktop/lib and the extension as they were), through the one replay path
-// there is (desktop/e2e/test/recorded-pages.test.mjs under tools/heavy-lock.sh): page cases and row cases alike. That the case PASSES on the push is the journey gate's and CI's replay.
+// there is (desktop/e2e/test/record/recorded-pages.test.mjs under tools/heavy-lock.sh): page cases and row cases alike. That the case PASSES on the push is the journey gate's and CI's replay.
 // A case that only pins current behaviour (no fix) says so in a commit message: "Recorded-pins: <why>" (refused with a Pool-row or an issue the commit fixes: a fix is not a pin).
 //   node tools/recorded-fails-on-old.mjs [--base origin/main] [--log <file>]   exit 1 with the reason. --list: print the cases it would replay (git only, seconds; the CI job's
 //   first step, so a PR that brings none installs nothing). On CI there is no lock to wait for (heavy-lock.sh is then a no-op: check). Guard: desktop/test/recorded-fails-on-old.test.js.
@@ -99,7 +99,7 @@ function replayOn(git, root, mergeBase, check, logFile) {
     for (const dir of ['desktop', 'desktop/e2e']) if (fs.existsSync(path.join(root, dir, 'node_modules'))) fs.symlinkSync(path.join(root, dir, 'node_modules'), path.join(tree, dir, 'node_modules'));
     for (const name of check) fs.cpSync(path.join(root, 'desktop/e2e/recorded', name), path.join(tree, 'desktop/e2e/recorded', name), {recursive: true});   // the push's case, over the old tree's own copy when it changed one
     console.error(`recorded cases on the old code (${mergeBase.slice(0, 8)}): replaying ${check.join(', ')}, each must FAIL there`);
-    const run = spawnSync('bash', [path.join(root, 'tools/heavy-lock.sh'), 'recorded-old', process.execPath, '--test', 'test/recorded-pages.test.mjs'], {cwd: path.join(tree, 'desktop/e2e'), encoding: 'utf8', maxBuffer: 256 << 20,
+    const run = spawnSync('bash', [path.join(root, 'tools/heavy-lock.sh'), 'recorded-old', process.execPath, '--test', 'test/record/recorded-pages.test.mjs'], {cwd: path.join(tree, 'desktop/e2e'), encoding: 'utf8', maxBuffer: 256 << 20,
       env: {...process.env, JP_REPLAY: '1', JP_REPLAY_CASES: check.join(','), JP_REPLAY_TABS: '1'}});
     const text = `${run.stdout || ''}\n${run.stderr || ''}`;
     if (logFile) fs.writeFileSync(logFile, text);

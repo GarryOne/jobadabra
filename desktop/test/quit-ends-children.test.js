@@ -90,7 +90,7 @@ test('a grandchild that ignores SIGTERM is gone too when the quit goes on', {ski
   await pipeline.stopRunning();
   await within(read, 5000, null);   // a surviving grandchild keeps the pipe open, so run() would not resolve: the assertion below says it
   // Why (31 Oct 2026, a8; #2726 run 41231359925): the closed pipe means the grandchild is dying, not that init has reaped it; kill(pid, 0) answers for that zombie.
-  // waitTreeGone reads the process state (a zombie is gone) and waits on it, the one copy of that (e2e/lib/app-tree.mjs, guard e2e/test/app-tree.test.mjs).
+  // waitTreeGone reads the process state (a zombie is gone) and waits on it, the one copy of that (e2e/lib/app-tree.mjs, guard e2e/test/app/app-tree.test.mjs).
   const left = await waitTreeGone([{pid: grand, command: 'grandchild'}], {capMs: 3000});
   assert.deepEqual(left, [], `the grandchild that ignored SIGTERM was ended with its group (still running: ${holdersOf(left)})`);
 });

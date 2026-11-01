@@ -4,7 +4,7 @@
 // Usage: node tools/flaky-verdict.mjs --run <red e2e run id> [--repo owner/repo] [--window <runs>] [--deadline <seconds>] [--json]        exit 0 always (it informs, never blocks); 2 on bad usage
 // Progress goes to stderr (a first line at once, "reading N runs…" within seconds); the verdict lines go to stdout. One hang guard (--deadline, DEADLINE_S) ends the whole read: "unknown: read cut at N of M runs".
 // Why (31 Oct 2026, owner: "You detect flakiness and immediately treat the flakiness root cause"): the tools say "flaky" on the red so no person has to.
-// Tests: desktop/e2e/test/flaky-verdict.test.mjs, desktop/e2e/test/flaky-evidence.test.mjs
+// Tests: desktop/e2e/test/pool/flaky-verdict.test.mjs, desktop/e2e/test/pool/flaky-evidence.test.mjs
 // Job: report health
 import {execFileSync} from 'node:child_process';
 import path from 'node:path';

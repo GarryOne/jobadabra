@@ -46,7 +46,7 @@ what stop a rule from being relaxed back into the old bug. Add an entry when a n
   gone", and bot checks were a list of vendors: all three failed on the first real site.
 - **Reading websites is universal** (owner, 8 Oct 2026: "we'll have thousands of them").
 - **A form bug is fixed in the mechanism** (8 Oct 2026): per-site fixes did not carry to the next site; upload slots became the example
-  (`extension/page/upload.js`, `desktop/e2e/test/upload-slot.test.mjs`).
+  (`extension/page/upload.js`, `desktop/integration/extension/upload-slot.test.mjs`).
 
 ## Working rules
 - **Every fix works for any user, through the Desktop App**: Always on's Google sign-in was once set with `gh secret set` by hand; the app now copies

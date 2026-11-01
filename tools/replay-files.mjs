@@ -51,7 +51,7 @@ export function harnessFiles(entry, root = ROOT) {
 // the app modules above, the job's pages and its runner's files. A change to none of them cannot change what the job replays.
 export function jobFiles(job, root = ROOT) {
   const loaded = ['extension/', ...replayFiles(root)];
-  if (job === 'replays') return new Set([...loaded, 'desktop/e2e/recorded/', ...harnessFiles('desktop/e2e/test/recorded-pages.test.mjs', root)]);
+  if (job === 'replays') return new Set([...loaded, 'desktop/e2e/recorded/', ...harnessFiles('desktop/e2e/test/record/recorded-pages.test.mjs', root)]);
   if (job === 'zoo') return new Set([...loaded, 'desktop/e2e/widget-zoo/', ...harnessFiles('desktop/e2e/widget-zoo.mjs', root)]);
   if (job === 'sites') return new Set(loaded);   // the recordings come from the release, not the repo; the steps' scripts are added below
   throw new Error(`no replay job ${job}: replays, zoo or sites`);

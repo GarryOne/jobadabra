@@ -5,14 +5,14 @@
 # Since 17 Oct 2026 (owner: "Off PRs now, scheduled only"): NO push trigger, no PR gate any more. It starts by hand, or from the daily site replays (site-replays.yml, `only` = the rows its verdict flagged "out of date" / "ask changed").
 # The text below on a push to main and on PRs is the history of the earlier design. Two ways in. (1) By hand with a PR number (workflow_dispatch, as before): that PR's pinned rows. (2) Was: AUTOMATICALLY on main (owner, 15 Oct 2026): a push to main that changes a ladder prompt fingerprint
 # (desktop/e2e/ladder-baseline.json, compared by refill-trigger.mjs with the file before the push; a score update alone does not count), OR a change to a file that builds the ask (the worker's instructions, fact rule, field list, CV facts; desktop/e2e/lib/prompt-sources.mjs; owner, 15 Oct 2026: #904 and #912 changed the ask and no refill ran), or a by-hand run with no PR number: EVERY recorded row, pinned or not.
-# NOT a pull_request trigger (owner rule, 13 Oct 2026: no workflow a PR starts can reach an AI key; desktop/e2e/test/pool-ci-triggers.test.mjs): a push to main is merged code the owner reviewed.
+# NOT a pull_request trigger (owner rule, 13 Oct 2026: no workflow a PR starts can reach an AI key; desktop/e2e/test/pool/pool-ci-triggers.test.mjs): a push to main is merged code the owner reviewed.
 # Never a fork PR: the key is never given to it. Never every PR. Refill runs take their turn one at a time (pool-ci-wait.mjs), so two never publish the same rows.
 # On main the publish works in groups of 3 rows (records-publish.mjs refuses more at once), one runner per group, and a failed or cap-refused run tells the owner on Telegram (ci-alert.mjs).
 # Key: REPLAY_REFILL_ANTHROPIC_KEY, its own workspace and spend limit, NO fallback to ANTHROPIC_API_KEY or any other key: missing = the job says so and stops (lib/refill.mjs).
 # Money: the estimate is printed first (pick job), above max_asks (default 40) or $3 the run does not start, a row stops at 30 paid calls, each row's spend is in the job log and on /admin/intelligence/ai-cost (job replay-refill).
 # The tree: main's tools + the PR's head merged on the runner (tools/refill-merge-main.sh; a branch older than this workflow still runs; one that conflicts with main stops with "rebase it").
 # Needs also: NET_RECORD_KEY, NET_RECORDS_READ_TOKEN (as the replay), NET_RECORDS_WRITE_TOKEN (contents:write on the private jobadabra-lab: only the publish job reads it), AI_COST_PUBLISH_KEY.
-# Guard: tests/test_refill_workflow.py, desktop/e2e/test/refill.test.mjs. Never posts a Replay-accept line.
+# Guard: tests/test_refill_workflow.py, desktop/e2e/test/filling/refill.test.mjs. Never posts a Replay-accept line.
 name: CI · Replay refill
 run-name: ${{ inputs.pr != '' && format('Replay refill PR {0} @ {1}', inputs.pr, inputs.head) || 'Replay refill' }}   # the PR gate looks for this title before it starts another automatic refill for the same commit
 

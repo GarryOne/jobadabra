@@ -7,7 +7,7 @@ ROOT = Path(__file__).resolve().parent.parent
 RETIRED = ('widget-zoo.yml', 'recorded-pages.yml', 'replay-pr.yml', 'replay-offline.yml', 'replay-verify.yml')
 # Files that read the old names on purpose, with their removal date in a comment; docs/superpowers keeps dated history; this file names them.
 READS_OLD_RUNS = {'worker/src/scheduler.js', 'worker/test/scheduler.test.js', 'worker/test/watchdog.test.js', 'desktop/e2e/replay-baseline.sh', 'desktop/e2e/ci-alert.mjs',
-                  'desktop/e2e/test/ci-alert.test.mjs', 'tools/red-main.sh', '.github/workflows/site-replays.yml', '.github/workflows/page-cases.yml',
+                  'desktop/e2e/test/harness/ci-alert.test.mjs', 'tools/red-main.sh', '.github/workflows/site-replays.yml', '.github/workflows/page-cases.yml',
                   'tests/test_replays_site_workflow.py', 'tests/test_retired_workflow_names.py', 'docs/rules/why.md'}
 
 

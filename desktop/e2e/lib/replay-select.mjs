@@ -1,12 +1,13 @@
 // Which recorded cases a change can affect (JP_GATE_REPLAY=1, the opt-in local replay; CI always replays all of them). Reads e2e/recorded-case-map.json, measured by `npm run recorded-map`
 // (lib/replay-coverage.mjs: the extension files each case really runs code from). ALL cases run when a shared file changes (one every case runs), a flow-core file, a replay-tool file, a file the
-// map has never seen (new, or never run), or the map is missing or stale. A case the map does not know always runs. Guard: e2e/test/replay-select.test.mjs.
+// map has never seen (new, or never run), or the map is missing or stale. A case the map does not know always runs. Guard: e2e/test/replay/replay-select.test.mjs.
+// Job: pick the suites
 import fs from 'node:fs';
 import path from 'node:path';
 
 export const MAP_FILE = 'recorded-case-map.json';   // next to e2e/recorded/, not inside it: that folder holds only case folders
 // The replay tool: a change here can change what any case sees.
-export const TOOL_FILES = /^desktop\/e2e\/(lib\/(page-replay|replay-browser|replay-coverage|replay-select|replay-shard|real-extension|extension|app)\.mjs|test\/recorded-pages\.test\.mjs|replay-map\.mjs)$/;
+export const TOOL_FILES = /^desktop\/e2e\/(lib\/(page-replay|replay-browser|replay-coverage|replay-select|replay-shard|real-extension|extension|app)\.mjs|test\/record\/recorded-pages\.test\.mjs|replay-map\.mjs)$/;
 
 export function extensionFiles(root) {   // every file under extension/, relative to it (the map's list: a new or removed file makes the map stale)
   const out = [], walk = dir => { for (const entry of fs.readdirSync(dir, {withFileTypes: true})) { const full = path.join(dir, entry.name); entry.isDirectory() ? walk(full) : out.push(path.relative(path.join(root, 'extension'), full).split(path.sep).join('/')); } };

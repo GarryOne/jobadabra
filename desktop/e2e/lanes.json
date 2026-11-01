@@ -52,6 +52,9 @@
     "jobs": {
       "aiMissesMax": 0
     },
+    "strategy": {
+      "aiMissesMax": 0
+    },
     "employers": {
       "aiMissesMax": 0
     },

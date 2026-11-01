@@ -2004,6 +2004,63 @@
       }
     }
   },
+  "strategy": {
+    "provenance": "tools/e2e-step-timings.mjs: 10 main runs, 6/10 calm shard-runs.\nMain run IDs: 40796899545, 40799225090, 40802551247, 40836904987, 40960750830, 40985357367, 40987937824, 41146558456, 41157036555, 41180851813.\n3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.\nGenerated step labels share their source template prefix; p95 is recomputed from the raw calm samples, not averaged from per-label percentiles.",
+    "steps": {
+      "a role and a place added in the app reach": {
+        "seconds": 30,
+        "n": 6,
+        "p95Seconds": 0.8
+      },
+      "a role changed in the app is used by the next check, and a removed role stops matching": {
+        "seconds": 65,
+        "n": 5,
+        "p95Seconds": 20.3
+      },
+      "no AI call of this suite reached a real model: the stand-in answered or refused every one": {
+        "seconds": 30,
+        "n": 6,
+        "p95Seconds": 0.6
+      },
+      "nothing was queued to report to the product": {
+        "seconds": 30,
+        "n": 6,
+        "p95Seconds": 0.4
+      },
+      "the app is seeded as a set-up install from the existing workspace": {
+        "shared": "applyflows",
+        "n": 1,
+        "p95Seconds": 2.9
+      },
+      "the app is set up on this Mac's store with the applicant's strategy": {
+        "seconds": 30,
+        "n": 5,
+        "p95Seconds": 5.7
+      },
+      "the next check keeps the posting that matches the new role and place, and still drops the other": {
+        "seconds": 60,
+        "n": 6,
+        "p95Seconds": 18.5
+      },
+      "the Notion stand-in answered every request the app made": {
+        "shared": "applyflows",
+        "n": 1,
+        "p95Seconds": 0
+      },
+      "this suite starts with no jobs, two small boards and no strategy change": {
+        "seconds": 30,
+        "n": 6,
+        "p95Seconds": 8.3
+      },
+      "an edit made directly on the Notion page is used by the next check, and a removed role stops matching": {
+        "seconds": 45,
+        "n": 1,
+        "maxSeconds": 14.8,
+        "provisional": true,
+        "reason": "provisional: 3 x its slowest calm sample, 30 s floor, rounded up to 5 s; regenerate after 5 main runs (tools/e2e-step-timings.mjs)"
+      }
+    }
+  },
   "updates": {
     "provenance": "tools/e2e-step-timings.mjs: 4 main runs, 4/4 calm shard-runs.\nMain run IDs: 40985357367, 41133640727, 41146558456, 41157036555.\n3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.",
     "steps": {

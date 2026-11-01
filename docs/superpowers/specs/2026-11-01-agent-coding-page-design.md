@@ -14,7 +14,7 @@
 - The per-check table already lives on `/admin/operations/pr-checks` (`admin/pr-checks.js`). This page does **not** repeat it: a link at the top ("Per-check scorecard →").
 
 ## The five stats (definitions)
-Window: the last 8 ISO weeks (Monday start, UTC), newest first; stats 1 is also shown for "last 7 days".
+Window: both uploads are one card per **day**; the page adds them into the last 8 weeks (Monday start, UTC), newest first.
 
 1. **Stopped pushes: form vs real.** Source: the push-gate log. A *push* is one `# <ts> push gate total=<s>s` header; its step lines are `<secs> <exit> <step>`. A push is *stopped* when any step has exit ≠ 0. Per step: runs, stops, seconds. Class of a stopped push, by its failed steps only:
    - **form** if every failed step is in TRAIL (recorded cases, rung trailer, e2e cause trailer, owner report, spec proof, why comments, new code comments, prompt cases, e2e issue links) or LISTS (workflow paths, registry lists, harness test sets, stale expectations, new e2e steps, e2e reliability, file size);
@@ -23,7 +23,7 @@ Window: the last 8 ISO weeks (Monday start, UTC), newest first; stats 1 is also 
 2. **What fixed a red.** For each red Actions run on a PR branch whose PR later merged, the first later commit of that PR that is green is the *fix commit*; it is classed **product** (touches `src/ desktop/ extension/ worker/ site/ prompts/` with more than 6 changed lines), **test/harness drift** (only `tests/ desktop/test/ desktop/e2e/ desktop/integration/`), **CI config or tools** (`.github/ tools/ docs/` or `lanes.json`-style registries) or **form** (the subject says trailer, comment, baseline, ratchet, lint, count, size, wording... and at most 60 changed lines). Reds with no later green on a merged PR are counted as "no fix seen". A **heuristic, ±10 points**, and the page says so.
 3. **Share of PRs that change CI or tooling.** Merged PRs per week where at least one file is under `.github/`, `tools/` or the `desktop/e2e/` harness (not `desktop/e2e/` suites' test names: the same path list as `tools/pr-check-scorecard.mjs`'s `TEST_PATH` keeps docs out). Shown as `n of N (x %)` per week.
 4. **Fix PRs per area per week; 3+ is a circle.** *Fix PR* = merged PR whose title starts with or contains "fix" (case-insensitive word) or whose branch starts with `fix`. *Area* = the first two path segments of its product files (e.g. `desktop/renderer`, `src/ai`, `extension`), a PR counts once per area it touches. An area with **3 or more fix PRs in one week** is flagged 🌀, which is the owner's going-in-circles rule applied to a week.
-5. **CI wall minutes per push.** Per week: Actions runs of `pull_request` events, `wall = updated_at − run_started_at`, summed per head sha ("a push"), median and p90 per push, share of minutes in cancelled runs, and **queue minutes** = `run_started_at − created_at` summed per push (waiting for a runner). Not billed minutes.
+5. **CI wall minutes per push.** Per week: Actions runs of `pull_request` events, `wall = updated_at − run_started_at`, summed per head sha ("a push"), median and p90 per push, share of minutes in cancelled runs, and **queue minutes** = the longest `run_started_at − created_at` of a push's runs (its wait for a runner; the page shows the median of those). A push's wall minutes are its runs added together. Not billed minutes.
 
 ## Data flow
 ```
@@ -32,9 +32,9 @@ GitHub:    Actions API + git history ──(.github/workflows/agent-coding-stats
                                                                                             ▼  SELFHEAL_PUBLISH_KEY
 jobadabra-web:  /agent-coding/data  (kind=gate | kind=ci)  →  D1 table agent_coding_days  →  /admin/operations/agent-coding
 ```
-- **Gate numbers** (`kind: "gate"`): `tools/gate-stats-upload.mjs` reads the log, builds per **day**: `{day, pushes, stopped, totalSecs, steps: {<fixed label>: {runs, fails, secs}}}` for the last 35 days and PUTs them. Idempotent: the same day replaces its row. Only counts, seconds and the fixed step labels leave the Mac: **never** a branch, path, commit text or the raw log. The uploader names each step by its fixed label and classes it (form / real / other) on the Mac; the Worker keeps at most 80 labels of at most 60 characters from a safe character set and clamps every number. The key is read from the Keychain item `job-pilotto.site.selfheal_publish_key` at run time; no file, no env copy in the repo.
-- **How it runs (owner choice, pending mac-07):** recommended = `tools/ship.sh` calls the uploader as a best-effort tail (5 s cap, `|| true`, a stamp file keeps it to once a day, `GATE_STATS_UPLOAD=0` off). No launchd job, no daemon.
-- **CI numbers** (`kind: "ci"`, stats 2–5): a daily workflow (`agent-coding-stats.yml`, schedule through the Worker scheduler if GitHub cron proves unreliable, see memory `feedback-github-cron-unreliable-use-worker`) runs `tools/agent-coding-stats.mjs` with the workflow's own `GITHUB_TOKEN` (its quota, not the owner's shared 5,000/h). It reads the last 3 days of runs and merged PRs, folds them into per-day rows, and PUTs them; a manual run with `days=35` backfills. Pure counting by structure (shas, paths, conclusions, timestamps): no AI, $0.
+- **Gate numbers** (`kind: "gate"`): `tools/gate-stats-upload.mjs` reads the log, builds per **day**: `{day, pushes, secs, stopped: {form, real, other}, stoppedSecs: {form, real, other}, steps: {<fixed label>: {runs, fails, secs, cls}}}` for the last 35 days and PUTs them. Idempotent: the same day replaces its row. Only counts, seconds and the fixed step labels leave the Mac: **never** a branch, path, commit text or the raw log. The uploader names each step by its fixed label and classes it (form / real / other) on the Mac; the Worker keeps at most 80 labels of at most 60 characters from a safe character set and clamps every number. The key is read from the Keychain item `job-pilotto.site.selfheal_publish_key` at run time; no file, no env copy in the repo.
+- **How it runs (owner choice, 1 Nov 2026: "Once a day from ship.sh"):** `tools/ship.sh` calls the uploader as a best-effort tail (5 s cap, `|| true`, a stamp file keeps it to once a day, `GATE_STATS_UPLOAD=0` off). No launchd job, no daemon.
+- **CI numbers** (`kind: "ci"`, stats 2–5): a daily workflow (`agent-coding-stats.yml`, schedule through the Worker scheduler if GitHub cron proves unreliable, see memory `feedback-github-cron-unreliable-use-worker`) runs `tools/agent-coding-stats.mjs` with the workflow's own `GITHUB_TOKEN` (its quota, not the owner's shared 5,000/h). It reads the last 3 days of runs and merged PRs, folds them into per-day rows, and PUTs them; a manual run takes `days` (1 to 14, larger values are cut to 14, because GitHub lists at most 1000 runs per query and the token's hourly limit) and `end=<YYYY-MM-DD>` to fill older days in slices. Both inputs go through `env:` and `end` is checked as a date before use. Pure counting by structure (shas, paths, conclusions, timestamps): no AI, $0.
 - **Worker** (`jobadabra-web`, `admin/agent-coding.js`, same shape as `admin/pr-checks.js`): `ingest` (Bearer `SELFHEAL_PUBLISH_KEY`, 404 without it, size cap, shape check that clamps every number and cuts every string, table `agent_coding_days(kind, day, card, updated_at)` primary key `(kind, day)`), `view` (owner cookie as the other admin pages), `page(rows)` renders the five sections. Routes added in `workers/www/index.js`, the page in `admin/admin.js` PAGES, a headline in `admin/headlines-ops.js`.
 
 ## Page layout (5–10 s rule)
@@ -44,7 +44,7 @@ Verdict band first (three lines, each with a status chip icon+word): "Push gate:
 - No data yet for a kind: card says "No upload yet" with the command to run, never zeros.
 - The gate log missing or empty (CI, another Mac): the uploader exits 0 and prints one line.
 - A day uploaded twice: replaced. A day with 0 pushes: absent, drawn as a gap.
-- Force-pushed branches lose their commits: their reds are "no fix seen", counted and shown.
+- Force-pushed branches lose their commits, and a PR that never merged has no later commits to join: such reds are **not counted** (the page says "Reds on PRs that never merged are not seen"); only a red on a merged PR with no later green is "no fix seen".
 - GitHub rate limit: the workflow stops below 300 remaining and publishes what it has; the page shows each day's "as of" time.
 - Honest labels: stats 2 and 4 carry "heuristic" text; stat 5 says "wall, not billed".
 
@@ -53,7 +53,7 @@ Verdict band first (three lines, each with a status chip icon+word): "Push gate:
 - No per-check table (it lives on PR checks).
 - No raw log, branch, path or commit text stored centrally.
 - No AI.
-- Backfill beyond 35 days; the prune audit's one-off numbers stay in its sketch.
+- Backfill beyond what a 14-day slice per run reaches; the prune audit's one-off numbers stay in its sketch.
 
 ## v2, not in these PRs: the SDLC tab (owner, 1 Nov 2026)
 Owner: "look on the entire harness/workflow of our development ... agents writing first lines of code → first gates → push checks → PR checks → main checks → beta/nightly/e2e", "to understand if our speccing is bad or missing, if our plan is bad, if our build is bad, if the maintain is bad", "probably a separate tab. SDLC".
@@ -62,10 +62,10 @@ Owner: "look on the entire harness/workflow of our development ... agents writin
 - Own spec and preview, after v1's uploads have run for a few days.
 
 ## Tests (named files only)
-- `jobadabra-web/test/admin/agent-coding.test.js`: ingest key/shape/clamp/replace, page empty state and rendered cards, escape of strings, menu entry, headline.
-- `jobadabra/tests/gate-stats.test.mjs`: form/real/other classes from a fixture log, steps bucketed, no branch text in the output; stamp file once a day; no key = no upload.
-- `jobadabra/tests/agent-coding-stats.test.mjs`: weekly bucketing, fix-commit join, area counting with the 3+ flag, queue/wall minutes, from recorded input (`--runs`, `--prs`) so no network.
-- A workflow-contract test entry for the new workflow (existing `tests/test_workflow_contract.py`).
+- `jobadabra-web/test/admin/agent-coding.test.js`: ingest key/shape/clamp/replace, weeks from Monday, page empty state and rendered cards, every push check listed, circle flagged at 3, escaping, menu entry, headline.
+- `jobadabra/desktop/test/gate-stats.test.js`: form/real/other classes from a fixture log, labels only (no branch text), the stamp once a day, a refusal/dead network/no key leaves no stamp, `GATE_STATS_UPLOAD=0`, and the shape of the `ship.sh` tail.
+- `jobadabra/desktop/test/agent-coding-stats.test.js`: merged PRs and CI share, fix PR areas and the 3-in-a-day sum, red to first later green commit, no fix seen / not counted, fix-commit classes, minutes per push, merges read from git; all from recorded input (`--input`), no network.
+- `jobadabra/tests/test_red_main.py`: the new workflow is classified ("ignored: report"). No workflow-contract entry was needed.
 
 ## Progress
 - [x] Owner decision and exceptions recorded (above) (proof: docs/superpowers/specs/2026-11-01-agent-coding-page-design.md)

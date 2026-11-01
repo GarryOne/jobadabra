@@ -39,9 +39,14 @@ jobs:
         with:
           node-version: '22'
       - name: Count the days
+        env:
+          END: ${{ inputs.end }}
+          DAYS: ${{ inputs.days || '3' }}
         run: |
-          end="${{ inputs.end }}"
-          node tools/agent-coding-stats.mjs --days "${{ inputs.days || 3 }}" ${end:+--end "$end"} --out "$RUNNER_TEMP/agent-coding.json"
+          # Why (1 Nov 2026, Gitar on #2835): a dispatch input is data, never script text: it comes through env and is checked before use.
+          case "$END" in ''|[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]) ;; *) echo "::error::end must be YYYY-MM-DD"; exit 1 ;; esac
+          case "$DAYS" in [0-9]|[0-9][0-9]) ;; *) echo "::error::days must be a number from 1 to 14"; exit 1 ;; esac
+          node tools/agent-coding-stats.mjs --days "$DAYS" ${END:+--end "$END"} --out "$RUNNER_TEMP/agent-coding.json"
       - name: Store it for the admin page
         run: |
           if [ -n "$SELFHEAL_PUBLISH_KEY" ]; then

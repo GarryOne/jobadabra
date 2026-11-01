@@ -1,16 +1,10 @@
-// The pieces both strategy tests share (strategy-integration, strategy-notion-integration): the local AI answer, the boards' new postings and one Jobs check, so they cannot drift apart.
+// The pieces both strategy tests share (strategy-integration, strategy-notion-integration): the boards' new postings and one Jobs check, so they cannot drift apart.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import {digestTitles} from '../../e2e/lib/digest.mjs';
 
 export const ROLE = 'zebra wrangler', GIRAFFE = 'giraffe keeper', PLACE = 'lugano', SKIP = 'E2E Initech';
-// A scoring call gets a fixed good score (the digest leaves out a job still waiting for its score once an AI is ready); any other call is refused locally.
-const SCORE = {score: 80, tier: 'B', components: {role_fit: 80, location: 80, compensation: 70, growth: 70, risk: 20}, basis: {salary_stated: false, level_stated: true},
-  reason: 'stand-in score', strengths: ['stand-in'], gaps: [], confidence: 'high'};
-/** The AI stand-in's answers: set with `proxy.setCanned(localAnswers)`. */
-export const localAnswers = body => (body.output_config?.format?.schema?.properties?.score ? JSON.stringify(SCORE) : {refuse: 'no-credit'});
-
 /** True when some entry of `list` (role keywords, places, companies) matches `word`, ignoring case; a missing list is empty. */
 export const has = (list, word) => (list || []).some(entry => new RegExp(word, 'i').test(entry));
 /** True when some digest title in `jobs` matches `word` (ignoring case) and, if `level` is given, starts with it ("Senior", "Staff"). */

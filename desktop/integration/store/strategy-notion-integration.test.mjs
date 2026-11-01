@@ -1,7 +1,7 @@
 // Layer 3 (Node + the real engine + the Notion stand-in, no window): the former strategy e2e suite's Notion leg (suites/strategy.mjs, removed with this test in #2763). The ⚙️ Search settings page
 // is a Notion rendering of the settings: a change made in the app reaches the page and config/search.json, an edit made on the page is used by the next check, and an app
 // connected again to the same page links it and keeps its settings. The app's own writers (lib/strategy-settings.js, lib/migrate.js) and the engine's page sync run for real
-// against the stand-in; the check is the steps of a Find jobs press over the suite's fixture boards, the AI answered locally. Replaces these e2e steps (Notion leg):
+// against the stand-in; the check is the steps of a Find jobs press over the suite's fixture boards, no AI set up (keeping or dropping a posting is decided before scoring, so the digest lists the kept ones unscored). Replaces these e2e steps (Notion leg):
 //   - "a role and a place added in the app reach the Notion page and config/search.json"
 //   - "a company to skip, set in the app, reaches Notion and config/preferences.json"
 //   - "an edit made directly on the Notion page is used by the next check, and a removed role stops matching"
@@ -13,24 +13,20 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {test} from 'node:test';
-import {startAiProxy} from '../../e2e/lib/ai-proxy.mjs';
-import {DUMMY_KEY} from '../../e2e/lib/engine.mjs';
 import {applicantDraft} from '../../e2e/lib/applicant-seed.mjs';
 import {buildStandIn, startNotionFake} from '../../e2e/lib/notion-fake.mjs';
 import {ensureSection, findPagesBeside, pageSections, restoreSections, setSection, useNotionAt} from '../../e2e/lib/notion.mjs';
-import {GIRAFFE, PLACE, ROLE, SKIP, addPosting as addPostingTo, checker, has, listed, localAnswers} from './strategy-support.mjs';
+import {GIRAFFE, PLACE, ROLE, SKIP, addPosting as addPostingTo, checker, has, listed} from './strategy-support.mjs';
 
 const E2E = path.resolve(import.meta.dirname, '..', '..', 'e2e');
 const FEEDS = path.join(E2E, 'fixtures', 'feeds');
 const TITLE = '⚙️ Search settings';
 
-const proxy = await startAiProxy();
-proxy.setCanned(localAnswers);
 const fake = await startNotionFake();
 useNotionAt(fake.url);
 const feeds = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-strategy-feeds-'));
 fs.cpSync(FEEDS, feeds, {recursive: true});
-Object.assign(process.env, {JOB_PILOTTO_E2E: '1', JOB_PILOTTO_FIXTURE_DIR: feeds, JOB_PILOTTO_E2E_AI_BASE_URL: proxy.url, JOB_PILOTTO_FOLLOW_APP: '0',
+Object.assign(process.env, {JOB_PILOTTO_E2E: '1', JOB_PILOTTO_FIXTURE_DIR: feeds, JOB_PILOTTO_FOLLOW_APP: '0',
   JOB_PILOTTO_E2E_NOTION_BASE_URL: fake.url, JOB_PILOTTO_E2E_NOTION_STANDIN: '1'});
 const {createStorage} = await import('../../lib/storage.js');
 const {ensureConfig} = await import('../../lib/pipeline-env.js');
@@ -45,9 +41,8 @@ const ids = await buildStandIn(fake);
 const install = () => {
   const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-strategy-notion-'));
   const storage = createStorage(profile, {encrypt: value => value, decrypt: value => value});
-  storage.saveSettings({store: 'notion', setupDone: true, aiEngine: 'api', lastScoutAt: new Date(0).toISOString(), notionIds: {...ids}});
+  storage.saveSettings({store: 'notion', setupDone: true, lastScoutAt: new Date(0).toISOString(), notionIds: {...ids}});
   storage.setSecret('NOTION_TOKEN', fake.token);
-  storage.setSecret('ANTHROPIC_API_KEY', DUMMY_KEY);
   ensureConfig(storage);
   return {profile, storage};
 };
@@ -150,10 +145,8 @@ test('a fresh install reconnecting to the same Notion page keeps the real settin
   assert.ok(has(read('search.json', again.profile).role_keywords, GIRAFFE), 'the reconnected install did not take the page\'s roles');
 });
 
-test('the AI stand-in answered locally and the Notion stand-in knew every request', async () => {
-  assert.ok(proxy.stats.calls > 0, 'positive control: the checks asked the stand-in');
-  assert.equal(proxy.stats.paid || 0, 0, 'a call went past the stand-in to a real model');
+test('the Notion stand-in knew every request', async () => {
   assert.deepEqual(fake.stats.unknown, []);
 });
 
-test('teardown', async () => { await proxy.close(); await fake.close(); });
+test('teardown', async () => { await fake.close(); });

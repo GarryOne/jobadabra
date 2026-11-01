@@ -1,7 +1,7 @@
 // Layer 3 (Node + the real engine + a temp data folder, no window): a change to the roles, places, level or companies to skip decides which postings the next Jobs check keeps
 // (the former strategy e2e suite, suites/strategy.mjs, removed with this test in #2763; this Mac's store). The app's own writers (lib/strategy-settings.js: keepLocally is the window's saveStrategy without Notion, addRoles)
-// change the files; the check is the very command list a Find jobs press runs (lib/search-steps.js searchSteps) over the suite's two fixture boards, with the AI answered locally
-// (a fixed good score for a scoring call, "no credit" for everything else) and the digest it wrote read back. Replaces these e2e steps (this Mac's store leg):
+// change the files; the check is the very command list a Find jobs press runs (lib/search-steps.js searchSteps) over the suite's two fixture boards, with no AI set up
+// (keeping or dropping a posting is decided before scoring, so the digest lists the kept ones unscored) and the digest it wrote read back. Replaces these e2e steps (this Mac's store leg):
 //   - "before any change the check finds neither new posting"
 //   - "a role and a place added in the app reach config/search.json"
 //   - "the next check keeps the posting that matches the new role and place, and still drops the other"
@@ -15,21 +15,17 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {test} from 'node:test';
-import {startAiProxy} from '../../e2e/lib/ai-proxy.mjs';
-import {DUMMY_KEY} from '../../e2e/lib/engine.mjs';
 import {applicantDraft} from '../../e2e/lib/applicant-seed.mjs';
 import {withRoles} from '../../e2e/lib/search-roles.mjs';
-import {GIRAFFE, PLACE, ROLE, SKIP, addPosting as addPostingTo, checker, has, listed, localAnswers} from './strategy-support.mjs';
+import {GIRAFFE, PLACE, ROLE, SKIP, addPosting as addPostingTo, checker, has, listed} from './strategy-support.mjs';
 
 const E2E = path.resolve(import.meta.dirname, '..', '..', 'e2e');
 const FEEDS = path.join(E2E, 'fixtures', 'feeds');
 
-const proxy = await startAiProxy();
-proxy.setCanned(localAnswers);
 const feeds = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-strategy-feeds-'));
 fs.cpSync(FEEDS, feeds, {recursive: true});
 // The app's own isolation switches, set before its modules read them.
-Object.assign(process.env, {JOB_PILOTTO_E2E: '1', JOB_PILOTTO_FIXTURE_DIR: feeds, JOB_PILOTTO_E2E_AI_BASE_URL: proxy.url, JOB_PILOTTO_FOLLOW_APP: '0'});
+Object.assign(process.env, {JOB_PILOTTO_E2E: '1', JOB_PILOTTO_FIXTURE_DIR: feeds, JOB_PILOTTO_FOLLOW_APP: '0'});
 const {createStorage} = await import('../../lib/storage.js');
 const {ensureConfig} = await import('../../lib/pipeline-env.js');
 const pipelineRun = await import('../../lib/pipeline-run.js');
@@ -49,8 +45,7 @@ const addPosting = (...args) => addPostingTo(feeds, ...args);
 const check = checker(searchSteps, storage, exec);
 
 test('the Mac store starts with the applicant\'s strategy and this suite\'s start state: no job, two small boards, no strategy change', async () => {
-  storage.saveSettings({store: 'sqlite', setupDone: true, aiEngine: 'api', lastScoutAt: new Date(0).toISOString()});   // lastScoutAt: no employer finder at the press's end
-  storage.setSecret('ANTHROPIC_API_KEY', DUMMY_KEY);
+  storage.saveSettings({store: 'sqlite', setupDone: true, lastScoutAt: new Date(0).toISOString()});   // lastScoutAt: no employer finder at the press's end
   ensureConfig(storage);
   strategy.keepLocally(storage, applicantDraft(), null);
   // The jobs suite's step "the check looks for this person's roles and places (this Mac's config, no Search settings page)":
@@ -116,10 +111,3 @@ test('a region word and a level set in the app decide which postings the next ch
   assert.ok(!listed(jobs, 'giraffe keeper, sued'), 'a posting in Zurich was kept for the region "Ticino"');
 });
 
-test('the AI stand-in answered locally: nothing reached a real model', () => {
-  assert.ok(START['Target roles'].length > 0);
-  assert.ok(proxy.stats.calls > 0, 'positive control: the checks asked the stand-in');
-  assert.equal(proxy.stats.paid || 0, 0, 'a call went past the stand-in to a real model');
-});
-
-test('teardown', async () => { await proxy.close(); });

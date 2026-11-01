@@ -31,7 +31,6 @@ export function registerFocusHandlers(ctx) {
     const result = await pipeline.deleteJob(storage, String(url)).catch(error => ({ok: false, error: error.message}));
     let host = ''; try { host = new URL(String(url)).hostname; } catch { /* not an address */ }
     appLog('jobs', result?.ok ? 'deleted a dismissed job' : 'job not deleted', {host, trashed: result?.trashed ?? 0, by: 'you', error: result?.ok ? undefined : result?.error});
-    if (result?.ok) viewCache.jobDeleted(storage, String(url));
     return result;
   });
   ipcMain.handle('setStatus', async (_, url, status) => {
@@ -39,15 +38,13 @@ export function registerFocusHandlers(ctx) {
     const gate = reason && needsNotion(reason);
     if (gate) return gate;
     if (status !== 'applied') {
-      const result = await pipeline.setStatus(storage, url, status);
-      if (result?.ok) viewCache.statusChanged(storage, String(url), status, result.stage);
-      return result;
+      return pipeline.setStatus(storage, url, status);   // pipeline-commands.js mirrors it in the view cache
     }
     const job = String(url);
     appLog('applied', `asked from the app (you): ${job}`);
     const result = await pipeline.setStatus(storage, job, status).catch(error => ({ok: false, error: error.message}));
     appLog('applied', `asked from the app (you): ${job} -> ${result?.ok ? 'marked applied' : result?.error || 'failed'}`);
-    if (result?.ok) { track('applied', {how: 'manual'}); server.sessionSubmitted(job); viewCache.statusChanged(storage, job, status, result.stage); }   // the job is Applied: its sessions are over, as for a submit the extension saw
+    if (result?.ok) { track('applied', {how: 'manual'}); server.sessionSubmitted(job); }   // the job is Applied: its sessions are over, as for a submit the extension saw
     return result;
   });
   // Focus: what to do next (Notion, no AI); Done on a reply logs a "Replied" event.

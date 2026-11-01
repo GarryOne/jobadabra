@@ -33,12 +33,49 @@ export function recall(storage, name) {
   } catch { return null; }
 }
 
+// Writes the app made that the store may still list as before. Notion lists a write late (up to ~2 min on CI; the stand-in lags 15 s on purpose), so a Jobs read that began AFTER
+// the write can still bring the old stage back: painted, and saved as the list every load paints first (#2758: a dismissed job back as "Interview scheduled" after a quick reload).
+// Design (#2758, owner's scenario): one owner of "what the app has just written" = this ledger, filled only by the app's own stage writes (statusChanged, jobDeleted; lib/pipeline-commands.js
+// calls them for every write that states the new stage), never by a read; applied by the one Jobs reader (pipeline.jobs), so every caller of the list sees it. A held job reads as written
+// until (a) a read lists the written value (the store caught up), (b) a read lists neither the written value nor a state the job had before (a newer change made elsewhere: not hidden),
+// or (c) HOLD_MS passes. HOLD_MS is Focus's hold of its finished cards (renderer/pages/focus.js), which covers the Up next list the same way.
+const HOLD_MS = 10 * 60000;
+const held = new Map();   // `${workspace}|${job url}` -> {status, stage, deleted, stale: [{status, stage}] (what the store may still list), until}
+const same = (job, one) => job.status === one.status && (job.stage || '') === (one.stage || '');
+function hold(storage, url, what) {
+  const key = `${workspace(storage)}|${url}`, before = held.get(key);
+  const cached = recall(storage, 'jobs')?.result?.jobs?.find(job => job.url === url);   // read before the saved list is patched to the new state
+  const stale = before ? [...before.stale, ...(before.deleted ? [] : [before])] : cached ? [cached] : [];
+  held.set(key, {...what, stale: stale.map(({status, stage}) => ({status, stage})), until: Date.now() + HOLD_MS});
+}
+/** Shows the app's own recent writes in a Jobs read (in place): a held status/stage is put back, a deleted job is dropped; a hold the read already satisfies, or contradicts with a newer state, ends. Returns the result. */
+export function withHeldWrites(storage, result) {
+  if (!held.size || !Array.isArray(result?.jobs)) return result;
+  const now = Date.now(), space = workspace(storage);
+  for (const [key, one] of held) if (one.until <= now) held.delete(key);
+  let removed = 0;
+  result.jobs = result.jobs.filter(job => {
+    const key = `${space}|${job.url}`, one = held.get(key);
+    if (!one) return true;
+    if (one.deleted) { removed += 1; return false; }
+    if (job.status === one.status && (!one.stage || job.stage === one.stage)) { held.delete(key); return true; }   // the store lists it now
+    if (one.stale.length && !one.stale.some(old => same(job, old))) { held.delete(key); return true; }   // a newer change than the one held
+    Object.assign(job, {status: one.status}, one.stage ? {stage: one.stage} : {});
+    return true;
+  });
+  if (removed && Number.isFinite(result.total)) result.total -= removed;
+  return result;
+}
+/** Test hook: forget every held write. */
+export const releaseHeldWrites = () => held.clear();
+
 // A job's status was just written to Notion (Save, Dismiss, Applied): the saved Jobs list says so too, and the saved
 // Focus (built from the old stages) is dropped. Without this a reload or restart painted the list from before the
 // change, a dismissed interview back as "Interview scheduled" until the fresh read landed (focus e2e, 3 Oct 2026).
 // A job deleted: out of the cached list, so the next start does not paint it back (main.js deleteJob).
 export function jobDeleted(storage, url) {
-  readsChanged();   // a read running now began before this write (shared-read.js)
+  readsChanged();
+  hold(storage, url, {deleted: true});   // a read running now began before this write (shared-read.js)
   const saved = recall(storage, 'jobs');
   if (!saved?.result?.jobs) return;
   saved.result.jobs = saved.result.jobs.filter(item => item.url !== url);
@@ -51,6 +88,7 @@ export function jobsCleared(storage) {
 }
 export function statusChanged(storage, url, status, stage) {
   readsChanged();
+  hold(storage, url, {status, stage});
   const saved = recall(storage, 'jobs');
   if (saved?.result?.jobs) {
     const job = saved.result.jobs.find(item => item.url === url);

@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import fs from 'node:fs';
 import {besideSteps, ownPress, setLinkedinStep, withLinkedin} from '../lib/search-beside.js';
+import {createRefresh} from '../lib/linkedin-refresh.js';
 
 const storage = {};
 const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -112,4 +113,15 @@ test('the search task runs the LinkedIn step for a person\'s own press and for n
 test('pipeline-tasks hands the whole press (mode, trigger, employers, note) to besideSteps', () => {
   const source = fs.readFileSync(new URL('../lib/pipeline-tasks.js', import.meta.url), 'utf8');
   assert.match(source, /besideSteps\(storage, onLine, signal, \{mode, trigger, employers, note\}, steps\)/);
+});
+
+test('#2731 the refresh wait is cut by the press\'s deadline, not only by its own 70 s cap, and never delays the engine\'s steps', async () => {
+  const note = createRefresh(); note.look();   // the extension looked a moment ago, so the press would wait the full 70 s
+  const outcomes = [], started = Date.now();
+  const step = async signal => { outcomes.push(await note.ask({signal})); return {state: 'stopped', jobs: 0}; };
+  const main = async () => { outcomes.push('main'); return {code: 0}; };
+  const r = base();
+  assert.deepEqual(await withLinkedin(storage, () => {}, null, main, {step, deadlineMs: 30, record: (_, row) => r.recorded.push(row)}), {code: 0});
+  assert.deepEqual(outcomes, ['main', 'stopped'], 'the engine ran at once; the wait ended with the deadline');
+  assert.ok(Date.now() - started < 5000, 'seconds, not the 70 s cap');
 });

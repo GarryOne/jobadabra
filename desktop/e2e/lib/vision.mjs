@@ -21,20 +21,24 @@ export const EXPECTED = {
 // settings-<section> and settings-connections-<engine>-chosen pages have no entry of their own: they are parts of the Settings page.
 export const expectedFor = view => (view === 'failure-screenshot' ? 'The whole app window at the moment a test step failed: any page. Judge only what would stop or mislead a person (an error, an empty or broken screen); the sidebar and the bottom bar look the same on every page and are not worth a finding here, and the failed step itself is not your concern.' : '') || EXPECTED[view.replace(/-narrow$/, '')] || (view.startsWith('activity-') ? `${EXPECTED.actions} The Recent activity panel is open over it, listing runs with a status pill, what each did and when; this screenshot shows ${view.replace('activity-', '').replace(/-/g, ' ')} state of a run. A Failed, Stopped, Not checked or With warnings pill must come with a reason in plain words and, when there is one, the way out (Run again, Try again, Connect Gmail, View technical log); the technical log stays folded unless the run is live.` : '') || (view.startsWith('settings-') ? `${EXPECTED.settings} This is the "${view.replace('settings-', '')}" part of Settings.` : 'its normal content');
 
-// Why (1 Nov 2026, owner via mac-07 "Teach the 2 AI judges"): one block for both screenshot prompts. CI asks the checklist (lib/review-checklist.mjs, since d1144b9)
-// and that prompt carried none of these lines, so shapes judged by design came back as issues (#2806, #2814, #2743, #2751). A new by-design shape goes here, once.
-export const NOT_FINDINGS = `The app runs here in a TEST profile with made-up demo data. Never report the demo data itself: invented names and companies (Fjord Networks, E2E Recruitee GmbH, Ada), lowercase hyphenated
-slugs used as titles (like "recruiter-call-failing"), round or implausible numbers, dates that are today's, an empty or "not connected" Notion, Gmail, Google or AI key, or a failing demo AI. A real
-person's data is not like that.
-Already judged BY DESIGN (a person decided these are fine; do not report them again): the tip banner on Focus, Jobs and Interviews is a text ticker that scrolls from right to left, so a frozen
-picture shows it cut off, in a failure screenshot too (#2806); the Jobs check card's "N open" and "View all N in Jobs" count different sets (the run's own message versus the jobs in the list); a Recent runs row is short on purpose and
-a warning's reason is in the detail pane; a result line such as "Done ($0.01)." shows the AI cost; at a short window the sidebar's menu list scrolls on its own with a thin visible scrollbar, so its last icon shown half-cut at the edge is the scroll, not a bug (#270, #271), but a menu item that cannot be reached at all is real; the Technical log text is technical by design; "Retry" on the Answer once card and a "not connected" Notion,
-Gmail or AI key are normal states of a new account.
-Also BY DESIGN, never report (they are how a TEST run looks, or a rule a person chose): the Ready to send card's reason "Not in the end-to-end journey: it never reaches our server" (a test run never reaches the site; a real install does not show it); a Technical log that stays open when a run you were watching stops (a run opened after it finished is folded; #1764); the status bar's "No search yet" beside applications and kits that come from Notion (it names this install's own searches; #1730).
+// Why (1 Nov 2026, owner via mac-07 "Teach the 2 AI judges"; #2857 measured): the shapes people closed as by design, the one part both screenshot prompts carry.
+// The checklist (lib/review-checklist.mjs, what CI asks) gets only these: given the whole NOT_FINDINGS list it saw 18 of 39 real bugs instead of 30 (review-eval
+// runs 41331643594, 41331646268). A new shape goes here once, with its issue, and the change is measured with review-eval.yml before it ships.
+export const BY_DESIGN_SHAPES = `Already judged BY DESIGN by a person (never report these):
+The tip line on Focus, Jobs and Interviews is a text ticker that scrolls from right to left; any picture of it, a failure screenshot too, catches it cut off (#2806).
 A FOLDED line (a one-line summary with Show, Details, a count or an arrow that opens it) keeps its reasons and its way out inside: a folded "Couldn't load your details · 1 …" with Show is not missing a reason or a fix.
 Report it only when the opened part is in the picture and still lacks them (#2814, #2743).
 A status code inside a plain sentence that says what happened and what to do ("the service was unavailable (HTTP 502). It is usually back within minutes: try again") is plain language, not raw
-technical text; raw is an error class, a stack trace, JSON, or a code with no such sentence around it (#2751).
+technical text; raw is an error class, a stack trace, JSON, or a code with no such sentence around it (#2751).`;
+
+export const NOT_FINDINGS = `The app runs here in a TEST profile with made-up demo data. Never report the demo data itself: invented names and companies (Fjord Networks, E2E Recruitee GmbH, Ada), lowercase hyphenated
+slugs used as titles (like "recruiter-call-failing"), round or implausible numbers, dates that are today's, an empty or "not connected" Notion, Gmail, Google or AI key, or a failing demo AI. A real
+person's data is not like that.
+Already judged BY DESIGN (a person decided these are fine; do not report them again): the Jobs check card's "N open" and "View all N in Jobs" count different sets (the run's own message versus the jobs in the list); a Recent runs row is short on purpose and
+a warning's reason is in the detail pane; a result line such as "Done ($0.01)." shows the AI cost; at a short window the sidebar's menu list scrolls on its own with a thin visible scrollbar, so its last icon shown half-cut at the edge is the scroll, not a bug (#270, #271), but a menu item that cannot be reached at all is real; the Technical log text is technical by design; "Retry" on the Answer once card and a "not connected" Notion,
+Gmail or AI key are normal states of a new account.
+Also BY DESIGN, never report (they are how a TEST run looks, or a rule a person chose): the Ready to send card's reason "Not in the end-to-end journey: it never reaches our server" (a test run never reaches the site; a real install does not show it); a Technical log that stays open when a run you were watching stops (a run opened after it finished is folded; #1764); the status bar's "No search yet" beside applications and kits that come from Notion (it names this install's own searches; #1730).
+${BY_DESIGN_SHAPES}
 Do NOT report: anything you cannot see, brand-new accounts having empty lists where the page says so nicely, or things listed as expected.
 Do NOT report transient interface: a toast or notification (it goes away by itself, and one over the page is by design), a tooltip, a spinner, a menu in the middle of opening.
 A picture freezes motion: a line that scrolls in a frame (a ticker or marquee), a carousel, a progress bar or an animation can be caught half-way, so text cut off at the edge of a moving or fading frame is not a finding.

@@ -2,7 +2,7 @@
 // finding. Built for the Free AI review (#2046, 26 Oct 2026: 71-79% of the judged bugs); here so a Claude model can be scored with it too (review-eval.mjs
 // "claude-haiku-5-5+checklist"). Guarded by test/review-checklist.test.mjs.
 // Job: report health
-import {NOT_FINDINGS, expectedFor} from './vision.mjs';
+import {BY_DESIGN_SHAPES, expectedFor} from './vision.mjs';
 
 export const CHECKS = [
   ['contradiction', 'Two parts of the screen state opposite things about the same item (a pill vs its own text, a header vs a card, a toast vs the detail, a step list vs the run status, a green "nothing new" vs a failed run).'],
@@ -16,11 +16,13 @@ export const CHECKS = [
   ['duplicated-or-inconsistent', 'The same message shown twice, or two lines describing the same rule differently.'],
   ['missing-key-info', 'A list row or card lacks what a person needs to act (no time, no outcome, no reason) where the page shows it elsewhere.'],
 ];
-// Why (1 Nov 2026, owner via mac-07 "Teach the 2 AI judges"): the checklist carries the same NOT_FINDINGS as the long prompt; without it the by-design shapes came back as issues.
-export const CHECK_SYSTEM = `You check ONE screenshot of the Jobadabra desktop app (a job-search app) for real bugs a person would hit. Go through EVERY check below and answer each one:
+// Why (1 Nov 2026, owner via mac-07 "Narrow it, measure first"): of the long prompt's not-a-finding list the checklist carries only the closed by-design shapes
+// (lib/vision.mjs BY_DESIGN_SHAPES); the whole NOT_FINDINGS list cut the real bugs it saw from 30 of 39 to 18 (#2857's measurement). Its own two opening lines
+// (test data, transient interface) are the wording that scored 30 of 39, kept as measured: a change to this text is measured with review-eval.yml first.
+export const CHECK_SYSTEM = `You check ONE screenshot of the Jobadabra desktop app (a job-search app) for real bugs a person would hit. Test data is made up (company names, round numbers, today's dates, a "not connected" Notion, Gmail or AI key are normal): never report the data itself.
+A toast, tooltip, spinner or a text ticker caught mid-scroll is never a bug. Go through EVERY check below and answer each one:
 ${CHECKS.map(([id, text], i) => `${i + 1}. ${id}: ${text}`).join('\n')}
-What is NOT a finding (a "yes" that one of these covers is a "no"):
-${NOT_FINDINGS}
+${BY_DESIGN_SHAPES}
 Reply with ONE JSON object: {"checks":[{"id":"<check id>","answer":"yes|no","where":"<the element>","evidence":"<quote the exact words or numbers you see, both sides of a contradiction>"}]} with all ${CHECKS.length} checks in order. Answer "yes" only with evidence you can quote from the screen (or the FACTS); otherwise "no".`;
 
 // A checklist answer -> [{title, detail}] for the checks answered yes with evidence; tolerant of the shapes the models use ({id, answer}, {type, findings}).

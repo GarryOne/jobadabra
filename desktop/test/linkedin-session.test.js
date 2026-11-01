@@ -37,7 +37,7 @@ test('saving the session puts it in the Keychain under one item, turns the switc
   const done = saveSession(settings, good(), {keychain: kc});
   assert.deepEqual(done, {ok: true});
   assert.equal(JSON.stringify(done).includes(SECRET), false);
-  assert.equal(SERVICE, 'job-pilotto.linkedin-jobs.session');
+  assert.equal(SERVICE, 'jobadabra.linkedin-jobs.session');
   assert.deepEqual(JSON.parse(kc.items.get(SERVICE)), {li_at: SECRET, JSESSIONID: JSESSION});
   assert.deepEqual(state(settings), {on: true, asked: 1, declined: 0});
   assert.equal(JSON.stringify(settings.settings()).includes(SECRET), false, 'the settings file never holds the session');

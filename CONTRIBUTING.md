@@ -12,7 +12,7 @@
 | Telegram bot | `cd app-core && npm install` (the website is in the private repo `jobadabra-web`, see `docs/rules/private-site.md`) |
 | Check your setup | `python3 -m src doctor` |
 
-Your own keys live in the macOS Keychain (`job-pilotto.*`), never in files you commit.
+Your own keys live in the macOS Keychain (`jobadabra.*`), never in files you commit.
 
 ## 2 · Make a change
 

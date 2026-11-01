@@ -15,18 +15,18 @@ test('accounts come from the CI secret or the Keychain items of listed hosts onl
   const asked = [];
   const mac = testAccounts({JP_TEST_ACCOUNT_HOSTS: 'jobs.example.test, missing.example.test'}, {keychain: service => { asked.push(service); if (service.includes('missing')) throw new Error('not found'); return service.endsWith('.email') ? 'me@x.test' : 'secret'; }});
   assert.deepEqual(mac, {'jobs.example.test': {email: 'me@x.test', password: 'secret'}});
-  assert.ok(asked.every(service => service.startsWith('job-pilotto.test-account.')), asked.join(' '));
+  assert.ok(asked.every(service => service.startsWith('jobadabra.test-account.')), asked.join(' '));
   assert.deepEqual(testAccounts({}, {hosts: () => []}), {}, 'nothing listed: no sign-in anywhere');
 });
 
 test('a seeded account is the product\'s saved site password: the host\'s item, the email in its comment, a private file', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-accounts-'));
-  fs.writeFileSync(path.join(dir, 'isolated-secrets.json'), JSON.stringify({'job-pilotto.other.test.password': {value: 'keep'}}));
+  fs.writeFileSync(path.join(dir, 'isolated-secrets.json'), JSON.stringify({'jobadabra.other.test.password': {value: 'keep'}}));
   assert.deepEqual(seedTestAccounts(dir, {'jobs.example.test': {email: 'me@x.test', password: 'secret'}}), ['jobs.example.test']);
   const items = JSON.parse(fs.readFileSync(path.join(dir, 'isolated-secrets.json'), 'utf8'));
-  assert.equal(items['job-pilotto.jobs.example.test.password'].value, 'secret');
-  assert.equal(items['job-pilotto.jobs.example.test.password'].comment, 'email=me@x.test');
-  assert.equal(items['job-pilotto.other.test.password'].value, 'keep', 'an item already there stays');
+  assert.equal(items['jobadabra.jobs.example.test.password'].value, 'secret');
+  assert.equal(items['jobadabra.jobs.example.test.password'].comment, 'email=me@x.test');
+  assert.equal(items['jobadabra.other.test.password'].value, 'keep', 'an item already there stays');
   if (process.platform !== 'win32') assert.equal(fs.statSync(path.join(dir, 'isolated-secrets.json')).mode & 0o777, 0o600);
 });
 
@@ -45,7 +45,7 @@ test('a Mac with no host list reads the listed test accounts only; a real accoun
   const asked = [];
   const got = testAccounts({}, {hosts: () => ['jobs.example.test'], keychain: service => { asked.push(service); return 'v'; }});
   assert.deepEqual(Object.keys(got), ['jobs.example.test']);
-  assert.ok(asked.length === 2 && asked.every(service => service.startsWith('job-pilotto.test-account.')), asked.join(' '));
+  assert.ok(asked.length === 2 && asked.every(service => service.startsWith('jobadabra.test-account.')), asked.join(' '));
   assert.deepEqual(testAccounts({JP_TEST_ACCOUNT_HOSTS: ''}, {hosts: () => ['jobs.example.test'], keychain: () => 'v'}), {}, 'an empty list means none');
 });
 
@@ -82,19 +82,19 @@ test('with that email the app signs in at the host (modeOf), with the fake one i
   assert.equal(modeOf({}, 'tenant.wd3.example.test', item, item, true), 'sign-in');
 });
 
-// The owner's REAL account on a site that also has a test account (career74.sapsf.eu, 16 Oct 2026): the real one is the product's item job-pilotto.<host>.password in the owner's Keychain
-// (Settings → Credentials), the test one job-pilotto.test-account.<host>.*. A test reads the second and never the first, for any host.
+// The owner's REAL account on a site that also has a test account (career74.sapsf.eu, 16 Oct 2026): the real one is the product's item jobadabra.<host>.password in the owner's Keychain
+// (Settings → Credentials), the test one jobadabra.test-account.<host>.*. A test reads the second and never the first, for any host.
 import {testHosts, replayAccounts} from '../../lib/test-accounts.mjs';
-const SAME_HOST = 'career74.sapsf.eu', REAL = `job-pilotto.${SAME_HOST}.password`, REAL_EMAIL = `job-pilotto.${SAME_HOST}.email`;
+const SAME_HOST = 'career74.sapsf.eu', REAL = `jobadabra.${SAME_HOST}.password`, REAL_EMAIL = `jobadabra.${SAME_HOST}.email`;
 
 test('on a host where the owner has a real account too, a test reads only the test-account items, never the real one', () => {
-  const asked = [], secrets = {[REAL]: 'REAL-PASSWORD', [REAL_EMAIL]: 'real@example.com', [`job-pilotto.test-account.${SAME_HOST}.password`]: 'test-password', [`job-pilotto.test-account.${SAME_HOST}.email`]: 'test+jp@example.com'};
+  const asked = [], secrets = {[REAL]: 'REAL-PASSWORD', [REAL_EMAIL]: 'real@example.com', [`jobadabra.test-account.${SAME_HOST}.password`]: 'test-password', [`jobadabra.test-account.${SAME_HOST}.email`]: 'test+jp@example.com'};
   const got = testAccounts({JP_TEST_ACCOUNT_HOSTS: SAME_HOST}, {keychain: service => { asked.push(service); if (!(service in secrets)) throw new Error('not found'); return secrets[service]; }});
   assert.deepEqual(got, {[SAME_HOST]: {email: 'test+jp@example.com', password: 'test-password'}}, 'the test account, not the real one');
-  assert.deepEqual(asked.sort(), [`job-pilotto.test-account.${SAME_HOST}.email`, `job-pilotto.test-account.${SAME_HOST}.password`]);
+  assert.deepEqual(asked.sort(), [`jobadabra.test-account.${SAME_HOST}.email`, `jobadabra.test-account.${SAME_HOST}.password`]);
   assert.ok(!asked.includes(REAL) && !asked.includes(REAL_EMAIL), 'the real item is never asked for');
   // a host that has ONLY the real account is not a test account at all: nothing is read
-  const none = [], dump = ['job-pilotto.career74.sapsf.eu.password', 'job-pilotto.other.example.password'].map(name => `keychain: "/x"\nclass: "genp"\nattributes:\n    "acct"<blob>="job-pilotto"\n    "icmt"<blob>="email=real@example.com"\n    "svce"<blob>="${name}"\n`).join('');
+  const none = [], dump = ['jobadabra.career74.sapsf.eu.password', 'jobadabra.other.example.password'].map(name => `keychain: "/x"\nclass: "genp"\nattributes:\n    "acct"<blob>="jobadabra"\n    "icmt"<blob>="email=real@example.com"\n    "svce"<blob>="${name}"\n`).join('');
   assert.deepEqual(testHosts(() => dump), [], 'a real account is never listed as a test account');
   assert.deepEqual(testAccounts({}, {hosts: () => testHosts(() => dump), keychain: service => { none.push(service); return 'v'; }}), {});
   assert.deepEqual(none, [], 'no item is read for a host that has only a real account');
@@ -105,6 +105,6 @@ test('a replay and the harness\'s own source never reach for a real account\'s i
   const read = file => fs.readFileSync(new URL(`../../${file}`, import.meta.url), 'utf8');
   const source = read('lib/test-accounts.mjs');
   const keychainReads = [...source.matchAll(/keychain\(`([^`]*)`\)/g)].map(found => found[1]);
-  assert.deepEqual(keychainReads, ['job-pilotto.test-account.${host}.email', 'job-pilotto.test-account.${host}.password'], 'the only Keychain reads of the test accounts name test-account items');
+  assert.deepEqual(keychainReads, ['jobadabra.test-account.${host}.email', 'jobadabra.test-account.${host}.password'], 'the only Keychain reads of the test accounts name test-account items');
   assert.ok(!/replayAccounts[\s\S]{0,600}find-generic-password/.test(source), 'replayAccounts does not touch the Keychain');
 });

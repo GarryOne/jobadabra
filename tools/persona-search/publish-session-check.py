@@ -1,7 +1,7 @@
 """Publish one finished local search check to /admin/job-search/lab "Session checks" so other sessions read it (owner, 24 Oct 2026).
 Usage: python3 tools/persona-search/publish-session-check.py <out dir> <case> --session <name> --label "Nurse, Zagreb" --country Croatia --role nurse --mode full|quick
            --build <sha> [--local-jobs N] [--broke "..."] [--conclusion "..."] [--prs "#1825 #1835"] [--dry]
-<out dir>/<case>/presses.jsonl and run-1.log are run.mjs's output. The key is the Keychain item job-pilotto.site.session_checks_key (its own key, never the CI one); never print it.
+<out dir>/<case>/presses.jsonl and run-1.log are run.mjs's output. The key is the Keychain item jobadabra.site.session_checks_key (its own key, never the CI one); never print it.
 Counts, seconds, board names with listed/relevant counts and two short sentences go up: no job titles, companies or CV text (the site cuts anything else). Guard: tests/test_publish_session_check.py."""
 import argparse
 import datetime
@@ -14,7 +14,7 @@ from pathlib import Path
 
 URL = 'https://www.jobpilotto.top/search-lab/session-checks'
 USER_AGENT = 'jobadabra-session-check/1'   # Cloudflare refuses Python's default agent with error 1010 before the Worker sees the request (24 Oct 2026)
-KEYCHAIN = ('job-pilotto', 'job-pilotto.site.session_checks_key')
+KEYCHAIN = ('jobadabra', 'jobadabra.site.session_checks_key')
 BOARD = re.compile(r'Job boards found: (?P<name>.+?) (?P<listed>\d+) job\(s\), (?P<relevant>\d+) relevant(?: \((?P<note>[^)]*)\))?\s*$')
 OWN_SECTION = re.compile(r'Job boards found: (?P<name>.+?) read from its own section')
 

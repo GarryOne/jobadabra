@@ -332,7 +332,7 @@ doesn't.
   same Claude conversation. The app asks before quitting with sessions running, and at start about applications a
   crash left open.
 - 🔑 **Creates the employer account** when a site asks for one, with your details from the CV. The
-  password is generated straight into your Mac's Keychain (`job-pilotto.<site>.password`) and pasted
+  password is generated straight into your Mac's Keychain (`jobadabra.<site>.password`) and pasted
   from the clipboard: it never appears in the session, the logs or Notion. Next time it signs in with it.
 - 📧 **Confirms the account itself**: reads the confirmation email's code or link from Gmail
   (read-only, connected in Settings → Gmail and Calendar).
@@ -711,7 +711,7 @@ None of group two is required for the core pipeline; it only matters if you want
 ## Configuration
 
 **Running locally**: on macOS, the maintainer's own scripts (`tools/apply-batch-*.sh`) read
-`NOTION_TOKEN` from the Keychain entry `job-pilotto.notion.token` if it's not already exported.
+`NOTION_TOKEN` from the Keychain entry `jobadabra.notion.token` if it's not already exported.
 Everywhere else — another OS, CI, or if you'd rather not use Keychain at all — copy
 `.env.example` to `.env` and fill in real values; `src/paths.py` loads it automatically (no
 library, no manual `source` step) the first time any part of this project runs, without
@@ -741,16 +741,16 @@ overriding a variable your shell already has set. `.env` is git-ignored, never c
 | `JOBADABRA_INSIGHT_MODEL` | model for the daily insight (repository variable; unset = no insights). Uses `claude-sonnet-5-5` |
 | `NOTION_INSIGHTS_DB` | your 💡 Insights database ID |
 | `NOTION_INTERVIEWS_DB` | your 🎤 Interviews database ID |
-| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REFRESH_TOKEN` | GitHub secrets for Gmail + Calendar (read-only), set by `python3 -m src.sources.google auth --github`; locally in the Keychain (`job-pilotto.google.*`) |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REFRESH_TOKEN` | GitHub secrets for Gmail + Calendar (read-only), set by `python3 -m src.sources.google auth --github`; locally in the Keychain (`jobadabra.google.*`) |
 | `JOBADABRA_MAIL_MODEL` | model that classifies job emails (repository variable; default `claude-haiku-5-5`) |
 | `JOBADABRA_TZ` | your time zone for reminders (default `Europe/Zurich`) |
 | `JOBADABRA_AI_ENGINE` | `api` (default; GitHub), `openai` (GitHub too), `cli` (your own Claude Code) or `codex` (your own Codex); set by the app from your choice |
 | `JOBADABRA_AI_FALLBACK` | `api` or `openai`: when your CLI hits its plan's limit, that run goes on with the same family's API key (the app's opt-in tick) |
 | `JOBADABRA_CLAUDE_BIN`, `JOBADABRA_CODEX_BIN` | path to `claude` / `codex` (the app sets the one Verify found); else PATH, `~/.local/bin`, Homebrew |
-| `OPENAI_API_KEY` | the OpenAI engine's key (Keychain `job-pilotto.openai.api_key`, the app's secrets, a GitHub secret for Always on) |
+| `OPENAI_API_KEY` | the OpenAI engine's key (Keychain `jobadabra.openai.api_key`, the app's secrets, a GitHub secret for Always on) |
 | `JOBADABRA_OPENAI_SMALL_MODEL`, `_MAIN_MODEL`, `_BIG_MODEL` | the OpenAI tiers' models (defaults `gpt-6-luna`, `gpt-6.1-sol`, `gpt-6.1-sol`) |
 | `JOBADABRA_MONTHLY_BUDGET_USD` | your Anthropic monthly spend limit, for the budget guard (repository variable; default 15) |
-| `ANTHROPIC_ADMIN_KEY` | optional Admin API key (`sk-ant-admin…`, GitHub secret or Keychain `job-pilotto.anthropic.admin-key`): exact monthly spend from Anthropic's cost report |
+| `ANTHROPIC_ADMIN_KEY` | optional Admin API key (`sk-ant-admin…`, GitHub secret or Keychain `jobadabra.anthropic.admin-key`): exact monthly spend from Anthropic's cost report |
 | `JOBADABRA_GOOGLE_AUTH_AT` | when you last signed in to Google (set by `google auth --github`); the health check warns before the 7-day Testing limit |
 | `JOBADABRA_INTERVIEW_MODEL` | model for interview reviews (default `claude-sonnet-5-5`) |
 | `DIGEST_BRAND_NAME` | your digest's display name (default `Jobadabra`) — the tool's own name stays generic; this is what your Telegram messages say, e.g. `"SRE Jobadabra"` if you want to keep your own role in the name |
@@ -889,7 +889,7 @@ python3 -m src.sources.google auth --github
 
 A Google tab opens: pick your account → "Google hasn't verified this app" → **Advanced → Go to Job
 Pilotto** → tick both read-only permissions → Continue. That's all: the token goes to your Keychain
-(`job-pilotto.google.*`) and your fork's `GOOGLE_*` repository secrets, and it doesn't expire.
+(`jobadabra.google.*`) and your fork's `GOOGLE_*` repository secrets, and it doesn't expire.
 
 This uses the published "Jobadabra" Google app, whose client ships inside the Mac app (it is not in
 git; from a source checkout, use `setup` for your own Google app).
@@ -1135,7 +1135,7 @@ Then help me set this up for myself, step by step:
 7. Trigger one real run (mode `run`) and show me what came back in Telegram.
 8. If I want the local form filling (macOS): copy .env.example to .env with JOBADABRA_CV_PATH set
    to my CV, store my Notion token in the Keychain (security add-generic-password -a "$USER"
-   -s job-pilotto.notion.token -w), and tell me to install Claude Code and the Claude in Chrome
+   -s jobadabra.notion.token -w), and tell me to install Claude Code and the Claude in Chrome
    extension myself. Show me the cost first, then offer to draft kits for my top matches
    (tools/prepare-top.sh 3 --dry-run, then without --dry-run once I agree).
 9. Run python3 -m src doctor and work through its "Next step" line until it says "All set" (or

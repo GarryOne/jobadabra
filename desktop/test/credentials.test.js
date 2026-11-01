@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {list, parseDump, reveal} from '../lib/credentials.js';
 
-const item = (service, {account = 'job-pilotto', comment = null, cdat = '20261008115402'} = {}) => `keychain: "/Users/x/Library/Keychains/login.keychain-db"
+const item = (service, {account = 'jobadabra', comment = null, cdat = '20261008115402'} = {}) => `keychain: "/Users/x/Library/Keychains/login.keychain-db"
 version: 512
 class: "genp"
 attributes:
@@ -16,10 +16,10 @@ attributes:
 
 test('every site account is listed with its email and job, newest first; the shared password and non-sites are not', () => {
   const dump = [
-    item('job-pilotto.career5.successfactors.eu.password', {cdat: '20260928003603'}),
-    item('job-pilotto.career2.successfactors.eu.password', {comment: 'email=ilie@example.com job=https://jobs.migros.ch/x'}),
-    item('job-pilotto.sites.password'), item('job-pilotto.mac-sign.password'),
-    item('job-pilotto.auth.jobs.ch.password', {account: 'someone-else'}), item('other.app.password'),
+    item('jobadabra.career5.successfactors.eu.password', {cdat: '20260928003603'}),
+    item('jobadabra.career2.successfactors.eu.password', {comment: 'email=ilie@example.com job=https://jobs.migros.ch/x'}),
+    item('jobadabra.sites.password'), item('jobadabra.mac-sign.password'),
+    item('jobadabra.auth.jobs.ch.password', {account: 'someone-else'}), item('other.app.password'),
   ].join('');
   assert.deepEqual(parseDump(dump), [
     {host: 'career2.successfactors.eu', email: 'ilie@example.com', job: 'https://jobs.migros.ch/x', created: '2026-10-08T11:54:02Z'},
@@ -60,8 +60,8 @@ test('emailOf reads the email recorded on one site\'s item (attributes only) and
 
 test('a test account is listed as one (test: true, its key), never as a real site, and no application ever gets it', async () => {
   const {forExtension} = await import('../lib/credentials.js'), {testHosts} = await import('../e2e/lib/test-accounts.mjs');
-  const dump = [item('job-pilotto.test-account.richemont.wd3.myworkdayjobs.com.password'), item('job-pilotto.richemont.wd3.myworkdayjobs.com.password', {comment: 'email=me@example.com'}),
-    item('job-pilotto.test-account.richemont.wd3.myworkdayjobs.com.email')].join('');
+  const dump = [item('jobadabra.test-account.richemont.wd3.myworkdayjobs.com.password'), item('jobadabra.richemont.wd3.myworkdayjobs.com.password', {comment: 'email=me@example.com'}),
+    item('jobadabra.test-account.richemont.wd3.myworkdayjobs.com.email')].join('');
   const rows = parseDump(dump);
   assert.deepEqual(rows.map(row => [row.host, row.test || false, row.key || '']), [['richemont.wd3.myworkdayjobs.com', true, 'test-account.richemont.wd3.myworkdayjobs.com'], ['richemont.wd3.myworkdayjobs.com', false, '']]);
   assert.deepEqual(testHosts(() => dump), ['richemont.wd3.myworkdayjobs.com']);
@@ -70,18 +70,18 @@ test('a test account is listed as one (test: true, its key), never as a real sit
 });
 
 test('a test account row shows the address kept in its sibling email item; a real row never borrows one', () => {
-  const dump = [item('job-pilotto.test-account.a.example.password'), item('job-pilotto.test-account.a.example.email'), item('job-pilotto.b.example.password'),
-    item('job-pilotto.test-account.c.example.password')].join('');
+  const dump = [item('jobadabra.test-account.a.example.password'), item('jobadabra.test-account.a.example.email'), item('jobadabra.b.example.password'),
+    item('jobadabra.test-account.c.example.password')].join('');
   const asked = [];
   const exec = (cmd, args) => {
     if (args.includes('dump-keychain')) return dump;
     const service = args[args.indexOf('-s') + 1];
     asked.push(service);
-    if (service === 'job-pilotto.test-account.a.example.email') return 'owner+jp@example.com\n';
+    if (service === 'jobadabra.test-account.a.example.email') return 'owner+jp@example.com\n';
     throw new Error('no item');
   };
   const {rows} = list('darwin', exec);
   const byHost = Object.fromEntries(rows.map(row => [row.host, row.email]));
   assert.deepEqual(byHost, {'a.example': 'owner+jp@example.com', 'b.example': '', 'c.example': ''});   // c: a test account with no email item says so; b: a real account, no address of its own
-  assert.deepEqual(asked.sort(), ['job-pilotto.test-account.a.example.email', 'job-pilotto.test-account.c.example.email']);   // only test rows ask, only for their own .email item, never a password
+  assert.deepEqual(asked.sort(), ['jobadabra.test-account.a.example.email', 'jobadabra.test-account.c.example.email']);   // only test rows ask, only for their own .email item, never a password
 });

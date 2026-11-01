@@ -260,7 +260,7 @@ def _keychain_token():
     if sys.platform != 'darwin' or secret_store.isolated():  # the end-to-end journey never reaches the owner's own Notion
         return ''
     secret = subprocess.run(['security', 'find-generic-password', '-a', os.getenv('USER', ''),
-                             '-s', 'job-pilotto.notion.token', '-w'], capture_output=True,
+                             '-s', 'jobadabra.notion.token', '-w'], capture_output=True,
                             text=True, check=False)
     return secret.stdout.strip() if secret.returncode == 0 else ''
 

@@ -37,9 +37,9 @@ const py = (args, env = {}) => execFileSync(python, args, {cwd: pilot, encoding:
   env: {...process.env, PYTHONUTF8: '1', ...env}}).trim();
 say(py(['-c', 'import anthropic, keyring, pip, sqlite3, ssl, sys; from importlib.metadata import version; ' +
   "print('Python', sys.version.split()[0], 'anthropic', version('anthropic'), 'keyring', version('keyring'))"]));
-say(py(['-c', "from src import secret_store as s; s.put('job-pilotto.smoke.test', 'ok', 'ci'); " +
-  "v = s.get('job-pilotto.smoke.test', 'ci'); s.delete('job-pilotto.smoke.test', 'ci'); " +
-  "assert v == 'ok', v; assert s.get('job-pilotto.smoke.test', 'ci') is None; print('Credential Manager round-trip ok')"]));
+say(py(['-c', "from src import secret_store as s; s.put('jobadabra.smoke.test', 'ok', 'ci'); " +
+  "v = s.get('jobadabra.smoke.test', 'ci'); s.delete('jobadabra.smoke.test', 'ci'); " +
+  "assert v == 'ok', v; assert s.get('jobadabra.smoke.test', 'ci') is None; print('Credential Manager round-trip ok')"]));
 if (want('packaging')) {
 // The transcription add-on is downloaded on the first recording (src/ai/transcribe.py install_addon): do exactly that here,
 // into a throwaway folder, so a Windows wheel that goes missing fails the release instead of a user's first interview.

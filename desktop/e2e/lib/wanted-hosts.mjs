@@ -16,7 +16,7 @@ export async function fetchWanted({env = process.env, key, fetcher = fetch} = {}
   const why = skipReason(env);
   if (why) return {hosts: [], why: `not asked (${why})`};
   let token = key;
-  try { token ??= execFileSync('security', ['find-generic-password', '-s', 'job-pilotto.site.api_key', '-w'], {encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore']}).trim(); } catch { token = ''; }
+  try { token ??= execFileSync('security', ['find-generic-password', '-s', 'jobadabra.site.api_key', '-w'], {encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore']}).trim(); } catch { token = ''; }
   if (!token) return {hosts: [], why: 'not asked (no site key in the Keychain)'};
   try {
     const answer = await fetcher(`${SITE}?json`, {headers: {Authorization: `Bearer ${token}`, 'X-Caller': 'smoke-discover'}, signal: AbortSignal.timeout(20000)});

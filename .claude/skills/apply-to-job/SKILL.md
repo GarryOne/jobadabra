@@ -158,7 +158,7 @@ in that file next time — keep evolving it.
       of discovering it piecemeal later.
 
 ## Before you start (session/tooling gotchas, 25 Sep 2026)
-- **This skill is project-scoped to job-pilotto.** If the session started in a different working
+- **This skill is project-scoped to jobadabra.** If the session started in a different working
   directory, the `Skill` tool's registry does not pick it up even after `cd`-ing into
   `/Users/mac/jobadabra` mid-session (observed: two failed `Skill("apply-to-job")` calls in a row).
   Don't retry the `Skill` tool after a `cd` — go straight to `Read` on
@@ -335,7 +335,7 @@ in that file next time — keep evolving it.
      click Submit") isn't touched; this only reacts *after* a human click. Then stop rescheduling
      for this job and tell the owner it's marked. **Use `python3 -m src.ai.apply_batch --mark-applied
      <job URL>` (needs `NOTION_TOKEN`, e.g. from Keychain — see other scripts in `tools/` for the
-     `security find-generic-password ... job-pilotto.notion.token` pattern), not
+     `security find-generic-password ... jobadabra.notion.token` pattern), not
      `gh workflow run daily.yml -f mode=apply -f job=<URL> -f action=applied`.** The `daily.yml`/
      `src.daily --mode apply` path looks the job up in the local `jobs.sqlite` crawl cache first —
      that cache is ephemeral in GitHub Actions (can be evicted between runs) and may never have been
@@ -396,7 +396,7 @@ per page where you can:
 6. **After sign-in** the site usually lands on the application or a profile step; on a dashboard,
    open the job again from the careers page and press Apply. Fill page by page (Next / Save and
    continue is fine), audit each page before leaving it, and stop at the review or Submit page.
-7. In the hand-over, name the account item (`job-pilotto.<host>.password`) so the owner can find it.
+7. In the hand-over, name the account item (`jobadabra.<host>.password`) so the owner can find it.
 
 ## Full automatic flow (25 Sep 2026)
 

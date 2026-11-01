@@ -19,7 +19,7 @@ import {withoutWrappers} from './lib/real-claude.mjs';   // never a terminal's c
 
 const DESKTOP = path.resolve(import.meta.dirname, '..'), REPO = path.resolve(DESKTOP, '..');
 const REAL = realFolder(), LIVE = path.join(path.dirname(REAL), 'Jobadabra (live test)'), HOME = path.join(LIVE, 'home');
-const MIRROR_TOKEN = 'job-pilotto.notion.token-live-test';
+const MIRROR_TOKEN = 'jobadabra.notion.token-live-test';
 const keychain = service => execFileSync('security', ['find-generic-password', '-s', service, '-w'], {encoding: 'utf8'}).trim();
 const say = text => console.log(`twin: ${text}`);
 const idsOf = file => Object.fromEntries(fs.readFileSync(file, 'utf8').split('\n').map(line => line.trim().split('=')).filter(([key, value]) => key?.startsWith('NOTION_') && value));

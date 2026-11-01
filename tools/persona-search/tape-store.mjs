@@ -4,7 +4,7 @@
 // as a new pair of assets beside the older ones; a fetch takes the newest pair of a candidate. Never --clobber: an older tape stays until the owner deletes it.
 //   node tools/persona-search/tape-store.mjs publish <candidate> <tape folder>     (the Mac: gh login; the folder holds web.jsonl, ai.jsonl, bodies/, draft.json)
 //   node tools/persona-search/tape-store.mjs publish-debug <candidate> <tape folder>   (a failed heal keeps its new tape on the release `search-tapes-debug`, newest 5 only; fetch-debug brings the newest of a candidate back for an offline replay)
-//   node tools/persona-search/tape-store.mjs fetch <candidate> <out folder>        (CI: NET_RECORD_KEY, GH_TOKEN or NET_RECORDS_READ_TOKEN; the Mac: Keychain job-pilotto.capture.key)
+//   node tools/persona-search/tape-store.mjs fetch <candidate> <out folder>        (CI: NET_RECORD_KEY, GH_TOKEN or NET_RECORDS_READ_TOKEN; the Mac: Keychain jobadabra.capture.key)
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -84,7 +84,7 @@ export function fetch(candidate, out, tag = TAG) {
   try {
     gh(['release', 'download', tag, '-R', REPO, '--pattern', pair.bundle, '--pattern', pair.key, '--dir', work], token);
     const pem = path.join(work, 'key.pem');
-    const secret = process.env.NET_RECORD_KEY || (process.platform === 'darwin' ? run('security', ['find-generic-password', '-s', 'job-pilotto.capture.key', '-w']).toString().trim() : '');
+    const secret = process.env.NET_RECORD_KEY || (process.platform === 'darwin' ? run('security', ['find-generic-password', '-s', 'jobadabra.capture.key', '-w']).toString().trim() : '');
     if (!secret) throw new Error('no NET_RECORD_KEY');
     fs.writeFileSync(pem, Buffer.from(secret, 'base64'), {mode: 0o600});
     run('openssl', ['pkeyutl', '-decrypt', '-inkey', pem, '-pkeyopt', 'rsa_padding_mode:oaep', '-in', path.join(work, pair.key), '-out', path.join(work, 'k')]);

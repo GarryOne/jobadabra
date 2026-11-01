@@ -8,7 +8,7 @@
 |---|---|---|
 | Folder | `~/Library/Application Support/Job Pilotto` | `…/Jobadabra (live test)/home`: a fresh clone at each start |
 | Notion | "Job Pilotto - mac - Photographer" | "🧪 Job Pilotto – Live Test" (one-way mirror, synced at each start) |
-| Token | the app's own current token: `desktop/e2e/lib/real-notion-token-main.mjs` decrypts it from the real `secrets.json` (safeStorage, read-only, env of the copy tool only, never printed; no fallback; macOS may ask once to allow the app's key) | Keychain `job-pilotto.notion.token-live-test` (404 on every real database: checked at start) |
+| Token | the app's own current token: `desktop/e2e/lib/real-notion-token-main.mjs` decrypts it from the real `secrets.json` (safeStorage, read-only, env of the copy tool only, never printed; no fallback; macOS may ask once to allow the app's key) | Keychain `jobadabra.notion.token-live-test` (404 on every real database: checked at start) |
 | Browser | the owner's Chrome | its own visible Chromium window, one tab, fresh profile with the sign-ins carried over, extension copy on the twin's port |
 | Port | 47111 | a free one (`twin.json`) |
 | Telegram, schedules, Always on, telemetry | on | off (`desktop/lib/twin.js`) |
@@ -16,8 +16,8 @@
 | AppleScript on Chrome / Terminal | yes | off |
 | Apply with Claude / Take over with Claude | your Chrome (`--chrome`) | the twin's own Chromium only: `--no-chrome` + a Playwright MCP on its port, the submit guard as init script, job-site passwords masked (`--secrets`) |
 | Engine's Keychain (Telegram bot) | yes | none (`src/secret_store.py` `isolated()`) |
-| Google sign-in (read-only Gmail and Calendar: the sign-up's confirmation mail) | yes | **read from the real store** (owner, 10 Oct 2026), the three `job-pilotto.google.*` items only (`TWIN_MAY_READ`); never written |
-| Ready to send (owner secret) | yes | **read from the real store** (owner, 17 Oct 2026), the one item `job-pilotto.ready.owner_secret` (`desktop/lib/keychain.js` `TWIN_OWNER_SECRET`), read-only: the twin is the same install, so its Send tonight / Run now reach the site as the owner's. The night's forms are filled on the server, never submitted |
+| Google sign-in (read-only Gmail and Calendar: the sign-up's confirmation mail) | yes | **read from the real store** (owner, 10 Oct 2026), the three `jobadabra.google.*` items only (`TWIN_MAY_READ`); never written |
+| Ready to send (owner secret) | yes | **read from the real store** (owner, 17 Oct 2026), the one item `jobadabra.ready.owner_secret` (`desktop/lib/keychain.js` `TWIN_OWNER_SECRET`), read-only: the twin is the same install, so its Send tonight / Run now reach the site as the owner's. The night's forms are filled on the server, never submitted |
 | Real websites, Keychain site passwords, AI | yes | yes (real AI spend: say the cost) |
 | Keychain writes (a new site password, a Google sign-in) | yes | never: the twin's own file `isolated-secrets.json` in its folder (`desktop/lib/keychain.js`, `src/secret_store.py`); it reads that file first, then the real site passwords only |
 
@@ -59,8 +59,8 @@
 <details><summary>Setting the mirror up again (once per workspace)</summary>
 
 1. Notion → an internal integration "Job Pilotto Live-Test" in the owner's workspace; share only the Live Test page with it.
-2. `security add-generic-password -U -a job-pilotto -s job-pilotto.notion.token-live-test -w '<secret>'`
-3. `python3 tools/notion_copy.py create --token job-pilotto.notion.token-live-test --parent <Live Test page id>` → save the printed ids as
+2. `security add-generic-password -U -a jobadabra -s jobadabra.notion.token-live-test -w '<secret>'`
+3. `python3 tools/notion_copy.py create --token jobadabra.notion.token-live-test --parent <Live Test page id>` → save the printed ids as
    `NOTION_*=<id>` lines in `~/Library/Application Support/Job Pilotto (live test)/ids.env`.
 4. `npm run twin` does the first full copy (about 10–20 min; later syncs only update).
 </details>

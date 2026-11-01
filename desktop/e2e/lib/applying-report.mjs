@@ -29,7 +29,7 @@ export const skipReason = (env = process.env) => (env.CI ? 'CI' : env.REAL_EXTEN
 // The owner's site key from the Keychain (or the one given), '' when there is none. Never printed.
 export function ownerKey(key) {
   if (key) return key;
-  try { return execFileSync('security', ['find-generic-password', '-s', 'job-pilotto.site.api_key', '-w'], {encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore']}).trim(); } catch { return ''; }
+  try { return execFileSync('security', ['find-generic-password', '-s', 'jobadabra.site.api_key', '-w'], {encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore']}).trim(); } catch { return ''; }
 }
 
 // A recorded case uploads only with its control (owner, 10 Oct 2026: a case that passed on the old build reached /admin/form-filling/lab as a pass). case.json `control` is

@@ -58,7 +58,7 @@ for _ in $(seq 540); do
   if [ "$(osascript -e 'application "Google Chrome" is running' 2>/dev/null)" = "true" ] &&
      osascript -e 'tell application "Google Chrome" to get URL of tabs of windows' 2>/dev/null |
        grep -Eq "$id/(confirmation|thanks)"; then
-    token="${NOTION_TOKEN:-$(security find-generic-password -a "$USER" -s job-pilotto.notion.token -w 2>/dev/null)}"
+    token="${NOTION_TOKEN:-$(security find-generic-password -a "$USER" -s jobadabra.notion.token -w 2>/dev/null)}"
     say "confirmation page seen"
     if (cd "$repo" && NOTION_TOKEN="$token" python3 -m src.ai.apply_batch --mark-applied "$url" --source Watcher); then
       notify "Submitted — marked Applied in Notion"

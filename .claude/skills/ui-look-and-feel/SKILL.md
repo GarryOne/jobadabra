@@ -163,7 +163,7 @@ env -u ELECTRON_RUN_AS_NODE JOBADABRA_DEMO=1 JOBADABRA_USER_DATA="$D" \
 - **Never put real data in `desktop/demo/`** — it is committed and fictional. Fixtures live in `/tmp`.
 - **Real Notion rows without the Notion MCP**: `desktop/lib/run-history.js` `list(storage, {size})` and
   `detail(storage, pageId)` take any storage `{secret: () => token, settings}` — token from
-  `security find-generic-password -s job-pilotto.notion.token -w`, settings from
+  `security find-generic-password -s jobadabra.notion.token -w`, settings from
   `~/Library/Application Support/Job Pilotto/settings.json`. **One run of every kind** (the `KIND` map in
   `desktop/renderer/pages/activity.js`) is the fastest way to exercise every detail pane.
 - **Prefer state to pixels, but measure the right thing.** `getBoundingClientRect()` reports a box, not content that

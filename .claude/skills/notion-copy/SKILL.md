@@ -18,8 +18,8 @@ uploaded to Notion (expiring links), views.
   and this tool find databases *by title*. A workspace can hold several copies with the same titles (the real
   databases, the public template's source, a new copy), so the target's connection must see only the target
   page, and the source is named explicitly with `--from-ids <.env>` when it isn't alone.
-- Tokens live in the Keychain (`job-pilotto.notion.token` = the terminal's; store others as
-  `job-pilotto.notion-<name>.token` with `security add-generic-password -U -a job-pilotto -s <name> -w '<token>'`).
+- Tokens live in the Keychain (`jobadabra.notion.token` = the terminal's; store others as
+  `jobadabra.notion-<name>.token` with `security add-generic-password -U -a jobadabra -s <name> -w '<token>'`).
   Never print them.
 
 ## New workspace for the Desktop App, filled with existing data
@@ -29,19 +29,19 @@ uploaded to Notion (expiring links), views.
    Notion → new connection that can see only the new **Jobadabra** page → paste its token. The app adds any
    missing columns/pages from `config/notion_schema.json`. Finish the wizard (a first search may run; its rows
    are replaced below).
-3. Owner gives you that same token → Keychain `job-pilotto.notion-app.token`.
+3. Owner gives you that same token → Keychain `jobadabra.notion-app.token`.
    **Connected with "Connect with Notion"** (the app keeps that token encrypted, nobody has it): the owner adds the
-   terminal's connection to the new page too (page ⋯ → Connections), then use `--to job-pilotto.notion.token`
+   terminal's connection to the new page too (page ⋯ → Connections), then use `--to jobadabra.notion.token`
    with `--to-ids "~/Library/Application Support/Job Pilotto/settings.json"` (and `settings --ids` the same),
    so the one token writes only into the app's workspace. The tool refuses when source and target are the same.
 4. **Check, then copy:**
    ```
-   python3 tools/notion_copy.py ids  --token job-pilotto.notion-app.token          # target found, only one copy?
-   python3 tools/notion_copy.py copy --from job-pilotto.notion.token --from-ids ~/jobadabra/.env \
-       --to job-pilotto.notion-app.token --dry-run                                  # row counts per database
-   python3 tools/notion_copy.py copy --from job-pilotto.notion.token --from-ids ~/jobadabra/.env \
-       --to job-pilotto.notion-app.token --replace                                  # the copy
-   python3 tools/notion_copy.py settings --token job-pilotto.notion-app.token --config ~/jobadabra/config
+   python3 tools/notion_copy.py ids  --token jobadabra.notion-app.token          # target found, only one copy?
+   python3 tools/notion_copy.py copy --from jobadabra.notion.token --from-ids ~/jobadabra/.env \
+       --to jobadabra.notion-app.token --dry-run                                  # row counts per database
+   python3 tools/notion_copy.py copy --from jobadabra.notion.token --from-ids ~/jobadabra/.env \
+       --to jobadabra.notion-app.token --replace                                  # the copy
+   python3 tools/notion_copy.py settings --token jobadabra.notion-app.token --config ~/jobadabra/config
    ```
    `--replace` sends the target's own rows (e.g. the wizard's first search) to Notion's trash (restorable 30 days)
    and replaces its Profile / Standard answers with the source's.
@@ -49,9 +49,9 @@ uploaded to Notion (expiring links), views.
    Applications rows (kit body, Events linked), and the app's Jobs list (statuses come from Stage).
 
 ## Switching everything else to the new workspace (only when the owner asks)
-- Terminal: `python3 tools/notion_copy.py ids --token job-pilotto.notion-app.token --env` → replace the
-  `NOTION_*` lines of `~/jobadabra/.env`; keep the old token as `job-pilotto.notion-original.token` and store the
-  new one as `job-pilotto.notion.token`.
+- Terminal: `python3 tools/notion_copy.py ids --token jobadabra.notion-app.token --env` → replace the
+  `NOTION_*` lines of `~/jobadabra/.env`; keep the old token as `jobadabra.notion-original.token` and store the
+  new one as `jobadabra.notion.token`.
 - Telegram bot: `worker/wrangler.toml` `NOTION_*` vars → new IDs, `npx wrangler@4 secret put NOTION_TOKEN`, deploy.
 - GitHub: the engine repo's `NOTION_TOKEN` secret (fill-failure intake) and, if cloud runs are on, the private
   repo's secret and `NOTION_*` variables (the app's Always on sets these itself).

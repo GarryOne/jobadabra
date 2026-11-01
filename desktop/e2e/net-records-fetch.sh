@@ -13,8 +13,8 @@ enc="$work/enc"; key="$work/key.pem"
 mkdir -p "$out" "$enc"
 # On the Mac the private repo is read with the person's own gh login when no read token is given (new sessions stopped at "no Mac records", 15 Oct 2026); CI passes its token.
 [ -z "${NET_RECORDS_READ_TOKEN:-}" ] && [ -z "${CI:-}" ] && NET_RECORDS_READ_TOKEN="$(gh auth token 2>/dev/null || true)"
-# ...and the private key from the Keychain item job-pilotto.capture.key (base64 of the PEM, as NET_RECORD_KEY), read here and never printed; it lives only in $work.
-[ -z "${NET_RECORD_KEY:-}" ] && [ -z "${CI:-}" ] && command -v security >/dev/null && NET_RECORD_KEY="$(security find-generic-password -s job-pilotto.capture.key -w 2>/dev/null || true)"
+# ...and the private key from the Keychain item jobadabra.capture.key (base64 of the PEM, as NET_RECORD_KEY), read here and never printed; it lives only in $work.
+[ -z "${NET_RECORD_KEY:-}" ] && [ -z "${CI:-}" ] && command -v security >/dev/null && NET_RECORD_KEY="$(security find-generic-password -s jobadabra.capture.key -w 2>/dev/null || true)"
 umask 077 && printf '%s' "${NET_RECORD_KEY:-}" | base64 -d > "$key"   # unset in --bundles-only: nothing is decrypted there
 # gh release download with a retry on GitHub's own rate limit (19:06Z, 16 Oct 2026: the read token belongs to the owner's account, so every session's gh calls and every CI fetch drew on one
 # 5,000/h and the PR journeys went red as "no record"). A rate limit waits 20 s then 60 s (NET_RECORDS_RETRY_SLEEP="20 60"), then says RATE LIMITED, never "no record". $1 token (may be empty), rest: gh args.

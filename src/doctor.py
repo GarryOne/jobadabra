@@ -58,7 +58,7 @@ def notion_token():
     if token:
         return token
     try:
-        return secret_store.get('job-pilotto.notion.token')   # a test run or a twin: never the owner's (src/secret_store.py)
+        return secret_store.get('jobadabra.notion.token')   # a test run or a twin: never the owner's (src/secret_store.py)
     except (OSError, subprocess.TimeoutExpired):
         return None
 
@@ -93,7 +93,7 @@ def check_notion(tracker, store=None):
         # Optional: the core crawl and digest work without it; tracking, scoring and kits need it.
         state = 'switched off (JOBADABRA_DISABLE)' if features.disabled('notion') else 'not set up'
         return Check('Setup', 'Notion', INFO, f'{state} — optional; your data stays on this Mac without it, Always on needs it',
-                     'Store it: security add-generic-password -a "$USER" -s job-pilotto.notion.token -w')
+                     'Store it: security add-generic-password -a "$USER" -s jobadabra.notion.token -w')
     try:
         tracker._request('GET', 'users/me')
     except Exception as error:
@@ -269,7 +269,7 @@ def _google_auth_age(now):
     """Days since the Google sign-in, from JOBADABRA_GOOGLE_AUTH_AT (CI variable) or the Keychain."""
     value = os.getenv('JOBADABRA_GOOGLE_AUTH_AT')
     if not value and sys.platform == 'darwin':
-        value = secret_store.get('job-pilotto.google.auth-at') or ''
+        value = secret_store.get('jobadabra.google.auth-at') or ''
     try:
         return (now - datetime.fromisoformat(value.replace('Z', '+00:00'))).total_seconds() / 86400
     except (AttributeError, ValueError):

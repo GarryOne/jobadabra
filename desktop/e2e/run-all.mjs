@@ -3,7 +3,7 @@
 //   npm run all -- --only jobs,quality  exactly these, even a manual one
 //   npm run all -- --manual            also the manual suites (personas)
 //   npm run all -- --skip quality,wizard  leave these out;   --parallel 3  three at a time (needs each suite's own Notion token)
-// Secrets come from the environment, else from the macOS Keychain (job-pilotto.e2e.notion_token, .notion_token_<suite>; never the Anthropic key). A suite without its
+// Secrets come from the environment, else from the macOS Keychain (jobadabra.e2e.notion_token, .notion_token_<suite>; never the Anthropic key). A suite without its
 // own token falls back to the wizard's (lib/context.mjs), so on a Mac without them the suites must run one at a time (the default).
 import {execFileSync, spawn} from 'node:child_process';
 import fs from 'node:fs';
@@ -48,7 +48,7 @@ export function keychainEnv(suites, {env = process.env, read = defaultRead} = {}
   const found = {};
   for (const [variable, item] of wanted) {
     if (env[variable]) continue;
-    const value = read(`job-pilotto.e2e.${item}`);
+    const value = read(`jobadabra.e2e.${item}`);
     if (value) found[variable] = value;
   }
   return found;

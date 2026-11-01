@@ -117,7 +117,7 @@ test('the job-site password is read from the Keychain on a Mac only, and a missi
   const sitePassword = await import('../lib/site-password.js');
   const calls = [];
   assert.equal(sitePassword.read('darwin', (...args) => { calls.push(args); return 'Maple-Rocket-42\n'; }), 'Maple-Rocket-42');
-  assert.deepEqual(calls[0].slice(0, 2), ['security', ['find-generic-password', '-a', 'job-pilotto', '-s', 'job-pilotto.sites.password', '-w']]);
+  assert.deepEqual(calls[0].slice(0, 2), ['security', ['find-generic-password', '-a', 'jobadabra', '-s', 'jobadabra.sites.password', '-w']]);
   assert.equal(sitePassword.read('darwin', () => { throw new Error('not found'); }), null);
   assert.equal(sitePassword.read('win32', () => 'x'), null);
 });

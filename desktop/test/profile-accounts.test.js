@@ -12,23 +12,23 @@ const A = 'profile-aaaaaaaaaaaa', B = 'profile-bbbbbbbbbbbb';
 const fresh = () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-accounts-'));
   const env = {JOBADABRA_E2E: '1', JOBADABRA_USER_DATA: dir};
-  const put = (service, value, comment = '') => keychain.write(service, value, {account: 'job-pilotto', comment, env});
+  const put = (service, value, comment = '') => keychain.write(service, value, {account: 'jobadabra', comment, env});
   return {dir, env, opts: {env}, put};
 };
 
 test('a profile lists and fills only its own accounts; old-name ones are unassigned and never filled', () => {
   const {env, put} = fresh();
-  put('job-pilotto.profile-aaaaaaaaaaaa.a.example.com.password', 'pw-a', 'email=a@x.test');
-  put('job-pilotto.profile-bbbbbbbbbbbb.b.example.com.password', 'pw-b', 'email=b@x.test');
-  put('job-pilotto.old.example.com.password', 'pw-old', 'email=c@x.test');
-  put('job-pilotto.test-account.t.example.com.password', 'pw-t');
+  put('jobadabra.profile-aaaaaaaaaaaa.a.example.com.password', 'pw-a', 'email=a@x.test');
+  put('jobadabra.profile-bbbbbbbbbbbb.b.example.com.password', 'pw-b', 'email=b@x.test');
+  put('jobadabra.old.example.com.password', 'pw-old', 'email=c@x.test');
+  put('jobadabra.test-account.t.example.com.password', 'pw-t');
   const rows = id => credentials.parseDump(keychain.dump({env}), {profile: id}).map(row => [row.host, row.unassigned ? 'unassigned' : row.test ? 'test' : 'own']).sort();
   assert.deepEqual(rows(A), [['a.example.com', 'own'], ['old.example.com', 'unassigned'], ['t.example.com', 'test']]);
   assert.deepEqual(rows(B), [['b.example.com', 'own'], ['old.example.com', 'unassigned'], ['t.example.com', 'test']]);
   credentials.useProfile(A);
   try {
     const read = host => credentials.reveal(host, 'darwin', () => { throw new Error('real Keychain'); });
-    assert.equal(credentials.serviceOf('a.example.com'), 'job-pilotto.profile-aaaaaaaaaaaa.a.example.com.password');
+    assert.equal(credentials.serviceOf('a.example.com'), 'jobadabra.profile-aaaaaaaaaaaa.a.example.com.password');
     assert.equal(credentials.forExtension('old.example.com', {applying: true, read: host => (host === 'a.example.com' ? 'x' : null)}).ok, false);   // profile B's host is not read as A's
     assert.equal(credentials.forExtension('unassigned:old.example.com', {applying: true, read: () => 'x'}).ok, false);
     assert.equal(typeof read, 'function');
@@ -37,36 +37,36 @@ test('a profile lists and fills only its own accounts; old-name ones are unassig
 
 test('the move by e-mail: a match goes to the profile, the rest stays; a mismatch deletes nothing; running twice changes nothing', () => {
   const {opts, put, env} = fresh();
-  put('job-pilotto.mine.example.com.password', 'pw-1', 'email=Me@x.test job=https://j.example/1');
-  put('job-pilotto.other.example.com.password', 'pw-2', 'email=else@x.test');
-  put('job-pilotto.blank.example.com.password', 'pw-3');
+  put('jobadabra.mine.example.com.password', 'pw-1', 'email=Me@x.test job=https://j.example/1');
+  put('jobadabra.other.example.com.password', 'pw-2', 'email=else@x.test');
+  put('jobadabra.blank.example.com.password', 'pw-3');
   assert.deepEqual(accounts.migrate(['me@x.test'], A, opts), {moved: 1, kept: 0, left: 2});
   assert.deepEqual(accounts.migrate(['me@x.test'], A, opts), {moved: 0, kept: 0, left: 2});
-  assert.equal(keychain.read('job-pilotto.profile-aaaaaaaaaaaa.mine.example.com.password', {env}), 'pw-1');
-  assert.match(keychain.comment('job-pilotto.profile-aaaaaaaaaaaa.mine.example.com.password', {env}), /email=Me@x.test job=https:\/\/j.example\/1/);
-  assert.equal(keychain.read('job-pilotto.mine.example.com.password', {env}), null);
-  for (const host of ['other', 'blank']) assert.ok(keychain.read(`job-pilotto.${host}.example.com.password`, {env}));
+  assert.equal(keychain.read('jobadabra.profile-aaaaaaaaaaaa.mine.example.com.password', {env}), 'pw-1');
+  assert.match(keychain.comment('jobadabra.profile-aaaaaaaaaaaa.mine.example.com.password', {env}), /email=Me@x.test job=https:\/\/j.example\/1/);
+  assert.equal(keychain.read('jobadabra.mine.example.com.password', {env}), null);
+  for (const host of ['other', 'blank']) assert.ok(keychain.read(`jobadabra.${host}.example.com.password`, {env}));
   // a profile item with another password already there: both stay
-  put('job-pilotto.profile-aaaaaaaaaaaa.other.example.com.password', 'different');
+  put('jobadabra.profile-aaaaaaaaaaaa.other.example.com.password', 'different');
   assert.equal(accounts.assign('other.example.com', A, opts), 'kept');
-  assert.equal(keychain.read('job-pilotto.other.example.com.password', {env}), 'pw-2');
+  assert.equal(keychain.read('jobadabra.other.example.com.password', {env}), 'pw-2');
 });
 
 test('reset removes this profile\'s accounts only; export carries them; import files them under the imported profile', () => {
   const {opts, put, env, dir} = fresh();
-  put('job-pilotto.profile-aaaaaaaaaaaa.a.example.com.password', 'pw-a', 'email=a@x.test job=https://j.example/a');
-  put('job-pilotto.profile-bbbbbbbbbbbb.b.example.com.password', 'pw-b', 'email=b@x.test');
-  put('job-pilotto.test-account.t.example.com.password', 'pw-t');
-  put('job-pilotto.old.example.com.password', 'pw-old');
+  put('jobadabra.profile-aaaaaaaaaaaa.a.example.com.password', 'pw-a', 'email=a@x.test job=https://j.example/a');
+  put('jobadabra.profile-bbbbbbbbbbbb.b.example.com.password', 'pw-b', 'email=b@x.test');
+  put('jobadabra.test-account.t.example.com.password', 'pw-t');
+  put('jobadabra.old.example.com.password', 'pw-old');
   const out = accounts.exportable(A, opts);
   assert.deepEqual(out, {'a.example.com': {password: 'pw-a', email: 'a@x.test', job: 'https://j.example/a'}});   // no B, no test, no unassigned
   fs.writeFileSync(path.join(dir, accounts.ACCOUNTS_FILE), JSON.stringify(out));
   assert.equal(accounts.adopt(dir, 'profile-cccccccccccc', opts), 1);
   assert.equal(fs.existsSync(path.join(dir, accounts.ACCOUNTS_FILE)), false);
-  assert.equal(keychain.read('job-pilotto.profile-cccccccccccc.a.example.com.password', {env}), 'pw-a');
+  assert.equal(keychain.read('jobadabra.profile-cccccccccccc.a.example.com.password', {env}), 'pw-a');
   assert.equal(accounts.removeAll(A, opts), 1);
-  assert.equal(keychain.read('job-pilotto.profile-aaaaaaaaaaaa.a.example.com.password', {env}), null);
-  for (const service of ['profile-bbbbbbbbbbbb.b', 'test-account.t', 'profile-cccccccccccc.a', 'old']) assert.ok(keychain.read(`job-pilotto.${service}.example.com.password`, {env}), service);
+  assert.equal(keychain.read('jobadabra.profile-aaaaaaaaaaaa.a.example.com.password', {env}), null);
+  for (const service of ['profile-bbbbbbbbbbbb.b', 'test-account.t', 'profile-cccccccccccc.a', 'old']) assert.ok(keychain.read(`jobadabra.${service}.example.com.password`, {env}), service);
 });
 
 test('a profile id is made once and kept in the settings', () => {
@@ -79,7 +79,7 @@ test('a profile id is made once and kept in the settings', () => {
 
 test('the module reads the real Keychain never: an isolated run has no `security` call', () => {
   const {opts, put} = fresh();
-  put('job-pilotto.x.example.com.password', 'pw', 'email=a@x.test');
+  put('jobadabra.x.example.com.password', 'pw', 'email=a@x.test');
   const exec = () => { throw new Error('security called'); };
   accounts.migrate(['a@x.test'], A, {...opts, exec});
   accounts.exportable(A, {...opts, exec});
@@ -96,9 +96,9 @@ test('an export never lists accounts.json as a data file (it is added only when 
 
 test('a reset always removes this profile\'s accounts (the export with accounts ticked brings them back); other profiles never', () => {
   const {opts, put, env} = fresh();
-  put('job-pilotto.profile-aaaaaaaaaaaa.a.example.com.password', 'pw-a', 'email=a@x.test');
-  put('job-pilotto.profile-bbbbbbbbbbbb.b.example.com.password', 'pw-b');
+  put('jobadabra.profile-aaaaaaaaaaaa.a.example.com.password', 'pw-a', 'email=a@x.test');
+  put('jobadabra.profile-bbbbbbbbbbbb.b.example.com.password', 'pw-b');
   assert.equal(accounts.onReset(A, opts), 1);
   assert.equal(keychain.read(credentials.serviceOf('a.example.com', A), {env}), null);
-  assert.equal(keychain.read('job-pilotto.profile-bbbbbbbbbbbb.b.example.com.password', {env}), 'pw-b');
+  assert.equal(keychain.read('jobadabra.profile-bbbbbbbbbbbb.b.example.com.password', {env}), 'pw-b');
 });

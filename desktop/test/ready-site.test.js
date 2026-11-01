@@ -96,7 +96,7 @@ test('every call carries the owner secret from the app\'s store or the Keychain 
   await runNow(has, {fetcher: fake.fetcher});
   assert.equal(fake.seen[0].init.headers['x-ready-owner'], 'from-store');
   const asked = []; useKeychainReader(service => { asked.push(service); return 'from-keychain'; });
-  try { assert.equal(ownerSecret(storage()), 'from-keychain'); assert.deepEqual(asked, ['job-pilotto.ready.owner_secret']); assert.equal(ownerSecret(has), 'from-store'); }
+  try { assert.equal(ownerSecret(storage()), 'from-keychain'); assert.deepEqual(asked, ['jobadabra.ready.owner_secret']); assert.equal(ownerSecret(has), 'from-store'); }
   finally { useKeychainReader(() => null); }
   assert.equal(ownerSecret(storage()), '');
 });

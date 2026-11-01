@@ -96,7 +96,7 @@ Older builds are `0.4.0-alpha.N`; the updater and the release tools still order 
   canary's trial (no more offers until the canary changes). Friends (stable) are unaffected.
 
 > 🔑 **Secret to set once:** repo secret `JOBADABRA_TELEMETRY_KEY` = the site's stats key
-> (same value as the Worker's `STATS_KEY`, Keychain `job-pilotto.site.stats_key`). Without it, it always waits.
+> (same value as the Worker's `STATS_KEY`, Keychain `jobadabra.site.stats_key`). Without it, it always waits.
 
 | | |
 |---|---|
@@ -146,7 +146,7 @@ doesn't have. Code that adds a column still survives an older workspace (`cron_r
    Opened from the disk image by mistake? The app offers **Move to Applications** itself.
    Keychain prompt: **Always Allow** (login password). It comes back **once after each update** until the app has an
    Apple Developer ID: macOS ties keychain access of apps without an Apple team ID to the exact build. Builds still share
-   one self-made signature (`MAC_SIGN_P12` secret, Keychain `job-pilotto.mac-sign.*`).
+   one self-made signature (`MAC_SIGN_P12` secret, Keychain `jobadabra.mac-sign.*`).
 3. The setup wizard does the rest: keys, Notion, CV, Profile; Always on is optional.
 
 <details><summary>Not done yet</summary>

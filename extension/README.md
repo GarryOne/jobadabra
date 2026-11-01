@@ -47,7 +47,7 @@ Everything happens in **the panel**, bottom right of every application form (the
    contact details, choose your CV file, **Save**.
 
 The token is the Worker secret `EXTENSION_TOKEN`. Create one with
-`openssl rand -hex 24`, store it (`security add-generic-password -a "$USER" -s job-pilotto.extension.token -w`)
+`openssl rand -hex 24`, store it (`security add-generic-password -a "$USER" -s jobadabra.extension.token -w`)
 and set it on the Worker (`cd worker && npx wrangler@4 secret put EXTENSION_TOKEN`).
 
 ## Development

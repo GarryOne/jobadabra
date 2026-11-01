@@ -27,7 +27,7 @@ def _reaches_real_store():
 
 
 def _refuse_real_write(real):
-    """24 Oct 2026: a test's refused-scope check wrote job-pilotto.google.scopes into the owner's real Keychain. A test never writes or
+    """24 Oct 2026: a test's refused-scope check wrote jobadabra.google.scopes into the owner's real Keychain. A test never writes or
     deletes in the real store: it patches secret_store.put/delete, replaces subprocess.run / _keyring, or runs isolated (JOBADABRA_E2E)."""
     if real and under_test():
         raise RuntimeError('A test tried to change the real secret store (Keychain / Credential Manager). Patch secret_store.put/delete or run isolated.')
@@ -80,7 +80,7 @@ def _isolated_save(path, items):
 
 # What a live-test twin may READ from the owner's real store (owner, 10 Oct 2026: "let the twin use the original app Gmail connection"): the Google
 # sign-in (read-only Gmail and Calendar), so the sign-up's confirmation mail can be found. Nothing else, and never a write (put/delete stay in the twin's file).
-TWIN_MAY_READ = ('job-pilotto.google.client-id', 'job-pilotto.google.client-secret', 'job-pilotto.google.refresh-token')
+TWIN_MAY_READ = ('jobadabra.google.client-id', 'jobadabra.google.client-secret', 'jobadabra.google.refresh-token')
 
 
 def _twin_may_read(service):

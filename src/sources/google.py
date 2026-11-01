@@ -48,9 +48,9 @@ from .google_scopes import MissingScope  # noqa: F401
 
 SCOPES = tuple(google_scopes.SCOPE_URLS.values())
 SHARED_CLIENT = Path(__file__).resolve().parents[2] / 'config' / 'google_oauth_client.json'
-KEYCHAIN = {'GOOGLE_CLIENT_ID': 'job-pilotto.google.client-id', 'GOOGLE_CLIENT_SECRET': 'job-pilotto.google.client-secret',
-            'GOOGLE_REFRESH_TOKEN': 'job-pilotto.google.refresh-token'}
-AUTH_AT = 'job-pilotto.google.auth-at'   # an app in Testing: when it signed in (Google's 7-day limit)
+KEYCHAIN = {'GOOGLE_CLIENT_ID': 'jobadabra.google.client-id', 'GOOGLE_CLIENT_SECRET': 'jobadabra.google.client-secret',
+            'GOOGLE_REFRESH_TOKEN': 'jobadabra.google.refresh-token'}
+AUTH_AT = 'jobadabra.google.auth-at'   # an app in Testing: when it signed in (Google's 7-day limit)
 
 
 def _keychain(service):

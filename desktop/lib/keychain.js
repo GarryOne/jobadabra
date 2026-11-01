@@ -1,11 +1,11 @@
 // Every Keychain read of the app goes through here, and what a test or a live-test twin may reach (8 Oct 2026: a local e2e run that reached
-// an account page overwrote the owner's real job-site password, job-pilotto.sites.password, because the engine's reads were isolated and its
+// an account page overwrote the owner's real job-site password, jobadabra.sites.password, because the engine's reads were isolated and its
 // writes were not). The rule, shared with src/secret_store.py:
 //   - a user's app: this Mac's Keychain;
 //   - the end-to-end journey (JOBADABRA_E2E): never the Keychain; a file in the run's own folder (JOBADABRA_USER_DATA/isolated-secrets.json,
 //     JOBADABRA_ISOLATED_SECRETS for the engine) holds what the run itself saved;
 //   - a live-test twin (JOBADABRA_TWIN, docs/live-test.md): writes to its own file too; it READS that file first, then the real Keychain for the
-//     job-site passwords only (job-pilotto.sites.password, job-pilotto.<host>.password), so it signs in like the real app. Nothing else of the owner's.
+//     job-site passwords only (jobadabra.sites.password, jobadabra.<host>.password), so it signs in like the real app. Nothing else of the owner's.
 // Guards: desktop/test/keychain.test.js (an isolated run never calls `security`), tests/test_secret_store.py.
 import {execFileSync} from 'node:child_process';
 import fs from 'node:fs';
@@ -15,10 +15,10 @@ import {writePrivate} from './private-file.js';
 export const isolated = (env = process.env) => !!(env.JOBADABRA_E2E || env.JOBADABRA_TWIN);
 // The run's own secrets file, or null (a user's app; or an isolated run without its own folder, which then reads and keeps nothing).
 export const isolatedFile = (env = process.env) => (isolated(env) && env.JOBADABRA_USER_DATA ? path.join(path.resolve(env.JOBADABRA_USER_DATA), 'isolated-secrets.json') : null);
-const SITE_PASSWORD = /^job-pilotto\.[a-z0-9.-]+\.password$/i;
+const SITE_PASSWORD = /^jobadabra\.[a-z0-9.-]+\.password$/i;
 // The twin may also read the Ready to send owner secret (owner, 17 Oct 2026: "Let the twin read that one item"): it is the same install, so its Send tonight / Run now reach the site as the owner's; read-only, never written.
-export const TWIN_OWNER_SECRET = 'job-pilotto.ready.owner_secret';
-export const twinMayRead = service => (SITE_PASSWORD.test(String(service)) && service !== 'job-pilotto.mac-sign.password') || service === TWIN_OWNER_SECRET;
+export const TWIN_OWNER_SECRET = 'jobadabra.ready.owner_secret';
+export const twinMayRead = service => (SITE_PASSWORD.test(String(service)) && service !== 'jobadabra.mac-sign.password') || service === TWIN_OWNER_SECRET;
 
 // {service: {value, account, comment, created}} as the run saved them.
 export function isolatedItems(env = process.env) {
@@ -101,5 +101,5 @@ export function write(service, value, {account, comment = '', label = '', env = 
   }
   if (platform !== 'darwin' || !value) return false;
   refuseRealChange(exec, env);
-  return real(exec, ['add-generic-password', '-U', '-a', account || 'job-pilotto', '-s', service, ...(label ? ['-l', label] : []), ...(comment ? ['-j', comment] : []), '-w', value]) !== null;
+  return real(exec, ['add-generic-password', '-U', '-a', account || 'jobadabra', '-s', service, ...(label ? ['-l', label] : []), ...(comment ? ['-j', comment] : []), '-w', value]) !== null;
 }

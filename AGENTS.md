@@ -256,7 +256,7 @@ cd desktop && node --test test/<the file you changed>.test.js  # CI: cd desktop 
 - **Notion, if your harness has no tool for it**: the change loop (CLAUDE.md, step 5 "After landing, only what applies")
   expects a Decision Log row for an owner decision that changes what agents may do, and a Bug Tracker row for a UI bug the
   Finder missed (the Run Log and Session Handoff are retired; history is in commit messages). Say plainly that it wasn't done rather than implying it was; the HTTP API is reachable with
-  the Keychain token (`job-pilotto.notion.token`) and `gh` is authenticated, so reads and repairs are possible when
+  the Keychain token (`jobadabra.notion.token`) and `gh` is authenticated, so reads and repairs are possible when
   asked.
 
 ### If your host is an Electron app (the DeepSeek Harness, Claude Code inside VS Code or Cursor, any other Electron host)

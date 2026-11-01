@@ -69,7 +69,7 @@ fi
 
 if [ "$source_chosen" = false ]; then
   if [ -z "${NOTION_TOKEN:-}" ]; then
-    export NOTION_TOKEN="$(security find-generic-password -a "$USER" -s job-pilotto.notion.token -w 2>/dev/null || true)"
+    export NOTION_TOKEN="$(security find-generic-password -a "$USER" -s jobadabra.notion.token -w 2>/dev/null || true)"
   fi
   [ -n "${NOTION_TOKEN:-}" ] || { echo "NOTION_TOKEN is required to select jobs" >&2; exit 1; }
   next_urls="$(cd "$REPO_DIR" && python3 -m src.ai.apply_batch --next "${max_jobs:-5}")"
@@ -91,7 +91,7 @@ done
 if [ "$DRY_RUN" = false ]; then
   [ -n "$CODEX_BIN" ] || { echo "codex CLI is not installed" >&2; exit 1; }
   [ -n "$NPX_BIN" ] || { echo "npx is not installed" >&2; exit 1; }
-  [ -n "${NOTION_TOKEN:-}" ] || export NOTION_TOKEN="$(security find-generic-password -a "$USER" -s job-pilotto.notion.token -w 2>/dev/null || true)"
+  [ -n "${NOTION_TOKEN:-}" ] || export NOTION_TOKEN="$(security find-generic-password -a "$USER" -s jobadabra.notion.token -w 2>/dev/null || true)"
   [ -n "${NOTION_TOKEN:-}" ] || { echo "NOTION_TOKEN is required to mark queued jobs Applying" >&2; exit 1; }
 fi
 

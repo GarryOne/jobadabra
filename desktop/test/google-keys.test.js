@@ -5,13 +5,13 @@ import {googleSecrets} from '../lib/google-keys.js';
 import * as github from '../lib/github.js';
 
 test('the Google sign-in is read whole or not at all', () => {
-  const all = {'job-pilotto.google.client-id': 'id', 'job-pilotto.google.client-secret': 'secret', 'job-pilotto.google.refresh-token': 'token'};
+  const all = {'jobadabra.google.client-id': 'id', 'jobadabra.google.client-secret': 'secret', 'jobadabra.google.refresh-token': 'token'};
   assert.deepEqual(googleSecrets(service => all[service] || ''), {GOOGLE_CLIENT_ID: 'id', GOOGLE_CLIENT_SECRET: 'secret', GOOGLE_REFRESH_TOKEN: 'token'});
   assert.deepEqual(googleSecrets(service => (service.endsWith('refresh-token') ? '' : all[service])), {});
 });
 
 test('the allowed parts go with the sign-in when known, and are left out when not', () => {
-  const all = {'job-pilotto.google.client-id': 'id', 'job-pilotto.google.client-secret': 'secret', 'job-pilotto.google.refresh-token': 'token', 'job-pilotto.google.scopes': 'gmail'};
+  const all = {'jobadabra.google.client-id': 'id', 'jobadabra.google.client-secret': 'secret', 'jobadabra.google.refresh-token': 'token', 'jobadabra.google.scopes': 'gmail'};
   assert.equal(googleSecrets(service => all[service] || '').GOOGLE_SCOPES, 'gmail');
   assert.ok(!('GOOGLE_SCOPES' in googleSecrets(service => (service.endsWith('scopes') ? '' : all[service]))));
 });

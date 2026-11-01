@@ -3,11 +3,11 @@
 import {execFileSync} from 'node:child_process';
 import {read} from './keychain.js';
 
-export const GOOGLE_KEYCHAIN = {GOOGLE_CLIENT_ID: 'job-pilotto.google.client-id', GOOGLE_CLIENT_SECRET: 'job-pilotto.google.client-secret',
-  GOOGLE_REFRESH_TOKEN: 'job-pilotto.google.refresh-token'};
+export const GOOGLE_KEYCHAIN = {GOOGLE_CLIENT_ID: 'jobadabra.google.client-id', GOOGLE_CLIENT_SECRET: 'jobadabra.google.client-secret',
+  GOOGLE_REFRESH_TOKEN: 'jobadabra.google.refresh-token'};
 
 // Which of Gmail / Calendar the user allowed (src/sources/google_scopes.py): optional, an older sign-in has none and counts as both.
-export const GOOGLE_SCOPES_KEYCHAIN = {GOOGLE_SCOPES: 'job-pilotto.google.scopes'};
+export const GOOGLE_SCOPES_KEYCHAIN = {GOOGLE_SCOPES: 'jobadabra.google.scopes'};
 
 const keychain = service => read(service, {exec: execFileSync}) || '';   // a test run or a twin reads none of the owner's (lib/keychain.js)
 

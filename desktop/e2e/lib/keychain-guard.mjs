@@ -4,11 +4,11 @@
 // Guard: test/keychain-guard.test.mjs.
 import {execFileSync} from 'node:child_process';
 
-// `security dump-keychain` text (attributes only, no -d) -> Map service -> modification date, for the job-pilotto.* items.
+// `security dump-keychain` text (attributes only, no -d) -> Map service -> modification date, for the jobadabra.* items.
 export function parseItems(text) {
   const items = new Map();
   for (const block of String(text || '').split(/^keychain: /m)) {
-    const service = /"svce"<blob>="(job-pilotto\.[^"]*)"/.exec(block)?.[1];
+    const service = /"svce"<blob>="(jobadabra\.[^"]*)"/.exec(block)?.[1];
     if (!service) continue;
     const modified = /"mdat"<timedate>=0x[0-9A-F]+\s+"(\d{14}Z)/.exec(block)?.[1] || '';
     items.set(service, modified);

@@ -8,7 +8,7 @@ import {WHY, archiveRows} from './lib/pool-archive.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url)), file = path.join(here, 'smoke-sites.json');
 const args = process.argv.slice(2), write = args.includes('--write'), only = args.includes('--only') ? args[args.indexOf('--only') + 1].split(',').filter(why => WHY.includes(why)) : WHY;
-const key = execFileSync('security', ['find-generic-password', '-s', 'job-pilotto.site.api_key', '-w'], {encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore']}).trim();
+const key = execFileSync('security', ['find-generic-password', '-s', 'jobadabra.site.api_key', '-w'], {encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore']}).trim();
 const answer = await fetch('https://www.jobpilotto.top/admin/form-filling/lab?json', {headers: {Authorization: `Bearer ${key}`, 'X-Caller': 'archive-pool-rows'}, signal: AbortSignal.timeout(30000)});
 if (!answer.ok) { console.error(`archive: the page answered ${answer.status}`); process.exit(1); }
 const items = Object.values((await answer.json()).pool || {}), pool = JSON.parse(fs.readFileSync(file, 'utf8'));

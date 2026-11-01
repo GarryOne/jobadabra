@@ -1,7 +1,7 @@
 """Which parts of the Google sign-in (Gmail, Calendar) the user actually allowed, and the plain words for a missing one.
 
 Google's consent screen lets the user untick a box; the token answer then lists only what was granted. This module reads that list,
-keeps it next to the token (Keychain item `job-pilotto.google.scopes`, repo secret GOOGLE_SCOPES for Always on) and gives every
+keeps it next to the token (Keychain item `jobadabra.google.scopes`, repo secret GOOGLE_SCOPES for Always on) and gives every
 caller one error, `MissingScope`, so no screen or message shows a raw 403."""
 import os
 
@@ -10,7 +10,7 @@ GMAIL, CALENDAR = 'gmail', 'calendar'
 SCOPE_URLS = {GMAIL: 'https://www.googleapis.com/auth/gmail.readonly', CALENDAR: 'https://www.googleapis.com/auth/calendar.events.readonly'}
 # Why (30 Oct 2026): a sign-in made before the narrowing holds the broader calendar.readonly (include_granted_scopes keeps it); it still covers events.
 LEGACY_URLS = {CALENDAR: ('https://www.googleapis.com/auth/calendar.readonly',)}
-SCOPES_SERVICE = 'job-pilotto.google.scopes'
+SCOPES_SERVICE = 'jobadabra.google.scopes'
 PART_NAMES = {GMAIL: 'Gmail', CALENDAR: 'Calendar'}
 WHAT_IT_LOSES = {GMAIL: 'replies and rejections cannot be tracked from your mail', CALENDAR: 'interviews cannot be found in your calendar'}
 

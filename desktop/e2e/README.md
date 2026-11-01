@@ -35,7 +35,7 @@ Also on night pass 1, report only (owner via a8, 1 Nov 2026, "Yes, nightly repor
 ## Running them all on this Mac
 `npm run all` runs every suite that is not manual, one after the other, and prints one table. `-- --only jobs,quality` runs exactly those (even a manual one), `-- --skip wizard` leaves some out,
 `-- --manual` adds the manual ones, `-- --parallel 3` runs three at a time (each suite then needs its own Notion token; without the flag, `run-all` runs up to 4 at once when every chosen suite has one, longest first). Secrets come from the environment, else from the Keychain
-(`job-pilotto.e2e.anthropic_key`, `.notion_token`, `.notion_token_<suite>`).
+(`jobadabra.e2e.anthropic_key`, `.notion_token`, `.notion_token_<suite>`).
 
 ```
 cd desktop/e2e && npm install
@@ -94,7 +94,7 @@ It costs about $0.3 a run, like the default (the SRE). It is how scoring is prov
   kept between runs by actions/cache) and pays only for new requests. CI judges run on Haiku (`E2E_JUDGE_MODEL`), the quality suite's too since 27 Oct 2026.
 - `E2E_NOTION_TOKEN`: the test connection's token. Never use your own Notion.
 Both live in GitHub (Settings → Secrets → Actions) and, for local runs, in the macOS Keychain
-(`job-pilotto.e2e.anthropic_key`, `job-pilotto.e2e.notion_token`). Never in code.
+(`jobadabra.e2e.anthropic_key`, `jobadabra.e2e.notion_token`). Never in code.
 
 ## Files
 `lib/app.mjs` launch, close, file picker · `fixtures/cv.pdf` a fictional CV (`make-cv.py` rewrites it)
@@ -139,7 +139,7 @@ journey step checks that nothing was queued to send. (2 Oct 2026: before this, t
 - **`ctx.relaunch(env, between)`** kills the app the hard way (a crash or power cut) and starts it again on the same profile; `between(profile)` runs while it is down.
 - **Words and leaks:** `badSummary()` and `leaks()` in `lib/activity.mjs` (unit-tested) judge a run's summary line and log: empty / `undefined` / raw JSON / stack trace, and any key, token, email or home path.
 - **Fresh posting ids every run** (`setFeed`): a posting an earlier run saw has a Job Matches row in Notion and is not new. The postings' titles mention both "Site Reliability Engineer" and "Data Analyst", so they match whatever the page's Search settings are.
-- **A Mac shares one page between suites** that have no token of their own; another session rebuilding it mid-run breaks the run ("database not found"). Use `E2E_NOTION_TOKEN_ACTIVITY` (Keychain `job-pilotto.e2e.notion_token_activity`).
+- **A Mac shares one page between suites** that have no token of their own; another session rebuilding it mid-run breaks the run ("database not found"). Use `E2E_NOTION_TOKEN_ACTIVITY` (Keychain `jobadabra.e2e.notion_token_activity`).
 - **Isolation:** with `JOBADABRA_E2E` the engine ignores this Mac's Keychain (`src/secret_store.py`); before that, a test "Gmail check" read the owner's real mail (2 Oct 2026).
 
 ## What CI runs, and when (the test key's AI credit is shared, so this is deliberate)
@@ -299,7 +299,7 @@ folded steps and probe path, and the same facts as one hidden `<!-- replay: {…
 - **Every judge and the explorer** (`lib/judge.mjs`, `lib/fit.mjs`, `lib/factjudge.mjs`, `suites/explore.mjs`, the CV match check in `quality`) ask through `lib/model.mjs`: `claude -p` on a Mac, with flags that drop your MCP servers, skills and settings (a bare call loads about 106k tokens; this one about 400), the API in CI. The mail eval (`qualityai:mail`) runs the engine the same way.
 - **Steps that need the AI proxy in front of the app** (a refusal, a delay, silence, a canned answer: the activity suite's failure and concurrency steps, the whole `apply` suite) switch to the API engine **with the placeholder key** (`ctx.withApi(fn)`, or `export const engine = 'api'`): the proxy answers before anything reaches Anthropic, so it costs nothing.
 - **The wizard suite** picks the Claude Code choice on a Mac; CI types the key, so both paths stay tested. The product's own wizard is unchanged.
-- **How it is enforced:** `testKey()` is empty on a Mac whatever the environment holds; `run-all.mjs` never reads the Keychain item `job-pilotto.e2e.anthropic_key`; `E2E_AI_ENGINE=api` is refused on a Mac; `test/no-local-key.test.mjs` fails when a suite or helper fetches the API itself or reads the key, so **a new suite must ask a model through `lib/model.mjs`**. The AI screenshot review (`review-ui.mjs`) and the Finder's CI tooling keep the CI key.
+- **How it is enforced:** `testKey()` is empty on a Mac whatever the environment holds; `run-all.mjs` never reads the Keychain item `jobadabra.e2e.anthropic_key`; `E2E_AI_ENGINE=api` is refused on a Mac; `test/no-local-key.test.mjs` fails when a suite or helper fetches the API itself or reads the key, so **a new suite must ask a model through `lib/model.mjs`**. The AI screenshot review (`review-ui.mjs`) and the Finder's CI tooling keep the CI key.
 - **To check the spend:** the Claude Console's API keys page shows the cost per key (`jobadabra-e2e-testing` was $34.89 on 5 Oct 2026); it should not grow from local runs.
 
 

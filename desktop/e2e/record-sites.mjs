@@ -81,7 +81,7 @@ const sendPool = (shapes, reports, results = {}) => upload('pool', poolRows(shap
 
 function droppedBoards() {
   try {
-    const key = execFileSync('security', ['find-generic-password', '-s', 'job-pilotto.site.api_key', '-w'], {encoding: 'utf8'}).trim();   // never printed
+    const key = execFileSync('security', ['find-generic-password', '-s', 'jobadabra.site.api_key', '-w'], {encoding: 'utf8'}).trim();   // never printed
     const json = execFileSync('curl', ['-s', '--max-time', '20', '-H', `Authorization: Bearer ${key}`, '-H', 'X-Caller: smoke-dropped-boards', 'https://www.jobpilotto.top/admin/form-filling/real-users/digest.json'], {encoding: 'utf8'});
     return (JSON.parse(json).boards || []).filter(board => board.dropped).map(board => ({board: board.board, earlier: board.earlierFilledShare, recent: board.recentFilledShare}));
   } catch { return null; }   // no key or no network: the report says the fleet was not read

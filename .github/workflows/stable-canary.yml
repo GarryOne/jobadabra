@@ -29,6 +29,14 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       REPO: ${{ github.repository }}
     steps:
+      # Why (1 Nov 2026, a8): this job had no checkout, so `python3 tools/canary_verdict.py` died on "No such file" (exit 2) in every canary whose e2e run was not green
+      # (26-31 Oct): `result` was never written, the Alarm step was skipped, no issue was filed and a harness red was not told from a stable red. Guard:
+      # tests/test_sparse_checkout_has_its_files.py EveryFileAStepRunsIsThere.
+      - uses: actions/checkout@v5
+        timeout-minutes: 5
+        with:
+          sparse-checkout: |
+            tools/canary_verdict.py
       - name: The stable build, and whether it needs a look today
         timeout-minutes: 5
         id: stable

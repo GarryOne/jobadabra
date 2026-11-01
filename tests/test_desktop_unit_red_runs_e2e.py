@@ -94,7 +94,7 @@ class UnitRedRunsE2E(unittest.TestCase):
         for name, lane, test, release in LANES:
             needs = re.search(r'(?m)^    needs: (\[[^\]]*\])', job(test)).group(1)
             self.assertEqual(needs, f'[changes, {name}]', lane)   # Why-changed (1 Nov 2026, a8): ai-ready left the beta (no live AI calls, beta #7)
-            self.assertEqual(re.search(r'(?m)^    needs: (\[[^\]]*\])', job(release)).group(1), '[changes, build, windows, test-mac, test-windows, integration, smoke, pages]', lane)   # + main-ci (1 Nov 2026, a8)
+            self.assertEqual(re.search(r'(?m)^    needs: (\[[^\]]*\])', job(release)).group(1), '[changes, build, windows, test-mac, test-windows, integration, smoke, pages]', lane)   # + integration, smoke, pages: main's jobs run in the beta (1 Nov 2026, a8)
             self.assertIn(f"needs.{name}.result == 'success'", job(test))
 
     def test_compile_and_smoke_still_stop_the_e2e_and_only_the_build_only_unit_step_fails_quietly(self):

@@ -134,41 +134,56 @@ function lastArgument(blanked, open, close) {
 }
 
 /**
- * The literal starts of the step names marked `{safety: true}` in one source text. A name built with `+` or `${}` is returned up to its first interpolation, so it matches by prefix.
+ * The literal starts of the step names marked `{<key>: true}` in one source text. A name built with `+` or `${}` is returned up to its first interpolation, so it matches by prefix.
+ * Why (1 Nov 2026, owner: "Auto-retry in betas only"): one reader for both marks, `safety` and `data`: neither kind of step gets the beta's retry (lib/beta-retry.mjs).
  * @param {string} text a suite or lib source file
+ * @param {'safety'|'data'} key the option that marks the step
  * @returns {string[]}
  */
-export function safetyNamesIn(text) {
-  const blanked = blankLiterals(text), names = [];
+export function markedNamesIn(text, key) {
+  const blanked = blankLiterals(text), names = [], mark = new RegExp(`^\\s*\\{[^]*\\b${key}\\s*:\\s*true\\b[^]*\\}\\s*$`);
   for (const match of blanked.matchAll(START)) {
     const open = match.index + match[0].indexOf('(');
     const close = closeOf(blanked, open);
     if (close < 0) continue;
-    const last = lastArgument(blanked, open, close);
-    if (/^\s*\{[^]*\bsafety\s*:\s*true\b[^]*\}\s*$/.test(last)) names.push(literalStart(text, match.index + match[0].length));
+    if (mark.test(lastArgument(blanked, open, close))) names.push(literalStart(text, match.index + match[0].length));
   }
   return names;
 }
 
+/** The literal starts of the step names marked `{safety: true}` in one source text. */
+export const safetyNamesIn = text => markedNamesIn(text, 'safety');
+
+/** The literal starts of the step names marked `{data: true}` in one source text (a store write, export/import/move, backup). */
+export const dataNamesIn = text => markedNamesIn(text, 'data');
+
 /**
- * Every safety step name (prefix) marked in desktop/e2e/suites and desktop/e2e/lib, sorted.
+ * Every step name (prefix) marked with `key` in desktop/e2e/suites and desktop/e2e/lib, sorted.
+ * @param {'safety'|'data'} key
  * @param {string} [e2eDir] the desktop/e2e folder (default: this one)
  * @returns {string[]}
  */
-export function safetyStepNames(e2eDir = path.join(HERE, '..')) {
+export function markedStepNames(key, e2eDir = path.join(HERE, '..')) {
   const names = new Set();
   for (const dir of ['suites', 'lib']) {
     if (!fs.existsSync(path.join(e2eDir, dir))) continue;   // a repo without this folder (a temp repo in a test) has no marks
     for (const file of fs.readdirSync(path.join(e2eDir, dir)).filter(name => name.endsWith('.mjs'))) {
-      for (const name of safetyNamesIn(fs.readFileSync(path.join(e2eDir, dir, file), 'utf8'))) names.add(name);
+      for (const name of markedNamesIn(fs.readFileSync(path.join(e2eDir, dir, file), 'utf8'), key)) names.add(name);
     }
   }
   return [...names].sort();
 }
 
+/** Every safety step name (prefix) marked in desktop/e2e/suites and desktop/e2e/lib, sorted. */
+export const safetyStepNames = e2eDir => markedStepNames('safety', e2eDir);
+
+/** Every data step name (prefix) marked in desktop/e2e/suites and desktop/e2e/lib, sorted. */
+export const dataStepNames = e2eDir => markedStepNames('data', e2eDir);
+
 /**
- * Whether step `name` is one of the marked safety steps.
+ * Whether step `name` is one of the marked steps.
  * @param {string} name a step's exact name (a lanes.json `steps` key)
- * @param {string[]} safety the output of safetyStepNames
+ * @param {string[]} marked the output of safetyStepNames or dataStepNames
  */
-export const isSafetyStep = (name, safety) => safety.some(prefix => prefix && String(name).startsWith(prefix));
+export const isSafetyStep = (name, marked) => marked.some(prefix => prefix && String(name).startsWith(prefix));
+export const isDataStep = isSafetyStep;

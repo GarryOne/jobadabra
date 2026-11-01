@@ -723,6 +723,7 @@ jobs:
       CI_CF_ANALYTICS_TOKEN: ${{ secrets.CI_CF_ANALYTICS_TOKEN }}
       CI_AI_PROVIDER: ${{ vars.CI_AI_PROVIDER }}   # the global AI switch for the judges: codex | claude | free, empty = free (lib/ai-provider.mjs; owner, 28 Oct 2026); E2E_AI_PROVIDER overrides it for one run
       E2E_AI_PROVIDER: ${{ inputs.ai_provider }}   # one run's choice from the dispatch input (empty = CI_AI_PROVIDER decides)
+      E2E_BETA_RETRY: ${{ (github.event_name == 'schedule' || inputs.nightly || inputs.beta) && '1' || '' }}   # Why (1 Nov 2026, owner: "Auto-retry in betas only"): a beta (nightly or by hand) gives a failed non-safety, non-data step one retry (desktop/e2e/lib/beta-retry.mjs); only this workflow sets it
       E2E_SEED: '0'   # the fixed path (lib/variation.mjs), on both platforms
       E2E_FULL: ${{ (github.event_name == 'schedule' || inputs.nightly) && needs.changes.outputs.over != 'true' && '1' || '' }}   # the paid AI judge steps: the nightly beta only, under today's budget (7 Oct 2026)
     permissions:
@@ -1059,6 +1060,7 @@ jobs:
       CI_CF_ANALYTICS_TOKEN: ${{ secrets.CI_CF_ANALYTICS_TOKEN }}
       CI_AI_PROVIDER: ${{ vars.CI_AI_PROVIDER }}   # the global AI switch for the judges: codex | claude | free, empty = free (lib/ai-provider.mjs; owner, 28 Oct 2026); E2E_AI_PROVIDER overrides it for one run
       E2E_AI_PROVIDER: ${{ inputs.ai_provider }}   # one run's choice from the dispatch input (empty = CI_AI_PROVIDER decides)
+      E2E_BETA_RETRY: ${{ (github.event_name == 'schedule' || inputs.nightly || inputs.beta) && '1' || '' }}   # Why (1 Nov 2026, owner: "Auto-retry in betas only"): a beta (nightly or by hand) gives a failed non-safety, non-data step one retry (desktop/e2e/lib/beta-retry.mjs); only this workflow sets it
     permissions:
       contents: write   # tools/e2e-lock.sh creates the lock ref
       issues: read      # the screenshot review reads its by-design lessons from the closed issues (lib/review-lessons.mjs)
@@ -1440,6 +1442,12 @@ jobs:
           node block-check.mjs --artifacts ../../e2e-artifacts > block.txt || status=$?
           cat block.txt
           if [ "$status" != 0 ]; then echo "$TAG is not offered on Mac: a real high-severity finding in its end-to-end suites."; exit 1; fi
+      - name: Steps that passed on their retry (listed in the release notes)
+        timeout-minutes: 5
+        working-directory: desktop/e2e
+        run: |
+          set -o pipefail   # a program piped into tee keeps its exit code (tests/test_workflow_pipefail.py)
+          node passed-on-retry.mjs --artifacts ../../e2e-artifacts | tee ../../passed-on-retry.txt   # Why (1 Nov 2026, owner: "Auto-retry in betas only"): the beta released past these; empty when none retried
       - name: The shared release checks (unit suites green on the commit; soak on, the Notion schema additive over stable)
         timeout-minutes: 65   # Why (31 Oct 2026, a8; beta 41246139016): the shared release checks script waits up to RELEASE_CI_WAIT (3600 s) for main's build.yml; 5 minutes killed it in both Release jobs of an all-green beta (tests/test_e2e_step_timeouts.py)
         env:
@@ -1451,6 +1459,7 @@ jobs:
         env:
           E2E_ALREADY_GREEN: '1'   # required Mac suites passed; outside health is reported separately
           SOAK: ${{ vars.JOB_PILOTTO_SOAK }}
+          PASSED_ON_RETRY_FILE: passed-on-retry.txt   # tools/beta-approve.sh adds its line to the notes
         run: |
           echo "Outside-world health: see the notion-real job notice and Mac HTML report (tolerant; does not block beta)."
           if [ "$SOAK" = on ]; then
@@ -1568,6 +1577,12 @@ jobs:
           node block-check.mjs --artifacts ../../e2e-artifacts > block.txt || status=$?
           cat block.txt
           if [ "$status" != 0 ]; then echo "$TAG is not offered on Windows: a real high-severity finding in its end-to-end suites."; exit 1; fi
+      - name: Steps that passed on their retry (listed in the release notes)
+        timeout-minutes: 5
+        working-directory: desktop/e2e
+        run: |
+          set -o pipefail   # a program piped into tee keeps its exit code (tests/test_workflow_pipefail.py)
+          node passed-on-retry.mjs --artifacts ../../e2e-artifacts | tee ../../passed-on-retry.txt   # Why (1 Nov 2026, owner: "Auto-retry in betas only"): the beta released past these; empty when none retried
       - name: The shared release checks (unit suites green on the commit; soak on, the Notion schema additive over stable)
         timeout-minutes: 65   # Why (31 Oct 2026, a8; beta 41246139016): the shared release checks script waits up to RELEASE_CI_WAIT (3600 s) for main's build.yml; 5 minutes killed it in both Release jobs of an all-green beta (tests/test_e2e_step_timeouts.py)
         env:
@@ -1579,6 +1594,7 @@ jobs:
         env:
           E2E_ALREADY_GREEN: '1'   # every Windows suite passed on this commit, in this run
           SOAK: ${{ vars.JOB_PILOTTO_SOAK }}
+          PASSED_ON_RETRY_FILE: passed-on-retry.txt   # tools/beta-approve.sh adds its line to the notes
         run: |
           set -o pipefail   # a program piped into tee/cat keeps its exit code (tests/test_workflow_pipefail.py)
           tools/beta-approve.sh --windows "$TAG"

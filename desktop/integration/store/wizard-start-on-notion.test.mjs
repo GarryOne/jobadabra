@@ -9,13 +9,14 @@ import os from 'node:os';
 import path from 'node:path';
 import {test} from 'node:test';
 import {buildStandIn, startNotionFake} from '../../e2e/lib/notion-fake.mjs';
-import {pageText, seedStore} from '../../e2e/lib/storemove-steps.mjs';
+import {pageText, seedStore, writeProfile} from '../../e2e/lib/storemove-steps.mjs';
 
 const standIn = await startNotionFake();
 Object.assign(process.env, {JOB_PILOTTO_E2E: '1', JOB_PILOTTO_E2E_NOTION_BASE_URL: standIn.url, JOB_PILOTTO_E2E_NOTION_STANDIN: '1', JOB_PILOTTO_FOLLOW_APP: '0'});
 const {createStorage} = await import('../../lib/storage.js');
 const {startOnNotionIfEmpty} = await import('../../lib/store-handlers.js');
 const migrate = await import('../../lib/migrate.js');
+const schema = await import('../../lib/schema.js');
 
 const STRATEGY = `# Profile\n\nWizard strategy: ${'a platform engineer in Zurich, ten years of infrastructure work. '.repeat(5)}`;
 
@@ -65,18 +66,19 @@ test('with data already on this Mac the connect leaves the store where it is: th
   assert.equal(JSON.parse(fs.readFileSync(path.join(install.profile, 'settings.json'), 'utf8')).store, 'sqlite');
 });
 
-/** What the person (or a first run) leaves behind: a Profile page with no blocks. */
-function blankPage(pageId) {
+/** A page as the workspace builder leaves it (lib/schema.js repair): one paragraph, the placeholder. The stand-in is shared by the tests, so earlier text is cleared first. */
+function untouchedPage(pageId) {
   const {body} = standIn.handle('GET', `blocks/${pageId}/children`, {}, new URLSearchParams());
   for (const block of body.results || []) standIn.handle('DELETE', `blocks/${block.id}`, {}, new URLSearchParams());
+  writeProfile(standIn, pageId, schema.PLACEHOLDER);
 }
 
 const DRAFT = `# Profile\n\nTarget: CHF 170,000 per year in Switzerland\nMinimum acceptable: CHF 140,000 per year in Switzerland\n\nWizard strategy: ${'a site reliability engineer in Zurich. '.repeat(8)}`;
 
 test('Notion found with its Profile page still the blank template: the draft kept on this Mac reaches the page before the local copy goes (#2759)', async () => {
   const install = await installAfterSetup({profileText: DRAFT});
-  blankPage(install.ids.NOTION_PROFILE_PAGE_ID);   // the stand-in is shared by the tests: the workspace the connect finds has a Profile with nothing on it
-  assert.equal(pageText(standIn, install.ids.NOTION_PROFILE_PAGE_ID), '', 'positive control: the Notion Profile is blank before the connect');
+  untouchedPage(install.ids.NOTION_PROFILE_PAGE_ID);
+  assert.equal(pageText(standIn, install.ids.NOTION_PROFILE_PAGE_ID), schema.PLACEHOLDER, 'positive control: the Notion Profile is the builder\'s untouched page before the connect');
   const {moved} = await connectAfterWorkspace(install, {built: false});   // a workspace that was already there: nothing was built
   const profileText = pageText(standIn, install.ids.NOTION_PROFILE_PAGE_ID);
   const lines = name => profileText.split('\n').filter(line => line.trim().startsWith(name)).length;

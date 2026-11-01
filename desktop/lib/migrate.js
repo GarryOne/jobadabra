@@ -47,9 +47,13 @@ export const STEPS = [
     const token = storage.secret('NOTION_TOKEN'), ids = storage.settings().notionIds || {};
     const files = ['profile.md', 'answers.md'].map(name => [name, storage.readText(name)]).filter(([, text]) => text.trim());
     const pageOf = name => (name === 'profile.md' ? ids.NOTION_PROFILE_PAGE_ID : ids.NOTION_ANSWERS_PAGE_ID);
-    // Why (#2759, 1 Nov 2026, a8): "Notion wins" is for a Notion that has something. A found workspace whose page has no text at all has nothing to win with:
+    // Why (#2759, 1 Nov 2026, a8): "Notion wins" is for a Notion that has something. A found workspace whose page has no text at all has nothing to win with (nor does one with only the builder's placeholder, schema.PLACEHOLDER; Gitar on #2804):
     // the draft is written into it, never only backed up before the local copy goes (setup ended with the Notion Profile blank and the draft in backup/).
-    const blank = async name => !!pageOf(name) && !(await pageText(token, pageOf(name)).catch(() => 'unreadable')).trim();
+    const blank = async name => {
+      if (!pageOf(name)) return false;
+      const text = (await pageText(token, pageOf(name)).catch(() => 'unreadable')).trim();
+      return !text || text === schema.PLACEHOLDER;   // a page the app built holds its placeholder until something is written
+    };
     const moveIn = [], keep = [];
     for (const file of files) (mode === 'fresh' || await blank(file[0]) ? moveIn : keep).push(file);
     for (const [name, text] of moveIn) if (pageOf(name)) await writePage(token, pageOf(name), text);

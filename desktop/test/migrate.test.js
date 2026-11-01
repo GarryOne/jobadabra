@@ -4,6 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {test} from 'node:test';
 import * as migrate from '../lib/migrate.js';
+import * as schema from '../lib/schema.js';
 import {createStorage} from '../lib/storage.js';
 
 const fakeCrypto = {encrypt: v => Buffer.from(v).toString('base64'), decrypt: s => Buffer.from(s, 'base64').toString()};
@@ -118,7 +119,7 @@ test('strategy from this Mac: an existing workspace with a blank Profile gets th
   const storage = withLocal('existing');
   const written = [];
   const writePage = async (_token, page, text) => { written.push([page, text]); };
-  const pageText = async (_token, page) => (page === 'prof' ? '  \n' : 'Their answers in Notion.');
+  const pageText = async (_token, page) => (page === 'prof' ? `  ${schema.PLACEHOLDER}\n` : 'Their answers in Notion.');   // the builder's own placeholder counts as no text
   assert.equal(await step().run(storage, undefined, {writePage, pageText}), true);
   assert.deepEqual(written, [['prof', '# Me\nSRE']], 'only the blank page takes the draft');
   const folder = storage.settings().notionKeptFolder;

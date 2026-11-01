@@ -3,7 +3,7 @@
 // Why (31 Oct 2026, owner: "I want predictability. If a test was green last time, it should be green this time as well, if the code didn't change on that area."; chosen:
 // "Spread the 5 burn-in passes over the night at different hours, not back to back (keeps PR CI free by day, and catches time-of-day flakes like calendar's)"): the passes
 // are ordinary runs of e2e.yml on the beta's own layout (every suite, both stores, Windows following); the beta gate (a8, PR 2/3) folds their steps.json into its record like any run's.
-// Why (31 Oct 2026, a8 with the coordinator): no AI spend without the owner's yes, so a pass leaves out the suites that ask the model live and the paid judge steps; those get their
+// Why (31 Oct 2026, a8 with the coordinator): no AI spend without the owner's yes, so a pass leaves out the suites that ask the model live and the paid judge steps (the one exception: qualityai, the night-report measurement, pays for one live run in pass 1 only, owner via a8, 1 Nov 2026); those get their
 // proof from the other runs that count. Guard: test/night-pass.test.mjs.
 import {NIGHT_REPORT, autoSuites} from './plan.mjs';
 
@@ -20,7 +20,7 @@ export function passNumber(text) {
 
 /**
  * The suites a pass tests: everything the beta's gate runs, minus the ones that ask the model live and the outside world (real Notion, not the app). Pass 1 also runs the night-report
- * suites (lib/plan.mjs): once a night is a report; five looks at them would be five reports.
+ * suites (lib/plan.mjs), qualityai among them, which asks the model live: one paid run a night, because five looks at a report would be five reports (and five paid runs).
  */
 export const nightSuites = (all, cadence, pass = 0) => {
   const gate = autoSuites(all, cadence).filter(suite => !LIVE_AI.includes(suite));

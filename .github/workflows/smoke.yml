@@ -1,0 +1,78 @@
+name: CI · Smoke (the app starts)
+# Smoke = the app starts, its window loads and every Settings section renders: the e2e backbone's journey J0 (suites/settings.mjs, step "every Settings section renders"),
+# run alone on this commit's own source in about 3 minutes, no AI and no network (this Mac's store: E2E_STORE=sqlite, the suite is `offlineAi`).
+# Why (owner, 1 Nov 2026, test stages 3-5: "let's fix this layering testing"): a PR and a merge had no smoke at all; the app starting was first proven by the beta or the weekly
+# Windows build, hours or days after the commit that broke it. A PR starts it when it changes a file the app runs; main (build.yml) calls it on every push, beside the
+# unit job, as its own job so main stays as long as before. Not a required check (a workflow `paths:` skips never reports; tests/test_workflow_paths.py).
+# Not covered here: the extension connecting to the app (Page cases load the real extension on the same PRs) and the packaged app (desktop.yml's smoke at the beta).
+on:
+  workflow_call:
+  pull_request:
+    branches: [main]
+    paths:
+      # The app and what it starts: the window, its main process and libs, the extension it serves, the engine it spawns, and the packages that run them.
+      - 'desktop/renderer/**'
+      - 'desktop/lib/**'
+      - 'desktop/main.js'
+      - 'desktop/package.json'
+      - 'desktop/package-lock.json'
+      - 'desktop/scripts/stage.mjs'
+      - 'extension/**'
+      - 'src/**'
+      - 'requirements*.txt'
+      # The smoke itself: the suite and the harness lib it launches the app through.
+      - 'desktop/e2e/suites/settings.mjs'
+      - 'desktop/e2e/lib/**'
+      - '.github/workflows/smoke.yml'
+
+permissions:
+  contents: read
+
+concurrency:   # a PR's newer push replaces its older run; each commit of main keeps its own run (tests/test_pr_runs_cancel.py, tests/test_main_runs_finish.py)
+  group: smoke-${{ github.event_name == 'pull_request' && github.head_ref || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  smoke:
+    name: Smoke · the app starts
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      JOB_PILOTTO_HEAVY: '0'   # the heavy lock is a Mac's machine-wide queue; this runner is its own machine
+      E2E_STORE: sqlite        # no Notion, no token, no network (lib/store.mjs)
+      E2E_STEPS: every Settings section renders   # J0 only: the words a step name must contain (lib/runner.mjs wantedWords); the suite's setup step runs with it
+      E2E_ARTIFACTS: ${{ github.workspace }}/smoke-artifacts
+      CI_FREE_AI_CF_ACCOUNT_ID: ${{ secrets.CI_FREE_AI_CF_ACCOUNT_ID }}   # the cap's account and token (lib/ai-cap.mjs) are job-level in every job that runs a suite (tests/test_ci_free_ai.py); this suite asks no AI
+      CI_CF_ANALYTICS_TOKEN: ${{ secrets.CI_CF_ANALYTICS_TOKEN }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install the app
+        working-directory: desktop
+        run: npm ci
+      - name: Install the tests
+        working-directory: desktop/e2e
+        run: npm ci || npm install
+      - name: Python packages the engine needs
+        run: pip install --quiet -r requirements.txt
+      - name: A virtual display and Electron's libraries
+        run: bash tools/apt-install.sh xvfb libnss3 libgbm1 libasound2t64 libgtk-3-0 libxss1 fonts-noto-color-emoji fonts-dejavu-core
+      - name: The app starts and every Settings section renders (the only try)
+        working-directory: desktop/e2e
+        timeout-minutes: 10
+        env:
+          E2E_TRY_MINUTES: 10   # = this step's timeout-minutes (tests/test_e2e_try_minutes.py): the suite stops itself before it, with its evidence
+        run: xvfb-run -a --server-args='-screen 0 1440x900x24' node suite.mjs settings
+      - name: Screenshots and the suite's steps
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v6
+        with:
+          name: smoke-artifacts
+          path: smoke-artifacts
+          if-no-files-found: ignore
+          retention-days: 7

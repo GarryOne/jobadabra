@@ -7,6 +7,7 @@ name: CI · Harness tests
 # History: they ran only in e2e.yml's scheduled plan job, which broke silently for ~11 h (12 Oct 2026, ERR_MODULE_NOT_FOUND after 3394c2e); here they gate the change that would
 # break them (test/recorded-ci-deps.test.mjs checks every job that runs them installs the app's own packages and stages desktop/shared).
 on:
+  workflow_call:   # main (build.yml) runs the same tests on every push, as a job beside the unit job (owner, 1 Nov 2026, test stages 3-5)
   pull_request:
     branches: [main]
     paths:
@@ -70,9 +71,9 @@ permissions:
   actions: read         # the commit's runs and jobs, for the PR's verdict (the last step of each job)
   pull-requests: read
 
-concurrency:
-  group: harness-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
+concurrency:   # a PR's newer push replaces its older run; each commit of main keeps its own (called from build.yml there is no PR number: tests/test_main_runs_finish.py)
+  group: harness-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   harness:

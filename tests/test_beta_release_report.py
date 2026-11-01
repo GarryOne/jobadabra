@@ -29,6 +29,13 @@ Anything new?\tUNKNOWN STEP\t2026-11-01T04:58:16.7893849Z \x1b[36;1m  echo "### 
 Release · Mac beta\tNot released on Mac, an E2E suite failed on Mac + Linux or Windows, or a unit test failed\t2026-11-01T05:23:47.5110906Z ##[error]Not released: red: Mac + Linux: focusdismiss
 Release · Windows beta\tNot released on Windows, an E2E suite failed on Mac + Linux or Windows, or a unit test failed\t2026-11-01T05:24:32.7160767Z ##[error]Not released: red: Mac + Linux: focusdismiss
 '''
+# From the workflow's source (desktop.yml): the output lines of a run that built nothing, next to the same words in the step's source.
+LOG_NOTHING_NEW = '''Anything new?\tUNKNOWN STEP\t2026-11-01T09:00:10.1000000Z \x1b[36;1m  echo "Nothing new for the app since ${tag}: no build tonight."\x1b[0m
+Anything new?\tUNKNOWN STEP\t2026-11-01T09:00:11.2000000Z Nothing new for the app since desktop-v0.8.67: no build tonight.
+'''
+LOG_SUPERSEDED = '''Anything new?\tUNKNOWN STEP\t2026-11-01T09:10:10.1000000Z \x1b[36;1m  echo "::warning::Workflows changed on main during this build: not released; a new build of main starts."\x1b[0m
+Anything new?\tUNKNOWN STEP\t2026-11-01T09:10:11.2000000Z ##[warning]Workflows changed on main during this build: not released; a new build of main starts.
+'''
 NOTES_BOTH = '''**Version 0.8.67**\n\n## What's changed\n\n- A thing (abc)\n
 Beta-approved (Windows): unit suites and every Windows end-to-end suite passed on commit 649f9dd (2026-11-01)
 Beta-approved: unit suites and every end-to-end suite passed on commit 649f9dd (2026-11-01)
@@ -36,15 +43,15 @@ Beta-approved: unit suites and every end-to-end suite passed on commit 649f9dd (
 NOTES_NONE = '**Version 0.8.66**\n\n## What\'s changed\n\n- A thing (abc)\n'
 FAKE_GH = '''#!/bin/sh
 case "$1 $2" in
-  "run view") case "$*" in *--log*) cat "$FAKE_LOG" ;; *) printf '%s\\n' "$FAKE_HEAD" ;; esac ;;
+  "run view") case "$*" in *--log*) cat "$FAKE_LOG" ;; *createdAt*) printf '%s\\n' "$FAKE_STARTED" ;; *) printf '%s\\n' "$FAKE_HEAD" ;; esac ;;
   "api repos/GarryOne/jobadabra/git/matching-refs/tags/desktop-v") cat "$FAKE_TAGS" ;;
-  "release view") [ -f "$FAKE_NOTES" ] && cat "$FAKE_NOTES" || exit 1 ;;
+  "release view") [ -f "$FAKE_NOTES" ] || exit 1; case "$*" in *publishedAt*) printf '%s\\n' "$FAKE_PUBLISHED" ;; *) cat "$FAKE_NOTES" ;; esac ;;
   *) echo "unexpected gh $*" >&2; exit 9 ;;
 esac
 '''
 
 
-def report(run, head, log, notes, tags=TAGS):
+def report(run, head, log, notes, tags=TAGS, started='2026-11-01T05:38:40Z', published='2026-11-01T05:48:49Z'):
     with tempfile.TemporaryDirectory() as directory:
         folder = Path(directory)
         (folder / 'bin').mkdir()
@@ -55,7 +62,7 @@ def report(run, head, log, notes, tags=TAGS):
         (folder / 'tags').write_text(tags)
         if notes is not None:
             (folder / 'notes').write_text(notes)
-        env = dict(os.environ, PATH=f"{folder / 'bin'}:{os.environ['PATH']}", FAKE_LOG=str(folder / 'log'), FAKE_TAGS=str(folder / 'tags'), FAKE_NOTES=str(folder / 'notes'), FAKE_HEAD=head)
+        env = dict(os.environ, PATH=f"{folder / 'bin'}:{os.environ['PATH']}", FAKE_LOG=str(folder / 'log'), FAKE_TAGS=str(folder / 'tags'), FAKE_NOTES=str(folder / 'notes'), FAKE_HEAD=head, FAKE_STARTED=started, FAKE_PUBLISHED=published)
         done = subprocess.run(['bash', str(ROOT / 'tools' / 'beta-release-report.sh'), run, URL + run], capture_output=True, text=True, env=env)
         assert done.returncode == 0, done.stderr
         return done.stdout
@@ -70,14 +77,27 @@ class TheBetaSaysWhichVersionItReleased(unittest.TestCase):
         out = report('41275070968', '59b9a0cba1b8b7b12eac7ce303c1c6a4fa5a9add', LOG_RED, NOTES_NONE)
         self.assertEqual(out.splitlines(), [f'desktop-v0.8.66: Mac beta NOT approved, Windows beta NOT approved. The run: {URL}41275070968', 'Not released: red: Mac + Linux: focusdismiss'])
 
-    def test_a_build_without_a_release_still_says_so(self):
+    def test_a_tag_without_a_release_says_only_that(self):
         out = report('41275070968', '59b9a0cba1b8b7b12eac7ce303c1c6a4fa5a9add', LOG_RED, None)
-        self.assertIn('desktop-v0.8.66: the build finished without a release', out)
+        self.assertEqual(out.strip(), f'desktop-v0.8.66: tagged, but the build finished without a release: see {URL}41275070968')
 
     def test_a_run_whose_commit_has_no_version_tag_is_not_given_a_made_up_one(self):
         out = report('41277723872', 'f' * 40, LOG_RELEASED, NOTES_BOTH)
         self.assertIn('made no version tag at fffffff', out)
         self.assertNotIn('desktop-v0.8', out)
+
+    def test_a_run_with_nothing_new_is_not_credited_with_the_release_of_an_earlier_run(self):
+        # Gitar on #2819: a beta started on a commit the nightly already released builds and tags nothing; the nightly's tag and approvals are at that commit too.
+        out = report('41280000001', '649f9ddd286032c25ca916a81d9622259ff66940', LOG_NOTHING_NEW, NOTES_BOTH, started='2026-11-01T09:00:00Z')
+        self.assertTrue(out.startswith('This run released nothing: desktop-v0.8.67 at this commit was released earlier'), out)
+        self.assertNotIn('approved,', out)
+        self.assertIn('Nothing new for the app since desktop-v0.8.67: no build tonight.', out)
+
+    def test_a_superseded_build_quotes_the_workflows_warning(self):
+        # desktop.yml: a build that cannot tag because main's workflows changed ends with this warning and no tag at all.
+        out = report('41280000002', 'a' * 40, LOG_SUPERSEDED, None)
+        self.assertIn('made no version tag at aaaaaaa', out)
+        self.assertIn('Workflows changed on main during this build: not released; a new build of main starts.', out)
 
 
 if __name__ == '__main__':

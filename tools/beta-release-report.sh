@@ -9,19 +9,26 @@ repo=${BETA_REPO:-GarryOne/jobadabra}
 id=${1:?usage: beta-release-report.sh <run id> <run url>}
 url=${2:-}
 head=$(gh run view "$id" -R "$repo" --json headSha -q .headSha)
+started=$(gh run view "$id" -R "$repo" --json createdAt -q .createdAt)
 tag=$(gh api "repos/$repo/git/matching-refs/tags/desktop-v" --paginate --jq '.[] | "\(.ref) \(.object.sha)"' \
   | awk -v sha="$head" '$2 == sha {sub("refs/tags/", "", $1); print $1}' | grep -E '^desktop-v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1 || true)
+log() { gh run view "$id" -R "$repo" --log 2>/dev/null || true; }
+# The run's own one line of why, quoted. A run log holds the same words in its step source (lowercase, or inside an echo), which these patterns do not match.
+gate_why() { log | grep -o 'Not released: .*' | sort -u || true; }
+nothing_built_why() { log | grep -oE '(##\[warning\]Workflows changed on main during this build.*|Z Nothing new for the app since desktop-v[0-9.]+.*)' | sed -E 's/^(##\[warning\]|Z )//' | sort -u || true; }
 if [ -z "$tag" ]; then
-  echo "The build made no version tag at ${head:0:7}: see $url"
-elif notes=$(gh release view "$tag" -R "$repo" --json body -q .body 2>/dev/null); then
+  echo "This run made no version tag at ${head:0:7}: see $url"
+  nothing_built_why
+elif ! published=$(gh release view "$tag" -R "$repo" --json publishedAt -q .publishedAt 2>/dev/null); then
+  echo "${tag}: tagged, but the build finished without a release: see $url"
+elif [[ "$published" < "$started" ]]; then
+  # Why (Gitar on #2819): a beta started on a commit an earlier run already released builds and tags nothing; that run's tag and approval lines are not this run's result.
+  echo "This run released nothing: ${tag} at this commit was released earlier, at ${published}: see $url"
+  nothing_built_why
+else
+  notes=$(gh release view "$tag" -R "$repo" --json body -q .body)
   mac=$(grep -q '^Beta-approved:' <<<"$notes" && echo "approved" || echo "NOT approved")
   win=$(grep -q '^Beta-approved (Windows):' <<<"$notes" && echo "approved" || echo "NOT approved")
   echo "${tag}: Mac beta ${mac}, Windows beta ${win}. The run: $url"
-  if [ "$mac" != approved ] || [ "$win" != approved ]; then
-    # The gate's one line of why, quoted ("Not released: red: Mac + Linux: focusdismiss"); a run log holds the same text lowercase in its step source, which this does not match.
-    why=$(gh run view "$id" -R "$repo" --log 2>/dev/null | grep -o 'Not released: .*' | sort -u || true)
-    [ -z "$why" ] || printf '%s\n' "$why"
-  fi
-else
-  echo "${tag}: the build finished without a release (workflows changed on main during it: a new build of main started by itself): see $url"
+  if [ "$mac" != approved ] || [ "$win" != approved ]; then gate_why; fi
 fi

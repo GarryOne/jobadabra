@@ -1,0 +1,10 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Fullstack Engineer with DevOps Mindset at E2E Chain Recruiting</title>
+<style>body{font:15px/1.4 system-ui,sans-serif;max-width:640px;margin:24px auto;padding:0 16px}.field{margin:14px 0}label{display:block;margin-bottom:4px}input[type=text],input[type=email],input[type=tel],input[type=url],select,textarea{width:100%;padding:6px;box-sizing:border-box}</style></head>
+<body><h1>Fullstack Engineer with DevOps Mindset</h1><p>E2E Chain Recruiting · Zurich, Switzerland</p>
+<p>Join the team. <a id="apply_link" href="https://e2e.recruitee.com/o/chain-step" target="_blank" style="display:inline-block;padding:12px 28px;background:#222;color:#fff;font-size:18px;text-decoration:none">Apply</a></p>
+<script>
+const fired = kind => fetch('/__fired?kind=' + kind + '&form=' + encodeURIComponent(location.pathname), {method: 'POST', keepalive: true});
+document.addEventListener('click', event => { if (event.target.closest('[type=submit]')) fired('click'); }, true);
+document.addEventListener('submit', event => { event.preventDefault(); fired('submit'); }, true);
+
+</script></body></html>

@@ -1,0 +1,71 @@
+{
+ "origin": "hand-cut",
+ "control": {
+  "guard": "applyflows e2e step \"the account and the application on one page\" (moved here 1 Nov 2026, R3)"
+ },
+ "shape": "the account and the application on ONE page: an Upload-a-CV button with its file input hidden, the email twice, a password twice, then the application's own questions; the AI calls it an account-form",
+ "why": "Coop on SuccessFactors, 8 Oct 2026: a combined page (a CV upload, a password twice, the application's questions) is the application form, filled from the kit with its password boxes left alone. The app puts the session at the form step only because the extension's review report names the page's role 'form' next to the panel's raw account:true (a password box is on it): the rule's word wins (desktop/lib/review.js, extension/messages-app.js). The applyflows e2e step proved it with the app; this case holds the extension's half (the report says role form while the panel saw a password box) and desktop/test/review.test.js holds the app's half. Planting the bug (the role dropped from the report) turns it red. (moved 1 Nov 2026, R3)",
+ "sample": "fixture form written by desktop/e2e/lib/forms.mjs (ONEPAGE; hosts and text invented)",
+ "rung": 2,
+ "pages": [
+  {
+   "url": "https://e2e.wd3.myworkdayjobs.com/e2e/one-page-apply",
+   "file": "form.html"
+  }
+ ],
+ "ai": {
+  "/extension/page-kind": {
+   "ok": true,
+   "kind": "account-form",
+   "role": "form",
+   "by": "ai",
+   "confidence": 0.95,
+   "rung": 2,
+   "signal": "confident",
+   "applyButton": "",
+   "applyRoute": "",
+   "applyBy": "",
+   "applyEmail": "",
+   "accountStep": "",
+   "registerControl": "",
+   "signinControl": "",
+   "accountButton": ""
+  },
+  "/extension/answer": {
+   "ok": true,
+   "eligible": true,
+   "answers": [
+    {
+     "field": "question_3001",
+     "question": "Years of experience with Kubernetes",
+     "value": "3",
+     "confidence": "high"
+    }
+   ]
+  }
+ },
+ "expect": {
+  "filled": [
+   "#first_name"
+  ],
+  "valueIs": [
+   "#first_name|Test",
+   "#email|test.candidate@example.com",
+   "#question_3001|3"
+  ],
+  "empty": [
+   "#password",
+   "#password_again"
+  ],
+  "notTold": [
+   "pressed the submit"
+  ],
+  "seconds": 60,
+  "reviewSays": [
+   [
+    "role|form",
+    "account|true"
+   ]
+  ]
+ }
+}

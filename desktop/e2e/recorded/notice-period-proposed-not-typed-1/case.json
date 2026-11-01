@@ -1,0 +1,75 @@
+{
+ "origin": "hand-cut",
+ "sample": "fixture form written by desktop/e2e/lib/forms.mjs (PROPOSE; hosts and text invented)",
+ "rung": 2,
+ "pages": [
+  {
+   "url": "https://boards.greenhouse.io/e2e-propose/4001012",
+   "file": "form.html"
+  }
+ ],
+ "start": "panel",
+ "control": {
+  "guard": "applyflows e2e step \"Needs your attention from the extension's fill\" (moved here 1 Nov 2026, R3)"
+ },
+ "shape": "a required menu (Notice period: Immediately, 1 month, 2 months) whose kit answer \"3 months\" is none of its choices and none means the same",
+ "why": "8 Oct 2026 (owner: \"we had this, it got overwritten\"): the fill leaves such a menu EMPTY and proposes the kit's answer to the app with the form's own choices, so the session page's Needs your attention row can show the proposal and a menu of the choices (desktop/lib/review.js proposals; desktop/integration/app/session-fill.test.js holds the app's half). A wrong guess typed into the menu, or no proposal sent, turns this case red. (moved 1 Nov 2026, R3)",
+ "ai": {
+  "/extension/page-kind": {
+   "ok": true,
+   "kind": "form",
+   "role": "form",
+   "by": "ai",
+   "confidence": 0.95,
+   "rung": 2,
+   "signal": "confident",
+   "applyButton": "",
+   "applyRoute": "",
+   "applyBy": "",
+   "applyEmail": "",
+   "accountStep": "",
+   "registerControl": "",
+   "signinControl": "",
+   "accountButton": ""
+  },
+  "/extension/answer": {
+   "ok": true,
+   "eligible": true,
+   "answers": [
+    {
+     "field": "notice_period",
+     "question": "Notice period",
+     "value": "3 months",
+     "confidence": "high"
+    },
+    {
+     "field": "question_3001",
+     "question": "Years of experience with Kubernetes",
+     "value": "7",
+     "confidence": "high"
+    }
+   ]
+  }
+ },
+ "expect": {
+  "filled": [
+   "#first_name",
+   "#question_3001"
+  ],
+  "valueIs": [
+   "#question_3001|7"
+  ],
+  "empty": [
+   "#notice_period"
+  ],
+  "told": [
+   "\"label\":\"Notice period\"",
+   "\"value\":\"3 months\"",
+   "\"options\":[\"Immediately\",\"1 month\",\"2 months\"]"
+  ],
+  "notTold": [
+   "pressed the submit"
+  ],
+  "seconds": 60
+ }
+}

@@ -1,0 +1,80 @@
+{
+ "origin": "hand-cut",
+ "sample": "fixture form written by desktop/e2e/lib/forms.mjs (PROPOSE; hosts and text invented)",
+ "rung": 2,
+ "pages": [
+  {
+   "url": "https://boards.greenhouse.io/e2e-propose/4001012",
+   "file": "form.html"
+  }
+ ],
+ "start": "panel",
+ "control": {
+  "guard": "applyflows e2e step \"Needs your attention from the extension's fill\": the Use half (moved here 1 Nov 2026, R3)"
+ },
+ "shape": "the app answers a form report with a command to fill one field (the session page's Use on a Needs your attention row: lib/review.js queueFill): the panel puts that value in the menu",
+ "why": "8 Oct 2026: the person picks a choice in the app and presses Use; the app queues {fill: {label, value}} and the next review reply carries it; the extension must put the value into the form's field and the field must hold it. The kit has no answer for the menu, so only the person's pick can fill it; the stub app answers every review report with that command, so the page half is proved without the session page; desktop/integration/app/session-fill.test.js proves the app queues exactly that command. Not putting the value in the field turns this case red. (moved 1 Nov 2026, R3)",
+ "ai": {
+  "/extension/page-kind": {
+   "ok": true,
+   "kind": "form",
+   "role": "form",
+   "by": "ai",
+   "confidence": 0.95,
+   "rung": 2,
+   "signal": "confident",
+   "applyButton": "",
+   "applyRoute": "",
+   "applyBy": "",
+   "applyEmail": "",
+   "accountStep": "",
+   "registerControl": "",
+   "signinControl": "",
+   "accountButton": ""
+  },
+  "/extension/answer": {
+   "ok": true,
+   "eligible": true,
+   "answers": [
+    {
+     "field": "question_3001",
+     "question": "Years of experience with Kubernetes",
+     "value": "7",
+     "confidence": "high"
+    }
+   ]
+  },
+  "/extension/review": {
+   "matched": "e2e-run",
+   "session": {
+    "id": "e2e-run",
+    "url": "https://boards.greenhouse.io/e2e-propose/4001012",
+    "title": "Cloud Engineer",
+    "company": "E2E Notice Systems",
+    "status": "done",
+    "live": true,
+    "kind": "form",
+    "stuck": ""
+   },
+   "watch": [],
+   "commands": [
+    {
+     "fill": {
+      "label": "Notice period",
+      "value": "2 months"
+     }
+    }
+   ]
+  }
+ },
+ "expect": {
+  "valueIs": [
+   "#notice_period|2 months",
+   "#question_3001|7"
+  ],
+  "notTold": [
+   "pressed the submit"
+  ],
+  "seconds": 60
+ }
+}

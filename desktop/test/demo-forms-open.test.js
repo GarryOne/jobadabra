@@ -23,6 +23,13 @@ test('the demo reports each form in review.json as open, so its card shows the f
   }
 });
 
+test('demoLinkSilent: the link is up and nothing is reported, so the card turns "Chrome isn\'t reporting" after WAIT_MS', () => {
+  const silent = demoFormsOpen([{id: 'f1'}], {demoLinkSilent: true}), item = {id: 'f1', kind: 'form', status: 'done'};
+  assert.deepEqual(silent, {known: false, ids: []}, 'no linkOff: the socket is open');
+  assert.equal(chromeSilent(item, silent, 70 * 1000), true);
+  assert.equal(chromeSilent(item, silent, 10 * 1000), false, 'before the wait it is a neutral first look');
+});
+
 test('the formsOpen handler answers from the demo\'s forms in demo mode', () => {
   const source = fs.readFileSync(path.join(desktop, 'lib/apply-handlers.js'), 'utf8');
   assert.match(source, /ipcMain\.handle\('formsOpen', async \(\) => \{\n\s+if \(DEMO\) return demoFormsOpen\(JSON\.parse\(fs\.readFileSync\(demoPath\(here, 'review\.json'\)/);

@@ -1,0 +1,95 @@
+{
+ "origin": "hand-cut",
+ "control": {
+  "guard": "applyflows e2e step \"two applications side by side, one whose Apply opens its form from script\" (moved here 1 Nov 2026, R3)"
+ },
+ "shape": "a posting whose Apply button opens the form from the page's own script (window.open to the employer's form host): nothing can be pointed at the same tab, so the new tab is followed as the same application and the posting closes",
+ "why": "8 Oct 2026, two applications side by side: the scripted posting's form got the other job's kit and the posting stayed open (the opener was taken to be the tab in FRONT, not the page that called window.open). The extension must follow the new tab as the application, close the posting's tab (extension/same-tab.js) and fill the form from its own job's kit (9 years, not the other job's 7). The applyflows e2e step proved it with two applications and the app; the page half is this case, and desktop/integration/app/session-tabs.test.js holds the app's half (each tab binds to its own session). Planting the bug (the posting not closed) turns it red. (moved 1 Nov 2026, R3)",
+ "sample": "fixture pages written by desktop/e2e/lib/forms.mjs (SCRIPTED; hosts and text invented)",
+ "rung": 2,
+ "pages": [
+  {
+   "url": "https://jobs.lever.co/e2e-scripted/4001006",
+   "file": "posting.html"
+  },
+  {
+   "url": "https://e2e.wd3.myworkdayjobs.com/e2e/scripted-form",
+   "file": "form.html"
+  }
+ ],
+ "ai": {
+  "/extension/page-kind": [
+   {
+    "when": {
+     "url": "https://e2e.wd3.myworkdayjobs.com/e2e/scripted-form"
+    },
+    "answer": {
+     "ok": true,
+     "kind": "form",
+     "role": "form",
+     "by": "ai",
+     "confidence": 0.95,
+     "rung": 2,
+     "signal": "confident",
+     "applyButton": "",
+     "applyRoute": "",
+     "applyBy": "",
+     "applyEmail": "",
+     "accountStep": "",
+     "registerControl": "",
+     "signinControl": "",
+     "accountButton": ""
+    }
+   },
+   {
+    "answer": {
+     "ok": true,
+     "kind": "posting",
+     "role": "no-form",
+     "by": "ai",
+     "confidence": 0.95,
+     "rung": 2,
+     "signal": "confident",
+     "applyButton": "",
+     "applyRoute": "",
+     "applyBy": "",
+     "applyEmail": "",
+     "accountStep": "",
+     "registerControl": "",
+     "signinControl": "",
+     "accountButton": ""
+    }
+   }
+  ],
+  "/extension/answer": {
+   "ok": true,
+   "eligible": true,
+   "answers": [
+    {
+     "field": "question_3001",
+     "question": "Years of experience with Kubernetes",
+     "value": "9",
+     "confidence": "high"
+    }
+   ]
+  }
+ },
+ "expect": {
+  "told": [
+   "pressed the Apply button"
+  ],
+  "filled": [
+   "#first_name"
+  ],
+  "valueIs": [
+   "#first_name|Test",
+   "#email|test.candidate@example.com",
+   "#question_3001|9"
+  ],
+  "notTold": [
+   "pressed the submit"
+  ],
+  "maxTabs": 1,
+  "seconds": 60
+ }
+}

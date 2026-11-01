@@ -178,7 +178,7 @@ const {notify, activity, announceRuns} = createAppNotify({DEMO, Notification, ap
 
 function handlers() {
   // Demo mode: what would reach outside or change this computer answers "demo" instead (lib/demo.js BLOCKED).
-  if (DEMO) ipcMain.handle = demo.guard(ipcMain.handle.bind(ipcMain));
+  if (DEMO) ipcMain.handle = demo.guard(ipcMain.handle.bind(ipcMain), appLog);
   // End-to-end run: log every call the window makes (the interaction probe reads it, see lib/e2e-ipc.js).
   ipcMain.handle = applyChoiceGuard(ipcMain.handle.bind(ipcMain), () => storage, appLog);   // first Apply: choose how to apply first (lib/apply-choice-gate.js)
   if (process.env.JOB_PILOTTO_E2E) { globalThis.__jpIpc = []; ipcMain.handle = recordIpc(ipcMain.handle.bind(ipcMain), globalThis.__jpIpc); }

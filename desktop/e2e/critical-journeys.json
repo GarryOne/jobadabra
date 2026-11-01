@@ -211,6 +211,8 @@
   {"suite": "apply", "step": "Stop on the card in Background automation: while the form is filling, Stop hands it to you and nothing is posted"},
   {"suite": "apply", "step": "the triage bar moves per real read and Cancel during a held read stops before the next job, closes its page, and fills or sends nothing"},
   {"suite": "apply", "step": "checking jobs before the form read exists reads nothing: every chip says \"Not checked\", no session starts, nothing is filled or sent"},
+  {"suite": "apply", "step": "\"See which jobs can apply automatically\" reads a job's form in the hidden browser: You review and submit, the tab closes, and nothing is filled or sent", "parts": ["\"See which jobs can apply automatically\" reads a job's form in the hidden browser: ", "You review and submit", ", the tab closes, and nothing is filled or sent"]},
+  {"suite": "apply", "step": "\"See which jobs can apply automatically\" reads a job's form in the hidden browser: Can apply automatically, the tab closes, and nothing is filled or sent", "parts": ["\"See which jobs can apply automatically\" reads a job's form in the hidden browser: ", "Can apply automatically", ", the tab closes, and nothing is filled or sent"]},
   {"suite": "applyflows", "step": "a form drawn after a spinner: its submit is never pressed as Apply, and it is filled once its fields come"},
   {"suite": "employers", "step": "the crawl's source list now holds the starter employers and the two new boards, and nothing else"},
   {"suite": "employers", "step": "a second run writes nothing twice"},

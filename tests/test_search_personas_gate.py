@@ -162,6 +162,63 @@ class TheFilesRoundTrip(unittest.TestCase):
             self.assertIn('p4 Warehouse Operator, Zurich', table)
 
 
+# Main push runs 41346903877, 41341289571, 41258189945 (1 Nov 2026, #2901): every persona judged 0 jobs, presses 146-175 s, floors -4.7, -3.8, -1.6, all three "success".
+TODAY = run([0] * 6, [152, 152, 152, 151, 175, 146], found=[0] * 6)
+
+
+class AGateThatSawNoJobHasMeasuredNothing(unittest.TestCase):
+    def test_todays_run_with_all_six_judges_at_zero_jobs_is_grey_and_says_measured_nothing_never_a_pass(self):
+        for mains in ([], [TODAY] * 3, [TODAY] * 12, [run([1, 0, 0, 10, 1, 1], [145] * 6, found=[5, 3, 9, 20, 7, 12])] * 12):
+            with self.subTest(main_runs=len(mains)):
+                verdict = gate.compare(TODAY, mains)
+                self.assertEqual(verdict['state'], 'neutral', 'was success (green) on main for three runs')
+                self.assertIn('measured nothing', verdict['head'])
+                self.assertIn('not a pass', verdict['head'])
+                self.assertIn('measured nothing', gate.table(verdict))
+                self.assertNotIn('🟢 every press', verdict['head'])
+                self.assertNotIn('🟢', gate.table(verdict), 'no persona row is green under a run that measured nothing (gitar on #2917)')
+
+    def test_the_main_column_does_not_show_the_zeros_of_runs_that_measured_nothing(self):
+        measured = run([0, 0, 0, 5, 0, 0], [150] * 6, found=[2, 3, 4, 9, 1, 2])
+        rows = gate.compare(measured, [TODAY, TODAY, measured, TODAY])['rows']
+        self.assertEqual(rows[3]['main'], [5], 'only the measured run is shown')
+
+    def test_a_press_over_180_seconds_is_still_red_when_nothing_was_measured(self):
+        slow = run([0] * 6, [152, 152, 181, 151, 175, 146], found=[0] * 6)
+        self.assertEqual(gate.compare(slow, [])['state'], 'failure')
+
+    def test_through_the_files_the_jobs_write_the_verdict_file_says_neutral_measured_nothing(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            for n in range(1, 7):
+                out = tmp / 'results' / f'search-personas-p{n}'
+                (out / 'draw').mkdir(parents=True)
+                (out / 'draw' / 'presses.jsonl').write_text(json.dumps({'press': 1, 'code': 0, 'crashes': [], 'seconds': 150, 'funnel': {'ai_usd': 0.04}}) + '\n')
+                (out / 'judged.json').write_text(json.dumps({'judged_jobs': 0, 'rows': []}))   # what 41346903877's judge wrote
+                (out / 'non-haiku-steps.txt').write_text('0\n')
+                self.assertEqual((gate.result(n, out)['found'], gate.result(n, out)['local']), (0, 0))
+            self.assertEqual(gate.main(['compare', str(tmp / 'results'), str(tmp / 'verdict')]), 0, 'grey: the job passes, the verdict file does not call it a pass')
+            saved = json.loads((tmp / 'verdict' / 'verdict.json').read_text())
+            self.assertEqual(saved['state'], 'neutral')
+            self.assertIn('measured nothing', saved['head'])
+
+    def test_one_persona_that_saw_a_job_is_a_measurement_and_a_missing_count_is_unknown_not_zero(self):
+        self.assertEqual(gate.compare(run([0] * 6, [150] * 6, found=[0, 0, 4, 0, 0, 0]), [])['state'], 'success')
+        self.assertEqual(gate.compare(run([0] * 6, [150] * 6), [])['state'], 'success', 'found is None in older recorded runs: unknown, not 0')
+
+    def test_a_main_run_that_measured_nothing_is_not_one_of_the_ten(self):
+        self.assertEqual(gate.quality(TODAY, [TODAY] * 10)['measured'], 0)
+        self.assertEqual(gate.quality(TODAY, [TODAY] * 10)['mode'], 'shown')
+
+    def test_the_floor_never_falls_below_one_right_job(self):
+        totals = [0, 4, 0, 0, 1, 0, 0, 0, 2, 0]   # mean 0.7, spread 1.3: the old floor was -1.9
+        mains = [run([t, 0, 0, 0, 0, 0], [150] * 6, found=[5] * 6) for t in totals]
+        quiet = gate.compare(run([0] * 6, [150] * 6, found=[5] * 6), mains)
+        self.assertEqual((quiet['quality']['mode'], quiet['quality']['floor']), ('gated', gate.QUALITY_FLOOR_MIN))
+        self.assertEqual((quiet['state'], 'below main' in quiet['head']), ('failure', True), 'a total of 0 right jobs is below the floor of 1')
+        self.assertEqual(gate.compare(run([1, 0, 0, 0, 0, 0], [150] * 6, found=[5] * 6), mains)['state'], 'success')
+
+
 class TheJudgeIsBlindAndOnCodex(unittest.TestCase):
     def test_the_judge_requires_the_codex_relay_and_never_uses_an_api_key(self):
         with self.assertRaisesRegex(ValueError, 'Codex relay'):

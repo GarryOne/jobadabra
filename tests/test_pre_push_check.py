@@ -104,23 +104,23 @@ class PrePushCheckTest(PrePushFixture):
         self.needed_committed()
         self.assertEqual(self.hook('PUSH_FULL=1 git push origin HEAD:main'), (0, ''))
         runs = self.log.read_text().splitlines()
-        self.assertEqual(sorted(line.split(' --area ')[1].split()[0] for line in runs), ['desktop', 'python', 'site', 'worker'])   # areas run side by side: no order
-        self.assertEqual(len({line.split()[0] for line in runs}), 4, 'a fresh checkout per area')
+        self.assertEqual(sorted(line.split(' --area ')[1].split()[0] for line in runs), ['desktop', 'python', 'worker'])   # areas run side by side: no order
+        self.assertEqual(len({line.split()[0] for line in runs}), 3, 'a fresh checkout per area')
         self.assertEqual(len(git(self.repo, 'worktree', 'list').splitlines()), 1)
 
     def test_no_checkout_is_removed_while_another_area_runs(self):
         # git's worktree add and remove race on .git/worktrees (9 Oct 2026: "failed to read .git/worktrees/worker/commondir", and a red
         # main from "tests failed in site" with no reason): the checkouts are made before the suites start and removed after all end.
-        # The desktop stub waits for the other three to finish, then looks whether their checkouts are still there.
+        # The desktop stub waits for the other two to finish, then looks whether their checkouts are still there.
         (self.repo / 'tools' / 'check.sh').write_text(CHECK + textwrap.dedent('''\
             if [ "$2" = desktop ]; then
-              for _ in $(seq 400); do [ "$(wc -l < "$CHECK_LOG.done" 2>/dev/null || echo 0)" -ge 3 ] && break; sleep 0.05; done
+              for _ in $(seq 400); do [ "$(wc -l < "$CHECK_LOG.done" 2>/dev/null || echo 0)" -ge 2 ] && break; sleep 0.05; done
               while read -r tree; do [ -d "$tree" ] && echo kept || echo gone; done < "$CHECK_LOG.done" > "$CHECK_LOG.seen"
             else echo "$PWD" >> "$CHECK_LOG.done"; fi
             '''))
         self.needed_committed()
         self.assertEqual(self.hook('PUSH_FULL=1 git push origin HEAD:main'), (0, ''))
-        self.assertEqual(Path(f'{self.log}.seen').read_text().split(), ['kept'] * 3)
+        self.assertEqual(Path(f'{self.log}.seen').read_text().split(), ['kept'] * 2)
         self.assertEqual(len(git(self.repo, 'worktree', 'list').splitlines()), 1, 'every checkout removed at the end')
 
     def tip(self):

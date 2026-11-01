@@ -84,7 +84,7 @@ export const stoppedReason = timedOut => `Stopped by Jobadabra: ${timedOut}. The
 export const errorKindOf = stdout => /^"?([A-Za-z_][\w.]*(?:Error|Exception|Exit))\b/.exec(String((() => { try { return JSON.parse(String(stdout).trim().split('\n').pop()).error; } catch { return ''; } })() || ''))?.[1] || '';   // words-ok: matches a Python exception type name in our own engine's error, not page text
 
 /** Runs `python -m <args>` (see runNow) and tells lib/engine-runs-in-flight.js about it, so a store move can wait for the runs already running. */
-export const run = (...call) => inFlight.track(runNow(...call));
+export const run = (...call) => inFlight.track(runNow(...call), {bounded: isWatched(call[1][0])});
 
 function runNow(storage, args, onLine = () => {}, extraEnv = {}, {stopAfterMs = 0, logArgs = null, privateOutput = false, inTask = '', onChild = null} = {}) {
   if (isDemo() && demoSearch.isSearchRun(args)) return demoSearch.play(onLine);   // Find jobs in the demo: the scripted search (lib/demo-search.js)

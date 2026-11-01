@@ -38,6 +38,12 @@ test('settled() waits for the runs in flight at the call, never for runs asked f
   later();
 });
 
+test('a run no watchdog bounds (a sign-in waiting on a person) never holds settled()', async () => {
+  inFlight.track(new Promise(() => {}), {bounded: false});   // never ends, as a Google sign-in left open
+  await inFlight.settled();
+  assert.ok(true, 'settled() came back although an unbounded run is still in flight');
+});
+
 test('a read the window starts during the move ends before the archive: no tracker.sqlite is left beside a Notion store', async () => {
   const storage = storageOn({store: 'sqlite'});
   const sqlite = engineOn('sqlite');

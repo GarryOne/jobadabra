@@ -18,6 +18,8 @@ CLASSIFIED = {
     'CI · Stored AI answer drift': 'ignored: nightly drift rates, warm-up warnings and a deduplicated lasting-red issue; never required',
     'Extension · Chrome Web Store publish': 'ignored: started by tools/release-stable.sh on a stable release, a PR editing it, or by hand; never runs on a push to main',
     'Extension · Web Store zip': 'ignored: by hand or on an extension-v* tag; builds the store package, never runs on a push to main',
+    # Why (1 Nov 2026, owner via a8: "Nightly report"): the clock-moved time-bomb report is report only, called by night pass 1, never a push or PR check.
+    'CI · Clock moved (nightly, report only)': 'ignored: nightly report of tests that fail with the clock moved; called by night pass 1, never counted for main',
     'CI · Tests': 'counted',
     'CI · Re-run jobs GitHub never started': 'ignored: after a beta or e2e run ends; only re-runs jobs GitHub gave no runner, never tests a push to main',
     "CI · Start the What's new publish": 'ignored: after a beta approval or a promotion to stable only, never on a push to main; it starts the site repo\'s publish and never fails a release',

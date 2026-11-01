@@ -1,5 +1,5 @@
 name: CI · Clock moved (nightly, report only)
-# Job: find time bombs
+# Job: report health
 # The fast unit folders (desktop/test, desktop/e2e/test, tests/) run once on the real clock and again with the clock moved +1 day and +7 days (libfaketime); the files that pass today and fail
 # moved are the report: a test or the library code under it that depends on today's date, found the night before it goes off (tools/clock-moved.mjs, guard desktop/test/clock-moved.test.js).
 # Why (1 Nov 2026, owner via a8: "Nightly report (Recommended)"; the gate rule needs >= 2 real escapes in 30 days, and there were 5: app-identity, review-cache, test_mail_google and test_feed_details on 31 Oct,

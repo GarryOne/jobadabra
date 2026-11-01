@@ -159,7 +159,7 @@ if (chrome.webNavigation) {
   chrome.permissions.onAdded.addListener(() => { startWaiting(); resumeFillWaiting({decide}); });
   watchUnallowedFillTabs({decide});
   startEarlyDim();   // an Apply starts when the app opens its tab and stays dimmed through every page change until a verdict (apply-state.js, early-dim.js)
-  startLinkedinSession(); startRefusedReads();   // LinkedIn: gives its permissions back when the app's switch is off (linkedin-session.js); refused sites are read only after the person's press in the app, seen by a one-minute look (refused-read.js)
+  startLinkedinSession({call: api, settings}); startRefusedReads();   // LinkedIn: gives its permissions back when the app's switch is off (linkedin-session.js); refused sites are read only after the person's press in the app, seen by a one-minute look (refused-read.js)
   chrome.webNavigation.onCommitted.addListener(async details => {
     if (details.frameId !== 0) return;
     retireFill(details.tabId);   // a new document: the fill running here belongs to the old one (extension/one-fill.js)

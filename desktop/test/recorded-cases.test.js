@@ -35,6 +35,22 @@ test('a Display-only marked file needs no recorded page; every file that fills o
   assert.deepEqual(displayOnlyProblems(root, loaded), []);
 });
 
+test('the marker works in extension/ too: a file that acts on no page (the LinkedIn cookie copy) needs no recorded page, and the files that act on pages still do (pa, 1 Nov 2026)', () => {
+  assert.ok(loaded.has('extension/linkedin-session.js') && isDisplayOnly(root, 'extension/linkedin-session.js') && !covered.has('extension/linkedin-session.js'));
+  assert.equal(missingCase([commit(['extension/linkedin-session.js'], 'Copy the session again')], covered), '');
+  for (const file of ['extension/flow.js', 'extension/background.js', 'extension/fill-flow.js']) {
+    assert.ok(covered.has(file), `${file} must stay covered`);
+    assert.match(missingCase([commit([file], 'Fix it')], covered), /recorded page/, file);
+  }
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'display-only-ext-'));
+  fs.mkdirSync(path.join(dir, 'extension'), {recursive: true});
+  fs.writeFileSync(path.join(dir, 'extension/flow.js'), '// Drives the page.\nexport const api = 1;\n');
+  fs.writeFileSync(path.join(dir, 'extension/copy.js'), "// Display-only: copies cookies.\nimport {api} from './flow.js';\n");
+  assert.deepEqual(displayOnlyProblems(dir, ['extension/copy.js']), ['extension/copy.js is marked Display-only but imports extension/flow.js'], 'a marked extension file that imports a page-acting one fails: the claim is checked by structure');
+  assert.equal(isDisplayOnly(dir, 'extension/flow.js'), false);
+  assert.equal(isDisplayOnly(dir, 'worker/src/x.js'), false, 'only desktop/lib and extension take the marker');
+});
+
 test('a marked file that gains a judging or filling import fails; an unmarked one is covered', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'display-only-'));
   fs.mkdirSync(path.join(dir, 'desktop/lib/ladder'), {recursive: true});

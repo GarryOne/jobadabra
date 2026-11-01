@@ -1,7 +1,7 @@
 name: Release · Build, test, beta
 # Job: run the backbone
 # ONE RUN PER RELEASE, ONE LANE PER PLATFORM (owner, 7 Oct 2026: three runs chained by triggers were hard to follow; then "2 parallel pipelines"):
-#   Anything new? -+- Build · Mac     -> E2E · Mac + Linux -> Release · Mac beta     -> offer -+- Clean up old builds
+#   Anything new? -+- Build · Mac     -> E2E · Mac + Linux -> Release · Mac beta     -> offer -+- Beta <version> · clean up old builds (also writes the run page's card)
 #                  +- Build · Windows -> E2E · Windows     -> Release · Windows beta -> offer -+
 #                  +- Main's CI on this commit (awaited from the start; both Release jobs read its result)
 # The two Release jobs run side by side (1 Nov 2026, owner); only each lane's tiny "offer" job, which writes its line into the release's notes, takes the one lock (release-promote).
@@ -1737,7 +1737,7 @@ jobs:
         timeout-minutes: 5
 
   prune:
-    name: Clean up old builds
+    name: ${{ format('Beta {0} · clean up old builds', needs.changes.outputs.version) }}   # the version is on the graph (owner, 1 Nov 2026: "I see nowhere the version just published")
     needs: [changes, build, windows, test-mac, test-windows, release-mac, release-windows, release-mac-offer, release-windows-offer]
     if: always() && needs.changes.outputs.released == 'true'
     runs-on: ubuntu-24.04
@@ -1757,6 +1757,39 @@ jobs:
         with:
           phase: start
         timeout-minutes: 5
+      # Why (1 Nov 2026, owner, on beta 11's run page: "I see nowhere the version just published" … "let's display it nicely here. Also the commit released (with hyperlink)"):
+      # the one step summary CI writes, by the run's last job, so the Summary page names the version, its release and the commit with links. It overrides "remove all the summaries"
+      # (26 Oct 2026) for this card only: tests/test_no_step_summaries.py allows exactly this write. Never a hold: a card that fails to write does not fail the run.
+      - name: The run page names the version and the commit
+        if: always()
+        continue-on-error: true
+        timeout-minutes: 5
+        env:
+          VERSION: ${{ needs.changes.outputs.version }}
+          BUILT_FROM: ${{ needs.changes.outputs.built_from }}
+          MAC: ${{ needs.release-mac.result }}
+          MAC_OFFER: ${{ needs.release-mac-offer.result }}
+          WINDOWS: ${{ needs.release-windows.result }}
+          WINDOWS_OFFER: ${{ needs.release-windows-offer.result }}
+          REPO_URL: ${{ github.server_url }}/${{ github.repository }}
+        run: |
+          mark() { case "$1" in success) echo "✅ done";; failure) echo "❌ failed";; skipped) echo "⏭️ skipped";; cancelled) echo "🚫 cancelled";; *) echo "$1";; esac; }
+          subject=$(git log -1 --format=%s "$GITHUB_SHA" 2>/dev/null || echo "")
+          subject=${subject//|/\\|}
+          when=$(date -u -d "@$(git log -1 --format=%ct "$GITHUB_SHA" 2>/dev/null || date +%s)" '+%-d %b %H:%M UTC')
+          place=$(printf '%s' "$BUILT_FROM" | awk -F' · ' '{print $2}')
+          if [ "$MAC" = success ] && [ "$WINDOWS" = success ]; then title="🧪 Beta $VERSION is published"; else title="⚠️ Beta $VERSION is not published to both platforms"; fi
+          {
+            echo "## $title"
+            echo
+            echo "| | |"
+            echo "|---|---|"
+            echo "| **Version** | [desktop-v$VERSION]($REPO_URL/releases/tag/desktop-v$VERSION) |"
+            echo "| **Commit** | [\`${GITHUB_SHA:0:7}\`]($REPO_URL/commit/$GITHUB_SHA) $subject |"
+            echo "| **Place and time** | ${place:-main} · committed $when |"
+            echo "| **Mac** | release $(mark "$MAC") · offered to testers $(mark "$MAC_OFFER") |"
+            echo "| **Windows** | release $(mark "$WINDOWS") · offered to testers $(mark "$WINDOWS_OFFER") |"
+          } >> "$GITHUB_STEP_SUMMARY"
       - name: A release neither build published (both failed) is removed; its tag stays and its number is not reused
         timeout-minutes: 5
         env:

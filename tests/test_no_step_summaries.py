@@ -1,4 +1,6 @@
 """No CI job writes a GitHub step summary (owner, 26 Oct 2026: "let's remove all the summaries"; a run page was a wall of "apply-1of2 summary" boxes).
+One card is allowed (owner, 1 Nov 2026, on beta 11's run page: "I see nowhere the version just published" … "let's display it nicely here. Also the commit released (with hyperlink)"):
+the beta's last job writes the version, its release and the commit with links, once per run. Exactly that write, in desktop.yml's prune job.
 
 What a person needs from a run lives in the job log, ::error/::warning annotations and the PR status "All checks passed" (tools/pr-verdict.py).
 This scans every tracked file but Markdown (docs may tell the history) for a write to $GITHUB_STEP_SUMMARY or @actions/core's summary.
@@ -10,12 +12,13 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 WRITES = re.compile(r'GITHUB_STEP_SUMMARY|\bcore\.summary\b')
+CARD = '.github/workflows/desktop.yml'
 SELF = Path(__file__).resolve().relative_to(ROOT).as_posix()
 
 
 def tracked():
     out = subprocess.run(['git', 'ls-files', '-z'], cwd=ROOT, capture_output=True, check=True).stdout.decode('utf-8', 'replace')
-    return [name for name in out.split('\0') if name and name != SELF and not name.endswith('.md') and '/node_modules/' not in f'/{name}']
+    return [name for name in out.split('\0') if name and name not in (SELF, CARD) and not name.endswith('.md') and '/node_modules/' not in f'/{name}']
 
 
 class NoStepSummaries(unittest.TestCase):
@@ -36,6 +39,15 @@ class NoStepSummaries(unittest.TestCase):
                 continue
             bad += [f'{name}:{number}: {line.strip()[:100]}' for number, line in enumerate(text.splitlines(), 1) if WRITES.search(line)]
         self.assertEqual(bad, [], 'print it to the log (echo, console.log, print) or as an ::error/::warning annotation; no step summaries')
+
+    def test_the_beta_card_is_the_one_write_and_it_is_in_the_last_job(self):
+        text = (ROOT / CARD).read_text(encoding='utf-8')
+        self.assertEqual(len(WRITES.findall(text)), 1, 'one card per run, no other summary')
+        prune = text.split('\n  prune:\n')[1]
+        self.assertEqual(len(WRITES.findall(prune)), 1, 'the card is written by the last job, which knows both lanes')
+        for link in ('/releases/tag/desktop-v$VERSION', '/commit/$GITHUB_SHA'):
+            self.assertIn(link, prune, 'the card links the release and the commit')
+
 
 
 if __name__ == '__main__':

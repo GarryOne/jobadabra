@@ -1,1 +1,110 @@
-[]
+[
+  {
+    "id": "calendar-day-dropped",
+    "test": "desktop/test/calendar.test.js",
+    "file": "desktop/renderer/calendar.js",
+    "find": "inMonth: date.getUTCMonth() === month,",
+    "replace": "inMonth: date.getUTCMonth() === month && date.getUTCDate() !== 4,",
+    "what": "the month grid loses day 4 (#120, #122 were this bug)",
+    "catches": "the month grid holds every day of its month once"
+  },
+  {
+    "id": "failed-run-ticked",
+    "test": "desktop/test/run-status.test.js",
+    "file": "desktop/renderer/run-status.js",
+    "find": "if (i === at && !live && !run?.waiting && (!run?.ok || run?.off)) return 'fail';",
+    "replace": "if (i === at && !live && !run?.waiting && (!run?.ok || run?.off)) return 'done';",
+    "what": "a failed run shows every step ticked done (#104)",
+    "catches": "a failed run does not tick the step it stopped at"
+  },
+  {
+    "id": "raw-api-error",
+    "test": "desktop/test/raw-error-in-lines.test.js",
+    "file": "desktop/renderer/run-warnings.js",
+    "find": "  if (!PROVIDER.test(raw)) return raw.replace(",
+    "replace": "  if (raw) return raw;\n  if (!PROVIDER.test(raw)) return raw.replace(",
+    "what": "the AI provider's raw JSON error reaches the screen",
+    "catches": "rate-limit dump becomes a sentence"
+  },
+  {
+    "id": "focus-count-off-by-one",
+    "test": "desktop/integration/app/screen-focus.test.js",
+    "file": "desktop/renderer/pages/focus.js",
+    "find": "$('focus-count').textContent = String(today.applied);",
+    "replace": "$('focus-count').textContent = String(today.applied + 1);",
+    "what": "Focus counts one application too many today",
+    "catches": "every number on Focus matches the store"
+  },
+  {
+    "id": "target-not-written",
+    "test": "desktop/integration/app/screen-focus.test.js",
+    "file": "desktop/lib/strategy-settings.js",
+    "find": "  storage.writeText('config/preferences.json', JSON.stringify({...JSON.parse(before), daily_applications_target: target}, null, 2) + '\\n');",
+    "replace": "  void target;",
+    "what": "a changed daily target is never written to this Mac's store",
+    "catches": "\"Edit target\" keeps what is typed"
+  },
+  {
+    "id": "scout-silent",
+    "test": "tests/test_scout_says_each_step.py",
+    "file": "src/scout_run.py",
+    "find": "def read_lists(scout, db, seeds):",
+    "replace": "print = lambda *args, **kwargs: None\n\ndef read_lists(scout, db, seeds):",
+    "what": "Find new employers prints nothing while it works: the live log says Nothing to show yet for minutes (5 Oct 2026)",
+    "catches": "test_reading_the_lists_is_said_before_it_starts"
+  },
+  {
+    "id": "focus-hold-not-kept",
+    "test": "desktop/integration/app/screen-focus-dismiss.test.js",
+    "file": "desktop/renderer/pages/focus.js",
+    "find": "  settled.set(itemKey(item), Date.now() + HOLD_MS);\n  keepHolds();",
+    "replace": "  settled.set(itemKey(item), Date.now() + HOLD_MS);",
+    "what": "a dismissed Up next card is held in memory only: a reload paints it back from the saved Focus (5 Oct 2026)",
+    "catches": "removes it for good"
+  },
+  {
+    "id": "focus-hold-one-minute",
+    "test": "desktop/integration/app/screen-focus-dismiss.test.js",
+    "file": "desktop/renderer/pages/focus.js",
+    "find": "const HOLD_MS = 10 * 60000,",
+    "replace": "const HOLD_MS = 5000,",
+    "what": "the hold on a dismissed card ends before Notion lists the write: the card returns after a refresh (5 Oct 2026)",
+    "catches": "the in-app hold on a dismissed card outlives the store"
+  },
+  {
+    "id": "feedback-skip-not-held",
+    "test": "desktop/integration/app/screen-focus-dismiss.test.js",
+    "file": "desktop/renderer/pages/focus.js",
+    "find": "    dismiss(item);   // it leaves at once, like Done and Skip; undone if Notion refuses it\n",
+    "replace": "",
+    "what": "Skip this request waits for Notion before the card leaves (5 Oct 2026)",
+    "catches": "removes it for good"
+  },
+  {
+    "id": "local-run-skips-notion-page",
+    "test": "desktop/integration/app/screen-activity.test.js",
+    "file": "desktop/renderer/pages/activity-render.js",
+    "find": "(!r.log || !r.message || (kindOf(r) === 'mail' && !r.report?.length))",
+    "replace": "!r.log",
+    "what": "a run recorded on this Mac never reads its Notion page: Search analysis opens empty, Gmail check loses its header (5 Oct 2026)",
+    "catches": "without its message still shows its result"
+  },
+  {
+    "id": "weekly-plain-layout-unread",
+    "test": "desktop/test/engine-message-contract.test.js",
+    "file": "desktop/renderer/weekly-card.js",
+    "find": "const FINDING = /^(?:💡\\s*|Finding:\\s*)(.+)$/;",
+    "replace": "const FINDING = /^💡\\s*(.+)$/;",
+    "what": "the Search analysis card reads only the old emoji layout: its sections run together (5 Oct 2026)",
+    "catches": "weekly: headline, finding, summary"
+  },
+  {
+    "id": "raw-http-error",
+    "test": "desktop/test/message-plain-error.test.js",
+    "file": "desktop/renderer/run-warnings.js",
+    "find": "  if (!PROVIDER.test(raw) && (HTTP.test(raw) || HTML.test(raw))) {",
+    "replace": "  if (false) {",
+    "what": "a web service's HTTP error page reaches the screen as raw markup (#275)",
+    "catches": "a provider dump inside a sentence becomes words"
+  }
+]

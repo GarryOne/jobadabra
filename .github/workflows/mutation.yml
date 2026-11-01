@@ -1,8 +1,11 @@
 name: CI · Planted code bugs
-# Does the Finder catch SERIOUS bugs in the app's own code? (5 Oct 2026) Each mutant of desktop/e2e/mutants.json writes one real bug into critical-path code
-# (a lost calendar day, a failed run shown done, raw API text, a wrong count, a write that never reaches Notion) and runs the suite that should catch it
-# (e2e.yml, input `mutant`): red = caught, green = missed (one detector-miss issue). Each suite also runs once unmutated: red there makes its mutants "unknown".
-# The runs go one at a time: a suite owns one Notion page and its queue keeps one waiting run, so parallel dispatches would cancel each other. No AI review.
+# Job: report health
+# Do the tests catch SERIOUS bugs in the app's own code? (5 Oct 2026) Each mutant of desktop/e2e/mutants.json writes one real bug into critical-path code
+# (a lost calendar day, a failed run shown done, raw API text, a wrong count, a write that never reaches the store) and runs the test that should catch it:
+# red = caught, green = missed (one detector-miss issue). Each test also runs once unplanted: red there makes its mutants "unknown". Report only: no PR runs it.
+# Why (1 Nov 2026, owner via mac-07, tg's report §7 item 4; JOB-177): the screens moved from e2e suites to unit and integration tests and the list was emptied with
+# them. A mutant now names a `test` (desktop/e2e/mutate-tests.mjs runs it here, in seconds); one that names a `suite` still dispatches e2e.yml, one run at a time
+# (a suite owns one Notion page and its queue keeps one waiting run, so parallel dispatches would cancel each other). No AI review.
 on:
   schedule:
     - cron: '0 1 * * 0'   # Sunday 01:00 UTC: a quiet hour, before the weekly reviews
@@ -27,13 +30,39 @@ jobs:
       RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
     steps:
       - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
       - uses: actions/setup-node@v5
         with:
           node-version: '22'
-      - name: Run each baseline and mutant, one at a time
+      # The install of integration.yml's app job: the engine's packages (the Python tests), the app with its dev packages (scripts/stage.mjs needs esbuild),
+      # the Electron binary and a virtual display (the app-integration tests open a window), and the tests' own packages (the store-integration tests).
+      - run: pip install --quiet -r requirements.txt
+      - run: npm ci
+        working-directory: desktop
+      - name: The Electron binary
+        timeout-minutes: 5
+        working-directory: desktop
+        run: node node_modules/electron/install.js
+      - name: A virtual display and Electron's libraries
+        timeout-minutes: 5
+        run: bash tools/apt-install.sh xvfb libnss3 libgbm1 libasound2t64 libgtk-3-0 libxss1 fonts-noto-color-emoji fonts-dejavu-core
+      - run: npm ci || npm install
+        working-directory: desktop/e2e
+      - name: Stage the app's shared files
+        working-directory: desktop
+        run: node scripts/stage.mjs
+      - name: Each planted bug that names a test, against its test (seconds each)
+        timeout-minutes: 30
+        env:
+          ELECTRON_DISABLE_SANDBOX: '1'   # Ubuntu 24.04 runners refuse Chromium's sandbox (integration.yml)
+          DESKTOP_RENDER_REQUIRED: '1'    # no electron or display is a red baseline (unknown), never a green skip
+        run: xvfb-run -a --server-args='-screen 0 1440x900x24' node desktop/e2e/mutate-tests.mjs runs.json
+      - name: Run each baseline and mutant that names a suite, one at a time
         run: |
           set -uo pipefail
-          echo '{}' > runs.json
+          [ -f runs.json ] || echo '{}' > runs.json
           node desktop/e2e/mutate.mjs --plan > plan.json
           count=$(jq length plan.json)
           for i in $(seq 0 $((count - 1))); do

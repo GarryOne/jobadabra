@@ -3,17 +3,19 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import {test} from 'node:test';
-import {applyMutant, baselineKey, issueActions, issueBody, issueTitle, plan, score, summary} from '../../lib/mutation.mjs';
+import {applyMutant, baselineKey, isTestMutant, issueActions, issueBody, issueTitle, plan, score, summary, testBaselineKey, testCommand} from '../../lib/mutation.mjs';
 
 const root = path.resolve(new URL('../../../..', import.meta.url).pathname);
 const mutants = JSON.parse(fs.readFileSync(new URL('../../mutants.json', import.meta.url), 'utf8'));
 
-test('every mutant applies to the current code exactly once, changes it, and names a suite that exists', () => {
+test('every mutant applies to the current code exactly once, changes it, and names a test or a suite that exists', () => {
+  assert.ok(mutants.length > 0, 'no planted code bugs: the weekly run would score nothing (1 Nov 2026: the integration moves emptied this list)');
   for (const mutant of mutants) {
     const source = fs.readFileSync(path.join(root, mutant.file), 'utf8');
     const changed = applyMutant(source, mutant);
     assert.notEqual(changed, source, mutant.id);
-    assert.ok(fs.existsSync(path.join(root, 'desktop', 'e2e', 'suites', `${mutant.suite}.mjs`)), `${mutant.id}: no suite ${mutant.suite}`);
+    if (isTestMutant(mutant)) assert.ok(fs.existsSync(path.join(root, mutant.test)), `${mutant.id}: no test ${mutant.test}`);
+    else assert.ok(fs.existsSync(path.join(root, 'desktop', 'e2e', 'suites', `${mutant.suite}.mjs`)), `${mutant.id}: no suite ${mutant.suite}`);
   }
   assert.equal(new Set(mutants.map(item => item.id)).size, mutants.length, 'ids are unique');
 });
@@ -46,8 +48,9 @@ function stepsRunBy(suite) {
 // 27 Oct 2026: three Focus mutants named `focus`, whose catching steps ran only in its other half (focusdismiss, deleted 1 Nov 2026 with J19): the guard read the whole file and passed (#1907-#1909).
 test('every mutant names the step that catches it, and its suite runs that step', async () => {
   for (const mutant of mutants) {
-    assert.ok(mutant.catches, `${mutant.id}: no "catches" (the words of the step that turns red when this bug is in the app)`);
-    assert.ok(await stepRunBy(mutant.suite, mutant.catches), `${mutant.id}: the ${mutant.suite} suite runs no step with "${mutant.catches}"`);
+    assert.ok(mutant.catches, `${mutant.id}: no "catches" (the words of the step or test that turns red when this bug is in the app)`);
+    if (isTestMutant(mutant)) assert.ok(fs.readFileSync(path.join(root, mutant.test), 'utf8').includes(mutant.catches), `${mutant.id}: ${mutant.test} has no test with "${mutant.catches}"`);
+    else assert.ok(await stepRunBy(mutant.suite, mutant.catches), `${mutant.id}: the ${mutant.suite} suite runs no step with "${mutant.catches}"`);
   }
 });
 
@@ -86,8 +89,8 @@ test('a finding the baseline did not raise kills a mutant too: a truth check fil
 
 // 27 Oct 2026: CI picks the store by run number (lib/store.mjs), so a mutant whose bug lives on one store's path was caught or missed by the date: on 25 Oct
 // the Notion-path mutants ran on this Mac's store, where their code never runs, and survived (#1906 #1910). Each mutant pins the store its bug lives on.
-test('every mutant pins the store its bug lives on, and a suite that pins its own store agrees', () => {
-  for (const mutant of mutants) {
+test('every suite mutant pins the store its bug lives on, and a suite that pins its own store agrees', () => {
+  for (const mutant of mutants.filter(item => !isTestMutant(item))) {
     assert.ok(['sqlite', 'standin'].includes(mutant.store), `${mutant.id}: "store" must be sqlite or standin, not ${mutant.store}`);
     const own = fs.readFileSync(path.join(root, 'desktop', 'e2e', 'suites', `${mutant.suite}.mjs`), 'utf8');
     const pinned = /export const store = '(\w+)'/.exec(own)?.[1];
@@ -112,4 +115,31 @@ test('a run opens an issue per missed mutant, comments on a known one, closes th
   assert.deepEqual(actions.comment.map(item => item.number), [2]);
   assert.deepEqual(actions.create.map(item => item.id), ['c']);
   assert.ok(!actions.close.some(item => item.number === 4), 'an unknown outcome leaves its issue open');
+});
+
+// 1 Nov 2026 (tg's report §7 item 4, JOB-177): the screens left e2e for unit and integration tests, so a mutant names the test file that catches it.
+test('a test mutant is judged against its own test run unplanted; the e2e plan leaves it out', () => {
+  const list = [{id: 't1', test: 'desktop/test/a.test.js', what: 'a'}, {id: 't2', test: 'desktop/test/a.test.js', what: 'b'}, {id: 't3', test: 'tests/test_b.py', what: 'c'}, {id: 's1', suite: 'apply', store: 'sqlite', what: 'd'}];
+  assert.deepEqual(plan(list), [{mutant: 'baseline', suite: 'apply', store: 'sqlite'}, {mutant: 's1', suite: 'apply', store: 'sqlite'}]);
+  const result = score(list, {[testBaselineKey('desktop/test/a.test.js')]: 'success', t1: 'failure', t2: 'success', [testBaselineKey('tests/test_b.py')]: 'failure', t3: 'failure', [baselineKey('apply', 'sqlite')]: 'success', s1: 'failure'});
+  assert.deepEqual(result.rows.map(row => row.outcome), ['killed', 'survived', 'unknown', 'killed']);
+  assert.equal(result.rows[0].why, 'its test went red');
+  assert.match(result.rows[2].why, /^tests\/test_b\.py is not green without the planted bug/);
+  assert.match(summary(result), /Planted code bugs: 67% caught \(2 caught, 1 missed, 1 unknown\)/);
+});
+
+test('each test runs the way CI runs it, from its own folder', () => {
+  assert.deepEqual(testCommand('desktop/test/run-status.test.js'), {cwd: 'desktop', argv: ['node', '--import', './test/no-live-site.mjs', '--test', 'test/run-status.test.js']});
+  assert.deepEqual(testCommand('desktop/integration/app/screen-focus.test.js'), {cwd: 'desktop', argv: ['node', '--import', './test/no-live-site.mjs', '--test', 'integration/app/screen-focus.test.js']});
+  assert.equal(testCommand('desktop/integration/store/x.test.mjs').cwd, 'desktop/e2e');
+  assert.deepEqual(testCommand('tests/test_scout_says_each_step.py'), {cwd: '.', argv: ['python3', '-m', 'unittest', 'tests.test_scout_says_each_step']});
+  assert.throws(() => testCommand('site/x.test.js'), /no way to run/);
+  for (const mutant of mutants.filter(isTestMutant)) assert.doesNotThrow(() => testCommand(mutant.test), mutant.id);
+});
+
+test('a missed test mutant\'s issue names its test and how to replay it on this Mac', () => {
+  const [row] = score([{id: 'day', test: 'desktop/test/calendar.test.js', file: 'desktop/renderer/calendar.js', what: 'a day is lost'}], {[testBaselineKey('desktop/test/calendar.test.js')]: 'success', day: 'success'}).rows;
+  const body = issueBody(row, 'https://run');
+  assert.match(body, /its test `desktop\/test\/calendar\.test\.js` stayed green/);
+  assert.match(body, /node desktop\/e2e\/mutate\.mjs day`, then `\(cd desktop && node --import \.\/test\/no-live-site\.mjs --test test\/calendar\.test\.js\)`, then `git checkout -- desktop\/renderer\/calendar\.js`/);
 });

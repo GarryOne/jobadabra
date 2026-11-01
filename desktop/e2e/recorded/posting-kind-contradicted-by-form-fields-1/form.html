@@ -1,0 +1,10 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Support Engineer, Mislabelled at E2E Mislabelled Co</title>
+<style>body{font:15px/1.4 system-ui,sans-serif;max-width:640px;margin:24px auto;padding:0 16px}.field{margin:14px 0}label{display:block;margin-bottom:4px}input[type=text],input[type=email],input[type=tel],input[type=url],select,textarea{width:100%;padding:6px;box-sizing:border-box}</style></head>
+<body><h1>Support Engineer, Mislabelled</h1><p>E2E Mislabelled Co · Zurich, Switzerland</p>
+<form id="application_form"><div class="field"><label for="first_name">First name *</label><input id="first_name" name="first_name" type="text" required ></div><div class="field"><label for="last_name">Last name *</label><input id="last_name" name="last_name" type="text" required ></div><div class="field"><label for="email">E-mail *</label><input id="email" name="email" type="email" required ></div><div class="field"><label for="question_3001">Years of experience with Kubernetes *</label><input id="question_3001" name="question_3001" type="text" required ></div><div class="field"><button type="submit" id="submit_app">Submit Application</button></div></form>
+<script>
+const fired = kind => fetch('/__fired?kind=' + kind + '&form=' + encodeURIComponent(location.pathname), {method: 'POST', keepalive: true});
+document.addEventListener('click', event => { if (event.target.closest('[type=submit]')) fired('click'); }, true);
+document.addEventListener('submit', event => { event.preventDefault(); fired('submit'); }, true);
+
+</script></body></html>

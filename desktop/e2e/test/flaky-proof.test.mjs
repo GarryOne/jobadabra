@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {INTERMITTENT, flakyProof, intermittentComment, labelRerun} from '../lib/flaky-proof.mjs';
 import {runJourneys} from '../lib/apply-journeys.mjs';
-import {LATE, REVEAL} from '../lib/forms.mjs';
+import {LATE, ONEPAGE} from '../lib/forms.mjs';
 import {stepClock} from '../lib/wait-on-state.mjs';
 import {toClose} from '../lib/triage-issues.mjs';
 
@@ -68,7 +68,7 @@ async function journeyFailure(t, {head, showTab = true, state = null, immediate 
   t.mock.timers.enable({apis: ['Date', 'setTimeout']});
   let failure, opened = false;
   const late = head.startsWith('a form drawn after a spinner');
-  const tab = {url: () => late ? LATE.formUrl : REVEAL.url, evaluate: async fn => {
+  const tab = {url: () => late ? LATE.formUrl : ONEPAGE.url, evaluate: async fn => {
     if (String(fn).includes('window.got')) return {name: 'cv.pdf', size: 10};
     if (String(fn).includes('Object.fromEntries')) return late ? {question_3001: {value: '5'}} : {};
     if (String(fn).includes('getElementById')) return true;
@@ -81,7 +81,7 @@ async function journeyFailure(t, {head, showTab = true, state = null, immediate 
   }};
   let settled = false;
   const started = Date.now();
-  const pending = runJourneys(ctx, {page: {evaluate: async () => { opened = true; }}, forms: {fired: []}, cv: {name: 'cv.pdf', size: 10}, dumpExtension: async () => {}, fail: problems => {
+  const pending = runJourneys(ctx, {page: {evaluate: async () => { opened = true; return []; }}, forms: {fired: []}, cv: {name: 'cv.pdf', size: 10}, dumpExtension: async () => {}, fail: problems => {
     if (problems.length) throw new Error(problems.join('; '));
   }}).finally(() => { settled = true; });
   for (let tick = 0; !settled && tick < 20; tick++) { await new Promise(setImmediate); if (!settled) t.mock.timers.tick(500); }
@@ -95,25 +95,25 @@ async function journeyFailure(t, {head, showTab = true, state = null, immediate 
 
 // Replay both incident situations through their producers; G5 reads only the new cap messages.
 for (const [head, showTab] of [
-  ['an upload slot that appears only', true],
+  ['the account and the application on one page', true],
   ['a form drawn after a spinner', false],
 ]) test(`a stalled journey reports timing without fallout: ${head}`, async t => {
   const message = await journeyFailure(t, {head, showTab});
   assert.equal(flakyProof(message).flaky, true, message);
   assert.match(flakyProof(message).why, /^timing:/);
-  assert.doesNotMatch(message, /slot never received|first name was not filled|Kubernetes years/);
+  assert.doesNotMatch(message, /first name ""|Kubernetes years ""/);
 });
 
 for (const state of ['done', 'error', 'stopped']) test(`a reported ${state} stays a wrong value`, async t => {
-  const message = await journeyFailure(t, {head: 'an upload slot that appears only', state: {state}});
-  if (state === 'done') assert.match(message, /the first name was not filled; Kubernetes years is not the kit's 8/);
+  const message = await journeyFailure(t, {head: 'the account and the application on one page', state: {state}});
+  if (state === 'done') assert.match(message, /first name "", expected Ada; Kubernetes years "", its kit says 3; the session is not at the form step/);
   else assert.equal(message, `state: {"state":"${state}"}`);
   assert.equal(flakyProof(message).flaky, false);
 });
 
 test('a closed tab fails immediately and is a wrong value, never timing', async t => {
   const state = {state: 'unreadable', closed: true, error: 'Target page has been closed'};
-  const message = await journeyFailure(t, {head: 'an upload slot that appears only', state, immediate: true});
+  const message = await journeyFailure(t, {head: 'the account and the application on one page', state, immediate: true});
   assert.equal(message, `state: ${JSON.stringify(state)}`);
   assert.equal(flakyProof(message).flaky, false);
 });

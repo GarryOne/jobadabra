@@ -1,5 +1,5 @@
 {
-  "about": "Slow first-try passed seconds, 24–31 Oct 2026 main and beta CI; canonical slice weights and timing regression evidence.",
+  "about": "Slow first-try passed seconds, 24\u201331 Oct 2026 main and beta CI; canonical slice weights and timing regression evidence.",
   "method": "tools/e2e-step-timings.mjs --suite <suite> --dir <first-try artifacts> --json; maxSeconds after the tool excludes shard-runs above 1.5x their median. Older retry-overwritten artifacts recovered from the first suite-step interval in job logs. Preserve tenths: rounding 149 cases up adds 73 seconds.",
   "applyflowsRuns": 80,
   "recordedRuns": 66,
@@ -164,10 +164,7 @@
     "a sign-in page before the form that refuses": 97,
     "a sign-in page before the form:": 62.6,
     "a form drawn after a spinner": 58.4,
-    "an upload slot that appears only when +": 80.2,
-    "the AI gave a page the wrong kind": 94.2,
-    "a sign-up page before the form": 95.5,
-    "a form with collapsed sections": 92.8
+    "a sign-up page before the form": 95.5
   },
   "recorded": {
     "accordion-body-after-head-1": 7.4,

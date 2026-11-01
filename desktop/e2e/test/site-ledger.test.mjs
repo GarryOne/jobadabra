@@ -88,7 +88,7 @@ test('two writers at once lose no visit', async () => {
 });
 
 // The class: a file that navigates a browser to an address must guard it or be listed here as offline (a page of this repo, a recorded page, a chrome:// page).
-const OFFLINE = new Set(['lib/page-replay.mjs', 'lib/replay-browser.mjs', 'lib/row-replay.mjs', 'lib/twin-refresh.mjs', 'suites/visitsauto.mjs']);   // recorded pages, a local fixture server, a routed fake host, chrome://extensions
+const OFFLINE = new Set(['lib/page-replay.mjs', 'lib/replay-browser.mjs', 'lib/row-replay.mjs', 'lib/twin-refresh.mjs']);   // recorded pages, a local fixture server, a routed fake host, chrome://extensions
 const walk = dir => fs.readdirSync(dir, {withFileTypes: true}).flatMap(item => item.name === 'node_modules' || item.name === 'test' || item.name === 'recorded' ? [] : item.isDirectory() ? walk(path.join(dir, item.name)) : item.name.endsWith('.mjs') ? [path.join(dir, item.name)] : []);
 test('every file that sends a browser to a real site calls guardLiveVisit', () => {
   const live = ['lib/live-row.mjs', 'lib/apply-live.mjs', 'lib/spool-tabs.mjs', 'ladder-capture.mjs', 'record-sites.mjs'];

@@ -6,7 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {test} from 'node:test';
 import {fileURLToPath, pathToFileURL} from 'node:url';
-import {buildReport, coveredLines, journeyTable, readE2eMap, readPython, readV8, renderMarkdown, scopeOf, walkScope} from '../../tools/coverage-report.mjs';
+import {buildReport, coveredLines, journeyTable, readE2eMap, readPython, readV8, renderMarkdown, scopeOf, suiteCadence, walkScope} from '../../tools/coverage-report.mjs';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const write = (root, rel, text) => { fs.mkdirSync(path.dirname(path.join(root, rel)), {recursive: true}); fs.writeFileSync(path.join(root, rel), text); };
@@ -20,6 +20,9 @@ function checkout() {
   write(root, 'desktop/lib/x.test.js', 'a test is not product code\n');
   write(root, 'desktop/e2e/suites/jobs.mjs', "export const cadence = 'night-report';\n");
   write(root, 'desktop/e2e/suites/wizard.mjs', 'export const x = 1;\n');
+  // qualityai's shape (Gitar, PR 2830): the suite re-exports a cadence another module holds.
+  write(root, 'desktop/e2e/suites/qualityai.mjs', "import {PLANNER} from '../lib/quality-journey.mjs';\nexport const cadence = PLANNER.cadence;\n");
+  write(root, 'desktop/e2e/lib/quality-journey.mjs', "export const PLANNER = Object.freeze({\n  cadence: 'night-report', budgetMinutes: 10,\n});\n");
   write(root, 'desktop/integration/app/screen-focus.test.js', '// a test\n');
   write(root, 'desktop/test/has-unit.test.js', '// a unit test\n');
   return root;
@@ -83,21 +86,27 @@ test('a missing or empty source is "not measured", never 0%', () => {
 
 test('journeys: a layer is named from facts in the checkout; one with nothing is "no test"', () => {
   const root = checkout();
+  assert.equal(suiteCadence(root, 'jobs'), 'night-report');
+  assert.equal(suiteCadence(root, 'qualityai'), 'night-report', 'a cadence re-exported from another module');
+  assert.equal(suiteCadence(root, 'wizard'), '');
+  assert.equal(suiteCadence(root, 'nope'), '');
   const registry = {journeys: [{id: 'J1', tier: 1, steps: [{suite: 'wizard', step: 's'}]}, {id: 'J2', tier: 2, steps: [{suite: 'apply', step: 't'}]}], kept: []};
   const journeys = [
     {n: 1, name: 'Set up', priority: 'HIGH', card: {}, suites: ['wizard'], unit: []},
     {n: 2, name: 'Focus', priority: 'MED', card: {}, suites: ['focus'], unit: []},
     {n: 3, name: 'Find', priority: 'HIGH', card: {}, suites: ['jobs'], unit: ['desktop/test/has-unit.test.js', 'desktop/test/gone.test.js']},
     {n: 4, name: 'Language', priority: 'HIGH', card: {}, suites: ['apply'], unit: []},
+    {n: 5, name: 'Mail', priority: 'MED', card: {}, suites: ['qualityai'], unit: []},
   ];
-  const [one, two, three, four] = journeyTable({journeys, registry, root});
+  const [one, two, three, four, five] = journeyTable({journeys, registry, root});
   assert.deepEqual(one.layers, ['e2e']);
   assert.deepEqual(two.layers, ['integration']);
   assert.deepEqual(three.layers, ['unit', 'nightly report']);
   assert.deepEqual(three.unit, ['desktop/test/has-unit.test.js']);   // a listed file that does not exist counts for nothing
   assert.equal(four.tested, false, 'a tier 2 suite is not e2e');
-  const report = buildReport({tree: walkScope(root), layers: [], journeys: [one, two, three, four]});
-  assert.equal(report.journeys.withTest, 3);
+  assert.deepEqual(five.nightly, ['qualityai'], 'a journey whose only night suite is qualityai still has its nightly layer');
+  const report = buildReport({tree: walkScope(root), layers: [], journeys: [one, two, three, four, five]});
+  assert.equal(report.journeys.withTest, 4);
   assert.match(renderMarkdown(report), /\| 4 \| Language \| HIGH \| \*\*no test\*\* \|/);
 });
 

@@ -145,6 +145,22 @@ const sumCells = cells => {
   return {state: 'measured', covered, total, pct: total ? Math.round((1000 * covered) / total) / 10 : 0};
 };
 
+/**
+ * A suite's cadence as its module exports it, read from the text (importing a suite would load Playwright): `export const cadence = 'night-report'`, or `= PLANNER.cadence` followed to the
+ * module that imports PLANNER from and holds `cadence: '…'` (qualityai, lib/quality-journey.mjs). '' when it says nothing readable.
+ */
+export function suiteCadence(root, suite) {
+  const file = path.join(root, 'desktop/e2e/suites', `${suite}.mjs`);
+  if (!fs.existsSync(file)) return '';
+  const text = fs.readFileSync(file, 'utf8');
+  const literal = /export const cadence\s*=\s*'([^']+)'/.exec(text);
+  if (literal) return literal[1];
+  const named = /export const cadence\s*=\s*(\w+)\.cadence\b/.exec(text);
+  const from = named && new RegExp(`import\\s*\\{[^}]*\\b${named[1]}\\b[^}]*\\}\\s*from\\s*'([^']+)'`).exec(text);
+  const source = from && path.resolve(path.dirname(file), from[1]);
+  return source && fs.existsSync(source) ? (/\bcadence:\s*'([^']+)'/.exec(fs.readFileSync(source, 'utf8')) || [])[1] || '' : '';
+}
+
 /** The journeys of the GTM board (docs/gtm-journeys.json) with the layers that test each, from facts in the checkout: the e2e registry, the integration and unit files that exist. */
 export function journeyTable({journeys, registry, root}) {
   const tier1 = new Set([...(registry?.journeys || []).filter(j => j.tier === 1).flatMap(j => (j.steps || []).map(s => s.suite)), ...(registry?.kept || []).map(s => s.suite)].filter(Boolean));
@@ -152,10 +168,7 @@ export function journeyTable({journeys, registry, root}) {
   const flat = name => name.toLowerCase().replace(/[^a-z0-9]/g, '');
   const walkFiles = dir => (fs.existsSync(dir) ? fs.readdirSync(dir, {withFileTypes: true}).flatMap(e => (e.isDirectory() ? walkFiles(path.join(dir, e.name)) : [e.name])) : []);
   const integration = walkFiles(integrationDir).filter(name => /\.test\.m?js$/.test(name)).map(flat);
-  const nightly = suite => {
-    const file = path.join(root, 'desktop/e2e/suites', `${suite}.mjs`);
-    return fs.existsSync(file) && /cadence\s*=\s*'night-report'/.test(fs.readFileSync(file, 'utf8'));
-  };
+  const nightly = suite => suiteCadence(root, suite) === 'night-report';
   return (journeys || []).map(j => {
     const suites = j.suites || [];
     const e2e = suites.filter(s => tier1.has(s));

@@ -73,6 +73,7 @@ Order per move: the private side lands first, then the jobadabra removal. Before
 - [x] 2/6 engine rename (proof: app-core/package.json)
 - [x] 3/6 web shell (proof: none: merged as jobadabra-web#274, e8a1907; deleted again in 4c)
 - [x] 4a/6 timers on the site Worker, off (proof: none: merged as jobadabra-web#279, 5e8a58f)
+- [x] 4b-0/6 the bot Worker's GitHub calls follow a repo move (a 301 re-sends the POST) (proof: app-core/test/github-fetch.test.js)
 - [ ] 4b/6 the switch by day
 - [ ] 4c/6 delete the bot Worker and shells
 - [x] 5a/6 shared ready-fill files to desktop/ready-fill (proof: desktop/ready-fill/night.mjs @5a58de5)

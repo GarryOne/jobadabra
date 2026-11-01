@@ -9,7 +9,7 @@
 //     after the panel's visible 5 s countdown with Cancel (owner, 10 Oct 2026; replaces "never started by itself") (desktop/test/session-flow.test.js).
 //  3. The session is found one way (lib/journey-identity.js) and its step changes only through terminals.js -> lib/application-journey.js (desktop/test/journeys.test.js).
 
-import {resolveSession} from './journey-identity.js';
+import {identityServices, resolveSession} from './journey-identity.js';
 import {STUCK} from './application-journey.js';
 
 const hostOf = url => { try { return new URL(String(url)).hostname; } catch { return ''; } };
@@ -32,11 +32,11 @@ export function createSessionFlow({terminals, review, apply, appLog, toWindow = 
       appLog('review', `stuck report about a page ${carried.id}'s tab has left: ignored`, {host: event.host, why: event.why});
       return 'stale-page';
     }
-    const match = carried ? (carried.kind === 'form' && !carried.outcome ? carried : null) : (terminals.get(resolveSession({job: event.job, url: event.url}, {get: terminals.get, list: terminals.list, isFormOf: apply.isFormOf})) || null);   // lib/journey-identity.js: by the tab's job, then the page
+    const match = carried ? (carried.kind === 'form' && !carried.outcome ? carried : null) : (terminals.get(resolveSession({job: event.job, url: event.url, boot: event.boot}, identityServices({terminals, review, isFormOf: apply.isFormOf}))) || null);   // lib/journey-identity.js: by the tab's job, then the page; never across browser runs
     appLog('extension', `can't reach the form: ${event.why}`, {host: event.host, matched: !!match, tab: event.tab ?? null, by: carried ? 'session' : 'job'});
     const why = STUCK.includes(event.why) ? event.why : 'no-form';   // the journey's one list of reasons (application-journey.js STUCK); anything else is 'no-form'
     // A Claude session on the same job at a sign-in page: its card says it is at the account step.
-    const claudes = carried ? (carried.kind === 'claude' ? [carried] : []) : terminals.list().filter(session => session.kind === 'claude' && !session.outcome && apply.isFormOf(event.url, session.url));
+    const claudes = carried ? (carried.kind === 'claude' ? [carried] : []) : terminals.list().filter(session => session.kind === 'claude' && !session.outcome && apply.isFormOf(event.url, session.url) && !review.heldElsewhere?.(session.id, String(event.boot || '')));
     if (why === 'account') for (const other of claudes) terminals.setStage(other.id, 'account', event.host);
     if (!match) return 'no-session';
     if (!terminals.noteStuck(match.id, why, event.host, event.needs, event.accountStep) && match.stuck === 'account' && why === 'no-form') appLog('extension', 'no-form from an earlier tab: the account step stays', {host: event.host, id: match.id});

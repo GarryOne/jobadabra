@@ -157,7 +157,7 @@ async function outcomeOnce(tab, frameId, memo) {
     await chrome.storage.session.remove(memoKey(tab)).catch(() => {});
     const id = await identityOf(tab);
     decide('fill', 'sign-in refused: sign-up next', {host});
-    apiFor(tab.id, config, '/extension/event', {method: 'POST', body: JSON.stringify({type: 'account-pressed', host, url: id.url, job: id.job, state: 'refused', session: id.session})}).catch(() => {});
+    apiFor(tab.id, config, '/extension/event', {method: 'POST', body: JSON.stringify({type: 'account-pressed', host, url: id.url, job: id.job, state: 'refused', session: id.session, boot: id.boot})}).catch(() => {});
     return;
   }
   if (action === 'flag') { await flag(tab, frameId, result.needs || ''); await giveUp(tab, host, 'the site did not accept it', result.needs || ''); return; }   // the form stays: the person finishes it, and the memo stays for the next look
@@ -169,7 +169,7 @@ async function outcomeOnce(tab, frameId, memo) {
   }
   await chrome.storage.session.remove(memoKey(tab)).catch(() => {});
   const id = await identityOf(tab);
-  apiFor(tab.id, config, '/extension/event', {method: 'POST', body: JSON.stringify({type: 'account-pressed', host, url: id.url, job: id.job, state: action, session: id.session})}).catch(() => {});
+  apiFor(tab.id, config, '/extension/event', {method: 'POST', body: JSON.stringify({type: 'account-pressed', host, url: id.url, job: id.job, state: action, session: id.session, boot: id.boot})}).catch(() => {});
   if (readsAgain(action, inPlace)) readAgain(tab, id.job).catch(() => {});   // the account is usable: the page it brought (often the same address) is read and filled as any other
   // The page asks for the code the site mailed (owner, 10 Oct 2026): in "Do it for me" the app reads it from Gmail (the AI picks it) and this types it into the box
   // the account AI named, then presses the form's button once (pressAccountButton's floors). The code is never logged; "Let me check each step": the person types it.
@@ -184,7 +184,7 @@ async function outcomeOnce(tab, frameId, memo) {
 
 // What the extension did on the account page, for the session card's record (lib/application-journey.js invariant 6): a consent accepted (its wording) or a code typed (never its value).
 function tellFact(config, tab, host, fact, text = '') {
-  identityOf(tab).then(id => apiFor(tab.id, config, '/extension/event', {method: 'POST', body: JSON.stringify({type: 'account-fact', fact, text: String(text).slice(0, 80), host, url: id.url, job: id.job, session: id.session})})).catch(() => {});
+  identityOf(tab).then(id => apiFor(tab.id, config, '/extension/event', {method: 'POST', body: JSON.stringify({type: 'account-fact', fact, text: String(text).slice(0, 80), host, url: id.url, job: id.job, session: id.session, boot: id.boot})})).catch(() => {});
 }
 
 export async function accountStep(tab, frameId) {
@@ -208,7 +208,7 @@ async function accountStepOnce(tab, frameId) {
   stepOf.set(tab.id, step);
   if (work && !step && !work.empty) return {filled: 0};   // no step the AI knows: the password only, and every box already has one
   const id = await identityOf(tab);
-  const answer = await apiFor(tab.id, config, '/extension/site-password', {method: 'POST', body: JSON.stringify({host, session: id.session, job: id.job, url: id.url})});
+  const answer = await apiFor(tab.id, config, '/extension/site-password', {method: 'POST', body: JSON.stringify({host, session: id.session, job: id.job, url: id.url, boot: id.boot})});
   await bindSession(tab.id, answer?.session, id.session);   // the app resolved which application this tab is (by its job): kept for the next report
   if (!answer?.ok || !answer.password) {
     // No password saved for this site: the person signs in, or chooses one to create the account. The run names that need once, never a silent stop (the outcome contract's

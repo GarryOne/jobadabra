@@ -5,15 +5,22 @@
 // and the Gmail check's "enter the code" never reached the card). Guards: test/journey-identity.test.js, test/journeys.test.js.
 //
 // Invariants: 1. a carried id of a live form session is never overridden by a job match (two applications on one board stay apart);
-//             2. a finished session (outcome set) is never matched; 3. no id, no job, no address: '' (never a guess).
+//             2. a finished session (outcome set) is never matched; 3. no id, no job, no address: '' (never a guess);
+//             4. a job or address match never takes a session whose tab is in another browser run that still reports (`boot`: the run the report comes from; a hidden-browser
+//                read of the same job carries a read id that is no session: #43, #2747, #2753). Guard: test/tab-match-class.test.js.
 
-export function resolveSession({session, job, url} = {}, {get, list, isFormOf}) {
+/** The services every handler hands resolveSession, built in ONE place so none can forget the browser-run check. */
+export function identityServices({terminals, review, isFormOf}) {
+  return {get: id => terminals.get(id), list: () => terminals.list(), isFormOf, heldElsewhere: review.heldElsewhere};
+}
+
+export function resolveSession({session, job, url, boot = ''} = {}, {get, list, isFormOf, heldElsewhere = () => false}) {
   const live = item => item && item.kind === 'form' && !item.outcome;
   const own = session ? get(String(session)) : null;
   if (live(own)) return own.id;
   for (const address of [job, url]) {
     if (!address) continue;
-    const found = list().find(item => live(item) && isFormOf(address, item.url));
+    const found = list().find(item => live(item) && isFormOf(address, item.url) && !heldElsewhere(item.id, String(boot || '')));
     if (found) return found.id;
   }
   return '';

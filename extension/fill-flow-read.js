@@ -107,7 +107,7 @@ export async function correctPage(step) {
   if (role === 'account') {
     const host0 = (() => { try { return new URL(tab.url).hostname; } catch { return ''; } })();
     const id = await identityOf(tab);
-    const peek = await apiFor(tab.id, await settings(), '/extension/site-password', {method: 'POST', body: JSON.stringify({host: host0, peek: true, session: id.session, job: id.job, url: id.url})}).catch(() => null);
+    const peek = await apiFor(tab.id, await settings(), '/extension/site-password', {method: 'POST', body: JSON.stringify({host: host0, peek: true, session: id.session, job: id.job, url: id.url, boot: id.boot})}).catch(() => null);
     await bindSession(tab.id, peek?.session, id.session);
     if (peek?.mode !== 'confirm') { role = 'form'; noted = 'account'; decide('fill', `account page${kind?.accountStep ? ` (${kind.accountStep})` : ''}: filled with your details`, {host: host0}); }   // 'confirm': waiting for its mail, nothing typed again
   }

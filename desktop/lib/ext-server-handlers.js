@@ -27,7 +27,7 @@ import {log as appLog} from './log.js';
 import {markedSession} from './session-tab.js';
 import {accountCodeAnswer, codeFromMail, confirmAccount} from './account-confirm.js';
 import {createAccountCheck} from './account-check.js';
-import {resolveSession} from './journey-identity.js';
+import {identityServices, resolveSession} from './journey-identity.js';
 import {automationOf, modeOf, record} from './site-accounts.js';
 import {resultOf} from './application-result.js';
 import {startForm, stopLiveForms} from './stop-all.js';
@@ -41,14 +41,14 @@ export function registerExtServerHandlers(ctx) {
   registerReportHandlers({ipcMain, storage, uploader: createUploader({storage})});   // the panel's Report popup (lib/report-handlers.js; sends only after the person's Send in the popup)
   // The Gmail check for an account awaiting its confirmation mail (lib/account-check.js): after the account button, and again when its sign-in page is met (10 Oct 2026: the page
   // sat untouched in 'confirm' mode with no check and no word to the person). A link in the mail is opened; a code, or no mail, is told to the session.
-  const ids = {get: id => terminals.get(id), list: () => terminals.list(), isFormOf: (address, posting) => applyLib.isFormOf(address, posting)};
+  const ids = identityServices({terminals, review, isFormOf: (address, posting) => applyLib.isFormOf(address, posting)});   // the job match asks the browser-run check too (lib/journey-identity.js)
   const accountCheck = createAccountCheck({confirm: confirmAccount, noteStuck: (...args) => terminals.noteStuck(...args)});
   const checkAccount = ({host, email, session, ...rest}) => accountCheck({host, email, session, run: args => pipeline.run(storage, args), open: link => applyLib.openOne(link, {session: String(session || '')}),
     mark: () => { storage.saveSettings({siteAccounts: record(storage.settings().siteAccounts, host, email, 'confirmed', Date.now(), terminals.record(String(session || ''))?.company || '')}); if (session) terminals.setAccount(session, 'created'); }, ...rest});
   // A site with no account item yet gets its OWN generated password (owner, 10 Oct 2026: a different one per site; it replaced the 8 Oct one-password-everywhere), kept under the
   // site's name so Settings → Credentials lists it with the profile's email. An account with an item keeps the one it has.
-  server.setSitePasswordHandler(async ({host, peek, session: carried, job, url} = {}) => {
-    const sessionId = resolveSession({session: carried, job, url}, ids);   // the tab's identity, resolved one way (lib/journey-identity.js); answered so the extension binds it
+  server.setSitePasswordHandler(async ({host, peek, session: carried, job, url, boot} = {}) => {
+    const sessionId = resolveSession({session: carried, job, url, boot}, ids);   // the tab's identity, resolved one way (lib/journey-identity.js); answered so the extension binds it
     const company = String(terminals.record(String(sessionId || ''))?.company || '');   // the job's company: one host can serve several employers, each with its own account
     const applying = terminals.list().some(session => !session.outcome && !session.endedAt);
     if (DEMO || !applying || !credentials.forExtension(host, {applying, read: () => 'x'}).ok) {
@@ -78,15 +78,15 @@ export function registerExtServerHandlers(ctx) {
     const email = DEMO ? '' : await Promise.resolve(notionGate.tracking(storage) ? contactDetails.read(storage) : {}).then(contact => contact?.email || '').catch(() => '');
     return accountCodeAnswer({mode: automationOf(storage.settings()), host, email, read: found => codeFromMail({...found, run: args => pipeline.run(storage, args)})});
   });
-  server.setAccountFactHandler(({fact, text, session: carried, job, url} = {}) => {   // the card's account record: a consent accepted (the page's own wording), a code typed
-    const session = resolveSession({session: carried, job, url}, ids);
+  server.setAccountFactHandler(({fact, text, session: carried, job, url, boot} = {}) => {   // the card's account record: a consent accepted (the page's own wording), a code typed
+    const session = resolveSession({session: carried, job, url, boot}, ids);
     if (session && terminals.setAccountFact(session, fact === 'code' ? 'code' : 'terms', text)) appLog('extension', fact === 'code' ? 'account record: a code from the mail was typed' : 'account record: a consent was accepted', {terms: fact === 'code' ? undefined : String(text || '').length});
   });
   // The extension pressed a sign-up page's button: this email has an account on this host now, unconfirmed until its mail's link is opened (never the address in a log).
   // The page's step as it happens (extension/page-mark.js): the session the tab carries, nothing guessed.
   server.setPageHandler(pageStepHandler({terminals, review, appLog}));   // lib/page-step.js
-  server.setAccountPressedHandler(async ({host, state, session: carried, job, url} = {}) => {
-    const session = resolveSession({session: carried, job, url}, ids);
+  server.setAccountPressedHandler(async ({host, state, session: carried, job, url, boot} = {}) => {
+    const session = resolveSession({session: carried, job, url, boot}, ids);
     const email = await Promise.resolve(notionGate.tracking(storage) ? contactDetails.read(storage) : {}).then(contact => contact?.email || '').catch(() => '');
     if (!host || !email) { appLog('extension', 'account made but not recorded', {host: String(host || '').slice(0, 120), email: !!email}); return; }
     if (state === 'refused') {   // a sign-in with this email was refused here (the account judge, any language): no account yet; the next look signs up (under full)

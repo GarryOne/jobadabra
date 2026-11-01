@@ -75,8 +75,9 @@ export function createLearningMessages(ctx) {
       (async () => {
         const config = await settings();
         if (config.workerUrl && !config.workerUrl.startsWith('http://127.0.0.1')) return {ok: false};
+        const identity = await identityOf(sender.tab);
         return api(config, '/extension/focus', {method: 'POST', body: JSON.stringify({
-          url: sender.tab.url, title: sender.tab.title || '', found: !!message.found, job: await jobOf(sender.tab), session: (await identityOf(sender.tab)).session})});
+          url: sender.tab.url, title: sender.tab.title || '', found: !!message.found, job: await jobOf(sender.tab), session: identity.session, boot: identity.boot})});
       })().then(reply, () => reply({ok: false}));
       return true;
     }

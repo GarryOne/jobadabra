@@ -21,7 +21,7 @@ import {closerLook} from './ladder/rung4-picture.js';
 import {applyPressed} from './tabs.js';
 import {isStopped} from './stop-state.js';
 import {pageStill} from './page-still.js';
-import {sessionOf} from './tab-identity.js';
+import {runId, sessionOf} from './tab-identity.js';
 import {formCame, pageKey} from './tab-pages.js';
 import {restoreLostQuery} from './restore-query.js';
 import {restartFromPosting} from './restart-from-posting.js';
@@ -145,7 +145,7 @@ export async function stuck(job, host, why, tabId = null, page = '', needs = '',
   if (tabId != null && page && !(await onPage(tabId, page))) { decide('fill', 'the page moved on: no "can\'t reach" report for it', {host, why}); return; }
   if (tabId != null) await sweepConsent(tabId, 'reporting the form as out of reach');   // a hold or error never leaves a cookie layer open
   const session = await sessionOf(tabId);
-  try { await apiFor(tabId, await settings(), '/extension/event', {method: 'POST', body: JSON.stringify({type: 'stuck', url: job, host, why, needs: String(needs || '').slice(0, 80), accountStep: String(accountStep || '').slice(0, 16), tab: tabId, session, page: String(page || '').split('#')[0]})}); } catch { /* the app is closed */ }
+  try { await apiFor(tabId, await settings(), '/extension/event', {method: 'POST', body: JSON.stringify({type: 'stuck', url: job, host, why, needs: String(needs || '').slice(0, 80), accountStep: String(accountStep || '').slice(0, 16), tab: tabId, session, boot: await runId(), page: String(page || '').split('#')[0]})}); } catch { /* the app is closed */ }
 }
 useReporter(stuck);   // the only way to it: every give-up goes through ladder/dead-end.js deadEnd (worker/test/dead-end.test.js)
 // In the CI pool only (the harness's ladderAct switch), the move the one rule lets act is pressed through the live Apply press and its effect checked: a form on the page, or a new page with fields.

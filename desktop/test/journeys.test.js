@@ -369,6 +369,41 @@ test('scenario: the person presses Stop mid-application (an account page, a fill
   assert.equal(terminals.get('f2').stuck, 'stopped', 'only the reopened one starts');
 });
 
+// #2812 (1 Nov 2026, a8's yes): an armed tab left on a page Chrome guards (chrome://, the web store, an error page) refused the Stop's page mark on every press, so the panel
+// said "Stop did not finish (Cannot access a chrome:// URL). Press Stop again." for ever. Through the extension's own stopAll: where no script of ours answers, the mark is best effort;
+// where one answers, the Stop still fails. A fake chrome lives only inside this scenario; nothing reaches a network or the app.
+test('scenario: the person presses Stop while an armed tab sits on a page Chrome guards: the Stop holds; it fails only where a script of ours still answers (#2812)', async () => {
+  const saved = {chrome: globalThis.chrome, fetch: globalThis.fetch}, store = {}, asked = [], reached = [];
+  const answers = new Set();   // tabs whose page holds a script of ours that answers 'stopped'
+  globalThis.fetch = async url => { reached.push(String(url)); throw new Error('no network in a scenario'); };
+  globalThis.chrome = {
+    runtime: {getManifest: () => ({version: 'scenario'}), sendMessage: async () => {}},
+    storage: {local: {get: async () => ({}), set: async () => {}}, session: {
+      get: async keys => (keys == null ? {...store} : Object.fromEntries([].concat(keys).filter(key => key in store).map(key => [key, store[key]]))),
+      set: async items => { Object.assign(store, items); }, remove: async keys => { for (const key of [].concat(keys)) delete store[key]; }}},
+    debugger: {detach: async () => {}, getTargets: async () => [], onDetach: {addListener() {}}},
+    tabs: {get: async () => ({}), query: async () => [], onRemoved: {addListener() {}},
+      sendMessage: async (id, message) => { asked.push([id, message.type]); if (message.type === 'stopped' && answers.has(id)) return {stopped: true}; throw new Error('Could not establish connection. Receiving end does not exist.'); }},
+    scripting: {executeScript: async () => { throw new Error('Cannot access a chrome:// URL'); }},
+  };
+  try {
+    const stop = await import('../../extension/stop.js');
+    store['armed:41'] = true;
+    const guarded = await stop.stopAll('the Stop button in the panel');
+    assert.deepEqual([guarded.ok, guarded.failed], [true, []], 'nothing of ours runs on the guarded page, so the Stop holds');
+    assert.ok(asked.some(([id, type]) => id === 41 && type === 'stopped'), 'the page was asked whether a script of ours is there');
+    assert.equal('armed:41' in store, false, 'its marks are cleared all the same');
+    stop.restart('scenario');
+    store['armed:42'] = true;
+    answers.add(42);
+    const ours = await stop.stopAll('the Stop button in the panel');
+    assert.equal(ours.ok, false, 'a script of ours is on a page that would not take the mark: the Stop did not finish');
+    assert.match(ours.failed.join(' | '), /^tab 42: the page was not marked stopped/);
+    stop.restart('scenario');
+    assert.deepEqual(reached, [], 'nothing reached a network');
+  } finally { globalThis.chrome = saved.chrome; globalThis.fetch = saved.fetch; }
+});
+
 // #961: the fill the Stop cut short reports "Stopped by you." as its error; the card stays Stopped and the error watcher (Sentry, Telegram) sees no error.
 test('scenario: a fill cut short by Stop reports its error late: the card stays Stopped and no fill error is raised (#961)', () => {
   const {flow, card} = journeyOf('f1');

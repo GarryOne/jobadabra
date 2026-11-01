@@ -11,13 +11,13 @@ const store = {};
 const calls = {detached: [], attached: [], scripted: [], told: [], sent: [], funcs: []};
 let pageWasStopped = true;   // what startedPage answers from the page
 let attachedTargets = [], detachListener = null;
-const fail = {keep: false, page: false, gone: new Set()};   // what a failing Stop step looks like: the kept flag will not save, the page will not take its mark, a tab is closed
+const fail = {keep: false, page: false, marks: false, gone: new Set(), heard: new Set()};   // what a failing Stop step looks like: the kept flag will not save, the page will not take its mark, a tab's marks will not clear, a tab is closed; heard: tabs where a script of ours answers the 'stopped' message
 globalThis.chrome = {
   runtime: {getManifest: () => ({version: 'test'}), sendMessage: async () => {}},
   storage: {local: {get: async () => ({}), set: async () => {}}, session: {
     async get(keys) { if (keys == null) return {...store}; return Object.fromEntries([].concat(keys).filter(key => key in store).map(key => [key, store[key]])); },
     async set(items) { if (fail.keep && 'stopped' in items) throw new Error('storage quota exceeded'); Object.assign(store, items); },
-    async remove(keys) { for (const key of [].concat(keys)) delete store[key]; },
+    async remove(keys) { if (fail.marks && [].concat(keys).some(key => key.startsWith('armed:'))) throw new Error('storage write failed'); for (const key of [].concat(keys)) delete store[key]; },
   }},
   debugger: {
     async attach(target) { calls.attached.push(target.tabId); },
@@ -25,13 +25,13 @@ globalThis.chrome = {
     async getTargets() { return attachedTargets; },
     onDetach: {addListener(fn) { detachListener = fn; }},
   },
-  tabs: {async get(id) { if (fail.gone.has(id)) throw new Error(`No tab with id: ${id}`); return null; }, async query() { return [{id: 5, url: 'https://github.com/x/y/pull/1#jobpilotto-fill=s1'}, {id: 6, url: 'https://example.com/'}]; }, async sendMessage(id, message) { calls.told.push([id, message.type]); }, onRemoved: {addListener() {}}},
+  tabs: {async get(id) { if (fail.gone.has(id)) throw new Error(`No tab with id: ${id}`); return null; }, async query() { return [{id: 5, url: 'https://github.com/x/y/pull/1#jobpilotto-fill=s1'}, {id: 6, url: 'https://example.com/'}]; }, async sendMessage(id, message) { calls.told.push([id, message.type]); if (message.type === 'stopped' && fail.heard.has(id)) return {stopped: true}; if (message.type === 'stopped') throw new Error('Could not establish connection. Receiving end does not exist.'); }, onRemoved: {addListener() {}}},
   scripting: {async executeScript(options) { if (fail.page && options.func?.name === 'stoppedPage') throw new Error('cannot access a chrome:// page'); calls.scripted.push(options.target.tabId); calls.funcs.push([options.target.tabId, options.func?.name || '']); return options.func?.name === 'startedPage' ? [{result: pageWasStopped}] : []; }},
 };
 const stop = await import('../../extension/stop.js');
 const {isCurrent, beginRead} = await import('../../extension/read-gen.js');
 const {followOpener, notePress} = await import('../../extension/tabs.js');
-const reset = () => { fail.keep = false; fail.page = false; fail.gone.clear(); for (const key of Object.keys(store)) delete store[key]; for (const list of Object.values(calls)) list.length = 0; attachedTargets = []; stop.restart('test'); };
+const reset = () => { fail.keep = false; fail.page = false; fail.marks = false; fail.gone.clear(); fail.heard.clear(); for (const key of Object.keys(store)) delete store[key]; for (const list of Object.values(calls)) list.length = 0; attachedTargets = []; stop.restart('test'); };
 
 test('Stop clears every armed tab\'s state, keeps what is not a tab\'s, and says it is stopped', async () => {
   reset();
@@ -203,15 +203,46 @@ test('a Stop whose flag could not be kept says so with the reason, and the worke
   assert.equal(stop.isStopped(), true, 'the running worker is stopped even when the flag for a restarted one failed');
 });
 
-test('a page that would not take its Stop mark is named; a tab that was closed is not a failure', async () => {
+test('a page that would not take its Stop mark while a script of ours still answers there is named; a tab that was closed is not a failure', async () => {
   reset();
   Object.assign(store, {'armed:5': true, 'armed:7': true});
   fail.page = true;
   fail.gone.add(7);
+  fail.heard.add(5);
   const done = await stop.stopAll('test');
   assert.equal(done.ok, false);
   assert.deepEqual(done.failed.map(line => line.replace(/:.*/, '')), ['tab 5'], 'only the tab that is still there');
   assert.match(done.failed[0], /the page was not marked stopped: cannot access a chrome:\/\/ page/);
+});
+
+// #2812: an armed tab on a page Chrome guards (a chrome:// page, the web store, an error page) refused the mark on every press, so the panel said "Stop did not finish … Press Stop again"
+// forever. The same refusal keeps every script of ours out of that page (the extension has no content_scripts: all of ours is injected), so the mark is best effort there,
+// decided by whether a script of ours answers the 'stopped' message, never by the error's words (a8, 1 Nov 2026).
+test('a page that refuses the mark where no script of ours answers is not a failure', async () => {
+  reset();
+  Object.assign(store, {'armed:5': true});
+  fail.page = true;
+  const done = await stop.stopAll('test');
+  assert.equal(done.ok, true);
+  assert.deepEqual(done.failed, []);
+  assert.ok(calls.told.some(([id, type]) => id === 5 && type === 'stopped'), 'the tab was asked');
+});
+
+test('a tab whose marks could not be cleared still fails the Stop, page or no page', async () => {
+  reset();
+  Object.assign(store, {'armed:5': true});
+  fail.marks = true;
+  fail.page = true;
+  const done = await stop.stopAll('test');
+  assert.equal(done.ok, false);
+  assert.match(done.failed.join(' | '), /tab 5: its marks were not cleared: storage write failed/);
+});
+
+test('the panel never shows Chrome\'s own words for a failed Stop', () => {
+  const source = fs.readFileSync(new URL('../../extension/review.js', import.meta.url), 'utf8');
+  const line = source.split('\n').find(text => text.includes('Stop did not finish'));
+  assert.ok(line, 'the failed-Stop notice is in review.js');
+  assert.doesNotMatch(line, /failed\s*\?\.\s*\[|failed\[/, 'the notice puts a step\'s raw reason on the page');
 });
 
 test('a Stop that worked says ok:true and nothing failed; the debugger refusing a detach is not a failure', async () => {

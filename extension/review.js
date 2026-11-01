@@ -63,7 +63,7 @@
   $('.min').onclick = () => { userMoved = true; setOpen(false); };   // minimise: back to the pill
   $('.x').onclick = () => { userMoved = true; setOpen(false); host.hidden = true; look(false); if (applyWorking) send({type: 'applyVerdict', verdict: 'your-turn'}).catch(() => {}); };   // close: the panel is out of the way until the page loads again; the overlay goes with it and a later step does not bring it back, as the Stop is on the panel (#1558)
   const stopButtons = [...root.querySelectorAll('.stop-btn, .pill-stop')], stopsBack = () => { for (const button of stopButtons) { button.disabled = false; button.textContent = 'Stop'; } };
-  for (const button of stopButtons) button.onclick = event => { if (event.isTrusted) { button.disabled = true; button.textContent = 'Stopping…'; const pressed = Date.now(); send({type: 'stop', reason: 'the Stop button in the panel'}).then(answer => { if (answer?.ok) stoppedHere(pressed); else { stopsBack(); note(`Stop did not finish${answer?.failed?.[0] ? ` (${answer.failed[0]})` : ''}. Press Stop again.`); } }, stopsBack); } };   // the one Stop (stop.js): in the live step row and beside the minimised pill
+  for (const button of stopButtons) button.onclick = event => { if (event.isTrusted) { button.disabled = true; button.textContent = 'Stopping…'; const pressed = Date.now(); send({type: 'stop', reason: 'the Stop button in the panel'}).then(answer => { if (answer?.ok) stoppedHere(pressed); else { stopsBack(); note('Stop did not finish. Press Stop again.'); } }, stopsBack); } };   // the one Stop (stop.js): in the live step row and beside the minimised pill
   // "Report", the one entry, in the footer of every state (owner, 16 Oct 2026): a popup on the panel (panel-report.js) that says what goes, takes a note and sends. A page script's click is ignored; a press that cannot open it says why.
   $('.report-btn').onclick = event => {
     if (!event.isTrusted) return;
@@ -281,8 +281,9 @@
     if (!host.hidden && !open) setOpen(true);
     render();
   }
-  chrome.runtime.onMessage.addListener(message => {
-    if (message?.type === 'stopped') stoppedHere(Number(message.at) || Date.now());
+  // Why (1 Nov 2026, #2812): the answer tells stop.js a script of ours is on this page, so a page that refused the Stop mark here still fails the Stop.
+  chrome.runtime.onMessage.addListener((message, _, reply) => {
+    if (message?.type === 'stopped') { stoppedHere(Number(message.at) || Date.now()); reply({stopped: true}); }
     else if (message?.type === 'started') { startedAt = Math.max(startedAt, Date.now()); stopped = false; stoppedCard(false); stopsBack(); if (session?.stuck === 'stopped') session = {...session, stuck: ''}; stuckSince = 0; lastStuck = ''; render(); }
     return false;
   });

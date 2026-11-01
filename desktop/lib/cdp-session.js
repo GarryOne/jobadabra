@@ -1,5 +1,5 @@
 // One lasting CDP connection to a tab of the app's own hidden browser, shaped like a Playwright CDPSession ({send, on, detach}) so the live view's
-// core (hosted/ready-fill/live.mjs attachLive) runs on it unchanged. Loopback only. Guard: test/cdp-session.test.js.
+// core (desktop/ready-fill/live.mjs attachLive) runs on it unchanged. Loopback only. Guard: test/cdp-session.test.js.
 
 /** Open a CDP session on a loopback page socket. send(method, params) -> result (rejects on a protocol error or a closed socket). */
 export async function openCdpSession(socketUrl, {WebSocketClass = globalThis.WebSocket, timeout = 5000} = {}) {

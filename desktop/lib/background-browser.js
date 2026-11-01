@@ -74,7 +74,7 @@ export function createBackgroundBrowser(storage, {find = findBackgroundBrowser, 
       if (!live) {
         const executable = find(storage.path('background-browser-runtime'));
         if (!executable) throw Object.assign(new Error('Download the optional background browser first.'), {code: 'BACKGROUND_BROWSER_MISSING'});
-        const {copyForNight} = await import(pathToFileURL(path.join(root, 'hosted', 'ready-fill', 'extension-copy.mjs')).href);
+        const {copyForNight} = await import(pathToFileURL(path.join(root, 'desktop', 'ready-fill', 'extension-copy.mjs')).href);
         fs.rmSync(extension, {recursive: true, force: true});
         copyForNight(appPort, path.join(root, 'extension'), extension, {owned: true});
         fs.mkdirSync(profile, {recursive: true, mode: 0o700});
@@ -103,7 +103,7 @@ export function createBackgroundBrowser(storage, {find = findBackgroundBrowser, 
         if (!worker) await pause(100);
       }
       if (!worker) throw new Error('The owned browser extension did not start.');
-      const {setExtensionStorage} = await import(pathToFileURL(path.join(root, 'hosted', 'ready-fill', 'extension-storage.mjs')).href);
+      const {setExtensionStorage} = await import(pathToFileURL(path.join(root, 'desktop', 'ready-fill', 'extension-storage.mjs')).href);
       await setExtensionStorage({evaluate: async (fn, value) => {
         const expression = `(${fn.toString()})(${JSON.stringify(value) || 'undefined'})`;
         const result = await command(worker.webSocketDebuggerUrl, 'Runtime.evaluate', {expression, awaitPromise: true, returnByValue: true});

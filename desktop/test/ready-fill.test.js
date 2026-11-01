@@ -1,23 +1,23 @@
-// Ready to send, the container's pure parts (hosted/ready-fill/): the extension copy holds the account button and points at the stand-in, the stand-in answers from the batch only, a submit is refused,
+// Ready to send, the container's pure parts (desktop/ready-fill/): the extension copy holds the account button and points at the stand-in, the stand-in answers from the batch only, a submit is refused,
 // the live view lets only mouse and keys through, and the outcome words are the server's.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {ACCOUNT_PRESS, copyForNight, holdAccountPress} from '../../hosted/ready-fill/extension-copy.mjs';
-import {CLOSED_NEED, classify, fillJob} from '../../hosted/ready-fill/fill-job.mjs';
+import {ACCOUNT_PRESS, copyForNight, holdAccountPress} from '../../desktop/ready-fill/extension-copy.mjs';
+import {CLOSED_NEED, classify, fillJob} from '../../desktop/ready-fill/fill-job.mjs';
 import {formUrl} from '../lib/form-address.js';
-import {inputToCdp} from '../../hosted/ready-fill/live.mjs';
-import {costMicro, sendVideo} from '../../hosted/ready-fill/night.mjs';
-import {looksLikeSubmit} from '../../hosted/ready-fill/no-submit.mjs';
-import {createStandIn} from '../../hosted/ready-fill/stand-in.mjs';
+import {inputToCdp} from '../../desktop/ready-fill/live.mjs';
+import {costMicro, sendVideo} from '../../desktop/ready-fill/night.mjs';
+import {looksLikeSubmit} from '../../desktop/ready-fill/no-submit.mjs';
+import {createStandIn} from '../../desktop/ready-fill/stand-in.mjs';
 
 const EXTENSION = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'extension');
 
 test('the night copy holds the account press, points at the stand-in and leaves extension/ alone', () => {
   const before = fs.readFileSync(path.join(EXTENSION, 'account-step.js'), 'utf8');
-  assert.ok(before.includes(ACCOUNT_PRESS), 'extension/account-step.js still has the press line this copy holds: if it moved, update hosted/ready-fill/extension-copy.mjs');
+  assert.ok(before.includes(ACCOUNT_PRESS), 'extension/account-step.js still has the press line this copy holds: if it moved, update desktop/ready-fill/extension-copy.mjs');
   const copy = copyForNight(41234, EXTENSION);
   try {
     const held = fs.readFileSync(path.join(copy, 'account-step.js'), 'utf8');
@@ -144,7 +144,7 @@ test('a job costs its seconds of container plus the AI the extension reported', 
 });
 
 test('a fresh extension worker is written only once chrome.storage exists, and every caller goes through that one wait', async () => {
-  const {setExtensionStorage} = await import('../../hosted/ready-fill/extension-storage.mjs');
+  const {setExtensionStorage} = await import('../../desktop/ready-fill/extension-storage.mjs');
   const saved = {}, worker = {evaluate: async (fn, arg) => fn(arg)};   // runs "in the worker": here, this process's globalThis
   const before = globalThis.chrome;
   try {
@@ -156,13 +156,14 @@ test('a fresh extension worker is written only once chrome.storage exists, and e
     await assert.rejects(setExtensionStorage(worker, {a: 1}, 100), /did not appear/);
   } finally { globalThis.chrome = before; if (before === undefined) delete globalThis.chrome; }
   const root = fileURLToPath(new URL('../../', import.meta.url));   // the class: no direct chrome.storage write through a worker's evaluate
-  for (const dir of ['hosted/ready-fill', 'desktop/e2e/lib', 'desktop/e2e']) for (const file of fs.readdirSync(root + dir).filter(f => f.endsWith('.mjs') && f !== 'extension-storage.mjs')) {
+  // Why (1 Nov 2026, owner: desktop + extension only): the night's shell files (main.mjs …) move to jobadabra-web, so hosted/ready-fill is walked only where it is laid.
+  for (const dir of ['desktop/ready-fill', 'hosted/ready-fill', 'desktop/e2e/lib', 'desktop/e2e'].filter(d => fs.existsSync(root + d))) for (const file of fs.readdirSync(root + dir).filter(f => f.endsWith('.mjs') && f !== 'extension-storage.mjs')) {
     assert.ok(!/evaluate\([^\n]*chrome\.storage\.local\.set/.test(fs.readFileSync(`${root}${dir}/${file}`, 'utf8')), `${dir}/${file}: use setExtensionStorage (the API is missing right after start)`);
   }
 });
 
 test('a night that cannot start tells the site each job failed and why, at once, instead of leaving them "waiting", and leaves nothing open', {timeout: 20000}, async () => {
-  const {runNight, NIGHT_FAILED} = await import('../../hosted/ready-fill/night.mjs');
+  const {runNight, NIGHT_FAILED} = await import('../../desktop/ready-fill/night.mjs');
   const posts = [];
   const fetchImpl = async (url, options) => {
     const route = url.split('/api/ready/')[1], body = options.body ? JSON.parse(options.body) : null;
@@ -190,7 +191,7 @@ test('a fill\'s video goes to the site with the night token, and its file is gon
 
 // Open in my browser after the container is gone (owner, 18 Oct 2026: "Yes, sealed, 24 h max"): each held form's hand-off goes to the site, sealed there; the job's log line keeps only the upload's status.
 test('a held form\'s hand-off goes to the site with the night token; the job log never carries it', async () => {
-  const {sendHandoff, jobLine} = await import('../../hosted/ready-fill/night.mjs');
+  const {sendHandoff, jobLine} = await import('../../desktop/ready-fill/night.mjs');
   const given = {url: 'https://boards.example.com/apply', storage: {cookies: [{name: 'sid', value: 'cookiesecret'}], origins: []}, sessionStorage: {}, snapshot: {fields: [{id: 'n', value: 'fieldsecret'}], files: []}};
   const calls = [];
   const fetchImpl = async (url, init) => { calls.push({url, method: init.method, auth: init.headers.authorization, type: init.headers['content-type'], body: JSON.parse(init.body)}); return {status: 200}; };
@@ -208,7 +209,7 @@ test('a held form\'s hand-off goes to the site with the night token; the job log
 
 // A container with no night in it (a fresh one the site woke after a deploy, or one already closed) says "gone", so the runner stops it and the app says to press Fill now.
 test('a container holding no night answers gone; a running or finished night does not', async () => {
-  const {gone} = await import('../../hosted/ready-fill/night.mjs');
+  const {gone} = await import('../../desktop/ready-fill/night.mjs');
   assert.equal(gone(null, {state: 'idle'}), true);
   assert.equal(gone(null, {state: 'running'}), false);
   assert.equal(gone(null, {state: 'failed'}), false, 'a failed night still says why on /state');

@@ -55,7 +55,7 @@ test('the app\'s page kind for the night\'s page: form at once, no AI; a fresh r
 });
 
 test('the night\'s stand-in keeps each answer it gave with its question, never an empty one; a new fill of the form forgets them', async () => {
-  const {createStandIn} = await import('../../hosted/ready-fill/stand-in.mjs');
+  const {createStandIn} = await import('../../desktop/ready-fill/stand-in.mjs');
   const answer = async () => ({answers: [{field: 'q_why', value: 'Because'}, {field: 'q_skip', value: ''}, {field: 'q_unknown', value: 'x'}], usd: 0});
   const standIn = await createStandIn({jobs: [{id: 'j1', url: PAGE, kit: {}}]}, {answer});
   try {

@@ -1,10 +1,10 @@
-// Ready to send, the night's AI answers (hosted/ready-fill/night-ai.mjs): the Worker's own answer engine runs on the batch's facts, every model call goes through the site with the night token and no key,
+// Ready to send, the night's AI answers (desktop/ready-fill/night-ai.mjs): the Worker's own answer engine runs on the batch's facts, every model call goes through the site with the night token and no key,
 // a capped or failing night answers nothing instead of stopping the fill, and the stand-in serves it on /extension/answer.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {answerForm} from '../src/extension.js';
-import {answererFor, answerEnv, createAnswerer, siteClient} from '../../hosted/ready-fill/night-ai.mjs';
-import {createStandIn} from '../../hosted/ready-fill/stand-in.mjs';
+import {answererFor, answerEnv, createAnswerer, siteClient} from '../../desktop/ready-fill/night-ai.mjs';
+import {createStandIn} from '../../desktop/ready-fill/stand-in.mjs';
 
 const batch = (facts = {profile: 'Alex Example lives in Zurich and has 8 years of SRE work.', standard: 'Notice period: two months'}) => ({contact: {name: 'Alex Example', email: 'alex@example.invalid'}, facts,
   jobs: [{id: 'j1', url: 'https://boards.example.com/acme/jobs/1', title: 'SRE', company: 'Acme', kit: {answers: []}, letter: 'Dear Acme'}]});

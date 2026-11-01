@@ -4,6 +4,7 @@ FROM mcr.microsoft.com/playwright:v1.49.1-noble
 WORKDIR /night
 COPY hosted/ready-fill/package.json ./
 RUN npm install --no-audit --no-fund --omit=dev
+COPY desktop/ready-fill/*.mjs ./
 COPY hosted/ready-fill/*.mjs ./
 COPY extension ./extension
 COPY app-core/src ./app-core/src

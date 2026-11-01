@@ -1,4 +1,4 @@
-// lib/live-view-handlers.js: the app screen's thin connection to the live view core (hosted/ready-fill/live.mjs attachLive). Fakes only: no browser,
+// lib/live-view-handlers.js: the app screen's thin connection to the live view core (desktop/ready-fill/live.mjs attachLive). Fakes only: no browser,
 // no window, no file but the test's own. A session's events reach the window tagged with its id; the window's input reaches only that session;
 // a file is answered only from the person's CV or the app's own Open dialog.
 import assert from 'node:assert/strict';
@@ -14,7 +14,7 @@ function setup({page = async id => (id === 's1' ? 'ws://127.0.0.1:9/devtools/pag
   registerLiveViewHandlers({DEMO, storage, ipcMain: {handle: (name, fn) => handles.set(name, fn)}, toWindow: (channel, payload) => sent.push([channel, payload]),
     page, getWindow: () => null, dialog: {showOpenDialog: async () => (picked ? {canceled: false, filePaths: [picked]} : {canceled: true, filePaths: []})},
     openCdp: async url => { opened.push(url); await openGate?.(); let detached = false; const ons = {}; return {url, ons, on: (event, fn) => { ons[event] = fn; }, detach: async () => { if (!detached) closed.push(url); detached = true; }}; },   // idempotent like a real CDP session
-    // hosted/ready-fill/live.mjs:160: a closed channel detaches its CDP session
+    // desktop/ready-fill/live.mjs:160: a closed channel detaches its CDP session
     attach: async (channel, cdp, options) => { if (failAttach) throw new Error('attach failed'); const row = {channel, cdp, options, inputs: []}; channel.onMessage(message => row.inputs.push(message)); channel.onClose(() => { closed.push('channel'); cdp.detach(); }); attached.push(row); await attachGate?.(); }});
   return {root, handles, sent, attached, closed, opened, call: (name, ...args) => handles.get(name)(null, ...args)};
 }

@@ -5,7 +5,8 @@ name: CI · Ready to send image
 on:
   pull_request:
     paths:
-      - 'hosted/ready-fill/**'   # extension/ and app-core/src/ changes are checked by the same night before each runner deploy (release-ready-runner.yml), not on every PR
+      - 'hosted/ready-fill/**'
+      - 'desktop/ready-fill/**'   # extension/ and app-core/src/ changes are checked by the same night before each runner deploy (release-ready-runner.yml), not on every PR
       - 'desktop/lib/form-address.js'   # copied into the image
       - '.github/workflows/ready-fill-image.yml'
   workflow_dispatch:

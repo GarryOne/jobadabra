@@ -173,7 +173,7 @@ export async function runApply(ctx, parts) {
       const result = await waitForFill({pickTab, readState: fillState});   // the step's clock: no cap of its own under it (lib/fill-attempt.mjs Why)
       if (result.ok) return {...result, session: markedSession(attemptUrl)};
       await dumpExtension();
-      throw new Error(`the extension never finished filling ${form.title} (${fillNote(result.state, result.ms / 1000)}, read on ${result.url}, ${result.tabs} tab(s))`);
+      throw new Error(`the extension never finished filling ${form.title} (${fillNote(result.state, Math.round(result.ms / 1000))}, read on ${result.url}, ${result.tabs} tab(s))`);
     } finally { for (const [tab, onLoad] of listeners) tab.off('load', onLoad); }
   }
   // The panel opens by itself while a fill runs; open it only when it is closed (a click on the pill toggles).

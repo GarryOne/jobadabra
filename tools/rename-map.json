@@ -28,6 +28,10 @@
   {
    "path": "^\\.github/workflows/(ready-fill-image|worker|central-scout|product-brain|ai-cost-billed)\\.yml$",
    "why": "rs: deleted or moved to another repo"
+  },
+  {
+   "path": "^tests/test_release_file_names\\.py$",
+   "why": "guards the release asset names; spells the old ones"
   }
  ],
  "rules": [
@@ -105,6 +109,13 @@
    "match": "^(sre[-_]job[-_]pilotto[-_]bot|jobpilotto_ci_alerts_bot|job-pilotto-bot)$",
    "keep": "Telegram bot / alert account names outside the repo",
    "expires": "never"
+  },
+  {
+   "id": "tmp-setup-name",
+   "match": "^Job-Pilotto-Setup$",
+   "step": 3,
+   "kind": "prose",
+   "readers": "a temporary file name in the updater"
   },
   {
    "id": "defer-update-assets",

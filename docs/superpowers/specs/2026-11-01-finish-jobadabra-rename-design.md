@@ -13,8 +13,8 @@ The Jobadabra app users run today still reads four old internal names. The owner
 | Name | Treatment in this PR | Why |
 |---|---|---|
 | Keychain items `job-pilotto.*` + account `job-pilotto` | renamed to `jobadabra.*`; **read new, then old**; write new | a user's Notion/Google/LinkedIn/site-password items stay found |
-| Updater asset names (`Job-Pilotto-…`) | the updater **accepts both** names; asset and feed names stay | installed apps run the old updater; renaming the assets now stops their auto-update |
-| `appId` `app.jobpilotto.desktop`, `productName`, `.app` / DMG / installer names, release asset and feed names | **stay**; renamed in a later release, after the both-names updater has been on stable for 2 releases (parked in Linear with that trigger) | the microphone permission is tied to the appId; see the row above |
+| Updater asset names | **nothing to do**: releases have been `Jobadabra-*` since 31 Oct 2026 and `desktop/lib/updater.js` already reads `Job-Pilotto-*` for older releases (`tests/test_release_file_names.py` guards it); both stay untouched | an older install keeps finding its update |
+| `appId` `app.jobpilotto.desktop` and `productName` "Job Pilotto" in `desktop/package.json` | **stay**; renamed in a later release (parked in Linear) | the microphone permission is tied to the appId; installs already out there update in place |
 | "Job Pilotto Safe Storage" (Electron's Keychain item sealing all saved tokens) | **stays** (`app-identity.js` untouched) | renaming it logs everyone out of Notion and Google |
 
 ## Inventory (origin/main, 1 Nov 2026)
@@ -38,7 +38,7 @@ Reproduce: `node tools/rename-inventory.mjs` (hits per rule) and `--tokens` (eve
 | Page globals, DOM attributes, ids, classes, events (`__jobPilotto*`, `data-jobpilotto-*`, `jobpilotto-fill`, `jobpilotto:fill`) | renamed on both sides at once |
 | `JOB_PILOTTO_*` env, `X-Job-Pilotto` header, Sentry release, PostHog `$lib`, `package.json` names | renamed (owner: "Rename to jobadabra" for Sentry and PostHog; charts and error trends break on the switch day) |
 | Keychain items and account | renamed, with the fallback above |
-| Updater asset names, `appId`, `productName`, bundle names, Safe Storage | see "What the owner chose" |
+| Updater legacy asset names, `appId`, `productName`, Safe Storage | see "What the owner chose" |
 | `www.jobpilotto.top` and `*.workers.dev` hosts | **stay**: live addresses the app calls |
 | `vars.JOB_PILOTTO_*` / `secrets.JOB_PILOTTO_*` references in workflows | **stay** until mac-07 renames the GitHub variable or secret (the owner's call, one by one); the env key on the left is renamed now |
 | Sentry org / project slugs `job-pilotto`, `job-pilotto-app` | **stay**: they name the account on sentry.io |
@@ -58,15 +58,14 @@ Reproduce: `node tools/rename-inventory.mjs` (hits per rule) and `--tokens` (eve
 | 4 | In-page names (extension, app-core, desktop, tests) | app-core and extension named tests |
 | 5 | Env vars, header, Sentry and PostHog labels, package names | env and server-route tests |
 | 6 | Keychain: new names, read new then old | keychain / credentials / `secret_store` tests with a fake store holding only old items |
-| 7 | Updater accepts both asset names | updater test: an update published under either name is found |
-| 8 | Guard test: no old name outside the map's `keep` rows | the guard itself |
+| 7 | Guard test: no old name outside the map's `keep` rows | the guard itself |
 
 The PR description opens with this table; review commit by commit.
 
 ## Follow-ups (parked in Linear, JOB)
 
-1. Rename `appId`, `productName`, bundle and release asset/feed names: trigger = the both-names updater has been on stable for 2 releases.
-2. Remove the Keychain old-name fallback and the updater's old-name acceptance: same trigger (2 stable releases after this PR's release).
+1. Rename `appId` and `productName`: trigger = the owner accepts one more microphone prompt.
+2. Remove the Keychain old-name fallback and the updater's `Job-Pilotto-*` names: trigger = 2 stable releases after this PR's release.
 3. mac-07 renames the GitHub variables / secrets; then the `vars.` / `secrets.` keeps go.
 4. The owner renames the Notion pages the e2e suites search for.
 
@@ -79,5 +78,4 @@ The PR description opens with this table; review commit by commit.
 - [ ] 4 In-page names
 - [ ] 5 Env, header, labels, package names
 - [ ] 6 Keychain with fallback
-- [ ] 7 Updater accepts both asset names
-- [ ] 8 Guard
+- [ ] 7 Guard

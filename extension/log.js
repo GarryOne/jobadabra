@@ -2,6 +2,7 @@
 // writes one line here, and it reaches the app's logs/app.log. Shared by every flow; owns no flow itself.
 import {settings} from './flow.js';
 import {errorReport} from './error-report.js';
+import {createLagProbe} from './sw-lag.js';
 
 // ---- What the extension decided, and why ----
 // A service worker's console dies with it, and a decision it made (marking a job Applied, or refusing to) used to
@@ -133,6 +134,9 @@ export function pushDecisions() {
   })();
   return pushOwner;
 }
+// Why (1 Nov 2026, a8, #2608): stalls of 5-38 s hit the extension while the app answered in under 2 s (Night burn-in 4/5, run 41269467529), and the artifacts cannot say whether the
+// worker's own loop was blocked or Chrome around it. A 1 s tick (sw-lag.js) answers: a stall with a late tick is the loop (one "sw lag" line), a stall with on-time ticks is outside it.
+export const lagProbe = createLagProbe({now: () => Date.now(), onLate: fields => { decide('log', 'sw lag', fields).catch(() => {}); }});
 // Why (30 Oct 2026, a8, #2608): in beta 41090972183 this push stalled 14-62 s while every other call to the app answered in under 0.5 s.
 // A cycle this slow writes one "slow push" line naming its phase (the wait for the ring, the POST, the write of the sent marks), so a run says which one.
 const SLOW_PUSH_MS = 5000;
@@ -145,7 +149,8 @@ async function pushNow() {
     if (now - start < SLOW_PUSH_MS || onlyNotes) return;
     const between = (from, to) => (from === undefined || to === undefined ? undefined : to - from);
     const phases = {settingsMs: configured - start, readMs: between(configured, read), postMs: between(read, posted ?? (failed ? now : undefined)), markMs: between(posted, marked)};
-    decide('log', 'slow push', {...Object.fromEntries(Object.entries(phases).filter(([, ms]) => ms !== undefined)), lines, ...(failed ? {failed: true} : {})}).catch(() => {});
+    const worstTickLagMs = lagProbe.worstSince(start);   // how late the worker's 1 s tick ran inside this cycle; undefined when the probe is not running
+    decide('log', 'slow push', {...Object.fromEntries(Object.entries({...phases, worstTickLagMs}).filter(([, ms]) => ms !== undefined)), lines, ...(failed ? {failed: true} : {})}).catch(() => {});
   };
   try {
     const config = await settings();
@@ -176,6 +181,9 @@ async function pushNow() {
 // Uncaught worker errors keep their local decision line and reach the app's reporter through the same authenticated log channel.
 if (typeof self !== 'undefined' && typeof self.addEventListener === 'function') {
   const origin = chrome.runtime.getURL('');
+  // The one timer of this file; it dies with an idle worker and never wakes one (sw-lag.js Design).
+  // Why (1 Nov 2026, a8, #2796 red: extension-sentry.test.mjs timed out at 180 s): a test that fakes `self` and imports this file under Node got a real interval that held the process open. A spectator holds nothing open: unref where the handle has it (Node); a browser's handle is a number.
+  lagProbe.start((tick, ms) => { setInterval(tick, ms)?.unref?.(); });
   self.addEventListener('error', event => {
     decide('error', 'uncaught error', errorReport(event?.error, {origin, filename: event?.filename, lineno: event?.lineno, colno: event?.colno})).catch(() => {});
   });

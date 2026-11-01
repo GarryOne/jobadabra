@@ -80,7 +80,7 @@ async function rig(t, options = {}) {
   globalThis.chrome = {
     runtime: {onMessage: {addListener() {}}},
     tabs: {get: async (...args) => { calls.push(['tab', ...args]); return options.moved ? {...tab, url: 'https://jobs.example.test/next'} : tabReads.length > 1 ? tabReads.shift() : tabReads[0]; }},
-    scripting: {executeScript: async spec => { calls.push(['script', spec.args || null]); return [{result: true}]; }},
+    scripting: {executeScript: async spec => { calls.push(['script', spec.args || null]); if (options.endWriteRejected && spec.args?.[2] !== 'running') throw new Error('frame gone'); return [{result: true}]; }},
   };
   const flow = await import(`../../extension/fill-flow.js?${key}`);
   flow.initFillFlow({started, fillOpenedTab: asyncRecord('fill', result), reportFlow: asyncRecord('report'), progress: asyncRecord('say')});
@@ -122,13 +122,38 @@ test('form filled: ordered asks, marks, token writes, fill, report and next-step
   const r = await rig(t);
   assert.equal(await r.run(), undefined);
   assert.deepEqual(order(r.calls), [...prefix, 'settings', 'early', 'say', 'mark', 'labels', 'outcome', 'sketch', 'frames', 'noteFrames', 'frameSketch', 'mails', 'script', 'settings', 'api', 'signal', 'late', 'drawing', 'late', 'backgroundPage', 'late', 'rule', 'late', 'decide', 'mark', 'takePressed', 'role', 'mark', 'backgroundPage', 'forget', 'decide', 'late', 'script', 'fill', 'tab', 'script', 'applyState', 'report', 'confirmed', 'hand', 'next']);
-  assert.deepEqual(named(r.calls, 'fill'), [['fill', tab, 'https://jobs.example.test/job/1', false, {fast: true, quiet: true}]]);
+  assert.deepEqual(named(r.calls, 'fill'), [['fill', tab, 'https://jobs.example.test/job/1', false, {fast: true, quiet: true, endsRun: false}]]);
   assert.deepEqual(named(r.calls, 'script').slice(1), [['script', [JSON.stringify({state: 'running'}), 'fill-token', 'running']], ['script', [JSON.stringify({state: 'done', filled: 2, left: 0, todo: []}), 'fill-token', 'done']]]);
   assert.deepEqual(lines(r.calls), ['page kind: form', 'filling']);
   assert.deepEqual(sayings(r.calls), [['say', 7, 'Reading this page…']]);
   assert.deepEqual(named(r.calls, 'report'), [['report', tab, {role: 'form', ok: true}]]);
   await r.run();
   assert.deepEqual(order(r.calls).slice(-2), ['stopped', 'mayFill'], 'a completed page keeps its started key');
+});
+
+// #2800: the fill pass inside fillPage no longer says `done` (the fake fillOpenedTab here stands for it, asked with endsRun: false); the fill's end on its page is the one verdict.
+test('fillPage: one Apply verdict per fill, after the end is written on the page (#2800)', async t => {
+  const r = await rig(t);
+  await r.run();
+  const seq = order(r.calls).filter(name => name === 'applyState' || name === 'script' || name === 'say');
+  assert.equal(named(r.calls, 'applyState').length, 1, 'one verdict per fill');
+  assert.deepEqual(named(r.calls, 'applyState'), [['applyState', 7, 'done']]);
+  assert.ok(seq.lastIndexOf('script') < seq.indexOf('applyState'), 'done comes after the fill\'s end is written on its page');
+  assert.equal(named(r.calls, 'fill')[0][4].endsRun, false, 'the pass inside fillPage does not end the run itself');
+});
+
+test('fillPage: an end write the page rejects still ends the run with done (#2800)', async t => {
+  const r = await rig(t, {endWriteRejected: true});
+  await r.run();
+  assert.deepEqual(named(r.calls, 'applyState'), [['applyState', 7, 'done']]);
+});
+
+test('fillPage: a tab that moved on during the fill gets the piece\'s end from the pass, not a page write (#2800)', async t => {
+  const r = await rig(t, {tabs: [tab, {...tab, url: 'https://jobs.example.test/next'}]});
+  await r.run();
+  assert.deepEqual(named(r.calls, 'applyState'), [], 'no page write, so no verdict from writeState');
+  assert.deepEqual(sayings(r.calls).slice(-1), [['say', 7, '', '']], 'the dim would otherwise stay until Stop: the clear names the end');
+  assert.ok(lines(r.calls).includes('the tab moved on during the fill: its end state is left to the next page'));
 });
 
 test('no form: press refused, digest asked, state and dead end reported', async t => {

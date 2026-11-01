@@ -1,13 +1,14 @@
-// The first-run path of a new install: key, CV, strategy, finish without Notion on this Mac's store (given at first start), then, on the stand-in, Notion
-// connected while that store is still empty: the store becomes Notion and the strategy moves in ("Start using Notion"). Starts from an emptied Notion page.
+// The first-run path of a new install: key, CV, strategy, finish without Notion on this Mac's store (given at first start). One store leg: starting on Notion (Notion connected while that store
+// is still empty: the store becomes Notion and the strategy moves in, "Start using Notion") is integration/store/wizard-start-on-notion.test.mjs (1 Nov 2026, wizard 2/2).
 import {finish, visit} from '../lib/layout.mjs';
 import {runWizard} from '../lib/wizard.mjs';
 
 export const minutes = 20;
 export const macos = true;   // runs on a macOS runner: the first run: the Keychain holds the keys it saves (lib/plan.mjs runnerOf)
 export const name = 'wizard';
-// The first run on either store (P7), started with no store at all as a new install is (newInstall): the app gives it this Mac; on the stand-in the run then
-// connects Notion with nothing stored yet (lib/wizard.mjs). A store with data stays at connect: suites/storemove.mjs.
+// Started with no store at all, as a new install is (newInstall): the app gives it this Mac. Pinned to this Mac's store: the journey (J1, "finishing the setup without Notion") has one store.
+// Why (1 Nov 2026, a8, wizard 2/2): the stand-in leg only added the Notion start, whose AI answers were never recorded (wizard-standin red in 3 night burn-ins). A store with data stays at connect: suites/storemove.mjs.
+export const store = 'sqlite';
 export const fresh = true;
 export const newInstall = true;
 export async function run(ctx) {

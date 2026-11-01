@@ -124,8 +124,8 @@ export async function runWizard(ctx) {
     await page.click('#find-card .magic-go');
     await page.waitForFunction(() => document.body.dataset.findCard === 'searching', null, {timeout: 30000});
   }, {needs: ctx.needs});
-  // A new install (the wizard suite: no store at launch, ctx.newInstall): the app gives it this Mac at first start (lib/store-handlers.js settleStore),
-  // so it is never "trying"; on the stand-in it then connects Notion while the store is still empty, and the store becomes Notion ("Start using Notion").
+  // A new install (the wizard suite: no store at launch, ctx.newInstall): the app gives it this Mac at first start (lib/store-handlers.js settleStore), so it is never "trying".
+  // Starting on Notion (Notion connected while this Mac's store is still empty) is an integration test, not a journey step: integration/store/wizard-start-on-notion.test.mjs (1 Nov 2026, wizard 2/2).
   if (ctx.newInstall) {
     await ctx.run('a new install keeps its data on this Mac: the store is set once at first start', async () => {
       const store = JSON.parse(fs.readFileSync(path.join(ctx.profile, 'settings.json'), 'utf8')).store;
@@ -133,28 +133,19 @@ export async function runWizard(ctx) {
     }, {needs: ctx.needs, data: true});
   }
   // This Mac's store: no page carries the Notion prompt and there is nothing to connect.
-  if (ctx.store === 'sqlite' || ctx.newInstall) {
-    // On this Mac's store no page asks to connect Notion: integration/app/screen-wizard.test.js (moved 1 Nov 2026).
-    if (ctx.store === 'sqlite') return;
-    await connectNotion(ctx, {startedOnNotion: true});
-    return;
-  }
+  // On this Mac's store no page asks to connect Notion: integration/app/screen-wizard.test.js (moved 1 Nov 2026).
+  if (ctx.store === 'sqlite') return;
   // Focus without Notion shows only Get started; Interviews carries the prompt: integration/app/screen-wizard.test.js (moved 1 Nov 2026).
   await connectNotion(ctx);
   } finally { ctx.proxy.setCanned(previous); }
 }
 
-// Notion connected with a token: the workspace is built inside the test page and the strategy moves in. startedOnNotion: the store was this Mac's, still
-// empty, so the connect itself makes Notion the store (lib/store-handlers.js startOnNotionIfEmpty) and says so.
-async function connectNotion(ctx, {startedOnNotion = false} = {}) {
+// Notion connected with a token: the workspace is built inside the test page and the strategy moves in (every Notion-store suite builds its workspace through here).
+async function connectNotion(ctx) {
   const {page, token: NOTION} = ctx;
   await ctx.run('a Notion token connects: the workspace is built inside the test page and the strategy moves in', async () => {
     const result = await page.evaluate(token => window.pilot.notionConnect(token), NOTION);
     if (!result?.ok) throw new Error(`Notion did not connect: ${result?.error || (result?.problems || []).map(p => p.title).join(', ') || 'unknown'}`);
-    if (startedOnNotion) {
-      const store = JSON.parse(fs.readFileSync(path.join(ctx.profile, 'settings.json'), 'utf8')).store;
-      if (!result.startedOnNotion || store !== 'notion') throw new Error(`an empty store did not become Notion at connect (startedOnNotion ${result.startedOnNotion}, store ${store})`);
-    }
     const started = Date.now();
     let text = '';
     while (text.length < 200) {   // the Profile page holds the strategy's Profile once the move-in has run

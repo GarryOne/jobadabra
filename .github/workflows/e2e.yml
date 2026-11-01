@@ -91,7 +91,7 @@ on:
         default: false
   schedule:
     - cron: '47 21,23,1 * * *'   # 23:47, 01:47, 03:47 in Zurich in summer, 22:47-02:47 in winter: at night only (owner, 15 Oct 2026: the 20 runners are for PRs by day); the UI loop's producer, ui-findings.yml, follows each run
-    - cron: '17 3 * * *'   # Why (30 Oct 2026, a8, #2502): the outside world (real Notion) once a day on its own clock; the nightly gate skips a night with no app change
+    - cron: '17 3 * * *'   # Why (30 Oct 2026, a8, #2502): the outside world (real Notion) once a day on its own clock. Since 1 Nov 2026 no suite has cadence 'outside' (notion-real moved to night-report, #2763), so this run plans nothing: remove it with the OUTSIDE plumbing, or keep it for the next outside suite
   # The release run (desktop.yml) calls this as its "E2E · Mac + Linux" job, right after it built the release (7 Oct 2026). GitHub names the jobs "E2E · Mac + Linux / <job>"
   # and uses the CALLER's event (schedule, workflow_dispatch): the gate is told by gate_tag, never by the event.
   workflow_call:

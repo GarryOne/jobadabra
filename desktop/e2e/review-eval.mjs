@@ -10,7 +10,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {DESKTOP} from './lib/app.mjs';
 import {buildRequest, parseFindings, usageCost} from './lib/vision.mjs';
-import {FREE_MODEL, askFree} from './lib/review-free.mjs';
+import {FREE_MODEL, askFree, judgeVerdict, judgedRow} from './lib/review-free.mjs';
 import {checklistRequest, checksToFindings} from './lib/review-checklist.mjs';
 import {fetchLessons, lessonsFor, lessonsText} from './lib/review-lessons.mjs';
 
@@ -73,12 +73,11 @@ async function same(item, findings) {
   if (!findings.length) return {same: false, usd: 0};
   const request = {system: [{type: 'text', text: 'You compare bug reports about one screenshot of an app. Answer with ONE JSON object: {"same": true} when any NEW finding reports the same problem as the EARLIER report (the same element and the same complaint, in any words), else {"same": false}.'}],
     messages: [{role: 'user', content: [{type: 'text', text: `EARLIER report: ${item.title}\n${item.found}\n\nNEW findings:\n${findings.map(f => `- ${f.title}: ${f.detail}`).join('\n')}`}]}]};
-  const answer = await askFree(request, {model: JUDGE});
-  const text = answer.ok ? answer.message.content[0].text : '';
-  return {same: /"same"\s*:\s*true/.test(text.replace(/<think>[\s\S]*?<\/think>/, '')), usd: answer.usd || 0, failed: answer.ok ? '' : `judge ${answer.status} ${answer.detail || ''}`.slice(0, 160), stop: ['capped', 'no-token'].includes(answer.status)};
+  return judgeVerdict(await askFree(request, {model: JUDGE}));
 }
 
 const runs = [];
+let stopped = '';   // a judge that cannot answer: the loops stop, the report is still written, then the run fails
 for (const model of MODELS) for (const withLessons of LESSONS === 'both' ? [false, true] : [LESSONS === 'on']) {
   const run = {model, lessons: withLessons, usd: 0, rows: []};
   for (const item of cases) {
@@ -92,18 +91,18 @@ for (const model of MODELS) for (const withLessons of LESSONS === 'both' ? [fals
     if (!answer.ok) { run.rows.push({...item, failed: `${answer.status} ${answer.detail}`.slice(0, 160)}); console.log(`  #${item.number} ${model}: failed ${answer.status}`); continue; }
     const findings = checklist ? checksToFindings(answer.message.content[0].text) : parseFindings(answer.message.content[0].text, item.view), judged = await same(item, findings);
     run.usd += (answer.usd || 0) + judged.usd;
-    // Why (1 Nov 2026, tg; runs 41328602438, 41328800166): a failed judge was scored "not seen", so a capped judge printed 0/39 as a result; it is unscored now,
-    // and a judge that cannot answer at all (capped, no token) stops the run before more reviewer money is spent on rows nobody can score.
+    run.rows.push(judgedRow(item, findings, judged));
+    // Why (1 Nov 2026, tg; runs 41328602438, 41328800166): a judge that cannot answer at all (capped, no token) stops asking the reviewer, so no more money
+    // goes on rows nobody can score; what was scored is still reported (Gitar on #2859).
     if (judged.failed) {
-      run.rows.push({number: item.number, resolution: item.resolution, view: item.view, findings: findings.length, failed: judged.failed});
       console.log(`  #${item.number} not scored: ${judged.failed}`);
-      if (judged.stop) throw new Error(`the judge cannot answer (${judged.failed}): stopped after $${run.usd.toFixed(3)}`);
+      if (judged.stop) { stopped = `the judge cannot answer (${judged.failed}): stopped after $${run.usd.toFixed(3)}`; break; }
       continue;
     }
-    run.rows.push({number: item.number, resolution: item.resolution, view: item.view, findings: findings.length, same: judged.same});
     console.log(`  #${item.number} ${item.resolution.slice(11).padEnd(11)} ${String(findings.length).padStart(2)} finding(s)${judged.same ? ', the same problem again' : ''}`);
   }
   runs.push(run);
+  if (stopped) break;
 }
 
 const score = run => {
@@ -120,4 +119,5 @@ for (const run of runs) {
   console.log(`| ${run.model.replace(/^@cf\//, '')}${run.lessons ? ' + lessons' : ''} | ${s.seen}/${s.fixed} (${pct(s.seen, s.fixed)}) | ${s.again}/${s.design} | ${s.precision == null ? '-' : pct(s.seen, s.seen + s.again)} | ${s.findings.toFixed(1)} | $${run.usd.toFixed(3)} |`);
 }
 for (const run of runs) { const missed = run.rows.filter(row => row.failed); if (missed.length) console.log(`${run.model}: ${missed.length} screenshot(s) not scored (${[...new Set(missed.map(row => row.failed.slice(0, 40)))].join('; ')})`); }
-fs.writeFileSync(path.join(OUT, 'review-eval.json'), JSON.stringify({at: new Date().toISOString(), judge: JUDGE, runs: runs.map(run => ({...run, score: score(run)}))}, null, 2));
+fs.writeFileSync(path.join(OUT, 'review-eval.json'), JSON.stringify({at: new Date().toISOString(), judge: JUDGE, stopped, runs: runs.map(run => ({...run, score: score(run)}))}, null, 2));
+if (stopped) { console.error(`::error::${stopped}`); process.exit(1); }

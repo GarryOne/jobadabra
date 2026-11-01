@@ -40,3 +40,16 @@ export async function askFree(request, {token = process.env.CI_FREE_AI_CF_TOKEN,
   return {ok: true, message: {content: [{type: 'text', text}], stop_reason: cut ? 'max_tokens' : 'end_turn',
     usage: {input_tokens: Number(usage.prompt_tokens) || 0, output_tokens: Number(usage.completion_tokens) || 0}}, usd: freeCost(model, usage)};
 }
+
+/** A same-problem judge's answer (askFree's shape) -> {same, usd, failed, stop}. A failed answer is never "not the same": `failed` says why, so the row
+ * stays unscored; `stop` is true when no later call can answer either (capped, no token). */
+// Why (1 Nov 2026, tg; review-eval runs 41328602438, 41328800166): a capped judge was read as "not seen" and printed 0/39 as a score.
+export function judgeVerdict(answer) {
+  if (!answer.ok) return {same: false, usd: answer.usd || 0, failed: `judge ${answer.status} ${answer.detail || ''}`.trim().slice(0, 160), stop: ['capped', 'no-token'].includes(answer.status)};
+  const text = String(answer.message?.content?.[0]?.text || '').replace(/<think>[\s\S]*?<\/think>/, '');
+  return {same: /"same"\s*:\s*true/.test(text), usd: answer.usd || 0, failed: '', stop: false};
+}
+
+/** One scored screenshot -> its eval row: a boolean `same` only when the judge answered, else `failed` (score() counts only boolean rows). */
+export const judgedRow = (item, findings, verdict) => ({number: item.number, resolution: item.resolution, view: item.view, findings: findings.length,
+  ...(verdict.failed ? {failed: verdict.failed} : {same: verdict.same})});

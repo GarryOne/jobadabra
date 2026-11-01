@@ -30,14 +30,6 @@ function answersMatrixFlag(suite, backbone) {
   return backbone.includes(suite) ? {aiAnswers: 'backbone'} : {};
 }
 
-function prLegs(suite, shards, env, picks) {
-  const pr = String(env.PR_SUITES || '').trim();
-  const admitted = pr && picks['(burn-in)']?.includes(suite);
-  if (!admitted) return shardLegs(suite, shards[suite]);
-  // Why (1 Nov 2026, owner: "Drop it entirely, now"): a PR runs each step once; a new step is no longer proved five times. Only a suite entering the backbone still is.
-  return Array.from({length: 5}, (_, at) => ({key: `${suite}-${at + 1}of5`, shard: '', burnIn: at + 1}));
-}
-
 function aiPlanOutputs(suites, offlineAi, review) {
   // Why (29 Oct 2026, owner): an offline-only run must survive revoked AI keys and must not ask a screenshot reviewer either.
   const aiRequired = suites.some(suite => !offlineAi.includes(suite));
@@ -156,9 +148,9 @@ export async function planRun({env, gh = realGh, all, minutes, os = async () => 
     : event === 'push' ? suitePartsFor(changedFiles, watchesWithImports(parts.qualityai || {}), pushReach)
     : !env.GATE_TAG && event === 'workflow_dispatch' && String(env.ONLY || '').split(',').map(name => name.trim()).includes('qualityai:mail') ? ['mail'] : ['journey'];
   const include = [];
-  for (const suite of suites) for (const slice of prLegs(suite, shards, env, picks)) for (const leg of legs(slice.key)) include.push({suite, ...(suite === 'qualityai' ? {qualityParts: qualityParts.length ? qualityParts : ['journey']} : {}), ...tolerantMatrixFlag(suite), fallbackSuites: slice.burnIn ? '' : fallbackSuites, ...offlineMatrixFlag(suite, offlineAi), ...answersMatrixFlag(suite, backbone), ...slice, ...leg, minutes: await minutes(suite), os: await os(suite, {pr: !!String(env.PR_SUITES || '').trim()})});
+  for (const suite of suites) for (const slice of shardLegs(suite, shards[suite])) for (const leg of legs(slice.key)) include.push({suite, ...(suite === 'qualityai' ? {qualityParts: qualityParts.length ? qualityParts : ['journey']} : {}), ...tolerantMatrixFlag(suite), fallbackSuites, ...offlineMatrixFlag(suite, offlineAi), ...answersMatrixFlag(suite, backbone), ...slice, ...leg, minutes: await minutes(suite), os: await os(suite, {pr: !!String(env.PR_SUITES || '').trim()})});
   if (env.AI_ANSWERS === 'record') {
-    const blocked = include.find(leg => leg.offlineAi && !leg.burnIn);
+    const blocked = include.find(leg => leg.offlineAi);
     if (blocked) throw new Error(`suite ${blocked.suite} declares offlineAi, so it cannot record: record from a branch where it does not declare it, then declare it`);
   }
   // Windows runs apply and the settings smoke of these (lib/plan.mjs WINDOWS, the e2e audit 26 Oct 2026), never one that judges what is the same on every OS

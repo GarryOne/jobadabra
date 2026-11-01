@@ -50,7 +50,7 @@
 | PR | Repo | What | Needs |
 |---|---|---|---|
 | 1/7 | jobadabra | This spec + inventory | nothing |
-| 2/7 | jobadabra | `repos.js`, updater / engine import it, 301 test; starter found by API among [new, old] name; `publish-starter.sh`, README, facts doc | nothing; ships in the next stable before the jobadabra move |
+| 2/7 ✅ #2898 + 2b/7 | jobadabra | `repos.js`, updater / engine import it, 301 test; starter found by API among [new, old] name; `publish-starter.sh`, README, facts doc | nothing; ships in the next stable before the jobadabra move |
 | 3/7 | jobadabra | `owner: ${{ vars.OWNER_OF_* }}` in the 17 workflow steps and `repository:` checkouts | owner sets the 3 variables to `GarryOne` first |
 | 4/7 | jobadabra-web | broker accepts both owners; `api/*.js` repo from env; the same `OWNER_OF_*` in its 4 steps | ab informed for the broker |
 | 5/7 | lab + benchmarks | the `repository:` literals read the variables | owner sets variables |
@@ -74,7 +74,8 @@
 - [x] 1/7 Inventory of all 6 repos and their settings (read-only) (proof: docs/superpowers/specs/2026-11-01-github-org-move-design.md)
 - [ ] Step 0 proof: transfer `rename-proof-a-renamed` into the org; test `uses:` redirect, secrets kept, ruleset kept
 - [ ] Step 0b proof: rename a throwaway template; what the old `/new?template_name=` link shows (item 15)
-- [ ] 2/7 App constant + redirect test
+- [x] 2/7 App constant + redirect test (proof: desktop/test/repos.test.js @d500c1b)
+- [ ] 2b/7 Starter renamed `jobadabra-user-template`: the app finds it by API among [new, old] (owner decision, 1 Nov 2026; merged #2898 before it)
 - [ ] 3/7 jobadabra workflows owner-neutral
 - [ ] 4/7 web + broker
 - [ ] 5/7 lab + benchmarks

@@ -1,0 +1,80 @@
+# Move the jobadabra repos to a GitHub organization (1 Nov 2026)
+
+> **Verdict:** 🟡 Doable, no cost change, one real risk. Owner, 1 Nov 2026: "start a session now that will move the github repos to a github
+> organization" (after "Should I move all the repos of jobadabra to an GitHub organizations. WOuld I lose or gain anything? Especially in costs"
+> and "Let's queue it after the rs finishes the split"). Session **go**. The org name `jobadabra` is free (`orgs/jobadabra` and `users/jobadabra` answer 404).
+> The one risk: users' Always-on repos call `GarryOne/jobadabra/.github/workflows/*.yml@<tag>` and GitHub did **not** redirect a workflow `uses:`
+> after a rename (proved 24 Oct 2026, `desktop/lib/engine-repo.js:11`). Whether it redirects after a **transfer** is unproven: step 0 proves it on a throwaway repo.
+
+## Cost: no change, one small gain
+| | Free personal (now) | Free org (after) |
+|---|---|---|
+| Private Actions minutes / month | 2,000 | 2,000 (per org, so the personal account keeps its own 2,000) |
+| Concurrent jobs / macOS | 20 / 5 | 20 / 5 |
+| Public repos (jobadabra, -web, -benchmarks, starter) | free, unlimited | free, unlimited |
+| Rulesets on a **private** repo (lab, always-on) | no | no (needs Team); public ones keep `main: pull requests with required checks` |
+| New | | one more owner of the CI App, tokens that do not hang on a personal login, a name that matches the product |
+
+## What the inventory found (origin/main, 1 Nov 2026)
+`GarryOne` appears in **jobadabra 127 files** (~290 lines, tests and docs included), **jobadabra-web 83**, **jobadabra-lab 13**, **jobadabra-benchmarks 6**, the user-facing templates, and settings that are not in git.
+
+| # | Place | What breaks on transfer | Fix |
+|---|---|---|---|
+| 1 | **Desktop app** `desktop/lib/updater.js:12` `REPO`, `engine-repo.js:15` `ENGINE_REPO`, `github.js:29` `STARTER` | Updater: `GET api.github.com/repos/GarryOne/jobadabra/releases` is redirected (301) and `fetch` follows it, **but only while nobody re-creates `GarryOne/jobadabra`**. The site (`api/releases.js`) is asked first, so old installs update through the site even without the redirect. Engine: `resolveEngineRepo` asks the API for the current `full_name`, so the app already follows a rename or transfer. | PR 2/7: one file `desktop/lib/repos.js` holds owner and repo names; the three files import it; a test plays a real 301 from a local server through the updater. Old installs keep the redirect and the site; new installs name the org. **Never create a repo with an old name under GarryOne again** (GitHub cannot reserve it). |
+| 2 | **Users' Always-on repos** `uses: GarryOne/jobadabra/.github/workflows/daily.yml@desktop-vX` (from `templates/github-actions/*.yml`, created from `GarryOne/job-pilotto-starter`) | If `uses:` is not redirected on transfer, every Always-on workflow stops until the app is opened once (the app rewrites the file at start, `engine-repo.js:30`). Always-on is for a closed app. | Step 0 proof. If not redirected: measure how many installs have Always-on on (site stats), tell them before the jobadabra transfer, and choose the hour by that count. The owner's own `jobadabra-personal-always-on` still names `GarryOne/job-pilotto` (two renames old, last push 4 Oct): re-generated from the template at the same time. |
+| 3 | **Workflow App tokens** `actions/create-github-app-token` with `owner: GarryOne` (17 steps, 13 here and 4 in web: free-ai-relay, central-scout, replay-refill ×4, site-replays ×3, fix-verdicts ×2, journeys, lab-ci; web: random-draw, search-lab, search-lab-heal ×2) and `repository: GarryOne/jobadabra-{web,lab}` checkouts | A token minted for an owner that no longer holds the repo fails ("not installed"). Hard-coded, so each transfer would need a PR in the consumer at the same minute. | Owner-neutral first (PR 3/7, 4/7, 5/7): `owner: ${{ vars.OWNER_OF_LAB }}` etc., one repo variable per target repo (`OWNER_OF_JOBADABRA`, `OWNER_OF_WEB`, `OWNER_OF_LAB`) set in each consumer; the owner flips by `gh variable set` in a second at each transfer. No red window. Final state: the three variables all say `jobadabra`. |
+| 4 | **The CI GitHub App** (`CI_APP_ID`, `CI_APP_CLIENT_ID`, `CI_APP_PRIVATE_KEY` in jobadabra and web) is owned by and installed on the personal account | Repos that leave lose its installation. | **Reuse it, do not build a second.** Owner transfers the App's ownership to the org (Developer settings → the App → Advanced → Transfer ownership), installs it on the org for web, lab, jobadabra, benchmarks. App id and key are unchanged, so the two secrets stay. Then give it the permissions the PATs below need (Actions: write on web; Contents: read) so those PATs can go. |
+| 5 | **Fine-grained tokens** (resource owner = the personal account, so they lose every repo that moves) | `WEB_DISPATCH_TOKEN` (jobadabra secret; `changelog-kick.yml`), `SCHEDULES_READ_TOKEN` (web), `NET_RECORDS_READ_TOKEN` / `NET_RECORDS_WRITE_TOKEN` (jobadabra + web; 52 references), `SECRETS_CHECK_TOKEN` (web), Worker secrets `TIMERS_GITHUB_TOKEN`, `GITHUB_TOKEN`, `E2E_INTEL_GITHUB_TOKEN` (Cloudflare), Keychain `job-pilotto.github.dispatch-token` | Per token: the App replaces it where the permission fits, else a new fine-grained token with **resource owner = the org**. The owner creates tokens in the browser; I store each in the Keychain and in its target at once, never print it. Order: new token in place **before** the repo moves, old one deleted after. |
+| 6 | **Secrets and variables of a repo** (jobadabra 83 secrets + 25 variables, web 23 + 3, lab 8 + 1, benchmarks 7, always-on 7 + 10) | GitHub keeps repository secrets on transfer (to verify on the throwaway); values cannot be read back, so a loss is not recoverable from GitHub. | Step 0 proof with a dummy secret. Before each move, `gh secret list` / `gh variable list` saved to the scratchpad, compared after (names only). |
+| 7 | **Rulesets / protection / merge settings** (`main: pull requests with required checks` on jobadabra: squash only, "All checks passed", bypass role 5; auto-merge on, delete branch on merge on) | Possibly reset by the new owner's defaults. | After each move: compare `gh api repos/<r>/rulesets/<id>` and the repo flags with the saved copy (owner 1 Nov: squash only). Org default workflow permission must stay `read` (all four repos say `read`). |
+| 8 | **OIDC** `workers/codex-broker/worker.js:136` and `wrangler.jsonc` `REPOSITORY` = `GarryOne/jobadabra,GarryOne/jobadabra-web`; `lib/oidc.mjs` checks the `repository` claim | After a move the run token says `jobadabra/jobadabra`; every CI AI call is refused. | PR 4/7 (web): accept both owners (`GarryOne/…,jobadabra/…`) **before** the first of those two moves; drop the old pair 7 days after. **ab** is renaming the broker to ai-broker: send ab the change as a one-line patch, never edit under them. |
+| 9 | **GCP Workload Identity** `GCP_WIF_PROVIDER` (Chrome Web Store publish, `extension-store-publish.yml`) | The provider's attribute condition almost surely pins `assertion.repository`. Not in git. | Owner step in the GCP console: add `jobadabra/jobadabra` to the condition before the jobadabra move. |
+| 10 | **Third-party app links**: Gitar (GitHub App on the account), Linear GitHub integration, Sentry (org `job-pilotto`, repo link), Cloudflare Workers/Pages git links (if any; deploys use `CLOUDFLARE_API_TOKEN`), Notion links | Gitar stops reviewing; links in Linear/Notion point at the old path (they redirect). | Owner reinstalls Gitar on the org for the moved repos **before** the jobadabra move (else PRs lose the Approved gate); reconnect Linear to the org; the rest after, by link redirect. |
+| 11 | **Hard-coded paths** in the code, tool and workflow files: `tools/*.{sh,py,mjs}` defaults `GarryOne/jobadabra` (`ship`, `beta-release`, `release-stable`, `canary_promote`, …), `desktop/e2e/*.mjs`, site `admin/*.js` and `jobs/*.mjs` (31 defaults), site `api/{downloads,install,releases}.js`, `workers/*/wrangler.toml` `GITHUB_REPO`, website links and the `gh attestation verify -R GarryOne/jobadabra` line on 4 pages | GETs follow the redirect; **POSTs do not** (`gh workflow run -R GarryOne/…` and other writes through a 301 are turned into GETs by most clients). | PR 6/7 after the last move: replace by the shared constant where code, by the literal org where prose, with a guard (below). Site env defaults (`GITHUB_REPO`) change in PR 4/7 so the downloads page never depends on the redirect. |
+| 12 | **Attestations**: `gh attestation verify <file> -R GarryOne/jobadabra` | Old releases carry `GarryOne/jobadabra` in their provenance; `-R jobadabra/jobadabra` may refuse them. | Prove on one old release after the move; the trust page then shows both commands (old builds / new builds). |
+| 13 | **Local checkouts**: `~/jobadabra*` remotes, 150+ worktrees, `gh` default repo | Git follows the redirect; `ship.sh` and `gh -R` read the remote URL. | `git remote set-url origin` in the five primaries after each move (worktrees share it); `tools/ship.sh` takes the owner from the remote, not a literal. |
+| 14 | **Other repos under GarryOne**: `job-pilotto-starter` (public template the app uses, `github.js:29`; still names `GarryOne/job-pilotto`), `rename-proof-a-renamed`, `rename-proof-b` (the 24 Oct throwaways), `conductor-playground`, `personal-finance-monitor` | The starter is part of the product; the rest are not. | Move `job-pilotto-starter` with the product (decision below). The throwaways serve step 0. The others stay on the personal account. |
+
+## Design
+- **One shared constant, owner changes once.** App: `desktop/lib/repos.js` (`OWNER`, `ENGINE`, `WEB`, `LAB`, `STARTER` names). Workflows: the three `OWNER_OF_*` variables. Tools and scripts: the owner comes from `GITHUB_REPOSITORY` or `git remote get-url origin`, else the constant; no literal.
+- **Why a variable and not a flag day:** four repos reference each other (jobadabra → web, lab; web → jobadabra, lab; lab, benchmarks → jobadabra). Whatever order they move in, for hours one side is under the org and the other under `GarryOne`. A variable flips in a second, with no PR and no red CI.
+- **Order and timing** (owner: smallest risk first): benchmarks → always-on (regenerated from the template, not a CI repo) → lab → web → starter → **jobadabra last**. By day, never 21:00–05:30 UTC. Web and jobadabra also outside any beta or main build, at the hour **a8** names. jobadabra only after **rs**'s remaining move PRs (5b/6, 6/6) have merged: ask rs. One repo per day; each is confirmed with mac-07, who asks the owner, before the transfer command runs.
+- **After each transfer, in this order:** (1) flip the `OWNER_OF_<repo>` variable in every consumer; (2) compare secrets / variables / ruleset / flags with the saved copy; (3) `git remote set-url`; (4) reinstall or check Gitar, the CI App, webhooks (none today); (5) one scheduled run and one PR through CI green; (6) tell the owner and peers.
+- **The `JOB_PILOTTO` → `jobadabra` code rename (queued, not started)** touches the same lines in three places: `desktop/lib/github.js:27-31` (`REPO_NAMES` has `job-pilotto-private`, `STARTER` is `job-pilotto-starter`), `engine-repo.js:30` (the regexes accept `job-pilotto|jobadabra`), and the env/variable names `JOB_PILOTTO_*` in the always-on repo's variables. This work keeps those lines as they are except the owner part, so the later rename is a name swap inside `repos.js`.
+
+## Guard (PR 6/7)
+`tests/test_repos_owner.py`: no tracked file names the personal owner (`GarryOne`) as a repo owner, except the allowlist: dated specs (history), `desktop/lib/repos.js` (the old name, kept for the redirect check), the `engine-repo` test, and this spec. A new hard-coded owner in a workflow or tool fails the test, the same shape as `tests/test_engine_repo_name.py`. Value: it protects a name change that would otherwise break POSTs silently; the move itself is the proof that ~85 literals existed.
+
+## Plan (n/N, one PR each, no stacking)
+| PR | Repo | What | Needs |
+|---|---|---|---|
+| 1/7 | jobadabra | This spec + inventory | nothing |
+| 2/7 | jobadabra | `repos.js`, updater / engine / starter import it, 301 test | nothing; ships in the next stable before the jobadabra move |
+| 3/7 | jobadabra | `owner: ${{ vars.OWNER_OF_* }}` in the 17 workflow steps and `repository:` checkouts | owner sets the 3 variables to `GarryOne` first |
+| 4/7 | jobadabra-web | broker accepts both owners; `api/*.js` repo from env; the same `OWNER_OF_*` in its 4 steps | ab informed for the broker |
+| 5/7 | lab + benchmarks | the `repository:` literals read the variables | owner sets variables |
+| 6/7 | all | literal sweep to the org after the last move + the guard | all 5 moved |
+| 7/7 | none | night slot + beta green from the org, report | a8's hours |
+
+## Owner steps (each is sent to mac-07 as one exact instruction when its turn comes)
+1. Create the org: github.com → **+** → New organization → **Free** → name `jobadabra` → "My personal account". Tell mac-07 "org created".
+2. Org Settings → Personal access tokens → allow fine-grained tokens (no approval needed for the owner). Actions → General → Workflow permissions = read.
+3. Transfer the CI App to the org and install it on the org (item 4); install Gitar on the org (item 10); add `jobadabra/jobadabra` to the GCP provider condition (item 9).
+4. Create the replacement tokens of item 5 with resource owner = the org (one browser session; I give the exact permission list).
+5. A yes per transfer, in the order above.
+
+## Decisions for the owner (recommendation first)
+- Move `job-pilotto-starter` too? **Yes** (the app reads it; 1 public template repo).
+- Reuse the existing CI App instead of building a new one? **Yes** (same id and key, 2 secrets unchanged).
+- `OWNER_OF_*` variables instead of one-day flag edits? **Yes** (no red window; 3 variables).
+
+## Progress
+- [x] 1/7 Inventory of all 6 repos and their settings (read-only)
+- [ ] Step 0 proof: transfer `rename-proof-a-renamed` into the org; test `uses:` redirect, secrets kept, ruleset kept
+- [ ] 2/7 App constant + redirect test
+- [ ] 3/7 jobadabra workflows owner-neutral
+- [ ] 4/7 web + broker
+- [ ] 5/7 lab + benchmarks
+- [ ] Transfers: benchmarks, always-on, lab, web, starter, jobadabra
+- [ ] 6/7 Sweep + guard
+- [ ] 7/7 Night slot and beta green from the org

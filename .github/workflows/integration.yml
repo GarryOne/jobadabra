@@ -1,4 +1,5 @@
 name: CI · Integration tests
+# Job: report health
 # The integration layer as its own visible check (owner, 1 Nov 2026, exact option "Yes, own workflow, 3 jobs (Recommended)"): "extension", "app (ubuntu-24.04)", "app (windows-latest)" and "store",
 # so each check name says its layer. A pull request starts it by `paths:` below (each layer's reach: desktop/integration/<layer>/** and what its tests import; desktop/test/integration-workflow-paths.test.js
 # fails when a file a test imports is missing); on main build.yml calls it as a job of CI · Tests on every push (as it does harness.yml and smoke.yml, owner 1 Nov 2026: "Parallel jobs"),

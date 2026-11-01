@@ -110,7 +110,12 @@ ship_watch_start() {  # detached like the background run itself: the caller's en
   if command -v setsid >/dev/null; then setsid bash "$tools/ship-watch.sh" "$1" "$log" "$pidfile" "$(ship_repo)" > /dev/null 2>&1 < /dev/null &
   else python3 -c 'import os,sys; os.setsid(); os.execvp(sys.argv[1], sys.argv[1:])' bash "$tools/ship-watch.sh" "$1" "$log" "$pidfile" "$(ship_repo)" > /dev/null 2>&1 < /dev/null & fi
 }
-trap 'code=$?; landing_release; timeline_write "$code"; if [ "$code" -ne 0 ]; then echo "ship: FAILED ${fail_reason:-(exit $code)}, log: $log"; elif [ -n "${review_n:-}" ]; then echo "ship: REVIEW #$review_n ${review_url:-} (every check green; the owner reviews and merges)"; ship_watch_start "$review_n"; elif [ -n "$finished" ]; then echo "ship: DONE ${sha:-nothing to push}"; else echo "ship: FAILED (ended early without pushing or finishing), log: $log"; fi' EXIT   # from the PR's opening, tools/ship-watch.sh adds MERGED / CLOSED / RED / GREEN / READY to the log
+gate_stats_tail() {  # the very last step, after every "ship:" line the watchers read; best effort, at most one call a day, never changes the exit code
+  # Why (1 Nov 2026, owner: "Once a day from ship.sh"): the push-gate counts go to /admin/operations/agent-coding without a background job; GATE_STATS_UPLOAD=0 turns it off.
+  [ "${GATE_STATS_UPLOAD:-1}" != 0 ] && [ -f "$tools/gate-stats-upload.mjs" ] && command -v node >/dev/null || return 0
+  node "$tools/gate-stats-upload.mjs" >/dev/null 2>&1 || true
+}
+trap 'code=$?; landing_release; timeline_write "$code"; if [ "$code" -ne 0 ]; then echo "ship: FAILED ${fail_reason:-(exit $code)}, log: $log"; elif [ -n "${review_n:-}" ]; then echo "ship: REVIEW #$review_n ${review_url:-} (every check green; the owner reviews and merges)"; ship_watch_start "$review_n"; elif [ -n "$finished" ]; then echo "ship: DONE ${sha:-nothing to push}"; else echo "ship: FAILED (ended early without pushing or finishing), log: $log"; fi; gate_stats_tail' EXIT   # from the PR's opening, tools/ship-watch.sh adds MERGED / CLOSED / RED / GREEN / READY to the log
 
 # Several sessions fetch into one shared repo: a fetch can lose the race for a ref lock ("cannot lock ref 'refs/remotes/origin/main'", 12 Oct 2026, a merged PR reported FAILED). Try again.
 ship_fetch() { local try; for try in 1 2 3 4 5; do git fetch -q origin 2>/dev/null && return 0; sleep 1; done; git fetch -q origin; }

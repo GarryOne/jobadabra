@@ -75,6 +75,9 @@ on:
       - 'tools/file-size.mjs'
       - 'tools/flow-fresh.mjs'
       - 'tools/pr-check-scorecard.mjs'
+      - 'tools/agent-coding-stats.mjs'   # desktop/test/agent-coding-stats.test.js
+      - 'tools/gate-stats.mjs'   # desktop/test/gate-stats.test.js
+      - 'tools/gate-stats-upload.mjs'
       - 'tools/free-ai-eval.mjs'
       - 'tools/free-ai-eval-claude.mjs'
       - 'tools/free-ai-eval-metrics.mjs'

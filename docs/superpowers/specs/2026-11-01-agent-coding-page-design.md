@@ -55,6 +55,12 @@ Verdict band first (three lines, each with a status chip icon+word): "Push gate:
 - No AI.
 - Backfill beyond 35 days; the prune audit's one-off numbers stay in its sketch.
 
+## v2, not in these PRs: the SDLC tab (owner, 1 Nov 2026)
+Owner: "look on the entire harness/workflow of our development ... agents writing first lines of code → first gates → push checks → PR checks → main checks → beta/nightly/e2e", "to understand if our speccing is bad or missing, if our plan is bad, if our build is bad, if the maintain is bad", "probably a separate tab. SDLC".
+- A tab on this page: one funnel row per layer (runs, reds by class product / form / flaky, minutes, product bugs caught, product bugs that got past to later layers) and one row per phase (spec, plan, build, maintain) with 2-3 proxy signals each (PRs with no spec, plans closed unmerged, reds and fix commits per PR, fixes after merge in the same area, reverts, red-main days).
+- Layers 2-4 need only more GitHub runs (push on main, schedule, dispatch); layer 0 (the agent's hooks, commit-msg) needs a counter written by the hooks (any change to `~/.claude/hooks` or settings is the owner's own yes); layer 5 (bugs the owner saw) reads GitHub issues and Sentry. Attribution of a late red to the PR that caused it is a heuristic (about ±10 points), labelled on the page.
+- Own spec and preview, after v1's uploads have run for a few days.
+
 ## Tests (named files only)
 - `jobadabra-web/test/admin/agent-coding.test.js`: ingest key/shape/clamp/replace, page empty state and rendered cards, escape of strings, menu entry, headline.
 - `jobadabra/tests/gate-stats.test.mjs`: form/real/other classes from a fixture log, steps bucketed, no branch text in the output; stamp file once a day; no key = no upload.
@@ -67,8 +73,10 @@ Verdict band first (three lines, each with a status chip icon+word): "Push gate:
 - [x] Upload path agreed: B, once a day from ship.sh (owner, 1 Nov 2026: "Once a day from ship.sh (Recommended)")
 - [x] Spec written (this file)
 - [x] Page, ingest, table and demo seed built in `jobadabra-web` (uncommitted until the owner's yes on the preview)
-- [ ] Side-by-side preview (fictional data, light + dark) and owner's yes
-- [ ] `jobadabra-web` PR: ingest, table, page, menu, tests
+- [x] Preview (fictional data, desktop | phone) and owner's yes ("Yes, build it (Recommended)")
+- [x] `jobadabra-web` PR opened: ingest, table, page, menu, tests (Operations row limit 8 → 9, owner pick)
 - [ ] `jobadabra` PR: `tools/gate-stats.mjs` + uploader + `tools/agent-coding-stats.mjs` + workflow + tests
+- [ ] Menu split into 🧪 Testing and 🤖 Agents (own web PR after this one; owner pick "2 groups")
+- [ ] v2: the SDLC tab (own spec and preview, designed on real numbers)
 - [ ] Both PRs READY (checks green, Gitar approved, no open comment)
 - [ ] First upload and first CI run seen on the live page

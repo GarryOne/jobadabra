@@ -183,6 +183,11 @@ class DesktopWorkflowTest(unittest.TestCase):
             self.assertIn('if [ "$MAIN_CI" != success ]', release)   # cancelled, skipped, failure and missing are all red
             self.assertIn('tools/release-checks.sh --after-ci "$TAG" "$REF"', release)
             self.assertNotIn('tools/release-checks.sh "$TAG"', release)
+        # Owner, 1 Nov 2026: the run says which commit it is built from and how far behind main (an annotation and the summary page).
+        self.assertIn('::notice title=Built from ${GITHUB_SHA:0:7}::', job('changes'))
+        self.assertIn('git rev-list --count "$GITHUB_SHA..origin/main"', job('changes'))
+        # Gitar on #2883: a beta built on a beta-pick/<sha7> branch (tools/beta-release.sh) still gets the AI credit alert and the quality-rate history.
+        self.assertNotIn("github.ref == 'refs/heads/main'", WORKFLOW.replace("(github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/beta-pick/'))", ''))
         # only a nightly or a beta by hand is tested; the plan is made once, for both lanes
         self.assertIn("(github.event_name == 'schedule' || inputs.nightly || inputs.beta)", job('changes'))
         self.assertIn('node plan-run.mjs', job('changes'))

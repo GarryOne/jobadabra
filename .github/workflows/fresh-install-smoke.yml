@@ -39,7 +39,7 @@ jobs:
           [ -n "$TAG" ] || TAG=$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName -q .tagName)
           [ -n "$TAG" ] || { echo "::error::No stable release found"; exit 1; }
           names=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets -q '.assets[].name')
-          for asset in Jobadabra-mac-arm64.zip Jobadabra-windows-x64.exe; do
+          for asset in Jobadabra-mac-arm64.dmg Jobadabra-mac-arm64.zip Jobadabra-windows-x64.exe; do   # the .dmg is the Mac link the website serves; the smoke installs the .zip the updater uses
             echo "$names" | grep -qx "$asset" || { echo "::error::No $asset in $TAG: the Download link would be broken"; exit 1; }
           done
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"

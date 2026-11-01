@@ -7,7 +7,7 @@ Every build is smoke-tested once, when it is built (`desktop.yml`: `mac-smoke.mj
 
 ## Behaviour
 - One workflow, `fresh-install-smoke.yml` (replaces `mac-smoke.yml`, same Mac job, one `tag` input kept for by-hand runs), two jobs, **Mac** and **Windows**, both report only.
-- Which build: the newest **stable** release (`gh release view`, no tag: the one the Download link serves), or the `tag` input (empty = that). Mac: `Jobadabra-mac-arm64.zip`; Windows: `Jobadabra-windows-x64.exe`; a stable release without them is a red run (the user-facing link is broken).
+- Which build: the newest **stable** release (`gh release view`, no tag: the one the Download link serves), or the `tag` input (empty = that). Mac: `Jobadabra-mac-arm64.zip` (installed) and `Jobadabra-mac-arm64.dmg` (the Mac Download link, checked to exist); Windows: `Jobadabra-windows-x64.exe`; a stable release without one of them is a red run (the user-facing link is broken).
 - What runs is what already exists: `mac-smoke.mjs` (signature, bundled Python, Keychain round trip, native terminal, the Jobs list opens) and `windows-smoke.mjs <exe> smoke smoke` (silent per-user install, bundled Python, Credential Manager round trip, the Jobs list opens). Nothing is rewritten.
 - Red = the job fails; the result line goes to the job log (no `$GITHUB_STEP_SUMMARY`, `tests/test_no_step_summaries.py`) and the screenshots are kept 14 days. Nothing blocks a merge or a beta (`tests/test_red_main.py`: ignored, report only).
 - GitHub's cron is the start (`23 3 * * *`); the Worker timer replaces it when the bot Worker has moved to `jobadabra-web` (GitHub cron is unreliable, memory `feedback-github-cron-unreliable-use-worker`).
@@ -21,7 +21,7 @@ Every build is smoke-tested once, when it is built (`desktop.yml`: `mac-smoke.mj
 | The installer is notarized and Gatekeeper accepts a downloaded copy | Not testable yet: the Mac build has no Apple Developer ID (`RELEASE.md`) | Parked until the Developer ID exists |
 
 ## Not covered
-Mounting the `.dmg`; the quarantine flag a browser download sets (no browser on the runner); beta releases (only the stable one is what users download); the in-app update swap (parked JOB-194).
+Mounting the `.dmg` (only its existence is checked); the quarantine flag a browser download sets (no browser on the runner); beta releases (only the stable one is what users download); the in-app update swap (parked JOB-194).
 
 ## Acceptance
 1. The workflow starts on its cron and by hand with an empty or explicit `tag`; the Mac and Windows jobs install the stable release's generic assets and print their result line.

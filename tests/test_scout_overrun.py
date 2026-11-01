@@ -24,6 +24,38 @@ class OverrunTest(unittest.TestCase):
             out.seek(0)
             self.assertIn('most recent call first', out.read())
 
+    def test_the_dump_is_written_by_python_under_the_gil_and_names_every_thread(self):
+        # 1 Nov 2026 (run 41347536341): faulthandler.dump_traceback_later walks the frames of 24 running check threads WITHOUT the GIL; its dump
+        # stopped at an unreadable frame ("File ???") with no main-thread section and the scout process died by a signal 6 s later (exit 128),
+        # so the day's index was not published. Green runs print the same dump; the crash is a race. A dump made from sys._current_frames()
+        # holds the GIL and cannot race.
+        hang = threading.Event()
+        self.addCleanup(hang.set)
+
+        def a_check_waiting_on_a_slow_site():
+            hang.wait()
+        worker = threading.Thread(target=a_check_waiting_on_a_slow_site, name='check-1')
+        worker.start()
+        self.addCleanup(worker.join)
+        self.addCleanup(hang.set)
+        with mock.patch.object(scout_overrun.faulthandler, 'dump_traceback_later') as unsafe, \
+                tempfile.TemporaryDirectory() as folder, open(Path(folder) / 'log.txt', 'w+') as out:
+            scout_overrun.arm(0.1, grace_s=0.1, file=out)
+            time.sleep(0.6)
+            scout_overrun.disarm()
+            out.seek(0)
+            text = out.read()
+        unsafe.assert_not_called()
+        self.assertIn('a_check_waiting_on_a_slow_site', text)   # the thread that holds the run
+        self.assertIn('MainThread', text)   # the one the crashed dump never reached
+
+    def test_a_dump_that_fails_never_fails_the_run(self):
+        with mock.patch.object(scout_overrun.traceback, 'format_stack', side_effect=RuntimeError('x')), \
+                tempfile.TemporaryDirectory() as folder, open(Path(folder) / 'log.txt', 'w+') as out:
+            scout_overrun.arm(0.1, grace_s=0.1, file=out)
+            time.sleep(0.5)
+            scout_overrun.disarm()   # the watchdog thread died quietly or logged; the main thread is untouched
+
     def test_a_run_that_ends_in_time_leaves_nothing(self):
         with tempfile.TemporaryDirectory() as folder, open(Path(folder) / 'log.txt', 'w+') as out:
             scout_overrun.arm(0.1, grace_s=0.3, file=out)

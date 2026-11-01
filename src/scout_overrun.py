@@ -8,6 +8,7 @@ import os
 import sys
 import threading
 import time
+import traceback
 
 DUMP_EVERY_S = 15 * 60
 GRACE_S = 10 * 60   # the budget ends new checks; running ones normally finish well inside this
@@ -16,22 +17,51 @@ _before = set()     # the threads alive when the run started (arm): not this run
 _armed = [False]    # arm() ran in this process: only then may leave_if_stuck leave
 
 
+_stop = threading.Event()   # set by disarm(): the watchdog thread ends
+
+
+def _dump_all(file):
+    """Writes the stack of every thread, main first, from sys._current_frames(): the GIL is held while Python reads the frames, so a check
+    thread that frees its frame meanwhile cannot make the dump read freed memory. Same header line as faulthandler's ('most recent call first')."""
+    names = {t.ident: t.name for t in threading.enumerate()}
+    main = threading.main_thread().ident
+    frames = sorted(sys._current_frames().items(), key=lambda item: item[0] != main)
+    print(f'Timeout: stacks of {len(frames)} threads', file=file)
+    for ident, frame in frames:
+        print(f'Thread {names.get(ident, "?")} 0x{ident:x} (most recent call first):', file=file)
+        print(''.join(reversed(traceback.format_stack(frame))), file=file)
+    file.flush()
+
+
+def _watch(every_s, file):
+    while not _stop.wait(every_s):
+        try:
+            _dump_all(file)
+        except Exception as error:  # noqa: BLE001 — the diagnostics never end the run they describe
+            print(f'scout: stack dump failed ({type(error).__name__}: {error})', file=sys.stderr, flush=True)
+
+
 def arm(budget_s, grace_s=GRACE_S, file=None):
-    """After budget_s + grace_s, dump every thread's stack once to `file` (stderr). Returns False when there is no budget to overrun.
-    Also notes the threads alive now: leave_if_stuck counts only threads this run started."""
+    """After budget_s + grace_s (and every such interval after), dump every thread's stack to `file` (stderr), from a daemon thread.
+    Returns False when there is no budget to overrun. Also notes the threads alive now: leave_if_stuck counts only threads this run started.
+    Why (1 Nov 2026, run 41347536341): faulthandler.dump_traceback_later reads other threads' frames without the GIL; with 24 check threads
+    running, its 15-minute dump stopped at an unreadable frame and the scout process died by a signal, before it published the index."""
     _before.clear()
     _before.update(t.ident for t in threading.enumerate())
     _armed[0] = True
     if not budget_s:
         return False
     target = file or sys.stderr
-    print(f'scout: stacks of every thread are written every {min(budget_s + grace_s, DUMP_EVERY_S) / 60:.0f} min while the run is going', flush=True)
-    faulthandler.dump_traceback_later(min(budget_s + grace_s, DUMP_EVERY_S), repeat=True, file=target)   # repeats: the first one alone came after the job's cancel (22 Oct 2026)
+    every_s = min(budget_s + grace_s, DUMP_EVERY_S)
+    print(f'scout: stacks of every thread are written every {every_s / 60:.0f} min while the run is going', flush=True)
+    _stop.clear()
+    threading.Thread(target=_watch, args=(every_s, target), daemon=True, name='scout-stack-watchdog').start()   # repeats: the first one alone came after the job's cancel (22 Oct 2026)
     return True
 
 
 def disarm():
     """The run ended in time: no dump."""
+    _stop.set()
     faulthandler.cancel_dump_traceback_later()
 
 

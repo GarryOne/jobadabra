@@ -131,7 +131,7 @@
     /* Centred over the form, the panel must not catch the driver's own clicks aimed at a field under it: it takes no hit-test while working, except Stop (the person's one way out) and the small minimise button. */
     .jp.working > *, .jp.working .card * { pointer-events: none; } .jp.working .stop-btn, .jp.working .pill-stop, .jp.working .min, .jp.working .card[hidden] ~ .pill { pointer-events: auto; }   /* centred, at the corner's own size (owner, 19 Oct 2026: the 1.3 zoom was too big); minimised, the pill opens it again */
     /* So while working, a button that cannot act is not drawn at all (owner, 27 Oct 2026: "let's not display at all the buttons (cross/x and "tailor CV") if they're not available during the
-       extension work"; Report too): every button of the card except Stop, minimise and the step row itself. A new button joins this by itself. Guard: desktop/integration/extension/fill-overlay.test.mjs. */
+       extension work"; Report too): every button of the card except Stop, minimise and the step row itself. A new button joins this by itself. Guard: desktop/e2e/test/fill-overlay.test.mjs. */
     .jp.working .card button:not(.stop-btn):not(.min):not(.fill), .jp.working .report-pop { display: none !important; }   /* the Report popup comes back at the end */
     .primary.is-busy .label { flex: 1; text-align: left; font-size: 13px; } .primary.is-busy ~ .stop-btn { padding: 6px 12px; }   /* the step on ONE line beside the spinner, left-aligned, cut with … (the whole sentence is its tooltip): never two centred rows (owner, 27 Oct 2026: "this should not be 2 rows") */
     /* The panel breathes an orange glow while it works (owner, 19 Oct 2026); none under reduced motion. */

@@ -2,7 +2,7 @@
 // clear verdict that the extension finished all its work... Why we're so reactive and changing our state every 10 ms? It causes glitches"). Intended behaviour, one state per tab:
 // working -> done | stopped | your-turn. It is set to working when the app opens or marks the tab (before any page loads) and changes only on a verdict: the run ends (done), Stop (stopped), or the person
 // must act (your-turn). The page only DRAWS it (panel-overlay.js, review.js, early-dim.js): dim + centred panel while working, nothing decided by a timer, a page event or a removed layer.
-// Held in the worker and in chrome.storage.session (a sleeping worker wakes to the same answer); every change is pushed to the tab as {type: 'applyState'}. Guards: desktop/integration/extension/fill-overlay-early-reload.test.mjs,
+// Held in the worker and in chrome.storage.session (a sleeping worker wakes to the same answer); every change is pushed to the tab as {type: 'applyState'}. Guards: desktop/e2e/test/fill-overlay-early-reload.test.mjs,
 // desktop/test/apply-state-owner.test.js.
 // TODO(AI): a run that ends with no progress('') (a return that skips it) leaves its tab working until Stop, the panel's X or the tab's close: find such a path and give it a verdict (2026-10-27).
 export const WORKING = 'working';

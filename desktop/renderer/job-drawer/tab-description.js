@@ -6,6 +6,7 @@
 import {el} from '../components.js';
 import {postingBlocks, postingFacts, postingSource, notSeen} from '../job-page-view.js';
 import {button, closedCard, factStrip, postingBody, skeleton, sourceCard, stateCard} from './parts.js';
+import {plainError} from '../run-warnings.js';
 
 const read = new Map();   // job url → the answer of IPC jobPosting, for this session
 const ICONS = {employer: 'building', posted: 'calendar', found: 'search', saved: 'file'};
@@ -22,7 +23,7 @@ function missing({job, page, reload}, box, paint, problem = '') {
   const app = page?.app?.id;
   const actions = [];
   const failed = text => { box.replaceChildren(stateCard({icon: 'alert', tone: 'bad', title: 'Could not retrieve the page', text: `${text} Try again, or paste the description.`, actions: buttons()})); };
-  const done = async result => { if (result.ok) { read.delete(job.url); reload(); } else failed(result.text || result.error || 'The page did not answer.'); };
+  const done = async result => { if (result.ok) { read.delete(job.url); reload(); } else failed(plainError(result.text || result.error || 'The page did not answer.')); };
   const fetchOriginal = () => {
     box.replaceChildren(stateCard({icon: 'info', title: 'Fetching original…', text: 'Retrieving the posting from the employer\'s website.'}), ...skeleton());
     window.pilot.describeJob(app, '', job.url).catch(error => ({ok: false, text: error.message})).then(done);
@@ -53,7 +54,7 @@ export function descriptionTab(ctx) {
   const box = el('div', 'jd-async');
   const paint = answer => {
     if (answer.failed) {
-      box.replaceChildren(stateCard({icon: 'alert', tone: 'bad', title: 'Could not read the saved posting', text: answer.error, actions: [button('Retry', () => ask(true))]}));
+      box.replaceChildren(stateCard({icon: 'alert', tone: 'bad', title: 'Could not read the saved posting', text: plainError(answer.error), actions: [button('Retry', () => ask(true))]}));
       return;
     }
     box.replaceChildren(answer.ok && answer.description ? saved(answer.description, job, answer) : missing(ctx, box, paint));

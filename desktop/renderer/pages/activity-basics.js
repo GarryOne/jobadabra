@@ -3,7 +3,7 @@
 import {billingLabel} from '../ai-engine-view.js';
 import {costText, dollars} from '../ai-cost.js';
 import {resumeOffered} from '../claude-help.js';
-import {AI_BUSY, groupWarnings, humanError, limitedJobs, sentences} from '../run-warnings.js';
+import {AI_BUSY, groupWarnings, humanError, limitedJobs, plainError, sentences} from '../run-warnings.js';
 import {aiLimitHead, failedOutcome, stoppedHead, deliveryHead, notConnectedHead, waitedHead, unsavedRun} from '../run-status.js';
 import {el} from '../components.js';
 import {parseRunMessage} from '../run-cards.js';
@@ -161,7 +161,7 @@ export function siteRow(site, live = true, since = '') {
     const button = keepPress(key, Object.assign(el('button', 'secondary item-action', action[0]), {type: 'button', title: site.url}));
     button.addEventListener('click', async () => {
       const done = await pressWhile(key, '', async () => action[1]()).catch(error => ({ok: false, error: error.message}));
-      if (done?.ok === false) setPress(key, {text: done.error || 'Could not do it now'});
+      if (done?.ok === false) setPress(key, {text: plainError(done.error || 'Could not do it now')});
     });
     li.append(button);
   }

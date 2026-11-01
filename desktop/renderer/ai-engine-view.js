@@ -2,6 +2,7 @@
 // the DOM so the tests can check them. The user picks; nothing is chosen for them (lib/claude-code.js engine()).
 import {costText, dollars} from './ai-cost.js';
 import {FREE_WEAKER, FREE_WEAKER_SHORT} from './ai-tier-words.js';
+import {plainError} from './run-warnings.js';
 const freeOn = settings => !!(settings?.aiFree || settings?.aiTrial);
 export const usingFree = settings => freeOn(settings) && (!settings.aiEngine || settings.aiEngine === 'api');   // Free is the engine in charge (a later pick of another engine wins)
 // The one-time hint after AI-written text on Free AI (renderer/own-key-hint.js): its words, and when it is wanted (Free, not shown yet).
@@ -112,7 +113,7 @@ export function cliStatus(status = null, family = 'claude') {
       : status.checkedAt ? {tone: 'bad', text: `Not signed in: ${login}, then Verify`}
         : {tone: 'warn', text: 'Not verified yet: press Verify'});
   }
-  if (status.error && status.authenticated) lines.push({tone: 'warn', text: status.error});  // e.g. the usage window
+  if (status.error && status.authenticated) lines.push({tone: 'warn', text: plainError(status.error)});  // e.g. the usage window
   return {lines, path: status.path || '', usable: !!(status.installed && status.authenticated), checking: false};
 }
 

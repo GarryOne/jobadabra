@@ -17,6 +17,7 @@ import {showFormCard} from './session-form-card.js';
 import {storeName} from '../store-words.js';
 import {reasonFor} from '../reason-words.js';
 import {NO_PLACE, sessionPlace} from '../targets.js';
+import {plainError} from '../run-warnings.js';
 
 // Something only you can do, with its most likely action one click away: a judgement call (Claude's proposed
 // answer, or another you saved for the same question) or an agreement (open the form to tick it).
@@ -382,7 +383,7 @@ export function askRow(need, item) {
     updateNeedsCount();
     if (value === saved && !forgotten.has(need.question)) { savedAnswers.set(need.question, value); keep(); body.append(savedLine(need.question)); return; }
     const result = await window.pilot.rememberAnswer(need.question, value);
-    if (!result?.ok) { body.append(el('div', 'small ss-saved is-error', result?.error || `Couldn't keep it in ${storeName()}`)); return; }
+    if (!result?.ok) { body.append(el('div', 'small ss-saved is-error', plainError(result?.error || `Couldn't keep it in ${storeName()}`))); return; }
     savedAnswers.set(need.question, value); forgotten.delete(need.question); keep();
     body.append(savedLine(need.question));
   }, offline(item));

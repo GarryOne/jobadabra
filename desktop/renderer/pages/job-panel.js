@@ -14,6 +14,7 @@ import {BODIES} from '../job-drawer/tabs-body.js';
 import {tabStrip} from '../job-drawer/tabs.js';
 import {$} from './core.js';
 import {shared} from './shared.js';
+import {plainError} from '../run-warnings.js';
 
 const state = {url: '', job: null, page: null, stage: 'none', restError: '', tab: 'overview', tabs: new Map(), expanded: false, asked: 0, back: null};
 export const panelUrl = () => state.url;
@@ -61,7 +62,7 @@ function draw() {
   const body = el('div', 'jd-body');
   const failed = page?.error || state.restError;
   if (page?.error) {
-    body.append(stateCard({icon: 'alert', tone: 'bad', title: 'Could not read this job', text: page.error,
+    body.append(stateCard({icon: 'alert', tone: 'bad', title: 'Could not read this job', text: plainError(page.error),
       actions: [button('Retry', () => load(job))]}));   // Retry only after a failure
   } else if (state.tab === 'overview' && (state.stage !== 'none' || job.fit != null)) {
     // The Overview reads the list row's own facts first (matchView), so it is drawn at once; the store's answer only adds to it.

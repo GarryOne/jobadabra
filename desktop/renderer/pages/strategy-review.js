@@ -13,6 +13,7 @@ import {toastMessage} from './startup.js';
 import {goStep, saveState, showSetupFinish} from './wizard.js';
 import {byStore} from '../store-words.js';
 import {titleCase} from '../fragment-words.js';
+import {plainError} from '../run-warnings.js';
 export {titleCase};   // one place for it: renderer/fragment-words.js
 
 // ---------- step 3: review the drafted strategy ----------
@@ -123,7 +124,7 @@ async function openRebuildReview() {
   const current = shared.draft;
   $('rebuild-draft-cost').textContent = costText(shared.draft?.usd, usd => `This draft cost ${dollars(usd)} (already spent). `);
   const result = await window.pilot.rebuildImpact(current);
-  if (!result.ok) { $('rebuild-groups').replaceChildren(el('p', 'message error', result.error)); return; }
+  if (!result.ok) { $('rebuild-groups').replaceChildren(el('p', 'message error', plainError(result.error))); return; }
   if (!result.groups.length) { $('rebuild-groups').replaceChildren(el('p', 'muted', 'This draft changes nothing in your current strategy.')); return; }
   const boxes = {};
   const update = () => {

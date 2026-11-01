@@ -112,10 +112,8 @@ test('#2157: removed UI words count only where a suite expects them, not in step
 test('one replay of the recorded cases per PR, in CI · Page cases only (no `recorded` e2e suite since 1 Nov 2026); it leaves the slow ones to main, extension change or not', async () => {
   // #2164 replayed every case twice: page-cases 2 jobs and 5 runner-min, e2e's recorded 5 jobs and 44.
   // Owner, 27 Oct 2026: slow cases stay off PRs ("One bug in hundreds of PRs, that's low value": #1621 was the one escape since 17 Oct).
-  const {ON_PR_ELSEWHERE} = await import('../lib/pr-suites.mjs');
   const {splitForPr} = await import('../lib/replay-slow.mjs');
   assert.ok(!fs.existsSync(new URL('../suites/recorded.mjs', import.meta.url)), 'the recorded cases are no e2e suite: test/recorded-pages.test.mjs is their only home');
-  assert.deepEqual(ON_PR_ELSEWHERE, {});
   const workflow = name => fs.readFileSync(new URL(`../../../.github/workflows/${name}`, import.meta.url), 'utf8');
   assert.match(workflow('pr-suites.yml'), /pr-suites\.mjs --base origin\/main --plan --pull-request/);
   const pages = workflow('page-cases.yml');

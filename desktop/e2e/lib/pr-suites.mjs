@@ -98,9 +98,6 @@ export function report({strings, hits, changedFiles, sources}) {
 // Why (2026-10-28, owner): rule G caps a PR at five suites; deferred suites run after merge. G2 still runs each chosen journey whole.
 // Catch-weighted ranking needs a PUBLIC scorecard snapshot (the site session owns that follow-up); today ties use reach, then name.
 // Optional catches are supplied explicitly, never fetched from the private site. Direct suite/step files outrank imports/quotes, then coverage.
-// Suites a pull request's e2e run never starts, and the workflow that runs the same on the PR. Empty since 1 Nov 2026: `recorded` (the recorded cases page-cases.yml already
-// replays; owner, 27 Oct 2026: "Drop it") left e2e altogether, and test/recorded-pages.test.mjs in CI · Page cases is its only home. The mechanism stays for the next one.
-export const ON_PR_ELSEWHERE = {};
 /** Pick reached backbone suites plus explicitly report-only numbers; only backbone uses the PR cap.
  * direct: suites whose own file or step file changed; pointed/hits: import, watch or quote reach; covering: recorded line reach.
  * lanes is the same {suites: {name: entry}} registry the verdict reads, supplied from the PR base or merged checkout by the CLI.
@@ -109,7 +106,7 @@ export const ON_PR_ELSEWHERE = {};
 export function planPrSuites({pointed = [], hits = {}, covering = {}, direct = [], catches = {}, lanes = {}, linux, cadence = {}, pullRequest = false}) {
   const reports = pullRequest ? new Set(Object.entries(lanes.suites || {}).filter(([suite, entry]) => entry?.lane === 'tolerant' && entry.pr === 'number').map(([suite]) => suite)) : new Set();
   const wanted = [...new Set([...pointed, ...Object.keys(hits), ...Object.keys(covering)])].filter(suite => (
-    !['manual', 'outside', NIGHT_REPORT].includes(cadence[suite]) && !(pullRequest && ON_PR_ELSEWHERE[suite]) &&
+    !['manual', 'outside', NIGHT_REPORT].includes(cadence[suite]) &&
     (reports.has(suite) || isBackbone(lanes, suite))));
   let run = wanted.filter(suite => linux(suite) || pointed.includes(suite) || String(covering[suite] || '').startsWith('runs '));
   const numbers = run.filter(suite => reports.has(suite));

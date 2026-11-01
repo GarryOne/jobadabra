@@ -38,6 +38,7 @@ LANES = {'mac': 'Mac', 'windows': 'Windows'}
 
 
 def when(run):
+    """The time a GitHub run was created, from its created_at (UTC); a run without it raises KeyError."""
     return datetime.fromisoformat(run['created_at'].replace('Z', '+00:00'))
 
 
@@ -48,6 +49,7 @@ def same(a, b):
 
 
 def state_of(run):
+    """'green', 'red', 'still running' or the run's own conclusion ('cancelled', 'skipped'...); a run with no conclusion yet is 'still running'."""
     if run.get('status') not in (None, 'completed'):
         return 'still running'
     return {'success': 'green', 'failure': 'red'}.get(run.get('conclusion'), run.get('conclusion') or 'still running')
@@ -69,6 +71,7 @@ def mac_passes(runs):
 
 
 def windows_passes(runs):
+    """[(pass n, the commit it tested, run)] for e2e-windows.yml burn-in runs: the commit is the sha in the run's title (its run-name); other runs are left out."""
     out = []
     for run in runs:
         found = WINDOWS_TITLE.match(run.get('display_title') or '')
@@ -78,6 +81,7 @@ def windows_passes(runs):
 
 
 def burn_in_lines(sha, macs, windows):
+    """The 'not proved' lines for the burn-in of `sha`: a pass missing, red, cancelled or still running, per lane; one line saying so when no pass tested `sha` at all."""
     mine = {'mac': [(n, run) for n, tested, run in macs if same(tested, sha)], 'windows': [(n, run) for n, tested, run in windows if same(tested, sha)]}
     if not mine['mac'] and not mine['windows']:
         return [f'not proved: no burn-in on {sha[:7]}']
@@ -94,11 +98,13 @@ def burn_in_lines(sha, macs, windows):
 
 
 def build_lines(sha, ci_runs):
+    """[] when main's build.yml runs on `sha` are green (e2e_gate.ci_verdict), else one 'not proved' line saying missing or red."""
     verdict = e2e_gate.ci_verdict(ci_runs)
     return [] if verdict == 'green' else [f'not proved: build.yml on {sha[:7]} is {"missing" if verdict == "none" else verdict}']
 
 
 def main_lines(sha, e2e_runs):
+    """One 'not proved' line per red main check of e2e.yml on `sha` (main_e2e_state.is_main_check); [] when none is red."""
     return [f"not proved: main's e2e is red on {sha[:7]} (run {run['id']})" for run in e2e_runs
             if same(run.get('head_sha'), sha) and main_e2e_state.is_main_check(run) and run.get('conclusion') == 'failure']
 
@@ -128,6 +134,7 @@ def newest_proved(data):
 
 
 def gh(*args):
+    """Output of `gh <args>`; raises RuntimeError with gh's own message on a non-zero exit, which main() prints as 'unknown is never proved'."""
     result = subprocess.run(['gh', *args], capture_output=True, text=True)
     if result.returncode:
         raise RuntimeError(f"gh {' '.join(args[:3])} failed: {result.stderr.strip()[:200]}")
@@ -146,6 +153,7 @@ def runs_of(repo, workflow, query='', pages=3):
 
 
 def fetch(repo):
+    """Read from GitHub what proof() needs: burn-in runs of e2e.yml and e2e-windows.yml, build.yml runs per tested sha, and the unit-<lane>.json assets of recent releases."""
     e2e_runs, windows_runs = runs_of(repo, 'e2e.yml'), runs_of(repo, 'e2e-windows.yml', '&event=workflow_dispatch')
     shas = {tested for _, tested, _ in mac_passes(e2e_runs)}
     build_runs = {sha: json.loads(gh('api', f'repos/{repo}/actions/workflows/build.yml/runs?head_sha={sha}&status=completed&per_page=20', '--jq', '[.workflow_runs[]|{conclusion}]')) for sha in shas}

@@ -116,7 +116,7 @@ async function extensionLog(t, reply, {serial = false, kept: start = []} = {}) {
   const batches = [];
   const oldChrome = globalThis.chrome;
   t.after(() => { if (oldChrome === undefined) delete globalThis.chrome; else globalThis.chrome = oldChrome; });
-  globalThis.chrome = {runtime: {getManifest: () => ({version: '0.9'})}, storage: {local: {
+  globalThis.chrome = {runtime: {getManifest: () => ({version: '0.9'}), getURL: () => 'chrome-extension://test/'}, storage: {local: {
     get: () => once(() => structuredClone(kept)), set: patch => once(() => { kept = structuredClone({...kept, ...patch}); }),
   }}};
   t.mock.method(globalThis, 'fetch', async (_url, init) => {
@@ -217,6 +217,63 @@ for (const outcome of ['ok', 'failed']) test(`a push cycle of 5 s or more (${out
   const {version: _version, ...fields} = slow[0].fields;
   assert.deepEqual(fields, {settingsMs: 0, readMs: 0, postMs: 6000, lines: 1, ...(outcome === 'ok' ? {markMs: 0} : {failed: true})});
   assert.ok(log.batches.flat().some(entry => entry.text === 'slow push'), 'the line itself reaches the app with a later push');
+});
+
+// #2608 (Night burn-in 4/5, run 41269467529): a 12 s POST while the app answered in under 2 s. The worker's 1 s tick (sw-lag.js) says if its own loop was blocked.
+// The fake scheduler stands in for setInterval: the test plays the ticks, so no real time passes.
+const slowPushFields = log => { const [line] = log.kept().filter(entry => entry.text === 'slow push'); const {version: _version, ...fields} = line.fields; return fields; };
+test('a 12 s stall with the loop on time: "slow push" says the worst tick lag was 0, and no "sw lag" line is written', async t => {
+  let now = 1000;
+  t.mock.method(Date, 'now', () => now);
+  const log = await extensionLog(t, (_batch, n) => { if (n === 1) for (let i = 0; i < 12; i++) { now += 1000; log.lagProbe.tick(); } return {ok: true}; });
+  log.lagProbe.start(() => {});
+  await log.decide('fill', 'filled the form');
+  await log.pushDecisions();
+  await log.pushDecisions();
+  assert.deepEqual(slowPushFields(log), {settingsMs: 0, readMs: 0, postMs: 12000, markMs: 0, worstTickLagMs: 0, lines: 1});
+  assert.equal(log.kept().filter(entry => entry.text === 'sw lag').length, 0);
+});
+
+for (const order of ['the tick runs before the cycle ends', 'the cycle ends before the late tick runs']) test(`a 12 s stall with a 12 s late tick (${order}): "slow push" carries the lag and one "sw lag" line is written`, async t => {
+  let now = 1000;
+  t.mock.method(Date, 'now', () => now);
+  const early = order.startsWith('the tick runs');
+  const log = await extensionLog(t, (_batch, n) => { if (n === 1) { now += 12000; if (early) log.lagProbe.tick(); } return {ok: true}; });
+  log.lagProbe.start(() => {});
+  await log.decide('fill', 'filled the form');
+  await log.pushDecisions();
+  log.lagProbe.tick();   // a stall ends with the awaited fetch and the overdue tick in the same turn, in either order
+  await log.pushDecisions();
+  await log.pushDecisions();
+  assert.equal(slowPushFields(log).worstTickLagMs, 11000, 'the tick was due 1 s after the last one and ran 11 s later');
+  const lines = log.kept().filter(entry => entry.text === 'sw lag');
+  assert.equal(lines.length, 1, 'one line for the one late tick');
+  assert.equal(lines[0].fields.lagMs, 11000);
+  assert.equal(lines[0].fields.burstTicks, 1);
+});
+
+// #2796 red: extension-sentry.test.mjs fakes `self` and imports log.js; the probe's real interval held that process open until the 180 s test timeout.
+test('in a worker the probe starts one 1 s interval whose handle does not hold a process open', async t => {
+  const started = [];
+  const oldSelf = globalThis.self;
+  t.after(() => { if (oldSelf === undefined) delete globalThis.self; else globalThis.self = oldSelf; });
+  globalThis.self = {addEventListener: () => {}};
+  let unref = 0;
+  t.mock.method(globalThis, 'setInterval', (_tick, ms) => { started.push(ms); return {unref: () => { unref++; }}; });
+  const log = await extensionLog(t);
+  assert.deepEqual(started, [1000], 'one interval, 1 s');
+  assert.equal(unref, 1, 'the handle was unref-ed');
+  assert.equal(log.lagProbe.worstSince(0), 0, 'the probe is running');
+});
+
+test('without a running probe (a harness, a test) "slow push" has no tick-lag field', async t => {
+  let now = 1000;
+  t.mock.method(Date, 'now', () => now);
+  const log = await extensionLog(t, () => { now += 6000; return {ok: true}; });
+  await log.decide('fill', 'filled the form');
+  await log.pushDecisions();
+  await log.pushDecisions();
+  assert.equal('worstTickLagMs' in slowPushFields(log), false);
 });
 
 test('a fast push writes no "slow push" line', async t => {

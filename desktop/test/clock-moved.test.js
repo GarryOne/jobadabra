@@ -10,8 +10,8 @@ import {fileURLToPath} from 'node:url';
 import {execute, filesOf, findTimeBombs, firstFailure, pool, probe, reportText} from '../../tools/clock-moved.mjs';
 
 const TOOL = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../tools/clock-moved.mjs');
-// Why (1 Nov 2026, #2823 red on Windows): libfaketime exists only on Linux and the stand-in is a /bin/sh script, so the tests that run through it skip elsewhere; the rest of this file runs everywhere.
-const LINUX_ONLY = process.platform === 'win32' && 'the faketime stand-in is a /bin/sh script';
+// Why (1 Nov 2026, #2823 red on Windows): the faketime stand-in is a /bin/sh script, so the tests that run through it skip on Windows; the rest of this file runs everywhere.
+const NEEDS_SH = process.platform === 'win32' && 'the faketime stand-in is a /bin/sh script';
 const FIXTURE_AREA = {name: 'fixture', cwd: '.', dir: 'test', match: /\.test\.js$/, command: file => ['node', file]};
 
 // A stand-in for `faketime -f +Nd <cmd>`: the same arguments, a Date that reads N days ahead. `moves=false` is a faketime that runs the command but leaves the clock alone.
@@ -36,7 +36,7 @@ function tree() {
   return {root, dir: root};
 }
 
-test('a file green today and red with the clock moved is reported at the smallest shift that breaks it; a file red today is not', {skip: LINUX_ONLY}, async t => {
+test('a file green today and red with the clock moved is reported at the smallest shift that breaks it; a file red today is not', {skip: NEEDS_SH}, async t => {
   const {root} = tree();
   t.after(() => fs.rmSync(root, {recursive: true, force: true}));
   process.env.CLOCK_MOVED_FAKETIME = standIn(root);
@@ -53,7 +53,7 @@ test('a file green today and red with the clock moved is reported at the smalles
   assert.doesNotMatch(text, /red-today/);
 });
 
-test('nothing red when moved says so in one line; the same line is never printed when nothing was measured', {skip: LINUX_ONLY}, async t => {
+test('nothing red when moved says so in one line; the same line is never printed when nothing was measured', {skip: NEEDS_SH}, async t => {
   const {root} = tree();
   t.after(() => fs.rmSync(root, {recursive: true, force: true}));
   for (const name of ['bomb-one-day', 'bomb-seven-days', 'red-today']) fs.rmSync(path.join(root, 'test', `${name}.test.js`));
@@ -67,7 +67,7 @@ test('nothing red when moved says so in one line; the same line is never printed
   assert.doesNotMatch(missing.stdout + missing.stderr, /No test depends on today's date/);
 });
 
-test('a faketime that runs but does not move the clock is caught by the probe before any test runs', {skip: LINUX_ONLY}, async t => {
+test('a faketime that runs but does not move the clock is caught by the probe before any test runs', {skip: NEEDS_SH}, async t => {
   const {root} = tree();
   t.after(() => fs.rmSync(root, {recursive: true, force: true}));
   process.env.CLOCK_MOVED_FAKETIME = standIn(root, false);

@@ -1,0 +1,176 @@
+name: CI · Upgrade + data test (daily, report only)
+
+# Every day: the three newest stable releases each fill their own data folder (their bundled Python and store), the build of main replaces them the way an update does, the app opens
+# that folder, and every job, answer and setting must still be there (desktop/scripts/upgrade-data-proof.mjs, compare in desktop/lib/data-fingerprint.js). Mac and Windows.
+# Report only (owner, 1 Nov 2026, five new test methods): nothing waits for this run and a red one blocks no merge and no beta; a red day is a finding for the Testing Overview.
+# Spec: docs/superpowers/specs/2026-11-01-upgrade-data-test-design.md. Never the owner's data, apps or port: a temp data folder, apps installed on the runner only.
+on:
+  schedule:
+    - cron: '41 4 * * *'   # a backup start; the daily timer belongs to the Worker that starts the other jobs
+  workflow_dispatch:
+    inputs:
+      new_tag:
+        description: 'A published build to update TO (empty: build main in this run, 15 to 25 minutes)'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+concurrency:
+  group: upgrade-data
+  cancel-in-progress: false
+
+jobs:
+  releases:
+    name: Which releases
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    outputs:
+      tags: ${{ steps.pick.outputs.tags }}
+    steps:
+      - id: pick
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # the three newest stable releases (no draft, no beta) that ship both generic installers
+          tags=""
+          for tag in $(gh release list --repo "$GITHUB_REPOSITORY" --limit 40 --json tagName,isDraft,isPrerelease -q '.[] | select((.isDraft | not) and (.isPrerelease | not)) | .tagName'); do
+            names=$(gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json assets -q '.assets[].name')
+            if echo "$names" | grep -qx 'Jobadabra-mac-arm64.zip' && echo "$names" | grep -qx 'Jobadabra-windows-x64.exe'; then tags="$tags $tag"; fi
+            [ "$(echo $tags | wc -w)" -ge 3 ] && break
+          done
+          [ -n "$tags" ] || { echo "::error::No stable release with both installers"; exit 1; }
+          echo "tags=$(echo $tags)" >> "$GITHUB_OUTPUT"
+          echo "Testing updates from:$tags"
+
+  mac:
+    name: Upgrade · Mac
+    needs: releases
+    runs-on: macos-latest   # Apple Silicon, the image the Mac build and its e2e run on
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0   # stage.mjs counts the extension's commits for its version
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v6   # only reads the Python release list; the app bundles its own
+        with:
+          python-version: '3.12'
+      - name: Install
+        working-directory: desktop
+        run: npm ci
+      - name: The build to update to · published build
+        if: inputs.new_tag != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release download "${{ inputs.new_tag }}" --repo "$GITHUB_REPOSITORY" -p 'Jobadabra-mac-arm64.zip' -D desktop/dist
+      - name: The build to update to · build main
+        if: inputs.new_tag == ''
+        working-directory: desktop
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          CLIENT: ${{ secrets.GOOGLE_SHARED_CLIENT_JSON }}
+          MAC_SIGN_P12: ${{ secrets.MAC_SIGN_P12 }}
+          MAC_SIGN_PASSWORD: ${{ secrets.MAC_SIGN_PASSWORD }}
+        run: |
+          if [ -n "$CLIENT" ]; then printf '%s' "$CLIENT" > ../config/google_oauth_client.json; fi
+          scripts/audiotee.sh && test -x build/bin/audiotee
+          node scripts/stage.mjs --app && scripts/python.sh
+          npm run build -- -c.buildVersion="${{ github.run_number }}"
+          cp dist/Jobadabra-*-arm64.zip dist/Jobadabra-mac-arm64.zip
+      - name: Update each release to it, and compare the data
+        working-directory: desktop
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAGS: ${{ needs.releases.outputs.tags }}
+        run: |
+          failed=0
+          for tag in $TAGS; do
+            mkdir -p "old/$tag"
+            gh release download "$tag" --repo "$GITHUB_REPOSITORY" -p 'Jobadabra-mac-arm64.zip' -D "old/$tag"
+            node scripts/upgrade-data-proof.mjs "${tag#desktop-v}" "old/$tag/Jobadabra-mac-arm64.zip" dist/Jobadabra-mac-arm64.zip upgrade || failed=1
+          done
+          exit $failed
+      - name: Summary
+        if: always()
+        working-directory: desktop
+        run: |
+          echo '| From | OS | State | Lost | Changed | Note |' >> "$GITHUB_STEP_SUMMARY"; echo '|---|---|---|---|---|---|' >> "$GITHUB_STEP_SUMMARY"
+          for f in upgrade/upgrade-*.json; do [ -f "$f" ] && jq -r '"| \(.from) | \(.os) | \(.state) | \(.lost | length) | \(.changed | length) | \(.note) |"' "$f" >> "$GITHUB_STEP_SUMMARY"; done; true
+      - name: Keep the screenshots and results
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: upgrade-data-mac
+          path: desktop/upgrade
+          if-no-files-found: ignore
+          retention-days: 14
+
+  windows:
+    name: Upgrade · Windows
+    needs: releases
+    runs-on: windows-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install
+        working-directory: desktop
+        run: npm ci
+      - name: The build to update to · published build
+        if: inputs.new_tag != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release download "${{ inputs.new_tag }}" --repo "$GITHUB_REPOSITORY" -p 'Jobadabra-windows-x64.exe' -D desktop/dist
+      - name: The build to update to · build main
+        if: inputs.new_tag == ''
+        working-directory: desktop
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          CLIENT: ${{ secrets.GOOGLE_SHARED_CLIENT_JSON }}
+          PYTHON_ARCH: x86_64-pc-windows-msvc
+        run: |
+          if [ -n "$CLIENT" ]; then printf '%s' "$CLIENT" > ../config/google_oauth_client.json; fi
+          node scripts/stage.mjs --app && scripts/python.sh
+          npm run build:win -- -c.buildVersion="${{ github.run_number }}"
+          cp dist/Jobadabra-*-x64.exe dist/Jobadabra-windows-x64.exe
+      - name: Update each release to it, and compare the data
+        working-directory: desktop
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAGS: ${{ needs.releases.outputs.tags }}
+        run: |
+          failed=0
+          for tag in $TAGS; do
+            mkdir -p "old/$tag"
+            gh release download "$tag" --repo "$GITHUB_REPOSITORY" -p 'Jobadabra-windows-x64.exe' -D "old/$tag"
+            node scripts/upgrade-data-proof.mjs "${tag#desktop-v}" "old/$tag/Jobadabra-windows-x64.exe" dist/Jobadabra-windows-x64.exe upgrade || failed=1
+          done
+          exit $failed
+      - name: Summary
+        if: always()
+        working-directory: desktop
+        run: |
+          echo '| From | OS | State | Lost | Changed | Note |' >> "$GITHUB_STEP_SUMMARY"; echo '|---|---|---|---|---|---|' >> "$GITHUB_STEP_SUMMARY"
+          for f in upgrade/upgrade-*.json; do [ -f "$f" ] && jq -r '"| \(.from) | \(.os) | \(.state) | \(.lost | length) | \(.changed | length) | \(.note) |"' "$f" >> "$GITHUB_STEP_SUMMARY"; done; true
+      - name: Keep the screenshots and results
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: upgrade-data-windows
+          path: desktop/upgrade
+          if-no-files-found: ignore
+          retention-days: 14

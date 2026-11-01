@@ -79,6 +79,20 @@ test('each way an update hurts a user is red and named: a deleted row, a changed
   assert.equal(compare(before, fingerprintFolder(folder((db, dir) => fs.writeFileSync(path.join(dir, 'settings.json'), JSON.stringify({models: {b: 2, a: 1}, cadence: 'daily', setupDone: true}))))).ok, true, 'key order is not a change');
 });
 
+test('rows still in the -wal of a store that was just closed by a quit are read, and the folder is not touched', () => {
+  const dir = folder();
+  const live = new DatabaseSync(path.join(dir, 'data', 'tracker.sqlite'));
+  live.exec('PRAGMA journal_mode = WAL; PRAGMA wal_autocheckpoint = 0');
+  live.prepare('INSERT INTO jobs (id, title, stage) VALUES (?, ?, ?)').run(99, 'Only in the wal', 'new');
+  assert.ok(fs.statSync(path.join(dir, 'data', 'tracker.sqlite-wal')).size > 0, 'positive control: the row is in the -wal');
+  const before = fs.readdirSync(path.join(dir, 'data')).sort();
+  const found = fingerprintFolder(dir);
+  const after = fs.readdirSync(path.join(dir, 'data')).sort();
+  live.close();
+  assert.ok(found['sqlite:data/tracker.sqlite:jobs:99:title'], 'the wal row is in the fingerprint');
+  assert.deepEqual(after, before, 'nothing was added or removed in the data folder by reading it');
+});
+
 test('a store the new build left unreadable is a change, never silence', () => {
   const before = prints();
   const broken = folder((db, dir) => {});

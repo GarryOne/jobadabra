@@ -16,7 +16,7 @@ For each old release `R` of the last three (the three newest non-draft, non-beta
 2. **Fingerprint** the data folder directly, no app needed: for `data/*.sqlite` one hash per cell (table, primary key, column), so a dropped or renamed column is a loss and an added one is not; for the user's texts (`desktop/lib/store/text-files.js`: profile, answers, knowledge, portrait), `cv.pdf` and `cv/` a hash per file; for `settings.json` and the config files (`desktop/lib/config-text.js`) a hash per top-level key. The lists are read from those files, never typed again.
 3. **Update.** Replace the app with the build of main (built in the job, as `windows-smoke.yml` already does for Windows) the way a user's update does it (Mac: replace `Jobadabra.app` in `/Applications`; Windows: the installer with the updater's own arguments, `WINDOWS_INSTALLER_ARGS`), then start it once on the same data folder and let it open the Jobs list (`smoke-screens.mjs`), so every migration the start runs has run, then quit.
 4. **Fingerprint again and compare.** Every old row, file and key must still be there with the same value. A change is allowed only when listed in `desktop/scripts/upgrade-expected.json` (a migration that rewrites a value on purpose: `{key, reason, pr}`; `*` matches any text, so one column can be allowed without the table). Anything else is a red line: `lost | changed | new-only` with table, key and the two hashes.
-5. **The app sees it.** The Jobs list of the new build shows the same number of jobs the old app's list showed (read through the same screen `smoke-screens.mjs` reads).
+5. **The app opens it.** The new build opens the Jobs list (not the setup wizard) on that folder, through `smoke-screens.mjs`. Counting the jobs the list draws is parked (the data check above already compares every row; the count only adds the renderer).
 
 Per run the result is one row per `R`: `{from, to, ok, rows: {before, after}, lost: [...], changed: [...]}` and a short summary; the job fails (red in Actions) on any loss, nothing else reacts to it.
 
@@ -43,6 +43,6 @@ Blocking anything; Linux; restoring the old app after the update; testing the No
 - [x] History read: windows-smoke/mac-smoke, updates suite, windows-upgrade-proof (25 Oct), demo.js, app-identity data files (proof: none: reading only, findings are in this spec)
 - [x] Choices (mac-07 for the owner, 1 Nov): a) the build of main is built inside the job, b) order: pure compare, then the runner on N-1..N-3, then the auto-update swap, c) extends the existing Windows upgrade workflow; all in `jobadabra` (desktop) (proof: none: a scope choice relayed by the coordinator, 1 Nov 2026)
 - [x] PR 1/3: `data-fingerprint.js` + unit tests + positive control (expected-change keys take `*` anywhere, so a migration is allowed for one column only) (proof: desktop/test/data-fingerprint.test.js)
-- [ ] PR 2/3: `upgrade-data-proof.mjs` + `upgrade-data.yml` on Mac and Windows with N-1..N-3
+- [x] PR 2/3: `upgrade-data-proof.mjs` + `upgrade-seed.py` + `upgrade-data.yml` on Mac and Windows with N-1..N-3 (proof: desktop/scripts/upgrade-data-proof.mjs); the seed was run with the bundled Python of the three real releases on 1 Nov (30 jobs, 366 entries each)
 - [ ] PR 3/3: the auto-update path (fake release list, real installer step)
 - [ ] Merged, first daily run read

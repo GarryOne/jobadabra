@@ -118,6 +118,7 @@ what stop a rule from being relaxed back into the old bug. Add an entry when a n
   silently not applied.
 - **Never force-push main** (1 Oct 2026): a `--force-with-lease` dropped another session's commit `8dce9ba`.
 - **Red main** (5 Oct 2026): four sessions waited for a red build's author until the owner stepped in.
+  **Removed 1 Nov 2026 (owner):** "We should remove that rule. It was when we're not using PRs. Now, since we use PRs, main can be red." The push block and the landing wait are gone; a red suite on main is bisected to a `red-main` issue instead.
 - **Keep worktrees** (owner, 9 + 11 Oct 2026): five landed worktrees were removed against the owner's wish and restored; then 167 worktrees took
   10 GB, hence keep by default + a 7-day prune of fully landed, untouched ones.
 - **Run Log and Session Handoff retired** (owner, 11 Oct 2026): of 56 sessions in 7 days only 2 read the Handoff (62 KB, its "Current state"

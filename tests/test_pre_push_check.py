@@ -1,4 +1,4 @@
-"""tools/pre-push-check.sh, the Claude Code hook before every git commit/push (1 of 3: commit subjects, red main, the clean checkouts, the gates beside the suites). Fixture: pre_push_fixture.py."""
+"""tools/pre-push-check.sh, the Claude Code hook before every git commit/push (1 of 3: commit subjects, the clean checkouts, the gates beside the suites). Fixture: pre_push_fixture.py."""
 import json
 import subprocess
 import unittest
@@ -126,39 +126,14 @@ class PrePushCheckTest(PrePushFixture):
     def tip(self):
         return git(self.repo, 'rev-parse', 'origin/main')
 
-    def test_a_red_main_with_no_failed_job_is_rerun_not_blocking(self):
+    def test_a_red_main_never_blocks_a_push(self):
+        # Owner, 1 Nov 2026: "We should remove that rule. It was when we're not using PRs. Now, since we use PRs, main can be red": the PR's own checks guard main.
         self.needed_committed()
-        code, err = self.hook('git push origin HEAD:main', GH_RUNS=runs_json(self.tip(), tests=('completed', 'cancelled')), GH_FAILED_JOBS='0')
-        self.assertEqual(code, 0, err)
-        self.assertIn('run rerun 42 --failed', Path(f'{self.log}.rerun').read_text())
-        # One job that really failed still blocks.
-        code, _ = self.hook('git push origin HEAD:main', GH_RUNS=runs_json(self.tip(), tests=('completed', 'failure')), GH_FAILED_JOBS='1')
-        self.assertEqual(code, 2)
-
-    def test_a_red_main_blocks_with_the_way_to_unblock_it(self):
-        self.needed_committed()
-        bad = git(self.repo, 'rev-parse', '--short=7', 'origin/main')
-        red = {'GH_RUNS': runs_json(self.tip(), tests=('completed', 'failure')), 'GH_FAILED_JOBS': '1'}
-        code, err = self.hook('git push origin HEAD:main', **red)
-        self.assertEqual(code, 2)
-        self.assertIn(f'git revert --no-edit {bad}', err)
-        self.assertIn('gh run view --log-failed 42', err)
-        subject, author = git(self.repo, 'log', '-1', '--format=%s', 'origin/main'), git(self.repo, 'log', '-1', '--format=%an', 'origin/main')
-        self.assertIn(f'main is RED: run 42 failed at {bad}, "{subject}" by {author} (https://x/runs/42)', err)   # one line: run, commit, author
-        self.assertEqual(self.hook('CI_RED_OK=1 git push origin HEAD:main', **red)[0], 0, 'the fix itself goes through')
-        self.assertEqual(self.hook('git push origin HEAD:main', SHIP_IGNORE_RED='1', **red)[0], 0, 'the explicit off switch')
-        # 12 Oct 2026: a PR's own required checks guard main, so a push to a PR branch never waits on a red main (flakes stopped 3 landings that day)
-        code, err = self.hook('SHIP_PR=1 git push origin my-branch', **red)
-        self.assertNotIn('main is RED', err)
-        self.assertEqual(code, 0, err)
-
-    def test_a_fix_in_flight_on_top_of_red_does_not_let_anyone_through(self):
-        # 11 Oct 2026: four landings went in on top of b6dd70e, a fix attempt that was still building and ended red
-        self.needed_committed()
-        red = runs_json(self.tip(), tests=('completed', 'failure'))
-        building = json.loads(runs_json('f' * 40, tests=('in_progress', ''), pages=('in_progress', '')))
-        code, err = self.hook('git push origin HEAD:main', GH_RUNS=json.dumps(building + json.loads(red)), GH_FAILED_JOBS='1')
-        self.assertEqual(code, 2, err)
+        for tests in (('completed', 'failure'), ('completed', 'cancelled'), ('in_progress', '')):
+            with self.subTest(tests=tests):
+                code, err = self.hook('git push origin HEAD:main', GH_RUNS=runs_json(self.tip(), tests=tests), GH_FAILED_JOBS='1')
+                self.assertEqual(code, 0, err)
+                self.assertNotIn('main is RED', err)
 
     @unittest.skipUnless(shutil.which('node'), 'needs node')
     def test_the_journey_gate_runs_beside_the_suites_and_a_failing_gate_blocks_with_its_output(self):

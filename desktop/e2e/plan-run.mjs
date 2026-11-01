@@ -155,9 +155,10 @@ export async function planRun({env, gh = realGh, all, minutes, os = async () => 
   // Windows runs apply and the settings smoke of these (lib/plan.mjs WINDOWS, the e2e audit 26 Oct 2026), never one that judges what is the same on every OS
   // (quality: the AI's answers; owner, 7 Oct 2026: Windows paid $1.36 a day for it).
   const windows = onWindows(suites.filter(suite => !sameOnEveryOs.includes(suite)));
-  // GATE_UNIT=1 (the release run, desktop.yml): the desktop unit tests are one more leg of each lane's matrix and count as a job to run; `suites` and `windows_suites` stay the E2E suites.
+  // GATE_UNIT=1 (the release run, desktop.yml): the desktop unit tests are one more leg of each lane's matrix. `count`, `suites` and `windows_suites` stay the E2E legs and suites: a plan
+  // that picked no suite must still read '0' so the Test matrix is skipped and "Gate ran?" names the failure (Gitar on #2858; the 24 Oct 2026 guard, tests/test_desktop_workflow.py).
   const macMatrix = withUnitLeg({include}, 'Mac', env), windowsPlan = withUnitLeg(windowsMatrix(windows, shards), 'Windows', env);
-  return {...aiPlanOutputs(suites, offlineAi, review), matrix: JSON.stringify(macMatrix), count: String(macMatrix.include.length), suites: suites.join(','), windows_suites: windows.join(','), windows_matrix: JSON.stringify(windowsPlan), ref, tag, why};
+  return {...aiPlanOutputs(suites, offlineAi, review), matrix: JSON.stringify(macMatrix), count: String(include.length), suites: suites.join(','), windows_suites: windows.join(','), windows_matrix: JSON.stringify(windowsPlan), ref, tag, why};
 }
 
 // What every suite says about itself (cadence, watches, varies, minutes, runner): planRun's inputs from the real suites. plan-windows.mjs plans the Windows gate with it too.

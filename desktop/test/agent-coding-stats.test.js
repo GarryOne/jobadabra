@@ -6,7 +6,7 @@ import {areaOf, classifyFix, compute, fetchMerges, isFixPr, kindOfFile} from '..
 const now = new Date('2026-11-01T12:00:00Z');
 const commit = (sha, subject, files, lines = 20) => ({sha, subject, files, lines});
 const merge = (pr, title, files, commits, extra = {}) => ({pr, day: '2026-11-01', title, branch: `b${pr}`, files, commits, ...extra});
-const run = (name, sha, conclusion, pr, {created = '2026-11-01T08:00:00Z', started = '2026-11-01T08:02:00Z', updated = '2026-11-01T08:12:00Z'} = {}) => ({name, head_sha: sha, conclusion, created_at: created, run_started_at: started, updated_at: updated, pr});
+const run = (name, sha, conclusion, pr, {branch = null, created = '2026-11-01T08:00:00Z', started = '2026-11-01T08:02:00Z', updated = '2026-11-01T08:12:00Z'} = {}) => ({name, head_sha: sha, conclusion, created_at: created, run_started_at: started, updated_at: updated, pr, branch});
 
 test('merged PRs and the share that change CI or tooling', () => {
   const [, , today] = compute({merges: [merge(1, 'Add a card', ['src/ai/x.py'], []), merge(2, 'Tune the gate', ['tools/ship.sh', 'src/a.py'], []), merge(3, 'Harness', ['desktop/e2e/lib/x.mjs'], []), merge(4, 'Old', ['tools/a.sh'], [], {day: '2026-10-20'})], runs: []}, {days: 3, now});
@@ -33,6 +33,15 @@ test('a red with no later green is "no fix seen"; a red on an unmerged PR or a c
   const input = {merges: [merge(7, 'x', [], [commit('a', 'Add', ['src/x.py'])])], runs: [run('CI · Tests', 'a', 'failure', 7), run('CI · Tests', 'z', 'failure', 7), run('CI · Tests', 'q', 'failure', 99), run('CI · Tests', 'a', 'failure', null)]};
   const [, , today] = compute(input, {days: 3, now});
   assert.deepEqual(today.reds, {product: 0, test: 0, ci: 0, form: 0, nofix: 1});
+});
+
+// Owner, 1 Nov 2026: the live page showed "no reds" in every week. Cause (measured: 0 of 29 runs of a merged PR list a pull request): GitHub empties a run's pull_requests once its branch is gone,
+// so every red lost its PR. The run's branch name (the merge commit's "from owner/branch") is what still joins them.
+test('a red on a merged PR is found by its branch when the run no longer lists its pull request', () => {
+  const commits = [commit('a', 'Add', ['src/x.py']), commit('b', 'Fix it', ['src/x.py'], 30)];
+  const input = {merges: [merge(7, 'x', [], commits)], runs: [run('CI · Tests', 'a', 'failure', null, {branch: 'b7'}), run('CI · Tests', 'b', 'success', null, {branch: 'b7'}), run('CI · Tests', 'a', 'failure', null, {branch: 'some-other-branch'})]};
+  const [, , today] = compute(input, {days: 3, now});
+  assert.deepEqual(today.reds, {product: 1, test: 0, ci: 0, form: 0, nofix: 0});
 });
 
 test('what a fixing commit was: product code, test drift, CI/tooling, or form', () => {

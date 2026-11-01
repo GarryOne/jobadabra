@@ -8,39 +8,19 @@
 import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
 import fs from 'node:fs';
-import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 import {after, before, test} from 'node:test';
-import {createRequire} from 'node:module';
 import {python, pythonEnv} from '../../e2e/lib/python.mjs';
+import {anonymous, call, callWith, launchChromium, repo, serveFixtures} from '../../e2e/lib/visit-page.mjs';
 
-const repo = path.resolve(import.meta.dirname, '..', '..', '..');
-const e2eDir = path.join(repo, 'desktop', 'e2e');
-// playwright-core is installed under desktop/e2e only (its package.json), so it is loaded from there.
-const {chromium} = createRequire(path.join(e2eDir, 'package.json'))('playwright-core');
-const fixtures = path.join(e2eDir, 'fixtures', 'visits');
-// The page functions as the extension injects them: their own source, nothing re-written for the test (split over two files since 25ed270).
-const source = ['visit.js', 'visit-page.js'].map(file => fs.readFileSync(path.join(repo, 'extension', file), 'utf8')).join('\n');
-const fn = name => { const match = new RegExp(`export (?:async )?function ${name}\\([^)]*\\) \\{[\\s\\S]*?\\n\\}\\n`).exec(source); if (!match) throw new Error(`${name} not found in extension/visit.js or visit-page.js`); return match[0].replace('export ', ''); };
-const anonymous = name => fn(name).replace(`function ${name}`, 'function');
-const call = (page, name) => page.evaluate(`(${anonymous(name)})()`);
-const callWith = (page, name, argument) => page.evaluate(`(${anonymous(name)})(${JSON.stringify(argument)})`);
 // The engine's Python on a one-off script (isolated environment: lib/python.mjs). The last stdout line is the JSON answer.
 const engine = (script, ...args) => JSON.parse(execFileSync(python(), ['-c', script, ...args], {cwd: repo, encoding: 'utf8', env: pythonEnv({JOB_PILOTTO_FOLLOW_APP: '0'})}).trim().split('\n').pop());
 
 let server, browser, base;
 before(async () => {
-  server = http.createServer((req, res) => {
-    const file = path.join(fixtures, path.basename(req.url.split('?')[0]) || 'list-1.html');
-    if (!fs.existsSync(file)) { res.writeHead(404); res.end(); return; }
-    res.writeHead(200, {'Content-Type': 'text/html; charset=utf-8'});
-    res.end(fs.readFileSync(file));
-  });
-  await new Promise(done => server.listen(0, '127.0.0.1', done));
-  base = `http://127.0.0.1:${server.address().port}`;
-  // The full Chromium in its new headless mode, as the extension suites run it: CI installs that one, not the separate headless shell.
-  browser = await chromium.launch({headless: false, args: [...(process.env.E2E_HEADED ? [] : ['--headless=new'])]});
+  ({server, base} = await serveFixtures());
+  browser = await launchChromium();
 });
 after(async () => {
   await browser?.close();
@@ -180,7 +160,7 @@ print(json.dumps(visit_reader.understand(outline, SimpleNamespace(messages=Simpl
 test('a home page is not a job list: the quick guess says so, and the engine finds the job list from its own links', withPage(async page => {
   await page.goto(`${base}/home.html`);
   const seen = await call(page, 'extractPage');
-  const plausible = await page.evaluate(`(${fn('plausible').replace('export function plausible', 'function plausible').replace('function plausible', 'function')})(${JSON.stringify(seen.cards)})`);
+  const plausible = await callWith(page, 'plausible', seen.cards);
   assert.ok(!plausible, `the home page looked like a job list: ${JSON.stringify(seen.cards)}`);
   const found = engine(`import json, sys, tempfile, pathlib
 from unittest import mock

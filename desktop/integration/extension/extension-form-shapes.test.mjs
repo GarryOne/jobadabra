@@ -11,10 +11,10 @@ import {fillState, readForm, readPanel} from '../../e2e/lib/extension.mjs';
 import {waitForFill} from '../../e2e/lib/fill-attempt.mjs';
 import {fillProblems, leftProblems, submitProblems} from '../../e2e/lib/applycheck.mjs';
 import {FORMS, REAL_FORMS, formHtml, realFieldId, realPage} from '../../e2e/lib/forms.mjs';
-import {startRealExtension} from '../../e2e/lib/real-extension.mjs';
+import {FAKE_CONTACT, startRealExtension} from '../../e2e/lib/real-extension.mjs';
 
 const KIND = {ok: true, kind: 'form', role: 'form', by: 'ai', confidence: 0.95, rung: 2};
-const CONTACT = {first_name: 'Test', last_name: 'Candidate', email: 'test.candidate@example.com'};
+const CONTACT = FAKE_CONTACT;   // the applicant the stand-in app serves (lib/real-extension.mjs)
 let run;
 before(async () => {
   // No kit: the AI answers nothing beyond the page kind, so what the person's details cannot fill must be listed for them.

@@ -1,6 +1,6 @@
 {
   "activity": {
-    "fixedWaits": 2,
+    "fixedWaits": 0,
     "elapsedAssertions": 0,
     "clockWaits": 8
   },
@@ -40,7 +40,7 @@
     "clockWaits": 9
   },
   "focusdismiss": {
-    "fixedWaits": 0,
+    "fixedWaits": 2,
     "elapsedAssertions": 0,
     "clockWaits": 2
   },

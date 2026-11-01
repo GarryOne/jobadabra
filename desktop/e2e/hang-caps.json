@@ -1072,6 +1072,11 @@
         "n": 8,
         "p95Seconds": 7.4
       },
+      "Delete moves an interview to the Notion trash and takes it off the page": {
+        "seconds": 30,
+        "n": 8,
+        "p95Seconds": 4.3
+      },
       "Interviews renders without layout problems": {
         "seconds": 30,
         "n": 8,
@@ -1121,11 +1126,6 @@
         "seconds": 30,
         "n": 8,
         "p95Seconds": 2
-      },
-      "Delete moves an interview to the Notion trash and takes it off the page": {
-        "seconds": 30,
-        "n": 8,
-        "p95Seconds": 4.3
       }
     }
   },

@@ -178,6 +178,9 @@ test('a due-time proof requires a live worker and an acknowledged extension poll
   // A refused acknowledgement names what it asked: the reply and, per service worker, whether it has the poll (apply-3of3 41264415439 had neither).
   await assert.rejects(() => pollOwnedBackground('/fixture', {targets: async () => [{type: 'page', url: 'https://x'}, {type: 'service_worker', url: 'chrome-extension://fixture/background.js', webSocketDebuggerUrl: 'ws://fixture'}],
     evaluate: async (_url, expression) => (expression.startsWith('typeof') ? false : undefined)}), /reply: null; asked chrome-extension:\/\/fixture\/background\.js; service workers: chrome-extension:\/\/fixture\/background\.js has the poll: false/);
+  // A worker that does not answer the diagnostic read says so, never "null".
+  await assert.rejects(() => pollOwnedBackground('/fixture', {targets: async () => [{type: 'service_worker', url: 'chrome-extension://fixture/background.js', webSocketDebuggerUrl: 'ws://fixture'}], evaluate: async () => null}),
+    /has the poll: unreadable \(no reply, closed or 4 s cap\)/);
   assert.equal(await pollOwnedBackground('/fixture', {targets: async () => [{type: 'service_worker', webSocketDebuggerUrl: 'ws://fixture'}], evaluate: async () => true}), true);
 });
 

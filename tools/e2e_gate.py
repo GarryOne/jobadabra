@@ -49,6 +49,19 @@ def ci_verdict(runs):
     return 'green' if all(run.get('conclusion') == 'success' for run in runs) else 'superseded'   # cancelled only: a newer push to main replaced it (15 Oct 2026)
 
 
+def run_verdict(repo, ids):
+    """The verdict of build.yml runs read one by one by id: 'pending' while any is not completed (or cannot be read), else ci_verdict of their conclusions.
+    Why (1 Nov 2026, a8; mac-07 on beta 9): a run the wait saw open has an id; its verdict comes from reading that run, never from a list that can lag behind it."""
+    conclusions = []
+    for run_id in ids:
+        out = subprocess.run(['gh', 'api', f'repos/{repo}/actions/runs/{run_id}', '--jq', '.status + " " + (.conclusion // "")'], capture_output=True, text=True)
+        status, _, conclusion = out.stdout.strip().partition(' ')
+        if out.returncode != 0 or status != 'completed':
+            return 'pending'
+        conclusions.append({'conclusion': conclusion})
+    return ci_verdict(conclusions)
+
+
 def _newer_main_build(repo, sha, query, jq):
     """Return the first matching main build SHA ahead of sha, or '' when gh yields no match."""
     def gh(*args):
@@ -75,6 +88,8 @@ if __name__ == '__main__':
         print(beta_verdict(sys.stdin.read(), sys.argv[2] if len(sys.argv) > 2 else ''))
     elif sys.argv[1] == 'ci':   # gh run list --workflow build.yml --commit <sha> --status completed --json conclusion | python3 tools/e2e_gate.py ci
         print(ci_verdict(json.load(sys.stdin)))
+    elif sys.argv[1] == 'run-verdict':   # python3 tools/e2e_gate.py run-verdict <repo> <run id>...: pending, or green/red/superseded/none
+        print(run_verdict(sys.argv[2], sys.argv[3:]))
     elif sys.argv[1] == 'newer-green':   # python3 tools/e2e_gate.py newer-green <repo> <sha>: prints a newer green commit of main, or nothing
         print(newer_green(sys.argv[2], sys.argv[3]))
     elif sys.argv[1] == 'newer-running':   # prints the newest pending build commit ahead of the beta on main, or nothing

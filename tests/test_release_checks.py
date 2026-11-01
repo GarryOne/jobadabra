@@ -19,16 +19,34 @@ import json, os, sys
 state = os.environ['FAKE_STATE']
 args = sys.argv[1:]
 if args[:2] == ['run', 'list']:
-    if '--jq' in args:
+    if 'databaseId,status' in args:   # the ids of the runs seen open, one read per poll: open.json gives the count of open runs at each call
         counts = json.load(open(os.path.join(state, 'open.json')))
         n = int(open(os.path.join(state, 'calls')).read() or 0) if os.path.exists(os.path.join(state, 'calls')) else 0
         open(os.path.join(state, 'calls'), 'w').write(str(n + 1))
-        print(counts[min(n, len(counts) - 1)])
+        print('101' if counts[min(n, len(counts) - 1)] > 0 else '')
     else:
-        print(json.dumps([{'conclusion': c} for c in json.load(open(os.path.join(state, 'done.json')))]))
+        done = json.load(open(os.path.join(state, 'done.json')))
+        if done and isinstance(done[0], list):   # one list per call: the completed list catching up after a run ends
+            path = os.path.join(state, 'done_calls')
+            n = int(open(path).read()) if os.path.exists(path) else 0
+            open(path, 'w').write(str(n + 1))
+            done = done[min(n, len(done) - 1)]
+        print(json.dumps([{'conclusion': c} for c in done]))
     sys.exit(0)
 if args[0] == 'api':
     endpoint = args[1]
+    if '/actions/runs/' in endpoint:   # a run read by id: byid.json lists "status conclusion" per call (default: completed with the completed list's first conclusion, else still running)
+        path = os.path.join(state, 'byid_calls')
+        n = int(open(path).read()) if os.path.exists(path) else 0
+        open(path, 'w').write(str(n + 1))
+        byid = json.load(open(os.path.join(state, 'byid.json')))
+        if byid is None:
+            done = json.load(open(os.path.join(state, 'done.json')))
+            done = done[-1] if done and isinstance(done[0], list) else done
+            print(f'completed {done[0]}' if done else 'in_progress ')
+        else:
+            print(byid[min(n, len(byid) - 1)])
+        sys.exit(0)
     if '/actions/workflows/build.yml/runs?' in endpoint:
         assert 'branch=main' in endpoint
         snapshots = json.load(open(os.path.join(state, 'newer.json')))
@@ -70,7 +88,7 @@ def code_lines(text):
 
 
 class ReleaseChecks(unittest.TestCase):
-    def run_checks(self, open_counts, done, wait='5', newer=None, compare=None, poll='1', mode=None, soak=None):
+    def run_checks(self, open_counts, done, wait='5', newer=None, compare=None, poll='1', mode=None, soak=None, byid=None):
         with tempfile.TemporaryDirectory() as tmp:
             bin_dir = Path(tmp) / 'bin'
             bin_dir.mkdir()
@@ -79,6 +97,7 @@ class ReleaseChecks(unittest.TestCase):
             gh.chmod(gh.stat().st_mode | stat.S_IEXEC)
             (Path(tmp) / 'open.json').write_text(json.dumps(open_counts))
             (Path(tmp) / 'done.json').write_text(json.dumps(done))
+            (Path(tmp) / 'byid.json').write_text(json.dumps(byid))
             (Path(tmp) / 'newer.json').write_text(json.dumps(newer or [[]]))
             (Path(tmp) / 'compare.json').write_text(json.dumps(compare or {}))
             sleep = bin_dir / 'sleep'
@@ -97,6 +116,24 @@ class ReleaseChecks(unittest.TestCase):
         code, out = self.run_checks([1, 1, 0], ['success'])
         self.assertEqual(code, 0, out)
         self.assertIn('build.yml on b5c13d0: green', out)
+
+    def test_a_run_seen_open_gets_its_verdict_from_its_id_not_from_a_completed_list_that_omits_it(self):
+        # Beta 9 (1 Nov 2026): the run ended seconds before the completed list was read; the list was empty and the release stopped on "none" although the build was green.
+        # mac-07: the box has the run's id, so it reads that run, and the list only finds runs.
+        code, out = self.run_checks([1, 0], [[]], byid=['in_progress ', 'completed success'])
+        self.assertEqual(code, 0, out)
+        self.assertIn('build.yml on b5c13d0: green', out)
+
+    def test_a_run_read_by_id_that_failed_stops_the_release_even_if_the_list_says_green(self):
+        code, out = self.run_checks([1, 0], [['success']], byid=['completed failure'])
+        self.assertEqual(code, 1, out)
+        self.assertIn('build.yml on b5c13d0: red', out)
+
+    def test_no_run_at_all_is_still_none_when_none_was_ever_open(self):
+        code, out = self.run_checks([0], [[]])
+        self.assertEqual(code, 1, out)
+        self.assertIn('build.yml on b5c13d0: none', out)
+        self.assertNotIn('not listed as completed yet', out)
 
     def test_a_build_that_ends_red_stops_the_release(self):
         code, out = self.run_checks([1, 0], ['failure'])

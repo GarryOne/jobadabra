@@ -14,16 +14,30 @@ repo=${GITHUB_REPOSITORY:-GarryOne/jobadabra}
 if [ "$mode" != after-ci ]; then
   # A beta cut right after a push to main meets main's own build.yml still running on the same commit (beta 17, 24 Oct 2026: "build.yml on b5c13d0: none", the run was 35 min in):
   # wait for it, bounded, and decide on its result; only red, cancelled (see below) or a run still going after the wait stop the release.
-  wait_max=${RELEASE_CI_WAIT:-3600}; poll=${RELEASE_CI_POLL:-30}; waited=0; said=-60
+  wait_max=${RELEASE_CI_WAIT:-3600}; poll=${RELEASE_CI_POLL:-30}; waited=0; said=-60; seen=""
   while :; do
-    open=$(gh run list -R "$repo" --workflow build.yml --commit "$ref" --json status --jq '[.[] | select(.status != "completed")] | length' 2>/dev/null) || open=0
-    case "$open" in ''|*[!0-9]*) open=0;; esac
-    [ "$open" -gt 0 ] || break
+    # One read per poll: the count of open runs and their ids come from the same response, so a run that ends between two reads cannot be counted open and then lost (Gitar on #2896).
+    ids=$(gh run list -R "$repo" --workflow build.yml --commit "$ref" --json databaseId,status --jq '[.[] | select(.status != "completed") | .databaseId | tostring] | join(" ")' 2>/dev/null) || ids=""
+    [ -n "$ids" ] || break
+    seen="$seen $ids"
     if [ "$waited" -ge "$wait_max" ]; then echo "build.yml on ${ref:0:7} is still running after ${waited} s: not waiting any longer."; break; fi
     if [ $((waited - said)) -ge 60 ]; then echo "build.yml on ${ref:0:7} is still running; waiting (${waited} s of ${wait_max} s)"; said=$waited; fi
     sleep "$poll"; waited=$((waited + poll))
   done
-  verdict=$(gh run list -R "$repo" --workflow build.yml --commit "$ref" --status completed --json conclusion | python3 "$(dirname "${BASH_SOURCE[0]}")/e2e_gate.py" ci)
+  # Why (1 Nov 2026, a8; beta 9 "build.yml on c0d23bb: none", mac-07): a run seen open is read by its id until it is completed, bounded by the same wait; the completed list only finds runs and never gives
+  # the verdict of one we waited for, because it lags a few seconds behind a run that just ended (beta 9: empty 4 s after a green run).
+  seen=$(echo $seen | tr ' ' '\n' | sort -u | tr '\n' ' ')
+  if [ -n "${seen// /}" ]; then
+    while :; do
+      verdict=$(python3 "$(dirname "${BASH_SOURCE[0]}")/e2e_gate.py" run-verdict "$repo" $seen)
+      [ "$verdict" = pending ] || break
+      if [ "$waited" -ge "$wait_max" ]; then echo "build.yml on ${ref:0:7} is still running after ${waited} s: not waiting any longer."; verdict=none; break; fi
+      if [ $((waited - said)) -ge 60 ]; then echo "build.yml on ${ref:0:7} is still running; waiting (${waited} s of ${wait_max} s)"; said=$waited; fi
+      sleep "$poll"; waited=$((waited + poll))
+    done
+  else
+    verdict=$(gh run list -R "$repo" --workflow build.yml --commit "$ref" --status completed --json conclusion | python3 "$(dirname "${BASH_SOURCE[0]}")/e2e_gate.py" ci)
+  fi
   # A push to main cancels the older commit's build.yml run (15 Oct 2026): the newest commit's run decides, so a cancelled run is green when a NEWER commit of main passed.
   # Why (28 Oct 2026, owner): a cancelled beta must wait for the newer main build that decides for it.
   while [ "$verdict" = superseded ]; do

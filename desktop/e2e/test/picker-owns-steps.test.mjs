@@ -15,7 +15,7 @@ import {planRun} from '../plan-run.mjs';
 const root = new URL('../', import.meta.url);
 const sources = Object.fromEntries(['suites', 'lib'].flatMap(dir => fs.readdirSync(new URL(`${dir}/`, root))
   .filter(name => name.endsWith('.mjs')).map(name => [`${dir}/${name}`, fs.readFileSync(new URL(`${dir}/${name}`, root), 'utf8')])));
-const file = 'desktop/e2e/lib/wizard.mjs', name = 'an invalid API key is rejected without saving';
+const file = 'desktop/e2e/lib/wizard.mjs', name = 'a valid API key is accepted and saved';
 
 test('#2476: across the real registry, only wizard receives the new wizard step', async () => {
   const line = sources['lib/wizard.mjs'].split('\n').findIndex(text => text.includes(`ctx.run('${name}'`)) + 1;

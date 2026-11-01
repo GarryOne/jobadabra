@@ -1,4 +1,4 @@
-/* global window, document */
+/* global window */
 // Job: wait on state
 // Actions + Recent activity + Jobs: the core of every workflow. Starts from a set-up install; resets only its own data (jobs and run rows) in Notion.
 import fs from 'node:fs';
@@ -96,21 +96,7 @@ export async function run(ctx) {
       await ctx.data('matches', 'list', {})]);   // the store: only this run's fixture jobs, emptied at the start (Notion) or a fresh profile (this Mac's store)
     if (problems.length) throw new Error(problems.slice(0, 5).join('; '));
   }, {needs: ctx.needs, data: true});
-  // One Apply button (5 Oct 2026): a scored job with no kit is applied to like any other (the kit is drafted when Apply is pressed), and Prepare is only in the ⋯ menu.
-  await ctx.run('a scored job without a kit shows the Apply button, never Prepare, and "Prepare only" in its ⋯ menu', async () => {
-    await page.click('.nav[data-view="jobs"]');
-    await page.waitForSelector('article.job-row', {timeout: 60000});
-    const rows = await page.evaluate(() => [...document.querySelectorAll('article.job-row')].map(row => ({text: row.textContent, label: row.querySelector('.row-main')?.textContent.trim(), cls: row.querySelector('.row-main')?.className || ''})));
-    const kitless = rows.filter(row => !/📝 Kit/.test(row.text));
-    if (!kitless.length) throw new Error(`no kitless job in the list to check (rows: ${rows.length})`);
-    const wrong = kitless.filter(row => row.label !== 'Apply' || !/state-apply/.test(row.cls) || /Prepare/.test(row.text));
-    if (wrong.length) throw new Error(`${wrong.length} of ${kitless.length} jobs without a kit do not show a plain Apply button: ${wrong.slice(0, 3).map(row => `"${row.label}" (${row.cls})`).join('; ')}`);
-    await page.locator('article.job-row').filter({hasNotText: '📝 Kit'}).first().getByRole('button', {name: 'More actions'}).click();   // an open menu survives the list's redraws (components.js holdMenu)
-    await page.getByRole('menuitem').first().waitFor();
-    const items = await page.getByRole('menuitem').allInnerTexts();
-    if (!items.some(text => /Prepare only/.test(text))) throw new Error(`the ⋯ menu of a job without a kit has no "Prepare only" (it lists: ${items.join(' | ')})`);
-    await page.keyboard.press('Escape');
-  }, {needs: ctx.needs});
+  // One Apply button (5 Oct 2026): a scored job without a kit shows Apply, and Prepare only in its ⋯ menu: integration/app/screen-apply.test.js (moved 1 Nov 2026).
   await ctx.run('Find new employers probes the seed company and lists it in the store (Employers & Sources)', async () => {
     fs.copyFileSync(path.join(ctx.E2E, 'fixtures', 'feeds', 'scout_seeds.json'), path.join(ctx.profile, 'config', 'scout_seeds.json'));
     await page.click('.nav[data-view="actions"]');

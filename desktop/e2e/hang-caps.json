@@ -291,11 +291,6 @@
         "n": 8,
         "p95Seconds": 130.5
       },
-      "a scored job without a kit shows the Apply button, never Prepare, and \"Prepare only\" in its ⋯ menu": {
-        "seconds": 30,
-        "n": 8,
-        "p95Seconds": 2.9
-      },
       "a slow Jobs check keeps showing that it is working, and ends cleanly": {
         "seconds": 495,
         "n": 8,
@@ -462,10 +457,6 @@
         "seconds": 300,
         "reason": "Preserved inline cap; see provenance."
       },
-      "the session page says it too": {
-        "seconds": 105,
-        "reason": "Preserved inline cap; see provenance."
-      },
       "Tailor CV on a job": {
         "seconds": 480,
         "reason": "Preserved inline cap; see provenance."
@@ -506,12 +497,6 @@
         "n": 5,
         "p95Seconds": 70.1
       },
-      "a silent Chrome in Background automation": {
-        "seconds": 95,
-        "reason": "Recent calm measurement exceeds the preserved 90 s lower bound.",
-        "n": 6,
-        "p95Seconds": 30.9
-      },
       "a silent Chrome in Full automation": {
         "seconds": 90,
         "reason": "Preserved inline cap; see provenance."
@@ -535,12 +520,6 @@
       "Stop on the card in Full automation": {
         "seconds": 420,
         "reason": "Preserved inline cap; see provenance."
-      },
-      "the Jobs popup has one field": {
-        "seconds": 135,
-        "reason": "Recent calm measurement exceeds the preserved 90 s lower bound.",
-        "n": 5,
-        "p95Seconds": 44.8
       },
       "checking jobs before the form read exists": {
         "seconds": 90,
@@ -2230,11 +2209,6 @@
         "n": 9,
         "p95Seconds": 2
       },
-      "an invalid API key is rejected without saving": {
-        "seconds": 30,
-        "n": 9,
-        "p95Seconds": 1.7
-      },
       "finishing the setup without Notion opens the Jobs list, with the strategy kept on this Mac": {
         "seconds": 30,
         "n": 10,
@@ -2249,26 +2223,6 @@
         "seconds": 30,
         "n": 10,
         "p95Seconds": 0.3
-      },
-      "on this Mac's store no page asks to connect Notion: Focus and Interviews open their own content": {
-        "seconds": 30,
-        "n": 10,
-        "p95Seconds": 2.5
-      },
-      "setup drafts the base letter; explicit approval makes its PDF before continuing": {
-        "seconds": 30,
-        "n": 7,
-        "p95Seconds": 4.3
-      },
-      "Start opens the AI step with both engines to choose from": {
-        "seconds": 30,
-        "n": 10,
-        "p95Seconds": 3.2
-      },
-      "the AI step will not continue without a key": {
-        "seconds": 30,
-        "n": 9,
-        "p95Seconds": 1.7
       },
       "the app starts on the welcome screen": {
         "seconds": 30,
@@ -2304,11 +2258,6 @@
         "provisional": true,
         "reason": "provisional: 3 x its slowest calm sample, 30 s floor, rounded up to 5 s; regenerate after 5 main runs (tools/e2e-step-timings.mjs)"
       },
-      "the OpenAI side of the switch shows its two cards": {
-        "seconds": 90,
-        "provisional": true,
-        "reason": "provisional: no calm sample yet, the 30 s floor x 3 (the convention of the apply caps); regenerate after 5 main runs (tools/e2e-step-timings.mjs). It runs only on the engine or store variant that reaches it (CI alternates OpenAI and Claude engines), so the main reports measured so far never saw it."
-      },
       "Codex is chosen (confirmed once, then checked) and the AI step continues": {
         "seconds": 90,
         "provisional": true,
@@ -2320,11 +2269,6 @@
         "reason": "provisional: no calm sample yet, the 30 s floor x 3 (the convention of the apply caps); regenerate after 5 main runs (tools/e2e-step-timings.mjs). It runs only on the engine or store variant that reaches it (CI alternates OpenAI and Claude engines), so the main reports measured so far never saw it."
       },
       "Claude Code is chosen (confirmed once, then checked) and the AI step continues": {
-        "seconds": 90,
-        "provisional": true,
-        "reason": "provisional: no calm sample yet, the 30 s floor x 3 (the convention of the apply caps); regenerate after 5 main runs (tools/e2e-step-timings.mjs). It runs only on the engine or store variant that reaches it (CI alternates OpenAI and Claude engines), so the main reports measured so far never saw it."
-      },
-      "Focus shows Get started without Notion; Interviews asks to connect Notion, lists the advantages, and Not now with a reason closes the prompt": {
         "seconds": 90,
         "provisional": true,
         "reason": "provisional: no calm sample yet, the 30 s floor x 3 (the convention of the apply caps); regenerate after 5 main runs (tools/e2e-step-timings.mjs). It runs only on the engine or store variant that reaches it (CI alternates OpenAI and Claude engines), so the main reports measured so far never saw it."

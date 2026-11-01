@@ -985,6 +985,7 @@ jobs:
           FULL: ''   # no paid AI judge on Windows: the Mac run judged the same screens (owner, 7 Oct 2026: "$30 a week")
           GATE: ${{ inputs.gate_tag }}
           NIGHT: ${{ inputs.night_pass }}   # every night pass is followed by Windows (the beta's layout), not once a day
+          REVIEW: ${{ inputs.night_pass == '' && needs.plan.outputs.review || '0' }}   # Why (1 Nov 2026, a8): night pass 1's one review batch is the Mac run's; Windows' pages are the gate suites' that the day runs review
         run: |
           # A main check starts Windows once a UTC day: the first one that tested something. A gate or a night pass always starts it.
           if [ -z "$GATE" ] && [ -z "$NIGHT" ]; then
@@ -996,7 +997,7 @@ jobs:
           # A night pass is titled apart (so Windows does not skip a commit it already tested) and walks the fixed path, as the Mac pass does.
           extra=(); if [ -n "$NIGHT" ]; then extra=(-f "night=$NIGHT" -f fixed=true); fi
           gh workflow run e2e-windows.yml --repo "${{ github.repository }}" --ref main "${extra[@]}" \
-            -f mac_run=${{ github.run_id }} -f sha=${{ needs.plan.outputs.ref }} -f review=${{ needs.plan.outputs.review }} -f full="$FULL" -f tag="${{ needs.plan.outputs.tag }}"
+            -f mac_run=${{ github.run_id }} -f sha=${{ needs.plan.outputs.ref }} -f review="$REVIEW" -f full="$FULL" -f tag="${{ needs.plan.outputs.tag }}"
           echo "Windows run started for commit ${{ needs.plan.outputs.ref }} (it skips a commit Windows already tested)."
 
   # Night pass 1 only (owner via a8, 1 Nov 2026, "Nightly report"): the fast unit folders again with the clock moved +1 d and +7 d, to name a test that depends on today's date the night before it goes off.

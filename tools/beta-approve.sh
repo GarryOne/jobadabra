@@ -15,6 +15,8 @@ if printf '%s\n' "$body" | grep -qF -- "$marker"; then echo "$tag is already app
 sha=$(gh api "repos/$repo/commits/$tag" -q '.sha[0:7]')
 line="$marker unit suites and every end-to-end suite passed on commit $sha ($(date -u +%Y-%m-%d))"
 [ -n "$windows" ] && line="$marker unit suites and every Windows end-to-end suite passed on commit $sha ($(date -u +%Y-%m-%d))"
-gh release edit "$tag" -R "$repo" --notes "$(printf '%s\n\n%s' "$body" "$line")"
+# Why (1 Nov 2026, owner: "Auto-retry in betas only"): a beta released past a step that passed on its retry lists it ("Passed on retry in this beta: <suite · step>, …"); desktop.yml writes the line to the file, empty when none retried.
+retry=''; [ -n "${PASSED_ON_RETRY_FILE:-}" ] && [ -s "$PASSED_ON_RETRY_FILE" ] && retry=$(cat "$PASSED_ON_RETRY_FILE")
+gh release edit "$tag" -R "$repo" --notes "$(printf '%s\n\n%s' "$body" "$line${retry:+$'\n'$retry}")"
 echo "$tag: $line"
 python3 "$(dirname "${BASH_SOURCE[0]}")/sync_release_labels.py" || echo "(release labels not refreshed: run tools/sync_release_labels.py)"

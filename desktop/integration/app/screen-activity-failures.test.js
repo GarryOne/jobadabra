@@ -7,13 +7,12 @@ import assert from 'node:assert/strict';
 import {before, test} from 'node:test';
 import {badSummary} from '../../e2e/lib/activity.mjs';
 import {humanError, isSpendingLimit} from '../../renderer/run-warnings.js';
-import {STATES, activityKit, demoFocus, indexOf, stateFiles, withData} from './screen-activity-kit.js';
+import {FAILED_STATES, STATES, activityKit, demoFocus, indexOf, stateFiles, withData} from './screen-activity-kit.js';
 import {needsElectron} from '../../test/needs-electron.js';
 import {probeWindow} from './window-probe.js';
 
 const live = {skip: needsElectron.skip};
-const NAMES = {limit: 'analyze--failed-api-spend-limit', credits: 'search--failed-api-credits-exhausted', telegram: 'search--completed-telegram-not-delivered', google: 'gmail--failed-google-signin-revoked',
-  unexplained: 'search--failed-unexplained', queued: 'tailor--failed-waiting-behind-another-run'};
+const NAMES = FAILED_STATES;
 // Every state that ends badly or waits: the ones the old step looked at for layout and technical text.
 const BAD = STATES.map(state => state.name).filter(name => /failed|stopped|telegram-not-delivered|warnings|partial/.test(name));
 let seen;

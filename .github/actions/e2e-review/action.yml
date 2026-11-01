@@ -37,6 +37,9 @@ runs:
       run: |
         in="$GITHUB_WORKSPACE/.e2e-review/in"; rm -rf "$in"; mkdir -p "$in"
         gh run download "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --pattern "${PREFIX}*" --dir "$in" || echo "no suite artifacts to review"
+        # Night pass 1's integration shots (e2e.yml integration-shots; owner via a8, 1 Nov 2026): one more folder of ui-*.png beside the suites', read by the same review. None on any other run.
+        if [ "$PREFIX" = e2e-artifacts- ]; then mkdir -p "$in/integration-shots"; gh run download "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --name integration-shots --dir "$in/integration-shots" || echo "no integration shots"; fi
+        find "$in" -mindepth 1 -maxdepth 1 -empty -type d -exec rmdir {} +   # a run without the shots leaves no empty folder to count as a suite
         find "$in" -mindepth 1 -maxdepth 1 -name '*-review' -exec rm -rf {} +   # an earlier attempt's own findings
         if [ "$PREFIX" = e2e-artifacts- ]; then find "$in" -mindepth 1 -maxdepth 1 -name 'e2e-artifacts-windows-*' -exec rm -rf {} +; fi
         echo "E2E_REVIEW_DIRS=$(find "$in" -mindepth 1 -maxdepth 1 -type d | sort | paste -sd: -)" >> "$GITHUB_ENV"

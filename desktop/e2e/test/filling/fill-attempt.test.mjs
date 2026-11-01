@@ -29,6 +29,15 @@ test('accepts done and error on the read after the last sleep', async () => {
   }
 });
 
+// Why (1 Nov 2026, main 47580bb run 41342226333): a fill read that never settled left extension-form-shapes silent until the file's 180 s limit; the wait now ends at its cap and names the read.
+test('a read of the page that never answers ends at the cap, names the read and keeps the last good state', async () => {
+  const tab = page('https://example.test/apply#jobpilotto-fill=ours');
+  let reads = 0;
+  const result = await waitForFill({capMs: 30, readGraceMs: 0, pickTab: () => ({tab, tabs: 1}), readState: () => (++reads === 1 ? Promise.resolve({state: 'running'}) : new Promise(() => {}))});
+  assert.deepEqual([result.ok, result.hung, result.state.state, result.state.last], [false, true, 'unreadable', {state: 'running'}]);
+  assert.match(fillNote(result.state, 1), /did not answer/, 'the note every caller prints carries the cause');
+});
+
 test('exhaustion keeps the last rejected read, URL and tab count without reading again', async () => {
   const time = clock(), tab = page('https://example.test/apply#jobpilotto-fill=ours');
   let reads = 0;

@@ -32,7 +32,7 @@
   "notion-real": {
     "fixedWaits": 2,
     "elapsedAssertions": 0,
-    "clockWaits": 11
+    "clockWaits": 10
   },
   "personas": {
     "fixedWaits": 2,

@@ -81,7 +81,7 @@ jobs:
         if: hashFiles('desktop/integration/extension/*.test.mjs') != ''
         working-directory: desktop/e2e
         run: node --import ./test/stdout-to-stderr.mjs --test --test-timeout=180000 --test-reporter=spec --test-reporter-destination=stdout --test-reporter=../integration/results-reporter.mjs --test-reporter-destination="$RUNNER_TEMP/integration-results.json" ../integration/extension/*.test.mjs
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v6
         if: always() && hashFiles('desktop/integration/extension/*.test.mjs') != ''
         with:
           name: integration-results-extension
@@ -139,7 +139,7 @@ jobs:
           TESTS: node --import ./test/no-live-site.mjs --test --test-reporter=./test/reporter-by-file.mjs --test-reporter-destination=stdout --test-reporter=./integration/results-reporter.mjs --test-reporter-destination="$RESULTS" integration/app/*.test.js
         run: |
           if [ "$RUNNER_OS" = Linux ]; then xvfb-run -a --server-args='-screen 0 1440x900x24' bash -c "$TESTS"; else bash -c "$TESTS"; fi
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v6
         if: always()
         with:
           name: integration-results-app-${{ matrix.os }}
@@ -181,7 +181,7 @@ jobs:
         if: hashFiles('desktop/integration/store/*.test.mjs') != ''
         working-directory: desktop/e2e
         run: node --import ./test/stdout-to-stderr.mjs --test --test-timeout=180000 --test-reporter=spec --test-reporter-destination=stdout --test-reporter=../integration/results-reporter.mjs --test-reporter-destination="$RUNNER_TEMP/integration-results.json" ../integration/store/*.test.mjs
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v6
         if: always() && hashFiles('desktop/integration/store/*.test.mjs') != ''
         with:
           name: integration-results-store

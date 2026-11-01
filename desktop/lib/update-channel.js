@@ -1,4 +1,4 @@
-// Which builds this install is offered: stable (default), beta (gate-approved pre-releases) or test builds (tools/test-build.sh, nothing checked).
+// Which builds this install is offered: stable (default), beta (gate-approved pre-releases) or test builds (a "Build only" run of desktop.yml, nothing checked).
 // One place for switching it, used by Settings → Diagnostics (Beta, Test builds, Back to stable; lib/app-meta-handlers.js) and by the menu's
 // Update Channel (lib/app-menu.js), so both ask the same question and save the same way. Only a click on the native dialog switches a channel on.
 // Guards: desktop/test/update-channel.test.js, app-menu.test.js.

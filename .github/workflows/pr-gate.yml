@@ -37,7 +37,7 @@ jobs:
         with:
           node-version: '22'
       # The same script the local push runs (tools/pre-push-check.sh, its fast pure checks): commit subjects, a fix names its test, file size, recorded cases (holes 1+2),
-      # the rung trailer, e2e issue links, stale expectations. CI_GATES=1: no red-main look, no AI place check, no local-run proof of new e2e steps.
+      # the rung trailer, e2e issue links, stale expectations. CI_GATES=1: no red-main look, no AI place check.
       - name: Fast checks
         run: |
           git fetch -q origin main
@@ -59,13 +59,6 @@ jobs:
         run: |
           git fetch -q origin main
           node tools/flow-fresh.mjs --base origin/main --head "${{ github.event.pull_request.head.sha }}" --others
-      # A table (owner, 24 Oct 2026): the e2e suites that quote UI text this PR removes, and whether the PR touches their step. Beta runs 5-11 found 8 tests lagging the app;
-      # this says so on the PR that causes it. Always exits 0: those suites RUN in pr-suites.yml, whose red blocks the merge (gate G1a, 26 Oct 2026).
-      - name: E2E suites that quote removed UI text
-        if: ${{ !cancelled() }}
-        run: |
-          git fetch -q origin main
-          node desktop/e2e/pr-suites.mjs --base origin/main || true
       # Every recorded case this PR adds or changes must FAIL on the PR's base (and pass on its head: the replay shards). Decide first, from git alone (seconds): a PR that
       # brings no case installs and replays nothing (12 Oct 2026: #501's label-only edit to 74 cases took 503 s). A case.json edit to label keys only is no case
       # (tools/recorded-cases.mjs LABEL_KEYS); a "Recorded-pins" case is not replayed; a refused pin fails here at once.

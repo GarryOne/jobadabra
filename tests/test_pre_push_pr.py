@@ -40,13 +40,23 @@ class PrePushPrTest(PrePushFixture):
         for status, message in ((1, 'JS architecture: boundary refusal'), (0, 'JS architecture: advisory')):
             with self.subTest(status=status):
                 self.commit('Set architecture verdict', {'tools/arch-check.py': f"import sys\nprint({message!r})\nsys.exit({status})\n"})
-                code, err = self.hook('SHIP_PR=1 git push origin topic')
+                code, err = self.hook('CI_GATES=1 git push origin topic')
                 self.assertEqual(code, 2 if status else 0, err)
                 self.assertEqual(err.count(message), 1, err)
                 if status:
                     self.assertIn(f'1) {message}', err)
                 else:
                     self.assertNotIn('Push blocked', err)
+
+    def test_the_architecture_check_is_left_to_the_pr_on_a_ship_push_only(self):
+        # Why (1 Nov 2026, owner "Yes, delete Group 1"): 6 stops in 1,403 local runs and 12,394 s; a ship push (SHIP_PR=1) leaves it to the PR's Fast checks (CI_GATES=1).
+        self.needed_committed()
+        self.commit('Architecture refuses', {'tools/arch-check.py': "import sys\nprint('architecture refusal')\nsys.exit(1)\n"})
+        for push, blocked in (('SHIP_PR=1 git push origin topic', False), ('CI_GATES=1 git push origin topic', True), ('git push origin HEAD:main', True)):
+            with self.subTest(push=push):
+                code, err = self.hook(push)
+                self.assertEqual(code, 2 if blocked else 0, err)
+                self.assertEqual('architecture refusal' in err, blocked, err)
 
     def test_the_lane_registry_is_left_to_the_pr_on_a_ship_push_only(self):
         # Why (1 Nov 2026, Gitar on #2765): the check was skipped for every push without CI_GATES=1, which also covers a direct push to main; no pr-gate runs for that one,

@@ -13,7 +13,7 @@ for (const kind of ['nightly', 'beta']) {
     const planned = new Set(out.suites.split(',').filter(Boolean));
     assert.ok(Number(out.count) > 0, 'the gate planned no suite at all');
     assert.ok(JSON.parse(out.windows_matrix).include.length > 0, 'the Windows gate planned no suite');
-    const always = facts.all.filter(suite => !['manual', 'watched'].includes(facts.cadence[suite]) && (kind === 'nightly' || facts.cadence[suite] !== 'nightly'));
+    const always = facts.all.filter(suite => !['manual', 'watched', 'night-report'].includes(facts.cadence[suite]) && (kind === 'nightly' || facts.cadence[suite] !== 'nightly'));
     assert.deepEqual(always.filter(suite => !planned.has(suite)), [], 'an always suite is missing from the gate');
   });
 }

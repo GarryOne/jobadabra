@@ -3,7 +3,7 @@
 # worktrees), run every test suite CI runs on a clean checkout of what is pushed, and block the push if one fails, so only green builds reach
 # GitHub. Reads the hook's JSON on stdin; reports all pure-check refusals together, then exits 2 to block the command.
 #   python: unittest, normally and as CI sees it (no Notion/Telegram/Google/SerpApi credentials)
-#   worker, site: npm test  desktop: npm test (npm ci first when node_modules is missing)
+#   worker: npm test  desktop: npm test (npm ci first when node_modules is missing)
 # Runs only the suites the push touches (AGENTS.md "Change tiers"; PUSH_FULL=1 for all). Also blocks a push on top of a red CI build on main
 # (not one that was only cancelled), and a build.yml that installs without dev dependencies.
 set -uo pipefail
@@ -30,6 +30,10 @@ trap 'type slot_release >/dev/null 2>&1 && slot_release; [ -s "$GATE_CACHE_NOTES
 input="$(cat)"
 command="$(jq -r '.tool_input.command // ""' <<<"$input")"
 case "$command" in *PUSH_FULL=1*) PUSH_FULL_RUN=1 ;; esac   # a full run has no watchdog (tools/gate-watchdog.sh)
+# Why (1 Nov 2026, owner, test stages 3-5: "Drop all 4 from push"; narrowed after Gitar's review on #2765): the lane registry and renderer class tests are left to the PR's Fast checks (pr-gate, CI_GATES=1)
+# on the push that ship.sh makes (SHIP_PR=1) and only there. A direct push to main has no pr-gate, so it still runs them. Tests: tests-desktop.yml runs both on the PR too;
+# tests/test_pre_push_pr.py plays all three kinds of push.
+ship_push=0; case "$command" in *SHIP_PR=1*) ship_push=1 ;; esac
 # An npm install through a node_modules that is a link into another checkout empties that shared folder for every worktree (28 Oct 2026): refused before npm runs
 # (tools/linked-modules-guard.py; the way out is `tools/worktree.sh own-modules <dir>`; tests/test_linked_modules_guard.py).
 case "$command" in *npm*)
@@ -131,21 +135,8 @@ $(echo "$paths_out" | tail -n 15)"
   fi ;;
 esac
 
-# The place sorter, checked with real AI answers when its code changes (7 Oct 2026: two of the day's place bugs were the real model's answers, which
-# unit tests fake): tools/places_check.py, ~5 Haiku calls. `PLACES_CHECK_OK=1 git push ...` skips it (say why in the commit). No AI here: skipped, said.
-case "$command" in *PLACES_CHECK_OK=1*|*CI_GATES=1*) ;; *)
-  if git -C "$repo" rev-parse --verify -q origin/main >/dev/null && git -C "$repo" diff --name-only origin/main...HEAD | grep -qE '^src/(ai/place_triage|sources/feeds)\.py$'; then
-    if command -v claude >/dev/null || [ -n "${ANTHROPIC_API_KEY:-}" ]; then
-      engine="$([ -n "${ANTHROPIC_API_KEY:-}" ] && echo api || echo cli)"
-      checked="$(cd "$repo" && JOB_PILOTTO_FOLLOW_APP=0 JOB_PILOTTO_AI_ENGINE="$engine" timed "places check (real AI)" python3 tools/places_check.py 2>&1)" \
-        || block "the place sorter answered wrongly with real AI calls, or could not ask (tools/places_check.py):
-$(echo "$checked" | grep -v '^⏳' | tail -25)"
-    else
-      echo "Note: the place code changed but no AI is available here (no claude, no ANTHROPIC_API_KEY): tools/places_check.py skipped" >&2
-    fi
-  fi ;;
-esac
-
+# The place sorter's real-AI check (tools/places_check.py, ~5 Haiku calls) is not a push check any more (1 Nov 2026, owner, test stages 3-5: 0 pushes blocked in 40 runs, 30 s each, paid AI
+# calls): run it by hand when src/ai/place_triage.py or src/sources/feeds.py changes.
 # A new e2e step must have been seen passing (6 Oct 2026: one that never had failed the 0.5.8 beta gate on its own premise): a local run of it, or an
 # "E2E-passed: <run url>" / "E2E-unverified: <why>" line in a commit message (tools/new-e2e-steps.mjs). No node, or no origin/main: skipped.
 if ! [[ "$command" == *CI_GATES=1* ]] && command -v node >/dev/null && [ -f "$repo/tools/new-e2e-steps.mjs" ] && git -C "$repo" rev-parse --verify -q origin/main >/dev/null; then   # CI has no local run to find: the commit message's E2E-passed line is read by the CI-less gate only
@@ -189,7 +180,7 @@ if command -v node >/dev/null && [ -f "$repo/tools/new-code-comments.mjs" ] && g
   newcomments="$(cd "$repo" && timed "new code comments" node tools/new-code-comments.mjs --base origin/main 2>&1)" || block "$newcomments"
 fi
 # A suite leaves the e2e backbone only by naming the input its result depends on (ai, clock, outside) and why: an entry of desktop/e2e/lanes.json (tools/lanes-check.mjs; spec rule E).
-if command -v node >/dev/null && [ -f "$repo/tools/lanes-check.mjs" ] && git -C "$repo" rev-parse --verify -q origin/main >/dev/null; then
+if [ "$ship_push" = 0 ] && command -v node >/dev/null && [ -f "$repo/tools/lanes-check.mjs" ] && git -C "$repo" rev-parse --verify -q origin/main >/dev/null; then
   lanes="$(cd "$repo" && timed "lane registry" node tools/lanes-check.mjs --base origin/main 2>&1)" || block "$lanes"
 fi
 # A changed AI prompt brings the case it fixed into its fixed case set (tools/prompt-cases.json), or a commit says "Prompt-case: none <why>" (tools/prompt-cases.mjs; owner, 27 Oct 2026).
@@ -203,7 +194,7 @@ fi
 # The renderer class tests (they read every renderer and lib file) run when a push touches those files: a CI red caught in 0.4 s here.
 # Why (28 Oct 2026): 10 of the last 34 red desktop-test PR runs that named a file failed in one of these seven (desktop/test/renderer-class-push.test.js); the whole desktop suite on push is 108 s (rule H).
 class_tests="test/card-system.test.js test/no-question-mark.test.js test/text-fields.test.js test/solid-buttons.test.js test/roomy-cards.test.js test/mac-words.test.js test/design.test.js"
-if command -v node >/dev/null && [ -d "$repo/desktop/test" ] && git -C "$repo" diff --name-only origin/main...HEAD 2>/dev/null | grep -qE '^desktop/(renderer|lib)/|^desktop/test/text-(buttons|fields)-allowed\.json$'; then
+if [ "$ship_push" = 0 ] && command -v node >/dev/null && [ -d "$repo/desktop/test" ] && git -C "$repo" diff --name-only origin/main...HEAD 2>/dev/null | grep -qE '^desktop/(renderer|lib)/|^desktop/test/text-(buttons|fields)-allowed\.json$'; then
   classes="$(cd "$repo/desktop" && timed "renderer class tests" node --test $class_tests 2>&1)" || block "a renderer class test fails (CI would be red):
 $(echo "$classes" | grep -E '^not ok|✖|^# fail' | head -6)"
 fi
@@ -270,7 +261,8 @@ gate_run() {  # cache area, timing name, script: prints the gate's output on std
   (cd "$repo" && GATE_CACHE_PATHS="$gate_paths" timed "$2" gate_cache_run "$repo" "$1" "touched=$(gate_touched)" node "$3" --base origin/main 2>&1)
 }
 gates_wanted=()
-for gate in journey ladder; do   # (the journey gate's tests: seconds, no browser, plus the recorded-page replay when the extension changed; the ladder gate: docs/flows/ladder.md)
+for gate in journey ladder; do   # (the ladder gate runs only with JP_LADDER_GATE=1 or PUSH_FULL=1: 0 pushes blocked in 525 runs, 1 Nov 2026, owner, test stages 3-5; the journey gate's tests: seconds, no browser, plus the recorded-page replay when the extension changed; the ladder gate: docs/flows/ladder.md)
+  [ "$gate" = ladder ] && [ -z "${PUSH_FULL_RUN:-}${JP_LADDER_GATE:-}" ] && continue
   if command -v node >/dev/null && [ -f "$repo/tools/$gate-gate.mjs" ] && git -C "$repo" rev-parse --verify -q origin/main >/dev/null; then gates_wanted+=("$gate"); fi
 done
 if [ "${JP_GATE_SERIAL:-0}" = 1 ]; then
@@ -284,23 +276,23 @@ fi
 # Which suites this push needs (AGENTS.md "Change tiers"). `PUSH_FULL=1 git push ...` runs everything (Tier 2). Docs alone run nothing; a path
 # this list does not know runs everything. The engine (src/, tests/) also runs desktop: its callers. A clean pip install only when dependencies changed.
 changed="$(git -C "$repo" diff --name-only origin/main..HEAD 2>/dev/null)"
-want_python=0; want_worker=0; want_site=0; want_desktop=0; want_workflows=0; clean_install=""
-if [ -z "$changed" ]; then want_python=1; want_worker=1; want_site=1; want_desktop=1; want_workflows=1; clean_install=--clean-install
+want_python=0; want_worker=0; want_desktop=0; want_workflows=0; clean_install=""
+if [ -z "$changed" ]; then want_python=1; want_worker=1; want_desktop=1; want_workflows=1; clean_install=--clean-install
 else
   while IFS= read -r file; do
     case "$file" in
       *.md|docs/*|LICENSE*|.gitignore|*/.gitignore) ;;
       worker/*) want_worker=1 ;;
-      site/*|web/*|admin/*|api/*|shared/*|workers/*|db/*|test/*|jobs/*|media/*|preview/*) want_site=1 ;;
+      site/*|web/*|admin/*|api/*|shared/*|workers/*|db/*|test/*|jobs/*|media/*|preview/*) ;;   # the site lives in the private repo jobadabra-web: no suite here (1 Nov 2026, test stages 3-5)
       desktop/*|extension/*) want_desktop=1 ;;
       requirements*|pyproject.toml) want_python=1; want_desktop=1; clean_install=--clean-install ;;
       src/*|tests/*) want_python=1; want_desktop=1 ;;
       .github/*) want_workflows=1; want_python=1 ;;   # tests/test_desktop_workflow.py and others read the workflow files (10 Oct 2026: 02021ae went red on one)
-      *) want_python=1; want_worker=1; want_site=1; want_desktop=1; want_workflows=1 ;;
+      *) want_python=1; want_worker=1; want_desktop=1; want_workflows=1 ;;
     esac
   done <<<"$changed"
 fi
-case "$command" in *PUSH_FULL=1*) want_python=1; want_worker=1; want_site=1; want_desktop=1; want_workflows=1; clean_install=--clean-install ;; esac
+case "$command" in *PUSH_FULL=1*) want_python=1; want_worker=1; want_desktop=1; want_workflows=1; clean_install=--clean-install ;; esac
 # The e2e harness's own unit tests (cd desktop/e2e && npm test, 72-143 s) are NOT run on a local push any more (owner, 11 Oct 2026: "I want the local e2e run dropped entirely"):
 # CI's e2e.yml "plan" job runs all of them on every push. `JP_E2E_UNIT=1 git push ...` (or tools/ship.sh with it set) runs them here when a change to the harness needs the answer now
 # (the 10 Oct 2026 move left 19 red); PUSH_FULL=1 does not bring them back.
@@ -338,7 +330,7 @@ case "$command" in *PUSH_FULL=1*) export GATE_CACHE_FRESH=1 ;; esac
 if [ -n "$affected_flag" ] && [ "${JOB_PILOTTO_TIERS:-1}" != 0 ] && command -v jq >/dev/null; then
   pick_json="$(cd "$repo" && python3 tools/affected-tests.py --base origin/main 2>/dev/null)"
   skipped=""
-  for area in python worker site desktop; do
+  for area in python worker desktop; do
     want="want_$area"; [ "${!want}" = 1 ] || continue
     [ "$(jq -r --arg a "$area" '.[$a] | if type == "array" and length == 0 then "empty" else "run" end' <<<"$pick_json" 2>/dev/null)" = empty ] || continue
     [ "$area" = desktop ] && grep -qE '\.(js|mjs|cjs)$' <<<"$changed" && continue
@@ -382,7 +374,6 @@ add_tree() {  # area: its fresh checkout, named in tree_<area> (empty when git c
 verify_area() {  # area [extra check.sh flags]
   local area="$1"; shift
   local name="tree_$area"; local tree="${!name:-}"
-  if [ "$area" = site ] && [ ! -d "$repo/admin" ]; then echo "site: lives in the private repo jobadabra-web (docs/rules/private-site.md): skipped here"; return 0; fi
   [ -n "$tree" ] || { echo "fatal: git could not make a clean checkout for $area"; return 1; }
   # Why (29 Oct 2026, fresh review of the link fix): the post-checkout hook has already linked the main checkout's folders into this clean checkout; `ln -s` onto such a link would add a link INSIDE the shared folder.
   # The pushing checkout's own folders win (a worktree with its own install after `worktree.sh own-modules`), so a link the hook made is replaced, never added to. Guard: tests/test_pre_push_check.py.
@@ -402,7 +393,7 @@ if [ "$want_workflows" = 1 ]; then
   if command -v actionlint >/dev/null; then run "workflow files (actionlint)" workflows
   else echo "pre-push: actionlint not installed (brew install actionlint); workflow files not checked" >&2; fi
 fi
-for area in python worker site desktop; do
+for area in python worker desktop; do
   want="want_$area"; [ "${!want}" = 1 ] && add_tree "$area"
 done
 gate_pids=()
@@ -411,7 +402,6 @@ for gate in ${gates_wanted[@]+"${gates_wanted[@]}"}; do   # first: they are the 
 done
 [ "$want_python" = 1 ] && DEFER="$(area_whole python)" run "python (clean checkout)" verify_area python $clean_install
 [ "$want_worker" = 1 ] && DEFER="$(area_whole worker)" run "worker (clean checkout)" verify_area worker
-[ "$want_site" = 1 ] && DEFER="$(area_whole site)" run "site (clean checkout)" verify_area site
 [ "$want_desktop" = 1 ] && DEFER="$(area_whole desktop)" run "desktop (clean checkout)" verify_area desktop
 [ "$want_e2e" = 1 ] && run "e2e unit tests (desktop/e2e npm test, as CI)" e2e_unit
 watch=(); for i in "${!pids[@]}"; do watch+=("${pids[$i]}:${outs[$i]}.code"); done

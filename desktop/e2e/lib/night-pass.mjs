@@ -5,7 +5,7 @@
 // are ordinary runs of e2e.yml on the beta's own layout (every suite, both stores, Windows following); the beta gate (a8, PR 2/3) folds their steps.json into its record like any run's.
 // Why (31 Oct 2026, a8 with the coordinator): no AI spend without the owner's yes, so a pass leaves out the suites that ask the model live and the paid judge steps; those get their
 // proof from the other runs that count. Guard: test/night-pass.test.mjs.
-import {autoSuites} from './plan.mjs';
+import {NIGHT_REPORT, autoSuites} from './plan.mjs';
 
 export const NIGHT_PASSES = 5;
 export const NIGHT_TITLE = 'Night burn-in';   // the run-name's first words; every list of "runs that are not main's check" holds it (tools/main_e2e_state.py NOT_MAIN_CHECK and its siblings)
@@ -18,8 +18,14 @@ export function passNumber(text) {
   return found && Number(found[2]) === NIGHT_PASSES && Number(found[1]) >= 1 && Number(found[1]) <= NIGHT_PASSES ? Number(found[1]) : 0;
 }
 
-/** The suites a pass tests: everything the beta's gate runs, minus the ones that ask the model live and the outside world (real Notion, not the app). */
-export const nightSuites = (all, cadence) => autoSuites(all, cadence).filter(suite => cadence[suite] !== 'outside' && !LIVE_AI.includes(suite));
+/**
+ * The suites a pass tests: everything the beta's gate runs, minus the ones that ask the model live and the outside world (real Notion, not the app). Pass 1 also runs the night-report
+ * suites (lib/plan.mjs): once a night is a report; five looks at them would be five reports.
+ */
+export const nightSuites = (all, cadence, pass = 0) => {
+  const gate = autoSuites(all, cadence).filter(suite => cadence[suite] !== 'outside' && !LIVE_AI.includes(suite));
+  return all.filter(suite => gate.includes(suite) || (pass === 1 && cadence[suite] === NIGHT_REPORT));
+};
 
 /**
  * The commit this pass tests: pass 1 tests the head it started on (`sha`); a later pass tests the head of the newest "Night burn-in 1/5" run started within the night.

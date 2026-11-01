@@ -25,6 +25,7 @@ export const aiAnswers = 'backbone';   // answers its AI from the stored table i
 export const store = 'sqlite';   // one store, so its stored answers follow one path (it ran on both before; Why above)
 export const macos = true;   // runs on a macOS runner: pixels, fonts and window sizes: judged on the Mac people use (lib/plan.mjs runnerOf)
 export const name = 'interactions';
+export const cadence = 'night-report';   // a finder: runs once a night, shows its result, never in the beta (lib/plan.mjs; owner, 1 Nov 2026)
 import {hangCapsFor} from '../lib/hang-caps.mjs'; export const hangCaps = hangCapsFor('interactions');
 // One failed step never hides the rest: the runner records it and goes on (lib/runner.mjs); only the setup steps marked `critical` stop the suite.
 export const keepGoing = true;

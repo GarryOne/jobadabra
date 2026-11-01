@@ -6,7 +6,7 @@ import {ensureStaged} from './ensure-staged.mjs';
 import {refusalNote} from './ai-refused.mjs';
 import {capMessage, skipStepForCap, takeCapped} from './ai-cap.mjs';
 import {isEnvironment, RETRY_WAIT_MS} from './environment.mjs';
-import {mayRetry} from './beta-retry.mjs';
+import {mayRetry, retryLog} from './beta-retry.mjs';
 import {faultCheck, NEVER_FIRED, neverFiredNote} from './faults.mjs';
 import {codeLine} from './artifacts.mjs';
 import {causeOf, sharedCauseLines} from './step-cause.mjs';
@@ -152,7 +152,7 @@ export function createRunner(getSession, {suite = '', cadence = '', keepGoing = 
           // (1 Nov 2026, owner: "Auto-retry in betas only"; lib/beta-retry.mjs). Not when the suite's budget is spent: the retry would run past it.
           if (budgetMs - (Date.now() - suiteStarted) <= 0 || !mayRetry({error, faults, safety, data})) throw error;
           retried = String(error.message).slice(0, 200);
-          console.log(`↻ ${name}: the environment failed (${retried.slice(0, 120)}), trying once more`);
+          console.log(retryLog(name, error.message));   // says which retry it is: an environment failure, or the beta's retry of a step that failed on its own terms
           await new Promise(done => setTimeout(done, RETRY_WAIT_MS));
           await fn();
         }

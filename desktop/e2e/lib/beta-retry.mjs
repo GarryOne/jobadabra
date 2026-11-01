@@ -23,6 +23,11 @@ export function mayRetry({error, faults = false, safety = false, data = false, e
   return inBeta(env) && !safety && !data;
 }
 
+/** The job-log line when a step is tried once more: an environment failure is said to be one; any other failure is the beta's retry, never called an environment failure. */
+export const retryLog = (name, message) => (isEnvironment(message)
+  ? `↻ ${name}: the environment failed (${String(message).slice(0, 120)}), trying once more`
+  : `↻ ${name}: failed (${String(message).slice(0, 120)}); beta retry, trying once more (not an environment failure)`);
+
 /** The "suite · step" names of the steps that passed on their retry, from one suite's results (steps.json). */
 export const passedOnRetry = (suite, results = []) => results.filter(result => result.status === 'passed' && result.retried).map(result => `${suite} · ${result.name}`);
 

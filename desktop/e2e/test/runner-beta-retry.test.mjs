@@ -6,7 +6,7 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {createRunner} from '../lib/runner.mjs';
-import {BETA_RETRY, mayRetry, passedOnRetry, retryLine} from '../lib/beta-retry.mjs';
+import {BETA_RETRY, mayRetry, passedOnRetry, retryLine, retryLog} from '../lib/beta-retry.mjs';
 
 process.env.E2E_RETRY_WAIT_MS = '0';   // the pause between the two tries is the runner's, not the test's subject
 const WRONG = () => new Error('expected 3 cards, saw 2');   // a wrong value: not an environment failure, so only a beta retries it
@@ -91,4 +91,14 @@ test('(g2) the line is read from the artifacts of every suite, a suite run on tw
   put('e2e-artifacts-jobs-standin', 'jobs', [{name: 'the list', status: 'passed', retried: 'expected 3'}]);
   put('e2e-artifacts-focus', 'focus', [{name: 'a card', status: 'passed', retried: 'x'}]);
   assert.equal(retryLineFor(root), 'Passed on retry in this beta: focus · a card, jobs · the list');
+});
+
+test('the job log says which retry it is: an environment failure, or the beta retry of a step that failed on its own terms', async () => {
+  assert.match(retryLog('a step', "Unexpected token '<'"), /the environment failed/);
+  assert.match(retryLog('a step', 'expected 3 cards, saw 2'), /beta retry.*not an environment failure/);
+  assert.doesNotMatch(retryLog('a step', 'expected 3 cards, saw 2'), /the environment failed/);
+  const lines = [], log = console.log;
+  console.log = line => lines.push(String(line));
+  try { await attempt(true, 1); } finally { console.log = log; }
+  assert.ok(lines.some(line => /beta retry/.test(line)) && !lines.some(line => /the environment failed/.test(line)), lines.join('\n'));
 });

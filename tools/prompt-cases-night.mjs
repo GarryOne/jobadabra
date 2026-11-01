@@ -37,7 +37,7 @@ export function reportLine(report) {
   const at = short(report.sha);
   if (report.status === 'carried') return `Prompt cases (${SET}): no prompt changed since ${at}: baseline carried, $0`;
   if (report.status === 'not-asked') return `Prompt cases (${SET}): NOT asked (${report.reason}); baseline ${at || 'none'} kept`;
-  const head = `Prompt cases (${SET}, Codex): ${report.total} cases, ${report.flipped.length} flipped, ${report.noise.length} model noise`;
+  const head = `Prompt cases (${SET}, Codex): ${report.total} cases, ${report.flipped.length} flipped, ${report.noise.length} model noise${report.unconfirmed?.length ? `, ${report.unconfirmed.length} unconfirmed (call cap)` : ''}`;
   return report.status === 'first' ? `${head}; first night, baseline stored (${report.right} right); ${report.calls} calls`
     : `${head}${report.newWrong.length ? `, ${report.newWrong.length} new wrong` : ''}; ${report.calls} calls`;
 }
@@ -49,7 +49,7 @@ export function reportLine(report) {
 export function factsLine(report) {
   const count = list => (Array.isArray(list) ? list.length : 0);
   return `PROMPT_CASES_NIGHT ${JSON.stringify({set: SET, status: report.status, sha: short(report.sha), total: report.total || 0, right: report.right || 0,
-    flipped: count(report.flipped), noise: count(report.noise), newWrong: count(report.newWrong), calls: report.calls || 0})}`;
+    flipped: count(report.flipped), noise: count(report.noise), newWrong: count(report.newWrong), unconfirmed: count(report.unconfirmed), calls: report.calls || 0})}`;
 }
 
 /**
@@ -60,7 +60,7 @@ export function factsLine(report) {
  * @returns {Promise<object>} {version, set, status: asked|first|carried|not-asked, reason?, sha, ranOn, calls, total, right, flipped, noise, newWrong, results}
  */
 export async function runNight({baseline, sha, changed, cases, ask, pool, jobs = 6, maxCalls = 160}) {
-  const keep = (status, reason, calls = 0) => ({...(baseline || {version: 1, set: SET, results: {}, total: 0, right: 0}), status, reason, ranOn: sha, calls, flipped: [], noise: [], newWrong: []});
+  const keep = (status, reason, calls = 0) => ({...(baseline || {version: 1, set: SET, results: {}, total: 0, right: 0}), status, reason, ranOn: sha, calls, flipped: [], noise: [], newWrong: [], unconfirmed: []});
   if (baseline && !changed) return keep('carried');
   if (cases.length > maxCalls) return keep('not-asked', `${cases.length} cases is over the cap of ${maxCalls} calls`);
   let calls = 0, refusal = null;
@@ -73,19 +73,27 @@ export async function runNight({baseline, sha, changed, cases, ask, pool, jobs =
   if (refusal || first.some(row => !row)) return keep('not-asked', refusal || 'the broker gave no answer', calls);
   const before = baseline?.results || null;
   const retry = new Set(first.filter(row => !row.right && before?.[row.id]).map(row => row.id));
-  const again = (await pool(cases.filter(item => retry.has(item.id) && calls < maxCalls), jobs, guarded)).filter(Boolean);
+  const toAsk = cases.filter(item => retry.has(item.id)).slice(0, Math.max(0, maxCalls - calls));   // Why (Gitar on #2851): the cap holds for the re-asks too
+  const again = (await pool(toAsk, jobs, guarded)).filter(Boolean);
   if (refusal) return keep('not-asked', refusal, calls);
+  const unconfirmed = [...retry].filter(id => !toAsk.some(item => item.id === id));   // wrong once, no call left to ask again: never called "flipped" (wrong twice)
   const {results, ...counts} = compareNight(before, first, again);
+  counts.flipped = counts.flipped.filter(id => !unconfirmed.includes(id));
   return {version: 1, set: SET, engine: 'codex (broker, small tier)', status: baseline ? 'asked' : 'first', sha, ranOn: sha, calls, total: counts.cases, right: counts.right,
-    flipped: counts.flipped, noise: counts.noise, newWrong: counts.newWrong, results};
+    flipped: counts.flipped, noise: counts.noise, newWrong: counts.newWrong, unconfirmed, results};
 }
 
 const git = (root, ...rest) => execFileSync('git', ['-C', root, ...rest], {encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe']});
 
-/** Did a live prompt, case file or asker change between the baseline's commit and HEAD? A git failure (commit unknown) counts as changed: not judged = asked, never read on a guess. */
+/**
+ * Did a live prompt, case file or asker change between the baseline's commit and HEAD? Unknown (a commit git does not know, unrelated history, no tool) counts as changed: not judged = asked,
+ * never read on a guess. Why (Gitar on #2851): tools/prompt-cases.mjs --live prints nothing and exits 0 when git cannot compare, so an unknown sha must be refused here first, by git.
+ */
 export function liveChanged(root, baselineSha) {
-  try { return execFileSync('node', [path.join(root, 'tools/prompt-cases.mjs'), '--live', '--base', baselineSha], {cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore']}).split('\n').includes(SET); }
-  catch { return true; }
+  try {
+    execFileSync('git', ['-C', root, 'merge-base', baselineSha, 'HEAD'], {stdio: 'ignore'});
+    return execFileSync('node', [path.join(root, 'tools/prompt-cases.mjs'), '--live', '--base', baselineSha], {cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore']}).split('\n').includes(SET);
+  } catch { return true; }
 }
 
 async function main(argv) {

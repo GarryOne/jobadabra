@@ -3,6 +3,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import {fileURLToPath} from 'node:url';
 import {compareNight, factsLine, liveChanged, reportLine, runNight} from '../../tools/prompt-cases-night.mjs';
 import {brokerBody, codexRun} from '../../tools/prompt-cases-codex.mjs';
 import {pool} from '../../tools/prompt-cases-live.mjs';
@@ -42,7 +43,7 @@ test('a changed prompt asks every case once and the flipped ones once more; the 
 
 test('one machine-readable line carries the night\'s counts for the site, never case texts', async () => {
   const report = await runNight({baseline, sha: 'bbbbbbb2222', changed: true, cases: items(['a', 'b', 'c']), ask: asker(['b']), pool, jobs: 1});
-  assert.equal(factsLine(report), 'PROMPT_CASES_NIGHT {"set":"form","status":"asked","sha":"bbbbbbb","total":3,"right":2,"flipped":1,"noise":0,"newWrong":0,"calls":4}');
+  assert.equal(factsLine(report), 'PROMPT_CASES_NIGHT {"set":"form","status":"asked","sha":"bbbbbbb","total":3,"right":2,"flipped":1,"noise":0,"newWrong":0,"unconfirmed":0,"calls":4}');
   assert.match(factsLine(await runNight({baseline, sha: 'c', changed: false, cases: [], ask: asker([]), pool})), /"status":"carried","sha":"aaaaaaa".*"calls":0/);
 });
 
@@ -66,8 +67,18 @@ test('a broker refusal is said, never a partial or green report, and the old bas
   assert.equal(over.calls, 0);
 });
 
-test('a baseline commit git does not know counts as changed: not judged is asked, never read on a guess', () => {
-  assert.equal(liveChanged(fs.mkdtempSync(`${process.env.TMPDIR || '/tmp'}/pc-night-`), 'deadbeef'), true);
+test('a baseline commit git does not know counts as changed, in the real repo: prompt-cases.mjs itself would print nothing and exit 0', () => {
+  const repo = fileURLToPath(root);
+  assert.equal(liveChanged(repo, 'deadbeefdeadbeefdeadbeefdeadbeefdeadbeef'), true, 'unknown sha: asked, never "carried"');
+  assert.equal(liveChanged(repo, 'HEAD'), false, 'HEAD..HEAD changed no live prompt: carried');
+});
+
+test('the call cap holds for the re-asks too: a case that could not be asked again is unconfirmed, never "flipped" (wrong twice)', async () => {
+  const calls = [];
+  const report = await runNight({baseline, sha: 'bbbbbbb2222', changed: true, cases: items(['a', 'b', 'c']), ask: asker(['a', 'b'], calls), pool, jobs: 1, maxCalls: 4});
+  assert.deepEqual(calls, ['a', 'b', 'c', 'a'], 'one call left for the re-asks');
+  assert.deepEqual([report.flipped, report.unconfirmed, report.calls <= 4], [['a'], ['b'], true]);
+  assert.match(reportLine(report), /1 unconfirmed \(call cap\)/);
 });
 
 test('Codex is asked in Messages shape: system apart, the schema as output_config, the Haiku tier; a refusal carries .capped', async () => {
@@ -91,5 +102,6 @@ test('only the night pass 1 calls it: report only, nothing needs it, no PR trigg
   const wf = read('.github/workflows/prompt-cases-night.yml');
   assert.ok(!/pull_request|push:|schedule:/.test(wf.split('\njobs:')[0]), 'no PR, push or cron trigger');
   assert.match(wf, /continue-on-error: true/);
+  assert.ok(!/prompt-cases-out\/log/.test(wf), 'the log lives outside the uploaded folder: a crashed night uploads nothing and keeps the old baseline');
   assert.ok(!/ANTHROPIC|PR_PROOF/.test(wf.replace(/^\s*#.*$/gm, '')), 'Codex plan only, never an API key (the no-step-summary rule is tests/test_no_step_summaries.py)');
 });

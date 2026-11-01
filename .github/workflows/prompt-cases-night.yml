@@ -48,7 +48,7 @@ jobs:
       - name: Replay the live prompt cases on the Codex plan
         run: |
           mkdir -p prompt-cases-out
-          node tools/prompt-cases-night.mjs --out prompt-cases-out --baseline prompt-cases-in/prompt-cases-night.json --jobs 6 --max-calls 160 2>&1 | tee prompt-cases-out/log.txt
+          node tools/prompt-cases-night.mjs --out prompt-cases-out --baseline prompt-cases-in/prompt-cases-night.json --jobs 6 --max-calls 160 2>&1 | tee prompt-cases-night.log   # Why (Gitar on #2851): the log lives outside the uploaded folder, so a crashed night uploads nothing and the previous baseline stays the newest artifact
       - uses: actions/upload-artifact@v6
         if: always()
         with:

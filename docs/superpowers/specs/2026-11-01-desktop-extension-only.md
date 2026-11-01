@@ -69,7 +69,7 @@ Order per move: the private side lands first, then the jobadabra removal. Before
 
 ## Progress
 - [x] Import graph and reader inventory (proof: none: analysis only, the findings are the table above)
-- [x] 1/6 rule + guard + spec (proof: tests/test_desktop_extension_only.py)
+- [x] 1/6 rule + guard + spec (proof: tests/test_desktop_extension_only.py @fc869fb)
 - [x] 2/6 engine rename (proof: app-core/package.json)
 - [x] 3/6 web shell (proof: none: merged as jobadabra-web#274, e8a1907; deleted again in 4c)
 - [ ] 4a/6 timers on the site Worker, off (web)

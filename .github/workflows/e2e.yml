@@ -342,13 +342,14 @@ jobs:
         with:
           ref: ${{ needs.plan.outputs.ref }}   # a push or a schedule: that commit; the run after a build: the build's own commit
       # Waits for the suite's lock instead of queueing in a concurrency group (GitHub keeps ONE waiting job per group and cancels the older one: beta 14, 24 Oct 2026).
-      # Why (31 Oct 2026, stable canary run 41202570730): this is the workflow's own commit, so it also holds main's artifact scan (tools/scan-e2e-artifacts.py); the suite checkout above may be an older tag without it (15 suites red on "can't open file"). Guard: tests/test_e2e_artifact_secrets.py test_scan_runs_the_workflows_own_tool.
+      # Why (31 Oct 2026, stable canary run 41202570730): this is the workflow's own commit, so it also holds main's artifact scan (tools/scan-e2e-artifacts.py); the suite checkout above may be an older tag without it (15 suites red on "can't open file"); the canary of 26 Oct died the same way on tools/apt-install.sh (29 Linux jobs, exit 127; 1 Nov 2026). Guard: tests/test_e2e_artifact_secrets.py test_scan_runs_the_workflows_own_tool.
       - uses: actions/checkout@v5
         timeout-minutes: 5
         with:
           ref: ${{ github.sha }}
           path: lock-tools
           sparse-checkout: |
+            tools/apt-install.sh
             tools/e2e-lock.sh
             tools/gh-ledger.sh
             tools/scan-e2e-artifacts.py
@@ -409,7 +410,7 @@ jobs:
       - name: A virtual display and Electron's libraries (Linux only)
         timeout-minutes: 5
         if: runner.os == 'Linux'
-        run: bash tools/apt-install.sh xvfb libnss3 libgbm1 libasound2t64 libgtk-3-0 libxss1 fonts-noto-color-emoji fonts-dejavu-core
+        run: bash lock-tools/tools/apt-install.sh xvfb libnss3 libgbm1 libasound2t64 libgtk-3-0 libxss1 fonts-noto-color-emoji fonts-dejavu-core
       - name: Write the mutant into the app (mutation test only)
         if: inputs.mutant != '' && inputs.mutant != 'baseline'
         timeout-minutes: 10

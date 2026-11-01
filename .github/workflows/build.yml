@@ -145,3 +145,17 @@ jobs:
       pull-requests: read
       statuses: write
     uses: ./.github/workflows/tests-desktop-windows.yml
+
+  # Why (owner, 1 Nov 2026, test stages 3-5, "Parallel jobs (Recommended)"): main runs the merged combination's integration layer and a smoke too, each as a job of its own
+  # beside the unit job, so main stays about as long as before. They are called workflows (the PR runs the same files): the harness tests (desktop/e2e npm test) were nightly only.
+  harness:
+    permissions:   # what harness.yml asks for, or GitHub refuses to start this whole run (tests/test_workflow_call_permissions.py)
+      contents: read
+      actions: read
+      pull-requests: read
+    uses: ./.github/workflows/harness.yml
+
+  smoke:
+    permissions:
+      contents: read
+    uses: ./.github/workflows/smoke.yml

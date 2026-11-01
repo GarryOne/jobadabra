@@ -27,11 +27,11 @@ class PrePushCheckTest(PrePushFixture):
         self.commit('Engine change', {'src/ai/x.py': 'x'})
         self.assertEqual(self.areas_run()[:2], (0, ['desktop', 'python']), 'the engine also runs its desktop callers')
         git(self.repo, 'push', '-q', 'origin', 'HEAD:main')
-        self.commit('Site only', {'admin/p.html': 'x'})
-        self.assertEqual(self.areas_run()[:2], (0, ['site']))
+        self.commit('Site only', {'admin/p.html': 'x'})   # Why (1 Nov 2026, owner, test stages 3-5): the site lives in the private repo; no suite here
+        self.assertEqual(self.areas_run()[:2], (0, []))
         git(self.repo, 'push', '-q', 'origin', 'HEAD:main')
         self.commit('Unknown top-level file', {'Makefile': 'x'})
-        self.assertEqual(self.areas_run()[:2], (0, ['desktop', 'python', 'site', 'worker']), 'an unknown path runs everything')
+        self.assertEqual(self.areas_run()[:2], (0, ['desktop', 'python', 'worker']), 'an unknown path runs everything')
 
     def test_docs_alone_run_no_suite_and_full_forces_all(self):
         self.needed_committed()
@@ -41,7 +41,7 @@ class PrePushCheckTest(PrePushFixture):
         self.assertEqual((code, areas), (0, []), err)
         # The hook's own output on failure (9 Oct 2026: a Mac CI run got (2, no desktop) once, with nothing saying why).
         code, areas, err = self.areas_run('PUSH_FULL=1 git push origin HEAD:main')
-        self.assertEqual((code, areas), (0, ['desktop', 'python', 'site', 'worker']), err)
+        self.assertEqual((code, areas), (0, ['desktop', 'python', 'worker']), err)
 
     def test_an_area_with_no_affected_tests_is_not_started(self):
         # Tiers (11 Oct 2026): a push nothing tests no longer starts every area just for stage + lint. The empty pick is the premise: no tests exist in this repo.
@@ -55,7 +55,7 @@ class PrePushCheckTest(PrePushFixture):
         self.assertIn('no affected tests', err)
         self.assertFalse(self.log.exists(), 'no suite started')
         self.assertEqual(self.hook('git push origin HEAD:main', JOB_PILOTTO_TIERS='0')[0], 0)
-        self.assertEqual(len(self.log.read_text().splitlines()), 4, 'the escape hatch runs every area the paths want')
+        self.assertEqual(len(self.log.read_text().splitlines()), 3, 'the escape hatch runs every area the paths want')
         self.log.unlink()
         self.commit('Change a script', {'desktop/lib/x.js': 'export {};\n'})
         self.hook('git push origin HEAD:main')

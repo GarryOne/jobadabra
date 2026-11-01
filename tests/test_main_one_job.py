@@ -22,8 +22,9 @@ ON_MAIN_INSTEAD = {'control-tests.yml': 'node check-fill.mjs --all --baseline'}
 class MainOneJob(unittest.TestCase):
     def test_two_jobs_one_linux_and_the_windows_tests(self):
         jobs = re.findall(r'(?m)^  ([\w-]+):\n(?:    .*\n)', BUILD.split('\njobs:\n', 1)[1])
-        self.assertEqual(jobs, ['linux', 'windows'])
-        self.assertIn('uses: ./.github/workflows/tests-desktop-windows.yml', BUILD)
+        self.assertEqual(jobs, ['linux', 'windows', 'harness', 'smoke'])   # Why (owner, 1 Nov 2026, test stages 3-5, "Parallel jobs"): the harness tests and the smoke are jobs of their own beside the unit job, so main stays as long as before
+        for called in ('tests-desktop-windows.yml', 'harness.yml', 'smoke.yml'):
+            self.assertIn(f'uses: ./.github/workflows/{called}', BUILD)
         self.assertNotRegex(BUILD.split('\njobs:\n', 1)[1], r'(?m)^    strategy:', 'no matrix on main')
 
     def test_every_linux_suite_a_pr_runs_is_a_step_of_the_one_job(self):

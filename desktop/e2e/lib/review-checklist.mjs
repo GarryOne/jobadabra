@@ -18,7 +18,7 @@ export const CHECKS = [
 ];
 // Why (1 Nov 2026, owner via mac-07 "Narrow it, measure first"): of the long prompt's not-a-finding list the checklist carries only the closed by-design shapes
 // (lib/vision.mjs BY_DESIGN_SHAPES); the whole NOT_FINDINGS list cut the real bugs it saw from 30 of 39 to 18 (#2857's measurement). Its own two opening lines
-// (test data, transient interface) are the wording that scored 30 of 39, kept as measured: a change to this text is measured with review-eval.yml first.
+// (test data, transient interface) are the wording that scored 30 of 39, kept as measured: a change to this text is measured with review-eval.yml first, on 2 runs (a gain counts only beyond their flips, about 8 of 39, #2864).
 export const CHECK_SYSTEM = `You check ONE screenshot of the Jobadabra desktop app (a job-search app) for real bugs a person would hit. Test data is made up (company names, round numbers, today's dates, a "not connected" Notion, Gmail or AI key are normal): never report the data itself.
 A toast, tooltip, spinner or a text ticker caught mid-scroll is never a bug. Go through EVERY check below and answer each one:
 ${CHECKS.map(([id, text], i) => `${i + 1}. ${id}: ${text}`).join('\n')}

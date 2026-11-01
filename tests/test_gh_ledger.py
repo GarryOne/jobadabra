@@ -70,7 +70,7 @@ class Ledger(unittest.TestCase):
         self.assertIn('the budget fell by 0 while this job ran', report)
 
 
-WORKFLOWS = ('desktop', 'e2e', 'e2e-windows', 'pr-suites', 'pr-verdict', 'search-personas', 'ui-verdict')   # the busiest users of the repo's API budget (runs per hour, 31 Oct 2026); ui-verdict is the one measured to burst (12 judge jobs x 170 event pages)
+WORKFLOWS = ('desktop', 'e2e', 'e2e-windows', 'pr-verdict', 'search-personas', 'ui-verdict')   # the busiest users of the repo's API budget (runs per hour, 31 Oct 2026); ui-verdict is the one measured to burst (12 judge jobs x 170 event pages)
 
 
 class EveryCheckedOutJobKeepsTheLedger(unittest.TestCase):

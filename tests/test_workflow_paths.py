@@ -16,18 +16,18 @@ def on_block(name):
     return (WORKFLOWS / name).read_text().split('\njobs:')[0]
 
 
-def pr_paths(name):
-    """-> the patterns of a workflow's `pull_request: paths:`, or None (no filter)."""
+def pr_paths(name, event='pull_request'):
+    """-> the patterns of a workflow's `<event>: paths:` (a pull request by default), or None (no filter)."""
     on = on_block(name)
-    pr = re.search(r'(?ms)^  pull_request:.*?(?=^  \w|\Z)', on)
+    pr = re.search(rf'(?ms)^  {event}:.*?(?=^  \w|\Z)', on)
     if not pr or '    paths:' not in pr.group(0):
         return None
     return re.findall(r"(?m)^      - '([^']+)'", pr.group(0).split('    paths:', 1)[1])
 
 
-def starts(name, files):
-    """Does a pull request changing these files start this workflow? GitHub's rule: per file, the last pattern that matches wins; `!` excludes."""
-    patterns = pr_paths(name)
+def starts(name, files, event='pull_request'):
+    """Does a pull request (or a push, `event='push'`) changing these files start this workflow? GitHub's rule: per file, the last pattern that matches wins; `!` excludes."""
+    patterns = pr_paths(name, event)
     if patterns is None:
         return True
     def regex(glob):
@@ -160,18 +160,18 @@ class TheClass(unittest.TestCase):
             with patch(__name__ + '.ROOT', root):
                 self.assertEqual(repo_reads(test, 'desktop'), {root / 'worker/package.json'})
 
-    def test_every_file_a_suite_watches_starts_the_pr_suites(self):
-        # #2043 (26 Oct 2026) changed src/ai/score.py and enrich.py, which the quality suite watches; pr-suites.yml had no src/ path, so it never started
-        # and quality never ran on the PR it was meant to judge. A suite's `watches` (lib/plan.mjs) only works when the file also starts the workflow.
+    def test_every_file_a_suite_watches_starts_the_steps_after_a_merge(self):
+        # #2043 (26 Oct 2026) changed src/ai/score.py and enrich.py, which the quality suite watches; the PR e2e workflow had no src/ path, so it never started and quality never ran.
+        # Since 1 Nov 2026 no PR runs e2e (owner: "No e2e on PRs"): main-steps.yml plans the merge's steps. A suite's `watches` (lib/plan.mjs) only works when the file also starts it.
         missing = []
         for suite in sorted((ROOT / 'desktop' / 'e2e' / 'suites').glob('*.mjs')):
             found = re.search(r'(?m)^export const watches = \[([^\]]*)\]', suite.read_text())
             for path in re.findall(r"'([^']+)'", found.group(1)) if found else []:
                 probe = f'{path}x.js' if path.endswith('/') else path
-                if not starts('pr-suites.yml', [probe]):
+                if not starts('main-steps.yml', [probe], 'push'):
                     missing.append(f'{suite.stem}: {path}')
-        self.assertTrue(any('quality' in line for line in missing) or starts('pr-suites.yml', ['src/ai/score.py']), 'positive control')
-        self.assertEqual(missing, [], 'pr-suites.yml paths: add these files its suites watch')
+        self.assertTrue(any('quality' in line for line in missing) or starts('main-steps.yml', ['src/ai/score.py'], 'push'), 'positive control')
+        self.assertEqual(missing, [], 'main-steps.yml push paths: add these files its suites watch')
 
     def test_ship_waits_for_every_check_the_pr_started(self):
         # With one required check, a "green" that read only them would hand the owner a PR whose suites still run.
@@ -200,11 +200,10 @@ class TheShapes(unittest.TestCase):
 
     def test_docs_and_tools_start_python_only(self):
         self.assertEqual(self.started(['docs/ARCHITECTURE.md', 'CLAUDE.md']), {'tests-python.yml'})
-        # a shell script starts the PR planner too, which runs the Windows check only for a script CI runs (lib/pr-suites.mjs windowsSmoke): not tools/ship.sh
-        self.assertEqual(self.started(['tools/ship.sh']), {'tests-python.yml', 'pr-suites.yml', 'tests-desktop.yml'})   # desktop/test/merge-baseline.test.js reads it
+        self.assertEqual(self.started(['tools/ship.sh']), {'tests-python.yml', 'tests-desktop.yml'})   # desktop/test/merge-baseline.test.js reads it
 
     def test_the_apply_flow_starts_its_replays_and_desktop(self):
-        self.assertEqual(self.started(['extension/fill-flow.js']), {'tests-desktop.yml', 'tests-worker.yml', 'page-cases.yml', 'pr-suites.yml', 'harness.yml', 'smoke.yml', 'integration.yml'})   # integration.yml: the extension layer and the app serve extension/ (owner, 1 Nov 2026); smoke.yml: the app starts from extension/ (owner, 1 Nov 2026); worker tests read extension/ (14 Oct 2026); pr-suites.yml names the suites the extension points at; harness.yml: the harness tests that load the extension (owner, 27 Oct 2026, "Yes, reached files")
+        self.assertEqual(self.started(['extension/fill-flow.js']), {'tests-desktop.yml', 'tests-worker.yml', 'page-cases.yml', 'harness.yml', 'smoke.yml', 'integration.yml'})   # integration.yml: the extension layer and the app serve extension/ (owner, 1 Nov 2026); smoke.yml: the app starts from extension/ (owner, 1 Nov 2026); worker tests read extension/ (14 Oct 2026); harness.yml: the harness tests that load the extension (owner, 27 Oct 2026, "Yes, reached files")
         self.assertNotIn('site-replays-pr.yml', self.started(['desktop/lib/server.js']), 'owner, 17 Oct 2026: site replays are off PRs, scheduled only')
         self.assertFalse((WORKFLOWS / 'site-replays-pr.yml').exists())
 

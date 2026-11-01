@@ -187,15 +187,15 @@ if __name__ == '__main__':
 
 
 class PrSuitesDispatchInputs(unittest.TestCase):
-    """Every input pr-suites.yml passes with `gh workflow run e2e.yml -f name=` is declared under e2e.yml's workflow_dispatch (a workflow_call-only input is refused with HTTP 422, #1754)."""
+    """Every input main-steps.yml passes with `gh workflow run e2e.yml -f name=` is declared under e2e.yml's workflow_dispatch (a workflow_call-only input is refused with HTTP 422, #1754).
+    Why (1 Nov 2026, owner: "No e2e on PRs"): no PR dispatches e2e any more; the one dispatcher is the after-merge planner."""
 
-    def test_dispatch_declares_what_pr_suites_passes(self):
+    def test_dispatch_declares_what_main_steps_passes(self):
         root = pathlib.Path(__file__).resolve().parent.parent / '.github' / 'workflows'
-        for name in ('e2e', 'e2e-windows'):   # e2e-windows.yml: a PR's short Windows check (PR 3 of the PR-checks plan)
-            passed = set(re.findall(r'(?:gh workflow run|dispatch) ' + re.escape(name) + r'\.yml[^\n]*', (root / 'pr-suites.yml').read_text()))
-            passed = {flag for line in passed for flag in re.findall(r'-f (\w+)=', line)}
-            self.assertTrue(passed, f'pr-suites.yml no longer dispatches {name}.yml?')
-            text = (root / f'{name}.yml').read_text()
-            dispatch = text.split('workflow_dispatch:')[1].split('\n  schedule:')[0].split('\n  workflow_call:')[0]
-            declared = set(re.findall(r'^      (\w+):\s*$', dispatch, re.M))
-            self.assertEqual(passed - declared, set(), name)
+        lines = re.findall(r'gh workflow run e2e\.yml[^\n]*', (root / 'main-steps.yml').read_text())
+        passed = {flag for line in lines for flag in re.findall(r'-f (\w+)=', line)}
+        self.assertTrue(passed, 'main-steps.yml no longer dispatches e2e.yml?')
+        text = (root / 'e2e.yml').read_text()
+        dispatch = text.split('workflow_dispatch:')[1].split('\n  schedule:')[0].split('\n  workflow_call:')[0]
+        declared = set(re.findall(r'^      (\w+):\s*$', dispatch, re.M))
+        self.assertEqual(passed - declared, set())

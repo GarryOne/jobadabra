@@ -14,3 +14,16 @@ export function showSetupProgress({percent, text, setup}) {
   show($('iv-setup-bar'), percent != null);
   if (percent != null) $('iv-setup-fill').style.width = `${Math.max(2, percent)}%`;
 }
+
+/**
+ * Draws one progress step the main process sends while a draft is transcribing or the one-time setup runs: the setup banner at the top of the page whichever draft is open (or none),
+ * then, only when the step is for the open draft (`openId`), that draft's own progress line and bar. Takes the step ({id, percent, text, setup}) and the id of the draft on screen.
+ */
+export function drawInterviewProgress({id, percent, text, setup}, openId) {
+  showSetupProgress({percent, text, setup});
+  if (id !== openId) return;
+  show($('iv-progress'));
+  $('iv-progress-text').textContent = text;
+  $('iv-progress-percent').textContent = percent == null ? '' : `${percent}%`;
+  if (percent != null) $('iv-progress-bar').style.width = `${Math.max(2, percent)}%`;
+}

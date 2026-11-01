@@ -68,15 +68,18 @@ before(async () => {
     // The one-time setup banner (J18, moved from the e2e `interviews` suite, 1 Nov 2026): a test run never starts the real setup, so the page is given the app's own progress steps.
     await section('banner', async () => {
       await kit.open(4);
-      const {showSetupProgress} = await import('./pages/interviews-setup.js');
+      const {drawInterviewProgress} = await import('./pages/interviews-setup.js');
       const banner = () => ({shown: !document.getElementById('iv-setup').hidden, text: document.getElementById('iv-setup-text').textContent,
         bar: document.getElementById('iv-setup-bar').hidden ? null : document.getElementById('iv-setup-fill').style.width});
-      showSetupProgress({id: 'setup', percent: 40, setup: true, text: 'Downloading the speech models, only the first time (about 520 MB): asr'});
-      const downloading = banner(), layout = kit.severe('interviews');
-      showSetupProgress({id: 'setup', percent: null, setup: true, text: 'Unpacking the speech models (asr), a minute or two'});
-      const unpacking = banner();
-      showSetupProgress({id: 'x', percent: 10, text: 'Writing down what was said'});
-      return {downloading, unpacking, transcribing: banner(), layout};
+      const draft = () => ({shown: !document.getElementById('iv-progress').hidden, text: document.getElementById('iv-progress-text').textContent, percent: document.getElementById('iv-progress-percent').textContent});
+      const open = 'the-open-draft';
+      // A setup step carries the id of the draft the person is reading or of none: either way the banner shows, the draft's own line only for its own id.
+      drawInterviewProgress({id: 'another-draft', percent: 40, setup: true, text: 'Downloading the speech models, only the first time (about 520 MB): asr'}, open);
+      const downloading = banner(), notMine = draft(), layout = kit.severe('interviews');
+      drawInterviewProgress({id: open, percent: null, setup: true, text: 'Unpacking the speech models (asr), a minute or two'}, open);
+      const unpacking = banner(), mineUnknown = draft();
+      drawInterviewProgress({id: open, percent: 10, text: 'Writing down what was said'}, open);
+      return {downloading, unpacking, transcribing: banner(), notMine, mineUnknown, mine: draft(), layout};
     });
     await section('delete', async () => {
       await kit.open(4);
@@ -132,19 +135,24 @@ test('Record stays off until everyone has agreed, and says why', live, () => {
   assert.match(box, /Recording consent required/, 'the consent notice is not on the page');
 });
 
-test('the one-time setup banner shows its step and percent, then goes away when transcribing starts', live, () => {
-  const {downloading, unpacking, transcribing, layout} = facts('banner');
+test('the one-time setup banner shows its step and percent, then goes away when transcribing starts; a draft\'s own line is drawn only for its own id', live, () => {
+  const {downloading, unpacking, transcribing, notMine, mineUnknown, mine, layout} = facts('banner');
   assert.equal(downloading.shown, true, 'the banner is not on screen while the speech models download');
   assert.ok(/asr 40%/.test(downloading.text) && downloading.bar === '40%', `the setup banner shows "${downloading.text}" with a bar of ${downloading.bar}, expected asr 40% and 40%`);
   assert.equal(unpacking.shown, true);
   assert.equal(unpacking.bar, null, 'the bar stays while the percent is unknown');
   assert.equal(transcribing.shown, false, 'the banner is still on screen after transcribing started');
+  assert.equal(notMine.shown, false, 'a step for another draft drew the open draft\'s own progress line');
+  assert.deepEqual([mineUnknown.shown, mineUnknown.percent], [true, ''], 'the open draft\'s progress line is missing, or shows a percent nobody sent');
+  assert.deepEqual([mine.text, mine.percent], ['Writing down what was said', '10%'], 'the open draft\'s progress line does not show its own step');
   assert.deepEqual(layout, [], 'the banner has layout problems');
 });
 
-test('the page draws every progress step the main process sends through the banner (the wiring, read from the page)', () => {
+// Why (1 Nov 2026, Gitar on #2808): the window cannot be handed the main process's own 'ivProgress' events (the page reaches them only through the preload's contextBridge), so the page's whole handler is
+// drawInterviewProgress, driven above; this only checks the page's one subscription hands it the step and the open draft's id.
+test('the page hands every progress step the main process sends, with the open draft\'s id, to the drawing function', () => {
   const page = fs.readFileSync(new URL('../../renderer/pages/interviews.js', import.meta.url), 'utf8');
-  assert.match(page, /onInterviewProgress\(\(\{id, percent, text, setup\}\) => \{\s*showSetupProgress\(\{percent, text, setup\}\)/, 'onInterviewProgress no longer draws the banner');
+  assert.match(page, /onInterviewProgress\(step => drawInterviewProgress\(step, ivOpen\)\)/, 'onInterviewProgress no longer draws through drawInterviewProgress with the open draft');
 });
 
 test('Delete, once the person agrees, says which interview was deleted', live, () => {

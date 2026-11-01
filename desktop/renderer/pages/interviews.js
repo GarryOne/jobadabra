@@ -18,7 +18,7 @@ import {showPermission, startRecording, isRecording, stopRecording, onLevel, ope
 import {agoText, endPractice, showMoments, skeletonRows, startPractice} from './interview-practice.js';
 import {PASTE, jobForPage, jobList, jobOptions, jobUrlOf, renderDrafts as renderDraftList, renderSpeakers as renderSpeakerFields} from './interview-lists.js';
 import {gatedOut} from './notion-connect.js';
-import {showSetupProgress} from './interviews-setup.js';
+import {drawInterviewProgress} from './interviews-setup.js';
 
 // ---------- interviews: drafts on this Mac, saved ones in Notion 🎤 Interviews ----------
 const iv = window.pilot.interviews;
@@ -446,14 +446,7 @@ export async function init() {
     if (ivOpen === id) openDraft(id);
     if (meta.status !== 'ready') message('iv-message', meta.error || 'Transcription failed', 'error');
   });
-  window.pilot.onInterviewProgress(({id, percent, text, setup}) => {
-    showSetupProgress({percent, text, setup});   // the one-time downloads show at the top of the page whichever draft is open, or none
-    if (id !== ivOpen) return;
-    show($('iv-progress'));
-    $('iv-progress-text').textContent = text;
-    $('iv-progress-percent').textContent = percent == null ? '' : `${percent}%`;
-    if (percent != null) $('iv-progress-bar').style.width = `${Math.max(2, percent)}%`;
-  });
+  window.pilot.onInterviewProgress(step => drawInterviewProgress(step, ivOpen));   // the logic is renderer/pages/interviews-setup.js, driven by integration/app/screen-interviews.test.js
 
   $('iv-add').addEventListener('click', async () => {
     const draft = await iv.add();

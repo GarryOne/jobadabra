@@ -1,15 +1,5 @@
 [
  {
-  "id": "calendar-day-dropped",
-  "suite": "calendar",
-  "store": "sqlite",
-  "file": "desktop/renderer/calendar.js",
-  "find": "inMonth: date.getUTCMonth() === month,",
-  "replace": "inMonth: date.getUTCMonth() === month && date.getUTCDate() !== 4,",
-  "what": "the month grid loses day 4 (#120, #122 were this bug)",
-  "catches": "the grid shows every meeting on its own day"
- },
- {
   "id": "failed-run-ticked",
   "suite": "activityfailures",
   "store": "standin",

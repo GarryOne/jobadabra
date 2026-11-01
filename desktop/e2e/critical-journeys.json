@@ -1,5 +1,5 @@
 {
- "_about": "The critical journeys the beta proves (owner, 1 Nov 2026), each with the steps that prove it, and the safety or data steps kept though no journey owns them; a lib/ change runs every suite listed here (lib/journeys.mjs). Safety and data marks live in code, never here. parts: literals of a name the code builds.",
+ "_about": "The critical journeys the beta proves (owner, 1 Nov 2026), each with the steps that prove it, and the safety or data steps kept though no journey owns them. Safety and data marks live in code, never here. parts: literals of a name the code builds.",
  "journeys": [
   {
    "id": "J0",

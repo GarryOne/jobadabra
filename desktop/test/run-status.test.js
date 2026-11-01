@@ -38,6 +38,7 @@ test('a failed run does not tick the step it stopped at, and its later steps sta
   const failed = {ok: false, log: ['Searching job boards', 'Checking employer career pages']};
   assert.deepEqual([0, 1].map(i => phaseStatus(failed, i, 1)), ['done', 'fail']);
   assert.deepEqual([0, 1].map(i => phaseStatus(failed, i, 0)), ['fail', 'todo']);
+  assert.equal(phaseStatus({ok: true, off: true}, 1, 1), 'fail', 'a Not checked run (ok but off) stops at its step too (#2815)');
   assert.equal(phaseStatus({ok: true}, 1, 1), 'done');
   assert.equal(phaseStatus({ok: true, warned: true}, 1, 1), 'warn');
   assert.equal(phaseStatus({live: true, ok: false}, 1, 1), 'now');

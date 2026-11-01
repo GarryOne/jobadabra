@@ -20,7 +20,7 @@ import {createRequire} from 'node:module';
 import {appLogText} from './app-log.mjs';
 import {stepTimeLeft} from './wait-on-state.mjs';
 import {keepRunLogs} from './run-logs.mjs';
-import {windowShot} from './window-shot.mjs';
+import {appPicture} from './window-shot.mjs';
 import {pythonCoverage, saveCoverage, startCoverage, takeSetup, takeStep} from './coverage.mjs';   // E2E_COVERAGE=1: what app code this session, and each step, ran (gate G1b)
 import {refuseWrapper, withoutWrappers} from './real-claude.mjs';   // never a terminal's claude wrapper (e2e/test/real-claude.test.mjs)
 const electronPath = () => {
@@ -72,7 +72,7 @@ export async function launch({env = {}, executablePath, args, profile: again, la
   const trace = await startTrace(app);
   const coverage = await startCoverage(app, page).catch(() => null);
   // A shot is evidence, never a reason to fail a step: one that cannot be taken says so in the log (lib/window-shot.mjs: the window as painted, motion stilled).
-  const shot = name => windowShot(app, page).then(png => { fs.mkdirSync(ARTIFACTS, {recursive: true}); fs.writeFileSync(path.join(ARTIFACTS, `${name}.png`), png); })
+  const shot = name => appPicture(app, page).then(png => { fs.mkdirSync(ARTIFACTS, {recursive: true}); fs.writeFileSync(path.join(ARTIFACTS, `${name}.png`), png); })
     .catch(error => console.log(`  (no shot ${name}: ${error.message})`));
   // Copy the app's own logs next to the screenshots (the test profile holds only fictional data, and the logs never contain keys), and print the engine's last lines.
   const keepLogs = async () => {

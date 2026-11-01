@@ -27,3 +27,19 @@ export async function windowShot(app, page) {
     await page.emulateMedia({reducedMotion: null});
   }
 }
+
+/**
+ * The picture every shot and failure picture takes: windowShot, and when the window gives nothing (hidden, minimised, never painted) Playwright's CSS-pixel
+ * screenshot instead, with one logged line. Why (1 Nov 2026, a8): a failure must never lose its picture.
+ * @param {import('playwright-core').ElectronApplication} app
+ * @param {import('playwright-core').Page} page
+ * @param {(line: string) => void} [log]
+ */
+export async function appPicture(app, page, log = console.log) {
+  try {
+    return await windowShot(app, page);
+  } catch (error) {
+    log(`  window capture empty (${error.message}): CSS-px screenshot instead`);
+    return page.screenshot();
+  }
+}

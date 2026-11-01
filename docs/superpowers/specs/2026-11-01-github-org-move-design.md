@@ -41,7 +41,7 @@
 ## Design
 - **One shared constant, owner changes once.** App: `desktop/lib/repos.js` (`OWNER`, `ENGINE`, `WEB`, `LAB`, `STARTER` names). Workflows: the three `OWNER_OF_*` variables. Tools and scripts: the owner comes from `GITHUB_REPOSITORY` or `git remote get-url origin`, else the constant; no literal.
 - **Why a variable and not a flag day:** four repos reference each other (jobadabra → web, lab; web → jobadabra, lab; lab, benchmarks → jobadabra). Whatever order they move in, for hours one side is under the org and the other under `GarryOne`. A variable flips in a second, with no PR and no red CI.
-- **Order and timing** (owner: smallest risk first): benchmarks → always-on (regenerated from the template, not a CI repo) → lab → web → starter (**transferred and renamed together**, to `jobadabra/jobadabra-user-template`) → **jobadabra last**. By day, never 21:00–05:30 UTC. Web and jobadabra also outside any beta or main build, at the hour **a8** names. jobadabra only after **rs**'s remaining move PRs (5b/6, 6/6) have merged: ask rs. One repo per day; each is confirmed with mac-07, who asks the owner, before the transfer command runs.
+- **Order and timing** (owner: smallest risk first): benchmarks → lab → web → starter (**transferred and renamed together**, to `jobadabra/jobadabra-user-template`) → **jobadabra last**; `jobadabra-personal-always-on` is not moved (owner, 1 Nov 2026). Changed 1 Nov 2026 night by the owner ("All 5 tonight"): the by-day rule is lifted; every transfer still needs a quiet check (no beta, main build or Worker deploy running; not in the 10 minutes before a burn-in pass at 23:30, 01:30, 03:30 UTC) and an identical before/after snapshot; web and jobadabra at the hour **a8** names. jobadabra only after **rs**'s dispatch fix is merged and deployed (bot Worker #2924 and its web twin: a POST follows a 301), with new org-owned tokens in place.
 - **After each transfer, in this order:** (1) flip the `OWNER_OF_<repo>` variable in every consumer; (2) compare secrets / variables / ruleset / flags with the saved copy; (3) `git remote set-url`; (4) reinstall or check Gitar, the CI App, webhooks (none today); (5) one scheduled run and one PR through CI green; (6) tell the owner and peers.
 - **The `JOB_PILOTTO` → `jobadabra` code rename (queued, not started)** touches the same lines in three places: `desktop/lib/github.js:27-31` (`REPO_NAMES` has `job-pilotto-private`, `STARTER` is `job-pilotto-starter`), `engine-repo.js:30` (the regexes accept `job-pilotto|jobadabra`), and the env/variable names `JOB_PILOTTO_*` in the always-on repo's variables. This work keeps those lines as they are except the owner part, so the later rename is a name swap inside `repos.js`.
 
@@ -56,11 +56,11 @@
 | 3/7 | jobadabra | `owner: ${{ vars.OWNER_OF_* }}` in the 17 workflow steps and `repository:` checkouts | owner sets the 3 variables to `GarryOne` first |
 | 4/7 | jobadabra-web | broker accepts both owners; `api/*.js` repo from env; the same `OWNER_OF_*` in its 4 steps | ab informed for the broker |
 | 5/7 | lab + benchmarks | the `repository:` literals read the variables | owner sets variables |
-| 6/7 | all | literal sweep to the org after the last move + the guard | all 6 transfers done (benchmarks, always-on, lab, web, starter, jobadabra) |
+| 6/7 | all | literal sweep to the org after the last move + the guard | all 5 org transfers done (benchmarks, lab, web, starter, jobadabra); `jobadabra-personal-always-on` stays under GarryOne (owner, 1 Nov 2026) |
 | 7/7 | none | night slot + beta green from the org, report | a8's hours |
 
 ## Runbook for the jobadabra transfer (the last one)
-1. Day only (never 21:00–05:30 UTC), outside any beta or main build, at the hour a8 names; rs's move PRs merged; mac-07 confirms with the owner.
+1. Outside any beta or main build and not in the 10 minutes before a night burn-in pass (23:30, 01:30, 03:30 UTC), at the hour a8 names (owner, 1 Nov 2026: "All 5 tonight" lifted the by-day rule); rs's dispatch fix (bot Worker #2924: a POST follows a 301) and its web twin (www dispatch + timers) merged by the owner and deployed green; mac-07 confirms.
 2. Before: `OWNER_OF_*` set everywhere (3/7), the CI App on the org with jobadabra in its repositories, Gitar on the org, the GCP provider condition has `jobadabra/jobadabra`, the broker accepts both owners, `gh secret list` / `gh variable list` / the ruleset saved to the scratchpad.
 3. Transfer: `gh api -X POST repos/GarryOne/jobadabra/transfer -f new_owner=jobadabra`.
 4. At once: flip `OWNER_OF_JOBADABRA` to `jobadabra` in web, lab and benchmarks; compare secrets, variables, ruleset and flags with the saved copy; `git remote set-url origin` in the primaries.
@@ -70,13 +70,15 @@
 ## Owner steps (each is sent to mac-07 as one exact instruction when its turn comes)
 1. Create the org: github.com → **+** → New organization → **Free** → name `jobadabra` → "My personal account". Tell mac-07 "org created".
 2. Org Settings → Personal access tokens → allow fine-grained tokens (no approval needed for the owner). Actions → General → Workflow permissions = read.
-3. Transfer the CI App to the org and install it on the org (item 4); install Gitar on the org (item 10); add `jobadabra/jobadabra` to the GCP provider condition (item 9).
+3. Done 1 Nov 2026 night (by mac-07 in the owner's Chrome): the CI App `jobadabra-ci-records` is installed on the org (all repositories) and made public, **still owned by GarryOne** with the same id and key: GitHub warned that a transfer uninstalls it from the personal account and would break CI for repos not yet moved, so its token works for repos under either owner during the move and the transfer of the App comes after the last repo moves. Also installed on the org: gitar-bot, claude, linear, linear-code, sentry. Gitar redirected to app.gitar.ai sign-up after install: if it does not review org repos, the owner links the org in Gitar's dashboard. Still open: add `jobadabra/jobadabra` to the GCP provider condition (item 9).
 4. Create the replacement tokens of item 5 with resource owner = the org (one browser session; I give the exact permission list).
 5. A yes per transfer, in the order above.
 
 ## Decisions for the owner (recommendation first)
 - Move the starter too, as `jobadabra-user-template`? **Decided (owner, 1 Nov 2026): yes, renamed and moved together.**
-- Reuse the existing CI App instead of building a new one? **Decided: yes** (same id and key, 2 secrets unchanged).
+- Reuse the existing CI App instead of building a new one? **Decided: yes** (same id and key, 2 secrets unchanged); installed on both accounts, ownership moves after the last repo.
+- Does `jobadabra-personal-always-on` move to the org? **Decided (owner, 1 Nov 2026): no.** "personal-always-on is not part of Jobadabra org, this is personal." It stays under GarryOne; after the jobadabra transfer its `uses:` lines are rewritten in place to the org path.
+- Make `jobadabra-lab` public so the scout can run on free public minutes? **Decided (owner, 1 Nov 2026): yes** ("Make lab public anyway", "For now we want to keep all public"; names in `data/licenses.json`: "Accept, names are fine"; encrypted releases: "Accept the risk"). Done 1 Nov 2026 after a full-history scan (gitleaks 0, key-prefix grep 0, issues and artifacts 0).
 - `OWNER_OF_*` variables instead of one-day flag edits? **Decided: yes** (no red window; 3 variables).
 - Throwaway test on `rename-proof-a-renamed`, then no real repo moves until Always-on is proven safe or has a design? **Decided: yes.**
 
@@ -86,10 +88,13 @@
 - [x] Step 0b proof: rename a throwaway template; what the old `/new?template_name=` link shows (item 15) (proof: none: measured in the owner's Chrome on the throwaway `rename-proof-b-renamed`, 1 Nov 2026)
 - [x] 2/7 App constant + redirect test (proof: desktop/test/repos.test.js @d500c1b)
 - [x] 2b/7 Starter renamed `jobadabra-user-template`: the app finds it by API among [new, old] (owner decision, 1 Nov 2026; merged after #2898) (proof: desktop/test/repos.test.js @220d7ad)
-- [ ] 3/7 jobadabra workflows owner-neutral
+- [x] 3/7 jobadabra workflows owner-neutral (#2906, merged as a78662f) (proof: tests/test_records_token_app.py @a78662f)
 - [ ] 4/7 web + broker
 - [ ] 5/7 lab + benchmarks
 - [x] Owner picks the Always-on design (item 2) (proof: none: owner's words relayed by the coordinator, 1 Nov 2026: "Accept: only my repo")
-- [ ] Transfers: benchmarks, always-on, lab, web, starter, jobadabra
+- [x] Transfer 1: benchmarks → `jobadabra/jobadabra-benchmarks` at 22:37 UTC, 1 Nov 2026 (proof: none: snapshot of secrets, variable, rulesets, hooks, keys, permissions identical before and after; old path redirects; `search-bench tests` re-run green from the org, run 41357668361 attempt 2)
+- [x] `jobadabra-personal-always-on` stays under GarryOne (proof: none: owner's words relayed by the coordinator, 1 Nov 2026: "personal-always-on is not part of Joabdaba org, this is perosnal")
+- [x] `jobadabra-lab` made public after the preflight scan (proof: none: `gh repo view GarryOne/jobadabra-lab` shows PUBLIC, 1 Nov 2026)
+- [ ] Transfers 2-5: lab, web, starter, jobadabra
 - [ ] 6/7 Sweep + guard
 - [ ] 7/7 Night slot and beta green from the org

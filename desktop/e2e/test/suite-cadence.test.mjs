@@ -7,9 +7,8 @@ import {planPrSuites} from '../lib/pr-suites.mjs';
 import {SLIM, autoSuites, suitesFor} from '../lib/plan.mjs';
 
 const KEEP = ['activity', 'activityfailures', 'apply', 'applyflows', 'employers', 'failureschannels', 'qualityai', 'settings'];
-const NIGHT_REPORT = ['interactions', 'quality', 'wander'];   // once a night, report only, never in the beta (owner, 1 Nov 2026); each exports cadence 'night-report' itself
+const NIGHT_REPORT = ['interactions', 'notion-real', 'quality', 'wander'];   // once a night, report only, never in the beta (owner, 1 Nov 2026); each exports cadence 'night-report' itself
 const DROPPED = ['mailreading', 'personas', 'pool'];
-const OUTSIDE = ['notion-real'];
 const BY_HAND = ['explore'];   // never scheduled by design: it spends the owner's AI credit
 
 const SHA = 'a'.repeat(40);
@@ -18,7 +17,7 @@ const plan = async env => new Set((await planRun({env: {REPO: 'o/r', SHA, ...env
 
 test('every suite is kept, slimmed, dropped or by hand, exactly once', async () => {
   const {all} = await suiteFacts();
-  const lists = [...KEEP, ...SLIM, ...NIGHT_REPORT, ...DROPPED, ...BY_HAND, ...OUTSIDE];
+  const lists = [...KEEP, ...SLIM, ...NIGHT_REPORT, ...DROPPED, ...BY_HAND];
   assert.deepEqual(all.filter(suite => !lists.includes(suite)), [], 'a new suite: put it in KEEP here, or in SLIM (lib/plan.mjs)');
   assert.deepEqual(lists.filter(suite => !all.includes(suite)), [], 'a listed suite no longer exists');
   assert.equal(new Set(lists).size, lists.length, 'a suite is in two lists');
@@ -62,17 +61,19 @@ test('autoSuites: slim is an always suite except in a repeat', () => {
   assert.deepEqual(autoSuites(all, cadence, false, true), ['a', 'c']);
 });
 
-// Outside-world availability changes without a source diff: never let reach pick it.
-test('real Notion runs in nightly and beta gates and its own daily run, never a look or PR/push reach', async () => {
+// Outside-world availability changes without a source diff: never let reach pick it. Why (1 Nov 2026, owner: "the beta [has] only the critical e2e/user journeys. ALl the others,
+// to run separately less frequently"): real Notion is a night-report suite (night pass 1 only, tolerant lane, test below): no gate, no beta, no look, no daily outside run.
+test('real Notion is a night-report suite: never a look, a gate, the daily outside run, PR/push reach or a repeat', async () => {
   const facts = await suiteFacts();
-  assert.equal(facts.cadence['notion-real'], 'outside');
+  assert.equal(facts.cadence['notion-real'], 'night-report');
   assert.ok(!(await plan({EVENT: 'schedule'})).has('notion-real'), 'a look never checks real Notion');
-  assert.ok((await plan({EVENT: 'schedule', OUTSIDE: '1'})).has('notion-real'), 'the daily outside run (e2e.yml OUTSIDE) checks real Notion');
+  assert.ok(!(await plan({EVENT: 'schedule', OUTSIDE: '1'})).has('notion-real'), 'the daily outside run no longer checks real Notion: it runs in night pass 1');
+  assert.ok((await plan({EVENT: 'workflow_dispatch', NIGHT_PASS: '1/5'})).has('notion-real'), 'night pass 1 checks real Notion');
   for (const kind of ['nightly', 'beta']) {
     const env = {EVENT: 'gate', GATE_TAG: 'desktop-v9.9', TARGET_REF: 'desktop-v9.9', GATE_KIND: kind};
-    assert.ok((await plan(env)).has('notion-real'), JSON.stringify(env));
+    assert.ok(!(await plan(env)).has('notion-real'), JSON.stringify(env));
   }
-  const reach = {pointed: OUTSIDE, direct: OUTSIDE, hits: {'notion-real': ['text']}, covering: {'notion-real': 'runs touched lines'}, cadence: facts.cadence, linux: () => true};
+  const reach = {pointed: ['notion-real'], direct: ['notion-real'], hits: {'notion-real': ['text']}, covering: {'notion-real': 'runs touched lines'}, cadence: facts.cadence, linux: () => true};
   for (const pullRequest of [true, false]) assert.deepEqual(planPrSuites({...reach, pullRequest}).suites, [], 'PR and after-merge reach stay offline');
   assert.deepEqual(suitesFor(['desktop/e2e/suites/notion-real.mjs'], facts.all, facts), []);
   assert.ok(!(await plan({EVENT: 'workflow_dispatch', PR_SUITES: 'notion-real', ONLY: 'notion-real'})).has('notion-real'), 'a stale explicit PR pick cannot run outside');

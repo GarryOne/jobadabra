@@ -8,7 +8,7 @@ import {planRun} from '../plan-run.mjs';
 
 const HEAD = 'a'.repeat(40), FIRST = 'b'.repeat(40);
 const ALL = ['jobs', 'settings', 'qualityai', 'notion-real', 'pool'];
-const CADENCE = {qualityai: 'nightly', 'notion-real': 'outside', pool: 'manual'};
+const CADENCE = {qualityai: 'nightly', 'notion-real': 'night-report', pool: 'manual'};
 const NOW = Date.parse('2026-11-01T01:30:00Z');
 
 function gh({runs = [], releasing = []} = {}) {

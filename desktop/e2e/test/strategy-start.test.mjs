@@ -1,7 +1,7 @@
 // The strategy suite's start state survives the app's own save: role_keywords are derived from target_roles (8c8bd70), so the draft must carry both.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {sqliteStart} from '../suites/strategy.mjs';
+import {sqliteStart} from './strategy-start.mjs';
 import {withRoles} from '../lib/search-roles.mjs';
 import {withDerived} from '../../lib/target-roles.js';
 

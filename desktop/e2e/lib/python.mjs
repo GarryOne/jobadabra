@@ -8,6 +8,7 @@
 // (JOB_PILOTTO_FOLLOW_APP=0, src/paths.py follow_app) nor read a .env; HOME is a temp folder. A key a step needs (an eval's AI key) is passed by the caller
 // in `extra`, by name. `realHome` keeps this computer's HOME for a step that runs the Claude Code or Codex CLI, which finds its sign-in there (the app
 // under test is launched the same way, lib/app.mjs).
+import {execFileSync} from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -45,4 +46,29 @@ export function pythonEnv(extra = {}, {home = '', realHome = false} = {}) {
     // A coverage run (lib/coverage.mjs pythonCoverage): the Python step map's recorder, which names src/ lines from the repo; never the shell's own PYTHONPATH.
     process.env.E2E_PY_COVERAGE_DIR ? {E2E_PY_COVERAGE_DIR: process.env.E2E_PY_COVERAGE_DIR, E2E_PY_COVERAGE_ROOT: repo, PYTHONPATH: process.env.PYTHONPATH} : {}, extra);
   return assertIsolated(env, {allowed: Object.keys(extra), realHome});
+}
+
+const findDb = folder => {
+  for (const entry of fs.readdirSync(folder, {withFileTypes: true})) {
+    const full = path.join(folder, entry.name);
+    if (entry.isDirectory()) { const hit = findDb(full); if (hit) return hit; } else if (entry.name === 'jobs.sqlite') return full;
+  }
+  return null;
+};
+
+// What the scout decided (its candidate table), the feeds it registered, and the list the jobs crawl would read (the engine's own active_sources), read from the engine's
+// jobs.sqlite under `profile`. `env` is the engine's environment for the run (the fixture folder, the persona's places). Shared by suites/employers.mjs and
+// integration/store/employers-integration.test.mjs, so the two cannot read the table differently.
+export function scoutState(profile, env) {
+  const db = findDb(profile);
+  if (!db) throw new Error('the app has no jobs.sqlite in its data folder');
+  const script = `import json, sqlite3, sys
+from src import scout, store
+path, starter = sys.argv[1], json.load(open(sys.argv[2]))
+c = sqlite3.connect(path); c.row_factory = sqlite3.Row
+rows = lambda q: [dict(r) for r in c.execute(q)]
+with store.connect(__import__('pathlib').Path(path)) as db:
+    crawl = [s['company'] for s in scout.active_sources(db, None, starter)]
+print(json.dumps({'candidates': rows('select name, status, ats, slug, quality from scout_candidates'), 'registered': rows('select ats, slug, company, quality, active from feed_sources'), 'crawl': crawl}))`;
+  return JSON.parse(execFileSync(python(), ['-c', script, db, path.join(profile, 'config', 'sources.json')], {cwd: repo, env: pythonEnv(env, {home: profile})}).toString());
 }

@@ -1,5 +1,5 @@
 // notion-real, the one suite on real Notion (suites/notion-real.mjs): it takes its own (borrowed) token or none, never the wizard's fallback, since its
-// `fresh` start empties the page the token sees; run-all loads the borrowed token's Keychain item; it runs as outside-world health, is pinned, and cleans its page.
+// `fresh` start empties the page the token sees; run-all loads the borrowed token's Keychain item; it runs as outside-world health once a night (night-report), is pinned, and cleans its page.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {test} from 'node:test';
@@ -22,7 +22,7 @@ test('run-all loads the borrowed token for notion-real, and every other suite it
 test('notion-real pins the real workspace, borrows a hyphen-free token, runs outside from an emptied page and cleans it', () => {
   assert.equal(suite.store, 'notion');
   assert.match(suite.notionTokenOf, /^[a-z0-9]+$/, 'a GitHub secret name cannot hold a hyphen');
-  assert.equal(suite.cadence, 'outside');
+  assert.equal(suite.cadence, 'night-report');
   assert.equal(suite.offlineAi, true, 'dummy keys and refusing local AI proxies, never a live AI call');
   assert.equal(suite.fresh, true);
   assert.equal(suite.notionPage, 'Job Pilotto E2E — Failures Notion');

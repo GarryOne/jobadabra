@@ -8,7 +8,6 @@ import {fileURLToPath} from 'node:url';
 const e2e = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'e2e');
 const BY_DESIGN = {
   'lib/wizard.mjs': 'a new install builds its own workspace in an empty test page',
-  'suites/strategy.mjs': 'a reconnect: the profile already carries its ids',
   'lib/notion-reuse.mjs': 'the helper itself',
   'lib/seed.mjs': 'saves RECONNECT right before the connect',
 };

@@ -105,6 +105,61 @@ class AffectedTests(unittest.TestCase):
         self.assertGreaterEqual(affected.py_graph.cache_info().hits, 1)
         self.assertEqual(affected.py_graph.cache_info().misses, 1)
 
+    # --- the e2e harness's own tests (desktop/e2e/test) are an area (c27, 1 Nov 2026) --------------------------------------------------
+    # #2767 deleted three suites and edited two more, hang-caps.json and timing-baseline.json: every harness test that scans the suites went red one CI round at a time (4 rounds).
+    PR_2767 = ['desktop/e2e/suites/focus.mjs', 'desktop/e2e/suites/cardstates.mjs', 'desktop/e2e/suites/foryou.mjs', 'desktop/e2e/suites/activity.mjs',
+               'desktop/e2e/suites/settings.mjs', 'desktop/e2e/hang-caps.json', 'desktop/e2e/timing-baseline.json']
+
+    def test_a_suite_and_baseline_change_like_2767_picks_the_harness_tests_that_scan_the_suites(self):
+        picked = set(affected.select(self.PR_2767)['e2e'])
+        for test in ('app-words-ratchet', 'timing-ratchet', 'suite-ai-mode', 'owns-step', 'suite-hang-caps'):   # the last two read every literal ctx.run step
+            self.assertIn(f'test/{test}.test.mjs', picked, test)
+
+    def test_a_harness_test_that_reads_a_folder_by_new_url_is_picked_for_a_file_inside_it(self):
+        # timing-ratchet reads ../suites/ by new URL(..., import.meta.url) and ../lanes.json: no import, no scanner call that names the file
+        for changed in ('desktop/e2e/suites/zz_not_there.mjs', 'desktop/e2e/lanes.json'):
+            self.assertIn('test/timing-ratchet.test.mjs', affected.select([changed])['e2e'], changed)
+
+    def test_a_python_only_edit_picks_no_scanning_harness_test(self):
+        self.assertEqual(affected.select(['tests/test_ship.py'])['e2e'], [])
+        self.assertLess(len(affected.select(['src/ai/kit.py'])['e2e']), 10)    # by reach or mention only
+
+    def test_a_harness_dependency_file_runs_the_harness_whole_and_nothing_else_whole(self):
+        got = affected.select(['desktop/e2e/package.json'])
+        self.assertEqual((got['e2e'], got['desktop']), ('all', 'all'))
+        self.assertTrue(all(got[a] != 'all' for a in ('python', 'worker', 'site')))
+
+    def test_every_area_with_picked_tests_prints_a_ready_command_and_e2e_runs_from_its_folder(self):
+        got = affected.select(self.PR_2767)
+        cmds = affected.commands(got)
+        self.assertTrue(cmds['e2e'].startswith('cd desktop/e2e && node --import ./test/stdout-to-stderr.mjs --test test/'), cmds['e2e'])
+        self.assertIn('test/timing-ratchet.test.mjs', cmds['e2e'].split())
+        self.assertTrue(cmds['desktop'].startswith('cd desktop && node --test test/'))
+        self.assertEqual(affected.commands({'python': 'all', 'e2e': [], 'reasons': {}}), {})   # a whole area is CI's; an empty pick runs nothing
+        for path in cmds['e2e'].split()[8:]:
+            self.assertTrue((ROOT / 'desktop/e2e' / path).is_file(), path)
+
+    def test_a_failing_reach_helper_runs_the_harness_whole_but_a_missing_one_does_not(self):
+        # Gitar on #2774: a present helper that exits non-zero must not silently drop the tests picked only by reach
+        class Failed: returncode, stdout = 1, 'not json'
+        real_run, real_which = affected.subprocess.run, affected.shutil.which
+        try:
+            affected.subprocess.run = lambda *a, **k: Failed()
+            affected.e2e_reach.cache_clear()
+            got = affected.select(['desktop/e2e/lanes.json'])
+            self.assertEqual(got['e2e'], 'all')
+            self.assertIn('e2e', got['reasons'])
+            affected.shutil.which = lambda name: None          # no node: the Python import graph and mentions still pick
+            affected.e2e_reach.cache_clear()
+            self.assertEqual(affected.e2e_reach(), {})
+            self.assertNotEqual(affected.select(['desktop/e2e/lanes.json'])['e2e'], 'all')
+        finally:
+            affected.subprocess.run, affected.shutil.which = real_run, real_which
+            affected.e2e_reach.cache_clear()
+
+    def test_the_site_command_names_the_test_folder(self):
+        self.assertEqual(affected.commands({'site': ['x.test.js'], 'reasons': {}}), {'site': 'node --test test/x.test.js'})
+
 
 if __name__ == '__main__':
     unittest.main()

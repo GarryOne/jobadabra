@@ -97,8 +97,8 @@ test('every workflow job that runs a suite passes its slice and names everything
   }
   assert.deepEqual(jobs.map(job => `${job.file}:${job.id}`).sort(), ['desktop.yml:test-mac', 'desktop.yml:test-windows', 'e2e-windows.yml:suite', 'e2e.yml:suite']);
   // Where the suite's own name is right: its file, command, comparison, step title, picked steps, the fallback cap's suite identity and the lane registry lookup (lanes.json is keyed by suite, shared by every slice; qu 4/4, 29 Oct 2026).
-  // Why (29 Oct 2026, ap): answer-mode membership compares suite identity; it does not name a shard's artifacts or concurrency group.
-  // Why (1 Nov 2026, owner): `matrix.suite != 'unit'` is the same kind of comparison: the unit leg of the Test matrix is told apart from the suite legs by its identity (lib/unit-leg.mjs).
+  // Why (29 Oct 2026, ap; 1 Nov 2026, owner): answer-mode membership compares suite identity, and so does the not-equal check that tells the unit leg of the Test matrix from the suite legs
+  // (lib/unit-leg.mjs); a comparison names no shard's artifacts or concurrency group.
   const allowed = /suites\/\$\{\{ matrix\.suite \}\}\.mjs|suite\.mjs \$\{\{ matrix\.suite \}\}|again \$\{\{ matrix\.suite \}\}|once \$\{\{ matrix\.suite \}\}|\[ "\$\{\{ matrix\.suite \}\}" != quality|matrix\.suite [!=]= '|contains\(fromJSON\('[^']+'\), matrix\.suite\)|name: .*\$\{\{ matrix\.suite \}\} suite|fromJSON\(inputs\.pr_steps\)\[matrix\.suite\]|^\s*E2E_FALLBACK_SUITE: \$\{\{ matrix\.suite \}\}\s*$|report_only=\$\(SUITE='\$\{\{ matrix\.suite \}\}'/;
   for (const job of jobs) {
     assert.match(job.block, /JP_REPLAY_SHARD: \$\{\{ matrix\.shard \}\}/, `${job.file} ${job.id}: pass the slice to the suite (JP_REPLAY_SHARD: \${{ matrix.shard }})`);

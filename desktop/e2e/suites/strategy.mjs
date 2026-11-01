@@ -1,13 +1,13 @@
 /* global document, window */
-// Strategy journey (J13, Tier 1) and the Notion page's Always on edit (Tier 2): a role and a place set in the app reach the next Jobs check, a role changed in the app
-// (this Mac's store) or on the ⚙️ Search settings page (Notion) is used by the check after it, and a removed role stops matching.
-// Why (1 Nov 2026, owner's three layers, a8's registry): only these 3 steps stay in e2e (they are the journey); the other 8 steps of the old suite moved to
-// desktop/integration/store/strategy-integration.test.mjs and strategy-notion-integration.test.mjs (#2763), which run the same writers and the real engine in seconds.
+// Strategy journey (J13, Tier 1): a role and a place set in the app reach the next Jobs check, and a role changed in the app (this Mac's store) is used by the check after it,
+// a removed role stops matching.
+// Why (1 Nov 2026, owner's three layers, a8's registry): only these steps stay in e2e (they are the journey); the other steps of the old suite, and the edit made directly on the Notion page
+// ("All Notion-only steps", owner, 1 Nov 2026), are desktop/integration/store/strategy-integration.test.mjs and strategy-notion-integration.test.mjs (#2763), which run the same writers and the real engine in seconds.
 import fs from 'node:fs';
 import path from 'node:path';
 import {digestTitles} from '../lib/digest.mjs';
 import {watch} from '../lib/activity.mjs';
-import {closeRunningRows, findPagesBeside, pageSections, restoreSections, setSection, trashPage} from '../lib/notion.mjs';
+import {closeRunningRows, findPagesBeside, pageSections, restoreSections, trashPage} from '../lib/notion.mjs';
 import {clearData} from '../lib/start-state.mjs';
 import {forgetFixtureJobs} from '../lib/forget.mjs';
 import {ensureSetUp} from '../lib/seed.mjs';
@@ -162,17 +162,6 @@ export async function run(ctx) {
     return;
   }
 
-  await ctx.run('an edit made directly on the Notion page is used by the next check, and a removed role stops matching', async () => {
-    const id = await settingsPage();
-    const before = await sections();
-    // The page is the source of truth: a person adds a role there, and takes the other one out.
-    await setSection(NOTION, id, 'Target roles', [...before['Target roles'].filter(entry => !has([entry], ROLE)), GIRAFFE]);
-    addPosting('zebra.json', 3006, 'Senior Zebra Wrangler, Cloud');
-    addPosting('zebra.json', 3007, 'Senior Giraffe Keeper, Cloud');
-    const jobs = await check();
-    const file = read('search.json');
-    if (!has(file.role_keywords, GIRAFFE) || has(file.role_keywords, ROLE)) throw new Error(`config/search.json did not follow the page: ${file.role_keywords.join(', ')}`);
-    if (!listed(jobs, 'giraffe keeper, cloud')) throw new Error(`the role added in Notion found nothing (listed: ${jobs.join('; ') || 'nothing'})`);
-    if (listed(jobs, 'zebra wrangler, cloud')) throw new Error('the role removed in Notion still matches a new posting');
-  }, {needs: ctx.needs});
+  // Why (1 Nov 2026, owner: "All Notion-only steps (Recommended)"): 'an edit made directly on the Notion page is used by the next check, and a removed role stops matching' is
+  // integration/store/strategy-notion-integration.test.mjs (same name): the page is the source of truth, proved against the Notion stand-in with the real engine.
 }

@@ -1,4 +1,5 @@
-"""Seeds an e2e app's SQLite store with real-shaped, invented data, for the storemove suite (suites/storemove.mjs).
+# Job: run the backbone
+"""Seeds an e2e app's SQLite store with real-shaped, invented data, for the storemove integration tests (integration/store/storemove-*.test.mjs; the e2e suite left on 1 Nov 2026) and the notion-real suite.
 
 `python3 desktop/e2e/lib/store_seed.py <app data folder>`: three applications (one with its kit section and a screenshot file), their
 events, an interview, a finished run, a match and an employer, written through the store interface (src/stores), so the data has the

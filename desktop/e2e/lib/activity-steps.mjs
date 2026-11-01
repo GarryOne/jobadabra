@@ -1,15 +1,13 @@
 /* global document, window */
-// What the two activity suites (activity, activityfailures) share: reading the Actions page and Recent activity the way a person sees them, running a task and counting
-// its rows, the feed the engine reads, and the common start (a set-up install, its own run rows cleared, no schedule, the app quiet). The suites themselves are in suites/.
+// Reading the Actions page and Recent activity the way a person sees them, running a task and counting its rows, and the feed the engine reads;
+// shared by suites/jobs.mjs, lib/quality-journey.mjs and lib/storemove-steps.mjs (the activity suites and their common start are gone).
 // Job: wait on state
 import fs from 'node:fs';
 import {stepTimeLeft} from './wait-on-state.mjs';
 import path from 'node:path';
 import {badSummary, leaks, sample} from './activity.mjs';
-import {clearData} from './start-state.mjs';
 import {whenDrained} from './ai-proxy.mjs';
 import {snap} from './layout.mjs';
-import {ensureSetUp} from './seed.mjs';
 import {pressTask} from './task-card.mjs';
 
 export const RUNS_DB = 'Cronjob Runs';
@@ -255,28 +253,3 @@ export async function quiet(ctx, {forMs, maxMs}) {
 
 // `page` always means the window of the app running now: some steps start the app again (ctx.relaunch).
 export const livePage = ctx => new Proxy({}, {get: (_, key) => { const value = ctx.page[key]; return typeof value === 'function' ? value.bind(ctx.page) : value; }});
-
-// The common start of both suites.
-export async function prepare(ctx) {
-  const page = livePage(ctx);
-  ctx.findings = [];
-  console.log(`  profile ${ctx.profile}, feeds ${ctx.feeds}`);
-  await ctx.run('this suite starts with no run rows in its store', async () => {
-    console.log(`  cleared ${await clearData(ctx, RUNS_DB)} run row(s)`);
-  }, {needs: ctx.needs, critical: true});
-  // Every run seeds postings with new ids (setFeed), so each leaves Job Matches rows behind: 491 piled up by 6 Oct 2026 and a run spent 5 minutes marking them Not seen.
-  await ctx.run('this suite starts with no job rows in its store\'s Job Matches', async () => {
-    console.log(`  cleared ${await clearData(ctx, 'Job Matches — AI Scored')} job row(s)`);
-  }, {needs: ctx.needs});
-  await ensureSetUp(ctx);
-  fs.mkdirSync(path.join(ctx.profile, 'config'), {recursive: true});
-  fs.copyFileSync(path.join(ctx.E2E, 'fixtures', 'feeds', 'sources.json'), path.join(ctx.profile, 'config', 'sources.json'));
-  fs.copyFileSync(path.join(ctx.E2E, 'fixtures', 'feeds', 'scout_seeds.json'), path.join(ctx.profile, 'config', 'scout_seeds.json'));
-  setFeed(ctx, []);
-  await ctx.run('the app is quiet before the first task: no schedule, no first search, its history read', async () => {
-    // A set-up install's first search (pressed on the Find jobs card) and a schedule that catches up what is due: neither belongs in a count of "one click, one row".
-    await page.evaluate(() => window.pilot.saveSettings({autoSearch: false, schedule: {search: 0, mail: 0, scout: 'off', insights: 'off'}}));
-    await quiet(ctx, {forMs: ctx.activityStateWaits ? 0 : 8000, maxMs: 300000});
-  }, {needs: ctx.needs, critical: true});
-  return page;
-}

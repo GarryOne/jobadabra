@@ -104,12 +104,18 @@
    "id": "J10",
    "name": "Your data stays yours: export, backup, import, move",
    "steps": [
-    {"suite": "settings", "step": "Your data: export with keys, reset, then import from the setup brings this computer back as it was"},
-    {"suite": "settings", "step": "Automatic backup: the backup file, imported after a reset, brings this computer back as it was"},
-    {"suite": "storemove", "step": "the export, imported into a fresh install, shows the same on every screen (still this Mac's store)"},
-    {"suite": "storemove", "step": "the imported install moves into an empty Notion: its Profile and every record arrive once"}
+    {"integration": "desktop/integration/store/data-roundtrip.test.mjs", "test": "Your data: export with keys, reset, then import from the setup brings this computer back as it was"},
+    {"integration": "desktop/integration/store/data-roundtrip.test.mjs", "test": "Automatic backup: the backup file, imported after a reset, brings this computer back as it was"},
+    {"integration": "desktop/integration/store/data-roundtrip.test.mjs", "test": "Automatic backup: Back up now writes a backup with no keys in its folder"},
+    {"integration": "desktop/integration/store/data-roundtrip.test.mjs", "test": "Automatic backup: a due backup runs once at start and once on the weekly tick"},
+    {"integration": "desktop/integration/store/storemove-screens.test.mjs", "test": "the export, imported into a fresh install, hands the same items to Jobs, Focus, Interviews and Recent activity (still this Mac's store)"},
+    {"integration": "desktop/integration/store/wizard-start-on-notion.test.mjs", "test": "with data already on this Mac the connect leaves the store where it is: the way to Notion is the move"},
+    {"integration": "desktop/integration/store/storemove-integration.test.mjs", "test": "a move killed halfway changes nothing, and the next one goes on with nothing twice"},
+    {"integration": "desktop/integration/store/storemove-empty-notion.test.mjs", "test": "an install moving into an empty Notion: its Profile and every record arrive once"},
+    {"integration": "desktop/integration/store/storemove-screens.test.mjs", "test": "after the move, the engine serves Jobs, Focus, Interviews and Recent activity the same items from Notion"},
+    {"integration": "desktop/integration/store/save-refused-notion.test.mjs", "test": "a Save that Notion refuses is never shown as saved: the person is told in words, and Notion and the list still agree"}
    ],
-   "tier": 1
+   "tier": 2
   },
   {
    "id": "J11",
@@ -135,8 +141,7 @@
    "name": "Strategy: a role or place change is used by the next check",
    "steps": [
     {"suite": "strategy", "step": "the next check keeps the posting that matches the new role and place, and still drops the other"},
-    {"suite": "strategy", "step": "a role changed in the app is used by the next check, and a removed role stops matching"},
-    {"suite": "strategy", "step": "an edit made directly on the Notion page is used by the next check, and a removed role stops matching"}
+    {"suite": "strategy", "step": "a role changed in the app is used by the next check, and a removed role stops matching"}
    ],
    "tier": 1
   },
@@ -207,19 +212,10 @@
   {"suite": "apply", "step": "checking jobs before the form read exists reads nothing: every chip says \"Not checked\", no session starts, nothing is filled or sent"},
   {"suite": "apply", "step": "\"See which jobs can apply automatically\" reads a job's form in the hidden browser: You review and submit, the tab closes, and nothing is filled or sent", "parts": ["\"See which jobs can apply automatically\" reads a job's form in the hidden browser: ", "You review and submit", ", the tab closes, and nothing is filled or sent"]},
   {"suite": "apply", "step": "\"See which jobs can apply automatically\" reads a job's form in the hidden browser: Can apply automatically, the tab closes, and nothing is filled or sent", "parts": ["\"See which jobs can apply automatically\" reads a job's form in the hidden browser: ", "Can apply automatically", ", the tab closes, and nothing is filled or sent"]},
-  {"suite": "applyflows", "step": "a form drawn after a spinner: its submit is never pressed as Apply, and it is filled once its fields come"},
-  {"suite": "failuresnotion", "step": "a Save that Notion refuses is never shown as saved: the person is told in words, and Notion and the list still agree"},
-  {"suite": "settings", "step": "Automatic backup: Back up now writes a backup with no keys in its folder, and View backups opens it"},
-  {"suite": "settings", "step": "Automatic backup: a due backup runs once at start and once on the weekly tick"},
-  {"suite": "storemove", "step": "an app on this Mac's store holds real-shaped data on every screen"},
-  {"suite": "storemove", "step": "Export data writes this Mac's data to one file"},
-  {"suite": "storemove", "step": "Notion connects with a Profile of its own; this Mac keeps its data until the move"},
-  {"suite": "storemove", "step": "a move killed halfway changes nothing, and the next one goes on with nothing twice"},
-  {"suite": "storemove", "step": "after the move the store is Notion, the Profile Notion had is kept, and this Mac's files are in the archive"},
-  {"suite": "storemove", "step": "Jobs, Focus, Interviews and Recent activity show the same items from Notion"}
+  {"suite": "applyflows", "step": "a form drawn after a spinner: its submit is never pressed as Apply, and it is filled once its fields come"}
  ],
  "to_come": [
- "Always on / Notion (tier 2): its own step is strategy.mjs 'an edit made directly on the Notion page is used by the next check, and a removed role stops matching', listed in J13 (tier 1); the kept storemove step 'Jobs, Focus, Interviews and Recent activity show the same items from Notion' also covers it",
+ "Always on / Notion (tier 2): integration only (strategy-notion-integration.test.mjs 'an edit made directly on the Notion page is used by the next check, and a removed role stops matching'); its e2e step left with the Notion-only steps (owner, 1 Nov 2026)",
   "Cover letter (tier 2): integration test to write (a job's letter reaches its form); a8 writes it",
   "Calendar (tier 2): integration test to write; a8 writes it"
  ]

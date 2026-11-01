@@ -233,21 +233,6 @@
   "settings": {
     "provenance": "Generated state-wait hang caps for settings; never a speed assertion.\ntools/e2e-step-timings.mjs: 10 main runs, 9/10 calm shard-runs.\nSparse shared steps use the applyflows entry's measurements.\nMain run IDs: 40135785331, 40152010902, 40252278499, 40274183649, 40428980247, 40434672283, 40589724303, 40610690663, 40799225090, 40802551247.\n3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.\ntools/e2e-step-timings.mjs: 9 main runs, 6/9 calm shard-runs.\nMain run IDs: 40796899545, 40799225090, 40836904987, 40960750830, 40985357367, 40987937824, 41146558456, 41157036555, 41180851813.\n3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.",
     "steps": {
-      "Automatic backup: a due backup runs once at start and once on the weekly tick": {
-        "seconds": 65,
-        "n": 9,
-        "p95Seconds": 20.2
-      },
-      "Automatic backup: Back up now writes a backup with no keys in its folder, and View backups opens it": {
-        "seconds": 30,
-        "n": 9,
-        "p95Seconds": 1.7
-      },
-      "Automatic backup: the backup file, imported after a reset, brings this computer back as it was": {
-        "seconds": 55,
-        "n": 9,
-        "p95Seconds": 17.9
-      },
       "every Settings section renders": {
         "seconds": 75,
         "n": 6,
@@ -281,12 +266,6 @@
         "seconds": 90,
         "provisional": true,
         "reason": "provisional: 3 x the settings round-trip step (p95 13.4 s, which also restarts the app), 30 s floor; regenerate after 5 main runs (tools/e2e-step-timings.mjs)"
-      },
-      "Your data: export with keys, reset, then import from the setup brings this computer back as it was": {
-        "seconds": 45,
-        "n": 6,
-        "p95Seconds": 13.4,
-        "reason": "Recent calm measurement exceeds the preserved 35 s lower bound."
       },
       "no AI call of this suite reached a real model: the stand-in answered or refused every one": {
         "shared": "applyflows",
@@ -502,66 +481,6 @@
       }
     }
   },
-  "failuresnotion": {
-    "provenance": "tools/e2e-step-timings.mjs: 5 main runs, 5/5 calm shard-runs.\nMain run IDs: 40985357367, 40987937824, 41133640727, 41157036555, 41180851813.\n3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.",
-    "steps": {
-      "a Save that Notion refuses is never shown as saved: the person is told in words, and Notion and the list still agree": {
-        "seconds": 70,
-        "n": 5,
-        "p95Seconds": 21.7
-      },
-      "no AI call of this suite reached a real model: the stand-in answered or refused every one": {
-        "shared": "applyflows",
-        "n": 3,
-        "p95Seconds": 0.3
-      },
-      "nothing was queued to report to the product": {
-        "seconds": 30,
-        "n": 5,
-        "p95Seconds": 0.3
-      },
-      "Notion answers an HTML error page instead of JSON during a Jobs check: the run ends as Failed or with warnings, in words, with nothing left Running": {
-        "seconds": 135,
-        "n": 5,
-        "p95Seconds": 43.9
-      },
-      "Notion is busy (429) for a moment during a Jobs check: the run ends normally, in words, with nothing left Running": {
-        "seconds": 130,
-        "n": 5,
-        "p95Seconds": 41.7
-      },
-      "the app is quiet before the first task: no schedule, no first search, its history read": {
-        "seconds": 30,
-        "n": 5,
-        "p95Seconds": 9.2
-      },
-      "the app is seeded as a set-up install from the existing workspace": {
-        "seconds": 50,
-        "n": 5,
-        "p95Seconds": 15.7
-      },
-      "the connection to Notion is gone during a Jobs check: the run ends as Failed or with warnings, in words, with nothing left Running": {
-        "seconds": 70,
-        "n": 5,
-        "p95Seconds": 23.2
-      },
-      "the Notion stand-in answered every request the app made": {
-        "seconds": 30,
-        "n": 5,
-        "p95Seconds": 0.3
-      },
-      "this suite starts with no job rows in its store's Job Matches": {
-        "seconds": 30,
-        "n": 5,
-        "p95Seconds": 0.2
-      },
-      "this suite starts with no run rows in its store": {
-        "seconds": 30,
-        "n": 5,
-        "p95Seconds": 4.8
-      }
-    }
-  },
   "pool": {
     "provenance": "tools/e2e-step-timings.mjs: 12 main runs, 12/12 calm shard-runs.\nMain run IDs: 38992350751, 39009143403, 40051394356, 40070363403, 40135785331, 40143950408, 40144173581, 40151661424, 40152010902, 40237153490, 40255698407, 40255953518.\n3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.",
     "steps": {
@@ -604,66 +523,6 @@
         "seconds": 30,
         "n": 12,
         "p95Seconds": 0
-      }
-    }
-  },
-  "storemove": {
-    "provenance": "tools/e2e-step-timings.mjs: 6 main runs, 6/6 calm shard-runs.\nMain run IDs: 40985357367, 40987937824, 41133640727, 41146558456, 41157036555, 41180851813.\n3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.",
-    "steps": {
-      "a move killed halfway changes nothing, and the next one goes on with nothing twice": {
-        "seconds": 80,
-        "n": 6,
-        "p95Seconds": 25.9
-      },
-      "after the move the store is Notion, the Profile Notion had is kept, and this Mac's files are in the archive": {
-        "seconds": 30,
-        "n": 6,
-        "p95Seconds": 0.2
-      },
-      "an app on this Mac's store holds real-shaped data on every screen": {
-        "seconds": 60,
-        "n": 6,
-        "p95Seconds": 19.4
-      },
-      "Export data writes this Mac's data to one file": {
-        "seconds": 30,
-        "n": 6,
-        "p95Seconds": 0.8
-      },
-      "Jobs, Focus, Interviews and Recent activity show the same items from Notion": {
-        "seconds": 50,
-        "n": 6,
-        "p95Seconds": 15.4
-      },
-      "no AI call of this suite reached a real model: the stand-in answered or refused every one": {
-        "shared": "applyflows",
-        "n": 4,
-        "p95Seconds": 0.2
-      },
-      "nothing was queued to report to the product": {
-        "seconds": 30,
-        "n": 6,
-        "p95Seconds": 0.2
-      },
-      "Notion connects with a Profile of its own; this Mac keeps its data until the move": {
-        "seconds": 30,
-        "n": 6,
-        "p95Seconds": 9
-      },
-      "the export, imported into a fresh install, shows the same on every screen (still this Mac's store)": {
-        "seconds": 60,
-        "n": 6,
-        "p95Seconds": 18.5
-      },
-      "the imported install moves into an empty Notion: its Profile and every record arrive once": {
-        "seconds": 165,
-        "n": 6,
-        "p95Seconds": 54.2
-      },
-      "the Notion stand-in answered every request the app made": {
-        "seconds": 30,
-        "n": 6,
-        "p95Seconds": 0.2
       }
     }
   },

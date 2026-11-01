@@ -105,7 +105,8 @@ test('the class: every place that waits for a held app folder goes through the o
   // Callers of the shared wait: the app's own exit wait (ctx.waitForExit); a suite waits through it, never with its own rename loop.
   assert.deepEqual(all.filter(file => /waitForFolderFree\(/.test(read(file))), ['lib/context.mjs']);
   assert.match(read('lib/context.mjs'), /waitForFolderFree\(session\.profile, \{mainPid/);   // the app's main pid: its descendants are ended too (beta 4)
-  assert.deepEqual(all.filter(file => /ctx\.waitForExit\(/.test(read(file))), ['suites/settings.mjs']);
+  // Why (1 Nov 2026): the only suite step that quit and restarted the app on a held folder (settings' reset and import round trip) moved to desktop/integration/store/data-roundtrip.test.mjs; no suite calls it now.
+  assert.deepEqual(all.filter(file => /ctx\.waitForExit\(/.test(read(file))), []);
   // The app's profile folder is the `jp-e2e-` one the leftovers' command lines name; a rename of the prefix would silently end nothing.
   assert.match(read('lib/app.mjs'), /mkdtempSync\(path\.join\(os\.tmpdir\(\), 'jp-e2e-'\)\)/);
   assert.match(read('lib/folder-free.mjs'), /\^jp-e2e-/);

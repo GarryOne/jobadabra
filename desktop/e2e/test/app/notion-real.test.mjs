@@ -33,7 +33,7 @@ test('notion-real pins the real workspace, borrows a hyphen-free token, runs out
   assert.match(source, /finally \{[\s\S]*emptyPage\(ctx\)[\s\S]*left\) throw/, 'the cleanup runs in a finally and fails when anything is left');
 });
 
-test('the borrowed token belongs to a suite that no longer holds a real token', async () => {
-  const lender = await import(`../../suites/${suite.notionTokenOf}.mjs`);
-  assert.equal(lender.store, 'standin', `${suite.notionTokenOf} must stay on the stand-in while notion-real uses its token`);
+test('the borrowed token is held by no other suite: its lender suite is gone, the name is only notion-real\'s', () => {
+  // Why (1 Nov 2026, c27 data checks leave e2e): suites/failuresnotion.mjs was deleted (its one step is integration/store/save-refused-notion.test.mjs); the token name stays because the GitHub secret and the Keychain item carry it.
+  assert.equal(fs.existsSync(new URL(`../../suites/${suite.notionTokenOf}.mjs`, import.meta.url)), false, `${suite.notionTokenOf} is a suite again: it would share notion-real's real token, so it must stay on the stand-in`);
 });

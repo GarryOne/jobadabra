@@ -112,9 +112,9 @@ import os from 'node:os';
 import path from 'node:path';
 import {spawnSync} from 'node:child_process';
 
-// Why (R2 + J16/J19, 1 Nov 2026; moved to test/harness/): 'failuresnotion' and 'linkedin' stand where the deleted `focusdismiss` and `interviews` suites stood, 'apply' where the deleted `activity` suite stood in these fixtures: a real suite file the diff fixture can read, sorting before failuresnotion as `activity` did.
+// Why (R2 + J16/J19, 1 Nov 2026; moved to test/harness/): 'applyflows' and 'linkedin' stand where the deleted `focusdismiss` and `interviews` suites stood, 'apply' where the deleted `activity` suite stood in these fixtures: a real suite file the diff fixture can read, sorting before applyflows as `activity` did.
 const cli = new URL('../../pr-suites.mjs', import.meta.url);
-function cliPlan({catches, pullRequest = true, base = 'origin/main', listed = {}, checkoutLanes = {}, suites = ['wizard', 'storemove', 'strategy', 'settings', 'jobs', 'linkedin', 'failuresnotion', 'apply'], extraFiles = [], coverage = {}, baseSources = {}} = {}) {
+function cliPlan({catches, pullRequest = true, base = 'origin/main', listed = {}, checkoutLanes = {}, suites = ['wizard', 'strategy', 'settings', 'jobs', 'linkedin', 'applyflows', 'apply'], extraFiles = [], coverage = {}, baseSources = {}} = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pr-cap-cli-'));
   try {
     const files = [...suites.map(s => `desktop/e2e/suites/${s}.mjs`), ...extraFiles];
@@ -148,8 +148,8 @@ syncBuiltinESMExports();`);
 
 test('CLI writes five whole suites and three deferrals with their reasons to stdout and GITHUB_OUTPUT', () => {
   const {values, text} = cliPlan();
-  assert.equal(values.suites, 'apply,failuresnotion,jobs,linkedin,settings');
-  assert.equal(values.left, 'wizard,storemove,strategy');
+  assert.equal(values.suites, 'apply,applyflows,jobs,linkedin,settings');
+  assert.equal(values.left, 'wizard,strategy');
   const steps = JSON.parse(values.steps);
   assert.deepEqual(Object.keys(steps), ['(parts)', '(why)']);
   for (const suite of values.left.split(',')) {
@@ -159,12 +159,13 @@ test('CLI writes five whole suites and three deferrals with their reasons to std
 });
 
 test('CLI reads catch counts only when supplied and applies the base registry before capping', () => {
-  assert.equal(cliPlan({catches: {wizard: 99}}).values.suites, 'wizard,apply,failuresnotion,jobs,linkedin');
-  const {values} = cliPlan({listed: {apply: {lane: 'tolerant'}, failuresnotion: {lane: 'suspended'}}});
-  assert.equal(values.suites, 'jobs,linkedin,settings,storemove,strategy');
-  assert.equal(values.left, 'wizard');
+  assert.equal(cliPlan({catches: {wizard: 99}}).values.suites, 'wizard,apply,applyflows,jobs,linkedin');
+  const {values} = cliPlan({listed: {apply: {lane: 'tolerant'}, applyflows: {lane: 'suspended'}}});
+  // Why (1 Nov 2026, data checks left e2e): with apply tolerant and applyflows suspended the five that remain all fit the cap; without the base registry applied first, the seven would defer wizard and strategy.
+  assert.equal(values.suites, 'wizard,strategy,settings,jobs,linkedin');
+  assert.equal(values.left, '');
   const main = cliPlan({pullRequest: false, catches: {wizard: 99}, listed: {apply: {lane: 'tolerant'}}});
-  assert.equal(main.values.suites.split(',').length, 7);   // --base applies even without --pull-request
+  assert.equal(main.values.suites.split(',').length, 6);   // --base applies even without --pull-request
   assert.ok(!main.values.suites.split(',').includes('apply'));
   assert.equal(main.values.left, '');
 });
@@ -178,14 +179,14 @@ test('CLI never picks the night-report AI suite, even when BASE enables its info
 
 test('CLI labels only the capped Linux suite for merge, not the Mac-only loader', () => {
   const {values, text} = cliPlan({
-    suites: ['strategy', 'settings', 'jobs', 'linkedin', 'failuresnotion', 'apply'],
+    suites: ['strategy', 'settings', 'jobs', 'linkedin', 'applyflows', 'apply'],
     extraFiles: ['cap-fixture.js'],
     coverage: {suites: {
       strategy: {sha: 'fixture', files: {'cap-fixture.js': {loaded: true, lines: []}}, steps: {}},
       updates: {sha: 'fixture', files: {'cap-fixture.js': {loaded: true, lines: []}}, steps: {}},
     }},
   });
-  assert.equal(values.suites, 'apply,failuresnotion,jobs,linkedin,settings');
+  assert.equal(values.suites, 'apply,applyflows,jobs,linkedin,settings');
   assert.equal(values.left, 'strategy,updates');
   assert.ok(text.includes('| `strategy` | run after merge | loads cap-fixture.js'));
   assert.ok(text.includes('| `updates` | not in this PR run | loads cap-fixture.js'));
@@ -225,15 +226,15 @@ test('after merge drops tolerant quality and retired mailreading but keeps reach
 });
 
 test('without --base the CLI reads the merged registry, including a lane changed by this merge', () => {
-  const {values} = cliPlan({pullRequest: false, base: '', suites: ['quality', 'qualityai', 'failuresnotion'],
+  const {values} = cliPlan({pullRequest: false, base: '', suites: ['quality', 'qualityai', 'applyflows'],
     checkoutLanes: {quality: {lane: 'tolerant'}, qualityai: {lane: 'tolerant'}}});
-  assert.equal(values.suites, 'failuresnotion');
+  assert.equal(values.suites, 'applyflows');
 });
 
 
 test('--base without --pull-request cannot use the checkout lane to exempt a reached suite', () => {
-  const {values} = cliPlan({pullRequest: false, suites: ['failuresnotion'], listed: {}, checkoutLanes: {failuresnotion: {lane: 'tolerant'}}});
-  assert.equal(values.suites, 'failuresnotion');
+  const {values} = cliPlan({pullRequest: false, suites: ['applyflows'], listed: {}, checkoutLanes: {applyflows: {lane: 'tolerant'}}});
+  assert.equal(values.suites, 'applyflows');
 });
 
 

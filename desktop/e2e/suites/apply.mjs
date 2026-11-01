@@ -54,10 +54,9 @@ export const stepSeconds = {'real forms the extension once failed on': 71.7, 'Ta
   'a form with a control the extension cannot operate': 13.2, 'Tailor CV on a job': 22.7, 'a Lever-like form': 10.6,
   'Open in Chrome on a form the night filled': 19.2, 'Tailor on the session page of a form': 9.4, 'the person submits a form': 30.3, 'a Greenhouse-like form': 20.8,
   'Apply on a saved job without a kit': 7.7, 'a Workday-shaped form': 7.4, 'The hidden browser fills a form': 18,
-  'Full automation presses Submit once on its own': 109.2, 'a silent Chrome in Standard automation': 40.1, 'a silent Chrome in Background automation': 19.2,
-  'a silent Chrome in Full automation': 19, 'the app quits while Background automation holds a filled form': 24.7, 'the app quits in Full automation\'s wait': 24.2,
+  'Full automation presses Submit once on its own': 109.2, 'a silent Chrome in Standard automation': 40.1, 'a silent Chrome in Full automation': 19, 'the app quits while Background automation holds a filled form': 24.7, 'the app quits in Full automation\'s wait': 24.2,
   'each read verdict gives its own chip': 168, 'Stop on the card in Background automation': 18.3, 'Stop on the card in Full automation': 27.8,
-  'the Jobs popup has one field': 10.7, 'checking jobs before the form read exists': 1.3, 'the triage bar moves per real read': 125,
+  'checking jobs before the form read exists': 1.3, 'the triage bar moves per real read': 125,
   'Background automation hands a bot check': 44.2, 'Full automation hands a bot check': 23.5, 'Background automation fills several queued jobs': 124.1,
   'Full automation presses each queued job': 68.9, 'Full automation asks once in Settings': 5.2, 'Full automation saved without its confirmation': 6.1};
 export const hangCaps = hangCapsFor('apply');
@@ -69,9 +68,9 @@ export const engine = 'api';   // the form's open question is answered by the AI
 export const macos = 'release';   // a release, a gate and the night run it on a macOS runner (the real Chrome extension, opened through `open` as on a Mac); a PR's run on Linux (lib/plan.mjs runnerOf)
 // What a step needs from an earlier one when E2E_STEPS picks it (lib/runner.mjs wantedWords): every form step needs the applicant, the kits and the proxy's answers.
 const SETUP = 'the app has an applicant';
-export const stepNeeds = {'form': [SETUP], 'session page says it too': [SETUP, 'multi-step form'], 'Tailor CV': [SETUP], 'tailored CV': [SETUP], 'without a kit': [SETUP],
+export const stepNeeds = {'form': [SETUP], 'Tailor CV': [SETUP], 'tailored CV': [SETUP], 'without a kit': [SETUP],
   'hidden browser fills a form': [SETUP], 'submits a form': [SETUP], 'I submitted it': [SETUP, 'Apply opens a new tab'], 'Apply opens a new tab': [SETUP], 'side by side': [SETUP], 'sign-up page': [SETUP], 'sign-in page': [SETUP], 'menu whose choices': [SETUP], 'Needs your attention" from': [SETUP], 'appears only when + is pressed': [SETUP], 'one page': [SETUP], 'tab is closed': [SETUP], 'second browser': [SETUP], 'wrong kind': [SETUP], 'cannot operate': [SETUP],
-  'each read verdict': [SETUP], 'the Jobs popup': [SETUP], 'queued job': [SETUP], 'checking jobs before': [SETUP, 'the Jobs popup'],
+  'each read verdict': [SETUP], 'the Jobs popup': [SETUP], 'queued job': [SETUP], 'checking jobs before': [SETUP],
   'the triage bar moves': [SETUP],
   'the app quits while': [SETUP], 'the app quits in': [SETUP],
   'Stop on the card': [SETUP],
@@ -308,40 +307,9 @@ export async function runApply(ctx, parts) {
     if (!/reject an application automatically|knockout rule/i.test(left.knock)) throw new Error(`no knockout warning above the list (it says: "${left.knock}")`);
     // The tip line is off for now (SHOW_TIPS=false in extension/review.js, owner 15 Oct 2026): a tip is not required, but one that shows still carries a label that says how strong it is.
     if (left.tip && (!['Fact', 'Recruiters say', 'Worth trying', 'Tip'].includes(left.tip.chip) || left.tip.text.length < 20)) throw new Error(`the panel shows a tip without a valid label (${JSON.stringify(left.tip)})`);
-  }, {safety: true, needs: ctx.needs, keepsTabs: 'multistep'});   // the session-page step below reads this form's session
+  }, {safety: true, needs: ctx.needs});
 
-  await ctx.run('the session page says it too: "Before you submit" counts the knockout question that is still the person\'s, and says which CV goes in', async () => {
-    const form = FORMS.multistep;
-    // The session this form belongs to. The job row's button says "View session" only on a Mac with Claude Code installed (claudeReady, jobs.js); here it is the fill
-    // button ("Opened ↻"), and clicking it fills the form again and stays on the Jobs list (apply run 37134779221). A session card in the dock opens the same page for everyone,
-    // and the Sessions page lists them all when the dock (three cards at most) does not show this one.
-    const card = page.locator('#sd-cards .sd-card').filter({hasText: form.company}).filter({hasText: form.title});
-    if (await card.count()) {
-      if (!await card.isVisible() && await page.locator('#sd-toggle').isVisible()) await page.click('#sd-toggle');   // the dock starts collapsed: its cards are in the page but hidden (apply run 37135786161)
-      await card.click();
-    }
-    else {
-      await page.click('.nav[data-view="sessions"]');
-      await page.locator('#ss-list .ss-row').filter({hasText: form.company}).filter({hasText: form.title}).click({timeout: 15000}).catch(() => { throw new Error(`no session for ${form.company} on the Sessions page or in the dock`); });
-    }
-    const strip = page.locator('#ss-before');
-    await strip.waitFor({state: 'visible', timeout: 30000}).catch(async () => {
-      throw new Error(`the session page shows no "Before you submit" strip (the form card says: "${await page.locator('#ss-form-card').innerText().catch(() => 'not shown')}")`);
-    });
-    // This session's strip, not the one shown before (6 Oct 2026: the row named the Greenhouse form's work-permit question, read the moment the strip appeared).
-    let knock = '';
-    await until(`the session page did not show ${form.company}'s sponsorship question within 15 s`, async () => {
-      knock = (await page.locator('#ss-before-knock').innerText()).replace(/\s+/g, ' ');
-      return /sponsorship/i.test(knock) && await page.evaluate(url => window.__jp.openSession?.url === url, form.url);
-    }, 15000);
-    if (!/1 question can reject you automatically/i.test(knock) || !/sponsorship/i.test(knock)) {
-      const shown = (await page.locator('#ss-title').innerText().catch(() => '?')).replace(/\s+/g, ' ').slice(0, 120);
-      throw new Error(`the knockout row does not count and name the sponsorship question after 15 s: "${knock}" (the page shows: "${shown}", expected ${form.company})`);
-    }
-    await page.locator('#ss-before-cv').waitFor({state: 'visible', timeout: 15000});
-    const cvRow = (await page.locator('#ss-before-cv').innerText()).replace(/\s+/g, ' ');
-    if (!/general CV|tailored/i.test(cvRow)) throw new Error(`the CV row says neither which CV goes in nor that one is tailored: "${cvRow}"`);
-  }, {needs: ctx.needs, closesTabs: 'multistep'});
+  // The session page's "Before you submit" strip (the knockout question that is still the person's, which CV goes in): integration/app/screen-apply.test.js (moved 1 Nov 2026).
 
   await ctx.run('a form with a control the extension cannot operate: the miss is reported to the app', async () => {
     const form = FORMS.unknown;

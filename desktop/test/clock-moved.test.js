@@ -25,7 +25,7 @@ globalThis.Date = class extends Real { constructor(...a) { a.length ? super(...a
 function tree() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'clock-moved-test-'));
   fs.mkdirSync(path.join(root, 'test'));
-  const stamp = Date.now();   // clock: fixture files are written with today's reading on purpose: they pass now and age out
+  const stamp = Date.now();   // clock: relative the fixture files are written with today's reading on purpose: they pass now and age out
   const write = (name, body) => fs.writeFileSync(path.join(root, 'test', name), body);
   write('fine.test.js', "require('node:assert/strict').ok(true);\n");
   write('bomb-one-day.test.js', `const assert = require('node:assert/strict');\nassert.ok(Date.now() - ${stamp} < 12 * 3600 * 1000, 'a fixed stamp aged past half a day'); // clock: relative the fixture is the bomb\n`);

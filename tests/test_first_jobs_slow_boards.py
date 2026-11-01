@@ -62,6 +62,37 @@ class TheBoardsJoinWhenTheyFinish(unittest.TestCase):
         self.assertEqual(events[:2], ['import 3', 'scored'], events)
         self.assertEqual(imported[-1], ['b1'], 'the boards joined after, when they finished')
 
+    def test_a_late_board_job_is_scored_when_the_employer_sites_gave_nothing(self):
+        """Gitar on #2928: the late join imported the board jobs but nothing scored them, and the slice said 'none to score yet' (the card's end)."""
+        release, queue, scored, said = threading.Event(), [], [], []
+
+        def boards(say):
+            release.wait(WAIT)
+            return [BOARD_JOB]
+
+        def scorer(db, candidates, profile, model, max_jobs, workers=5, stats=None, on_scored=None, every=10, only_ids=None, **kw):
+            scored.append(sorted(only_ids))
+            stats.update(done=len(only_ids))
+
+        def import_jobs(report):
+            queue.extend(job['id'] for job in report['jobs'])   # the store gains the jobs the slice imports
+        original = first_jobs._score_first
+
+        def score_then_release(*args, **kwargs):
+            try:
+                return original(*args, **kwargs)
+            finally:
+                release.set()   # the employer batch is over (nothing to score): the boards end now
+        with mock.patch.object(first_jobs, '_score_first', side_effect=score_then_release), \
+                mock.patch.object(first_jobs.score, 'queue', side_effect=lambda *a: [{'id': i} for i in queue]), \
+                mock.patch.object(first_jobs, 'to_score', return_value=[]), \
+                mock.patch.object(first_jobs, 'aggregators_kept', side_effect=lambda feed_db, name, found: list(found)):
+            first_jobs.run(mock.MagicMock(), mock.MagicMock(), [{'company': 'A', 'ats': 'greenhouse', 'slug': 'a'}], profile='p', hidden=frozenset(),
+                           sync=lambda: None, say=said.append, scan=lambda sources, feed_db: {'jobs': [], 'sources': []}, scorer=scorer,
+                           fits=lambda db: {}, boards=boards, import_jobs=import_jobs)
+        self.assertEqual(scored, [['b1']], 'the board job was scored in the slice')
+        self.assertFalse([line for line in said if 'none to score yet' in line], said)
+
     def test_boards_that_finish_at_once_are_imported_once_whichever_side_of_the_scan_they_end(self):
         events, imported = self.run_slice(lambda say: [BOARD_JOB])
         self.assertEqual(sorted(job for batch in imported for job in batch), ['0', '1', '2', 'b1'], 'every job once, none twice')

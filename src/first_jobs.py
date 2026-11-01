@@ -166,12 +166,20 @@ def run(db, feed_db, sources, profile, hidden, sync, say=print, scan=None, score
             report['jobs'] = [*(report.get('jobs') or []), *_board_jobs(reading, feed_db, say)]
         (import_jobs or (lambda slice_report: store.import_watch_report(db, slice_report)))(report)   # the search passes SoFar.add: the full crawl then still counts these as new (#1015)
         say(f'First jobs: {len(report.get("jobs") or [])} found')   # the app reads the list again on this line
-        done, strong = _score_first(db, hidden, profile, scorer, model, first, fits, sync, report, say)
+        found = len(report.get('jobs') or [])
+        done, strong, queued = _score_first(db, hidden, profile, scorer, model, first, fits, sync, MAX_FIRST)
         if late is not None:
             joined = _board_jobs(late, feed_db, say)
             if joined:
+                found += len(joined)
                 (import_jobs or (lambda slice_report: store.import_watch_report(db, slice_report)))({'jobs': joined})
                 say(f'First jobs: {len(joined)} more from the job boards')
+                if not strong and done < MAX_FIRST:   # Gitar #2928: with little from the employer sites the boards' jobs are the slice's first scores
+                    more, strong, more_queued = _score_first(db, hidden, profile, scorer, model, first, fits, sync, MAX_FIRST - done)
+                    done, queued = done + more, queued + more_queued
+    if not queued:
+        say(f'First jobs: {found} found, none to score yet')   # the app closes the first-jobs card on this line: said once, after the boards joined
+        return 0
     said = f', one fits {FIT}+' if strong else ''
     say(f'First jobs: {done} scored in {round(time.monotonic() - started)} s{said}; the full search goes on')
     return done
@@ -187,13 +195,12 @@ def _board_jobs(reading, feed_db, say):
         return []
 
 
-def _score_first(db, hidden, profile, scorer, model, first, fits, sync, report, say):
-    """Score the best-ranked jobs `first` at a time, a sync after each, until one fits FIT+ or MAX_FIRST are scored -> (how many were scored, whether one fits)."""
+def _score_first(db, hidden, profile, scorer, model, first, fits, sync, limit):
+    """Score the best-ranked jobs `first` at a time, a sync after each, until one fits FIT+ or `limit` are scored -> (how many were scored, whether one fits, how many were queued)."""
     from . import time_budget
-    order = [job['id'] for job in time_budget.best_first(score.queue(db, to_score(db, hidden), profile))][:MAX_FIRST]
+    order = [job['id'] for job in time_budget.best_first(score.queue(db, to_score(db, hidden), profile))][:limit]
     if not order:
-        say(f'First jobs: {len(report.get("jobs") or [])} found, none to score yet')
-        return 0, False
+        return 0, False, 0
     done, tried, strong = 0, 0, False
     while tried < len(order) and not strong:
         ids = set(order[tried:tried + first])
@@ -204,4 +211,4 @@ def _score_first(db, hidden, profile, scorer, model, first, fits, sync, report, 
             break
         done += stats['done']
         strong = any(fit >= FIT for job_id, fit in fits(db).items() if job_id in {str(i) for i in ids})
-    return done, strong
+    return done, strong, len(order)

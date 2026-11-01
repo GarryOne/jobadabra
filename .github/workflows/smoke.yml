@@ -61,6 +61,7 @@ jobs:
       - name: Python packages the engine needs
         run: pip install --quiet -r requirements.txt
       - name: A virtual display and Electron's libraries
+        timeout-minutes: 5   # every apt step names its own limit (tests/test_ci_apt.py)
         run: bash tools/apt-install.sh xvfb libnss3 libgbm1 libasound2t64 libgtk-3-0 libxss1 fonts-noto-color-emoji fonts-dejavu-core
       - name: The app starts and every Settings section renders (the only try)
         working-directory: desktop/e2e

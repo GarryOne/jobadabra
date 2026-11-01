@@ -394,6 +394,6 @@ test('cadence night-report: once a night, in no gate, schedule, push or PR, and 
   assert.deepEqual(suitesOf(first), ['jobs', 'settings', 'wander'], 'night pass 1 runs it');
   assert.deepEqual(JSON.parse(first.matrix).include.filter(leg => leg.suite === 'wander').map(leg => leg.tolerant), [true], 'it runs, shows its result, and never fails the run or holds a beta (the matrix says tolerant)');
   assert.ok(!JSON.parse(first.matrix).include.filter(leg => leg.suite !== 'wander').some(leg => leg.tolerant), 'the other suites stay as they were');
-  const later = await run({EVENT: 'workflow_dispatch', NIGHT_PASS: '3/5'}, {runs: [{displayTitle: 'Night burn-in 1/5 · bbbbbbbb', headSha: HEAD, createdAt: new Date().toISOString()}]});
+  const later = await run({EVENT: 'workflow_dispatch', NIGHT_PASS: '3/5'});   // no pass-1 run listed: the pass tests its own head; the suites are the same, and no clock is read here
   assert.deepEqual(suitesOf(later), ['jobs', 'settings'], 'passes 2 to 5 are five looks at the gate suites, not five reports');
 });

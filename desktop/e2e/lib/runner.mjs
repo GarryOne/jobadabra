@@ -12,6 +12,7 @@ import {codeLine} from './artifacts.mjs';
 import {causeOf, sharedCauseLines} from './step-cause.mjs';
 import {providerLine} from './ai-provider.mjs';
 import {stepClock} from './wait-on-state.mjs';
+import {appPicture} from './window-shot.mjs';
 import {backboneSuite} from './hang-caps.mjs';
 
 // keepGoing (a suite's `export const keepGoing = true`): a failed step is recorded and the next one runs, so one failure never hides the rest of the suite
@@ -92,7 +93,8 @@ export const shotName = name => `failed-${name.replace(/\W+/g, '-').slice(0, 60)
 
 // faultTally: () => the fakes' {armed, failed} counters (lib/faults.mjs), to check that a step's fault fired.
 // report (the Playwright HTML report, lib/suite-main.mjs): each step runs as a Playwright step, with a screenshot of the window when it ends (the failure's, if it failed).
-const pictureOf = async session => (session?.page ? Promise.race([session.page.screenshot().catch(() => null), new Promise(done => setTimeout(() => done(null), 10000))]) : null);
+// The same capture as every other shot (lib/window-shot.mjs appPicture: the window, else the CSS-px screenshot); one that cannot be taken at all is logged and left out.
+const pictureOf = async session => (session?.page ? Promise.race([appPicture(session.app, session.page).catch(error => { console.log(`  (no picture: ${error.message})`); return null; }), new Promise(done => setTimeout(() => done(null), 10000))]) : null);
 // stepNeeds null: the suite declares none, so its steps may build on every earlier one (quality's checks read the rows its Jobs check wrote, after the step that loads
 // the golden postings): a picked run then runs every step up to the last picked one and skips only the rest (#2108, 26 Oct 2026). Declared (even {}): the precise pick.
 /** Resolve an exact cap or its longest prefix; backbone steps may never use the tolerant default. */

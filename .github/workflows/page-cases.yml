@@ -79,6 +79,7 @@ on:
       - 'desktop/e2e/lib/step-shots.mjs'
       - 'desktop/e2e/lib/test-accounts.mjs'
       - 'desktop/e2e/lib/wait-on-state.mjs'
+      - 'desktop/e2e/lib/window-shot.mjs'
       - 'desktop/e2e/lib/worker-console.mjs'
       - 'desktop/e2e/recorded/**'
       - 'desktop/e2e/replay-time.mjs'

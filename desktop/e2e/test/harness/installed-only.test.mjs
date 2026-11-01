@@ -55,8 +55,8 @@ test('every module the harness\'s unit tests reach needs only desktop/e2e\'s own
 test('positive control: a module two imports away that needs an uninstalled package is found', () => {
   const folder = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-installed-only-'));
   try {
-    fs.writeFileSync(path.join(folder, 'entry.test.mjs'), "import {x} from '../middle.mjs';\nexport const y = x;\n");
-    fs.writeFileSync(path.join(folder, 'middle.mjs'), "export const x = 1;\nexport const later = () => import('../client.mjs');\n");
+    fs.writeFileSync(path.join(folder, 'entry.test.mjs'), "import {x} from './middle.mjs';\nexport const y = x;\n");
+    fs.writeFileSync(path.join(folder, 'middle.mjs'), "export const x = 1;\nexport const later = () => import('./client.mjs');\n");
     fs.writeFileSync(path.join(folder, 'client.mjs'), "import Anthropic from '@anthropic-ai/sdk';\nimport fs from 'node:fs';\nexport default Anthropic;\n");
     assert.deepEqual(Object.keys(missingPackages([path.join(folder, 'entry.test.mjs')])), ['@anthropic-ai/sdk']);
   } finally { fs.rmSync(folder, {recursive: true, force: true}); }

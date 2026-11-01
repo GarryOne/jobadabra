@@ -34,6 +34,6 @@ test('notion-real pins the real workspace, borrows a hyphen-free token, runs out
 });
 
 test('the borrowed token belongs to a suite that no longer holds a real token', async () => {
-  const lender = await import(`../suites/${suite.notionTokenOf}.mjs`);
+  const lender = await import(`../../suites/${suite.notionTokenOf}.mjs`);
   assert.equal(lender.store, 'standin', `${suite.notionTokenOf} must stay on the stand-in while notion-real uses its token`);
 });

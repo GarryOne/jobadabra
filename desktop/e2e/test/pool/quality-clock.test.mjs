@@ -128,7 +128,7 @@ for (const [mode, stateSeconds, jobsSeconds, suiteMs, minutes] of [
 ]) test(`${mode}: quality exports and enforces the matching state, Jobs and whole-journey caps`, async t => {
   const {ctx, time} = fixture(t);
   process.env.E2E_AI_ANSWERS = mode;
-  const suite = await import(`../suites/quality.mjs?clock=${mode}`);
+  const suite = await import(`../../suites/quality.mjs?clock=${mode}`);
   assert.equal(suite.hangCaps['no job text, CV text or secret reached the logs'], stateSeconds);
   assert.equal(suite.hangCaps['a Jobs check on the golden postings finishes and scores them'], jobsSeconds);
   assert.equal(suite.minutes, minutes);

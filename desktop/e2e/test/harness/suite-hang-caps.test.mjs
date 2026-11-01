@@ -82,7 +82,7 @@ test('every backbone suite has a cap table and every cap is a positive number be
   const data = JSON.parse(source('hang-caps.json'));
   const violations = [], checked = [];
   for (const file of readdirSync(new URL('../../suites/', import.meta.url)).filter(file => file.endsWith('.mjs'))) {
-    const name = file.slice(0, -4), suite = await import(`../suites/${file}`);
+    const name = file.slice(0, -4), suite = await import(`../../suites/${file}`);
     if (lanes[name]?.lane || cadenceOf(name, suite) === 'manual') continue;   // tolerant, suspended, retired and manual suites keep the default (explore: cadence manual)
     checked.push(name);
     if (!data[name] || !Object.keys(data[name].steps).length) { violations.push(`${name}: no measured hang cap table`); continue; }
@@ -110,7 +110,7 @@ test('every literal step a backbone suite runs has a cap in some backbone table'
   const uncapped = [], checked = [];
   for (const file of readdirSync(new URL('../../suites/', import.meta.url)).filter(file => file.endsWith('.mjs'))) {
     const suite = file.slice(0, -4);
-    if (lanes[suite]?.lane || cadenceOf(suite, await import(`../suites/${file}`)) === 'manual') continue;
+    if (lanes[suite]?.lane || cadenceOf(suite, await import(`../../suites/${file}`)) === 'manual') continue;
     const helpers = [...source(`suites/${file}`).matchAll(/from\s+'\.\.\/lib\/([^']+\.mjs)'/g)].map(match => `lib/${match[1]}`).filter(helper => helperFiles.includes(helper));
     checked.push(suite);
     for (const name of [`suites/${file}`, ...helpers].flatMap(literals)) if (!capped.some(head => name.startsWith(head))) uncapped.push(`${suite}: ${name}`);

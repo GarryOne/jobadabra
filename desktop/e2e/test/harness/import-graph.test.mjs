@@ -7,8 +7,8 @@ import {suitesUsing} from '../../lib/import-graph.mjs';
 import {suitesFor} from '../../lib/plan.mjs';
 
 const files = {
-  'suites/a.mjs': "import {x} from '../../lib/one.mjs';", 'suites/b.mjs': "import {y} from '../../two.mjs';", 'suites/c.mjs': "import '../../lib/shared.mjs';",
-  'lib/one.mjs': "import {z} from '../deep.mjs';", 'lib/deep.mjs': '', 'two.mjs': "import {z} from '../lib/deep.mjs';", 'lib/shared.mjs': '', 'lib/unused.mjs': '',
+  'suites/a.mjs': "import {x} from '../lib/one.mjs';", 'suites/b.mjs': "import {y} from '../two.mjs';", 'suites/c.mjs': "import '../lib/shared.mjs';",
+  'lib/one.mjs': "import {z} from './deep.mjs';", 'lib/deep.mjs': '', 'two.mjs': "import {z} from './lib/deep.mjs';", 'lib/shared.mjs': '', 'lib/unused.mjs': '',
 };
 
 test('a helper reaches the suites that import it, directly or through another helper', () => {

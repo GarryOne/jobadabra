@@ -61,7 +61,7 @@ test('every stored-answer backbone suite pins its store or bypasses store altern
   assert.ok(suites.includes('quality'), 'quality must use stored backbone answers');
   assert.ok(suites.includes('stores'), 'stores must use declared backbone kinds');
   for (const name of suites) {
-    const suite = await import(`../suites/${name}.mjs`);
+    const suite = await import(`../../suites/${name}.mjs`);
     // Why (29 Oct 2026, ap): notion=false bypasses context's store alternation; stores sets up SQLite itself and its declared kind refusals contain no store-specific data.
     assert.ok(STORES.includes(suite.store) || suite.notion === false, `${name}: stored answers require a store pin or no store alternation`);
   }

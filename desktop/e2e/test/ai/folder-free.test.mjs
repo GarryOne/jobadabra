@@ -98,7 +98,7 @@ test('the wait passes the app main pid to the leftover end', async () => {
 
 test('the class: every place that waits for a held app folder goes through the one shared wait, which can end the run\'s own leftovers', async () => {
   const fsx = await import('node:fs'), pathx = await import('node:path'), url = await import('node:url');
-  const root = pathx.resolve(pathx.dirname(url.fileURLToPath(import.meta.url)), '../..');
+  const root = pathx.resolve(pathx.resolve(pathx.dirname(url.fileURLToPath(import.meta.url)), '..'), '..');
   const sources = dir => fsx.readdirSync(pathx.join(root, dir)).filter(name => name.endsWith('.mjs')).map(name => `${dir}/${name}`);
   const read = file => fsx.readFileSync(pathx.join(root, file), 'utf8');
   const all = [...sources('lib'), ...sources('suites')].filter(file => file !== 'lib/folder-free.mjs');

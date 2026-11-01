@@ -88,7 +88,7 @@ function fixturePaths() {
     const source = fs.readFileSync(new URL(filename, import.meta.url), 'utf8');
     for (const match of source.matchAll(/`\$\{([\w.]+Path)\}(\/[^`?$]*)`/g)) {
       const [, expression, suffix] = match;
-      const [owner, ...parts] = expression.split('.');
+      const [owner, ...parts] = expression.split('..');
       const loops = [...source.slice(0, match.index).matchAll(new RegExp(`for \\(const ${owner} of \\[([^\\]]+)\\]\\)`, 'g'))];
       const roots = fixtureForms[owner] ? [fixtureForms[owner]] : (loops.at(-1)?.[1] || '').split(',').map(name => fixtureForms[name.trim()]);
       for (const root of roots) {

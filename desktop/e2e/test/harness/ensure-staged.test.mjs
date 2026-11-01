@@ -23,7 +23,7 @@ test('a desktop folder without shared/ is staged once; one with it is left alone
 test('plan-run stages before it loads the suites (every workflow that plans a gate goes through suiteFacts)', () => {
   const source = fs.readFileSync(new URL('../../plan-run.mjs', import.meta.url), 'utf8');
   const body = source.slice(source.indexOf('export async function suiteFacts'));
-  assert.ok(body.indexOf('ensureStaged(') > 0 && body.indexOf('ensureStaged(') < body.indexOf("await import('../lib/context.mjs')"));
+  assert.ok(body.indexOf('ensureStaged(') > 0 && body.indexOf('ensureStaged(') < body.indexOf("await import('./lib/context.mjs')"));
   assert.equal(typeof suiteFacts, 'function');
 });
 

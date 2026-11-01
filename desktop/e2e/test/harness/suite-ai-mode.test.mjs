@@ -39,19 +39,19 @@ test('the harness runs the real-AI check for a suite declaring false', () => {
 
 
 test('a wrapper importing a stubbing suite must declare its own AI mode', () => {
-  const wrapper = "import {runApply} from '../apply.mjs'; export const run = ctx => runApply(ctx);";
+  const wrapper = "import {runApply} from './apply.mjs'; export const run = ctx => runApply(ctx);";
   const graph = new Map([['apply.mjs', 'proxy.setCanned(answer);']]);
   assert.equal(requiresMode(wrapper, graph), true);
   graph.set('middle.mjs', wrapper);
-  assert.equal(requiresMode("export {run} from '../middle.mjs';", graph), true);
-  graph.set('cycle.mjs', "export {run} from '../cycle.mjs';");
-  assert.equal(requiresMode("export {run} from '../cycle.mjs';", graph), false);
-  assert.equal(requiresMode("import {run} from '../unrelated.mjs';", graph), false);
+  assert.equal(requiresMode("export {run} from './middle.mjs';", graph), true);
+  graph.set('cycle.mjs', "export {run} from './cycle.mjs';");
+  assert.equal(requiresMode("export {run} from './cycle.mjs';", graph), false);
+  assert.equal(requiresMode("import {run} from './unrelated.mjs';", graph), false);
 });
 
 // A missing suite declaration must not send the seeded CV's contact ask to a hash cache or live AI.
 for (const name of ['jobs']) test(`${name}: setup contact proposals use the existing reviewed answer`, async () => {
-  const suite = await import(`../suites/${name}.mjs`);
+  const suite = await import(`../../suites/${name}.mjs`);
   const wanted = ['phone', 'salutation', 'street', 'postal_code', 'place_of_origin', 'birth_date', 'linkedin', 'github', 'website'];
   const client = {messages: {create: async (body, options) => {
     const answer = storedAnswer({url: '/v1/messages', body, headers: options.headers}, {E2E_AI_ANSWERS: suite.aiAnswers || 'off'});

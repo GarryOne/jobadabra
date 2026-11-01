@@ -21,7 +21,7 @@ const HEADROOM = 0.75;   // a slice may use three quarters of its budget: the ca
 test('every slice of a sharded suite fits its budget on Windows (the slower lane) at today\'s case count', async () => {
   const sharded = [];
   for (const name of SUITES) {
-    const suite = await import(`../suites/${name}.mjs`);
+    const suite = await import(`../../suites/${name}.mjs`);
     if (!suite.shards) continue;
     sharded.push(name);
     if (suite.stepSharded) continue;   // its slices are steps (below)

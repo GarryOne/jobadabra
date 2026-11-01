@@ -4,11 +4,11 @@ import {test} from 'node:test';
 import {openFailures, suitesOf, unnamed} from '../../lib/issue-links.mjs';
 
 const suites = {
-  activityfailures: "import {openContext} from '../../lib/context.mjs';",
-  failureschannels: "import {runParts} from '../activityfailures.mjs';\nimport {openContext} from '../../lib/context.mjs';",
-  activity: "import {openRun} from '../../lib/activity-steps.mjs';\nimport {openContext} from '../../lib/context.mjs';",
-  focus: "import {seed} from '../../lib/focus-data.mjs';\nimport {openContext} from '../../lib/context.mjs';",
-  jobs: "import {openContext} from '../../lib/context.mjs';",
+  activityfailures: "import {openContext} from '../lib/context.mjs';",
+  failureschannels: "import {runParts} from './activityfailures.mjs';\nimport {openContext} from '../lib/context.mjs';",
+  activity: "import {openRun} from '../lib/activity-steps.mjs';\nimport {openContext} from '../lib/context.mjs';",
+  focus: "import {seed} from '../lib/focus-data.mjs';\nimport {openContext} from '../lib/context.mjs';",
+  jobs: "import {openContext} from '../lib/context.mjs';",
 };
 const issue = (number, suite, kind = 'test-failure') => ({number, title: `[auto-ui] ${suite}: step failed`, labels: [{name: 'auto-ui'}, {name: `kind:${kind}`}, {name: `suite:${suite}`}]});
 

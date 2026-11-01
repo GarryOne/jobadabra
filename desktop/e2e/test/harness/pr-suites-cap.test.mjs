@@ -250,7 +250,7 @@ test('CLI: qualityai and its mail part are never planned on a PR, even when BASE
 // Why (1 Nov 2026, owner: "Drop it entirely, now"): a new step in a backbone suite is no longer proved five times; the PR plan names the suite and no repeat metadata.
 test('CLI: a PR that adds a step to a backbone suite plans the suite and writes no step burn-in', () => {
   const file = 'desktop/e2e/suites/settings.mjs';
-  const head = fs.readFileSync(new URL('../../../' + file, import.meta.url), 'utf8');
+  const head = fs.readFileSync(new URL('../../../../' + file, import.meta.url), 'utf8');
   const [step] = pick.stepCalls(head).filter(call => call.name);
   const old = head.slice(0, step.start) + head.slice(step.end + 1);
   const {values, text} = cliPlan({suites: ['settings'], baseSources: {[file]: old}});

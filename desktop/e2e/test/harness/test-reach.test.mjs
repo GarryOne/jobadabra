@@ -24,14 +24,14 @@ function tree(files) {
 }
 
 test('a module\'s relative specifiers: static, side-effect, dynamic, files read via new URL, and a declared "// Reaches:" line; never a package', () => {
-  const text = `import {a} from '../a.mjs';\nimport '../b.mjs';\nconst c = await import('../../c.js');\nconst d = new URL('../../../renderer/', import.meta.url);\n// Reaches: ./child.mjs ../app/\nimport {chromium} from 'playwright';`;
+  const text = `import {a} from './a.mjs';\nimport './b.mjs';\nconst c = await import('../c.js');\nconst d = new URL('../../renderer/', import.meta.url);\n// Reaches: ./child.mjs ../app/\nimport {chromium} from 'playwright';`;
   assert.deepEqual(specifiers(text).sort(), ['../../../renderer/', '../../app/', '../../c.js', '../a.mjs', '../b.mjs', '../child.mjs']);
 });
 
 test('reach follows imports to the end, a folder read covers every file under it, a package is never a path, the repo root is never a reach', t => {
   const root = tree({
-    'e2e/test/x.test.mjs': `import {h} from '../../lib/h.mjs';\nconst all = new URL('../../../../', import.meta.url);`,
-    'e2e/lib/h.mjs': `import {g} from '../g.mjs';\nconst css = new URL('../../../renderer/', import.meta.url);`,
+    'e2e/test/x.test.mjs': `import {h} from '../lib/h.mjs';\nconst all = new URL('../../../', import.meta.url);`,
+    'e2e/lib/h.mjs': `import {g} from './g.mjs';\nconst css = new URL('../../renderer/', import.meta.url);`,
     'e2e/lib/g.mjs': `import {chromium} from 'playwright';`,
   });
   t.after(() => fs.rmSync(root, {recursive: true, force: true}));

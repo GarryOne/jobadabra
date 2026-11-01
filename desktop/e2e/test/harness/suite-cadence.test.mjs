@@ -24,7 +24,7 @@ test('every suite is kept, slimmed, dropped or by hand, exactly once', async () 
 });
 
 test('a slim suite gets its cadence from the table only; a dropped one exports manual itself', async () => {
-  for (const suite of SLIM) assert.equal((await import(`../suites/${suite}.mjs`)).cadence, undefined, `${suite} exports a cadence of its own: SLIM (lib/plan.mjs) decides`);
+  for (const suite of SLIM) assert.equal((await import(`../../suites/${suite}.mjs`)).cadence, undefined, `${suite} exports a cadence of its own: SLIM (lib/plan.mjs) decides`);
   const {cadence} = await suiteFacts();
   for (const suite of SLIM) assert.equal(cadence[suite], 'slim', suite);
   for (const suite of [...DROPPED, ...BY_HAND]) assert.equal(cadence[suite], 'manual', suite);

@@ -113,7 +113,7 @@ class AffectedTests(unittest.TestCase):
     def test_a_suite_and_baseline_change_like_2767_picks_the_harness_tests_that_scan_the_suites(self):
         picked = set(affected.select(self.PR_2767)['e2e'])
         for test in ('timing-ratchet', 'suite-ai-mode', 'owns-step', 'suite-hang-caps'):   # the last two read every literal ctx.run step
-            self.assertIn(f'test/{test}.test.mjs', picked, test)
+            self.assertIn(f'test/harness/{test}.test.mjs', picked, test)
 
     def test_a_harness_test_that_reads_a_folder_by_new_url_is_picked_for_a_file_inside_it(self):
         # timing-ratchet reads ../suites/ by new URL(..., import.meta.url) and ../lanes.json: no import, no scanner call that names the file

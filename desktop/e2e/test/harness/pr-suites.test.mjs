@@ -13,7 +13,7 @@ test('only quoted words on removed app lines count: not tests, not short or code
   assert.deepEqual(removedStrings(DIFF), ['Backup saved to the folder']);
 });
 
-const sources = {'suites/settings.mjs': "import {x} from '../../lib/layout.mjs';\nfoo('Other');", 'lib/layout.mjs': "expect('Backup saved to the folder')", 'suites/jobs.mjs': 'nothing here'};
+const sources = {'suites/settings.mjs': "import {x} from '../lib/layout.mjs';\nfoo('Other');", 'lib/layout.mjs': "expect('Backup saved to the folder')", 'suites/jobs.mjs': 'nothing here'};
 
 test('a lib file counts for the suites that import it, and a suite that does not quote the text is not named', () => {
   assert.deepEqual(suitesExpecting(['Backup saved to the folder'], sources), {settings: ['Backup saved to the folder']});

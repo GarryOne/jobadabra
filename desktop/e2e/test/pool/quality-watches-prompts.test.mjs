@@ -23,7 +23,7 @@ test('every app module either quality journey imports is watched by both suites'
 });
 
 test('the app import reader includes direct imports, deferred imports and the app loader', () => {
-  const source = "import {one} from '../../../lib/one.js';\nconst two = await import('../../../lib/two.js');\nconst three = await loadAppModule('store/index.js');";
+  const source = "import {one} from '../../lib/one.js';\nconst two = await import('../../lib/two.js');\nconst three = await loadAppModule('store/index.js');";
   assert.deepEqual(appImports(source), ['desktop/lib/one.js', 'desktop/lib/two.js', 'desktop/lib/store/index.js']);
 });
 

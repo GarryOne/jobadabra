@@ -77,7 +77,7 @@ test('the suites with no step data are named (the 26 Oct map: 19 of 20 were, and
 test("a hunk of comments only changes nothing (#1992's header comment picked 17 suites)", () => {
   const diff = ['diff --git a/desktop/lib/pipeline-lines.js b/desktop/lib/pipeline-lines.js', '--- a/desktop/lib/pipeline-lines.js', '+++ b/desktop/lib/pipeline-lines.js',
     '@@ -1,1 +1,1 @@', '-// Owns: reading the engine lines', '+// Owns: reading the engine lines, keepRunLine',
-    '@@ -53,3 +53,2 @@', '-// A line that says', '-export const STATUS_LINE = /x/;', '+export {STATUS_LINE} from "../../renderer/run-lines.js";',
+    '@@ -53,3 +53,2 @@', '-// A line that says', '-export const STATUS_LINE = /x/;', '+export {STATUS_LINE} from "../renderer/run-lines.js";',
     'diff --git a/desktop/renderer/x.css b/desktop/renderer/x.css', '--- a/desktop/renderer/x.css', '+++ b/desktop/renderer/x.css', '@@ -4,1 +4,1 @@', '-/* a */', '+/* b */'].join('\n');
   assert.deepEqual(hunksFromDiff(diff), {'desktop/lib/pipeline-lines.js': [[53, 55]]});
 });

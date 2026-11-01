@@ -25,7 +25,7 @@ const SUITES = {apply: {parts: ['forms', 'cv'], seconds: apply.stepSeconds}, app
 
 test('every sliced step of apply and applyflows runs in exactly one slice, and where the step it needs runs', async () => {
   for (const [suite, {parts, seconds}] of Object.entries(SUITES)) {
-    const {shards} = await import(`../suites/${suite}.mjs`), steps = stepsOf(parts);
+    const {shards} = await import(`../../suites/${suite}.mjs`), steps = stepsOf(parts);
     assert.equal(shards, {apply: 3, applyflows: 3}[suite], suite);
     assert.ok(steps.length >= 3, `${suite}: only ${steps.length} steps read: the pattern no longer matches`);
     const runs = Array.from({length: shards}, (_, at) => { const takes = stepSlicer({index: at + 1, count: shards}, {seconds, needs: apply.stepNeeds, setup: SETUP}); return steps.filter(name => takes(name)); });

@@ -44,7 +44,7 @@ test('there is no start-time force-stop without an aggregate; budgeted suites ke
 // Why (31 Oct 2026, owner): a job has one try, so its limit holds one full budget and the setup (the two-attempt limit of 12 Oct 2026, applycv 38242968527, went with the retry).
 test('every suite with its own budget has a job limit above one run of it plus the setup', async () => {
   for (const name of SUITES) {
-    const suite = await import(`../suites/${name}.mjs`);
+    const suite = await import(`../../suites/${name}.mjs`);
     if (!suite.budgetMinutes) continue;
     assert.ok((suite.minutes || 15) >= suite.budgetMinutes + 4, `${name}: minutes ${suite.minutes} cannot hold one run of its ${suite.budgetMinutes}-minute budget (CI cancels the job and the evidence is lost)`);
   }

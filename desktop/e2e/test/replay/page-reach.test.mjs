@@ -25,7 +25,7 @@ test('elementIds: the ids a file draws into or a suite looks at, not colours or 
 });
 
 test('suitesReading: a suite whose source (or an import of it) quotes an element the file draws reads it; the app chrome every suite quotes names no one', () => {
-  const src = {'suites/focus.mjs': "import '../lib/rows.mjs'; page.locator('#focus-list')", 'lib/rows.mjs': "page.locator('#focus-extra')", 'suites/calendar.mjs': "page.locator('#focus-extra')",
+  const src = {'suites/focus.mjs': "import './lib/rows.mjs'; page.locator('#focus-list')", 'lib/rows.mjs': "page.locator('#focus-extra')", 'suites/calendar.mjs': "page.locator('#focus-extra')",
     ...Object.fromEntries(['a', 'b', 'c', 'd'].map(name => [`suites/${name}.mjs`, "page.locator('#app-nav')"]))};
   const use = {'suites/focus.mjs': ['focus'], 'lib/rows.mjs': ['focus', 'calendar'], 'suites/calendar.mjs': ['calendar'], ...Object.fromEntries(['a', 'b', 'c', 'd'].map(name => [`suites/${name}.mjs`, [name]]))};
   const files = {'p/focus.js': "$('focus-list'); $('focus-extra'); $('app-nav')", 'p/nav.js': "$('app-nav')", 'p/model.js': 'export const x = 1;'};

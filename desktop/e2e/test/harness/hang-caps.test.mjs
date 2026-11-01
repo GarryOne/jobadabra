@@ -7,7 +7,7 @@ const suites = ['apply', 'activityfailures', 'quality', 'applyflows', 'interacti
 test('every suite exports the loader table', async () => {
   const {hangCapsFor} = await import('../../lib/hang-caps.mjs');
   for (const suite of suites) {
-    const exported = await import(`../suites/${suite}.mjs`);
+    const exported = await import(`../../suites/${suite}.mjs`);
     assert.equal(exported.hangCaps, hangCapsFor(suite), suite);
   }
 });

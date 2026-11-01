@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {newSideRanges, stepCalls, stepsQuoting, stepsTouched} from '../../lib/pr-suites.mjs';
 
-const SUITE = `import {x} from '../../lib/y.mjs';
+const SUITE = `import {x} from '../lib/y.mjs';
 const helper = () => 'Old helper text here';
 export default async ctx => {
   await ctx.run('Open, the Jobs page', async () => { await see('More employers'); /* ) */ const s = "a ) b"; });
@@ -28,7 +28,7 @@ test('a quote inside steps picks those steps; outside a literal step or in a lib
 });
 
 // A change to a suite's own file runs the steps it touches (owner, 26 Oct 2026: "a change to a suite runs that suite's affected steps (apply/applyflows included)").
-const OWN = `import {x} from '../../lib/y.mjs';
+const OWN = `import {x} from '../lib/y.mjs';
 const helper = () => 1;
 export default async ctx => {
   await ctx.run('first step', async () => {

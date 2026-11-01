@@ -11,7 +11,7 @@ const READ = "a job's form in the hidden browser";
 const STOP = 'Stop on the card in Background automation';
 const RED = 'fb1d711';
 const tree = {
-  'desktop/e2e/suites/apply.mjs': "import {proof} from '../../lib/background-proof.mjs';\n",
+  'desktop/e2e/suites/apply.mjs': "import {proof} from '../lib/background-proof.mjs';\n",
   'desktop/e2e/lib/background-proof.mjs': '', 'desktop/e2e/suite.mjs': '', 'desktop/e2e/lib/suite-main.mjs': '',
 };
 const table = (...passed) => ({results: passed.map(name => ({name, status: 'passed'}))});
@@ -98,7 +98,7 @@ test('ghIo compares and reads a commit its checkout lacks, and leaves the checko
   git(origin, 'init', '-q', '-b', 'main');
   git(origin, 'config', 'uploadpack.allowAnySHA1InWant', 'true');
   const put = (file, text) => { fs.mkdirSync(path.dirname(path.join(origin, file)), {recursive: true}); fs.writeFileSync(path.join(origin, file), text); };
-  put('desktop/e2e/suite.mjs', "import '../lib/x.mjs';\n"); put('desktop/e2e/lib/x.mjs', '1');
+  put('desktop/e2e/suite.mjs', "import './lib/x.mjs';\n"); put('desktop/e2e/lib/x.mjs', '1');
   git(origin, 'add', '-A'); git(origin, 'commit', '-qm', 'base');
   git(origin, 'checkout', '-q', '-b', 'pr'); put('desktop/e2e/lib/x.mjs', '2'); git(origin, 'commit', '-qam', 'pr'); const pr = git(origin, 'rev-parse', 'HEAD');
   git(origin, 'checkout', '-q', 'main'); put('desktop/e2e/other.mjs', '1'); git(origin, 'add', '-A'); git(origin, 'commit', '-qm', 'main'); const main = git(origin, 'rev-parse', 'HEAD');

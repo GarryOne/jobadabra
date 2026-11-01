@@ -11,11 +11,11 @@ import {importsOf, importClosure, stepFiles, touched, judge, sayLine, HARNESS_RO
 
 const STEP = '"See which jobs can apply automatically" reads a job\'s form in the hidden browser: You review and submit, the tab closes, and nothing is filled or sent';
 const tree = {
-  'desktop/e2e/suites/apply.mjs': "import {ctx} from '../../lib/context.mjs';\nimport {proof} from '../../lib/background-proof.mjs';\nconst later = await import('../../lib/later.mjs');\n",
-  'desktop/e2e/lib/context.mjs': "export * from '../runner.mjs';\nimport './side-effect.mjs';\nimport fs from 'node:fs';\nimport x from 'left-pad';\n",
+  'desktop/e2e/suites/apply.mjs': "import {ctx} from '../lib/context.mjs';\nimport {proof} from '../lib/background-proof.mjs';\nconst later = await import('../lib/later.mjs');\n",
+  'desktop/e2e/lib/context.mjs': "export * from './runner.mjs';\nimport './side-effect.mjs';\nimport fs from 'node:fs';\nimport x from 'left-pad';\n",
   'desktop/e2e/lib/runner.mjs': 'export const run = 1;\n',
   'desktop/e2e/lib/side-effect.mjs': '',
-  'desktop/e2e/lib/background-proof.mjs': "import {run} from '../runner.mjs';\n",
+  'desktop/e2e/lib/background-proof.mjs': "import {run} from './runner.mjs';\n",
   'desktop/e2e/lib/later.mjs': '',
   'desktop/e2e/lib/unrelated.mjs': '',
   'desktop/e2e/suite.mjs': '', 'desktop/e2e/lib/suite-main.mjs': '',

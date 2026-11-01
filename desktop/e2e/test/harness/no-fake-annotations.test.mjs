@@ -7,7 +7,7 @@ import {fileURLToPath} from 'node:url';
 import {writeSuiteFailures} from '../../lib/artifacts.mjs';
 
 // Why (1 Nov 2026, c27): a fixed list, each file calls a writer of annotations: writeSuiteFailures, writeFinalFailures or noteSkipped. This file is not in it (a replay never includes itself).
-const WRITER_TESTS = ['artifacts.test.mjs', 'no-real-ai.test.mjs', 'ai-misses-ratchet.test.mjs', 'ai-miss-cause.test.mjs', 'broker-job.test.mjs', 'brain-codex.test.mjs'];
+const WRITER_TESTS = ['artifacts.test.mjs', '../ai/no-real-ai.test.mjs', '../ai/ai-misses-ratchet.test.mjs', '../ai/ai-miss-cause.test.mjs', '../ai/broker-job.test.mjs', '../ai/brain-codex.test.mjs'];   // relative to this folder (area folders, c27 1 Nov 2026)
 
 test('writeSuiteFailures has no env default: a caller must say which env it means', () => {
   assert.throws(() => writeSuiteFailures('unused', 'activity', []), /explicit env/);

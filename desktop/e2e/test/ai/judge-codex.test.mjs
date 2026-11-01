@@ -88,7 +88,7 @@ test('the flagged code\'s callers are in the evidence (3 of 4 live verdicts said
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'callers-'));
   fs.mkdirSync(path.join(root, 'desktop/renderer'), {recursive: true});
   fs.writeFileSync(path.join(root, 'desktop/renderer/offer.js'), ['export function showOffer(box) {', '  const note = hostedOn(box);', "  box.textContent = error.message;", '}', ''].join('\n'));
-  fs.writeFileSync(path.join(root, 'desktop/renderer/page.js'), ['import {showOffer} from "../offer.js";', 'function open() {', '  showOffer(document.body);   // any IPC failure reaches it', '}', ''].join('\n'));
+  fs.writeFileSync(path.join(root, 'desktop/renderer/page.js'), ['import {showOffer} from "./offer.js";', 'function open() {', '  showOffer(document.body);   // any IPC failure reaches it', '}', ''].join('\n'));
   for (const args of [['init', '-q'], ['add', '-A'], ['-c', 'user.email=a@b', '-c', 'user.name=a', 'commit', '-qm', 'x']]) execFileSync('git', args, {cwd: root});
   assert.deepEqual(symbolsAt('desktop/renderer/offer.js', 3, root), ['showOffer']);
   assert.deepEqual(symbolsAt('desktop/renderer/offer.js', 2, root), ['showOffer', 'hostedOn']);

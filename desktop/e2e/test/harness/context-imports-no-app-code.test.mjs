@@ -33,9 +33,9 @@ test('the files context.mjs statically imports need no desktop/shared/ files bef
 test('a transitive staged dependency is rejected, including side-effect imports and re-exports', () => {
   const entry = path.join(lib, 'fixture-context.mjs');
   const graph = new Map([
-    [entry, "import {helper} from '../fixture-helper.mjs';"],
-    [path.join(lib, 'fixture-helper.mjs'), "export {leaf} from '../../../lib/fixture-leaf.js';"],
-    [path.join(desktop, 'lib', 'fixture-leaf.js'), "import '../../shared/alias-schema.js';\nexport {x} from '../../shared/worker/ai.js';"],
+    [entry, "import {helper} from './fixture-helper.mjs';"],
+    [path.join(lib, 'fixture-helper.mjs'), "export {leaf} from '../../lib/fixture-leaf.js';"],
+    [path.join(desktop, 'lib', 'fixture-leaf.js'), "import '../shared/alias-schema.js';\nexport {x} from '../shared/worker/ai.js';"],
   ]);
   assert.deepEqual(unstagedImports(entry, file => graph.get(file) || ''), ['shared/alias-schema.js', 'shared/worker/ai.js']);
   graph.set(path.join(desktop, 'lib', 'fixture-leaf.js'), "import path from 'node:path';\nexport const leaf = path.sep;");

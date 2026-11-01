@@ -25,7 +25,7 @@ test('#2476: across the real registry, only wizard receives the new wizard step'
   assert.ok(users.length >= 16, 'positive control: the shared lib reaches many suites');
   const own = {};
   for (const suite of users.filter(suite => SUITES.includes(suite))) {
-    const {ownsStep} = await import(`../suites/${suite}.mjs`);
+    const {ownsStep} = await import(`../../suites/${suite}.mjs`);
     const names = pick.ownedStepNames({suite, file, names: touched.steps, sources, ownsStep, map: {}});
     for (const step of names) for (const home of pick.stepHomes({}, suite, step)) (own[home] ||= []).push(step);
   }
@@ -41,7 +41,7 @@ test('shared lib ownership retains recorded steps, respects ownsStep, and accept
   const input = {suite: 'jobs', file: 'desktop/e2e/lib/deep.mjs', names: ['known', 'new'], sources: {}, map: {suites: {jobs: {steps: {known: {}}}}}};
   assert.deepEqual(pick.ownedStepNames(input), ['known']);
   assert.deepEqual(pick.ownedStepNames({...input, ownsStep: () => false}), []);
-  assert.deepEqual(pick.ownedStepNames({...input, sources: {'suites/jobs.mjs': "import {run} from '../../lib/deep.mjs';"}}), ['known', 'new']);
+  assert.deepEqual(pick.ownedStepNames({...input, sources: {'suites/jobs.mjs': "import {run} from '../lib/deep.mjs';"}}), ['known', 'new']);
 });
 
 for (const [lib, name] of [
@@ -52,7 +52,7 @@ for (const [lib, name] of [
   assert.ok(!pick.stepCalls(sources[`lib/${lib}.mjs`]).some(call => call.name === name), 'the step has no prior source or coverage record');
   for (const suite of SUITES) {
     if (!suitesUsing('', sources)[`lib/${lib}.mjs`].includes(suite)) continue;
-    const {ownsStep} = await import(`../suites/${suite}.mjs`);
+    const {ownsStep} = await import(`../../suites/${suite}.mjs`);
     const names = pick.ownedStepNames({suite, file: `desktop/e2e/lib/${lib}.mjs`, names: [name], sources, ownsStep});
     if (names.length) own[suite] = names;
   }

@@ -1,4 +1,5 @@
 /* global document */
+// Job: serve stored answers
 // Layer 2 of applying reliability (spec: docs/superpowers/specs/2026-10-10-applying-reliability-layers.md): recorded pages replayed with the REAL extension,
 // offline. A case (e2e/recorded/<shape>-<n>/case.json) serves its pages at their real addresses (context.route), answers the app's AI calls from the case
 // (no AI, no network), opens the first page as an application tab (`start: "panel"`: then presses the panel's Fill) and checks `expect`. Isolation: lib/real-extension.mjs (fake applicant, stub app).
@@ -67,7 +68,8 @@ const lastBody = (list, route) => { for (const request of [...list()].reverse())
 // The case's checks on ITS tab. scope: {run, page (the tab), pages() (the case's non-extension tabs), mine() (requests that are the case's: told/asked/judged count only these, so a
 // parallel tab's request never satisfies a check), all() (every request: notTold counts all, so a parallel tab can only add a failure, never hide one), opened() (tabs opened during the run)}.
 // -> {ok, failures: [why], seen: {tabs, opened}, moves()}. expect: {told: [log words], stuck: ['<why>' | '<why>|<need start>'] (a "can't reach" report), ending: [ending] (what the report names: extension/ladder/endings.js), notTold: [..], maxTabs, maxNewTabs (tabs opened during the run), attached: [selector], filled: [selector], kept: [selector] (still holds a value after the page settled), valueHas: ["selector|digits"] (the box holds those digits), pressed: [selector] (a pressable button, aria-pressed=true), chosen: [selector] (a choice option that reads as on: aria-checked/aria-pressed true, or a checked native radio/checkbox), asked: [question] (listed in the fields of an /extension/answer request: the reader saw it), empty: [selector], gone: [selector], notJudged: ["<label>:<state>"] (the form judge was never sent that), present: [selector] (an element matches: a state a widget shows only by a class or attribute), seconds}
-export async function judgeCase(item, scope) {
+// clean-code-ok: Why (1 Nov 2026, layer 1 of the e2e move): the existing one-check-per-key judge, renamed from judgeCase; three more checks (panelSays, absent, notPanelSays) join its list; splitting it is its own change.
+export async function judgePhase(item, scope) {
   const {run, mine, all} = scope, failures = [];
   if (item.start === 'panel') await run.fillWithPanel(scope.page);   // a form page's fill starts from the panel's Fill button (as the person, or the app's start signal, would)
   const expect = item.expect || {}, deadline = Date.now() + (expect.seconds || 40) * 1000;
@@ -104,6 +106,8 @@ export async function judgeCase(item, scope) {
     panelHas: text => page().evaluate(want => [...(document.getElementById('jobpilotto-review-host')?.shadowRoot?.querySelectorAll('button') || [])].some(button => button.textContent.trim() === want && button.getClientRects().length > 0), text).catch(() => false),
     gone: selector => page().evaluate(css => !document.querySelector(css)?.getClientRects().length, selector).catch(() => false),
     present: selector => page().evaluate(css => !!document.querySelector(css), selector).catch(() => false),
+    // panelSays: ["<text>"]: the extension's panel (its own open shadow root) shows that text in a visible element (a warning line, a count; a hidden line does not count).
+    panelSays: text => page().evaluate(want => [...(document.getElementById('jobpilotto-review-host')?.shadowRoot?.querySelectorAll('*') || [])].some(el => !el.children.length && el.getClientRects().length > 0 && el.textContent.replace(/\s+/g, ' ').includes(want)), text).catch(() => false),
   };
   const pending = Object.entries(checks).flatMap(([kind, check]) => (expect[kind] || []).map(arg => ({kind, arg, check})));
   while (pending.length && Date.now() < deadline) {
@@ -117,6 +121,8 @@ export async function judgeCase(item, scope) {
   for (const word of expect.notTold || []) if (requestChecks(all).told(word)) failures.push(`notTold: ${word}`);
   for (const spec of expect.notJudged || []) if (requestChecks(all).judged(spec)) failures.push(`notJudged: ${spec}`);   // the form judge was never shown that control in that state
   for (const selector of expect.empty || []) if (await checks.filled(selector)) failures.push(`empty: ${selector}`);
+  for (const selector of expect.absent || []) if (await checks.present(selector)) failures.push(`absent: ${selector} is on the page`);   // e.g. "#org[data-jobpilotto-ai]": a plain fact is not marked as an AI answer
+  for (const text of expect.notPanelSays || []) if (await checks.panelSays(text)) failures.push(`notPanelSays: the panel says "${text}"`);   // e.g. "Ready to submit" over a required control it could not fill
   // kept: a box the fill typed must still hold its value once the page has had its say (an upload's own autofill rewrites boxes a moment later): read after the page settled.
   if ((expect.kept || []).length) { await wait(expect.keptAfter || 2500); for (const selector of expect.kept) if (!(await checks.filled(selector))) failures.push(`kept: ${selector} is empty after the page settled`); }
   // The end state, once (the panel reports before the fill too): after the page settled, the fill's settled record and the panel's last report must say the same as the case
@@ -149,6 +155,23 @@ export async function judgeCase(item, scope) {
     for (const kind of ['told', 'asked', 'judged', 'onTop', 'stuck', 'ending']) for (const arg of expect[kind] || []) if (!strict[kind](arg)) confirm.push(`${kind}: ${arg}`);
   }
   return {ok: !failures.length, failures, confirm, seen: {tabs, opened}, truth: readings.counts, moves: () => movesFromRequests(mine()), repairs: () => repairsFromRequests(mine())};   // the ladder moves the case's pages confirmed (lib/ladder-moves.mjs), read once the run is over: a report can land after the judgment
+}
+
+// A case may go on after its first judgment as the person would (case.json `then`: {do: [{click: '<selector>'} | {panel: '<button text>'}], expect: {...}}): a multi-step form's
+// step 2 is filled only once the person has reached it (Next pressed, then the panel's "Fill again"). The second phase is judged with its own expect, on the same tab.
+export async function judgeCase(item, scope) {
+  const first = await judgePhase(item, scope);
+  if (!item.then || !first.ok) return first;
+  const tab = scope.pages().at(-1) || scope.page;
+  for (const step of item.then.do || []) {
+    if (step.click) await tab.locator(step.click).click();
+    if (step.panel) {
+      await tab.waitForFunction(want => [...(document.getElementById('jobpilotto-review-host')?.shadowRoot?.querySelectorAll('button') || [])].some(button => !button.disabled && button.textContent.trim() === want), step.panel);
+      await tab.evaluate(want => [...document.getElementById('jobpilotto-review-host').shadowRoot.querySelectorAll('button')].find(button => !button.disabled && button.textContent.trim() === want).click(), step.panel);
+    }
+  }
+  const second = await judgePhase({...item, start: undefined, expect: item.then.expect}, scope);
+  return {...second, failures: [...first.failures, ...second.failures.map(text => `then: ${text}`)], ok: second.ok, confirm: [...(first.confirm || []), ...(second.confirm || [])], seen: second.seen};
 }
 
 // JP_REPLAY_WINDOW: 'quick' (a pull request's page cases: .github/workflows/page-cases.yml) ends the window early; anything else is 'full', the whole window (main, the daily run, a local run).

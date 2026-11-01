@@ -8,9 +8,9 @@ import {fileURLToPath} from 'node:url';
 import {reach, specifiers, unstage} from '../lib/test-reach.mjs';
 
 const ROOT = fileURLToPath(new URL('../../../', import.meta.url));
-const inRepo = file => `desktop/e2e/test/${file}`;
-// Why (owner, 30 Oct 2026, option C): every harness PR runs every file in test/ (harness.yml, `npm test`); there is no list to read.
-const allTests = () => fs.readdirSync(new URL('.', import.meta.url)).filter(name => /\.test\.mjs$/.test(name)).sort().map(inRepo);
+// Why (owner, 30 Oct 2026, option C; 1 Nov 2026, integration tests in desktop/integration/<layer>/): `npm test` runs every file of test/ and of ../integration/extension/ on each harness PR (harness.yml); no list picks files, so both folders are read here.
+const listTests = (folder, repoDir) => fs.readdirSync(new URL(folder, import.meta.url)).filter(name => /\.test\.mjs$/.test(name)).sort().map(name => `${repoDir}/${name}`);
+const allTests = () => [...listTests('.', 'desktop/e2e/test'), ...listTests('../../integration/extension/', 'desktop/integration/extension')];
 
 function tree(files) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-reach-'));

@@ -1,0 +1,18 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>DevOps Engineer at E2E Recruitee GmbH</title>
+<style>body{font:15px/1.4 system-ui,sans-serif;max-width:640px;margin:24px auto;padding:0 16px}.field{margin:14px 0}label{display:block;margin-bottom:4px}input[type=text],input[type=email],input[type=tel],input[type=url],select,textarea{width:100%;padding:6px;box-sizing:border-box}</style></head>
+<body><h1>DevOps Engineer</h1><p>E2E Recruitee GmbH · Zurich, Switzerland</p>
+<form id="application_form">
+  <section id="step1"><h2>Step 1 of 2: about you</h2>
+  <div class="field"><label for="first_name">First name *</label><input id="first_name" name="first_name" type="text" required ></div><div class="field"><label for="last_name">Last name *</label><input id="last_name" name="last_name" type="text" required ></div><div class="field"><label for="email">Email *</label><input id="email" name="email" type="email" required ></div><div class="field"><label for="resume">Resume/CV *</label><input id="resume" name="resume" type="file" required></div>
+  <div class="field"><button type="button" id="next_step">Next</button></div></section>
+  <section id="step2" hidden><h2>Step 2 of 2: your terms</h2>
+  <div class="field"><label for="salary">Salary expectation (CHF per year) *</label><input id="salary" name="salary" type="text" required ></div><div class="field"><label for="start_date">Earliest start date *</label><input id="start_date" name="start_date" type="text" required ></div>
+  <div class="field"><label for="sponsorship">Will you now or in the future require sponsorship for employment visa status? *</label><input id="sponsorship" name="sponsorship" type="text" required ></div>
+  <div class="field"><label><input id="consent_data" name="consent_data" type="checkbox" required> I agree to the processing of my personal data (privacy policy) *</label></div>
+  <div class="field"><button type="submit" id="submit_app">Submit Application</button></div></section></form>
+<script>
+const fired = kind => fetch('/__fired?kind=' + kind + '&form=' + encodeURIComponent(location.pathname), {method: 'POST', keepalive: true});
+document.addEventListener('click', event => { if (event.target.closest('[type=submit]')) fired('click'); }, true);
+document.addEventListener('submit', event => { event.preventDefault(); fired('submit'); }, true);
+document.getElementById('next_step').addEventListener('click', () => { document.getElementById('step1').hidden = true; document.getElementById('step2').hidden = false; });
+</script></body></html>

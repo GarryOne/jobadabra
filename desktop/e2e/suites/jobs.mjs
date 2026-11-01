@@ -26,23 +26,11 @@ export const hangCaps = hangCapsFor('jobs');
 // Why (30 Oct 2026, owner, Rule B): measured per-step hang caps replace the aggregate clock; a slow runner is not a failed state assertion.
 export const aggregateBudget = false;
 export async function run(ctx) {
-  const {proxy, feeds, ARTIFACTS} = ctx;
-  let {page} = ctx;
+  const {proxy, feeds, ARTIFACTS, page} = ctx;
   ctx.findings = [];
   await ensureSetUp(ctx);
-  // On this Mac's store the strategy is the app's own config (saved at setup, lib/seed.mjs): no page to link, the check reads the file. That the file holds the applicant's roles is
-  // desktop/integration/store/strategy-integration.test.mjs (moved from this suite, owner, 1 Nov 2026).
-  if (ctx.store !== 'sqlite') await ctx.run("the app's next start links this workspace's Search settings page (so the check looks for this person's roles and places)", async () => {
-    // The fast seed connects Notion and marks setup done without a restart; the app links the existing Search settings page in its start-up migration (migrate.js), which is
-    // what a real person's next start does. Without it the engine keeps the example config (a data analyst in Amsterdam), drops every fixture job and the check finds "0 new jobs"
-    // (CI, 2 Oct 2026).
-    await ctx.relaunch();
-    page = ctx.page;
-    await page.waitForSelector('.view:not([hidden])', {timeout: 60000});
-    const {value: linked} = await pollUntil(() => page.evaluate(async () => (await window.pilot.state()).settings?.notionIds?.NOTION_SEARCH_SETTINGS_PAGE || null),
-      linked => !!linked, {capMs: stepTimeLeft()});
-    if (!linked) throw new Error("the app did not link this workspace's Search settings page before the step's hang cap");
-  }, {needs: ctx.needs});
+  // Why (1 Nov 2026, a8's after-merge red on 6631d38): this suite is pinned to this Mac's store (`store` above), whose strategy is the app's own config (saved at setup, lib/seed.mjs); a step
+  // behind `ctx.store !== 'sqlite'` could never run, and the after-merge picker picked it. That the config holds the applicant's roles is desktop/integration/store/strategy-integration.test.mjs.
   await ctx.run('this suite starts with no jobs and no runs in its Notion page', async () => {
     const rows = [await clearData(ctx, 'Job Matches — AI Scored'), await clearData(ctx, 'Cronjob Runs')];
     console.log(`  cleared ${rows[0]} job row(s) and ${rows[1]} run row(s)`);

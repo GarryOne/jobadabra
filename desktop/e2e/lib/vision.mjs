@@ -34,8 +34,7 @@ technical text; raw is an error class, a stack trace, JSON, or a code with no su
 export const NOT_FINDINGS = `The app runs here in a TEST profile with made-up demo data. Never report the demo data itself: invented names and companies (Fjord Networks, E2E Recruitee GmbH, Ada), lowercase hyphenated
 slugs used as titles (like "recruiter-call-failing"), round or implausible numbers, dates that are today's, an empty or "not connected" Notion, Gmail, Google or AI key, or a failing demo AI. A real
 person's data is not like that.
-Already judged BY DESIGN (a person decided these are fine; do not report them again): the tip banner on Focus, Jobs and Interviews is a text ticker that scrolls from right to left, so a frozen
-picture shows it cut off; the Jobs check card's "N open" and "View all N in Jobs" count different sets (the run's own message versus the jobs in the list); a Recent runs row is short on purpose and
+Already judged BY DESIGN (a person decided these are fine; do not report them again): the Jobs check card's "N open" and "View all N in Jobs" count different sets (the run's own message versus the jobs in the list); a Recent runs row is short on purpose and
 a warning's reason is in the detail pane; a result line such as "Done ($0.01)." shows the AI cost; at a short window the sidebar's menu list scrolls on its own with a thin visible scrollbar, so its last icon shown half-cut at the edge is the scroll, not a bug (#270, #271), but a menu item that cannot be reached at all is real; the Technical log text is technical by design; "Retry" on the Answer once card and a "not connected" Notion,
 Gmail or AI key are normal states of a new account.
 Also BY DESIGN, never report (they are how a TEST run looks, or a rule a person chose): the Ready to send card's reason "Not in the end-to-end journey: it never reaches our server" (a test run never reaches the site; a real install does not show it); a Technical log that stays open when a run you were watching stops (a run opened after it finished is folded; #1764); the status bar's "No search yet" beside applications and kits that come from Notion (it names this install's own searches; #1730).
@@ -43,11 +42,13 @@ ${BY_DESIGN_SHAPES}
 Do NOT report: anything you cannot see, brand-new accounts having empty lists where the page says so nicely, or things listed as expected.
 Do NOT report transient interface: a toast or notification (it goes away by itself, and one over the page is by design), a tooltip, a spinner, a menu in the middle of opening.
 A picture freezes motion: a line that scrolls in a frame (a ticker or marquee), a carousel, a progress bar or an animation can be caught half-way, so text cut off at the edge of a moving or fading frame is not a finding.
+A card or list that runs past the bottom edge of a page that scrolls goes on below the picture: that is not cut off.
 The FACTS may list "moving" (elements animating when the picture was taken) and "clippedOnPurpose" (text cut by design: an ellipsis, a line clamp, a fade). Text cut in those is not a finding,
 unless the cut hides the meaning and the full text is nowhere else on the page.
 Do NOT report a guess about how the app works inside or what it "should" know. A contradiction needs proof: two things you can SEE disagree, or the picture disagrees with a stated FACT; quote both.
 A status that merely looks odd, but that data the app keeps elsewhere could explain (a follow-up built from logged events while Gmail is disconnected), is not a contradiction. When you only suspect, say nothing.
 A list row that gives only a short summary is not missing its reason when the page also shows a detail pane or a selected item: the reason lives there. Two numbers or messages that count different things (a run's own message versus the items listed, a summary of one data source beside a list of another, an empty-list message with a filter off) are not a contradiction unless the labels say they count the same thing.
+Two statements about DIFFERENT things are not a contradiction either: two services (Gmail and Notion, the AI and the store), or an earlier run's result beside the state now (a run that failed before a connection was made, listed under that connection working now).
 The window is narrow (about 1024 px) in views whose name ends in -narrow: a single column and an icon-only sidebar are by design there, so do not compare it with the wide layout. Anything cut off, covered or unreachable there is still a real finding, because that is a window size people use.`;
 
 export const SYSTEM = `You are a person using the Jobadabra desktop app to find and win a job: you search, read matches, apply, track applications, prepare for interviews. You are looking at ONE screen

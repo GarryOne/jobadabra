@@ -70,10 +70,12 @@ test('with E2E_REVIEW_PROMPT=checklist the review asks the checklist and writes 
 
 // Owner via mac-07, 1 Nov 2026 ("Teach the 2 AI judges", then "Narrow it, measure first"): both screenshot prompts carry the shapes people closed
 // (#2806, #2814, #2743, #2751), but the checklist CI asks gets only those: the whole long list cut its real bugs seen from 30 of 39 to 18 (#2857's measurement).
-test('both screenshot prompts carry the closed by-design shapes; the checklist carries no more than them', () => {
+test('both screenshot prompts carry the closed by-design shapes; the checklist carries no other line of the long list', () => {
   for (const shape of ['#2806', '#2814', '#2743', '#2751', 'FOLDED', 'ticker']) assert.ok(BY_DESIGN_SHAPES.includes(shape), `the shapes name ${shape}`);
   for (const [name, prompt] of [['the checklist', CHECK_SYSTEM], ['the long prompt', SYSTEM]]) assert.ok(prompt.includes(BY_DESIGN_SHAPES), `${name} carries the shapes`);
   assert.ok(SYSTEM.includes(NOT_FINDINGS), 'the long prompt keeps its whole list');
-  for (const muted of ['DIFFERENT things', 'A contradiction needs proof', 'Recent runs row is short', 'sidebar\'s menu list scrolls']) assert.ok(!CHECK_SYSTEM.includes(muted), `the checklist does not carry "${muted}"`);
-  assert.ok(!NOT_FINDINGS.includes('DIFFERENT things'), 'the line that muted the Gmail-state contradictions is gone');
+  assert.equal(NOT_FINDINGS.split('text ticker').length - 1, 1, 'the ticker is said once, in the shapes');
+  const others = NOT_FINDINGS.replace(BY_DESIGN_SHAPES, '').split('\n').filter(line => line.trim().length > 20);
+  assert.ok(others.length > 10, 'the long list was read');
+  for (const line of others) for (const piece of line.split(/[;:.] /).filter(part => part.length > 30)) assert.ok(!CHECK_SYSTEM.includes(piece), `the checklist carries "${piece.slice(0, 70)}"`);
 });

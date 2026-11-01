@@ -10,6 +10,7 @@ import './journeys-eligibility.js';
 import './journeys-popup.js';
 import './journeys-linkedin-refresh.js';
 import './journeys-no-browser.js';
+import './journeys-background-queue.js';
 import * as terminals from '../lib/terminals.js';
 import * as apply from '../lib/apply.js';
 import * as review from '../lib/review.js';

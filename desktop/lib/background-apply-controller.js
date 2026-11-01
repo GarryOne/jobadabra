@@ -115,8 +115,7 @@ export function createBackgroundApplyController(storage, {store = null, browser 
     return {via, at: now(), dueAt, state: state.state, reason};
   }
   // Collect at most one launch, due rechecks and permanent handoffs without ever reissuing a reserved press.
-  async function commandsForPoll(item, commands, via) {
-    const found = await stateForPoll(item);
+  async function commandsForPoll(item, found, commands, via) {
     if (!found) return;
     let {state} = found;
     const dueAt = state.readyAt ? state.readyAt + (found.current.auto?.waitMin ?? AUTO_DEFAULTS.waitMin) * 60000 : 0;
@@ -124,7 +123,8 @@ export function createBackgroundApplyController(storage, {store = null, browser 
     if (HANDOFF.has(state.state)) { commands.handoffs.push({session: item.id, reason: state.reason, reveal: state.reason !== 'captcha_preflight'}); cache(item, state, decision); return; }   // words-ok: our own hand-off reason id / user-facing word, not page knowledge
     if (state.state === 'submitting') return;
     if (state.state === 'waiting_to_submit' && now() >= dueAt) commands.checks.push({session: item.id});
-    if (['queued', 'preflight'].includes(state.state) && !commands.filling && !reader.busy()) {
+    const claimable = state.state === 'preflight' || (state.state === 'queued' && !commands.busy);
+    if (claimable && !commands.filling && !reader.busy()) {
       const claim = await store.claim(item.url, item.id, owner);
       if (claim.ok) { commands.filling = true; state = claim.state; commands.jobs.push({session: item.id, url: sessionTabUrl(item.url, item.id), mode: state.mode}); }
     }
@@ -134,9 +134,14 @@ export function createBackgroundApplyController(storage, {store = null, browser 
     if (!owner) ({owner} = await browserOf().start({port, token: token()}));
     if (!givenOwner || givenOwner !== owner) return {ok: false, jobs: [], checks: []};
     await handOverAll(heldOpen, {quit: true});   // a poll before the start-up sweep never continues a job an earlier run held (owner, 30 Oct 2026: "A quit is a Stop")
-    const commands = {jobs: [], checks: [], handoffs: [], filling: false};
     const open = terminals.list().filter(item => item.background && !item.outcome && !unsaved.has(item.id));   // a held job whose hand-over write threw is never continued (Gitar on #2598); the next poll tries again
-    for (const item of open) await commandsForPoll(item, commands, via);
+    const found = [];
+    for (const item of open) found.push([item, await stateForPoll(item)]);
+    // Why (#2646, 1 Nov 2026): one job at a time in the hidden browser. A job already claimed (preflight) or past a multi-step form's middle step (filling) holds
+    // every queued one, whatever the list order; states are read first so a queued job listed before it is not claimed.
+    const busy = found.some(([, each]) => each && ['preflight', 'filling'].includes(each.state.state));
+    const commands = {jobs: [], checks: [], handoffs: [], filling: false, busy};
+    for (const [item, each] of found) await commandsForPoll(item, each, commands, via);
     const {jobs, checks, handoffs, filling} = commands;
     // Why (2026-10-30, owner: triage read, PR C2a): a form read and an application never share the hidden browser: a read waits for open applications, and an application waits (at most the read's timeout) for a read that is queued or out (Gitar, #2602).
     jobs.push(...readCommands({filling, open}));

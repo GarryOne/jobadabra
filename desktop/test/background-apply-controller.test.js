@@ -361,3 +361,29 @@ test('a clock wake leaves queued triage reads and ended-page closes for the exte
   assert.equal(commands.jobs[0].session, 'read-next');
   assert.deepEqual([taken, ended], [1, 1]);
 });
+
+// #2646 (1 Nov 2026): one job at a time in the hidden browser. A multi-step form saves 'filling' at its middle step; the poll must still count it as busy,
+// in either list order, or a second form launches into the same hidden browser. Once the first job leaves filling, the queue moves.
+test('a job still filling (or claimed) holds the queue in either list order; the next starts once it leaves filling', async () => {
+  const pollWith = async (states, order) => {
+    const claimed = [];
+    const controller = createBackgroundApplyController({}, {
+      store: {read: async url => states[url.split('/').pop()],
+        claim: async (url, session) => { const state = states[session]; claimed.push(session); return state.state === 'queued' ? {ok: true, state: {...state, state: 'preflight', owner: 'o1'}} : {ok: state.owner === 'o1', state}; }},
+      browser: {start: async () => ({owner: 'o1'})},
+      terminals: {list: () => order.map(id => ({id, url: `https://jobs.example.test/${id}`, background: {}, outcome: ''})), record: () => null, report: () => {}},
+      config: () => ({mode: 'auto', chosenAt: 'c1', auto: {waitMin: 1}}), token: () => 't', notify: () => {}, stop: () => false, log: () => {}});
+    const polled = await controller.handle({action: 'poll', owner: 'o1'});
+    return {launched: polled.jobs.map(job => job.session), claimed};
+  };
+  const job = (session, state, owner = 'o1') => ({session, mode: 'auto', chosenAt: 'c1', state, owner});
+  for (const order of [['a', 'b'], ['b', 'a']]) {
+    const filling = await pollWith({a: job('a', 'filling'), b: job('b', 'queued', '')}, order);
+    assert.deepEqual(filling.launched, [], `a form at its middle step holds the next job (order ${order})`);
+    assert.ok(!filling.claimed.includes('b'), `the queued job is not claimed while one fills (order ${order})`);
+    const preflight = await pollWith({a: job('a', 'preflight'), b: job('b', 'queued', '')}, order);
+    assert.deepEqual(preflight.launched, ['a'], `only the claimed job is (re)issued (order ${order})`);
+  }
+  const moved = await pollWith({a: job('a', 'waiting_to_submit'), b: job('b', 'queued', '')}, ['a', 'b']);
+  assert.deepEqual(moved.launched, ['b'], 'once the first job left filling, the next starts');
+});

@@ -55,7 +55,7 @@ def main(argv):
         print(f'skipped {other[:7]}: {why}', file=sys.stderr)
     if not sha:
         print('No commit of main qualifies: ' + (f'{forced} is not a fully green CI · Tests commit with the head\'s workflows' if forced else f'none of the last {len(green)} green CI · Tests runs has main head\'s workflow files')
-              + ". Wait for the running build, or start from the head with: tools/beta-release.sh --head", file=sys.stderr)
+              + (". Name another green commit, or run tools/beta-release.sh without --commit." if forced else ". tools/beta-release.sh builds main's head instead; its Release waits for that commit's CI."), file=sys.stderr)
         return 1
     behind = int(_run('git', 'rev-list', '--count', f'{sha}..{head}').stdout.strip() or 0)
     print(f'{sha} {behind}')

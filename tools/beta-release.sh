@@ -28,8 +28,12 @@ gate_log="$(mktemp)"; trap 'rm -f "$gate_log"' EXIT
 if [ -n "$force" ]; then bash "$(dirname "$0")/red-main-gate.sh" "$repo" --force "$force" | tee "$gate_log"; else bash "$(dirname "$0")/red-main-gate.sh" "$repo" | tee "$gate_log" || exit 1; fi
 red_note="$(grep '^Red on main, not safety or data: ' "$gate_log" | tail -1 || true)"
 ref=main
+pick=""
 if [ "$at" != head ]; then
-  pick="$(python3 "$(dirname "$0")/beta_pick.py" "$repo" ${commit:+--commit "$commit"})" || exit 1
+  # Why (1 Nov 2026, a8; beta 9): the first real use found no eligible commit, because main's head had just added a workflow file and so differs from every green run (24 of the last 60 main commits change a workflow file). With no commit named, the beta then builds main's head, as before #2883: its Release waits for that commit's CI. A named --commit still stops.
+  pick="$(python3 "$(dirname "$0")/beta_pick.py" "$repo" ${commit:+--commit "$commit"})" || { [ -n "$commit" ] && exit 1; echo "Building main's head instead: its Release waits for that commit's CI · Tests (tools/beta_pick.py found no eligible green commit)."; pick=""; }
+fi
+if [ -n "$pick" ]; then
   sha=${pick%% *}; behind=${pick#* }
   if [ "$behind" -gt 0 ]; then
     ref="beta-pick/${sha:0:7}"

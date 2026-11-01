@@ -85,11 +85,53 @@ class PickCli(unittest.TestCase):
         code, out, err = self.pick('E', ['D', 'C', 'B'])
         self.assertEqual(code, 1, out)
         self.assertIn(f"skipped {self.sha['D'][:7]}", err)
-        self.assertIn('tools/beta-release.sh --head', err)
+        self.assertIn("builds main's head instead", err)
+        self.assertNotIn('--head', err, 'the hint must not tell the owner to start a second beta')
 
     def test_a_forced_commit_is_picked_only_when_it_qualifies(self):
         self.assertEqual(self.pick('D', ['D', 'C', 'B'], '--commit', self.sha['C'][:7])[1], f"{self.sha['C']} 1")
         self.assertEqual(self.pick('D', ['D', 'B'], '--commit', self.sha['C'][:7])[0], 1)
+
+
+class BetaReleaseFallback(unittest.TestCase):
+    """Beta 9 (1 Nov 2026, a8): main's head had just added a workflow file, so the picker exited 1 and the one command stopped. Plays that scenario on the real script with stub gh, gate and picker."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        base = Path(self.tmp.name)
+        tools = base / 'tools'
+        tools.mkdir()
+        (tools / 'beta-release.sh').write_text((ROOT / 'tools' / 'beta-release.sh').read_text())
+        (tools / 'red-main-gate.sh').write_text('#!/bin/sh\necho "Main\'s e2e: no suite red."\n')
+        (tools / 'beta_pick.py').write_text('import sys\nprint("No commit of main qualifies: stub", file=sys.stderr)\nsys.exit(1)\n')
+        bin_dir = base / 'bin'
+        bin_dir.mkdir()
+        self.log = base / 'gh.log'
+        gh = bin_dir / 'gh'
+        gh.write_text('#!/bin/sh\necho "$@" >> "$GH_LOG"\ncase "$1 $2" in "run list") echo "42 https://example.test/runs/42";; esac\n')
+        gh.chmod(gh.stat().st_mode | stat.S_IEXEC)
+        sleep = bin_dir / 'sleep'
+        sleep.write_text('#!/bin/sh\n')
+        sleep.chmod(sleep.stat().st_mode | stat.S_IEXEC)
+        self.env = dict(os.environ, PATH=f'{bin_dir}{os.pathsep}{os.environ["PATH"]}', GH_LOG=str(self.log))
+        self.script = tools / 'beta-release.sh'
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def run_script(self, *args):
+        return subprocess.run(['bash', str(self.script), '--no-watch', *args], env=self.env, capture_output=True, text=True)
+
+    def test_no_eligible_commit_dispatches_the_head(self):
+        done = self.run_script()
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertIn("Building main's head instead", done.stdout)
+        self.assertIn('workflow run desktop.yml -R GarryOne/jobadabra --ref main -f beta=true', self.log.read_text())
+
+    def test_a_named_commit_that_does_not_qualify_still_stops(self):
+        done = self.run_script('--commit', 'abc1234')
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertFalse(self.log.exists() and 'workflow run' in self.log.read_text(), 'nothing is dispatched')
 
 
 if __name__ == '__main__':

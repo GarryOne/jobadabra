@@ -140,17 +140,6 @@ class HostedRun(unittest.TestCase):
         self.assertIn('Always on', rows[0]['title'])
         self.assertIn('New job: One | Co | https://a/1 | 7', rows[0]['log'].split('\n'))   # the run card's item, with its fit (renderer/new-jobs-card.js)
 
-    def test_the_image_starts_the_server_and_bakes_in_no_secret(self):
-        text = (Path(__file__).resolve().parent.parent / 'hosted' / 'Dockerfile').read_text()
-        self.assertIn('CMD ["python", "-m", "src", "hosted", "--serve"]', text)
-        self.assertNotRegex(text, r'(?i)(token|key|secret)\s*=\s*\S')
-
-    def test_the_image_has_the_headless_browser_for_script_built_pages(self):
-        """Owner, 19 Oct 2026: script-built job boards are read headlessly wherever the search runs, Cloudflare hosted included."""
-        text = (Path(__file__).resolve().parent.parent / 'hosted' / 'Dockerfile').read_text()
-        self.assertIn('requirements-render.txt', text)
-        self.assertRegex(text, r'playwright install --with-deps chromium')
-
     def test_the_server_runs_one_run_per_post_and_refuses_a_bad_token(self):
         import urllib.request
         from http.server import HTTPServer

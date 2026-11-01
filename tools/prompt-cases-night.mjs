@@ -43,6 +43,16 @@ export function reportLine(report) {
 }
 
 /**
+ * The numbers of one night as the single machine-readable log line the site's collector reads (jobadabra-web jobs/e2e-intel.mjs), so it never parses the prose of reportLine().
+ * @returns {string} `PROMPT_CASES_NIGHT {"set","status","sha","total","right","flipped","noise","newWrong","calls"}`: counts only, never case texts
+ */
+export function factsLine(report) {
+  const count = list => (Array.isArray(list) ? list.length : 0);
+  return `PROMPT_CASES_NIGHT ${JSON.stringify({set: SET, status: report.status, sha: short(report.sha), total: report.total || 0, right: report.right || 0,
+    flipped: count(report.flipped), noise: count(report.noise), newWrong: count(report.newWrong), calls: report.calls || 0})}`;
+}
+
+/**
  * Runs the night. All I/O is injected so a test plays it offline. The returned report is also the next night's baseline file:
  * `sha` is the commit its `results` (right/wrong by case id) reflect, so a carried or not-asked night keeps the baseline's own sha.
  * @param {{baseline: object|null, sha: string, changed: boolean, cases: object[], ask: Function, pool: Function, jobs?: number, maxCalls?: number}} options
@@ -97,6 +107,7 @@ async function main(argv) {
   fs.writeFileSync(path.join(out, 'prompt-cases-night.json'), JSON.stringify(report, null, 1) + '\n');
   const line = reportLine(report);
   console.log(line);
+  console.log(factsLine(report));
   for (const id of report.flipped || []) console.log(`FLIPPED ${id}: right last night, wrong twice tonight`);
   console.log(`::${report.status === 'not-asked' ? 'warning' : 'notice'} title=Prompt cases (nightly, report only)::${line}`);
   return 0;

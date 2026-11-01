@@ -3,7 +3,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import {compareNight, liveChanged, reportLine, runNight} from '../../tools/prompt-cases-night.mjs';
+import {compareNight, factsLine, liveChanged, reportLine, runNight} from '../../tools/prompt-cases-night.mjs';
 import {brokerBody, codexRun} from '../../tools/prompt-cases-codex.mjs';
 import {pool} from '../../tools/prompt-cases-live.mjs';
 
@@ -38,6 +38,12 @@ test('a changed prompt asks every case once and the flipped ones once more; the 
   assert.equal(report.status, 'asked');
   assert.deepEqual([report.flipped, report.noise, report.calls, report.sha], [['b'], [], 4, 'bbbbbbb2222']);
   assert.equal(reportLine(report), 'Prompt cases (form, Codex): 3 cases, 1 flipped, 0 model noise; 4 calls');
+});
+
+test('one machine-readable line carries the night\'s counts for the site, never case texts', async () => {
+  const report = await runNight({baseline, sha: 'bbbbbbb2222', changed: true, cases: items(['a', 'b', 'c']), ask: asker(['b']), pool, jobs: 1});
+  assert.equal(factsLine(report), 'PROMPT_CASES_NIGHT {"set":"form","status":"asked","sha":"bbbbbbb","total":3,"right":2,"flipped":1,"noise":0,"newWrong":0,"calls":4}');
+  assert.match(factsLine(await runNight({baseline, sha: 'c', changed: false, cases: [], ask: asker([]), pool})), /"status":"carried","sha":"aaaaaaa".*"calls":0/);
 });
 
 test('the first night stores a baseline and flips nothing', async () => {

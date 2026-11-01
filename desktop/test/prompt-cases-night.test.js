@@ -78,6 +78,8 @@ test('the call cap holds for the re-asks too: a case that could not be asked aga
   const report = await runNight({baseline, sha: 'bbbbbbb2222', changed: true, cases: items(['a', 'b', 'c']), ask: asker(['a', 'b'], calls), pool, jobs: 1, maxCalls: 4});
   assert.deepEqual(calls, ['a', 'b', 'c', 'a'], 'one call left for the re-asks');
   assert.deepEqual([report.flipped, report.unconfirmed, report.calls <= 4], [['a'], ['b'], true]);
+  assert.equal(report.results.b, true, 'b keeps last night\'s verdict (right): tomorrow asks it again, the regression is not lost');
+  assert.equal(report.right, 2, 'right counts c (right tonight) and b (kept verdict), not a (flipped) and not b\'s unconfirmed wrong answer');
   assert.match(reportLine(report), /1 unconfirmed \(call cap\)/);
 });
 

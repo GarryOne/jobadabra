@@ -43,8 +43,9 @@ export function reportLine(report) {
 }
 
 /**
- * The numbers of one night as the single machine-readable log line the site's collector reads (jobadabra-web jobs/e2e-intel.mjs), so it never parses the prose of reportLine().
- * @returns {string} `PROMPT_CASES_NIGHT {"set","status","sha","total","right","flipped","noise","newWrong","calls"}`: counts only, never case texts
+ * The numbers of one night as one machine-readable log line, so a reader never parses the prose of reportLine(). The planned reader is the jobadabra-web collector (jobs/e2e-intel.mjs).
+ * TODO(AI): the site PR reads this line onto the Quality AI card; until it lands nothing reads it (#2851)
+ * @returns {string} `PROMPT_CASES_NIGHT {"set","status","sha","total","right","flipped","noise","newWrong","unconfirmed","calls"}`: counts only, never case texts
  */
 export function factsLine(report) {
   const count = list => (Array.isArray(list) ? list.length : 0);
@@ -78,6 +79,8 @@ export async function runNight({baseline, sha, changed, cases, ask, pool, jobs =
   if (refusal) return keep('not-asked', refusal, calls);
   const unconfirmed = [...retry].filter(id => !toAsk.some(item => item.id === id));   // wrong once, no call left to ask again: never called "flipped" (wrong twice)
   const {results, ...counts} = compareNight(before, first, again);
+  for (const id of unconfirmed) results[id] = before[id];   // Why (Gitar on #2851): not confirmed tonight = last night's verdict stays, so tomorrow judges it again instead of losing the regression
+  counts.right = Object.values(results).filter(Boolean).length;
   counts.flipped = counts.flipped.filter(id => !unconfirmed.includes(id));
   return {version: 1, set: SET, engine: 'codex (broker, small tier)', status: baseline ? 'asked' : 'first', sha, ranOn: sha, calls, total: counts.cases, right: counts.right,
     flipped: counts.flipped, noise: counts.noise, newWrong: counts.newWrong, unconfirmed, results};

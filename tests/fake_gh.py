@@ -10,6 +10,8 @@ import tempfile
 from pathlib import Path
 
 path = Path(os.environ['FAKE_GH_STATE'])
+from fake_gh_state import hold, write   # tests/fake_gh_state.py: one call at a time on the state file, saved whole (a watcher and a ship call this together)
+lock = hold(path)
 state = json.loads(path.read_text())
 argv = sys.argv[1:]
 state.setdefault('calls', []).append(' '.join(argv))
@@ -23,7 +25,7 @@ def said(words):
 
 
 def save():
-    path.write_text(json.dumps(state))
+    write(path, state)
 
 
 def flag(name):

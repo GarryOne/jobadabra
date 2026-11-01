@@ -7,6 +7,7 @@ import {buildStandIn} from '../../e2e/lib/notion-fake.mjs';
 import {fileBlocks, rowsIn, seedStore} from '../../e2e/lib/storemove-steps.mjs';
 
 export const WANTED = {applications: 3, events: 2, interviews: 1, files: 1};
+/** -> how many rows (applications, events, interviews) and file blocks a stand-in Notion holds, read from the stand-in's own dump; compare with WANTED. */
 export const countsIn = fake => ({applications: rowsIn(fake, 'Job Tracker'), events: rowsIn(fake, 'Events'), interviews: rowsIn(fake, 'Interviews'), files: fileBlocks(fake)});
 export const publish = async () => {};   // ⚙️ Search settings page: not part of the data move (test/store-move.test.js)
 export const repair = async (_token, ids) => ({ids});   // the stand-in's workspace is built whole by buildStandIn

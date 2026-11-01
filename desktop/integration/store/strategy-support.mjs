@@ -11,7 +11,9 @@ const SCORE = {score: 80, tier: 'B', components: {role_fit: 80, location: 80, co
 /** The AI stand-in's answers: set with `proxy.setCanned(localAnswers)`. */
 export const localAnswers = body => (body.output_config?.format?.schema?.properties?.score ? JSON.stringify(SCORE) : {refuse: 'no-credit'});
 
+/** True when some entry of `list` (role keywords, places, companies) matches `word`, ignoring case; a missing list is empty. */
 export const has = (list, word) => (list || []).some(entry => new RegExp(word, 'i').test(entry));
+/** True when some digest title in `jobs` matches `word` (ignoring case) and, if `level` is given, starts with it ("Senior", "Staff"). */
 export const listed = (jobs, word, level) => jobs.some(job => new RegExp(word, 'i').test(job) && (!level || job.startsWith(level)));
 
 /** A new posting on one of the boards (the seen ones are not "new" again, so each check is judged on postings added just before it). */

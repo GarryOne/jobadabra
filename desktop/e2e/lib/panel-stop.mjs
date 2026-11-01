@@ -57,7 +57,9 @@ export async function pressStop(page, {capMs, minimised = false, now = Date.now,
   const budget = pressBudget({stepLeft: stepTimeLeft(), capMs});
   const deadline = now() + budget;   // Why (PR #2748, Gitar x2; redesign 1 Nov 2026): one hang guard from before the press; the click and every stage spend what is left of it, never a fresh budget
   const stop = page.locator(HOST).locator(minimised ? '.pill-stop' : '.stop-btn');   // exactly what the test pressed before, inside the panel's host (owner's manifest: a fix does not change a selector that works)
-  const wait = (accepts, label) => pollUntil(() => readPanel(page), state => state.panel !== 'absent' && accepts(state), {capMs: Math.max(0, deadline - now()), now, ...(pause && {pause}), ...(log && {log}), label});
+  // Why (1 Nov 2026, Gitar on #2766): a page that closes or navigates mid-press makes the read throw; that is a panel state to name ({panel: 'absent', unreadable}), not a raw error that hides the click's own message.
+  const read = () => readPanel(page).catch(error => ({panel: 'absent', unreadable: String(error.message).split('\n')[0]}));
+  const wait = (accepts, label) => pollUntil(read, state => state.panel !== 'absent' && accepts(state), {capMs: Math.max(0, deadline - now()), now, ...(pause && {pause}), ...(log && {log}), label});
   let clickError = null;
   try {
     await stepWait('the Stop control was visible, enabled and still', timeout => stop.click({timeout: timeout ?? Math.max(1, deadline - now())}));

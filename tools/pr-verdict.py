@@ -38,11 +38,11 @@ GREY_WORDS.update({'ai-credit': ('grey', 'AI cap or credit'), 'runner': ('grey',
                    # Why (31 Oct 2026, owner: "Grey: not known yet"): budget refusal is not a quality judgment.
                    'ai-budget': ('qualityai', 'AI budget refused, not judged')})
 CI_FILES = re.compile(r'^(\.github/|tools/pr-|desktop/e2e/(lib/plan|lib/pr-suites|lib/coverage|pr-suites\.mjs|plan-run\.mjs))')
-# The workflows a pull request can start: a pull_request trigger, or started by one of them. A workflow outside it (the users' Always On daily/scout/mail.yml,
+# The workflows a pull request can start: a pull_request trigger, or started by one of them (no PR starts an e2e run since 1 Nov 2026: the journeys run after each merge, main-steps.yml). A workflow outside it (the users' Always On daily/scout/mail.yml,
 # the nightly, a release) never runs on a PR, so editing it does not slow a PR: #2137 went red at 11.4 min, every check green, for daily/scout/mail.yml.
 # Guard: tests/test_pr_verdict.py recomputes it from .github/workflows (a new PR workflow fails there until listed).
-PR_WORKFLOWS = {'beta-approve.yml', 'conflict-label.yml', 'e2e-windows.yml', 'e2e.yml', 'extension-store-publish.yml', 'gitar-label.yml', 'harness.yml', 'hosted-probe.yml', 'key-org-proof.yml',
-                'office-addon.yml', 'page-cases.yml', 'pr-closed-cancel.yml', 'pr-gate.yml', 'pr-suites.yml', 'ready-fill-image.yml', 'search-personas.yml', 'smoke.yml', 'tests-desktop-windows.yml',
+PR_WORKFLOWS = {'conflict-label.yml', 'extension-store-publish.yml', 'gitar-label.yml', 'harness.yml', 'hosted-probe.yml', 'integration.yml', 'key-org-proof.yml',
+                'office-addon.yml', 'page-cases.yml', 'pr-closed-cancel.yml', 'pr-gate.yml', 'ready-fill-image.yml', 'search-personas.yml', 'smoke.yml', 'tests-desktop-windows.yml',
                 'tests-desktop.yml', 'tests-python.yml', 'tests-worker.yml'}
 
 

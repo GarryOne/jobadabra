@@ -1,4 +1,4 @@
-// The start state of the strategy tests (moved out of suites/strategy.mjs when that suite became integration/store/strategy-integration.test.mjs and strategy-notion-integration.test.mjs,
+// The start state of the strategy tests and of the 3 journey steps in suites/strategy.mjs (moved out of it when the rest of that suite became integration/store/strategy-integration.test.mjs and strategy-notion-integration.test.mjs,
 // owner, 1 Nov 2026): the page's sections and the same values in the config files' shape. Guarded by test/strategy-start.test.mjs and test/strategy-headings.test.mjs.
 import {withRoles} from '../lib/search-roles.mjs';
 

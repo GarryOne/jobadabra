@@ -115,7 +115,7 @@ test('one replay of the recorded cases per PR, in CI · Page cases only (no `rec
   const {splitForPr} = await import('../lib/replay-slow.mjs');
   assert.ok(!fs.existsSync(new URL('../suites/recorded.mjs', import.meta.url)), 'the recorded cases are no e2e suite: test/recorded-pages.test.mjs is their only home');
   const workflow = name => fs.readFileSync(new URL(`../../../.github/workflows/${name}`, import.meta.url), 'utf8');
-  assert.match(workflow('pr-suites.yml'), /pr-suites\.mjs --base origin\/main --plan --pull-request/);
+  assert.ok(!fs.existsSync(new URL('../../../.github/workflows/pr-suites.yml', import.meta.url)), 'no PR starts e2e (owner, 1 Nov 2026: "No e2e on PRs"): the steps run after the merge, main-steps.yml');
   const pages = workflow('page-cases.yml');
   for (const path of ["'extension/**'", "'desktop/e2e/recorded/**'"]) assert.ok(pages.includes(path), `page-cases.yml runs on a PR that changes ${path}`);
   const cases = [{name: 'fast'}, {name: 'slow'}];

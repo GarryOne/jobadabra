@@ -60,6 +60,7 @@ on:
       - 'tools/pool-rows.mjs'
       - 'tools/persona-search/codex.mjs'
       - 'tools/record-env.mjs'
+      - 'tools/red-main-verdict.mjs'
       - 'tools/rung-trailer.mjs'
       - 'tools/seed-ai-answer-requests.mjs'
       - 'tools/sentry-fixer/codex-fix.mjs'

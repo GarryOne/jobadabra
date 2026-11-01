@@ -45,6 +45,10 @@ on:
         description: 'Set by tools/beta-release.sh --force "<why>": main''s e2e was red and the beta starts anyway; the reason shows in this run''s summary (gate G2, 26 Oct 2026)'
         type: string
         default: ''
+      red_not_blocking:
+        description: 'Set by tools/beta-release.sh: the gate''s line "Red on main, not safety or data: <suite · step>, …" (a red that does not stop a beta); the release notes carry it beside "Passed on retry in this beta"'
+        type: string
+        default: ''
 
 permissions:
   contents: write      # create the release
@@ -72,6 +76,7 @@ jobs:
       windows_matrix: ${{ steps.plan.outputs.windows_matrix }}
       count: ${{ steps.plan.outputs.count }}
       review: ${{ steps.plan.outputs.review }}
+      red_note: ${{ steps.redmain.outputs.note || inputs.red_not_blocking }}   # Why (1 Nov 2026, owner: "Safety strict, rest tolerant"): a red that is not safety or data does not stop a beta; the release notes list it
       over: ${{ steps.spend.outputs.over }}                # today's e2e AI budget is spent
     permissions:
       contents: write   # the tag and the draft release
@@ -149,11 +154,18 @@ jobs:
           tools/red-main-gate.sh "$GITHUB_REPOSITORY" 2>&1 | tee "$RUNNER_TEMP/red-main-gate.log"
           rc=${PIPESTATUS[0]}
           set -e
-          if [ "$rc" -eq 0 ]; then echo "red=false" >> "$GITHUB_OUTPUT"; exit 0; fi
+          if [ "$rc" -eq 0 ]; then
+            echo "red=false" >> "$GITHUB_OUTPUT"
+            note=$(grep '^Red on main, not safety or data: ' "$RUNNER_TEMP/red-main-gate.log" | tail -1 || true)   # the gate's one line for a red it tolerates (tools/red-main-verdict.mjs)
+            [ -z "$note" ] || echo "note=$note" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           suites=$(awk '/^Main.s e2e is red:/ { found = 1; next } found && /^  / { print $1 }' "$RUNNER_TEMP/red-main-gate.log" | paste -sd, -)
+          why=$(sed -n 's/^Stops the beta: //p' "$RUNNER_TEMP/red-main-gate.log" | paste -sd';' -)   # why a safety or data step, or unreadable results, stopped it
           recheck=$(sed -n 's/^Re-check: //p' "$RUNNER_TEMP/red-main-gate.log" | tail -1)
           [ -n "$recheck" ] || recheck="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
           if [ -n "$suites" ]; then what="main's e2e still red on $suites"; else what="main's e2e state could not be read"; fi
+          [ -z "$why" ] || what="$what — $why"
           message="Nightly skipped: $what (re-check $recheck)"
           echo "::notice title=Nightly skipped::$message"
           echo "No build tonight: $what. Nothing is built or tested; the next beta re-checks the red suites first."
@@ -1460,6 +1472,7 @@ jobs:
           E2E_ALREADY_GREEN: '1'   # required Mac suites passed; outside health is reported separately
           SOAK: ${{ vars.JOB_PILOTTO_SOAK }}
           PASSED_ON_RETRY_FILE: passed-on-retry.txt   # tools/beta-approve.sh adds its line to the notes
+          RED_ON_MAIN_NOTE: ${{ needs.changes.outputs.red_note }}   # Why (1 Nov 2026): the red steps the gate let through; tools/beta-approve.sh adds the line beside the retry line
         run: |
           echo "Outside-world health: see the notion-real job notice and Mac HTML report (tolerant; does not block beta)."
           if [ "$SOAK" = on ]; then
@@ -1595,6 +1608,7 @@ jobs:
           E2E_ALREADY_GREEN: '1'   # every Windows suite passed on this commit, in this run
           SOAK: ${{ vars.JOB_PILOTTO_SOAK }}
           PASSED_ON_RETRY_FILE: passed-on-retry.txt   # tools/beta-approve.sh adds its line to the notes
+          RED_ON_MAIN_NOTE: ${{ needs.changes.outputs.red_note }}   # Why (1 Nov 2026): the red steps the gate let through; tools/beta-approve.sh adds the line beside the retry line
         run: |
           set -o pipefail   # a program piped into tee/cat keeps its exit code (tests/test_workflow_pipefail.py)
           tools/beta-approve.sh --windows "$TAG"

@@ -17,11 +17,9 @@ on:
     types: [completed]
     workflows:
       - 'CI · Pull request'
-      - 'CI · E2E suites for a PR'
-      - 'CI · End-to-end on Mac + Linux'
-      - 'CI · End-to-end on Windows'
       - 'CI · Control tests (measure, not required)'
       - 'CI · Harness tests'
+      - 'CI · Integration tests'
       - 'CI · Smoke (the app starts)'
       - 'CI · Hosted Always on cost probe (one-off)'
       - 'Proof · Codex subscription broker'

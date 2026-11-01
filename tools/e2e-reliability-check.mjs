@@ -11,8 +11,8 @@ const REGISTRY = 'desktop/e2e/lanes.json';
 const SUITE = /^desktop\/e2e\/suites\/([^/]+)\.mjs$/;
 const CHECK_LIB = /^desktop\/e2e\/lib\/[^/]*(?:check|problems|quality|judge|baseline|truth)[^/]*\.mjs$/;
 const EXPECTATIONS = /^desktop\/e2e\/(?:.*(?:baseline|expectations?)\.json|fixtures\/.*\/truth\.json)$/;
-// Why (28 Oct 2026, a8; e2e-revert #2424; e2e-flip 29 Oct 2026, owner): rule F covers workflows that run, judge or report e2e; label, mail and site workflows have no e2e design job to name. Add a workflow here when it starts to.
-const E2E_WORKFLOWS = '(?:e2e|e2e-windows|e2e-bisect|e2e-revert|e2e-flip|main-steps|pr-suites|pr-verdict|page-cases|stable-canary)';
+// Why (28 Oct 2026, a8; e2e-revert #2424; e2e-flip 29 Oct 2026, owner): rule F covers workflows that run, judge or report e2e; label, mail and site workflows have no e2e design job to name. Add a workflow here when it starts to; pr-suites left the list on 1 Nov 2026 (owner, "No e2e on PRs"): the workflow is deleted.
+const E2E_WORKFLOWS = '(?:e2e|e2e-windows|e2e-bisect|e2e-revert|e2e-flip|main-steps|pr-verdict|page-cases|stable-canary)';
 const HARNESS = new RegExp(`^(?:\\.github\\/workflows\\/${E2E_WORKFLOWS}\\.ya?ml|desktop\\/e2e\\/(?:lib\\/.*|[^/]+)\\.(?:[cm]?js|py|sh))$`);
 const citation = messages => messages.some(message => /^(?:Expect-changed-by|Test-was-wrong):[ \t]*\S[^\n]*$/m.test(message));
 

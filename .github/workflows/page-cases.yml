@@ -254,8 +254,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          # Why (1 Nov 2026, Gitar on #2825): main's page cases run inside CI · Tests (build.yml calls this workflow as its `pages` job), so their artifacts sit in build.yml's
-          # runs; page-cases.yml has had no push run since 15 Oct, so the old lookup found nothing and this check only ever said "no main data".
-          id=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow build.yml --branch main --event push --status success --limit 1 --json databaseId -q '.[0].databaseId' || true)
+          # Why (1 Nov 2026, Gitar on #2825): main's page cases run inside CI · Tests (build.yml calls this workflow as its `pages` job), so their artifacts sit in its runs;
+          # page-cases.yml has had no push run since 15 Oct, so the old run lookup found nothing and this check only ever said "no main data". Found by artifact name,
+          # as build.yml's fill check finds its baseline (a workflow reading build.yml's runs by name is a release check: tests/test_release_checks.py).
+          id=$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=replay-results-1&per_page=20" --jq '[.artifacts[] | select((.expired | not) and .workflow_run.head_branch == "main")][0].workflow_run.id // empty' || true)
           if [ -n "$id" ]; then gh run download "$id" --repo "$GITHUB_REPOSITORY" --pattern 'replay-results-*' --dir main-results || echo "fill time: main's results of run $id could not be read"; fi
           node replay-time.mjs --pr results/replay-results-*.json --main main-results/*/*.json   # one folder per artifact; an unmatched pattern is a missing file, skipped

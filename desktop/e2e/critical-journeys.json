@@ -1,12 +1,13 @@
 {
- "_about": "The critical journeys the beta proves (owner, 1 Nov 2026), each with the steps that prove it, and the safety or data steps kept though no journey owns them. Safety and data marks live in code, never here. parts: literals of a name the code builds.",
+ "_about": "The critical journeys the beta proves (owner, 1 Nov 2026), each with the steps that prove it, and the safety or data steps kept though no journey owns them. tier 1 = runs after every merge and blocks the beta (the owner's test: \"it blocks the user's flow\"); tier 2 = night burn-in only, reported, never blocks. The kept steps are tier 1. Safety and data marks live in code, never here. parts: literals of a name the code builds.",
  "journeys": [
   {
    "id": "J0",
    "name": "The app starts and draws every screen (smoke)",
    "steps": [
     {"suite": "settings", "step": "every Settings section renders"}
-   ]
+   ],
+   "tier": 1
   },
   {
    "id": "J1",
@@ -20,7 +21,8 @@
     {"suite": "wizard", "step": "finishing the setup without Notion opens the Jobs list, with the strategy kept on this Mac"},
     {"suite": "wizard", "step": "Jobs opens on the Find jobs card; pressing it starts the first search"},
     {"suite": "wizard", "step": "a new install keeps its data on this Mac: the store is set once at first start"}
-   ]
+   ],
+   "tier": 1
   },
   {
    "id": "J2",
@@ -28,7 +30,8 @@
    "steps": [
     {"suite": "jobs", "step": "a jobs check reads the fixture feeds, drops the wrong roles and scores the matching jobs"},
     {"suite": "jobs", "step": "every scored job in the Jobs list is its Job Matches record, with the same score, and none is missing"}
-   ]
+   ],
+   "tier": 1
   },
   {
    "id": "J4",
@@ -41,7 +44,8 @@
     {"suite": "linkedin", "step": "Stop in the middle of a LinkedIn read closes its tab and takes the session out of the browser"},
     {"suite": "linkedin", "step": "the copied session is in no log, run or store file of the app, only in the run's secrets file"},
     {"suite": "linkedin", "step": "with the switch off a press asks LinkedIn for nothing and the session is gone from the secrets file"}
-   ]
+   ],
+   "tier": 1
   },
   {
    "id": "J5",
@@ -51,7 +55,8 @@
     {"suite": "apply", "step": "the person submits a form: the page after Submit is read, the job becomes Applied, its session leaves the list"},
     {"suite": "apply", "step": "through all of it: Submit was never clicked or submitted, and no host but the fixture job sites was contacted"},
     {"suite": "applyflows", "step": "through all of it: Submit was never clicked or submitted, and no host but the fixture job sites was contacted"}
-   ]
+   ],
+   "tier": 1
   },
   {
    "id": "J6",
@@ -64,21 +69,25 @@
     {"suite": "apply", "step": "Full automation saved without its confirmation: the app refuses to start, and nothing is filled or sent"},
     {"suite": "apply", "step": "the app quits in Full automation's wait: after it starts again the job is handed to you, and nothing is pressed when the wait runs out"},
     {"suite": "apply", "step": "Stop on the card in Full automation: the wait says when it will submit, Stop hands it to you, and nothing is posted past the due time"}
-   ]
+   ],
+   "tier": 1
   },
   {
    "id": "J7",
    "name": "Apply in the hidden browser: fills, you submit, queue in order",
    "steps": [
     {"suite": "apply", "step": "The hidden browser fills a form, the person's Submit in the live view posts it once and the job becomes Applied"}
-   ]
+   ],
+   "tier": 1
   },
   {
    "id": "J8",
    "name": "Tailor a CV for a job",
    "steps": [
-    {"suite": "apply", "step": "Tailor CV on a job writes a CV from its posting: the PDF on this Mac, the file on the job in Notion, and the extension attaches it, not the base CV"}
-   ]
+    {"suite": "apply", "step": "Tailor CV on a job writes a CV from its posting: the PDF on this Mac, the file on the job in Notion, and the extension attaches it, not the base CV"},
+    {"suite": "apply", "step": "Tailor on the session page of a form restarts the form with the tailored CV under its own name"}
+   ],
+   "tier": 2
   },
   {
    "id": "J9",
@@ -86,7 +95,8 @@
    "steps": [
     {"suite": "stores", "step": "the board shows the store's applications in their stage columns"},
     {"suite": "stores", "step": "moving a card to Interviewing writes the stage and its event to the store, and it stays after a reload"}
-   ]
+   ],
+   "tier": 1
   },
   {
    "id": "J10",
@@ -96,7 +106,8 @@
     {"suite": "settings", "step": "Automatic backup: the backup file, imported after a reset, brings this computer back as it was"},
     {"suite": "storemove", "step": "the export, imported into a fresh install, shows the same on every screen (still this Mac's store)"},
     {"suite": "storemove", "step": "the imported install moves into an empty Notion: its Profile and every record arrive once"}
-   ]
+   ],
+   "tier": 1
   },
   {
    "id": "J11",
@@ -111,7 +122,8 @@
      ]
     },
     {"suite": "activityfailures", "step": "quitting the app in the middle of a run: it is not shown Running for ever, and the app says what became of it"}
-   ]
+   ],
+   "tier": 1
   },
   {
    "id": "J12",
@@ -120,6 +132,40 @@
     {"suite": "updates", "step": "a newer stable release is offered to everyone, in the menu foot"},
     {"suite": "updates", "step": "an approved beta is offered only on the beta channel"},
     {"suite": "updates", "step": "a pre-release the gate has not approved is never offered, even on the beta channel"}
+   ],
+   "tier": 1
+  },
+  {
+   "id": "J14",
+   "name": "Profile: the CV is read, its problems are found",
+   "tier": 1,
+   "steps": [
+    {"suite": "settings", "step": "the CV check reads real PDFs: a plain CV passes, each known problem is found, a picture of a CV fails"}
+   ]
+  },
+  {
+   "id": "J15",
+   "name": "What we learned: sign-up answers stay out, a menu choice is remembered",
+   "tier": 2,
+   "steps": [
+    {"suite": "applyflows", "step": "a sign-up page before the form: the account step is kept apart from the application form"},
+    {"suite": "applyflows", "step": "a menu whose choices are not the answer's words: the choice that means the same is picked, then remembered for the next form on the site"}
+   ]
+  },
+  {
+   "id": "J16",
+   "name": "Gmail check: reads the inbox and ends in words",
+   "tier": 2,
+   "steps": [
+    {"suite": "activityfailures", "step": "the Gmail check reads the inbox through Google and ends in words, with nothing left Running"}
+   ]
+  },
+  {
+   "id": "J17",
+   "name": "Settings render without layout problems",
+   "tier": 2,
+   "steps": [
+    {"suite": "settings", "step": "Settings render without layout problems"}
    ]
   }
  ],

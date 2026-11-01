@@ -1,6 +1,5 @@
 // The first-run path of a new install: key, CV, strategy, finish without Notion on this Mac's store (given at first start). One store leg: starting on Notion (Notion connected while that store
 // is still empty: the store becomes Notion and the strategy moves in, "Start using Notion") is integration/store/wizard-start-on-notion.test.mjs (1 Nov 2026, wizard 2/2).
-import {finish, visit} from '../lib/layout.mjs';
 import {runWizard} from '../lib/wizard.mjs';
 
 export const minutes = 20;
@@ -12,10 +11,6 @@ export const store = 'sqlite';
 export const fresh = true;
 export const newInstall = true;
 export async function run(ctx) {
-  ctx.findings = [];
   await runWizard(ctx);
-  await ctx.run('the first screens after setup render without layout problems', async () => {
-    await visit(ctx, ['focus', 'jobs']);
-    finish(ctx);
-  }, {needs: ctx.needs});
+  // The first screens after setup, laid out: suites/interactions.mjs (night-report) takes the Finder shots of Focus and Jobs on a set-up install (moved 1 Nov 2026, 6/6a-2).
 }

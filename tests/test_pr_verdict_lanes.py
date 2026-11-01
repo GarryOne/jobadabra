@@ -178,7 +178,7 @@ class RegistryFile(unittest.TestCase):
     def test_the_registry_keeps_the_first_cut_the_live_quality_journey_and_personas(self):
         listed = {name: (entry['lane'], entry['returns']) for name, entry in self.registry['suites'].items() if 'lane' in entry}
         self.assertEqual(listed, {
-            'qualityai': ('tolerant', 'Stays tolerant: it measures the live model.'),
+            'qualityai': ('tolerant', 'Stays tolerant: it measures the live model, as a nightly report, not a gate.'),   # owner via a8, 1 Nov 2026: cadence night-report (lib/quality-journey.mjs PLANNER)
             'notion-real': ('tolerant', 'Stays tolerant: it tests Notion itself.'),
             'personas': ('tolerant', 'Stays tolerant: it reports a live model\'s answers on fictional personas; it returns to the backbone only if the owner asks for its asks to be stored.'),   # owner, 31 Oct 2026: report only, like qualityai
             'wander': ('tolerant', 'Stays tolerant: it is a nightly report, not a gate.'),   # owner, 1 Nov 2026: cadence night-report (lib/plan.mjs)

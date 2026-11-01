@@ -3,6 +3,7 @@
 // Guard: desktop/test/data-fingerprint.test.js.
 import crypto from 'node:crypto';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import {createRequire} from 'node:module';
 import {CONFIG_FILES} from './config-text.js';
@@ -23,12 +24,16 @@ const read = (dir, rel) => { try { return fs.readFileSync(path.join(dir, rel)); 
 const walk = (dir, rel) => { try { return fs.readdirSync(path.join(dir, rel), {withFileTypes: true}).flatMap(entry => (entry.isDirectory() ? walk(dir, path.join(rel, entry.name)) : [path.join(rel, entry.name)])); } catch { return []; } };
 
 // One cell per row and column, keyed by the table's primary key (the rowid when it has none): an added column or table is only "new", a renamed or dropped one is "lost".
+// Why (1 Nov 2026): read a private copy of the file and its -wal, never the live file: an app that just quit leaves committed rows in the -wal, and opening the live file would
+// miss them or write a checkpoint into the folder under test.
 function sqliteCells(dir, rel, out) {
   const file = path.join(dir, rel);
   if (!fs.existsSync(file)) return;
+  const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'data-fingerprint-copy-'));
   let db;
   try {
-    db = new (sqlite().DatabaseSync)(file, {readOnly: true});
+    for (const suffix of ['', '-wal']) if (fs.existsSync(file + suffix)) fs.copyFileSync(file + suffix, path.join(scratch, `copy.sqlite${suffix}`));
+    db = new (sqlite().DatabaseSync)(path.join(scratch, 'copy.sqlite'));
     for (const {name} of db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'").all()) {
       const info = db.prepare(`PRAGMA table_info("${name.replace(/"/g, '""')}")`).all(), keys = info.filter(column => column.pk).sort((a, b) => a.pk - b.pk).map(column => column.name);
       for (const row of db.prepare(`SELECT rowid AS __rowid, * FROM "${name.replace(/"/g, '""')}"`).all()) {
@@ -37,7 +42,7 @@ function sqliteCells(dir, rel, out) {
       }
     }
   } catch (error) { out[`sqlite:${rel}:unreadable`] = hash(String(error.message)); }   // a store the new build cannot open is a change, not silence
-  finally { try { db?.close(); } catch { /* already closed */ } }
+  finally { try { db?.close(); } catch { /* already closed */ } fs.rmSync(scratch, {recursive: true, force: true}); }
 }
 
 /** {key: hash} for a data folder: sqlite cells, whole text files, JSON files per top-level key, and every file under cv/. Keys read `kind:path[:detail]`. */

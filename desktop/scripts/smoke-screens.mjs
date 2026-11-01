@@ -17,10 +17,11 @@ const topOfStack = report => {
   return at < 0 ? report.split('\n').slice(-60).join('\n') : report.slice(at).split('\n').slice(0, 40).join('\n');
 };
 
-export async function jobsScreen({exe, out, prefix, say}) {
+// Why (1 Nov 2026): `userData` lets the upgrade + data test open the app on the folder it seeded (its own settings.json stays); the two smoke tests pass none and get the usual fresh one.
+export async function jobsScreen({exe, out, prefix, say, userData: given = ''}) {
   const name = 'jobs-without-notion';
-  const userData = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-smoke-'));
-  fs.writeFileSync(path.join(userData, 'settings.json'), JSON.stringify(DONE));
+  const userData = given || fs.mkdtempSync(path.join(os.tmpdir(), 'jp-smoke-'));
+  if (!given) fs.writeFileSync(path.join(userData, 'settings.json'), JSON.stringify(DONE));
   const png = path.join(out, `${prefix}-${name}.png`);
   // A hard limit (SIGKILL: a quitting app can hang too), the app's own output, and where it is stuck when no screenshot comes: on a bare CI Mac the window once never
   // came (10 Oct 2026). After 20 s without a picture the process is sampled (macOS `sample`) and listed, so a hang names its cause.

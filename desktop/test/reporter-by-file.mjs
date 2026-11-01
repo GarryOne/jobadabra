@@ -8,6 +8,7 @@ import path from 'node:path';
 // Why (1 Nov 2026): the reporter used to yield only after the whole run, so a 4-minute run was silent. JOB_PILOTTO_PROGRESS_MS is the test seam for the quiet interval.
 const QUIET_MS = Number(process.env.JOB_PILOTTO_PROGRESS_MS) || 25000;
 const TICK = Symbol('tick');
+const now = () => Date.now();   // clock: relative the progress line says how long THIS run has been going; it is wall time by definition, never a fixture's date
 const clock = ms => { const seconds = Math.round(ms / 1000); return seconds >= 60 ? `${Math.floor(seconds / 60)}m${String(seconds % 60).padStart(2, '0')}s` : `${seconds}s`; };
 // How many test files this run was asked for: the patterns node --test got, expanded; null when they cannot be expanded (the progress line then has no total).
 export function countFiles(patterns = process.argv.slice(1), glob = fs.globSync) {
@@ -41,9 +42,9 @@ export default async function* byFile(source) {
     return files.get(file);
   };
   let diagnostics = [], failed = 0;
-  const label = `${path.basename(process.cwd())} tests`, total = countFiles(), began = Date.now();
+  const label = `${path.basename(process.cwd())} tests`, total = countFiles(), began = now();
   let lastLine = began, step = 1;
-  const progress = () => { lastLine = Date.now(); return `${label}: ${files.size}${total ? `/${total}` : ''} files · ${failed} failed · ${clock(lastLine - began)}\n`; };
+  const progress = () => { lastLine = now(); return `${label}: ${files.size}${total ? `/${total}` : ''} files · ${failed} failed · ${clock(lastLine - began)}\n`; };
   yield `${label}: started${total ? ` · ${total} files` : ''}\n`;
   const iterator = source[Symbol.asyncIterator]();
   let pending = iterator.next();
@@ -61,7 +62,7 @@ export default async function* byFile(source) {
       if (text) { failed++; yield text; }   // a failing test at once, the end summary lists it again
     } else if (type === 'test:diagnostic' && !/^(tests|suites|pass|fail|cancelled|skipped|todo|duration_ms) /.test(data.message)) diagnostics.push(data.message);
     if (total && files.size >= Math.ceil(total * step / 10)) { step = Math.floor(files.size * 10 / total) + 1; yield progress(); }   // every ~10% of the files
-    else if (Date.now() - lastLine >= QUIET_MS) yield progress();
+    else if (now() - lastLine >= QUIET_MS) yield progress();
   }
   let pass = 0, fail = 0, skipped = 0;
   const sorted = [...files].sort(([a], [b]) => a.localeCompare(b));

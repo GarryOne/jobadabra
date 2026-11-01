@@ -40,5 +40,5 @@ Owner, 1 Nov 2026: "look on the entire harness/workflow of our development and .
 - [x] Preview (desktop | phone, real numbers) and the owner's yes: "Yes, build it as shown (Recommended)", "Accept, show it plainly (Recommended)" (proof: none: the owner's answers, the image is in the web PR)
 - [x] PR 1/3 `sdlc-stats` and workflow step (proof: tools/sdlc-stats.mjs @b6d27ee, desktop/test/sdlc-stats.test.js @057836e)
 - [x] PR 2/3 the tab and grid (proof: none: the code is in jobadabra-web PR #251, merged)
-- [ ] Hook counter (not started): the owner's own yes on the exact diff, then PR 3/3
+- [x] Hook counter: the owner's own yes on the exact diff ("Yes, apply this diff (Recommended)"), `~/.claude/hooks/count-blocks.sh` wraps four hooks, the upload carries the counts (web #253 shows them) (proof: tools/gate-stats.mjs @a8244f7, desktop/test/gate-stats.test.js @8209ea6)
 - [x] First `sdlc` upload seen on the live page: 5 days, 11,452 runs, "5 slow checks caught nothing real (50.9 h in 4 weeks)" (proof: none: workflow run 41330739611 and the live tab)

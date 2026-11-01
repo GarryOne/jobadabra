@@ -52,3 +52,20 @@ class CheckTests(unittest.TestCase):
     def test_missing_dependencies_are_actionable(self):
         with mock.patch.object(check, 'find_node', return_value=('/node', 'v22.23.1')), mock.patch.object(check.shutil, 'which', return_value='/npm'), mock.patch.object(check.Path, 'is_dir', return_value=False):
             self.assertEqual(check.main(['--area', 'desktop']), 2)
+
+    def test_the_worker_area_checks_the_modules_of_its_folder(self):
+        """Why (1 Nov 2026, #2882 red): the `worker` suite's folder is app-core/; check.py asked for worker/node_modules, which CI never has (a worktree's old link hid it locally)."""
+        self.assertEqual(check.AREA_DIR['worker'], 'app-core')
+        self.assertTrue((check.ROOT / 'app-core' / 'package.json').is_file())
+        self.assertFalse((check.ROOT / 'worker' / 'node_modules').exists() and not (check.ROOT / 'app-core' / 'node_modules').exists())
+        seen = []
+        def only_app_core(path):
+            seen.append(path.as_posix())
+            return path.parent.name == 'app-core' and path.name == 'node_modules'
+        with mock.patch.object(check, 'find_node', return_value=('/node', 'v22.23.1')), mock.patch.object(check.shutil, 'which', return_value='/npm'), \
+                mock.patch.object(check.Path, 'is_dir', only_app_core), mock.patch.object(check.subprocess, 'run', return_value=mock.Mock(returncode=0)), \
+                mock.patch('builtins.print'):
+            check.main(['--area', 'worker'])
+        self.assertTrue(any(p.endswith('app-core/node_modules') for p in seen), seen)
+        self.assertFalse(any(p.endswith('worker/node_modules') for p in seen), seen)
+

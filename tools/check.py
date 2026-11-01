@@ -102,8 +102,9 @@ def main(argv=None):
         for area in areas:
             package = json.loads((ROOT / ('workers/www' if area == 'site' else AREA_DIR.get(area, area)) / 'package.json').read_text()) if area != 'python' else {}
             needs_modules = bool(package.get('dependencies') or package.get('devDependencies'))
-            if needs_modules and not (ROOT / area / 'node_modules').is_dir():
-                raise RuntimeError(f'{area}/node_modules is missing. Use tools/worktree.sh or run npm ci in {area}/.')
+            where = AREA_DIR.get(area, area)
+            if needs_modules and not (ROOT / where / 'node_modules').is_dir():
+                raise RuntimeError(f'{where}/node_modules is missing. Use tools/worktree.sh or run npm ci in {where}/.')
             if area == 'desktop' and not (ROOT / 'desktop/node_modules/eslint').exists():
                 raise RuntimeError('Desktop dependencies are outdated: run npm ci in desktop/.')
     except RuntimeError as error:

@@ -61,12 +61,6 @@
     "updates": {
       "aiMissesMax": 0
     },
-    "failuresnotion": {
-      "aiMissesMax": 0
-    },
-    "storemove": {
-      "aiMissesMax": 0
-    },
     "quality": {
       "lane": "tolerant",
       "input": "ai",

@@ -113,7 +113,7 @@ test('settings registers measured runner caps and no aggregate budget', async ()
   const direct = stepCalls(source('suites/settings.mjs')).map(step => step.name);
   const seed = stepCalls(source('lib/seed.mjs')).map(step => step.name);
   const required = [...direct, ...seed, 'no AI call of this suite reached a real model: the stand-in answered or refused every one', 'nothing was queued to report to the product', 'the Notion stand-in answered every request the app made'];
-  assert.ok(direct.length >= 6, 'positive control: settings literal steps were read');
+  assert.ok(direct.length >= 2, 'positive control: settings literal steps were read');   // Why (1 Nov 2026): the Your data and Automatic backup steps left e2e: two literal steps stay (the smoke and the CV check)
   assert.deepEqual(Object.keys(settings.hangCaps).sort(), [...new Set(required)].sort());
   for (const [name, seconds] of Object.entries(settings.hangCaps)) {
     assert.ok(Number.isFinite(seconds) && seconds >= 30, `${name}: ${seconds}`);

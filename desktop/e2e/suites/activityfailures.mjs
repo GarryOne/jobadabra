@@ -6,8 +6,7 @@
 import {hangCapsFor} from '../lib/hang-caps.mjs';
 import {pollUntil, waitForLogLine} from '../lib/wait-on-state.mjs';
 import {badSummary, leaks} from '../lib/activity.mjs';
-import {rows as notionRows} from '../lib/notion.mjs';
-import {LABEL, idsNow, noRowStaysRunning, openRun, own, prepare, quiet, resumedSearchSeen, runTask, runsData, setFeed, sleep} from '../lib/activity-steps.mjs';
+import {LABEL, idsNow, noRowStaysRunning, openRun, own, prepare, quiet, resumedSearchSeen, runTask, runsData, setFeed} from '../lib/activity-steps.mjs';
 
 // Only this arming can prove consumption; global failures may belong to earlier delayed calls.
 function consumedFault(fault) {
@@ -49,7 +48,7 @@ export const keepGoing = true;
 export const notionProxy = true;
 // The app reads Notion's run history every 15 s and picks up the jobs of the last session 20 s after launch: both shortened for the journey (never for a user).
 export const env = {JOB_PILOTTO_E2E_HISTORY_MS: '3000', JOB_PILOTTO_E2E_RESUME_MS: '3000', JOB_PILOTTO_E2E_EXPECTS_FAILURES: '1'};   // this suite breaks things on purpose: its Sentry reports are tagged expected
-// The two parts are the suites activityfailures (the AI) and failuresnotion: each on its own Notion page, in parallel.
+// The AI part (the Notion part left e2e with the suite failuresnotion, 1 Nov 2026).
 export async function runParts(ctx, parts) {
   const {proxy} = ctx;
   ctx.activityStateWaits = parts.includes('ai');
@@ -91,37 +90,7 @@ export async function runParts(ctx, parts) {
       }), {needs: ctx.needs, faults: true, stopOnHang: true});
     }
   }
-  if (parts.includes('notion')) {
-    // A save Notion refuses must never look saved: the engine writes Notion first and changes nothing when it fails (src/desktop.py), so the person is told,
-    // the row in Notion is as it was, and the list does not claim the job is saved. A silent loss here is a job the person thinks they kept (5 Oct 2026).
-    await ctx.run('a Save that Notion refuses is never shown as saved: the person is told in words, and Notion and the list still agree', async () => {
-      // Its own job first (9 Oct 2026: run as failuresnotion, nothing had opened the Jobs page, so the list was never loaded and the step never
-      // reached Save; and under the applicant's own strategy, Zurich only, a "Zurich or Amsterdam" posting was placed outside their places and
-      // dropped): one clean search for a posting in Zurich, then the Jobs page, whose list must hold THAT job before Notion is made to refuse.
-      const [seed] = setFeed(ctx, ['Senior Site Reliability Engineer, save seed'], {location: 'Zurich, Switzerland'});
-      await runTask(ctx, 'run', {maxMs: 300000, kind: 'search'});
-      await page.click('.nav[data-view="jobs"]');
-      const unsaved = () => page.evaluate(url => (window.__jp.shared.allJobs || []).find(item => item.url === url && item.status !== 'saved'), seed.absolute_url);
-      let job = await unsaved();
-      for (let waited = 0; !job && waited < 60000; waited += 2000) { await sleep(page, 2000); job = await unsaved(); }
-      if (!job) throw new Error(`the seed did not take: a clean search for "${seed.title}" (Zurich) ran, yet the Jobs list does not hold it (${seed.absolute_url})`);
-      console.log(`  save seed: "${job.title}" (${job.company}) is in the list, status ${job.status}`);
-      const statusIn = async () => (await notionRows(ctx.token, 'Job Matches — AI Scored')).find(row => String(row.properties?.['Job URL']?.url || '').replace(/\/$/, '') === job.url.replace(/\/$/, ''))?.properties?.Status?.select?.name || '';
-      const before = await statusIn();
-      ctx.notion.fail('server-error', {writes: true});
-      let result;
-      try { result = await page.evaluate(url => window.pilot.setStatus(url, 'saved').catch(error => ({ok: false, error: error.message})), job.url); } finally { ctx.notion.pass(); }
-      const after = await statusIn();
-      const listed = await page.evaluate(url => (window.__jp.shared.allJobs || []).find(item => item.url === url)?.status, job.url);
-      console.log(`  save refused: answer ${JSON.stringify(result).slice(0, 160)}; Notion "${before}" -> "${after}"; list "${listed}"`);
-      const problems = [];
-      if (result?.ok && after === before) problems.push('the app answered "saved" but Notion never got it: a silent loss');
-      if (!result?.ok && after !== before) problems.push(`the app said it failed but Notion changed ("${before}" -> "${after}")`);
-      if (!result?.ok && listed === 'saved') problems.push('the list shows the job as saved though the save failed');
-      if (!result?.ok && /<!DOCTYPE|internal_server_error|"object":|Traceback/.test(String(result?.error || ''))) problems.push('the message for the person carries Notion\'s raw answer');
-      if (problems.length) throw new Error(problems.join('; '));
-    }, {needs: ctx.needs, faults: true, data: true});
-  }
+  // Why (1 Nov 2026, owner: "All Notion-only steps"): the Notion part (a save Notion refuses is never shown as saved; suite failuresnotion) is desktop/integration/store/save-refused-notion.test.mjs.
   // Why (1 Nov 2026, owner: "Only tier 1 … should stay e2e"): the Gmail check (night journey J16, Tier 2; suite failureschannels) is an integration test: integration/store/run-channels.test.mjs.
   if (parts.includes('ai')) {
     // ---------- (3) two things at once, and a quit in the middle ----------

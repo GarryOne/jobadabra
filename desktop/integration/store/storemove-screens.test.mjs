@@ -59,7 +59,7 @@ async function screens(profile, token = '') {
 }
 const sorted = shown => Object.fromEntries(Object.entries(shown).map(([key, list]) => [key, [...list].sort()]));
 
-test('Jobs, Focus, Interviews and Recent activity show the same items from Notion', async () => {
+test('after the move, the engine serves Jobs, Focus, Interviews and Recent activity the same items from Notion', async () => {
   const {profile, storage} = await install(standIn);
   const before = await screens(profile);
   // The positive control: the seed is what the screens are handed, so "the same after" means something.
@@ -72,7 +72,7 @@ test('Jobs, Focus, Interviews and Recent activity show the same items from Notio
   assert.deepEqual(standIn.stats.unknown, [], 'the stand-in met requests it does not know');
 });
 
-test('the export, imported into a fresh install, shows the same on every screen (still this Mac\'s store)', async () => {
+test('the export, imported into a fresh install, hands the same items to Jobs, Focus, Interviews and Recent activity (still this Mac\'s store)', async () => {
   const {profile} = await install(standIn);
   const before = await screens(profile);
   assert.ok(before.jobs.length === 4 && before.interviews.length === 1, `the seeded data is not on the screens: ${JSON.stringify(before)}`);

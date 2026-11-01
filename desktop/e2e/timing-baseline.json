@@ -24,11 +24,6 @@
     "elapsedAssertions": 0,
     "clockWaits": 4
   },
-  "failuresnotion": {
-    "fixedWaits": 0,
-    "elapsedAssertions": 0,
-    "clockWaits": 8
-  },
   "interactions": {
     "fixedWaits": 1,
     "elapsedAssertions": 0,
@@ -73,11 +68,6 @@
     "fixedWaits": 0,
     "elapsedAssertions": 0,
     "clockWaits": 2
-  },
-  "storemove": {
-    "fixedWaits": 0,
-    "elapsedAssertions": 0,
-    "clockWaits": 10
   },
   "strategy": {
     "fixedWaits": 0,

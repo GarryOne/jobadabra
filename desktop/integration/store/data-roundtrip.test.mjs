@@ -93,7 +93,7 @@ test('Automatic backup: the backup file, imported after a reset, brings this com
 });
 
 test('Automatic backup: Back up now writes a backup with no keys in its folder', async () => {
-  const {base, dir, storage} = install();
+  const {base, storage} = install();
   storage.setSecret('OPENAI_API_KEY', MARKER);
   const target = path.join(base, 'backups');
   const told = [];

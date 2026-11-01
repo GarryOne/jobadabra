@@ -119,12 +119,6 @@
       "standin": 253,
       "sqlite": 220
     },
-    "Mac + Linux · storemove": {
-      "runs": 2,
-      "max": 87,
-      "standin": 87,
-      "sqlite": 83
-    },
     "Mac + Linux · qualityai": {
       "runs": 2,
       "max": 278,
@@ -136,12 +130,6 @@
       "max": 130,
       "standin": 130,
       "sqlite": 126
-    },
-    "Mac + Linux · failuresnotion": {
-      "runs": 2,
-      "max": 78,
-      "standin": 77,
-      "sqlite": 78
     },
     "Mac + Linux · interviews": {
       "runs": 2,

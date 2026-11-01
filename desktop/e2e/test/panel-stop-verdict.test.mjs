@@ -29,6 +29,13 @@ test('a click call that times out after the press landed is judged pressed, and 
   assert.equal(clock.clicks, 1, 'a press that landed is never repeated');
 });
 
+test('a halted panel whose labels went back to "Stop" and whose dim stays is judged pressed, and the dim stage is named (Gitar on #2779; extension/review.js stoppedHere calls stopsBack)', async () => {
+  const dimStays = {...halted, overlay: true, stopButtons: ['Stop', 'Stop']};
+  const {page, clock, options} = fake({click: async (timeout, c) => { c.ms += timeout; throw new Error('locator.click: Timeout 1500ms exceeded.'); }, show: () => dimStays});
+  await assert.rejects(pressStop(page, {capMs: 1500, ...options}), error => /^Stop did not halt the fill: the dim over the page lifted did not finish/.test(error.message) && /"overlay":true/.test(error.message));
+  assert.equal(clock.clicks, 1);
+});
+
 test('a click call that returns is not a verdict either: a panel that never shows the press fails naming the panel, not the click', async () => {
   const {page, options} = fake({click: async () => {}, show: () => idle});
   await assert.rejects(pressStop(page, {capMs: 1000, ...options}), error => {

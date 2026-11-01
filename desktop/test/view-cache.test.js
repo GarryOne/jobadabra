@@ -118,6 +118,15 @@ test('a change made elsewhere before the store caught up is not hidden: only a s
   assert.equal(read(s, [{url, status: 'unreviewed', stage: 'Kit ready'}]).jobs[0].stage, 'Kit ready', 'and the hold ended with it');
 });
 
+test('with no saved list to read the prior state from, the first listing after the write is the stale one and a newer change is not hidden', () => {
+  const s = storage(); s.saveSettings({viewCache: false});   // recall() is null: no prior state known
+  const url = 'https://x/ember';
+  viewCache.statusChanged(s, url, 'dismissed', 'Closed');
+  assert.equal(read(s, [{url, status: 'applied', stage: 'Interview scheduled'}]).jobs[0].stage, 'Closed', 'the first listing, from before the write, is replaced');
+  assert.equal(read(s, [{url, status: 'applied', stage: 'Interview scheduled'}]).jobs[0].stage, 'Closed', 'and so is the next one');
+  assert.equal(read(s, [{url, status: 'applied', stage: 'Offer'}]).jobs[0].stage, 'Offer', 'a newer state is shown, and the hold ends');
+});
+
 test('two writes inside the lag: the listing from before either of them is still replaced by the last one', () => {
   const s = storage(), url = 'https://x/ember';
   read(s, [{url, status: 'applied', stage: 'Interview scheduled'}]);

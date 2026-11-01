@@ -59,7 +59,8 @@ export function withHeldWrites(storage, result) {
     if (!one) return true;
     if (one.deleted) { removed += 1; return false; }
     if (job.status === one.status && (!one.stage || job.stage === one.stage)) { held.delete(key); return true; }   // the store lists it now
-    if (one.stale.length && !one.stale.some(old => same(job, old))) { held.delete(key); return true; }   // a newer change than the one held
+    if (!one.stale.length) one.stale = [{status: job.status, stage: job.stage}];   // no prior state known (saved list off, empty or another workspace's): the first listing after the write is the store's pre-write one
+    else if (!one.stale.some(old => same(job, old))) { held.delete(key); return true; }   // a newer change than the one held
     Object.assign(job, {status: one.status}, one.stage ? {stage: one.stage} : {});
     return true;
   });
@@ -74,8 +75,8 @@ export const releaseHeldWrites = () => held.clear();
 // change, a dismissed interview back as "Interview scheduled" until the fresh read landed (focus e2e, 3 Oct 2026).
 // A job deleted: out of the cached list, so the next start does not paint it back (main.js deleteJob).
 export function jobDeleted(storage, url) {
-  readsChanged();
-  hold(storage, url, {deleted: true});   // a read running now began before this write (shared-read.js)
+  readsChanged();   // a read running now began before this write (shared-read.js)
+  hold(storage, url, {deleted: true});
   const saved = recall(storage, 'jobs');
   if (!saved?.result?.jobs) return;
   saved.result.jobs = saved.result.jobs.filter(item => item.url !== url);

@@ -1,12 +1,16 @@
-// LinkedIn jobs on every Find jobs, PR 1/3 (spec docs/superpowers/specs/2026-10-31-linkedin-headless-design.md): the IPC the window uses for the switch and the two
+// LinkedIn jobs on every Find jobs, PR 1/3 (spec docs/superpowers/specs/2026-10-31-linkedin-headless-design.md): the IPC the window uses for the switch and the
 // routes the extension calls (the copied session, and "is the switch still on?"). The session is a credential: nothing here logs it or sends it back. Guard: test/linkedin-handlers.test.js.
 import * as session from './linkedin-session.js';
+import {refresh as realRefresh} from './linkedin-refresh.js';
 
-/** The extension's two calls. session: {cookies} from the consent page -> saved or refused; pending: only tells the extension whether to give up its LinkedIn permissions. */
+/** The extension's three calls. session: {cookies} from the consent page -> saved or refused; pending: tells the extension whether to give up its LinkedIn permissions and whether a Find jobs press
+ *  wants a fresh copy now; refresh: that fresh copy (or {held: false}), after which the waiting press goes on (lib/linkedin-refresh.js). */
 export function linkedinRoutes(storage, deps = {}) {
+  const note = deps.refresh || realRefresh;
   return {
     session: payload => session.saveSession(storage, payload?.cookies, deps),
-    pending: () => ({revoke: !session.state(storage).on}),
+    pending: () => { const on = session.state(storage).on; return {revoke: !on, refresh: on && note.look()}; },
+    refresh: payload => { const answer = session.refreshSession(storage, payload?.cookies, {...deps, held: payload?.held !== false}); note.delivered(); return answer; },
   };
 }
 
@@ -21,6 +25,7 @@ export function registerLinkedinHandlers({DEMO, ipcMain, server, storage, openPa
   const routes = linkedinRoutes(storage, deps);
   server.setVisitRoute('/extension/linkedin-session', payload => routes.session(payload));
   server.setVisitRoute('/extension/linkedin-pending', () => routes.pending());
+  server.setVisitRoute('/extension/linkedin-refresh', payload => routes.refresh(payload));
   ipcMain.handle('linkedinJobsState', () => (DEMO ? {on: false, asked: 0, declined: 0, ask: true, hasSession: false} : linkedinView(storage, deps)));
   ipcMain.handle('linkedinJobsAsked', () => { if (!DEMO) session.noteAsked(storage); return {ok: true}; });
   ipcMain.handle('linkedinJobsAnswer', (_, answer) => { if (!DEMO) session.noteAnswer(storage, answer); return {ok: true}; });

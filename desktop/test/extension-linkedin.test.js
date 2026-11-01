@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {test} from 'node:test';
-import {LINKEDIN, connect, readCookies, revokeIfOff, startLinkedinSession} from '../../extension/linkedin-session.js';
+import {LINKEDIN, connect, readCookies, refreshSession, revokeIfOff, startLinkedinSession} from '../../extension/linkedin-session.js';
 
 const manifest = JSON.parse(fs.readFileSync(new URL('../../extension/manifest.json', import.meta.url), 'utf8'));
 const JAR = [{name: 'li_at', value: 'AQEDfake', domain: '.linkedin.com', path: '/', secure: true, httpOnly: true}, {name: 'JSESSIONID', value: '"ajax:1"', domain: '.www.linkedin.com'},
@@ -59,15 +59,16 @@ test('Gitar on #2694: cookies the options page (Open in my browser) or every-sit
   const chrome = fakeChrome({had: {cookies: true, origin: true}});
   await connect({config: {}, chrome, call: async () => ({ok: true})});
   assert.deepEqual(chrome.store.linkedinGranted, {cookies: false, origin: false}, 'nothing was added by this consent');
-  const never = await revokeIfOff({config: {}, chrome, call: async () => { throw new Error('must not even ask: this consent granted nothing'); }});
-  assert.deepEqual(never, {held: false});
+  const quiet = await revokeIfOff({config: {}, chrome, call: async () => ({revoke: true})});   // #2731: this consent still looks (for a refresh); an "off" answer takes nothing it did not add
+  assert.deepEqual(quiet, {revoked: true});
   assert.equal(chrome.log.some(entry => entry[0] === 'remove'), false);
+  assert.equal(chrome.store.linkedinGranted, undefined);
   const partly = fakeChrome({had: {cookies: true, origin: false}});
   await connect({config: {}, chrome: partly, call: async () => ({ok: true})});
   assert.deepEqual(await revokeIfOff({config: {}, chrome: partly, call: async () => ({revoke: true})}), {revoked: true});
   assert.deepEqual(partly.log.at(-1), ['remove', {origins: ['https://www.linkedin.com/*']}], 'only the origin this consent added');
   const never2 = fakeChrome();
-  assert.deepEqual(await revokeIfOff({config: {}, chrome: never2, call: async () => { throw new Error('nothing granted by us: no call'); }}), {held: false});
+  assert.deepEqual(await revokeIfOff({config: {}, chrome: never2, call: async () => { throw new Error('no consent ever happened here: no call'); }}), {held: false});
 });
 
 test('the look starts one alarm a minute, and the manifest declares the origin and keeps cookies optional', () => {
@@ -86,4 +87,26 @@ test('the consent page shows the warning line and what is read before the button
   assert.ok(html.indexOf('li_at') < html.indexOf('id="allow"'), 'what is read is told before the button');
   assert.ok(html.includes('127.0.0.1') && html.includes('Keychain'));
   assert.equal(/<script(?![^>]*src=)/.test(html), false, 'Chrome extension pages allow no inline script');
+});
+
+test('#2731 a Find jobs press wants a fresh copy: the look sends the two cookies again, to the app only, and never asks for a permission', async () => {
+  const chrome = fakeChrome({had: {cookies: true, origin: true}, stored: {linkedinGranted: {cookies: true, origin: true}}}), calls = [];
+  const answer = await revokeIfOff({config: {}, chrome, call: async (config, path, init) => { calls.push({path, body: init.body}); return path === '/extension/linkedin-pending' ? {revoke: false, refresh: true} : {ok: true}; }});
+  assert.deepEqual(answer, {revoked: false});
+  assert.deepEqual(calls.map(call => call.path), ['/extension/linkedin-pending', '/extension/linkedin-refresh']);
+  assert.deepEqual(JSON.parse(calls[1].body), {cookies: [{name: 'li_at', value: 'AQEDfake', domain: '.linkedin.com'}, {name: 'JSESSIONID', value: '"ajax:1"', domain: '.www.linkedin.com'}]});
+  assert.equal(chrome.log.some(entry => entry[0] === 'request' || entry[0] === 'remove'), false, 'a refresh never asks for or gives back a permission');
+  const plain = [];
+  await revokeIfOff({config: {}, chrome: fakeChrome({stored: {linkedinGranted: {cookies: true, origin: true}}}), call: async (config, path) => { plain.push(path); return {revoke: false, refresh: false}; }});
+  assert.deepEqual(plain, ['/extension/linkedin-pending'], 'no press, no cookie read');
+});
+
+test('#2731 refresh: signed out in Chrome sends an empty list; a grant the person took back sends only {held: false} and reads no cookie', async () => {
+  const bodies = [], call = async (config, path, init) => { bodies.push(JSON.parse(init.body)); return {ok: true}; };
+  await refreshSession({config: {}, chrome: fakeChrome({had: {cookies: true, origin: true}, jar: [JAR[2]]}), call});
+  assert.deepEqual(bodies[0], {cookies: []}, 'only li_at and JSESSIONID count: bcookie is not sent');
+  const gone = fakeChrome({had: {cookies: false, origin: false}});
+  await refreshSession({config: {}, chrome: gone, call});
+  assert.deepEqual(bodies[1], {held: false});
+  assert.equal(gone.log.some(entry => entry[0] === 'getAll'), false, 'no cookie read without the grants');
 });

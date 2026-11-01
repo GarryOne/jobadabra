@@ -205,3 +205,41 @@ test('if the jar cannot be listed, the two cookies that were set are still expir
   await linkedinStep(r.args);
   assert.deepEqual(cookieCalls(r.calls).at(-1)[1].cookies.map(c => c.name), ['li_at', 'JSESSIONID']);
 });
+
+// Issue #2731 (spec Behaviour 1: the session is copied again "at each Find jobs while on"): the expired copy in the Keychain, Chrome's cookies changed, the next press reads with the fresh ones.
+const FRESH = {li_at: 'FAKE-LI-AT-fresh-5678', JSESSIONID: '"ajax:100"'};
+const expiredThenFresh = r => {   // the Keychain holds the expired copy until the extension's copy arrives
+  let held = {li_at: 'FAKE-LI-AT-expired-0000', JSESSIONID: '"ajax:1"'};
+  r.args.readSession = () => { r.calls.push('read-keychain'); return held; };
+  r.args.refresh = async ({say}) => { r.calls.push('refresh'); say('asked'); held = FRESH; return 'fresh'; };
+};
+
+test('#2731: the press asks for a fresh copy first, and the read uses it, not the expired Keychain value', async () => {
+  const r = rig();
+  expiredThenFresh(r);
+  const result = await linkedinStep(r.args);
+  assert.equal(result.state, 'done');
+  assert.ok(r.calls.indexOf('refresh') < r.calls.indexOf('read-keychain'), 'refresh before the Keychain is read');
+  const put = cookieCalls(r.calls)[0][1].cookies;
+  assert.deepEqual(put.map(c => c.value), [FRESH.li_at, FRESH.JSESSIONID], 'the browser got the copy from Chrome as it is now');
+  assert.equal(JSON.stringify(r.calls).includes('expired-0000'), false);
+  assert.ok(r.lines.includes('asked'), 'the wait is said in Recent activity');
+});
+
+test('#2731: no refresh when the read cannot happen (off, paused, Stop, browser not downloaded); a refresh that throws does not fail the step', async () => {
+  for (const options of [{on: false}, {paused: '2026-11-01T12:00:00.000Z'}, {aborted: true}, {ready: false}]) {
+    const r = rig(options); expiredThenFresh(r);
+    await linkedinStep(r.args);
+    assert.equal(r.calls.includes('refresh'), false, `no refresh for ${JSON.stringify(options)}`);
+  }
+  const r = rig(); r.args.refresh = async () => { throw new Error('boom'); };
+  assert.equal((await linkedinStep(r.args)).state, 'done', 'the held copy is used');
+});
+
+test('#2731: a copy that never arrives leaves the held one in use, so an expired session ends signed-out with the true words', async () => {
+  const r = rig({results: [{ok: false, jobs: 0, blocked: 'login', why: 'sign in'}]});
+  r.args.refresh = async () => 'late';
+  const result = await linkedinStep(r.args);
+  assert.equal(result.state, 'signed-out');
+  assert.match(r.lines.join('\n'), /sign in again in Chrome, then press Find jobs/);
+});

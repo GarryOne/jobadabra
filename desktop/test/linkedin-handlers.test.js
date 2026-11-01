@@ -3,7 +3,8 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {linkedinRoutes, linkedinView, registerLinkedinHandlers} from '../lib/linkedin-handlers.js';
-import {SERVICE} from '../lib/linkedin-session.js';
+import {SERVICE, readSession} from '../lib/linkedin-session.js';
+import {createRefresh} from '../lib/linkedin-refresh.js';
 
 const SECRET = 'AQEDAR-fake-li-at-value';
 function store(settings = {}) { const mine = {...settings}; return {settings: () => mine, saveSettings: patch => Object.assign(mine, patch)}; }
@@ -11,9 +12,9 @@ function keychain() { const items = new Map(); return {items, write: (service, v
 
 test('the consent page\'s POST saves the session, the poll then says keep; off says revoke', () => {
   const settings = store(), kc = keychain(), routes = linkedinRoutes(settings, {keychain: kc});
-  assert.deepEqual(routes.pending(), {revoke: true}, 'off: the extension gives its LinkedIn permissions back');
+  assert.deepEqual(routes.pending(), {revoke: true, refresh: false}, 'off: the extension gives its LinkedIn permissions back');
   assert.deepEqual(routes.session({cookies: [{name: 'li_at', value: SECRET, domain: '.linkedin.com'}]}), {ok: true});
-  assert.deepEqual(routes.pending(), {revoke: false});
+  assert.deepEqual(routes.pending(), {revoke: false, refresh: false});
   assert.ok(kc.items.has(SERVICE));
 });
 
@@ -21,7 +22,7 @@ test('a POST with nothing usable is refused and the switch stays off', () => {
   const settings = store(), routes = linkedinRoutes(settings, {keychain: keychain()});
   assert.equal(routes.session({}).ok, false);
   assert.equal(routes.session({cookies: [{name: 'bcookie', value: 'x', domain: '.linkedin.com'}]}).ok, false);
-  assert.deepEqual(routes.pending(), {revoke: true});
+  assert.deepEqual(routes.pending(), {revoke: true, refresh: false});
 });
 
 test('the window\'s view has the state and the ask, never a cookie value', () => {
@@ -37,7 +38,7 @@ test('registered handlers: demo mode touches no store, off deletes the item, the
   const handlers = new Map(), routes = new Map(), ipcMain = {handle: (name, fn) => handlers.set(name, fn)}, server = {setVisitRoute: (path, fn) => routes.set(path, fn)};
   const settings = store(), kc = keychain();
   registerLinkedinHandlers({DEMO: false, ipcMain, server, storage: settings, openPage: async () => ({opened: true}), deps: {keychain: kc}});
-  assert.deepEqual([...routes.keys()].sort(), ['/extension/linkedin-pending', '/extension/linkedin-session']);
+  assert.deepEqual([...routes.keys()].sort(), ['/extension/linkedin-pending', '/extension/linkedin-refresh', '/extension/linkedin-session']);
   await handlers.get('linkedinJobsAsked')();
   await handlers.get('linkedinJobsAnswer')({}, 'not-now');
   assert.deepEqual((await handlers.get('linkedinJobsState')()).asked, 1);
@@ -52,4 +53,19 @@ test('registered handlers: demo mode touches no store, off deletes the item, the
   assert.equal((await demo.get('linkedinJobsState')()).on, false);
   assert.deepEqual(await demo.get('linkedinJobsConnect')(), {opened: true});
   assert.deepEqual(await demo.get('linkedinJobsOff')(), {ok: true});
+});
+
+test("#2731 a Find jobs press asks, the extension's look hears it, its copy lands in the Keychain and the press goes on", async () => {
+  const settings = store(), kc = keychain(), note = createRefresh(), routes = linkedinRoutes(settings, {keychain: kc, refresh: note});
+  routes.session({cookies: [{name: 'li_at', value: SECRET, domain: '.linkedin.com'}]});
+  assert.equal(routes.pending().refresh, false, 'nobody pressed: the look is only a look');
+  const pressed = note.ask();   // the look just now made the extension "alive"
+  assert.equal(routes.pending().refresh, true, 'the press is waiting: copy now');
+  assert.deepEqual(routes.refresh({cookies: [{name: 'li_at', value: 'AQEDAR-fresh-value', domain: '.linkedin.com'}]}), {ok: true});
+  assert.equal(await pressed, 'fresh');
+  assert.equal(readSession({keychain: kc}).li_at, 'AQEDAR-fresh-value');
+  assert.equal(routes.pending().refresh, false, 'asked once per press');
+  settings.saveSettings({linkedinJobs: {on: false}});
+  assert.deepEqual(routes.pending(), {revoke: true, refresh: false}, 'off never asks for a copy');
+  assert.deepEqual(routes.refresh({held: false}), {ok: false, error: 'LinkedIn jobs is off'});
 });

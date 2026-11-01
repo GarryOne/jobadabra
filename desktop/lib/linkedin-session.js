@@ -40,6 +40,20 @@ export function saveSession(storage, cookies, {keychain = realKeychain} = {}) {
   return {ok: true};
 }
 
+/**
+ * The extension's fresh copy at a Find jobs press (issue #2731). Only while the switch is on (a copy never arrives with it off). Cookies that pass: replace the Keychain item.
+ * No usable li_at (the person signed out in Chrome): the copy is deleted, because it mirrors Chrome ("deleted ... on sign-out", spec Safety) and the step then says no-session.
+ * `held` false (the extension no longer holds the LinkedIn grants, so it read nothing): the Keychain is left as it is. -> {ok, kept?}; the value is never in the answer.
+ */
+export function refreshSession(storage, cookies, {keychain = realKeychain, held = true} = {}) {
+  if (!state(storage).on) return {ok: false, error: 'LinkedIn jobs is off'};
+  if (!held) return {ok: true, kept: true};
+  const clean = cleanCookies(cookies);
+  if (!clean) { keychain.remove(SERVICE, {account: ACCOUNT}); return {ok: true, signedOut: true}; }
+  if (!keychain.write(SERVICE, JSON.stringify(clean), {account: ACCOUNT, label: 'Jobadabra: LinkedIn session'})) return {ok: false, error: 'The Keychain would not keep the LinkedIn sign-in'};
+  return {ok: true};
+}
+
 /** The copied session, or null (the reader of PR 2). */
 export function readSession({keychain = realKeychain} = {}) {
   try { const value = JSON.parse(keychain.read(SERVICE, {account: ACCOUNT}) || 'null'); return cleanCookies(COOKIE_NAMES.filter(name => value?.[name]).map(name => ({name, value: value[name], domain: '.linkedin.com'}))); } catch { return null; }

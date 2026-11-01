@@ -5,16 +5,17 @@ import {createBackgroundBrowser} from './background-browser.js';
 import {linkedinStep} from './linkedin-headless.js';
 import {extensionToken} from './server-env.js';
 import * as pipeline from './pipeline.js';
+import {refresh as realRefresh} from './linkedin-refresh.js';
 import * as visits from './visits.js';
 
 /** -> {step(signal, onLine), searches(), score(fits, onLine)} for withLinkedin (lib/search-beside.js). */
-export function linkedinSeams(storage, {browser = null, runEngine = pipeline.run, run = visits.runAll, end = visits.done, port = Number(process.env.JOB_PILOTTO_PORT || 47111)} = {}) {
+export function linkedinSeams(storage, {browser = null, runEngine = pipeline.run, run = visits.runAll, end = visits.done, port = Number(process.env.JOB_PILOTTO_PORT || 47111), refresh = realRefresh} = {}) {
   let owned = browser;
   const searches = async () => {
     const {code, stdout} = await runEngine(storage, ['src.desktop', 'linkedin-searches']).catch(() => ({code: 1, stdout: ''}));
     try { return code === 0 ? JSON.parse(String(stdout).trim().split('\n').pop()).searches || [] : []; } catch { return []; }
   };
-  const step = (signal, onLine) => linkedinStep({storage, browser: (owned ||= createBackgroundBrowser(storage)), run, end, tee: onLine, signal, searches, port, token: () => extensionToken(storage)});   // read only when the browser starts (the switch is on)
+  const step = (signal, onLine) => linkedinStep({storage, browser: (owned ||= createBackgroundBrowser(storage)), run, end, tee: onLine, signal, searches, port, token: () => extensionToken(storage), refresh: options => refresh.ask(options)});   // read only when the browser starts (the switch is on)
   const score = (fits, onLine) => runEngine(storage, pipeline.visitsArgs(storage, fits), onLine);
   return {step, searches, score};
 }

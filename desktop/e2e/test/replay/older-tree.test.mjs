@@ -22,6 +22,6 @@ test('the old tree keeps its own app and extension, takes main\'s e2e tools and 
   assert.equal(read('src/ai/prompt.py'), 'old prompt\n', 'the old prompts stay (the kept answers are found)');
   assert.equal(read('extension/fill.js'), 'old fill\n');
   assert.equal(read('desktop/e2e/replay-net.mjs'), 'main tool\n', 'main\'s tools');
-  assert.deepEqual(added.sort(), ['extension/page/option-groups.js', 'app-core/src/owner-guard.js'], 'files only main has, so main\'s tools find what they import');
+  assert.deepEqual(added.sort(), ['app-core/src/owner-guard.js', 'extension/page/option-groups.js'], 'files only main has, so main\'s tools find what they import');
   assert.equal(read('app-core/src/owner-guard.js'), 'added later\n');
 });

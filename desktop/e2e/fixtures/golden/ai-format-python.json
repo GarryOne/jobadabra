@@ -28,7 +28,7 @@
 "src/ai/score_bands.py":"f159c68130bf0971469aead4821b6198cbc6475058b5453c57d5e7004276e5af",
 "src/ai/score_search.py":"cfebc382833f7f7c4e335a8e4b7d9c83bd20ca03b341782f4913d3b266cfb5c4",
 "src/ai/title_triage.py":"14faf85a7c269dccf019f5ed86d5be251580109b975c997ea760ee27b59acf44",
-"src/ai/writing_rules.py":"222fabaf07285d66e5dba3d08ad36de93e17158c5f7ecbb15ff105369f76660e",
+"src/ai/writing_rules.py":"1037d010b5cdf21c368f1cc73fb82409e7a42d3b05de39e92028269e274f80e6",
 "src/field_redraft.py":"f54e5ca549aa4fdd512624503a070c6c4687955046c6305d633ceee8671f6769",
 "src/geo.py":"19cfe43d153a7929a9ed32e6d42b6954cac591e3a09d4ebe2c6c3ccd073f8f7a",
 "src/levels.py":"8f2666a69b222366ce25fb91e2ad766fed990df66a5c704393ef6db45bb66f2d",

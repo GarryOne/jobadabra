@@ -42,7 +42,7 @@ test('jobs watcher leaves time for the terminal-state verdict before the runner 
 });
 
 for (const [suiteName, suite, count, largest, minutes] of [
-  ['interactions', interactions, 26, 220, 25], ['jobs', jobs, 14, 495, 30], ['failureschannels', failureschannels, 12, 180, 12],
+  ['interactions', interactions, 26, 220, 25], ['jobs', jobs, 14, 495, 30], ['failureschannels', failureschannels, 10, 180, 12],
 ]) {
   test(`${suiteName}: every step has a measured or documented fallback cap and no aggregate clock`, () => {
     const caps = JSON.parse(source('hang-caps.json'))[suiteName];

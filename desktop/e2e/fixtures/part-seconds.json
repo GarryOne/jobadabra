@@ -65,12 +65,6 @@
       "standin": 389,
       "sqlite": 416
     },
-    "Mac + Linux · focus": {
-      "runs": 2,
-      "max": 50,
-      "standin": 28,
-      "sqlite": 50
-    },
     "Mac + Linux · activity": {
       "runs": 2,
       "max": 97,
@@ -112,12 +106,6 @@
       "max": 235,
       "standin": 137,
       "sqlite": 235
-    },
-    "Mac + Linux · cardstates": {
-      "runs": 2,
-      "max": 51,
-      "standin": 51,
-      "sqlite": 43
     },
     "Mac + Linux · updates": {
       "runs": 2,

@@ -25,7 +25,7 @@ export function autoSuites(all, cadence = {}, alwaysOnly = false, repeat = false
 
 // The slim suites, as one table here rather than a `cadence` export in each suite: a PR that edits a suite file runs that suite, so 15 exports would run 15 suites
 // on the PR that slims them. A dropped suite exports cadence 'manual' itself (a manual suite never runs on a PR). Guard: test/suite-cadence.test.mjs.
-export const SLIM = ['calendar', 'failuresnotion', 'focus', 'focusdismiss', 'interviews', 'jobs', 'linkedin', 'recorded', 'storemove', 'stores', 'strategy', 'updates', 'visitread', 'visitsauto', 'wander', 'wizard'];
+export const SLIM = ['calendar', 'failuresnotion', 'focus', 'focusdismiss', 'interviews', 'jobs', 'linkedin', 'recorded', 'storemove', 'stores', 'updates', 'visitread', 'visitsauto', 'wander', 'wizard'];
 // A suite's cadence from its module: the table's 'slim', else its own export. Every reader (plan-run.mjs suiteFacts, suite.mjs, run-all.mjs) goes through it.
 export const cadenceOf = (suite, module) => (SLIM.includes(suite) ? 'slim' : module.cadence);
 

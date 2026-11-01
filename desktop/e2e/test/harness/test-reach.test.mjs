@@ -1,4 +1,4 @@
-// What a harness test reaches (lib/test-reach.mjs), and that harness.yml's `on: paths:` start the run for every one of those paths.
+// What a harness test reaches (lib/test-reach.mjs). That harness.yml's `on: paths:` start the run for every one of those paths is checked with the other workflow-paths checks in tests/test_workflow_paths.py (prune audit 3/4, 1 Nov 2026).
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -49,22 +49,6 @@ test('parent-only URL specifiers reach a directory with its trailing slash', t =
     assert.deepEqual([...paths].sort(), ['desktop/', 'desktop/e2e/test/x.test.mjs'], spec);
     assert.ok([...paths].every(file => file.startsWith('desktop/')), 'desktop/** covers every reached path');
   }
-});
-
-test('harness.yml starts for every file a harness test reaches (its `paths:` cover them all)', () => {
-  const workflow = fs.readFileSync(path.join(ROOT, '.github/workflows/harness.yml'), 'utf8');
-  const globs = [...workflow.split('\npermissions:')[0].matchAll(/^\s+- '([^']+)'/gm)].map(found => found[1]);
-  const matches = (glob, file) => glob.endsWith('/**') ? file.startsWith(glob.slice(0, -2)) : glob === file;
-  // As GitHub reads them: in order, the last pattern that matches decides (a '!' leaves the file out, a later plain one takes it back).
-  const started = file => globs.reduce((on, glob) => glob.startsWith('!') ? (matches(glob.slice(1), file) ? false : on) : (matches(glob, file) ? true : on), false);
-  const cache = new Map(), missing = new Set();
-  for (const file of allTests()) {
-    for (const item of reach(ROOT, file, cache).paths) {
-      const probe = item.endsWith('/') ? `${item}any-file` : item;
-      if (!started(probe) && fs.existsSync(path.join(ROOT, item))) missing.add(item);
-    }
-  }
-  assert.deepEqual([...missing].sort(), [], 'add these to harness.yml\'s on: pull_request: paths: (a change there reaches a harness test)');
 });
 
 test('a reach into staged desktop/shared/ is a reach into the file stage.mjs copies it from (review on #2241)', () => {

@@ -125,7 +125,9 @@ case "$command" in *STALE_EXPECT_OK=1*) ;; *)
 esac
 
 # Every workflow starts on the files its tests read (18 Oct 2026: #1443 made a desktop test read src/notion/cron_report.py, its own PR touched only desktop/ so the
-# Python suite never started, and main went red). Pure and under a second, so it runs on every PR; `WORKFLOW_PATHS_OK=1 git push ...` skips it.
+# Python suite never started, and main went red). Pure and a couple of seconds, so it runs on every PR; `WORKFLOW_PATHS_OK=1 git push ...` skips it.
+# Why (prune audit 3/4, 1 Nov 2026, owner "First 3 rows"): this ONE step holds the whole workflow-paths family: the paths the tests read, the harness.yml reach and the per-workflow
+# `tools/replay-files.mjs --check` (#1638, 20 Oct 2026: worker/src/answer-declarations.js missing opened a PR red) now live in tests/test_workflow_paths.py (TheCheckedPaths), not in a loop of their own here.
 case "$command" in *WORKFLOW_PATHS_OK=1*) ;; *)
   if [ -f "$repo/tests/test_workflow_paths.py" ]; then   # a repo without the test (the hook's own fixtures) has nothing to check
     PATH_TESTS="tests.test_workflow_paths tests.test_windows_paths"   # every test that keeps a workflow's paths: complete (#1447 missed the Windows one)
@@ -141,14 +143,6 @@ esac
 if command -v node >/dev/null && [ -f "$repo/tools/file-size.mjs" ]; then
   sizes="$(cd "$repo" && timed "file size" node tools/file-size.mjs 2>&1)" || block "a file is too big:
 $sizes"
-fi
-# A new file a replay workflow loads must be in that workflow's `pull_request` paths (20 Oct 2026: #1638 opened red on "control tests" and "page cases" because worker/src/answer-declarations.js was
-# missing): the same check the workflows run (tools/replay-files.mjs --check), seconds, before the PR exists. Any push, any area.
-if command -v node >/dev/null && [ -f "$repo/tools/replay-files.mjs" ]; then
-  for wf in $(cd "$repo" && node tools/replay-files.mjs --workflows); do   # the one list (WORKFLOW_JOB): control-tests.yml left PRs on 26 Oct 2026 and this loop still checked it
-    [ -f "$repo/.github/workflows/$wf" ] || continue
-    drift="$(cd "$repo" && timed "workflow paths $wf" node tools/replay-files.mjs --check "$wf" 2>&1)" || block "$drift"
-  done
 fi
 # The commit-message and comment checks run together and list every refusal at once (tools/commit-checks.mjs; prune audit 2/4, owner, 1 Nov 2026): recorded cases (owner, 10 Oct 2026: never fix
 # the same website twice), the rung trailer (docs/flows/ladder.md), the Why-changed trailer (27 Oct), new code's comments (27 Oct), a ticked Progress box's proof file, the open e2e issues a suite

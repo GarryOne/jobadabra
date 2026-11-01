@@ -74,7 +74,7 @@ test('the command gets the relay address, a dummy key and the cap as its limit, 
 
 test('a run whose calls fail stays green but says so: warning, ai-capped.json for the one alert, skipped=true', async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'relay-run-'));
-  const env = {...process.env, GITHUB_OUTPUT: path.join(dir, 'out')};
+  const env = {...process.env, GITHUB_ACTIONS: 'true', GITHUB_OUTPUT: path.join(dir, 'out')};   // GITHUB_ACTIONS fixed: on GitHub the skip is an annotation, the same on a laptop (console.log is captured below)
   const caller = "const b=JSON.stringify({model:'m',messages:[]});(async()=>{for(let i=0;i<3;i++)await fetch(process.env.JOB_PILOTTO_AI_BASE_URL+'/v1/messages',{method:'POST',body:b});})()";
   const logged = [];
   const log = console.log;

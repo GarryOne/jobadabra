@@ -1,0 +1,107 @@
+name: CI · Fresh-install smoke (daily, report only)
+
+# The installer a person downloads today, installed on a clean Mac and a clean Windows runner and opened, every day with no commit behind it
+# (owner, 1 Nov 2026, five report-only test methods, #5: "daily fresh-install smoke"). Each build is smoke-tested once when it is built (desktop.yml) and Windows
+# is rebuilt weekly (windows-smoke.yml); nothing installed the published file, so a deleted or re-uploaded asset or a moved runner image was a user's first report.
+# Report only: a red run blocks no merge and no beta. Spec: docs/superpowers/specs/2026-11-01-fresh-install-smoke-design.md.
+# This file replaces mac-smoke.yml (by hand); the `tag` input keeps the by-hand run on any published build for fixing the smoke scripts.
+on:
+  schedule:
+    - cron: '23 3 * * *'   # daily, a backup start; the timer belongs to the Worker that starts the other jobs once it runs from jobadabra-web
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to install (empty: the newest stable release, the one the Download link serves)'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fresh-install-smoke
+  cancel-in-progress: false
+
+jobs:
+  pick:
+    name: Which release
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      tag: ${{ steps.pick.outputs.tag }}
+    steps:
+      - id: pick
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          # `gh release view` with no tag is the newest release that is neither a draft nor a beta: what the Download link serves
+          [ -n "$TAG" ] || TAG=$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName -q .tagName)
+          [ -n "$TAG" ] || { echo "::error::No stable release found"; exit 1; }
+          names=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets -q '.assets[].name')
+          for asset in Jobadabra-mac-arm64.dmg Jobadabra-mac-arm64.zip Jobadabra-windows-x64.exe; do   # the .dmg is the Mac link the website serves; the smoke installs the .zip the updater uses
+            echo "$names" | grep -qx "$asset" || { echo "::error::No $asset in $TAG: the Download link would be broken"; exit 1; }
+          done
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "Installing $TAG"
+
+  mac:
+    name: Fresh install · Mac
+    needs: pick
+    runs-on: macos-latest   # Apple Silicon, the image the Mac build and its e2e run on
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - name: Download the installer
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release download "${{ needs.pick.outputs.tag }}" --repo "$GITHUB_REPOSITORY" -p 'Jobadabra-mac-arm64.zip' -D dist
+      - name: Install it and smoke-test what a user gets
+        working-directory: desktop
+        run: node scripts/mac-smoke.mjs ../dist/Jobadabra-mac-arm64.zip smoke
+      - name: Result
+        if: always()
+        run: echo "fresh-install ${{ needs.pick.outputs.tag }} Mac ${{ job.status }}"
+      - name: Keep the Mac screenshot
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: fresh-install-mac-screens
+          path: desktop/smoke
+          if-no-files-found: ignore
+          retention-days: 14
+
+  windows:
+    name: Fresh install · Windows
+    needs: pick
+    runs-on: windows-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - name: Download the installer
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release download "${{ needs.pick.outputs.tag }}" --repo "$GITHUB_REPOSITORY" -p 'Jobadabra-windows-x64.exe' -D dist
+      - name: Install it and smoke-test what a user gets
+        working-directory: desktop
+        run: node scripts/windows-smoke.mjs ../dist/Jobadabra-windows-x64.exe smoke smoke
+      - name: Result
+        if: always()
+        run: echo "fresh-install ${{ needs.pick.outputs.tag }} Windows ${{ job.status }}"
+      - name: Keep the screenshots
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: fresh-install-windows-screens
+          path: desktop/smoke
+          if-no-files-found: ignore
+          retention-days: 14

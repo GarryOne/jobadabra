@@ -25,7 +25,7 @@ Per run the result is one row per `R`: `{from, to, ok, rows: {before, after}, lo
 
 | Scenario | Likelihood | Runs |
 |---|---|---|
-| The data folder moves, renames or picks between two folders (`migrateDataFolder`, installed twice) | Highest: edited often, real near-misses | On every PR that touches `app-identity.js`, `migrate.js` or the store: a Node integration test, seconds (PR 3/3) |
+| The data folder moves, renames or picks between two folders (`migrateDataFolder`, installed twice) | Highest: edited often, real near-misses | On every PR, already: 9 tests in `desktop/test/app-identity.test.js` (rename, two folders, move once); no new test (PR 3/3 dropped) |
 | The newest stable release updated to main, packaged, Mac and Windows | Medium: only a schema or file-format change breaks it | Weekly |
 | The 3 newest releases | Low: an old format drifts slowly | Monthly (the 1st) |
 | The app's own auto-update swap | Low, and covered in part by the `updates` suite and `windows-smoke` | Parked (Linear) |
@@ -54,5 +54,6 @@ Blocking anything; Linux; restoring the old app after the update; testing the No
 - [x] Choices (mac-07 for the owner, 1 Nov): a) the build of main is built inside the job, b) order: pure compare, then the runner on N-1..N-3, then the auto-update swap, c) extends the existing Windows upgrade workflow; all in `jobadabra` (desktop) (proof: none: a scope choice relayed by the coordinator, 1 Nov 2026)
 - [x] PR 1/3: `data-fingerprint.js` + unit tests + positive control (expected-change keys take `*` anywhere, so a migration is allowed for one column only) (proof: desktop/test/data-fingerprint.test.js)
 - [x] PR 2/3: `upgrade-data-proof.mjs` + `upgrade-seed.py` + `upgrade-data.yml` on Mac and Windows with N-1..N-3 (proof: desktop/scripts/upgrade-data-proof.mjs); the seed was run with the bundled Python of the three real releases on 1 Nov (30 jobs, 366 entries each)
-- [ ] PR 3/3: the folder-move integration test on PRs that touch the data-folder code (the likelier break); the auto-update swap is parked in Linear
-- [ ] Merged, first weekly run read
+- [x] PR 3/3 dropped: the folder-move logic already has 9 tests in `desktop/test/app-identity.test.js` that run on every PR (proof: desktop/test/app-identity.test.js @1b731a5); the auto-update swap is parked as JOB-194
+- [x] Merged (#2877, #2881); first run read by hand on 1 Nov, run 41344619739 (build 0.8.72 over 0.8.60): Mac and Windows green, 30 jobs seeded, 378 entries before, 399 after (21 new), 0 lost, the app opened the Jobs list (proof: none: a CI run, id above)
+- [ ] First Monday run (build of main inside the job) read

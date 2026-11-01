@@ -2,7 +2,7 @@ name: CI · Harness tests
 # Every e2e harness unit test (desktop/e2e/test/*/*.test.mjs, `npm test`) on each pull request that changes what one reaches; harness-daily.yml runs the same command nightly on main.
 # Why (owner, 30 Oct 2026, option C "run all on every PR"): a PR ran only a "pr" set plus the files its changes reached (test-sets.json, a picker), so tests outside them went red unseen
 # (harness-daily red 28-30 Oct: 1, 3, then 6 tests, one a PR-workflow AI guard), and every new test edited the one shared list (8 PRs conflicting on it, 30 Oct). The whole folder takes 4-5 min in one job; it runs as 3 parallel parts now (1 Nov 2026).
-# GitHub's `on: paths:` below starts it for every area a harness test reaches (test/harness/test-reach.test.mjs fails when one is missing).
+# GitHub's `on: paths:` below starts it for every area a harness test reaches (tests/test_workflow_paths.py fails when one is missing).
 # Not a required check: a required check whose workflow `paths:` skips never reports and blocks the PR (tests/test_affected_jobs.py). The backstop is harness-daily.yml.
 # History: they ran only in e2e.yml's scheduled plan job, which broke silently for ~11 h (12 Oct 2026, ERR_MODULE_NOT_FOUND after 3394c2e); here they gate the change that would
 # break them (test/record/recorded-ci-deps.test.mjs checks every job that runs them installs the app's own packages and stages desktop/shared).
@@ -11,7 +11,7 @@ on:
   pull_request:
     branches: [main]
     paths:
-      # Every file or folder a harness test reaches (desktop/e2e/lib/test-reach.mjs), so a change that can break one starts the run: test/harness/test-reach.test.mjs fails on a missing one.
+      # Every file or folder a harness test reaches (desktop/e2e/lib/test-reach.mjs), so a change that can break one starts the run: tests/test_workflow_paths.py fails on a missing one.
       - 'desktop/**'
       - '.github/workflows/ai-answer-drift.yml'
       # Data that other jobs replay (page-cases.yml, control-tests.yml); no harness test reaches them (owner, 14 Oct 2026: a recorded case alone started the harness).

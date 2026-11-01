@@ -1,8 +1,10 @@
 """Which CI workflows a pull request starts: GitHub's `on: pull_request: paths:` alone decides (owner, 14 Oct 2026: "drop your shared pick logic, rely fully on gh
 workflow paths"; a PR that changed only a recorded case ran the harness tests, a PR that changed the pick ran every job). Pins the class: no required check in a
 workflow paths can skip (it would never report and block the PR), no step asks a pick, main still runs every suite on each push, and the real PR shapes."""
+import json
 import re
 import shlex
+import subprocess
 import unittest
 import tempfile
 from unittest.mock import patch
@@ -187,6 +189,40 @@ class TheClass(unittest.TestCase):
         self.assertIn('workflow_call:', on_block('tests-desktop-windows.yml'))
         for name in ('page-cases.yml', 'control-tests.yml'):
             self.assertNotIn('\n  push:', on_block(name), f'{name}: main runs it as a step of build.yml')
+
+
+def node_out(*args):
+    """-> stdout of a node tool run from the repo root (the push gate and CI both have node)."""
+    return subprocess.run(['node', *args], cwd=ROOT, capture_output=True, text=True, check=True, timeout=120).stdout
+
+
+class TheCheckedPaths(unittest.TestCase):
+    """The workflow-paths family in ONE place (prune audit 3/4, 1 Nov 2026): the push gate's single "workflow paths" step runs this module. It replaces the gate's own per-workflow loop of
+    `replay-files.mjs --check`, tests/test_pre_push_workflow_paths.py (the pin that the hook runs that loop) and the copy of the harness.yml check in test/harness/test-reach.test.mjs."""
+
+    def test_harness_yml_starts_for_every_file_a_harness_test_reaches(self):
+        # Moved from test/harness/test-reach.test.mjs (owner, 30 Oct 2026, option C: every harness PR runs every test file, so `paths:` must cover what a test reaches). The reach comes from the
+        # harness's own parser (tools/e2e-test-reach.mjs: the tests `npm test` runs in desktop/e2e). The extension integration tests are run by integration.yml, whose own paths
+        # desktop/test/integration-workflow-paths.test.js checks (Gitar on #2854: the old copy of this check wrongly counted them against harness.yml).
+        reach = json.loads(node_out('tools/e2e-test-reach.mjs'))
+        self.assertTrue(len(reach) > 100 and pr_paths('harness.yml'), 'positive control: the reach is read and harness.yml filters by paths')
+        self.assertFalse(starts('harness.yml', ['docs/unrelated-note.md']), 'positive control: a file no harness test reads does not start it')
+        reached = {item for items in reach.values() for item in items}   # unique first: the tests share most paths, and every check below reads the workflow again
+        missing = sorted(item for item in reached if (ROOT / item).exists() and not starts('harness.yml', [f'{item}any-file' if item.endswith('/') else item]))
+        self.assertEqual(missing, [], "harness.yml's on: pull_request: paths: add these (a change there reaches a harness test)")
+
+    def test_every_workflow_that_checks_its_own_paths_is_listed_and_passes(self):
+        # Moved from tests/test_pre_push_workflow_paths.py and the push gate's loop (#1638, 20 Oct 2026: a new file a recorded replay loads opened a red PR). The workflows run the same
+        # `tools/replay-files.mjs --check <name>` themselves; WORKFLOW_JOB is the one list (the loop kept control-tests.yml after it left PRs, 26 Oct 2026).
+        names = set()
+        for workflow in WORKFLOWS.glob('*.yml'):
+            names.update(re.findall(r'replay-files\.mjs --check ([\w.-]+\.yml)', workflow.read_text(encoding='utf8')))
+        self.assertTrue(names, 'no workflow runs the paths check any more: update this test')
+        listed = node_out('tools/replay-files.mjs', '--workflows').split()
+        self.assertEqual(set(listed), names, 'WORKFLOW_JOB must hold exactly the workflows that run the paths check')
+        for name in listed:
+            done = subprocess.run(['node', 'tools/replay-files.mjs', '--check', name], cwd=ROOT, capture_output=True, text=True, timeout=60)
+            self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
 
 
 class TheShapes(unittest.TestCase):

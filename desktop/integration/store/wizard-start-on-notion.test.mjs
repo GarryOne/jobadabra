@@ -20,24 +20,24 @@ const migrate = await import('../../lib/migrate.js');
 const STRATEGY = `# Profile\n\nWizard strategy: ${'a platform engineer in Zurich, ten years of infrastructure work. '.repeat(5)}`;
 
 /** A new install after setup: this Mac's store (empty unless `withData`), the strategy the wizard wrote, and a Notion workspace the app has just built in the stand-in. */
-async function installAfterSetup({withData = false} = {}) {
+async function installAfterSetup({withData = false, profileText = STRATEGY} = {}) {
   const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-wizard-notion-start-'));
   const storage = createStorage(profile, {encrypt: value => value, decrypt: value => value});
   fs.mkdirSync(path.join(profile, 'data'), {recursive: true});
   storage.saveSettings({store: 'sqlite', setupDone: true});
   if (withData) assert.equal(seedStore(profile).applications, 3);   // writes profile.md / answers.md too, with its own texts
-  storage.writeText('profile.md', STRATEGY);
+  storage.writeText('profile.md', profileText);
   const ids = await buildStandIn(standIn);   // connectWorkspace, the app's own code (lib/notion-core.js reads the stand-in's address when it loads, so one stand-in serves both tests)
   return {profile, storage, ids};
 }
 
-/** main.js connectNotion after the workspace is found or built: secrets and ids saved, the empty-store check, the connect settings, then the move-in. -> {startedOnNotion, moved}. */
-async function connectAfterWorkspace({storage, ids}) {
+/** main.js connectNotion after the workspace is found or built (`built`: the connect made pages, main.js's `result.built?.length`; false = it found a workspace that was there): secrets and ids saved, the empty-store check, the connect settings, then the move-in. -> {startedOnNotion, moved}. */
+async function connectAfterWorkspace({storage, ids}, {built = true} = {}) {
   storage.setSecret('NOTION_TOKEN', standIn.token);
   storage.saveSettings({notionIds: ids});
   const hadLocal = !!(storage.readText('profile.md').trim() || storage.readText('answers.md').trim());
   const startedOnNotion = await startOnNotionIfEmpty(storage);
-  storage.saveSettings(migrate.connectSettings(storage.settings(), {hadLocal, fresh: true}));
+  storage.saveSettings(migrate.connectSettings(storage.settings(), {hadLocal, fresh: built}));
   // Only the strategy's move-in: the other steps (employers, search settings, ...) need data this test does not seed and are covered where they live (strategy-notion-integration.test.mjs, storemove).
   const moved = await migrate.run(storage, line => { if (/failed/i.test(line)) throw new Error(`the move-in reported: ${line}`); }, migrate.STEPS.filter(step => step.name === 'strategy from this Mac'));
   return {startedOnNotion, moved};
@@ -63,6 +63,25 @@ test('with data already on this Mac the connect leaves the store where it is: th
   assert.deepEqual(moved, [], 'nothing moves into a Notion the data does not live in');
   assert.equal(startedOnNotion, false, 'a store with data became Notion without the move');
   assert.equal(JSON.parse(fs.readFileSync(path.join(install.profile, 'settings.json'), 'utf8')).store, 'sqlite');
+});
+
+/** What the person (or a first run) leaves behind: a Profile page with no blocks. */
+function blankPage(pageId) {
+  const {body} = standIn.handle('GET', `blocks/${pageId}/children`, {}, new URLSearchParams());
+  for (const block of body.results || []) standIn.handle('DELETE', `blocks/${block.id}`, {}, new URLSearchParams());
+}
+
+const DRAFT = `# Profile\n\nTarget: CHF 170,000 per year in Switzerland\nMinimum acceptable: CHF 140,000 per year in Switzerland\n\nWizard strategy: ${'a site reliability engineer in Zurich. '.repeat(8)}`;
+
+test('Notion found with its Profile page still the blank template: the draft kept on this Mac reaches the page before the local copy goes (#2759)', async () => {
+  const install = await installAfterSetup({profileText: DRAFT});
+  blankPage(install.ids.NOTION_PROFILE_PAGE_ID);   // the stand-in is shared by the tests: the workspace the connect finds has a Profile with nothing on it
+  assert.equal(pageText(standIn, install.ids.NOTION_PROFILE_PAGE_ID), '', 'positive control: the Notion Profile is blank before the connect');
+  const {moved} = await connectAfterWorkspace(install, {built: false});   // a workspace that was already there: nothing was built
+  const profileText = pageText(standIn, install.ids.NOTION_PROFILE_PAGE_ID);
+  const lines = name => profileText.split('\n').filter(line => line.trim().startsWith(name)).length;
+  assert.ok(lines('Target:') === 1 && lines('Minimum acceptable:') === 1,
+    `the Notion Profile should hold the draft's one Target line and one Minimum acceptable line, found ${lines('Target:')} and ${lines('Minimum acceptable:')}; the draft had ${DRAFT.length} characters; moved: ${moved.join(', ') || 'nothing'}; the page holds ${profileText.length} characters: ${JSON.stringify(profileText.slice(0, 160))}; profile.md ${fs.existsSync(path.join(install.profile, 'profile.md')) ? 'still on this Mac' : 'gone from this Mac'}`);
 });
 
 test('teardown', async () => { await standIn.close(); });

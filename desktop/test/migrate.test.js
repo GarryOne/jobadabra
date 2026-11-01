@@ -105,12 +105,33 @@ test('strategy from this Mac: a fresh workspace gets the local Profile, answers 
 test('strategy from this Mac: an existing workspace wins; the files are only backed up', async () => {
   const storage = withLocal('existing');
   const writePage = async () => { throw new Error('must not write'); };
-  assert.equal(await step().run(storage, undefined, {writePage}), true);
+  assert.equal(await step().run(storage, undefined, {writePage, pageText: async () => 'Their own words in Notion.'}), true);
   const folder = storage.settings().notionKeptFolder;
   assert.ok(folder && fs.readFileSync(path.join(folder, 'profile.md'), 'utf8') === '# Me\nSRE');
   assert.equal(fs.readFileSync(path.join(folder, 'answers.md'), 'utf8'), 'Notice: 1 month');
   assert.equal(storage.readText('profile.md'), '');
   assert.equal(storage.settings().notionMoveIn, undefined);
+});
+
+// #2759 (1 Nov 2026): a found workspace whose page has no text has nothing to win with; the draft used to be only backed up, then dropped, leaving Notion blank.
+test('strategy from this Mac: an existing workspace with a blank Profile gets the local Profile; a page with text still wins', async () => {
+  const storage = withLocal('existing');
+  const written = [];
+  const writePage = async (_token, page, text) => { written.push([page, text]); };
+  const pageText = async (_token, page) => (page === 'prof' ? '  \n' : 'Their answers in Notion.');
+  assert.equal(await step().run(storage, undefined, {writePage, pageText}), true);
+  assert.deepEqual(written, [['prof', '# Me\nSRE']], 'only the blank page takes the draft');
+  const folder = storage.settings().notionKeptFolder;
+  assert.equal(fs.readFileSync(path.join(folder, 'answers.md'), 'utf8'), 'Notice: 1 month');
+  assert.ok(!fs.existsSync(path.join(folder, 'profile.md')), 'the draft that reached Notion is not also kept aside');
+  assert.equal(storage.readText('profile.md'), '');
+});
+
+test('strategy from this Mac: a page that cannot be read counts as having text, so the draft is kept aside, not written over it', async () => {
+  const storage = withLocal('existing');
+  const writePage = async () => { throw new Error('must not write'); };
+  assert.equal(await step().run(storage, undefined, {writePage, pageText: async () => { throw new Error('502'); }}), true);
+  assert.equal(fs.readFileSync(path.join(storage.settings().notionKeptFolder, 'profile.md'), 'utf8'), '# Me\nSRE');
 });
 
 test('strategy from this Mac: a failed write keeps both files and the flag, so the next start finishes the job', async () => {

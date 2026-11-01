@@ -43,19 +43,21 @@ export const STEPS = [
   {name: 'strategy from this Mac', onMac: 'data', run: async (storage, _fetcher, deps = {}) => {
     const mode = storage.settings().notionMoveIn;
     if (!mode) return false;
-    const {writePage = notion.writePage, ensurePage = notion.ensurePage, run = pipeline.run} = deps;
+    const {writePage = notion.writePage, ensurePage = notion.ensurePage, run = pipeline.run, pageText = notion.pageText} = deps;
     const token = storage.secret('NOTION_TOKEN'), ids = storage.settings().notionIds || {};
     const files = ['profile.md', 'answers.md'].map(name => [name, storage.readText(name)]).filter(([, text]) => text.trim());
-    if (mode === 'fresh') {
-      for (const [name, text] of files) {
-        const page = name === 'profile.md' ? ids.NOTION_PROFILE_PAGE_ID : ids.NOTION_ANSWERS_PAGE_ID;
-        if (page) await writePage(token, page, text);
-      }
-      await strategy.publishSearchSettings(storage, {run, ensurePage, writePage});
-    } else if (files.length) {
+    const pageOf = name => (name === 'profile.md' ? ids.NOTION_PROFILE_PAGE_ID : ids.NOTION_ANSWERS_PAGE_ID);
+    // Why (#2759, 1 Nov 2026, a8): "Notion wins" is for a Notion that has something. A found workspace whose page has no text at all has nothing to win with:
+    // the draft is written into it, never only backed up before the local copy goes (setup ended with the Notion Profile blank and the draft in backup/).
+    const blank = async name => !!pageOf(name) && !(await pageText(token, pageOf(name)).catch(() => 'unreadable')).trim();
+    const moveIn = [], keep = [];
+    for (const file of files) (mode === 'fresh' || await blank(file[0]) ? moveIn : keep).push(file);
+    for (const [name, text] of moveIn) if (pageOf(name)) await writePage(token, pageOf(name), text);
+    if (mode === 'fresh') await strategy.publishSearchSettings(storage, {run, ensurePage, writePage});
+    if (keep.length) {
       const folder = storage.path(`backup/before-notion-${new Date().toISOString().replace(/[-:]/g, '').replace('T', '-').slice(0, 13)}`);
       fs.mkdirSync(folder, {recursive: true});
-      for (const [name, text] of files) writePrivate(path.join(folder, name), text);
+      for (const [name, text] of keep) writePrivate(path.join(folder, name), text);
       storage.saveSettings({notionKeptFolder: folder});
     }
     strategy.dropLocalCopies(storage);

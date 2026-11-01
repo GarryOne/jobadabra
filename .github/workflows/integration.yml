@@ -125,15 +125,20 @@ jobs:
         if: runner.os == 'Linux'
         timeout-minutes: 5
         run: bash tools/apt-install.sh xvfb libnss3 libgbm1 libasound2t64 libgtk-3-0 libxss1 fonts-noto-color-emoji fonts-dejavu-core
+      # `npm test` ran scripts/stage.mjs as its `pretest`; this job runs node directly, so it stages desktop/shared itself (the first run failed 7 files on Windows without it).
+      - name: Stage the app's shared files
+        working-directory: desktop
+        run: node scripts/stage.mjs
       - name: The app on a seeded store, a fake browser
         working-directory: desktop
         env:
           ELECTRON_DISABLE_SANDBOX: '1'   # Ubuntu 24.04 runners refuse Chromium's sandbox, as the e2e harness knows (--no-sandbox)
           DESKTOP_RENDER_REQUIRED: ${{ runner.os == 'Linux' && '1' || '' }}   # test/needs-electron.js: no electron or display is a red job on Linux, never a green skip
           RESULTS: ${{ runner.temp }}/integration-results.json
+          # One command string, not an exported shell function: `export -f` does not reach the shell xvfb-run starts (exit 127 "run: command not found" on the first run).
+          TESTS: node --import ./test/no-live-site.mjs --test --test-reporter=./test/reporter-by-file.mjs --test-reporter-destination=stdout --test-reporter=./integration/results-reporter.mjs --test-reporter-destination="$RESULTS" integration/app/*.test.js
         run: |
-          run() { node --import ./test/no-live-site.mjs --test --test-reporter=./test/reporter-by-file.mjs --test-reporter-destination=stdout --test-reporter=./integration/results-reporter.mjs --test-reporter-destination="$RESULTS" integration/app/*.test.js; }
-          if [ "$RUNNER_OS" = Linux ]; then export -f run; xvfb-run -a --server-args='-screen 0 1440x900x24' bash -c run; else run; fi
+          if [ "$RUNNER_OS" = Linux ]; then xvfb-run -a --server-args='-screen 0 1440x900x24' bash -c "$TESTS"; else bash -c "$TESTS"; fi
       - uses: actions/upload-artifact@v5
         if: always()
         with:

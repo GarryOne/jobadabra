@@ -10,6 +10,7 @@
     "prestart": "node scripts/check-install.mjs && npm install --no-audit --no-fund --loglevel=error && scripts/audiotee.sh && node scripts/stage.mjs",
     "start": "electron .",
     "pretest": "node scripts/stage.mjs",
+    "pretest:integration:app": "node scripts/stage.mjs",
     "test:integration:app": "node --import ./test/no-live-site.mjs --test --test-reporter=./test/reporter-by-file.mjs integration/app/*.test.js",
     "test": "npm run lint && node --import ./test/no-live-site.mjs --test --test-reporter=./test/reporter-by-file.mjs test/*.test.js",
     "flows": "node e2e/flows-run.mjs",

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import fs from 'node:fs';
 import {waitForFill} from '../lib/fill-attempt.mjs';
+import {stepClock} from '../lib/wait-on-state.mjs';
 import {fillNote, formTab} from '../lib/extension.mjs';
 import {flakyProof} from '../lib/flaky-proof.mjs';
 import {tabGuard} from '../lib/tab-guard.mjs';
@@ -94,7 +95,7 @@ function applyHarness({spooled = true, reloadOwn = false} = {}) {
 
 test('Apply ignores the global spool tail and reports its rejected read even if the dump sees done', async () => {
   const h = applyHarness();
-  await assert.rejects(h.apply(), /never finished filling Engineer \(the fill did not finish within 90 s \(last seen: {"state":"running","read":3}\), read on https:\/\/example.test\/apply#jobpilotto-fill=ours, 2 tab\(s\)\)/);
+  await assert.rejects(h.apply(), /never finished filling Engineer \(the fill did not finish within 1 s \(last seen: {"state":"running","read":3}\), read on https:\/\/example.test\/apply#jobpilotto-fill=ours, 2 tab\(s\)\)/);
   assert.equal(h.reads(), 3, 'no fresh state read while formatting the failure');
   assert.equal(h.dumps(), 1);
   assert.equal(h.listeners.size, 0, 'listeners leave with the attempt');
@@ -131,4 +132,17 @@ test('every ordinary apply step has one hang cap and setup remains critical', ()
   ctx.run('the app is seeded as a set-up install', () => {}, {critical: true, needs: ['setup']});
   assert.deepEqual(seen[0][2], {critical: true, needs: ['setup']});
   assert.ok(caps['a multi-step form'] >= (30 + 90 + 45 + 15 + 60 + 15 + 15 + 30));
+});
+
+// Night run 41253960704 (apply-3of3 Tailor CV, a macOS runner stalled ~25 s): the fill ended at 94 s, the wait's own 90 s cap had ended it at 90 s.
+test('a fill that ends after 90 s is read while the step\'s clock still runs: the wait has no cap of its own', async () => {
+  const time = clock(), tab = page('https://boards.example.test/job#jobpilotto-fill=ours');
+  stepClock(300000);
+  try {
+    const result = await waitForFill({...time, pickTab: () => ({tab, tabs: 2}),
+      readState: async () => (time.now() >= 94000 ? {state: 'done'} : {state: 'running'})});
+    assert.equal(result.ok, true);
+    assert.equal(result.ms, 94000);
+    assert.equal(result.state.state, 'done');
+  } finally { stepClock(null); }
 });

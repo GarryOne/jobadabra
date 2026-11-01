@@ -66,6 +66,8 @@ on:
       - 'desktop/scripts/release-notes.sh'
       - 'desktop/scripts/side-by-side.mjs'
       - 'desktop/scripts/smoke-screens.mjs'
+      - 'desktop/scripts/upgrade-data-lib.mjs'
+      - 'desktop/scripts/upgrade-data-proof.mjs'
       - 'desktop/scripts/windows-smoke.mjs'
       - 'desktop/scripts/windows-upgrade-proof.mjs'
       - 'desktop/start.js'

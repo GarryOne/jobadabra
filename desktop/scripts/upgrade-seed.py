@@ -16,6 +16,7 @@ ROLES = ['Nurse', 'Electrician', 'Accountant', 'Teacher', 'Pharmacist', 'Welder'
 
 
 def seed(count=30):
+    """Creates `count` fake applications (stages, a note section each, events on the ones past Saved) in the store the environment names; returns how many it made. Any failure propagates to the caller below."""
     from src.stores import open_stores
     stores = open_stores()
     made = 0

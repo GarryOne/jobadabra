@@ -116,7 +116,7 @@ const bugIssues = repo => gh(`repos/${repo}/issues?state=all&labels=bug&since=${
 function main(argv) {
   const arg = name => (argv.includes(name) ? argv[argv.indexOf(name) + 1] : undefined);
   const days = Math.min(14, Math.max(1, Number(arg('--days')) || 3)), now = arg('--now') ? new Date(arg('--now')) : arg('--end') ? new Date(`${arg('--end')}T23:59:59Z`) : new Date(), repo = process.env.REPO || 'GarryOne/jobadabra';
-  const input = arg('--input') ? JSON.parse(readFileSync(arg('--input'), 'utf8')) : {merges: fetchMerges({days, now}), closedUnmerged: closedUnmerged(repo), bugs: bugIssues(repo),
+  const input = arg('--input') ? JSON.parse(readFileSync(arg('--input'), 'utf8')) : {merges: fetchMerges({days, now, repo}), closedUnmerged: closedUnmerged(repo), bugs: bugIssues(repo),
     runs: [...fetchRuns({repo, days, now, event: 'pull_request'}), ...fetchRuns({repo, days, now, event: 'push', filter: '&branch=main'}), ...fetchRuns({repo, days, now, event: 'schedule'}), ...fetchRuns({repo, days, now, event: 'workflow_dispatch'})]};
   if (!input.compares) input.compares = fetchCompares(repo, pendingPairs(input, {days, now}));
   if (arg('--save-input')) writeFileSync(arg('--save-input'), JSON.stringify(input));

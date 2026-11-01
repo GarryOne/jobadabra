@@ -80,22 +80,52 @@ export function compute(input, {days = 3, now = new Date()} = {}) {
 const run = (command, args, options = {}) => execFileSync(command, args, {encoding: 'utf8', maxBuffer: 256 * 1024 * 1024, ...options});
 const gh = path => JSON.parse(run('gh', ['api', path]));
 
-// The merge commits of the window from the local git history (first parent of main) -> [{pr, day, title, branch, files, commits}] oldest commit first; `git` is a seam for tests.
-export function fetchMerges({days, now, git = (...args) => run('git', args)}) {
+// True when the shared GitHub rate limit is under `lowWater` (`api` is the gh seam: a path -> parsed JSON).
+const rateLow = (api, lowWater) => Number(api('rate_limit').resources?.core?.remaining) < lowWater;
+const numstat = block => {
+  const [head, ...rest] = block.split('\n'), [sha, subject] = head.split('\x1f'), files = [];
+  let lines = 0;
+  for (const stat of rest.filter(Boolean)) { const [add, del, ...name] = stat.split('\t'); if (name.length) { files.push(name.join('\t')); lines += (Number(add) || 0) + (Number(del) || 0); } }
+  return {sha, subject, files, lines};
+};
+
+// The PRs merged to main in the window -> [{pr, day, at, title, branch, files, commits}] (commits oldest first). `git` and `api` (gh) are seams for tests.
+// Why (1 Nov 2026, owner: all 3 repos squash-merge only): main's first-parent history has two shapes: the old "Merge pull request #n from owner/branch" (its commits are <sha>^1..<sha>^2) and, from 1 Nov,
+// one squash commit "<PR title> (#n)" whose branch and per-commit list exist only on GitHub (pulls/<n>, pulls/<n>/commits, commits/<sha>); the run's head_sha is still one of those commits, so reds join as before.
+export function fetchMerges({days, now, repo = process.env.REPO || 'GarryOne/jobadabra', git = (...args) => run('git', args), api = gh, lowWater = 300}) {
   const since = new Date(now.getTime() - (days - 1) * 86400000).toISOString().slice(0, 10);
   const merges = [];
-  for (const line of git('log', '--first-parent', '--merges', `--since=${since}T00:00:00Z`, `--until=${new Date(now.getTime() + 86400000).toISOString().slice(0, 10)}`, '--format=%H%x1f%cs%x1f%cI%x1f%s%x1f%b%x1e').split('\x1e')) {
+  let calls = 0, stopped = false;
+  const call = path => {
+    if (!stopped && calls++ % 25 === 0 && rateLow(api, lowWater)) { stopped = true; console.error('agent-coding-stats: rate limit low, squash-merged PRs are counted without their commits'); }
+    return stopped ? null : api(path);
+  };
+  for (const line of git('log', '--first-parent', `--since=${since}T00:00:00Z`, `--until=${new Date(now.getTime() + 86400000).toISOString().slice(0, 10)}`, '--format=%H%x1f%cs%x1f%cI%x1f%s%x1f%b%x1e').split('\x1e')) {
     const [sha, date, at, subject, body] = line.trim().split('\x1f');
-    const match = /^Merge pull request #(\d+) from \S+?\/(\S+)/.exec(subject || '');
-    if (!match) continue;
-    const commits = [];
-    for (const block of git('log', '--reverse', '--numstat', '--format=%x1e%H%x1f%s', `${sha}^1..${sha}^2`).split('\x1e').slice(1)) {
-      const [head, ...rest] = block.split('\n'), [csha, csubject] = head.split('\x1f'), files = [];
-      let lines = 0;
-      for (const stat of rest.filter(Boolean)) { const [add, del, ...name] = stat.split('\t'); if (name.length) { files.push(name.join('\t')); lines += (Number(add) || 0) + (Number(del) || 0); } }
-      commits.push({sha: csha, subject: csubject, files, lines});
+    if (!sha) continue;
+    const old = /^Merge pull request #(\d+) from \S+?\/(\S+)/.exec(subject || ''), squash = old ? null : /^(.*\S)\s+\(#(\d+)\)$/.exec(subject || '');
+    if (!old && !squash) continue;
+    const files = git('diff', '--name-only', `${sha}^1`, sha).split('\n').filter(Boolean);
+    if (old) {
+      const commits = git('log', '--reverse', '--numstat', '--format=%x1e%H%x1f%s', `${sha}^1..${sha}^2`).split('\x1e').slice(1).map(numstat);
+      merges.push({pr: Number(old[1]), day: date, at, title: (body || '').split('\n')[0], branch: old[2], files, commits});
+      continue;
     }
-    merges.push({pr: Number(match[1]), day: date, at, title: (body || '').split('\n')[0], branch: match[2], files: git('diff', '--name-only', `${sha}^1`, sha).split('\n').filter(Boolean), commits});
+    const pr = Number(squash[2]), pull = call(`repos/${repo}/pulls/${pr}`);
+    let commits = [];
+    // Why (1 Nov 2026, Gitar on #2893): a half-read commit list makes a red whose fix is in the missing tail count as "no fix"; so page through all commits and, if the rate-limit stop fires mid-PR, keep none of them.
+    for (let page = 1; pull; page++) {
+      const list = call(`repos/${repo}/pulls/${pr}/commits?per_page=100&page=${page}`) || [];
+      for (const item of list) {
+        const detail = call(`repos/${repo}/commits/${item.sha}`);
+        if (!detail) break;
+        const changed = detail.files || [];
+        commits.push({sha: item.sha, subject: String(item.commit?.message || '').split('\n')[0], files: changed.map(file => file.filename), lines: changed.reduce((n, file) => n + (file.additions || 0) + (file.deletions || 0), 0)});
+      }
+      if (stopped || list.length < 100) break;
+    }
+    if (stopped) commits = [];   // whichever call tripped the stop (a page or a commit), this PR is never half-read
+    merges.push({pr, day: date, at, title: squash[1], branch: pull?.head?.ref ?? null, files, commits});
   }
   return merges;
 }
@@ -107,7 +137,7 @@ export function fetchRuns({repo, days, now, lowWater = 300}) {
   for (let at = start; at < now.getTime(); at += slice) {
     const range = `${new Date(at).toISOString().slice(0, 19)}Z..${new Date(Math.min(at + slice - 1000, now.getTime())).toISOString().slice(0, 19)}Z`;
     for (let page = 1; ; page++) {
-      if (calls++ % 25 === 0 && Number(run('gh', ['api', 'rate_limit', '--jq', '.resources.core.remaining']).trim()) < lowWater) { console.error('agent-coding-stats: rate limit low, stopping with what is read'); return runs; }
+      if (calls++ % 25 === 0 && rateLow(gh, lowWater)) { console.error('agent-coding-stats: rate limit low, stopping with what is read'); return runs; }
       const list = gh(`repos/${repo}/actions/runs?event=pull_request&created=${range}&per_page=100&page=${page}`).workflow_runs || [];
       for (const item of list) runs.push({name: item.name, head_sha: item.head_sha, conclusion: item.conclusion, created_at: item.created_at, run_started_at: item.run_started_at, updated_at: item.updated_at, pr: item.pull_requests?.[0]?.number ?? null, branch: item.head_branch ?? null});
       if (list.length < 100) break;
@@ -119,7 +149,7 @@ export function fetchRuns({repo, days, now, lowWater = 300}) {
 function main(argv) {
   const arg = name => (argv.includes(name) ? argv[argv.indexOf(name) + 1] : undefined);
   const days = Math.min(14, Math.max(1, Number(arg('--days')) || 3)), now = arg('--now') ? new Date(arg('--now')) : arg('--end') ? new Date(`${arg('--end')}T23:59:59Z`) : new Date();
-  const input = arg('--input') ? JSON.parse(readFileSync(arg('--input'), 'utf8')) : {runs: fetchRuns({repo: process.env.REPO || 'GarryOne/jobadabra', days, now}), merges: fetchMerges({days, now})};
+  const input = arg('--input') ? JSON.parse(readFileSync(arg('--input'), 'utf8')) : {runs: fetchRuns({repo: process.env.REPO || 'GarryOne/jobadabra', days, now}), merges: fetchMerges({days, now, repo: process.env.REPO || 'GarryOne/jobadabra'})};
   const cards = compute(input, {days, now});
   if (arg('--out')) writeFileSync(arg('--out'), JSON.stringify({kind: 'ci', days: cards}));
   console.log(`agent-coding-stats: ${cards.length} days, ${cards.reduce((n, card) => n + card.prs.merged, 0)} merged PRs, ${(input.runs || []).length} runs`);

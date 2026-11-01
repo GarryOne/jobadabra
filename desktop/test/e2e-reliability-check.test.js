@@ -317,7 +317,8 @@ test('suite execution configuration ignores comments and whitespace', () => {
 
 test('a weight-only edit to the real apply suite requires rule F but changes no expectation', () => {
   const original = fs.readFileSync(path.join(root, suite), 'utf8');
-  const changed = original.replace(/('Tailor CVs for top matches':\s*)[\d.]+/, (_, prefix) => `${prefix}999`);
+  // Why (1 Nov 2026, #2824): the FIRST weight of the real table, not a named step; this line named "Tailor CVs for top matches" (and before it another step) and broke each time a step left e2e.
+  const changed = original.replace(/(export const stepSeconds = \{'(?:[^'\\]|\\.)+':\s*)[\d.]+/, (_, prefix) => `${prefix}999`);
   assert.notEqual(changed, original, 'the real weight edit took effect');
   const unlabelled = changed.replace(/^\/\/ Job:[^\n]*\n/gm, '');
   const result = push({[suite]: original}, {[suite]: unlabelled});

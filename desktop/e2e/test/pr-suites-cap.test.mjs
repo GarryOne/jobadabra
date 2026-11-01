@@ -135,7 +135,7 @@ import path from 'node:path';
 import {spawnSync} from 'node:child_process';
 
 const cli = new URL('../pr-suites.mjs', import.meta.url);
-function cliPlan({catches, pullRequest = true, base = 'origin/main', listed = {}, mergeBaseListed = listed, headListed = listed, checkoutLanes = {}, addedFiles = [], deletedFiles = [], suites = ['wizard', 'visitread', 'strategy', 'settings', 'jobs', 'interviews', 'focusdismiss', 'calendar'], extraFiles = [], coverage = {}, baseSources = {}} = {}) {
+function cliPlan({catches, pullRequest = true, base = 'origin/main', listed = {}, checkoutLanes = {}, suites = ['wizard', 'visitread', 'strategy', 'settings', 'jobs', 'interviews', 'focusdismiss', 'calendar'], extraFiles = [], coverage = {}, baseSources = {}} = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pr-cap-cli-'));
   try {
     const files = [...suites.map(s => `desktop/e2e/suites/${s}.mjs`), ...extraFiles];
@@ -145,7 +145,7 @@ function cliPlan({catches, pullRequest = true, base = 'origin/main', listed = {}
       return `--- a/${file}\n+++ b/${file}\n@@ -${line} +${line} @@\n-old\n+new`;
     }).join('\n');
     const bin = path.join(dir, 'bin'); fs.mkdirSync(bin);
-    fs.writeFileSync(path.join(bin, 'git'), `#!${process.execPath}\nconst args = process.argv.slice(2);\nif (args.includes('--name-only') && !args.includes(${JSON.stringify(`${base || 'origin/main'}...HEAD`)})) throw new Error('wrong diff base');\nif (args.includes('--diff-filter=A')) console.log(${JSON.stringify(addedFiles.join('\n'))});\nelse if (args.includes('--diff-filter=D')) console.log(${JSON.stringify(deletedFiles.join('\n'))});\nelse if (args.includes('--name-only')) console.log(${JSON.stringify(files.join('\n'))});\nelse if (args[0] === 'merge-base') console.log('fork');\nelse if (args[0] === 'show' && !args[1].endsWith('lanes.json')) { const file = args[1].split(':').slice(1).join(':'); const sources = ${JSON.stringify(baseSources)}; console.log(Object.hasOwn(sources, file) ? sources[file] : require('node:fs').readFileSync(require('node:path').join(${JSON.stringify(new URL('../../../', import.meta.url).pathname)}, file), 'utf8')); }\nelse if (args[0] === 'show') console.log(args[1].startsWith('HEAD:') ? ${JSON.stringify(JSON.stringify({suites: headListed}))} : args[1].startsWith('fork:') ? ${JSON.stringify(JSON.stringify({suites: mergeBaseListed}))} : ${JSON.stringify(JSON.stringify({suites: listed}))});\nelse console.log(${JSON.stringify(diff)});\n`, {mode: 0o755});
+    fs.writeFileSync(path.join(bin, 'git'), `#!${process.execPath}\nconst args = process.argv.slice(2);\nif (args.includes('--name-only') && !args.includes(${JSON.stringify(`${base || 'origin/main'}...HEAD`)})) throw new Error('wrong diff base');\nif (args.includes('--name-only')) console.log(${JSON.stringify(files.join('\n'))});\nelse if (args[0] === 'show' && !args[1].endsWith('lanes.json')) { const file = args[1].split(':').slice(1).join(':'); const sources = ${JSON.stringify(baseSources)}; console.log(Object.hasOwn(sources, file) ? sources[file] : require('node:fs').readFileSync(require('node:path').join(${JSON.stringify(new URL('../../../', import.meta.url).pathname)}, file), 'utf8')); }\nelse if (args[0] === 'show') console.log(${JSON.stringify(JSON.stringify({suites: listed}))});\nelse console.log(${JSON.stringify(diff)});\n`, {mode: 0o755});
     fs.writeFileSync(path.join(bin, 'gh'), `#!${process.execPath}\nthrow new Error('Network forbidden in CLI test');\n`, {mode: 0o755});
     const output = path.join(dir, 'output'), map = path.join(dir, 'map.json');
     fs.writeFileSync(map, JSON.stringify(coverage));
@@ -221,17 +221,17 @@ test('CLI labels only the capped Linux suite for merge, not the Mac-only loader'
 // Why (1 Nov 2026, owner via mac-07: "Yes, journeys only (Recommended)": a PR that adds or changes a journey step runs it 5x, no other step and no suite admission): a new suite
 // file or a lane promotion is planned like any change, once; the night burn-in proves it.
 test('CLI: a new suite file or a lane promotion is planned once, with no admission legs', () => {
-  const added = cliPlan({suites: ['settings'], addedFiles: ['desktop/e2e/suites/settings.mjs']});
+  const added = cliPlan({suites: ['settings']});
   assert.ok(added.values.suites.split(',').includes('settings'));
   assert.equal(JSON.parse(added.values.steps)['(burn-in)'], undefined);
-  const promoted = cliPlan({suites: [], extraFiles: ['desktop/e2e/lanes.json'], listed: {quality: {lane: 'tolerant'}}, headListed: {}});
+  const promoted = cliPlan({suites: [], extraFiles: ['desktop/e2e/lanes.json'], listed: {}});
   assert.ok(!promoted.values.suites.split(',').includes('quality'), 'nothing reaches quality, so the promotion alone plans nothing');
   assert.equal(JSON.parse(promoted.values.steps)['(burn-in)'], undefined);
   assert.doesNotMatch(promoted.text + added.text, /burn-in/);
 });
 
-test('CLI keeps main tip exemptions without burning in a stale branch after a main demotion', () => {
-  const {values} = cliPlan({suites: ['quality'], listed: {quality: {lane: 'tolerant'}}, mergeBaseListed: {}, headListed: {}});
+test('CLI: a suite BASE lists as tolerant stays out of the PR plan', () => {
+  const {values} = cliPlan({suites: ['quality'], listed: {quality: {lane: 'tolerant'}}});
   assert.equal(values.suites, '');
   assert.equal(values.left, '');
   assert.equal(JSON.parse(values.steps)['(burn-in)'], undefined);

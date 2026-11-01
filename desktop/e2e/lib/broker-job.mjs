@@ -22,7 +22,8 @@ const annotation = text => String(text).replace(/%/g, '%25').replace(/\r/g, '%0D
  * Takes {job, why, dir, env}; returns the why. Never throws on a file that cannot be written (a note never breaks a run).
  */
 export function noteSkipped({job, why, env = process.env, dir = cappedDir(env)}) {
-  console.log(`::warning title=AI skipped (${annotation(job)})::${annotation(why)}`);
+  // Why (1 Nov 2026, owner saw a fixture skip as a warning on a green harness job, #2787): a GitHub annotation only where env sets GITHUB_ACTIONS; a test passes its own env, so its fixture skips print a plain line.
+  console.log(env.GITHUB_ACTIONS ? `::warning title=AI skipped (${annotation(job)})::${annotation(why)}` : `AI skipped (${job}): ${why}`);
   try {
     fs.mkdirSync(dir, {recursive: true});
     fs.writeFileSync(path.join(dir, 'ai-capped.json'), JSON.stringify({why: `${job}: ${why}`, provider: 'Codex broker', job, at: new Date().toISOString()}));

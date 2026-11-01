@@ -61,7 +61,7 @@ test('every journey of applyflows is weighed or follows one, and no weight names
   assert.deepEqual(steps.filter(name => !heads.some(head => name.startsWith(head)) && !needsOf(name).length), [], 'weigh the new journey in suites/apply.mjs flowSeconds');
   assert.deepEqual(heads.filter(head => !steps.some(name => name.startsWith(head))), []);
   for (const name of steps) assert.ok(heads.filter(head => name.startsWith(head)).length <= 1, `"${name.slice(0, 50)}" matches two weights`);
-  // Why (1 Nov 2026, R3): five journeys are left (the others went to recorded pages and integration), 441 s in all; two halves of five steps cannot be balanced to a tenth, and the capacity test below is what the budget needs.
+  // Why (1 Nov 2026, R3): three journeys are left (the others went to recorded pages and integration), 218 s in all; three steps over flows.shards = 3 slices land one per slice (97 vs 58 s) and cannot be balanced to a tenth, so the capacity test below is what the budget needs.
 });
 
 // Pinned observations supply the weights; these guards check placement and capacity, while the PR run proves current runtime.

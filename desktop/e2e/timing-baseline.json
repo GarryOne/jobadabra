@@ -109,11 +109,6 @@
     "elapsedAssertions": 0,
     "clockWaits": 0
   },
-  "visitsauto": {
-    "fixedWaits": 1,
-    "elapsedAssertions": 0,
-    "clockWaits": 1
-  },
   "wander": {
     "fixedWaits": 2,
     "elapsedAssertions": 0,

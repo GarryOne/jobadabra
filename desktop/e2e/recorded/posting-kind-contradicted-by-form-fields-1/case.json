@@ -1,0 +1,65 @@
+{
+ "origin": "hand-cut",
+ "control": {
+  "guard": "applyflows e2e step \"the AI gave a page the wrong kind\" (moved here 1 Nov 2026)"
+ },
+ "shape": "the AI calls an application form a posting (no Apply control, but a form's fields on the page): the page contradicts the kind, the kind is corrected and dropped, and the form is filled",
+ "why": "Journey step of the applyflows e2e suite, page-shape half moved to a page case (1 Nov 2026, R2); the app's \"page kind forgotten\" line is the app's half and stays with the journey. It pins behaviour the e2e step already proved; planting the bug in the extension turns it red.",
+ "sample": "fixture form written by desktop/e2e/lib/forms.mjs (hosts and text invented)",
+ "rung": 2,
+ "pages": [
+  {
+   "url": "https://jobs.lever.co/mislabelled-co/support-engineer",
+   "file": "form.html"
+  }
+ ],
+ "ai": {
+  "/extension/page-kind": {
+   "ok": true,
+   "kind": "posting",
+   "role": "no-form",
+   "by": "ai",
+   "confidence": 0.9,
+   "rung": 2,
+   "signal": "confident",
+   "applyButton": "",
+   "applyRoute": "",
+   "applyBy": "",
+   "applyEmail": "",
+   "accountStep": "",
+   "registerControl": "",
+   "signinControl": "",
+   "accountButton": ""
+  },
+  "/extension/answer": {
+   "ok": true,
+   "eligible": true,
+   "answers": [
+    {
+     "field": "question_3001",
+     "question": "Years of experience with Kubernetes",
+     "value": "4",
+     "confidence": "high"
+    }
+   ]
+  }
+ },
+ "expect": {
+  "told": [
+   "page kind corrected: a posting with no Apply but a form",
+   "\"forget\":true"
+  ],
+  "filled": [
+   "#first_name",
+   "#email"
+  ],
+  "valueIs": [
+   "#question_3001|4"
+  ],
+  "notTold": [
+   "pressed the submit"
+  ],
+  "seconds": 60
+ },
+ "start": "panel"
+}

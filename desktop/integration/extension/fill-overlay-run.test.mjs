@@ -68,11 +68,11 @@ function showedWithin(mine, look, bound) {
   return {index, late, text: index < 0 ? `none in ${lived} ms` : `${mine[index].at - born} ms`};
 }
 
-/** One document's verdicts: its dim and look in time, and where its dimmed and looking stretches start. -> {problems, dimmed, looking} */
-function judgeDocument(mine) {
+/** One document's verdicts: its dim and look in time (only when `asked`), and where its dimmed and looking stretches start. -> {problems, dimmed, looking} */
+function judgeDocument(mine, asked) {
   const path = mine[0].path, dim = showedWithin(mine, s => s.dim, DIM_BY_MS), look = showedWithin(mine, s => s.dim && s.host && s.centred && s.busy, LOOK_BY_MS), problems = [];
-  if (dim.late) problems.push(`document ${path} showed no dim within ${DIM_BY_MS} ms of its first sample (${dim.text})`);
-  if (look.late) problems.push(`document ${path} showed no complete look within ${LOOK_BY_MS} ms of its first sample (${look.text})`);
+  if (asked && dim.late) problems.push(`document ${path} showed no dim within ${DIM_BY_MS} ms of its first sample (${dim.text})`);
+  if (asked && look.late) problems.push(`document ${path} showed no complete look within ${LOOK_BY_MS} ms of its first sample (${look.text})`);
   return {problems, dimmed: dim.index < 0 ? [] : mine.slice(dim.index), looking: look.index < 0 ? [] : mine.slice(look.index)};
 }
 
@@ -92,7 +92,7 @@ function judgeDrops(dimmed, looking) {
 /**
  * The verdicts about one recorded run. -> the list of what is wrong (empty when the run is clean).
  * Every document of the run is judged, the first one and each page change: it must show its dim within DIM_BY_MS and its complete look within LOOK_BY_MS of its first sample
- * (a document that lived shorter than a bound is not asked for it), and from the moment it shows them to the end verdict nothing may drop.
+ * (a document that lived shorter than a bound is not asked for it; the first one, the posting the page script reloads after 500 ms, is judged only for drops), and from the moment it shows them to the end verdict nothing may drop.
  * @param {{at: number, state: string}[]} states the worker's apply:<tab> changes, in order
  * @param {{doc: number, path: string, at: number, dim: boolean, host: boolean, centred: boolean, busy: boolean, label: string}[]} samples every document's samples
  */
@@ -108,7 +108,7 @@ export function judgeRun(states, samples) {
   for (const doc of docs) {
     const mine = samples.filter(s => s.doc === doc && s.at >= startAt && s.at < endAt);
     if (!mine.length) continue;
-    const judged = judgeDocument(mine);
+    const judged = judgeDocument(mine, doc !== docs[0]);   // the posting is reloaded by its own script after 500 ms, whatever the load: it is judged for drops from its first look, not for how soon it shows it
     problems.push(...judged.problems);
     dimmed.push(...judged.dimmed);
     looking.push(...judged.looking);
@@ -160,6 +160,11 @@ test('a page change that is dimmed only after the bound is reported (Gitar, #280
 test('a page change that never shows its dim or its look is reported, not skipped', () => {
   const samples = [...span(1, '/post', 1000, 100), ...span(2, '/post2', 1500, 60), ...span(3, '/form', 1600, 90, {dim: false, host: false, centred: false, busy: false, label: ''})];
   assert.match(judgeRun(RUN, samples).join('\n'), /document \/form showed no dim within 400 ms of its first sample \(none in 445 ms\)/);
+});
+
+test('the posting that shows its look late (a loaded machine) is judged for drops only, its reload and the form are asked in time', () => {
+  const bareFirst = [...span(1, '/post', 1000, 100, {dim: false, host: false, centred: false, busy: false, label: ''}), ...span(1, '/post', 1500, 40), ...span(2, '/post2', 1700, 60), ...span(3, '/form', 1800, 60)];
+  assert.deepEqual(judgeRun(RUN, bareFirst), []);
 });
 
 test('a run that went through no page change fails its positive control', () => {

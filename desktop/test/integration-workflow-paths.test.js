@@ -38,4 +38,8 @@ test('npm test no longer runs the integration tests; the workflow does, with the
   assert.doesNotMatch(unit.test, /integration\//, 'the unit job runs unit tests only');
   assert.match(unit['test:integration:app'], /integration\/app\/\*\.test\.js/);
   assert.match(workflow, /results-reporter\.mjs/);
+  // Why (1 Nov 2026, #2783): #2766 and #2763 each added their layer's glob to the harness `npm test`; a glob left there runs the layer twice (in "harness tests" and in its own job).
+  const harness = JSON.parse(fs.readFileSync(path.join(ROOT, 'desktop/e2e/package.json'), 'utf8')).scripts;
+  assert.doesNotMatch(harness.test, /integration\//, 'the harness job runs the harness tests only; each integration layer has its own job');
+  for (const layer of ['extension', 'store']) assert.match(harness[`test:integration:${layer}`], new RegExp(`integration/${layer}/\\*\\.test\\.mjs`));
 });

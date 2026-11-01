@@ -27,7 +27,7 @@ export const JOURNEY_TESTS = ['test/journeys.test.js', 'test/application-journey
 // One row per scenario. `e2e`: words of its step in desktop/e2e/suites/apply.mjs or lib/apply-*.mjs (E2E_STEPS); `unit`: desktop/test files.
 export const MATRIX = [
   {scenario: 'What kind of page: the AI decides once per site and page shape, the structure rule only without AI', e2e: ['one page', 'wrong kind'], unit: ['test/page-kind.test.js', 'test/extension-tab-pages.test.js']},
-  {scenario: 'Direct application form (Greenhouse, Workday, Lever, multi-step)', e2e: ['Greenhouse-like form', 'Workday-shaped form', 'Lever-like form', 'multi-step form'], unit: ['test/extension-tab-pages.test.js']},
+  {scenario: 'Direct application form (Greenhouse, Workday, Lever, multi-step)', e2e: ['Greenhouse-like form', 'Workday-shaped form', 'multi-step form'], unit: ['test/extension-tab-pages.test.js', 'e2e/recorded/lever-late-field-open-question-1/case.json', 'integration/extension/extension-form-shapes.test.mjs']},
   {scenario: 'Upload slots of any shape (input, hidden input, drop zone, + that creates the input): CV and cover letter by meaning, a miss reported by fingerprint', e2e: ['appears only when + is pressed'], unit: ['e2e/test/upload-slot.test.mjs']},
   {scenario: 'Posting → Apply link or form into a new tab → same tab, posted data kept', e2e: ['Apply opens a new tab'], unit: ['test/extension-same-tab.test.js']},
   {scenario: 'Apply opens its form from the page\'s script (`window.open`): opened in the same tab', e2e: ['side by side'], unit: ['test/extension-same-tab.test.js']},

@@ -1,0 +1,86 @@
+name: CI · Clock moved (nightly, report only)
+# Job: report health
+# The fast unit folders (desktop/test, desktop/e2e/test, tests/) run once on the real clock and again with the clock moved +1 day and +7 days (libfaketime); the files that pass today and fail
+# moved are the report: a test or the library code under it that depends on today's date, found the night before it goes off (tools/clock-moved.mjs, guard desktop/test/clock-moved.test.js).
+# Why (1 Nov 2026, owner via a8: "Nightly report (Recommended)"; the gate rule needs >= 2 real escapes in 30 days, and there were 5: app-identity, review-cache, test_mail_google and test_feed_details on 31 Oct,
+# night-pass.test.mjs on 1 Nov, each red for every PR with no code change): REPORT ONLY. Never a PR check (no pull_request trigger), never a beta gate, never fails the night pass: the job is continue-on-error and
+# nothing `needs` it. Started by e2e.yml's night pass 1 (`night_pass: 1/5`, the Worker's slot), or by hand: gh workflow run clock-moved.yml.
+# One job per folder (desktop, e2e, python) so the three run side by side; each prints its report at the end of its log, names each file in a ::warning annotation (no step summaries: owner, 26 Oct 2026) and keeps the artifact `clock-moved-<folder>` (report.json).
+# No faketime, or one that does not move the clock = the job fails and says so; it never reports a clean night it did not measure.
+on:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: clock-moved-${{ github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  clock-moved:
+    name: ${{ matrix.area }} tests, clock moved
+    strategy:
+      fail-fast: false
+      matrix:
+        area: [desktop, e2e, python]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    continue-on-error: true   # report only: a red here never reddens the night pass that called it
+    env:
+      JOB_PILOTTO_DISABLE: mail,notion,telegram,google_jobs   # as tools/check.py sets it for the python unit job
+      ELECTRON_DISABLE_SANDBOX: '1'
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - name: libfaketime, a virtual display and Electron's libraries
+        timeout-minutes: 5
+        run: bash tools/apt-install.sh faketime xvfb libnss3 libgbm1 libasound2t64 libgtk-3-0 libxss1 fonts-noto-color-emoji fonts-dejavu-core
+      - name: The engine's packages
+        if: matrix.area == 'python'
+        run: pip install --quiet -r requirements.txt
+      # desktop: as tests-desktop.yml (dev packages, Electron's binary: the tests that render the demo app run here too)
+      - name: The desktop tests' packages and Electron
+        if: matrix.area == 'desktop'
+        working-directory: desktop
+        timeout-minutes: 8
+        run: |
+          npm ci
+          node node_modules/electron/install.js
+          node scripts/stage.mjs --files-only
+      # e2e: as harness-daily.yml (the harness's packages, the app's own, the staged shared files, the browsers the tests' own tests load)
+      - name: The harness tests' packages
+        if: matrix.area == 'e2e'
+        working-directory: desktop/e2e
+        run: npm ci || npm install
+      - name: The app's own packages and shared files
+        if: matrix.area == 'e2e'
+        working-directory: desktop
+        run: |
+          npm ci --omit=dev --ignore-scripts || npm install --omit=dev --ignore-scripts
+          node scripts/stage.mjs --files-only
+      - name: The browsers for the harness tests (the full one loads the extension)
+        if: matrix.area == 'e2e'
+        uses: ./.github/actions/playwright-browser
+        with: {working-directory: desktop/e2e, mode: both}
+      - name: Run every ${{ matrix.area }} test file on today's clock, then +1 d and +7 d
+        timeout-minutes: 38
+        run: |
+          set -o pipefail
+          mkdir -p clock-moved-out
+          xvfb-run -a --server-args='-screen 0 1440x900x24' node tools/clock-moved.mjs --area ${{ matrix.area }} --json clock-moved-out/report.json 2>&1 | tee clock-moved-out/log.txt
+      - name: Name each time bomb in the run's annotations
+        if: always() && hashFiles('clock-moved-out/report.json') != ''
+        run: node -e "for (const b of JSON.parse(require('fs').readFileSync('clock-moved-out/report.json', 'utf8')).bombs) console.log('::warning title=Time bomb (+' + b.days + ' d)::' + b.file + ' · ' + b.why.replace(/[\r\n%]/g, ' '))"
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: clock-moved-${{ matrix.area }}
+          path: clock-moved-out
+          if-no-files-found: ignore

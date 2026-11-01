@@ -66,6 +66,7 @@ on:
       - 'tests/fixtures/stores/conversation.json'
       - 'tests/fixtures/stores/kit-section.md'
       - 'tools/claim-shape.mjs'
+      - 'tools/clock-moved.mjs'   # desktop/test/clock-moved.test.js
       - 'tools/commit-trailers.mjs'
       - 'tools/decision-branches.mjs'
       - 'tools/e2e-unit-wanted.mjs'

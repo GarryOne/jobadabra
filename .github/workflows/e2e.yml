@@ -999,6 +999,15 @@ jobs:
             -f mac_run=${{ github.run_id }} -f sha=${{ needs.plan.outputs.ref }} -f review=${{ needs.plan.outputs.review }} -f full="$FULL" -f tag="${{ needs.plan.outputs.tag }}"
           echo "Windows run started for commit ${{ needs.plan.outputs.ref }} (it skips a commit Windows already tested)."
 
+  # Night pass 1 only (owner via a8, 1 Nov 2026, "Nightly report"): the fast unit folders again with the clock moved +1 d and +7 d, to name a test that depends on today's date the night before it goes off.
+  # REPORT ONLY: nothing `needs` this job, its own job is continue-on-error, and it has no pull_request trigger (clock-moved.yml). It takes no Worker cron: it rides the slot of pass 1.
+  clock-moved:
+    name: Clock moved (report only)
+    if: inputs.night_pass == '1/5'
+    uses: ./.github/workflows/clock-moved.yml
+    permissions:
+      contents: read
+
   # Why (31 Oct 2026, owner): "It should just raise an alert. And that's it." One credit alert per workflow run, never a beta hold.
   ai-credit-health:
     name: AI credit health

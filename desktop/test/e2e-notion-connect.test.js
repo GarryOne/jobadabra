@@ -10,6 +10,7 @@ const BY_DESIGN = {
   'lib/wizard.mjs': 'a new install builds its own workspace in an empty test page',
   'lib/notion-reuse.mjs': 'the helper itself',
   'lib/seed.mjs': 'saves RECONNECT right before the connect',
+  'suites/strategy.mjs': 'a reconnect: the profile already carries its ids',
 };
 const walk = dir => fs.readdirSync(dir, {withFileTypes: true}).flatMap(e => e.name === 'node_modules' ? [] : e.isDirectory() ? walk(path.join(dir, e.name)) : [path.join(dir, e.name)]);
 

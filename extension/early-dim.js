@@ -2,7 +2,7 @@
 // it appears"). A page the app opened to fill (its address carries the fill mark) is dimmed as soon as its document commits, before the panel's scripts are injected at load. The panel's
 // first step takes the same layer over (panel-overlay.js keeps one copy per page). Started from background.js.
 // Rewritten 27 Oct 2026 (owner: "one state, changed only on a verdict"): a document that commits on a tab the worker holds as working is dimmed at its commit; the state itself is apply-state.js's.
-// Guard: desktop/e2e/test/fill-overlay.test.mjs ("dimmed at load"), fill-overlay-early-reload.test.mjs.
+// Guard: desktop/integration/extension/fill-overlay.test.mjs ("dimmed at load"), fill-overlay-early-reload.test.mjs.
 import {isStopped} from './stop-state.js';
 import {applyState, isWorking, restored, setApply, WORKING} from './apply-state.js';
 

@@ -4,8 +4,8 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {test} from 'node:test';
-import {startRealExtension} from '../lib/real-extension.mjs';
-import {extensionWorker} from '../lib/own-worker.mjs';
+import {startRealExtension} from '../../e2e/lib/real-extension.mjs';
+import {extensionWorker} from '../../e2e/lib/own-worker.mjs';
 
 const FORM = `<!doctype html><title>Senior Site Reliability Engineer</title><body style="height:3000px"><form><h1>Apply</h1>
 <label>Full name <input id="n" name="n" required></label><label>Email <input id="e" name="e" type="email" required></label><label>Phone <input name="p" required></label><label>City <input name="c" required></label></form>

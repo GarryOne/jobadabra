@@ -186,10 +186,12 @@ class DesktopWorkflowTest(unittest.TestCase):
         # Owner, 1 Nov 2026: the run says which commit it is built from and how far behind main (an annotation and the summary page).
         self.assertIn('::notice title=Built from ${GITHUB_SHA:0:7}::', job('changes'))
         self.assertIn('git rev-list --count "$GITHUB_SHA..origin/main"', job('changes'))
-        # Gitar on #2883: a beta built on a beta-pick/<sha7> branch (tools/beta-release.sh) still gets the AI credit alert. The quality-rate history save stays main-only:
-        # a cache saved on a branch is restored only by that branch and its children, so one saved on a beta-pick branch would never reach main's history.
+        # Owner, 1 Nov 2026, on beta 10's graph: the commit and its age are on a box of the graph, and the AI credit box is gone (its alert is steps of the last job, Gitar on #2904).
+        self.assertIn('built_from: ${{ steps.built.outputs.label }}', WORKFLOW)
+        self.assertIn("name: ${{ format('Main''s CI on {0}', needs.changes.outputs.built_from) }}", job('main-ci'))
+        self.assertNotIn('ai-credit-health', WORKFLOW)
+        # Gitar on #2883: a cache saved on a branch is restored only by that branch and its children, so the quality-rate history save stays main-only.
         loose = "(github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/beta-pick/'))"
-        self.assertIn(loose, job('ai-credit-health'))
         self.assertEqual(WORKFLOW.replace(loose, '').count("github.ref == 'refs/heads/main'"), 1, 'only the history cache save is main-only')
         self.assertIn("github.ref == 'refs/heads/main' && hashFiles('desktop/e2e/.quality-rate/history.json')", WORKFLOW)
         # only a nightly or a beta by hand is tested; the plan is made once, for both lanes

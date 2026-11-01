@@ -85,8 +85,11 @@ class CiFreeAiTests(unittest.TestCase):
     def test_the_beta_has_no_ai_preflight_but_its_relay_suites_still_fail_by_name(self):
         beta = jobs((WORKFLOWS / 'desktop.yml').read_text())
         self.assertNotIn('ai-ready', beta, 'the beta makes no live AI calls (step 1, 1 Nov 2026): no preflight job before the matrices')
-        # Why (1 Nov 2026, a8; Gitar on #2869): the beta's AI screenshot review and judges still write ai-capped.json, and ai-credit-health is its only reader; it leaves with them in step 2.
-        self.assertIn('ai-credit-health', beta, 'the credit alert stays in the beta until the review and judge steps leave it (step 2)')
+        # Owner, 1 Nov 2026, on beta 10's graph: "We're still showing AI Credit health", and Gitar on #2904: the beta has no credit box, but the judge steps and the relay still write
+        # ai-capped.json, so the one alert is a set of nonblocking steps of the run's last job.
+        self.assertNotIn('ai-credit-health', beta)
+        self.assertIn('node desktop/e2e/credit-alert.mjs --artifacts credit-artifacts', beta['prune'])
+        self.assertEqual(beta['prune'].count('continue-on-error: true'), 4, 'the alert never holds the run: setup, alert, scan and marker steps')
         for name in ('test-mac', 'test-windows'):
             self.assertRegex(re.search(r'(?m)^    needs: (\[[^\]]*\])', beta[name]).group(1), r'^\[changes, (build|windows)\]$', name)
             self.assertIn('Free AI relay', beta[name], f'{name} still starts the relay in its own step')

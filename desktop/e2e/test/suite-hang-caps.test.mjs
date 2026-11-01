@@ -127,7 +127,8 @@ test('every backbone suite has a cap table and every cap is a positive number be
       if (!Number.isFinite(seconds) || seconds <= 0 || seconds * 1000 >= budgetMs) violations.push(`${name}/${step}: cap ${seconds} s, job budget ${budgetMs / 1000} s`);
     }
   }
-  assert.ok(checked.length >= 20 && checked.includes('apply'), 'positive control: the class covers the backbone, not an empty list');
+  // Why (1 Nov 2026, owner's three layers): the floor only proves the class is not an empty list; a floor of 20 failed each time a layer moved suites out of e2e, so it is 10.
+  assert.ok(checked.length >= 10 && checked.includes('apply'), 'positive control: the class covers the backbone, not an empty list');
   assert.ok(!checked.includes('explore') && !checked.includes('personas'), 'explore is manual and personas is tolerant');
   assert.deepEqual(violations, [], violations.join('\n'));
 });
@@ -150,6 +151,7 @@ test('every literal step a backbone suite runs has a cap in some backbone table'
     checked.push(suite);
     for (const name of [`suites/${file}`, ...helpers].flatMap(literals)) if (!capped.some(head => name.startsWith(head))) uncapped.push(`${suite}: ${name}`);
   }
-  assert.ok(checked.length >= 20 && checked.includes('wizard'), 'positive control: the class reads the real backbone suites');
+  // Why (1 Nov 2026, owner's three layers): the floor only proves the class is not an empty list; a floor of 20 failed each time a layer moved suites out of e2e, so it is 10.
+  assert.ok(checked.length >= 10 && checked.includes('wizard'), 'positive control: the class reads the real backbone suites');
   assert.deepEqual(uncapped, [], `these steps would fail with "no hang cap":\n${uncapped.join('\n')}`);
 });

@@ -90,7 +90,7 @@ test('five suite names defer nothing despite more than five jobs: fails if the p
   const {shards: apply} = await import('../suites/apply.mjs');
   const {shards: applyflows} = await import('../suites/applyflows.mjs');
   const shards = {apply, applyflows};
-  const pointed = ['settings', 'applyflows', 'jobs', 'apply', 'calendar'];
+  const pointed = ['settings', 'applyflows', 'jobs', 'apply', 'activity'];
   const plan = pick.planPrSuites({...args, pointed});
   assert.deepEqual(plan, {suites: pointed, left: [], deferred: []});
   const jobs = pointed.flatMap(suite => shardLegs(suite, shards[suite]));
@@ -99,18 +99,18 @@ test('five suite names defer nothing despite more than five jobs: fails if the p
 
   const six = pick.planPrSuites({...args, pointed: [...pointed, 'strategy']});
   assert.deepEqual(six, {
-    suites: ['apply', 'applyflows', 'calendar', 'jobs', 'settings'],
+    suites: ['activity', 'apply', 'applyflows', 'jobs', 'settings'],
     left: ['strategy'], deferred: ['strategy'],
   });
 });
 
 test('recorded takes no PR place (page-cases.yml replays it) and is one suite name with its slice jobs after merge', async () => {
   const {shards} = await import('../suites/recorded.mjs');
-  const ordinary = ['strategy', 'settings', 'jobs', 'interviews', 'focusdismiss', 'calendar'];
+  const ordinary = ['strategy', 'settings', 'jobs', 'interviews', 'focusdismiss', 'activity'];
   const pointed = ['recorded', ...ordinary];
   const plan = pick.planPrSuites({...args, pointed});
   assert.deepEqual(plan, {
-    suites: ['calendar', 'focusdismiss', 'interviews', 'jobs', 'settings'],
+    suites: ['activity', 'focusdismiss', 'interviews', 'jobs', 'settings'],
     left: ['strategy'], deferred: ['strategy'],
   });
   // Why (29 Oct 2026, a8): page-cases.yml replays recorded on a PR, so ON_PR_ELSEWHERE removes it before the cap counts anything.
@@ -184,7 +184,7 @@ import path from 'node:path';
 import {spawnSync} from 'node:child_process';
 
 const cli = new URL('../pr-suites.mjs', import.meta.url);
-function cliPlan({catches, pullRequest = true, base = 'origin/main', listed = {}, mergeBaseListed = listed, headListed = listed, checkoutLanes = {}, addedFiles = [], deletedFiles = [], suites = ['wizard', 'visitread', 'stores', 'settings', 'jobs', 'interviews', 'focusdismiss', 'calendar'], extraFiles = [], coverage = {}, baseSources = {}} = {}) {
+function cliPlan({catches, pullRequest = true, base = 'origin/main', listed = {}, mergeBaseListed = listed, headListed = listed, checkoutLanes = {}, addedFiles = [], deletedFiles = [], suites = ['wizard', 'visitread', 'stores', 'settings', 'jobs', 'interviews', 'focusdismiss', 'activity'], extraFiles = [], coverage = {}, baseSources = {}} = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pr-cap-cli-'));
   try {
     const files = [...suites.map(s => `desktop/e2e/suites/${s}.mjs`), ...extraFiles];
@@ -218,7 +218,7 @@ syncBuiltinESMExports();`);
 
 test('CLI writes five whole suites and three deferrals with their reasons to stdout and GITHUB_OUTPUT', () => {
   const {values, text} = cliPlan();
-  assert.equal(values.suites, 'calendar,focusdismiss,interviews,jobs,settings');
+  assert.equal(values.suites, 'activity,focusdismiss,interviews,jobs,settings');
   assert.equal(values.left, 'wizard,visitread,stores');
   const steps = JSON.parse(values.steps);
   assert.deepEqual(Object.keys(steps), ['(parts)', '(why)']);
@@ -229,13 +229,13 @@ test('CLI writes five whole suites and three deferrals with their reasons to std
 });
 
 test('CLI reads catch counts only when supplied and applies the base registry before capping', () => {
-  assert.equal(cliPlan({catches: {wizard: 99}}).values.suites, 'wizard,calendar,focusdismiss,interviews,jobs');
-  const {values} = cliPlan({listed: {calendar: {lane: 'tolerant'}, focusdismiss: {lane: 'suspended'}}});
+  assert.equal(cliPlan({catches: {wizard: 99}}).values.suites, 'wizard,activity,focusdismiss,interviews,jobs');
+  const {values} = cliPlan({listed: {activity: {lane: 'tolerant'}, focusdismiss: {lane: 'suspended'}}});
   assert.equal(values.suites, 'interviews,jobs,settings,stores,visitread');
   assert.equal(values.left, 'wizard');
-  const main = cliPlan({pullRequest: false, catches: {wizard: 99}, listed: {calendar: {lane: 'tolerant'}}});
+  const main = cliPlan({pullRequest: false, catches: {wizard: 99}, listed: {activity: {lane: 'tolerant'}}});
   assert.equal(main.values.suites.split(',').length, 7);   // --base applies even without --pull-request
-  assert.ok(!main.values.suites.split(',').includes('calendar'));
+  assert.ok(!main.values.suites.split(',').includes('activity'));
   assert.equal(main.values.left, '');
 });
 
@@ -248,14 +248,14 @@ test('CLI picks a real watched AI suite only when BASE enables its informational
 
 test('CLI labels only the capped Linux suite for merge, not the Mac-only loader', () => {
   const {values, text} = cliPlan({
-    suites: ['stores', 'settings', 'jobs', 'interviews', 'focusdismiss', 'calendar'],
+    suites: ['stores', 'settings', 'jobs', 'interviews', 'focusdismiss', 'activity'],
     extraFiles: ['cap-fixture.js'],
     coverage: {suites: {
       stores: {sha: 'fixture', files: {'cap-fixture.js': {loaded: true, lines: []}}, steps: {}},
       updates: {sha: 'fixture', files: {'cap-fixture.js': {loaded: true, lines: []}}, steps: {}},
     }},
   });
-  assert.equal(values.suites, 'calendar,focusdismiss,interviews,jobs,settings');
+  assert.equal(values.suites, 'activity,focusdismiss,interviews,jobs,settings');
   assert.equal(values.left, 'stores,updates');
   assert.ok(text.includes('| `stores` | run after merge | loads cap-fixture.js'));
   assert.ok(text.includes('| `updates` | not in this PR run | loads cap-fixture.js'));

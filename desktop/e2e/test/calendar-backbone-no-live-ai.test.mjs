@@ -98,11 +98,3 @@ test('calendar names an undeclared ask before any live transport', async t => {
   assert.equal(error.code, missing.code); assert.match(error.message, missing.message);
   h.assertNoLive();
 });
-
-test('calendar opts into stored answers and the real-AI guard on both workflow attempts', () => {
-  const source = fs.readFileSync(new URL('../suites/calendar.mjs', import.meta.url), 'utf8');
-  assert.match(source, /^export const offlineAi = true;/m);
-  assert.match(source, /^export const realAi = false;/m);
-  // The suite declares it; every workflow reads it from the matrix (plan-run.mjs, tests/test_workflow_ai_answers.py; beta 41078746088: a hand-kept list drifted).
-  assert.match(fs.readFileSync(new URL('../suites/calendar.mjs', import.meta.url), 'utf8'), /^export const aiAnswers = 'backbone';/m);
-});

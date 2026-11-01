@@ -9,8 +9,9 @@ const MB = bytes => Math.round(bytes / 1048576);
 const etas = new Map();
 const etaOf = started => { if (!etas.has(started)) etas.set(started, new Eta(0)); return etas.get(started); };
 const AT = {checking: 0, download: 0, unpack: 2};
-const OFFER = {title: 'Background automation needs Jobadabra\'s browser', right: '', share: null, steps: [],
-  fine: 'About 200 MB, only once. It fills your applications out of sight; you review each one and press Submit.', action: 'Download'};
+// Why (1 Nov 2026, #2485): Background and Full automation both run in this browser, so the offer names neither mode and promises nothing about who presses Submit.
+const OFFER = {title: 'Your Apply mode needs Jobadabra\'s browser', right: '', share: null, steps: [],
+  fine: 'About 200 MB, only once. It fills your applications out of sight.', action: 'Download'};
 
 /** One event -> what a spot shows: {hidden} or {title, right, share, steps: [{text, kind: done|now|next}], fine, action}. offer: this spot may offer the download. */
 export function browserView(event = {}, {offer = false, platform = 'darwin', now = Date.now()} = {}) {

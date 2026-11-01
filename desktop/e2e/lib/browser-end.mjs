@@ -14,7 +14,7 @@ export function profileTree(profile, rows = listProcesses({width: WHOLE_COMMAND}
   const own = rows.filter(row => flag.test(row.command));
   const ids = new Set(own.map(row => row.pid));
   const roots = own.filter(row => !ids.has(row.ppid));
-  const below = roots.flatMap(root => descendantsOf(rows, root.pid));
+  const below = roots.flatMap(root => descendantsOf(rows, root));
   return [...new Map([...own, ...below].map(row => [row.pid, row])).values()];
 }
 
@@ -30,7 +30,7 @@ export async function endBrowser({profile, control = null, launched = false, fal
   if (!left.length && launched && fallback) { await fallback(); return; }
   for (let attempt = 0; attempt < 2 && left.length; attempt++) {
     for (const row of left) { try { kill(row.pid, 'SIGKILL'); } catch { /* already gone */ } }
-    left = await waitTreeGone(left, {alive, ...(capMs === undefined ? {} : {capMs})});
+    left = await waitTreeGone(left, {alive, list, ...(capMs === undefined ? {} : {capMs})});
   }
   if (left.length) throw new Error(`isolated browser: still running after kill: ${holdersOf(left)}`);
 }

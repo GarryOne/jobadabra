@@ -40,3 +40,24 @@ test('closing an app that already exited by itself (a reset, an import) is quiet
   await closeApp(gone);
   await closeApp(gone, {how: 'crash', graceMs: 10});
 });
+
+// Why (1 Nov 2026, beta #4 run 41309751593, Windows apply-2of3): the close listed 155 processes "below" the app, because Windows keeps a dead parent's pid as the parent id of what it made and
+// a newer process can take that pid. The runner's own processes were among them and were ended. A process created before the app is not its child, whatever its parent id says.
+test('closing the app ends what the app started and leaves a live process whose parent id is the launcher\'s pid but was created before it', async t => {
+  const launcher = spawn(process.execPath, ['-e', START_THE_APP], {stdio: ['ignore', 'pipe', 'ignore']});
+  const app = Number(await firstLine(launcher.stdout));
+  const bystander = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], {stdio: 'ignore'});   // stands for a runner process: alive, not the app's
+  t.after(() => { for (const pid of [app, launcher.pid, bystander.pid]) { try { process.kill(pid, 'SIGKILL'); } catch (error) { if (error.code !== 'ESRCH') throw error; } } });
+  const row = (pid, ppid, started, command) => ({pid, ppid, started, command});
+  const GONE = 2000000000;   // a pid nothing has: it makes the tree closeApp reads from `list` differ from the real one (main ignored `list` and saw 1 process below the launcher)
+  const list = () => [row(launcher.pid, process.pid, 2000, 'launcher'), row(app, launcher.pid, 2500, 'the app'), row(GONE, launcher.pid, 2600, 'a second child of the app'),
+    row(bystander.pid, launcher.pid, 1000, 'bystander: made before the launcher by the pid\'s earlier owner')];
+  const exits = once(launcher, 'exit');
+  const fake = {process: () => launcher, evaluate: async fn => { if (!/exit\(/.test(String(fn))) return ''; launcher.kill('SIGKILL'); await exits; }};
+  const said = [], log = console.log;
+  console.log = (...parts) => { said.push(parts.join(' ')); };
+  try { await closeApp(fake, {graceMs: 300, list}); } finally { console.log = log; }
+  assert.match(said.join('\n'), /closing the app \(pid \d+, 2 process\(es\) below it\)/, 'the tree is read from the list: the app and its second child, not the stale row');
+  assert.equal(isAlive(app), false, 'the program the launcher started is still running after the close');
+  assert.equal(isAlive(bystander.pid), true, 'a process that is not the app\'s was ended by the close (a stale parent id took it into the tree)');
+});

@@ -50,7 +50,7 @@ A line that encodes a decision says why, so the next session does not undo it wi
   ``// Why (#2203): `names neither a currency nor a period` — form 106 stayed empty``. The gate then guards those words (3+ words, found in that const), not the whole prompt line.
   A backticked name or path (`` `retryCount` ``) is not a sentence: the line under the Why stays guarded.
   A comment explains; the prompt's case set protects. **A prompt change adds the case it fixed to that prompt's set** (`tools/prompt-cases.json`: the form answers,
-  writing and mail sets), or says `Prompt-case: none <why>` (a typo, a move, a prompt with no set yet); `tools/prompt-cases.mjs` checks it at push. The live set
+  writing and mail sets). Nothing checks it at push or on a PR any more (owner, 1 Nov 2026, prune audit 2/4: 2 stops in 30 days, every `Prompt-case` trailer "none"); the session adds the case and the reviewer asks for it. The live set
   comparison is **manual only** (`prompt-cases.yml`, `workflow_dispatch`): choose a ref to compare with main, and Haiku 5.5 checks the cases using main's prompts
   and the selected ref's prompts. It is a paid proof run, not a PR check. Haiku, not Free AI's qwen: it catches prompt regressions, not model ones.
   A new anchored Why must quote words that are in the code right under it (`tools/why-changed.mjs`).

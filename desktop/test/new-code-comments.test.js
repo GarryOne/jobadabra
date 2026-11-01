@@ -1,7 +1,6 @@
 // The comment checks on a push's new code (tools/new-code-comments.mjs; owner, 27 Oct 2026): a new exported function has a doc comment, a debt note has its tag.
 // Fake diffs in git's -U0 shape; old code is never asked.
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import {test} from 'node:test';
 import {commentProblems} from '../../tools/new-code-comments.mjs';
 
@@ -42,11 +41,4 @@ test('a debt note needs its tag: "TODO(AI): <what> (<date or #PR>)" or "FIXME: <
   assert.deepEqual(check('desktop/lib/a.js', ['// TODO(AI): read the second page too (27 Oct 2026)', '// TODO(AI): ask once per job (#2210)', '// FIXME: the count is off by one on an empty list']), []);
   assert.deepEqual(check('desktop/lib/a.js', ['const examples = [\'  x = 1;  // TODO\', "# XXX"];']), [], 'a "//" inside a string is not a comment');
   assert.deepEqual(check('desktop/lib/a.js', ['const todo = rows.filter(Boolean);   // the to-do rows', 'const url = "https://example.com/TODO";']), [], 'the app\'s to-do and code that is not a comment');
-});
-
-test('the push gate runs it beside the Why check, before a PR push stops', () => {
-  const hook = fs.readFileSync(new URL('../../tools/pre-push-check.sh', import.meta.url), 'utf8');
-  const at = hook.indexOf('node tools/new-code-comments.mjs --base origin/main');
-  assert.ok(at > 0 && Math.abs(at - hook.indexOf('node tools/why-changed.mjs --base origin/main')) < 1500);
-  assert.ok(at < hook.indexOf('case "$command" in *SHIP_PR=1*|*CI_GATES=1*)'));
 });

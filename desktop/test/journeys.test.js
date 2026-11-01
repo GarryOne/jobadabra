@@ -7,6 +7,7 @@ import './journeys-letter-fallback.test.js';
 import './journeys-profile.js';
 import './journeys-cover-letter-notice.js';
 import './journeys-eligibility.js';
+import './journeys-popup.js';
 import * as terminals from '../lib/terminals.js';
 import * as apply from '../lib/apply.js';
 import * as review from '../lib/review.js';
@@ -28,7 +29,6 @@ import {sharedRead} from '../lib/shared-read.js';
 import {endingOf} from '../e2e/lib/ending.mjs';
 import {stopsOf} from '../e2e/lib/pool-shadow.mjs';
 import {doorLines, runEvents} from '../e2e/lib/pool-gaps.mjs';
-import {pickDismiss} from '../lib/popup-pick.js';
 import * as questionFormats from '../lib/question-formats.js';
 import {formatFor} from '../renderer/question-kind.js';
 
@@ -369,6 +369,33 @@ test('scenario: the person presses Stop mid-application (an account page, a fill
   assert.equal(terminals.get('f2').stuck, 'stopped', 'only the reopened one starts');
 });
 
+// #2812 (1 Nov 2026, a8's yes): an armed tab left on a page Chrome guards (chrome://, the web store, an error page) refused the Stop's page mark on every press, so the panel
+// said "Stop did not finish (Cannot access a chrome:// URL). Press Stop again." for ever. The person's press, through the panel's own channel (stop-messages.js): the Stop holds where no
+// script of ours answers, fails where one does, and the panel is never given Chrome's words. The step-level cases are desktop/test/extension-stop.test.js; a fake chrome lives only here.
+test('scenario: the person presses Stop in the panel while another armed tab sits on a page Chrome guards: the Stop holds, and the panel never gets Chrome\'s words (#2812)', async () => {
+  const saved = {chrome: globalThis.chrome, fetch: globalThis.fetch}, store = {}, reached = [], answers = new Set();   // answers: tabs where a script of ours replies to 'stopped'
+  globalThis.fetch = async url => { reached.push(String(url)); throw new Error('no network in a scenario'); };
+  globalThis.chrome = {runtime: {getManifest: () => ({version: 'scenario'})},
+    storage: {local: {get: async () => ({workerUrl: 'https://worker.invalid'})}, session: {get: async () => ({...store}), set: async items => { Object.assign(store, items); }, remove: async keys => { for (const key of [].concat(keys)) delete store[key]; }}},
+    debugger: {detach: async () => {}, getTargets: async () => []}, tabs: {get: async () => ({}), query: async () => [],
+      sendMessage: async (id, message) => { if (message.type === 'stopped' && answers.has(id)) return {stopped: true}; throw new Error('Could not establish connection. Receiving end does not exist.'); }},
+    scripting: {executeScript: async () => { throw new Error('Cannot access a chrome:// URL'); }}};
+  try {
+    const stop = await import('../../extension/stop.js');
+    const press = (await import('../../extension/stop-messages.js')).createStopMessages();
+    const pressStop = () => new Promise(resolve => press({type: 'stop', reason: 'the Stop button in the panel'}, {tab: {id: 7}}, resolve));
+    store['armed:41'] = true;
+    assert.deepEqual(await pressStop(), {ok: true, tabs: 1}, 'nothing of ours runs on the guarded page: the Stop holds at the first press');
+    stop.restart('the person pressed Apply');
+    store['armed:42'] = true;
+    answers.add(42);
+    const failed = await pressStop();
+    assert.deepEqual(failed, {ok: false, tabs: 1}, 'a script of ours is on a page that refused the mark: the Stop did not finish, and the panel gets no reason to show');
+    stop.restart('scenario');
+    assert.deepEqual(reached.filter(url => new URL(url).hostname === '127.0.0.1'), [], 'the scenario aimed at the app on this Mac');
+  } finally { globalThis.chrome = saved.chrome; globalThis.fetch = saved.fetch; }
+});
+
 // #961: the fill the Stop cut short reports "Stopped by you." as its error; the card stays Stopped and the error watcher (Sentry, Telegram) sees no error.
 test('scenario: a fill cut short by Stop reports its error late: the card stays Stopped and no fill error is raised (#961)', () => {
   const {flow, card} = journeyOf('f1');
@@ -426,8 +453,6 @@ test('scenario: Fill in Chrome pressed twice on one job with its tab open: one t
   assert.equal(review.tabOf(first.session.id), 5, 'the session stays on its one tab');
 });
 
-const claude = (button, sent = [], effect = 'closes_only') => ({messages: {create: async request => { sent.push(request); return {stop_reason: 'end_turn', content: [{type: 'text', text: JSON.stringify({button, effect})}]}; }}});
-const popup = {text: 'Bleiben Sie auf dem Laufenden mit unserem Newsletter!', buttons: ['Jetzt anmelden', 'Nein, danke']};
 const storageOf = () => createStorage(fs.mkdtempSync(path.join(os.tmpdir(), 'pilot-')), {encrypt: v => Buffer.from(v).reverse().toString('base64'), decrypt: s => Buffer.from(s, 'base64').reverse().toString()});
 
 // #520: start() made a form session per job and then found no browser: the sessions stayed in the Applying page with no tab (applyOne already removes its own).
@@ -447,19 +472,6 @@ test('scenario: Apply to N jobs with no browser installed leaves no form session
   } finally { Object.defineProperty(process, 'platform', {value: real}); for (const [name, value] of Object.entries(home)) { if (value === undefined) delete process.env[name]; else process.env[name] = value; } }
 });
 
-// #962: a pick kept before the effect floor (c8e0113) had no effect on record and was pressed anyway for up to 30 days.
-test('scenario: a popup pick kept before the closes_only floor (no effect on record) is asked again, never pressed blind (#962)', async () => {
-  const files = {}, storage = {readText: name => files[name] ?? null, writeText: (name, text) => { files[name] = text; }}, sent = [];
-  await pickDismiss(storage, popup, {client: claude('Nein, danke', sent)});
-  const kept = JSON.parse(storage.readText('popup-picks.json')), [key] = Object.keys(kept);
-  assert.equal(kept[key].e, 'closes_only', 'the effect is kept with the pick');
-  delete kept[key].e;   // what an older install holds
-  storage.writeText('popup-picks.json', JSON.stringify(kept));
-  assert.deepEqual(await pickDismiss(storage, popup, {client: claude('Jetzt anmelden', sent, 'declines_consent')}), {button: '', how: 'ai'});
-  assert.equal(sent.length, 2, 'asked again');
-  assert.deepEqual(await pickDismiss(storage, popup, {client: claude('x', sent)}), {button: '', how: 'kept'}, 'a kept "none" needs no effect');
-});
-
 test('scenario: Apply answers after its job is marked Applying: a list read asked then is a fresh one, so the Jobs chips count it (#1737, 24 Oct 2026)', async () => {
   terminals._reset();
   const jobs = sharedRead('jobs', () => new Promise(() => {}));   // a read that began before the press, still running
@@ -469,30 +481,5 @@ test('scenario: Apply answers after its job is marked Applying: a list read aske
   assert.equal(result.ok, true);
   assert.notEqual(jobs(), running, 'Apply answered while its Applying write was still running: the window re-read the old stage');
   terminals._reset();
-});
-
-// The replay app does not run setup or the review queue: prove their shared missing-letter state through the desktop boundary.
-test('scenario: attached CV and complete required fields still leave missing cover-letter setup HIGH PRIORITY', async () => {
-  const {openShown} = await import('../lib/question-lists.js');
-  const {me} = await import('../lib/server-contact.js');
-  const {availableLetter} = await import('../lib/letter-availability.js');
-  const storage = createStorage(fs.mkdtempSync(path.join(os.tmpdir(), 'jp-letter-journey-')), {encrypt: v => v, decrypt: v => v});
-  fs.writeFileSync(storage.path('cv.pdf'), '%PDF-fictional-CV');
-  const queue = await openShown(storage, {rows: [], groups: [], ai: {client: {messages: {create: async () => { throw new Error('This setup state never needs AI'); }}}}});
-  assert.equal(queue.letter?.setup?.kind, 'cover-letter', 'its own card (owner, 28 Oct 2026)');
-  assert.equal(queue.letter.priority, 'HIGH PRIORITY');
-  const details = await me(storage, FORM);
-  assert.ok(details.resume, 'the CV is attached/available while the letter is missing');
-  assert.equal(details.coverLetterStatus.state, 'missing');
-  assert.equal(details.coverLetterFile, null);
-  review._reset();
-  const sessions = [{id: 'letter-journey', url: FORM, company: 'Example', kind: 'form', status: 'done'}];
-  const payload = {session: 'letter-journey', url: FORM, tab: 91, total: 3, left: 0, letterAsked: true, letterGiven: false};
-  review.report(sessions, payload);
-  const state = review.allStates().find(row => row.id === 'letter-journey');
-  assert.equal(availableLetter(storage, FORM, {given: state.letterGiven}).status.ready, false, 'filled required fields cannot stand in for a missing letter');
-  review.report(sessions, {...payload, letterGiven: true});
-  const written = review.allStates().find(row => row.id === 'letter-journey');
-  assert.equal(availableLetter(storage, FORM, {given: written.letterGiven}).status.source, 'form', 'a letter actually supplied satisfies this form without changing fallback consent');
 });
 

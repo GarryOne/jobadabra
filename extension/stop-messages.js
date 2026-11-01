@@ -21,7 +21,8 @@ export function createStopMessages() {
   });
   return function messages_stop(message, sender, reply) {
     if (message?.type === 'stop') {
-      stopAll(String(message.reason || 'the person pressed Stop')).then(done => reply({ok: true, ...done}), () => reply({ok: false}));
+      // Why (1 Nov 2026, #2812, Gitar on #2840): a page gets only whether the Stop held and on how many tabs; each failed step's reason (Chrome's own words) stays in the log (stop.js).
+      stopAll(String(message.reason || 'the person pressed Stop')).then(done => reply({ok: done.ok, tabs: done.tabs}), () => reply({ok: false}));
       return true;
     }
     if (PERSON_STARTS.includes(message?.type)) {   // the group that owns the message answers it

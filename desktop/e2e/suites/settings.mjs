@@ -7,6 +7,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {FIXTURES} from '../lib/cvfixtures.mjs';
 import {ensureSetUp} from '../lib/seed.mjs';
+import {profileExperienceStep} from '../lib/profile-experience-step.mjs';
 
 export const name = 'settings';
 import {hangCapsFor} from '../lib/hang-caps.mjs'; export const hangCaps = hangCapsFor('settings');
@@ -56,6 +57,8 @@ export async function run(ctx) {
       }
     } finally { if (original) fs.writeFileSync(target, original); }
   }, {needs: ctx.needs});
+  // Why (1 Nov 2026, owner: "Profile (CV, Experience)" is tier 1): the Experience half of J14; its integration counterpart is integration/store/profile-experience-edit.test.mjs.
+  await ctx.run('Profile Experience: an edited summary is saved with the Profile save bar, and is still there after a restart', () => profileExperienceStep(ctx), {needs: ctx.needs, data: true});
   // Why (1 Nov 2026, owner: "Only tier 1 … should stay e2e"; "None of these are critical user journeys"): 'Settings render without layout problems' (J17) is integration/app/screen-settings.test.js.
   // The Your data and Automatic backup steps (export with keys / reset / import, the backup file, Back up now, the due-at-start and weekly-tick backup; J10) are integration/store/data-roundtrip.test.mjs.
 }

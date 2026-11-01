@@ -16,7 +16,7 @@ import {replayFiles} from './replay-files.mjs';
 
 export const PROOF = /^desktop\/(e2e\/recorded\/|e2e\/ladder-fixtures\/|test\/journeys\.test\.js$)/;   // a recorded page, a ladder fixture (a decision fix) or a scenario
 export const TRAILER = /^Recorded-unneeded:\s*\S/m;
-export const NAMES_A_FAILURE = /^Pool-row:[ \t]*(?!none\b)\S|^Owner-report:[ \t]*(?!none\b)\S|^(?:fix(?:e[sd])?|close[sd]?|resolve[sd]?|refs?)[ \t]+#\d+/im;   // a pool row (not "none <why>"), or an issue, the commit answers to
+export const NAMES_A_FAILURE = /^Pool-row:[ \t]*(?!none\b)\S|^(?:fix(?:e[sd])?|close[sd]?|resolve[sd]?|refs?)[ \t]+#\d+/im;   // a pool row (not "none <why>"), or an issue, the commit answers to
 export const RECORDED_CASE = /^desktop\/e2e\/recorded\/([^/]+)\//;
 
 // The recorded cases (folder names) a push adds or changes.

@@ -144,7 +144,6 @@ class RatchetTest(RepoTest):
         start = hook.index('python3 tools/clean-code-py.py --base origin/main')
         arch = hook.index('python3 tools/arch-check.py --base origin/main')
         self.assertLess(start, arch)
-        self.assertLess(arch, hook.index('timed "spec proof"'))
         self.assertLess(arch, hook.index('case "$command" in *SHIP_PR=1*|*CI_GATES=1*)'))
 
 

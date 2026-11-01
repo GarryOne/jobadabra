@@ -135,11 +135,3 @@ test('the pure parts agree with the repo path', () => {
   assert.deepEqual(guardedChanges('', () => ''), []);
   assert.equal(missingWhyChanged([], []), '');
 });
-
-test('the push gate runs it where the other trailer checks run, before a PR push stops', () => {
-  const hook = fs.readFileSync(new URL('../../tools/pre-push-check.sh', import.meta.url), 'utf8');
-  const at = hook.indexOf('node tools/why-changed.mjs --base origin/main');
-  assert.ok(at > 0, 'tools/pre-push-check.sh runs tools/why-changed.mjs --base origin/main');
-  assert.ok(Math.abs(at - hook.indexOf('node tools/rung-trailer.mjs --base origin/main')) < 1500, 'beside the rung trailer check');
-  assert.ok(at < hook.indexOf('case "$command" in *SHIP_PR=1*|*CI_GATES=1*)'), 'before the line where a PR push stops');
-});

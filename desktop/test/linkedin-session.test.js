@@ -2,7 +2,7 @@
 // copied LinkedIn session as a credential (allow-listed cookies, Keychain only, gone when the switch goes off). lib/linkedin-session.js.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {COOKIE_NAMES, SERVICE, cleanCookies, noteAnswer, noteAsked, noteRun, pausedUntil, readSession, saveSession, shouldAsk, state, turnOff} from '../lib/linkedin-session.js';
+import {COOKIE_NAMES, SERVICE, cleanCookies, noteAnswer, noteAsked, noteRun, pausedUntil, readSession, refreshSession, saveSession, shouldAsk, state, turnOff} from '../lib/linkedin-session.js';
 
 const SECRET = 'AQEDAR-fake-li-at-value';
 const JSESSION = '"ajax:1234567890"';
@@ -106,4 +106,21 @@ test('the last run and a pause are kept beside the switch, and no other write dr
   assert.equal(pausedUntil(settings), 0, 'turning it off forgets the pause: a new yes starts clean');
   assert.equal(settings.settings().linkedinJobs.last, undefined, 'and the last run');
   assert.equal(pausedUntil(store()), 0);
+});
+
+test('#2731 the refresh copy: replaces the Keychain item while on; Chrome signed out deletes it; grants gone keeps it; off refuses everything', () => {
+  const settings = store(), kc = keychain();
+  assert.equal(refreshSession(settings, good(), {keychain: kc}).ok, false, 'off: a copy never arrives');
+  assert.equal(kc.items.size, 0);
+  saveSession(settings, good(), {keychain: kc});
+  const fresh = [cookie('li_at', 'AQEDAR-fresh-value'), cookie('JSESSIONID', '"ajax:55"')];
+  const answer = refreshSession(settings, fresh, {keychain: kc});
+  assert.deepEqual(answer, {ok: true});
+  assert.deepEqual(readSession({keychain: kc}), {li_at: 'AQEDAR-fresh-value', JSESSIONID: '"ajax:55"'});
+  assert.equal(JSON.stringify(answer).includes('fresh-value'), false);
+  assert.deepEqual(refreshSession(settings, undefined, {keychain: kc, held: false}), {ok: true, kept: true});
+  assert.equal(readSession({keychain: kc}).li_at, 'AQEDAR-fresh-value', 'the extension read nothing: the copy stays');
+  assert.deepEqual(refreshSession(settings, [], {keychain: kc}), {ok: true, signedOut: true});
+  assert.equal(readSession({keychain: kc}), null, 'signed out in Chrome: the copy goes, the step will say no-session');
+  assert.equal(state(settings).on, true, "the switch is the person's, not the refresh's");
 });

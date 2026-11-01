@@ -1,6 +1,6 @@
 // LinkedIn jobs on every Find jobs, PR 2/3 (owner, 31 Oct 2026: "Every Find jobs, if the user is logged in via Linkedin Jobs, should search and scrape jobs, using the
 // user's login" … "but headlessly"; spec docs/superpowers/specs/2026-10-31-linkedin-headless-design.md). The step: the person's LinkedIn session (copied from their Chrome by the
-// extension, kept in the Keychain: lib/linkedin-session.js) goes into the app's OWN hidden browser for the read and leaves it again on every way out; up to 3 searches, 3 pages each,
+// extension, kept in the Keychain: lib/linkedin-session.js, copied again at each press: lib/linkedin-refresh.js) goes into the app's OWN hidden browser for the read and leaves it again on every way out; up to 3 searches, 3 pages each,
 // one after another, read by the owned browser's extension exactly as in Chrome (extension/visit.js). It never solves a check, types a password or changes the browser's identity;
 // a sign-in page, a check or a 401/403/429/999 ends it with no retry (a 429 also pauses LinkedIn for a day). Guard: test/linkedin-headless.test.js.
 // Invariant: the session value is only ever in the `Storage.setCookies` call; not in a line, a result, an error or a log.
@@ -99,8 +99,10 @@ async function readAll({list, run, openTab, signal, tee, pause, seen, closeTabs}
  * -> {state: 'off'|'no-session'|'no-browser'|'done'|'signed-out'|'check'|'limited'|'stopped'|'failed', jobs, read?, of?, pauseUntil?}; the caller records it (linkedin-session.js noteRun).
  */
 export async function linkedinStep({storage, browser, openCdp = openCdpSession, run, end, tee = () => {}, signal = null, now = Date.now, searches, readSession = realSession.readSession,
-  port, token, pause = ms => new Promise(resolve => setTimeout(resolve, ms))}) {
+  port, token, refresh = null, pause = ms => new Promise(resolve => setTimeout(resolve, ms))}) {
   const say = state => { if (WORDS[state]) tee(WORDS[state]); return {state, jobs: 0}; };
+  // Why (#2731, spec Behaviour 1): the Keychain copy is only as fresh as the last time the extension copied it, so a press asks for a new one first (lib/linkedin-refresh.js); only when the read can happen.
+  if (refresh && realSession.state(storage).on && !signal?.aborted && realSession.pausedUntil(storage) <= now() && browser.ready()) await refresh({signal, say: tee}).catch(() => {});
   const gated = gate({storage, browser, signal, now, readSession});
   if (!gated.session) return gated.quiet ? {state: 'off', jobs: 0} : say(gated.state);
   try { await browser.start({port, token: typeof token === 'function' ? token() : token}); } catch (error) { return say(error?.code === 'BACKGROUND_BROWSER_MISSING' ? 'no-browser' : 'failed'); }

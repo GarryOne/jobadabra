@@ -1,6 +1,6 @@
 // LinkedIn jobs on every Find jobs, PR 1/3 (owner, 31 Oct 2026: "Opt-in, warned once"; spec docs/superpowers/specs/2026-10-31-linkedin-headless-design.md): the person's LinkedIn
 // sign-in is copied to the app on this Mac so the app's own hidden browser can read their job searches. Chrome Web Store rules shape this file: the permissions are optional and
-// asked only from linkedin.html on a click (consent shown there first); only li_at and JSESSIONID are read; they go only to the app's loopback address; and the permissions are
+// asked only from linkedin.html on a click (consent shown there first); only li_at and JSESSIONID are read; they go only to the app's loopback address; the session is copied again only when the app says a Find jobs press wants it; and the permissions are
 // given back when the app says the switch is off. Guard: desktop/test/extension-linkedin.test.js. Not a flow file: nothing here touches an application.
 import {api, settings} from './flow.js';
 
@@ -27,15 +27,28 @@ export async function connect({chrome = globalThis.chrome, call = api, config = 
   return call(config || await settings(), '/extension/linkedin-session', {method: 'POST', body: JSON.stringify({cookies})});
 }
 
-/** Give back what this consent added when the app says the switch is off, nothing else. Why (31 Oct 2026, Web Store): an app that does not answer takes nothing, so a closed app never revokes;
- *  Why (Gitar on #2694): a permission another feature already held (cookies from the options page, every site) is never removed here. */
+/** A fresh copy for the Find jobs press that asked for one (issue #2731; spec Behaviour 1 "at each Find jobs while on"). Reads only when both LinkedIn grants are still held (never asks for them:
+ *  a request needs the person's click), and posts only to the app. No li_at in Chrome = the person signed out: an empty list tells the app so. Grants gone = {held: false}: the app keeps what it has. */
+export async function refreshSession({chrome = globalThis.chrome, call = api, config = null} = {}) {
+  const held = await chrome.permissions.contains(LINKEDIN).catch(() => false);
+  const body = held ? {cookies: await readCookies(chrome)} : {held: false};
+  return call(config || await settings(), '/extension/linkedin-refresh', {method: 'POST', body: JSON.stringify(body)});
+}
+
+/** The one-minute look. Asks the app two things: is the switch off (give back what this consent added, nothing else), and does a Find jobs press want a fresh copy (refreshSession).
+ *  Why (31 Oct 2026, Web Store): an app that does not answer takes nothing, so a closed app never revokes;
+ *  Why (Gitar on #2694): a permission another feature already held (cookies from the options page, every site) is never removed here;
+ *  Why (#2731): a consent that added nothing (both grants were already held) is still looked after for the refresh, so only the removal is skipped for it. */
 export async function revokeIfOff({chrome = globalThis.chrome, call = api, config = null} = {}) {
   const granted = (await chrome.storage.local.get(GRANTED).catch(() => ({})))[GRANTED];
-  if (!granted || !(granted.cookies || granted.origin)) return {held: false};
+  if (!granted) return {held: false};
   const asked = await call(config || await settings(), '/extension/linkedin-pending', {method: 'POST', body: '{}'}).catch(() => null);
-  if (asked?.revoke !== true) return {revoked: false};
+  if (asked?.revoke !== true) {
+    if (asked?.refresh === true) await refreshSession({chrome, call, config}).catch(() => {});
+    return {revoked: false};
+  }
   const mine = {...(granted.cookies ? {permissions: LINKEDIN.permissions} : {}), ...(granted.origin ? {origins: LINKEDIN.origins} : {})};
-  await chrome.permissions.remove(mine).catch(() => {});
+  if (granted.cookies || granted.origin) await chrome.permissions.remove(mine).catch(() => {});
   await chrome.storage.local.remove(GRANTED).catch(() => {});
   return {revoked: true};
 }

@@ -342,8 +342,8 @@ def downloaded_index():
     # Default: only feeds with roles in your places. JOBADABRA_INDEX_ALL=1 crawls the whole worldwide index.
     if os.getenv('JOBADABRA_INDEX_ALL'):
         return index
-    kinds = role_kinds.of_search(load_search_config())
-    me = employer_index.me_now()
+    from .together import together   # Why (#2913, 2 Nov 2026): the kinds and the labels are independent AI lookups; one after another they held the employer pick
+    kinds, me = together(lambda: role_kinds.of_search(load_search_config()), employer_index.me_now)
     # The labels this install shares and is ranked by: fixed lists only (7 Oct 2026: a wrong label, like "Suisse" read as ten metros, shows here).
     print('Pool labels: ' + '; '.join(f"{name} {','.join(me.get(name) or []) or '-'}" for name in ('roles', 'families', 'countries', 'metros')))
     said = []

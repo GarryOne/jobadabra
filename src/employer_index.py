@@ -107,8 +107,9 @@ def board_rate(board, me, cache=None):
 def me_now(search=None):
     """This user's fixed-list labels (src/contribute.py): role kinds, families, countries, metros. Nothing leaves the Mac here."""
     from . import contribute
-    roles, _ = contribute.tags(search)
-    return {'roles': roles, **contribute.fine_tags(search)}
+    from .together import together   # Why (#2913, 2 Nov 2026): the two sets of lookups are independent
+    (roles, _), fine = together(lambda: contribute.tags(search), lambda: contribute.fine_tags(search))
+    return {'roles': roles, **fine}
 
 
 QUIET_FROM = '2026-10-21'   # shadow mode until then (owner, 7 Oct 2026): quiet feeds are named in the log but still crawled

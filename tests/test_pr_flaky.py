@@ -43,6 +43,7 @@ class PrFlaky(unittest.TestCase):
         self.assertEqual(len(calls), 1, 'a green e2e run and a non-e2e run are not read')
         self.assertEqual(calls[0][calls[0].index('--run') + 1], '7')
         self.assertEqual(calls[0][calls[0].index('--window') + 1], pf.WINDOW, 'the verdict writer shares a small API budget: a short window')
+        self.assertLess(int(calls[0][calls[0].index('--deadline') + 1]), pf.TOTAL_S, 'the tool ends its own read before the caller kills it (a killed tool prints nothing)')
 
     def test_the_whole_read_stops_at_its_total_deadline_and_no_run_may_outlast_it(self):
         calls, timeouts = [], []

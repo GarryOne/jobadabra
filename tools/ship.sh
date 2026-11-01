@@ -2,7 +2,7 @@
 # Land this worktree's branch on main in one command (AGENTS.md "Change tiers"). It does what the checklist did by hand, and retries the
 # one thing that kept failing, a push rejected because another session pushed in between:
 #   1. fetch + rebase on origin/main (conflicts: it stops and says so; keep both sides' work)
-#   2. the push hook's checks, once: commit subjects, red main, and the suites of the areas this change touches
+#   2. the push hook's checks, once: commit subjects and the suites of the areas this change touches
 #   3. push (fast-forward only, never forced); rejected -> fetch, rebase, re-check only if what landed can clash (tools/recheck-needed.py), push again, up to 5 times
 #   4. bring the main checkout up to date (unless it holds uncommitted edits to the same files); the worktree is kept (tools/worktree.sh prune removes old landed ones)
 #   tools/ship.sh            Tier 0/1: only the touched areas' suites

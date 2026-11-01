@@ -150,7 +150,7 @@ every 30 seconds. Keep the guardrails that catch real breakage; stop paying the 
   | Where | What runs |
   |---|---|
   | **Local push gate** | the cheap commit checks (subject, trailers, file size, stale words), the **affected** unit tests of each area (desktop, Python, worker, site: those that import or name a changed file), the journey tests (no browser, ~1 s), the ladder gate (offline). **No browser, no heavy lock.** |
-  | **CI, after the push** | ALL recorded pages (`.github/workflows/page-cases.yml`: Linux, 4 shards, 4 tabs each, ~80 s), the full suites (`build.yml`), the Windows checks, the e2e harness's own unit tests (`e2e.yml`). A red run on main is a red main: the hook blocks pushes until it is fixed or reverted. |
+  | **CI, after the push** | ALL recorded pages (`.github/workflows/page-cases.yml`: Linux, 4 shards, 4 tabs each, ~80 s), the full suites (`build.yml`), the Windows checks, the e2e harness's own unit tests (`e2e.yml`). A red run on main is a red main: it blocks no push (owner, 1 Nov 2026), only a red e2e suite gets an owner (the `red-main` issue, below); a red `build.yml`, `page-cases.yml` or Windows run has none automatically. |
   | **On request** | `JP_GATE_REPLAY=1` replays here the recorded cases a change can affect (`desktop/e2e/recorded-case-map.json`, measured by `npm run recorded-map`; every case when a shared, flow-core or replay-tool file changed, a file is unmapped or the map is stale); `JP_E2E_UNIT=1` the e2e harness's unit tests; `JP_GATE_FULL=1` (or `PUSH_FULL=1`) the old full run, no watchdog. |
   A ~55 s watchdog (`tools/gate-watchdog.sh`, `JP_GATE_BUDGET`) stops a heavy step still running (a whole suite, not an affected-test list) and says **"DEFERRED TO CI"** with its name: never failed, never dropped.
   **Harness tests before a push** (c27, 1 Nov 2026): `python3 tools/affected-tests.py --base origin/main` also lists `e2e` (the tests of `desktop/e2e/test` your change can break: reach, mention, or a suite scan) and a ready `commands.<area>` line to paste; the gate itself does not run them (named files, seconds; never the whole harness). An area picked whole is listed in `ci_only.<area>` (with its reason) and has no `commands` entry: run nothing locally for it, CI runs it (never a hand-built list; a8, 1 Nov 2026, #2766 and #2763).
@@ -158,7 +158,6 @@ every 30 seconds. Keep the guardrails that catch real breakage; stop paying the 
 - **One change, one push.** A follow-up you think of (prefetch, a Finder check, a new tool) is offered in one line and built only when the owner says yes.
 - **Land with `tools/ship.sh`**, not by hand. The pre-push hook runs only the suites of the areas the push touches (docs: none; engine: python +
   desktop; an unknown path: everything; `PUSH_FULL=1` forces all). Do not wait for CI of your own push before the next task: look at it later.
-  A red main whose jobs were only cancelled or never started (busy runners) is infrastructure: the hook re-runs it and does not block.
 - **What the hook starts is decided by the affected-tests pick** (`tools/affected-tests.py`, 11 Oct 2026): an area with no affected test is not started
   (a docs, skill or tools-only push: lint + the touched unit tests, under ~1 min; a changed JS file keeps desktop's lint). `extension/` and flow-core
   pushes keep the journey, ladder and recorded gates, which run on their own file lists. `JOB_PILOTTO_TIERS=0` starts every area the paths want.
@@ -209,31 +208,17 @@ A full suite is 3-17 minutes; the step that failed is usually under one. Two ses
 - **Re-run only the step:** `E2E_STEPS="<words from the step name>,<its prerequisite steps>" node run-all.mjs --only <suite>` (setup steps marked critical always run; `run-all` reads the Notion tokens, `suite.mjs` alone does not). A step often builds on the one before it, so name both.
 - **Full suite or full `run-all` only as the last check** before a push that touches that area, never to look at a failure.
 
-### Red main: the first session to see it unblocks everyone (5 Oct 2026)
-A red `build` on `main` blocks every session's push (the pre-push hook). Waiting for its author left four sessions stuck
-until the owner stepped in. So whoever meets it fixes it, in the same turn, before their own push:
-1. `gh run view --log-failed <run>`: what broke.
-2. **Small and obvious** (a missing file, an import, a test expectation): fix it forward in its own commit,
-   `CI_RED_OK=1 git push origin <topic>:main`.
-3. **Otherwise** `git revert --no-edit <bad sha>` (`tools/revert-red.sh <sha>` does it and lands it with `ship.sh --fix`, now through a PR too) (a new commit, never a force-push), push it with `CI_RED_OK=1`, and tell
-   the user which commit was reverted; its author lands it again, fixed.
-4. Then push your own work normally. Never add your commits on top of a red build, and never push with `CI_RED_OK=1` for
-   anything but the fix or the revert.
-
-A landing through a pull request (`tools/ship.sh` in PR mode, `SHIP_PR=1`) does not wait on a red main (12 Oct 2026): the PR's own required checks
-guard main, and a flake already re-run green stopped three landings that day. ship.sh says "main is red at X: not waiting" and goes on; fixing a
-real red main is still the first session's job.
+### Red main blocks no push (owner, 1 Nov 2026; replaces the 5 Oct 2026 rule)
+Owner, 1 Nov 2026: "We should remove that rule. It was when we're not using PRs. Now, since we use PRs, main can be red." Main takes pull requests only, so the PR's own
+required checks ("All checks passed") guard it: the pre-push hook and `tools/ship.sh` never wait on or refuse a push because main's build is red (a flake already re-run green stopped
+three landings on 12 Oct 2026, and a red main stopped #2883 on 1 Nov 2026).
+- A red **e2e suite** on main still has an owner (gate G2b, `docs/rules/change-loop.md`): it is bisected to its breaking PR (`e2e-bisect.yml`) and named in a `red-main` issue and on that PR. A red `build.yml`, `page-cases.yml` or Windows run on main has no automatic owner now that the push block is gone: whoever sees it red first says so to the coordinator (owner decision, 1 Nov 2026; a filer for them is a new gate, which waits for the burn-in).
+- `tools/revert-red.sh <sha>` and `tools/ship.sh --fix` remain as optional tools for a revert or a fix you want landed ahead of the queue. They are not required before a push.
+- `tools/ship-red.sh` (the landing wait) remains in the direct mode only (a non-GitHub origin, or `gh` not answering); a pull request never waits.
 
 The hook runs the suites on a **clean checkout of what is pushed**, one area at a time, as CI does, so leftovers in your
 folder can't hide a break: `fa1f838` passed locally on a `desktop/shared/` left by a desktop run, and the worker's CI job,
-which never stages it, went red. A fix still building does **not** let anyone through (11 Oct 2026: four landings went in
-on top of a fix attempt that ended red): main is green again when a later commit's run has completed green
-(`tools/red-main.sh`). While it is red every landing but the fix waits (`tools/ship.sh` says so); after **5 minutes** red
-with nobody claiming the fix (`tools/red-main.sh claim <sha> --session <name>` extends it to 15, once) the next landing
-says loudly to run `tools/revert-red.sh <sha>`, which reverts the commit and ships it with `--fix`. Every red period is
-logged to `gate-timing.log` (`red-main ended ... minutes=N waited=K`). `SHIP_IGNORE_RED=1` only with the owner's OK.
-The fix goes first: `tools/ship.sh --fix` skips the landing queue, never waits for a check slot, and its heavy-lock runs are class `fix`
-(`JOB_PILOTTO_HEAVY_CLASS=fix` for a proof replay started by hand). A red run is re-run once; the 5 minutes count from its first completion.
+which never stages it, went red.
 
 ### Commit messages
 - **Every fix leaves a permanent check** (3 Oct 2026). A commit that says `Fixes #N` also adds the test that would have caught the bug: a unit test, an e2e unit test,

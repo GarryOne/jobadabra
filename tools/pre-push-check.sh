@@ -63,30 +63,7 @@ fi
 repo="$(git -C "$dir" rev-parse --show-toplevel 2>/dev/null)" || exit 0
 [ -f "$repo/src/daily.py" ] && [ -d "$repo/worker" ] || exit 0   # only this project
 
-# Don't stack commits on a red main: when main's state (tools/red-main.sh: the newest commit with a finished verdict, a failed job in a running build counts) is red, block the push unless the
-# command says it is the fix or a revert: `CI_RED_OK=1 git push ...`. A fix still building does NOT let others through (11 Oct 2026: four landings went in on top of a fix attempt that ended red):
-# main is green again only when a later commit's run has completed green. No gh or no network: skip. The first session to meet a red main unblocks everyone (AGENTS.md "Red main").
-# A push to a pull request branch (SHIP_PR=1) never waits: the PR's own required checks guard main (12 Oct 2026: red-main flakes stopped three PR landings).
-case "$command" in *CI_RED_OK=1*|*CI_GATES=1*|*SHIP_PR=1*) ;; *)
-  if [ "${SHIP_IGNORE_RED:-}" != 1 ] && [ -f "$repo/tools/red-main.sh" ]; then
-    state="$(bash "$repo/tools/red-main.sh" 2>/dev/null)" || true
-    case "$state" in red*)
-      IFS="|" read -r _ bad workflow url finished run_id <<<"$state"
-      # One clear line first: which run, which commit, who wrote it (no gh api, no daemon: the commit is in this clone after the gate's fetch).
-      culprit="$(git -C "$repo" log -1 --format='"%s" by %an' "$bad" 2>/dev/null)"
-      {
-        echo "Push blocked: main is RED: run ${run_id:-?} failed at $bad, ${culprit:-commit not in this clone} ($url)."
-        echo "CI '$workflow' on main is red (finished $finished)."
-        echo "Unblock it now, you are not waiting for its author (AGENTS.md \"Red main\"):"
-        echo "  1. See why: gh run view --log-failed ${run_id:-?}"
-        echo "  2. A small, obvious fix (missing file, import, test expectation): fix it forward, push it with CI_RED_OK=1 git push ... (tools/ship.sh --fix)"
-        echo "  3. Otherwise: git revert --no-edit $bad (a new commit, never a force-push), push it with CI_RED_OK=1, and tell the user what was reverted (tools/revert-red.sh)."
-        echo "  Then push your own work normally. A fix still building does not unblock anyone: main is green when a later run has completed green. Never just add commits on top of a red build."
-      } >&2
-      exit 2 ;;
-    esac
-  fi ;;
-esac
+# A red main never blocks a push (owner, 1 Nov 2026: "We should remove that rule. It was when we're not using PRs. Now, since we use PRs, main can be red"): the PR's own required checks guard main.
 
 # Commit subjects: one line, at most 72 characters (AGENTS.md → Commit messages). Checks the commits this push adds on top of
 # origin/main, merges aside; `COMMIT_LONG_OK=1 git push ...` skips it (a pushed commit is never rewritten to satisfy this).

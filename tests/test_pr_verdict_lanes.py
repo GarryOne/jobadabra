@@ -179,7 +179,6 @@ class RegistryFile(unittest.TestCase):
         listed = {name: (entry['lane'], entry['returns']) for name, entry in self.registry['suites'].items() if 'lane' in entry}
         self.assertEqual(listed, {
             'qualityai': ('tolerant', 'Stays tolerant: it measures the live model.'),
-            'mailreading': ('retired', 'Retired permanently; use qualityai:mail for a manual mail-reading eval.'),
             'notion-real': ('tolerant', 'Stays tolerant: it tests Notion itself.'),
             'personas': ('tolerant', 'Stays tolerant: it reports a live model\'s answers on fictional personas; it returns to the backbone only if the owner asks for its asks to be stored.'),   # owner, 31 Oct 2026: report only, like qualityai
             'wander': ('tolerant', 'Stays tolerant: it is a nightly report, not a gate.'),   # owner, 1 Nov 2026: cadence night-report (lib/plan.mjs)

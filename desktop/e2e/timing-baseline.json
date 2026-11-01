@@ -1,13 +1,8 @@
 {
-  "activity": {
-    "fixedWaits": 0,
-    "elapsedAssertions": 0,
-    "clockWaits": 8
-  },
   "activityfailures": {
     "fixedWaits": 1,
     "elapsedAssertions": 0,
-    "clockWaits": 9
+    "clockWaits": 8
   },
   "apply": {
     "fixedWaits": 0,
@@ -32,17 +27,17 @@
   "failureschannels": {
     "fixedWaits": 0,
     "elapsedAssertions": 0,
-    "clockWaits": 9
+    "clockWaits": 8
   },
   "failuresnotion": {
     "fixedWaits": 0,
     "elapsedAssertions": 0,
-    "clockWaits": 9
+    "clockWaits": 8
   },
   "focusdismiss": {
-    "fixedWaits": 2,
+    "fixedWaits": 0,
     "elapsedAssertions": 0,
-    "clockWaits": 2
+    "clockWaits": 1
   },
   "interactions": {
     "fixedWaits": 1,
@@ -50,7 +45,7 @@
     "clockWaits": 4
   },
   "interviews": {
-    "fixedWaits": 1,
+    "fixedWaits": 0,
     "elapsedAssertions": 0,
     "clockWaits": 2
   },
@@ -63,11 +58,6 @@
     "fixedWaits": 0,
     "elapsedAssertions": 0,
     "clockWaits": 1
-  },
-  "mailreading": {
-    "fixedWaits": 0,
-    "elapsedAssertions": 0,
-    "clockWaits": 0
   },
   "notion-real": {
     "fixedWaits": 2,

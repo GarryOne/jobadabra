@@ -175,6 +175,17 @@ class AffectedTests(unittest.TestCase):
     def test_the_site_command_names_the_test_folder(self):
         self.assertEqual(affected.commands({'site': ['x.test.js'], 'reasons': {}}), {'site': 'node --test test/x.test.js'})
 
+    def test_the_integration_layer_is_an_area_picked_by_reach_and_the_engine_picks_its_store_tests(self):
+        # R2, 1 Nov 2026 (owner: "whatever e2e suite we'd feel to run on a PR, we should run the integrations counterpart"): one picker, one more area.
+        got = affected.select(['desktop/lib/interviews.js'])
+        self.assertIn('store/interviews-flow.test.mjs', got['integration'])
+        self.assertNotIn('store/jobs-run.test.mjs', got['integration'], 'picked by reach, not as a whole-tree scanner')
+        engine = affected.select(['src/scout.py'])['integration']
+        self.assertTrue(engine and all(name.startswith('store/') for name in engine), 'an engine change picks the store layer (it runs the real engine), not the window tests')
+        self.assertEqual(affected.select(['docs/x.md'])['integration'], [])
+        command = affected.commands({'integration': ['store/jobs-run.test.mjs'], 'reasons': {}})['integration']
+        self.assertEqual(command, 'cd desktop && node --import ./test/no-live-site.mjs --test integration/store/jobs-run.test.mjs')
+
 
 if __name__ == '__main__':
     unittest.main()

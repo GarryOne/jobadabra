@@ -49,8 +49,8 @@ test('every mutant names the step that catches it, and its suite runs that step'
     assert.ok(mutant.catches, `${mutant.id}: no "catches" (the words of the step that turns red when this bug is in the app)`);
     assert.ok(await stepRunBy(mutant.suite, mutant.catches), `${mutant.id}: the ${mutant.suite} suite runs no step with "${mutant.catches}"`);
   }
-  assert.equal(await stepRunBy('focusdismiss', 'removes it for good'), true);
-  assert.ok(!stepsRunBy('activityfailures').includes('Notion answers an HTML error page'), 'the parts model is right: the AI part does not run the Notion steps');
+  assert.equal(await stepRunBy('focusdismiss', 'Dismiss on a job in process'), true);   // R2, 1 Nov 2026: the one step focusdismiss still runs
+  assert.ok(!stepsRunBy('activityfailures').includes('a Save that Notion refuses is never shown as saved'), 'the parts model is right: the AI part does not run the Notion steps');
 });
 
 test('a stale or ambiguous mutant is an error, never a silent pass', () => {

@@ -26,12 +26,12 @@ JS_EXT = ('.js', '.mjs', '.cjs')
 IMPORT_RE = re.compile(r"""(?:require\(\s*|\bfrom\s+|\bimport\s*\(\s*|\bimport\s+)['"](\.[^'"]*)['"]""")
 SCANNER_RE = re.compile(r'''readdirSync|globSync|git ls-files|git ls-tree|['"]ls-(?:files|tree)['"]''')   # the last: execFileSync('git', ['ls-files', ...]) (15 Oct 2026)
 ENGINE_RE = re.compile(r'python|(?:^|[^A-Za-z])src[/.]')
-NODE_AREAS = {'desktop': 'desktop/test', 'worker': 'worker/test', 'site': 'test', 'e2e': 'desktop/e2e/test'}   # site: the website's tests, only in the joined tree of jobadabra-web; e2e: the harness's own tests (c27, 1 Nov 2026)
-AREAS = ('python', 'desktop', 'worker', 'site', 'e2e')
+NODE_AREAS = {'desktop': 'desktop/test', 'worker': 'worker/test', 'site': 'test', 'e2e': 'desktop/e2e/test', 'integration': 'desktop/integration'}   # site: the website's tests, only in the joined tree of jobadabra-web; e2e: the harness's; integration: the app, extension and store layers own tests (c27, 1 Nov 2026)
+AREAS = ('python', 'desktop', 'worker', 'site', 'e2e', 'integration')
 # Why (c27, 1 Nov 2026, owner "Yes, via affected-tests"): ~70 harness tests scan every suite (ratchets, step lists, guards); #2767 found them one CI round at a time (4 rounds).
 # They are picked as scanners only for a change the harness can read (the app, the extension, the Worker, the workflows); a Python-only edit picks them by reach or mention alone.
 E2E_SCAN_FOR = ('desktop/', 'extension/', 'worker/', '.github/')
-PREFIX = {'e2e': 'desktop/e2e/'}   # the folder a picked test path is printed relative to (default: the area name + '/')
+PREFIX = {'e2e': 'desktop/e2e/', 'integration': 'desktop/integration/'}   # the folder a picked test path is printed relative to (default: the area name + '/')
 ALL_TRIGGERS = re.compile(r'(^|/)(package(-lock)?\.json|requirements[^/]*\.txt|pyproject\.toml|eslint\.config\.mjs)$|^\.github/workflows/build\.yml$')
 # A dependency file inside one JS area (desktop/e2e/package.json) makes THAT area run whole; the other areas still pick by imports and mentions (11 Oct 2026: 1 of 150 commits, the e2e
 # harness's package.json, ran Python, worker and site whole for nothing). A root-level file (package.json, requirements, pyproject) still runs everything.
@@ -181,11 +181,14 @@ def reaches_changed(paths, changed):
 def pick_node_area(area, folder, relevant, graph, engine_changed):
     """The test files of one node area a change can break (paths relative to the area), or 'all' when the e2e reach helper is there and fails."""
     changed_js = {(ROOT / f).resolve() for f in relevant}
-    tests = sorted((ROOT / folder).glob('*.test.*')) if (ROOT / folder).is_dir() else []
+    # Why (R2, 1 Nov 2026, owner: "whatever e2e suite we'd feel to run on a PR, we should run the integrations counterpart"): the integration layer is the PR-time counterpart of the e2e journeys, in three
+    # sub-folders (app, extension, store); it is picked by the same reach, mention and scanner rules as the unit tests, not by a second picker.
+    pattern = '**/*.test.*' if area == 'integration' else '*.test.*'
+    tests = sorted((ROOT / folder).glob(pattern)) if (ROOT / folder).is_dir() else []
     reached = e2e_reach() if area == 'e2e' else {}
     if reached is None:
         return 'all'
-    scan_ok = area != 'e2e' or any(f.startswith(E2E_SCAN_FOR) for f in relevant)
+    scan_ok = any(f.startswith(E2E_SCAN_FOR) for f in relevant) if area == 'e2e' else area != 'integration'   # an integration test is never a whole-tree guard: only reach and mention pick it
     picked, scans = [], {}   # scans: file -> does its text scan the tree (a guard may scan through a module it imports, 10 Oct 2026)
     for t in tests:
         text = read(t)
@@ -195,14 +198,15 @@ def pick_node_area(area, folder, relevant, graph, engine_changed):
         scanner = bool(SCANNER_RE.search(text)) or any(scans.setdefault(f, bool(SCANNER_RE.search(read(f)))) for f in via)
         if (reach & changed_js) or mentions(text, relevant, {}) or (scanner and scan_ok) \
                 or reaches_changed(reached.get(rel(t), ()), relevant) \
-                or (area == 'desktop' and engine_changed and ENGINE_RE.search(text)):
+                or (area == 'desktop' and engine_changed and ENGINE_RE.search(text)) \
+                or (area == 'integration' and engine_changed and '/integration/store/' in rel(t)):   # the store layer runs the real Python engine
             picked.append(rel(t)[len(PREFIX.get(area, area + '/')):])
     return picked
 
 
 def select(changed, base_ref=None):
     changed = sorted(set(changed))
-    result = {'python': [], 'desktop': [], 'worker': [], 'site': [], 'e2e': [], 'reasons': {}}
+    result = {'python': [], 'desktop': [], 'worker': [], 'site': [], 'e2e': [], 'integration': [], 'reasons': {}}
     why = result['reasons']
     if not changed:
         return result
@@ -215,7 +219,8 @@ def select(changed, base_ref=None):
              'desktop': (lambda f: f.startswith(('desktop/', 'extension/')) or f == '.gitattributes'),
              'worker': (lambda f: f.startswith(('worker/', 'extension/'))),
              'site': (lambda f: f.startswith(('site/', 'web/', 'admin/', 'api/', 'shared/', 'workers/', 'db/', 'test/', 'jobs/', 'media/', 'preview/'))),
-             'e2e': (lambda f: True)}   # any file may be read by a harness test: reach and mention decide
+             'e2e': (lambda f: True),   # any file may be read by a harness test: reach and mention decide
+             'integration': (lambda f: f.startswith(('desktop/', 'extension/')))}
     unknown = [f for f in relevant if not f.startswith(KNOWN)]
     if everything or unknown:
         why['all'] = everything + unknown
@@ -246,7 +251,7 @@ def select(changed, base_ref=None):
     # An engine edit (src/) or a fixture/helper under tests/ (a desktop test may read it) counts; an edit to a Python test file itself (tests/test_*.py) cannot change what the app does (11 Oct 2026: it started ~130 desktop tests).
     engine_changed = any(f.startswith('src/') or (f.startswith('tests/') and not re.fullmatch(r'tests/test_[^/]+\.py', f)) for f in relevant)
     for area, folder in NODE_AREAS.items():
-        if not any(areas[area](f) for f in relevant) and not (area == 'desktop' and engine_changed):
+        if not any(areas[area](f) for f in relevant) and not (area in ('desktop', 'integration') and engine_changed):
             continue
         graph = graph or js_graph()
         picked = pick_node_area(area, folder, relevant, graph, engine_changed)
@@ -271,7 +276,8 @@ def commands(result):
                      'desktop': f'cd desktop && node --test {files}',
                      'worker': f'cd worker && node --test {files}',
                      'site': 'node --test ' + ' '.join(f'test/{name}' for name in picked),   # the site pick is relative to test/ (PREFIX strips 'site/', the same length)
-                     'e2e': f'cd desktop/e2e && node --import ./test/stdout-to-stderr.mjs --test {files}'}[area]
+                     'e2e': f'cd desktop/e2e && node --import ./test/stdout-to-stderr.mjs --test {files}',
+                     'integration': f'cd desktop && node --import ./test/no-live-site.mjs --test {" ".join("integration/" + name for name in picked)}'}[area]
     return out
 
 

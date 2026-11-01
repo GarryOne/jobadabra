@@ -6,6 +6,7 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {startRealExtension} from '../lib/real-extension.mjs';
+import {extensionWorker} from '../lib/own-worker.mjs';
 
 const POSTING = 'https://jobs.coop.ch/Coop/job/Nyon-Assistante-Assistant-du-commerce-de-d%C3%A9tail-AFP-Vaud/1405093533/?locale=en_US';
 // REAL_EXTENSION_DIR=<folder> runs the same checks on another build of the extension (a positive control: the build from before a fix must fail them).
@@ -128,7 +129,7 @@ test('Apply on this page refills a tab the app opened, a reload refills, any oth
     await serve(run, CHOICE_STEP);
     // The popup's page is opened first, before any tab is armed: a tab created right after an Apply press is taken for "the tab Apply opened" and the posting tab is closed (tabs.js followOpener).
     const popup = await run.context.newPage();
-    await popup.goto(`chrome-extension://${new URL(run.context.serviceWorkers()[0].url()).host}/popup.html`);
+    await popup.goto(`chrome-extension://${new URL((await extensionWorker(run.context)).url()).host}/popup.html`);
     await run.page.bringToFront();
     const attached = () => run.page.evaluate(() => document.getElementById('resumeFile')?.files.length || 0).catch(() => -1);
     const ask = (address) => popup.evaluate(async url => { const [tab] = await chrome.tabs.query({url}); return chrome.runtime.sendMessage({type: 'applyHere', tabId: tab.id}); }, address);

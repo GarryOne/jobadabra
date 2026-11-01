@@ -159,9 +159,9 @@ test('jobs slow proxy counts a stored engine answer before lookup with no live c
   });
   assert.equal((await h.localFetch(`${h.proxy.url}/v1/messages`, initOf(row))).status, 200);
   assert.equal(h.proxy.stats.calls - before, 1);
-  const source = fs.readFileSync(new URL('../suites/jobs.mjs', import.meta.url), 'utf8');
-  assert.match(source, /proxy\.setDelay\(8000\)/);
-  assert.match(source, /proxy\.stats\.calls - callsBefore < 1/);
+  const source = fs.readFileSync(new URL('../../integration/store/jobs-run.test.mjs', import.meta.url), 'utf8');   // the slow check moved there (R2, 1 Nov 2026), with a shorter delay
+  assert.match(source, /kit\.proxy\.setDelay\(\d+\)/);
+  assert.match(source, /kit\.proxy\.stats\.calls > calls/);
   h.assertNoLive();
 });
 

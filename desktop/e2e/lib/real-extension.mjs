@@ -20,6 +20,7 @@ import {EXTENSION_DIR, browserChannel, copyExtension, freePort} from './extensio
 import {LAUNCH_TIMEOUT_MS, launchGuard} from './launch-guard.mjs';
 import {setExtensionStorage} from '../../../hosted/ready-fill/extension-storage.mjs';
 import {endBrowser} from './browser-end.mjs';
+import {extensionWorker} from './own-worker.mjs';
 
 // The extension's stored settings (chrome.storage.local as JSON) -> '' or why it is not isolated: its app address is not the stand-in's port, or an address
 // on the live app's port 47111 is stored anywhere. An ADDRESS, never the bare digits: 27 Oct 2026 (run 40447725087) a stored timestamp, "boot":"1793074711121",
@@ -87,7 +88,7 @@ export async function startRealExtension({extensionDir = EXTENSION_DIR, cv = tru
         ...(offline ? ['--host-resolver-rules=MAP * ~NOTFOUND , EXCLUDE 127.0.0.1 , EXCLUDE localhost'] : [])],
     });
     await checkCancelled();
-    worker = context.serviceWorkers()[0] || await context.waitForEvent('serviceworker', {timeout: 30000});
+    worker = await extensionWorker(context);
   } catch (error) {
     launchGuard.failed(error);
     await close().catch(() => {});

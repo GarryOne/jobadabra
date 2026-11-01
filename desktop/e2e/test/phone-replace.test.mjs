@@ -6,6 +6,7 @@ import {test} from 'node:test';
 import {PAGE_FILES} from '../../../extension/page-files.js';
 import {typeNotTakenForReal} from '../../../extension/fill-verify.js';
 import {startRealExtension} from '../lib/real-extension.mjs';
+import {extensionWorker} from '../lib/own-worker.mjs';
 
 const FIXTURE_URL = 'https://phone.example.test/fixture';
 const FORM = `<!doctype html><title>Telephone control fixture</title>
@@ -53,7 +54,7 @@ test('post-country phone writer replaces the existing number on every pass', asy
       window.__jobPilottoPhone = {field: 'phone', national: '+41795550123'};
     });
     const driver = await app.context.newPage();
-    const base = app.context.serviceWorkers()[0].url().split('/').slice(0, 3).join('/');
+    const base = (await extensionWorker(app.context)).url().split('/').slice(0, 3).join('/');
     await driver.goto(`${base}/options.html`);
     for (let pass = 0; pass < 2; pass++) {
       const results = await driver.evaluate(async url => {

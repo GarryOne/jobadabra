@@ -34,20 +34,6 @@
       ]
     },
     {
-      "name": "the AI answers 429 (rate limit): the run ends as Failed or with warnings, in words, with nothing left Running",
-      "seconds": [
-        28.6,
-        30
-      ]
-    },
-    {
-      "name": "the AI answers 500: the run ends as Failed or with warnings, in words, with nothing left Running",
-      "seconds": [
-        16.9,
-        19.7
-      ]
-    },
-    {
       "name": "the AI says the key is invalid (401): the run ends as Failed or with warnings, in words, with nothing left Running",
       "seconds": [
         18.8,
@@ -55,31 +41,10 @@
       ]
     },
     {
-      "name": "the AI says the credit balance is empty (the spending limit): the run ends as Failed or with warnings, in words, with nothing left Running",
-      "seconds": [
-        17.4,
-        21.5
-      ]
-    },
-    {
-      "name": "the AI never answers: the run is stopped after its silence limit and ends as Stopped, in words, with nothing left Running",
-      "seconds": [
-        50.4,
-        50.6
-      ]
-    },
-    {
       "name": "quitting the app in the middle of a run: it is not shown Running for ever, and the app says what became of it",
       "seconds": [
         157.3,
         158
-      ]
-    },
-    {
-      "name": "the failure and queued states render without layout problems",
-      "seconds": [
-        0.2,
-        0.3
       ]
     },
     {

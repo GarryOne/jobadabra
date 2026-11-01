@@ -1,12 +1,14 @@
 // Measures the affected-case map (e2e/recorded-case-map.json): every recorded case runs alone in its own browser with V8 coverage on the extension's worker and pages, and the files a named
 // function ran in are kept (lib/replay-coverage.mjs). Run when the extension's file list or a case changed: `npm run recorded-map` (takes the heavy lock; about the time of a serial replay).
 // lib/replay-select.mjs reads the map; a map that does not match extension/ is stale and every case runs.
+// Job: serve stored answers
 import fs from 'node:fs';
 import path from 'node:path';
 import {REPLAY_DIR, loadCases} from './lib/page-replay.mjs';
 import {startReplayBrowser} from './lib/replay-browser.mjs';
 import {connect, startCoverage} from './lib/replay-coverage.mjs';
 import {MAP_FILE, extensionFiles} from './lib/replay-select.mjs';
+import {extensionWorker} from './lib/own-worker.mjs';
 
 const only = process.env.REPLAY_ONLY || '';
 const root = path.resolve(REPLAY_DIR, '../../..');
@@ -17,7 +19,7 @@ for (const item of loadCases().filter(one => one.name.includes(only))) {
   const browser = await startReplayBrowser([item], {cdp: true});
   const cdp = await connect(browser.run.profile);
   try {
-    const cover = await startCoverage(cdp, new URL(browser.run.context.serviceWorkers()[0].url()).host);
+    const cover = await startCoverage(cdp, new URL((await extensionWorker(browser.run.context)).url()).host);
     const tick = setInterval(() => cover.refresh().catch(() => {}), 500);   // a tab the case opens later is covered too
     const result = await browser.runInTab(item);
     clearInterval(tick);

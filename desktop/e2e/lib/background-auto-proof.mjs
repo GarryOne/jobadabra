@@ -2,7 +2,7 @@
 // Job: wait on state
 // The end-to-end proof of Full automation's press (spec 2026-10-27-background-apply-execution, step C): the app's hidden browser fills a fictional form and, once the
 // wait has run, presses Submit itself exactly once against the fixture server's fake submit endpoint (never a real site); a Stop in the wait presses nothing. Every wait is on a state.
-import {backgroundOf, backgroundStateOf, closeHiddenBrowser, describeHidden, linkRuntime, sessionOf, skipJob, withFormJudge} from './background-proof.mjs';
+import {backgroundOf, backgroundStateOf, closeHiddenBrowser, describeHidden, linkRuntime, sessionOf, skipJob, withFormJudge, withJobsEnded} from './background-proof.mjs';
 import {advancePastDue, waitOn} from './apply-hold.mjs';
 import {stageOf} from './seed-data.mjs';
 import {appLogLines} from './app-log.mjs';
@@ -32,7 +32,9 @@ export async function proveAutomatic(ctx, {form, seed, until}) {
   const unlinked = linkRuntime(ctx.profile);
   if (unlinked) { if (process.platform === 'win32') { console.log(`  skipped here: ${unlinked}`); return; } throw new Error(unlinked); }
   await ctx.relaunch();
-  try {
+  // Why (the Stop half): the app keeps one background session per job address, so a second run on the same address reads the first one's final state; the Stop half uses its own address (the server ignores the query).
+  const second = {...form, url: `${form.url}?second=1`};
+  await withJobsEnded(ctx, [form, second], async () => {
     const posted = forms.posts.length;
     const seen = {what: 'the automatic job never reached its wait', state: null};
     await startAuto(ctx, {form, seed, waitMin: 1});
@@ -45,8 +47,6 @@ export async function proveAutomatic(ctx, {form, seed, until}) {
 
     // Stop in the wait: the job has to reach "waiting to submit" first, then the person's Stop turns it into a hand-off with nothing sent.
     const beforeStop = forms.posts.length;
-    // Why (2026-10-28, found by this step): the app keeps one background session per job address, so a second run on the same address reads the first one's final state; the Stop half uses its own address (the server ignores the query).
-    const second = {...form, url: `${form.url}?second=1`};
     await startAuto(ctx, {form: second, seed, waitMin: 5});
     await until('the form never reached the wait before the automatic press', async () => (await backgroundStateOf(ctx.page, second.url)) === 'waiting_to_submit', 180000)
       .catch(async error => { throw new Error(`${error.message} | ${handedWhy(ctx.profile)} | ${await describeHidden(ctx.profile)} | state: ${await backgroundStateOf(ctx.page, second.url) || 'none'}`); });
@@ -57,5 +57,5 @@ export async function proveAutomatic(ctx, {form, seed, until}) {
     await advancePastDue(ctx, second, seen, {state: 'needs_user_handoff', reason: 'stopped'});
     if (forms.posts.length !== beforeStop) throw new Error(`Stop in the wait still let ${forms.posts.length - beforeStop} submit(s) through`);
     await skipJob(ctx.page, second);   // the Stopped job stays handed over and eligible; the next proof's Start would take it
-  } finally { await closeHiddenBrowser(ctx.profile); }
+  });
 }

@@ -219,6 +219,49 @@ for (const outcome of ['ok', 'failed']) test(`a push cycle of 5 s or more (${out
   assert.ok(log.batches.flat().some(entry => entry.text === 'slow push'), 'the line itself reaches the app with a later push');
 });
 
+// #2608 (Night burn-in 4/5, run 41269467529): a 12 s POST while the app answered in under 2 s. The worker's 1 s tick (sw-lag.js) says if its own loop was blocked.
+// The fake scheduler stands in for setInterval: the test plays the ticks, so no real time passes.
+const slowPushFields = log => { const [line] = log.kept().filter(entry => entry.text === 'slow push'); const {version: _version, ...fields} = line.fields; return fields; };
+test('a 12 s stall with the loop on time: "slow push" says the worst tick lag was 0, and no "sw lag" line is written', async t => {
+  let now = 1000;
+  t.mock.method(Date, 'now', () => now);
+  const log = await extensionLog(t, (_batch, n) => { if (n === 1) for (let i = 0; i < 12; i++) { now += 1000; log.lagProbe.tick(); } return {ok: true}; });
+  log.lagProbe.start(() => {});
+  await log.decide('fill', 'filled the form');
+  await log.pushDecisions();
+  await log.pushDecisions();
+  assert.deepEqual(slowPushFields(log), {settingsMs: 0, readMs: 0, postMs: 12000, markMs: 0, worstTickLagMs: 0, lines: 1});
+  assert.equal(log.kept().filter(entry => entry.text === 'sw lag').length, 0);
+});
+
+for (const order of ['the tick runs before the cycle ends', 'the cycle ends before the late tick runs']) test(`a 12 s stall with a 12 s late tick (${order}): "slow push" carries the lag and one "sw lag" line is written`, async t => {
+  let now = 1000;
+  t.mock.method(Date, 'now', () => now);
+  const early = order.startsWith('the tick runs');
+  const log = await extensionLog(t, (_batch, n) => { if (n === 1) { now += 12000; if (early) log.lagProbe.tick(); } return {ok: true}; });
+  log.lagProbe.start(() => {});
+  await log.decide('fill', 'filled the form');
+  await log.pushDecisions();
+  log.lagProbe.tick();   // a stall ends with the awaited fetch and the overdue tick in the same turn, in either order
+  await log.pushDecisions();
+  await log.pushDecisions();
+  assert.equal(slowPushFields(log).worstTickLagMs, 11000, 'the tick was due 1 s after the last one and ran 11 s later');
+  const lines = log.kept().filter(entry => entry.text === 'sw lag');
+  assert.equal(lines.length, 1, 'one line for the one late tick');
+  assert.equal(lines[0].fields.lagMs, 11000);
+  assert.equal(lines[0].fields.burstTicks, 1);
+});
+
+test('without a running probe (a harness, a test) "slow push" has no tick-lag field', async t => {
+  let now = 1000;
+  t.mock.method(Date, 'now', () => now);
+  const log = await extensionLog(t, () => { now += 6000; return {ok: true}; });
+  await log.decide('fill', 'filled the form');
+  await log.pushDecisions();
+  await log.pushDecisions();
+  assert.equal('worstTickLagMs' in slowPushFields(log), false);
+});
+
 test('a fast push writes no "slow push" line', async t => {
   let now = 1000;
   t.mock.method(Date, 'now', () => now);

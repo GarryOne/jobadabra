@@ -1,3 +1,4 @@
+// Job: serve stored answers
 /* global document, performance, window */
 // Every page a live run saw, each under its own address, for an offline replay of that run (speed-5x landing 1, owner 11 Oct 2026). It owns WHEN a page is
 // kept: each frame of each tab (the main document and every iframe: a hosted form is its own page at its own address) is snapshotted the first time its

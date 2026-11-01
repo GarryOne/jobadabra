@@ -4,6 +4,7 @@
 # ONLY the published release is read (owner, 15 Oct 2026): a record-sites run's CI artifact (net-records-<run>) is never fetched, so a recording reaches a replay only after it passed records-publish's guard. Needs NET_RECORD_KEY, GH_TOKEN and NET_RECORDS_READ_TOKEN on CI; on the Mac none (the Keychain key, the gh login). Used by site-replays-pr.yml and site-replays.yml.
 # --bundles-only <dir>: only downloads the release's bundles into <dir>, STILL ENCRYPTED (no key needed, nothing decrypted): one job per workflow run does it and uploads <dir> as an artifact, and every replay job
 # sets NET_RECORDS_BUNDLES=<that artifact's folder> and so makes no release call (15 Oct 2026: ~20 jobs each downloading dozens of assets tripped GitHub's burst limit for every session).
+# Job: serve stored answers
 set -u
 bundles_only=0; [ "${1:-}" = "--bundles-only" ] && { bundles_only=1; shift; }
 out="${1:?usage: net-records-fetch.sh [--bundles-only] <records dir>}"

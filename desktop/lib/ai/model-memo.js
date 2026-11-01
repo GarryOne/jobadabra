@@ -165,7 +165,9 @@ const later = (ms, env) => { const wait = Math.min(latencyCap(env), Math.max(0, 
 // asks of that kind this replay has made; each is noted in the file. A row case then holds in CI whatever the order the extension's concurrent flows ask in (12 Oct 2026), and the run prints it as a warning.
 export const ordinalFile = (env = process.env) => (env.JOBADABRA_E2E ? String(env.JOBADABRA_MODEL_MEMO_ORDINAL || '') : '');
 const kindOf = parts => `${parts.model}|${parts.system ?? parts['system:0'] ?? ''}`;
+/** Path of the memo miss log an e2e run asks for (JOBADABRA_MODEL_MEMO_MISSLOG), or "" outside e2e. */
 export const missLogFile = (env = process.env) => (env.JOBADABRA_E2E ? String(env.JOBADABRA_MODEL_MEMO_MISSLOG || '') : '');
+/** Path of the loose memo file an e2e run asks for (JOBADABRA_MODEL_MEMO_LOOSE), or "" outside e2e. */
 export const looseFile = (env = process.env) => (env.JOBADABRA_E2E ? String(env.JOBADABRA_MODEL_MEMO_LOOSE || '') : '');
 const isPageSide = name => name === 'output' || /^(user|assistant):/.test(name);
 export function looseMatch(parts, kept) {

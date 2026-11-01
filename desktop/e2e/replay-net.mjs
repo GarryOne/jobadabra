@@ -5,6 +5,7 @@
 // The row runs exactly as live (lib/live-row.mjs runLiveRow: the app, Apply, the real extension), but its browser resolves no host (offline) and every
 // request is served from the record; the AI answers only from the live run's kept answers, at their live latency; a miss is refused and counted.
 // Writes <out>/replay.json (requests by rule, not recorded, misses by step) beside the run's own end.png and step-*.png.
+// Job: serve stored answers
 /* global navigator */
 import fs from 'node:fs';
 import path from 'node:path';

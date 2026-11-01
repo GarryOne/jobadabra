@@ -1,6 +1,7 @@
 // Every state of a Gmail check's card in ONE visible demo window: Recent activity lists one Gmail check run per state, newest
 // first, so you click through them like real runs (owner, 6 Oct 2026). node e2e/mail-states.mjs  ·  Ctrl+C closes it.
 // The states are fixtures/mail-states.json; demo data only, nothing reported.
+// Job: serve stored answers
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';

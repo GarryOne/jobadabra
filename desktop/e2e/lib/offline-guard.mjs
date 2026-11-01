@@ -2,6 +2,7 @@
 // under plain node reached the live site for the alias pack). offlineEnv: the journey's env (no telemetry, no pool sharing: lib/telemetry.js reads JOBADABRA_E2E),
 // its own data folder, no Anthropic key (a Mac uses the plan path), never the twin. guardNetwork: fetch, http and https refuse any host but loopback, and name it.
 // The AI is the one exception by design: `claude -p` is its own process (the plan path), not this process's network. Guard: e2e/test/offline-guard.test.mjs.
+// Job: serve stored answers
 import http from 'node:http';
 import https from 'node:https';
 import path from 'node:path';

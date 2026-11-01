@@ -1,3 +1,4 @@
+// Job: run the backbone
 /* global window */
 // A suite whose Notion page already holds a workspace connects to it the way a reconnecting user does: as a profile that already has one saved.
 // 16 Oct 2026 (owner, "Always start new"): a profile with NO saved workspace (settings.notionIds empty) never reuses an existing Jobadabra page, it builds a new one beside it

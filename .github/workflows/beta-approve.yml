@@ -1,3 +1,4 @@
+# Job: report health
 name: CI · Release to beta
 
 # THE RELEASE STEP of a lane (7 Oct 2026, owner: "Build -> E2E test -> Release" must be distinct in the pipeline). The release run (desktop.yml) calls it as

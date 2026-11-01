@@ -1,3 +1,4 @@
+// Job: run the backbone
 /* global document, window */
 // npm run twin:drive -- <command> (in desktop/): drive and read a running live-test twin (e2e/twin.mjs) the way the owner would, visibly:
 // every click and keystroke is outlined in orange with a "Claude: …" caption first, so the owner watching the twin sees what is pressed and why.

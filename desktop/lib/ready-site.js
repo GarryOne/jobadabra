@@ -21,6 +21,7 @@ async function keyFor(storage, {fetcher = globalThis.fetch} = {}) {
 // Without it the site opens no owner route and the card stays closed. Tests replace the reader.
 let readKeychain = service => keychainRead(service, {account: 'jobadabra'});
 export const useKeychainReader = fn => { readKeychain = fn; };
+/** The owner secret for the Ready site: the stored READY_OWNER_SECRET, else the Keychain item jobadabra.ready.owner_secret, else "" (never throws). */
 export const ownerSecret = storage => String(storage.secret('READY_OWNER_SECRET') || readKeychain('jobadabra.ready.owner_secret') || '');
 const call = async (storage, route, options = {}) => callWith(storage, route, {...options, key: await keyFor(storage, options), headers: {'x-ready-owner': ownerSecret(storage)}});
 

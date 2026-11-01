@@ -2,6 +2,7 @@
 // "Fixture:" and the recorded cases a commit adds) plus desktop/e2e/pool-fixes.json for fixes that landed before the trailer. Also the claims held now (tools/claim-shape.mjs list).
 // Computed, never typed: the status (landed, confirmed, back) is worked out on the site from the smoke runs. Only a site name, a short hash, a version, a rung and ids leave the Mac.
 // Run: node desktop/e2e/lib/fix-ledger.mjs [--upload]   (the nightly smoke does the upload after its pool upload). Guard: e2e/test/fix-ledger.test.mjs.
+// Job: keep the scorecard
 import {execFileSync} from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';

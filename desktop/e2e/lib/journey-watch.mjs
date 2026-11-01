@@ -1,3 +1,4 @@
+// Job: keep the scorecard
 /* global document */
 // What the person SEES along a journey, sampled while a row runs (journey tests): the card (the app's own words for the session, desktop/renderer/session-state.js
 // cardWords on the app's session + the panel's counts and page step) and the panel (the extension's pill, count, note and its footer's Report button, read in the

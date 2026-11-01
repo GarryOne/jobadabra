@@ -1,3 +1,4 @@
+// Job: keep the scorecard
 /* global document, CSS, getComputedStyle, window */
 // The false readings a replay must never pass (owner, 12 Oct 2026, after #507: Recruitee's country box held Israel, FNAC's panel said ready with a required field left,
 // a CV slot counted in with no file). They make a row look better, so a "did it get worse" check never sees them. At each replay's end:

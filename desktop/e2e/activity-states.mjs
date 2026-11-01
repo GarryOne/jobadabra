@@ -1,3 +1,4 @@
+// Job: serve stored answers
 /* global document, window */
 // Every Recent activity state in ONE demo window: each task's runs, one per state (fixtures/activity-states.json, fictional data only),
 // newest first, so you click through them like real runs. node e2e/activity-states.mjs · Ctrl+C closes it. The cardstates suite checks them.

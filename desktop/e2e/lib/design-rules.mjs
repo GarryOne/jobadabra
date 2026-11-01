@@ -1,3 +1,4 @@
+// Job: keep the scorecard
 /* global document, getComputedStyle */
 // The design rules a screen can be checked against, from the owner's UI feedback (18 Oct 2026; docs/rules/desktop-ui.md "Read views, lists, buttons and choices").
 // designRules() runs inside the page (self-contained: page.evaluate sends only its source) on every view a journey visits (lib/layout.mjs snap) and on the

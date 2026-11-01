@@ -12,12 +12,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {writePrivate} from './private-file.js';
 
+/** True in a test run or the twin (JOBADABRA_E2E or JOBADABRA_TWIN): secrets then come from an isolated file, never the owner's Keychain. */
 export const isolated = (env = process.env) => !!(env.JOBADABRA_E2E || env.JOBADABRA_TWIN);
 // The run's own secrets file, or null (a user's app; or an isolated run without its own folder, which then reads and keeps nothing).
 export const isolatedFile = (env = process.env) => (isolated(env) && env.JOBADABRA_USER_DATA ? path.join(path.resolve(env.JOBADABRA_USER_DATA), 'isolated-secrets.json') : null);
 const SITE_PASSWORD = /^jobadabra\.[a-z0-9.-]+\.password$/i;
 // The twin may also read the Ready to send owner secret (owner, 17 Oct 2026: "Let the twin read that one item"): it is the same install, so its Send tonight / Run now reach the site as the owner's; read-only, never written.
 export const TWIN_OWNER_SECRET = 'jobadabra.ready.owner_secret';
+/** True when the twin may read this Keychain service: a job-site password (not the Mac signing one) or the twin owner secret; anything else stays unreadable. */
 export const twinMayRead = service => (SITE_PASSWORD.test(String(service)) && service !== 'jobadabra.mac-sign.password') || service === TWIN_OWNER_SECRET;
 
 // {service: {value, account, comment, created}} as the run saved them.

@@ -7,6 +7,7 @@
 // apply-live and its tab opener) counts once. Loopback, file and non-https addresses are not real sites and never counted.
 // Live paths (the class; test/site-ledger.test.mjs fails when one is missing): lib/live-row.mjs (npm run live, the pool's plain leg, row-to-case captures), lib/apply-live.mjs +
 // lib/extension.mjs (the Electron leg, the twin), ladder-capture.mjs (a fixture's live read). Windows/Linux-safe: os.tmpdir, path.join, a mkdir lock.
+// Job: keep the scorecard
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -18,6 +19,7 @@ export class SiteLimitError extends Error {
   constructor(message, details) { super(message); this.name = 'SiteLimitError'; Object.assign(this, details); }
 }
 
+/** Folder of the per-site visit ledger: JOBADABRA_SITE_LEDGER_DIR from env, else a fixed folder under the OS temp dir; only builds the path, creates nothing. */
 export const ledgerDir = (env = process.env) => env.JOBADABRA_SITE_LEDGER_DIR || path.join(os.tmpdir(), 'jobadabra-site-ledger');
 export const dayOf = (now = new Date()) => `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 

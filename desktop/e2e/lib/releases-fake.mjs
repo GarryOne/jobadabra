@@ -1,5 +1,6 @@
 // A fake GitHub release list for the update flow (suites/updates.mjs): the app's updater reads it through JOBADABRA_E2E_UPDATES_URL (lib/updater.js apiBase,
 // e2e only). `set(releases)` replaces the list; every installer download is counted. Nothing reaches GitHub.
+// Job: serve stored answers
 import http from 'node:http';
 
 // A release as GitHub lists it, with this platform's installers under the names lib/updater.js asset() looks for.

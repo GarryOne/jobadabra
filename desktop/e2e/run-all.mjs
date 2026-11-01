@@ -5,6 +5,7 @@
 //   npm run all -- --skip quality,wizard  leave these out;   --parallel 3  three at a time (needs each suite's own Notion token)
 // Secrets come from the environment, else from the macOS Keychain (jobadabra.e2e.notion_token, .notion_token_<suite>; never the Anthropic key). A suite without its
 // own token falls back to the wizard's (lib/context.mjs), so on a Mac without them the suites must run one at a time (the default).
+// Job: run the backbone
 import {execFileSync, spawn} from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';

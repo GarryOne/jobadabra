@@ -5,6 +5,7 @@
 // fleet digest flags as dropped (layer 4). Report: <QA folder>/smoke-reports/<day>.json (outside the repo: it names real postings, and outlives worktrees). Exit 1 when a shape reached less than last time.
 // Usage: cd desktop/e2e && npm run record-sites [-- --only <shape words> | --all] [RECORD_SHARE=10] [RECORD_SECONDS=90]: this run's share of the pool (the least recently run first), or
 // --all / --only. Each shape is compared with ITS last run, however long ago. It never schedules itself: the owner starts it by hand.
+// Job: serve stored answers
 import {SiteLimitError, blockSignal, guardLiveVisit, markBlocked} from './lib/site-ledger.mjs';
 import {recordVar} from '../../tools/record-env.mjs';
 import {ensureStagedWorker} from './lib/staged-worker.mjs';

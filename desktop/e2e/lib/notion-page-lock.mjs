@@ -2,6 +2,7 @@
 // Same shape as tools/heavy-lock.sh: a directory holding pid, session, what, since; stale when its pid is gone; the waiting run prints who holds it.
 // Taken once in lib/context.mjs openContext, so every caller gets it. Escape hatches, said in the log: JOBADABRA_NOTION_LOCK=0 (no lock),
 // JOBADABRA_NOTION_LOCK_WAIT=<s> (longest wait, default 1800). Guarded by test/notion-page-lock.test.mjs.
+// Job: run the backbone
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -11,6 +12,7 @@ const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 const read = (lock, name) => { try { return fs.readFileSync(path.join(lock, name), 'utf8').trim(); } catch { return ''; } };
 const pidAlive = pid => { try { process.kill(Number(pid), 0); return true; } catch (error) { return error.code === 'EPERM'; } };
 
+/** True when a run on {store} must take the machine-wide lock on the real Notion test page: store "notion", not CI, and JOBADABRA_NOTION_LOCK not "0". */
 export const lockNeeded = ({store, env = process.env}) => store === 'notion' && env.JOBADABRA_NOTION_LOCK !== '0' && !env.CI;
 
 export function holderText(lock = LOCK) {

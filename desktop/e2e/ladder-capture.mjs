@@ -1,3 +1,4 @@
+// Job: serve stored answers
 /* global document, location */
 // Fills the `sketch` of each ladder fixture (desktop/e2e/ladder-fixtures/<id>.json) with the page sketch exactly as the extension builds it: it runs the extension's OWN builder functions
 // (extension/page-reads.js pageSketchOf, extension/ladder/outcomes.js mailsOf, read from their source) in a bare headless Chromium, with no extension, no profile and no app.

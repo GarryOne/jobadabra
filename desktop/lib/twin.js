@@ -14,6 +14,7 @@ import {fileURLToPath} from 'node:url';
 import {writePrivate} from './private-file.js';
 import {realDataFolders} from './app-identity.js';
 
+/** True when this process is the live-test twin (JOBADABRA_TWIN set in env). */
 export const isTwin = (env = process.env) => !!env.JOBADABRA_TWIN;
 
 // The owner's real folder: the one that exists (Jobadabra, or the folder from before the rename on an install not moved yet; lib/app-identity.js), else the new name.

@@ -78,10 +78,10 @@ The PR description opens with this table; review commit by commit.
 ## Progress
 
 - [x] Inventory measured on origin/main (proof: none: `git grep` counts, 1 Nov 2026)
-- [x] 1 Spec
-- [x] 2 Map + scripts (`tools/rename-map.json`, `rename-inventory.mjs`, `rename-apply.mjs`)
-- [x] 3 Prose and local names
-- [x] 4 In-page names
-- [x] 5 Env, header, labels, package names
-- [x] 6 Keychain with read-old fallback (`src/secret_store.py`, `desktop/lib/keychain.js`, `credentials.js`) and the one-time copy script
-- [x] 7 Guard (`desktop/test/rename-guard.test.js` runs `rename-inventory.mjs --check`)
+- [x] 1 Spec (proof: none: this document)
+- [x] 2 Map + scripts (`tools/rename-map.json`, `rename-inventory.mjs`, `rename-apply.mjs`) (proof: desktop/test/rename-guard.test.js)
+- [x] 3 Prose and local names (proof: desktop/test/rename-guard.test.js)
+- [x] 4 In-page names (proof: desktop/test/rename-guard.test.js)
+- [x] 5 Env, header, labels, package names (proof: desktop/test/rename-guard.test.js)
+- [x] 6 Keychain with read-old fallback (`src/secret_store.py`, `desktop/lib/keychain.js`, `credentials.js`) and the one-time copy script (proof: tests/test_secret_store.py, desktop/test/keychain.test.js, tests/test_keychain_copy_to_jobadabra.py)
+- [x] 7 Guard (`desktop/test/rename-guard.test.js` runs `rename-inventory.mjs --check`) (proof: desktop/test/rename-guard.test.js)

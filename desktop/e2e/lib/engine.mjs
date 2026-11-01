@@ -1,4 +1,5 @@
 // Which AI engine the app under test uses (the app's own "AI engine" setting: its API key, or the user's Claude Code on this Mac).
+// Job: run the backbone
 import {execFileSync} from 'node:child_process';
 import {aiProvider} from './ai-provider.mjs';
 import {withoutWrappers} from './real-claude.mjs';   // never a terminal's claude wrapper (e2e/test/real-claude.test.mjs)
@@ -73,6 +74,7 @@ export const familySecret = (family, engine = 'api') => (family === 'free' ? 'E2
 // run by hand (JOBADABRA_VISIT_KIND=hand) on LIVE_POOL_ANTHROPIC_KEY; until the owner has set one, the Tests key. -> the NAME
 // the key comes from (for the job log), never its value. The one place that picks it (e2e/test/no-local-key.test.mjs).
 export const LIVE_KEYS = {hand: 'LIVE_POOL_ANTHROPIC_KEY'};
+/** Name of the env var holding a live run's AI key (never its value): the run kind's own key when it is set, else the engine's default secret; reads only the given env. */
 export const liveKeyName = (env = process.env, engine = 'api') => { const own = familyOf(engine) === 'claude' ? LIVE_KEYS[env.JOBADABRA_VISIT_KIND] : ''; return own && env[own] ? own : keySecret(engine); };
 export const appSecretName = engine => (familyOf(engine) === 'openai' ? 'OPENAI_API_KEY' : 'ANTHROPIC_API_KEY');
 

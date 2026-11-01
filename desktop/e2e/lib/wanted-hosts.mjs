@@ -2,6 +2,7 @@
 // /admin/form-filling/lab, k >= 3 installs each) become discovery candidates: postings on those hosts, from the loaded profile's jobs, are tried first. Everything stays on this Mac
 // (discover writes the repo's pool list, desktop/e2e/smoke-sites.json); a suggested host with no posting among the jobs is listed in the report, not skipped silently.
 // Guard: test/wanted-hosts.test.mjs.
+// Job: serve stored answers
 import {execFileSync} from 'node:child_process';
 import {SITE, skipReason} from './applying-report.mjs';
 import {candidates, mayVisit} from './record-sites.mjs';

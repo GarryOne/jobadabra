@@ -7,6 +7,7 @@
 //   verdicts   the verdict pass's accuracy from the owner's ticks in the weekly audits (verdict-audit issues)
 //   regression fixed defects that came back (label `regression`) per defect closed by a fix
 //   flake      failed-step issues marked `flaky` (passed on the same commit) of all failed-step issues
+// Job: keep the scorecard
 import {afterEpoch} from './stats-epoch.mjs';
 import {auditScore} from './verdict-audit.mjs';
 import {closedByFix, FLAKY, REGRESSION} from './triage.mjs';

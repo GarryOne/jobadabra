@@ -4,6 +4,7 @@
 # Runs `npm run recorded` on the new build (must pass), then again with REAL_EXTENSION_DIR=<old> (must FAIL: the fix's recorded page is the positive control). JP_REPLAY_CASES,
 # JP_REPLAY_SHARD and JP_REPLAY_TABS reach both runs. Exit 0 = new passes and old fails; 1 = the new build fails; 3 = the old build passes everything (the control proves nothing).
 # RECORDED_SKIP_OLD=1 runs only the new build. Not under the lock (JOBADABRA_HEAVY=0, or run outside `npm run recorded-both`) the two runs still happen in order.
+# Job: serve stored answers
 old="${1:-${OLD_EXTENSION_DIR:-}}"
 [ -n "$old" ] || [ "${RECORDED_SKIP_OLD:-}" = 1 ] || { echo "recorded-both: name the old build: npm run recorded-both -- <folder> (or OLD_EXTENSION_DIR=<folder>; RECORDED_SKIP_OLD=1 runs the new build only)" >&2; exit 2; }
 [ -z "$old" ] || [ -d "$old" ] || { echo "recorded-both: $old is not a folder" >&2; exit 2; }

@@ -1,3 +1,4 @@
+// Job: keep the scorecard
 /* global document, getComputedStyle */
 // The false readings at a live row's end (the canary on flow PRs, owner 12 Oct 2026; the replays' own: lib/replay-truth.mjs). A live row has no kept AI answers and no
 // request list, so it reads the page: TRUTH for the applicant's contact boxes, known by the HTML autocomplete token or an email type (a standard, never a label word);

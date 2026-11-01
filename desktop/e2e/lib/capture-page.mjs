@@ -1,3 +1,4 @@
+// Job: serve stored answers
 /* global document */
 // Capturing a page for the recorded pages (layer 2, spec docs/superpowers/specs/2026-10-10-applying-reliability-layers.md): its STRUCTURE only. In the page
 // (snapshotInPage): scripts and event handlers dropped, frames kept as elements, the applied CSS kept (11 Oct 2026), every typed value, check and choice removed, URL queries and fragments cut, the extension's

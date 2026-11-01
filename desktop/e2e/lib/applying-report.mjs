@@ -2,6 +2,7 @@
 // the Keychain (never printed). Fixed words and hosts only: never a posting's address, never applicant data. Never from CI, nor from a control run against an
 // old build (REAL_EXTENSION_DIR: its failures are on purpose). The recorded replays are the other way round: only CI on a push to main sends them (uploadReplays,
 // replays-report.mjs), never a local run. Guard: e2e/test/applying-report.test.mjs.
+// Job: keep the scorecard
 import {execFileSync} from 'node:child_process';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';

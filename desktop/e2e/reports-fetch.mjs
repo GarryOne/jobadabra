@@ -4,6 +4,7 @@
 //   node reports-fetch.mjs <records dir> [--dry]
 // Keys (Keychain, never printed): jobadabra.site.api_key (the scripts' key for the site), jobadabra.capture.key (the private key; PEM, or base64 of it as in the NET_RECORD_KEY secret).
 // Env overrides for tests: JP_SITE, JP_ADMIN_KEY, JP_PRIVATE_KEY. Guard: test/reports-fetch.test.mjs.
+// Job: keep the scorecard
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';

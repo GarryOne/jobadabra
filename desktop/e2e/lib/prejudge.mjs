@@ -2,11 +2,14 @@
 // notification and a place in the statistics. Now the run's NEW findings (at most PREJUDGE_MAX) are judged first, in one Claude session: `false-positive` and
 // `harness` are never filed (listed in the run's log and remembered in the pinned noise register, so the same noise is not judged again), `real` is filed
 // already `confirmed`, `needs-human` is filed parked. A finding over the cap, or a run without AI, is filed as before and judged later (ui-verdict.yml). Pure.
+// Job: report health
 import {checkEvidence, parse, verdictComment} from './verdict-comment.mjs';
 import {FALSE_POSITIVE, labelFor} from './triage.mjs';
 import {matchLearned} from './signatures.mjs';
 
-export const PREJUDGE_MAX = 3;   // per run; four runs a day = at most 12 judgements a day
+// Why (1 Nov 2026, owner via mac-07, "Check the silent detectors"): every new finding is judged before the 3-new-issues cap (triage.mjs), so noise never takes a real one's slot;
+// 10 covers the most a recent run raised (run 41314669803: 3 + 7 cut). Still one session per run, on the Codex plan since 9efe1ea (no price per finding).
+export const PREJUDGE_MAX = 10;
 export const NOISE_WORDS = ['false-positive', 'harness'];
 export const REGISTER_LABEL = 'noise-register';
 export const REGISTER_KEEP = 300;

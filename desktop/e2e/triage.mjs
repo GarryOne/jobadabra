@@ -162,22 +162,21 @@ export function triage({artifacts, runUrl, gh = realGh, publish = publishFiles, 
   const rejected = [...issues, ...asIssues(remembered)];
   const planAll = findings.map(finding => { const existing = matchExisting(finding, issues); return {finding, existing, twin: !existing && platform !== 'mac' ? macTwin(finding, everything) : null}; })
     .filter(({finding, existing, twin}) => existing || twin || !suppressedBy(finding, rejected));   // a closed false positive (or one judged noise before filing) stays closed
-  const plan = capNewAi(planAll);
-  out.capped = planAll.length - plan.length;
-  for (const item of planAll) if (!plan.includes(item)) dropped.push({view: item.finding.view, severity: item.finding.severity, title: item.finding.title, source: 'ai-review', why: 'over the 3-new-AI-issues-per-run cap'});
   for (const finding of findings) if (!planAll.some(item => item.finding === finding)) dropped.push({view: finding.view, severity: finding.severity, title: finding.title, source: finding.source, why: 'matches an issue closed as a false positive'});
-  const matched = new Set(plan.filter(item => item.existing).map(item => item.existing.number));
-  const needsPicture = plan.filter(({existing, twin}) => !twin && (!existing || (existing.state === 'OPEN' && !(existing.comments || []).some(comment => (comment.body || '').includes(runUrl)))));
-
-  if (pendingOnly) {
-    const fresh = plan.filter(({existing, twin}) => !existing && !twin).map(({finding}) => ({...finding, screenshot: evidenceFile(finding)}));
-    return {...out, findings, pending: pendingOf(fresh, undefined, {tripped, learned})};
-  }
+  const fresh = ({existing, twin}) => !existing && !twin;
+  // Why (1 Nov 2026, owner via mac-07, "Check the silent detectors"): every new finding is judged BEFORE the per-run cap, and noise never takes a slot; judging only the capped three let
+  // noise fill them (run 41314669803 filed 0 and cut 7 unjudged findings).
+  if (pendingOnly) return {...out, findings, pending: pendingOf(planAll.filter(fresh).map(({finding}) => ({...finding, screenshot: evidenceFile(finding)})), undefined, {tripped, learned})};
   // Judged noise before filing: never filed, listed in the summary and remembered in the register.
   const verdictFor = finding => (verdicts && verdicts[finding.id]) || signatureVerdict(finding, learned);   // a known harness signature needs no model
-  const noiseNow = plan.filter(({finding, existing, twin}) => !existing && !twin && verdictFor(finding) && NOISE_WORDS.includes(wordOf(verdictFor(finding))));
+  const noiseNow = planAll.filter(item => fresh(item) && verdictFor(item.finding) && NOISE_WORDS.includes(wordOf(verdictFor(item.finding))));
   for (const {finding} of noiseNow) dropped.push({view: finding.view, severity: finding.severity, title: finding.title, source: finding.source, why: `judged ${wordOf(verdictFor(finding))} before filing`});
   out.judgedNoise = noiseNow.map(({finding}) => finding.id);
+  const plan = capNewAi(planAll.filter(item => !noiseNow.includes(item)));
+  out.capped = planAll.length - noiseNow.length - plan.length;
+  for (const item of planAll) if (!plan.includes(item) && !noiseNow.includes(item)) dropped.push({view: item.finding.view, severity: item.finding.severity, title: item.finding.title, source: 'ai-review', why: 'over the 3-new-AI-issues-per-run cap'});
+  const matched = new Set(plan.filter(item => item.existing).map(item => item.existing.number));
+  const needsPicture = plan.filter(({existing, twin}) => !twin && (!existing || (existing.state === 'OPEN' && !(existing.comments || []).some(comment => (comment.body || '').includes(runUrl)))));
   // 2. a finding that was open, whose page was photographed and reviewed again in this run and did not come back: it is "not seen" (a fix, or a one-off).
   const reviewed = {ai: new Set(), layout: new Set()};
   // A page counts as "reviewed again" only when the AI really looked at it (review-ui.mjs lists them): a page it could not review (no credit, an outage) is neither filed nor cleared, so a

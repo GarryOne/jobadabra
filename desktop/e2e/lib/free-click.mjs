@@ -15,9 +15,8 @@ export async function liftState(tab) {
 /** Waits for the fill overlay to lift, at most the step's remaining time (its hang guard). A timeout names the state it saw, never "Timeout 30000ms exceeded".
  * Why (1 Nov 2026, a8, red 41267492981, applyflows-2of3): the sign-up step failed with a bare `waitForFunction: Timeout 30000ms exceeded` at this line; the extension's log showed its own
  * storage read taking 30 s (#2608), so the overlay stayed up while nothing here could say so. The wait is now the step's clock, and its failure carries the last state. */
-async function overlayLifted(tab, liftMs) {
-  await stepWait('the fill overlay lifted', async left => {
-    const timeout = liftMs ?? left;   // a step's remaining time, else the caller's own, else Playwright's default (a unit test, a helper run alone)
+async function overlayLifted(tab) {
+  await stepWait('the fill overlay lifted', async timeout => {   // the step's remaining time; outside a step (a unit test) Playwright's own default
     try { await tab.waitForFunction(GONE, null, timeout === undefined ? {} : {timeout}); } catch (error) {
       throw new Error(`the fill overlay did not lift (last state: ${JSON.stringify(await liftState(tab))}): ${String(error?.message || error).split('\n')[0]}`);
     }
@@ -25,10 +24,10 @@ async function overlayLifted(tab, liftMs) {
 }
 
 // `act` is one Playwright action on the tab (check or click); a click lost under a returning overlay throws or changes nothing, so it is tried again after the overlay lifts.
-export async function whenFree(tab, act, {tries = 6, liftMs} = {}) {
+export async function whenFree(tab, act, {tries = 6} = {}) {
   let last = null;
   for (let at = 0; at < tries; at += 1) {
-    await overlayLifted(tab, liftMs);
+    await overlayLifted(tab);
     try { return await act({timeout: 5000}); } catch (error) { last = error; }
   }
   throw last;
@@ -39,12 +38,12 @@ export const ticked = (tab, selector) => whenFree(tab, options => tab.check(sele
 // A press counts only when what it does shows (`landed`, e.g. the page moved on): the overlay drops a trusted click without any error, so a click "succeeds"
 // and nothing happens (26 Oct 2026, beta 40275152602: "Create account" eaten after the overlay came back, the sign-up page never left, 91 s lost). Until it
 // shows (landMs per try), the click is made again once the overlay lifts. Guard: test/free-click.test.mjs.
-export async function pressed(tab, selector, {landed, landMs = 8000, tries = 6, liftMs, step = 250} = {}) {
+export async function pressed(tab, selector, {landed, landMs = 8000, tries = 6, step = 250} = {}) {
   if (typeof landed !== 'function') throw new Error(`pressed(${selector}) needs landed(): a click the fill overlay held throws nothing`);
   let last = null;
   for (let at = 0; at < tries; at += 1) {
     if (await landed()) return;
-    try { await whenFree(tab, options => tab.click(selector, options), {tries: 1, liftMs}); } catch (error) { last = error; }
+    try { await whenFree(tab, options => tab.click(selector, options), {tries: 1}); } catch (error) { last = error; }
     for (let waited = 0; waited < landMs; waited += step) { if (await landed()) return; await pause(step); }
   }
   throw new Error(`the press on ${selector} never took effect after ${tries} tries${last ? `: ${last.message}` : ''}`);

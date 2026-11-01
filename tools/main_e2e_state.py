@@ -18,6 +18,7 @@ from pathlib import Path
 
 REPO = 'GarryOne/jobadabra'
 LANES = Path(__file__).resolve().parent.parent / 'desktop/e2e/lanes.json'
+SUITES = 'desktop/e2e/suites'   # the suites main can run: the folder the plan lists (desktop/e2e/lib/context.mjs SUITES), read on main
 # Runs that do not check main's own code as it is.
 NOT_MAIN_CHECK = re.compile(r'^(Mutant|RC soak|Stable canary|Beta E2E tests|Gate|Night burn-in|Bisect|E2E check · outside world) ')   # the outside world is health, never main's state (#2502)
 # Jobs of e2e.yml that are not a suite.
@@ -94,11 +95,15 @@ def lane_steps():
         return []
 
 
-def red(st, excluded=None):
-    """Blocking backbone reds only; tolerant, suspended and retired results never make main red."""
+def red(st, excluded=None, present=None):
+    """Blocking backbone reds only; tolerant, suspended and retired results never make main red, and neither does a job that is no suite on main now.
+    present: main's suite names (suites_on_main); None = unknown, so no red is dropped."""
     # Why (30 Oct 2026, owner): rule D reports non-backbone results as rates or suspensions, never red main.
+    # Why (1 Nov 2026, the owner's beta by hand refused): a deleted suite never runs again, so its last red stayed; the gate re-checked focusdismiss after #2808
+    # deleted it, the plan refused "unknown suite" (run 41308204982) and the gate read that as unreadable results.
     excluded = lane_suites() if excluded is None else excluded
-    return sorted(((suite, s) for suite, s in st.items() if s['conclusion'] == 'failure' and suite not in excluded), key=lambda item: item[0])
+    return sorted(((suite, s) for suite, s in st.items() if s['conclusion'] == 'failure' and suite not in excluded and (present is None or suite in present)),
+                  key=lambda item: item[0])
 
 
 def gh_json(args):
@@ -111,6 +116,16 @@ def live(repo):
     return state(runs, lambda rid: gh_json(['api', f'repos/{repo}/actions/runs/{rid}/jobs?per_page=100', '--jq', '.jobs']) or [])
 
 
+def suites_on_main(repo):
+    """The suite names main can run now: desktop/e2e/suites/*.mjs on main, read on GitHub like the runs. None when the read fails or finds none: unknown, so no red is dropped."""
+    # Why (Gitar on #2820): the gate runs from any checkout (a branch, or behind main); a local folder would drop a red of a suite added on main since.
+    try:
+        names = gh_json(['api', f'repos/{repo}/contents/{SUITES}?ref=main', '--jq', '[.[].name]'])
+    except (subprocess.CalledProcessError, json.JSONDecodeError, OSError):
+        return None
+    return {name[:-len('.mjs')] for name in names or [] if isinstance(name, str) and name.endswith('.mjs')} or None
+
+
 def main(argv):
     repo = argv[argv.index('--repo') + 1] if '--repo' in argv else REPO
     try:
@@ -120,7 +135,7 @@ def main(argv):
         print(json.dumps({'unknown': True}) if '--json' in argv else '')
         return 3   # unknown is never green: the gate refuses a beta on it
     suspended = lane_suites(('suspended',))
-    reds = red(st)
+    reds = red(st, present=suites_on_main(repo))
     if '--json' in argv:
         print(json.dumps({'red': [{'suite': suite, **s} for suite, s in reds],
                           'suspended': [{'suite': suite, **st[suite]} for suite in sorted(suspended) if suite in st],

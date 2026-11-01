@@ -11,6 +11,8 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from tools import main_e2e_state as m  # noqa: E402
 
+ROOT = Path(__file__).resolve().parent.parent
+
 
 def run(rid, title, conclusion='failure', sha='f' * 40, branch='main'):
     return {'id': rid, 'display_title': title, 'conclusion': conclusion, 'head_sha': sha, 'head_branch': branch, 'created_at': f't{rid}', 'html_url': f'u{rid}'}
@@ -44,6 +46,7 @@ class MainE2eState(unittest.TestCase):
         registry = patch.object(m, 'LANES', Path(tmp.name) / 'lanes.json')
         registry.start()
         self.addCleanup(registry.stop)
+        self.present = None   # main's suite list unread: no red is dropped (the fictional suites below are kept)
         self.state = m.state(RUNS, lambda rid: JOBS.get(rid, []))
 
     def test_red_suites_are_the_newest_main_check_result(self):
@@ -77,7 +80,8 @@ class MainE2eState(unittest.TestCase):
             if registry is not None:
                 lanes.write_text(registry)
             output = io.StringIO()
-            with patch.object(m, 'LANES', lanes, create=True), patch.object(m, 'live', return_value=self.state), redirect_stdout(output):
+            with patch.object(m, 'LANES', lanes, create=True), patch.object(m, 'live', return_value=self.state), \
+                    patch.object(m, 'suites_on_main', return_value=self.present), redirect_stdout(output):
                 self.assertEqual(m.main(['--json']), 0)
             return json.loads(output.getvalue())
 
@@ -120,6 +124,35 @@ class MainE2eState(unittest.TestCase):
         self.assertEqual([s['suite'] for s in report['red']], ['apply'])
         report = self.report(json.dumps({'suites': {'quality': {'lane': 'tolerant'}, 'qualityai': {'lane': 'tolerant'}, 'apply': {'lane': 'retired'}}}))
         self.assertEqual(report['red'], [])
+
+    def test_a_suite_no_longer_on_main_is_never_red(self):
+        # Why (1 Nov 2026, the owner's beta by hand refused): #2808 deleted focusdismiss; its last main run (8fc460d) stayed red and the gate re-checked a suite
+        # the plan no longer knows ("unknown suite", run 41308204982). A job that is no suite file ("AI review of the screenshots") is the same shape.
+        self.state = m.state([run(9, 'E2E check · GitHub schedule (backup)')],
+                             lambda _: [{'name': name, 'conclusion': 'failure'} for name in ('focusdismiss', 'apply-3of3', 'AI review of the screenshots')]
+                             + [{'name': 'wizard', 'conclusion': 'success'}])
+        self.assertEqual([suite for suite, _ in m.red(self.state, present={'apply', 'wizard'})], ['apply'])
+        self.present = {'apply', 'wizard'}
+        self.assertEqual([s['suite'] for s in self.report(None)['red']], ['apply'])
+        self.present = None   # main's list unread: unknown, every red stays (never a silent green)
+        self.assertEqual([s['suite'] for s in self.report(None)['red']], ['AI review of the screenshots', 'apply', 'focusdismiss'])
+
+    def test_main_s_suite_list_is_read_on_main_not_from_this_checkout(self):
+        # Why (Gitar on #2820): the gate runs from any checkout; a local folder behind main would drop the red of a suite added on main since.
+        calls = []
+        def gh(args):
+            calls.append(args)
+            return ['apply.mjs', 'wizard.mjs', 'README.md']
+        with patch.object(m, 'gh_json', side_effect=gh):
+            self.assertEqual(m.suites_on_main('o/r'), {'apply', 'wizard'})
+        self.assertIn('repos/o/r/contents/desktop/e2e/suites?ref=main', calls[0])
+        self.assertIn("SUITES = readdirSync(path.join(E2E, 'suites'))", (ROOT / 'desktop/e2e/lib/context.mjs').read_text(), 'the folder the plan lists')
+        for broken in (m.subprocess.CalledProcessError(1, 'gh'), json.JSONDecodeError('x', '', 0), OSError('no gh')):
+            with self.subTest(broken=type(broken).__name__), patch.object(m, 'gh_json', side_effect=broken):
+                self.assertIsNone(m.suites_on_main('o/r'))
+        for empty in ([], None, ['README.md']):
+            with self.subTest(empty=empty), patch.object(m, 'gh_json', return_value=empty):
+                self.assertIsNone(m.suites_on_main('o/r'), 'an empty list is unknown, never "every red is gone"')
 
     def test_an_older_green_does_not_hide_a_newer_red(self):
         self.assertEqual(self.state['interactions']['sha'], 'f' * 40)

@@ -42,6 +42,9 @@ elif endpoint.endswith('/jobs?per_page=100'):
 elif '/check-runs/' in endpoint:
     jid = endpoint.split('/check-runs/')[1].split('/')[0]
     print(json.dumps([data.get('annotations', {}).get(jid, [])]))
+elif '/contents/desktop/e2e/suites?ref=main' in endpoint:   # gh api … --jq '[.[].name]'
+    if 'suites' not in data: sys.exit(1)
+    print(json.dumps(data['suites']))
 elif endpoint.endswith('commits/main'):
     print(data['head'])
 elif 'event=workflow_dispatch' in endpoint:
@@ -56,7 +59,7 @@ RED_RUN = {'id': 2, 'display_title': 'E2E check · on time (Worker cron)', 'conc
 RED_JOBS = {'2': [{'name': 'cardstates', 'conclusion': 'failure'}, {'name': 'settings', 'conclusion': 'failure'}, {'name': 'jobs', 'conclusion': 'success'}]}
 
 
-def gate(data, *extra, lanes=None, verdict_tool=None):
+def gate(data, *extra, lanes=None, verdict_tool=None, suites=None):
     with tempfile.TemporaryDirectory() as tmp:
         tmp = Path(tmp)
         (tmp / 'bin').mkdir()
@@ -75,6 +78,8 @@ def gate(data, *extra, lanes=None, verdict_tool=None):
         gh = tmp / 'bin/gh'
         gh.write_text(FAKE_GH)
         gh.chmod(gh.stat().st_mode | stat.S_IEXEC)
+        if suites is not None:   # main's suite files on GitHub (desktop/e2e/suites?ref=main); unset = that read fails, which drops no red
+            data = {**data, 'suites': [f'{suite}.mjs' for suite in suites]}
         (tmp / 'data.json').write_text(json.dumps({'recheck_jobs': [{'name': 'cardstates', 'conclusion': 'success'}, {'name': 'settings', 'conclusion': 'success'}], **data}))
         env = {**os.environ, 'PATH': f"{tmp / 'bin'}{os.pathsep}{os.environ['PATH']}", 'FAKE_GH': str(tmp), 'RED_MAIN_POLL': '0', 'RED_MAIN_FIND_S': '2', 'RED_MAIN_WAIT_S': '2'}
         proc = subprocess.run(['bash', str(tmp / 'tools/red-main-gate.sh'), 'o/r', *extra], env=env, capture_output=True, text=True, timeout=120)
@@ -131,6 +136,17 @@ class RedMainGate(unittest.TestCase):
         self.assertEqual(code, 0, out)
         self.assertIn('suite=cardstates,settings', dispatch)
         self.assertNotIn('jobs', dispatch.split('suite=')[1])
+
+    def test_a_red_of_a_suite_deleted_from_main_is_never_rechecked_nor_blocks(self):
+        # Why (1 Nov 2026, the owner's beta by hand refused): #2808 deleted focusdismiss; its last run on main (8fc460d) was red, so the gate re-checked it,
+        # the plan refused "unknown suite: focusdismiss" (run 41308204982), and that red run with no suite job read as unreadable results: no beta.
+        code, out, dispatch = gate({'runs': [RED_RUN], 'jobs': RED_JOBS, 'head': NEW_SHA, 'recheck': 'success'}, suites=('settings', 'jobs'))
+        self.assertEqual(code, 0, out)
+        self.assertIn('suite=settings', dispatch)
+        self.assertNotIn('cardstates', dispatch + out)
+        code, out, dispatch = gate({'runs': [RED_RUN], 'jobs': {'2': [{'name': 'cardstates', 'conclusion': 'failure'}]}, 'head': NEW_SHA}, suites=('settings',))
+        self.assertEqual((code, dispatch), (0, ''), out)
+        self.assertIn('no suite red', out)
 
     def test_red_rerun_still_red_refuses(self):
         code, out, _ = gate({'runs': [RED_RUN], 'jobs': RED_JOBS, 'head': NEW_SHA, 'recheck': 'failure'})

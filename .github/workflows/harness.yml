@@ -1,7 +1,7 @@
 name: CI · Harness tests
 # Every e2e harness unit test (desktop/e2e/test/*.test.mjs, `npm test`) on each pull request that changes what one reaches; harness-daily.yml runs the same command nightly on main.
 # Why (owner, 30 Oct 2026, option C "run all on every PR"): a PR ran only a "pr" set plus the files its changes reached (test-sets.json, a picker), so tests outside them went red unseen
-# (harness-daily red 28-30 Oct: 1, 3, then 6 tests, one a PR-workflow AI guard), and every new test edited the one shared list (8 PRs conflicting on it, 30 Oct). The whole folder takes 4-5 min.
+# (harness-daily red 28-30 Oct: 1, 3, then 6 tests, one a PR-workflow AI guard), and every new test edited the one shared list (8 PRs conflicting on it, 30 Oct). The whole folder takes 4-5 min in one job; it runs as 3 parallel parts now (1 Nov 2026).
 # GitHub's `on: paths:` below starts it for every area a harness test reaches (test/test-reach.test.mjs fails when one is missing).
 # Not a required check: a required check whose workflow `paths:` skips never reports and blocks the PR (tests/test_affected_jobs.py). The backstop is harness-daily.yml.
 # History: they ran only in e2e.yml's scheduled plan job, which broke silently for ~11 h (12 Oct 2026, ERR_MODULE_NOT_FOUND after 3394c2e); here they gate the change that would
@@ -79,9 +79,15 @@ concurrency:   # a PR's newer push replaces its older run; each commit of main k
 
 jobs:
   harness:
-    name: harness tests
+    # Why (owner, 1 Nov 2026: "let's just split the harness tests"): 3 parallel parts, node's own --test-shard (every file lands in exactly one part, round-robin by sorted name).
+    # Measured on main run 41269779066: one job 416 s (tests 371 s, setup 45 s); the heaviest part of 3 holds about 37% of the test seconds. What to remove from it is decided later.
+    name: harness tests (${{ matrix.part }}/3)
     runs-on: ubuntu-24.04
     timeout-minutes: 20
+    strategy:
+      fail-fast: false   # every part reports its own reds; one red part must not hide the others
+      matrix:
+        part: [1, 2, 3]
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -100,6 +106,9 @@ jobs:
         uses: ./.github/actions/playwright-browser
         with: {working-directory: desktop/e2e, mode: both}
       # The same command as harness-daily.yml: one list, the folder itself.
-      - name: Every harness test
+      - name: Every harness test (this part)
         working-directory: desktop/e2e
+        # Why (Gitar on #2793): node reads --test-shard only before the files, and npm adds extra arguments after the glob, where the flag is ignored and all 3 parts run the whole folder. The script carries the flag and reads this variable.
+        env:
+          TEST_SHARD: ${{ matrix.part }}/3
         run: npm test

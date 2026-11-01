@@ -71,23 +71,11 @@
       "standin": 90,
       "sqlite": 97
     },
-    "Mac + Linux · recorded-2of5": {
-      "runs": 2,
-      "max": 461,
-      "standin": 461,
-      "sqlite": 454
-    },
     "Mac + Linux · apply-1of3": {
       "runs": 2,
       "max": 351,
       "standin": 351,
       "sqlite": 334
-    },
-    "Mac + Linux · recorded-1of5": {
-      "runs": 2,
-      "max": 467,
-      "standin": 459,
-      "sqlite": 467
     },
     "Mac + Linux · focusdismiss": {
       "runs": 2,
@@ -125,12 +113,6 @@
       "standin": 83,
       "sqlite": 86
     },
-    "Mac + Linux · visitread": {
-      "runs": 2,
-      "max": 10,
-      "standin": 10,
-      "sqlite": 10
-    },
     "Mac + Linux · visitsauto": {
       "runs": 2,
       "max": 21,
@@ -149,12 +131,6 @@
       "standin": 89,
       "sqlite": 95
     },
-    "Mac + Linux · recorded-3of5": {
-      "runs": 2,
-      "max": 466,
-      "standin": 466,
-      "sqlite": 458
-    },
     "Mac + Linux · interactions": {
       "runs": 2,
       "max": 253,
@@ -172,12 +148,6 @@
       "max": 278,
       "standin": 113,
       "sqlite": 278
-    },
-    "Mac + Linux · recorded-5of5": {
-      "runs": 2,
-      "max": 463,
-      "standin": 461,
-      "sqlite": 463
     },
     "Mac + Linux · failureschannels": {
       "runs": 2,
@@ -208,12 +178,6 @@
       "max": 79,
       "standin": 72,
       "sqlite": 79
-    },
-    "Mac + Linux · recorded-4of5": {
-      "runs": 2,
-      "max": 471,
-      "standin": 470,
-      "sqlite": 471
     },
     "Mac + Linux · applyflows-3of3": {
       "runs": 2,

@@ -6,7 +6,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {pageText} from './notion.mjs';
-import {goView} from './go-view.mjs';
 import {pollUntil, stepTimeLeft} from './wait-on-state.mjs';
 
 // The CV-facts schema is the one background question newly reached when setup goes straight to Jobs.
@@ -26,23 +25,16 @@ export async function runWizard(ctx) {
   await ctx.run('the app starts on the welcome screen', async () => {
     await ctx.expectStep('welcome');
     await page.getByRole('button', {name: 'Start'}).waitFor();
-  });
-  await ctx.run('Start opens the AI step with both engines to choose from', async () => {
+    // Start opens the AI step; its cards are checked by integration/app/screen-wizard.test.js (moved 1 Nov 2026).
     await page.locator('.step[data-step="welcome"] [data-next]').click();
     await ctx.expectStep('ai');
-    await page.locator('[data-choice="free"]').waitFor();
-    await page.locator('[data-choice="family-claude"]').waitFor();
-    await page.locator('[data-choice="family-openai"]').waitFor();
   });
   if (ctx.engine === 'codex' || ctx.engine === 'openai') {
     // The OpenAI family (lib/engine.mjs rotation): its small card first, then its two cards. A Mac picks Codex (confirmed once, then checked); CI types the OpenAI test key.
-    await ctx.run('the OpenAI side of the switch shows its two cards', async () => {
-      await page.locator('[data-choice="family-openai"]').click();
-      await page.locator('[data-choice="openai"]').waitFor();
-      await page.locator('[data-choice="codex"]').waitFor();
-    });
+    // The OpenAI side of the switch shows its two cards: integration/app/screen-wizard.test.js (moved 1 Nov 2026).
     if (ctx.engine === 'codex') {
       await ctx.run('Codex is chosen (confirmed once, then checked) and the AI step continues', async () => {
+        await page.locator('[data-choice="family-openai"]').click();
         await page.locator('[data-choice="codex"]').click();
         await page.locator('[data-notice="yes"]').click({timeout: 5000}).catch(() => {});   // the notice shows only the first time (found by structure, fdfeacd)
         await page.waitForFunction(() => !document.getElementById('ai-save')?.disabled, null, {timeout: 90000});
@@ -51,6 +43,7 @@ export async function runWizard(ctx) {
       });
     } else {
       await ctx.run('a valid OpenAI API key is accepted and saved', async () => {
+        await page.locator('[data-choice="family-openai"]').click();
         await page.locator('[data-choice="openai"]').click();
         await page.locator('#openai-key').waitFor();
         if (!(await page.locator('#ai-save').isDisabled())) throw new Error('"Check and save" is enabled with no key typed');
@@ -81,25 +74,11 @@ export async function runWizard(ctx) {
       if (!settings.aiFree || settings.aiEngine !== 'api') throw new Error(`after "Use Free AI" the app is on ${JSON.stringify({aiFree: settings.aiFree, aiEngine: settings.aiEngine})}, not Free AI`);
     }, {needs: ctx.needsKey});
   } else {
-    await ctx.run('the AI step will not continue without a key', async () => {
+    // The step will not continue without a key, and an invalid key is rejected without saving: integration/app/screen-wizard.test.js and setup-ai-handlers.test.js (moved 1 Nov 2026).
+    await ctx.run('a valid API key is accepted and saved', async () => {
       await page.locator('[data-choice="family-claude"]').click();
       await page.locator('[data-choice="api"]').click();
       await page.locator('#anthropic-key').waitFor();
-      if (!(await page.locator('#ai-save').isDisabled())) throw new Error('"Check and save" is enabled with no key typed');
-    });
-    // Why (29 Oct 2026, run 40836904987; #2427 exposed it): key acceptance is a backbone check; only the setup validator is stubbed, never the AI transport or secret persistence.
-    await ctx.run('an invalid API key is rejected without saving', async () => {
-      await page.evaluate(() => window.pilot.saveSettings({anthropicKeyTest: 'reject'}));
-      try {
-        await page.fill('#anthropic-key', `${KEY}-rejected`);
-        await page.click('#ai-save');
-        await page.waitForFunction(() => document.getElementById('ai-message')?.textContent.includes('This key was rejected'));
-        await ctx.expectStep('ai');
-        const state = await page.evaluate(() => window.pilot.state());
-        if (state.secrets.ANTHROPIC_API_KEY) throw new Error('the rejected API key was saved');
-      } finally { await page.evaluate(() => window.pilot.saveSettings({anthropicKeyTest: null})); }
-    }, {needs: [{name: 'E2E_ANTHROPIC_KEY', value: KEY}]});
-    await ctx.run('a valid API key is accepted and saved', async () => {
       await page.evaluate(() => window.pilot.saveSettings({anthropicKeyTest: 'accept'}));
       try {
         await page.fill('#anthropic-key', KEY);
@@ -155,39 +134,12 @@ export async function runWizard(ctx) {
   }
   // This Mac's store: no page carries the Notion prompt and there is nothing to connect.
   if (ctx.store === 'sqlite' || ctx.newInstall) {
-    await ctx.run("on this Mac's store no page asks to connect Notion: Focus and Interviews open their own content", async () => {
-      await page.click('.nav[data-view="focus"]');
-      await page.locator('.view[data-view="focus"]:not([hidden])').waitFor({timeout: 15000});
-      await goView(page, 'interviews');   // not in the menu until used: opened as the More row / ⌘K does
-      await page.locator('.view[data-view="interviews"] #iv-add').waitFor({state: 'visible', timeout: 15000});
-      for (const view of ['focus', 'interviews']) {
-        if (await page.locator(`.view[data-view="${view}"] .ui-gate`).count()) throw new Error(`${view} shows the Notion prompt on this Mac's store`);
-      }
-      if (await page.locator('#notion-connect-dialog[open]').count()) throw new Error("the connect prompt opened on this Mac's store");
-    }, {needs: ctx.needs});
+    // On this Mac's store no page asks to connect Notion: integration/app/screen-wizard.test.js (moved 1 Nov 2026).
     if (ctx.store === 'sqlite') return;
     await connectNotion(ctx, {startedOnNotion: true});
     return;
   }
-  // Focus without Notion shows only Get started (396d94e); a page that still needs Notion (Interviews) carries the prompt.
-  await ctx.run('Focus shows Get started without Notion; Interviews asks to connect Notion, lists the advantages, and Not now with a reason closes the prompt', async () => {
-    await page.click('.nav[data-view="focus"]');
-    await page.locator('.view[data-view="focus"].focus-started #focus-onboarding').waitFor({timeout: 15000});
-    if (await page.locator('.view[data-view="focus"] .ui-gate').count()) throw new Error('Focus shows the Notion prompt instead of Get started');
-    await goView(page, 'interviews');   // not in the menu until used: opened as the More row / ⌘K does
-    await page.locator('.view[data-view="interviews"] .ui-gate').waitFor({timeout: 15000});
-    await page.locator('.view[data-view="interviews"] .ui-gate button.primary').click();
-    await page.locator('#notion-connect-dialog[open]').waitFor({timeout: 5000});
-    const benefits = await page.locator('#notion-connect-benefits li').count();
-    if (benefits !== 6) throw new Error(`the prompt lists ${benefits} advantages, not 6`);
-    const reason = await page.locator('#notion-connect-reason').innerText();
-    if (!/Connect Notion to keep interview transcripts\./.test(reason)) throw new Error(`the prompt's reason reads "${reason}"`);
-    await page.click('#notion-connect-later');
-    await page.locator('#notion-connect-why .ui-tag', {hasText: 'Privacy'}).click();
-    await page.locator('#notion-connect-dialog[open]').waitFor({state: 'detached', timeout: 5000}).catch(async () => {
-      if (await page.locator('#notion-connect-dialog').evaluate(dialog => dialog.open)) throw new Error('the prompt stayed open after Not now');
-    });
-  }, {needs: ctx.needs});
+  // Focus without Notion shows only Get started; Interviews carries the prompt: integration/app/screen-wizard.test.js (moved 1 Nov 2026).
   await connectNotion(ctx);
   } finally { ctx.proxy.setCanned(previous); }
 }

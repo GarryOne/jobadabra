@@ -10,13 +10,13 @@ import {stepSlicer} from '../lib/step-slices.mjs';
 import {tabGuard} from '../lib/tab-guard.mjs';
 import path from 'node:path';
 import {cvProblems, fillProblems, highlightProblems, leftProblems, notLeftProblems, submitProblems} from '../lib/applycheck.mjs';
-import {CHAIN, FORMS, HOSTS, LATE, REAL_FORMS, SCRIPTED, SIGNIN, SIGNIN_REFUSED, SIGNUP, MENU_FIRST, MENU_AGAIN, PROPOSE, REVEAL, COLLAPSED, ONEPAGE, MISLABELLED, realFieldId} from '../lib/forms.mjs';
+import {CHAIN, FORMS, HOSTS, LATE, SCRIPTED, SIGNIN, SIGNIN_REFUSED, SIGNUP, MENU_FIRST, MENU_AGAIN, PROPOSE, REVEAL, COLLAPSED, ONEPAGE, MISLABELLED} from '../lib/forms.mjs';
 import {formTab, launchBrowser, readForm, readPanel, fillState, fillNote} from '../lib/extension.mjs';
 import {waitForFill} from '../lib/fill-attempt.mjs';
 import {markedSession, sessionTabUrl} from '../../lib/session-tab.js';
 import {addKitJob, removeJobsByUrl, seedLivePosting, stageOf} from '../lib/seed-data.mjs';
 import {ensureSetUp} from '../lib/seed.mjs';
-import {appLogLines, appLogText} from '../lib/app-log.mjs';
+import {appLogLines} from '../lib/app-log.mjs';
 import {livePosting, realKind, runLive} from '../lib/apply-live.mjs';
 import {runCvSteps} from '../lib/apply-cv-steps.mjs';
 import {runSilentChromeSteps} from '../lib/apply-silent-steps.mjs';
@@ -31,7 +31,7 @@ import {HIDDEN_NEED, autoFormOf, kitSeeder, proveBackground, proveBotCheck, prov
 import {proveAutomatic} from '../lib/background-auto-proof.mjs';
 import {runJourneys} from '../lib/apply-journeys.mjs';
 import {installApplyAnswers} from '../lib/apply-answers.mjs';
-import {CONTACT, OPEN_ANSWER, POSTING, expectedOf} from '../lib/apply-fixtures.mjs';
+import {CONTACT, POSTING, expectedOf} from '../lib/apply-fixtures.mjs';
 
 // Walks other data and timing on each seeded run (lib/forms.mjs varyForms): an exploring run on an unchanged commit includes it.
 // Why (29 Oct 2026, ap): apply's fixture answers cover every AI ask, so CI needs neither live AI nor an AI secret.
@@ -48,16 +48,15 @@ export const shards = 3;   // the forms and CV steps split across three gate job
 export const stepSharded = true;   // its slices are steps, not recorded cases (test/suite-shards.test.mjs)
 // Why (31 Oct 2026, a8; beta 41229992832, the stand-in leg): apply-3of3 ran 698 s of its 660. The weights were guessed seconds from one 26 Oct Notion run; added up they were close (1286 vs 1143 measured),
 // but a step weighed 140 s took 25 s and one weighed 45-90 s took 125-170 s, so the slices were not thirds. They are now the slowest seconds seen on the Mac jobs of the apply parts (beta 41229992832 and the runs
-// before it), a step's followers counted in it (multi-step + the session page, cannot operate + Ready to submit). Refresh them after a beta from the Mac job logs: test/part-headroom.test.mjs fails "split apply further"
+// before it), a step's followers counted in it (multi-step + the session page). Refresh them after a beta from the Mac job logs: test/part-headroom.test.mjs fails "split apply further"
 // when a slice sits over the headroom of its budget, and this table is where the gate (tools/e2e-reliability-check.mjs) sees a re-cut.
-export const stepSeconds = {'real forms the extension once failed on': 71.7, 'Tailor CVs for top matches': 36.7, 'a multi-step form': 16.2,
-  'a form with a control the extension cannot operate': 13.2, 'Tailor CV on a job': 22.7, 'a Lever-like form': 10.6,
+export const stepSeconds = {'Tailor CVs for top matches': 36.7, 'a multi-step form': 16.2,
+  'Tailor CV on a job': 22.7,
   'Open in Chrome on a form the night filled': 19.2, 'Tailor on the session page of a form': 9.4, 'the person submits a form': 30.3, 'a Greenhouse-like form': 20.8,
   'Apply on a saved job without a kit': 7.7, 'a Workday-shaped form': 7.4, 'The hidden browser fills a form': 18,
-  'Full automation presses Submit once on its own': 109.2, 'a silent Chrome in Standard automation': 40.1, 'a silent Chrome in Background automation': 19.2,
-  'a silent Chrome in Full automation': 19, 'the app quits while Background automation holds a filled form': 24.7, 'the app quits in Full automation\'s wait': 24.2,
+  'Full automation presses Submit once on its own': 109.2, 'a silent Chrome in Standard automation': 40.1, 'a silent Chrome in Full automation': 19, 'the app quits while Background automation holds a filled form': 24.7, 'the app quits in Full automation\'s wait': 24.2,
   'each read verdict gives its own chip': 168, 'Stop on the card in Background automation': 18.3, 'Stop on the card in Full automation': 27.8,
-  'the Jobs popup has one field': 10.7, 'checking jobs before the form read exists': 1.3, 'the triage bar moves per real read': 125,
+  'checking jobs before the form read exists': 1.3, 'the triage bar moves per real read': 125,
   'Background automation hands a bot check': 44.2, 'Full automation hands a bot check': 23.5, 'Background automation fills several queued jobs': 124.1,
   'Full automation presses each queued job': 68.9, 'Full automation asks once in Settings': 5.2, 'Full automation saved without its confirmation': 6.1};
 export const hangCaps = hangCapsFor('apply');
@@ -69,13 +68,12 @@ export const engine = 'api';   // the form's open question is answered by the AI
 export const macos = 'release';   // a release, a gate and the night run it on a macOS runner (the real Chrome extension, opened through `open` as on a Mac); a PR's run on Linux (lib/plan.mjs runnerOf)
 // What a step needs from an earlier one when E2E_STEPS picks it (lib/runner.mjs wantedWords): every form step needs the applicant, the kits and the proxy's answers.
 const SETUP = 'the app has an applicant';
-export const stepNeeds = {'form': [SETUP], 'session page says it too': [SETUP, 'multi-step form'], 'Tailor CV': [SETUP], 'tailored CV': [SETUP], 'without a kit': [SETUP],
-  'hidden browser fills a form': [SETUP], 'submits a form': [SETUP], 'I submitted it': [SETUP, 'Apply opens a new tab'], 'Apply opens a new tab': [SETUP], 'side by side': [SETUP], 'sign-up page': [SETUP], 'sign-in page': [SETUP], 'menu whose choices': [SETUP], 'Needs your attention" from': [SETUP], 'appears only when + is pressed': [SETUP], 'one page': [SETUP], 'tab is closed': [SETUP], 'second browser': [SETUP], 'wrong kind': [SETUP], 'cannot operate': [SETUP],
-  'each read verdict': [SETUP], 'the Jobs popup': [SETUP], 'queued job': [SETUP], 'checking jobs before': [SETUP, 'the Jobs popup'],
+export const stepNeeds = {'form': [SETUP], 'Tailor CV': [SETUP], 'tailored CV': [SETUP], 'without a kit': [SETUP],
+  'hidden browser fills a form': [SETUP], 'submits a form': [SETUP], 'I submitted it': [SETUP, 'Apply opens a new tab'], 'Apply opens a new tab': [SETUP], 'side by side': [SETUP], 'sign-up page': [SETUP], 'sign-in page': [SETUP], 'menu whose choices': [SETUP], 'Needs your attention" from': [SETUP], 'appears only when + is pressed': [SETUP], 'one page': [SETUP], 'tab is closed': [SETUP], 'second browser': [SETUP], 'wrong kind': [SETUP],
+  'each read verdict': [SETUP], 'the Jobs popup': [SETUP], 'queued job': [SETUP], 'checking jobs before': [SETUP],
   'the triage bar moves': [SETUP],
   'the app quits while': [SETUP], 'the app quits in': [SETUP],
-  'Stop on the card': [SETUP],
-  'Ready to submit': [SETUP, 'cannot operate']};   // it reads the tab the "cannot operate" step left open
+  'Stop on the card': [SETUP]};
 // One failed step never hides the rest: the runner records it and goes on (lib/runner.mjs); only the setup step marked `critical` stops the suite. A step that needs another one is named in stepNeeds.
 export const keepGoing = true;
 export const name = 'apply';
@@ -186,7 +184,6 @@ export async function runApply(ctx, parts) {
     if (!result.ok) throw new Error(`the form panel did not become readable within ${Math.round(result.ms / 1000)} s (last read: ${JSON.stringify(result.state)})`);
     return result.state;
   };
-  let unknownTab = null;
   const fail = problems => { if (problems.length) throw new Error(problems.join('; ')); };
 
   await ctx.run('a Greenhouse-like form: every kit answer and your details are filled, the CV is attached, the legal box is left, Submit untouched', async () => {
@@ -217,43 +214,6 @@ export async function runApply(ctx, parts) {
     console.log(`  workday panel: "${panel.progress}"; left for you: ${panel.left.join(' | ') || 'nothing'}`);
     fail(leftProblems(panel.left, ['hear about us']));
   }, {safety: true, needs: ctx.needs});
-
-  // Forms the extension failed on for a real person (fixtures/real-forms, tools/fixture-from-fills.py): your details filled, every required field it cannot
-  // fill listed as left for you by its label, Submit untouched. None yet: the step says so and passes.
-  await ctx.run('real forms the extension once failed on: your details are filled, and every field it failed on is now filled or listed for you by name', async () => {
-    if (!REAL_FORMS.length) { console.log('  no real forms yet (tools/fixture-from-fills.py writes them from the fill log)'); return; }
-    const problems = [];
-    for (const spec of REAL_FORMS) {
-      const form = FORMS[`real-${spec.id}`];
-      const {tab, state} = await apply(form);
-      if (state.state === 'error') { problems.push(`${spec.id}: the fill ended in an error: ${state.error}`); continue; }
-      const actual = await readForm(tab);
-      problems.push(...fillProblems({expected: {first_name: CONTACT.first_name, last_name: CONTACT.last_name, email: CONTACT.email}, actual}).map(text => `${spec.id}: ${text}`));
-      problems.push(...submitProblems(forms.fired, form.path).map(text => `${spec.id}: ${text}`));
-      const panel = await panelOf(tab);
-      if (!panel) { problems.push(`${spec.id}: no Jobadabra panel on the form`); continue; }
-      // Each field it failed on for a real person is now either filled, or listed for the person by name: never skipped in silence.
-      const listed = label => panel.left.some(item => item.toLowerCase().includes(String(label).split(/\s+/).slice(0, 3).join(' ').toLowerCase()));
-      for (const [i, item] of spec.fields.entries()) {
-        if (item.required === false) continue;
-        const value = actual[realFieldId(item.label, i)];
-        const filled = value && (value.checked || (value.value && !/^select/i.test(value.value)));
-        if (!filled && !listed(item.label)) problems.push(`${spec.id}: "${String(item.label).slice(0, 60)}" was neither filled nor listed as left for the person (it lists: ${panel.left.join(' | ') || 'nothing'})`);
-      }
-    }
-    fail(problems);
-  }, {needs: ctx.needs});
-
-  await ctx.run('a Lever-like form: a field rendered late is filled, the question no kit covers is answered by the AI and highlighted', async () => {
-    const form = FORMS.lever;
-    const callsBefore = proxy.stats.canned;
-    const {tab, state} = await apply(form);
-    if (state.state === 'error') throw new Error(`the fill ended in an error: ${state.error}`);
-    const actual = await readForm(tab);
-    fail([...fillProblems({expected: {...expectedOf(form), name: CONTACT.full_name, email: CONTACT.email, why: OPEN_ANSWER}, actual}), ...cvProblems(actual, cv),
-      ...highlightProblems({actual, ai: ['why'], plain: ['org', 'heard', 'email']}), ...submitProblems(forms.fired, form.path)]);
-    if (proxy.stats.canned - callsBefore < 1) throw new Error('the AI was never asked about the open question');
-  }, {needs: ctx.needs});
 
   // Ready to send's Open in Chrome (owner, 18 Oct 2026: "It should be all cached... instant"): the night's hand-off carries its page kind and AI answers; the app
   // answers from them (lib/ready-handoff.js), so the extension fills with no page-kind ask and no question asked, and the panel says the fill is last night's.
@@ -308,58 +268,9 @@ export async function runApply(ctx, parts) {
     if (!/reject an application automatically|knockout rule/i.test(left.knock)) throw new Error(`no knockout warning above the list (it says: "${left.knock}")`);
     // The tip line is off for now (SHOW_TIPS=false in extension/review.js, owner 15 Oct 2026): a tip is not required, but one that shows still carries a label that says how strong it is.
     if (left.tip && (!['Fact', 'Recruiters say', 'Worth trying', 'Tip'].includes(left.tip.chip) || left.tip.text.length < 20)) throw new Error(`the panel shows a tip without a valid label (${JSON.stringify(left.tip)})`);
-  }, {safety: true, needs: ctx.needs, keepsTabs: 'multistep'});   // the session-page step below reads this form's session
+  }, {safety: true, needs: ctx.needs});
 
-  await ctx.run('the session page says it too: "Before you submit" counts the knockout question that is still the person\'s, and says which CV goes in', async () => {
-    const form = FORMS.multistep;
-    // The session this form belongs to. The job row's button says "View session" only on a Mac with Claude Code installed (claudeReady, jobs.js); here it is the fill
-    // button ("Opened ↻"), and clicking it fills the form again and stays on the Jobs list (apply run 37134779221). A session card in the dock opens the same page for everyone,
-    // and the Sessions page lists them all when the dock (three cards at most) does not show this one.
-    const card = page.locator('#sd-cards .sd-card').filter({hasText: form.company}).filter({hasText: form.title});
-    if (await card.count()) {
-      if (!await card.isVisible() && await page.locator('#sd-toggle').isVisible()) await page.click('#sd-toggle');   // the dock starts collapsed: its cards are in the page but hidden (apply run 37135786161)
-      await card.click();
-    }
-    else {
-      await page.click('.nav[data-view="sessions"]');
-      await page.locator('#ss-list .ss-row').filter({hasText: form.company}).filter({hasText: form.title}).click({timeout: 15000}).catch(() => { throw new Error(`no session for ${form.company} on the Sessions page or in the dock`); });
-    }
-    const strip = page.locator('#ss-before');
-    await strip.waitFor({state: 'visible', timeout: 30000}).catch(async () => {
-      throw new Error(`the session page shows no "Before you submit" strip (the form card says: "${await page.locator('#ss-form-card').innerText().catch(() => 'not shown')}")`);
-    });
-    // This session's strip, not the one shown before (6 Oct 2026: the row named the Greenhouse form's work-permit question, read the moment the strip appeared).
-    let knock = '';
-    await until(`the session page did not show ${form.company}'s sponsorship question within 15 s`, async () => {
-      knock = (await page.locator('#ss-before-knock').innerText()).replace(/\s+/g, ' ');
-      return /sponsorship/i.test(knock) && await page.evaluate(url => window.__jp.openSession?.url === url, form.url);
-    }, 15000);
-    if (!/1 question can reject you automatically/i.test(knock) || !/sponsorship/i.test(knock)) {
-      const shown = (await page.locator('#ss-title').innerText().catch(() => '?')).replace(/\s+/g, ' ').slice(0, 120);
-      throw new Error(`the knockout row does not count and name the sponsorship question after 15 s: "${knock}" (the page shows: "${shown}", expected ${form.company})`);
-    }
-    await page.locator('#ss-before-cv').waitFor({state: 'visible', timeout: 15000});
-    const cvRow = (await page.locator('#ss-before-cv').innerText()).replace(/\s+/g, ' ');
-    if (!/general CV|tailored/i.test(cvRow)) throw new Error(`the CV row says neither which CV goes in nor that one is tailored: "${cvRow}"`);
-  }, {needs: ctx.needs, closesTabs: 'multistep'});
-
-  await ctx.run('a form with a control the extension cannot operate: the miss is reported to the app', async () => {
-    const form = FORMS.unknown;
-    const {tab, state} = await apply(form);
-    if (state.state === 'error') throw new Error(`the fill ended in an error: ${state.error}`);
-    const actual = await readForm(tab);
-    fail([...fillProblems({expected: {...expectedOf(form), first_name: CONTACT.first_name, email: CONTACT.email}, actual}), ...submitProblems(forms.fired, form.path)]);
-    // Reported to the app: it keeps the control's shape in misses.json and says so in its log.
-    const file = path.join(ctx.profile, 'misses.json');
-    let kept = [];
-    await until('the app was never told about the slider (no "slider" entry in misses.json)', async () => {
-      kept = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : [];
-      return kept.some(entry => entry.kind === 'slider');
-    }, 30000);
-    const log = appLogText(ctx.profile);
-    if (!/\[misses\] \d+ new control/.test(log)) throw new Error('the app kept the miss but did not log it');
-    unknownTab = tab;
-  }, {needs: ctx.needs, keepsTabs: 'unknown'});   // the "Ready to submit" step, after the live, journey, CV and silent steps, reads this tab's panel and closes it
+  // The session page's "Before you submit" strip (the knockout question that is still the person's, which CV goes in): integration/app/screen-apply.test.js (moved 1 Nov 2026).
 
   await runLive(ctx, {page, posting: live});   // lib/apply-live.mjs (only when parts has 'live')
   await runJourneys(ctx, {cv, dumpExtension, fail, forms, page});   // lib/apply-journeys.mjs
@@ -444,14 +355,4 @@ export async function runApply(ctx, parts) {
   const queueJobs = mode => [1, 2, 3, 4].map(n => autoFormOf(FORMS.submitter, `?queue=${mode}${n}`));
   await ctx.run('Background automation fills several queued jobs one at a time, in queue order, and a Stop on a queued job skips only that one', () => proveQueue(ctx, {jobs: queueJobs('fill'), mode: 'fill', until, seed: kitSeeder(ctx, urls, POSTING)}), {safety: true, needs: [...ctx.needs, HIDDEN_NEED]});
   await ctx.run('Full automation presses each queued job once, one at a time, in queue order, and a Stop on a queued job skips only that one', () => proveQueue(ctx, {jobs: queueJobs('auto'), mode: 'auto', until, seed: kitSeeder(ctx, urls, POSTING)}), {safety: true, needs: [...ctx.needs, HIDDEN_NEED]});
-
-  // Found by this suite (2 Oct 2026): extension/review.js built the panel's list from native fields only, so a REQUIRED custom widget it cannot read (here a
-  // role=slider) was in no list and no count, and the panel said "Ready to submit, every required field is filled" over a form that still needed an answer.
-  // The miss was reported to the app but not shown to the person. Fixed in review.js; this step keeps it fixed (worker/test/panel-widgets.test.js is the unit test).
-  await ctx.run('the panel does not say "Ready to submit" over a required control it could not fill, and lists the question', async () => {
-    const panel = await panelOf(unknownTab);
-    console.log(`  panel: "${panel?.progress}"; left for you: ${panel?.left.join(' | ') || 'nothing'}; pill: "${panel?.pill}"`);
-    if (/ready to submit/i.test(`${panel?.pill} ${panel?.progress}`)) throw new Error('the panel says "Ready to submit" while the required "How would you rate your Terraform skill?" control is unanswered');
-    fail(leftProblems(panel?.left || [], ['Terraform skill']));
-  }, {needs: ctx.needs, closesTabs: 'unknown'});
 }

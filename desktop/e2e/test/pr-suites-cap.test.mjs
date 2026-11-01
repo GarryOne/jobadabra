@@ -55,28 +55,6 @@ test('five suite names defer nothing despite more than five jobs: fails if the p
   });
 });
 
-test('recorded takes no PR place (page-cases.yml replays it) and is one suite name with its slice jobs after merge', async () => {
-  const {shards} = await import('../suites/recorded.mjs');
-  const ordinary = ['strategy', 'settings', 'jobs', 'interviews', 'focusdismiss', 'activity'];
-  const pointed = ['recorded', ...ordinary];
-  const plan = pick.planPrSuites({...args, pointed});
-  assert.deepEqual(plan, {
-    suites: ['activity', 'focusdismiss', 'interviews', 'jobs', 'settings'],
-    left: ['strategy'], deferred: ['strategy'],
-  });
-  // Why (29 Oct 2026, a8): page-cases.yml replays recorded on a PR, so ON_PR_ELSEWHERE removes it before the cap counts anything.
-  assert.ok(!plan.suites.includes('recorded'));
-  assert.ok(!plan.deferred.includes('recorded'));
-
-  const main = pick.planPrSuites({...args, pointed, pullRequest: false});
-  assert.deepEqual(main, {suites: pointed, left: [], deferred: []});
-  assert.equal(main.suites.filter(suite => suite === 'recorded').length, 1);
-  const jobs = main.suites.flatMap(suite => shardLegs(suite, suite === 'recorded' ? shards : undefined).map(leg => ({suite, ...leg})));
-  assert.equal(jobs.filter(job => job.suite === 'recorded').length, shards);
-  assert.equal(jobs.length, ordinary.length + shards);
-  assert.ok(shards > 1, 'after merge, one recorded suite name expands into several slice jobs');
-});
-
 test('optional catch counts break a reach tie, never outrank a stronger reach', () => {
   const out = pick.planPrSuites({...eight, catches: {'c-map': 1000, 'y-import': 2, 'b-quote': 1}});
   assert.deepEqual(out.suites, ['x-own', 'z-own', 'y-import', 'b-quote', 'a-quote']);
@@ -135,7 +113,7 @@ import path from 'node:path';
 import {spawnSync} from 'node:child_process';
 
 const cli = new URL('../pr-suites.mjs', import.meta.url);
-function cliPlan({catches, pullRequest = true, base = 'origin/main', listed = {}, checkoutLanes = {}, suites = ['wizard', 'visitread', 'stores', 'settings', 'jobs', 'interviews', 'focusdismiss', 'activity'], extraFiles = [], coverage = {}, baseSources = {}} = {}) {
+function cliPlan({catches, pullRequest = true, base = 'origin/main', listed = {}, checkoutLanes = {}, suites = ['wizard', 'visitsauto', 'stores', 'settings', 'jobs', 'interviews', 'focusdismiss', 'activity'], extraFiles = [], coverage = {}, baseSources = {}} = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pr-cap-cli-'));
   try {
     const files = [...suites.map(s => `desktop/e2e/suites/${s}.mjs`), ...extraFiles];
@@ -170,7 +148,7 @@ syncBuiltinESMExports();`);
 test('CLI writes five whole suites and three deferrals with their reasons to stdout and GITHUB_OUTPUT', () => {
   const {values, text} = cliPlan();
   assert.equal(values.suites, 'activity,focusdismiss,interviews,jobs,settings');
-  assert.equal(values.left, 'wizard,visitread,stores');
+  assert.equal(values.left, 'wizard,visitsauto,stores');
   const steps = JSON.parse(values.steps);
   assert.deepEqual(Object.keys(steps), ['(parts)', '(why)']);
   for (const suite of values.left.split(',')) {
@@ -182,7 +160,7 @@ test('CLI writes five whole suites and three deferrals with their reasons to std
 test('CLI reads catch counts only when supplied and applies the base registry before capping', () => {
   assert.equal(cliPlan({catches: {wizard: 99}}).values.suites, 'wizard,activity,focusdismiss,interviews,jobs');
   const {values} = cliPlan({listed: {activity: {lane: 'tolerant'}, focusdismiss: {lane: 'suspended'}}});
-  assert.equal(values.suites, 'interviews,jobs,settings,stores,visitread');
+  assert.equal(values.suites, 'interviews,jobs,settings,stores,visitsauto');
   assert.equal(values.left, 'wizard');
   const main = cliPlan({pullRequest: false, catches: {wizard: 99}, listed: {activity: {lane: 'tolerant'}}});
   assert.equal(main.values.suites.split(',').length, 7);   // --base applies even without --pull-request

@@ -30,7 +30,7 @@ export function autoSuites(all, cadence = {}, alwaysOnly = false, repeat = false
 
 // The slim suites, as one table here rather than a `cadence` export in each suite: a PR that edits a suite file runs that suite, so 15 exports would run 15 suites
 // on the PR that slims them. A dropped suite exports cadence 'manual' itself (a manual suite never runs on a PR). Guard: test/suite-cadence.test.mjs.
-export const SLIM = ['failuresnotion', 'focusdismiss', 'interviews', 'jobs', 'linkedin', 'recorded', 'storemove', 'stores', 'strategy', 'updates', 'visitread', 'visitsauto', 'wizard'];
+export const SLIM = ['failuresnotion', 'focusdismiss', 'interviews', 'jobs', 'linkedin', 'storemove', 'stores', 'strategy', 'updates', 'visitsauto', 'wizard'];
 // A suite's cadence from its module: the table's 'slim', else its own export. Every reader (plan-run.mjs suiteFacts, suite.mjs, run-all.mjs) goes through it.
 export const cadenceOf = (suite, module) => (SLIM.includes(suite) ? 'slim' : module.cadence);
 
@@ -42,8 +42,8 @@ export function suitesFor(files, all, {watches = {}, cadence = {}, uses = {}} = 
   for (const file of files.map(name => String(name).trim()).filter(Boolean)) {
     const suite = /^desktop\/e2e\/suites\/([^/]+)\.mjs$/.exec(file)?.[1];
     if (suite) { if (all.includes(suite)) chosen.add(suite); continue; }
-    if (/^extension\//.test(file)) { chosen.add('apply'); chosen.add('applyflows'); chosen.add('recorded'); continue; }
-    if (/^desktop\/e2e\/(recorded\/|lib\/page-replay\.mjs$)/.test(file)) { chosen.add('recorded'); continue; }   // layer 2: a case or its harness
+    if (/^extension\//.test(file)) { chosen.add('apply'); chosen.add('applyflows'); continue; }   // the recorded cases are replayed by page-cases.yml, not by an e2e suite (1 Nov 2026)
+    if (/^desktop\/e2e\/(recorded\/|lib\/page-replay\.mjs$)/.test(file)) { continue; }   // a recorded case or its harness: page-cases.yml replays them (test/recorded-pages.test.mjs); no e2e suite
     if (/^desktop\/e2e\/test\//.test(file) || /\.md$/.test(file)) continue;   // unit tests run on their own; docs run nothing
     if (/^desktop\/e2e\//.test(file) || file === '.github/workflows/e2e.yml') {
       chosen.add(SMOKE);

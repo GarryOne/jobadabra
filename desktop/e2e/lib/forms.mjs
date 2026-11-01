@@ -355,6 +355,9 @@ const PAGES = {
   ${submit}</form>`),
 };
 
+/** One fixture form's page (PAGES[name]) for a test that serves it itself (integration/extension/extension-form-shapes.test.mjs). */
+export const formHtml = (name, form = FORMS[name]) => PAGES[name](form);
+
 // A read-only proof's shape: empty details and an upload, with field-count reports even when its hidden tab closes. No applicant values leave the page.
 const heldReadPage = form => page(form, `<form id="application_form" method="post" action="${form.autoPath}">
   ${field('first_name', 'First name', {required: true})}${field('last_name', 'Last name', {required: true})}${field('email', 'Email', {type: 'email', required: true})}${resume}${submit}</form>`, `

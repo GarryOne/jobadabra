@@ -7,7 +7,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
-import {isAppFile, removedStrings, suitesExpecting, report, planPrSuites, stepLists, stepsQuoting, windowsSmoke, windowsCiText, WINDOWS_SMOKE, newSideRanges, stepCalls, stepsTouched, rehomeQuotes, stepHomes, pointedWithMap, ON_PR_ELSEWHERE, deferredLines, ownedStepNames} from './lib/pr-suites.mjs';
+import {isAppFile, removedStrings, suitesExpecting, report, planPrSuites, stepLists, stepsQuoting, windowsSmoke, windowsCiText, WINDOWS_SMOKE, newSideRanges, stepCalls, stepsTouched, rehomeQuotes, stepHomes, pointedWithMap, deferredLines, ownedStepNames} from './lib/pr-suites.mjs';
 import {suitePartsFor, suitesFor} from './lib/plan.mjs';
 import {suitesUsing, watchesWithImports} from './lib/import-graph.mjs';
 import {suitesReading} from './lib/page-reach.mjs';
@@ -119,9 +119,8 @@ try {
     const why = Object.entries(picked).map(([suite, p]) => `| \`${suite}\` | ${plan.deferred.includes(suite) ? 'run after merge' : !plan.suites.includes(suite) ? 'not in this PR run' : steps[suite] ? steps[suite].map(name => `"${name}"`).join(', ') : 'whole suite'} | ${p.reason} |`).join('\n');
     if (why) console.log(`\n### Steps that run the lines this PR changes (coverage map)\n\n| Suite | Steps | Why |\n|---|---|---|\n${why}\n`);
     const stepCount = Object.values(steps).reduce((sum, names) => sum + names.length, 0), whole = plan.suites.filter(suite => !steps[suite]);
-    const elsewhere = pullRequest ? [...new Set([...pointed, ...Object.keys(hits), ...Object.keys(covering)])].filter(suite => ON_PR_ELSEWHERE[suite]) : [];
     const reasons = [...whyLines({suites: plan.suites, steps, stores, dropped, picked, pointedBy, hits, quoting, own}),
-      ...deferredLines({left: plan.deferred, picked, pointedBy, hits, quoting, own}), ...elsewhere.map(suite => `${suite} · not in this run ← ${ON_PR_ELSEWHERE[suite]}`)];
+      ...deferredLines({left: plan.deferred, picked, pointedBy, hits, quoting, own})];
     console.log(`\n### Why each one runs (suite [store] · step ← the changed line that reached it)\n${reasons.join('\n')}\n`);
     console.log(`Precise: ${plan.suites.length} suite(s); ${stepCount} picked step(s) in ${Object.keys(steps).length}, ${whole.length} whole (${whole.join(', ') || 'none'})`);
     const stepless = steplessSuites(map);

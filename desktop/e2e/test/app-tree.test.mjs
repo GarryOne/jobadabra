@@ -55,20 +55,21 @@ test('endTree: leaves alone what leaves by itself, kills what stays and waits fo
   const rows = parseProcessList(LIST).slice(0, 3);
   const killed = [];
   const kill = (pid, signal) => { killed.push(`${pid} ${signal}`); };
-  assert.deepEqual(await endTree(rows, {wait: async () => [], kill}), []);
+  await assert.rejects(endTree(rows, {wait: async () => [], kill}), /graceMs is the caller's/, 'no default: the caller owns the grace');
+  assert.deepEqual(await endTree(rows, {graceMs: 1, wait: async () => [], kill}), []);
   assert.deepEqual(killed, [], 'nothing is killed when the whole tree left on its own');
 
   const waits = [[rows[1]], []];   // first wait: 11 stays; second wait (after the kill): gone
-  assert.deepEqual((await endTree(rows, {wait: async () => waits.shift(), kill})).map(row => row.pid), [11]);
+  assert.deepEqual((await endTree(rows, {graceMs: 1, wait: async () => waits.shift(), kill})).map(row => row.pid), [11]);
   assert.deepEqual(killed, ['11 SIGKILL']);
 
   const gone = Object.assign(new Error('no such process'), {code: 'ESRCH'});
   const waitsAgain = [[rows[2]], []];
-  assert.deepEqual((await endTree(rows, {wait: async () => waitsAgain.shift(), kill: () => { throw gone; }})).map(row => row.pid), [12], 'a process that went meanwhile is no error');
+  assert.deepEqual((await endTree(rows, {graceMs: 1, wait: async () => waitsAgain.shift(), kill: () => { throw gone; }})).map(row => row.pid), [12], 'a process that went meanwhile is no error');
   const tried = [], refused = Object.assign(new Error('access denied'), {code: 'EPERM'});
   const waitsThird = [[rows[1], rows[2]], []];
-  await endTree(rows, {wait: async () => waitsThird.shift(), kill: pid => { tried.push(pid); if (pid === 11) throw refused; }});
+  await endTree(rows, {graceMs: 1, wait: async () => waitsThird.shift(), kill: pid => { tried.push(pid); if (pid === 11) throw refused; }});
   assert.deepEqual(tried, [11, 12], 'a process that cannot be killed does not stop the others being ended');
 
-  await assert.rejects(endTree(rows, {wait: async () => [rows[2]], kill}), /1 process\(es\) of the closed app are still running after being killed: 12 python3 -m src\.focus/);
+  await assert.rejects(endTree(rows, {graceMs: 1, wait: async () => [rows[2]], kill}), /1 process\(es\) of the closed app are still running after being killed: 12 python3 -m src\.focus/);
 });

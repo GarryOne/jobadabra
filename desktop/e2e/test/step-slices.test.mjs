@@ -27,7 +27,7 @@ test('every sliced step of apply and applyflows runs in exactly one slice, and w
   for (const [suite, {parts, seconds}] of Object.entries(SUITES)) {
     const {shards} = await import(`../suites/${suite}.mjs`), steps = stepsOf(parts);
     assert.equal(shards, {apply: 3, applyflows: 3}[suite], suite);
-    assert.ok(steps.length >= 5, `${suite}: only ${steps.length} steps read: the pattern no longer matches`);
+    assert.ok(steps.length >= 3, `${suite}: only ${steps.length} steps read: the pattern no longer matches`);
     const runs = Array.from({length: shards}, (_, at) => { const takes = stepSlicer({index: at + 1, count: shards}, {seconds, needs: apply.stepNeeds, setup: SETUP}); return steps.filter(name => takes(name)); });
     for (const name of steps) assert.equal(runs.filter(list => list.includes(name)).length, 1, `${suite}: "${name.slice(0, 60)}" runs in ${runs.filter(list => list.includes(name)).length} slices`);
     for (const list of runs) for (const name of list) for (const word of needsOf(name)) assert.ok(list.some(other => other !== name && other.includes(word)), `${suite}: "${name.slice(0, 50)}" runs without "${word}" in its slice`);

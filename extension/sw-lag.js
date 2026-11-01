@@ -2,7 +2,8 @@
 // Pure: the clock, the timer and the line writer are injected (log.js wires the real ones), so a test plays a stall without waiting.
 
 // Design (1 Nov 2026, a8, #2608): the probe is a spectator, like the log it feeds.
-// - One interval tick, nothing else. A tick calls no chrome.* API, so it never resets Chrome's 30 s idle timer; a timer does not keep an MV3 worker alive either.
+// - One interval tick, nothing else. An on-time tick calls no chrome.* API, so it never resets Chrome's 30 s idle timer; a timer does not keep an MV3 worker alive either.
+//   Only a late tick writes (one decide() line, which touches storage and the app like any other decision line), and only after the worker was already awake.
 //   When Chrome ends an idle worker the interval dies with it, and the next worker's first start() sets a fresh baseline: a sleeping worker writes nothing and keeps nothing alive.
 // - A tick that runs >= LATE_NOTE_MS later than its slot calls onLate({lagMs, burstTicks}) once; burstTicks counts the late ticks in a row (an on-time tick ends the burst).
 //   A frozen worker (or a Mac that slept) also shows as one late tick: it cannot be told apart from a blocked loop, and for the question "was the worker running?" it is the same answer.

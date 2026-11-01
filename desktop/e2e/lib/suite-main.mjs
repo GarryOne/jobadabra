@@ -39,7 +39,7 @@ export function writeFinalFailures(suite, ctx, env) {
   const refused = refusedQuestions({...process.env, E2E_ARTIFACTS: ctx.ARTIFACTS});
   const missing = recordAnswerRefusals(ctx, refused);
   if (missing) console.error(`✗ ${ctx.stopped}`);
-  // Why (30 Oct 2026, a8): a suite at 0 asks without a stored answer must stay at 0 (jobs and failureschannels went red when the CI AI budget ran out).
+  // Why (30 Oct 2026, a8; 1 Nov 2026: a seeding run, one that started with no kept answer, is exempt): a suite at 0 asks without a stored answer must stay at 0 (jobs and failureschannels went red when the CI AI budget ran out).
   const seeding = seedingRun();
   const ceiling = checkAiMisses(ctx.ARTIFACTS, JSON.parse(fs.readFileSync(new URL('../lanes.json', import.meta.url), 'utf8')).suites?.[suite], seeding);
   if (ceiling.max !== null) console.log(`AI asks with no stored answer: ${ceiling.misses} (allowed ${ceiling.max})${seeding && ceiling.misses > ceiling.max ? '; seeding run: this leg started with no kept AI answer, so a green run saves these for the next one' : ''}`);

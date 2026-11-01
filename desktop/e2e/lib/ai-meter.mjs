@@ -113,7 +113,9 @@ let cacheAtStart = null;
 const entriesIn = dir => { try { return fs.readdirSync(dir).filter(name => name.endsWith('.json')).length; } catch (error) { if (error.code === 'ENOENT') return 0; throw error; } };
 /** Count the kept answers once, before the first ask. */
 export function noteCacheStart(env = process.env) { if (cacheAtStart === null && replaying(env)) cacheAtStart = entriesIn(cacheDir(env)); }
+/** Forget the noted cache start (a test, or a second suite in one process). */
 export const resetSeeding = () => { cacheAtStart = null; };
+/** -> true when this run replays, is not a backbone suite, and started with no kept answer (see noteCacheStart); false before it was noted. */
 export const seedingRun = (env = process.env) => cacheAtStart === 0 && replaying(env) && env.E2E_AI_ANSWERS !== 'backbone';
 // Everything inside fn asks the model, whatever E2E_AI_REPLAY says; replay is back after it. For a check whose point is a second, independent answer (quality's
 // second scoring: replayed, it got the first answers back and always read ±0, 26 Oct 2026). Guard: test/ai-meter.test.mjs.

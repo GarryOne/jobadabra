@@ -81,7 +81,6 @@ jobs:
       red_note: ${{ steps.redmain.outputs.note || inputs.red_not_blocking }}   # Why (1 Nov 2026, owner: "Safety strict, rest tolerant"): a red that is not safety or data does not stop a beta; the release notes list it
       over: ${{ steps.spend.outputs.over }}                # today's e2e AI budget is spent
       built_from: ${{ steps.built.outputs.label }}         # "5f3d29b · main's head · 4 minutes ago": the commit this run is built from and its age, shown on the graph
-      ci_sha: ${{ steps.built.outputs.sha }}               # the commit of main whose CI · Tests run proves this build: the run's own commit, or the green commit a beta-pick overlay was built from
     permissions:
       contents: write   # the tag and the draft release
       actions: write    # a fresh build of main when this one can't be released
@@ -105,23 +104,18 @@ jobs:
           # Why (1 Nov 2026, owner: "We should show though, on the beta pipeline, as an annotation. What is the commit chosen and how old it is... or both"): a by-hand beta is built from the newest
           # fully green main commit (tools/beta_pick.py), which can be a few commits behind main's head; the run says which one, its place counting back from the head, and its age.
           git fetch -q origin main
-          # Why (1 Nov 2026, Gitar on #2927): tools/beta-release.sh runs an older pick as an overlay commit (its code + main's head's workflow files, message line "Beta pick: the code of <sha> with ..."). Only <sha> is on
-          # main and has a build.yml run, so the CI wait, the Release jobs and this annotation read <sha>, not the overlay.
-          built=$(git log -1 --format=%B "$GITHUB_SHA" | sed -n 's/^Beta pick: the code of \([0-9a-f]\{40\}\) with .*/\1/p' | tail -1)
-          built=${built:-$GITHUB_SHA}
-          echo "sha=$built" >> "$GITHUB_OUTPUT"
-          behind=$(git rev-list --count "$built..origin/main")
-          subject=$(git log -1 --format=%s "$built")
-          ago=$(git log -1 --format=%cr "$built")
-          gap=$(( $(git log -1 --format=%ct origin/main) - $(git log -1 --format=%ct "$built") ))
+          behind=$(git rev-list --count "$GITHUB_SHA..origin/main")
+          subject=$(git log -1 --format=%s "$GITHUB_SHA")
+          ago=$(git log -1 --format=%cr "$GITHUB_SHA")
+          gap=$(( $(git log -1 --format=%ct origin/main) - $(git log -1 --format=%ct "$GITHUB_SHA") ))
           if [ "$gap" -ge 86400 ]; then older="$((gap / 86400)) day(s)"; elif [ "$gap" -ge 3600 ]; then older="$((gap / 3600)) hour(s)"; else older="$((gap / 60)) minute(s)"; fi
           n=$((behind + 1)); case "$n" in 11|12|13) sfx=th;; *1) sfx=st;; *2) sfx=nd;; *3) sfx=rd;; *) sfx=th;; esac
           if [ "$behind" = 0 ]; then where="the newest commit of main (its head)"; else where="the ${n}${sfx} newest commit of main, $behind behind the head $(git rev-parse --short origin/main) and $older older than it"; fi
-          echo "::notice title=Built from ${built:0:7}::$subject ($where, committed $ago)"
-          echo "Built from ${built:0:7}: $subject ($where, committed $ago)"
+          echo "::notice title=Built from ${GITHUB_SHA:0:7}::$subject ($where, committed $ago)"
+          echo "Built from ${GITHUB_SHA:0:7}: $subject ($where, committed $ago)"
           # Why (1 Nov 2026, owner, on beta 10's graph: "I don't see where it says how old is the commit"): the annotation sits below the graph; the short label is the name of a box in it.
           if [ "$behind" = 0 ]; then place="main's head"; else place="$behind behind main's head"; fi
-          echo "label=${built:0:7} · $place · $ago" >> "$GITHUB_OUTPUT"
+          echo "label=${GITHUB_SHA:0:7} · $place · $ago" >> "$GITHUB_OUTPUT"
       - uses: ./.github/actions/gh-ledger
         with:
           phase: start
@@ -219,15 +213,32 @@ jobs:
           extension=$(node scripts/extension-stamp.mjs)
           echo "Extension version $extension"
           echo "extension_version=$extension" >> "$GITHUB_OUTPUT"
-      - name: Tag this build now (its workflows still match main's)
+      # Why (1 Nov 2026, owner on beta 13's red: "fix the root cause"): GitHub refuses (HTTP 403) a tag or a release on a commit whose workflow files differ from main's when the token is the run's own
+      # github.token (it cannot hold the workflows permission). That rule is why a beta could only be built from a commit with main's workflow files, and why the overlay of #2927 (a commit's code under
+      # another commit's pipeline) failed its own unit test. The CI App holds Workflows: write (owner, 1 Nov 2026; org installation too), so its token tags and releases any commit of main: a pick
+      # runs its own pipeline. A failed mint falls back to github.token and the old behaviour below.
+      - name: The CI App's token, to tag and release a commit whose workflows differ from main's
         if: steps.diff.outputs.build == 'true' && steps.redmain.outputs.red != 'true'
         timeout-minutes: 5
-        # GitHub refuses (HTTP 403) to let this run's token create a tag on a commit whose workflow files differ from main's. Tagged here, at the
-        # start, that can't happen: a push to main during the build no longer costs a rebuild (7 Oct 2026). A build that fails after this leaves
+        id: tag_app
+        continue-on-error: true   # a failed mint falls back to the workflow token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.CI_APP_CLIENT_ID }}
+          private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-workflows: write
+      - name: Tag this build now
+        if: steps.diff.outputs.build == 'true' && steps.redmain.outputs.red != 'true'
+        timeout-minutes: 5
+        env:
+          APP_TOKEN: ${{ steps.tag_app.outputs.token }}
+        # Tagged here, at the start: a push to main during the build no longer costs a rebuild (7 Oct 2026). A build that fails after this leaves
         # its number unused; scripts/next-version.sh then takes the next one.
         run: |
           tag="desktop-v${{ steps.version.outputs.version }}"
-          if git push -q origin "$GITHUB_SHA:refs/tags/$tag"; then echo "Tagged $tag at ${GITHUB_SHA::7}"
+          remote=origin; [ -z "$APP_TOKEN" ] || remote="https://x-access-token:${APP_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          if git push -q "$remote" "$GITHUB_SHA:refs/tags/$tag"; then echo "Tagged $tag at ${GITHUB_SHA::7}"
           else echo "::warning::Could not tag $tag at the start: the Release step tags it (and rebuilds main if workflows changed meanwhile)."; fi
       - name: Release
         if: steps.diff.outputs.build == 'true' && steps.redmain.outputs.red != 'true'
@@ -235,7 +246,7 @@ jobs:
         id: release
         working-directory: desktop
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ steps.tag_app.outputs.token || github.token }}   # the App's token may tag a commit whose workflows differ from main's (see the mint step above)
           version: ${{ steps.version.outputs.version }}
         run: |
           # GitHub refuses (HTTP 403) to let this run's token tag a commit whose workflow files differ from main's.
@@ -243,7 +254,7 @@ jobs:
           tag="desktop-v${version}"
           # Tagged at the start (above): nothing to refuse. Only a build that could not tag then still needs main's workflows to match.
           git fetch -q origin main
-          if [ "$(git ls-remote --tags origin "refs/tags/$tag" | cut -f1)" != "$GITHUB_SHA" ] && ! git diff --quiet "$GITHUB_SHA" origin/main -- .github/workflows; then
+          if [ "$(git ls-remote --tags origin "refs/tags/$tag" | cut -f1)" != "$GITHUB_SHA" ] && [ "$GH_TOKEN" = "${{ github.token }}" ] && ! git diff --quiet "$GITHUB_SHA" origin/main -- .github/workflows; then
             echo "::warning::Workflows changed on main during this build: not released; a new build of main starts."
             echo "### ⚠️ ${version} not released: superseded by a new build of main (workflows changed on main during the build)."
             # what this run was, as below: a beta stays a beta, a nightly a nightly
@@ -1350,7 +1361,7 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
       TAG: desktop-v${{ needs.changes.outputs.version }}
-      REF: ${{ needs.changes.outputs.ci_sha }}   # main's CI is read on this commit (see the "built" step in changes)
+      REF: ${{ github.sha }}
     steps:
       - uses: actions/checkout@v5
         timeout-minutes: 5
@@ -1395,7 +1406,7 @@ jobs:
       CI_ALERTS_TELEGRAM_BOT_TOKEN: ${{ secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN }}   # release-stable.sh alerts once when a store publish does not start (job level: the artifact scan lists it)
       CI_ALERTS_TELEGRAM_CHAT_ID: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}
       TAG: desktop-v${{ needs.changes.outputs.version }}
-      REF: ${{ needs.changes.outputs.ci_sha }}   # main's CI is read on this commit (see the "built" step in changes)
+      REF: ${{ github.sha }}
     steps:
       - uses: actions/checkout@v5
         timeout-minutes: 5
@@ -1512,7 +1523,7 @@ jobs:
       CI_ALERTS_TELEGRAM_BOT_TOKEN: ${{ secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN }}   # release-stable.sh alerts once when a store publish does not start
       CI_ALERTS_TELEGRAM_CHAT_ID: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}
       TAG: desktop-v${{ needs.changes.outputs.version }}
-      REF: ${{ needs.changes.outputs.ci_sha }}   # main's CI is read on this commit (see the "built" step in changes)
+      REF: ${{ github.sha }}
     steps:
       - uses: actions/checkout@v5
         timeout-minutes: 5
@@ -1563,7 +1574,7 @@ jobs:
         GITHUB_TOKEN
       GH_TOKEN: ${{ github.token }}
       TAG: desktop-v${{ needs.changes.outputs.version }}
-      REF: ${{ needs.changes.outputs.ci_sha }}   # main's CI is read on this commit (see the "built" step in changes)
+      REF: ${{ github.sha }}
     steps:
       - uses: actions/checkout@v5
         timeout-minutes: 5
@@ -1680,7 +1691,7 @@ jobs:
       CI_ALERTS_TELEGRAM_BOT_TOKEN: ${{ secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN }}   # release-stable.sh alerts once when a store publish does not start
       CI_ALERTS_TELEGRAM_CHAT_ID: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}
       TAG: desktop-v${{ needs.changes.outputs.version }}
-      REF: ${{ needs.changes.outputs.ci_sha }}   # main's CI is read on this commit (see the "built" step in changes)
+      REF: ${{ github.sha }}
     steps:
       - uses: actions/checkout@v5
         timeout-minutes: 5
@@ -1829,13 +1840,13 @@ jobs:
           LANES: Mac=${{ needs.release-mac-offer.result }},Windows=${{ needs.release-windows-offer.result }}
         run: node desktop/e2e/release-alert.mjs beta "$TAG" --lanes "$LANES"
       - uses: actions/setup-node@v5
-        if: always() && !cancelled() && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/beta-pick/'))
+        if: always() && !cancelled() && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/beta-pick-'))
         continue-on-error: true
         timeout-minutes: 5
         with:
           node-version: '22'
       - name: AI credit is an alert, never a hold
-        if: always() && !cancelled() && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/beta-pick/'))
+        if: always() && !cancelled() && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/beta-pick-'))
         continue-on-error: true
         timeout-minutes: 5
         env:
@@ -1848,7 +1859,7 @@ jobs:
           node desktop/e2e/credit-alert.mjs --artifacts credit-artifacts --marker ai-credit-alert/alert-sent.txt
       - name: Scan artifact contents for CI secrets
         id: artifact_scan_1
-        if: always() && !cancelled() && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/beta-pick/'))
+        if: always() && !cancelled() && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/beta-pick-'))
         continue-on-error: true
         timeout-minutes: 5
         env:

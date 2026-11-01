@@ -1,7 +1,7 @@
 /* global document */
 // Actions: the three tasks a person presses (Find jobs, Check Gmail, Analyze my job search), each ending in one Recent runs row, plain words, a clean log and nothing left Running.
 // Why (1 Nov 2026, owner: "I'd like the beta to have only the critical e2e/user journeys"): the Recent activity SCREEN checks (filter, result card, pop-up, a run read from Notion,
-// layout) moved to desktop/test/screen-activity.test.js; what stays is the part that needs a real run. Starts from a set-up install; resets only its own run rows in Notion.
+// layout) moved to desktop/integration/app/screen-activity.test.js; what stays is the part that needs a real run. Starts from a set-up install; resets only its own run rows in Notion.
 // What goes WRONG (the AI failing, two things at once, a quit in the middle) is the activityfailures suite, in parallel, on its own Notion page.
 import fs from 'node:fs';
 import path from 'node:path';

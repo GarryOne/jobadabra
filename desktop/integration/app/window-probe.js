@@ -1,7 +1,7 @@
 /* global document, performance */
 // Layer 2 of the test pyramid: the app's real window on fictional data, no browser, no Notion, no AI. One hidden Electron launch runs a probe script in the window.
 // Why (1 Nov 2026, owner: "I'd like the beta to have only the critical e2e/user journeys. All the others, to run separately less frequently"): screen checks left the e2e
-// suites for desktop/test, which CI · Tests · desktop runs on every PR under xvfb (needs-electron.js). The pattern is the one palette-one-row-per-card.test.js uses
+// suites for desktop/integration/app, which CI · Tests · desktop runs on every PR under xvfb (needs-electron.js). The pattern is the one palette-one-row-per-card.test.js uses
 // (scripts/shot.mjs): the demo app, `JOB_PILOTTO_SMOKE_EVAL` returns the page's facts as JSON; here with the demo folder replaced by a test's own files.
 import {spawnSync} from 'node:child_process';
 import fs from 'node:fs';

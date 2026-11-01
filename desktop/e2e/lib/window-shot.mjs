@@ -1,4 +1,5 @@
 // The picture of the app's window that every e2e shot and failure picture uses: what the window paints, at rest, nothing around it.
+// Job: report health
 /* global requestAnimationFrame */
 // Why (1 Nov 2026, owner via mac-07 "Fix the capture canvas"; #2749, #2742, #2806): on a display up to 1512 wide the app draws at 80% (desktop/lib/zoom.js), and CI's xvfb
 // screen is 1440 wide; Playwright's page.screenshot then sized the picture in CSS pixels (1280/0.8 x 793/0.8 = 1600 x 991) around the 1280 x 793 the window paints,

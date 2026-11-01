@@ -110,7 +110,7 @@ jobs:
           n=$((behind + 1)); case "$n" in 11|12|13) sfx=th;; *1) sfx=st;; *2) sfx=nd;; *3) sfx=rd;; *) sfx=th;; esac
           if [ "$behind" = 0 ]; then where="the newest commit of main (its head)"; else where="the ${n}${sfx} newest commit of main, $behind behind the head $(git rev-parse --short origin/main) and $older older than it"; fi
           echo "::notice title=Built from ${GITHUB_SHA:0:7}::$subject ($where, committed $ago)"
-          { echo "### Built from \`${GITHUB_SHA:0:7}\`: $subject"; echo "$where, committed $ago."; } >> "$GITHUB_STEP_SUMMARY"
+          echo "Built from ${GITHUB_SHA:0:7}: $subject ($where, committed $ago)"
       - uses: ./.github/actions/gh-ledger
         with:
           phase: start

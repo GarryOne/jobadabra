@@ -16,7 +16,6 @@ const source = file => readFileSync(new URL(`../${file}`, import.meta.url), 'utf
 const names = text => stepCalls(text).flatMap(call => call.name ?? VIEWS.map(view =>
   view + text.slice(call.start, call.end).match(/`\$\{view\}([^`]+)`/)[1]));
 const finalSteps = ['no AI call of this suite reached a real model: the stand-in answered or refused every one', 'nothing was queued to report to the product', 'the Notion stand-in answered every request the app made'];
-const linkStep = "the app's next start links this workspace's Search settings page (so the check looks for this person's roles and places)";
 
 test('jobs watcher leaves time for the terminal-state verdict before the runner cap', async t => {
   t.mock.method(console, 'log', () => {});
@@ -41,8 +40,10 @@ test('jobs watcher leaves time for the terminal-state verdict before the runner 
   assert.deepEqual(delays, [8000, 0], 'reset the slow proxy before reporting the state failure');
 });
 
-for (const [suiteName, suite, count, largest, minutes] of [
-  ['interactions', interactions, 26, 220, 25], ['jobs', jobs, 12, 495, 30], ['failureschannels', failureschannels, 10, 180, 12],
+// Why (1 Nov 2026, owner "Shrink in cleanup", a8): the step count was typed in here and had to follow every step a layer moved out (#2763, #2770, a509995 all went red on it); the property is that every step
+// the suite source declares has a cap, so the count is read, and at least one step must be found so an empty scan never passes.
+for (const [suiteName, suite, largest, minutes] of [
+  ['interactions', interactions, 220, 25], ['jobs', jobs, 495, 30], ['failureschannels', failureschannels, 180, 12],
 ]) {
   test(`${suiteName}: every step has a measured or documented fallback cap and no aggregate clock`, () => {
     const caps = JSON.parse(source('hang-caps.json'))[suiteName];
@@ -56,7 +57,7 @@ for (const [suiteName, suite, count, largest, minutes] of [
       preparation = source('lib/activity-steps.mjs');
     }
     const required = [...names(direct), ...names(preparation), ...names(source('lib/seed.mjs')), ...finalSteps];
-    assert.equal(required.length, count, 'positive control: all direct, generated, shared and final steps were read');
+    assert.ok(required.length > 0, 'positive control: the suite\'s steps were read, an empty scan never passes');
     assert.deepEqual(Object.keys(suite.hangCaps).sort(), [...new Set(required)].sort());
     assert.equal(suite.aggregateBudget, false);
     assert.equal(budgetMsOf(suite), Infinity);
@@ -70,7 +71,7 @@ for (const [suiteName, suite, count, largest, minutes] of [
     }
     const rows = Object.entries(caps.steps).filter(([, step]) => !step.shared && step.p95Seconds !== undefined);
     const shared = Object.entries(caps.steps).filter(([, step]) => step.shared);
-    assert.equal(rows.length + shared.length + (suiteName === 'jobs' ? 1 : 0), count, 'every cap has provenance');
+    assert.equal(rows.length + shared.length, Object.keys(caps.steps).length, 'every cap has provenance');
     for (const [name, {seconds, n, p95Seconds}] of rows) {
       assert.ok(n >= 5, `${name}: insufficient calm samples`);
       assert.equal(seconds, Math.max(30, Math.ceil(3 * p95Seconds / 5) * 5), name);
@@ -78,10 +79,6 @@ for (const [suiteName, suite, count, largest, minutes] of [
     for (const [name, {n, shared: sharedSuite}] of shared) {
       assert.ok(n < 5);
       assert.equal(suite.hangCaps[name], hangCapsFor(sharedSuite)[name]);
-    }
-    if (suiteName === 'jobs') {
-      assert.equal(suite.hangCaps[linkStep], 90);
-      assert.deepEqual(caps.steps[linkStep], {seconds: 90, n: 4, reason: 'fewer than 5 calm samples, no shared cap; 30 s floor x 3'});
     }
   });
 

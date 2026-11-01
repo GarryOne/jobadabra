@@ -13,6 +13,7 @@ import {ensureSetUp} from '../lib/seed.mjs';
 import {step as wizardStep} from '../lib/app.mjs';
 import crypto from 'node:crypto';
 import os from 'node:os';
+import {profileExperienceStep} from '../lib/profile-experience-step.mjs';
 import {backupNowStep, backupTimerStep, makeBackupFile} from '../lib/backup-steps.mjs';
 import {exportedFileDigests} from '../lib/export-snapshot.mjs';
 import {roundTripFileDifferences} from '../lib/roundtrip-files.mjs';
@@ -65,6 +66,8 @@ export async function run(ctx) {
       }
     } finally { if (original) fs.writeFileSync(target, original); }
   }, {needs: ctx.needs});
+  // Why (1 Nov 2026, owner: "Profile (CV, Experience)" is tier 1): the Experience half of J14; its integration counterpart is integration/store/profile-experience-edit.test.mjs.
+  await ctx.run('Profile Experience: an edited summary is saved with the Profile save bar, and is still there after a restart', () => profileExperienceStep(ctx), {needs: ctx.needs, data: true});
   // Why (1 Nov 2026, owner: "Only tier 1 … should stay e2e"): 'Settings render without layout problems' (night journey J17, Tier 2) is an integration test: integration/app/screen-settings.test.js 'every Settings section the page lists opens and has no layout problems'.
   await ctx.run('Automatic backup: Back up now writes a backup with no keys in its folder, and View backups opens it', () => backupNowStep(ctx), {needs: ctx.needs, data: true});
   await ctx.run('Automatic backup: a due backup runs once at start and once on the weekly tick', () => backupTimerStep(ctx), {needs: ctx.needs, data: true});

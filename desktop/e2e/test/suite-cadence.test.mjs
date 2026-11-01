@@ -6,7 +6,8 @@ import {planRun, suiteFacts} from '../plan-run.mjs';
 import {planPrSuites} from '../lib/pr-suites.mjs';
 import {SLIM, autoSuites, suitesFor} from '../lib/plan.mjs';
 
-const KEEP = ['activity', 'activityfailures', 'apply', 'applyflows', 'cardstates', 'employers', 'failureschannels', 'interactions', 'quality', 'qualityai', 'settings'];
+const KEEP = ['activity', 'activityfailures', 'apply', 'applyflows', 'cardstates', 'employers', 'failureschannels', 'qualityai', 'settings'];
+const NIGHT_REPORT = ['interactions', 'quality', 'wander'];   // once a night, report only, never in the beta (owner, 1 Nov 2026); each exports cadence 'night-report' itself
 const DROPPED = ['foryou', 'mailreading', 'personas', 'pool'];
 const OUTSIDE = ['notion-real'];
 const BY_HAND = ['explore'];   // never scheduled by design: it spends the owner's AI credit
@@ -17,7 +18,7 @@ const plan = async env => new Set((await planRun({env: {REPO: 'o/r', SHA, ...env
 
 test('every suite is kept, slimmed, dropped or by hand, exactly once', async () => {
   const {all} = await suiteFacts();
-  const lists = [...KEEP, ...SLIM, ...DROPPED, ...BY_HAND, ...OUTSIDE];
+  const lists = [...KEEP, ...SLIM, ...NIGHT_REPORT, ...DROPPED, ...BY_HAND, ...OUTSIDE];
   assert.deepEqual(all.filter(suite => !lists.includes(suite)), [], 'a new suite: put it in KEEP here, or in SLIM (lib/plan.mjs)');
   assert.deepEqual(lists.filter(suite => !all.includes(suite)), [], 'a listed suite no longer exists');
   assert.equal(new Set(lists).size, lists.length, 'a suite is in two lists');
@@ -28,6 +29,7 @@ test('a slim suite gets its cadence from the table only; a dropped one exports m
   const {cadence} = await suiteFacts();
   for (const suite of SLIM) assert.equal(cadence[suite], 'slim', suite);
   for (const suite of [...DROPPED, ...BY_HAND]) assert.equal(cadence[suite], 'manual', suite);
+  for (const suite of NIGHT_REPORT) assert.equal(cadence[suite], 'night-report', suite);
   for (const suite of KEEP) assert.ok(!['manual', 'slim'].includes(cadence[suite]), `${suite} is kept: no manual or slim cadence`);
 });
 
@@ -40,7 +42,7 @@ test('slim suites run at night and in both release gates; never in a soak top-up
   assert.deepEqual(SLIM.filter(suite => !night.has(suite)), [], 'the night schedule left out a slim suite (the code → suite map is built from it)');
   const repeat = await plan({EVENT: 'workflow_dispatch', TARGET_REF: 'desktop-v9.9'});   // canary-promote.yml's soak top-up and stable-canary.yml: a release's commit, no gate
   assert.deepEqual(SLIM.filter(suite => repeat.has(suite)), [], 'a soak top-up or the canary ran a slim suite');
-  assert.deepEqual(KEEP.filter(suite => !repeat.has(suite) && !['quality', 'qualityai'].includes(suite)), [], 'a kept suite left the soak top-up');
+  assert.deepEqual(KEEP.filter(suite => !repeat.has(suite) && !['qualityai'].includes(suite)), [], 'a kept suite left the soak top-up');
   const named = await plan({EVENT: 'workflow_dispatch', TARGET_REF: 'desktop-v9.9', ONLY: 'jobs'});
   assert.ok(named.has('jobs'), 'a slim suite named by hand still runs on a release');
 });
@@ -75,4 +77,13 @@ test('real Notion runs in nightly and beta gates and its own daily run, never a 
   assert.deepEqual(suitesFor(['desktop/e2e/suites/notion-real.mjs'], facts.all, facts), []);
   assert.ok(!(await plan({EVENT: 'workflow_dispatch', PR_SUITES: 'notion-real', ONLY: 'notion-real'})).has('notion-real'), 'a stale explicit PR pick cannot run outside');
   assert.ok(!(await plan({EVENT: 'workflow_dispatch', TARGET_REF: 'desktop-v9.9'})).has('notion-real'), 'no soak/canary repeats');
+});
+
+test('a night-report suite runs in night pass 1 only: no release gate, schedule, soak or canary', async () => {
+  const first = await plan({EVENT: 'workflow_dispatch', NIGHT_PASS: '1/5'});
+  assert.deepEqual(NIGHT_REPORT.filter(suite => !first.has(suite)), [], 'night pass 1 left out a night-report suite');
+  for (const env of [{EVENT: 'schedule'}, {EVENT: 'workflow_dispatch', TARGET_REF: 'desktop-v9.9'}, ...['nightly', 'beta'].map(GATE_KIND => ({EVENT: 'gate', TARGET_REF: 'desktop-v9.9', GATE_TAG: 'desktop-v9.9', GATE_KIND}))]) {
+    const planned = await plan(env);
+    assert.deepEqual(NIGHT_REPORT.filter(suite => planned.has(suite)), [], `${JSON.stringify(env)} planned a night-report suite`);
+  }
 });

@@ -2,7 +2,7 @@
 // Wander: a seeded random walk (lib/wander.mjs). It starts from a state nobody scripted (setup left half-way, the CV gone), takes steps nobody scripted (three pages in a row without
 // waiting, a control pressed twice, a dialog left open while the page changes, a reload, a hard crash and restart) and has Notion or the AI fail for a stretch of the walk.
 // Nothing here asserts one right answer: after every step the page must still answer, show no technical text or broken layout (the layout checks), and the whole walk must raise no
-// uncaught exception (lib/journey.mjs). The seed replays the walk: E2E_SEED=<n> node suite.mjs wander. No seed = a short fixed walk (the release gate).
+// uncaught exception (lib/journey.mjs). The seed replays the walk: E2E_SEED=<n> node suite.mjs wander. No seed = a short fixed walk.
 import fs from 'node:fs';
 import path from 'node:path';
 import {finish} from '../lib/layout.mjs';
@@ -19,6 +19,7 @@ export const offlineAi = true;
 export const realAi = false;
 export const aiAnswers = 'backbone';   // answers its AI from the stored table in every workflow (plan-run.mjs puts it in the matrix)
 export const name = 'wander';
+export const cadence = 'night-report';   // an explorer: runs once a night, shows its result, never in the beta (lib/plan.mjs; owner, 1 Nov 2026)
 export const keepGoing = true;
 export const notionProxy = true;
 // Why (30 Oct 2026, ap): stored answers need one store path; the stand-in keeps wander's injected Notion faults reachable, unlike SQLite.

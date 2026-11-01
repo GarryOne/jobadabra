@@ -1,0 +1,166 @@
+name: CI · Coverage report (nightly, report only)
+# Job: report health
+# Line % per test layer (unit Python, unit JS, integration, e2e) and per folder, and which of the 38 GTM-board journeys have a test at which layer (tools/coverage-report.mjs, guard desktop/test/coverage-report.test.js).
+# Why (1 Nov 2026, owner via a8: "Yes, nightly report (Recommended)"): nobody could say how much code each layer runs. REPORT ONLY, allowed under the owner's freeze (no new guard, gate or check until 3 green nights):
+# no pull_request trigger, no required check, nothing `needs` it, every job continue-on-error, and a missing source is printed "not measured", never 0%. Started by e2e.yml's night pass 1 (`night_pass: 1/5`,
+# the Worker's slot: no new cron), or by hand: gh workflow run coverage-report.yml.
+# Sources: coverage.py (Python unit tests), NODE_V8_COVERAGE (desktop/test, worker/test and desktop/integration/{store,extension,app}), and the code → suite map that e2e.yml's coverage-map job keeps from main's
+# e2e runs (the app window, extension and engine lines lib/coverage.mjs records; a night pass itself records none, E2E_COVERAGE is off there). Cost: coverage slows the tests, so they run here and nowhere else.
+# The report is printed in the `report` job's log, named in ::notice annotations (no step summaries: owner, 26 Oct 2026) and kept as the artifact `coverage-report` (report.md, report.json).
+on:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read   # the e2e coverage map of main's last run
+
+concurrency:
+  group: coverage-report-${{ github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  python:
+    name: Python unit tests, coverage.py
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    continue-on-error: true   # report only
+    env:
+      JOB_PILOTTO_DISABLE: mail,notion,telegram,google_jobs   # as tools/check.py sets it for the python unit job
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: The engine's packages and coverage.py
+        timeout-minutes: 8
+        run: pip install --quiet -r requirements.txt coverage
+      - name: Run the Python unit tests under coverage.py (one process; a red test does not stop the report)
+        timeout-minutes: 50
+        run: |
+          set -o pipefail
+          mkdir -p cov-out
+          coverage run --source=src -m unittest discover -s tests -q 2>&1 | tee cov-out/log.txt || echo "some Python tests were red: the coverage below is of the ones that ran"
+          coverage json --ignore-errors -o cov-out/py.json
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: coverage-py
+          path: cov-out/py.json
+          if-no-files-found: ignore
+          retention-days: 3
+
+  javascript:
+    name: JS unit and integration tests, V8 coverage
+    runs-on: ubuntu-24.04
+    timeout-minutes: 75
+    continue-on-error: true   # report only
+    env:
+      ELECTRON_DISABLE_SANDBOX: '1'
+      JOB_PILOTTO_DISABLE: mail,notion,telegram,google_jobs
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - name: The engine's packages (the store tests run the real engine)
+        timeout-minutes: 8
+        run: pip install --quiet -r requirements.txt
+      - name: A virtual display and Electron's libraries
+        timeout-minutes: 5
+        run: bash tools/apt-install.sh xvfb libnss3 libgbm1 libasound2t64 libgtk-3-0 libxss1 fonts-noto-color-emoji fonts-dejavu-core
+      - name: The desktop packages and Electron
+        timeout-minutes: 8
+        working-directory: desktop
+        run: |
+          npm ci
+          node node_modules/electron/install.js
+          node scripts/stage.mjs
+      - name: The harness packages and the browser the extension tests load
+        timeout-minutes: 8
+        working-directory: desktop/e2e
+        run: npm ci || npm install
+      - uses: ./.github/actions/playwright-browser
+        with: {working-directory: desktop/e2e, mode: both}
+      - name: The worker packages
+        timeout-minutes: 5
+        working-directory: worker
+        run: |
+          npm ci
+          node scripts/stage-shared.mjs
+      # Each run below writes its V8 files into its own folder (NODE_V8_COVERAGE is inherited by the processes a test starts). A red file is the unit/integration workflows' business, not this report's.
+      - name: Unit tests (desktop/test, worker/test)
+        timeout-minutes: 25
+        run: |
+          mkdir -p "$RUNNER_TEMP/v8/unit"
+          (cd desktop && NODE_V8_COVERAGE="$RUNNER_TEMP/v8/unit" xvfb-run -a --server-args='-screen 0 1440x900x24' env DESKTOP_RENDER_REQUIRED=1 node --import ./test/no-live-site.mjs --test test/*.test.js) || echo "some desktop unit tests were red"
+          (cd worker && NODE_V8_COVERAGE="$RUNNER_TEMP/v8/unit" node --test test/*.test.js) || echo "some worker tests were red"
+      - name: Integration tests (store, extension, app)
+        timeout-minutes: 25
+        run: |
+          mkdir -p "$RUNNER_TEMP/v8/integration-store" "$RUNNER_TEMP/v8/integration-extension" "$RUNNER_TEMP/v8/integration-app"
+          (cd desktop/e2e && NODE_V8_COVERAGE="$RUNNER_TEMP/v8/integration-store" node --import ./test/stdout-to-stderr.mjs --test --test-timeout=180000 ../integration/store/*.test.mjs) || echo "some store tests were red"
+          (cd desktop/e2e && NODE_V8_COVERAGE="$RUNNER_TEMP/v8/integration-extension" node --import ./test/stdout-to-stderr.mjs --test --test-timeout=180000 ../integration/extension/*.test.mjs) || echo "some extension tests were red"
+          (cd desktop && NODE_V8_COVERAGE="$RUNNER_TEMP/v8/integration-app" xvfb-run -a --server-args='-screen 0 1440x900x24' env DESKTOP_RENDER_REQUIRED=1 node --import ./test/no-live-site.mjs --test integration/app/*.test.js) || echo "some app tests were red"
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: coverage-v8
+          path: ${{ runner.temp }}/v8
+          if-no-files-found: ignore
+          retention-days: 3
+
+  report:
+    name: Coverage report
+    needs: [python, javascript]
+    if: always() && !cancelled()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    continue-on-error: true   # report only
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - uses: actions/download-artifact@v7
+        continue-on-error: true   # a layer whose job died is "not measured" below
+        with:
+          name: coverage-py
+          path: cov/py
+      - uses: actions/download-artifact@v7
+        continue-on-error: true
+        with:
+          name: coverage-v8
+          path: cov/v8
+      - name: The e2e coverage map of main's last run
+        timeout-minutes: 5
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p cov/e2e
+          id=$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=e2e-coverage-map&per_page=1" --jq '.artifacts[0].workflow_run.id // empty' || true)
+          if [ -n "$id" ]; then gh run download "$id" -n e2e-coverage-map -D cov/e2e || echo "the e2e map was not read: that layer is not measured"; else echo "no e2e coverage map yet: that layer is not measured"; fi
+      - name: Build the report
+        run: |
+          set -o pipefail
+          mkdir -p coverage-report
+          args=(--root . --journeys docs/gtm-journeys.json --sha "$GITHUB_SHA" --at "$(date -u +%Y-%m-%d)" --json coverage-report/report.json --md coverage-report/report.md)
+          [ -f cov/py/py.json ] && args+=(--py cov/py/py.json)
+          [ -d cov/v8/unit ] && args+=(--unit-js cov/v8/unit)
+          for d in cov/v8/integration-*; do [ -d "$d" ] && args+=(--integration-js "$d"); done
+          [ -f cov/e2e/coverage-map.json ] && args+=(--e2e-map cov/e2e/coverage-map.json)
+          node tools/coverage-report.mjs "${args[@]}" 2>&1 | tee coverage-report/log.txt
+      - name: Name each layer's number in the run's annotations
+        if: always() && hashFiles('coverage-report/report.json') != ''
+        run: |
+          node -e "const r = JSON.parse(require('fs').readFileSync('coverage-report/report.json', 'utf8')); for (const l of r.layers) console.log('::notice title=Coverage · ' + l.label + '::' + (l.total.state === 'measured' ? l.total.pct + '% (' + l.total.covered + ' of ' + l.total.total + ' lines)' : l.total.state + (l.why ? ' · ' + l.why : ''))); console.log('::notice title=GTM journeys with a test::' + r.journeys.withTest + ' of ' + r.journeys.total)"
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: coverage-report
+          path: coverage-report
+          if-no-files-found: ignore
+          retention-days: 35

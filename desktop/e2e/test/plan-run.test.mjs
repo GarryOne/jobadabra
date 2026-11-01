@@ -278,26 +278,15 @@ test('the gate runs each suite that keeps data on both stores, one job each; oth
   assert.deepEqual(JSON.parse(manual.matrix).include.map(({key, store}) => ({key, store})), [{key: 'jobs', store: ''}]);
 });
 
-test('schedules never carry the outside world; its own daily run carries only it; beta keeps one nonblocking AI-free outside leg', async () => {
-  const all = ['settings', 'notion-real'], cadence = {'notion-real': 'outside'};
+test('an exhausted schedule stays "Nothing tested" and needs no AI', async () => {
+  // Why (1 Nov 2026, c27 6/6a): the daily outside run and the 'outside' cadence are gone (real Notion is a night-report suite, test/suite-cadence.test.mjs); this keeps the schedule's exhaustion case.
+  const all = ['settings', 'notion-real'], cadence = {'notion-real': 'night-report'};
   const plan = (env, runs = []) => planRun({env: {EVENT: 'schedule', REPO: 'o/r', SHA: HEAD, ...env}, gh: gh({runs}), all, cadence,
     offlineAi: all, storeless: ['notion-real'], minutes: () => 15, os: () => 'ubuntu-24.04'});
   const exhausted = await plan({}, [sched(1), sched(2), sched(3)]);
   assert.deepEqual(suitesOf(exhausted), [], 'an exhausted schedule stays Nothing tested');
   assert.equal(exhausted.ai_required, '0');
-  // Gitar on #2502: the Worker starts the looks as dispatches, so run history never decided a day's first; no look carries the outside world.
   assert.ok(!suitesOf(await plan({})).includes('notion-real'), 'a look on a new commit never checks real Notion');
-  const outside = await plan({OUTSIDE: '1'}, [sched(1), sched(2), sched(3)]);
-  assert.deepEqual(suitesOf(outside), ['notion-real'], 'the daily outside run checks real Notion even on an unchanged commit, and nothing else');
-  assert.equal(JSON.parse(outside.matrix).include[0].tolerant, true);
-  assert.equal(outside.ai_required, '0');
-  const beta = await planRun({env: {EVENT: 'gate', REPO: 'o/r', SHA: HEAD, GATE_TAG: 'desktop-v9.9', GATE_KIND: 'beta'},
-    gh: args => args[0] === 'release' && args[1] === 'view' ? '{"body":"Beta-approved: yes"}' : gh({releases: [['desktop-v9.8', OLD]], files: []})(args),
-    all, cadence, offlineAi: all, storeless: ['notion-real'], minutes: () => 15});
-  assert.ok(suitesOf(beta).includes('notion-real'), 'an unchanged beta still checks the outside world');
-  assert.equal(JSON.parse(beta.matrix).include.find(leg => leg.suite === 'notion-real').tolerant, true);
-  assert.equal(beta.ai_required, '0');
-  assert.equal(JSON.parse(beta.matrix).include.filter(leg => leg.suite === 'notion-real').length, 1, 'no duplicate store legs');
 });
 
 
@@ -309,7 +298,7 @@ test('the matrix marks tolerant suites from lanes.json, never backbone suites', 
   assert.equal(legs.find(leg => leg.suite === 'settings').tolerant, undefined);
 });
 
-test('lanes.json alone marks every tolerant suite and every outside and night-report cadence is tolerant; workflows never gate that lane', async () => {
+test('lanes.json alone marks every tolerant suite and every night-report cadence is tolerant; workflows never gate that lane', async () => {
   const lanes = JSON.parse(fs.readFileSync(new URL('../lanes.json', import.meta.url), 'utf8')).suites;
   const facts = await suiteFacts();
   const all = Object.keys(lanes);
@@ -319,7 +308,7 @@ test('lanes.json alone marks every tolerant suite and every outside and night-re
   for (const [suite, entry] of Object.entries(lanes)) {
     assert.equal(legs.find(leg => leg.suite === suite)?.tolerant, entry.lane === 'tolerant' ? true : undefined, suite);
   }
-  for (const [suite, cadence] of Object.entries(facts.cadence)) if (['outside', 'night-report'].includes(cadence)) assert.equal(lanes[suite]?.lane, 'tolerant', `${suite}: a ${cadence} suite is a tolerant lane (it shows its result and never holds a beta)`);
+  for (const [suite, cadence] of Object.entries(facts.cadence)) if (cadence === 'night-report') assert.equal(lanes[suite]?.lane, 'tolerant', `${suite}: a ${cadence} suite is a tolerant lane (it shows its result and never holds a beta)`);
   for (const name of ['desktop', 'e2e', 'e2e-windows']) {
     const text = fs.readFileSync(new URL(`../../../.github/workflows/${name}.yml`, import.meta.url), 'utf8');
     assert.doesNotMatch(text, /matrix\.outside/, name);

@@ -1,0 +1,58 @@
+name: CI · Prompt cases (nightly, report only)
+# Job: report health
+# Last night's per-case right/wrong of the live "form" prompt-case set against tonight's main, asked on the owner's Codex plan through the broker (tools/prompt-cases-night.mjs,
+# tools/prompt-cases-codex.mjs; guard desktop/test/prompt-cases-night.test.js). No live prompt, case file or asker changed since the baseline's commit = nothing is asked, the baseline is carried ($0).
+# Why (1 Nov 2026, owner via mac-07: "Let the prompts being checked nightly and report"; "It should be part of the measurements / Quality AI"; a8 agreed the design the same day): REPORT ONLY, riding night
+# pass 1 beside clock-moved and coverage-report: started by e2e.yml (`night_pass: 1/5`), never by a PR, a beta gate or a by-hand run; nothing `needs` it, the job is continue-on-error, it holds no suite lock.
+# Scheduled AI runs on the Codex plan, never a paid API (owner, 28 Oct 2026): the broker puts this run in its `scheduled` lane (jobadabra-web workers/codex-broker lib/lanes.mjs), no daily call cap.
+# The result is one ::notice annotation, the log and the artifact `prompt-cases-night` (prompt-cases-night.json: also tomorrow's baseline); no step summary (owner, 26 Oct 2026). It sits beside the
+# Quality AI night report, whose own artifacts are the only place that report lands (a8, 1 Nov 2026).
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+  actions: read     # last night's artifact
+  id-token: write   # GitHub's per-run OIDC token proves the run to the Codex broker; no API key
+
+concurrency:
+  group: prompt-cases-night-${{ github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  replay:
+    name: Prompt cases, nightly (report only)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    continue-on-error: true   # report only: a red here never reddens the night pass that called it
+    env:
+      CI_AI_PROVIDER: codex
+      E2E_AI_PROVIDER: codex
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0   # the baseline's commit must be in the history to ask what changed since
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - name: The worker's packages (the cases are built with its prompts)
+        run: npm ci --prefix worker
+      - name: Last night's baseline (the newest prompt-cases-night artifact of main)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p prompt-cases-in
+          url=$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=prompt-cases-night&per_page=20" --jq '[.artifacts[] | select(.expired == false and .workflow_run.head_branch == "main")] | first | .archive_download_url // empty') || url=""
+          if [ -z "$url" ]; then echo "No earlier baseline: tonight stores the first one."; exit 0; fi
+          gh api "$url" > prompt-cases-in/baseline.zip && unzip -oq prompt-cases-in/baseline.zip -d prompt-cases-in || echo "::warning title=Prompt cases (nightly, report only)::last night's baseline could not be read: tonight stores a new one."
+      - name: Replay the live prompt cases on the Codex plan
+        run: |
+          mkdir -p prompt-cases-out
+          node tools/prompt-cases-night.mjs --out prompt-cases-out --baseline prompt-cases-in/prompt-cases-night.json --jobs 6 --max-calls 160 2>&1 | tee prompt-cases-night.log   # Why (Gitar on #2851): the log lives outside the uploaded folder, so a crashed night uploads nothing and the previous baseline stays the newest artifact
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: prompt-cases-night
+          path: prompt-cases-out   # one folder, so the zip's root holds prompt-cases-night.json: tomorrow's baseline path
+          retention-days: 14
+          if-no-files-found: ignore

@@ -22,6 +22,8 @@ CLASSIFIED = {
     'CI · Clock moved (nightly, report only)': 'ignored: nightly report of tests that fail with the clock moved; called by night pass 1, never counted for main',
     # Why (1 Nov 2026, owner via a8: "Yes, nightly report"): the coverage report is report only, called by night pass 1, never a push or PR check.
     'CI · Coverage report (nightly, report only)': 'ignored: nightly line % per layer and GTM journeys with a test; called by night pass 1, never counted for main',
+    # Why (1 Nov 2026, owner via mac-07: "Let the prompts being checked nightly and report"): the prompt-case replay is report only, called by night pass 1, never a push or PR check.
+    'CI · Prompt cases (nightly, report only)': 'ignored: nightly replay of the live prompt-case set on the Codex plan; called by night pass 1, never counted for main',
     'CI · Tests': 'counted',
     'CI · Re-run jobs GitHub never started': 'ignored: after a beta or e2e run ends; only re-runs jobs GitHub gave no runner, never tests a push to main',
     "CI · Start the What's new publish": 'ignored: after a beta approval or a promotion to stable only, never on a push to main; it starts the site repo\'s publish and never fails a release',

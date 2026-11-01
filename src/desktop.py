@@ -278,7 +278,10 @@ def _jobs(db, args):
     fresh = found is not None
     if notion and not fresh:
         result['stale'] = True
-    result['profile_empty'] = _profile_blank(notion, stores)   # Jobs says fit scores are paused (#2759); setup ends on this page
+    # Jobs says fit scores are paused (#2759; setup ends on this page). Not asked when Notion just failed to list: the cached list must come back fast,
+    # and no verdict leaves the notice as the page has it (Gitar, #2872).
+    if not (notion and not fresh):
+        result['profile_empty'] = _profile_blank(notion, stores)
     return result, False
 
 

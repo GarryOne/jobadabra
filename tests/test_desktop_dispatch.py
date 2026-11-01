@@ -374,7 +374,7 @@ import src.desktop
     def test_jobs_sources_kits_errors_and_options(self):
         ready = self.patch('src.ai.engine.ready', return_value=True)
         listed = self.patch('src.desktop.jobs', side_effect=lambda *a, **k: dict(VALUE))
-        self.patch('src.desktop._profile_blank', return_value=False)   # the Profile verdict Jobs carries (#2759); its own test is test_desktop.py
+        blank = self.patch('src.desktop._profile_blank', return_value=False)   # the Profile verdict Jobs carries (#2759); its own test is test_desktop.py
         JOBS_OUT = {**VALUE, 'profile_empty': False}
         self.call('jobs', JOBS_OUT, outside=True)
         listed.assert_called_once_with(self.db, 200, notion_jobs=[], kit_inputs=None, hide_unscored=True)
@@ -382,8 +382,9 @@ import src.desktop
         listed.assert_called_with(self.db, 7, notion_jobs=[], kit_inputs=None, hide_unscored=False)
         ready.return_value = False
         self.tracker.notion_jobs.side_effect = OSError('offline')
-        self.call('jobs', {**VALUE, 'stale': True, 'profile_empty': False}, outside=True, err='Warning: Notion unavailable, showing the cached list: OSError: offline\n')
+        self.call('jobs', {**VALUE, 'stale': True}, outside=True, err='Warning: Notion unavailable, showing the cached list: OSError: offline\n')
         listed.assert_called_with(self.db, 200, notion_jobs=None, kit_inputs=None, hide_unscored=False)
+        self.assertEqual(blank.call_count, 2, 'Notion just failed to list: the cached list does not wait on a second Notion read for the Profile (Gitar, #2872)')
         self.from_env.return_value = None
         self.call('jobs', JOBS_OUT, outside=True)
         rows = [{'stage': 'Kit ready', 'next_step': 'é'}]

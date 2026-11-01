@@ -5,8 +5,9 @@ import unittest
 from pathlib import Path
 
 WORKFLOWS = Path(__file__).resolve().parent.parent / '.github' / 'workflows'
-RUNS_PYTHON = re.compile(r"--area python\b|UNIT_AREAS: '[^']*\bpython\b")
-SIX = re.compile(r"^\s+JOB_PILOTTO_PY_JOBS: '?6'?\b", re.M)
+# Owner, 1 Nov 2026: the desktop unit step is the composite action .github/actions/unit-tests, whose callers pass `areas:` and `py-jobs:` (the action exports JOB_PILOTTO_PY_JOBS).
+RUNS_PYTHON = re.compile(r"--area python\b|UNIT_AREAS: '[^']*\bpython\b|^\s+areas: '[^']*\bpython\b", re.M)
+SIX = re.compile(r"^\s+(?:JOB_PILOTTO_PY_JOBS|py-jobs): '?6'?\b", re.M)
 
 
 def jobs_of(text):
@@ -35,6 +36,10 @@ class CiPythonShardsTest(unittest.TestCase):
         self.assertTrue(SIX.search("          JOB_PILOTTO_PY_JOBS: '6'   # why"))
         self.assertTrue(SIX.search("      JOB_PILOTTO_PY_JOBS: 6"))
         self.assertFalse(SIX.search("      JOB_PILOTTO_PY_JOBS: 2"))
+        self.assertTrue(RUNS_PYTHON.search("        with:\n          areas: 'python desktop'"))   # the composite call
+        self.assertFalse(RUNS_PYTHON.search("        with:\n          areas: 'desktop'"))
+        self.assertTrue(SIX.search("          py-jobs: '6'"))
+        self.assertFalse(SIX.search("          py-jobs: '2'"))
 
 
 if __name__ == '__main__':

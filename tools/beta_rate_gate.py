@@ -65,9 +65,10 @@ def blocking_lanes(jobs, registry):
 def backbone_check(jobs, registry, unit=None):
     """Hold either beta on any backbone job that is not green; a suite's single try is the verdict (spec rule L, 31 Oct 2026).
 
-    `unit` maps a lane label to its Build box's unit-step outcome. Why (31 Oct 2026, owner, "D: unit red still runs e2e"): the unit step no longer stops the e2e
-    (beta 41215677698 lost 45 minutes of e2e to 1 flaky unit test), so the release is where one unit red still refuses both platforms. Only 'failure' counts: a unit
-    step that did not run ('' / skipped / cancelled) means the build did not finish, which the e2e jobs already show.
+    `unit` maps a lane label to its "Unit tests · <lane>" job's result, which the Release jobs pass as 'failure' for anything but 'success' (a cancelled or skipped unit job
+    never passed). Why (31 Oct 2026, owner, "D: unit red still runs e2e"): a red unit test no longer stops the e2e (beta 41215677698 lost 45 minutes of e2e to 1 flaky unit
+    test), so the release is where one unit red still refuses both platforms. Since 1 Nov 2026 the unit tests are jobs beside Build, not a step inside it. Only 'failure' counts
+    here: an empty value means no unit result was given (a run by hand of this script).
     """
     red = {f'Unit tests · {lane}' for lane, outcome in (unit or {}).items() if outcome == 'failure'}
     for lane, label in LANE_NAMES.items():
@@ -161,8 +162,8 @@ def main():
     parser.add_argument('--run', required=True)
     parser.add_argument('--e2e-only', action='store_true', help='block on any red gate suite of either lane')
     parser.add_argument('--platform', choices=('mac', 'windows'), default='mac')
-    parser.add_argument('--unit-mac', default='', help="the Build · Mac unit step's outcome ('failure' holds both betas)")
-    parser.add_argument('--unit-windows', default='', help="the Build · Windows unit step's outcome ('failure' holds both betas)")
+    parser.add_argument('--unit-mac', default='', help="the Unit tests · Mac job's result as the Release job passes it ('failure' holds both betas)")
+    parser.add_argument('--unit-windows', default='', help="the Unit tests · Windows job's result as the Release job passes it ('failure' holds both betas)")
     args = parser.parse_args()
     try:
         registry = json.loads(LANES.read_text())['suites']

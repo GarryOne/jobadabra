@@ -206,12 +206,13 @@ export async function runJourneys(ctx, h) {
     const {ms: pressWaitMs, error: pressError} = await waitForStage(() => pressesOf(SIGNIN_REFUSED), list => list.length > 0);
     // Ends the step here when the press never came: the pauses and panel waits below have clocks of their own and would let the runner cut the step first.
     if (!pressesOf(SIGNIN_REFUSED).length) fail([missedPressNote({what: '"Sign in" on the refusing page', waitedMs: pressWaitMs, ...await boxesOf(tab, CONTACT.email), error: pressError, decisions: await extensionDecisions(ctx)})]);
-    const {value: at} = await waitForStage(() => sessionOf(SIGNIN_REFUSED), value => value?.stuck === 'account');
+    const {value: at, error: stuckError} = await waitForStage(() => sessionOf(SIGNIN_REFUSED), value => value?.stuck === 'account');
+    // Ends the step here: the wait spent the step's clock, and the pauses and panel waits below have clocks of their own that would let the runner cut the step first (Gitar on #2778).
+    if (at?.stuck !== 'account') fail([`the session does not say the account step needs you (stage: ${at?.stage}, stuck: ${at?.stuck}${stuckError ? `, last read error: ${stuckError}` : ''})`]);
     await pause(12000);   // several more looks of the extension (it looks every few seconds): a second press would show here
     const presses = pressesOf(SIGNIN_REFUSED).length;
     if (presses > 1) problems.push(`after the site refused, "Sign in" was pressed again (${presses} presses): a refused sign-in is never retried`);
     if (tab.url().startsWith(SIGNIN_REFUSED.formUrl)) problems.push('the refusing page somehow led to the form');
-    if (at?.stuck !== 'account') problems.push(`the session does not say the account step needs you (stage: ${at?.stage}, stuck: ${at?.stuck})`);
     const {value: log} = await waitForDecisions(() => extensionDecisions(ctx), [/account result: refused/]);
     if (!/account result: refused/.test(log)) problems.push('the account AI\'s "refused" is not in the extension\'s decisions');
     if (!/account page: the extension could not finish it/.test(log)) problems.push('the account step was not handed to the person after the refused sign-in');

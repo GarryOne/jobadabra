@@ -39,6 +39,7 @@ def api(method, path, data=None):
 
 
 def template_json(name):
+    """-> the parsed templates/org-repo/<name> (settings.json, ruleset.json, profiles.json); the one source of the desired setup. Raises if the file is missing."""
     return json.loads((TEMPLATES / name).read_text(encoding='utf-8'))
 
 
@@ -98,6 +99,7 @@ def default_file(repo, branch, name):
 
 
 def find_ruleset(repo):
+    """-> the id of the repo's ruleset named like templates/org-repo/ruleset.json, or None when it has none (a 404 on the repo raises NotFound)."""
     name = template_json('ruleset.json')['name']
     for listed in api('GET', f'repos/{ORG}/{repo}/rulesets') or []:
         if listed['name'] == name:
@@ -124,6 +126,7 @@ def check_repo(repo):
 
 
 def org_repos():
+    """-> the names of the org's active repos (archived ones and profiles.json "exclude" left out), read from the GitHub API."""
     return [r['name'] for r in api('GET', f'orgs/{ORG}/repos?type=all&per_page=100') if not r.get('archived') and r['name'] not in template_json('profiles.json').get('exclude', [])]
 
 
@@ -143,6 +146,7 @@ def keep_issue(drift, dry):
 
 
 def cmd_check(args):
+    """`check`: print every difference between the repos (all, or the named ones) and the templates; with --issue keep the one report issue. -> exit code (1 on drift without --issue)."""
     drift = {}
     for repo in args.repos or org_repos():
         gaps = check_repo(repo)
@@ -158,6 +162,7 @@ def cmd_check(args):
 
 
 def cmd_files(args):
+    """`files`: write the repo's workflow files from the templates into the clone at args.clone, only those that differ. -> 0."""
     target = Path(args.clone) / WORKFLOWS
     target.mkdir(parents=True, exist_ok=True)
     for name in files_for(args.repo):
@@ -169,6 +174,7 @@ def cmd_files(args):
 
 
 def cmd_settings(args):
+    """`settings`: PATCH the repo with templates/org-repo/settings.json (or print the request with --dry-run). -> 0; an API error exits non-zero."""
     if args.dry_run:
         print(f'PATCH repos/{ORG}/{args.repo} {json.dumps(template_json("settings.json"))}')
     else:
@@ -185,6 +191,7 @@ def check_exists(repo):
 
 
 def cmd_ruleset(args):
+    """`ruleset`: create or update the repo's ruleset from the template. -> 0, or 2 (nothing written) while its "All checks passed" job is not on the default branch."""
     if not check_exists(args.repo):
         print(f'ruleset refused: {args.repo} has no {WORKFLOWS}/pr-checks.yml on its default branch yet (ship the files first)', file=sys.stderr)
         return 2
@@ -199,6 +206,7 @@ def cmd_ruleset(args):
 
 
 def cmd_onboard(args):
+    """`onboard`: files + settings, then the ruleset when its check already exists on the default branch, else say what to ship first. -> the ruleset step's exit code."""
     cmd_files(args)
     cmd_settings(args)
     if check_exists(args.repo):

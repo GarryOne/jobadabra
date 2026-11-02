@@ -9,7 +9,7 @@ import { PAGE_FILES } from '../../extension/page-files.js';
 import { readPanel } from './helpers/panel.js';
 
 const JSDOM = await loadJsdom();
-const skip = JSDOM ? false : 'jsdom is not installed here (run npm install in worker/)';
+const skip = JSDOM ? false : 'jsdom is not installed here (run npm install in app-core/)';
 const FORM = `<form>
   <label for="sal">Formule d'appel *</label><select id="sal" required><option value=""></option><option>Madame</option><option>Monsieur</option></select>
   <label for="tel">Numéro de téléphone *</label><input id="tel" type="tel" required>

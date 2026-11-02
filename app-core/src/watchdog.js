@@ -76,9 +76,9 @@ export function issueBody(missing, {checked, runUrl = ''} = {}) {
       : `| \`${item.workflow}\`${item.night ? ` night pass ${item.night}` : ''} | ${clock(item.at)} | \`${item.cron}\` |`)), '',
     ...(round ? ['The probe round (`shared/synthetic.js` in jobadabra-web, started by the site Worker) stored nothing for over 45 min while the site answers: see the Synthetic Monitoring tab in /admin/testing, the Worker logs and the `synthetic_probes` table.', ''] : []),
     ...(starts.length ? ["GitHub's own schedule still starts them, late or not at all (it skipped 4 of 6 stats runs on 5-6 Oct). What to check:",
-    '- the Worker\'s secrets: `cd worker && npx wrangler secret list` (GITHUB_TOKEN, TELEGRAM_BOT_TOKEN, OWNER_CHAT_ID; `npm run deploy` checks them)',
+    '- the site Worker\'s secrets (www, in jobadabra-web): `cd workers/www && npx wrangler secret list` (TIMERS_GITHUB_TOKEN), and the vars TIMERS=on and TIMERS_REPO in its wrangler.toml',
     "- a refused start is commented here by the Worker itself, with GitHub's answer",
-    '- the schedule: `app-core/src/scheduler.js` and `worker/wrangler.toml` [triggers]', ''] : []),
+    '- the schedule: `app-core/src/scheduler.js` (the rules) and `workers/www/wrangler.toml` [triggers] in jobadabra-web (the 47 trigger and the every-5-minutes one)', ''] : []),
     `<sub>Kept by \`.github/workflows/schedule-watchdog.yml\` (\`app-core/src/watchdog.js\`): updated each hour while a start is missing, closed when every one is seen again.</sub>`,
     `<!-- watchdog-missing: ${keyOf(missing)} -->`].join('\n');
 }

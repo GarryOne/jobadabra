@@ -16,11 +16,8 @@ SERVER_WORKFLOWS = ('worker.yml', 'ready-fill-image.yml', 'central-scout.yml', '
 DEPLOY_MARK = re.compile(r'wrangler|docker (build|buildx)|docker/build-push|CLOUDFLARE_API_TOKEN')
 
 # Left to move, with the PR that removes the entry (spec "Plan").
-ALLOWED_FOLDERS = {
-    'worker': 'PR 2 renames worker/src + worker/test to app-core; PR 4 removes the deploy shell (wrangler.toml, scripts, package.json)',
-}
+ALLOWED_FOLDERS = {}
 ALLOWED_WORKFLOWS = {
-    'worker.yml': 'PR 4: the bot Worker deploys from jobadabra-web',
     'central-scout.yml': 'PR 6: jobadabra-lab',
     'product-brain.yml': 'PR 6: jobadabra-lab',
 }

@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { loadJsdom, openPage } from './helpers/page.js';
 
 const JSDOM = await loadJsdom();
-const skip = JSDOM ? false : 'jsdom is not installed here (run npm install in worker/)';
+const skip = JSDOM ? false : 'jsdom is not installed here (run npm install in app-core/)';
 
 const FLAT = `<form><input type="hidden" name="job_id">
   <label for="civility">Civilité : Mlle / Mme / M</label>

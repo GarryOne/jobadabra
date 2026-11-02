@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { loadJsdom, openPage } from './helpers/page.js';
 
 const JSDOM = await loadJsdom();
-const skip = JSDOM ? false : 'jsdom is not installed here (run npm install in worker/)';
+const skip = JSDOM ? false : 'jsdom is not installed here (run npm install in app-core/)';
 
 const FORM = `<form>
   <label for="title">Title *</label><select id="title" required><option value="">Please select</option><option>Mr</option><option>Mrs</option><option>Ms</option></select>

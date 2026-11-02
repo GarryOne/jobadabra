@@ -110,6 +110,16 @@ class Check(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertIn('note jobadabra-lab: bypass actors are not shown', out)
 
+    def test_settings_a_token_gets_as_null_are_a_note_not_drift_but_a_real_wrong_value_still_is(self):
+        fake = Fake(settings={'allow_auto_merge': None, 'allow_squash_merge': None, 'allow_update_branch': None, 'delete_branch_on_merge': None})
+        code, out = run(fake, 'check', 'jobadabra-lab')
+        self.assertEqual(code, 0)
+        self.assertIn('note jobadabra-lab: settings', out)
+        self.assertIn('allow_squash_merge', out)
+        code, out = run(Fake(settings={'allow_auto_merge': None, 'allow_merge_commit': True}), 'check', 'jobadabra-lab')
+        self.assertEqual(code, 1, 'a null beside a readable wrong value: the wrong value is still drift')
+        self.assertIn('allow_merge_commit', out)
+
     def test_each_repo_gets_its_profile(self):
         self.assertEqual(org_repo.files_for('jobadabra'), [])
         self.assertEqual(org_repo.files_for('jobadabra-web'), ['gitar-label.yml', 'conflict-label.yml'])

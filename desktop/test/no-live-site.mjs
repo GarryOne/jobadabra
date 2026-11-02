@@ -6,7 +6,7 @@ const real = globalThis.fetch;
 let hits = 0;
 globalThis.fetch = async (input, init) => {
   const url = String(input?.url || input);
-  if (/jobpilotto\.(?:workers\.dev|top)/.test(url)) {
+  if (/(?:jobpilotto|jobadabra)\.(?:workers\.dev|top)/.test(url)) {
     hits += 1;
     console.error(`[no-live-site] a test reached the live site: ${new URL(url).pathname} (pass a fetcher/base, or settings telemetry:false)`);
     throw new Error('tests must not reach the live site');

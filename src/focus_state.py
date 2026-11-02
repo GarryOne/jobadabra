@@ -132,7 +132,7 @@ def _applied_by_day(rows, by_app, today, days=14):
 
 
 # A job known only from an invitation or a message: its Job URL is the email, the chat or a derived link.
-PLACEHOLDER_URL = re.compile(r'mail\.google\.com|linkedin\.com/messaging|jobpilotto\.(?:workers\.dev|top)/lead')
+PLACEHOLDER_URL = re.compile(r'mail\.google\.com|linkedin\.com/messaging|(?:jobpilotto|jobadabra)\.(?:workers\.dev|top)/lead')
 
 
 def thin(row):

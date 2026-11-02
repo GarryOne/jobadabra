@@ -29,12 +29,13 @@ class AffectedTests(unittest.TestCase):
 
     def test_a_failing_data_readers_helper_runs_everything(self):
         class Failed: returncode, stdout = 1, ''
-        real_run = affected.subprocess.run
+        real_run, real_which = affected.subprocess.run, affected.shutil.which
         try:
+            affected.shutil.which = lambda name: '/usr/bin/node'   # Gitar on #2971: reach the helper call on a machine without node too
             affected.subprocess.run = lambda args, *a, **k: Failed() if 'data-readers' in str(args) else real_run(args, *a, **k)
             got = affected.select(['docs/notion-profile-template.md'])
         finally:
-            affected.subprocess.run = real_run
+            affected.subprocess.run, affected.shutil.which = real_run, real_which
         self.assertEqual(got['integration'], 'all', 'its readers are unknown: when in doubt, run it')
         self.assertEqual(got['reasons']['all'], ['tools/data-readers.mjs failed'])
 

@@ -18,7 +18,8 @@ const NEW_PHONE = '+41 79 555 99 88';
 // Profile as a person opens it: the menu's Profile, then one of its tabs.
 async function openProfile(ctx, tab) {
   await stepWait('the Profile menu item', timeout => ctx.page.getByRole('button', {name: 'Profile', exact: true}).click({timeout}));
-  await stepWait(`the ${tab} tab`, timeout => ctx.page.getByRole('tab', {name: tab, exact: true}).click({timeout}));
+  // Why (2 Nov 2026, local run): a tab's accessible name carries its badge ("Your details 7 missing"), so the name is matched by its start, not whole.
+  await stepWait(`the ${tab} tab`, timeout => ctx.page.getByRole('tab', {name: new RegExp(`^${tab}( |$)`)}).click({timeout}));
 }
 
 // The plain CV, printed by the app's own Chromium (the same PDF a person's CV is): the file the CV check reads.
@@ -41,7 +42,7 @@ export async function profileCvStep(ctx) {
     await ctx.page.reload();   // the Profile page reads the CV file afresh
     await openProfile(ctx, 'CV');
     await stepWait('the CV check button', timeout => ctx.page.getByRole('button', {name: 'Check PDF readability'}).click({timeout}));
-    await stepWait('the CV check to say it was checked', timeout => ctx.page.getByText(/^Checked /).waitFor({state: 'visible', timeout}));
+    await stepWait('the CV check to say it was checked', timeout => ctx.page.getByText(/^Checked .+ · /).waitFor({state: 'visible', timeout}));
     await stepWait('the Readability score tile', timeout => ctx.page.getByText('Readability', {exact: true}).first().waitFor({state: 'visible', timeout}));
     const saved = await ctx.page.evaluate(() => window.pilot.cvCheckStatus());
     const score = saved?.ats?.score;
@@ -69,7 +70,7 @@ export async function profileDetailStep(ctx) {
   await waitForLogLine(ctx.profile, /startup moves finished/g, {what: 'the app\'s start-up move into the store'});
   const before = await ctx.page.evaluate(() => window.pilot.contact());
   await openProfile(ctx, 'Your details');
-  await stepWait('Edit on the Contact card', timeout => ctx.page.getByRole('button', {name: 'Edit contact'}).click({timeout}));
+  await stepWait('Edit on the Contact card', timeout => ctx.page.getByRole('button', {name: 'Edit contact', exact: true}).click({timeout}));
   await stepWait('the Phone box', timeout => ctx.page.getByRole('textbox', {name: 'Phone', exact: true}).fill(NEW_PHONE, {timeout}));
   await stepWait('Save all changes on the save bar', timeout => ctx.page.getByRole('region', {name: 'Unsaved changes'}).getByRole('button', {name: 'Save all changes'}).click({timeout}));
   const {value: saved} = await pollUntil(() => ctx.page.evaluate(() => window.pilot.contact()), contact => contact?.phone === NEW_PHONE, {log: () => {}});

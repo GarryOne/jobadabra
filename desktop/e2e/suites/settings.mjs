@@ -3,11 +3,8 @@
 // Settings: every section renders, the CV check on real PDFs. Why (1 Nov 2026): Automatic backup and Your data (export / reset / import) moved to desktop/integration/store/data-roundtrip.test.mjs; the AI engine panel and ⌘K moved to desktop/integration/app/screen-settings.test.js.
 // Was: every section, with each AI engine chosen. Starts from a set-up install (a key saved, a workspace connected).
 import {snap} from '../lib/layout.mjs';
-import fs from 'node:fs';
-import path from 'node:path';
-import {FIXTURES} from '../lib/cvfixtures.mjs';
 import {ensureSetUp} from '../lib/seed.mjs';
-import {profileExperienceStep} from '../lib/profile-experience-step.mjs';
+import {profileCvStep, profileDetailStep} from '../lib/profile-journey-steps.mjs';
 
 export const name = 'settings';
 import {hangCapsFor} from '../lib/hang-caps.mjs'; export const hangCaps = hangCapsFor('settings');
@@ -35,30 +32,10 @@ export async function run(ctx) {
       await snap(ctx, `settings-${section}`, {view: 'settings'});
     }
   }, {needs: ctx.needs});
-  await ctx.run('the CV check reads real PDFs: a plain CV passes, each known problem is found, a picture of a CV fails', async () => {
-    const target = path.join(ctx.profile, 'cv.pdf'), original = fs.existsSync(target) ? fs.readFileSync(target) : null;
-    try {
-      for (const [name, fixture] of Object.entries(FIXTURES)) {
-        // Printed by the app's own Chromium, then read by the app's own PDF reader (the same path a person's CV takes).
-        const pdf = await app.evaluate(async ({BrowserWindow}, html) => {
-          const win = new BrowserWindow({show: false, width: 794, height: 1123});
-          await win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
-          const data = await win.webContents.printToPDF({pageSize: 'A4', printBackground: true, preferCSSPageSize: true});
-          win.destroy();
-          return data.toString('base64');
-        }, fixture.html);
-        fs.writeFileSync(target, Buffer.from(pdf, 'base64'));
-        const result = await page.evaluate(() => window.pilot.cvCheckRun());
-        if (!result.ok) throw new Error(`${name}: the CV check did not run: ${result.error}`);
-        const byId = Object.fromEntries(result.ats.checks.map(item => [item.id, item.status]));
-        const wrong = [...fixture.pass.filter(id => byId[id] !== 'pass').map(id => `${id} should pass but is ${byId[id]}`), ...fixture.fail.filter(id => byId[id] === 'pass').map(id => `${id} should be flagged`)];
-        if (wrong.length) throw new Error(`${name} (score ${result.ats.score}): ${wrong.join('; ')}`);
-        console.log(`  ${name}: score ${result.ats.score}, flagged ${result.ats.checks.filter(item => item.status !== 'pass').map(item => item.id).join(', ') || 'nothing'}`);
-      }
-    } finally { if (original) fs.writeFileSync(target, original); }
-  }, {needs: ctx.needs});
-  // Why (1 Nov 2026, owner: "Profile (CV, Experience)" is tier 1): the Experience half of J14; its integration counterpart is integration/store/profile-experience-edit.test.mjs.
-  await ctx.run('Profile Experience: an edited summary is saved with the Profile save bar, and is still there after a restart', () => profileExperienceStep(ctx), {needs: ctx.needs, data: true});
+  // Why (2 Nov 2026, owner: "the e2e Profile journey keeps only the thin path a user takes"): J14 is two steps on the real app, the CV check's score and a detail reaching the extension (lib/profile-journey-steps.mjs).
+  // The CV check on real PDFs is integration/app/cv-check.test.js; the Experience editor is integration/store/profile-experience-edit.test.mjs.
+  await ctx.run('Profile CV: the CV is checked with the card\'s button and the card shows its Readability score', () => profileCvStep(ctx), {needs: ctx.needs});
+  await ctx.run('Profile Your details: a phone edited and saved is what the extension is handed after the app is quit and started again', () => profileDetailStep(ctx), {needs: ctx.needs, data: true});
   // Why (1 Nov 2026, owner: "Only tier 1 … should stay e2e"; "None of these are critical user journeys"): 'Settings render without layout problems' (J17) is integration/app/screen-settings.test.js.
   // The Your data and Automatic backup steps (export with keys / reset / import, the backup file, Back up now, the due-at-start and weekly-tick backup; J10) are integration/store/data-roundtrip.test.mjs.
 }

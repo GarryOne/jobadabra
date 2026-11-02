@@ -1,5 +1,5 @@
 // Electron main script for cv-check.test.js: prints each CV fixture to a PDF in a hidden window, reads it with the app's own PDF reader and parser, writes the verdicts as JSON.
-// Why (R2, 1 Nov 2026): the e2e settings step "the CV check reads real PDFs" needs the main process (BrowserWindow.printToPDF, lib/cv-look.js probeWindow), which the demo window cannot reach;
+// Why (R2, 1 Nov 2026; 2 Nov 2026: the step left e2e, this is now its only home): checking real PDFs needs the main process (BrowserWindow.printToPDF, lib/cv-look.js probeWindow), which the demo window cannot reach;
 // this runs the same two calls the cvCheckRun handler makes (lib/cv-handlers.js) in a throwaway Electron with its own user-data folder, never the owner's app.
 import {app, BrowserWindow} from 'electron';
 import fs from 'node:fs';

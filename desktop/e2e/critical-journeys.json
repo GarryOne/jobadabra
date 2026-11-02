@@ -150,11 +150,11 @@
   },
   {
    "id": "J14",
-   "name": "Profile: the CV is read, its problems are found",
+   "name": "Profile: the CV is checked and a detail you edit reaches the extension",
    "tier": 1,
    "steps": [
-    {"suite": "settings", "step": "the CV check reads real PDFs: a plain CV passes, each known problem is found, a picture of a CV fails"},
-    {"suite": "settings", "step": "Profile Experience: an edited summary is saved with the Profile save bar, and is still there after a restart"}
+    {"suite": "settings", "step": "Profile CV: the CV is checked with the card's button and the card shows its Readability score"},
+    {"suite": "settings", "step": "Profile Your details: a phone edited and saved is what the extension is handed after the app is quit and started again"}
    ]
   },
   {

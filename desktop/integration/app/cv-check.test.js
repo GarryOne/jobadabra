@@ -1,6 +1,6 @@
 // Layer 2 (a throwaway Electron, no demo window): the CV check reads real PDFs, printed by the app's own Chromium and read by its own PDF reader: a plain CV passes, each known problem is
-// found, a picture of a CV fails. PR-time counterpart of the e2e `settings` step "the CV check reads real PDFs…" (night/beta journey J14, which STAYS in e2e: it also runs the
-// cvCheckRun handler on the person's profile folder). Added 1 Nov 2026 (R2). The hang guard is the spawn timeout; the script quits as soon as it has written its answer.
+// found, a picture of a CV fails. The home of what the CV check flags (owner, 2 Nov 2026: the e2e Profile journey keeps only the thin path; its "Profile CV" step in the settings suite
+// checks one plain CV and the score card). Added 1 Nov 2026 (R2). The hang guard is the spawn timeout; the script quits as soon as it has written its answer.
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
 import fs from 'node:fs';

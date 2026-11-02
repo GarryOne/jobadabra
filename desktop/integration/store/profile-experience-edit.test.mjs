@@ -1,5 +1,5 @@
-// Layer 3 (Node + the app's own modules over a temp folder on this Mac's store, no window, no browser, no AI): Profile → Experience (journey J14, Tier 1). The e2e step in the settings suite plays it
-// in the window ("an edited summary is saved with the Profile's one Save, and is still there after a restart"); this file proves the same rule below the browser, on every PR: the Experience
+// Layer 3 (Node + the app's own modules over a temp folder on this Mac's store, no window, no browser, no AI): Profile → Experience (journey J14, Tier 1). The e2e step that played it in the window left e2e on 2 Nov 2026
+// (owner: the Profile journey keeps only the thin path; editing experiences is integration); this file is its home, on every PR: the Experience
 // card's changes (renderer/experience-profile-model.js changesFor, what the editor hands the save bar) go through the app's own textEdit handler (lib/text-outline-handlers.js) into profile.md;
 // a second storage over the same folder (the app started again) reads the new summary back; the apply side reads the same text (store page('profile').text(), what the scorer, tailoring and answers
 // are given); a stale edit is refused as "changed meanwhile" and overwrites nothing. Fake applicant data, a temp folder, no Keychain, Notion, AI or network.

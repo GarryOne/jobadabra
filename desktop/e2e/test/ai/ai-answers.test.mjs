@@ -237,10 +237,11 @@ test('backbone refuses unparseable decide and keyed misses despite warm cache, r
   assert.equal(refusedQuestions({...env, E2E_ARTIFACTS: `${dir}${path.sep}`}).length, 4);
 });
 
+// off: a live measurement suite's stand-in (realAi = true; test/ai/one-answer-rule.test.mjs): only a live caller or a record run sends a miss on.
 for (const mode of ['off', 'record']) test(`${mode} miss uses localhost upstream${mode === 'record' ? ' and records loadable merged candidates' : ''}`, async t => {
   const {env, dir} = fixture(t, {}); environment(t, {...env, E2E_AI_ANSWERS: mode, E2E_AI_REPLAY: mode === 'record' ? '1' : '0', E2E_AI_CACHE: dir, E2E_AI_CANDIDATES: dir});
   keep(requestKey('/v1/messages', Buffer.from(JSON.stringify(score()))), {status: 200, contentType: 'application/json', body: Buffer.from(JSON.stringify(stored))});
-  const up = await upstream(t), proxy = await proxyFor(t, {target: up.url});
+  const up = await upstream(t), proxy = await proxyFor(t, {target: up.url, ...(mode === 'off' ? {live: true} : {})});
   assert.deepEqual(await (await fetch(`${proxy.url}/v1/messages`, init(score()))).json(), live); assert.equal(up.calls(), 1);
   const candidates = path.join(dir, 'ai-answers-candidates.json');
   if (mode === 'record') {
@@ -252,16 +253,17 @@ for (const mode of ['off', 'record']) test(`${mode} miss uses localhost upstream
   } else assert.ok(!fs.existsSync(candidates));
 });
 
-for (const action of ['decide', 'strategy', 'places', 'saved-answers']) test(`record proxy replays a warm unkeyable ${action} answer without paying or recording`, async t => {
+// Why (2 Nov 2026, owner: "A: remove exact matching"): this asserted the opposite (a warm answer replayed by the request's text); a record run asks the model instead.
+for (const action of ['decide', 'strategy', 'places', 'saved-answers']) test(`record proxy never answers an unkeyable ${action} ask by its text: it asks the model and records nothing`, async t => {
   const {env, dir} = fixture(t, {});
   environment(t, {...env, E2E_AI_ANSWERS: 'record', E2E_AI_REPLAY: '1', E2E_AI_CACHE: dir});
   const body = {model: 'test', messages: [{role: 'user', content: `An unkeyable ${action} question.`}]};
   keep(requestKey('/v1/messages', Buffer.from(JSON.stringify(body))), {status: 200, contentType: 'application/json', body: Buffer.from(JSON.stringify(stored))});
   const up = await upstream(t), proxy = await proxyFor(t, {target: up.url});
   const response = await fetch(`${proxy.url}/v1/messages`, {...init(body), headers: {'content-type': 'application/json', 'x-jp-action': action}});
-  assert.equal(up.calls(), 0);
-  assert.deepEqual(await response.json(), stored);
-  assert.equal(proxy.stats.paid || 0, 0);
+  assert.equal(up.calls(), 1);
+  assert.deepEqual(await response.json(), live);
+  assert.equal(proxy.stats.paid, 1);
   assert.ok(!fs.existsSync(path.join(dir, 'ai-answers-candidates.json')));
 });
 
@@ -350,7 +352,7 @@ for (const mode of ['off', 'backbone', 'record']) test(`photographer score in ${
 for (const mode of ['off', 'backbone', 'record']) test(`photographer score in ${mode} cannot match a default-only posting`, async t => {
   const {env} = fixture(t);
   environment(t, {...env, E2E_AI_ANSWERS: mode, E2E_QUALITY_PERSONA: 'photographer'});
-  const up = await upstream(t), proxy = await proxyFor(t, {target: up.url});
+  const up = await upstream(t), proxy = await proxyFor(t, {target: up.url, ...(mode === 'off' ? {live: true} : {})});
   const response = await fetch(`${proxy.url}/v1/messages`, init(score()));
   if (mode === 'backbone') {
     assert.equal(response.status, 503);

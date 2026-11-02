@@ -23,6 +23,8 @@ export const minutes = 15;
 // full AI runs each time. No schedule, push or release gate runs it (cadence 'manual', lib/plan.mjs); run it by hand when a change could bring owner-specific text back:
 //   gh workflow run e2e.yml -f suite=personas        or        node suite.mjs personas
 export const cadence = 'manual';
+// Why (2 Nov 2026, owner: "I want the guardrail to be general, for any e2e or itnegrations"): a live measurement, never a gate; its unanswered asks go on to the model (every other suite's are refused, test/ai/one-answer-rule.test.mjs).
+export const realAi = true;
 export const name = 'personas';
 
 // Words that belong to the first user, not to the product. Anywhere in what a persona sees or what is stored for them, each is a bug.

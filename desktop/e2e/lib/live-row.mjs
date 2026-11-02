@@ -55,7 +55,7 @@ export async function runLiveRow({posting, captureDir, extensionDir, ask = true,
   const started = Date.now();
   let shotAsked = false;
   fs.mkdirSync(captureDir, {recursive: true});
-  const proxy = aiProxy || (refill ? await startAiProxy({maxCalls: refillCap()}) : ask && isCi() ? await startAiProxy() : null),   // a replay never asks: no proxy
+  const proxy = aiProxy || (refill ? await startAiProxy({maxCalls: refillCap(), live: true}) : ask && isCi() ? await startAiProxy({live: true}) : null),   // a replay never asks: no proxy; a live row asks the real model on purpose
     before = {...usage().app};
   const errorsBefore = {...apiErrors()};   // calls Anthropic refused (no credit, a limit, a bad key): the row then ran without AI, which the run must say
   const spend = () => {

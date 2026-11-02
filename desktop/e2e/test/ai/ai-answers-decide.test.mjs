@@ -135,11 +135,12 @@ for (const shape of ['anthropic', 'openai']) test(`${shape}: backbone names the 
   assert.equal(up.calls(), 0); assert.equal(refusedQuestions(env).length, 1);
 });
 
+// off: a live measurement suite's stand-in (realAi = true; test/ai/one-answer-rule.test.mjs): only a live caller or a record run sends a miss on.
 for (const shape of ['anthropic', 'openai']) for (const mode of ['off', 'record']) test(`${shape} ${mode}: a miss falls through once; record writes one candidate per item`, async t => {
   const {dir, file} = fixture(t, {}, mode), body = request(undefined, shape);
   const replyText = JSON.stringify({results: [{index: 1, answer: 'other'}, {index: 0, answer: 'switzerland'}]});
   const live = shape === 'openai' ? responseOf(replyText) : message(replyText);
-  const up = await upstream(t, live), proxy = await proxyFor(t, {target: up.url, shape});
+  const up = await upstream(t, live), proxy = await proxyFor(t, {target: up.url, shape, ...(mode === 'off' ? {live: true} : {})});
   const pathname = shape === 'openai' ? '/v1/responses' : '/v1/messages';
   if (mode === 'record') keep(requestKey(pathname, Buffer.from(JSON.stringify(body))), {status: 200, contentType: 'application/json', body: Buffer.from(JSON.stringify(message('warm')))});
   assert.deepEqual(await (await fetch(`${proxy.url}${pathname}`, init(body))).json(), live);

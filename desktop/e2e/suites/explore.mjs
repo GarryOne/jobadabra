@@ -16,6 +16,8 @@ import {goView} from '../lib/go-view.mjs';
 export const name = 'explore';
 export const keepGoing = true;
 export const cadence = 'manual';   // never chosen by a schedule or a push (lib/plan.mjs); a person names it
+// Why (2 Nov 2026, owner: "I want the guardrail to be general, for any e2e or itnegrations"): a live measurement, never a gate; its unanswered asks go on to the model (every other suite's are refused, test/ai/one-answer-rule.test.mjs).
+export const realAi = true;
 export const minutes = 20;
 export const watches = ['desktop/e2e/lib/explore.mjs'];
 

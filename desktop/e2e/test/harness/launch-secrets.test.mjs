@@ -50,7 +50,7 @@ test('both real proxy transports attach credentials only on the upstream hop', a
   const forwarded = [];
   // Every upstream request is intercepted in memory; no provider or real account is contacted.
   t.mock.method(globalThis, 'fetch', async (url, options) => { forwarded.push({url, headers: options.headers}); return new Response('{"ok":true}', {headers: {'content-type': 'application/json'}}); });
-  const ai = await startAiProxy({target: 'http://upstream.invalid', credentials: {[APP_AI_ALIAS]: 'fake-upstream-ai-key'}});
+  const ai = await startAiProxy({target: 'http://upstream.invalid', credentials: {[APP_AI_ALIAS]: 'fake-upstream-ai-key'}, live: true});
   const notion = await startNotionProxy({target: 'http://upstream.invalid', credentials: {[NOTION_ALIAS]: 'fake-upstream-notion-token'}});
   t.after(async () => { await ai.close(); await notion.close(); });
   const request = (url, headers) => new Promise((resolve, reject) => {

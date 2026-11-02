@@ -24,6 +24,8 @@ export const light = JSON.parse(process.env.E2E_QUALITY_PARTS || '["journey"]').
 // Live every run on the shipped model: facts, rescores, judge flags and CV matches.
 // The shared budget and planner allowance cover Jobs checks and setup; each slow step has its own limit.
 export const cadence = PLANNER.cadence;
+// Why (2 Nov 2026, owner: "I want the guardrail to be general, for any e2e or itnegrations"): a live measurement, never a gate; its unanswered asks go on to the model (every other suite's are refused, test/ai/one-answer-rule.test.mjs).
+export const realAi = true;
 export const budgetMinutes = PLANNER.budgetMinutes;
 export const minutes = PLANNER.minutes;
 export const sameOnEveryOs = PLANNER.sameOnEveryOs;

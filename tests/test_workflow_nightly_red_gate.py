@@ -112,7 +112,7 @@ class NightlyRedGateRuns(unittest.TestCase):
         self.assertEqual(sent, '')
         self.assertIn("red_note: ${{ steps.redmain.outputs.note || inputs.red_not_blocking }}", first_job())
         for job in ('release-mac', 'release-windows'):
-            text = TEXT.split(f'\n  {job}:\n', 1)[1].split('\n  gate-ran:\n' if job == 'release-windows' else '\n  release-windows:\n', 1)[0]
+            text = TEXT.split(f'\n  {job}:\n', 1)[1].split('\n  prune:\n' if job == 'release-windows' else '\n  release-windows:\n', 1)[0]
             self.assertIn('RED_ON_MAIN_NOTE: ${{ needs.changes.outputs.red_note }}', text, job)
         self.assertIn('RED_ON_MAIN_NOTE', (ROOT / 'tools/beta-approve.sh').read_text())
         self.assertIn('-f red_not_blocking="$red_note"', (ROOT / 'tools/beta-release.sh').read_text())

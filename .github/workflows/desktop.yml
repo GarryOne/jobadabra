@@ -1719,41 +1719,6 @@ jobs:
 
   # Keep the release list short: stable releases stay, plus the newest 3 test builds (tools/prune-releases.sh) and each platform's newest beta. After both lanes, so
   # tonight's approvals are already written when it decides what to keep.
-  # A gate that was planned but did not start must not end the run green (18-21 Oct 2026: the plan step crashed, E2E and Release were skipped, the run read "success").
-  # A plan of ZERO suites is the same failure (count '0' skips test-mac too), so it is not excluded here (24 Oct 2026).
-  gate-ran:
-    name: Gate ran?
-    needs: [changes, build, windows, test-mac, test-windows]
-    if: always() && needs.changes.outputs.gate == 'true' && (needs.build.result == 'failure' || needs.windows.result == 'failure' || (needs.build.result == 'success' && needs.test-mac.result == 'skipped') || (needs.windows.result == 'success' && needs.test-windows.result == 'skipped'))
-    runs-on: ubuntu-24.04
-    steps:
-      # Why (31 Oct 2026, a8; beta 41226261602, owner: a failed build in either lane blocks the beta loudly): Build · Mac failed at its release upload, so its E2E matrix,
-      # this job and Release · Mac were all skipped with no word, and Release · Windows ran alone and failed on a reason that was not true.
-      - uses: actions/checkout@v5
-        timeout-minutes: 5
-      - uses: ./.github/actions/gh-ledger
-        with:
-          phase: start
-        timeout-minutes: 5
-      - name: A build failed, the beta is not released (names the lane and the step)
-        if: needs.build.result != 'success' || needs.windows.result != 'success'
-        timeout-minutes: 5
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: python3 tools/beta_lane_gate.py --mac "${{ needs.build.result }}" --windows "${{ needs.windows.result }}"
-      - name: Fail the run, the E2E gate did not run
-        if: (needs.build.result == 'success' && needs.test-mac.result == 'skipped') || (needs.windows.result == 'success' && needs.test-windows.result == 'skipped')
-        timeout-minutes: 5
-        run: |
-          echo "### ❌ The E2E gate was planned but did not run: no build was tested or approved. See the 'Plan the E2E suites' step of Anything new?."
-          echo "::error::The E2E gate was skipped after a green build."
-          exit 1
-      - if: always()
-        uses: ./.github/actions/gh-ledger
-        with:
-          phase: end
-        timeout-minutes: 5
-
   prune:
     name: ${{ format('Beta {0} · clean up old builds', needs.changes.outputs.version) }}   # the version is on the graph (owner, 1 Nov 2026: "I see nowhere the version just published")
     needs: [changes, build, windows, test-mac, test-windows, release-mac, release-windows, release-mac-offer, release-windows-offer]
@@ -1878,6 +1843,25 @@ jobs:
           name: ai-credit-alert-${{ github.run_id }}
           path: ai-credit-alert/alert-sent.txt
           overwrite: true
+      # A gate that was planned but did not start must not end the run green (18-21 Oct 2026: the plan step crashed, E2E and Release were skipped, the run read "success").
+      # A plan of ZERO suites is the same failure (count '0' skips test-mac too), so it is not excluded here (24 Oct 2026).
+      # Why (2 Nov 2026, owner: "let's remove the box"): these two checks were the job "Gate ran?", a grey box on every good run. They are the last steps of this job, so the cleanup above has run,
+      # and a failure here still ends the run red, naming the lane and the step.
+      # Why (31 Oct 2026, a8; beta 41226261602, owner: a failed build in either lane blocks the beta loudly): Build · Mac failed at its release upload, so its E2E matrix,
+      # this check and Release · Mac were all skipped with no word, and Release · Windows ran alone and failed on a reason that was not true.
+      - name: A build failed, the beta is not released (names the lane and the step)
+        if: always() && needs.changes.outputs.gate == 'true' && (needs.build.result == 'failure' || needs.windows.result == 'failure')
+        timeout-minutes: 5
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 tools/beta_lane_gate.py --mac "${{ needs.build.result }}" --windows "${{ needs.windows.result }}"
+      - name: Fail the run, the E2E gate did not run
+        if: always() && needs.changes.outputs.gate == 'true' && ((needs.build.result == 'success' && needs.test-mac.result == 'skipped') || (needs.windows.result == 'success' && needs.test-windows.result == 'skipped'))
+        timeout-minutes: 5
+        run: |
+          echo "### ❌ The E2E gate was planned but did not run: no build was tested or approved. See the 'Plan the E2E suites' step of Anything new?."
+          echo "::error::The E2E gate was skipped after a green build."
+          exit 1
       - if: always()
         uses: ./.github/actions/gh-ledger
         with:

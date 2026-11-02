@@ -13,8 +13,8 @@ def job(name):
 
 class FailedLane(unittest.TestCase):
     def test_gate_ran_also_fires_on_a_failed_build_and_names_it(self):
-        gate = job('gate-ran')
-        condition = re.search(r'    if: (.+)', gate).group(1)
+        gate = TEXT.split('\n  prune:\n')[1]
+        condition = re.search(r'name: A build failed, the beta is not released.*\n        if: (.+)', gate).group(1)
         self.assertIn("needs.build.result == 'failure'", condition)
         self.assertIn("needs.windows.result == 'failure'", condition)
         self.assertIn('tools/beta_lane_gate.py --mac "${{ needs.build.result }}" --windows "${{ needs.windows.result }}"', gate)

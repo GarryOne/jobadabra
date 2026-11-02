@@ -24,8 +24,11 @@ def main():
     places = [r for r in rows if feeds.wanted_location({'location': r[2] or '', 'title': r[1]})]
     seen = sorted(ts(r[3]) - t0 for r in places if r[3])
     scores = {}
-    for job_id, created, data in db.execute('SELECT job_id, created_at, data_json FROM scores'):
-        scores[job_id] = (created, (json.loads(data or '{}').get('score') or 0))
+    # Why (2 Nov 2026, run 41373710207): a press the 180 s budget stopped before it scored a job has no `scores` table; that is "no fit jobs yet", not a crash
+    # (metrics.py guards the same table; without this run.mjs died here and the check read "the press wrote no numbers").
+    if db.execute("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'scores'").fetchone():
+        for job_id, created, data in db.execute('SELECT job_id, created_at, data_json FROM scores'):
+            scores[job_id] = (created, (json.loads(data or '{}').get('score') or 0))
     fit = sorted(max(ts(scores[r[0]][0]), ts(r[3])) - t0 for r in places if r[0] in scores and scores[r[0]][1] >= 70 and scores[r[0]][0])
     at = lambda xs, n: round(xs[n - 1]) if len(xs) >= n else None
     out = {'first_in_places_s': at(seen, 1), 'tenth_in_places_s': at(seen, 10), 'first_fit70_s': at(fit, 1), 'tenth_fit70_s': at(fit, 10),

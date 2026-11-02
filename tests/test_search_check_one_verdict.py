@@ -69,6 +69,16 @@ class TheRowsAndTheOverallLineAgree(unittest.TestCase):
         self.assertIn('p1 1→0 right', verdict['head'])
         self.assertNotIn('p3', verdict['head'].split('·')[0], 'p3 was 0 on main: it did not drop')
 
+    def test_review_cases(self):
+        """Fresh-subagent review of this PR: nothing ran is not "found 0"; a zero run with a fault is still a run that read nothing; a missing scored count is unknown."""
+        none_ran = gate.compare({n: {'persona': n, 'not_measured': 'no token'} for n in range(1, 7)}, [])
+        self.assertTrue(none_ran['head'].startswith('⚪ not measured (6 of 6): no token'), none_ran['head'])
+        self.assertTrue(gate.compare(PR_2969, [])['head'].startswith('⚪ no right job on any of the six'))
+        zero_but_slow = {n: row(n, 190, 0, 0) for n in range(1, 7)}
+        self.assertTrue(gate._nothing(zero_but_slow))
+        self.assertEqual(gate.row_verdict({**row(1, 150, 0, 5), 'scored': None})[2], 'none-right', 'found 5 and no scored count: unknown, not "no job scored"')
+        self.assertIn(CUT, gate.row_verdict(row(1, 190, 0, 0, cut=CUT))[1])
+
     def test_every_mix_of_row_kinds_gives_the_overall_line_the_rows_say(self):
         """One loop over the class: the overall state is a function of the six marks and nothing else (no quality gate: no main runs)."""
         kinds = {'fault': lambda n: row(n, 200, 3, 3, local=1), 'right': lambda n: row(n, 150, 3, 3, local=1), 'none right': lambda n: row(n, 150, 3, 5),

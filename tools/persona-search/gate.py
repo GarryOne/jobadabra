@@ -159,8 +159,9 @@ def result(n, out):
             row['funnel_note'] = note
         press_usd = None if ai is None else float(ai)   # the press's measured AI cost (funnel.py ai_usd); the strategy draft before it is not counted
         row.update(seconds=int(press['seconds']), code=int(press.get('code') or 0), crashes=len(press.get('crashes') or []))
-        row['scored'] = int(press.get('scored_in_places') or 0)
-        cut, waited = cut_note(row['seconds'], row['scored'], out / 'run.log')
+        if press.get('scored_in_places') is not None:   # a missing count stays unknown (read_of falls back to the judge's), never 0
+            row['scored'] = int(press['scored_in_places'])
+        cut, waited = cut_note(row['seconds'], int(press.get('scored_in_places') or 0), out / 'run.log')
         if cut:
             row['cut'] = cut
         starved_wait = waited if waited is not None and waited >= STARVED_WAIT_S else None
@@ -251,7 +252,7 @@ def row_verdict(row):
     Invariant: 'nothing' only on an explicit 0 (a missing count is 'none-right', unknown is not zero)."""
     reasons = judge_one(row, [])[0]
     if reasons:
-        return '🔴', '; '.join(reasons), 'fault'
+        return '🔴', '; '.join(reasons) + (f" {row['cut']}" if row and row.get('cut') else ''), 'fault'
     if row.get('not_measured'):
         return '⚪', f"not measured: {row['not_measured']}", 'unmeasured'
     if type(row.get('local')) is int and row['local'] > 0:
@@ -265,7 +266,7 @@ def row_verdict(row):
 def _nothing(run):
     """True when every persona's row is 'nothing' (no job scored on all six): this run measured nothing, so it is no main history."""
     rows = [run.get(n) for n in range(1, len(PERSONAS) + 1)]
-    return all(r is not None and not r.get('error') and row_verdict(r)[2] == 'nothing' for r in rows)
+    return all(r is not None and not r.get('error') and not r.get('not_measured') and read_of(r) == 0 for r in rows)   # the count alone: a fault in a zero run does not make it measured
 
 
 def _total(run):
@@ -309,7 +310,9 @@ def grey_head(rows, pr):
     causes = {'unmeasured': f'not measured ({kinds.count("unmeasured")} of {len(PERSONAS)}): {first}', 'nothing': f'{kinds.count("nothing")} no job scored',
               'none-right': f'{kinds.count("none-right")} scored but none right'}
     parts = [text for k, text in causes.items() if k in kinds]
-    return f'⚪ found 0 right jobs on all six (not a pass): ' + ', '.join(parts), ''
+    if all(k == 'unmeasured' for k in kinds):   # nothing ran: no "found 0"
+        return f'⚪ {parts[0]} (not a pass)', ''
+    return ('⚪ no right job on any of the six (not a pass): ' if 'unmeasured' in kinds else '⚪ found 0 right jobs on all six (not a pass): ') + ', '.join(parts), ''
 
 
 def compare(pr, main_runs):

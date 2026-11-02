@@ -140,10 +140,16 @@ def org_repos():
     return [r['name'] for r in api('GET', f'orgs/{ORG}/repos?type=all&per_page=100') if not r.get('archived') and r['name'] not in template_json('profiles.json').get('exclude', [])]
 
 
-def keep_issue(drift, dry):
+def keep_issue(drift, dry, notes=None):
     """One open issue while any repo drifts (updated in place), closed when none does."""
-    open_issues = [i for i in api('GET', f'repos/{ISSUE_REPO}/issues?state=open&per_page=100') if i['title'] == ISSUE_TITLE and 'pull_request' not in i]
-    body = '\n'.join(f'- **{repo}**: {gap}' for repo, gaps in sorted(drift.items()) for gap in gaps) + '\n\nFix: `tools/org-repo.sh onboard <repo> <clone>` (files + settings) and `tools/org-repo.sh ruleset <repo>`; the weekly check closes this issue when nothing drifts.'
+    open_issues = []
+    for page in range(1, 11):   # Why (2 Nov 2026, Gitar on #2949): one page of 100 loses the report issue once 100 newer issues/PRs are open, and a duplicate would open every week
+        listed = api('GET', f'repos/{ISSUE_REPO}/issues?state=open&per_page=100&page={page}')
+        open_issues += [i for i in listed if i['title'] == ISSUE_TITLE and 'pull_request' not in i]
+        if len(listed) < 100:
+            break
+    unseen = '\n'.join(f'- {repo}: {note}' for repo, found in sorted((notes or {}).items()) for note in found)
+    body = '\n'.join(f'- **{repo}**: {gap}' for repo, gaps in sorted(drift.items()) for gap in gaps) + (f'\n\n**Not verified with this token** (not drift):\n{unseen}' if unseen else '') + '\n\nFix: `tools/org-repo.sh onboard <repo> <clone>` (files + settings) and `tools/org-repo.sh ruleset <repo>`; the weekly check closes this issue when nothing drifts.'
     if dry:
         print(f'issue: would {"update/open" if drift else "close"}: {ISSUE_TITLE}')
     elif drift and open_issues:
@@ -157,19 +163,23 @@ def keep_issue(drift, dry):
 
 def cmd_check(args):
     """`check`: print every difference between the repos (all, or the named ones) and the templates; with --issue keep the one report issue. -> exit code (1 on drift without --issue)."""
-    drift = {}
+    drift, notes = {}, {}
     for repo in args.repos or org_repos():
         UNVERIFIED.clear()
         gaps = check_repo(repo)
+        if UNVERIFIED:
+            notes[repo] = list(UNVERIFIED)
         for note in UNVERIFIED:
             print(f'note {repo}: {note}')
         for gap in gaps:
             print(f'drift {repo}: {gap}')
         if gaps:
             drift[repo] = gaps
-    print(f'org-repo: {len(drift)} repo(s) drift' if drift else 'org-repo: every checked repo is on the shared setup')
+    # Why (2 Nov 2026, Gitar on #2950): a token that cannot read a setting must never make the report say "every repo is on the shared setup"; the unread part is named in the line and in the issue.
+    unseen = f'; not verified with this token in {len(notes)} repo(s): {", ".join(sorted(notes))}' if notes else ''
+    print(f'org-repo: {len(drift)} repo(s) drift{unseen}' if drift else f'org-repo: no drift in what this token can read{unseen}' if notes else 'org-repo: every checked repo is on the shared setup')
     if args.issue:
-        keep_issue(drift, args.dry_run)
+        keep_issue(drift, args.dry_run, notes)
         return 0   # the issue is the report: a scheduled run is red only when the check itself failed (an API error exits non-zero)
     return 1 if drift else 0
 

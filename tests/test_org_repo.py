@@ -52,7 +52,8 @@ class Fake:
                 raise org_repo.NotFound(path)
             return {'content': base64.b64encode(self.files[name].encode()).decode()}
         if path.startswith(f'repos/{org_repo.ISSUE_REPO}/issues'):
-            return self.issues
+            page = int(path.split('&page=')[1]) if '&page=' in path else 1
+            return self.issues[(page - 1) * 100:page * 100]
         raise AssertionError(f'unexpected GET {path}')
 
 
@@ -139,6 +140,25 @@ class Check(unittest.TestCase):
         clean.issues = [{'number': 5, 'title': org_repo.ISSUE_TITLE}]
         run(clean, 'check', 'jobadabra-lab', '--issue')
         self.assertEqual(clean.writes[0][2]['state'], 'closed')
+
+
+    def test_the_issue_is_found_past_the_first_hundred_open_issues(self):
+        fake = Fake(ruleset='none')
+        fake.issues = [{'number': n, 'title': f'other {n}'} for n in range(100)] + [{'number': 500, 'title': org_repo.ISSUE_TITLE}]
+        run(fake, 'check', 'jobadabra-lab', '--issue')
+        self.assertEqual(fake.writes[0][:2], ('PATCH', f'repos/{org_repo.ISSUE_REPO}/issues/500'), 'updated in place, no duplicate opened')
+
+    def test_a_clean_result_never_claims_what_the_token_could_not_read(self):
+        """Gitar on #2950: with the org's read token the merge settings are never compared; a clean report must say so, in the line and in the issue."""
+        unreadable = {'allow_auto_merge': None, 'allow_squash_merge': None, 'allow_update_branch': None, 'delete_branch_on_merge': None}
+        fake = Fake(settings=unreadable)
+        code, out = run(fake, 'check', 'jobadabra-lab', '--issue')
+        self.assertEqual(code, 0)
+        self.assertNotIn('every checked repo is on the shared setup', out)
+        self.assertIn('no drift in what this token can read; not verified with this token in 1 repo(s): jobadabra-lab', out)
+        fake = Fake(ruleset='none', settings=unreadable)
+        run(fake, 'check', 'jobadabra-lab', '--issue')
+        self.assertIn('Not verified with this token', fake.writes[0][2]['body'])
 
 
 class Ruleset(unittest.TestCase):

@@ -11,7 +11,7 @@ import path from 'node:path';
 import zlib from 'node:zlib';
 import {execFileSync} from 'node:child_process';
 
-const SITE = process.env.JP_SITE || 'https://www.jobpilotto.top';
+const SITE = process.env.JP_SITE || 'https://www.jobadabra.top';
 const keychain = service => { try { return execFileSync('security', ['find-generic-password', '-a', 'jobadabra', '-s', service, '-w'], {encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore']}).trim(); } catch { return ''; } };
 const pemOf = value => (value.includes('BEGIN') ? value : Buffer.from(value, 'base64').toString('utf8'));
 

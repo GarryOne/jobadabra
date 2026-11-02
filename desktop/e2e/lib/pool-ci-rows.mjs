@@ -4,7 +4,7 @@
 import {hostOnly} from './applying-report.mjs';
 import {rungFields, verdictFields} from './record-sites.mjs';
 
-export const CI_ROWS_SITE = 'https://www.jobpilotto.top/applying/ci-rows';
+export const CI_ROWS_SITE = 'https://www.jobadabra.top/applying/ci-rows';
 
 // report: the day report (record-sites.mjs). -> [{name, host, reached, filled, left, note, ending, ...}] for the rows THIS run ran
 export function ciRows(report = {}) {

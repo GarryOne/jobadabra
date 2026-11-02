@@ -5,7 +5,7 @@ import {installId} from './pool-share.js';
 import {siteOffForUser} from './recipes.js';
 import {installToken} from './install-token.js';
 
-export const FREE_BASE = 'https://www.jobpilotto.top/api/ai';
+export const FREE_BASE = 'https://www.jobadabra.top/api/ai';
 
 // Our own keys: Free AI's JPF1.… and the founder/friend key (JP1.…) older apps used for the $1 credit.
 export const isFreeKey = key => /^JPF?1\./.test(String(key || ''));

@@ -14,7 +14,7 @@ test('the figure is today\'s e2e jobs, read with the publishing key; no key or a
   const asked = [];
   const fetcher = async (url, init) => { asked.push({url, auth: init.headers.Authorization}); return {ok: true, json: async () => ({usd: 2.5, runs: 9})}; };
   assert.deepEqual(await readSpent({key: 'k', fetcher, day: '2026-10-07'}), {usd: 2.5, runs: 9});
-  assert.deepEqual(asked[0], {url: 'https://www.jobpilotto.top/ai-cost/data?day=2026-10-07&prefix=e2e-', auth: 'Bearer k'});
+  assert.deepEqual(asked[0], {url: 'https://www.jobadabra.top/ai-cost/data?day=2026-10-07&prefix=e2e-', auth: 'Bearer k'});
   assert.equal(await readSpent({fetcher}), null);
   assert.equal(await readSpent({key: 'k', fetcher: async () => { throw new Error('offline'); }}), null);
 });

@@ -1,7 +1,7 @@
 // "Send feedback…" (sidebar and Help menu): the user's own words to the owner, through the website
 // (site/src/feedback.js → the owner's Jobadabra Brain bot). Stage 1's exit criterion is feedback from real users.
 // Sends: the text, an optional contact the user typed, the app version and platform, the random install id.
-export const ENDPOINT = 'https://www.jobpilotto.top/api/feedback';
+export const ENDPOINT = 'https://www.jobadabra.top/api/feedback';
 
 export function installId(storage) {
   let id = storage.settings().telemetryId;  // the same random id as technical reports

@@ -22,7 +22,7 @@ test('the month is read from the cost endpoint for the refill job; no key or a b
   const urls = [];
   const fetcher = async url => { urls.push(url); return {ok: true, json: async () => ({usd: 1.25})}; };
   assert.equal(await monthSpend({key: 'k', fetcher, now: new Date('2026-10-17T10:00:00Z')}), 1.25);
-  assert.equal(urls[0], 'https://www.jobpilotto.top/ai-cost/data?month=2026-10&prefix=replay-refill');
+  assert.equal(urls[0], 'https://www.jobadabra.top/ai-cost/data?month=2026-10&prefix=replay-refill');
   assert.ok(Number.isNaN(await monthSpend({fetcher})));
   assert.ok(Number.isNaN(await monthSpend({key: 'k', fetcher: async () => ({ok: false})})));
   assert.ok(Number.isNaN(await monthSpend({key: 'k', fetcher: async () => { throw new Error('x'); }})));

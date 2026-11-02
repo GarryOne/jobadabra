@@ -23,7 +23,7 @@ from .sources import ats, page_recipes
 
 REGION_NAMES = ('europe', 'north_america', 'latin_america', 'asia_pacific', 'middle_east_africa', 'remote')   # site/src/pool.js REGIONS
 
-URL = 'https://www.jobpilotto.top/api/index'
+URL = 'https://www.jobadabra.top/api/index'
 CACHE = DATA / 'employer_index.json'
 MAX_AGE = timedelta(minutes=55)   # checked about hourly (7 Oct 2026): an unchanged list costs one tiny 304, the central scout publishes every 6 h
 TIMEOUT = 10

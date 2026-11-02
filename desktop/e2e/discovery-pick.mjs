@@ -11,7 +11,7 @@ import {postTelegram} from './lib/telegram-post.mjs';
 import {FAILURES, capText} from './lib/discovery-judge.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-export const INPUT_URL = 'https://www.jobpilotto.top/applying/discovery-input';
+export const INPUT_URL = 'https://www.jobadabra.top/applying/discovery-input';
 const readJson = file => { try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return null; } };
 
 // <states dir>/<run id>/discovery.json: {at, usd, rows: [{shape, url, reached}], capAlertWeek?}

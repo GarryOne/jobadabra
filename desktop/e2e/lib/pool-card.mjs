@@ -7,7 +7,7 @@ import {fillCard, cleanCard} from '../../../extension/fill-card.js';
 import {boardName} from '../../lib/control-events.js';
 import {extensionVersion, ownerKey, skipReason} from './applying-report.mjs';
 
-export const CONTROLS = 'https://www.jobpilotto.top/api/controls';
+export const CONTROLS = 'https://www.jobadabra.top/api/controls';
 const INSTALL = 'pool-qa-smoke';   // not a real install: the site counts pool cards by source, never by this
 
 // The host where the journey ended, from the flow signature `kinds@host#step` ('' when there is none).

@@ -15,7 +15,7 @@ export function reportToken(storage) {
   return keychainRead('jobadabra.report.token') || '';   // a test run or a twin reads none of the owner's (lib/keychain.js)
 }
 
-export const ENDPOINT = process.env.JOBADABRA_REPORT_URL || 'https://www.jobpilotto.top/report/fill-failure';
+export const ENDPOINT = process.env.JOBADABRA_REPORT_URL || 'https://www.jobadabra.top/report/fill-failure';
 // The menu reasons are extension/menu-reason.js MENU_REASONS (what the pick observed) and the older fixed one; test/menu-reason-copies.test.js keeps them equal.
 export const MECHANICAL = ['dropdown not clicked', 'dropdown clicked, but its menu did not open', 'dropdown clicked, but no option matched',
   'dropdown option clicked, but not selected', 'dropdown selected, but the reader cannot see it', 'dropdown clicked, but it selected another choice', 'dropdown that opens only on a real click',

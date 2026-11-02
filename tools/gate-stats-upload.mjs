@@ -8,7 +8,7 @@ import {fileURLToPath} from 'node:url';
 import {homedir} from 'node:os';
 import {byDay, parseHookLog, parseLog} from './gate-stats.mjs';
 
-export const URL_DEFAULT = 'https://www.jobpilotto.top/agent-coding/data';
+export const URL_DEFAULT = 'https://www.jobadabra.top/agent-coding/data';
 // Why (1 Nov 2026): 5 s so a slow site never holds a landing; the stamp keeps it to one call a day.
 const TIMEOUT_MS = 5000;
 

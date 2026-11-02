@@ -4,7 +4,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-export const VERIFY = 'https://www.jobpilotto.top/applying/verify';
+export const VERIFY = 'https://www.jobadabra.top/applying/verify';
 const json = file => { try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return null; } };
 const FIELDS = ['kind', 'row', 'verdict', 'why', 'commit', 'buildBy', 'recordedAt', 'olderAt'];
 

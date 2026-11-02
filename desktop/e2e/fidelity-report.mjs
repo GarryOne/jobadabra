@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {needsRefill} from './lib/refill.mjs';
 
-export const FIDELITY = 'https://www.jobpilotto.top/applying/fidelity';
+export const FIDELITY = 'https://www.jobadabra.top/applying/fidelity';
 
 // -> every record of the folder's .json files, a file holding one record or {rows: [...]}.
 export function readRecords(dir) {

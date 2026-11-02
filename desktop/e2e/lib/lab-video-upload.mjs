@@ -3,7 +3,7 @@
 // The row's name and the video's length go in the address, never the page's address; the file is removed after a send. JP_CI_ROWS_DRY=1|true: say it, send nothing. Guard: e2e/test/lab-video-upload.test.mjs.
 import fs from 'node:fs';
 
-export const LAB_VIDEO_SITE = 'https://www.jobpilotto.top/applying/video';
+export const LAB_VIDEO_SITE = 'https://www.jobadabra.top/applying/video';
 
 // video: {path, bytes, secs} from lib/fill-video (desktop/ready-fill), or null. ctx: {branch}. -> one line for the run's output; never throws.
 export async function uploadFillVideo(name, video, ctx = {}, {env = process.env, fetcher = fetch} = {}) {

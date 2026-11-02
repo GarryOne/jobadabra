@@ -15,7 +15,7 @@ import urllib.request
 from .paths import DATA
 from .sources import ats
 
-SITE = 'https://www.jobpilotto.top'
+SITE = 'https://www.jobadabra.top'
 TIMEOUT = 10
 ID_FILE = DATA / 'install_id'
 TOKENS_FILE = DATA / 'site_tokens.json'   # this install's site tokens, kept once given (site_token)

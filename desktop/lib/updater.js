@@ -62,7 +62,7 @@ const offerOf = (release, platform, extra = {}) => {
 export const apiBase = (env = process.env) => (env.JOBADABRA_E2E && env.JOBADABRA_E2E_UPDATES_URL) || 'https://api.github.com';
 // A person's app reads our website first (site/src/releases.js: GitHub read with the site's token, kept 5 minutes for every install), then
 // GitHub itself. 9 Oct 2026: unsigned GitHub calls are 60 an hour per IP, and an office network shares one: "GitHub answered 403".
-export const SITE = process.env.JOBADABRA_SITE || 'https://www.jobpilotto.top';
+export const SITE = process.env.JOBADABRA_SITE || 'https://www.jobadabra.top';
 const HEADERS = {Accept: 'application/vnd.github+json'};
 const kept = new Map();   // GitHub url -> {etag, data}: an unchanged answer (304) doesn't count against GitHub's limit
 let limitedUntil = 0;     // GitHub said this network used its hour: no call before then

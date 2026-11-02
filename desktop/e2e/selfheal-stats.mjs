@@ -105,7 +105,7 @@ if (import.meta.url === pathToFileURL(process.argv[1] || '').href) {
   if (process.argv.includes('--publish')) {
     const key = process.env.SELFHEAL_PUBLISH_KEY;
     if (!key) { console.log('::warning::SELFHEAL_PUBLISH_KEY is not set: nothing published.'); process.exit(0); }
-    const response = await fetch(process.env.SELFHEAL_URL || 'https://www.jobpilotto.top/self-heal/data', {method: 'PUT', headers: {Authorization: `Bearer ${key}`, 'Content-Type': 'application/json'}, body: JSON.stringify(data)});
+    const response = await fetch(process.env.SELFHEAL_URL || 'https://www.jobadabra.top/self-heal/data', {method: 'PUT', headers: {Authorization: `Bearer ${key}`, 'Content-Type': 'application/json'}, body: JSON.stringify(data)});
     console.log(`published: HTTP ${response.status}`);
     if (!response.ok) { console.log(await response.text()); process.exit(1); }
   }

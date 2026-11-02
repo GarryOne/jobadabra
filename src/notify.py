@@ -14,7 +14,7 @@ import re
 import sys
 import urllib.request
 
-SITE = 'https://www.jobpilotto.top'
+SITE = 'https://www.jobadabra.top'
 MAX_HTML = 18000   # the site keeps 20000 characters
 SEPARATOR = '\n\n———\n\n'
 _QUEUE = {'matches': [], 'activity': []}

@@ -190,7 +190,7 @@ test('the update check reads our website first and never calls GitHub when it an
   const urls = [];
   const offer = await check('0.6.15', {platform: 'win32', fetcher: async url => { urls.push(url); return {ok: true, json: async () => LATEST}; }});
   assert.equal(offer.version, '0.6.19');
-  assert.deepEqual(urls, ['https://www.jobpilotto.top/api/releases/latest']);
+  assert.deepEqual(urls, ['https://www.jobadabra.top/api/releases/latest']);
 });
 
 test('the site down: GitHub itself, then the same answer again costs a 304, not a call against the limit', async () => {

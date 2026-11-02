@@ -1,6 +1,6 @@
 name: CI · PR checks scorecard
 # Monthly (owner, 17 Oct 2026): per PR check, its runs, real catches, false reds and minutes over 30 days (tools/pr-check-scorecard.mjs); a check with 0 catches is flagged for review.
-# Posts ONE Telegram message through the CI alerts bot, and stores the card for https://www.jobpilotto.top/admin/operations/pr-checks (PUT /pr-checks/data, SELFHEAL_PUBLISH_KEY). No AI, $0. By hand: Actions → run workflow (days input).
+# Posts ONE Telegram message through the CI alerts bot, and stores the card for https://www.jobadabra.top/admin/operations/pr-checks (PUT /pr-checks/data, SELFHEAL_PUBLISH_KEY). No AI, $0. By hand: Actions → run workflow (days input).
 on:
   schedule:
     - cron: '17 6 1 * *'
@@ -50,7 +50,7 @@ jobs:
       - name: Store it for the admin page
         run: |
           if [ -n "$SELFHEAL_PUBLISH_KEY" ]; then
-            curl -sS -o /dev/null --fail -X PUT -H "Authorization: Bearer ${SELFHEAL_PUBLISH_KEY}" --data-binary "@$RUNNER_TEMP/scorecard.json" "https://www.jobpilotto.top/pr-checks/data"
+            curl -sS -o /dev/null --fail -X PUT -H "Authorization: Bearer ${SELFHEAL_PUBLISH_KEY}" --data-binary "@$RUNNER_TEMP/scorecard.json" "https://www.jobadabra.top/pr-checks/data"
           else
             echo "::notice::SELFHEAL_PUBLISH_KEY is not set: nothing stored."
           fi

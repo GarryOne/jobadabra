@@ -19,7 +19,7 @@ if (!fs.existsSync(path.join(DESKTOP, 'shared', 'alias-schema.js'))) execFileSyn
 const {confirm, counts, hit, ladderStore, miss, record} = await import('../../lib/ladder/learning.js');
 const {kindKey} = await import('../../lib/ladder/rung1-kept.js');
 
-export const MOVES_SITE = 'https://www.jobpilotto.top/api/controls';
+export const MOVES_SITE = 'https://www.jobadabra.top/api/controls';
 export const SOURCES = ['ci', 'replay'];   // the site's test sources (site/src/ladder-moves.js); 'user' is an install's own batch, never sent from here
 const scratch = () => ladderStore(path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'jp-moves-')), 'ladder-learning.json'));
 const verified = {signal: 'confident', verified: true};

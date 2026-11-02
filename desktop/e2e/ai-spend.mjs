@@ -6,7 +6,7 @@
 import {pathToFileURL} from 'node:url';
 
 export const DEFAULT_BUDGET = 5;
-const SITE = 'https://www.jobpilotto.top';
+const SITE = 'https://www.jobadabra.top';
 
 export function verdict(spent, budget = DEFAULT_BUDGET) {
   const usd = Number(spent?.usd);

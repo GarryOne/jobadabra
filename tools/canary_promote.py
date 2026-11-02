@@ -54,7 +54,7 @@ CANARY_WINDOW = timedelta(days=7)   # a canary not promoted within 7 days is dro
 # so they are never the canary and never block newer builds. Same value as desktop/lib/canary.js CANARY_FLOOR.
 CANARY_FLOOR = '0.4.0-alpha.69'
 ROOT = Path(__file__).resolve().parents[1]
-TELEMETRY_URL = 'https://www.jobpilotto.top/telemetry/version'
+TELEMETRY_URL = 'https://www.jobadabra.top/telemetry/version'
 KEY_ENV = 'JOBADABRA_TELEMETRY_KEY'
 MIN_HEALTH_DAYS = 2              # distinct days with a health line on the candidate
 MIN_USED_SPAN = timedelta(hours=48)   # first to last health line

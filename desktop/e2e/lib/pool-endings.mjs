@@ -4,7 +4,7 @@
 // and a sha only: never an address. CI only; JP_ENDINGS_DRY=1|true: say it, send nothing. Guard: e2e/test/pool-endings.test.mjs.
 import {ENDINGS} from '../../../extension/ladder/endings.js';
 
-export const ENDINGS_SITE = 'https://www.jobpilotto.top/applying/endings';
+export const ENDINGS_SITE = 'https://www.jobadabra.top/applying/endings';
 const WORDS = new Set([...ENDINGS, 'held']);
 
 // report: the day report (record-sites.mjs); ctx: {run, branch, sha, at}. -> [{row, ending, step, cause, run, branch, sha, at}]

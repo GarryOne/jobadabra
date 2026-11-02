@@ -101,7 +101,7 @@ def lead_url(lead, text, gmail_id='', seed=None):
     digest = seed or hashlib.sha256(re.sub(r'\s+', ' ', text).strip().lower().encode()).hexdigest()[:16]
     if lead.get('platform') == 'LinkedIn':
         return f'https://www.linkedin.com/messaging/#jp-{digest}'
-    return f'https://www.jobpilotto.top/lead#{digest}'
+    return f'https://www.jobadabra.top/lead#{digest}'
 
 
 def contact(lead):

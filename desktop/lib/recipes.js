@@ -26,7 +26,7 @@ import {counts as otherCounts, otherStore} from './ladder/other.js';
 import {REPAIRS_SENT, repairDelta} from './ladder/repair-feed.js';
 import {forgetToken, installToken} from './install-token.js';
 
-export const SITE = 'https://www.jobpilotto.top';
+export const SITE = 'https://www.jobadabra.top';
 const CACHE = 'recipes-cache.json';
 const TTL_MS = 6 * 3600 * 1000;
 const FLUSH_MS = 5 * 60 * 1000;

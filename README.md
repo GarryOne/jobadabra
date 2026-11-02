@@ -8,10 +8,10 @@ Full automation** (Settings → Apply, with a confirm dialog; an optional wait w
 
 **Not a developer?** Use the free [Mac app](#mac-app) (Windows beta too): a guided setup in about ten minutes, no
 terminal, with a Chrome extension that fills the forms. Website:
-[www.jobpilotto.top](https://www.jobpilotto.top/)
-([how it works](https://www.jobpilotto.top/#how),
-[all the AI inside](https://www.jobpilotto.top/intelligence.html),
-[compared with Simplify, Teal, Huntr, JobCopilot and LazyApply](https://www.jobpilotto.top/compare.html)).
+[www.jobadabra.top](https://www.jobadabra.top/)
+([how it works](https://www.jobadabra.top/#how),
+[all the AI inside](https://www.jobadabra.top/intelligence.html),
+[compared with Simplify, Teal, Huntr, JobCopilot and LazyApply](https://www.jobadabra.top/compare.html)).
 
 <p align="center">
   <img src="docs/images/architecture.png" width="100%"
@@ -105,7 +105,7 @@ switched-off feature behaves exactly as if its keys were missing, and `doctor` l
 
 Something in Jobadabra is reading, suggesting or checking at each stop of the search: 47 steps today (AI, plus a few plain rules marked as such), each one yours to accept or ignore, none of them pressing Submit.
 Every step runs on the AI you choose: Claude or OpenAI, through an API key or your own Claude Code / Codex plan (setup step 5 below).
-The same list, with more detail, is on the website: [Intelligence](https://www.jobpilotto.top/intelligence.html). Every base prompt is in this repository (`src/ai/`, `desktop/lib/`, `app-core/src/extension.js`); what is learned from installs is served as data, never as prompt text.
+The same list, with more detail, is on the website: [Intelligence](https://www.jobadabra.top/intelligence.html). Every base prompt is in this repository (`src/ai/`, `desktop/lib/`, `app-core/src/extension.js`); what is learned from installs is served as data, never as prompt text.
 
 **Find: Finds what is worth your time**
 

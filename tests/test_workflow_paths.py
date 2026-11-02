@@ -85,8 +85,8 @@ def pr_workflows():
 
 
 def required():
-    text = (ROOT / 'tools/pr-settings.sh').read_text()
-    return shlex.split(re.search(r"^checks='(.*)'$", text, re.M).group(1))
+    ruleset = json.loads((ROOT / 'templates/org-repo/ruleset.json').read_text())   # the one definition (tools/pr-settings.sh applies it through tools/org-repo.sh)
+    return [c['context'] for rule in ruleset['rules'] if rule['type'] == 'required_status_checks' for c in rule['parameters']['required_status_checks']]
 
 
 class TheClass(unittest.TestCase):

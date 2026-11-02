@@ -1,0 +1,52 @@
+# Why (2 Nov 2026, owner: "basically on all the repos in the org... the same workflow"): the script is NOT copied here; this workflow checks out tools/gitar-label.mjs from the public
+# jobadabra/jobadabra main (run only as a label writer, never the PR's code), so a fix to the parser lands in every repo at once. Same triggers, permissions and rules as there.
+# Puts one coloured "Gitar: …" label on a PR from Gitar's verdict comment, so the PR list shows changes requested / approved with suggestions / approved (owner, 28 Oct 2026).
+# Runs on a push (pull_request_target: the head moved, "reviewing" until Gitar judges it), on Gitar submitting or dismissing a review (pull_request_review), and on
+# Gitar posting a new comment (issue_comment created); all check out main's copy of the script and NEVER run the PR's code; its only writes are labels.
+# Why (30 Oct 2026, owner chose "run only on review + push"): on every Gitar comment edit it ran 151 times an hour, used up the repo's REST budget, and the runs
+# that met the limit left labels wrong in silence (#2516). Edits start nothing; a new Gitar comment does (about 12 an hour): after a push with an unchanged verdict
+# Gitar posts a new comment and submits no review (9 of the last 60 PRs, #2516 at 00:13). Gray labels: "reviewing" (no verdict for the head), "working on PR comments" (set by the agent).
+# Parser and cases: jobadabra/jobadabra tools/gitar-label.mjs, tests/test_gitar_label.py.
+name: CI · Gitar label
+# Why (30 Oct 2026): quoted, since an unquoted ' #' starts a YAML comment, which cut the number off every run's name.
+run-name: "Gitar label on #${{ github.event.pull_request.number || github.event.issue.number }}"
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+  pull_request_review:
+    types: [submitted, dismissed]
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  checks: read   # the head's first check suite gives its push time (tools/gitar-label.mjs)
+  pull-requests: write
+  issues: write   # creating a missing label (tools/gitar-label.mjs addLabel)
+
+jobs:
+  label:
+    if: >-
+      github.event_name == 'pull_request_target' ||
+      (github.event_name == 'pull_request_review' && github.event.review.user.login == 'gitar-bot[bot]') ||
+      (github.event_name == 'issue_comment' && github.event.issue.pull_request && github.event.comment.user.login == 'gitar-bot[bot]')
+    # Why (28 Oct 2026, owner's PR list: #2400 showed a red ✗ from a cancelled label run): no concurrency group. A cancelled run is drawn as a failed check in
+    # the PR list. Runs needing a live sync re-read the verdict, head and labels after every write until nothing changes (converge in
+    # tools/gitar-label.mjs).
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          repository: jobadabra/jobadabra   # the script lives there (public), not in this repo
+          ref: main
+          sparse-checkout: |
+            tools/gitar-label.mjs
+          sparse-checkout-cone-mode: false
+      - name: Set the label from Gitar's verdict
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number || github.event.issue.number }}
+        run: node tools/gitar-label.mjs "$PR"

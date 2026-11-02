@@ -52,7 +52,9 @@ run=$(gh run list -R "$repo" --workflow desktop.yml --event workflow_dispatch -L
 echo "Beta by hand started: ${run#* }"
 # Watched to the end (7 Oct 2026: a refused release went unnoticed): which version it published, and which platforms approved it. --no-watch returns at once.
 if [ "$watch" = 0 ]; then
-  echo "Build, then both gates, in that one run (about 45 minutes); a pass adds 'Beta-approved:' (Mac) and 'Beta-approved (Windows):' to the release notes."
+  # Why (2 Nov 2026, owner: "why 45 mins? We made it to be 15-25mins"): the time is measured on the last finished betas (tools/beta_took.py), never typed; none found says none.
+  took="$(python3 "$(dirname "$0")/beta_took.py" "$repo" 2>/dev/null || true)"
+  echo "Build, then both gates, in that one run${took:+ ($took)}; a pass adds 'Beta-approved:' (Mac) and 'Beta-approved (Windows):' to the release notes."
   exit 0
 fi
 id=${run%% *}

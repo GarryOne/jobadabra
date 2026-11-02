@@ -24,12 +24,20 @@ test('capped, no-token and unreachable skip with the reason, write the note and 
     assert.equal(answer.ok, false);
     assert.match(answer.why, /budget:week/);
     assert.match(JSON.parse(fs.readFileSync(path.join(dir, 'ai-capped.json'), 'utf8')).why, /^ui-verdict: broker: budget:week/);
+    assert.equal(JSON.parse(fs.readFileSync(path.join(dir, 'ai-capped.json'), 'utf8')).provider, 'AI broker', 'the note names the AI broker (Codex, Claude or Free AI), so the alert never says Codex alone');
     assert.equal(fs.readFileSync(path.join(dir, 'out.txt'), 'utf8'), 'skipped=true\n');
   }
 });
 
 test('any other broker failure is a real failure: the job goes red', async () => {
-  await assert.rejects(askOrSkip({}, {job: 'x', env: env(temp()), ask: async () => ({ok: false, status: 422, detail: 'broker: reply-refused'})}), /failed \(422\)/);
+  await assert.rejects(askOrSkip({}, {job: 'x', env: env(temp()), ask: async () => ({ok: false, status: 422, detail: 'broker: reply-refused'})}), /the AI broker failed \(422\)/);
+});
+
+test('an answer keeps which engine wrote it and what it fell back from (ai-broker 6/7)', async () => {
+  const answer = await askOrSkip({}, {job: 'x', env: env(temp()), ask: async () => ({ok: true, message: {content: [{text: 'hi'}], usage: {}}, model: 'claude-haiku-5-5', tier: 'small', ms: 5, engine: 'claude', fellBack: [{engine: 'codex', why: 'ran-out'}]})});
+  assert.deepEqual([answer.engine, answer.fellBack], ['claude', [{engine: 'codex', why: 'ran-out'}]]);
+  const old = await askOrSkip({}, {job: 'x', env: env(temp()), ask: async () => ({ok: true, message: {content: [{text: 'hi'}], usage: {}}, model: 'gpt-6-luna', tier: 'small', ms: 5})});
+  assert.equal(Object.hasOwn(old, 'engine'), false, 'a broker that sends no engine adds no key');
 });
 
 test('off GitHub the skip is a plain line, on GitHub a warning annotation', () => {

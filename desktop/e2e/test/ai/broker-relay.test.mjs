@@ -175,3 +175,10 @@ test('web-search-only calls reach the broker, while mixed tools and broker refus
   assert.equal(refused.status, 503);
   assert.match(JSON.parse(refused.body).error.message, /broker unavailable/);
 });
+
+test('the --proof line says which AI answered, not "Codex" when Claude did (Gitar on #2947)', async () => {
+  const {proofLine} = await import('../../../../tools/persona-search/codex.mjs');
+  assert.equal(proofLine({model: 'claude-haiku-5-5', engine: 'claude', fellBack: [{engine: 'codex', why: 'ran-out'}]}), 'AI broker answered (AI: claude / claude-haiku-5-5 (codex ran-out)); no API key used');
+  assert.equal(proofLine({model: 'gpt-6-luna', tier: 'small'}), 'AI broker answered (AI: gpt-6-luna); no API key used', 'an older broker without an engine still shows its model');
+  assert.equal(proofLine({tier: 'small'}), 'AI broker answered (small); no API key used');
+});

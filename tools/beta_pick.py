@@ -4,9 +4,8 @@
 
 Why (1 Nov 2026, owner: "beta should just promote the latest main CI commit that ran fully and it was green", "2-3-4 commits olds... or 5 commits olds"): main's CI proved that commit
 (unit suites, worker, harness, integration, recorded pages, smoke, fill check), so the beta does not wait for main's queue (beta 41339598113 idled 24 min on three commits) or run those jobs again.
-Why (1 Nov 2026, owner: "latest green one", after beta 12 found none of the last 30 usable): its workflow files used to have to match main's head, because GitHub refuses a tag on a commit whose
-workflow files differ (desktop.yml "Tag this build now"). On a night with workflow merges that skipped every green commit. tools/beta-release.sh now puts main's head's workflow files on the picked
-commit's code (a branch beta-pick/<sha7>), so only "is it on main" is asked here.
+Why (1 Nov 2026, owner: "latest green one"): its workflow files used to have to match main's head, because GitHub refused a tag on a commit whose workflow files differ unless the token held the workflows
+permission. desktop.yml's tag steps now use the CI App's token (Workflows: write), so only "is it green and on main" is asked here.
 """
 import subprocess
 import sys

@@ -73,7 +73,7 @@ test('the beta reports AI credit through nonblocking steps of its last job, not 
   assert.doesNotMatch(text, /\n  ai-credit-health:/);
   const prune = text.split('\n  prune:\n')[1] || '';
   assert.match(prune, /node desktop\/e2e\/credit-alert.mjs --artifacts credit-artifacts/);
-  assert.match(prune, /\(github.ref == 'refs\/heads\/main' \|\| startsWith\(github.ref, 'refs\/heads\/beta-pick\/'\)\)/);
+  assert.match(prune, /\(github.ref == 'refs\/heads\/main' \|\| startsWith\(github.ref, 'refs\/tags\/beta-pick-'\)\)/);
   assert.doesNotMatch(prune, /e2e-rerun/);
 });
 

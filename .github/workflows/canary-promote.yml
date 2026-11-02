@@ -81,7 +81,7 @@ jobs:
       - name: Decide (and promote when switched on)
         if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.force_tag != '') }}
         env:
-          JOBADABRA_TELEMETRY_KEY: ${{ secrets.JOB_PILOTTO_TELEMETRY_KEY }}
+          JOBADABRA_TELEMETRY_KEY: ${{ secrets.JOBADABRA_TELEMETRY_KEY }}
           JOBADABRA_REQUIRE_BETA: ${{ vars.JOB_PILOTTO_REQUIRE_BETA }}
           SWITCH: ${{ vars.JOB_PILOTTO_AUTO_PROMOTE }}
           DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}

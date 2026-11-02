@@ -51,7 +51,7 @@ jobs:
       BRAIN_DATABASE_ID: ${{ vars.BRAIN_DATABASE_ID }}
       BRAIN_BOT_TOKEN: ${{ secrets.BRAIN_BOT_TOKEN }}
       BRAIN_CHAT_ID: ${{ secrets.BRAIN_CHAT_ID }}
-      JOBADABRA_TELEMETRY_KEY: ${{ secrets.JOB_PILOTTO_TELEMETRY_KEY }}
+      JOBADABRA_TELEMETRY_KEY: ${{ secrets.JOBADABRA_TELEMETRY_KEY }}
     steps:
       - uses: actions/checkout@v5
         with:

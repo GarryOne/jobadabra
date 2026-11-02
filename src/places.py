@@ -185,9 +185,11 @@ def expand(fragments, cache=None):
     out = []
     for fragment in fragments or []:
         out.append(fragment)
-        entry = cache.get(_key(fragment))
-        if entry and entry.get('kind') in EXPAND_KINDS + ('city',) and entry.get('names'):
-            out.append(pattern(entry['names']))
+        keys = list(dict.fromkeys([_key(fragment), *(_key(word) for word in fragment_place_words(fragment))]))   # an alternation's spellings are asked one by one (Gitar on #2977)
+        for key in keys:
+            entry = cache.get(key)
+            if entry and entry.get('kind') in EXPAND_KINDS + ('city',) and entry.get('names'):
+                out.append(pattern(entry['names']))
     return out
 
 

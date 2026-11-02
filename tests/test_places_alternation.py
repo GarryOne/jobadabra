@@ -95,6 +95,12 @@ class AnAlternationOfSpellingsIsItsPlaces(unittest.TestCase):
         self.assertEqual(places.countries(search(top=['romandie|suisse romande']), {}, limit=None), ['Switzerland'])
         self.assertNotIn('romandie', places.words_of(search(top=['romandie|suisse romande'])))
 
+    def test_each_spelling_of_an_alternation_adds_the_names_the_AI_gave_it(self):
+        """Gitar on #2977: expand() looked the cache up by the whole fragment, so "bulgaria|българия" never gained its cities."""
+        cache = {'bulgaria': {'kind': 'country', 'names': ['Plovdiv', 'Varna'], 'countries': ['Bulgaria']}, 'българия': {'kind': 'country', 'names': ['Пловдив'], 'countries': ['Bulgaria']}}
+        out = places.expand(['bulgaria|българия', 'plain'], cache)
+        self.assertEqual(out, ['bulgaria|българия', places.pattern(['Plovdiv', 'Varna']), places.pattern(['Пловдив']), 'plain'])
+
     def test_a_real_regex_is_still_not_a_place_word(self):
         self.assertEqual(places.words_of(search(top=['/regex-like/', 'z(?:ü|ue)rich', 'a|(b)', '(sofia|софия)', 'sofia|', '|sofia', 'sofia|софия|(?:x)'])), [])
 

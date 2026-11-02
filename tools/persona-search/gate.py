@@ -107,6 +107,7 @@ def result(n, out):
     out = Path(out)
     row = {'persona': int(n), 'label': label(n)}
     press_billing = ''
+    starved_wait = None
     press_usd = None   # None = the press's cost was not measured; never shown or counted as $0 (gitar on #2259)
     try:
         press = json.loads((out / 'draw' / 'presses.jsonl').read_text(encoding='utf-8').splitlines()[0])
@@ -117,8 +118,7 @@ def result(n, out):
         cut, waited = cut_note(row['seconds'], int(press.get('scored_in_places') or 0), out / 'run.log')
         if cut:
             row['cut'] = cut
-        if waited is not None and waited >= STARVED_WAIT_S:
-            row['not_measured'] = f'AI queue full (waited {waited} s)'   # grey, never red and never green: the press was starved of AI, not slow
+        starved_wait = waited if waited is not None and waited >= STARVED_WAIT_S else None
     except (OSError, IndexError, ValueError, KeyError, TypeError):
         row['error'] = 'the press wrote no numbers (see run.log)'
     unavailable = refused_reason(out / 'run.log')
@@ -144,6 +144,10 @@ def result(n, out):
         row['non_haiku'] = int((out / 'non-haiku-steps.txt').read_text().strip() or 0)
     except (OSError, ValueError):
         pass
+    # Grey only for a press that ran clean and ended inside its budget: a non-zero exit, a crash, a step outside the small tier or a run past 180 s stay red
+    # (Gitar on #2955). A starved press is cut at the app's own stop, never past it.
+    if starved_wait is not None and not row.get('code') and not row.get('crashes') and not row.get('non_haiku') and row.get('seconds', 0) <= PRESS_LIMIT:
+        row['not_measured'] = f'AI queue full (waited {starved_wait} s)'
     (out / 'result.json').write_text(json.dumps(row, ensure_ascii=False), encoding='utf-8')
     return row
 

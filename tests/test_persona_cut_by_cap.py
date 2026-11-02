@@ -36,7 +36,7 @@ class AStopBeforeAnyScoreIsANumber(unittest.TestCase):
             cut_press_data(tmp)
             env = {**os.environ, 'PYTHONPATH': str(ROOT), 'JOBADABRA_NO_DOTENV': '1', 'JOBADABRA_FOLLOW_APP': '0', 'JOBADABRA_DATA_DIR': tmp, 'JOBADABRA_CONFIG_DIR': tmp}
             # the engine's place check needs a whole search config; the table is what is under test, so every job counts as in the places
-            stub = ("import sys, types, runpy; import src.sources as s; f = types.ModuleType('src.sources.feeds'); f.wanted_location = lambda job: True; "
+            stub = ("import sys, types, runpy; sys.path.insert(0, 'tools/persona-search'); import src.sources as s; f = types.ModuleType('src.sources.feeds'); f.wanted_location = lambda job: True; "
                     "s.feeds = f; sys.modules['src.sources.feeds'] = f; sys.argv = ['ttfr.py']; runpy.run_path('tools/persona-search/ttfr.py', run_name='__main__')")
             done = subprocess.run([sys.executable, '-c', stub], cwd=ROOT, env=env, capture_output=True, text=True)
             self.assertEqual(done.returncode, 0, done.stderr[-400:])
@@ -83,6 +83,17 @@ class AStopBeforeAnyScoreIsANumber(unittest.TestCase):
         self.assertEqual(red['state'], 'failure')
         self.assertTrue(any('press took 200 s' in r for r in red['rows'][1]['reasons']))
         self.assertEqual(red['rows'][3]['reasons'], [])
+
+    def test_a_long_wait_never_greys_a_press_that_crashed_exited_badly_or_ran_past_its_budget(self):
+        """Gitar on #2955: the grey grade skipped the exit-code, crash and 180 s checks; a wait of 117 s must not hide any of them."""
+        waits = [500, 117451]
+        for label, seconds, code, crashes in (('exit code', 178, 1, []), ('crash', 178, 0, [{'step': 'Scout', 'error': 'x'}]), ('over 180 s', 240, 0, [])):
+            with self.subTest(label), tempfile.TemporaryDirectory() as tmp:
+                folder = self.press_folder(tmp, seconds, 0, waits)
+                (folder / 'draw' / 'presses.jsonl').write_text(json.dumps({'press': 1, 'code': code, 'crashes': crashes, 'seconds': seconds, 'scored_in_places': 0, 'funnel': {'ai_usd': 0}}) + '\n')
+                row = gate.result(4, folder)
+                self.assertNotIn('not_measured', row)
+                self.assertTrue(gate.judge_one(row, [])[0], f'{label} must stay red')
 
     def test_a_press_that_scored_or_finished_early_has_no_cut_note(self):
         with tempfile.TemporaryDirectory() as tmp:

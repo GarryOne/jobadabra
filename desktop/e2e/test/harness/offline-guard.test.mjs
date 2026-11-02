@@ -24,11 +24,11 @@ test('a request that leaves this computer is refused and named; loopback goes th
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   const guard = guardNetwork();
   try {
-    await assert.rejects(fetch('https://www.jobpilotto.top/api/aliases'), /offline: www\.jobpilotto\.top/);
+    await assert.rejects(fetch('https://www.jobadabra.top/api/aliases'), /offline: www\.jobadabra\.top/);
     assert.throws(() => https.get('https://example.com/'), /offline: example\.com/);
     assert.throws(() => http.request({host: 'example.org', path: '/'}), /offline: example\.org/);
     assert.equal(await (await fetch(`http://127.0.0.1:${server.address().port}/`)).text(), 'ok');
-    assert.deepEqual(guard.refused, ['www.jobpilotto.top', 'example.com', 'example.org']);
+    assert.deepEqual(guard.refused, ['www.jobadabra.top', 'example.com', 'example.org']);
   } finally { guard.restore(); server.close(); }
   assert.notEqual(globalThis.fetch.name, 'offlineFetch', 'restore() puts the real fetch back');
 });

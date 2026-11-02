@@ -29,7 +29,7 @@ Reference, read when the task touches these areas. Linked from CLAUDE.md. For an
 - `config/`: `preferences.json`, `sources.json`, `scout_seeds.json` (a user's own additions only). Starting sources are central
   (`jobadabra-lab`), published in the employer index; old shipped lists are ignored (`src/legacy_lists.py`).
 - `desktop/lib/interviews.js` + Interviews page: records (mic left, call audio right; consent box each time), drafts and recordings stay on the Mac.
-- **Product vs personal.** Product (the owner's Cloudflare account): one worker `www`, its code in the private repo `jobadabra-web` (`site/` there) → https://www.jobpilotto.top (website, Pro
+- **Product vs personal.** Product (the owner's Cloudflare account): one worker `www`, its code in the private repo `jobadabra-web` (`site/` there) → https://www.jobadabra.top (website, Pro
   waitlist, Notion sign-in, `/report/fill-failure`). Personal (per user, set up in the app): their Telegram bot and scheduled runs (their private repo).
 - `worker/` is the Telegram bot: run locally with long polling (`desktop/lib/telegram.js`), or uploaded to the user's own Cloudflare account
   (`desktop/lib/telegram-cloud.js`, `settings.telegramCloud`).

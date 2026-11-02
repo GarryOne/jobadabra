@@ -1,10 +1,11 @@
 // Sends the "Replay vs live (prototype)" records of a step-4 folder (one JSON per pool row, or {rows: [...]}) to /admin/form-filling/lab in ONE PUT (site/src/applying-fidelity.js).
+// Job: report health
 // Bearer REPLAYS_PUBLISH_KEY from the environment, never printed. A prototype's numbers: send only after the site deploy with migration 0064 is green. Run: node fidelity-report.mjs <step-4 folder> [--dry]
 import fs from 'node:fs';
 import path from 'node:path';
 import {needsRefill} from './lib/refill.mjs';
 
-export const FIDELITY = 'https://www.jobpilotto.top/applying/fidelity';
+export const FIDELITY = 'https://www.jobadabra.top/applying/fidelity';
 
 // -> every record of the folder's .json files, a file holding one record or {rows: [...]}.
 export function readRecords(dir) {

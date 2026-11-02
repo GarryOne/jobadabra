@@ -14,7 +14,7 @@ from .stores.rules import EMPLOYER_STAGES
 APPLIED_OR_LATER = {'Applied', *EMPLOYER_STAGES}
 NEW_WORK_MODES = ('scheduled', 'run', 'today', 'kits', 'prepare')
 OVER_LINE = 'Your free trial is over: Always on paused new searches. Get Pro to continue.'
-SITE = 'https://www.jobpilotto.top'
+SITE = 'https://www.jobadabra.top'
 
 
 def applied_count(stages):

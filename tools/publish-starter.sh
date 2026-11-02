@@ -12,7 +12,7 @@ done
 [ -n "$repo" ] || { echo "publish-starter: no starter template repo found (set STARTER_REPO)" >&2; exit 1; }
 root="$(git rev-parse --show-toplevel)"
 work="$(mktemp -d)"; trap 'rm -rf "$work"' EXIT
-gh repo edit "$repo" --template --homepage "https://www.jobpilotto.top" >/dev/null
+gh repo edit "$repo" --template --homepage "https://www.jobadabra.top" >/dev/null
 git clone -q "https://github.com/$repo.git" "$work/repo" 2>/dev/null || git init -q -b main "$work/repo"
 cd "$work/repo"
 rm -rf .github && mkdir -p .github/workflows

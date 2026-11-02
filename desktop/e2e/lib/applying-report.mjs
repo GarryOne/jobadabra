@@ -8,8 +8,8 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {stampedAt} from '../../scripts/extension-stamp.mjs';
 
-export const SITE = 'https://www.jobpilotto.top/admin/form-filling/lab';
-export const REPLAYS = 'https://www.jobpilotto.top/applying/replays';
+export const SITE = 'https://www.jobadabra.top/admin/form-filling/lab';
+export const REPLAYS = 'https://www.jobadabra.top/applying/replays';
 // desktop/e2e (not imported from app.mjs: that pulls playwright-core into the desktop unit job, which does not install it; main was red 11 Oct 2026).
 const E2E = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 export const extensionVersion = () => stampedAt();   // the version this checkout's build stamps (scripts/extension-stamp.mjs)

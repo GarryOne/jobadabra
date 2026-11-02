@@ -324,7 +324,7 @@ export function save(storage, code, record, pdf) {
 const pageKey = url => String(url || '').split('#')[0].replace(/\/+$/, '');
 // A job with no posting link of its own (a recruiter's message, a LinkedIn chat: its "URL" is the conversation) can't be matched by page. The
 // employer's form is then recognised by the company's name in its address (careers.kestrel.com, boards.greenhouse.io/kestrel/...).
-const NO_POSTING_LINK = /mail\.google|linkedin\.com\/messaging|jobpilotto\.(?:workers\.dev|top)\/lead/;
+const NO_POSTING_LINK = /mail\.google|linkedin\.com\/messaging|(?:jobpilotto|jobadabra)\.(?:workers\.dev|top)\/lead/;
 const slug = text => String(text || '').toLowerCase().replace(/[^a-z0-9]/g, '');
 export function forUrl(storage, url) {
   const key = pageKey(url);

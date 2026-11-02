@@ -1,4 +1,5 @@
-// Every scheduled AI job tells the owner's page https://www.jobpilotto.top/ai-cost what it spent (site/src/aicost.js). Never fails a job:
+// Every scheduled AI job tells the owner's page https://www.jobadabra.top/ai-cost what it spent (site/src/aicost.js). Never fails a job:
+// Job: report health
 // a missing key, an unreadable record or an unreachable site only prints a line.
 //   node ai-cost-report.mjs --job <id> (--execution <claude-code-action output> | --file <{usd, calls}> | --usd <n> [--calls <n>]) [--suffix <matrix key>] [--provider anthropic|openai]
 //   node ai-cost-report.mjs --billed [--days 7]     what Anthropic itself billed per day (Admin API, ANTHROPIC_ADMIN_KEY), to see what the jobs miss;
@@ -9,7 +10,7 @@ import {pathToFileURL} from 'node:url';
 import {outcome} from './ai-budget.mjs';
 import {PRICES} from './lib/vision.mjs';
 
-const SITE = process.env.AI_COST_SITE || 'https://www.jobpilotto.top';
+const SITE = process.env.AI_COST_SITE || 'https://www.jobadabra.top';
 
 // {usd, calls} of one run from whichever record the job leaves.
 export function spent({execution, file, usd, calls}) {

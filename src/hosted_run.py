@@ -188,7 +188,7 @@ def main():
     if '--serve' in args:
         serve()
         return 0
-    site = args[args.index('--site') + 1] if '--site' in args else os.environ.get('HOSTED_SITE', 'https://www.jobpilotto.top')
+    site = args[args.index('--site') + 1] if '--site' in args else os.environ.get('HOSTED_SITE', 'https://www.jobadabra.top')
     token = args[args.index('--token') + 1] if '--token' in args else os.environ.get('HOSTED_RUN_TOKEN', '')
     if not token.startswith('HR1.'):
         print('hosted: a run token (HR1...) is needed: --token or HOSTED_RUN_TOKEN', file=sys.stderr)

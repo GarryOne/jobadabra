@@ -11,7 +11,7 @@ const site = (seen = []) => async (url, init) => { seen.push({url, body: JSON.pa
 test('start: no key or account; mints the install token, keeps JPF1.<install>.<token> and points the SDKs at the website', async () => {
   const env = {}, seen = [], st = storage();
   assert.deepEqual(await start(st, env, site(seen)), {ok: true});
-  assert.equal(seen[0].url, 'https://www.jobpilotto.top/api/install-token');
+  assert.equal(seen[0].url, 'https://www.jobadabra.top/api/install-token');
   assert.equal(seen[0].body.purpose, 'ai');
   assert.match(st.secrets.ANTHROPIC_API_KEY, /^JPF1\..+\.tok123$/);
   assert.ok(isFreeKey(st.secrets.ANTHROPIC_API_KEY));

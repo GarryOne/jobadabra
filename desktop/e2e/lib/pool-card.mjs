@@ -1,4 +1,5 @@
 // The nightly smoke pool as a second, labelled source for the form-filling learning loop (docs/superpowers/specs/2026-10-10-pool-feeds-learning.md): one fill card
+// Job: report health
 // per form reached, built by the SAME fillCard()/causeOf as a user's, sent to the same POST /api/controls with source 'pool' and the owner's key. Fixed words and
 // counts only: never a field label, an answer, a posting address or a host (only the board name, a known board or a short hash). Same guard as the applying report:
 // never from CI, a control run on an old build, or JP_NO_REPORT. Guard: test/pool-card.test.mjs.
@@ -7,7 +8,7 @@ import {fillCard, cleanCard} from '../../../extension/fill-card.js';
 import {boardName} from '../../lib/control-events.js';
 import {extensionVersion, ownerKey, skipReason} from './applying-report.mjs';
 
-export const CONTROLS = 'https://www.jobpilotto.top/api/controls';
+export const CONTROLS = 'https://www.jobadabra.top/api/controls';
 const INSTALL = 'pool-qa-smoke';   // not a real install: the site counts pool cards by source, never by this
 
 // The host where the journey ended, from the flow signature `kinds@host#step` ('' when there is none).

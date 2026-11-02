@@ -21,7 +21,7 @@ function files(path) {
 const sources = SHIPPED.flatMap(files).map(file => ({file: file.slice(ROOT.length), text: readFileSync(file, 'utf8')}));
 
 // Our routes in code: a path literal that starts right after a quote ('/api/x'), or sits after our host. A third-party URL has its own host in front of /api/, so it never matches.
-const OURS = /(?:['"`]|jobpilotto\.(?:top|workers\.dev))(\/(?:api|report)\/[A-Za-z][A-Za-z0-9/_.-]*)/g;
+const OURS = /(?:['"`]|(?:jobpilotto|jobadabra)\.(?:top|workers\.dev))(\/(?:api|report)\/[A-Za-z][A-Za-z0-9/_.-]*)/g;
 const listed = path => manifest.routes.some(route => route.path === path || (route.prefix && (path.startsWith(route.path) || `${path}/` === route.path)));
 
 test('every site route that shipped code writes out is in the list', () => {

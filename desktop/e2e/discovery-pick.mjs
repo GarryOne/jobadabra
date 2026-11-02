@@ -1,4 +1,5 @@
 // node discovery-pick.mjs <out dir> <states dir>: the daily discovery batch's first job (.github/workflows/record-sites.yml, schedule). Reads the site's input
+// Job: pick the suites
 // (GET /applying/discovery-input, Bearer REPLAYS_PUBLISH_KEY), the pool and the earlier batch runs' own state files (<states dir>/<run>/discovery.json: their rows and spend),
 // runs the picker (lib/discovery-pick.mjs) and writes <out dir>/discovery-rows.json (rows in the pool's format, read by the recorder as RECORD_SITES) and picked.json.
 // Prints what it picked and why; sets count/only/max_usd for the next job through GITHUB_OUTPUT; when the week's cap stops the batch, writes cap-alert.txt once a week.
@@ -11,7 +12,7 @@ import {postTelegram} from './lib/telegram-post.mjs';
 import {FAILURES, capText} from './lib/discovery-judge.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-export const INPUT_URL = 'https://www.jobpilotto.top/applying/discovery-input';
+export const INPUT_URL = 'https://www.jobadabra.top/applying/discovery-input';
 const readJson = file => { try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return null; } };
 
 // <states dir>/<run id>/discovery.json: {at, usd, rows: [{shape, url, reached}], capAlertWeek?}

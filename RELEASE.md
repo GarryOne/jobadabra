@@ -166,7 +166,7 @@ buttons `api/brain.js` (private repo `jobadabra-web`), decisions in Notion **�
 - Notion: connection **Jobadabra Brain** (internal), shared with the Decisions database only → GitHub secret `NOTION_BRAIN_TOKEN`.
 - Telegram: @BotFather → new bot → GitHub secret `BRAIN_BOT_TOKEN`; your chat id → `BRAIN_CHAT_ID`.
   The same token and id + a random `BRAIN_WEBHOOK_SECRET` as Worker secrets of `www` (private repo `jobadabra-web`), then
-  `setWebhook` to `https://www.jobpilotto.top/api/brain/telegram` with that secret.
+  `setWebhook` to `https://www.jobadabra.top/api/brain/telegram` with that secret.
 - Repository variable `BRAIN_DATABASE_ID` (set). Cost: about $0.10–0.30 a brief (Sonnet, capped turns).
 </details>
 

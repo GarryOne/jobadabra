@@ -12,7 +12,7 @@ import sys
 import urllib.request
 from pathlib import Path
 
-URL = 'https://www.jobpilotto.top/search-lab/session-checks'
+URL = 'https://www.jobadabra.top/search-lab/session-checks'
 USER_AGENT = 'jobadabra-session-check/1'   # Cloudflare refuses Python's default agent with error 1010 before the Worker sees the request (24 Oct 2026)
 KEYCHAIN = ('jobadabra', 'jobadabra.site.session_checks_key')
 BOARD = re.compile(r'Job boards found: (?P<name>.+?) (?P<listed>\d+) job\(s\), (?P<relevant>\d+) relevant(?: \((?P<note>[^)]*)\))?\s*$')

@@ -1,4 +1,5 @@
 // The automatic refill's cap check and alert (owner, 17 Oct 2026: a PR whose replay finds changed asks starts replay-refill.yml itself, at most $0.50 a run and $5 a calendar month, Telegram at the cap).
+// Job: report health
 // Runs in the refill workflow's pick job (main's code, the only place with the cost key), never in the PR's job. Guard: e2e/test/refill-auto.test.mjs.
 //   node refill-auto.mjs cap <estimate usd>      (env AI_COST_PUBLISH_KEY) -> prints "ok" or why not, exit 1 when it must not run
 //   node refill-auto.mjs alert "<what>"          (env CI_ALERTS_TELEGRAM_*) -> the owner's Telegram
@@ -6,7 +7,7 @@ import path from 'node:path';
 import {autoRefusal} from './lib/refill.mjs';
 import {send} from './ci-alert.mjs';
 
-const SITE = 'https://www.jobpilotto.top';
+const SITE = 'https://www.jobadabra.top';
 // The month's spend of the refill job as /admin/intelligence/ai-cost has it, or NaN when it cannot be read (then nothing is asked).
 export async function monthSpend({key, fetcher = fetch, now = new Date()} = {}) {
   if (!key) return NaN;

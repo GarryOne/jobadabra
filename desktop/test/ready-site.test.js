@@ -59,14 +59,14 @@ test('the morning line counts forms filled and not yet submitted or deleted, and
 test('Open live asks the site for a link and opens it in the browser, never inside the app', async () => {
   const handlers = {}, opened = [];
   const ipcMain = {handle: (name, fn) => { handlers[name] = fn; }}, shell = {openExternal: async url => { opened.push(url); }};
-  const realFetch = globalThis.fetch; globalThis.fetch = async () => new Response(JSON.stringify({ok: true, url: 'https://www.jobpilotto.top/ready-live?job=j1&k=1.2'}), {status: 200});
+  const realFetch = globalThis.fetch; globalThis.fetch = async () => new Response(JSON.stringify({ok: true, url: 'https://www.jobadabra.top/ready-live?job=j1&k=1.2'}), {status: 200});
   try {
     registerReadyHandlers({ipcMain, shell, storage: storage()});
     assert.deepEqual(await handlers.readyLive({}, 'j1'), {ok: true});
     globalThis.fetch = async () => new Response('{}', {status: 401});
     assert.equal((await handlers.readyLive({}, 'j1')).ok, false);
   } finally { globalThis.fetch = realFetch; }
-  assert.deepEqual(opened, ['https://www.jobpilotto.top/ready-live?job=j1&k=1.2']);
+  assert.deepEqual(opened, ['https://www.jobadabra.top/ready-live?job=j1&k=1.2']);
   assert.equal((await link(storage(), 'j1', {fetcher: async () => new Response(JSON.stringify({ok: true, url: 'u'}), {status: 200})})).url, 'u');
 });
 

@@ -3,7 +3,7 @@
 import {chromium} from 'playwright';
 import {mkdirSync} from 'node:fs';
 
-const url = process.argv[2] || 'https://www.jobpilotto.top/';
+const url = process.argv[2] || 'https://www.jobadabra.top/';
 const out = process.argv[3] || '.brain';
 const MAX_SLICES = 6;  // per device: the page's top matters most, and each image costs tokens
 mkdirSync(out, {recursive: true});

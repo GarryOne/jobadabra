@@ -1,4 +1,5 @@
 // The daily watch list (owner, 17 Oct 2026): one pool row per multi-step platform, recorded LIVE every day; its cap, its comparison with the row's last live run, its one message. Pure.
+// Job: report health
 // A watch row is a pool row of desktop/e2e/smoke-sites.json with "stage": "watch" (the life cycle's Daily watch stage); the batch adds a row when it finds a new platform.
 // The verdict per row is the discovery judge's (lib/discovery-judge.mjs); a flow is WORSE when its verdict got more severe, it reached an earlier step, it filled fewer fields on the same
 // posting (lib/record-sites.mjs compare), or its journey check failed after passing. A row that was not measured (held, bot wall, gone posting) is never worse and never the next baseline.
@@ -52,7 +53,7 @@ export function judgeWatch(report = {}, picked = [], previous = {}, failedJourne
 }
 
 // ONE message a run, only when a flow got worse than its previous live run. '' otherwise (day 1 sends nothing).
-export function telegramText({day, judged, usd = 0, monthSpent = 0, monthCap = MONTH_CAP_USD, labUrl = 'https://www.jobpilotto.top/admin/form-filling/lab'}) {
+export function telegramText({day, judged, usd = 0, monthSpent = 0, monthCap = MONTH_CAP_USD, labUrl = 'https://www.jobadabra.top/admin/form-filling/lab'}) {
   if (!judged.worse.length) return '';
   return [`📉 Daily watch ${day}: ${judged.worse.length} of ${judged.measured.length} flows worse than the last live run`,
     ...judged.worse.map(item => `• ${item.shape}: ${item.why}`),

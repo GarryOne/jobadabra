@@ -52,7 +52,7 @@ test('saving a new address asks the site first and keeps nothing when the site s
   const saved = await save(s, {by: ['email', 'app'], email: 'Me@Example.com', marketing: true}, site([{ok: true}], asked));
   assert.equal(saved.ok, true);
   assert.deepEqual([s.settings().notifyEmail, s.settings().notifyBy, s.settings().notifyMarketing], ['me@example.com', ['email', 'app'], true]);
-  assert.deepEqual(asked[1], {url: 'https://www.jobpilotto.top/api/account/email', method: 'PUT', key: KEY.JOBADABRA_TRIAL_KEY, body: {email: 'me@example.com', marketing: true}});
+  assert.deepEqual(asked[1], {url: 'https://www.jobadabra.top/api/account/email', method: 'PUT', key: KEY.JOBADABRA_TRIAL_KEY, body: {email: 'me@example.com', marketing: true}});
 });
 
 test('e-mail cannot be chosen without an address, and a switch change alone does not call the site', async () => {

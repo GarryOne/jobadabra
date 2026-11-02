@@ -34,7 +34,7 @@ export function learningOff(env = process.env, {packaged = false} = {}) {
 // a crash during the journey is a real bug and the stack trace helps. A local run reports nothing at all.
 export const sentryOnly = (env = process.env) => !!(env.JOBADABRA_E2E && env.GITHUB_ACTIONS);
 
-export const ENDPOINT = 'https://www.jobpilotto.top/report/telemetry';
+export const ENDPOINT = 'https://www.jobadabra.top/report/telemetry';
 const QUEUE = 'telemetry-queue.json';
 const MAX_QUEUE = 500, SHOWN = 20, BATCH = 50;
 export const KINDS = ['crash', 'run_failed', 'run_warning', 'form_issue', 'stuck', 'health', 'setup', 'control', 'advice', 'tab', 'search'];   // advice: a recommendation shown / taken / dismissed (renderer/coverage-actions.js)

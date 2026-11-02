@@ -1,4 +1,5 @@
 // The discovery batch's verdict per recorded row, its one Telegram message and its spend line (owner, 17 Oct 2026). Pure: the CLI (discovery-report.mjs) passes the day report in.
+// Job: report health
 // The judge is the one the recordings already use: the row's ending and cause (lib/ending.mjs), the form judge's "blocked", and the shortfall (fields reached but not explained). A row says:
 //   fine           the form is reached and what is left is the person's (or a stop the person is told about)
 //   fields-left    the form is reached but required fields stayed empty (a field we missed, the AI declined, a control it could not see, a shortfall)
@@ -40,7 +41,7 @@ export function judgeBatch(report = {}, picked = []) {
 const hostOf = url => { try { return new URL(url).hostname.replace(/^www\./, ''); } catch { return ''; } };
 
 // Telegram: ONE message a run, only when something new failed. -> '' when nothing did.
-export function telegramText({day, judged = [], usd = 0, weekSpent = 0, weekCap = 3, labUrl = 'https://www.jobpilotto.top/admin/form-filling/lab'}) {
+export function telegramText({day, judged = [], usd = 0, weekSpent = 0, weekCap = 3, labUrl = 'https://www.jobadabra.top/admin/form-filling/lab'}) {
   const failed = judged.filter(item => FAILURES.includes(item.verdict));
   if (!failed.length) return '';
   const fine = judged.filter(item => item.verdict === 'fine'), unmeasured = judged.filter(item => item.verdict === 'not-measured');

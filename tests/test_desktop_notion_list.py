@@ -72,7 +72,7 @@ class AddedJobTests(unittest.TestCase):
             'Job URL': {'url': 'https://a/found'}, 'Job': {'title': [{'plain_text': 'SRE'}]}, 'Company': text('Acme'),
             'Score': {'number': 80}, 'Status': {'select': {'name': 'Open'}}}}
         lead = {'id': 'a1', 'url': 'https://notion/a1', 'created_time': '2026-09-29', 'properties': {
-            'Job URL': {'url': 'https://www.jobpilotto.top/lead#abc'}, 'Job': {'title': [{'plain_text': 'Platform Lead'}]},
+            'Job URL': {'url': 'https://www.jobadabra.top/lead#abc'}, 'Job': {'title': [{'plain_text': 'Platform Lead'}]},
             'Company': text('Beta'), 'Fit score': {'number': 74}, 'Stage': {'select': {'name': 'Recruiter lead'}},
             'Work mode': {'select': {'name': 'Remote'}}, 'Contact': text('Jane (recruiter)'), 'Via': text('Example Talent'),
             'Source': {'select': {'name': 'Gmail'}}, 'Notes': text('Recruiter message (Email). Client: logistics software, Series A'),
@@ -88,7 +88,7 @@ class AddedJobTests(unittest.TestCase):
                 mock.patch.object(desktop.score, 'load', return_value={}), mock.patch.object(desktop.store, 'set_application_status'):
             listed = desktop.jobs(sqlite3.connect(':memory:'), notion_jobs=jobs)['jobs']
         self.assertEqual({(r['url'], r['fit']) for r in listed},
-                         {('https://a/found', 80), ('https://www.jobpilotto.top/lead#abc', 74)})
+                         {('https://a/found', 80), ('https://www.jobadabra.top/lead#abc', 74)})
         # What the app needs to tell inbound from outbound (desktop/renderer/origin.js) and to show "In conversation".
         shown = next(r for r in listed if r['url'].endswith('#abc'))
         self.assertEqual((shown['source'], shown['notes'], shown['applied_on'], shown['via'], shown['next_step']),

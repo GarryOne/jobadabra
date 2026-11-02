@@ -1,10 +1,11 @@
 // Sends the verdicts of "Confirmed offline" to /admin/form-filling/lab in ONE PUT (site/src/applying-verify.js): the plan's own (rows answered without a replay) and each row job's verdict.json.
+// Job: report health
 // Bearer REPLAYS_PUBLISH_KEY from the environment, never printed. A row job that died sends nothing for its row: the old verdict stays. Main only (the workflow). 
 // Run: node verify-report.mjs <plan.json> <folder with verdict.json files> [--dry]. Guard: e2e/test/verify-report.test.mjs.
 import fs from 'node:fs';
 import path from 'node:path';
 
-export const VERIFY = 'https://www.jobpilotto.top/applying/verify';
+export const VERIFY = 'https://www.jobadabra.top/applying/verify';
 const json = file => { try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return null; } };
 const FIELDS = ['kind', 'row', 'verdict', 'why', 'commit', 'buildBy', 'recordedAt', 'olderAt'];
 

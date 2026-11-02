@@ -83,7 +83,7 @@ For each issue, oldest high-severity first:
    the false-positive causes (`resolution:` labels), how often a judge changed the filed severity, the change since the last scorecard
    (posted on the pinned `finder-scorecard` issue). It counts like `/admin/operations/self-healing` (same `classify()`, noise register included).
 2. **The /self-heal page** (all the loop's collected data), read as the owner:
-   `curl -sL -H "Authorization: Bearer $(security find-generic-password -s jobadabra.site.api_key -w)" https://www.jobpilotto.top/admin/operations/self-healing -o <scratch>/selfheal.html`,
+   `curl -sL -H "Authorization: Bearer $(security find-generic-password -s jobadabra.site.api_key -w)" https://www.jobadabra.top/admin/operations/self-healing -o <scratch>/selfheal.html`,
    then strip the tags. Read every section, not only the totals:
    - **The loop, live**: its age (published every 3 h by `self-heal-stats.yml`; older than ~6 h = the publisher is broken) and its cutoff.
    - **Recall** (planted bugs caught; which were missed) and **Planted code bugs caught** (bugs written into the code on purpose).

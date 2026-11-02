@@ -19,7 +19,7 @@
 "src/ai/mail_config.py":"e1d8eff2d15c0df7d8669ae171e0450b775b416635ec12e284d7ca0bffffc38b",
 "src/ai/mail_read.py":"8a1093c412ef12fa4d2905c992fc91b49df2d20e241968606d82808990c8945f",
 "src/ai/models.py":"7f1d92d047cd96e5d1ee6e5a3f23cacd53a96309470f7fcf657bfed357c812d0",
-"src/ai/opportunity.py":"61f88b7289b05318c1e0aa3570313708891b4a242b94e677faa66d9c04c972e6",
+"src/ai/opportunity.py":"aefca2df6661cf0a9975fa9729738bb0b8b9867a34c8488349adb41a00ede281",
 "src/ai/place_triage.py":"bc12f76364355eb833db06d9fdba19b65d0d6960fe4d8069949e7e6286476671",
 "src/ai/providers/schema.py":"4f3def25e72db6fbecf329a498a41bde1fcefe8878bcfcefd0187aa90d53c647",
 "src/ai/role_ideas.py":"e0f9deb6df7e2e3ad6a362e6385179e11ba39e57e15ac1ef8ade201565a5a023",

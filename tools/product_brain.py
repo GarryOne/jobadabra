@@ -30,8 +30,8 @@ import urllib.error
 import urllib.request
 
 DATABASE = os.environ.get('BRAIN_DATABASE_ID', '')  # repository variable; Notion IDs never default in code
-SIGNALS_URL = 'https://www.jobpilotto.top/api/signals?days={days}'
-LOG_URL = 'https://www.jobpilotto.top/api/brain/log'
+SIGNALS_URL = 'https://www.jobadabra.top/api/signals?days={days}'
+LOG_URL = 'https://www.jobadabra.top/api/brain/log'
 NOTION = 'https://api.notion.com/v1'
 LENSES = ['Growth', 'Product', 'Quality', 'UX', 'Business']  # Monday..Friday; the weekend picks by evidence
 STATUSES = ['Proposed', 'Exploring', 'Plan ready', 'Approved', 'Not now', 'Done']

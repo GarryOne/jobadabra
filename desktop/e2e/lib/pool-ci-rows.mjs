@@ -1,10 +1,11 @@
 // A CI recording run's rows for the pool table on /admin/form-filling/lab (owner, 14 Oct 2026: the CI workflow's one job is recording, so its rows must move the page): one PUT to
+// Job: report health
 // /applying/ci-rows with CI's narrow REPLAYS_PUBLISH_KEY, a run on main only (the site refuses any other branch: site/src/applying-ci-rows.js). The Mac's own upload (lib/applying-report.mjs)
 // still refuses CI. Same row fields as record-sites.mjs sends from a Mac. JP_CI_ROWS_DRY=1|true: say it, send nothing. Guard: e2e/test/pool-ci-rows.test.mjs.
 import {hostOnly} from './applying-report.mjs';
 import {rungFields, verdictFields} from './record-sites.mjs';
 
-export const CI_ROWS_SITE = 'https://www.jobpilotto.top/applying/ci-rows';
+export const CI_ROWS_SITE = 'https://www.jobadabra.top/applying/ci-rows';
 
 // report: the day report (record-sites.mjs). -> [{name, host, reached, filled, left, note, ending, ...}] for the rows THIS run ran
 export function ciRows(report = {}) {

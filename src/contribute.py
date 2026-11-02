@@ -17,7 +17,7 @@ from .paths import DATA, load_search_config
 from . import contribute_candidates, contribute_yield, pool_served
 from .sources import ats
 
-URL = 'https://www.jobpilotto.top/api/contribute'
+URL = 'https://www.jobadabra.top/api/contribute'
 STAMP = DATA / 'contribution_sent.json'
 EVERY = timedelta(0)   # no wait: shared as it is produced (owner, 6 Oct 2026; was once a day, then 10 minutes); the site allows 30 a minute
 MAX_FEEDS = 2000   # every feed a check read (7 Oct 2026); the most useful first, so a cut drops the quietest

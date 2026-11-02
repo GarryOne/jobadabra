@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-const SITE = 'https://www.jobpilotto.top/admin/form-filling/lab?json';
+const SITE = 'https://www.jobadabra.top/admin/form-filling/lab?json';
 export const MAX_AGE_MS = 15 * 60000;
 export const COPY = path.join(os.tmpdir(), 'jobadabra-applying-page.json');
 

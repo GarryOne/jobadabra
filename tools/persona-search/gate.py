@@ -8,6 +8,7 @@ right role + place by a blind judge).
   python3 tools/persona-search/gate.py compare <results dir> <out dir> [<main run dir>...]   verdict.json + table.md; exit 1 when red
 Judge: gate_judge.py. Personas: gate-personas.json (copied from the benchmark round). Tests: tests/test_search_personas_gate.py."""
 import json
+import re
 import sqlite3
 import sys
 from pathlib import Path
@@ -64,6 +65,20 @@ def extract(db_path, out):
     return rows
 
 
+REFUSED = re.compile(r'ai-capped: [^\n(]*\((?:Codex broker: )?(?:broker: )?([^)\n]+)\)')
+
+
+def refused_reason(log):
+    """The first reason the press's AI was refused ("fallback:search-unsupported": the Codex broker cannot run a web search; or a spent plan), read from
+    the press log's `ai-capped: <step> (Codex broker: broker: <reason>)` lines; '' when there is none or no log. Why (2 Nov 2026, #2928 run 41367786313):
+    15 such lines and 0 jobs showed as a table of zeros that looked like a search that found nothing."""
+    try:
+        found = REFUSED.search(Path(log).read_text(encoding='utf-8', errors='replace'))
+    except OSError:
+        return ''
+    return found.group(1).strip() if found else ''
+
+
 def result(n, out):
     """One persona's numbers: local = jobs the blind judge called right role AND right place; seconds and code of press 1; a missing file is
     a failed press (silence is not success), never a zero that looks measured."""
@@ -79,6 +94,9 @@ def result(n, out):
         row.update(seconds=int(press['seconds']), code=int(press.get('code') or 0), crashes=len(press.get('crashes') or []))
     except (OSError, IndexError, ValueError, KeyError, TypeError):
         row['error'] = 'the press wrote no numbers (see run.log)'
+    unavailable = refused_reason(out / 'run.log')
+    if unavailable:
+        row['unavailable'] = unavailable
     judge_usd = 0.0
     subscription = False
     try:
@@ -194,6 +212,9 @@ def compare(pr, main_runs):
         # Why (1 Nov 2026, owner: "Guard grey now + Claude subscription"): until the press reads jobs again on the engine CI uses (cause: each Codex relay call takes 13-17 s, #2635), "measured nothing" is
         # grey, not red: a red here would block every search PR and main push. TODO(AI): back to red once found > 0 on the Claude engine (#2901)
         state, head = 'neutral', f'⚪ measured nothing: all {len(PERSONAS)} judges saw 0 jobs, so no press read a job (not a pass)'
+        reason = next((r.get('unavailable') for r in (pr.get(n) or {} for n in range(1, len(PERSONAS) + 1)) if r.get('unavailable')), '')
+        if reason:   # still grey, never a pass: the first line names the cause instead of a table of zeros
+            head = f"⚪ {'web search' if 'search' in reason else 'AI'} unavailable: {reason}; no press read a job (not a pass)"
     elif unmeasured:
         state, head = 'neutral', f'⚪ not measured ({unmeasured} of {len(PERSONAS)}): {next(r["not_measured"] for r in rows if r["not_measured"])}'
     else:
@@ -202,12 +223,14 @@ def compare(pr, main_runs):
         row['measured_nothing'] = nothing   # the table marks every row grey then: a run that is not a pass has no green row (gitar on #2917)
     head += ' · ' + ((f"quality: shown, not gated ({quality_['why']})" if quality_.get('why') else f"quality: shown, gate starts at {QUALITY_MIN_RUNS} measured main runs, {quality_['measured']} so far") if quality_['mode'] == 'shown' else
                      f"quality: gated at total {quality_['floor']} ({quality_['basis']} over {quality_['measured']} runs)")
-    return {'state': state, 'head': head, 'rows': rows, 'main_runs': len(main_runs), 'quality': quality_}
+    return {'state': state, 'head': head, 'rows': rows, 'main_runs': len(main_runs), 'quality': quality_, 'unavailable': bool(nothing and ' unavailable: ' in head)}
 
 
 def table(verdict):
     spent = sum(r['usd'] or 0 for r in verdict['rows'])
     cap = '' if any(r.get('billing') == 'subscription' for r in verdict['rows']) else f' (legacy API cap ${PERSONA_CAP_USD * len(PERSONAS):.2f})'
+    if verdict.get('unavailable'):   # no table of zeros: nothing was searched, so there is nothing to compare
+        return f"🔍 **Search check:** {verdict['head']} · {COST}\n\n<sub>Presses ran, but their AI refused the search, so no job was read and nothing was judged. Grey, never a pass; it measures again once the search runs.</sub>\n"
     lines = [f"🔍 **Search check:** {verdict['head']} · {COST} · cost ${spent:.2f}{cap}", '',
              f"| Persona | Main (last {MAIN_RUNS}) | This PR | Found | Press | Cost | |", '|---|---|---|---|---|---|---|']
     for r in verdict['rows']:

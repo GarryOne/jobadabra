@@ -240,6 +240,41 @@ class AGateThatSawNoJobHasMeasuredNothing(unittest.TestCase):
         self.assertEqual(gate.compare(run([4, 0, 0, 0, 0, 0], [150] * 6, found=[5] * 6), mains)['state'], 'success')
 
 
+class TheCheckSaysWhyItMeasuredNothing(unittest.TestCase):
+    """2 Nov 2026 (#2928, run 41367786313): the Codex broker refused the press's web search 15 times ("ai-capped: ... fallback:search-unsupported"),
+    every judge saw 0 jobs, and the report was a table of zeros that read like a search that found nothing."""
+    LOG = ('Find jobs: starting\nai-capped: e2e (Codex broker: broker: fallback:search-unsupported)\n'
+           'ai-capped: e2e (Codex broker: broker: fallback:search-unsupported)\nFirst jobs: 0 found, none to score yet\n')
+
+    def test_the_reason_is_read_from_the_press_log(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            (Path(tmp) / 'run.log').write_text(self.LOG, encoding='utf-8')
+            self.assertEqual(gate.refused_reason(Path(tmp) / 'run.log'), 'fallback:search-unsupported')
+            self.assertEqual(gate.refused_reason(Path(tmp) / 'missing.log'), '', 'no log, no reason')
+            (Path(tmp) / 'run.log').write_text('First jobs: 0 found\n', encoding='utf-8')
+            self.assertEqual(gate.refused_reason(Path(tmp) / 'run.log'), '')
+
+    def test_a_grey_run_names_the_refused_search_first_and_has_no_table_of_zeros(self):
+        pr = run([0] * 6, [150] * 6, found=[0] * 6)
+        pr[2]['unavailable'] = 'fallback:search-unsupported'
+        verdict = gate.compare(pr, [])
+        self.assertEqual(verdict['state'], 'neutral', 'grey, never a pass')
+        self.assertTrue(verdict['head'].startswith('⚪ web search unavailable: fallback:search-unsupported'), verdict['head'])
+        text = gate.table(verdict)
+        self.assertTrue(text.splitlines()[0].startswith('🔍 **Search check:** ⚪ web search unavailable: fallback:search-unsupported'), text)
+        self.assertNotIn('| Persona |', text)
+
+    def test_without_a_reason_the_old_grey_report_and_table_stay(self):
+        verdict = gate.compare(run([0] * 6, [150] * 6, found=[0] * 6), [])
+        self.assertTrue(verdict['head'].startswith('⚪ measured nothing'), verdict['head'])
+        self.assertIn('| Persona |', gate.table(verdict))
+
+    def test_a_run_that_found_jobs_is_not_called_unavailable_whatever_the_log_said(self):
+        pr = run([1, 0, 0, 0, 0, 0], [150] * 6, found=[3, 0, 0, 0, 0, 0])
+        pr[1]['unavailable'] = 'fallback:search-unsupported'
+        self.assertNotIn('unavailable', gate.compare(pr, [])['head'])
+
+
 class TheJudgeIsBlindAndOnCodex(unittest.TestCase):
     def test_the_judge_requires_the_codex_relay_and_never_uses_an_api_key(self):
         with self.assertRaisesRegex(ValueError, 'Codex relay'):

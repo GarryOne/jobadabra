@@ -65,7 +65,7 @@ test('old answer keys are never lost or changed; a new key is fine', () => {
 });
 
 test('the proxy refuses the paid call past its cap before it reaches the API', async () => {
-  const proxy = await startAiProxy({target: 'http://127.0.0.1:1', maxCalls: 1});
+  const proxy = await startAiProxy({target: 'http://127.0.0.1:1', maxCalls: 1, live: true});   // the refill's live row (lib/live-row.mjs)
   try {
     const ask = () => fetch(`${proxy.url}/v1/messages`, {method: 'POST', body: '{}', headers: {'content-type': 'application/json'}});
     assert.equal((await ask()).status, 502, 'the first call goes out (to a closed port here)');

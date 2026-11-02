@@ -113,7 +113,7 @@ test('the fixture forms: each is served on its job-site host with its kit fields
 });
 
 test('the AI proxy answers a canned text (the Messages API shape) and passes on what it has no text for', async () => {
-  const proxy = await startAiProxy({target: 'http://127.0.0.1:1'});
+  const proxy = await startAiProxy({target: 'http://127.0.0.1:1', live: true});   // live: the uncanned call goes on (test/ai/one-answer-rule.test.mjs refuses it otherwise)
   try {
     proxy.setCanned(body => (body.messages?.[0]?.content === 'hello' ? 'hi there' : null));
     const ask = content => fetch(`${proxy.url}/v1/messages`, {method: 'POST', headers: {'content-type': 'application/json'}, body: JSON.stringify({messages: [{role: 'user', content}]})});

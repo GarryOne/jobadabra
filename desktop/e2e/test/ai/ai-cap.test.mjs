@@ -53,7 +53,7 @@ test('the app\'s proxy on Free AI answers 503 ai-capped for a question replay ca
   const real = globalThis.fetch;
   let forwarded = 0;
   globalThis.fetch = async (url, init) => (/graphql/.test(String(url)) ? analytics(CAP_NEURONS + 1)() : (forwarded++, real(url, init)));
-  const proxy = await startAiProxy({target: 'http://127.0.0.1:9', kind: 'app-free'});
+  const proxy = await startAiProxy({target: 'http://127.0.0.1:9', kind: 'app-free', live: true});   // the cap guards a live run on Free AI; any other run refuses first (test/ai/one-answer-rule.test.mjs)
   try {
     const answer = await real(`${proxy.url}/v1/messages`, {method: 'POST', body: '{"messages":[]}'});
     assert.equal(answer.status, 503);

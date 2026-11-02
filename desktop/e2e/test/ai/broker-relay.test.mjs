@@ -45,7 +45,7 @@ test('unsupported tools are refused with a 400 and the broker saying no is a 503
 
 test('the proxy sends a metered call through the relay and answers with the relay body', async () => {
   let asks = 0;
-  const proxy = await startAiProxy({kind: 'app-codex', relay: async body => { asks++; return answerViaBroker(body, {ask: answered('{"a":1}')}); }});
+  const proxy = await startAiProxy({kind: 'app-codex', live: true, relay: async body => { asks++; return answerViaBroker(body, {ask: answered('{"a":1}')}); }});   // the relay is the live leg
   try {
     const call = () => fetch(`${proxy.url}/v1/messages`, {method: 'POST', headers: {'content-type': 'application/json'}, body: JSON.stringify(request())}).then(response => response.json());
     assert.equal((await call()).content[0].text, '{"a":1}');
@@ -62,7 +62,7 @@ test('pdfText reads the words out of a real PDF', async () => {
 });
 
 test('a relay that throws (a bad body, a bad PDF) is a 502 answer and the proxy keeps serving', async () => {
-  const proxy = await startAiProxy({kind: 'app-codex', relay: async () => { throw new Error('bad pdf'); }});
+  const proxy = await startAiProxy({kind: 'app-codex', live: true, relay: async () => { throw new Error('bad pdf'); }});
   try {
     const first = await fetch(`${proxy.url}/v1/messages`, {method: 'POST', headers: {'content-type': 'application/json'}, body: '{}'});
     assert.equal(first.status, 502);

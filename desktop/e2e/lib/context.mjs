@@ -58,13 +58,13 @@ export async function contextAiKeys({offlineAi = false, light = false, family, e
   return {key, judgeKey: offlineCi ? DUMMY_KEY : KEY(), appKey: offlineCi || !isCi() ? DUMMY_KEY : family === 'free' ? FREE_AI_ALIAS : APP_AI_ALIAS, needsKey, lightNeeds, needs: ['api', 'openai'].includes(engine) ? needsKey : []};
 }
 
-/** Start both proxies; offline backbone suites use declared answers and other offline suites refuse all asks. */
-export async function contextAiProxies({offlineAi = false, family}) {
+/** Start both proxies; offline backbone suites use declared answers and other offline suites refuse all asks; only a live suite's unanswered ask reaches a model. */
+export async function contextAiProxies({offlineAi = false, family, liveAi = false}) {
   const offline = {target: 'http://127.0.0.1:1'};
-  const proxy = await startAiProxy({delayMs: 0, credentials: {[APP_AI_ALIAS]: offlineAi ? '' : testKey(process.env, 'api', family), [FREE_AI_ALIAS]: offlineAi ? '' : testKey(process.env, 'api', family)}, ...(offlineAi ? offline : aiProvider(process.env, 'app').provider === 'codex' && isCi() ? {kind: 'app-codex', relay: answerViaBroker} : family === 'free' ? {target: process.env.E2E_FREE_AI_URL, kind: 'app-free'} : {})});
+  const proxy = await startAiProxy({delayMs: 0, live: liveAi, credentials: {[APP_AI_ALIAS]: offlineAi ? '' : testKey(process.env, 'api', family), [FREE_AI_ALIAS]: offlineAi ? '' : testKey(process.env, 'api', family)}, ...(offlineAi ? offline : aiProvider(process.env, 'app').provider === 'codex' && isCi() ? {kind: 'app-codex', relay: answerViaBroker} : family === 'free' ? {target: process.env.E2E_FREE_AI_URL, kind: 'app-free'} : {})});
   // Why (29 Oct 2026, ap): backbone must reach declared answers and fail unknown kinds by name; other offline modes keep the blanket refusal for background asks (59 in Settings run 40930376557).
   if (offlineAi && answersMode() !== 'backbone') proxy.setCanned(() => ({refuse: 'invalid-key'}));
-  const openaiProxy = family === 'openai' ? await startAiProxy({target: offlineAi ? offline.target : 'https://api.openai.com', kind: 'app-openai', credentials: {[APP_AI_ALIAS]: offlineAi ? '' : testKey(process.env, 'openai', family)}, metered: /\/responses(\?|$)/, shape: 'openai', follow: proxy}) : null;
+  const openaiProxy = family === 'openai' ? await startAiProxy({target: offlineAi ? offline.target : 'https://api.openai.com', kind: 'app-openai', credentials: {[APP_AI_ALIAS]: offlineAi ? '' : testKey(process.env, 'openai', family)}, metered: /\/responses(\?|$)/, shape: 'openai', follow: proxy, live: liveAi}) : null;
   return {proxy, openaiProxy};
 }
 /** Keep a real Notion token behind the proxy; app and harness consumers receive only its alias. */
@@ -107,8 +107,8 @@ function markStandIn(env, standIn) {
  * defaults to the suite's table in hang-caps.json and `cadence` is the suite's own export, so a manual suite keeps the default cap. Returns the context, or one that
  * skips the suite when a secret it needs is missing; a launch failure throws. Data: lib/store.mjs, lib/runner.mjs, hang-caps.json.
  */
-// clean-code-ok: Why (29 Oct 2026, ia): old function; this change adds one option to its signature (aggregateBudget) and one argument of the createRunner call; st adds offlineAi (score falls, 75 to 63); a8 (21b) forwards hangCaps to createRunner; a8 (2/5, 31 Oct 2026) defaults hangCaps from the suite's table and adds the suite's cadence, both forwarded to createRunner
-export async function openContext(suite, {fresh = false, env: suiteEnv = {}, browser = false, light = false, offlineAi = false, notionProxy = false, telegram = false, google = false, releases = false, notion: usesNotion = true, notionStandIn = false, store: suiteStore = '', newInstall = false, standInFromWizard = false, notionTokenOf = '', notionPage = '', keepGoing = false, variesPlace = false, engine: suiteEngine = '', budgetMinutes = 0, aggregateBudget = true, hangCaps = hangCapsFor(suite), cadence = '', stepNeeds = null, report = null} = {}) {
+// clean-code-ok: Why (29 Oct 2026, ia): old function; this change adds one option to its signature (aggregateBudget) and one argument of the createRunner call; st adds offlineAi (score falls, 75 to 63); a8 (21b) forwards hangCaps to createRunner; a8 (2/5, 31 Oct 2026) defaults hangCaps from the suite's table and adds the suite's cadence, both forwarded to createRunner; a8 (2/4, 2 Nov 2026) adds liveAi, forwarded to the AI stand-in
+export async function openContext(suite, {fresh = false, env: suiteEnv = {}, browser = false, light = false, offlineAi = false, notionProxy = false, telegram = false, google = false, releases = false, liveAi = false, notion: usesNotion = true, notionStandIn = false, store: suiteStore = '', newInstall = false, standInFromWizard = false, notionTokenOf = '', notionPage = '', keepGoing = false, variesPlace = false, engine: suiteEngine = '', budgetMinutes = 0, aggregateBudget = true, hangCaps = hangCapsFor(suite), cadence = '', stepNeeds = null, report = null} = {}) {
   // Where the app keeps the person's data (lib/store.mjs): this Mac (sqlite, no Notion at all), the in-memory Notion (fresh and private for this run, no
   // token, no shared page: lib/notion-fake.mjs), or the real test workspace for a suite that pins it. A suite with no Notion part keeps its own setup.
   const store = light || !usesNotion ? '' : pickStore({suiteStore: suiteStore || (notionStandIn ? 'standin' : '')});
@@ -152,9 +152,9 @@ export async function openContext(suite, {fresh = false, env: suiteEnv = {}, bro
   ctx.built = onNotion && !fresh && await workspaceReady(token);
   ctx.feeds = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-e2e-feeds-'));
   fs.cpSync(path.join(E2E, 'fixtures', 'feeds'), ctx.feeds, {recursive: true});
-  // The OpenAI engine's calls (the app's and the engine's SDK follow OPENAI_BASE_URL in a test run): metered as app-openai, replayed like Claude's, and they obey
+  // The OpenAI engine's calls (the app's and the engine's SDK follow OPENAI_BASE_URL in a test run): metered as app-openai, answered by name like Claude's, and they obey
   // ctx.proxy's controls: a suite's stand-ins (setCanned), faults (setMode) and delay apply on an OpenAI turn too, in OpenAI's own shapes (lib/ai-proxy.mjs).
-  Object.assign(ctx, await contextAiProxies({offlineAi, family}));
+  Object.assign(ctx, await contextAiProxies({offlineAi, family, liveAi}));
   // A suite that breaks Notion on purpose (`export const notionProxy = true`) gets the Notion stand-in between the app and Notion (lib/notion-proxy.mjs).
   // Its far side is the stand-in, never real Notion, unless the suite pins the real workspace; on this Mac's store a dead port (the app has no business with Notion there).
   Object.assign(ctx, await contextNotionProxy({notionProxy, token, standIn, store}));

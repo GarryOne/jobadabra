@@ -8,8 +8,8 @@ import {upstreamCredentials} from './proxy-credentials.mjs';
 import {HUNG_REPORTS, markPlanted} from './planted.mjs';
 import {keyFingerprint} from './key-check.mjs';
 import {capMessage, capReached, noteCapped} from './ai-cap.mjs';
-import {askKey, count, countError, countReplay, keepAsk, keepMiss, recallAsk, usageOf} from './ai-meter.mjs';
-import {keepCandidateBody, message, storedAnswer} from './ai-answers.mjs';
+import {count, countError, usageOf} from './ai-meter.mjs';
+import {keepCandidateBody, message, refuseUnanswered, storedAnswer} from './ai-answers.mjs';
 import {streamOf as claudeStreamOf} from './broker-relay.mjs';
 // Why (#2450 slice 3): test/ai-answers.test.mjs and test/applycheck.test.mjs still import this shared wrapper here.
 export {message} from './ai-answers.mjs';
@@ -86,8 +86,9 @@ async function serveFault(control, fault, ready, res, openai) {
 // kind / metered: the tally a paid call goes to and which API path is a model call (Anthropic: /messages; OpenAI: /responses, kind 'app-openai').
 // follow: the Claude proxy of the same suite, whose controls (canned answers, fault mode, delay) this one obeys, so a suite's stand-ins and faults work on an OpenAI
 // turn too (9 Oct 2026: the first OpenAI run let every stand-in pass through to the real model). shape 'openai': the Responses API, translated both ways.
-/** Start the app's AI proxy with fault controls, stored answers and metered live fallback. */
-export async function startAiProxy({delayMs = 0, target = 'https://api.anthropic.com', kind = 'app', metered = /\/messages(\?|$)/, shape = 'anthropic', follow = null, maxCalls = 0, relay = null, credentials = {}} = {}) {   // maxCalls: the refill's per-row cap on paid calls (lib/refill.mjs): the next one is refused here, before Anthropic
+// live: an ask no stand-in or stored answer took goes on to the model (a live measurement suite, realAi = true, and the live row); off by default, so a new caller refuses it.
+/** Start the app's AI proxy with fault controls, stored answers and, only when `live`, a metered fallback to the model. */
+export async function startAiProxy({delayMs = 0, target = 'https://api.anthropic.com', kind = 'app', metered = /\/messages(\?|$)/, shape = 'anthropic', follow = null, maxCalls = 0, relay = null, credentials = {}, live = false} = {}) {   // maxCalls: the refill's per-row cap on paid calls (lib/refill.mjs): the next one is refused here, before Anthropic
   const stats = {calls: 0, delayMs, mode: 'pass', canned: 0, armed: 0, failed: 0, fault: faultScope('pass')};   // armed / failed: the runner's check that a step's fault fired (lib/faults.mjs)
   const pending = new Set();
   let canned = null;   // (request body as an object) -> the text a model would answer, or null to pass the call through to Anthropic
@@ -123,22 +124,21 @@ export async function startAiProxy({delayMs = 0, target = 'https://api.anthropic
       res.writeHead(503, {'content-type': 'application/json'});
       res.end(JSON.stringify({type: 'error', error: {type: 'api_error', code: error.code, message: error.message}})); return;
     }
-    // Replay (CI, lib/ai-meter.mjs): the same request answered before is answered from the cache, free; anything new is paid, counted, and kept for next time.
-    // Why (#2450; 1 Nov 2026, a8: the hash is askKey's, store ids renamed): only keyed misses can become review candidates; unkeyable asks must retain their free hash replays.
-    const body = Buffer.concat(chunks), ask = askKey(req.url, body), key = ask.key, kept = stored.mode === 'record' && !stored.question.unkeyable ? null : recallAsk(ask, req.url, body);
-    if (!kept) keepMiss(key, req.url, body, process.env, String(req.headers['x-jp-action'] || ''));   // what changed since a run replay could answer (lib/ai-meter.mjs keepMiss)
-    if (kept) {
-      countReplay(kind, usageOf(kept.body.toString('utf8'), kept.contentType));
-      res.writeHead(kept.status, {'content-type': kept.contentType, 'content-length': kept.body.length});
-      res.end(kept.body);
-      return;
+    // Why (2 Nov 2026, owner: "A: remove exact matching", then "I want the guardrail to be general, for any e2e or integrations"; wizard red in betas 16, 17, 18): an app's ask
+    // is answered by a stand-in or by its name (above), never by its exact text: every edit upstream of an ask changed that text. Past this point only a live measurement
+    // suite (realAi = true) or a record run asks a model; every other run is refused here, naming the ask and its step (test/ai/one-answer-rule.test.mjs).
+    const body = Buffer.concat(chunks);
+    if (!live && stored.mode !== 'record') {
+      const error = refuseUnanswered(stored, {url: req.url, headers: req.headers, body});
+      res.writeHead(503, {'content-type': 'application/json'});
+      res.end(JSON.stringify({type: 'error', error: {type: 'api_error', code: error.code, message: error.message}})); return;
     }
     if (relay && metered.test(req.url)) {   // the owner's Codex plan through the broker (lib/broker-relay.mjs); a refusal is an error answer, never another provider
       stats.paid = (stats.paid || 0) + 1;
       let answered;
       try { answered = await relay(JSON.parse(body.toString('utf8') || '{}')); }
       catch (error) { res.writeHead(502, {'content-type': 'application/json'}); res.end(JSON.stringify({type: 'error', error: {type: 'api_error', message: `relay: ${error.message}`}})); return; }   // Why (#2427, Gitar): a bad PDF or body is an answer, never a crashed proxy
-      if (answered.status === 200) { try { count(kind, usageOf(answered.counted, 'application/json')); } catch { /* counting never breaks the call */ } keepAsk(ask, {status: 200, contentType: answered.contentType, body: answered.body}); }
+      if (answered.status === 200) { try { count(kind, usageOf(answered.counted, 'application/json')); } catch { /* counting never breaks the call */ } }
       if (answered.status === 200) keepCandidateBody(stored, answered.body);
       res.writeHead(answered.status, {'content-type': answered.contentType, 'content-length': answered.body.length}); res.end(answered.body); return;
     }
@@ -154,7 +154,7 @@ export async function startAiProxy({delayMs = 0, target = 'https://api.anthropic
       const answer = await fetch(`${target}${req.url}`, {method: req.method, headers, body: ['GET', 'HEAD'].includes(req.method) ? undefined : body});
       const answered = Buffer.from(await answer.arrayBuffer()), contentType = answer.headers.get('content-type') || 'application/json';
       if (!answer.ok) { countError(answer.status, answered.toString('utf8')); describeRefusal(stats, answer, req, body); }   // Anthropic's own answer: which limit, which error (lib/ai-meter.mjs); the first few with the request's shape
-      if (answer.ok && metered.test(req.url)) { count(kind, usageOf(answered.toString('utf8'), contentType)); keepAsk(ask, {status: answer.status, contentType, body: answered}); }
+      if (answer.ok && metered.test(req.url)) { count(kind, usageOf(answered.toString('utf8'), contentType)); }
       if (answer.ok) keepCandidateBody(stored, answered);
       stats.inflight--;
       res.writeHead(answer.status, {'content-type': contentType, 'content-length': answered.length});

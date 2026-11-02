@@ -8,6 +8,7 @@ import {placeQuestion} from './ai-answers-place.mjs';
 import {engineQuestion, itemOperation, validateItemEntry} from './ai-answers-engine.mjs';
 import {canonical, hash, object} from './ai-answers-engine-items.mjs';
 import {promptOf} from './ai-answer-prompts.mjs';
+import {stepNow} from './step-now.mjs';
 
 /** Opening of desktop/lib/learnings.js INSTRUCTIONS: the only way to tell its header-less call (kind learn_from_form) apart. */
 export const LEARN_FORM_PREFIX = "A job-application form was just filled. You keep the applicant's learnings:";
@@ -185,7 +186,9 @@ function requestPreview(request) {
 export function refusal(suite, question, why, request) {
   const name = question?.unkeyable || (question?.operation ? `${question.operation}/${question.id}` : 'unknown: question identity is not in the request');
   const preview = why === 'is unkeyable' || !question?.operation ? `; request=${JSON.stringify(requestPreview(request))}` : '';
-  const error = new Error(`${suite}: ${name} ${why} (E2E_AI_ANSWERS=backbone): add it with a record run (E2E_AI_ANSWERS=record)${preview}`);
+  // Why (2 Nov 2026, owner: an unlabelled ask "fails loudly naming its step"): outside the e2e runner (integration, unit tests) no step is running and the wording is unchanged.
+  const step = stepNow() ? `: unlabelled AI request in step "${stepNow()}"` : '';
+  const error = new Error(`${suite}: ${name} ${why}${step} (E2E_AI_ANSWERS=backbone): add it with a record run (E2E_AI_ANSWERS=record)${preview}`);
   error.code = 'E2E_AI_ANSWER_MISSING';
   return error;
 }
@@ -262,19 +265,33 @@ export function storedAnswer(request, env = process.env) {
   const found = (question.unkeyable ? {} : answerFor(question, table)) || {};
   // Why (29 Oct 2026, ap): an explicit kind refusal is a stored answer, so it must stop before caches and live transports too.
   if (found.reply || found.refuse) return found;
-  // Why (29 Oct 2026, a8; owner approved the sketch): those 47 misses reached live AI in strict replay, so backbone misses must refuse before cache, relay, broker or CLI selection.
-  if (mode === 'backbone') {
-    // Why (#2450 slice 3): the registry must name the first missing item (or, for an unidentifiable request, its bounded preview), even when product code swallows the refusal.
-    const failure = found.unkeyable || found.missing;
-    const error = refusal(suiteOf(env), failure ? {...question, unkeyable: failure} : question, question.unkeyable || found.unkeyable || !found.missing ? 'is unkeyable' : 'has no stored answer', request);
-    const list = refusals.get(dir) || [];
-    list.push({code: error.code, message: error.message, question});
-    refusals.set(dir, list);
-    fs.mkdirSync(dir, {recursive: true});
-    fs.writeFileSync(path.join(dir, 'ai-answer-refusals.json'), JSON.stringify(list, null, 2));
-    throw error;
-  }
-  return {mode, question, dir: env.E2E_AI_CANDIDATES || dir, ...(mode === 'record' ? {request: candidateRequest(request)} : {})};
+  // Why (29 Oct 2026, a8; owner approved the sketch): those 47 misses reached live AI in strict replay, so backbone misses must refuse before cache, relay, broker or CLI selection;
+  // since 2 Nov 2026 (owner: "I want the guardrail to be general") the stand-in's refusal of any non-live run's miss shares this one refusal (refuseMissing, lib/ai-proxy.mjs).
+  if (mode === 'backbone') throw refuseMissing(question, found, request, env);
+  return {mode, question, found, dir: env.E2E_AI_CANDIDATES || dir, ...(mode === 'record' ? {request: candidateRequest(request)} : {})};
+}
+
+/** Name an ask nothing answered and record it, so the suite fails naming it even when product code swallows the refusal; returns the error to send. */
+function refuseMissing(question, found, request, env) {
+  const dir = artifactsOf(env);
+  // Why (#2450 slice 3): the registry must name the first missing item (or, for an unidentifiable request, its bounded preview), even when product code swallows the refusal.
+  const failure = found.unkeyable || found.missing;
+  const error = refusal(suiteOf(env), failure ? {...question, unkeyable: failure} : question, question.unkeyable || found.unkeyable || !found.missing ? 'is unkeyable' : 'has no stored answer', request);
+  const list = refusals.get(dir) || [];
+  list.push({code: error.code, message: error.message, question});
+  refusals.set(dir, list);
+  fs.mkdirSync(dir, {recursive: true});
+  fs.writeFileSync(path.join(dir, 'ai-answer-refusals.json'), JSON.stringify(list, null, 2));
+  return error;
+}
+
+/**
+ * Refuse an ask that no stand-in and no stored answer took, in a run that may not ask a model (lib/ai-proxy.mjs `live: false`): named and recorded like a
+ * stored-answer miss. Why (2 Nov 2026, owner: "I want the guardrail to be general, for any e2e or itnegrations"): before, such an ask was answered from the
+ * exact-text cache or a live model, and wizard went red in betas 16, 17 and 18 when an edit upstream changed its text.
+ */
+export function refuseUnanswered(stored, request, env = process.env) {
+  return refuseMissing(stored?.question || {unkeyable: 'unknown: question identity is not in the request'}, stored?.found || {}, request, env);
 }
 
 /** Keep a successful live reply only for a keyed record-mode miss, never a hash replay. */

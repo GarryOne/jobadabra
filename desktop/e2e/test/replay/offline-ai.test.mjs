@@ -137,7 +137,7 @@ test('settings declares offline AI and the harness wires its key path, proxies a
   assert.match(source('../../suites/settings.mjs'), /^export const offlineAi = true;/m);
   assert.match(source('../../suites/settings.mjs'), /^export const realAi = false;/m);
   assert.match(source('../../lib/context.mjs'), /await contextAiKeys\(\{offlineAi, light, family, engine\}\)/);
-  assert.match(source('../../lib/context.mjs'), /await contextAiProxies\(\{offlineAi, family\}\)/);
+  assert.match(source('../../lib/context.mjs'), /await contextAiProxies\(\{offlineAi, family, liveAi\}\)/);
   assert.match(source('../../lib/suite-main.mjs'), /offlineAi: !!suite\.offlineAi/);
   assert.match(source('../../lib/suite-main.mjs'), /await runAiGuards\(suite, ctx, runAlways\)/);
   assert.match(source('../../lib/no-real-ai.mjs'), /suite\.realAi === false\) await runAlways\('no AI call of this suite reached a real model:[\s\S]*?assertNoRealAi\(ctx\)[\s\S]*?critical: true/);

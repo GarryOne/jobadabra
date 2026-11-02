@@ -44,29 +44,30 @@ async function fakeAnthropic() {
   return {url: `http://127.0.0.1:${server.address().port}`, seen, close: () => new Promise(resolve => server.close(resolve))};
 }
 
-test('the proxy pays and keeps a new request, and with replay on answers the same request from the cache without calling the model', async t => {
+// Why (2 Nov 2026, owner: "A: remove exact matching"): this asserted the opposite (an app ask kept and replayed by its exact text); a live stand-in now pays every time.
+test('a live proxy pays and meters a new request, and with replay on asks the model again: an app ask is never kept or replayed by its text', async t => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ai-cache-')), upstream = await fakeAnthropic();
   const saved = {cache: process.env.E2E_AI_CACHE, replay: process.env.E2E_AI_REPLAY};
   t.after(async () => { await upstream.close(); process.env.E2E_AI_CACHE = saved.cache ?? ''; process.env.E2E_AI_REPLAY = saved.replay ?? ''; fs.rmSync(dir, {recursive: true, force: true}); });
   process.env.E2E_AI_CACHE = dir; process.env.E2E_AI_REPLAY = '';
   resetUsage();
-  const proxy = await startAiProxy({target: upstream.url});
+  const proxy = await startAiProxy({target: upstream.url, live: true});
+  t.after(() => proxy.close());
   const ask = () => fetch(`${proxy.url}/v1/messages`, {method: 'POST', headers: {'content-type': 'application/json'}, body: JSON.stringify({model: 'claude-haiku-4-5', messages: [{role: 'user', content: 'score this'}]})}).then(r => r.json());
   assert.equal((await ask()).content[0].text, 'ok');
   assert.equal(upstream.seen.calls, 1, 'the first call reached the model');   // positive control: the fake upstream was really used
   assert.equal(usage().app.calls, 1);
-  assert.equal(fs.readdirSync(dir).length, 1, 'the paid answer was kept');
+  assert.equal(fs.readdirSync(dir).length, 0, 'the paid answer is not kept by its text');
   process.env.E2E_AI_REPLAY = '1';
   assert.equal((await ask()).content[0].text, 'ok');
-  assert.equal(upstream.seen.calls, 1, 'the replayed call never reached the model');
-  assert.equal(usage().app.replayed, 1);
-  assert.ok(usage().app.saved > 1.49);
+  assert.equal(upstream.seen.calls, 2, 'replay on: the app\'s ask still reaches the model');
+  assert.equal(usage().app.replayed, 0);
   await proxy.close();
   const out = fs.mkdtempSync(path.join(os.tmpdir(), 'ai-usage-'));
   writeUsage(out);
   const written = JSON.parse(fs.readFileSync(path.join(out, 'ai-usage-app.json'), 'utf8'));
-  assert.equal(written.calls, 1);
-  assert.ok(Math.abs(written.usd - 1.5) < 1e-6);
+  assert.equal(written.calls, 2);
+  assert.ok(Math.abs(written.usd - 3) < 1e-6);
   assert.ok(!fs.existsSync(path.join(out, 'ai-usage-judges.json')), 'no judge calls, no judges file');
 });
 
@@ -172,7 +173,7 @@ test('a refused call is recorded with the API\'s status, type and message', asyn
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   t.after(() => new Promise(resolve => server.close(resolve)));
   reset();
-  const proxy = await startAiProxy({target: `http://127.0.0.1:${server.address().port}`});
+  const proxy = await startAiProxy({target: `http://127.0.0.1:${server.address().port}`, live: true});
   assert.equal((await fetch(`${proxy.url}/v1/messages`, {method: 'POST', body: '{}'})).status, 400);
   await proxy.close();
   assert.deepEqual(apiErrors(), {'400 invalid_request_error: You have reached your specified API usage limits.': 1});
@@ -223,7 +224,7 @@ test('OpenAI runs are metered too: usage plain and streamed, its own cached pric
   resetUsage();
   const server = http.createServer((req, res) => { req.resume(); req.on('end', () => { res.writeHead(200, {'content-type': 'application/json'}); res.end(JSON.stringify(answer)); }); });
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
-  const proxy = await startAiProxy({target: `http://127.0.0.1:${server.address().port}`, kind: 'app-openai', metered: /\/responses(\?|$)/});
+  const proxy = await startAiProxy({target: `http://127.0.0.1:${server.address().port}`, kind: 'app-openai', metered: /\/responses(\?|$)/, live: true});
   try {
     const reply = await fetch(`${proxy.url}/v1/responses`, {method: 'POST', headers: {'content-type': 'application/json'}, body: JSON.stringify({model: 'gpt-6-luna', input: 'hi'})});
     assert.equal(reply.status, 200);

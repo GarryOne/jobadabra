@@ -30,7 +30,7 @@ test('a proxy in a failure mode answers it without reaching the target, and pass
   let reached = 0;
   const target = http.createServer((req, res) => { reached++; res.writeHead(200, {'content-type': 'application/json'}); res.end('{"ok":true}'); });
   await new Promise(resolve => target.listen(0, '127.0.0.1', resolve));
-  const proxy = await startAiProxy({target: `http://127.0.0.1:${target.address().port}`});
+  const proxy = await startAiProxy({target: `http://127.0.0.1:${target.address().port}`, live: true});   // a live stand-in: an unanswered ask reaches the target
   try {
     proxy.setMode('rate-limit');
     const refused = await post(proxy.url);

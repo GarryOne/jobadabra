@@ -15,6 +15,7 @@ import {stepClock} from './wait-on-state.mjs';
 import {appPicture} from './window-shot.mjs';
 import {backboneSuite} from './hang-caps.mjs';
 import {turnedAway} from './ai-miss-name.mjs';
+import {setStep} from './step-now.mjs';
 
 // keepGoing (a suite's `export const keepGoing = true`): a failed step is recorded and the next one runs, so one failure never hides the rest of the suite
 // (5 Oct 2026: one outdated step hid fifteen, twice). A step marked `critical` (the setup the others need) still stops the suite.
@@ -143,6 +144,7 @@ export function createRunner(getSession, {suite = '', cadence = '', keepGoing = 
     const missing = needs.filter(item => !item.value);
     if (missing.length) { results.push({name, status: 'skipped'}); console.log(`- ${name}: skipped (needs ${missing.map(item => item.name).join(', ')})`); await report?.skipStep(name).catch(() => {}); return; }
     takeCapped();   // a cap refusal seen from here on belongs to this step
+    setStep(name);   // an AI ask refused from here on names this step (lib/ai-answers.mjs refusal)
     const started = Date.now(), before = faultTally?.();
     const unfired = () => faultCheck(before, faultTally?.(), {faults});
     let retried = '';

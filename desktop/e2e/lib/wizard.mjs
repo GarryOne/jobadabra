@@ -11,11 +11,15 @@ import {pollUntil, stepTimeLeft} from './wait-on-state.mjs';
 // The strategy the wizard builds from the CV is the fictional draft the demo shows. Why (2 Nov 2026, owner: "I think we agreed to move the variable things outside of e2e"): the stand-in matched
 // this ask by the request's full text and beta 16 hung 30 s on one miss; answered by its schema, no key can miss. What the app does with a real draft: integration/store/wizard-strategy-from-cv.test.mjs.
 const WIZARD_DRAFT = JSON.parse(fs.readFileSync(new URL('../../demo/draft.json', import.meta.url), 'utf8')).draft;
+// Why (2 Nov 2026, owner: "I want the guardrail to be general, for any e2e or itnegrations"): the CV's transcription (desktop/lib/cv.js transcribePdf) was answered
+// by its exact text from the replay cache; with that gone it is answered by its schema, with the fictional applicant's CV, already in that schema (run 41388540884).
+const CV_TRANSCRIPT = fs.readFileSync(new URL('../fixtures/cv.json', import.meta.url), 'utf8');
 
-// The CV-facts schema is the one background question newly reached when setup goes straight to Jobs.
-function setupBackgroundAnswer(body, previous) {
+/** Setup's own AI asks answered by their schema (the strategy draft, the CV's transcription); the CV-facts read is refused; anything else goes to `previous`. */
+export function setupBackgroundAnswer(body, previous) {
   const properties = body?.output_config?.format?.schema?.properties || {};
   if (properties.profile_markdown && properties.goals) return JSON.stringify(WIZARD_DRAFT);
+  if (properties.jobs && properties.education && properties.links) return CV_TRANSCRIPT;
   const how = properties.facts?.items?.properties?.how?.enum || [];
   // Why (31 Oct 2026, #2659): cv_queue has a declared invalid-key fixture; never send this optional background read to a live relay.
   if (Object.keys(properties).length === 1 && how.includes('stated') && how.includes('inferred')) return {refuse: 'invalid-key'};

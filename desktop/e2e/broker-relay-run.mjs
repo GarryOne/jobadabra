@@ -1,5 +1,5 @@
 // Runs a command whose AI calls go through the Codex broker, with the relay (lib/broker-relay-serve.mjs) on 127.0.0.1 in front of it, and says out loud when any AI call failed.
-//   node broker-relay-run.mjs --job central-scout --cap 40 -- python -m src scout --publish-index      (.github/workflows/central-scout.yml)
+//   node broker-relay-run.mjs --job central-scout --cap 40 -- python -m src scout --publish-index      (jobadabra-lab's .github/workflows/central-scout.yml)
 // Why (31 Oct 2026, owner: "We should use fully the Codex"; coordinator: "the silent green is a bug in its own right"): central-scout run 41192760002 ended `success` with 1,417 logged AI failures
 // (the Anthropic workspace's usage limit, HTTP 400) and 1,552 "regain access on 2026-11-01" lines: nobody saw that the day's judgments were skipped. Every AI call of the command passes through the
 // relay, so the relay's counts are the truth: any failed call becomes an "AI skipped/failed" annotation, ai-capped.json for the ONE alert of the run, and skipped=true for the steps after.

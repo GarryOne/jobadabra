@@ -10,18 +10,25 @@ import sys
 import zipfile
 
 
+def annotation(why):
+    """The one line GitHub shows on the job for a blocked upload: names and file names only, never a value; % and line breaks escaped so it stays one line.
+    Why (2 Nov 2026, owner on beta 18: "why the errors are not more descriptive, but saying only: "Process completed with exit code 1." ?" → "Keep failing, say why")."""
+    return '::error title=Artifact upload blocked::' + why.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
+
+
 def secret_values(env):
     """Read named credentials in memory; unresolved names fail, short values are named and skipped."""
     if 'E2E_ARTIFACT_SECRET_NAMES' not in env:
-        raise ValueError()
+        print(annotation('E2E_ARTIFACT_SECRET_NAMES is not set in this step, so the credentials to look for are unknown: nothing is uploaded'))
+        return None
     names = {name.strip() for name in env['E2E_ARTIFACT_SECRET_NAMES'].splitlines() if name.strip()}
     if any(not re.fullmatch(r'[A-Za-z_][A-Za-z0-9_]*', name) for name in names):
-        raise ValueError()
+        print(annotation('E2E_ARTIFACT_SECRET_NAMES holds a line that is not a variable name: nothing is uploaded'))
+        return None
     # Why (31 Oct 2026, owner): a partial credential scan must never permit an upload.
     missing = sorted(name for name in names if not env.get(name))
-    for name in missing:
-        print(name)
     if missing:
+        print(annotation(f'{", ".join(missing)} had no value in this job (the step that sets it failed or did not run), so a scan would be partial: nothing is uploaded'))
         return None
     for name in sorted(names):
         if len(env[name]) < 8:
@@ -38,6 +45,7 @@ class Scanner:
         self.overlap = max((len(needle) for _, needle in self.needles), default=1) - 1
         self.failed = False
         self.files = 0
+        self.blocking = []   # 'NAME in file' for each fatal finding, for the annotation
 
     def report(self, name, location, *, fatal=True):
         """Never let a credential in a filename or exception escape through the diagnostic itself."""
@@ -47,6 +55,7 @@ class Scanner:
         print(f'{name}{separator}{json.dumps(location, ensure_ascii=True)}')
         if fatal:
             self.failed = True
+            self.blocking.append(f'{name} in {location}')
 
     def scan(self, stream, location, zipped=False, depth=0):
         """Read complete streams in bounded chunks and recursively inspect every ZIP entry."""
@@ -117,14 +126,18 @@ def main():
         scanner = Scanner(values)
         patterns = sys.argv[1:] or os.environ.get('E2E_ARTIFACT_PATHS', '').splitlines()
         if not patterns:
-            raise ValueError()
+            print(annotation('no artifact paths to scan were given (E2E_ARTIFACT_PATHS is empty): nothing is uploaded'))
+            return 1
         scanner.paths(patterns)
         if scanner.failed:
+            shown = scanner.blocking[:3] + ([f'{len(scanner.blocking) - 3} more in the step log'] if len(scanner.blocking) > 3 else [])
+            print(annotation(f'a credential value, or a file that could not be read or removed: {"; ".join(shown)}. Nothing is uploaded'))
             return 1
         print(f'Artifact secret scan clean: {scanner.files} file(s)')
         return 0
-    except Exception:
+    except Exception as error:
         print('SCAN_ERROR: artifact inspection failed; upload blocked')
+        print(annotation(f'artifact inspection failed ({type(error).__name__}): nothing is uploaded'))   # the type only: a message may quote file content
         return 1
 
 

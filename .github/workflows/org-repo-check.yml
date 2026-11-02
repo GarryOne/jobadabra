@@ -1,0 +1,30 @@
+name: CI · Org repos on the shared setup (weekly, report only)
+# Weekly (owner, 2 Nov 2026: "One script + weekly check"): compares every repo of the org with templates/org-repo/ (tools/org-repo.sh check) and keeps ONE issue open while any repo
+# drifts, closed when none does. Started by the jobadabra-web Worker timer (a GitHub cron is not reliable, jobadabra-web scheduler.js), or by hand. Report only: it changes no repo.
+# Needs the secret ORG_REPO_CHECK_TOKEN: an org-owned fine-grained token (resource owner jobadabra, all repositories) with Administration: read (settings, rulesets), Contents: read and
+# Issues: write on this repo.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Org repos check
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          sparse-checkout: |
+            tools/org-repo.sh
+            tools/org_repo.py
+            templates/org-repo
+          sparse-checkout-cone-mode: false
+      - name: Compare every repo with the templates
+        env:
+          GH_TOKEN: ${{ secrets.ORG_REPO_CHECK_TOKEN }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then echo "::error::ORG_REPO_CHECK_TOKEN is not set in this repo"; exit 1; fi
+          sh tools/org-repo.sh check --issue

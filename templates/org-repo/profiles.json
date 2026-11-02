@@ -1,0 +1,7 @@
+{
+  "_why": "Which template files a repo gets (owner, 2 Nov 2026: the same workflow on all repos). jobadabra is the source of the label scripts and has its own pr-gate; web has its own tests job named All checks passed and its own body check. Every other repo gets all three.",
+  "default": ["pr-checks.yml", "gitar-label.yml", "conflict-label.yml"],
+  "jobadabra": [],
+  "jobadabra-web": ["gitar-label.yml", "conflict-label.yml"],
+  "exclude": []
+}

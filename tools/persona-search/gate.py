@@ -264,9 +264,10 @@ def row_verdict(row):
 
 
 def _nothing(run):
-    """True when every persona's row is 'nothing' (no job scored on all six): this run measured nothing, so it is no main history."""
+    """True when every persona's judge saw 0 jobs (explicit found == 0): this run measured nothing, so it is no main history. It is the judge's count, never the press's
+    `scored`: a press cut before scoring can leave jobs the judge still graded, and that run is a measurement (Gitar on #2974)."""
     rows = [run.get(n) for n in range(1, len(PERSONAS) + 1)]
-    return all(r is not None and not r.get('error') and not r.get('not_measured') and read_of(r) == 0 for r in rows)   # the count alone: a fault in a zero run does not make it measured
+    return all(r is not None and not r.get('error') and not r.get('not_measured') and type(r.get('found')) is int and r['found'] == 0 for r in rows)   # the count alone: a fault in a zero run does not make it measured
 
 
 def _total(run):
@@ -301,7 +302,7 @@ def grey_head(rows, pr):
     on the engine CI uses (cause: each Codex relay call takes 13-17 s, #2635) this is grey, not red: a red here would block every search PR and main push.
     TODO(AI): back to red once found > 0 on the Claude engine (#2901)"""
     kinds = [r['kind'] for r in rows]
-    if all(k == 'nothing' for k in kinds):   # no press scored a job: the first line names the cause (the refused AI) instead of a table of zeros
+    if _nothing(pr):   # every judge saw 0 jobs: the first line names the cause (the refused AI) instead of a table of zeros
         reason = next((r.get('unavailable') for r in (pr.get(n) or {} for n in range(1, len(PERSONAS) + 1)) if r.get('unavailable')), '')
         if reason:
             return f"⚪ {'web search' if 'search' in reason else 'AI'} unavailable: {reason}; no press read a job (not a pass)", reason

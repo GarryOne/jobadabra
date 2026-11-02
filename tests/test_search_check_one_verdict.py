@@ -76,6 +76,10 @@ class TheRowsAndTheOverallLineAgree(unittest.TestCase):
         self.assertTrue(gate.compare(PR_2969, [])['head'].startswith('⚪ no right job on any of the six'))
         zero_but_slow = {n: row(n, 190, 0, 0) for n in range(1, 7)}
         self.assertTrue(gate._nothing(zero_but_slow))
+        cut_but_judged = {n: row(n, 178, 0, 5) for n in range(1, 7)}   # Gitar on #2974: presses scored 0, the judges still graded 5 jobs each: a measurement
+        self.assertFalse(gate._nothing(cut_but_judged))
+        self.assertEqual(gate._total(cut_but_judged), 0)
+        self.assertNotIn('judges saw 0 jobs', gate.compare(cut_but_judged, [])['head'])
         self.assertEqual(gate.row_verdict({**row(1, 150, 0, 5), 'scored': None})[2], 'none-right', 'found 5 and no scored count: unknown, not "no job scored"')
         self.assertIn(CUT, gate.row_verdict(row(1, 190, 0, 0, cut=CUT))[1])
 

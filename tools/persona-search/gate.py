@@ -25,6 +25,9 @@ QUALITY_SPREADS = 2
 # Why (1 Nov 2026, #2901): main's last runs judged 0 jobs on all six personas (the press ran out of its 180 s before reading one), so "average minus two spreads" fell to -1.6..-6.3 and no total could be below it:
 # a search that finds nothing stayed green. A floor below one right job is no floor; a run whose six judges saw no job at all measured nothing (see _nothing).
 QUALITY_FLOOR_MIN = 1
+# Why (2 Nov 2026, owner: "Ship speed fix, fix the gate"; #2928): the floor of 1 above was red on a total of 0 although main's own last three totals were 7, 5 and 0:
+# a PR was held to a higher bar than main itself reached (owner, 28 Oct 2026: "a PR is red only when its diff broke it"). The floor never rises above the lowest total
+# of main's measured runs; while main's lowest is 1 or more, the floor of 1 above still holds, so a search that finds nothing is red on a healthy main.
 PERSONA_CAP_USD = 0.10   # Why (30 Oct 2026, owner; supersedes 27 Oct): Codex runs report $0 API charge; this cap only guards legacy API-key measurements (#2259: $0.045-0.079).
 COST = 'Codex subscription (ChatGPT plan; no API charge)'
 
@@ -155,14 +158,17 @@ def _total(run):
 
 def quality(pr, main_runs):
     """-> {mode: 'shown'|'gated', measured, total, floor, red}. 'shown' below QUALITY_MIN_RUNS measured main runs (a run that measured all six personas);
-    then the newest QUALITY_MIN_RUNS of them give mean and sample spread, and the PR is red below mean - QUALITY_SPREADS x spread."""
+    then the newest QUALITY_MIN_RUNS of them give mean and sample spread, and the PR is red below mean - QUALITY_SPREADS x spread, at least 1 and
+    at most the lowest of those totals (a PR is not held to more than main reached)."""
     import statistics
     totals = [t for t in (_total(run) for run in main_runs) if t is not None][:QUALITY_MIN_RUNS]
     total = _total(pr)
     if len(totals) < QUALITY_MIN_RUNS:
         return {'mode': 'shown', 'measured': len(totals), 'total': total, 'floor': None, 'red': False}
-    floor = max(statistics.mean(totals) - QUALITY_SPREADS * statistics.stdev(totals), QUALITY_FLOOR_MIN)
-    return {'mode': 'gated', 'measured': len(totals), 'total': total, 'floor': round(floor, 1), 'red': total is not None and total < floor}
+    spread_floor = max(statistics.mean(totals) - QUALITY_SPREADS * statistics.stdev(totals), QUALITY_FLOOR_MIN)
+    floor = min(spread_floor, min(totals))
+    return {'mode': 'gated', 'measured': len(totals), 'total': total, 'floor': round(floor, 1), 'red': total is not None and total < floor,
+            'basis': "main's lowest" if floor < spread_floor else f"main's average minus {QUALITY_SPREADS} spreads"}
 
 
 def compare(pr, main_runs):
@@ -191,7 +197,7 @@ def compare(pr, main_runs):
     for row in rows:
         row['measured_nothing'] = nothing   # the table marks every row grey then: a run that is not a pass has no green row (gitar on #2917)
     head += ' · ' + (f"quality: shown, gate starts at {QUALITY_MIN_RUNS} measured main runs, {quality_['measured']} so far" if quality_['mode'] == 'shown' else
-                     f"quality: gated at total {quality_['floor']} (main's average minus {QUALITY_SPREADS} spreads over {quality_['measured']} runs)")
+                     f"quality: gated at total {quality_['floor']} ({quality_['basis']} over {quality_['measured']} runs)")
     return {'state': state, 'head': head, 'rows': rows, 'main_runs': len(main_runs), 'quality': quality_}
 
 
@@ -206,7 +212,7 @@ def table(verdict):
         cell = lambda v, unit='': '—' if v is None else f'{v}{unit}'   # noqa: E731
         lines.append(f"| {r['label']} | {main} | {cell(r['local'])} | {cell(r['found'])} | {cell(r['seconds'], ' s')} | {'—' if r['usd'] is None else '$%.3f' % r['usd']} | {mark} |")
     lines += ['', '<sub>This PR / Main = jobs a blind judge (Codex small tier) called right role AND right place, of the jobs found; one press each, '
-              'a fresh install. Red: a press over 180 s, or (from 10 measured main runs) the six-persona total below main\'s average minus twice its spread, never below 1. Grey: all six judges saw 0 jobs (measured nothing, not a pass).</sub>']
+              'a fresh install. Red: a press over 180 s, or (from 10 measured main runs) the six-persona total below main\'s average minus twice its spread (never below 1, never above main\'s lowest of those runs). Grey: all six judges saw 0 jobs (measured nothing, not a pass).</sub>']
     return '\n'.join(lines) + '\n'
 
 

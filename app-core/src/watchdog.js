@@ -78,7 +78,7 @@ export function issueBody(missing, {checked, runUrl = ''} = {}) {
     ...(starts.length ? ["GitHub's own schedule still starts them, late or not at all (it skipped 4 of 6 stats runs on 5-6 Oct). What to check:",
     '- the site Worker\'s secrets (www, in jobadabra-web): `cd workers/www && npx wrangler secret list` (TIMERS_GITHUB_TOKEN), and the vars TIMERS=on and TIMERS_REPO in its wrangler.toml',
     "- a refused start is commented here by the Worker itself, with GitHub's answer",
-    '- the schedule: `app-core/src/scheduler.js` (the rules) and `workers/www/wrangler.toml` [triggers] in jobadabra-web (the 47 trigger and the every-5-minutes one)', ''] : []),
+    '- the schedule: `app-core/src/scheduler.js` (the rules) and `workers/www/wrangler.toml` [triggers] in jobadabra-web (the `47 21,23,1 * * *` trigger, and the `*/5 * * * *` tick that stands for the rules\' other crons through `shared/timers.js`)', ''] : []),
     `<sub>Kept by \`.github/workflows/schedule-watchdog.yml\` (\`app-core/src/watchdog.js\`): updated each hour while a start is missing, closed when every one is seen again.</sub>`,
     `<!-- watchdog-missing: ${keyOf(missing)} -->`].join('\n');
 }

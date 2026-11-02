@@ -1,5 +1,5 @@
 // The product brain's AI step on the owner's Codex plan (the broker), in place of claude-code-action: reads the signals, the website screenshots and the README, asks once, writes the file the step after it posts.
-//   node brain-codex.mjs --step brief|another|review|explore     (.github/workflows/product-brain.yml; the private prompts come from BRAIN_PROMPT_BRIEF, _REVIEW and _EXPLORE)
+//   node brain-codex.mjs --step brief|another|review|explore     (jobadabra-lab's .github/workflows/product-brain.yml; the private prompts come from BRAIN_PROMPT_BRIEF, _REVIEW and _EXPLORE)
 // Why (29 Oct 2026, owner: CI AI on his Codex plan; "Product brain is failing" every morning since 22 Oct, "Credit balance is too low"): one Messages call through lib/broker-client.mjs, no tools, no web search
 // (the broker's model has no shell: the signals and README are put in the prompt). brief/another/review write .brain/brief.json (the keys tools/product_brain.py post wants), explore writes .brain/plan.md.
 // Why (31 Oct 2026, owner: "We should use fully the Codex"): the BRAIN_AI=claude path (claude-code-action on an Anthropic key) is gone; a refused call skips the day with its reason (lib/broker-job.mjs) instead of failing red.

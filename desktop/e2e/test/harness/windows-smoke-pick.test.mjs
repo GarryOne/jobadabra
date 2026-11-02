@@ -26,7 +26,7 @@ test('what the Windows run runs starts the check: its workflow, the actions and 
 test('the real tree: the audited PRs start the Windows check only when they change what Windows runs', () => {
   const ci = windowsCiText(read);
   assert.ok(ci.files.includes('.github/actions/free-ai-relay/action.yml'), 'positive control: #1997 broke Windows through the relay action');
-  for (const file of ['.github/workflows/central-scout.yml', 'tools/ship.sh', '.github/workflows/main-steps.yml', 'tools/pr-verdict.py']) assert.equal(windowsSmoke([file], ci), false, `${file} (#2073/#2088, #2090, #2070)`);
+  for (const file of ['tools/ship.sh', '.github/workflows/main-steps.yml', 'tools/pr-verdict.py']) assert.equal(windowsSmoke([file], ci), false, `${file} (#2073/#2088, #2090, #2070)`);
   for (const file of ['.github/workflows/e2e-windows.yml', 'tools/e2e-lock.sh', '.github/actions/free-ai-relay/action.yml']) assert.equal(windowsSmoke([file], ci), true, file);
 });
 

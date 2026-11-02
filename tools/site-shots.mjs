@@ -1,4 +1,4 @@
-// The website as visitors see it, for the product brain (.github/workflows/product-brain.yml): a desktop and a
+// The website as visitors see it, for the product brain (jobadabra-lab's .github/workflows/product-brain.yml): a desktop and a
 // phone screenshot of the landing page (in slices), with the scroll-in animations shown, into .brain/. Needs `playwright`.
 import {chromium} from 'playwright';
 import {mkdirSync} from 'node:fs';

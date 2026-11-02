@@ -1,7 +1,7 @@
 """Source scout, title kinds counted elsewhere: the job titles of the whole index judged by kind of role on the owner's Mac through his Claude plan
 (tools/recount_title_kinds.py; owner, 26 Oct 2026: "do that from local, to rely on subscription. not costs"), loaded into the scout's kept
 decisions once a run, so its capped AI calls go to new titles only and every mix counts with the 19 kinds at once.
-The file comes from the private repo (central-scout.yml: SCOUT_TITLE_KINDS=ops/config/title_kinds.json.gz); none there: nothing changes.
+The file comes from the private repo (jobadabra-lab's central-scout.yml: SCOUT_TITLE_KINDS=ops/config/title_kinds.json.gz); none there: nothing changes.
 Tests: tests/test_recount_title_kinds.py."""
 import gzip
 import json

@@ -158,7 +158,7 @@ from .employer_index import OUTCOMES   # noqa: E402 (kept beside its comment)
 # Keys of employers some install found with no readable job site lately (the central scout reads them before its run; an install reads the
 # downloaded employer index instead), so the central scout does not probe what installs already tried.
 SHARED_DEAD = set()
-# The central scout's time for names and checks, so it always publishes inside its 75-minute job (central-scout.yml): 20 Oct 2026, 2 of 4 runs
+# The central scout's time for names and checks, so it always publishes inside its 75-minute job (jobadabra-lab's central-scout.yml): 20 Oct 2026, 2 of 4 runs
 # were cancelled checking 500 hospital and school sites (slower than job-system boards) and published nothing. Publishing takes ~15 minutes.
 CENTRAL_BUDGET_S = 8 * 60   # names and employer checks; the whole job is up to 30 minutes (owner, 24 Oct 2026; 15-20 on 23 Oct)
 VERIFY_BUDGET_S = 12 * 60    # then the feeds' verification: what it does not reach is carried over (src/scout_carry.py)

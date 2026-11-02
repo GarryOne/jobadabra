@@ -1,4 +1,4 @@
-"""The product brain's plumbing (.github/workflows/product-brain.yml): Claude decides, this script reads and writes.
+"""The product brain's plumbing (jobadabra-lab's .github/workflows/product-brain.yml): Claude decides, this script reads and writes.
 
   signals  --out signals.md      what the brief reads: website + app numbers (/api/signals), GitHub (issues, failing
                                  workflows, releases, commits), and the brain's own past decisions (Notion)

@@ -17,10 +17,7 @@ DEPLOY_MARK = re.compile(r'wrangler|docker (build|buildx)|docker/build-push|CLOU
 
 # Left to move, with the PR that removes the entry (spec "Plan").
 ALLOWED_FOLDERS = {}
-ALLOWED_WORKFLOWS = {
-    'central-scout.yml': 'PR 6: jobadabra-lab',
-    'product-brain.yml': 'PR 6: jobadabra-lab',
-}
+ALLOWED_WORKFLOWS = {}
 
 
 def tracked():

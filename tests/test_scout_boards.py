@@ -109,11 +109,6 @@ class BoardPassTest(unittest.TestCase):
         self.assertIn('Board pass: Moldova: 2 boards proposed, 1 with 3+ local jobs; listed/local: a.md 5/4, b.md 0/0', out[-1])
         self.assertIn('md', scout_cells._meta(self.db, 'boards_aimed', []))   # it counts as done: the rotation moves on
 
-    def test_the_workflow_passes_the_country_input_to_the_scout(self):
-        from pathlib import Path
-        flow = (Path(__file__).resolve().parents[1] / '.github/workflows/central-scout.yml').read_text()
-        self.assertIn('country: {description', flow)
-        self.assertIn('SCOUT_BOARD_COUNTRY: ${{ inputs.country }}', flow)
 
 
 class RealBoardIdeasTest(unittest.TestCase):

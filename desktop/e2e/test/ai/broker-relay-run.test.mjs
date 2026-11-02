@@ -101,12 +101,3 @@ test('a run whose calls all answer says nothing is skipped and leaves no note', 
   assert.equal(fs.existsSync(path.join(dir, 'out')), false);
   assert.equal(outcomeOf({calls: 1, ok: 1, refused: 0, capHit: 0, latched: '', reasons: []}, 'x').why, '');
 });
-
-test('the scout step holds no Anthropic secret and no address off this machine; its AI runs behind the relay on the 40-call cap', () => {
-  const text = fs.readFileSync(new URL('../../../../.github/workflows/central-scout.yml', import.meta.url), 'utf8').replace(/^\s*#.*$/gm, '').replace(/\s#.*$/gm, '');
-  assert.doesNotMatch(text, /ANTHROPIC|anthropic/, 'no key, no base URL');
-  assert.match(text, /id-token: write/);
-  assert.match(text, /CENTRAL_AI_CAP: '40'/);
-  assert.match(text, /broker-relay-run\.mjs --job central-scout --cap "\$CENTRAL_AI_CAP" -- python -m src scout/);
-  assert.match(text, /steps\.scout\.outputs\.skipped == 'true'/);
-});

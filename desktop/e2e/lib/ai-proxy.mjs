@@ -108,16 +108,7 @@ export async function startAiProxy({delayMs = 0, target = 'https://api.anthropic
       if (text != null) {
         stats.canned++;
         if (follow) follow.stats.canned++;
-        if (openai && asked.stream) {   // the app's streamed calls (lib/ai/openai-api.js stream): the same answer as server-sent events
-          res.writeHead(200, {'content-type': 'text/event-stream'});
-          res.end(streamOf(text));
-          return;
-        }
-        if (!openai && asked.stream) {   // a streamed Claude ask (the app's messages.stream) reads chunks: the same answer as server-sent events, as the replay of a recorded stream is
-          res.writeHead(200, {'content-type': 'text/event-stream'});
-          res.end(claudeStreamOf(text, asked.model || 'e2e-canned', {input_tokens: 1, output_tokens: 1}));
-          return;
-        }
+        if (asked.stream) { sendEvents(res, streamedAnswer(text, openai, asked.model)); return; }   // the app's streamed calls (OpenAI: lib/ai/openai-api.js stream; Claude: messages.stream) read chunks, as the replay of a recorded stream gives them
         const body = Buffer.from(JSON.stringify(openai ? responseOf(text) : message(text)));
         res.writeHead(200, {'content-type': 'application/json', 'content-length': body.length});
         res.end(body);
@@ -202,11 +193,15 @@ function sendStored(res, stored, openai, requestBody, stats) {
   const {reply} = stored, stream = JSON.parse(requestBody).stream;
   const text = reply.output_text ?? (reply.content || (reply.output || []).flatMap(item => item.content || [])).map(part => part.text || '').join('');
   const data = openai ? (reply.object === 'response' ? reply : responseOf(text)) : (reply.object === 'response' ? message(text) : reply);
-  const body = stream ? (openai ? streamOf(text) : claudeStreamOf(text, data.model || 'e2e-canned', {input_tokens: 1, output_tokens: 1})) : JSON.stringify(data);
-  res.writeHead(200, {'content-type': stream ? 'text/event-stream' : 'application/json'});
-  res.end(body);
+  if (stream) { sendEvents(res, streamedAnswer(text, openai, data.model)); return true; }
+  res.writeHead(200, {'content-type': 'application/json'});
+  res.end(JSON.stringify(data));
   return true;
 }
+
+/** The answer text as the events a streamed ask reads: the OpenAI response events, or the Claude Messages stream (one text delta). */
+const streamedAnswer = (text, openai, model) => (openai ? streamOf(text) : claudeStreamOf(text, model || 'e2e-canned', {input_tokens: 1, output_tokens: 1}));
+function sendEvents(res, events) { res.writeHead(200, {'content-type': 'text/event-stream'}); res.end(events); }
 
 // 18 Oct 2026 (strategy): every app call was refused "credit balance is too low" while the key, the balance and a preflight call were fine, and the log showed no more than that.
 // The first three refusals of a proxy print what the request was (never the key or the prompt): the API's request-id, model, max_tokens, input size, how many calls were in flight,

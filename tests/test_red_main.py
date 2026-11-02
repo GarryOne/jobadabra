@@ -33,6 +33,8 @@ CLASSIFIED = {
     'CI · Gitar label': 'ignored: Gitar comment, review and pull_request_target events only; sets PR labels, never runs on a push to main',
     # Why (2 Nov 2026, owner: "the same workflow on all repos"): the shared PR-description check other org repos call (workflow_call); it never runs on this repo's main.
     'CI · PR description (reusable)': 'ignored: workflow_call only, run for another repo\'s pull request; checks that PR\'s description, never runs on a push to main',
+    # Why (2 Nov 2026, owner: "One script + weekly check"): the weekly org-setup check is report only (one issue), started by the Worker timer or by hand, never a push or PR check.
+    'CI · Org repos on the shared setup (weekly, report only)': 'ignored: weekly report of org repos that drift from templates/org-repo; keeps one issue, never runs on a push to main',
     'CI · Conflict label': 'ignored: runs on a push to main, but only labels the open PRs that conflict; it tests nothing, so its result says nothing about main',
     'CI · Cancel the runs of a closed PR': 'ignored: pull_request_target on close; cancels the closed PR\'s own runs, never runs on main',
     'CI · Prompt cases (Haiku re-ask)': 'ignored: by hand only (paid Haiku calls); compares the selected ref with main, never a push check',

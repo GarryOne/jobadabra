@@ -235,19 +235,32 @@ class DesktopWorkflowTest(unittest.TestCase):
         self.assertEqual(len(re.findall(r'(?m)^  [a-z-]+-offer:$', WORKFLOW)), 2)
 
     def test_a_planned_gate_that_was_skipped_after_a_green_build_fails_the_run(self):
-        job = WORKFLOW.split('\n  gate-ran:\n')[1].split('\n  prune:\n')[0]
+        job = WORKFLOW.split('\n  prune:\n')[1]
         self.assertIn("needs.test-mac.result == 'skipped'", job)
         self.assertIn("needs.test-windows.result == 'skipped'", job)
         self.assertIn('exit 1', job)
 
+    def test_gate_ran_is_no_box_of_the_graph_only_steps_of_the_last_job(self):
+        # Owner, 2 Nov 2026: "let's remove the box": the checks stay, as steps of the last job; no grey box on a good run.
+        self.assertNotIn('\n  gate-ran:\n', WORKFLOW)
+        self.assertNotIn('name: Gate ran?', WORKFLOW)
+        prune = WORKFLOW.split('\n  prune:\n')[1]
+        self.assertIn('tools/beta_lane_gate.py --mac', prune)
+        self.assertLess(prune.index('Tell the owner on Telegram that a beta was released'), prune.index('Fail the run, the E2E gate did not run'), 'the cleanup and the alerts run before the failing steps')
+
     def test_a_gate_that_planned_zero_suites_also_fails_the_run(self):
-        job = WORKFLOW.split('\n  gate-ran:\n')[1].split('\n  prune:\n')[0]
-        self.assertNotIn("count != '0'", job.split('steps:')[0], 'a zero-suite plan skips test-mac, which is the failure this job exists for')
+        # The checks are steps of prune now (2 Nov 2026), so the conditions to read are the two step-level `if:` lines, not the job header.
+        prune = WORKFLOW.split('\n  prune:\n')[1]
+        gate = prune[prune.index('name: A build failed, the beta is not released'):]
+        conditions = re.findall(r'(?m)^        if: (.+)$', gate)
+        self.assertEqual(len(conditions), 2)  # the two checks (the ledger end writes its `if:` after a dash)
+        for condition in conditions:
+            self.assertNotIn("count != '0'", condition, 'a zero-suite plan skips test-mac, which is the failure this check exists for')
 
     def test_no_lane_waits_for_an_ai_key_check(self):
         # Why-changed (1 Nov 2026, a8; owner: "take the AI out of the beta, in two steps"; beta #7, run 41333086670: 0 live AI calls in the 7 relay suites): this asserted every lane waits for
         # the one "AI key ready?" job. The beta no longer has it; a refused token fails each relay suite by name (tests/test_ci_free_ai.py), and the night runs keep their preflight.
-        for lane in ('test-mac', 'test-windows', 'gate-ran'):
+        for lane in ('test-mac', 'test-windows'):
             job = WORKFLOW.split(f'\n  {lane}:\n')[1].split('\n    runs-on')[0]
             self.assertNotIn('ai-ready', job, f'{lane}: the beta has no AI key check job any more')
         self.assertNotIn('\n  ai-ready:\n', WORKFLOW)

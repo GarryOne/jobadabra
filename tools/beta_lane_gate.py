@@ -1,8 +1,8 @@
 """A beta never releases one lane alone: if either build failed, say which lane and which step, and fail the job.
 
 Why (31 Oct 2026, a8; beta 41226261602, owner: a failed build in either lane must block the beta loudly): `Build · Mac` failed at its last step (the release upload), so its
-E2E matrix, `Gate ran?` and `Release · Mac beta` were all skipped with no word, and `Release · Windows beta` ran alone and failed with "an E2E suite failed", a reason that
-was not true. The release jobs and `Gate ran?` call this first:
+E2E matrix, the gate check of the last job and `Release · Mac beta` were all skipped with no word, and `Release · Windows beta` ran alone and failed with "an E2E suite failed", a reason that
+was not true. The release jobs and the gate check of the last job call this first:
 
     python3 tools/beta_lane_gate.py --mac "${{ needs.build.result }}" --windows "${{ needs.windows.result }}"
 

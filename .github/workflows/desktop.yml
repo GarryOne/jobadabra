@@ -238,7 +238,8 @@ jobs:
         run: |
           tag="desktop-v${{ steps.version.outputs.version }}"
           remote=origin; [ -z "$APP_TOKEN" ] || remote="https://x-access-token:${APP_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
-          if git push -q "$remote" "$GITHUB_SHA:refs/tags/$tag"; then echo "Tagged $tag at ${GITHUB_SHA::7}"
+          # Why (1 Nov 2026, Gitar on #2933): checkout persists the run's github.token as an extraheader that git sends before it looks at the credentials in the URL, so without the empty -c the App token is never used.
+          if git -c http.https://github.com/.extraheader= push -q "$remote" "$GITHUB_SHA:refs/tags/$tag"; then echo "Tagged $tag at ${GITHUB_SHA::7}"
           else echo "::warning::Could not tag $tag at the start: the Release step tags it (and rebuilds main if workflows changed meanwhile)."; fi
       - name: Release
         if: steps.diff.outputs.build == 'true' && steps.redmain.outputs.red != 'true'

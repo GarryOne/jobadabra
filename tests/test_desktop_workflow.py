@@ -202,6 +202,7 @@ class DesktopWorkflowTest(unittest.TestCase):
         self.assertIn('permission-workflows: write', changes)
         self.assertIn('id: tag_app', changes)
         self.assertIn('APP_TOKEN: ${{ steps.tag_app.outputs.token }}', changes)
+        self.assertIn('git -c http.https://github.com/.extraheader= push -q "$remote"', changes)   # Gitar on #2933: the persisted github.token header would win over the App token in the URL
         self.assertIn('GH_TOKEN: ${{ steps.tag_app.outputs.token || github.token }}', changes)
         self.assertNotIn('refs/heads/beta-pick', WORKFLOW)
         # Gitar on #2883: a cache saved on a branch is restored only by that branch and its children, so the quality-rate history save stays main-only.

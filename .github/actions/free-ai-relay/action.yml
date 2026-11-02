@@ -52,7 +52,18 @@ runs:
         set -euo pipefail
         tree="$RUNNER_TEMP/free-ai-tree"; rm -rf "$tree"; mkdir -p "$tree"
         git -C "$GITHUB_WORKSPACE/$PUBLIC_TREE" archive HEAD | (cd "$tree" && tar -x)
-        git -C "$GITHUB_WORKSPACE/.free-ai-site" archive HEAD | (cd "$tree" && tar -x)
+        # Why (2 Nov 2026, rn; beta 18 run 41383379256): the site's files go to the paths its code expects through the site's own tools/layout-map.txt (the map tools/lay-private.sh
+        # and tree.sh read). A raw `tar -x` of the site broke every Free AI e2e when web #318 moved jobs/ to ops/jobs/ ("Cannot find module ../../shared"). tar/cp, not rsync:
+        # the Windows runners have no rsync.
+        raw="$RUNNER_TEMP/free-ai-site-raw"; rm -rf "$raw"; mkdir -p "$raw"
+        git -C "$GITHUB_WORKSPACE/.free-ai-site" archive HEAD | (cd "$raw" && tar -x)
+        (cd "$raw" && tar -c .) | (cd "$tree" && tar -x)   # the mapped folders go on top, last (as lay-private.sh does: a stub at an old path loses to the real file)
+        if [ -f "$raw/tools/layout-map.txt" ]; then
+          while read -r from to; do
+            case "$from" in ''|'#'*) continue;; esac
+            if [ -d "$raw/$from" ]; then mkdir -p "$tree/$to"; (cd "$raw/$from" && tar -c .) | (cd "$tree/$to" && tar -x); fi
+          done < "$raw/tools/layout-map.txt"
+        fi
         site="$(git -C "$GITHUB_WORKSPACE/.free-ai-site" rev-parse --short HEAD)"
         rm -rf "$GITHUB_WORKSPACE/.free-ai-site"   # nothing private stays in the workspace the suites and their artifacts see
         log="$RUNNER_TEMP/free-ai-relay.log"; key="$RUNNER_TEMP/free-ai.key"

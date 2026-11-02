@@ -4,9 +4,9 @@ name = "sre-job-pilotto-bot"
 main = "../app-core/src/index.js"
 compatibility_date = "2026-09-01"
 
-# On-time starts (the rules stay in app-core/src/scheduler.js): 04:00 Zurich nightly build, three e2e runs a day, PR verdict sweeps every 10 minutes and /self-heal numbers every 3 hours.
-# GitHub's own crons in the workflow files stay as the backup. Deploy after a change: npm run deploy.
-# Why (2 Nov 2026, owner: "Timers to site Worker, delete bot"): the site Worker (www, jobadabra-web workers/www) starts these now (shared/timers.js, TIMERS=on); the account allows 5 cron triggers and all 5 were used, so the bot gives its three up BEFORE www takes the 47 one.
+# No cron triggers here any more: the on-time starts (04:00 Zurich nightly build, three e2e runs a day, night passes, PR verdict sweeps every 10 minutes, /self-heal numbers every 3 hours) are started by the site Worker (www, jobadabra-web workers/www/wrangler.toml); their rules stay in app-core/src/scheduler.js.
+# GitHub's own crons in the workflow files stay as the backup (the night passes have none).
+# Why (2 Nov 2026, owner: "Timers to site Worker, delete bot"): the account allows 5 cron triggers and all 5 were used, so the bot gives its three up BEFORE www takes the 47 one.
 [triggers]
 crons = []
 

@@ -1,4 +1,4 @@
-// The product brain's Codex step (brain-codex.mjs) and its switch in product-brain.yml: the request carries the prompt, the signals and the screenshots; the answer is checked before it becomes the file the poster reads.
+// The product brain's Codex step (brain-codex.mjs) and its switch (the workflow test moved to jobadabra-lab with product-brain.yml): the request carries the prompt, the signals and the screenshots; the answer is checked before it becomes the file the poster reads.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -8,7 +8,6 @@ import {buildRequest, fileText, MODEL, promptFor} from '../../brain-codex.mjs';
 import {askOrSkip} from '../../lib/broker-job.mjs';
 import {toBrokerCall} from '../../lib/broker-client.mjs';
 
-const workflow = fs.readFileSync(new URL('../../../../.github/workflows/product-brain.yml', import.meta.url), 'utf8');
 const brainDir = () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'brain-'));
   fs.writeFileSync(path.join(dir, 'signals.md'), '# Signals\n## Product Compass\nPHASE: validate');
@@ -40,16 +39,6 @@ test('a brief without an action or a lens, or a plan that is empty, stops the st
   assert.throws(() => fileText('brief', 'not json'));
   assert.throws(() => fileText('explore', '  '), /empty plan/);
   assert.equal(JSON.parse(fileText('brief', JSON.stringify({lens: 'Growth', action: 'Post X'}))).action, 'Post X');
-});
-
-test('the workflow runs the brain only on the broker: no Claude step, no Anthropic key, the post steps wait for an answer, a refusal alerts once', () => {
-  assert.doesNotMatch(workflow.replace(/^\s*#.*$/gm, ''), /claude-code-action|anthropic_api_key|ANTHROPIC|BRAIN_AI|ai_provider/i, 'no Anthropic path is left in the brain');
-  assert.match(workflow, /id-token: write/);
-  assert.match(workflow, /brain-codex\.mjs --step "\$STEP"/);
-  assert.match(workflow, /brain-codex\.mjs --step explore/);
-  assert.match(workflow, /Send the brief\n\s+if: [^\n]*steps\.brief_ai\.outputs\.skipped != 'true'/);
-  assert.match(workflow, /Send the plan\n\s+if: [^\n]*steps\.explore_ai\.outputs\.skipped != 'true'/);
-  assert.match(workflow, /uses: \.\/\.github\/actions\/ai-skipped-alert/);
 });
 
 test('a refused broker call skips the step with its reason: no file, skipped=true, one note for the alert; any other failure stays red', async () => {

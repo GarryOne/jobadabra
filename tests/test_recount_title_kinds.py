@@ -80,9 +80,7 @@ class SeedTests(unittest.TestCase):
     def test_no_file_changes_nothing(self):
         self.assertEqual(scout_title_seed.load(Path('/nonexistent/title_kinds.json.gz')), 0)
 
-    def test_the_central_scout_is_given_the_seed_from_the_private_repo(self):
-        workflow = (ROOT / '.github' / 'workflows' / 'central-scout.yml').read_text(encoding='utf-8')
-        self.assertIn('SCOUT_TITLE_KINDS: ops/config/title_kinds.json.gz', workflow)
+    def test_the_index_build_loads_the_seed(self):
         self.assertIn('scout_title_seed.load()', (ROOT / 'src' / 'scout_index.py').read_text(encoding='utf-8'))
 
 

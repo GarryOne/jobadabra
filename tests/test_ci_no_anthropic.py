@@ -63,8 +63,7 @@ class NoAnthropicInCI(unittest.TestCase):
 
     def test_the_moved_workflows_use_the_broker(self):
         moved = {'ui-verdict': r'node desktop/e2e/judge-codex\.mjs', 'ui-findings': r'node desktop/e2e/judge-codex\.mjs', 'ui-fix': r'node desktop/e2e/edit-codex\.mjs',
-                 'finder-review': r'node desktop/e2e/edit-codex\.mjs', 'judge-exam': r'node desktop/e2e/judge-codex\.mjs',
-                 'product-brain': r'node desktop/e2e/brain-codex\.mjs', 'central-scout': r'node desktop/e2e/broker-relay-run\.mjs'}
+                 'finder-review': r'node desktop/e2e/edit-codex\.mjs', 'judge-exam': r'node desktop/e2e/judge-codex\.mjs'}
         for name, script in moved.items():
             text = (ROOT / '.github' / 'workflows' / f'{name}.yml').read_text(encoding='utf-8')
             self.assertIn('id-token: write', text, f'{name}: the broker knows a run by its OIDC token')

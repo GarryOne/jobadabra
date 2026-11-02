@@ -39,7 +39,6 @@ on:
       - '.github/workflows/e2e.yml'
       - '.github/workflows/journeys.yml'
       - '.github/workflows/page-cases.yml'
-      - '.github/workflows/product-brain.yml'
       - '.github/workflows/replay-refill.yml'
       - 'desktop/ready-fill/extension-storage.mjs'
       - 'desktop/ready-fill/fill-video.mjs'

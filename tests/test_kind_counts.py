@@ -54,11 +54,6 @@ class ScoutCountsTest(Fixtures):
         jobs = [{'title': 'First Officer', 'location': 'Zurich'}] + [{'title': 'Backend Engineer', 'location': 'Frankfurt'}] * 4
         self.assertIsNone(scout_kind_counts.kind_counts(jobs), '1 of 5 jobs judged on both says little about the employer')
 
-    def test_the_scout_keeps_its_places_between_runs(self):
-        from pathlib import Path
-        workflow = (Path(__file__).resolve().parents[1] / '.github' / 'workflows' / 'central-scout.yml').read_text()
-        self.assertEqual(workflow.count('data/geo.json'), workflow.count('data/jobs.sqlite') - workflow.count('--db data/jobs.sqlite'),
-                         'every cache restore and save keeps the places the AI judged (asked once, ever)')
 
 
 class CentralCapAndSampleTest(Fixtures):
@@ -95,16 +90,6 @@ class CentralCapAndSampleTest(Fixtures):
 
 
 class ScoutUsesTheBrokerTest(unittest.TestCase):
-    def test_the_central_scout_judges_through_the_broker_never_a_key_never_free_ai(self):
-        """Owner, 26 Oct 2026: "keep claude for the scout" (kinds and places decide which employers every install reads); 31 Oct 2026: "We should use fully the Codex".
-        Its judgments are the same public engine calls, answered by the Codex broker behind a 127.0.0.1 relay; no Anthropic key, no Free AI."""
-        from pathlib import Path
-        workflow = (Path(__file__).resolve().parents[1] / '.github' / 'workflows' / 'central-scout.yml').read_text()
-        code = '\n'.join(line for line in workflow.splitlines() if not line.lstrip().startswith('#'))
-        self.assertIn('broker-relay-run.mjs --job central-scout', code)
-        self.assertNotRegex(code, r'(?i)anthropic', 'the scout holds no Anthropic key and no base URL')
-        self.assertNotRegex(code, r'(?i)free_ai|JOBADABRA_AI_ENGINE', 'the scout never switches to Free AI or another engine')
-
     def test_the_run_cap_is_one_env_value_and_items_past_it_stay_unjudged(self):
         import os
         from unittest import mock

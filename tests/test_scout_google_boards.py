@@ -127,12 +127,6 @@ class GoogleBoards(unittest.TestCase):
                          "Google's few free searches go to the country's thinnest kinds of work, never software (owner, 19 Oct 2026: global, not tech)")
 
 
-    def test_the_scout_workflow_gives_the_key_only_under_its_own_name(self):
-        workflow = (Path(__file__).resolve().parent.parent / '.github/workflows/central-scout.yml').read_text()
-        self.assertIn(f'{google.KEY_ENV}: ${{{{ secrets.CENTRAL_SCOUT_SERPAPI_KEY }}}}', workflow)
-        self.assertNotIn('SERPAPI_API_KEY:', workflow, "that name turns on the role searches' SerpApi lane, outside the month cap")
-
-
     def test_a_site_not_judged_waits_for_the_next_run_and_is_never_searched_again(self):
         fake, answers = Fake(), {}
         self.judge = lambda board, roles: self.judged.append((board['host'], roles)) or answers.get(board['host'])

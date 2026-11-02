@@ -14,6 +14,7 @@ import {providerLine} from './ai-provider.mjs';
 import {stepClock} from './wait-on-state.mjs';
 import {appPicture} from './window-shot.mjs';
 import {backboneSuite} from './hang-caps.mjs';
+import {turnedAway} from './ai-miss-name.mjs';
 
 // keepGoing (a suite's `export const keepGoing = true`): a failed step is recorded and the next one runs, so one failure never hides the rest of the suite
 // (5 Oct 2026: one outdated step hid fifteen, twice). A step marked `critical` (the setup the others need) still stops the suite.
@@ -37,7 +38,7 @@ export function withLimit(promise, ms, name, getSession = () => null, budget = 0
   const limit = new Promise((_, fail) => { timer = setTimeout(async () => {
     const cut = budget ? `the suite's ${Math.round(budget / 60000)}-minute budget ran out during this step (the suite is too long: split it)`
       : `the step did not finish within ${ms < 10 * 60000 ? `${ms / 1000} s` : `${Math.round(ms / 60000)} min`} (it hung)`;
-    const error = new Error(`${cut}: ${hangError ? await hangError(ms) : await hangReport(getSession())}`); error.stepHang = true; fail(error); }, ms); });
+    const error = new Error(`${cut}: ${hangError ? await hangError(ms) : await hangReport(getSession())}${turnedAway(ARTIFACTS)}`); error.stepHang = true; fail(error); }, ms); });
   return Promise.race([promise, limit]).finally(() => { clearTimeout(timer); stepClock(null); });
 }
 

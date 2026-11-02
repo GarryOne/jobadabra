@@ -7,7 +7,11 @@ import {registerHooks} from 'node:module';
 import {test} from 'node:test';
 import {entryProblems, lanesProblems, namesException} from '../../../../tools/lanes-check.mjs';
 import {NON_BACKBONE} from '../../lib/suite-shards.mjs';
+import {createHash} from 'node:crypto';
 import {aiMissesVerdict, checkAiMisses} from '../../lib/no-real-ai.mjs';
+
+// The 8-hex digest the miss line shows for a text part (lib/ai-miss-name.mjs): the line proves the part without holding it.
+const digestOf = text => createHash('sha256').update(text).digest('hex').slice(0, 8);
 
 test('every suite defaults to zero misses unless its lane or a named exception exempts it', t => {
   const text = fs.readFileSync(new URL('../../lanes.json', import.meta.url), 'utf8');
@@ -36,7 +40,7 @@ test('a new unlisted backbone suite defaults to zero without a registry entry', 
   miss(dir, 'new-unknown-ask', {input: 'fictional fixture request'});
   assert.deepEqual(checkAiMisses(dir, suites[name]), {
     ok: false, misses: 1, max: 0,
-    message: 'AI asks with no stored answer: 1 (allowed 0); first ask key: new-unknown-ask',
+    message: 'AI asks with no stored answer: 1 (allowed 0); first ask key: new-unknown-ask; first ask: unkeyable (unknown: question identity is not in the request (/v1/messages))',
   });
 });
 
@@ -77,7 +81,7 @@ test('one miss with max zero reports only its request key and never the fixture 
   assert.equal(result.message.includes(prompt), false);
   assert.deepEqual(result, {
     ok: false, misses: 1, max: 0,
-    message: 'AI asks with no stored answer: 1 (allowed 0); first ask key: 0123456789abcdef0123456789abcdef',
+    message: `AI asks with no stored answer: 1 (allowed 0); first ask key: 0123456789abcdef0123456789abcdef; first ask: unkeyable (unknown: question identity is not in the request (/v1/messages)); parts: [0] user text ${digestOf(prompt)}`,
   });
 });
 
@@ -100,7 +104,7 @@ test('counts only JSON files, sorts the keys and includes the ceiling boundary',
   fs.mkdirSync(path.join(dir, 'ai-misses', 'folder.json'));
   assert.deepEqual(checkAiMisses(dir, {aiMissesMax: 2}), {ok: true, misses: 2, max: 2, message: ''});
   assert.deepEqual(checkAiMisses(dir, {aiMissesMax: 1}), {
-    ok: false, misses: 2, max: 1, message: 'AI asks with no stored answer: 2 (allowed 1); first ask key: a',
+    ok: false, misses: 2, max: 1, message: `AI asks with no stored answer: 2 (allowed 1); first ask key: a; first ask: unkeyable (unknown: question identity is not in the request (/v1/messages)); parts: [0] user input_text ${digestOf('first\nprompt')}`,
   });
 });
 
@@ -109,7 +113,7 @@ test('a malformed miss still counts and cannot turn the suite green', t => {
   miss(dir, 'broken', {});
   fs.writeFileSync(path.join(dir, 'ai-misses', 'broken.json'), '{');
   assert.deepEqual(checkAiMisses(dir, {aiMissesMax: 0}), {
-    ok: false, misses: 1, max: 0, message: 'AI asks with no stored answer: 1 (allowed 0); first ask key: broken',
+    ok: false, misses: 1, max: 0, message: "AI asks with no stored answer: 1 (allowed 0); first ask key: broken; first ask: unreadable miss file (Expected property name or '}' in JSON at position 1 (line 1 column 2))",
   });
 });
 
@@ -140,7 +144,7 @@ test('the existing suite finalizer fails after teardown and keeps the AI failure
   assert.ok(messages.some(message => message.includes('E2E-cause: ai wizard')));
   assert.equal(messages.join('\n').includes('ask during teardown'), false);
   const failures = JSON.parse(fs.readFileSync(path.join(dir, 'suite-failures.json'), 'utf8'));
-  assert.equal(failures[0].message, 'AI asks with no stored answer: 1 (allowed 0); first ask key: late');
+  assert.match(failures[0].message, /^AI asks with no stored answer: 1 \(allowed 0\); first ask key: late; first ask: unkeyable/);
   const steps = JSON.parse(fs.readFileSync(path.join(dir, 'steps.json'), 'utf8'));
   assert.equal(steps.results[0].status, 'failed');
 });

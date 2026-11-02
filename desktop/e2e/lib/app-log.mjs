@@ -14,6 +14,14 @@ export function appLogText(profile) {
 }
 export const appLogLines = profile => appLogText(profile).split('\n');
 
+/**
+ * The last `count` real `[extension]` / `[applied]` lines, cut to 220 characters: `[extension] span:` lines (start/end timings) are left out, they filled the tail and hid the line that said why.
+ * Why (2 Nov 2026, owner: "why beta is red?"; night burn-in apply-1of3, run 41372875478): "The app's last extension lines" held only span lines; `fill: dead end fallback (shadow)` was at the very end.
+ */
+export function extensionTail(lines, count = 8) {
+  return lines.filter(line => /\[extension\]|\[applied\]/.test(line) && !/\[extension\] span:/.test(line)).slice(-count).map(line => line.slice(0, 220));
+}
+
 /** Capture matching counts; later reads count new matches across rolls or a shorter replacement log. */
 export function logCursor(profile, match) {
   const count = () => appLogLines(profile).filter(line => new RegExp(match.source, match.flags).test(line)).length;

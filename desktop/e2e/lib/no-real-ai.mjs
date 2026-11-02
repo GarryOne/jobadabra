@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {namesException} from '../../../tools/lanes-check.mjs';
 import {NON_BACKBONE} from './suite-shards.mjs';
+import {missLine} from './ai-miss-name.mjs';
 
 export const realAiCalls = ctx => (ctx.proxy?.stats.paid || 0) + (ctx.openaiProxy?.stats.paid || 0);
 
@@ -33,10 +34,10 @@ export function recordAnswerRefusals(ctx, refused) {
 const missesExempt = lane => NON_BACKBONE.includes(lane?.lane) || namesException(lane);
 
 /** Pure verdict: backbone defaults to zero; diagnostics contain only the request key, never prompt text. */
-export function aiMissesVerdict(misses, lane, firstKey = '') {
+export function aiMissesVerdict(misses, lane, firstKey = '', firstAsk = '') {
   const max = missesExempt(lane) ? null : (lane?.aiMissesMax ?? 0);
   const ok = max === null || misses <= max;
-  return {ok, misses, max, message: ok ? '' : `AI asks with no stored answer: ${misses} (allowed ${max}); first ask key: ${firstKey}`};
+  return {ok, misses, max, message: ok ? '' : `AI asks with no stored answer: ${misses} (allowed ${max}); first ask key: ${firstKey}${firstAsk ? `; ${firstAsk}` : ''}`};
 }
 
 /** Count miss JSON filenames without reading bodies; missing folders mean zero, and exempt suites do no I/O. */
@@ -46,5 +47,6 @@ export function checkAiMisses(artifacts, lane) {
   let files;
   try { files = fs.readdirSync(dir, {withFileTypes: true}).filter(file => file.isFile() && file.name.endsWith('.json')).map(file => file.name).sort(); }
   catch (error) { if (error.code === 'ENOENT') return aiMissesVerdict(0, lane); throw error; }
-  return aiMissesVerdict(files.length, lane, files[0]?.slice(0, -5) || '');
+  // Why (2 Nov 2026, owner: "why beta is red?"; beta 16 wizard): the key alone is a hash nobody can read; the first ask's operation and part digests (never its text) say which ask it was.
+  return aiMissesVerdict(files.length, lane, files[0]?.slice(0, -5) || '', files[0] ? missLine(path.join(dir, files[0])) : '');
 }

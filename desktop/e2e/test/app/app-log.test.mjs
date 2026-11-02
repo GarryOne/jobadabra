@@ -112,3 +112,17 @@ test('a log cursor treats matches in a replacement log as new and never returns 
   fs.appendFileSync(file, saved);
   assert.equal(since(), 2);
 });
+
+test('the extension tail drops span timings and keeps the last real extension and applied lines (night burn-in apply-1of3, 2 Nov 2026)', () => {
+  const real = ['[extension] fill: dead end fallback (shadow) {"outcome":""}', '[applied] job marked Applied', '[extension] fill: pressed Submit {}'];
+  const spans = Array.from({length: 40}, (_, n) => `2026-11-02T01:43:${String(n).padStart(2, '0')}.000Z [extension] span: fill step ${n} end {"ms":${n}}`);
+  const lines = [...Array.from({length: 12}, (_, n) => `[extension] tab: seen ${n} {}`), ...real, ...spans, '[run] start: python -m src scout', '[extension] noted: ' + 'x'.repeat(400)];
+  const tail = appLog.extensionTail(lines);
+  assert.equal(tail.length, 8, 'the last eight, not six');
+  assert.equal(tail.some(line => line.includes('span:')), false, 'no span line');
+  assert.equal(tail.some(line => line.includes('[run]')), false, 'only extension and applied lines');
+  assert.deepEqual(tail.slice(-4, -1), real, 'the dead end line survives a long run of spans after it');
+  assert.equal(tail.at(-1).length, 220, 'a long line is cut');
+  assert.deepEqual(appLog.extensionTail(['[extension] span: a start {}']), [], 'only spans: nothing');
+  assert.deepEqual(appLog.extensionTail(real, 2), real.slice(-2));
+});

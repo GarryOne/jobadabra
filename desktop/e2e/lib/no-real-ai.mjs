@@ -1,9 +1,9 @@
 // Counts the AI calls of a test run that went on to a real model; a suite whose AI is all stand-in ends with a step that fails when any did (strategy, 18 Oct 2026: it reached gpt-6-luna).
 // Job: serve stored answers
-import fs from 'node:fs';
 import path from 'node:path';
 import {namesException} from '../../../tools/lanes-check.mjs';
 import {NON_BACKBONE} from './suite-shards.mjs';
+import {missFiles, missLine} from './ai-miss-name.mjs';
 
 export const realAiCalls = ctx => (ctx.proxy?.stats.paid || 0) + (ctx.openaiProxy?.stats.paid || 0);
 
@@ -32,19 +32,18 @@ export function recordAnswerRefusals(ctx, refused) {
 // Why (31 Oct 2026, owner; Gitar on #2664): new backbone suites inherit zero misses; only an explicit lane or a named exception exempts them, read from the one lane list and the registry's one exception rule.
 const missesExempt = lane => NON_BACKBONE.includes(lane?.lane) || namesException(lane);
 
-/** Pure verdict: backbone defaults to zero; diagnostics contain only the request key, never prompt text. */
-export function aiMissesVerdict(misses, lane, firstKey = '') {
+/** Pure verdict: backbone defaults to zero; diagnostics hold the request key and the first ask's operation and part digests, never prompt text. */
+export function aiMissesVerdict(misses, lane, firstKey = '', firstAsk = '') {
   const max = missesExempt(lane) ? null : (lane?.aiMissesMax ?? 0);
   const ok = max === null || misses <= max;
-  return {ok, misses, max, message: ok ? '' : `AI asks with no stored answer: ${misses} (allowed ${max}); first ask key: ${firstKey}`};
+  return {ok, misses, max, message: ok ? '' : `AI asks with no stored answer: ${misses} (allowed ${max}); first ask key: ${firstKey}${firstAsk ? `; ${firstAsk}` : ''}`};
 }
 
-/** Count miss JSON filenames without reading bodies; missing folders mean zero, and exempt suites do no I/O. */
+/** Count miss JSON filenames and name the first one's ask (lib/ai-miss-name.mjs missLine); missing folders mean zero, and exempt suites do no I/O. */
 export function checkAiMisses(artifacts, lane) {
   if (missesExempt(lane)) return aiMissesVerdict(0, lane);
-  const dir = path.join(artifacts, 'ai-misses');
-  let files;
-  try { files = fs.readdirSync(dir, {withFileTypes: true}).filter(file => file.isFile() && file.name.endsWith('.json')).map(file => file.name).sort(); }
-  catch (error) { if (error.code === 'ENOENT') return aiMissesVerdict(0, lane); throw error; }
-  return aiMissesVerdict(files.length, lane, files[0]?.slice(0, -5) || '');
+  const dir = path.join(artifacts, 'ai-misses'), files = missFiles(artifacts);
+  if (!files.length) return aiMissesVerdict(0, lane);
+  // Why (2 Nov 2026, owner: "why beta is red?"; beta 16 wizard): the key alone is a hash nobody can read; the first ask's operation and part digests (never its text) say which ask it was.
+  return aiMissesVerdict(files.length, lane, files[0]?.slice(0, -5) || '', files[0] ? missLine(path.join(dir, files[0])) : '');
 }

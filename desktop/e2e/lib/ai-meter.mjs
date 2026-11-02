@@ -130,14 +130,14 @@ export function recall(key, env = process.env) {
 // Test data only (the suites' synthetic workspace), at most MAX_MISSES per suite run.
 const MAX_MISSES = 60;
 let misses = 0;
-export function keepMiss(key, url, body, env = process.env) {
+export function keepMiss(key, url, body, env = process.env, action = '') {   // action: the x-jp-action header, which the body alone may not carry (2 Nov 2026: a miss file could not say which ask it was)
   if (!replaying(env) || !env.E2E_ARTIFACTS || misses >= MAX_MISSES) return;
   let request;
   try { request = JSON.parse(body.toString('utf8') || '{}'); delete request.metadata; } catch { return; }
   try {
     const dir = path.join(env.E2E_ARTIFACTS, 'ai-misses');
     fs.mkdirSync(dir, {recursive: true});
-    fs.writeFileSync(path.join(dir, `${key}.json`), JSON.stringify({url, request}, null, 1));
+    fs.writeFileSync(path.join(dir, `${key}.json`), JSON.stringify({url, ...(action ? {action} : {}), request}, null, 1));
     misses++;
   } catch {}
 }

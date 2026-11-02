@@ -129,7 +129,7 @@ export async function startAiProxy({delayMs = 0, target = 'https://api.anthropic
     // Replay (CI, lib/ai-meter.mjs): the same request answered before is answered from the cache, free; anything new is paid, counted, and kept for next time.
     // Why (#2450; 1 Nov 2026, a8: the hash is askKey's, store ids renamed): only keyed misses can become review candidates; unkeyable asks must retain their free hash replays.
     const body = Buffer.concat(chunks), ask = askKey(req.url, body), key = ask.key, kept = stored.mode === 'record' && !stored.question.unkeyable ? null : recallAsk(ask, req.url, body);
-    if (!kept) keepMiss(key, req.url, body);   // what changed since a run replay could answer (lib/ai-meter.mjs keepMiss)
+    if (!kept) keepMiss(key, req.url, body, process.env, String(req.headers['x-jp-action'] || ''));   // what changed since a run replay could answer (lib/ai-meter.mjs keepMiss)
     if (kept) {
       countReplay(kind, usageOf(kept.body.toString('utf8'), kept.contentType));
       res.writeHead(kept.status, {'content-type': kept.contentType, 'content-length': kept.body.length});

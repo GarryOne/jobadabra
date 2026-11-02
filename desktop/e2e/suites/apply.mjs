@@ -16,7 +16,7 @@ import {waitForFill} from '../lib/fill-attempt.mjs';
 import {markedSession, sessionTabUrl} from '../../lib/session-tab.js';
 import {addKitJob, removeJobsByUrl, seedLivePosting, stageOf} from '../lib/seed-data.mjs';
 import {ensureSetUp} from '../lib/seed.mjs';
-import {appLogLines} from '../lib/app-log.mjs';
+import {appLogLines, extensionTail} from '../lib/app-log.mjs';
 import {lostTabIn} from '../lib/tab-bound.mjs';
 import {livePosting, realKind, runLive} from '../lib/apply-live.mjs';
 import {runCvSteps} from '../lib/apply-cv-steps.mjs';
@@ -251,7 +251,7 @@ export async function runApply(ctx, parts) {
   await runJourneys(ctx, {cv, dumpExtension, fail, forms, page});   // lib/apply-journeys.mjs
 
   const sessionsOf = url => page.evaluate(target => window.pilot.sessions().then(list => list.filter(item => String(item.url || '').replace(/\/$/, '') === target.replace(/\/$/, '')).map(item => `${item.kind}:${item.id}`)), url);
-  const logTail = () => { try { return appLogLines(ctx.profile).filter(line => /\[extension\]|\[applied\]/.test(line)).slice(-6).map(line => line.slice(0, 220)).join('\n    '); } catch { return '(no log)'; } };
+  const logTail = () => { try { return extensionTail(appLogLines(ctx.profile)).join('\n    '); } catch { return '(no log)'; } };
   async function until(what, check, ms = 60000) {
     const result = await waitForFill({capMs: ms, pickTab: () => ({tab: page, tabs: ctx.browser.context.pages().length}), readState: check, accept: state => !!state});
     if (!result.ok) throw new Error(`${what}. The app's last extension lines:\n    ${logTail()}`);

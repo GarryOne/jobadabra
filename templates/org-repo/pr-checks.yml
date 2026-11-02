@@ -1,5 +1,5 @@
 name: PR checks
-# The PR checks every repo of the org has (owner, 2 Nov 2026: "the same workflow on all repos"). Copied into a repo by `tools/org-repo.sh onboard <repo>`; a repo adds its own
+# The PR checks every repo of the org has (owner, 2 Nov 2026: "the same workflow on all repos"). Copied by hand into a repo's .github/workflows/ (the onboarding script comes in step 4); a repo adds its own
 # jobs (tests) here and lists them under `needs` of the last job. The PR-description check is jobadabra's one copy (pr-body-check.yml). "All checks passed" is the ONE status the
 # repo's ruleset requires, so adding a job never means editing the ruleset. No concurrency group: a cancelled run is drawn as a red ✗ (jobadabra#2400).
 on:

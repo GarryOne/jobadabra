@@ -79,12 +79,35 @@ def refused_reason(log):
     return found.group(1).strip() if found else ''
 
 
+RELAY_WAIT = re.compile(r'relay: .* waited (\d+) ')
+CUT_FROM_S = 170   # the app stops its AI steps a little before 180 s (desktop/lib/search-steps.js); a press ending from here on was stopped by the budget
+# Why (2 Nov 2026, mac-07: a flaky red must be fixed at its guard; runs 41369268108, 41373757641 green, 41373710207, 41372158033 red): the longest wait of a
+# relay call was 9-35 s in every press of the two green runs and 61-167 s in the presses that overlapped another run on the broker (Claude answers 3 at a
+# time while Codex is used up). 45 s sits between the two; a press stopped by the cap with that wait was starved of AI, so what it found says nothing about the code.
+STARVED_WAIT_S = 45
+
+
+def cut_note(seconds, scored, log):
+    """(note, longest wait in s or None) for a press the budget stopped before it scored one job, else ('', None). The note reads "cut by the cap after
+    178 s with no job scored; longest wait for the AI 117 s"; the wait is the largest client-side wait of any relay call in the press log (the queue
+    at the broker). Why (2 Nov 2026, run 41373710207): 4 of 6 presses waited for the AI until the cap, and the check showed a crash message."""
+    if seconds < CUT_FROM_S or scored:
+        return '', None
+    try:
+        waits = [int(m[1]) for m in RELAY_WAIT.finditer(Path(log).read_text(encoding='utf-8', errors='replace'))]
+    except OSError:
+        waits = []
+    longest = round(max(waits) / 1000) if waits else None
+    return f'cut by the cap after {seconds} s with no job scored' + (f'; longest wait for the AI {longest} s' if longest is not None else ''), longest
+
+
 def result(n, out):
     """One persona's numbers: local = jobs the blind judge called right role AND right place; seconds and code of press 1; a missing file is
     a failed press (silence is not success), never a zero that looks measured."""
     out = Path(out)
     row = {'persona': int(n), 'label': label(n)}
     press_billing = ''
+    starved_wait = None
     press_usd = None   # None = the press's cost was not measured; never shown or counted as $0 (gitar on #2259)
     try:
         press = json.loads((out / 'draw' / 'presses.jsonl').read_text(encoding='utf-8').splitlines()[0])
@@ -92,6 +115,10 @@ def result(n, out):
         ai = (press.get('funnel') or {}).get('ai_usd')
         press_usd = None if ai is None else float(ai)   # the press's measured AI cost (funnel.py ai_usd); the strategy draft before it is not counted
         row.update(seconds=int(press['seconds']), code=int(press.get('code') or 0), crashes=len(press.get('crashes') or []))
+        cut, waited = cut_note(row['seconds'], int(press.get('scored_in_places') or 0), out / 'run.log')
+        if cut:
+            row['cut'] = cut
+        starved_wait = waited if waited is not None and waited >= STARVED_WAIT_S else None
     except (OSError, IndexError, ValueError, KeyError, TypeError):
         row['error'] = 'the press wrote no numbers (see run.log)'
     unavailable = refused_reason(out / 'run.log')
@@ -117,6 +144,10 @@ def result(n, out):
         row['non_haiku'] = int((out / 'non-haiku-steps.txt').read_text().strip() or 0)
     except (OSError, ValueError):
         pass
+    # Grey only for a press that ran clean and ended inside its budget: a non-zero exit, a crash, a step outside the small tier or a run past 180 s stay red
+    # (Gitar on #2955). A starved press is cut at the app's own stop, never past it.
+    if starved_wait is not None and not row.get('code') and not row.get('crashes') and not row.get('non_haiku') and row.get('seconds', 0) <= PRESS_LIMIT:
+        row['not_measured'] = f'AI queue full (waited {starved_wait} s)'
     (out / 'result.json').write_text(json.dumps(row, ensure_ascii=False), encoding='utf-8')
     return row
 
@@ -202,7 +233,7 @@ def compare(pr, main_runs):
         unmeasured += bool(row and row.get('not_measured'))
         red += bool(reasons)
         rows.append({'persona': n, 'label': label(n), 'main': seen, 'local': (row or {}).get('local'), 'found': (row or {}).get('found'),
-                     'seconds': (row or {}).get('seconds'), 'usd': (row or {}).get('usd'), 'billing': (row or {}).get('billing'), 'reasons': reasons, 'not_measured': (row or {}).get('not_measured')})
+                     'seconds': (row or {}).get('seconds'), 'usd': (row or {}).get('usd'), 'billing': (row or {}).get('billing'), 'reasons': reasons, 'not_measured': (row or {}).get('not_measured'), 'cut': (row or {}).get('cut', '')})
     quality_ = quality(pr, main_runs)
     reason = ''   # why every press read nothing, when the press log says (the AI was refused); set below, returned for the table
     nothing = _nothing(pr)   # grey in every mode, with or without main: a gate that saw no job at all has measured nothing, and is never read as a pass (#2901)
@@ -237,6 +268,8 @@ def table(verdict):
     for r in verdict['rows']:
         main = ' · '.join(str(x) for x in r['main']) or '—'
         mark = '🔴 ' + '; '.join(r['reasons']) if r['reasons'] else ('⚪' if r['not_measured'] or r.get('measured_nothing') else '🟢')
+        if r.get('cut'):
+            mark += f" {r['cut']}"
         cell = lambda v, unit='': '—' if v is None else f'{v}{unit}'   # noqa: E731
         lines.append(f"| {r['label']} | {main} | {cell(r['local'])} | {cell(r['found'])} | {cell(r['seconds'], ' s')} | {'—' if r['usd'] is None else '$%.3f' % r['usd']} | {mark} |")
     lines += ['', '<sub>This PR / Main = jobs a blind judge (Codex small tier) called right role AND right place, of the jobs found; one press each, '

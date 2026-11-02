@@ -7,6 +7,7 @@ import sqlite3
 
 from collections import Counter
 
+from scores_rows import scores_rows
 from src import country_codes, source_yield
 from src.paths import JOBS_DB
 from src.sources import feeds
@@ -18,8 +19,7 @@ def main():
     db = sqlite3.connect(JOBS_DB)
     rows = db.execute("SELECT j.id, j.title, j.location, COALESCE(c.name, ''), j.url FROM jobs j LEFT JOIN companies c ON c.id = j.company_id "
                       "WHERE j.state = 'open'").fetchall()
-    has_scores = db.execute("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'scores'").fetchone()
-    scores = {job_id: json.loads(data or '{}') for job_id, data in db.execute('SELECT job_id, data_json FROM scores')} if has_scores else {}
+    scores = {job_id: json.loads(data or '{}') for job_id, data in scores_rows(db, 'SELECT job_id, data_json FROM scores')}
     source_names = dict(db.execute('SELECT j.id, COALESCE(s.name, \'\') FROM jobs j LEFT JOIN sources s ON s.id = j.source_id').fetchall())
     in_places = [row for row in rows if feeds.wanted_location({'location': row[2] or '', 'title': row[1]})]
     # Located in the user's places by their own words (a city or country in the job's place), never remote anywhere: what a place check counts (24 Oct 2026, memory feedback-local-jobs-only-no-worldwide-remote)

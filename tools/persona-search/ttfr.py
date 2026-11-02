@@ -8,6 +8,7 @@ import sqlite3
 import sys
 from datetime import datetime
 
+from scores_rows import scores_rows
 from src.paths import DATA, JOBS_DB
 from src.sources import feeds
 
@@ -24,7 +25,7 @@ def main():
     places = [r for r in rows if feeds.wanted_location({'location': r[2] or '', 'title': r[1]})]
     seen = sorted(ts(r[3]) - t0 for r in places if r[3])
     scores = {}
-    for job_id, created, data in db.execute('SELECT job_id, created_at, data_json FROM scores'):
+    for job_id, created, data in scores_rows(db, 'SELECT job_id, created_at, data_json FROM scores'):   # none yet when the 180 s budget stopped the press first
         scores[job_id] = (created, (json.loads(data or '{}').get('score') or 0))
     fit = sorted(max(ts(scores[r[0]][0]), ts(r[3])) - t0 for r in places if r[0] in scores and scores[r[0]][1] >= 70 and scores[r[0]][0])
     at = lambda xs, n: round(xs[n - 1]) if len(xs) >= n else None

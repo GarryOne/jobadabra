@@ -1,0 +1,34 @@
+name: CI · PR description (reusable)
+# The PR-description check every repo of the org calls (owner, 2 Nov 2026: "they should have the same PR Body, the same GH labels... the same workflow"). One copy: this repo's
+# tools/pr-body-check.py (the check pr-gate.yml runs on jobadabra's own PRs). A repo calls it from its caller file (templates/org-repo/pr-checks.yml):
+#   body:
+#     uses: jobadabra/jobadabra/.github/workflows/pr-body-check.yml@main
+# The caller's event is the PR's, so github.event.pull_request is this PR's body and title. The script is read from this repo's main as two files, never from the PR's code.
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  body:
+    name: PR description laid out
+    if: ${{ github.event_name == 'pull_request' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          repository: jobadabra/jobadabra
+          ref: main
+          path: engine   # not the caller's own tree: the script runs from engine/ (tests/test_sparse_checkout_has_its_files.py reads another repository's checkout by its path)
+          # Why (2 Nov 2026, web#307): every file the script loads is listed (pr-body-check.py loads pr-screens.py), and no comment inside this block (a YAML block scalar has none: it would be part of the pattern).
+          sparse-checkout: |
+            tools/pr-body-check.py
+            tools/pr-screens.py
+          sparse-checkout-cone-mode: false
+      - name: PR description laid out
+        env:
+          BODY: ${{ github.event.pull_request.body }}
+          PR_TITLE: ${{ endsWith(github.actor, '[bot]') && '' || github.event.pull_request.title }}   # the "[xx] " session tag (a bot's PR has none)
+        run: printf '%s' "$BODY" | python3 engine/tools/pr-body-check.py

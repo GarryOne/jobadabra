@@ -1,0 +1,31 @@
+name: PR checks
+# The PR checks every repo of the org has (owner, 2 Nov 2026: "the same workflow on all repos"). Copied by hand into a repo's .github/workflows/ (the onboarding script comes in step 4); a repo adds its own
+# jobs (tests) here and lists them under `needs` of the last job. The PR-description check is jobadabra's one copy (pr-body-check.yml). "All checks passed" is the ONE status the
+# repo's ruleset requires, so adding a job never means editing the ruleset. No concurrency group: a cancelled run is drawn as a red ✗ (jobadabra#2400).
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, edited]   # edited: fixing the description re-runs the check
+
+permissions:
+  contents: read
+
+jobs:
+  body:
+    uses: jobadabra/jobadabra/.github/workflows/pr-body-check.yml@main
+
+  # <this repo's own jobs go here, e.g. `tests:`, and into `needs` below>
+
+  verdict:
+    name: All checks passed
+    if: ${{ always() }}
+    needs: [body]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Every job this one waits for passed or was skipped on purpose
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: |
+          echo "$NEEDS" | jq -r 'to_entries[] | "\(.key): \(.value.result)"'
+          echo "$NEEDS" | jq -e 'all(.[]; .result == "success" or .result == "skipped")' > /dev/null

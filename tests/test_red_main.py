@@ -31,6 +31,8 @@ CLASSIFIED = {
     'Proof · Screenshot review scored on the judged issues': 'ignored: by hand only (it spends a few cents on Claude); scores a review model, never runs on a push to main',
     'Proof · Codex subscription broker': 'ignored: pull requests that edit it, and by hand; proves the OIDC Codex broker without an AI key, never on a push to main',
     'CI · Gitar label': 'ignored: Gitar comment, review and pull_request_target events only; sets PR labels, never runs on a push to main',
+    # Why (2 Nov 2026, owner: "the same workflow on all repos"): the shared PR-description check other org repos call (workflow_call); it never runs on this repo's main.
+    'CI · PR description (reusable)': 'ignored: workflow_call only, run for another repo\'s pull request; checks that PR\'s description, never runs on a push to main',
     'CI · Conflict label': 'ignored: runs on a push to main, but only labels the open PRs that conflict; it tests nothing, so its result says nothing about main',
     'CI · Cancel the runs of a closed PR': 'ignored: pull_request_target on close; cancels the closed PR\'s own runs, never runs on main',
     'CI · Prompt cases (Haiku re-ask)': 'ignored: by hand only (paid Haiku calls); compares the selected ref with main, never a push check',

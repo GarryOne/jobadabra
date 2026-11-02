@@ -27,7 +27,7 @@ class ZeroRightJobsIsNeverGreen(unittest.TestCase):
         self.assertEqual(verdict['state'], 'neutral')
         self.assertIn('found 0 right jobs on all six', verdict['head'])
         self.assertNotIn('🟢', verdict['head'])
-        self.assertTrue(all(r['measured_nothing'] for r in verdict['rows']), 'no green row in a run that is not a pass')
+        self.assertEqual({r['mark'] for r in verdict['rows']}, {'⚪'}, 'no green row in a run that is not a pass')
 
     def test_one_right_job_anywhere_keeps_the_check_as_it_was(self):
         self.assertEqual(gate.compare(six({4: {'local': 1, 'found': 3}}), [])['state'], 'success')

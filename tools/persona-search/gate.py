@@ -159,7 +159,8 @@ def result(n, out):
             row['funnel_note'] = note
         press_usd = None if ai is None else float(ai)   # the press's measured AI cost (funnel.py ai_usd); the strategy draft before it is not counted
         row.update(seconds=int(press['seconds']), code=int(press.get('code') or 0), crashes=len(press.get('crashes') or []))
-        cut, waited = cut_note(row['seconds'], int(press.get('scored_in_places') or 0), out / 'run.log')
+        row['scored'] = int(press.get('scored_in_places') or 0)
+        cut, waited = cut_note(row['seconds'], row['scored'], out / 'run.log')
         if cut:
             row['cut'] = cut
         starved_wait = waited if waited is not None and waited >= STARVED_WAIT_S else None
@@ -237,18 +238,34 @@ def judge_one(row, mains):
     return reasons, seen   # right jobs are shown, never red per persona (quality(): the pooled total)
 
 
+def read_of(row):
+    """Jobs the press scored: `scored` from the press row, else the judge's `found` (rows recorded before `scored` was kept); None = unknown, never 0."""
+    return next((row[k] for k in ('scored', 'found') if type(row.get(k)) is int), None)
+
+
+def row_verdict(row):
+    """-> (mark, why, kind): THE rule for one persona's row; compare() builds the overall line from these and from nothing else (owner, 2 Nov 2026: the row
+    and the overall line of #2969 disagreed: 🟢 rows with 0 right jobs under "⚪ not measured (1 of 6)").
+    🔴 a fault (judge_one: failed press, over 180 s, cost, off the small tier, no result); ⚪ no right job, kind 'unmeasured' (AI queue full, no token),
+    'nothing' (no job scored: cut by the cap, time ran out, AI refused) or 'none-right' (jobs scored, none right role AND place); 🟢 at least one right job.
+    Invariant: 'nothing' only on an explicit 0 (a missing count is 'none-right', unknown is not zero)."""
+    reasons = judge_one(row, [])[0]
+    if reasons:
+        return '🔴', '; '.join(reasons), 'fault'
+    if row.get('not_measured'):
+        return '⚪', f"not measured: {row['not_measured']}", 'unmeasured'
+    if type(row.get('local')) is int and row['local'] > 0:
+        return '🟢', '', 'measured'
+    read = read_of(row)
+    if read == 0:
+        return '⚪', row.get('cut') or 'no job scored', 'nothing'
+    return '⚪', f'scored {read}, none right role and place' if read else 'no right job', 'none-right'
+
+
 def _nothing(run):
-    """True when every persona's judge saw 0 jobs (judged.json `rows: []` on all six): the press never read a job, so this run measured nothing.
-    Invariant: only an explicit `found == 0` counts; a missing `found` (older recorded runs, errored rows) is unknown, never zero."""
+    """True when every persona's row is 'nothing' (no job scored on all six): this run measured nothing, so it is no main history."""
     rows = [run.get(n) for n in range(1, len(PERSONAS) + 1)]
-    return all(r is not None and not r.get('not_measured') and not r.get('error') and type(r.get('found')) is int and r['found'] == 0 for r in rows)
-
-
-def _no_right_jobs(run):
-    """True when every persona was measured and the blind judge called no job right (role AND place) on any of the six. Why (2 Nov 2026, owner: "still, everything is 0"):
-    with main's lowest at 0 the quality gate is "not gated", so six presses with nothing right read 🟢; a check that finds nothing must never look like a pass."""
-    rows = [run.get(n) for n in range(1, len(PERSONAS) + 1)]
-    return all(r is not None and not r.get('not_measured') and not r.get('error') and type(r.get('local')) is int for r in rows) and sum(r['local'] for r in rows) == 0
+    return all(r is not None and not r.get('error') and row_verdict(r)[2] == 'nothing' for r in rows)
 
 
 def _total(run):
@@ -278,39 +295,44 @@ def quality(pr, main_runs):
             'basis': "main's lowest" if floor < spread_floor else f"main's average minus {QUALITY_SPREADS} spreads"}
 
 
+def grey_head(rows, pr):
+    """-> (head, unavailable reason) of an overall line with no 🟢 row, from the rows' kinds. Why (1 Nov 2026, owner: "Guard grey now"): until the press reads jobs again
+    on the engine CI uses (cause: each Codex relay call takes 13-17 s, #2635) this is grey, not red: a red here would block every search PR and main push.
+    TODO(AI): back to red once found > 0 on the Claude engine (#2901)"""
+    kinds = [r['kind'] for r in rows]
+    if all(k == 'nothing' for k in kinds):   # no press scored a job: the first line names the cause (the refused AI) instead of a table of zeros
+        reason = next((r.get('unavailable') for r in (pr.get(n) or {} for n in range(1, len(PERSONAS) + 1)) if r.get('unavailable')), '')
+        if reason:
+            return f"⚪ {'web search' if 'search' in reason else 'AI'} unavailable: {reason}; no press read a job (not a pass)", reason
+        return f'⚪ measured nothing: all {len(PERSONAS)} judges saw 0 jobs, so no press read a job (not a pass)', ''
+    first = next((r['why'].removeprefix('not measured: ') for r in rows if r['kind'] == 'unmeasured'), '')
+    causes = {'unmeasured': f'not measured ({kinds.count("unmeasured")} of {len(PERSONAS)}): {first}', 'nothing': f'{kinds.count("nothing")} no job scored',
+              'none-right': f'{kinds.count("none-right")} scored but none right'}
+    parts = [text for k, text in causes.items() if k in kinds]
+    return f'⚪ found 0 right jobs on all six (not a pass): ' + ', '.join(parts), ''
+
+
 def compare(pr, main_runs):
-    """pr: {n: result}; main_runs: [{n: result}] newest first. -> {state: success|failure|neutral, rows, text}."""
-    rows, red, unmeasured = [], 0, 0
+    """pr: {n: result}; main_runs: [{n: result}] newest first. -> {state: success|failure|neutral, rows, head}. Every row is decided by row_verdict, the
+    overall state only adds the rows up: any 🔴 row or a pooled total below main's range is red, no 🟢 row is grey, else green "measured k of 6"."""
+    rows = []
     for n in range(1, len(PERSONAS) + 1):
         row = pr.get(n)
-        reasons, seen = judge_one(row, [run[n] for run in main_runs if n in run and not run[n].get('not_measured') and not _nothing(run)])   # a run that measured nothing shows no zeros
-        unmeasured += bool(row and row.get('not_measured'))
-        red += bool(reasons)
-        rows.append({'persona': n, 'label': label(n), 'main': seen, 'local': (row or {}).get('local'), 'found': (row or {}).get('found'),
-                     'seconds': (row or {}).get('seconds'), 'usd': (row or {}).get('usd'), 'billing': (row or {}).get('billing'), 'reasons': reasons, 'not_measured': (row or {}).get('not_measured'), 'cut': (row or {}).get('cut', ''),
-                     'engine': (row or {}).get('engine', ''), 'funnel_note': (row or {}).get('funnel_note', '')})
+        _, seen = judge_one(row, [run[n] for run in main_runs if n in run and not run[n].get('not_measured') and not _nothing(run)])   # a run that measured nothing shows no zeros
+        mark, why, kind = row_verdict(row)
+        rows.append({'persona': n, 'label': label(n), 'main': seen, 'local': (row or {}).get('local'), 'found': (row or {}).get('found'), 'seconds': (row or {}).get('seconds'),
+                     'usd': (row or {}).get('usd'), 'billing': (row or {}).get('billing'), 'mark': mark, 'why': why, 'kind': kind, 'reasons': why.split('; ') if kind == 'fault' else [], 'engine': (row or {}).get('engine', ''),
+                     'funnel_note': (row or {}).get('funnel_note', '')})
     quality_ = quality(pr, main_runs)
-    reason = ''   # why every press read nothing, when the press log says (the AI was refused); set below, returned for the table
-    nothing = _nothing(pr)   # grey in every mode, with or without main: a gate that saw no job at all has measured nothing, and is never read as a pass (#2901)
+    red, green, reason = sum(r['mark'] == '🔴' for r in rows), sum(r['mark'] == '🟢' for r in rows), ''
     if red or quality_['red']:
         parts = ([f'{red} persona(s) red'] if red else []) + ([f"total {quality_['total']} right jobs, below main's floor {quality_['floor']}"] if quality_['red'] else [])
         state, head = 'failure', '🔴 ' + ' · '.join(parts)
-    elif nothing:
-        # Why (1 Nov 2026, owner: "Guard grey now + Claude subscription"): until the press reads jobs again on the engine CI uses (cause: each Codex relay call takes 13-17 s, #2635), "measured nothing" is
-        # grey, not red: a red here would block every search PR and main push. TODO(AI): back to red once found > 0 on the Claude engine (#2901)
-        state, head = 'neutral', f'⚪ measured nothing: all {len(PERSONAS)} judges saw 0 jobs, so no press read a job (not a pass)'
-        reason = next((r.get('unavailable') for r in (pr.get(n) or {} for n in range(1, len(PERSONAS) + 1)) if r.get('unavailable')), '')
-        if reason:   # still grey, never a pass: the first line names the cause instead of a table of zeros
-            head = f"⚪ {'web search' if 'search' in reason else 'AI'} unavailable: {reason}; no press read a job (not a pass)"
-    elif _no_right_jobs(pr):
-        state, head = 'neutral', f'⚪ found 0 right jobs on all six: not a pass (the blind judge called none right role and right place)'
-        nothing = True   # the table marks every row grey, as for a run that measured nothing
-    elif unmeasured:
-        state, head = 'neutral', f'⚪ not measured ({unmeasured} of {len(PERSONAS)}): {next(r["not_measured"] for r in rows if r["not_measured"])}'
+    elif green:
+        state, head = 'success', f'🟢 measured {green} of {len(PERSONAS)} · every press ≤ 180 s'
     else:
-        state, head = 'success', '🟢 every press ≤ 180 s'
-    for row in rows:
-        row['measured_nothing'] = nothing   # the table marks every row grey then: a run that is not a pass has no green row (gitar on #2917)
+        state = 'neutral'
+        head, reason = grey_head(rows, pr)
     head += ' · ' + ((f"quality: shown, not gated ({quality_['why']})" if quality_.get('why') else f"quality: shown, gate starts at {QUALITY_MIN_RUNS} measured main runs, {quality_['measured']} so far") if quality_['mode'] == 'shown' else
                      f"quality: gated at total {quality_['floor']} ({quality_['basis']} over {quality_['measured']} runs)")
     return {'state': state, 'head': head, 'rows': rows, 'main_runs': len(main_runs), 'quality': quality_, 'unavailable': reason}
@@ -336,16 +358,14 @@ def table(verdict):
              f"| Persona | Main (last {MAIN_RUNS}) | This PR | Found | Press | Cost | |", '|---|---|---|---|---|---|---|']
     for r in verdict['rows']:
         main = ' · '.join(str(x) for x in r['main']) or '—'
-        mark = '🔴 ' + '; '.join(r['reasons']) if r['reasons'] else ('⚪' if r['not_measured'] or r.get('measured_nothing') else '🟢')
-        if r.get('cut'):
-            mark += f" {r['cut']}"
+        mark = f"{r['mark']} {r['why']}".strip()
         cell = lambda v, unit='': '—' if v is None else f'{v}{unit}'   # noqa: E731
         lines.append(f"| {r['label']} | {main} | {cell(r['local'])} | {cell(r['found'])} | {cell(r['seconds'], ' s')} | {'—' if r['usd'] is None else '$%.3f' % r['usd']} | {mark} |")
-    notes = [f"{r['label'].split(' ')[0]}: {r['funnel_note']}" for r in verdict['rows'] if r.get('funnel_note') and (r['local'] in (0, None) or r.get('reasons'))]
+    notes = [f"{r['label'].split(' ')[0]}: {r['funnel_note']}" for r in verdict['rows'] if r.get('funnel_note') and r['mark'] != '🟢']
     if notes:   # where a press that found no right job spent its time (funnel.py), one line each
         lines += ['', '<sub>Where the time went: ' + ' · '.join(notes) + '</sub>']
     lines += ['', '<sub>This PR / Main = jobs a blind judge (Codex small tier) called right role AND right place, of the jobs found; one press each, '
-              'a fresh install. Red: a press over 180 s, or (from 10 measured main runs) the six-persona total below main\'s average minus twice its spread (never below 1, never above main\'s lowest of those runs; not gated while that lowest is 0). Grey: all six judges saw 0 jobs, or none of the six found a right one (not a pass).</sub>']
+              'a fresh install. Red: a press over 180 s, or (from 10 measured main runs) the six-persona total below main\'s average minus twice its spread (never below 1, never above main\'s lowest of those runs; not gated while that lowest is 0). A row is green with at least one right job, grey without (it says why: AI queue full, no job scored, none right); the whole check is grey when no row is green (not a pass).</sub>']
     return '\n'.join(lines) + '\n'
 
 

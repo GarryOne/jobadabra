@@ -1,8 +1,9 @@
 name: CI · Org repos on the shared setup (weekly, report only)
 # Weekly (owner, 2 Nov 2026: "One script + weekly check"): compares every repo of the org with templates/org-repo/ (tools/org-repo.sh check) and keeps ONE issue open while any repo
 # drifts, closed when none does. Started by the jobadabra-web Worker timer (a GitHub cron is not reliable, jobadabra-web scheduler.js), or by hand. Report only: it changes no repo.
-# Needs the secret ORG_REPO_CHECK_TOKEN: an org-owned fine-grained token (resource owner jobadabra, all repositories) with Administration: write, Contents: read and Issues: write on
-# this repo. Write, though the job only reads: GitHub shows a ruleset's bypass actors only to a requester with write access to it (a read token makes `check` print a note instead).
+# Needs the secret ORG_REPO_CHECK_TOKEN: an org-owned fine-grained token (resource owner jobadabra, all repositories) with Administration: read, Contents: read and Issues: read+write
+# (measured 2 Nov 2026: it shows the rulesets and their bypass actors, but the merge settings come back null; `check` prints a note for those, never drift).
+
 on:
   workflow_dispatch:
 

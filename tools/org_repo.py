@@ -73,10 +73,10 @@ def ruleset_gaps(want, have):
     """The differences between the template ruleset and a repo's: enforcement, branch, bypass actors (exactly), and each rule's own parameters."""
     gaps = subset_gaps({k: want[k] for k in ('name', 'target', 'enforcement', 'conditions')}, have)
     actors = lambda body: sorted((a['actor_type'], a['actor_id'], a['bypass_mode']) for a in body.get('bypass_actors', []))
-    # Why (2 Nov 2026, Gitar on #2945): GitHub returns bypass_actors only to a requester with write access to the ruleset. A read-only token sees no key at all: that is "cannot verify"
+    # Why (2 Nov 2026, Gitar on #2945): GitHub documents bypass_actors as returned only to a requester with write access. The org's Administration-read token does see it (measured), but a token that does not gets no key at all: that is "cannot verify"
     # (a note, see UNVERIFIED), never an empty list, or every repo would drift for ever. A key that IS returned must match exactly (an extra bypass is drift too).
     if 'bypass_actors' not in have:
-        UNVERIFIED.append('bypass actors are not shown to this token (it needs Administration: write on the repo to read them)')
+        UNVERIFIED.append('bypass actors are not shown to this token (this token cannot read them)')
     elif actors(want) != actors(have):
         gaps.append(f'bypass actors are {actors(have)}, should be {actors(want)}')
     have_rules = {rule['type']: rule for rule in have.get('rules', [])}
@@ -115,7 +115,12 @@ def find_ruleset(repo):
 def check_repo(repo):
     """-> the list of differences between one repo and the templates (empty = on the shared setup)."""
     info = api('GET', f'repos/{ORG}/{repo}')
-    gaps = [f'settings: {gap}' for gap in subset_gaps(template_json('settings.json'), info)]
+    # Why (2 Nov 2026, mac-07 measured the org's Administration-read token): the merge settings come back null to it. null is "cannot read", a note, never drift; a real value must match.
+    wanted = template_json('settings.json')
+    unreadable = sorted(key for key in wanted if info.get(key) is None)
+    if unreadable:
+        UNVERIFIED.append(f'settings {", ".join(unreadable)} are not shown to this token (null)')
+    gaps = [f'settings: {gap}' for gap in subset_gaps({k: v for k, v in wanted.items() if k not in unreadable}, info)]
     ruleset_id = find_ruleset(repo)
     if ruleset_id is None:
         gaps.append(f'no ruleset "{template_json("ruleset.json")["name"]}"')

@@ -253,24 +253,24 @@
         "n": 7,
         "p95Seconds": 11
       },
-      "the CV check reads real PDFs: a plain CV passes, each known problem is found, a picture of a CV fails": {
-        "seconds": 30,
-        "n": 9,
-        "p95Seconds": 4.2
-      },
       "the Notion stand-in answered every request the app made": {
         "shared": "applyflows",
         "n": 2
-      },
-      "Profile Experience: an edited summary is saved with the Profile save bar, and is still there after a restart": {
-        "seconds": 90,
-        "provisional": true,
-        "reason": "provisional: 3 x the settings round-trip step (p95 13.4 s, which also restarts the app), 30 s floor; regenerate after 5 main runs (tools/e2e-step-timings.mjs)"
       },
       "no AI call of this suite reached a real model: the stand-in answered or refused every one": {
         "shared": "applyflows",
         "n": 3,
         "p95Seconds": 0.3
+      },
+      "Profile CV: the CV is checked with the card's button and the card shows its Readability score": {
+        "seconds": 60,
+        "provisional": true,
+        "reason": "provisional: the old CV-check step took p95 4.2 s for six PDFs; one printed PDF and one click, 60 s floor; regenerate after 5 main runs (tools/e2e-step-timings.mjs)"
+      },
+      "Profile Your details: a phone edited and saved is what the extension is handed after the app is quit and started again": {
+        "seconds": 90,
+        "provisional": true,
+        "reason": "provisional: 3 x the settings round-trip step (p95 13.4 s, which also restarts the app), 30 s floor; regenerate after 5 main runs (tools/e2e-step-timings.mjs)"
       }
     }
   },

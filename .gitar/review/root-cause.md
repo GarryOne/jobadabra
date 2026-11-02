@@ -1,6 +1,6 @@
 # Root cause, never symptoms
 
-Why (owner, 27 Oct 2026): "root causes, never symptoms", and "to avoid going in circles, with tens of PRs about a specific area of the app". Golden rule in the owner's CLAUDE.md; counter: `node tools/area-circles.mjs origin/main`.
+Why (owner, 27 Oct 2026): "root causes, never symptoms", and "to avoid going in circles, with tens of PRs about a specific area of the app". Golden rule in the owner's CLAUDE.md. Removed 2 Nov 2026 (owner: "let's decommission AREA-CIRCLES. Did it help in any way?… I don't think"): the counter flagged 76% of PRs, so it said nothing; the rule below stays, judged from the PR itself.
 
 ## On a PR that fixes a bug
 
@@ -14,8 +14,7 @@ Each of these is a blocking finding (no approval) with file:line: the cause is m
 
 ## Going in circles
 
-Look for the line `AREA-CIRCLES 7d=<n> 30d=<n> files=<list>` in the PR description. It counts the earlier PRs that touched the same product or harness code (desktop/e2e root, lib and suites `.mjs`; tests, fixtures, recordings and the shared registries never count); judge from the subjects listed above it which of them were fixes.
+Judge it from the PR itself: the files it changes and the earlier PRs on the same product or harness code that you can see (desktop/e2e root, lib and suites `.mjs`; tests, fixtures, recordings and the shared registries never count). If you cannot see the history, do not guess: flag only what the diff and the description show.
 
-- `7d` is 2 or more and the earlier PRs read as fixes (this PR would be the 3rd): a blocking finding until the description has a `Design:` block in the description: the intended behaviour in the owner's words, as the states, the one owner of each, and the verdicts that change them. The code should then be simplified to match.
+- The earlier PRs on the same files read as 2 or more fixes in the last 7 days (this PR would be the 3rd): a blocking finding until the description has a `Design:` block in the description: the intended behaviour in the owner's words, as the states, the one owner of each, and the verdicts that change them. The code should then be simplified to match.
 - Flag a PR that adds one more case, branch, flag or special case to code that already had 2+ fixes that week; ask what the design says instead.
-- The line is missing on a bug-fix PR: ask the author to run `node tools/area-circles.mjs origin/main` and paste its last line.

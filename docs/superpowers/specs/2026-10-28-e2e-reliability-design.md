@@ -172,7 +172,7 @@ Guard: none: the classifier lives in the private jobadabra-web repo.
 
 **J · Where e2e work goes.** A card on /admin/operations/e2e, per week: commits split into product / test expectations / plumbing / other e2e, against the owner's
 target of plumbing under 15%, plus fix PRs per harness area within 7 days (`tools/area-circles.mjs`). Same numbers in the weekly summary.
-Guard: `tests/test_area_circles.py`.
+Guard: none: the circle counter (`tools/area-circles.mjs`) was removed on 2 Nov 2026 (owner: "let's decommission AREA-CIRCLES"); the rest of the card is the e2e scorecard's.
 
 **K · Gitar too.** `.gitar/review/e2e-reliability.md` holds E, F and "tolerant results never get a fix PR"; the mechanical gates enforce the same, whatever Gitar
 says. On one finding, after 2 rounds of disagreement with Gitar the session answers in the thread and the owner decides.

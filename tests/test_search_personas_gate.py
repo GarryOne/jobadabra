@@ -211,24 +211,31 @@ class AGateThatSawNoJobHasMeasuredNothing(unittest.TestCase):
         self.assertEqual(gate.quality(TODAY, [TODAY] * 10)['mode'], 'shown')
 
     def test_the_floor_is_one_right_job_while_main_never_fell_below_it(self):
-        totals = [3, 9, 2, 14, 2, 8, 2, 2, 20, 2]   # mean 6.4, spread 6.1: mean - 2 spreads is -5.8; main's lowest is 2
+        totals = [3, 9, 2, 14, 2, 8, 2, 2, 20, 2]   # mean 6.4, spread 6.3: mean - 2 spreads is -6.3; main's lowest is 2
         mains = [run([t, 0, 0, 0, 0, 0], [150] * 6, found=[5] * 6) for t in totals]
         quiet = gate.compare(run([0] * 6, [150] * 6, found=[5] * 6), mains)
         self.assertEqual((quiet['quality']['mode'], quiet['quality']['floor']), ('gated', gate.QUALITY_FLOOR_MIN))
         self.assertEqual((quiet['state'], 'below main' in quiet['head']), ('failure', True), 'a total of 0 right jobs is below the floor of 1')
         self.assertEqual(gate.compare(run([1, 0, 0, 0, 0, 0], [150] * 6, found=[5] * 6), mains)['state'], 'success')
 
-    def test_a_pr_is_not_held_above_the_lowest_total_main_itself_reached(self):
-        """#2928 (2 Nov 2026): main's last three totals were 7, 5 and 0; the PR's 0 was red against a floor of 1."""
+    def test_a_pr_is_not_held_to_a_floor_main_itself_fell_through(self):
+        """#2928 (2 Nov 2026): main's last three totals were 7, 5 and 0; the PR's 0 was red against a floor of 1. A floor of 0 would pass anything
+        (Gitar on #2934), so while main's lowest is 0 the quality is shown, not gated, and says why."""
         totals = [7, 5, 0, 1, 0, 4, 2, 0, 3, 6]
         mains = [run([t, 0, 0, 0, 0, 0], [150] * 6, found=[5] * 6) for t in totals]
         verdict = gate.compare(run([0] * 6, [150] * 6, found=[5] * 6), mains)
-        self.assertEqual((verdict['quality']['mode'], verdict['quality']['floor'], verdict['quality']['red']), ('gated', 0, False))
+        self.assertEqual((verdict['quality']['mode'], verdict['quality']['floor'], verdict['quality']['red']), ('shown', None, False))
         self.assertEqual(verdict['state'], 'success')
-        self.assertIn("main's lowest", verdict['head'])
+        self.assertIn('not gated (main reached 0 right jobs', verdict['head'])
+
+    def test_a_pr_is_not_held_above_the_lowest_total_main_reached_when_that_is_a_job_or_more(self):
+        totals = [4, 3, 3, 9, 4, 8, 3, 3, 12, 3]   # mean 5.2, spread 3.2: spread floor -1.2 -> 1, main's lowest 3 caps it at 1 (the lower one stands)
+        mains = [run([t, 0, 0, 0, 0, 0], [150] * 6, found=[5] * 6) for t in totals]
+        verdict = gate.compare(run([1, 0, 0, 0, 0, 0], [150] * 6, found=[5] * 6), mains)
+        self.assertEqual((verdict['quality']['mode'], verdict['quality']['floor']), ('gated', 1))
 
     def test_the_spread_floor_still_applies_when_it_is_lower_than_mains_lowest_total(self):
-        mains = [run([t, 0, 0, 0, 0, 0], [150] * 6, found=[5] * 6) for t in [6, 7, 5, 8, 9, 5, 6, 7, 8, 5]]   # lowest 5, mean 6.6, spread 1.4 -> floor 3.8 (below main's lowest 5, so it stands)
+        mains = [run([t, 0, 0, 0, 0, 0], [150] * 6, found=[5] * 6) for t in [6, 7, 5, 8, 9, 5, 6, 7, 8, 5]]   # lowest 5, mean 6.6, spread 1.4 -> floor 3.7 (below main's lowest 5, so it stands)
         self.assertEqual(gate.compare(run([3, 0, 0, 0, 0, 0], [150] * 6, found=[5] * 6), mains)['state'], 'failure')
         self.assertEqual(gate.compare(run([4, 0, 0, 0, 0, 0], [150] * 6, found=[5] * 6), mains)['state'], 'success')
 

@@ -159,14 +159,18 @@ def _total(run):
 def quality(pr, main_runs):
     """-> {mode: 'shown'|'gated', measured, total, floor, red}. 'shown' below QUALITY_MIN_RUNS measured main runs (a run that measured all six personas);
     then the newest QUALITY_MIN_RUNS of them give mean and sample spread, and the PR is red below mean - QUALITY_SPREADS x spread, at least 1 and
-    at most the lowest of those totals (a PR is not held to more than main reached)."""
+    at most the lowest of those totals (a PR is not held to more than main reached). When that lowest is below 1, main itself found nothing in
+    one of the ten: 'shown' with a `why`, since a floor of 0 could never go red (Gitar on #2934)."""
     import statistics
     totals = [t for t in (_total(run) for run in main_runs) if t is not None][:QUALITY_MIN_RUNS]
     total = _total(pr)
     if len(totals) < QUALITY_MIN_RUNS:
         return {'mode': 'shown', 'measured': len(totals), 'total': total, 'floor': None, 'red': False}
     spread_floor = max(statistics.mean(totals) - QUALITY_SPREADS * statistics.stdev(totals), QUALITY_FLOOR_MIN)
-    floor = min(spread_floor, min(totals))
+    lowest = min(totals)
+    if lowest < QUALITY_FLOOR_MIN:   # main itself found nothing in one of the ten: no floor can be enforced, so say so instead of a floor that always passes
+        return {'mode': 'shown', 'measured': len(totals), 'total': total, 'floor': None, 'red': False, 'why': f"main reached {lowest} right jobs in one of its last {len(totals)} runs"}
+    floor = min(spread_floor, lowest)
     return {'mode': 'gated', 'measured': len(totals), 'total': total, 'floor': round(floor, 1), 'red': total is not None and total < floor,
             'basis': "main's lowest" if floor < spread_floor else f"main's average minus {QUALITY_SPREADS} spreads"}
 
@@ -196,7 +200,7 @@ def compare(pr, main_runs):
         state, head = 'success', '🟢 every press ≤ 180 s'
     for row in rows:
         row['measured_nothing'] = nothing   # the table marks every row grey then: a run that is not a pass has no green row (gitar on #2917)
-    head += ' · ' + (f"quality: shown, gate starts at {QUALITY_MIN_RUNS} measured main runs, {quality_['measured']} so far" if quality_['mode'] == 'shown' else
+    head += ' · ' + ((f"quality: shown, not gated ({quality_['why']})" if quality_.get('why') else f"quality: shown, gate starts at {QUALITY_MIN_RUNS} measured main runs, {quality_['measured']} so far") if quality_['mode'] == 'shown' else
                      f"quality: gated at total {quality_['floor']} ({quality_['basis']} over {quality_['measured']} runs)")
     return {'state': state, 'head': head, 'rows': rows, 'main_runs': len(main_runs), 'quality': quality_}
 
@@ -212,7 +216,7 @@ def table(verdict):
         cell = lambda v, unit='': '—' if v is None else f'{v}{unit}'   # noqa: E731
         lines.append(f"| {r['label']} | {main} | {cell(r['local'])} | {cell(r['found'])} | {cell(r['seconds'], ' s')} | {'—' if r['usd'] is None else '$%.3f' % r['usd']} | {mark} |")
     lines += ['', '<sub>This PR / Main = jobs a blind judge (Codex small tier) called right role AND right place, of the jobs found; one press each, '
-              'a fresh install. Red: a press over 180 s, or (from 10 measured main runs) the six-persona total below main\'s average minus twice its spread (never below 1, never above main\'s lowest of those runs). Grey: all six judges saw 0 jobs (measured nothing, not a pass).</sub>']
+              'a fresh install. Red: a press over 180 s, or (from 10 measured main runs) the six-persona total below main\'s average minus twice its spread (never below 1, never above main\'s lowest of those runs; not gated while that lowest is 0). Grey: all six judges saw 0 jobs (measured nothing, not a pass).</sub>']
     return '\n'.join(lines) + '\n'
 
 

@@ -9,6 +9,11 @@ import re
 import sys
 
 STEP = re.compile(r'^\[\d+s\] ')
+SECONDS = re.compile(r'^\[(\d+)s\] ')
+PLACES = re.compile(r'^Places: (?:worked out|\d+ place words? placed)')
+WEB_START = re.compile(r'^Job boards: searching the web for trade and local boards')
+WEB_SKIPPED = re.compile(r'^Job boards: no web search: this search names no places or roles')
+TIME_UP = re.compile(r'^⏱ Time is up \([^)]*\) for ([^:]+):')
 EMPLOYERS = re.compile(r'^Employers: ([\d,]+) of ([\d,]+) in your places hire for your kind of role')
 EMPLOYER_READ = re.compile(r'Reading employer job sites: ([\d,]+) of ([\d,]+)(?: · ([\d,]+) jobs listed)?')
 BOARD = re.compile(r'^Job boards found: (.+?) ([\d,]+) job\(s\), ([\d,]+) relevant')
@@ -28,12 +33,28 @@ def funnel(lines):
     out = dict.fromkeys(('employers_picked', 'employers_in_places', 'employer_sites_read', 'looked', 'matches', 'scored', 'good'))
     boards, web, found = {}, 0, 0
     scout_web = False
+    # Why (2 Nov 2026, run 41376694937, mac-07: "everything is 0"): p2-p4 started their web search and still found 0 because the time budget ended before
+    # any employer site or board was read; p1/p5 never started it. Seconds and phases below say which, in the funnel and the table.
+    where = {'places_worked_out_s': None, 'web_search_started_s': None, 'employers_named_s': None}
+    time_up, web_skipped = [], False
     for raw in lines:
+        at = SECONDS.match(raw)
+        at = int(at[1]) if at else None
         line = STEP.sub('', raw.rstrip('\n'))
         for part in line.split('⏳'):   # a progress line can follow another on the same line
             part = part.strip()
-            if m := EMPLOYERS.match(part):
+            if PLACES.match(part):
+                where['places_worked_out_s'] = where['places_worked_out_s'] if where['places_worked_out_s'] is not None else at
+            elif WEB_START.match(part):
+                where['web_search_started_s'] = where['web_search_started_s'] if where['web_search_started_s'] is not None else at
+            elif WEB_SKIPPED.match(part):
+                web_skipped = True
+            elif m := TIME_UP.match(part):
+                if m[1] not in time_up:
+                    time_up.append(m[1])
+            elif m := EMPLOYERS.match(part):
                 out['employers_picked'], out['employers_in_places'] = number(m[1]), number(m[2])
+                where['employers_named_s'] = where['employers_named_s'] if where['employers_named_s'] is not None else at
             elif m := EMPLOYER_READ.search(part):
                 out['employer_sites_read'] = max(out['employer_sites_read'] or 0, number(m[1]))
             elif m := BOARD.match(part):
@@ -47,7 +68,8 @@ def funnel(lines):
             elif m := COUNTS.match(part):
                 out['looked'], out['matches'], out['scored'], out['good'] = map(int, m.groups())
     return {**out, 'boards_read': len(boards), 'board_jobs': sum(jobs for jobs, _ in boards.values()),
-            'board_relevant': sum(relevant for _, relevant in boards.values()), 'web_searches': web, 'web_found': found, 'scout_web': scout_web}
+            'board_relevant': sum(relevant for _, relevant in boards.values()), 'web_searches': web, 'web_found': found, 'scout_web': scout_web,
+            **where, 'web_search_skipped': web_skipped, 'time_up': time_up}
 
 
 def kinds():

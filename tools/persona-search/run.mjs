@@ -96,11 +96,21 @@ if (!storage.settings().setupDone) {   // the wizard's strategy step: the app's 
   storage.saveSettings({setupDone: true, cvName: 'cv.pdf'});
   console.log(`${name}: strategy ${kept ? `from ${kept}` : 'drafted'} in ${Math.round((Date.now() - started) / 1000)} s`);
 }
+// What the press searched with (Why 2 Nov 2026, run 41376694937: p1/p5 never started their web search and the artifact could not say why): roles and place words from search.json,
+// the countries the AI worked out for them from places.json (written by the press itself, so it is read again after it).
+function searchSummary() {
+  const read = (folder, file) => { try { return JSON.parse(fs.readFileSync(path.join(storage.path(folder), file), 'utf8')); } catch { return {}; } };
+  const search = read('config', 'search.json'), known = read('data', 'places.json'), places = [];
+  for (const key of ['top_tier', 'country_wide', 'abroad']) for (const word of search.locations?.[key] || []) if (!places.includes(word)) places.push(word);
+  const countries = [...new Set(places.flatMap(word => Object.values(known).filter(entry => String(entry?.word || '').toLowerCase() === String(word).toLowerCase()).flatMap(entry => entry.countries || [])))];
+  return {roles: (search.role_keywords || []).length, places, countries};
+}
 const failed = [];
 const done = fs.existsSync(path.join(out, 'presses.jsonl')) ? fs.readFileSync(path.join(out, 'presses.jsonl'), 'utf8').trim().split('\n').filter(Boolean).length : 0;
 const fieldFile = option('--change-field', '');
 for (let press = done + 1; press <= presses; press++) {
   const changed = press === 2 && fieldFile ? await changeField(JSON.parse(fs.readFileSync(fieldFile, 'utf8'))) : null;
+  console.log(`Search: ${searchSummary().roles} roles; places ${searchSummary().places.join(', ') || 'none'}`);
   const started = Date.now(), log = fs.createWriteStream(path.join(out, `run-${press}.log`));
   const firstOnly = process.argv.includes('--first-only');
   let calls = 0;
@@ -109,6 +119,7 @@ for (let press = done + 1; press <= presses; press++) {
   log.end();
   const crashes = metrics('crashes.py', path.join(out, `run-${press}.log`));   // a Traceback in the log: a step died, its numbers are thin
   const row = {press, code, crashes, ...(process.env.JOBADABRA_PERSONA_CODEX === '1' ? {billing: 'subscription'} : {}), seconds: Math.round((Date.now() - started) / 1000), ...metrics(), funnel: metrics('funnel.py', path.join(out, `run-${press}.log`), '--since', new Date(started).toISOString().slice(0, 19)),
+    search: searchSummary(),
     ...(changed ? {field_changed: changed} : {}),
     ...(press === 1 ? {ttfr: metrics('ttfr.py', path.join(out, 'run-1.log'))} : {})};
   fs.appendFileSync(path.join(out, 'presses.jsonl'), `${JSON.stringify(row)}\n`);

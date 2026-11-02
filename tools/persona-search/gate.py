@@ -227,7 +227,7 @@ def judge_one(row, mains):
         reasons.append(f"the press failed (exit {row.get('code')}, {row.get('crashes', 0)} crash(es))")
     if row.get('seconds', 0) > PRESS_LIMIT:
         reasons.append(f"press took {row['seconds']} s (> {PRESS_LIMIT})")
-    if row.get('cost_unmeasured'):
+    if row.get('cost_unmeasured') and not row.get('cut'):   # a press the budget cut never reached the step that measures its cost (run 41379413905); the cut note says so
         reasons.append('the press cost was not measured')
     if (row.get('usd') or 0) > PERSONA_CAP_USD:
         reasons.append(f"cost ${row['usd']:.3f} over the ${PERSONA_CAP_USD} cap")

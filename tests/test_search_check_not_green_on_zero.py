@@ -61,6 +61,14 @@ class ZeroRightJobsIsNeverGreen(unittest.TestCase):
         table = gate.table(gate.compare(six({4: {'local': 1, 'found': 3}}), []))
         self.assertIn('AI engine not reported', table)
 
+    def test_a_press_cut_by_the_cap_is_not_red_for_a_cost_it_never_reached(self):
+        """Run 41379413905 (PR #2961): three presses were cut at 178 s with no job scored and were red only for "the press cost was not measured", which
+        the cut itself explains (the cost step comes after the scoring). A cut press with a measured cost stays as it was; any other red reason stays."""
+        cut = row(1, cost_unmeasured=True, usd=None, cut='cut by the cap after 178 s with no job scored; longest wait for the AI 36 s', seconds=178)
+        self.assertEqual(gate.judge_one(cut, [])[0], [])
+        self.assertTrue(gate.judge_one({**cut, 'cut': ''}, [])[0], 'an unmeasured cost without a cut is still red')
+        self.assertTrue(gate.judge_one({**cut, 'seconds': 200}, [])[0], 'a press over 180 s is still red')
+
     def test_a_press_that_found_nothing_says_where_the_time_went(self):
         funnel = {'places_worked_out_s': 10, 'web_search_started_s': 10, 'employers_named_s': 43, 'time_up': ['job boards', 'employer sites'], 'web_search_skipped': False}
         skipped = {'places_worked_out_s': None, 'web_search_started_s': None, 'employers_named_s': 45, 'time_up': [], 'web_search_skipped': True}

@@ -1,6 +1,5 @@
 """The beta by hand is built from the newest fully green main commit, whatever workflow files changed since (owner, 1 Nov 2026: the beta promotes what main's CI already proved)."""
 import os
-import re
 import stat
 import subprocess
 import sys
@@ -147,8 +146,8 @@ class BetaReleaseFallback(unittest.TestCase):
         self.assertFalse(self.log.exists() and 'workflow run' in self.log.read_text(), 'nothing is dispatched')
 
 
-class BetaPickBranch(unittest.TestCase):
-    """The real script on a real throwaway repo (A(w1) B(w1) C(w2) D(w3)): a pick behind main whose workflow files differ is pushed as the commit's code with main's head's workflow files."""
+class BetaPickTag(unittest.TestCase):
+    """The real script on a real throwaway repo (A(w1) B(w1) C(w2) D(w3)): a pick behind main is run from a tag at that commit, whatever its workflow files are (beta 13's overlay failed its own unit test: one commit's tests under another's workflows)."""
 
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
@@ -191,38 +190,21 @@ class BetaPickBranch(unittest.TestCase):
         (self.tools / 'beta_pick.py').write_text(f'print("{pick}")\n')
         return subprocess.run(['bash', str(self.tools / 'beta-release.sh'), '--no-watch'], cwd=self.work, env=self.env, capture_output=True, text=True)
 
-    def test_a_pick_with_older_workflow_files_runs_its_code_with_the_heads_workflow_files(self):
+    def test_a_pick_behind_main_runs_from_a_tag_at_that_very_commit(self):
         done = self.run_script(f"{self.sha['B']} 2")
         self.assertEqual(done.returncode, 0, done.stderr)
-        self.assertIn("with main's head's workflow files", done.stdout)
-        branch = f"refs/heads/beta-pick/{self.sha['B'][:7]}"
-        built = git(self.origin, 'rev-parse', branch)
-        self.assertNotEqual(built, self.sha['B'], 'a new commit, not the green one')
-        self.assertEqual(git(self.origin, 'rev-parse', f'{built}^'), self.sha['B'], 'its parent is the green commit')
-        self.assertEqual(git(self.origin, 'rev-parse', f"{built}:.github/workflows"), git(self.origin, 'rev-parse', f"{self.sha['D']}:.github/workflows"), "main's head's workflow files")
-        self.assertEqual(git(self.origin, 'diff', '--name-only', self.sha['B'], built), '.github/workflows/x.yml', 'nothing else differs from the green commit')
+        tag = f"beta-pick-{self.sha['B'][:7]}"
+        self.assertIn(f'tag {tag}', done.stdout)
+        self.assertEqual(git(self.origin, 'rev-parse', f'refs/tags/{tag}'), self.sha['B'], 'the green commit itself: its tests and its workflows agree')
+        self.assertEqual(git(self.origin, 'for-each-ref', 'refs/heads', '--format=%(refname)'), 'refs/heads/main', 'no branch is pushed')
         self.assertEqual(git(self.origin, 'rev-parse', 'refs/heads/main'), self.sha['D'], 'main is untouched')
-        self.assertIn(f'--ref beta-pick/{self.sha["B"][:7]} -f beta=true', self.log.read_text())
-        self.assertIn('Beta pick: the code of', git(self.origin, 'log', '-1', '--format=%B', built))
-        self.assertEqual(git(self.origin, 'log', '-1', '--format=%s', built), 'commit B', "the green commit's own title")
-        # Gitar on #2927: the overlay has no build.yml run; desktop.yml's "built" step finds the green commit from the message with this very sed.
-        step = (ROOT / '.github' / 'workflows' / 'desktop.yml').read_text()
-        expr = re.search(r"sed -n '([^']*Beta pick: the code of[^']*)' \| tail -1", step).group(1)
-        found = subprocess.run(['sed', '-n', expr], input=git(self.origin, 'log', '-1', '--format=%B', built), capture_output=True, text=True).stdout.strip()
-        self.assertEqual(found, self.sha['B'], 'the CI wait reads the green commit, which is on main and has a run')
+        self.assertIn(f'--ref {tag} -f beta=true', self.log.read_text())
 
-    def test_a_pick_with_the_heads_workflow_files_is_pushed_as_it_is(self):
-        git(self.work, 'checkout', '-q', '-b', 'tmp', self.sha['C'])
-        (self.work / 'E.txt').write_text('E')
-        (self.work / '.github' / 'workflows' / 'x.yml').write_text('v3\n')
-        git(self.work, 'add', '-A')
-        git(self.work, 'commit', '-q', '-m', 'commit E')
-        head = git(self.work, 'rev-parse', 'HEAD')
-        git(self.work, 'push', '-q', '-f', 'origin', f'{head}:refs/heads/main')
-        done = self.run_script(f"{self.sha['D']} 1")
+    def test_a_pick_at_main_head_runs_on_main_and_pushes_nothing(self):
+        done = self.run_script(f"{self.sha['D']} 0")
         self.assertEqual(done.returncode, 0, done.stderr)
-        self.assertNotIn("workflow files", done.stdout.split('(the newest')[1])
-        self.assertEqual(git(self.origin, 'rev-parse', f"refs/heads/beta-pick/{self.sha['D'][:7]}"), self.sha['D'], 'same workflow files: the green commit itself')
+        self.assertEqual(git(self.origin, 'tag', '-l'), '')
+        self.assertIn('--ref main -f beta=true', self.log.read_text())
 
 
 if __name__ == '__main__':

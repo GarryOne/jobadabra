@@ -184,13 +184,8 @@ class DesktopWorkflowTest(unittest.TestCase):
             self.assertIn('tools/release-checks.sh --after-ci "$TAG" "$REF"', release)
             self.assertNotIn('tools/release-checks.sh "$TAG"', release)
         # Owner, 1 Nov 2026: the run says which commit it is built from and how far behind main (an annotation and the summary page).
-        self.assertIn('::notice title=Built from ${built:0:7}::', job('changes'))
-        self.assertIn('git rev-list --count "$built..origin/main"', job('changes'))
-        # Gitar on #2927: a beta-pick overlay commit has no build.yml run; main's CI is read on the green commit its message names, in every job that reads it.
-        self.assertIn("Beta pick: the code of", job('changes'))
-        self.assertIn('ci_sha: ${{ steps.built.outputs.sha }}', WORKFLOW)
-        self.assertNotIn('REF: ${{ github.sha }}', WORKFLOW)
-        self.assertEqual(WORKFLOW.count('REF: ${{ needs.changes.outputs.ci_sha }}'), 5)
+        self.assertIn('::notice title=Built from ${GITHUB_SHA:0:7}::', job('changes'))
+        self.assertIn('git rev-list --count "$GITHUB_SHA..origin/main"', job('changes'))
         # Owner, 1 Nov 2026, on beta 10's graph: the commit and its age are on a box of the graph, and the AI credit box is gone (its alert is steps of the last job, Gitar on #2904).
         self.assertIn('built_from: ${{ steps.built.outputs.label }}', WORKFLOW)
         self.assertIn("name: ${{ format('Main''s CI on {0}', needs.changes.outputs.built_from) }}", job('main-ci'))
@@ -201,8 +196,17 @@ class DesktopWorkflowTest(unittest.TestCase):
         self.assertIn('node desktop/e2e/release-alert.mjs beta "$TAG" --lanes "$LANES"', job('prune'))
         self.assertIn("if: always() && (needs.release-mac-offer.result == 'success' || needs.release-windows-offer.result == 'success')", job('prune'))
         self.assertIn('LANES: Mac=${{ needs.release-mac-offer.result }},Windows=${{ needs.release-windows-offer.result }}', job('prune'))
+        # Owner, 1 Nov 2026, on beta 13's red: a pick runs its own pipeline (a tag at the green commit); GitHub refuses a token without the workflows permission a tag on a commit whose workflows differ from
+        # main's, so the tag and the release use the CI App's token (Workflows: write), with the run's own token as the fallback.
+        changes = job('changes')
+        self.assertIn('permission-workflows: write', changes)
+        self.assertIn('id: tag_app', changes)
+        self.assertIn('APP_TOKEN: ${{ steps.tag_app.outputs.token }}', changes)
+        self.assertIn('git -c http.https://github.com/.extraheader= push -q "$remote"', changes)   # Gitar on #2933: the persisted github.token header would win over the App token in the URL
+        self.assertIn('GH_TOKEN: ${{ steps.tag_app.outputs.token || github.token }}', changes)
+        self.assertNotIn('refs/heads/beta-pick', WORKFLOW)
         # Gitar on #2883: a cache saved on a branch is restored only by that branch and its children, so the quality-rate history save stays main-only.
-        loose = "(github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/beta-pick/'))"
+        loose = "(github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/beta-pick-'))"
         self.assertEqual(WORKFLOW.replace(loose, '').count("github.ref == 'refs/heads/main'"), 1, 'only the history cache save is main-only')
         self.assertIn("github.ref == 'refs/heads/main' && hashFiles('desktop/e2e/.quality-rate/history.json')", WORKFLOW)
         # only a nightly or a beta by hand is tested; the plan is made once, for both lanes

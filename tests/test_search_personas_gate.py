@@ -264,6 +264,17 @@ class TheCheckSaysWhyItMeasuredNothing(unittest.TestCase):
         self.assertTrue(text.splitlines()[0].startswith('🔍 **Search check:** ⚪ web search unavailable: fallback:search-unsupported'), text)
         self.assertNotIn('| Persona |', text)
 
+    def test_a_spent_plan_is_named_as_the_ai_not_as_the_search(self):
+        """Gitar on #2943: head and footer must agree; the reason comes from compare(), not from re-reading the head."""
+        pr = run([0] * 6, [150] * 6, found=[0] * 6)
+        pr[1]['unavailable'] = 'budget:week'
+        verdict = gate.compare(pr, [])
+        self.assertEqual(verdict['unavailable'], 'budget:week')
+        text = gate.table(verdict)
+        self.assertIn('AI unavailable: budget:week', text.splitlines()[0])
+        self.assertIn('their AI was refused (budget:week)', text)
+        self.assertNotIn('refused the search', text)
+
     def test_without_a_reason_the_old_grey_report_and_table_stay(self):
         verdict = gate.compare(run([0] * 6, [150] * 6, found=[0] * 6), [])
         self.assertTrue(verdict['head'].startswith('⚪ measured nothing'), verdict['head'])

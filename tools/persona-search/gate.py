@@ -204,6 +204,7 @@ def compare(pr, main_runs):
         rows.append({'persona': n, 'label': label(n), 'main': seen, 'local': (row or {}).get('local'), 'found': (row or {}).get('found'),
                      'seconds': (row or {}).get('seconds'), 'usd': (row or {}).get('usd'), 'billing': (row or {}).get('billing'), 'reasons': reasons, 'not_measured': (row or {}).get('not_measured')})
     quality_ = quality(pr, main_runs)
+    reason = ''   # why every press read nothing, when the press log says (the AI was refused); set below, returned for the table
     nothing = _nothing(pr)   # grey in every mode, with or without main: a gate that saw no job at all has measured nothing, and is never read as a pass (#2901)
     if red or quality_['red']:
         parts = ([f'{red} persona(s) red'] if red else []) + ([f"total {quality_['total']} right jobs, below main's floor {quality_['floor']}"] if quality_['red'] else [])
@@ -223,14 +224,14 @@ def compare(pr, main_runs):
         row['measured_nothing'] = nothing   # the table marks every row grey then: a run that is not a pass has no green row (gitar on #2917)
     head += ' · ' + ((f"quality: shown, not gated ({quality_['why']})" if quality_.get('why') else f"quality: shown, gate starts at {QUALITY_MIN_RUNS} measured main runs, {quality_['measured']} so far") if quality_['mode'] == 'shown' else
                      f"quality: gated at total {quality_['floor']} ({quality_['basis']} over {quality_['measured']} runs)")
-    return {'state': state, 'head': head, 'rows': rows, 'main_runs': len(main_runs), 'quality': quality_, 'unavailable': bool(nothing and ' unavailable: ' in head)}
+    return {'state': state, 'head': head, 'rows': rows, 'main_runs': len(main_runs), 'quality': quality_, 'unavailable': reason}
 
 
 def table(verdict):
     spent = sum(r['usd'] or 0 for r in verdict['rows'])
     cap = '' if any(r.get('billing') == 'subscription' for r in verdict['rows']) else f' (legacy API cap ${PERSONA_CAP_USD * len(PERSONAS):.2f})'
     if verdict.get('unavailable'):   # no table of zeros: nothing was searched, so there is nothing to compare
-        return f"🔍 **Search check:** {verdict['head']} · {COST}\n\n<sub>Presses ran, but their AI refused the search, so no job was read and nothing was judged. Grey, never a pass; it measures again once the search runs.</sub>\n"
+        return f"🔍 **Search check:** {verdict['head']} · {COST}\n\n<sub>Presses ran, but their AI was refused ({verdict['unavailable']}), so no job was read and nothing was judged. Grey, never a pass; it measures again once the AI answers.</sub>\n"
     lines = [f"🔍 **Search check:** {verdict['head']} · {COST} · cost ${spent:.2f}{cap}", '',
              f"| Persona | Main (last {MAIN_RUNS}) | This PR | Found | Press | Cost | |", '|---|---|---|---|---|---|---|']
     for r in verdict['rows']:

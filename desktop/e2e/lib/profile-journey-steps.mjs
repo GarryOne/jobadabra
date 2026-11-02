@@ -8,12 +8,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {FIXTURES} from './cvfixtures.mjs';
-import {freePort} from './extension.mjs';
+import {DEFAULT_APP_PORT, freePort} from './extension.mjs';
 import {pollUntil, stepWait, waitForLogLine} from './wait-on-state.mjs';
 
 // Why (2 Nov 2026, a8): the extension's id is its manifest key's (lib/server.js EXTENSION_IDS); importing server.js would load the whole app server into the runner.
 const EXTENSION_ID = 'gpffoneapcfceflfmfgedkcfbommgcfk';
-const PRODUCTION_PORT = 47111;   // the owner's own app (lib/server-listen.js DEFAULT_PORT): no step here starts or asks an app on it
 const NEW_PHONE = '+41 79 555 99 88';
 
 // Profile as a person opens it: the menu's Profile, then one of its tabs.
@@ -78,7 +77,7 @@ export async function profileDetailStep(ctx) {
 
   // The app is quit as a person quits it and started again on its own free port.
   const port = await freePort();
-  if (port === PRODUCTION_PORT) throw new Error('the Profile step must never use the production port 47111');
+  if (port === DEFAULT_APP_PORT) throw new Error(`the Profile step must never use the production port ${DEFAULT_APP_PORT}`);
   await ctx.relaunch({JOBADABRA_PORT: String(port)}, undefined, {how: 'quit'});
   const {value: setUp} = await pollUntil(() => ctx.page.evaluate(async () => (await window.pilot.state()).settings.setupDone === true), value => value, {log: () => {}});
   if (!setUp) throw new Error('after the restart the app is not set up again');

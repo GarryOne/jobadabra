@@ -74,7 +74,7 @@ test('zero misses with max zero passes even when the misses folder is absent', t
   assert.deepEqual(checkAiMisses(artifacts(t), {aiMissesMax: 0}), {ok: true, misses: 0, max: 0, message: ''});
 });
 
-test('one miss with max zero reports only its request key and never the fixture prompt', t => {
+test('one miss with max zero reports its request key, the operation and part digests of the ask, and never the fixture prompt', t => {
   const dir = artifacts(t), prompt = 'private fixture prompt must never be logged';
   miss(dir, '0123456789abcdef0123456789abcdef', {messages: [{role: 'user', content: prompt}]});
   const result = checkAiMisses(dir, {aiMissesMax: 0});

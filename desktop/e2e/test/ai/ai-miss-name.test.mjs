@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {test} from 'node:test';
 import {keepMiss} from '../../lib/ai-meter.mjs';
-import {askParts, missLine, missName, questionName, turnedAway} from '../../lib/ai-miss-name.mjs';
+import {askParts, missFiles, missLine, missName, questionName, turnedAway} from '../../lib/ai-miss-name.mjs';
 import {storedAnswer} from '../../lib/ai-answers.mjs';
 import {checkAiMisses} from '../../lib/no-real-ai.mjs';
 
@@ -96,4 +96,15 @@ test('a hang message gets nothing when the AI turned nothing away, the first mis
   const said = turnedAway(dir, env);
   assert.match(said, /^; the AI stand-in refused: app\.score\/feed\/[0-9a-f]+$/);
   assert.equal(said.includes(SECRET), false);
+});
+
+test('the hang message and the suite verdict count the same files: a folder named like a miss is no miss', t => {
+  const dir = folder(t);
+  miss(dir, 'real', {url: '/v1/messages', action: 'score', request: scoreBody});
+  fs.mkdirSync(path.join(dir, 'ai-misses', 'a-folder.json'));
+  fs.writeFileSync(path.join(dir, 'ai-misses', 'notes.txt'), 'not a miss');
+  assert.deepEqual(missFiles(dir), ['real.json']);
+  assert.deepEqual(missFiles(path.join(dir, 'nowhere')), []);
+  assert.match(turnedAway(dir, {}), /\(1 so far\), first ask: app\.score/);
+  assert.equal(checkAiMisses(dir, {aiMissesMax: 1}).misses, 1);
 });

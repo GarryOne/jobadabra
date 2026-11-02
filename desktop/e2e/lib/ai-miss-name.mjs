@@ -59,6 +59,12 @@ export function missLine(file, env = process.env) {
   return `first ask: ${missName(miss, env)}${parts ? `; parts: ${parts}` : ''}`;
 }
 
+/** Sorted names of the real miss JSON files in `artifacts`/ai-misses (a folder named like one is no miss); [] when the folder is missing. The one list the suite verdict and the hang message both count. */
+export function missFiles(artifacts) {
+  try { return fs.readdirSync(path.join(artifacts, 'ai-misses'), {withFileTypes: true}).filter(file => file.isFile() && file.name.endsWith('.json')).map(file => file.name).sort(); }
+  catch (error) { if (error.code === 'ENOENT') return []; throw error; }
+}
+
 /**
  * What the AI stand-in turned away in this suite, to follow a hang message: its first refusal, else its first replay miss; '' when it turned nothing away.
  * Why (2 Nov 2026, owner: "why beta is red?"; beta 16 wizard, run 41372979302): the step hung and nothing said the AI had refused the ask it waited for.
@@ -66,7 +72,6 @@ export function missLine(file, env = process.env) {
 export function turnedAway(artifacts, env = process.env) {
   const refused = refusedQuestions({...env, E2E_ARTIFACTS: artifacts});
   if (refused.length) return `; the AI stand-in refused: ${questionName(refused[0].question) || shorten(refused[0].message)}${refused.length > 1 ? ` (+${refused.length - 1} more)` : ''}`;
-  let names;
-  try { names = fs.readdirSync(path.join(artifacts, 'ai-misses')).filter(name => name.endsWith('.json')).sort(); } catch (error) { if (error.code === 'ENOENT') return ''; throw error; }
+  const names = missFiles(artifacts);
   return names.length ? `; an AI ask had no stored answer (${names.length} so far), ${missLine(path.join(artifacts, 'ai-misses', names[0]), env)}` : '';
 }

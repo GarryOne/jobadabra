@@ -92,6 +92,7 @@ class TheBoardsJoinWhenTheyFinish(unittest.TestCase):
                            fits=lambda db: {}, boards=boards, import_jobs=import_jobs)
         self.assertEqual(scored, [['b1']], 'the board job was scored in the slice')
         self.assertFalse([line for line in said if 'none to score yet' in line], said)
+        self.assertIn('First jobs: 1 found on the job boards', said, 'the app re-reads its job list on this wording (LIST_CHANGED, desktop/test/live-count.test.js)')
 
     def test_boards_that_finish_at_once_are_imported_once_whichever_side_of_the_scan_they_end(self):
         events, imported = self.run_slice(lambda say: [BOARD_JOB])

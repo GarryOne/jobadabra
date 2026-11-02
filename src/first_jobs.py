@@ -173,7 +173,7 @@ def run(db, feed_db, sources, profile, hidden, sync, say=print, scan=None, score
             if joined:
                 found += len(joined)
                 (import_jobs or (lambda slice_report: store.import_watch_report(db, slice_report)))({'jobs': joined})
-                say(f'First jobs: {len(joined)} more from the job boards')
+                say(f'First jobs: {len(joined)} found on the job boards')   # Why (#2928, Gitar): the app re-reads its job list on `First jobs: N found` (LIST_CHANGED, desktop/renderer/pages/jobs.js); another wording left these jobs hidden
                 if not strong and done < MAX_FIRST:   # Gitar #2928: with little from the employer sites the boards' jobs are the slice's first scores
                     more, strong, more_queued = _score_first(db, hidden, profile, scorer, model, first, fits, sync, MAX_FIRST - done)
                     done, queued = done + more, queued + more_queued

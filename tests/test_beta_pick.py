@@ -171,11 +171,16 @@ class BetaPickTag(unittest.TestCase):
         tools.mkdir()
         (tools / 'beta-release.sh').write_text((ROOT / 'tools' / 'beta-release.sh').read_text())
         (tools / 'red-main-gate.sh').write_text('#!/bin/sh\necho "Main\'s e2e: no suite red."\n')
+        (tools / 'beta_took.py').write_text((ROOT / 'tools' / 'beta_took.py').read_text())
         bin_dir = base / 'bin'
         bin_dir.mkdir()
         self.log = base / 'gh.log'
         gh = bin_dir / 'gh'
-        gh.write_text('#!/bin/sh\necho "$@" >> "$GH_LOG"\ncase "$1 $2" in "run list") echo "42 https://example.test/runs/42";; esac\n')
+        # `run list --json …createdAt…` is beta_took.py's read of the finished betas; any other `run list` finds the started run.
+        runs = ('[{"displayTitle":"Beta by hand","conclusion":"failure","createdAt":"2026-11-02T02:00:00Z","updatedAt":"2026-11-02T02:19:00Z"},'
+                '{"displayTitle":"Beta by hand","conclusion":"success","createdAt":"2026-11-02T01:00:00Z","updatedAt":"2026-11-02T01:17:00Z"}]')
+        gh.write_text('#!/bin/sh\necho "$@" >> "$GH_LOG"\ncase "$*" in *createdAt*) echo \'' + runs + '\'; exit 0;; esac\n'
+                      'case "$1 $2" in "run list") echo "42 https://example.test/runs/42";; esac\n')
         gh.chmod(gh.stat().st_mode | stat.S_IEXEC)
         sleep = bin_dir / 'sleep'
         sleep.write_text('#!/bin/sh\n')
@@ -199,6 +204,12 @@ class BetaPickTag(unittest.TestCase):
         self.assertEqual(git(self.origin, 'for-each-ref', 'refs/heads', '--format=%(refname)'), 'refs/heads/main', 'no branch is pushed')
         self.assertEqual(git(self.origin, 'rev-parse', 'refs/heads/main'), self.sha['D'], 'main is untouched')
         self.assertIn(f'--ref {tag} -f beta=true', self.log.read_text())
+
+    def test_the_start_line_says_the_measured_time_of_the_last_betas(self):
+        done = self.run_script(f"{self.sha['D']} 0")
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertIn('in that one run (the last 2 took 17–19 min);', done.stdout, 'measured on the finished betas, never typed (owner, 2 Nov 2026: "why 45 mins?")')
+        self.assertNotIn('45', done.stdout)
 
     def test_a_pick_at_main_head_runs_on_main_and_pushes_nothing(self):
         done = self.run_script(f"{self.sha['D']} 0")

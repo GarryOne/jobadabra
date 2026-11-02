@@ -23,11 +23,7 @@ class Took(unittest.TestCase):
 
     def test_no_finished_beta_gives_no_line(self):
         self.assertIsNone(beta_took.took([run(3, 'cancelled')]))
-
-    def test_the_start_line_types_no_time(self):
-        script = (ROOT / 'tools' / 'beta-release.sh').read_text()
-        self.assertNotIn('about 45 minutes', script)
-        self.assertIn('beta_took.py', script, 'the start line takes its time from the measured betas')
+    # The start line itself: tests/test_beta_pick.py BetaPickTag runs tools/beta-release.sh --no-watch and reads what it prints.
 
 
 if __name__ == '__main__':

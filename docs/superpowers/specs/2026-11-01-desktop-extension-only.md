@@ -74,7 +74,7 @@ Order per move: the private side lands first, then the jobadabra removal. Before
 - [x] 3/6 web shell (proof: none: merged as jobadabra-web#274, e8a1907; deleted again in 4c)
 - [x] 4a/6 timers on the site Worker, off (proof: none: merged as jobadabra-web#279, 5e8a58f)
 - [x] 4b-0/6 the bot Worker's GitHub calls follow a repo move (a 301 re-sends the POST) (proof: app-core/test/github-fetch.test.js)
-- [ ] 4b/6 the timers switch: www starts the on-time workflows, the bot has 0 triggers (jobadabra#2935, jobadabra-web#305; proof pending: the 01:30 night pass and the 01:47 e2e start from www)
+- [x] 4b/6 the timers switch: www starts the on-time workflows, the bot has 0 triggers (proof: none: jobadabra#2935 + jobadabra-web#305; Cloudflare read-back www 3 triggers / bot 0; sweeps 01:10 and 01:20, Night burn-in 3/5 at 01:30:57 started by workflow_dispatch)
 - [x] 4c-1/6 delete `worker/`, `worker.yml` and the dead `scheduled` export here (proof: tests/test_desktop_extension_only.py)
 - [ ] 4c-2/6 delete the bot shell in jobadabra-web (`workers/bot`, `release-bot-worker.yml`, its test)
 - [ ] 4c-3/6 delete the Cloudflare Worker `sre-job-pilotto-bot` and its Telegram webhook (mac-07 deletes the webhook first; no PR)

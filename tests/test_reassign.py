@@ -99,7 +99,7 @@ class NewJobTests(unittest.TestCase):
 
     def test_a_new_job_on_this_macs_store(self):
         with tempfile.TemporaryDirectory() as folder:
-            self.check_new_job(sqlite.open_store({'JOB_PILOTTO_DATA_DIR': folder}))
+            self.check_new_job(sqlite.open_store({'JOBADABRA_DATA_DIR': folder}))
 
     def test_a_new_job_on_notion(self):
         tracker = FakeTracker([])

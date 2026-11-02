@@ -101,7 +101,7 @@ def params_of(request, model, effort, action=''):
         params['extra_headers'] = headers
         action = headers.get('x-jp-action') or action
     if action:
-        params['prompt_cache_key'] = f'job-pilotto-{action}'   # the AI step only: calls of one step share a cache
+        params['prompt_cache_key'] = f'jobadabra-{action}'   # the AI step only: calls of one step share a cache
     return params
 
 

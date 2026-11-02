@@ -148,7 +148,7 @@ def limit():
     # Why (31 Oct 2026, owner: the plan "burn these tokens" once Codex resets on 4 Nov): the scout's AI now runs on the Codex plan (desktop/e2e/broker-relay-run.mjs), whose weekly share is small until then,
     # so central-scout.yml sets CENTRAL_AI_CAP=40 calls a run (about 2,000 items at BATCH 50; items past it stay unjudged, never defaulted). Raise that one value after the 4 Nov reset.
     try:
-        return int(os.environ.get('JOB_PILOTTO_CENTRAL_MAX_CALLS') or 0) or CENTRAL_MAX_CALLS
+        return int(os.environ.get('JOBADABRA_CENTRAL_MAX_CALLS') or 0) or CENTRAL_MAX_CALLS
     except ValueError:
         return CENTRAL_MAX_CALLS
 

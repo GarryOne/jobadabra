@@ -2,51 +2,51 @@
 # Heavy runs on this Mac: browser suites, recorded replays, real-extension and the e2e harness take this lock; unit tests never do.
 #   bash tools/heavy-lock.sh <what> <command...>      waits for a slot (says who holds them), waits while the load is high, runs, frees it, keeps the exit code
 # ONE copy for every session (owner, 11 Oct 2026): a worktree's copy hands off to the primary checkout's (<git common dir>/..), so all queue in one order.
-# Slots = directories <TMPDIR>/job-pilotto-heavy/lock and lock.2 holding pid, what, since, cwd; stale when the pid is gone (taken over by an atomic rename).
+# Slots = directories <TMPDIR>/jobadabra-heavy/lock and lock.2 holding pid, what, since, cwd; stale when the pid is gone (taken over by an atomic rename).
 # The first heavy run always starts; more start beside it only while the memory gate has room (tools/heavy-lock-memory.sh: macOS pressure, available memory, swap-outs). Ports are free per run and the real Notion page has its own lock (desktop/e2e/lib/notion-page-lock.mjs).
 # First come, first served (11 Oct 2026: the pool's per-site runs re-took a just-freed lock while a replay starved 6+ min): each waiter holds a ticket
 # <root>/queue/<nanoseconds>-<pid> ("<pid> <what>") and takes a slot only when no live older ticket is ahead; a dead waiter's ticket is dropped.
 # Shortest first (owner, 11 Oct 2026: a ~15 s row replay waited 1-3 min behind ~70 s live runs): a waiter whose `what` is `row` or `row-*` goes ahead of older
-# longer waiters, and a longer waiter yields to a younger row waiter, each only while it has waited under JOB_PILOTTO_HEAVY_SHORT_AGE seconds (default 120),
-# so nobody starves. Replays (row*, recorded-replay) wait for the memory gate, never for the load. A ticket names its session (JOB_PILOTTO_SESSION, else the
-# branch of the working folder) and the log lines say it. JOB_PILOTTO_HEAVY_SHORT_FIRST=0 = strict arrival order; JOB_PILOTTO_HEAVY_REPLAY_LOAD=1 = replays wait for the load too.
+# longer waiters, and a longer waiter yields to a younger row waiter, each only while it has waited under JOBADABRA_HEAVY_SHORT_AGE seconds (default 120),
+# so nobody starves. Replays (row*, recorded-replay) wait for the memory gate, never for the load. A ticket names its session (JOBADABRA_SESSION, else the
+# branch of the working folder) and the log lines say it. JOBADABRA_HEAVY_SHORT_FIRST=0 = strict arrival order; JOBADABRA_HEAVY_REPLAY_LOAD=1 = replays wait for the load too.
 #   bash tools/heavy-lock.sh status     who holds it, who waits (class, how long), load, memory, about how long a new run would wait (tools/heavy-lock-status.sh)
-# Every wait is logged to <git common dir>/gate-timing.log (JOB_PILOTTO_HEAVY_TIMING_LOG elsewhere, GATE_TIMING=0 off).
+# Every wait is logged to <git common dir>/gate-timing.log (JOBADABRA_HEAVY_TIMING_LOG elsewhere, GATE_TIMING=0 off).
 # A nested call (a suite started by `npm run all`) sees JP_HEAVY_HELD and runs at once. Escape hatches, all said in the log when used:
-#   JOB_PILOTTO_HEAVY=0                 no lock, no load wait
-#   JOB_PILOTTO_HEAVY_WAIT=<s>          longest wait for a slot before running anyway (default 1800)
-#   JOB_PILOTTO_HEAVY_SLOTS=<n>         1 = one heavy run at a time; default 4 (each beyond the 1st behind the memory gate)
-#   JOB_PILOTTO_HEAVY_MEM_RULE=floor    the old memory gate (free+inactive over 7 GB live / 3 GB replay, swap used under 50% / 70%); the other knobs are in tools/heavy-lock-memory.sh
-#   JOB_PILOTTO_HEAVY_SHARED=<path>     the shared copy to run (default the primary checkout's); this script never hands off to itself
-#   JOB_PILOTTO_HEAVY_LOAD=<n>          1-minute load average above which a run waits (default 1.5 x cores); 0 = never wait for load
-#   JOB_PILOTTO_HEAVY_POLL=<s>          seconds between looks at the queue and the load (default 1; the tests use 0.1)
-#   JOB_PILOTTO_HEAVY_LOAD_WAIT=<s>     longest wait for the load to drop before running anyway (default 300)
+#   JOBADABRA_HEAVY=0                 no lock, no load wait
+#   JOBADABRA_HEAVY_WAIT=<s>          longest wait for a slot before running anyway (default 1800)
+#   JOBADABRA_HEAVY_SLOTS=<n>         1 = one heavy run at a time; default 4 (each beyond the 1st behind the memory gate)
+#   JOBADABRA_HEAVY_MEM_RULE=floor    the old memory gate (free+inactive over 7 GB live / 3 GB replay, swap used under 50% / 70%); the other knobs are in tools/heavy-lock-memory.sh
+#   JOBADABRA_HEAVY_SHARED=<path>     the shared copy to run (default the primary checkout's); this script never hands off to itself
+#   JOBADABRA_HEAVY_LOAD=<n>          1-minute load average above which a run waits (default 1.5 x cores); 0 = never wait for load
+#   JOBADABRA_HEAVY_POLL=<s>          seconds between looks at the queue and the load (default 1; the tests use 0.1)
+#   JOBADABRA_HEAVY_LOAD_WAIT=<s>     longest wait for the load to drop before running anyway (default 300)
 # Owner: landing-speed (11 Oct 2026, spec faster-fixes §6). Guarded by tests/test_heavy_lock.py.
 [ "${1:-}" = status ] && exec bash "$(dirname "$0")/heavy-lock-status.sh"   # read-only readout of holders, waiters, load and expected waits
 # `yield`, called by a run that holds the lock between two parts of its work (the pool, between sites): when a waiter of a higher class or a shorter run is queued, it gives its place up and
-# waits for it back in the queue (class and age as a new waiter); otherwise it returns at once. No-op outside a hold or with JOB_PILOTTO_HEAVY=0. desktop/e2e/lib/heavy.mjs yieldHeavy() calls it.
+# waits for it back in the queue (class and age as a new waiter); otherwise it returns at once. No-op outside a hold or with JOBADABRA_HEAVY=0. desktop/e2e/lib/heavy.mjs yieldHeavy() calls it.
 yield_mode=0
-if [ "${1:-}" = yield ]; then yield_mode=1; { [ -n "${JP_HEAVY_HELD:-}" ] && [ "${JOB_PILOTTO_HEAVY:-1}" != 0 ]; } || exit 0; set -- yield true; fi
+if [ "${1:-}" = yield ]; then yield_mode=1; { [ -n "${JP_HEAVY_HELD:-}" ] && [ "${JOBADABRA_HEAVY:-1}" != 0 ]; } || exit 0; set -- yield true; fi
 what="${1:-heavy run}"; shift || true
 [ "$#" -gt 0 ] || { echo "usage: heavy-lock.sh <what> <command...>" >&2; exit 2; }
-if [ "$yield_mode" = 0 ] && { [ "${JOB_PILOTTO_HEAVY:-1}" = 0 ] || [ -n "${JP_HEAVY_HELD:-}" ]; }; then exec "$@"; fi
+if [ "$yield_mode" = 0 ] && { [ "${JOBADABRA_HEAVY:-1}" = 0 ] || [ -n "${JP_HEAVY_HELD:-}" ]; }; then exec "$@"; fi
 
-shared="${JOB_PILOTTO_HEAVY_SHARED:-}"
+shared="${JOBADABRA_HEAVY_SHARED:-}"
 if [ -z "$shared" ]; then common="$(git -C "$(dirname "$0")" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)"; [ -n "$common" ] && shared="$(dirname "$common")/tools/heavy-lock.sh"; fi
 real() { echo "$(cd "$(dirname "$1")" 2>/dev/null && pwd -P)/$(basename "$1")"; }
-if [ -n "$shared" ] && [ -f "$shared" ] && [ "$(real "$shared")" != "$(real "$0")" ]; then JOB_PILOTTO_HEAVY_SHARED="$shared" exec bash "$shared" "$what" "$@"; fi
+if [ -n "$shared" ] && [ -f "$shared" ] && [ "$(real "$shared")" != "$(real "$0")" ]; then JOBADABRA_HEAVY_SHARED="$shared" exec bash "$shared" "$what" "$@"; fi
 
-root="${JOB_PILOTTO_HEAVY_DIR:-${TMPDIR:-/tmp}/job-pilotto-heavy}"; lock=""
+root="${JOBADABRA_HEAVY_DIR:-${TMPDIR:-/tmp}/jobadabra-heavy}"; lock=""
 mkdir -p "$root"
 say() { echo "heavy-lock: $*" >&2; }
 # Every hold is logged with the branch and session it belongs to and the load at queueing and at start, so a fix's proof waits can be summed (tools/landing-report.mjs).
 timing_log() {  # <text after the time stamp>
   [ "${GATE_TIMING:-1}" != 0 ] || return 0
-  local timing="${JOB_PILOTTO_HEAVY_TIMING_LOG:-$(git -C "$(dirname "$0")" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)/gate-timing.log}"
+  local timing="${JOBADABRA_HEAVY_TIMING_LOG:-$(git -C "$(dirname "$0")" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)/gate-timing.log}"
   [ "$timing" = /gate-timing.log ] || echo "# $(date -u +%Y-%m-%dT%H:%M:%SZ) $1" >>"$timing" 2>/dev/null || true
 }
 [ -f "$(dirname "$0")/heavy-lock-reap.sh" ] && source "$(dirname "$0")/heavy-lock-reap.sh" || { forced_reason() { return 1; }; reap_dead() { return 0; }; reap_slot() { return 0; }; kill_group() { return 0; }; find_session_pid() { :; }; }
-max_slots="${JOB_PILOTTO_HEAVY_SLOTS:-4}"; [ "$max_slots" -ge 1 ] 2>/dev/null || max_slots=1
+max_slots="${JOBADABRA_HEAVY_SLOTS:-4}"; [ "$max_slots" -ge 1 ] 2>/dev/null || max_slots=1
 SLOT_DIRS="$root/lock"; for _i in $(seq 2 "$max_slots"); do SLOT_DIRS="$SLOT_DIRS $root/lock.$_i"; done
 holders() { local dir pid what since out=""
   for dir in $SLOT_DIRS; do [ -d "$dir" ] || continue; pid="$(cat "$dir/pid" 2>/dev/null)"; what="$(cat "$dir/what" 2>/dev/null)"; since="$(cat "$dir/since" 2>/dev/null)"
@@ -67,12 +67,12 @@ held() {  # live slots, after dropping stale ones
   done
   echo "$count"
 }
-# Admission by memory budget (owner, 11 Oct 2026; the old fixed 2 slots): up to JOB_PILOTTO_HEAVY_SLOTS (default 4) runs at once, each admitted only while the memory gate says one more fits:
+# Admission by memory budget (owner, 11 Oct 2026; the old fixed 2 slots): up to JOBADABRA_HEAVY_SLOTS (default 4) runs at once, each admitted only while the memory gate says one more fits:
 # macOS's pressure normal, its available memory less what runs just started declared over this run's cost plus a margin, and no swapping out (tools/heavy-lock-memory.sh;
-# JOB_PILOTTO_HEAVY_MEM_RULE=floor = the free+inactive 7 GB / 3 GB floors of before).
+# JOBADABRA_HEAVY_MEM_RULE=floor = the free+inactive 7 GB / 3 GB floors of before).
 [ -f "$(dirname "$0")/heavy-lock-memory.sh" ] && source "$(dirname "$0")/heavy-lock-memory.sh" || { my_cost() { echo 2.9; }; memory_ok() { why="no memory gate (tools/heavy-lock-memory.sh missing)"; return 1; }; }
-# A timing run (what has "latency" or "timing" in it, or JOB_PILOTTO_HEAVY_EXCLUSIVE=1) is exclusive: it starts only on an empty lock and nobody starts beside it.
-is_exclusive() { case "$what" in *latency*|*timing*) return 0 ;; esac; [ "${JOB_PILOTTO_HEAVY_EXCLUSIVE:-0}" = 1 ]; }
+# A timing run (what has "latency" or "timing" in it, or JOBADABRA_HEAVY_EXCLUSIVE=1) is exclusive: it starts only on an empty lock and nobody starts beside it.
+is_exclusive() { case "$what" in *latency*|*timing*) return 0 ;; esac; [ "${JOBADABRA_HEAVY_EXCLUSIVE:-0}" = 1 ]; }
 exclusive_held() { local dir; for dir in $SLOT_DIRS; do [ -f "$dir/exclusive" ] && return 0; done; return 1; }
 take() { local dir; for dir in $SLOT_DIRS; do mkdir "$dir" 2>/dev/null && { lock="$dir"; echo $$ >"$dir/pid"; my_cost >"$dir/cost"; date +%s >"$dir/since"; is_exclusive && echo 1 >"$dir/exclusive"; return 0; }; done; return 1; }
 # After taking a slot: a timing run must be the only holder and nobody may have started beside it; if two took at the same moment, both give the slot back and try again in their turn.
@@ -82,10 +82,10 @@ queue="$root/queue"; mkdir -p "$queue"
 age_of() { local ns="${1%%-*}"; echo $(( $(date +%s) - ns / 1000000000 )); }   # seconds a ticket has waited (its name starts with the nanosecond clock)
 ticket_label() { echo "$(head -n 1 "$queue/$1" | cut -d' ' -f2-) (pid $2, session $(sed -n 3p "$queue/$1" 2>/dev/null || echo ?))$([ "$(sed -n 5p "$queue/$1" 2>/dev/null)" = exclusive ] && echo ' [exclusive]')"; }
 branch_now="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo ?)"
-[ -f "$(dirname "$0")/session-name.sh" ] && source "$(dirname "$0")/session-name.sh" && session="$(session_name)" || session="${JOB_PILOTTO_SESSION:-?}"
+[ -f "$(dirname "$0")/session-name.sh" ] && source "$(dirname "$0")/session-name.sh" && session="$(session_name)" || session="${JOBADABRA_SESSION:-?}"
 [ "$session" = ? ] && session="$branch_now"   # no session name found: the branch still says whose run it is
 [ -f "$(dirname "$0")/heavy-lock-classes.sh" ] && source "$(dirname "$0")/heavy-lock-classes.sh" || { is_short() { return 1; }; is_replay() { return 1; }; lock_class() { echo other; }; prio_of() { echo 3; }; ticket_prio() { echo 3; }; can_overtake() { return 1; }; }
-klass="$(lock_class "$what" "${JOB_PILOTTO_HEAVY_CLASS:-}")"; my_prio="$(prio_of "$what" "$klass")"
+klass="$(lock_class "$what" "${JOBADABRA_HEAVY_CLASS:-}")"; my_prio="$(prio_of "$what" "$klass")"
 if [ "$yield_mode" = 1 ]; then
   slot=""; for dir in $SLOT_DIRS; do [ "$(cat "$dir/pid" 2>/dev/null)" = "$JP_HEAVY_HELD" ] && slot="$dir"; done
   [ -n "$slot" ] || exit 0
@@ -125,41 +125,41 @@ ahead() {  # the waiter I must let go first, as "<what> (pid N, session S)"; dea
   done
 }
 
-wait_max="${JOB_PILOTTO_HEAVY_WAIT:-1800}"; poll="${JOB_PILOTTO_HEAVY_POLL:-1}"; began=$(date +%s); told=0
+wait_max="${JOBADABRA_HEAVY_WAIT:-1800}"; poll="${JOBADABRA_HEAVY_POLL:-1}"; began=$(date +%s); told=0
 # A busy machine (seven sessions' suites at once: load 40-147 on 11 Oct 2026) makes browser runs time out; wait for it to calm down. The wait is IN THE QUEUE, holding no slot
 # (11 Oct 2026: a run took the slot and then sat 12 min in the load wait while two landings queued behind it), and a waiter that waits only for the machine does not hold up
 # the ones behind it (its ticket says "loadwait"): whoever is ready first goes, the older first.
 cores="$(sysctl -n hw.ncpu 2>/dev/null || nproc 2>/dev/null || echo 8)"
-limit="${JOB_PILOTTO_HEAVY_LOAD:-$(( cores * 3 / 2 ))}"; load_wait="${JOB_PILOTTO_HEAVY_LOAD_WAIT:-300}"; load_began=""; load_gave_up=0
+limit="${JOBADABRA_HEAVY_LOAD:-$(( cores * 3 / 2 ))}"; load_wait="${JOBADABRA_HEAVY_LOAD_WAIT:-300}"; load_began=""; load_gave_up=0
 load1() { uptime | sed -E 's/.*load averages?: *//' | awk -F'[ ,]+' '{ printf "%d", $1 + 0.5 }'; }
 load_queue="$(load1)"
-# Who loads the Mac (owner, 11 Oct 2026: waits could not be attributed): the 3 programs using the most CPU right now, as "name 120%, ..." (JOB_PILOTTO_HEAVY_TOP=0 leaves it out). Nothing is killed.
+# Who loads the Mac (owner, 11 Oct 2026: waits could not be attributed): the 3 programs using the most CPU right now, as "name 120%, ..." (JOBADABRA_HEAVY_TOP=0 leaves it out). Nothing is killed.
 top_cpu() {  # $1 = separator between name and percent, $2 = separator between entries
-  [ "${JOB_PILOTTO_HEAVY_TOP:-1}" = 0 ] && return 0
+  [ "${JOBADABRA_HEAVY_TOP:-1}" = 0 ] && return 0
   ps -Ao pcpu=,comm= 2>/dev/null | awk '{c = $1; $1 = ""; sub(/^ +/, ""); n = split($0, p, "/"); cpu[p[n]] += c} END {for (k in cpu) printf "%d\t%s\n", cpu[k], k}' | sort -rn | head -3 \
     | awk -F'\t' -v a="$1" -v b="$2" '$1 > 0 {printf "%s%s%s%s%%", sep, $2, a, $1; sep = b}'
 }
 mark() { printf '%s %s\n%s\n%s\n%s\n%s\n' "$$" "$what" "$1" "$session" "$klass" "$(is_exclusive && echo exclusive)" >"$root/.ticket.$$" && mv -f "$root/.ticket.$$" "$ticket"; }   # written aside and renamed: a reader never sees it half-written (11 Oct 2026, CI red 3x)   # the ticket keeps its name (its place in line); only its second line changes
-# What "the machine is busy" is read from (JOB_PILOTTO_HEAVY_SIGNAL, default auto since 11 Oct 2026: load 160-205 held three proofs for minutes at 36-51% CPU and 53% free memory, the
+# What "the machine is busy" is read from (JOBADABRA_HEAVY_SIGNAL, default auto since 11 Oct 2026: load 160-205 held three proofs for minutes at 36-51% CPU and 53% free memory, the
 # average counts the runnable threads of many short-lived test processes). auto = cpu and memory together (busy when either is); load = the 1-minute load average; or one of: the CPU in use (sum of the processes' CPU over the cores; busy above
-# JOB_PILOTTO_HEAVY_CPU_BUSY percent, default 90) or the free memory percentage of `memory_pressure` (busy below JOB_PILOTTO_HEAVY_MEM_FREE_PCT percent, default 15). All three are logged on every
+# JOBADABRA_HEAVY_CPU_BUSY percent, default 90) or the free memory percentage of `memory_pressure` (busy below JOBADABRA_HEAVY_MEM_FREE_PCT percent, default 15). All three are logged on every
 # hold (cpu_busy=, mem_free=) so the signal that predicts slow or failed runs can be chosen from data (11 Oct 2026: no failure-versus-load data existed before the new log).
 cpu_busy() { ps -Ao pcpu= 2>/dev/null | awk -v n="$cores" '{s += $1} END {printf "%d", s / (n > 0 ? n : 1)}'; }
 mem_free_pct() { memory_pressure -Q 2>/dev/null | sed -nE 's/.*free percentage: *([0-9]+)%.*/\1/p' | head -n 1; }
 machine_calm() {  # 0 when the chosen signal says the machine is not busy; sets $signal_text to what it read
-  case "${JOB_PILOTTO_HEAVY_SIGNAL:-auto}" in
-    cpu) local c; c="$(cpu_busy)"; signal_text="CPU in use ${c}% of ${cores} cores (busy above ${JOB_PILOTTO_HEAVY_CPU_BUSY:-90}%)"; [ "${c:-0}" -le "${JOB_PILOTTO_HEAVY_CPU_BUSY:-90}" ] ;;
-    memory) local m; m="$(mem_free_pct)"; signal_text="free memory ${m:-?}% (busy below ${JOB_PILOTTO_HEAVY_MEM_FREE_PCT:-15}%)"; [ -z "$m" ] || [ "$m" -ge "${JOB_PILOTTO_HEAVY_MEM_FREE_PCT:-15}" ] ;;
+  case "${JOBADABRA_HEAVY_SIGNAL:-auto}" in
+    cpu) local c; c="$(cpu_busy)"; signal_text="CPU in use ${c}% of ${cores} cores (busy above ${JOBADABRA_HEAVY_CPU_BUSY:-90}%)"; [ "${c:-0}" -le "${JOBADABRA_HEAVY_CPU_BUSY:-90}" ] ;;
+    memory) local m; m="$(mem_free_pct)"; signal_text="free memory ${m:-?}% (busy below ${JOBADABRA_HEAVY_MEM_FREE_PCT:-15}%)"; [ -z "$m" ] || [ "$m" -ge "${JOBADABRA_HEAVY_MEM_FREE_PCT:-15}" ] ;;
     load) signal_text="1-minute load $(load1) is above $limit"; [ "$(load1)" -le "$limit" ] ;;
     *) local c m; c="$(cpu_busy)"; m="$(mem_free_pct)"   # auto: busy only when the CPU is used up or memory is short
-       signal_text="CPU in use ${c}% of ${cores} cores (busy above ${JOB_PILOTTO_HEAVY_CPU_BUSY:-90}%), free memory ${m:-?}% (busy below ${JOB_PILOTTO_HEAVY_MEM_FREE_PCT:-15}%)"
-       [ "${c:-0}" -le "${JOB_PILOTTO_HEAVY_CPU_BUSY:-90}" ] && { [ -z "$m" ] || [ "$m" -ge "${JOB_PILOTTO_HEAVY_MEM_FREE_PCT:-15}" ]; } ;;
+       signal_text="CPU in use ${c}% of ${cores} cores (busy above ${JOBADABRA_HEAVY_CPU_BUSY:-90}%), free memory ${m:-?}% (busy below ${JOBADABRA_HEAVY_MEM_FREE_PCT:-15}%)"
+       [ "${c:-0}" -le "${JOBADABRA_HEAVY_CPU_BUSY:-90}" ] && { [ -z "$m" ] || [ "$m" -ge "${JOBADABRA_HEAVY_MEM_FREE_PCT:-15}" ]; } ;;
   esac
 }
 machine_ready() {  # sets $why when not
   [ "$limit" -gt 0 ] 2>/dev/null || return 0
   [ "$load_gave_up" = 1 ] && return 0
-  is_replay "$what" && [ "${JOB_PILOTTO_HEAVY_REPLAY_LOAD:-0}" != 1 ] && return 0   # replays wait for the memory gate, not the load
+  is_replay "$what" && [ "${JOBADABRA_HEAVY_REPLAY_LOAD:-0}" != 1 ] && return 0   # replays wait for the memory gate, not the load
   if machine_calm; then load_began=""; return 0; fi
   # The first busy reading always waits once (and says why): giving up on it could skip the wait line when the clock's second ticks between the two reads (main red, 13 Oct 2026)
   if [ -z "$load_began" ]; then load_began=$(date +%s)
@@ -172,8 +172,8 @@ while :; do
     mark ""
     first_raw="$(ahead)"; first="${first_raw#*|}"; skip=0
     busy="$(held)"   # read AFTER the queue: the lock may have been taken while the queue was being read (a timing run's neighbour started beside it in a loaded run, 11 Oct 2026)
-    # A replay beside the runs that hold the lock, with room in the budget, does not queue behind a waiter that has waited under the cap (JOB_PILOTTO_HEAVY_REPLAY_SKIP=0 off).
-    case "$first" in *'[exclusive]') ;; *) [ -n "$first" ] && [ "$busy" != 0 ] && is_replay "$what" && [ "${JOB_PILOTTO_HEAVY_REPLAY_SKIP:-1}" != 0 ] && [ "${first_raw%%|*}" -lt "${JOB_PILOTTO_HEAVY_STARVE:-600}" ] && skip=1 ;; esac
+    # A replay beside the runs that hold the lock, with room in the budget, does not queue behind a waiter that has waited under the cap (JOBADABRA_HEAVY_REPLAY_SKIP=0 off).
+    case "$first" in *'[exclusive]') ;; *) [ -n "$first" ] && [ "$busy" != 0 ] && is_replay "$what" && [ "${JOBADABRA_HEAVY_REPLAY_SKIP:-1}" != 0 ] && [ "${first_raw%%|*}" -lt "${JOBADABRA_HEAVY_STARVE:-600}" ] && skip=1 ;; esac
     if [ -z "$first" ] || [ "$skip" = 1 ]; then
       if [ "$busy" = 0 ]; then take && alone_ok && break
       elif ! is_exclusive && ! exclusive_held && [ "$busy" -lt "$max_slots" ] && memory_ok; then take && alone_ok && break; fi
@@ -183,8 +183,8 @@ while :; do
   if [ "$waited" -ge "$wait_max" ]; then say "waited ${wait_max}s for the lock held by $(holders): running anyway"; break; fi
   if [ "$told" = 0 ] || [ $((waited % 30)) -lt 2 ]; then
     if [ -n "$why" ]; then say "$what waits for the machine, holding no slot: $why"
-    elif [ "$busy" != 0 ]; then say "$what waits: the lock is held by $(holders)${first:+, then $first is ahead}; waited ${waited}s; load $(load1), using the CPU: $(top_cpu ' ' ', ') (JOB_PILOTTO_HEAVY=0 skips this)"
-    else say "$what waits: $first asked first; waited ${waited}s (JOB_PILOTTO_HEAVY=0 skips this)"; fi
+    elif [ "$busy" != 0 ]; then say "$what waits: the lock is held by $(holders)${first:+, then $first is ahead}; waited ${waited}s; load $(load1), using the CPU: $(top_cpu ' ' ', ') (JOBADABRA_HEAVY=0 skips this)"
+    else say "$what waits: $first asked first; waited ${waited}s (JOBADABRA_HEAVY=0 skips this)"; fi
     told=1; sleep "$poll"
   fi
   sleep "$poll"

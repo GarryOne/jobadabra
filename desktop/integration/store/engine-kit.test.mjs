@@ -25,11 +25,11 @@ test('every server of the kit is on loopback, on a port that is not the owner\'s
 test('the install is a temp folder of its own, and the engine gets its data and config folders from it', () => {
   assert.ok(kit.profile.startsWith(fs.realpathSync(os.tmpdir())) || kit.profile.startsWith(os.tmpdir()), `${kit.profile} is not under the temp folder`);
   const env = kit.tasks.pipelineEnv(kit.storage);
-  assert.equal(env.JOB_PILOTTO_DATA_DIR, path.join(kit.profile, 'data'));
-  assert.equal(env.JOB_PILOTTO_CONFIG_DIR, path.join(kit.profile, 'config'));
-  assert.equal(env.JOB_PILOTTO_AI_BASE_URL, undefined);
+  assert.equal(env.JOBADABRA_DATA_DIR, path.join(kit.profile, 'data'));
+  assert.equal(env.JOBADABRA_CONFIG_DIR, path.join(kit.profile, 'config'));
+  assert.equal(env.JOBADABRA_AI_BASE_URL, undefined);
   assert.equal(env.ANTHROPIC_BASE_URL, kit.proxy.url, 'the engine\'s AI must go through the kit\'s proxy');
-  assert.equal(env.JOB_PILOTTO_E2E_NOTION_BASE_URL, kit.notion.url);
+  assert.equal(env.JOBADABRA_E2E_NOTION_BASE_URL, kit.notion.url);
 });
 
 test('the engine refuses the app\'s own folder when no data and config folder is set (so a run that lost its folders stops, never touches the owner\'s)', async () => {

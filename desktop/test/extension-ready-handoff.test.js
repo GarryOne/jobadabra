@@ -96,9 +96,9 @@ test('the page side puts back only the storage and marks the night\'s page: no f
   assert.deepEqual(events, [], 'no input or change event');
   assert.deepEqual(globalThis.localStorage.data, {kept: 'mine', draft: '1'}, 'storage added, never overwritten');
   assert.equal(globalThis.sessionStorage.data.step, '2');
-  assert.equal(globalThis.document.marks['data-jobpilotto-night'], '1', 'the panel says "Last night\'s fill is back" (review.js)');
+  assert.equal(globalThis.document.marks['data-jobadabra-night'], '1', 'the panel says "Last night\'s fill is back" (review.js)');
   page([]); restoreInPage({localStorage: {}, snapshot: {fields: []}});
-  assert.equal(globalThis.document.marks['data-jobpilotto-night'], undefined, 'a hand-off not from a night leaves the page unmarked');
+  assert.equal(globalThis.document.marks['data-jobadabra-night'], undefined, 'a hand-off not from a night leaves the page unmarked');
 });
 
 // A marked tab first looked at after its load (26 Oct 2026, Windows beta 40275152602: Chrome's first tab loaded before the worker started; the late look

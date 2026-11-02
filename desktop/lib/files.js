@@ -12,7 +12,7 @@ export const MAX_BYTES = 5 * 1024 * 1024;
 export const CV_HEADING = '📎 CV';
 export const LETTER_HEADING = '✉️ Cover letter';  // the approved general cover letter PDFs, newest first
 // The end-to-end tests put a Notion stand-in in between that can fail on purpose (desktop/e2e/lib/notion-proxy.mjs); honoured only in a test run.
-const API = process.env.JOB_PILOTTO_E2E && process.env.JOB_PILOTTO_E2E_NOTION_BASE_URL ? `${process.env.JOB_PILOTTO_E2E_NOTION_BASE_URL.replace(/\/$/, '')}/v1/` : 'https://api.notion.com/v1/';
+const API = process.env.JOBADABRA_E2E && process.env.JOBADABRA_E2E_NOTION_BASE_URL ? `${process.env.JOBADABRA_E2E_NOTION_BASE_URL.replace(/\/$/, '')}/v1/` : 'https://api.notion.com/v1/';
 export const fingerprint = file => crypto.createHash('sha1').update(fs.readFileSync(file)).digest('hex').slice(0, 16);
 
 // -> the file upload's id, ready to attach. Throws when Notion refuses or the file is too big.

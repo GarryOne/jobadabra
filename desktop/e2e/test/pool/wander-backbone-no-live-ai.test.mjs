@@ -100,8 +100,8 @@ assert found == {title: 'software' for title in data['titles']}, found
 assert len(asked) == len(data['titles'])
 print(json.dumps(found))
 `], {cwd: fileURLToPath(new URL('../../../../', import.meta.url)),
-    env: pythonEnv({PYTHONDONTWRITEBYTECODE: '1', JOB_PILOTTO_DATA_DIR: h.dir,
-      JOB_PILOTTO_CONFIG_DIR: h.dir, JOB_PILOTTO_APP_DIR: h.dir}, {home: h.dir}),
+    env: pythonEnv({PYTHONDONTWRITEBYTECODE: '1', JOBADABRA_DATA_DIR: h.dir,
+      JOBADABRA_CONFIG_DIR: h.dir, JOBADABRA_APP_DIR: h.dir}, {home: h.dir}),
     input: JSON.stringify({replies, request: captured, titles, search: applicantDraft({which: 'thin'}).search}), encoding: 'utf8', timeout: 10000});
   assert.deepEqual(Object.values(JSON.parse(result)), ['software', 'software', 'software', 'software', 'software', 'software']);
   h.assertNoLive();
@@ -208,7 +208,7 @@ test('wander stored successes and refusals also survive the OpenAI following pro
   const h = await harness(t, 'openai');
   for (const kind of [...Object.keys(empty), ...refused]) {
     const init = {method: 'POST', headers: {'content-type': 'application/json'},
-      body: JSON.stringify({model: 'test', input: 'different profile', prompt_cache_key: `job-pilotto-${kind}`})};
+      body: JSON.stringify({model: 'test', input: 'different profile', prompt_cache_key: `jobadabra-${kind}`})};
     const response = await h.localFetch(`${h.openaiProxy.url}/v1/responses`, init);
     assert.equal(response.status, refused.includes(kind) ? 401 : 200, kind);
     if (empty[kind]) assert.deepEqual(JSON.parse((await response.json()).output[0].content[0].text), empty[kind]);

@@ -17,24 +17,24 @@ const open = async (answer = {}) => {
   await app.context.route('https://jobs.example.test/**', route => route.fulfill({status: 200, contentType: 'text/html', body: FORM}));
   await app.page.goto(URL);
   await app.page.evaluate(() => { location.hash = 'jobpilotto-fill'; });
-  await app.page.waitForFunction(() => document.getElementById('jobpilotto-review-host')?.shadowRoot?.querySelector('.report-btn'), null, {timeout: 20000});
+  await app.page.waitForFunction(() => document.getElementById('jobadabra-review-host')?.shadowRoot?.querySelector('.report-btn'), null, {timeout: 20000});
   const worker = await extensionWorker(app.context);
   // Why-changed (27 Oct 2026, owner: one state, changed only on a verdict): a step is the worker saying the run is on (apply-state.js: `working`); an empty one stands here for the run's end verdict (`done`): a fill pass inside the page no longer says done since #2803, only the fill's end does;
   // the page draws what it is told. `verdict(state)` pushes any other state the way the worker does.
   const verdict = state => worker.evaluate(async word => { const [tab] = await chrome.tabs.query({url: 'https://jobs.example.test/*'}); return chrome.tabs.sendMessage(tab.id, {type: 'applyState', state: word}); }, state);
   const step = async text => { await verdict(text ? 'working' : 'done'); return worker.evaluate(async words => { const [tab] = await chrome.tabs.query({url: 'https://jobs.example.test/*'}); return chrome.tabs.sendMessage(tab.id, {type: 'panelStep', text: words}); }, text); };
-  const overlay = () => app.page.evaluate(() => !!document.getElementById('jobpilotto-fill-overlay'));
-  const host = () => app.page.evaluate(() => { const h = document.getElementById('jobpilotto-review-host'); const box = h?.getBoundingClientRect(); return {centred: !!h && /translate/.test(h.style.cssText), right: h?.style.right, x: box && Math.round(box.x + box.width / 2), w: innerWidth}; });
+  const overlay = () => app.page.evaluate(() => !!document.getElementById('jobadabra-fill-overlay'));
+  const host = () => app.page.evaluate(() => { const h = document.getElementById('jobadabra-review-host'); const box = h?.getBoundingClientRect(); return {centred: !!h && /translate/.test(h.style.cssText), right: h?.style.right, x: box && Math.round(box.x + box.width / 2), w: innerWidth}; });
   const clickInput = async () => { await app.page.mouse.click(300, 60); return app.page.evaluate(() => ({hits: window.hits, focus: document.activeElement?.id || ''})); };
   // The working look is ONE state: the dim layer and the centred panel together (owner, 27 Oct 2026). Waits until both are as asked, else says what drifted.
-  const look = () => app.page.evaluate(() => { const h = document.getElementById('jobpilotto-review-host'), root = h?.shadowRoot; return {dim: !!document.getElementById('jobpilotto-fill-overlay'), centred: !!h && /translate/.test(h.style.cssText), busy: !!root?.querySelector('.fill.is-busy'), stopped: !!root && !root.querySelector('.stopped').hidden}; });
+  const look = () => app.page.evaluate(() => { const h = document.getElementById('jobadabra-review-host'), root = h?.shadowRoot; return {dim: !!document.getElementById('jobadabra-fill-overlay'), centred: !!h && /translate/.test(h.style.cssText), busy: !!root?.querySelector('.fill.is-busy'), stopped: !!root && !root.querySelector('.stopped').hidden}; });
   const lookIs = async (want, what) => {
     const keys = Object.keys(want);
-    await app.page.waitForFunction(([wanted, names]) => { const h = document.getElementById('jobpilotto-review-host'), root = h?.shadowRoot;
-      const now = {dim: !!document.getElementById('jobpilotto-fill-overlay'), centred: !!h && /translate/.test(h.style.cssText), busy: !!root?.querySelector('.fill.is-busy'), stopped: !!root && !root.querySelector('.stopped').hidden};
+    await app.page.waitForFunction(([wanted, names]) => { const h = document.getElementById('jobadabra-review-host'), root = h?.shadowRoot;
+      const now = {dim: !!document.getElementById('jobadabra-fill-overlay'), centred: !!h && /translate/.test(h.style.cssText), busy: !!root?.querySelector('.fill.is-busy'), stopped: !!root && !root.querySelector('.stopped').hidden};
       return names.every(name => now[name] === wanted[name]); }, [want, keys], {timeout: 10000}).catch(async () => assert.fail(`${what}: wanted ${JSON.stringify(want)}, the page shows ${JSON.stringify(await look())}`));
   };
-  const mark = page => app.page.evaluate(word => document.documentElement.setAttribute('data-jobpilotto-page', word), page);
+  const mark = page => app.page.evaluate(word => document.documentElement.setAttribute('data-jobadabra-page', word), page);
   return {app, step, verdict, overlay, host, clickInput, worker, look, lookIs, mark};
 };
 
@@ -42,11 +42,11 @@ test('a fill step dims the page, holds the person\'s click, key and wheel, and c
   const t = await open();
   try {
     await t.step('');   // the page's own fill mark may have started a first step (the overlay is rightly on then): end it, then the control
-    await t.app.page.waitForFunction(() => !document.getElementById('jobpilotto-fill-overlay'), null, {timeout: 5000});
+    await t.app.page.waitForFunction(() => !document.getElementById('jobadabra-fill-overlay'), null, {timeout: 5000});
     assert.equal(await t.overlay(), false, 'control: no overlay before a fill');
     const before = await t.app.panel();
     await t.step('Filling Full name…');
-    await t.app.page.waitForFunction(() => !!document.getElementById('jobpilotto-fill-overlay'), null, {timeout: 5000}).catch(() => assert.fail('no overlay while a fill step shows'));
+    await t.app.page.waitForFunction(() => !!document.getElementById('jobadabra-fill-overlay'), null, {timeout: 5000}).catch(() => assert.fail('no overlay while a fill step shows'));
     const hit = await t.app.page.evaluate(() => { const el = document.getElementById('n'); const b = el.getBoundingClientRect(); return document.elementFromPoint(b.x + b.width / 2, b.y + b.height / 2)?.id; });
     assert.equal(hit, 'n', 'the overlay takes no hit-test: the page reads (elementFromPoint, on-top) see the form, not a layer');
     assert.deepEqual((await t.app.panel()).pill, before.pill, 'the form read is the same with the overlay on');
@@ -60,12 +60,12 @@ test('a fill step dims the page, holds the person\'s click, key and wheel, and c
     assert.equal(await t.app.page.evaluate(() => window.scrollY), 0, 'the page does not scroll');
     const spot = await t.host();
     assert.equal(spot.centred, true, 'the panel is centred while filling');
-    const under = await t.app.page.evaluate(() => { const h = document.getElementById('jobpilotto-review-host'); const c = h.shadowRoot.querySelector('.card').getBoundingClientRect(); return document.elementFromPoint(c.x + c.width / 2, c.y + c.height / 2)?.id; });
-    assert.notEqual(under, 'jobpilotto-review-host', 'the centred panel takes no hit-test: the driver\'s clicks aimed at a field under it reach the field (recorded cases text-state-from-keys-1, menu-choices-worded-differently-2)');
-    const wide = await t.app.page.evaluate(() => document.getElementById('jobpilotto-review-host').shadowRoot.querySelector('.card').getBoundingClientRect().width);
+    const under = await t.app.page.evaluate(() => { const h = document.getElementById('jobadabra-review-host'); const c = h.shadowRoot.querySelector('.card').getBoundingClientRect(); return document.elementFromPoint(c.x + c.width / 2, c.y + c.height / 2)?.id; });
+    assert.notEqual(under, 'jobadabra-review-host', 'the centred panel takes no hit-test: the driver\'s clicks aimed at a field under it reach the field (recorded cases text-state-from-keys-1, menu-choices-worded-differently-2)');
+    const wide = await t.app.page.evaluate(() => document.getElementById('jobadabra-review-host').shadowRoot.querySelector('.card').getBoundingClientRect().width);
     assert.ok(wide <= 380, `the centred panel is the corner's size, not larger (${Math.round(wide)}px wide, the docked card is 372)`);
     // The driver's gap: the worker marks its own input, and it lands.
-    await t.worker.evaluate(async () => { const [tab] = await chrome.tabs.query({url: 'https://jobs.example.test/*'}); await chrome.scripting.executeScript({target: {tabId: tab.id}, func: () => document.documentElement.setAttribute('data-jobpilotto-driving', '1')}); });
+    await t.worker.evaluate(async () => { const [tab] = await chrome.tabs.query({url: 'https://jobs.example.test/*'}); await chrome.scripting.executeScript({target: {tabId: tab.id}, func: () => document.documentElement.setAttribute('data-jobadabra-driving', '1')}); });
     await t.app.page.mouse.click(clicked.x, clicked.y);
     assert.equal(await t.app.page.evaluate(() => document.activeElement?.id), 'n', 'during the driver\'s own action the click lands');
   } finally { await t.app.close(); }
@@ -75,12 +75,12 @@ test('the end of the fill takes the overlay away and puts the panel back at its 
   const t = await open();
   try {
     await t.step('');   // the page's own fill mark may have started a step: end it, then the panel is at its spot
-    await t.app.page.waitForFunction(() => !document.getElementById('jobpilotto-fill-overlay'), null, {timeout: 5000});
+    await t.app.page.waitForFunction(() => !document.getElementById('jobadabra-fill-overlay'), null, {timeout: 5000});
     const home = await t.host();
     await t.step('Filling Full name…');
-    await t.app.page.waitForFunction(() => !!document.getElementById('jobpilotto-fill-overlay'), null, {timeout: 5000});
+    await t.app.page.waitForFunction(() => !!document.getElementById('jobadabra-fill-overlay'), null, {timeout: 5000});
     await t.step('');
-    await t.app.page.waitForFunction(() => !document.getElementById('jobpilotto-fill-overlay'), null, {timeout: 5000}).catch(() => assert.fail('the overlay stayed after the fill ended'));
+    await t.app.page.waitForFunction(() => !document.getElementById('jobadabra-fill-overlay'), null, {timeout: 5000}).catch(() => assert.fail('the overlay stayed after the fill ended'));
     const back = await t.host();
     assert.deepEqual({centred: back.centred, right: back.right}, {centred: home.centred, right: home.right}, 'the panel is back where it was');
     const free = await t.clickInput();
@@ -92,10 +92,10 @@ test('Stop (in the panel step row) takes the overlay away and is pressable above
   const t = await open();
   try {
     await t.step('Filling Full name…');
-    await t.app.page.waitForFunction(() => !!document.getElementById('jobpilotto-fill-overlay'), null, {timeout: 5000});
-    const stop = await t.app.page.evaluate(() => { const b = document.getElementById('jobpilotto-review-host').shadowRoot.querySelector('.stop-btn').getBoundingClientRect(); return {x: b.x + b.width / 2, y: b.y + b.height / 2}; });
+    await t.app.page.waitForFunction(() => !!document.getElementById('jobadabra-fill-overlay'), null, {timeout: 5000});
+    const stop = await t.app.page.evaluate(() => { const b = document.getElementById('jobadabra-review-host').shadowRoot.querySelector('.stop-btn').getBoundingClientRect(); return {x: b.x + b.width / 2, y: b.y + b.height / 2}; });
     await t.app.page.mouse.click(stop.x, stop.y);   // the panel's own Stop, above the dim layer
-    await t.app.page.waitForFunction(() => !document.getElementById('jobpilotto-fill-overlay'), null, {timeout: 8000}).catch(() => assert.fail('Stop did not take the overlay away'));
+    await t.app.page.waitForFunction(() => !document.getElementById('jobadabra-fill-overlay'), null, {timeout: 8000}).catch(() => assert.fail('Stop did not take the overlay away'));
   } finally { await t.app.close(); }
 });
 
@@ -103,9 +103,9 @@ test('a page that needs the person (a captcha left) takes the overlay away', asy
   const t = await open();
   try {
     await t.step('Filling Full name…');
-    await t.app.page.waitForFunction(() => !!document.getElementById('jobpilotto-fill-overlay'), null, {timeout: 5000});
-    await t.app.page.evaluate(() => document.documentElement.setAttribute('data-jobpilotto-needs', 'a captcha'));
-    await t.app.page.waitForFunction(() => !document.getElementById('jobpilotto-fill-overlay'), null, {timeout: 15000}).catch(() => assert.fail('"needs you" kept the overlay on: the person could not do the captcha'));
+    await t.app.page.waitForFunction(() => !!document.getElementById('jobadabra-fill-overlay'), null, {timeout: 5000});
+    await t.app.page.evaluate(() => document.documentElement.setAttribute('data-jobadabra-needs', 'a captcha'));
+    await t.app.page.waitForFunction(() => !document.getElementById('jobadabra-fill-overlay'), null, {timeout: 15000}).catch(() => assert.fail('"needs you" kept the overlay on: the person could not do the captcha'));
     assert.ok((await t.clickInput()).hits >= 1, 'the person is free to click');
   } finally { await t.app.close(); }
 });
@@ -134,7 +134,7 @@ test('a navigation after the run leaves no overlay', async () => {
   try {
     await fillOver(t);
     await t.step('Filling Full name…');
-    await t.app.page.waitForFunction(() => !!document.getElementById('jobpilotto-fill-overlay'), null, {timeout: 5000});
+    await t.app.page.waitForFunction(() => !!document.getElementById('jobadabra-fill-overlay'), null, {timeout: 5000});
     await t.worker.evaluate(async () => { const [tab] = await chrome.tabs.query({url: 'https://jobs.example.test/*'}); return chrome.tabs.sendMessage(tab.id, {type: 'panelStep', text: ''}); });
     await t.app.page.goto('https://jobs.example.test/next');
     assert.equal(await t.overlay(), false);
@@ -145,13 +145,13 @@ test('reading or routing a page covers it too, says it once in the step row, and
   const t = await open();
   try {
     await t.step('');
-    await t.app.page.waitForFunction(() => !document.getElementById('jobpilotto-fill-overlay'), null, {timeout: 5000});
+    await t.app.page.waitForFunction(() => !document.getElementById('jobadabra-fill-overlay'), null, {timeout: 5000});
     await t.verdict('working');   // Why-changed (27 Oct 2026): a page mark only words the step; the worker's state decides whether the page is dimmed
-    await t.app.page.evaluate(() => document.documentElement.setAttribute('data-jobpilotto-page', 'reading'));
-    await t.app.page.waitForFunction(() => !!document.getElementById('jobpilotto-fill-overlay'), null, {timeout: 8000}).catch(() => assert.fail('no overlay while the page is being read'));
-    await t.app.page.waitForFunction(() => /Reading this page/.test(document.getElementById('jobpilotto-review-host')?.shadowRoot?.querySelector('.fill .label')?.textContent || ''), null, {timeout: 8000});
+    await t.app.page.evaluate(() => document.documentElement.setAttribute('data-jobadabra-page', 'reading'));
+    await t.app.page.waitForFunction(() => !!document.getElementById('jobadabra-fill-overlay'), null, {timeout: 8000}).catch(() => assert.fail('no overlay while the page is being read'));
+    await t.app.page.waitForFunction(() => /Reading this page/.test(document.getElementById('jobadabra-review-host')?.shadowRoot?.querySelector('.fill .label')?.textContent || ''), null, {timeout: 8000});
     const seen = await t.app.page.evaluate(() => {
-      const root = document.getElementById('jobpilotto-review-host').shadowRoot, shown = el => !!el && el.getClientRects().length > 0;   // drawn (an ancestor with display:none draws nothing)
+      const root = document.getElementById('jobadabra-review-host').shadowRoot, shown = el => !!el && el.getClientRects().length > 0;   // drawn (an ancestor with display:none draws nothing)
       const count = [...root.querySelectorAll('.progress-line b, .step-line, .fill .label, .pill b')].filter(el => shown(el) && /Reading this page/.test(el.textContent)).length;
       return {count, which: [...root.querySelectorAll('.progress-line b, .step-line, .fill .label, .pill b')].filter(el => shown(el) && /Reading this page/.test(el.textContent)).map(el => el.className + '/' + el.tagName), hint: root.querySelector('.step-hint')?.textContent, pill: shown(root.querySelector('.pill'))};
     });
@@ -159,7 +159,7 @@ test('reading or routing a page covers it too, says it once in the step row, and
     assert.equal(seen.pill, false, 'the pill is hidden while the panel is centred');
     assert.doesNotMatch(seen.hint, /Counts update/, 'reading has its own sub-line');
     assert.equal((await t.host()).centred, true);
-    await t.app.page.evaluate(() => document.documentElement.setAttribute('data-jobpilotto-page', 'form'));
+    await t.app.page.evaluate(() => document.documentElement.setAttribute('data-jobadabra-page', 'form'));
     await t.app.page.waitForTimeout(600);
     assert.equal(await t.overlay(), true, 'a page mark moving on never lifts the dim (Why-changed, 27 Oct 2026: only the worker\'s verdict does)');
     await t.verdict('done');
@@ -200,23 +200,23 @@ test('every end of a working state takes the dim and the centring away together,
   const t = await open();
   const ends = [
     ['done', () => t.step('')],
-    ['needs you', () => t.app.page.evaluate(() => document.documentElement.setAttribute('data-jobpilotto-needs', 'a captcha'))],
+    ['needs you', () => t.app.page.evaluate(() => document.documentElement.setAttribute('data-jobadabra-needs', 'a captcha'))],
   ];
   try {
     for (const [name, end] of ends) {
-      await t.app.page.evaluate(() => document.documentElement.removeAttribute('data-jobpilotto-needs'));
+      await t.app.page.evaluate(() => document.documentElement.removeAttribute('data-jobadabra-needs'));
       await t.step('Filling Full name…');
       await t.lookIs({dim: true, centred: true, busy: true}, `before "${name}"`);
       await end();
       await t.lookIs({dim: false, centred: false, busy: false}, `end "${name}"`);
     }
-    await t.app.page.evaluate(() => document.documentElement.removeAttribute('data-jobpilotto-needs'));
+    await t.app.page.evaluate(() => document.documentElement.removeAttribute('data-jobadabra-needs'));
     await t.step('Filling Full name…');
     await t.lookIs({dim: true, centred: true}, 'before the wipe');
-    await t.app.page.evaluate(() => { document.getElementById('jobpilotto-fill-overlay')?.remove(); document.getElementById('jobpilotto-review-host')?.remove(); });   // Why-changed (27 Oct 2026): a layer and panel the page deletes are put back, the state stays
+    await t.app.page.evaluate(() => { document.getElementById('jobadabra-fill-overlay')?.remove(); document.getElementById('jobadabra-review-host')?.remove(); });   // Why-changed (27 Oct 2026): a layer and panel the page deletes are put back, the state stays
     await t.app.page.waitForTimeout(300);
     await t.lookIs({dim: true, centred: true}, 'a page that deletes the layer and the panel gets them back');
-    await t.app.page.evaluate(() => document.getElementById('jobpilotto-review-host').shadowRoot.querySelector('.x').click());
+    await t.app.page.evaluate(() => document.getElementById('jobadabra-review-host').shadowRoot.querySelector('.x').click());
     await t.lookIs({dim: false, centred: false}, 'end "closed"');
     await t.step('Filling Email…');
     await t.app.page.waitForTimeout(500);
@@ -228,7 +228,7 @@ test('every end of a working state takes the dim and the centring away together,
 // not working"): every restart path clears the page's Stop, the panel's "Stopped by you" and tells the app, and the fill runs instead of answering "Stopped by you." at once.
 test('after Stop, every restart on the page works again: Check form again, Fill again, Fill anyway, the popup\'s Apply on this page', async () => {
   const t = await open();
-  const press = selector => () => t.app.page.evaluate(which => document.getElementById('jobpilotto-review-host').shadowRoot.querySelector(which).click(), selector);
+  const press = selector => () => t.app.page.evaluate(which => document.getElementById('jobadabra-review-host').shadowRoot.querySelector(which).click(), selector);
   const popupApply = async () => {
     const id = new globalThis.URL(t.worker.url()).host;
     const popup = await t.app.context.newPage();
@@ -244,16 +244,16 @@ test('after Stop, every restart on the page works again: Check form again, Fill 
       await t.app.page.waitForTimeout(600);
       await t.step('Reading this page…');
       await t.lookIs({dim: true, centred: true, busy: true}, `working before Stop (${name})`);
-      const stop = await t.app.page.evaluate(() => { const b = document.getElementById('jobpilotto-review-host').shadowRoot.querySelector('.stop-btn').getBoundingClientRect(); return {x: b.x + b.width / 2, y: b.y + b.height / 2}; });
+      const stop = await t.app.page.evaluate(() => { const b = document.getElementById('jobadabra-review-host').shadowRoot.querySelector('.stop-btn').getBoundingClientRect(); return {x: b.x + b.width / 2, y: b.y + b.height / 2}; });
       await t.app.page.mouse.click(stop.x, stop.y);
       await t.lookIs({dim: false, centred: false, busy: false, stopped: true}, `Stop pressed (${name})`);
-      assert.equal(await t.app.page.evaluate(() => document.getElementById('jobpilotto-note')), null, 'no second box beside the panel: the panel says it is stopped');
+      assert.equal(await t.app.page.evaluate(() => document.getElementById('jobadabra-note')), null, 'no second box beside the panel: the panel says it is stopped');
       const sent = t.app.requests.length;
       await restart();
-      await t.app.page.waitForFunction(() => !window.__jobPilottoStopped, null, {timeout: 10000}).catch(() => assert.fail(`${name}: the page kept its Stop`));
+      await t.app.page.waitForFunction(() => !window.__jobadabraStopped, null, {timeout: 10000}).catch(() => assert.fail(`${name}: the page kept its Stop`));
       await t.lookIs({stopped: false}, `${name}: the panel leaves "Stopped by you"`);
       // The worker's final verdict can lift busy before panelFill's reply: the next iteration must wait for its button to be actionable too.
-      await t.app.page.waitForFunction(() => { const button = document.getElementById('jobpilotto-review-host').shadowRoot.querySelector('.fill'); return !button.classList.contains('is-busy') && !button.disabled; }, null, {timeout: 60000});
+      await t.app.page.waitForFunction(() => { const button = document.getElementById('jobadabra-review-host').shadowRoot.querySelector('.fill'); return !button.classList.contains('is-busy') && !button.disabled; }, null, {timeout: 60000});
       assert.equal((await t.look()).stopped, false, `${name}: the fill ran instead of answering "Stopped by you." at once`);
       assert.ok(t.app.requests.slice(sent).some(request => request.route === '/extension/event' && /"type":"started"/.test(request.body)), `${name}: the app is told, so its session leaves "Stopped"`);
     }
@@ -263,8 +263,8 @@ test('after Stop, every restart on the page works again: Check form again, Fill 
 // The fill's own first run on the page (its mark) ends before a test drives its own steps: its end would cut into them.
 const fillOver = t => t.app.page.waitForFunction(() => /"state":"(done|error|no-form|account)"/.test(document.documentElement.dataset.jobpilottoFill || ''), null, {timeout: 30000}).catch(() => {});
 // The look, sampled in the page every 16 ms (a frame) from now on: what the person sees, including a flash between two calls of the test.
-const sampleLook = t => t.app.page.evaluate(() => { window.__looks = []; window.__sampler = setInterval(() => { const h = document.getElementById('jobpilotto-review-host');
-  window.__looks.push({dim: !!document.getElementById('jobpilotto-fill-overlay'), centred: !!h && /translate/.test(h.style.cssText), at: performance.now()}); }, 16); });
+const sampleLook = t => t.app.page.evaluate(() => { window.__looks = []; window.__sampler = setInterval(() => { const h = document.getElementById('jobadabra-review-host');
+  window.__looks.push({dim: !!document.getElementById('jobadabra-fill-overlay'), centred: !!h && /translate/.test(h.style.cssText), at: performance.now()}); }, 16); });
 const sampled = t => t.app.page.evaluate(() => { clearInterval(window.__sampler); return window.__looks; });
 
 // Owner, 27 Oct 2026: "there are flashes (very short moments) when the extension panel moves from center to bottom right, and removes the background, then comes back again". Causes: the page's
@@ -315,7 +315,7 @@ test('a page the app opened to fill is dimmed at load: the dim is on while the p
     // The page notes, in its own frame of mind, the first moment the dim is there and whether the form was drawn then (report only: `at` is never asserted).
     await t.app.page.addInitScript(() => {
       if (window !== window.top) return;
-      const seen = () => { if (window.__dimSeen || !document.getElementById('jobpilotto-fill-overlay')) return; window.__dimSeen = {at: Math.round(performance.now()), formDrawn: !!document.getElementById('n')}; };
+      const seen = () => { if (window.__dimSeen || !document.getElementById('jobadabra-fill-overlay')) return; window.__dimSeen = {at: Math.round(performance.now()), formDrawn: !!document.getElementById('n')}; };
       new MutationObserver(seen).observe(document, {childList: true, subtree: true});
       seen();
     });
@@ -330,7 +330,7 @@ test('a page the app opened to fill is dimmed at load: the dim is on while the p
     await t.app.page.waitForFunction(() => !!document.getElementById('n'), null, {polling: 50, timeout: 10000})
       .catch(() => assert.fail('positive control: the form was not drawn after the script was released'));
     await t.lookIs({dim: true, centred: true}, 'the panel takes the early dim over, centred');
-    assert.equal(await t.app.page.evaluate(() => document.querySelectorAll('#jobpilotto-fill-overlay').length), 1, 'one dim layer, the early one and the panel\'s are the same');
+    assert.equal(await t.app.page.evaluate(() => document.querySelectorAll('#jobadabra-fill-overlay').length), 1, 'one dim layer, the early one and the panel\'s are the same');
   } finally { release(); await t.app.close(); }
 });
 
@@ -339,11 +339,11 @@ test('a page opened without the fill mark is never dimmed at load', async () => 
   try {
     await fillOver(t);
     const page = await t.app.context.newPage();   // a tab the person opened: never the app's (that one is followed to its next pages, rightly)
-    await page.addInitScript(() => document.addEventListener('DOMContentLoaded', () => setTimeout(() => { window.__dimAtLoad = !!document.getElementById('jobpilotto-fill-overlay'); }, 50)));
+    await page.addInitScript(() => document.addEventListener('DOMContentLoaded', () => setTimeout(() => { window.__dimAtLoad = !!document.getElementById('jobadabra-fill-overlay'); }, 50)));
     await page.goto('https://jobs.example.test/apply?other=1');
     await page.waitForFunction(() => window.__dimAtLoad !== undefined, null, {timeout: 10000});
     await page.waitForTimeout(1500);
-    assert.deepEqual(await page.evaluate(() => ({atLoad: window.__dimAtLoad, later: !!document.getElementById('jobpilotto-fill-overlay')})), {atLoad: false, later: false}, 'a page the app did not open got the dim');
+    assert.deepEqual(await page.evaluate(() => ({atLoad: window.__dimAtLoad, later: !!document.getElementById('jobadabra-fill-overlay')})), {atLoad: false, later: false}, 'a page the app did not open got the dim');
   } finally { await t.app.close(); }
 });
 
@@ -355,7 +355,7 @@ test('the working status row is one line: spinner, the step left-aligned and cut
     await t.step('Choosing the drop-down answers for the questions this employer asks about your work permit…');
     await t.lookIs({dim: true, centred: true, busy: true}, 'a long step');
     const row = await t.app.page.evaluate(() => {
-      const root = document.getElementById('jobpilotto-review-host').shadowRoot, box = el => root.querySelector(el).getBoundingClientRect(), label = root.querySelector('.fill .label');
+      const root = document.getElementById('jobadabra-review-host').shadowRoot, box = el => root.querySelector(el).getBoundingClientRect(), label = root.querySelector('.fill .label');
       const style = getComputedStyle(label);
       return {label: box('.fill .label'), spin: box('.fill .spin'), stop: box('.stop-btn'), hint: box('.step-hint'), lineHeight: parseFloat(style.lineHeight) || parseFloat(style.fontSize) * 1.3, align: style.textAlign, cut: label.scrollWidth > label.clientWidth, title: root.querySelector('.fill').title};
     });
@@ -375,16 +375,16 @@ test('the working status row is one line: spinner, the step left-aligned and cut
 test('while working, every panel button is hidden or works: Stop, minimise and the pill act, nothing else is drawn', async () => {
   const t = await open({'/extension/kit': () => ({job: {code: 'J1', title: 'Senior SRE', company: 'Example'}, kit: {answers: []}}),
     '/extension/review': () => ({matched: 's1', session: {id: 's1', url: URL, status: 'input', live: false, kind: 'form', stuck: ''}, watch: [], commands: [], cv: {tailored: false, working: false}})});
-  const shown = () => t.app.page.evaluate(() => { const root = document.getElementById('jobpilotto-review-host').shadowRoot;
+  const shown = () => t.app.page.evaluate(() => { const root = document.getElementById('jobadabra-review-host').shadowRoot;
     return [...root.querySelectorAll('button')].filter(button => button.getClientRects().length > 0).map(button => button.className.split(' ').filter(name => !['primary', 'secondary', 'link', 'is-busy'].includes(name)).join('.')); });
-  const hits = selector => t.app.page.evaluate(which => { const host = document.getElementById('jobpilotto-review-host'), b = host.shadowRoot.querySelector(which).getBoundingClientRect();
+  const hits = selector => t.app.page.evaluate(which => { const host = document.getElementById('jobadabra-review-host'), b = host.shadowRoot.querySelector(which).getBoundingClientRect();
     return host.shadowRoot.elementFromPoint(b.x + b.width / 2, b.y + b.height / 2)?.closest(which) === host.shadowRoot.querySelector(which); }, selector);
-  const press = async selector => { const b = await t.app.page.evaluate(which => { const r = document.getElementById('jobpilotto-review-host').shadowRoot.querySelector(which).getBoundingClientRect(); return {x: r.x + r.width / 2, y: r.y + r.height / 2}; }, selector); await t.app.page.mouse.click(b.x, b.y); };
+  const press = async selector => { const b = await t.app.page.evaluate(which => { const r = document.getElementById('jobadabra-review-host').shadowRoot.querySelector(which).getBoundingClientRect(); return {x: r.x + r.width / 2, y: r.y + r.height / 2}; }, selector); await t.app.page.mouse.click(b.x, b.y); };
   try {
     await fillOver(t);
     await t.step('');
     await t.lookIs({dim: false, centred: false, busy: false}, 'control: not working');
-    await t.app.page.waitForFunction(() => !document.getElementById('jobpilotto-review-host').shadowRoot.querySelector('.open-app').hidden, null, {timeout: 15000}).catch(() => {});   // the idle panel has drawn its actions
+    await t.app.page.waitForFunction(() => !document.getElementById('jobadabra-review-host').shadowRoot.querySelector('.open-app').hidden, null, {timeout: 15000}).catch(() => {});   // the idle panel has drawn its actions
     const idle = await shown();
     for (const name of ['x', 'min', 'report-btn']) assert.ok(idle.includes(name), `positive control: "${name}" is drawn when the panel is not working (${idle})`);
     await t.step('Filling the form…');
@@ -392,13 +392,13 @@ test('while working, every panel button is hidden or works: Stop, minimise and t
     const working = await shown();
     const ACTS = ['stop-btn', 'min', 'fill'];   // the step row's own label (aria-busy, not a button to press), Stop, minimise
     assert.deepEqual(working.filter(name => !ACTS.includes(name)), [], `buttons drawn while working that cannot act: ${working}`);
-    assert.equal(await t.app.page.evaluate(() => document.getElementById('jobpilotto-review-host').shadowRoot.querySelector('.fill').getAttribute('aria-busy')), 'true', 'the step row says it is busy, it is not a button to press');
+    assert.equal(await t.app.page.evaluate(() => document.getElementById('jobadabra-review-host').shadowRoot.querySelector('.fill').getAttribute('aria-busy')), 'true', 'the step row says it is busy, it is not a button to press');
     for (const name of ['stop-btn', 'min']) assert.ok(await hits(`.${name}`), `"${name}" is drawn but takes no click`);
     await press('.min');
-    await t.app.page.waitForFunction(() => document.getElementById('jobpilotto-review-host').shadowRoot.querySelector('.card').hidden, null, {timeout: 3000}).catch(() => assert.fail('minimise did nothing while working'));
+    await t.app.page.waitForFunction(() => document.getElementById('jobadabra-review-host').shadowRoot.querySelector('.card').hidden, null, {timeout: 3000}).catch(() => assert.fail('minimise did nothing while working'));
     assert.ok(await hits('.pill'), 'minimised while working, the pill takes the click that opens the panel again');
     await press('.pill');
-    await t.app.page.waitForFunction(() => !document.getElementById('jobpilotto-review-host').shadowRoot.querySelector('.card').hidden, null, {timeout: 3000}).catch(() => assert.fail('the pill did not open the panel again'));
+    await t.app.page.waitForFunction(() => !document.getElementById('jobadabra-review-host').shadowRoot.querySelector('.card').hidden, null, {timeout: 3000}).catch(() => assert.fail('the pill did not open the panel again'));
     await t.step('');
     await t.lookIs({dim: false, centred: false, busy: false}, 'the work ended');
     const after = await shown();
@@ -420,16 +420,16 @@ test('Check again on "Your action is needed" reads the form again and the AI jud
   const t = await open({'/extension/account-judge': body => { if (/"phase":"form"/.test(body)) judged += 1; return verdict; }});
   try {
     await fillOver(t);
-    await t.app.page.evaluate(() => document.documentElement.setAttribute('data-jobpilotto-needs', 'the captcha'));
-    await t.app.page.waitForFunction(() => !document.getElementById('jobpilotto-review-host').shadowRoot.querySelector('.verify').hidden, null, {timeout: 8000});
+    await t.app.page.evaluate(() => document.documentElement.setAttribute('data-jobadabra-needs', 'the captcha'));
+    await t.app.page.waitForFunction(() => !document.getElementById('jobadabra-review-host').shadowRoot.querySelector('.verify').hidden, null, {timeout: 8000});
     verdict = {answer: 'ready'};   // the person solved it on the page…
     const before = judged;
-    const b = await t.app.page.evaluate(() => { const r = document.getElementById('jobpilotto-review-host').shadowRoot.querySelector('.v-again').getBoundingClientRect(); return {x: r.x + r.width / 2, y: r.y + r.height / 2}; });
+    const b = await t.app.page.evaluate(() => { const r = document.getElementById('jobadabra-review-host').shadowRoot.querySelector('.v-again').getBoundingClientRect(); return {x: r.x + r.width / 2, y: r.y + r.height / 2}; });
     await t.app.page.mouse.click(b.x, b.y);   // …then pressed Check again
     for (let waited = 0; waited < 30000 && judged <= before; waited += 250) await t.app.page.waitForTimeout(250);
     assert.ok(judged > before, 'Check again did nothing: the AI was not asked about the page again');
-    await t.app.page.waitForFunction(() => !document.documentElement.hasAttribute('data-jobpilotto-needs'), null, {timeout: 15000}).catch(() => assert.fail('the page still says it needs you after the AI said it is ready'));
-    await t.app.page.waitForFunction(() => document.getElementById('jobpilotto-review-host').shadowRoot.querySelector('.verify').hidden, null, {timeout: 8000}).catch(() => assert.fail('"Your action is needed" stayed after the AI said the page is ready'));
+    await t.app.page.waitForFunction(() => !document.documentElement.hasAttribute('data-jobadabra-needs'), null, {timeout: 15000}).catch(() => assert.fail('the page still says it needs you after the AI said it is ready'));
+    await t.app.page.waitForFunction(() => document.getElementById('jobadabra-review-host').shadowRoot.querySelector('.verify').hidden, null, {timeout: 8000}).catch(() => assert.fail('"Your action is needed" stayed after the AI said the page is ready'));
   } finally { await t.app.close(); }
 });
 
@@ -437,12 +437,12 @@ test('Check again keeps "Your action is needed" when the AI still says the page 
   const t = await open({'/extension/account-judge': () => ({answer: 'needs_person', needs: 'the captcha'})});
   try {
     await fillOver(t);
-    await t.app.page.evaluate(() => document.documentElement.setAttribute('data-jobpilotto-needs', 'the captcha'));
-    await t.app.page.waitForFunction(() => !document.getElementById('jobpilotto-review-host').shadowRoot.querySelector('.verify').hidden, null, {timeout: 8000});
-    await t.app.page.evaluate(() => document.getElementById('jobpilotto-review-host').shadowRoot.querySelector('.v-again').click());
+    await t.app.page.evaluate(() => document.documentElement.setAttribute('data-jobadabra-needs', 'the captcha'));
+    await t.app.page.waitForFunction(() => !document.getElementById('jobadabra-review-host').shadowRoot.querySelector('.verify').hidden, null, {timeout: 8000});
+    await t.app.page.evaluate(() => document.getElementById('jobadabra-review-host').shadowRoot.querySelector('.v-again').click());
     await t.lookIs({busy: true}, 'Check again reads the form (the step row shows)');
     await t.lookIs({busy: false}, 'the read is over');
-    await t.app.page.waitForFunction(() => !document.getElementById('jobpilotto-review-host').shadowRoot.querySelector('.verify').hidden && document.documentElement.getAttribute('data-jobpilotto-needs') === 'the captcha', null, {timeout: 15000})
+    await t.app.page.waitForFunction(() => !document.getElementById('jobadabra-review-host').shadowRoot.querySelector('.verify').hidden && document.documentElement.getAttribute('data-jobadabra-needs') === 'the captcha', null, {timeout: 15000})
       .catch(() => assert.fail('the card went though the AI still says the page needs the person'));
   } finally { await t.app.close(); }
 });

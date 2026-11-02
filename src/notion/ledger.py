@@ -55,9 +55,9 @@ from .ledger_intake import (MONTHS, NUMBER_WORDS, WALLED, _relative, parse_appli
 EVENTS_DATABASE_ID = os.getenv('NOTION_EVENTS_DB', '')
 NO_RESPONSE_DAYS = 30
 APP_SUPPORT = Path.home() / 'Library' / 'Application Support' / 'JobPilotto'
-SNAPSHOT_DIR = Path(os.getenv('JOB_PILOTTO_FORM_SNAPSHOT_DIR', str(APP_SUPPORT / 'form-snapshots')))
-RUN_DIR = Path(os.getenv('JOB_PILOTTO_APPLY_RUN_DIR', str(APP_SUPPORT / 'apply-runs')))
-DEFAULT_CV = os.getenv('JOB_PILOTTO_CV_PATH',
+SNAPSHOT_DIR = Path(os.getenv('JOBADABRA_FORM_SNAPSHOT_DIR', str(APP_SUPPORT / 'form-snapshots')))
+RUN_DIR = Path(os.getenv('JOBADABRA_APPLY_RUN_DIR', str(APP_SUPPORT / 'apply-runs')))
+DEFAULT_CV = os.getenv('JOBADABRA_CV_PATH',
                        str(Path.home() / 'Documents' / 'CV.pdf'))
 # Stages that are real application outcomes, in funnel order; each one is also an event Kind.
 OUTCOME_STAGES = ('Applied', 'Confirmation received', 'Screening', 'Interview scheduled',

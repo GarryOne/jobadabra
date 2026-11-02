@@ -20,8 +20,8 @@ const SAMPLER = () => {
   const born = performance.now(), doc = Math.round(performance.timeOrigin + born);
   window.__sampledFrom = born;
   const sample = () => { try {
-    const h = document.getElementById('jobpilotto-review-host'), root = h?.shadowRoot;
-    window.__rec({doc, path: location.pathname, at: Math.round(performance.timeOrigin + performance.now()), dim: !!document.getElementById('jobpilotto-fill-overlay'), host: !!h,
+    const h = document.getElementById('jobadabra-review-host'), root = h?.shadowRoot;
+    window.__rec({doc, path: location.pathname, at: Math.round(performance.timeOrigin + performance.now()), dim: !!document.getElementById('jobadabra-fill-overlay'), host: !!h,
       centred: !!h && /translate/.test(h.style.cssText), busy: !!root?.querySelector('.fill.is-busy'), label: root?.querySelector('.fill .label')?.textContent || ''}); } catch { /* no document element or no binding yet */ } };
   sample(); setInterval(sample, 5);
 };

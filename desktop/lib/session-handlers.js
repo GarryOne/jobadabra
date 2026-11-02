@@ -164,11 +164,11 @@ export function registerSessionHandlers({ipcMain, appLog, storage, getWindow, di
     if (ms >= 50) appLog('sessions', 'list was slow', {count: list.length, ms});
     return list;
   });
-  const demoOutput = () => (process.env.JOB_PILOTTO_DEMO_OUTPUT ? fs.readFileSync(process.env.JOB_PILOTTO_DEMO_OUTPUT, 'utf8')  // a recorded session
+  const demoOutput = () => (process.env.JOBADABRA_DEMO_OUTPUT ? fs.readFileSync(process.env.JOBADABRA_DEMO_OUTPUT, 'utf8')  // a recorded session
     : '\x1b[2m19:10:02\x1b[0m \x1b[32m✓\x1b[0m Loaded the kit, Profile and answers from Notion\r\n\x1b[2m19:10:06\x1b[0m \x1b[32m✓\x1b[0m Opened the posting in Chrome\r\n' +   // about Notion
       '\x1b[2m19:10:09\x1b[0m \x1b[33m!\x1b[0m Location: San Francisco, CA · On-site\r\n\x1b[2m19:10:11\x1b[0m \x1b[35m⏸\x1b[0m Paused before opening the form. Waiting for your reply…\r\n\r\n\x1b[1m>\x1b[0m ');
   checkedSessions.handle('sessionOutput', (_, id) => (DEMO ? demoOutput() : terminals.output(String(id))));
-  // The log's screen when it opens (see terminals.snapshot); JOB_PILOTTO_DEMO_OUTPUT replays a recorded session in demo mode.
+  // The log's screen when it opens (see terminals.snapshot); JOBADABRA_DEMO_OUTPUT replays a recorded session in demo mode.
   // A finished session as a conversation (its Claude Code transcript), for the log's page-text view.
   checkedSessions.handle('sessionTranscript', (_, id) => {
     const record = DEMO ? null : terminals.record(String(id));

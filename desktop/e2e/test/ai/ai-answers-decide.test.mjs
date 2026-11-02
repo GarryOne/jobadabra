@@ -25,7 +25,7 @@ const entry = (text, answer) => ({text, answer});
 function request(texts = ['Zurich', 'Paris'], shape = 'anthropic', instructions = task) {
   const content = `Task: ${instructions}\nAllowed answers: ${choices.join(', ')}\n\n${texts.map((text, index) => `### Item ${index}\n${text}`).join('\n\n')}`;
   return shape === 'anthropic' ? {model: 'test', system: [{type: 'text', text: system}], messages: [{role: 'user', content}], output_config: {format: {schema}}} :
-    {model: 'test', instructions: system, prompt_cache_key: 'job-pilotto-decide', input: [{role: 'user', content: [{type: 'input_text', text: content}]}], text: {format: {type: 'json_schema', schema}}};
+    {model: 'test', instructions: system, prompt_cache_key: 'jobadabra-decide', input: [{role: 'user', content: [{type: 'input_text', text: content}]}], text: {format: {type: 'json_schema', schema}}};
 }
 const init = body => ({method: 'POST', headers: {'content-type': 'application/json', 'x-jp-action': 'decide'}, body: JSON.stringify(body)});
 const question = (body, env = {}) => questionOf({headers: {'x-jp-action': 'decide'}, body}, env);

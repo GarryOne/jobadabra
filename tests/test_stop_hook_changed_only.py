@@ -16,7 +16,7 @@ class StopHookChangedOnlyTest(unittest.TestCase):
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, self.tmp, True)
-        self.repo = self.tmp / 'job-pilotto'   # the hook only follows paths of this project (a folder named like it)
+        self.repo = self.tmp / 'jobadabra'   # the hook only follows paths of this project (a folder named like it)
         for d in ('src', 'app-core', 'tools', 'tests', 'desktop'):
             (self.repo / d).mkdir(parents=True)
         (self.repo / 'src' / 'daily.py').write_text('x = 1\n')
@@ -29,8 +29,8 @@ class StopHookChangedOnlyTest(unittest.TestCase):
         (self.repo / 'desktop' / 'node_modules').mkdir(parents=True)
         (self.repo / 'desktop' / 'lib.js').write_text('1\n')
         (self.repo / 'src' / 'daily.py').write_text('x = 2\n')   # an uncommitted change: the hook would test it if the session had made it
-        self.env = {**os.environ, 'TMPDIR': str(self.tmp), 'JOB_PILOTTO_CHECK_SLOTS': '0', 'STOP_CHECK_SUITES': '1'}   # the suites (off by default since 13 Oct 2026)
-        self.env.pop('JOB_PILOTTO_SESSION', None)
+        self.env = {**os.environ, 'TMPDIR': str(self.tmp), 'JOBADABRA_CHECK_SLOTS': '0', 'STOP_CHECK_SUITES': '1'}   # the suites (off by default since 13 Oct 2026)
+        self.env.pop('JOBADABRA_SESSION', None)
 
     def stop(self, transcript_lines, **env):
         transcript = self.tmp / 'transcript.jsonl'

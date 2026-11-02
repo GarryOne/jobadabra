@@ -17,7 +17,7 @@ class StoreCliTests(unittest.TestCase):
     def run_cli(self, *argv, stores=None):
         out = io.StringIO()
         with mock.patch.object(cli, 'open_stores', return_value=stores or memory.open_store()), \
-                mock.patch.dict(os.environ, {'JOB_PILOTTO_STORE': 'memory'}):
+                mock.patch.dict(os.environ, {'JOBADABRA_STORE': 'memory'}):
             code = cli.main(list(argv), out=out)
         return code, json.loads(out.getvalue())
 
@@ -39,7 +39,7 @@ class StoreCliTests(unittest.TestCase):
     def test_a_jobs_files_come_as_base64_on_every_store(self):
         folder = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, folder, True)
-        for stores in (memory.open_store(), sqlite.open_store({'JOB_PILOTTO_DATA_DIR': str(folder)})):
+        for stores in (memory.open_store(), sqlite.open_store({'JOBADABRA_DATA_DIR': str(folder)})):
             app = stores.applications.create({'url': 'https://x.example/files', 'title': 'SRE', 'company': 'Acme'}, 'Saved')
             stores.applications.attach(app['id'], 'reply.png', b'\x89PNG-bytes', 'image/png')
             code, answer = self.run_cli('call', 'applications', 'files', json.dumps({'app_id': app['id']}), stores=stores)
@@ -56,10 +56,10 @@ class StoreCliTests(unittest.TestCase):
         (app_dir / 'cv' / 'tailored').mkdir(parents=True)
         pdf = app_dir / 'cv' / 'tailored' / 'abc.pdf'
         pdf.write_bytes(b'%PDF-tailored')
-        stores = sqlite.open_store({'JOB_PILOTTO_DATA_DIR': str(data)})
+        stores = sqlite.open_store({'JOBADABRA_DATA_DIR': str(data)})
         app = stores.applications.create({'url': 'https://x.example/cv', 'title': 'SRE', 'company': 'Acme'}, 'Saved')
         kwargs = {'app_id': app['id'], 'name': 'CV · Acme · SRE.pdf', 'content_type': 'application/pdf', 'path': str(pdf)}
-        with mock.patch.dict(os.environ, {'JOB_PILOTTO_DATA_DIR': str(data)}):
+        with mock.patch.dict(os.environ, {'JOBADABRA_DATA_DIR': str(data)}):
             code, _ = self.run_cli('call', 'applications', 'attach', json.dumps(kwargs), stores=stores)
             self.assertEqual(code, 0)
             self.assertEqual(stores.applications.files(app['id']), [('CV · Acme · SRE.pdf', b'%PDF-tailored', 'application/pdf')])

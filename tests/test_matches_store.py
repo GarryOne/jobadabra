@@ -61,7 +61,7 @@ class MoveThenSyncTests(unittest.TestCase):
     def test_the_first_sync_after_a_move_adopts_the_copied_rows_and_fills_the_scoring_columns(self):
         a, b = scored('https://jobs.example/a', 80), scored('https://jobs.example/b', 60)
         with tempfile.TemporaryDirectory() as folder:
-            local = sqlite_store.open_store({'JOB_PILOTTO_DATA_DIR': folder})
+            local = sqlite_store.open_store({'JOBADABRA_DATA_DIR': folder})
             local.matches.sync(cache(), [a, b])
             notion = self.make()
             store_copy.copy(local, notion)                     # the move: matches upserted into 🎯 Job Matches

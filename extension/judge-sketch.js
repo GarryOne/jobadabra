@@ -9,6 +9,6 @@ export const READER_FILES = ['page/typed-check.js', 'page/read-back.js'];
 export async function sketchOf(tabId, frameId = 0, world) {
   const target = {tabId, frameIds: [frameId ?? 0]}, inWorld = world ? {world} : {};
   const run = more => chrome.scripting.executeScript({target, ...inWorld, ...more}).then(rows => rows?.[0]?.result).catch(() => undefined);
-  if (!(await run({func: () => !!window.__jobPilottoReadBack}))) await run({files: READER_FILES});
+  if (!(await run({func: () => !!window.__jobadabraReadBack}))) await run({files: READER_FILES});
   return run({func: accountSketch});
 }

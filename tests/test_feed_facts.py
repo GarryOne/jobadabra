@@ -147,7 +147,7 @@ class ConditionalGetTest(unittest.TestCase):
             if request.get_header('If-none-match') == 'W/"abc"':
                 raise urllib.error.HTTPError(request.full_url, 304, 'Not Modified', {}, None)
             return Response()
-        with mock.patch.object(ats.host_pace, 'open', opened), mock.patch.dict('os.environ', {'JOB_PILOTTO_FIXTURE_DIR': ''}):
+        with mock.patch.object(ats.host_pace, 'open', opened), mock.patch.dict('os.environ', {'JOBADABRA_FIXTURE_DIR': ''}):
             with ats.conditional(None) as state:
                 ats._get('https://boards-api.greenhouse.io/v1/boards/x/jobs')
             self.assertEqual((state.etag, state.pages), ('W/"abc"', 1))

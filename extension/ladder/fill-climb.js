@@ -26,7 +26,7 @@ async function withClicks(tabId, work) {
   await attachDebugger(tabId);
   try {
     const mouse = (type, x, y) => chrome.debugger.sendCommand(target, 'Input.dispatchMouseEvent', {type, x, y, button: 'left', clickCount: 1});
-    return await work(async (x, y) => { const marked = await chrome.scripting.executeScript({target: {tabId}, world: 'MAIN', func: (px, py) => globalThis.__jobPilottoSubmitPress?.markAt(px, py), args: [x, y]}).catch(() => [{result: true}]); if (marked?.[0]?.result === false) return; await driving(tabId, async () => { for (const type of ['mouseMoved', 'mousePressed', 'mouseReleased']) await mouse(type, x, y); }); });   // marked first: the extension's own press (page/submit-press.js markAt)
+    return await work(async (x, y) => { const marked = await chrome.scripting.executeScript({target: {tabId}, world: 'MAIN', func: (px, py) => globalThis.__jobadabraSubmitPress?.markAt(px, py), args: [x, y]}).catch(() => [{result: true}]); if (marked?.[0]?.result === false) return; await driving(tabId, async () => { for (const type of ['mouseMoved', 'mousePressed', 'mouseReleased']) await mouse(type, x, y); }); });   // marked first: the extension's own press (page/submit-press.js markAt)
   } finally { await detachDebugger(tabId); }
 }
 
@@ -53,9 +53,9 @@ async function repairPage(tab, config, turn) {
 // -> {readBack} when the page was read again (a repair or a late retype changed something), else null: the caller keeps its first read.
 export async function climbFill(tab, config, {turn = work => work()} = {}) {
   const repaired = repairActs(config) ? await repairPage(tab, config, turn).catch(() => null) : null;
-  const late = await inPage(tab.id, () => window.__jobPilottoRetypeWiped?.(0) || 0).catch(() => 0);   // a box the page emptied after rung 0's read: typed again now (page/browser-form-fastpath.js)
+  const late = await inPage(tab.id, () => window.__jobadabraRetypeWiped?.(0) || 0).catch(() => 0);   // a box the page emptied after rung 0's read: typed again now (page/browser-form-fastpath.js)
   if (!late && !repaired?.results?.some(row => row.ok !== undefined)) return null;
-  const readBack = await inPage(tab.id, () => window.__jobPilottoReadBack?.pass() || []).catch(() => null);
+  const readBack = await inPage(tab.id, () => window.__jobadabraReadBack?.pass() || []).catch(() => null);
   if (Array.isArray(readBack)) decide('fill', 'read back again after the last action', {retyped: late, repaired: repaired?.results?.filter(row => row.ok).length || 0}).catch(() => {});
   return Array.isArray(readBack) ? {readBack} : null;
 }

@@ -48,17 +48,17 @@ export function registerFocusHandlers(ctx) {
     return result;
   });
   // Focus: what to do next (Notion, no AI); Done on a reply logs a "Replied" event.
-  // Demo mode: the fictional list in demo/focus.json (JOB_PILOTTO_DEMO_FOCUS_DELAY ms first, to see the loading state;
-  // JOB_PILOTTO_DEMO_FOCUS=<file> another fictional list, e.g. e2e/mail-states.mjs's open and answered questions).
+  // Demo mode: the fictional list in demo/focus.json (JOBADABRA_DEMO_FOCUS_DELAY ms first, to see the loading state;
+  // JOBADABRA_DEMO_FOCUS=<file> another fictional list, e.g. e2e/mail-states.mjs's open and answered questions).
   // Demo mode remembers what you do there, as Notion would for a person: an answered "which job?" leaves Focus and is
   // answered, a built prep kit is ready. Without it every re-read of the file undid it (owner, 6 Oct 2026).
   let demoFocus = null;
-  const demoFocusData = () => demoFocus || (demoFocus = JSON.parse(fs.readFileSync(process.env.JOB_PILOTTO_DEMO_FOCUS || demoPath(here, 'focus.json'), 'utf8')));
+  const demoFocusData = () => demoFocus || (demoFocus = JSON.parse(fs.readFileSync(process.env.JOBADABRA_DEMO_FOCUS || demoPath(here, 'focus.json'), 'utf8')));
   ipcMain.handle('focus', sharedRead('focus', async () => {
     const gate = needsNotion('focus');
     if (gate) return gate;
     if (!DEMO) return viewCache.remember(storage, 'focus', await pipeline.focus(storage));
-    await new Promise(resolve => setTimeout(resolve, Number(process.env.JOB_PILOTTO_DEMO_FOCUS_DELAY) || 0));
+    await new Promise(resolve => setTimeout(resolve, Number(process.env.JOBADABRA_DEMO_FOCUS_DELAY) || 0));
     return {ok: true, focus: demoFocusData()};
   }, {log: appLog}));
   // The daily applications target lives on ⚙️ Search settings in Notion (Focus, Settings and the wizard set it).

@@ -107,9 +107,9 @@ test('the Find jobs card sits where the list appears: after the counters and the
   assert.match(read('renderer/find-card.css'), /find-card="empty"\] #jobs-head, body\[data-find-card="empty"\] #jobs-empty \{ display: none/, 'no column titles or "no jobs yet" line beside the empty card');
 });
 
-test('demo: JOB_PILOTTO_DEMO_SEARCH_SECONDS sets how long the scripted search lasts (the hero plays a short one)', async () => {
+test('demo: JOBADABRA_DEMO_SEARCH_SECONDS sets how long the scripted search lasts (the hero plays a short one)', async () => {
   const total = async env => { const waits = []; await play(() => {}, {sleep: async ms => { waits.push(ms); }, env}); return waits.reduce((sum, ms) => sum + ms, 0); };
-  assert.equal(SECONDS_ENV, 'JOB_PILOTTO_DEMO_SEARCH_SECONDS');
+  assert.equal(SECONDS_ENV, 'JOBADABRA_DEMO_SEARCH_SECONDS');
   const usual = await total({});
   assert.ok(Math.abs(await total({[SECONDS_ENV]: '5'}) - 5000) <= SCRIPT.length, 'lasts 5 s (rounding only)');
   assert.ok(Math.abs(await total({[SECONDS_ENV]: '60'}) - 60000) <= SCRIPT.length, 'or longer');

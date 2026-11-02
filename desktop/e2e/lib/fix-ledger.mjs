@@ -2,6 +2,7 @@
 // "Fixture:" and the recorded cases a commit adds) plus desktop/e2e/pool-fixes.json for fixes that landed before the trailer. Also the claims held now (tools/claim-shape.mjs list).
 // Computed, never typed: the status (landed, confirmed, back) is worked out on the site from the smoke runs. Only a site name, a short hash, a version, a rung and ids leave the Mac.
 // Run: node desktop/e2e/lib/fix-ledger.mjs [--upload]   (the nightly smoke does the upload after its pool upload). Guard: e2e/test/fix-ledger.test.mjs.
+// Job: keep the scorecard
 import {execFileSync} from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -22,7 +23,7 @@ export const cleanRow = value => { const name = String(value || '').trim(); retu
 const defaultGit = (...args) => execFileSync('git', ['-C', ROOT, ...args], {encoding: 'utf8', maxBuffer: 64 << 20});
 // A commit's facts never change, so each is read from git once per Mac (14 Oct 2026: 5 git calls per commit, one a ~1 s rev-list, made the smoke run look hung
 // for minutes after its report). Keyed by the full hash; a missing or broken file only costs the git calls again.
-const MEMO_FILE = path.join(os.tmpdir(), 'job-pilotto-fix-ledger-memo.json');
+const MEMO_FILE = path.join(os.tmpdir(), 'jobadabra-fix-ledger-memo.json');
 const readMemo = () => { try { return JSON.parse(fs.readFileSync(MEMO_FILE, 'utf8')); } catch { return {}; } };
 const saveMemo = memo => { try { fs.writeFileSync(MEMO_FILE, JSON.stringify(memo)); } catch { /* best effort */ } };
 

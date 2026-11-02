@@ -99,7 +99,7 @@ export async function adoptSessionUnlessClosing(ctx, open, adopt) {
 
 // Why (#2669): an actual in-memory service has no external rate limit; a fault proxy alone is not that service.
 function markStandIn(env, standIn) {
-  if (standIn) env.JOB_PILOTTO_E2E_NOTION_STANDIN = '1';
+  if (standIn) env.JOBADABRA_E2E_NOTION_STANDIN = '1';
 }
 
 /**
@@ -141,7 +141,7 @@ export async function openContext(suite, {fresh = false, env: suiteEnv = {}, bro
   const {copyExtension, freePort, makeOpenShim, opensIntoSpool} = await import('./extension.mjs');
   if (engine === 'cli') console.log('  AI engine: the Claude Code on this Mac (your plan): no Anthropic key is read or used on a Mac.');
   // The real test page is one page for the whole Mac: a run on it waits for the run that holds it (lib/notion-page-lock.mjs). SQLite and stand-in runs never take it.
-  if (lockNeeded({store})) ctx.pageLock = await takeNotionPage({what: suite}); else if (store === 'notion' && process.env.JOB_PILOTTO_NOTION_LOCK === '0') console.log('  Notion page lock: off (JOB_PILOTTO_NOTION_LOCK=0)');
+  if (lockNeeded({store})) ctx.pageLock = await takeNotionPage({what: suite}); else if (store === 'notion' && process.env.JOBADABRA_NOTION_LOCK === '0') console.log('  Notion page lock: off (JOBADABRA_NOTION_LOCK=0)');
   if (onNotion) ctx.root = await testRoot(token);   // refuses any workspace but the test one, and any token that sees more than one page
   // The real workspace names the page it may empty (`notionPage`): a token that sees another page fails here, before `fresh` trashes anything.
   if (store === 'notion' && (!notionPage || ctx.root.title !== notionPage)) throw new Error(`refusing the Notion page "${ctx.root.title}": the ${suite} suite may only use "${notionPage || '(its notionPage export is missing)'}"`);
@@ -173,33 +173,33 @@ export async function openContext(suite, {fresh = false, env: suiteEnv = {}, bro
   // (lib/browser-profile.js browserData; 16 Oct 2026: a local run read the owner's Chrome Local State). Every suite, with or without a browser.
   // The automatic backup's folder likewise: the app backs up at its start once set up, and must never write to the owner's iCloud Drive or Documents (lib/backup.js folder).
   ctx.backupDir = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-e2e-backups-'));
-  const browserEnv = {JOB_PILOTTO_BROWSER_DATA: fs.mkdtempSync(path.join(os.tmpdir(), 'jp-e2e-browser-data-')), JOB_PILOTTO_BACKUP_DIR: ctx.backupDir};
+  const browserEnv = {JOBADABRA_BROWSER_DATA: fs.mkdtempSync(path.join(os.tmpdir(), 'jp-e2e-browser-data-')), JOBADABRA_BACKUP_DIR: ctx.backupDir};
   // Every suite, with or without a browser: a page the app opens lands in the stand-in's spool, never in the owner's Chrome. Why (#2350, 28 Oct 2026): the shim was
   // put only on browser suites, so the interactions probe's press on Focus's "Read Indeed" ran the real `open` and put ch.indeed.com in the owner's Chrome.
   ctx.shim = makeOpenShim();
-  Object.assign(browserEnv, {PATH: `${ctx.shim.bin}${path.delimiter}${process.env.PATH}`, JOB_PILOTTO_E2E_OPEN_DIR: ctx.shim.spool});
-  if (process.platform === 'win32') browserEnv.JOB_PILOTTO_E2E_OPENER = ctx.shim.script;   // no `open` on Windows (lib/apply.js chromeCommand)
+  Object.assign(browserEnv, {PATH: `${ctx.shim.bin}${path.delimiter}${process.env.PATH}`, JOBADABRA_E2E_OPEN_DIR: ctx.shim.spool});
+  if (process.platform === 'win32') browserEnv.JOBADABRA_E2E_OPENER = ctx.shim.script;   // no `open` on Windows (lib/apply.js chromeCommand)
   if (browser) {
     // The app and the extension copy share a free port, so the test never meets the user's own app on 47111.
     ctx.appPort = await freePort();
     ctx.extensionDir = copyExtension(ctx.appPort);
     ctx.forms = await startForms({vary: ctx.vary});
-    browserEnv.JOB_PILOTTO_PORT = String(ctx.appPort);
+    browserEnv.JOBADABRA_PORT = String(ctx.appPort);
     Object.assign(browserEnv, hiddenBrowserEnv(ctx.forms.port));   // the app's hidden browser reaches the fixture sites only (lib/background-proof.mjs)
   }
-  const env = {...appModelEnv(), JOB_PILOTTO_FIXTURE_DIR: ctx.feeds, JOB_PILOTTO_E2E_AI_BASE_URL: ctx.proxy.url, ...(family === 'free' ? {JOB_PILOTTO_E2E_FREE_AI_KEY: FREE_AI_ALIAS} : {}), ...(ctx.openaiProxy ? {JOB_PILOTTO_E2E_OPENAI_BASE_URL: `${ctx.openaiProxy.url}/v1`} : {}), ...(ctx.notion ? {JOB_PILOTTO_E2E_NOTION_BASE_URL: ctx.notion.url} : ctx.standIn ? {JOB_PILOTTO_E2E_NOTION_BASE_URL: ctx.standIn.url} : store && store !== 'notion' ? {JOB_PILOTTO_E2E_NOTION_BASE_URL: notionFarSide({store})} : {}), ...(ctx.telegram ? {JOB_PILOTTO_E2E_TELEGRAM_BASE_URL: ctx.telegram.url} : {}),
-    ...(ctx.releases ? {JOB_PILOTTO_E2E_UPDATES_URL: ctx.releases.url} : {}), ...(ctx.google ? {JOB_PILOTTO_E2E_GOOGLE_BASE_URL: ctx.google.url, GOOGLE_CLIENT_ID: 'e2e-client', GOOGLE_CLIENT_SECRET: 'e2e-secret', GOOGLE_REFRESH_TOKEN: 'e2e-refresh'} : {}), ...browserEnv, ...suiteEnv};
+  const env = {...appModelEnv(), JOBADABRA_FIXTURE_DIR: ctx.feeds, JOBADABRA_E2E_AI_BASE_URL: ctx.proxy.url, ...(family === 'free' ? {JOBADABRA_E2E_FREE_AI_KEY: FREE_AI_ALIAS} : {}), ...(ctx.openaiProxy ? {JOBADABRA_E2E_OPENAI_BASE_URL: `${ctx.openaiProxy.url}/v1`} : {}), ...(ctx.notion ? {JOBADABRA_E2E_NOTION_BASE_URL: ctx.notion.url} : ctx.standIn ? {JOBADABRA_E2E_NOTION_BASE_URL: ctx.standIn.url} : store && store !== 'notion' ? {JOBADABRA_E2E_NOTION_BASE_URL: notionFarSide({store})} : {}), ...(ctx.telegram ? {JOBADABRA_E2E_TELEGRAM_BASE_URL: ctx.telegram.url} : {}),
+    ...(ctx.releases ? {JOBADABRA_E2E_UPDATES_URL: ctx.releases.url} : {}), ...(ctx.google ? {JOBADABRA_E2E_GOOGLE_BASE_URL: ctx.google.url, GOOGLE_CLIENT_ID: 'e2e-client', GOOGLE_CLIENT_SECRET: 'e2e-secret', GOOGLE_REFRESH_TOKEN: 'e2e-refresh'} : {}), ...browserEnv, ...suiteEnv};
   // The owner's browser data is never read by a test run: the app's browser-data root is this run's own folder (lib/browser-profile.js browserData).
   markStandIn(env, standIn);
-  if (!env.JOB_PILOTTO_BROWSER_DATA || path.resolve(env.JOB_PILOTTO_BROWSER_DATA).startsWith(path.join(os.homedir(), 'Library')) || path.resolve(env.JOB_PILOTTO_BROWSER_DATA).startsWith(path.join(os.homedir(), 'AppData'))) {
-    throw new Error(`a test run must not read the owner's browser profiles (JOB_PILOTTO_BROWSER_DATA is ${env.JOB_PILOTTO_BROWSER_DATA || 'unset'})`);
+  if (!env.JOBADABRA_BROWSER_DATA || path.resolve(env.JOBADABRA_BROWSER_DATA).startsWith(path.join(os.homedir(), 'Library')) || path.resolve(env.JOBADABRA_BROWSER_DATA).startsWith(path.join(os.homedir(), 'AppData'))) {
+    throw new Error(`a test run must not read the owner's browser profiles (JOBADABRA_BROWSER_DATA is ${env.JOBADABRA_BROWSER_DATA || 'unset'})`);
   }
   // A page the app opens goes to this run's spool, never to the owner's browser (lib/browser-launch.js runs `open`, found first on PATH, or the Windows opener).
   if (!opensIntoSpool(env)) throw new Error(`a test run must not open pages in the owner's browser (PATH starts ${String(env.PATH).split(path.delimiter)[0]})`);
   // P7: off the real workspace a run holds no token but the stand-in's own (lib/store.mjs runToken); the run fails here, before the app starts, if it ever does.
   if (store && store !== 'notion' && token && token !== standIn?.token) throw new Error(`the ${store} store must not hold a Notion token from the environment`);
   // P7: a run off the real workspace reaches no Notion but a local one (the stand-in, or the fault proxy in front of it). Fails the run before the app starts.
-  if (store && store !== 'notion' && !isLoopback(env.JOB_PILOTTO_E2E_NOTION_BASE_URL)) throw new Error(`the ${store} store must not reach real Notion, and the app was given ${env.JOB_PILOTTO_E2E_NOTION_BASE_URL || 'no Notion URL (the real one)'}`);
+  if (store && store !== 'notion' && !isLoopback(env.JOBADABRA_E2E_NOTION_BASE_URL)) throw new Error(`the ${store} store must not reach real Notion, and the app was given ${env.JOBADABRA_E2E_NOTION_BASE_URL || 'no Notion URL (the real one)'}`);
   // The environment the app was started with: a second app a step opens (another time zone, a fresh install) starts from it, so it talks to the same Notion
   // (real or the stand-in), AI proxy and fixtures (6 Oct 2026: calendar's second app had its own list and reached real Notion with the stand-in's token).
   ctx.appEnv = env;
@@ -207,7 +207,7 @@ export async function openContext(suite, {fresh = false, env: suiteEnv = {}, bro
   const adopt = started => { session = started; ctx.session = session; ctx.page = session.page; ctx.app = session.app; ctx.profile = session.profile; };
   // A seeded run of a suite that opts in lives somewhere else: another time zone (window and engine) and language (lib/variation.mjs placeOf).
   ctx.place = variesPlace ? placeOf() : null;
-  if (ctx.place) { Object.assign(env, {TZ: ctx.place.zone, JOB_PILOTTO_TZ: ctx.place.zone, LANG: `${ctx.place.locale.replace('-', '_')}.UTF-8`}); console.log(`  place: ${ctx.place.zone}, ${ctx.place.locale}`); }
+  if (ctx.place) { Object.assign(env, {TZ: ctx.place.zone, JOBADABRA_TZ: ctx.place.zone, LANG: `${ctx.place.locale.replace('-', '_')}.UTF-8`}); console.log(`  place: ${ctx.place.zone}, ${ctx.place.locale}`); }
   // newInstall: no store written, as a new install starts (the app gives it this Mac at first start, lib/store-handlers.js settleStore).
   adopt(await launch({env, lang: ctx.place?.locale || '', settings: newInstall ? {} : storeSettings(store)}));
   // The app's trace is kept when the suite failed so far: a failed step, or an error outside the steps (lib/suite-main.mjs sets ctx.stopped first).

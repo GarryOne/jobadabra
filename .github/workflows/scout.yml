@@ -4,7 +4,7 @@ run-name: scout${{ inputs.batch && format(' {0}', inputs.batch) || '' }}
 # Grows the list of employer job feeds a small batch at a time. Probes public
 # job-feed APIs and public career pages only; no applying. AI (ideas for new employers, reading careers pages that list jobs
 # as plain text) only when the repository has an Anthropic key; a headless browser for pages built in the browser unless
-# JOB_PILOTTO_RENDER=0.
+# JOBADABRA_RENDER=0.
 on:
   # Called by the scheduled workflow in your private repo (templates/github-actions/scout.yml).
   workflow_call:
@@ -26,30 +26,30 @@ permissions:
 
 
 # Optional features can be switched off without deleting their secrets (src/features.py),
-# e.g. repository variable JOB_PILOTTO_DISABLE=google_jobs,mail.
+# e.g. repository variable JOBADABRA_DISABLE=google_jobs,mail.
 env:
   # The model of the small AI steps (title and page checks, triage, search picks), as the app sets it in this repo (desktop/lib/github.js).
-  JOB_PILOTTO_SMALL_MODEL: ${{ vars.JOB_PILOTTO_SMALL_MODEL }}
+  JOBADABRA_SMALL_MODEL: ${{ vars.JOB_PILOTTO_SMALL_MODEL }}
   # The AI engine the user chose for Always on (api: Anthropic key, openai: OpenAI key; never a CLI here) and the OpenAI tiers' models,
   # as the app sets them in this repo (desktop/lib/github.js; src/ai/providers, src/ai/models.py).
-  JOB_PILOTTO_AI_ENGINE: ${{ vars.JOB_PILOTTO_AI_ENGINE }}
-  JOB_PILOTTO_OPENAI_SMALL_MODEL: ${{ vars.JOB_PILOTTO_OPENAI_SMALL_MODEL }}
-  JOB_PILOTTO_OPENAI_MAIN_MODEL: ${{ vars.JOB_PILOTTO_OPENAI_MAIN_MODEL }}
-  JOB_PILOTTO_OPENAI_BIG_MODEL: ${{ vars.JOB_PILOTTO_OPENAI_BIG_MODEL }}
+  JOBADABRA_AI_ENGINE: ${{ vars.JOB_PILOTTO_AI_ENGINE }}
+  JOBADABRA_OPENAI_SMALL_MODEL: ${{ vars.JOB_PILOTTO_OPENAI_SMALL_MODEL }}
+  JOBADABRA_OPENAI_MAIN_MODEL: ${{ vars.JOB_PILOTTO_OPENAI_MAIN_MODEL }}
+  JOBADABRA_OPENAI_BIG_MODEL: ${{ vars.JOB_PILOTTO_OPENAI_BIG_MODEL }}
   # Help the pool grow, as the app sets it in this repo (desktop/lib/pool-share.js): an Always on run shares like the app (6 Oct 2026: it never did).
-  JOB_PILOTTO_SHARE_EMPLOYERS: ${{ vars.JOB_PILOTTO_SHARE_EMPLOYERS }}
-  JOB_PILOTTO_INSTALL_ID: ${{ vars.JOB_PILOTTO_INSTALL_ID }}
+  JOBADABRA_SHARE_EMPLOYERS: ${{ vars.JOB_PILOTTO_SHARE_EMPLOYERS }}
+  JOBADABRA_INSTALL_ID: ${{ vars.JOB_PILOTTO_INSTALL_ID }}
   # The free trial, as the app sets it in this repo (desktop/lib/github.js): the install's key, the first-run day and a license key; src/trial.py asks the website
-  # whether new work may start. JOB_PILOTTO_AI_BASE_URL points the AI at Free AI (src/ai/providers/anthropic_api.py) when the key is a Free AI one.
-  JOB_PILOTTO_TRIAL_KEY: ${{ secrets.JOB_PILOTTO_TRIAL_KEY }}
-  JOB_PILOTTO_LICENSE_KEY: ${{ secrets.JOB_PILOTTO_LICENSE_KEY }}
-  JOB_PILOTTO_FIRST_RUN: ${{ vars.JOB_PILOTTO_FIRST_RUN }}
-  JOB_PILOTTO_AI_BASE_URL: ${{ vars.JOB_PILOTTO_AI_BASE_URL }}
+  # whether new work may start. JOBADABRA_AI_BASE_URL points the AI at Free AI (src/ai/providers/anthropic_api.py) when the key is a Free AI one.
+  JOBADABRA_TRIAL_KEY: ${{ secrets.JOB_PILOTTO_TRIAL_KEY }}
+  JOBADABRA_LICENSE_KEY: ${{ secrets.JOB_PILOTTO_LICENSE_KEY }}
+  JOBADABRA_FIRST_RUN: ${{ vars.JOB_PILOTTO_FIRST_RUN }}
+  JOBADABRA_AI_BASE_URL: ${{ vars.JOB_PILOTTO_AI_BASE_URL }}
   # Notion's limit (~3 requests a second) is shared with the user's app on their computer: this run takes ~1.4/s.
-  JOB_PILOTTO_NOTION_GAP_MS: '700'
-  JOB_PILOTTO_DISABLE: ${{ vars.JOB_PILOTTO_DISABLE }}
+  JOBADABRA_NOTION_GAP_MS: '700'
+  JOBADABRA_DISABLE: ${{ vars.JOB_PILOTTO_DISABLE }}
   # How the person wants to be told (the app sets it, desktop/lib/github.js): email, telegram, app. E-mail goes through the website with the install's key (src/notify.py).
-  JOB_PILOTTO_NOTIFY: ${{ vars.JOB_PILOTTO_NOTIFY }}
+  JOBADABRA_NOTIFY: ${{ vars.JOB_PILOTTO_NOTIFY }}
   # Your Notion workspace: database and page IDs, as repository variables (the Desktop App sets them).
   NOTION_APPLICATIONS_DB: ${{ vars.NOTION_APPLICATIONS_DB }}
   NOTION_MATCHES_DB: ${{ vars.NOTION_MATCHES_DB }}
@@ -67,14 +67,14 @@ env:
   NOTION_KNOWLEDGE_PAGE: ${{ vars.NOTION_KNOWLEDGE_PAGE }}
   NOTION_PIPELINE_PAGE: ${{ vars.NOTION_PIPELINE_PAGE }}
   # Companies scout never suggests (e.g. your current employer), comma-separated.
-  JOB_PILOTTO_EXCLUDED_COMPANIES: ${{ vars.JOB_PILOTTO_EXCLUDED_COMPANIES }}
+  JOBADABRA_EXCLUDED_COMPANIES: ${{ vars.JOB_PILOTTO_EXCLUDED_COMPANIES }}
 
 jobs:
   scout:
     runs-on: ubuntu-24.04
     # Shares the SQLite state with the digest workflow, so the two never overlap.
     concurrency:
-      group: job-pilotto-state
+      group: jobadabra-state
       cancel-in-progress: false
     timeout-minutes: 20
     steps:
@@ -101,8 +101,8 @@ jobs:
         uses: actions/cache/restore@v5
         with:
           path: data/jobs.sqlite
-          key: job-pilotto-db-${{ github.run_id }}
-          restore-keys: job-pilotto-db-
+          key: jobadabra-db-${{ github.run_id }}
+          restore-keys: jobadabra-db-
       - name: Install the AI library
         run: pip install --quiet -r requirements.txt
       - name: Install the headless browser
@@ -119,19 +119,19 @@ jobs:
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          JOB_PILOTTO_RENDER: ${{ vars.JOB_PILOTTO_RENDER }}
+          JOBADABRA_RENDER: ${{ vars.JOB_PILOTTO_RENDER }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
           BRAVE_SEARCH_API_KEY: ${{ secrets.BRAVE_SEARCH_API_KEY }}   # an employer's job site by web search (src/sources/web_search.py)
           SERPAPI_API_KEY: ${{ secrets.SERPAPI_API_KEY }}
           BATCH: ${{ inputs.batch || '40' }}
-          JOB_PILOTTO_RUN_ID: ${{ github.run_id }}
+          JOBADABRA_RUN_ID: ${{ github.run_id }}
         run: |
-          echo "run_id=${JOB_PILOTTO_RUN_ID}"
+          echo "run_id=${JOBADABRA_RUN_ID}"
           send=""
           if [ -n "$TELEGRAM_BOT_TOKEN" ] && [ -n "$TELEGRAM_CHAT_ID" ]; then send="--send"; fi
-          case ",$JOB_PILOTTO_NOTIFY," in *,email,*) send="--send" ;; esac   # e-mail chosen: src/notify.py
+          case ",$JOBADABRA_NOTIFY," in *,email,*) send="--send" ;; esac   # e-mail chosen: src/notify.py
           python -m src scout --batch "$BATCH" $send --log-run
       - name: Report failure to Telegram
         if: failure()
@@ -141,7 +141,7 @@ jobs:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           [ -n "$TELEGRAM_BOT_TOKEN" ] && [ -n "$TELEGRAM_CHAT_ID" ] || exit 0
-          case ",$JOB_PILOTTO_NOTIFY," in ,,|*,telegram,*) ;; *) exit 0 ;; esac   # Telegram turned off in Settings → Notifications
+          case ",$JOBADABRA_NOTIFY," in ,,|*,telegram,*) ;; *) exit 0 ;; esac   # Telegram turned off in Settings → Notifications
           curl -fsS "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
             --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
             --data-urlencode "text=❌ Jobadabra source scout failed: ${RUN_URL}" > /dev/null
@@ -156,7 +156,7 @@ jobs:
         uses: actions/cache/save@v5
         with:
           path: data/jobs.sqlite
-          key: job-pilotto-db-${{ github.run_id }}
+          key: jobadabra-db-${{ github.run_id }}
       - name: Backup job database
         # See daily.yml's own "Backup job database" step: separate from the cache above because
         # a cache entry can be evicted without warning; an artifact just expires on its own
@@ -164,7 +164,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v6
         with:
-          name: job-pilotto-jobs-db
+          name: jobadabra-jobs-db
           path: data/jobs.sqlite
           retention-days: 90
           if-no-files-found: warn

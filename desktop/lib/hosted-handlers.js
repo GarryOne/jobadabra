@@ -20,7 +20,7 @@ export function registerHostedHandlers({DEMO, dialog, getWindow, ipcMain, storag
   ipcMain.handle('hostedExport', async () => {
     if (DEMO) return {ok: true};
     const win = getWindow();
-    const {canceled, filePath} = await dialog.showSaveDialog(win && !win.isDestroyed() ? win : undefined, {defaultPath: 'job-pilotto-hosted-data.json', filters: [{name: 'JSON', extensions: ['json']}]});
+    const {canceled, filePath} = await dialog.showSaveDialog(win && !win.isDestroyed() ? win : undefined, {defaultPath: 'jobadabra-hosted-data.json', filters: [{name: 'JSON', extensions: ['json']}]});
     return canceled || !filePath ? {ok: false, cancelled: true} : hosted.exportTo(storage, filePath);
   });
   if (!DEMO && hosted.state(storage).on) hosted.pushConfig(storage).catch(() => {});   // the profile and search settings as they are now (they may have changed since)

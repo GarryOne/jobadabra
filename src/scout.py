@@ -70,7 +70,7 @@ def ai_ideas(db, harvest_sources=None):
     harvest sources, or a failure (the scout then simply carries on with the usual sources)."""
     from . import features
     from .ai import engine, scout_ideas
-    if harvest_sources is not None or os.getenv('JOB_PILOTTO_FIXTURE_DIR') or not features.enabled('scout_ai') or not engine.ready():
+    if harvest_sources is not None or os.getenv('JOBADABRA_FIXTURE_DIR') or not features.enabled('scout_ai') or not engine.ready():
         return None
     from . import scout_cells   # the central scout aims at the list's thinnest kind × country, not the example search's roles
     search, label = scout_cells.aim(db, load_search_config()) if scout_core.CENTRAL else (load_search_config(), '')
@@ -158,11 +158,11 @@ def ai_cost_line(what, usd, api_calls, plan_calls, calls):
 
 
 def report_ai_cost(side):
-    """Print what this run's AI calls cost, and write {usd, calls} to JOB_PILOTTO_AI_COST_FILE when set (the central scout's workflow
+    """Print what this run's AI calls cost, and write {usd, calls} to JOBADABRA_AI_COST_FILE when set (the central scout's workflow
     reports it to the owner's /ai-cost page). Always written when asked, even $0: a job that spent nothing must still show up."""
     usd, calls = float(side.get('usd') or 0), int(side.get('done') or 0)
     print(ai_cost_line('scout run', usd, int(side.get('api_calls') or 0), int(side.get('cli_calls') or 0), calls))
-    target = os.getenv('JOB_PILOTTO_AI_COST_FILE')
+    target = os.getenv('JOBADABRA_AI_COST_FILE')
     if target:
         Path(target).write_text(json.dumps({'usd': round(usd, 6), 'calls': calls}))
 
@@ -188,7 +188,7 @@ def main():
                                                                  'Notion; the desktop app does)')
     parser.add_argument('--publish-index', action='store_true',
                         help='the central scout: after the run, verify every feed and upload the employer index '
-                             '(needs INDEX_PUBLISH_KEY; URL: JOB_PILOTTO_INDEX_URL or the default)')
+                             '(needs INDEX_PUBLISH_KEY; URL: JOBADABRA_INDEX_URL or the default)')
     parser.add_argument('--sync-store', '--sync-notion', dest='sync_store', action='store_true',
                         help='write the employers already checked on this computer that the active store lacks (its employer list; '
                              'on Notion, Employers & Sources: the app runs it when Notion is connected), then stop')
@@ -217,7 +217,7 @@ def main():
         return 0
     from .features import disabled
     if disabled('scout'):
-        print('Source scout is off (JOB_PILOTTO_DISABLE includes scout).')
+        print('Source scout is off (JOBADABRA_DISABLE includes scout).')
         return 0
     stores = employer_store()
     from . import trial
@@ -236,7 +236,7 @@ def main():
                 print(f'Warning: pasted page not read: {type(error).__name__}: {error}')
         fetched = None   # the central scout reads what installs shared before its run, so it skips their dead ends (20 Oct 2026)
         if args.publish_index and scout_core.CENTRAL and os.getenv('INDEX_PUBLISH_KEY'):
-            fetched = fetch_contributions(os.getenv('JOB_PILOTTO_INDEX_URL') or employer_index.URL, os.environ['INDEX_PUBLISH_KEY'], with_nofeed=True)
+            fetched = fetch_contributions(os.getenv('JOBADABRA_INDEX_URL') or employer_index.URL, os.environ['INDEX_PUBLISH_KEY'], with_nofeed=True)
             scout_core.SHARED_DEAD = employer_index.fresh_nofeed(fetched[1])
         if scout_core.CENTRAL:
             scout_overrun.arm(args.budget or scout_core.CENTRAL_BUDGET_S)   # an empty log at the job's cancel hid what held two runs (20 Oct 2026)
@@ -256,7 +256,7 @@ def main():
             key = os.getenv('INDEX_PUBLISH_KEY')
             if not key:
                 raise SystemExit('--publish-index needs INDEX_PUBLISH_KEY')
-            index_url = os.getenv('JOB_PILOTTO_INDEX_URL') or employer_index.URL
+            index_url = os.getenv('JOBADABRA_INDEX_URL') or employer_index.URL
             from . import scout_boards, scout_cells
             deadline = min(scout_overrun.publish_deadline(started) - scout_boards.RESERVE_S, time.monotonic() + scout_core.VERIFY_BUDGET_S)
             with scout_overrun.phase('reading what installs shared'):

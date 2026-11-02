@@ -54,9 +54,9 @@ test('the pool run sets JP_APPLICANT (thin when started by hand)', () => {
 // 15 Oct 2026: no PR proof keeps a visit back any more: a by-hand recording may use the host's whole day (limit 2), and each visit says it is by hand.
 test('the recording run names its visit kind (by hand) and keeps no visit back for a PR proof', () => {
   const smoke = workflows['record-sites.yml'];
-  assert.match(smoke, /JOB_PILOTTO_VISIT_KIND: hand\b/);
-  assert.doesNotMatch(smoke, /JOB_PILOTTO_SITE_RESERVE|pull_request|PR_PROOF/);
-  assert.match(smoke, /JOB_PILOTTO_SITE_LIMIT: '2'/);
+  assert.match(smoke, /JOBADABRA_VISIT_KIND: hand\b/);
+  assert.doesNotMatch(smoke, /JOBADABRA_SITE_RESERVE|pull_request|PR_PROOF/);
+  assert.match(smoke, /JOBADABRA_SITE_LIMIT: '2'/);
 });
 
 // Owner, 14 Oct 2026: the CI workflow's one job is recording, so its rows move /admin/form-filling/lab (main only, the narrow key); it sends no "proven live" record any more.
@@ -95,7 +95,7 @@ test('the daily discovery batch: picker without AI, recording only after a pick,
   assert.match(record, /needs\.pick\.result == 'success' && needs\.pick\.outputs\.count != '0'/, 'no new candidate, no recording run');
   assert.match(record, /MAX_ROWS: \$\{\{ github\.event_name == 'schedule' && '5' \|\| '3' \}\}/, 'five rows a day at most');
   assert.match(record, /MAX_USD: \$\{\{ github\.event_name == 'schedule' && needs\.pick\.outputs\.max_usd \|\| '0\.50' \}\}/, 'the day\'s dollars come from the week\'s remainder');
-  assert.match(record, /JOB_PILOTTO_SITE_LIMIT: '2'/, 'the site limit is the same');
+  assert.match(record, /JOBADABRA_SITE_LIMIT: '2'/, 'the site limit is the same');
   assert.match(record, /JP_APPLICANT: thin/, 'the test applicant, never the owner\'s');
   assert.doesNotMatch(pr, /ANTHROPIC|OPENAI|REPLAYS_PUBLISH_KEY/);
   assert.doesNotMatch(smoke, /gh pr merge|--auto|auto-merge/i, 'the owner merges every PR by hand');
@@ -113,7 +113,7 @@ test('the daily watch list: picker without AI, recording only when the month has
   assert.match(record, /needs: pick/);
   assert.match(record, /needs\.pick\.outputs\.count != '0'/, 'at the cap: no run');
   assert.match(record, /MAX_USD: \$\{\{ needs\.pick\.outputs\.max_usd \}\}/);
-  assert.match(record, /JOB_PILOTTO_SITE_LIMIT: '2'/, 'at most 2 visits a host a day');
+  assert.match(record, /JOBADABRA_SITE_LIMIT: '2'/, 'at most 2 visits a host a day');
   assert.match(record, /JP_APPLICANT: thin/);
   assert.match(record, /JP_TEST_ACCOUNTS: \$\{\{ secrets\.POOL_TEST_ACCOUNTS \}\}/, 'test accounts only, from the secret');
   assert.match(record, /AI_COST_JOB: pool-watch/, 'its spend has its own line on /admin/intelligence/ai-cost');

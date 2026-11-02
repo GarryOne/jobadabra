@@ -42,11 +42,11 @@ async function replay(spec, html) {
     });
   }
   const field = fieldOf(window, spec);
-  const summary = await window.__jobPilottoExtensionFill([{ field, value: spec.answer, question: spec.label, source: 'kit' }], {}, null, '', false);
-  const armed = window.document.querySelector('[data-jobpilotto-armed]');
+  const summary = await window.__jobadabraExtensionFill([{ field, value: spec.answer, question: spec.label, source: 'kit' }], {}, null, '', false);
+  const armed = window.document.querySelector('[data-jobadabra-armed]');
   if (armed) {
     userClick(window, armed);
-    for (let waited = 0; waited < 5000 && window.__jobPilottoArmedCount() && !picked.length; waited += 50) await wait(50);
+    for (let waited = 0; waited < 5000 && window.__jobadabraArmedCount() && !picked.length; waited += 50) await wait(50);
   }
   const radio = window.document.querySelector('input[type=radio]:checked');
   const input = window.document.getElementById(field) || window.document.querySelector(`[name="${field}"]`);

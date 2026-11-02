@@ -52,7 +52,7 @@ def seed(db, url, key, get=None):
         with urllib.request.urlopen(request, timeout=60) as response:
             return json.load(response)
     try:
-        published = (get or default_get)(urllib.request.Request(url, headers={'Authorization': f'Bearer {key}', 'User-Agent': 'job-pilotto-scout'}))
+        published = (get or default_get)(urllib.request.Request(url, headers={'Authorization': f'Bearer {key}', 'User-Agent': 'jobadabra-scout'}))
         have = {(r[0], r[1]) for r in db.execute('SELECT ats, slug FROM feed_entries')}
         added = 0
         for entry in published.get('feeds') or []:

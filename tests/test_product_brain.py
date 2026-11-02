@@ -130,7 +130,7 @@ class SiteLogTest(unittest.TestCase):
 
     def test_a_log_write_never_fails_the_step(self):
         brain.site_log = self.saved['site_log']
-        with unittest.mock.patch.dict('os.environ', {'JOB_PILOTTO_TELEMETRY_KEY': 'k'}), \
+        with unittest.mock.patch.dict('os.environ', {'JOBADABRA_TELEMETRY_KEY': 'k'}), \
              unittest.mock.patch.object(brain, '_request', side_effect=SystemExit('POST failed: 500')):
             self.assertEqual(brain.site_log([{'decision': 'a', 'kind': 'status'}]), 0)
 

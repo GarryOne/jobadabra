@@ -5,8 +5,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-// Why (1 Nov 2026): the reporter used to yield only after the whole run, so a 4-minute run was silent. JOB_PILOTTO_PROGRESS_MS is the test seam for the quiet interval.
-const QUIET_MS = Number(process.env.JOB_PILOTTO_PROGRESS_MS) || 25000;
+// Why (1 Nov 2026): the reporter used to yield only after the whole run, so a 4-minute run was silent. JOBADABRA_PROGRESS_MS is the test seam for the quiet interval.
+const QUIET_MS = Number(process.env.JOBADABRA_PROGRESS_MS) || 25000;
 const TICK = Symbol('tick');
 const now = () => Date.now();   // clock: relative the progress line says how long THIS run has been going; it is wall time by definition, never a fixture's date
 const clock = ms => { const seconds = Math.round(ms / 1000); return seconds >= 60 ? `${Math.floor(seconds / 60)}m${String(seconds % 60).padStart(2, '0')}s` : `${seconds}s`; };

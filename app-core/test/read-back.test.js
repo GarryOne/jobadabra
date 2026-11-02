@@ -21,7 +21,7 @@ const FORM = `<form>
 
 test('one state per control kind: a box, a calling code alone, a menu, a choice, a picklist chip or labelled hidden input', {skip: !JSDOM}, () => {
   const window = openPage(JSDOM, FORM);
-  const state = id => window.__jobPilottoReadBack.stateOf(window.document.getElementById(id));
+  const state = id => window.__jobadabraReadBack.stateOf(window.document.getElementById(id));
   assert.deepEqual(['name', 'phone', 'city'].map(state), ['empty', 'empty', 'committed'], 'a box holding only a calling code is empty (Recruitee "+972", 12 Oct 2026)');
   assert.deepEqual(['pays', 'anrede'].map(state), ['empty', 'committed'], 'a placeholder is no answer; a menu with no blank first option starts on a real one (easytemp, 9 Oct 2026)');
   assert.equal(state('ok'), 'empty');
@@ -30,17 +30,17 @@ test('one state per control kind: a box, a calling code alone, a menu, a choice,
   assert.equal(state('country'), 'committed', 'react-select: the chip holds the choice, the input is only search text (chosen Country, 11 Oct 2026)');
   assert.equal(state('title-search'), 'committed', 'a labelled hidden input holds the picklist choice (SuccessFactors, 8 Oct 2026)');
   assert.equal(state('empty-combo'), 'empty');
-  assert.equal(window.__jobPilottoChosen, window.__jobPilottoReadBack.chosen, 'the name the audit and coverage.js call is the same rule');
+  assert.equal(window.__jobadabraChosen, window.__jobadabraReadBack.chosen, 'the name the audit and coverage.js call is the same rule');
   window.close();
 });
 
 test('a page that reformats what was typed stays committed; one that put something else there is a mismatch', {skip: !JSDOM}, () => {
   const window = openPage(JSDOM, '<input id="b">');
-  const box = window.document.getElementById('b'), state = () => window.__jobPilottoReadBack.stateOf(box);
+  const box = window.document.getElementById('b'), state = () => window.__jobadabraReadBack.stateOf(box);
   const cases = [['41791234567', '079 123 45 67', 'committed'], ['41791234567', '+41 (79) 123-45-67', 'committed'], ['20261102', '02.11.2026', 'committed'],
     ['adalovelace', 'ADA LOVELACE', 'committed'], ['zurich', ' Zurich ', 'committed'], ['adalovelace', 'Bob', 'mismatch'], ['41791234567', '', 'empty']];
   for (const [typed, now, want] of cases) {
-    box.setAttribute('data-jobpilotto-typed', typed); box.value = now;
+    box.setAttribute('data-jobadabra-typed', typed); box.value = now;
     assert.equal(state(), want, `typed ${typed}, the page shows "${now}"`);
   }
   window.close();
@@ -51,10 +51,10 @@ const SLOT = (extra = '') => `<form><div class="field"><label for="first">First<
 
 test('an upload slot is read by the file it shows: ours or a name that came after first sight is in; a hint or a name there from the start is never in', {skip: !JSDOM}, () => {
   const read = (html, {mark = false, later = ''} = {}) => {
-    const window = openPage(JSDOM, html), input = window.document.getElementById('cv'), RB = window.__jobPilottoReadBack;
+    const window = openPage(JSDOM, html), input = window.document.getElementById('cv'), RB = window.__jobadabraReadBack;
     const first = RB.fileState(input);   // the first sight: its baseline
     if (later) window.document.getElementById('zone').insertAdjacentHTML('beforeend', later);
-    if (mark) { input.dataset.jobPilottoFile = 'cv.pdf'; window.document.getElementById('slot').dataset.jobpilottoFile = 'cv.pdf'; }
+    if (mark) { input.dataset.jobadabraInputFile = 'cv.pdf'; window.document.getElementById('slot').dataset.jobadabraFile = 'cv.pdf'; }
     const now = RB.fileState(input);
     window.close();
     return [first, now];
@@ -69,7 +69,7 @@ test('an upload slot is read by the file it shows: ours or a name that came afte
   window_files: {
     const window = openPage(JSDOM, SLOT()), input = window.document.getElementById('cv');
     Object.defineProperty(input, 'files', {value: [{name: 'cv.pdf'}]});
-    assert.equal(window.__jobPilottoReadBack.fileState(input), 'committed', 'the input holds the file');
+    assert.equal(window.__jobadabraReadBack.fileState(input), 'committed', 'the input holds the file');
     window.close();
   }
 });
@@ -77,12 +77,12 @@ test('an upload slot is read by the file it shows: ours or a name that came afte
 test('the fill\'s end pass writes each control\'s state on it and returns them, with the CV\'s file name', {skip: !JSDOM}, async () => {
   const window = openPage(JSDOM, SLOT('<div class="file-chip">cv.pdf</div>'));
   const input = window.document.getElementById('cv');
-  input.dataset.jobPilottoFile = 'cv.pdf';
-  const rows = JSON.parse(JSON.stringify(await window.__jobPilottoReadBack.pass({quietMs: 50, maxMs: 500})));   // out of jsdom's realm
+  input.dataset.jobadabraInputFile = 'cv.pdf';
+  const rows = JSON.parse(JSON.stringify(await window.__jobadabraReadBack.pass({quietMs: 50, maxMs: 500})));   // out of jsdom's realm
   assert.deepEqual(rows.map(row => [row.field, row.type, row.state]), [['first', 'text', 'committed'], ['cv', 'file', 'committed']]);
   assert.equal(rows[1].file, 'cv.pdf');
-  assert.equal(window.document.getElementById('first').getAttribute('data-jobpilotto-r0'), 'committed');
-  assert.equal(input.getAttribute('data-jobpilotto-r0'), 'committed');
+  assert.equal(window.document.getElementById('first').getAttribute('data-jobadabra-r0'), 'committed');
+  assert.equal(input.getAttribute('data-jobadabra-r0'), 'committed');
   assert.deepEqual(readBackCounts(rows), {committed: 2});
   window.close();
 });
@@ -103,9 +103,9 @@ test('the fill\'s record says what the slot shows, and why a box is left', () =>
 test('a CV slot whose input the page hides is found by its visible zone; a zone that holds another field is not a slot', {skip: !JSDOM}, () => {
   const window = openPage(JSDOM, `<form><div class="field"><label for="cv">Resume</label><div class="zone" id="zone"><input id="cv" type="file" style="display:none"><span>Drop your CV here</span></div></div>
     <div class="row" id="row"><input id="other" type="file" style="display:none"><input id="note" placeholder="Note"></div></form>`);
-  const slot = window.__jobPilottoReadBack.shownSlot(window.document.getElementById('cv'));
+  const slot = window.__jobadabraReadBack.shownSlot(window.document.getElementById('cv'));
   assert.equal(slot?.id, 'zone', 'the nearest shown box around the hidden input');
-  assert.equal(window.__jobPilottoReadBack.shownSlot(window.document.getElementById('other')), null, 'its box holds another field: not this slot\'s zone');
+  assert.equal(window.__jobadabraReadBack.shownSlot(window.document.getElementById('other')), null, 'its box holds another field: not this slot\'s zone');
   window.close();
 });
 
@@ -137,8 +137,8 @@ for (const [name, html, expected] of [
   test(`a select-only combobox div is read by its shown choice (OpenUI5 sap.m.Select markup): ${name}`, {skip: !JSDOM}, () => {
     const window = openPage(JSDOM, `<form>${html}</form>`);
     const el = window.document.querySelector('[role=combobox]');
-    assert.equal(window.__jobPilottoReadBack.stateOf(el), expected);
-    assert.equal(window.__jobPilottoReadBack.holds(el), expected === 'committed');
+    assert.equal(window.__jobadabraReadBack.stateOf(el), expected);
+    assert.equal(window.__jobadabraReadBack.holds(el), expected === 'committed');
   });
 }
 
@@ -149,6 +149,6 @@ test('a custom dropdown trigger is listed unless its own wrapper holds the real 
     <div><div id="alone" role="combobox" aria-controls="l">Choose</div></div>
     <div><button id="beside" aria-haspopup="listbox" type="button">Mobile</button><input type="text"></div>
   </form>`);
-  const listed = window.__jobPilottoReadBack.customSelects(() => true).map(el => el.id);
+  const listed = window.__jobadabraReadBack.customSelects(() => true).map(el => el.id);
   assert.equal(listed.join(), 'alone');
 });

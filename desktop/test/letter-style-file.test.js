@@ -64,5 +64,5 @@ test('in demo mode the rules are read from the demo folder and nothing in it is 
 test('the engine gets the file\'s path, so a kit letter follows the same rules', async () => {
   const {pipelineEnv} = await import('../lib/pipeline-env.js');
   const s = fresh();
-  assert.equal(pipelineEnv(s).JOB_PILOTTO_LETTER_STYLE_FILE, s.path('cover-letter/style.json'));
+  assert.equal(pipelineEnv(s).JOBADABRA_LETTER_STYLE_FILE, s.path('cover-letter/style.json'));
 });

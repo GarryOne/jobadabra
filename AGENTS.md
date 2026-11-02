@@ -46,7 +46,7 @@ field. The flow, for every agent and every tool:
    (Playwright init script, or the file's text passed to the page's JS tool), then fill every
    plain field in one evaluation with `window.__jobPilottoFillKnownFields(plan)`. Fields it skips
    (Greenhouse dropdowns are react-select comboboxes): open, read live option coordinates with
-   `window.__jobPilottoOptionPositions()`, click — no screenshot per field.
+   `window.__jobadabraOptionPositions()`, click — no screenshot per field.
 4. **Verify once** with the audit.
 5. **Upload the résumé** (last — Greenhouse can reset other fields after an upload).
 6. **Re-verify once**, then hand over. Never Submit.
@@ -160,10 +160,10 @@ every 30 seconds. Keep the guardrails that catch real breakage; stop paying the 
   desktop; an unknown path: everything; `PUSH_FULL=1` forces all). Do not wait for CI of your own push before the next task: look at it later.
 - **What the hook starts is decided by the affected-tests pick** (`tools/affected-tests.py`, 11 Oct 2026): an area with no affected test is not started
   (a docs, skill or tools-only push: lint + the touched unit tests, under ~1 min; a changed JS file keeps desktop's lint). `extension/` and flow-core
-  pushes keep the journey, ladder and recorded gates, which run on their own file lists. `JOB_PILOTTO_TIERS=0` starts every area the paths want.
+  pushes keep the journey, ladder and recorded gates, which run on their own file lists. `JOBADABRA_TIERS=0` starts every area the paths want.
 - **Heavy runs queue in one lock per Mac** (`tools/heavy-lock.sh`, every worktree runs the primary checkout's copy): e2e suites, `run-all`, `smoke`, `npm run real-extension`
   and `recorded` take it in arrival order (a run that re-asks never jumps a waiter), say who holds it, start a 2nd beside the first only while free+inactive
-  memory is over 7 GB and swap is low (never a 3rd), and wait while the 1-minute load is above 1.5 x the cores. No slot messaging between sessions. Unit tests never wait. `JOB_PILOTTO_HEAVY=0` skips it.
+  memory is over 7 GB and swap is low (never a 3rd), and wait while the 1-minute load is above 1.5 x the cores. No slot messaging between sessions. Unit tests never wait. `JOBADABRA_HEAVY=0` skips it.
 - PRs run unit + integration; journeys run after each merge on main, in the night burn-in and the beta (owner, 1 Nov 2026: "No e2e on PRs"); the Finder files what they find. Do not run one to "be sure" at Tier 0/1.
 
 ### Which test for which question (owner, 8 Oct 2026: "the right test method for the right case")
@@ -239,7 +239,7 @@ hooks, so no other agent gets them (`.git/hooks/` holds only samples; the one gi
 then say what passed** (learned 30 Sep 2026, each of these cost real time). **In a session, only the files you changed** (owner, 26 Oct 2026: "It should run only on CI" / "and locally, only very isolated"; the hook `~/.claude/hooks/foreground-long-run.py` refuses the whole suites below); CI runs them on the PR:
 
 ```sh
-python3 -m unittest tests.test_<the module you changed>       # CI: JOB_PILOTTO_DISABLE=mail,notion,telegram,google_jobs python3 -m unittest discover -s tests
+python3 -m unittest tests.test_<the module you changed>       # CI: JOBADABRA_DISABLE=mail,notion,telegram,google_jobs python3 -m unittest discover -s tests
 cd desktop && node --test test/<the file you changed>.test.js  # CI: cd desktop && npm test; cd app-core && npm test
 ```
 
@@ -247,16 +247,16 @@ cd desktop && node --test test/<the file you changed>.test.js  # CI: cd desktop 
   fail on a missing `desktop/shared/` and look like real regressions. The reverse trap: a `desktop/shared/` left behind
   makes another area pass here and fail in CI. Run the suites in a fresh worktree of your commit (the hook does).
 - **A read-only `<repo>/data`** makes the Python suite error on `data/insights.lock` (14 tests): pass
-  `JOB_PILOTTO_DATA_DIR=<a writable folder>`. The DSH sandbox starts that way for this repo, since the session
+  `JOBADABRA_DATA_DIR=<a writable folder>`. The DSH sandbox starts that way for this repo, since the session
   workspace is elsewhere; the first write needs the user to widen the policy, after which the rules above apply as they
   are.
 - **Adding a file?** Start it with a one-line comment saying what it does (the live code map reads it; `desktop/test/codemap.test.js` checks it says enough).
-- **The smoke hooks** (`desktop/main.js`): `JOB_PILOTTO_SMOKE_JS` must be an IIFE — top-level `await` hangs the window —
-  `JOB_PILOTTO_SMOKE_EVAL`'s result is written to `<JOB_PILOTTO_SMOKE>.json`, and `..._SELECTOR` crops the picture.
+- **The smoke hooks** (`desktop/main.js`): `JOBADABRA_SMOKE_JS` must be an IIFE — top-level `await` hangs the window —
+  `JOBADABRA_SMOKE_EVAL`'s result is written to `<JOBADABRA_SMOKE>.json`, and `..._SELECTOR` crops the picture.
 - **Notion, if your harness has no tool for it**: the change loop (CLAUDE.md, step 5 "After landing, only what applies")
   expects a Decision Log row for an owner decision that changes what agents may do, and a Bug Tracker row for a UI bug the
   Finder missed (the Run Log and Session Handoff are retired; history is in commit messages). Say plainly that it wasn't done rather than implying it was; the HTTP API is reachable with
-  the Keychain token (`job-pilotto.notion.token`) and `gh` is authenticated, so reads and repairs are possible when
+  the Keychain token (`jobadabra.notion.token`) and `gh` is authenticated, so reads and repairs are possible when
   asked.
 
 ### If your host is an Electron app (the DeepSeek Harness, Claude Code inside VS Code or Cursor, any other Electron host)

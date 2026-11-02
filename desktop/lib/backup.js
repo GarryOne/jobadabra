@@ -11,13 +11,13 @@ export const EVERY_MS = 7 * 24 * 3600 * 1000;
 export const KEEP = 4;
 const PREFIX = 'Job Pilotto backup ';   // existing backups keep this name (how they are found and pruned); renamed with the data folder, later
 
-// -> the backups folder. A test run names its own (JOB_PILOTTO_BACKUP_DIR, honoured only under JOB_PILOTTO_E2E: it must never reach the owner's folders).
+// -> the backups folder. A test run names its own (JOBADABRA_BACKUP_DIR, honoured only under JOBADABRA_E2E: it must never reach the owner's folders).
 // Cloud folders are found by looking, never by a user name: iCloud Drive on a Mac, OneDrive's Documents (its "backed up" Documents folder) on Windows.
 export function folder(home = os.homedir(), exists = fs.existsSync, {env = process.env, platform = process.platform} = {}) {
-  if (env.JOB_PILOTTO_E2E && env.JOB_PILOTTO_BACKUP_DIR) return env.JOB_PILOTTO_BACKUP_DIR;
-  // Why (#2340, 28 Oct 2026): a unit test that called the Your details move without its own copy target reached this Mac's iCloud backup folder (macOS
+  if (env.JOBADABRA_E2E && env.JOBADABRA_BACKUP_DIR) return env.JOBADABRA_BACKUP_DIR;
+  // Why (#2340, 28 Oct 2026; names renamed 1 Nov 2026): a unit test that called the Your details move without its own copy target reached this Mac's iCloud backup folder (macOS
   // refused it). Under the test runner (node --test marks its processes) the real folder is refused, so the next caller that omits a target fails at once.
-  if (env.NODE_TEST_CONTEXT && !env.JOB_PILOTTO_E2E) throw new Error('a test reached the real backup folder: pass a target (or the move a copy)');
+  if (env.NODE_TEST_CONTEXT && !env.JOBADABRA_E2E) throw new Error('a test reached the real backup folder: pass a target (or the move a copy)');
   const join = platform === 'win32' ? path.win32.join : path.posix.join;   // by the platform asked about, so a test can ask about either from any host
   const icloud = join(home, 'Library', 'Mobile Documents', 'com~apple~CloudDocs');
   const oneDrive = [env.OneDriveConsumer, env.OneDrive, env.OneDriveCommercial].filter(Boolean).map(root => join(root, 'Documents')).find(dir => exists(dir));

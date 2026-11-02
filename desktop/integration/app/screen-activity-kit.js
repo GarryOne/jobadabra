@@ -21,7 +21,7 @@ export function stateFiles(now, demoFocus) {
 /** The demo's focus.json, read fresh; throws if the demo folder moved. */
 export const demoFocus = () => JSON.parse(fs.readFileSync(new URL('../../demo/focus.json', import.meta.url), 'utf8'));
 /** The env that shows Gmail disconnected now (the header, the schedule and the box follow the current connection). */
-export const googleEnv = google => (google === 'off' ? {JOB_PILOTTO_DEMO_GOOGLE: 'off'} : {});
+export const googleEnv = google => (google === 'off' ? {JOBADABRA_DEMO_GOOGLE: 'off'} : {});
 
 /**
  * A probe script that also receives `data` (second argument): the script is serialised into the window, so it cannot close over the test file's constants.

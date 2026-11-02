@@ -14,7 +14,7 @@ post, plan and status also write each message to that log (POST /api/brain/log);
 
 Nothing here decides or builds: the two approval gates are the owner's taps in the "Job Pilotto Brain" Telegram bot
 (api/brain.js). Needs NOTION_BRAIN_TOKEN (a Notion connection that sees only the Decisions database),
-BRAIN_DATABASE_ID, BRAIN_BOT_TOKEN, BRAIN_CHAT_ID, JOB_PILOTTO_TELEMETRY_KEY (the site's STATS_KEY) and GH_TOKEN.
+BRAIN_DATABASE_ID, BRAIN_BOT_TOKEN, BRAIN_CHAT_ID, JOBADABRA_TELEMETRY_KEY (the site's STATS_KEY) and GH_TOKEN.
 Standard library only.
 """
 from __future__ import annotations
@@ -46,7 +46,7 @@ def lens_of_the_day(day: dt.date) -> str:
 def _request(url: str, method: str = 'GET', body: dict | None = None, headers: dict | None = None) -> dict:
     data = json.dumps(body).encode() if body is not None else None
     req = urllib.request.Request(url, data=data, method=method, headers={  # Cloudflare blocks the default Python agent (1010)
-        'Content-Type': 'application/json', 'User-Agent': 'job-pilotto-product-brain', **(headers or {})})
+        'Content-Type': 'application/json', 'User-Agent': 'jobadabra-product-brain', **(headers or {})})
     for attempt in (1, 2):  # one retry: a reset connection now and then shouldn't cost the brief
         try:
             with urllib.request.urlopen(req, timeout=30) as response:
@@ -81,9 +81,9 @@ def telegram(text: str, buttons: list[list[dict]] | None = None) -> int | None:
 
 def site_log(messages: list[dict]) -> int:
     """Messages -> the site's log (D1 brain_messages, read by /admin/intelligence/brain). Never fails the step: Notion stays the record."""
-    key = os.environ.get('JOB_PILOTTO_TELEMETRY_KEY')
+    key = os.environ.get('JOBADABRA_TELEMETRY_KEY')
     if not key or not messages:
-        print('Brain log: not written (JOB_PILOTTO_TELEMETRY_KEY missing).' if not key else 'Brain log: nothing to write.', file=sys.stderr)
+        print('Brain log: not written (JOBADABRA_TELEMETRY_KEY missing).' if not key else 'Brain log: nothing to write.', file=sys.stderr)
         return 0
     saved = 0
     for start in range(0, len(messages), 200):
@@ -216,9 +216,9 @@ def strategy_pages(limit: int = 6) -> str:
 
 
 def signals(out: str, today: dt.date, days: int = 7) -> None:
-    key = os.environ.get('JOB_PILOTTO_TELEMETRY_KEY')
+    key = os.environ.get('JOBADABRA_TELEMETRY_KEY')
     try:  # one missing source is said in the signals, not a failed brief
-        numbers = _request(SIGNALS_URL.format(days=days), headers={'Authorization': f'Bearer {key}'}) if key else {'error': 'JOB_PILOTTO_TELEMETRY_KEY missing'}
+        numbers = _request(SIGNALS_URL.format(days=days), headers={'Authorization': f'Bearer {key}'}) if key else {'error': 'JOBADABRA_TELEMETRY_KEY missing'}
     except SystemExit as error:
         numbers = {'error': f'website/app numbers not available: {error}'}
     since = (today - dt.timedelta(days=days)).isoformat()

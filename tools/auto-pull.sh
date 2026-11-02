@@ -11,8 +11,8 @@
 set -u
 # The checkout moved to ~/jobadabra (rebrand, 24 Oct 2026); ~/job-pilotto stays as a symlink for a while.
 REPO="${JP_AUTOPULL_REPO:-$([ -d "$HOME/jobadabra/.git" ] && echo "$HOME/jobadabra" || echo "$HOME/job-pilotto")}"
-LOG="${JP_AUTOPULL_LOG:-$HOME/Library/Logs/job-pilotto-autopull.log}"
-STATE="${JP_AUTOPULL_STATE:-$HOME/Library/Logs/job-pilotto-autopull.state}"
+LOG="${JP_AUTOPULL_LOG:-$HOME/Library/Logs/jobadabra-autopull.log}"
+STATE="${JP_AUTOPULL_STATE:-$HOME/Library/Logs/jobadabra-autopull.state}"
 LABEL=com.jobpilotto.autopull
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
 

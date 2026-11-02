@@ -1,5 +1,5 @@
 /* global window, document */
-// A field asked for by its label from the app ("Use" on a Needs your attention row: extension/page/propose.js __jobPilottoFillOne) is found whether the page puts
+// A field asked for by its label from the app ("Use" on a Needs your attention row: extension/page/propose.js __jobadabraFillOne) is found whether the page puts
 // the required star before the label or after it (owner, 9 Oct 2026: SuccessFactors writes "* Titre de civilité"; the app asked for "Titre de civilité", the field
 // was never found, so the menu choice the AI picked by meaning was never put in). The SHAPE, not a site: stars on either side, a text box and a menu. A real Chrome.
 import assert from 'node:assert/strict';
@@ -21,7 +21,7 @@ test('a field asked for by its label is found with the required star before or a
     const page = await browser.newPage({locale: 'fr-CH'});
     await page.setContent(FORM);
     for (const file of PAGE_FILES) await page.addScriptTag({content: fs.readFileSync(new URL(`../../../extension/${file}`, import.meta.url), 'utf8')});
-    const one = (label, value) => page.evaluate(([l, v]) => window.__jobPilottoFillOne(l, v), [label, value]);
+    const one = (label, value) => page.evaluate(([l, v]) => window.__jobadabraFillOne(l, v), [label, value]);
     const leading = await one('Prénom', 'Ada'), trailing = await one('Nom', 'Tester'), menu = await one('Titre de civilité', 'M.');
     const values = await page.evaluate(() => ({first: document.getElementById('first').value, last: document.getElementById('last').value, title: document.getElementById('title').selectedOptions[0]?.text}));
     assert.equal(leading.ok, true, 'the leading-star text box was not found by its label');

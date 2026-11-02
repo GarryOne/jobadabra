@@ -14,7 +14,7 @@ cd "$(dirname "$0")/.."
 n="${1:-3}"
 [[ "$n" =~ ^[1-9][0-9]*$ ]] || { echo "Usage: $0 [N] [--dry-run]" >&2; exit 2; }
 if [ -z "${NOTION_TOKEN:-}" ]; then
-  NOTION_TOKEN="$(security find-generic-password -a "$USER" -s job-pilotto.notion.token -w 2>/dev/null || true)"
+  NOTION_TOKEN="$(security find-generic-password -a "$USER" -s jobadabra.notion.token -w 2>/dev/null || true)"
   export NOTION_TOKEN
 fi
 

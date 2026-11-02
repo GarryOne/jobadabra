@@ -22,4 +22,4 @@ export function check({find = extensionInstall.installed, seen = server.extensio
 }
 
 // What the app's handlers call (main.js passes it in): the e2e harness has its own browser profile and no installed copy to find.
-export const extensionGate = () => (process.env.JOB_PILOTTO_E2E ? null : check());
+export const extensionGate = () => (process.env.JOBADABRA_E2E ? null : check());

@@ -1,6 +1,6 @@
 // Layer 3 (Node + the real engine, no window): the AI never answers, so the run is stopped after its silence limit and ends as Stopped, in words, with nothing left Running. Moved from the
 // e2e `activityfailures` suite (1 Nov 2026, R2): "the AI never answers: the run is stopped after its silence limit and ends as Stopped, in words". The limit is the app's own watchdog
-// (lib/pipeline-run.js LIMITS.idleMs), shortened as the journey shortens it (JOB_PILOTTO_E2E_IDLE_MS, set by silence-env.mjs before any app module loads: one value per test file, hence this file of its own); the verdict is
+// (lib/pipeline-run.js LIMITS.idleMs), shortened as the journey shortens it (JOBADABRA_E2E_IDLE_MS, set by silence-env.mjs before any app module loads: one value per test file, hence this file of its own); the verdict is
 // awaited as a state (the task ends), the 'hang' proxy mode is the AI that never answers.
 import './silence-env.mjs';
 import assert from 'node:assert/strict';

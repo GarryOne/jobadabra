@@ -42,8 +42,8 @@ const PERSONAS = [pickPersona()];
 function engine(ctx, code, args = []) {
   const cli = ['cli', 'codex'].includes(ctx.engine);
   const key = cli ? {} : familyOf(ctx.engine) === 'openai' ? {OPENAI_API_KEY: testKey(process.env, ctx.engine)} : {ANTHROPIC_API_KEY: ctx.key,
-    ...(ctx.family === 'free' ? {JOB_PILOTTO_AI_BASE_URL: ctx.proxy.url} : {})};   // CI on Free AI: its JPF1 key only opens the relay, through the suite's proxy (src/ai/providers/anthropic_api.py)
-  const env = pythonEnv({JOB_PILOTTO_CONFIG_DIR: path.join(ctx.profile, 'config'), JOB_PILOTTO_DATA_DIR: path.join(ctx.profile, 'data'), JOB_PILOTTO_AI_ENGINE: ctx.engine, ...key},
+    ...(ctx.family === 'free' ? {JOBADABRA_AI_BASE_URL: ctx.proxy.url} : {})};   // CI on Free AI: its JPF1 key only opens the relay, through the suite's proxy (src/ai/providers/anthropic_api.py)
+  const env = pythonEnv({JOBADABRA_CONFIG_DIR: path.join(ctx.profile, 'config'), JOBADABRA_DATA_DIR: path.join(ctx.profile, 'data'), JOBADABRA_AI_ENGINE: ctx.engine, ...key},
     cli ? {realHome: true} : {home: ctx.profile});
   return execFileSync(python(), ['-c', code, ...args], {cwd: REPO, env, encoding: 'utf8', timeout: 120000});
 }

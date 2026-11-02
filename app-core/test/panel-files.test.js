@@ -1,4 +1,4 @@
-// The panel is several classic scripts that share window.__jobPilottoPanel*; every place that injects review.js injects them all, before it, in the list's order (extension/panel-files.js).
+// The panel is several classic scripts that share window.__jobadabraPanel*; every place that injects review.js injects them all, before it, in the list's order (extension/panel-files.js).
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -19,14 +19,14 @@ test('no injector lists review.js alone: each one spreads PANEL_FILES (or names 
   assert.match(read('extension/background.js'), /files: \[[^\]]*\.\.\.PANEL_FILES[^\]]*\]/, 'the worker injects the whole list');
 });
 
-// Why (#2429, Gitar): review.js called the new __jobPilottoPanelView unconditionally but its guard did not name it, so a partial
+// Why (#2429, Gitar): review.js called the new __jobadabraPanelView unconditionally but its guard did not name it, so a partial
 // injection after a reload removed the panel and blanked it silently (mount() runs under .catch(() => {})) instead of naming the helper.
 test('review.js guards every panel helper it calls without ?. so a partial injection draws nothing instead of throwing', () => {
   const review = read('extension/review.js');
-  const guarded = JSON.parse(review.match(/\|\| (\[[^\]]*\])\.some\(name => !window\['__jobPilotto' \+ name\]/)[1].replaceAll("'", '"'));
-  const defined = PANEL_FILES.filter((file) => file !== 'review.js').flatMap((file) => [...read(`extension/${file}`).matchAll(/window\.__jobPilotto(\w+) *=[^=]/g)].map((m) => m[1]));
-  const optional = (name) => [...review.matchAll(new RegExp(`window\\.__jobPilotto${name}\\b(\\?\\.|\\))?`, 'g'))].every((m) => m[1] || review.includes(`if (window.__jobPilotto${name})`));
-  const unguarded = defined.filter((name) => review.includes(`__jobPilotto${name}`) && !guarded.includes(name) && !optional(name));
+  const guarded = JSON.parse(review.match(/\|\| (\[[^\]]*\])\.some\(name => !window\['__jobadabra' \+ name\]/)[1].replaceAll("'", '"'));
+  const defined = PANEL_FILES.filter((file) => file !== 'review.js').flatMap((file) => [...read(`extension/${file}`).matchAll(/window\.__jobadabra(\w+) *=[^=]/g)].map((m) => m[1]));
+  const optional = (name) => [...review.matchAll(new RegExp(`window\\.__jobadabra${name}\\b(\\?\\.|\\))?`, 'g'))].every((m) => m[1] || review.includes(`if (window.__jobadabra${name})`));
+  const unguarded = defined.filter((name) => review.includes(`__jobadabra${name}`) && !guarded.includes(name) && !optional(name));
   assert.deepEqual(unguarded, [], 'add these to the helper-script guard at the top of extension/review.js');
 });
 

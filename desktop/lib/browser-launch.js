@@ -23,8 +23,8 @@ export const schemeOf = app => (find(app) || LAUNCH[0]).scheme;
 // in /Applications or ~/Applications; with none found it still says Chrome, as before, and `open` explains.
 // Returns [command, args, app] ... callers spread the first two.
 export function browserCommand(urls, platform = process.platform, env = process.env, exists = fs.existsSync, prefer = '', read = fs.readFileSync) {
-  // The end-to-end journey on Windows: no `open` to put a stand-in for on PATH, so node runs its stand-in script (never for a user: needs JOB_PILOTTO_E2E).
-  if (env.JOB_PILOTTO_E2E && env.JOB_PILOTTO_E2E_OPENER) return ['node', [env.JOB_PILOTTO_E2E_OPENER, ...urls]];
+  // The end-to-end journey on Windows: no `open` to put a stand-in for on PATH, so node runs its stand-in script (never for a user: needs JOBADABRA_E2E).
+  if (env.JOBADABRA_E2E && env.JOBADABRA_E2E_OPENER) return ['node', [env.JOBADABRA_E2E_OPENER, ...urls]];
   const order = [find(prefer), ...LAUNCH].filter(Boolean).filter((browser, i, all) => all.indexOf(browser) === i);
   if (platform !== 'win32') {
     const home = env.HOME || '';

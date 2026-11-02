@@ -67,11 +67,11 @@ def push_state(site, token, folder):
 def environment(folder, site, token, base=None):
     """The engine's environment for a hosted run: the SQLite store in `folder`, AI through the site with the run token, nothing else."""
     env = dict(base if base is not None else os.environ)
-    for name in [key for key in env if key.startswith(('NOTION_', 'TELEGRAM_', 'ANTHROPIC_', 'OPENAI_', 'JOB_PILOTTO_TRIAL', 'JOB_PILOTTO_AI'))]:
+    for name in [key for key in env if key.startswith(('NOTION_', 'TELEGRAM_', 'ANTHROPIC_', 'OPENAI_', 'JOBADABRA_TRIAL', 'JOBADABRA_AI'))]:
         del env[name]   # a hosted run holds no other credential, whatever the image or the host sets
-    env.update({'JOB_PILOTTO_STORE': 'sqlite', 'JOB_PILOTTO_DISABLE': 'notion', 'JOB_PILOTTO_CONFIG_DIR': str(folder / 'config'),
-                'JOB_PILOTTO_DATA_DIR': str(folder / 'data'), 'JOB_PILOTTO_PROFILE_FILE': str(folder / 'config' / 'profile.md'),
-                'JOB_PILOTTO_AI_BASE_URL': f'{site}/api/ai', 'ANTHROPIC_API_KEY': token, 'JOB_PILOTTO_TRIGGER': 'hosted'})
+    env.update({'JOBADABRA_STORE': 'sqlite', 'JOBADABRA_DISABLE': 'notion', 'JOBADABRA_CONFIG_DIR': str(folder / 'config'),
+                'JOBADABRA_DATA_DIR': str(folder / 'data'), 'JOBADABRA_PROFILE_FILE': str(folder / 'config' / 'profile.md'),
+                'JOBADABRA_AI_BASE_URL': f'{site}/api/ai', 'ANTHROPIC_API_KEY': token, 'JOBADABRA_TRIGGER': 'hosted'})
     return env
 
 

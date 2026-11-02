@@ -173,7 +173,7 @@ class TradeSuggestionsTests(unittest.TestCase):
     def test_unused_sources_least_effort_first(self):
         names = [s['id'] for s in coverage.unused_sources({})]
         self.assertEqual(names, ['brave', 'aggregators', 'serpapi'])
-        self.assertEqual([s['id'] for s in coverage.unused_sources({'JOOBLE_API_KEY': 'k', 'JOB_PILOTTO_AI_ENGINE': 'cli'})], ['serpapi'],
+        self.assertEqual([s['id'] for s in coverage.unused_sources({'JOOBLE_API_KEY': 'k', 'JOBADABRA_AI_ENGINE': 'cli'})], ['serpapi'],
                          'Claude Code\'s own web search stands in for the Brave key')
 
 

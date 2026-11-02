@@ -17,9 +17,9 @@ class HeavyLockStatusTest(unittest.TestCase):
         self.tmp = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, self.tmp, True)
         self.log = self.tmp / 'gate-timing.log'
-        self.env = {**{k: v for k, v in os.environ.items() if not k.startswith(('JOB_PILOTTO_HEAVY', 'JP_HEAVY'))}, 'JOB_PILOTTO_HEAVY_DIR': (self.tmp / 'heavy').as_posix(),
-                    'JOB_PILOTTO_HEAVY_LOAD': '0', 'JOB_PILOTTO_HEAVY_POLL': '0.1', 'JOB_PILOTTO_HEAVY_TIMING_LOG': self.log.as_posix(), 'JOB_PILOTTO_HEAVY_SHARED': str(LOCK),
-                    'JOB_PILOTTO_HEAVY_SLOTS': '1'}
+        self.env = {**{k: v for k, v in os.environ.items() if not k.startswith(('JOBADABRA_HEAVY', 'JP_HEAVY'))}, 'JOBADABRA_HEAVY_DIR': (self.tmp / 'heavy').as_posix(),
+                    'JOBADABRA_HEAVY_LOAD': '0', 'JOBADABRA_HEAVY_POLL': '0.1', 'JOBADABRA_HEAVY_TIMING_LOG': self.log.as_posix(), 'JOBADABRA_HEAVY_SHARED': str(LOCK),
+                    'JOBADABRA_HEAVY_SLOTS': '1'}
 
     def start(self, what, body, **env):
         return subprocess.Popen(['bash', str(LOCK), what, 'bash', '-c', body], env={**self.env, **env}, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -37,10 +37,10 @@ class HeavyLockStatusTest(unittest.TestCase):
         self.log.write_text('# 2026-10-11T10:00:00Z heavy lock run=100s wait=0s exit=0 what=real-extension class=proof\n# 2026-10-11T10:05:00Z heavy lock run=300s wait=0s exit=0 what=real-extension class=proof\n')
         go = (self.tmp / 'go').as_posix()
         hold = f'{gate_loop(go, 0.1)}'
-        heavy = self.env['JOB_PILOTTO_HEAVY_DIR']
-        holder = self.start('real-extension', hold, JOB_PILOTTO_SESSION='session-a')
+        heavy = self.env['JOBADABRA_HEAVY_DIR']
+        holder = self.start('real-extension', hold, JOBADABRA_SESSION='session-a')
         wait_in_books(heavy, holder, ('holds',), env=self.env)
-        waiter = self.start('e2e-smoke', 'true', JOB_PILOTTO_SESSION='session-b')
+        waiter = self.start('e2e-smoke', 'true', JOBADABRA_SESSION='session-b')
         wait_in_books(heavy, waiter, ('waits',), procs=[holder], env=self.env)   # THIS run's ticket is queued (CI, 12 Oct 2026: counting files said "two" for one run's slot and ticket: "nobody waits")
         out = self.status()
         Path(go).write_text('go')

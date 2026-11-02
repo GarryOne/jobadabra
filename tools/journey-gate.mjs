@@ -25,7 +25,7 @@ async function replay(desktop, changed) {
   if (!fs.existsSync(path.join(e2e, 'node_modules', 'playwright-core'))) { console.log('journey gate: recorded pages skipped (no desktop/e2e/node_modules: npm ci there)'); return 0; }
   const started = Date.now();
   // `npm run recorded` takes the heavy-run lock (tools/heavy-lock.sh) and may wait for it and for a busy machine: the 6 minutes are for the replay itself.
-  const waitS = process.env.JOB_PILOTTO_HEAVY === '0' ? 0 : Number(process.env.JOB_PILOTTO_HEAVY_WAIT || 1800) + Number(process.env.JOB_PILOTTO_HEAVY_LOAD_WAIT || 300);
+  const waitS = process.env.JOBADABRA_HEAVY === '0' ? 0 : Number(process.env.JOBADABRA_HEAVY_WAIT || 1800) + Number(process.env.JOBADABRA_HEAVY_LOAD_WAIT || 300);
   // Only the cases the change can affect (e2e/lib/replay-select.mjs, from the measured case map); every case when a shared, flow-core or replay-tool file changed, a file is unmapped or the map is stale;
   // JP_GATE_FULL=1 / PUSH_FULL=1: all. CI replays all of them after the push.
   const {FLOW_CORE} = await import(path.join(repo, 'desktop/e2e/flows.mjs'));

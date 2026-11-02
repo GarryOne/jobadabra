@@ -123,14 +123,14 @@ const zoom = createZoom({screen, getWindow: () => window, getStorage: () => stor
 const {getUpdateOffer, setUpdateOffer, getUpdateCheckedAt, FROM_SOURCE, FROM_STORE, betaOn, testerOn, testerLogsOn, checkForUpdate, buildMenu, trackSetup, installUpdate, channels} =
   createAppUpdates({zoom, Menu, app, dialog, isDemo: () => DEMO, getStorage: () => storage, getTelemetry: () => telemetry, toWindow, track, getWindow: () => window, openExternal: url => shell.openExternal(url)});   // lib/app-updates.js
 const here = path.dirname(fileURLToPath(import.meta.url));
-// Demo mode (JOB_PILOTTO_DEMO=1, with JOB_PILOTTO_USER_DATA pointing at a copy of demo/): fictional
+// Demo mode (JOBADABRA_DEMO=1, with JOBADABRA_USER_DATA pointing at a copy of demo/): fictional
 // profile and jobs for screenshots (scripts/screenshots.mjs). Nothing is contacted: no Python, Telegram,
 // GitHub or local server, and the keys in demo/secrets.json are placeholders stored unencrypted.
-// "Look around first" (setup wizard, lib/demo.js) starts it too, with --job-pilotto-demo=<a fresh copy of demo/>:
+// "Look around first" (setup wizard, lib/demo.js) starts it too, with --jobadabra-demo=<a fresh copy of demo/>:
 // the same, plus the banner with "Set up my own", and the actions that would reach outside answer "demo".
 const DEMO_FOLDER = demo.folderFrom(process.argv);
 const LOOK_AROUND = !!DEMO_FOLDER;
-const DEMO = !!process.env.JOB_PILOTTO_DEMO || LOOK_AROUND;
+const DEMO = !!process.env.JOBADABRA_DEMO || LOOK_AROUND;
 const {licenseState, allowanceBlock, allowanceGate, aiGate, aiCaps, watchAiCaps, readSites, scoreVisitJobs, healthOnce, getPlan} = createAppAllowance({DEMO, getLicense: () => license, log: line => log(line), getStorage: () => storage, getTelemetry: () => telemetry, toWindow});   // lib/app-allowance.js
 const JOBS_PAGE = 200;   // the Jobs list's first page; each "Show more" adds 500
 const HIDDEN = hideWindows({app, BrowserWindow});   // an e2e run: windows never show or take focus (lib/e2e-hidden.js)
@@ -181,7 +181,7 @@ function handlers() {
   if (DEMO) ipcMain.handle = demo.guard(ipcMain.handle.bind(ipcMain), appLog);
   // End-to-end run: log every call the window makes (the interaction probe reads it, see lib/e2e-ipc.js).
   ipcMain.handle = applyChoiceGuard(ipcMain.handle.bind(ipcMain), () => storage, appLog);   // first Apply: choose how to apply first (lib/apply-choice-gate.js)
-  if (process.env.JOB_PILOTTO_E2E) { globalThis.__jpIpc = []; ipcMain.handle = recordIpc(ipcMain.handle.bind(ipcMain), globalThis.__jpIpc); }
+  if (process.env.JOBADABRA_E2E) { globalThis.__jpIpc = []; ipcMain.handle = recordIpc(ipcMain.handle.bind(ipcMain), globalThis.__jpIpc); }
   standInHost({shell, clipboard, app}); watchRunner(() => app.exit(0));   // a test run's calls to the owner's browser, Finder, clipboard and login items are recorded, never made; the app ends when its runner does (lib/e2e-host.js)
   // Notion later: without Notion the app only tries; a tracking action returns notionGate.needs(reason) and the window
   // opens the connect dialog (pages/core.js gated()). null = go on.
@@ -311,10 +311,10 @@ function handlers() {
 // Started from a terminal that's since closed, writing a log line fails (EIO/EPIPE); that must never crash the app.
 for (const stream of [process.stdout, process.stderr]) stream?.on?.('error', () => {});
 
-// A separate data folder for tests and demos (JOB_PILOTTO_USER_DATA), so they never touch the real one (nor move it: lib/app-identity.js moves a pre-rename folder).
-keepLegacyIdentity({app, safeStorage, userDataOverride: DEMO_FOLDER || process.env.JOB_PILOTTO_USER_DATA || '', log: text => console.log(`[data folder] ${text}`)});   // the Keychain item keeps the old name
+// A separate data folder for tests and demos (JOBADABRA_USER_DATA), so they never touch the real one (nor move it: lib/app-identity.js moves a pre-rename folder).
+keepLegacyIdentity({app, safeStorage, userDataOverride: DEMO_FOLDER || process.env.JOBADABRA_USER_DATA || '', log: text => console.log(`[data folder] ${text}`)});   // the Keychain item keeps the old name
 if (DEMO_FOLDER) app.setPath('userData', DEMO_FOLDER);
-else if (process.env.JOB_PILOTTO_USER_DATA) app.setPath('userData', process.env.JOB_PILOTTO_USER_DATA);
+else if (process.env.JOBADABRA_USER_DATA) app.setPath('userData', process.env.JOBADABRA_USER_DATA);
 // A live-test twin (lib/twin.js) on the real folder, or without the mirror's Notion token, stops here, before anything opens it.
 if (twinRefusal()) { console.error(`Jobadabra twin refused: ${twinRefusal()}`); app.exit(3); }
 // A reset asked for in Settings → Danger zone: the data folder is moved aside (or deleted) now, before anything
@@ -398,7 +398,7 @@ startWhenReady({app, firstCopy, getWindows: () => BrowserWindow.getAllWindows(),
   requestLog.setFile(path.join(app.getPath('userData'), 'logs', 'notion-requests.log'));  // every Notion request, one line
   engineLog.setFile(path.join(app.getPath('userData'), 'logs', 'engine.log'));  // everything a run printed, in full
   // E2E on a Linux CI runner only (no keyring there): Electron's safeStorage refuses the basic store unless told to. A user's app never takes this path.
-  if (process.platform === 'linux' && process.env.JOB_PILOTTO_E2E && process.env.CI) safeStorage.setUsePlainTextEncryption?.(true);
+  if (process.platform === 'linux' && process.env.JOBADABRA_E2E && process.env.CI) safeStorage.setUsePlainTextEncryption?.(true);
   storage = createStorage(app.getPath('userData'), DEMO ? {encrypt: value => value, decrypt: value => value} : safeStorageCrypto(safeStorage));
   buildMenu();   // again, now the saved update channel can be read (Update Channel's radio)
   // An import on the Mac that made it: its sealed keys open here; an older export without them takes them from the same Profile's backup (lib/reset.js adoptBackupKeys).
@@ -428,7 +428,7 @@ startWhenReady({app, firstCopy, getWindows: () => BrowserWindow.getAllWindows(),
   // CI smoke runs (windows-smoke.mjs) launch the packaged app with a fresh profile each time: they (any launch with CI/GITHUB_ACTIONS set) must not count as installs.
   registerTelemetryHandlers({DEMO, app, crashReporter, healthOnce, storage, testerLogsOn, testerOn, track, trackSetup,   // lib/telemetry-handlers.js
     setTelemetry: value => { telemetry = value; }, setTrail: value => { trail = value; }, setAnalytics: value => { analytics = value; }});
-  applyTheme(process.env.JOB_PILOTTO_THEME || storage.settings().theme);
+  applyTheme(process.env.JOBADABRA_THEME || storage.settings().theme);
   reset.adoptKeys(storage);  // keys that came with an import: stored encrypted, plain file deleted
   for (const file of pipeline.ensureConfig(storage)) appLog('config', 'removed the example notes from a settings file', {file});   // a copy made before 11 Oct 2026 kept them (lib/config-text.js)
   handlers();
@@ -490,7 +490,7 @@ const skippedLoops = new Set();
 const {skipUntilNotion, focusReminder, resumeQueue, sessionNeedsYou} = createAppReminders({FOCUS_HOURS, Notification, dialog, log, notify, skippedLoops, getStorage: () => storage, targets, toWindow, getWindow: () => window});   // lib/app-reminders.js
 // Quitting decisions read current services, so they remain testable without global mocks.
 installQuitHandling({app, platform: process.platform,
-  state: () => ({storage, window, telemetry, demo: DEMO, smoke: !!process.env.JOB_PILOTTO_SMOKE}),
+  state: () => ({storage, window, telemetry, demo: DEMO, smoke: !!process.env.JOBADABRA_SMOKE}),
   pipeline, terminals, critical, stopDataJob: () => dataJob.stop(), dataRunning: () => !!dataJob.running(), shouldAskOnQuit: setupFunnel.shouldAskOnQuit,
   askWhyLeaving: () => toWindow('askWhyLeaving'),
   showDialog: (parent, options) => dialog.showMessageBoxSync(parent, options),

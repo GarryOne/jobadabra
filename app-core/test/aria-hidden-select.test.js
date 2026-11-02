@@ -15,14 +15,14 @@ const FORM = `<form><label for="country">Country</label>
 
 test('an aria-hidden select with choices is a field; an aria-hidden helper input or a select with no choices is not', {skip: !JSDOM}, () => {
   const window = openPage(JSDOM, FORM);
-  const away = id => window.__jobPilottoReadBack.hiddenAway(window.document.getElementById(id));
+  const away = id => window.__jobadabraReadBack.hiddenAway(window.document.getElementById(id));
   assert.deepEqual(['country', 'stub', 'plain', 'helper', 'visible'].map(away), [false, true, false, true, false]);
 });
 
 test('the panel, the fill reader and both copies of the audit ask the one rule (never their own aria-hidden test)', () => {
   const read = file => fs.readFileSync(new URL(`../../${file}`, import.meta.url), 'utf8');
   for (const file of ['extension/panel-form.js', 'extension/page/fill-read.js', 'extension/page/browser-form-fastpath.js', 'tools/browser-form-fastpath.js']) {
-    assert.match(read(file), /__jobPilottoReadBack\.hiddenAway/, file);
+    assert.match(read(file), /__jobadabraReadBack\.hiddenAway/, file);
     assert.doesNotMatch(read(file), /\bel\.getAttribute\('aria-hidden'\) [!=]== 'true'/, `${file} keeps its own test`);
   }
 });

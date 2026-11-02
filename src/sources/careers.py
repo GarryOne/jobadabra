@@ -27,7 +27,7 @@ from .careers_parse import (MAX_JOB_PAGES, CAREER_WORDS, JOB_PATH, JOB_ID, COUNT
 
 def _public(host):
     """False for an address that leads to this computer or a private network: a catalog entry must never make a run reach those."""
-    if os.getenv('JOB_PILOTTO_FIXTURE_DIR'):
+    if os.getenv('JOBADABRA_FIXTURE_DIR'):
         return True
     try:
         for family, _, _, _, address in socket.getaddrinfo(host, None):
@@ -44,7 +44,7 @@ def get_text(url):
     parts = urllib.parse.urlsplit(url)
     if parts.scheme not in ('http', 'https') or not parts.hostname or not _public(parts.hostname):
         raise ValueError('not a public web address')
-    fixtures = os.getenv('JOB_PILOTTO_FIXTURE_DIR')
+    fixtures = os.getenv('JOBADABRA_FIXTURE_DIR')
     if fixtures:
         return ats._fixture(fixtures, url).decode('utf-8', 'replace')
     request = urllib.request.Request(url, headers={'User-Agent': ats.USER_AGENT, 'Accept': 'text/html,application/xhtml+xml'})
@@ -137,7 +137,7 @@ READER = 'auto'   # 'auto': Claude reads pages the rules cannot (ai/page_reader.
 def reader():
     if READER != 'auto':
         return READER
-    if os.getenv('JOB_PILOTTO_FIXTURE_DIR'):
+    if os.getenv('JOBADABRA_FIXTURE_DIR'):
         return None
     from ..ai import page_reader
     return page_reader.read if page_reader.usable() else None
@@ -231,7 +231,7 @@ CHOOSER = 'auto'   # 'auto': a model picks the job-list link on a home page the 
 def chooser():
     if CHOOSER != 'auto':
         return CHOOSER
-    if os.getenv('JOB_PILOTTO_FIXTURE_DIR'):
+    if os.getenv('JOBADABRA_FIXTURE_DIR'):
         return None
     from ..ai import page_reader
     return page_reader.choose_links if page_reader.usable() else None
@@ -241,10 +241,10 @@ RENDER = 'auto'   # 'auto': the headless browser (render.py) when Playwright is 
 
 
 def renderer():
-    """The function that reads a page after its scripts ran, or None. Off with JOB_PILOTTO_RENDER=0 and in the end-to-end fixtures."""
+    """The function that reads a page after its scripts ran, or None. Off with JOBADABRA_RENDER=0 and in the end-to-end fixtures."""
     if RENDER != 'auto':
         return RENDER
-    if os.getenv('JOB_PILOTTO_RENDER') == '0' or os.getenv('JOB_PILOTTO_FIXTURE_DIR'):
+    if os.getenv('JOBADABRA_RENDER') == '0' or os.getenv('JOBADABRA_FIXTURE_DIR'):
         return None
     from . import render
     return render.render if render.available() else None

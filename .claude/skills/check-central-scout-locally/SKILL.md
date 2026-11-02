@@ -13,7 +13,7 @@ Why: 24 Oct 2026 the board pass was merged without its path ever running. The fi
 - `tests/test_scout_publish_path.py` drives `scout.main --publish-index` with every network piece replaced (the checks, the board pass, the publish) and the job
   "20 minutes in", so a slow run's deadlines are real. A new step in that branch gets a fake in `run_main` and an assertion in this test, not only its own unit test.
 - **Watch the new assertion fail on the old code** (revert the fix by hand, run, restore), as for any bug.
-- A real local run (`python3 -m src scout --batch 3 --publish-index` with temp `JOB_PILOTTO_DATA_DIR` / `CONFIG_DIR` and a stub index URL) is NOT a smoke:
+- A real local run (`python3 -m src scout --batch 3 --publish-index` with temp `JOBADABRA_DATA_DIR` / `CONFIG_DIR` and a stub index URL) is NOT a smoke:
   candidate gathering alone (Wikidata, Common Crawl) takes minutes and 504s, so it never reaches the publish. Use the test above.
 
 ## 2. After it merges: read the run, don't wait for it blind

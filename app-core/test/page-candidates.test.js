@@ -8,7 +8,7 @@ import { loadJsdom, openPage } from './helpers/page.js';
 const JSDOM = await loadJsdom();
 const SOURCE = fs.readFileSync(new URL('../../extension/ladder/rung3-candidates.js', import.meta.url), 'utf8');   // not in PAGE_FILES yet: loaded by hand
 const open = (html, url = 'https://jobs.example.ch/job/1') => { const window = openPage(JSDOM, html, { url }); window.eval(SOURCE); return window; };
-const of = (html, url) => Array.from(open(html, url).__jobPilottoCandidates.candidatesOf());
+const of = (html, url) => Array.from(open(html, url).__jobadabraCandidates.candidatesOf());
 
 const NAV = Array.from({ length: 30 }, (_, i) => `<a href="/cat/${i}">Kategorie ${i}</a>`).join('');
 const ALDI = `<header><nav>${NAV}</nav></header><main><h1>Filialmitarbeiter</h1><p>Wir suchen Verstärkung für unsere Filiale.</p>
@@ -100,7 +100,7 @@ test('a link drawn as a button, or a call to action shown twice, outranks plain 
   const window = open(`<main><h1>Operative</h1><p>Days in Derby.</p>${Array.from({ length: 5 }, (_, i) => `<a href="/p/${i}">Plain ${i}</a>`).join('')}
     <a id="cta" href="/go" style="background-color: rgb(0, 80, 200)">Go now</a><a href="/again">Again</a><p>More text.</p><a href="/again">Again</a></main>`);
   window.Element.prototype.getBoundingClientRect = function () { return this.id === 'cta' ? { left: 0, top: 0, width: 160, height: 44, right: 160, bottom: 44 } : { left: 0, top: 0, width: 60, height: 18, right: 60, bottom: 18 }; };
-  const actions = Array.from(window.__jobPilottoCandidates.candidatesOf()).filter((item) => item.kind === 'link').map((item) => item.text);
+  const actions = Array.from(window.__jobadabraCandidates.candidatesOf()).filter((item) => item.kind === 'link').map((item) => item.text);
   assert.deepEqual(actions.slice(0, 2).sort(), ['Again', 'Go now']);
 });
 

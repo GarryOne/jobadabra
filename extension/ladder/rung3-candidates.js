@@ -7,7 +7,7 @@
   const MAIL = /[^\s@<>()]+@[^\s@<>()]+\.[a-z]{2,}/i;
   const PHONE = /\+?\d[\d\s().\/-]{6,}\d/;
   const BLOCK = 'p, li, h1, h2, h3, h4, h5, h6, td, th, dd, dt, blockquote, div, section, article, main, header, footer, aside, nav, ul, ol, table, tr, form';
-  const SKIP = 'script, style, noscript, template, textarea, select, option, input, svg, [aria-hidden="true"], [id^="jobpilotto"], [id^="job-pilotto"]';   // the last two: the extension's own UI (desktop/e2e/test/own-ui-not-read.test.mjs)
+  const SKIP = 'script, style, noscript, template, textarea, select, option, input, svg, [aria-hidden="true"], [id^="jobadabra"], [id^="jobadabra"]';   // the last two: the extension's own UI (desktop/e2e/test/own-ui-not-read.test.mjs)
   const clean = (text, max = MAX_TEXT) => String(text || '').replace(/\s+/g, ' ').trim().slice(0, max);
   const digits = (text) => String(text).replace(/\D/g, '').length;
   const shown = (el) => el.getClientRects().length > 0 && !el.closest(SKIP);
@@ -110,5 +110,5 @@
     return picked.slice(0, MAX).map((item, index) => ({n: index + 1, ...item}));
   }
   const api = {candidatesOf};
-  if (typeof module !== 'undefined' && module.exports) module.exports = api; else window.__jobPilottoCandidates = api;
+  if (typeof module !== 'undefined' && module.exports) module.exports = api; else window.__jobadabraCandidates = api;
 })();

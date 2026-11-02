@@ -28,7 +28,7 @@ class InboxCommandTests(unittest.TestCase):
 
     def test_notion_chosen_without_a_token_says_connect_notion_first(self):
         env = {k: v for k, v in os.environ.items() if k != 'NOTION_TOKEN'}
-        with mock.patch.dict(os.environ, {**env, 'JOB_PILOTTO_STORE': 'notion'}, clear=True), \
+        with mock.patch.dict(os.environ, {**env, 'JOBADABRA_STORE': 'notion'}, clear=True), \
                 self.assertRaisesRegex(SystemExit, 'Connect Notion first'):
             inbox.main(['--text-file', os.devnull])
 

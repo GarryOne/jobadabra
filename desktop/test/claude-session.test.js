@@ -17,7 +17,7 @@ test('the session gets Notion and the app folders, the app\'s python3 first, nev
   assert.equal(env.ANTHROPIC_API_KEY, undefined);
   assert.equal(env.PATH, '/data/bin:/usr/bin');
   assert.equal(env.HOME, '/Users/x');
-  assert.equal(env.JOB_PILOTTO_APPLY_RUN_DIR, storage.path('apply-runs'));
+  assert.equal(env.JOBADABRA_APPLY_RUN_DIR, storage.path('apply-runs'));
   const win = session.sessionEnv(storage, {Path: 'C:\\Windows'}, 'win32', 'C:\\data\\bin');
   assert.equal(win.Path, 'C:\\data\\bin;C:\\Windows');
 });
@@ -114,7 +114,7 @@ test('resume: the same conversation with fresh hooks; a stopped session is told 
   assert.deepEqual(waiting.args.slice(-2), ['--resume', 'conv-1']);  // nothing to add: it waits where it was
   assert.deepEqual(stopped.args.slice(-3, -1), ['--resume', 'conv-2']);
   assert.match(stopped.args.at(-1), /Carry on where you left off/);
-  assert.equal(waiting.env.JOB_PILOTTO_SESSION, 'w1');
+  assert.equal(waiting.env.JOBADABRA_SESSION, 'w1');
   const settings = waiting.args[waiting.args.indexOf('--settings') + 1];
   assert.equal(fs.readFileSync(settings, 'utf8'), 'hooks:w1:47111');
   assert.match((await session.resumeInApp(storage, 'l3', options)).error, /already running/);

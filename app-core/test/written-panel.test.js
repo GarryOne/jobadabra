@@ -14,17 +14,17 @@ const FORM = (draftKind = 'draft') => `<form>
   <label for="a">First name *</label><input id="a" required value="Ada">
   <label for="b">Last name *</label><input id="b" required value="Tester">
   <label for="c">Email *</label><input id="c" type="email" required value="ada@example.test">
-  ${QUESTIONS.map((q, i) => `<label for="q${i}">${q} *</label><textarea id="q${i}" required data-jobpilotto-category="written" ${draftKind ? `data-jobpilotto-draft="${draftKind}"` : ''}>${i === 3 && draftKind === 'outline' ? '• Add: which incident' : `Draft ${i}`}</textarea>`).join('')}</form>`;
+  ${QUESTIONS.map((q, i) => `<label for="q${i}">${q} *</label><textarea id="q${i}" required data-jobadabra-category="written" ${draftKind ? `data-jobadabra-draft="${draftKind}"` : ''}>${i === 3 && draftKind === 'outline' ? '• Add: which incident' : `Draft ${i}`}</textarea>`).join('')}</form>`;
 
 async function panel(html, onSend = async () => ({})) {
   const { window } = openPage(JSDOM, html);
   const sent = [];
   window.chrome = { runtime: { id: 'test', getManifest: () => ({ version: 'test' }), sendMessage: async (message) => { sent.push(message); return message.type === 'panelAllowed' ? { ok: true } : onSend(message); }, onMessage: { addListener() {} } } };
   window.eval(read('extension/page/skeleton.js'));
-  window.document.documentElement.setAttribute('data-jobpilotto-page', 'form');   // judged a form by the fill flow (extension/page-mark.js): only then may the panel count or say Ready
+  window.document.documentElement.setAttribute('data-jobadabra-page', 'form');   // judged a form by the fill flow (extension/page-mark.js): only then may the panel count or say Ready
   evalPanel(window);
   await new Promise((resolve) => setTimeout(resolve, 60));
-  const root = () => window.document.getElementById('jobpilotto-review-host')?.shadowRoot;
+  const root = () => window.document.getElementById('jobadabra-review-host')?.shadowRoot;
   return { window, sent, pill: () => root()?.querySelector('.pill b').textContent, close: () => window.close() };
 }
 const hostOf = (window, id) => window.document.getElementById(id).nextElementSibling;
@@ -76,14 +76,14 @@ test('Review my answer asks once, shows the result, and types nothing until "Use
   await new Promise((resolve) => setTimeout(resolve, 100));
   press('Use this version');
   assert.equal(box.value, 'Improved text', 'the press applies it');
-  assert.equal(box.hasAttribute('data-jobpilotto-draft'), false, 'what the person chose is no longer an unread draft');
+  assert.equal(box.hasAttribute('data-jobadabra-draft'), false, 'what the person chose is no longer an unread draft');
   close();
 });
 
 test('reminders on a written box are listed beside it, never in it (owner, 27 Oct 2026)', { skip: !JSDOM }, async () => {
-  const html = FORM('').replace('<textarea id="q3" required data-jobpilotto-category="written" >Draft 3</textarea>',
-    `<textarea id="q3" required data-jobpilotto-category="written" data-jobpilotto-remind='["which incident","its root cause"]'></textarea>`);
-  assert.ok(html.includes('data-jobpilotto-remind'), 'the fixture placed the reminders');
+  const html = FORM('').replace('<textarea id="q3" required data-jobadabra-category="written" >Draft 3</textarea>',
+    `<textarea id="q3" required data-jobadabra-category="written" data-jobadabra-remind='["which incident","its root cause"]'></textarea>`);
+  assert.ok(html.includes('data-jobadabra-remind'), 'the fixture placed the reminders');
   const { window, close } = await panel(html);
   const root = hostOf(window, 'q3').shadowRoot;
   assert.deepEqual([...root.querySelectorAll('.add li')].map((li) => li.textContent), ['which incident', 'its root cause']);

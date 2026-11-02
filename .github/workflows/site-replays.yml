@@ -139,7 +139,7 @@ jobs:
       matrix:
         shard: [0, 1, 2, 3, 4]
     env:
-      JOB_PILOTTO_HEAVY: '0'   # the heavy lock is a Mac's machine-wide queue; this runner is its own machine
+      JOBADABRA_HEAVY: '0'   # the heavy lock is a Mac's machine-wide queue; this runner is its own machine
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -197,7 +197,7 @@ jobs:
         working-directory: desktop/e2e
         env:
           JP_REPLAY_SHARD: ${{ matrix.shard }}/5
-          JOB_PILOTTO_MODEL_MEMO_LATENCY_PAD_MS: '4000'
+          JOBADABRA_MODEL_MEMO_LATENCY_PAD_MS: '4000'
         run: |
           node replay-records.mjs "$GITHUB_WORKSPACE/records" "$GITHUB_WORKSPACE/replay-late" > /dev/null || true
           node replay-late.mjs "$GITHUB_WORKSPACE/replay-late/replays" | tee "$GITHUB_WORKSPACE/replay-out/late.md"
@@ -256,7 +256,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:
-      JOB_PILOTTO_HEAVY: '0'
+      JOBADABRA_HEAVY: '0'
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -317,7 +317,7 @@ jobs:
     runs-on: ubuntu-24.04   # the judge is pure Node (a macOS runner queued for 30 min); the retry replay is its own job
     timeout-minutes: 30
     env:
-      JOB_PILOTTO_HEAVY: '0'
+      JOBADABRA_HEAVY: '0'
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5

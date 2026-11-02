@@ -154,7 +154,7 @@ def for_you(index, me, n=8):
 def central_nofeed(cache=None, today=None, days=30):
     """{key} of employers some install or the central scout found with no readable job site in the last `days` days (6 Oct 2026): this
     install's scout skips them instead of probing the same dead end."""
-    if os.getenv('JOB_PILOTTO_FIXTURE_DIR') and cache is None:   # a fixture run reads nothing downloaded (as load() does)
+    if os.getenv('JOBADABRA_FIXTURE_DIR') and cache is None:   # a fixture run reads nothing downloaded (as load() does)
         return set()
     day = today or datetime.now(timezone.utc).date()
     stored = _read(cache or CACHE) or {}
@@ -220,11 +220,11 @@ def load(cache=None, url=None, get=_get, now=None, install_id=None, retry_wait=N
     """The downloaded index (list of feeds), from the cache when it is under a day old. Never raises."""
     global problem
     problem = ''
-    if os.getenv('JOB_PILOTTO_FIXTURE_DIR'):   # the end-to-end journey: only its own fixture feeds, nothing downloaded
+    if os.getenv('JOBADABRA_FIXTURE_DIR'):   # the end-to-end journey: only its own fixture feeds, nothing downloaded
         return []
     retry_wait = RETRY_WAIT if retry_wait is None else retry_wait
     cache = cache or CACHE
-    url = url or os.getenv('JOB_PILOTTO_INDEX_URL') or URL
+    url = url or os.getenv('JOBADABRA_INDEX_URL') or URL
     now = now or datetime.now(timezone.utc)
     # Only the slice for this install's own regions (fixed words: europe, remote...): nothing else about the user goes up.
     regions = my_regions()
@@ -241,7 +241,7 @@ def load(cache=None, url=None, get=_get, now=None, install_id=None, retry_wait=N
             pass
     headers = {'Accept': 'application/json'}
     # The id is random and local: the one the app shares with the pool when you opted in, else one kept next to the cache.
-    install_id = install_id or os.getenv('JOB_PILOTTO_INSTALL_ID') or (stored or {}).get('install')
+    install_id = install_id or os.getenv('JOBADABRA_INSTALL_ID') or (stored or {}).get('install')
     if not (install_id and re.fullmatch(r'[A-Za-z0-9_-]{8,64}', install_id)):
         install_id = secrets.token_hex(12)
     headers['X-Install-Id'] = install_id

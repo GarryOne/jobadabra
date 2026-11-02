@@ -10,7 +10,7 @@
 # on two desktop jobs for hours and nobody reacted until the owner asked; #1356, #1362 and #1350 then sat CONFLICTING. Guard: tests/test_pr_red_hook.py.
 set -uo pipefail
 [ "${PR_RED_CHECK:-1}" != 0 ] || exit 0
-[ -z "${JOB_PILOTTO_SESSION:-}" ] || exit 0   # an "Apply with Claude" session of the desktop app changes no code
+[ -z "${JOBADABRA_SESSION:-}" ] || exit 0   # an "Apply with Claude" session of the desktop app changes no code
 command -v gh >/dev/null && command -v jq >/dev/null || exit 0
 # Why (owner, 27 Oct 2026, try 3 on "GraphQL runs out": "No GraphQL in our tools"): every look is REST with the last ETag (tools/pr-rest-lib.sh); this hook runs on every prompt of every session.
 . "$(cd "$(dirname "$0")" && pwd)/pr-rest-lib.sh"; . "$(cd "$(dirname "$0")" && pwd)/pr-comments-lib.sh"
@@ -28,7 +28,7 @@ dirs=("$cwd")
 if [ -f "$transcript" ]; then
   while IFS= read -r w; do [ -d "$w" ] && dirs+=("$w"); done < <(
     tail -n 4000 "$transcript" | jq -r 'select(.type=="assistant") | .message.content[]? | select(.type=="tool_use" and .name=="Bash") | .input.command // empty' 2>/dev/null |
-      grep -E 'tools/ship\.sh' | grep -oE '/[^[:space:]"'"'"'`;|&()]*(\.claude/worktrees/|job-pilotto-site-|jobadabra-web-)[^/[:space:]"'"'"'`;|&()]+' | sort -u | head -5)   # also the private site repo's sibling worktrees (job-pilotto-site-<topic>), shipped with this repo's tools/ship.sh
+      grep -E 'tools/ship\.sh' | grep -oE '/[^[:space:]"'"'"'`;|&()]*(\.claude/worktrees/|jobadabra-site-|jobadabra-web-)[^/[:space:]"'"'"'`;|&()]+' | sort -u | head -5)   # also the private site repo's sibling worktrees (jobadabra-site-<topic>), shipped with this repo's tools/ship.sh
 fi
 
 # One worker owns each cache refresh. A slow REST chain finishes after the hook returns;

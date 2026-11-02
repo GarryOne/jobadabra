@@ -1,5 +1,6 @@
 // The apply suite's judgements as pure functions of what was read from a form, so each one can be shown to fail on a wrong input (test/applycheck.test.mjs).
 // `actual` is readForm()'s answer: {field id: {type, value, checked, files: [{name, size}], ai}}.
+// Job: keep the scorecard
 
 // Every kit answer is in its field (a checkbox: ticked), and what the person must decide (legal consents) is untouched, kit or no kit.
 export function fillProblems({expected = {}, left = [], actual}) {
@@ -28,7 +29,7 @@ export function submitProblems(fired, formPath) {
   return fired.filter(item => String(item.form).startsWith(formPath)).map(item => `${item.kind} on Submit at ${item.form}: the extension must never submit`);
 }
 
-// Fields the extension highlighted as AI-written (data-jobpilotto-ai): `ai` must all be marked, `plain` must not be (a short fact from your details is not an AI answer).
+// Fields the extension highlighted as AI-written (data-jobadabra-ai): `ai` must all be marked, `plain` must not be (a short fact from your details is not an AI answer).
 export function highlightProblems({actual, ai = [], plain = []}) {
   return [...ai.filter(id => !actual[id]?.ai).map(id => `${id}: an AI-written answer is not highlighted`),
     ...plain.filter(id => actual[id]?.ai).map(id => `${id}: highlighted as AI-written, but it is a plain fact`)];

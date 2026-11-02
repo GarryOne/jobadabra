@@ -11,14 +11,14 @@ applied. Speed matters: a Greenhouse form should take under 3 minutes.
 
 **Golden rule (see `AGENTS.md`): map once → build the whole plan → one fill call → verify once →
 upload résumé → re-verify once.** Use the helpers in `tools/browser-form-fastpath.js`
-(`__jobPilottoAuditVisibleFields`, `__jobPilottoFillKnownFields`, `__jobPilottoOptionPositions`),
+(`__jobPilottoAuditVisibleFields`, `__jobPilottoFillKnownFields`, `__jobadabraOptionPositions`),
 injected after `tools/browser-submit-guard.js`; with claude-in-chrome, Read each file and pass its
 text to `javascript_tool`. Anything you end up doing by hand that could be deterministic belongs
 in that file next time — keep evolving it.
 
 **Speed defaults learned 26 Sep 2026 (a 3-minute Grafana run; aim for under 2):**
--1. **The owner's own run uses the app's data on purpose:** every `python3 -m src...` command below runs with `JOB_PILOTTO_FOLLOW_APP=1` in its environment
-   (the engine refuses the app's folder otherwise, 18 Oct 2026). Never in a test or an exploration: those set their own temp `JOB_PILOTTO_DATA_DIR` + `JOB_PILOTTO_CONFIG_DIR`.
+-1. **The owner's own run uses the app's data on purpose:** every `python3 -m src...` command below runs with `JOBADABRA_FOLLOW_APP=1` in its environment
+   (the engine refuses the app's folder otherwise, 18 Oct 2026). Never in a test or an exploration: those set their own temp `JOBADABRA_DATA_DIR` + `JOBADABRA_CONFIG_DIR`.
 0. **One context call first:** `python3 -m src.ai.apply_run --context <job URL>` prints the kit
    (JSON), Profile, Application Answers and recent learnings for that job board in one go (~8 s);
    don't fetch those pages separately. Apply the learnings.
@@ -158,7 +158,7 @@ in that file next time — keep evolving it.
       of discovering it piecemeal later.
 
 ## Before you start (session/tooling gotchas, 25 Sep 2026)
-- **This skill is project-scoped to job-pilotto.** If the session started in a different working
+- **This skill is project-scoped to jobadabra.** If the session started in a different working
   directory, the `Skill` tool's registry does not pick it up even after `cd`-ing into
   `/Users/mac/jobadabra` mid-session (observed: two failed `Skill("apply-to-job")` calls in a row).
   Don't retry the `Skill` tool after a `cd` — go straight to `Read` on
@@ -183,7 +183,7 @@ in that file next time — keep evolving it.
 | No kit yet | `gh workflow run daily.yml -R GarryOne/jobadabra -f mode=prepare -f job=<job URL or 8-hex code>`; wait ~1 min (`gh run watch`). Or the 📝 Prepare button in Telegram. |
 | Standard answers | Notion page Application Answers `3e562be8fd868108ae38d1f47d52a811` |
 | Profile | Notion page `3e562be8fd8681579078d09829921b8c` |
-| CV (upload + contact details) | `$JOB_PILOTTO_CV_PATH` (see `.env`) |
+| CV (upload + contact details) | `$JOBADABRA_CV_PATH` (see `.env`) |
 
 ## Steps
 1. **Kit + both Notion pages.** Get the kit JSON, and read **both** the Profile page and the
@@ -335,7 +335,7 @@ in that file next time — keep evolving it.
      click Submit") isn't touched; this only reacts *after* a human click. Then stop rescheduling
      for this job and tell the owner it's marked. **Use `python3 -m src.ai.apply_batch --mark-applied
      <job URL>` (needs `NOTION_TOKEN`, e.g. from Keychain — see other scripts in `tools/` for the
-     `security find-generic-password ... job-pilotto.notion.token` pattern), not
+     `security find-generic-password ... jobadabra.notion.token` pattern), not
      `gh workflow run daily.yml -f mode=apply -f job=<URL> -f action=applied`.** The `daily.yml`/
      `src.daily --mode apply` path looks the job up in the local `jobs.sqlite` crawl cache first —
      that cache is ephemeral in GitHub Actions (can be evicted between runs) and may never have been
@@ -396,7 +396,7 @@ per page where you can:
 6. **After sign-in** the site usually lands on the application or a profile step; on a dashboard,
    open the job again from the careers page and press Apply. Fill page by page (Next / Save and
    continue is fine), audit each page before leaving it, and stop at the review or Submit page.
-7. In the hand-over, name the account item (`job-pilotto.<host>.password`) so the owner can find it.
+7. In the hand-over, name the account item (`jobadabra.<host>.password`) so the owner can find it.
 
 ## Full automatic flow (25 Sep 2026)
 
@@ -424,8 +424,8 @@ cases.
 
 1. **Crawl/score** — already automatic, every 4h.
 2. **Auto-draft kits** — `src/ai/kit.py:auto_run`, wired into `daily.py` for `scheduled`/`run`/`today`
-   modes when the repository variable `JOB_PILOTTO_AUTO_KIT_MAX` is set (score ≥
-   `JOB_PILOTTO_AUTO_KIT_MIN_SCORE`, default 50; capped per run). No manual 📝 Prepare tap needed for
+   modes when the repository variable `JOBADABRA_AUTO_KIT_MAX` is set (score ≥
+   `JOBADABRA_AUTO_KIT_MIN_SCORE`, default 50; capped per run). No manual 📝 Prepare tap needed for
    jobs that qualify; a short Telegram message lists what was drafted. Idempotent — table
    `auto_kits` in the canonical DB remembers which jobs already got one, so it never re-drafts.
    Manual 📝 Prepare still works for anything below the threshold or that needs a fresh draft.
@@ -652,7 +652,7 @@ gate enforced in code rather than by the model's own judgment call." Re-test bef
   CV uploaded, all 4 dropdowns), verified field-by-field, left open for the owner; nothing
   submitted. One misclick along the way (screenshot-scale bug, see above), caught and corrected.
 - 2026-09-25 · Greenhouse · Canonical Senior SRE · form filled from a session that started outside
-  job-pilotto (had to `cd` in and read SKILL.md as a plain file — the `Skill` tool never picked up the
+  jobadabra (had to `cd` in and read SKILL.md as a plain file — the `Skill` tool never picked up the
   project-scoped skill after `cd`, see "Before you start" above). Owner self-assessed dead time
   afterward and asked for fixes: added the skip-schema-fetch SQL shortcut for kit lookup, the
   phone-country-code-vs-work-country field disambiguation, and the resume-upload verification note

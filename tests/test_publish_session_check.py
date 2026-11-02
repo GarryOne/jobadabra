@@ -44,7 +44,7 @@ class PublishTests(unittest.TestCase):
 
     def test_the_key_is_read_from_the_keychain_and_never_printed(self):
         text = (ROOT / 'tools' / 'persona-search' / 'publish-session-check.py').read_text(encoding='utf-8')
-        self.assertIn('job-pilotto.site.session_checks_key', text)
+        self.assertIn('jobadabra.site.session_checks_key', text)
         self.assertNotIn('print(key', text)
 
     def test_the_request_names_itself_because_cloudflare_refuses_the_default_agent(self):

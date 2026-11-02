@@ -15,13 +15,13 @@ const fresh = () => createStorage(fs.mkdtempSync(path.join(os.tmpdir(), 'pilot-'
 test('a new install shares by default; switched off, no variable reaches the run environment', () => {
   const storage = fresh();
   assert.equal(poolShare.on(storage), true);
-  assert.equal(pipelineEnv(storage, {}).JOB_PILOTTO_SHARE_EMPLOYERS, '1');
+  assert.equal(pipelineEnv(storage, {}).JOBADABRA_SHARE_EMPLOYERS, '1');
   poolShare.set(storage, false);
   assert.equal(poolShare.on(storage), false);
   assert.equal(poolShare.variables(storage), null);
   const env = pipelineEnv(storage, {});
-  assert.equal(env.JOB_PILOTTO_SHARE_EMPLOYERS, undefined);
-  assert.equal(env.JOB_PILOTTO_INSTALL_ID, undefined);
+  assert.equal(env.JOBADABRA_SHARE_EMPLOYERS, undefined);
+  assert.equal(env.JOBADABRA_INSTALL_ID, undefined);
 });
 
 test('opt-out for every install: an old install pinned off is turned on once; a choice made with the switch is kept', async () => {
@@ -48,8 +48,8 @@ test('switched on: the run environment gets the switch and the same random id te
   storage.saveSettings({telemetryId: 'existing-random-id'});
   poolShare.set(storage, true);
   const env = pipelineEnv(storage, {});
-  assert.equal(env.JOB_PILOTTO_SHARE_EMPLOYERS, '1');
-  assert.equal(env.JOB_PILOTTO_INSTALL_ID, 'existing-random-id');
+  assert.equal(env.JOBADABRA_SHARE_EMPLOYERS, '1');
+  assert.equal(env.JOBADABRA_INSTALL_ID, 'existing-random-id');
 });
 
 test('switching on makes an id when there is none; switching off removes everything again', () => {
@@ -57,7 +57,7 @@ test('switching on makes an id when there is none; switching off removes everyth
   poolShare.set(storage, true);
   assert.match(storage.settings().telemetryId, /^[0-9a-f-]{36}$/);
   poolShare.set(storage, false);
-  assert.equal(pipelineEnv(storage, {}).JOB_PILOTTO_SHARE_EMPLOYERS, undefined);
+  assert.equal(pipelineEnv(storage, {}).JOBADABRA_SHARE_EMPLOYERS, undefined);
 });
 
 test('Always on follows the switch: variables set when on, removed when off', async () => {
@@ -75,7 +75,7 @@ test('Always on follows the switch: variables set when on, removed when off', as
   poolShare.set(storage, true);
   await github.updateRepo(storage, {fetcher});
   assert.ok(calls.some(c => c.includes('/actions/variables')), calls.join('\n'));
-  assert.ok(!calls.some(c => c.startsWith('DELETE') && c.includes('JOB_PILOTTO_SHARE_EMPLOYERS')));
+  assert.ok(!calls.some(c => c.startsWith('DELETE') && c.includes('JOBADABRA_SHARE_EMPLOYERS')));
 });
 
 test('the first screen of setup says, in one plain sentence, that employer pages are shared and where to switch it off', () => {

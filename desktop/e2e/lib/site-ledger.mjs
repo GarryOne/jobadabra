@@ -1,12 +1,13 @@
 // The per-site daily limit for live visits (owner, 11 Oct 2026: our runs go out from the owner's home network, the one they apply from; SmartRecruiters, Louis Vuitton and H&M
-// refused us after dozens of visits). ONE machine-wide ledger of live visits per host and day, shared by every worktree and session (<tmpdir>/job-pilotto-site-ledger, as the
-// heavy lock's folder), and ONE function every live path calls before it reaches a real site: guardLiveVisit(url). It refuses the 4th visit of a host in a day (JOB_PILOTTO_SITE_LIMIT
+// refused us after dozens of visits). ONE machine-wide ledger of live visits per host and day, shared by every worktree and session (<tmpdir>/jobadabra-site-ledger, as the
+// heavy lock's folder), and ONE function every live path calls before it reaches a real site: guardLiveVisit(url). It refuses the 4th visit of a host in a day (JOBADABRA_SITE_LIMIT
 // changes 3), and any visit to a host that showed a block page that day (markBlocked: a digest "refused", a bot check, access denied) until the next day, whoever asks.
-// The owner's override is an environment flag only: JOB_PILOTTO_SITE_LIMIT_OVERRIDE=<host>[,<host>] lets those hosts through (the count and the block both), and each use is logged to
+// The owner's override is an environment flag only: JOBADABRA_SITE_LIMIT_OVERRIDE=<host>[,<host>] lets those hosts through (the count and the block both), and each use is logged to
 // <ledger folder>/override.log. Counting starts at the landing (11 Oct 2026): earlier visits are not back-filled. The same process visiting the same host again (the Electron leg's
 // apply-live and its tab opener) counts once. Loopback, file and non-https addresses are not real sites and never counted.
 // Live paths (the class; test/site-ledger.test.mjs fails when one is missing): lib/live-row.mjs (npm run live, the pool's plain leg, row-to-case captures), lib/apply-live.mjs +
 // lib/extension.mjs (the Electron leg, the twin), ladder-capture.mjs (a fixture's live read). Windows/Linux-safe: os.tmpdir, path.join, a mkdir lock.
+// Job: keep the scorecard
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -18,7 +19,8 @@ export class SiteLimitError extends Error {
   constructor(message, details) { super(message); this.name = 'SiteLimitError'; Object.assign(this, details); }
 }
 
-export const ledgerDir = (env = process.env) => env.JOB_PILOTTO_SITE_LEDGER_DIR || path.join(os.tmpdir(), 'job-pilotto-site-ledger');
+/** Folder of the per-site visit ledger: JOBADABRA_SITE_LEDGER_DIR from env, else a fixed folder under the OS temp dir; only builds the path, creates nothing. */
+export const ledgerDir = (env = process.env) => env.JOBADABRA_SITE_LEDGER_DIR || path.join(os.tmpdir(), 'jobadabra-site-ledger');
 export const dayOf = (now = new Date()) => `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
 // The site of an address: its host without a leading www.; '' for anything that is not a real https site of the internet.
@@ -63,23 +65,23 @@ const clock = at => new Date(at).toLocaleTimeString('en-GB', {hour: '2-digit', m
 export function guardLiveVisit(url, {env = process.env, now = new Date(), who = '', record = true, log = line => process.stderr.write(`${line}\n`)} = {}) {
   const site = siteOf(url);
   if (!site) return null;
-  const limit = Number(env.JOB_PILOTTO_SITE_LIMIT) > 0 ? Number(env.JOB_PILOTTO_SITE_LIMIT) : DEFAULT_LIMIT;
-  // CI: each visit says its kind (JOB_PILOTTO_VISIT_KIND: hand). A by-hand recording may use all the day's visits (record-once spec, 15 Oct 2026: no PR proof keeps one back any more).
-  const kind = String(env.JOB_PILOTTO_VISIT_KIND || '');
+  const limit = Number(env.JOBADABRA_SITE_LIMIT) > 0 ? Number(env.JOBADABRA_SITE_LIMIT) : DEFAULT_LIMIT;
+  // CI: each visit says its kind (JOBADABRA_VISIT_KIND: hand). A by-hand recording may use all the day's visits (record-once spec, 15 Oct 2026: no PR proof keeps one back any more).
+  const kind = String(env.JOBADABRA_VISIT_KIND || '');
   const day = dayOf(now), at = now.getTime(), runId = String(process.pid);
   return withLedger(env, ledger => {
     for (const old of Object.keys(ledger)) if (old !== day) delete ledger[old];   // a new day starts clean
     const entry = ((ledger[day] ||= {})[site] ||= {visits: []});
-    const overridden = hostsOf(env.JOB_PILOTTO_SITE_LIMIT_OVERRIDE).includes(site);
+    const overridden = hostsOf(env.JOBADABRA_SITE_LIMIT_OVERRIDE).includes(site);
     if (entry.visits.some(visit => visit.run === runId)) return {site, count: entry.visits.length, limit, overridden};   // this process was counted already
     const last = entry.visits.at(-1);
     const refuse = (why, extra) => {
       if (overridden) {
-        try { fs.appendFileSync(path.join(ledgerDir(env), 'override.log'), `${new Date(at).toISOString()} ${site} ${why} (override JOB_PILOTTO_SITE_LIMIT_OVERRIDE) ${who || 'session ?'}\n`); } catch { /* the log is best effort */ }
-        log(`site-ledger: ${site}: ${why}: let through by JOB_PILOTTO_SITE_LIMIT_OVERRIDE`);
+        try { fs.appendFileSync(path.join(ledgerDir(env), 'override.log'), `${new Date(at).toISOString()} ${site} ${why} (override JOBADABRA_SITE_LIMIT_OVERRIDE) ${who || 'session ?'}\n`); } catch { /* the log is best effort */ }
+        log(`site-ledger: ${site}: ${why}: let through by JOBADABRA_SITE_LIMIT_OVERRIDE`);
         return null;
       }
-      throw new SiteLimitError(`site-ledger: ${site} is not visited: ${why}. Counted from the machine-wide ledger (${ledgerDir(env)}); the owner can allow it with JOB_PILOTTO_SITE_LIMIT_OVERRIDE=${site}.`, {site, day, ...extra});
+      throw new SiteLimitError(`site-ledger: ${site} is not visited: ${why}. Counted from the machine-wide ledger (${ledgerDir(env)}); the owner can allow it with JOBADABRA_SITE_LIMIT_OVERRIDE=${site}.`, {site, day, ...extra});
     };
     if (entry.blocked) refuse(`it showed a block page at ${clock(entry.blocked.at)} today (${entry.blocked.why}), so it rests until tomorrow`, {blocked: true});
     else if (entry.visits.length >= limit) refuse(`${entry.visits.length} live visits today (limit ${limit}), the last at ${clock(last.at)}${last.who ? ` by ${last.who}` : ''}`, {count: entry.visits.length, limit});

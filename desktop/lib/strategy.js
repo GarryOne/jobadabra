@@ -13,7 +13,7 @@ import {REPO} from './pipeline.js';
 import {askAgainNote, emptyParts} from './strategy-empty.js';
 import {withDerived} from './target-roles.js';
 
-export const MODEL = process.env.JOB_PILOTTO_MODEL_OVERRIDE || 'claude-sonnet-5-5';   // the override is for the end-to-end journey (desktop/e2e): every step on Haiku
+export const MODEL = process.env.JOBADABRA_MODEL_OVERRIDE || 'claude-sonnet-5-5';   // the override is for the end-to-end journey (desktop/e2e): every step on Haiku
 const PRICE = {input: 2, output: 10}; // USD per million tokens, claude-sonnet-5-5
 
 // Contact details typed into application forms (the Chrome extension's fields), read from the CV.

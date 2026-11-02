@@ -41,7 +41,7 @@ class ScoutEndToEnd(unittest.TestCase):
             (Path(self.dir) / name).write_text(text)
         # The first matching route wins, so the most specific address comes first.
         (Path(self.dir) / 'routes.json').write_text(json.dumps({'acme.example/jobs/data-analyst': 'jobs-1.html', 'acme.example/karriere': 'jobs.html', 'acme.example': 'home.html'}))
-        patch = mock.patch.dict(os.environ, {'JOB_PILOTTO_FIXTURE_DIR': self.dir})
+        patch = mock.patch.dict(os.environ, {'JOBADABRA_FIXTURE_DIR': self.dir})
         patch.start()
         self.addCleanup(patch.stop)
         saved = careers.READER, careers.RENDER

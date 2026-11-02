@@ -35,7 +35,7 @@ class QuestionsToleratesABadLinkTest(unittest.TestCase):
 
     def test_the_odd_value_is_reported_once_a_day_by_type_and_key_names_only(self):
         sent, folder = Sent(), tempfile.mkdtemp()
-        env = {'JOB_PILOTTO_SENTRY_DSN': DSN, 'JOB_PILOTTO_STORE': 'notion'}
+        env = {'JOBADABRA_SENTRY_DSN': DSN, 'JOBADABRA_STORE': 'notion'}
         real = crash_reporting.warn
         with mock.patch.dict('os.environ', env), mock.patch.object(crash_reporting, 'warn', lambda *a, **k: real(*a, urlopen=sent, marker_dir=folder, **k)):
             self.ask({'url': SECRET_VALUE, 'name': 'Jane Doe'})

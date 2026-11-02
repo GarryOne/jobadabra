@@ -17,11 +17,11 @@ async function panel({ night, mark }) {
 </form>`);
   window.chrome = { runtime: { id: 'test', getManifest: () => ({ version: 'test' }), sendMessage: async (message) => (message.type === 'panelAllowed' ? { ok: true } : {}), onMessage: { addListener() {} } } };
   window.eval(read('extension/page/skeleton.js'));
-  if (night) window.document.documentElement.setAttribute('data-jobpilotto-night', '1');
-  window.document.documentElement.setAttribute('data-jobpilotto-page', mark);
+  if (night) window.document.documentElement.setAttribute('data-jobadabra-night', '1');
+  window.document.documentElement.setAttribute('data-jobadabra-page', mark);
   evalPanel(window);
   await new Promise((resolve) => setTimeout(resolve, 60));
-  const root = window.document.getElementById('jobpilotto-review-host').shadowRoot;
+  const root = window.document.getElementById('jobadabra-review-host').shadowRoot;
   return { window, pill: () => root.querySelector('.pill b').textContent, sub: () => root.querySelector('.pill small').textContent };
 }
 

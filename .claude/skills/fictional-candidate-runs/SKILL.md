@@ -33,5 +33,5 @@ Not on the Benchmark tab: the benchmark's own rule is "a local run is a side not
 - **Claude Code's auto-update swaps `claude.exe` and it is missing for ~10 s** (the global package was replaced at 22:39 and 22:48; four runs died on "no claude install found" / "Claude Code is not installed"). Keep a private copy: `cp <global claude-code>/bin/claude.exe pinbin/claude` (the scripts put `pinbin` first on PATH). Never read a failure of that kind as the search failing.
 - The judge needs a real `claude` on PATH, never a shell wrapper (it carries the owner's identity): `real_claude()` in `judge.py`.
 - `--first-only` is a floor for N (later steps, light run and scout, are skipped); say so on every card. A full press takes ~20 min.
-- Keychain/API keys: none needed; the scripts remove every API key from the environment. Publishing Session checks uses Keychain `job-pilotto.site.session_checks_key`; never print it.
+- Keychain/API keys: none needed; the scripts remove every API key from the environment. Publishing Session checks uses Keychain `jobadabra.site.session_checks_key`; never print it.
 - No posting texts, URLs or personal data go in the archive: titles, employers, places only. Round data is public (the benchmark repo is public).

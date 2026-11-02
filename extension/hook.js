@@ -7,8 +7,8 @@
 // <html data-jobpilotto-hook="<version>"> says the extension is here.
 (() => {
   // Once per page, but a copy left behind by an extension reload (its chrome.runtime is gone) lets the new one run.
-  if (window.__jobPilottoHookAlive?.()) return;
-  window.__jobPilottoHookAlive = () => !!chrome.runtime?.id;
+  if (window.__jobadabraHookAlive?.()) return;
+  window.__jobadabraHookAlive = () => !!chrome.runtime?.id;
   // Injected as the app's tab starts loading: <html> may not exist for a moment. The listener is on document,
   // which does; the attribute Claude looks for is set as soon as <html> is there.
   const markHook = () => { if (document.documentElement) document.documentElement.dataset.jobpilottoHook = chrome.runtime.getManifest().version; };
@@ -23,5 +23,5 @@
   });
   // The fill ladder's attempt log (page/attempts.js, the page's own world, where chrome.runtime is not) says a try worked: relayed as the run's progress (ladder/progress.js).
   // Only that one fixed kind; a page that fires it itself only adds a shadow log line, it never makes the extension act.
-  document.addEventListener('jobpilotto:progress', event => { if (event.detail === 'value_stayed') chrome.runtime.sendMessage({type: 'progress', kind: 'value_stayed'}).catch?.(() => {}); });
+  document.addEventListener('jobadabra:progress', event => { if (event.detail === 'value_stayed') chrome.runtime.sendMessage({type: 'progress', kind: 'value_stayed'}).catch?.(() => {}); });
 })();

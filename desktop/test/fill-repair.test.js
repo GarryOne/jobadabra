@@ -27,7 +27,7 @@ const client = answer => {
 test('one value class list on both ends; the sketch keeps a known class only, a legal mark and a try count, never a value', () => {
   const window = {};
   vm.runInNewContext(fs.readFileSync(new URL('../../extension/page/value-class.js', import.meta.url), 'utf8'), {window, document: {documentElement: {lang: 'en'}}, Intl});
-  assert.deepEqual([...window.__jobPilottoValueClass.CLASSES], VALUE_CLASSES, 'extension/page/value-class.js and lib/ladder/value-class.js name the same classes');
+  assert.deepEqual([...window.__jobadabraValueClass.CLASSES], VALUE_CLASSES, 'extension/page/value-class.js and lib/ladder/value-class.js name the same classes');
   const sketch = accountSketch({...raw, controls: [...raw.controls, {type: 'text', label: 'x', answer: 'ssn', legal: 'yes', tried: 99, value: 'secret'}]});
   assert.deepEqual(sketch.controls.map(item => item.answer), ['free_text', 'dial_code', '', '', '', 'free_text', '']);
   assert.deepEqual(sketch.controls.map(item => item.legal), [false, false, true, false, false, false, false]);

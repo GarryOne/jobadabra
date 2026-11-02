@@ -1,4 +1,4 @@
-// The demo reads its fictional data from one folder (lib/demo.js folder/demoPath): demo/ by default, JOB_PILOTTO_DEMO_DIR
+// The demo reads its fictional data from one folder (lib/demo.js folder/demoPath): demo/ by default, JOBADABRA_DEMO_DIR
 // for another fictional person (the product media's personas). A read that names demo/ itself would show the default person.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -8,9 +8,9 @@ import {demoPath, folder} from '../lib/demo.js';
 
 const desktop = path.join(import.meta.dirname, '..');
 
-test('the demo folder is demo/ unless JOB_PILOTTO_DEMO_DIR names another one', () => {
+test('the demo folder is demo/ unless JOBADABRA_DEMO_DIR names another one', () => {
   assert.equal(folder('/app', {}), path.join('/app', 'demo'));
-  assert.equal(folder('/app', {JOB_PILOTTO_DEMO_DIR: '/tmp/nurse'}), '/tmp/nurse');
+  assert.equal(folder('/app', {JOBADABRA_DEMO_DIR: '/tmp/nurse'}), '/tmp/nurse');
   assert.equal(demoPath(desktop, 'jobs.json'), path.join(folder(desktop), 'jobs.json'));
 });
 

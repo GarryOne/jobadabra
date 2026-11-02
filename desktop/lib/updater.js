@@ -58,11 +58,11 @@ const offerOf = (release, platform, extra = {}) => {
   return {version, name: release.name || version, notes: String(release.body || '').slice(0, 2000), url: release.html_url,
     download: download.browser_download_url, size: download.size, ...extra};
 };
-// Where the releases are read: GitHub, or the e2e's fake release server (JOB_PILOTTO_E2E_UPDATES_URL), only under the e2e (JOB_PILOTTO_E2E), never for a person.
-export const apiBase = (env = process.env) => (env.JOB_PILOTTO_E2E && env.JOB_PILOTTO_E2E_UPDATES_URL) || 'https://api.github.com';
+// Where the releases are read: GitHub, or the e2e's fake release server (JOBADABRA_E2E_UPDATES_URL), only under the e2e (JOBADABRA_E2E), never for a person.
+export const apiBase = (env = process.env) => (env.JOBADABRA_E2E && env.JOBADABRA_E2E_UPDATES_URL) || 'https://api.github.com';
 // A person's app reads our website first (site/src/releases.js: GitHub read with the site's token, kept 5 minutes for every install), then
 // GitHub itself. 9 Oct 2026: unsigned GitHub calls are 60 an hour per IP, and an office network shares one: "GitHub answered 403".
-export const SITE = process.env.JOB_PILOTTO_SITE || 'https://www.jobpilotto.top';
+export const SITE = process.env.JOBADABRA_SITE || 'https://www.jobpilotto.top';
 const HEADERS = {Accept: 'application/vnd.github+json'};
 const kept = new Map();   // GitHub url -> {etag, data}: an unchanged answer (304) doesn't count against GitHub's limit
 let limitedUntil = 0;     // GitHub said this network used its hour: no call before then
@@ -171,11 +171,11 @@ export const windowsExplanation = update => ({type: 'info', buttons: ['Install n
 // closes, the installer shows its progress, the app opens again), so the closing window is never a surprise.
 export async function install(update, {exe, pid = process.pid, quit, onStep = () => {}, logFile = '', fetcher = globalThis.fetch,
   platform = process.platform, spawn: run = spawn, explain = async () => {}}) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'job-pilotto-update-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'jobadabra-update-'));
   onStep('Downloading…');
   const response = await fetcher(update.download);
   if (!response.ok) throw new Error(`Download failed (${response.status})`);
-  const file = path.join(dir, platform === 'win32' ? 'Job-Pilotto-Setup.exe' : 'update.zip');
+  const file = path.join(dir, platform === 'win32' ? 'Jobadabra-Setup.exe' : 'update.zip');
   fs.writeFileSync(file, Buffer.from(await response.arrayBuffer()));
   if (platform === 'win32') {
     onStep('Ready to install…');

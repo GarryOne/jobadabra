@@ -3,6 +3,7 @@
 // made it and the live result, under <root>/<day>/<row>/, so `npm run measure` can re-run any build on it offline, with no site visit. Mac: <QA folder>/captures
 // (outside the repo); CI: RECORD_CAPTURES, uploaded as the 30-day artifact pool-captures-<run> (owner, 13 Oct 2026). Days older than 30 are pruned (owner).
 // Used by record-sites.mjs and live.mjs. Guard: e2e/test/capture-library.test.mjs.
+// Job: serve stored answers
 import {execFileSync} from 'node:child_process';
 import {recordVar} from '../../../tools/record-env.mjs';
 import fs from 'node:fs';
@@ -37,9 +38,9 @@ export function pruneCaptures(root, {today = new Date().toISOString().slice(0, 1
 // its form answer). Each: how a live run's env records it, and the env a replay sets from it (null: shown only, a kept answer stands for it; `only`: the one value a replay can use).
 export const RUN_SETTINGS = {
   applicant: {recorded: env => env.JP_APPLICANT || 'thin', replayEnv: 'JP_APPLICANT'},
-  model: {recorded: env => env.JOB_PILOTTO_MODEL_OVERRIDE || 'default', replayEnv: 'JOB_PILOTTO_MODEL_OVERRIDE'},
+  model: {recorded: env => env.JOBADABRA_MODEL_OVERRIDE || 'default', replayEnv: 'JOBADABRA_MODEL_OVERRIDE'},
   engine: {recorded: env => env.LIVE_ENGINE || (env.CI ? 'api' : 'cli'), replayEnv: null},
-  store: {recorded: env => env.JOB_PILOTTO_STORE || 'sqlite', replayEnv: null, only: 'sqlite'},
+  store: {recorded: env => env.JOBADABRA_STORE || 'sqlite', replayEnv: null, only: 'sqlite'},
 };
 export const runSettings = (env = process.env) => Object.fromEntries(Object.entries(RUN_SETTINGS).map(([name, setting]) => [name, setting.recorded(env)]));
 

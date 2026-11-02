@@ -2,8 +2,8 @@
 import json, os, sqlite3, sys
 repo, out = sys.argv[1], sys.argv[2]
 sys.path.insert(0, repo)
-os.environ.update({'JOB_PILOTTO_DATA_DIR': os.environ['RD'] + '/data', 'JOB_PILOTTO_CONFIG_DIR': os.environ['RD'] + '/config',
-                   'JOB_PILOTTO_FOLLOW_APP': '0', 'JOB_PILOTTO_DISABLE': 'mail,notion,telegram,google_jobs', 'ANTHROPIC_API_KEY': ''})
+os.environ.update({'JOBADABRA_DATA_DIR': os.environ['RD'] + '/data', 'JOBADABRA_CONFIG_DIR': os.environ['RD'] + '/config',
+                   'JOBADABRA_FOLLOW_APP': '0', 'JOBADABRA_DISABLE': 'mail,notion,telegram,google_jobs', 'ANTHROPIC_API_KEY': ''})
 from src.ai import engine
 engine.ready = lambda *a, **k: False   # AI off in both
 from src import role_kinds, coverage, levels, contribute, employer_index, paths

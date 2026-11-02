@@ -51,13 +51,13 @@ function onFillOne(message, sender, reply) {
   if (message?.type !== 'panelFillOne' || !sender.tab) return false;
   const tabId = sender.tab.id, label = String(message.label || '').slice(0, 120), value = String(message.value || '').slice(0, 200);
   const run = () => chrome.scripting.executeScript({target: {tabId}, world: 'MAIN', args: [label, value],
-    func: (l, v) => (window.__jobPilottoFillOne ? window.__jobPilottoFillOne(l, v) : {ok: false, missing: true})}).then(([frame]) => frame?.result || {ok: false});
+    func: (l, v) => (window.__jobadabraFillOne ? window.__jobadabraFillOne(l, v) : {ok: false, missing: true})}).then(([frame]) => frame?.result || {ok: false});
   // Never while this tab's fill is still running: its last pass arms and clicks the menus again and overrode the app's pick (8 Oct 2026, the
   // live twin: "Suisse" picked at 20:13:35, "Allemagne" after the fill's last pass at 20:13:42). Waits for it, at most 90 s.
   const fillDone = async () => { for (let waited = 0; fillsNow.has(tabId) && waited < 90000; waited += 300) await new Promise(resolve => setTimeout(resolve, 300)); };
   fillDone().then(run).then(async result => {
     if (result.missing) {
-      await chrome.scripting.executeScript({target: {tabId}, world: 'MAIN', func: () => { window.__jobPilottoNoGuard = true; }});
+      await chrome.scripting.executeScript({target: {tabId}, world: 'MAIN', func: () => { window.__jobadabraNoGuard = true; }});
       await chrome.scripting.executeScript({target: {tabId}, world: 'MAIN', files: PAGE_FILES});
       result = await run();
     }
@@ -112,10 +112,10 @@ export async function askKind(tab, {fresh = false, digest = false, shadow = fals
     return answer?.role ? answer : null;
   } catch (error) { decide('fill', 'page kind: the app could not be asked', {class: String(error?.name || 'Error').slice(0, 40), ms: Date.now() - askedAt, digest}); return null; }   // the class only: a message can carry page text
 }
-// Claude reads this on <html data-jobpilotto-fill>. States: running, done, error, no-form, account. A fill's end goes only into the page it started on (its token, kept in this script world; 13 Oct 2026: a sign-up page's "done" landed on the form after it). Guard: app-core/test/fill-mark-own-page.test.js. Only JSON states go here; the fill's card id has its own <html data-jobpilotto-fill-id> (fill-card.js markCardId).
+// Claude reads this on <html data-jobpilotto-fill>. States: running, done, error, no-form, account. A fill's end goes only into the page it started on (its token, kept in this script world; 13 Oct 2026: a sign-up page's "done" landed on the form after it). Guard: app-core/test/fill-mark-own-page.test.js. Only JSON states go here; the fill's card id has its own <html data-jobadabra-fill-id> (fill-card.js markCardId).
 export function writeState(tabId, value, token = '') {
   return chrome.scripting.executeScript({target: {tabId}, args: [JSON.stringify(value), token, value.state],
-    func: (text, token, now) => { if (now === 'running') window.__jobPilottoFillToken = token; else if (token && window.__jobPilottoFillToken !== token) return false; if (document.documentElement) document.documentElement.dataset.jobpilottoFill = text; return true; }})
+    func: (text, token, now) => { if (now === 'running') window.__jobadabraFillToken = token; else if (token && window.__jobadabraFillToken !== token) return false; if (document.documentElement) document.documentElement.dataset.jobpilottoFill = text; return true; }})
     // Why (#2221 "the fill writing its end frees the page at once", kept 2026-10-27 under the one state owner): the fill's end on its own page is the worker's ONE verdict (#2800: the fill pass inside fillPage no longer says `done` before it), said at once, not after the bookkeeping that follows (reports, notes, dialogs):
     // the person's first click after "done" is theirs (the apply suite's Next and Submit were held). `account` hands the page over. A write the token refused (another page's end) says nothing; a later step brings `working` back (background.js progress).
     .then(rows => { if (rows?.[0]?.result && !['running', 'received'].includes(value.state)) setApply(tabId, value.state === 'account' ? 'your-turn' : 'done'); },

@@ -11,7 +11,7 @@ from src import contribute, employer_index
 
 class FixtureIsolationTest(unittest.TestCase):
     def test_a_fixture_run_sends_nothing_and_reads_no_dead_end_list(self):
-        with mock.patch.dict(os.environ, {'JOB_PILOTTO_FIXTURE_DIR': '/tmp/fixtures'}), \
+        with mock.patch.dict(os.environ, {'JOBADABRA_FIXTURE_DIR': '/tmp/fixtures'}), \
                 mock.patch.object(contribute.urllib.request, 'urlopen', side_effect=AssertionError('sent to the real pool')), \
                 mock.patch.object(employer_index, '_read', return_value={'nofeed': [{'key': 'e2eghost', 'last': '2099-01-01'}]}):
             self.assertFalse(contribute.send({'v': 2}))

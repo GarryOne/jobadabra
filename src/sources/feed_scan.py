@@ -44,7 +44,7 @@ def scan(sources, db, fetcher=None, details=None, on_jobs=None):
     key = lambda source: f'{source.get("ats", "greenhouse")}:{source.get("slug") or source["board"]}'
     with db:   # the end-to-end journey's fixture feeds answer the same every run: nothing rests there, nothing is skipped as unchanged
         db.execute(feeds.REST_TABLE)
-        fixtures = os.getenv('JOB_PILOTTO_FIXTURE_DIR')
+        fixtures = os.getenv('JOBADABRA_FIXTURE_DIR')
         rest, facts = ({}, {}) if fixtures else (feeds.resting(db, now), feed_facts.load(db))
     rested = [source for source in sources if key(source) in rest]
     same = [source for source in sources if key(source) not in rest and feed_facts.fresh(facts.get(key(source)), now)]   # judged for this search minutes ago

@@ -6,19 +6,19 @@
 // box (page/fill-verify.js types those), never a legal question (page/radios.js optionOf), within the control's one attempt log (page/attempts.js "press_real"); the worker checks
 // each point against the press floor too. Values stay in the page. Guard: app-core/test/hybrid-moves.test.js; the widget zoo's radio-trusted-only-1 and custom-select-1.
 (() => {
-  if (window.__jobPilottoPressSpots) return;
-  const norm = text => window.__jobPilottoFold(text).replace(/[^\p{L}\p{N}]/gu, '');   // the shared accent-blind fold (page/fold-text.js): "Zurich" finds "Zürich"
+  if (window.__jobadabraPressSpots) return;
+  const norm = text => window.__jobadabraFold(text).replace(/[^\p{L}\p{N}]/gu, '');   // the shared accent-blind fold (page/fold-text.js): "Zurich" finds "Zürich"
   const shown = el => !!el && !!el.getClientRects().length && getComputedStyle(el).visibility !== 'hidden';
   const TRIGGER = 'div[role=combobox], button[role=combobox], button[aria-haspopup=listbox], [role=button][aria-haspopup=listbox]';
-  const ops = () => window.__jobPilottoFillKit?.radioOps;
-  const groupOf = key => document.getElementById(key) || document.querySelector(`[data-jobpilotto-group="${CSS.escape(key)}"]`);
+  const ops = () => window.__jobadabraFillKit?.radioOps;
+  const groupOf = key => document.getElementById(key) || document.querySelector(`[data-jobadabra-group="${CSS.escape(key)}"]`);
   // field -> {kind: 'group' | 'menu', el}, or null for any other control (a text box, a native choice: not this move's).
   const controlOf = field => {
     if (String(field).startsWith('aria:')) { const group = groupOf(String(field).slice(5)); return group ? {kind: 'group', el: group} : null; }
     const el = document.getElementById(String(field));
     return el && el.matches(TRIGGER) && !el.matches('input, select, textarea') ? {kind: 'menu', el} : null;
   };
-  const answerOf = field => (window.__jobPilottoNotTakenAll?.() || []).find(([noted]) => noted === field)?.[1];
+  const answerOf = field => (window.__jobadabraNotTakenAll?.() || []).find(([noted]) => noted === field)?.[1];
   // Does the control hold the answer now? A group: its answer's option reads as on. A dropdown: the trigger shows the answer's words.
   const holds = (control, answer) => (control.kind === 'group' ? (option => !!option && !!ops()?.isOn(option))(ops()?.optionOf(control.el, answer))
     : !!norm(answer) && norm(control.el.textContent) === norm(answer));
@@ -35,10 +35,10 @@
   };
   const before = new Map();   // field -> its state before the press (the attempt log's key)
   // -> [{field, step: 'option' | 'opener', x, y}] for each noted choice that is shown and still does not hold its answer (at most 6).
-  window.__jobPilottoPressSpots = () => {
+  window.__jobadabraPressSpots = () => {
     const spots = [];
-    for (const [field, answer] of window.__jobPilottoNotTakenAll?.() || []) {
-      const control = controlOf(field), log = window.__jobPilottoAttempts;
+    for (const [field, answer] of window.__jobadabraNotTakenAll?.() || []) {
+      const control = controlOf(field), log = window.__jobadabraAttempts;
       if (spots.length >= 6 || !control || !shown(control.el) || holds(control, answer) || (log && !log.mayTry(control.el, 'press_real'))) continue;
       const target = control.kind === 'group' ? ops()?.optionOf(control.el, answer) : control.el;
       const at = shown(target) ? spotOf(target) : null;
@@ -49,7 +49,7 @@
     return spots;
   };
   // After the opener was pressed for real: where the option with the answer's name is drawn (in the list the trigger names, else any shown option), or null.
-  window.__jobPilottoPressOptionSpot = field => {
+  window.__jobadabraPressOptionSpot = field => {
     const control = controlOf(field), answer = answerOf(field);
     if (control?.kind !== 'menu' || !norm(answer)) return null;
     const list = (id => (id ? document.getElementById(id) : null))(control.el.getAttribute('aria-controls'));
@@ -57,12 +57,12 @@
     return option ? spotOf(option) : null;
   };
   // After the press: written in the control's attempt log, and whether it holds the answer now; one that does is no longer "not taken".
-  window.__jobPilottoPressedNow = field => {
+  window.__jobadabraPressedNow = field => {
     const control = controlOf(field), answer = answerOf(field);
     if (!control) return false;
     const taken = holds(control, answer);
-    window.__jobPilottoAttempts?.note(control.el, 'press_real', before.get(field), taken);
-    if (taken) window.__jobPilottoForgetNotTaken?.(field);
+    window.__jobadabraAttempts?.note(control.el, 'press_real', before.get(field), taken);
+    if (taken) window.__jobadabraForgetNotTaken?.(field);
     return taken;
   };
 })();

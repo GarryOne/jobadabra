@@ -30,24 +30,24 @@ permissions:
 
 
 # Optional features can be switched off without deleting their secrets (src/features.py),
-# e.g. repository variable JOB_PILOTTO_DISABLE=google_jobs,mail.
+# e.g. repository variable JOBADABRA_DISABLE=google_jobs,mail.
 env:
   # Free AI for a Free AI install (desktop/lib/github.js): src/ai/providers/anthropic_api.py points the SDK there. Tracking goes on after the free trial.
-  JOB_PILOTTO_AI_BASE_URL: ${{ vars.JOB_PILOTTO_AI_BASE_URL }}
+  JOBADABRA_AI_BASE_URL: ${{ vars.JOB_PILOTTO_AI_BASE_URL }}
   # The model of the small AI steps (title and page checks, triage, search picks), as the app sets it in this repo (desktop/lib/github.js).
-  JOB_PILOTTO_SMALL_MODEL: ${{ vars.JOB_PILOTTO_SMALL_MODEL }}
+  JOBADABRA_SMALL_MODEL: ${{ vars.JOB_PILOTTO_SMALL_MODEL }}
   # The AI engine the user chose for Always on (api: Anthropic key, openai: OpenAI key; never a CLI here) and the OpenAI tiers' models,
   # as the app sets them in this repo (desktop/lib/github.js; src/ai/providers, src/ai/models.py).
-  JOB_PILOTTO_AI_ENGINE: ${{ vars.JOB_PILOTTO_AI_ENGINE }}
-  JOB_PILOTTO_OPENAI_SMALL_MODEL: ${{ vars.JOB_PILOTTO_OPENAI_SMALL_MODEL }}
-  JOB_PILOTTO_OPENAI_MAIN_MODEL: ${{ vars.JOB_PILOTTO_OPENAI_MAIN_MODEL }}
-  JOB_PILOTTO_OPENAI_BIG_MODEL: ${{ vars.JOB_PILOTTO_OPENAI_BIG_MODEL }}
+  JOBADABRA_AI_ENGINE: ${{ vars.JOB_PILOTTO_AI_ENGINE }}
+  JOBADABRA_OPENAI_SMALL_MODEL: ${{ vars.JOB_PILOTTO_OPENAI_SMALL_MODEL }}
+  JOBADABRA_OPENAI_MAIN_MODEL: ${{ vars.JOB_PILOTTO_OPENAI_MAIN_MODEL }}
+  JOBADABRA_OPENAI_BIG_MODEL: ${{ vars.JOB_PILOTTO_OPENAI_BIG_MODEL }}
   # Notion's limit (~3 requests a second) is shared with the user's app on their computer: this run takes ~1.4/s.
-  JOB_PILOTTO_NOTION_GAP_MS: '700'
-  JOB_PILOTTO_DISABLE: ${{ vars.JOB_PILOTTO_DISABLE }}
+  JOBADABRA_NOTION_GAP_MS: '700'
+  JOBADABRA_DISABLE: ${{ vars.JOB_PILOTTO_DISABLE }}
   # How the person wants to be told (the app sets it, desktop/lib/github.js): email, telegram, app. E-mail goes through the website with the install's key (src/notify.py).
-  JOB_PILOTTO_NOTIFY: ${{ vars.JOB_PILOTTO_NOTIFY }}
-  JOB_PILOTTO_TRIAL_KEY: ${{ secrets.JOB_PILOTTO_TRIAL_KEY }}
+  JOBADABRA_NOTIFY: ${{ vars.JOB_PILOTTO_NOTIFY }}
+  JOBADABRA_TRIAL_KEY: ${{ secrets.JOB_PILOTTO_TRIAL_KEY }}
   # Your Notion workspace: database and page IDs, as repository variables (the Desktop App sets them).
   NOTION_APPLICATIONS_DB: ${{ vars.NOTION_APPLICATIONS_DB }}
   NOTION_MATCHES_DB: ${{ vars.NOTION_MATCHES_DB }}
@@ -66,7 +66,7 @@ jobs:
   mail:
     runs-on: ubuntu-24.04
     concurrency:
-      group: job-pilotto-mail
+      group: jobadabra-mail
       cancel-in-progress: false
     timeout-minutes: 20
     env:
@@ -113,8 +113,8 @@ jobs:
         uses: actions/cache/restore@v5
         with:
           path: data/mail-state.json
-          key: job-pilotto-mail-${{ github.run_id }}
-          restore-keys: job-pilotto-mail-
+          key: jobadabra-mail-${{ github.run_id }}
+          restore-keys: jobadabra-mail-
       - name: Wait
         if: env.GOOGLE_REFRESH_TOKEN != '' && env.NOTION_APPLICATIONS_DB != '' && inputs.delay && inputs.delay != '0'
         run: sleep $(( ${{ inputs.delay }} * 60 ))
@@ -129,14 +129,14 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          JOB_PILOTTO_MAIL_MODEL: ${{ vars.JOB_PILOTTO_MAIL_MODEL || 'claude-haiku-5-5' }}
-          JOB_PILOTTO_RUN_ID: ${{ github.run_id }}
+          JOBADABRA_MAIL_MODEL: ${{ vars.JOB_PILOTTO_MAIL_MODEL || 'claude-haiku-5-5' }}
+          JOBADABRA_RUN_ID: ${{ github.run_id }}
         run: |
-          echo "run_id=${JOB_PILOTTO_RUN_ID}"
+          echo "run_id=${JOBADABRA_RUN_ID}"
           pip install --quiet -r requirements.txt
           send=()
           if [ -n "$TELEGRAM_BOT_TOKEN" ] && [ -n "$TELEGRAM_CHAT_ID" ]; then send=(--send); fi
-          case ",$JOB_PILOTTO_NOTIFY," in *,email,*) send=(--send) ;; esac   # e-mail chosen: src/notify.py
+          case ",$JOBADABRA_NOTIFY," in *,email,*) send=(--send) ;; esac   # e-mail chosen: src/notify.py
           # Only a check that recorded something answers on Telegram: a quiet one says so in the app and on its ⏱️
           # Search runs row, and a "nothing that changes your applications" message for every check someone started
           # is noise (the app dispatches this workflow for its "Check Gmail now", 1 Oct 2026).
@@ -151,7 +151,7 @@ jobs:
         run: |
           python -m src.notify "Jobadabra Gmail check failed: ${RUN_URL}" || true   # e-mail, when chosen (src/notify.py)
           [ -n "$TELEGRAM_BOT_TOKEN" ] && [ -n "$TELEGRAM_CHAT_ID" ] || exit 0
-          case ",$JOB_PILOTTO_NOTIFY," in ,,|*,telegram,*) ;; *) exit 0 ;; esac   # Telegram turned off in Settings → Notifications
+          case ",$JOBADABRA_NOTIFY," in ,,|*,telegram,*) ;; *) exit 0 ;; esac   # Telegram turned off in Settings → Notifications
           curl -fsS "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
             --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
             --data-urlencode "text=❌ Jobadabra Gmail check failed: ${RUN_URL}" > /dev/null
@@ -160,4 +160,4 @@ jobs:
         uses: actions/cache/save@v5
         with:
           path: data/mail-state.json
-          key: job-pilotto-mail-${{ github.run_id }}
+          key: jobadabra-mail-${{ github.run_id }}

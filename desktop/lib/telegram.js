@@ -8,7 +8,7 @@ import * as notionGate from './notion-gate.js';
 import {telegramStore} from './store/telegram-store.js';
 
 // The end-to-end tests' fake Bot API (desktop/e2e/lib/telegram-fake.mjs), honoured only in a test run.
-export const BASE = process.env.JOB_PILOTTO_E2E && process.env.JOB_PILOTTO_E2E_TELEGRAM_BASE_URL ? process.env.JOB_PILOTTO_E2E_TELEGRAM_BASE_URL.replace(/\/$/, '') : 'https://api.telegram.org';
+export const BASE = process.env.JOBADABRA_E2E && process.env.JOBADABRA_E2E_TELEGRAM_BASE_URL ? process.env.JOBADABRA_E2E_TELEGRAM_BASE_URL.replace(/\/$/, '') : 'https://api.telegram.org';
 export async function api(token, method, body = {}, fetcher = globalThis.fetch) {
   const response = await fetcher(`${BASE}/bot${token}/${method}`, {
     method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body),

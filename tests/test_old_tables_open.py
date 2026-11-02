@@ -39,7 +39,7 @@ class OldTablesOpen(unittest.TestCase):
     def test_run_with_a_long_queue_on_a_table_from_before_checked_with(self):
         """The crash itself (17 Oct 2026): a long queue on a table from before checked_with reached next_batch without harvest()."""
         db = old_candidates_db(105)
-        with tempfile.TemporaryDirectory() as tmp, mock.patch.dict('os.environ', {'JOB_PILOTTO_FIXTURE_DIR': tmp}), \
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.dict('os.environ', {'JOBADABRA_FIXTURE_DIR': tmp}), \
                 mock.patch.object(scout.employer_index, 'central_nofeed', return_value=set()):
             scout.run(db, batch=3, seeds={}, probe=lambda *a, **k: None, static=[], workers=1)
         self.assertLessEqual({'website', 'checked_with'}, columns(db, 'scout_candidates'))

@@ -49,7 +49,7 @@ export async function backgroundChallenge(tabId, reason = 'captcha_runtime') {  
   const context = await backgroundContext(tabId);
   if (!context) return false;
   await owned().requireManual(context.session, reason);
-  await chrome.scripting.executeScript({target: {tabId, allFrames: true}, world: 'MAIN', func: () => { window.__jobPilottoStopped = true; }}).catch(() => {});
+  await chrome.scripting.executeScript({target: {tabId, allFrames: true}, world: 'MAIN', func: () => { window.__jobadabraStopped = true; }}).catch(() => {});
   await request(context, {action: 'manual', reason}).catch(() => null);
   const row = await owned().inspect(context.session);
   if (reason !== 'captcha_preflight' && !row.revealedAt) await owned().reveal(context.session);   // words-ok: our own hand-off reason id / user-facing word, not page knowledge

@@ -134,7 +134,7 @@ class AggregatorKindTests(unittest.TestCase):
         """Jobicy is read by IT tags (devops, sre, kubernetes): a photographer's check asked it for DevOps jobs (6 Oct 2026)."""
         from src.sources import aggregators
         with mock.patch.object(aggregators, 'jobicy', lambda: ['a remote DevOps job']):
-            reader = dict(aggregators.sources({'JOB_PILOTTO_DISABLE': ''}))['Jobicy']
+            reader = dict(aggregators.sources({'JOBADABRA_DISABLE': ''}))['Jobicy']
             self.assertEqual(reader(PHOTOGRAPHER), [])
             self.assertEqual(reader({'role_keywords': [r'\bsre\b']}), ['a remote DevOps job'])
 

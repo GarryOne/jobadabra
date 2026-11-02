@@ -30,7 +30,7 @@ def _post(url, body):
     """The JSON a widgets request answers (a fixture folder stands in for the network in the journey tests)."""
     request = urllib.request.Request(url, data=json.dumps(body).encode(), headers={
         'User-Agent': ats.USER_AGENT, 'Content-Type': 'application/json', 'Accept': 'application/json'})
-    fixtures = os.getenv('JOB_PILOTTO_FIXTURE_DIR')
+    fixtures = os.getenv('JOBADABRA_FIXTURE_DIR')
     if fixtures:
         return json.loads(ats._fixture(fixtures, f'{url}?{body.get("keywords", "")}'))
     with host_pace.open(request, ats.TIMEOUT) as response:

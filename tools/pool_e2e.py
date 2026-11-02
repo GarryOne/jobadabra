@@ -75,10 +75,10 @@ def main():
     (WORK / 'config' / 'search.json').write_text(json.dumps(search))
     for name in ('preferences.json', 'scout_seeds.json', 'sources.json'):
         shutil.copy(REPO / 'config' / name, WORK / 'config' / name)
-    os.environ.update({'JOB_PILOTTO_DATA_DIR': str(WORK / 'data'), 'JOB_PILOTTO_CONFIG_DIR': str(WORK / 'config'), 'JOB_PILOTTO_FOLLOW_APP': '0',
-                       'JOB_PILOTTO_SHARE_EMPLOYERS': '1', 'JOB_PILOTTO_INSTALL_ID': 'e2e-pool-0001', 'JOB_PILOTTO_CONTRIBUTE_URL': f'{base}/api/contribute',
-                       'JOB_PILOTTO_INDEX_URL': f'{base}/api/index', 'JOB_PILOTTO_DISABLE': 'mail,notion,telegram,google_jobs'})
-    os.environ.pop('JOB_PILOTTO_LOCATIONS_FILE', None)
+    os.environ.update({'JOBADABRA_DATA_DIR': str(WORK / 'data'), 'JOBADABRA_CONFIG_DIR': str(WORK / 'config'), 'JOBADABRA_FOLLOW_APP': '0',
+                       'JOBADABRA_SHARE_EMPLOYERS': '1', 'JOBADABRA_INSTALL_ID': 'e2e-pool-0001', 'JOBADABRA_CONTRIBUTE_URL': f'{base}/api/contribute',
+                       'JOBADABRA_INDEX_URL': f'{base}/api/index', 'JOBADABRA_DISABLE': 'mail,notion,telegram,google_jobs'})
+    os.environ.pop('JOBADABRA_LOCATIONS_FILE', None)
     sys.path.insert(0, str(REPO))
     from src import contribute, coverage, employer_index, role_kinds, scout, store
     from src.sources import feeds
@@ -183,12 +183,12 @@ def main():
 
     def opt_out():
         before = len(POSTS)
-        os.environ['JOB_PILOTTO_SHARE_EMPLOYERS'] = '0'
+        os.environ['JOBADABRA_SHARE_EMPLOYERS'] = '0'
         try:
             contribute.share_now(feed={'ats': 'lever', 'slug': 'x', 'company': 'X'})
             contribute.maybe_send(feed_list, {**report, 'sources': []}, None, db=db)
         finally:
-            os.environ['JOB_PILOTTO_SHARE_EMPLOYERS'] = '1'
+            os.environ['JOBADABRA_SHARE_EMPLOYERS'] = '1'
         if len(POSTS) != before:
             raise AssertionError(f'{len(POSTS) - before} shares sent with the switch off')
     check('With "Help the pool grow" off, nothing is sent', opt_out)

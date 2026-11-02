@@ -127,11 +127,11 @@ export function nextByRecipe(recipe) {
     const current = document.querySelector('[aria-current="page"], [aria-current="true"]');
     const number = Number((current?.innerText || '').trim());
     const following = number && controls.find(node => (node.innerText || '').trim() === String(number + 1));
-    if (following) { (globalThis.__jobPilottoPress?.(following) || following.click()); return 'page number'; }
+    if (following) { (globalThis.__jobadabraPress?.(following) || following.click()); return 'page number'; }
     return 'none';
   }
   const target = controls.find(node => labels(node).includes(recipe.next));
-  if (target) { (globalThis.__jobPilottoPress?.(target) || target.click()); return 'recipe'; }
+  if (target) { (globalThis.__jobadabraPress?.(target) || target.click()); return 'recipe'; }
   return 'none';
 }
 
@@ -143,7 +143,7 @@ export function closeConsent(want = null) {   // want: {list: true} -> the box's
   const visible = node => { const box = node.getBoundingClientRect(); const look = getComputedStyle(node); return box.width > 0 && box.height > 0 && look.visibility !== 'hidden' && look.display !== 'none'; };
   const words = node => (node.innerText || node.value || node.getAttribute('aria-label') || '').replace(/\s+/g, ' ').trim();
   // Also inside open shadow roots: a banner drawn by web components (Usercentrics: div#usercentrics-root) is invisible to document.querySelectorAll (Hornbach, 11 Oct 2026). Same walk as fill-flow.js pageSketchOf.
-  const deep = selector => { const found = []; const walk = root => { found.push(...root.querySelectorAll(selector)); for (const el of root.querySelectorAll('*')) if (el.shadowRoot && !/^job-?pilotto/.test(el.id)) walk(el.shadowRoot); }; walk(document); return found; };
+  const deep = selector => { const found = []; const walk = root => { found.push(...root.querySelectorAll(selector)); for (const el of root.querySelectorAll('*')) if (el.shadowRoot && !/^jobadabra/.test(el.id)) walk(el.shadowRoot); }; walk(document); return found; };
   const ABOUT = want?.cookiesOnly ? /cookie|traceurs|tracking/i : /cookie|consent|gdpr|privacy|datenschutz|confidentialit|traceurs|tracking/i;   // cookiesOnly: the application flow never touches a privacy or terms box
   // Inside a frame that is itself the consent message (Sourcepoint, TrustArc draw theirs in an iframe), the whole frame is the box.
   const framed = window !== window.top && ABOUT.test(document.body?.innerText || '') && !document.querySelector('input[type=password]') ? [document.body] : [];
@@ -157,22 +157,22 @@ export function closeConsent(want = null) {   // want: {list: true} -> the box's
   const stays = node => !leavesPage(node);
   const buttonsOf = box => [...box.querySelectorAll('button, a, [role=button], input[type=button], input[type=submit]')].filter(node => visible(node) && stays(node) && words(node) && words(node).length < 60);
   if (want?.list) return [...new Set(boxes.flatMap(box => buttonsOf(box).map(words)))].slice(0, 20);
-  if (want?.press) { const button = boxes.flatMap(buttonsOf).find(node => words(node) === want.press); if (button) (globalThis.__jobPilottoPress?.(button) || button.click()); return button && !window.__jobPilottoRefused ? words(button) : ''; }   // a press the floor refused (page/submit-press.js) is no press
+  if (want?.press) { const button = boxes.flatMap(buttonsOf).find(node => words(node) === want.press); if (button) (globalThis.__jobadabraPress?.(button) || button.click()); return button && !window.__jobadabraRefused ? words(button) : ''; }   // a press the floor refused (page/submit-press.js) is no press
   for (const pattern of [least, any]) {
     for (const box of boxes) {
       const button = [...box.querySelectorAll('button, a, [role=button], input[type=button], input[type=submit]')].find(node => visible(node) && stays(node) && pattern.test(words(node)) && words(node).length < 60);
-      if (button) { (globalThis.__jobPilottoPress?.(button) || button.click()); return window.__jobPilottoRefused ? '' : words(button); }
+      if (button) { (globalThis.__jobadabraPress?.(button) || button.click()); return window.__jobadabraRefused ? '' : words(button); }
     }
   }
   return '';
 }
 
 export function pageBanner(text) {
-  let node = document.getElementById('jobpilotto-reading');
+  let node = document.getElementById('jobadabra-reading');
   if (!text) { node?.remove(); return; }
   if (!node) {
     node = document.createElement('div');
-    node.id = 'jobpilotto-reading';
+    node.id = 'jobadabra-reading';
     node.setAttribute('role', 'status');
     node.style.cssText = 'position:fixed;z-index:2147483647;right:16px;bottom:16px;padding:10px 14px;border-radius:10px;background:#132439;color:#fff;'
       + 'font:600 13px/1.4 -apple-system,BlinkMacSystemFont,system-ui,sans-serif;box-shadow:0 6px 24px rgba(0,0,0,.25);pointer-events:none';
@@ -280,8 +280,8 @@ export async function applyFilters(steps) {
         node.value = String(value).slice(0, stem.length);
         node.dispatchEvent(new Event('input', {bubbles: true}));
       }
-      if (option && !globalThis.__jobPilottoSubmitPress?.refused(option)) {   // the press floor (page/submit-press.js) holds for the suggestion click too
-        globalThis.__jobPilottoSubmitPress?.mark(option);
+      if (option && !globalThis.__jobadabraSubmitPress?.refused(option)) {   // the press floor (page/submit-press.js) holds for the suggestion click too
+        globalThis.__jobadabraSubmitPress?.mark(option);
         for (const type of ['mousedown', 'mouseup', 'click']) option.dispatchEvent(new MouseEvent(type, {bubbles: true, cancelable: true}));
         return (option.innerText || option.textContent).replace(/\s+/g, ' ').trim().slice(0, 80);
       }
@@ -322,7 +322,7 @@ export async function applyFilters(steps) {
       node.dispatchEvent(new KeyboardEvent('keydown', {key: 'Enter', bubbles: true}));
       searchSubmit(node.form);
     } else {
-      (globalThis.__jobPilottoPress?.(node) || node.click());
+      (globalThis.__jobadabraPress?.(node) || node.click());
     }
     done.push({control: step.control, ok: true});
   }
@@ -336,19 +336,19 @@ export function goNext() {
     && !/\$\{|\{\{|%7B/i.test(node.getAttribute('href') || '');   // a link to template code (DHL's "${getUrl(") goes nowhere
   const labels = node => [node.innerText, node.getAttribute('aria-label'), node.getAttribute('title')].map(text => (text || '').trim()).filter(Boolean);
   const rel = document.querySelector('a[rel="next"], link[rel="next"]');
-  if (rel?.href && rel.tagName === 'A' && visible(rel)) { (globalThis.__jobPilottoPress?.(rel) || rel.click()); return 'next link'; }
+  if (rel?.href && rel.tagName === 'A' && visible(rel)) { (globalThis.__jobadabraPress?.(rel) || rel.click()); return 'next link'; }
   const NEXT = /^(next|suivant|weiter|nächste|siguiente|successivo|›|»|>)$|next page|page suivante|nächste seite/i;
   const controls = [...document.querySelectorAll('a, button, [role="button"]')].filter(visible);
   const next = controls.find(node => labels(node).some(text => NEXT.test(text)));
-  if (next) { (globalThis.__jobPilottoPress?.(next) || next.click()); return 'next button'; }
+  if (next) { (globalThis.__jobadabraPress?.(next) || next.click()); return 'next button'; }
   const current = document.querySelector('[aria-current="page"], [aria-current="true"], .active > a, li.selected');
   const number = Number((current?.innerText || '').trim());
   if (number) {
     const following = controls.find(node => (node.innerText || '').trim() === String(number + 1));
-    if (following) { (globalThis.__jobPilottoPress?.(following) || following.click()); return 'page number'; }
+    if (following) { (globalThis.__jobadabraPress?.(following) || following.click()); return 'page number'; }
   }
   const more = controls.find(node => labels(node).some(text => /^(see more jobs|show more|load more|more jobs|afficher plus|plus d'offres|mehr anzeigen|weitere jobs)/i.test(text)));
-  if (more) { (globalThis.__jobPilottoPress?.(more) || more.click()); return 'more button'; }
+  if (more) { (globalThis.__jobadabraPress?.(more) || more.click()); return 'more button'; }
   const before = document.documentElement.scrollHeight;
   window.scrollTo(0, before);
   return before > window.innerHeight + 50 ? 'scroll' : 'none';

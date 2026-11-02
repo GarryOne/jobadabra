@@ -1,7 +1,7 @@
 """The SQLite store: the user's data on this Mac, the default adapter when Notion isn't chosen.
 
 One file, data/tracker.sqlite (the user's records; data/jobs.sqlite stays a rebuildable crawl cache), files under
-data/files/<app_id>/, texts as Markdown files (the desktop app's JOB_PILOTTO_PROFILE_FILE / _ANSWERS_FILE /
+data/files/<app_id>/, texts as Markdown files (the desktop app's JOBADABRA_PROFILE_FILE / _ANSWERS_FILE /
 _KNOWLEDGE_FILE when set, else data/texts/<name>.md). Each table keeps the whole record as JSON in `data` (so an int
 stays an int and a list a list) plus the few columns it is looked up or ordered by. Spec: docs/superpowers/specs/2026-10-09-store-adapters.md.
 Guarded by tests/test_store_sqlite.py (the contract suite plus what is SQLite's own: reopening, the file layout).
@@ -461,8 +461,8 @@ class CronRuns(_Table):
 
 class Texts:
     """Whole Markdown files: the app's Profile and standard answers where it keeps them, else data/texts/<name>.md."""
-    VARIABLES = {'profile': 'JOB_PILOTTO_PROFILE_FILE', 'answers': 'JOB_PILOTTO_ANSWERS_FILE',
-                 'knowledge': 'JOB_PILOTTO_KNOWLEDGE_FILE'}
+    VARIABLES = {'profile': 'JOBADABRA_PROFILE_FILE', 'answers': 'JOBADABRA_ANSWERS_FILE',
+                 'knowledge': 'JOBADABRA_KNOWLEDGE_FILE'}
 
     def __init__(self, folder, env):
         self.folder, self.env = Path(folder), env
@@ -486,9 +486,9 @@ class Texts:
 
 
 def root(env):
-    """The data folder: JOB_PILOTTO_DATA_DIR (the app's, a test's temp folder) when set, else the engine's data/."""
+    """The data folder: JOBADABRA_DATA_DIR (the app's, a test's temp folder) when set, else the engine's data/."""
     from .. import paths
-    return Path(env.get('JOB_PILOTTO_DATA_DIR') or paths.DATA)
+    return Path(env.get('JOBADABRA_DATA_DIR') or paths.DATA)
 
 
 def open_store(env=None):

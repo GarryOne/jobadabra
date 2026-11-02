@@ -15,7 +15,7 @@ export function restoreInPage(handoff) {
   let put = 0;
   const into = (area, items) => { for (const [name, value] of Object.entries(items || {})) { try { if (area.getItem(name) === null) { area.setItem(name, value); put++; } } catch { /* storage refused */ } } };
   into(localStorage, handoff.localStorage); into(sessionStorage, handoff.sessionStorage);
-  if (handoff.fromNight) document.documentElement.setAttribute('data-jobpilotto-night', '1');   // the panel's words (review.js)
+  if (handoff.fromNight) document.documentElement.setAttribute('data-jobadabra-night', '1');   // the panel's words (review.js)
   return put;
 }
 

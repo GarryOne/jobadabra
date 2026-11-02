@@ -3,7 +3,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-// The live form, as window.__jobPilottoDescribeForm reads it (the Anthropic form's shape).
+// The live form, as window.__jobadabraDescribeForm reads it (the Anthropic form's shape).
 const FORM = [
   {field: 'first_name', label: 'First Name', type: 'text', required: true}, {field: 'last_name', label: 'Last Name', type: 'text', required: true},
   {field: 'email', label: 'Email', type: 'email', required: true}, {field: 'phone', label: 'Phone', type: 'tel'},
@@ -23,9 +23,9 @@ async function run() {
     storage: {session: {get: async () => ({}), set: async () => {}}, local: {get: async () => ({})}},
     scripting: {executeScript: async ({func, args}) => {
       if (!func) return [{}];
-      const window = {__jobPilottoDescribeForm: async () => FORM, __jobPilottoCheckboxQuestions: () => [], __jobPilottoPageText: () => '',
-        __jobPilottoProfileEntries: rows => rows.filter(r => ['first_name', 'last_name', 'email', 'phone'].includes(r.field)).map(r => ({field: r.field})),
-        __jobPilottoExtensionFill: list => { calls.push({path: 'page fill', fields: list.map(a => a.field)}); return {filled: 5, todo: []}; }, __jobPilottoArmedCount: () => 0};
+      const window = {__jobadabraDescribeForm: async () => FORM, __jobadabraCheckboxQuestions: () => [], __jobadabraPageText: () => '',
+        __jobadabraProfileEntries: rows => rows.filter(r => ['first_name', 'last_name', 'email', 'phone'].includes(r.field)).map(r => ({field: r.field})),
+        __jobadabraExtensionFill: list => { calls.push({path: 'page fill', fields: list.map(a => a.field)}); return {filled: 5, todo: []}; }, __jobadabraArmedCount: () => 0};
       globalThis.window = window;
       return [{result: await func(...(args || []))}];
     }},

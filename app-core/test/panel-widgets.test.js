@@ -19,12 +19,12 @@ const SLIDER = '<div id="lbl">How would you rate your Terraform skill? *</div><d
 async function panel(html, after) {
   const { window } = openPage(JSDOM, html);
   window.chrome = { runtime: { id: 'test', getManifest: () => ({ version: 'test' }), sendMessage: async (message) => (message.type === 'panelAllowed' ? { ok: true } : {}), onMessage: { addListener() {} } } };
-  window.document.documentElement.setAttribute('data-jobpilotto-page', 'form');   // the fill flow judged this page a form (extension/page-mark.js): only then may the panel count or say Ready
+  window.document.documentElement.setAttribute('data-jobadabra-page', 'form');   // the fill flow judged this page a form (extension/page-mark.js): only then may the panel count or say Ready
   window.eval(read('extension/page/skeleton.js'));
   evalPanel(window);
   await new Promise((resolve) => setTimeout(resolve, 50));
   const read2 = () => {
-    const root = window.document.getElementById('jobpilotto-review-host')?.shadowRoot;
+    const root = window.document.getElementById('jobadabra-review-host')?.shadowRoot;
     return root && { pill: root.querySelector('.pill b').textContent, ring: root.querySelector('.ring span').textContent };
   };
   const before = read2();
@@ -40,7 +40,7 @@ test('a page nothing has judged yet says only "Reading this page…", never Read
   window.eval(read('extension/page/skeleton.js'));
   evalPanel(window);
   await new Promise((resolve) => setTimeout(resolve, 50));
-  const pill = window.document.getElementById('jobpilotto-review-host')?.shadowRoot?.querySelector('.pill b')?.textContent;
+  const pill = window.document.getElementById('jobadabra-review-host')?.shadowRoot?.querySelector('.pill b')?.textContent;
   window.close();
   assert.equal(pill, 'Reading this page…');
 });
@@ -96,13 +96,13 @@ test('a required question nothing read is listed; answering it yourself is repor
   const { window } = openPage(JSDOM, FORM(`${UNREAD}<button type="button" id="go">Submit application</button>`));
   const sent = [];
   window.chrome = { runtime: { id: 'test', getManifest: () => ({ version: 'test' }), sendMessage: async (message) => { sent.push(message); return message.type === 'panelAllowed' ? { ok: true } : {}; }, onMessage: { addListener() {} } } };
-  window.document.documentElement.setAttribute('data-jobpilotto-page', 'form');   // judged a form by the fill flow (extension/page-mark.js)
+  window.document.documentElement.setAttribute('data-jobadabra-page', 'form');   // judged a form by the fill flow (extension/page-mark.js)
   window.eval(read('extension/page/skeleton.js'));
   window.eval(read('extension/page/coverage.js'));
   window.eval(read('extension/page/submit-press.js'));
   evalPanel(window);
   await new Promise((resolve) => setTimeout(resolve, 50));
-  const pill = () => window.document.getElementById('jobpilotto-review-host').shadowRoot.querySelector('.pill b').textContent;
+  const pill = () => window.document.getElementById('jobadabra-review-host').shadowRoot.querySelector('.pill b').textContent;
   assert.equal(pill(), '1 left');
   const trusted = (el, type) => { const event = new window.MouseEvent(type, { bubbles: true }); event.__jpTrusted = true; el.dispatchEvent(event); };
   window.document.getElementById('p6').checked = true;
@@ -138,7 +138,7 @@ test('an empty combobox is not filled by a neighbouring field\'s hidden value', 
 test('a small sign-in page has no panel, unless the AI says it needs the person: then the panel says what', { skip: !JSDOM }, async () => {
   const SIGN_IN = '<form><label for="e">Email</label><input id="e" type="email" value=""><label for="p">Password</label><input id="p" type="password" value=""></form>';
   assert.ok(!(await panel(SIGN_IN)).before);   // no panel at all
-  const flagged = await panel(SIGN_IN, document => document.documentElement.setAttribute('data-jobpilotto-needs', 'Check the code we sent you'));
+  const flagged = await panel(SIGN_IN, document => document.documentElement.setAttribute('data-jobadabra-needs', 'Check the code we sent you'));
   assert.match(flagged.after?.pill || '', /^Needs you: Check the code we sent you/);
 });
 
@@ -148,12 +148,12 @@ test('the panel shows its ⚑ "Report this form" icon in every state: reading, p
     ['form, ready', 'form', FORM('')], ['account page', 'account', FORM('<label>Password <input type="password" required></label>')]];
   for (const [name, mark, html] of states) {
     const { window } = openPage(JSDOM, html);
-    if (mark) window.document.documentElement.setAttribute('data-jobpilotto-page', mark);
+    if (mark) window.document.documentElement.setAttribute('data-jobadabra-page', mark);
     window.chrome = { runtime: { id: 'test', getManifest: () => ({ version: 'test' }), sendMessage: async (message) => (message.type === 'panelAllowed' ? { ok: true } : {}), onMessage: { addListener() {} } } };
     window.eval(read('extension/page/skeleton.js'));
     evalPanel(window);
     await new Promise((resolve) => setTimeout(resolve, 50));
-    const root = window.document.getElementById('jobpilotto-review-host')?.shadowRoot;
+    const root = window.document.getElementById('jobadabra-review-host')?.shadowRoot;
     root?.querySelector('.pill')?.click();   // opened, as a person does
     const icon = root?.querySelector('.foot .report-btn');
     const seen = { name, there: !!icon && !icon.hidden && icon.getAttribute('aria-label') === 'Report this form' && icon.textContent.trim() === 'Report' && !root.querySelector('.head .report-flag') };
@@ -161,6 +161,6 @@ test('the panel shows its ⚑ "Report this form" icon in every state: reading, p
     assert.deepEqual(seen, { name, there: true });
   }
   const panel = read('extension/review.js');
-  assert.match(panel, /\$\('\.report-btn'\)\.onclick = event => \{[^]*if \(!event\.isTrusted\) return;[^]*window\.__jobPilottoReport\.open\(\);/);
-  assert.match(read('extension/panel-report.js'), /window\.__jobPilottoReport = \{mount, open, words: WORDS, sentence: refusal\};/, 'the popup the footer\'s Report opens');
+  assert.match(panel, /\$\('\.report-btn'\)\.onclick = event => \{[^]*if \(!event\.isTrusted\) return;[^]*window\.__jobadabraReport\.open\(\);/);
+  assert.match(read('extension/panel-report.js'), /window\.__jobadabraReport = \{mount, open, words: WORDS, sentence: refusal\};/, 'the popup the footer\'s Report opens');
 });

@@ -9,7 +9,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-export const GAP_MS = Number(process.env.JOB_PILOTTO_NOTION_GAP_MS) || 340;  // ~3 a second (Notion's limit)
+export const GAP_MS = Number(process.env.JOBADABRA_NOTION_GAP_MS) || 340;  // ~3 a second (Notion's limit)
 const LOCK_STALE_MS = 3000;
 const LOCK_TRIES = 200;
 
@@ -17,11 +17,11 @@ const LOCK_TRIES = 200;
 export const isLoopback = value => /^http:\/\/127\.0\.0\.1(?::\d+)?(?:\/|$)/.test(String(value || ''));
 
 /** True only for an explicitly marked in-memory service in e2e; local fault proxies retain production pacing. */
-// Why (31 Oct 2026, owner review of bab7120): the shared pacer owns the exemption so every client and subprocess follows one rule.
-export const isStandIn = (env = process.env) => !!env.JOB_PILOTTO_E2E && env.JOB_PILOTTO_E2E_NOTION_STANDIN === '1' && isLoopback(env.JOB_PILOTTO_E2E_NOTION_BASE_URL);
+// Why (31 Oct 2026, owner review of bab7120; names renamed 1 Nov 2026): the shared pacer owns the exemption so every client and subprocess follows one rule.
+export const isStandIn = (env = process.env) => !!env.JOBADABRA_E2E && env.JOBADABRA_E2E_NOTION_STANDIN === '1' && isLoopback(env.JOBADABRA_E2E_NOTION_BASE_URL);
 
 export const paceFile = token => path.join(os.tmpdir(),
-  `job-pilotto-notion-${crypto.createHash('sha256').update(String(token)).digest('hex').slice(0, 12)}.pace`);
+  `jobadabra-notion-${crypto.createHash('sha256').update(String(token)).digest('hex').slice(0, 12)}.pace`);
 
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
 

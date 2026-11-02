@@ -17,7 +17,7 @@ import {mayAct} from './stop-state.js';
 const PAGE_BUTTONS = 'a[href], button, [role="button"], input[type="button"]';
 function applyCandidates(tabId, listed = PAGE_BUTTONS) {   // listed: PAGE_BUTTONS for the phrase path, NAMED_BUTTONS (the page sketch's own list) when the AI named the control
   return chrome.scripting.executeScript({target: {tabId}, func: selector => [...document.querySelectorAll(selector)].map((el, index) => {
-    if (el.closest('[id^=jobpilotto], [id^=job-pilotto]')) return null;   // never the extension's own UI; the index stays the page's (desktop/e2e/test/own-ui-not-read.test.mjs)
+    if (el.closest('[id^=jobadabra], [id^=jobadabra]')) return null;   // never the extension's own UI; the index stays the page's (desktop/e2e/test/own-ui-not-read.test.mjs)
     const box = el.getBoundingClientRect(), style = getComputedStyle(el);
     return {index, tag: el.tagName.toLowerCase(), text: (el.innerText || el.value || el.getAttribute('aria-label') || '').slice(0, 80),
       area: Math.round(box.width * box.height), visible: el.getClientRects().length > 0 && style.visibility !== 'hidden',
@@ -107,7 +107,7 @@ export async function pressApply(tabId, phrases = [], named = '', want = '', noE
     const counting = function () { noted(); return open.apply(this, arguments); };   // after the redirect window: the page's own behaviour, only counted
     setTimeout(() => { if (window.open !== open) window.open = counting; }, 5000);
     setTimeout(() => { if (window.open === counting) window.open = open; }, 25000);
-    (globalThis.__jobPilottoPress?.(el) || el.click());
+    (globalThis.__jobadabraPress?.(el) || el.click());
     return {same, tag: el.tagName.toLowerCase(), aimed};
   }, args: [listed, pick.index]}).then(rows => rows?.[0]?.result || null).catch(error => ({error: String(error?.message || error).slice(0, 120)}));
   if (done?.error) { decide('fill', 'the Apply button could not be pressed', {error: done.error}); return {pressed: null, via: '', buttons: []}; }

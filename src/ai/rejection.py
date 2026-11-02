@@ -2,8 +2,7 @@
 """Rejection review: why an application was turned down, and whether there's anything to improve.
 
 After each rejection (the Gmail check runs it when a rejection email moves an application to Rejected), or on
-demand (the Desktop App's job menu → "Why was I rejected?", or this command), Claude Sonnet 5 reads what Job
-Pilotto keeps about the application:
+demand (the Desktop App's job menu → "Why was I rejected?", or this command), Claude Sonnet 5 reads what Jobadabra keeps about the application:
 - the job posting and the answers and cover letter sent (the frozen 🗂 Application record), the fit score and
   its reasons;
 - the timeline (📈 Application Events: how far it got, how fast the answer came);
@@ -43,7 +42,7 @@ from .models import MAIN_MODEL
 from .writing_floors import scrub
 from .writing_rules import RULES as WRITING_RULES
 
-DEFAULT_MODEL = os.getenv('JOB_PILOTTO_REJECTION_MODEL', os.getenv('JOB_PILOTTO_INSIGHT_MODEL', MAIN_MODEL))
+DEFAULT_MODEL = os.getenv('JOBADABRA_REJECTION_MODEL', os.getenv('JOBADABRA_INSIGHT_MODEL', MAIN_MODEL))
 HEADING = '🔎 Why it was rejected'
 NOT_ON_YOU = 'Not a fit (not on you)'
 VERDICTS = ['Presentation', 'Hard skills', 'Soft skills', NOT_ON_YOU, 'Unclear']

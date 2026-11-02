@@ -110,7 +110,7 @@ class EuresTest(unittest.TestCase):
 
     def test_registered_as_a_free_api_and_off_by_its_switch(self):
         self.assertIn('EURES', [name for name, _ in aggregators.sources({})])
-        self.assertNotIn('EURES', [name for name, _ in aggregators.sources({'JOB_PILOTTO_DISABLE': 'eures'})])
+        self.assertNotIn('EURES', [name for name, _ in aggregators.sources({'JOBADABRA_DISABLE': 'eures'})])
 
     def test_it_runs_past_the_read_cut_and_stops_asking_after_its_own_time(self):
         from src.sources import read_budget
@@ -172,7 +172,7 @@ class EuresTest(unittest.TestCase):
     def test_the_early_read_is_not_started_when_the_stage_would_not_take_it(self):
         from datetime import datetime, timezone
         from src.sources import feeds
-        with mock.patch.dict('os.environ', {'JOB_PILOTTO_DISABLE': 'eures'}):
+        with mock.patch.dict('os.environ', {'JOBADABRA_DISABLE': 'eures'}):
             self.assertIsNone(eures.start_early(SEARCH), 'switched off')
         with mock.patch.object(eures, 'DATA', Path(self.tmp.name)):
             with feeds.database(Path(self.tmp.name) / 'jobs.sqlite') as db:
@@ -180,7 +180,7 @@ class EuresTest(unittest.TestCase):
             self.assertIsNone(eures.start_early(SEARCH), 'read within the last SPACING_HOURS for this search')
 
     def test_the_early_read_is_not_started_in_the_fixture_mode(self):
-        with mock.patch.dict('os.environ', {'JOB_PILOTTO_FIXTURE_DIR': '/x'}):
+        with mock.patch.dict('os.environ', {'JOBADABRA_FIXTURE_DIR': '/x'}):
             self.assertIsNone(eures.start_early(SEARCH))
 
     def test_the_search_starts_it_with_the_run(self):

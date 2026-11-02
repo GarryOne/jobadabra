@@ -10,16 +10,16 @@ here="$(cd "$(dirname "$0")" && pwd)"
 id="$(printf '%s' "${url%%\?*}" | sed -E 's#/+$##; s#.*/##')"
 board="$(printf '%s' "$url" | sed -E 's#https?://[^/]+/([^/?]+).*#\1#')"
 case "$url" in *amazon.jobs*) board=amazon; id="$(printf '%s' "$url" | sed -E 's#.*/jobs/([0-9]+).*#\1#')" ;; esac
-# A session running inside the Jobadabra app (JOB_PILOTTO_SESSION): the app shows it on the session's card and
+# A session running inside the Jobadabra app (JOBADABRA_SESSION): the app shows it on the session's card and
 # notifies you itself when it needs you.
-if [ -n "${JOB_PILOTTO_SESSION:-}" ]; then
-  curl -s -m 3 -X POST -H 'X-Job-Pilotto: launcher' --data-urlencode "message=$message" \
-    "http://127.0.0.1:47111/claude/session?id=$JOB_PILOTTO_SESSION&event=note" >/dev/null 2>&1
+if [ -n "${JOBADABRA_SESSION:-}" ]; then
+  curl -s -m 3 -X POST -H 'X-Jobadabra: launcher' --data-urlencode "message=$message" \
+    "http://127.0.0.1:47111/claude/session?id=$JOBADABRA_SESSION&event=note" >/dev/null 2>&1
   exit 0
 fi
 # Off macOS (Windows, in Git Bash): the Jobadabra app shows the notification, when it's running.
 if ! command -v osascript >/dev/null; then
-  curl -s -m 3 -X POST -H 'X-Job-Pilotto: launcher' --data-urlencode "job=$board job $id" \
+  curl -s -m 3 -X POST -H 'X-Jobadabra: launcher' --data-urlencode "job=$board job $id" \
     --data-urlencode "message=$message" http://127.0.0.1:47111/claude/notify >/dev/null 2>&1
   exit 0
 fi
@@ -54,7 +54,7 @@ esac
 
 notifier="$(command -v terminal-notifier || true)"
 if [ -n "$notifier" ]; then
-  args=(-title "Jobadabra" -subtitle "$board job $id" -message "$message" -sound Glass -group "jobpilotto-$id")
+  args=(-title "Jobadabra" -subtitle "$board job $id" -message "$message" -sound Glass -group "jobadabra-$id")
   [ -n "$tty" ] && args+=(-execute "'$here/focus-terminal.sh' '$tty'")
   # Fails (exit 3) when macOS hasn't allowed terminal-notifier's notifications: fall back below.
   "$notifier" "${args[@]}" >/dev/null 2>&1 && exit 0

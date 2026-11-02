@@ -18,7 +18,7 @@ test('the CV check reads real PDFs: a plain CV passes, each known problem is fou
   try {
     const out = path.join(folder, 'answer.json');
     const run = spawnSync(path.join(desktop, 'node_modules', '.bin', 'electron'), [fileURLToPath(new URL('./cv-check-main.js', import.meta.url))], {
-      cwd: desktop, encoding: 'utf8', timeout: 120000, env: {...process.env, JOB_PILOTTO_CV_PROBE_DIR: folder, JOB_PILOTTO_CV_PROBE_OUT: out}});
+      cwd: desktop, encoding: 'utf8', timeout: 120000, env: {...process.env, JOBADABRA_CV_PROBE_DIR: folder, JOBADABRA_CV_PROBE_OUT: out}});
     assert.ok(fs.existsSync(out), `the probe wrote no answer (exit ${run.status}, signal ${run.signal}): ${(run.stderr || run.stdout || '').slice(-600)}`);
     const answer = JSON.parse(fs.readFileSync(out, 'utf8'));
     assert.equal(answer.error, undefined, answer.error);

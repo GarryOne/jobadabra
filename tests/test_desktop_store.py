@@ -1,4 +1,4 @@
-"""The desktop's engine commands on this Mac's store (JOB_PILOTTO_STORE=sqlite, no Notion at all): Strategy, Calendar and
+"""The desktop's engine commands on this Mac's store (JOBADABRA_STORE=sqlite, no Notion at all): Strategy, Calendar and
 Tune answer from the store's own applications and Profile, and the Notion messages stay for a Notion store that can't be read.
 Guards src/desktop.py, src/desktop_strategy.py, src/store_access.py and tune.run's stages."""
 import contextlib
@@ -17,8 +17,8 @@ from src.stores import sqlite as sqlite_store
 class DesktopOnThisMacsStoreTests(unittest.TestCase):
     def setUp(self):
         folder = pathlib.Path(tempfile.mkdtemp())
-        env = {'JOB_PILOTTO_STORE': 'sqlite', 'JOB_PILOTTO_DATA_DIR': str(folder), 'NOTION_TOKEN': '',
-               'JOB_PILOTTO_PROFILE_FILE': str(folder / 'no-profile.md')}
+        env = {'JOBADABRA_STORE': 'sqlite', 'JOBADABRA_DATA_DIR': str(folder), 'NOTION_TOKEN': '',
+               'JOBADABRA_PROFILE_FILE': str(folder / 'no-profile.md')}
         patches = [mock.patch.dict(os.environ, env), mock.patch.object(desktop, 'JOBS_DB', folder / 'jobs.sqlite'),
                    mock.patch('src.notion.client.Tracker.from_env', return_value=None)]   # no Notion at all
         for patcher in patches:

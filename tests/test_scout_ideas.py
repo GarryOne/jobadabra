@@ -166,10 +166,10 @@ class RunTests(unittest.TestCase):
         db = database()
         import os
         from unittest import mock
-        with mock.patch.dict(os.environ, {'ANTHROPIC_API_KEY': 'k', 'JOB_PILOTTO_DISABLE': ''}), \
+        with mock.patch.dict(os.environ, {'ANTHROPIC_API_KEY': 'k', 'JOBADABRA_DISABLE': ''}), \
                 mock.patch.object(scout_ideas, 'run', side_effect=RuntimeError('boom')):
             self.assertIsNone(scout.ai_ideas(db))
-        with mock.patch.dict(os.environ, {'ANTHROPIC_API_KEY': 'k', 'JOB_PILOTTO_DISABLE': 'scout_ai'}):
+        with mock.patch.dict(os.environ, {'ANTHROPIC_API_KEY': 'k', 'JOBADABRA_DISABLE': 'scout_ai'}):
             self.assertIsNone(scout.ai_ideas(db))
         self.assertIsNone(scout.ai_ideas(db, harvest_sources=[]), 'a caller with its own sources gets no AI')
 

@@ -52,7 +52,7 @@ class Ahead:
 def start(db, search, env=None, now=None):
     """An Ahead reading the found boards now (within the scan's spacing, those not read since), when aggregators.scan would read them; else None."""
     from . import aggregators
-    if os.getenv('JOB_PILOTTO_FIXTURE_DIR'):   # the end-to-end fixture mode never reaches a live site (as aggregators.scan)
+    if os.getenv('JOBADABRA_FIXTURE_DIR'):   # the end-to-end fixture mode never reaches a live site (as aggregators.scan)
         return None
     read = dict(aggregators.sources(env)).get(NAME)
     if read is None:

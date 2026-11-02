@@ -17,11 +17,12 @@ async function keyFor(storage, {fetcher = globalThis.fetch} = {}) {
   const token = await installToken(storage, install, 'ai', {base: FREE_BASE.replace(/\/api\/ai$/, ''), fetcher});   // kept once asked; no new ask after a refusal until tomorrow
   return token ? `JPF1.${install}.${token}` : '';
 }
-// Every call carries the owner secret too, never the install id: the app's own store, else this Mac's Keychain item job-pilotto.ready.owner_secret (read through lib/keychain.js, so a test or twin never reaches it).
+// Every call carries the owner secret too, never the install id: the app's own store, else this Mac's Keychain item jobadabra.ready.owner_secret (read through lib/keychain.js, so a test or twin never reaches it).
 // Without it the site opens no owner route and the card stays closed. Tests replace the reader.
-let readKeychain = service => keychainRead(service, {account: 'job-pilotto'});
+let readKeychain = service => keychainRead(service, {account: 'jobadabra'});
 export const useKeychainReader = fn => { readKeychain = fn; };
-export const ownerSecret = storage => String(storage.secret('READY_OWNER_SECRET') || readKeychain('job-pilotto.ready.owner_secret') || '');
+/** The owner secret for the Ready site: the stored READY_OWNER_SECRET, else the Keychain item jobadabra.ready.owner_secret, else "" (never throws). */
+export const ownerSecret = storage => String(storage.secret('READY_OWNER_SECRET') || readKeychain('jobadabra.ready.owner_secret') || '');
 const call = async (storage, route, options = {}) => callWith(storage, route, {...options, key: await keyFor(storage, options), headers: {'x-ready-owner': ownerSecret(storage)}});
 
 // The server no longer holds the form (a deploy or the container's sleep dropped the held tabs, or the night ended): its 410 "gone", or a 404 that says "held".

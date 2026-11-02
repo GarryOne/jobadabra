@@ -29,7 +29,7 @@ class HeavyLockTest(HeavyLockFixture):
         trace, go = self.tmp / 'trace', self.tmp / 'go'
         body = f'echo start >> {trace}; {gate_loop(go.as_posix(), 0.05)}; echo end >> {trace}'
         first = self.start('first suite', 'bash', '-c', body)
-        wait_in_books(self.env['JOB_PILOTTO_HEAVY_DIR'], first, ('holds',), env=self.env)   # first holds: not a guessed 0.4 s
+        wait_in_books(self.env['JOBADABRA_HEAVY_DIR'], first, ('holds',), env=self.env)   # first holds: not a guessed 0.4 s
         second = self.start_logged('second suite', 'bash', '-c', body)
         self.said(second, 'second suite waits', first)   # it looked and waits: a queued ticket alone has not looked yet
         go.write_text('go')
@@ -51,14 +51,14 @@ class HeavyLockTest(HeavyLockFixture):
 
     def test_waiting_has_a_limit_and_runs_anyway_saying_so(self):
         _, let_go = self.hold()   # held until the impatient run has given up waiting
-        result = self.run_lock('impatient', 'echo', 'ran', JOB_PILOTTO_HEAVY_WAIT='1')
+        result = self.run_lock('impatient', 'echo', 'ran', JOBADABRA_HEAVY_WAIT='1')
         let_go()
         self.assertEqual(result.stdout.strip(), 'ran')
         self.assertIn('running anyway', result.stderr)
 
     def test_a_nested_call_and_the_off_switch_run_at_once(self):
         _, let_go = self.hold()
-        for env in ({'JP_HEAVY_HELD': '1'}, {'JOB_PILOTTO_HEAVY': '0'}):
+        for env in ({'JP_HEAVY_HELD': '1'}, {'JOBADABRA_HEAVY': '0'}):
             result = self.run_lock('inner', 'echo', 'ran', **env)
             self.assertEqual(result.stdout.strip(), 'ran')
             self.assertNotRegex(result.stderr, r'waits|waited|got the lock after', f'{env}: it ran at once, it did not wait for the holder')   # the lock says when it waits; no stopwatch (a loaded runner is slow, not waiting)
@@ -70,7 +70,7 @@ class HeavyLockTest(HeavyLockFixture):
         (bin_dir / 'uptime').write_text('#!/bin/sh\necho "10:00  up 1 day,  3 users,  load averages: 99.00 90.00 80.00"\n')
         (bin_dir / 'uptime').chmod(0o755)
         result = self.run_lock('browser suite', 'echo', 'ran', PATH=f'{bin_dir}{os.pathsep}{os.environ["PATH"]}',
-                               JOB_PILOTTO_HEAVY_LOAD='8', JOB_PILOTTO_HEAVY_SIGNAL='load', JOB_PILOTTO_HEAVY_LOAD_WAIT='1')
+                               JOBADABRA_HEAVY_LOAD='8', JOBADABRA_HEAVY_SIGNAL='load', JOBADABRA_HEAVY_LOAD_WAIT='1')
         self.assertEqual(result.stdout.strip(), 'ran')
         self.assertIn('waits for the machine, holding no slot: the machine is busy: 1-minute load 99 is above 8', result.stderr)
         self.assertIn('running browser suite anyway', result.stderr)
@@ -79,7 +79,7 @@ class HeavyLockTest(HeavyLockFixture):
         # 13 Oct 2026 main red: with a 1 s wait, the clock's second ticking between two reads gave up on the first reading, with no wait line.
         # A 0 s wait makes that race certain: the first reading must still wait once and say why.
         result = self.run_lock('browser suite', 'echo', 'ran', **self.busy_machine(),
-                               JOB_PILOTTO_HEAVY_LOAD='8', JOB_PILOTTO_HEAVY_SIGNAL='load', JOB_PILOTTO_HEAVY_LOAD_WAIT='0')
+                               JOBADABRA_HEAVY_LOAD='8', JOBADABRA_HEAVY_SIGNAL='load', JOBADABRA_HEAVY_LOAD_WAIT='0')
         self.assertEqual(result.stdout.strip(), 'ran')
         self.assertIn('waits for the machine, holding no slot: the machine is busy', result.stderr)
         self.assertIn('running browser suite anyway', result.stderr)
@@ -93,9 +93,9 @@ class HeavyLockTest(HeavyLockFixture):
 
     def test_a_run_waiting_for_the_machine_holds_no_slot_and_never_blocks_a_later_run_that_fits(self):
         # 11 Oct 2026: a replay took the slot, then sat 12 minutes in the load wait while two landings queued behind it
-        waiting = self.start('waits for load', 'echo', 'late', **self.busy_machine(), JOB_PILOTTO_HEAVY_LOAD='8', JOB_PILOTTO_HEAVY_SIGNAL='load', JOB_PILOTTO_HEAVY_LOAD_WAIT='600')
+        waiting = self.start('waits for load', 'echo', 'late', **self.busy_machine(), JOBADABRA_HEAVY_LOAD='8', JOBADABRA_HEAVY_SIGNAL='load', JOBADABRA_HEAVY_LOAD_WAIT='600')
         self.addCleanup(lambda: waiting.poll() is None and (waiting.kill(), waiting.communicate()))
-        wait_in_books(self.env['JOB_PILOTTO_HEAVY_DIR'], waiting, ('loadwait',), env=self.env)   # its ticket says it waits for the machine: not a guessed 0.8 s
+        wait_in_books(self.env['JOBADABRA_HEAVY_DIR'], waiting, ('loadwait',), env=self.env)   # its ticket says it waits for the machine: not a guessed 0.8 s
         self.assertFalse((self.tmp / 'heavy' / 'lock').exists(), 'while it waits for the machine it holds no slot')
         later = self.run_lock('fits now', 'echo', 'went')   # this run has no load limit: it is ready, and it is behind the waiter in line
         self.assertEqual(later.stdout.strip(), 'went')
@@ -107,7 +107,7 @@ class HeavyLockTest(HeavyLockFixture):
     def test_the_load_wait_still_ends_and_the_run_goes_anyway_in_its_turn(self):
         first = self.start('first', 'bash', '-c', 'sleep 1.2; echo first')
         time.sleep(0.3)   # clock: no order is asserted here, only that the load wait ends and says so
-        second = self.start('second', 'echo', 'second', **self.busy_machine(), JOB_PILOTTO_HEAVY_LOAD='8', JOB_PILOTTO_HEAVY_SIGNAL='load', JOB_PILOTTO_HEAVY_LOAD_WAIT='1')
+        second = self.start('second', 'echo', 'second', **self.busy_machine(), JOBADABRA_HEAVY_LOAD='8', JOBADABRA_HEAVY_SIGNAL='load', JOBADABRA_HEAVY_LOAD_WAIT='1')
         out, err = second.communicate(timeout=30)
         first.communicate(timeout=30)
         self.assertEqual(out.strip(), 'second')
@@ -162,7 +162,7 @@ class HeavyLockTest(HeavyLockFixture):
         git('worktree', 'add', '-q', str(self.tmp / 'wt'))
         mine = self.tmp / 'wt' / 'tools' / 'heavy-lock.sh'
         mine.write_text(LOCK.read_text())
-        env = {k: v for k, v in self.env.items() if k != 'JOB_PILOTTO_HEAVY_SHARED'}
+        env = {k: v for k, v in self.env.items() if k != 'JOBADABRA_HEAVY_SHARED'}
         result = subprocess.run(['bash', str(mine), 'suite', 'echo', 'hi'], env=env, capture_output=True, text=True, cwd=self.tmp / 'wt')
         self.assertEqual(result.stdout.strip(), 'primary copy: suite echo hi')
         result = subprocess.run(['bash', str(mine), 'suite', 'echo', 'hi'], env=env, capture_output=True, text=True, cwd='/')

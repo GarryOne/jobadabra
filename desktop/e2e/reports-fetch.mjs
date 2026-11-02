@@ -2,8 +2,9 @@
 // the offline loop already reads (<records dir>/reported-<id>-<site>/record.json + bodies/<hash>, source "person"), then marks it fetched. By hand, on the owner's say, never a schedule. Next:
 // `node records-publish.mjs <records dir>` adds them to the private release so the PR replay and /admin/form-filling/lab see them (spec docs/superpowers/specs/2026-10-15-report-this-form.md §5).
 //   node reports-fetch.mjs <records dir> [--dry]
-// Keys (Keychain, never printed): job-pilotto.site.api_key (the scripts' key for the site), job-pilotto.capture.key (the private key; PEM, or base64 of it as in the NET_RECORD_KEY secret).
+// Keys (Keychain, never printed): jobadabra.site.api_key (the scripts' key for the site), jobadabra.capture.key (the private key; PEM, or base64 of it as in the NET_RECORD_KEY secret).
 // Env overrides for tests: JP_SITE, JP_ADMIN_KEY, JP_PRIVATE_KEY. Guard: test/reports-fetch.test.mjs.
+// Job: keep the scorecard
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -11,7 +12,7 @@ import zlib from 'node:zlib';
 import {execFileSync} from 'node:child_process';
 
 const SITE = process.env.JP_SITE || 'https://www.jobpilotto.top';
-const keychain = service => { try { return execFileSync('security', ['find-generic-password', '-a', 'job-pilotto', '-s', service, '-w'], {encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore']}).trim(); } catch { return ''; } };
+const keychain = service => { try { return execFileSync('security', ['find-generic-password', '-a', 'jobadabra', '-s', service, '-w'], {encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore']}).trim(); } catch { return ''; } };
 const pemOf = value => (value.includes('BEGIN') ? value : Buffer.from(value, 'base64').toString('utf8'));
 
 // iv(12) + tag(16) + ciphertext, the AES key wrapped (RSA-OAEP, SHA-256) -> {record, bodies: {hash: base64}} (the format of desktop/lib/report-upload.js)
@@ -64,7 +65,7 @@ export async function fetchReports({dir, dry = false, fetcher = fetch, site = SI
 if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(new URL(import.meta.url).pathname)) {
   const [dir] = process.argv.slice(2).filter(arg => !arg.startsWith('--'));
   if (!dir) { console.error('usage: node reports-fetch.mjs <records dir> [--dry]'); process.exit(2); }
-  const adminKey = process.env.JP_ADMIN_KEY || keychain('job-pilotto.site.api_key'), privateKey = process.env.JP_PRIVATE_KEY || keychain('job-pilotto.capture.key');
-  if (!adminKey || !privateKey) { console.error('reports-fetch: the Keychain items job-pilotto.site.api_key and job-pilotto.capture.key are needed'); process.exit(2); }
+  const adminKey = process.env.JP_ADMIN_KEY || keychain('jobadabra.site.api_key'), privateKey = process.env.JP_PRIVATE_KEY || keychain('jobadabra.capture.key');
+  if (!adminKey || !privateKey) { console.error('reports-fetch: the Keychain items jobadabra.site.api_key and jobadabra.capture.key are needed'); process.exit(2); }
   await fetchReports({dir, dry: process.argv.includes('--dry'), adminKey, privatePem: pemOf(privateKey)});
 }

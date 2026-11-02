@@ -43,7 +43,7 @@ class StopMeansStop(unittest.TestCase):
     def _stop_with(self, sig):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / 'jobs.sqlite'
-            env = {**os.environ, 'JOB_PILOTTO_FOLLOW_APP': '0', 'JOB_PILOTTO_DISABLE': 'mail,notion,telegram,google_jobs', 'PYTHONUNBUFFERED': '1'}
+            env = {**os.environ, 'JOBADABRA_FOLLOW_APP': '0', 'JOBADABRA_DISABLE': 'mail,notion,telegram,google_jobs', 'PYTHONUNBUFFERED': '1'}
             child = subprocess.Popen([sys.executable, '-c', SCRIPT, str(path)], cwd=ROOT, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
             try:
                 def checked():

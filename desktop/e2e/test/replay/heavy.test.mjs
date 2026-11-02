@@ -23,18 +23,18 @@ test('the main script re-runs itself under the lock and exits with the run\'s co
 test('a class given by the entry point reaches the lock; none leaves the environment alone', () => {
   calls.length = 0;
   heavy('e2e-smoke', pathToFileURL(script).href, {argv: ['node', script], env: {A: '1'}, klass: 'proof', ...fake});
-  assert.equal(calls[0][2].env.JOB_PILOTTO_HEAVY_CLASS, 'proof');
+  assert.equal(calls[0][2].env.JOBADABRA_HEAVY_CLASS, 'proof');
   assert.equal(calls[0][2].env.A, '1');
   calls.length = 0;
   heavy('e2e-smoke', pathToFileURL(script).href, {argv: ['node', script], env: {}, ...fake});
   assert.equal(calls[0][2].env, undefined);
   calls.length = 0;   // an explicit class in the environment wins over the entry point's default (the capture pass's per-row runs are pool, not proof)
-  heavy('e2e-smoke', pathToFileURL(script).href, {argv: ['node', script, '--only', 'x'], env: {JOB_PILOTTO_HEAVY_CLASS: 'pool'}, klass: 'proof', ...fake});
-  assert.notEqual(calls[0][2]?.env?.JOB_PILOTTO_HEAVY_CLASS, 'proof');
+  heavy('e2e-smoke', pathToFileURL(script).href, {argv: ['node', script, '--only', 'x'], env: {JOBADABRA_HEAVY_CLASS: 'pool'}, klass: 'proof', ...fake});
+  assert.notEqual(calls[0][2]?.env?.JOBADABRA_HEAVY_CLASS, 'proof');
 });
 
 test('an import, a held lock, the off switch and --list do nothing', () => {
-  for (const [argv, env] of [[['node', here + 'other.mjs'], {}], [['node', script], {JP_HEAVY_HELD: '1'}], [['node', script], {JOB_PILOTTO_HEAVY: '0'}], [['node', script, '--list'], {}]]) {
+  for (const [argv, env] of [[['node', here + 'other.mjs'], {}], [['node', script], {JP_HEAVY_HELD: '1'}], [['node', script], {JOBADABRA_HEAVY: '0'}], [['node', script, '--list'], {}]]) {
     calls.length = 0;
     assert.equal(heavy('x', pathToFileURL(script).href, {argv, env, ...fake}), false);
     assert.equal(calls.length, 0);
@@ -48,7 +48,7 @@ test('every heavy entry point calls it (a new browser suite entry must too)', ()
 test('yieldHeavy asks the lock only inside a hold, never throws, and smoke calls it once per site', () => {
   calls.length = 0;
   assert.equal(yieldHeavy({env: {}, run: (...call) => { calls.push(call); return {status: 0}; }}), false);
-  assert.equal(yieldHeavy({env: {JP_HEAVY_HELD: '1', JOB_PILOTTO_HEAVY: '0'}, run: (...call) => { calls.push(call); return {status: 0}; }}), false);
+  assert.equal(yieldHeavy({env: {JP_HEAVY_HELD: '1', JOBADABRA_HEAVY: '0'}, run: (...call) => { calls.push(call); return {status: 0}; }}), false);
   assert.equal(calls.length, 0);
   assert.equal(yieldHeavy({env: {JP_HEAVY_HELD: '1'}, run: (...call) => { calls.push(call); return {status: 0}; }}), true);
   assert.deepEqual(calls[0][1].slice(1), ['yield']);

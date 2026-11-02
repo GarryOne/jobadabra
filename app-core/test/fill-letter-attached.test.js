@@ -16,7 +16,7 @@ async function fill(form, resume, {rejectLetter = false} = {}) {
   window.DataTransfer = class { constructor() { this.files = []; this.items = {add: file => this.files.push(file)}; } };
   for (const el of window.document.querySelectorAll('input[type=file]')) { let files = []; Object.defineProperty(el, 'files', {get: () => files, set: list => { files = list; }}); }
   if (rejectLetter) window.document.getElementById('letter').addEventListener('change', event => { event.target.files = []; });
-  const summary = await window.__jobPilottoExtensionFill([], {}, resume, '', false);
+  const summary = await window.__jobadabraExtensionFill([], {}, resume, '', false);
   const out = {trace: Array.from(summary.trace).map(row => ({...row})), todo: Array.from(summary.todo)};
   window.close();
   return out;

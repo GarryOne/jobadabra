@@ -11,7 +11,7 @@ import {NAMES} from '../lib/ai/index.js';
 import {rowOf, waitingOf} from '../renderer/pages/ready-rows.js';
 
 useKeychainReader(() => null);   // no test reads this Mac's Keychain
-const storage = (extra = {}) => ({secret: name => (name === 'JOB_PILOTTO_TRIAL_KEY' || /TRIAL/.test(name) ? 'JPF1.install.token' : ''), settings: () => extra, saveSettings: patch => Object.assign(extra, patch), path: name => `/nowhere/${name}`});
+const storage = (extra = {}) => ({secret: name => (name === 'JOBADABRA_TRIAL_KEY' || /TRIAL/.test(name) ? 'JPF1.install.token' : ''), settings: () => extra, saveSettings: patch => Object.assign(extra, patch), path: name => `/nowhere/${name}`});
 const site = (status = 200, body = {ok: true}) => { const seen = []; return {seen, fetcher: async (url, init) => { seen.push({url, init}); return new Response(JSON.stringify(body), {status}); }}; };
 
 test('the owner is whoever the site says yes to; 401 and 404 are no', async () => {
@@ -96,7 +96,7 @@ test('every call carries the owner secret from the app\'s store or the Keychain 
   await runNow(has, {fetcher: fake.fetcher});
   assert.equal(fake.seen[0].init.headers['x-ready-owner'], 'from-store');
   const asked = []; useKeychainReader(service => { asked.push(service); return 'from-keychain'; });
-  try { assert.equal(ownerSecret(storage()), 'from-keychain'); assert.deepEqual(asked, ['job-pilotto.ready.owner_secret']); assert.equal(ownerSecret(has), 'from-store'); }
+  try { assert.equal(ownerSecret(storage()), 'from-keychain'); assert.deepEqual(asked, ['jobadabra.ready.owner_secret']); assert.equal(ownerSecret(has), 'from-store'); }
   finally { useKeychainReader(() => null); }
   assert.equal(ownerSecret(storage()), '');
 });

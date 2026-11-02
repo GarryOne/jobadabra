@@ -11,8 +11,8 @@ const PROFILE = { phone: '+41 79 555 01 23', first_name: 'Test' };
 
 const entriesOf = (html, profile = PROFILE) => {
   const window = openPage(JSDOM, html);
-  const rows = [...window.document.querySelectorAll('input')].map((el) => ({ field: el.id, label: window.__jobPilottoFillKit.labelOf(el), type: el.type || 'text' }));
-  return Object.fromEntries(window.__jobPilottoProfileEntries(rows, profile).map((entry) => [entry.field, entry.value]));
+  const rows = [...window.document.querySelectorAll('input')].map((el) => ({ field: el.id, label: window.__jobadabraFillKit.labelOf(el), type: el.type || 'text' }));
+  return Object.fromEntries(window.__jobadabraProfileEntries(rows, profile).map((entry) => [entry.field, entry.value]));
 };
 
 test('picker, number and extension boxes each take their own part', { skip }, () => {

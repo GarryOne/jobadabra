@@ -46,14 +46,14 @@ class SourceCostTests(unittest.TestCase):
     def test_at_the_monthly_pause_source_reading_is_switched_off_too(self):
         args = argparse.Namespace(auto_kit_max=3, score_max=60, enrich_max=200)
         warnings = []
-        with mock.patch.dict(os.environ, {'JOB_PILOTTO_DISABLE': 'google_jobs'}):
+        with mock.patch.dict(os.environ, {'JOBADABRA_DISABLE': 'google_jobs'}):
             budget.apply_caps(args, {'level': 'pause', 'pct': 0.93}, warnings)
-            off = os.environ['JOB_PILOTTO_DISABLE'].split(',')
+            off = os.environ['JOBADABRA_DISABLE'].split(',')
         self.assertEqual(off, ['google_jobs', 'page_reader', 'job_alerts', 'scout_ai'])
         self.assertIn('AI source reading off', warnings[0])
-        with mock.patch.dict(os.environ, {'JOB_PILOTTO_DISABLE': ''}):
+        with mock.patch.dict(os.environ, {'JOBADABRA_DISABLE': ''}):
             self.assertFalse(budget.apply_caps(args, {'level': 'warn', 'pct': 0.75}, []))
-            self.assertEqual(os.environ['JOB_PILOTTO_DISABLE'], '')
+            self.assertEqual(os.environ['JOBADABRA_DISABLE'], '')
 
 
 if __name__ == '__main__':

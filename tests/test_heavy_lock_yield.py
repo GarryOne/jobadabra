@@ -18,9 +18,9 @@ class HeavyLockYieldTest(unittest.TestCase):
         self.addCleanup(shutil.rmtree, self.tmp, True)
         self.trace = (self.tmp / 'trace').as_posix()
         self.log = self.tmp / 'gate-timing.log'
-        self.env = {**{k: v for k, v in os.environ.items() if not k.startswith(('JOB_PILOTTO_HEAVY', 'JP_HEAVY'))}, 'JOB_PILOTTO_HEAVY_DIR': (self.tmp / 'heavy').as_posix(),
-                    'JOB_PILOTTO_HEAVY_LOAD': '0', 'JOB_PILOTTO_HEAVY_POLL': '0.1', 'JOB_PILOTTO_HEAVY_TIMING_LOG': self.log.as_posix(), 'JOB_PILOTTO_HEAVY_SHARED': str(LOCK),
-                    'JOB_PILOTTO_HEAVY_SLOTS': '1'}
+        self.env = {**{k: v for k, v in os.environ.items() if not k.startswith(('JOBADABRA_HEAVY', 'JP_HEAVY'))}, 'JOBADABRA_HEAVY_DIR': (self.tmp / 'heavy').as_posix(),
+                    'JOBADABRA_HEAVY_LOAD': '0', 'JOBADABRA_HEAVY_POLL': '0.1', 'JOBADABRA_HEAVY_TIMING_LOG': self.log.as_posix(), 'JOBADABRA_HEAVY_SHARED': str(LOCK),
+                    'JOBADABRA_HEAVY_SLOTS': '1'}
 
     def pool(self, **env):
         """A pool run: part 1 (until the test says go), a yield point, part 2 (0.3 s)."""
@@ -37,7 +37,7 @@ class HeavyLockYieldTest(unittest.TestCase):
         return Path(self.trace).read_text().split(), errs
 
     def test_a_pool_run_gives_its_place_to_a_waiting_proof_at_the_yield_point_and_gets_it_back(self):
-        heavy = self.env['JOB_PILOTTO_HEAVY_DIR']
+        heavy = self.env['JOBADABRA_HEAVY_DIR']
         pool = self.pool()
         wait_in_books(heavy, pool, ('holds',), env=self.env)
         proof = self.waiter('real-extension', 'proof')
@@ -52,7 +52,7 @@ class HeavyLockYieldTest(unittest.TestCase):
         self.assertIn('yield-back', text)
 
     def test_with_nobody_of_a_higher_class_waiting_it_returns_at_once_and_keeps_the_lock(self):
-        heavy = self.env['JOB_PILOTTO_HEAVY_DIR']
+        heavy = self.env['JOBADABRA_HEAVY_DIR']
         pool = self.pool()
         wait_in_books(heavy, pool, ('holds',), env=self.env)
         other = self.waiter('e2e-smoke', 'pool-b')     # the same class: no reason to yield
@@ -64,7 +64,7 @@ class HeavyLockYieldTest(unittest.TestCase):
 
     def test_outside_a_hold_and_with_the_lock_switched_off_it_does_nothing(self):
         self.assertEqual(subprocess.run(['bash', str(LOCK), 'yield'], env=self.env, capture_output=True, text=True, timeout=20).returncode, 0)
-        self.assertEqual(subprocess.run(['bash', str(LOCK), 'yield'], env={**self.env, 'JP_HEAVY_HELD': '1', 'JOB_PILOTTO_HEAVY': '0'}, capture_output=True, text=True, timeout=20).returncode, 0)
+        self.assertEqual(subprocess.run(['bash', str(LOCK), 'yield'], env={**self.env, 'JP_HEAVY_HELD': '1', 'JOBADABRA_HEAVY': '0'}, capture_output=True, text=True, timeout=20).returncode, 0)
         self.assertFalse((self.tmp / 'heavy' / 'lock').exists())
 
 

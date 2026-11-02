@@ -26,7 +26,7 @@ from .models import MAIN_MODEL, SMALL_MODEL
 from .writing_floors import scrub
 from .writing_rules import RULES as WRITING_RULES
 
-DEFAULT_MODEL = os.getenv('JOB_PILOTTO_PREP_MODEL', MAIN_MODEL)
+DEFAULT_MODEL = os.getenv('JOBADABRA_PREP_MODEL', MAIN_MODEL)
 HEADING = '🎤 Interview prep'
 DESCRIPTION_HEADING = '🧾 Job description'
 MIN_ROLE = 400  # characters about the role before a kit is worth building
@@ -95,7 +95,7 @@ def role_text(stores, record, db_path=None):
     sections = stores.applications.sections(record['id'])
     known = [sections.get(name, '') for name in SECTIONS if sections.get(name)]
     url = record.get('url') or ''
-    if url and not re.search(r'mail\.google|linkedin\.com/messaging|jobpilotto', url):
+    if url and not re.search(r'mail\.google|linkedin\.com/messaging|jobadabra', url):
         try:
             from .. import store
             from ..paths import jobs_db
@@ -240,7 +240,7 @@ def follow_up_text(earlier, events):
     return '\n\n'.join(parts)
 
 
-READ_MODEL = os.getenv('JOB_PILOTTO_INBOX_MODEL') or SMALL_MODEL
+READ_MODEL = os.getenv('JOBADABRA_INBOX_MODEL') or SMALL_MODEL
 MAX_SHOTS = 5
 
 
@@ -429,7 +429,7 @@ def main(argv=None):
     about.add_argument('--url', default='')
     args = parser.parse_args(argv)
     try:
-        stores = open_stores()   # Notion (its token) or this Mac's store, as JOB_PILOTTO_STORE / the token choose
+        stores = open_stores()   # Notion (its token) or this Mac's store, as JOBADABRA_STORE / the token choose
         record = stores.applications.by_id(args.page_id)
         if record is None:
             result = {'ok': False, 'text': 'That job is no longer tracked.'}

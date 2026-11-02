@@ -9,9 +9,9 @@ const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 // page(func, args) runs in the page (main world); mouse(x, y) is the caller's trusted click (the debugger's mouse events, inside the driver gap: fill-verify.js). -> {tried, taken}
 export async function pressNotTakenForReal({page, mouse, wait = sleep}) {
-  const spots = ((await page(() => window.__jobPilottoPressSpots?.() || []).catch(() => [])) || []).slice(0, MAX);
+  const spots = ((await page(() => window.__jobadabraPressSpots?.() || []).catch(() => [])) || []).slice(0, MAX);
   const press = async ({x, y}) => {
-    if ((await page((px, py) => globalThis.__jobPilottoSubmitPress?.markAt(px, py), [x, y]).catch(() => true)) === false) return false;   // the extension's own press, behind the press floor
+    if ((await page((px, py) => globalThis.__jobadabraSubmitPress?.markAt(px, py), [x, y]).catch(() => true)) === false) return false;   // the extension's own press, behind the press floor
     await mouse(x, y);
     return true;
   };
@@ -20,14 +20,14 @@ export async function pressNotTakenForReal({page, mouse, wait = sleep}) {
     if (!(await press(spot))) continue;
     if (spot.step === 'opener') {
       await wait(SETTLE_MS);   // the list draws its options after the press
-      const option = await page(field => window.__jobPilottoPressOptionSpot?.(field) || null, [spot.field]).catch(() => null);
+      const option = await page(field => window.__jobadabraPressOptionSpot?.(field) || null, [spot.field]).catch(() => null);
       if (!option || !(await press(option))) continue;
     }
     await wait(SETTLE_MS);
-    if (await page(field => window.__jobPilottoPressedNow?.(field) || false, [spot.field]).catch(() => false)) taken += 1;
+    if (await page(field => window.__jobadabraPressedNow?.(field) || false, [spot.field]).catch(() => false)) taken += 1;
   }
   return {tried: spots.length, taken};
 }
 
 // Is there anything to press on this page? (The caller attaches the debugger only then.)
-export const hasPressSpots = page => page(() => (window.__jobPilottoPressSpots?.() || []).length > 0).catch(() => false);
+export const hasPressSpots = page => page(() => (window.__jobadabraPressSpots?.() || []).length > 0).catch(() => false);

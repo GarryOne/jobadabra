@@ -34,9 +34,9 @@ def said(path, text, proc, timeout=60):
 
 
 def run(args, slot_dir, slots='1', wait='20', timing=None, **kw):
-    env = dict(os.environ, JOB_PILOTTO_CHECK_SLOT_DIR=slot_dir, JOB_PILOTTO_CHECK_SLOTS=slots, JOB_PILOTTO_CHECK_WAIT=wait)
+    env = dict(os.environ, JOBADABRA_CHECK_SLOT_DIR=slot_dir, JOBADABRA_CHECK_SLOTS=slots, JOBADABRA_CHECK_WAIT=wait)
     if timing:
-        env['JOB_PILOTTO_CHECK_TIMING_LOG'] = timing
+        env['JOBADABRA_CHECK_TIMING_LOG'] = timing
     kw.setdefault('stderr', subprocess.PIPE)
     return subprocess.Popen(['bash', SCRIPT, *args], env=env, stdout=subprocess.PIPE, text=True, **kw)
 
@@ -87,7 +87,7 @@ class SlotTests(unittest.TestCase):
             held_by(d, off)
             err_path = os.path.join(t, 'err-2')
             with open(err_path, 'w') as err_out:
-                second = subprocess.Popen(['bash', SCRIPT, 'true'], env=dict(os.environ, JOB_PILOTTO_CHECK_SLOT_DIR=d, JOB_PILOTTO_CHECK_SLOTS='1', GATE_TIMING='0', JOB_PILOTTO_CHECK_TIMING_LOG=log), stdout=subprocess.PIPE, stderr=err_out)
+                second = subprocess.Popen(['bash', SCRIPT, 'true'], env=dict(os.environ, JOBADABRA_CHECK_SLOT_DIR=d, JOBADABRA_CHECK_SLOTS='1', GATE_TIMING='0', JOBADABRA_CHECK_TIMING_LOG=log), stdout=subprocess.PIPE, stderr=err_out)
             said(err_path, 'waiting for a free slot', second)
             Path(gate).write_text('go')
             second.communicate(timeout=30)

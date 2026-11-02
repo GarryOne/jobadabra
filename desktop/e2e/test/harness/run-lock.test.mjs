@@ -35,7 +35,7 @@ test('the hung-AI step waits for the lock before it starts and checks the log af
   const dir = path.join(path.resolve(import.meta.dirname, '..'), '../suites');
   for (const file of fs.readdirSync(dir)) {
     const src = fs.readFileSync(path.join(dir, file), 'utf8');
-    if (!src.includes('JOB_PILOTTO_E2E_IDLE_MS')) continue;
+    if (!src.includes('JOBADABRA_E2E_IDLE_MS')) continue;
     assert.match(src, /waitForRunLock\(/, `${file} shortens the silence limit but does not wait for the run lock first`);
     assert.match(src, /waitedForLock\(/, `${file} does not check that the stopped run never waited for the lock`);
   }

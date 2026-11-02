@@ -27,8 +27,8 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 60   # the PR workflows' timeouts add up to ~75; the suites took ~25 min in sequence with the page cases, ~15 without
     env:
-      JOB_PILOTTO_PY_JOBS: 6
-      JOB_PILOTTO_HEAVY: 0   # the heavy lock is a Mac's machine-wide queue; this runner is its own machine
+      JOBADABRA_PY_JOBS: 6
+      JOBADABRA_HEAVY: 0   # the heavy lock is a Mac's machine-wide queue; this runner is its own machine
     steps:
       - uses: actions/checkout@v5
         with:

@@ -34,6 +34,6 @@ async function check(ctx) {
 test('this Mac\'s store', {timeout: 60000}, () => check({profile: profileWith({store: 'sqlite'}), store: 'sqlite', token: ''}));
 test('Notion (the stand-in)', {timeout: 60000}, async () => {
   const fake = await startNotionFake();
-  try { await check({profile: profileWith({notionIds: await buildStandIn(fake)}), store: 'standin', token: fake.token, appEnv: {JOB_PILOTTO_E2E_NOTION_BASE_URL: fake.url}}); }
+  try { await check({profile: profileWith({notionIds: await buildStandIn(fake)}), store: 'standin', token: fake.token, appEnv: {JOBADABRA_E2E_NOTION_BASE_URL: fake.url}}); }
   finally { await fake.close(); }
 });

@@ -46,7 +46,7 @@ def new_run(mode):
 def _fresh(mode):
     from datetime import datetime, timezone
     event = os.getenv('GITHUB_EVENT_NAME', '')
-    trigger = os.getenv('JOB_PILOTTO_TRIGGER') or {'schedule': 'Schedule', '': 'Local'}.get(event, 'Manual')
+    trigger = os.getenv('JOBADABRA_TRIGGER') or {'schedule': 'Schedule', '': 'Local'}.get(event, 'Manual')
     run = {'mode': mode, 'started_at': datetime.now(timezone.utc).isoformat(timespec='seconds'),
            'trigger': trigger, 'warnings': [], 'run_id': run_result.current_id()}
     if os.getenv('GITHUB_RUN_ID'):

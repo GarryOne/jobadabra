@@ -13,7 +13,7 @@ export const MAIL_WATCHES = ['src/ai/mail.py', 'src/ai/mail_inbox.py', 'src/ai/m
 const repo = path.resolve(import.meta.dirname, '..', '..', '..');
 
 /** Python uses only the loopback transport; modelFetch owns every provider credential and CLI sign-in. */
-export const evalEnv = proxyUrl => pythonEnv({JOB_PILOTTO_AI_ENGINE: 'api',
+export const evalEnv = proxyUrl => pythonEnv({JOBADABRA_AI_ENGINE: 'api',
   ANTHROPIC_API_KEY: DUMMY_KEY, ANTHROPIC_BASE_URL: proxyUrl});
 
 // SDK-shaped loopback bridge only: no provider choice, cache or billing outside the existing judge transport.

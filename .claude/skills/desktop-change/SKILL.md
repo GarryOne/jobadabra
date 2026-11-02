@@ -51,7 +51,7 @@ Before a PR, make ONE side-by-side image: reference (the owner's mockup, or toda
 | A job runs but nothing reports back | Every run writes its ⏱️ Search runs row (start → end, log); user-started jobs always answer (Telegram / dialog), even "nothing new". |
 | Fixed by hand for the owner (gh, Keychain, Notion) | Product bug: the Desktop App must do it for any user (CLAUDE.md rule). |
 | Editing Python from a script right after JS | No `=>` or `const` in Python (happened twice): `python3 -c "import ast; ast.parse(open(f).read())"` before the tests. |
-| Notion 429s | Notion's limit (~3/s) is shared by everything using the key: the app, its Python jobs (one pace file on the Mac) and **GitHub runs** (slower pace, `JOB_PILOTTO_NOTION_GAP_MS`). Read `logs/notion-requests.log` (who called what, status, ms) before guessing. |
+| Notion 429s | Notion's limit (~3/s) is shared by everything using the key: the app, its Python jobs (one pace file on the Mac) and **GitHub runs** (slower pace, `JOBADABRA_NOTION_GAP_MS`). Read `logs/notion-requests.log` (who called what, status, ms) before guessing. |
 | Values in CSS | Tokens only (`tokens.css`); `design.test.js` fails otherwise. |
 | Demo data | Fictional only (`desktop/demo/`); add the case you need to render. |
 

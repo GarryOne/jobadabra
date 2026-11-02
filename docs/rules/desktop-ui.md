@@ -29,7 +29,7 @@ Living copy: `npm run gallery` (sections "Chips" and "Value → control", drawn 
 
 ## Cards: read → Edit → editor; one save bar (owner, 18 Oct 2026, UI redesign)
 Every Profile and Strategy card works one way ("so nice, so clean"). Parts: `renderer/card-shell.js` + `card-shell.css`, `components.js` `cardEdit`, `renderer/save-bar.js`;
-living copy: `npm run gallery` → "Card shell"; API for other sessions: `~/job-pilotto-ui-mockups-2026-10-18/SHARED-PARTS.md`.
+living copy: `npm run gallery` → "Card shell"; API for other sessions: `~/jobadabra-ui-mockups-2026-10-18/SHARED-PARTS.md`.
 - **Header:** icon, title, one-line description (`.panel-lead`), then at the right a quiet **✎ Edit** (`cardEdit`: neutral outline, pencil + word, always visible) and the chevron. Same place on every card.
 - **Read view by default** (`.card-read`): `readRows` (label → value; empty = `pill('Not set', 'warn')`; a note for the AI is a muted line under its value) and `chipLine`
   for several values ("English · B2", "Romanian · Native"). Never the editor's controls just to read.
@@ -128,7 +128,7 @@ The owner's review of Strategy and Your details, kept as rules. Don't / Do pairs
 - **The window is one module per page** (`desktop/renderer/pages/`); `renderer/app.js` only runs each page's `init()` in order. Helpers every page
   uses are in `pages/core.js`; state more than one page *reassigns* lives on `shared` (`pages/shared.js`), since an imported binding is read-only.
   Logic testable without a window goes in its own small module (`renderer/session-message.js`, `session-state.js`) with a test in `desktop/test/`.
-- `electron .` works in any worktree: `desktop/start.js` builds `shared/` when it's missing; a test run (`JOB_PILOTTO_SMOKE…`) that can't start
+- `electron .` works in any worktree: `desktop/start.js` builds `shared/` when it's missing; a test run (`JOBADABRA_SMOKE…`) that can't start
   prints why and quits.
 
 ## Checking a UI change (the tier decides how much)
@@ -144,7 +144,7 @@ The owner's review of Strategy and Your details, kept as rules. Don't / Do pairs
 - **PR images: at most 5 before/after pairs, usually 1-2** (owner, 17 Oct 2026; `tools/pr-body.sh` refuses more than 10 images).
 - **PR images are published with `node tools/pr-assets.mjs pr-assets-<branch> <png>...` (a git tag + raw URL), never a GitHub release**: a normal release becomes "Latest" and the Download link points at it (17 Oct 2026; `tests/test_release_guard.py`, hourly `release-guard.yml`).
 - A screenshot tool that fails for tooling reasons: drop it once, say so; don't sink time into it.
-- **Screenshots show no first-launch overlay** (owner, 17 Oct 2026: the menu tour covered the sidebar in PR shots). Every capture tool runs with `JOB_PILOTTO_SMOKE`, so the page loads `?capture=1` (`lib/e2e-hidden.js` `captureQuery`); a new one-time overlay (tour, hint, what's new) checks `captureRun` (`renderer/menu-tour.js`) like the tour does.
+- **Screenshots show no first-launch overlay** (owner, 17 Oct 2026: the menu tour covered the sidebar in PR shots). Every capture tool runs with `JOBADABRA_SMOKE`, so the page loads `?capture=1` (`lib/e2e-hidden.js` `captureQuery`); a new one-time overlay (tour, hint, what's new) checks `captureRun` (`renderer/menu-tour.js`) like the tour does.
 
 ## A detail screen is cards, tiles and bars, never a plain table (owner, 25 Oct 2026) [approved]
 A new Reports tab or detail screen starts from the app's own widgets: `summaryTiles` for the main figures (icon, tone), a `.card` per topic with a small category label and a title, `.bar` rows for shares and durations, `pill()` for status and `chip()` for values, a tone on a run row's left edge, folds for the long rest. A `.data-table` is for a list of like rows, not for a report. Why: the first Searches tab (a table per topic) was called "the most ugly and basic design I ever seen"; rebuilt from the tiles, cards and bars the Focus and Jobs screens use, the owner said ship (session ee, Reports → Searches). Before any preview, put the screen next to `docs/ui/jobs.jpg` and `focus.jpg`: if it looks plainer, rebuild it before asking.

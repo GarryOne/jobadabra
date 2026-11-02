@@ -1,7 +1,7 @@
 // Layer 3 (Node + the engine's real SQLite store in a temp folder, no window, no browser): "I submitted it" (the session card's button; the app missed the submit, 3 Oct 2026). Pressing it
 // marks the job Applied in the store AND ends every session of that job, not only the store row. Moved here from the apply/applyflows e2e step '"I submitted it" marks the job Applied and takes
 // its session off the list' (1 Nov 2026, R2): the app's own `setStatus` handler (lib/focus-handlers.js) runs against a real store and the real session list (lib/terminals.js).
-// Isolation: the storage is a temp folder, the engine gets only that folder's data and config (lib/pipeline-env.js), its secrets file is the run's own (JOB_PILOTTO_ISOLATED_SECRETS), and no
+// Isolation: the storage is a temp folder, the engine gets only that folder's data and config (lib/pipeline-env.js), its secrets file is the run's own (JOBADABRA_ISOLATED_SECRETS), and no
 // window, Notion, AI or Keychain is reached.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -21,9 +21,9 @@ before(async () => {
   profile = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-applied-by-hand-'));
   fs.writeFileSync(path.join(profile, 'settings.json'), JSON.stringify({store: 'sqlite'}));
   // The engine child inherits these: its own secrets file (never the Keychain) and the test marker (lib/pipeline-env.js).
-  const kept = {JOB_PILOTTO_E2E: process.env.JOB_PILOTTO_E2E, JOB_PILOTTO_ISOLATED_SECRETS: process.env.JOB_PILOTTO_ISOLATED_SECRETS, HOME: process.env.HOME};
-  process.env.JOB_PILOTTO_E2E = '1';
-  process.env.JOB_PILOTTO_ISOLATED_SECRETS = path.join(profile, 'isolated-secrets.json');
+  const kept = {JOBADABRA_E2E: process.env.JOBADABRA_E2E, JOBADABRA_ISOLATED_SECRETS: process.env.JOBADABRA_ISOLATED_SECRETS, HOME: process.env.HOME};
+  process.env.JOBADABRA_E2E = '1';
+  process.env.JOBADABRA_ISOLATED_SECRETS = path.join(profile, 'isolated-secrets.json');
   process.env.HOME = profile;
   restore = () => { for (const [name, value] of Object.entries(kept)) { if (value === undefined) delete process.env[name]; else process.env[name] = value; } };
   const {createStorage} = await loadAppModule('storage.js');

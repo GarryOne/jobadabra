@@ -97,13 +97,13 @@ def probe_options(scout, db, stores, static, harvest_sources):
     # A web search for an employer's own job site, when a key allows it (web_search.py); never for the end-to-end journey's fixtures.
     from .sources import web_search
     language = next((loc.get('language') for loc in (scout.load_search_config().get('google_jobs') or {}).get('locations') or [] if isinstance(loc, dict)), '')
-    search = None if harvest_sources is not None or os.getenv('JOB_PILOTTO_FIXTURE_DIR') or not web_search.provider() else\
+    search = None if harvest_sources is not None or os.getenv('JOBADABRA_FIXTURE_DIR') or not web_search.provider() else\
         (lambda name: web_search.job_sites(name, language))
     if search:
         print(f'Scout: employers with no job site found are looked up with a web search ({web_search.provider()}).')
     # jobs.ch for an employer with no job site we can read: Swiss places only (it lists Swiss employers), never for the fixtures.
     from .sources import boards as job_boards
-    lookup = None if harvest_sources is not None or os.getenv('JOB_PILOTTO_FIXTURE_DIR') or job_boards.swiss_place_word(scout.load_search_config()) is None\
+    lookup = None if harvest_sources is not None or os.getenv('JOBADABRA_FIXTURE_DIR') or job_boards.swiss_place_word(scout.load_search_config()) is None\
         else (lambda name: ats.jobsch_find(name, scout.key_for))
     return active, search, lookup
 

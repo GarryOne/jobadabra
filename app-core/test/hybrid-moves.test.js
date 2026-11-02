@@ -12,7 +12,7 @@ const NAMES = `<label for="first">First name</label> <input id="first" type="tex
 <label for="last">Last name</label> <input id="last" type="text">`;
 const trustedClick = (window, el) => { const event = new window.MouseEvent('click', { bubbles: true }); event.__jpTrusted = true; el.dispatchEvent(event); };
 const trustedDown = (window, el) => { const event = new window.MouseEvent('mousedown', { bubbles: true, cancelable: true }); event.__jpTrusted = true; el.dispatchEvent(event); };
-const fill = (window, answers) => window.__jobPilottoExtensionFill(answers, {}, null, '', false);
+const fill = (window, answers) => window.__jobadabraExtensionFill(answers, {}, null, '', false);
 
 const CHIPS = `<form>${NAMES}<label id="model-label">Work model</label>
 <div class="chips" aria-labelledby="model-label"><span class="chip" data-v="office" tabindex="0">Office</span><span class="chip" data-v="hybrid" tabindex="0">Hybrid</span><span class="chip" data-v="remote" tabindex="0">Remote</span></div></form>`;
@@ -20,7 +20,7 @@ const wireChips = (window) => { for (const chip of window.document.querySelector
 
 test('move 1: a group of choices named only by aria-labelledby (no role, no aria state) is read as one question with its options', { skip: !JSDOM }, async () => {
   const window = openPage(JSDOM, CHIPS);
-  const fields = await window.__jobPilottoDescribeForm();
+  const fields = await window.__jobadabraDescribeForm();
   const model = fields.find((field) => field.label === 'Work model');
   assert.ok(model, `the group is a field: ${JSON.stringify(fields.map((f) => f.label))}`);
   assert.equal(model.type, 'radio');
@@ -30,7 +30,7 @@ test('move 1: a group of choices named only by aria-labelledby (no role, no aria
 test('move 1: its answer is pressed once, and a press that only changes the option\'s class counts as taken (never pressed again, which would undo it)', { skip: !JSDOM }, async () => {
   const window = openPage(JSDOM, CHIPS);
   wireChips(window);
-  const field = (await window.__jobPilottoDescribeForm()).find((row) => row.label === 'Work model').field;
+  const field = (await window.__jobadabraDescribeForm()).find((row) => row.label === 'Work model').field;
   const summary = await fill(window, [{ field, value: 'Remote', source: 'kit' }]);
   assert.ok(window.document.querySelector('.chip.is-on[data-v=remote]'), 'Remote is on');
   assert.equal(window.document.querySelectorAll('.chip.is-on').length, 1);
@@ -40,7 +40,7 @@ test('move 1: its answer is pressed once, and a press that only changes the opti
 test('move 1 floor: a list of links, or a group holding a text box, named the same way is no question', { skip: !JSDOM }, async () => {
   const window = openPage(JSDOM, `<form>${NAMES}<span id="more">More</span><div aria-labelledby="more"><a href="/a" tabindex="0">One</a><a href="/b" tabindex="0">Two</a></div>
     <span id="mix">Mixed</span><div aria-labelledby="mix"><span tabindex="0">A</span><span tabindex="0">B</span><input id="other"></div></form>`);
-  const labels = (await window.__jobPilottoDescribeForm()).map((row) => row.label);
+  const labels = (await window.__jobadabraDescribeForm()).map((row) => row.label);
   assert.ok(!labels.includes('More') && !labels.includes('Mixed'), JSON.stringify(labels));
 });
 
@@ -51,16 +51,16 @@ const wireTrustedRadios = (window) => { for (const r of window.document.querySel
 test('move 2: a radio group that ignores a scripted click lists its answer\'s option as a spot to press for real, then reads as taken', { skip: !JSDOM }, async () => {
   const window = openPage(JSDOM, RADIOS);
   wireTrustedRadios(window);
-  const field = (await window.__jobPilottoDescribeForm()).find((row) => row.label === 'Are you willing to relocate?').field;
+  const field = (await window.__jobadabraDescribeForm()).find((row) => row.label === 'Are you willing to relocate?').field;
   await fill(window, [{ field, value: 'No', source: 'kit' }]);
   const no = window.document.querySelector('[data-v=no]');
   assert.equal(no.getAttribute('aria-checked'), 'false', 'the scripted press did not take');
-  const spots = Array.from(window.__jobPilottoPressSpots());
+  const spots = Array.from(window.__jobadabraPressSpots());
   assert.deepEqual(spots.map(({ field: f, step }) => ({ f, step })), [{ f: field, step: 'option' }]);
   assert.ok(Number.isFinite(spots[0].x) && Number.isFinite(spots[0].y));
   trustedClick(window, no);   // what the worker's debugger click does at that spot
-  assert.equal(window.__jobPilottoPressedNow(field), true);
-  assert.deepEqual(Array.from(window.__jobPilottoPressSpots()), [], 'taken: never pressed again');
+  assert.equal(window.__jobadabraPressedNow(field), true);
+  assert.deepEqual(Array.from(window.__jobadabraPressSpots()), [], 'taken: never pressed again');
 });
 
 const MENU = `<form>${NAMES}<label id="lang-label">Preferred language</label>
@@ -74,7 +74,7 @@ const wireMenu = (window) => {
 
 test('move 1: a custom dropdown named by aria-labelledby in a form with other boxes is read as its question', { skip: !JSDOM }, async () => {
   const window = openPage(JSDOM, MENU);
-  const row = (await window.__jobPilottoDescribeForm()).find((item) => item.label === 'Preferred language');
+  const row = (await window.__jobadabraDescribeForm()).find((item) => item.label === 'Preferred language');
   assert.ok(row, 'read');
   assert.equal(row.type, 'select');
 });
@@ -82,16 +82,16 @@ test('move 1: a custom dropdown named by aria-labelledby in a form with other bo
 test('move 2: a custom dropdown that opens only on a real press: the opener is the spot, then its answer\'s option, then it reads as taken', { skip: !JSDOM }, async () => {
   const window = openPage(JSDOM, MENU);
   wireMenu(window);
-  const field = (await window.__jobPilottoDescribeForm()).find((item) => item.label === 'Preferred language').field;
+  const field = (await window.__jobadabraDescribeForm()).find((item) => item.label === 'Preferred language').field;
   await fill(window, [{ field, value: 'German', source: 'kit' }]);
   assert.equal(window.document.getElementById('lang').value, '', 'the scripted press did not open it');
-  const [spot] = Array.from(window.__jobPilottoPressSpots());
+  const [spot] = Array.from(window.__jobadabraPressSpots());
   assert.equal(spot?.step, 'opener');
-  assert.equal(window.__jobPilottoPressOptionSpot(field), null, 'nothing to pick before the list opens');
+  assert.equal(window.__jobadabraPressOptionSpot(field), null, 'nothing to pick before the list opens');
   trustedDown(window, window.document.querySelector('.select'));
-  assert.ok(window.__jobPilottoPressOptionSpot(field), 'the answer\'s option, once the list is open');
+  assert.ok(window.__jobadabraPressOptionSpot(field), 'the answer\'s option, once the list is open');
   trustedDown(window, [...window.document.querySelectorAll('[role=option]')].find((li) => li.textContent === 'German'));
-  assert.equal(window.__jobPilottoPressedNow(field), true);
+  assert.equal(window.__jobadabraPressedNow(field), true);
   assert.equal(window.document.getElementById('lang').value, 'German');
 });
 
@@ -103,10 +103,10 @@ test('move 2, the worker: presses each spot for real (the opener, then the optio
   };
   const page = async (func, args = []) => {
     const source = String(func);
-    if (source.includes('__jobPilottoPressSpots')) return answers.spots;
+    if (source.includes('__jobadabraPressSpots')) return answers.spots;
     if (source.includes('markAt')) { calls.push(`mark ${args.join(',')}`); return true; }
-    if (source.includes('__jobPilottoPressOptionSpot')) return answers.option;
-    if (source.includes('__jobPilottoPressedNow')) return args[0] === 'menu';
+    if (source.includes('__jobadabraPressOptionSpot')) return answers.option;
+    if (source.includes('__jobadabraPressedNow')) return args[0] === 'menu';
     return null;
   };
   const mouse = async (x, y) => { calls.push(`press ${x},${y}`); };
@@ -117,7 +117,7 @@ test('move 2, the worker: presses each spot for real (the opener, then the optio
 
 test('move 2, the worker: a point the press floor refuses (a submit drawn there) is never pressed', async () => {
   const calls = [];
-  const page = async (func) => { const source = String(func); if (source.includes('__jobPilottoPressSpots')) return [{ field: 'aria:g1', step: 'option', x: 1, y: 2 }]; if (source.includes('markAt')) return false; return false; };
+  const page = async (func) => { const source = String(func); if (source.includes('__jobadabraPressSpots')) return [{ field: 'aria:g1', step: 'option', x: 1, y: 2 }]; if (source.includes('markAt')) return false; return false; };
   const result = await pressNotTakenForReal({ page, mouse: async (x, y) => calls.push(`${x},${y}`), wait: async () => {} });
   assert.deepEqual(calls, []);
   assert.deepEqual(result, { tried: 1, taken: 0 });

@@ -15,7 +15,7 @@ the market moved, how the week's insights were rated, and up to three changes fo
 It is kept as a 💡 Insights row (Category "Weekly report") whose page body holds the full report.
 
 Runs with the first scheduled crawl of the day (at or after SEND_HOUR_UTC), or on demand with
-`--mode insight` / `--mode weekly` (Telegram /insight, /weekly). Off unless JOB_PILOTTO_INSIGHT_MODEL
+`--mode insight` / `--mode weekly` (Telegram /insight, /weekly). Off unless JOBADABRA_INSIGHT_MODEL
 names a model.
 """
 from collections import Counter, defaultdict
@@ -41,7 +41,7 @@ from ..stores.notion_blocks import to_markdown
 from ..suggestions import door_field
 
 
-DEFAULT_MODEL = os.getenv('JOB_PILOTTO_INSIGHT_MODEL', MAIN_MODEL)
+DEFAULT_MODEL = os.getenv('JOBADABRA_INSIGHT_MODEL', MAIN_MODEL)
 INSIGHTS_DATABASE_ID = os.getenv('NOTION_INSIGHTS_DB', '')  # focus.py and desktop.py still read Notion's insights by it
 SEND_HOUR_UTC = 4
 GOOD_FIT = 60

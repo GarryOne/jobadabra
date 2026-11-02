@@ -8,8 +8,8 @@ import {FIXTURES} from '../../e2e/lib/cvfixtures.mjs';
 import * as cvCheck from '../../lib/cv-check.js';
 import * as cvLook from '../../lib/cv-look.js';
 
-const folder = process.env.JOB_PILOTTO_CV_PROBE_DIR;
-if (!folder || !process.env.JOB_PILOTTO_CV_PROBE_OUT) throw new Error('JOB_PILOTTO_CV_PROBE_DIR and JOB_PILOTTO_CV_PROBE_OUT are required');
+const folder = process.env.JOBADABRA_CV_PROBE_DIR;
+if (!folder || !process.env.JOBADABRA_CV_PROBE_OUT) throw new Error('JOBADABRA_CV_PROBE_DIR and JOBADABRA_CV_PROBE_OUT are required');
 app.setPath('userData', path.join(folder, 'user-data'));
 app.dock?.hide();
 
@@ -29,6 +29,6 @@ app.whenReady().then(async () => {
       } finally { probe.close(); }
     }
   } catch (error) { out.error = String(error?.stack || error); } finally { printer.destroy(); }
-  fs.writeFileSync(process.env.JOB_PILOTTO_CV_PROBE_OUT, JSON.stringify(out));
+  fs.writeFileSync(process.env.JOBADABRA_CV_PROBE_OUT, JSON.stringify(out));
   app.quit();
 });

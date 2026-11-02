@@ -1,4 +1,4 @@
-"""tools/heavy-lock-memory.sh, the pressure rule (11 Oct 2026): a run starts beside others while macOS's memory pressure is normal, its available memory less what just-started runs declared is over the run's cost plus 1.5 GB, and nothing swaps out; swap already used no longer holds. JOB_PILOTTO_HEAVY_MEM_RULE=floor brings back the 7 GB free+inactive floor. Fake sysctl/vm_stat on PATH; the floor rule (also the fallback where the macOS readings are missing) is in test_heavy_lock_memory.py and test_heavy_lock_budget.py."""
+"""tools/heavy-lock-memory.sh, the pressure rule (11 Oct 2026): a run starts beside others while macOS's memory pressure is normal, its available memory less what just-started runs declared is over the run's cost plus 1.5 GB, and nothing swaps out; swap already used no longer holds. JOBADABRA_HEAVY_MEM_RULE=floor brings back the 7 GB free+inactive floor. Fake sysctl/vm_stat on PATH; the floor rule (also the fallback where the macOS readings are missing) is in test_heavy_lock_memory.py and test_heavy_lock_budget.py."""
 import os
 import shutil
 import subprocess
@@ -19,9 +19,9 @@ class HeavyLockPressureTest(unittest.TestCase):
         self.addCleanup(shutil.rmtree, self.tmp, True)
         self.trace, self.gates, self.procs = self.tmp / 'trace', self.tmp / 'gates', []
         self.addCleanup(lambda: [p.kill() for p in self.procs])
-        self.env = {**{k: v for k, v in os.environ.items() if not k.startswith(('JOB_PILOTTO_HEAVY', 'JP_HEAVY'))}, 'JOB_PILOTTO_HEAVY_DIR': (self.tmp / 'heavy').as_posix(),
-                    'JOB_PILOTTO_HEAVY_LOAD': '0', 'JOB_PILOTTO_HEAVY_POLL': '0.1', 'JOB_PILOTTO_HEAVY_SWAP_SAMPLE': '1', 'JOB_PILOTTO_HEAVY_RAMP': '3600',   # a just-started run's reservation lasts the whole test
-                    'JOB_PILOTTO_HEAVY_TIMING_LOG': (self.tmp / 'gate-timing.log').as_posix(), 'JOB_PILOTTO_HEAVY_SHARED': str(LOCK)}
+        self.env = {**{k: v for k, v in os.environ.items() if not k.startswith(('JOBADABRA_HEAVY', 'JP_HEAVY'))}, 'JOBADABRA_HEAVY_DIR': (self.tmp / 'heavy').as_posix(),
+                    'JOBADABRA_HEAVY_LOAD': '0', 'JOBADABRA_HEAVY_POLL': '0.1', 'JOBADABRA_HEAVY_SWAP_SAMPLE': '1', 'JOBADABRA_HEAVY_RAMP': '3600',   # a just-started run's reservation lasts the whole test
+                    'JOBADABRA_HEAVY_TIMING_LOG': (self.tmp / 'gate-timing.log').as_posix(), 'JOBADABRA_HEAVY_SHARED': str(LOCK)}
 
     def mac(self, level=1, avail_pct=60, swapping=False, free_inactive_gb=4, swap_used_pct=82):
         """A 16 GB Mac as macOS reports it: pressure level, available percent, swap-outs climbing (1000 pages a look) or not, free+inactive pages, swap file use."""
@@ -44,7 +44,7 @@ class HeavyLockPressureTest(unittest.TestCase):
         proc = subprocess.Popen(['bash', str(LOCK), what, 'bash', '-c', gated(self.trace, name, self.gates)], env={**self.env, **env}, stdout=subprocess.DEVNULL, stderr=err, text=True)
         proc.err_path = self.tmp / f'err-{name}'
         self.procs.append(proc)
-        wait_in_books(self.env['JOB_PILOTTO_HEAVY_DIR'], proc, procs=self.procs, env=self.env)
+        wait_in_books(self.env['JOBADABRA_HEAVY_DIR'], proc, procs=self.procs, env=self.env)
         return proc
 
     def words(self):
@@ -110,7 +110,7 @@ class HeavyLockPressureTest(unittest.TestCase):
 
     def test_the_floor_rule_is_the_escape_hatch(self):
         self.mac(avail_pct=60, free_inactive_gb=4)   # green with room, but free+inactive 4 GB is under the old 7 GB floor
-        beside, err = self.beside_first(JOB_PILOTTO_HEAVY_MEM_RULE='floor')
+        beside, err = self.beside_first(JOBADABRA_HEAVY_MEM_RULE='floor')
         self.assertFalse(beside)
         self.assertIn('free+inactive memory', err)
 

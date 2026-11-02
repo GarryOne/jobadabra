@@ -128,7 +128,7 @@ RESULT = {'nothing_useful': False, 'headline': 'Database failover is your weak s
 def env():
     return mock.patch.multiple(interviews, INTERVIEWS_DATABASE_ID='interviews-db'), \
         mock.patch.dict(ii.os.environ, {'NOTION_INSIGHTS_DB': 'insights-db', 'NOTION_INTERVIEWS_DB': 'interviews-db', 'NOTION_APPLICATIONS_DB': 'apps-db',
-                                        'JOB_PILOTTO_STORE': 'notion'})
+                                        'JOBADABRA_STORE': 'notion'})
 
 
 def of(fake):

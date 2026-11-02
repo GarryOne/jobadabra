@@ -13,7 +13,7 @@ export const CAUSE_REASON = {proposed: 'no_answer', no_data: 'no_answer', ai_dec
   not_taken: 'not_kept', no_option: 'not_kept', menu_not_clicked: 'not_kept', menu_not_opened: 'not_kept', menu_not_selected: 'not_kept', menu_not_read: 'not_kept', menu_other_choice: 'not_kept', not_kept_after_tries: 'not_kept', real_click: 'not_kept',
   unread: 'unread', other: 'unknown'};
 export const isReason = value => REASONS.includes(value);
-// entry: what the panel knows of one control: the fill's cause (data-jobpilotto-cause), the attempt log's give-up (data-jobpilotto-gaveup), the page's unread mark, a proposal or a contact key.
+// entry: what the panel knows of one control: the fill's cause (data-jobadabra-cause), the attempt log's give-up (data-jobadabra-gaveup), the page's unread mark, a proposal or a contact key.
 export function controlReason({cause = '', gaveUp = '', unread = false, suggested = '', wants = ''} = {}) {
   const reason = gaveUp ? 'tries' : unread ? 'unread' : CAUSE_REASON[cause] || (suggested || wants ? 'no_answer' : 'unknown');
   return {reason, ending: REASON_ENDING[reason]};

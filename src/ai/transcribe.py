@@ -34,7 +34,7 @@ MAX_PIECE = 20          # seconds of speech per ASR piece; Parakeet is accurate 
 AUDIO_TYPES = ('.webm', '.m4a', '.mp3', '.wav', '.ogg', '.oga', '.opus', '.mp4', '.mov', '.aac', '.flac', '.aiff', '.mkv')
 RELEASES = 'https://github.com/k2-fsa/sherpa-onnx/releases/download'
 # English for now. For German/French etc. switch to sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8 (25 languages).
-ASR_MODEL = os.getenv('JOB_PILOTTO_ASR_MODEL', 'sherpa-onnx-nemo-parakeet-tdt-0.6b-v2-int8')
+ASR_MODEL = os.getenv('JOBADABRA_ASR_MODEL', 'sherpa-onnx-nemo-parakeet-tdt-0.6b-v2-int8')
 MODELS = {
     'vad': (f'{RELEASES}/asr-models/silero_vad.onnx', 'silero_vad.onnx'),
     'segmentation': (f'{RELEASES}/speaker-segmentation-models/sherpa-onnx-pyannote-segmentation-3-0.tar.bz2',
@@ -46,14 +46,14 @@ MODELS = {
 
 
 def models_dir():
-    if os.getenv('JOB_PILOTTO_MODELS_DIR'):
-        return Path(os.environ['JOB_PILOTTO_MODELS_DIR'])
-    return Path.home() / ('Library/Caches' if sys.platform == 'darwin' else '.cache') / 'job-pilotto' / 'models'
+    if os.getenv('JOBADABRA_MODELS_DIR'):
+        return Path(os.environ['JOBADABRA_MODELS_DIR'])
+    return Path.home() / ('Library/Caches' if sys.platform == 'darwin' else '.cache') / 'jobadabra' / 'models'
 
 
 def addon_dir():
     """Where the app puts the transcription libraries (av, numpy, sherpa-onnx, ~115 MB) the first time they're needed:
-    the installer doesn't carry them. Next to the models, so JOB_PILOTTO_MODELS_DIR moves both."""
+    the installer doesn't carry them. Next to the models, so JOBADABRA_MODELS_DIR moves both."""
     return models_dir().parent / 'addon'
 
 
@@ -85,7 +85,7 @@ def install_addon(run=subprocess.run):
 
 def available():
     """True when the transcription libraries are installed (they're optional: the core doesn't need them)
-    and JOB_PILOTTO_DISABLE doesn't list "transcribe"."""
+    and JOBADABRA_DISABLE doesn't list "transcribe"."""
     from .. import features
     return not features.disabled('transcribe') and libraries()
 

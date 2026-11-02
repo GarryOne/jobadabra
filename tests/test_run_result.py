@@ -18,8 +18,8 @@ class RunResultTest(unittest.TestCase):
 
     def tearDown(self):
         run_result.reset()
-        os.environ.pop('JOB_PILOTTO_RUN_ID', None)
-        os.environ.pop('JOB_PILOTTO_RESULT_FILE', None)
+        os.environ.pop('JOBADABRA_RUN_ID', None)
+        os.environ.pop('JOBADABRA_RESULT_FILE', None)
 
     def test_the_fixture_is_the_contract_both_sides_read(self):
         body = json.loads(FIXTURE.read_text())
@@ -29,8 +29,8 @@ class RunResultTest(unittest.TestCase):
     def test_publish_writes_that_shape_with_the_runs_id(self):
         with tempfile.TemporaryDirectory() as folder:
             path = Path(folder) / 'result.json'
-            os.environ['JOB_PILOTTO_RESULT_FILE'] = str(path)
-            os.environ['JOB_PILOTTO_RUN_ID'] = 'abc123def456'
+            os.environ['JOBADABRA_RESULT_FILE'] = str(path)
+            os.environ['JOBADABRA_RUN_ID'] = 'abc123def456'
             run_result.note_job({'page_id': 'page-1', 'url': 'https://www.notion.so/page1', 'title': 'SRE',
                                  'job_url': 'https://jobs.example/1', 'created': True})
             run_result.note_notion('https://www.notion.so/run1')
@@ -42,7 +42,7 @@ class RunResultTest(unittest.TestCase):
             self.assertEqual(written['warnings'], [{'message': '1 feed failed'}])
 
     def test_a_run_row_carries_the_same_id(self):
-        os.environ['JOB_PILOTTO_RUN_ID'] = 'abc123def456'
+        os.environ['JOBADABRA_RUN_ID'] = 'abc123def456'
         cron_runs._auto.clear()
         run = cron_runs.new_run('run')
         props, _ = cron_runs.run_page(run)

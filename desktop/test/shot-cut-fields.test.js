@@ -18,7 +18,7 @@ test('the check is scoped to --select and wired into the shot', () => {
   assert.match(cutFields(), /\.segmented/);
   assert.match(cutFields(), /data-saved-value/);
   const shot = fs.readFileSync(new URL('../scripts/shot.mjs', import.meta.url), 'utf8');
-  assert.match(shot, /JOB_PILOTTO_SMOKE_EVAL = option\('eval'\) \|\| cutFields\(option\('select'\)\)/);
+  assert.match(shot, /JOBADABRA_SMOKE_EVAL = option\('eval'\) \|\| cutFields\(option\('select'\)\)/);
 });
 
 test('the choice checks name a one-column choice row and a saved value nothing shows (owner, 18 Oct 2026: Target level)', () => {

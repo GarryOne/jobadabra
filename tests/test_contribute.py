@@ -61,15 +61,15 @@ class SendTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.stamp = Path(self.tmp.name) / 'sent.json'
-        self.env = {'JOB_PILOTTO_SHARE_EMPLOYERS': '1', 'JOB_PILOTTO_INSTALL_ID': 'abc-12345678'}
+        self.env = {'JOBADABRA_SHARE_EMPLOYERS': '1', 'JOBADABRA_INSTALL_ID': 'abc-12345678'}
 
     def tearDown(self):
         self.tmp.cleanup()
 
     def test_off_by_default_and_needs_an_install_id(self):
         self.assertFalse(contribute.enabled({}))
-        self.assertFalse(contribute.enabled({'JOB_PILOTTO_SHARE_EMPLOYERS': '1'}))
-        self.assertFalse(contribute.enabled({**self.env, 'JOB_PILOTTO_DISABLE': 'contribute'}))
+        self.assertFalse(contribute.enabled({'JOBADABRA_SHARE_EMPLOYERS': '1'}))
+        self.assertFalse(contribute.enabled({**self.env, 'JOBADABRA_DISABLE': 'contribute'}))
         self.assertTrue(contribute.enabled(self.env))
 
     def test_nothing_is_sent_unless_opted_in(self):
@@ -167,7 +167,7 @@ class ShareNowTests(unittest.TestCase):
     def test_one_find_or_one_dead_end_goes_at_once_and_only_when_sharing_is_on(self):
         posts = []
         ok = lambda request: posts.append(json.loads(request.data)) or 200  # noqa: E731
-        on = {'JOB_PILOTTO_SHARE_EMPLOYERS': '1', 'JOB_PILOTTO_INSTALL_ID': 'abc-12345678'}
+        on = {'JOBADABRA_SHARE_EMPLOYERS': '1', 'JOBADABRA_INSTALL_ID': 'abc-12345678'}
         with mock.patch.dict('os.environ', on, clear=True), mock.patch.object(contribute, 'tags', lambda search=None: (['sales_retail'], ['europe'])):
             self.assertTrue(contribute.share_now(feed={'ats': 'successfactors', 'slug': 'jobs.coop.ch', 'company': 'Coop', 'how': 'ai_idea'}, post=ok, url='https://x.test/c'))
             self.assertTrue(contribute.share_now(dead={'company': 'Fnac Suisse', 'host': 'fnac.ch'}, post=ok, url='https://x.test/c'))

@@ -18,7 +18,7 @@ class SecretFileModeTest(unittest.TestCase):
             with open(path, 'w', encoding='utf-8') as handle:
                 json.dump({}, handle)
             os.chmod(path, 0o644)
-            secret_store._isolated_save(path, {'job-pilotto.example.test.password': {'value': 'x'}})
+            secret_store._isolated_save(path, {'jobadabra.example.test.password': {'value': 'x'}})
             self.assertEqual(stat.S_IMODE(os.stat(path).st_mode), 0o600)
 
     def test_a_new_file_is_private(self):

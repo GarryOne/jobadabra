@@ -41,7 +41,7 @@ test('the app asks before starting again; the end-to-end journey answers by its 
   assert.deepEqual(await askResume(['Find new employers'], {ask: ask(1), env: {}}), {start: false, decidedBy: 'you'});
   assert.deepEqual(asked[0].buttons, ['Start again', 'Leave stopped']);
   assert.equal(resumeQuestion(['Refresh jobs', 'Find new employers']).message, 'Start Refresh jobs and Find new employers again?');
-  assert.deepEqual(await askResume(['Refresh jobs'], {ask: () => { throw new Error('no dialog in e2e'); }, env: {JOB_PILOTTO_E2E: '1'}}), {start: true, decidedBy: 'e2e'});
-  assert.deepEqual(await askResume(['Refresh jobs'], {env: {JOB_PILOTTO_E2E: '1', JOB_PILOTTO_E2E_RESUME: 'leave'}}), {start: false, decidedBy: 'e2e'});
+  assert.deepEqual(await askResume(['Refresh jobs'], {ask: () => { throw new Error('no dialog in e2e'); }, env: {JOBADABRA_E2E: '1'}}), {start: true, decidedBy: 'e2e'});
+  assert.deepEqual(await askResume(['Refresh jobs'], {env: {JOBADABRA_E2E: '1', JOBADABRA_E2E_RESUME: 'leave'}}), {start: false, decidedBy: 'e2e'});
   assert.deepEqual(await askResume([], {env: {}}), {start: false, decidedBy: 'nothing to ask'});
 });

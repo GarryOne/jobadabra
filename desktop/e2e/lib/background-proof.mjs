@@ -128,7 +128,7 @@ export const hiddenPort = profile => Number(fs.readFileSync(path.join(profile, '
 export const hiddenTargets = async profile => (await fetch(`http://127.0.0.1:${hiddenPort(profile)}/json/list`, {signal: AbortSignal.timeout(3000)})).json();
 
 /** The values of the inputs on the page behind `socketUrl`, for a failure message. */
-const valuesOf = async socketUrl => String(await evaluateOn(socketUrl, "[...document.querySelectorAll('input,textarea,select')].map(item => (item.name || item.id) + '=' + (item.type === 'file' ? item.files.length + ' file(s) [file mark: ' + (item.getAttribute('data-jobpilotto-file') || 'none') + ']' : item.value) + ' [grounding: ' + (item.dataset.jobpilottoGrounding || 'none') + (item.hasAttribute('data-jobpilotto-guess') ? ', guess' : '') + ']').join(', ')") ?? '(no answer)').slice(0, 700);
+const valuesOf = async socketUrl => String(await evaluateOn(socketUrl, "[...document.querySelectorAll('input,textarea,select')].map(item => (item.name || item.id) + '=' + (item.type === 'file' ? item.files.length + ' file(s) [file mark: ' + (item.getAttribute('data-jobadabra-file') || 'none') + ']' : item.value) + ' [grounding: ' + (item.dataset.jobadabraGrounding || 'none') + (item.hasAttribute('data-jobadabra-guess') ? ', guess' : '') + ']').join(', ')") ?? '(no answer)').slice(0, 700);
 
 /** The console lines and exceptions the page behind `socketUrl` already holds (Runtime.enable replays them), for a failure message. */
 const consoleOf = socketUrl => new Promise((done, fail) => {

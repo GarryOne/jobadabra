@@ -8,20 +8,20 @@
     .tag{display:inline-block;padding:1px 8px;border-radius:999px;background:#fdf4e4;color:#9a6200;font-size:11.5px;font-weight:600;margin-right:8px}
     .card{margin-top:6px;padding:10px;border-radius:10px;background:#f5f7fb;border:1px solid #e2e8f0}.card b{display:block;margin-bottom:2px}.card ul{margin:4px 0 6px 18px;padding:0}
     .add{margin:2px 0 6px 18px;padding:0}.imp{white-space:pre-wrap;margin:6px 0;padding:8px;border-radius:8px;background:#fff;border:1px solid #e2e8f0;max-height:220px;overflow:auto}.err{color:#a33}</style>`;
-  window.__jobPilottoPanelWritten = {start({send, alive}) {
+  window.__jobadabraPanelWritten = {start({send, alive}) {
     const hosts = new Map();   // the box -> {host, root, result}
     const setValue = (el, text) => {   // as a person's typing would arrive: the page's own listeners see it
       Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set.call(el, text);
       el.dispatchEvent(new Event('input', {bubbles: true})); el.dispatchEvent(new Event('change', {bubbles: true}));
     };
-    const keep = el => { delete el.dataset.jobpilottoDraft; };
-    const kindOf = field => field.el?.dataset?.jobpilottoDraft || '';
+    const keep = el => { delete el.dataset.jobadabraDraft; };
+    const kindOf = field => field.el?.dataset?.jobadabraDraft || '';
     const line = (tag, text) => Object.assign(document.createElement(tag), {textContent: text});
 
     function draw(field, slot) {
       const {root, result} = slot, el = field.el, kind = kindOf(field);
       const box = root.querySelector('.w'), text = String(el.value || '').trim();
-      const remind = (() => { try { return JSON.parse(el.dataset.jobpilottoRemind || '[]'); } catch { return []; } })();   // what to add in your own words (page/categories.js): never typed (owner, 27 Oct 2026)
+      const remind = (() => { try { return JSON.parse(el.dataset.jobadabraRemind || '[]'); } catch { return []; } })();   // what to add in your own words (page/categories.js): never typed (owner, 27 Oct 2026)
       const sig = [kind, !!text, result.busy, result.error, result.rev, remind.length].join('|');   // drawn again only when something shown changed: a press never lands on a rebuilt button
       if (slot.sig === sig) return;
       slot.sig = sig;
@@ -71,7 +71,7 @@
         wanted.add(el);
         let slot = hosts.get(el);
         if (!slot || !slot.host.isConnected) {
-          const host = Object.assign(document.createElement('div'), {id: 'jobpilotto-written-host'});
+          const host = Object.assign(document.createElement('div'), {id: 'jobadabra-written-host'});
           const root = host.attachShadow({mode: 'open'}); root.innerHTML = `${STYLE}<div class="w"></div>`;
           el.after(host);
           slot = {host, root, result: slot?.result || {rev: 0}}; hosts.set(el, slot);

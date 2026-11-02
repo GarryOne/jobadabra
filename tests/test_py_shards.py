@@ -149,7 +149,7 @@ class CheckoutDataTests(unittest.TestCase):
 
     def test_a_unit_test_process_without_a_data_folder_gets_its_own_temp_one(self):
         code = 'import unittest, src.paths as p; print(p.DATA); print(p.REPORTS); print(p.jobs_db())'
-        env = {key: value for key, value in os.environ.items() if not key.startswith('JOB_PILOTTO_')}   # the shard's own JOB_PILOTTO_TEST_DATA_DIR included (Gitar on #2735)
+        env = {key: value for key, value in os.environ.items() if not key.startswith('JOBADABRA_')}   # the shard's own JOBADABRA_TEST_DATA_DIR included (Gitar on #2735)
         done = subprocess.run([sys.executable, '-c', code], cwd=ROOT, env=env, capture_output=True, text=True)
         data, reports, db = (Path(line) for line in done.stdout.split())
         self.assertNotIn(ROOT, data.parents)
@@ -171,8 +171,8 @@ class CheckoutDataTests(unittest.TestCase):
 
     def test_a_process_a_test_starts_writes_into_the_shards_folder_not_the_checkout(self):
         with tempfile.TemporaryDirectory() as shard_folder:
-            env = {key: value for key, value in os.environ.items() if not key.startswith('JOB_PILOTTO_')}
-            env.update({'JOB_PILOTTO_TEST_DATA_DIR': shard_folder, 'JOB_PILOTTO_FOLLOW_APP': '0', 'PYTHONPATH': str(ROOT)})
+            env = {key: value for key, value in os.environ.items() if not key.startswith('JOBADABRA_')}
+            env.update({'JOBADABRA_TEST_DATA_DIR': shard_folder, 'JOBADABRA_FOLLOW_APP': '0', 'PYTHONPATH': str(ROOT)})
             done = subprocess.run([sys.executable, '-c', 'from src import paths; print(paths.DATA); print(paths.REPORTS)'], cwd=ROOT, env=env, capture_output=True, text=True)
             self.assertEqual(done.stdout.split(), [shard_folder, str(Path(shard_folder) / 'reports')], done.stderr)
 
@@ -185,7 +185,7 @@ class ProgressLineTests(unittest.TestCase):
         self.assertEqual(shards.progress_line(shard_list, [0, 1], 1, 80), 'python tests: 2/3 shards done (4/6 modules) · 1 failed · 1m20s')
 
     def test_a_run_longer_than_the_interval_prints_a_progress_line_before_the_end(self):
-        env = {**os.environ, 'JOB_PILOTTO_PROGRESS_SECS': '1', 'JOB_PILOTTO_PY_JOBS': '2'}
+        env = {**os.environ, 'JOBADABRA_PROGRESS_SECS': '1', 'JOBADABRA_PY_JOBS': '2'}
         with tempfile.TemporaryDirectory() as tmp:
             sleeper = Path(tmp) / 'test_zz_progress_sleeper.py'
             sleeper.write_text('import time, unittest\nclass T(unittest.TestCase):\n    def test_slow(self):\n        time.sleep(3)\n')

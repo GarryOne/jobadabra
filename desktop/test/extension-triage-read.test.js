@@ -13,8 +13,8 @@ globalThis.chrome = {
   tabs: {get: async id => (id === 7 ? {id: 7, url: current.local.backgroundApplySessions[SESSION].url, windowId: 3} : null), remove: async id => { current.removed.push(id); }},
   scripting: {executeScript: async ({files, func, args = []}) => {
     if (files) { current.files.push(...files); return []; }
-    const window = {__jobPilottoDescribeForm: async () => current.form, __jobPilottoCheckboxQuestions: () => [],
-      __jobPilottoProfileEntries: (rows, profile) => rows.filter(row => profile[row.field]).map(row => ({field: row.field})), __jobPilottoPageText: () => 'Fictional form'};
+    const window = {__jobadabraDescribeForm: async () => current.form, __jobadabraCheckboxQuestions: () => [],
+      __jobadabraProfileEntries: (rows, profile) => rows.filter(row => profile[row.field]).map(row => ({field: row.field})), __jobadabraPageText: () => 'Fictional form'};
     return [{result: await vm.runInNewContext(`(${func.toString()})(...args)`, {window, args})}];
   }},
 };

@@ -13,8 +13,8 @@ async function run(kitLetter) {
   globalThis.chrome = {runtime: {getManifest: () => ({version: 'test'})}, storage: {session: {get: async () => ({}), set: async () => {}}, local: {get: async () => ({})}},
     scripting: {executeScript: async ({func, args}) => {
       if (!func) return [{}];
-      globalThis.window = {__jobPilottoDescribeForm: async () => [{field: 'cover_letter', type: 'textarea', label: 'Cover letter', required: false}], __jobPilottoCheckboxQuestions: () => [], __jobPilottoPageText: () => '', __jobPilottoProfileEntries: () => [],
-        __jobPilottoExtensionFill: (...values) => { given.push(values); return {filled: 1, todo: []}; }, __jobPilottoArmedCount: () => 0};
+      globalThis.window = {__jobadabraDescribeForm: async () => [{field: 'cover_letter', type: 'textarea', label: 'Cover letter', required: false}], __jobadabraCheckboxQuestions: () => [], __jobadabraPageText: () => '', __jobadabraProfileEntries: () => [],
+        __jobadabraExtensionFill: (...values) => { given.push(values); return {filled: 1, todo: []}; }, __jobadabraArmedCount: () => 0};
       return [{result: await func(...(args || []))}];
     }}};
   globalThis.fetch = async () => new Response(JSON.stringify({answers: [], eligible: true, usd: 0}), {status: 200});

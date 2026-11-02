@@ -23,7 +23,7 @@ test('an upload slot is a file row named by its meaning, required by the page\'s
   const JSDOM = await loadJsdom();
   if (!JSDOM) return;
   const { window } = openPage(JSDOM, '<div class="field"><label>* Lebenslauf <input type="file" id="a"></label></div><div class="field"><label>Zeugnisse <input type="file" id="b"></label></div><input id="e">');
-  const rows = window.__jobPilottoUpload.rows();
+  const rows = window.__jobadabraUpload.rows();
   assert.deepEqual(JSON.parse(JSON.stringify(rows.map(row => [row.field, row.type, row.required, row.filled]))), [['resume', 'file', true, false], ['upload_2', 'file', false, false]]);
 });
 

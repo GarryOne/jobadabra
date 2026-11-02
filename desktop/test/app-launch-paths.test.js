@@ -33,7 +33,7 @@ test('Playwright starts the app in one place only: e2e/lib/app.mjs launch(), whi
   assert.deepEqual(launchers, ['e2e/lib/app.mjs'], 'start the app through launch() (e2e/lib/app.mjs), never a second Playwright launch');
   const app = FILES.find(({file}) => file === 'e2e/lib/app.mjs').text;
   assert.match(app, /ownPortEnv\(/, 'launch() gives every test app its own port');
-  assert.match(app, /JOB_PILOTTO_E2E_RUNNER_PID/, 'launch() names its runner, so the app ends with it (lib/e2e-host.js watchRunner)');
+  assert.match(app, /JOBADABRA_E2E_RUNNER_PID/, 'launch() names its runner, so the app ends with it (lib/e2e-host.js watchRunner)');
 });
 
 test('every other start of the app has no socket or its own port, and ends with the script that started it', () => {
@@ -41,10 +41,10 @@ test('every other start of the app has no socket or its own port, and ends with 
   assert.deepEqual([...new Set(starts.map(({file}) => file))].sort(), ['e2e/twin.mjs', 'scripts/screenshots.mjs', 'scripts/shot.mjs', 'scripts/ui-shots.mjs'],
     'the scan finds the three shot tools and the twin: the pattern above still matches them (a new start is added here with its rules)');
   for (const {file, text} of starts) {
-    assert.match(text, /JOB_PILOTTO_DEMO|JOB_PILOTTO_PORT/, `${file}: a demo app (no socket) or its own port, never the owner's 47111`);
+    assert.match(text, /JOBADABRA_DEMO|JOBADABRA_PORT/, `${file}: a demo app (no socket) or its own port, never the owner's 47111`);
     // The twin is the one start meant to outlive its script: the owner looks at it after `twin.mjs start` returns, and `twin.mjs stop` ends it (docs/live-test.md).
-    if (file === 'e2e/twin.mjs') { assert.match(text, /JOB_PILOTTO_PORT: String\(port\)/, 'the twin listens on its own port'); continue; }
-    assert.match(text, /JOB_PILOTTO_E2E_RUNNER_PID: String\(process\.pid\)/, `${file}: name the runner, so the app ends with this script (lib/e2e-host.js watchRunner); a timeout kills only the .bin/electron shim`);
+    if (file === 'e2e/twin.mjs') { assert.match(text, /JOBADABRA_PORT: String\(port\)/, 'the twin listens on its own port'); continue; }
+    assert.match(text, /JOBADABRA_E2E_RUNNER_PID: String\(process\.pid\)/, `${file}: name the runner, so the app ends with this script (lib/e2e-host.js watchRunner); a timeout kills only the .bin/electron shim`);
   }
 });
 
@@ -56,6 +56,6 @@ test('a plain-node copy of the app\'s server ends with the harness that started 
     const name = path.basename(file);
     const launchers = FILES.filter(other => other.file !== file && other.file !== SELF && other.text.includes(name) && /\bspawn\(/.test(other.text));
     assert.ok(launchers.length, `${file}: its launcher is found`);
-    for (const launcher of launchers) assert.match(launcher.text, /JOB_PILOTTO_E2E_RUNNER_PID: String\(process\.pid\)/, `${launcher.file}: name the runner when starting ${name}`);
+    for (const launcher of launchers) assert.match(launcher.text, /JOBADABRA_E2E_RUNNER_PID: String\(process\.pid\)/, `${launcher.file}: name the runner when starting ${name}`);
   }
 });

@@ -11,7 +11,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {writePrivate} from './private-file.js';
 
-export const MODEL = process.env.JOB_PILOTTO_MODEL_OVERRIDE || 'claude-sonnet-5-5';
+export const MODEL = process.env.JOBADABRA_MODEL_OVERRIDE || 'claude-sonnet-5-5';
 const PRICE = {input: 2, output: 10};  // USD per million tokens
 const usd = usage => (usage?.billing === 'subscription' ? 0 : Math.round(((usage?.input_tokens || 0) * priceOf(usage, PRICE).input + (usage?.output_tokens || 0) * priceOf(usage, PRICE).output) / 1e4) / 100);
 

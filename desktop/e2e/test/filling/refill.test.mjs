@@ -52,7 +52,7 @@ test('an empty balance or a spent limit is named as out of credits', () => {
 });
 
 test('a fill asks the model on CI only with the refill flag, never otherwise', () => {
-  const base = {JOB_PILOTTO_E2E: '1', JOB_PILOTTO_MODEL_MEMO_ONLY: '1', JOB_PILOTTO_MODEL_MEMO_FILL: '1'};
+  const base = {JOBADABRA_E2E: '1', JOBADABRA_MODEL_MEMO_ONLY: '1', JOBADABRA_MODEL_MEMO_FILL: '1'};
   assert.equal(fillOn(base), true, 'a Mac');
   assert.equal(fillOn({...base, CI: 'true'}), false, 'CI without the flag');
   assert.equal(fillOn({...base, GITHUB_ACTIONS: 'true'}), false);

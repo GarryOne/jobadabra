@@ -34,14 +34,14 @@ export function restart(who) {
 // The panel stays and says "Stopped by you" with "Check form again" itself (review.js hears `stopped`; owner mockup 03): the note below is only for a page without the panel,
 // never a second box beside it saying something else (owner, 27 Oct 2026: the panel came back centred and working, undimmed, under "Jobadabra is stopped on this page").
 function stoppedPage() {
-  window.__jobPilottoStopped = true;
+  window.__jobadabraStopped = true;
   try { const clean = location.href.replace(/#jobpilotto-fill(=[A-Za-z0-9_-]{1,64})?$/, ''); if (clean !== location.href) history.replaceState(history.state, '', clean); } catch { /* sandboxed page */ }
-  for (const id of ['jobpilotto-progress', 'jobpilotto-note', 'jobpilotto-fill-overlay']) document.getElementById(id)?.remove();
+  for (const id of ['jobadabra-progress', 'jobadabra-note', 'jobadabra-fill-overlay']) document.getElementById(id)?.remove();
   if (!document.documentElement) return;
   document.documentElement.dataset.jobpilottoFill = JSON.stringify({state: 'stopped'});
-  if (window.top !== window || document.getElementById('jobpilotto-review-host')) return;
+  if (window.top !== window || document.getElementById('jobadabra-review-host')) return;
   const box = document.createElement('div');
-  box.id = 'jobpilotto-note';
+  box.id = 'jobadabra-note';
   box.dataset.stopped = '1';
   box.style.cssText = 'position:fixed;top:12px;right:12px;z-index:2147483647;max-width:320px;background:#132439;color:#fff;border-radius:10px;padding:12px 14px;font:13px/1.45 system-ui,sans-serif;box-shadow:0 6px 24px #0008';
   box.textContent = 'Jobadabra is stopped on this page. Press Apply in the app to start again.';
@@ -51,9 +51,9 @@ function stoppedPage() {
 
 // A page the person starts again: its own Stop goes (the flag, the stopped mark, the stopped note). -> whether it was stopped. Runs in every frame.
 function startedPage() {
-  const was = !!window.__jobPilottoStopped;
-  delete window.__jobPilottoStopped;
-  document.querySelector('#jobpilotto-note[data-stopped]')?.remove();
+  const was = !!window.__jobadabraStopped;
+  delete window.__jobadabraStopped;
+  document.querySelector('#jobadabra-note[data-stopped]')?.remove();
   try { if (JSON.parse(document.documentElement?.dataset.jobpilottoFill || '{}').state === 'stopped') delete document.documentElement.dataset.jobpilottoFill; } catch { /* not our mark */ }
   return was;
 }

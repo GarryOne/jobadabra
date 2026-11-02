@@ -1,7 +1,7 @@
 """Every use of the records read/write token goes through the GitHub App's own token, with the old secret as the fallback (16 Oct 2026).
 
 19:06Z that day the token belonged to the owner's account, so every local session and every CI fetch drew on one 5,000/h; it ran out and PR journeys went red as "no record".
-The App (job-pilotto-ci-records, installed on jobadabra-lab only) has its own limit: a job that reads jobadabra-lab mints its token first
+The App (jobadabra-ci-records, installed on jobadabra-lab only) has its own limit: a job that reads jobadabra-lab mints its token first
 (`id: records_app`, continue-on-error, only when CI_APP_PRIVATE_KEY is set) and uses `steps.records_app.outputs.token || secrets.NET_RECORDS_*_TOKEN`.
 A workflow job that names the old secret alone, or mints it wrongly, fails here with its file:line.
 """

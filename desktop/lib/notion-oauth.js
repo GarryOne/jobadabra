@@ -4,7 +4,7 @@
 // (it holds the connection's secret) and keeps it 10 minutes; the app collects it once with the session id.
 import crypto from 'node:crypto';
 
-export const SITE = process.env.JOB_PILOTTO_SITE || 'https://www.jobpilotto.top';
+export const SITE = process.env.JOBADABRA_SITE || 'https://www.jobpilotto.top';
 
 // The page Notion copied the Jobadabra template into ("Use a template provided by the developer" on its
 // consent page; the connection's settings must offer it), as a plain 32-character id; null when the user picked

@@ -52,7 +52,7 @@ test('scrubUrl: query values and fragment gone, e-mail and id-like path parts na
   assert.equal(scrubUrl('/relative/path?x=1'), '/relative/path?x=<v>');
 });
 
-// Review of #798 (job-pilotto-cc, 15 Oct 2026): the scrub fails closed.
+// Review of #798 (jobadabra-cc, 15 Oct 2026): the scrub fails closed.
 const one = (type, body, over = {}) => ({bodies: new Map([['b', Buffer.isBuffer(body) ? body : Buffer.from(body)]]), entries: [entry({type: 'fetch', url: 'https://jobs.example.test/x', headers: type ? {'content-type': type} : {}, hash: 'b', size: 9, ...over})]});
 const gone = out => out.entries.every(item => item.hash === '' && item.size === 0) && out.bodies.size === 0;
 

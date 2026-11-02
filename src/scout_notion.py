@@ -17,8 +17,8 @@ from .scout_probe import board_url
 
 
 def excluded_companies(seeds=None):
-    """Keys of companies this user never wants suggested or crawled (seed list + JOB_PILOTTO_EXCLUDED_COMPANIES)."""
-    extra = [name for name in os.getenv('JOB_PILOTTO_EXCLUDED_COMPANIES', '').split(',') if name.strip()]
+    """Keys of companies this user never wants suggested or crawled (seed list + JOBADABRA_EXCLUDED_COMPANIES)."""
+    extra = [name for name in os.getenv('JOBADABRA_EXCLUDED_COMPANIES', '').split(',') if name.strip()]
     return {key_for(name.strip()) for name in (seeds or {}).get('excluded', []) + extra}
 
 

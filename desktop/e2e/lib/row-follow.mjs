@@ -2,6 +2,7 @@
 // route it changed, a banner it closed) is played back from the live run's own states (lib/capture-journey.mjs: each settled state in order, with its time) once
 // the replay's extension makes the same press as the live run did at that point (presses.json, lib/replay-candidate.mjs livePresses). A different press stops the
 // replay: "pressed X, live pressed Y" is the finding a fix needs. Used by lib/row-replay.mjs. Guard: e2e/test/row-follow.test.mjs.
+// Job: serve stored answers
 
 // The presses the replay's extension logged (its /extension/log calls, our own wording), in order. -> [{what, label}]
 const PRESS = /^((?:pressed [^:]*?|closed a popup))(?::.*)?$/;   // words-ok: our own log's wording, not page text
@@ -76,15 +77,15 @@ export function samePress(mine, live, k) {
 
 // Runs in the page: the recorded next state of this same address is played INTO the page (12 Oct 2026): an element that is still there stays the same element (the extension holds the boxes it typed
 // in; a page's own script empties their value, it does not replace them: fix 2f6a91e retypes exactly such a box, which a replaced one could never show), its attributes and text follow the new state,
-// a text box or area takes the capture's value (none: the capture strips typed values), nodes only one side has are added or removed. The extension's own UI (ids jobpilotto-*) is kept.
+// a text box or area takes the capture's value (none: the capture strips typed values), nodes only one side has are added or removed. The extension's own UI (ids jobadabra-*) is kept.
 export function swapInPage(html) {
   /* global document, DOMParser */
   const next = new DOMParser().parseFromString(html, 'text/html');
-  const ours = node => node.nodeType === 1 && /^(jobpilotto|job-pilotto)/.test(node.id || '');
+  const ours = node => node.nodeType === 1 && /^(jobadabra|jobadabra)/.test(node.id || '');
   const sameKind = (a, b) => a.nodeType === b.nodeType && a.nodeName === b.nodeName && (a.nodeType !== 1 || (a.id || '') === (b.id || ''));
   const morph = (from, to) => {
     if (from.nodeType === 3 || from.nodeType === 8) { if (from.nodeValue !== to.nodeValue) from.nodeValue = to.nodeValue; return; }
-    for (const attr of [...from.attributes]) if (!to.hasAttribute(attr.name) && !/^data-jobpilotto/.test(attr.name) && attr.name !== 'value') from.removeAttribute(attr.name);
+    for (const attr of [...from.attributes]) if (!to.hasAttribute(attr.name) && !/^data-jobadabra/.test(attr.name) && attr.name !== 'value') from.removeAttribute(attr.name);
     for (const attr of [...to.attributes]) if (attr.name !== 'value' && from.getAttribute(attr.name) !== attr.value) from.setAttribute(attr.name, attr.value);
     if (/^(INPUT|TEXTAREA)$/.test(from.tagName) && !/^(file|checkbox|radio|submit|button|image|reset|hidden)$/i.test(from.type || '') && to.getAttribute('data-jp-state') !== 'filled') from.value = to.getAttribute('value') ?? (to.tagName === 'TEXTAREA' ? to.textContent : '');   // a box the live state had FILLED keeps what the extension typed
     if (from.tagName === 'TEXTAREA') return;

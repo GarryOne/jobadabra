@@ -76,6 +76,6 @@ CI runs `python3 -m unittest discover -s tests`, `cd app-core && npm test`, `cd 
 - The Stop hook (`tools/stop-test-check.sh`) runs no suite by default since 13 Oct 2026 (owner): CI runs them on the PR before the owner merges; `STOP_CHECK_SUITES=1` runs the ones your changes touch.
 - The gate reuses a suite pass on identical inputs (`tools/gate-cache.sh`; `GATE_CACHE=0` off, `PUSH_FULL=1` re-runs); a fail is never cached.
   Each step's time is logged (`<git common dir>/gate-timing.log`, `GATE_TIMING=0` off).
-- Areas with no affected test are not started (`JOB_PILOTTO_TIERS=0` starts all); browser suites and replays take one machine-wide lock
-  (`tools/heavy-lock.sh`, the primary checkout's copy, first come first served, a 2nd run only with spare memory, waits on a busy Mac, `JOB_PILOTTO_HEAVY=0` skips); `tools/ship.sh` lands through a PR the owner merges (main is protected; no landing
+- Areas with no affected test are not started (`JOBADABRA_TIERS=0` starts all); browser suites and replays take one machine-wide lock
+  (`tools/heavy-lock.sh`, the primary checkout's copy, first come first served, a 2nd run only with spare memory, waits on a busy Mac, `JOBADABRA_HEAVY=0` skips); `tools/ship.sh` lands through a PR the owner merges (main is protected; no landing
   queue: any session opens a PR at any time, CI's required checks guard main); a refused push rebases and re-checks only when what landed can clash (`tools/recheck-needed.py`; `SHIP_RECHECK=1` always), and keeps the worktree.

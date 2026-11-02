@@ -1,6 +1,6 @@
 // Sends the push gate's daily counts to /admin/operations/agent-coding, at most once a day (owner, 1 Nov 2026: "Once a day from ship.sh"): tools/ship.sh runs it as its last step.
 // Best effort: a missing log, key or network, a refusal or a slow answer ends quietly with exit 0 and never stops a ship; the stamp is written only after the site answered ok, so a failed day tries again.
-// The key is read from the macOS Keychain (job-pilotto.site.selfheal_publish_key) when it runs, never from a file or the environment. GATE_STATS_UPLOAD=0 turns it off; --force skips the stamp.
+// The key is read from the macOS Keychain (jobadabra.site.selfheal_publish_key) when it runs, never from a file or the environment. GATE_STATS_UPLOAD=0 turns it off; --force skips the stamp.
 // Only counts, seconds and fixed check labels leave this Mac (tools/gate-stats.mjs). Test: desktop/test/gate-stats.test.js.
 import {execFileSync} from 'node:child_process';
 import {existsSync, readFileSync, writeFileSync} from 'node:fs';
@@ -28,7 +28,7 @@ export async function upload({log, hookLog, stampFile, now = new Date(), force =
   return 'sent';
 }
 
-const keychain = () => { try { return execFileSync('security', ['find-generic-password', '-s', 'job-pilotto.site.selfheal_publish_key', '-w'], {encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore']}).trim(); } catch { return ''; } };
+const keychain = () => { try { return execFileSync('security', ['find-generic-password', '-s', 'jobadabra.site.selfheal_publish_key', '-w'], {encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore']}).trim(); } catch { return ''; } };
 const post = (body, secret) => fetch(process.env.GATE_STATS_URL || URL_DEFAULT, {method: 'PUT', headers: {Authorization: `Bearer ${secret}`, 'Content-Type': 'application/json'}, body, signal: AbortSignal.timeout(TIMEOUT_MS)})
   .then(response => response.status, () => null);
 

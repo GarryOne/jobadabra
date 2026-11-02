@@ -1,11 +1,11 @@
 """Monthly AI budget: how much of this month's Anthropic spend limit is used, and what to do about it.
 
 Spend comes from Anthropic's Usage & Cost Admin API when an Admin API key is available
-(ANTHROPIC_ADMIN_KEY, or the Keychain entry job-pilotto.anthropic.admin-key) — the exact figure the
+(ANTHROPIC_ADMIN_KEY, or the Keychain entry jobadabra.anthropic.admin_key) — the exact figure the
 console shows. Without one (Admin keys need an organization account), it is the sum of this month's runs' AI cost
 (stores.cron_runs: ⏱️ Search runs "AI cost (USD)" in Notion), which every AI run logs (crawls, kits, insights, interviews, mail).
 
-Levels, against JOB_PILOTTO_MONTHLY_BUDGET_USD (your console limit, default 15):
+Levels, against JOBADABRA_MONTHLY_BUDGET_USD (your console limit, default 15):
   ok     below 70%
   warn   70% or more: one Telegram alert
   pause  90% or more: one Telegram alert, and the scheduled crawl skips optional AI (auto-kits, scoring
@@ -14,7 +14,6 @@ Levels, against JOB_PILOTTO_MONTHLY_BUDGET_USD (your console limit, default 15):
 from datetime import datetime, timezone
 import json
 import os
-import subprocess
 import sys
 import urllib.parse
 import urllib.request
@@ -29,7 +28,7 @@ PAUSED_SCORE_MAX, PAUSED_ENRICH_MAX = 10, 30
 
 def monthly_budget():
     try:
-        return float(os.getenv('JOB_PILOTTO_MONTHLY_BUDGET_USD') or 15)
+        return float(os.getenv('JOBADABRA_MONTHLY_BUDGET_USD') or 15)
     except ValueError:
         return 15.0
 
@@ -38,9 +37,7 @@ def admin_key():
     key = os.getenv('ANTHROPIC_ADMIN_KEY')
     if key or sys.platform != 'darwin' or secret_store.isolated():  # the end-to-end journey never reaches the owner's Anthropic organisation
         return key
-    found = subprocess.run(['security', 'find-generic-password', '-a', os.getenv('USER', ''),
-                            '-s', 'job-pilotto.anthropic.admin-key', '-w'], capture_output=True, text=True)
-    return found.stdout.strip() or None
+    return secret_store.get('jobadabra.anthropic.admin_key') or None   # the store also finds the owner's item under the pre-rename name
 
 
 def month_start(now):
@@ -55,7 +52,7 @@ def admin_spend(key, now, opener=urllib.request.urlopen):
     while True:
         query = dict(params, **({'page': page} if page else {}))
         request = urllib.request.Request(f'{COST_REPORT}?{urllib.parse.urlencode(query)}', headers={
-            'x-api-key': key, 'anthropic-version': '2023-06-01', 'User-Agent': 'JobPilotto/1.0'})
+            'x-api-key': key, 'anthropic-version': '2023-06-01', 'User-Agent': 'Jobadabra/1.0'})
         with opener(request, timeout=20) as response:
             data = json.load(response)
         for bucket in data.get('data', []):
@@ -107,7 +104,7 @@ def alert_once(db, info, send, now=None):
     if info['level'] == 'pause':
         text = (f"⚠️ <b>AI budget</b>\n{info['pct']:.0%} used · {describe(info)}\n\n<b>What is paused</b>\n"
                 "Auto-kits and extra scoring, until the limit resets on the 1st. Mail, insights and interview reviews keep running.\n\n"
-                "<b>Next step</b>\nTo resume now, raise the limit in the Anthropic console and JOB_PILOTTO_MONTHLY_BUDGET_USD.")
+                "<b>Next step</b>\nTo resume now, raise the limit in the Anthropic console and JOBADABRA_MONTHLY_BUDGET_USD.")
     else:
         text = (f"💸 <b>AI budget</b>\n{info['pct']:.0%} used · {describe(info)}\n\n<b>What happens next</b>\n"
                 "At 90% the optional AI steps pause so the essentials keep running.")
@@ -128,7 +125,7 @@ def apply_caps(args, info, warnings):
     if args.enrich_max:
         args.enrich_max = min(args.enrich_max, PAUSED_ENRICH_MAX)
     # The AI that helps find sources (careers pages, alert emails, scout ideas) is optional too: off until the month resets.
-    off = [name for name in (os.getenv('JOB_PILOTTO_DISABLE') or '').split(',') if name.strip()]
-    os.environ['JOB_PILOTTO_DISABLE'] = ','.join(dict.fromkeys(off + ['page_reader', 'job_alerts', 'scout_ai']))
+    off = [name for name in (os.getenv('JOBADABRA_DISABLE') or '').split(',') if name.strip()]
+    os.environ['JOBADABRA_DISABLE'] = ','.join(dict.fromkeys(off + ['page_reader', 'job_alerts', 'scout_ai']))
     warnings.append(f"budget {info['pct']:.0%}: auto-kits off, scoring capped at {PAUSED_SCORE_MAX}, AI source reading off")
     return True

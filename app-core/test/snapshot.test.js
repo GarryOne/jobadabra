@@ -32,7 +32,7 @@ const FORM = `
     <div class="select__container">
       <label id="degree-label" for="degree--0" class="label select__label">Degree<span aria-hidden="true">*</span></label>
       <div class="select-shell remix-css-b62m3t-container">
-        <div class="select__control select__control--is-focused select__control--menu-is-open remix-css-13cymwt-control jobpilotto-review" style="outline: 3px solid #d9540b" data-jobpilotto-armed="Degree">
+        <div class="select__control select__control--is-focused select__control--menu-is-open remix-css-13cymwt-control jobadabra-review" style="outline: 3px solid #d9540b" data-jobadabra-armed="Degree">
           <div class="select__value-container remix-css-hlgwow">
             <div class="select__placeholder" id="react-select-degree--0-placeholder">Select...</div>
             <div class="select__input-container" data-value="Master of Science in Physics">
@@ -44,7 +44,7 @@ const FORM = `
           <div class="select__indicators"><span class="select__indicator-separator"></span>
             <div class="select__indicator select__dropdown-indicator" aria-hidden="true"><svg height="20" width="20"><path d="M4 5z"></path></svg></div></div>
         </div>
-        <div class="job-pilotto-badge">✈️ Click to choose: Master of Science in Physics</div>
+        <div class="jobadabra-badge">✈️ Click to choose: Master of Science in Physics</div>
         <div class="select__menu remix-css-menu">
           <div class="select__menu-list" role="listbox" id="react-select-degree--0-listbox" aria-multiselectable="false">
             <div class="select__option" role="option" id="react-select-degree--0-option-0" aria-selected="false">Bachelor's Degree</div>
@@ -69,10 +69,10 @@ const FORM = `
 test('a snapshot of a form full of personal data leaks none of it, and keeps the structure a replay needs', { skip }, () => {
   const window = openPage(JSDOM, FORM);
   const secrets = Object.values(ME);
-  const degree = window.__jobPilottoSnapshots([{ label: 'Degree', field: 'degree--0' }], secrets).Degree;
+  const degree = window.__jobadabraSnapshots([{ label: 'Degree', field: 'degree--0' }], secrets).Degree;
   const html = snapshotFromReport(degree);  // as the Worker writes it into the issue
   for (const leak of LEAKS) assert.ok(!html.includes(leak), `"${leak}" leaked:\n${html}`);
-  assert.ok(!/href|src=|style=|onfocus|data-value|data-initial|data-jobpilotto|jobpilotto-review|<script|<img|<path|value="/.test(html), html);
+  assert.ok(!/href|src=|style=|onfocus|data-value|data-initial|data-jobadabra|jobadabra-review|<script|<img|<path|value="/.test(html), html);
   // What a replay needs: the label, the combobox and its aria wiring, react-select's classes, the open menu's options.
   assert.match(html, /<label id="degree-label" for="degree--0" class="label select__label">/);
   assert.match(html, /<input class="select__input" id="degree--0" role="combobox" type="text" aria-expanded="true"[^>]*aria-controls="react-select-degree--0-listbox"[^>]*data-jp-field>/);
@@ -82,12 +82,12 @@ test('a snapshot of a form full of personal data leaks none of it, and keeps the
   assert.ok(html.length <= SNAPSHOT_MAX);
 
   // A search box the user typed their city into: the text and the options it brought up are hidden.
-  const location = snapshotFromReport(window.__jobPilottoSnapshots([{ label: 'Location (City)', field: 'location' }], secrets)['Location (City)']);
+  const location = snapshotFromReport(window.__jobadabraSnapshots([{ label: 'Location (City)', field: 'location' }], secrets)['Location (City)']);
   assert.ok(!location.includes('Winterthur'), location);
   assert.match(location, /\[redacted\], Iowa, United States/);
 
   // Whole-form snapshots too (every field at once): still nothing personal.
-  const all = snapshotHtml(window.__jobPilottoScrubSnapshot(window.eval(`(${toTreeSource})(document.body)`), secrets));
+  const all = snapshotHtml(window.__jobadabraScrubSnapshot(window.eval(`(${toTreeSource})(document.body)`), secrets));
   assert.match(all, /First Name/);
   assert.match(all, /Welcome back, \[redacted\] \[redacted\]/);  // the greeting, without the name
   for (const leak of LEAKS) assert.ok(!all.includes(leak), `"${leak}" leaked from the whole form:\n${all}`);
@@ -102,14 +102,14 @@ const toTreeSource = `function toTree(el) {
 }`;
 
 test('the page captures the Degree menu as it opened (before typing filtered it), for "no option matched"', { skip }, async () => {
-  const window = openPage(JSDOM, FORM.replace('data-jobpilotto-armed="Degree"', ''));
+  const window = openPage(JSDOM, FORM.replace('data-jobadabra-armed="Degree"', ''));
   const { userClick } = await import('./helpers/page.js');
-  await window.__jobPilottoExtensionFill([{ field: 'degree--0', value: 'Astronaut' }], {}, null, '', false);
-  userClick(window, window.document.querySelector('[data-jobpilotto-armed]'));
+  await window.__jobadabraExtensionFill([{ field: 'degree--0', value: 'Astronaut' }], {}, null, '', false);
+  userClick(window, window.document.querySelector('[data-jobadabra-armed]'));
   await new Promise((resolve) => setTimeout(resolve, 200));
-  const kept = window.__jobPilottoMenuSnapshots?.Degree;
+  const kept = window.__jobadabraMenuSnapshots?.Degree;
   assert.ok(kept, 'the menu snapshot was kept when the answer matched no option');
-  const html = snapshotFromReport(window.__jobPilottoSnapshots([{ label: 'Degree', field: 'degree--0' }], Object.values(ME)).Degree);
+  const html = snapshotFromReport(window.__jobadabraSnapshots([{ label: 'Degree', field: 'degree--0' }], Object.values(ME)).Degree);
   assert.ok(html.includes("Master's Degree") && !html.includes('Astronaut') && !html.includes('Lovelace'), html);
 });
 

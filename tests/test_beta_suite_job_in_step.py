@@ -24,7 +24,7 @@ DIFFERENT = {
         'E2E_SEED': 'variation.mjs uses a fixed path for every beta; standalone non-gate runs can vary by run id.',
         'E2E_COVERAGE': 'coverage.mjs records current-code PR/main runs, never release builds.',
         'E2E_COVERAGE_SHA': 'coverage.mjs stamps that current-code coverage; the beta does not collect it.',
-        'JOB_PILOTTO_E2E_EXPECTS_FAILURES': 'sentry.js tags intentional mutant failures; the beta never mutates the build.',
+        'JOBADABRA_E2E_EXPECTS_FAILURES': 'sentry.js tags intentional mutant failures; the beta never mutates the build.',
     },
     'windows': {
         'E2E_FULL': 'The beta omits duplicate paid Windows judges (owner, 7 Oct); standalone runs accept inputs.full.',

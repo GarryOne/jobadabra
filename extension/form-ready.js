@@ -1,6 +1,6 @@
 // The AI's veto on an APPLICATION form's "Ready to submit" (owner, 8 Oct 2026: the account page's "ready?" judgment, ported). The panel counts required boxes by HTML; when that count says
 // everything is filled, the AI reads the page's real state (a consent that is a link, a custom picklist, an error shown) and may say "needs you: <label>"; the worker then sets the page's
-// data-jobpilotto-needs, which the panel shows instead of "Ready". It only ever VETOES a ready claim: it never accepts a consent, never presses Submit, and without AI nothing changes.
+// data-jobadabra-needs, which the panel shows instead of "Ready". It only ever VETOES a ready claim: it never accepts a consent, never presses Submit, and without AI nothing changes.
 // The answer is kept per tab for the sketch it was given (asked again only when the page changed), one look at a time. Guards: app-core/test/form-ready.test.js, desktop/test/form-judge.test.js.
 import {backgroundContext, backgroundFormReady} from './background-apply.js';
 import {apiFor, gaveUpOn, settings} from './flow.js';

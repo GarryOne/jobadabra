@@ -2,7 +2,7 @@ name: CI · Judge exam
 
 # The verdict pass's exam (desktop/e2e/lib/judge-exam.mjs): ten findings from this loop's own history, each with the code as it was at its build and a known answer (four real, six false),
 # judged by the same prompt as a real finding and scored. A judge that dismisses a real bug or believes a false alarm shows it as a number on /self-heal, without anyone ticking a box.
-# It costs one broker call (about ten findings in one prompt, Codex plan), so it is OFF until the owner turns it on:  gh variable set JOB_PILOTTO_JUDGE_EXAM --body on
+# It costs one broker call (about ten findings in one prompt, Codex plan), so it is OFF until the owner turns it on:  gh variable set JOBADABRA_JUDGE_EXAM --body on
 # Why (31 Oct 2026, owner: "We should use fully the Codex"): it ran claude-code-action on an API key; a refused broker call skips the exam with its reason (desktop/e2e/judge-codex.mjs).
 on:
   schedule:

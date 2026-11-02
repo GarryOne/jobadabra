@@ -130,7 +130,7 @@ export function localEnv(storage, submitted = sessionSubmitted, {find: injected,
     NOTION_PROFILE_PAGE_ID: ids.NOTION_PROFILE_PAGE_ID || '',
     NOTION_ANSWERS_PAGE_ID: ids.NOTION_ANSWERS_PAGE_ID || '',
     // extension.js reads the Profile and standard answers pages from Notion.
-    JOB_PILOTTO_KIT_MODEL: pipeline.MODELS.kit,
+    JOBADABRA_KIT_MODEL: pipeline.MODELS.kit,
     markApplied: async (url, decision = '') => {
       const job = await find(url);
       // Irreversible, so what decided it and on what evidence goes to the app's log (grep 'extension' logs/app.log):

@@ -1,7 +1,7 @@
 // The panel's own styles and markup (drawn inside its shadow root, so the page's styles cannot touch it). Owns only this string; review.js puts it in the root
 // and finds its parts by class. Injected before review.js (panel-files.js). Guarded by desktop/test/panel-click-through, extension-panel-version, cost-labels.
 (() => {
-  window.__jobPilottoPanelMarkup = `<style>
+  window.__jobadabraPanelMarkup = `<style>
     :host { all: initial; }
     * { box-sizing: border-box; }
     /* Two themes (owner, 19 Oct 2026: "let it support 2 themes dark/light, in sync with the desktop app"): light tokens here; dark under data-theme=dark (the app's setting, review.js) or,

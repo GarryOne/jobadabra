@@ -2,6 +2,7 @@
 // the Keychain (never printed). Fixed words and hosts only: never a posting's address, never applicant data. Never from CI, nor from a control run against an
 // old build (REAL_EXTENSION_DIR: its failures are on purpose). The recorded replays are the other way round: only CI on a push to main sends them (uploadReplays,
 // replays-report.mjs), never a local run. Guard: e2e/test/applying-report.test.mjs.
+// Job: keep the scorecard
 import {execFileSync} from 'node:child_process';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -29,7 +30,7 @@ export const skipReason = (env = process.env) => (env.CI ? 'CI' : env.REAL_EXTEN
 // The owner's site key from the Keychain (or the one given), '' when there is none. Never printed.
 export function ownerKey(key) {
   if (key) return key;
-  try { return execFileSync('security', ['find-generic-password', '-s', 'job-pilotto.site.api_key', '-w'], {encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore']}).trim(); } catch { return ''; }
+  try { return execFileSync('security', ['find-generic-password', '-s', 'jobadabra.site.api_key', '-w'], {encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore']}).trim(); } catch { return ''; }
 }
 
 // A recorded case uploads only with its control (owner, 10 Oct 2026: a case that passed on the old build reached /admin/form-filling/lab as a pass). case.json `control` is

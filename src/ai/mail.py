@@ -149,10 +149,10 @@ def main(argv=None):
     args = parser.parse_args(argv)
     google = Google.from_env()
     if not google:
-        print('Gmail + Calendar is off: Google is not connected or JOB_PILOTTO_DISABLE includes mail. '
+        print('Gmail + Calendar is off: Google is not connected or JOBADABRA_DISABLE includes mail. '
               'See README → Gmail and Calendar.')
         return 0
-    stores = open_stores()  # the active store: this Mac's (sqlite) or Notion; JOB_PILOTTO_STORE picks it
+    stores = open_stores()  # the active store: this Mac's (sqlite) or Notion; JOBADABRA_STORE picks it
     sender = None
     from ..features import disabled
     if args.send and not disabled('telegram'):

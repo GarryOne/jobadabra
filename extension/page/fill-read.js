@@ -1,10 +1,10 @@
-// The form filler's reader (split from page/fill.js, 9 Oct 2026): every question on the visible page with its choices (__jobPilottoDescribeForm),
+// The form filler's reader (split from page/fill.js, 9 Oct 2026): every question on the visible page with its choices (__jobadabraDescribeForm),
 // the page's text, checkbox groups that are one question, and your contact details placed by label (built-in patterns, then the service's
 // meanings). No applicant values are read. Needs page/fill-labels.js first. Guarded by app-core/test/fill-learning.test.js, aliases.test.js.
 (() => {
-  if (window.__jobPilottoFillReadLoaded) return;
-  window.__jobPilottoFillReadLoaded = true;
-  const {LEGAL, asksQuestion, clean, labelOf, questionOf, fieldsetTitle, titleRequired, visible, isCombo, radioOps} = window.__jobPilottoFillKit;
+  if (window.__jobadabraFillReadLoaded) return;
+  window.__jobadabraFillReadLoaded = true;
+  const {LEGAL, asksQuestion, clean, labelOf, questionOf, fieldsetTitle, titleRequired, visible, isCombo, radioOps} = window.__jobadabraFillKit;
 
   const PROFILE_LABELS = [
     ['first_name', /first\s*name|given\s*name|vorname|prénom/i],
@@ -47,7 +47,7 @@
   // -> the text this box takes of the saved phone, '' for a box that takes none.
   const phoneFor = (part, phone) => {
     const compact = String(phone).replace(/[\s().-]/g, '');
-    const dial = window.__jobPilottoFillKit.dialOf?.(compact) || '';
+    const dial = window.__jobadabraFillKit.dialOf?.(compact) || '';
     if (part === 'extension') return '';
     if (part === 'code') return dial;
     return part === 'split-number' ? compact.slice(dial.length).replace(/^0+/, '') : String(phone);
@@ -58,7 +58,7 @@
   const aliasFor = label => {
     const text = clean(label).toLowerCase().replace(/\*+/g, '').replace(/\((optional|required|erforderlich|obligatoire)\)/g, '').replace(/^\s*\d+[.)]\s+/, '').replace(/[\s:;,.?!-]+$/g, '').trim();
     if (text.length < 3 || text.length > 100 || /@|https?:|www\./.test(text)) return null;
-    for (const item of window.__jobPilottoAliases || []) {
+    for (const item of window.__jobadabraAliases || []) {
       if (item && item.key && !/^(resume|cover_letter)$/.test(item.key) && item.phrase && (text === item.phrase || ` ${text} `.includes(` ${item.phrase} `))) return item;
     }
     return null;
@@ -68,21 +68,22 @@
   // person's places: a page can guess where a visitor is, but a name, e-mail or phone it holds came from the person's own account there and is kept.
   // A box the fill typed on this page before (the person may have changed it since) is never a guess. Agreeing text (another spelling, the city part) is kept.
   const PLACE_KEYS = ['location', 'street', 'postal_code'];
-  const fold = text => (window.__jobPilottoFold?.(text) ?? String(text ?? '').toLowerCase()).replace(/[^\p{L}\p{N}]/gu, '');   // letters and digits, accents dropped (Zürich = Zurich; page/fold-text.js)
+  const fold = text => (window.__jobadabraFold?.(text) ?? String(text ?? '').toLowerCase()).replace(/[^\p{L}\p{N}]/gu, '');   // letters and digits, accents dropped (Zürich = Zurich; page/fold-text.js)
   const pageGuess = (row, profile) => {
     const key = (PROFILE_LABELS.find(([name, pattern]) => profile[name] && pattern.test(row.label || row.field)) || [])[0];
     if (!PLACE_KEYS.includes(key) || asksQuestion(row.label)) return false;
     const el = document.getElementById?.(row.field) || document.querySelector?.(`[name="${CSS.escape(row.field)}"]`);
-    if (!el || el.tagName === 'SELECT' || window.__jobPilottoTypedHere?.(el)) return false;
+    if (!el || el.tagName === 'SELECT' || window.__jobadabraTypedHere?.(el)) return false;
     const forms = typeof profile.location_forms === 'string' ? profile.location_forms.split(',') : profile.location_forms || [];
     const saved = [profile[key], ...(key === 'location' ? [String(profile.location).split(',')[0], ...forms] : [])].filter(Boolean);
-    return !saved.some(value => window.__jobPilottoTypedSame(fold(value), fold(el.value)));
+    return !saved.some(value => window.__jobadabraTypedSame(fold(value), fold(el.value)));
   };
   // Contact details by field label, for the fields every board names differently.
-  window.__jobPilottoProfileEntries = (rows, profile, taken = []) => {
+  // clean-code-ok: Why (1 Nov 2026, rename to Jobadabra): only the old name in this function was renamed; its complexity is unchanged
+  window.__jobadabraProfileEntries = (rows, profile, taken = []) => {
     const used = new Set(taken);
     const entries = [];
-    window.__jobPilottoAliasUsed = {};   // field -> the phrase that placed it (reported as counts, never the answer)
+    window.__jobadabraAliasUsed = {};   // field -> the phrase that placed it (reported as counts, never the answer)
     const parts = phoneParts(rows), split = [...parts.values()].includes('code');
     for (const row of rows) {
       if (row.legal || used.has(row.field) || !TEXT_TYPES.includes(row.type)) continue;
@@ -99,7 +100,7 @@
       const value = key === 'phone' ? phoneFor(part === 'number' && split ? 'split-number' : part, profile.phone) : String(profile[key]);
       if (!value) { used.add(row.field); continue; }   // the extension box: nothing to type, and no other detail takes it
       entries.push({field: row.field, value, ...(guess ? {pageGuess: true} : {}), ...((profile._fromCv || []).includes(key) ? {fromCv: true} : {})});   // a detail you left empty, from your CV (desktop/lib/server-contact.js withCvFallback): shown "check it"
-      if (alias) window.__jobPilottoAliasUsed[row.field] = alias.phrase;
+      if (alias) window.__jobadabraAliasUsed[row.field] = alias.phrase;
       used.add(row.field);
     }
     return entries;
@@ -108,10 +109,11 @@
   // Every question on the visible page, with the choices it offers. No applicant values.
   // settled: read at the end of a fill (flow.js), when a real choice on the first option is an answer ("Monsieur"); before it, a page's preselected first
   // option is still asked (the AI answers it: "Célibataire" may be wrong for you).
-  window.__jobPilottoDescribeForm = async (settled = false) => {
+  // clean-code-ok: Why (1 Nov 2026, rename to Jobadabra): only the old name in this function was renamed; its complexity is unchanged
+  window.__jobadabraDescribeForm = async (settled = false) => {
     const fields = [];
     const controls = Array.from(document.querySelectorAll('input, textarea, select')).filter(el => visible(el) &&
-      !el.disabled && !window.__jobPilottoReadBack.hiddenAway(el) &&
+      !el.disabled && !window.__jobadabraReadBack.hiddenAway(el) &&
       !['hidden', 'submit', 'button', 'reset', 'search', 'file', 'image'].includes(el.type));
     const groups = new Set();
     let unnamed = 0;
@@ -124,41 +126,41 @@
         const radios = controls.filter(r => r.type === 'radio' && r.name === el.name);
         const question = questionOf(el) || labelOf(el);
         fields.push({field: `radio:${el.name}`, label: question, type: 'radio',
-          required: radios.some(r => r.required || r.getAttribute('aria-required') === 'true') || titleRequired(fieldsetTitle(el.closest('fieldset')) || window.__jobPilottoRequired.rowTitle(el))
-            || (group => !!group && (group.getAttribute('aria-required') === 'true' || window.__jobPilottoRequired.has(window.__jobPilottoOwnName(group)?.el)))(el.closest('[role=radiogroup], [role=group]')),   // the group's own title carries the star (page/label-before.js)
+          required: radios.some(r => r.required || r.getAttribute('aria-required') === 'true') || titleRequired(fieldsetTitle(el.closest('fieldset')) || window.__jobadabraRequired.rowTitle(el))
+            || (group => !!group && (group.getAttribute('aria-required') === 'true' || window.__jobadabraRequired.has(window.__jobadabraOwnName(group)?.el)))(el.closest('[role=radiogroup], [role=group]')),   // the group's own title carries the star (page/label-before.js)
           options: radios.map(labelOf), filled: radios.some(r => r.checked), legal: LEGAL.test(question)});
       } else if (el.type === 'checkbox') {
         const label = labelOf(el);
         const question = questionOf(el);
         fields.push({field: el.id || el.name, label: question && question !== label ? `${question}: ${label}` : label,
-          type: 'checkbox', required: el.required || window.__jobPilottoRequired.marked(el), filled: window.__jobPilottoReadBack.holds(el), legal: LEGAL.test(`${question} ${label}`)});
+          type: 'checkbox', required: el.required || window.__jobadabraRequired.marked(el), filled: window.__jobadabraReadBack.holds(el), legal: LEGAL.test(`${question} ${label}`)});
       } else if (isCombo(el)) {
         fields.push({field: el.id || el.name, label: labelOf(el), type: 'combobox',
-          required: window.__jobPilottoRequired.marked(el), filled: window.__jobPilottoReadBack.holds(el),
+          required: window.__jobadabraRequired.marked(el), filled: window.__jobadabraReadBack.holds(el),
           legal: LEGAL.test(labelOf(el)), ...(el.closest('[class*="is-multi"], [aria-multiselectable="true"]') ? {multiple: true} : {})});   // a menu that takes several choices (react-select's is-multi, aria-multiselectable): the AI is told, and every choice is picked (page/fill-menus.js armCombo)
       } else {
         const type = el.tagName === 'SELECT' ? 'select' : el.tagName === 'TEXTAREA' ? 'textarea' : el.type || 'text';
-        fields.push({field: el.id || el.name, label: labelOf(el), type, required: window.__jobPilottoRequired.marked(el),
+        fields.push({field: el.id || el.name, label: labelOf(el), type, required: window.__jobadabraRequired.marked(el),
           ...(type === 'select' ? {options: Array.from(el.options).map(o => clean(o.text)).filter(Boolean)} : {}),
-          filled: window.__jobPilottoReadBack.holds(el) && (type !== 'select' || settled || !window.__jobPilottoAtPageDefault?.(el)), legal: LEGAL.test(labelOf(el))});   // the one reading (page/read-back.js): a box the page changed after we typed it is not filled
+          filled: window.__jobadabraReadBack.holds(el) && (type !== 'select' || settled || !window.__jobadabraAtPageDefault?.(el)), legal: LEGAL.test(labelOf(el))});   // the one reading (page/read-back.js): a box the page changed after we typed it is not filled
       }
     }
     fields.push(...radioOps.ariaFields());   // ARIA radio groups (page/radios.js)
     // Custom dropdowns that are no input (<div role=combobox>, <button aria-haspopup=listbox>): a question with choices like a native select. Their list sits in the page,
     // named by aria-controls or beside the trigger; the operator (page/controls.js) picks by the question or the id. Before, only the coverage audit saw them
     // ("question on the page not read"), so nothing was ever asked (jobs.ch "Disponibilité", "Permis de travail", 20 Oct 2026).
-    for (const el of window.__jobPilottoReadBack.customSelects(visible)) {
+    for (const el of window.__jobadabraReadBack.customSelects(visible)) {
       if (!el.id && !el.name) el.id = `jp-field-${++unnamed}`;
-      const options = window.__jobPilottoReadBack.choicesOf(el);
-      fields.push({field: el.id || el.name, label: labelOf(el), type: 'select', custom: true, required: el.getAttribute('aria-required') === 'true' || window.__jobPilottoRequired.marked(el),
-        ...(options.length ? {options} : {}), filled: window.__jobPilottoReadBack.holds(el), legal: LEGAL.test(labelOf(el))});
+      const options = window.__jobadabraReadBack.choicesOf(el);
+      fields.push({field: el.id || el.name, label: labelOf(el), type: 'select', custom: true, required: el.getAttribute('aria-required') === 'true' || window.__jobadabraRequired.marked(el),
+        ...(options.length ? {options} : {}), filled: window.__jobadabraReadBack.holds(el), legal: LEGAL.test(labelOf(el))});
     }
     return fields.filter(f => f.field);
   };
 
-  window.__jobPilottoPageText = () => clean(document.body?.innerText || '').slice(0, 12000);
+  window.__jobadabraPageText = () => clean(document.body?.innerText || '').slice(0, 12000);
 
-  window.__jobPilottoCheckboxQuestions = () => {
+  window.__jobadabraCheckboxQuestions = () => {
     const groups = {};
     for (const b of document.querySelectorAll('input[type=checkbox]')) {
       const q = questionOf(b);
@@ -166,5 +168,5 @@
     }
     return Object.entries(groups).filter(([, options]) => options.length > 1).map(([question, options]) => ({question, options}));
   };
-  Object.assign(window.__jobPilottoFillKit, {PROFILE_LABELS, TEXT_TYPES, aliasFor, phoneParts});
+  Object.assign(window.__jobadabraFillKit, {PROFILE_LABELS, TEXT_TYPES, aliasFor, phoneParts});
 })();

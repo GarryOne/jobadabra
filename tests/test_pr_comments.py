@@ -248,7 +248,7 @@ class HookCommentsTest(Base):
         self.env.update({'PR_RED_DIR': str(self.tmp / 'cache'), 'PR_RED_TTL': '0', 'PR_RED_WAIT': 'state',
                          'PR_RED_MAIN_SCRIPT': str(self.tmp / 'rm.sh')})
         (self.tmp / 'rm.sh').write_text('#!/bin/sh\necho unknown\n')
-        self.env.pop('JOB_PILOTTO_SESSION', None)
+        self.env.pop('JOBADABRA_SESSION', None)
 
     def answer(self, v, lines=()):
         super().answer(v, lines)

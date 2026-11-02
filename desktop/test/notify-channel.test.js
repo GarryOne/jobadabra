@@ -10,7 +10,7 @@ const storage = ({settings = {}, secrets = {}} = {}) => {
   return {settings: () => kept, saveSettings: patch => Object.assign(kept, patch), secret: name => secrets[name] || ''};
 };
 const BOT = {secrets: {TELEGRAM_BOT_TOKEN: 't'}, settings: {telegramChatId: '1'}};
-const KEY = {JOB_PILOTTO_TRIAL_KEY: 'JPF1.install-0001.tok'};
+const KEY = {JOBADABRA_TRIAL_KEY: 'JPF1.install-0001.tok'};
 const site = (answers, asked = []) => async (url, init) => { asked.push({url, method: init?.method, key: init?.headers['x-api-key'], body: init?.body ? JSON.parse(init.body) : null}); const answer = answers.shift(); if (answer instanceof Error) throw answer; return {json: async () => answer}; };
 
 test('with nothing chosen the channels follow what is set up: the app always, e-mail with an address, Telegram with a bot', () => {
@@ -35,15 +35,15 @@ test('every command that sends follows the choice: e-mail only gets --send witho
 });
 
 test('the engine is told the channels and, for e-mail, the install key; Telegram-only runs get no key', () => {
-  const chosen = storage({settings: {notifyBy: ['email', 'app'], notifyEmail: 'a@b.co'}, secrets: {JOB_PILOTTO_TRIAL_KEY: KEY.JOB_PILOTTO_TRIAL_KEY}});
-  assert.deepEqual(notifyEnv(chosen), {JOB_PILOTTO_NOTIFY: 'email,app', ...KEY});
-  assert.deepEqual(notifyEnv(storage({secrets: {JOB_PILOTTO_TRIAL_KEY: 'JPF1.x.y'}})), {JOB_PILOTTO_NOTIFY: 'app'});
+  const chosen = storage({settings: {notifyBy: ['email', 'app'], notifyEmail: 'a@b.co'}, secrets: {JOBADABRA_TRIAL_KEY: KEY.JOBADABRA_TRIAL_KEY}});
+  assert.deepEqual(notifyEnv(chosen), {JOBADABRA_NOTIFY: 'email,app', ...KEY});
+  assert.deepEqual(notifyEnv(storage({secrets: {JOBADABRA_TRIAL_KEY: 'JPF1.x.y'}})), {JOBADABRA_NOTIFY: 'app'});
   const free = storage({settings: {notifyEmail: 'a@b.co'}, secrets: {ANTHROPIC_API_KEY: 'JPF1.free.tok'}});
-  assert.equal(notifyEnv(free).JOB_PILOTTO_TRIAL_KEY, 'JPF1.free.tok');
+  assert.equal(notifyEnv(free).JOBADABRA_TRIAL_KEY, 'JPF1.free.tok');
 });
 
 test('saving a new address asks the site first and keeps nothing when the site says no; a taken address is said in words', async () => {
-  const s = storage({secrets: KEY.JOB_PILOTTO_TRIAL_KEY ? {JOB_PILOTTO_TRIAL_KEY: KEY.JOB_PILOTTO_TRIAL_KEY} : {}}), asked = [];
+  const s = storage({secrets: KEY.JOBADABRA_TRIAL_KEY ? {JOBADABRA_TRIAL_KEY: KEY.JOBADABRA_TRIAL_KEY} : {}}), asked = [];
   const refused = await save(s, {by: ['email', 'app'], email: 'Me@Example.com', marketing: true}, site([{ok: false, error: 'taken'}], asked));
   assert.equal(refused.ok, false);
   assert.match(refused.error, /already has a Jobadabra account/);
@@ -52,11 +52,11 @@ test('saving a new address asks the site first and keeps nothing when the site s
   const saved = await save(s, {by: ['email', 'app'], email: 'Me@Example.com', marketing: true}, site([{ok: true}], asked));
   assert.equal(saved.ok, true);
   assert.deepEqual([s.settings().notifyEmail, s.settings().notifyBy, s.settings().notifyMarketing], ['me@example.com', ['email', 'app'], true]);
-  assert.deepEqual(asked[1], {url: 'https://www.jobpilotto.top/api/account/email', method: 'PUT', key: KEY.JOB_PILOTTO_TRIAL_KEY, body: {email: 'me@example.com', marketing: true}});
+  assert.deepEqual(asked[1], {url: 'https://www.jobpilotto.top/api/account/email', method: 'PUT', key: KEY.JOBADABRA_TRIAL_KEY, body: {email: 'me@example.com', marketing: true}});
 });
 
 test('e-mail cannot be chosen without an address, and a switch change alone does not call the site', async () => {
-  const s = storage({secrets: {JOB_PILOTTO_TRIAL_KEY: KEY.JOB_PILOTTO_TRIAL_KEY}, settings: {notifyEmail: 'a@b.co'}}), asked = [];
+  const s = storage({secrets: {JOBADABRA_TRIAL_KEY: KEY.JOBADABRA_TRIAL_KEY}, settings: {notifyEmail: 'a@b.co'}}), asked = [];
   assert.equal((await save(storage(), {by: ['email'], email: ''}, site([]))).ok, false);
   assert.equal((await save(s, {by: ['app'], email: 'a@b.co'}, site([], asked))).ok, true);
   assert.deepEqual(asked, []);
@@ -64,7 +64,7 @@ test('e-mail cannot be chosen without an address, and a switch change alone does
 });
 
 test('the window state shows the site\'s address and confirmation, and the kept address when offline', async () => {
-  const s = storage({secrets: {JOB_PILOTTO_TRIAL_KEY: KEY.JOB_PILOTTO_TRIAL_KEY}, settings: {notifyEmail: 'kept@b.co'}});
+  const s = storage({secrets: {JOBADABRA_TRIAL_KEY: KEY.JOBADABRA_TRIAL_KEY}, settings: {notifyEmail: 'kept@b.co'}});
   const online = await state(s, site([{ok: true, email: 'kept@b.co', confirmed: true, marketing: false}]));
   assert.deepEqual([online.email, online.confirmed, online.marketing, online.reached], ['kept@b.co', true, false, true]);
   const offline = await state(s, site([new Error('offline')]));
@@ -72,7 +72,7 @@ test('the window state shows the site\'s address and confirmation, and the kept 
 });
 
 test('an e-mail the app sends itself needs e-mail chosen, and never throws', async () => {
-  const asked = [], on = storage({secrets: {JOB_PILOTTO_TRIAL_KEY: KEY.JOB_PILOTTO_TRIAL_KEY}, settings: {notifyEmail: 'a@b.co'}});
+  const asked = [], on = storage({secrets: {JOBADABRA_TRIAL_KEY: KEY.JOBADABRA_TRIAL_KEY}, settings: {notifyEmail: 'a@b.co'}});
   assert.equal(await sendEmail(on, {subject: 'Few <new> jobs', text: 'a & b'}, site([{ok: true}], asked)), true);
   assert.equal(asked[0].body.html, '<b>Few &lt;new&gt; jobs</b>\na &amp; b');
   assert.equal(asked[0].body.kind, 'activity', 'the app\'s own notices wait for the digest');
@@ -81,7 +81,7 @@ test('an e-mail the app sends itself needs e-mail chosen, and never throws', asy
 });
 
 test('the digest cadence (daily or weekly) goes to the site with the address; anything else is ignored', async () => {
-  const s = storage({secrets: {JOB_PILOTTO_TRIAL_KEY: KEY.JOB_PILOTTO_TRIAL_KEY}, settings: {notifyEmail: 'a@b.co'}}), asked = [];
+  const s = storage({secrets: {JOBADABRA_TRIAL_KEY: KEY.JOBADABRA_TRIAL_KEY}, settings: {notifyEmail: 'a@b.co'}}), asked = [];
   assert.equal((await save(s, {by: ['email'], email: 'a@b.co', cadence: 'weekly'}, site([{ok: true}], asked))).ok, true);
   assert.deepEqual([asked[0].body, s.settings().notifyCadence], [{email: 'a@b.co', cadence: 'weekly'}, 'weekly']);
   await save(s, {by: ['email'], email: 'a@b.co', cadence: 'hourly'}, site([{ok: true}], asked));

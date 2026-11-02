@@ -38,14 +38,14 @@ const py = (args, env = {}) => execFileSync(python, args, {cwd: pilot, encoding:
 // no keyring here: on the Mac src/secret_store.py talks to the Keychain through the `security` tool (keyring is the Windows Credential Manager's)
 say(py(['-c', 'import anthropic, sqlite3, ssl, sys; from importlib.metadata import version; ' +
   "print('Python', sys.version.split()[0], 'anthropic', version('anthropic'))"]));
-say(py(['-c', "from src import secret_store as s; s.put('job-pilotto.smoke.test', 'ok', 'ci'); " +
-  "v = s.get('job-pilotto.smoke.test', 'ci'); s.delete('job-pilotto.smoke.test', 'ci'); " +
-  "assert v == 'ok', v; assert s.get('job-pilotto.smoke.test', 'ci') is None; print('Keychain round-trip ok')"]));
+say(py(['-c', "from src import secret_store as s; s.put('jobadabra.smoke.test', 'ok', 'ci'); " +
+  "v = s.get('jobadabra.smoke.test', 'ci'); s.delete('jobadabra.smoke.test', 'ci'); " +
+  "assert v == 'ok', v; assert s.get('jobadabra.smoke.test', 'ci') is None; print('Keychain round-trip ok')"]));
 const data = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-smoke-data-'));
 for (const sub of ['config', 'data']) fs.mkdirSync(path.join(data, sub), {recursive: true});
 for (const name of fs.readdirSync(path.join(pilot, 'config')).filter(n => n.endsWith('.json'))) fs.copyFileSync(path.join(pilot, 'config', name), path.join(data, 'config', name));
-const jobs = py(['-m', 'src.desktop', 'jobs'], {JOB_PILOTTO_NO_DOTENV: '1', JOB_PILOTTO_CONFIG_DIR: path.join(data, 'config'),
-  JOB_PILOTTO_DATA_DIR: path.join(data, 'data')}).split(/\r?\n/).pop();
+const jobs = py(['-m', 'src.desktop', 'jobs'], {JOBADABRA_NO_DOTENV: '1', JOBADABRA_CONFIG_DIR: path.join(data, 'config'),
+  JOBADABRA_DATA_DIR: path.join(data, 'data')}).split(/\r?\n/).pop();
 JSON.parse(jobs);
 say(`pipeline jobs list ok: ${jobs.slice(0, 80)}`);
 

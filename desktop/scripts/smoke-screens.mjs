@@ -1,6 +1,6 @@
 // The one screen both smoke tests (windows-smoke.mjs, mac-smoke.mjs) check in the INSTALLED app: setup done but no Notion key (it can't be made on a runner),
 // so the app opens the Jobs list with the rest of the app loaded. A blank or half-built window still saves a picture, so the window also reports what it shows
-// (JOB_PILOTTO_SMOKE_EVAL, written beside the screenshot as JSON). Other pages are driven by the e2e suites, from source (owner, 10 Oct 2026).
+// (JOBADABRA_SMOKE_EVAL, written beside the screenshot as JSON). Other pages are driven by the e2e suites, from source (owner, 10 Oct 2026).
 import {execFileSync, spawn} from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -26,7 +26,7 @@ export async function jobsScreen({exe, out, prefix, say, userData: given = ''}) 
   // A hard limit (SIGKILL: a quitting app can hang too), the app's own output, and where it is stuck when no screenshot comes: on a bare CI Mac the window once never
   // came (10 Oct 2026). After 20 s without a picture the process is sampled (macOS `sample`) and listed, so a hang names its cause.
   const child = spawn(exe, [], {stdio: ['ignore', 'pipe', 'pipe'],
-    env: {...process.env, ELECTRON_ENABLE_LOGGING: '1', JOB_PILOTTO_USER_DATA: userData, JOB_PILOTTO_SMOKE: png, JOB_PILOTTO_SMOKE_JS: WAIT_FOR_JOBS, JOB_PILOTTO_SMOKE_EVAL: REPORT}});
+    env: {...process.env, ELECTRON_ENABLE_LOGGING: '1', JOBADABRA_USER_DATA: userData, JOBADABRA_SMOKE: png, JOBADABRA_SMOKE_JS: WAIT_FOR_JOBS, JOBADABRA_SMOKE_EVAL: REPORT}});
   let text = '';
   child.stdout.on('data', chunk => { text += chunk; });
   child.stderr.on('data', chunk => { text += chunk; });
@@ -37,7 +37,7 @@ export async function jobsScreen({exe, out, prefix, say, userData: given = ''}) 
     if (!fs.existsSync(png)) {
       const run = (file, args) => { try { return execFileSync(file, args, {encoding: 'utf8', timeout: 30000, maxBuffer: 20 * 1024 * 1024}); } catch (error) { return `(${file}: ${error.message.split('\n')[0]})`; } };
       stuck = process.platform === 'darwin'
-        ? `${run('ps', ['-axo', 'pid,ppid,stat,etime,command']).split('\n').filter(line => /Job Pilotto/i.test(line)).join('\n')}\n${topOfStack(run('sample', [String(child.pid), '2']))}`
+        ? `${run('ps', ['-axo', 'pid,ppid,stat,etime,command']).split('\n').filter(line => /Jobadabra/i.test(line)).join('\n')}\n${topOfStack(run('sample', [String(child.pid), '2']))}`
         : run('tasklist', ['/FI', 'IMAGENAME eq Jobadabra.exe', '/FO', 'LIST']);
     }
     return Promise.race([exited, wait(40000).then(() => { child.kill('SIGKILL'); return exited; })]);

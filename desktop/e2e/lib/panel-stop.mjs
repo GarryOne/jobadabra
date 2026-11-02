@@ -11,7 +11,7 @@
 // Tests: test/panel-stop-verdict.test.mjs (verdicts on a fake page and clock), test/panel-stop.test.mjs (what needs a real browser)
 import {POLL_CAP_MS, pollUntil, stepTimeLeft, stepWait, waitCapNote} from './wait-on-state.mjs';
 
-const HOST = '#jobpilotto-review-host';
+const HOST = '#jobadabra-review-host';
 
 /** The one budget of a press, spent across the click and the three stages: the step's time left, else the test's cap, else pollUntil's own default (never a fresh budget per wait). */
 export const pressBudget = ({stepLeft, capMs}) => stepLeft ?? capMs ?? POLL_CAP_MS;
@@ -23,10 +23,10 @@ export const pressBudget = ({stepLeft, capMs}) => stepLeft ?? capMs ?? POLL_CAP_
  * @returns {Promise<object>} {panel: 'absent'} or {busy, overlay, cardHidden, stoppedShown, stopButtons, panelClass}
  */
 export const readPanel = page => page.evaluate(() => {
-  const root = document.getElementById('jobpilotto-review-host')?.shadowRoot;
+  const root = document.getElementById('jobadabra-review-host')?.shadowRoot;
   if (!root) return {panel: 'absent'};
   const one = selector => root.querySelector(selector);
-  return {busy: !!one('.fill.is-busy'), overlay: !!document.getElementById('jobpilotto-fill-overlay'), cardHidden: !!one('.card')?.hidden, stoppedShown: !!one('.stopped') && !one('.stopped').hidden,
+  return {busy: !!one('.fill.is-busy'), overlay: !!document.getElementById('jobadabra-fill-overlay'), cardHidden: !!one('.card')?.hidden, stoppedShown: !!one('.stopped') && !one('.stopped').hidden,
     stopButtons: [...root.querySelectorAll('.stop-btn, .pill-stop')].map(button => `${button.textContent.trim()}${button.disabled ? ' (disabled)' : ''}`), panelClass: one('.jp')?.className || ''};
 });
 

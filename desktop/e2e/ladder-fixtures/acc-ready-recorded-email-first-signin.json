@@ -13,7 +13,7 @@
  },
  "url": "https://auth.example.com/login",
  "sketch": {
-  "url": "file:///Users/mac/job-pilotto/.claude/worktrees/ladder-fixtures/desktop/e2e/recorded/email-first-signin-1/login.html",
+  "url": "file:///Users/mac/jobadabra/.claude/worktrees/ladder-fixtures/desktop/e2e/recorded/email-first-signin-1/login.html",
   "title": "",
   "headings": [
    "Log in"

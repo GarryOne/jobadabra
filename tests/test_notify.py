@@ -13,7 +13,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from src import notify, telegram  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
-EMAIL = {'JOB_PILOTTO_NOTIFY': 'email', 'JOB_PILOTTO_TRIAL_KEY': 'JPF1.install-0001.tok', 'JOB_PILOTTO_SITE_URL': 'https://site.test'}
+EMAIL = {'JOBADABRA_NOTIFY': 'email', 'JOBADABRA_TRIAL_KEY': 'JPF1.install-0001.tok', 'JOBADABRA_SITE_URL': 'https://site.test'}
 CARD = '📬 <b>3 new matches</b>\nFrom your search\n\n<b>Top</b>\n<a href="https://x.example/1">Data Engineer</a>'
 
 
@@ -52,7 +52,7 @@ class ChannelTests(unittest.TestCase):
 
     def test_email_only_needs_no_telegram_credentials(self):
         self.assertEqual(run_with({**EMAIL}, Site(), telegram.credentials), (None, None))
-        both_without_bot = {**EMAIL, 'JOB_PILOTTO_NOTIFY': 'email,telegram'}
+        both_without_bot = {**EMAIL, 'JOBADABRA_NOTIFY': 'email,telegram'}
         self.assertEqual(run_with(both_without_bot, Site(), telegram.credentials), (None, None))
         with_bot = {**both_without_bot, 'TELEGRAM_BOT_TOKEN': 't', 'TELEGRAM_CHAT_ID': '1'}
         self.assertEqual(run_with(with_bot, Site(), telegram.credentials), ('t', '1'))
@@ -62,7 +62,7 @@ class ChannelTests(unittest.TestCase):
 
     def test_telegram_chosen_without_a_bot_still_stops_with_the_old_message(self):
         with self.assertRaises(SystemExit):
-            run_with({'JOB_PILOTTO_NOTIFY': 'telegram'}, Site(), telegram.credentials)
+            run_with({'JOBADABRA_NOTIFY': 'telegram'}, Site(), telegram.credentials)
 
 
 class DeliveryTests(unittest.TestCase):
@@ -80,7 +80,7 @@ class DeliveryTests(unittest.TestCase):
         self.assertEqual(len(site.sent), 2)
         matches, activity = site.sent
         self.assertEqual(matches['url'], 'https://site.test/api/notify/email')
-        self.assertEqual(matches['key'], EMAIL['JOB_PILOTTO_TRIAL_KEY'])
+        self.assertEqual(matches['key'], EMAIL['JOBADABRA_TRIAL_KEY'])
         self.assertEqual(matches['body']['subject'], '3 new matches and 1 more')
         self.assertIn('Data Engineer', matches['body']['html'])
         self.assertNotIn('kind', matches['body'], 'new matches go at once')
@@ -111,7 +111,7 @@ class DeliveryTests(unittest.TestCase):
 
     def test_both_channels_send_to_telegram_and_queue_the_email(self):
         site, posted = Site(), []
-        env = {**EMAIL, 'JOB_PILOTTO_NOTIFY': 'email,telegram'}
+        env = {**EMAIL, 'JOBADABRA_NOTIFY': 'email,telegram'}
 
         def work():
             with mock.patch('src.telegram.urllib.request.urlopen', lambda request, timeout=0: (posted.append(request.full_url), io.BytesIO(b'{"ok": true}'))[1]):
@@ -139,17 +139,17 @@ class DeliveryTests(unittest.TestCase):
     def test_no_install_key_means_no_email_and_no_crash(self):
         out = io.StringIO()
         with mock.patch('sys.stderr', out):
-            ok = run_with({'JOB_PILOTTO_NOTIFY': 'email', 'JOB_PILOTTO_SITE_URL': 'https://site.test'}, Site(), lambda: (telegram.send(CARD, None, None), notify.flush())[1])
+            ok = run_with({'JOBADABRA_NOTIFY': 'email', 'JOBADABRA_SITE_URL': 'https://site.test'}, Site(), lambda: (telegram.send(CARD, None, None), notify.flush())[1])
         self.assertFalse(ok)
 
     def test_the_end_to_end_journey_never_reaches_the_real_site(self):
         site = Site()
-        run_with({'JOB_PILOTTO_NOTIFY': 'email', 'JOB_PILOTTO_TRIAL_KEY': 'JPF1.a.b', 'JOB_PILOTTO_E2E': '1'}, site, lambda: (telegram.send(CARD, None, None), notify.flush()))
+        run_with({'JOBADABRA_NOTIFY': 'email', 'JOBADABRA_TRIAL_KEY': 'JPF1.a.b', 'JOBADABRA_E2E': '1'}, site, lambda: (telegram.send(CARD, None, None), notify.flush()))
         self.assertEqual(site.sent, [])
 
     def test_the_free_ai_key_identifies_the_run_when_there_is_no_trial_key(self):
         site = Site()
-        run_with({'JOB_PILOTTO_NOTIFY': 'email', 'ANTHROPIC_API_KEY': 'JPF1.i.t', 'JOB_PILOTTO_SITE_URL': 'https://site.test'}, site, lambda: (telegram.send(CARD, None, None), notify.flush()))
+        run_with({'JOBADABRA_NOTIFY': 'email', 'ANTHROPIC_API_KEY': 'JPF1.i.t', 'JOBADABRA_SITE_URL': 'https://site.test'}, site, lambda: (telegram.send(CARD, None, None), notify.flush()))
         self.assertEqual(site.sent[0]['key'], 'JPF1.i.t')
 
 

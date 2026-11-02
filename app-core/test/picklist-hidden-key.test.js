@@ -17,9 +17,9 @@ const PICKLIST = `<table><tr><th><label id="label_tor__fcountry" for="tor__fcoun
 test('a picklist whose hidden input holds a key is read by what its box shows, never by the key', {skip: !JSDOM}, () => {
   const window = openPage(JSDOM, PICKLIST, {url: 'https://career5.successfactors.eu/careers'});
   const box = window.document.getElementById('9:_input'), key = window.document.getElementById('tor__fcountry');
-  const state = () => window.__jobPilottoReadBack.stateOf(box);
+  const state = () => window.__jobadabraReadBack.stateOf(box);
   assert.equal(state(), 'empty', 'untouched: no key, an empty box');
-  box.setAttribute('data-jobpilotto-picked', 'switzerland');   // the fill's own pick (page/fill-menus.js)
+  box.setAttribute('data-jobadabra-picked', 'switzerland');   // the fill's own pick (page/fill-menus.js)
   assert.equal(state(), 'empty', 'picked, but the page kept no key: not filled');
   box.value = 'Switzerland'; key.value = '688';
   assert.equal(state(), 'committed', 'the box shows the picked option; its key is no other choice');
@@ -35,10 +35,10 @@ test('a picklist whose hidden input holds a key is read by what its box shows, n
 test('the other readings keep their compare: a chip by its text, a native menu by its option', {skip: !JSDOM}, () => {
   const window = openPage(JSDOM, `<div class="select__container"><div class="select__single-value">Germany</div><input id="chip" role="combobox"></div>
     <select id="menu"><option value="">Pick</option><option value="CH">Switzerland</option><option value="DE">Germany</option></select>`);
-  const {stateOf} = window.__jobPilottoReadBack, chip = window.document.getElementById('chip'), menu = window.document.getElementById('menu');
-  chip.setAttribute('data-jobpilotto-picked', 'switzerland');
+  const {stateOf} = window.__jobadabraReadBack, chip = window.document.getElementById('chip'), menu = window.document.getElementById('menu');
+  chip.setAttribute('data-jobadabra-picked', 'switzerland');
   assert.equal(stateOf(chip), 'mismatch');
-  menu.setAttribute('data-jobpilotto-picked', 'switzerland'); menu.value = 'DE';
+  menu.setAttribute('data-jobadabra-picked', 'switzerland'); menu.value = 'DE';
   assert.equal(stateOf(menu), 'mismatch');
   menu.value = 'CH';
   assert.equal(stateOf(menu), 'committed');

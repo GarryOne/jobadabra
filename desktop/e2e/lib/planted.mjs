@@ -11,7 +11,7 @@ export const RECALL_REPORTS = {kinds: ['crash'], text: 'recall planted'};
 
 /** Record only the reports a synthetic failure causes; extension plants identify their own source and frame instead of arbitrary message text. */
 export function markPlanted(why, {kinds = SERVICE_REPORTS, text = '', source = '', frame = ''} = {}, env = process.env, now = Date.now()) {
-  const file = env.JOB_PILOTTO_E2E_PLANTED_FILE;
+  const file = env.JOBADABRA_E2E_PLANTED_FILE;
   if (!file) return false;
   try {
     fs.appendFileSync(file, `${JSON.stringify({at: now, why: String(why).slice(0, 80), kinds, text,

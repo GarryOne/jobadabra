@@ -85,7 +85,7 @@ export function slots(size = 2) {
 export class CliAdapter extends Adapter {
   static billing = SUBSCRIPTION;
   static tool = '';      // the CLI's name, in words ("Claude Code")
-  static folder = '';    // the call folders' name: job-pilotto-<folder>-…
+  static folder = '';    // the call folders' name: jobadabra-<folder>-…
   static missingText = '';
 
   constructor({binary = '', timeout = TIMEOUT_MS, spawnFn = spawn, lane, ...options} = {}) {
@@ -120,7 +120,7 @@ export class CliAdapter extends Adapter {
 
   async complete(request) {
     const {tool, folder: name} = this.constructor;
-    const folder = fs.mkdtempSync(path.join(os.tmpdir(), `job-pilotto-${name || this.engine}-`));
+    const folder = fs.mkdtempSync(path.join(os.tmpdir(), `jobadabra-${name || this.engine}-`));
     try {
       const files = writeFiles(request, folder);
       const {args, prompt: base, native} = await this.build(request, folder, files);

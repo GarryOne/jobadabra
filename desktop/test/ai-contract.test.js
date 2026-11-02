@@ -97,7 +97,7 @@ test('OpenAI API: the Responses body, cached tokens, refusal, cut-off, and error
   assert.equal(sent.model, 'gpt-6.1-sol');   // sonnet -> main tier
   assert.equal(sent.instructions, 'Be brief.');
   assert.equal(sent.store, false);
-  assert.equal(sent.prompt_cache_key, 'job-pilotto-cv');
+  assert.equal(sent.prompt_cache_key, 'jobadabra-cv');
   assert.deepEqual(sent.input[0].content.map(part => part.type), ['input_file', 'input_image', 'input_text']);
   assert.match(sent.input[0].content[0].file_data, /^data:application\/pdf;base64,/);
   assert.deepEqual(sent.text.format.schema, strict(SCHEMA));
@@ -222,16 +222,16 @@ test('the registry: the choice, readiness, family, Always on, and the factory ne
   assert.equal(claudeCode.client(store({aiEngine: 'api'}, {ANTHROPIC_API_KEY: 'a'})), null, 'the old callers keep using their key for the API');
   assert.equal(claudeCode.client(store({aiEngine: 'openai'}, {OPENAI_API_KEY: 'sk'})).engine, 'openai');
   assert.equal(claudeCode.aiReady({aiEngine: 'openai'}, true, false), false);
-  assert.deepEqual(claudeCode.pipelineVariables({aiEngine: 'openai'}, false, true), {JOB_PILOTTO_AI_ENGINE: 'openai'});
+  assert.deepEqual(claudeCode.pipelineVariables({aiEngine: 'openai'}, false, true), {JOBADABRA_AI_ENGINE: 'openai'});
   assert.deepEqual(claudeCode.pipelineVariables({aiEngine: 'codex', codex: {path: '/x/codex'}, aiFallback: true}, true, true),
-    {JOB_PILOTTO_AI_ENGINE: 'codex', JOB_PILOTTO_CODEX_BIN: '/x/codex', JOB_PILOTTO_AI_FALLBACK: 'openai'});
-  assert.deepEqual(claudeCode.pipelineVariables({aiEngine: 'codex', aiFallback: true}, true, false), {JOB_PILOTTO_AI_ENGINE: 'codex'});
+    {JOBADABRA_AI_ENGINE: 'codex', JOBADABRA_CODEX_BIN: '/x/codex', JOBADABRA_AI_FALLBACK: 'openai'});
+  assert.deepEqual(claudeCode.pipelineVariables({aiEngine: 'codex', aiFallback: true}, true, false), {JOBADABRA_AI_ENGINE: 'codex'});
 });
 
 test('models by tier, env overrides, and one price table in the app and the Worker', () => {
   assert.equal(model('small'), 'claude-haiku-5-5');
   assert.equal(model('small', 'openai', {}), 'gpt-6-luna');
-  assert.equal(model('main', 'openai', {JOB_PILOTTO_OPENAI_MAIN_MODEL: 'gpt-x'}), 'gpt-x');
+  assert.equal(model('main', 'openai', {JOBADABRA_OPENAI_MAIN_MODEL: 'gpt-x'}), 'gpt-x');
   assert.deepEqual(openaiModel('claude-opus-5-5', null, {}), {model: 'gpt-6.1-sol', effort: 'high'});
   assert.deepEqual(openaiModel('gpt-6-luna', 'low', {}), {model: 'gpt-6-luna', effort: 'low'});
   assert.deepEqual(worker.OPENAI_PRICES, OPENAI_PRICES);
@@ -261,10 +261,10 @@ test('Always on: the OpenAI family runs on GitHub as the OpenAI API engine with 
   const codex = payload({aiEngine: 'codex', codex: {path: '/x/codex'}}, {OPENAI_API_KEY: 'sk-o', NOTION_TOKEN: 'ntn'});
   assert.equal(codex.variables.JOB_PILOTTO_AI_ENGINE, 'openai');
   assert.equal(codex.secrets.OPENAI_API_KEY, 'sk-o');
-  assert.ok(!('JOB_PILOTTO_CODEX_BIN' in codex.variables));
+  assert.ok(!('JOBADABRA_CODEX_BIN' in codex.variables));
   assert.ok(codex.variables.JOB_PILOTTO_SCORE_MODEL, 'the AI steps run: the OpenAI key is there');
   const claude = payload({aiEngine: 'cli'}, {ANTHROPIC_API_KEY: 'sk-a'});
-  assert.ok(!('JOB_PILOTTO_AI_ENGINE' in claude.variables));
+  assert.ok(!('JOBADABRA_AI_ENGINE' in claude.variables));
   assert.ok(claude.removed.includes('JOB_PILOTTO_AI_ENGINE'));
 });
 

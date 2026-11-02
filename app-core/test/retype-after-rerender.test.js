@@ -12,7 +12,7 @@ const PAGE = `<form><div id="sec">${SECTION(['__input1-inner', '__input2-inner']
 
 function typed() {
   const window = openPage(JSDOM, PAGE);
-  window.__jobPilottoNoGuard = true;
+  window.__jobadabraNoGuard = true;
   window.__jobPilottoFillKnownFields([{field: '__input1-inner', value: 'Platform'}, {field: '__input2-inner', value: 'P4711'}]);
   return window;
 }
@@ -20,7 +20,7 @@ function typed() {
 test('boxes re-created with new ids are typed again by their question', {skip}, () => {
   const window = typed();
   window.document.getElementById('sec').innerHTML = SECTION(['__input11-inner', '__input12-inner']);   // drawn again: new ids, empty
-  assert.equal(window.__jobPilottoRetypeWiped(0), 2);
+  assert.equal(window.__jobadabraRetypeWiped(0), 2);
   assert.deepEqual(['__input11-inner', '__input12-inner'].map((id) => window.document.getElementById(id).value), ['Platform', 'P4711']);
   window.close();
 });
@@ -28,7 +28,7 @@ test('boxes re-created with new ids are typed again by their question', {skip}, 
 test('two re-created boxes with the same question are not told apart: neither is typed', {skip}, () => {
   const window = typed();
   window.document.getElementById('sec').innerHTML = SECTION(['__input21-inner', '__input22-inner']) + `<p><label for="dup">Team name</label><input id="dup" type="text"></p>`;
-  window.__jobPilottoRetypeWiped(0);
+  window.__jobadabraRetypeWiped(0);
   assert.equal(window.document.getElementById('__input21-inner').value, '', 'one question, two boxes');
   assert.equal(window.document.getElementById('dup').value, '');
   assert.equal(window.document.getElementById('__input22-inner').value, 'P4711', 'the other question is still found');

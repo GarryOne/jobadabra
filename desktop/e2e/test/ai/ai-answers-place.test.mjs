@@ -30,7 +30,7 @@ const entries = () => ({[keyFor('zurich, switzerland')]: {text: 'zurich, switzer
 function request(texts = ['zurich, switzerland', 'Paris'], shape = 'anthropic', words = places) {
   const content = `Their places (JSON): ${JSON.stringify(words)}\nThe job locations:\n${texts.map((text, i) => `${i + 1}. ${text}`).join('\n')}`;
   return shape === 'anthropic' ? {model: 'test', max_tokens: 4000, system: [{type: 'text', text: SYSTEM}], messages: [{role: 'user', content}], output_config: {format: {type: 'json_schema', schema: structuredClone(SCHEMA)}, effort: 'low'}} :
-    {model: 'test', instructions: SYSTEM, prompt_cache_key: 'job-pilotto-place_triage', input: [{role: 'user', content: [{type: 'input_text', text: content}]}], text: {format: {type: 'json_schema', schema: structuredClone(SCHEMA)}}};
+    {model: 'test', instructions: SYSTEM, prompt_cache_key: 'jobadabra-place_triage', input: [{role: 'user', content: [{type: 'input_text', text: content}]}], text: {format: {type: 'json_schema', schema: structuredClone(SCHEMA)}}};
 }
 const init = (body, action = 'place_triage') => ({method: 'POST', headers: {'content-type': 'application/json', 'x-jp-action': action}, body: JSON.stringify(body)});
 const question = (body, env = {}, action = 'place_triage') => questionOf({headers: {'x-jp-action': action}, body}, env);

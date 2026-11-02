@@ -2,9 +2,10 @@
 // encrypted with the repo's public key (desktop/e2e/net-record.pub.pem: only the owner's Keychain key and the NET_RECORD_KEY secret open it) and put on the
 // GitHub release `net-records` of the PRIVATE repo jobadabra-lab (owner, 14 Oct 2026; CI reads it with NET_RECORDS_READ_TOKEN, net-records-fetch.sh) as a NEW bundle
 // beside the others (14 Oct 2026: a publish that replaced the set would have dropped 11 of 18 rows; adding needs only the public key). The reader keeps the newest record per row
-// across bundles. Decrypting (to edit a record's answers): the Keychain item job-pilotto.capture.key. Re-recording is by hand on the Mac (owner, 13 Oct 2026).
+// across bundles. Decrypting (to edit a record's answers): the Keychain item jobadabra.capture.key. Re-recording is by hand on the Mac (owner, 13 Oct 2026).
 // A row the guard refuses is named with why and left out; the rows that pass are still published, and the command ends red (exit 1) for a safety refusal; a row that only needs a re-record (pinned / step) ends green and is listed by --report <file> (owner, 15 and 17 Oct 2026).
 //   node records-publish.mjs <records dir> [--dry]      (record a row: JP_NET_RECORD_DIR=<records dir> npm run record-sites -- --only "<row>")
+// Job: keep the scorecard
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';

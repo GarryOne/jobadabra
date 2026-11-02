@@ -1,7 +1,7 @@
 """Fills a data folder with a demo job search through the store API of the release that runs this script (upgrade + data test, spec 2026-11-01-upgrade-data-test-design.md).
 
 Run by an OLD release's own bundled Python with its pilot folder as the working directory, so the data is in that release's format by construction:
-    JOB_PILOTTO_STORE=sqlite JOB_PILOTTO_DATA_DIR=<data folder>/data python upgrade-seed.py
+    JOBADABRA_STORE=sqlite JOBADABRA_DATA_DIR=<data folder>/data python upgrade-seed.py
 Why (1 Nov 2026): it uses only Applications.create / set_section and Events.add, the calls every release since the SQLite store has. Exit 3 = the seed
 itself could not run on this release (reported as "seed failed", never as lost data). Fake people and companies only; never the owner's data.
 """

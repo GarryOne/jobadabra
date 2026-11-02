@@ -5,7 +5,7 @@
 // 2026: two required radio groups were neither filled nor listed). Read only: it never changes the page. Loaded by the panel,
 // the fill and the form lab (jobadabra-lab lab/form-lab.mjs), and by the tests (module.exports).
 (() => {
-  const clean = text => window.__jobPilottoRequired.clean(text);
+  const clean = text => window.__jobadabraRequired.clean(text);
   const norm = text => clean(text).toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
   // Where a question's title can be. Options' own labels are not marked required, so they never count.
   const TITLE = 'label, legend, [class*=question-title], [class*=questionTitle], [class*=field-label], [class*=fieldLabel], [class*=label], [class*=title], h3, h4, h5';
@@ -14,9 +14,9 @@
   // The page says this title's question is required: a trailing "*", a "required" class, a "*" drawn before/after it, or a
   // marker element inside it.
   function marked(title, view) {
-    if (window.__jobPilottoRequired.has(title)) return true;
+    if (window.__jobadabraRequired.has(title)) return true;
     if (/(^|[\s_-])required([\s_-]|$)/i.test(String(title.className?.baseVal ?? title.className ?? ''))) return true;
-    if ([...title.querySelectorAll('[class*=required], [aria-label*=required i], abbr[title*=required i]')].some(mark => !window.__jobPilottoRequired.hiddenIn(mark, title))) return true;   // a marker the page hides is not shown
+    if ([...title.querySelectorAll('[class*=required], [aria-label*=required i], abbr[title*=required i]')].some(mark => !window.__jobadabraRequired.hiddenIn(mark, title))) return true;   // a marker the page hides is not shown
     try {
       for (const pseudo of ['::after', '::before']) if (String(view.getComputedStyle(title, pseudo).content || '').includes('*')) return true;
     } catch { /* no styles (a test DOM) */ }
@@ -40,7 +40,7 @@
   function showsFile(title) {
     let box = title.parentElement, field = null;
     for (let up = 0; box && up < 5 && !box.querySelector(CONTROL); box = box.parentElement, up++) field = box;
-    return !!field && !!window.__jobPilottoReadBack?.namesIn?.(field.innerText ?? field.textContent ?? '').length;
+    return !!field && !!window.__jobadabraReadBack?.namesIn?.(field.innerText ?? field.textContent ?? '').length;
   }
   // read: the labels the reader has for this form (field labels, group questions). shown(el): is it visible. Returns
   // [{question, kinds, area, title, shared}] for each required-marked question with a control near it that no read label names.
@@ -53,7 +53,7 @@
     const claimed = q => labels.some(l => l === q || (q.length >= 8 && l.length >= 8 && (l.includes(q) || q.includes(l))));
     const out = [], areas = new Set(), seen = new Set(), titles = [];
     for (const title of doc.querySelectorAll(TITLE)) {
-      if (title.closest('#jobpilotto-review-host, .job-pilotto-badge, [id^=jobpilotto]')) continue;
+      if (title.closest('#jobadabra-review-host, .jobadabra-badge, [id^=jobadabra]')) continue;
       // A label wrapping its own control ("I agree *") is that control's label, read with it.
       if (title.querySelector(CONTROL) || !shown(title) || !marked(title, view)) continue;
       const question = clean(title.textContent);
@@ -79,13 +79,13 @@
   function answered(area) {
     for (const el of area.querySelectorAll(CONTROL)) {
       if (el.matches('input[type=radio], input[type=checkbox]')) { if (el.checked) return true; continue; }
-      if (el.matches('input, textarea')) { if (window.__jobPilottoBoxGiven ? window.__jobPilottoBoxGiven(el.value) : String(el.value || '').trim()) return true; continue; }
-      if (el.matches('select')) { if (window.__jobPilottoChosen ? window.__jobPilottoChosen(el) : el.selectedIndex > 0) return true; continue; }   // a real choice (browser-form-fastpath.js)
+      if (el.matches('input, textarea')) { if (window.__jobadabraBoxGiven ? window.__jobadabraBoxGiven(el.value) : String(el.value || '').trim()) return true; continue; }
+      if (el.matches('select')) { if (window.__jobadabraChosen ? window.__jobadabraChosen(el) : el.selectedIndex > 0) return true; continue; }   // a real choice (browser-form-fastpath.js)
       if (el.getAttribute('aria-pressed') === 'true' || el.getAttribute('aria-checked') === 'true') return true;
     }
     return !!area.querySelector('[class*=single-value], [class*=multi-value], [aria-selected=true]');
   }
 
   const api = {unread, audit, answered, marked, norm};
-  if (typeof module !== 'undefined' && module.exports) module.exports = api; else window.__jobPilottoCoverage = api;
+  if (typeof module !== 'undefined' && module.exports) module.exports = api; else window.__jobadabraCoverage = api;
 })();

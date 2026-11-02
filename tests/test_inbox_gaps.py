@@ -139,7 +139,7 @@ class NotionEventsFilterTest(unittest.TestCase):
                                            'Application': {'type': 'relation', 'relation': [{'id': 'h1'}]}}}
         fake = EventsNotion([lead])
         with mock.patch.dict('os.environ', {'NOTION_EVENTS_DB': 'events-db'}):
-            stores = open_stores({**os.environ, 'JOB_PILOTTO_STORE': 'notion'}, tracker=fake)
+            stores = open_stores({**os.environ, 'JOBADABRA_STORE': 'notion'}, tracker=fake)
         manual = base.record(base.APPLICATION_FIELDS, {'id': 'h1', 'url': URL, 'source': 'Manual', 'reached_via': 'Email',
                                                        'created_at': '2026-09-29T13:09:00Z'})
         with mock.patch.object(stores.applications, 'update', side_effect=AssertionError('nothing to write')), \
@@ -184,7 +184,7 @@ class NotionEntryTest(unittest.TestCase):
 
     def test_a_logged_entry_names_its_channel_on_the_notion_page(self):
         page = NotionPage()
-        stores = open_stores({**os.environ, 'JOB_PILOTTO_STORE': 'notion'}, tracker=page)   # the Notion store, with its database ids
+        stores = open_stores({**os.environ, 'JOBADABRA_STORE': 'notion'}, tracker=page)   # the Notion store, with its database ids
         page.parent = stores.applications.database_id
         app = base.record(base.APPLICATION_FIELDS, {'id': 'job'})
         inbox._keep(stores, app, 'hi', None, 'Call booked', '2026-09-21T10:00:00Z', 'LinkedIn')
@@ -194,7 +194,7 @@ class NotionEntryTest(unittest.TestCase):
 
     def test_several_screenshots_become_a_row_of_thumbnails_inside_the_fold(self):
         page = NotionPage()
-        stores = open_stores({**os.environ, 'JOB_PILOTTO_STORE': 'notion'}, tracker=page)   # the Notion store, with its database ids
+        stores = open_stores({**os.environ, 'JOBADABRA_STORE': 'notion'}, tracker=page)   # the Notion store, with its database ids
         page.parent = stores.applications.database_id
         shots = [(f's{n}.png', b'x', 'image/png') for n in range(4)]
         inbox._keep(stores, base.record(base.APPLICATION_FIELDS, {'id': 'job'}), '', shots, 'LinkedIn chat', '2026-09-21T10:00:00+00:00')

@@ -7,7 +7,7 @@ import { loadJsdom, openPage } from './helpers/page.js';
 import { readPanel } from './helpers/panel.js';
 
 const JSDOM = await loadJsdom();
-const page = html => { const window = openPage(JSDOM, html); return { window, doc: window.document, groups: window.__jobPilottoOptionGroups }; };
+const page = html => { const window = openPage(JSDOM, html); return { window, doc: window.document, groups: window.__jobadabraOptionGroups }; };
 const q = (doc, selector) => doc.querySelector(selector);
 
 test('options join by the box that holds only options: a fieldset, an ARIA group', { skip: !JSDOM }, () => {
@@ -68,7 +68,7 @@ test('answered: any option checked, or the box itself or something inside it hol
 
 test('review.js and the replay truth reader take their groups from this one function (never a copy of the rule)', () => {
   const read = file => fs.readFileSync(new URL(`../../${file}`, import.meta.url), 'utf8');
-  assert.match(readPanel(), /__jobPilottoOptionGroups/);
+  assert.match(readPanel(), /__jobadabraOptionGroups/);
   assert.match(read('desktop/e2e/lib/replay-truth.mjs'), /option-groups\.js/);
   for (const list of ['extension/page-files.js', 'extension/background.js']) assert.match(read(list), /page\/option-groups\.js/, `${list} loads it`);
 });

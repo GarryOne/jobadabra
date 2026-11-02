@@ -4,19 +4,19 @@ between databases) and the Profile / Standard answers pages. Used to move a real
 workspace the Desktop App uses, or to keep a test copy. Safe to re-run: rows already copied are updated,
 not duplicated (the source -> target page map is kept in data/notion-copy/).
 
-Tokens are read from the macOS Keychain by service name (never printed), e.g. job-pilotto.notion.token.
+Tokens are read from the macOS Keychain by service name (never printed), e.g. jobadabra.notion.token.
 
     # 1. Find a workspace's databases and pages (by their titles, as the app does); --env prints .env lines
-    python3 tools/notion_copy.py ids --token job-pilotto.notion-app.token [--env]
+    python3 tools/notion_copy.py ids --token jobadabra.notion-app.token [--env]
     # 2. Optional: build an empty workspace from config/notion_schema.json under a page the token can see
-    python3 tools/notion_copy.py create --token job-pilotto.notion-test.token --parent <page id>
+    python3 tools/notion_copy.py create --token jobadabra.notion-test.token --parent <page id>
     # 3. Copy (--replace: target rows that didn't come from this source go to Notion's trash first,
     #    and the target's Profile / Standard answers are replaced; --dry-run: only count)
-    python3 tools/notion_copy.py copy --from job-pilotto.notion.token --from-ids ~/jobadabra/.env \
-        --to job-pilotto.notion-app.token [--replace] [--dry-run]
+    python3 tools/notion_copy.py copy --from jobadabra.notion.token --from-ids ~/jobadabra/.env \
+        --to jobadabra.notion-app.token [--replace] [--dry-run]
     # (one token that sees both workspaces: --to the same token, --to-ids "~/Library/Application Support/Jobadabra/settings.json")
     # 4. Optional: write ⚙️ Search settings from a config folder (search.json + preferences.json)
-    python3 tools/notion_copy.py settings --token job-pilotto.notion-app.token --config ~/jobadabra/config
+    python3 tools/notion_copy.py settings --token jobadabra.notion-app.token --config ~/jobadabra/config
 
 What isn't copied: people fields (user ids differ per workspace), formulas and rollups (Notion computes them),
 files uploaded to Notion (their links expire; external links are kept), database views (not in the API).

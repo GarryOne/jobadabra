@@ -75,7 +75,7 @@
   // is its "field": the widest ancestor that holds this one slot and no other form control, so the title above the widget is part of it.
   // -> [{el: the field, input: a native file input or null, trigger: the pressable that opens one or null}]. Structure only: no wording.
   const REVEAL = /attach|upload|dropzone|dropbox/i;
-  const OWN = '[id^=jobpilotto], #jobpilotto-review-host';
+  const OWN = '[id^=jobadabra], #jobadabra-review-host';
   const POPUP = '[role=dialog], [class*=popup], [class*=callout]';
   const FIELDS = 'input:not([type=file]):not([type=hidden]):not([type=submit]):not([type=button]), select, textarea';
   // A popup beside the form (a source picker the + opens) holds no other form control; a dialog that holds the form's own fields IS the form (an application drawn as a sheet).
@@ -137,5 +137,5 @@
   }
 
   const api = {skeleton, canonical, fingerprint, classWords, widgets, uploadSlots};
-  if (typeof module !== 'undefined' && module.exports) module.exports = api; else window.__jobPilottoSkeleton = api;
+  if (typeof module !== 'undefined' && module.exports) module.exports = api; else window.__jobadabraSkeleton = api;
 })();

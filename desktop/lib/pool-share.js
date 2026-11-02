@@ -21,6 +21,6 @@ export function set(storage, value) {
 
 // What the Python side reads (pipeline environment, and repository variables for Always on).
 export function variables(storage) {
-  return on(storage) ? {JOB_PILOTTO_SHARE_EMPLOYERS: '1', JOB_PILOTTO_INSTALL_ID: installId(storage)} : null;
+  return on(storage) ? {JOBADABRA_SHARE_EMPLOYERS: '1', JOBADABRA_INSTALL_ID: installId(storage)} : null;
 }
-export const NAMES = ['JOB_PILOTTO_SHARE_EMPLOYERS', 'JOB_PILOTTO_INSTALL_ID'];
+export const NAMES = ['JOBADABRA_SHARE_EMPLOYERS', 'JOBADABRA_INSTALL_ID'];

@@ -9,7 +9,7 @@ const skip = JSDOM ? false : 'jsdom is not installed here (run npm install in wo
 const FORM = '<form><label for="city">City</label><input id="city"><div role="group" id="g"><button type="button" aria-pressed="false">Yes</button></div></form>';
 
 test('a try that failed on this state is not made again; another verb may; a control gets CAP tries in all, then it is given up once', {skip}, () => {
-  const window = openPage(JSDOM, FORM), log = window.__jobPilottoAttempts, box = window.document.getElementById('city');
+  const window = openPage(JSDOM, FORM), log = window.__jobadabraAttempts, box = window.document.getElementById('city');
   assert.equal(log.CAP, 3);
   assert.equal(log.mayTry(box, 'retype'), true);
   log.note(box, 'retype', log.stateOf(box));   // it stays empty: the try did not work
@@ -27,7 +27,7 @@ test('a try that failed on this state is not made again; another verb may; a con
 });
 
 test('a try that worked may be made again on the same state (a page that wipes a box twice), still within the tries in all', {skip}, () => {
-  const window = openPage(JSDOM, FORM), log = window.__jobPilottoAttempts, box = window.document.getElementById('city');
+  const window = openPage(JSDOM, FORM), log = window.__jobadabraAttempts, box = window.document.getElementById('city');
   for (let wipe = 1; wipe <= 3; wipe++) {
     box.value = '';
     const before = log.stateOf(box);
@@ -42,7 +42,7 @@ test('a try that worked may be made again on the same state (a page that wipes a
 });
 
 test('a group the one reader cannot read: the operator says whether the press worked; at the cap a group whose last press worked is not given up', {skip}, () => {
-  const window = openPage(JSDOM, FORM), log = window.__jobPilottoAttempts, group = window.document.getElementById('g');
+  const window = openPage(JSDOM, FORM), log = window.__jobadabraAttempts, group = window.document.getElementById('g');
   log.note(group, 'press', log.stateOf(group), true);
   assert.equal(log.mayTry(group, 'press'), true, 'a press that worked does not block another');
   log.note(group, 'press', log.stateOf(group), false);
@@ -57,11 +57,11 @@ test('the fastpath types a wiped box again only as its attempt log allows, then 
   const window = openPage(JSDOM, FORM), box = window.document.getElementById('city');
   window.__jobPilottoFillKnownFields([{field: 'city', value: 'Zurich'}]);
   let typedAgain = 0;
-  for (let wipe = 0; wipe < 6; wipe++) { box.value = ''; typedAgain += window.__jobPilottoRetypeWiped(0); }
+  for (let wipe = 0; wipe < 6; wipe++) { box.value = ''; typedAgain += window.__jobadabraRetypeWiped(0); }
   assert.equal(typedAgain, 3, 'three times, not the old five');
   box.value = '';
-  window.__jobPilottoAttempts.note(box, 'retype', window.__jobPilottoAttempts.stateOf(box), false);
-  assert.deepEqual(JSON.parse(JSON.stringify(window.__jobPilottoRetypeGaveUp())).map(item => item.field), ['city']);
+  window.__jobadabraAttempts.note(box, 'retype', window.__jobadabraAttempts.stateOf(box), false);
+  assert.deepEqual(JSON.parse(JSON.stringify(window.__jobadabraRetypeGaveUp())).map(item => item.field), ['city']);
   window.close();
 });
 
@@ -71,12 +71,12 @@ const MENU = '<form><label for="country">Country</label><select id="country"><op
 
 test('a menu showing another option than the fill picked reads mismatch; a custom menu\'s chip too', {skip}, () => {
   const window = openPage(JSDOM, MENU + '<div class="select__container"><div class="select__single-value">Israel</div><input id="combo" role="combobox"></div>');
-  const RB = window.__jobPilottoReadBack, menu = window.document.getElementById('country'), combo = window.document.getElementById('combo');
+  const RB = window.__jobadabraReadBack, menu = window.document.getElementById('country'), combo = window.document.getElementById('combo');
   window.__jobPilottoFillKnownFields([{field: 'country', value: 'CH'}]);
   assert.equal(RB.stateOf(menu), 'committed');
   menu.value = 'IL';
   assert.equal(RB.stateOf(menu), 'mismatch', 'the page set it to another option');
-  combo.setAttribute('data-jobpilotto-picked', 'switzerland');
+  combo.setAttribute('data-jobadabra-picked', 'switzerland');
   assert.equal(RB.stateOf(combo), 'mismatch', 'the chip shows another option than the fill picked');
   window.close();
 });
@@ -85,18 +85,18 @@ test('a native menu the page sets back is picked again, at most CAP times, then 
   const window = openPage(JSDOM, MENU), menu = window.document.getElementById('country');
   window.__jobPilottoFillKnownFields([{field: 'country', value: 'CH'}]);
   let again = 0;
-  for (let round = 0; round < 6; round++) { menu.value = 'IL'; again += window.__jobPilottoRetypeWiped(0); }
-  assert.equal(again, window.__jobPilottoAttempts.CAP, 'picked again within its attempt log');
-  assert.equal(window.__jobPilottoAttempts.gaveUp(menu), 'tries', 'the page keeps setting it back: left for the person once');
+  for (let round = 0; round < 6; round++) { menu.value = 'IL'; again += window.__jobadabraRetypeWiped(0); }
+  assert.equal(again, window.__jobadabraAttempts.CAP, 'picked again within its attempt log');
+  assert.equal(window.__jobadabraAttempts.gaveUp(menu), 'tries', 'the page keeps setting it back: left for the person once');
   menu.value = 'IL';
-  assert.equal(window.__jobPilottoRetypeWiped(0), 0);
+  assert.equal(window.__jobadabraRetypeWiped(0), 0);
   window.close();
 });
 
 test('a try that worked tells the run it progressed (value_stayed, relayed by hook.js); a failed one says nothing', {skip}, () => {
-  const window = openPage(JSDOM, FORM), log = window.__jobPilottoAttempts, box = window.document.getElementById('city');
+  const window = openPage(JSDOM, FORM), log = window.__jobadabraAttempts, box = window.document.getElementById('city');
   const heard = [];
-  window.document.addEventListener('jobpilotto:progress', event => heard.push(event.detail));
+  window.document.addEventListener('jobadabra:progress', event => heard.push(event.detail));
   log.note(box, 'retype', log.stateOf(box), false);
   assert.deepEqual(heard, []);
   log.note(box, 'type_real', log.stateOf(box), true);

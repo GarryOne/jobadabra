@@ -22,8 +22,8 @@ export function createSettleOpenTabs({arm, memoryReady}) {
       }
       const frames = await chrome.scripting.executeScript({target: {tabId: tab.id, allFrames: true}, func: () => {
         let removed = 0;
-        window.__jobPilottoOverlay?.off();   // before the sweep: a layer removed from outside is put back while a run is on (panel-overlay.js)
-        for (const id of ['jobpilotto-review-host', 'jobpilotto-progress', 'jobpilotto-note', 'jobpilotto-fill-overlay']) {
+        window.__jobadabraOverlay?.off();   // before the sweep: a layer removed from outside is put back while a run is on (panel-overlay.js)
+        for (const id of ['jobadabra-review-host', 'jobadabra-progress', 'jobadabra-note', 'jobadabra-fill-overlay']) {
           const node = document.getElementById(id);
           if (node) { node.remove(); removed++; }
         }

@@ -49,12 +49,12 @@ class SharedPaceTest(unittest.TestCase):
             self.assertEqual(pace.claim(self.token), 1_002_000)
 
     def test_same_file_as_the_app(self):
-        # desktop/lib/notion-pace.js: <tmp>/job-pilotto-notion-<sha256(token)[:12]>.pace
-        self.assertRegex(os.path.basename(pace.pace_file('abc')), r'^job-pilotto-notion-ba7816bf8f01\.pace$')
+        # desktop/lib/notion-pace.js: <tmp>/jobadabra-notion-<sha256(token)[:12]>.pace
+        self.assertRegex(os.path.basename(pace.pace_file('abc')), r'^jobadabra-notion-ba7816bf8f01\.pace$')
 
     def test_a_request_waits_for_its_turn(self):
         waits = []
-        # GitHub runs set JOB_PILOTTO_NOTION_GAP_MS=700 (daily.yml): this test checks the default gap.
+        # GitHub runs set JOBADABRA_NOTION_GAP_MS=700 (daily.yml): this test checks the default gap.
         with mock.patch.object(pace, 'clock', lambda: 1000.0), mock.patch.object(pace, 'GAP_MS', 340):  # a fixed clock: exactly one turn to wait
             pace.claim(self.token)
             pace.wait_turn(self.token, waits.append)
@@ -73,8 +73,8 @@ class SharedPaceTest(unittest.TestCase):
             requested.append(request.full_url)
             return Answer({'results': []})
 
-        with mock.patch.dict(os.environ, {'JOB_PILOTTO_E2E': '1', 'JOB_PILOTTO_E2E_NOTION_STANDIN': '1',
-                                         'JOB_PILOTTO_E2E_NOTION_BASE_URL': 'http://127.0.0.1:12345'}), \
+        with mock.patch.dict(os.environ, {'JOBADABRA_E2E': '1', 'JOBADABRA_E2E_NOTION_STANDIN': '1',
+                                         'JOBADABRA_E2E_NOTION_BASE_URL': 'http://127.0.0.1:12345'}), \
                 mock.patch.object(pace, 'clock', lambda: now[0]), \
                 mock.patch.object(pace, 'GAP_MS', 340), \
                 mock.patch.object(client.urllib.request, 'urlopen', opener):
@@ -88,8 +88,8 @@ class SharedPaceTest(unittest.TestCase):
         """Neither slot claims nor shared 429 cool-downs wait on the in-memory service."""
         for base in ['http://127.0.0.1', 'http://127.0.0.1:12345']:
             with self.subTest(base=base), \
-                    mock.patch.dict(os.environ, {'JOB_PILOTTO_E2E': '1', 'JOB_PILOTTO_E2E_NOTION_STANDIN': '1',
-                                                 'JOB_PILOTTO_E2E_NOTION_BASE_URL': base}), \
+                    mock.patch.dict(os.environ, {'JOBADABRA_E2E': '1', 'JOBADABRA_E2E_NOTION_STANDIN': '1',
+                                                 'JOBADABRA_E2E_NOTION_BASE_URL': base}), \
                     mock.patch.object(pace, 'clock', lambda: 1000.0):
                 waits = []
                 pace.calm_until(self.token, 1_005_000)
@@ -117,8 +117,8 @@ class SharedPaceTest(unittest.TestCase):
                     requested.append(request.full_url)
                     return Answer({'ok': True})
 
-                with mock.patch.dict(os.environ, {'JOB_PILOTTO_E2E': e2e, 'JOB_PILOTTO_E2E_NOTION_STANDIN': standin,
-                                                 'JOB_PILOTTO_E2E_NOTION_BASE_URL': base}), \
+                with mock.patch.dict(os.environ, {'JOBADABRA_E2E': e2e, 'JOBADABRA_E2E_NOTION_STANDIN': standin,
+                                                 'JOBADABRA_E2E_NOTION_BASE_URL': base}), \
                         mock.patch.object(pace, 'clock', lambda: now[0]), \
                         mock.patch.object(pace, 'GAP_MS', 340), \
                         mock.patch.object(client.urllib.request, 'urlopen', opener):

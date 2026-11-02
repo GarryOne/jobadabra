@@ -8,13 +8,13 @@ import crypto from 'node:crypto';
 import os from 'node:os';
 
 // Why this run must not report anything to the product, or '' when it may (the user's own switch is checked separately). Test runs of every kind
-// are off by construction: CI, the packaged-app smoke tests and the end-to-end journey (JOB_PILOTTO_E2E). 2 Oct 2026: the journey passed
-// JOB_PILOTTO_TELEMETRY=0 to mean "off", the app read any non-empty value as "on", and eight test profiles showed up as installs.
+// are off by construction: CI, the packaged-app smoke tests and the end-to-end journey (JOBADABRA_E2E). 2 Oct 2026: the journey passed
+// JOBADABRA_TELEMETRY=0 to mean "off", the app read any non-empty value as "on", and eight test profiles showed up as installs.
 export const DEV_BUILD = 'a development build';   // the owner's app run from source is one: what a person presses reaches the site from it (recipes.js siteOffForUser)
 export function reportingOff(env = process.env, {packaged = false} = {}) {
-  if (env.JOB_PILOTTO_E2E) return 'the end-to-end journey';
-  if (env.JOB_PILOTTO_TWIN) return 'a live-test twin';
-  if (env.JOB_PILOTTO_SMOKE || env.JOB_PILOTTO_PTY_SMOKE) return 'a smoke test';
+  if (env.JOBADABRA_E2E) return 'the end-to-end journey';
+  if (env.JOBADABRA_TWIN) return 'a live-test twin';
+  if (env.JOBADABRA_SMOKE || env.JOBADABRA_PTY_SMOKE) return 'a smoke test';
   if (env.CI || env.GITHUB_ACTIONS) return 'CI';
   if (!packaged && !sourceRunReports(env)) return DEV_BUILD;
   return '';
@@ -26,13 +26,13 @@ export function reportingOff(env = process.env, {packaged = false} = {}) {
 // real data ... we should learn from it and reuse the learning"). Its analytics, crash reports and install attribution stay off (reportingOff).
 // The twin is a clone of the owner's folder: it reports under the owner's install id, so it never counts as another install.
 export function learningOff(env = process.env, {packaged = false} = {}) {
-  if (env.JOB_PILOTTO_TWIN && !env.JOB_PILOTTO_E2E) return '';
+  if (env.JOBADABRA_TWIN && !env.JOBADABRA_E2E) return '';
   return reportingOff(env, {packaged});
 }
 
 // The journey on CI is the one test run that may reach Sentry (tagged environment "e2e", one fixed anonymous id, never your /telemetry store or PostHog):
 // a crash during the journey is a real bug and the stack trace helps. A local run reports nothing at all.
-export const sentryOnly = (env = process.env) => !!(env.JOB_PILOTTO_E2E && env.GITHUB_ACTIONS);
+export const sentryOnly = (env = process.env) => !!(env.JOBADABRA_E2E && env.GITHUB_ACTIONS);
 
 export const ENDPOINT = 'https://www.jobpilotto.top/report/telemetry';
 const QUEUE = 'telemetry-queue.json';
@@ -54,11 +54,11 @@ export function scrub(value, max = 500, home = os.homedir()) {
   return text.length > max ? `${text.slice(0, max)}…` : text;
 }
 
-// A run from source (npm start, the e2e harness) stays silent unless JOB_PILOTTO_TELEMETRY asks for reports. "0", "off",
+// A run from source (npm start, the e2e harness) stays silent unless JOBADABRA_TELEMETRY asks for reports. "0", "off",
 // "false" and "no" mean no: the e2e harness sets '0', and a plain "is it set?" test read that as yes, so every e2e run
 // reported itself as a new machine (2 Oct 2026: nine fake installs on /telemetry).
 export function sourceRunReports(env = process.env) {
-  const value = String(env.JOB_PILOTTO_TELEMETRY ?? '').trim().toLowerCase();
+  const value = String(env.JOBADABRA_TELEMETRY ?? '').trim().toLowerCase();
   return value !== '' && !['0', 'off', 'false', 'no'].includes(value);
 }
 

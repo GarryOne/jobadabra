@@ -1,6 +1,6 @@
 """The versioned result of one engine process, written for the desktop app.
 
-stdout stays human text. When JOB_PILOTTO_RESULT_FILE is set, this module writes one JSON object
+stdout stays human text. When JOBADABRA_RESULT_FILE is set, this module writes one JSON object
 there: v, ok, run_id, warnings, job, notion_url, mail. The same run_id is the Notion "Run id"
 column (src/notion/cron_runs.py) and the id in logs/app.log and logs/engine.log.
 """
@@ -17,9 +17,9 @@ _minted = ''
 
 
 def current_id():
-    """The id for this process: JOB_PILOTTO_RUN_ID when the app or GitHub set one, otherwise minted once."""
+    """The id for this process: JOBADABRA_RUN_ID when the app or GitHub set one, otherwise minted once."""
     global _minted
-    chosen = os.environ.get('JOB_PILOTTO_RUN_ID', '').strip()
+    chosen = os.environ.get('JOBADABRA_RUN_ID', '').strip()
     if chosen:
         return chosen
     if not _minted:
@@ -51,7 +51,7 @@ def publish(run, failed=False):
     No file is set (a terminal, a test): nothing is written. Never raises."""
     global _published
     _published = True
-    path = os.environ.get('JOB_PILOTTO_RESULT_FILE', '').strip()
+    path = os.environ.get('JOBADABRA_RESULT_FILE', '').strip()
     if not path:
         return None
     warnings = run.get('warnings') or []

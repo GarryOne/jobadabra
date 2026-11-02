@@ -67,7 +67,7 @@ class PrRedHookTest(unittest.TestCase):
         self.state = self.tmp / 'state'; self.state.mkdir()
         self.env = {**os.environ, 'PATH': f'{self.tmp / "bin"}{os.pathsep}{os.environ["PATH"]}', 'FAKE_GH_DIR': str(self.state), 'FAKE_GH_REAL': str(self.tmp / 'real-gh'),
                     'PR_RED_DIR': str(self.tmp / 'cache'), 'PR_RED_TTL': '0', 'PR_RED_WAIT': 'state', 'PR_REST_CACHE': str(self.tmp / 'rest-cache'), 'GH_GRAPHQL_LOG': 'off'}
-        self.env.pop('JOB_PILOTTO_SESSION', None)
+        self.env.pop('JOBADABRA_SESSION', None)
         red_main = self.tmp / 'red-main.sh'   # main's verdict (tools/red-main.sh) from a file: unknown unless a test writes one
         red_main.write_text('#!/bin/sh\n[ "$RED_MAIN_NO_RERUN" = 1 ] || echo "rerun allowed" >> "$FAKE_GH_DIR/calls"\ncat "$FAKE_GH_DIR/red-main" 2>/dev/null || echo unknown\n')
         self.env['PR_RED_MAIN_SCRIPT'] = str(red_main)

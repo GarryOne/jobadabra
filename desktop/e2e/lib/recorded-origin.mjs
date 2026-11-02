@@ -1,6 +1,7 @@
-// Where a recorded case's page came from (owner, 12 Oct 2026, via job-pilotto-cc: a green replay proves a mechanism on a small page, not a site): every case.json says
+// Where a recorded case's page came from (owner, 12 Oct 2026, via jobadabra-cc: a green replay proves a mechanism on a small page, not a site): every case.json says
 // `origin`: 'captured' (the markup came from a real page: saved by a run or copied, then scrubbed or reduced) or 'hand-cut' (written by hand: invented, reconstructed from a sketch or
 // a screenshot, rebuilt small). /admin/form-filling/lab shows it per case (site/src/applying-cases.js). Guard: desktop/test/recorded-origin.test.js fails a case without it.
+// Job: keep the scorecard
 import fs from 'node:fs';
 import path from 'node:path';
 

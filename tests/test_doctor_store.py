@@ -50,7 +50,7 @@ class StoreChecks(unittest.TestCase):
     def test_a_store_on_this_mac_is_read_from_the_thread_that_opened_it(self):
         """9 Oct 2026, the first real run: the data checks ran in a thread pool and SQLite refused every one ("could not check")."""
         with tempfile.TemporaryDirectory() as folder, mock.patch.object(doctor, 'gh', return_value=None):
-            checks = doctor.run_checks(None, NOW, stores=sqlite.open_store({'JOB_PILOTTO_DATA_DIR': folder}))
+            checks = doctor.run_checks(None, NOW, stores=sqlite.open_store({'JOBADABRA_DATA_DIR': folder}))
         self.assertEqual([c.detail for c in checks if 'could not check' in c.detail], [])
         self.assertIn('Kits ready', {c.name for c in checks})
 

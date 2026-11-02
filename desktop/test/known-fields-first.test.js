@@ -10,7 +10,7 @@ const flow = ['../../extension/flow.js', '../../extension/fill-tab-inputs.js', '
 const background = fs.readFileSync(new URL('../../extension/background.js', import.meta.url), 'utf8');
 
 test('without a kit, Claude is asked and the known fields are filled before its answer is awaited', () => {
-  const asked = flow.indexOf('pendingAI = askedEarly ?'), firstPass = flow.indexOf('window.__jobPilottoExtensionFill(list, profile, resume, letter, consents)'), awaited = flow.indexOf('ai = answersOrDropped(pendingAI ? await pendingAI');
+  const asked = flow.indexOf('pendingAI = askedEarly ?'), firstPass = flow.indexOf('window.__jobadabraExtensionFill(list, profile, resume, letter, consents)'), awaited = flow.indexOf('ai = answersOrDropped(pendingAI ? await pendingAI');
   assert.ok(asked > 0 && firstPass > asked && awaited > firstPass, 'ask, then fill the known fields, then await the answers');
   assert.match(flow, /later = open;\n    \}\n  \}/, 'the answers fill as a second pass');
   assert.doesNotMatch(flow, /import\('\.\/log\.js'\)/, 'no dynamic import: a service worker refuses import()');

@@ -2,6 +2,7 @@
 // /admin/form-filling/lab, k >= 3 installs each) become discovery candidates: postings on those hosts, from the loaded profile's jobs, are tried first. Everything stays on this Mac
 // (discover writes the repo's pool list, desktop/e2e/smoke-sites.json); a suggested host with no posting among the jobs is listed in the report, not skipped silently.
 // Guard: test/wanted-hosts.test.mjs.
+// Job: serve stored answers
 import {execFileSync} from 'node:child_process';
 import {SITE, skipReason} from './applying-report.mjs';
 import {candidates, mayVisit} from './record-sites.mjs';
@@ -16,7 +17,7 @@ export async function fetchWanted({env = process.env, key, fetcher = fetch} = {}
   const why = skipReason(env);
   if (why) return {hosts: [], why: `not asked (${why})`};
   let token = key;
-  try { token ??= execFileSync('security', ['find-generic-password', '-s', 'job-pilotto.site.api_key', '-w'], {encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore']}).trim(); } catch { token = ''; }
+  try { token ??= execFileSync('security', ['find-generic-password', '-s', 'jobadabra.site.api_key', '-w'], {encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore']}).trim(); } catch { token = ''; }
   if (!token) return {hosts: [], why: 'not asked (no site key in the Keychain)'};
   try {
     const answer = await fetcher(`${SITE}?json`, {headers: {Authorization: `Bearer ${token}`, 'X-Caller': 'smoke-discover'}, signal: AbortSignal.timeout(20000)});

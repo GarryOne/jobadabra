@@ -12,12 +12,12 @@ class InstallIdTest(unittest.TestCase):
     def test_the_shared_id_wins_and_a_random_one_is_kept(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / 'install_id'
-            self.assertEqual(service.install_id(path, {'JOB_PILOTTO_INSTALL_ID': 'shared-install-1'}), 'shared-install-1')
+            self.assertEqual(service.install_id(path, {'JOBADABRA_INSTALL_ID': 'shared-install-1'}), 'shared-install-1')
             self.assertFalse(path.exists())
             first = service.install_id(path, {})
             self.assertRegex(first, r'^[0-9a-f]{24}$')
             self.assertEqual(service.install_id(path, {}), first)            # kept for the next run
-            self.assertNotEqual(service.install_id(Path(tmp) / 'other', {'JOB_PILOTTO_INSTALL_ID': 'bad id'}), 'bad id')
+            self.assertNotEqual(service.install_id(Path(tmp) / 'other', {'JOBADABRA_INSTALL_ID': 'bad id'}), 'bad id')
 
 
 class PlaybookTest(unittest.TestCase):

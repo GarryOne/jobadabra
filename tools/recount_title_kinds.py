@@ -28,9 +28,9 @@ def prepare(work, env=os.environ):
     work.mkdir(parents=True, exist_ok=True)
     for name in ('data', 'config'):
         (work / name).mkdir(exist_ok=True)
-    env['JOB_PILOTTO_DATA_DIR'], env['JOB_PILOTTO_CONFIG_DIR'] = str(work / 'data'), str(work / 'config')
-    env['JOB_PILOTTO_AI_ENGINE'] = 'cli'
-    env.pop('JOB_PILOTTO_AI_FALLBACK', None)
+    env['JOBADABRA_DATA_DIR'], env['JOBADABRA_CONFIG_DIR'] = str(work / 'data'), str(work / 'config')
+    env['JOBADABRA_AI_ENGINE'] = 'cli'
+    env.pop('JOBADABRA_AI_FALLBACK', None)
     env.pop('ANTHROPIC_API_KEY', None)
 
 

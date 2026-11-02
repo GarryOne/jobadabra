@@ -1,5 +1,5 @@
 // The judges' sketch (extension/account-fill.js accountSketch, run from its own source as ladder-capture.mjs does) reads a picklist's choice the way the panel
-// does (extension/review.js comboFilled, __jobPilottoChosen): a react-select chip, a labelled hidden input holding the value, never typed search text alone.
+// does (extension/review.js comboFilled, __jobadabraChosen): a react-select chip, a labelled hidden input holding the value, never typed search text alone.
 // Every picklist shape in one loop, and the form audit (page/browser-form-fastpath.js) must agree on each. Headless Chromium; skipped without Chromium.
 // 11 Oct 2026: a chosen Country (+41) read "empty", so the form-ready judge said "needs Country*" on a filled form.
 import assert from 'node:assert/strict';

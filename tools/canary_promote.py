@@ -12,7 +12,7 @@ Rule (all must hold, else nothing changes):
      bundles a different Chrome extension than stable, no open `fill-failure` issue names the candidate's extension
      version but not stable's;
   4. positive evidence that it was used and worked (app reports, the website's GET /telemetry/version, read with the
-     key in JOB_PILOTTO_TELEMETRY_KEY = the site's STATS_KEY): silence is not health.
+     key in JOBADABRA_TELEMETRY_KEY = the site's STATS_KEY): silence is not health.
        used:   daily health lines from >= 1 install on that exact version on >= 2 days, first to last >= 48 h apart;
        worked: >= 5 successful pipeline runs (health runsOk) and a failure rate at most 5 points above stable's
                (stable with < 5 counted runs: at most 10 %);
@@ -27,7 +27,7 @@ the next build becomes the canary and the owner's app moves on to it.
   python3 tools/canary_promote.py               # promote when the rule holds (the workflow does this daily)
   gh release list --json tagName,isPrerelease,isDraft,isLatest,createdAt | python3 tools/canary_promote.py --canary
                                                 # print the canary's tag (or nothing); prune-releases.sh uses it
-Reads GitHub with the `gh` CLI (GH_TOKEN in CI) and app reports with JOB_PILOTTO_TELEMETRY_KEY.
+Reads GitHub with the `gh` CLI (GH_TOKEN in CI) and app reports with JOBADABRA_TELEMETRY_KEY.
 """
 import argparse
 import base64
@@ -55,7 +55,7 @@ CANARY_WINDOW = timedelta(days=7)   # a canary not promoted within 7 days is dro
 CANARY_FLOOR = '0.4.0-alpha.69'
 ROOT = Path(__file__).resolve().parents[1]
 TELEMETRY_URL = 'https://www.jobpilotto.top/telemetry/version'
-KEY_ENV = 'JOB_PILOTTO_TELEMETRY_KEY'
+KEY_ENV = 'JOBADABRA_TELEMETRY_KEY'
 MIN_HEALTH_DAYS = 2              # distinct days with a health line on the candidate
 MIN_USED_SPAN = timedelta(hours=48)   # first to last health line
 MIN_INSTALLS = 3                 # distinct installs on the build: one tester's luck proves nothing (the old rule needed one)
@@ -128,7 +128,7 @@ def canary_of(releases, now, window=CANARY_WINDOW, floor=CANARY_FLOOR):
 
 
 def approved_only(releases, approved):
-    """With the soak on (JOB_PILOTTO_SOAK=on) only a build the release gate approved is soaked: the other pre-releases drop out, stable stays.
+    """With the soak on (JOBADABRA_SOAK=on) only a build the release gate approved is soaked: the other pre-releases drop out, stable stays.
     Without it the oldest newer build was the candidate, so a build that failed its gate held up the approved one until it was dropped after 48 h
     (alpha.253 in front of the approved alpha.254, 3 Oct 2026)."""
     return [r for r in releases if not r.get('isPrerelease') or r['tagName'] in approved]
@@ -416,7 +416,7 @@ class GitHub:
             raise EvidenceUnavailable(f'{KEY_ENV} is not set (the site\'s stats key), so usage can\'t be checked')
         query = {'v': version, **({'compare': stable_version} if stable_version else {})}
         request = urllib.request.Request(f'{self.url}?{urllib.parse.urlencode(query)}', headers={
-            'Authorization': f'Bearer {self.key}', 'User-Agent': 'job-pilotto-canary', 'Accept': 'application/json'})
+            'Authorization': f'Bearer {self.key}', 'User-Agent': 'jobadabra-canary', 'Accept': 'application/json'})
         try:
             with urllib.request.urlopen(request, timeout=30) as response:
                 data = json.loads(response.read())
@@ -459,13 +459,13 @@ def run(args):
         return 0
     github = GitHub(args.repo, key=os.environ.get(KEY_ENV, '').strip() or None)
     releases = github.releases()
-    if os.environ.get('JOB_PILOTTO_SOAK', '') == 'on':
+    if os.environ.get('JOBADABRA_SOAK', '') == 'on':
         releases = approved_only(releases, github.approved())
     if args.candidate:
         found = canary_of(releases, datetime.now(timezone.utc))
         print(found['tagName'] if found else '')
         return 0
-    result = decide(releases, datetime.now(timezone.utc), github, require_beta=os.environ.get('JOB_PILOTTO_REQUIRE_BETA', '') == 'on')
+    result = decide(releases, datetime.now(timezone.utc), github, require_beta=os.environ.get('JOBADABRA_REQUIRE_BETA', '') == 'on')
     verdict = ('PROMOTE ' + result['tag']) if result['promote'] else 'WAIT (no promotion)'
     print(f"Canary auto-promote: {verdict}")
     print(f"Current stable: {result['stable'] or '(none)'}")

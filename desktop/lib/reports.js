@@ -8,14 +8,14 @@
 import {read as keychainRead} from './keychain.js';
 
 // The owner's app signs its reports (trusted → the daily fixer takes them); the token is in the app's secrets
-// or, on the owner's Mac, the Keychain item job-pilotto.report.token. Without one, reports wait in triage.
+// or, on the owner's Mac, the Keychain item jobadabra.report.token. Without one, reports wait in triage.
 export function reportToken(storage) {
   const saved = storage.secret('REPORT_TOKEN');
   if (saved || process.platform !== 'darwin') return saved;
-  return keychainRead('job-pilotto.report.token') || '';   // a test run or a twin reads none of the owner's (lib/keychain.js)
+  return keychainRead('jobadabra.report.token') || '';   // a test run or a twin reads none of the owner's (lib/keychain.js)
 }
 
-export const ENDPOINT = process.env.JOB_PILOTTO_REPORT_URL || 'https://www.jobpilotto.top/report/fill-failure';
+export const ENDPOINT = process.env.JOBADABRA_REPORT_URL || 'https://www.jobpilotto.top/report/fill-failure';
 // The menu reasons are extension/menu-reason.js MENU_REASONS (what the pick observed) and the older fixed one; test/menu-reason-copies.test.js keeps them equal.
 export const MECHANICAL = ['dropdown not clicked', 'dropdown clicked, but its menu did not open', 'dropdown clicked, but no option matched',
   'dropdown option clicked, but not selected', 'dropdown selected, but the reader cannot see it', 'dropdown clicked, but it selected another choice', 'dropdown that opens only on a real click',

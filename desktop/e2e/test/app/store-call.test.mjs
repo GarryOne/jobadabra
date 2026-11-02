@@ -29,7 +29,7 @@ async function roundTrip(ctx) {
 test('this Mac\'s store: the engine\'s store, in the profile\'s data folder, with no Notion at all', async () => {
   const profile = profileWith({store: 'sqlite'});
   const env = storeEnv({profile});
-  assert.equal(env.JOB_PILOTTO_STORE, 'sqlite');
+  assert.equal(env.JOBADABRA_STORE, 'sqlite');
   assert.equal(env.NOTION_TOKEN, undefined);
   await roundTrip({profile, store: 'sqlite', token: ''});
   assert.ok(fs.readdirSync(path.join(profile, 'data')).some(name => name.endsWith('.sqlite')), 'the data is in the profile\'s own data folder');
@@ -40,7 +40,7 @@ test('Notion (the stand-in): the same calls, with the run\'s token and the works
   try {
     const ids = await buildStandIn(fake);
     const profile = profileWith({notionIds: ids});
-    await roundTrip({profile, store: 'standin', token: fake.token, appEnv: {JOB_PILOTTO_E2E_NOTION_BASE_URL: fake.url, JOB_PILOTTO_E2E_NOTION_STANDIN: '1'}});
+    await roundTrip({profile, store: 'standin', token: fake.token, appEnv: {JOBADABRA_E2E_NOTION_BASE_URL: fake.url, JOBADABRA_E2E_NOTION_STANDIN: '1'}});
     assert.equal(fake.dump().find(item => item.title === 'Job Tracker')?.rows, 1, 'the job is a row of the stand-in\'s Job Tracker, not anywhere else');
   } finally { await fake.close(); }
 });
@@ -52,8 +52,8 @@ test('a Notion store the app has not connected yet is said, not guessed', () => 
 test('only the in-memory Notion store opts the engine out of the real service clock', () => {
   const profile = profileWith({store: 'notion', notionIds: {}});
   const given = {profile, token: 'fixture', notionUrl: 'http://127.0.0.1:12345'};
-  assert.equal(storeEnv({...given, standIn: true}).JOB_PILOTTO_E2E_NOTION_STANDIN, '1');
-  assert.equal(storeEnv(given).JOB_PILOTTO_E2E_NOTION_STANDIN, undefined, 'a local fault proxy may still forward to real Notion');
+  assert.equal(storeEnv({...given, standIn: true}).JOBADABRA_E2E_NOTION_STANDIN, '1');
+  assert.equal(storeEnv(given).JOBADABRA_E2E_NOTION_STANDIN, undefined, 'a local fault proxy may still forward to real Notion');
 });
 
 test('seed subprocesses use the app environment marker even when the context store label is notion', async t => {
@@ -62,7 +62,7 @@ test('seed subprocesses use the app environment marker even when the context sto
   t.after(async () => { await fake.close(); fs.rmSync(clock, {force: true}); });
   const profile = profileWith({store: 'notion', notionIds: await buildStandIn(fake)});
   const result = await storeCall({profile, store: 'notion', token: fake.token,
-    appEnv: {JOB_PILOTTO_E2E_NOTION_BASE_URL: fake.url, JOB_PILOTTO_E2E_NOTION_STANDIN: '1'}}, 'applications', 'list');
+    appEnv: {JOBADABRA_E2E_NOTION_BASE_URL: fake.url, JOBADABRA_E2E_NOTION_STANDIN: '1'}}, 'applications', 'list');
   assert.deepEqual(result, []);
   assert.equal(fs.existsSync(clock), false, 'the seed process must inherit the app marker instead of reclassifying the store label');
 });
@@ -71,5 +71,5 @@ test('never anyone\'s real data: only a temp profile, HOME there, and the engine
   assert.throws(() => storeEnv({profile: os.homedir()}), /not a temp profile/);
   const profile = profileWith({store: 'sqlite'});
   const env = storeEnv({profile});
-  assert.deepEqual([env.HOME, env.JOB_PILOTTO_FOLLOW_APP, env.JOB_PILOTTO_DATA_DIR], [profile, '0', path.join(profile, 'data')]);
+  assert.deepEqual([env.HOME, env.JOBADABRA_FOLLOW_APP, env.JOBADABRA_DATA_DIR], [profile, '0', path.join(profile, 'data')]);
 });

@@ -11,11 +11,11 @@ const NOW = Date.parse('2026-10-11T12:00:00Z');
 
 test('a row is claimed by one session; a second one is told who holds it', () => {
   const d = dir();
-  assert.equal(claim('jobs.ch posting whose Apply the extension did not find', 'job-pilotto-81', {dir: d, now: NOW}).ok, true);
-  const second = claim('jobs.ch posting whose Apply the extension did not find', 'job-pilotto-b8', {dir: d, now: NOW + 1000});
+  assert.equal(claim('jobs.ch posting whose Apply the extension did not find', 'jobadabra-81', {dir: d, now: NOW}).ok, true);
+  const second = claim('jobs.ch posting whose Apply the extension did not find', 'jobadabra-b8', {dir: d, now: NOW + 1000});
   assert.equal(second.ok, false);
-  assert.equal(second.holder, 'job-pilotto-81');
-  assert.equal(claim('jobs.ch posting whose Apply the extension did not find', 'job-pilotto-81', {dir: d, now: NOW + 2000}).ok, true, 'the holder may claim again (renews)');
+  assert.equal(second.holder, 'jobadabra-81');
+  assert.equal(claim('jobs.ch posting whose Apply the extension did not find', 'jobadabra-81', {dir: d, now: NOW + 2000}).ok, true, 'the holder may claim again (renews)');
 });
 
 test('a claim of an expired or no-longer-listed session is taken over, a live one is not', () => {

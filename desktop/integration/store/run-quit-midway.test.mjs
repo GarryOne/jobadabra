@@ -1,10 +1,10 @@
 // Layer 3 (Node + the real engine, no window): quitting the app in the middle of a run (journey J11, A run that fails ends in words, never Running for ever). Moved from the e2e
 // `activityfailures` suite (1 Nov 2026, owner: "Only tier 1 ... should stay e2e"; J11 is now proven here). The search is held at the AI (the proxy delays its answer), the app "quits"
 // the way lib/lifecycle.js quits with a run going (pipeline.freezeQueue, then the engine child stopped), and the NEXT START runs the app's own code: takeQueue lists the lost run as
-// Interrupted, and the app's resumeQueue (lib/app-reminders.js, answered "Start again" as the journey answers it: askResume with JOB_PILOTTO_E2E) closes the killed run's row and starts the
+// Interrupted, and the app's resumeQueue (lib/app-reminders.js, answered "Start again" as the journey answers it: askResume with JOBADABRA_E2E) closes the killed run's row and starts the
 // search again. The quit's "process is gone" is played by ending the search's steps (stopTask) as well as its engine child. What it proves: the lost run is listed once as Interrupted with what it said, the search you had started is picked up again and ends ok, nothing is shown Running for
 // ever and no row of the store says Running. What it does not prove: the process kill itself (a real app is killed, here the engine child is stopped and the app's module state stays in
-// this process), and the native question (askResume answers by itself under JOB_PILOTTO_E2E, test/resume-ask.test.js). Both stayed true of the e2e step on a Mac.
+// this process), and the native question (askResume answers by itself under JOBADABRA_E2E, test/resume-ask.test.js). Both stayed true of the e2e step on a Mac.
 import assert from 'node:assert/strict';
 import {after, before, test} from 'node:test';
 import {createAppReminders} from '../../lib/app-reminders.js';
@@ -47,11 +47,11 @@ test('quitting the app in the middle of a run: it is not shown Running for ever,
     await first;
   } finally { proxy.setDelay(0); }
 
-  // The next start: the app's own resume code, answered "Start again" (JOB_PILOTTO_E2E), with no wait.
+  // The next start: the app's own resume code, answered "Start again" (JOBADABRA_E2E), with no wait.
   const lines = [];
   const reminders = createAppReminders({FOCUS_HOURS: [], Notification: class {}, dialog: {}, log: line => lines.push(String(line)), notify: () => {}, skippedLoops: new Set(),
     getStorage: () => storage, targets: {}, toWindow: () => {}, getWindow: () => null});
-  assert.equal(resumeDelay({JOB_PILOTTO_E2E: '1', JOB_PILOTTO_E2E_RESUME_MS: '3000'}), 3000, 'the control: the journey shortens the wait, a user keeps 20 s');
+  assert.equal(resumeDelay({JOBADABRA_E2E: '1', JOBADABRA_E2E_RESUME_MS: '3000'}), 3000, 'the control: the journey shortens the wait, a user keeps 20 s');
   const taken = scheduleResume(pipeline, storage, {begin: jobs => reminders.resumeQueue(jobs), delayMs: 0, timer: callback => callback()});
   assert.deepEqual(taken.map(job => job.kind), ['search'], 'the search you had started is handed back to start again');
   await until(() => pipeline.running()?.kind === 'search' || pipeline.runs(storage).some(run => run.kind === 'search' && !before.has(run.id) && run.ok), 'the search to start again');

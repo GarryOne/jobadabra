@@ -1,3 +1,4 @@
+// Job: serve stored answers
 /* global document */
 // Capturing a page for the recorded pages (layer 2, spec docs/superpowers/specs/2026-10-10-applying-reliability-layers.md): its STRUCTURE only. In the page
 // (snapshotInPage): scripts and event handlers dropped, frames kept as elements, the applied CSS kept (11 Oct 2026), every typed value, check and choice removed, URL queries and fragments cut, the extension's
@@ -71,10 +72,10 @@ export function snapshotInPage() {
   } catch { /* none readable */ }
   for (const node of root.querySelectorAll('script, noscript, object, embed, template, link[rel=preload], link[rel=prefetch], link[rel=modulepreload], meta[http-equiv]')) node.remove();
   for (const node of root.querySelectorAll('iframe[srcdoc], frame[srcdoc]')) node.removeAttribute('srcdoc');
-  for (const node of root.querySelectorAll('[id^="jobpilotto"], [class*="jobpilotto"], [data-jobpilotto-panel]')) node.remove();
+  for (const node of root.querySelectorAll('[id^="jobadabra"], [class*="jobadabra"], [data-jobadabra-panel]')) node.remove();
   for (const node of root.querySelectorAll('*')) {
     for (const attr of [...node.attributes]) {
-      if (/^on/i.test(attr.name) || /^data-jobpilotto/i.test(attr.name)) node.removeAttribute(attr.name);
+      if (/^on/i.test(attr.name) || /^data-jobadabra/i.test(attr.name)) node.removeAttribute(attr.name);
       else if (attr.name === 'srcset') node.setAttribute(attr.name, attr.value.replace(/[?#][^\s,"]*/g, ''));   // a list: each address loses its own query
       else if (['href', 'src', 'action'].includes(attr.name)) node.setAttribute(attr.name, attr.value.replace(/[?#].*$/s, ''));   // one address: the whole query goes, commas included (css?family=Lato:400,400i left ",400i" behind: an address no replay could serve)
     }
@@ -114,5 +115,5 @@ export function cssRecorder(context, {maxSheet = 2e6, maxAll = 2e7} = {}) {
     request: {method: 'GET', url, httpVersion: 'HTTP/1.1', headers: [], queryString: [], cookies: [], headersSize: -1, bodySize: -1},
     response: {status: 200, statusText: 'OK', httpVersion: 'HTTP/1.1', headers: [{name: 'content-type', value: 'text/css'}], cookies: [], redirectURL: '', headersSize: -1, bodySize: -1,
       content: {size: text.length, mimeType: 'text/css', text}}});
-  return {har: async () => { await Promise.all([...pending]); return {log: {version: '1.2', creator: {name: 'job-pilotto capture', version: '1'}, entries: [...sheets].map(([url, text]) => entry(url, text))}}; }};
+  return {har: async () => { await Promise.all([...pending]); return {log: {version: '1.2', creator: {name: 'jobadabra capture', version: '1'}, entries: [...sheets].map(([url, text]) => entry(url, text))}}; }};
 }

@@ -19,8 +19,8 @@ class HeavyLockTicketsTest(unittest.TestCase):
         tmp = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, tmp, True)
         heavy, go = (tmp / 'heavy').as_posix(), (tmp / 'go').as_posix()
-        env = {**{k: v for k, v in os.environ.items() if not k.startswith(('JOB_PILOTTO_HEAVY', 'JP_HEAVY'))}, 'JOB_PILOTTO_HEAVY_DIR': heavy, 'JOB_PILOTTO_HEAVY_LOAD': '0',
-               'JOB_PILOTTO_HEAVY_POLL': '0.02', 'JOB_PILOTTO_HEAVY_TIMING_LOG': (tmp / 'gate-timing.log').as_posix(), 'JOB_PILOTTO_HEAVY_SHARED': str(LOCK), 'JOB_PILOTTO_HEAVY_SLOTS': '1'}
+        env = {**{k: v for k, v in os.environ.items() if not k.startswith(('JOBADABRA_HEAVY', 'JP_HEAVY'))}, 'JOBADABRA_HEAVY_DIR': heavy, 'JOBADABRA_HEAVY_LOAD': '0',
+               'JOBADABRA_HEAVY_POLL': '0.02', 'JOBADABRA_HEAVY_TIMING_LOG': (tmp / 'gate-timing.log').as_posix(), 'JOBADABRA_HEAVY_SHARED': str(LOCK), 'JOBADABRA_HEAVY_SLOTS': '1'}
         procs = [subprocess.Popen(['bash', str(LOCK), 'e2e-smoke', 'bash', '-c', f'{gate_loop(go, 0.05)}'], env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)]
         self.addCleanup(lambda: [p.kill() for p in procs])
         wait_in_books(heavy, procs[0], ('holds',), env=env)
@@ -40,8 +40,8 @@ class HeavyLockTicketsTest(unittest.TestCase):
         tmp = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, tmp, True)
         heavy, go = tmp / 'heavy', (tmp / 'go').as_posix()
-        env = {**{k: v for k, v in os.environ.items() if not k.startswith(('JOB_PILOTTO_HEAVY', 'JP_HEAVY'))}, 'JOB_PILOTTO_HEAVY_DIR': heavy.as_posix(), 'JOB_PILOTTO_HEAVY_LOAD': '0',
-               'JOB_PILOTTO_HEAVY_POLL': '0.02', 'JOB_PILOTTO_HEAVY_TIMING_LOG': (tmp / 'gate-timing.log').as_posix(), 'JOB_PILOTTO_HEAVY_SHARED': str(LOCK), 'JOB_PILOTTO_HEAVY_SLOTS': '1'}
+        env = {**{k: v for k, v in os.environ.items() if not k.startswith(('JOBADABRA_HEAVY', 'JP_HEAVY'))}, 'JOBADABRA_HEAVY_DIR': heavy.as_posix(), 'JOBADABRA_HEAVY_LOAD': '0',
+               'JOBADABRA_HEAVY_POLL': '0.02', 'JOBADABRA_HEAVY_TIMING_LOG': (tmp / 'gate-timing.log').as_posix(), 'JOBADABRA_HEAVY_SHARED': str(LOCK), 'JOBADABRA_HEAVY_SLOTS': '1'}
         holder = subprocess.Popen(['bash', str(LOCK), 'e2e-smoke', 'bash', '-c', f'{gate_loop(go, 0.05)}'], env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         sleeper = subprocess.Popen(['sleep', '60'])
         self.addCleanup(lambda: (holder.kill(), sleeper.kill()))
@@ -76,8 +76,8 @@ class HeavyLockTicketsTest(unittest.TestCase):
         tmp = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, tmp, True)
         heavy, go = tmp / 'heavy', (tmp / 'go').as_posix()
-        env = {**{k: v for k, v in os.environ.items() if not k.startswith(('JOB_PILOTTO_HEAVY', 'JP_HEAVY'))}, 'JOB_PILOTTO_HEAVY_DIR': heavy.as_posix(), 'JOB_PILOTTO_HEAVY_LOAD': '0',
-               'JOB_PILOTTO_HEAVY_POLL': '0.05', 'JOB_PILOTTO_HEAVY_TIMING_LOG': (tmp / 'gate-timing.log').as_posix(), 'JOB_PILOTTO_HEAVY_SHARED': str(LOCK), 'JOB_PILOTTO_HEAVY_SLOTS': '1'}
+        env = {**{k: v for k, v in os.environ.items() if not k.startswith(('JOBADABRA_HEAVY', 'JP_HEAVY'))}, 'JOBADABRA_HEAVY_DIR': heavy.as_posix(), 'JOBADABRA_HEAVY_LOAD': '0',
+               'JOBADABRA_HEAVY_POLL': '0.05', 'JOBADABRA_HEAVY_TIMING_LOG': (tmp / 'gate-timing.log').as_posix(), 'JOBADABRA_HEAVY_SHARED': str(LOCK), 'JOBADABRA_HEAVY_SLOTS': '1'}
         (heavy / 'queue').mkdir(parents=True)
         old = subprocess.Popen(['sleep', '60'])
         self.addCleanup(old.kill)

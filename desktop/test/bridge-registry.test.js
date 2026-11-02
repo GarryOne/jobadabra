@@ -55,8 +55,8 @@ test('the marker reader takes both comment styles and flags a malformed one', ()
 });
 
 test('the shipped STORE_CHOICE is read from the code with no environment', () => {
-  assert.equal(storeChoiceShipsOn("export const STORE_CHOICE = process.env.JOB_PILOTTO_STORE_CHOICE === '1';"), false);
-  assert.equal(storeChoiceShipsOn("export const STORE_CHOICE = process.env.JOB_PILOTTO_STORE_CHOICE !== '0';"), true);
+  assert.equal(storeChoiceShipsOn("export const STORE_CHOICE = process.env.JOBADABRA_STORE_CHOICE === '1';"), false);
+  assert.equal(storeChoiceShipsOn("export const STORE_CHOICE = process.env.JOBADABRA_STORE_CHOICE !== '0';"), true);
   assert.equal(storeChoiceShipsOn('export const STORE_CHOICE = true;'), true);
   assert.equal(storeChoiceShipsOn(), true, 'the choice ships on (the flip): every bridge must be gone');
 });

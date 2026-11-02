@@ -55,11 +55,11 @@ test('move my data to Notion: progress reaches the window, a second press waits 
   assert.deepEqual(sent[0], ['storeMoveProgress', {entity: 'applications', done: 1, total: 2}]);
 });
 
-test('with the choice off (JOB_PILOTTO_STORE_CHOICE=0, the only way now), there is no switch to this Mac', async () => {
+test('with the choice off (JOBADABRA_STORE_CHOICE=0, the only way now), there is no switch to this Mac', async () => {
   const storage = make();
   assert.equal((await handlers(storage, false).map.keepOnThisMac()).ok, false);
   assert.equal(storage.settings().store, undefined);
-  assert.equal(STORE_CHOICE, process.env.JOB_PILOTTO_STORE_CHOICE !== '0', 'it ships on');
+  assert.equal(STORE_CHOICE, process.env.JOBADABRA_STORE_CHOICE !== '0', 'it ships on');
 });
 
 test('at start, an install with no store gets its home once: Notion when connected (no change, D7), else this Mac', () => {

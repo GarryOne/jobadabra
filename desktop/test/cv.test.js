@@ -161,7 +161,7 @@ test('the extension gets the tailored CV on that job\'s page and the base CV els
   // The clean PDF has a name to send, and the window says which is the final CV and which only previews the changes.
   assert.match(page, /Final CV: send this one/);
   assert.match(page, /Preview of changes/);
-  assert.match(page, /jobpilotto-cv:reveal/);
+  assert.match(page, /jobadabra-cv:reveal/);
   const finalPdf = cv.finalCopy(storage, cv.load(storage, 'ab12cd34'));
   assert.match(path.basename(finalPdf), /^CV_.*Acme\.pdf$/);
   assert.equal(fs.readFileSync(finalPdf, 'utf8'), 'TAILORED');

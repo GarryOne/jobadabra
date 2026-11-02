@@ -124,11 +124,11 @@ class TranscribeTests(unittest.TestCase):
         self.assertEqual(lines[-2:], ['progress download-m 100', 'progress extract-m 0'])
 
     def test_available_follows_the_switch(self):
-        with mock.patch.dict(transcribe.os.environ, {'JOB_PILOTTO_DISABLE': 'transcribe'}):
+        with mock.patch.dict(transcribe.os.environ, {'JOBADABRA_DISABLE': 'transcribe'}):
             self.assertFalse(transcribe.available())
 
     def test_addon_installs_into_its_own_folder_and_reports_failure(self):
-        with tempfile.TemporaryDirectory() as folder, mock.patch.dict(transcribe.os.environ, {'JOB_PILOTTO_MODELS_DIR': f'{folder}/models'}), \
+        with tempfile.TemporaryDirectory() as folder, mock.patch.dict(transcribe.os.environ, {'JOBADABRA_MODELS_DIR': f'{folder}/models'}), \
                 mock.patch('sys.stderr', io.StringIO()) as err:
             calls = []
             transcribe.install_addon(lambda cmd, **kw: calls.append(cmd) or mock.Mock(returncode=0, stderr=''))
@@ -138,7 +138,7 @@ class TranscribeTests(unittest.TestCase):
                 transcribe.install_addon(lambda cmd, **kw: mock.Mock(returncode=1, stderr='no network'))
 
     def test_use_addon_puts_the_folder_on_the_path_once(self):
-        with tempfile.TemporaryDirectory() as folder, mock.patch.dict(transcribe.os.environ, {'JOB_PILOTTO_MODELS_DIR': f'{folder}/models'}):
+        with tempfile.TemporaryDirectory() as folder, mock.patch.dict(transcribe.os.environ, {'JOBADABRA_MODELS_DIR': f'{folder}/models'}):
             (Path(folder) / 'addon').mkdir()
             with mock.patch.object(sys, 'path', list(sys.path)):
                 transcribe.use_addon()

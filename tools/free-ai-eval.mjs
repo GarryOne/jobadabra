@@ -3,7 +3,7 @@
 // translation (shared/free-ai-translate.js) on Workers AI models and prints a markdown table: valid JSON, schema, rank against Claude's scores, cost.
 //   node tools/free-ai-eval.mjs --cases <cases.json> [--models small,strong] [--backend rest|mock] [--effort low] [--out table.md]
 // Cases (made by tools/free-ai-cases.py, fictional data only): [{id, action, params: <Anthropic request>, baseline?: <Claude's score>}].
-// rest: needs a token with Account > Workers AI > Read + Edit: CF_API_TOKEN or the Keychain item job-pilotto.cloudflare.workers_ai_token; --account <id> names the Cloudflare account the token belongs to, never the production one (its free daily allowance is the live Free AI's). A few hundred calls cost cents.
+// rest: needs a token with Account > Workers AI > Read + Edit: CF_API_TOKEN or the Keychain item jobadabra.cloudflare.workers_ai_token; --account <id> names the Cloudflare account the token belongs to, never the production one (its free daily allowance is the live Free AI's). A few hundred calls cost cents.
 import {execFileSync} from 'node:child_process';
 import fs from 'node:fs';
 import {costUsd, SMALL, STRONG} from '../desktop/lib/free-ai-models.js';
@@ -12,7 +12,7 @@ import {claudeRun, isClaude} from './free-ai-eval-claude.mjs';
 import {answerProblems, factProblems, kitProblems, schemaProblems, summarize, table} from './free-ai-eval-metrics.mjs';
 
 const MODELS = {small: SMALL, strong: STRONG};
-const keychain = name => { try { return execFileSync('security', ['find-generic-password', '-a', 'job-pilotto', '-s', name, '-w'], {encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore']}).trim(); } catch { return ''; } };
+const keychain = name => { try { return execFileSync('security', ['find-generic-password', '-a', 'jobadabra', '-s', name, '-w'], {encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore']}).trim(); } catch { return ''; } };
 
 // The REST backend: Cloudflare's OpenAI-compatible chat route for one model. -> the answer in Workers AI's chat shape.
 // effort: the reasoning level to ask for (Workers AI's reasoning_effort: low, medium, high ...); empty = each model's own default (qwen3.8 xhigh, deepseek high, glm-5.3 max).
@@ -102,9 +102,9 @@ async function main(argv) {
   else if (names.every(isClaude)) run = claudeRun();   // the user's own subscription: nothing reaches Cloudflare, no account guard
   else {
     const cloud = names.filter(name => !isClaude(name));
-    const token = process.env.CF_API_TOKEN || keychain('job-pilotto.cloudflare.workers_ai_token');
+    const token = process.env.CF_API_TOKEN || keychain('jobadabra.cloudflare.workers_ai_token');
     ({account, maxCalls, production} = guardAccount({account: option('account'), 'allow-production': argv.includes('--allow-production'), 'max-calls': option('max-calls')}));
-    if (!token) throw new Error('No Workers AI token: set CF_API_TOKEN or the Keychain item job-pilotto.cloudflare.workers_ai_token (one made in the --account account), or use --backend mock.');
+    if (!token) throw new Error('No Workers AI token: set CF_API_TOKEN or the Keychain item jobadabra.cloudflare.workers_ai_token (one made in the --account account), or use --backend mock.');
     guardCalls(cases.length, cloud.length, maxCalls);
     const cloudRun = rest({account, token, effort: option('effort')}), subscription = claudeRun();
     run = (model, input) => (isClaude(model) ? subscription(model, input) : cloudRun(model, input));

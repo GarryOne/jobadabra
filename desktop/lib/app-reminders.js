@@ -60,7 +60,7 @@ export function createAppReminders(ctx) {
     const what = terminals.label(session);
     const text = session.brief || 'Claude needs your input';  // one plain sentence; the whole message is on the session page
     if (!shouldNotify(needsYouSeen, session.id, text)) return;  // the card says it; no new ping for the same question
-    if (!process.env.JOB_PILOTTO_SMOKE && Notification.isSupported()) {
+    if (!process.env.JOBADABRA_SMOKE && Notification.isSupported()) {
       const note = new Notification({title: `Needs your input · ${what}`, body: text});
       note.on('click', () => { getWindow()?.show(); getWindow()?.focus(); toWindow('session', 'open', {id: session.id}); });
       note.show();

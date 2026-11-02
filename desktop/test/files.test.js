@@ -95,8 +95,8 @@ test('the backup folder: iCloud Drive on a Mac, OneDrive\'s Documents on Windows
   assert.equal(backup.folder('C:\\Users\\a', dir => dir === `${one}\\Documents`, {...win, env: {OneDrive: one}}), `${one}\\Documents\\Job Pilotto Backups`);
   assert.equal(backup.folder('C:\\Users\\a', dir => dir === `${one}\\Documents`, {...win, env: {}}), 'C:\\Users\\a\\Documents\\Job Pilotto Backups', 'OneDrive not set up');
   assert.equal(backup.folder('C:\\Users\\a', () => false, {...win, env: {OneDrive: one}}), 'C:\\Users\\a\\Documents\\Job Pilotto Backups', 'OneDrive set but Documents not in it');
-  assert.equal(backup.folder('/home/x', () => true, {env: {JOB_PILOTTO_BACKUP_DIR: '/tmp/t', JOB_PILOTTO_E2E: '1'}}), '/tmp/t');
-  assert.notEqual(backup.folder('/home/x', () => false, {env: {JOB_PILOTTO_BACKUP_DIR: '/tmp/t'}, platform: 'linux'}), '/tmp/t', 'the override is for test runs only');
+  assert.equal(backup.folder('/home/x', () => true, {env: {JOBADABRA_BACKUP_DIR: '/tmp/t', JOBADABRA_E2E: '1'}}), '/tmp/t');
+  assert.notEqual(backup.folder('/home/x', () => false, {env: {JOBADABRA_BACKUP_DIR: '/tmp/t'}, platform: 'linux'}), '/tmp/t', 'the override is for test runs only');
   assert.deepEqual([backup.place('/u/Library/Mobile Documents/com~apple~CloudDocs/x'), backup.place('C:\\Users\\a\\OneDrive\\Documents\\x'), backup.place('/u/Documents/x')], ['iCloud Drive', 'OneDrive', 'Documents']);
 });
 

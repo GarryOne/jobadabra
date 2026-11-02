@@ -13,22 +13,22 @@ const FORM = `<form>
   <label for="pw">Password</label><input id="pw" type="password">
   <label for="terms">I accept the terms</label><input id="terms" type="checkbox">
   <fieldset id="q"><legend>Built backend services?</legend><label><input type="radio" name="b" id="b1"> Yes</label><label><input type="radio" name="b" id="b2"> No</label></fieldset>
-  <label for="ko">Based in Texas?</label><input id="ko" data-jobpilotto-category="knockout">
+  <label for="ko">Based in Texas?</label><input id="ko" data-jobadabra-category="knockout">
 </form>`;
 
 function page() {
   const window = openPage(JSDOM, FORM);
   const doc = window.document;
-  [...doc.querySelectorAll('input, select')].forEach((el, index) => el.setAttribute('data-jobpilotto-n', String(index + 1)));   // as the judges' sketch numbers them (extension/account-fill.js)
-  window.__jobPilottoValueClass.mark([{field: 'country', value: '+41'}, {field: 'code', value: '+41'}, {field: 'city', value: 'Zurich'}, {field: 'pw', value: 'x'}]);
-  return {window, doc, act: window.__jobPilottoRepairAct};
+  [...doc.querySelectorAll('input, select')].forEach((el, index) => el.setAttribute('data-jobadabra-n', String(index + 1)));   // as the judges' sketch numbers them (extension/account-fill.js)
+  window.__jobadabraValueClass.mark([{field: 'country', value: '+41'}, {field: 'code', value: '+41'}, {field: 'city', value: 'Zurich'}, {field: 'pw', value: 'x'}]);
+  return {window, doc, act: window.__jobadabraRepairAct};
 }
 
 test('choose_option: the calling code\'s country is picked by the dial-code table; option 0 finds it, a named option is checked', {skip: !JSDOM}, async () => {
   const {window, doc, act} = page();
   assert.deepEqual(JSON.parse(JSON.stringify(await act.choose_option(1, 0))), {ok: true, why: ''});
   assert.equal(doc.getElementById('country').value, 'CH');
-  assert.equal(doc.getElementById('country').getAttribute('data-jobpilotto-picked'), 'switzerland', 'the fill\'s own pick, for the one reader\'s mismatch');
+  assert.equal(doc.getElementById('country').getAttribute('data-jobadabra-picked'), 'switzerland', 'the fill\'s own pick, for the one reader\'s mismatch');
   doc.getElementById('country').value = '';
   assert.equal((await act.choose_option(1, 2)).ok, false, 'option 2 (Germany) does not show the answer: refused, never a different answer');
   assert.equal(doc.getElementById('country').value, '');
@@ -64,13 +64,13 @@ test('every repair is a try in the control\'s attempt log: a few in all, then re
   for (let i = 0; i < 5; i++) whys.push((await act.retype(3)).why);
   assert.equal(whys[0], 'the page did not keep it');
   assert.equal(whys.at(-1), 'its tries are used');
-  assert.ok(window.__jobPilottoAttempts.count(city) <= window.__jobPilottoAttempts.CAP);
+  assert.ok(window.__jobadabraAttempts.count(city) <= window.__jobadabraAttempts.CAP);
   window.close();
 });
 
 test('floors: a native radio or checkbox and a knockout question are never repaired, in any verb or by a real click (a click there can only flip the answer)', {skip: !JSDOM}, async () => {
   const {window, doc, act} = page();
-  const number = id => Number(doc.getElementById(id).getAttribute('data-jobpilotto-n'));
+  const number = id => Number(doc.getElementById(id).getAttribute('data-jobadabra-n'));
   for (const id of ['b1', 'b2', 'terms', 'ko']) {
     assert.equal(act.refused(number(id)).length > 0, true, `${id} refused`);
     assert.equal(act.spot(number(id)), null, `${id}: no real click`);

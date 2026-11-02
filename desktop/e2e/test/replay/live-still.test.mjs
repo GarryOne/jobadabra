@@ -84,10 +84,10 @@ test('the deciding signal: the panel button busy or the floating step box, nothi
   const browser = await chromium.launch();
   try {
     const page = await browser.newPage();
-    const shadow = busy => page.setContent(`<body><div id="jobpilotto-review-host"></div><script>document.getElementById('jobpilotto-review-host').attachShadow({mode:'open'}).innerHTML='<button class="fill" ${busy ? 'aria-busy="true"' : ''}></button>'</script></body>`);
+    const shadow = busy => page.setContent(`<body><div id="jobadabra-review-host"></div><script>document.getElementById('jobadabra-review-host').attachShadow({mode:'open'}).innerHTML='<button class="fill" ${busy ? 'aria-busy="true"' : ''}></button>'</script></body>`);
     await shadow(true); assert.equal(await isDeciding(page), true, 'panel busy');
     await shadow(false); assert.equal(await isDeciding(page), false, 'panel idle');
-    await page.setContent('<body><div id="jobpilotto-progress">Reading this page…</div></body>'); assert.equal(await isDeciding(page), true, 'floating step box');
+    await page.setContent('<body><div id="jobadabra-progress">Reading this page…</div></body>'); assert.equal(await isDeciding(page), true, 'floating step box');
     await page.setContent('<body>plain</body>'); assert.equal(await isDeciding(page), false);
   } finally { await browser.close(); }
 });

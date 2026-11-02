@@ -1,11 +1,11 @@
 // The owner's own values (the tripwire's list) handed to every app the harness starts, so the app never types them (app-core/src/owner-guard.js; the app side is
 // Job: run the backbone
-// desktop/lib/owner-guard-env.js, which honours it only under JOB_PILOTTO_E2E and removes it from its environment). The values travel in memory only (an environment
+// desktop/lib/owner-guard-env.js, which honours it only under JOBADABRA_E2E and removes it from its environment). The values travel in memory only (an environment
 // variable of the child), never to a file or a log. Guard: e2e/test/owner-guard-env.test.mjs.
 import {ownerValues} from './privacy-tripwire.mjs';
 
 let memo = null;
-// -> {JOB_PILOTTO_E2E_OWNER_VALUES} or {} when this computer holds nothing of an owner (a CI runner). values: a test's own list.
+// -> {JOBADABRA_E2E_OWNER_VALUES} or {} when this computer holds nothing of an owner (a CI runner). values: a test's own list.
 export function ownerGuardEnv(values = (memo ||= ownerValues())) {
-  return values.size ? {JOB_PILOTTO_E2E_OWNER_VALUES: JSON.stringify([...values])} : {};
+  return values.size ? {JOBADABRA_E2E_OWNER_VALUES: JSON.stringify([...values])} : {};
 }

@@ -14,7 +14,7 @@ test('a blank optional letter is an important setup action, not a silently compl
   const w = openPage(JSDOM, FORM);
   try {
     const status = {state: 'missing', ready: false, reason: 'No cover letter has been created.', action: 'Create cover letter'};
-    const result = await w.__jobPilottoExtensionFill([], {}, {coverLetterStatus: status});
+    const result = await w.__jobadabraExtensionFill([], {}, {coverLetterStatus: status});
     assert.ok(result.todo.some(text => /important.*cover letter/i.test(text)), JSON.stringify(result.todo));
     assert.equal(result.coverLetterStatus?.state, 'missing');
     assert.equal(w.document.querySelector('textarea').value, '');
@@ -33,12 +33,12 @@ test('Applying panel quietly offers missing-letter setup even when required fiel
     return {};
   }}};
   try {
-    await w.__jobPilottoExtensionFill([], {}, {coverLetterStatus: status});
-    w.document.documentElement.setAttribute('data-jobpilotto-page', 'form');
+    await w.__jobadabraExtensionFill([], {}, {coverLetterStatus: status});
+    w.document.documentElement.setAttribute('data-jobadabra-page', 'form');
     w.eval(fs.readFileSync(new URL('../../extension/page/review-payload.js', import.meta.url), 'utf8'));
     evalPanel(w);
     await new Promise(resolve => setTimeout(resolve, 60));
-    const root = w.document.getElementById('jobpilotto-review-host').shadowRoot;
+    const root = w.document.getElementById('jobadabra-review-host').shadowRoot;
     const banner = root.querySelector('.letter-setup');
     assert.ok(banner, 'the important setup action exists');
     assert.equal(banner.hidden, false, JSON.stringify(sent.map(m => m.type))); 
@@ -52,7 +52,7 @@ test('Applying panel quietly offers missing-letter setup even when required fiel
     // A kit or the person's written letter satisfies this form even when the general setup is still missing.
     const box = w.document.getElementById('cover_letter');
     box.value = LETTER;
-    box.setAttribute('data-jobpilotto-letter', '1');
+    box.setAttribute('data-jobadabra-letter', '1');
     box.dispatchEvent(new w.Event('input', {bubbles: true}));
     await new Promise(resolve => setTimeout(resolve, 450));
     assert.equal(banner.hidden, true, 'an actual written letter clears this form’s warning');
@@ -68,11 +68,11 @@ for (const label of ['Cover letter', 'Bewerbungsschreiben']) test(`selected text
   const w = openPage(JSDOM, `<form><label for="letter">${label}</label><textarea id="letter"></textarea></form>`);
   try {
     const file = {coverLetterStatus: {state: 'ready', ready: true}};
-    const first = await w.__jobPilottoExtensionFill([], {}, file, LETTER);
+    const first = await w.__jobadabraExtensionFill([], {}, file, LETTER);
     assert.equal(w.document.querySelector('textarea').value, LETTER);
     assert.equal(first.todo.some(text => /^Important:/.test(text)), false);
     w.document.querySelector('textarea').value = LETTER + '\n';
-    await w.__jobPilottoExtensionFill([], {}, file, LETTER);
+    await w.__jobadabraExtensionFill([], {}, file, LETTER);
     assert.equal(w.document.querySelector('textarea').value, LETTER + '\n', 'written text wins');
   } finally { w.close(); }
 });
@@ -88,19 +88,19 @@ for (const hidden of [false, true]) test(`a rejected optional letter upload is a
   input.addEventListener('change', () => {files = [];});
   w.chrome = {runtime: {id: 'test', getManifest: () => ({version: 'test'}), onMessage: {addListener() {}}, sendMessage: async message => message.type === 'panelAllowed' ? {ok: true} : message.type === 'review' ? {session: {id: 'fictional', kind: 'form'}, coverLetterStatus: status} : {}}};
   try {
-    await w.__jobPilottoExtensionFill([], {}, {coverLetterStatus: status, coverLetterFile: {name: 'Cover letter.pdf', type: 'application/pdf', data: 'JVBERi0xLjQK'}});
+    await w.__jobadabraExtensionFill([], {}, {coverLetterStatus: status, coverLetterFile: {name: 'Cover letter.pdf', type: 'application/pdf', data: 'JVBERi0xLjQK'}});
     w.eval(fs.readFileSync(new URL('../../extension/page/review-payload.js', import.meta.url), 'utf8'));
-    w.document.documentElement.setAttribute('data-jobpilotto-page', 'form');
+    w.document.documentElement.setAttribute('data-jobadabra-page', 'form');
     evalPanel(w);
     await new Promise(resolve => setTimeout(resolve, 60));
-    const root = w.document.getElementById('jobpilotto-review-host').shadowRoot;
+    const root = w.document.getElementById('jobadabra-review-host').shadowRoot;
     assert.equal(root.querySelector('.letter-setup').hidden, false);
     assert.equal(root.querySelector('.letter-title').textContent, 'Cover letter wasn’t kept');
     assert.equal(root.querySelector('.letter-reason').textContent, 'Paste or attach it manually, then check again.');
     assert.equal(root.querySelector('.letter-action').textContent, 'Show on form');
     assert.doesNotMatch(root.querySelector('.pill b').textContent, /Ready to submit/);
     root.querySelector('.letter-action').click();
-    assert.ok(w.document.querySelector('.jobpilotto-flash'), 'manual recovery highlights the failed letter control');
+    assert.ok(w.document.querySelector('.jobadabra-flash'), 'manual recovery highlights the failed letter control');
   } finally {w.close();}
 });
 
@@ -110,13 +110,13 @@ test('a form with no letter field can be ready while the separate setup queue re
   const status = {state: 'missing', ready: false, reason: 'No usable letter.', action: 'Create cover letter'};
   w.chrome = {runtime: {id: 'test', getManifest: () => ({version: 'test'}), onMessage: {addListener() {}}, sendMessage: async m => m.type === 'panelAllowed' ? {ok: true} : m.type === 'review' ? {session: {id: 'fictional', kind: 'form'}, coverLetterStatus: status} : {}}};
   try {
-    const result = await w.__jobPilottoExtensionFill([], {}, {coverLetterStatus: status});
+    const result = await w.__jobadabraExtensionFill([], {}, {coverLetterStatus: status});
     assert.equal(result.todo.some(text => /^Important: cover letter/.test(text)), false);
     w.eval(fs.readFileSync(new URL('../../extension/page/review-payload.js', import.meta.url), 'utf8'));
-    w.document.documentElement.setAttribute('data-jobpilotto-page', 'form');
+    w.document.documentElement.setAttribute('data-jobadabra-page', 'form');
     evalPanel(w);
     await new Promise(resolve => setTimeout(resolve, 60));
-    const root = w.document.getElementById('jobpilotto-review-host').shadowRoot;
+    const root = w.document.getElementById('jobadabra-review-host').shadowRoot;
     assert.equal(root.querySelector('.letter-setup').hidden, true);
     assert.match(root.querySelector('.pill b').textContent, /Ready to submit/);
   } finally {w.close();}
@@ -131,15 +131,15 @@ for (const [available, reveal] of [[false, true], [true, true], [true, false]]) 
   w.document.getElementById('manual').onclick = () => { clicks++; if (reveal) w.document.getElementById('cover_letter').style.display = ''; };
   w.chrome = {runtime: {id: 'test', getManifest: () => ({version: 'test'}), onMessage: {addListener() {}}, sendMessage: async m => {sent.push(m); return m.type === 'panelAllowed' ? {ok: true} : m.type === 'review' ? {session: {id: 'fictional', kind: 'form'}, coverLetterStatus: status} : {};}}};
   try {
-    const result = await w.__jobPilottoExtensionFill([], {}, {coverLetterStatus: status}, available ? LETTER : '');
+    const result = await w.__jobadabraExtensionFill([], {}, {coverLetterStatus: status}, available ? LETTER : '');
     assert.equal(result.todo.some(text => /^Important: cover letter/.test(text)), !available || !reveal);
     assert.equal(clicks, available ? 1 : 0, 'missing content does not click the manual control');
     assert.equal(w.document.getElementById('cover_letter').value, available && reveal ? LETTER : '');
     w.eval(fs.readFileSync(new URL('../../extension/page/review-payload.js', import.meta.url), 'utf8'));
-    w.document.documentElement.setAttribute('data-jobpilotto-page', 'form');
+    w.document.documentElement.setAttribute('data-jobadabra-page', 'form');
     evalPanel(w);
     await new Promise(resolve => setTimeout(resolve, 60));
-    const root = w.document.getElementById('jobpilotto-review-host').shadowRoot;
+    const root = w.document.getElementById('jobadabra-review-host').shadowRoot;
     assert.equal(root.querySelector('.letter-setup').hidden, available && reveal);
     assert.equal(sent.filter(m => m.type === 'review').at(-1)?.payload?.letterAsked, true, 'Applying receives the same letter observation');
     assert.equal(/Ready to submit/.test(root.querySelector('.pill b').textContent), available && reveal);

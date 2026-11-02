@@ -67,7 +67,7 @@ class ThinCellTest(unittest.TestCase):
             return {'candidates': [], 'companies': 0, 'directories': 0, 'note': ''}
         with mock.patch.object(scout_core, 'CENTRAL', True), mock.patch.object(scout_ideas, 'run', run), \
                 mock.patch('src.features.enabled', lambda name: True), mock.patch('src.ai.engine.ready', lambda: True), \
-                mock.patch.dict('os.environ', {'JOB_PILOTTO_FIXTURE_DIR': ''}):
+                mock.patch.dict('os.environ', {'JOBADABRA_FIXTURE_DIR': ''}):
             scout.ai_ideas(self.db)
         self.assertEqual(asked, [(['Switzerland'], scout_cells.AIMED[0])])
 

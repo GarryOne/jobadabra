@@ -5,7 +5,7 @@ remote yes/no); it answers best place, in their places, or out. Each answer is k
 location is asked about once; a change of places asks again.
 
 What Haiku sees: location strings from job postings and the user's place words, nothing else (no CV, no profile, no title, no employer). Off
-without AI or with JOB_PILOTTO_DISABLE=place_triage, and for a location not decided yet: the place words as patterns, as before (sources/feeds.py).
+without AI or with JOBADABRA_DISABLE=place_triage, and for a location not decided yet: the place words as patterns, as before (sources/feeds.py).
 """
 import hashlib
 import json

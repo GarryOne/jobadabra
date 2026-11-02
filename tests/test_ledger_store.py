@@ -153,12 +153,12 @@ class ScheduledTests(unittest.TestCase):
 class CommandTests(unittest.TestCase):
     def test_the_event_command_runs_on_the_sqlite_store(self):
         import tempfile
-        with tempfile.TemporaryDirectory() as folder, mock.patch.dict(os.environ, {'JOB_PILOTTO_STORE': 'sqlite',
-                                                                                   'JOB_PILOTTO_DATA_DIR': folder}):
+        with tempfile.TemporaryDirectory() as folder, mock.patch.dict(os.environ, {'JOBADABRA_STORE': 'sqlite',
+                                                                                   'JOBADABRA_DATA_DIR': folder}):
             from src.stores import open_stores
             stores = open_stores()
             if not str(getattr(stores.applications, 'file_root', '')).startswith(folder):
-                self.skipTest('the sqlite store does not take JOB_PILOTTO_DATA_DIR')
+                self.skipTest('the sqlite store does not take JOBADABRA_DATA_DIR')
             stores.applications.create({'url': URL, 'title': 'SRE'}, 'Applied')
             out = StringIO()
             with redirect_stdout(out):

@@ -14,12 +14,12 @@ const claude = (field, value, extra) => ({ field, value, source: 'Claude (on the
 
 test('a typed guess carries the AI mark at any confidence; a high-confidence answer from a saved fact does not', { skip: !JSDOM }, async () => {
   const window = openPage(JSDOM, FORM);
-  await window.__jobPilottoExtensionFill([
+  await window.__jobadabraExtensionFill([
     claude('s', '120000', { confidence: 'high', fact: 'none', guess: true }),
     claude('y', '8', { confidence: 'high', fact: 'years_experience' }),
     claude('p', 'Yes', { confidence: 'medium', fact: 'none', guess: true }),
   ], {}, null, '', false);
-  const marked = (id) => window.document.getElementById(id).hasAttribute('data-jobpilotto-ai');
+  const marked = (id) => window.document.getElementById(id).hasAttribute('data-jobadabra-ai');
   assert.deepEqual([marked('s'), marked('y'), marked('p')], [true, false, true]);
   assert.equal(window.document.getElementById('s').value, '120000', 'the guess is typed');
 });

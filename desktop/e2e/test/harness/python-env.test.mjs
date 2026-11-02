@@ -11,7 +11,7 @@ import {evalEnv} from '../../lib/quality-mail.mjs';
 
 test('the engine runs with UTF-8 mode on, and a suite\'s own variables win', () => {
   assert.equal(pythonEnv().PYTHONUTF8, '1');
-  assert.equal(pythonEnv({JOB_PILOTTO_DATA_DIR: '/tmp/x'}).JOB_PILOTTO_DATA_DIR, '/tmp/x');
+  assert.equal(pythonEnv({JOBADABRA_DATA_DIR: '/tmp/x'}).JOBADABRA_DATA_DIR, '/tmp/x');
 });
 
 test('no token or key from the shell, no app-following, no .env, and HOME is a temp folder', () => {
@@ -20,7 +20,7 @@ test('no token or key from the shell, no app-following, no .env, and HOME is a t
     Object.assign(process.env, {NOTION_TOKEN: 'secret_x', ANTHROPIC_API_KEY: 'sk-x', E2E_NOTION_TOKEN_FOCUS: 'secret_y', GOOGLE_REFRESH_TOKEN: 'r'});
     const env = pythonEnv();
     for (const name of ['NOTION_TOKEN', 'ANTHROPIC_API_KEY', 'E2E_NOTION_TOKEN_FOCUS', 'GOOGLE_REFRESH_TOKEN']) assert.equal(env[name], undefined, `${name} reached the engine`);
-    assert.deepEqual([env.JOB_PILOTTO_FOLLOW_APP, env.JOB_PILOTTO_NO_DOTENV], ['0', '1']);
+    assert.deepEqual([env.JOBADABRA_FOLLOW_APP, env.JOBADABRA_NO_DOTENV], ['0', '1']);
     assert.ok(env.HOME.startsWith(os.tmpdir()) || env.HOME.startsWith(fs.realpathSync(os.tmpdir())), `HOME is ${env.HOME}`);
     assert.notEqual(env.HOME, os.homedir());
   } finally { for (const name of Object.keys(process.env)) if (!(name in saved)) delete process.env[name]; Object.assign(process.env, saved); }
@@ -30,13 +30,13 @@ test('a key the caller names gets through; a CLI step keeps this computer\'s HOM
   assert.equal(pythonEnv({ANTHROPIC_API_KEY: 'sk-test'}).ANTHROPIC_API_KEY, 'sk-test');
   const cli = pythonEnv({}, {realHome: true});
   assert.equal(cli.HOME, os.homedir());
-  for (const name of ['JOB_PILOTTO_DATA_DIR', 'JOB_PILOTTO_CONFIG_DIR']) assert.ok(cli[name].startsWith(os.tmpdir()) || cli[name].startsWith(fs.realpathSync(os.tmpdir())), `${name} with the real HOME is ${cli[name]}`);
-  assert.throws(() => pythonEnv({JOB_PILOTTO_DATA_DIR: path.join(os.homedir(), 'job-pilotto', 'data')}, {realHome: true}), /DATA_DIR is not a temp folder/, 'the real HOME never comes with the person\'s own data');
+  for (const name of ['JOBADABRA_DATA_DIR', 'JOBADABRA_CONFIG_DIR']) assert.ok(cli[name].startsWith(os.tmpdir()) || cli[name].startsWith(fs.realpathSync(os.tmpdir())), `${name} with the real HOME is ${cli[name]}`);
+  assert.throws(() => pythonEnv({JOBADABRA_DATA_DIR: path.join(os.homedir(), 'jobadabra', 'data')}, {realHome: true}), /DATA_DIR is not a temp folder/, 'the real HOME never comes with the person\'s own data');
   const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-python-env-'));
   assert.equal(pythonEnv({}, {home: profile}).HOME, profile);
   assert.throws(() => pythonEnv({}, {home: os.homedir()}), /HOME is not a temp folder/);
-  assert.throws(() => pythonEnv({JOB_PILOTTO_FOLLOW_APP: '1'}), /FOLLOW_APP is not 0/);
-  assert.throws(() => assertIsolated({JOB_PILOTTO_FOLLOW_APP: '0', JOB_PILOTTO_NO_DOTENV: '1', HOME: profile, NOTION_TOKEN: 'x'}), /carries NOTION_TOKEN/);
+  assert.throws(() => pythonEnv({JOBADABRA_FOLLOW_APP: '1'}), /FOLLOW_APP is not 0/);
+  assert.throws(() => assertIsolated({JOBADABRA_FOLLOW_APP: '0', JOBADABRA_NO_DOTENV: '1', HOME: profile, NOTION_TOKEN: 'x'}), /carries NOTION_TOKEN/);
 });
 
 // The class: every Python the e2e code starts (python() or a bare python3/python) passes an explicit env, and no file that starts one spreads process.env.
@@ -68,14 +68,14 @@ test('every engine spawn in suites/ and lib/ is isolated', () => {
 // Python holds only a localhost transport placeholder; the Node judge transport owns provider credentials and CLI sign-in.
 test('mail eval env has a temp HOME and no provider keys or account tokens', () => {
   const env = evalEnv('http://127.0.0.1:9999');
-  assert.equal(env.JOB_PILOTTO_AI_ENGINE, 'api');
+  assert.equal(env.JOBADABRA_AI_ENGINE, 'api');
   assert.equal(env.ANTHROPIC_BASE_URL, 'http://127.0.0.1:9999');
   assert.match(env.ANTHROPIC_API_KEY, /not-a-real-key/);
   assert.equal(env.OPENAI_API_KEY, undefined);
   assert.notEqual(env.HOME, os.homedir());
   assert.ok(env.HOME.startsWith(os.tmpdir()) || env.HOME.startsWith(fs.realpathSync(os.tmpdir())));
   assert.deepEqual(Object.keys(env).filter(name => /NOTION|TELEGRAM|OIDC|TOKEN/.test(name)), []);
-  assert.equal(env.JOB_PILOTTO_FOLLOW_APP, '0');
+  assert.equal(env.JOBADABRA_FOLLOW_APP, '0');
 });
 
 test('a coverage run hands the Python step map\'s recorder to the engine it runs; otherwise no PYTHONPATH gets through', () => {

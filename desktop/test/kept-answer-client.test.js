@@ -12,7 +12,7 @@ const memo = () => path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'jp-memo-')),
 test('under the e2e memo, the API key\'s form answers go through the memo (a capture keeps them)', async () => {
   const file = memo();
   fs.writeFileSync(file, '{}');
-  const client = keptAnswerClient(storage('sk-test'), {JOB_PILOTTO_E2E: '1', JOB_PILOTTO_MODEL_MEMO: file});
+  const client = keptAnswerClient(storage('sk-test'), {JOBADABRA_E2E: '1', JOBADABRA_MODEL_MEMO: file});
   assert.equal(typeof client?.messages?.create, 'function');
   // the memo's own create, not the SDK's: a kept answer is served without the network (the key is fake)
   const params = {model: 'm', max_tokens: 10, messages: [{role: 'user', content: 'q'}]};
@@ -23,6 +23,6 @@ test('under the e2e memo, the API key\'s form answers go through the memo (a cap
 
 test('a person\'s app (no e2e memo), no key, or the memo without the harness: no client, the worker asks with its key as before', () => {
   assert.equal(keptAnswerClient(storage('sk-test'), {}), null);
-  assert.equal(keptAnswerClient(storage(''), {JOB_PILOTTO_E2E: '1', JOB_PILOTTO_MODEL_MEMO: memo()}), null);
-  assert.equal(keptAnswerClient(storage('sk-test'), {JOB_PILOTTO_MODEL_MEMO: memo()}), null);
+  assert.equal(keptAnswerClient(storage(''), {JOBADABRA_E2E: '1', JOBADABRA_MODEL_MEMO: memo()}), null);
+  assert.equal(keptAnswerClient(storage('sk-test'), {JOBADABRA_MODEL_MEMO: memo()}), null);
 });

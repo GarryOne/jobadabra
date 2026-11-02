@@ -21,24 +21,24 @@ async function run(options = {}, scenario = {}) {
   let fillCount = 0;
   const record = (name, value) => { calls.push(name); return value; };
   const page = {
-    __jobPilottoDescribeForm: settled => record(settled ? 'settled form' : 'form', structuredClone(settled ? scenario.finalForm ?? [] : form)),
-    __jobPilottoCheckboxQuestions: () => [],
-    __jobPilottoProfileEntries: () => record('profile fields', []),
-    __jobPilottoPageText: () => record('page text', 'Fictional posting'),
-    __jobPilottoControls: {fingerprints: () => record('fingerprints', scenario.prints || [])},
-    __jobPilottoUpload: {cvCandidates: () => record('upload titles', scenario.titles || [])},
-    __jobPilottoExtensionFill: (...args) => {
+    __jobadabraDescribeForm: settled => record(settled ? 'settled form' : 'form', structuredClone(settled ? scenario.finalForm ?? [] : form)),
+    __jobadabraCheckboxQuestions: () => [],
+    __jobadabraProfileEntries: () => record('profile fields', []),
+    __jobadabraPageText: () => record('page text', 'Fictional posting'),
+    __jobadabraControls: {fingerprints: () => record('fingerprints', scenario.prints || [])},
+    __jobadabraUpload: {cvCandidates: () => record('upload titles', scenario.titles || [])},
+    __jobadabraExtensionFill: (...args) => {
       fills.push(structuredClone(args)); record('fill'); fillCount++;
       if (scenario.fillError) return scenario.fillError;
       if (scenario.heldPass === fillCount) return {held: true};
       return {filled: fillCount === 1 ? 1 : 2, unfilledRequired: 1, todo: ['Review'], trace: structuredClone(scenario.trace || [])};
     },
-    __jobPilottoArmedCount: () => record('armed', 0),
-    __jobPilottoSnapshots: (...args) => { record('snapshots'); scenario.onSnapshots?.(...args); return {q: 'scrubbed'}; },
-    __jobPilottoRetypeWiped: ms => record(`retype ${ms}`, ms ? scenario.retyped || 0 : 0),
-    __jobPilottoRetypeGaveUp: () => record('gave up', []),
-    __jobPilottoReadBack: {pass: () => record('read back', scenario.readBack || [])},
-    __jobPilottoAttempts: {drain: () => record('drain', scenario.spent || []), summary: () => record('tries', scenario.tries || null)},
+    __jobadabraArmedCount: () => record('armed', 0),
+    __jobadabraSnapshots: (...args) => { record('snapshots'); scenario.onSnapshots?.(...args); return {q: 'scrubbed'}; },
+    __jobadabraRetypeWiped: ms => record(`retype ${ms}`, ms ? scenario.retyped || 0 : 0),
+    __jobadabraRetypeGaveUp: () => record('gave up', []),
+    __jobadabraReadBack: {pass: () => record('read back', scenario.readBack || [])},
+    __jobadabraAttempts: {drain: () => record('drain', scenario.spent || []), summary: () => record('tries', scenario.tries || null)},
   };
   globalThis.window = page;
   globalThis.document = {documentElement: {dataset: {}}, getElementById: () => null, getElementsByName: () => []};
@@ -187,8 +187,8 @@ test('page refuses injection: reject before reading details or filling', async (
 
 test('isolated bridge failure is optional; recipes, aliases and upload choice still arrive before the fill', async () => {
   const got = await run({useAI: false}, {bridgeError: true, prints: ['shape'], titles: ['Import', 'CV document']});
-  assert.ifError(got.error); assert.deepEqual(got.page.__jobPilottoRecipes, {shape: 'recipe'});
-  assert.deepEqual(got.page.__jobPilottoAliases, ['meaning']); assert.deepEqual(got.page.__jobPilottoUploadChoice, {resume: 'CV document'});
+  assert.ifError(got.error); assert.deepEqual(got.page.__jobadabraRecipes, {shape: 'recipe'});
+  assert.deepEqual(got.page.__jobadabraAliases, ['meaning']); assert.deepEqual(got.page.__jobadabraUploadChoice, {resume: 'CV document'});
   assert.ok(got.calls.indexOf('/extension/recipes') < got.calls.indexOf('fill'));
 });
 

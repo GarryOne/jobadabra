@@ -18,7 +18,7 @@ async function tellApp(tabId, page) {
 export async function markPage(tabId, role, pressed = false, kind = null, {working = false} = {}) {   // kind: the AI's page answer, for a sign-up page's own words; working: the read goes on, so no verdict (working-mark.js)
   const mark = markOf(role, pressed, kind?.accountStep || '', kind?.kind || ''), value = working ? workingMark(mark) : mark;
   await chrome.scripting.executeScript({target: {tabId}, func: mark => {
-    if (mark) document.documentElement.setAttribute('data-jobpilotto-page', mark); else document.documentElement.removeAttribute('data-jobpilotto-page');
+    if (mark) document.documentElement.setAttribute('data-jobadabra-page', mark); else document.documentElement.removeAttribute('data-jobadabra-page');
   }, args: [value]}).catch(() => {});
   if (value) await tellApp(tabId, value);
 }

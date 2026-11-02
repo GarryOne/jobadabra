@@ -154,11 +154,11 @@ test('Apply on this page refills a tab the app opened, a reload refills, any oth
 const STUCK_PAGE = '<body><h1>Create your account</h1><form><label>Name <input id="n" required></label><label>Email <input id="e" type="email" required></label><label>Country <input id="c" required></label><label>City <input id="t" required></label></form></body>';
 const takeOvers = run => run.requests.filter(request => request.route === '/extension/event' && request.body.includes('"take-over"')).map(request => JSON.parse(request.body));
 const offerOf = run => run.page.evaluate(() => {
-  const root = document.getElementById('jobpilotto-review-host')?.shadowRoot, box = root?.querySelector('.claude-offer');
+  const root = document.getElementById('jobadabra-review-host')?.shadowRoot, box = root?.querySelector('.claude-offer');
   if (root?.querySelector('.card')?.hidden) root.querySelector('.pill')?.click();
   return {shown: !!box && !box.hidden, text: (box?.textContent || '').replace(/\s+/g, ' ').trim(), buttons: [...(box?.querySelectorAll('button') || [])].map(button => button.textContent.trim())};
 });
-const pressInOffer = (run, name) => run.page.evaluate(label => [...document.getElementById('jobpilotto-review-host').shadowRoot.querySelectorAll('.claude-offer button')].find(button => button.textContent.trim() === label)?.click(), name);
+const pressInOffer = (run, name) => run.page.evaluate(label => [...document.getElementById('jobadabra-review-host').shadowRoot.querySelectorAll('.claude-offer button')].find(button => button.textContent.trim() === label)?.click(), name);
 
 test('a stuck page: the offer, the consent line on the first press, the countdown with Cancel for "always", and what is needed when Claude is not ready', {skip}, async () => {
   const facts = {claudeHelp: true, claudeAlways: false, claudeAuto: false, claudeConsent: false};

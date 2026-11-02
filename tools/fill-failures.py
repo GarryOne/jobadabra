@@ -41,7 +41,7 @@ def notion(token, method, path, body=None):
         return json.load(response)
 
 
-KEYCHAIN_TOKENS = ('job-pilotto.notion.token', 'job-pilotto.notion.token-job-pilotto-2')
+KEYCHAIN_TOKENS = ('jobadabra.notion.token', 'jobadabra.notion.token-job-pilotto-2')
 
 
 def keychain_tokens():

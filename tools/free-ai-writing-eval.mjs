@@ -12,7 +12,7 @@ import {guardAccount, guardCalls, rest} from './free-ai-eval.mjs';
 import {CRITERIA, judge} from './free-ai-writing-judge.mjs';
 import {loadCases} from './free-ai-writing-load.mjs';
 
-const keychain = name => execFileSync('security', ['find-generic-password', '-a', 'job-pilotto', '-s', name, '-w'], {encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore']}).trim();
+const keychain = name => execFileSync('security', ['find-generic-password', '-a', 'jobadabra', '-s', name, '-w'], {encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore']}).trim();
 // The letter as the app shows it: the kit's code floors applied (src/ai/writing_floors.py), so the judge reads what a person would.
 export const withFloors = (item, data, off = false) => {
   if (off || !['letter', 'prep', 'rejection'].includes(item.feature) || !data) return data;
@@ -55,7 +55,7 @@ async function main(argv) {
   const subscription = claudeRun();
   const {account, maxCalls} = again || FREE_CLAUDE ? {} : guardAccount({account: option('account'), 'allow-production': argv.includes('--allow-production'), 'max-calls': option('max-calls')});
   if (!again && !FREE_CLAUDE) guardCalls(cases.length, 1, maxCalls);
-  const free = again ? null : FREE_CLAUDE ? subscription : rest({account, token: process.env.CF_API_TOKEN || keychain('job-pilotto.cloudflare.workers_ai_token')});
+  const free = again ? null : FREE_CLAUDE ? subscription : rest({account, token: process.env.CF_API_TOKEN || keychain('jobadabra.cloudflare.workers_ai_token')});
   const sonnetJudged = option('sonnet-judged-from') ? JSON.parse(fs.readFileSync(option('sonnet-judged-from'), 'utf8')) : {};   // Sonnet's verdicts from an earlier run: not judged twice
   let usd = 0;
   for (const item of cases) {

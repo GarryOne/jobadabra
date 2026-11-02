@@ -124,11 +124,11 @@ class NothingSearchesSomewhereTheUserNeverChose(unittest.TestCase):
 
 class TimeZoneIsTheUsers(unittest.TestCase):
     def test_env_wins_and_there_is_no_fixed_city(self):
-        with mock.patch.dict(os.environ, {'JOB_PILOTTO_TZ': 'America/Chicago'}):
+        with mock.patch.dict(os.environ, {'JOBADABRA_TZ': 'America/Chicago'}):
             self.assertEqual(tz.zone_name(), 'America/Chicago')
-        with mock.patch.dict(os.environ, {'JOB_PILOTTO_TZ': 'America/Sao_Paulo'}):
+        with mock.patch.dict(os.environ, {'JOBADABRA_TZ': 'America/Sao_Paulo'}):
             self.assertEqual(tz.local_zone().key, 'America/Sao_Paulo')
-        with mock.patch.dict(os.environ, {'JOB_PILOTTO_TZ': 'Not/AZone', 'TZ': ''}):
+        with mock.patch.dict(os.environ, {'JOBADABRA_TZ': 'Not/AZone', 'TZ': ''}):
             self.assertTrue(tz.zone_name())   # an unknown name falls back to the machine's, then UTC: never Zurich on purpose
 
     def test_source_has_no_hardcoded_zone(self):
@@ -137,7 +137,7 @@ class TimeZoneIsTheUsers(unittest.TestCase):
             for name in names:
                 if name.endswith('.py') and name != 'google.py':   # google.py: a table that maps Windows zone names
                     text = Path(folder, name).read_text(encoding='utf-8')
-                    self.assertNotRegex(text, r"getenv\('JOB_PILOTTO_TZ', 'Europe/", name)
+                    self.assertNotRegex(text, r"getenv\('JOBADABRA_TZ', 'Europe/", name)
 
 
 if __name__ == '__main__':

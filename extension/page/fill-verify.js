@@ -3,8 +3,8 @@
 // and each is read back after. Only plain text boxes: never a password, a read-only or disabled box, a menu's search box (combo-click.js owns those) or a select.
 // Values stay in the page: the worker gets the text to type for the box it clicks, never a list of values to report. Guard: app-core/test/fill-verify.test.js.
 (() => {
-  if (window.__jobPilottoFillVerifyLoaded) return;
-  window.__jobPilottoFillVerifyLoaded = true;
+  if (window.__jobadabraFillVerifyLoaded) return;
+  window.__jobadabraFillVerifyLoaded = true;
   const notTaken = new Map();   // field (id or name) -> the answer the fill gave it
   const before = new Map();     // field -> its state before the real typing (the attempt log's key)
   const TEXT = 'input:not([type]), input[type=text], input[type=email], input[type=tel], input[type=url], input[type=number], input[type=search], textarea';
@@ -15,26 +15,26 @@
     && !!el.getClientRects().length && getComputedStyle(el).visibility !== 'hidden';
   // The fill gave this box an answer and the page did not take it: a bare mark (no value) so the judges' sketch says match "no" (extension/account-fill.js matchOf), a box the fill's own
   // marks would otherwise call untouched. Any answered box, whatever its kind; only the plain text ones are typed again below.
-  window.__jobPilottoNoteNotTaken = (field, value) => {
+  window.__jobadabraNoteNotTaken = (field, value) => {
     const el = byField(String(field));
-    if (el && !el.hasAttribute('data-jobpilotto-typed')) el.setAttribute('data-jobpilotto-nottaken', '');
+    if (el && !el.hasAttribute('data-jobadabra-typed')) el.setAttribute('data-jobadabra-nottaken', '');
     if (field && typeof value === 'string' && value.trim()) notTaken.set(String(field), value);
   };
   // A box a suggest-only widget was handled in (page/fill-menus.js suggestPick: a suggestion chosen, or the box left empty on purpose) is no longer one that "did not take its answer": typing the first text
   // over a chosen place, or into a box the page empties again, would undo or repeat what was just decided.
-  window.__jobPilottoForgetNotTaken = field => {
+  window.__jobadabraForgetNotTaken = field => {
     const el = byField(String(field));
     notTaken.delete(String(field));
-    el?.removeAttribute('data-jobpilotto-nottaken');
+    el?.removeAttribute('data-jobadabra-nottaken');
   };
   // Every noted control with the fill's answer, whatever its kind: the presses for real read it (page/press-real.js). -> [[field, answer]]
-  window.__jobPilottoNotTakenAll = () => [...notTaken];
+  window.__jobadabraNotTakenAll = () => [...notTaken];
   // -> [{field, x, y, text}] for each noted box that is typable and still does not hold its answer (at most 8), scrolled into view first.
-  window.__jobPilottoNotTakenSpots = () => {
+  window.__jobadabraNotTakenSpots = () => {
     const spots = [];
     for (const [field, text] of notTaken) {
       const el = byField(field);
-      const log = window.__jobPilottoAttempts;
+      const log = window.__jobadabraAttempts;
       if (!typable(el) || holds(el, text) || spots.length >= 8 || (log && !log.mayTry(el, 'type_real'))) continue;   // within the box's one attempt log (page/attempts.js)
       if (log) before.set(field, log.stateOf(el));
       el.scrollIntoView({block: 'center', inline: 'nearest'});
@@ -44,13 +44,13 @@
     return spots;
   };
   // After the real typing: leave the box the way a person would (it loses focus), then say whether it holds the answer now; a box that does is marked as the fill's.
-  window.__jobPilottoTakenNow = field => {
+  window.__jobadabraTakenNow = field => {
     const el = byField(field), text = notTaken.get(field);
     if (!el) return false;
     el.blur();
     const taken = holds(el, text);
-    window.__jobPilottoAttempts?.note(el, 'type_real', before.get(field), taken);
-    if (taken) { el.removeAttribute('data-jobpilotto-nottaken'); el.setAttribute('data-jobpilotto-filled', ''); el.setAttribute('data-jobpilotto-typed', alnum(text).slice(0, 160)); notTaken.delete(field); }
+    window.__jobadabraAttempts?.note(el, 'type_real', before.get(field), taken);
+    if (taken) { el.removeAttribute('data-jobadabra-nottaken'); el.setAttribute('data-jobadabra-filled', ''); el.setAttribute('data-jobadabra-typed', alnum(text).slice(0, 160)); notTaken.delete(field); }
     return taken;
   };
 })();

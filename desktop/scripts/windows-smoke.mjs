@@ -37,16 +37,16 @@ const py = (args, env = {}) => execFileSync(python, args, {cwd: pilot, encoding:
   env: {...process.env, PYTHONUTF8: '1', ...env}}).trim();
 say(py(['-c', 'import anthropic, keyring, pip, sqlite3, ssl, sys; from importlib.metadata import version; ' +
   "print('Python', sys.version.split()[0], 'anthropic', version('anthropic'), 'keyring', version('keyring'))"]));
-say(py(['-c', "from src import secret_store as s; s.put('job-pilotto.smoke.test', 'ok', 'ci'); " +
-  "v = s.get('job-pilotto.smoke.test', 'ci'); s.delete('job-pilotto.smoke.test', 'ci'); " +
-  "assert v == 'ok', v; assert s.get('job-pilotto.smoke.test', 'ci') is None; print('Credential Manager round-trip ok')"]));
+say(py(['-c', "from src import secret_store as s; s.put('jobadabra.smoke.test', 'ok', 'ci'); " +
+  "v = s.get('jobadabra.smoke.test', 'ci'); s.delete('jobadabra.smoke.test', 'ci'); " +
+  "assert v == 'ok', v; assert s.get('jobadabra.smoke.test', 'ci') is None; print('Credential Manager round-trip ok')"]));
 if (want('packaging')) {
 // The transcription add-on is downloaded on the first recording (src/ai/transcribe.py install_addon): do exactly that here,
 // into a throwaway folder, so a Windows wheel that goes missing fails the release instead of a user's first interview.
 const models = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-models-'));
 say(py(['-c', "from src.ai import transcribe as t; assert not t.libraries(), 'bundled after all'; t.install_addon(); " +
   "assert t.libraries(), 'installed but not loadable'; import sherpa_onnx, numpy; print('Add-on installed:', t.addon_dir())"],
-{JOB_PILOTTO_MODELS_DIR: path.join(models, 'models')}));
+{JOBADABRA_MODELS_DIR: path.join(models, 'models')}));
 // The audio half of interview transcription: PyAV's bundled ffmpeg decoding a real file. The recogniser's models are
 // a 520 MB download, so CI doesn't run those — but importing `av` proves nothing about whether its native codecs
 // load on Windows, and this does.
@@ -66,15 +66,15 @@ samples = sum(f.samples for f in frames)
 assert samples >= 16000, samples
 os.remove(path); os.rmdir(folder)
 print('PyAV decoded', samples, 'samples at', frames[0].sample_rate, 'Hz')
-`], {JOB_PILOTTO_MODELS_DIR: path.join(models, 'models')}));
+`], {JOBADABRA_MODELS_DIR: path.join(models, 'models')}));
 }
 const data = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-smoke-data-'));
 for (const sub of ['config', 'data']) fs.mkdirSync(path.join(data, sub), {recursive: true});
 for (const name of fs.readdirSync(path.join(pilot, 'config')).filter(n => n.endsWith('.json'))) {
   fs.copyFileSync(path.join(pilot, 'config', name), path.join(data, 'config', name));
 }
-const jobs = py(['-m', 'src.desktop', 'jobs'], {JOB_PILOTTO_NO_DOTENV: '1', JOB_PILOTTO_CONFIG_DIR: path.join(data, 'config'),
-  JOB_PILOTTO_DATA_DIR: path.join(data, 'data')}).split(/\r?\n/).pop();
+const jobs = py(['-m', 'src.desktop', 'jobs'], {JOBADABRA_NO_DOTENV: '1', JOBADABRA_CONFIG_DIR: path.join(data, 'config'),
+  JOBADABRA_DATA_DIR: path.join(data, 'data')}).split(/\r?\n/).pop();
 JSON.parse(jobs);
 say(`pipeline jobs list ok: ${jobs.slice(0, 80)}`);
 
@@ -86,7 +86,7 @@ if (want('packaging')) {
     .split(/\r?\n/).map(line => line.split('","')[1]).filter(Boolean).map(Number);
   const wait = async (check, seconds) => { for (let i = 0; i < seconds * 4; i++) { if (check()) return true; await new Promise(resolve => setTimeout(resolve, 250)); } return false; };
   const userData = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-smoke-update-'));
-  const app = spawn(exe, [], {detached: true, stdio: 'ignore', env: {...process.env, JOB_PILOTTO_USER_DATA: userData}});
+  const app = spawn(exe, [], {detached: true, stdio: 'ignore', env: {...process.env, JOBADABRA_USER_DATA: userData}});
   app.unref();
   if (!(await wait(() => running().includes(app.pid), 60))) throw new Error('update: the installed app did not start');
   const started = Date.now();
@@ -105,8 +105,8 @@ if (want('packaging')) {
 if (want('packaging')) {
   const userData = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-smoke-pty-'));
   const result = path.join(userData, 'pty.txt');
-  spawnSync(exe, [], {timeout: 90000, stdio: 'inherit', env: {...process.env, JOB_PILOTTO_USER_DATA: userData,
-    JOB_PILOTTO_SMOKE: path.join(userData, 'pty.png'), JOB_PILOTTO_SMOKE_JS: 'new Promise(r => setTimeout(r, 5000))', JOB_PILOTTO_PTY_SMOKE: result}});
+  spawnSync(exe, [], {timeout: 90000, stdio: 'inherit', env: {...process.env, JOBADABRA_USER_DATA: userData,
+    JOBADABRA_SMOKE: path.join(userData, 'pty.png'), JOBADABRA_SMOKE_JS: 'new Promise(r => setTimeout(r, 5000))', JOBADABRA_PTY_SMOKE: result}});
   const text = fs.existsSync(result) ? fs.readFileSync(result, 'utf8') : 'no result file';
   if (!text.includes('pty-ok')) throw new Error(`in-app terminal: ${text.slice(0, 300)}`);
   say('in-app terminal ok (node-pty ran cmd.exe in the installed app)');

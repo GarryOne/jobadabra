@@ -25,7 +25,7 @@ const FEEDS = path.join(E2E, 'fixtures', 'feeds');
 const feeds = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-strategy-feeds-'));
 fs.cpSync(FEEDS, feeds, {recursive: true});
 // The app's own isolation switches, set before its modules read them.
-Object.assign(process.env, {JOB_PILOTTO_E2E: '1', JOB_PILOTTO_FIXTURE_DIR: feeds, JOB_PILOTTO_FOLLOW_APP: '0'});
+Object.assign(process.env, {JOBADABRA_E2E: '1', JOBADABRA_FIXTURE_DIR: feeds, JOBADABRA_FOLLOW_APP: '0'});
 const {createStorage} = await import('../../lib/storage.js');
 const {ensureConfig} = await import('../../lib/pipeline-env.js');
 const pipelineRun = await import('../../lib/pipeline-run.js');
@@ -37,7 +37,7 @@ const {sqliteStart} = await import('../../e2e/test/strategy-start.mjs');
 const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-strategy-int-'));
 const storage = createStorage(profile, {encrypt: value => value, decrypt: value => value});
 const read = file => JSON.parse(fs.readFileSync(path.join(profile, 'config', file), 'utf8'));
-const exec = (s, args, onLine, extra, options) => pipelineRun.run(s, args, onLine, {...extra, JOB_PILOTTO_STORE: 'sqlite', JOB_PILOTTO_FOLLOW_APP: '0'}, options);
+const exec = (s, args, onLine, extra, options) => pipelineRun.run(s, args, onLine, {...extra, JOBADABRA_STORE: 'sqlite', JOBADABRA_FOLLOW_APP: '0'}, options);
 const deps = {run: exec, ensurePage: async () => { throw new Error('no Notion page on this Mac\'s store'); }, writePage: async () => { throw new Error('no Notion page on this Mac\'s store'); }};
 // The window's saveStrategy on this Mac's store (lib/strategy-draft-handlers.js): only the accepted parts are written.
 const saveInApp = (search, preferences, parts) => strategy.keepLocally(storage, {profile_markdown: 'Placeholder.', answers_markdown: 'Placeholder.', contact: {}, search, preferences}, parts);

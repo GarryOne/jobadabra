@@ -1,7 +1,7 @@
 /* global document, window */
 // Job: wait on state
 // Launch the real Jobadabra app (Electron) with a throwaway profile, like a first-time user, and drive it through Playwright.
-// Nothing here touches the real user's data: JOB_PILOTTO_USER_DATA points at a fresh temp folder and no .env is read.
+// Nothing here touches the real user's data: JOBADABRA_USER_DATA points at a fresh temp folder and no .env is read.
 import {endTree, holdersOf, listProcesses, treeOf, waitTreeGone} from './app-tree.mjs';
 import {appLaunchEnv} from './app-env.mjs';
 import {journey} from './journey.mjs';
@@ -55,13 +55,13 @@ export async function launch({env = {}, executablePath, args, profile: again, la
     args: args || [DESKTOP, ...(process.platform === 'linux' ? ['--no-sandbox', '--password-store=basic'] : []), ...(lang ? [`--lang=${lang}`] : [])],
     // The app counts days in the computer's own zone; the suites check it against Europe/Zurich (lib/focus-data.mjs). On a CI runner in UTC the two disagreed
     // about "today" from 0:00 to 2:00 Zurich time, and Focus's 14-day count failed only then (4 Oct 2026). A suite that tests another zone sets TZ, and the engine follows it
-    // (it reads JOB_PILOTTO_TZ first: the calendar suite's Tokyo and Honolulu must reach both the window and the engine).
-    env: withoutWrappers(appLaunchEnv(process.env, { TZ: zoneOf(env), JOB_PILOTTO_TZ: env.JOB_PILOTTO_TZ || zoneOf(env), JOB_PILOTTO_USER_DATA: profile, JOB_PILOTTO_NO_DOTENV: '1', JOB_PILOTTO_E2E: '1', JOB_PILOTTO_E2E_RUNNER_PID: String(process.pid), ...ownerGuardEnv(), JOB_PILOTTO_E2E_HIDDEN: hidden(), ...port, ...env})),   // the app watches this runner and ends when it is gone, even if it was killed (lib/e2e-host.js watchRunner)
+    // (it reads JOBADABRA_TZ first: the calendar suite's Tokyo and Honolulu must reach both the window and the engine).
+    env: withoutWrappers(appLaunchEnv(process.env, { TZ: zoneOf(env), JOBADABRA_TZ: env.JOBADABRA_TZ || zoneOf(env), JOBADABRA_USER_DATA: profile, JOBADABRA_NO_DOTENV: '1', JOBADABRA_E2E: '1', JOBADABRA_E2E_RUNNER_PID: String(process.pid), ...ownerGuardEnv(), JOBADABRA_E2E_HIDDEN: hidden(), ...port, ...env})),   // the app watches this runner and ends when it is gone, even if it was killed (lib/e2e-host.js watchRunner)
     timeout: 90000,
   });
   const page = await app.firstWindow();
   await page.waitForLoadState('domcontentloaded');
-  // Why (28 Oct 2026, owner): a test run must never reach the owner's browser, Finder, clipboard or login items. The app closes those doors itself under JOB_PILOTTO_E2E
+  // Why (28 Oct 2026, owner): a test run must never reach the owner's browser, Finder, clipboard or login items. The app closes those doors itself under JOBADABRA_E2E
   // (desktop/lib/e2e-host.js; Electron's own shell.openExternal and openPath print "[native code]", the stand-ins do not); a run that finds them open stops here, before any step. A packaged build named by executablePath may be older than that code: not checked.
   if (!executablePath && !(await app.evaluate(({shell}) => Array.isArray(globalThis.__jpHost) && ![shell.openExternal, shell.openPath].some(call => /\[native code\]/.test(Function.prototype.toString.call(call)))).catch(() => false))) { await closeApp(app); throw new Error("a test run must not reach the owner's browser, Finder or clipboard: the app's host stand-in (lib/e2e-host.js) is not active"); }
   page.on('pageerror', error => { console.log(`  ! page error: ${error.message}`); journey.pageErrors.push(`${error.name || 'Error'}: ${error.message}`); });

@@ -2,7 +2,7 @@
 // Layer 2 of the test pyramid: the app's real window on fictional data, no browser, no Notion, no AI. One hidden Electron launch runs a probe script in the window.
 // Why (1 Nov 2026, owner: "I'd like the beta to have only the critical e2e/user journeys. All the others, to run separately less frequently"): screen checks left the e2e
 // suites for desktop/integration/app, which CI · Tests · desktop runs on every PR under xvfb (needs-electron.js). The pattern is the one palette-one-row-per-card.test.js uses
-// (scripts/shot.mjs): the demo app, `JOB_PILOTTO_SMOKE_EVAL` returns the page's facts as JSON; here with the demo folder replaced by a test's own files.
+// (scripts/shot.mjs): the demo app, `JOBADABRA_SMOKE_EVAL` returns the page's facts as JSON; here with the demo folder replaced by a test's own files.
 import {spawnSync} from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -75,8 +75,8 @@ export function probeWindow({script, after = null, use = [], files = {}, setting
     const first = after || keep ? park : '';
     // Why (2 Nov 2026, flaky on the clock): the Focus seed counts days in Zurich time (e2e/lib/focus-data.mjs) and the app in the computer's zone; the e2e launcher pinned TZ (e2e/lib/app.mjs zoneOf), the move to integration dropped it, so a UTC runner failed Focus's 14-day count from 23:00 to 24:00 UTC. A test that needs another zone passes TZ in `env`, which comes last.
     const run = spawnSync(path.join(desktop, 'node_modules', '.bin', 'electron'), ['.'], {cwd: desktop, encoding: 'utf8', timeout, env: {
-      ...process.env, TZ: ZONE, JOB_PILOTTO_DEMO: '1', JOB_PILOTTO_DEMO_DIR: folder, JOB_PILOTTO_USER_DATA: folder, JOB_PILOTTO_SMOKE: out, ...(keep ? {} : {JOB_PILOTTO_SMOKE_NO_PICTURE: '1'}), JOB_PILOTTO_E2E_OPEN_DIR: folder,
-      JOB_PILOTTO_SMOKE_EVAL: code, ...(after ? {JOB_PILOTTO_SMOKE_JS: first, JOB_PILOTTO_SMOKE_RELOAD_JS: '0'} : keep ? {JOB_PILOTTO_SMOKE_JS: first} : {}), JOB_PILOTTO_E2E_RUNNER_PID: String(process.pid), ...env}});
+      ...process.env, TZ: ZONE, JOBADABRA_DEMO: '1', JOBADABRA_DEMO_DIR: folder, JOBADABRA_USER_DATA: folder, JOBADABRA_SMOKE: out, ...(keep ? {} : {JOBADABRA_SMOKE_NO_PICTURE: '1'}), JOBADABRA_E2E_OPEN_DIR: folder,
+      JOBADABRA_SMOKE_EVAL: code, ...(after ? {JOBADABRA_SMOKE_JS: first, JOBADABRA_SMOKE_RELOAD_JS: '0'} : keep ? {JOBADABRA_SMOKE_JS: first} : {}), JOBADABRA_E2E_RUNNER_PID: String(process.pid), ...env}});
     const answer = `${out}.json`;
     if (!fs.existsSync(answer)) throw new Error(`the app wrote no answer (exit ${run.status}, signal ${run.signal}): ${(run.stderr || run.stdout || '').slice(-600)}`);
     const value = JSON.parse(fs.readFileSync(answer, 'utf8'));

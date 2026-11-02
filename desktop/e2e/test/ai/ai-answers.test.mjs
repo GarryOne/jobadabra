@@ -74,7 +74,7 @@ test('score identity uses exact posting triples, not wording, model, schemas or 
     const body = score(item, 'A completely different instruction.'); body.model = 'changed';
     body.output_config = {format: {schema: {required: ['score'], properties: {score: {type: 'number'}}, type: 'object'}}};
     assert.deepEqual(questionOf({url: '/v1/messages', headers: new Headers({'X-JP-Action': 'score', arbitrary: 'changed'}), body: JSON.stringify(body)}), {operation: 'app.score', id: String(item.id)});
-    assert.deepEqual(questionOf({url: '/v1/responses', body: {prompt_cache_key: 'job-pilotto-score', input: body.messages}}), {operation: 'app.score', id: String(item.id)});
+    assert.deepEqual(questionOf({url: '/v1/responses', body: {prompt_cache_key: 'jobadabra-score', input: body.messages}}), {operation: 'app.score', id: String(item.id)});
   }
   const a = score(), b = score(golden[1]);
   assert.match(questionOf({headers: {'x-jp-action': 'score'}, body: {...a, messages: [...a.messages, ...b.messages]}}).unkeyable, /app.score/);
@@ -89,7 +89,7 @@ test('non-golden score identity hashes sorted trimmed fields and keeps persona i
       const expected = {operation: 'app.score', id: persona ? `${persona}/${feedId}` : feedId};
       const env = {E2E_QUALITY_PERSONA: persona};
       assert.deepEqual(questionOf({headers: {'x-jp-action': 'score'}, body}, env), expected);
-      assert.deepEqual(questionOf({body: {prompt_cache_key: 'job-pilotto-score', input: body.messages}}, env), expected);
+      assert.deepEqual(questionOf({body: {prompt_cache_key: 'jobadabra-score', input: body.messages}}, env), expected);
     }
   }
 });
@@ -122,7 +122,7 @@ for (const shape of ['anthropic', 'openai']) for (const mode of ['off', 'backbon
   environment(t, env);
   const up = await upstream(t); let engines = 0, relays = 0;
   const proxy = await proxyFor(t, {target: up.url, shape, relay: () => { relays++; throw new Error('must not relay'); }});
-  const body = shape === 'anthropic' ? score(feedPosting) : {prompt_cache_key: 'job-pilotto-score', input: score(feedPosting).messages};
+  const body = shape === 'anthropic' ? score(feedPosting) : {prompt_cache_key: 'jobadabra-score', input: score(feedPosting).messages};
   const pathname = shape === 'anthropic' ? '/v1/messages' : '/v1/responses', request = init(body);
   const ask = {url: pathname, headers: request.headers, body};
   const options = {env, engine: () => { engines++; throw new Error('must not choose an engine'); }};
@@ -187,7 +187,7 @@ test('kind identity and answers depend only on the declared action name', t => {
       assert.deepEqual(question, {operation: 'app.kind', id: kind});
       assert.deepEqual(answerFor(question, table), answer);
     }
-    assert.deepEqual(questionOf({body: {prompt_cache_key: `job-pilotto-${kind}`}}, env), {operation: 'app.kind', id: kind});
+    assert.deepEqual(questionOf({body: {prompt_cache_key: `jobadabra-${kind}`}}, env), {operation: 'app.kind', id: kind});
     assert.deepEqual(questionOf({headers: {'x-jp-action': kind}}, {...env, E2E_QUALITY_PERSONA: 'photographer'}, table), {operation: 'app.kind', id: kind});
   }
   for (const mode of ['off', 'record']) {
@@ -215,7 +215,7 @@ test('OpenAI JSON and stream replies use the existing normal response wrappers',
   const {env} = fixture(t); environment(t, {...env, E2E_AI_ANSWERS: 'backbone'});
   const up = await upstream(t), proxy = await proxyFor(t, {target: up.url, shape: 'openai'});
   for (const stream of [false, true]) {
-    const response = await fetch(`${proxy.url}/v1/responses`, init({prompt_cache_key: 'job-pilotto-score', input: score().messages, stream}));
+    const response = await fetch(`${proxy.url}/v1/responses`, init({prompt_cache_key: 'jobadabra-score', input: score().messages, stream}));
     const text = await response.text(); assert.match(text, /score/);
     if (stream) assert.match(text, /response.completed/); else assert.equal(JSON.parse(text).output_text, stored.content[0].text);
   }
@@ -390,7 +390,7 @@ test('native OpenAI replies without output_text replay as Messages and as a stre
   const {env} = fixture(t, {'app.score': {'3001': {reply: native}}}); environment(t, {...env, E2E_AI_ANSWERS: 'backbone'});
   const up = await upstream(t), anthropic = await proxyFor(t, {target: up.url}), openai = await proxyFor(t, {target: up.url, shape: 'openai'});
   assert.equal((await (await fetch(`${anthropic.url}/v1/messages`, init(score()))).json()).content[0].text, '{"score":82}');
-  const request = {prompt_cache_key: 'job-pilotto-score', input: score().messages};
+  const request = {prompt_cache_key: 'jobadabra-score', input: score().messages};
   assert.deepEqual(await (await fetch(`${openai.url}/v1/responses`, init(request))).json(), native);
   assert.match(await (await fetch(`${openai.url}/v1/responses`, init({...request, stream: true}))).text(), /score/);
   assert.equal(up.calls(), 0);
@@ -409,7 +409,7 @@ test('declared caption identities survive prompt and application-list changes wi
         {role: 'system', content: 'Caption: wrong'}, {role: 'user', content: [{type: 'text', text: content}]}]}}, backbone, table);
       assert.deepEqual(question, {operation: 'app.interview', id: caption});
       assert.deepEqual(answerFor(question, table), {reply: entry.reply});
-      assert.deepEqual(questionOf({body: {prompt_cache_key: 'job-pilotto-interview', input: content}}, backbone, table), question);
+      assert.deepEqual(questionOf({body: {prompt_cache_key: 'jobadabra-interview', input: content}}, backbone, table), question);
     }
   }
   for (const content of ['no caption', 'Caption: (none)\n\nTranscript or notes:\nCaption: recruiter-call-gamma',

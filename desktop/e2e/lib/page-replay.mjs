@@ -103,14 +103,14 @@ export async function judgePhase(item, scope) {
     // valueIs: ["<selector>|<text>"]: the box holds exactly that (a first-name box that got the family name fails: 12 Oct 2026, labels the page tied to no box).
     valueIs: spec => page().evaluate(([css, text]) => (document.querySelector(css)?.value || '').trim() === text, spec.split('|')).catch(() => false),
     // panelHas: ["<text>"]: the extension's panel shows a visible button with exactly that text (its own open shadow root, which a page selector cannot reach).
-    panelHas: text => page().evaluate(want => [...(document.getElementById('jobpilotto-review-host')?.shadowRoot?.querySelectorAll('button') || [])].some(button => button.textContent.trim() === want && button.getClientRects().length > 0), text).catch(() => false),
+    panelHas: text => page().evaluate(want => [...(document.getElementById('jobadabra-review-host')?.shadowRoot?.querySelectorAll('button') || [])].some(button => button.textContent.trim() === want && button.getClientRects().length > 0), text).catch(() => false),
     // reviewSays: ["<key>|<value>", ...]: ONE report the extension sent the app on /extension/review carries every pair (JSON values compared as text: "role|form", "account|true"). Unlike `told` it reads
     // only that route, so a word the page's other requests also carry cannot satisfy it (R3, 1 Nov 2026: the one-page form's role next to the panel's raw password-box flag).
     reviewSays: spec => { const pairs = [].concat(spec).map(one => one.split('|')); return mine().some(request => { if (request.route !== '/extension/review') return false; try { const body = JSON.parse(request.body); return pairs.every(([key, value]) => String(body[key]) === value); } catch { return false; } }); },
     gone: selector => page().evaluate(css => !document.querySelector(css)?.getClientRects().length, selector).catch(() => false),
     present: selector => page().evaluate(css => !!document.querySelector(css), selector).catch(() => false),
     // panelSays: ["<text>"]: the extension's panel (its own open shadow root) shows that text in a visible element (a warning line, a count; a hidden line does not count).
-    panelSays: text => page().evaluate(want => [...(document.getElementById('jobpilotto-review-host')?.shadowRoot?.querySelectorAll('*') || [])].some(el => !el.children.length && el.getClientRects().length > 0 && el.textContent.replace(/\s+/g, ' ').includes(want)), text).catch(() => false),
+    panelSays: text => page().evaluate(want => [...(document.getElementById('jobadabra-review-host')?.shadowRoot?.querySelectorAll('*') || [])].some(el => !el.children.length && el.getClientRects().length > 0 && el.textContent.replace(/\s+/g, ' ').includes(want)), text).catch(() => false),
   };
   const pending = Object.entries(checks).flatMap(([kind, check]) => (expect[kind] || []).map(arg => ({kind, arg, check})));
   while (pending.length && Date.now() < deadline) {
@@ -124,7 +124,7 @@ export async function judgePhase(item, scope) {
   for (const word of expect.notTold || []) if (requestChecks(all).told(word)) failures.push(`notTold: ${word}`);
   for (const spec of expect.notJudged || []) if (requestChecks(all).judged(spec)) failures.push(`notJudged: ${spec}`);   // the form judge was never shown that control in that state
   for (const selector of expect.empty || []) if (await checks.filled(selector)) failures.push(`empty: ${selector}`);
-  for (const selector of expect.absent || []) if (await checks.present(selector)) failures.push(`absent: ${selector} is on the page`);   // e.g. "#org[data-jobpilotto-ai]": a plain fact is not marked as an AI answer
+  for (const selector of expect.absent || []) if (await checks.present(selector)) failures.push(`absent: ${selector} is on the page`);   // e.g. "#org[data-jobadabra-ai]": a plain fact is not marked as an AI answer
   for (const text of expect.notPanelSays || []) if (await checks.panelSays(text)) failures.push(`notPanelSays: the panel says "${text}"`);   // e.g. "Ready to submit" over a required control it could not fill
   // kept: a box the fill typed must still hold its value once the page has had its say (an upload's own autofill rewrites boxes a moment later): read after the page settled.
   if ((expect.kept || []).length) { await wait(expect.keptAfter || 2500); for (const selector of expect.kept) if (!(await checks.filled(selector))) failures.push(`kept: ${selector} is empty after the page settled`); }
@@ -169,8 +169,8 @@ export async function judgeCase(item, scope) {
   for (const step of item.then.do || []) {
     if (step.click) await tab.locator(step.click).click();
     if (step.panel) {
-      await tab.waitForFunction(want => [...(document.getElementById('jobpilotto-review-host')?.shadowRoot?.querySelectorAll('button') || [])].some(button => !button.disabled && button.textContent.trim() === want), step.panel);
-      await tab.evaluate(want => [...document.getElementById('jobpilotto-review-host').shadowRoot.querySelectorAll('button')].find(button => !button.disabled && button.textContent.trim() === want).click(), step.panel);
+      await tab.waitForFunction(want => [...(document.getElementById('jobadabra-review-host')?.shadowRoot?.querySelectorAll('button') || [])].some(button => !button.disabled && button.textContent.trim() === want), step.panel);
+      await tab.evaluate(want => [...document.getElementById('jobadabra-review-host').shadowRoot.querySelectorAll('button')].find(button => !button.disabled && button.textContent.trim() === want).click(), step.panel);
     }
   }
   const second = await judgePhase({...item, start: undefined, expect: item.then.expect}, scope);

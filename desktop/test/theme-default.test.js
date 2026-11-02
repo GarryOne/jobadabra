@@ -20,7 +20,7 @@ test('a saved choice is kept: light, dark and system', () => {
 
 test('the window is told the theme before it is created, and the Appearance page and telemetry agree on the default', () => {
   const main = fs.readFileSync(new URL('../main.js', import.meta.url), 'utf8');
-  assert.ok(main.indexOf('applyTheme(process.env.JOB_PILOTTO_THEME') < main.indexOf('  createWindow();'), 'applyTheme runs before createWindow');
+  assert.ok(main.indexOf('applyTheme(process.env.JOBADABRA_THEME') < main.indexOf('  createWindow();'), 'applyTheme runs before createWindow');
   assert.match(fs.readFileSync(new URL('../renderer/pages/theme.js', import.meta.url), 'utf8'), /settings\?\.theme \|\| 'dark'/);
   assert.match(fs.readFileSync(new URL('../lib/app-allowance.js', import.meta.url), 'utf8'), /theme: settings\.theme \|\| 'dark'/);
 });

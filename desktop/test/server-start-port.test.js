@@ -12,9 +12,9 @@ import {createStorage} from '../lib/storage.js';
 const freePort = () => new Promise(resolve => { const probe = net.createServer().listen(0, '127.0.0.1', () => { const {port} = probe.address(); probe.close(() => resolve(port)); }); });
 
 test('a taken extension port is reported, not a crash', async () => {
-  process.env.JOB_PILOTTO_PORT = String(await freePort());
+  process.env.JOBADABRA_PORT = String(await freePort());
   const server = await import('../lib/server.js');
-  assert.equal(String(server.PORT), process.env.JOB_PILOTTO_PORT, 'this test holds its own port, never the owner\'s app\'s');
+  assert.equal(String(server.PORT), process.env.JOBADABRA_PORT, 'this test holds its own port, never the owner\'s app\'s');
   const blocker = net.createServer();
   await new Promise(resolve => blocker.listen(server.PORT, '127.0.0.1', resolve));
   const storage = createStorage(fs.mkdtempSync(path.join(os.tmpdir(), 'jp-port-')), {encrypt: s => s, decrypt: s => s});

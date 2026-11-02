@@ -24,7 +24,7 @@ class ShipRedTest(ShipFixture):
         (bin_dir / 'gh').write_text(f'#!/bin/bash\nstate="{self.gh.as_posix()}"\ncase "$1 $2" in\n  "run list") cat "$state/runs.json" ;;\n  "run view") echo 1 ;;\n  "run rerun") ;;\nesac\n')
         (bin_dir / 'gh').chmod(0o755)
         self.tip = git(self.tree, 'rev-parse', 'origin/main')
-        self.env = {**os.environ, 'PATH': f'{bin_dir.as_posix()}{os.pathsep}{os.environ["PATH"]}', 'SHIP_RED_POLL': '0.2', 'JOB_PILOTTO_SESSION': 'test-session'}
+        self.env = {**os.environ, 'PATH': f'{bin_dir.as_posix()}{os.pathsep}{os.environ["PATH"]}', 'SHIP_RED_POLL': '0.2', 'JOBADABRA_SESSION': 'test-session'}
         self.change(self.tree, 'mine.txt', 'x\n', 'My change')
 
     def runs(self, minutes_ago=1, red=True):

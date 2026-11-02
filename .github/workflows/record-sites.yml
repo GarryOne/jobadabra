@@ -121,12 +121,12 @@ jobs:
       LIVE_POOL_ANTHROPIC_KEY: ${{ secrets.LIVE_POOL_ANTHROPIC_KEY }}   # a pool run by hand (owner, 12 Oct 2026: each live run's cost apart)
       JP_NO_REPORT: '1'                # no applying report from CI (the code refuses it anyway); the proven records and ladder moves go with their own narrow key
       JP_APPLICANT: thin   # the thin test applicant: runs are by hand only (the PR proof that ran the grown one was removed on 13 Oct 2026)
-      JOB_PILOTTO_HEAVY: '0'           # the heavy lock is a Mac's machine-wide queue; this runner is its own machine
-      JOB_PILOTTO_SESSION: record-sites CI run ${{ github.run_id }}
-      JOB_PILOTTO_SITE_LIMIT: '2'
-      JOB_PILOTTO_VISIT_KIND: hand   # each visit says its kind (lib/site-ledger.mjs; lib/engine.mjs liveKeyName)
+      JOBADABRA_HEAVY: '0'           # the heavy lock is a Mac's machine-wide queue; this runner is its own machine
+      JOBADABRA_SESSION: record-sites CI run ${{ github.run_id }}
+      JOBADABRA_SITE_LIMIT: '2'
+      JOBADABRA_VISIT_KIND: hand   # each visit says its kind (lib/site-ledger.mjs; lib/engine.mjs liveKeyName)
       JP_NET_RECORD_DIR: ${{ github.workspace }}/net-records   # each row's network record (lib/net-record.mjs): uploaded encrypted below, never in the plain captures
-      JOB_PILOTTO_SITE_LEDGER_DIR: ${{ github.workspace }}/record-sites-out/site-ledger
+      JOBADABRA_SITE_LEDGER_DIR: ${{ github.workspace }}/record-sites-out/site-ledger
       RECORD_PAIRED: '0'
       RECORD_REPORTS: ${{ github.workspace }}/record-sites-out/smoke-reports
       RECORD_CANDIDATES: ${{ github.workspace }}/record-sites-out/replay-candidates
@@ -187,7 +187,7 @@ jobs:
           if ! [ "$rows" -ge 1 ] 2>/dev/null; then rows=1; fi
           if [ "$rows" -gt "$MAX_ROWS" ]; then rows=$MAX_ROWS; fi
           only=${ONLY:-$DEFAULT_ROWS}
-          echo "record-sites: rows matching \"$only\", at most $rows, AI cap \$$MAX_USD; CI's site limit $JOB_PILOTTO_SITE_LIMIT a host a day"
+          echo "record-sites: rows matching \"$only\", at most $rows, AI cap \$$MAX_USD; CI's site limit $JOBADABRA_SITE_LIMIT a host a day"
           RECORD_MAX_ROWS=$rows RECORD_MAX_USD=$MAX_USD xvfb-run -a --server-args='-screen 0 1440x900x24' node record-sites.mjs --only "$only" 2>&1 | tee "$GITHUB_WORKSPACE/record-sites-out/smoke.log"
       - name: Encrypt the network records (the public key is in the repo; the private key only in the owner's Keychain)
         if: always()

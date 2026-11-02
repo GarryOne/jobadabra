@@ -44,7 +44,7 @@ in Settings) instead of a Cloudflare Worker; it reuses the same endpoint code
   keys; `lib/strategy.js` CV → strategy draft; `lib/apply.js` Apply to N; `lib/server.js` extension
   endpoints on 127.0.0.1.
 - `renderer/` the window (plain HTML, CSS and JavaScript).
-- Tests: `npm test` (no Electron needed). Windows: CI installs the built .exe and runs `scripts/windows-smoke.mjs` (screenshots kept as the run's `windows-screens-*` artifact). Smoke test: `JOB_PILOTTO_USER_DATA=/tmp/pilot JOB_PILOTTO_SMOKE=/tmp/shot.png npx electron .`
+- Tests: `npm test` (no Electron needed). Windows: CI installs the built .exe and runs `scripts/windows-smoke.mjs` (screenshots kept as the run's `windows-screens-*` artifact). Smoke test: `JOBADABRA_USER_DATA=/tmp/pilot JOBADABRA_SMOKE=/tmp/shot.png npx electron .`
   renders hidden, saves a screenshot and quits.
 
 ## Automatic searches and Telegram

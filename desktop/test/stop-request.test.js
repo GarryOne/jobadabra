@@ -14,7 +14,7 @@ import {startForm, stopLiveForms} from '../lib/stop-all.js';
 const freePort = () => new Promise(resolve => { const probe = net.createServer().listen(0, '127.0.0.1', () => { const {port} = probe.address(); probe.close(() => resolve(port)); }); });
 
 test('the extension hears the app\'s Stop in its next report, until it says it stopped', async () => {
-  process.env.JOB_PILOTTO_PORT = String(await freePort());
+  process.env.JOBADABRA_PORT = String(await freePort());
   const server = await import('../lib/server.js');
   const storage = createStorage(fs.mkdtempSync(path.join(os.tmpdir(), 'jp-stop-')), {encrypt: s => s, decrypt: s => s});
   const heard = [];

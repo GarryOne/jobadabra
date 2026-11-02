@@ -1,5 +1,5 @@
 // The evidence bundle of a smoke run (lib/evidence-bundle.mjs): one folder per shape and day holding what a fixer needs to name the blocker without a re-run
-// (job-pilotto-cc's post-mortem, 11 Oct 2026: ~40% of every fix was a wrong first guess), and a run that did not finish records and uploads nothing.
+// (jobadabra-cc's post-mortem, 11 Oct 2026: ~40% of every fix was a wrong first guess), and a run that did not finish records and uploads nothing.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';

@@ -7,7 +7,7 @@ from .stores import open_stores
 
 
 def run_stores(tracker):
-    """The run's one store: the tracker's Notion when the engine holds one (JOB_PILOTTO_STORE may still choose another), else the
+    """The run's one store: the tracker's Notion when the engine holds one (JOBADABRA_STORE may still choose another), else the
     store the environment picks. And the Notion tracker for the steps only Notion has yet, None on any other store, so a person on
     this Mac's store never gets a second copy of their data in Notion."""
     stores = open_stores(tracker=tracker) if tracker else open_stores()
@@ -44,7 +44,7 @@ def open_run():
 
 def notion_of(stores):
     """The engine's Notion client behind the run's store (open_run), for a step whose own lane hasn't moved it onto the store yet;
-    None on any other store, and when Tracker.from_env gave none (no token, JOB_PILOTTO_DISABLE=notion): exactly when the engine had
+    None on any other store, and when Tracker.from_env gave none (no token, JOBADABRA_DISABLE=notion): exactly when the engine had
     a tracker before. Every use carries a bridge marker naming its lane, and goes when that lane lands."""
     tracker = getattr(getattr(stores, 'applications', None), 'tracker', None) if stores is not None and stores.name == 'notion' else None
     return tracker if any(tracker is mine for mine in _ENGINE) else None

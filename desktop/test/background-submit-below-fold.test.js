@@ -10,7 +10,7 @@ function fakePage({top = 464, viewport = 413, coveredBy = null} = {}) {
   const button = {tagName: 'BUTTON', innerText: 'Submit Application', disabled: false, getClientRects: () => [1], getAttribute: () => null, contains: el => el === button,
     getBoundingClientRect: () => ({left: 58, top: top - scrolled, width: 126, height: 21}), scrollIntoView: () => { scrolled = Math.max(0, top - 100); }};
   const input = {tagName: 'INPUT', type: 'text', id: 'n', name: 'n', required: true, value: 'Ada', checked: false, files: null, disabled: false, getClientRects: () => [1],
-    getAttribute: name => (name === 'data-jobpilotto-grounding' ? 'known' : null), checkValidity: () => true};
+    getAttribute: name => (name === 'data-jobadabra-grounding' ? 'known' : null), checkValidity: () => true};
   const document = {title: 'Apply', body: {innerText: 'Apply'},
     querySelectorAll: selector => (selector.startsWith('input, textarea') ? [input] : selector.startsWith('button, a') ? [button] : []),
     elementFromPoint: (x, y) => (y >= 0 && y < viewport ? (coveredBy || button) : null)};

@@ -18,7 +18,7 @@ test('the named box gets the code and is marked; no code or only a password box:
   await inPage('<label for="c">Verification code *</label><input id="c" type="text"><input id="o" type="text" placeholder="Promo">', ({fillCodeBox}, win) => {
     assert.equal(fillCodeBox('Verification code *', '482913'), 1);
     assert.equal(win.document.getElementById('c').value, '482913');
-    assert.ok(win.document.getElementById('c').hasAttribute('data-jobpilotto-filled'));
+    assert.ok(win.document.getElementById('c').hasAttribute('data-jobadabra-filled'));
     assert.equal(win.document.getElementById('o').value, '');
   });
   await inPage('<input id="p" type="password">', ({fillCodeBox}) => { assert.equal(fillCodeBox('Code', '482913'), 0); });

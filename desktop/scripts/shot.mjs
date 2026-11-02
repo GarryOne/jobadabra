@@ -13,10 +13,10 @@
 //   --no-picture       only the --eval result, no screenshot
 //   --output <file>    a recorded terminal output to show as the session's log (e.g. a real session's)
 //   --width <px>       the window's width, to check a narrow layout (default 1280; the window's minimum is lib/main-window.js MIN_WIDTH)
-//   --out <file.png>   where the picture goes (default: $TMPDIR/job-pilotto-shot.png)
+//   --out <file.png>   where the picture goes (default: $TMPDIR/jobadabra-shot.png)
 //   --search <json>    written as config/search.json (a state the demo lacks: the strategy's lists)
-//   --theme <light|dark>  the app's theme; the demo's default is dark. The one way: the app's own JOB_PILOTTO_THEME (lib/main-window.js applyTheme), which this option sets and an exported
-//                      JOB_PILOTTO_THEME also does. A data-theme attribute set by --js does nothing: the CSS follows Electron's theme source.
+//   --theme <light|dark>  the app's theme; the demo's default is dark. The one way: the app's own JOBADABRA_THEME (lib/main-window.js applyTheme), which this option sets and an exported
+//                      JOBADABRA_THEME also does. A data-theme attribute set by --js does nothing: the CSS follows Electron's theme source.
 //   --settings <json>  merged into the demo's settings.json first (a state the demo lacks: '{"store":"sqlite"}')
 // The full reference set is npm run ui-shots (only after big UI changes, or when asked).
 import {spawnSync} from 'node:child_process';
@@ -63,18 +63,18 @@ if (option('search')) {
   fs.mkdirSync(path.join(data, 'config'), {recursive: true});
   fs.writeFileSync(path.join(data, 'config', 'search.json'), option('search'));
 }
-const out = path.resolve(option('out') || path.join(os.tmpdir(), 'job-pilotto-shot.png'));
+const out = path.resolve(option('out') || path.join(os.tmpdir(), 'jobadabra-shot.png'));
 fs.rmSync(`${out}.json`, {force: true});
-// Why (30 Oct 2026): the timeout below kills only the `.bin/electron` shim; the app itself ends when this script does (lib/e2e-host.js watchRunner), never left running for days.
-const env = {...process.env, JOB_PILOTTO_DEMO: '1', JOB_PILOTTO_E2E_RUNNER_PID: String(process.pid), JOB_PILOTTO_USER_DATA: data, JOB_PILOTTO_SMOKE: out, JOB_PILOTTO_SMOKE_JS: script(steps.join('\n'))};
-if (option('theme')) env.JOB_PILOTTO_THEME = option('theme');
-if (option('width')) env.JOB_PILOTTO_SHOT_WIDTH = option('width');
-if (flag('full')) env.JOB_PILOTTO_SMOKE_FULL = '1';
-if (flag('reload')) env.JOB_PILOTTO_SMOKE_RELOAD_JS = script((flag('log') ? expandLog : wait(500)) + (options('mark').length ? markSteps(options('mark')) : ''));   // a reload wipes the frames
-if (option('select')) env.JOB_PILOTTO_SMOKE_SELECTOR = option('select');
-env.JOB_PILOTTO_SMOKE_EVAL = option('eval') || cutFields(option('select'));
-if (flag('no-picture')) env.JOB_PILOTTO_SMOKE_NO_PICTURE = '1';
-if (option('output')) env.JOB_PILOTTO_DEMO_OUTPUT = path.resolve(option('output'));
+// Why (30 Oct 2026; names renamed 1 Nov 2026): the timeout below kills only the `.bin/electron` shim; the app itself ends when this script does (lib/e2e-host.js watchRunner), never left running for days.
+const env = {...process.env, JOBADABRA_DEMO: '1', JOBADABRA_E2E_RUNNER_PID: String(process.pid), JOBADABRA_USER_DATA: data, JOBADABRA_SMOKE: out, JOBADABRA_SMOKE_JS: script(steps.join('\n'))};
+if (option('theme')) env.JOBADABRA_THEME = option('theme');
+if (option('width')) env.JOBADABRA_SHOT_WIDTH = option('width');
+if (flag('full')) env.JOBADABRA_SMOKE_FULL = '1';
+if (flag('reload')) env.JOBADABRA_SMOKE_RELOAD_JS = script((flag('log') ? expandLog : wait(500)) + (options('mark').length ? markSteps(options('mark')) : ''));   // a reload wipes the frames
+if (option('select')) env.JOBADABRA_SMOKE_SELECTOR = option('select');
+env.JOBADABRA_SMOKE_EVAL = option('eval') || cutFields(option('select'));
+if (flag('no-picture')) env.JOBADABRA_SMOKE_NO_PICTURE = '1';
+if (option('output')) env.JOBADABRA_DEMO_OUTPUT = path.resolve(option('output'));
 const started = Date.now();
 const run = spawnSync(electron, ['.'], {cwd: desktop, env, timeout: 90000, encoding: 'utf8'});
 fs.rmSync(data, {recursive: true, force: true});

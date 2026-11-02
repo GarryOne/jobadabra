@@ -26,11 +26,11 @@ async function pressFill(page, standIn, address, seconds = 25) {
   await page.evaluate(() => { location.hash = 'jobpilotto-fill'; }).catch(() => {});
   for (let waited = 0; waited < 8 && !standIn.started(address); waited++) await wait(1000);
   if (standIn.started(address)) return true;   // it started on its own
-  const ready = await page.waitForFunction(() => document.getElementById('jobpilotto-review-host')?.shadowRoot?.querySelector('button'), null, {timeout: seconds * 1000}).then(() => true, () => false);
+  const ready = await page.waitForFunction(() => document.getElementById('jobadabra-review-host')?.shadowRoot?.querySelector('button'), null, {timeout: seconds * 1000}).then(() => true, () => false);
   if (!ready) return false;
   await wait(3000);   // the panel settles its buttons
   return page.evaluate(pattern => {
-    const buttons = [...(document.getElementById('jobpilotto-review-host')?.shadowRoot?.querySelectorAll('button') || [])].filter(button => !button.disabled);
+    const buttons = [...(document.getElementById('jobadabra-review-host')?.shadowRoot?.querySelectorAll('button') || [])].filter(button => !button.disabled);
     const pick = buttons.find(button => new RegExp(pattern, 'i').test((button.textContent || '').trim()));
     if (pick) pick.click();
     return !!pick;

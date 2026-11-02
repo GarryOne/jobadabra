@@ -1,3 +1,4 @@
+// Job: keep the scorecard
 /* global document, getComputedStyle */
 // The false readings at a live row's end (the canary on flow PRs, owner 12 Oct 2026; the replays' own: lib/replay-truth.mjs). A live row has no kept AI answers and no
 // request list, so it reads the page: TRUTH for the applicant's contact boxes, known by the HTML autocomplete token or an email type (a standard, never a label word);
@@ -36,7 +37,7 @@ export function parseReadings(output) {
 // On the tab: the contact boxes (every frame) and the panel's count (its ring: a number, ✓ for none left, – for none counted).
 const boxesInPage = () => [...document.querySelectorAll('input[autocomplete], input[type=email]')].filter(el => el.getClientRects().length && getComputedStyle(el).visibility !== 'hidden')
   .map(el => ({autocomplete: el.getAttribute('autocomplete') || '', type: el.type, value: el.value || ''}));
-const ringInPage = () => (document.getElementById('jobpilotto-review-host')?.shadowRoot?.querySelector('.ring span')?.textContent || '').trim();
+const ringInPage = () => (document.getElementById('jobadabra-review-host')?.shadowRoot?.querySelector('.ring span')?.textContent || '').trim();
 
 // The whole reading of a live row's last application tab. -> {failures, boxes} (boxes: how many contact boxes were read: 0 says truth had nothing to judge)
 export async function readLive(page, contact) {

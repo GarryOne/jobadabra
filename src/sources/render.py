@@ -34,7 +34,7 @@ _state = {'playwright': None, 'browser': None, 'pages': 0, 'last': {}}
 
 def _app():
     """The desktop app's own Chromium (desktop/lib/page-render.js), when this run was started by the app: (address, key) or None."""
-    url, key = os.getenv('JOB_PILOTTO_RENDER_URL', ''), os.getenv('JOB_PILOTTO_RENDER_TOKEN', '')
+    url, key = os.getenv('JOBADABRA_RENDER_URL', ''), os.getenv('JOBADABRA_RENDER_TOKEN', '')
     return (url, key) if url.startswith('http://127.0.0.1:') and key else None
 
 
@@ -85,7 +85,7 @@ def render(url):
 def _through_app(url):
     address, key = _app()
     request = urllib.request.Request(address, data=json.dumps({'url': url, 'user_agent': f'{ats.USER_AGENT} browser'}).encode(),
-                                     headers={'Content-Type': 'application/json', 'X-Job-Pilotto-Render': key})
+                                     headers={'Content-Type': 'application/json', 'X-Jobadabra-Render': key})
     with urllib.request.urlopen(request, timeout=TIMEOUT_MS / 1000 + 15) as response:
         answer = json.load(response)
     if host_pace.answer(url, int(answer.get('status') or 200)):

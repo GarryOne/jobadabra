@@ -13,7 +13,7 @@ import {HIDDEN_NEED, closeHiddenBrowser, describeHidden, evaluateOn, hiddenPort,
 import {FAKE_JSESSIONID, FAKE_LI_AT} from './linkedin-fixture.mjs';
 import {pollUntil, stepTimeLeft} from './wait-on-state.mjs';
 
-const SERVICE = 'job-pilotto.linkedin-jobs.session';   // lib/linkedin-session.js SERVICE: the run's secrets file stands in for the Keychain (lib/keychain.js)
+const SERVICE = 'jobadabra.linkedin-jobs.session';   // lib/linkedin-session.js SERVICE: the run's secrets file stands in for the Keychain (lib/keychain.js)
 const searchesOf = fx => fx.requests.filter(item => item.path.startsWith('/jobs/search')).length;
 
 /** The settings the app keeps for the switch, the last result and the pause. */

@@ -11,9 +11,9 @@ test('only public web addresses are rendered, never this computer or the local n
 });
 
 test('the user agent is the engine\'s, never a browser\'s', () => {
-  const ours = 'JobPilotto/0.1 (personal job search; contact via GitHub GarryOne/jobadabra) browser';
+  const ours = 'Jobadabra/0.1 (personal job search; contact via GitHub GarryOne/jobadabra) browser';
   assert.equal(pageRender.agentOf(ours), ours);
-  assert.equal(pageRender.agentOf('Mozilla/5.0 (Macintosh) Chrome/130'), 'JobPilotto browser');
+  assert.equal(pageRender.agentOf('Mozilla/5.0 (Macintosh) Chrome/130'), 'Jobadabra browser');
 });
 
 test('a page is loaded in a hidden window of its own session, its HTML returned, the window destroyed', async () => {
@@ -28,11 +28,11 @@ test('a page is loaded in a hidden window of its own session, its HTML returned,
     isDestroyed() { return this.destroyed; }
     destroy() { this.destroyed = true; }
   }
-  const result = await pageRender.renderPage('https://jobs.migros.ch/de', {BrowserWindow: FakeWindow, userAgent: 'JobPilotto browser', wait: async () => {}});
+  const result = await pageRender.renderPage('https://jobs.migros.ch/de', {BrowserWindow: FakeWindow, userAgent: 'Jobadabra browser', wait: async () => {}});
   assert.deepEqual(result, {status: 200, html: '<html>jobs</html>'});
   const [win] = made;
   assert.equal(win.options.show, false);
-  assert.equal(win.options.webPreferences.partition, 'job-pilotto-render', 'its own session: never the user\'s cookies');
+  assert.equal(win.options.webPreferences.partition, 'jobadabra-render', 'its own session: never the user\'s cookies');
   assert.equal(win.destroyed, true);
   assert.deepEqual(win.opens(), {action: 'deny'});
   win.filter({resourceType: 'image'}, answer => assert.equal(answer.cancel, true));

@@ -10,7 +10,7 @@ ACTION_MAX = 100
 # A state of the world the statistics never contain: the AI made it up from an empty result.
 INVENTED_STATE = re.compile(r'\b(search (is )?paused|no eligible (jobs|positions)|market is empty|nothing (is )?available)\b', re.I)
 # Advice that points away from the app, or to "Jobadabra" from inside it.
-VAGUE_ACTION = re.compile(r'\b(clarify|determine whether|with (job pilotto|jobadabra)|or a recruiter|consider)\b', re.I)
+VAGUE_ACTION = re.compile(r'\b(clarify|determine whether|with (jobadabra|jobadabra)|or a recruiter|consider)\b', re.I)
 THIN_WORDS = re.compile(r'not enough data|too (early|few)|small sample|sample (is|was) (small|thin|tiny)|(is|are|was) small\b', re.I)
 VERBS = {'add', 'apply', 'ask', 'check', 'collect', 'fix', 'follow', 'learn', 'open', 'practise', 'practice', 'prepare', 'raise', 'review',
          'run', 'send', 'set', 'start', 'target', 'update', 'widen', 'narrow', 'put', 'try', 'drop', 'move', 'wait', 'keep', 'use', 'build'}

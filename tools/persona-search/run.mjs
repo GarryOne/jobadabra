@@ -40,9 +40,9 @@ const engineName = option('--engine', how.engine || 'cli');
 if (process.argv.includes('--speed')) { console.error('--speed is gone (it multiplied the waits, so 20 meant 20x slower): use --wait-scale, 0 = no wait'); process.exit(2); }
 if (tape) {   // read by the engine (desktop/lib/pipeline-env.js passes these three on)
   if (process.argv.includes('--record') === process.argv.includes('--replay')) { console.error('--tape needs --record or --replay'); process.exit(2); }
-  Object.assign(process.env, {JOB_PILOTTO_SEARCH_TAPE: path.resolve(tape), JOB_PILOTTO_SEARCH_TAPE_MODE: process.argv.includes('--record') ? 'record' : 'replay',
-    JOB_PILOTTO_TAPE_WAIT_SCALE: waitScale});
-  if (process.argv.includes('--no-live')) process.env.JOB_PILOTTO_TAPE_LIVE = '0';   // CI has no AI account: a question the tape lacks is counted and raises (src/search_tape.py)
+  Object.assign(process.env, {JOBADABRA_SEARCH_TAPE: path.resolve(tape), JOBADABRA_SEARCH_TAPE_MODE: process.argv.includes('--record') ? 'record' : 'replay',
+    JOBADABRA_TAPE_WAIT_SCALE: waitScale});
+  if (process.argv.includes('--no-live')) process.env.JOBADABRA_TAPE_LIVE = '0';   // CI has no AI account: a question the tape lacks is counted and raises (src/search_tape.py)
 }
 
 const lib = file => import(path.join(ROOT, 'desktop', 'lib', file));
@@ -58,20 +58,20 @@ const storage = createStorage(dir, {encrypt: value => value, decrypt: value => v
 ensureConfig(storage);
 // --engine api keeps the Messages SDK contract: the PR search check uses the Codex wrapper's relay and placeholder; standalone draws retain their own explicit API key.
 const api = engineName === 'api', replayOnly = api && process.argv.includes('--replay') && process.argv.includes('--no-live');   // an offline replay builds the API client but never calls it
-// Why (30 Oct 2026, owner): the CI wrapper supplies a broker-only loopback relay, never an API credential.
-const apiKey = process.env.JOB_PILOTTO_PERSONA_CODEX === '1' ? 'codex-relay-placeholder' : process.env.LAB_HEAL_ANTHROPIC_KEY || process.env.RANDOM_DRAWS_ANTHROPIC_KEY || process.env.PR_PROOF_ANTHROPIC_KEY || (replayOnly ? 'replay-only' : '');
+// Why (30 Oct 2026, owner; names renamed 1 Nov 2026): the CI wrapper supplies a broker-only loopback relay, never an API credential.
+const apiKey = process.env.JOBADABRA_PERSONA_CODEX === '1' ? 'codex-relay-placeholder' : process.env.LAB_HEAL_ANTHROPIC_KEY || process.env.RANDOM_DRAWS_ANTHROPIC_KEY || process.env.PR_PROOF_ANTHROPIC_KEY || (replayOnly ? 'replay-only' : '');
 if (api && !apiKey) { console.error('--engine api needs LAB_HEAL_ANTHROPIC_KEY, RANDOM_DRAWS_ANTHROPIC_KEY or PR_PROOF_ANTHROPIC_KEY'); process.exit(2); }
 if (api) storage.setSecret('ANTHROPIC_API_KEY', apiKey);
-storage.saveSettings({aiEngine: api ? 'api' : 'cli', ...(api ? {} : {claudeCode: {path: realClaude() || (process.env.JOB_PILOTTO_TAPE_LIVE === '0' ? process.execPath : '')}}), store: 'sqlite', telemetry: false, shareEmployers: false});
+storage.saveSettings({aiEngine: api ? 'api' : 'cli', ...(api ? {} : {claudeCode: {path: realClaude() || (process.env.JOBADABRA_TAPE_LIVE === '0' ? process.execPath : '')}}), store: 'sqlite', telemetry: false, shareEmployers: false});
 
 const metrics = (script = 'metrics.py', ...args) => JSON.parse(execFileSync(python(), [path.join(ROOT, 'tools', 'persona-search', script), ...args], {cwd: ROOT, env: {
-  ...process.env, PYTHONPATH: ROOT, JOB_PILOTTO_NO_DOTENV: '1', JOB_PILOTTO_FOLLOW_APP: '0',
-  JOB_PILOTTO_CONFIG_DIR: storage.path('config'), JOB_PILOTTO_DATA_DIR: storage.path('data')}}).toString().trim().split('\n').pop());
+  ...process.env, PYTHONPATH: ROOT, JOBADABRA_NO_DOTENV: '1', JOBADABRA_FOLLOW_APP: '0',
+  JOBADABRA_CONFIG_DIR: storage.path('config'), JOBADABRA_DATA_DIR: storage.path('data')}}).toString().trim().split('\n').pop());
 
 function judged() {
-  const env = {...process.env, PYTHONPATH: ROOT, JOB_PILOTTO_NO_DOTENV: '1', JOB_PILOTTO_FOLLOW_APP: '0', JOB_PILOTTO_AI_ENGINE: 'cli',
-    JOB_PILOTTO_CONFIG_DIR: storage.path('config'), JOB_PILOTTO_DATA_DIR: storage.path('data')};
-  for (const key of Object.keys(env)) if (key.startsWith('JOB_PILOTTO_SEARCH_TAPE') || key === 'JOB_PILOTTO_TAPE_WAIT_SCALE' || key === 'JOB_PILOTTO_TAPE_LIVE') delete env[key];
+  const env = {...process.env, PYTHONPATH: ROOT, JOBADABRA_NO_DOTENV: '1', JOBADABRA_FOLLOW_APP: '0', JOBADABRA_AI_ENGINE: 'cli',
+    JOBADABRA_CONFIG_DIR: storage.path('config'), JOBADABRA_DATA_DIR: storage.path('data')};
+  for (const key of Object.keys(env)) if (key.startsWith('JOBADABRA_SEARCH_TAPE') || key === 'JOBADABRA_TAPE_WAIT_SCALE' || key === 'JOBADABRA_TAPE_LIVE') delete env[key];
   try {
     return JSON.parse(execFileSync(python(), [path.join(ROOT, 'tools', 'persona-search', 'judge.py'), out, name], {cwd: ROOT, env}).toString().trim().split('\n').pop());
   } catch (error) { console.log(`${name}: top 10 not judged: ${String(error.message).split('\n')[0]}`); return null; }
@@ -108,7 +108,7 @@ for (let press = done + 1; press <= presses; press++) {
   const {code} = await searchSteps(storage, line => log.write(`[${Math.round((Date.now() - started) / 1000)}s] ${line}\n`), 'run', press === 1 ? 'first' : 'you', exec);
   log.end();
   const crashes = metrics('crashes.py', path.join(out, `run-${press}.log`));   // a Traceback in the log: a step died, its numbers are thin
-  const row = {press, code, crashes, ...(process.env.JOB_PILOTTO_PERSONA_CODEX === '1' ? {billing: 'subscription'} : {}), seconds: Math.round((Date.now() - started) / 1000), ...metrics(), funnel: metrics('funnel.py', path.join(out, `run-${press}.log`), '--since', new Date(started).toISOString().slice(0, 19)),
+  const row = {press, code, crashes, ...(process.env.JOBADABRA_PERSONA_CODEX === '1' ? {billing: 'subscription'} : {}), seconds: Math.round((Date.now() - started) / 1000), ...metrics(), funnel: metrics('funnel.py', path.join(out, `run-${press}.log`), '--since', new Date(started).toISOString().slice(0, 19)),
     ...(changed ? {field_changed: changed} : {}),
     ...(press === 1 ? {ttfr: metrics('ttfr.py', path.join(out, 'run-1.log'))} : {})};
   fs.appendFileSync(path.join(out, 'presses.jsonl'), `${JSON.stringify(row)}\n`);

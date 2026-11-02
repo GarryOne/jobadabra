@@ -1,7 +1,7 @@
 """Web searches on every install (owner, 26 Oct 2026: "The Free AI should have no limitation"): the user's own signed-in plan (Claude Code, then
 Codex) does the web searches that find job boards and employers even when Free AI or an API key answers the rest; Free AI itself never gets
 a web search tool it cannot run (25 Oct 2026: the owner's Free AI install had no web search anywhere, so a pilot search found no board).
-Fake clients only: no test here starts a real CLI (JOB_PILOTTO_PLAN_SEARCH is set only by the app, from a signed-in check)."""
+Fake clients only: no test here starts a real CLI (JOBADABRA_PLAN_SEARCH is set only by the app, from a signed-in check)."""
 import os
 import unittest
 from unittest import mock
@@ -11,8 +11,8 @@ from src.ai.providers import claude_code, codex_cli
 from src.sources import board_web, careers, web_search
 from tests.test_board_web import Base, Client, SEARCH, STAGE, NOW, board
 
-FREE = {'JOB_PILOTTO_AI_ENGINE': 'api', 'ANTHROPIC_API_KEY': 'JPF1.install.token', 'JOB_PILOTTO_DISABLE': ''}
-KEY = {'JOB_PILOTTO_AI_ENGINE': 'api', 'ANTHROPIC_API_KEY': 'sk-ant-own', 'JOB_PILOTTO_DISABLE': ''}
+FREE = {'JOBADABRA_AI_ENGINE': 'api', 'ANTHROPIC_API_KEY': 'JPF1.install.token', 'JOBADABRA_DISABLE': ''}
+KEY = {'JOBADABRA_AI_ENGINE': 'api', 'ANTHROPIC_API_KEY': 'sk-ant-own', 'JOBADABRA_DISABLE': ''}
 _READER = careers.READER
 
 
@@ -25,14 +25,14 @@ def tearDownModule():
 
 
 def env(base, **more):
-    clean = {k: v for k, v in os.environ.items() if k not in ('JOB_PILOTTO_PLAN_SEARCH', 'JOB_PILOTTO_CLAUDE_BIN', 'JOB_PILOTTO_CODEX_BIN')}
+    clean = {k: v for k, v in os.environ.items() if k not in ('JOBADABRA_PLAN_SEARCH', 'JOBADABRA_CLAUDE_BIN', 'JOBADABRA_CODEX_BIN')}
     return mock.patch.dict(os.environ, {**clean, **base, **more}, clear=True)
 
 
 class PlanClient(unittest.TestCase):
     def test_a_signed_in_plan_searches_when_another_engine_answers(self):
-        for named, binary, adapter in (('claude', 'JOB_PILOTTO_CLAUDE_BIN', claude_code.ClaudeCode), ('codex', 'JOB_PILOTTO_CODEX_BIN', codex_cli.Codex)):
-            with self.subTest(named), env(FREE, JOB_PILOTTO_PLAN_SEARCH=named, **{binary: f'/x/{named}'}), \
+        for named, binary, adapter in (('claude', 'JOBADABRA_CLAUDE_BIN', claude_code.ClaudeCode), ('codex', 'JOBADABRA_CODEX_BIN', codex_cli.Codex)):
+            with self.subTest(named), env(FREE, JOBADABRA_PLAN_SEARCH=named, **{binary: f'/x/{named}'}), \
                     mock.patch.object(web_search, '_binary', side_effect=lambda name: f"/x/{'claude' if name == 'cli' else 'codex'}"):
                 self.assertTrue(web_search._claude_code())
                 self.assertEqual(web_search._plan_engine(), named)
@@ -44,7 +44,7 @@ class PlanClient(unittest.TestCase):
             self.assertIsNone(web_search.plan_client())
 
     def test_the_chosen_plan_engine_stays_the_search(self):
-        with env({'JOB_PILOTTO_AI_ENGINE': 'cli'}), mock.patch.object(web_search, '_binary', return_value='/x/claude'), \
+        with env({'JOBADABRA_AI_ENGINE': 'cli'}), mock.patch.object(web_search, '_binary', return_value='/x/claude'), \
                 mock.patch('src.ai.engine.client', return_value='the engine') as made:
             self.assertTrue(web_search._claude_code())
             self.assertEqual(web_search.plan_client(), 'the engine')

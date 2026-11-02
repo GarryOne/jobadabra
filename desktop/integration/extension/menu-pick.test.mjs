@@ -30,19 +30,19 @@ async function pick(accept) {
     const page = await browser.newPage();
     await page.setContent(MENU(accept));
     for (const file of PAGE_FILES) await page.addScriptTag({content: fs.readFileSync(new URL(`../../../extension/${file}`, import.meta.url), 'utf8')});
-    await page.evaluate(() => window.__jobPilottoExtensionFill([{field: 'pays', value: 'Suisse'}], {}, null, '', false));
-    const armedBefore = await page.evaluate(() => window.__jobPilottoArmedCount());
-    const spot = await page.evaluate(() => window.__jobPilottoNextCombo(0));
+    await page.evaluate(() => window.__jobadabraExtensionFill([{field: 'pays', value: 'Suisse'}], {}, null, '', false));
+    const armedBefore = await page.evaluate(() => window.__jobadabraArmedCount());
+    const spot = await page.evaluate(() => window.__jobadabraNextCombo(0));
     await page.mouse.click(spot.x, spot.y);
     let clickedSpot = false;
     for (let waited = 0; waited < 6000; waited += 100) {
       await page.waitForTimeout(100);
-      if (await page.evaluate(() => window.__jobPilottoArmedCount()) < armedBefore) break;
-      const at = clickedSpot ? null : await page.evaluate(() => window.__jobPilottoPickSpot || null);
+      if (await page.evaluate(() => window.__jobadabraArmedCount()) < armedBefore) break;
+      const at = clickedSpot ? null : await page.evaluate(() => window.__jobadabraPickSpot || null);
       if (at) { clickedSpot = true; await page.mouse.click(at.x, at.y); }
     }
     await page.waitForTimeout(300);
-    return await page.evaluate(() => ({value: document.getElementById('pays').value, armed: window.__jobPilottoArmedCount(), last: window.__jobPilottoLastPick, badge: document.querySelector('.job-pilotto-badge')?.textContent || ''}));
+    return await page.evaluate(() => ({value: document.getElementById('pays').value, armed: window.__jobadabraArmedCount(), last: window.__jobadabraLastPick, badge: document.querySelector('.jobadabra-badge')?.textContent || ''}));
   } finally { await browser.close(); }
 }
 
@@ -90,8 +90,8 @@ test('a menu that loads its choices page by page is scrolled until the answer ap
     const page = await browser.newPage();
     await page.setContent(PAGED);
     for (const file of PAGE_FILES) await page.addScriptTag({content: fs.readFileSync(new URL(`../../../extension/${file}`, import.meta.url), 'utf8')});
-    await page.evaluate(() => window.__jobPilottoExtensionFill([{field: 'pays', value: 'Suisse'}], {}, null, '', false));
-    const spot = await page.evaluate(() => window.__jobPilottoNextCombo(0));
+    await page.evaluate(() => window.__jobadabraExtensionFill([{field: 'pays', value: 'Suisse'}], {}, null, '', false));
+    const spot = await page.evaluate(() => window.__jobadabraNextCombo(0));
     await page.mouse.click(spot.x, spot.y);
     await page.waitForFunction(() => document.getElementById('pays').dataset.picked === 'Suisse', null, {timeout: 8000}).catch(() => {});
     assert.equal(await page.evaluate(() => document.getElementById('pays').dataset.picked), 'Suisse', 'the known answer was only proposed: its option was on a page not loaded yet');
@@ -107,18 +107,18 @@ test('a menu that takes several choices gets each one picked with its own real c
     const page = await browser.newPage();
     await page.setContent(html);
     for (const file of PAGE_FILES) await page.addScriptTag({content: fs.readFileSync(new URL(`../../../extension/${file}`, import.meta.url), 'utf8')});
-    await page.evaluate(() => window.__jobPilottoExtensionFill([{field: 'lang', value: 'English && Spanish && German'}], {}, null, '', false));
-    assert.equal(await page.evaluate(() => window.__jobPilottoArmedCount()), 1);
+    await page.evaluate(() => window.__jobadabraExtensionFill([{field: 'lang', value: 'English && Spanish && German'}], {}, null, '', false));
+    assert.equal(await page.evaluate(() => window.__jobadabraArmedCount()), 1);
     for (let turn = 0; turn < 6; turn++) {   // what flow.js clickCombosNow does: the next armed menu, a real click, the option's spot when the page leaves one
-      const spot = await page.evaluate(() => window.__jobPilottoNextCombo(0));
+      const spot = await page.evaluate(() => window.__jobadabraNextCombo(0));
       if (!spot) break;
-      const armedBefore = await page.evaluate(() => window.__jobPilottoArmedCount());
+      const armedBefore = await page.evaluate(() => window.__jobadabraArmedCount());
       await page.mouse.click(spot.x, spot.y);
       let clickedSpot = false;
       for (let waited = 0; waited < 6000; waited += 100) {
         await page.waitForTimeout(100);
-        if (await page.evaluate(() => window.__jobPilottoArmedCount()) < armedBefore) break;
-        const at = clickedSpot ? null : await page.evaluate(() => window.__jobPilottoPickSpot || null);
+        if (await page.evaluate(() => window.__jobadabraArmedCount()) < armedBefore) break;
+        const at = clickedSpot ? null : await page.evaluate(() => window.__jobadabraPickSpot || null);
         if (at) { clickedSpot = true; await page.mouse.click(at.x, at.y); }
       }
     }

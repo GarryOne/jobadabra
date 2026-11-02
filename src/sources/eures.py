@@ -178,7 +178,7 @@ def start_early(search):
     future, or None in the end-to-end fixture mode."""
     import os
     from concurrent.futures import ThreadPoolExecutor
-    if os.getenv('JOB_PILOTTO_FIXTURE_DIR'):
+    if os.getenv('JOBADABRA_FIXTURE_DIR'):
         return None
     from . import aggregators, feeds
     from ..ai import slots

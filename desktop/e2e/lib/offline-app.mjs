@@ -34,12 +34,12 @@ export async function startOfflineApp({memo = '', ask = false, loose = '', missL
   if (!fs.existsSync(path.join(DESKTOP, 'shared', 'app-core', 'extension.js'))) execFileSync(process.execPath, [path.join(DESKTOP, 'scripts', 'stage.mjs'), '--files-only'], {cwd: DESKTOP, stdio: 'ignore'});
   const port = await freePort();
   if (port === LIVE_PORT) throw new Error('offline app: never the live app\'s port');
-  const env = {...offlineEnv(dir, parent), ...(api ? {ANTHROPIC_BASE_URL: api.url, JOB_PILOTTO_E2E_API_KEY: api.key} : {}), JOB_PILOTTO_PORT: String(port), JOB_PILOTTO_MODEL_MEMO: memo, ...(ask ? {} : {JOB_PILOTTO_MODEL_MEMO_ONLY: '1', ...(fill ? {JOB_PILOTTO_MODEL_MEMO_FILL: '1'} : {}), JOB_PILOTTO_MODEL_MEMO_LATENCY: '1', ...(slow ? {JOB_PILOTTO_MODEL_MEMO_LATENCY_SCALE: '1.6', JOB_PILOTTO_MODEL_MEMO_LATENCY_PAD_MS: '300'} : {})}),   // latency: a kept answer comes after the time the live ask took (lib/ai/model-memo.js: the live interleaving, not this machine's speed)
-   ...(loose && !ask ? {JOB_PILOTTO_MODEL_MEMO_LOOSE: loose} : {}), ...(ordinal && !ask ? {JOB_PILOTTO_MODEL_MEMO_ORDINAL: ordinal} : {}), ...(missLog && !ask ? {JOB_PILOTTO_MODEL_MEMO_MISSLOG: missLog} : {}),   // loose: the file a loose memo hit is noted in (lib/ai/model-memo.js looseFile)
+  const env = {...offlineEnv(dir, parent), ...(api ? {ANTHROPIC_BASE_URL: api.url, JOBADABRA_E2E_API_KEY: api.key} : {}), JOBADABRA_PORT: String(port), JOBADABRA_MODEL_MEMO: memo, ...(ask ? {} : {JOBADABRA_MODEL_MEMO_ONLY: '1', ...(fill ? {JOBADABRA_MODEL_MEMO_FILL: '1'} : {}), JOBADABRA_MODEL_MEMO_LATENCY: '1', ...(slow ? {JOBADABRA_MODEL_MEMO_LATENCY_SCALE: '1.6', JOBADABRA_MODEL_MEMO_LATENCY_PAD_MS: '300'} : {})}),   // latency: a kept answer comes after the time the live ask took (lib/ai/model-memo.js: the live interleaving, not this machine's speed)
+   ...(loose && !ask ? {JOBADABRA_MODEL_MEMO_LOOSE: loose} : {}), ...(ordinal && !ask ? {JOBADABRA_MODEL_MEMO_ORDINAL: ordinal} : {}), ...(missLog && !ask ? {JOBADABRA_MODEL_MEMO_MISSLOG: missLog} : {}),   // loose: the file a loose memo hit is noted in (lib/ai/model-memo.js looseFile)
    
-    JOB_PILOTTO_E2E_OPENER: 'offline-app', ...(journey ? {JP_JOURNEY: '1'} : {}), ...(review ? {JP_REVIEW: '1'} : {}), ...(captureDir ? {LIVE_CAPTURE_DIR: captureDir} : {})};   // an Apply hands its address to the harness (lib/browser-launch.js), never a browser of this computer
-  // Why (30 Oct 2026, a8: an offline app from 27 Oct still ran 3 days later, parent launchd): the child ends with this process however it ends (lib/e2e-host.js watchRunner).
-  const child = spawn(process.execPath, [CHILD], {env: {...env, JOB_PILOTTO_E2E_RUNNER_PID: String(process.pid)}, stdio: ['pipe', 'pipe', 'pipe']});
+    JOBADABRA_E2E_OPENER: 'offline-app', ...(journey ? {JP_JOURNEY: '1'} : {}), ...(review ? {JP_REVIEW: '1'} : {}), ...(captureDir ? {LIVE_CAPTURE_DIR: captureDir} : {})};   // an Apply hands its address to the harness (lib/browser-launch.js), never a browser of this computer
+  // Why (30 Oct 2026, a8: an offline app from 27 Oct still ran 3 days later, parent launchd; names renamed 1 Nov 2026): the child ends with this process however it ends (lib/e2e-host.js watchRunner).
+  const child = spawn(process.execPath, [CHILD], {env: {...env, JOBADABRA_E2E_RUNNER_PID: String(process.pid)}, stdio: ['pipe', 'pipe', 'pipe']});
   let out = '', err = '';
   child.stderr.on('data', chunk => { err += chunk; });
   const ready = await new Promise((resolve, reject) => {

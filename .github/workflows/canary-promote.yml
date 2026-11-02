@@ -2,14 +2,14 @@ name: Release · Promote to stable
 # Each run says what it did (owner, 7 Oct 2026: "I don't see stable in this name"): a hot path names the tag it made stable.
 run-name: ${{ inputs.force_tag && format('Hot path · {0} to stable', inputs.force_tag) || github.event_name == 'schedule' && 'Soak check · beta to stable' || 'Promote to stable (dry run)' }}
 
-# The last stretch before stable (2 Oct 2026 pipeline, soak added 4 Oct). With the repository variable JOB_PILOTTO_SOAK = on, e2e.yml no longer promotes a build the moment
+# The last stretch before stable (2 Oct 2026 pipeline, soak added 4 Oct). With the repository variable JOBADABRA_SOAK = on, e2e.yml no longer promotes a build the moment
 # it passes: it APPROVES it for beta testers (tools/beta-approve.sh), and this workflow decides when it becomes stable, every 8 hours:
 #   1. the candidate is the canary build (the oldest pre-release newer than stable, under 7 days old). It gets end-to-end TOP-UP runs on its own commit (about every 7 h),
 #      so "green three times over a day" is evidence, not luck; their findings are filed as issues that name the build.
 #   2. tools/canary_promote.py decides (gates 3-5): >= 48 h out, build.yml green, end-to-end green >= 3 times over >= 24 h with no red among the last 3 and no open
-#      high-severity finding on that commit, no new telemetry/fill-failure issue, and (JOB_PILOTTO_REQUIRE_BETA = on) healthy opt-in beta use: >= 3 installs,
+#      high-severity finding on that commit, no new telemetry/fill-failure issue, and (JOBADABRA_REQUIRE_BETA = on) healthy opt-in beta use: >= 3 installs,
 #      >= 30 successful runs, no crash. Without beta testers yet, thin app evidence is noted, not blocking; a crash or a worse failure rate still blocks.
-#   3. JOB_PILOTTO_AUTO_PROMOTE = on promotes it (tools/release-stable.sh); a canary that failed for sure is dropped; one that is still unproven after 5 days opens a
+#   3. JOBADABRA_AUTO_PROMOTE = on promotes it (tools/release-stable.sh); a canary that failed for sure is dropped; one that is still unproven after 5 days opens a
 #      `release-decision` issue: a person promotes it (hot path below), waits, or drops it.
 # HOT PATH: a security or data-loss fix must not wait for the soak. Run this workflow by hand with `force_tag` and `force_reason`: it promotes that tag with SKIP_E2E=1
 # and writes the reason into the release notes. By hand without them it prints the decision (dry run).
@@ -45,7 +45,7 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
       REPO: ${{ github.repository }}
-      JOB_PILOTTO_SOAK: ${{ vars.JOB_PILOTTO_SOAK }}   # on: only a beta-approved build is the candidate (canary_promote.py approved_only)
+      JOBADABRA_SOAK: ${{ vars.JOB_PILOTTO_SOAK }}   # on: only a beta-approved build is the candidate (canary_promote.py approved_only)
     steps:
       - uses: actions/checkout@v5
       - name: HOT PATH (by hand with force_tag)
@@ -81,8 +81,8 @@ jobs:
       - name: Decide (and promote when switched on)
         if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.force_tag != '') }}
         env:
-          JOB_PILOTTO_TELEMETRY_KEY: ${{ secrets.JOB_PILOTTO_TELEMETRY_KEY }}
-          JOB_PILOTTO_REQUIRE_BETA: ${{ vars.JOB_PILOTTO_REQUIRE_BETA }}
+          JOBADABRA_TELEMETRY_KEY: ${{ secrets.JOB_PILOTTO_TELEMETRY_KEY }}
+          JOBADABRA_REQUIRE_BETA: ${{ vars.JOB_PILOTTO_REQUIRE_BETA }}
           SWITCH: ${{ vars.JOB_PILOTTO_AUTO_PROMOTE }}
           DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
           CI_ALERTS_TELEGRAM_BOT_TOKEN: ${{ secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN }}   # release-stable.sh alerts once when a store publish does not start
@@ -90,7 +90,7 @@ jobs:
         run: |
           args=(--repo "$REPO")
           if [ "$SWITCH" != "on" ]; then
-            args+=(--dry-run); note="Auto-promote is off (repository variable JOB_PILOTTO_AUTO_PROMOTE is not \`on\`): decision only."
+            args+=(--dry-run); note="Auto-promote is off (repository variable JOBADABRA_AUTO_PROMOTE is not \`on\`): decision only."
           elif [ "$DRY_RUN" = "true" ]; then
             args+=(--dry-run); note="Dry run (manual start): decision only."
           else

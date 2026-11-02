@@ -120,7 +120,7 @@ class CliClientTests(unittest.TestCase):
         # The user's own sign-in: the API key and the relay the app gives Python never reach Claude Code.
         self.assertIsNone(call['api_key'])
         self.assertIsNone(call['base_url'])
-        self.assertTrue(Path(call['cwd']).name.startswith('job-pilotto-claude-'))
+        self.assertTrue(Path(call['cwd']).name.startswith('jobadabra-claude-'))
         self.assertFalse(Path(call['cwd']).exists())  # the fresh folder is gone afterwards
 
     def test_models_map_to_claude_code_aliases(self):
@@ -282,34 +282,34 @@ class CliClientTests(unittest.TestCase):
 class SelectionTests(unittest.TestCase):
     def test_the_users_choice_nothing_automatic(self):
         self.assertEqual(engine.choice({}), 'api')
-        self.assertEqual(engine.choice({'JOB_PILOTTO_AI_ENGINE': 'cli'}), 'cli')
-        self.assertEqual(engine.choice({'JOB_PILOTTO_AI_ENGINE': 'CLI '}), 'cli')
-        self.assertEqual(engine.choice({'JOB_PILOTTO_AI_ENGINE': 'auto'}), 'api')  # no silent automatic choice
+        self.assertEqual(engine.choice({'JOBADABRA_AI_ENGINE': 'cli'}), 'cli')
+        self.assertEqual(engine.choice({'JOBADABRA_AI_ENGINE': 'CLI '}), 'cli')
+        self.assertEqual(engine.choice({'JOBADABRA_AI_ENGINE': 'auto'}), 'api')  # no silent automatic choice
 
     def test_client_matrix(self):
         with mock.patch('src.ai.providers.anthropic_api.sdk', lambda action='': 'sdk client'):
             self.assertEqual(engine.client({'ANTHROPIC_API_KEY': 'k'}).client, 'sdk client')
             self.assertEqual(engine.client({}).client, 'sdk client')  # the SDK says what's missing, as before
-            cli = engine.client({'JOB_PILOTTO_AI_ENGINE': 'cli', 'JOB_PILOTTO_CLAUDE_BIN': sys.executable})
+            cli = engine.client({'JOBADABRA_AI_ENGINE': 'cli', 'JOBADABRA_CLAUDE_BIN': sys.executable})
             self.assertIsInstance(cli, engine.CliClient)
             self.assertEqual(cli.binary, sys.executable)
             self.assertIsNone(cli.fallback)
-            with_key = engine.client({'JOB_PILOTTO_AI_ENGINE': 'cli', 'JOB_PILOTTO_AI_FALLBACK': 'api', 'ANTHROPIC_API_KEY': 'k'})
+            with_key = engine.client({'JOBADABRA_AI_ENGINE': 'cli', 'JOBADABRA_AI_FALLBACK': 'api', 'ANTHROPIC_API_KEY': 'k'})
             self.assertIsNotNone(with_key.fallback)
-            no_key = engine.client({'JOB_PILOTTO_AI_ENGINE': 'cli', 'JOB_PILOTTO_AI_FALLBACK': 'api'})
+            no_key = engine.client({'JOBADABRA_AI_ENGINE': 'cli', 'JOBADABRA_AI_FALLBACK': 'api'})
             self.assertIsNone(no_key.fallback)  # the fallback needs a key
 
     def test_ready_and_features(self):
         self.assertFalse(engine.ready({}))
         self.assertTrue(engine.ready({'ANTHROPIC_API_KEY': 'k'}))
-        self.assertTrue(engine.ready({'JOB_PILOTTO_AI_ENGINE': 'cli'}))
-        cli = {'JOB_PILOTTO_AI_ENGINE': 'cli', 'JOB_PILOTTO_ENRICH_MODEL': 'claude-haiku-4-5'}
+        self.assertTrue(engine.ready({'JOBADABRA_AI_ENGINE': 'cli'}))
+        cli = {'JOBADABRA_AI_ENGINE': 'cli', 'JOBADABRA_ENRICH_MODEL': 'claude-haiku-4-5'}
         self.assertTrue(features.configured('enrich', cli))
-        self.assertFalse(features.configured('enrich', dict(cli, JOB_PILOTTO_AI_ENGINE='api')))
-        self.assertTrue(features.configured('enrich', {'ANTHROPIC_API_KEY': 'k', 'JOB_PILOTTO_ENRICH_MODEL': 'm'}))
+        self.assertFalse(features.configured('enrich', dict(cli, JOBADABRA_AI_ENGINE='api')))
+        self.assertTrue(features.configured('enrich', {'ANTHROPIC_API_KEY': 'k', 'JOBADABRA_ENRICH_MODEL': 'm'}))
 
     def test_find_binary_prefers_the_apps_path(self):
-        self.assertEqual(engine.find_binary({'JOB_PILOTTO_CLAUDE_BIN': '/x/claude', 'PATH': ''}, exists=lambda p: p == '/x/claude'), '/x/claude')
+        self.assertEqual(engine.find_binary({'JOBADABRA_CLAUDE_BIN': '/x/claude', 'PATH': ''}, exists=lambda p: p == '/x/claude'), '/x/claude')
         installed = str(Path('/h') / '.local' / 'bin' / 'claude')   # the path as this OS writes it
         self.assertEqual(engine.find_binary({'PATH': '', 'HOME': '/h'}, exists=lambda p: p == installed), installed)
         self.assertEqual(engine.find_binary({'PATH': '', 'HOME': '/h'}, exists=lambda p: False), '')

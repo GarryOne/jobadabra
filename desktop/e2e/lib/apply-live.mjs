@@ -51,7 +51,7 @@ export async function stallReport(tab, say) {
       return `${el.type}·${label}${el.required || el.getAttribute('aria-required') === 'true' ? '·required' : ''}${(el.type === 'checkbox' ? el.checked : el.value) ? '·filled' : '·EMPTY'}`;
     }),
     buttons: [...document.querySelectorAll('button, input[type=submit], a')].filter(el => el.getClientRects().length).map(el => (el.innerText || el.value || '').replace(/\s+/g, ' ').trim().slice(0, 30)).filter(Boolean).slice(0, 12),
-    panel: document.getElementById('jobpilotto-review-host')?.shadowRoot?.querySelector('.card')?.innerText?.replace(/\s+/g, ' ').slice(0, 260) || ''})).catch(error => ({error: String(error).slice(0, 80)}));
+    panel: document.getElementById('jobadabra-review-host')?.shadowRoot?.querySelector('.card')?.innerText?.replace(/\s+/g, ' ').slice(0, 260) || ''})).catch(error => ({error: String(error).slice(0, 80)}));
   say(`  live STALL (12 s without a change; held by the test: ${process.env.LIVE_SUBMIT ? 'no' : 'YES, nothing is pressed'}): ${JSON.stringify(view)}`);
 }
 
@@ -83,7 +83,7 @@ export async function lookViaWorker(ctx, tab, say) {
   const url = tab.url().split('#')[0];
   const action = await worker.evaluate(async address => {
     const tabs = await chrome.tabs.query({}), found = tabs.find(item => String(item.url).startsWith(address));
-    const decided = await globalThis.__jobPilottoCloserLook(found, 0, 'the live test asked for a closer look');
+    const decided = await globalThis.__jobadabraCloserLook(found, 0, 'the live test asked for a closer look');
     return `${decided} (tabs: ${JSON.stringify(tabs.map(item => [item.id, item.active, item.windowId, String(item.url).slice(0, 30)]))})`;   // set by extension/ladder/rung4-picture.js
   }, url).catch(error => `error: ${String(error).slice(0, 100)}`);
   say(`  live look: the closer look decided ${JSON.stringify(action)}`);
@@ -92,7 +92,7 @@ export async function lookViaWorker(ctx, tab, say) {
 export async function runLive(ctx, h) {
   const {page, posting} = h;
   await ctx.run('a real posting, watched live: the page kinds, stages and fills as they happen (nothing is pressed on the page)', async () => {
-    guardLiveVisit(posting.url, {who: process.env.JOB_PILOTTO_SESSION || 'live'});   // the per-site daily limit (lib/site-ledger.mjs); inside the step: a run with no live part has no posting
+    guardLiveVisit(posting.url, {who: process.env.JOBADABRA_SESSION || 'live'});   // the per-site daily limit (lib/site-ledger.mjs); inside the step: a run with no live part has no posting
     try {
       const frames = path.join(ctx.ARTIFACTS, 'live-frames');
       fs.rmSync(frames, {recursive: true, force: true}); fs.mkdirSync(frames, {recursive: true});
@@ -169,7 +169,7 @@ export async function runLive(ctx, h) {
       if (trip || (trip = await tripped())) { console.log(`  live: ${trip}`); throw new Error(trip); }
       if (asks) clearInterval(asks);
       console.log(`  live ${at()}: watched ${Math.round((Date.now() - started) / 1000)}s; frames in ${frames}`);
-      // The app's whole log of this run, kept with the report (job-pilotto-54: the smoke report did not copy app.log, so an error nothing printed was lost): identity and counts only, per the app's logging rule.
+      // The app's whole log of this run, kept with the report (jobadabra-54: the smoke report did not copy app.log, so an error nothing printed was lost): identity and counts only, per the app's logging rule.
       if (process.env.LIVE_CAPTURE_DIR) { fs.mkdirSync(process.env.LIVE_CAPTURE_DIR, {recursive: true}); fs.writeFileSync(path.join(process.env.LIVE_CAPTURE_DIR, 'app.log'), appLogLines(ctx.profile).join('\n') + '\n'); }
       if (journey) {
         await journey.finish();

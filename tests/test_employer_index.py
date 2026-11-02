@@ -147,7 +147,7 @@ class MergeTest(unittest.TestCase):
         index = [{'company': 'Farco', 'ats': 'greenhouse', 'slug': 'farco'},
                  {'company': 'My Employer AG', 'ats': 'ashby', 'slug': 'mine'}]
         with tempfile.TemporaryDirectory() as tmp, \
-                mock.patch.dict('os.environ', {'JOB_PILOTTO_EXCLUDED_COMPANIES': 'My Employer'}):
+                mock.patch.dict('os.environ', {'JOBADABRA_EXCLUDED_COMPANIES': 'My Employer'}):
             with job_store.connect(Path(tmp) / 'jobs.sqlite') as db:
                 sources = scout.active_sources(db, None, self.STARTER, index)
         self.assertEqual({(s.get('ats', 'greenhouse'), s.get('slug') or s['board']) for s in sources},
@@ -168,13 +168,13 @@ class RelevantTest(unittest.TestCase):
     def test_daily_uses_the_filter_unless_asked_for_everything(self):
         from src import daily, features
         index = [{'company': 'Zh', 'ats': 'lever', 'slug': 'zh', 'places': ['Nowhere-land']}]
-        # The run's own switches (JOB_PILOTTO_DISABLE, keys present) must not decide this test.
+        # The run's own switches (JOBADABRA_DISABLE, keys present) must not decide this test.
         self.enterContext(mock.patch.object(features, 'disabled', lambda name: False))
         with mock.patch.object(employer_index, 'load', return_value=index), \
-                mock.patch.dict('os.environ', {'JOB_PILOTTO_INDEX_ALL': ''}):
+                mock.patch.dict('os.environ', {'JOBADABRA_INDEX_ALL': ''}):
             self.assertEqual(daily.downloaded_index(), [])
         with mock.patch.object(employer_index, 'load', return_value=index), \
-                mock.patch.dict('os.environ', {'JOB_PILOTTO_INDEX_ALL': '1'}):
+                mock.patch.dict('os.environ', {'JOBADABRA_INDEX_ALL': '1'}):
             self.assertEqual(len(daily.downloaded_index()), 1)
 
 
@@ -224,7 +224,7 @@ class CentralLocationsTest(unittest.TestCase):
     def test_locations_file_replaces_places_only(self):
         from src import paths
         plain = paths.load_search_config()
-        with mock.patch.dict('os.environ', {'JOB_PILOTTO_LOCATIONS_FILE': str(paths.ROOT / 'config' / 'central_locations.json')}):
+        with mock.patch.dict('os.environ', {'JOBADABRA_LOCATIONS_FILE': str(paths.ROOT / 'config' / 'central_locations.json')}):
             central = paths.load_search_config()
         self.assertNotEqual(central['role_keywords'], plain['role_keywords'])   # engineering and IT, not the example profile
         from src.sources import feeds as f

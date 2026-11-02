@@ -7,6 +7,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY src ./src
 COPY config ./config
 COPY tools/hosted-probe/probe_server.py ./probe_server.py
-ENV JOB_PILOTTO_NO_DOTENV=1 JOB_PILOTTO_STORE=sqlite JOB_PILOTTO_APP_DIR=/work/app PYTHONUNBUFFERED=1
+ENV JOBADABRA_NO_DOTENV=1 JOBADABRA_STORE=sqlite JOBADABRA_APP_DIR=/work/app PYTHONUNBUFFERED=1
 EXPOSE 8080
 CMD ["python", "probe_server.py"]

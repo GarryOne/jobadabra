@@ -27,7 +27,7 @@ const FOLDER = 'gpffoneapcfceflfmfgedkcfbommgcfk';   // the manifest key's ID (L
 const freePort = () => new Promise(resolve => { const probe = net.createServer().listen(0, '127.0.0.1', () => { const {port} = probe.address(); probe.close(() => resolve(port)); }); });
 
 test('the store-installed extension pairs, and the app opens pages at the ID that last checked in', async () => {
-  process.env.JOB_PILOTTO_PORT = String(await freePort());
+  process.env.JOBADABRA_PORT = String(await freePort());
   const server = await import('../lib/server.js');
   assert.deepEqual(server.EXTENSION_IDS, [FOLDER, STORE]);
   const storage = createStorage(fs.mkdtempSync(path.join(os.tmpdir(), 'jp-store-id-')), {encrypt: s => s, decrypt: s => s});

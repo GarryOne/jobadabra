@@ -62,7 +62,7 @@ class RulesCase:
         self.assertEqual(rules.mark(self.s, JOB, 'Dismissed')[1], rules.UPDATED)
 
     def test_a_new_row_says_where_it_came_from(self):
-        with mock.patch.dict(os.environ, {'JOB_PILOTTO_SOURCE': 'Desktop App'}):
+        with mock.patch.dict(os.environ, {'JOBADABRA_SOURCE': 'Desktop App'}):
             row, _ = rules.mark(self.s, JOB, 'Kit ready')
         self.assertEqual((row['source'], row['origin'], row['company']), ('Desktop App', 'Outbound', 'Acme'))
         greenhouse, _ = rules.mark(self.s, {'url': 'https://boards.greenhouse.io/acme/jobs/1', 'title': 'SRE', 'posted': '2026-10-01'}, 'Saved')
@@ -102,7 +102,7 @@ class SqliteRulesTests(RulesCase, unittest.TestCase):
     def make(self):
         folder = tempfile.TemporaryDirectory()
         self.addCleanup(folder.cleanup)
-        return sqlite.open_store({'JOB_PILOTTO_DATA_DIR': folder.name})
+        return sqlite.open_store({'JOBADABRA_DATA_DIR': folder.name})
 
 
 if __name__ == '__main__':

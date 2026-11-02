@@ -7,7 +7,7 @@ import {test} from 'node:test';
 const module = {exports: {}};
 // A control's question comes from the one naming rule (page/label-before.js, tested on a real DOM in app-core/test/label-before.test.js); these fakes have no DOM, so it reads the entry's title.
 const groupTitle = el => (title => (title ? {text: title, el: null} : null))(el.parentElement?.querySelector?.()?.textContent);
-new Function('module', 'window', fs.readFileSync(new URL('../../extension/page/controls.js', import.meta.url), 'utf8'))(module, {__jobPilottoGroupTitle: groupTitle});
+new Function('module', 'window', fs.readFileSync(new URL('../../extension/page/controls.js', import.meta.url), 'utf8'))(module, {__jobadabraGroupTitle: groupTitle});
 const ops = module.exports;
 const noop = () => {};
 

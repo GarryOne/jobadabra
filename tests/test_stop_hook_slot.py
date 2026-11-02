@@ -1,4 +1,4 @@
-"""The Stop hook's suites wait for a check slot like a push gate (11 Oct 2026: whole lint + test runs of several sessions at once drove the load to 160-205): it says so in one line, gives up waiting after JOB_PILOTTO_STOP_SLOT_WAIT seconds, and STOP_CHECK_NO_SLOT=1 skips it."""
+"""The Stop hook's suites wait for a check slot like a push gate (11 Oct 2026: whole lint + test runs of several sessions at once drove the load to 160-205): it says so in one line, gives up waiting after JOBADABRA_STOP_SLOT_WAIT seconds, and STOP_CHECK_NO_SLOT=1 skips it."""
 import os
 import shutil
 import subprocess
@@ -27,7 +27,7 @@ class StopHookSlotTest(unittest.TestCase):
         (self.tmp / 'tools').mkdir()
         shutil.copy(ROOT / 'tools' / 'check-slot.sh', self.tmp / 'tools' / 'check-slot.sh')
         (self.tmp / 'tools' / 'hook.sh').write_text('#!/bin/bash\n' + take_slot_script() + 'take_slot\necho "ran with slot: ${SLOT_MINE:-none}"\n')
-        self.env = {**os.environ, 'JOB_PILOTTO_CHECK_SLOT_DIR': (self.tmp / 'slots').as_posix(), 'JOB_PILOTTO_CHECK_SLOTS': '1', 'JOB_PILOTTO_CHECK_TIMING_LOG': (self.tmp / 'timing.log').as_posix()}
+        self.env = {**os.environ, 'JOBADABRA_CHECK_SLOT_DIR': (self.tmp / 'slots').as_posix(), 'JOBADABRA_CHECK_SLOTS': '1', 'JOBADABRA_CHECK_TIMING_LOG': (self.tmp / 'timing.log').as_posix()}
         self.env.pop('STOP_CHECK_NO_SLOT', None)
 
     def run_hook(self, **env):
@@ -57,7 +57,7 @@ class StopHookSlotTest(unittest.TestCase):
     def test_it_gives_up_waiting_after_its_limit_and_the_off_switch_skips_the_slot(self):
         holder = self.hold_slot(30)
         began = time.monotonic()
-        result = self.run_hook(JOB_PILOTTO_STOP_SLOT_WAIT='2')
+        result = self.run_hook(JOBADABRA_STOP_SLOT_WAIT='2')
         self.assertLess(time.monotonic() - began, 15)
         self.assertIn('running anyway', result.stderr)
         skipped = self.run_hook(STOP_CHECK_NO_SLOT='1')
@@ -67,7 +67,7 @@ class StopHookSlotTest(unittest.TestCase):
 
     def test_the_suites_are_started_only_after_the_slot_is_taken(self):
         text = HOOK.read_text()
-        self.assertLess(text.index('    take_slot\n'), text.index('( cd "$dir" && JOB_PILOTTO_AFFECTED_FILES'))
+        self.assertLess(text.index('    take_slot\n'), text.index('( cd "$dir" && JOBADABRA_AFFECTED_FILES'))
 
 
 if __name__ == '__main__':

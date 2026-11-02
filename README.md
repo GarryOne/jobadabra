@@ -29,7 +29,7 @@ with no accounts and no keys, then turn on the rest one piece at a time, only if
 Needs Python 3.10+ and nothing else: the core uses only the standard library.
 
 ```bash
-git clone https://github.com/<you>/job-pilotto && cd job-pilotto
+git clone https://github.com/<you>/jobadabra && cd jobadabra
 python3 -m src discover     # job boards (jobs.ch, TechTree): their jobs, and new employers to watch
                             # (SwissDevJobs is tried too, but it blocks automated access)
 python3 -m src daily        # crawl every employer feed, add the board jobs, rank, print the digest
@@ -44,7 +44,7 @@ Databricks and more, about 9,000 open jobs), so the first run already has plenty
 crawls every Active row of your Employers & Sources database (your own list, kept growing by your
 own optional scout). On top of both, every run downloads the shared employer index: feeds found and verified
 daily by one central scout, worldwide, each with the places it hires in; only feeds with roles in *your* places
-are crawled (`JOB_PILOTTO_INDEX_ALL=1` for all, `JOB_PILOTTO_DISABLE=index` for none). Nothing about you is sent to
+are crawled (`JOBADABRA_INDEX_ALL=1` for all, `JOBADABRA_DISABLE=index` for none). Nothing about you is sent to
 get it. If the service is down, the cache or the starter list is used. Make it yours by editing `config/search.json` (job titles, places, skills; it ships empty, the setup drafts it from your CV; format example: `config/search.example.json`; see
 [Configuration](#configuration)) and `config/sources.json` (employer feeds to crawl). That's a
 working job search. Everything below is an upgrade you can skip.
@@ -63,18 +63,18 @@ otherwise. Nothing fails because a feature is missing: `python3 -m src doctor` j
 | Scheduled runs | a crawl every 4 hours without your laptop | a GitHub fork with Actions on | free | 5 min |
 | `notion` | Applications tracker, Job Matches, run log | `NOTION_TOKEN` + the pages in [docs/notion-schema.md](docs/notion-schema.md) | free | 30 min |
 | Telegram buttons | ✅ applied / ⭐ save / ➕ next, `/run`, `/add` | Cloudflare Worker (`worker/setup.sh`) | free | 15 min |
-| `enrich` | AI facts: languages, seniority, salary, visa | `ANTHROPIC_API_KEY`, `JOB_PILOTTO_ENRICH_MODEL` | ~$0.004/job | 2 min |
-| `score` | AI fit score against your Profile | + `JOB_PILOTTO_SCORE_MODEL`, Notion | ~$0.01/job | 2 min |
-| `auto_kits` | cover letter + form answers for top matches | + `JOB_PILOTTO_AUTO_KIT_MAX`, Notion | ~$0.04/kit | 2 min |
-| `insights` | daily insight + Monday weekly report | + `JOB_PILOTTO_INSIGHT_MODEL`, Notion | ~$0.03/day | 2 min |
+| `enrich` | AI facts: languages, seniority, salary, visa | `ANTHROPIC_API_KEY`, `JOBADABRA_ENRICH_MODEL` | ~$0.004/job | 2 min |
+| `score` | AI fit score against your Profile | + `JOBADABRA_SCORE_MODEL`, Notion | ~$0.01/job | 2 min |
+| `auto_kits` | cover letter + form answers for top matches | + `JOBADABRA_AUTO_KIT_MAX`, Notion | ~$0.04/kit | 2 min |
+| `insights` | daily insight + Monday weekly report | + `JOBADABRA_INSIGHT_MODEL`, Notion | ~$0.03/day | 2 min |
 | `scout_ai` | Claude proposes new employers and company lists to look at, and learns from what the probes found | the AI key | ~$0.05–0.15 per Find jobs run that grows the employer list | on with the AI key |
 | `page_reader` | Claude reads careers pages that list jobs as plain text (cached until the page changes) | the AI key | a fraction of a cent per changed page | on with the AI key |
 | `render` | headless browser for careers pages built in the browser (public pages only; honours robots.txt, stops at any refusal) | `pip install -r requirements-render.txt` + `playwright install chromium` | free | 5 min |
 | `aggregators` | Arbeitnow, Himalayas and Jobicy: free public job APIs, each source named on its jobs, each read at most every 6 hours | nothing | free | on by default |
-| `adzuna` / `jooble` | **parked** (26 Oct 2026): off and hidden in the app until `JOB_PILOTTO_ENABLE=adzuna,jooble`, a saved key stays unused; more job search (Adzuna covers Switzerland) | `JOB_PILOTTO_ENABLE` + `ADZUNA_APP_ID` + `ADZUNA_APP_KEY` / `JOOBLE_API_KEY` | free tier | 5 min |
-| `job_alerts` | **parked** (26 Oct 2026): off and hidden in the app until `JOB_PILOTTO_ENABLE=job_alerts`; jobs from your own job-alert emails (LinkedIn, jobs.ch, jobup.ch, Indeed, Glassdoor) in Gmail; their pages are never opened | `JOB_PILOTTO_ENABLE=job_alerts`, Gmail connected + the AI key; alerts switched on at those sites | a fraction of a cent per alert email | 5 min |
-| `google_jobs` | **parked** (26 Oct 2026): off and hidden until `JOB_PILOTTO_ENABLE=google_jobs`; Google Jobs listings via [SerpApi](https://serpapi.com) | `JOB_PILOTTO_ENABLE` + `SERPAPI_API_KEY` | free plan: 250 searches/month | 5 min |
-| `brave_search` | **parked** (26 Oct 2026): off and hidden until `JOB_PILOTTO_ENABLE=brave_search`; the Brave Search API for the web search that finds an employer's own job site (without a key that search runs on your Claude Code or Codex plan) | `JOB_PILOTTO_ENABLE` + `BRAVE_SEARCH_API_KEY` | free plan: 2,000 searches/month | 5 min |
+| `adzuna` / `jooble` | **parked** (26 Oct 2026): off and hidden in the app until `JOBADABRA_ENABLE=adzuna,jooble`, a saved key stays unused; more job search (Adzuna covers Switzerland) | `JOBADABRA_ENABLE` + `ADZUNA_APP_ID` + `ADZUNA_APP_KEY` / `JOOBLE_API_KEY` | free tier | 5 min |
+| `job_alerts` | **parked** (26 Oct 2026): off and hidden in the app until `JOBADABRA_ENABLE=job_alerts`; jobs from your own job-alert emails (LinkedIn, jobs.ch, jobup.ch, Indeed, Glassdoor) in Gmail; their pages are never opened | `JOBADABRA_ENABLE=job_alerts`, Gmail connected + the AI key; alerts switched on at those sites | a fraction of a cent per alert email | 5 min |
+| `google_jobs` | **parked** (26 Oct 2026): off and hidden until `JOBADABRA_ENABLE=google_jobs`; Google Jobs listings via [SerpApi](https://serpapi.com) | `JOBADABRA_ENABLE` + `SERPAPI_API_KEY` | free plan: 250 searches/month | 5 min |
+| `brave_search` | **parked** (26 Oct 2026): off and hidden until `JOBADABRA_ENABLE=brave_search`; the Brave Search API for the web search that finds an employer's own job site (without a key that search runs on your Claude Code or Codex plan) | `JOBADABRA_ENABLE` + `BRAVE_SEARCH_API_KEY` | free plan: 2,000 searches/month | 5 min |
 | `mail` | Gmail + Calendar update your applications | Google OAuth client + sign-in, Notion, Anthropic | a few cents/day | 15 min |
 | Mac app | guided setup, job list, Apply / Prepare / Tailor CV buttons, schedules, notifications | a Mac (Apple silicon) | free | 10 min |
 | Chrome extension | fills the form from its kit in seconds, you Submit | Chrome + the Mac app (or the Worker; [extension/README.md](extension/README.md)) | free | 5 min |
@@ -85,15 +85,15 @@ otherwise. Nothing fails because a feature is missing: `python3 -m src doctor` j
 
 A sensible order: Telegram and scheduled runs first (free, 10 minutes), then Notion, then the AI
 stages if the ranking is worth paying for. The paid features only cost money once you add a key.
-The AI stages also stop at your monthly budget (`JOB_PILOTTO_MONTHLY_BUDGET_USD`).
+The AI stages also stop at your monthly budget (`JOBADABRA_MONTHLY_BUDGET_USD`).
 
-**Turning a feature off without deleting its keys:** list it in `JOB_PILOTTO_DISABLE`,
+**Turning a feature off without deleting its keys:** list it in `JOBADABRA_DISABLE`,
 comma-separated, or `all` for the core only.
 
 ```bash
-echo 'JOB_PILOTTO_DISABLE=google_jobs,mail' >> .env               # local runs
-gh variable set JOB_PILOTTO_DISABLE --body 'google_jobs,mail'     # scheduled runs on GitHub
-gh variable delete JOB_PILOTTO_DISABLE                            # everything back on
+echo 'JOBADABRA_DISABLE=google_jobs,mail' >> .env               # local runs
+gh variable set JOBADABRA_DISABLE --body 'google_jobs,mail'     # scheduled runs on GitHub
+gh variable delete JOBADABRA_DISABLE                            # everything back on
 ```
 
 The names are the ones in the first column (`discover`, `scout`, `telegram`, `notion`, `enrich`,
@@ -257,7 +257,7 @@ The same list, with more detail, is on the website: [Intelligence](https://www.j
   last crawl) also runs every morning and sends one Telegram line only if something is wrong
   (`doctor --alert` runs it now).
 - 💸 **AI budget guard**: month-to-date AI spend against your Anthropic monthly limit
-  (`JOB_PILOTTO_MONTHLY_BUDGET_USD`). A Telegram alert at 70%; at 90% the scheduled crawl pauses
+  (`JOBADABRA_MONTHLY_BUDGET_USD`). A Telegram alert at 70%; at 90% the scheduled crawl pauses
   auto-kits and caps scoring, so mail checks, insights and interview reviews keep working until the
   limit resets. Spend comes from Anthropic's cost report when you add an Admin API key
   (`ANTHROPIC_ADMIN_KEY`; organization accounts only), otherwise from ⏰ Cronjob Runs, where every AI
@@ -332,7 +332,7 @@ doesn't.
   same Claude conversation. The app asks before quitting with sessions running, and at start about applications a
   crash left open.
 - 🔑 **Creates the employer account** when a site asks for one, with your details from the CV. The
-  password is generated straight into your Mac's Keychain (`job-pilotto.<site>.password`) and pasted
+  password is generated straight into your Mac's Keychain (`jobadabra.<site>.password`) and pasted
   from the clipboard: it never appears in the session, the logs or Notion. Next time it signs in with it.
 - 📧 **Confirms the account itself**: reads the confirmation email's code or link from Gmail
   (read-only, connected in Settings → Gmail and Calendar).
@@ -358,8 +358,7 @@ doesn't.
   employer's site) fills with the same job's kit; any other site works with one click on the icon, or
   automatically with the "every job site" permission.
 - 🧠 **Learns per job site**: after a fill that left fields, Claude Haiku writes short reusable notes
-  for that site (about 1¢ per site, once), used on every later form there. With "Help improve Job
-  Pilotto" on, the *structure* of a field it couldn't operate (never your answers) becomes a GitHub
+  for that site (about 1¢ per site, once), used on every later form there. With "Help improve Jobadabra" on, the *structure* of a field it couldn't operate (never your answers) becomes a GitHub
   issue that a daily Claude Code run turns into a tested fix.
 - 📋 **Every fill logged** to 🤖 Agent Runs in Notion with a field-by-field table and debug data, and
   the job is marked Applied when the confirmation page appears.
@@ -397,7 +396,7 @@ doesn't.
   is not proof of a missing skill. When the evidence is insufficient, the report says so and keeps
   individual observations tentative. Supported priorities live in **Notion Insights**; Focus shows the
   strongest recent priority and its next action, with **Review evidence**. This uses the existing
-  insight/report model calls, rather than a separate analysis job. `JOB_PILOTTO_DISABLE=feedback`
+  insight/report model calls, rather than a separate analysis job. `JOBADABRA_DISABLE=feedback`
   turns off feedback collection and requests.
 - 🧊 **Every application frozen when you apply**: the job description, AI facts and fit score,
   every question with the answer you actually submitted (read from the form just before Submit),
@@ -711,7 +710,7 @@ None of group two is required for the core pipeline; it only matters if you want
 ## Configuration
 
 **Running locally**: on macOS, the maintainer's own scripts (`tools/apply-batch-*.sh`) read
-`NOTION_TOKEN` from the Keychain entry `job-pilotto.notion.token` if it's not already exported.
+`NOTION_TOKEN` from the Keychain entry `jobadabra.notion.token` if it's not already exported.
 Everywhere else — another OS, CI, or if you'd rather not use Keychain at all — copy
 `.env.example` to `.env` and fill in real values; `src/paths.py` loads it automatically (no
 library, no manual `source` step) the first time any part of this project runs, without
@@ -733,29 +732,29 @@ overriding a variable your shell already has set. `.env` is git-ignored, never c
 | `NOTION_CRON_RUNS_DB` | your ⏰ Cronjob Runs database ID (optional — without access the run just logs a warning) |
 | `NOTION_EVENTS_DB` | your 📈 Application Events database ID (outcome history: Applied, Screening, Rejected, ...; written by the ✅/`/applied` buttons, `mark-applied` and the scheduled sync) |
 | `NOTION_AGENT_RUNS_DB` | your 🤖 Agent Runs database ID (optional — form-filling runs are still recorded locally without it) |
-| `JOB_PILOTTO_ENRICH_MODEL` | e.g. `claude-haiku-5-5` — turns on AI stage 1 |
-| `JOB_PILOTTO_SCORE_MODEL` | e.g. `claude-sonnet-5-5` — turns on AI stage 2 |
-| `JOB_PILOTTO_KIT_MODEL` | model for 📝 Prepare (defaults to `claude-sonnet-5-5` if unset) |
-| `JOB_PILOTTO_AUTO_KIT_MAX` | auto-draft kits for up to N best new matches per crawl (0/unset = off) |
-| `JOB_PILOTTO_AUTO_KIT_MIN_SCORE` | minimum fit score to qualify (default 50) |
-| `JOB_PILOTTO_INSIGHT_MODEL` | model for the daily insight (repository variable; unset = no insights). Uses `claude-sonnet-5-5` |
+| `JOBADABRA_ENRICH_MODEL` | e.g. `claude-haiku-5-5` — turns on AI stage 1 |
+| `JOBADABRA_SCORE_MODEL` | e.g. `claude-sonnet-5-5` — turns on AI stage 2 |
+| `JOBADABRA_KIT_MODEL` | model for 📝 Prepare (defaults to `claude-sonnet-5-5` if unset) |
+| `JOBADABRA_AUTO_KIT_MAX` | auto-draft kits for up to N best new matches per crawl (0/unset = off) |
+| `JOBADABRA_AUTO_KIT_MIN_SCORE` | minimum fit score to qualify (default 50) |
+| `JOBADABRA_INSIGHT_MODEL` | model for the daily insight (repository variable; unset = no insights). Uses `claude-sonnet-5-5` |
 | `NOTION_INSIGHTS_DB` | your 💡 Insights database ID |
 | `NOTION_INTERVIEWS_DB` | your 🎤 Interviews database ID |
-| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REFRESH_TOKEN` | GitHub secrets for Gmail + Calendar (read-only), set by `python3 -m src.sources.google auth --github`; locally in the Keychain (`job-pilotto.google.*`) |
-| `JOB_PILOTTO_MAIL_MODEL` | model that classifies job emails (repository variable; default `claude-haiku-5-5`) |
-| `JOB_PILOTTO_TZ` | your time zone for reminders (default `Europe/Zurich`) |
-| `JOB_PILOTTO_AI_ENGINE` | `api` (default; GitHub), `openai` (GitHub too), `cli` (your own Claude Code) or `codex` (your own Codex); set by the app from your choice |
-| `JOB_PILOTTO_AI_FALLBACK` | `api` or `openai`: when your CLI hits its plan's limit, that run goes on with the same family's API key (the app's opt-in tick) |
-| `JOB_PILOTTO_CLAUDE_BIN`, `JOB_PILOTTO_CODEX_BIN` | path to `claude` / `codex` (the app sets the one Verify found); else PATH, `~/.local/bin`, Homebrew |
-| `OPENAI_API_KEY` | the OpenAI engine's key (Keychain `job-pilotto.openai.api_key`, the app's secrets, a GitHub secret for Always on) |
-| `JOB_PILOTTO_OPENAI_SMALL_MODEL`, `_MAIN_MODEL`, `_BIG_MODEL` | the OpenAI tiers' models (defaults `gpt-6-luna`, `gpt-6.1-sol`, `gpt-6.1-sol`) |
-| `JOB_PILOTTO_MONTHLY_BUDGET_USD` | your Anthropic monthly spend limit, for the budget guard (repository variable; default 15) |
-| `ANTHROPIC_ADMIN_KEY` | optional Admin API key (`sk-ant-admin…`, GitHub secret or Keychain `job-pilotto.anthropic.admin-key`): exact monthly spend from Anthropic's cost report |
-| `JOB_PILOTTO_GOOGLE_AUTH_AT` | when you last signed in to Google (set by `google auth --github`); the health check warns before the 7-day Testing limit |
-| `JOB_PILOTTO_INTERVIEW_MODEL` | model for interview reviews (default `claude-sonnet-5-5`) |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REFRESH_TOKEN` | GitHub secrets for Gmail + Calendar (read-only), set by `python3 -m src.sources.google auth --github`; locally in the Keychain (`jobadabra.google.*`) |
+| `JOBADABRA_MAIL_MODEL` | model that classifies job emails (repository variable; default `claude-haiku-5-5`) |
+| `JOBADABRA_TZ` | your time zone for reminders (default `Europe/Zurich`) |
+| `JOBADABRA_AI_ENGINE` | `api` (default; GitHub), `openai` (GitHub too), `cli` (your own Claude Code) or `codex` (your own Codex); set by the app from your choice |
+| `JOBADABRA_AI_FALLBACK` | `api` or `openai`: when your CLI hits its plan's limit, that run goes on with the same family's API key (the app's opt-in tick) |
+| `JOBADABRA_CLAUDE_BIN`, `JOBADABRA_CODEX_BIN` | path to `claude` / `codex` (the app sets the one Verify found); else PATH, `~/.local/bin`, Homebrew |
+| `OPENAI_API_KEY` | the OpenAI engine's key (Keychain `jobadabra.openai.api_key`, the app's secrets, a GitHub secret for Always on) |
+| `JOBADABRA_OPENAI_SMALL_MODEL`, `_MAIN_MODEL`, `_BIG_MODEL` | the OpenAI tiers' models (defaults `gpt-6-luna`, `gpt-6.1-sol`, `gpt-6.1-sol`) |
+| `JOBADABRA_MONTHLY_BUDGET_USD` | your Anthropic monthly spend limit, for the budget guard (repository variable; default 15) |
+| `ANTHROPIC_ADMIN_KEY` | optional Admin API key (`sk-ant-admin…`, GitHub secret or Keychain `jobadabra.anthropic.admin_key`): exact monthly spend from Anthropic's cost report |
+| `JOBADABRA_GOOGLE_AUTH_AT` | when you last signed in to Google (set by `google auth --github`); the health check warns before the 7-day Testing limit |
+| `JOBADABRA_INTERVIEW_MODEL` | model for interview reviews (default `claude-sonnet-5-5`) |
 | `DIGEST_BRAND_NAME` | your digest's display name (default `Jobadabra`) — the tool's own name stays generic; this is what your Telegram messages say, e.g. `"SRE Jobadabra"` if you want to keep your own role in the name |
 
-Delete `JOB_PILOTTO_ENRICH_MODEL`/`JOB_PILOTTO_SCORE_MODEL` at any time to stop all AI spending.
+Delete `JOBADABRA_ENRICH_MODEL`/`JOBADABRA_SCORE_MODEL` at any time to stop all AI spending.
 
 `config/preferences.json`, `config/sources.json` and `config/scout_seeds.json` hold your hard
 filters, always-crawled employer feeds and scout candidate companies — edit these to your own
@@ -788,7 +787,7 @@ matches both spellings, `"\\bsre\\b"` avoids matching inside another word) — c
 adding your own. A frontend developer targeting Berlin, for example, would set `role_keywords` to
 `["frontend", "react", "\\bui\\b", "web developer"]` and `locations.top_tier` to `["berlin"]`.
 
-For the optional local tooling: `JOB_PILOTTO_CV_PATH` (in your local `.env`) points the launchers at your CV
+For the optional local tooling: `JOBADABRA_CV_PATH` (in your local `.env`) points the launchers at your CV
 (defaults to `~/Documents/CV.pdf`).
 
 ## How the application automation works
@@ -796,8 +795,8 @@ For the optional local tooling: `JOB_PILOTTO_CV_PATH` (in your local `.env`) poi
 Drafting and filling can be automated end to end; **submitting never is.** The full pipeline, in
 order:
 
-1. **A kit gets drafted.** For your best-scored new matches (score ≥ `JOB_PILOTTO_AUTO_KIT_MIN_SCORE`,
-   up to `JOB_PILOTTO_AUTO_KIT_MAX` per crawl) this happens automatically after AI stage 2, with no
+1. **A kit gets drafted.** For your best-scored new matches (score ≥ `JOBADABRA_AUTO_KIT_MIN_SCORE`,
+   up to `JOBADABRA_AUTO_KIT_MAX` per crawl) this happens automatically after AI stage 2, with no
    action from you. For any other job, tap **📝 Prepare application kit** under it in Telegram, run
    `tools/prepare-top.sh N` for your N best-scored jobs without a kit (it skips closed postings), or
    `python -m src daily --mode prepare --job <job URL>` for one job. A job that has dropped out of
@@ -887,9 +886,8 @@ In the Mac app: **Settings → Gmail and Calendar → Connect Google**. From a t
 python3 -m src.sources.google auth --github
 ```
 
-A Google tab opens: pick your account → "Google hasn't verified this app" → **Advanced → Go to Job
-Pilotto** → tick both read-only permissions → Continue. That's all: the token goes to your Keychain
-(`job-pilotto.google.*`) and your fork's `GOOGLE_*` repository secrets, and it doesn't expire.
+A Google tab opens: pick your account → "Google hasn't verified this app" → **Advanced → Go to Jobadabra** → tick both read-only permissions → Continue. That's all: the token goes to your Keychain
+(`jobadabra.google.*`) and your fork's `GOOGLE_*` repository secrets, and it doesn't expire.
 
 This uses the published "Jobadabra" Google app, whose client ships inside the Mac app (it is not in
 git; from a source checkout, use `setup` for your own Google app).
@@ -915,7 +913,7 @@ guides: [Desktop app credentials](https://developers.google.com/workspace/guides
 <details><summary>What it does, step by step (to do it by hand)</summary>
 
 1. `gcloud auth login you@gmail.com`, then
-   `gcloud projects create job-pilotto-$RANDOM --name="Jobadabra" --account=you@gmail.com` and
+   `gcloud projects create jobadabra-$RANDOM --name="Jobadabra" --account=you@gmail.com` and
    `gcloud services enable gmail.googleapis.com calendar-json.googleapis.com --project=<id> --account=you@gmail.com`.
 2. [Google Auth Platform](https://console.cloud.google.com/auth/overview) → Get started: app name, your
    email, audience **External** → Create.
@@ -941,7 +939,7 @@ src/
   __main__.py        python -m src <command>
   daily.py           one digest run: crawl, AI, sync, send (modes below)
   doctor.py          readiness checklist and the one next step (python3 -m src doctor)
-  features.py        optional features: what each needs and costs; JOB_PILOTTO_DISABLE switch
+  features.py        optional features: what each needs and costs; JOBADABRA_DISABLE switch
   digest.py          filtering, ranking, rotation, paging, message layout, buttons
   telegram.py        sending messages
   store.py           SQLite store (jobs, companies, AI results, shown history) —
@@ -1048,7 +1046,7 @@ python3 -m src daily --send --mode interview --interview <page id>   # review a 
 `prepare` (draft an application kit for one job), `insight` (send an insight now), `weekly` (send the
 weekly report now), `interview` (analyse a recording or transcript `--file <Telegram file id or path>`,
 `--note` text, or a saved row `--interview <page id>`; `--job <URL>` picks the application), `add`
-(track an application made elsewhere: `--job <URL> --note <date>`). Scheduled runs add `--insight` when `JOB_PILOTTO_INSIGHT_MODEL` is set: the first
+(track an application made elsewhere: `--job <URL> --note <date>`). Scheduled runs add `--insight` when `JOBADABRA_INSIGHT_MODEL` is set: the first
 run after 04:00 UTC sends the day's insight, or the weekly report on Mondays.
 
 ## Tests
@@ -1076,7 +1074,7 @@ pipeline; skip any step whose feature you don't want, and `doctor` shows that fe
    and command menu — needs a Cloudflare account logged in via `wrangler`).
 6. Trigger a first run by hand: Actions tab → `Jobadabra` → Run workflow → mode `run`, or
    send `/run` to your bot once the webhook is live.
-7. For the local apply tooling (macOS): copy `.env.example` to `.env` and set `JOB_PILOTTO_CV_PATH`
+7. For the local apply tooling (macOS): copy `.env.example` to `.env` and set `JOBADABRA_CV_PATH`
    (and `NOTION_TOKEN` if you don't use the Keychain).
 8. Fill in your Profile and Application Answers pages in Notion; edit `config/search.json` to your
    own role/location/tech keywords, and `config/preferences.json`, `config/sources.json` and
@@ -1133,9 +1131,9 @@ Then help me set this up for myself, step by step:
 6. Run the test suites (python3 -m unittest discover -s tests, and cd app-core && npm test) and fix
    anything that fails before calling this done.
 7. Trigger one real run (mode `run`) and show me what came back in Telegram.
-8. If I want the local form filling (macOS): copy .env.example to .env with JOB_PILOTTO_CV_PATH set
+8. If I want the local form filling (macOS): copy .env.example to .env with JOBADABRA_CV_PATH set
    to my CV, store my Notion token in the Keychain (security add-generic-password -a "$USER"
-   -s job-pilotto.notion.token -w), and tell me to install Claude Code and the Claude in Chrome
+   -s jobadabra.notion.token -w), and tell me to install Claude Code and the Claude in Chrome
    extension myself. Show me the cost first, then offer to draft kits for my top matches
    (tools/prepare-top.sh 3 --dry-run, then without --dry-run once I agree).
 9. Run python3 -m src doctor and work through its "Next step" line until it says "All set" (or

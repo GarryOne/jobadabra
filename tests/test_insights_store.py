@@ -1,5 +1,5 @@
 """The daily insight, weekly report and learning on the store (src/ai/insights.py, insights_data.py, learning.py): they run
-with JOB_PILOTTO_STORE=sqlite and no Notion, and the feedback buttons carry the store's own insight id, which the
+with JOBADABRA_STORE=sqlite and no Notion, and the feedback buttons carry the store's own insight id, which the
 buttons' handler updates (ins:<u|n|a>:<id> → insights.update(id, {'fields': {'feedback': …}}))."""
 import os
 import shutil
@@ -20,7 +20,7 @@ class SqliteRunTests(unittest.TestCase):
     def setUp(self):
         self.folder = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, self.folder, True)
-        self.env = {'JOB_PILOTTO_STORE': 'sqlite', 'JOB_PILOTTO_DATA_DIR': str(self.folder)}
+        self.env = {'JOBADABRA_STORE': 'sqlite', 'JOBADABRA_DATA_DIR': str(self.folder)}
 
     def test_the_daily_insight_runs_on_this_macs_store_without_notion(self):
         sqlite.open_store(self.env).texts.set('profile', 'SRE with Kubernetes.')
@@ -92,7 +92,7 @@ class LearningTests(unittest.TestCase):
 class OpenStoresTests(unittest.TestCase):
     def test_without_a_tracker_the_insight_reads_the_chosen_store(self):
         with tempfile.TemporaryDirectory() as folder:
-            stores = open_stores({'JOB_PILOTTO_STORE': 'sqlite', 'JOB_PILOTTO_DATA_DIR': folder})
+            stores = open_stores({'JOBADABRA_STORE': 'sqlite', 'JOBADABRA_DATA_DIR': folder})
             self.assertEqual(stores.name, 'sqlite')
 
 

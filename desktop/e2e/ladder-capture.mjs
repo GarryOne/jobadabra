@@ -1,3 +1,4 @@
+// Job: serve stored answers
 /* global document, location */
 // Fills the `sketch` of each ladder fixture (desktop/e2e/ladder-fixtures/<id>.json) with the page sketch exactly as the extension builds it: it runs the extension's OWN builder functions
 // (extension/page-reads.js pageSketchOf, extension/ladder/outcomes.js mailsOf, read from their source) in a bare headless Chromium, with no extension, no profile and no app.
@@ -32,7 +33,7 @@ export function builderSource(file, marker) {
   return `(() => {${text.slice(start + 'func: () => {'.length, end)}})()`;
 }
 // The numbered candidates of rung 3 (extension/ladder/rung3-candidates.js, a classic page script): run in the page as the extension would.
-export const candidatesOfPage = page => page.evaluate(`${fs.readFileSync(path.join(ROOT, 'extension/ladder/rung3-candidates.js'), 'utf8')}\nwindow.__jobPilottoCandidates.candidatesOf()`);
+export const candidatesOfPage = page => page.evaluate(`${fs.readFileSync(path.join(ROOT, 'extension/ladder/rung3-candidates.js'), 'utf8')}\nwindow.__jobadabraCandidates.candidatesOf()`);
 
 // The whole `export function <name>() {…}` of an extension file (balanced braces), as an expression to run in the page.
 export function functionSource(file, header) {
@@ -55,7 +56,7 @@ export async function judgeSketchOf(page, capture = {}) {
 }
 
 // The frame candidates as the extension lists them (extension/ladder/rung3-frames.js run in the page, then climb.js frameSketch: host, path, size; the address never kept).
-export const frameCandidatesOfPage = page => page.evaluate(`${fs.readFileSync(path.join(ROOT, 'extension/ladder/rung3-frames.js'), 'utf8')}\nwindow.__jobPilottoFrames.frameCandidates()`).then(frameSketch);
+export const frameCandidatesOfPage = page => page.evaluate(`${fs.readFileSync(path.join(ROOT, 'extension/ladder/rung3-frames.js'), 'utf8')}\nwindow.__jobadabraFrames.frameCandidates()`).then(frameSketch);
 // A live page with another host's iframe: wait (at most waitMs) until one qualifies as a candidate (the finder's own floor), as the extension judges again when a frame grows
 // (climb.js frameGrew; a hosted board's iframe is born ~150 px high). -> {frameCandidates, frame: {read, qualified, after_s}}; `frame` is null when the page has no other host's iframe.
 export async function grownFramesOf(page, {waitMs = 20000, stepMs = 500} = {}) {
@@ -120,7 +121,7 @@ async function main() {
           await page.route(url => !url.href.startsWith('file:'), route => route.abort());
           await page.goto(pathToFileURL(path.join(E2E, fixture.capture.page)).href, {waitUntil: 'load'});
         } else {
-          guardLiveVisit(fixture.capture.url, {who: process.env.JOB_PILOTTO_SESSION || 'ladder-capture'});   // the per-site daily limit (lib/site-ledger.mjs)
+          guardLiveVisit(fixture.capture.url, {who: process.env.JOBADABRA_SESSION || 'ladder-capture'});   // the per-site daily limit (lib/site-ledger.mjs)
           await page.goto(fixture.capture.url, {waitUntil: 'domcontentloaded', timeout: 30000});
           await page.waitForTimeout(4000);
           url = (await page.evaluate(() => location.href)).split(/[?#]/)[0];

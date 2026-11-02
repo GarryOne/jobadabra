@@ -50,16 +50,16 @@ test('the updater follows the 301 GitHub answers on the old path after a transfe
     response.writeHead(404); response.end();
   });
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
-  const saved = {e2e: process.env.JOB_PILOTTO_E2E, url: process.env.JOB_PILOTTO_E2E_UPDATES_URL};
-  process.env.JOB_PILOTTO_E2E = '1';
-  process.env.JOB_PILOTTO_E2E_UPDATES_URL = `http://127.0.0.1:${server.address().port}`;
+  const saved = {e2e: process.env.JOBADABRA_E2E, url: process.env.JOBADABRA_E2E_UPDATES_URL};
+  process.env.JOBADABRA_E2E = '1';
+  process.env.JOBADABRA_E2E_UPDATES_URL = `http://127.0.0.1:${server.address().port}`;
   try {
     resetLimit();
     const offer = await check('0.1.0', {platform: 'darwin'});
     assert.equal(offer?.version, '9.9.9', 'the release behind the redirect is offered');
     assert.deepEqual(seen, [`/repos/${REPO}/releases/latest`, '/repos/jobadabra/jobadabra/releases/latest']);
   } finally {
-    for (const [key, value] of [['JOB_PILOTTO_E2E', saved.e2e], ['JOB_PILOTTO_E2E_UPDATES_URL', saved.url]]) {
+    for (const [key, value] of [['JOBADABRA_E2E', saved.e2e], ['JOBADABRA_E2E_UPDATES_URL', saved.url]]) {
       if (value === undefined) delete process.env[key]; else process.env[key] = value;
     }
     await new Promise(resolve => server.close(resolve));

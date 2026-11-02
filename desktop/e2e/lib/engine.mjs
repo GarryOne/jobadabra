@@ -1,4 +1,5 @@
 // Which AI engine the app under test uses (the app's own "AI engine" setting: its API key, or the user's Claude Code on this Mac).
+// Job: run the backbone
 import {execFileSync} from 'node:child_process';
 import {aiProvider} from './ai-provider.mjs';
 import {withoutWrappers} from './real-claude.mjs';   // never a terminal's claude wrapper (e2e/test/real-claude.test.mjs)
@@ -17,7 +18,7 @@ export const appKey = (key, env = process.env) => isCi(env) ? key : DUMMY_KEY;
 
 // The app's models under test. CI forces every step onto one cheap model (Haiku) to save credit; a Mac has no per-token cost, so the app uses its own production models
 // (Haiku for the first pass, Sonnet for scoring and strategy): closer to what ships (owner, 5 Oct 2026).
-export const appModelEnv = (env = process.env) => isCi(env) ? {JOB_PILOTTO_MODEL_OVERRIDE: 'claude-haiku-5-5'} : {};
+export const appModelEnv = (env = process.env) => isCi(env) ? {JOBADABRA_MODEL_OVERRIDE: 'claude-haiku-5-5'} : {};
 
 // Which AI family the app under test runs on (owner, 9 Oct 2026: "make sure the OpenAI/Codex integration works well and produces good results"): CI ALTERNATES
 // per run, by GitHub's run number (odd: OpenAI, even: Claude), so both families are tested every other run at today's cost; the report names the family.
@@ -70,10 +71,11 @@ export const familyOf = engine => (engine === 'openai' || engine === 'codex' ? '
 export const keySecret = engine => (familyOf(engine) === 'openai' ? 'E2E_OPENAI_KEY' : 'E2E_ANTHROPIC_KEY');
 export const familySecret = (family, engine = 'api') => (family === 'free' ? 'E2E_FREE_AI_KEY' : keySecret(engine));
 // Live runs on real sites ask on their own Anthropic keys, so each one's cost shows apart in the Console and on /admin/intelligence/ai-cost (owner, 12 Oct 2026): a CI recording
-// run by hand (JOB_PILOTTO_VISIT_KIND=hand) on LIVE_POOL_ANTHROPIC_KEY; until the owner has set one, the Tests key. -> the NAME
+// run by hand (JOBADABRA_VISIT_KIND=hand) on LIVE_POOL_ANTHROPIC_KEY; until the owner has set one, the Tests key. -> the NAME
 // the key comes from (for the job log), never its value. The one place that picks it (e2e/test/no-local-key.test.mjs).
 export const LIVE_KEYS = {hand: 'LIVE_POOL_ANTHROPIC_KEY'};
-export const liveKeyName = (env = process.env, engine = 'api') => { const own = familyOf(engine) === 'claude' ? LIVE_KEYS[env.JOB_PILOTTO_VISIT_KIND] : ''; return own && env[own] ? own : keySecret(engine); };
+/** Name of the env var holding a live run's AI key (never its value): the run kind's own key when it is set, else the engine's default secret; reads only the given env. */
+export const liveKeyName = (env = process.env, engine = 'api') => { const own = familyOf(engine) === 'claude' ? LIVE_KEYS[env.JOBADABRA_VISIT_KIND] : ''; return own && env[own] ? own : keySecret(engine); };
 export const appSecretName = engine => (familyOf(engine) === 'openai' ? 'OPENAI_API_KEY' : 'ANTHROPIC_API_KEY');
 
 // The applyflows suite's engine (npm run live / flows / the pool's smoke). A live run on a real site asks the AI things no proxy answer covers (which popup button, which

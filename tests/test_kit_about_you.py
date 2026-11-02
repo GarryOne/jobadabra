@@ -1,5 +1,5 @@
 """Kits read the CV with the Experience bank from About you (owner, 28 Oct 2026, D1b option A; desktop/lib/about-you.js READERS.kit): the app writes it
-for the run (JOB_PILOTTO_ABOUT_YOU_FILE), kit.draft puts it beside the Profile and standard answers, and a figure only the CV states survives the floors.
+for the run (JOBADABRA_ABOUT_YOU_FILE), kit.draft puts it beside the Profile and standard answers, and a figure only the CV states survives the floors.
 A run with no file (the cloud, no CV imported) drafts as before and names the CV as lacked (spec criterion 6). A recording fake AI; fictional data."""
 import json
 import os
@@ -39,7 +39,7 @@ def bundle_file(bundle):
 class KitAboutYouTest(unittest.TestCase):
     def test_a_kit_run_reads_the_bank_bullet_and_keeps_an_answer_resting_on_it(self):
         path = bundle_file({'reader': 'kit', 'parts': {'cv': CV}, 'lacked': []})
-        with mock.patch.dict(os.environ, {'JOB_PILOTTO_ABOUT_YOU_FILE': path}):
+        with mock.patch.dict(os.environ, {'JOBADABRA_ABOUT_YOU_FILE': path}):
             cv, lacked = kit.about_you()
         self.assertEqual(lacked, [])
         client = Recording()
@@ -51,7 +51,7 @@ class KitAboutYouTest(unittest.TestCase):
         self.assertEqual(drafted['answers'][0]['answer'], BANK_ANSWER, 'a figure the CV states is grounded')
 
     def test_without_a_bundle_the_kit_drafts_from_the_pages_names_the_cv_lacked_and_floors_an_unsupported_figure(self):
-        with mock.patch.dict(os.environ, {'JOB_PILOTTO_ABOUT_YOU_FILE': ''}):
+        with mock.patch.dict(os.environ, {'JOBADABRA_ABOUT_YOU_FILE': ''}):
             cv, lacked = kit.about_you()
         self.assertEqual((cv, lacked), ('', ['cv']))
         client = Recording()
@@ -65,7 +65,7 @@ class KitAboutYouTest(unittest.TestCase):
             with tempfile.NamedTemporaryFile('w', suffix='.json', delete=False, encoding='utf-8') as file:
                 file.write(content)
             path = file.name
-            with mock.patch.dict(os.environ, {'JOB_PILOTTO_ABOUT_YOU_FILE': path}):
+            with mock.patch.dict(os.environ, {'JOBADABRA_ABOUT_YOU_FILE': path}):
                 self.assertEqual(kit.about_you(), ('', ['cv']))
 
 

@@ -64,7 +64,7 @@ class JudgeTest(unittest.TestCase):
     def test_run_mjs_keeps_the_judge_off_the_tape_and_off_the_api_engine(self):
         source = (ROOT / 'tools' / 'persona-search' / 'run.mjs').read_text()
         self.assertIn("process.argv.includes('--judge') && !api", source)
-        self.assertIn("key.startsWith('JOB_PILOTTO_SEARCH_TAPE')", source)
+        self.assertIn("key.startsWith('JOBADABRA_SEARCH_TAPE')", source)
 
 
 if __name__ == '__main__':

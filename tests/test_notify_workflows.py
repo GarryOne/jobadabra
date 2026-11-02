@@ -1,4 +1,4 @@
-"""The Always on workflows tell a person by the channels they chose (JOB_PILOTTO_NOTIFY, set by the app): a failed run is told by e-mail too, and Telegram stays quiet when it was turned off.
+"""The Always on workflows tell a person by the channels they chose (JOBADABRA_NOTIFY, set by the app): a failed run is told by e-mail too, and Telegram stays quiet when it was turned off.
 
 The class: every workflow a user's private repo runs (templates/github-actions → daily, mail, scout). Found 26 Oct 2026: scout and mail sent a failure only to Telegram (or not at all),
 and the Telegram failure line ignored a Telegram-off choice. Messages from the engine itself go through src/telegram.py → src/notify.py (tests/test_notify.py).
@@ -9,7 +9,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 USER_WORKFLOWS = sorted(p.name for p in (ROOT / 'templates' / 'github-actions').glob('*.yml'))
-TELEGRAM_CHOSEN = 'case ",$JOB_PILOTTO_NOTIFY," in ,,|*,telegram,*) ;; *) exit 0 ;; esac'
+TELEGRAM_CHOSEN = 'case ",$JOBADABRA_NOTIFY," in ,,|*,telegram,*) ;; *) exit 0 ;; esac'
 
 
 def steps(name):
@@ -40,8 +40,8 @@ class FailureNoticeTests(unittest.TestCase):
         for name in USER_WORKFLOWS:
             text = (ROOT / '.github' / 'workflows' / name).read_text(encoding='utf-8')
             with self.subTest(name):
-                self.assertIn('JOB_PILOTTO_NOTIFY: ${{ vars.JOB_PILOTTO_NOTIFY }}', text)
-                self.assertIn('JOB_PILOTTO_TRIAL_KEY: ${{ secrets.JOB_PILOTTO_TRIAL_KEY }}', text)
+                self.assertIn('JOBADABRA_NOTIFY: ${{ vars.JOB_PILOTTO_NOTIFY }}', text)
+                self.assertIn('JOBADABRA_TRIAL_KEY: ${{ secrets.JOB_PILOTTO_TRIAL_KEY }}', text)
 
 
 if __name__ == '__main__':

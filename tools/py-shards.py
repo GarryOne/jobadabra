@@ -28,7 +28,7 @@ DEV_TOOLING = ('test_affected_tests', 'test_check', 'test_check_slot', 'test_com
 
 
 # The lock family (owner, 12 Oct 2026): the heavy lock's, landing queue's and check slot's own tests (~150 s of shard time and the day's top flake) run on a PR only when it touches
-# a lock path; CI · Tests passes the PR's changed files in JOB_PILOTTO_PY_CHANGED_FILE. A push to main, a local run or an unreadable list runs everything. Guarded by tests/test_lock_test_scope.py,
+# a lock path; CI · Tests passes the PR's changed files in JOBADABRA_PY_CHANGED_FILE. A push to main, a local run or an unreadable list runs everything. Guarded by tests/test_lock_test_scope.py,
 # which also fails when a lock test starts using a tools/ file that is not a lock path here.
 LOCK_MODULES = ('test_red_fix_first', 'test_landing_lock', 'test_check_slot')
 LOCK_PATHS = ('tools/heavy-lock', 'tools/check-slot.sh', 'tools/link-modules.sh', 'tools/landing-lock.sh', 'tools/ship', 'tools/pr-body.sh', 'tools/pr-title.sh', 'tools/pr-conflict-fix.sh', 'tools/pr-rest-lib.sh', 'tools/pr-comments-lib.sh', 'tools/pr-body-format.py', 'tools/pr-body-check.py', 'tools/pr-screens.py', 'tools/red-main.sh', 'tools/revert-red.sh', 'tools/worktree.sh', 'tools/session-name.sh',
@@ -47,7 +47,7 @@ def lock_tests_needed(changed):
 
 
 def changed_files():
-    listing = os.environ.get('JOB_PILOTTO_PY_CHANGED_FILE')
+    listing = os.environ.get('JOBADABRA_PY_CHANGED_FILE')
     try:
         return [line.strip() for line in Path(listing).read_text().splitlines() if line.strip()] if listing else None
     except OSError:
@@ -144,7 +144,7 @@ def default_jobs(cores, slots, free):
     base = max(2, cores // (slots or 1))
     return min(max(base, cores * 3 // 4), base + 2) if free is not None and free > 3 and slots else base
 
-PROGRESS_SECS = float(os.environ.get('JOB_PILOTTO_PROGRESS_SECS') or 25)
+PROGRESS_SECS = float(os.environ.get('JOBADABRA_PROGRESS_SECS') or 25)
 
 
 def progress_line(shards, finished, failed, elapsed):
@@ -169,7 +169,7 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('modules', nargs='*', help='test modules to run (default: all)')
     parser.add_argument('--app-only', action='store_true', help='leave out the tests of this repo\'s own dev tooling (DEV_TOOLING)')
-    parser.add_argument('--jobs', type=int, default=int(os.environ.get('JOB_PILOTTO_PY_JOBS', 0)) or default_jobs(os.cpu_count() or 4, int(os.environ.get('JOB_PILOTTO_CHECK_SLOTS', 2) or 0), free_gb()))   # JOB_PILOTTO_PY_JOBS=4 (or --jobs 4) is the old width; JOB_PILOTTO_PY_SERIAL=1 (tools/check.py) one process
+    parser.add_argument('--jobs', type=int, default=int(os.environ.get('JOBADABRA_PY_JOBS', 0)) or default_jobs(os.cpu_count() or 4, int(os.environ.get('JOBADABRA_CHECK_SLOTS', 2) or 0), free_gb()))   # JOBADABRA_PY_JOBS=4 (or --jobs 4) is the old width; JOBADABRA_PY_SERIAL=1 (tools/check.py) one process
     args = parser.parse_args(argv)
     modules = args.modules or all_modules()
     if args.app_only:
@@ -178,7 +178,7 @@ def main(argv=None):
         left = [m for m in modules if is_lock_module(m)]
         modules = [m for m in modules if not is_lock_module(m)]
         print(f'py-shards: lock tests left out: this change touches no lock path ({len(left)} modules; tools/py-shards.py LOCK_PATHS)', flush=True)
-    if os.environ.get('JOB_PILOTTO_PY_DRY_RUN'):
+    if os.environ.get('JOBADABRA_PY_DRY_RUN'):
         print('py-shards: dry run, modules: ' + ', '.join(modules))
         return 0
     if not modules:
@@ -186,7 +186,7 @@ def main(argv=None):
         return 2
     env = dict(os.environ)
     env['PYTHONPATH'] = os.pathsep.join([str(TESTS), env.get('PYTHONPATH', '')]).rstrip(os.pathsep)
-    env['JOB_PILOTTO_AUDIT_CHECKOUT_DATA'] = '1'   # tests/test_0_notion_ids.py installs tests/checkout_data_audit.py in every shard
+    env['JOBADABRA_AUDIT_CHECKOUT_DATA'] = '1'   # tests/test_0_notion_ids.py installs tests/checkout_data_audit.py in every shard
     started = time.monotonic()
     before = checkout_state(ROOT)
     # test_0_notion_ids sets the fake IDs the whole suite imports against; discovery loads it first, so every shard does too.
@@ -194,11 +194,11 @@ def main(argv=None):
     # full pipe then raises BlockingIOError and Python exits 120 with every test passed (#2136, 26 Oct 2026). Guard: tests/test_py_shards.py.
     shard_list = split(modules, args.jobs)
     logs = [tempfile.TemporaryFile() for _ in shard_list]
-    # Why (31 Oct 2026, a8): each shard gets its own data folder for the processes its tests start (src/paths.py JOB_PILOTTO_TEST_DATA_DIR); three CI rounds of hunting the test that wrote
+    # Why (31 Oct 2026, a8): each shard gets its own data folder for the processes its tests start (src/paths.py JOBADABRA_TEST_DATA_DIR); three CI rounds of hunting the test that wrote
     # data/jobs.sqlite from a child process (try 3) ended in closing the class here instead.
     data_folders = [tempfile.mkdtemp(prefix='jobadabra-shard-data-') for _ in shard_list]
     procs = [(shard, subprocess.Popen([sys.executable, '-m', 'unittest', '-q', '-b', *DURATIONS, BOOTSTRAP, *[m for m in shard if m != BOOTSTRAP]], cwd=ROOT,
-                                      env={**env, 'JOB_PILOTTO_TEST_DATA_DIR': folder}, stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT))
+                                      env={**env, 'JOBADABRA_TEST_DATA_DIR': folder}, stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT))
              for shard, log, folder in zip(shard_list, logs, data_folders)]
     results = [None] * len(procs)
     bad = []

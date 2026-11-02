@@ -10,7 +10,7 @@ from .. import feedback as employer_feedback
 from .models import SMALL_MODEL
 
 
-DEFAULT_MODEL = os.getenv('JOB_PILOTTO_MAIL_MODEL') or SMALL_MODEL
+DEFAULT_MODEL = os.getenv('JOBADABRA_MAIL_MODEL') or SMALL_MODEL
 TZ = tz.local_zone()
 STATE_FILE = DATA / 'mail-state.json'
 # Senders that only write about applications: ATSs, recruiter platforms, schedulers.

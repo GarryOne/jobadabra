@@ -82,9 +82,9 @@ test('the filler places a question with a service meaning exactly where the shar
   const window = filler();
   const aliases = [{key: 'place_of_origin', phrase: 'ort der herkunft'}, {key: 'email', phrase: 'courriel'}, {key: 'location', phrase: 'ville de résidence'}];
   const profile = {place_of_origin: 'Zürich', email: 'a@b.c', location: 'Geneva', first_name: 'Ana'};
-  window.__jobPilottoAliases = aliases;
+  window.__jobadabraAliases = aliases;
   const labels = ['Ort der Herkunft *', 'Votre courriel professionnel', 'Ville de résidence', 'Courriels', 'Something else', 'First name', 'E-mail address', ''];
-  const entries = window.__jobPilottoProfileEntries(rows(labels), profile);
+  const entries = window.__jobadabraProfileEntries(rows(labels), profile);
   const placed = Object.fromEntries(entries.map(entry => [labels[Number(entry.field.slice(1))], entry.value]));
   for (const label of labels) {
     const viaAlias = aliasKey(label, aliases);
@@ -93,13 +93,13 @@ test('the filler places a question with a service meaning exactly where the shar
     assert.equal(placed[label], expected, `"${label}"`);
   }
   assert.equal(placed['Courriels'], undefined);   // not on a word boundary
-  assert.equal(window.__jobPilottoAliasUsed.f0, 'ort der herkunft');   // the phrase that placed it, for the canary
-  assert.equal(window.__jobPilottoAliasUsed.f5, undefined);            // a built-in pattern is not an alias
+  assert.equal(window.__jobadabraAliasUsed.f0, 'ort der herkunft');   // the phrase that placed it, for the canary
+  assert.equal(window.__jobadabraAliasUsed.f5, undefined);            // a built-in pattern is not an alias
   // No profile value for the field: the alias places nothing (it only adds meanings, never data).
-  assert.equal(JSON.stringify(window.__jobPilottoProfileEntries(rows(['Ort der Herkunft']), {email: 'x'})), '[]');
+  assert.equal(JSON.stringify(window.__jobadabraProfileEntries(rows(['Ort der Herkunft']), {email: 'x'})), '[]');
   // No aliases at all: the built-in patterns work alone.
-  delete window.__jobPilottoAliases;
-  assert.equal(JSON.stringify(window.__jobPilottoProfileEntries(rows(['Ort der Herkunft']), profile)), '[]');
+  delete window.__jobadabraAliases;
+  assert.equal(JSON.stringify(window.__jobadabraProfileEntries(rows(['Ort der Herkunft']), profile)), '[]');
 });
 
 test('hints from the site keep only a fixed reason word and a share between 0 and 1, at most three', async () => {

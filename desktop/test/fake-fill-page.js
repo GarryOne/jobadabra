@@ -23,15 +23,15 @@ export function fakeFillPage(rows, {audit = null, checkboxes = false} = {}) {
   for (const file of PAGE_SCRIPTS) vm.runInContext(fs.readFileSync(new URL(`../../extension/${file}`, import.meta.url), 'utf8'), context);
   const armed = [];   // the menus the fill armed for a real click (page/fill-menus.js armCombo): [field, value]
   Object.assign(window, {
-    __jobPilottoDescribeForm: async () => rows.map(row => ({...row})),
-    __jobPilottoCheckboxQuestions: () => [],
+    __jobadabraDescribeForm: async () => rows.map(row => ({...row})),
+    __jobadabraCheckboxQuestions: () => [],
     __jobPilottoFillKnownFields: () => ({filled: []}),
-    __jobPilottoProfileEntries: () => [],
-    __jobPilottoArmCombo: (field, value) => armed.push([field, value]),
-    __jobPilottoUpload: {fill: async () => []},
-    __jobPilottoAuditVisibleFields: () => (audit || rows).map(row => ({...row, legal: !!row.legal || elements[row.field]?.dataset.jobpilottoCategory === 'legal'})),
+    __jobadabraProfileEntries: () => [],
+    __jobadabraArmCombo: (field, value) => armed.push([field, value]),
+    __jobadabraUpload: {fill: async () => []},
+    __jobPilottoAuditVisibleFields: () => (audit || rows).map(row => ({...row, legal: !!row.legal || elements[row.field]?.dataset.jobadabraCategory === 'legal'})),
   });
   // The fill as flow.js starts it: answers [{field, value, category?, use?}] -> its summary {trace, todo, ...}. A thrown error is the test's failure.
-  const fill = (answers, {profile = {}, resume = null, letter = '', consents = false} = {}) => window.__jobPilottoExtensionFill(answers, profile, resume, letter, consents);
+  const fill = (answers, {profile = {}, resume = null, letter = '', consents = false} = {}) => window.__jobadabraExtensionFill(answers, profile, resume, letter, consents);
   return {window, elements, armed, fill};
 }

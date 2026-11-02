@@ -2,18 +2,18 @@
 // of value the fill gave a control, from a fixed list, computed here on the person's computer from the fill's own answer, so the fill check and the repair question
 // (desktop/lib/ladder/fill-verify.js, fill-repair.js) can see that a calling code went into a country menu without ever seeing the value. Shapes only, no word list: calling codes
 // and country names come from the dial-code table (page/dial-codes.js) named by the browser itself (Intl.DisplayNames, in the page's language and English).
-// The fill marks each answered control with its class (data-jobpilotto-class, page/fill.js); the judges' sketch reads that mark (extension/account-fill.js).
+// The fill marks each answered control with its class (data-jobadabra-class, page/fill.js); the judges' sketch reads that mark (extension/account-fill.js).
 // The list is the desktop's VALUE_CLASSES too (desktop/lib/ladder/fill-repair.js; desktop/test/fill-repair.test.js fails when they differ). Guard: app-core/test/value-class.test.js.
 (() => {
-  if (window.__jobPilottoValueClass) return;
+  if (window.__jobadabraValueClass) return;
   const CLASSES = ['dial_code', 'country_name', 'email_shaped', 'phone', 'date', 'number', 'url', 'free_text', 'none'];
-  const fold = window.__jobPilottoFold;   // page/fold-text.js, loaded first
+  const fold = window.__jobadabraFold;   // page/fold-text.js, loaded first
   let countries = null;
   // Every country name of the dial-code table's regions, in the page's language and in English (built once, on first use).
   const countryNames = () => {
     if (countries) return countries;
     countries = new Set();
-    const regions = Object.values(window.__jobPilottoDialRegion || {});
+    const regions = Object.values(window.__jobadabraDialRegion || {});
     for (const lang of [...new Set([document.documentElement?.lang?.split('-')[0], 'en'].filter(Boolean))]) {
       let names = null;
       try { names = new Intl.DisplayNames([lang], {type: 'region'}); } catch { continue; }
@@ -35,7 +35,7 @@
     const text = String(value ?? '').trim();
     if (!text) return 'none';
     const code = text.replace(/^00(?=\d)/, '+').replace(/\s/g, '');
-    if (/^\+\d{1,4}$/.test(code) && (window.__jobPilottoDialRegion || {})[code]) return 'dial_code';
+    if (/^\+\d{1,4}$/.test(code) && (window.__jobadabraDialRegion || {})[code]) return 'dial_code';
     if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(text)) return 'email_shaped';
     if (/^(https?:\/\/|www\.)\S+$/i.test(text) || /^[\p{L}\p{N}-]+(\.[\p{L}\p{N}-]+)+\/\S*$/u.test(text)) return 'url';
     if (isDate(text)) return 'date';
@@ -52,7 +52,7 @@
       if (!field || /^(radio|group):/.test(field)) continue;
       const el = document.getElementById(field) || document.querySelector(`[name="${CSS.escape(field)}"]`);
       if (!el || !el.matches('input, select, textarea') || ['checkbox', 'radio', 'file', 'password'].includes(el.type)) continue;
-      el.setAttribute('data-jobpilotto-class', of(item.value));
+      el.setAttribute('data-jobadabra-class', of(item.value));
       answerOf.set(el, String(item.value ?? ''));
     }
   };
@@ -64,11 +64,11 @@
     const has = (want, got) => want.length > 0 && want.every(word => got.includes(word));
     if (of(answer) === 'dial_code') {
       const code = String(answer).trim().replace(/^00(?=\d)/, '+').replace(/\s/g, '');
-      return new RegExp(`\\+${code.slice(1)}(?!\\d)`).test(String(text)) || has(words(window.__jobPilottoDial?.[code] || ''), words(text));
+      return new RegExp(`\\+${code.slice(1)}(?!\\d)`).test(String(text)) || has(words(window.__jobadabraDial?.[code] || ''), words(text));
     }
     // A bare calling code the option shows (a phone country picker's chip: a flag and "+41") is the country the dial-code table names for it.
     const shown = String(text).trim().replace(/\s/g, '');
-    if (/^\+\d{1,4}$/.test(shown)) return has(words(answer), words(window.__jobPilottoDial?.[shown] || ''));
+    if (/^\+\d{1,4}$/.test(shown)) return has(words(answer), words(window.__jobadabraDial?.[shown] || ''));
     return has(words(answer), words(text));
   };
   // The option of this menu (a native select) that shows the fill's own answer: number (1-based among its listed options, as the judges' sketch numbers them) names one to check, 0 asks
@@ -80,5 +80,5 @@
     const found = pool.filter(option => !option.disabled && fits(answer, option.text));
     return found.length === 1 ? found[0] : null;
   };
-  window.__jobPilottoValueClass = {CLASSES, of, mark, fits, optionFor, answer: el => answerOf.get(el) ?? null};   // answer: for the page's own repair (page/repair-act.js), never sent anywhere
+  window.__jobadabraValueClass = {CLASSES, of, mark, fits, optionFor, answer: el => answerOf.get(el) ?? null};   // answer: for the page's own repair (page/repair-act.js), never sent anywhere
 })();

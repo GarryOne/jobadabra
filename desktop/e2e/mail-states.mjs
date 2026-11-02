@@ -1,6 +1,7 @@
 // Every state of a Gmail check's card in ONE visible demo window: Recent activity lists one Gmail check run per state, newest
 // first, so you click through them like real runs (owner, 6 Oct 2026). node e2e/mail-states.mjs  ·  Ctrl+C closes it.
 // The states are fixtures/mail-states.json; demo data only, nothing reported.
+// Job: serve stored answers
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -25,7 +26,7 @@ const demoFocus = JSON.parse(fs.readFileSync(focusFile, 'utf8'));
 fs.writeFileSync(focusFile, JSON.stringify({...demoFocus, items: [...focus.open, ...demoFocus.items], answered_questions: focus.answered}, null, 1));
 
 // Demo mode reads Focus from the app's demo/focus.json unless told otherwise: without this the question states drew as answered.
-const session = await launch({profile, env: {JOB_PILOTTO_DEMO: '1', JOB_PILOTTO_DEMO_FOCUS: focusFile}});
+const session = await launch({profile, env: {JOBADABRA_DEMO: '1', JOBADABRA_DEMO_FOCUS: focusFile}});
 await session.page.waitForSelector('.nav[data-view=focus]:not([hidden])', {timeout: 30000});
 await session.app.evaluate(({BrowserWindow}) => {
   const win = BrowserWindow.getAllWindows()[0];

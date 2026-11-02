@@ -16,7 +16,7 @@ function setup(defaultsReply) {
   const box = element('div'), list = element('div');
   const send = async message => { sent.push(message); return message.type === 'rememberDefaults' ? defaultsReply : {ok: true}; };
   const field = (label, value) => ({isConnected: true, disabled: false, type: 'text', tagName: 'INPUT', value, labels: [], matches: () => true, _label: label});
-  const learn = window.__jobPilottoPanelLearn.start({send, alive: () => true, mine: {box, list},
+  const learn = window.__jobadabraPanelLearn.start({send, alive: () => true, mine: {box, list},
     form: {fields: () => [], question: el => el._label, visible: () => true, clean: text => String(text).trim()}});
   const type = el => (listeners.input || []).forEach(fn => fn({isTrusted: true, target: el}));
   return {learn, box, list, sent, field, type, listeners};

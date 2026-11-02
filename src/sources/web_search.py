@@ -21,13 +21,13 @@ JOB_WORDS = {'fr': 'emplois carrières', 'de': 'Stellen Jobs', 'it': 'lavoro car
 
 
 def _get(url, headers=None):
-    request = urllib.request.Request(url, headers={'Accept': 'application/json', 'User-Agent': 'JobPilotto/1.0', **(headers or {})})
+    request = urllib.request.Request(url, headers={'Accept': 'application/json', 'User-Agent': 'Jobadabra/1.0', **(headers or {})})
     with urllib.request.urlopen(request, timeout=20) as response:
         return json.load(response)
 
 
 def provider():
-    """'claude', 'codex', 'brave', 'serpapi' or None (off: none available, or JOB_PILOTTO_DISABLE=web_search). The user's own plan first
+    """'claude', 'codex', 'brave', 'serpapi' or None (off: none available, or JOBADABRA_DISABLE=web_search). The user's own plan first
     (Claude Code or Codex: the AI engine, or signed in beside Free AI or a key): its web search is free to us and to them beyond the plan;
     then the keyed search APIs, while they are not parked (src/features.py PARKED: brave_search, google_jobs; owner, 26 Oct 2026)."""
     if disabled('web_search'):
@@ -53,9 +53,9 @@ PLAN_ENGINES = {'cli': 'claude', 'codex': 'codex'}   # engine → this search's 
 
 
 def _plan_named():
-    """The plan the app found signed in on this Mac while another engine answers ('claude' or 'codex', JOB_PILOTTO_PLAN_SEARCH from
+    """The plan the app found signed in on this Mac while another engine answers ('claude' or 'codex', JOBADABRA_PLAN_SEARCH from
     desktop/lib/claude-code.js planSearch), or None. Only the app sets it, so a test or a GitHub run never starts a CLI by finding one."""
-    named = os.getenv('JOB_PILOTTO_PLAN_SEARCH', '').strip().lower()
+    named = os.getenv('JOBADABRA_PLAN_SEARCH', '').strip().lower()
     return named if named in PLAN_ENGINES.values() else None
 
 

@@ -15,13 +15,13 @@ const FORM = `<form>
 
 test('a real choice is an answer, a blank one is not, in every reader; before a fill a preselected first option is still asked', { skip: !JSDOM }, async () => {
   const window = openPage(JSDOM, FORM, { url: 'https://api.easytemp.ch/live/bew/1-FR.php' });
-  const chosen = id => window.__jobPilottoChosen(window.document.getElementById(id));
+  const chosen = id => window.__jobadabraChosen(window.document.getElementById(id));
   assert.deepEqual(['anrede', 'zivil', 'region', 'pays'].map(chosen), [true, true, false, false]);
   const audit = Object.fromEntries(window.__jobPilottoAuditVisibleFields().map(row => [row.field, row.filled]));
   assert.deepEqual([audit.anrede, audit.region, audit.pays], [true, false, false], 'the audit');
-  const before = Object.fromEntries((await window.__jobPilottoDescribeForm()).map(row => [row.field, row.filled]));
+  const before = Object.fromEntries((await window.__jobadabraDescribeForm()).map(row => [row.field, row.filled]));
   assert.deepEqual([before.anrede, before.zivil, before.region], [false, false, false], 'before a fill the AI is asked about preselected choices');
-  const settled = Object.fromEntries((await window.__jobPilottoDescribeForm(true)).map(row => [row.field, row.filled]));
+  const settled = Object.fromEntries((await window.__jobadabraDescribeForm(true)).map(row => [row.field, row.filled]));
   assert.deepEqual([settled.anrede, settled.zivil, settled.region, settled.pays], [true, true, false, false], 'at the end a real choice counts');
   window.close();
 });
@@ -29,13 +29,13 @@ test('a real choice is an answer, a blank one is not, in every reader; before a 
 test('every reader reads menus by the one rule (page/read-back.js), and no copy of it is left', () => {
   const read = path => fs.readFileSync(new URL(`../../${path}`, import.meta.url), 'utf8');
   assert.match(read('extension/page/read-back.js'), /const chosen = el => \(o => !!o && !o\.disabled/, 'the one reader holds the rule');
-  assert.match(read('extension/page/read-back.js'), /window\.__jobPilottoChosen = chosen/, 'under the name the audit and coverage.js call');
+  assert.match(read('extension/page/read-back.js'), /window\.__jobadabraChosen = chosen/, 'under the name the audit and coverage.js call');
   for (const path of ['extension/panel-form.js', 'extension/account-fill.js', 'extension/page/browser-form-fastpath.js', 'tools/browser-form-fastpath.js']) {
     assert.doesNotMatch(read(path), /o\.index === 0 && \/\^\(\|0\|-1\)\$\//, `${path} keeps no copy of the menu rule`);
-    assert.match(read(path), /__jobPilottoReadBack/, `${path} asks the one reader`);
+    assert.match(read(path), /__jobadabraReadBack/, `${path} asks the one reader`);
   }
-  assert.match(read('extension/fill-tab-finish.js'), /window\.__jobPilottoDescribeForm\?\.\(true\)/, 'the end of a fill reads settled');
-  assert.match(read('extension/page/coverage.js'), /window\.__jobPilottoChosen\(el\)/);
+  assert.match(read('extension/fill-tab-finish.js'), /window\.__jobadabraDescribeForm\?\.\(true\)/, 'the end of a fill reads settled');
+  assert.match(read('extension/page/coverage.js'), /window\.__jobadabraChosen\(el\)/);
 });
 
 // easytemp (twin, 9 Oct 2026): Nationalité preselected "Suisse" (an option marked selected, not the first) was read as answered and never asked.
@@ -45,10 +45,10 @@ test('a menu on the page\'s own preselected choice is asked before the fill and 
     <label for="lang">Langue</label><select id="lang"><option value="FR">Français</option><option value="DE">Deutsch</option></select>
   </form>`, { url: 'https://api.easytemp.ch/live/bew/2-FR.php' });
   const staat = window.document.getElementById('staat');
-  assert.equal(window.__jobPilottoAtPageDefault(staat), true);
-  const before = Object.fromEntries((await window.__jobPilottoDescribeForm()).map(row => [row.field, row.filled]));
+  assert.equal(window.__jobadabraAtPageDefault(staat), true);
+  const before = Object.fromEntries((await window.__jobadabraDescribeForm()).map(row => [row.field, row.filled]));
   assert.deepEqual([before.staat, before.lang], [false, false], 'both still asked');
-  const summary = await window.__jobPilottoExtensionFill([{field: 'lang', value: 'Deutsch'}], {}, null, '', false);
+  const summary = await window.__jobadabraExtensionFill([{field: 'lang', value: 'Deutsch'}], {}, null, '', false);
   const rows = Object.fromEntries(Array.from(summary.trace, row => [row.label, [row.outcome, row.reason]]));
   assert.deepEqual(rows['Nationalité'], ['filled', 'preselected by the page: check it']);
   assert.deepEqual(rows.Langue, ['filled', ''], 'one we set is a plain answer');
@@ -63,7 +63,7 @@ test('a menu answered with a real option whose value is 0 counts as chosen', { s
   </form>`, { url: 'https://example.test/form' });
   const kids = window.document.getElementById('kids'), sel = window.document.getElementById('sel');
   kids.selectedIndex = 1;
-  assert.equal(window.__jobPilottoChosen(kids), true);
-  assert.equal(window.__jobPilottoChosen(sel), false, 'a placeholder first option is still empty');
+  assert.equal(window.__jobadabraChosen(kids), true);
+  assert.equal(window.__jobadabraChosen(sel), false, 'a placeholder first option is still empty');
   window.close();
 });

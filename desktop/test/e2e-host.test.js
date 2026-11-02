@@ -17,8 +17,8 @@ const fresh = () => {
 };
 
 test('every e2e app answers ivPrefetch without a downloader or progress event', async () => {
-  const before = process.env.JOB_PILOTTO_E2E;
-  process.env.JOB_PILOTTO_E2E = '1';
+  const before = process.env.JOBADABRA_E2E;
+  process.env.JOBADABRA_E2E = '1';
   try {
     let downloads = 0;
     const handlers = {}, progress = [];
@@ -30,15 +30,15 @@ test('every e2e app answers ivPrefetch without a downloader or progress event', 
     assert.equal(downloads, 0);
     assert.deepEqual(progress, []);
     const launch = fs.readFileSync(new URL('../e2e/lib/app.mjs', import.meta.url), 'utf8');
-    assert.match(launch, /JOB_PILOTTO_E2E: '1'/, 'every harness app enables the shared seam');
+    assert.match(launch, /JOBADABRA_E2E: '1'/, 'every harness app enables the shared seam');
   } finally {
-    if (before === undefined) delete process.env.JOB_PILOTTO_E2E; else process.env.JOB_PILOTTO_E2E = before;
+    if (before === undefined) delete process.env.JOBADABRA_E2E; else process.env.JOBADABRA_E2E = before;
   }
 });
 
 test('without the e2e flag ivPrefetch still runs the real setup and forwards progress', async () => {
-  const before = process.env.JOB_PILOTTO_E2E;
-  delete process.env.JOB_PILOTTO_E2E;
+  const before = process.env.JOBADABRA_E2E;
+  delete process.env.JOBADABRA_E2E;
   try {
     let downloads = 0;
     const handlers = {}, progress = [], step = {id: 'setup', setup: true};
@@ -50,11 +50,11 @@ test('without the e2e flag ivPrefetch still runs the real setup and forwards pro
     assert.equal(downloads, 1);
     assert.deepEqual(progress, [['ivProgress', step]]);
   } finally {
-    if (before !== undefined) process.env.JOB_PILOTTO_E2E = before;
+    if (before !== undefined) process.env.JOBADABRA_E2E = before;
   }
 });
 
-test('a person\'s app (no JOB_PILOTTO_E2E) keeps every call real', () => {
+test('a person\'s app (no JOBADABRA_E2E) keeps every call real', () => {
   const {host} = fresh(), before = {...host.shell};
   assert.deepEqual(standInHost(host, {}), []);
   assert.equal(host.shell.openExternal, before.openExternal);
@@ -63,7 +63,7 @@ test('a person\'s app (no JOB_PILOTTO_E2E) keeps every call real', () => {
 test('a test run records each door and never calls the real one; the spool gets a line', async () => {
   const spool = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-host-')), {host, called} = fresh();
   globalThis.__jpHost = [];
-  assert.deepEqual(standInHost(host, {JOB_PILOTTO_E2E: '1', JOB_PILOTTO_E2E_OPEN_DIR: spool}), DOORS.map(([owner, method]) => `${owner}.${method}`));
+  assert.deepEqual(standInHost(host, {JOBADABRA_E2E: '1', JOBADABRA_E2E_OPEN_DIR: spool}), DOORS.map(([owner, method]) => `${owner}.${method}`));
   await host.shell.openExternal('https://ch.indeed.com/job/1');
   assert.equal(await host.shell.openPath('/Users/someone/Documents'), '', 'openPath answers "" like a real success');
   host.shell.showItemInFolder('/tmp/x'); host.clipboard.writeText('secret'); host.app.setLoginItemSettings({openAtLogin: true});
@@ -77,7 +77,7 @@ test('a test run records each door and never calls the real one; the spool gets 
 
 test('a missing spool folder never opens the real door', async () => {
   const {host, called} = fresh();
-  standInHost(host, {JOB_PILOTTO_E2E: '1', JOB_PILOTTO_E2E_OPEN_DIR: path.join(os.tmpdir(), 'jp-host-missing', 'nope')});
+  standInHost(host, {JOBADABRA_E2E: '1', JOBADABRA_E2E_OPEN_DIR: path.join(os.tmpdir(), 'jp-host-missing', 'nope')});
   await host.shell.openExternal('https://example.com');
   assert.deepEqual(called, []);
 });
@@ -103,9 +103,9 @@ test('every host call in the app is a closed door or on the reviewed list', () =
   assert.ok(Object.keys(REVIEWED).length > 0);
 });
 
-test('a screenshot run (JOB_PILOTTO_SMOKE) is a test run too: its shell calls stay recorded, as lib/e2e-hidden.js did before #2363', async () => {
+test('a screenshot run (JOBADABRA_SMOKE) is a test run too: its shell calls stay recorded, as lib/e2e-hidden.js did before #2363', async () => {
   const {host, called} = fresh();
-  assert.ok(standInHost(host, {JOB_PILOTTO_SMOKE: '/tmp/a.png'}).includes('shell.openExternal'));
+  assert.ok(standInHost(host, {JOBADABRA_SMOKE: '/tmp/a.png'}).includes('shell.openExternal'));
   await host.shell.openExternal('https://example.com');
   assert.deepEqual(called, []);
 });

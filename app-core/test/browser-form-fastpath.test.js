@@ -80,7 +80,7 @@ test('fast path types fields for the Chrome extension, which switches the guard 
   });
   const first = new HTMLInputElement('first_name');
   const document = {querySelectorAll() { return [first]; }};
-  const window = {__jobPilottoGuardActive: false, __jobPilottoNoGuard: true};
+  const window = {__jobPilottoGuardActive: false, __jobadabraNoGuard: true};
   const code = fs.readFileSync(new URL('../../tools/browser-form-fastpath.js', import.meta.url), 'utf8');
   vm.runInNewContext(code, {window, document, HTMLInputElement, HTMLTextAreaElement: class {},
     getComputedStyle: () => ({visibility: 'visible'}), Event: class {}});
@@ -105,7 +105,7 @@ test('a read-only box (a date picker keeps its box so) takes a date while empty;
   const start = new HTMLInputElement('start_on'), name = new HTMLInputElement('full_name'), taken = new HTMLInputElement('ends_on');
   taken.value = '01.01.2027';
   const elements = [start, name, taken];
-  const window = {__jobPilottoGuardActive: true, __jobPilottoValueClass: {of: value => (/^\d\d\.\d\d\.\d{4}$/.test(value) ? 'date' : 'free_text')}};
+  const window = {__jobPilottoGuardActive: true, __jobadabraValueClass: {of: value => (/^\d\d\.\d\d\.\d{4}$/.test(value) ? 'date' : 'free_text')}};
   const context = vm.createContext({window, document: {querySelectorAll: () => elements}, HTMLInputElement, HTMLTextAreaElement: class {}, getComputedStyle: () => ({visibility: 'visible'}), Event: class {}});
   for (const file of ['../../extension/page/typed-check.js', '../../extension/page/read-back.js']) vm.runInContext(fs.readFileSync(new URL(file, import.meta.url), 'utf8'), context);
   vm.runInContext(fs.readFileSync(new URL('../../tools/browser-form-fastpath.js', import.meta.url), 'utf8'), context);

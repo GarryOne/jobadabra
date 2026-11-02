@@ -18,7 +18,7 @@ const bodyFor = shape => shape === 'anthropic' ? {
   model: 'diagnostic-model', system: [{type: 'text', text: system}], cv: 'CV_BODY_CANARY',
   messages: [{role: 'assistant', content: 'ASSISTANT_CANARY'}, {role: 'user', content: [{type: 'text', text: user}, {type: 'image', source: {data: 'IMAGE_BODY_CANARY'}}]}, {role: 'user', content: 'SECOND_USER_CANARY'}],
 } : {
-  model: 'diagnostic-model', instructions: system, prompt_cache_key: 'job-pilotto-unidentified', cv: 'CV_BODY_CANARY',
+  model: 'diagnostic-model', instructions: system, prompt_cache_key: 'jobadabra-unidentified', cv: 'CV_BODY_CANARY',
   input: [{role: 'assistant', content: 'ASSISTANT_CANARY'}, {role: 'user', content: [{type: 'input_text', text: user}, {type: 'input_image', image_url: 'IMAGE_BODY_CANARY'}]}, {role: 'user', content: 'SECOND_USER_CANARY'}],
 };
 function checkPreview(message, action) {

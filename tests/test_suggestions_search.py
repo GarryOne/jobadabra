@@ -172,7 +172,7 @@ class FocusTests(unittest.TestCase):
         from src.sources import feeds  # noqa: F401 - read the search settings at import, before the patched ones below
         from src.stores import open_stores
         with tempfile.TemporaryDirectory() as tmp:
-            stores = open_stores({'JOB_PILOTTO_STORE': 'sqlite', 'JOB_PILOTTO_DATA_DIR': tmp})
+            stores = open_stores({'JOBADABRA_STORE': 'sqlite', 'JOBADABRA_DATA_DIR': tmp})
             stores.insights.add({'day': NOW.date().isoformat(), 'category': suggestions.ANSWER_CATEGORY, 'title': 'Add Cashier to your roles',
                                  'fields': {'state': 'Not true', 'hidden_until': '', 'data': _json.dumps({'aside': ['caissier', 'retouche']}), 'input_hash': 'ideas:old'}})
             kept = pathlib.Path(tmp) / 'role_ideas.json'

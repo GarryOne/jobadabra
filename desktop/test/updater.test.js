@@ -64,7 +64,7 @@ test('installing on Windows starts the installer itself, quiet, updating and reo
     onStep: text => steps.push(text),
   });
   const run = calls[0];
-  assert.match(run.file, /Job-Pilotto-Setup\.exe$/, 'the downloaded installer runs, no script in between');
+  assert.match(run.file, /Jobadabra-Setup\.exe$/, 'the downloaded installer runs, no script in between');
   assert.ok(fs.existsSync(run.file));
   // --updated: it waits for this app to close, then ends it if it lingers; --force-run: it opens the new version. Not /S, and its
   // window not hidden: the person sees the installer's progress instead of a closed app and nothing (owner, 9 Oct 2026).

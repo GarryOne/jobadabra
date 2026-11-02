@@ -19,7 +19,7 @@ import {pagesDocument} from './cv-inplace-review.js';
 import {writePrivate} from './private-file.js';
 import {log as appLog} from './log.js';
 
-export const MODEL = process.env.JOB_PILOTTO_MODEL_OVERRIDE || 'claude-sonnet-5-5';   // the override: the end-to-end journey (desktop/e2e)
+export const MODEL = process.env.JOBADABRA_MODEL_OVERRIDE || 'claude-sonnet-5-5';   // the override: the end-to-end journey (desktop/e2e)
 const PRICE = {input: 2, output: 10};  // USD per million tokens
 export const usd = usage => (usage?.billing === 'subscription' ? 0 : Math.round(((usage?.input_tokens || 0) * priceOf(usage, PRICE).input + (usage?.output_tokens || 0) * priceOf(usage, PRICE).output) / 1e4) / 100);  // Claude Code: the user's plan, $0
 
@@ -377,7 +377,7 @@ export function reviewPage(storage, record) {
     ${final ? `<div class="jp-final"><div class="jp-final-h">Final CV: send this one</div>
       <div class="jp-final-name">${esc(path.basename(final))}</div>
       <div class="jp-actions"><a href="${esc(pathToFileURL(final).href)}" target="_blank">Open</a>
-        <a href="jobpilotto-cv:reveal">Show in Finder</a> <a href="jobpilotto-cv:copy">Copy path</a></div>
+        <a href="jobadabra-cv:reveal">Show in Finder</a> <a href="jobadabra-cv:copy">Copy path</a></div>
       <div class="jp-note">Clean: no highlights or notes. The page on the right is only a preview of what changed.</div></div>` : ''}
     <div class="jp-title">Preview of changes · ${esc(record.job.title)} · ${esc(record.job.company)}</div>
     <div class="jp-meta">${new Date(record.createdAt).toLocaleString()} · ${esc(record.model)}</div>

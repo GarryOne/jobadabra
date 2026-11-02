@@ -10,7 +10,7 @@ const JSDOM = await loadJsdom();
 
 test('the answer shows in another writing: a country by its bare calling code, a calling code by its country; a different country never', {skip: !JSDOM}, () => {
   const window = openPage(JSDOM, '<form></form>');
-  const fits = window.__jobPilottoValueClass.fits;
+  const fits = window.__jobadabraValueClass.fits;
   assert.equal(fits('Switzerland', '+41'), true, 'the chip shows the code only');
   assert.equal(fits('Switzerland', 'Switzerland +41'), true);
   assert.equal(fits('Switzerland', '+49'), false, 'another country');
@@ -22,12 +22,12 @@ test('the answer shows in another writing: a country by its bare calling code, a
 test('a picker that shows the picked option\'s calling code only is that option; another code is another choice', {skip: !JSDOM}, () => {
   const window = openPage(JSDOM, `<div class="select__container"><div class="select__value-container"><div class="select__single-value">+41</div><input id="cc" role="combobox"></div></div>`);
   const input = window.document.getElementById('cc');
-  input.setAttribute('data-jobpilotto-picked', 'switzerland41');
-  assert.equal(window.__jobPilottoReadBack.stateOf(input), 'committed');
-  input.setAttribute('data-jobpilotto-picked', 'germany49');
-  assert.equal(window.__jobPilottoReadBack.stateOf(input), 'mismatch', 'the chip shows another country\'s code');
-  input.setAttribute('data-jobpilotto-picked', 'switzerland');
-  assert.equal(window.__jobPilottoReadBack.stateOf(input), 'mismatch', 'a code that is no part of the picked option is another choice');
+  input.setAttribute('data-jobadabra-picked', 'switzerland41');
+  assert.equal(window.__jobadabraReadBack.stateOf(input), 'committed');
+  input.setAttribute('data-jobadabra-picked', 'germany49');
+  assert.equal(window.__jobadabraReadBack.stateOf(input), 'mismatch', 'the chip shows another country\'s code');
+  input.setAttribute('data-jobadabra-picked', 'switzerland');
+  assert.equal(window.__jobadabraReadBack.stateOf(input), 'mismatch', 'a code that is no part of the picked option is another choice');
   window.close();
 });
 

@@ -91,4 +91,4 @@ export async function closerLook(tab, frameId, reason, {kind = 'account', pictur
 }
 
 // The live test (desktop/e2e/lib/apply-live.mjs) reaches the worker only through its evaluate(), where import() is not allowed: it calls this. Not reachable from any page.
-globalThis.__jobPilottoCloserLook = closerLook;
+globalThis.__jobadabraCloserLook = closerLook;

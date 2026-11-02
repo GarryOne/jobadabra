@@ -230,8 +230,8 @@ jobs:
           # shellcheck disable=SC2086
           url=$(GH_TOKEN="${PR_TOKEN:-$GH_TOKEN}" gh pr create --repo "$REPO" --base "$BASE" --head "$branch" --title "$title" --body-file .heal/laid-out.md --label auto-ui-fix $extra)
           echo "Pull request opened: $url"
-          # Autonomy, opt-in (JOB_PILOTTO_FIXER_AUTOMERGE=on): a fix of the window only (desktop/renderer and its tests), at most 80 changed lines, that already
-          # passed every suite and the lint, merges itself, and a confirmed small engine fix with its own test may too (JOB_PILOTTO_FIXER_AUTOMERGE_ENGINE=on, below).
+          # Autonomy, opt-in (JOBADABRA_FIXER_AUTOMERGE=on): a fix of the window only (desktop/renderer and its tests), at most 80 changed lines, that already
+          # passed every suite and the lint, merges itself, and a confirmed small engine fix with its own test may too (JOBADABRA_FIXER_AUTOMERGE_ENGINE=on, below).
           # Anything else waits for a person. Off by default: until 4 Oct 2026 nothing merged itself.
           if { [ "${AUTOMERGE:-}" = on ] || [ "${AUTOMERGE_ENGINE:-}" = on ]; } && [ "$BASE" = main ]; then
             files=$(git show --name-only --format= HEAD | grep -v '^CODEMAP.md$' || true)

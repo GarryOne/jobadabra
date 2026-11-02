@@ -11,7 +11,7 @@ if the recording lacks the route your fix needs, ask `record-applying-sites` to 
 Detail moved to files here: [reproduce.md](reproduce.md) (decisions made, how to reproduce), [rung-method.md](rung-method.md) (a page judged wrong), [lessons.md](lessons.md) (read once at the start).
 
 ## 0. Pick the work (one line each to the owner)
-- **The list is "Needs a fix" on `/admin/form-filling/lab`** (owner-only; Bearer = Keychain `job-pilotto.site.api_key`, memory `reference-owner-pages-access`; the same rows are in `?json`).
+- **The list is "Needs a fix" on `/admin/form-filling/lab`** (owner-only; Bearer = Keychain `jobadabra.site.api_key`, memory `reference-owner-pages-access`; the same rows are in `?json`).
   Worst first: regressions, the earliest stop, the least filled form. A form reached with under half its asked fields filled is a **shortfall**. A code or bot check is a documented hold, not on the list.
 - **Take a CAUSE, not a row** (owner, 11 Oct 2026; `docs/rules/rounds.md`): the **By cause** tab, or `~/jobadabra-web/tools/site-run.sh node jobs/needs-fix-causes.mjs --rows`. A row "Run first" (never recorded, or not since its fix) is the recorder's, not a fix.
   Weigh by demand (the scorecard's "Of matched jobs"); a "Blind spot" platform (real fills worse than the tests) goes first: its signal is in `record-applying-sites` "Reading real use".

@@ -1,6 +1,6 @@
 // The panel's reading of the form (read only): each question's text, which are required, which are filled, find by label, and the amber flash that points at one.
 // Owns fields(), question(), find(), flash() and the knockout / agreement word lists the panel draws with. Injected before review.js (panel-files.js), shared as
-// window.__jobPilottoPanelForm (a content script has no imports). Guarded by app-core/test/panel-widgets, option-groups, control-marks, aria-hidden-select,
+// window.__jobadabraPanelForm (a content script has no imports). Guarded by app-core/test/panel-widgets, option-groups, control-marks, aria-hidden-select,
 // select-chosen and desktop/test/typed-match, extension-files (the knockout words agree with the app's).
 (() => {
   const SKIP = ['hidden', 'submit', 'button', 'reset', 'search', 'image'];
@@ -8,19 +8,19 @@
   // office attendance, a required licence or language). Marked first, because a wrong or rushed answer here decides more than anything else on the form.
   const KNOCKOUT = /authori[sz]ed to work|authori[sz]ation|right to work|legally (eligible|entitled)|sponsor|visa|work permit|citizen|relocat|willing(ness)? to (work|commute|come|travel)|on-?site|in[- ]office|office (days|attendance)|days (a|per) week|reside|currently located|security clearance|licen[sc]e/i;
   const AGREE = /agree|consent|acknowledg|terms|privacy|policy|arbitrat|certif|attest|pledge/i;
-  const clean = text => window.__jobPilottoRequired.clean(text);
+  const clean = text => window.__jobadabraRequired.clean(text);
   const norm = text => clean(text).toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
   const visible = el => !!(el.getClientRects().length && getComputedStyle(el).visibility !== 'hidden');
 
   // ---- reading the form (read only) ----
   function question(el) {
     const byIds = (el.getAttribute('aria-labelledby') || '').split(/\s+/).map(id => document.getElementById(id)?.textContent).filter(Boolean).join(' ');
-    const own = byIds || el.getAttribute('aria-label') || Array.from(el.labels || [], label => window.__jobPilottoRequired.read(label)).join(' ') || (el.type !== 'hidden' && window.__jobPilottoLabelBefore?.(el)) || '';
-    const legend = window.__jobPilottoRequired.read(fieldsetTitle(el.closest('fieldset')) || (['radio', 'checkbox'].includes(el.type) ? window.__jobPilottoRequired.rowTitle(el) : null));
+    const own = byIds || el.getAttribute('aria-label') || Array.from(el.labels || [], label => window.__jobadabraRequired.read(label)).join(' ') || (el.type !== 'hidden' && window.__jobadabraLabelBefore?.(el)) || '';
+    const legend = window.__jobadabraRequired.read(fieldsetTitle(el.closest('fieldset')) || (['radio', 'checkbox'].includes(el.type) ? window.__jobadabraRequired.rowTitle(el) : null));
     if (['checkbox', 'radio'].includes(el.type) && legend) return clean(legend);
     if (clean(own)) return clean(own);
     if (legend) return clean(legend);
-    const above = window.__jobPilottoTitleAbove(el, 'label, legend, [class*=label], [class*=question]', 4);   // the nearest title before it that no other control owns (page/label-before.js)
+    const above = window.__jobadabraTitleAbove(el, 'label, legend, [class*=label], [class*=question]', 4);   // the nearest title before it that no other control owns (page/label-before.js)
     if (above) return clean(above.textContent);
     return clean(el.name || el.id);
   }
@@ -28,11 +28,11 @@
   // by a "*" its CSS draws after that title (no attribute), so the class and the drawn "*" count too.
   const fieldsetTitle = set => set && (set.querySelector('legend') ||
     Array.from(set.querySelectorAll('label')).find(l => !l.control && !l.querySelector('input, select, textarea')));
-  const titleRequired = title => !!title && (window.__jobPilottoRequired.has(title) || /required/i.test(String(title.className || '')) ||
+  const titleRequired = title => !!title && (window.__jobadabraRequired.has(title) || /required/i.test(String(title.className || '')) ||
     String(getComputedStyle(title, '::after').content || '').includes('*'));
-  const required = el => window.__jobPilottoRequired.marked(el) ||
-    [...(el.labels || [])].some(label => window.__jobPilottoRequired.has(label)) ||
-    (['checkbox', 'radio'].includes(el.type) && titleRequired(fieldsetTitle(el.closest('fieldset')) || window.__jobPilottoRequired.rowTitle(el)));
+  const required = el => window.__jobadabraRequired.marked(el) ||
+    [...(el.labels || [])].some(label => window.__jobadabraRequired.has(label)) ||
+    (['checkbox', 'radio'].includes(el.type) && titleRequired(fieldsetTitle(el.closest('fieldset')) || window.__jobadabraRequired.rowTitle(el)));
   // A control's state (a box, a menu, a picklist's chip, a choice, an upload slot that shows its file as a chip) is read by the one reader the fill and the judges use too
   // (page/read-back.js, injected before this file): one truth per control, never a copy that drifts (12 Oct 2026, Ashby: the fill said 8 filled, the panel 5/10 left).
   // A required custom control the readers in fields() do not know (a slider, a switch, a rich-text box): nothing says what it should hold, so it is
@@ -43,17 +43,17 @@
   function fields() {
     const groups = new Map();
     for (const el of document.querySelectorAll('input, textarea, select, [role=combobox]:not(input):not(textarea):not(select)')) {   // a select-only combobox is a <div role=combobox> holding its shown choice (page/read-back.js selectOnly)
-      const slot = el.type === 'file' && !visible(el) ? window.__jobPilottoReadBack.shownSlot(el) : null; if (SKIP.includes(el.type) || el.disabled || window.__jobPilottoReadBack.hiddenAway(el) || !(visible(el) || slot)) continue;   // a CV slot whose input the page hides counts by its visible zone (page/read-back.js)
-      const group = ['checkbox', 'radio'].includes(el.type) ? window.__jobPilottoOptionGroups?.groupOf(el) : null;   // one question is one row, however its options are named (page/option-groups.js, shared with the replay's truth reader)
+      const slot = el.type === 'file' && !visible(el) ? window.__jobadabraReadBack.shownSlot(el) : null; if (SKIP.includes(el.type) || el.disabled || window.__jobadabraReadBack.hiddenAway(el) || !(visible(el) || slot)) continue;   // a CV slot whose input the page hides counts by its visible zone (page/read-back.js)
+      const group = ['checkbox', 'radio'].includes(el.type) ? window.__jobadabraOptionGroups?.groupOf(el) : null;   // one question is one row, however its options are named (page/option-groups.js, shared with the replay's truth reader)
       const key = group ? group.key : el;
-      const filled = window.__jobPilottoReadBack.holds(el);   // the one reading (page/read-back.js): a box holding only a country code is empty, an upload slot by the file it shows
-      const named = group?.box && window.__jobPilottoOwnName?.(group.box);   // a group that names itself (aria-labelledby / aria-label: a UI5 radio group): that is the question, not the first option's own label
-      const entry = groups.get(key) || {el: slot || el, label: named ? clean(named.text) : group && !group.box ? clean(window.__jobPilottoTitleAbove(el, 'label, legend, [class*=label], [class*=question]', 4)?.textContent) || question(el) : question(el), required: false, filled: false, ai: false, byUs: false};   // the zone is what a person sees and is shown
-      entry.required ||= required(el) || !!(group?.box && (group.box.getAttribute('aria-required') === 'true' || (named?.el && window.__jobPilottoRequired.has(named.el))));   // the group's own mark: aria-required on it, or the star in the title it names itself by
-      entry.ai ||= el.hasAttribute('data-jobpilotto-ai'); entry.suggested ||= el.dataset.jobpilottoSuggested || ''; entry.guess ||= !!el.dataset.jobpilottoGuess; entry.wants ||= el.dataset.jobpilottoWants || ''; entry.options ||= el.dataset.jobpilottoOptions || '';   // page/propose.js: proposals, reported with what is left (the app's rows)
-      entry.cause ||= el.dataset.jobpilottoCause || ''; entry.gaveUp ||= el.getAttribute('data-jobpilotto-gaveup') || ''; entry.byUs ||= el.hasAttribute('data-jobpilotto-filled') || el.hasAttribute('data-jobpilotto-ai'); entry.category ||= el.dataset.jobpilottoCategory || '';   // the AI's reading, any language (page/categories.js)
-      entry.draft ||= el.dataset.jobpilottoDraft || '';   // page/fill-marks.js: text we drafted that the person has not yet read
-      entry.changed ||= !!window.__jobPilottoTypedChanged?.(el); entry.filled ||= filled && !entry.changed && !entry.draft;   // a box the page changed after we typed it is not filled (page/typed-check.js)
+      const filled = window.__jobadabraReadBack.holds(el);   // the one reading (page/read-back.js): a box holding only a country code is empty, an upload slot by the file it shows
+      const named = group?.box && window.__jobadabraOwnName?.(group.box);   // a group that names itself (aria-labelledby / aria-label: a UI5 radio group): that is the question, not the first option's own label
+      const entry = groups.get(key) || {el: slot || el, label: named ? clean(named.text) : group && !group.box ? clean(window.__jobadabraTitleAbove(el, 'label, legend, [class*=label], [class*=question]', 4)?.textContent) || question(el) : question(el), required: false, filled: false, ai: false, byUs: false};   // the zone is what a person sees and is shown
+      entry.required ||= required(el) || !!(group?.box && (group.box.getAttribute('aria-required') === 'true' || (named?.el && window.__jobadabraRequired.has(named.el))));   // the group's own mark: aria-required on it, or the star in the title it names itself by
+      entry.ai ||= el.hasAttribute('data-jobadabra-ai'); entry.suggested ||= el.dataset.jobadabraSuggested || ''; entry.guess ||= !!el.dataset.jobadabraGuess; entry.wants ||= el.dataset.jobadabraWants || ''; entry.options ||= el.dataset.jobadabraOptions || '';   // page/propose.js: proposals, reported with what is left (the app's rows)
+      entry.cause ||= el.dataset.jobadabraCause || ''; entry.gaveUp ||= el.getAttribute('data-jobadabra-gaveup') || ''; entry.byUs ||= el.hasAttribute('data-jobadabra-filled') || el.hasAttribute('data-jobadabra-ai'); entry.category ||= el.dataset.jobadabraCategory || '';   // the AI's reading, any language (page/categories.js)
+      entry.draft ||= el.dataset.jobadabraDraft || '';   // page/fill-marks.js: text we drafted that the person has not yet read
+      entry.changed ||= !!window.__jobadabraTypedChanged?.(el); entry.filled ||= filled && !entry.changed && !entry.draft;   // a box the page changed after we typed it is not filled (page/typed-check.js)
       groups.set(key, entry);
     }
     // A robot check (reCAPTCHA, hCaptcha, Turnstile) lives in a frame the form's inputs don't include: its answer is the hidden
@@ -72,43 +72,43 @@
       pairs.get(button.parentElement).push(button);
     }
     for (const [box, buttons] of pairs) {
-      const named = buttons.length > 1 && window.__jobPilottoGroupTitle(box);   // two buttons; its own accessible name, else the nearest title before it no other control owns (page/label-before.js)
+      const named = buttons.length > 1 && window.__jobadabraGroupTitle(box);   // two buttons; its own accessible name, else the nearest title before it no other control owns (page/label-before.js)
       if (!named) continue;
       const inner = [...groups].filter(([, entry]) => entry.el !== box && box.contains(entry.el)), title = named.el;
       inner.forEach(([key]) => groups.delete(key));   // what the fill marked on the checkbox (by us, suggested) stays with the question
       groups.set(box, {...inner[0]?.[1], el: box, label: clean(named.text), ai: false,
-        required: /required/i.test(title.className) || window.__jobPilottoRequired.has(title),
+        required: /required/i.test(title.className) || window.__jobadabraRequired.has(title),
         filled: buttons.some(button => button.getAttribute('aria-pressed') === 'true')});
     }
     // An ARIA radio group (role=radiogroup > role=radio, a hidden aria-hidden input inside each option): one question, however the options are drawn. The loop above skips the
     // aria-hidden inputs (react-select's helpers), so without this row the fill sees the question and the panel never counts it (Starling, 17 Oct 2026: 4 required Yes/No left,
     // panel "4 left" against 8). Filled when an option reads as on; required as the group or an option says, or its title shows the mark.
     // A group named only by a label link is the same question (the fill's reader marks it, page/radios.js namedGroups; hybrid fill move 1): its options are its children, on by an aria state or the fill's chosen mark.
-    for (const box of document.querySelectorAll('[role=radiogroup], [data-jobpilotto-named-group]')) {
+    for (const box of document.querySelectorAll('[role=radiogroup], [data-jobadabra-named-group]')) {
       const options = [...(box.matches('[role=radiogroup]') ? box.querySelectorAll('[role=radio]') : box.children)].filter(option => option.tagName !== 'INPUT' && visible(option));
       if (options.length < 2 || !visible(box) || [...groups.values()].some(entry => entry.el === box || box.contains(entry.el))) continue;
-      const named = window.__jobPilottoOwnName?.(box) || window.__jobPilottoGroupTitle?.(box);
+      const named = window.__jobadabraOwnName?.(box) || window.__jobadabraGroupTitle?.(box);
       if (!named) continue;
-      groups.set(box, {el: box, label: clean(named.text), ai: box.hasAttribute('data-jobpilotto-ai'), byUs: box.hasAttribute('data-jobpilotto-filled'), suggested: box.dataset.jobpilottoSuggested || '', guess: !!box.dataset.jobpilottoGuess, options: box.dataset.jobpilottoOptions || '',
-        required: box.getAttribute('aria-required') === 'true' || options.some(option => option.getAttribute('aria-required') === 'true') || (!!named.el && window.__jobPilottoRequired.has(named.el)),
-        filled: options.some(option => option.getAttribute('aria-checked') === 'true' || option.getAttribute('aria-pressed') === 'true' || option.dataset.jobpilottoChosen === '1' || !!option.querySelector('input[type=radio]:checked'))});
+      groups.set(box, {el: box, label: clean(named.text), ai: box.hasAttribute('data-jobadabra-ai'), byUs: box.hasAttribute('data-jobadabra-filled'), suggested: box.dataset.jobadabraSuggested || '', guess: !!box.dataset.jobadabraGuess, options: box.dataset.jobadabraOptions || '',
+        required: box.getAttribute('aria-required') === 'true' || options.some(option => option.getAttribute('aria-required') === 'true') || (!!named.el && window.__jobadabraRequired.has(named.el)),
+        filled: options.some(option => option.getAttribute('aria-checked') === 'true' || option.getAttribute('aria-pressed') === 'true' || option.dataset.jobadabraChosen === '1' || !!option.querySelector('input[type=radio]:checked'))});
     }
     const known = [...groups.values()];
-    for (const {el} of window.__jobPilottoSkeleton?.widgets(document, visible) || []) {
+    for (const {el} of window.__jobadabraSkeleton?.widgets(document, visible) || []) {
       if (known.some(entry => entry.el === el || entry.el?.contains?.(el) || el.contains(entry.el))) continue;   // a field the readers above already count
       const named = (el.getAttribute('aria-labelledby') || '').split(/\s+/).map(id => document.getElementById(id)?.textContent || '').join(' ');
-      if (el.getAttribute('aria-required') !== 'true' && !window.__jobPilottoRequired.has(named)) continue;
+      if (el.getAttribute('aria-required') !== 'true' && !window.__jobadabraRequired.has(named)) continue;
       const state = widgetState(el);
       if (!firstState.has(el)) firstState.set(el, state);
       groups.set(el, {el, label: question(el), required: true, filled: state !== firstState.get(el), ai: false, custom: true});   // custom: still a miss for reportMisses
     }
     // Required questions the page shows that none of the readers above read (page/coverage.js): left for you until answered, told apart at Submit.
-    const cover = window.__jobPilottoCoverage;
+    const cover = window.__jobadabraCoverage;
     if (cover) {
       const read = [...groups.values()].map(entry => entry.label);
       for (const item of cover.unread(document, read, visible)) {   // an ARIA radio group is read by the fill (page/radios.js): not unread, and its marks count
         const aria = item.area.matches?.('[role=radiogroup]') ? item.area : item.area.querySelector?.('[role=radiogroup]');
-        groups.set(item.area, {el: item.area, label: item.question, required: true, filled: !item.shared && cover.answered(item.area), ai: false, unread: !aria, suggested: aria?.dataset.jobpilottoSuggested || '', guess: !!aria?.dataset.jobpilottoGuess, options: aria?.dataset.jobpilottoOptions || ''});
+        groups.set(item.area, {el: item.area, label: item.question, required: true, filled: !item.shared && cover.answered(item.area), ai: false, unread: !aria, suggested: aria?.dataset.jobadabraSuggested || '', guess: !!aria?.dataset.jobadabraGuess, options: aria?.dataset.jobadabraOptions || ''});
       }
     }
     return [...groups.values()];
@@ -139,29 +139,29 @@
   // and glow instead of a hard border or outline. "review": an answer the AI wrote (pulses 3 times, then stays soft);
   // "flash": the field the panel or the app pointed at (pulses, removed after a few seconds).
   const glowStyle = () => {
-    if (document.getElementById('jobpilotto-glow-style')) return;
+    if (document.getElementById('jobadabra-glow-style')) return;
     const style = document.createElement('style');
-    style.id = 'jobpilotto-glow-style';
+    style.id = 'jobadabra-glow-style';
     style.textContent = `
-      @keyframes jobpilotto-pulse { 0%, 100% { box-shadow: 0 0 0 2px rgba(245,158,11,.45), 0 0 10px 2px rgba(245,158,11,.18); }
+      @keyframes jobadabra-pulse { 0%, 100% { box-shadow: 0 0 0 2px rgba(245,158,11,.45), 0 0 10px 2px rgba(245,158,11,.18); }
         50% { box-shadow: 0 0 0 3px rgba(245,158,11,.75), 0 0 22px 6px rgba(245,158,11,.35); } }
-      .jobpilotto-review { box-shadow: 0 0 0 2px rgba(245,158,11,.45), 0 0 10px 2px rgba(245,158,11,.18) !important;
-        animation: jobpilotto-pulse 1.4s ease-in-out 3; transition: box-shadow .3s ease; }
-      .jobpilotto-flash { box-shadow: 0 0 0 3px rgba(255,178,36,.8), 0 0 24px 6px rgba(255,178,36,.35) !important;
-        animation: jobpilotto-pulse 1s ease-in-out 3; transition: box-shadow .3s ease; }
-      @media (prefers-reduced-motion: reduce) { .jobpilotto-review, .jobpilotto-flash { animation: none; } }`;
+      .jobadabra-review { box-shadow: 0 0 0 2px rgba(245,158,11,.45), 0 0 10px 2px rgba(245,158,11,.18) !important;
+        animation: jobadabra-pulse 1.4s ease-in-out 3; transition: box-shadow .3s ease; }
+      .jobadabra-flash { box-shadow: 0 0 0 3px rgba(255,178,36,.8), 0 0 24px 6px rgba(255,178,36,.35) !important;
+        animation: jobadabra-pulse 1s ease-in-out 3; transition: box-shadow .3s ease; }
+      @media (prefers-reduced-motion: reduce) { .jobadabra-review, .jobadabra-flash { animation: none; } }`;
     document.head.append(style);
   };
   function flash(el) {
     el.scrollIntoView({behavior: 'smooth', block: 'center'});
     const target = el.closest('fieldset') || el;
     glowStyle();
-    target.classList.remove('jobpilotto-flash');
+    target.classList.remove('jobadabra-flash');
     void target.offsetWidth;  // restart the pulse when the same field is shown again
-    target.classList.add('jobpilotto-flash');
-    setTimeout(() => target.classList.remove('jobpilotto-flash'), 3500);
+    target.classList.add('jobadabra-flash');
+    setTimeout(() => target.classList.remove('jobadabra-flash'), 3500);
     // The cursor goes into text fields only: a dropdown would open its menu, a box would look ticked-by-us.
     if (!['checkbox', 'radio', 'file'].includes(el.type) && el.getAttribute('role') !== 'combobox' && el.tagName !== 'SELECT') el.focus({preventScroll: true});
   }
-  window.__jobPilottoPanelForm = {KNOCKOUT, AGREE, clean, norm, visible, question, fields, find, flash};
+  window.__jobadabraPanelForm = {KNOCKOUT, AGREE, clean, norm, visible, question, fields, find, flash};
 })();

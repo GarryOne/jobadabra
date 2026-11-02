@@ -27,7 +27,7 @@ export function createAppNotify(ctx) {
     if (clean) toWindow('openTarget', clean);
   }
   function notify(title, body, target = null, tone = 'info') {   // tone: the window toast's kind (renderer/toast-tone.js); macOS notifications have none
-    if (process.env.JOB_PILOTTO_SMOKE) return;
+    if (process.env.JOBADABRA_SMOKE) return;
     const onClick = typeof target === 'function' ? target : () => openTarget(target);
     const toast = hint => toWindow('toast', {title, body, hint, target: typeof target === 'function' ? null : targets.clean(target), tone: toneOf(tone)});
     if (!Notification.isSupported() || notificationsBlocked) { appLog('notify', 'window toast only', {title, blocked: notificationsBlocked}); toast(false); return; }

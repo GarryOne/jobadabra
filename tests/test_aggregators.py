@@ -85,9 +85,9 @@ class JobsChTests(unittest.TestCase):
     def test_it_is_on_by_default_and_has_its_own_switch(self):
         names = lambda env: [name for name, _ in aggregators.sources(env)]
         self.assertIn('jobs.ch', names({}))
-        self.assertNotIn('jobs.ch', names({'JOB_PILOTTO_DISABLE': 'jobsch'}))
-        self.assertNotIn('jobs.ch', names({'JOB_PILOTTO_DISABLE': 'aggregators'}))
-        self.assertIn('Arbeitnow', names({'JOB_PILOTTO_DISABLE': 'jobsch'}))
+        self.assertNotIn('jobs.ch', names({'JOBADABRA_DISABLE': 'jobsch'}))
+        self.assertNotIn('jobs.ch', names({'JOBADABRA_DISABLE': 'aggregators'}))
+        self.assertIn('Arbeitnow', names({'JOBADABRA_DISABLE': 'jobsch'}))
 
     def test_the_scan_keeps_the_matching_ones_named_by_source(self):
         db = sqlite3.connect(':memory:')
@@ -107,10 +107,10 @@ class AggregatorTests(unittest.TestCase):
     def test_the_end_to_end_fixture_mode_never_reaches_a_live_api(self):
         # 3 Oct 2026: real jobicy rows landed in the e2e quality suite's data. Fixture mode reads files only, like careers.py.
         db = sqlite3.connect(':memory:')
-        with mock.patch.dict('os.environ', {'JOB_PILOTTO_FIXTURE_DIR': '/tmp/fixtures'}), mock.patch.object(aggregators, 'sources', side_effect=AssertionError('a live source was asked')):
+        with mock.patch.dict('os.environ', {'JOBADABRA_FIXTURE_DIR': '/tmp/fixtures'}), mock.patch.object(aggregators, 'sources', side_effect=AssertionError('a live source was asked')):
             self.assertEqual(aggregators.scan(db, {}, now=NOW), {'jobs': [], 'sources': []})
         # a test of scan itself, with its own readers, is unaffected
-        with mock.patch.dict('os.environ', {'JOB_PILOTTO_FIXTURE_DIR': '/tmp/fixtures'}):
+        with mock.patch.dict('os.environ', {'JOBADABRA_FIXTURE_DIR': '/tmp/fixtures'}):
             self.assertEqual(aggregators.scan(db, {}, now=NOW, readers=[])['jobs'], [])
 
     def test_the_boards_step_says_when_it_is_done_with_what_it_kept(self):
@@ -121,7 +121,7 @@ class AggregatorTests(unittest.TestCase):
         db = sqlite3.connect(':memory:')
         db.row_factory = sqlite3.Row
         jobs = [aggregators._job('x', 1, TITLE, 'Acme', PLACE, 'https://a.example/1')]
-        for env, readers in (({}, [('Arbeitnow', lambda search: jobs)]), ({'JOB_PILOTTO_FIXTURE_DIR': '/tmp/fixtures'}, None)):
+        for env, readers in (({}, [('Arbeitnow', lambda search: jobs)]), ({'JOBADABRA_FIXTURE_DIR': '/tmp/fixtures'}, None)):
             out = io.StringIO()
             with mock.patch.dict('os.environ', env), mock.patch.object(feeds, 'record', return_value='new'), contextlib.redirect_stdout(out):
                 report = aggregators.scan(db, {}, NOW, readers=readers)
@@ -164,12 +164,12 @@ class AggregatorTests(unittest.TestCase):
         names = lambda env: [name for name, _ in aggregators.sources(env)]
         self.assertEqual(names({}), ['Arbeitnow', 'Himalayas', 'Jobicy', 'jobs.ch', 'EURES', 'Job boards found'])
         keys = {'ADZUNA_APP_ID': 'i', 'ADZUNA_APP_KEY': 'k', 'JOOBLE_API_KEY': 'j'}
-        # Parked (owner, 26 Oct 2026; src/features.py PARKED): saved keys are not used until JOB_PILOTTO_ENABLE names the source.
+        # Parked (owner, 26 Oct 2026; src/features.py PARKED): saved keys are not used until JOBADABRA_ENABLE names the source.
         self.assertEqual(names(keys), ['Arbeitnow', 'Himalayas', 'Jobicy', 'jobs.ch', 'EURES', 'Job boards found'])
-        keys['JOB_PILOTTO_ENABLE'] = 'adzuna,jooble'
+        keys['JOBADABRA_ENABLE'] = 'adzuna,jooble'
         self.assertEqual(names(keys), ['Arbeitnow', 'Himalayas', 'Jobicy', 'jobs.ch', 'EURES', 'Job boards found', 'Adzuna', 'Jooble'])
-        self.assertNotIn('Job boards found', names({'JOB_PILOTTO_DISABLE': 'found_boards'}))
-        self.assertEqual(names({'JOB_PILOTTO_DISABLE': 'aggregators', 'JOOBLE_API_KEY': 'j', 'JOB_PILOTTO_ENABLE': 'jooble'}), ['Jooble'])
+        self.assertNotIn('Job boards found', names({'JOBADABRA_DISABLE': 'found_boards'}))
+        self.assertEqual(names({'JOBADABRA_DISABLE': 'aggregators', 'JOOBLE_API_KEY': 'j', 'JOBADABRA_ENABLE': 'jooble'}), ['Jooble'])
 
     def test_adzuna_asks_per_country_of_your_places(self):
         asked = []

@@ -31,8 +31,8 @@ export const isSearchRun = args => args[0] === 'src' && args[1] === 'daily';
 // The steps around the engine's daily run (the job boards, the finder) end at once and silently: the script already told their story.
 export const isQuietStep = args => args[0] === 'src' && ['discover', 'scout'].includes(args[1]);
 
-// How long the script lasts: about 25 s, or JOB_PILOTTO_DEMO_SEARCH_SECONDS seconds when that is a positive number (the hero video plays a short one).
-export const SECONDS_ENV = 'JOB_PILOTTO_DEMO_SEARCH_SECONDS';
+// How long the script lasts: about 25 s, or JOBADABRA_DEMO_SEARCH_SECONDS seconds when that is a positive number (the hero video plays a short one).
+export const SECONDS_ENV = 'JOBADABRA_DEMO_SEARCH_SECONDS';
 const TOTAL_MS = SCRIPT.reduce((sum, [wait]) => sum + wait, 0);
 export const scaleFor = (env = process.env) => { const seconds = Number(env[SECONDS_ENV]); return seconds > 0 && Number.isFinite(seconds) ? seconds * 1000 / TOTAL_MS : 1; };
 

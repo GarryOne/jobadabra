@@ -37,7 +37,7 @@ export function body(request, {env = process.env, action = ''} = {}) {
     ...(effort ? {reasoning: {effort}} : {}),
     ...(request.schema ? {text: {format: {type: 'json_schema', name: 'answer', strict: true, schema: strict(request.schema)}}} : {}),
     ...(request.webSearch ? {tools: [{type: 'web_search'}], max_tool_calls: request.webSearch} : {}),
-    ...(action ? {prompt_cache_key: `job-pilotto-${action}`} : {}),
+    ...(action ? {prompt_cache_key: `jobadabra-${action}`} : {}),
   };
 }
 

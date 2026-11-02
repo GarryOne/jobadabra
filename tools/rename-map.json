@@ -1,0 +1,347 @@
+{
+ "about": "Every old-name hit (job-pilotto in any spelling) is owned by the FIRST rule whose match/before/after/line/paths all fit. step = the commit of docs/superpowers/specs/2026-11-01-finish-jobadabra-rename-design.md: 3 prose and local names, 4 in-page names, 5 env/header/telemetry/package names, 6 Keychain (with read-old fallback). keep = stays on purpose (why, expires). owner = another session's sweep.",
+ "skip": [
+  {
+   "path": "^docs/superpowers/(specs|plans)/",
+   "why": "dated specs and plans are a record of what was true then; the rename spec itself names the old words"
+  },
+  {
+   "path": "^tools/(rename-map\\.json|rename-inventory\\.mjs|lib/rename-scan\\.mjs)$",
+   "why": "the rename tooling spells the old names"
+  },
+  {
+   "path": "^desktop/lib/app-identity\\.js$",
+   "why": "pins the old data folder and Safe Storage name"
+  },
+  {
+   "path": "^desktop/test/app-identity\\.test\\.js$",
+   "why": "guards app-identity.js"
+  },
+  {
+   "path": "^(hosted|worker)/",
+   "why": "rs: deleted from this repo (5c, 4c)"
+  },
+  {
+   "path": "^\\.github/workflows/(ready-fill-image|worker)\\.yml$",
+   "why": "rs: deleted from this repo (5c, 4c)"
+  },
+  {
+   "path": "^tests/test_release_file_names\\.py$",
+   "why": "guards the release asset names; spells the old ones"
+  },
+  {
+   "path": "^tests/test_brand_wording\\.py$",
+   "why": "the existing brand guard: spells the old name and its KEPT list"
+  },
+  {
+   "path": "^desktop/test/(legacy-name-literals|app-menu)\\.test\\.js$",
+   "why": "guards that assert the old name is absent or pinned"
+  },
+  {
+   "path": "^tests/test_engine_repo_name\\.py$",
+   "why": "guards that no file names the old engine repo slug; spells it"
+  },
+  {
+   "path": "^desktop/e2e/recorded/[^/]+/[^/]+\\.html$",
+   "why": "recorded captures of live pages with the extension's marks as they were on the day; a changed capture is a new recorded case that must fail on the old code (tools/recorded-fails-on-old.mjs)"
+  }
+ ],
+ "rules": [
+  {
+   "id": "keep-recorded-why",
+   "match": ".",
+   "paths": "^desktop/e2e/recorded/[^/]+/case\\.json$",
+   "line": "^\\s*\"why\":",
+   "keep": "the story of a captured page, as written on the day",
+   "expires": "never"
+  },
+  {
+   "id": "keep-safe-storage",
+   "match": "^Job Pilotto$",
+   "after": "^ Safe Storage",
+   "keep": "Electron's Keychain item that seals every saved token; renaming makes them unreadable",
+   "expires": "never"
+  },
+  {
+   "id": "keep-api-host",
+   "match": "pilotto",
+   "after": "^\\\\?\\.(?:\\(\\?:)?(top\\b|workers)",
+   "keep": "installed apps call www.jobpilotto.top: a live address, not a name",
+   "expires": "never"
+  },
+  {
+   "id": "keep-workers-dev",
+   "match": "pilotto",
+   "after": "^[a-z0-9.-]*\\\\?\\.workers\\\\?\\.dev",
+   "keep": "installed apps POST to these workers.dev hosts",
+   "expires": "never"
+  },
+  {
+   "id": "go-owner-repo",
+   "match": "pilotto",
+   "before": "(GarryOne|garryone)/$",
+   "owner": "go: every GarryOne/ literal is swept by go (PRs 3/7 to 6/7)"
+  },
+  {
+   "id": "go-owner-line",
+   "match": "^job-pilotto$",
+   "line": "GarryOne",
+   "owner": "go: a line that names the owner and the repo is part of go's sweep (1e)"
+  },
+  {
+   "id": "keep-vars-secrets",
+   "match": "^JOB_PILOTTO",
+   "before": "(vars|secrets)\\.$",
+   "keep": "GitHub variable/secret name: mac-07 renames it (the owner's call), then this reference changes",
+   "expires": "when mac-07 has renamed the variable or secret"
+  },
+  {
+   "id": "keep-sentry-slugs",
+   "match": "^job-pilotto(-app)?$",
+   "line": "org job-pilotto|project job-pilotto|sentry\\.io|SENTRY_",
+   "keep": "the Sentry account's org and project slugs",
+   "expires": "never"
+  },
+  {
+   "id": "keep-notion-names",
+   "match": "^[Jj]ob [Pp]ilotto$",
+   "after": "^ (E2E|2|Tests|Self-heal|QA|Brain|Live|Backups)",
+   "keep": "Notion pages and folders the suites search for; the owner renames them",
+   "expires": "when the owner renames the Notion pages"
+  },
+  {
+   "id": "keep-notion-names-line",
+   "match": "^Job Pilotto$",
+   "line": "Brain|Live Test|archived|Job Pilotto Backups",
+   "keep": "Notion pages and the backup folder we do not rename from here",
+   "expires": "when the owner renames the Notion pages"
+  },
+  {
+   "id": "keep-legacy-readers",
+   "match": "^(Job Pilotto|Job-Pilotto|job-pilotto)$",
+   "line": "LEGACY|legacy|before the rename|Job Pilotto app|Stopped by|\\(Job Pilotto\\|Jobadabra\\)|'Job Pilotto'\\]|Job Pilotto backup|\\.app before",
+   "keep": "existing readers of data an older install wrote under the old name; each has a test",
+   "expires": "not extended here"
+  },
+  {
+   "id": "keep-app-paths",
+   "match": "^(Job Pilotto|jobpilotto|JobPilotto|job-pilotto)$",
+   "before": "(Logs|Programs|Support|Roaming|APPDATA|config|Applications|MacOS)[^A-Za-z0-9]{0,8}$",
+   "keep": "folders named by productName or the legacy data folder (productName stays until the later release)",
+   "expires": "after the both-names updater was on stable for 2 releases"
+  },
+  {
+   "id": "keep-bot-names",
+   "match": "^(sre[-_]job[-_]pilotto[-_]bot|jobpilotto_ci_alerts_bot|job-pilotto-bot)$",
+   "keep": "Telegram bot / alert account names outside the repo",
+   "expires": "never"
+  },
+  {
+   "id": "tmp-setup-name",
+   "match": "^Job-Pilotto-Setup$",
+   "step": 3,
+   "kind": "prose",
+   "readers": "a temporary file name in the updater"
+  },
+  {
+   "id": "defer-update-assets",
+   "match": "^Job-Pilotto(-|$)",
+   "keep": "release asset and feed names: installed apps run the old updater, so these move in a later release",
+   "expires": "after the both-names updater was on stable for 2 releases"
+  },
+  {
+   "id": "defer-app-id",
+   "match": "^jobpilotto$",
+   "before": "app\\.$",
+   "keep": "appId app.jobpilotto.desktop (the microphone permission is tied to it)",
+   "expires": "after the both-names updater was on stable for 2 releases"
+  },
+  {
+   "id": "defer-product-name",
+   "match": "^Job Pilotto$",
+   "paths": "^desktop/package\\.json$",
+   "keep": "productName names the .app, DMG and installer",
+   "expires": "after the both-names updater was on stable for 2 releases"
+  },
+  {
+   "id": "defer-bundle-name",
+   "match": "^Job Pilotto$",
+   "after": "^\\.(app|exe)",
+   "keep": "the .app bundle name of installs out there",
+   "expires": "after the both-names updater was on stable for 2 releases"
+  },
+  {
+   "id": "keep-fill-mark",
+   "match": "^jobpilotto-fill$",
+   "keep": "the #jobpilotto-fill address mark the app puts on the tabs it opens: the Chrome Web Store extension updates on its own and arms only on tabs that carry it; flipped in two steps (extension reads both, then the app writes the new one) after the extension rename has been in the store",
+   "expires": "JOB-199 (flip after the extension reading both marks is on the store)"
+  },
+  {
+   "id": "keep-extension-page-calls",
+   "match": "^__jobPilotto(ClickOption|Steps?|GuardActive|AuditVisibleFields|FillKnownFields|BackgroundSessions)$",
+   "keep": "the page and service-worker functions the app’s prompts and tools call on the extension: a name the app and the Chrome Web Store extension use to talk to each other; the extension updates on its own, so a new app must still find an old extension (Gitar, #2926); flipped in two steps (the extension answers to both names, then the app uses the new one)",
+   "expires": "JOB-199 (flip after the extension answering to both names is on the store)"
+  },
+  {
+   "id": "keep-extension-hook",
+   "match": "^(data-jobpilotto-hook|jobpilottoHook|jobpilottoFill|data-jobpilotto-fill)$",
+   "keep": "the hook marks on <html> that a Claude session reads: a name the app and the Chrome Web Store extension use to talk to each other; the extension updates on its own, so a new app must still find an old extension (Gitar, #2926); flipped in two steps (the extension answers to both names, then the app uses the new one)",
+   "expires": "JOB-199 (flip after the extension answering to both names is on the store)"
+  },
+  {
+   "id": "keep-extension-event",
+   "match": "^jobpilotto$",
+   "after": "^:fill",
+   "keep": "the jobpilotto:fill event a Claude session fires for the extension: a name the app and the Chrome Web Store extension use to talk to each other; the extension updates on its own, so a new app must still find an old extension (Gitar, #2926); flipped in two steps (the extension answers to both names, then the app uses the new one)",
+   "expires": "JOB-199 (flip after the extension answering to both names is on the store)"
+  },
+  {
+   "id": "in-page-global",
+   "match": "^__jobPilotto",
+   "step": 4,
+   "kind": "in-page",
+   "readers": "extension content scripts and the app's injected scripts"
+  },
+  {
+   "id": "in-page-dom",
+   "match": "^(data-job-?pilotto|jobpilotto-|jobpilotto[A-Z]|jobPilotto[A-Z]|\\.job-pilotto-badge|job-pilotto-badge)",
+   "step": 4,
+   "kind": "in-page",
+   "readers": "extension and app: DOM attributes, ids, classes, dataset keys"
+  },
+  {
+   "id": "in-page-dom-bare",
+   "match": "^(jobpilotto|data-jobpilotto)$",
+   "after": "^(-|\\]|\"|\\)|:)",
+   "step": 4,
+   "kind": "in-page",
+   "readers": "extension and app: attribute prefix"
+  },
+  {
+   "id": "keep-repo-var-names",
+   "match": "^JOB_PILOTTO_",
+   "paths": "^desktop/(lib/github\\.js|test/(github|cloud|engine-repo|ai-contract|always-on-trial|notify-choice|telegram-cloud|pool-share)[^/]*)$",
+   "line": "^(?!.*process\\.env)",
+   "keep": "names of the GitHub secrets and variables the app writes into a user's repo; the public workflows read them as vars./secrets.; they change together with the GitHub-side rename",
+   "expires": "when mac-07 has renamed the variables and secrets"
+  },
+  {
+   "id": "keep-sentry-short-ids",
+   "match": "^JOB-PILOTTO-APP-",
+   "keep": "Sentry issue ids (JOB-PILOTTO-APP-14): ids that exist on sentry.io",
+   "expires": "never"
+  },
+  {
+   "id": "keep-old-repo-names",
+   "match": "^job-pilotto-(private|starter)$",
+   "keep": "names of users' repos made before the rename: the app still finds them (REPO_NAMES, OLD_STARTER)",
+   "expires": "2 stable releases after the release carrying the rename PR"
+  },
+  {
+   "id": "go-owner-pattern",
+   "match": "^job-pilotto$",
+   "line": "OWNER_PATTERN|\\$\\{OWNER\\}",
+   "owner": "go: repo and owner names (1e, PR 6/7)"
+  },
+  {
+   "id": "keep-history-words",
+   "match": "^(Job Pilotto|Job-Pilotto|job-pilotto|jobpilotto)$",
+   "line": "renamed from|used to be|was called|formerly|old name|before the rename|after the rename",
+   "keep": "a sentence about what the old name was",
+   "expires": "not extended here"
+  },
+  {
+   "id": "keep-launchd-label",
+   "match": "^jobpilotto$",
+   "before": "com\\.$",
+   "keep": "label of the launch agent already loaded on the owner's Mac (a new label would leave the old one running)",
+   "expires": "never"
+  },
+  {
+   "id": "keep-owner-keychain-odd",
+   "match": "^token-job-pilotto-2$",
+   "keep": "the owner's second Notion token item",
+   "expires": "never"
+  },
+  {
+   "id": "keep-ai-provider-key-names",
+   "match": "^job-pilotto-",
+   "paths": "ai-meter",
+   "keep": "names of API keys and workspaces at the AI provider: external",
+   "expires": "when the provider keys are renamed"
+  },
+  {
+   "id": "keep-keychain-fallback",
+   "match": "^job-pilotto$",
+   "paths": "^(desktop/lib/(keychain|credentials)\\.js|desktop/test/(keychain|credentials)\\.test\\.js|src/secret_store\\.py|tests/test_(secret_store|keychain_copy_to_jobadabra)\\.py|tools/keychain-copy-to-jobadabra\\.sh)$",
+   "keep": "the read-old-name fallback of the Keychain, its tests and the one-time copy script",
+   "expires": "2 stable releases after the release carrying the rename PR"
+  },
+  {
+   "id": "keep-artifact-fallback",
+   "match": "^job-pilotto-jobs-db$",
+   "paths": "^desktop/(lib/github|test/github-sync-database[^/]*)\\.js$",
+   "keep": "the artifact name a repo's last pre-rename run uploaded: the app reads the new name, then this one",
+   "expires": "2 stable releases after the release carrying the rename PR (JOB-200)"
+  },
+  {
+   "id": "keychain-item",
+   "match": "^job-pilotto$",
+   "after": "^\\\\?\\.(?:[a-z*]|\\$\\{|\\{|\\(|\\[)",
+   "step": 6,
+   "kind": "keychain",
+   "readers": "app (JS), engine (Python), tools, owner hooks"
+  },
+  {
+   "id": "keychain-account",
+   "match": "^job-pilotto$",
+   "line": "account|acct|ACCOUNT|-a ['\"]|security (add|find|delete)|\\.password|[Kk]eychain|KEYCHAIN",
+   "step": 6,
+   "kind": "keychain",
+   "readers": "app (JS), engine (Python), tools"
+  },
+  {
+   "id": "env-var",
+   "match": "^JOB_PILOTTO",
+   "step": 5,
+   "kind": "env",
+   "readers": "app, engine, tests, tools, CI"
+  },
+  {
+   "id": "http-header",
+   "match": "^[Xx]-[Jj]ob-[Pp]ilotto",
+   "step": 5,
+   "kind": "header",
+   "readers": "the app's local server and its callers"
+  },
+  {
+   "id": "telemetry",
+   "match": "^job-pilotto(-engine)?$",
+   "line": "\\$lib|sentry_client|['\"]?release['\"]?\\s*[:=]|@\\$\\{|@\\{|@[0-9t]",
+   "step": 5,
+   "kind": "telemetry",
+   "readers": "Sentry and PostHog dashboards"
+  },
+  {
+   "id": "package-name",
+   "match": "^job-pilotto-(desktop|e2e)$",
+   "step": 5,
+   "kind": "package",
+   "readers": "npm, electron-builder"
+  },
+  {
+   "id": "keep-old-new-pair",
+   "match": "^(Job Pilotto|job-pilotto|jobpilotto)$",
+   "line": "[Jj]obadabra",
+   "keep": "a line that names both: a reader of the old name next to the new one (or a sentence about the move)",
+   "expires": "not extended here"
+  },
+  {
+   "id": "prose-and-locals",
+   "match": ".",
+   "step": 3,
+   "kind": "prose",
+   "readers": "people and the same file's code (comments, docs, test titles, local names, tmp-dir prefixes)"
+  }
+ ]
+}

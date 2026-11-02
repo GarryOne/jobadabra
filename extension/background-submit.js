@@ -8,7 +8,7 @@ export async function submissionPage(action, {control = '', seal = ''} = {}) {
   const requiredComplete = fields.length > 0 && fields.every(el => typeof el.checkValidity !== 'function' || el.checkValidity()) &&
     fields.filter(el => el.required || el.getAttribute?.('aria-required') === 'true').every(el => {
       if (el.type === 'checkbox' || el.type === 'radio') return el.checked || el.type === 'radio' && fields.some(other => other.name === el.name && other.checked);
-      if (el.type === 'file') return !!el.files?.length || el.hasAttribute?.('data-jobpilotto-filled');
+      if (el.type === 'file') return !!el.files?.length || el.hasAttribute?.('data-jobadabra-filled');
       return !!clean(el.value || el.getAttribute?.('aria-valuetext') || el.textContent);
     });
   const named = [...document.querySelectorAll('button, a, [role=button], input[type=submit], input[type=button]')].filter(el => visible(el) && clean(el.innerText || el.textContent || el.value || el.getAttribute?.('aria-label')).toLowerCase() === clean(control).toLowerCase());
@@ -17,14 +17,14 @@ export async function submissionPage(action, {control = '', seal = ''} = {}) {
   // in view first, then asked what is on top (the live view's own press does the same: desktop/ready-fill/live.mjs BUTTON_AT).
   button?.scrollIntoView?.({block: 'center', behavior: 'instant'});
   const rect = button?.getBoundingClientRect(), onTop = rect && document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
-  const blocked = fields.some(el => el.type === 'password') || [...document.querySelectorAll('[data-jobpilotto-draft]')].some(visible);
-  const safe = !!button && !button.disabled && button.getAttribute?.('aria-disabled') !== 'true' && (onTop === button || button.contains(onTop)) && !blocked && !globalThis.__jobPilottoStopped;
-  const factsOnly = document.querySelectorAll('[data-jobpilotto-grounding=unknown], [data-jobpilotto-guess]').length === 0 && fields.every(el => {
+  const blocked = fields.some(el => el.type === 'password') || [...document.querySelectorAll('[data-jobadabra-draft]')].some(visible);
+  const safe = !!button && !button.disabled && button.getAttribute?.('aria-disabled') !== 'true' && (onTop === button || button.contains(onTop)) && !blocked && !globalThis.__jobadabraStopped;
+  const factsOnly = document.querySelectorAll('[data-jobadabra-grounding=unknown], [data-jobadabra-guess]').length === 0 && fields.every(el => {
     if (['submit', 'button', 'reset'].includes(el.type)) return true;
-    // Why (2026-10-28, found by the Full automation e2e): upload.js writes the input's own mark as dataset.jobPilottoFile and only the slot's as data-jobpilotto-file (read-back.js reads both); reading the slot's attribute on the input matched no CV, so every attachment handed the application over.
-    if (el.type === 'file') return !el.files?.length || (el.dataset?.jobPilottoFile || el.closest?.('[data-jobpilotto-file]')?.dataset?.jobpilottoFile || el.getAttribute?.('data-jobpilotto-file')) === el.files[0].name;
+    // Why (2026-10-28, found by the Full automation e2e): upload.js writes the input's own mark as dataset.jobadabraInputFile and only the slot's as data-jobadabra-file (read-back.js reads both); reading the slot's attribute on the input matched no CV, so every attachment handed the application over.
+    if (el.type === 'file') return !el.files?.length || (el.dataset?.jobadabraInputFile || el.closest?.('[data-jobadabra-file]')?.dataset?.jobadabraFile || el.getAttribute?.('data-jobadabra-file')) === el.files[0].name;
     if (['checkbox', 'radio'].includes(el.type) && !el.checked) return true;
-    return !clean(el.value || el.getAttribute?.('aria-valuetext') || el.textContent) || el.getAttribute?.('data-jobpilotto-grounding') === 'known';
+    return !clean(el.value || el.getAttribute?.('aria-valuetext') || el.textContent) || el.getAttribute?.('data-jobadabra-grounding') === 'known';
   });
   // The values never leave the page: their digest detects edits/site replacement during the server round-trip.
   const bytes = new TextEncoder().encode(JSON.stringify([location?.href || '', fields.map(el => [el.id, el.name, el.type, el.value, !!el.checked, [...(el.files || [])].map(file => [file.name, file.size, file.lastModified])]), named.map(el => clean(el.innerText || el.textContent || el.value))]));
@@ -35,7 +35,7 @@ export async function submissionPage(action, {control = '', seal = ''} = {}) {
   }
   if (!safe || !requiredComplete || !seal || seal !== current) return {pressed: false};
   // The normal press floor still rejects destructive controls; submit-watch is explicitly armed as automation, not as a human press.
-  if (globalThis.__jobPilottoSubmitPress?.refused(button)) return {pressed: false};
-  (globalThis.__jobPilottoPress?.(button) || button.click());
+  if (globalThis.__jobadabraSubmitPress?.refused(button)) return {pressed: false};
+  (globalThis.__jobadabraPress?.(button) || button.click());
   return {pressed: true};
 }

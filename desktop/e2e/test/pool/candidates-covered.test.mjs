@@ -26,7 +26,7 @@ test('candidates under a layer are covered; others are not', {skip: !chromium &&
     for (const [name, html, want] of SHAPES) {
       await page.setContent(`<!doctype html><html><body style="margin:0">${html}</body></html>`);
       await page.evaluate(source);
-      const found = await page.evaluate('window.__jobPilottoCandidates.candidatesOf()');
+      const found = await page.evaluate('window.__jobadabraCandidates.candidatesOf()');
       for (const [text, covered] of Object.entries(want)) assert.equal(!!found.find(item => item.text === text)?.covered, covered, `${name}: ${text}`);
     }
   } finally { await browser.close(); }

@@ -17,7 +17,7 @@ import {parseRunMessage} from '../renderer/run-cards.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 // Windows has `python`, not `python3`; its console code page cannot print the engine's text: UTF-8 on (as lib/pipeline.js runs the engine).
-const python = process.env.JOB_PILOTTO_CHECK_PYTHON || (process.platform === 'win32' ? 'python' : 'python3');
+const python = process.env.JOBADABRA_CHECK_PYTHON || (process.platform === 'win32' ? 'python' : 'python3');
 const run = spawnSync(python, [path.join(here, 'fixtures/engine_messages.py')], {cwd: path.join(here, '../..'), encoding: 'utf8', env: {...process.env, PYTHONUTF8: '1', PYTHONIOENCODING: 'utf-8'}});
 assert.equal(run.status, 0, run.stderr);
 const said = JSON.parse(run.stdout);

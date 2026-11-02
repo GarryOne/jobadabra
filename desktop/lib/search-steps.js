@@ -20,7 +20,7 @@ export function scoutDue(settings, trigger, now = Date.now(), force = false) {
 export const searchTrigger = settings => (settings.lastSearchAt ? 'you' : 'first');
 
 // One deadline for the whole press (owner, 26 Oct 2026: "A find jobs session should take at most 3min"; the 06:21 press took 269 s: the job
-// boards' step 177 s with no clock, then the search's own 3 minutes). Every engine step gets the press's time (JOB_PILOTTO_SEARCH_AT) and counts
+// boards' step 177 s with no clock, then the search's own 3 minutes). Every engine step gets the press's time (JOBADABRA_SEARCH_AT) and counts
 // from it (src/time_budget.py): the job boards' step ends at its share (src/sources/boards.py SHARE_S), the search at the press's end, minus
 // the finder's share when it is due; the finder gets what is left. A step with no time left waits for the next search and says so.
 export const SCOUT_SHARE_S = 45;   // the employer finder's seconds at the press's end, when it is due
@@ -34,7 +34,7 @@ const clockText = s => `${Math.floor(s / 60)} min ${String(s % 60).padStart(2, '
 export async function searchSteps(storage, onLine, mode, trigger = 'you', exec = run, {employers = false, now = Date.now} = {}) {
   const ai = claudeCode.aiReady(storage.settings(), !!storage.secret('ANTHROPIC_API_KEY'), !!storage.secret('OPENAI_API_KEY'));
   const pressAt = now();
-  const env = {...triggerEnv(trigger), JOB_PILOTTO_SEARCH_AT: String(pressAt / 1000)};
+  const env = {...triggerEnv(trigger), JOBADABRA_SEARCH_AT: String(pressAt / 1000)};
   const scout = scoutDue(storage.settings(), trigger, Date.now(), employers);
   const budget = SEARCH_BUDGET_S - (scout ? SCOUT_SHARE_S : 0);   // the search's end on the press's clock
   const spent = () => Math.floor((now() - pressAt) / 1000);

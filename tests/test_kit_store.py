@@ -180,7 +180,7 @@ class TestLetterStyleBesideTheLetter(unittest.TestCase):
                          '- Notice period: 3 months\n\n## Other\n- Pets: none\n\n## Cover letter style\n- Tone: direct\n- Never mention: salary\n- Tone: warm')
         self.assertEqual(kit.with_style('- Notice period: 3 months', str(folder / 'none.json')), '- Notice period: 3 months')
         stores = mock.Mock(texts=mock.Mock(get={'answers': 'Driving license: B'}.__getitem__))
-        with mock.patch.dict(os.environ, {'JOB_PILOTTO_LETTER_STYLE_FILE': str(style)}):
+        with mock.patch.dict(os.environ, {'JOBADABRA_LETTER_STYLE_FILE': str(style)}):
             self.assertTrue(kit.standard_answers(stores).endswith('## Cover letter style\n- Tone: direct\n- Never mention: salary'))
 
 

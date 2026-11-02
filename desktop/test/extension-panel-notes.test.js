@@ -31,7 +31,7 @@ test('a page mark of posting or opening is never Ready and never counts; the fil
   const panel = readPanel();
   assert.match(panel, /ready = !moved && !pageMark && total > 0 && left === 0/);
   assert.match(panel, /pageMark \? \(MARK_WORDS\[pageMark\] \|\| 'Apply button detected\. Redirecting…'\)/g);   // the owner's own words for a posting; a page not judged yet is only being read
-  assert.match(panel, /pageMark = \(m => \(\['form', 'account', 'sign-up'\]\.includes\(m\) \? '' : m \|\| 'reading'\)\)\(document\.documentElement\.getAttribute\('data-jobpilotto-page'\) \|\| ''\)/, 'default-deny: Ready only on a page judged to be a form');
+  assert.match(panel, /pageMark = \(m => \(\['form', 'account', 'sign-up'\]\.includes\(m\) \? '' : m \|\| 'reading'\)\)\(document\.documentElement\.getAttribute\('data-jobadabra-page'\) \|\| ''\)/, 'default-deny: Ready only on a page judged to be a form');
   assert.match(panel, /!account && !pageMark;/, 'no CV tip on a page that is not a form');
   assert.match(read('page/review-payload.js'), /page: \(mark => mark \|\| 'reading'\)/, 'the app hears the same: an unjudged page reports no counts');
   assert.match(['fill-flow.js', 'fill-flow-read.js', 'fill-flow-steps.js'].map(read).join('\n'), /markPage\(tab\.id, role, false, kind, \{working: true\}\);/, 'set while the read goes on: no verdict yet (extension/working-mark.js)');

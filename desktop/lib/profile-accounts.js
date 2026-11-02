@@ -1,5 +1,5 @@
 // Job-site accounts belong to one profile (owner, 16 Oct 2026): the profile's id, moving an old-name account to it, and what export, import and reset do with them.
-// Items: job-pilotto.profile-<id>.<host>.password (comment "email=… job=…"); test accounts (job-pilotto.test-account.*) are outside profiles, never moved, exported or reset.
+// Items: jobadabra.profile-<id>.<host>.password (comment "email=… job=…"); test accounts (jobadabra.test-account.*) are outside profiles, never moved, exported or reset.
 // Secrets are read and written only through lib/keychain.js (a test run or the twin never reaches the real Keychain); nothing here logs a value.
 // Guards: desktop/test/profile-accounts.test.js.
 import crypto from 'node:crypto';
@@ -10,7 +10,7 @@ import * as credentials from './credentials.js';
 import {appProfileTexts, personalValues} from './owner-values.js';
 
 export const ACCOUNTS_FILE = 'accounts.json';   // an export's accounts, in plain text (only when the person ticked it)
-const ACCOUNT = 'job-pilotto';
+const ACCOUNT = 'jobadabra';
 
 // The profile's id: made once, kept in the settings (so an export carries it and a reset starts a new one).
 export function profileId(storage) {
@@ -26,7 +26,7 @@ const noteText = ({email, job}) => [email && `email=${email}`, job && `job=${job
 // -> 'moved' | 'kept' (the new item already has another password: both stay) | 'failed' (nothing deleted).
 export function assign(host, id = credentials.currentProfile(), opts = {}) {
   if (!id || !/^[a-z0-9.-]{1,253}$/i.test(String(host || '')) || !String(host).includes('.')) return 'failed';
-  const from = `job-pilotto.${host}.password`, to = credentials.serviceOf(host, id);
+  const from = `jobadabra.${host}.password`, to = credentials.serviceOf(host, id);
   const secret = keychain.read(from, {account: ACCOUNT, ...opts});
   if (!secret) return 'failed';
   const there = keychain.read(to, {account: ACCOUNT, ...opts});

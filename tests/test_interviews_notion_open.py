@@ -1,6 +1,6 @@
 """The interview commands and the prep kit open Notion only through the store: with the Notion store chosen in the environment
-(JOB_PILOTTO_STORE=notion and a token), `src.ai.interviews`, `src.ai.interview_insights` and `src.ai.prep` reach Notion through
-src.stores (its notion adapter's client), never a client of their own; JOB_PILOTTO_DISABLE=notion still reads as "not connected"
+(JOBADABRA_STORE=notion and a token), `src.ai.interviews`, `src.ai.interview_insights` and `src.ai.prep` reach Notion through
+src.stores (its notion adapter's client), never a client of their own; JOBADABRA_DISABLE=notion still reads as "not connected"
 (as Tracker.from_env did); and none of the four files calls the Notion API directly. Guards src/ai/interviews.py
 (open_for_commands), interview_insights.py, prep.py and interviews_blocks.py (the job line now lives in the notion adapter)."""
 import io
@@ -19,7 +19,7 @@ from tests.interviews_fixtures import NotionPages, app
 ROOT = Path(__file__).resolve().parents[1]
 FILES = ('src/ai/interviews.py', 'src/ai/interviews_blocks.py', 'src/ai/interview_insights.py', 'src/ai/prep.py')
 DIRECT = re.compile(r'Tracker\.from_env|Tracker\(|\._request\(|update_page\(|create_page\(|query_database\(')
-NOTION = {'JOB_PILOTTO_STORE': 'notion', 'NOTION_TOKEN': 'secret_test', 'NOTION_INTERVIEWS_DB': 'iv-db', 'NOTION_APPLICATIONS_DB': 'apps'}
+NOTION = {'JOBADABRA_STORE': 'notion', 'NOTION_TOKEN': 'secret_test', 'NOTION_INTERVIEWS_DB': 'iv-db', 'NOTION_APPLICATIONS_DB': 'apps'}
 
 
 class Pages(NotionPages):
@@ -43,7 +43,7 @@ class NotionOpenedByTheStore(unittest.TestCase):
         self.enterContext(mock.patch.dict(os.environ, NOTION))
         self.enterContext(mock.patch.object(interviews, 'INTERVIEWS_DATABASE_ID', 'iv-db'))
         self.opened = self.enterContext(mock.patch('src.stores.notion.tracker_for', return_value=self.notion))
-        os.environ.pop('JOB_PILOTTO_DISABLE', None)
+        os.environ.pop('JOBADABRA_DISABLE', None)
 
     def test_the_list_reaches_notion_through_the_store(self):
         self.notion.pages['iv-1'] = {'id': 'iv-1', 'url': 'https://notion.test/iv-1', 'properties': {
@@ -55,7 +55,7 @@ class NotionOpenedByTheStore(unittest.TestCase):
         self.assertEqual(self.opened.call_count, 1)  # the store's own Notion client, once
 
     def test_disabled_notion_reads_as_not_connected(self):
-        with mock.patch.dict(os.environ, {'JOB_PILOTTO_DISABLE': 'notion'}):
+        with mock.patch.dict(os.environ, {'JOBADABRA_DISABLE': 'notion'}):
             self.assertEqual(call(interviews, 'list'), (1, {'ok': False, 'error': interviews.NOT_CONNECTED}))
             self.assertEqual(call(ii, 'refresh'), (1, {'ok': False, 'error': 'Connect Notion first'}))
 

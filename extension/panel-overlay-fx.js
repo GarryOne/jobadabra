@@ -8,7 +8,7 @@
   const STARS = [[12, 18], [78, 12], [30, 70], [88, 60], [52, 88], [8, 52], [64, 30], [22, 40], [92, 86], [45, 10], [70, 78], [36, 92], [16, 84], [58, 56], [84, 36], [4, 28], [96, 14], [40, 30], [74, 52], [26, 14], [60, 8], [90, 72], [10, 70], [50, 68]];
   const box = (parent, css) => parent.appendChild(Object.assign(document.createElement('div'), {style: css}));
   const loop = (node, frames, options) => node.animate(frames, {iterations: Infinity, easing: 'ease-in-out', ...options});
-  window.__jobPilottoOverlayFx = layer => {
+  window.__jobadabraOverlayFx = layer => {
     if (!layer?.animate || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
     const fx = box(layer, 'position:absolute;inset:0;overflow:hidden;pointer-events:none;');
     for (const [rgb, size, left, top, dx, dy, secs] of CLOUDS) {

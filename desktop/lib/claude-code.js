@@ -34,19 +34,19 @@ export const aiReady = (settings, hasKey, hasOpenAiKey = false) => ai.ready(sett
 // Another engine answers (Free AI, an API key) but the user's own plan is signed in on this Mac: its CLI still does the web searches that find
 // job boards and employers (owner, 26 Oct 2026: "The Free AI should have no limitation"), free beyond the plan. Claude Code first, then Codex.
 export function planSearch(settings = {}) {
-  if (settings.claudeCode?.authenticated && settings.claudeCode?.path) return {JOB_PILOTTO_PLAN_SEARCH: 'claude', JOB_PILOTTO_CLAUDE_BIN: settings.claudeCode.path};
-  if (settings.codex?.authenticated && settings.codex?.path) return {JOB_PILOTTO_PLAN_SEARCH: 'codex', JOB_PILOTTO_CODEX_BIN: settings.codex.path};
+  if (settings.claudeCode?.authenticated && settings.claudeCode?.path) return {JOBADABRA_PLAN_SEARCH: 'claude', JOBADABRA_CLAUDE_BIN: settings.claudeCode.path};
+  if (settings.codex?.authenticated && settings.codex?.path) return {JOBADABRA_PLAN_SEARCH: 'codex', JOBADABRA_CODEX_BIN: settings.codex.path};
   return {};
 }
 
 export function pipelineVariables(settings = {}, hasKey = false, hasOpenAiKey = false) {
   const chosen = engine(settings, hasKey);
-  if (chosen === 'openai') return {JOB_PILOTTO_AI_ENGINE: 'openai', ...planSearch(settings)};
-  if (chosen === 'codex') return {JOB_PILOTTO_AI_ENGINE: 'codex', ...(settings.codex?.path ? {JOB_PILOTTO_CODEX_BIN: settings.codex.path} : {}),
-    ...(settings.aiFallback && hasOpenAiKey ? {JOB_PILOTTO_AI_FALLBACK: 'openai'} : {})};
-  if (chosen !== 'cli') return {JOB_PILOTTO_AI_ENGINE: 'api', ...planSearch(settings)};
-  return {JOB_PILOTTO_AI_ENGINE: 'cli', ...(settings.claudeCode?.path ? {JOB_PILOTTO_CLAUDE_BIN: settings.claudeCode.path} : {}),
-    ...(settings.aiFallback && hasKey ? {JOB_PILOTTO_AI_FALLBACK: 'api'} : {})};
+  if (chosen === 'openai') return {JOBADABRA_AI_ENGINE: 'openai', ...planSearch(settings)};
+  if (chosen === 'codex') return {JOBADABRA_AI_ENGINE: 'codex', ...(settings.codex?.path ? {JOBADABRA_CODEX_BIN: settings.codex.path} : {}),
+    ...(settings.aiFallback && hasOpenAiKey ? {JOBADABRA_AI_FALLBACK: 'openai'} : {})};
+  if (chosen !== 'cli') return {JOBADABRA_AI_ENGINE: 'api', ...planSearch(settings)};
+  return {JOBADABRA_AI_ENGINE: 'cli', ...(settings.claudeCode?.path ? {JOBADABRA_CLAUDE_BIN: settings.claudeCode.path} : {}),
+    ...(settings.aiFallback && hasKey ? {JOBADABRA_AI_FALLBACK: 'api'} : {})};
 }
 
 // `claude --version` -> "2.1.3", or null.
@@ -64,7 +64,7 @@ export async function detect({binary = claudeBinary, run = execFile} = {}) {
   return {installed: !!found, path: file, version: found};
 }
 
-const freshFolder = () => fs.mkdtempSync(path.join(os.tmpdir(), 'job-pilotto-claude-'));
+const freshFolder = () => fs.mkdtempSync(path.join(os.tmpdir(), 'jobadabra-claude-'));
 
 // Windows: the Claude Desktop app is a chat app and does not include Claude Code (the `claude` command); what installs it is told here.
 const hint = (platform = process.platform) => platform === 'win32'

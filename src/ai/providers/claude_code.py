@@ -40,10 +40,10 @@ MISSING_TEXT = ('Claude Code was not found on this computer: install it from '
 
 
 def find_binary(env=None, exists=os.path.exists):
-    """The user's `claude`: as the app found it (JOB_PILOTTO_CLAUDE_BIN), else on PATH, else where the installers put
+    """The user's `claude`: as the app found it (JOBADABRA_CLAUDE_BIN), else on PATH, else where the installers put
     it (an app opened from the Finder has no shell PATH)."""
     env = os.environ if env is None else env
-    given = env.get('JOB_PILOTTO_CLAUDE_BIN')
+    given = env.get('JOBADABRA_CLAUDE_BIN')
     if given and exists(given):
         return given
     on_path = shutil.which('claude', path=env.get('PATH'))

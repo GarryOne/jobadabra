@@ -1,4 +1,4 @@
-"""JOB_PILOTTO_FIXTURE_DIR: feeds come from a folder, never the network (the end-to-end journey's deterministic jobs)."""
+"""JOBADABRA_FIXTURE_DIR: feeds come from a folder, never the network (the end-to-end journey's deterministic jobs)."""
 import json
 import tempfile
 import unittest
@@ -17,7 +17,7 @@ class FixtureFeedsTest(unittest.TestCase):
         (root / 'acme.json').write_text(json.dumps({'jobs': [
             {'id': 7, 'title': 'Senior SRE', 'location': {'name': 'Zurich, Switzerland'}, 'absolute_url': 'https://boards.example.test/acme/7',
              'content': '<p>Run Kubernetes.</p>', 'updated_at': '2026-10-01'}]}))
-        patch = mock.patch.dict('os.environ', {'JOB_PILOTTO_FIXTURE_DIR': self.folder.name})
+        patch = mock.patch.dict('os.environ', {'JOBADABRA_FIXTURE_DIR': self.folder.name})
         patch.start()
         self.addCleanup(patch.stop)
         self.addCleanup(self.folder.cleanup)
@@ -43,7 +43,7 @@ if __name__ == '__main__':
 class DiscoveryTest(unittest.TestCase):
     def test_the_jobs_ch_crawl_stays_offline_in_fixture_mode(self):
         from src.sources import boards
-        with mock.patch.dict('os.environ', {'JOB_PILOTTO_FIXTURE_DIR': '/nowhere'}), mock.patch('urllib.request.urlopen', side_effect=AssertionError('went online')), \
+        with mock.patch.dict('os.environ', {'JOBADABRA_FIXTURE_DIR': '/nowhere'}), mock.patch('urllib.request.urlopen', side_effect=AssertionError('went online')), \
                 mock.patch('sys.argv', ['discover']):
             self.assertEqual(boards.main(), 0)
 
@@ -61,7 +61,7 @@ class ScoutTest(unittest.TestCase):
         seeds = {'excluded': [], 'tier1_known': [{'name': 'E2E Gamma', 'ats': 'greenhouse', 'slug': 'e2e-gamma'}], 'tier1': [], 'manual_watch': [], 'regional': {}, 'boards': []}
         db = sqlite3.connect(':memory:')
         db.row_factory = sqlite3.Row
-        with mock.patch.dict('os.environ', {'JOB_PILOTTO_FIXTURE_DIR': folder.name}), mock.patch('urllib.request.urlopen') as online:
+        with mock.patch.dict('os.environ', {'JOBADABRA_FIXTURE_DIR': folder.name}), mock.patch('urllib.request.urlopen') as online:
             summary, results = scout.run(db, batch=5, seeds=seeds)
         online.assert_not_called()   # no Hacker News, no whiteboards: the scout swallows a failed source, so only "never tried" proves it
         self.assertEqual([(candidate['name'], outcome['status']) for candidate, outcome in results], [('E2E Gamma', 'found')])

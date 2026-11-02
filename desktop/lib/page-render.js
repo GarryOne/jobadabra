@@ -7,12 +7,12 @@ import net from 'node:net';
 
 // The engine's key to /engine/render (lib/server.js): made at each start, given only to the engine runs this app starts (lib/pipeline.js).
 export const TOKEN = crypto.randomBytes(24).toString('hex');
-const PARTITION = 'job-pilotto-render';   // in memory only: nothing it is given is kept
+const PARTITION = 'jobadabra-render';   // in memory only: nothing it is given is kept
 let where = '';
 export const setAddress = value => { where = value; };   // main.js, once the local server listens
 export const address = () => where;
 // The engine's own user agent plus "browser" (src/sources/render.py sends it): never a browser's, so a site always sees who it is.
-export const agentOf = value => (/^JobPilotto\/[\w.]+ \([^)]*\) browser$/.test(String(value || '')) ? String(value) : 'JobPilotto browser');
+export const agentOf = value => (/^Jobadabra\/[\w.]+ \([^)]*\) browser$/.test(String(value || '')) ? String(value) : 'Jobadabra browser');
 
 // A public web address only: never this computer, the local network or a non-web scheme.
 export function publicUrl(address) {

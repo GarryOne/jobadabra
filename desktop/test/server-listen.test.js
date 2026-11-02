@@ -26,16 +26,16 @@ test('the owner scenario: another program holds the port, the app says so once a
 });
 
 test('a test app without its own port does not listen at all; with one it does', async () => {
-  assert.equal(testWithoutOwnPort({JOB_PILOTTO_E2E: '1'}), true);
-  assert.equal(testWithoutOwnPort({JOB_PILOTTO_E2E: '1', JOB_PILOTTO_PORT: 'abc'}), true);
-  assert.equal(testWithoutOwnPort({JOB_PILOTTO_E2E: '1', JOB_PILOTTO_PORT: '48123'}), false);
+  assert.equal(testWithoutOwnPort({JOBADABRA_E2E: '1'}), true);
+  assert.equal(testWithoutOwnPort({JOBADABRA_E2E: '1', JOBADABRA_PORT: 'abc'}), true);
+  assert.equal(testWithoutOwnPort({JOBADABRA_E2E: '1', JOBADABRA_PORT: '48123'}), false);
   assert.equal(testWithoutOwnPort({}), false, 'a person\'s app has the production port');
   const bare = http.createServer();
-  listen(bare, await freePort(), {env: {JOB_PILOTTO_E2E: '1'}, say: () => {}});
+  listen(bare, await freePort(), {env: {JOBADABRA_E2E: '1'}, say: () => {}});
   assert.equal(bare.listening, false);
   assert.equal(listenState().code, 'TEST_WITHOUT_PORT');
   const port = await freePort(), own = http.createServer();
-  listen(own, port, {env: {JOB_PILOTTO_E2E: '1', JOB_PILOTTO_PORT: String(port)}, say: () => {}});
+  listen(own, port, {env: {JOBADABRA_E2E: '1', JOBADABRA_PORT: String(port)}, say: () => {}});
   await once(own, 'listening');
   assert.equal(listenState().ok, true);
   await new Promise(r => own.close(r));
@@ -45,12 +45,12 @@ test('a test app without its own port does not listen at all; with one it does',
 // to it, still took the owner's port, and a unit test under `node --test` (automation.test.js) bound it whenever the owner's app was closed.
 test('a test process never listens on the production port, however its port is given', async () => {
   const {EventEmitter} = await import('node:events');
-  for (const env of [{JOB_PILOTTO_E2E: '1', JOB_PILOTTO_PORT: '47111'}, {JOB_PILOTTO_E2E: '1', JOB_PILOTTO_PORT: '0'}, {JOB_PILOTTO_E2E: '1', JOB_PILOTTO_PORT: '70000'},
-    {NODE_TEST_CONTEXT: 'child-v8'}, {NODE_TEST_CONTEXT: 'child-v8', JOB_PILOTTO_PORT: '47111'}]) assert.equal(testWithoutOwnPort(env), true, JSON.stringify(env));
-  assert.equal(testWithoutOwnPort({NODE_TEST_CONTEXT: 'child-v8', JOB_PILOTTO_PORT: '48123'}), false, 'a unit test with its own port listens there');
+  for (const env of [{JOBADABRA_E2E: '1', JOBADABRA_PORT: '47111'}, {JOBADABRA_E2E: '1', JOBADABRA_PORT: '0'}, {JOBADABRA_E2E: '1', JOBADABRA_PORT: '70000'},
+    {NODE_TEST_CONTEXT: 'child-v8'}, {NODE_TEST_CONTEXT: 'child-v8', JOBADABRA_PORT: '47111'}]) assert.equal(testWithoutOwnPort(env), true, JSON.stringify(env));
+  assert.equal(testWithoutOwnPort({NODE_TEST_CONTEXT: 'child-v8', JOBADABRA_PORT: '48123'}), false, 'a unit test with its own port listens there');
   // The port being opened counts, not only the env: told 48123 and handed 47111, it still stays off. A stand-in socket, so this test never binds 47111 itself.
   const fake = Object.assign(new EventEmitter(), {listening: false, calls: 0, listen() { this.calls++; }});
-  listen(fake, DEFAULT_PORT, {env: {JOB_PILOTTO_E2E: '1', JOB_PILOTTO_PORT: '48123'}, say: () => {}});
+  listen(fake, DEFAULT_PORT, {env: {JOBADABRA_E2E: '1', JOBADABRA_PORT: '48123'}, say: () => {}});
   assert.equal(fake.calls, 0);
   assert.equal(listenState().code, 'TEST_WITHOUT_PORT');
 });

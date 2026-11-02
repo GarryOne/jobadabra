@@ -44,7 +44,7 @@ def application_for(stores, job_url):
         return found
     from ..ledger_store import add_application
     added = {}
-    add_application(stores, job_url.strip(), approx=True, source=os.getenv('JOB_PILOTTO_SOURCE') or 'Manual', found=added)
+    add_application(stores, job_url.strip(), approx=True, source=os.getenv('JOBADABRA_SOURCE') or 'Manual', found=added)
     if added.get('row'):
         return added['row']
     found = by_url(stores, [], job_url)

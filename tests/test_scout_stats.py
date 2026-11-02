@@ -92,7 +92,7 @@ class AiCostReportTests(unittest.TestCase):
         import tempfile
         from contextlib import redirect_stdout
         from io import StringIO
-        with tempfile.TemporaryDirectory() as tmp, unittest.mock.patch.dict(os.environ, {'JOB_PILOTTO_AI_COST_FILE': f'{tmp}/c.json'}):
+        with tempfile.TemporaryDirectory() as tmp, unittest.mock.patch.dict(os.environ, {'JOBADABRA_AI_COST_FILE': f'{tmp}/c.json'}):
             out = StringIO()
             with redirect_stdout(out):
                 scout.report_ai_cost({'usd': 0.12345678, 'done': 7})
@@ -119,7 +119,7 @@ class AiCostLineTests(unittest.TestCase):
 class DoctorPlanTests(unittest.TestCase):
     def test_no_budget_to_watch_on_claude_code(self):
         from src import doctor
-        with mock.patch.dict(os.environ, {'JOB_PILOTTO_AI_ENGINE': 'cli'}):
+        with mock.patch.dict(os.environ, {'JOBADABRA_AI_ENGINE': 'cli'}):
             check = doctor.check_budget(None)
         self.assertEqual((check.state, check.name), ('ok', 'AI budget'))
         self.assertIn('Claude plan', check.detail)

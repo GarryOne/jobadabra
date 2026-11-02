@@ -41,5 +41,5 @@
   const answered = group => !!group && (group.options.some(option => option.checked === true) || !!(group.box && (group.box.matches(ON) || group.box.querySelector(ON))));
 
   const api = {groupOf, groupOfBox, answered, ON};
-  if (typeof module !== 'undefined' && module.exports) module.exports = api; else window.__jobPilottoOptionGroups = api;
+  if (typeof module !== 'undefined' && module.exports) module.exports = api; else window.__jobadabraOptionGroups = api;
 })();

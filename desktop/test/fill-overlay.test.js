@@ -16,11 +16,11 @@ test('every extension file that sends debugger input does it inside driving() (a
 test('the overlay is invisible to hit-tests, ends on every way out, and is hidden from the picture', () => {
   const overlay = read('extension/panel-overlay.js');
   assert.match(overlay, /pointer-events:\s*none/, 'a layer that takes no hit-test: elementFromPoint, on-top and the clicks of the driver see the page');
-  assert.match(overlay, /ID = 'jobpilotto-fill-overlay'/, 'its id starts with jobpilotto: every page read already skips it');
+  assert.match(overlay, /ID = 'jobadabra-fill-overlay'/, 'its id starts with jobadabra: every page read already skips it');
   assert.match(overlay, /chrome\.runtime\?\.id/, 'an extension reload lifts it');
   assert.doesNotMatch(overlay, /MAX_MS|EARLY_MS|setTimeout\(\(\) => lift/, 'no timer lifts it: only the worker\'s verdict (Why-changed: the three-minute backstop and the early 15 s life — owner, 27 Oct 2026, one state owner)');
-  for (const path of ['extension/stop.js', 'extension/settle-tabs.js']) assert.match(read(path), /jobpilotto-fill-overlay/, `${path} removes the overlay with the other page marks`);
-  assert.match(read('extension/ladder/rung4-page-picture.js'), /jobpilotto-fill-overlay/, 'the AI\'s picture never shows the dim layer');
+  for (const path of ['extension/stop.js', 'extension/settle-tabs.js']) assert.match(read(path), /jobadabra-fill-overlay/, `${path} removes the overlay with the other page marks`);
+  assert.match(read('extension/ladder/rung4-page-picture.js'), /jobadabra-fill-overlay/, 'the AI\'s picture never shows the dim layer');
   assert.match(read('extension/panel-files.js'), /panel-overlay\.js/);
   const markup = read('extension/panel-markup.js');
   assert.match(markup, /\.jp\.working \{ align-items: center; \}/, 'the panel is centred while filling');
@@ -29,7 +29,7 @@ test('the overlay is invisible to hit-tests, ends on every way out, and is hidde
 
 test('the magic behind the panel lives inside the layer, only moves transform and opacity, and stands still under reduced motion', () => {
   const fx = read('extension/panel-overlay-fx.js');
-  assert.match(read('extension/panel-overlay.js'), /__jobPilottoOverlayFx\?\.\(layer\)/, 'drawn into the overlay layer: every end that removes the layer removes it');
+  assert.match(read('extension/panel-overlay.js'), /__jobadabraOverlayFx\?\.\(layer\)/, 'drawn into the overlay layer: every end that removes the layer removes it');
   assert.match(fx, /prefers-reduced-motion: reduce/, 'nothing is added under reduced motion');
   assert.match(fx, /pointer-events:none/, 'takes no hit-test');
   assert.doesNotMatch(fx, /setInterval|setTimeout|requestAnimationFrame|<style|fetch\(|url\(/, 'no timers, no page <style> a CSP could refuse, no network image');
@@ -68,6 +68,6 @@ test('a working Apply is dimmed from its commit by the one overlay the panel tak
   assert.match(early, /files: \['panel-overlay-fx\.js', 'panel-overlay\.js', 'overlay-early\.js'\]/, 'one injection: the overlay and its early start together');
   assert.match(read('extension/background.js'), /startEarlyDim\(\);/, 'the worker starts it');
   const overlay = read('extension/panel-overlay.js');
-  assert.match(overlay, /if \(window\.__jobPilottoOverlay\?\.alive\?\.\(\)\) return;/, 'one copy per page: the panel\'s own injection keeps the early layer, so the panel lifts the layer it sees');
+  assert.match(overlay, /if \(window\.__jobadabraOverlay\?\.alive\?\.\(\)\) return;/, 'one copy per page: the panel\'s own injection keeps the early layer, so the panel lifts the layer it sees');
   assert.match(read('extension/review.js'), /send\(\{type: 'panelApply'\}\)[\s\S]*showStep\(answer\.text \|\| 'Starting…'\)/, 'the panel\'s first draw is the worker\'s state: working draws centred with its step, a verdict draws the finished look, no timeout in between');
 });

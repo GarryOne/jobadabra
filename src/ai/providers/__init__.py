@@ -1,6 +1,6 @@
 """The AI engines a user can choose, each an adapter behind one contract (contract.py), and how each is built from the environment.
 
-JOB_PILOTTO_AI_ENGINE names the engine, as the user chose it in the app (Settings → Connections → AI). Nothing is chosen for the user and nothing switches
+JOBADABRA_AI_ENGINE names the engine, as the user chose it in the app (Settings → Connections → AI). Nothing is chosen for the user and nothing switches
 by itself: an engine's `fallback` (another engine of the SAME family, billed) is used only on the user's own tick (`fallback_env`).
 A new provider is one adapter file plus one `Engine` row here; engine.py and every AI module stay as they are. Guarded by
 tests/test_ai_providers.py (every engine meets the contract) and tests/test_ai_engine.py.
@@ -19,7 +19,7 @@ class Engine:
     key: str = ''        # the secret it needs, for an API engine
     local_only: bool = False   # runs the user's own CLI: this computer only, never GitHub (Always on)
     fallback: str = ''   # the engine the user may tick as the fallback when the plan's limit is hit
-    fallback_env: str = 'JOB_PILOTTO_AI_FALLBACK'
+    fallback_env: str = 'JOBADABRA_AI_FALLBACK'
     missing: str = ''    # what to say when it can't run
     label: str = ''      # how its calls are paid for, in words ("Billed to", a run's log)
     limit: str = ''      # its limit in a few words: "AI limit reached: <limit>"
@@ -50,7 +50,7 @@ DEFAULT = 'api'
 def choice(env=None):
     """The chosen engine's name, as set (anything else, or nothing: the default)."""
     env = os.environ if env is None else env
-    value = (env.get('JOB_PILOTTO_AI_ENGINE') or DEFAULT).strip().lower()
+    value = (env.get('JOBADABRA_AI_ENGINE') or DEFAULT).strip().lower()
     return value if value in ENGINES else DEFAULT
 
 
@@ -87,7 +87,7 @@ def build(env=None, action='', log=None):
     """The chosen engine's client: an adapter whose `messages.create` every AI module calls."""
     env = os.environ if env is None else env
     name = choice(env)
-    fallback = (lambda: build(dict(env, JOB_PILOTTO_AI_ENGINE=ENGINES[name].fallback), action, log)) if fallback_allowed(env) else None
+    fallback = (lambda: build(dict(env, JOBADABRA_AI_ENGINE=ENGINES[name].fallback), action, log)) if fallback_allowed(env) else None
     if name == 'cli':
         from .claude_code import ClaudeCode, find_binary
         return ClaudeCode(binary=find_binary(env), log=log, fallback=fallback)

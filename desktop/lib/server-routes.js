@@ -18,7 +18,7 @@ async function handlePair(req, res, body, {storage, ownOrigin, PORT}) {
 // Render an engine request only with its local run key.
 async function handleRender(req, res, body) {
   // The engine asks for a page after its scripts ran (lib/page-render.js): a local program with this run's key, never a web page (Origin).
-  const allowed = req.method === 'POST' && !req.headers.origin && req.headers['x-job-pilotto-render'] === pageRender.TOKEN && renderer;
+  const allowed = req.method === 'POST' && !req.headers.origin && req.headers['x-jobadabra-render'] === pageRender.TOKEN && renderer;
   const asked = jsonPayload(body);
   const result = allowed ? await renderer(String(asked.url || ''), pageRender.agentOf(asked.user_agent)) : {error: 'Not allowed'};
   jsonHeaders(res, allowed ? 200 : 403);
@@ -28,7 +28,7 @@ async function handleRender(req, res, body) {
 // Issue a hand-off ticket to a local launcher.
 async function handleClaudeTicket(req, res, body) {
   // Only local programs: a browser page's request carries an Origin and can't add this header unasked.
-  const local = req.method === 'POST' && req.headers['x-job-pilotto'] === 'launcher' && !req.headers.origin;
+  const local = req.method === 'POST' && req.headers['x-jobadabra'] === 'launcher' && !req.headers.origin;
   const job = (() => { try { return JSON.parse(body?.toString() || '{}').job; } catch { return ''; } })();
   jsonHeaders(res, local && job ? 200 : 403);
   jsonBody(res, local && job ? {ticket: issueTicket(job)} : {error: 'Not allowed'});
@@ -36,7 +36,7 @@ async function handleClaudeTicket(req, res, body) {
 
 // Forward a local launcher session report.
 async function handleClaudeSession(req, res, body) {
-  const local = req.method === 'POST' && req.headers['x-job-pilotto'] === 'launcher' && !req.headers.origin;
+  const local = req.method === 'POST' && req.headers['x-jobadabra'] === 'launcher' && !req.headers.origin;
   const query = new URL(req.url, 'http://127.0.0.1').searchParams;
   const text = body?.toString() || '';
   const payload = (() => { try { return JSON.parse(text); } catch { return {message: new URLSearchParams(text).get('message') || ''}; } })();
@@ -49,7 +49,7 @@ async function handleClaudeSession(req, res, body) {
 // Show a local launcher notification.
 async function handleClaudeNotify(req, res, body) {
   // A Claude session's tools/notify.sh where there's no osascript (Windows): the app shows it. Local only, as above.
-  const local = req.method === 'POST' && req.headers['x-job-pilotto'] === 'launcher' && !req.headers.origin;
+  const local = req.method === 'POST' && req.headers['x-jobadabra'] === 'launcher' && !req.headers.origin;
   const form = new URLSearchParams(body?.toString() || '');
   const message = form.get('message')?.slice(0, 300);
   if (local && message) notify(`Jobadabra · ${form.get('job')?.slice(0, 120) || 'Application'}`, message, {view: 'sessions'}, 'info');

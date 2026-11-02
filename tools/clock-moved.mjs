@@ -31,7 +31,7 @@ export function execute(argv, {cwd, env = {}, days = 0, timeoutMs = FILE_TIMEOUT
   return new Promise(resolve => {
     const data = fs.mkdtempSync(path.join(os.tmpdir(), 'clock-moved-'));
     const full = days ? [faketime(), '-f', `+${days}d`, ...argv] : argv;
-    const child = spawn(full[0], full.slice(1), {cwd, env: {...process.env, ...env, JOB_PILOTTO_TEST_DATA_DIR: data, ...(days ? {FAKETIME_DONT_FAKE_MONOTONIC: '1'} : {})}, stdio: ['ignore', 'pipe', 'pipe']});
+    const child = spawn(full[0], full.slice(1), {cwd, env: {...process.env, ...env, JOBADABRA_TEST_DATA_DIR: data, ...(days ? {FAKETIME_DONT_FAKE_MONOTONIC: '1'} : {})}, stdio: ['ignore', 'pipe', 'pipe']});
     let output = '';
     const timer = setTimeout(() => child.kill('SIGKILL'), timeoutMs);
     const done = result => { clearTimeout(timer); fs.rmSync(data, {recursive: true, force: true}); resolve(result); };

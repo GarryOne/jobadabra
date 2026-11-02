@@ -13,7 +13,7 @@ from pathlib import Path
 from . import score
 
 COLUMN = 'Kit inputs'
-CV_PATH = os.getenv('JOB_PILOTTO_CV_PATH', '')
+CV_PATH = os.getenv('JOBADABRA_CV_PATH', '')
 
 
 def fingerprint(data):

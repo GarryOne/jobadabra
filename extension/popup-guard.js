@@ -12,7 +12,7 @@ export async function answerGate(tabId, {close = closePopupOrLayer, look = layer
 }
 if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
   chrome.runtime.onMessage.addListener((message, sender, reply) => {
-    if (message?.type !== 'jobpilotto-gate' || !sender?.tab?.id) return false;
+    if (message?.type !== 'jobadabra-gate' || !sender?.tab?.id) return false;
     answerGate(sender.tab.id).then(out => reply({held: out.held})).catch(() => reply({held: false}));
     return true;   // the answer comes later
   });

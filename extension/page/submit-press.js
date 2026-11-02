@@ -4,7 +4,7 @@
 // A press the extension makes itself (a popup closer, a route press, a menu open) is marked by `press(el)` and is never the person's submit: `person(event)` says so for a click,
 // and for the form's submit event the button that caused it (event.submitter) was one of those own presses, still in the same task. Structure and one floor of words, no site. Injected before review.js (background.js). Guarded by app-core/test/submit-press.test.js.
 (() => {
-  if (window.__jobPilottoSubmitPress) return;
+  if (window.__jobadabraSubmitPress) return;
   const SUBMIT_WORDS = /\b(submit|send application)\b/i;
   const written = el => String(el.getAttribute?.('type') || '').trim().toLowerCase();
   const says = el => (el.tagName === 'BUTTON' && written(el) === 'submit') || (el.tagName === 'INPUT' && ['submit', 'image'].includes(written(el)));
@@ -18,14 +18,14 @@
   const markAt = (x, y) => {
     const el = document.elementFromPoint(x, y); if (!el) return false;
     const control = controlOf(el);
-    if (refused(control) || (pressable(control) && (says(control) || SUBMIT_WORDS.test(textOf(control))))) { window.__jobPilottoRefused = textOf(control).slice(0, 60) || 'x'; return false; }
+    if (refused(control) || (pressable(control) && (says(control) || SUBMIT_WORDS.test(textOf(control))))) { window.__jobadabraRefused = textOf(control).slice(0, 60) || 'x'; return false; }
     mark(el, 1500); return true;
   };
-  // The extension's own presses all go through here (a popup closer, a route press, a menu open: `globalThis.__jobPilottoPress?.(el) || el.click()` at every site, guarded by app-core/test/submit-press.test.js).
+  // The extension's own presses all go through here (a popup closer, a route press, a menu open: `globalThis.__jobadabraPress?.(el) || el.click()` at every site, guarded by app-core/test/submit-press.test.js).
   // The site's scripts click too (a styled "Send" that clicks a hidden submit button): their click stays the person's.
   // The press floor (safety, 15 Oct 2026: a "Decline" of a Data Privacy Consent Statement opened "Delete All Data"): whatever named the control, the extension never presses one that deletes or removes an
   // account or data, withdraws an application or signs out, nor one that DECLINES inside a dialog that is no cookie or tracking notice. A refused press answers true (the callers' `|| el.click()` stays unused)
-  // and is left in window.__jobPilottoRefused. Words are an extra floor ANDed with the AI's answer (desktop/lib/popup-pick.js `effect`), never the judge. Guard: app-core/test/press-floor.test.js.
+  // and is left in window.__jobadabraRefused. Words are an extra floor ANDed with the AI's answer (desktop/lib/popup-pick.js `effect`), never the judge. Guard: app-core/test/press-floor.test.js.
   const NEVER = /\b(delete|remove|erase|deactivate|withdraw|cancel|close)\b.{0,24}\b(account|data|profile|application)\b|\b(sign|log) ?out\b|\bdelete all\b|löschen|konto entfernen|supprimer|se déconnecter|eliminar cuenta|elimina (account|dati)|abmelden/i;   // words-ok: a safety floor ANDed with the AI answer, never the judge
   const DECLINE = /^\W*(decline|reject|refuse|deny|disagree|i (do not|don't) (agree|accept|consent)|ablehnen|nicht zustimmen|refuser|rifiuta|rechazar)\b/i;   // words-ok: a safety floor ANDed with the AI answer, never the judge
   const ABOUT_COOKIES = /cookie|tracking|traceurs/i;   // words-ok: a safety floor ANDed with the AI answer, never the judge
@@ -33,8 +33,8 @@
   const textOf = el => String(el.innerText || el.textContent || el.value || el.getAttribute?.('aria-label') || el.getAttribute?.('title') || '').replace(/\s+/g, ' ').trim();
   const layerOf = el => { for (let node = el; node && node !== document.body && node !== document.documentElement; node = node.parentElement) { if (node.matches?.('[role=dialog], [role=alertdialog], [aria-modal=true], dialog')) return node; if (getComputedStyle(node).position === 'fixed') return node; } return null; };
   const refused = el => { const words = textOf(el); if (NEVER.test(words)) return true; if (!DECLINE.test(words)) return false; const layer = layerOf(el); const about = layer && textOf(layer); return !!layer && (!ABOUT_COOKIES.test(about) || STATEMENT.test(about.slice(0, 200))); };
-  const press = el => { window.__jobPilottoRefused = ''; if (refused(el)) { window.__jobPilottoRefused = textOf(el).slice(0, 60) || 'x'; return true; } mark(el); el.click(); return true; };
+  const press = el => { window.__jobadabraRefused = ''; if (refused(el)) { window.__jobadabraRefused = textOf(el).slice(0, 60) || 'x'; return true; } mark(el); el.click(); return true; };
   const person = event => event.type === 'submit' ? !(event.submitter ? own.has(event.submitter) : [...own].some(control => control.form && control.form === event.target)) : (own.has(controlOf(event.target)) ? (release(event.target, controlOf(event.target)), false) : true);
-  window.__jobPilottoSubmitPress = {refused, says, person, mark, markAt, press, counts: (el, words) => says(el) || SUBMIT_WORDS.test(words)};
-  window.__jobPilottoPress = press;
+  window.__jobadabraSubmitPress = {refused, says, person, mark, markAt, press, counts: (el, words) => says(el) || SUBMIT_WORDS.test(words)};
+  window.__jobadabraPress = press;
 })();

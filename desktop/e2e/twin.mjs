@@ -18,8 +18,8 @@ import {TOKEN_VAR} from './lib/real-notion-token.mjs';
 import {withoutWrappers} from './lib/real-claude.mjs';   // never a terminal's claude wrapper (e2e/test/real-claude.test.mjs)
 
 const DESKTOP = path.resolve(import.meta.dirname, '..'), REPO = path.resolve(DESKTOP, '..');
-const REAL = realFolder(), LIVE = path.join(path.dirname(REAL), 'Job Pilotto (live test)'), HOME = path.join(LIVE, 'home');
-const MIRROR_TOKEN = 'job-pilotto.notion.token-live-test';
+const REAL = realFolder(), LIVE = path.join(path.dirname(REAL), 'Jobadabra (live test)'), HOME = path.join(LIVE, 'home');
+const MIRROR_TOKEN = 'jobadabra.notion.token-live-test';
 const keychain = service => execFileSync('security', ['find-generic-password', '-s', service, '-w'], {encoding: 'utf8'}).trim();
 const say = text => console.log(`twin: ${text}`);
 const idsOf = file => Object.fromEntries(fs.readFileSync(file, 'utf8').split('\n').map(line => line.trim().split('=')).filter(([key, value]) => key?.startsWith('NOTION_') && value));
@@ -75,11 +75,11 @@ async function main() {
   // The owner's Chrome has the extension's "all sites" access granted (optional_host_permissions, one click there); the twin's copy has it
   // built in, so it reads any employer site as the owner's does (8 Oct 2026: on jobs.coop.ch the twin's extension saw no tab at all).
   grantAllSites(extensionDir);
-  const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('JOB_PILOTTO_')));
+  const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('JOBADABRA_')));
   // The app is started by a function: a refresh that touches its main process restarts it alone (same ports, same folder, same environment), the browser stays.
   const startApp = () => spawn(path.join(DESKTOP, 'node_modules', '.bin', 'electron'), [DESKTOP, `--remote-debugging-port=${cdp}`], {cwd: DESKTOP, stdio: ['ignore', 'inherit', 'inherit'], detached: true,   // its own process group: lib/twin-refresh.mjs killGroup
-    env: withoutWrappers({...env, JOB_PILOTTO_TWIN: '1', JOB_PILOTTO_USER_DATA: HOME, JOB_PILOTTO_TWIN_NOTION_TOKEN: token, JOB_PILOTTO_PORT: String(port), JOB_PILOTTO_TWIN_BROWSER_CDP: `http://127.0.0.1:${browserCdp}`,
-      PATH: `${shim.bin}${path.delimiter}${process.env.PATH}`, JOB_PILOTTO_E2E_OPEN_DIR: shim.spool})});
+    env: withoutWrappers({...env, JOBADABRA_TWIN: '1', JOBADABRA_USER_DATA: HOME, JOBADABRA_TWIN_NOTION_TOKEN: token, JOBADABRA_PORT: String(port), JOBADABRA_TWIN_BROWSER_CDP: `http://127.0.0.1:${browserCdp}`,
+      PATH: `${shim.bin}${path.delimiter}${process.env.PATH}`, JOBADABRA_E2E_OPEN_DIR: shim.spool})});
   let app = startApp(), restarting = false;
   // A fresh browser profile at each start, with only the site sign-ins carried over (cookies, local storage) and saved back at stop.
   // A whole kept profile also kept the extension's worker state: once it ran stale background code, once (after clearing that) no worker

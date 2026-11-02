@@ -135,8 +135,8 @@ test('the class: the debugger is attached in one place, and every press site ask
 test('the class: the fill\'s entry points and the page-side gate check stopped', () => {
   const read = file => fs.readFileSync(path.join(root, file), 'utf8');
   assert.match(read('fill-flow.js'), /export async function consider[\s\S]{0,400}?isStopped\(\)/, 'consider() looks first');
-  assert.match(read('page/guard-gate.js'), /__jobPilottoStopped/, 'the fill\'s stage gate holds when stopped');
-  assert.match(read('page/fill.js'), /__jobPilottoStopped/, 'the fill\'s first look');
+  assert.match(read('page/guard-gate.js'), /__jobadabraStopped/, 'the fill\'s stage gate holds when stopped');
+  assert.match(read('page/fill.js'), /__jobadabraStopped/, 'the fill\'s first look');
   assert.match(read('messages-app.js'), /isStopped\(\)/, 'a stopped worker answers no report, password or judgment');
   assert.match(read('visit.js'), /mayAct\(\)\) return;/, 'no read of a job list starts while stopped');
 });
@@ -190,9 +190,9 @@ test('every person-pressed start on a tab clears that page\'s own Stop, tells it
 
 test('the page fill waits for the page\'s Stop to clear before it starts', () => {
   const flow = fs.readFileSync(new URL('../../extension/fill-tab-inputs.js', import.meta.url), 'utf8');
-  assert.match(flow, /const summary = await pageStarted\(tab\.id\)\.then\(\(\) => inPage\(tab\.id, \(list, profile, resume, letter, consents\) => window\.__jobPilottoExtensionFill/, 'flow.js awaits pageStarted right before the page fill');
+  assert.match(flow, /const summary = await pageStarted\(tab\.id\)\.then\(\(\) => inPage\(tab\.id, \(list, profile, resume, letter, consents\) => window\.__jobadabraExtensionFill/, 'flow.js awaits pageStarted right before the page fill');
   const stopFile = fs.readFileSync(new URL('../../extension/stop.js', import.meta.url), 'utf8');
-  assert.doesNotMatch(stopFile.match(/function stoppedPage\(\) \{[\s\S]*?\n\}/)[0].match(/for \(const id of \[[^\]]*\]\) document\.getElementById\(id\)\?\.remove\(\)/)[0], /'jobpilotto-review-host'/, 'Stop keeps the panel: it says "Stopped by you" with Check form again (owner mockup 03), never a panel taken away and drawn back working');
+  assert.doesNotMatch(stopFile.match(/function stoppedPage\(\) \{[\s\S]*?\n\}/)[0].match(/for \(const id of \[[^\]]*\]\) document\.getElementById\(id\)\?\.remove\(\)/)[0], /'jobadabra-review-host'/, 'Stop keeps the panel: it says "Stopped by you" with Check form again (owner mockup 03), never a panel taken away and drawn back working');
 });
 
 // Why (31 Oct 2026, a8; coordinator: "A Stop that failed must say so (rule 6, safety)"; the open-panel Stop flake of run 41250657527): stopAll swallowed every step's error and the

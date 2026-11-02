@@ -4,9 +4,9 @@
 (() => {
   // Already set up on this page (a second fill): its getter can't be redefined, and may read false (the extension's).
   if ('__jobPilottoGuardActive' in window) return;
-  // The Chrome extension sets __jobPilottoNoGuard: it never submits, and blocking the user's own Submit only
+  // The Chrome extension sets __jobadabraNoGuard: it never submits, and blocking the user's own Submit only
   // got in the way. The agent launchers (Playwright) keep the guard.
-  let active = !window.__jobPilottoNoGuard;
+  let active = !window.__jobadabraNoGuard;
   Object.defineProperty(window, '__jobPilottoGuardActive', {get: () => active});
 
   const legal = /\b(i agree|i accept|terms|privacy|consent\w*|acknowledg\w*|certif\w*|affirm\w*|i confirm i have read|i have read and understood)\b/i;
@@ -57,15 +57,15 @@
   // A deliberate owner action releases the guard only after the agent hands over the tab.
   // "Tick terms and consent boxes for me" (extension setting): after filling, the extension hands the form over
   // with consents ticked, so the user only presses Submit. The extension itself never submits.
-  window.__jobPilottoHandOver = () => {
+  window.__jobadabraHandOver = () => {
     active = false;
-    const box = document.getElementById('job-pilotto-submit-guard');
+    const box = document.getElementById('jobadabra-submit-guard');
     if (box) box.firstChild.textContent = 'Jobadabra: filled, consents ticked. Review everything, then press Submit yourself. ';
     box?.querySelector('button')?.remove();
   };
   const showUnlock = () => {
     const box = document.createElement('div');
-    box.id = 'job-pilotto-submit-guard';
+    box.id = 'jobadabra-submit-guard';
     box.style.cssText = 'position:fixed;bottom:12px;right:12px;z-index:2147483647;background:#132439;color:white;padding:10px 12px;border-radius:8px;font:13px sans-serif;box-shadow:0 2px 12px #0008';
     const status = document.createElement('span');
     status.textContent = 'Jobadabra: Submit and legal consent paused. ';

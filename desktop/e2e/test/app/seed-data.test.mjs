@@ -22,7 +22,7 @@ const contextOn = async store => {
   }
   const fake = await startNotionFake();
   fs.writeFileSync(path.join(profile, 'settings.json'), JSON.stringify({notionIds: await buildStandIn(fake)}));
-  const ctx = {profile, store, token: fake.token, appEnv: {JOB_PILOTTO_E2E_NOTION_BASE_URL: fake.url}};
+  const ctx = {profile, store, token: fake.token, appEnv: {JOBADABRA_E2E_NOTION_BASE_URL: fake.url}};
   return {ctx: {...ctx, data: (entity, method, kwargs) => storeCall(ctx, entity, method, kwargs)}, close: () => fake.close()};
 };
 

@@ -1,7 +1,7 @@
 # Jobadabra — your scheduled job search, in YOUR private repo (the Desktop App puts it there).
 # It runs the public engine (GarryOne/jobadabra) with this repo's secrets and variables, so your
 # logs, job database and results stay private. Schedules are in UTC.
-name: Job Pilotto
+name: Jobadabra
 run-name: ${{ inputs.mode || 'scheduled' }}${{ inputs.job && format(' {0}', inputs.job) || '' }}
 
 on:

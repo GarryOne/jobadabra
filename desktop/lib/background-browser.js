@@ -11,13 +11,13 @@ import {tabOfSession} from './session-tab.js';
 import {startReaper} from './browser-reaper.js';
 
 // Why (2026-10-28, e2e proof of Background automation): the test forms use real site names (boards.greenhouse.io), so the hidden browser under e2e must be
-// pointed at the fixture server or it would reach the real sites. The harness passes a JSON list in JOB_PILOTTO_E2E_BACKGROUND_BROWSER_ARGS; it counts only with
-// JOB_PILOTTO_E2E=1 (never set for a person) and only a host map, the test certificate and (e2e only) --no-sandbox pass, so no other flag, proxy or debugging address can come in this way.
+// pointed at the fixture server or it would reach the real sites. The harness passes a JSON list in JOBADABRA_E2E_BACKGROUND_BROWSER_ARGS; it counts only with
+// JOBADABRA_E2E=1 (never set for a person) and only a host map, the test certificate and (e2e only) --no-sandbox pass, so no other flag, proxy or debugging address can come in this way.
 // Why (2026-10-28, #2364): `--no-sandbox` also passes under e2e only: Playwright's own Chromium launches without the sandbox, and a CI runner (Ubuntu 24.04) may not allow the sandbox for the app's plain spawn.
 const E2E_ARGUMENTS = /^(--host-resolver-rules=.+|--ignore-certificate-errors|--no-sandbox)$/;
 function e2eArguments(env) {
-  if (env.JOB_PILOTTO_E2E !== '1') return [];
-  try { const list = JSON.parse(env.JOB_PILOTTO_E2E_BACKGROUND_BROWSER_ARGS || '[]'); return Array.isArray(list) ? list.filter(arg => typeof arg === 'string' && E2E_ARGUMENTS.test(arg)) : []; } catch { return []; }
+  if (env.JOBADABRA_E2E !== '1') return [];
+  try { const list = JSON.parse(env.JOBADABRA_E2E_BACKGROUND_BROWSER_ARGS || '[]'); return Array.isArray(list) ? list.filter(arg => typeof arg === 'string' && E2E_ARGUMENTS.test(arg)) : []; } catch { return []; }
 }
 /** Return launch flags for an owned profile and extension, never a system profile or a visible startup page. `env` is only read for the e2e harness's host map (above). */
 export function browserArguments(profile, extension, env = process.env) {
@@ -79,8 +79,8 @@ export function createBackgroundBrowser(storage, {find = findBackgroundBrowser, 
         copyForNight(appPort, path.join(root, 'extension'), extension, {owned: true});
         fs.mkdirSync(profile, {recursive: true, mode: 0o700});
         fs.rmSync(portFile, {force: true});
-        // Why (2026-10-28, #2364): under e2e the browser's own messages go to a file the harness prints when it does not start (a CI failure said only "did not start"); a person's browser keeps none.
-        const log = process.env.JOB_PILOTTO_E2E === '1' ? fs.openSync(path.join(folder, 'e2e-browser.log'), 'w') : 'ignore';
+        // Why (2026-10-28, #2364; names renamed 1 Nov 2026): under e2e the browser's own messages go to a file the harness prints when it does not start (a CI failure said only "did not start"); a person's browser keeps none.
+        const log = process.env.JOBADABRA_E2E === '1' ? fs.openSync(path.join(folder, 'e2e-browser.log'), 'w') : 'ignore';
         ownChild = spawn(executable, browserArguments(profile, extension), {detached: true, stdio: ['ignore', log, log], windowsHide: true});
         if (log !== 'ignore') fs.closeSync(log);
         let spawnError = null;

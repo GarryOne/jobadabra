@@ -133,7 +133,7 @@ def guarded(db, search, harvest_sources=None):
     """`run` and the hiring search (src/scout_hiring.py) for the scout, their candidates together: None when tests pass their own harvest
     sources or the journey fixture runs; a failure of either leaves the other (a bonus that must never stop the scout)."""
     import os
-    if harvest_sources is not None or os.getenv('JOB_PILOTTO_FIXTURE_DIR'):
+    if harvest_sources is not None or os.getenv('JOBADABRA_FIXTURE_DIR'):
         return None
     from . import scout_hiring
     try:

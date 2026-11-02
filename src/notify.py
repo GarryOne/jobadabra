@@ -1,10 +1,10 @@
 """Where a message goes besides Telegram: e-mail, through our site (POST /api/notify/email, site/src/account-email.js).
 
-The app (or the Always on repo) says which channels the person chose in JOB_PILOTTO_NOTIFY, a comma list of email, telegram, app. Unset = the old behaviour (Telegram only).
+The app (or the Always on repo) says which channels the person chose in JOBADABRA_NOTIFY, a comma list of email, telegram, app. Unset = the old behaviour (Telegram only).
 Every message src/telegram.py sends goes through here too, so each Telegram message has its e-mail form with the same layout (src/tgcard.py's Telegram HTML; the site keeps a safe subset).
 Cadence (owner, 17 Oct 2026): new matches (kind 'matches') go as ONE e-mail per run, sent when the process ends or at flush(); an urgent message (an interview) goes at once, alone;
 everything else (kind 'activity': mail-check results, insights, finished jobs) is handed to the site as ONE message per run, which holds it for the person's daily or weekly digest (site/src/mail-held.js).
-The run The run identifies as the install (JOB_PILOTTO_TRIAL_KEY,
+The run The run identifies as the install (JOBADABRA_TRIAL_KEY,
 or the Free AI key JPF1.<install>.<token>), never an SMTP secret. Guarded by tests/test_notify.py.
 """
 import atexit
@@ -24,7 +24,7 @@ _registered = []
 
 def channels(env=None):
     """The chosen channels as a set, or None when nothing was chosen (the old behaviour: Telegram only)."""
-    raw = (os.environ if env is None else env).get('JOB_PILOTTO_NOTIFY')
+    raw = (os.environ if env is None else env).get('JOBADABRA_NOTIFY')
     if raw is None or not raw.strip():
         return None
     return {part.strip().lower() for part in raw.split(',') if part.strip()}
@@ -40,7 +40,7 @@ def wants_telegram(env=None):
 
 
 def _key(env):
-    key = (env.get('JOB_PILOTTO_TRIAL_KEY') or '').strip()
+    key = (env.get('JOBADABRA_TRIAL_KEY') or '').strip()
     if not key and (env.get('ANTHROPIC_API_KEY') or '').startswith('JPF1.'):
         key = env['ANTHROPIC_API_KEY']
     return key
@@ -93,8 +93,8 @@ def _post(items, urlopen=None, env=None, kind='matches'):
     env = os.environ if env is None else env
     urlopen = urlopen or urllib.request.urlopen
     key = _key(env)
-    base = env.get('JOB_PILOTTO_SITE_URL', SITE).rstrip('/')
-    if env.get('JOB_PILOTTO_E2E') and not env.get('JOB_PILOTTO_SITE_URL'):
+    base = env.get('JOBADABRA_SITE_URL', SITE).rstrip('/')
+    if env.get('JOBADABRA_E2E') and not env.get('JOBADABRA_SITE_URL'):
         return True   # the end-to-end journey never reaches the real site
     if not key:
         print('Warning: no e-mail sent: this run has no install key.', file=sys.stderr)

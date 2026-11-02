@@ -68,7 +68,7 @@ test('turning it on uploads the bot, gives it an address, points the webhook the
 test('an account without a workers.dev address gets one', async () => {
   const {calls, fetcher} = fakeCloudflare({subdomain: ''});
   const result = await tgCloud.turnOn(ready(), 'cf', {fetcher, bundle: () => '', random: () => 'abcdef123', telegram: async () => true});
-  assert.equal(result.url, 'https://job-pilotto-bot.jobpilotto-abcdef.workers.dev');
+  assert.equal(result.url, 'https://job-pilotto-bot.jobadabra-abcdef.workers.dev');
   assert.ok(calls.some(c => c.method === 'PUT' && c.url.endsWith('/workers/subdomain')));
 });
 

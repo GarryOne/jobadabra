@@ -95,7 +95,7 @@ def _triaged():
 
 def triage(jobs):
     """Ask Claude about the titles of these jobs that are in the user's places, the role and excluded words' hits too (once per title and search).
-    Off without AI or with JOB_PILOTTO_DISABLE=title_triage: the exact words only."""
+    Off without AI or with JOBADABRA_DISABLE=title_triage: the exact words only."""
     from .. import features
     from ..ai import engine
     from ..time_budget import best_first   # your best places' titles first: a short search sorts them before the rest
@@ -249,7 +249,7 @@ def needs_visa(job):
 
 def triage_places(jobs):
     """Ask Claude where the new locations are, for the jobs that could be kept (their title fits); each location once per version of the
-    places. Off without AI or with JOB_PILOTTO_DISABLE=place_triage: the place words only."""
+    places. Off without AI or with JOBADABRA_DISABLE=place_triage: the place words only."""
     from .. import features
     from ..ai import engine
     locations = [job.get('location') for job in jobs if (job.get('location') or '').strip() and job.get('title') and wanted_title(job['title'])]

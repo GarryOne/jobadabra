@@ -15,7 +15,7 @@ const until = async (check, ms) => { for (const end = Date.now() + ms; Date.now(
 // The runner starts three children: a watched app, a watched app whose exit call does nothing (an app that ignores being asked to quit), and a control with no watch.
 const RUNNER = `
 import {spawn} from 'node:child_process';
-const child = body => spawn(process.execPath, ['--input-type=module', '-e', body], {stdio: 'ignore', env: {...process.env, JOB_PILOTTO_E2E_RUNNER_PID: String(process.pid), JOB_PILOTTO_E2E_RUNNER_POLL_MS: '50', JOB_PILOTTO_E2E_RUNNER_GRACE_MS: '150'}});
+const child = body => spawn(process.execPath, ['--input-type=module', '-e', body], {stdio: 'ignore', env: {...process.env, JOBADABRA_E2E_RUNNER_PID: String(process.pid), JOBADABRA_E2E_RUNNER_POLL_MS: '50', JOBADABRA_E2E_RUNNER_GRACE_MS: '150'}});
 const watched = exit => 'import {watchRunner} from ' + ${JSON.stringify(JSON.stringify(HOST))} + '; watchRunner(' + exit + '); setInterval(() => {}, 1000);';
 const pids = {watched: child(watched('() => process.exit(0)')).pid, stubborn: child(watched('() => {}')).pid, control: child('setInterval(() => {}, 1000);').pid};
 console.log(JSON.stringify(pids));
@@ -48,9 +48,9 @@ test('a test app ends when its runner is killed, and one without the watch does 
 
 test('an app a person runs is never watched: no runner pid, no timer', () => {
   assert.equal(watchRunner(() => {}, {}), null);
-  assert.equal(watchRunner(() => {}, {JOB_PILOTTO_E2E: '1'}), null, 'a test run with no runner named has nothing to watch');
-  assert.equal(watchRunner(() => {}, {JOB_PILOTTO_E2E_RUNNER_PID: 'not a pid'}), null);
-  const timer = watchRunner(() => assert.fail('exit was called for a runner that is alive'), {JOB_PILOTTO_E2E_RUNNER_PID: String(process.pid), JOB_PILOTTO_E2E_RUNNER_POLL_MS: '20'});
+  assert.equal(watchRunner(() => {}, {JOBADABRA_E2E: '1'}), null, 'a test run with no runner named has nothing to watch');
+  assert.equal(watchRunner(() => {}, {JOBADABRA_E2E_RUNNER_PID: 'not a pid'}), null);
+  const timer = watchRunner(() => assert.fail('exit was called for a runner that is alive'), {JOBADABRA_E2E_RUNNER_PID: String(process.pid), JOBADABRA_E2E_RUNNER_POLL_MS: '20'});
   assert.ok(timer, 'a live runner is watched');
   clearInterval(timer);
 });

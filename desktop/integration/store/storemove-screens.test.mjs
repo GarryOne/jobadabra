@@ -19,7 +19,7 @@ import {COMPANIES, settingsOf} from '../../e2e/lib/storemove-steps.mjs';
 
 // The app's own isolation switches, set before the app's modules read them (lib/notion-core.js reads the base URL when it loads).
 const standIn = await startNotionFake();
-Object.assign(process.env, {JOB_PILOTTO_E2E: '1', JOB_PILOTTO_E2E_NOTION_BASE_URL: standIn.url, JOB_PILOTTO_E2E_NOTION_STANDIN: '1', JOB_PILOTTO_FOLLOW_APP: '0'});
+Object.assign(process.env, {JOBADABRA_E2E: '1', JOBADABRA_E2E_NOTION_BASE_URL: standIn.url, JOBADABRA_E2E_NOTION_STANDIN: '1', JOBADABRA_FOLLOW_APP: '0'});
 const {createStorage} = await import('../../lib/storage.js');
 const {moveToNotion} = await import('../../lib/store-move.js');
 const {ensureConfig} = await import('../../lib/pipeline-env.js');
@@ -44,7 +44,7 @@ const named = text => COMPANIES.filter(name => text.includes(name));
 
 /** {jobs, focus, interviews, activity}: which seeded items each screen is handed (the e2e suite's `screens`, from the engine instead of the DOM). */
 async function screens(profile, token = '') {
-  const ctx = {profile, store: token ? 'standin' : 'sqlite', token, appEnv: {JOB_PILOTTO_E2E_NOTION_BASE_URL: standIn.url, JOB_PILOTTO_E2E_NOTION_STANDIN: '1'}};
+  const ctx = {profile, store: token ? 'standin' : 'sqlite', token, appEnv: {JOBADABRA_E2E_NOTION_BASE_URL: standIn.url, JOBADABRA_E2E_NOTION_STANDIN: '1'}};
   const jobs = await engine(profile, token, 'src.desktop', 'jobs');
   const focus = await engine(profile, token, 'src.focus');
   const interviews = await storeCall(ctx, 'interviews', 'list', {});

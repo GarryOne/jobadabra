@@ -12,8 +12,8 @@ export function onTop(want = null) {
     }
     return null;
   };
-  const nameOf = el => el.labels?.[0]?.innerText || el.getAttribute('aria-label') || (window.__jobPilottoFillKit?.labelOf ? window.__jobPilottoFillKit.labelOf(el) : '') || el.name;   // as the panel names a field (page/fill-labels.js), when the page has that reader
-  const own = node => node.closest('[id^=jobpilotto], [id^=job-pilotto]');
+  const nameOf = el => el.labels?.[0]?.innerText || el.getAttribute('aria-label') || (window.__jobadabraFillKit?.labelOf ? window.__jobadabraFillKit.labelOf(el) : '') || el.name;   // as the panel names a field (page/fill-labels.js), when the page has that reader
+  const own = node => node.closest('[id^=jobadabra], [id^=jobadabra]');
   const points = [...document.querySelectorAll('input, select, textarea')].filter(el => el.getClientRects().length && !['hidden', 'submit', 'button', 'image', 'reset'].includes(el.type)).slice(0, 12)
     .map(el => ({el, box: el.getBoundingClientRect()})).filter(({box}) => box.width && box.height).map(({el, box}) => ({el, x: box.left + box.width / 2, y: box.top + box.height / 2}));
   points.push({el: null, x: innerWidth / 2, y: innerHeight / 2});
@@ -26,7 +26,7 @@ export function onTop(want = null) {
     const controls = [...layer.node.querySelectorAll('button, [role=button], input[type=submit], input[type=button], a')].filter(item => item.getClientRects().length);
     const labelOf = item => clean(item.innerText || item.value || item.getAttribute('aria-label') || item.getAttribute('title'), 40);
     const leavesPage = node => { const link = node.closest && node.closest('a[href]'); if (!link) return false; if (/^(_blank|_top|_parent)$/i.test(link.getAttribute('target') || '')) return true; try { const to = new URL(link.href, location.href); return to.protocol !== 'javascript:' && to.href.split('#')[0] !== location.href.split('#')[0]; } catch { return true; } };   // the shared floor (app-core/test/popup-press-stays.test.js)
-    if (want?.press) { const found = controls.find(item => labelOf(item) === want.press && !leavesPage(item)); if (found) (globalThis.__jobPilottoPress?.(found) || found.click()); return {pressed: found && !window.__jobPilottoRefused ? labelOf(found) : ''}; }   // a press the floor refused (page/submit-press.js) is no press   // the app's pick, pressed only if it is a button OF this layer
+    if (want?.press) { const found = controls.find(item => labelOf(item) === want.press && !leavesPage(item)); if (found) (globalThis.__jobadabraPress?.(found) || found.click()); return {pressed: found && !window.__jobadabraRefused ? labelOf(found) : ''}; }   // a press the floor refused (page/submit-press.js) is no press   // the app's pick, pressed only if it is a button OF this layer
     const buttons = [...new Set(controls.map(labelOf).filter(Boolean))].slice(0, 6);
     const covered = points.filter(point => point.el && (hit => hit && layer.node.contains(hit))(document.elementFromPoint(point.x, point.y))).map(point => clean(nameOf(point.el), 60)).filter(Boolean);   // the form's own controls this layer is drawn over
     return {covered, shape: layer.shape, role: clean(layer.node.getAttribute('role') || layer.node.tagName.toLowerCase(), 20), text: clean(layer.node.innerText || layer.node.textContent, 160), buttons};

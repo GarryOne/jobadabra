@@ -9,7 +9,7 @@ Owner, 16 Oct 2026: "move the commits on my ~/jobadabra local main so that I can
 The owner's app runs from `~/jobadabra/desktop` and the owner's Chrome loads the extension unpacked from `~/jobadabra/extension`: what is on that checkout is what he sees.
 
 ## 1. Before moving anything
-- **One trial at a time.** `git -C ~/jobadabra log --oneline origin/main..main`: empty, or only your own commits. Someone else's commits there: stop and tell job-pilotto-cc (another session is being tried).
+- **One trial at a time.** `git -C ~/jobadabra log --oneline origin/main..main`: empty, or only your own commits. Someone else's commits there: stop and tell jobadabra-cc (another session is being tried).
 - **Clean tree.** `git -C ~/jobadabra status --porcelain --untracked-files=no` must be empty. Never stash, never edit files in the primary (the hook refuses; don't work around it).
 - Your fix is committed in YOUR worktree (WIP commits are fine), rebased on a fresh `origin/main`; the tests you touched pass. No ship.sh, no CI wait.
 

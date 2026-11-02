@@ -30,9 +30,9 @@ export const PLANNER = Object.freeze({
   watches: Object.freeze(['src/ai/score.py', 'src/ai/score_bands.py', 'src/ai/enrich.py', 'src/ai/hints.py', 'desktop/lib/pipeline.js', 'desktop/lib/question-reuse.js', 'desktop/lib/match-check.js', 'desktop/e2e/fixtures/golden/']),
   // This suite measures what a user gets, so the app under test runs on the shipped model (about $0.3 a run); the other suites run on Haiku. For a cheap run:
   // E2E_APP_MODEL=claude-haiku-4-5 (Haiku 4.5 scored the same job up to 10 points apart between two scorings, Sonnet within 6).
-  env: Object.freeze({JOB_PILOTTO_MODEL_OVERRIDE: process.env.E2E_APP_MODEL || 'claude-sonnet-5-5',
+  env: Object.freeze({JOBADABRA_MODEL_OVERRIDE: process.env.E2E_APP_MODEL || 'claude-sonnet-5-5',
     // The engine reads the persona's Profile instead of the test page's Profile.
-    ...(PERSONA ? {JOB_PILOTTO_E2E_PROFILE_FILE: path.join(GOLDEN, 'profile.md')} : {})}),
+    ...(PERSONA ? {JOBADABRA_E2E_PROFILE_FILE: path.join(GOLDEN, 'profile.md')} : {})}),
 });
 
 /** Collect checked facts without policy: required missing jobs add diagnostics and missed facts, optional drops add neither. */

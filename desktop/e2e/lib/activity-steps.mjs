@@ -149,7 +149,7 @@ export async function appReady(ctx) {
 /** Keep the temporary silence limit inside its cleanup scope, including startup failures. */
 export async function withSilenceLimit(ctx, run) {
   try {
-    await ctx.relaunch({JOB_PILOTTO_E2E_IDLE_MS: '10000'}, undefined, {how: 'quit'});
+    await ctx.relaunch({JOBADABRA_E2E_IDLE_MS: '10000'}, undefined, {how: 'quit'});
     await appReady(ctx);
     return await run();
   } finally {

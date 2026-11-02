@@ -1,5 +1,6 @@
-// A fake Telegram Bot API for the end-to-end tests (5 Oct 2026): the app and the engine send here instead of Telegram (JOB_PILOTTO_E2E_TELEGRAM_BASE_URL, test runs
+// A fake Telegram Bot API for the end-to-end tests (5 Oct 2026): the app and the engine send here instead of Telegram (JOBADABRA_E2E_TELEGRAM_BASE_URL, test runs
 // only), so a suite can read the digest a person would receive and make Telegram refuse a send. getUpdates answers "nothing new" at once; nothing reaches Telegram.
+// Job: serve stored answers
 import http from 'node:http';
 import {markPlanted} from './planted.mjs';
 

@@ -198,7 +198,7 @@ class BesideTests(unittest.TestCase):
         ahead = boards_ahead.start(self.db, SEARCH, now=now)
         ahead.wait()
         self.assertEqual(self.since, [now - timedelta(hours=aggregators.SPACING_HOURS)])
-        with mock.patch.dict('os.environ', {'JOB_PILOTTO_FIXTURE_DIR': '/x'}):
+        with mock.patch.dict('os.environ', {'JOBADABRA_FIXTURE_DIR': '/x'}):
             self.assertIsNone(boards_ahead.start(sqlite3.connect(':memory:'), SEARCH), 'the fixture mode never reaches a live site')
 
 

@@ -11,18 +11,18 @@ test('Electron launch options exclude CI secret names and values, including expl
   const expression = source.match(/^    env: (.*),\s*\/\//m)?.[1];
   assert.ok(expression, 'inspect the actual launch env expression');
   const helpers = source.includes("'./app-env.mjs'") ? await import('../../lib/app-env.mjs') : {};
-  const env = vm.runInNewContext(`(${expression})`, {process: {env: inherited, pid: 123}, env: {TZ: 'UTC', E2E_OPENAI_KEY: secret}, profile: '/test/profile', port: {JOB_PILOTTO_PORT: '12345'}, ownerGuardEnv: () => ({}), hidden: () => '0', zoneOf: env => env.TZ, withoutWrappers: env => env, ...helpers});
+  const env = vm.runInNewContext(`(${expression})`, {process: {env: inherited, pid: 123}, env: {TZ: 'UTC', E2E_OPENAI_KEY: secret}, profile: '/test/profile', port: {JOBADABRA_PORT: '12345'}, ownerGuardEnv: () => ({}), hidden: () => '0', zoneOf: env => env.TZ, withoutWrappers: env => env, ...helpers});
   assert.equal(Object.values(env).includes(secret), false, 'no credential value reaches Playwright launch');
   for (const name of Object.keys(inherited).filter(name => !['PATH', 'HOME', 'CI', 'DISPLAY'].includes(name))) assert.equal(name in env, false, name);
   assert.equal(env.CI, 'true');
   assert.equal(env.DISPLAY, ':99');
   assert.equal(env.TZ, 'UTC');
-  assert.equal(env.JOB_PILOTTO_PORT, '12345');
+  assert.equal(env.JOBADABRA_PORT, '12345');
 });
 
 test('the launch allowlist rejects a real credential smuggled into a product hook', async () => {
   const {appLaunchEnv} = await import('../../lib/app-env.mjs');
-  assert.throws(() => appLaunchEnv({E2E_ANTHROPIC_KEY: 'fake-inherited-key'}, {JOB_PILOTTO_HOOK: 'fake-inherited-key'}), /CI credential override refused: E2E_ANTHROPIC_KEY/);
+  assert.throws(() => appLaunchEnv({E2E_ANTHROPIC_KEY: 'fake-inherited-key'}, {JOBADABRA_HOOK: 'fake-inherited-key'}), /CI credential override refused: E2E_ANTHROPIC_KEY/);
 });
 
 test('proxy credentials replace exact aliases only and never mutate app headers', async () => {

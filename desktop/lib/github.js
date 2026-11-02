@@ -22,8 +22,8 @@ export {setEngineRef, resolveEngineRepo, currentEngineRepo, ENGINE_REPO} from '.
 
 // The Jobadabra GitHub App (public identifiers; device flow needs no client secret). Its permissions,
 // on the one repository it's installed on: Actions, Contents, Secrets, Variables and Workflows (write).
-export const CLIENT_ID = process.env.JOB_PILOTTO_GITHUB_CLIENT_ID || 'Iv23liEIBvK1hG0oejDr';
-export const APP_SLUG = process.env.JOB_PILOTTO_GITHUB_APP || 'jobadabra';   // renamed from job-pilotto on 26 Oct 2026: the old address answers 404
+export const CLIENT_ID = process.env.JOBADABRA_GITHUB_CLIENT_ID || 'Iv23liEIBvK1hG0oejDr';
+export const APP_SLUG = process.env.JOBADABRA_GITHUB_APP || 'jobadabra';   // renamed from job-pilotto on 26 Oct 2026: the old address answers 404
 // New repos are named jobadabra-personal-always-on (owner, 24 Oct 2026); repos made before keep job-pilotto-private and are still found.
 export const REPO_NAME = 'jobadabra-personal-always-on';
 export const REPO_NAMES = [REPO_NAME, 'job-pilotto-private'];
@@ -107,7 +107,7 @@ export function client(token, fetcher = globalThis.fetch) {
     const response = await fetcher(`${API}${route}`, {
       method, body: body === undefined ? undefined : JSON.stringify(body),
       headers: {Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28',
-        'User-Agent': 'job-pilotto-desktop', ...(body === undefined ? {} : {'Content-Type': 'application/json'})},
+        'User-Agent': 'jobadabra-desktop', ...(body === undefined ? {} : {'Content-Type': 'application/json'})},
     });
     if (response.status === 204) return null;
     const data = await response.json().catch(() => null);
@@ -236,8 +236,10 @@ export function payload(storage, templatesDir = path.join(REPO, 'templates', 'gi
     if (kits > 0) variables.JOB_PILOTTO_AUTO_KIT_MAX = String(kits); else removed.push('JOB_PILOTTO_AUTO_KIT_MAX');
   }
   // "Help the pool grow" (opt-in): Always-on runs follow the same choice.
+  // Why (1 Nov 2026, rename to Jobadabra; Gitar found the class): pool-share names its keys as the engine's env (JOBADABRA_*), but the repo's variables keep the JOB_PILOTTO_ names the workflows read as vars.* until the GitHub-side rename (mac-07); drop repoName when it lands.
+  const repoName = name => name.replace(/^JOBADABRA_/, 'JOB_PILOTTO_');
   const share = poolShare.variables(storage);
-  if (share) Object.assign(variables, share); else removed.push(...poolShare.NAMES);
+  if (share) Object.assign(variables, Object.fromEntries(Object.entries(share).map(([name, value]) => [repoName(name), value]))); else removed.push(...poolShare.NAMES.map(repoName));
   return {files, secrets, variables, removed};
 }
 
@@ -430,8 +432,13 @@ export async function syncDatabase(storage, {fetcher = globalThis.fetch, unzip} 
   const {repo} = storage.settings().cloud || {};
   if (!repo) return false;
   const api = client(storage.secret('GITHUB_TOKEN'), fetcher);
-  const {artifacts} = await api('GET', `/repos/${repo}/actions/artifacts?name=job-pilotto-jobs-db&per_page=1`);
-  const latest = artifacts?.find(artifact => !artifact.expired);
+  // Why (1 Nov 2026, rename to Jobadabra): a repo whose last run was before the rename still holds the job-pilotto-jobs-db artifact until its next daily run; read the new name, then the old. Remove the old name with the other fallbacks (JOB-200).
+  let latest;
+  for (const name of ['jobadabra-jobs-db', 'job-pilotto-jobs-db']) {
+    const {artifacts} = await api('GET', `/repos/${repo}/actions/artifacts?name=${name}&per_page=1`);
+    latest = artifacts?.find(artifact => !artifact.expired);
+    if (latest) break;
+  }
   if (!latest || latest.id === storage.settings().cloud.artifactId) return false;
   const response = await fetcher(latest.archive_download_url, {headers: {Authorization: `Bearer ${storage.secret('GITHUB_TOKEN')}`}});
   if (!response.ok) throw new Error(`Could not download the job database (${response.status})`);

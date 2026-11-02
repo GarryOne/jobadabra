@@ -26,7 +26,7 @@ def search(clock):
 class Base(unittest.TestCase):
     def setUp(self):
         self.dir = tempfile.TemporaryDirectory()
-        patch = mock.patch.dict(os.environ, {'JOB_PILOTTO_SEARCH_TAPE': self.dir.name, 'JOB_PILOTTO_DATA_DIR': self.dir.name})
+        patch = mock.patch.dict(os.environ, {'JOBADABRA_SEARCH_TAPE': self.dir.name, 'JOBADABRA_DATA_DIR': self.dir.name})
         patch.start()
         self.addCleanup(patch.stop)
         self.addCleanup(self.dir.cleanup)
@@ -39,7 +39,7 @@ class Base(unittest.TestCase):
         (Path(self.dir.name) / 'budget_epoch.txt').unlink(missing_ok=True)   # a fresh run of the same processes
         budget_tape._seen.clear()
         budget_tape._tape.clear()
-        with mock.patch.dict(os.environ, {'JOB_PILOTTO_SEARCH_TAPE_MODE': mode}), contextlib_quiet():
+        with mock.patch.dict(os.environ, {'JOBADABRA_SEARCH_TAPE_MODE': mode}), contextlib_quiet():
             return search(clock)
 
 
@@ -57,7 +57,7 @@ class BudgetTapeTest(Base):
         self.assertEqual(self.run_mode('replay', 0.01), plain)
 
     def test_without_a_tape_nothing_is_written(self):
-        with mock.patch.dict(os.environ, {'JOB_PILOTTO_SEARCH_TAPE': ''}), contextlib_quiet():
+        with mock.patch.dict(os.environ, {'JOBADABRA_SEARCH_TAPE': ''}), contextlib_quiet():
             search(1.0)
         self.assertFalse((Path(self.dir.name) / 'budget.jsonl').exists())
 
@@ -70,11 +70,11 @@ class TwoSearchesTest(Base):
             return first, second
         for mode in ('record',):
             budget_tape._seen.clear(), budget_tape._tape.clear()
-            with mock.patch.dict(os.environ, {'JOB_PILOTTO_SEARCH_TAPE_MODE': mode}), contextlib_quiet():
+            with mock.patch.dict(os.environ, {'JOBADABRA_SEARCH_TAPE_MODE': mode}), contextlib_quiet():
                 recorded = two(20.0)
         (Path(self.dir.name) / 'budget_epoch.txt').unlink()   # a fresh replay run
         budget_tape._seen.clear(), budget_tape._tape.clear()
-        with mock.patch.dict(os.environ, {'JOB_PILOTTO_SEARCH_TAPE_MODE': 'replay'}), contextlib_quiet():
+        with mock.patch.dict(os.environ, {'JOBADABRA_SEARCH_TAPE_MODE': 'replay'}), contextlib_quiet():
             self.assertEqual(two(0.01), recorded)
 
 

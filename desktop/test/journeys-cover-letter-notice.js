@@ -11,7 +11,7 @@ import {createStorage} from '../lib/storage.js';
 const source = fs.readFileSync(new URL('../../extension/letter-notice.js', import.meta.url), 'utf8');
 const window = {};
 vm.runInNewContext(source, {window});
-const notice = window.__jobPilottoCoverLetterNotice;
+const notice = window.__jobadabraCoverLetterNotice;
 
 test('cover-letter notice copy names the right next step for each status', () => {
   assert.deepEqual({...notice({state: 'missing'})}, {

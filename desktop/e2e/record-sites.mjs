@@ -5,6 +5,7 @@
 // fleet digest flags as dropped (layer 4). Report: <QA folder>/smoke-reports/<day>.json (outside the repo: it names real postings, and outlives worktrees). Exit 1 when a shape reached less than last time.
 // Usage: cd desktop/e2e && npm run record-sites [-- --only <shape words> | --all] [RECORD_SHARE=10] [RECORD_SECONDS=90]: this run's share of the pool (the least recently run first), or
 // --all / --only. Each shape is compared with ITS last run, however long ago. It never schedules itself: the owner starts it by hand.
+// Job: serve stored answers
 import {SiteLimitError, blockSignal, guardLiveVisit, markBlocked} from './lib/site-ledger.mjs';
 import {recordVar} from '../../tools/record-env.mjs';
 import {ensureStagedWorker} from './lib/staged-worker.mjs';
@@ -67,7 +68,7 @@ function liveRun(posting, seconds, captureDir = '', engine = smokeEngine()) {
       child.on('close', (code, signal) => resolve({output, code, signal, seconds: Math.round((Date.now() - started) / 1000)}));
       return;
     }
-    const child = spawn('node', ['run-all.mjs', '--only', 'applyflows'], {cwd: here, env: {...poolEnv(), E2E_ARTIFACTS: runArtifacts(), LIVE: '1', LIVE_URL: posting.url, LIVE_TITLE: posting.title || '', LIVE_COMPANY: posting.company || '', LIVE_SECONDS: String(seconds), LIVE_CAPTURE_DIR: captureDir, ...(captureDir ? {JOB_PILOTTO_MODEL_MEMO: path.join(captureDir, 'model-memo.json')} : {}), LIVE_ENGINE: process.env.LIVE_ENGINE || 'cli'}});
+    const child = spawn('node', ['run-all.mjs', '--only', 'applyflows'], {cwd: here, env: {...poolEnv(), E2E_ARTIFACTS: runArtifacts(), LIVE: '1', LIVE_URL: posting.url, LIVE_TITLE: posting.title || '', LIVE_COMPANY: posting.company || '', LIVE_SECONDS: String(seconds), LIVE_CAPTURE_DIR: captureDir, ...(captureDir ? {JOBADABRA_MODEL_MEMO: path.join(captureDir, 'model-memo.json')} : {}), LIVE_ENGINE: process.env.LIVE_ENGINE || 'cli'}});
     let output = '';
     child.stdout.on('data', chunk => { output += chunk; });
     child.stderr.on('data', chunk => { output += chunk; });
@@ -81,7 +82,7 @@ const sendPool = (shapes, reports, results = {}) => upload('pool', poolRows(shap
 
 function droppedBoards() {
   try {
-    const key = execFileSync('security', ['find-generic-password', '-s', 'job-pilotto.site.api_key', '-w'], {encoding: 'utf8'}).trim();   // never printed
+    const key = execFileSync('security', ['find-generic-password', '-s', 'jobadabra.site.api_key', '-w'], {encoding: 'utf8'}).trim();   // never printed
     const json = execFileSync('curl', ['-s', '--max-time', '20', '-H', `Authorization: Bearer ${key}`, '-H', 'X-Caller: smoke-dropped-boards', 'https://www.jobpilotto.top/admin/form-filling/real-users/digest.json'], {encoding: 'utf8'});
     return (JSON.parse(json).boards || []).filter(board => board.dropped).map(board => ({board: board.board, earlier: board.earlierFilledShare, recent: board.recentFilledShare}));
   } catch { return null; }   // no key or no network: the report says the fleet was not read

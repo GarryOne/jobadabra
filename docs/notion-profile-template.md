@@ -122,7 +122,7 @@ edited on Profile → Cover letter; the rest on Profile → Application answers.
 
 ## Where the CV file and contact details live
 
-- **CV file path**: set `JOB_PILOTTO_CV_PATH` in your local `.env` (see `.env.example`). Never
+- **CV file path**: set `JOBADABRA_CV_PATH` in your local `.env` (see `.env.example`). Never
   commit the PDF itself — `.gitignore` already excludes `*.pdf`.
 - **Contact details** (name, email, phone, address, links): the app writes them as 📇 Contact details
   on your Profile, from your CV; edit them in Profile → Your details. Forms read them from there; the

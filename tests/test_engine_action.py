@@ -24,18 +24,18 @@ class ActionHeaderTest(unittest.TestCase):
 
     def test_a_named_step_sends_its_name_and_nothing_else(self):
         with mock.patch.dict(sys.modules, {'anthropic': self.module}):
-            engine.client(env={'JOB_PILOTTO_AI_ENGINE': 'api'}, action='score')
+            engine.client(env={'JOBADABRA_AI_ENGINE': 'api'}, action='score')
             engine.client(env={}, action='kit')
         self.assertEqual(FakeAnthropic.made, [{'default_headers': {'x-jp-action': 'score'}}, {'default_headers': {'x-jp-action': 'kit'}}])
 
     def test_places_is_forwarded_as_a_header(self):
         with mock.patch.dict(sys.modules, {'anthropic': self.module}):
-            engine.client(env={'JOB_PILOTTO_AI_ENGINE': 'api'}, action='places')
+            engine.client(env={'JOBADABRA_AI_ENGINE': 'api'}, action='places')
         self.assertEqual(FakeAnthropic.made, [{'default_headers': {'x-jp-action': 'places'}}])
 
     def test_opportunity_is_already_a_named_free_ai_step(self):
         with mock.patch.dict(sys.modules, {'anthropic': self.module}):
-            engine.client(env={'JOB_PILOTTO_AI_ENGINE': 'api'}, action='opportunity')
+            engine.client(env={'JOBADABRA_AI_ENGINE': 'api'}, action='opportunity')
         self.assertEqual(FakeAnthropic.made, [{'default_headers': {'x-jp-action': 'opportunity'}}])
 
     def test_an_unknown_or_missing_step_sends_no_header(self):

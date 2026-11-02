@@ -34,7 +34,7 @@ test('clickCombosNow: no debugger, page or AI call outside a deadline (bound / w
 
 test('clickCombo: a page that keeps asking for typing is given up at the ceiling, not waited on for ever', async () => {
   let clock = 0;
-  const page = async func => { const text = String(func); if (text.includes('__jobPilottoNeed;')) return {kind: 'type', text: 'x'}; if (text.includes('ArmedCount')) return 1; return null; };
+  const page = async func => { const text = String(func); if (text.includes('__jobadabraNeed;')) return {kind: 'type', text: 'x'}; if (text.includes('ArmedCount')) return 1; return null; };
   const slow = async (...args) => { clock += 900; return page(...args); };   // a busy machine: every page call takes 0.9 s of real time
   const result = await clickCombo({page: slow, click: async () => {}, spot: {x: 1, y: 1}, type: async () => {}, sleep: async ms => { clock += ms; }, now: () => clock});
   assert.equal(result.picked, false);

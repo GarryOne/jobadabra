@@ -56,7 +56,7 @@ if [ "$mode" != after-ci ]; then
 fi
 
 # The schema is additive over the current stable, so "Back to stable" cannot split anybody's data.
-if [ "$mode" != wait-ci ] && [ "${JOB_PILOTTO_SOAK:-}" = on ]; then
+if [ "$mode" != wait-ci ] && [ "${JOBADABRA_SOAK:-}" = on ]; then
   stable=$(gh release list -R "$repo" -L 20 --json tagName,isPrerelease,isDraft -q '[.[] | select(.isDraft | not) | select(.isPrerelease | not)][0].tagName')
   if [ -z "$stable" ] || [ "$stable" = "$tag" ]; then echo "No older stable to compare the schema with."; exit 0; fi
   tmp=$(mktemp -d)

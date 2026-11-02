@@ -7,7 +7,7 @@ import vm from 'node:vm';
 import {test} from 'node:test';
 
 const load = (file, extra = {}) => {
-  const window = {__jobPilottoDial: {'+41': 'Switzerland', '+972': 'Israel', '+1': 'United States'}, ...extra};
+  const window = {__jobadabraDial: {'+41': 'Switzerland', '+972': 'Israel', '+1': 'United States'}, ...extra};
   const document = {querySelectorAll: () => [], addEventListener() {}, dispatchEvent() {}};
   vm.runInNewContext(fs.readFileSync(new URL(`../../${file}`, import.meta.url), 'utf8'), {window, document, getComputedStyle: () => ({}), CSS: {escape: x => x}, Event: class {}, CustomEvent: class {}, Object, String, Array, Date, Math, RegExp, Map, Set, console});
   return window;
@@ -22,18 +22,18 @@ const CASES = [   // [typed, now, same?]
 ];
 test('the page script and the panel agree on every case, and a box reset to the widget\'s own country code is not the number we typed', () => {
   for (const [typed, now, same] of CASES) {
-    assert.equal(page.__jobPilottoTypedSame(typed, now), same, `page script: ${typed} -> ${now}`);
-    assert.equal(panel.__jobPilottoTypedSame(alnum(typed).slice(0, 160), now), same, `panel: ${typed} -> ${now}`);
+    assert.equal(page.__jobadabraTypedSame(typed, now), same, `page script: ${typed} -> ${now}`);
+    assert.equal(panel.__jobadabraTypedSame(alnum(typed).slice(0, 160), now), same, `panel: ${typed} -> ${now}`);
   }
 });
 
 test('a box holding only a calling code is empty for the panel and the readers; a number, a name or a bare plus-and-digits-and-more is not', () => {
-  const given = panel.__jobPilottoBoxGiven;
+  const given = panel.__jobadabraBoxGiven;
   assert.deepEqual(['', ' ', '+972', '+1', '+41 '].map(given), [false, false, false, false, false]);
   assert.deepEqual(['+41 79 555 01 23', '+41795550123', 'Ada', '0795550123', '+49123456'].map(given), [true, true, true, true, true]);
   // The one control reader holds the rule (page/read-back.js, amendment 4 of the fill ladder); every reader of a box's state asks it, or the rule itself (coverage.js).
   const source = file => fs.readFileSync(new URL(`../../${file}`, import.meta.url), 'utf8');
-  assert.match(source('extension/page/read-back.js'), /__jobPilottoBoxGiven/, 'the one reader treats a calling code alone as empty');
-  for (const file of ['extension/panel-form.js', 'extension/page/fill-read.js', 'extension/account-fill.js', 'tools/browser-form-fastpath.js']) assert.match(source(file), /__jobPilottoReadBack/, `${file} reads a box through the one reader`);
-  assert.match(source('extension/page/coverage.js'), /__jobPilottoBoxGiven/, 'coverage.js treats a calling code alone as empty');
+  assert.match(source('extension/page/read-back.js'), /__jobadabraBoxGiven/, 'the one reader treats a calling code alone as empty');
+  for (const file of ['extension/panel-form.js', 'extension/page/fill-read.js', 'extension/account-fill.js', 'tools/browser-form-fastpath.js']) assert.match(source(file), /__jobadabraReadBack/, `${file} reads a box through the one reader`);
+  assert.match(source('extension/page/coverage.js'), /__jobadabraBoxGiven/, 'coverage.js treats a calling code alone as empty');
 });

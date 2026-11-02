@@ -29,7 +29,7 @@ test('through Claude Code the answer has the Messages shape the judges read', as
   assert.equal(response.ok, true);
   assert.equal(data.content[0].text, '{"items":[]}');
   assert.deepEqual(data.usage, {input_tokens: 15, output_tokens: 7});
-  assert.ok(!seen.cwd.includes('job-pilotto'), 'the call runs in an empty folder, with no project around it');
+  assert.ok(!seen.cwd.includes('jobadabra'), 'the call runs in an empty folder, with no project around it');
 });
 
 test('a failing Claude Code is an error answer, never a pass', async () => {

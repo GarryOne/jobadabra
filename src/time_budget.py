@@ -19,7 +19,7 @@ from . import budget_tape
 
 DEADLINE = None
 STAGE_END = None   # this process's own end on the search's clock (the job boards' step: its share), before DEADLINE; None: DEADLINE
-SEARCH_AT = 'JOB_PILOTTO_SEARCH_AT'   # epoch seconds of the Find jobs press, the same for each of its processes (desktop/lib/search-steps.js)
+SEARCH_AT = 'JOBADABRA_SEARCH_AT'   # epoch seconds of the Find jobs press, the same for each of its processes (desktop/lib/search-steps.js)
 STARTED = None
 BEGAN = None   # when the search started (src/sources/read_budget.py cut_at)
 PLANNED = 180   # the app's budget, which the seconds below are planned for (part)

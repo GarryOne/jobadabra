@@ -216,7 +216,7 @@ KEY_SOURCES_OFFERED = False
 
 def _claude_code(env):
     """The AI engine is the user's own plan's CLI (Claude Code or Codex): its web search stands in for the keyed ones."""
-    return (env.get('JOB_PILOTTO_AI_ENGINE') or '').lower() in ('cli', 'codex')
+    return (env.get('JOBADABRA_AI_ENGINE') or '').lower() in ('cli', 'codex')
 
 
 BOARDS_OF = {'aggregators': ('adzuna', 'jooble'), 'serpapi': ('google_jobs',)}   # a source here -> its board ids in the shared pool

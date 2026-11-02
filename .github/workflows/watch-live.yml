@@ -78,12 +78,12 @@ jobs:
       JP_TEST_ACCOUNTS: ${{ secrets.POOL_TEST_ACCOUNTS }}               # {"<host>": {"email", "password"}}: test accounts only (lib/test-accounts.mjs); a row without one is held
       JP_NO_REPORT: '1'
       JP_APPLICANT: thin
-      JOB_PILOTTO_HEAVY: '0'
-      JOB_PILOTTO_SESSION: watch-live CI run ${{ github.run_id }}
-      JOB_PILOTTO_SITE_LIMIT: '2'
-      JOB_PILOTTO_VISIT_KIND: hand
+      JOBADABRA_HEAVY: '0'
+      JOBADABRA_SESSION: watch-live CI run ${{ github.run_id }}
+      JOBADABRA_SITE_LIMIT: '2'
+      JOBADABRA_VISIT_KIND: hand
       JP_NET_RECORD_DIR: ${{ github.workspace }}/net-records
-      JOB_PILOTTO_SITE_LEDGER_DIR: ${{ github.workspace }}/record-sites-out/site-ledger
+      JOBADABRA_SITE_LEDGER_DIR: ${{ github.workspace }}/record-sites-out/site-ledger
       RECORD_PAIRED: '0'
       RECORD_REPORTS: ${{ github.workspace }}/record-sites-out/smoke-reports
       RECORD_CANDIDATES: ${{ github.workspace }}/record-sites-out/replay-candidates
@@ -138,7 +138,7 @@ jobs:
         run: |
           set -o pipefail
           mkdir -p "$RECORD_REPORTS"
-          echo "watch: rows matching \"$ONLY\", at most $MAX_ROWS, AI cap \$$MAX_USD; CI's site limit $JOB_PILOTTO_SITE_LIMIT a host a day"
+          echo "watch: rows matching \"$ONLY\", at most $MAX_ROWS, AI cap \$$MAX_USD; CI's site limit $JOBADABRA_SITE_LIMIT a host a day"
           RECORD_MAX_ROWS=$MAX_ROWS RECORD_MAX_USD=$MAX_USD xvfb-run -a --server-args='-screen 0 1440x900x24' node record-sites.mjs --only "$ONLY" 2>&1 | tee "$GITHUB_WORKSPACE/record-sites-out/smoke.log"
       - name: The journey check on each fresh recording (the card and the panel at every step; the report says what failed)
         if: always()

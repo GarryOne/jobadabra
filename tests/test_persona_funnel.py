@@ -70,7 +70,7 @@ class CostTest(unittest.TestCase):
         db.commit()
         log = os.path.join(folder, 'run-1.log')
         Path(log).write_text(LOG, encoding='utf-8')
-        env = {**os.environ, 'PYTHONPATH': str(ROOT), 'JOB_PILOTTO_DATA_DIR': folder, 'JOB_PILOTTO_CONFIG_DIR': folder, 'JOB_PILOTTO_NO_DOTENV': '1'}
+        env = {**os.environ, 'PYTHONPATH': str(ROOT), 'JOBADABRA_DATA_DIR': folder, 'JOBADABRA_CONFIG_DIR': folder, 'JOBADABRA_NO_DOTENV': '1'}
         out = json.loads(subprocess.run([sys.executable, str(ROOT / 'tools' / 'persona-search' / 'funnel.py'), log, '--since', '2026-10-25T16:02:46'],
                                         env=env, capture_output=True, text=True, check=True).stdout)
         self.assertEqual(out['ai_usd'], 0.53)

@@ -17,7 +17,7 @@ const entriesFor = rows => {
   const window = {}, context = vm.createContext({window, document: {}});
   vm.runInContext(read('extension/page/radios.js'), context);
   for (const file of FILL_FILES) vm.runInContext(read(`extension/${file}`), context);
-  return JSON.parse(JSON.stringify(window.__jobPilottoProfileEntries(rows, profile)));
+  return JSON.parse(JSON.stringify(window.__jobadabraProfileEntries(rows, profile)));
 };
 
 // Every contact detail's own pattern, planted inside a sentence that asks about something else: none is typed. Looped over the details, so a new one is covered.

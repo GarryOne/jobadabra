@@ -204,7 +204,7 @@ test('scenario: Notion chosen but not connected, a search starts: the engine run
   const {pipelineEnv} = await import('../lib/pipeline.js');
   const storage = settings => ({settings: () => settings, secret: () => '', path: name => `/folder/${name}`, secretsPresent: () => ({}), saveSettings: () => {}});
   const env = pipelineEnv(storage({store: 'notion'}), {PATH: '/usr/bin'});
-  assert.equal(env.JOB_PILOTTO_STORE, undefined);   // was 'notion': src/stores/notion.py raised "needs NOTION_TOKEN", shown as "Unexpected error"
+  assert.equal(env.JOBADABRA_STORE, undefined);   // was 'notion': src/stores/notion.py raised "needs NOTION_TOKEN", shown as "Unexpected error"
   assert.equal(env.NOTION_TOKEN, undefined);
 });
 

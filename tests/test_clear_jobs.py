@@ -13,7 +13,7 @@ def job(name):
 
 class ClearJobs(unittest.TestCase):
     def stores(self):
-        return [memory.open_store(), sqlite.open_store({'JOB_PILOTTO_DATA_DIR': tempfile.mkdtemp()})]
+        return [memory.open_store(), sqlite.open_store({'JOBADABRA_DATA_DIR': tempfile.mkdtemp()})]
 
     def setup(self, stores):
         db = store.connect(Path(tempfile.mkdtemp()) / 'jobs.sqlite')

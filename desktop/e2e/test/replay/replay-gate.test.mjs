@@ -85,7 +85,7 @@ test('a recording made before a prompt change is "out of date": never red, liste
   assert.deepEqual([result.worse, result.red], [1, true], 'only b turns the gate red');
   assert.equal(judge([fallen], baseline).red, false);
   assert.match(summary(result), /🔁 out of date/);
-  assert.match(fs.readFileSync(new URL('../../replay-net.mjs', import.meta.url), 'utf8'), /JOB_PILOTTO_MODEL_MEMO_MISSLOG = path\.join\(out, 'misslog\.jsonl'\)/, 'replay-net keeps the whole list of differing parts');
+  assert.match(fs.readFileSync(new URL('../../replay-net.mjs', import.meta.url), 'utf8'), /JOBADABRA_MODEL_MEMO_MISSLOG = path\.join\(out, 'misslog\.jsonl'\)/, 'replay-net keeps the whole list of differing parts');
 });
 
 test('a row whose only misses are asks the memo lacks is "ask changed", never worse or red (the gate waits for a local replay)', () => {

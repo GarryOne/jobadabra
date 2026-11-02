@@ -55,7 +55,7 @@ test('contact details go into matching empty text fields, never over kit answers
   ];
   const profile = {first_name: 'Ada', last_name: 'L', full_name: 'Ada L', email: 'a@b.c', phone: '+41',
                    linkedin: 'https://linkedin.com/in/ada', website: 'https://ada.dev', location: 'Zurich'};
-  const entries = JSON.parse(JSON.stringify(window.__jobPilottoProfileEntries(rows, profile, ['question_10'])));
+  const entries = JSON.parse(JSON.stringify(window.__jobadabraProfileEntries(rows, profile, ['question_10'])));
   assert.deepEqual(entries, [
     {field: 'first_name', value: 'Ada'}, {field: 'last_name', value: 'L'},
     {field: 'phone', value: '+41'}, {field: 'question_9', value: 'https://linkedin.com/in/ada'},
@@ -91,7 +91,7 @@ test('Apply with Claude hand-off: hook only on a tab the app opened, ticket chec
 test('the Submit guard can be loaded twice on a page (a second fill) without throwing', () => {
   const code = read('extension/page/browser-submit-guard.js');
   const noop = () => {};
-  const window = { __jobPilottoNoGuard: true, addEventListener: noop };
+  const window = { __jobadabraNoGuard: true, addEventListener: noop };
   const context = vm.createContext({ window, document: { addEventListener: noop, querySelectorAll: () => [] },
     HTMLFormElement: function () {}, HTMLElement: function () {}, Element: function () {}, MutationObserver: function () { this.observe = noop; } });
   window.window = window;
@@ -127,11 +127,11 @@ test('an out-of-date extension in Chrome loads the new copy by itself, and only 
   assert.match(read('extension/self-reload.js'), /reloadedFor !== latest/);
   assert.match(read('extension/tab-report.js'), /mayReloadSelf\(\{latest: answer\?\.latest, running, reloadedFor,/);
   assert.match(background, /executeScript\(\{target: \{tabId, allFrames: true\}, files: \['page\/skeleton\.js', 'page\/required-mark\.js', 'page\/typed-check\.js', 'page\/read-back\.js', 'page\/label-before\.js', 'page\/coverage\.js', 'page\/option-groups\.js', 'page\/review-payload\.js', 'hook\.js', 'panel-claude\.js', 'page\/submit-press\.js', \.\.\.PANEL_FILES\], injectImmediately: true\}\)/);
-  assert.match(background, /jobpilotto-review-host/);
+  assert.match(background, /jobadabra-review-host/);
   assert.match(readPanel(), /send\(\{type: 'panelAllowed'\}\)/);
   // A copy left behind by a reload gives way to the fresh one instead of blocking it.
-  assert.match(readPanel(), /__jobPilottoReviewAlive\?\.\(\)/);
-  assert.match(read('extension/hook.js'), /__jobPilottoHookAlive\?\.\(\)/);
+  assert.match(readPanel(), /__jobadabraReviewAlive\?\.\(\)/);
+  assert.match(read('extension/hook.js'), /__jobadabraHookAlive\?\.\(\)/);
 });
 
 test('a kit fill starts at once: kit and contact details prefetched, no fixed wait from the panel, quick dropdowns', () => {
@@ -148,7 +148,7 @@ test('a kit fill starts at once: kit and contact details prefetched, no fixed wa
 
 test('a CV tailored after the first fill replaces the one the extension attached, never one the person chose', () => {
   const fill = read('extension/page/upload.js');   // page/upload.js owns attaching a file
-  assert.match(fill, /input\.dataset\.jobPilottoFile = file\.name/);
+  assert.match(fill, /input\.dataset\.jobadabraInputFile = file\.name/);
   assert.match(fill, /ours && input\.files\[0\]\.name === ours && ours !== file\.name/);
   const review = readPanel();
   // Why (27 Oct 2026, owner: "remove the line with General CV attached… Tailor in Jobadabra"): the panel has no CV row; tailoring is the app's, which restarts the form with the new CV, so the panel never asks the app to tailor.
@@ -187,10 +187,10 @@ test('the form report sends the AI-read knockouts: its key is code, not the tail
 
 test('the panel\'s Claude offer (panel-claude.js) shows only when Claude is ready and the extension stuck; the app sends both, and the panel hands the offer its facts', () => {
   const panel = readPanel();
-  assert.match(panel, /__jobPilottoClaude\?\.render\(\{on: [^}]*!!claudeAsk\.help, stuck: !needsYou && handed && !stopped/);   // handed: the app's stuck, unless a newer step came after it (27 Oct 2026)
+  assert.match(panel, /__jobadabraClaude\?\.render\(\{on: [^}]*!!claudeAsk\.help, stuck: !needsYou && handed && !stopped/);   // handed: the app's stuck, unless a newer step came after it (27 Oct 2026)
   assert.match(panel, /const stuckNow = !!session\?\.stuck && /);
   assert.match(panel, /claudeAsk = \{takeover: reply\?\.claudeTakeover !== false, help: !!reply\?\.claudeHelp, always: !!reply\?\.claudeAlways, auto: !!reply\?\.claudeAuto, consent: !!reply\?\.claudeConsent\};/);
-  assert.match(panel, /__jobPilottoClaude\?\.mount\(root, send\)/);
+  assert.match(panel, /__jobadabraClaude\?\.mount\(root, send\)/);
   assert.match(read('extension/background.js'), /'hook\.js', 'panel-claude\.js', 'page\/submit-press\.js', \.\.\.PANEL_FILES/);   // the offer's script is there before the panel mounts
   assert.match(read('desktop/lib/review.js'), /kind: session\.kind \|\| 'claude', stuck: session\.stuck \|\| ''\}/);
   assert.match(read('desktop/lib/ext-server-handlers.js'), /claudeHelp: takeoverOffered\(storage\), claudeTakeover: SHOW_RESUME_CLAUDE, claudeAlways: SHOW_RESUME_CLAUDE && !!storage\.settings\(\)\.claudeAuto/);

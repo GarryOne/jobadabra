@@ -1,7 +1,7 @@
 // How the form reader and the generic operators fared, as reports for the product (docs: Notion "Self-improving form filling").
 // Only failures and unreadable controls become events: a control's kind, its structural fingerprint (no text), what went wrong,
 // and the site. The site is named only for known job boards; any other site is a short hash, so distinct sites can be counted
-// without telling us which employer you apply to. The owner's own installs (JOB_PILOTTO_OWNER) send plain hosts to debug with.
+// without telling us which employer you apply to. The owner's own installs (JOBADABRA_OWNER) send plain hosts to debug with.
 import crypto from 'node:crypto';
 import {ATS} from './form-tab.js';
 

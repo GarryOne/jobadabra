@@ -1,7 +1,7 @@
 """The crawl for people who are not in IT: the search a draft proposed for a nurse and for an accountant keeps their roles, skips what
 they would not want, and does not tell them to add engineering terms. Seconds, no AI: the search settings are real model output
 saved in tests/fixtures/non_it/ (fictional people). The keywords are read when src/sources/feeds.py is imported, so each case runs in
-its own process with JOB_PILOTTO_LOCATIONS_FILE pointing at the fixture."""
+its own process with JOBADABRA_LOCATIONS_FILE pointing at the fixture."""
 import json
 import os
 import subprocess
@@ -39,7 +39,7 @@ def crawl(fixture, rows, place):
     rows = rows + [(title, where.format(place=place)) for title, where in ENGINEERING]
     # Why (31 Oct 2026, a8): the child is not a unit test process, so without a data folder it wrote the checkout's data/jobs.sqlite (tools/py-shards.py names such a leak).
     with tempfile.TemporaryDirectory() as data:
-        env = {**os.environ, 'JOB_PILOTTO_LOCATIONS_FILE': str(FIXTURES / fixture), 'JOB_PILOTTO_CONFIG_DIR': str(ROOT / 'config'), 'JOB_PILOTTO_DATA_DIR': data}
+        env = {**os.environ, 'JOBADABRA_LOCATIONS_FILE': str(FIXTURES / fixture), 'JOBADABRA_CONFIG_DIR': str(ROOT / 'config'), 'JOBADABRA_DATA_DIR': data}
         done = subprocess.run([sys.executable, '-c', CRAWL, str(ROOT), json.dumps(rows), str(FIXTURES / fixture)],
                               capture_output=True, text=True, env=env, timeout=60)
     assert done.returncode == 0, done.stderr

@@ -2,12 +2,12 @@
 // trusted) click opens it (page/menu-pick.js checks the pick took); where the next armed menu and the phone box are, for flow.js clickCombos;
 // the phone's country from its prefix. Needs page/fill-labels.js first. Guarded by desktop/e2e/test/menu-pick.test.mjs, fill-categories.test.js.
 (() => {
-  if (window.__jobPilottoFillMenusLoaded) return;
-  window.__jobPilottoFillMenusLoaded = true;
-  const {clean, norm, sleep, labelOf, comboControl, comboValue} = window.__jobPilottoFillKit;
+  if (window.__jobadabraFillMenusLoaded) return;
+  window.__jobadabraFillMenusLoaded = true;
+  const {clean, norm, sleep, labelOf, comboControl, comboValue} = window.__jobadabraFillKit;
 
   // Phone widgets with a separate country menu: the country comes from the number's prefix (every code: page/dial-codes.js).
-  const DIAL = {...(window.__jobPilottoDial || {}), '+1': 'United States', '+30': 'Greece', '+31': 'Netherlands', '+32': 'Belgium', '+33': 'France', '+34': 'Spain',
+  const DIAL = {...(window.__jobadabraDial || {}), '+1': 'United States', '+30': 'Greece', '+31': 'Netherlands', '+32': 'Belgium', '+33': 'France', '+34': 'Spain',
     '+36': 'Hungary', '+39': 'Italy', '+40': 'Romania', '+41': 'Switzerland', '+43': 'Austria', '+44': 'United Kingdom',
     '+45': 'Denmark', '+46': 'Sweden', '+47': 'Norway', '+48': 'Poland', '+49': 'Germany', '+351': 'Portugal', '+353': 'Ireland',
     '+358': 'Finland', '+373': 'Moldova', '+380': 'Ukraine', '+420': 'Czech Republic', '+421': 'Slovakia', '+972': 'Israel',
@@ -19,7 +19,7 @@
   // The innermost option elements of an open menu (not the phone field's hidden country list).
   // A suggest-only box (suggestPick below) has no markup of its own to find its options by: what appeared beside it once it was typed in is its list (page/suggest-box.js).
   let suggestCtx = null;
-  const optionNodes = () => (suggestCtx ? window.__jobPilottoSuggest.appeared(suggestCtx.el, suggestCtx.before) : Array.from(document.querySelectorAll(OPTION))
+  const optionNodes = () => (suggestCtx ? window.__jobadabraSuggest.appeared(suggestCtx.el, suggestCtx.before) : Array.from(document.querySelectorAll(OPTION))
     .filter(o => o.offsetParent !== null && !o.querySelector(OPTION) && !/iti__/.test(o.className)));
   // A menu that draws its choices page by page (SuccessFactors: 100 of 200 countries) loads the next page when its list is scrolled: scroll the open list's own scroller to its end.
   const loadMoreOptions = () => {
@@ -49,12 +49,12 @@
     return contains.length === 1 ? contains[0] : null;
   };
 
-  // The page asks the extension for what only it can do (real typing, the AI's pick): combo-click.js answers through __jobPilottoNeedDone.
+  // The page asks the extension for what only it can do (real typing, the AI's pick): combo-click.js answers through __jobadabraNeedDone.
   const need = async request => {
-    window.__jobPilottoNeedDone = undefined; window.__jobPilottoNeed = request;
-    for (let waited = 0; waited < 12000 && window.__jobPilottoNeedDone === undefined; waited += 100) await sleep(100);
-    window.__jobPilottoNeed = null;
-    return window.__jobPilottoNeedDone ?? null;
+    window.__jobadabraNeedDone = undefined; window.__jobadabraNeed = request;
+    for (let waited = 0; waited < 12000 && window.__jobadabraNeedDone === undefined; waited += 100) await sleep(100);
+    window.__jobadabraNeed = null;
+    return window.__jobadabraNeedDone ?? null;
   };
   // A box that searches as you type: the answer typed for real (its first part, then all of it, then a short start when those find nothing), the options awaited,
   // the one that means the answer chosen: the same text, else the AI's pick from the options' own list (a fixed answer: one of them or none).
@@ -108,16 +108,16 @@
   // means the applicant's own place chosen (the AI's pick: one of them or none; a place the page offers first, nearby or not, is never taken for the applicant's), then checked once focus has left again:
   // a box the page empties reads as empty, never as filled. Nothing chosen: the box is left empty for the person (page/propose.js menuMissed). -> {selectedAfter, trusted}
   const suggestPick = async (el, answer, control, badge, done) => {
-    const suggest = window.__jobPilottoSuggest, asked = String(answer).split(' || ')[0];
+    const suggest = window.__jobadabraSuggest, asked = String(answer).split(' || ')[0];
     suggestCtx = {el, before: suggest.snapshot()};
     let found = {option: null, shown: []}, took = {selectedAfter: false, trusted: false}, text = '';
     try {
       found = await typeToSearch(el, answer);
       if (found.option) {
         text = clean(found.option.textContent);
-        took = await window.__jobPilottoMenuPick({el, option: found.option, control, readValue: box => suggest.holds(box, found.option)});
+        took = await window.__jobadabraMenuPick({el, option: found.option, control, readValue: box => suggest.holds(box, found.option)});
         if (took.selectedAfter) {
-          window.__jobPilottoNoteTyped?.(el, text);   // the box holds the chosen place now: the typed-check must not call that a box that did not take its answer and type the first text over it
+          window.__jobadabraNoteTyped?.(el, text);   // the box holds the chosen place now: the typed-check must not call that a box that did not take its answer and type the first text over it
           try { el.focus({preventScroll: true}); el.blur(); } catch { /* a box that cannot take focus keeps what it has */ }
           await sleep(250);
           if (norm(el.value) !== norm(text)) took = {...took, selectedAfter: false};
@@ -126,17 +126,17 @@
     } finally { suggestCtx = null; }
     // Nothing was suggested at all: not a suggest-only box (a plain box that keeps its own state and empties when left, text-state-from-keys-2). Disarmed and left exactly as it is: the retype step
     // (page/fill-verify.js, typed for real) still owns it, and the box is not emptied.
-    if (!found.option && !found.shown.length) { window.__jobPilottoLastPick = {asked, got: '', opened: false, found: false, refused: true, choices: [], peek: `nothing appeared beside the box: ${String(el.value || '').length} typed, focused ${document.activeElement === el}, ${suggest.snapshot().size} visible text nodes`}; done(); return took; }
-    window.__jobPilottoLeaveAlone?.(el);   // decided: the retype watch must not type plain text into it (page/browser-form-fastpath.js)
-    window.__jobPilottoForgetNotTaken?.(el.id || el.name);   // decided: never typed over again as a box that did not take its answer (page/fill-verify.js)
-    window.__jobPilottoLastPick = {asked, got: text, same: found.option ? !!window.__jobPilottoValueClass?.fits?.(asked, text) : null, opened: found.shown.length > 0 || !!found.option, found: !!found.option, choices: found.option ? [] : found.shown.slice(0, 8).map(item => clean(item).slice(0, 40)), peek: '', ...took};
-    if (took.selectedAfter) { el.setAttribute('data-jobpilotto-picked', text.toLowerCase().replace(/[^\p{L}\p{N}]/gu, '').slice(0, 160)); done(); return took; }
-    badge.textContent = `✈️ Suggested: ${asked} (pick it yourself)`; window.__jobPilottoMenuMissed?.(el, found.shown);
+    if (!found.option && !found.shown.length) { window.__jobadabraLastPick = {asked, got: '', opened: false, found: false, refused: true, choices: [], peek: `nothing appeared beside the box: ${String(el.value || '').length} typed, focused ${document.activeElement === el}, ${suggest.snapshot().size} visible text nodes`}; done(); return took; }
+    window.__jobadabraLeaveAlone?.(el);   // decided: the retype watch must not type plain text into it (page/browser-form-fastpath.js)
+    window.__jobadabraForgetNotTaken?.(el.id || el.name);   // decided: never typed over again as a box that did not take its answer (page/fill-verify.js)
+    window.__jobadabraLastPick = {asked, got: text, same: found.option ? !!window.__jobadabraValueClass?.fits?.(asked, text) : null, opened: found.shown.length > 0 || !!found.option, found: !!found.option, choices: found.option ? [] : found.shown.slice(0, 8).map(item => clean(item).slice(0, 40)), peek: '', ...took};
+    if (took.selectedAfter) { el.setAttribute('data-jobadabra-picked', text.toLowerCase().replace(/[^\p{L}\p{N}]/gu, '').slice(0, 160)); done(); return took; }
+    badge.textContent = `✈️ Suggested: ${asked} (pick it yourself)`; window.__jobadabraMenuMissed?.(el, found.shown);
     return took;
   };
 
   // Mark a dropdown with its answer; your click opens the menu, and the answer is picked in it.
-  // The rest of a multiple-choice menu's answer: queued when a pick took, armed again by the next __jobPilottoNextCombo, so flow.js sees the first pick as done (the armed count fell)
+  // The rest of a multiple-choice menu's answer: queued when a pick took, armed again by the next __jobadabraNextCombo, so flow.js sees the first pick as done (the armed count fell)
   // before the same menu is clicked for the next choice.
   const moreChoices = [];
   let armedSeq = 0;
@@ -145,26 +145,27 @@
     const [answer, ...rest] = String(fullAnswer).split(' && ').map(part => part.trim()).filter(Boolean);
     const el = document.getElementById(field) || document.querySelector(`[name="${CSS.escape(field)}"]`);
     if (!el || answer === undefined) return false;
-    const control = comboControl(el); control.__jobPilottoDisarm?.();   // armed again (Use in the app, a re-arm): the earlier answer's click handler goes
+    const control = comboControl(el); control.__jobadabraDisarm?.();   // armed again (Use in the app, a re-arm): the earlier answer's click handler goes
     control.style.outline = '3px solid #b87400';
     control.style.outlineOffset = '2px';
     const badge = document.createElement('div');
-    badge.className = 'job-pilotto-badge';
+    badge.className = 'jobadabra-badge';
     badge.textContent = `✈️ Click to choose: ${String(answer).split(' || ')[0]}`;
     badge.style.cssText = 'margin-top:4px;font:600 12px system-ui,sans-serif;color:#8a5700';
     control.parentElement.insertBefore(badge, control.nextSibling);
-    control.dataset.jobpilottoArmed = labelOf(el) || field;
-    if (opts.consent) control.dataset.jobpilottoConsent = 'true';
-    control.dataset.jobpilottoArmedId = String(++armedSeq);   // which menu flow.js has passed over, whatever menus are disarmed meanwhile (__jobPilottoNextCombo)
-    const done = () => { control.style.outline = ''; badge.remove(); delete control.dataset.jobpilottoArmed; delete control.dataset.jobpilottoConsent; delete control.dataset.jobpilottoArmedId; control.removeEventListener('mousedown', onOpen, true); };
+    control.dataset.jobadabraArmed = labelOf(el) || field;
+    if (opts.consent) control.dataset.jobadabraConsent = 'true';
+    control.dataset.jobadabraArmedId = String(++armedSeq);   // which menu flow.js has passed over, whatever menus are disarmed meanwhile (__jobadabraNextCombo)
+    const done = () => { control.style.outline = ''; badge.remove(); delete control.dataset.jobadabraArmed; delete control.dataset.jobadabraConsent; delete control.dataset.jobadabraArmedId; control.removeEventListener('mousedown', onOpen, true); };
     const onOpen = event => {
       if (!event.isTrusted) return;
       // Each opening is a try in the menu's one attempt log (page/attempts.js): one that failed on this state is not made again, and a menu gets a few in all, then it is
       // given up and left to the person once (12 Oct 2026: the 6th try in a row on one dropdown). Not allowed: disarmed, the suggestion stays for the person.
-      const attemptLog = window.__jobPilottoAttempts;
-      if (attemptLog && !attemptLog.mayTry(el, 'pick')) { window.__jobPilottoLastPick = {asked: String(answer).split(' || ')[0], got: '', opened: false, found: false, refused: true, choices: []}; done(); return; }   // refused: never read as a pick (combo-click.js)
+      const attemptLog = window.__jobadabraAttempts;
+      if (attemptLog && !attemptLog.mayTry(el, 'pick')) { window.__jobadabraLastPick = {asked: String(answer).split(' || ')[0], got: '', opened: false, found: false, refused: true, choices: []}; done(); return; }   // refused: never read as a pick (combo-click.js)
       const before = attemptLog ? attemptLog.stateOf(el) : '';
-      setTimeout(async () => { window.__jobPilottoPicking = true; let took = null; try {   // flow.js/combo-click.js waits for it: no second click while the page is still deciding
+      // clean-code-ok: Why (1 Nov 2026, rename to Jobadabra): only the old name in this function was renamed; its complexity is unchanged
+      setTimeout(async () => { window.__jobadabraPicking = true; let took = null; try {   // flow.js/combo-click.js waits for it: no second click while the page is still deciding
         if (opts.suggest) { took = await suggestPick(el, answer, control, badge, done); return; }   // a box that only takes a suggestion the page offers (page/suggest-box.js)
         let option = null;
         if (opts.consent) {
@@ -176,7 +177,7 @@
         } else option = matchOption(answer);
         if (!option && !opts.consent) {
           // The menu as it opened (before typing filters it): for the fill-failure report's snapshot (snapshot.js).
-          try { (window.__jobPilottoMenuSnapshots ||= {})[control.dataset.jobpilottoArmed] = window.__jobPilottoSnapshot?.({field: el.id || el.name}); } catch {} var shown = []; for (let w = 0; w < 1500 && !shown.length; w += 150) { await sleep(150); shown = optionNodes().map(o => clean(o.textContent)).filter(Boolean).slice(0, 60); } option = matchOption(answer); var menuAsOpened = shown.slice();   // the menu's own choices once drawn (a slow menu: Coop, 8 Oct 2026)
+          try { (window.__jobadabraMenuSnapshots ||= {})[control.dataset.jobadabraArmed] = window.__jobadabraSnapshot?.({field: el.id || el.name}); } catch {} var shown = []; for (let w = 0; w < 1500 && !shown.length; w += 150) { await sleep(150); shown = optionNodes().map(o => clean(o.textContent)).filter(Boolean).slice(0, 60); } option = matchOption(answer); var menuAsOpened = shown.slice();   // the menu's own choices once drawn (a slow menu: Coop, 8 Oct 2026)
           // Long menus (countries, cities) show only their first entries: type the answer to filter, which the menu accepts once your click has opened it; search-as-you-type fields (Location) load suggestions from the server: type the first part, wait for them.
           if (!option) Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(el, String(answer).split(' || ')[0].split(',')[0].trim());
           if (!option) el.dispatchEvent(new Event('input', {bubbles: true}));
@@ -194,14 +195,14 @@
         }
         // Picked only when the page shows it (page/menu-pick.js); what was seen goes to flow.js clickCombos and the fill card's reason (observed, not assumed: 9 Oct 2026).
         const opened = el.getAttribute('aria-expanded') === 'true' || optionNodes().length > 0;   // before the pick closes it
-        took = option ? await (window.__jobPilottoMenuPick?.({el, option, control, readValue: comboValue, multiple: !!el.closest('[class*="is-multi"], [aria-multiselectable="true"]')}) ?? ((globalThis.__jobPilottoPress?.(option) || option.click()), {selectedAfter: true, trusted: false})) : {selectedAfter: false, trusted: false};
-        window.__jobPilottoLastPick = {asked: opts.consent && option ? clean(option.textContent) : String(answer).split(' || ')[0], got: option ? clean(option.textContent) : '', same: option ? !!window.__jobPilottoValueClass?.fits?.(String(answer).split(' || ')[0], clean(option.textContent)) : null, opened, found: !!option, choices: option ? [] : (shown || []).slice(0, 8).map(text => text.slice(0, 60)),
+        took = option ? await (window.__jobadabraMenuPick?.({el, option, control, readValue: comboValue, multiple: !!el.closest('[class*="is-multi"], [aria-multiselectable="true"]')}) ?? ((globalThis.__jobadabraPress?.(option) || option.click()), {selectedAfter: true, trusted: false})) : {selectedAfter: false, trusted: false};
+        window.__jobadabraLastPick = {asked: opts.consent && option ? clean(option.textContent) : String(answer).split(' || ')[0], got: option ? clean(option.textContent) : '', same: option ? !!window.__jobadabraValueClass?.fits?.(String(answer).split(' || ')[0], clean(option.textContent)) : null, opened, found: !!option, choices: option ? [] : (shown || []).slice(0, 8).map(text => text.slice(0, 60)),
           peek: option ? '' : Array.from(document.querySelectorAll('[class*="menu-notice"], [class*="menu-list"], [role="listbox"]')).filter(n => !/iti__|country/.test(String(n.className))).map(n => clean(n.textContent).slice(0, 30)).slice(0, 3).join(' | '), ...took};   // choices, peek: the form's own wording of a menu nothing matched (its choices, or its "No options" notice), for the log; never the answer
-        if (took.selectedAfter) { el.setAttribute('data-jobpilotto-picked', clean(option.textContent).toLowerCase().replace(/[^\p{L}\p{N}]/gu, '').slice(0, 160)); done(); if (rest.length) moreChoices.push([field, rest.join(' && ')]); return; }   // the fill's own pick, for the one reader's mismatch (page/read-back.js)
-        badge.textContent = `✈️ Suggested: ${answer} (pick it yourself)`; if (!option) window.__jobPilottoMenuMissed?.(el, shown);   // page/propose.js: no text left in the box; its choices go to the app
-      } finally { window.__jobPilottoPicking = false; attemptLog?.note(el, 'pick', before, !!took?.selectedAfter); } }, 120);
+        if (took.selectedAfter) { el.setAttribute('data-jobadabra-picked', clean(option.textContent).toLowerCase().replace(/[^\p{L}\p{N}]/gu, '').slice(0, 160)); done(); if (rest.length) moreChoices.push([field, rest.join(' && ')]); return; }   // the fill's own pick, for the one reader's mismatch (page/read-back.js)
+        badge.textContent = `✈️ Suggested: ${answer} (pick it yourself)`; if (!option) window.__jobadabraMenuMissed?.(el, shown);   // page/propose.js: no text left in the box; its choices go to the app
+      } finally { window.__jobadabraPicking = false; attemptLog?.note(el, 'pick', before, !!took?.selectedAfter); } }, 120);
     };
-    control.addEventListener('mousedown', onOpen, true); control.__jobPilottoDisarm = done;
+    control.addEventListener('mousedown', onOpen, true); control.__jobadabraDisarm = done;
     return true;
   };
 
@@ -209,26 +210,26 @@
   // for a real click (sent by the extension through Chrome's debugger), or null when none is left.
   // skip: the ids of the menus already passed over (flow.js), or how many to pass. By id: a failed menu disarmed by the sweep below shifted every later one, so a count
   // passed over the next menu unclicked (27 Oct 2026, fair round form 102: School missed, then Degree was never clicked). The spot carries the menu's id.
-  window.__jobPilottoNextCombo = async (skip = 0) => {
+  window.__jobadabraNextCombo = async (skip = 0) => {
     while (moreChoices.length) { const [field, answer] = moreChoices.shift(); armCombo(field, answer); }
     // A menu whose attempt log refuses another opening (page/attempts.js) is disarmed here, before it is counted and clicked: its suggestion stays for the person.
-    for (const armed of document.querySelectorAll('[data-jobpilotto-armed]')) {
+    for (const armed of document.querySelectorAll('[data-jobadabra-armed]')) {
       const box = armed.matches('input, select') ? armed : armed.querySelector('input[role=combobox], input, select');
-      if (box && window.__jobPilottoAttempts && !window.__jobPilottoAttempts.mayTry(box, 'pick')) armed.__jobPilottoDisarm?.();
+      if (box && window.__jobadabraAttempts && !window.__jobadabraAttempts.mayTry(box, 'pick')) armed.__jobadabraDisarm?.();
     }
-    const armed = Array.from(document.querySelectorAll('[data-jobpilotto-armed]'));
-    const control = Array.isArray(skip) ? armed.find(one => !skip.includes(one.dataset.jobpilottoArmedId)) : armed[skip];
+    const armed = Array.from(document.querySelectorAll('[data-jobadabra-armed]'));
+    const control = Array.isArray(skip) ? armed.find(one => !skip.includes(one.dataset.jobadabraArmedId)) : armed[skip];
     if (!control) return null;
     // Instant, not smooth: sites with smooth scrolling (Greenhouse) moved the menu after it was measured.
     control.scrollIntoView({block: 'center', behavior: 'instant'});
     await sleep(120);
     const rect = control.getBoundingClientRect();
     return {x: Math.round(rect.left + Math.min(40, rect.width / 2)), y: Math.round(rect.top + rect.height / 2),
-      label: control.dataset.jobpilottoArmed, id: control.dataset.jobpilottoArmedId || ''};
+      label: control.dataset.jobadabraArmed, id: control.dataset.jobadabraArmedId || ''};
   };
   // After the country menu is picked: where to type the national number (the widget adds the prefix).
-  window.__jobPilottoPhoneSpot = async () => {
-    const phone = window.__jobPilottoPhone;
+  window.__jobadabraPhoneSpot = async () => {
+    const phone = window.__jobadabraPhone;
     const el = phone && (document.getElementById(phone.field) || document.querySelector(`[name="${CSS.escape(phone.field)}"]`));
     if (!el) return null;
     el.scrollIntoView({block: 'center', behavior: 'instant'});
@@ -236,6 +237,6 @@
     const rect = el.getBoundingClientRect();
     return {field: phone.field, x: Math.round(rect.left + 30), y: Math.round(rect.top + rect.height / 2), text: phone.national};
   };
-  window.__jobPilottoArmedCount = () => document.querySelectorAll('[data-jobpilotto-armed]').length;
-  Object.assign(window.__jobPilottoFillKit, {DIAL, dialOf, armCombo});
+  window.__jobadabraArmedCount = () => document.querySelectorAll('[data-jobadabra-armed]').length;
+  Object.assign(window.__jobadabraFillKit, {DIAL, dialOf, armCombo});
 })();

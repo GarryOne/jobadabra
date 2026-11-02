@@ -30,7 +30,7 @@ test('the panel flag is off until the uploader exists and while the switch is of
   for (const file of ['desktop/renderer/index.html', 'desktop/renderer/pages/nav.js', 'desktop/renderer/pages/report-form.js']) assert.doesNotMatch(read(file), /ss-report/, `${file}: the flag lives only in the extension panel, no app button or ⌘K entry`);
   assert.match(read('extension/panel-markup.js'), /<div class="foot">[^]*<button class="report-btn"[^>]*>[^]*Report<\/button><\/div>/, 'one Report entry, in the footer of every state');
   assert.doesNotMatch(read('extension/panel-markup.js'), /report-flag|report-open/, 'no header flag, no body button');
-  assert.match(read('extension/review.js'), /\$\('\.report-btn'\)\.onclick[^]*window\.__jobPilottoReport\.open\(\)/, 'the footer\'s Report opens the popup on the panel');
+  assert.match(read('extension/review.js'), /\$\('\.report-btn'\)\.onclick[^]*window\.__jobadabraReport\.open\(\)/, 'the footer\'s Report opens the popup on the panel');
   assert.doesNotMatch(code('extension/panel-report.js'), /class="flag"|bottom: 12px|left: 12px/, 'no bottom-left ⚑ chip (owner, 19 Oct 2026: Stop and the flag leave the corner)');
 });
 
@@ -91,9 +91,9 @@ test('the trace switch is on by default and named in plain words in Settings (so
 test('no panel button is a silent no-op: a click handler never calls a window hook with ?.(), and a Report press that cannot open the popup says so in the panel', () => {
   for (const file of ['extension/review.js', 'extension/panel-review-view.js', 'extension/panel-claude.js', 'extension/panel-written.js']) {
     const lines = code(file).split('\n').filter(line => /onclick|addEventListener\('click'/.test(line));
-    for (const line of lines) assert.doesNotMatch(line, /__jobPilotto\w+\?\.\(/, `${file}: a button that calls a missing hook does nothing, silently: ${line.trim().slice(0, 80)}`);
+    for (const line of lines) assert.doesNotMatch(line, /__jobadabra\w+\?\.\(/, `${file}: a button that calls a missing hook does nothing, silently: ${line.trim().slice(0, 80)}`);
   }
-  assert.match(code('extension/review.js'), /__jobPilottoReport\.open\(\);\s*else note\('Report could not open/, 'a missing popup says so in the panel');
+  assert.match(code('extension/review.js'), /__jobadabraReport\.open\(\);\s*else note\('Report could not open/, 'a missing popup says so in the panel');
   assert.deepEqual(PANEL_FILES.slice(-2), ['panel-report.js', 'review.js'], 'the popup script is injected before the panel that mounts it');
 });
 

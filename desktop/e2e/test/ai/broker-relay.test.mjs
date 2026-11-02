@@ -88,7 +88,7 @@ test('a persona child uses only the Codex relay; credentials never reach the chi
     assert.equal(env.ANTHROPIC_API_KEY, undefined);
     assert.equal(env.OPENAI_API_KEY, undefined);
     assert.equal(env.ACTIONS_ID_TOKEN_REQUEST_TOKEN, undefined);
-    assert.equal(env.JOB_PILOTTO_E2E_AI_BASE_URL, env.ANTHROPIC_BASE_URL);
+    assert.equal(env.JOBADABRA_E2E_AI_BASE_URL, env.ANTHROPIC_BASE_URL);
     const reply = await fetch(env.ANTHROPIC_BASE_URL + '/v1/messages', {method: 'POST', body: JSON.stringify({model: 'claude-haiku-5-5', messages: [{role: 'user', content: 'hi'}]})});
     assert.equal(reply.status, 200);
     assert.equal((await reply.json()).content[0].text, 'from Codex');

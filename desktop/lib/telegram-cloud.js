@@ -15,7 +15,7 @@ export const SCRIPT = 'job-pilotto-bot';
 const API = 'https://api.cloudflare.com/client/v4';
 const BUNDLE = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'shared', 'bot-worker.js');
 // A token with exactly what this needs, prefilled on Cloudflare's "Create token" page.
-export const TOKEN_URL = 'https://dash.cloudflare.com/profile/api-tokens?name=Job%20Pilotto%20Telegram&permissionGroupKeys=' +
+export const TOKEN_URL = 'https://dash.cloudflare.com/profile/api-tokens?name=Jobadabra%20Telegram&permissionGroupKeys=' +
   encodeURIComponent(JSON.stringify([{key: 'workers_scripts', type: 'edit'}, {key: 'account_settings', type: 'read'}]));
 
 async function cloudflare(token, method, route, body, fetcher = globalThis.fetch) {
@@ -42,7 +42,7 @@ export function missing(storage) {
 export function bindings(storage, webhookSecret) {
   const settings = storage.settings();
   const plain = {OWNER_CHAT_ID: String(settings.telegramChatId), GITHUB_REPO: settings.cloud.repo, WORKFLOW_FILE: 'daily.yml',
-    JOB_PILOTTO_KIT_MODEL: MODELS.kit, ...Object.fromEntries(Object.entries(settings.notionIds || {}).filter(([, v]) => v))};
+    JOBADABRA_KIT_MODEL: MODELS.kit, ...Object.fromEntries(Object.entries(settings.notionIds || {}).filter(([, v]) => v))};
   const secret = {TELEGRAM_BOT_TOKEN: storage.secret('TELEGRAM_BOT_TOKEN'), WEBHOOK_SECRET: webhookSecret,
     GITHUB_TOKEN: storage.secret('GITHUB_TOKEN'), NOTION_TOKEN: storage.secret('NOTION_TOKEN'),
     ANTHROPIC_API_KEY: storage.secret('ANTHROPIC_API_KEY')};
@@ -65,7 +65,7 @@ export async function turnOn(storage, token, {fetcher, telegram = telegramApi, b
     if (!account) return {ok: false, error: 'This Cloudflare token sees no account. Create it with "Account Settings: Read" too.'};
     let subdomain;
     try { subdomain = (await cf('GET', `/accounts/${account.id}/workers/subdomain`)).subdomain; } catch {}
-    if (!subdomain) subdomain = (await cf('PUT', `/accounts/${account.id}/workers/subdomain`, {subdomain: `jobpilotto-${random().slice(0, 6)}`})).subdomain;
+    if (!subdomain) subdomain = (await cf('PUT', `/accounts/${account.id}/workers/subdomain`, {subdomain: `jobadabra-${random().slice(0, 6)}`})).subdomain;
     const webhookSecret = random();
     const form = new FormData();
     form.append('metadata', new Blob([JSON.stringify({main_module: 'index.js', compatibility_date: '2026-09-01',

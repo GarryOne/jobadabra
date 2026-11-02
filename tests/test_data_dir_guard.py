@@ -23,8 +23,8 @@ class DataDirGuardTests(unittest.TestCase):
         (cls.app / 'settings.json').write_text(json.dumps({'setupDone': True, 'notionIds': {'NOTION_APPLICATIONS_DB': 'fake'}}))
 
     def run_py(self, code, **extra):
-        env = {k: v for k, v in os.environ.items() if not k.startswith(('JOB_PILOTTO_', 'NOTION_'))}
-        env.update({'JOB_PILOTTO_APP_DIR': str(self.app), 'PYTHONPATH': str(ROOT)}, **extra)
+        env = {k: v for k, v in os.environ.items() if not k.startswith(('JOBADABRA_', 'NOTION_'))}
+        env.update({'JOBADABRA_APP_DIR': str(self.app), 'PYTHONPATH': str(ROOT)}, **extra)
         return subprocess.run([sys.executable, '-c', code], cwd=self.tmp, env=env, capture_output=True, text=True)
 
     def test_entry_points_are_found(self):
@@ -38,17 +38,17 @@ class DataDirGuardTests(unittest.TestCase):
                 if done.returncode == 0:
                     continue  # never reads src.paths: touches no folder
                 self.assertNotEqual(done.returncode, 7, f'{module} imported src.paths without the guard refusing')
-                self.assertIn('JOB_PILOTTO_DATA_DIR', done.stderr)
+                self.assertIn('JOBADABRA_DATA_DIR', done.stderr)
 
     def test_the_way_out_cases(self):
         own = Path(self.tmp) / 'own'
         probe = 'from src import paths; print(paths.DATA)'
         cases = [
-            ('explicit folders', {'JOB_PILOTTO_DATA_DIR': str(own / 'd'), 'JOB_PILOTTO_CONFIG_DIR': str(own / 'c')}, str(own / 'd')),
-            ('FOLLOW_APP=1 (owner\'s own run)', {'JOB_PILOTTO_FOLLOW_APP': '1'}, str(self.app / 'data')),
-            ('FOLLOW_APP=0 (repo example data)', {'JOB_PILOTTO_FOLLOW_APP': '0'}, str(ROOT / 'data')),
-            ('the app itself (NO_DOTENV + folders)', {'JOB_PILOTTO_NO_DOTENV': '1', 'JOB_PILOTTO_DATA_DIR': str(own / 'a'), 'JOB_PILOTTO_CONFIG_DIR': str(own / 'b')}, str(own / 'a')),
-            ('CI: no app on the computer', {'JOB_PILOTTO_APP_DIR': str(Path(self.tmp) / 'no app here')}, str(ROOT / 'data')),
+            ('explicit folders', {'JOBADABRA_DATA_DIR': str(own / 'd'), 'JOBADABRA_CONFIG_DIR': str(own / 'c')}, str(own / 'd')),
+            ('FOLLOW_APP=1 (owner\'s own run)', {'JOBADABRA_FOLLOW_APP': '1'}, str(self.app / 'data')),
+            ('FOLLOW_APP=0 (repo example data)', {'JOBADABRA_FOLLOW_APP': '0'}, str(ROOT / 'data')),
+            ('the app itself (NO_DOTENV + folders)', {'JOBADABRA_NO_DOTENV': '1', 'JOBADABRA_DATA_DIR': str(own / 'a'), 'JOBADABRA_CONFIG_DIR': str(own / 'b')}, str(own / 'a')),
+            ('CI: no app on the computer', {'JOBADABRA_APP_DIR': str(Path(self.tmp) / 'no app here')}, str(ROOT / 'data')),
         ]
         for name, extra, want in cases:
             with self.subTest(name):
@@ -59,7 +59,7 @@ class DataDirGuardTests(unittest.TestCase):
     def test_refusal_names_the_variable_and_opens_nothing(self):
         done = self.run_py('from src import paths')
         self.assertNotEqual(done.returncode, 0)
-        self.assertIn('JOB_PILOTTO_DATA_DIR', done.stderr)
+        self.assertIn('JOBADABRA_DATA_DIR', done.stderr)
         self.assertEqual(sorted(p.name for p in self.app.iterdir()), ['config', 'data', 'settings.json'])
 
 

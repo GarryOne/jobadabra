@@ -16,7 +16,7 @@ const FORM = `<form>
 
 test('trace rows carry a menu\'s and a radio group\'s own choices, a text field none', { skip }, async () => {
   const window = openPage(JSDOM, FORM, { url: 'https://careers.example.test/apply' });
-  const summary = await window.__jobPilottoExtensionFill([], {}, null, '', false);
+  const summary = await window.__jobadabraExtensionFill([], {}, null, '', false);
   const row = (label) => (summary.trace || []).find((each) => each.label === label);
   assert.deepEqual([...row('Title').options], ['Mr', 'Mrs', 'Ms'], 'the placeholder (empty value) is not a choice');   // copied out of the page's own realm
   assert.equal(row('Title').type, 'select');

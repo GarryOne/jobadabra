@@ -1,5 +1,5 @@
 // The page scripts the extension injects into an application form (main world), in order: one list for flow.js, fill-flow.js and the tests.
-// The form filler is FILL_FILES: its helpers by concern, then fill.js, which calls them (window.__jobPilottoFillKit). Guarded by
+// The form filler is FILL_FILES: its helpers by concern, then fill.js, which calls them (window.__jobadabraFillKit). Guarded by
 // app-core/test/page-propose.test.js (order) and the tests that load the filler (aliases, fill-categories, extension-files, fill-learning).
 export const FILL_FILES = ['page/fill-labels.js', 'page/fill-read.js', 'page/suggest-box.js', 'page/fill-menus.js', 'page/fill-checks.js', 'page/fill-marks.js', 'page/fill-plan.js', 'page/fill-report.js', 'page/fill.js'];
 export const PAGE_FILES = ['page/fold-text.js', 'page/browser-submit-guard.js', 'page/browser-form-fastpath.js', 'page/snapshot.js', 'page/skeleton.js', 'page/controls.js',

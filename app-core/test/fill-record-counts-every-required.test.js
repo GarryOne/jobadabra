@@ -16,7 +16,7 @@ const FORM = `<form>
 
 async function traceOf() {
   const window = openPage(JSDOM, FORM);
-  const summary = await window.__jobPilottoExtensionFill([], {}, null, '', false);
+  const summary = await window.__jobadabraExtensionFill([], {}, null, '', false);
   window.close();
   return Array.from(summary.trace).map(row => ({...row}));
 }
@@ -36,7 +36,7 @@ test('an optional upload with nothing for it is a row too, never counted as miss
 test('a required group with no control the fill can answer (a recorder) is left for the person, never filled by another question\'s box', { skip: !JSDOM }, async () => {
   const window = openPage(JSDOM, FORM);
   window.document.getElementById('first').value = 'Ada';   // another question's box holds a value: the recorder's area is shared with it
-  const summary = await window.__jobPilottoExtensionFill([], {}, null, '', false);
+  const summary = await window.__jobadabraExtensionFill([], {}, null, '', false);
   const row = Array.from(summary.trace).find(one => /short video/i.test(one.label));
   window.close();
   assert.ok(row, 'the record has a row for it');

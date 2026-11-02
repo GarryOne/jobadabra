@@ -29,7 +29,7 @@
     return found.length === 1 ? found[0] : '';
   }
 
-  const kit = () => window.__jobPilottoSkeleton;
+  const kit = () => window.__jobadabraSkeleton;
   const fingerprintOf = el => { try { return kit() ? kit().fingerprint(kit().skeleton(el)) : ''; } catch { return ''; } };
   const textOf = el => el.innerText ?? el.textContent ?? '';   // innerText is the words a person sees; a DOM without layout has only textContent
 
@@ -48,15 +48,15 @@
       const title = clean(Array.from(box.children).filter(el => el !== child).map(textOf).join(' ')) || clean(textOf(slot.el));
       const hints = slot.input ? `${slot.input.getAttribute('aria-label') || ''} ${slot.input.name || ''} ${slot.input.id || ''}` : '';
       // Holds a file: the one reading (page/read-back.js): the input's file, or a file name the slot shows; this extension's own mark alone is not a file (one truth with the panel).
-      const holds = slot.input ? window.__jobPilottoReadBack?.fileState(slot.input) === 'committed'
-        : [slot.el.dataset.jobpilottoFile, ...(window.__jobPilottoAttached || [])].some(name => !!name && textOf(slot.el).includes(name));   // a slot that is only a button: it shows a file we attached (by name: the page may have redrawn the field and lost our mark on it)
+      const holds = slot.input ? window.__jobadabraReadBack?.fileState(slot.input) === 'committed'
+        : [slot.el.dataset.jobadabraFile, ...(window.__jobadabraAttached || [])].some(name => !!name && textOf(slot.el).includes(name));   // a slot that is only a button: it shows a file we attached (by name: the page may have redrawn the field and lost our mark on it)
       return {...slot, title: title.slice(0, 160), hints, fp: fingerprintOf(slot.el), filled: holds,
         required: /\*/.test(title) || !!slot.input?.required || slot.input?.getAttribute('aria-required') === 'true' || slot.trigger?.getAttribute('aria-required') === 'true'};
     });
   }
   // What a slot asks for, from its title (then the input's own aria-label/name): 'resume', 'cover_letter' or ''.
   const meaningOf = (slot, aliases) => fileKind(slot.title, aliases) || fileKind(slot.hints, aliases);
-  // The app's AI picked, from the titles of the slots that could take the CV, the one that takes it as a document (window.__jobPilottoUploadChoice = {resume: title}, set by flow.js):
+  // The app's AI picked, from the titles of the slots that could take the CV, the one that takes it as a document (window.__jobadabraUploadChoice = {resume: title}, set by flow.js):
   // that slot is the CV slot, and another that only a word called a CV (an "Import data from my CV" feature that reads the file to fill the form) gets no file.
   // A slot's own title can miss its field's label (Louis Vuitton: the label block sits more than 6 levels above the hidden input): the AI sees the wider title, climbed further
   // by the same stops (never past a parent that holds another slot or any other control).
@@ -75,19 +75,19 @@
     const said = refs.map(ref => clean(textOf(ref)).slice(0, 80)).filter(text => text && !named.has(text) && named.add(text));
     return clean([...said, textOf(el)].join(' ')).slice(0, 160);
   };
-  const choice = () => cleanLabel(window.__jobPilottoUploadChoice?.resume || '');
+  const choice = () => cleanLabel(window.__jobadabraUploadChoice?.resume || '');
   const named = (slot, aliases, all) => {
     const meaning = meaningOf(slot, aliases), picked = choice();
     return !picked ? meaning : cleanLabel(wideTitle(slot, all)) === picked ? 'resume' : meaning === 'resume' ? '' : meaning;
   };
   // The wider titles of the slots that could take the CV (not a cover-letter slot), when two or more could: what the app is asked to choose among. Fewer: nothing to choose.
-  function cvCandidates(doc = document, aliases = window.__jobPilottoAliases || []) {
+  function cvCandidates(doc = document, aliases = window.__jobadabraAliases || []) {
     const all = slots(doc), titles = all.filter(slot => meaningOf(slot, aliases) !== 'cover_letter').map(slot => wideTitle(slot, all)).filter(Boolean);
     return titles.length >= 2 ? [...new Set(titles)] : [];
   }
 
   // The rows the form audit lists for uploads: the CV slot keeps the field name "resume" (what the panel and the session page know).
-  function rows(doc = document, aliases = window.__jobPilottoAliases || []) {
+  function rows(doc = document, aliases = window.__jobadabraAliases || []) {
     const all = slots(doc);
     return all.map((slot, i) => {
       const meaning = named(slot, aliases, all) || (all.length === 1 ? 'resume' : '');
@@ -121,7 +121,7 @@
     if (params.trigger) { try { trigger = slot.el.querySelector(params.trigger) || trigger; } catch { /* a recipe's selector is data: ignore a bad one */ } }
     if (!trigger || trigger.type === 'submit') return null;
     const before = new Set(document.querySelectorAll('input[type=file]'));
-    (globalThis.__jobPilottoPress?.(trigger) || trigger.click());
+    (globalThis.__jobadabraPress?.(trigger) || trigger.click());
     for (let tries = 0; tries < 10; tries++) {
       await sleep(150);
       // The input the page creates, or one it already had and SHOWS now, empty and not another slot's (a choice among ways to give the CV: Upload / Paste / Later
@@ -135,8 +135,8 @@
   // Put the file into the input, tell the page, and check the page took it: the input still holds it, or the page consumed the input, or the
   // slot visibly changed. A file the person chose stays; one this extension attached earlier is replaced by a different file (a CV tailored later).
   async function attach(slot, input, file, revealed) {
-    window.__jobPilottoReadBack?.baseline(input);   // what the slot showed before our file (page/read-back.js): a name there now is not ours
-    const ours = input.dataset.jobPilottoFile;
+    window.__jobadabraReadBack?.baseline(input);   // what the slot showed before our file (page/read-back.js): a name there now is not ours
+    const ours = input.dataset.jobadabraInputFile;
     if (input.files?.length && !(ours && input.files[0].name === ours && ours !== file.name)) return {ok: true, why: 'already holds a file'};
     const holder = revealed ? input.closest('fieldset, form') || input.parentElement || slot.el : slot.el;   // a revealed input's own area, not the trigger's
     const before = holder.outerHTML.length;
@@ -144,9 +144,9 @@
     const transfer = new DataTransfer();
     transfer.items.add(new File([bytes], file.name, {type: file.type || 'application/pdf'}));
     input.files = transfer.files;
-    input.dataset.jobPilottoFile = file.name;
-    slot.el.dataset.jobpilottoFile = file.name;
-    (window.__jobPilottoAttached ||= new Set()).add(file.name);   // by name, for a field the page redraws (the mark above is lost with the element)
+    input.dataset.jobadabraInputFile = file.name;
+    slot.el.dataset.jobadabraFile = file.name;
+    (window.__jobadabraAttached ||= new Set()).add(file.name);   // by name, for a field the page redraws (the mark above is lost with the element)
     input.dispatchEvent(new Event('input', {bubbles: true}));
     input.dispatchEvent(new Event('change', {bubbles: true}));
     await sleep(revealed ? 800 : 150);
@@ -163,7 +163,8 @@
   // files: {resume, coverLetter} (each {data: base64, name, type} or absent). -> one result per slot:
   // {meaning, fp, recipe, ok, why, label} where ok is true/false only when the slot was operated (a failure is a miss to report);
   // a slot with no file for it, or with a wording nobody knows, is {ok: undefined, why} and is never touched.
-  async function fill(files, {aliases = window.__jobPilottoAliases || [], recipes = window.__jobPilottoRecipes || {}, doc = document} = {}) {
+  // clean-code-ok: Why (1 Nov 2026, rename to Jobadabra): only the old name in this function was renamed; its complexity is unchanged
+  async function fill(files, {aliases = window.__jobadabraAliases || [], recipes = window.__jobadabraRecipes || {}, doc = document} = {}) {
     const all = slots(doc);
     const results = [];
     const given = new Set();   // a document given by one slot is not given again by another way of giving it (Upload CV, then Copy and paste CV: the second press hid the first's input)
@@ -199,5 +200,5 @@
   const fingerprints = (doc = document) => [...new Set(slots(doc).map(slot => slot.fp).filter(Boolean))];
 
   const api = {slots, rows, fill, fillOrder, fingerprints, fileKind, meaningOf, cvCandidates};
-  if (typeof module !== 'undefined' && module.exports) module.exports = api; else window.__jobPilottoUpload = api;
+  if (typeof module !== 'undefined' && module.exports) module.exports = api; else window.__jobadabraUpload = api;
 })();

@@ -1,8 +1,8 @@
 # Source it, then `session_name` prints the name of the Claude session this process runs under. Owner: ship-speed (11 Oct 2026). Guarded by tests/test_session_name.py.
-# Order: JOB_PILOTTO_SESSION (a caller that detached from its parents, like ship.sh --background, sets it first), JP_SESSION, then the same lookup the workspace hooks use
+# Order: JOBADABRA_SESSION (a caller that detached from its parents, like ship.sh --background, sets it first), JP_SESSION, then the same lookup the workspace hooks use
 # (walk the parent processes to ~/.claude/sessions/<pid>.json and read its "name"; JP_SESSIONS_DIR points elsewhere for tests), else "?".
 session_name() {
-  local name="${JOB_PILOTTO_SESSION:-${JP_SESSION:-}}"
+  local name="${JOBADABRA_SESSION:-${JP_SESSION:-}}"
   [ -n "$name" ] || name="$(session_key name)"
   echo "${name:-?}"
 }
@@ -17,13 +17,13 @@ session_key() {
   done
 }
 
-# `session_short` prints the short name the owner sees in cmux (27, d3, bb) for a PR title's "[xx] " tag: JOB_PILOTTO_SESSION_SHORT (ship.sh --background
+# `session_short` prints the short name the owner sees in cmux (27, d3, bb) for a PR title's "[xx] " tag: JOBADABRA_SESSION_SHORT (ship.sh --background
 # exports it before it detaches), else the name the cmux title hook keeps for this Claude session (~/.claude/workspace-assignments/<sessionId>.short;
 # JP_ASSIGNMENTS_DIR for tests), else the session name's last part, else "?".
 # Why (owner, 30 Oct 2026, "Tag from cmux title"): the tag was the Claude name's last part, so d3's PRs read [8f] and the coordinator 27's read [07].
 session_short() {
-  local short="${JOB_PILOTTO_SESSION_SHORT:-}" kept="${JP_ASSIGNMENTS_DIR:-$HOME/.claude/workspace-assignments}" sid name
-  if [ -z "$short" ] && [ -z "${JOB_PILOTTO_SESSION:-}${JP_SESSION:-}" ]; then   # a caller that named the session itself has no Claude parent to walk
+  local short="${JOBADABRA_SESSION_SHORT:-}" kept="${JP_ASSIGNMENTS_DIR:-$HOME/.claude/workspace-assignments}" sid name
+  if [ -z "$short" ] && [ -z "${JOBADABRA_SESSION:-}${JP_SESSION:-}" ]; then   # a caller that named the session itself has no Claude parent to walk
     sid="$(session_key sessionId)"
     [ -n "$sid" ] && [ -s "$kept/$sid.short" ] && short="$(head -1 "$kept/$sid.short")"
   fi

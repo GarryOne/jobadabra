@@ -1,3 +1,4 @@
+// Job: serve stored answers
 /* global document, window */
 // Every Recent activity state in ONE demo window: each task's runs, one per state (fixtures/activity-states.json, fictional data only),
 // newest first, so you click through them like real runs. node e2e/activity-states.mjs · Ctrl+C closes it. The cardstates suite checks them.
@@ -25,7 +26,7 @@ export async function openStates({google = 'on', visible = false} = {}) {
   const demoFocus = JSON.parse(fs.readFileSync(focusFile, 'utf8'));
   fs.writeFileSync(focusFile, JSON.stringify({...demoFocus, items: [...focus.open, ...demoFocus.items], answered_questions: focus.answered}, null, 1));
   if (visible) process.env.E2E_HIDDEN ??= '0';
-  const session = await launch({profile, env: {JOB_PILOTTO_DEMO: '1', JOB_PILOTTO_DEMO_FOCUS: focusFile, ...(google === 'off' ? {JOB_PILOTTO_DEMO_GOOGLE: 'off'} : {})}});
+  const session = await launch({profile, env: {JOBADABRA_DEMO: '1', JOBADABRA_DEMO_FOCUS: focusFile, ...(google === 'off' ? {JOBADABRA_DEMO_GOOGLE: 'off'} : {})}});
   const {page} = session;
   await page.waitForSelector('.nav[data-view=focus]:not([hidden])', {timeout: 30000});
   await session.app.evaluate(({BrowserWindow}) => { BrowserWindow.getAllWindows()[0].setBounds({x: 40, y: 40, width: 1400, height: 940}); });

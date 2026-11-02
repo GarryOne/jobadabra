@@ -116,17 +116,17 @@ export async function startRealExtension({extensionDir = EXTENSION_DIR, cv = tru
 
   await checkCancelled();
   const panel = () => page.evaluate(() => {
-    const root = document.getElementById('jobpilotto-review-host')?.shadowRoot;
+    const root = document.getElementById('jobadabra-review-host')?.shadowRoot;
     const text = selector => (root?.querySelector(selector)?.textContent || '').replace(/\s+/g, ' ').trim();
     return {buttons: [...(root?.querySelectorAll('button') || [])].map(button => (button.textContent || '').trim()).filter(Boolean), pill: text('.pill'), progress: text('.progress-line'), note: text('.note:not(.trace-note)')};
   });
   // What the app does for "Apply" (the same tab, marked for the extension), then the person's own click on the panel's Fill button.
   const fillWithPanel = async (tab = page) => {
     await tab.evaluate(() => { location.hash = 'jobpilotto-fill'; });
-    await tab.waitForFunction(() => document.getElementById('jobpilotto-review-host')?.shadowRoot?.querySelector('button'), null, {timeout: 20000});
+    await tab.waitForFunction(() => document.getElementById('jobadabra-review-host')?.shadowRoot?.querySelector('button'), null, {timeout: 20000});
     await tab.waitForTimeout(3000);
     return tab.evaluate(() => {
-      const buttons = [...(document.getElementById('jobpilotto-review-host')?.shadowRoot?.querySelectorAll('button') || [])].filter(button => !button.disabled);
+      const buttons = [...(document.getElementById('jobadabra-review-host')?.shadowRoot?.querySelectorAll('button') || [])].filter(button => !button.disabled);
       const pick = buttons.find(button => /^fill anyway$/i.test((button.textContent || '').trim())) || buttons.find(button => /^(fill this form|fill again)$/i.test((button.textContent || '').trim()));
       if (pick) pick.click();
       return pick ? pick.textContent.trim() : null;

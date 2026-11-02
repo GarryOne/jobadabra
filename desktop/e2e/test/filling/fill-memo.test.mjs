@@ -34,7 +34,7 @@ test('replay-net --fill-memo: Mac only, keeps nothing when the privacy tripwire 
   assert.match(net, /--fill-memo/);
   assert.match(net, /result\.tripped[^\n]*keepFilled|keepFilled[^\n]*tripped/s, 'a tripped run keeps nothing');
   assert.match(net, /fill: FILL/);
-  assert.match(fs.readFileSync(new URL('../../lib/offline-app.mjs', import.meta.url), 'utf8'), /JOB_PILOTTO_MODEL_MEMO_FILL: '1'/);
+  assert.match(fs.readFileSync(new URL('../../lib/offline-app.mjs', import.meta.url), 'utf8'), /JOBADABRA_MODEL_MEMO_FILL: '1'/);
 });
 
 test('the network replay serves kept answers loosely (a system-only change still hits) and reports them', () => {

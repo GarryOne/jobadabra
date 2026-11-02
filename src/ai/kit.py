@@ -24,7 +24,7 @@ from .models import MAIN_MODEL
 from .writing_floors import kit_floors
 from .writing_rules import RULES as WRITING_RULES
 
-DEFAULT_MODEL = os.getenv('JOB_PILOTTO_KIT_MODEL', MAIN_MODEL)
+DEFAULT_MODEL = os.getenv('JOBADABRA_KIT_MODEL', MAIN_MODEL)
 KIT_VERSION = 1
 KIT_HEADING = '📝 Application kit'
 KIT_SECTION = base.KIT_SECTION   # the job's section the kit is kept in, on every store
@@ -144,7 +144,7 @@ def form_questions(url, opener=None):
     if not ref:
         return []
     api = f'https://boards-api.greenhouse.io/v1/boards/{ref[0]}/jobs/{ref[1]}?questions=true'
-    request = urllib.request.Request(api, headers={'User-Agent': 'JobPilotto/0.1 (personal job search)'})
+    request = urllib.request.Request(api, headers={'User-Agent': 'Jobadabra/0.1 (personal job search)'})
     with (opener or urllib.request.urlopen)(request, timeout=20) as response:
         data = json.load(response)
     groups = [('', data.get('questions') or []), ('', data.get('location_questions') or [])]
@@ -191,9 +191,9 @@ def _question_text(questions):
 
 def about_you():
     """The kit's part of About you (desktop/lib/about-you.js READERS.kit): the main CV with the Experience bank's bullets, as the app wrote it for this
-    run (JOB_PILOTTO_ABOUT_YOU_FILE). -> (CV as JSON text, the parts lacked). A cloud run, or a Mac with no CV imported, has none: the kit is drafted
+    run (JOBADABRA_ABOUT_YOU_FILE). -> (CV as JSON text, the parts lacked). A cloud run, or a Mac with no CV imported, has none: the kit is drafted
     from the Profile and standard answers, and the lacked part is named (spec 2026-10-28-about-you-everywhere-design.md, criterion 6)."""
-    path = os.environ.get('JOB_PILOTTO_ABOUT_YOU_FILE', '')
+    path = os.environ.get('JOBADABRA_ABOUT_YOU_FILE', '')
     try:
         with open(path, encoding='utf-8') as file:
             bundle = json.load(file)
@@ -245,7 +245,7 @@ def with_style(answers, path=None):
     (the app's letter writers read the rules as the About you voice part instead). Why (PR B1b, owner 28 Oct 2026: "everything about the cover letter should be
     only in Cover Letter tab"): the rules left the answers page. Why (Gitar on #2328): a section still on the page (the Strategy draft or the
     organizer wrote it before the app moved it) joins the file's rules, de-duplicated, as the app's letterStyle.read returns them; never doubled."""
-    path = path or os.getenv('JOB_PILOTTO_LETTER_STYLE_FILE', '')
+    path = path or os.getenv('JOBADABRA_LETTER_STYLE_FILE', '')
     try:
         with open(path, encoding='utf-8') as handle:
             lines = [str(line).strip() for line in json.load(handle).get('lines') or [] if str(line).strip()]

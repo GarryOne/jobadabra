@@ -3,6 +3,6 @@
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 
-const packaged = !!process.resourcesPath && !process.defaultApp && !process.env.JOB_PILOTTO_DEV;
+const packaged = !!process.resourcesPath && !process.defaultApp && !process.env.JOBADABRA_DEV;
 export const ROOT = packaged ? path.join(process.resourcesPath, 'pilot')
   : path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');

@@ -58,7 +58,7 @@ def notion_token():
     if token:
         return token
     try:
-        return secret_store.get('job-pilotto.notion.token')   # a test run or a twin: never the owner's (src/secret_store.py)
+        return secret_store.get('jobadabra.notion.token')   # a test run or a twin: never the owner's (src/secret_store.py)
     except (OSError, subprocess.TimeoutExpired):
         return None
 
@@ -91,9 +91,9 @@ def check_notion(tracker, store=None):
         return Check('Setup', 'Notion', INFO, 'not used — your data is on this Mac; Always on needs it')
     if tracker is None:
         # Optional: the core crawl and digest work without it; tracking, scoring and kits need it.
-        state = 'switched off (JOB_PILOTTO_DISABLE)' if features.disabled('notion') else 'not set up'
+        state = 'switched off (JOBADABRA_DISABLE)' if features.disabled('notion') else 'not set up'
         return Check('Setup', 'Notion', INFO, f'{state} — optional; your data stays on this Mac without it, Always on needs it',
-                     'Store it: security add-generic-password -a "$USER" -s job-pilotto.notion.token -w')
+                     'Store it: security add-generic-password -a "$USER" -s jobadabra.notion.token -w')
     try:
         tracker._request('GET', 'users/me')
     except Exception as error:
@@ -139,7 +139,7 @@ def check_cv():
     path = Path(apply_batch.DEFAULT_CV).expanduser()
     if not path.is_file():
         return Check('Setup', 'CV file', INFO, f'not found: {path} (only needed for form filling)',
-                     'Set JOB_PILOTTO_CV_PATH in .env to your CV PDF')
+                     'Set JOBADABRA_CV_PATH in .env to your CV PDF')
     return Check('Setup', 'CV file', OK, path.name)
 
 
@@ -175,12 +175,12 @@ def check_workflow():
 
 def pipeline_env():
     """Names of the GitHub secrets and variables set for the scheduled runs, with placeholder values
-    (features only test presence), plus the real value of JOB_PILOTTO_DISABLE. None without gh."""
+    (features only test presence), plus the real value of JOBADABRA_DISABLE. None without gh."""
     secrets, variables = gh('secret', 'list', '--json', 'name'), gh('variable', 'list', '--json', 'name,value')
     if secrets is None or variables is None:
         return None
     env = {item['name']: 'set' for item in secrets + variables}
-    env['JOB_PILOTTO_DISABLE'] = next((v['value'] for v in variables if v['name'] == 'JOB_PILOTTO_DISABLE'), '')
+    env['JOBADABRA_DISABLE'] = next((v['value'] for v in variables if v['name'] == 'JOBADABRA_DISABLE'), '')
     return env
 
 
@@ -258,7 +258,7 @@ def check_budget(stores, now=None):
     detail = budget.describe(info)
     if info['level'] == 'pause':
         return Check('Health', 'AI budget', FAIL, f'{detail}; auto-kits and extra scoring are paused',
-                     'Raise the limit in the Anthropic console (Settings → Limits) and JOB_PILOTTO_MONTHLY_BUDGET_USD, '
+                     'Raise the limit in the Anthropic console (Settings → Limits) and JOBADABRA_MONTHLY_BUDGET_USD, '
                      'or wait for the reset on the 1st')
     if info['level'] == 'warn':
         return Check('Health', 'AI budget', WARN, detail, 'Watch spend; at 90% the optional AI steps pause')
@@ -266,10 +266,10 @@ def check_budget(stores, now=None):
 
 
 def _google_auth_age(now):
-    """Days since the Google sign-in, from JOB_PILOTTO_GOOGLE_AUTH_AT (CI variable) or the Keychain."""
-    value = os.getenv('JOB_PILOTTO_GOOGLE_AUTH_AT')
+    """Days since the Google sign-in, from JOBADABRA_GOOGLE_AUTH_AT (CI variable) or the Keychain."""
+    value = os.getenv('JOBADABRA_GOOGLE_AUTH_AT')
     if not value and sys.platform == 'darwin':
-        value = secret_store.get('job-pilotto.google.auth-at') or ''
+        value = secret_store.get('jobadabra.google.auth-at') or ''
     try:
         return (now - datetime.fromisoformat(value.replace('Z', '+00:00'))).total_seconds() / 86400
     except (AttributeError, ValueError):
@@ -282,7 +282,7 @@ def check_google(now=None):
     client = google.Google.from_env()
     if not client:
         return Check('Health', 'Gmail + Calendar', INFO,
-                     'switched off (JOB_PILOTTO_DISABLE)' if features.disabled('mail') else 'not connected (optional)',
+                     'switched off (JOBADABRA_DISABLE)' if features.disabled('mail') else 'not connected (optional)',
                      'README → Gmail and Calendar setup')
     fix = 'Sign in again: python3 -m src.sources.google auth --github  (add --client-json <file> if you use your own Google app)'
     try:

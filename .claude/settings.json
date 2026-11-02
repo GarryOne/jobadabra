@@ -52,7 +52,7 @@
   },
   "permissions": {
     "allow": [
-      "Bash(JOB_PILOTTO_DISABLE=mail,notion,telegram,google_jobs python3 -m unittest discover -s tests)",
+      "Bash(JOBADABRA_DISABLE=mail,notion,telegram,google_jobs python3 -m unittest discover -s tests)",
       "Bash(actionlint)",
       "Bash(gh cache list *)",
       "Bash(gh run watch *)",

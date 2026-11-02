@@ -3,12 +3,12 @@
 // Job: wait on state
 import {fillState} from './extension.mjs';
 import {stepWait} from './wait-on-state.mjs';
-const GONE = () => !document.getElementById('jobpilotto-fill-overlay');
+const GONE = () => !document.getElementById('jobadabra-fill-overlay');
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 /** What the page shows while the overlay holds the click: the overlay up or down, the extension's fill state (with its last error) and the address. */
 export async function liftState(tab) {
-  const overlay = await tab.evaluate(() => !!document.getElementById('jobpilotto-fill-overlay')).then(up => (up ? 'up' : 'down'), error => `unreadable: ${String(error?.message || error).split('\n')[0].slice(0, 120)}`);
+  const overlay = await tab.evaluate(() => !!document.getElementById('jobadabra-fill-overlay')).then(up => (up ? 'up' : 'down'), error => `unreadable: ${String(error?.message || error).split('\n')[0].slice(0, 120)}`);
   return {overlay, fill: await fillState(tab), url: String(tab.url?.() || '').split('#')[0].slice(0, 100)};
 }
 

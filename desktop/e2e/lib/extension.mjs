@@ -61,10 +61,10 @@ export function makeOpenShim() {
   // The URL is the first http(s) argument, not the last: `open -a "Google Chrome" <url> --args --profile-directory=<p>` (lib/browser-launch.js) ends
   // with a flag (16 Oct 2026: on a Mac with Chrome the stand-in recorded the flag, so every Apply looked unopened). Guard: e2e/test/open-shim.test.mjs.
   fs.writeFileSync(path.join(bin, 'open'), '#!/bin/sh\nurl=\nfor a; do case "$a" in http://*|https://*) [ -z "$url" ] && url=$a;; esac; done\n[ -n "$url" ] || exit 0\n'
-    + 'f=$(mktemp "$JOB_PILOTTO_E2E_OPEN_DIR/open.XXXXXX") && printf \'%s\' "$url" > "$f" && mv "$f" "$f.url"\n', {mode: 0o755});
-  // Windows has no `open`: the app runs `node <script> <urls>` instead (lib/apply.js chromeCommand, JOB_PILOTTO_E2E_OPENER). Same spool, same .url files.
+    + 'f=$(mktemp "$JOBADABRA_E2E_OPEN_DIR/open.XXXXXX") && printf \'%s\' "$url" > "$f" && mv "$f" "$f.url"\n', {mode: 0o755});
+  // Windows has no `open`: the app runs `node <script> <urls>` instead (lib/apply.js chromeCommand, JOBADABRA_E2E_OPENER). Same spool, same .url files.
   const script = path.join(root, 'open.mjs');
-  fs.writeFileSync(script, "import fs from 'node:fs'; import path from 'node:path';\nconst dir = process.env.JOB_PILOTTO_E2E_OPEN_DIR, url = process.argv.slice(2).find(arg => /^https?:\\/\\//.test(arg));\n" +
+  fs.writeFileSync(script, "import fs from 'node:fs'; import path from 'node:path';\nconst dir = process.env.JOBADABRA_E2E_OPEN_DIR, url = process.argv.slice(2).find(arg => /^https?:\\/\\//.test(arg));\n" +
     "if (!url) process.exit(0);\nconst file = path.join(dir, `open.${process.pid}.${Date.now()}`); fs.writeFileSync(file, url); fs.renameSync(file, `${file}.url`);\n");
   return {bin, spool, script};
 }
@@ -72,8 +72,8 @@ export function makeOpenShim() {
 /** Whether an app started with `env` opens pages into the stand-in's spool: the shim's `open` is first on PATH (and the Windows opener is set on Windows). */
 export function opensIntoSpool(env, platform = process.platform) {
   const first = String(env.PATH || '').split(path.delimiter)[0];
-  if (!env.JOB_PILOTTO_E2E_OPEN_DIR || !fs.existsSync(path.join(first, 'open'))) return false;
-  return platform !== 'win32' || Boolean(env.JOB_PILOTTO_E2E_OPENER);
+  if (!env.JOBADABRA_E2E_OPEN_DIR || !fs.existsSync(path.join(first, 'open'))) return false;
+  return platform !== 'win32' || Boolean(env.JOBADABRA_E2E_OPENER);
 }
 
 // E2E_BROWSER=msedge: the same suite in Microsoft Edge (preinstalled on the Windows runners) instead of Playwright's Chromium. Edge 153 loads the
@@ -136,7 +136,7 @@ export function formTab(browser, url) {
 export const readForm = page => page.evaluate(() => Object.fromEntries([...document.querySelectorAll('input, select, textarea')]
   .filter(el => el.type !== 'submit' && el.type !== 'button')
   .map(el => [el.id || el.name, {type: el.type, value: el.type === 'file' ? '' : el.value, checked: !!el.checked, hidden: el.getClientRects().length === 0,
-    files: [...(el.files || [])].map(file => ({name: file.name, size: file.size})), ai: el.hasAttribute('data-jobpilotto-ai')}])));
+    files: [...(el.files || [])].map(file => ({name: file.name, size: file.size})), ai: el.hasAttribute('data-jobadabra-ai')}])));
 
 // What the page says the extension is doing: the state the extension writes for Claude on <html data-jobpilotto-fill> ({state: running|done|error|no-form|account, ...}).
 // Written by the app's hand-off fill only (background.js handOff): a fill pressed on the panel leaves the last hand-off's state, so wait on readPanel's `filling` for that one.
@@ -163,7 +163,7 @@ export const fillNote = (state, seconds, options = {}) => (fillSettled(state, op
 
 // The panel the extension draws on the page (bottom right, an open shadow root).
 export const readPanel = page => page.evaluate(() => {
-  const root = document.getElementById('jobpilotto-review-host')?.shadowRoot;
+  const root = document.getElementById('jobadabra-review-host')?.shadowRoot;
   if (!root) return null;
   const text = selector => (root.querySelector(selector)?.textContent || '').replace(/\s+/g, ' ').trim();
   return {pill: text('.pill'), progress: text('.progress-line'), note: root.querySelector('.note:not(.trace-note)')?.hidden ? '' : text('.note:not(.trace-note)'),

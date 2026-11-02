@@ -14,7 +14,7 @@ import {python, pythonEnv} from '../../e2e/lib/python.mjs';
 import {anonymous, call, callWith, launchChromium, repo, serveFixtures} from '../../e2e/lib/visit-page.mjs';
 
 // The engine's Python on a one-off script (isolated environment: lib/python.mjs). The last stdout line is the JSON answer.
-const engine = (script, ...args) => JSON.parse(execFileSync(python(), ['-c', script, ...args], {cwd: repo, encoding: 'utf8', env: pythonEnv({JOB_PILOTTO_FOLLOW_APP: '0'})}).trim().split('\n').pop());
+const engine = (script, ...args) => JSON.parse(execFileSync(python(), ['-c', script, ...args], {cwd: repo, encoding: 'utf8', env: pythonEnv({JOBADABRA_FOLLOW_APP: '0'})}).trim().split('\n').pop());
 
 let server, browser, base;
 before(async () => {

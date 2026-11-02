@@ -55,7 +55,7 @@ export async function runOnCodex(command, args, {env = process.env, ask = askBro
   const url = `http://127.0.0.1:${server.address().port}`;
   try {
     const childEnv = Object.fromEntries(Object.entries(env).filter(([name]) => !name.endsWith('_KEY') && !name.endsWith('_TOKEN') && !name.endsWith('_SECRET') && !name.startsWith('ANTHROPIC_') && !name.startsWith('ACTIONS_ID_TOKEN_')));
-    Object.assign(childEnv, {JOB_PILOTTO_PERSONA_CODEX: '1', ANTHROPIC_BASE_URL: url, JOB_PILOTTO_E2E: '1', JOB_PILOTTO_E2E_AI_BASE_URL: url, JOB_PILOTTO_NO_DOTENV: '1'});
+    Object.assign(childEnv, {JOBADABRA_PERSONA_CODEX: '1', ANTHROPIC_BASE_URL: url, JOBADABRA_E2E: '1', JOBADABRA_E2E_AI_BASE_URL: url, JOBADABRA_NO_DOTENV: '1'});
     return await new Promise((resolve, reject) => {
       const child = spawn(command, args, {env: childEnv, stdio: 'inherit'});
       child.once('error', reject);

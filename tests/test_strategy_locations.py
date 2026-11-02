@@ -13,7 +13,7 @@ def read(search, profile=''):
     with tempfile.TemporaryDirectory() as tmp:
         db = store.connect(Path(tmp) / 'j.sqlite')
         tracker = SimpleNamespace(url_stages=lambda: {}, page_text=lambda: profile, _request=lambda *a, **k: {'results': []})
-        os.environ.pop('JOB_PILOTTO_PROFILE_FILE', None)
+        os.environ.pop('JOBADABRA_PROFILE_FILE', None)
         with mock.patch.object(desktop.digest, 'eligible_jobs', lambda db: ([], [])), mock.patch('src.paths.load_search_config', lambda matching=True: search), \
                 mock.patch('src.paths.local_profile', lambda: ''):
             data = desktop.strategy(db, tracker)

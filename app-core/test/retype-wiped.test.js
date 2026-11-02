@@ -41,27 +41,27 @@ function page(clock = {now: 0}) {
 test('a box the page emptied after the fill is typed again, once', () => {
   const {window, boxes} = page();
   boxes[0]._value = ''; boxes[1]._value = '';
-  assert.equal(window.__jobPilottoRetypeWiped(), 2);
+  assert.equal(window.__jobadabraRetypeWiped(), 2);
   assert.deepEqual(boxes.map(box => box.value), ['typed-first', 'typed-last', 'typed-link', 'typed-mail']);
   boxes[0]._value = '';
-  assert.equal(window.__jobPilottoRetypeWiped(), 1, 'a page that empties it again is typed into again');
+  assert.equal(window.__jobadabraRetypeWiped(), 1, 'a page that empties it again is typed into again');
   assert.equal(boxes[0].value, 'typed-first');
 });
 
 test('a page that keeps clearing a box is typed into a few times, then left, and the field is named', () => {
   const {window, boxes} = page();
   let typed = 0;
-  for (let round = 0; round < 12; round++) { boxes[0]._value = ''; typed += window.__jobPilottoRetypeWiped(); }
-  assert.equal(typed, window.__jobPilottoAttempts.CAP, 'the box\'s one attempt log: a few tries in all (page/attempts.js)');
+  for (let round = 0; round < 12; round++) { boxes[0]._value = ''; typed += window.__jobadabraRetypeWiped(); }
+  assert.equal(typed, window.__jobadabraAttempts.CAP, 'the box\'s one attempt log: a few tries in all (page/attempts.js)');
   assert.equal(boxes[0].value, '');
-  assert.equal(JSON.stringify(window.__jobPilottoRetypeGaveUp()), JSON.stringify([{field: 'first', times: window.__jobPilottoAttempts.CAP}]));
+  assert.equal(JSON.stringify(window.__jobadabraRetypeGaveUp()), JSON.stringify([{field: 'first', times: window.__jobadabraAttempts.CAP}]));
   assert.deepEqual(boxes.slice(1).map(box => box.value), ['typed-last', 'typed-link', 'typed-mail']);
 });
 
 test('the watch outlives its first window while the page keeps emptying, and catches a wipe after 15 s', () => {
   const clock = {now: 1000};
   const {window, boxes} = page(clock);
-  window.__jobPilottoRetypeWiped(15000);
+  window.__jobadabraRetypeWiped(15000);
   clock.now += 14000; boxes[1]._value = ''; clock.tick();
   assert.equal(boxes[1].value, 'typed-last', 'a wipe late in the window is typed again');
   clock.now += 14000; boxes[1]._value = ''; clock.tick();
@@ -75,7 +75,7 @@ test('a box the person touched, or the page filled itself, is never typed over',
   boxes[0]._value = ''; boxes[0].listeners.forEach(fn => fn({isTrusted: true}));   // the person cleared it
   boxes[1]._value = 'the page wrote this';
   boxes[2]._value = ''; boxes[2].listeners.forEach(fn => fn({isTrusted: false}));   // a script's event is not the person
-  assert.equal(window.__jobPilottoRetypeWiped(), 1);
+  assert.equal(window.__jobadabraRetypeWiped(), 1);
   assert.equal(boxes[0].value, '');
   assert.equal(boxes[1].value, 'the page wrote this');
   assert.equal(boxes[2].value, 'typed-link');
@@ -86,7 +86,7 @@ test('a box the page replaced by a new element (a re-render keeps its id) is fou
   const old = boxes[0];
   const fresh = replace(0);   // the old element is gone from the page, a new empty one stands in its place
   assert.equal(fresh.value, '');
-  assert.equal(window.__jobPilottoRetypeWiped(), 1);
+  assert.equal(window.__jobadabraRetypeWiped(), 1);
   assert.equal(fresh.value, 'typed-first');
   assert.equal(old.isConnected, false);
 });
@@ -95,13 +95,13 @@ test('a replaced box the person touched is left alone', () => {
   const {window, boxes, replace} = page();
   boxes[0].listeners.forEach(fn => fn({isTrusted: true}));
   const fresh = replace(0);
-  assert.equal(window.__jobPilottoRetypeWiped(), 0);
+  assert.equal(window.__jobadabraRetypeWiped(), 0);
   assert.equal(fresh.value, '');
 });
 
 test('a box the page put back on a bare country code (a phone widget\'s own "+972") is typed again; any other value the page wrote stays', () => {
   const {window, boxes} = page();
   boxes[0]._value = '+972'; boxes[1]._value = '+41'; boxes[2]._value = '+41 79 5'; boxes[3]._value = 'the page wrote this';
-  assert.equal(window.__jobPilottoRetypeWiped(), 2);
+  assert.equal(window.__jobadabraRetypeWiped(), 2);
   assert.deepEqual(boxes.map(box => box.value), ['typed-first', 'typed-last', '+41 79 5', 'the page wrote this']);
 });

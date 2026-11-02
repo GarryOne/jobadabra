@@ -42,10 +42,10 @@ class HeavyLockReapTest(unittest.TestCase):
         self.heavy = self.tmp / 'heavy'
         self.log = self.tmp / 'gate-timing.log'
         self.pids = self.tmp / 'pids'
-        self.env = {**{k: v for k, v in os.environ.items() if not k.startswith(('JOB_PILOTTO_HEAVY', 'JP_HEAVY'))},
-                    'JOB_PILOTTO_HEAVY_DIR': self.heavy.as_posix(), 'JOB_PILOTTO_HEAVY_LOAD': '0', 'JOB_PILOTTO_HEAVY_POLL': '0.1',
-                    'JOB_PILOTTO_HEAVY_TIMING_LOG': self.log.as_posix(), 'JOB_PILOTTO_HEAVY_SHARED': str(LOCK), 'JOB_PILOTTO_HEAVY_SLOTS': '1',
-                    'JOB_PILOTTO_HEAVY_RAMP': '0'}
+        self.env = {**{k: v for k, v in os.environ.items() if not k.startswith(('JOBADABRA_HEAVY', 'JP_HEAVY'))},
+                    'JOBADABRA_HEAVY_DIR': self.heavy.as_posix(), 'JOBADABRA_HEAVY_LOAD': '0', 'JOBADABRA_HEAVY_POLL': '0.1',
+                    'JOBADABRA_HEAVY_TIMING_LOG': self.log.as_posix(), 'JOBADABRA_HEAVY_SHARED': str(LOCK), 'JOBADABRA_HEAVY_SLOTS': '1',
+                    'JOBADABRA_HEAVY_RAMP': '0'}
         self.procs = []
         self.addCleanup(self.cleanup)
 
@@ -72,7 +72,7 @@ class HeavyLockReapTest(unittest.TestCase):
     def next_run(self):
         """The next run, which must free the dead or idle holder; its own wait limit is long so only the freeing ends it (load 270 outlasted 60 s, 12 Oct 2026)."""
         try:
-            return subprocess.run(['bash', str(LOCK), 'next', 'echo', 'ran'], env={**self.env, 'JOB_PILOTTO_HEAVY_WAIT': '900'}, stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=600)
+            return subprocess.run(['bash', str(LOCK), 'next', 'echo', 'ran'], env={**self.env, 'JOBADABRA_HEAVY_WAIT': '900'}, stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=600)
         except subprocess.TimeoutExpired as e:
             raise AssertionError(f'the next run did not free the holder in 600 s: {e.stderr!r}; {self.evidence()}')
 
@@ -95,7 +95,7 @@ class HeavyLockReapTest(unittest.TestCase):
     def test_a_holder_whose_session_is_gone_is_freed_and_its_tree_killed(self):
         session = subprocess.Popen(['sleep', '300'])
         self.addCleanup(session.kill)
-        p, children = self.hung_holder(JOB_PILOTTO_SESSION_PID=str(session.pid))
+        p, children = self.hung_holder(JOBADABRA_SESSION_PID=str(session.pid))
         self.assertTrue(wait_for(lambda: (self.heavy / 'lock' / 'session_pid').exists()), 'the slot records the session')
         self.assertEqual((self.heavy / 'lock' / 'session_pid').read_text().strip(), str(session.pid))
         session.kill()
@@ -125,8 +125,8 @@ class HeavyLockReapTest(unittest.TestCase):
         self.assertTrue(wait_for(lambda: not any(alive(c) for c in children)))
 
     def test_an_idle_holder_is_freed_after_the_idle_limit(self):
-        p, children = self.hung_holder(JOB_PILOTTO_HEAVY_IDLE='2')
-        result = subprocess.run(['bash', str(LOCK), 'next', 'echo', 'ran'], env={**self.env, 'JOB_PILOTTO_HEAVY_IDLE': '2', 'JOB_PILOTTO_HEAVY_WAIT': '900'}, stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=600)
+        p, children = self.hung_holder(JOBADABRA_HEAVY_IDLE='2')
+        result = subprocess.run(['bash', str(LOCK), 'next', 'echo', 'ran'], env={**self.env, 'JOBADABRA_HEAVY_IDLE': '2', 'JOBADABRA_HEAVY_WAIT': '900'}, stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=600)
         self.assertEqual(result.stdout.strip(), 'ran')
         freed = re.search(r'freed: idle (\d+)s', result.stderr)
         self.assertTrue(freed, result.stderr)
@@ -138,9 +138,9 @@ class HeavyLockReapTest(unittest.TestCase):
     def test_a_busy_holder_is_never_freed(self):
         stop = (self.tmp / 'stop').as_posix()
         busy = f'import os, time\nwhile not os.path.exists({stop!r}):\n    sum(range(20000))\n'
-        holder = self.start('replay-busy', 'python3', '-c', busy, JOB_PILOTTO_HEAVY_IDLE='4')
+        holder = self.start('replay-busy', 'python3', '-c', busy, JOBADABRA_HEAVY_IDLE='4')
         self.assertTrue(wait_for(lambda: (self.heavy / 'lock' / 'pgid').exists()))
-        waiter = subprocess.Popen(['bash', str(LOCK), 'next', 'echo', 'ran'], env={**self.env, 'JOB_PILOTTO_HEAVY_IDLE': '4', 'JOB_PILOTTO_HEAVY_WAIT': '900'}, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        waiter = subprocess.Popen(['bash', str(LOCK), 'next', 'echo', 'ran'], env={**self.env, 'JOBADABRA_HEAVY_IDLE': '4', 'JOBADABRA_HEAVY_WAIT': '900'}, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         self.procs.append(waiter)
         time.sleep(7)   # clock: past the 4 s idle limit a working holder must NOT be freed; the lock measures its own CPU clock, the test only gives a wrong free time to show
         self.assertIsNone(waiter.poll(), 'the waiter is still waiting behind a busy holder')
@@ -165,7 +165,7 @@ class HeavyLockReapTest(unittest.TestCase):
     def test_status_says_why_a_holder_is_about_to_be_freed(self):
         session = subprocess.Popen(['sleep', '300'])
         self.addCleanup(session.kill)
-        self.hung_holder(JOB_PILOTTO_SESSION_PID=str(session.pid))
+        self.hung_holder(JOBADABRA_SESSION_PID=str(session.pid))
         self.assertTrue(wait_for(lambda: (self.heavy / 'lock' / 'session_pid').exists()))
         session.kill()
         session.wait()

@@ -20,7 +20,7 @@ test('no timer, page event or removed layer lifts the dim or ends the working lo
   const overlay = read('panel-overlay.js'), review = read('review.js');
   assert.doesNotMatch(overlay, /setTimeout\(\(\) => lift|Date\.now\(\) >|EARLY_MS|MAX_MS|isConnected\) \{ lift/, 'panel-overlay.js lifts only on the worker\'s verdict (or an extension reload)');
   assert.doesNotMatch(review, /setTimeout\(endStep|endSoon|END_GAP_MS|STEP_SAFETY_MS|STEP_FIRST_MS|fillOver/, 'review.js ends its working look only through the worker\'s verdict');
-  const offs = using(/__jobPilottoOverlay\??\.off\(|overlay\.off\(/);
+  const offs = using(/__jobadabraOverlay\??\.off\(|overlay\.off\(/);
   assert.deepEqual(offs, ['review.js', 'settle-tabs.js'], 'who may take the layer down: the panel\'s look() on a verdict or its own close, and the sweep of a page the app did not open');
   assert.match(read('stop.js'), /setApply\(tabId, 'stopped'\)/, 'Stop is a verdict');
   assert.match(read('background.js'), /sayApply\(tabId, text, verdict\)/, 'the end of a run is a verdict, named by its caller');

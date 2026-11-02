@@ -60,7 +60,7 @@ test('the keys come from config/analytics.json, env wins, and a missing file mea
   fs.mkdirSync(path.join(repo, 'config'));
   fs.writeFileSync(path.join(repo, 'config', 'analytics.json'), JSON.stringify({sentry_dsn: 'https://a@b.ingest.sentry.io/1', posthog_key: 'phc_file', posthog_host: 'https://eu.i.posthog.com/'}));
   assert.deepEqual(load(repo, {}), {sentryDsn: 'https://a@b.ingest.sentry.io/1', posthogKey: 'phc_file', posthogHost: 'https://eu.i.posthog.com'});
-  assert.equal(load(repo, {JOB_PILOTTO_POSTHOG_KEY: 'phc_env'}).posthogKey, 'phc_env');
+  assert.equal(load(repo, {JOBADABRA_POSTHOG_KEY: 'phc_env'}).posthogKey, 'phc_env');
 });
 
 test('the first start after an update says from which version to which, once; a first start, the same version and odd text say nothing', () => {

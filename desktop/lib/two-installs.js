@@ -9,7 +9,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 export const STORE_IDENTITY = 'IgorMardari.Jobadabra';   // the Store package's identity name (.github/workflows/msix-store.yml); its folder is <identity>_<publisher id>
-export const EXE_FOLDER = 'job-pilotto-desktop';         // where the NSIS installer puts the app: %LOCALAPPDATA%\Programs\<this>\Jobadabra.exe (measured: msix-spike.yml run 41232577742, inventory line "nsis exe")
+export const EXE_FOLDER = 'jobadabra-desktop';         // where the NSIS installer puts the app: %LOCALAPPDATA%\Programs\<this>\Jobadabra.exe (measured: msix-spike.yml run 41232577742, inventory line "nsis exe")
 
 const win = path.win32;
 const names = dir => { try { return fs.readdirSync(dir); } catch { return []; } };

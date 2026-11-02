@@ -119,7 +119,7 @@ class OldState(unittest.TestCase):
                       mock.patch('src.role_kinds.of_search', side_effect=lambda search: set(aviation)),
                       mock.patch('src.places.countries', return_value=['Austria', 'Germany']),
                       mock.patch.object(found_boards.board_employers, 'note'), mock.patch.object(aggregators.board_employers, 'note'),
-                      mock.patch.object(aggregators.board_employers, 'fill_missing'), mock.patch.dict('os.environ', {'JOB_PILOTTO_FIXTURE_DIR': ''})):
+                      mock.patch.object(aggregators.board_employers, 'fill_missing'), mock.patch.dict('os.environ', {'JOBADABRA_FIXTURE_DIR': ''})):
             patch.start()
             self.addCleanup(patch.stop)
         board_web._early.clear()

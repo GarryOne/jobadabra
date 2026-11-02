@@ -17,7 +17,7 @@ const fieldsOf = async (html) => {
   const JSDOM = await loadJsdom();
   if (!JSDOM) return null;
   const window = openPage(JSDOM, html);
-  return { window, rows: Array.from(await window.__jobPilottoDescribeForm(true)) };
+  return { window, rows: Array.from(await window.__jobadabraDescribeForm(true)) };
 };
 
 for (const [name, html, required, optional] of [['a legend and labels', SHEET, /based in the city|First name/, /Last name/],
@@ -32,6 +32,6 @@ for (const [name, html, required, optional] of [['a legend and labels', SHEET, /
       assert.doesNotMatch(row.label, /\*|✱|Required|Pflichtfeld/, `the question reads clean: ${row.label}`);
     }
     for (const row of rows.filter((r) => optional.test(r.label))) assert.equal(row.required, false, `optional: ${row.label}`);
-    assert.equal(page.window.__jobPilottoRequired.starred(page.window.document), 2);
+    assert.equal(page.window.__jobadabraRequired.starred(page.window.document), 2);
   });
 }

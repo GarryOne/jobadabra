@@ -17,7 +17,7 @@ export function serve(out, port = 0) {
     const file = path.join(out, wanted.endsWith('/') ? `${wanted}index.html` : wanted);
     if (!file.startsWith(out) || !fs.existsSync(file) || !fs.statSync(file).isFile()) { response.writeHead(404); response.end('Not found'); return; }
     const headers = {'Content-Type': TYPES[path.extname(file)] || 'application/octet-stream', 'Cache-Control': 'no-store'};
-    if (file.endsWith('.zip')) headers['Content-Disposition'] = 'attachment; filename="job-pilotto-design-system.zip"';
+    if (file.endsWith('.zip')) headers['Content-Disposition'] = 'attachment; filename="jobadabra-design-system.zip"';
     response.writeHead(200, headers);
     fs.createReadStream(file).pipe(response);
   });

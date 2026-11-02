@@ -61,7 +61,7 @@ test('the Store copy finds its own package folder from where it runs, whatever t
   const exe = name => `C:\\Program Files\\WindowsApps\\${name}_1.2.3.0_x64__abc123def\\app\\Jobadabra.exe`;
   assert.equal(ownPackageFolder(exe('IgorMardari.Jobadabra'), path.join('L', 'x')), path.join('L', 'x', 'Packages', 'IgorMardari.Jobadabra_abc123def'));
   assert.equal(ownPackageFolder(exe('Jobadabra.Spike'), path.join('L', 'x')), path.join('L', 'x', 'Packages', 'Jobadabra.Spike_abc123def'));
-  assert.equal(ownPackageFolder('C:\\Users\\a\\AppData\\Local\\Programs\\job-pilotto-desktop\\Jobadabra.exe', 'L'), '', 'the installer copy is not a package');
+  assert.equal(ownPackageFolder('C:\\Users\\a\\AppData\\Local\\Programs\\jobadabra-desktop\\Jobadabra.exe', 'L'), '', 'the installer copy is not a package');
   assert.equal(ownPackageFolder(exe('IgorMardari.Jobadabra'), ''), '');
 });
 

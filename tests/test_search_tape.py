@@ -34,7 +34,7 @@ class TapeTest(unittest.TestCase):
     def setUp(self):
         folder = tempfile.TemporaryDirectory()
         self.addCleanup(folder.cleanup)
-        self.env = {'JOB_PILOTTO_SEARCH_TAPE': folder.name, 'JOB_PILOTTO_TAPE_WAIT_SCALE': '0'}
+        self.env = {'JOBADABRA_SEARCH_TAPE': folder.name, 'JOBADABRA_TAPE_WAIT_SCALE': '0'}
         search_tape._index.clear()
         self.addCleanup(search_tape._index.clear)
         for key in search_tape.counts:
@@ -42,12 +42,12 @@ class TapeTest(unittest.TestCase):
 
     def mode(self, mode):
         search_tape._index.clear()   # a new process reads the tape again
-        return mock.patch.dict(os.environ, {**self.env, 'JOB_PILOTTO_SEARCH_TAPE_MODE': mode})
+        return mock.patch.dict(os.environ, {**self.env, 'JOBADABRA_SEARCH_TAPE_MODE': mode})
 
 
 class WaitScaleTest(TapeTest):
     def slept(self, scale, seconds=10):
-        with mock.patch.dict(os.environ, {'JOB_PILOTTO_TAPE_WAIT_SCALE': scale}), mock.patch.object(search_tape.time, 'sleep') as sleep:
+        with mock.patch.dict(os.environ, {'JOBADABRA_TAPE_WAIT_SCALE': scale}), mock.patch.object(search_tape.time, 'sleep') as sleep:
             search_tape._wait(seconds)
         return [call.args[0] for call in sleep.call_args_list]
 
@@ -66,7 +66,7 @@ class WaitScaleTest(TapeTest):
 class VirtualClockTest(TapeTest):
     """The replay's clock reads the recorded time at any wait scale (src/search_tape.py virtual_now)."""
     def advanced(self, scale, waits):
-        with mock.patch.dict(os.environ, {'JOB_PILOTTO_TAPE_WAIT_SCALE': scale}), mock.patch.object(search_tape.time, 'sleep'), \
+        with mock.patch.dict(os.environ, {'JOBADABRA_TAPE_WAIT_SCALE': scale}), mock.patch.object(search_tape.time, 'sleep'), \
                 mock.patch.object(search_tape, '_skipped', [0.0]):
             before = search_tape.virtual_now()
             for wait in waits:
@@ -80,7 +80,7 @@ class VirtualClockTest(TapeTest):
 
     def test_waits_that_run_together_are_not_added_up(self):
         # real (short) sleeps so the threads overlap; at scale 0 nothing waits, so threads cannot overlap and their waits add up (a known limit)
-        with mock.patch.dict(os.environ, {'JOB_PILOTTO_TAPE_WAIT_SCALE': '0.1'}), mock.patch.object(search_tape, '_skipped', [0.0]):
+        with mock.patch.dict(os.environ, {'JOBADABRA_TAPE_WAIT_SCALE': '0.1'}), mock.patch.object(search_tape, '_skipped', [0.0]):
             before = search_tape.virtual_now()
             threads = [threading.Thread(target=search_tape._wait, args=(w,)) for w in (3, 3, 3)]
             [t.start() for t in threads]
@@ -119,7 +119,7 @@ class WebTest(TapeTest):
                 urlopen('https://jobs.test/never-seen')
         self.assertEqual(len(calls), 2, 'replay never reaches the web')
         self.assertEqual((search_tape.counts['web_tape'], search_tape.counts['web_missing']), (2, 1))
-        missing = [json.loads(line) for line in (Path(self.env['JOB_PILOTTO_SEARCH_TAPE']) / 'missing.jsonl').read_text().splitlines()]
+        missing = [json.loads(line) for line in (Path(self.env['JOBADABRA_SEARCH_TAPE']) / 'missing.jsonl').read_text().splitlines()]
         self.assertEqual([(item['web'], item['method'], item['url']) for item in missing], [(True, 'GET', 'https://jobs.test/never-seen')], 'the page the tape lacked is kept: method and address')
 
     def test_a_post_with_the_installs_own_id_is_answered_whatever_the_id_but_a_changed_purpose_misses(self):
@@ -138,7 +138,7 @@ class WebTest(TapeTest):
 
     def test_a_tape_recorded_before_norm_existed_answers_an_install_post_by_its_address(self):
         urlopen = search_tape._web(lambda *a, **k: None)
-        folder = Path(self.env['JOB_PILOTTO_SEARCH_TAPE'])
+        folder = Path(self.env['JOBADABRA_SEARCH_TAPE'])
         (folder / 'bodies').mkdir(parents=True)
         (folder / 'bodies' / 'k1').write_bytes(b'{"token": "old"}')
         (folder / 'web.jsonl').write_text(json.dumps({'key': 'k1', 'url': 'https://site.test/api/install-token', 'method': 'POST', 'status': 200, 'type': 'application/json', 'seconds': 0}) + '\n')
@@ -274,12 +274,12 @@ class AiTest(TapeTest):
         with self.mode('record'):
             self.client(asked).messages.create(**question)
         other = {**question, 'messages': [{'role': 'user', 'content': 'score job 2'}]}
-        with mock.patch.dict(os.environ, {'JOB_PILOTTO_TAPE_LIVE': '0'}), self.mode('replay'):
+        with mock.patch.dict(os.environ, {'JOBADABRA_TAPE_LIVE': '0'}), self.mode('replay'):
             self.assertEqual(self.client(asked).messages.create(**question).content[0].text, 'answer 1', 'what is on the tape still replays')
             with self.assertRaises(RuntimeError):
                 self.client(asked).messages.create(**other)
         self.assertEqual(len(asked), 1, 'the live client was never built or asked')
-        kept = [json.loads(line) for line in (Path(self.env['JOB_PILOTTO_SEARCH_TAPE']) / 'missing.jsonl').read_text().splitlines()]
+        kept = [json.loads(line) for line in (Path(self.env['JOBADABRA_SEARCH_TAPE']) / 'missing.jsonl').read_text().splitlines()]
         self.assertEqual([item['user'] for item in kept], ['score job 2'], 'the question the tape lacked is kept, to see what differs')
         self.assertEqual((search_tape.counts['ai_tape'], search_tape.counts['ai_missing'], search_tape.counts['ai_live']), (1, 1, 0))
 
@@ -288,7 +288,7 @@ class InstallTest(unittest.TestCase):
     def test_a_normal_run_never_loads_the_tape(self):
         self.assertFalse(getattr(urllib.request.urlopen, 'search_tape', False))
         init = (Path(__file__).resolve().parents[1] / 'src' / '__init__.py').read_text()
-        self.assertIn("if _os.getenv('JOB_PILOTTO_SEARCH_TAPE'):", init)
+        self.assertIn("if _os.getenv('JOBADABRA_SEARCH_TAPE'):", init)
 
 
 if __name__ == '__main__':

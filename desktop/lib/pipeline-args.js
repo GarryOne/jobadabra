@@ -66,7 +66,7 @@ export function mailArgs(storage, now = Date.now()) {
   return ['src.ai.mail', '--days', String(days), ...(telegram ? ['--send'] : []), '--log-run'];
 }
 // What started a run, for its Notion ⏰ Search runs row (GitHub runs say Schedule or Manual).
-export const triggerEnv = trigger => ({JOB_PILOTTO_TRIGGER: trigger === 'schedule' ? 'Mac schedule' : 'Mac (you)'});
+export const triggerEnv = trigger => ({JOBADABRA_TRIGGER: trigger === 'schedule' ? 'Mac schedule' : 'Mac (you)'});
 // The jobs read in Chrome, scored at once after a read (Always on or not: those pages stay on this Mac). A run here that reads
 // only those pages (src/daily.py --only-visits, mode today: it closes nothing, no Telegram digest), scores what matches and writes it to Notion.
 // The light run after Find jobs using your browser scores the jobs it found that match, and nothing else (7 Oct 2026: it read 41 other

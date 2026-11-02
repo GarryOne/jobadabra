@@ -26,31 +26,31 @@ for (const shape of ['native', 'custom', 'aria']) test(`${shape} consent follows
     await page.setContent(fixture(shape));
     for (const file of PAGE_FILES) await page.addScriptTag({content: fs.readFileSync(new URL(`../../../../extension/${file}`, import.meta.url), 'utf8')});
     const answers = [decision('notice', shape === 'native' ? 'Acconsento' : 'checked'), decision('truth', 'Yes')];
-    const fill = enabled => page.evaluate(({answers,enabled})=>window.__jobPilottoExtensionFill(answers,{},null,'',enabled), {answers,enabled});
+    const fill = enabled => page.evaluate(({answers,enabled})=>window.__jobadabraExtensionFill(answers,{},null,'',enabled), {answers,enabled});
     const off = await fill(false);
     assert.equal(off.error, undefined);
     assert.equal(off.unfilledRequired, 2, 'an unaccepted required consent stays in the required count');
     assert.equal(await page.evaluate(()=>document.getElementById('notice').value || ''), '');
-    assert.equal(await page.evaluate(()=>window.__jobPilottoArmedCount()), 0);
+    assert.equal(await page.evaluate(()=>window.__jobadabraArmedCount()), 0);
     const on = await fill(true);
     assert.equal(on.error, undefined);
     if (shape !== 'native') {
-      const spot = await page.evaluate(()=>window.__jobPilottoNextCombo());
+      const spot = await page.evaluate(()=>window.__jobadabraNextCombo());
       assert.ok(spot, 'authorized consent must be armed for the existing trusted dropdown path');
       await page.mouse.click(spot.x, spot.y);
-      await page.waitForFunction(()=>window.__jobPilottoNeed?.kind === 'choose');
-      const request = await page.evaluate(()=>window.__jobPilottoNeed);
+      await page.waitForFunction(()=>window.__jobadabraNeed?.kind === 'choose');
+      const request = await page.evaluate(()=>window.__jobadabraNeed);
       assert.equal(request.consent, true);
       assert.deepEqual(request.choices, ['Non acconsento', 'Acconsento']);
-      await page.evaluate(()=>{window.__jobPilottoNeedDone='Acconsento'});
-      await page.waitForFunction(()=>window.__jobPilottoArmedCount() === 0);
+      await page.evaluate(()=>{window.__jobadabraNeedDone='Acconsento'});
+      await page.waitForFunction(()=>window.__jobadabraArmedCount() === 0);
     }
     assert.equal(await page.evaluate(()=>document.getElementById('notice').value || ''), shape === 'native' ? 'agree' : 'Acconsento');
     assert.equal(await page.inputValue('#truth'), '', 'a factual attestation stays untouched even with an erroneous consent reading');
     const again = await fill(true);
     assert.equal(again.unfilledRequired, 1, 'only the attestation remains required');
     assert.equal(again.trace.find(row=>row.label.startsWith('Privacy notice')).outcome,'filled');
-    assert.equal(await page.evaluate(()=>window.__jobPilottoArmedCount()), 0, 'repeat must not arm a committed consent');
+    assert.equal(await page.evaluate(()=>window.__jobadabraArmedCount()), 0, 'repeat must not arm a committed consent');
     assert.equal(await page.evaluate(()=>window.__jobPilottoAuditVisibleFields().find(row=>row.field==='notice').filled), true);
     assert.equal(await page.evaluate(()=>window.submits), 0);
   } finally { await browser.close(); }
@@ -65,16 +65,16 @@ test('custom consent with no affirmative AI reading stays empty and required; tu
     await page.setContent(fixture('custom'));
     for (const file of PAGE_FILES) await page.addScriptTag({content: fs.readFileSync(new URL(`../../../../extension/${file}`, import.meta.url), 'utf8')});
     const answers = [decision('notice')];
-    await page.evaluate(answers=>window.__jobPilottoExtensionFill(answers,{},null,'',true), answers);
-    const spot = await page.evaluate(()=>window.__jobPilottoNextCombo());
+    await page.evaluate(answers=>window.__jobadabraExtensionFill(answers,{},null,'',true), answers);
+    const spot = await page.evaluate(()=>window.__jobadabraNextCombo());
     await page.mouse.click(spot.x, spot.y);
-    await page.waitForFunction(()=>window.__jobPilottoNeed?.kind === 'choose');
-    await page.evaluate(()=>{window.__jobPilottoNeedDone=''});
-    await page.waitForFunction(()=>!window.__jobPilottoPicking);
+    await page.waitForFunction(()=>window.__jobadabraNeed?.kind === 'choose');
+    await page.evaluate(()=>{window.__jobadabraNeedDone=''});
+    await page.waitForFunction(()=>!window.__jobadabraPicking);
     assert.equal(await page.evaluate(()=>document.getElementById('notice').value || ''), '');
-    assert.equal(await page.evaluate(()=>window.__jobPilottoLastPick.selectedAfter), false);
-    const off = await page.evaluate(answers=>window.__jobPilottoExtensionFill(answers,{},null,'',false), answers);
-    assert.equal(await page.evaluate(()=>window.__jobPilottoArmedCount()), 0);
+    assert.equal(await page.evaluate(()=>window.__jobadabraLastPick.selectedAfter), false);
+    const off = await page.evaluate(answers=>window.__jobadabraExtensionFill(answers,{},null,'',false), answers);
+    assert.equal(await page.evaluate(()=>window.__jobadabraArmedCount()), 0);
     assert.equal(off.trace.find(row=>row.label.startsWith('Privacy notice')).outcome,'left');
     assert.equal(off.unfilledRequired, 2);
   } finally { await browser.close(); }

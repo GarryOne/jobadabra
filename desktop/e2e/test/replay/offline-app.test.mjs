@@ -108,7 +108,7 @@ test('the offline app ends when the harness that started it is killed outright',
   const start = `const {startOfflineApp} = await import(${JSON.stringify(pathToFileURL(path.resolve(path.resolve(import.meta.dirname, '..'), '../lib/offline-app.mjs')).href)});
     const app = await startOfflineApp(); console.log(JSON.stringify({pid: app.pid})); setInterval(() => {}, 1000);`;
   const harness = spawn(process.execPath, ['--input-type=module', '-e', start], {stdio: ['ignore', 'pipe', 'inherit'],
-    env: {...process.env, JOB_PILOTTO_E2E_RUNNER_POLL_MS: '50', JOB_PILOTTO_E2E_RUNNER_GRACE_MS: '150'}});
+    env: {...process.env, JOBADABRA_E2E_RUNNER_POLL_MS: '50', JOBADABRA_E2E_RUNNER_GRACE_MS: '150'}});
   const alive = pid => { try { process.kill(pid, 0); return true; } catch (error) { return error.code === 'EPERM'; } };
   let pid = 0;
   try {

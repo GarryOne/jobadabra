@@ -1,9 +1,9 @@
 // Builds value-free field traces and review marks after the page fill has been audited.
 // Invariants: reason precedence and mark order are preserved; traces keep field metadata, never applicant values.
 (() => {
-  if (window.__jobPilottoFillReportLoaded) return;
-  window.__jobPilottoFillReportLoaded = true;
-  const {clean, norm, PROFILE_LABELS, aliasFor, questionOf, wantsUnchecked, boxOf, markAttention, markDraft} = window.__jobPilottoFillKit;
+  if (window.__jobadabraFillReportLoaded) return;
+  window.__jobadabraFillReportLoaded = true;
+  const {clean, norm, PROFILE_LABELS, aliasFor, questionOf, wantsUnchecked, boxOf, markAttention, markDraft} = window.__jobadabraFillKit;
 
   // A question's wording is kept whole (owner, 17 Oct 2026: labels cut at 120 characters were saved as "…We t: Yes" and never matched the form again); the cap only guards a runaway page.
   const TRACE_LABEL_MAX = 500;
@@ -15,7 +15,7 @@
     const once = event => {
       if (!event.isTrusted) return;
       el.removeEventListener('input', once); el.removeEventListener('change', once);
-      if (window.__jobPilottoCorrections.length < 40) window.__jobPilottoCorrections.push(clean(label).slice(0, 500));
+      if (window.__jobadabraCorrections.length < 40) window.__jobadabraCorrections.push(clean(label).slice(0, 500));
     };
     el.addEventListener('input', once); el.addEventListener('change', once);
   };
@@ -26,7 +26,7 @@
     const els = name.startsWith('radio:') ? document.querySelectorAll(`input[type=radio][name="${CSS.escape(name.slice(6))}"]`)
       : name.startsWith('group:') ? Array.from(document.querySelectorAll('input[type=checkbox]')).filter(b => questionOf(b) === name.slice(6))
       : [document.getElementById(name) || document.querySelector(`[name="${CSS.escape(name)}"]`)];
-    for (const el of els) if (el) { el.setAttribute('data-jobpilotto-filled', ''); el.dataset.jobpilottoGrounding = grounded ? 'known' : 'unknown'; }
+    for (const el of els) if (el) { el.setAttribute('data-jobadabra-filled', ''); el.dataset.jobadabraGrounding = grounded ? 'known' : 'unknown'; }
   };
 
   // Return the saved-detail key recognized for a row.
@@ -53,8 +53,8 @@
   const traceChoiceReason = (row, answer, source, proposedOf, armedFields) => {
     let reason;
     // A menu left on the page's own preselected choice that nobody answered (easytemp: Nationalité "Suisse"): the page will send it, so it reads as
-    // filled, but the person must check it (browser-form-fastpath.js __jobPilottoAtPageDefault).
-    if (row.filled && !source && (el => el?.tagName === 'SELECT' && window.__jobPilottoAtPageDefault?.(el))(document.getElementById(row.field) || document.querySelector(`select[name="${CSS.escape(row.field)}"]`))) reason = 'preselected by the page: check it';
+    // filled, but the person must check it (browser-form-fastpath.js __jobadabraAtPageDefault).
+    if (row.filled && !source && (el => el?.tagName === 'SELECT' && window.__jobadabraAtPageDefault?.(el))(document.getElementById(row.field) || document.querySelector(`select[name="${CSS.escape(row.field)}"]`))) reason = 'preselected by the page: check it';
     else if (row.unread && !row.filled) reason = 'question on the page not read';
     // A two-state control (checkbox, switch, toggle) answered "no" that holds its state already: the answer is kept, nothing to type (it stays "left" for a required one: the page may still want it ticked).
     else if (!row.filled && row.type === 'checkbox' && answer && wantsUnchecked(answer.value) && boxOf(row.field)?.checked === false) { reason = 'answered no: left unchecked'; }
@@ -72,7 +72,7 @@
     // wording to learn (only NO_ANSWER rows are reported as such). 9 Oct 2026: "Lieu d'origine" went to the learner although its meaning was known.
     else if (!row.filled && !answer && !contactFields.has(row.field) && knownKey(row)) reason = `a detail of yours not saved yet (${knownKey(row)})`;
     else if (!row.filled && !answer && !contactFields.has(row.field)) reason = 'no answer in the kit, Profile or your details';
-    else if (!row.filled) { reason = 'answer given, but the field did not take it'; window.__jobPilottoNoteNotTaken?.(row.field, answer?.value); }   // typed again for real after the fill (page/fill-verify.js)
+    else if (!row.filled) { reason = 'answer given, but the field did not take it'; window.__jobadabraNoteNotTaken?.(row.field, answer?.value); }   // typed again for real after the fill (page/fill-verify.js)
     return reason;
   };
 
@@ -96,7 +96,7 @@
     const {contactFields, fromCvFields, rowOf, proposedOf} = context;
     if (outcome === 'filled' && source && row.type !== 'file') watchCorrection(row.field, label);
     const grounded = traceGrounded(row, answer, source, contactFields, fromCvFields);
-    if (outcome === 'filled' && source) markFilled(row.field, grounded); else window.__jobPilottoMarkProposal?.({...row, options: rowOf[row.field]?.options || row.options}, answer || proposedOf[row.field], (PROFILE_LABELS.find(([, pattern]) => pattern.test(label)) || [])[0] || aliasFor(label)?.key || '');   // page/propose.js: what the app's row proposes
+    if (outcome === 'filled' && source) markFilled(row.field, grounded); else window.__jobadabraMarkProposal?.({...row, options: rowOf[row.field]?.options || row.options}, answer || proposedOf[row.field], (PROFILE_LABELS.find(([, pattern]) => pattern.test(label)) || [])[0] || aliasFor(label)?.key || '');   // page/propose.js: what the app's row proposes
   };
 
   // Return the form choices, excluding empty placeholders and applicant values.
@@ -119,10 +119,10 @@
     if (outcome === 'filled' && answer?.draft && row.type !== 'file') reason = answer.draft === 'outline' ? 'outline: add your own details' : 'drafted: review it';   // typed, but the person has not read it yet (owner, 16 Oct 2026)
     markTraceRow(row, answer, label, source, outcome, context);
     const choices = traceChoices(row, rowOf);
-    const shown = row.type === 'file' && row.field === 'cover_letter' && outcome === 'filled' ? window.__jobPilottoLetterGiven || '' : source;   // which letter went in
+    const shown = row.type === 'file' && row.field === 'cover_letter' && outcome === 'filled' ? window.__jobadabraLetterGiven || '' : source;   // which letter went in
     return {label: label.slice(0, TRACE_LABEL_MAX), required: !!row.required, type: rowOf[row.field]?.type || (row.type === 'file' ? 'file' : ''), source: shown, outcome, reason,
       ...(choices.length ? {options: choices} : {}), ...(rowOf[row.field]?.multiple ? {multiple: true} : {}),
-      alias: (window.__jobPilottoAliasUsed || {})[row.field] || '',
+      alias: (window.__jobadabraAliasUsed || {})[row.field] || '',
       fact: (answer || proposedOf[row.field])?.fact || '', category: (answer || proposedOf[row.field])?.category || '', known: knownKey(row),   // fixed words for the fill card's meaning (fill-meaning.js)
       low: answer && answer.confidence && answer.confidence !== 'high' ? (answer.note || 'low confidence') : ''};
   };
@@ -130,8 +130,8 @@
   // Build the field trace and append the CV result without applicant values.
   const buildTrace = (after, all, answers, context, resumeAttached, resume) => {
     // A value we put in that the person then changes by hand is a correction: the label is kept (never the value) so the product learns
-    // which questions it fills wrongly. The background drains window.__jobPilottoCorrections (extension/background.js reportTabs).
-    window.__jobPilottoCorrections = window.__jobPilottoCorrections || [];
+    // which questions it fills wrongly. The background drains window.__jobadabraCorrections (extension/background.js reportTabs).
+    window.__jobadabraCorrections = window.__jobadabraCorrections || [];
     // Field-by-field log for the run record: where each answer came from and what happened.
     const answerOf = Object.fromEntries([...answers, ...(all || []).filter(a => a.consent === true)].map(a => [a.field, a]));
     const traceContext = {...context, answerOf};
@@ -146,7 +146,7 @@
   const markReviewAnswer = (item, row, summary) => {
     const long = row.type === 'textarea' || String(item.value || '').length > 80;
     const grounded = document.getElementById(item.field) || document.querySelector(`[name="${CSS.escape(item.field)}"]`);
-    if (grounded && (item.guess || item.fact === 'none' || item.confidence && item.confidence !== 'high')) grounded.dataset.jobpilottoGrounding = 'unknown';
+    if (grounded && (item.guess || item.fact === 'none' || item.confidence && item.confidence !== 'high')) grounded.dataset.jobadabraGrounding = 'unknown';
     const unsure = item.guess || (item.confidence && item.confidence !== 'high');   // a typed guess at any confidence (worker typeGuess, 14 Oct 2026)
     if (item.draft) summary.todo.push(`${item.draft === 'outline' ? 'Complete' : 'Review'}: ${row.label} (drafted for you)`);
     if (long || unsure || item.draft) markAttention(item.field, row.label || item.question || item.field);
@@ -162,5 +162,5 @@
     }
   };
 
-  Object.assign(window.__jobPilottoFillKit, {buildTrace, markReviewAnswers});
+  Object.assign(window.__jobadabraFillKit, {buildTrace, markReviewAnswers});
 })();

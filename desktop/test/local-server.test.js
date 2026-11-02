@@ -165,10 +165,10 @@ test('a save that would write fewer sessions keeps the file it is replacing', as
   terminals.persist(null);
 });
 
-test('the local port is 47111 (the extension has it built in) unless JOB_PILOTTO_PORT names another whole port', () => {
+test('the local port is 47111 (the extension has it built in) unless JOBADABRA_PORT names another whole port', () => {
   assert.equal(server.DEFAULT_PORT, 47111);
   assert.equal(server.portFrom({}), 47111);
-  assert.equal(server.portFrom({JOB_PILOTTO_PORT: '48123'}), 48123);
-  for (const bad of ['', 'abc', '0', '65536', '-5', '47111x', '4711.5', ' 48123']) assert.equal(server.portFrom({JOB_PILOTTO_PORT: bad}), 47111, `"${bad}" is ignored`);
+  assert.equal(server.portFrom({JOBADABRA_PORT: '48123'}), 48123);
+  for (const bad of ['', 'abc', '0', '65536', '-5', '47111x', '4711.5', ' 48123']) assert.equal(server.portFrom({JOBADABRA_PORT: bad}), 47111, `"${bad}" is ignored`);
   assert.equal(server.PORT, server.portFrom(process.env), 'the server uses the same rule');
 });

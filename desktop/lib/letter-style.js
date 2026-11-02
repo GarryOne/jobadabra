@@ -3,7 +3,7 @@
 // "Beside the letter"): they were the "Cover letter style" section of the answers page. That section is still written there by the Strategy draft and the
 // line organizer (lib/strategy.js, lib/profile-destinations.js): each read moves it into the file and off the page, so the file is the one home and no
 // prompt changed. Letter writers read the rules as the About you bundle's voice part (lib/about-you.js voiceOf, D1c-2); the engine's kit reads the file by path
-// (JOB_PILOTTO_LETTER_STYLE_FILE, src/ai/kit.py). Guarded by test/letter-style-file.test.js.
+// (JOBADABRA_LETTER_STYLE_FILE, src/ai/kit.py). Guarded by test/letter-style-file.test.js.
 import fs from 'node:fs';
 import path from 'node:path';
 import {openStore} from './store/index.js';

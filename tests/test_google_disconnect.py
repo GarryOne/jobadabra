@@ -5,8 +5,8 @@ from unittest import mock
 
 from src.sources import google
 
-STORE = {'job-pilotto.google.client-id': 'id', 'job-pilotto.google.client-secret': 'secret',
-         'job-pilotto.google.refresh-token': 'refresh', 'job-pilotto.google.auth-at': '2026-10-07'}
+STORE = {'jobadabra.google.client-id': 'id', 'jobadabra.google.client-secret': 'secret',
+         'jobadabra.google.refresh-token': 'refresh', 'jobadabra.google.auth-at': '2026-10-07'}
 
 
 class DisconnectTest(unittest.TestCase):

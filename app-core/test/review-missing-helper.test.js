@@ -1,5 +1,5 @@
 // The panel (extension/review.js) survives a tab where one of its helper scripts did not run (an extension reload with the tab open, a frame that missed a file): no uncaught error,
-// whichever helper is missing (14 Oct 2026: "Cannot read properties of undefined (reading 'groupOf')" at review.js:63 on a page the app had marked). One loop over every window.__jobPilotto* helper it names.
+// whichever helper is missing (14 Oct 2026: "Cannot read properties of undefined (reading 'groupOf')" at review.js:63 on a page the app had marked). One loop over every window.__jobadabra* helper it names.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -10,7 +10,7 @@ import { PANEL_FILES } from '../../extension/panel-files.js';
 const read = (path) => fs.readFileSync(new URL(`../../${path}`, import.meta.url), 'utf8');
 const JSDOM = await loadJsdom();
 const SOURCE = readPanel();
-const HELPERS = [...new Set([...SOURCE.matchAll(/__jobPilotto(\w+)/g)].map((match) => match[1]))].filter((name) => name !== 'ReviewAlive');
+const HELPERS = [...new Set([...SOURCE.matchAll(/__jobadabra(\w+)/g)].map((match) => match[1]))].filter((name) => name !== 'ReviewAlive');
 const FORM = `<form><label for="a">First name *</label><input id="a" required value="Ada"><fieldset><legend>Pick *</legend><input type="checkbox" name="q[]"><input type="checkbox" name="q[]"></fieldset></form>`;
 
 async function run(missing) {
@@ -21,8 +21,8 @@ async function run(missing) {
   process.on('unhandledRejection', caught);
   window.chrome = { runtime: { id: 'test', getManifest: () => ({ version: 'test' }), sendMessage: async (message) => (message.type === 'panelAllowed' ? { ok: true } : {}), onMessage: { addListener() {} } } };
   window.eval(read('extension/page/skeleton.js'));
-  window.__jobPilottoReviewPayload ||= () => ({});
-  delete window[`__jobPilotto${missing}`];
+  window.__jobadabraReviewPayload ||= () => ({});
+  delete window[`__jobadabra${missing}`];
   const warned = [];
   window.console.warn = (...args) => warned.push(args.join(' '));
   try {
@@ -32,7 +32,7 @@ async function run(missing) {
     } else window.eval(SOURCE);
   } catch (error) { errors.push(String(error)); }
   await new Promise((resolve) => setTimeout(resolve, 100));
-  const drawn = !!window.document.getElementById('jobpilotto-review-host');
+  const drawn = !!window.document.getElementById('jobadabra-review-host');
   window.close();
   process.off('unhandledRejection', caught);
   return { errors, warned, drawn };
@@ -41,7 +41,7 @@ async function run(missing) {
 test('the list of helpers review.js names is not empty (the loop below tests something)', () => assert.ok(HELPERS.includes('OptionGroups') && HELPERS.includes('ReadBack')));
 
 for (const name of HELPERS) {
-  test(`review.js with __jobPilotto${name} missing: no uncaught error`, { skip: !JSDOM }, async () => {
+  test(`review.js with __jobadabra${name} missing: no uncaught error`, { skip: !JSDOM }, async () => {
     const { errors } = await run(name);
     assert.deepEqual(errors, []);
   });

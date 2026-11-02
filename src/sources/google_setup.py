@@ -55,7 +55,7 @@ def gcloud(*args, account):
 
 
 def project_id():
-    return 'job-pilotto-' + ''.join(secrets.choice(string.ascii_lowercase + string.digits) for _ in range(6))
+    return 'jobadabra-' + ''.join(secrets.choice(string.ascii_lowercase + string.digits) for _ in range(6))
 
 
 def newest_client_file(since, folder='~/Downloads'):
@@ -82,7 +82,7 @@ def run():
         say('gcloud is needed for steps 1-2: https://cloud.google.com/sdk/docs/install (or do them in the console; '
             'see README → Gmail and Calendar setup).')
         return 1
-    account = ask('Google account whose Gmail Jobadabra should read', os.getenv('JOB_PILOTTO_GOOGLE_ACCOUNT', ''))
+    account = ask('Google account whose Gmail Jobadabra should read', os.getenv('JOBADABRA_GOOGLE_ACCOUNT', ''))
     if not account:
         return 1
     known = subprocess.run(['gcloud', 'auth', 'list', '--format=value(account)'], capture_output=True, text=True).stdout

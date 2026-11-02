@@ -1,3 +1,4 @@
+// Job: keep the scorecard
 /* global document, CSS, getComputedStyle, window */
 // The false readings a replay must never pass (owner, 12 Oct 2026, after #507: Recruitee's country box held Israel, FNAC's panel said ready with a required field left,
 // a CV slot counted in with no file). They make a row look better, so a "did it get worse" check never sees them. At each replay's end:
@@ -53,7 +54,7 @@ const digits = text => String(text || '').replace(/\D/g, '');
 // shorter wording, "Geneva" for "Geneva, Switzerland"), or a phone by its digits. Never a different word: Israel is not Switzerland, "Not sure" is not "No".
 // A calling code's country, by the extension's own dial-code table (extension/page/dial-codes.js, named by the browser): the fill ladder's repair picks "Switzerland" for the answer "+41"
 // (choose_option: the same answer in another writing, checked in the page; recorded dial-code-in-country-1), so the truth reads it as that answer.
-const DIAL = (() => { const window = {}; try { vm.runInNewContext(fs.readFileSync(new URL('../../../extension/page/dial-codes.js', import.meta.url), 'utf8'), {window, Intl}); } catch { /* no table: no country */ } return window.__jobPilottoDial || {}; })();
+const DIAL = (() => { const window = {}; try { vm.runInNewContext(fs.readFileSync(new URL('../../../extension/page/dial-codes.js', import.meta.url), 'utf8'), {window, Intl}); } catch { /* no table: no country */ } return window.__jobadabraDial || {}; })();
 const countryOfCode = text => { const code = String(text || '').trim().replace(/^00(?=\d)/, '+').replace(/\s/g, ''); return /^\+\d{1,4}$/.test(code) ? DIAL[code] || '' : ''; };
 
 export function sameAnswer(expected, shown = []) {
@@ -110,7 +111,7 @@ const readFieldsInPage = keys => {
   for (const key of keys) {
     const text = String(key);
     if (text.startsWith('aria:')) {
-      const group = document.getElementById(text.slice(5)) || document.querySelector(`[data-jobpilotto-group="${CSS.escape(text.slice(5))}"]`);
+      const group = document.getElementById(text.slice(5)) || document.querySelector(`[data-jobadabra-group="${CSS.escape(text.slice(5))}"]`);
       if (!group) continue;
       const on = [...group.querySelectorAll('[aria-checked="true"], [aria-pressed="true"], [aria-selected="true"], input:checked')];
       out[key] = on.length ? {state: 'value', shown: on.flatMap(el => [labelOf(el), el.value || '', el.getAttribute('data-option') || ''])} : {state: 'empty', shown: []};
@@ -162,7 +163,7 @@ const readRequiredInPage = cvName => {
   const groups = new Set(), out = [];
   const slots = document.querySelectorAll('input[type=file]').length;   // plus the control-less required groups counted below
   for (const el of document.querySelectorAll('input[required], select[required], textarea[required], [aria-required="true"]')) {
-    if (!visible(el) || el.disabled || el.closest('#jobpilotto-review-host')) continue;
+    if (!visible(el) || el.disabled || el.closest('#jobadabra-review-host')) continue;
     const labelled = (el.getAttribute('aria-labelledby') || '').split(/\s+/).map(id => id && document.getElementById(id)?.textContent).filter(Boolean).join(' ');
     const forLabel = el.id ? document.querySelector(`label[for="${CSS.escape(el.id)}"]`)?.textContent : '';
     const type = (el.getAttribute('type') || '').toLowerCase(), name = (el.getAttribute('aria-label') || labelled || forLabel || el.closest('label')?.textContent || el.getAttribute('name') || el.id || el.closest('[class*=field], [class*=question], fieldset')?.querySelector('label, legend')?.textContent || el.tagName.toLowerCase()).replace(/\s+/g, ' ').trim().slice(0, 60);
@@ -170,7 +171,7 @@ const readRequiredInPage = cvName => {
     const role = el.getAttribute('role') || '';
     // One question is one control, however its options are named (NICE's Greenhouse form, pool run 38325149096): options join into ONE group by the one rule the panel uses too
     // (extension/page/option-groups.js, injected into the page in readTab): the box holding only options (fieldset, ARIA group), else a shared name; answered when any option is ticked.
-    const choice = ['checkbox', 'radio'].includes(type), og = window.__jobPilottoOptionGroups;
+    const choice = ['checkbox', 'radio'].includes(type), og = window.__jobadabraOptionGroups;
     const group = choice || ['radio', 'checkbox', 'option', 'switch'].includes(role) ? og.groupOf(el) : og.groupOfBox(el);
     if (group) { if (groups.has(group.key)) continue; groups.add(group.key); out.push({name: group.title || name, empty: !og.answered(group)}); continue; }
     // An upload slot: a file box, a group holding one, or a required group with no control of its own (Greenhouse's resume group: a chip with the file's name, no file input in the
@@ -184,7 +185,7 @@ const readRequiredInPage = cvName => {
   return {required: out, slots: slots + out.filter(one => one.slot).length, files: [...document.querySelectorAll('input[type=file]')].filter(el => el.files?.length).length + (cvName && (document.body?.innerText || '').includes(cvName) ? 1 : 0)};   // a page that took the file and emptied its box shows the file's name
 };
 const readPanelInPage = () => {
-  const root = document.getElementById('jobpilotto-review-host')?.shadowRoot;
+  const root = document.getElementById('jobadabra-review-host')?.shadowRoot;
   return {present: !!root?.querySelector('.jp'), ready: !!root?.querySelector('.jp.ready')};
 };
 

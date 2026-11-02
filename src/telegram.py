@@ -3,12 +3,11 @@ import html
 import json
 import os
 import re
-import subprocess
 import sys
 import urllib.parse
 import urllib.request
 
-from . import notify
+from . import notify, secret_store
 
 
 def credentials():
@@ -48,8 +47,8 @@ def to_app(text, reply_markup=None):
 
 def api_base():
     """Telegram's Bot API, or the end-to-end tests' fake (desktop/e2e/lib/telegram-fake.mjs): only in a test run."""
-    override = os.environ.get('JOB_PILOTTO_E2E_TELEGRAM_BASE_URL', '')
-    return override.rstrip('/') if os.environ.get('JOB_PILOTTO_E2E') and override else 'https://api.telegram.org'
+    override = os.environ.get('JOBADABRA_E2E_TELEGRAM_BASE_URL', '')
+    return override.rstrip('/') if os.environ.get('JOBADABRA_E2E') and override else 'https://api.telegram.org'
 
 
 def send(text, token, chat_id, reply_markup=None, urgent=False, kind='activity'):
@@ -104,13 +103,9 @@ def failure_words(error, subject='digest', retry=True):
 def keychain_token():
     """Read the optional local macOS Keychain token without printing it."""
     # sys.platform, not os.uname(): Windows has no os.uname, so `focus remind --send` crashed on every Windows run (found in the Windows e2e log, 3 Oct 2026)
-    if sys.platform != 'darwin' or os.getenv('JOB_PILOTTO_E2E'):  # the end-to-end journey never reaches the owner's real bot
+    if sys.platform != 'darwin' or os.getenv('JOBADABRA_E2E'):  # the end-to-end journey never reaches the owner's real bot
         return None
     try:
-        result = subprocess.run(
-            ['security', 'find-generic-password', '-a', os.getenv('USER', ''),
-             '-s', 'job-pilotto.telegram.bot-token', '-w'],
-            check=True, capture_output=True, text=True)
-        return result.stdout.strip() or None
-    except (OSError, subprocess.CalledProcessError):
+        return secret_store.get('jobadabra.telegram.bot-token') or None   # also finds the item an older install made under the pre-rename name
+    except OSError:
         return None

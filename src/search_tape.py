@@ -2,13 +2,13 @@
 to the search is measured on the same sources and the same answers (owner, 18 Oct 2026, change 0 of the search algorithm plan: "a fixed
 replay test"; spec docs/superpowers/specs/2026-10-18-search-learns-sources.md). Used by the persona search check (tools/persona-search).
 
-JOB_PILOTTO_SEARCH_TAPE=<folder> and JOB_PILOTTO_SEARCH_TAPE_MODE=record|replay turn it on (src/__init__.py installs it before anything else
+JOBADABRA_SEARCH_TAPE=<folder> and JOBADABRA_SEARCH_TAPE_MODE=record|replay turn it on (src/__init__.py installs it before anything else
 imports urllib). Off by default: a normal run never loads it.
 - The web: urllib.request.urlopen, the one way the engine reaches a site. Record keeps the body, status and time; replay serves it after the
-  its recorded time times JOB_PILOTTO_TAPE_WAIT_SCALE (1 = as recorded, 0 = no wait, 0.1 = ten times faster) and a URL the tape lacks fails like an unreachable site: nothing leaves the computer.
+  its recorded time times JOBADABRA_TAPE_WAIT_SCALE (1 = as recorded, 0 = no wait, 0.1 = ten times faster) and a URL the tape lacks fails like an unreachable site: nothing leaves the computer.
 - The AI: the engine's AI client (messages.create). Record keeps each answer and its time, keyed by the whole request; replay serves it after its
   time. A request the tape lacks (a change scoring other jobs) goes to the live engine and is added, counted in 'live' (the report says it).
-  JOB_PILOTTO_TAPE_LIVE=0 (the CI replay of the Lab Job Search, no AI account there): a request the tape lacks is not asked, it is counted in
+  JOBADABRA_TAPE_LIVE=0 (the CI replay of the Lab Job Search, no AI account there): a request the tape lacks is not asked, it is counted in
   'ai_missing' and raises, so the replay says "the tape is stale" instead of making an answer up.
 - The name lookups (socket.getaddrinfo, dns.jsonl): whether each host was found when recorded, and at which address; a replay answers the same, so the search never asks a host that did not exist
   (careers._public). Every failed web answer (HTTP error, refusal, timeout, no host) is kept and replayed as the same kind of failure.
@@ -35,16 +35,16 @@ counts = {'web_tape': 0, 'web_missing': 0, 'ai_tape': 0, 'ai_live': 0, 'ai_missi
 
 
 def folder():
-    return Path(os.environ['JOB_PILOTTO_SEARCH_TAPE'])
+    return Path(os.environ['JOBADABRA_SEARCH_TAPE'])
 
 
 def mode():
-    return os.getenv('JOB_PILOTTO_SEARCH_TAPE_MODE', 'replay')
+    return os.getenv('JOBADABRA_SEARCH_TAPE_MODE', 'replay')
 
 
 def wait_scale():
     try:
-        return max(0.0, float(os.getenv('JOB_PILOTTO_TAPE_WAIT_SCALE', '1')))
+        return max(0.0, float(os.getenv('JOBADABRA_TAPE_WAIT_SCALE', '1')))
     except ValueError:
         return 1.0
 
@@ -277,7 +277,7 @@ class _Messages:
             counts['ai_tape'] += 1
             _wait(record.get('seconds'))
             return _response(record)
-        if mode() == 'replay' and os.getenv('JOB_PILOTTO_TAPE_LIVE') == '0':
+        if mode() == 'replay' and os.getenv('JOBADABRA_TAPE_LIVE') == '0':
             counts['ai_missing'] += 1
             _keep_missing(key, params)
             raise RuntimeError('not on the search tape: an AI request')

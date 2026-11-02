@@ -34,7 +34,7 @@ function press(html) {
   Object.assign(globalThis, {document, Node});
   let clicks = 0;
   document.querySelectorAll('button, input[type=submit]').forEach(button => button.addEventListener('click', event => { clicks++; event.preventDefault(); }));
-  document.querySelector('input[type=password]')?.setAttribute('data-jobpilotto-filled', '1');
+  document.querySelector('input[type=password]')?.setAttribute('data-jobadabra-filled', '1');
   return {reason: pressAccountButton(), clicks: () => clicks};
 }
 
@@ -59,7 +59,7 @@ test('not pressed: a required box or consent still empty, a frame in the form (a
 // jobs.ch, 9 Oct 2026: an email-first sign-up (no password box until the next step); the fill typed the email, the AI said ready, the press refused ("not-filled").
 test('an email-first account page: pressed when the fill typed its email, never when we filled nothing', () => {
   const page = mark => new JSDOM(`<body><form><input type="email" id="e" value="a@b.c" ${mark}><button type="submit">Continue</button></form></body>`).window;
-  for (const [mark, want] of [['data-jobpilotto-filled', 'pressed'], ['', 'not-filled']]) {
+  for (const [mark, want] of [['data-jobadabra-filled', 'pressed'], ['', 'not-filled']]) {
     const win = page(mark);
     win.HTMLElement.prototype.getClientRects = function () { return [{}]; };
     let clicks = 0;
@@ -75,7 +75,7 @@ import {passwordWork} from '../../extension/account-fill.js';
 test('the cheap look before anything is asked of the app: how many password boxes, how many empty, whether a press of ours is still waiting', () => {
   const look = html => { const dom = new JSDOM(`<body>${html}</body>`); dom.window.HTMLElement.prototype.getClientRects = function () { return [{}]; }; Object.assign(globalThis, {document: dom.window.document}); return passwordWork(); };
   assert.deepEqual(look('<input type="password"><input type="password" value="x">'), {boxes: 2, empty: 1, pending: false});
-  assert.deepEqual(look('<input type="password" value="x" data-jobpilotto-filled="1">'), {boxes: 1, empty: 0, pending: true});   // ours, its button not pressed yet
+  assert.deepEqual(look('<input type="password" value="x" data-jobadabra-filled="1">'), {boxes: 1, empty: 0, pending: true});   // ours, its button not pressed yet
   assert.deepEqual(look('<p>An account already exists</p>'), {boxes: 0, empty: 0, pending: false});   // a notice page has none: still looked at
 });
 
@@ -104,7 +104,7 @@ test('the account button named twice: the one beside the filled box is pressed, 
     Object.assign(globalThis, {document: dom.window.document, Node: dom.window.Node});
     const clicked = [];
     dom.window.document.querySelectorAll('button').forEach(el => el.addEventListener('click', event => { event.preventDefault(); clicked.push(el.id); }));
-    dom.window.document.querySelector('input[type=password]').setAttribute('data-jobpilotto-filled', '1');
+    dom.window.document.querySelector('input[type=password]').setAttribute('data-jobadabra-filled', '1');
     return {reason: pressAccountButton(named), clicked};
   };
   const page = tail => `<header><div><button id="head" aria-label="Sign In"></button></div></header><main><form><input type="text" value="a@b.c"><input type="password" value="x">${tail}</form></main>`;
@@ -120,7 +120,7 @@ test('a button and its hidden twin (a click overlay over an aria-hidden submit b
   Object.assign(globalThis, {document: dom.window.document, Node: dom.window.Node});
   const clicked = [];
   dom.window.document.querySelectorAll('button, [role=button]').forEach(el => el.addEventListener('click', event => { event.preventDefault(); clicked.push(el.id); }));
-  dom.window.document.querySelector('input[type=password]').setAttribute('data-jobpilotto-filled', '1');
+  dom.window.document.querySelector('input[type=password]').setAttribute('data-jobadabra-filled', '1');
   assert.equal(pressAccountButton('Sign In'), 'pressed');
   assert.deepEqual(clicked, ['overlay']);
   const twin = '<main><form><input type="email"></form><div><a id="vis">Sign In</a><a id="hid" aria-hidden="true">Sign In</a></div></main>';
@@ -172,9 +172,9 @@ test('the AI\'s page step is left on the page for the panel, and removed when th
   const {window} = new JSDOM('<body></body>');
   Object.assign(globalThis, {document: window.document});
   markAccountStep('sign_in');
-  assert.equal(window.document.documentElement.getAttribute('data-jobpilotto-account-step'), 'sign_in');
+  assert.equal(window.document.documentElement.getAttribute('data-jobadabra-account-step'), 'sign_in');
   markAccountStep('');
-  assert.equal(window.document.documentElement.hasAttribute('data-jobpilotto-account-step'), false);
+  assert.equal(window.document.documentElement.hasAttribute('data-jobadabra-account-step'), false);
 });
 
 import {fillAccountEmail} from '../../extension/account-fill.js';
@@ -187,7 +187,7 @@ function signIn(html) {
 test('a sign-in page: the one empty text or email box ahead of the password box gets the email, once; anything less certain is left alone', () => {
   let doc = signIn('<form><input id="e" type="text"><input id="p" type="password"></form>');
   assert.equal(fillAccountEmail('me@example.test'), 1);
-  assert.deepEqual([doc.getElementById('e').value, doc.getElementById('e').hasAttribute('data-jobpilotto-filled')], ['me@example.test', true]);
+  assert.deepEqual([doc.getElementById('e').value, doc.getElementById('e').hasAttribute('data-jobadabra-filled')], ['me@example.test', true]);
   doc = signIn('<form><input id="e" type="email" value="other@example.test"><input id="p" type="password"></form>');
   assert.equal(fillAccountEmail('me@example.test'), 0);   // a box that holds something is never overwritten
   assert.equal(doc.getElementById('e').value, 'other@example.test');

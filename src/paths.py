@@ -23,7 +23,7 @@ def _load_dotenv():
     Runs once at import time so every entry point picks it up without calling anything extra."""
     env_file = ROOT / '.env'
     # The desktop app passes every setting itself; the repo's .env belongs to the developer.
-    if not env_file.exists() or os.getenv('JOB_PILOTTO_NO_DOTENV'):
+    if not env_file.exists() or os.getenv('JOBADABRA_NO_DOTENV'):
         return
     for line in env_file.read_text().splitlines():
         line = line.strip()
@@ -42,9 +42,9 @@ _load_dotenv()
 
 
 def app_folder():
-    """The Desktop App's data folder (its settings, Notion IDs, job cache), or JOB_PILOTTO_APP_DIR."""
-    if os.getenv('JOB_PILOTTO_APP_DIR'):
-        return Path(os.environ['JOB_PILOTTO_APP_DIR'])
+    """The Desktop App's data folder (its settings, Notion IDs, job cache), or JOBADABRA_APP_DIR."""
+    if os.getenv('JOBADABRA_APP_DIR'):
+        return Path(os.environ['JOBADABRA_APP_DIR'])
     if sys.platform == 'darwin':
         return Path.home() / 'Library' / 'Application Support' / 'Job Pilotto'
     if sys.platform == 'win32':
@@ -60,8 +60,8 @@ def workspace_repo(folder=None):
     about a run must use this, never the engine checkout it happens to be running from (1 Oct 2026: the
     post-application watcher dispatched mail.yml here, and every submitted application queued a run that could
     only fail — no NOTION_APPLICATIONS_DB, so Notion answered 400).
-    JOB_PILOTTO_CLOUD_REPO overrides (tests, CI). '' when nothing is set up."""
-    given = (os.getenv('JOB_PILOTTO_CLOUD_REPO') or '').strip()
+    JOBADABRA_CLOUD_REPO overrides (tests, CI). '' when nothing is set up."""
+    given = (os.getenv('JOBADABRA_CLOUD_REPO') or '').strip()
     if given:
         return given
     folder = Path(folder) if folder else app_folder()
@@ -78,12 +78,12 @@ def follow_app(env=os.environ, folder=None):
     When the app is set up on this computer, every NOTION_* ID the environment (or .env) doesn't set comes from
     the app's settings, and the data and config folders are the app's. If .env sets a NOTION_* ID of another
     workspace (a test one, on purpose), nothing is taken: that run keeps its own workspace and job cache. Off when the app itself runs the pipeline
-    (it passes everything), in tests, or with JOB_PILOTTO_FOLLOW_APP=0. -> what was taken ({} = nothing).
+    (it passes everything), in tests, or with JOBADABRA_FOLLOW_APP=0. -> what was taken ({} = nothing).
 
     Taking the app's folders is opt-in (18 Oct 2026: an agent's terminal call to read_board() with no folder set used the owner's
     live data folder). With the app set up and nothing set, the run is REFUSED here, before any file is opened, unless
-    JOB_PILOTTO_FOLLOW_APP=1 says "yes, this is the owner's own run". Every entry point imports this module, so all are guarded."""
-    if env.get('JOB_PILOTTO_NO_DOTENV') or env.get('JOB_PILOTTO_FOLLOW_APP') == '0' or 'unittest' in sys.modules:
+    JOBADABRA_FOLLOW_APP=1 says "yes, this is the owner's own run". Every entry point imports this module, so all are guarded."""
+    if env.get('JOBADABRA_NO_DOTENV') or env.get('JOBADABRA_FOLLOW_APP') == '0' or 'unittest' in sys.modules:
         return {}
     folder = Path(folder) if folder else app_folder()
     try:
@@ -97,18 +97,18 @@ def follow_app(env=os.environ, folder=None):
     if other:  # .env points at another workspace on purpose: that run keeps its own job cache too (never mixed)
         print(f'Not using the Desktop App\'s workspace: .env sets {", ".join(other)}', file=sys.stderr)
         return {}
-    if env.get('JOB_PILOTTO_DATA_DIR') and env.get('JOB_PILOTTO_CONFIG_DIR') and env.get('JOB_PILOTTO_FOLLOW_APP') != '1':
+    if env.get('JOBADABRA_DATA_DIR') and env.get('JOBADABRA_CONFIG_DIR') and env.get('JOBADABRA_FOLLOW_APP') != '1':
         return {}  # the run has folders of its own: nothing of the app's is mixed in
     wanted = {name: value for name, value in ids.items() if not env.get(name)}
-    for name, sub in (('JOB_PILOTTO_DATA_DIR', 'data'), ('JOB_PILOTTO_CONFIG_DIR', 'config')):
+    for name, sub in (('JOBADABRA_DATA_DIR', 'data'), ('JOBADABRA_CONFIG_DIR', 'config')):
         if not env.get(name) and (folder / sub).is_dir():
             wanted[name] = str(folder / sub)
-    if wanted and env.get('JOB_PILOTTO_FOLLOW_APP') != '1':
+    if wanted and env.get('JOBADABRA_FOLLOW_APP') != '1':
         raise SystemExit(
             f'Refusing to use the Desktop App\'s data folder ({folder}): this run was not started by the app, and no folder is set.\n'
-            'Set JOB_PILOTTO_DATA_DIR and JOB_PILOTTO_CONFIG_DIR to your own (a temp folder for a test or an agent), '
-            'or JOB_PILOTTO_FOLLOW_APP=0 to use the repo\'s example data/, '
-            'or JOB_PILOTTO_FOLLOW_APP=1 if this is your own run and it should use the app\'s data on purpose.')
+            'Set JOBADABRA_DATA_DIR and JOBADABRA_CONFIG_DIR to your own (a temp folder for a test or an agent), '
+            'or JOBADABRA_FOLLOW_APP=0 to use the repo\'s example data/, '
+            'or JOBADABRA_FOLLOW_APP=1 if this is your own run and it should use the app\'s data on purpose.')
     taken = {}
     for name, value in wanted.items():
         env[name] = taken[name] = value
@@ -122,13 +122,13 @@ FOLLOWED = follow_app()
 # The desktop app keeps each user's settings and data in its own folder (Application Support), so the
 # same code runs from the repo (defaults below) or from the app, which sets these variables.
 # Tests read their own example user (an SRE in Zurich, tests/fixtures/config), never the shipped example defaults.
-CONFIG = (Path(os.environ['JOB_PILOTTO_CONFIG_DIR']) if os.getenv('JOB_PILOTTO_CONFIG_DIR')
+CONFIG = (Path(os.environ['JOBADABRA_CONFIG_DIR']) if os.getenv('JOBADABRA_CONFIG_DIR')
           else ROOT / 'tests' / 'fixtures' / 'config' if 'unittest' in sys.modules else ROOT / 'config')
 
 
 def _test_data_folder():
     """A fresh data folder for this test process, removed when it ends.
-    Why (31 Oct 2026, a8; the 2nd time: 26 Oct was jobs.sqlite, 31 Oct host_pace.json): without JOB_PILOTTO_DATA_DIR a unit test that wrote through DATA wrote into the
+    Why (31 Oct 2026, a8; the 2nd time: 26 Oct was jobs.sqlite, 31 Oct host_pace.json): without JOBADABRA_DATA_DIR a unit test that wrote through DATA wrote into the
     checkout's data/, and the next run read it back (a pause learned at one clock was still there when the clock moved). Only a unit test run gets this folder; the app and the
     scripts keep the checkout's data/ (the example data) when nothing is set, exactly as before. tools/py-shards.py fails a run that still leaves a file in data/ or reports/."""
     folder = tempfile.mkdtemp(prefix='jobadabra-test-data-')
@@ -136,9 +136,9 @@ def _test_data_folder():
     return Path(folder)
 
 
-# JOB_PILOTTO_TEST_DATA_DIR is the shard runner's (tools/py-shards.py) folder for every process a test starts: a child that imports src.paths without unittest loaded (python -m src ...)
+# JOBADABRA_TEST_DATA_DIR is the shard runner's (tools/py-shards.py) folder for every process a test starts: a child that imports src.paths without unittest loaded (python -m src ...)
 # would otherwise write the checkout's data/. It is not a steering variable of the app: nothing sets it outside a test run.
-_OWN_DATA = os.getenv('JOB_PILOTTO_DATA_DIR') or os.getenv('JOB_PILOTTO_TEST_DATA_DIR') or ('unittest' in sys.modules and str(_test_data_folder())) or ''
+_OWN_DATA = os.getenv('JOBADABRA_DATA_DIR') or os.getenv('JOBADABRA_TEST_DATA_DIR') or ('unittest' in sys.modules and str(_test_data_folder())) or ''
 DATA = Path(_OWN_DATA) if _OWN_DATA else ROOT / 'data'
 REPORTS = DATA / 'reports' if _OWN_DATA else ROOT / 'reports'
 JOBS_DB = DATA / 'jobs.sqlite'
@@ -247,11 +247,11 @@ def local_text(variable):
 
 
 def local_profile():
-    return local_text('JOB_PILOTTO_PROFILE_FILE')
+    return local_text('JOBADABRA_PROFILE_FILE')
 
 
 def local_answers():
-    return local_text('JOB_PILOTTO_ANSWERS_FILE')
+    return local_text('JOBADABRA_ANSWERS_FILE')
 
 
 def load_search_config(matching=True):
@@ -265,8 +265,8 @@ def load_search_config(matching=True):
     from . import target_roles
     config = target_roles.with_derived(json.loads((CONFIG / 'search.json').read_text()))   # the one list of roles gives the engine's two keys
     # The central scout (private repo jobadabra-lab) judges feeds for everyone in engineering and IT, worldwide, not
-    # by one user's example profile: a file named in JOB_PILOTTO_LOCATIONS_FILE replaces those parts of this config.
-    override = os.getenv('JOB_PILOTTO_LOCATIONS_FILE')
+    # by one user's example profile: a file named in JOBADABRA_LOCATIONS_FILE replaces those parts of this config.
+    override = os.getenv('JOBADABRA_LOCATIONS_FILE')
     if override:
         extra = json.loads(Path(override).read_text())
         config.update({k: extra[k] for k in ('locations', 'remote_excluded_regions', 'role_keywords', 'title_exclude_keywords',

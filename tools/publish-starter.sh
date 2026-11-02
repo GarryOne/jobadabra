@@ -20,7 +20,7 @@ cp "$root"/templates/github-actions/*.yml .github/workflows/
 cp "$root/templates/github-actions/README.md" README.md
 git add -A
 if git diff --cached --quiet; then echo "Starter already up to date."; exit 0; fi
-git -c user.name=GarryOne -c user.email=6481499+GarryOne@users.noreply.github.com commit -q -m "Update from job-pilotto templates/github-actions"
+git -c user.name=GarryOne -c user.email=6481499+GarryOne@users.noreply.github.com commit -q -m "Update from jobadabra templates/github-actions"
 git branch -M main
 git remote get-url origin >/dev/null 2>&1 || git remote add origin "https://github.com/$repo.git"
 git push -q -u origin main

@@ -90,7 +90,7 @@ test('the app not answering the switch question is "app" at the press, not "turn
 function panelWords() {
   const window = {}, document = {createElement: () => ({}), };
   vm.runInNewContext(read('extension/panel-report.js'), {window, document});
-  return window.__jobPilottoReport;
+  return window.__jobadabraReport;
 }
 test('every kind a failed Report can have has its own true sentence; only "app" asks if the app is open', () => {
   const {words, sentence} = panelWords();

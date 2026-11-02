@@ -20,7 +20,7 @@ class PoolContractTest(unittest.TestCase):
     def test_the_sites_fixture_is_what_the_engine_sends_today(self):
         with tempfile.TemporaryDirectory() as tmp:
             out = Path(tmp) / 'payloads.json'
-            env = {k: v for k, v in os.environ.items() if not k.startswith('JOB_PILOTTO_')}
+            env = {k: v for k, v in os.environ.items() if not k.startswith('JOBADABRA_')}
             run = subprocess.run([sys.executable, str(REPO / 'tools' / 'pool_e2e.py')], cwd=REPO, env={**env, 'POOL_PAYLOADS_OUT': str(out)},
                                  capture_output=True, text=True, timeout=120)
             self.assertTrue(out.exists(), f'tools/pool_e2e.py made no payloads: {run.stderr[-500:]}')

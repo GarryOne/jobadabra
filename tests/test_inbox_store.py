@@ -80,7 +80,7 @@ class AddMessageModeOnTheMemoryStoreTests(unittest.TestCase):
         out = io.StringIO()
         argv = ['daily', '--mode', 'add', '--note', 'Thank you for your interest. We decided not to move forward.',
                 '--log-run', '--db', str(Path(tempfile.mkdtemp()) / 'jobs.sqlite')]
-        with mock.patch.object(sys, 'argv', argv), mock.patch.dict('os.environ', {'JOB_PILOTTO_STORE': 'memory'}), \
+        with mock.patch.object(sys, 'argv', argv), mock.patch.dict('os.environ', {'JOBADABRA_STORE': 'memory'}), \
                 mock.patch.object(socket.socket, 'connect', side_effect=AssertionError('the run reached the network')), \
                 mock.patch.object(daily.notion.Tracker, 'from_env', return_value=None), \
                 mock.patch.object(store_access, 'open_stores', lambda tracker=None: stores), \

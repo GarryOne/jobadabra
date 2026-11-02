@@ -3,6 +3,7 @@
 // Guards: e2e/test/replay-browser.test.mjs (attribution, host overlap), e2e/test/recorded-pages.test.mjs (every case).
 // A case's pages are served at their real addresses; every other address is a 404 and, besides that, resolves to nothing (real-extension.mjs offline: true).
 // Isolation between tabs: told/asked/judged count only requests whose body names the case's host, notTold counts the case's own lines and the ones no case's host names (a line of another case's host is not its tab's; a failure in parallel is run again alone by the caller), and two cases that share a host never run at the same time (their pages, and the extension's per-host state, would meet).
+// Job: serve stored answers
 import {startRealExtension} from './real-extension.mjs';
 import {fillSeconds} from './replay-time.mjs';
 import {timedReplay, replayLimit} from './replay-deadline.mjs';

@@ -19,5 +19,5 @@ export async function freePort() {
 
 /** -> the env entry that gives a launched test app its own port: the suite's, else a free one. */
 export async function ownPortEnv(env = {}) {
-  return {JOB_PILOTTO_PORT: env.JOB_PILOTTO_PORT || String(await freePort())};
+  return {JOBADABRA_PORT: env.JOBADABRA_PORT || String(await freePort())};
 }

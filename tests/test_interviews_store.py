@@ -1,6 +1,6 @@
 """The Interviews page's commands and the interview insights on this Mac's store: every desktop command
 (`src.ai.interviews list|calendar|save|link|held|moved|cancelled|delete`, `src.ai.interview_insights refresh|step`) works
-with JOB_PILOTTO_STORE=sqlite and prints the JSON shape the app reads; the insights' fingerprint is the one Notion's rows gave
+with JOBADABRA_STORE=sqlite and prints the JSON shape the app reads; the insights' fingerprint is the one Notion's rows gave
 (a changed digest would make every Notion user's insight look outdated and refresh it, paid); the insight command runs without
 Notion. Guards src/ai/interviews.py, interviews_apps.py, interview_insights.py, daily_modes.insight_mode."""
 import hashlib
@@ -28,7 +28,7 @@ class OnThisMac(unittest.TestCase):
         folder = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, folder, True)
         self.folder = folder
-        self.env = {'JOB_PILOTTO_STORE': 'sqlite', 'JOB_PILOTTO_DATA_DIR': str(folder)}
+        self.env = {'JOBADABRA_STORE': 'sqlite', 'JOBADABRA_DATA_DIR': str(folder)}
         patcher = mock.patch.dict(os.environ, self.env)
         patcher.start()
         self.addCleanup(patcher.stop)
@@ -80,7 +80,7 @@ class SqliteCommandTests(OnThisMac):
         self.assertEqual((code, out), (1, {'ok': False, 'error': 'There are no interview insights yet.'}))
 
     def test_notion_chosen_but_not_connected_says_so(self):
-        with mock.patch.dict(os.environ, {'JOB_PILOTTO_STORE': 'notion'}):
+        with mock.patch.dict(os.environ, {'JOBADABRA_STORE': 'notion'}):
             self.assertEqual(self.call(interviews, 'list'), (1, {'ok': False, 'error': 'Connect Notion first: interviews are kept in 🎤 Interviews.'}))
             self.assertEqual(self.call(ii, 'refresh'), (1, {'ok': False, 'error': 'Connect Notion first'}))
 
@@ -103,14 +103,14 @@ class RunStoreGateTests(unittest.TestCase):
         """The interview and insight modes' gate, on the store alone: the four cases of the old `not tracker and chosen() == 'notion'`."""
         from src import daily_modes
         cases = [({}, 'sqlite'),                                                                     # no token: this Mac's store, runs
-                 ({'JOB_PILOTTO_STORE': 'notion'}, None),                                          # Notion chosen, no token: stops
-                 ({'NOTION_TOKEN': 'secret_x', 'JOB_PILOTTO_DISABLE': 'notion'}, None),           # Notion switched off: stops
-                 ({'NOTION_TOKEN': 'secret_x', 'JOB_PILOTTO_DISABLE': 'notion', 'JOB_PILOTTO_STORE': 'sqlite'}, 'sqlite'),
+                 ({'JOBADABRA_STORE': 'notion'}, None),                                          # Notion chosen, no token: stops
+                 ({'NOTION_TOKEN': 'secret_x', 'JOBADABRA_DISABLE': 'notion'}, None),           # Notion switched off: stops
+                 ({'NOTION_TOKEN': 'secret_x', 'JOBADABRA_DISABLE': 'notion', 'JOBADABRA_STORE': 'sqlite'}, 'sqlite'),
                  ({'NOTION_TOKEN': 'secret_x'}, 'notion')]                                        # Notion connected: runs
         for env, expected in cases:
             with tempfile.TemporaryDirectory() as folder, \
-                    mock.patch.dict(os.environ, {'JOB_PILOTTO_DATA_DIR': folder, **env}), self.subTest(env=env):
-                for name in ('NOTION_TOKEN', 'JOB_PILOTTO_STORE', 'JOB_PILOTTO_DISABLE'):
+                    mock.patch.dict(os.environ, {'JOBADABRA_DATA_DIR': folder, **env}), self.subTest(env=env):
+                for name in ('NOTION_TOKEN', 'JOBADABRA_STORE', 'JOBADABRA_DISABLE'):
                     if name not in env:
                         os.environ.pop(name, None)
                 if expected is None:

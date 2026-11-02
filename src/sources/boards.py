@@ -104,7 +104,7 @@ class Client:
         if not self.refresh and path.exists() and time.time()-path.stat().st_mtime<21600:
             return json.loads(path.read_text())
         from . import host_pace   # each site at its own learned pace (jobs.ch refused a fast burst, 403, 6 Oct 2026)
-        with host_pace.open(Request(url,headers={'User-Agent':'JobPilotto/0.1 (personal job discovery)'}),15) as r:
+        with host_pace.open(Request(url,headers={'User-Agent':'Jobadabra/0.1 (personal job discovery)'}),15) as r:
             data={'url':r.url,'html':r.read(5_000_000).decode('utf-8',errors='replace')}
         path.write_text(json.dumps(data));return data
 
@@ -393,8 +393,8 @@ def main():
     if not 1<=args.pages<=10 or not 1<=args.max_companies<=200:p.error('pages: 1–10; max-companies: 1–200')
     from ..features import disabled
     if disabled('discover'):
-        print('job board discovery is off (JOB_PILOTTO_DISABLE includes discover).');return 0
-    if os.getenv('JOB_PILOTTO_FIXTURE_DIR'):   # the end-to-end journey (desktop/e2e): only its fixture feeds, no live crawl
+        print('job board discovery is off (JOBADABRA_DISABLE includes discover).');return 0
+    if os.getenv('JOBADABRA_FIXTURE_DIR'):   # the end-to-end journey (desktop/e2e): only its fixture feeds, no live crawl
         print('job board discovery is off (fixture feeds only).');return 0
     if args.budget:   # one Find jobs press, one deadline: this step counts from the press and ends at its share; the boards left wait for the next search
         from .. import time_budget

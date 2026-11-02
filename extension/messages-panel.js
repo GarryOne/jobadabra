@@ -42,7 +42,7 @@ export function createPanelMessages(ctx) {
         if (result?.error || result?.ineligible) return result;
         forgetJudged(sender.tab.id);
         sayStep(sender.tab.id, 'Checking the form…');
-        await chrome.scripting.executeScript({target: {tabId: sender.tab.id}, func: () => document.documentElement.removeAttribute('data-jobpilotto-needs')}).catch(() => {});   // the old verdict goes; the judges below set it again if the page still needs the person
+        await chrome.scripting.executeScript({target: {tabId: sender.tab.id}, func: () => document.documentElement.removeAttribute('data-jobadabra-needs')}).catch(() => {});   // the old verdict goes; the judges below set it again if the page still needs the person
         await handGivenUpToPerson(sender.tab, 0, result?.trace).catch(() => {});
         await formNext(sender.tab, 0).catch(() => {});
         sayStep(sender.tab.id, '');

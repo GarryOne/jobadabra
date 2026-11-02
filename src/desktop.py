@@ -6,7 +6,7 @@
     python -m src.desktop posting <code>         one job's posting (title, company, description) for CV tailoring
     python -m src.desktop strategy               the Strategy page: targets, how matches score, what's avoided, counts
 
-The app sets JOB_PILOTTO_CONFIG_DIR / JOB_PILOTTO_DATA_DIR / JOB_PILOTTO_PROFILE_FILE, so everything
+The app sets JOBADABRA_CONFIG_DIR / JOBADABRA_DATA_DIR / JOBADABRA_PROFILE_FILE, so everything
 here reads and writes the user's own folder. Output is one JSON document on stdout.
 """
 import argparse
@@ -251,14 +251,14 @@ def _jobs(db, args):
     from .stores import open_stores
     found, stores = None, None
     # Notion only when it holds the data: a token can outlive a move to this Mac's store.
-    notion = tracker if os.environ.get('JOB_PILOTTO_STORE', 'notion') == 'notion' else None
+    notion = tracker if os.environ.get('JOBADABRA_STORE', 'notion') == 'notion' else None
     if notion:
         try:
             found = notion.notion_jobs()  # the list, from Notion
         except Exception as error:  # the list still shows from the cache, marked as possibly out of date
             print(f'Warning: Notion unavailable, showing the cached list: {type(error).__name__}: {error}',
                   file=__import__('sys').stderr)
-    elif os.environ.get('JOB_PILOTTO_STORE', 'notion') != 'notion':  # the person chose a store on this Mac: the list is its rows
+    elif os.environ.get('JOBADABRA_STORE', 'notion') != 'notion':  # the person chose a store on this Mac: the list is its rows
         from .desktop_store_jobs import store_jobs
         stores = open_stores()
         found = store_jobs(stores)

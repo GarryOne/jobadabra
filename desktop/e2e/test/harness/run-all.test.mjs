@@ -14,7 +14,7 @@ test('run-all picks what a manual CI run would: everything that is not manual; -
 });
 
 test('secrets already in the environment are kept; the rest come from the Keychain, per suite', () => {
-  const store = {'job-pilotto.e2e.notion_token': 'w', 'job-pilotto.e2e.notion_token_quality': 'q'};
+  const store = {'jobadabra.e2e.notion_token': 'w', 'jobadabra.e2e.notion_token_quality': 'q'};
   const found = keychainEnv(['jobs', 'quality'], {env: {E2E_NOTION_TOKEN: 'already'}, read: service => store[service] || ''});
   assert.deepEqual(found, {E2E_NOTION_TOKEN_QUALITY: 'q'});   // the wizard token is set, the jobs token is not in the Keychain
 });

@@ -58,7 +58,7 @@ export function create({key, host = 'https://eu.i.posthog.com', installId, versi
     try {
       if (!active || !enabled() || !EVENTS.includes(event)) return false;
       queue.push({event, distinct_id: installId, timestamp: new Date(now()).toISOString(),
-        properties: {...cleanProps(props), app_version: version, platform, os: String(os).slice(0, 20), $lib: 'job-pilotto', $process_person_profile: false, $geoip_disable: true}});
+        properties: {...cleanProps(props), app_version: version, platform, os: String(os).slice(0, 20), $lib: 'jobadabra', $process_person_profile: false, $geoip_disable: true}});
       if (queue.length > QUEUE_MAX) queue.shift();
       if (queue.length >= FLUSH_AT) void flush();
       else if (timers && !timer) { timer = setTimeout(() => { timer = null; void flush(); }, FLUSH_MS); timer.unref?.(); }

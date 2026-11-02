@@ -28,7 +28,7 @@ export function copyForNight(port, from, into = '', {owned = false} = {}) {
   edit('account-step.js', holdAccountPress);
   edit('manifest.json', text => { const manifest = JSON.parse(text); manifest.host_permissions = [...new Set([...(manifest.host_permissions || []), 'https://*/*'])]; return JSON.stringify(manifest, null, 2); });
   if (owned) {
-    fs.writeFileSync(path.join(dir, 'owned-bootstrap.js'), '// Owned background browser: suppress first-install setup windows.\nglobalThis.__jobPilottoBackgroundOwned = true;\n');
+    fs.writeFileSync(path.join(dir, 'owned-bootstrap.js'), '// Owned background browser: suppress first-install setup windows.\nglobalThis.__jobadabraBackgroundOwned = true;\n');
     fs.writeFileSync(path.join(dir, 'background-owned.js'), "// Reuse the actual extension worker after the owned-browser flag is installed.\nimport './owned-bootstrap.js';\nimport './background.js';\n");
     edit('manifest.json', text => { const manifest = JSON.parse(text); manifest.background.service_worker = 'background-owned.js'; return JSON.stringify(manifest, null, 2); });
   }

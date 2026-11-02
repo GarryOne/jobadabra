@@ -31,5 +31,5 @@ test('the answer trace reaches the reporter, never from a test run (a twin count
   assert.match(env, /onAnswer: trace => \{\n.*appLog\(.fill.*\n(.*withheld.*\n)?\s*answerReporter\(trace\);/);
   const handlers = fs.readFileSync(new URL('../lib/ext-server-handlers.js', import.meta.url), 'utf8');
   assert.match(handlers, /setAnswerReporter\(trace => \{ if \(!testRun\(\)\) recipeReporter\.answer\(trace\)/);
-  assert.match(handlers, /const testRun = \(\) => !!process\.env\.JOB_PILOTTO_E2E;/);
+  assert.match(handlers, /const testRun = \(\) => !!process\.env\.JOBADABRA_E2E;/);
 });

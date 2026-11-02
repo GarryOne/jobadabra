@@ -15,7 +15,7 @@ from src.stores import memory
 URL = 'https://jobs.example/platform-7'
 
 
-# Why (1 Nov 2026, #2908 CI): the python job runs with JOB_PILOTTO_DISABLE=...telegram (tools/check.py), which clears args.send; this test sets its own feature switches.
+# Why (1 Nov 2026, #2908 CI): the python job runs with JOBADABRA_DISABLE=...telegram (tools/check.py), which clears args.send; this test sets its own feature switches.
 def add(*flags):
     """The `daily --mode add --job <url>` run of the app (--from-app), the bot (--send) or the terminal (neither), on a memory store; returns (exit code, the job's row, its events, output)."""
     stores = memory.open_store()
@@ -24,7 +24,7 @@ def add(*flags):
     run_log._open.clear()
     argv = ['daily', '--mode', 'add', '--job', URL, '--note', '', '--log-run', '--job-title', 'Platform Engineer', '--job-company', 'Acme',
             '--db', str(pathlib.Path(tempfile.mkdtemp()) / 'jobs.sqlite'), *flags]
-    with mock.patch.object(sys, 'argv', argv), mock.patch.dict('os.environ', {'JOB_PILOTTO_STORE': 'memory', 'JOB_PILOTTO_DISABLE': ''}), \
+    with mock.patch.object(sys, 'argv', argv), mock.patch.dict('os.environ', {'JOBADABRA_STORE': 'memory', 'JOBADABRA_DISABLE': ''}), \
             mock.patch.object(socket.socket, 'connect', side_effect=AssertionError('the run reached the network')), \
             mock.patch.object(daily.notion.Tracker, 'from_env', return_value=None), \
             mock.patch.object(store_access, 'open_stores', lambda tracker=None: stores), \

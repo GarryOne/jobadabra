@@ -16,7 +16,7 @@ from .models import BIG_MODEL, MAIN_MODEL
 # Opus for reviews and the insights built on them (owner, 30 Sep 2026): rare, judgment-heavy calls on noisy transcripts.
 # Opus thinks by default (it can't be switched off), so its answers get room: MAX_TOKENS. A request it declines is answered
 # once by FALLBACK_MODEL (ask()).
-DEFAULT_MODEL = os.getenv('JOB_PILOTTO_INTERVIEW_MODEL', BIG_MODEL)
+DEFAULT_MODEL = os.getenv('JOBADABRA_INTERVIEW_MODEL', BIG_MODEL)
 FALLBACK_MODEL = MAIN_MODEL
 MAX_TOKENS = 16000
 

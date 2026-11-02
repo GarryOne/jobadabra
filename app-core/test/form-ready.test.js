@@ -73,7 +73,7 @@ test('the panel\'s ready claim is judged only when the tab\'s fill is not runnin
     const asked = [];
     globalThis.chrome = {
       storage: {local: {get: async () => ({workerUrl: 'http://127.0.0.1:47111', token: 't'}), set: async () => {}}, session: {get: async () => ({}), set: async () => {}}},
-      scripting: {executeScript: async ({func}) => [{result: String(func).includes('jobpilottoFill') ? state === 'running'
+      scripting: {executeScript: async ({func}) => [{result: /dataset\.jobpilottoFill\b/.test(String(func)) ? state === 'running'
         : {url: 'https://apply.example/f', title: 'Apply', headings: [], controls: [{type: 'text', label: `City ${state}`, required: true, state: 'filled'}], buttons: [], texts: [], frames: []}}]},
       runtime: {getManifest: () => ({version: '0'})}};
     globalThis.fetch = async (url, init) => { asked.push(String(url)); return {ok: true, status: 200, json: async () => ({answer: 'ready', step: 'final'})}; };
@@ -96,7 +96,7 @@ test('the fill check is asked on a miss or a contradiction, never otherwise, and
   const asked = [];
   globalThis.chrome = {
     storage: {local: {get: async () => ({workerUrl: 'http://127.0.0.1:47111', token: 't'}), set: async () => {}}, session: {get: async () => ({}), set: async () => {}}},
-    scripting: {executeScript: async ({func}) => [{result: String(func).includes('jobpilottoFill') ? false : {url: 'https://apply.example/v', title: 'Apply', headings: [], controls: [{type: 'text', ...kept, required: true, state: 'filled'}, {type: 'text', ...lost, required: true, state: 'empty'}], buttons: [], texts: [], frames: []}}]},
+    scripting: {executeScript: async ({func}) => [{result: /dataset\.jobpilottoFill\b/.test(String(func)) ? false : {url: 'https://apply.example/v', title: 'Apply', headings: [], controls: [{type: 'text', ...kept, required: true, state: 'filled'}, {type: 'text', ...lost, required: true, state: 'empty'}], buttons: [], texts: [], frames: []}}]},
     runtime: {getManifest: () => ({version: '0'})}};
   globalThis.fetch = async (url, init) => { const body = JSON.parse(init?.body || '{}'); asked.push(body.phase); return {ok: true, status: 200, json: async () => (body.phase === 'fill' ? {ok: true, answer: 'shadow', counts: {ok: 1, empty: 1, wrong: 0, unreachable: 0, unsure: 0}} : {answer: 'needs_person', needs: 'City', step: 'final'})}; };
   try { await formNext({id: 91, url: 'https://apply.example/v'}, 0); await new Promise(resolve => setTimeout(resolve, 50)); } finally { Object.assign(globalThis, keep); }

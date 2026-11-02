@@ -1,12 +1,12 @@
 """Employer-site passwords for Apply with Claude sessions, on the Mac and on Windows.
 
 The session never sees or types a password: `new` stores one in this computer's secret store
-(Keychain / Credential Manager, item job-pilotto.<profile>.<host>.password) and puts it on the clipboard, the
+(Keychain / Credential Manager, item jobadabra.<profile>.<host>.password) and puts it on the clipboard, the
 session pastes it (cmd+v / ctrl+v), then `clear` empties the clipboard.
 
 Every NEW account gets its own generated password (owner, 10 Oct 2026: a different one per site, so one leaked site
 opens no other; it replaces the 8 Oct one-password-everywhere). Accounts made before keep theirs: the old shared
-job-site password (job-pilotto.sites.password, e.g. Maple-Rocket-42) is read, never made again for a new site.
+job-site password (jobadabra.sites.password, e.g. Maple-Rocket-42) is read, never made again for a new site.
 A site's rule (--length, --no-symbols) is followed. Settings → Credentials shows each one on demand.
 
   python3 -m src.ai.passwords have <host>    exit 0 when one is stored for that site
@@ -28,10 +28,10 @@ import sys
 
 from .. import secret_store
 
-ACCOUNT = 'job-pilotto'
+ACCOUNT = 'jobadabra'
 
 
-SHARED = 'job-pilotto.sites.password'
+SHARED = 'jobadabra.sites.password'
 
 # Short, plain words (4-6 letters) that are easy to say and type on any layout: no y or z, which QWERTZ swaps.
 WORDS = ('amber apple arrow basil beach blue bread brick cedar chalk cloud coast comet coral cotton crane '
@@ -43,10 +43,10 @@ WORDS = ('amber apple arrow basil beach blue bread brick cedar chalk cloud coast
 
 
 def service(host):
-    """The Keychain item of a site's account. It belongs to one profile (owner, 16 Oct 2026): job-pilotto.profile-<id>.<host>.password, the id from the app
-    (JOB_PILOTTO_PROFILE_ID); with none (a hand-run tool) the old name, which the app lists as unassigned."""
-    profile = os.environ.get('JOB_PILOTTO_PROFILE_ID', '')
-    return f'job-pilotto.{profile}.{host}.password' if re.fullmatch(r'profile-[0-9a-f]{12}', profile) else f'job-pilotto.{host}.password'
+    """The Keychain item of a site's account. It belongs to one profile (owner, 16 Oct 2026): jobadabra.profile-<id>.<host>.password, the id from the app
+    (JOBADABRA_PROFILE_ID); with none (a hand-run tool) the old name, which the app lists as unassigned."""
+    profile = os.environ.get('JOBADABRA_PROFILE_ID', '')
+    return f'jobadabra.{profile}.{host}.password' if re.fullmatch(r'profile-[0-9a-f]{12}', profile) else f'jobadabra.{host}.password'
 
 
 def memorable():

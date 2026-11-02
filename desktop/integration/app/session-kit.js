@@ -36,7 +36,7 @@ const noop = () => {};
  */
 export async function startSessionKit({settings = {}} = {}) {
   const port = await freePort();
-  Object.assign(process.env, {JOB_PILOTTO_PORT: String(port), JOB_PILOTTO_E2E: '1', JOB_PILOTTO_E2E_OPENER: 'fake-opener'});
+  Object.assign(process.env, {JOBADABRA_PORT: String(port), JOBADABRA_E2E: '1', JOBADABRA_E2E_OPENER: 'fake-opener'});
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-session-kit-'));
   const {createStorage} = await import('../../lib/storage.js');
   const storage = createStorage(dir, {encrypt: text => text, decrypt: text => text});
@@ -57,7 +57,7 @@ export async function startSessionKit({settings = {}} = {}) {
   const handlers = new Map(), sent = [];
   const ipcMain = {handle: (name, fn) => handlers.set(name, fn), on: noop};
   const toWindow = (channel, payload) => sent.push({channel, payload});
-  const browser = {opened: [], open(command, args) { browser.opened.push(String(args.at(-1))); return {on: noop, unref: noop}; }};   // JOB_PILOTTO_E2E_OPENER: ['node', [opener, ...urls]]
+  const browser = {opened: [], open(command, args) { browser.opened.push(String(args.at(-1))); return {on: noop, unref: noop}; }};   // JOBADABRA_E2E_OPENER: ['node', [opener, ...urls]]
   // main.js builds the session flow once, from the same pieces (the stage from each report, the hand-over): the kit's differ only in what reaches outside (no Claude, no notice, no tab to close).
   const {createSessionFlow} = await import('../../lib/session-flow.js');
   let sessionFlow = null;

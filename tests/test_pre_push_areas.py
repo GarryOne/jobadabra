@@ -54,7 +54,7 @@ class PrePushCheckTest(PrePushFixture):
         self.assertEqual(code, 0)
         self.assertIn('no affected tests', err)
         self.assertFalse(self.log.exists(), 'no suite started')
-        self.assertEqual(self.hook('git push origin HEAD:main', JOB_PILOTTO_TIERS='0')[0], 0)
+        self.assertEqual(self.hook('git push origin HEAD:main', JOBADABRA_TIERS='0')[0], 0)
         self.assertEqual(len(self.log.read_text().splitlines()), 3, 'the escape hatch runs every area the paths want')
         self.log.unlink()
         self.commit('Change a script', {'desktop/lib/x.js': 'export {};\n'})

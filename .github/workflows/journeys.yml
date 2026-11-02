@@ -62,7 +62,7 @@ jobs:
       matrix:
         row: ['Richemont Workday', 'SuccessFactors: account and form', 'Lever: single page, no account']   # journeys.json rows that are neither pending nor macOnly (desktop/e2e/test/replay/journey-run.test.mjs keeps them equal)
     env:
-      JOB_PILOTTO_HEAVY: '0'   # the heavy lock is a Mac's queue; this runner is its own machine
+      JOBADABRA_HEAVY: '0'   # the heavy lock is a Mac's queue; this runner is its own machine
     steps:
       - name: The record key is set
         env:

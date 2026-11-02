@@ -20,7 +20,7 @@ const storageOn = settings => {
 };
 // Isolated like test/store-call-private.test.js: no .env, never the Desktop App's folder; the store is the one under test.
 const engineOn = store => (s, args, onLine, extra, options) => pipelineRun.run(s, args, onLine,
-  {...extra, JOB_PILOTTO_STORE: store, JOB_PILOTTO_FOLLOW_APP: '0', JOB_PILOTTO_NO_DOTENV: '1', NOTION_TOKEN: ''}, options);
+  {...extra, JOBADABRA_STORE: store, JOBADABRA_FOLLOW_APP: '0', JOBADABRA_NO_DOTENV: '1', NOTION_TOKEN: ''}, options);
 const ready = async () => { await new Promise(setImmediate); };   // one turn of the event loop: whatever is already runnable has run
 
 test('settled() waits for the runs in flight at the call, never for runs asked for after it', async () => {

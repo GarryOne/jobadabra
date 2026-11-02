@@ -17,7 +17,7 @@ export const knowledgeOnWith = ensureKnowledgePage => fake => storage => ensureK
 
 /** An install on this Mac's SQLite store (3 jobs, 2 events, 1 interview, 1 file) whose Notion is the stand-in's fresh workspace; `createStorage` is the app's, imported after the isolation switches. */
 export const installerWith = createStorage => async fake => {
-  process.env.JOB_PILOTTO_E2E_NOTION_BASE_URL = fake.url;   // the engine's copy takes its Notion from the environment the app gives it (lib/pipeline-env.js)
+  process.env.JOBADABRA_E2E_NOTION_BASE_URL = fake.url;   // the engine's copy takes its Notion from the environment the app gives it (lib/pipeline-env.js)
   const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-storemove-int-'));
   const storage = createStorage(profile, {encrypt: value => value, decrypt: value => value});
   fs.mkdirSync(path.join(profile, 'data'), {recursive: true});

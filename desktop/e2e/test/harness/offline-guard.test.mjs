@@ -9,13 +9,13 @@ import {test} from 'node:test';
 import {guardNetwork, offlineEnv} from '../../lib/offline-guard.mjs';
 
 test('the env is the journey\'s, in its own folder, never the app\'s real one', () => {
-  const env = offlineEnv('/tmp/jp-x', {PATH: '/bin', ANTHROPIC_API_KEY: 'sk-real', JOB_PILOTTO_TWIN: '1'});
-  assert.equal(env.JOB_PILOTTO_E2E, '1');
-  assert.equal(env.JOB_PILOTTO_USER_DATA, '/tmp/jp-x');
-  assert.equal(env.JOB_PILOTTO_NO_DOTENV, '1');
+  const env = offlineEnv('/tmp/jp-x', {PATH: '/bin', ANTHROPIC_API_KEY: 'sk-real', JOBADABRA_TWIN: '1'});
+  assert.equal(env.JOBADABRA_E2E, '1');
+  assert.equal(env.JOBADABRA_USER_DATA, '/tmp/jp-x');
+  assert.equal(env.JOBADABRA_NO_DOTENV, '1');
   assert.equal(env.PATH, '/bin');
   assert.equal(env.ANTHROPIC_API_KEY, undefined, 'no key on a Mac: the plan path only');
-  assert.equal(env.JOB_PILOTTO_TWIN, undefined);
+  assert.equal(env.JOBADABRA_TWIN, undefined);
   assert.throws(() => offlineEnv(path.join(os.homedir(), 'Library', 'Application Support', 'Job Pilotto')), /real/);
 });
 

@@ -12,7 +12,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 NOT_SCANNED = re.compile(
     r'(^|/)(node_modules|dist)/|docs/rules/why\.md|desktop/lib/app-identity\.js|'
-    r'desktop/test/app-identity\.test\.js|tests/test_brand_wording\.py|\.(png|jpg|jpeg|gif|ico|icns|woff2?|zip|pdf|lock|svg)$|package-lock')
+    r'desktop/test/app-identity\.test\.js|tests/test_brand_wording\.py|tools/(rename-map\.json|lib/rename-scan\.mjs)|2026-11-01-finish-jobadabra-rename-design\.md|\.(png|jpg|jpeg|gif|ico|icns|woff2?|zip|pdf|lock|svg)$|package-lock')
 # Kept names: a line is allowed when it matches one of these.
 KEPT = re.compile('|'.join([
     r"Application Support|APPDATA|AppData|/ 'Job Pilotto'|\\Job Pilotto|/Job Pilotto\b|Job Pilotto Safe Storage",  # the real data folder, the Keychain item

@@ -66,6 +66,8 @@ runs:
         fi
         site="$(git -C "$GITHUB_WORKSPACE/.free-ai-site" rev-parse --short HEAD)"
         rm -rf "$GITHUB_WORKSPACE/.free-ai-site"   # nothing private stays in the workspace the suites and their artifacts see
+        # Why (2 Nov 2026, Gitar on #2972): a future folder move that the site's layout map does not follow must fail here by name, not as "Cannot find module" from inside the relay.
+        if [ ! -f "$tree/jobs/persona-search/free-ai-local.mjs" ]; then echo "::error::the site's layout map did not lay jobs/persona-search/free-ai-local.mjs (jobadabra-web $site)"; exit 1; fi
         log="$RUNNER_TEMP/free-ai-relay.log"; key="$RUNNER_TEMP/free-ai.key"
         (cd "$tree" && nohup node jobs/persona-search/free-ai-local.mjs "$PORT" "$key" --install-prefix ci-e2e- > "$log" 2>&1 &)
         for i in $(seq 1 60); do grep -q "listening on $PORT" "$log" 2>/dev/null && break; sleep 0.5; done
